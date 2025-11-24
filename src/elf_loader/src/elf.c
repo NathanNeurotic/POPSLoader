@@ -10,12 +10,14 @@
 
 #include <string.h>
 #include <sifrpc.h>
+#include <stdio.h>
 #include <kernel.h>
 #include <sys/stat.h>
 #include <stdbool.h>
 #include <stdlib.h>
 
 #include "elf.h"
+
 #define DPRINTF(x...) printf(x)
 // Loader ELF variables
 extern u8 loader_elf[];
