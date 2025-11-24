@@ -58,7 +58,7 @@ ifeq ($(DEBUG),1)
 EE_CXXFLAGS += -DDEBUG
 endif
 
-BIN2S = $(PS2SDK)/bin/bin2s
+BIN2S = $(PS2SDK)/bin/bin2c
 
 #-------------------------- App Content ---------------------------#
 EXT_LIBS = modules/ds34usb/ee/libds34usb.a modules/ds34bt/ee/libds34bt.a
@@ -95,14 +95,14 @@ $(EE_BIN_PKD): $(EE_BIN)
 	ps2-packer $< $@ > /dev/null
 #--------------------- Embedded ressources ------------------------#
 
-$(EE_ASM_DIR)boot.s: etc/boot.lua | $(EE_ASM_DIR)
+$(EE_ASM_DIR)boot.c: etc/boot.lua | $(EE_ASM_DIR)
 	echo "Embedding boot script..."
 	$(BIN2S) $< $@ bootString
 
 # Images
-$(EE_ASM_DIR)%.s: EMBED/%.png
+$(EE_ASM_DIR)%.c: EMBED/%.png
 	$(BIN2S) $< $@ $(shell basename $< .png)
-$(EE_ASM_DIR)%.s: EMBED/%.ttf
+$(EE_ASM_DIR)%.c: EMBED/%.ttf
 	$(BIN2S) $< $@ $(shell basename $< .ttf)
 #------------------------------------------------------------------#
 
@@ -113,7 +113,7 @@ vpath %.irx iop/
 vpath %.irx $(PS2SDK)/iop/irx/
 IRXTAG = $(subst -,_,$(notdir $(addsuffix _irx, $(basename $<))))
 
-$(EE_ASM_DIR)%.s: $(PS2SDK)/iop/irx/%.irx | $(EE_ASM_DIR)
+$(EE_ASM_DIR)%.c: $(PS2SDK)/iop/irx/%.irx | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ $(IRXTAG)
 
 
@@ -123,7 +123,7 @@ modules/ds34bt/ee/libds34bt.a: modules/ds34bt/ee
 modules/ds34bt/iop/ds34bt.irx: modules/ds34bt/iop
 	$(MAKE) -C $<
 
-$(EE_ASM_DIR)ds34bt.s: modules/ds34bt/iop/ds34bt.irx | $(EE_ASM_DIR)
+$(EE_ASM_DIR)ds34bt.c: modules/ds34bt/iop/ds34bt.irx | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ ds34bt_irx
 
 modules/ds34usb/ee/libds34usb.a: modules/ds34usb/ee
@@ -132,7 +132,7 @@ modules/ds34usb/ee/libds34usb.a: modules/ds34usb/ee
 modules/ds34usb/iop/ds34usb.irx: modules/ds34usb/iop
 	$(MAKE) -C $<
 
-$(EE_ASM_DIR)ds34usb.s: modules/ds34usb/iop/ds34usb.irx | $(EE_ASM_DIR)
+$(EE_ASM_DIR)ds34usb.c: modules/ds34usb/iop/ds34usb.irx | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ ds34usb_irx
 
 #------------------------------------------------------------------#
@@ -212,6 +212,10 @@ $(EE_OBJS_DIR)%.o: $(EE_SRC_DIR)%.c | $(EE_OBJS_DIR)
 $(EE_OBJS_DIR)%.o: $(EE_ASM_DIR)%.s | $(EE_OBJS_DIR)
 	@echo "  - $@"
 	@$(EE_AS) $(EE_ASFLAGS) $< -o $@
+
+$(EE_OBJS_DIR)%.o: $(EE_ASM_DIR)%.c | $(EE_OBJS_DIR)
+	@echo "  - $@"
+	@$(EE_CC) $(EE_CFLAGS) $(EE_INCS) -c $< -o $@
 
 $(EE_OBJS_DIR)%.o: $(EE_SRC_DIR)%.cpp | $(EE_OBJS_DIR)
 	@echo "  - $@"
