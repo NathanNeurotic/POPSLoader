@@ -43,3 +43,4 @@ bin/POPSLDR/.pldrs
 bin/LICENSE
 !EMBED/*
 bin/POPSLDR/hdd_gamecache.lua
+!iop/embed/*.irx

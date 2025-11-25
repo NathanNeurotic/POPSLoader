@@ -80,6 +80,9 @@ extern unsigned int size_ds34usb_irx;
 extern unsigned char ds34bt_irx;
 extern unsigned int size_ds34bt_irx;
 
+extern unsigned char mmceman_irx;
+extern unsigned int size_mmceman_irx;
+
 char boot_path[255];
 
 void setLuaBootPath(int argc, char ** argv, int idx)
@@ -174,6 +177,7 @@ int main(int argc, char * argv[])
 	fileXioInit();
 
 	LOAD_IRX_NARG(sio2man_irx);
+	LOAD_IRX_NARG(mmceman_irx);
     LOAD_IRX_NARG(mcman_irx);
     LOAD_IRX_NARG(mcserv_irx);
     initMC();
