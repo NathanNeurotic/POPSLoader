@@ -24,7 +24,7 @@ jobs:
       run: |
         git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v5
     - run: |
         git fetch --prune --unshallow
 
@@ -34,7 +34,7 @@ jobs:
 
     - name: Upload artifacts
       if: ${{ success() }}
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: POPSLDR
         path: POPSLoader.7z
