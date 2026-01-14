@@ -58,13 +58,32 @@ JoinPath = joinPath
 IsValidRoot = isValidRoot
 
 local function detectPreferredDevice()
-  if safeDoesFolderExist("mmce0:/") then return "mmce0:/" end
-  if safeDoesFolderExist("mmce1:/") then return "mmce1:/" end
-  if safeDoesFolderExist("mass0:/") then return "mass0:/" end
-  if safeDoesFolderExist("mass1:/") then return "mass1:/" end
-  if safeDoesFolderExist("mass2:/") then return "mass2:/" end
-  if safeDoesFolderExist("mass3:/") then return "mass3:/" end
-  return "mmce0:/"
+  local probe_roots = {
+    "mass0:/",
+    "mass1:/",
+    "mass2:/",
+    "mass3:/",
+  }
+
+  if MMCE_AVAILABLE then
+    table.insert(probe_roots, 1, "mmce1:/")
+    table.insert(probe_roots, 2, "mmce0:/")
+  end
+
+  while true do
+    for _, root in ipairs(probe_roots) do
+      if safeDoesFolderExist(root.."POPS/") then
+        return root
+      end
+    end
+    System.sleep(1)
+  end
+end
+
+BOOT_PATH = tostring(BOOT_PATH or System.currentDirectory() or "./")
+BOOT_PATH = BOOT_PATH:gsub("//+", "/")
+if BOOT_PATH:sub(-1) ~= "/" then
+  BOOT_PATH = BOOT_PATH.."/"
 end
 
 PREFERRED_DEVICE = normalizeRoot(detectPreferredDevice())
@@ -77,7 +96,7 @@ elseif not isValidRoot(BOOT_DEVICE_ROOT) then
   LOG("WARNING: invalid boot device root", BOOT_DEVICE_ROOT)
 end
 
-package.path = "./?.lua;mc0:/?.lua;mc1:/?.lua"
+package.path = string.format("%s?.lua", BOOT_PATH)
 
 POPSLDR_VER = "v1.0.0 - rev3"
 
@@ -127,9 +146,20 @@ if string.find(ARGV0, "^hdd0:") then
 end
 GPAD = 0
 Font.ftInit()
-BFONT = Font.LoadBuiltinFont()
-SFONT = Font.LoadBuiltinFont()
-LFONT = Font.LoadBuiltinFont()
+local function loadBuiltinFont()
+  local font = Font.LoadBuiltinFont()
+  if font == nil and doesFileExist(BOOT_PATH.."builtin_font.ttf") then
+    font = Font.ftLoad(BOOT_PATH.."builtin_font.ttf")
+  end
+  return font
+end
+
+BFONT = loadBuiltinFont()
+SFONT = loadBuiltinFont()
+LFONT = loadBuiltinFont()
+if BFONT == nil or SFONT == nil or LFONT == nil then
+  error("Failed to load builtin font (missing embedded font and builtin_font.ttf)")
+end
 Font.ftSetCharSize(BFONT, 800, 800)
 Font.ftSetCharSize(SFONT, 600, 600)
 function STOP() LOG("PROGRAM STOP") Screen.clear(Color.new(255,0,0)) Screen.flip() while true do end end
@@ -137,10 +167,11 @@ function RunScript(S)
   dofile(S)
 end
 
-RUNTIME_ROOT = System.currentDirectory()
+RUNTIME_ROOT = BOOT_PATH
+POPSTARTER_PATH = BOOT_PATH.."POPSTARTER.ELF"
 
-if doesFileExist("system.lua") then
-	RunScript("system.lua");
+if doesFileExist(BOOT_PATH.."system.lua") then
+	RunScript(BOOT_PATH.."system.lua");
 else
   error("Cant access system.lua\n\n\tcurrent_bootpath: "..System.currentDirectory())
 end

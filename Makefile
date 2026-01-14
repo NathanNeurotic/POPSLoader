@@ -117,10 +117,8 @@ IRXTAG = $(subst -,_,$(notdir $(addsuffix _irx, $(basename $<))))
 $(EE_ASM_DIR)%.c: %.irx | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ $(IRXTAG)
 
-SIO2MAN_VARIANT ?= sio2man
-SIO2MAN_DIR = sio2man/$(SIO2MAN_VARIANT)
-SIO2MAN_IRX = $(SIO2MAN_DIR)/sio2man.irx
-SIO2MAN_VARIANTS := $(notdir $(dir $(wildcard sio2man/*/sio2man.irx)))
+SIO2MAN_IRX ?= sio2man/sio2man/sio2man.irx
+SIO2MAN_IRX_PATHS := $(wildcard sio2man/*/sio2man.irx)
 
 ifeq ($(wildcard $(SIO2MAN_IRX)),)
 $(error Missing $(SIO2MAN_IRX). Place an old sio2man.irx under sio2man/<variant>/sio2man.irx)
@@ -188,14 +186,23 @@ reset:
 POPSLDR_PKG = POPSLoader.7z
 package: $(EE_BIN_PKD)
 	rm -f $(POPSLDR_PKG)
-	7z a $(POPSLDR_PKG) $(EE_BIN_PKD) bin/changelog bin/*.lua bin/*.png bin/PATCH_5.BIN LICENSE README.md
+	rm -rf $(BINDIR)pkg
+	mkdir -p $(BINDIR)pkg
+	cp $(EE_BIN_PKD) $(BINDIR)pkg/
+	if [ -f $(BINDIR)POPSTARTER.ELF ]; then cp $(BINDIR)POPSTARTER.ELF $(BINDIR)pkg/; fi
+	cp $(BINDIR)*.lua $(BINDIR)pkg/
+	cp $(BINDIR)*.png $(BINDIR)pkg/
+	cp $(BINDIR)PATCH_5.BIN $(BINDIR)pkg/
+	if [ -f EMBED/builtin_font.ttf ]; then cp EMBED/builtin_font.ttf $(BINDIR)pkg/; fi
+	7z a $(POPSLDR_PKG) $(BINDIR)pkg/* LICENSE README.md
 
 variants:
-	@if [ -z "$(SIO2MAN_VARIANTS)" ]; then echo "No sio2man variants found under sio2man/*/sio2man.irx"; exit 1; fi
-	@for v in $(SIO2MAN_VARIANTS); do \
-		echo "Building variant $$v"; \
+	@if [ -z "$(SIO2MAN_IRX_PATHS)" ]; then echo "No sio2man variants found under sio2man/*/sio2man.irx"; exit 1; fi
+	@for v in $(SIO2MAN_IRX_PATHS); do \
+		variant=$$(basename $$(dirname $$v)); \
+		echo "Building variant $$variant"; \
 		$(MAKE) cleanbin; \
-		$(MAKE) SIO2MAN_VARIANT=$$v EE_BIN=$(BINDIR)enceladus_$$v.elf EE_BIN_PKD=$(BINDIR)POPSLOADER_$$v.ELF; \
+		$(MAKE) SIO2MAN_IRX=$$v EE_BIN=$(BINDIR)enceladus_$$variant.elf EE_BIN_PKD=$(BINDIR)POPSLOADER_$$variant.ELF; \
 	done
 
 dummys:

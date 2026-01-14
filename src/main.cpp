@@ -86,6 +86,9 @@ extern unsigned char mmceman_irx[];
 extern unsigned int size_mmceman_irx;
 
 char boot_path[255];
+int g_mmce_available = 0;
+static int g_mmce_probed = 0;
+static int g_mmce_disabled = 0;
 static const char *kMmceDevices[] = {"mmce0:/", "mmce1:/"};
 static const char *kDeviceProbeOrder[] = {
     "mmce1:/",
@@ -97,6 +100,7 @@ static const char *kDeviceProbeOrder[] = {
 };
 static const char *kDefaultDevice = "mmce0:/";
 static const int kDeviceRetries = 50;
+static const int kMmceProbeRetries = 2;
 
 static bool hasDevicePrefix(const char *path)
 {
@@ -116,6 +120,52 @@ static int waitForDevice(const char *device, int retries)
     }
 
     return ret;
+}
+
+static bool isMmceRoot(const char *root)
+{
+    return root != NULL && (strncmp(root, "mmce0:/", 7) == 0 || strncmp(root, "mmce1:/", 7) == 0);
+}
+
+static void probeMmceAvailability(void)
+{
+    if (g_mmce_probed) {
+        return;
+    }
+
+    g_mmce_probed = 1;
+    g_mmce_available = 0;
+
+    for (size_t idx = 0; idx < (sizeof(kMmceDevices) / sizeof(kMmceDevices[0])); ++idx) {
+        if (waitForDevice(kMmceDevices[idx], kMmceProbeRetries) == 0) {
+            g_mmce_available = 1;
+            break;
+        }
+    }
+
+    if (g_mmce_available) {
+        printf("MMCE: available\n");
+    } else {
+        g_mmce_disabled = 1;
+        printf("MMCE: probe failed (no ACK). Disabling mmce0:/ for this session.\n");
+    }
+}
+
+static bool hasPopsDirectory(const char *root)
+{
+    if (root == NULL) {
+        return false;
+    }
+
+    char path[64];
+    snprintf(path, sizeof(path), "%sPOPS/", root);
+
+    struct stat buffer;
+    if (stat(path, &buffer) != 0) {
+        return false;
+    }
+
+    return S_ISDIR(buffer.st_mode);
 }
 
 static void logMmceDiagnostics(void)
@@ -141,13 +191,33 @@ static void logMmceDiagnostics(void)
 
 static const char *detectPreferredDevice(void)
 {
+    probeMmceAvailability();
     for (size_t idx = 0; idx < (sizeof(kDeviceProbeOrder) / sizeof(kDeviceProbeOrder[0])); ++idx) {
-        if (waitForDevice(kDeviceProbeOrder[idx], kDeviceRetries) == 0) {
+        if (g_mmce_disabled && isMmceRoot(kDeviceProbeOrder[idx])) {
+            continue;
+        }
+        if (waitForDevice(kDeviceProbeOrder[idx], kDeviceRetries) == 0 &&
+            hasPopsDirectory(kDeviceProbeOrder[idx])) {
             return kDeviceProbeOrder[idx];
         }
     }
 
     return kDefaultDevice;
+}
+
+static void ensureBootPathSlash(void)
+{
+    size_t len = strlen(boot_path);
+    if (len == 0) {
+        return;
+    }
+
+    if (boot_path[len - 1] != '/') {
+        if (len + 1 < sizeof(boot_path)) {
+            boot_path[len] = '/';
+            boot_path[len + 1] = '\0';
+        }
+    }
 }
 
 void setLuaBootPath(int argc, char ** argv, int idx, const char *preferred_device)
@@ -184,6 +254,8 @@ void setLuaBootPath(int argc, char ** argv, int idx, const char *preferred_devic
     if (boot_path[0] == '\0' || !hasDevicePrefix(boot_path)) {
         snprintf(boot_path, sizeof(boot_path), "%s", normalized_root);
     }
+
+    ensureBootPathSlash();
     
 }
 
@@ -246,7 +318,9 @@ int main(int argc, char * argv[])
 
 	LOAD_IRX_NARG(sio2man_irx);
 	LOAD_IRX_NARG(mmceman_irx);
+#ifdef DEBUG
     logMmceDiagnostics();
+#endif
     LOAD_IRX_NARG(mcman_irx);
     LOAD_IRX_NARG(mcserv_irx);
     initMC();

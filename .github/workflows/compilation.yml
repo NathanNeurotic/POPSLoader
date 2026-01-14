@@ -12,9 +12,29 @@ on:
     types: [run_build]
 
 jobs:
+  list-variants:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+    - uses: actions/checkout@v5
+    - id: matrix
+      run: |
+        files=$(find sio2man -type f -name sio2man.irx | sort)
+        if [ -z "$files" ]; then
+          echo "No sio2man variants found under sio2man/*/sio2man.irx" >&2
+          exit 1
+        fi
+        json=$(printf '%s\n' "$files" | jq -R -s -c 'split("\n") | map(select(length > 0))')
+        echo "matrix=${json}" >> "$GITHUB_OUTPUT"
+
   build:
     runs-on: ubuntu-latest
     container: ps2dev/ps2dev:latest
+    needs: list-variants
+    strategy:
+      matrix:
+        sio2man_irx: ${{ fromJson(needs.list-variants.outputs.matrix) }}
     steps:
     - name: Install dependencies
       run: |
@@ -28,16 +48,27 @@ jobs:
     - run: |
         git fetch --prune --unshallow
 
+    - name: Prepare variant name
+      id: variant
+      run: |
+        variant_name=$(echo "${{ matrix.sio2man_irx }}" | sed -e 's#^sio2man/##' -e 's#/sio2man.irx##' -e 's#[^A-Za-z0-9._-]#_#g')
+        echo "variant_name=sio2man_${variant_name}" >> "$GITHUB_OUTPUT"
+
     - name: Compile project
       run: |
-        make clean elfloader all package
+        make clean elfloader all SIO2MAN_IRX=${{ matrix.sio2man_irx }} ENABLE_USB_MASS=1
+        mv bin/POPSLOADER.ELF bin/POPSLOADER_${{ steps.variant.outputs.variant_name }}.ELF
+        make package EE_BIN_PKD=bin/POPSLOADER_${{ steps.variant.outputs.variant_name }}.ELF POPSLDR_PKG=POPSLoader_${{ steps.variant.outputs.variant_name }}.7z
 
     - name: Upload artifacts
       if: ${{ success() }}
       uses: actions/upload-artifact@v4
       with:
-        name: POPSLDR
-        path: POPSLoader.7z
+        name: POPSLOADER_${{ steps.variant.outputs.variant_name }}
+        path: |
+          bin/POPSLOADER_${{ steps.variant.outputs.variant_name }}.ELF
+          bin/pkg/*
+          POPSLoader_${{ steps.variant.outputs.variant_name }}.7z
  
     - name: Create pre-release
       if: github.ref == 'refs/heads/main'
