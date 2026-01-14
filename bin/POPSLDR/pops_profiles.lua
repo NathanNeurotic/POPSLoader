@@ -12,19 +12,19 @@ local DEFAULT_PROFILE = 1 -- change this for a different default profile. defaul
 
 PLDR.PROFILES = {
   {
-    ELF=System.currentDirectory().."/POPSLDR/PROFILES/MAIN/POPSTARTER.ELF";
+    ELF=JoinPath(System.currentDirectory(), "POPSLDR/PROFILES/MAIN/POPSTARTER.ELF");
     DESC="Latest popstarter without any modifications";
   },
   {
-    ELF=System.currentDirectory().."/POPSLDR/PROFILES/DEBUG/POPSTARTER.ELF";
+    ELF=JoinPath(System.currentDirectory(), "POPSLDR/PROFILES/DEBUG/POPSTARTER.ELF");
     DESC="Latest popstarter with debug menus enabled";
   },
   {
-    ELF=System.currentDirectory().."/POPSLDR/PROFILES/USBDELAY/POPSTARTER.ELF";
+    ELF=JoinPath(System.currentDirectory(), "POPSLDR/PROFILES/USBDELAY/POPSTARTER.ELF");
     DESC="Latest popstarter with increased USB delay";
   },
   {
-    ELF=System.currentDirectory().."/POPSLDR/PROFILES/USBDELAY_DEBUG/POPSTARTER.ELF";
+    ELF=JoinPath(System.currentDirectory(), "POPSLDR/PROFILES/USBDELAY_DEBUG/POPSTARTER.ELF");
     DESC="Latest popstarter with increased USB delay & debug menus enabled";
   },
   {

@@ -44,7 +44,7 @@ int LoadELFFromFile(const char *filename, int argc, char *argv[]);
  * dont forget about leading ":"
  *
  * It is not necessary that filename should be on that partition
- * filename - <device>:/TEST.ELF (e.g. mass:/TEST.ELF or mmce0:/TEST.ELF)
+ * filename - <device>:/TEST.ELF (e.g. mmce0:/TEST.ELF)
  * partition - pfs:/__common
  * will be valid usage
  */

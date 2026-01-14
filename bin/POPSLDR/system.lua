@@ -25,11 +25,11 @@ if doesFolderExist("POPSLDR/IRX/") then
   end
 end
 local function resolvePreferredPath(relative_path)
-  local preferred = PREFERRED_DEVICE or "mass:/"
-  local candidate = preferred..relative_path
+  local preferred = NormalizeRoot(PREFERRED_DEVICE or "mmce0:/")
+  local candidate = JoinPath(preferred, relative_path)
   if doesFileExist(candidate) then return candidate end
-  if preferred ~= "mass:/" then
-    local fallback = "mass:/"..relative_path
+  if USB_FALLBACK_ENABLED and preferred ~= "mass:/" then
+    local fallback = JoinPath("mass:/", relative_path)
     if doesFileExist(fallback) then return fallback end
   end
   return candidate
