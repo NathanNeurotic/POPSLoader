@@ -185,6 +185,79 @@ bool join_path(char *out, size_t outsz, const char *root, const char *rel)
 	return true;
 }
 
+bool derive_base_dir(const char *boot_path, char *out, size_t out_sz)
+{
+	if (out == NULL || out_sz == 0) {
+		return false;
+	}
+	out[0] = '\0';
+
+	if (boot_path == NULL || boot_path[0] == '\0') {
+		return false;
+	}
+
+	const char *colon = strchr(boot_path, ':');
+	const char *last_slash = strrchr(boot_path, '/');
+
+	if (colon == NULL) {
+		if (last_slash == NULL) {
+			return false;
+		}
+		size_t len = (size_t)(last_slash - boot_path + 1);
+		if (len >= out_sz) {
+			len = out_sz - 1;
+		}
+		memcpy(out, boot_path, len);
+		out[len] = '\0';
+		return true;
+	}
+
+	size_t dev_len = (size_t)(colon - boot_path);
+	if (dev_len + 2 >= out_sz) {
+		return false;
+	}
+
+	memcpy(out, boot_path, dev_len);
+	out[dev_len] = ':';
+	out[dev_len + 1] = '/';
+	size_t written = dev_len + 2;
+
+	const char *rest_start = (colon[1] == '/') ? colon + 2 : colon + 1;
+	if (last_slash == NULL || last_slash < rest_start) {
+		out[written] = '\0';
+		return true;
+	}
+
+	size_t rest_len = (size_t)(last_slash - rest_start + 1);
+	if (written + rest_len >= out_sz) {
+		rest_len = out_sz - written - 1;
+	}
+
+	memcpy(out + written, rest_start, rest_len);
+	written += rest_len;
+	out[written] = '\0';
+	return true;
+}
+
+bool resolve_local(const char *base_dir, const char *filename, char *out, size_t out_sz)
+{
+	if (out == NULL || out_sz == 0) {
+		return false;
+	}
+	out[0] = '\0';
+
+	if (base_dir == NULL || filename == NULL) {
+		return false;
+	}
+
+	int written = snprintf(out, out_sz, "%s%s", base_dir, filename);
+	if (written < 0 || (size_t)written >= out_sz) {
+		out[0] = '\0';
+		return false;
+	}
+	return true;
+}
+
 
 void IOP_Reset(void)
 {

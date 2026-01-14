@@ -32,16 +32,20 @@ end
 ResolvePreferredPath = resolvePreferredPath
 
 local POPS_DEVICE_ORDER = {
+  "mmce1:/POPS/",
+  "mmce0:/POPS/",
+  "mmce1:/POPS/",
+  "mmce0:/POPS/",
+  "mass:/POPS/",
   "mass0:/POPS/",
   "mass1:/POPS/",
   "mass2:/POPS/",
-  "mass3:/POPS/"
+  "mass3:/POPS/",
+  "mass:/POPS/",
+  "mass0:/POPS/"
 }
 
-if MMCE_AVAILABLE then
-  table.insert(POPS_DEVICE_ORDER, 1, "mmce1:/POPS/")
-  table.insert(POPS_DEVICE_ORDER, 2, "mmce0:/POPS/")
-end
+PLDR_LAST_POPS_DEVICE = nil
 
 local function canOpenDir(path)
   local ok, result = pcall(System.listDirectory, path)
@@ -73,11 +77,13 @@ PLDR = {
 function PLDR.FindPopsRoot()
   if BOOT_DEVICE_ROOT then
     local candidate = BOOT_DEVICE_ROOT.."POPS/"
+    PLDR_LAST_POPS_DEVICE = candidate
     if canOpenDir(candidate) then
       return candidate
     end
   end
   for _, root in ipairs(POPS_DEVICE_ORDER) do
+    PLDR_LAST_POPS_DEVICE = root
     if canOpenDir(root) then
       return root
     end
