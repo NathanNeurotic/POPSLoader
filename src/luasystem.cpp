@@ -1008,6 +1008,30 @@ void luaSystem_init(lua_State *L) {
 	lua_pushinteger(L, SEEK_CUR);
 	lua_setglobal(L, "CUR");
 
+	lua_pushinteger(L, FIO_O_RDONLY);
+	lua_setglobal(L, "FXO_RDONLY");
+
+	lua_pushinteger(L, FIO_O_WRONLY);
+	lua_setglobal(L, "FXO_WRONLY");
+
+	lua_pushinteger(L, FIO_O_RDWR);
+	lua_setglobal(L, "FXO_RDWR");
+
+	lua_pushinteger(L, FIO_O_CREAT);
+	lua_setglobal(L, "FXO_CREAT");
+
+	lua_pushinteger(L, FIO_O_TRUNC);
+	lua_setglobal(L, "FXO_TRUNC");
+
+	lua_pushinteger(L, FIO_SEEK_SET);
+	lua_setglobal(L, "FX_SEEK_SET");
+
+	lua_pushinteger(L, FIO_SEEK_END);
+	lua_setglobal(L, "FX_SEEK_END");
+
+	lua_pushinteger(L, FIO_SEEK_CUR);
+	lua_setglobal(L, "FX_SEEK_CUR");
+
 	lua_pushinteger(L, 1);
 	lua_setglobal(L, "READ_ONLY");
 

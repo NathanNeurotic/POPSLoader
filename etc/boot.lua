@@ -289,18 +289,18 @@ local function load_system_lua()
   local last_read_ret = nil
   local last_parse_err = nil
   for attempt = 1, OPEN_RETRY_COUNT do
-    local system_fd, system_open_ret = open_with_retry(system_path, FREAD)
+    local system_fd, system_open_ret = open_with_retry(system_path, FXO_RDONLY)
     if system_fd < 0 then
       emit_fatal("Cant open system.lua\n\n\tboot_path: "..current_bootpath.."\n\tdeps_base_dir: "..deps_base_dir.."\n\tsystem_path: "..system_path.."\n\topen_ret: "..tostring(system_open_ret))
     end
 
-    local system_size = System.fileXioLseek(system_fd, 0, END)
+    local system_size = System.fileXioLseek(system_fd, 0, FX_SEEK_END)
     if system_size <= 0 then
       LOG("WARNING: system.lua size invalid, retrying. size:"..tostring(system_size))
       System.fileXioClose(system_fd)
       System.sleepMs(OPEN_RETRY_SLEEP_MS)
     else
-      System.fileXioLseek(system_fd, 0, SET)
+      System.fileXioLseek(system_fd, 0, FX_SEEK_SET)
       local system_data, system_read_ret = read_filexio_exact(system_fd, system_size)
       last_read_ret = system_read_ret
       LOGF("system.lua read ret: %d", system_read_ret)
@@ -326,12 +326,12 @@ local function load_system_lua()
             System.sleepMs(OPEN_RETRY_SLEEP_MS)
           else
             local checksum_first = checksum_bytes(system_data)
-            local verify_fd, verify_open_ret = open_with_retry(system_path, FREAD)
+            local verify_fd, verify_open_ret = open_with_retry(system_path, FXO_RDONLY)
             if verify_fd < 0 then
               emit_fatal("Cant re-open system.lua\n\n\tboot_path: "..current_bootpath.."\n\tdeps_base_dir: "..deps_base_dir.."\n\tsystem_path: "..system_path.."\n\topen_ret: "..tostring(verify_open_ret))
             end
-            local verify_size = System.fileXioLseek(verify_fd, 0, END)
-            System.fileXioLseek(verify_fd, 0, SET)
+            local verify_size = System.fileXioLseek(verify_fd, 0, FX_SEEK_END)
+            System.fileXioLseek(verify_fd, 0, FX_SEEK_SET)
             local verify_data, verify_read_ret = read_filexio_exact(verify_fd, verify_size)
             System.fileXioClose(verify_fd)
             if verify_data == nil or verify_read_ret ~= system_read_ret then
