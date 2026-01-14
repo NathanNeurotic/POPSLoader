@@ -118,6 +118,23 @@ static int waitForDevice(const char *device, int retries)
     return ret;
 }
 
+static bool hasPopsDirectory(const char *root)
+{
+    if (root == NULL) {
+        return false;
+    }
+
+    char path[64];
+    snprintf(path, sizeof(path), "%sPOPS/", root);
+
+    struct stat buffer;
+    if (stat(path, &buffer) != 0) {
+        return false;
+    }
+
+    return S_ISDIR(buffer.st_mode);
+}
+
 static void logMmceDiagnostics(void)
 {
     bool any_ready = false;
@@ -142,12 +159,28 @@ static void logMmceDiagnostics(void)
 static const char *detectPreferredDevice(void)
 {
     for (size_t idx = 0; idx < (sizeof(kDeviceProbeOrder) / sizeof(kDeviceProbeOrder[0])); ++idx) {
-        if (waitForDevice(kDeviceProbeOrder[idx], kDeviceRetries) == 0) {
+        if (waitForDevice(kDeviceProbeOrder[idx], kDeviceRetries) == 0 &&
+            hasPopsDirectory(kDeviceProbeOrder[idx])) {
             return kDeviceProbeOrder[idx];
         }
     }
 
     return kDefaultDevice;
+}
+
+static void ensureBootPathSlash(void)
+{
+    size_t len = strlen(boot_path);
+    if (len == 0) {
+        return;
+    }
+
+    if (boot_path[len - 1] != '/') {
+        if (len + 1 < sizeof(boot_path)) {
+            boot_path[len] = '/';
+            boot_path[len + 1] = '\0';
+        }
+    }
 }
 
 void setLuaBootPath(int argc, char ** argv, int idx, const char *preferred_device)
@@ -184,6 +217,8 @@ void setLuaBootPath(int argc, char ** argv, int idx, const char *preferred_devic
     if (boot_path[0] == '\0' || !hasDevicePrefix(boot_path)) {
         snprintf(boot_path, sizeof(boot_path), "%s", normalized_root);
     }
+
+    ensureBootPathSlash();
     
 }
 

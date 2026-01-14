@@ -24,7 +24,7 @@ do
   end
 end
 local function resolvePreferredPath(relative_path)
-  local candidate = JoinPath(System.currentDirectory(), relative_path)
+  local candidate = JoinPath(BOOT_PATH or System.currentDirectory(), relative_path)
   if doesFileExist(candidate) then return candidate end
   return candidate
 end
@@ -45,11 +45,13 @@ local function canOpenDir(path)
   return ok and type(result) == "table"
 end
 
+local POPS_ROOT = BOOT_DEVICE_ROOT and (BOOT_DEVICE_ROOT.."POPS/") or "mmce0:/POPS/"
+
 PLDR = {
   REBOOT_IOP_WHILE_LOADING_POPSTARTER = 0;
   POPSTARTER_PATH = resolvePreferredPath("POPSTARTER.ELF");
   CHECK_POPSTARTER_FILES = false;
-  GAMEPATH = ".";
+  GAMEPATH = POPS_ROOT;
   GAMES = {};
   HDDCACHE = nil;
   PROFILES = {};
@@ -65,10 +67,15 @@ PLDR = {
   };
 }
 
-function PLDR.FindPopsRoot(retries, delay)
-  local attempts = retries or 5
+function PLDR.FindPopsRoot(delay)
   local wait = delay or 1
-  for _ = 1, attempts do
+  if BOOT_DEVICE_ROOT then
+    local candidate = BOOT_DEVICE_ROOT.."POPS/"
+    if canOpenDir(candidate) then
+      return candidate
+    end
+  end
+  while true do
     for _, root in ipairs(POPS_DEVICE_ORDER) do
       if canOpenDir(root) then
         return root
@@ -76,7 +83,6 @@ function PLDR.FindPopsRoot(retries, delay)
     end
     System.sleep(wait)
   end
-  return nil
 end
 if BOOTPATH ~= nil then
   PLDR.HDD.LOADSTATE = 1
