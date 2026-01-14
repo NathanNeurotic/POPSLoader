@@ -262,6 +262,24 @@ local function has_invalid_control_chars(text)
   return false, nil
 end
 
+local function has_non_ascii(text)
+  for i = 1, #text do
+    local b = string.byte(text, i)
+    if b >= 128 then
+      return true, b
+    end
+  end
+  return false, nil
+end
+
+local function checksum_bytes(text)
+  local sum = 0
+  for i = 1, #text do
+    sum = (sum + string.byte(text, i)) % 4294967296
+  end
+  return sum
+end
+
 local function load_system_lua()
   local loader = loadstring or load
   if loader == nil then
@@ -301,13 +319,42 @@ local function load_system_lua()
           LOG("WARNING: system.lua invalid control char, retrying. code:"..tostring(invalid_code))
           System.sleepMs(OPEN_RETRY_SLEEP_MS)
         else
-          local system_chunk, system_err = loader(system_data, "@"..system_path)
-          if system_chunk == nil then
-            last_parse_err = system_err
-            LOG("WARNING: system.lua parse failed, retrying. err:"..tostring(system_err))
+          local non_ascii, non_ascii_code = has_non_ascii(system_data)
+          if non_ascii then
+            last_parse_err = "non-ascii byte: "..tostring(non_ascii_code)
+            LOG("WARNING: system.lua non-ascii byte, retrying. code:"..tostring(non_ascii_code))
             System.sleepMs(OPEN_RETRY_SLEEP_MS)
           else
-            return system_chunk
+            local checksum_first = checksum_bytes(system_data)
+            local verify_fd, verify_open_ret = open_with_retry(system_path, FREAD)
+            if verify_fd < 0 then
+              emit_fatal("Cant re-open system.lua\n\n\tboot_path: "..current_bootpath.."\n\tdeps_base_dir: "..deps_base_dir.."\n\tsystem_path: "..system_path.."\n\topen_ret: "..tostring(verify_open_ret))
+            end
+            local verify_size = System.fileXioLseek(verify_fd, 0, END)
+            System.fileXioLseek(verify_fd, 0, SET)
+            local verify_data, verify_read_ret = read_filexio_exact(verify_fd, verify_size)
+            System.fileXioClose(verify_fd)
+            if verify_data == nil or verify_read_ret ~= system_read_ret then
+              last_parse_err = "re-read mismatch"
+              LOG("WARNING: system.lua re-read mismatch, retrying. ret:"..tostring(verify_read_ret))
+              System.sleepMs(OPEN_RETRY_SLEEP_MS)
+            else
+              local checksum_second = checksum_bytes(verify_data)
+              if checksum_first ~= checksum_second then
+                last_parse_err = "checksum mismatch"
+                LOG("WARNING: system.lua checksum mismatch, retrying.")
+                System.sleepMs(OPEN_RETRY_SLEEP_MS)
+              else
+                local system_chunk, system_err = loader(verify_data, "@"..system_path)
+                if system_chunk == nil then
+                  last_parse_err = system_err
+                  LOG("WARNING: system.lua parse failed, retrying. err:"..tostring(system_err))
+                  System.sleepMs(OPEN_RETRY_SLEEP_MS)
+                else
+                  return system_chunk
+                end
+              end
+            end
           end
         end
       end
