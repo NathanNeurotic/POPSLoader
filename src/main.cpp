@@ -281,7 +281,9 @@ int main(int argc, char * argv[])
 
 	LOAD_IRX_NARG(sio2man_irx);
 	LOAD_IRX_NARG(mmceman_irx);
+#ifdef DEBUG
     logMmceDiagnostics();
+#endif
     LOAD_IRX_NARG(mcman_irx);
     LOAD_IRX_NARG(mcserv_irx);
     initMC();
