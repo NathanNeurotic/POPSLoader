@@ -199,7 +199,7 @@ local pops_device = nil
 
 if cfg_pops_device ~= nil then
   local candidate = cfg_pops_device
-  local path = candidate..":/POPS"
+  local path = candidate..":/POPS/"
   if validate_pops_root("cfg", path) then
     pops_root_dir = path
     pops_device = candidate
@@ -213,7 +213,7 @@ if pops_root_dir == nil then
   for _, candidate in ipairs(candidates) do
     if candidate ~= nil and not seen[candidate] then
       seen[candidate] = true
-      local path = candidate..":/POPS"
+      local path = candidate..":/POPS/"
       if validate_pops_root(candidate, path) then
         pops_root_dir = path
         pops_device = candidate

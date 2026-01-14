@@ -48,7 +48,10 @@ local function canOpenDir(path)
   return ok and type(result) == "table"
 end
 
-local POPS_ROOT = BOOT_DEVICE_ROOT and (BOOT_DEVICE_ROOT.."POPS/") or "mass0:/POPS/"
+local POPS_ROOT = POPS_ROOT_DIR or (BOOT_DEVICE_ROOT and (BOOT_DEVICE_ROOT.."POPS/") or "mass0:/POPS/")
+if POPS_ROOT:sub(-1) ~= "/" then
+  POPS_ROOT = POPS_ROOT.."/"
+end
 
 PLDR = {
   REBOOT_IOP_WHILE_LOADING_POPSTARTER = 0;
@@ -71,6 +74,9 @@ PLDR = {
 }
 
 function PLDR.FindPopsRoot()
+  if POPS_ROOT_DIR and canOpenDir(POPS_ROOT_DIR) then
+    return POPS_ROOT_DIR
+  end
   if BOOT_DEVICE_ROOT then
     local candidate = BOOT_DEVICE_ROOT.."POPS/"
     if canOpenDir(candidate) then
