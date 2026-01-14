@@ -41,52 +41,108 @@ extern unsigned int size_iomanX_irx;
 extern unsigned char fileXio_irx[];
 extern unsigned int size_fileXio_irx;
 
-extern unsigned char sio2man_irx;
+extern unsigned char sio2man_irx[];
 extern unsigned int size_sio2man_irx;
 
-extern unsigned char mcman_irx;
+extern unsigned char mcman_irx[];
 extern unsigned int size_mcman_irx;
 
-extern unsigned char mcserv_irx;
+extern unsigned char mcserv_irx[];
 extern unsigned int size_mcserv_irx;
 
-extern unsigned char padman_irx;
+extern unsigned char padman_irx[];
 extern unsigned int size_padman_irx;
 
-extern unsigned char libsd_irx;
+extern unsigned char libsd_irx[];
 extern unsigned int size_libsd_irx;
 
-extern unsigned char cdfs_irx;
+extern unsigned char cdfs_irx[];
 extern unsigned int size_cdfs_irx;
 
-extern unsigned char usbd_irx;
+extern unsigned char usbd_irx[];
 extern unsigned int size_usbd_irx;
 
-extern unsigned char bdm_irx;
+extern unsigned char bdm_irx[];
 extern unsigned int size_bdm_irx;
 
-extern unsigned char bdmfs_fatfs_irx;
+extern unsigned char bdmfs_fatfs_irx[];
 extern unsigned int size_bdmfs_fatfs_irx;
 
-extern unsigned char usbmass_bd_irx;
+extern unsigned char usbmass_bd_irx[];
 extern unsigned int size_usbmass_bd_irx;
 
-extern unsigned char audsrv_irx;
+extern unsigned char audsrv_irx[];
 extern unsigned int size_audsrv_irx;
 
-extern unsigned char ds34usb_irx;
+extern unsigned char ds34usb_irx[];
 extern unsigned int size_ds34usb_irx;
 
-extern unsigned char ds34bt_irx;
+extern unsigned char ds34bt_irx[];
 extern unsigned int size_ds34bt_irx;
 
-extern unsigned char mmceman_irx;
+extern unsigned char mmceman_irx[];
 extern unsigned int size_mmceman_irx;
 
 char boot_path[255];
+static const char *kMmceDevices[] = {"mmce0:/", "mmce1:/"};
+static const char *kFallbackDevice = "mass:/";
+static const int kDeviceRetries = 50;
 
-void setLuaBootPath(int argc, char ** argv, int idx)
+static bool hasDevicePrefix(const char *path)
 {
+    return path != NULL && strchr(path, ':') != NULL;
+}
+
+static void normalizeDevicePath(char *path)
+{
+    if (path == NULL) {
+        return;
+    }
+
+    char *colon = strchr(path, ':');
+    if (colon == NULL) {
+        return;
+    }
+
+    char *slash = colon + 1;
+    while (slash[0] == '/' && slash[1] == '/') {
+        memmove(slash + 1, slash + 2, strlen(slash + 2) + 1);
+    }
+}
+
+static int waitForDevice(const char *device, int retries)
+{
+    struct stat buffer;
+    int ret = -1;
+
+    while (ret != 0 && retries > 0) {
+        ret = stat(device, &buffer);
+        /* Wait until the device is ready */
+        nopdelay();
+        retries--;
+    }
+
+    return ret;
+}
+
+static const char *detectPreferredDevice(void)
+{
+    for (size_t idx = 0; idx < (sizeof(kMmceDevices) / sizeof(kMmceDevices[0])); ++idx) {
+        if (waitForDevice(kMmceDevices[idx], kDeviceRetries) == 0) {
+            return kMmceDevices[idx];
+        }
+    }
+
+    if (waitForDevice(kFallbackDevice, kDeviceRetries) == 0) {
+        return kFallbackDevice;
+    }
+
+    return kFallbackDevice;
+}
+
+void setLuaBootPath(int argc, char ** argv, int idx, const char *preferred_device)
+{
+    boot_path[0] = '\0';
     if (argc>=(idx+1))
     {
 
@@ -111,11 +167,11 @@ void setLuaBootPath(int argc, char ** argv, int idx)
     }
     
     // check if path needs patching
-    if( !strncmp( boot_path, "mass:/", 6) && (strlen (boot_path)>6))
-    {
-        strcpy((char *)&boot_path[5],(const char *)&boot_path[6]);
+    normalizeDevicePath(boot_path);
+
+    if (boot_path[0] == '\0' || !hasDevicePrefix(boot_path)) {
+        snprintf(boot_path, sizeof(boot_path), "%s", preferred_device);
     }
-      
     
 }
 
@@ -204,22 +260,10 @@ int main(int argc, char * argv[])
 
     LOAD_IRX_NARG(audsrv_irx);
 
-    //waitUntilDeviceIsReady by fjtrujy
+    const char *preferred_device = detectPreferredDevice();
+    DPRINTF("Preferred device: %s\n", preferred_device);
 
-    struct stat buffer;
-    int ret = -1;
-    int retries = 50;
-
-    while(ret != 0 && retries > 0)
-    {
-        ret = stat("mass:/", &buffer);
-        /* Wait until the device is ready */
-        nopdelay();
-
-        retries--;
-    }
-	
-        setLuaBootPath (argc, argv, 0);
+    setLuaBootPath (argc, argv, 0, preferred_device);
 	// Lua init
 	// init internals library
     
@@ -260,4 +304,3 @@ int main(int argc, char * argv[])
 
 	return 0;
 }
-

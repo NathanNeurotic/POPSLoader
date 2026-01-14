@@ -1,4 +1,19 @@
-package.path = "./POPSLDR/?.lua;./?.lua;mass:/POPSLDR/?.lua;mc0:/POPSLDR/?.lua;mc1:/POPSLDR/?.lua"
+local function safeDoesFolderExist(path)
+  local ok, result = pcall(doesFolderExist, path)
+  return ok and result
+end
+
+local function detectPreferredDevice()
+  if safeDoesFolderExist("mmce0:/") then return "mmce0:/" end
+  if safeDoesFolderExist("mmce1:/") then return "mmce1:/" end
+  if safeDoesFolderExist("mass:/") then return "mass:/" end
+  return "mass:/"
+end
+
+PREFERRED_DEVICE = detectPreferredDevice()
+BOOT_DEVICE_ROOT = PREFERRED_DEVICE
+
+package.path = string.format("./POPSLDR/?.lua;./?.lua;%sPOPSLDR/?.lua;mc0:/POPSLDR/?.lua;mc1:/POPSLDR/?.lua", BOOT_DEVICE_ROOT)
 function LOG(...)
   print_uart(...)
 end

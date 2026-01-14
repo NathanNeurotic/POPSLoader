@@ -24,9 +24,22 @@ if doesFolderExist("POPSLDR/IRX/") then
     end
   end
 end
+local function resolvePreferredPath(relative_path)
+  local preferred = PREFERRED_DEVICE or "mass:/"
+  local candidate = preferred..relative_path
+  if doesFileExist(candidate) then return candidate end
+  if preferred ~= "mass:/" then
+    local fallback = "mass:/"..relative_path
+    if doesFileExist(fallback) then return fallback end
+  end
+  return candidate
+end
+
+ResolvePreferredPath = resolvePreferredPath
+
 PLDR = {
   REBOOT_IOP_WHILE_LOADING_POPSTARTER = 0;
-  POPSTARTER_PATH = "mass:/POPS/POPSTARTER.ELF";--"mass:/POPS/POPSTARTER.ELF";
+  POPSTARTER_PATH = resolvePreferredPath("POPS/POPSTARTER.ELF");
   CHECK_POPSTARTER_FILES = false;
   GAMEPATH = ".";
   GAMES = {};
@@ -81,7 +94,7 @@ end
 function PLDR.CheckPOPStarterDEPS(device)
   if not PLDR.CHECK_POPSTARTER_FILES then return true, true, true end
   if device == UI.SCENES.GUSB then
-    return doesFileExist("mass:/POPS/POPS_IOX.PAK")
+    return doesFileExist(ResolvePreferredPath("POPS/POPS_IOX.PAK"))
   elseif device == UI.SCENES.GHDD then
     local a = HDD.MountPartition("hdd0:__common", 1, FIO_MT_RDONLY)
     if a then
