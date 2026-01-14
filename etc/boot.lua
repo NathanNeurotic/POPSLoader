@@ -67,6 +67,7 @@ local function emit_fatal(message)
     Screen.clear()
   end
   pcall(function()
+    Font.ftInit()
     Font.fmLoad()
     Font.fmPrint(20, 20, 0.6, message)
   end)
@@ -233,6 +234,7 @@ end
 POPS_DEVICE = pops_device
 POPS_ROOT_DIR = pops_root_dir
 POPS_DEVICE_ROOT = normalizeRoot(pops_device)
+BOOT_DEVICE_ROOT = POPS_DEVICE_ROOT
 
 LOGF("POPS device root: %s", POPS_DEVICE_ROOT)
 LOGF("POPS root dir: %s", POPS_ROOT_DIR)
