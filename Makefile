@@ -193,6 +193,7 @@ package: $(EE_BIN_PKD)
 	cp $(BINDIR)*.lua $(BINDIR)pkg/
 	cp $(BINDIR)*.png $(BINDIR)pkg/
 	cp $(BINDIR)PATCH_5.BIN $(BINDIR)pkg/
+	if [ -f EMBED/builtin_font.ttf ]; then cp EMBED/builtin_font.ttf $(BINDIR)pkg/; fi
 	7z a $(POPSLDR_PKG) $(BINDIR)pkg/* LICENSE README.md
 
 variants:

@@ -146,9 +146,20 @@ if string.find(ARGV0, "^hdd0:") then
 end
 GPAD = 0
 Font.ftInit()
-BFONT = Font.LoadBuiltinFont()
-SFONT = Font.LoadBuiltinFont()
-LFONT = Font.LoadBuiltinFont()
+local function loadBuiltinFont()
+  local font = Font.LoadBuiltinFont()
+  if font == nil and doesFileExist(BOOT_PATH.."builtin_font.ttf") then
+    font = Font.ftLoad(BOOT_PATH.."builtin_font.ttf")
+  end
+  return font
+end
+
+BFONT = loadBuiltinFont()
+SFONT = loadBuiltinFont()
+LFONT = loadBuiltinFont()
+if BFONT == nil or SFONT == nil or LFONT == nil then
+  error("Failed to load builtin font (missing embedded font and builtin_font.ttf)")
+end
 Font.ftSetCharSize(BFONT, 800, 800)
 Font.ftSetCharSize(SFONT, 600, 600)
 function STOP() LOG("PROGRAM STOP") Screen.clear(Color.new(255,0,0)) Screen.flip() while true do end end
