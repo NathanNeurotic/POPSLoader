@@ -245,7 +245,7 @@ end
 local system_data, system_read_ret = read_filexio_all(system_fd)
 LOGF("system.lua read ret: %d", system_read_ret)
 if system_size > 0 and system_read_ret ~= system_size then
-  LOG("WARNING: system.lua size mismatch. stat:"..tostring(system_size).." read:"..tostring(system_read_ret))
+  emit_fatal("Cant read system.lua\n\n\tboot_path: "..current_bootpath.."\n\tdeps_base_dir: "..deps_base_dir.."\n\tsystem_path: "..system_path.."\n\tstat_size: "..tostring(system_size).."\n\tread_size: "..tostring(system_read_ret))
 end
 local system_close_ret = System.fileXioClose(system_fd)
 LOGF("system.lua close ret: %d", system_close_ret)
