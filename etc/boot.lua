@@ -59,13 +59,16 @@ IsValidRoot = isValidRoot
 
 local function detectPreferredDevice()
   local probe_roots = {
-    "mmce1:/",
-    "mmce0:/",
     "mass0:/",
     "mass1:/",
     "mass2:/",
     "mass3:/",
   }
+
+  if MMCE_AVAILABLE then
+    table.insert(probe_roots, 1, "mmce1:/")
+    table.insert(probe_roots, 2, "mmce0:/")
+  end
 
   while true do
     for _, root in ipairs(probe_roots) do

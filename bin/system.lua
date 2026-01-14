@@ -32,20 +32,23 @@ end
 ResolvePreferredPath = resolvePreferredPath
 
 local POPS_DEVICE_ORDER = {
-  "mmce1:/POPS/",
-  "mmce0:/POPS/",
   "mass0:/POPS/",
   "mass1:/POPS/",
   "mass2:/POPS/",
   "mass3:/POPS/"
 }
 
+if MMCE_AVAILABLE then
+  table.insert(POPS_DEVICE_ORDER, 1, "mmce1:/POPS/")
+  table.insert(POPS_DEVICE_ORDER, 2, "mmce0:/POPS/")
+end
+
 local function canOpenDir(path)
   local ok, result = pcall(System.listDirectory, path)
   return ok and type(result) == "table"
 end
 
-local POPS_ROOT = BOOT_DEVICE_ROOT and (BOOT_DEVICE_ROOT.."POPS/") or "mmce0:/POPS/"
+local POPS_ROOT = BOOT_DEVICE_ROOT and (BOOT_DEVICE_ROOT.."POPS/") or "mass0:/POPS/"
 
 PLDR = {
   REBOOT_IOP_WHILE_LOADING_POPSTARTER = 0;

@@ -849,5 +849,8 @@ void luaSystem_init(lua_State *L) {
 	lua_pushstring(L, boot_path);
 	lua_setglobal(L, "BOOT_PATH");
 
+	lua_pushboolean(L, g_mmce_available != 0);
+	lua_setglobal(L, "MMCE_AVAILABLE");
+
 	
 }

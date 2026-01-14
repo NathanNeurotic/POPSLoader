@@ -10,6 +10,7 @@ extern "C" {
 }
 
 extern char boot_path[255];
+extern int g_mmce_available;
 
 #ifdef DEBUG
 #define dbgprintf(args...) scr_printf(args)
@@ -41,4 +42,3 @@ extern void luaHDD_init(lua_State *L);
 extern void stackDump (lua_State *L);
 
 #endif
-

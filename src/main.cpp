@@ -86,6 +86,9 @@ extern unsigned char mmceman_irx[];
 extern unsigned int size_mmceman_irx;
 
 char boot_path[255];
+int g_mmce_available = 0;
+static int g_mmce_probed = 0;
+static int g_mmce_disabled = 0;
 static const char *kMmceDevices[] = {"mmce0:/", "mmce1:/"};
 static const char *kDeviceProbeOrder[] = {
     "mmce1:/",
@@ -97,6 +100,7 @@ static const char *kDeviceProbeOrder[] = {
 };
 static const char *kDefaultDevice = "mmce0:/";
 static const int kDeviceRetries = 50;
+static const int kMmceProbeRetries = 2;
 
 static bool hasDevicePrefix(const char *path)
 {
@@ -116,6 +120,35 @@ static int waitForDevice(const char *device, int retries)
     }
 
     return ret;
+}
+
+static bool isMmceRoot(const char *root)
+{
+    return root != NULL && (strncmp(root, "mmce0:/", 7) == 0 || strncmp(root, "mmce1:/", 7) == 0);
+}
+
+static void probeMmceAvailability(void)
+{
+    if (g_mmce_probed) {
+        return;
+    }
+
+    g_mmce_probed = 1;
+    g_mmce_available = 0;
+
+    for (size_t idx = 0; idx < (sizeof(kMmceDevices) / sizeof(kMmceDevices[0])); ++idx) {
+        if (waitForDevice(kMmceDevices[idx], kMmceProbeRetries) == 0) {
+            g_mmce_available = 1;
+            break;
+        }
+    }
+
+    if (g_mmce_available) {
+        printf("MMCE: available\n");
+    } else {
+        g_mmce_disabled = 1;
+        printf("MMCE: probe failed (no ACK). Disabling mmce0:/ for this session.\n");
+    }
 }
 
 static bool hasPopsDirectory(const char *root)
@@ -158,7 +191,11 @@ static void logMmceDiagnostics(void)
 
 static const char *detectPreferredDevice(void)
 {
+    probeMmceAvailability();
     for (size_t idx = 0; idx < (sizeof(kDeviceProbeOrder) / sizeof(kDeviceProbeOrder[0])); ++idx) {
+        if (g_mmce_disabled && isMmceRoot(kDeviceProbeOrder[idx])) {
+            continue;
+        }
         if (waitForDevice(kDeviceProbeOrder[idx], kDeviceRetries) == 0 &&
             hasPopsDirectory(kDeviceProbeOrder[idx])) {
             return kDeviceProbeOrder[idx];
