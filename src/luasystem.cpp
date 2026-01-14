@@ -598,6 +598,17 @@ static int lua_filexio_close(lua_State *L){
 	return 1;
 }
 
+static int lua_filexio_lseek(lua_State *L){
+	int argc = lua_gettop(L);
+	if (argc != 3) return luaL_error(L, "wrong number of arguments");
+	int fd = luaL_checkinteger(L, 1);
+	int offset = luaL_checkinteger(L, 2);
+	int whence = luaL_checkinteger(L, 3);
+	int ret = fileXioLseek(fd, offset, whence);
+	lua_pushinteger(L, ret);
+	return 1;
+}
+
 static int lua_derive_base_dir(lua_State *L){
 	int argc = lua_gettop(L);
 	if (argc != 1) return luaL_error(L, "wrong number of arguments");
@@ -862,6 +873,7 @@ static const luaL_Reg System_functions[] = {
 	{"fileXioOpen",                lua_filexio_open},
 	{"fileXioRead",                lua_filexio_read},
 	{"fileXioClose",               lua_filexio_close},
+	{"fileXioLseek",               lua_filexio_lseek},
 	{"deriveBaseDir",              lua_derive_base_dir},
 	{"resolveLocal",               lua_resolve_local},
 	//{"doesFileExist",            lua_checkexist}, BREAKS ERROR HANDLING IF DECLARED INSIDE TABLE. DONT ASK ME WHY

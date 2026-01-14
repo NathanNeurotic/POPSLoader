@@ -76,23 +76,6 @@ local function wait_for_ready(path, timeout_ms)
   return false, last_ret
 end
 
-local function wait_for_stat_size(path, timeout_ms)
-  local elapsed = 0
-  local last_ret = nil
-  local last_size = nil
-  while elapsed <= timeout_ms do
-    local stat_ret, stat_size = System.fileXioGetStat(path)
-    last_ret = stat_ret
-    last_size = stat_size
-    if stat_ret == 0 and stat_size > 0 then
-      return true, stat_size, stat_ret
-    end
-    System.sleepMs(DEVICE_READY_SLEEP_MS)
-    elapsed = elapsed + DEVICE_READY_SLEEP_MS
-  end
-  return false, last_size, last_ret
-end
-
 local function open_with_retry(path, flags)
   local last_ret = nil
   for attempt = 1, OPEN_RETRY_COUNT do
@@ -229,10 +212,10 @@ RUNTIME_ROOT = BOOT_PATH
 POPSTARTER_PATH = BOOT_PATH.."POPSTARTER.ELF"
 
 local system_path = System.resolveLocal(deps_base_dir, "system.lua")
-local stat_ok, system_size, system_stat_ret = wait_for_stat_size(system_path, DEVICE_READY_TIMEOUT_MS)
-LOGF("system.lua stat ret: %d size: %d", system_stat_ret, system_size)
-if not stat_ok then
-  emit_fatal("Cant access system.lua\n\n\tboot_path: "..current_bootpath.."\n\tdeps_base_dir: "..deps_base_dir.."\n\tsystem_path: "..system_path.."\n\tstat_ret: "..tostring(system_stat_ret).."\n\tstat_size: "..tostring(system_size))
+local system_stat_ret, system_stat_size = System.fileXioGetStat(system_path)
+LOGF("system.lua stat ret: %d size: %d", system_stat_ret, system_stat_size)
+if system_stat_ret ~= 0 then
+  emit_fatal("Cant access system.lua\n\n\tboot_path: "..current_bootpath.."\n\tdeps_base_dir: "..deps_base_dir.."\n\tsystem_path: "..system_path.."\n\tstat_ret: "..tostring(system_stat_ret))
 end
 local function read_filexio_exact(fd, total_size)
   if total_size <= 0 then
@@ -293,32 +276,40 @@ local function load_system_lua()
       emit_fatal("Cant open system.lua\n\n\tboot_path: "..current_bootpath.."\n\tdeps_base_dir: "..deps_base_dir.."\n\tsystem_path: "..system_path.."\n\topen_ret: "..tostring(system_open_ret))
     end
 
-    local system_data, system_read_ret = read_filexio_exact(system_fd, system_size)
-    last_read_ret = system_read_ret
-    LOGF("system.lua read ret: %d", system_read_ret)
-    local system_close_ret = System.fileXioClose(system_fd)
-    LOGF("system.lua close ret: %d", system_close_ret)
-    if system_close_ret ~= 0 then
-      LOG("WARNING: Failed to close system.lua, ret: "..tostring(system_close_ret))
-    end
-    if system_data == nil then
-      LOG("WARNING: system.lua read failed, retrying. ret:"..tostring(system_read_ret))
+    local system_size = System.fileXioLseek(system_fd, 0, END)
+    if system_size <= 0 then
+      LOG("WARNING: system.lua size invalid, retrying. size:"..tostring(system_size))
+      System.fileXioClose(system_fd)
       System.sleepMs(OPEN_RETRY_SLEEP_MS)
     else
-      local invalid_char, invalid_code = has_invalid_control_chars(system_data)
-      if invalid_char then
-        last_parse_err = "invalid control char: "..tostring(invalid_code)
-        LOG("WARNING: system.lua invalid control char, retrying. code:"..tostring(invalid_code))
-        System.sleepMs(OPEN_RETRY_SLEEP_MS)
-      else
-      local system_chunk, system_err = loader(system_data, "@"..system_path)
-      if system_chunk == nil then
-        last_parse_err = system_err
-        LOG("WARNING: system.lua parse failed, retrying. err:"..tostring(system_err))
-        System.sleepMs(OPEN_RETRY_SLEEP_MS)
-      else
-        return system_chunk
+      System.fileXioLseek(system_fd, 0, SET)
+      local system_data, system_read_ret = read_filexio_exact(system_fd, system_size)
+      last_read_ret = system_read_ret
+      LOGF("system.lua read ret: %d", system_read_ret)
+      local system_close_ret = System.fileXioClose(system_fd)
+      LOGF("system.lua close ret: %d", system_close_ret)
+      if system_close_ret ~= 0 then
+        LOG("WARNING: Failed to close system.lua, ret: "..tostring(system_close_ret))
       end
+      if system_data == nil then
+        LOG("WARNING: system.lua read failed, retrying. ret:"..tostring(system_read_ret))
+        System.sleepMs(OPEN_RETRY_SLEEP_MS)
+      else
+        local invalid_char, invalid_code = has_invalid_control_chars(system_data)
+        if invalid_char then
+          last_parse_err = "invalid control char: "..tostring(invalid_code)
+          LOG("WARNING: system.lua invalid control char, retrying. code:"..tostring(invalid_code))
+          System.sleepMs(OPEN_RETRY_SLEEP_MS)
+        else
+          local system_chunk, system_err = loader(system_data, "@"..system_path)
+          if system_chunk == nil then
+            last_parse_err = system_err
+            LOG("WARNING: system.lua parse failed, retrying. err:"..tostring(system_err))
+            System.sleepMs(OPEN_RETRY_SLEEP_MS)
+          else
+            return system_chunk
+          end
+        end
       end
     end
   end
