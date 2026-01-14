@@ -78,6 +78,8 @@ end
 
 local function open_with_retry(path, flags)
   local last_ret = nil
+  local last_read_ret = nil
+  local last_parse_err = nil
   for attempt = 1, OPEN_RETRY_COUNT do
     local fd = System.fileXioOpen(path, flags)
     LOGF("fileXioOpen attempt %d ret: %d", attempt, fd)
@@ -214,11 +216,6 @@ LOGF("system.lua stat ret: %d", system_stat_ret)
 if system_stat_ret ~= 0 then
   emit_fatal("Cant access system.lua\n\n\tboot_path: "..current_bootpath.."\n\tdeps_base_dir: "..deps_base_dir.."\n\tsystem_path: "..system_path.."\n\tstat_ret: "..tostring(system_stat_ret))
 end
-local system_fd, system_open_ret = open_with_retry(system_path, FREAD)
-if system_fd < 0 then
-  emit_fatal("Cant open system.lua\n\n\tboot_path: "..current_bootpath.."\n\tdeps_base_dir: "..deps_base_dir.."\n\tsystem_path: "..system_path.."\n\topen_ret: "..tostring(system_open_ret))
-end
-
 local function read_filexio_all(fd)
   local chunks = {}
   local read_total = 0
@@ -242,26 +239,48 @@ local function read_filexio_all(fd)
   return table.concat(chunks), read_total
 end
 
-local system_data, system_read_ret = read_filexio_all(system_fd)
-LOGF("system.lua read ret: %d", system_read_ret)
-if system_size > 0 and system_read_ret ~= system_size then
-  emit_fatal("Cant read system.lua\n\n\tboot_path: "..current_bootpath.."\n\tdeps_base_dir: "..deps_base_dir.."\n\tsystem_path: "..system_path.."\n\tstat_size: "..tostring(system_size).."\n\tread_size: "..tostring(system_read_ret))
-end
-local system_close_ret = System.fileXioClose(system_fd)
-LOGF("system.lua close ret: %d", system_close_ret)
-if system_close_ret ~= 0 then
-  LOG("WARNING: Failed to close system.lua, ret: "..tostring(system_close_ret))
-end
-if system_data == nil then
-  emit_fatal("Cant read system.lua\n\n\tboot_path: "..current_bootpath.."\n\tdeps_base_dir: "..deps_base_dir.."\n\tsystem_path: "..system_path.."\n\tread_ret: "..tostring(system_read_ret))
+local function load_system_lua()
+  local loader = loadstring or load
+  if loader == nil then
+    emit_fatal("Cant load system.lua\n\n\tboot_path: "..current_bootpath.."\n\tdeps_base_dir: "..deps_base_dir.."\n\tsystem_path: "..system_path.."\n\terr: loader unavailable")
+  end
+
+  local last_read_ret = nil
+  local last_parse_err = nil
+  for attempt = 1, OPEN_RETRY_COUNT do
+    local system_fd, system_open_ret = open_with_retry(system_path, FREAD)
+    if system_fd < 0 then
+      emit_fatal("Cant open system.lua\n\n\tboot_path: "..current_bootpath.."\n\tdeps_base_dir: "..deps_base_dir.."\n\tsystem_path: "..system_path.."\n\topen_ret: "..tostring(system_open_ret))
+    end
+
+    local system_data, system_read_ret = read_filexio_all(system_fd)
+    last_read_ret = system_read_ret
+    LOGF("system.lua read ret: %d", system_read_ret)
+    if system_size > 0 and system_read_ret ~= system_size then
+      LOG("WARNING: system.lua size mismatch. stat:"..tostring(system_size).." read:"..tostring(system_read_ret))
+    end
+    local system_close_ret = System.fileXioClose(system_fd)
+    LOGF("system.lua close ret: %d", system_close_ret)
+    if system_close_ret ~= 0 then
+      LOG("WARNING: Failed to close system.lua, ret: "..tostring(system_close_ret))
+    end
+    if system_data == nil then
+      LOG("WARNING: system.lua read failed, retrying. ret:"..tostring(system_read_ret))
+      System.sleepMs(OPEN_RETRY_SLEEP_MS)
+    else
+      local system_chunk, system_err = loader(system_data, "@"..system_path)
+      if system_chunk == nil then
+        last_parse_err = system_err
+        LOG("WARNING: system.lua parse failed, retrying. err:"..tostring(system_err))
+        System.sleepMs(OPEN_RETRY_SLEEP_MS)
+      else
+        return system_chunk
+      end
+    end
+  end
+
+  emit_fatal("Cant load system.lua\n\n\tboot_path: "..current_bootpath.."\n\tdeps_base_dir: "..deps_base_dir.."\n\tsystem_path: "..system_path.."\n\tread_ret: "..tostring(last_read_ret).."\n\terr: "..tostring(last_parse_err))
 end
 
-local loader = loadstring or load
-if loader == nil then
-  emit_fatal("Cant load system.lua\n\n\tboot_path: "..current_bootpath.."\n\tdeps_base_dir: "..deps_base_dir.."\n\tsystem_path: "..system_path.."\n\terr: loader unavailable")
-end
-local system_chunk, system_err = loader(system_data, "@"..system_path)
-if system_chunk == nil then
-  emit_fatal("Cant load system.lua\n\n\tboot_path: "..current_bootpath.."\n\tdeps_base_dir: "..deps_base_dir.."\n\tsystem_path: "..system_path.."\n\terr: "..tostring(system_err))
-end
+local system_chunk = load_system_lua()
 system_chunk()
