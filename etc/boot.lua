@@ -153,8 +153,6 @@ function RunScript(S)
   dofile(S)
 end
 
-RUNTIME_ROOT = System.currentDirectory()
-
 RUNTIME_ROOT = BOOT_PATH
 POPSTARTER_PATH = BOOT_PATH.."POPSTARTER.ELF"
 

@@ -67,22 +67,19 @@ PLDR = {
   };
 }
 
-function PLDR.FindPopsRoot(delay)
-  local wait = delay or 1
+function PLDR.FindPopsRoot()
   if BOOT_DEVICE_ROOT then
     local candidate = BOOT_DEVICE_ROOT.."POPS/"
     if canOpenDir(candidate) then
       return candidate
     end
   end
-  while true do
-    for _, root in ipairs(POPS_DEVICE_ORDER) do
-      if canOpenDir(root) then
-        return root
-      end
+  for _, root in ipairs(POPS_DEVICE_ORDER) do
+    if canOpenDir(root) then
+      return root
     end
-    System.sleep(wait)
   end
+  return nil
 end
 if BOOTPATH ~= nil then
   PLDR.HDD.LOADSTATE = 1

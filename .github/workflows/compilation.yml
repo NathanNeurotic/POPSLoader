@@ -12,13 +12,29 @@ on:
     types: [run_build]
 
 jobs:
+  list-variants:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+    - uses: actions/checkout@v5
+    - id: matrix
+      run: |
+        files=$(find sio2man -type f -name sio2man.irx | sort)
+        if [ -z "$files" ]; then
+          echo "No sio2man variants found under sio2man/*/sio2man.irx" >&2
+          exit 1
+        fi
+        json=$(printf '%s\n' "$files" | jq -R -s -c 'split("\n") | map(select(length > 0))')
+        echo "matrix=${json}" >> "$GITHUB_OUTPUT"
+
   build:
     runs-on: ubuntu-latest
     container: ps2dev/ps2dev:latest
+    needs: list-variants
     strategy:
       matrix:
-        sio2man_irx:
-          - sio2man/sio2man/sio2man.irx
+        sio2man_irx: ${{ fromJson(needs.list-variants.outputs.matrix) }}
     steps:
     - name: Install dependencies
       run: |
