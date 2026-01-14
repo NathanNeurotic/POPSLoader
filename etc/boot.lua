@@ -76,10 +76,25 @@ local function wait_for_ready(path, timeout_ms)
   return false, last_ret
 end
 
+local function wait_for_stat_size(path, timeout_ms)
+  local elapsed = 0
+  local last_ret = nil
+  local last_size = nil
+  while elapsed <= timeout_ms do
+    local stat_ret, stat_size = System.fileXioGetStat(path)
+    last_ret = stat_ret
+    last_size = stat_size
+    if stat_ret == 0 and stat_size > 0 then
+      return true, stat_size, stat_ret
+    end
+    System.sleepMs(DEVICE_READY_SLEEP_MS)
+    elapsed = elapsed + DEVICE_READY_SLEEP_MS
+  end
+  return false, last_size, last_ret
+end
+
 local function open_with_retry(path, flags)
   local last_ret = nil
-  local last_read_ret = nil
-  local last_parse_err = nil
   for attempt = 1, OPEN_RETRY_COUNT do
     local fd = System.fileXioOpen(path, flags)
     LOGF("fileXioOpen attempt %d ret: %d", attempt, fd)
@@ -211,13 +226,10 @@ RUNTIME_ROOT = BOOT_PATH
 POPSTARTER_PATH = BOOT_PATH.."POPSTARTER.ELF"
 
 local system_path = System.resolveLocal(deps_base_dir, "system.lua")
-local system_stat_ret, system_size = System.fileXioGetStat(system_path)
-LOGF("system.lua stat ret: %d", system_stat_ret)
-if system_stat_ret ~= 0 then
-  emit_fatal("Cant access system.lua\n\n\tboot_path: "..current_bootpath.."\n\tdeps_base_dir: "..deps_base_dir.."\n\tsystem_path: "..system_path.."\n\tstat_ret: "..tostring(system_stat_ret))
-end
-if system_size <= 0 then
-  emit_fatal("Cant read system.lua\n\n\tboot_path: "..current_bootpath.."\n\tdeps_base_dir: "..deps_base_dir.."\n\tsystem_path: "..system_path.."\n\tstat_size: "..tostring(system_size))
+local stat_ok, system_size, system_stat_ret = wait_for_stat_size(system_path, DEVICE_READY_TIMEOUT_MS)
+LOGF("system.lua stat ret: %d size: %d", system_stat_ret, system_size)
+if not stat_ok then
+  emit_fatal("Cant access system.lua\n\n\tboot_path: "..current_bootpath.."\n\tdeps_base_dir: "..deps_base_dir.."\n\tsystem_path: "..system_path.."\n\tstat_ret: "..tostring(system_stat_ret).."\n\tstat_size: "..tostring(system_size))
 end
 local function read_filexio_exact(fd, total_size)
   if total_size <= 0 then
