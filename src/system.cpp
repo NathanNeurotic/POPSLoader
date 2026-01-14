@@ -74,6 +74,125 @@ char* __ps2_normalize_path(char *path_name)
 	return (char*)out;
 }
 
+void normalize_device_path(char *path)
+{
+	if (path == NULL) {
+		return;
+	}
+
+	char *write_ptr = path;
+	char *read_ptr = path;
+	while (*read_ptr) {
+		*write_ptr++ = *read_ptr;
+		if (*read_ptr == '/') {
+			while (*(read_ptr + 1) == '/') {
+				read_ptr++;
+			}
+		}
+		read_ptr++;
+	}
+	*write_ptr = '\0';
+}
+
+bool is_valid_root(const char *root)
+{
+	if (root == NULL) {
+		return false;
+	}
+
+	if (!strcmp(root, "mmce0:/") || !strcmp(root, "mmce1:/")) {
+		return true;
+	}
+#ifdef ENABLE_USB_FALLBACK
+	if (!strcmp(root, "mass:/")) {
+		return true;
+	}
+#endif
+	return false;
+}
+
+bool normalize_root(const char *devroot, char *out, size_t outsz)
+{
+	const char *default_root = "mmce0:/";
+	const char *selected = default_root;
+	char device[8] = {0};
+
+	if (devroot != NULL && devroot[0] != '\0') {
+		const char *colon = strchr(devroot, ':');
+		size_t len = colon ? (size_t)(colon - devroot) : strlen(devroot);
+		if (len >= sizeof(device)) {
+			len = sizeof(device) - 1;
+		}
+		strncpy(device, devroot, len);
+		device[len] = '\0';
+
+		if (!strcmp(device, "mmce0") || !strcmp(device, "mmce1")) {
+			selected = devroot;
+		}
+#ifdef ENABLE_USB_FALLBACK
+		else if (!strcmp(device, "mass")) {
+			selected = devroot;
+		}
+#endif
+	}
+
+	if (outsz == 0) {
+		return false;
+	}
+
+	const char *colon = strchr(selected, ':');
+	size_t prefix_len = colon ? (size_t)(colon - selected) : strlen(selected);
+	if (prefix_len >= outsz) {
+		prefix_len = outsz - 1;
+	}
+
+	memcpy(out, selected, prefix_len);
+	out[prefix_len] = '\0';
+	strncat(out, ":/", outsz - strlen(out) - 1);
+	normalize_device_path(out);
+	return is_valid_root(out);
+}
+
+bool join_path(char *out, size_t outsz, const char *root, const char *rel)
+{
+	if (outsz == 0) {
+		return false;
+	}
+
+	if (rel != NULL && strchr(rel, ':') != NULL) {
+		snprintf(out, outsz, "%s", rel);
+		normalize_device_path(out);
+		return true;
+	}
+
+	if (root == NULL) {
+		root = "";
+	}
+
+	char root_buf[256];
+	snprintf(root_buf, sizeof(root_buf), "%s", root);
+	normalize_device_path(root_buf);
+
+	const char *rel_buf = rel ? rel : "";
+	while (rel_buf[0] == '/') {
+		rel_buf++;
+	}
+
+	size_t root_len = strlen(root_buf);
+	bool root_has_trailing = (root_len > 0 && root_buf[root_len - 1] == '/');
+
+	if (root_len == 0) {
+		snprintf(out, outsz, "%s", rel_buf);
+	} else if (root_has_trailing) {
+		snprintf(out, outsz, "%s%s", root_buf, rel_buf);
+	} else {
+		snprintf(out, outsz, "%s/%s", root_buf, rel_buf);
+	}
+
+	normalize_device_path(out);
+	return true;
+}
+
 
 void IOP_Reset(void)
 {

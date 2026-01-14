@@ -123,8 +123,9 @@ UI = {
             UI.Notif_queue.add("Cant find POPSTARTER ELF\n"..PLDR.POPSTARTER_PATH)
           else
             if UI.CURSCENE ~= UI.SCENES.GHDD then -- only check if game can be found on USB and SMB
-              if not doesFileExist(PLDR.GAMEPATH .. PLDR.GAMES[UI.GameList.CURR]) then
-                UI.Notif_queue.add("Cant find Game\n"..PLDR.GAMEPATH .. PLDR.GAMES[UI.GameList.CURR])
+              local game_path = JoinPath(PLDR.GAMEPATH, PLDR.GAMES[UI.GameList.CURR])
+              if not doesFileExist(game_path) then
+                UI.Notif_queue.add("Cant find Game\n"..game_path)
               end
             end
             PLDR.RunPOPStarterGame(PLDR.GAMEPATH, PLDR.GAMES[UI.GameList.CURR])
@@ -176,7 +177,7 @@ UI = {
         if Pads.check(GPAD, PAD_CROSS) then
           if UI.MainMenu.OPT == 1 then
             PLDR.CleanupGameList()
-            PLDR.GetPS1GameLists("mass"..PLDR.USB.MASSINDX..":/POPS/", true)
+            PLDR.GetPS1GameLists(JoinPath(BOOT_DEVICE_ROOT, "POPS/"), true)
           elseif UI.MainMenu.OPT == 3 then
             PLDR.LoadHDDModules()
             if UI.LASTSCENE == UI.SCENES.GHDD then

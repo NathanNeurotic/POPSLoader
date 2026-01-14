@@ -37,6 +37,9 @@ DEBUG = 0
 #----------------------- Set IP for PS2Client ---------------------#
 PS2LINK_IP = 192.168.1.10
 #------------------------------------------------------------------#
+#------------------ Enable USB mass fallback ----------------------#
+ENABLE_USB_FALLBACK ?= 0
+#------------------------------------------------------------------#
 
 BINDIR = bin/
 EE_BIN = $(BINDIR)enceladus.elf
@@ -58,6 +61,11 @@ ifeq ($(DEBUG),1)
 EE_CXXFLAGS += -DDEBUG
 endif
 
+ifeq ($(ENABLE_USB_FALLBACK),1)
+EE_CFLAGS += -DENABLE_USB_FALLBACK
+EE_CXXFLAGS += -DENABLE_USB_FALLBACK
+endif
+
 BIN2S = $(PS2SDK)/bin/bin2c
 
 #-------------------------- App Content ---------------------------#
@@ -73,9 +81,12 @@ LUA_LIBS =	luaplayer.o luasound.o luacontrols.o \
 
 IOP_MODULES = iomanX.o fileXio.o \
 			  sio2man.o mcman.o mcserv.o padman.o libsd.o \
-			  usbd.o audsrv.o bdm.o bdmfs_fatfs.o \
-			  usbmass_bd.o cdfs.o ds34bt.o ds34usb.o \
+			  usbd.o audsrv.o cdfs.o ds34bt.o ds34usb.o \
 			  ps2dev9.o ps2atad.o ps2hdd-osd.o ps2fs.o mmceman.o
+
+ifeq ($(ENABLE_USB_FALLBACK),1)
+IOP_MODULES += bdm.o bdmfs_fatfs.o usbmass_bd.o
+endif
 
 EMBEDDED_RSC = boot.o builtin_font.o
 
@@ -115,6 +126,9 @@ IRXTAG = $(subst -,_,$(notdir $(addsuffix _irx, $(basename $<))))
 
 $(EE_ASM_DIR)%.c: %.irx | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ $(IRXTAG)
+
+$(EE_ASM_DIR)mmceman.c: iop/embed/mmceman.irx | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ mmceman_irx
 
 
 modules/ds34bt/ee/libds34bt.a: modules/ds34bt/ee

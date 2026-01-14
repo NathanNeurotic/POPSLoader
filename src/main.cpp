@@ -16,12 +16,14 @@
 
 #include <sbv_patches.h>
 #include <smem.h>
+#include <assert.h>
 
 #include "include/graphics.h"
 #include "include/sound.h"
 #include "include/luaplayer.h"
 #include "include/pad.h"
 #include "include/dprintf.h"
+#include "include/system.h"
 
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
@@ -85,29 +87,15 @@ extern unsigned int size_mmceman_irx;
 
 char boot_path[255];
 static const char *kMmceDevices[] = {"mmce0:/", "mmce1:/"};
+static const char *kDefaultDevice = "mmce0:/";
+#ifdef ENABLE_USB_FALLBACK
 static const char *kFallbackDevice = "mass:/";
+#endif
 static const int kDeviceRetries = 50;
 
 static bool hasDevicePrefix(const char *path)
 {
     return path != NULL && strchr(path, ':') != NULL;
-}
-
-static void normalizeDevicePath(char *path)
-{
-    if (path == NULL) {
-        return;
-    }
-
-    char *colon = strchr(path, ':');
-    if (colon == NULL) {
-        return;
-    }
-
-    char *slash = colon + 1;
-    while (slash[0] == '/' && slash[1] == '/') {
-        memmove(slash + 1, slash + 2, strlen(slash + 2) + 1);
-    }
 }
 
 static int waitForDevice(const char *device, int retries)
@@ -125,6 +113,27 @@ static int waitForDevice(const char *device, int retries)
     return ret;
 }
 
+static void logMmceDiagnostics(void)
+{
+    bool any_ready = false;
+    for (size_t idx = 0; idx < (sizeof(kMmceDevices) / sizeof(kMmceDevices[0])); ++idx) {
+        int ret = waitForDevice(kMmceDevices[idx], kDeviceRetries);
+        printf("mmce check %s => %d\n", kMmceDevices[idx], ret);
+        if (ret == 0) {
+            any_ready = true;
+        }
+    }
+
+    if (!any_ready) {
+        printf("ERROR: mmce0:/ not detected after mmceman load.\n");
+        printf("Possible causes:\n");
+        printf(" - incompatible sio2man/mmceman pairing\n");
+        printf(" - wrong mmceman IRX blob address/size\n");
+        printf(" - missing fileXioInit before mmceman\n");
+        printf(" - module load failure (see id/ret above)\n");
+    }
+}
+
 static const char *detectPreferredDevice(void)
 {
     for (size_t idx = 0; idx < (sizeof(kMmceDevices) / sizeof(kMmceDevices[0])); ++idx) {
@@ -133,11 +142,13 @@ static const char *detectPreferredDevice(void)
         }
     }
 
+#ifdef ENABLE_USB_FALLBACK
     if (waitForDevice(kFallbackDevice, kDeviceRetries) == 0) {
         return kFallbackDevice;
     }
+#endif
 
-    return kFallbackDevice;
+    return kDefaultDevice;
 }
 
 void setLuaBootPath(int argc, char ** argv, int idx, const char *preferred_device)
@@ -167,10 +178,12 @@ void setLuaBootPath(int argc, char ** argv, int idx, const char *preferred_devic
     }
     
     // check if path needs patching
-    normalizeDevicePath(boot_path);
+    normalize_device_path(boot_path);
+    char normalized_root[16];
+    normalize_root(preferred_device, normalized_root, sizeof(normalized_root));
 
     if (boot_path[0] == '\0' || !hasDevicePrefix(boot_path)) {
-        snprintf(boot_path, sizeof(boot_path), "%s", preferred_device);
+        snprintf(boot_path, sizeof(boot_path), "%s", normalized_root);
     }
     
 }
@@ -234,6 +247,7 @@ int main(int argc, char * argv[])
 
 	LOAD_IRX_NARG(sio2man_irx);
 	LOAD_IRX_NARG(mmceman_irx);
+    logMmceDiagnostics();
     LOAD_IRX_NARG(mcman_irx);
     LOAD_IRX_NARG(mcserv_irx);
     initMC();
@@ -252,18 +266,26 @@ int main(int argc, char * argv[])
     ds34usb_init();
     ds34bt_init();
 
+#ifdef ENABLE_USB_FALLBACK
     LOAD_IRX_NARG(bdm_irx);
     LOAD_IRX_NARG(bdmfs_fatfs_irx);
     LOAD_IRX_NARG(usbmass_bd_irx);
+#endif
 
     LOAD_IRX_NARG(cdfs_irx);
 
     LOAD_IRX_NARG(audsrv_irx);
 
     const char *preferred_device = detectPreferredDevice();
+    char normalized_root[16];
+    normalize_root(preferred_device, normalized_root, sizeof(normalized_root));
     DPRINTF("Preferred device: %s\n", preferred_device);
+    DPRINTF("Normalized root: %s\n", normalized_root);
+#ifdef DEBUG
+    assert(is_valid_root(normalized_root));
+#endif
 
-    setLuaBootPath (argc, argv, 0, preferred_device);
+    setLuaBootPath (argc, argv, 0, normalized_root);
 	// Lua init
 	// init internals library
     

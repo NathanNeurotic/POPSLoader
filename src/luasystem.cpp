@@ -58,8 +58,7 @@ static int lua_setCurrentDirectory(lua_State *L)
            else
         {
 	      getcwd(temp_path, 256);
-	      strcat(temp_path,"/");
-	      strcat(temp_path,path);
+	      join_path(temp_path, sizeof(temp_path), temp_path, path);
 	    }
     }
         
@@ -93,14 +92,13 @@ static int lua_dir(lua_State *L)
 		temp_path = luaL_checkstring(L, 1);
 		// append the given path to the boot_path
 	        
-	        strcpy ((char *)path, boot_path);
-	        
-	        if (strchr(temp_path, ':'))
+	        if (strchr(temp_path, ':')) {
 	           // workaround in case of temp_path is containing 
 	           // a device name again
 	           strcpy ((char *)path, temp_path);
-	        else
-	           strcat ((char *)path, temp_path);
+	        } else {
+	           join_path(path, sizeof(path), boot_path, temp_path);
+	        }
 	}
 	
 	strcpy(path,__ps2_normalize_path(path));
@@ -852,4 +850,3 @@ void luaSystem_init(lua_State *L) {
 
 	
 }
-
