@@ -58,13 +58,16 @@ jobs:
       run: |
         make clean elfloader all SIO2MAN_IRX=${{ matrix.sio2man_irx }} ENABLE_USB_MASS=1
         mv bin/POPSLOADER.ELF bin/POPSLOADER_${{ steps.variant.outputs.variant_name }}.ELF
+        make package EE_BIN_PKD=bin/POPSLOADER_${{ steps.variant.outputs.variant_name }}.ELF POPSLDR_PKG=POPSLoader_${{ steps.variant.outputs.variant_name }}.7z
 
     - name: Upload artifacts
       if: ${{ success() }}
       uses: actions/upload-artifact@v4
       with:
         name: POPSLOADER_${{ steps.variant.outputs.variant_name }}
-        path: bin/POPSLOADER_${{ steps.variant.outputs.variant_name }}.ELF
+        path: |
+          bin/POPSLOADER_${{ steps.variant.outputs.variant_name }}.ELF
+          POPSLoader_${{ steps.variant.outputs.variant_name }}.7z
  
     - name: Create pre-release
       if: github.ref == 'refs/heads/main'
