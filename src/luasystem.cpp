@@ -5,6 +5,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <errno.h>
+#define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
 #include "include/luaplayer.h"
 #include "include/md5.h"
