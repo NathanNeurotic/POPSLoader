@@ -80,11 +80,22 @@ local function detectPreferredDevice()
   end
 end
 
-BOOT_PATH = tostring(BOOT_PATH or System.currentDirectory() or "./")
-BOOT_PATH = BOOT_PATH:gsub("//+", "/")
-if BOOT_PATH:sub(-1) ~= "/" then
-  BOOT_PATH = BOOT_PATH.."/"
+local current_bootpath = tostring(System.currentDirectory() or "")
+local base_dir = System.deriveBaseDir(current_bootpath)
+
+local base_stat_ret = System.fileXioGetStat(base_dir)
+if base_stat_ret ~= 0 then
+  for _ = 1, 2 do
+    System.sleep(1)
+    base_stat_ret = System.fileXioGetStat(base_dir)
+    if base_stat_ret == 0 then
+      break
+    end
+  end
 end
+LOGF("base_dir stat ret: %d", base_stat_ret)
+
+BOOT_PATH = base_dir
 
 PREFERRED_DEVICE = normalizeRoot(detectPreferredDevice())
 BOOT_DEVICE_ROOT = PREFERRED_DEVICE
@@ -170,8 +181,25 @@ end
 RUNTIME_ROOT = BOOT_PATH
 POPSTARTER_PATH = BOOT_PATH.."POPSTARTER.ELF"
 
-if doesFileExist(BOOT_PATH.."system.lua") then
-	RunScript(BOOT_PATH.."system.lua");
-else
-  error("Cant access system.lua\n\n\tcurrent_bootpath: "..System.currentDirectory())
+local system_path = System.resolveLocal(base_dir, "system.lua")
+local system_stat_ret = System.fileXioGetStat(system_path)
+LOGF("system.lua stat ret: %d", system_stat_ret)
+if system_stat_ret ~= 0 then
+  error("Cant access system.lua\n\n\tcurrent_bootpath: "..current_bootpath.."\n\tbase_dir: "..base_dir.."\n\tsystem_path: "..system_path.."\n\tstat_ret: "..tostring(system_stat_ret))
 end
+
+local system_fd, system_errno = System.openFileRaw(system_path, FREAD)
+LOGF("system.lua open fd: %d errno: %d", system_fd, system_errno)
+if system_fd < 0 then
+  error("Cant open system.lua\n\n\tcurrent_bootpath: "..current_bootpath.."\n\tbase_dir: "..base_dir.."\n\tsystem_path: "..system_path.."\n\terrno: "..tostring(system_errno))
+end
+
+local system_size = System.sizeFile(system_fd)
+local system_data = System.readFile(system_fd, system_size)
+System.closeFile(system_fd)
+
+local system_chunk, system_err = loadstring(system_data, "@"..system_path)
+if system_chunk == nil then
+  error("Cant load system.lua\n\n\tcurrent_bootpath: "..current_bootpath.."\n\tbase_dir: "..base_dir.."\n\tsystem_path: "..system_path.."\n\terr: "..tostring(system_err))
+end
+system_chunk()

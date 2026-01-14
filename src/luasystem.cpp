@@ -4,6 +4,8 @@
 #include <sys/fcntl.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <errno.h>
+#include <fileXio_rpc.h>
 #include "include/luaplayer.h"
 #include "include/md5.h"
 #include "include/graphics.h"
@@ -419,6 +421,19 @@ static int lua_openfile(lua_State *L){
 	return 1;
 }
 
+static int lua_openfile_raw(lua_State *L){
+	int argc = lua_gettop(L);
+	if (argc != 2) return luaL_error(L, "wrong number of arguments");
+	const char *file_tbo = luaL_checkstring(L, 1);
+	int type = luaL_checkinteger(L, 2);
+	errno = 0;
+	int fileHandle = open(file_tbo, type, 0777);
+	int err = errno;
+	lua_pushinteger(L, fileHandle);
+	lua_pushinteger(L, err);
+	return 2;
+}
+
 
 static int lua_readfile(lua_State *L){
 	int argc = lua_gettop(L);
@@ -486,6 +501,42 @@ static int lua_checkexist(lua_State *L){
 		close(fileHandle);
 		lua_pushboolean(L,true);
 	}
+	return 1;
+}
+
+static int lua_filexio_getstat(lua_State *L){
+	int argc = lua_gettop(L);
+	if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	const char *path = luaL_checkstring(L, 1);
+	iox_stat_t stat;
+	memset(&stat, 0, sizeof(stat));
+	int ret = fileXioGetStat(path, &stat);
+	lua_pushinteger(L, ret);
+	return 1;
+}
+
+static int lua_derive_base_dir(lua_State *L){
+	int argc = lua_gettop(L);
+	if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	const char *path = luaL_checkstring(L, 1);
+	char out[256];
+	if (!derive_base_dir(path, out, sizeof(out))) {
+		return luaL_error(L, "derive_base_dir failed for '%s'", path);
+	}
+	lua_pushstring(L, out);
+	return 1;
+}
+
+static int lua_resolve_local(lua_State *L){
+	int argc = lua_gettop(L);
+	if (argc != 2) return luaL_error(L, "wrong number of arguments");
+	const char *base_dir = luaL_checkstring(L, 1);
+	const char *filename = luaL_checkstring(L, 2);
+	char out[256];
+	if (!resolve_local(base_dir, filename, out, sizeof(out))) {
+		return luaL_error(L, "resolve_local failed for '%s' + '%s'", base_dir, filename);
+	}
+	lua_pushstring(L, out);
 	return 1;
 }
 extern "C" {
@@ -705,11 +756,15 @@ static int lua_popargv0(lua_State *L) {
 
 static const luaL_Reg System_functions[] = {
 	{"openFile",                   lua_openfile},
+	{"openFileRaw",                lua_openfile_raw},
 	{"readFile",                   lua_readfile},
 	{"writeFile",                 lua_writefile},
 	{"closeFile",                 lua_closefile},  
 	{"seekFile",                   lua_seekfile},  
 	{"sizeFile",                   lua_sizefile},
+	{"fileXioGetStat",             lua_filexio_getstat},
+	{"deriveBaseDir",              lua_derive_base_dir},
+	{"resolveLocal",               lua_resolve_local},
 	//{"doesFileExist",            lua_checkexist}, BREAKS ERROR HANDLING IF DECLARED INSIDE TABLE. DONT ASK ME WHY
 	{"currentDirectory",             lua_curdir},
 	{"listDirectory",           	    lua_dir},
