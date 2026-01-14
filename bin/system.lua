@@ -31,19 +31,22 @@ end
 
 ResolvePreferredPath = resolvePreferredPath
 
-local POPS_DEVICE_ORDER = {
-  "mmce1:/POPS/",
-  "mmce0:/POPS/",
-  "mmce1:/POPS/",
-  "mmce0:/POPS/",
-  "mass:/POPS/",
-  "mass0:/POPS/",
-  "mass1:/POPS/",
-  "mass2:/POPS/",
-  "mass3:/POPS/",
-  "mass:/POPS/",
-  "mass0:/POPS/"
-}
+local POPS_DEVICE_ORDER = {}
+local mmce_devices = {"mmce1:/POPS/", "mmce0:/POPS/"}
+local mass_devices = {"mass:/POPS/", "mass0:/POPS/", "mass1:/POPS/", "mass2:/POPS/", "mass3:/POPS/"}
+local mass_retry_devices = {"mass:/POPS/", "mass0:/POPS/"}
+
+for _ = 1, 2 do
+  for _, dev in ipairs(mmce_devices) do
+    table.insert(POPS_DEVICE_ORDER, dev)
+  end
+end
+for _, dev in ipairs(mass_devices) do
+  table.insert(POPS_DEVICE_ORDER, dev)
+end
+for _, dev in ipairs(mass_retry_devices) do
+  table.insert(POPS_DEVICE_ORDER, dev)
+end
 
 PLDR_LAST_POPS_DEVICE = nil
 

@@ -122,19 +122,22 @@ LOGF("base_dir stat ret: %d", base_stat_ret)
 BOOT_PATH = deps_base_dir
 
 local function find_pops_device()
-  local roots = {
-    "mmce1:/",
-    "mmce0:/",
-    "mmce1:/",
-    "mmce0:/",
-    "mass:/",
-    "mass0:/",
-    "mass1:/",
-    "mass2:/",
-    "mass3:/",
-    "mass:/",
-    "mass0:/"
-  }
+  local roots = {}
+  local mmce_devices = {"mmce1:/", "mmce0:/"}
+  local mass_devices = {"mass:/", "mass0:/", "mass1:/", "mass2:/", "mass3:/"}
+  local mass_retry_devices = {"mass:/", "mass0:/"}
+
+  for _ = 1, 2 do
+    for _, dev in ipairs(mmce_devices) do
+      table.insert(roots, dev)
+    end
+  end
+  for _, dev in ipairs(mass_devices) do
+    table.insert(roots, dev)
+  end
+  for _, dev in ipairs(mass_retry_devices) do
+    table.insert(roots, dev)
+  end
   for _, root in ipairs(roots) do
     local path = root.."POPS/"
     local ready_ok, _ = wait_for_ready(path, DEVICE_READY_TIMEOUT_MS)
