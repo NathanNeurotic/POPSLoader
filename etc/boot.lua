@@ -224,11 +224,18 @@ local system_data, system_read_ret = System.fileXioRead(system_fd, system_size)
 LOGF("system.lua read ret: %d", system_read_ret)
 local system_close_ret = System.fileXioClose(system_fd)
 LOGF("system.lua close ret: %d", system_close_ret)
+if system_close_ret ~= 0 then
+  LOG("WARNING: Failed to close system.lua, ret: "..tostring(system_close_ret))
+end
 if system_data == nil then
   emit_fatal("Cant read system.lua\n\n\tboot_path: "..current_bootpath.."\n\tdeps_base_dir: "..deps_base_dir.."\n\tsystem_path: "..system_path.."\n\tread_ret: "..tostring(system_read_ret))
 end
 
-local system_chunk, system_err = loadstring(system_data, "@"..system_path)
+local loader = loadstring or load
+if loader == nil then
+  emit_fatal("Cant load system.lua\n\n\tboot_path: "..current_bootpath.."\n\tdeps_base_dir: "..deps_base_dir.."\n\tsystem_path: "..system_path.."\n\terr: loader unavailable")
+end
+local system_chunk, system_err = loader(system_data, "@"..system_path)
 if system_chunk == nil then
   emit_fatal("Cant load system.lua\n\n\tboot_path: "..current_bootpath.."\n\tdeps_base_dir: "..deps_base_dir.."\n\tsystem_path: "..system_path.."\n\terr: "..tostring(system_err))
 end
