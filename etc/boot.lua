@@ -225,6 +225,7 @@ local function read_filexio_exact(fd, total_size)
   end
   local chunks = {}
   local read_total = 0
+  local zero_reads = 0
   while read_total < total_size do
     local remaining = total_size - read_total
     local chunk_size = remaining
@@ -232,11 +233,23 @@ local function read_filexio_exact(fd, total_size)
       chunk_size = 16384
     end
     local data, ret = System.fileXioRead(fd, chunk_size)
-    if data == nil or ret <= 0 then
+    if data == nil then
       return nil, ret
     end
-    table.insert(chunks, data)
-    read_total = read_total + ret
+    if ret == 0 then
+      zero_reads = zero_reads + 1
+      if zero_reads >= 5 then
+        return nil, ret
+      end
+      System.sleepMs(OPEN_RETRY_SLEEP_MS)
+      data = nil
+    else
+      zero_reads = 0
+    end
+    if data ~= nil then
+      table.insert(chunks, data)
+      read_total = read_total + ret
+    end
   end
   return table.concat(chunks), read_total
 end
