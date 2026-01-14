@@ -67,6 +67,7 @@ jobs:
         name: POPSLOADER_${{ steps.variant.outputs.variant_name }}
         path: |
           bin/POPSLOADER_${{ steps.variant.outputs.variant_name }}.ELF
+          bin/pkg/*
           POPSLoader_${{ steps.variant.outputs.variant_name }}.7z
  
     - name: Create pre-release
