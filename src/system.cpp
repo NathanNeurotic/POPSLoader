@@ -250,15 +250,11 @@ bool resolve_local(const char *base_dir, const char *filename, char *out, size_t
 		return false;
 	}
 
-	size_t base_len = strlen(base_dir);
-	size_t file_len = strlen(filename);
-	if (base_len + file_len >= out_sz) {
+	int written = snprintf(out, out_sz, "%s%s", base_dir, filename);
+	if (written < 0 || (size_t)written >= out_sz) {
+		out[0] = '\0';
 		return false;
 	}
-
-	memcpy(out, base_dir, base_len);
-	memcpy(out + base_len, filename, file_len);
-	out[base_len + file_len] = '\0';
 	return true;
 }
 

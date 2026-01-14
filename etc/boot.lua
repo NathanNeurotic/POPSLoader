@@ -80,19 +80,73 @@ local function detectPreferredDevice()
   end
 end
 
+local DEVICE_READY_TIMEOUT_MS = 2000
+local DEVICE_READY_SLEEP_MS = 100
+local OPEN_RETRY_COUNT = 3
+local OPEN_RETRY_SLEEP_MS = 100
+
+local function emit_fatal(message)
+  LOG(message)
+  System.dprintf(message)
+  print(message)
+  if Screen and Screen.clear then
+    Screen.clear()
+  end
+  pcall(function()
+    Font.fmLoad()
+    Font.fmPrint(20, 20, 0.6, message)
+  end)
+  if Screen and Screen.flip then
+    Screen.flip()
+  end
+  while true do
+    System.sleep(1)
+  end
+end
+
+local function wait_for_ready(path, timeout_ms)
+  local elapsed = 0
+  local last_ret = nil
+  while elapsed <= timeout_ms do
+    local stat_ret = System.fileXioGetStat(path)
+    if stat_ret == 0 then
+      return true, 0
+    end
+    local dopen_ret = System.fileXioDopen(path)
+    if dopen_ret >= 0 then
+      System.fileXioDclose(dopen_ret)
+      return true, 0
+    end
+    last_ret = (dopen_ret < 0) and dopen_ret or stat_ret
+    System.sleepMs(DEVICE_READY_SLEEP_MS)
+    elapsed = elapsed + DEVICE_READY_SLEEP_MS
+  end
+  return false, last_ret
+end
+
+local function open_with_retry(path, flags)
+  local last_ret = nil
+  for attempt = 1, OPEN_RETRY_COUNT do
+    local fd = System.fileXioOpen(path, flags)
+    LOGF("fileXioOpen attempt %d ret: %d", attempt, fd)
+    if fd >= 0 then
+      return fd, 0
+    end
+    last_ret = fd
+    System.sleepMs(OPEN_RETRY_SLEEP_MS)
+  end
+  return -1, last_ret
+end
+
 local current_bootpath = tostring(System.currentDirectory() or "")
 local base_dir = System.deriveBaseDir(current_bootpath)
 
-local base_stat_ret = System.fileXioGetStat(base_dir)
-if base_stat_ret ~= 0 then
-  for _ = 1, 2 do
-    System.sleep(1)
-    base_stat_ret = System.fileXioGetStat(base_dir)
-    if base_stat_ret == 0 then
-      break
-    end
-  end
+local ready_ok, ready_ret = wait_for_ready(base_dir, DEVICE_READY_TIMEOUT_MS)
+if not ready_ok then
+  emit_fatal("FATAL: base_dir not ready\n\n\tcurrent_bootpath: "..current_bootpath.."\n\tbase_dir: "..base_dir.."\n\tlast_ret: "..tostring(ready_ret))
 end
+
+local base_stat_ret, _ = System.fileXioGetStat(base_dir)
 LOGF("base_dir stat ret: %d", base_stat_ret)
 
 BOOT_PATH = base_dir
@@ -182,24 +236,27 @@ RUNTIME_ROOT = BOOT_PATH
 POPSTARTER_PATH = BOOT_PATH.."POPSTARTER.ELF"
 
 local system_path = System.resolveLocal(base_dir, "system.lua")
-local system_stat_ret = System.fileXioGetStat(system_path)
+local system_stat_ret, system_size = System.fileXioGetStat(system_path)
 LOGF("system.lua stat ret: %d", system_stat_ret)
 if system_stat_ret ~= 0 then
-  error("Cant access system.lua\n\n\tcurrent_bootpath: "..current_bootpath.."\n\tbase_dir: "..base_dir.."\n\tsystem_path: "..system_path.."\n\tstat_ret: "..tostring(system_stat_ret))
+  emit_fatal("Cant access system.lua\n\n\tcurrent_bootpath: "..current_bootpath.."\n\tbase_dir: "..base_dir.."\n\tsystem_path: "..system_path.."\n\tstat_ret: "..tostring(system_stat_ret))
 end
 
-local system_fd, system_errno = System.openFileRaw(system_path, FREAD)
-LOGF("system.lua open fd: %d errno: %d", system_fd, system_errno)
+local system_fd, system_open_ret = open_with_retry(system_path, FREAD)
 if system_fd < 0 then
-  error("Cant open system.lua\n\n\tcurrent_bootpath: "..current_bootpath.."\n\tbase_dir: "..base_dir.."\n\tsystem_path: "..system_path.."\n\terrno: "..tostring(system_errno))
+  emit_fatal("Cant open system.lua\n\n\tcurrent_bootpath: "..current_bootpath.."\n\tbase_dir: "..base_dir.."\n\tsystem_path: "..system_path.."\n\topen_ret: "..tostring(system_open_ret))
 end
 
-local system_size = System.sizeFile(system_fd)
-local system_data = System.readFile(system_fd, system_size)
-System.closeFile(system_fd)
+local system_data, system_read_ret = System.fileXioRead(system_fd, system_size)
+LOGF("system.lua read ret: %d", system_read_ret)
+local system_close_ret = System.fileXioClose(system_fd)
+LOGF("system.lua close ret: %d", system_close_ret)
+if system_data == nil then
+  emit_fatal("Cant read system.lua\n\n\tcurrent_bootpath: "..current_bootpath.."\n\tbase_dir: "..base_dir.."\n\tsystem_path: "..system_path.."\n\tread_ret: "..tostring(system_read_ret))
+end
 
 local system_chunk, system_err = loadstring(system_data, "@"..system_path)
 if system_chunk == nil then
-  error("Cant load system.lua\n\n\tcurrent_bootpath: "..current_bootpath.."\n\tbase_dir: "..base_dir.."\n\tsystem_path: "..system_path.."\n\terr: "..tostring(system_err))
+  emit_fatal("Cant load system.lua\n\n\tcurrent_bootpath: "..current_bootpath.."\n\tbase_dir: "..base_dir.."\n\tsystem_path: "..system_path.."\n\terr: "..tostring(system_err))
 end
 system_chunk()

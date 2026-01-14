@@ -348,6 +348,15 @@ static int lua_sleep(lua_State *L)
 	return 0;
 }
 
+static int lua_sleep_ms(lua_State *L)
+{
+	if (lua_gettop(L) != 1) return luaL_error(L, "milliseconds expected.");
+	int ms = luaL_checkinteger(L, 1);
+	if (ms < 0) ms = 0;
+	usleep((useconds_t)ms * 1000);
+	return 0;
+}
+
 static int lua_getFreeMemory(lua_State *L)
 {
 	if (lua_gettop(L) != 0) return luaL_error(L, "no arguments expected.");
@@ -367,6 +376,15 @@ static int lua_exit(lua_State *L)
             "syscall;"
             "nop;"
         );
+	return 0;
+}
+
+static int lua_dprintf(lua_State *L)
+{
+	int argc = lua_gettop(L);
+	if (argc != 1) return luaL_error(L, "System.dprintf(text) expects one string");
+	const char *text = luaL_checkstring(L, 1);
+	dbgprintf("%s", text);
 	return 0;
 }
 
@@ -428,7 +446,7 @@ static int lua_openfile_raw(lua_State *L){
 	const char *file_tbo = luaL_checkstring(L, 1);
 	int type = luaL_checkinteger(L, 2);
 	errno = 0;
-	int fileHandle = open(file_tbo, type, 0777);
+	int fileHandle = open(file_tbo, type, 0644);
 	int err = errno;
 	lua_pushinteger(L, fileHandle);
 	lua_pushinteger(L, err);
@@ -513,31 +531,106 @@ static int lua_filexio_getstat(lua_State *L){
 	memset(&stat, 0, sizeof(stat));
 	int ret = fileXioGetStat(path, &stat);
 	lua_pushinteger(L, ret);
+	lua_pushinteger(L, (ret == 0) ? (lua_Integer)stat.size : 0);
+	return 2;
+}
+
+static int lua_filexio_dopen(lua_State *L){
+	int argc = lua_gettop(L);
+	if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	const char *path = luaL_checkstring(L, 1);
+	int fd = fileXioDopen(path);
+	lua_pushinteger(L, fd);
+	return 1;
+}
+
+static int lua_filexio_dclose(lua_State *L){
+	int argc = lua_gettop(L);
+	if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	int fd = luaL_checkinteger(L, 1);
+	int ret = fileXioDclose(fd);
+	lua_pushinteger(L, ret);
+	return 1;
+}
+
+static int lua_filexio_open(lua_State *L){
+	int argc = lua_gettop(L);
+	if (argc != 2 && argc != 3) return luaL_error(L, "wrong number of arguments");
+	const char *path = luaL_checkstring(L, 1);
+	int flags = luaL_checkinteger(L, 2);
+	int mode = 0;
+	if (argc == 3) {
+		mode = luaL_checkinteger(L, 3);
+	}
+	int fd = fileXioOpen(path, flags, mode);
+	lua_pushinteger(L, fd);
+	return 1;
+}
+
+static int lua_filexio_read(lua_State *L){
+	int argc = lua_gettop(L);
+	if (argc != 2) return luaL_error(L, "wrong number of arguments");
+	int fd = luaL_checkinteger(L, 1);
+	int size = luaL_checkinteger(L, 2);
+	if (size < 0) size = 0;
+	uint8_t *buffer = (uint8_t*)malloc((size_t)size + 1);
+	if (buffer == NULL) return luaL_error(L, "out of memory");
+	int len = fileXioRead(fd, buffer, size);
+	if (len < 0) {
+		free(buffer);
+		lua_pushnil(L);
+		lua_pushinteger(L, len);
+		return 2;
+	}
+	buffer[len] = 0;
+	lua_pushlstring(L, (const char*)buffer, len);
+	free(buffer);
+	lua_pushinteger(L, len);
+	return 2;
+}
+
+static int lua_filexio_close(lua_State *L){
+	int argc = lua_gettop(L);
+	if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	int fd = luaL_checkinteger(L, 1);
+	int ret = fileXioClose(fd);
+	lua_pushinteger(L, ret);
 	return 1;
 }
 
 static int lua_derive_base_dir(lua_State *L){
 	int argc = lua_gettop(L);
 	if (argc != 1) return luaL_error(L, "wrong number of arguments");
-	const char *path = luaL_checkstring(L, 1);
-	char out[256];
-	if (!derive_base_dir(path, out, sizeof(out))) {
+	size_t path_len = 0;
+	const char *path = luaL_checklstring(L, 1, &path_len);
+	size_t out_sz = path_len + 3;
+	char *out = (char*)malloc(out_sz);
+	if (out == NULL) return luaL_error(L, "out of memory");
+	if (!derive_base_dir(path, out, out_sz)) {
+		free(out);
 		return luaL_error(L, "derive_base_dir failed for '%s'", path);
 	}
 	lua_pushstring(L, out);
+	free(out);
 	return 1;
 }
 
 static int lua_resolve_local(lua_State *L){
 	int argc = lua_gettop(L);
 	if (argc != 2) return luaL_error(L, "wrong number of arguments");
-	const char *base_dir = luaL_checkstring(L, 1);
-	const char *filename = luaL_checkstring(L, 2);
-	char out[256];
-	if (!resolve_local(base_dir, filename, out, sizeof(out))) {
+	size_t base_len = 0;
+	size_t file_len = 0;
+	const char *base_dir = luaL_checklstring(L, 1, &base_len);
+	const char *filename = luaL_checklstring(L, 2, &file_len);
+	size_t out_sz = base_len + file_len + 1;
+	char *out = (char*)malloc(out_sz);
+	if (out == NULL) return luaL_error(L, "out of memory");
+	if (!resolve_local(base_dir, filename, out, out_sz)) {
+		free(out);
 		return luaL_error(L, "resolve_local failed for '%s' + '%s'", base_dir, filename);
 	}
 	lua_pushstring(L, out);
+	free(out);
 	return 1;
 }
 extern "C" {
@@ -764,6 +857,11 @@ static const luaL_Reg System_functions[] = {
 	{"seekFile",                   lua_seekfile},  
 	{"sizeFile",                   lua_sizefile},
 	{"fileXioGetStat",             lua_filexio_getstat},
+	{"fileXioDopen",               lua_filexio_dopen},
+	{"fileXioDclose",              lua_filexio_dclose},
+	{"fileXioOpen",                lua_filexio_open},
+	{"fileXioRead",                lua_filexio_read},
+	{"fileXioClose",               lua_filexio_close},
 	{"deriveBaseDir",              lua_derive_base_dir},
 	{"resolveLocal",               lua_resolve_local},
 	//{"doesFileExist",            lua_checkexist}, BREAKS ERROR HANDLING IF DECLARED INSIDE TABLE. DONT ASK ME WHY
@@ -779,8 +877,10 @@ static const luaL_Reg System_functions[] = {
 	{"rename",                       lua_rename},
 	{"md5sum",                       lua_md5sum},
 	{"sleep",                         lua_sleep},
+	{"sleepMs",                     lua_sleep_ms},
 	{"getFreeMemory",         lua_getFreeMemory},
 	{"exitToBrowser",                  lua_exit},
+	{"dprintf",                     lua_dprintf},
 	{"getMCInfo",                 lua_getmcinfo},
 	{"loadELF",                 	lua_loadELF},
 	{"checkValidDisc",       lua_checkValidDisc},
