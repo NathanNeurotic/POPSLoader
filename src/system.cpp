@@ -80,12 +80,18 @@ void normalize_device_path(char *path)
 		return;
 	}
 
-	for (int i = 0; path[i] != '\0'; ++i) {
-		if (path[i] == '/' && path[i + 1] == '/') {
-			memmove(&path[i], &path[i + 1], strlen(&path[i + 1]) + 1);
-			--i;
+	char *write_ptr = path;
+	char *read_ptr = path;
+	while (*read_ptr) {
+		*write_ptr++ = *read_ptr;
+		if (*read_ptr == '/') {
+			while (*(read_ptr + 1) == '/') {
+				read_ptr++;
+			}
 		}
+		read_ptr++;
 	}
+	*write_ptr = '\0';
 }
 
 bool is_valid_root(const char *root)
