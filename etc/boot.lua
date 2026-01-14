@@ -214,28 +214,17 @@ LOGF("system.lua stat ret: %d", system_stat_ret)
 if system_stat_ret ~= 0 then
   emit_fatal("Cant access system.lua\n\n\tboot_path: "..current_bootpath.."\n\tdeps_base_dir: "..deps_base_dir.."\n\tsystem_path: "..system_path.."\n\tstat_ret: "..tostring(system_stat_ret))
 end
-if system_size <= 0 then
-  emit_fatal("Cant read system.lua\n\n\tboot_path: "..current_bootpath.."\n\tdeps_base_dir: "..deps_base_dir.."\n\tsystem_path: "..system_path.."\n\tstat_size: "..tostring(system_size))
-end
-
 local system_fd, system_open_ret = open_with_retry(system_path, FREAD)
 if system_fd < 0 then
   emit_fatal("Cant open system.lua\n\n\tboot_path: "..current_bootpath.."\n\tdeps_base_dir: "..deps_base_dir.."\n\tsystem_path: "..system_path.."\n\topen_ret: "..tostring(system_open_ret))
 end
 
-local function read_filexio_all(fd, total_size)
-  if total_size <= 0 then
-    return nil, 0
-  end
+local function read_filexio_all(fd)
   local chunks = {}
   local read_total = 0
   local last_ret = 0
-  while read_total < total_size do
-    local remaining = total_size - read_total
-    local chunk_size = remaining
-    if chunk_size > 16384 then
-      chunk_size = 16384
-    end
+  while true do
+    local chunk_size = 16384
     local data, ret = System.fileXioRead(fd, chunk_size)
     last_ret = ret
     if data == nil then
@@ -247,14 +236,17 @@ local function read_filexio_all(fd, total_size)
     table.insert(chunks, data)
     read_total = read_total + ret
   end
-  if read_total ~= total_size then
+  if read_total == 0 then
     return nil, last_ret
   end
   return table.concat(chunks), read_total
 end
 
-local system_data, system_read_ret = read_filexio_all(system_fd, system_size)
+local system_data, system_read_ret = read_filexio_all(system_fd)
 LOGF("system.lua read ret: %d", system_read_ret)
+if system_size > 0 and system_read_ret ~= system_size then
+  LOG("WARNING: system.lua size mismatch. stat:"..tostring(system_size).." read:"..tostring(system_read_ret))
+end
 local system_close_ret = System.fileXioClose(system_fd)
 LOGF("system.lua close ret: %d", system_close_ret)
 if system_close_ret ~= 0 then
