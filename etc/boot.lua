@@ -7,18 +7,14 @@ function LOGF(S, ...)
   print_uart(string.format(S, ...))
 end
 
-local function safeDoesFolderExist(path)
-  local ok, result = pcall(doesFolderExist, path)
-  return ok and result
-end
-
 local function normalizeRoot(devroot)
   local dev = tostring(devroot or "")
   local prefix = dev:match("^(.-):") or dev
   prefix = string.lower(prefix)
   if prefix ~= "mmce0" and prefix ~= "mmce1" and
      prefix ~= "mass0" and prefix ~= "mass1" and
-     prefix ~= "mass2" and prefix ~= "mass3" then
+     prefix ~= "mass2" and prefix ~= "mass3" and
+     prefix ~= "mass" and prefix ~= "mc0" and prefix ~= "mc1" then
     prefix = "mmce0"
   end
   return prefix..":/"
@@ -28,6 +24,7 @@ local function isValidRoot(root)
   if root == nil then return false end
   if root == "mmce0:/" or root == "mmce1:/" then return true end
   if root == "mass0:/" or root == "mass1:/" or root == "mass2:/" or root == "mass3:/" then return true end
+  if root == "mass:/" or root == "mc0:/" or root == "mc1:/" then return true end
   return false
 end
 
@@ -56,29 +53,6 @@ end
 NormalizeRoot = normalizeRoot
 JoinPath = joinPath
 IsValidRoot = isValidRoot
-
-local function detectPreferredDevice()
-  local probe_roots = {
-    "mass0:/",
-    "mass1:/",
-    "mass2:/",
-    "mass3:/",
-  }
-
-  if MMCE_AVAILABLE then
-    table.insert(probe_roots, 1, "mmce1:/")
-    table.insert(probe_roots, 2, "mmce0:/")
-  end
-
-  while true do
-    for _, root in ipairs(probe_roots) do
-      if safeDoesFolderExist(root.."POPS/") then
-        return root
-      end
-    end
-    System.sleep(1)
-  end
-end
 
 local DEVICE_READY_TIMEOUT_MS = 2000
 local DEVICE_READY_SLEEP_MS = 100
@@ -138,27 +112,134 @@ local function open_with_retry(path, flags)
   return -1, last_ret
 end
 
-local current_bootpath = tostring(System.currentDirectory() or "")
-local base_dir = System.deriveBaseDir(current_bootpath)
-
-local ready_ok, ready_ret = wait_for_ready(base_dir, DEVICE_READY_TIMEOUT_MS)
-if not ready_ok then
-  emit_fatal("FATAL: base_dir not ready\n\n\tcurrent_bootpath: "..current_bootpath.."\n\tbase_dir: "..base_dir.."\n\tlast_ret: "..tostring(ready_ret))
+local function sanitize_device(value)
+  if value == nil then
+    return nil
+  end
+  local dev = tostring(value)
+  dev = dev:gsub("#.*$", ""):gsub("%s+$", ""):gsub("^%s+", "")
+  dev = dev:gsub(":/?$", ""):gsub(":$", "")
+  if dev == "" then
+    return nil
+  end
+  return dev
 end
 
-local base_stat_ret, _ = System.fileXioGetStat(base_dir)
+local function read_file(path)
+  local stat_ret, size = System.fileXioGetStat(path)
+  LOGF("fileXioGetStat %s ret: %d", path, stat_ret)
+  if stat_ret ~= 0 then
+    return nil, stat_ret
+  end
+  local fd, open_ret = open_with_retry(path, FREAD)
+  if fd < 0 then
+    return nil, open_ret
+  end
+  local data, read_ret = System.fileXioRead(fd, size)
+  local close_ret = System.fileXioClose(fd)
+  LOGF("fileXioClose %s ret: %d", path, close_ret)
+  if data == nil then
+    return nil, read_ret
+  end
+  return data, 0
+end
+
+local function parse_cfg(text)
+  local cfg = {}
+  for line in tostring(text or ""):gmatch("[^\r\n]+") do
+    local trimmed = line:gsub("#.*$", ""):gsub("%s+$", ""):gsub("^%s+", "")
+    if trimmed ~= "" then
+      local key, val = trimmed:match("^([%w_]+)%s*=%s*(.+)$")
+      if key and val then
+        cfg[key] = sanitize_device(val) or val
+      end
+    end
+  end
+  return cfg
+end
+
+local boot_path = tostring(System.GetArgv0() or System.currentDirectory() or "")
+local current_bootpath = boot_path
+local deps_base_dir = System.deriveBaseDir(current_bootpath)
+
+local ready_ok, ready_ret = wait_for_ready(deps_base_dir, DEVICE_READY_TIMEOUT_MS)
+if not ready_ok then
+  emit_fatal("FATAL: base_dir not ready\n\n\tboot_path: "..current_bootpath.."\n\tdeps_base_dir: "..deps_base_dir.."\n\tlast_ret: "..tostring(ready_ret))
+end
+
+local base_stat_ret, _ = System.fileXioGetStat(deps_base_dir)
 LOGF("base_dir stat ret: %d", base_stat_ret)
 
-BOOT_PATH = base_dir
+BOOT_PATH = deps_base_dir
 
-PREFERRED_DEVICE = normalizeRoot(detectPreferredDevice())
-BOOT_DEVICE_ROOT = PREFERRED_DEVICE
+local cfg_path = System.resolveLocal(deps_base_dir, "POPSLDR.CFG")
+local cfg_data, cfg_ret = read_file(cfg_path)
+local cfg = parse_cfg(cfg_data)
+local cfg_pops_device = sanitize_device(cfg.POPS_DEVICE)
 
-LOGF("Boot device root: %s", BOOT_DEVICE_ROOT)
+local attempt_logs = {}
+local function record_attempt(label, path, stat_ret, ready_ret, dopen_ret)
+  table.insert(attempt_logs, string.format("%s => %s stat:%s ready:%s dopen:%s", label, path, tostring(stat_ret), tostring(ready_ret), tostring(dopen_ret)))
+end
+
+local function validate_pops_root(label, path)
+  local stat_ret = System.fileXioGetStat(path)
+  local ready_ok_local, ready_ret_local = wait_for_ready(path, DEVICE_READY_TIMEOUT_MS)
+  local dopen_ret = System.fileXioDopen(path)
+  if dopen_ret >= 0 then
+    System.fileXioDclose(dopen_ret)
+  end
+  record_attempt(label, path, stat_ret, ready_ok_local and 0 or ready_ret_local, dopen_ret)
+  return ready_ok_local and dopen_ret >= 0
+end
+
+local pops_root_dir = nil
+local pops_device = nil
+
+if cfg_pops_device ~= nil then
+  local candidate = cfg_pops_device
+  local path = candidate..":/POPS"
+  if validate_pops_root("cfg", path) then
+    pops_root_dir = path
+    pops_device = candidate
+  end
+end
+
+if pops_root_dir == nil then
+  local device_of_boot = sanitize_device(current_bootpath:match("^(.-):"))
+  local candidates = {device_of_boot, "mmce0", "mmce1", "mass", "mc0", "mc1"}
+  local seen = {}
+  for _, candidate in ipairs(candidates) do
+    if candidate ~= nil and not seen[candidate] then
+      seen[candidate] = true
+      local path = candidate..":/POPS"
+      if validate_pops_root(candidate, path) then
+        pops_root_dir = path
+        pops_device = candidate
+        break
+      end
+    end
+  end
+end
+
+if pops_root_dir == nil then
+  emit_fatal("FATAL: No valid POPS device found.\n\n\tboot_path: "..current_bootpath..
+    "\n\tdeps_base_dir: "..deps_base_dir..
+    "\n\tcfg_pops_device: "..tostring(cfg_pops_device)..
+    "\n\tattempts:\n\t"..table.concat(attempt_logs, "\n\t")..
+    "\n\nSet POPS_DEVICE in POPSLDR.CFG next to POPSLDR.ELF.")
+end
+
+POPS_DEVICE = pops_device
+POPS_ROOT_DIR = pops_root_dir
+POPS_DEVICE_ROOT = normalizeRoot(pops_device)
+
+LOGF("POPS device root: %s", POPS_DEVICE_ROOT)
+LOGF("POPS root dir: %s", POPS_ROOT_DIR)
 if DEBUG_BUILD then
-  assert(isValidRoot(BOOT_DEVICE_ROOT), "Invalid boot device root: "..BOOT_DEVICE_ROOT)
-elseif not isValidRoot(BOOT_DEVICE_ROOT) then
-  LOG("WARNING: invalid boot device root", BOOT_DEVICE_ROOT)
+  assert(isValidRoot(POPS_DEVICE_ROOT), "Invalid POPS device root: "..POPS_DEVICE_ROOT)
+elseif not isValidRoot(POPS_DEVICE_ROOT) then
+  LOG("WARNING: invalid POPS device root", POPS_DEVICE_ROOT)
 end
 
 package.path = string.format("%s?.lua", BOOT_PATH)
@@ -235,16 +316,16 @@ end
 RUNTIME_ROOT = BOOT_PATH
 POPSTARTER_PATH = BOOT_PATH.."POPSTARTER.ELF"
 
-local system_path = System.resolveLocal(base_dir, "system.lua")
+local system_path = System.resolveLocal(deps_base_dir, "system.lua")
 local system_stat_ret, system_size = System.fileXioGetStat(system_path)
 LOGF("system.lua stat ret: %d", system_stat_ret)
 if system_stat_ret ~= 0 then
-  emit_fatal("Cant access system.lua\n\n\tcurrent_bootpath: "..current_bootpath.."\n\tbase_dir: "..base_dir.."\n\tsystem_path: "..system_path.."\n\tstat_ret: "..tostring(system_stat_ret))
+  emit_fatal("Cant access system.lua\n\n\tboot_path: "..current_bootpath.."\n\tdeps_base_dir: "..deps_base_dir.."\n\tsystem_path: "..system_path.."\n\tstat_ret: "..tostring(system_stat_ret))
 end
 
 local system_fd, system_open_ret = open_with_retry(system_path, FREAD)
 if system_fd < 0 then
-  emit_fatal("Cant open system.lua\n\n\tcurrent_bootpath: "..current_bootpath.."\n\tbase_dir: "..base_dir.."\n\tsystem_path: "..system_path.."\n\topen_ret: "..tostring(system_open_ret))
+  emit_fatal("Cant open system.lua\n\n\tboot_path: "..current_bootpath.."\n\tdeps_base_dir: "..deps_base_dir.."\n\tsystem_path: "..system_path.."\n\topen_ret: "..tostring(system_open_ret))
 end
 
 local system_data, system_read_ret = System.fileXioRead(system_fd, system_size)
@@ -252,11 +333,11 @@ LOGF("system.lua read ret: %d", system_read_ret)
 local system_close_ret = System.fileXioClose(system_fd)
 LOGF("system.lua close ret: %d", system_close_ret)
 if system_data == nil then
-  emit_fatal("Cant read system.lua\n\n\tcurrent_bootpath: "..current_bootpath.."\n\tbase_dir: "..base_dir.."\n\tsystem_path: "..system_path.."\n\tread_ret: "..tostring(system_read_ret))
+  emit_fatal("Cant read system.lua\n\n\tboot_path: "..current_bootpath.."\n\tdeps_base_dir: "..deps_base_dir.."\n\tsystem_path: "..system_path.."\n\tread_ret: "..tostring(system_read_ret))
 end
 
 local system_chunk, system_err = loadstring(system_data, "@"..system_path)
 if system_chunk == nil then
-  emit_fatal("Cant load system.lua\n\n\tcurrent_bootpath: "..current_bootpath.."\n\tbase_dir: "..base_dir.."\n\tsystem_path: "..system_path.."\n\terr: "..tostring(system_err))
+  emit_fatal("Cant load system.lua\n\n\tboot_path: "..current_bootpath.."\n\tdeps_base_dir: "..deps_base_dir.."\n\tsystem_path: "..system_path.."\n\terr: "..tostring(system_err))
 end
 system_chunk()
