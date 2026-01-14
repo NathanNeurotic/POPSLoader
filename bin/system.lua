@@ -12,34 +12,42 @@
   Licensed under GNU General public license v3.0
 --]]
 LOG(System.currentDirectory())
-if doesFolderExist("POPSLDR/IRX/") then
-  local IRXDIR = System.listDirectory("POPSLDR/IRX/")
+do
+  local IRXDIR = System.listDirectory(".")
   if IRXDIR ~= nil then
-    LOG("Found IRX folder")
     for x=1, #IRXDIR do
-      if string.lower(string.sub(IRXDIR[i].name,-4)) == ".irx" then
-        local ID, RET = IOP.loadModule(IRXDIR[x])
-        LOG(IRXDIR[x], ID, RET)
+      if string.lower(string.sub(IRXDIR[x].name, -4)) == ".irx" then
+        local ID, RET = IOP.loadModule(IRXDIR[x].name)
+        LOG(IRXDIR[x].name, ID, RET)
       end
     end
   end
 end
 local function resolvePreferredPath(relative_path)
-  local preferred = PREFERRED_DEVICE or "mass:/"
-  local candidate = preferred..relative_path
+  local candidate = JoinPath(System.currentDirectory(), relative_path)
   if doesFileExist(candidate) then return candidate end
-  if preferred ~= "mass:/" then
-    local fallback = "mass:/"..relative_path
-    if doesFileExist(fallback) then return fallback end
-  end
   return candidate
 end
 
 ResolvePreferredPath = resolvePreferredPath
 
+local POPS_DEVICE_ORDER = {
+  "mmce1:/POPS/",
+  "mmce0:/POPS/",
+  "mass0:/POPS/",
+  "mass1:/POPS/",
+  "mass2:/POPS/",
+  "mass3:/POPS/"
+}
+
+local function canOpenDir(path)
+  local ok, result = pcall(System.listDirectory, path)
+  return ok and type(result) == "table"
+end
+
 PLDR = {
   REBOOT_IOP_WHILE_LOADING_POPSTARTER = 0;
-  POPSTARTER_PATH = resolvePreferredPath("POPS/POPSTARTER.ELF");
+  POPSTARTER_PATH = resolvePreferredPath("POPSTARTER.ELF");
   CHECK_POPSTARTER_FILES = false;
   GAMEPATH = ".";
   GAMES = {};
@@ -55,10 +63,21 @@ PLDR = {
     HAS_CHECKED_DEPS = false;
     STATUS = 3
   };
-  USB = {
-    MASSINDX = 0
-  }
 }
+
+function PLDR.FindPopsRoot(retries, delay)
+  local attempts = retries or 5
+  local wait = delay or 1
+  for _ = 1, attempts do
+    for _, root in ipairs(POPS_DEVICE_ORDER) do
+      if canOpenDir(root) then
+        return root
+      end
+    end
+    System.sleep(wait)
+  end
+  return nil
+end
 if BOOTPATH ~= nil then
   PLDR.HDD.LOADSTATE = 1
   PLDR.HDD.STATUS = HDD.GetHDDStatus()
@@ -94,7 +113,11 @@ end
 function PLDR.CheckPOPStarterDEPS(device)
   if not PLDR.CHECK_POPSTARTER_FILES then return true, true, true end
   if device == UI.SCENES.GUSB then
-    return doesFileExist(ResolvePreferredPath("POPS/POPS_IOX.PAK"))
+    local root = PLDR.FindPopsRoot()
+    if root == nil then
+      return false, false, false
+    end
+    return doesFileExist(JoinPath(root, "POPS_IOX.PAK"))
   elseif device == UI.SCENES.GHDD then
     local a = HDD.MountPartition("hdd0:__common", 1, FIO_MT_RDONLY)
     if a then
@@ -246,7 +269,7 @@ end
 function PLDR.HDD.CreateCache()
   if not PLDR.HDD.USECACHE then return end
   LOG("> HDD Cache Create")
-  local C = "POPSLDR/hdd_gamecache.lua"
+  local C = "hdd_gamecache.lua"
   local temp = "LOG(\">HDD CACHE LOAD\")\nPLDR.HDDCACHE = {\n"
   PLDR.HDD.BuildGameList()
   for i = 1, #PLDR.GAMES do
@@ -261,7 +284,7 @@ end
 
 function PLDR.HDD.ReadCache()
   LOG("> HDD Cache Read")
-  local C = "POPSLDR/hdd_gamecache.lua"
+  local C = "hdd_gamecache.lua"
   if doesFileExist(C) then
     dofile(C)
     PLDR.HDD.HAS_CHECKED = true
@@ -270,7 +293,7 @@ end
 
 function PLDR.HDD.WipeCache(CACHE)
   LOG("> HDD Cache Wipe")
-  local C = "POPSLDR/hdd_gamecache.lua"
+  local C = "hdd_gamecache.lua"
   if doesFileExist(C) then
     System.removeFile(C)
     PLDR.HDD.HAS_CHECKED = false
@@ -303,7 +326,7 @@ end
 
 ---MAIN PROGRAM BEHAVIOUR BEGINS
 UI.WelcomeDraw.Play()
-if Touch("POPSLDR/.pldrs") then
+if Touch(".pldrs") then
   UI.CURSCENE = UI.SCENES.CREDITS
 end
 

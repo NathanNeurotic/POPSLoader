@@ -7,7 +7,7 @@
 --]]
 
 LOG("Loading images")
---- Add your images to this table, just write the name of the file, all images go into POPSLDR/IMG/*
+--- Add your images to this table, just write the name of the file, all images live next to POPSLOADER.ELF
 --- FILES MUST HAVE EXTENSION. filename is parsed to create the access key: USB.PNG will be accesed by typing `IMG["USB"]`
 local IMGS = {
   "USB.png",
@@ -35,8 +35,7 @@ IMG = {}
 LOGF("%d images registered", #IMGS)
 for x=1, #IMGS do
   local INDX = IMGS[x]:match("(.+)%..+$")
-  IMG[INDX] = Graphics.loadImage("POPSLDR/IMG/"..IMGS[x])
-  if IMG[INDX] == nil then error("Could not load 'POPSLDR/IMG/"..IMGS[x].."'") end
+  IMG[INDX] = Graphics.loadImage(IMGS[x])
+  if IMG[INDX] == nil then error("Could not load '"..IMGS[x].."'") end
   Graphics.setImageFilters(IMG[INDX], LINEAR)
 end
-

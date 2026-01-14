@@ -1,25 +1,83 @@
-local function safeDoesFolderExist(path)
-  local ok, result = pcall(doesFolderExist, path)
-  return ok and result
-end
+DEBUG_BUILD = DEBUG_BUILD or false
 
-local function detectPreferredDevice()
-  if safeDoesFolderExist("mmce0:/") then return "mmce0:/" end
-  if safeDoesFolderExist("mmce1:/") then return "mmce1:/" end
-  if safeDoesFolderExist("mass:/") then return "mass:/" end
-  return "mass:/"
-end
-
-PREFERRED_DEVICE = detectPreferredDevice()
-BOOT_DEVICE_ROOT = PREFERRED_DEVICE
-
-package.path = string.format("./POPSLDR/?.lua;./?.lua;%sPOPSLDR/?.lua;mc0:/POPSLDR/?.lua;mc1:/POPSLDR/?.lua", BOOT_DEVICE_ROOT)
 function LOG(...)
   print_uart(...)
 end
 function LOGF(S, ...)
   print_uart(string.format(S, ...))
 end
+
+local function safeDoesFolderExist(path)
+  local ok, result = pcall(doesFolderExist, path)
+  return ok and result
+end
+
+local function normalizeRoot(devroot)
+  local dev = tostring(devroot or "")
+  local prefix = dev:match("^(.-):") or dev
+  prefix = string.lower(prefix)
+  if prefix ~= "mmce0" and prefix ~= "mmce1" and
+     prefix ~= "mass0" and prefix ~= "mass1" and
+     prefix ~= "mass2" and prefix ~= "mass3" then
+    prefix = "mmce0"
+  end
+  return prefix..":/"
+end
+
+local function isValidRoot(root)
+  if root == nil then return false end
+  if root == "mmce0:/" or root == "mmce1:/" then return true end
+  if root == "mass0:/" or root == "mass1:/" or root == "mass2:/" or root == "mass3:/" then return true end
+  return false
+end
+
+local function joinPath(root, rel)
+  local base = tostring(root or "")
+  local extra = tostring(rel or "")
+
+  if extra ~= "" and string.find(extra, ":") then
+    return extra:gsub("//+", "/"):gsub(":(/+)", ":/")
+  end
+
+  if base == "" then
+    return extra:gsub("//+", "/")
+  end
+
+  base = base:gsub("//+", "/"):gsub(":(/+)", ":/")
+  if extra == "" then
+    return base
+  end
+
+  base = base:gsub("/+$", "")
+  extra = extra:gsub("^/+", "")
+  return (base.."/"..extra):gsub("//+", "/"):gsub(":(/+)", ":/")
+end
+
+NormalizeRoot = normalizeRoot
+JoinPath = joinPath
+IsValidRoot = isValidRoot
+
+local function detectPreferredDevice()
+  if safeDoesFolderExist("mmce0:/") then return "mmce0:/" end
+  if safeDoesFolderExist("mmce1:/") then return "mmce1:/" end
+  if safeDoesFolderExist("mass0:/") then return "mass0:/" end
+  if safeDoesFolderExist("mass1:/") then return "mass1:/" end
+  if safeDoesFolderExist("mass2:/") then return "mass2:/" end
+  if safeDoesFolderExist("mass3:/") then return "mass3:/" end
+  return "mmce0:/"
+end
+
+PREFERRED_DEVICE = normalizeRoot(detectPreferredDevice())
+BOOT_DEVICE_ROOT = PREFERRED_DEVICE
+
+LOGF("Boot device root: %s", BOOT_DEVICE_ROOT)
+if DEBUG_BUILD then
+  assert(isValidRoot(BOOT_DEVICE_ROOT), "Invalid boot device root: "..BOOT_DEVICE_ROOT)
+elseif not isValidRoot(BOOT_DEVICE_ROOT) then
+  LOG("WARNING: invalid boot device root", BOOT_DEVICE_ROOT)
+end
+
+package.path = "./?.lua;mc0:/?.lua;mc1:/?.lua"
 
 POPSLDR_VER = "v1.0.0 - rev3"
 
@@ -79,8 +137,10 @@ function RunScript(S)
   dofile(S)
 end
 
-if doesFileExist("POPSLDR/system.lua") then
-	RunScript("POPSLDR/system.lua");
+RUNTIME_ROOT = System.currentDirectory()
+
+if doesFileExist("system.lua") then
+	RunScript("system.lua");
 else
-  error("Cant access POPSLDR/system.lua\n\n\tcurrent_bootpath: "..System.currentDirectory())
+  error("Cant access system.lua\n\n\tcurrent_bootpath: "..System.currentDirectory())
 end

@@ -1,4 +1,5 @@
-.SILENT:                                                                              
+.SILENT:
+.PHONY: variants
 
 define HEADER
                                                                        
@@ -116,6 +117,22 @@ IRXTAG = $(subst -,_,$(notdir $(addsuffix _irx, $(basename $<))))
 $(EE_ASM_DIR)%.c: %.irx | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ $(IRXTAG)
 
+SIO2MAN_VARIANT ?= sio2man
+SIO2MAN_DIR = sio2man/$(SIO2MAN_VARIANT)
+SIO2MAN_IRX = $(SIO2MAN_DIR)/sio2man.irx
+SIO2MAN_VARIANTS := $(notdir $(dir $(wildcard sio2man/*/sio2man.irx)))
+
+ifeq ($(wildcard $(SIO2MAN_IRX)),)
+$(error Missing $(SIO2MAN_IRX). Place an old sio2man.irx under sio2man/<variant>/sio2man.irx)
+endif
+
+$(EE_ASM_DIR)mmceman.c: iop/embed/mmceman.irx | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ mmceman_irx
+
+$(EE_ASM_DIR)sio2man.c: $(SIO2MAN_IRX) | $(EE_ASM_DIR)
+	rm -f $@
+	$(BIN2S) $< $@ sio2man_irx
+
 
 modules/ds34bt/ee/libds34bt.a: modules/ds34bt/ee
 	$(MAKE) -C $<
@@ -171,7 +188,15 @@ reset:
 POPSLDR_PKG = POPSLoader.7z
 package: $(EE_BIN_PKD)
 	rm -f $(POPSLDR_PKG)
-	7z a $(POPSLDR_PKG) $(EE_BIN_PKD) bin/changelog bin/POPSLDR/* LICENSE README.md
+	7z a $(POPSLDR_PKG) $(EE_BIN_PKD) bin/changelog bin/*.lua bin/*.png bin/PATCH_5.BIN LICENSE README.md
+
+variants:
+	@if [ -z "$(SIO2MAN_VARIANTS)" ]; then echo "No sio2man variants found under sio2man/*/sio2man.irx"; exit 1; fi
+	@for v in $(SIO2MAN_VARIANTS); do \
+		echo "Building variant $$v"; \
+		$(MAKE) cleanbin; \
+		$(MAKE) SIO2MAN_VARIANT=$$v EE_BIN=$(BINDIR)enceladus_$$v.elf EE_BIN_PKD=$(BINDIR)POPSLOADER_$$v.ELF; \
+	done
 
 dummys:
 	touch $(BINDIR)A.vcd
