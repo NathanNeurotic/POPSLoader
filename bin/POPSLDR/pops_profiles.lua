@@ -24,11 +24,11 @@ PLDR.PROFILES = {
     DESC="Latest popstarter with increased USB delay";
   },
   {
-    ELF=System.currentDirectory().."POPSLDR/PROFILES/USBDELAY_DEBUG/POPSTARTER.ELF";
+    ELF=System.currentDirectory().."/POPSLDR/PROFILES/USBDELAY_DEBUG/POPSTARTER.ELF";
     DESC="Latest popstarter with increased USB delay & debug menus enabled";
   },
   {
-    ELF="mass:/POPS/POPSTARTER.ELF";
+    ELF=ResolvePreferredPath("POPS/POPSTARTER.ELF");
     DESC="the POPSTARTER ELF located on the POPS folder";
   },
 }
