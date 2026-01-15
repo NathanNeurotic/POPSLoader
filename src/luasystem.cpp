@@ -672,38 +672,12 @@ static int lua_loadELF(lua_State *L)
 		printf("#  argv[%d] = '%s'\n", x, luaL_checkstring(L, lua_index));
 		p[x] = (char*)luaL_checkstring(L, lua_index);
 	}
-	if (rebootIOP) {
-		int loader_argc = extra_argc + 1;
-		char **loader_argv = (char**)malloc(loader_argc * sizeof(char*));
-		if (loader_argv == NULL) {
-			free(p);
-			return luaL_error(L, "out of memory");
-		}
-		loader_argv[0] = (char*)elftoload;
-		for (int i = 0; i < extra_argc; i++) {
-			loader_argv[i + 1] = p[i];
-		}
-		load_elf(elftoload, rebootIOP, loader_argv, loader_argc);
-		free(loader_argv);
-		// If load_elf returns, attempt to restore services for error reporting.
-		CleanUp(rebootIOP);
-		SifInitRpc(0);
-		sbv_patch_fileio();
-		int ret = 0;
-		SifExecModuleBuffer(iomanX_irx, size_iomanX_irx, 0, NULL, &ret);
-		SifExecModuleBuffer(fileXio_irx, size_fileXio_irx, 0, NULL, &ret);
-		fileXioInit();
-		SifLoadFileInit();
-		free(p);
-		return luaL_error(L, "load_elf returned unexpectedly");
-	} else {
-		int load_result = LoadELFFromFile(elftoload, extra_argc, p);
-		free(p);
-		if (load_result < 0) {
-			return luaL_error(L, "LoadELFFromFile failed: %d", load_result);
-		}
-		return 1;
+	int load_result = LoadELFFromFile(elftoload, extra_argc, p);
+	free(p);
+	if (load_result < 0) {
+		return luaL_error(L, "LoadELFFromFile failed: %d", load_result);
 	}
+	return 1;
 }
 
 DiscType DiscTypes[] = {
