@@ -14,6 +14,11 @@
 #include "include/system.h"
 #include "include/dprintf.h"
 
+extern unsigned char iomanX_irx[];
+extern unsigned int size_iomanX_irx;
+extern unsigned char fileXio_irx[];
+extern unsigned int size_fileXio_irx;
+
 #define MAX_DIR_FILES 512
 
 static int lua_getCurrentDirectory(lua_State *L)
@@ -662,8 +667,30 @@ static int lua_loadELF(lua_State *L)
 		printf("#  argv[%d] = '%s'\n", (x-3), luaL_checkstring(L, x));
 		p[x-3] = (char*)luaL_checkstring(L, x);
 	}
+	if (rebootIOP) {
+		CleanUp(rebootIOP);
+		SifInitRpc(0);
+		sbv_patch_fileio();
+		int ret = 0;
+		int mod_id = SifExecModuleBuffer(iomanX_irx, size_iomanX_irx, 0, NULL, &ret);
+		if (mod_id < 0) {
+			free(p);
+			return luaL_error(L, "Failed to load iomanX_irx: %d (ret=%d)", mod_id, ret);
+		}
+		mod_id = SifExecModuleBuffer(fileXio_irx, size_fileXio_irx, 0, NULL, &ret);
+		if (mod_id < 0) {
+			free(p);
+			return luaL_error(L, "Failed to load fileXio_irx: %d (ret=%d)", mod_id, ret);
+		}
+		fileXioInit();
+		SifLoadFileInit();
+	}
 	//load_elf(elftoload, rebootIOP, p, (argc-1));
-	LoadELFFromFile(elftoload, argc-2, p);
+	int load_result = LoadELFFromFile(elftoload, argc-2, p);
+	free(p);
+	if (load_result < 0) {
+		return luaL_error(L, "LoadELFFromFile failed: %d", load_result);
+	}
 	return 1;
 }
 
