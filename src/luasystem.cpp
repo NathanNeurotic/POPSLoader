@@ -655,15 +655,35 @@ static int lua_loadELF(lua_State *L)
 	size_t size;
 	const char *elftoload = luaL_checklstring(L, 1, &size);
 	int rebootIOP = luaL_checkinteger(L, 2);
-	char** p = (char**)malloc((argc-1) * sizeof(const char*));
-	p[0] = (char*)elftoload;
-	printf("# Loading ELF '%s' iop_reboot=%d, extra_args=%d\n", elftoload, rebootIOP, argc-2);
-	for (int x = 3; x <= argc; x++) {
-		printf("#  argv[%d] = '%s'\n", (x-3), luaL_checkstring(L, x));
-		p[x-3] = (char*)luaL_checkstring(L, x);
+	int extra_argc = argc - 2;
+	char **p = NULL;
+	if (extra_argc > 0) {
+		p = (char**)malloc(extra_argc * sizeof(char*));
+		if (p == NULL) return luaL_error(L, "out of memory");
 	}
-	//load_elf(elftoload, rebootIOP, p, (argc-1));
-	LoadELFFromFile(elftoload, argc-2, p);
+	printf("# Loading ELF '%s' iop_reboot=%d, extra_args=%d\n", elftoload, rebootIOP, argc-2);
+	for (int x = 0; x < extra_argc; x++) {
+		int lua_index = x + 3;
+		printf("#  argv[%d] = '%s'\n", x, luaL_checkstring(L, lua_index));
+		p[x] = (char*)luaL_checkstring(L, lua_index);
+	}
+	if (rebootIOP) {
+		int loader_argc = extra_argc + 1;
+		char **loader_argv = (char**)malloc(loader_argc * sizeof(char*));
+		if (loader_argv == NULL) {
+			free(p);
+			return luaL_error(L, "out of memory");
+		}
+		loader_argv[0] = (char*)elftoload;
+		for (int i = 0; i < extra_argc; i++) {
+			loader_argv[i + 1] = p[i];
+		}
+		load_elf(elftoload, rebootIOP, loader_argv, loader_argc);
+		free(loader_argv);
+	} else {
+		LoadELFFromFile(elftoload, extra_argc, p);
+	}
+	free(p);
 	return 1;
 }
 
