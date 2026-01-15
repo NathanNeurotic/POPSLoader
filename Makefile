@@ -78,7 +78,7 @@ IOP_MODULES = iomanX.o fileXio.o \
 			  usbmass_bd.o cdfs.o ds34bt.o ds34usb.o \
 			  ps2dev9.o ps2atad.o ps2hdd-osd.o ps2fs.o mmceman.o
 
-EMBEDDED_RSC = boot.o system.o builtin_font.o
+EMBEDDED_RSC = boot.o system_lua.o builtin_font.o
 
 EE_OBJS = $(APP_CORE) $(LUA_LIBS) $(IOP_MODULES) $(EMBEDDED_RSC)
 
@@ -100,7 +100,7 @@ $(EE_ASM_DIR)boot.c: etc/boot.lua | $(EE_ASM_DIR)
 	echo "Embedding boot script..."
 	$(BIN2S) $< $@ bootString
 
-$(EE_ASM_DIR)system.c: bin/system.lua | $(EE_ASM_DIR)
+$(EE_ASM_DIR)system_lua.c: bin/system.lua | $(EE_ASM_DIR)
 	echo "Embedding system script..."
 	$(BIN2S) $< $@ systemString
 
