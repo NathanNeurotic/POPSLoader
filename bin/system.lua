@@ -14,11 +14,20 @@
 LOG(System.currentDirectory())
 do
   local IRXDIR = System.listDirectory(".")
+  local has_irx = false
   if IRXDIR ~= nil then
     for x=1, #IRXDIR do
       if string.lower(string.sub(IRXDIR[x].name, -4)) == ".irx" then
-        local ID, RET = IOP.loadModule(IRXDIR[x].name)
-        LOG(IRXDIR[x].name, ID, RET)
+        has_irx = true
+        break
+      end
+    end
+    if has_irx then
+      for x=1, #IRXDIR do
+        if string.lower(string.sub(IRXDIR[x].name, -4)) == ".irx" then
+          local ID, RET = IOP.loadModule(IRXDIR[x].name)
+          LOG(IRXDIR[x].name, ID, RET)
+        end
       end
     end
   end
@@ -31,37 +40,11 @@ end
 
 ResolvePreferredPath = resolvePreferredPath
 
-local POPS_DEVICE_ORDER = {}
-local mmce_devices = {"mmce1:/POPS/", "mmce0:/POPS/"}
-local mass_devices = {"mass:/POPS/", "mass0:/POPS/", "mass1:/POPS/", "mass2:/POPS/", "mass3:/POPS/"}
-local mass_retry_devices = {"mass:/POPS/", "mass0:/POPS/"}
-
-for _ = 1, 2 do
-  for _, dev in ipairs(mmce_devices) do
-    table.insert(POPS_DEVICE_ORDER, dev)
-  end
-end
-for _, dev in ipairs(mass_devices) do
-  table.insert(POPS_DEVICE_ORDER, dev)
-end
-for _, dev in ipairs(mass_retry_devices) do
-  table.insert(POPS_DEVICE_ORDER, dev)
-end
-
-PLDR_LAST_POPS_DEVICE = nil
-
-local function canOpenDir(path)
-  local ok, result = pcall(System.listDirectory, path)
-  return ok and type(result) == "table"
-end
-
-local POPS_ROOT = BOOT_DEVICE_ROOT and (BOOT_DEVICE_ROOT.."POPS/") or "mass0:/POPS/"
-
 PLDR = {
-  REBOOT_IOP_WHILE_LOADING_POPSTARTER = 1;
+  REBOOT_IOP_WHILE_LOADING_POPSTARTER = 0;
   POPSTARTER_PATH = resolvePreferredPath("POPSTARTER.ELF");
   CHECK_POPSTARTER_FILES = false;
-  GAMEPATH = POPS_ROOT;
+  GAMEPATH = ".";
   GAMES = {};
   HDDCACHE = nil;
   PROFILES = {};
@@ -75,18 +58,18 @@ PLDR = {
     HAS_CHECKED_DEPS = false;
     STATUS = 3
   };
+  USB = {
+    MASSINDX = 0
+  }
 }
+local function canOpenDir(path)
+  local ok, result = pcall(System.listDirectory, path)
+  return ok and type(result) == "table"
+end
 
-function PLDR.FindPopsRoot()
-  if BOOT_DEVICE_ROOT then
-    local candidate = BOOT_DEVICE_ROOT.."POPS/"
-    PLDR_LAST_POPS_DEVICE = candidate
-    if canOpenDir(candidate) then
-      return candidate
-    end
-  end
-  for _, root in ipairs(POPS_DEVICE_ORDER) do
-    PLDR_LAST_POPS_DEVICE = root
+function PLDR.FindMmceRoot()
+  local mmce_devices = {"mmce1:/POPS/", "mmce0:/POPS/"}
+  for _, root in ipairs(mmce_devices) do
     if canOpenDir(root) then
       return root
     end
@@ -128,7 +111,9 @@ end
 function PLDR.CheckPOPStarterDEPS(device)
   if not PLDR.CHECK_POPSTARTER_FILES then return true, true, true end
   if device == UI.SCENES.GUSB then
-    local root = PLDR.FindPopsRoot()
+    return doesFileExist("mass:/POPS/POPS_IOX.PAK")
+  elseif device == UI.SCENES.GMMCE then
+    local root = PLDR.FindMmceRoot()
     if root == nil then
       return false, false, false
     end
@@ -318,8 +303,11 @@ end
 ---DONT TOUCH ME
 function PLDR.RunPOPStarterGame(gamelocation, game)
   local PREFIX = "" --HDD has no prefix
-  if UI.CURSCENE == UI.SCENES.GUSB then PREFIX = "XX."
-  elseif UI.CURSCENE == UI.SCENES.GSMB then PREFIX = "SB." end
+  if UI.CURSCENE == UI.SCENES.GUSB then
+    PREFIX = "XX."
+  elseif UI.CURSCENE == UI.SCENES.GMMCE then
+    PREFIX = "XX."
+  end
   local BOOTPARAM = PLDR.replace_device(gamelocation, "isra")..PREFIX..PLDR.replace_extension(game, "ELF")
   LOG("Loading", PLDR.POPSTARTER_PATH, BOOTPARAM)
   System.loadELF(PLDR.POPSTARTER_PATH,
