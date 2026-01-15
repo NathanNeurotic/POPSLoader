@@ -670,6 +670,11 @@ static int lua_loadELF(lua_State *L)
 	if (rebootIOP) {
 		CleanUp(rebootIOP);
 		SifInitRpc(0);
+		sbv_patch_fileio();
+		int ret = 0;
+		SifExecModuleBuffer(iomanX_irx, size_iomanX_irx, 0, NULL, &ret);
+		SifExecModuleBuffer(fileXio_irx, size_fileXio_irx, 0, NULL, &ret);
+		fileXioInit();
 		SifLoadFileInit();
 	}
 	//load_elf(elftoload, rebootIOP, p, (argc-1));
