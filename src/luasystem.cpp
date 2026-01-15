@@ -670,19 +670,6 @@ static int lua_loadELF(lua_State *L)
 	if (rebootIOP) {
 		CleanUp(rebootIOP);
 		SifInitRpc(0);
-		sbv_patch_fileio();
-		int ret = 0;
-		int mod_id = SifExecModuleBuffer(iomanX_irx, size_iomanX_irx, 0, NULL, &ret);
-		if (mod_id < 0) {
-			free(p);
-			return luaL_error(L, "Failed to load iomanX_irx: %d (ret=%d)", mod_id, ret);
-		}
-		mod_id = SifExecModuleBuffer(fileXio_irx, size_fileXio_irx, 0, NULL, &ret);
-		if (mod_id < 0) {
-			free(p);
-			return luaL_error(L, "Failed to load fileXio_irx: %d (ret=%d)", mod_id, ret);
-		}
-		fileXioInit();
 		SifLoadFileInit();
 	}
 	//load_elf(elftoload, rebootIOP, p, (argc-1));
