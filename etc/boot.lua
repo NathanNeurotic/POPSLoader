@@ -7,30 +7,6 @@ function LOGF(S, ...)
   print_uart(string.format(S, ...))
 end
 
-local function safeDoesFolderExist(path)
-  local ok, result = pcall(doesFolderExist, path)
-  return ok and result
-end
-
-local function normalizeRoot(devroot)
-  local dev = tostring(devroot or "")
-  local prefix = dev:match("^(.-):") or dev
-  prefix = string.lower(prefix)
-  if prefix ~= "mmce0" and prefix ~= "mmce1" and
-     prefix ~= "mass0" and prefix ~= "mass1" and
-     prefix ~= "mass2" and prefix ~= "mass3" then
-    prefix = "mmce0"
-  end
-  return prefix..":/"
-end
-
-local function isValidRoot(root)
-  if root == nil then return false end
-  if root == "mmce0:/" or root == "mmce1:/" then return true end
-  if root == "mass0:/" or root == "mass1:/" or root == "mass2:/" or root == "mass3:/" then return true end
-  return false
-end
-
 local function joinPath(root, rel)
   local base = tostring(root or "")
   local extra = tostring(rel or "")
@@ -53,48 +29,99 @@ local function joinPath(root, rel)
   return (base.."/"..extra):gsub("//+", "/"):gsub(":(/+)", ":/")
 end
 
-NormalizeRoot = normalizeRoot
 JoinPath = joinPath
-IsValidRoot = isValidRoot
 
-local function detectPreferredDevice()
-  local probe_roots = {
-    "mass0:/",
-    "mass1:/",
-    "mass2:/",
-    "mass3:/",
-  }
+local DEVICE_READY_TIMEOUT_MS = 2000
+local DEVICE_READY_SLEEP_MS = 100
 
-  if MMCE_AVAILABLE then
-    table.insert(probe_roots, 1, "mmce1:/")
-    table.insert(probe_roots, 2, "mmce0:/")
+local function emit_fatal(message)
+  LOG(message)
+  System.dprintf(message)
+  print(message)
+  if Screen and Screen.clear then
+    Screen.clear()
   end
-
+  pcall(function()
+    Font.ftInit()
+    Font.fmLoad()
+    Font.fmPrint(20, 20, 0.6, message)
+  end)
+  if Screen and Screen.flip then
+    Screen.flip()
+  end
   while true do
-    for _, root in ipairs(probe_roots) do
-      if safeDoesFolderExist(root.."POPS/") then
-        return root
-      end
-    end
     System.sleep(1)
   end
 end
 
-BOOT_PATH = tostring(BOOT_PATH or System.currentDirectory() or "./")
-BOOT_PATH = BOOT_PATH:gsub("//+", "/")
-if BOOT_PATH:sub(-1) ~= "/" then
-  BOOT_PATH = BOOT_PATH.."/"
+local function wait_for_ready(path, timeout_ms)
+  local elapsed = 0
+  local last_ret = nil
+  while elapsed <= timeout_ms do
+    local stat_ret = System.fileXioGetStat(path)
+    if stat_ret == 0 then
+      return true, 0
+    end
+    local dopen_ret = System.fileXioDopen(path)
+    if dopen_ret >= 0 then
+      System.fileXioDclose(dopen_ret)
+      return true, 0
+    end
+    last_ret = (dopen_ret < 0) and dopen_ret or stat_ret
+    System.sleepMs(DEVICE_READY_SLEEP_MS)
+    elapsed = elapsed + DEVICE_READY_SLEEP_MS
+  end
+  return false, last_ret
 end
 
-PREFERRED_DEVICE = normalizeRoot(detectPreferredDevice())
-BOOT_DEVICE_ROOT = PREFERRED_DEVICE
+local boot_path = tostring(System.GetArgv0() or System.currentDirectory() or "")
+local current_bootpath = boot_path
+local deps_base_dir = System.deriveBaseDir(current_bootpath)
 
-LOGF("Boot device root: %s", BOOT_DEVICE_ROOT)
-if DEBUG_BUILD then
-  assert(isValidRoot(BOOT_DEVICE_ROOT), "Invalid boot device root: "..BOOT_DEVICE_ROOT)
-elseif not isValidRoot(BOOT_DEVICE_ROOT) then
-  LOG("WARNING: invalid boot device root", BOOT_DEVICE_ROOT)
+System.currentDirectory(deps_base_dir)
+
+local ready_ok, ready_ret = wait_for_ready(deps_base_dir, DEVICE_READY_TIMEOUT_MS)
+if not ready_ok then
+  emit_fatal("FATAL: base_dir not ready\n\n\tboot_path: "..current_bootpath.."\n\tdeps_base_dir: "..deps_base_dir.."\n\tlast_ret: "..tostring(ready_ret))
 end
+
+local base_stat_ret, _ = System.fileXioGetStat(deps_base_dir)
+LOGF("base_dir stat ret: %d", base_stat_ret)
+
+BOOT_PATH = deps_base_dir
+
+local function find_pops_device()
+  local roots = {}
+  local mmce_devices = {"mmce1:/", "mmce0:/"}
+  local mass_devices = {"mass:/", "mass0:/", "mass1:/", "mass2:/", "mass3:/"}
+  local mass_retry_devices = {"mass:/", "mass0:/"}
+
+  for _ = 1, 2 do
+    for _, dev in ipairs(mmce_devices) do
+      table.insert(roots, dev)
+    end
+  end
+  for _, dev in ipairs(mass_devices) do
+    table.insert(roots, dev)
+  end
+  for _, dev in ipairs(mass_retry_devices) do
+    table.insert(roots, dev)
+  end
+  for _, root in ipairs(roots) do
+    local path = root.."POPS/"
+    local ready_ok, _ = wait_for_ready(path, DEVICE_READY_TIMEOUT_MS)
+    if ready_ok then
+      local dopen_ret = System.fileXioDopen(path)
+      if dopen_ret >= 0 then
+        System.fileXioDclose(dopen_ret)
+        return root
+      end
+    end
+  end
+  return nil
+end
+
+BOOT_DEVICE_ROOT = find_pops_device()
 
 package.path = string.format("%s?.lua", BOOT_PATH)
 
@@ -170,8 +197,19 @@ end
 RUNTIME_ROOT = BOOT_PATH
 POPSTARTER_PATH = BOOT_PATH.."POPSTARTER.ELF"
 
-if doesFileExist(BOOT_PATH.."system.lua") then
-	RunScript(BOOT_PATH.."system.lua");
-else
-  error("Cant access system.lua\n\n\tcurrent_bootpath: "..System.currentDirectory())
+local system_source = SYSTEM_LUA or ""
+local system_path = "@embedded:system.lua"
+if system_source == "" then
+  emit_fatal("Cant load system.lua\n\n\tboot_path: "..current_bootpath.."\n\tdeps_base_dir: "..deps_base_dir.."\n\tsystem_path: "..system_path.."\n\terr: embedded system.lua missing")
 end
+
+local loader = loadstring or load
+if loader == nil then
+  emit_fatal("Cant load system.lua\n\n\tboot_path: "..current_bootpath.."\n\tdeps_base_dir: "..deps_base_dir.."\n\tsystem_path: "..system_path.."\n\terr: loader unavailable")
+end
+
+local system_chunk, system_err = loader(system_source, system_path)
+if system_chunk == nil then
+  emit_fatal("Cant load system.lua\n\n\tboot_path: "..current_bootpath.."\n\tdeps_base_dir: "..deps_base_dir.."\n\tsystem_path: "..system_path.."\n\terr: "..tostring(system_err))
+end
+system_chunk()
