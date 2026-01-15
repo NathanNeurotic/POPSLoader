@@ -1062,7 +1062,8 @@ void luaSystem_init(lua_State *L) {
 	lua_pushboolean(L, g_mmce_available != 0);
 	lua_setglobal(L, "MMCE_AVAILABLE");
 
-	lua_pushlstring(L, (const char *)systemString, (size_t)size_systemString);
+	size_t system_len = strnlen((const char *)systemString, (size_t)size_systemString);
+	lua_pushlstring(L, (const char *)systemString, system_len);
 	lua_setglobal(L, "SYSTEM_LUA");
 
 	
