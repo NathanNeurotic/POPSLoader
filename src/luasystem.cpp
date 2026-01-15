@@ -685,10 +685,7 @@ static int lua_loadELF(lua_State *L)
 		}
 		load_elf(elftoload, rebootIOP, loader_argv, loader_argc);
 		free(loader_argv);
-	} else {
-		LoadELFFromFile(elftoload, extra_argc, p);
-	}
-	if (rebootIOP) {
+		// If load_elf returns, attempt to restore services for error reporting.
 		CleanUp(rebootIOP);
 		SifInitRpc(0);
 		sbv_patch_fileio();
@@ -697,14 +694,16 @@ static int lua_loadELF(lua_State *L)
 		SifExecModuleBuffer(fileXio_irx, size_fileXio_irx, 0, NULL, &ret);
 		fileXioInit();
 		SifLoadFileInit();
+		free(p);
+		return luaL_error(L, "load_elf returned unexpectedly");
+	} else {
+		int load_result = LoadELFFromFile(elftoload, extra_argc, p);
+		free(p);
+		if (load_result < 0) {
+			return luaL_error(L, "LoadELFFromFile failed: %d", load_result);
+		}
+		return 1;
 	}
-	//load_elf(elftoload, rebootIOP, p, (argc-1));
-	int load_result = LoadELFFromFile(elftoload, argc-2, p);
-	free(p);
-	if (load_result < 0) {
-		return luaL_error(L, "LoadELFFromFile failed: %d", load_result);
-	}
-	return 1;
 }
 
 DiscType DiscTypes[] = {
