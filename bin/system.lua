@@ -121,27 +121,6 @@ function PLDR.FindPopsRoot()
   end
   return PLDR.FindPopsRootFor(POPS_DEVICE_ORDER)
 end
-
-function PLDR.LoadDeferredModules()
-  if PLDR.DEFERRED_MODULES_LOADED then
-    return true
-  end
-  if System.loadDeferredModules == nil then
-    UI.Notif_queue.add("Deferred modules function missing")
-    return false
-  end
-  local ok, failed = System.loadDeferredModules()
-  if not ok then
-    local message = "Failed to load deferred modules"
-    if failed ~= nil then
-      message = message.."\n"..failed
-    end
-    UI.Notif_queue.add(message)
-    return false
-  end
-  PLDR.DEFERRED_MODULES_LOADED = true
-  return true
-end
 if BOOTPATH ~= nil then
   PLDR.HDD.LOADSTATE = 1
   PLDR.HDD.STATUS = HDD.GetHDDStatus()
