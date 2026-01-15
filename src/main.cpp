@@ -326,9 +326,6 @@ int main(int argc, char * argv[])
     initMC();
     LOAD_IRX_NARG(padman_irx);
 
-    LOAD_IRX_NARG(libsd_irx);
-
-
     // load USB modules    
     LOAD_IRX_NARG(usbd_irx);
 

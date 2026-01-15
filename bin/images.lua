@@ -31,6 +31,11 @@ local IMGS = {
   --"triangle.png",
   --"up.png",
 }
+if doesFileExist("MMCE.png") then
+  table.insert(IMGS, 2, "MMCE.png")
+else
+  LOG("MMCE.png missing; using USB icon as fallback")
+end
 IMG = {}
 LOGF("%d images registered", #IMGS)
 for x=1, #IMGS do
@@ -38,4 +43,7 @@ for x=1, #IMGS do
   IMG[INDX] = Graphics.loadImage(IMGS[x])
   if IMG[INDX] == nil then error("Could not load '"..IMGS[x].."'") end
   Graphics.setImageFilters(IMG[INDX], LINEAR)
+end
+if IMG["MMCE"] == nil then
+  IMG["MMCE"] = IMG["USB"]
 end

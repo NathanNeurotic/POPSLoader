@@ -71,7 +71,7 @@ end
 
 local POPS_ROOT = BOOT_DEVICE_ROOT and (BOOT_DEVICE_ROOT.."POPS/") or "mass0:/POPS/"
 PLDR = {
-  REBOOT_IOP_WHILE_LOADING_POPSTARTER = 1;
+  REBOOT_IOP_WHILE_LOADING_POPSTARTER = 0;
   POPSTARTER_PATH = resolvePreferredPath("POPSTARTER.ELF");
   CHECK_POPSTARTER_FILES = false;
   GAMEPATH = POPS_ROOT;
@@ -90,6 +90,7 @@ PLDR = {
     HAS_CHECKED_DEPS = false;
     STATUS = 3
   };
+  DEFERRED_MODULES_LOADED = false;
 }
 
 function PLDR.FindPopsRootFor(device_order)
