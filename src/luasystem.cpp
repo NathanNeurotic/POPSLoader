@@ -973,6 +973,8 @@ static int lua_sio_print(lua_State *L) {
 	if (n > 0) sio_putc('\n');
   	return 0;
 }
+extern unsigned char systemString[];
+extern unsigned int size_systemString;
 void luaSystem_init(lua_State *L) {
 
 	lua_register(L, "doesFileExist", lua_checkexist);
@@ -1020,6 +1022,9 @@ void luaSystem_init(lua_State *L) {
 
 	lua_pushboolean(L, g_mmce_available != 0);
 	lua_setglobal(L, "MMCE_AVAILABLE");
+
+	lua_pushlstring(L, (const char *)systemString, (size_t)size_systemString);
+	lua_setglobal(L, "SYSTEM_LUA");
 
 	
 }
