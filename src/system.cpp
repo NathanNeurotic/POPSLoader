@@ -8,7 +8,7 @@
 
 #include "include/system.h"
 
-//extern int size_loader_elf;
+extern u8 loader_elf[];
 
 void IOP_Reset(void);
 
@@ -344,7 +344,6 @@ void CleanUp(int iop_reset)
   	FlushCache(2);
 }
 
-/*
 void load_elf(const char *elf_path, int reboot_iop, char** Cargs, int Cargc)
 {   
 	u8 *boot_elf;
@@ -405,7 +404,6 @@ void load_elf(const char *elf_path, int reboot_iop, char** Cargs, int Cargc)
 	ExecPS2((void *)boot_header->entry, 0, final_argc, final_argv);	
 	
 }
-*/
 ///////////////////////////////////////////////
 
 void* AllocateLargestFreeBlock(size_t* Size)
