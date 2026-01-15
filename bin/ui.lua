@@ -176,10 +176,16 @@ UI = {
         if Pads.check(GPAD, PAD_CROSS) then
           if UI.MainMenu.OPT == 1 then
             PLDR.CleanupGameList()
-            PLDR.GetPS1GameLists("mass"..PLDR.USB.MASSINDX..":/POPS/", true)
+            local root = PLDR.FindPopsRootFor(PLDR.MASS_DEVICE_ORDER)
+            if root == nil then
+              local last_device = PLDR_LAST_POPS_DEVICE or "unknown device"
+              UI.Notif_queue.add("No POPS Folder Found on "..last_device)
+            else
+              PLDR.GetPS1GameLists(root, true)
+            end
           elseif UI.MainMenu.OPT == 2 then
             PLDR.CleanupGameList()
-            local root = PLDR.FindMmceRoot()
+            local root = PLDR.FindPopsRootFor(PLDR.MMCE_DEVICE_ORDER)
             if root == nil then
               UI.Notif_queue.add("No POPS Folder Found on MMCE")
             else
