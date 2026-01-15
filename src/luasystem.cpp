@@ -14,6 +14,11 @@
 #include "include/system.h"
 #include "include/dprintf.h"
 
+extern unsigned char iomanX_irx[];
+extern unsigned int size_iomanX_irx;
+extern unsigned char fileXio_irx[];
+extern unsigned int size_fileXio_irx;
+
 #define MAX_DIR_FILES 512
 
 static int lua_getCurrentDirectory(lua_State *L)
@@ -668,7 +673,11 @@ static int lua_loadELF(lua_State *L)
 		SifLoadFileInit();
 	}
 	//load_elf(elftoload, rebootIOP, p, (argc-1));
-	LoadELFFromFile(elftoload, argc-2, p);
+	int load_result = LoadELFFromFile(elftoload, argc-2, p);
+	free(p);
+	if (load_result < 0) {
+		return luaL_error(L, "LoadELFFromFile failed: %d", load_result);
+	}
 	return 1;
 }
 
