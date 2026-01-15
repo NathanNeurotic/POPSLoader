@@ -90,38 +90,7 @@ LOGF("base_dir stat ret: %d", base_stat_ret)
 
 BOOT_PATH = deps_base_dir
 
-local function find_pops_device()
-  local roots = {}
-  local mmce_devices = {"mmce1:/", "mmce0:/"}
-  local mass_devices = {"mass:/", "mass0:/", "mass1:/", "mass2:/", "mass3:/"}
-  local mass_retry_devices = {"mass:/", "mass0:/"}
-
-  for _ = 1, 2 do
-    for _, dev in ipairs(mmce_devices) do
-      table.insert(roots, dev)
-    end
-  end
-  for _, dev in ipairs(mass_devices) do
-    table.insert(roots, dev)
-  end
-  for _, dev in ipairs(mass_retry_devices) do
-    table.insert(roots, dev)
-  end
-  for _, root in ipairs(roots) do
-    local path = root.."POPS/"
-    local ready_ok, _ = wait_for_ready(path, DEVICE_READY_TIMEOUT_MS)
-    if ready_ok then
-      local dopen_ret = System.fileXioDopen(path)
-      if dopen_ret >= 0 then
-        System.fileXioDclose(dopen_ret)
-        return root
-      end
-    end
-  end
-  return nil
-end
-
-BOOT_DEVICE_ROOT = find_pops_device()
+BOOT_DEVICE_ROOT = nil
 
 package.path = string.format("%s?.lua", BOOT_PATH)
 
