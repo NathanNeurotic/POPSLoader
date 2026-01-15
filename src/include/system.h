@@ -24,6 +24,7 @@ extern bool is_valid_root(const char *root);
 extern void normalize_device_path(char *path);
 extern bool derive_base_dir(const char *boot_path, char *out, size_t out_sz);
 extern bool resolve_local(const char *base_dir, const char *filename, char *out, size_t out_sz);
+extern void CleanUp(int iop_reset);
 #define load_elf_NoIOPReset(ELF) load_elf(ELF, 0, NULL, 0);
 extern void load_elf(const char *elf_path, int reboot_iop, char** Cargs, int Cargc);
 extern size_t GetFreeSize(void);
