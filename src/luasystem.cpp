@@ -662,6 +662,11 @@ static int lua_loadELF(lua_State *L)
 		printf("#  argv[%d] = '%s'\n", (x-3), luaL_checkstring(L, x));
 		p[x-3] = (char*)luaL_checkstring(L, x);
 	}
+	if (rebootIOP) {
+		CleanUp(rebootIOP);
+		SifInitRpc(0);
+		SifLoadFileInit();
+	}
 	//load_elf(elftoload, rebootIOP, p, (argc-1));
 	LoadELFFromFile(elftoload, argc-2, p);
 	return 1;
