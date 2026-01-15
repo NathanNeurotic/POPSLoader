@@ -41,6 +41,8 @@ end
 ResolvePreferredPath = resolvePreferredPath
 
 local POPS_DEVICE_ORDER = {}
+local MMCE_DEVICE_ORDER = {}
+local MASS_DEVICE_ORDER = {}
 local mmce_devices = {"mmce1:/POPS/", "mmce0:/POPS/"}
 local mass_devices = {"mass:/POPS/", "mass0:/POPS/", "mass1:/POPS/", "mass2:/POPS/", "mass3:/POPS/"}
 local mass_retry_devices = {"mass:/POPS/", "mass0:/POPS/"}
@@ -48,13 +50,16 @@ local mass_retry_devices = {"mass:/POPS/", "mass0:/POPS/"}
 for _ = 1, 2 do
   for _, dev in ipairs(mmce_devices) do
     table.insert(POPS_DEVICE_ORDER, dev)
+    table.insert(MMCE_DEVICE_ORDER, dev)
   end
 end
 for _, dev in ipairs(mass_devices) do
   table.insert(POPS_DEVICE_ORDER, dev)
+  table.insert(MASS_DEVICE_ORDER, dev)
 end
 for _, dev in ipairs(mass_retry_devices) do
   table.insert(POPS_DEVICE_ORDER, dev)
+  table.insert(MASS_DEVICE_ORDER, dev)
 end
 
 PLDR_LAST_POPS_DEVICE = nil
@@ -70,6 +75,8 @@ PLDR = {
   POPSTARTER_PATH = resolvePreferredPath("POPSTARTER.ELF");
   CHECK_POPSTARTER_FILES = false;
   GAMEPATH = POPS_ROOT;
+  MASS_DEVICE_ORDER = MASS_DEVICE_ORDER;
+  MMCE_DEVICE_ORDER = MMCE_DEVICE_ORDER;
   GAMES = {};
   HDDCACHE = nil;
   PROFILES = {};
@@ -85,6 +92,24 @@ PLDR = {
   };
 }
 
+function PLDR.FindPopsRootFor(device_order)
+  local order = device_order or POPS_DEVICE_ORDER
+  if BOOT_DEVICE_ROOT then
+    local candidate = BOOT_DEVICE_ROOT.."POPS/"
+    PLDR_LAST_POPS_DEVICE = candidate
+    if canOpenDir(candidate) then
+      return candidate
+    end
+  end
+  for _, root in ipairs(order) do
+    PLDR_LAST_POPS_DEVICE = root
+    if canOpenDir(root) then
+      return root
+    end
+  end
+  return nil
+end
+
 function PLDR.FindPopsRoot()
   if BOOT_DEVICE_ROOT then
     local candidate = BOOT_DEVICE_ROOT.."POPS/"
@@ -93,13 +118,7 @@ function PLDR.FindPopsRoot()
       return candidate
     end
   end
-  for _, root in ipairs(POPS_DEVICE_ORDER) do
-    PLDR_LAST_POPS_DEVICE = root
-    if canOpenDir(root) then
-      return root
-    end
-  end
-  return nil
+  return PLDR.FindPopsRootFor(POPS_DEVICE_ORDER)
 end
 if BOOTPATH ~= nil then
   PLDR.HDD.LOADSTATE = 1
@@ -136,7 +155,13 @@ end
 function PLDR.CheckPOPStarterDEPS(device)
   if not PLDR.CHECK_POPSTARTER_FILES then return true, true, true end
   if device == UI.SCENES.GUSB then
-    local root = PLDR.FindPopsRoot()
+    local root = PLDR.FindPopsRootFor(MASS_DEVICE_ORDER)
+    if root == nil then
+      return false, false, false
+    end
+    return doesFileExist(JoinPath(root, "POPS_IOX.PAK"))
+  elseif device == UI.SCENES.GMMCE then
+    local root = PLDR.FindPopsRootFor(MMCE_DEVICE_ORDER)
     if root == nil then
       return false, false, false
     end
@@ -326,8 +351,11 @@ end
 ---DONT TOUCH ME
 function PLDR.RunPOPStarterGame(gamelocation, game)
   local PREFIX = "" --HDD has no prefix
-  if UI.CURSCENE == UI.SCENES.GUSB then PREFIX = "XX."
-  elseif UI.CURSCENE == UI.SCENES.GSMB then PREFIX = "SB." end
+  if UI.CURSCENE == UI.SCENES.GUSB then
+    PREFIX = "XX."
+  elseif UI.CURSCENE == UI.SCENES.GMMCE then
+    PREFIX = "XX."
+  end
   local BOOTPARAM = PLDR.replace_device(gamelocation, "isra")..PREFIX..PLDR.replace_extension(game, "ELF")
   LOG("Loading", PLDR.POPSTARTER_PATH, BOOTPARAM)
   System.loadELF(PLDR.POPSTARTER_PATH,

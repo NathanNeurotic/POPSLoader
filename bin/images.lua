@@ -11,7 +11,7 @@ LOG("Loading images")
 --- FILES MUST HAVE EXTENSION. filename is parsed to create the access key: USB.PNG will be accesed by typing `IMG["USB"]`
 local IMGS = {
   "USB.png",
-  "SMB.png",
+  "MMCE.png",
   "HDD.png",
   "PSL.png",
   "select.png",
