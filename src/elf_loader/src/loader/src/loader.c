@@ -119,7 +119,7 @@ int main(int argc, char *argv[])
 		SET_GS_BGCOLOUR(YELLOW_BG);
 
 		// Let's reset IOP because ELF was already loaded in memory
-		while(!SifIopReset(NULL, 0)){};
+		while(!SifIopReset(NULL, 0)){};	
 		while (!SifIopSync()) {};
 
 		SET_GS_BGCOLOUR(ORANGE_BG);
