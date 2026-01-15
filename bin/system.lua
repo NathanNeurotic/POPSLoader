@@ -14,11 +14,20 @@
 LOG(System.currentDirectory())
 do
   local IRXDIR = System.listDirectory(".")
+  local has_irx = false
   if IRXDIR ~= nil then
     for x=1, #IRXDIR do
       if string.lower(string.sub(IRXDIR[x].name, -4)) == ".irx" then
-        local ID, RET = IOP.loadModule(IRXDIR[x].name)
-        LOG(IRXDIR[x].name, ID, RET)
+        has_irx = true
+        break
+      end
+    end
+    if has_irx then
+      for x=1, #IRXDIR do
+        if string.lower(string.sub(IRXDIR[x].name, -4)) == ".irx" then
+          local ID, RET = IOP.loadModule(IRXDIR[x].name)
+          LOG(IRXDIR[x].name, ID, RET)
+        end
       end
     end
   end
