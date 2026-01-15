@@ -664,6 +664,8 @@ static int lua_loadELF(lua_State *L)
 	}
 	if (rebootIOP) {
 		CleanUp(rebootIOP);
+		SifInitRpc(0);
+		SifLoadFileInit();
 	}
 	//load_elf(elftoload, rebootIOP, p, (argc-1));
 	LoadELFFromFile(elftoload, argc-2, p);
