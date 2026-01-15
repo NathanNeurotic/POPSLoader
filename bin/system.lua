@@ -12,56 +12,23 @@
   Licensed under GNU General public license v3.0
 --]]
 LOG(System.currentDirectory())
-do
-  local IRXDIR = System.listDirectory(".")
+if doesFolderExist("POPSLDR/IRX/") then
+  local IRXDIR = System.listDirectory("POPSLDR/IRX/")
   if IRXDIR ~= nil then
+    LOG("Found IRX folder")
     for x=1, #IRXDIR do
-      if string.lower(string.sub(IRXDIR[x].name, -4)) == ".irx" then
-        local ID, RET = IOP.loadModule(IRXDIR[x].name)
-        LOG(IRXDIR[x].name, ID, RET)
+      if string.lower(string.sub(IRXDIR[i].name,-4)) == ".irx" then
+        local ID, RET = IOP.loadModule(IRXDIR[x])
+        LOG(IRXDIR[x], ID, RET)
       end
     end
   end
 end
-local function resolvePreferredPath(relative_path)
-  local candidate = JoinPath(BOOT_PATH or System.currentDirectory(), relative_path)
-  if doesFileExist(candidate) then return candidate end
-  return candidate
-end
-
-ResolvePreferredPath = resolvePreferredPath
-
-local POPS_DEVICE_ORDER = {}
-local mmce_devices = {"mmce1:/POPS/", "mmce0:/POPS/"}
-local mass_devices = {"mass:/POPS/", "mass0:/POPS/", "mass1:/POPS/", "mass2:/POPS/", "mass3:/POPS/"}
-local mass_retry_devices = {"mass:/POPS/", "mass0:/POPS/"}
-
-for _ = 1, 2 do
-  for _, dev in ipairs(mmce_devices) do
-    table.insert(POPS_DEVICE_ORDER, dev)
-  end
-end
-for _, dev in ipairs(mass_devices) do
-  table.insert(POPS_DEVICE_ORDER, dev)
-end
-for _, dev in ipairs(mass_retry_devices) do
-  table.insert(POPS_DEVICE_ORDER, dev)
-end
-
-PLDR_LAST_POPS_DEVICE = nil
-
-local function canOpenDir(path)
-  local ok, result = pcall(System.listDirectory, path)
-  return ok and type(result) == "table"
-end
-
-local POPS_ROOT = BOOT_DEVICE_ROOT and (BOOT_DEVICE_ROOT.."POPS/") or "mass0:/POPS/"
-
 PLDR = {
-  REBOOT_IOP_WHILE_LOADING_POPSTARTER = 1;
-  POPSTARTER_PATH = resolvePreferredPath("POPSTARTER.ELF");
+  REBOOT_IOP_WHILE_LOADING_POPSTARTER = 0;
+  POPSTARTER_PATH = "mass:/POPS/POPSTARTER.ELF";--"mass:/POPS/POPSTARTER.ELF";
   CHECK_POPSTARTER_FILES = false;
-  GAMEPATH = POPS_ROOT;
+  GAMEPATH = ".";
   GAMES = {};
   HDDCACHE = nil;
   PROFILES = {};
@@ -75,24 +42,10 @@ PLDR = {
     HAS_CHECKED_DEPS = false;
     STATUS = 3
   };
+  USB = {
+    MASSINDX = 0
+  }
 }
-
-function PLDR.FindPopsRoot()
-  if BOOT_DEVICE_ROOT then
-    local candidate = BOOT_DEVICE_ROOT.."POPS/"
-    PLDR_LAST_POPS_DEVICE = candidate
-    if canOpenDir(candidate) then
-      return candidate
-    end
-  end
-  for _, root in ipairs(POPS_DEVICE_ORDER) do
-    PLDR_LAST_POPS_DEVICE = root
-    if canOpenDir(root) then
-      return root
-    end
-  end
-  return nil
-end
 if BOOTPATH ~= nil then
   PLDR.HDD.LOADSTATE = 1
   PLDR.HDD.STATUS = HDD.GetHDDStatus()
@@ -128,11 +81,7 @@ end
 function PLDR.CheckPOPStarterDEPS(device)
   if not PLDR.CHECK_POPSTARTER_FILES then return true, true, true end
   if device == UI.SCENES.GUSB then
-    local root = PLDR.FindPopsRoot()
-    if root == nil then
-      return false, false, false
-    end
-    return doesFileExist(JoinPath(root, "POPS_IOX.PAK"))
+    return doesFileExist("mass:/POPS/POPS_IOX.PAK")
   elseif device == UI.SCENES.GHDD then
     local a = HDD.MountPartition("hdd0:__common", 1, FIO_MT_RDONLY)
     if a then
@@ -284,7 +233,7 @@ end
 function PLDR.HDD.CreateCache()
   if not PLDR.HDD.USECACHE then return end
   LOG("> HDD Cache Create")
-  local C = "hdd_gamecache.lua"
+  local C = "POPSLDR/hdd_gamecache.lua"
   local temp = "LOG(\">HDD CACHE LOAD\")\nPLDR.HDDCACHE = {\n"
   PLDR.HDD.BuildGameList()
   for i = 1, #PLDR.GAMES do
@@ -299,7 +248,7 @@ end
 
 function PLDR.HDD.ReadCache()
   LOG("> HDD Cache Read")
-  local C = "hdd_gamecache.lua"
+  local C = "POPSLDR/hdd_gamecache.lua"
   if doesFileExist(C) then
     dofile(C)
     PLDR.HDD.HAS_CHECKED = true
@@ -308,7 +257,7 @@ end
 
 function PLDR.HDD.WipeCache(CACHE)
   LOG("> HDD Cache Wipe")
-  local C = "hdd_gamecache.lua"
+  local C = "POPSLDR/hdd_gamecache.lua"
   if doesFileExist(C) then
     System.removeFile(C)
     PLDR.HDD.HAS_CHECKED = false
@@ -341,7 +290,7 @@ end
 
 ---MAIN PROGRAM BEHAVIOUR BEGINS
 UI.WelcomeDraw.Play()
-if Touch(".pldrs") then
+if Touch("POPSLDR/.pldrs") then
   UI.CURSCENE = UI.SCENES.CREDITS
 end
 
