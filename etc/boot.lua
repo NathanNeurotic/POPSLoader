@@ -78,6 +78,8 @@ local boot_path = tostring(System.GetArgv0() or System.currentDirectory() or "")
 local current_bootpath = boot_path
 local deps_base_dir = System.deriveBaseDir(current_bootpath)
 
+System.currentDirectory(deps_base_dir)
+
 local ready_ok, ready_ret = wait_for_ready(deps_base_dir, DEVICE_READY_TIMEOUT_MS)
 if not ready_ok then
   emit_fatal("FATAL: base_dir not ready\n\n\tboot_path: "..current_bootpath.."\n\tdeps_base_dir: "..deps_base_dir.."\n\tlast_ret: "..tostring(ready_ret))
