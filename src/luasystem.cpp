@@ -672,34 +672,7 @@ static int lua_loadELF(lua_State *L)
 		printf("#  argv[%d] = '%s'\n", x, luaL_checkstring(L, lua_index));
 		p[x] = (char*)luaL_checkstring(L, lua_index);
 	}
-	if (rebootIOP) {
-		int loader_argc = extra_argc + 1;
-		char **loader_argv = (char**)malloc(loader_argc * sizeof(char*));
-		if (loader_argv == NULL) {
-			free(p);
-			return luaL_error(L, "out of memory");
-		}
-		loader_argv[0] = (char*)elftoload;
-		for (int i = 0; i < extra_argc; i++) {
-			loader_argv[i + 1] = p[i];
-		}
-		load_elf(elftoload, rebootIOP, loader_argv, loader_argc);
-		free(loader_argv);
-	} else {
-		LoadELFFromFile(elftoload, extra_argc, p);
-	}
-	if (rebootIOP) {
-		CleanUp(rebootIOP);
-		SifInitRpc(0);
-		sbv_patch_fileio();
-		int ret = 0;
-		SifExecModuleBuffer(iomanX_irx, size_iomanX_irx, 0, NULL, &ret);
-		SifExecModuleBuffer(fileXio_irx, size_fileXio_irx, 0, NULL, &ret);
-		fileXioInit();
-		SifLoadFileInit();
-	}
-	//load_elf(elftoload, rebootIOP, p, (argc-1));
-	int load_result = LoadELFFromFile(elftoload, argc-2, p);
+	int load_result = LoadELFFromFile(elftoload, extra_argc, p);
 	free(p);
 	if (load_result < 0) {
 		return luaL_error(L, "LoadELFFromFile failed: %d", load_result);
@@ -1063,7 +1036,8 @@ void luaSystem_init(lua_State *L) {
 	lua_pushboolean(L, g_mmce_available != 0);
 	lua_setglobal(L, "MMCE_AVAILABLE");
 
-	lua_pushlstring(L, (const char *)systemString, (size_t)size_systemString);
+	size_t system_len = strnlen((const char *)systemString, (size_t)size_systemString);
+	lua_pushlstring(L, (const char *)systemString, system_len);
 	lua_setglobal(L, "SYSTEM_LUA");
 
 	

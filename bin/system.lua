@@ -14,11 +14,20 @@
 LOG(System.currentDirectory())
 do
   local IRXDIR = System.listDirectory(".")
+  local has_irx = false
   if IRXDIR ~= nil then
     for x=1, #IRXDIR do
       if string.lower(string.sub(IRXDIR[x].name, -4)) == ".irx" then
-        local ID, RET = IOP.loadModule(IRXDIR[x].name)
-        LOG(IRXDIR[x].name, ID, RET)
+        has_irx = true
+        break
+      end
+    end
+    if has_irx then
+      for x=1, #IRXDIR do
+        if string.lower(string.sub(IRXDIR[x].name, -4)) == ".irx" then
+          local ID, RET = IOP.loadModule(IRXDIR[x].name)
+          LOG(IRXDIR[x].name, ID, RET)
+        end
       end
     end
   end
@@ -56,7 +65,6 @@ local function canOpenDir(path)
 end
 
 local POPS_ROOT = BOOT_DEVICE_ROOT and (BOOT_DEVICE_ROOT.."POPS/") or "mass0:/POPS/"
-
 PLDR = {
   REBOOT_IOP_WHILE_LOADING_POPSTARTER = 1;
   POPSTARTER_PATH = resolvePreferredPath("POPSTARTER.ELF");
