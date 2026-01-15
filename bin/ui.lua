@@ -187,8 +187,7 @@ UI = {
             PLDR.CleanupGameList()
             local root = PLDR.FindPopsRootFor(PLDR.MMCE_DEVICE_ORDER)
             if root == nil then
-              local last_device = PLDR_LAST_POPS_DEVICE or "unknown device"
-              UI.Notif_queue.add("No POPS Folder Found on "..last_device)
+              UI.Notif_queue.add("No POPS Folder Found on MMCE")
             else
               PLDR.GetPS1GameLists(root, true)
             end

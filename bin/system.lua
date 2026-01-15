@@ -92,6 +92,10 @@ PLDR = {
   };
   DEFERRED_MODULES_LOADED = false;
 }
+local function canOpenDir(path)
+  local ok, result = pcall(System.listDirectory, path)
+  return ok and type(result) == "table"
+end
 
 function PLDR.FindPopsRootFor(device_order)
   local order = device_order or POPS_DEVICE_ORDER
