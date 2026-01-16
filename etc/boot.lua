@@ -32,7 +32,9 @@ end
 JoinPath = joinPath
 
 local DEVICE_READY_TIMEOUT_MS = 2000
+local POPS_SCAN_TIMEOUT_MS = 250
 local DEVICE_READY_SLEEP_MS = 100
+local SCAN_POPS_AT_BOOT = false
 
 local function emit_fatal(message)
   LOG(message)
@@ -109,7 +111,7 @@ local function find_pops_device()
   end
   for _, root in ipairs(roots) do
     local path = root.."POPS/"
-    local ready_ok, _ = wait_for_ready(path, DEVICE_READY_TIMEOUT_MS)
+    local ready_ok, _ = wait_for_ready(path, POPS_SCAN_TIMEOUT_MS)
     if ready_ok then
       local dopen_ret = System.fileXioDopen(path)
       if dopen_ret >= 0 then
@@ -121,7 +123,11 @@ local function find_pops_device()
   return nil
 end
 
-BOOT_DEVICE_ROOT = find_pops_device()
+if SCAN_POPS_AT_BOOT then
+  BOOT_DEVICE_ROOT = find_pops_device()
+else
+  BOOT_DEVICE_ROOT = nil
+end
 
 package.path = string.format("%s?.lua", BOOT_PATH)
 
