@@ -181,6 +181,7 @@ UI = {
               local last_device = PLDR_LAST_POPS_DEVICE or "unknown device"
               UI.Notif_queue.add("No POPS Folder Found on "..last_device)
             else
+              PLDR.LAST_MASS_ROOT = root
               PLDR.GetPS1GameLists(root, true)
             end
           elseif UI.MainMenu.OPT == 2 then
@@ -221,7 +222,7 @@ UI = {
     };
     Pad = {
       OLDPAD = 0;
-      PDELAY = 150;
+      PDELAY = 600;
       CLK = 0;
       Listen = function ()
         if UI.Pad.Timer == nil then
