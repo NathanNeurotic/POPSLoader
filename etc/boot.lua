@@ -34,6 +34,7 @@ JoinPath = joinPath
 local DEVICE_READY_TIMEOUT_MS = 2000
 local POPS_SCAN_TIMEOUT_MS = 250
 local DEVICE_READY_SLEEP_MS = 100
+local SCAN_POPS_AT_BOOT = false
 
 local function emit_fatal(message)
   LOG(message)
@@ -122,7 +123,11 @@ local function find_pops_device()
   return nil
 end
 
-BOOT_DEVICE_ROOT = find_pops_device()
+if SCAN_POPS_AT_BOOT then
+  BOOT_DEVICE_ROOT = find_pops_device()
+else
+  BOOT_DEVICE_ROOT = nil
+end
 
 package.path = string.format("%s?.lua", BOOT_PATH)
 
