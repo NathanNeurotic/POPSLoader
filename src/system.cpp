@@ -80,6 +80,12 @@ void normalize_device_path(char *path)
 		return;
 	}
 
+	if (!strncmp(path, "mc:", 3) && (path[3] == '0' || path[3] == '1')) {
+		char slot = path[3];
+		path[2] = slot;
+		path[3] = ':';
+	}
+
 	for (int i = 0; path[i] != '\0'; ++i) {
 		if (path[i] == '/' && path[i + 1] == '/') {
 			memmove(&path[i], &path[i + 1], strlen(&path[i + 1]) + 1);

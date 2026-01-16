@@ -70,6 +70,11 @@ static void wipeUserMem(void)
 	}
 }
 
+extern unsigned char iomanX_irx[];
+extern unsigned int size_iomanX_irx;
+extern unsigned char fileXio_irx[];
+extern unsigned int size_fileXio_irx;
+
 //--------------------------------------------------------------
 //End of func:  void wipeUserMem(void)
 //--------------------------------------------------------------
@@ -114,12 +119,12 @@ int main(int argc, char *argv[])
 	SifLoadFileInit();
 	ret = SifLoadElf(argv[0], &elfdata);
 	SifLoadFileExit();
-	SET_GS_BGCOLOUR(BLUE_BG);
-	if (ret == 0 && elfdata.epc != 0) {
-		SET_GS_BGCOLOUR(YELLOW_BG);
+		SET_GS_BGCOLOUR(BLUE_BG);
+		if (ret == 0 && elfdata.epc != 0) {
+			SET_GS_BGCOLOUR(YELLOW_BG);
 
 		// Let's reset IOP because ELF was already loaded in memory
-		while(!SifIopReset(NULL, 0)){};
+		while(!SifIopReset(NULL, 0)){};	
 		while (!SifIopSync()) {};
 
 		SET_GS_BGCOLOUR(ORANGE_BG);
@@ -127,6 +132,8 @@ int main(int argc, char *argv[])
         SifInitRpc(0);
         // Load modules.
         SifLoadFileInit();
+        SifExecModuleBuffer(iomanX_irx, size_iomanX_irx, 0, NULL, NULL);
+        SifExecModuleBuffer(fileXio_irx, size_fileXio_irx, 0, NULL, NULL);
         SifLoadModule("rom0:SIO2MAN", 0, NULL);
         SifLoadModule("rom0:MCMAN", 0, NULL);
         SifLoadModule("rom0:MCSERV", 0, NULL);
@@ -140,6 +147,10 @@ int main(int argc, char *argv[])
 
 		SET_GS_BGCOLOUR(PURPBLE_BG);
 		
+#ifdef LOADER_HANDOFF_DEBUG
+        DPRINTF("ExecPS2 handoff: epc=%p gp=%p argc=%d\n", (void *)elfdata.epc, (void *)elfdata.gp, argc-1);
+        DPRINTF("ExecPS2 argv0=%s argv1=%s\n", new_argv[0], new_argv[1]);
+#endif
 		return ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc-1, new_argv);
 		// return ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc, argv);
 	} else {
