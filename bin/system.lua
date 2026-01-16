@@ -356,14 +356,12 @@ end
 ---DONT TOUCH ME
 function PLDR.RunPOPStarterGame(gamelocation, game)
   local PREFIX = "" --HDD has no prefix
-  local device_tag = "isra"
   if UI.CURSCENE == UI.SCENES.GUSB then
     PREFIX = "XX."
   elseif UI.CURSCENE == UI.SCENES.GMMCE then
     PREFIX = "XX."
-    device_tag = "mass0"
   end
-  local BOOTPARAM = PLDR.replace_device(gamelocation, device_tag)..PREFIX..PLDR.replace_extension(game, "ELF")
+  local BOOTPARAM = PLDR.replace_device(gamelocation, "isra")..PREFIX..PLDR.replace_extension(game, "ELF")
   LOG("Loading", PLDR.POPSTARTER_PATH, BOOTPARAM)
   System.loadELF(PLDR.POPSTARTER_PATH,
     PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER,
