@@ -361,7 +361,11 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   elseif UI.CURSCENE == UI.SCENES.GMMCE then
     PREFIX = "XX."
   end
-  local BOOTPARAM = PLDR.replace_device(gamelocation, "isra")..PREFIX..PLDR.replace_extension(game, "ELF")
+  local boot_root = gamelocation
+  if UI.CURSCENE == UI.SCENES.GUSB or UI.CURSCENE == UI.SCENES.GMMCE then
+    boot_root = PLDR.replace_device(gamelocation, "mass")
+  end
+  local BOOTPARAM = boot_root..PREFIX..PLDR.replace_extension(game, "ELF")
   LOG("Loading", PLDR.POPSTARTER_PATH, BOOTPARAM)
   System.loadELF(PLDR.POPSTARTER_PATH,
     PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER,

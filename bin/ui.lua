@@ -221,7 +221,7 @@ UI = {
     };
     Pad = {
       OLDPAD = 0;
-      PDELAY = 150;
+      PDELAY = 600;
       CLK = 0;
       Listen = function ()
         if UI.Pad.Timer == nil then
