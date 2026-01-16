@@ -100,7 +100,7 @@ end
 
 function PLDR.FindPopsRootFor(device_order)
   local order = device_order or POPS_DEVICE_ORDER
-  if device_order == nil and BOOT_DEVICE_ROOT then
+  if BOOT_DEVICE_ROOT then
     local candidate = BOOT_DEVICE_ROOT.."POPS/"
     PLDR_LAST_POPS_DEVICE = candidate
     if canOpenDir(candidate) then
