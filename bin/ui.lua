@@ -10,7 +10,7 @@ LOG("Registering POPSLoader UI")
 UI = {
     LASTSCENE = 4;
     CURSCENE = 4;
-    SCENES = {GUSB=1, GSMB=2, GHDD=3, MMAIN=4, MPROFILE=5, CREDITS=6};
+    SCENES = {GUSB=1, GMMCE=2, GHDD=3, MMAIN=4, MPROFILE=5, CREDITS=6};
     SceneChange = function (SCENE)
       UI.LASTSCENE = UI.CURSCENE
       UI.CURSCENE = SCENE
@@ -122,7 +122,7 @@ UI = {
           if not doesFileExist(PLDR.POPSTARTER_PATH) then
             UI.Notif_queue.add("Cant find POPSTARTER ELF\n"..PLDR.POPSTARTER_PATH)
           else
-            if UI.CURSCENE ~= UI.SCENES.GHDD then -- only check if game can be found on USB and SMB
+            if UI.CURSCENE ~= UI.SCENES.GHDD then -- only check if game can be found on USB/MMCE
               local game_path = JoinPath(PLDR.GAMEPATH, PLDR.GAMES[UI.GameList.CURR])
               if not doesFileExist(game_path) then
                 UI.Notif_queue.add("Cant find Game\n"..game_path)
@@ -158,7 +158,7 @@ UI = {
     };
     MainMenu = {
       OPT = 1;
-      opts = {"USB", "SMB", "HDD"};
+      opts = {"USB", "MMCE", "HDD"};
       Play = function ()
         local profcnt = 3
         Font.ftPrint(LFONT, UI.SCR.X_MID, 30, 8, UI.SCR.X, 16, "Welcome to POPStarter Loader", UI.CCOL.GREY)
@@ -168,7 +168,6 @@ UI = {
         end
         Graphics.drawImage(IMG["start"], 20, UI.SCR.Y-65) Font.ftPrint(SFONT, 55, UI.SCR.Y-60, 0, UI.SCR.X, 16, "POPStarter profiles")
         Graphics.drawImage(IMG["select"], 20, UI.SCR.Y-85) Font.ftPrint(SFONT, 55, UI.SCR.Y-80, 0, UI.SCR.X, 16, "About")
-        if UI.MainMenu.OPT == 2 then Font.ftPrint(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID+UI.SCR.Y_MID/2, 8, UI.SCR.X, 16, "COMMING SOON", UI.CCOL.RED) end
         UI.Pad.Listen()
         if Pads.check(GPAD, PAD_RIGHT) then UI.MainMenu.OPT = CLAMP(UI.MainMenu.OPT+1, 1, profcnt) GPAD = 0 end
         if Pads.check(GPAD, PAD_LEFT)  then UI.MainMenu.OPT = CLAMP(UI.MainMenu.OPT-1, 1, profcnt) GPAD = 0 end
@@ -177,10 +176,18 @@ UI = {
         if Pads.check(GPAD, PAD_CROSS) then
           if UI.MainMenu.OPT == 1 then
             PLDR.CleanupGameList()
-            local root = PLDR.FindPopsRoot()
+            local root = PLDR.FindPopsRootFor(PLDR.MASS_DEVICE_ORDER)
             if root == nil then
               local last_device = PLDR_LAST_POPS_DEVICE or "unknown device"
               UI.Notif_queue.add("No POPS Folder Found on "..last_device)
+            else
+              PLDR.GetPS1GameLists(root, true)
+            end
+          elseif UI.MainMenu.OPT == 2 then
+            PLDR.CleanupGameList()
+            local root = PLDR.FindPopsRootFor(PLDR.MMCE_DEVICE_ORDER)
+            if root == nil then
+              UI.Notif_queue.add("No POPS Folder Found on MMCE")
             else
               PLDR.GetPS1GameLists(root, true)
             end
@@ -206,8 +213,8 @@ UI = {
             else
               UI.Notif_queue.add("ERROR: Cant detect usable HDD ("..PLDR.HDD.STATUS..")")
             end
-          end --because we still dont support SMB
-          if UI.MainMenu.OPT ~= 2 then UI.SceneChange(UI.MainMenu.OPT) end
+          end
+          UI.SceneChange(UI.MainMenu.OPT)
           GPAD = 0
         end
       end
