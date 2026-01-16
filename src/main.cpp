@@ -326,9 +326,6 @@ int main(int argc, char * argv[])
     initMC();
     LOAD_IRX_NARG(padman_irx);
 
-    LOAD_IRX_NARG(libsd_irx);
-
-
     // load USB modules    
     LOAD_IRX_NARG(usbd_irx);
 
@@ -347,7 +344,14 @@ int main(int argc, char * argv[])
 
     LOAD_IRX_NARG(audsrv_irx);
 
-    const char *preferred_device = detectPreferredDevice();
+    const char *preferred_device = kDefaultDevice;
+    bool needs_device_probe = true;
+    if (argc > 0 && argv[0] != NULL && hasDevicePrefix(argv[0])) {
+        needs_device_probe = false;
+    }
+    if (needs_device_probe) {
+        preferred_device = detectPreferredDevice();
+    }
     char normalized_root[16];
     normalize_root(preferred_device, normalized_root, sizeof(normalized_root));
     DPRINTF("Preferred device: %s\n", preferred_device);
@@ -373,7 +377,7 @@ int main(int argc, char * argv[])
     
     while (1)
     {
-        errMsg = runScript(bootString, true);
+        errMsg = runScript(bootString, true, size_bootString);
 
         init_scr();
 
