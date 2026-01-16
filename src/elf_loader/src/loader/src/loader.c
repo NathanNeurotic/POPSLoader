@@ -119,7 +119,7 @@ int main(int argc, char *argv[])
 		SET_GS_BGCOLOUR(YELLOW_BG);
 
 		// Let's reset IOP because ELF was already loaded in memory
-		while(!SifIopReset(NULL, 0)){};
+		while(!SifIopReset(NULL, 0)){};	
 		while (!SifIopSync()) {};
 
 		SET_GS_BGCOLOUR(ORANGE_BG);
@@ -127,6 +127,8 @@ int main(int argc, char *argv[])
         SifInitRpc(0);
         // Load modules.
         SifLoadFileInit();
+        SifLoadModule("rom0:IOMANX", 0, NULL);
+        SifLoadModule("rom0:FILEXIO", 0, NULL);
         SifLoadModule("rom0:SIO2MAN", 0, NULL);
         SifLoadModule("rom0:MCMAN", 0, NULL);
         SifLoadModule("rom0:MCSERV", 0, NULL);
