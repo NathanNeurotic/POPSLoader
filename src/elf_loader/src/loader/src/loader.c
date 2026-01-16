@@ -70,6 +70,11 @@ static void wipeUserMem(void)
 	}
 }
 
+extern unsigned char iomanX_irx[];
+extern unsigned int size_iomanX_irx;
+extern unsigned char fileXio_irx[];
+extern unsigned int size_fileXio_irx;
+
 //--------------------------------------------------------------
 //End of func:  void wipeUserMem(void)
 //--------------------------------------------------------------
@@ -119,7 +124,7 @@ int main(int argc, char *argv[])
 		SET_GS_BGCOLOUR(YELLOW_BG);
 
 		// Let's reset IOP because ELF was already loaded in memory
-		while(!SifIopReset(NULL, 0)){};
+		while(!SifIopReset(NULL, 0)){};	
 		while (!SifIopSync()) {};
 
 		SET_GS_BGCOLOUR(ORANGE_BG);
@@ -127,6 +132,8 @@ int main(int argc, char *argv[])
         SifInitRpc(0);
         // Load modules.
         SifLoadFileInit();
+        SifExecModuleBuffer(iomanX_irx, size_iomanX_irx, 0, NULL, NULL);
+        SifExecModuleBuffer(fileXio_irx, size_fileXio_irx, 0, NULL, NULL);
         SifLoadModule("rom0:SIO2MAN", 0, NULL);
         SifLoadModule("rom0:MCMAN", 0, NULL);
         SifLoadModule("rom0:MCSERV", 0, NULL);

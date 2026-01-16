@@ -18,6 +18,18 @@ extern unsigned char iomanX_irx[];
 extern unsigned int size_iomanX_irx;
 extern unsigned char fileXio_irx[];
 extern unsigned int size_fileXio_irx;
+extern unsigned char libsd_irx[];
+extern unsigned int size_libsd_irx;
+extern unsigned char cdfs_irx[];
+extern unsigned int size_cdfs_irx;
+extern unsigned char bdm_irx[];
+extern unsigned int size_bdm_irx;
+extern unsigned char bdmfs_fatfs_irx[];
+extern unsigned int size_bdmfs_fatfs_irx;
+extern unsigned char usbmass_bd_irx[];
+extern unsigned int size_usbmass_bd_irx;
+extern unsigned char audsrv_irx[];
+extern unsigned int size_audsrv_irx;
 
 #define MAX_DIR_FILES 512
 
@@ -672,34 +684,7 @@ static int lua_loadELF(lua_State *L)
 		printf("#  argv[%d] = '%s'\n", x, luaL_checkstring(L, lua_index));
 		p[x] = (char*)luaL_checkstring(L, lua_index);
 	}
-	if (rebootIOP) {
-		int loader_argc = extra_argc + 1;
-		char **loader_argv = (char**)malloc(loader_argc * sizeof(char*));
-		if (loader_argv == NULL) {
-			free(p);
-			return luaL_error(L, "out of memory");
-		}
-		loader_argv[0] = (char*)elftoload;
-		for (int i = 0; i < extra_argc; i++) {
-			loader_argv[i + 1] = p[i];
-		}
-		load_elf(elftoload, rebootIOP, loader_argv, loader_argc);
-		free(loader_argv);
-	} else {
-		LoadELFFromFile(elftoload, extra_argc, p);
-	}
-	if (rebootIOP) {
-		CleanUp(rebootIOP);
-		SifInitRpc(0);
-		sbv_patch_fileio();
-		int ret = 0;
-		SifExecModuleBuffer(iomanX_irx, size_iomanX_irx, 0, NULL, &ret);
-		SifExecModuleBuffer(fileXio_irx, size_fileXio_irx, 0, NULL, &ret);
-		fileXioInit();
-		SifLoadFileInit();
-	}
-	//load_elf(elftoload, rebootIOP, p, (argc-1));
-	int load_result = LoadELFFromFile(elftoload, argc-2, p);
+	int load_result = LoadELFFromFile(elftoload, extra_argc, p);
 	free(p);
 	if (load_result < 0) {
 		return luaL_error(L, "LoadELFFromFile failed: %d", load_result);
@@ -900,6 +885,51 @@ static int lua_popargv0(lua_State *L) {
 	return 1;
 }
 
+static int lua_loadDeferredModules(lua_State *L) {
+	static bool deferred_loaded = false;
+	if (deferred_loaded) {
+		lua_pushboolean(L, 1);
+		lua_pushnil(L);
+		return 2;
+	}
+
+	struct DeferredModule {
+		const char *name;
+		unsigned char *blob;
+		unsigned int size;
+	};
+
+	DeferredModule modules[] = {
+		{"libsd_irx", libsd_irx, size_libsd_irx},
+		{"audsrv_irx", audsrv_irx, size_audsrv_irx},
+		{"bdm_irx", bdm_irx, size_bdm_irx},
+		{"bdmfs_fatfs_irx", bdmfs_fatfs_irx, size_bdmfs_fatfs_irx},
+		{"usbmass_bd_irx", usbmass_bd_irx, size_usbmass_bd_irx},
+		{"cdfs_irx", cdfs_irx, size_cdfs_irx}
+	};
+
+	bool ok = true;
+	const char *failed = NULL;
+	for (size_t i = 0; i < sizeof(modules) / sizeof(modules[0]); ++i) {
+		int ret = 0;
+		int id = SifExecModuleBuffer(modules[i].blob, modules[i].size, 0, NULL, &ret);
+		DPRINTF("deferred module %s: id:%d ret:%d\n", modules[i].name, id, ret);
+		if (ret < 0 && failed == NULL) {
+			failed = modules[i].name;
+			ok = false;
+		}
+	}
+
+	deferred_loaded = ok;
+	lua_pushboolean(L, ok);
+	if (ok) {
+		lua_pushnil(L);
+	} else {
+		lua_pushstring(L, failed);
+	}
+	return 2;
+}
+
 static const luaL_Reg System_functions[] = {
 	{"openFile",                   lua_openfile},
 	{"openFileRaw",                lua_openfile_raw},
@@ -940,6 +970,7 @@ static const luaL_Reg System_functions[] = {
 	{"getDiscType",             lua_getDiscType},
 	{"checkDiscTray",         lua_checkDiscTray},
 	{"GetArgv0",                   lua_popargv0},
+	{"loadDeferredModules",     lua_loadDeferredModules},
 	{0, 0}
 };
 
@@ -1063,7 +1094,8 @@ void luaSystem_init(lua_State *L) {
 	lua_pushboolean(L, g_mmce_available != 0);
 	lua_setglobal(L, "MMCE_AVAILABLE");
 
-	lua_pushlstring(L, (const char *)systemString, (size_t)size_systemString);
+	size_t system_len = strnlen((const char *)systemString, (size_t)size_systemString);
+	lua_pushlstring(L, (const char *)systemString, system_len);
 	lua_setglobal(L, "SYSTEM_LUA");
 
 	
