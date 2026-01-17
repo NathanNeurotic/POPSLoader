@@ -97,13 +97,27 @@ local function canOpenDir(path)
   return ok and type(result) == "table"
 end
 
+local function orderHasRoot(order, root)
+  for _, candidate in ipairs(order) do
+    if candidate == root then
+      return true
+    end
+  end
+  return false
+end
+
 function PLDR.FindPopsRootFor(device_order)
   local order = device_order or POPS_DEVICE_ORDER
   if BOOT_DEVICE_ROOT then
     local candidate = BOOT_DEVICE_ROOT.."POPS/"
-    PLDR_LAST_POPS_DEVICE = candidate
-    if canOpenDir(candidate) then
-      return candidate
+    if not orderHasRoot(order, candidate) then
+      candidate = nil
+    end
+    if candidate then
+      PLDR_LAST_POPS_DEVICE = candidate
+      if canOpenDir(candidate) then
+        return candidate
+      end
     end
   end
   for _, root in ipairs(order) do
