@@ -11,6 +11,7 @@
 - **IOP**: I/O Processor; reset and module loading are handled in `src/main.cpp` and `src/system.cpp`.
 - **MMCE**: Device prefix `mmce0:/` or `mmce1:/` probed for `POPS/` and used as default fallbacks.
 - **USB mass**: Device prefixes `mass0:/` through `mass3:/` used for POPS scanning.
+- **HDD**: Hard Disk Drive; `hdd0:` device prefix used for booting and HDD operations.
 - **ELF loader**: Embedded loader built in `src/elf_loader/` and used by `load_elf` in `src/system.cpp`.
 
 ## Unknown / Requires Confirmation
@@ -23,5 +24,7 @@
 - `src/main.cpp`
 - `src/system.cpp`
 - `src/luasystem.cpp`
+- `src/luaplayer.cpp`
+- `src/luaHDD.cpp`
 - `bin/system.lua`
 - `bin/pops_profiles.lua`

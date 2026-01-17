@@ -40,6 +40,7 @@
 - `src/main.cpp`
 - `src/luaplayer.cpp`
 - `src/luasystem.cpp`
+- `src/luaHDD.cpp`
 - `src/system.cpp`
 - `src/elf_loader/Makefile`
 - `etc/boot.lua`
