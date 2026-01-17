@@ -1,65 +1,38 @@
-<a href="">!<img width="1536" height="1024" alt="POPSLOADER MMCE on Enceladus" src="https://github.com/user-attachments/assets/bc8ce695-17a6-445b-b09b-1d2b962f6b5d" /></a>
-<a href="https://www.github.com/NathanNeurotic/Enceladus/releases">![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/nathanneurotic/enceladus/total?style=plastic&logo=playstation%202&logoColor=red&logoSize=auto&label=Downloads&labelColor=gold&color=turquoise%20&link=https%3A%2F%2Fgithub.com%2FNathanNeurotic%2FEnceladus%2Freleases%2Ftag%2FMMCE)</a>
+# Enceladus (POPSLoader runtime)
 
-# POPSLoader
+Enceladus in this repo is a PlayStation 2 homebrew runtime plus the **POPSLoader** launcher: a Lua-driven UI that boots **POPStarter** and scans storage devices for PS1 `.VCD` content. The build produces a packed `POPSLOADER.ELF` alongside runtime Lua scripts and assets for deployment on PS2 hardware.
 
-POPSLoader is an open-source launcher for POPStarter that is scripted in Lua and built on top of the Enceladus runtime. This repository packages the launcher (POPSLOADER.ELF), runtime Lua scripts, textures, and required modules into a single, portable bundle intended for PlayStation 2 environments such as MMCE and USB mass storage.
+## Features
 
-POPSLoader was created by [El_isra](https://www.github.com/israpps), and this repository is a fork of his work. Endless thanks to Isra for his contributions and open-source projects gifted to the community.
+- Lua runtime that boots an embedded `boot.lua`, then chains into the packaged `system.lua` launcher logic.
+- Loads embedded IOP modules for storage, input, audio, and USB support before running Lua.
+- Scans `POPS/` folders on MMCE and USB mass devices to build game lists from `.VCD` files.
+- POPStarter profile selection and configurable POPStarter ELF paths in Lua.
 
-> **Project lineage**: This project is derived from the [Enceladus](https://github.com/DanielSant0s/Enceladus) Lua environment and retains its GPLv3 licensing.
+## Supported Targets
 
----
+- PlayStation 2 (EE/IOP) homebrew builds via PS2SDK/ps2dev toolchains.
 
-## Table of Contents
+## How It Works (High Level)
 
-- [What POPSLoader Does](#what-popsloader-does)
-- [Who This Is For](#who-this-is-for)
-- [Quick Start (Just Want to Use It)](#quick-start-just-want-to-use-it)
-- [Runtime File Layout](#runtime-file-layout)
-- [Where to Put Your Games](#where-to-put-your-games)
-- [Running on Hardware or Emulator](#running-on-hardware-or-emulator)
-- [Configuration Tips](#configuration-tips)
-- [Troubleshooting](#troubleshooting)
-- [Repository Layout](#repository-layout)
-- [Contributing](#contributing)
-- [License](#license)
+1. The EE entry point (`src/main.cpp`) resets the IOP (optional), loads embedded IRX modules, and initializes pad, audio, and file I/O.
+2. The embedded boot script (`etc/boot.lua`) establishes the base directory, detects a POPS device root, and loads the embedded `system.lua` launcher.
+3. The launcher (`bin/system.lua`) scans for `.VCD` titles under `POPS/`, manages POPStarter profiles, and calls `System.loadELF` to launch POPStarter with game arguments.
 
----
+## Quick Start (Build + Package)
 
-## What POPSLoader Does
+> This repo requires a PS2SDK toolchain and the `sio2man` IRX variants directory (see `sio2man/*/sio2man.irx`).
 
-POPSLoader is a front-end for POPStarter that makes it easier to:
+```bash
+make clean elfloader all SIO2MAN_IRX=sio2man/<variant>/sio2man.irx
+make package
+```
 
-- Discover and launch your POPS titles using a Lua-driven UI.
-- Provide a consistent user experience across MMCE and USB storage setups.
+Artifacts are written to `bin/` and a `POPSLoader.7z` is created by `make package`.
 
-Game patches and modifiers are managed by POPS/POPStarter, not by POPSLoader.
+## Run / Deploy / Use
 
-The launcher itself is an EE ELF (POPSLOADER.ELF) that embeds scripts, assets, and IOP modules at build time. These components are also copied to the `bin/` output folder for easy deployment.
-
-## Who This Is For
-
-- **New users** who just want to run POPS games without diving into the build system.
-- **Modders and tinkerers** who want to customize POPSLoader’s Lua UI and assets.
-- **Developers** who want to customize POPSLoader’s Lua UI and assets.
-
-If you are brand new to PS2 homebrew, focus on the [Quick Start](#quick-start-just-want-to-use-it) and [Runtime File Layout](#runtime-file-layout) sections first.
-
----
-
-## Quick Start (Just Want to Use It)
-
-1. **Grab a prebuilt release** from the project’s GitHub releases page.
-2. **Copy the runtime files** to a folder on your target device (see the layout below).
-3. **Place your games and POPS assets** in the correct POPS directory (details below).
-4. Launch `POPSLOADER.ELF` from your PS2 launcher of choice.
-
----
-
-## Runtime File Layout
-
-Wherever you place `POPSLOADER.ELF`, keep **all of its dependencies and `POPSTARTER.ELF` together** in the same folder:
+Deployment expects the following runtime files to live together in the same folder on your target device:
 
 ```
 POPSLoader/
@@ -70,80 +43,47 @@ POPSLoader/
 └── PATCH_5.BIN
 ```
 
-**Notes:**
+The runtime discovers PS1 titles by scanning `POPS/` on supported devices. If no executable path is provided at boot, the runtime probes for a `POPS/` directory in this order: `mmce1:/`, `mmce0:/`, `mass0:/`, `mass1:/`, `mass2:/`, `mass3:/`, falling back to `mmce0:/` as a default.
 
-- Do **not** place files in a `POPSLDR/` subfolder; keep everything together.
-- POPSLoader only needs its own runtime files alongside it; POPS content lives under `POPS/`.
+## Configuration
 
----
+- **Build flags (Makefile)**: `RESET_IOP`, `DEBUG`, `PS2LINK_IP`, `SIO2MAN_IRX`, and output names like `EE_BIN` / `EE_BIN_PKD`.
+- **Launcher profiles (Lua)**: `bin/pops_profiles.lua` defines POPStarter profile paths and the default profile.
+- **Runtime behavior (Lua)**: `bin/system.lua` contains POPStarter launch flags and game list handling.
 
-## Where to Put Your Games
+## Artifact / Release Layout
 
-POPSLoader scans the `POPS/` folder under supported storage targets in this order:
+- Local build outputs: `bin/enceladus.elf` (unpacked) and `bin/POPSLOADER.ELF` (packed).
+- Packaging (`make package`) creates `bin/pkg/` with Lua/assets and emits a `POPSLoader.7z` archive.
+- CI builds per `sio2man` variant and uploads `POPSLOADER_<variant>.ELF` plus a `POPSLoader_<variant>.7z` archive.
 
-1. `mmce1:/POPS/`
-2. `mmce0:/POPS/`
-3. `mass0:/POPS/`
-4. `mass1:/POPS/`
-5. `mass2:/POPS/`
-6. `mass3:/POPS/`
+## Troubleshooting (Quick Notes)
 
-Your games, patches/cheats, VMCs, and required POPS binary file(s) must live inside the chosen `POPS/` folder (e.g., `device:/POPS/<binary(ies)>`). POPSLoader itself should remain next to its runtime files, not inside `POPS/`.
+- Build fails with “Missing sio2man.irx”: ensure `sio2man/<variant>/sio2man.irx` exists and pass `SIO2MAN_IRX=...`.
+- Runtime cannot find `POPS/`: verify the device path uses the supported roots and the `POPS/` directory exists.
+- Lua crash logs may appear as `lua_crashlog.txt` in the current directory when the Lua panic handler triggers.
 
----
+## Deeper Documentation
 
-## Running on Hardware or Emulator
+- [docs/REPO_OVERVIEW.md](docs/REPO_OVERVIEW.md)
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- [docs/BUILD_AND_RELEASE.md](docs/BUILD_AND_RELEASE.md)
+- [docs/CONFIGURATION.md](docs/CONFIGURATION.md)
+- [docs/RUNTIME_BEHAVIOR.md](docs/RUNTIME_BEHAVIOR.md)
+- [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
+- [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md)
+- [docs/SECURITY_AND_SECRETS.md](docs/SECURITY_AND_SECRETS.md)
+- [docs/GLOSSARY.md](docs/GLOSSARY.md)
+- [docs/CHANGELOG_NOTES.md](docs/CHANGELOG_NOTES.md)
 
-### Run over network (ps2client)
+## Sources
 
-If you have a PS2 running PS2Link or PS2Client, you can launch `POPSLOADER.ELF` over the network using those tools. Consult your PS2Link/PS2Client setup guide for exact commands and IP configuration.
-
----
-
-## Configuration Tips
-
-- **MMCE IGR auto-return:** If you want POPStarter IGR to return to POPSLoader automatically, put runtime files in the root of `mmce0:/` and copy `POPSLOADER.ELF` as `BOOT.ELF`.
-- **Custom IGR textures:** To match the POPSLoader UI in POPStarter’s in-game menu, copy `PATCH_5.BIN` (from next to `POPSLOADER.ELF`) into the `POPS/` directory.
-
----
-
-## Troubleshooting
-
-| Symptom | Likely Cause | Fix |
-| --- | --- | --- |
-| `ps2client` can’t connect | PS2 IP mismatch | Double-check your console IP and PS2Link/PS2Client configuration. |
-| POPS titles not showing | Game path not in supported `POPS/` directory | Move games into one of the supported `POPS/` paths. |
-| Launcher boots but no UI assets | Assets not next to ELF | Make sure `.lua`, `.png`, and `PATCH_5.BIN` are in the same folder as `POPSLOADER.ELF`. |
-
-If you still get stuck, open an issue with a description of your setup.
-
----
-
-## Repository Layout
-
-```
-bin/          Runtime files (ELF, Lua, assets)
-EMBED/        Embedded fonts, textures, boot scripts
-etc/          Boot scripts and helper Lua
-iop/          IOP modules and embedded assets
-modules/      Optional modules (ds34bt, ds34usb, etc.)
-sio2man/      SIO2MAN variants and notes
-src/          Core C/C++ source for Enceladus runtime and POPSLoader
-```
-
----
-
-## Contributing
-
-Contributions are welcome! If you plan to make changes:
-
-1. Fork the repo.
-2. Create a feature branch.
-3. Commit your changes.
-4. Open a pull request with a clear description and test/build notes.
-
----
-
-## License
-
-This project is licensed under the GNU General Public License v3.0. See [`LICENSE`](LICENSE) for details.
+- `Makefile`
+- `src/main.cpp`
+- `src/luaplayer.cpp`
+- `src/luasystem.cpp`
+- `etc/boot.lua`
+- `bin/system.lua`
+- `bin/pops_profiles.lua`
+- `.github/workflows/compilation.yml`
+- `bin/changelog`
