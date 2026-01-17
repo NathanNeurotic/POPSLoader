@@ -378,7 +378,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   end
   local boot_root = gamelocation
   if UI.CURSCENE == UI.SCENES.GMMCE then
-    boot_root = PLDR.LAST_MASS_ROOT or "mass0:/POPS/"
+    boot_root = PLDR.LAST_MASS_ROOT or PLDR.replace_device(gamelocation, "mass")
   end
   local BOOTPARAM = boot_root..PREFIX..PLDR.replace_extension(game, "ELF")
   LOG("Loading", PLDR.POPSTARTER_PATH, BOOTPARAM)
