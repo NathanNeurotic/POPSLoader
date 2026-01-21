@@ -614,24 +614,39 @@ local function EnsureTrailingSlash(path)
   return path.."/"
 end
 
+local function HostAltPath(path)
+  if path == nil then
+    return nil
+  end
+  if string.match(path, "^host:/") then
+    return "host:"..string.sub(path, 7)
+  end
+  return nil
+end
+
 local function TryOpenForLaunch(path)
-  if System.checkFileXio ~= nil then
-    local ok, rc, stage, api = System.checkFileXio(path)
-    return ok, rc, stage, api
-  end
   local ok, fd_or_err = pcall(System.openFile, path, FREAD)
-  if not ok then
-    return false, fd_or_err, "open", "open"
-  end
-  if type(fd_or_err) ~= "number" or fd_or_err < 0 then
-    return false, fd_or_err, "open", "open"
+  if not ok or type(fd_or_err) ~= "number" or fd_or_err < 0 then
+    local alt = HostAltPath(path)
+    if alt ~= nil then
+      local alt_ok, alt_fd = pcall(System.openFile, alt, FREAD)
+      if alt_ok and type(alt_fd) == "number" and alt_fd >= 0 then
+        local size = System.sizeFile(alt_fd)
+        System.closeFile(alt_fd)
+        if type(size) ~= "number" or size < 0 then
+          return false, size, "stat", "sizeFile", alt
+        end
+        return true, size, "stat", "open(host_alt)", alt
+      end
+    end
+    return false, fd_or_err, "open", "open", path
   end
   local size = System.sizeFile(fd_or_err)
   System.closeFile(fd_or_err)
   if type(size) ~= "number" or size < 0 then
-    return false, size, "stat", "sizeFile"
+    return false, size, "stat", "sizeFile", path
   end
-  return true, size, "stat", "sizeFile"
+  return true, size, "stat", "open", path
 end
 
 local function BlockLaunchFailure(rc, popstarter, device_page, argv0, game_path, app_dir, open_rc, open_api)
@@ -682,7 +697,7 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     end
   end
   LogPopstarterArgs(argv)
-  local open_ok, open_rc, open_stage, open_api = TryOpenForLaunch(popstarter)
+  local open_ok, open_rc, open_stage, open_api, open_path = TryOpenForLaunch(popstarter)
   if open_ok then
     LaunchLog("LAUNCH: popstarter stat ok:", open_rc)
   else
@@ -698,6 +713,10 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
       open_api
     )
     return
+  end
+  if open_path ~= nil and open_path ~= popstarter then
+    LaunchLog("LAUNCH: popstarter path adjusted:", popstarter, "->", open_path)
+    popstarter = open_path
   end
   SetLaunchPhase(LaunchState.PHASE_FADEOUT)
   UI.LAUNCHING = true

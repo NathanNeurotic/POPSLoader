@@ -4,7 +4,6 @@
 #include <sys/fcntl.h>
 #include <dirent.h>
 #include <sys/stat.h>
-#include <fileXio_rpc.h>
 #include "include/luaplayer.h"
 #include "include/md5.h"
 #include "include/graphics.h"
@@ -477,36 +476,6 @@ static int lua_sizefile(lua_State *L){
 	return 1;
 }
 
-static int lua_checkfilexio(lua_State *L){
-	int argc = lua_gettop(L);
-	if (argc != 1) return luaL_error(L, "wrong number of arguments");
-	const char *path = luaL_checkstring(L, 1);
-	iox_stat_t statbuf;
-	int stat_rc = fileXioGetStat(path, &statbuf);
-	if (stat_rc < 0) {
-		lua_pushboolean(L, false);
-		lua_pushinteger(L, stat_rc);
-		lua_pushstring(L, "stat");
-		lua_pushstring(L, "fileXioGetStat");
-		return 4;
-	}
-	int fd = fileXioOpen(path, O_RDONLY, 0);
-	if (fd < 0) {
-		lua_pushboolean(L, false);
-		lua_pushinteger(L, fd);
-		lua_pushstring(L, "open");
-		lua_pushstring(L, "fileXioOpen");
-		return 4;
-	}
-	fileXioClose(fd);
-	lua_pushboolean(L, true);
-	lua_pushinteger(L, 0);
-	lua_pushstring(L, "ok");
-	lua_pushstring(L, "fileXioOpen");
-	return 4;
-}
-
-
 static int lua_checkexist(lua_State *L){
 	int argc = lua_gettop(L);
 	if (argc != 1) return luaL_error(L, "wrong number of arguments");
@@ -778,7 +747,6 @@ static const luaL_Reg System_functions[] = {
 	{"closeFile",                 lua_closefile},  
 	{"seekFile",                   lua_seekfile},  
 	{"sizeFile",                   lua_sizefile},
-	{"checkFileXio",               lua_checkfilexio},
 	//{"doesFileExist",            lua_checkexist}, BREAKS ERROR HANDLING IF DECLARED INSIDE TABLE. DONT ASK ME WHY
 	{"currentDirectory",             lua_curdir},
 	{"listDirectory",           	    lua_dir},

@@ -17,8 +17,6 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <fileXio_rpc.h>
-
 #include "elf.h"
 
 #define DPRINTF(x...) printf(x)
@@ -30,9 +28,28 @@ extern int size_loader_elf;
 #define ELF_MAGIC 0x464c457f
 #define ELF_PT_LOAD 1
 
-static bool file_exists(const char *filename) {
-	iox_stat_t buffer;
-	return (fileXioGetStat(filename, &buffer) == 0);
+static bool is_host_path(const char *filename) {
+	return (filename != NULL && strncmp(filename, "host:/", 6) == 0);
+}
+
+static bool build_host_alt_path(const char *filename, char *out, size_t out_size) {
+	if (!is_host_path(filename)) {
+		return false;
+	}
+	snprintf(out, out_size, "host:%s", filename + 6);
+	return true;
+}
+
+static int resolve_exec_path(const char *filename, char *out, size_t out_size) {
+	struct stat buffer;
+	if (stat(filename, &buffer) == 0) {
+		snprintf(out, out_size, "%s", filename);
+		return 0;
+	}
+	if (build_host_alt_path(filename, out, out_size) && stat(out, &buffer) == 0) {
+		return 0;
+	}
+	return -1;
 }
 
 static char *store_arg(const char *src, char *storage, size_t storage_size, size_t *offset) {
@@ -80,31 +97,36 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	static const int kMaxArgc = 32;
 	static char *launch_argv[33];
 	static char launch_arg_storage[2048];
+	char resolved_path[256];
 	size_t storage_offset = 0;
 	
 	// We need to check that the ELF file before continue
-	if (!file_exists(filename)) {
+	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
 		return -1; // ELF file doesn't exists
 	}
 	// ELF Exists
 	wipe_bramMem();
 
 	DPRINTF("LAUNCH: BEGIN\n");
-	DPRINTF("LAUNCH: popstarter path: %s\n", filename);
-	fd = fileXioOpen(filename, O_RDONLY, 0);
-	DPRINTF("LAUNCH: popstarter open rc=%d (fileXioOpen)\n", fd);
+	if (strcmp(resolved_path, filename) != 0) {
+		DPRINTF("LAUNCH: popstarter path: %s (resolved to %s)\n", filename, resolved_path);
+	} else {
+		DPRINTF("LAUNCH: popstarter path: %s\n", resolved_path);
+	}
+	fd = open(resolved_path, O_RDONLY);
+	DPRINTF("LAUNCH: popstarter open rc=%d (open)\n", fd);
 	if (fd >= 0) {
-		fileXioClose(fd);
+		close(fd);
 	} else {
 		return fd;
 	}
 	for (i = 0; i < argc; i++) { DPRINTF("LAUNCH: argv[%d]: %s\n", i, argv[i]);}
 	// Preparing filename and partition to be sent in the argv
-	DPRINTF("LAUNCH: argv[0]: %s\n", filename);
+	DPRINTF("LAUNCH: argv[0]: %s\n", resolved_path);
 	if (new_argc + 1 > kMaxArgc) {
 		return -2;
 	}
-	char *stored_filename = store_arg(filename, launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
+	char *stored_filename = store_arg(resolved_path, launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
 	if (!stored_filename) {
 		return -3;
 	}
