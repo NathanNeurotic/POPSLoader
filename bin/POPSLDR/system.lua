@@ -425,9 +425,16 @@ local function TranslateMMCEPathForPopStarter(gamelocation)
   return string.gsub(gamelocation, "^mmce%d:/", "mass:/")
 end
 
+local function LogPopstarterArgs(args)
+  for i = 1, #args do
+    LOG("PopStarter argv["..(i - 1).."]:", args[i])
+  end
+end
+
 function PLDR.RunPOPStarterGame(gamelocation, game)
   local is_mmce = string.match(gamelocation, "^mmce") ~= nil
   local source_mode = GetLaunchSourceMode(gamelocation)
+  local raw_source_mode = source_mode
   if is_mmce then
     source_mode = "isra"
   end
@@ -445,10 +452,11 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   else
     BOOTPARAM = BuildXXUsageArgs(handoff_gamelocation, game, source_mode)
   end
+  local argv = {BOOTPARAM, "--nr"}
 
   LOG("Boot APP_DIR: "..APP_DIR_LOCAL)
   LOG("PopStarter selected: "..popstarter)
-  LOG("PopStarter:", popstarter, "VCD:", vcd_path, "mode:", source_mode, "argv_count:", 2, "args:", BOOTPARAM, "--nr")
+  LOG("PopStarter:", popstarter, "VCD:", vcd_path, "mode:", source_mode, "argv_count:", #argv)
   local device_page = "unknown"
   if string.match(gamelocation, "^mass") then
     device_page = "USB"
@@ -466,15 +474,15 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
     end
   end
   LOG("PopStarter handoff device page:", device_page, "UI scene:", UI and UI.CURSCENE or "unknown")
-  LOG("PopStarter handoff source mode:", source_mode)
+  LOG("PopStarter handoff source mode:", source_mode, "raw_source:", raw_source_mode)
+  LOG("PopStarter reboot_iop flag:", PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER)
   LOG("PopStarter handoff path:", popstarter)
   LOG("PopStarter handoff game path (raw):", gamelocation, "translated:", handoff_gamelocation, "game:", game, "vcd_path:", vcd_path)
-  LOG("PopStarter argv[0]:", BOOTPARAM)
-  LOG("PopStarter argv[1]:", "--nr")
+  LogPopstarterArgs(argv)
   UI.LAUNCHING = true
   System.loadELF(popstarter,
     PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER,
-    BOOTPARAM, "--nr")
+    argv[1], argv[2])
     LOG(">>> UNHANDLED ERROR at Launching game '", game, " via ", popstarter, " Failed")
   error("ERROR: ELF loading failure")
 end
