@@ -6,9 +6,9 @@
   Licensed under GNU General public license v3.0
 --]]
 LOG("Registering POPStarter profiles...")
-local DEFAULT_PROFILE = 1 -- change this for a different default profile. default package points to classic popstarter path
+local DEFAULT_PROFILE = 1 -- change this for a different default profile. default package points to local popstarter path
 -- to register an ELF that is stored on the same folder than POPSLOADER, please do it this way:
--- System.currentDirectory().."/POPSLDR/PROFILES/YOUR_CUSTOM_PROFILE/POPSTARTER.ELF"
+-- System.currentDirectory().."/POPSTARTER.ELF"
 
 local APP_DIR_LOCAL = APP_DIR or System.currentDirectory()
 if string.sub(APP_DIR_LOCAL, -1) ~= "/" then APP_DIR_LOCAL = APP_DIR_LOCAL.."/" end
@@ -18,6 +18,10 @@ local function ResolveProfilePath(rel)
 end
 
 PLDR.PROFILES = {
+  {
+    ELF="POPSTARTER.ELF";
+    DESC="PopStarter located next to POPSLOADER.ELF";
+  },
   {
     ELF=ResolveProfilePath("PROFILES/MAIN/POPSTARTER.ELF");
     DESC="Latest popstarter without any modifications";

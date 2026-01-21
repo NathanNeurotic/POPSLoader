@@ -594,6 +594,8 @@ static int lua_getDiscType(lua_State *L)
 }
 
 extern void *_gp;
+extern int mmce_slot0_ready;
+extern int mmce_slot1_ready;
 
 #define BUFSIZE (64*1024)
 
@@ -867,6 +869,12 @@ void luaSystem_init(lua_State *L) {
 
 	lua_pushinteger(L, ASSET_IRX);
 	lua_setglobal(L, "ASSET_IRX");
+
+	lua_pushinteger(L, mmce_slot0_ready);
+	lua_setglobal(L, "MMCE_SLOT0_READY");
+
+	lua_pushinteger(L, mmce_slot1_ready);
+	lua_setglobal(L, "MMCE_SLOT1_READY");
 
 	lua_pushinteger(L, O_RDONLY);
 	lua_setglobal(L, "FREAD");
