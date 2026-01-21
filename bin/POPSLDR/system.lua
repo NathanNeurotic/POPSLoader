@@ -12,12 +12,23 @@
   Licensed under GNU General public license v3.0
 --]]
 LOG(System.currentDirectory())
-local function NormalizeDirPath(path)
-  if path == nil or path == "" then return "" end
-  if string.sub(path, -1) ~= "/" then
-    return path.."/"
+local function NormalizeDeviceRoot(path)
+  if path == nil or path == "" then return path end
+  local device = string.match(path, "^([%a]+%d*):/?$")
+  if device ~= nil then
+    return device..":/"
   end
   return path
+end
+
+local function NormalizeDirPath(path)
+  if path == nil or path == "" then return "" end
+  local normalized = NormalizeDeviceRoot(path)
+  normalized = string.gsub(normalized, "/+$", "/")
+  if string.sub(normalized, -1) ~= "/" then
+    normalized = normalized.."/"
+  end
+  return normalized
 end
 
 local function JoinPath(base, rel)
@@ -25,13 +36,12 @@ local function JoinPath(base, rel)
   if rel == nil or rel == "" then
     return normalized
   end
-  if string.sub(rel, 1, 1) == "/" then
-    rel = string.sub(rel, 2)
-  end
-  return normalized..rel
+  local cleaned = string.gsub(rel, "^/+", "")
+  return normalized..cleaned
 end
 
 local APP_DIR_LOCAL = NormalizeDirPath(APP_DIR or System.currentDirectory())
+LOG("APP_DIR="..APP_DIR_LOCAL)
 
 local function ResolveAsset(rel)
   return System.resolveAsset(rel) or JoinPath(APP_DIR_LOCAL, rel)
