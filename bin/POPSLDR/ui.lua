@@ -271,7 +271,8 @@ local UI = {
         Graphics.drawImage(IMG["start"], 20, UI.SCR.Y-65) Font.ftPrint(SFONT, 55, UI.SCR.Y-60, 0, UI.SCR.X, 16, "POPStarter profiles")
         Graphics.drawImage(IMG["select"], 20, UI.SCR.Y-85) Font.ftPrint(SFONT, 55, UI.SCR.Y-80, 0, UI.SCR.X, 16, "About")
         if not UI.LAUNCHING and not UI.Modal.active then
-          Font.ftPrint(SFONT, 55, UI.SCR.Y-100, 0, UI.SCR.X, 16, "^ Exit")
+          Graphics.drawImage(IMG["Triangle"], 20, UI.SCR.Y-105)
+          Font.ftPrint(SFONT, 55, UI.SCR.Y-100, 0, UI.SCR.X, 16, "Exit")
         end
         UI.Pad.Listen()
         UI.HandleGlobalInput(true)
