@@ -480,20 +480,31 @@ function PLDR.HDD.WipeCache(CACHE)
   end
 end
 
-local function BuildBootParamFromVcd(vcd_path, prefix)
-  if vcd_path == nil or vcd_path == "" then
+local function NormalizeBootBasename(basename, desired_prefix)
+  if basename == nil or basename == "" then
     return ""
   end
-  local dir, name = string.match(vcd_path, "^(.*[/])([^/]+)$")
-  if dir == nil then
-    dir = ""
-    name = vcd_path
+  local cleaned = basename
+  if string.match(cleaned, "^[Xx][Xx]%.") then
+    cleaned = string.gsub(cleaned, "^[Xx][Xx]%.", "", 1)
+  elseif string.match(cleaned, "^[Ss][Bb]%.") then
+    cleaned = string.gsub(cleaned, "^[Ss][Bb]%.", "", 1)
   end
-  local base = PLDR.replace_extension(name, "ELF")
-  if prefix ~= nil and prefix ~= "" and string.sub(base, 1, #prefix) ~= prefix then
-    base = prefix..base
+  if desired_prefix ~= nil and desired_prefix ~= "" then
+    if not string.match(cleaned, "^"..desired_prefix:gsub("%.", "%%.")) then
+      cleaned = desired_prefix..cleaned
+    end
   end
-  return dir..base
+  return cleaned
+end
+
+local function BuildBootParamFromVcd(pops_root, basename, prefix)
+  if pops_root == nil then
+    pops_root = ""
+  end
+  local normalized_root = EnsureTrailingSlash(pops_root)
+  local normalized_basename = NormalizeBootBasename(basename, prefix)
+  return normalized_root..normalized_basename
 end
 
 local function GetDevicePrefix(path)
@@ -699,6 +710,9 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     LaunchLog("LAUNCH: device page:", context.device_page, "UI scene:", context.ui_scene)
     LaunchLog("LAUNCH: source mode:", context.source_mode, "raw_source:", context.raw_source_mode)
     LaunchLog("LAUNCH: game path (raw):", context.gamelocation, "handoff:", context.handoff_gamelocation, "game:", context.game, "vcd_path:", context.vcd_path)
+    LaunchLog("LAUNCH: vcd raw:", context.vcd_path)
+    LaunchLog("LAUNCH: vcd basename:", context.bootparam_basename)
+    LaunchLog("LAUNCH: pops root:", context.bootparam_root)
     LaunchLog("LAUNCH: bootparam:", context.bootparam)
     LaunchLog(
       "LAUNCH: bootparam prefix:",
@@ -838,14 +852,18 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   local vcd_path = normalized_gamelocation..game
   local popstarter = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
   local prefix = ""
+  local pops_root = normalized_gamelocation
   if source_mode == "pfs" then
     prefix = ""
+    pops_root = normalized_gamelocation
   elseif device_page == "SMB/MMCE" then
     prefix = "SB."
+    pops_root = "smb:/POPS/"
   else
     prefix = "XX."
+    pops_root = "mass:/POPS/"
   end
-  local bootparam = BuildBootParamFromVcd(vcd_path, prefix)
+  local bootparam = BuildBootParamFromVcd(pops_root, game, prefix)
   local argv = {bootparam, "--nr"}
 
   LOG("Boot APP_DIR: "..APP_DIR_LOCAL)
@@ -863,6 +881,8 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
     vcd_path = vcd_path,
     bootparam = bootparam,
     bootparam_prefix = prefix,
+    bootparam_root = pops_root,
+    bootparam_basename = game,
     hdd_init = hdd_init
   }
   LaunchEngine(popstarter, argv, PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER, context)
