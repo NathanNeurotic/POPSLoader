@@ -36,9 +36,9 @@ local UI = {
       BGCOL = Color.new(32,0,32);
     };
     InputConfig = {
-      NAV_REPEAT_DELAY_MS = 500;
-      NAV_REPEAT_INTERVAL_MS = 240;
-      ANALOG_DEADZONE = 0.40;
+      NAV_REPEAT_DELAY_MS = 600;
+      NAV_REPEAT_INTERVAL_MS = 260;
+      ANALOG_DEADZONE = 0.45;
       DEBUG_NAV_RATE = true;
     };
     --- Notifications queue handler
@@ -354,6 +354,7 @@ local UI = {
       RepeatStart = {};
       RepeatLast = {};
       NavHeld = {};
+      Queue = {};
       DebugNavTimer = nil;
       DebugNavCount = 0;
       DebugConfirmCount = 0;
@@ -372,16 +373,45 @@ local UI = {
         local pressed = UI.Pad.GPAD & ~UI.Pad.OLDPAD
         local released = ~UI.Pad.GPAD & UI.Pad.OLDPAD
 
+        UI.Pad.Queue = {}
         UI.Pad.Events.NAV_UP = false
         UI.Pad.Events.NAV_DOWN = false
         UI.Pad.Events.NAV_LEFT = false
         UI.Pad.Events.NAV_RIGHT = false
-        UI.Pad.Events.CONFIRM = (pressed & PAD_CROSS) ~= 0
-        UI.Pad.Events.BACK = (pressed & PAD_CIRCLE) ~= 0
-        UI.Pad.Events.EXIT = (pressed & PAD_TRIANGLE) ~= 0
-        UI.Pad.Events.START = (pressed & PAD_START) ~= 0
-        UI.Pad.Events.SELECT = (pressed & PAD_SELECT) ~= 0
-        UI.Pad.Events.ANY = pressed ~= 0
+        UI.Pad.Events.CONFIRM = false
+        UI.Pad.Events.BACK = false
+        UI.Pad.Events.EXIT = false
+        UI.Pad.Events.START = false
+        UI.Pad.Events.SELECT = false
+        UI.Pad.Events.ANY = false
+
+        if UI.InputConfig.DEBUG_NAV_RATE then
+          if UI.Pad.DebugNavTimer == nil then
+            UI.Pad.DebugNavTimer = Timer.new()
+            UI.Pad.DebugNavLast = Timer.getTime(UI.Pad.DebugNavTimer)
+            UI.Pad.DebugNavCount = 0
+            UI.Pad.DebugConfirmCount = 0
+          end
+        end
+
+        local function emit(event)
+          table.insert(UI.Pad.Queue, event)
+          UI.Pad.Events[event] = true
+          UI.Pad.Events.ANY = true
+          if not UI.InputConfig.DEBUG_NAV_RATE then return end
+          if event == "NAV_UP" or event == "NAV_DOWN" or event == "NAV_LEFT" or event == "NAV_RIGHT" then
+            UI.Pad.DebugNavCount = UI.Pad.DebugNavCount + 1
+          end
+          if event == "CONFIRM" then
+            UI.Pad.DebugConfirmCount = UI.Pad.DebugConfirmCount + 1
+          end
+        end
+
+        if (pressed & PAD_CROSS) ~= 0 then emit("CONFIRM") end
+        if (pressed & PAD_CIRCLE) ~= 0 then emit("BACK") end
+        if (pressed & PAD_TRIANGLE) ~= 0 then emit("EXIT") end
+        if (pressed & PAD_START) ~= 0 then emit("START") end
+        if (pressed & PAD_SELECT) ~= 0 then emit("SELECT") end
 
         local function handle_repeat(dir, is_down, was_pressed, was_released)
           if was_released then
@@ -423,24 +453,12 @@ local UI = {
           return handle_repeat(dir, is_down, was_pressed, was_released)
         end
 
-        UI.Pad.Events.NAV_UP = resolve_nav("UP", ((UI.Pad.GPAD & PAD_UP) ~= 0) or analog_up)
-        UI.Pad.Events.NAV_DOWN = resolve_nav("DOWN", ((UI.Pad.GPAD & PAD_DOWN) ~= 0) or analog_down)
-        UI.Pad.Events.NAV_LEFT = resolve_nav("LEFT", ((UI.Pad.GPAD & PAD_LEFT) ~= 0) or analog_left)
-        UI.Pad.Events.NAV_RIGHT = resolve_nav("RIGHT", ((UI.Pad.GPAD & PAD_RIGHT) ~= 0) or analog_right)
+        if resolve_nav("UP", ((UI.Pad.GPAD & PAD_UP) ~= 0) or analog_up) then emit("NAV_UP") end
+        if resolve_nav("DOWN", ((UI.Pad.GPAD & PAD_DOWN) ~= 0) or analog_down) then emit("NAV_DOWN") end
+        if resolve_nav("LEFT", ((UI.Pad.GPAD & PAD_LEFT) ~= 0) or analog_left) then emit("NAV_LEFT") end
+        if resolve_nav("RIGHT", ((UI.Pad.GPAD & PAD_RIGHT) ~= 0) or analog_right) then emit("NAV_RIGHT") end
 
         if UI.InputConfig.DEBUG_NAV_RATE then
-          if UI.Pad.DebugNavTimer == nil then
-            UI.Pad.DebugNavTimer = Timer.new()
-            UI.Pad.DebugNavLast = Timer.getTime(UI.Pad.DebugNavTimer)
-            UI.Pad.DebugNavCount = 0
-            UI.Pad.DebugConfirmCount = 0
-          end
-          if UI.Pad.Events.NAV_UP or UI.Pad.Events.NAV_DOWN or UI.Pad.Events.NAV_LEFT or UI.Pad.Events.NAV_RIGHT then
-            UI.Pad.DebugNavCount = UI.Pad.DebugNavCount + 1
-          end
-          if UI.Pad.Events.CONFIRM then
-            UI.Pad.DebugConfirmCount = UI.Pad.DebugConfirmCount + 1
-          end
           local dbg_now = Timer.getTime(UI.Pad.DebugNavTimer)
           if (dbg_now - UI.Pad.DebugNavLast) >= 1000 then
             LOGF("NAV events/sec: %d | CONFIRM events/sec: %d", UI.Pad.DebugNavCount, UI.Pad.DebugConfirmCount)
