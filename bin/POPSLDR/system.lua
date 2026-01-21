@@ -545,6 +545,11 @@ local function EnsureHDDReadyForLaunch(game)
 end
 
 local function LogPopstarterArgs(args)
+  if args == nil then
+    LaunchLog("LAUNCH: argv: nil")
+    return
+  end
+  LaunchLog("LAUNCH: argv_count:", #args)
   for i = 1, #args do
     LaunchLog("LAUNCH: argv["..(i - 1).."]:", args[i])
   end
@@ -667,8 +672,6 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     end
   end
   LogPopstarterArgs(argv)
-  LaunchLog("LAUNCH: argv[0]:", argv0)
-  LaunchLog("LAUNCH: game path arg:", argv0)
   local open_ok, open_rc, open_stage = TryOpenForLaunch(popstarter)
   if open_ok then
     LaunchLog("LAUNCH: popstarter stat ok:", open_rc)
