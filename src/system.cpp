@@ -107,6 +107,64 @@ int ResolveAssetPath(char* out, size_t outsz, const char* relativeName)
 	return 0;
 }
 
+static int ResolveAssetCandidate(char* out, size_t outsz, const char* candidate)
+{
+	struct stat st;
+	if (stat(candidate, &st) == 0) {
+		DPRINTF("ResolveAssetPath: %s\n", candidate);
+		snprintf(out, outsz, "%s", candidate);
+		return 1;
+	}
+	return 0;
+}
+
+int ResolveAssetPathTyped(char* out, size_t outsz, const char* relativeName, AssetKind kind)
+{
+	if (!out || outsz == 0 || !relativeName) return 0;
+
+	if (strchr(relativeName, ':') != NULL) {
+		snprintf(out, outsz, "%s", relativeName);
+		struct stat st;
+		return (stat(out, &st) == 0);
+	}
+
+	char candidate[255];
+
+	if (kind == ASSET_IMG) {
+		snprintf(candidate, sizeof(candidate), "%s%s", app_dir, relativeName);
+		if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
+
+		snprintf(candidate, sizeof(candidate), "%sIMG/%s", app_dir, relativeName);
+		if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
+
+		snprintf(candidate, sizeof(candidate), "%sPOPSLDR/IMG/%s", app_dir, relativeName);
+		if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
+
+		snprintf(candidate, sizeof(candidate), "%sPOPSLDR/%s", app_dir, relativeName);
+		if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
+
+		return 0;
+	}
+
+	if (kind == ASSET_IRX) {
+		snprintf(candidate, sizeof(candidate), "%s%s", app_dir, relativeName);
+		if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
+
+		snprintf(candidate, sizeof(candidate), "%sIRX/%s", app_dir, relativeName);
+		if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
+
+		snprintf(candidate, sizeof(candidate), "%sPOPSLDR/IRX/%s", app_dir, relativeName);
+		if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
+
+		snprintf(candidate, sizeof(candidate), "%sPOPSLDR/%s", app_dir, relativeName);
+		if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
+
+		return 0;
+	}
+
+	return ResolveAssetPath(out, outsz, relativeName);
+}
+
 
 void IOP_Reset(void)
 {

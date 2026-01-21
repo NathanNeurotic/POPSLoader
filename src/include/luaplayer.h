@@ -13,7 +13,14 @@ extern "C" {
 extern char boot_path[255];
 extern char app_dir[255];
 
+typedef enum AssetKind {
+	ASSET_GENERIC = 0,
+	ASSET_IMG = 1,
+	ASSET_IRX = 2,
+} AssetKind;
+
 int ResolveAssetPath(char* out, size_t outsz, const char* relativeName);
+int ResolveAssetPathTyped(char* out, size_t outsz, const char* relativeName, AssetKind kind);
 
 #ifdef DEBUG
 #define dbgprintf(args...) scr_printf(args)
