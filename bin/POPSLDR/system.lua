@@ -92,6 +92,24 @@ if BOOTPATH ~= nil then
   PLDR.HDD.STATUS = HDD.GetHDDStatus()
 end
 
+if MMCE_SLOT0_READY ~= nil and MMCE_SLOT0_READY >= 0 then
+  PLDR.MMCE.PROBED = true
+  PLDR.MMCE.SLOTS = {}
+  PLDR.MMCE.INDEX = 1
+  if MMCE_SLOT0_READY == 1 then
+    table.insert(PLDR.MMCE.SLOTS, "mmce0:/")
+  end
+  if MMCE_SLOT1_READY == 1 then
+    table.insert(PLDR.MMCE.SLOTS, "mmce1:/")
+  end
+  if #PLDR.MMCE.SLOTS > 0 then
+    PLDR.MMCE.PREFIX = PLDR.MMCE.SLOTS[PLDR.MMCE.INDEX]
+    LOG("MMCE slot selected: "..PLDR.MMCE.PREFIX)
+  else
+    LOG("MMCE not found")
+  end
+end
+
 require("pops_profiles")
 require("ui")
 require("images")
