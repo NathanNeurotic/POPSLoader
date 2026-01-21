@@ -13,6 +13,16 @@
 --]]
 local BOOT_PATH_RAW = System.currentDirectory()
 LOG("BOOT_PATH_RAW="..tostring(BOOT_PATH_RAW))
+local function EnsureTrailingSlash(path)
+  if path == nil then
+    return nil
+  end
+  if string.sub(path, -1) == "/" then
+    return path
+  end
+  return path.."/"
+end
+LOG("EnsureTrailingSlash loaded from system.lua")
 local function NormalizeDeviceRoot(path)
   if path == nil or path == "" then return path end
   if string.match(path, "^host:/") then
@@ -630,16 +640,6 @@ local LaunchState = {
 local function SetLaunchPhase(phase)
   LaunchState.phase = phase
   LaunchLog("LAUNCH: phase:", phase)
-end
-
-local function EnsureTrailingSlash(path)
-  if path == nil then
-    return nil
-  end
-  if string.sub(path, -1) == "/" then
-    return path
-  end
-  return path.."/"
 end
 
 local function HostAltPath(path)
