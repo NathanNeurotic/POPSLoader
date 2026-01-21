@@ -561,6 +561,16 @@ function LaunchLog(...)
   AppendLaunchLog(line)
 end
 
+local function EnsureTrailingSlash(path)
+  if path == nil then
+    return nil
+  end
+  if string.sub(path, -1) == "/" then
+    return path
+  end
+  return path.."/"
+end
+
 local function TryOpenForLaunch(path)
   local ok, fd_or_err = pcall(System.openFile, path, FREAD)
   if ok then
@@ -573,7 +583,7 @@ end
 local function BlockLaunchFailure(rc, popstarter, device_page, argv0, game_path)
   UI.LAUNCHING = false
   local body = string.format(
-    "Exec returned when it should not.\nrc=%s\nDevice: %s\nPath: %s\nargv[0]: %s\nGame: %s\nPress X/O to continue.",
+    "LAUNCH RETURNED\nrc=%s\nDevice: %s\nPOPSTARTER: %s\nargv[0]: %s\nGame arg: %s\nPress X/O to continue.",
     tostring(rc),
     tostring(device_page),
     tostring(popstarter),
@@ -590,16 +600,20 @@ local function BlockLaunchFailure(rc, popstarter, device_page, argv0, game_path)
     end
     UI.flip()
   end
+  UI.SceneChange(UI.SCENES.MMAIN)
 end
 
 local function LaunchEngine(popstarter, argv, reboot_iop, context)
+  local app_dir = EnsureTrailingSlash(APP_DIR_LOCAL)
+  local boot_path = EnsureTrailingSlash(System.currentDirectory())
+  local argv0 = argv and argv[1] or nil
   LaunchLog("LAUNCH BEGIN")
-  LaunchLog("LAUNCH: boot path:", System.currentDirectory(), "APP_DIR:", APP_DIR_LOCAL)
+  LaunchLog("LAUNCH: boot path:", boot_path, "APP_DIR:", app_dir)
+  LaunchLog("LAUNCH: reboot_iop flag:", reboot_iop)
+  LaunchLog("LAUNCH: popstarter path:", popstarter)
   if context ~= nil then
     LaunchLog("LAUNCH: device page:", context.device_page, "UI scene:", context.ui_scene)
     LaunchLog("LAUNCH: source mode:", context.source_mode, "raw_source:", context.raw_source_mode)
-    LaunchLog("LAUNCH: reboot_iop flag:", reboot_iop)
-    LaunchLog("LAUNCH: popstarter path:", popstarter)
     LaunchLog("LAUNCH: game path (raw):", context.gamelocation, "handoff:", context.handoff_gamelocation, "game:", context.game, "vcd_path:", context.vcd_path)
     LaunchLog("LAUNCH: bootparam:", context.bootparam)
     if context.hdd_init ~= nil then
@@ -622,7 +636,11 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     return
   end
   LogPopstarterArgs(argv)
+  LaunchLog("LAUNCH: argv[0]:", argv0)
+  LaunchLog("LAUNCH: game path arg:", argv0)
   UI.LAUNCHING = true
+  Screen.clear(Color.new(0, 0, 0))
+  Screen.flip()
   local rc = System.loadELF(popstarter, reboot_iop, argv[1], argv[2])
   LaunchLog("LAUNCH RETURNED rc="..tostring(rc))
   LOG(">>> UNHANDLED ERROR at Launching game '", context and context.game or "unknown", " via ", popstarter, " Failed")
@@ -630,8 +648,8 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     rc,
     popstarter,
     context and context.device_page or "unknown",
-    argv and argv[1] or nil,
-    context and context.vcd_path or nil
+    argv0,
+    argv0
   )
 end
 
