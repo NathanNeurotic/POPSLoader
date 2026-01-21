@@ -82,7 +82,9 @@ PLDR = {
   },
   MMCE = {
     PROBED = false,
-    PREFIX = nil
+    PREFIX = nil,
+    SLOTS = {},
+    INDEX = 1
   }
 }
 if BOOTPATH ~= nil then
@@ -99,17 +101,42 @@ function PLDR.DetectMMCESlot()
     return PLDR.MMCE.PREFIX
   end
   PLDR.MMCE.PROBED = true
+  PLDR.MMCE.SLOTS = {}
+  PLDR.MMCE.INDEX = 1
   local candidates = {"mmce0:/", "mmce1:/"}
   for i = 1, #candidates do
     local candidate = candidates[i]
     if doesFolderExist(candidate) then
-      PLDR.MMCE.PREFIX = candidate
-      LOG("MMCE slot selected: "..candidate)
-      return candidate
+      table.insert(PLDR.MMCE.SLOTS, candidate)
     end
+  end
+  if #PLDR.MMCE.SLOTS > 0 then
+    PLDR.MMCE.PREFIX = PLDR.MMCE.SLOTS[PLDR.MMCE.INDEX]
+    LOG("MMCE slot selected: "..PLDR.MMCE.PREFIX)
+    return PLDR.MMCE.PREFIX
   end
   LOG("MMCE not found")
   return nil
+end
+
+function PLDR.GetMMCESlots()
+  if not PLDR.MMCE.PROBED then
+    PLDR.DetectMMCESlot()
+  end
+  return PLDR.MMCE.SLOTS
+end
+
+function PLDR.SetMMCESlot(index)
+  local slots = PLDR.GetMMCESlots()
+  if #slots < 1 then
+    return nil
+  end
+  if index < 1 then index = #slots end
+  if index > #slots then index = 1 end
+  PLDR.MMCE.INDEX = index
+  PLDR.MMCE.PREFIX = slots[index]
+  LOG("MMCE slot selected: "..PLDR.MMCE.PREFIX)
+  return PLDR.MMCE.PREFIX
 end
 
 
