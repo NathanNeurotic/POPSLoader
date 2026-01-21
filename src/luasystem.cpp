@@ -508,7 +508,9 @@ static int lua_loadELF(lua_State *L)
 		p[x-3] = (char*)luaL_checkstring(L, x);
 	}
 	//load_elf(elftoload, rebootIOP, p, (argc-1));
-	LoadELFFromFile(elftoload, argc-2, p);
+	int rc = LoadELFFromFile(elftoload, argc-2, p);
+	free(p);
+	lua_pushinteger(L, rc);
 	return 1;
 }
 
