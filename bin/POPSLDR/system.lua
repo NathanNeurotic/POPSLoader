@@ -28,6 +28,27 @@ local function ResolveWritablePath(rel)
   return modern
 end
 
+local function IsAbsoluteDevicePath(path)
+  return path ~= nil and string.match(path, "^[%a]+%d*:/") ~= nil
+end
+
+local function ResolvePopstarterPath(path)
+  local fallback = "mass:/POPS/POPSTARTER.ELF"
+  local chosen = path
+  if chosen == nil or chosen == "" then
+    chosen = APP_DIR_LOCAL.."POPSTARTER.ELF"
+  elseif not IsAbsoluteDevicePath(chosen) then
+    chosen = APP_DIR_LOCAL..chosen
+  end
+  if doesFileExist(chosen) then
+    return chosen
+  end
+  if chosen ~= fallback and doesFileExist(fallback) then
+    return fallback
+  end
+  return chosen
+end
+
 local function ResolveIrx(name)
   return System.resolveAssetType(name, ASSET_IRX) or (APP_DIR_LOCAL..name)
 end
@@ -386,6 +407,7 @@ end
 function PLDR.RunPOPStarterGame(gamelocation, game)
   local source_mode = GetLaunchSourceMode(gamelocation)
   local vcd_path = gamelocation..game
+  local popstarter = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
 
   local BOOTPARAM
   if UI.CURSCENE == UI.SCENES.GSMB then
@@ -395,11 +417,13 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
     BOOTPARAM = BuildXXUsageArgs(gamelocation, game, source_mode)
   end
 
-  LOG("PopStarter:", PLDR.POPSTARTER_PATH, "VCD:", vcd_path, "mode:", source_mode, "argv_count:", 2, "args:", BOOTPARAM, "--nr")
-  System.loadELF(PLDR.POPSTARTER_PATH,
+  LOG("Boot APP_DIR: "..APP_DIR_LOCAL)
+  LOG("PopStarter selected: "..popstarter)
+  LOG("PopStarter:", popstarter, "VCD:", vcd_path, "mode:", source_mode, "argv_count:", 2, "args:", BOOTPARAM, "--nr")
+  System.loadELF(popstarter,
     PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER,
     BOOTPARAM, "--nr")
-    LOG(">>> UNHANDLED ERROR at Launching game '", game, " via ", PLDR.POPSTARTER_PATH, " Failed")
+    LOG(">>> UNHANDLED ERROR at Launching game '", game, " via ", popstarter, " Failed")
   error("ERROR: ELF loading failure")
 end
 
