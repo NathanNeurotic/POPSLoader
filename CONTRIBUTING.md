@@ -1,11 +1,11 @@
 # Contributing
 
 ## Branches and pull requests
-Use the standard GitHub fork/branch workflow described in the project documentation:
+Use the standard GitHub fork/branch workflow described in the repository README:
 1. Fork the project.
 2. Create your feature branch (`git checkout -b feature/MyChange`).
 3. Commit your changes.
-4. Push the branch and open a PR.【F:docs/index.md†L123-L131】
+4. Push the branch and open a PR.
 
 ## Style expectations (C/C++/Lua)
 - Match the existing style in the file you are editing (indentation, brace placement, naming, and logging conventions). For C/C++, see the formatting and `DPRINTF` usage in `src/main.cpp`.【F:src/main.cpp†L108-L126】

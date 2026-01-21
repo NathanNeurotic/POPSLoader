@@ -1,5 +1,7 @@
 # Truth Sheet (audit, ground-truth only)
 
+> **DEPRECATED**: This file is no longer maintained as canonical documentation. For current launch behavior and device rules, see `docs/LAUNCH_PIPELINE.md`. For runtime layout, see `docs/RUNTIME_LAYOUT.md`.
+
 ## What this project is
 POPSLoader is an open-source launcher for POPStarter, scripted in Lua and based on the Enceladus project.【F:README.md†L1-L4】
 

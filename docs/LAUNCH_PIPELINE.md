@@ -1,6 +1,6 @@
 # POPSLoader Launch Pipeline (Single Source of Truth)
 
-This document describes **how POPSLoader constructs and hands off the POPStarter boot string**, based on the current codebase. It is meant to be the definitive, unambiguous reference for launch behavior. If behavior is unknown or outside this repo, it is explicitly marked as **TODO: verify**.
+This document describes **how POPSLoader constructs and hands off the POPStarter boot string**, based on the current codebase. It is the definitive reference for launch behavior. If behavior is unknown or outside this repo, it is explicitly marked as **TODO: verify**.
 
 ## 1) Terminology and invariants
 
@@ -12,7 +12,7 @@ This document describes **how POPSLoader constructs and hands off the POPStarter
 
 **POPS root**
 - The directory that POPStarter expects to contain VCDs (e.g., `mass:/POPS/`, `smb:/POPS/`, or a mounted `pfs` path).
-- POPSLoader **must** provide a fully qualified VCD path to POPStarter, built from this root.
+- POPSLoader **must** build a fully qualified VCD path from this root and pass it to POPStarter.
 
 **VCD basename**
 - The filename portion of the VCD (e.g., `SLUS_012.34.VCD` or `XX.SLUS_012.34.VCD`).
@@ -20,7 +20,7 @@ This document describes **how POPSLoader constructs and hands off the POPStarter
 
 **VCD full path / boot string**
 - The concatenation of the POPS root and the normalized VCD basename (including any required prefix).
-- This is the boot string passed to POPStarter as part of the argument list.
+- This is the boot string passed to the ELF loader as an argument.
 
 **Source mode**
 - The source of the game/VCD, used to determine POPS root and prefix rules.
@@ -30,13 +30,13 @@ This document describes **how POPSLoader constructs and hands off the POPStarter
   - `pfs` for HDD if path begins with `pfs` or UI scene is HDD.
   - **TODO: verify** other device prefixes if present elsewhere.
 
-## 2) Device rules table (prefix + root + example argv)
+## 2) Device rules table (prefix + root + boot string)
 
-> **Invariant:** POPStarter must receive the **full VCD boot string** (including prefix when required) in the argument list. POPSLoader currently passes the boot string as the **first extra argument** (argv[1]) and `--nr` as argv[2].
+> **Invariant:** POPSLoader constructs the **full VCD boot string** (including prefix when required) and passes it to the ELF loader as the first extra argument. **Do not assume which argv index POPStarter itself reads** until verified from POPStarter source/docs.
 
-| Source mode | POPS root | Required prefix | Example argv[1] (boot string) |
+| Source mode | POPS root | Required prefix | Example boot string |
 | --- | --- | --- | --- |
-| HDD (`pfs`) | **pfs mount**, e.g. `pfs0:/` or `pfs1:/` (mounted `__.POPS` partition) | *(none)* | `pfs1:/SLUS_012.34.VCD` |
+| HDD (`pfs`) | `pfs*:/` mount of the `__.POPS` partition (e.g., `pfs1:/`) | *(none)* | `pfs1:/SLUS_012.34.VCD` |
 | SMB | `smb:/POPS/` | `SB.` | `smb:/POPS/SB.SLUS_012.34.VCD` |
 | MASS/USB/MMCE | `mass:/POPS/` | `XX.` | `mass:/POPS/XX.SLUS_012.34.VCD` |
 
@@ -56,20 +56,20 @@ These prefix rules are implemented in `BuildPopstarterBootString()`.
    - `NormalizeIsraPath()` translates `isra:` paths into device-specific `mass:`/`pfs:` equivalents.
    - MMCE paths are translated to `mass:/` for POPStarter handoff.
 4. **Compute `pops_root`**:
-   - `pfs` → use the normalized gamelocation directly.
-   - `SMB/MMCE` page → use `smb:/POPS/`.
-   - Otherwise → use `mass:/POPS/`.
+   - If `source_mode` matches `^pfs`, use the normalized `pfs*:/` gamelocation.
+   - If UI device page is `SMB/MMCE`, force `pops_root = "smb:/POPS/"`.
+   - Otherwise use `pops_root = "mass:/POPS/"`.
 5. **Build the boot string** with `BuildPopstarterBootString(source_mode, pops_root, basename)`:
    - Applies the correct prefix and ensures `pops_root` is slash-terminated.
-6. **Build argv list**:
+6. **Build argv list** (Lua side):
    - `argv[1] = boot string` (first extra arg)
    - `argv[2] = "--nr"`
 7. **Exec POPStarter** via `System.loadELF(popstarter, reboot_iop, argv[1], argv[2])`.
-   - The underlying ELF loader inserts POPStarter’s path as `argv[0]` and shifts the extra args.
+   - The ELF loader inserts POPStarter’s path as `argv[0]` and shifts the extra args.
 
-## 4) Argument list and POPStarter handoff (verified)
+## 4) Argument list and POPStarter handoff (verified vs unknown)
 
-### What POPSLoader passes to POPStarter
+### What POPSLoader passes to the ELF loader (verified)
 POPSLoader’s Lua side passes the boot string and `--nr` as extra args to `System.loadELF()`. The loader then constructs the final `ExecPS2()` argv list as:
 
 ```
@@ -83,7 +83,7 @@ This is verified by:
 - `lua_loadELF` printing extra args as `argv[0]`, `argv[1]`, etc.
 - `LoadELFFromFileWithPartition` inserting POPStarter path into `launch_argv[0]` and shifting extras.
 
-### Where POPStarter parses argv
+### Where POPStarter parses argv (unknown in this repo)
 **TODO: verify.** POPStarter argument parsing is **not** present in this repository. To confirm which argv index POPStarter reads for the VCD boot string, locate POPStarter’s source (or official docs) and cite the exact file/function/line.
 
 ## 5) Expected log lines (validation)

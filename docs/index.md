@@ -1,3 +1,5 @@
+> **DEPRECATED**: This page is legacy Enceladus documentation and is **not** authoritative for POPSLoader. For current POPSLoader documentation, see the repository README and `docs/LAUNCH_PIPELINE.md`.
+
 <br />
 <p align="center">
   <a href="https://github.com/DanielSant0s/Enceladus/">
@@ -178,7 +180,3 @@ Here are some direct and indirect thanks to the people who made the project viab
 * fjtrujy - Help on porting current Lua language versions and general code help
 * Rinnegatamante - Having created lpp, which served as a great initial guide
 * Whole PS2DEV team
-
-
-
-
