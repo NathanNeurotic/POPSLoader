@@ -98,6 +98,13 @@ UI = {
       end;
       Play = function()
         local ammount = #PLDR.GAMES
+        if UI.CURSCENE == UI.SCENES.GSMB then
+          local slots = PLDR.GetMMCESlots()
+          if #slots > 1 then
+            Font.ftPrint(SFONT, 30, 2, 0, UI.SCR.X, 16, "Slot: "..PLDR.MMCE.PREFIX, UI.CCOL.GREY)
+            Font.ftPrint(SFONT, 30, 12, 0, UI.SCR.X, 16, "Triangle: switch slot", UI.CCOL.GREY)
+          end
+        end
         if (UI.GameList.CURR > (UI.GameList.STARTUP+(UI.GameList.MAXDRAW-1))) then
           UI.GameList.STARTUP = (UI.GameList.CURR-UI.GameList.MAXDRAW+1)
         elseif (UI.GameList.CURR < UI.GameList.STARTUP) then
@@ -114,6 +121,17 @@ UI = {
         end
         UI.Pad.Listen()
         if Pads.check(GPAD, PAD_CIRCLE) then UI.SceneChange(UI.SCENES.MMAIN) end
+        if UI.CURSCENE == UI.SCENES.GSMB then
+          local slots = PLDR.GetMMCESlots()
+          if #slots > 1 and Pads.check(GPAD, PAD_TRIANGLE) then
+            local next_prefix = PLDR.SetMMCESlot(PLDR.MMCE.INDEX + 1)
+            if next_prefix ~= nil then
+              PLDR.CleanupGameList()
+              PLDR.GetPS1GameLists(next_prefix.."POPS/", true)
+            end
+            GPAD = 0
+          end
+        end
         if Pads.check(GPAD, PAD_DOWN) then UI.GameList.CURR = CLAMP(UI.GameList.CURR+1, 1, ammount) GPAD = 0 end
         if Pads.check(GPAD, PAD_RIGHT) then UI.GameList.CURR = CLAMP(UI.GameList.CURR+UI.GameList.MAXDRAW, 1, ammount) GPAD = 0 end
         if Pads.check(GPAD, PAD_UP) then UI.GameList.CURR = CLAMP(UI.GameList.CURR-1, 1, ammount) GPAD = 0 end
@@ -177,6 +195,17 @@ UI = {
           if UI.MainMenu.OPT == 1 then
             PLDR.CleanupGameList()
             PLDR.GetPS1GameLists("mass"..PLDR.USB.MASSINDX..":/POPS/", true)
+            UI.SceneChange(UI.MainMenu.OPT)
+          elseif UI.MainMenu.OPT == 2 then
+            local mmce_prefix = PLDR.DetectMMCESlot()
+            if mmce_prefix == nil then
+              UI.Notif_queue.add("No MMCE device found (mmce0/mmce1).")
+            else
+              mmce_prefix = PLDR.SetMMCESlot(1)
+              PLDR.CleanupGameList()
+              PLDR.GetPS1GameLists(mmce_prefix.."POPS/", true)
+              UI.SceneChange(UI.MainMenu.OPT)
+            end
           elseif UI.MainMenu.OPT == 3 then
             PLDR.LoadHDDModules()
             if UI.LASTSCENE == UI.SCENES.GHDD then
@@ -199,8 +228,8 @@ UI = {
             else
               UI.Notif_queue.add("ERROR: Cant detect usable HDD ("..PLDR.HDD.STATUS..")")
             end
+            UI.SceneChange(UI.MainMenu.OPT)
           end --because we still dont support SMB
-          if UI.MainMenu.OPT ~= 2 then UI.SceneChange(UI.MainMenu.OPT) end
           GPAD = 0
         end
       end
