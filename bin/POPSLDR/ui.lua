@@ -36,9 +36,10 @@ local UI = {
       BGCOL = Color.new(32,0,32);
     };
     InputConfig = {
-      NAV_REPEAT_DELAY_MS = 350;
-      NAV_REPEAT_INTERVAL_MS = 170;
+      NAV_REPEAT_DELAY_MS = 450;
+      NAV_REPEAT_INTERVAL_MS = 220;
       ANALOG_DEADZONE = 0.35;
+      DEBUG_NAV_RATE = true;
     };
     --- Notifications queue handler
     Notif_queue = {
@@ -351,6 +352,9 @@ local UI = {
       REPEAT_INTERVAL = nil;
       RepeatStart = {};
       RepeatLast = {};
+      DebugNavTimer = nil;
+      DebugNavCount = 0;
+      DebugNavLast = 0;
       Listen = function ()
         if UI.Pad.Timer == nil then
           UI.Pad.Timer = Timer.new()
@@ -402,6 +406,23 @@ local UI = {
         UI.Pad.Events.NAV_DOWN = handle_repeat("DOWN", PAD_DOWN)
         UI.Pad.Events.NAV_LEFT = handle_repeat("LEFT", PAD_LEFT)
         UI.Pad.Events.NAV_RIGHT = handle_repeat("RIGHT", PAD_RIGHT)
+
+        if UI.InputConfig.DEBUG_NAV_RATE then
+          if UI.Pad.DebugNavTimer == nil then
+            UI.Pad.DebugNavTimer = Timer.new()
+            UI.Pad.DebugNavLast = Timer.getTime(UI.Pad.DebugNavTimer)
+            UI.Pad.DebugNavCount = 0
+          end
+          if UI.Pad.Events.NAV_UP or UI.Pad.Events.NAV_DOWN or UI.Pad.Events.NAV_LEFT or UI.Pad.Events.NAV_RIGHT then
+            UI.Pad.DebugNavCount = UI.Pad.DebugNavCount + 1
+          end
+          local dbg_now = Timer.getTime(UI.Pad.DebugNavTimer)
+          if (dbg_now - UI.Pad.DebugNavLast) >= 1000 then
+            LOGF("NAV events/sec: %d", UI.Pad.DebugNavCount)
+            UI.Pad.DebugNavCount = 0
+            UI.Pad.DebugNavLast = dbg_now
+          end
+        end
       end;
     };
     Credits = {
