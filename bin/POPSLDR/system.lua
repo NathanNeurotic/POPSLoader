@@ -607,21 +607,30 @@ end
 
 local function TryOpenForLaunch(path)
   local ok, fd_or_err = pcall(System.openFile, path, FREAD)
-  if ok then
-    System.closeFile(fd_or_err)
-    return true, fd_or_err
+  if not ok then
+    return false, fd_or_err, "open"
   end
-  return false, fd_or_err
+  if type(fd_or_err) ~= "number" or fd_or_err < 0 then
+    return false, fd_or_err, "open"
+  end
+  local size = System.sizeFile(fd_or_err)
+  System.closeFile(fd_or_err)
+  if type(size) ~= "number" or size < 0 then
+    return false, size, "stat"
+  end
+  return true, size, "stat"
 end
 
-local function BlockLaunchFailure(rc, popstarter, device_page, argv0, game_path)
+local function BlockLaunchFailure(rc, popstarter, device_page, argv0, game_path, app_dir, open_rc)
   SetLaunchPhase(LaunchState.PHASE_FAILED)
   UI.LAUNCHING = false
   local body = string.format(
-    "LAUNCH RETURNED\nrc=%s\nDevice: %s\nPOPSTARTER: %s\nargv[0]: %s\nGame arg: %s\nPress X/O to continue.",
+    "LAUNCH RETURNED\nrc=%s\nDevice: %s\nPOPSTARTER: %s\nOpen/stat rc: %s\nAPP_DIR: %s\nargv[0]: %s\nGame arg: %s\nPress X/O to continue.",
     tostring(rc),
     tostring(device_page),
     tostring(popstarter),
+    tostring(open_rc),
+    tostring(app_dir),
     tostring(argv0),
     tostring(game_path)
   )
@@ -660,17 +669,19 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   LogPopstarterArgs(argv)
   LaunchLog("LAUNCH: argv[0]:", argv0)
   LaunchLog("LAUNCH: game path arg:", argv0)
-  local open_ok, open_rc = TryOpenForLaunch(popstarter)
+  local open_ok, open_rc, open_stage = TryOpenForLaunch(popstarter)
   if open_ok then
-    LaunchLog("LAUNCH: popstarter open rc:", open_rc)
+    LaunchLog("LAUNCH: popstarter stat ok:", open_rc)
   else
-    LaunchLog("LAUNCH: popstarter open failed:", open_rc)
+    LaunchLog("LAUNCH: popstarter "..tostring(open_stage).." failed:", open_rc)
     BlockLaunchFailure(
-      "popstarter open failed: "..tostring(open_rc),
+      "popstarter "..tostring(open_stage).." failed: "..tostring(open_rc),
       popstarter,
       context and context.device_page or "unknown",
       argv and argv[1] or nil,
-      context and context.vcd_path or nil
+      context and context.vcd_path or nil,
+      app_dir,
+      open_rc
     )
     return
   end
@@ -686,7 +697,9 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
       popstarter,
       context and context.device_page or "unknown",
       argv0,
-      argv0
+      argv0,
+      app_dir,
+      nil
     )
     return
   end
@@ -700,7 +713,9 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
       popstarter,
       context and context.device_page or "unknown",
       argv0,
-      argv0
+      argv0,
+      app_dir,
+      nil
     )
     return
   end
@@ -709,7 +724,9 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     popstarter,
     context and context.device_page or "unknown",
     argv0,
-    argv0
+    argv0,
+    app_dir,
+    nil
   )
 end
 
@@ -753,6 +770,8 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
         ResolvePopstarterPath(PLDR.POPSTARTER_PATH),
         device_page,
         nil,
+        nil,
+        APP_DIR_LOCAL,
         nil
       )
       return
