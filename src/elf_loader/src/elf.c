@@ -99,6 +99,7 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	static char launch_arg_storage[2048];
 	char resolved_path[256];
 	size_t storage_offset = 0;
+	bool argv_includes_path = false;
 	
 	// We need to check that the ELF file before continue
 	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
@@ -121,6 +122,10 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 		return fd;
 	}
 	for (i = 0; i < argc; i++) { DPRINTF("LAUNCH: argv[%d]: %s\n", i, argv[i]);}
+	argv_includes_path = (argc > 0 && argv[0] != NULL &&
+		(strcmp(argv[0], resolved_path) == 0 || strcmp(argv[0], filename) == 0));
+	new_argc = argv_includes_path ? argc : (argc + 1);
+	DPRINTF("LAUNCH: argv includes popstarter: %s\n", argv_includes_path ? "yes" : "no");
 	// Preparing filename and partition to be sent in the argv
 	DPRINTF("LAUNCH: argv[0]: %s\n", resolved_path);
 	if (new_argc + 1 > kMaxArgc) {
@@ -131,13 +136,24 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 		return -3;
 	}
 	launch_argv[0] = stored_filename;
-	for (i = 1; i < new_argc; i++) {
-		char *stored_arg = store_arg(argv[i - 1], launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
-		if (!stored_arg) {
-			return -3;
+	if (argv_includes_path) {
+		for (i = 1; i < new_argc; i++) {
+			char *stored_arg = store_arg(argv[i], launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
+			if (!stored_arg) {
+				return -3;
+			}
+			launch_argv[i] = stored_arg;
+			DPRINTF("LAUNCH: argv[%d]: %s\n", i, launch_argv[i]);
 		}
-		launch_argv[i] = stored_arg;
-		DPRINTF("LAUNCH: argv[%d]: %s\n", i, launch_argv[i]);
+	} else {
+		for (i = 1; i < new_argc; i++) {
+			char *stored_arg = store_arg(argv[i - 1], launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
+			if (!stored_arg) {
+				return -3;
+			}
+			launch_argv[i] = stored_arg;
+			DPRINTF("LAUNCH: argv[%d]: %s\n", i, launch_argv[i]);
+		}
 	}
 	launch_argv[new_argc] = NULL;
 	
