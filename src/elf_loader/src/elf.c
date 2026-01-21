@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <fileXio_rpc.h>
 
 #include "elf.h"
 
@@ -30,8 +31,22 @@ extern int size_loader_elf;
 #define ELF_PT_LOAD 1
 
 static bool file_exists(const char *filename) {
-	struct stat   buffer;   
-	return (stat (filename, &buffer) == 0);
+	iox_stat_t buffer;
+	return (fileXioGetStat(filename, &buffer) == 0);
+}
+
+static char *store_arg(const char *src, char *storage, size_t storage_size, size_t *offset) {
+	size_t len;
+	char *dest;
+	if (!src) return NULL;
+	len = strlen(src) + 1;
+	if ((*offset + len) > storage_size) {
+		return NULL;
+	}
+	dest = &storage[*offset];
+	memcpy(dest, src, len);
+	*offset += len;
+	return dest;
 }
 
 /* IMPORTANT: This method wipe memory where the loader is going to be allocated 
@@ -62,6 +77,10 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	int i;
 	int new_argc = argc + 1;
 	int fd = -1;
+	static const int kMaxArgc = 32;
+	static char *launch_argv[33];
+	static char launch_arg_storage[2048];
+	size_t storage_offset = 0;
 	
 	// We need to check that the ELF file before continue
 	if (!file_exists(filename)) {
@@ -72,20 +91,33 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 
 	DPRINTF("LAUNCH: BEGIN\n");
 	DPRINTF("LAUNCH: popstarter path: %s\n", filename);
-	fd = open(filename, O_RDONLY);
-	DPRINTF("LAUNCH: popstarter open rc=%d\n", fd);
+	fd = fileXioOpen(filename, O_RDONLY, 0);
+	DPRINTF("LAUNCH: popstarter open rc=%d (fileXioOpen)\n", fd);
 	if (fd >= 0) {
-		close(fd);
+		fileXioClose(fd);
+	} else {
+		return fd;
 	}
 	for (i = 0; i < argc; i++) { DPRINTF("LAUNCH: argv[%d]: %s\n", i, argv[i]);}
 	// Preparing filename and partition to be sent in the argv
-	char *new_argv[new_argc];
 	DPRINTF("LAUNCH: argv[0]: %s\n", filename);
-	new_argv[0] = filename;
-	for (i = 1; i < new_argc; i++) {
-		new_argv[i] = argv[i-1];
-		DPRINTF("LAUNCH: argv[%d]: %s\n", i, new_argv[i]);
+	if (new_argc + 1 > kMaxArgc) {
+		return -2;
 	}
+	char *stored_filename = store_arg(filename, launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
+	if (!stored_filename) {
+		return -3;
+	}
+	launch_argv[0] = stored_filename;
+	for (i = 1; i < new_argc; i++) {
+		char *stored_arg = store_arg(argv[i - 1], launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
+		if (!stored_arg) {
+			return -3;
+		}
+		launch_argv[i] = stored_arg;
+		DPRINTF("LAUNCH: argv[%d]: %s\n", i, launch_argv[i]);
+	}
+	launch_argv[new_argc] = NULL;
 	
 	/* NB: LOADER.ELF is embedded  */
 	boot_elf = (u8 *)loader_elf;
@@ -112,7 +144,7 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	FlushCache(0);
 	FlushCache(2);
 	
-	int rc = ExecPS2((void *)eh->entry, NULL, new_argc, new_argv);
+	int rc = ExecPS2((void *)eh->entry, NULL, new_argc, launch_argv);
 	DPRINTF("LAUNCH: RETURNED rc=%d\n", rc);
 	return rc;
 }
