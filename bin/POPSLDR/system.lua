@@ -704,6 +704,7 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   local app_dir = EnsureTrailingSlash(APP_DIR_LOCAL)
   local boot_path = EnsureTrailingSlash(System.currentDirectory())
   local argv0 = argv and argv[1] or nil
+  local exec_args = {popstarter, argv and argv[1] or nil, argv and argv[2] or nil}
   SetLaunchPhase(LaunchState.PHASE_VALIDATE)
   LaunchLog("LAUNCH BEGIN")
   LaunchLog("LAUNCH: boot path raw:", BOOT_PATH_RAW, "boot path cwd:", boot_path)
@@ -791,11 +792,11 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     "boot string:",
     context and context.bootparam or "unknown"
   )
-  LaunchLog("LAUNCH: stage A argv_count:", argv and #argv or 0)
-  LogPopstarterArgs(argv)
-  LaunchLog("LAUNCH: exec argv[0]:", argv[1])
-  LaunchLog("LAUNCH: exec argv[1]:", argv[2])
-  local rc = System.loadELF(popstarter, reboot_iop, argv[1], argv[2])
+  LaunchLog("LAUNCH: stage A argv_count:", exec_args and #exec_args or 0)
+  LogPopstarterArgs(exec_args)
+  LaunchLog("LAUNCH: exec argv[0]:", exec_args[1])
+  LaunchLog("LAUNCH: exec argv[1]:", exec_args[2])
+  local rc = System.loadELF(popstarter, reboot_iop, exec_args[1], exec_args[2], exec_args[3])
   LaunchLog("LAUNCH RETURNED rc="..tostring(rc))
   LOG(">>> UNHANDLED ERROR at Launching game '", context and context.game or "unknown", " via ", popstarter, " Failed")
   if (Timer.getTime(LaunchState.fade_timer) - LaunchState.fade_start) >= LaunchState.watchdog_ms then
