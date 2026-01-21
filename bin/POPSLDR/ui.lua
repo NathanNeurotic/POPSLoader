@@ -36,9 +36,9 @@ local UI = {
       BGCOL = Color.new(32,0,32);
     };
     InputConfig = {
-      NAV_REPEAT_DELAY_MS = 650;
-      NAV_REPEAT_INTERVAL_MS = 320;
-      ANALOG_DEADZONE = 0.35;
+      NAV_REPEAT_DELAY_MS = 500;
+      NAV_REPEAT_INTERVAL_MS = 240;
+      ANALOG_DEADZONE = 0.40;
       DEBUG_NAV_RATE = true;
     };
     --- Notifications queue handler
@@ -347,13 +347,16 @@ local UI = {
         EXIT = false,
         START = false,
         SELECT = false,
+        ANY = false,
       };
       REPEAT_DELAY = nil;
       REPEAT_INTERVAL = nil;
       RepeatStart = {};
       RepeatLast = {};
+      NavHeld = {};
       DebugNavTimer = nil;
       DebugNavCount = 0;
+      DebugConfirmCount = 0;
       DebugNavLast = 0;
       Listen = function ()
         if UI.Pad.Timer == nil then
@@ -378,18 +381,19 @@ local UI = {
         UI.Pad.Events.EXIT = (pressed & PAD_TRIANGLE) ~= 0
         UI.Pad.Events.START = (pressed & PAD_START) ~= 0
         UI.Pad.Events.SELECT = (pressed & PAD_SELECT) ~= 0
+        UI.Pad.Events.ANY = pressed ~= 0
 
-        local function handle_repeat(dir, mask)
-          if (released & mask) ~= 0 then
+        local function handle_repeat(dir, is_down, was_pressed, was_released)
+          if was_released then
             UI.Pad.RepeatStart[dir] = nil
             UI.Pad.RepeatLast[dir] = nil
           end
-          if (pressed & mask) ~= 0 then
+          if was_pressed then
             UI.Pad.RepeatStart[dir] = now
             UI.Pad.RepeatLast[dir] = now
             return true
           end
-          if (UI.Pad.GPAD & mask) ~= 0 then
+          if is_down then
             if UI.Pad.RepeatStart[dir] == nil then
               UI.Pad.RepeatStart[dir] = now
               UI.Pad.RepeatLast[dir] = now
@@ -402,24 +406,46 @@ local UI = {
           return false
         end
 
-        UI.Pad.Events.NAV_UP = handle_repeat("UP", PAD_UP)
-        UI.Pad.Events.NAV_DOWN = handle_repeat("DOWN", PAD_DOWN)
-        UI.Pad.Events.NAV_LEFT = handle_repeat("LEFT", PAD_LEFT)
-        UI.Pad.Events.NAV_RIGHT = handle_repeat("RIGHT", PAD_RIGHT)
+        local lx, ly = Pads.getLeftStick()
+        local deadzone = UI.InputConfig.ANALOG_DEADZONE
+        local ax = lx / 127
+        local ay = ly / 127
+        local analog_up = ay <= -deadzone
+        local analog_down = ay >= deadzone
+        local analog_left = ax <= -deadzone
+        local analog_right = ax >= deadzone
+
+        local function resolve_nav(dir, is_down)
+          local was_down = UI.Pad.NavHeld[dir] == true
+          local was_pressed = is_down and not was_down
+          local was_released = was_down and not is_down
+          UI.Pad.NavHeld[dir] = is_down
+          return handle_repeat(dir, is_down, was_pressed, was_released)
+        end
+
+        UI.Pad.Events.NAV_UP = resolve_nav("UP", ((UI.Pad.GPAD & PAD_UP) ~= 0) or analog_up)
+        UI.Pad.Events.NAV_DOWN = resolve_nav("DOWN", ((UI.Pad.GPAD & PAD_DOWN) ~= 0) or analog_down)
+        UI.Pad.Events.NAV_LEFT = resolve_nav("LEFT", ((UI.Pad.GPAD & PAD_LEFT) ~= 0) or analog_left)
+        UI.Pad.Events.NAV_RIGHT = resolve_nav("RIGHT", ((UI.Pad.GPAD & PAD_RIGHT) ~= 0) or analog_right)
 
         if UI.InputConfig.DEBUG_NAV_RATE then
           if UI.Pad.DebugNavTimer == nil then
             UI.Pad.DebugNavTimer = Timer.new()
             UI.Pad.DebugNavLast = Timer.getTime(UI.Pad.DebugNavTimer)
             UI.Pad.DebugNavCount = 0
+            UI.Pad.DebugConfirmCount = 0
           end
           if UI.Pad.Events.NAV_UP or UI.Pad.Events.NAV_DOWN or UI.Pad.Events.NAV_LEFT or UI.Pad.Events.NAV_RIGHT then
             UI.Pad.DebugNavCount = UI.Pad.DebugNavCount + 1
           end
+          if UI.Pad.Events.CONFIRM then
+            UI.Pad.DebugConfirmCount = UI.Pad.DebugConfirmCount + 1
+          end
           local dbg_now = Timer.getTime(UI.Pad.DebugNavTimer)
           if (dbg_now - UI.Pad.DebugNavLast) >= 1000 then
-            LOGF("NAV events/sec: %d", UI.Pad.DebugNavCount)
+            LOGF("NAV events/sec: %d | CONFIRM events/sec: %d", UI.Pad.DebugNavCount, UI.Pad.DebugConfirmCount)
             UI.Pad.DebugNavCount = 0
+            UI.Pad.DebugConfirmCount = 0
             UI.Pad.DebugNavLast = dbg_now
           end
         end
@@ -444,7 +470,7 @@ local UI = {
         Graphics.drawRect(0, UI.SCR.Y-60, UI.SCR.X, 2, currcol)
         UI.Pad.Listen()
         UI.HandleGlobalInput(true)
-        if GPAD ~= 0 then UI.Credits.INCR = 1 end
+        if UI.Pad.Events.ANY then UI.Credits.INCR = 1 end
       end
     };
   }
