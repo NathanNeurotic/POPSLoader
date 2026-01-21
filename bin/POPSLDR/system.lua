@@ -445,47 +445,21 @@ local function BuildXXUsageArgs(gamelocation, game, source_mode)
 end
 
 local function GetLaunchSourceMode(gamelocation)
-  -- Mode/source should reflect the actual device for PopStarter.
-  -- USB/mass uses "isra", MMCE uses its device string (mmce0), SMB should use its own mode if enabled.
-  local device = string.match(gamelocation, "^(.-):")
-  if device ~= nil and string.match(device, "^mmce") then
-    return device
-  end
+  -- Force PopStarter mode/source to match the working USB/mass behavior.
   return "isra"
 end
 
-local function ResolveLaunchDevicePrefix(device_page)
-  if device_page == "USB" then
-    local idx = PLDR.USB and PLDR.USB.MASSINDX or 0
-    return "mass"..idx..":"
-  elseif device_page == "MMCE" then
-    local prefix = PLDR.MMCE and PLDR.MMCE.PREFIX or nil
-    if prefix ~= nil then
-      return string.gsub(prefix, "/$", "")
-    end
-    return "mmce0:"
-  elseif device_page == "HDD" then
-    local prefix = string.match(PLDR.GAMEPATH or "", "^(.-):")
-    if prefix ~= nil then
-      return prefix..":"
-    end
-    return "pfs1:"
-  end
-  return nil
-end
-
-local function NormalizePopstarterLaunchPath(path, device_page)
+local function TranslateLaunchPath(path)
   if path == nil then
     return path
   end
-  if not string.match(path, "^isra:") then
-    return path
+  if string.match(path, "^mmce%d:") then
+    return string.gsub(path, "^mmce%d:/", "mass:/")
   end
-  local replacement = ResolveLaunchDevicePrefix(device_page)
-  if replacement == nil then
-    return path
+  if string.match(path, "^isra:") then
+    return "mass:/"..string.sub(path, 6)
   end
-  return replacement..string.sub(path, 6)
+  return path
 end
 
 local function LogPopstarterArgs(args)
@@ -549,7 +523,6 @@ local function BlockLaunchFailure(rc, popstarter, device_page)
 end
 
 function PLDR.RunPOPStarterGame(gamelocation, game)
-  local is_mmce = string.match(gamelocation, "^mmce") ~= nil
   local source_mode = GetLaunchSourceMode(gamelocation)
   local raw_source_mode = source_mode
   local handoff_gamelocation = gamelocation
@@ -573,25 +546,20 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
     end
   end
 
-  local BOOTPARAM
-  if UI.CURSCENE == UI.SCENES.GSMB and not is_mmce then
-    -- SMB uses a distinct SB usage format when enabled.
-    BOOTPARAM = PLDR.replace_device(handoff_gamelocation, source_mode).."SB."..PLDR.replace_extension(game, "ELF")
-  else
-    BOOTPARAM = BuildXXUsageArgs(handoff_gamelocation, game, source_mode)
-  end
-  local normalized_bootparam = NormalizePopstarterLaunchPath(BOOTPARAM, device_page)
+  local translated_gamelocation = TranslateLaunchPath(handoff_gamelocation)
+  local BOOTPARAM = BuildXXUsageArgs(translated_gamelocation, game, source_mode)
+  local normalized_bootparam = TranslateLaunchPath(BOOTPARAM)
   local argv = {normalized_bootparam, "--nr"}
 
   LOG("Boot APP_DIR: "..APP_DIR_LOCAL)
   LOG("PopStarter selected: "..popstarter)
   LOG("PopStarter:", popstarter, "VCD:", vcd_path, "mode:", source_mode, "argv_count:", #argv)
-  LaunchLog("LAUNCH: BEGIN")
+  LaunchLog("LAUNCH BEGIN")
   LaunchLog("LAUNCH: device page:", device_page, "UI scene:", UI and UI.CURSCENE or "unknown")
   LaunchLog("LAUNCH: source mode:", source_mode, "raw_source:", raw_source_mode)
   LaunchLog("LAUNCH: reboot_iop flag:", PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER)
   LaunchLog("LAUNCH: popstarter path:", popstarter)
-  LaunchLog("LAUNCH: game path (raw):", gamelocation, "translated:", handoff_gamelocation, "game:", game, "vcd_path:", vcd_path)
+  LaunchLog("LAUNCH: game path (raw):", gamelocation, "translated:", translated_gamelocation, "game:", game, "vcd_path:", vcd_path)
   LaunchLog("LAUNCH: bootparam raw:", BOOTPARAM, "normalized:", normalized_bootparam)
   local open_ok, open_rc = TryOpenForLaunch(popstarter)
   if open_ok then
@@ -604,10 +572,10 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   local rc = System.loadELF(popstarter,
     PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER,
     argv[1], argv[2])
-  LaunchLog("LAUNCH: RETURNED rc="..tostring(rc))
+  LaunchLog("LAUNCH RETURNED rc="..tostring(rc))
   LOG(">>> UNHANDLED ERROR at Launching game '", game, " via ", popstarter, " Failed")
   BlockLaunchFailure(rc, popstarter, device_page)
-  error("ERROR: ELF loading failure")
+  return
 end
 
 function Touch(FILE)

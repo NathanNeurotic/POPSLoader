@@ -36,8 +36,8 @@ local UI = {
       BGCOL = Color.new(32,0,32);
     };
     InputConfig = {
-      NAV_REPEAT_DELAY_MS = 450;
-      NAV_REPEAT_INTERVAL_MS = 220;
+      NAV_REPEAT_DELAY_MS = 650;
+      NAV_REPEAT_INTERVAL_MS = 320;
       ANALOG_DEADZONE = 0.35;
       DEBUG_NAV_RATE = true;
     };
