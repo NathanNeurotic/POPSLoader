@@ -874,13 +874,15 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   local popstarter = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
   local pops_root = normalized_gamelocation
   local boot_source_mode = source_mode
-  if source_mode == "pfs" then
+  if string.match(source_mode, "^pfs") then
     pops_root = normalized_gamelocation
+    boot_source_mode = "pfs"
   elseif device_page == "SMB/MMCE" then
     pops_root = "smb:/POPS/"
     boot_source_mode = "smb"
   else
     pops_root = "mass:/POPS/"
+    boot_source_mode = "mass"
   end
   local bootparam, prefix = BuildPopstarterBootString(boot_source_mode, pops_root, game)
   local argv = {bootparam, "--nr"}
