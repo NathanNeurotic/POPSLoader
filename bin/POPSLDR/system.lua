@@ -12,7 +12,17 @@
   Licensed under GNU General public license v3.0
 --]]
 local BOOT_PATH_RAW = System.currentDirectory()
-LOG(BOOT_PATH_RAW)
+LOG("BOOT_PATH_RAW="..tostring(BOOT_PATH_RAW))
+local function EnsureTrailingSlash(path)
+  if path == nil then
+    return nil
+  end
+  if string.sub(path, -1) == "/" then
+    return path
+  end
+  return path.."/"
+end
+LOG("EnsureTrailingSlash loaded from system.lua")
 local function NormalizeDeviceRoot(path)
   if path == nil or path == "" then return path end
   if string.match(path, "^host:/") then
@@ -27,19 +37,24 @@ end
 
 local function NormalizeHostPath(path)
   if path == nil or path == "" then return path end
-  if not string.match(path, "^host:/") then
+  if not string.match(path, "^host:") then
     return path
   end
-  local rest = string.sub(path, 7)
+  local rest = string.sub(path, 6)
+  if string.sub(rest, 1, 1) == "/" then
+    rest = string.sub(rest, 2)
+  end
+  rest = string.gsub(rest, "\\", "/")
   if string.match(rest, "^[%a]:[^/]") then
     rest = string.sub(rest, 1, 2).."/"..string.sub(rest, 3)
   end
   return "host:/"..rest
 end
 
-local function NormalizeDirPath(path)
+function NormalizeDirPath(path)
   if path == nil or path == "" then return "" end
-  local normalized = NormalizeHostPath(NormalizeDeviceRoot(path))
+  local normalized = string.gsub(path, "\\", "/")
+  normalized = NormalizeHostPath(NormalizeDeviceRoot(normalized))
   normalized = string.gsub(normalized, "/+$", "/")
   if string.sub(normalized, -1) ~= "/" then
     normalized = normalized.."/"
@@ -47,7 +62,7 @@ local function NormalizeDirPath(path)
   return normalized
 end
 
-local function JoinPath(base, rel)
+function JoinPath(base, rel)
   local normalized = NormalizeDirPath(base)
   if rel == nil or rel == "" then
     return normalized
@@ -57,7 +72,6 @@ local function JoinPath(base, rel)
 end
 
 local APP_DIR_LOCAL = NormalizeDirPath(APP_DIR or BOOT_PATH_RAW)
-LOG("APP_DIR_RAW="..tostring(BOOT_PATH_RAW))
 LOG("APP_DIR_NORM="..APP_DIR_LOCAL)
 LOG("APP_DIR_POPSTARTER_JOIN="..JoinPath(APP_DIR_LOCAL, "POPSTARTER.ELF"))
 
@@ -476,11 +490,39 @@ function PLDR.HDD.WipeCache(CACHE)
   end
 end
 
----DONT TOUCH ME
-local function BuildXXUsageArgs(gamelocation, game, source_mode)
-  -- XX usage: PopStarter expects an XX.-prefixed ELF name for USB-style launches.
-  -- USB (mass:/...) and MMCE (mmce0:/...) share this format; only the source mode changes.
-  return PLDR.replace_device(gamelocation, source_mode).."XX."..PLDR.replace_extension(game, "ELF")
+local function NormalizeBootBasename(basename, desired_prefix)
+  if basename == nil or basename == "" then
+    return ""
+  end
+  local cleaned = basename
+  if string.match(cleaned, "^[Xx][Xx]%.") then
+    cleaned = string.gsub(cleaned, "^[Xx][Xx]%.", "", 1)
+  elseif string.match(cleaned, "^[Ss][Bb]%.") then
+    cleaned = string.gsub(cleaned, "^[Ss][Bb]%.", "", 1)
+  end
+  if desired_prefix ~= nil and desired_prefix ~= "" then
+    if not string.match(cleaned, "^"..desired_prefix:gsub("%.", "%%.")) then
+      cleaned = desired_prefix..cleaned
+    end
+  end
+  return cleaned
+end
+
+local function BuildPopstarterBootString(source_mode, pops_root, basename)
+  local prefix = ""
+  if source_mode == "pfs" then
+    prefix = ""
+  elseif source_mode == "smb" then
+    prefix = "SB."
+  else
+    prefix = "XX."
+  end
+  if pops_root == nil then
+    pops_root = ""
+  end
+  local normalized_root = EnsureTrailingSlash(pops_root)
+  local normalized_basename = NormalizeBootBasename(basename, prefix)
+  return normalized_root..normalized_basename, prefix
 end
 
 local function GetDevicePrefix(path)
@@ -600,41 +642,51 @@ local function SetLaunchPhase(phase)
   LaunchLog("LAUNCH: phase:", phase)
 end
 
-local function EnsureTrailingSlash(path)
+local function HostAltPath(path)
   if path == nil then
     return nil
   end
-  if string.sub(path, -1) == "/" then
-    return path
+  if string.match(path, "^host:/") then
+    return "host:"..string.sub(path, 7)
   end
-  return path.."/"
+  return nil
 end
 
 local function TryOpenForLaunch(path)
   local ok, fd_or_err = pcall(System.openFile, path, FREAD)
-  if not ok then
-    return false, fd_or_err, "open"
-  end
-  if type(fd_or_err) ~= "number" or fd_or_err < 0 then
-    return false, fd_or_err, "open"
+  if not ok or type(fd_or_err) ~= "number" or fd_or_err < 0 then
+    local alt = HostAltPath(path)
+    if alt ~= nil then
+      local alt_ok, alt_fd = pcall(System.openFile, alt, FREAD)
+      if alt_ok and type(alt_fd) == "number" and alt_fd >= 0 then
+        local size = System.sizeFile(alt_fd)
+        System.closeFile(alt_fd)
+        if type(size) ~= "number" or size < 0 then
+          return false, size, "stat", "sizeFile", alt
+        end
+        return true, size, "stat", "open(host_alt)", alt
+      end
+    end
+    return false, fd_or_err, "open", "open", path
   end
   local size = System.sizeFile(fd_or_err)
   System.closeFile(fd_or_err)
   if type(size) ~= "number" or size < 0 then
-    return false, size, "stat"
+    return false, size, "stat", "sizeFile", path
   end
-  return true, size, "stat"
+  return true, size, "stat", "open", path
 end
 
-local function BlockLaunchFailure(rc, popstarter, device_page, argv0, game_path, app_dir, open_rc)
+local function BlockLaunchFailure(rc, popstarter, device_page, argv0, game_path, app_dir, open_rc, open_api)
   SetLaunchPhase(LaunchState.PHASE_FAILED)
   UI.LAUNCHING = false
   local body = string.format(
-    "LAUNCH RETURNED\nrc=%s\nDevice: %s\nPOPSTARTER: %s\nOpen/stat rc: %s\nAPP_DIR: %s\nargv[0]: %s\nGame arg: %s\nPress X/O to continue.",
+    "LAUNCH RETURNED\nrc=%s\nDevice: %s\nPOPSTARTER: %s\nOpen/stat rc: %s\nOpen API: %s\nAPP_DIR: %s\nargv[0]: %s\nGame arg: %s\nPress X/O to continue.",
     tostring(rc),
     tostring(device_page),
     tostring(popstarter),
     tostring(open_rc),
+    tostring(open_api),
     tostring(app_dir),
     tostring(argv0),
     tostring(game_path)
@@ -658,25 +710,35 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   local argv0 = argv and argv[1] or nil
   SetLaunchPhase(LaunchState.PHASE_VALIDATE)
   LaunchLog("LAUNCH BEGIN")
-  LaunchLog("LAUNCH: boot path:", boot_path, "APP_DIR:", app_dir)
+  LaunchLog("LAUNCH: boot path raw:", BOOT_PATH_RAW, "boot path cwd:", boot_path)
+  LaunchLog("LAUNCH: app dir normalized:", app_dir, "APP_DIR join POPSTARTER:", JoinPath(app_dir, "POPSTARTER.ELF"))
   LaunchLog("LAUNCH: reboot_iop flag:", reboot_iop)
   LaunchLog("LAUNCH: popstarter path:", popstarter)
   if context ~= nil then
     LaunchLog("LAUNCH: device page:", context.device_page, "UI scene:", context.ui_scene)
     LaunchLog("LAUNCH: source mode:", context.source_mode, "raw_source:", context.raw_source_mode)
     LaunchLog("LAUNCH: game path (raw):", context.gamelocation, "handoff:", context.handoff_gamelocation, "game:", context.game, "vcd_path:", context.vcd_path)
+    LaunchLog("LAUNCH: vcd raw:", context.vcd_path)
+    LaunchLog("LAUNCH: vcd basename:", context.bootparam_basename)
+    LaunchLog("LAUNCH: pops root:", context.bootparam_root)
     LaunchLog("LAUNCH: bootparam:", context.bootparam)
+    LaunchLog(
+      "LAUNCH: bootparam prefix:",
+      context.bootparam_prefix or "none",
+      "prefix injected:",
+      tostring((context.bootparam_prefix or "") ~= "")
+    )
     if context.hdd_init ~= nil then
       LaunchLog("LAUNCH: hdd init ok:", context.hdd_init.init_ok, "status:", context.hdd_init.status,
         "mount:", context.hdd_init.mount_partition, "mount_ok:", context.hdd_init.mount_ok)
     end
   end
   LogPopstarterArgs(argv)
-  local open_ok, open_rc, open_stage = TryOpenForLaunch(popstarter)
+  local open_ok, open_rc, open_stage, open_api, open_path = TryOpenForLaunch(popstarter)
   if open_ok then
     LaunchLog("LAUNCH: popstarter stat ok:", open_rc)
   else
-    LaunchLog("LAUNCH: popstarter "..tostring(open_stage).." failed:", open_rc)
+    LaunchLog("LAUNCH: popstarter "..tostring(open_stage).." failed:", open_rc, "api:", open_api)
     BlockLaunchFailure(
       "popstarter "..tostring(open_stage).." failed: "..tostring(open_rc),
       popstarter,
@@ -684,9 +746,14 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
       argv and argv[1] or nil,
       context and context.vcd_path or nil,
       app_dir,
-      open_rc
+      open_rc,
+      open_api
     )
     return
+  end
+  if open_path ~= nil and open_path ~= popstarter then
+    LaunchLog("LAUNCH: popstarter path adjusted:", popstarter, "->", open_path)
+    popstarter = open_path
   end
   SetLaunchPhase(LaunchState.PHASE_FADEOUT)
   UI.LAUNCHING = true
@@ -702,11 +769,27 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
       argv0,
       argv0,
       app_dir,
+      nil,
       nil
     )
     return
   end
   SetLaunchPhase(LaunchState.PHASE_EXEC)
+  LaunchLog(
+    "LAUNCH: boot source:",
+    context and context.bootparam_source or "unknown",
+    "pops root:",
+    context and context.bootparam_root or "unknown",
+    "vcd basename:",
+    context and context.bootparam_basename or "unknown",
+    "prefix used:",
+    context and context.bootparam_prefix or "none",
+    "boot string:",
+    context and context.bootparam or "unknown"
+  )
+  LogPopstarterArgs(argv)
+  LaunchLog("LAUNCH: exec argv[0]:", argv[1])
+  LaunchLog("LAUNCH: exec argv[1]:", argv[2])
   local rc = System.loadELF(popstarter, reboot_iop, argv[1], argv[2])
   LaunchLog("LAUNCH RETURNED rc="..tostring(rc))
   LOG(">>> UNHANDLED ERROR at Launching game '", context and context.game or "unknown", " via ", popstarter, " Failed")
@@ -718,6 +801,7 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
       argv0,
       argv0,
       app_dir,
+      nil,
       nil
     )
     return
@@ -729,6 +813,7 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     argv0,
     argv0,
     app_dir,
+    nil,
     nil
   )
 end
@@ -775,6 +860,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
         nil,
         nil,
         APP_DIR_LOCAL,
+        nil,
         nil
       )
       return
@@ -786,7 +872,19 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   local raw_source_mode = source_mode
   local vcd_path = normalized_gamelocation..game
   local popstarter = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
-  local bootparam = BuildXXUsageArgs(handoff_gamelocation, game, source_mode)
+  local pops_root = normalized_gamelocation
+  local boot_source_mode = source_mode
+  if string.match(source_mode, "^pfs") then
+    pops_root = normalized_gamelocation
+    boot_source_mode = "pfs"
+  elseif device_page == "SMB/MMCE" then
+    pops_root = "smb:/POPS/"
+    boot_source_mode = "smb"
+  else
+    pops_root = "mass:/POPS/"
+    boot_source_mode = "mass"
+  end
+  local bootparam, prefix = BuildPopstarterBootString(boot_source_mode, pops_root, game)
   local argv = {bootparam, "--nr"}
 
   LOG("Boot APP_DIR: "..APP_DIR_LOCAL)
@@ -803,6 +901,10 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
     game = game,
     vcd_path = vcd_path,
     bootparam = bootparam,
+    bootparam_prefix = prefix,
+    bootparam_root = pops_root,
+    bootparam_basename = game,
+    bootparam_source = boot_source_mode,
     hdd_init = hdd_init
   }
   LaunchEngine(popstarter, argv, PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER, context)

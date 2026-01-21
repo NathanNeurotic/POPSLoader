@@ -12,6 +12,7 @@
 #include <audsrv.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <ctype.h>
 
 #include <dirent.h>
 
@@ -98,17 +99,41 @@ static unsigned int boot_ms(void)
     return (unsigned int)(((clock() - boot_start) * 1000) / CLOCKS_PER_SEC);
 }
 
+static void InsertChar(char *base, size_t base_size, char *pos, char ch)
+{
+    size_t len = strlen(base);
+    if (len + 1 >= base_size) {
+        return;
+    }
+    memmove(pos + 1, pos, len - (pos - base) + 1);
+    *pos = ch;
+}
+
 static void NormalizeDirPath(char *path, size_t size)
 {
     if (path == NULL || path[0] == '\0') {
         return;
     }
-    char *first_colon = strchr(path, ':');
-    if (first_colon != NULL && strstr(path, ":/") == NULL) {
-        size_t len = strlen(path);
-        if (len + 1 < size) {
-            memmove(first_colon + 2, first_colon + 1, len - (first_colon + 1 - path) + 1);
-            first_colon[1] = '/';
+    for (char *p = path; *p; ++p) {
+        if (*p == '\\') {
+            *p = '/';
+        }
+    }
+    if (strncmp(path, "host:", 5) == 0) {
+        if (path[5] != '/' && path[5] != '\0') {
+            InsertChar(path, size, path + 5, '/');
+        }
+        if (strncmp(path, "host:/", 6) == 0) {
+            char *drive = path + 6;
+            if (isalpha((unsigned char)drive[0]) && drive[1] == ':' && drive[2] != '/' && drive[2] != '\0') {
+                InsertChar(path, size, drive + 2, '/');
+            }
+        }
+    } else {
+        char *first_colon = strchr(path, ':');
+        char *second_colon = first_colon ? strchr(first_colon + 1, ':') : NULL;
+        if (first_colon != NULL && first_colon[1] != '/' && second_colon == NULL) {
+            InsertChar(path, size, first_colon + 1, '/');
         }
     }
     size_t len = strlen(path);
@@ -164,11 +189,14 @@ static void setAppDirFromPath(const char *path)
 
     char tmp[255];
     snprintf(tmp, sizeof(tmp), "%s", path);
+    for (char *p = tmp; *p; ++p) {
+        if (*p == '\\') {
+            *p = '/';
+        }
+    }
 
     char *p = strrchr(tmp, '/');
     if (p != NULL) {
-        p[1] = '\0';
-    } else if ((p = strrchr(tmp, '\\')) != NULL) {
         p[1] = '\0';
     } else if ((p = strchr(tmp, ':')) != NULL) {
         p[1] = '\0';

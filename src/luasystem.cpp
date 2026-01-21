@@ -476,7 +476,6 @@ static int lua_sizefile(lua_State *L){
 	return 1;
 }
 
-
 static int lua_checkexist(lua_State *L){
 	int argc = lua_gettop(L);
 	if (argc != 1) return luaL_error(L, "wrong number of arguments");
@@ -500,8 +499,7 @@ static int lua_loadELF(lua_State *L)
 	size_t size;
 	const char *elftoload = luaL_checklstring(L, 1, &size);
 	int rebootIOP = luaL_checkinteger(L, 2);
-	char** p = (char**)malloc((argc-1) * sizeof(const char*));
-	p[0] = (char*)elftoload;
+	char** p = (char**)malloc((argc-2) * sizeof(const char*));
 	printf("# Loading ELF '%s' iop_reboot=%d, extra_args=%d\n", elftoload, rebootIOP, argc-2);
 	for (int x = 3; x <= argc; x++) {
 		printf("#  argv[%d] = '%s'\n", (x-3), luaL_checkstring(L, x));
