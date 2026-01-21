@@ -12,17 +12,36 @@
   Licensed under GNU General public license v3.0
 --]]
 LOG(System.currentDirectory())
-local APP_DIR_LOCAL = APP_DIR or System.currentDirectory()
-if string.sub(APP_DIR_LOCAL, -1) ~= "/" then APP_DIR_LOCAL = APP_DIR_LOCAL.."/" end
+local function NormalizeDirPath(path)
+  if path == nil or path == "" then return "" end
+  if string.sub(path, -1) ~= "/" then
+    return path.."/"
+  end
+  return path
+end
+
+local function JoinPath(base, rel)
+  local normalized = NormalizeDirPath(base)
+  if rel == nil or rel == "" then
+    return normalized
+  end
+  if string.sub(rel, 1, 1) == "/" then
+    rel = string.sub(rel, 2)
+  end
+  return normalized..rel
+end
+
+local APP_DIR_LOCAL = NormalizeDirPath(APP_DIR or System.currentDirectory())
 
 local function ResolveAsset(rel)
-  return System.resolveAsset(rel) or (APP_DIR_LOCAL..rel)
+  return System.resolveAsset(rel) or JoinPath(APP_DIR_LOCAL, rel)
 end
 
 local function ResolveWritablePath(rel)
-  local legacy = APP_DIR_LOCAL.."POPSLDR/"..rel
-  local modern = APP_DIR_LOCAL..rel
-  if doesFileExist(legacy) or doesFolderExist(APP_DIR_LOCAL.."POPSLDR/") then
+  local legacy_root = JoinPath(APP_DIR_LOCAL, "POPSLDR")
+  local legacy = JoinPath(legacy_root, rel)
+  local modern = JoinPath(APP_DIR_LOCAL, rel)
+  if doesFileExist(legacy) or doesFolderExist(legacy_root) then
     return legacy
   end
   return modern
@@ -36,9 +55,9 @@ local function ResolvePopstarterPath(path)
   local fallback = "mass:/POPS/POPSTARTER.ELF"
   local chosen = path
   if chosen == nil or chosen == "" then
-    chosen = APP_DIR_LOCAL.."POPSTARTER.ELF"
+    chosen = JoinPath(APP_DIR_LOCAL, "POPSTARTER.ELF")
   elseif not IsAbsoluteDevicePath(chosen) then
-    chosen = APP_DIR_LOCAL..chosen
+    chosen = JoinPath(APP_DIR_LOCAL, chosen)
   end
   if doesFileExist(chosen) then
     return chosen
@@ -50,12 +69,13 @@ local function ResolvePopstarterPath(path)
 end
 
 local function ResolveIrx(name)
-  return System.resolveAssetType(name, ASSET_IRX) or (APP_DIR_LOCAL..name)
+  return System.resolveAssetType(name, ASSET_IRX) or JoinPath(APP_DIR_LOCAL, name)
 end
 
 local function LoadIrxFromDir(dir)
-  if not doesFolderExist(dir) then return false end
-  local IRXDIR = System.listDirectory(dir)
+  local normalized = NormalizeDirPath(dir)
+  if not doesFolderExist(normalized) then return false end
+  local IRXDIR = System.listDirectory(normalized)
   if IRXDIR == nil then return false end
   local loaded = false
   for x=1, #IRXDIR do
@@ -63,7 +83,7 @@ local function LoadIrxFromDir(dir)
     if entry ~= nil and not entry.directory then
       local name = entry.name
       if name ~= nil and string.lower(string.sub(name, -4)) == ".irx" then
-        local PATH = ResolveIrx(name) or (dir..name)
+        local PATH = ResolveIrx(name) or JoinPath(normalized, name)
         local ID, RET = IOP.loadModule(PATH)
         LOG(PATH, ID, RET)
         loaded = true
@@ -75,10 +95,10 @@ end
 
 local loadedIrx = LoadIrxFromDir(APP_DIR_LOCAL)
 if not loadedIrx then
-  loadedIrx = LoadIrxFromDir(APP_DIR_LOCAL.."IRX/")
+  loadedIrx = LoadIrxFromDir(JoinPath(APP_DIR_LOCAL, "IRX"))
 end
 if not loadedIrx then
-  LoadIrxFromDir(APP_DIR_LOCAL.."POPSLDR/IRX/")
+  LoadIrxFromDir(JoinPath(APP_DIR_LOCAL, "POPSLDR/IRX"))
 end
 PLDR = {
   REBOOT_IOP_WHILE_LOADING_POPSTARTER = 0;
