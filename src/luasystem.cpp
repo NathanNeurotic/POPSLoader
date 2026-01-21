@@ -723,6 +723,20 @@ static int lua_resolveAsset(lua_State *L) {
 	return 1;
 }
 
+static int lua_resolveAssetType(lua_State *L) {
+	int argc = lua_gettop(L);
+	if (argc != 2) return luaL_error(L, "Argument error: System.resolveAssetType(relativeName, kind) takes two arguments.");
+	const char *rel = luaL_checkstring(L, 1);
+	int kind = luaL_checkinteger(L, 2);
+	char out[255];
+	if (ResolveAssetPathTyped(out, sizeof(out), rel, (AssetKind)kind)) {
+		lua_pushstring(L, out);
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
 static const luaL_Reg System_functions[] = {
 	{"openFile",                   lua_openfile},
 	{"readFile",                   lua_readfile},
@@ -753,6 +767,7 @@ static const luaL_Reg System_functions[] = {
 	{"GetArgv0",                   lua_popargv0},
 	{"getAppDir",                 lua_getAppDir},
 	{"resolveAsset",           lua_resolveAsset},
+	{"resolveAssetType",   lua_resolveAssetType},
 	{0, 0}
 };
 
@@ -843,6 +858,15 @@ void luaSystem_init(lua_State *L) {
 
 	lua_pushstring(L, app_dir);
 	lua_setglobal(L, "APP_DIR");
+
+	lua_pushinteger(L, ASSET_GENERIC);
+	lua_setglobal(L, "ASSET_GENERIC");
+
+	lua_pushinteger(L, ASSET_IMG);
+	lua_setglobal(L, "ASSET_IMG");
+
+	lua_pushinteger(L, ASSET_IRX);
+	lua_setglobal(L, "ASSET_IRX");
 
 	lua_pushinteger(L, O_RDONLY);
 	lua_setglobal(L, "FREAD");

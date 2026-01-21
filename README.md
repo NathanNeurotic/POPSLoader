@@ -15,7 +15,9 @@ Based on [Enceladus](https://github.com/DanielSant0s/Enceladus)
 - Treat mmce as USB (XX.) for POPSTARTER.
 
 ## Usage
-Put `POPSLOADER.ELF` and runtime assets in the same folder (no subfolder required).  
+Put `POPSLOADER.ELF` and runtime assets in the same folder (no subfolder required):  
+- `system.lua`, `ui.lua`, `images.lua`, `pops_profiles.lua`, `PATCH_5.BIN`  
+- UI images (`*.png`) and optional external IRX modules (`*.irx`)  
 Legacy `POPSLDR/` folder layout is still supported as a fallback.  
 See [docs/RUNTIME_LAYOUT.md](docs/RUNTIME_LAYOUT.md) for layout details and compatibility notes.
 
