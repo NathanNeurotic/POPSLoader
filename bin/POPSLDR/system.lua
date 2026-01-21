@@ -300,12 +300,35 @@ function PLDR.HDD.WipeCache(CACHE)
 end
 
 ---DONT TOUCH ME
+local function BuildXXUsageArgs(gamelocation, game, source_mode)
+  -- XX usage: PopStarter expects an XX.-prefixed ELF name for USB-style launches.
+  -- USB (mass:/...) and MMCE (mmce0:/...) share this format; only the source mode changes.
+  return PLDR.replace_device(gamelocation, source_mode).."XX."..PLDR.replace_extension(game, "ELF")
+end
+
+local function GetLaunchSourceMode(gamelocation)
+  -- Mode/source should reflect the actual device for PopStarter.
+  -- USB/mass uses "isra", MMCE uses its device string (mmce0), SMB should use its own mode if enabled.
+  local device = string.match(gamelocation, "^(.-):")
+  if device ~= nil and string.match(device, "^mmce") then
+    return device
+  end
+  return "isra"
+end
+
 function PLDR.RunPOPStarterGame(gamelocation, game)
-  local PREFIX = "" --HDD has no prefix
-  if UI.CURSCENE == UI.SCENES.GUSB then PREFIX = "XX."
-  elseif UI.CURSCENE == UI.SCENES.GSMB then PREFIX = "SB." end
-  local BOOTPARAM = PLDR.replace_device(gamelocation, "isra")..PREFIX..PLDR.replace_extension(game, "ELF")
-  LOG("Loading", PLDR.POPSTARTER_PATH, BOOTPARAM)
+  local source_mode = GetLaunchSourceMode(gamelocation)
+  local vcd_path = gamelocation..game
+
+  local BOOTPARAM
+  if UI.CURSCENE == UI.SCENES.GSMB then
+    -- SMB uses a distinct SB usage format when enabled.
+    BOOTPARAM = PLDR.replace_device(gamelocation, source_mode).."SB."..PLDR.replace_extension(game, "ELF")
+  else
+    BOOTPARAM = BuildXXUsageArgs(gamelocation, game, source_mode)
+  end
+
+  LOG("PopStarter:", PLDR.POPSTARTER_PATH, "VCD:", vcd_path, "mode:", source_mode, "argv_count:", 2, "args:", BOOTPARAM, "--nr")
   System.loadELF(PLDR.POPSTARTER_PATH,
     PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER,
     BOOTPARAM, "--nr")
