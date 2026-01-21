@@ -3,7 +3,19 @@ An open source Launcher for POPStarter scripted in lua.
 
 Based on [Enceladus](https://github.com/DanielSant0s/Enceladus)
 
+## Documentation
+- [AGENTS.md](AGENTS.md)
+- [DEVELOPMENT.md](DEVELOPMENT.md)
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- [docs/RUNTIME_LAYOUT.md](docs/RUNTIME_LAYOUT.md)
+
+## Status / Roadmap
+- No subfolder dependencies (assets load from ELF directory first).
+- Legacy `POPSLDR/` layout kept as fallback.
+- Treat mmce as USB (XX.) for POPSTARTER.
+
 ## Usage
+**Current layout** (see [docs/RUNTIME_LAYOUT.md](docs/RUNTIME_LAYOUT.md) for the upcoming layout change).
 move the POPSLOADER.ELF and the `POPSLDR/` folder into a USB device or internal HDD
 
 ### Tips
