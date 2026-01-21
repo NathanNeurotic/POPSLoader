@@ -36,10 +36,9 @@ local UI = {
       BGCOL = Color.new(32,0,32);
     };
     InputConfig = {
-      NAV_REPEAT_DELAY_MS = 600;
-      NAV_REPEAT_INTERVAL_MS = 260;
-      ANALOG_DEADZONE = 0.45;
-      DEBUG_NAV_RATE = true;
+      MIN_NAV_EVENT_MS = 180;
+      MIN_ACTION_MS = 220;
+      DEBUG_INPUT_LOG = true;
     };
     --- Notifications queue handler
     Notif_queue = {
@@ -349,16 +348,13 @@ local UI = {
         SELECT = false,
         ANY = false,
       };
-      REPEAT_DELAY = nil;
-      REPEAT_INTERVAL = nil;
-      RepeatStart = {};
-      RepeatLast = {};
       NavHeld = {};
+      NavNeutral = {UP = true, DOWN = true, LEFT = true, RIGHT = true};
       Queue = {};
-      DebugNavTimer = nil;
-      DebugNavCount = 0;
-      DebugConfirmCount = 0;
-      DebugNavLast = 0;
+      DebugPadTimer = nil;
+      DebugPadLast = 0;
+      LastNavEventMs = 0;
+      LastActionEventMs = 0;
       Listen = function ()
         if UI.Pad.Timer == nil then
           UI.Pad.Timer = Timer.new()
@@ -385,86 +381,65 @@ local UI = {
         UI.Pad.Events.SELECT = false
         UI.Pad.Events.ANY = false
 
-        if UI.InputConfig.DEBUG_NAV_RATE then
-          if UI.Pad.DebugNavTimer == nil then
-            UI.Pad.DebugNavTimer = Timer.new()
-            UI.Pad.DebugNavLast = Timer.getTime(UI.Pad.DebugNavTimer)
-            UI.Pad.DebugNavCount = 0
-            UI.Pad.DebugConfirmCount = 0
-          end
-        end
-
         local function emit(event)
           table.insert(UI.Pad.Queue, event)
           UI.Pad.Events[event] = true
           UI.Pad.Events.ANY = true
-          if not UI.InputConfig.DEBUG_NAV_RATE then return end
-          if event == "NAV_UP" or event == "NAV_DOWN" or event == "NAV_LEFT" or event == "NAV_RIGHT" then
-            UI.Pad.DebugNavCount = UI.Pad.DebugNavCount + 1
-          end
-          if event == "CONFIRM" then
-            UI.Pad.DebugConfirmCount = UI.Pad.DebugConfirmCount + 1
-          end
         end
 
-        if (pressed & PAD_CROSS) ~= 0 then emit("CONFIRM") end
-        if (pressed & PAD_CIRCLE) ~= 0 then emit("BACK") end
-        if (pressed & PAD_TRIANGLE) ~= 0 then emit("EXIT") end
+        local function emit_action(event)
+          if (now - (UI.Pad.LastActionEventMs or 0)) < UI.InputConfig.MIN_ACTION_MS then
+            return
+          end
+          UI.Pad.LastActionEventMs = now
+          emit(event)
+        end
+
+        if (pressed & PAD_CROSS) ~= 0 then emit_action("CONFIRM") end
+        if (pressed & PAD_CIRCLE) ~= 0 then emit_action("BACK") end
+        if (pressed & PAD_TRIANGLE) ~= 0 then emit_action("EXIT") end
         if (pressed & PAD_START) ~= 0 then emit("START") end
         if (pressed & PAD_SELECT) ~= 0 then emit("SELECT") end
 
-        local function handle_repeat(dir, is_down, was_pressed, was_released)
-          if was_released then
-            UI.Pad.RepeatStart[dir] = nil
-            UI.Pad.RepeatLast[dir] = nil
-          end
-          if was_pressed then
-            UI.Pad.RepeatStart[dir] = now
-            UI.Pad.RepeatLast[dir] = now
-            return true
-          end
-          if is_down then
-            if UI.Pad.RepeatStart[dir] == nil then
-              UI.Pad.RepeatStart[dir] = now
-              UI.Pad.RepeatLast[dir] = now
-            elseif (now - UI.Pad.RepeatStart[dir]) >= UI.Pad.REPEAT_DELAY
-              and (now - (UI.Pad.RepeatLast[dir] or 0)) >= UI.Pad.REPEAT_INTERVAL then
-              UI.Pad.RepeatLast[dir] = now
-              return true
-            end
-          end
-          return false
-        end
-
-        local lx, ly = Pads.getLeftStick()
-        local deadzone = UI.InputConfig.ANALOG_DEADZONE
-        local ax = lx / 127
-        local ay = ly / 127
-        local analog_up = ay <= -deadzone
-        local analog_down = ay >= deadzone
-        local analog_left = ax <= -deadzone
-        local analog_right = ax >= deadzone
-
         local function resolve_nav(dir, is_down)
           local was_down = UI.Pad.NavHeld[dir] == true
-          local was_pressed = is_down and not was_down
-          local was_released = was_down and not is_down
-          UI.Pad.NavHeld[dir] = is_down
-          return handle_repeat(dir, is_down, was_pressed, was_released)
+          if not is_down then
+            if was_down then
+              UI.Pad.NavNeutral[dir] = true
+            end
+            UI.Pad.NavHeld[dir] = false
+            return false
+          end
+          UI.Pad.NavHeld[dir] = true
+          if not UI.Pad.NavNeutral[dir] then
+            return false
+          end
+          if (now - (UI.Pad.LastNavEventMs or 0)) < UI.InputConfig.MIN_NAV_EVENT_MS then
+            return false
+          end
+          UI.Pad.NavNeutral[dir] = false
+          UI.Pad.LastNavEventMs = now
+          return true
         end
 
-        if resolve_nav("UP", ((UI.Pad.GPAD & PAD_UP) ~= 0) or analog_up) then emit("NAV_UP") end
-        if resolve_nav("DOWN", ((UI.Pad.GPAD & PAD_DOWN) ~= 0) or analog_down) then emit("NAV_DOWN") end
-        if resolve_nav("LEFT", ((UI.Pad.GPAD & PAD_LEFT) ~= 0) or analog_left) then emit("NAV_LEFT") end
-        if resolve_nav("RIGHT", ((UI.Pad.GPAD & PAD_RIGHT) ~= 0) or analog_right) then emit("NAV_RIGHT") end
+        if resolve_nav("UP", ((UI.Pad.GPAD & PAD_UP) ~= 0)) then emit("NAV_UP") end
+        if resolve_nav("DOWN", ((UI.Pad.GPAD & PAD_DOWN) ~= 0)) then emit("NAV_DOWN") end
+        if resolve_nav("LEFT", ((UI.Pad.GPAD & PAD_LEFT) ~= 0)) then emit("NAV_LEFT") end
+        if resolve_nav("RIGHT", ((UI.Pad.GPAD & PAD_RIGHT) ~= 0)) then emit("NAV_RIGHT") end
 
-        if UI.InputConfig.DEBUG_NAV_RATE then
-          local dbg_now = Timer.getTime(UI.Pad.DebugNavTimer)
-          if (dbg_now - UI.Pad.DebugNavLast) >= 1000 then
-            LOGF("NAV events/sec: %d | CONFIRM events/sec: %d", UI.Pad.DebugNavCount, UI.Pad.DebugConfirmCount)
-            UI.Pad.DebugNavCount = 0
-            UI.Pad.DebugConfirmCount = 0
-            UI.Pad.DebugNavLast = dbg_now
+        if UI.InputConfig.DEBUG_INPUT_LOG then
+          if UI.Pad.DebugPadTimer == nil then
+            UI.Pad.DebugPadTimer = Timer.new()
+            UI.Pad.DebugPadLast = Timer.getTime(UI.Pad.DebugPadTimer)
+          end
+          local dbg_now = Timer.getTime(UI.Pad.DebugPadTimer)
+          if (dbg_now - UI.Pad.DebugPadLast) >= 1000 then
+            local up = (UI.Pad.GPAD & PAD_UP) ~= 0
+            local down = (UI.Pad.GPAD & PAD_DOWN) ~= 0
+            local cross = (UI.Pad.GPAD & PAD_CROSS) ~= 0
+            local circle = (UI.Pad.GPAD & PAD_CIRCLE) ~= 0
+            LOGF("PAD mask: 0x%04X | UP:%s DOWN:%s X:%s O:%s", UI.Pad.GPAD, tostring(up), tostring(down), tostring(cross), tostring(circle))
+            UI.Pad.DebugPadLast = dbg_now
           end
         end
       end;
@@ -492,7 +467,5 @@ local UI = {
       end
     };
   }
-UI.Pad.REPEAT_DELAY = UI.InputConfig.NAV_REPEAT_DELAY_MS
-UI.Pad.REPEAT_INTERVAL = UI.InputConfig.NAV_REPEAT_INTERVAL_MS
 _G.UI = UI
 return UI
