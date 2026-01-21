@@ -12,7 +12,9 @@ This document reflects the current POPSLoader architecture as implemented in the
 ## UI flow (scenes and device pages)
 - The main menu defines three device slots (`USB`, `SMB`, `HDD`); the `SMB` slot is wired to the MMCE device page and uses MMCE slot discovery/selection rather than SMB networking.【F:bin/POPSLDR/ui.lua†L261-L307】
 - MMCE slot detection is driven by `mmce0:/` and `mmce1:/` availability (populated into `PLDR.MMCE.SLOTS`).【F:bin/POPSLDR/system.lua†L116-L127】
-- POPStarter launches use a shared path builder: USB and MMCE both use the `XX.` boot parameter format, while the launch mode differs (`isra` for USB/mass, device string for MMCE).【F:bin/POPSLDR/system.lua†L390-L405】
+
+## Launch pipeline reference
+- POPStarter launch rules (device detection, prefix rules, argv handoff) are documented in `docs/LAUNCH_PIPELINE.md` and should be treated as canonical.
 
 ## Exit path (UI → OSDSYS)
 - Triangle opens an exit confirmation modal; confirming calls `System.exitToBrowser()` to return to OSDSYS.【F:bin/POPSLDR/ui.lua†L94-L168】
