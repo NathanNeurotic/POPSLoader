@@ -12,7 +12,7 @@
   Licensed under GNU General public license v3.0
 --]]
 local BOOT_PATH_RAW = System.currentDirectory()
-LOG(BOOT_PATH_RAW)
+LOG("BOOT_PATH_RAW="..tostring(BOOT_PATH_RAW))
 local function NormalizeDeviceRoot(path)
   if path == nil or path == "" then return path end
   if string.match(path, "^host:/") then
@@ -27,19 +27,24 @@ end
 
 local function NormalizeHostPath(path)
   if path == nil or path == "" then return path end
-  if not string.match(path, "^host:/") then
+  if not string.match(path, "^host:") then
     return path
   end
-  local rest = string.sub(path, 7)
+  local rest = string.sub(path, 6)
+  if string.sub(rest, 1, 1) == "/" then
+    rest = string.sub(rest, 2)
+  end
+  rest = string.gsub(rest, "\\", "/")
   if string.match(rest, "^[%a]:[^/]") then
     rest = string.sub(rest, 1, 2).."/"..string.sub(rest, 3)
   end
   return "host:/"..rest
 end
 
-local function NormalizeDirPath(path)
+function NormalizeDirPath(path)
   if path == nil or path == "" then return "" end
-  local normalized = NormalizeHostPath(NormalizeDeviceRoot(path))
+  local normalized = string.gsub(path, "\\", "/")
+  normalized = NormalizeHostPath(NormalizeDeviceRoot(normalized))
   normalized = string.gsub(normalized, "/+$", "/")
   if string.sub(normalized, -1) ~= "/" then
     normalized = normalized.."/"
@@ -47,7 +52,7 @@ local function NormalizeDirPath(path)
   return normalized
 end
 
-local function JoinPath(base, rel)
+function JoinPath(base, rel)
   local normalized = NormalizeDirPath(base)
   if rel == nil or rel == "" then
     return normalized
@@ -57,7 +62,6 @@ local function JoinPath(base, rel)
 end
 
 local APP_DIR_LOCAL = NormalizeDirPath(APP_DIR or BOOT_PATH_RAW)
-LOG("APP_DIR_RAW="..tostring(BOOT_PATH_RAW))
 LOG("APP_DIR_NORM="..APP_DIR_LOCAL)
 LOG("APP_DIR_POPSTARTER_JOIN="..JoinPath(APP_DIR_LOCAL, "POPSTARTER.ELF"))
 
@@ -658,7 +662,8 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   local argv0 = argv and argv[1] or nil
   SetLaunchPhase(LaunchState.PHASE_VALIDATE)
   LaunchLog("LAUNCH BEGIN")
-  LaunchLog("LAUNCH: boot path:", boot_path, "APP_DIR:", app_dir)
+  LaunchLog("LAUNCH: boot path raw:", BOOT_PATH_RAW, "boot path cwd:", boot_path)
+  LaunchLog("LAUNCH: app dir normalized:", app_dir, "APP_DIR join POPSTARTER:", JoinPath(app_dir, "POPSTARTER.ELF"))
   LaunchLog("LAUNCH: reboot_iop flag:", reboot_iop)
   LaunchLog("LAUNCH: popstarter path:", popstarter)
   if context ~= nil then
