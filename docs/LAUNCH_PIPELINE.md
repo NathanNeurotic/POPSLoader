@@ -22,13 +22,14 @@ This document describes **how POPSLoader constructs and hands off the POPStarter
 - The concatenation of the POPS root and the normalized VCD basename (including any required prefix).
 - This is the boot string passed to the ELF loader as an argument.
 
-**Source mode**
-- The source of the game/VCD, used to determine POPS root and prefix rules.
-- Derived from the game location and/or UI scene:
-  - `mass` if path begins with `mass` or UI scene is USB.
-  - `mmce` (handoff still uses `mass` semantics) if path begins with `mmce` or UI scene is SMB/MMCE.
-  - `pfs` for HDD if path begins with `pfs` or UI scene is HDD.
-  - **TODO: verify** other device prefixes if present elsewhere.
+**Launch policy inputs**
+- POPSLoader derives a launch policy from **two inputs**:
+  1) `policy.mode` from `ResolveLaunchPolicy(gamelocation)`
+  2) `device_page` (UI scene label)
+- `policy.mode` is **not** an MMCE-specific mode. It is either:
+  - `mass` (USB or MMCE), or
+  - a `pfs*` prefix (HDD).
+- The final POPS root + prefix used for the boot string are computed in `PLDR.RunPOPStarterGame` using **both** `policy.mode` and `device_page` (see step 4 below).
 
 ## 2) Device rules table (prefix + root + boot string)
 
@@ -50,8 +51,9 @@ These prefix rules are implemented in `BuildPopstarterBootString()`.
 ## 3) End-to-end launch sequence (current code)
 
 1. **User selects a game** (VCD basename) from the UI list.
-2. **Determine source mode** via `ResolveLaunchPolicy()`:
+2. **Determine launch policy** via `ResolveLaunchPolicy()`:
    - Uses `gamelocation` prefix (`mass`, `mmce`, `pfs`) if available; otherwise falls back to the current UI scene.
+   - Policy `mode` is `mass` (USB/MMCE) or `pfs*` (HDD).
 3. **Normalize/translate the game path** using the selected launch policy:
    - `NormalizeIsraPath()` translates `isra:` paths into device-specific `mass:`/`pfs:` equivalents.
    - MMCE paths are translated to `mass:/` for POPStarter handoff.
