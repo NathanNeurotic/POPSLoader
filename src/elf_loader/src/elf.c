@@ -15,6 +15,8 @@
 #include <sys/stat.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include "elf.h"
 
@@ -59,6 +61,7 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	void *pdata;
 	int i;
 	int new_argc = argc + 1;
+	int fd = -1;
 	
 	// We need to check that the ELF file before continue
 	if (!file_exists(filename)) {
@@ -67,14 +70,21 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	// ELF Exists
 	wipe_bramMem();
 
-	for (i = 0; i < argc; i++) { DPRINTF("@argv[%d]: %s\n", i, argv[i]);}
+	DPRINTF("LAUNCH: BEGIN\n");
+	DPRINTF("LAUNCH: popstarter path: %s\n", filename);
+	fd = open(filename, O_RDONLY);
+	DPRINTF("LAUNCH: popstarter open rc=%d\n", fd);
+	if (fd >= 0) {
+		close(fd);
+	}
+	for (i = 0; i < argc; i++) { DPRINTF("LAUNCH: argv[%d]: %s\n", i, argv[i]);}
 	// Preparing filename and partition to be sent in the argv
 	char *new_argv[new_argc];
-	DPRINTF("-- new_argv[0]: %s\n", filename);
+	DPRINTF("LAUNCH: argv[0]: %s\n", filename);
 	new_argv[0] = filename;
 	for (i = 1; i < new_argc; i++) {
 		new_argv[i] = argv[i-1];
-		DPRINTF("--- new_argv[%d] = argv[%d]: %s\n", i, i-1, new_argv[i]);
+		DPRINTF("LAUNCH: argv[%d]: %s\n", i, new_argv[i]);
 	}
 	
 	/* NB: LOADER.ELF is embedded  */
@@ -102,7 +112,9 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	FlushCache(0);
 	FlushCache(2);
 	
-	return ExecPS2((void *)eh->entry, NULL, new_argc, new_argv);
+	int rc = ExecPS2((void *)eh->entry, NULL, new_argc, new_argv);
+	DPRINTF("LAUNCH: RETURNED rc=%d\n", rc);
+	return rc;
 }
 
 int LoadELFFromFile(const char *filename, int argc, char *argv[])

@@ -98,6 +98,28 @@ static unsigned int boot_ms(void)
     return (unsigned int)(((clock() - boot_start) * 1000) / CLOCKS_PER_SEC);
 }
 
+static void NormalizeDirPath(char *path, size_t size)
+{
+    if (path == NULL || path[0] == '\0') {
+        return;
+    }
+    char *first_colon = strchr(path, ':');
+    if (first_colon != NULL && strstr(path, ":/") == NULL) {
+        size_t len = strlen(path);
+        if (len + 1 < size) {
+            memmove(first_colon + 2, first_colon + 1, len - (first_colon + 1 - path) + 1);
+            first_colon[1] = '/';
+        }
+    }
+    size_t len = strlen(path);
+    if (len > 0 && path[len - 1] != '/') {
+        if (len + 1 < size) {
+            path[len] = '/';
+            path[len + 1] = '\0';
+        }
+    }
+}
+
 static void BootStamp(const char *stage)
 {
     DPRINTF("BOOT: %s %u\n", stage, boot_ms());
@@ -128,12 +150,8 @@ void setLuaBootPath(int argc, char ** argv, int idx)
 
     }
     
-    // check if path needs patching
-    if( !strncmp( boot_path, "mass:/", 6) && (strlen (boot_path)>6))
-    {
-        strcpy((char *)&boot_path[5],(const char *)&boot_path[6]);
-    }
-      
+    NormalizeDirPath(boot_path, sizeof(boot_path));
+    
     
 }
 
@@ -167,6 +185,7 @@ static void setAppDirFromPath(const char *path)
     if (len > 0 && app_dir[len - 1] != '/') {
         strncat(app_dir, "/", sizeof(app_dir) - len - 1);
     }
+    NormalizeDirPath(app_dir, sizeof(app_dir));
 }
 
 
