@@ -16,8 +16,8 @@
 - `POPSLoader.7z` (packaged release archive).【F:Makefile†L132-L135】
 
 ## Packaging and running on device
-- Place `POPSLOADER.ELF` and the `POPSLDR/` folder on a USB device or internal HDD (root).【F:README.md†L6-L7】
-- Lua boot script expects `POPSLDR/system.lua` in the current directory, and uses `POPSLDR/` on `mass:/` and `mc0:/mc1:/` as fallbacks for Lua modules.【F:etc/boot.lua†L1-L1】【F:etc/boot.lua†L55-L60】
+- Place `POPSLOADER.ELF` and runtime assets in the same folder (no subfolder required). Legacy `POPSLDR/` layout remains a fallback.【F:README.md†L17-L24】
+- Lua boot script resolves `system.lua` via `System.resolveAsset` (APP_DIR first), then legacy `POPSLDR/` fallbacks if needed.【F:etc/boot.lua†L1-L81】【F:src/system.cpp†L80-L107】
 - Default POPStarter path is `mass:/POPS/POPSTARTER.ELF` (see runtime script).【F:bin/POPSLDR/system.lua†L25-L27】
 
 ## Troubleshooting (common build issues)

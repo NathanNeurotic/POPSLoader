@@ -5,8 +5,11 @@
 #include <unistd.h>
 #include <string.h>
 #include <malloc.h>
+#include <sys/stat.h>
 
 #include "include/system.h"
+#include "include/luaplayer.h"
+#include "include/dprintf.h"
 
 //extern int size_loader_elf;
 
@@ -72,6 +75,36 @@ char* __ps2_normalize_path(char *path_name)
 		out[i-1] = 0;
 
 	return (char*)out;
+}
+
+int ResolveAssetPath(char* out, size_t outsz, const char* relativeName)
+{
+	if (!out || outsz == 0 || !relativeName) return 0;
+
+	if (strchr(relativeName, ':') != NULL) {
+		snprintf(out, outsz, "%s", relativeName);
+		struct stat st;
+		return (stat(out, &st) == 0);
+	}
+
+	char candidate[255];
+	struct stat st;
+
+	snprintf(candidate, sizeof(candidate), "%s%s", app_dir, relativeName);
+	if (stat(candidate, &st) == 0) {
+		DPRINTF("ResolveAssetPath: %s\n", candidate);
+		snprintf(out, outsz, "%s", candidate);
+		return 1;
+	}
+
+	snprintf(candidate, sizeof(candidate), "%sPOPSLDR/%s", app_dir, relativeName);
+	if (stat(candidate, &st) == 0) {
+		DPRINTF("ResolveAssetPath: %s\n", candidate);
+		snprintf(out, outsz, "%s", candidate);
+		return 1;
+	}
+
+	return 0;
 }
 
 

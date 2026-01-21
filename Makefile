@@ -171,7 +171,8 @@ reset:
 POPSLDR_PKG = POPSLoader.7z
 package: $(EE_BIN_PKD)
 	rm -f $(POPSLDR_PKG)
-	7z a $(POPSLDR_PKG) $(EE_BIN_PKD) bin/changelog bin/POPSLDR/* LICENSE README.md
+	7z a $(POPSLDR_PKG) $(EE_BIN_PKD) bin/changelog LICENSE README.md
+	cd bin/POPSLDR; 7z a ../$(POPSLDR_PKG) .
 
 dummys:
 	touch $(BINDIR)A.vcd
