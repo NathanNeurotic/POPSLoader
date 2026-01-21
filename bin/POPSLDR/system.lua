@@ -561,6 +561,22 @@ function LaunchLog(...)
   AppendLaunchLog(line)
 end
 
+local LaunchState = {
+  PHASE_VALIDATE = "LAUNCH_VALIDATE",
+  PHASE_FADEOUT = "LAUNCH_FADEOUT",
+  PHASE_EXEC = "LAUNCH_EXEC",
+  PHASE_FAILED = "LAUNCH_FAILED",
+  phase = "IDLE",
+  watchdog_ms = 3000,
+  fade_timer = nil,
+  fade_start = 0
+}
+
+local function SetLaunchPhase(phase)
+  LaunchState.phase = phase
+  LaunchLog("LAUNCH: phase:", phase)
+end
+
 local function EnsureTrailingSlash(path)
   if path == nil then
     return nil
@@ -581,6 +597,7 @@ local function TryOpenForLaunch(path)
 end
 
 local function BlockLaunchFailure(rc, popstarter, device_page, argv0, game_path)
+  SetLaunchPhase(LaunchState.PHASE_FAILED)
   UI.LAUNCHING = false
   local body = string.format(
     "LAUNCH RETURNED\nrc=%s\nDevice: %s\nPOPSTARTER: %s\nargv[0]: %s\nGame arg: %s\nPress X/O to continue.",
@@ -607,6 +624,7 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   local app_dir = EnsureTrailingSlash(APP_DIR_LOCAL)
   local boot_path = EnsureTrailingSlash(System.currentDirectory())
   local argv0 = argv and argv[1] or nil
+  SetLaunchPhase(LaunchState.PHASE_VALIDATE)
   LaunchLog("LAUNCH BEGIN")
   LaunchLog("LAUNCH: boot path:", boot_path, "APP_DIR:", app_dir)
   LaunchLog("LAUNCH: reboot_iop flag:", reboot_iop)
@@ -621,6 +639,9 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
         "mount:", context.hdd_init.mount_partition, "mount_ok:", context.hdd_init.mount_ok)
     end
   end
+  LogPopstarterArgs(argv)
+  LaunchLog("LAUNCH: argv[0]:", argv0)
+  LaunchLog("LAUNCH: game path arg:", argv0)
   local open_ok, open_rc = TryOpenForLaunch(popstarter)
   if open_ok then
     LaunchLog("LAUNCH: popstarter open rc:", open_rc)
@@ -635,15 +656,36 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     )
     return
   end
-  LogPopstarterArgs(argv)
-  LaunchLog("LAUNCH: argv[0]:", argv0)
-  LaunchLog("LAUNCH: game path arg:", argv0)
+  SetLaunchPhase(LaunchState.PHASE_FADEOUT)
   UI.LAUNCHING = true
+  LaunchState.fade_timer = Timer.new()
+  LaunchState.fade_start = Timer.getTime(LaunchState.fade_timer)
   Screen.clear(Color.new(0, 0, 0))
   Screen.flip()
+  if (Timer.getTime(LaunchState.fade_timer) - LaunchState.fade_start) >= LaunchState.watchdog_ms then
+    BlockLaunchFailure(
+      "Launch timeout: exec did not transfer control",
+      popstarter,
+      context and context.device_page or "unknown",
+      argv0,
+      argv0
+    )
+    return
+  end
+  SetLaunchPhase(LaunchState.PHASE_EXEC)
   local rc = System.loadELF(popstarter, reboot_iop, argv[1], argv[2])
   LaunchLog("LAUNCH RETURNED rc="..tostring(rc))
   LOG(">>> UNHANDLED ERROR at Launching game '", context and context.game or "unknown", " via ", popstarter, " Failed")
+  if (Timer.getTime(LaunchState.fade_timer) - LaunchState.fade_start) >= LaunchState.watchdog_ms then
+    BlockLaunchFailure(
+      "Launch timeout: exec did not transfer control",
+      popstarter,
+      context and context.device_page or "unknown",
+      argv0,
+      argv0
+    )
+    return
+  end
   BlockLaunchFailure(
     rc,
     popstarter,
