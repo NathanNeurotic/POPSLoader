@@ -23,6 +23,8 @@ POPSLoader was created by [El_isra](https://www.github.com/israpps), and this re
 Put `POPSLOADER.ELF` and runtime assets in the same folder (no subfolder required):  
 - `system.lua`, `ui.lua`, `images.lua`, `pops_profiles.lua`, `PATCH_5.BIN`  
 - UI images (`*.png`) and optional external IRX modules (`*.irx`)  
+Recommended layout: place `POPSTARTER.ELF` next to `POPSLOADER.ELF` in the same folder.  
+Profiles can override the PopStarter path if needed; legacy locations are fallback-only.  
 Legacy `POPSLDR/` folder layout is still supported as a fallback.  
 See [docs/RUNTIME_LAYOUT.md](docs/RUNTIME_LAYOUT.md) for layout details and compatibility notes.
 

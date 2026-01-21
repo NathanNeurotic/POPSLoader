@@ -185,23 +185,33 @@ UI = {
         end
         Graphics.drawImage(IMG["start"], 20, UI.SCR.Y-65) Font.ftPrint(SFONT, 55, UI.SCR.Y-60, 0, UI.SCR.X, 16, "POPStarter profiles")
         Graphics.drawImage(IMG["select"], 20, UI.SCR.Y-85) Font.ftPrint(SFONT, 55, UI.SCR.Y-80, 0, UI.SCR.X, 16, "About")
-        if UI.MainMenu.OPT == 2 then Font.ftPrint(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID+UI.SCR.Y_MID/2, 8, UI.SCR.X, 16, "COMMING SOON", UI.CCOL.RED) end
         UI.Pad.Listen()
         if Pads.check(GPAD, PAD_RIGHT) then UI.MainMenu.OPT = CLAMP(UI.MainMenu.OPT+1, 1, profcnt) GPAD = 0 end
         if Pads.check(GPAD, PAD_LEFT)  then UI.MainMenu.OPT = CLAMP(UI.MainMenu.OPT-1, 1, profcnt) GPAD = 0 end
         if Pads.check(GPAD, PAD_START) then UI.SceneChange(UI.SCENES.MPROFILE) end
         if Pads.check(GPAD, PAD_SELECT)then UI.SceneChange(UI.SCENES.CREDITS) end
-        if Pads.check(GPAD, PAD_CROSS) then
+          if Pads.check(GPAD, PAD_CROSS) then
           if UI.MainMenu.OPT == 1 then
             PLDR.CleanupGameList()
             PLDR.GetPS1GameLists("mass"..PLDR.USB.MASSINDX..":/POPS/", true)
             UI.SceneChange(UI.MainMenu.OPT)
           elseif UI.MainMenu.OPT == 2 then
-            local mmce_prefix = PLDR.DetectMMCESlot()
-            if mmce_prefix == nil then
+            local slots = PLDR.GetMMCESlots()
+            if #slots < 1 then
               UI.Notif_queue.add("No MMCE device found (mmce0/mmce1).")
+              PLDR.CleanupGameList()
+              PLDR.GAMEPATH = ""
+              UI.SceneChange(UI.MainMenu.OPT)
             else
-              mmce_prefix = PLDR.SetMMCESlot(1)
+              if PLDR.MMCE.PREFIX == nil then
+                PLDR.SetMMCESlot(1)
+              end
+              local mmce_prefix = PLDR.MMCE.PREFIX or PLDR.SetMMCESlot(1)
+              if mmce_prefix == nil then
+                UI.Notif_queue.add("No MMCE device found (mmce0/mmce1).")
+                GPAD = 0
+                return
+              end
               PLDR.CleanupGameList()
               PLDR.GetPS1GameLists(mmce_prefix.."POPS/", true)
               UI.SceneChange(UI.MainMenu.OPT)

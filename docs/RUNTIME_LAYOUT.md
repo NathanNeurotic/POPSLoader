@@ -3,6 +3,7 @@
 ## Current expected runtime folder structure (today)
 From README and boot scripts:
 - Place `POPSLOADER.ELF` and runtime assets in the same folder (no subfolder required).【F:README.md†L17-L21】
+- Recommended: place `POPSTARTER.ELF` next to `POPSLOADER.ELF`; profiles can override this path, while legacy locations are fallback-only.【F:README.md†L22-L28】
 - `boot.lua` executes the resolved `system.lua` via `System.resolveAsset` and prefers APP_DIR paths first, with legacy `POPSLDR/` fallbacks preserved.【F:etc/boot.lua†L1-L81】【F:src/system.cpp†L80-L107】
 
 Example layout (USB root, no subfolder):
@@ -44,7 +45,7 @@ When resolving Lua scripts/modules:
 |---|---|---|---|
 | Lua entrypoint | `system.lua` | `System.resolveAsset("system.lua")` (APP_DIR first, `POPSLDR/` fallback) | `etc/boot.lua` |【F:etc/boot.lua†L72-L81】【F:src/system.cpp†L80-L107】
 | Lua modules | `ui.lua`, `images.lua`, `pops_profiles.lua` | `package.path` includes `APP_DIR/?.lua` plus legacy `POPSLDR/?.lua` locations | `etc/boot.lua` |【F:etc/boot.lua†L1-L11】
-| POPStarter ELF | `mass:/POPS/POPSTARTER.ELF` | Used as `PLDR.POPSTARTER_PATH` when launching games | `bin/POPSLDR/system.lua` |【F:bin/POPSLDR/system.lua†L25-L27】
+| POPStarter ELF | `APP_DIR/POPSTARTER.ELF` (preferred), `mass:/POPS/POPSTARTER.ELF` (fallback) | Resolved at launch from `PLDR.POPSTARTER_PATH` with APP_DIR-first behavior | `bin/POPSLDR/system.lua` |【F:bin/POPSLDR/system.lua†L31-L50】【F:bin/POPSLDR/system.lua†L407-L427】
 | POPStarter dependencies (USB/HDD) | `POPS_IOX.PAK`, `POPS.ELF`, `IOPRP252.IMG` | Checked under `mass:/POPS/` or `pfs1:/POPS/` if enabled | `bin/POPSLDR/system.lua` |【F:bin/POPSLDR/system.lua†L63-L74】
 | Optional IGR textures | `PATCH_5.BIN` | Documented as replaceable in `POPS/` for POPStarter IGR | `bin/README.md` |【F:bin/README.md†L9-L10】
 

@@ -28,6 +28,27 @@ local function ResolveWritablePath(rel)
   return modern
 end
 
+local function IsAbsoluteDevicePath(path)
+  return path ~= nil and string.match(path, "^[%a]+%d*:/") ~= nil
+end
+
+local function ResolvePopstarterPath(path)
+  local fallback = "mass:/POPS/POPSTARTER.ELF"
+  local chosen = path
+  if chosen == nil or chosen == "" then
+    chosen = APP_DIR_LOCAL.."POPSTARTER.ELF"
+  elseif not IsAbsoluteDevicePath(chosen) then
+    chosen = APP_DIR_LOCAL..chosen
+  end
+  if doesFileExist(chosen) then
+    return chosen
+  end
+  if chosen ~= fallback and doesFileExist(fallback) then
+    return fallback
+  end
+  return chosen
+end
+
 local function ResolveIrx(name)
   return System.resolveAssetType(name, ASSET_IRX) or (APP_DIR_LOCAL..name)
 end
@@ -90,6 +111,24 @@ PLDR = {
 if BOOTPATH ~= nil then
   PLDR.HDD.LOADSTATE = 1
   PLDR.HDD.STATUS = HDD.GetHDDStatus()
+end
+
+if MMCE_SLOT0_READY ~= nil and MMCE_SLOT0_READY >= 0 then
+  PLDR.MMCE.PROBED = true
+  PLDR.MMCE.SLOTS = {}
+  PLDR.MMCE.INDEX = 1
+  if MMCE_SLOT0_READY == 1 then
+    table.insert(PLDR.MMCE.SLOTS, "mmce0:/")
+  end
+  if MMCE_SLOT1_READY == 1 then
+    table.insert(PLDR.MMCE.SLOTS, "mmce1:/")
+  end
+  if #PLDR.MMCE.SLOTS > 0 then
+    PLDR.MMCE.PREFIX = PLDR.MMCE.SLOTS[PLDR.MMCE.INDEX]
+    LOG("MMCE slot selected: "..PLDR.MMCE.PREFIX)
+  else
+    LOG("MMCE not found")
+  end
 end
 
 require("pops_profiles")
@@ -368,6 +407,7 @@ end
 function PLDR.RunPOPStarterGame(gamelocation, game)
   local source_mode = GetLaunchSourceMode(gamelocation)
   local vcd_path = gamelocation..game
+  local popstarter = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
 
   local BOOTPARAM
   if UI.CURSCENE == UI.SCENES.GSMB then
@@ -377,11 +417,13 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
     BOOTPARAM = BuildXXUsageArgs(gamelocation, game, source_mode)
   end
 
-  LOG("PopStarter:", PLDR.POPSTARTER_PATH, "VCD:", vcd_path, "mode:", source_mode, "argv_count:", 2, "args:", BOOTPARAM, "--nr")
-  System.loadELF(PLDR.POPSTARTER_PATH,
+  LOG("Boot APP_DIR: "..APP_DIR_LOCAL)
+  LOG("PopStarter selected: "..popstarter)
+  LOG("PopStarter:", popstarter, "VCD:", vcd_path, "mode:", source_mode, "argv_count:", 2, "args:", BOOTPARAM, "--nr")
+  System.loadELF(popstarter,
     PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER,
     BOOTPARAM, "--nr")
-    LOG(">>> UNHANDLED ERROR at Launching game '", game, " via ", PLDR.POPSTARTER_PATH, " Failed")
+    LOG(">>> UNHANDLED ERROR at Launching game '", game, " via ", popstarter, " Failed")
   error("ERROR: ELF loading failure")
 end
 
