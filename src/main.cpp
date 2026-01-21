@@ -85,6 +85,8 @@ extern unsigned int size_mmceman_irx;
 
 char boot_path[255];
 char app_dir[255];
+int mmce_slot0_ready = -1;
+int mmce_slot1_ready = -1;
 
 void setLuaBootPath(int argc, char ** argv, int idx)
 {
@@ -182,6 +184,75 @@ char* GetArgv0(void) {
     printf("%s: id:%d, ret:%d\n", #_irx, ID, RET)
 #define LOAD_IRX_NARG(_irx) LOAD_IRX(_irx, 0, NULL)
 
+static bool LoadIrxChecked(const char *name, unsigned char *irx, unsigned int size, int *out_id, int *out_ret)
+{
+    int id = -1;
+    int ret = -1;
+    id = SifExecModuleBuffer(irx, size, 0, NULL, &ret);
+    if (out_id) {
+        *out_id = id;
+    }
+    if (out_ret) {
+        *out_ret = ret;
+    }
+    if (id < 0 || ret < 0) {
+        DPRINTF("IOP module load failed: %s id=%d ret=%d\n", name, id, ret);
+        return false;
+    }
+    DPRINTF("IOP module load ok: %s id=%d ret=%d\n", name, id, ret);
+    return true;
+}
+
+#ifdef DEBUG
+static void DumpLoadedModules(void)
+{
+    smod_mod_info_t cur;
+    smod_mod_info_t next;
+    int ret = smod_get_next_mod(NULL, &cur);
+    if (ret < 0) {
+        DPRINTF("IOP module list unavailable: ret=%d\n", ret);
+        return;
+    }
+    for (;;) {
+        char name[32] = {0};
+        if (cur.name != NULL) {
+            smem_read(cur.name, name, sizeof(name) - 1);
+        } else {
+            snprintf(name, sizeof(name), "<noname>");
+        }
+        DPRINTF("IOP module: name=%s id=%d\n", name, cur.id);
+        ret = smod_get_next_mod(&cur, &next);
+        if (ret < 0) {
+            break;
+        }
+        cur = next;
+    }
+}
+#endif
+
+static bool ProbeDevicePath(const char *path)
+{
+    DIR *d = opendir(path);
+    if (d) {
+        closedir(d);
+        return true;
+    }
+    struct stat st;
+    if (stat(path, &st) == 0) {
+        return true;
+    }
+    return false;
+}
+
+static void ProbeMmceSlots(void)
+{
+    mmce_slot0_ready = ProbeDevicePath("mmce0:/") ? 1 : 0;
+    mmce_slot1_ready = ProbeDevicePath("mmce1:/") ? 1 : 0;
+    DPRINTF("MMCE probe: mmce0=%s mmce1=%s\n",
+            mmce_slot0_ready ? "OK" : "FAIL",
+            mmce_slot1_ready ? "OK" : "FAIL");
+}
+
 int main(int argc, char * argv[])
 {
     int ID, RET;
@@ -205,12 +276,49 @@ int main(int argc, char * argv[])
 	LOAD_IRX_NARG(ppctty_irx);
 #endif
 
-	LOAD_IRX_NARG(iomanX_irx);
-	LOAD_IRX_NARG(fileXio_irx);
-	fileXioInit();
+    bool ioman_ok = LoadIrxChecked("iomanX_irx", iomanX_irx, size_iomanX_irx, NULL, NULL);
+    bool filexio_ok = false;
+    int filexio_ret = -1;
+    if (ioman_ok) {
+        filexio_ok = LoadIrxChecked("fileXio_irx", fileXio_irx, size_fileXio_irx, NULL, NULL);
+        if (filexio_ok) {
+            filexio_ret = fileXioInit();
+            if (filexio_ret < 0) {
+                DPRINTF("fileXioInit failed: ret=%d\n", filexio_ret);
+                filexio_ok = false;
+            }
+        }
+    } else {
+        DPRINTF("Skipping fileXio init; iomanX failed to load.\n");
+    }
 
 	LOAD_IRX_NARG(sio2man_irx);
-	LOAD_IRX_NARG(mmceman_irx);
+    if (filexio_ok) {
+        int mmceman_id = -1;
+        int mmceman_ret = -1;
+        bool mmceman_ok = LoadIrxChecked("mmceman_irx", &mmceman_irx, size_mmceman_irx, &mmceman_id, &mmceman_ret);
+        DPRINTF("mmceman load result: id=%d ret=%d\n", mmceman_id, mmceman_ret);
+#ifdef DEBUG
+        if (mmceman_ok) {
+            smod_mod_info_t info;
+            int lookup_ret = smod_get_mod_by_name("mmceman", &info);
+            if (lookup_ret < 0) {
+                DPRINTF("mmceman module lookup failed: ret=%d\n", lookup_ret);
+                DumpLoadedModules();
+            }
+        }
+#endif
+        if (mmceman_ok) {
+            ProbeMmceSlots();
+        } else {
+            mmce_slot0_ready = 0;
+            mmce_slot1_ready = 0;
+        }
+    } else {
+        DPRINTF("Skipping mmceman init; fileXio not ready.\n");
+        mmce_slot0_ready = 0;
+        mmce_slot1_ready = 0;
+    }
     LOAD_IRX_NARG(mcman_irx);
     LOAD_IRX_NARG(mcserv_irx);
     initMC();
