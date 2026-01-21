@@ -377,7 +377,7 @@ function PLDR.HDD.CreateCache()
   local temp = "LOG(\">HDD CACHE LOAD\")\nPLDR.HDDCACHE = {\n"
   PLDR.HDD.BuildGameList()
   for i = 1, #PLDR.GAMES do
-    temp = temp..("  \"%s\",\n"):format(PLDR.GAMES[i])
+    temp = temp..("  %q,\n"):format(PLDR.GAMES[i])
   end
   temp = temp.."\n}\n"
   local fd = System.openFile(C, FCREATE)
