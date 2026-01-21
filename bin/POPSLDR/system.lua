@@ -22,6 +22,7 @@ local function EnsureTrailingSlash(path)
   end
   return path.."/"
 end
+_G.EnsureTrailingSlash = EnsureTrailingSlash
 LOG("EnsureTrailingSlash loaded from system.lua")
 local function NormalizeDeviceRoot(path)
   if path == nil or path == "" then return path end
@@ -495,13 +496,8 @@ local function NormalizeBootBasename(basename, desired_prefix)
     return ""
   end
   local cleaned = basename
-  if string.match(cleaned, "^[Xx][Xx]%.") then
-    cleaned = string.gsub(cleaned, "^[Xx][Xx]%.", "", 1)
-  elseif string.match(cleaned, "^[Ss][Bb]%.") then
-    cleaned = string.gsub(cleaned, "^[Ss][Bb]%.", "", 1)
-  end
   if desired_prefix ~= nil and desired_prefix ~= "" then
-    if not string.match(cleaned, "^"..desired_prefix:gsub("%.", "%%.")) then
+    if string.upper(string.sub(cleaned, 1, #desired_prefix)) ~= string.upper(desired_prefix) then
       cleaned = desired_prefix..cleaned
     end
   end
@@ -733,7 +729,6 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
         "mount:", context.hdd_init.mount_partition, "mount_ok:", context.hdd_init.mount_ok)
     end
   end
-  LogPopstarterArgs(argv)
   local open_ok, open_rc, open_stage, open_api, open_path = TryOpenForLaunch(popstarter)
   if open_ok then
     LaunchLog("LAUNCH: popstarter stat ok:", open_rc)
@@ -775,8 +770,9 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     return
   end
   SetLaunchPhase(LaunchState.PHASE_EXEC)
+  LaunchLog("LAUNCH: exec popstarter path:", popstarter)
   LaunchLog(
-    "LAUNCH: boot source:",
+    "LAUNCH: exec boot source:",
     context and context.bootparam_source or "unknown",
     "pops root:",
     context and context.bootparam_root or "unknown",
@@ -787,6 +783,15 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     "boot string:",
     context and context.bootparam or "unknown"
   )
+  LaunchLog(
+    "LAUNCH: stage A boot root:",
+    context and context.bootparam_root or "unknown",
+    "prefix:",
+    context and context.bootparam_prefix or "none",
+    "boot string:",
+    context and context.bootparam or "unknown"
+  )
+  LaunchLog("LAUNCH: stage A argv_count:", argv and #argv or 0)
   LogPopstarterArgs(argv)
   LaunchLog("LAUNCH: exec argv[0]:", argv[1])
   LaunchLog("LAUNCH: exec argv[1]:", argv[2])
@@ -877,7 +882,10 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   if string.match(source_mode, "^pfs") then
     pops_root = normalized_gamelocation
     boot_source_mode = "pfs"
-  elseif device_page == "SMB/MMCE" then
+  elseif string.match(normalized_gamelocation, "^mmce%d:/") then
+    pops_root = normalized_gamelocation
+    boot_source_mode = "mass"
+  elseif string.match(normalized_gamelocation, "^smb:/") or device_page == "SMB/MMCE" then
     pops_root = "smb:/POPS/"
     boot_source_mode = "smb"
   else

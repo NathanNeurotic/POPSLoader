@@ -37,7 +37,7 @@ local UI = {
     };
     InputConfig = {
       MIN_ACTION_MS = 220;
-      DEBUG_INPUT_LOG = true;
+      DEBUG_INPUT_LOG = false;
     };
     --- Notifications queue handler
     Notif_queue = {
