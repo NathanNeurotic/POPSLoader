@@ -17,16 +17,22 @@ POPSLoader was created by [El_isra](https://www.github.com/israpps), and this re
 ## Status / Roadmap
 - No subfolder dependencies (assets load from ELF directory first).
 - Legacy `POPSLDR/` layout kept as fallback.
-- Treat mmce as USB (XX.) for POPSTARTER.
 
 ## Usage
-Put `POPSLOADER.ELF` and runtime assets in the same folder (no subfolder required):  
+Place `POPSLOADER.ELF`, `POPSTARTER.ELF`, Lua scripts, images, and optional IRX modules in the same directory (no required subdirectories).  
 - `system.lua`, `ui.lua`, `images.lua`, `pops_profiles.lua`, `PATCH_5.BIN`  
 - UI images (`*.png`) and optional external IRX modules (`*.irx`)  
-Recommended layout: place `POPSTARTER.ELF` next to `POPSLOADER.ELF` in the same folder.  
-Profiles can override the PopStarter path if needed; legacy locations are fallback-only.  
-Legacy `POPSLDR/` folder layout is still supported as a fallback.  
+Legacy folders (`POPSLDR/`, `IMG/`, `IRX/`) are fallback-only.  
+Profiles can override the PopStarter path if needed.  
 See [docs/RUNTIME_LAYOUT.md](docs/RUNTIME_LAYOUT.md) for layout details and compatibility notes.
+
+### Device pages
+- The SMB slot represents MMCE (no SMB networking support); `SMB.png` is reused as the icon.  
+- MMCE auto-detects `mmce0:/` and `mmce1:/`, with module load order: `iomanX` → `fileXio` → `mmceman`.  
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for implementation details.
+
+### Controls
+- Triangle: Exit to OSDSYS (with confirmation).
 
 ### Tips
 - (USB Only) if you want POPStarter IGR to go back to POPSLoader automatically, copy `POPSLOADER.ELF` renamed as `BOOT.ELF` (legacy `POPSLDR/` layout is still supported if you use it)

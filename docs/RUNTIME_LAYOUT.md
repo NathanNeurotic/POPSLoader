@@ -1,53 +1,39 @@
-# Runtime layout
+# Runtime layout (single source of truth)
 
-## Current expected runtime folder structure (today)
-From README and boot scripts:
-- Place `POPSLOADER.ELF` and runtime assets in the same folder (no subfolder required).【F:README.md†L17-L21】
-- Recommended: place `POPSTARTER.ELF` next to `POPSLOADER.ELF`; profiles can override this path, while legacy locations are fallback-only.【F:README.md†L22-L28】
-- `boot.lua` executes the resolved `system.lua` via `System.resolveAsset` and prefers APP_DIR paths first, with legacy `POPSLDR/` fallbacks preserved.【F:etc/boot.lua†L1-L81】【F:src/system.cpp†L80-L107】
+This document describes how POPSLoader resolves runtime assets **today**, based on the current codebase. It is the authoritative layout reference; other docs should defer to this file.
 
-Example layout (USB root, no subfolder):
-```
-/mass:/
-  POPSLOADER.ELF
-  system.lua
-  ui.lua
-  images.lua
-  pops_profiles.lua
-  PATCH_5.BIN
-  USB.png
-  SMB.png
-  HDD.png
-  PSL.png
-  select.png
-  start.png
-  (optional) *.irx
-```
-(See packaged assets under `bin/POPSLDR/` in the repo; packaging flattens them beside the ELF.)【F:bin/POPSLDR/system.lua†L1-L11】【F:Makefile†L171-L179】
+## Flat layout (recommended)
+Place these files **next to** `POPSLOADER.ELF` in the same directory (no required subfolders):
+- `POPSLOADER.ELF`
+- `POPSTARTER.ELF`
+- Lua scripts (e.g., `system.lua`, `ui.lua`, `images.lua`, `pops_profiles.lua`)
+- UI images (`*.png`)
+- External modules (`*.irx`)
+- Profiles/configs if stored as external files
 
-## Target layout (goal)
-**Goal:** assets should load from the ELF directory first (no subfolder dependency). This is implemented in the resolver and must preserve legacy fallback behavior unless intentionally removed and documented. (See `AGENTS.md` for the explicit roadmap statement.)【F:AGENTS.md†L41-L50】【F:src/system.cpp†L80-L107】
+Legacy subfolders (`POPSLDR/`, `IMG/`, `IRX/`) are **fallback only** and should not be required for a correct install.
 
-## Compatibility strategy (fallback order)
-When resolving Lua scripts/modules:
+## Search order (explicit)
+### Lua scripts and modules
+`etc/boot.lua` sets the Lua search path so that assets are resolved in this order:
 1. `APP_DIR/?.lua`
 2. `APP_DIR/POPSLDR/?.lua` (legacy fallback)
 3. `./?.lua`
 4. `./POPSLDR/?.lua`
 5. `mass:/POPSLDR/?.lua`
 6. `mc0:/POPSLDR/?.lua`
-7. `mc1:/POPSLDR/?.lua`【F:etc/boot.lua†L1-L11】
+7. `mc1:/POPSLDR/?.lua`
 
-`boot.lua` resolves `system.lua` via `System.resolveAsset` before falling back to error handling.【F:etc/boot.lua†L72-L81】
+### Images and IRX modules
+`System.resolveAssetType` and runtime helpers attempt the flat layout first, then legacy folders:
+- Images: `APP_DIR/`, `APP_DIR/IMG/`, `APP_DIR/POPSLDR/IMG/`, `APP_DIR/POPSLDR/`
+- IRX: `APP_DIR/`, `APP_DIR/IRX/`, `APP_DIR/POPSLDR/IRX/`, `APP_DIR/POPSLDR/`
 
-## Runtime assets and search locations
-| Asset type | Example(s) | Search / usage location | Evidence |
-|---|---|---|---|
-| Lua entrypoint | `system.lua` | `System.resolveAsset("system.lua")` (APP_DIR first, `POPSLDR/` fallback) | `etc/boot.lua` |【F:etc/boot.lua†L72-L81】【F:src/system.cpp†L80-L107】
-| Lua modules | `ui.lua`, `images.lua`, `pops_profiles.lua` | `package.path` includes `APP_DIR/?.lua` plus legacy `POPSLDR/?.lua` locations | `etc/boot.lua` |【F:etc/boot.lua†L1-L11】
-| POPStarter ELF | `APP_DIR/POPSTARTER.ELF` (preferred), `mass:/POPS/POPSTARTER.ELF` (fallback) | Resolved at launch from `PLDR.POPSTARTER_PATH` with APP_DIR-first behavior | `bin/POPSLDR/system.lua` |【F:bin/POPSLDR/system.lua†L31-L50】【F:bin/POPSLDR/system.lua†L407-L427】
-| POPStarter dependencies (USB/HDD) | `POPS_IOX.PAK`, `POPS.ELF`, `IOPRP252.IMG` | Checked under `mass:/POPS/` or `pfs1:/POPS/` if enabled | `bin/POPSLDR/system.lua` |【F:bin/POPSLDR/system.lua†L63-L74】
-| Optional IGR textures | `PATCH_5.BIN` | Documented as replaceable in `POPS/` for POPStarter IGR | `bin/README.md` |【F:bin/README.md†L9-L10】
+## Device support (path prefixes used in code)
+POPSLoader uses these device prefixes in its runtime paths:
+- Memory card: `mc0:/`, `mc1:/`
+- USB mass storage: `mass:/` and `mass0:/`–`mass4:/` (the game list path is built as `mass{MASSINDX}:/`, default `MASSINDX = 0`)
+- MMCE: `mmce0:/`, `mmce1:/`
 
-## TODOs / unknowns (verify in code)
-- `mmce0:/` usage is not visible in the reviewed files. The module `mmceman.irx` is embedded, but no explicit device path references were found. **TODO: verify** in other Lua scripts or C/C++ modules.【F:iop/embed/mmceman.irx†L1-L1】
+## Not handled here
+This document does **not** define POPStarter’s own `POPS/` folder expectations (e.g., `mass:/POPS/` or `pfs1:/POPS/`). Those remain POPStarter responsibilities and are validated elsewhere in the runtime.

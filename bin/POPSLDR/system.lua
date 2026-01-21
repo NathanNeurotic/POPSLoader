@@ -420,6 +420,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   LOG("Boot APP_DIR: "..APP_DIR_LOCAL)
   LOG("PopStarter selected: "..popstarter)
   LOG("PopStarter:", popstarter, "VCD:", vcd_path, "mode:", source_mode, "argv_count:", 2, "args:", BOOTPARAM, "--nr")
+  UI.LAUNCHING = true
   System.loadELF(popstarter,
     PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER,
     BOOTPARAM, "--nr")

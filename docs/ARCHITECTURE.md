@@ -1,17 +1,18 @@
 # Architecture
 
-## High-level flow (UI → profile selection → POPStarter handoff)
-- The Lua entrypoint is `etc/boot.lua`, embedded into the ELF at build time and executed at startup; it sets `package.path` and runs the resolved `system.lua` (APP_DIR first, legacy `POPSLDR/` fallback).【F:Makefile†L71-L73】【F:etc/boot.lua†L1-L81】【F:src/system.cpp†L80-L107】
-- `bin/POPSLDR/system.lua` initializes UI state and executes a main loop that drives scenes (main menu, profile query, game list, credits).【F:bin/POPSLDR/system.lua†L277-L296】
-- POPStarter handoff is performed by `PLDR.RunPOPStarterGame`, which builds a boot parameter and calls `System.loadELF(POPSLDR.POPSTARTER_PATH, ...)`.【F:bin/POPSLDR/system.lua†L262-L279】
+This document reflects the current POPSLoader architecture as implemented in the codebase.
 
-## Key modules / files and responsibilities
-- `src/main.cpp`: EE entrypoint; sets up IOP modules, device readiness, and boot path from argv, then executes embedded Lua boot script.【F:src/main.cpp†L65-L126】
-- `etc/boot.lua`: boot script; sets Lua search paths, handles HDD boot path setup, and loads the resolved `system.lua` (flat-first).【F:etc/boot.lua†L1-L81】【F:src/system.cpp†L80-L107】
-- `bin/POPSLDR/system.lua`: core runtime logic for POPSLoader UI, game list handling, and POPStarter handoff (calls `System.loadELF`).【F:bin/POPSLDR/system.lua†L25-L31】【F:bin/POPSLDR/system.lua†L262-L296】
-- `bin/POPSLDR/ui.lua`, `bin/POPSLDR/images.lua`, `bin/POPSLDR/pops_profiles.lua`: UI and profile data loaded via `require(...)` from `system.lua`.【F:bin/POPSLDR/system.lua†L55-L58】
-- `src/luasystem.cpp`: provides Lua bindings such as `System.loadELF` for POPStarter handoff.【F:src/luasystem.cpp†L496-L526】【F:src/luasystem.cpp†L720-L735】
+## Startup flow (EE entrypoint → Lua boot)
+- Optional IOP reset is performed only when `RESET_IOP` is defined (`SifIopReset`/`SifIopSync`).【F:src/main.cpp†L262-L267】
+- IOP module init order for MMCE support is: `iomanX` → `fileXio` (and `fileXioInit`) → `mmceman`; MMCE slots are probed after `mmceman` loads successfully.【F:src/main.cpp†L279-L313】
+- `APP_DIR` is derived from the launch path (`argv[0]`) via `setAppDirFromPath`, with `boot_path` fallback when no argv is provided.【F:src/main.cpp†L363-L368】
+- A USB readiness preflight probes `mass:/` (stat loop with retries).【F:src/main.cpp†L350-L361】
+- The embedded Lua boot script (`etc/boot.lua`) sets `package.path` and loads the resolved `system.lua` (APP_DIR first, legacy `POPSLDR/` fallback).【F:etc/boot.lua†L1-L11】【F:etc/boot.lua†L72-L81】
 
-## Where Lua lives and how it’s invoked
-- Lua boot code is embedded from `etc/boot.lua` into the ELF during the build (via `bin2c`).【F:Makefile†L71-L73】
-- Runtime Lua scripts are expected beside the ELF (flat layout) with `POPSLDR/` kept as a legacy fallback for `dofile`/`require`.【F:etc/boot.lua†L1-L11】【F:etc/boot.lua†L72-L81】
+## UI flow (scenes and device pages)
+- The main menu defines three device slots (`USB`, `SMB`, `HDD`); the `SMB` slot is wired to the MMCE device page and uses MMCE slot discovery/selection rather than SMB networking.【F:bin/POPSLDR/ui.lua†L261-L307】
+- MMCE slot detection is driven by `mmce0:/` and `mmce1:/` availability (populated into `PLDR.MMCE.SLOTS`).【F:bin/POPSLDR/system.lua†L116-L127】
+- POPStarter launches use a shared path builder: USB and MMCE both use the `XX.` boot parameter format, while the launch mode differs (`isra` for USB/mass, device string for MMCE).【F:bin/POPSLDR/system.lua†L390-L405】
+
+## Exit path (UI → OSDSYS)
+- Triangle opens an exit confirmation modal; confirming calls `System.exitToBrowser()` to return to OSDSYS.【F:bin/POPSLDR/ui.lua†L94-L168】

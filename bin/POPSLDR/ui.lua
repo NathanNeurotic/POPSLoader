@@ -11,6 +11,7 @@ UI = {
     LASTSCENE = 4;
     CURSCENE = 4;
     SCENES = {GUSB=1, GSMB=2, GHDD=3, MMAIN=4, MPROFILE=5, CREDITS=6};
+    LAUNCHING = false;
     SceneChange = function (SCENE)
       UI.LASTSCENE = UI.CURSCENE
       UI.CURSCENE = SCENE
@@ -64,6 +65,7 @@ UI = {
     --- wrapper for Screen.flip(), here you add UI draws that renders on top of everything (for example, error notifications)
     flip = function (notif)
       UI.Notif_queue.display()
+      UI.Modal.Draw()
       Screen.flip()
     end;
     WelcomeDraw = {
@@ -89,6 +91,82 @@ UI = {
           Graphics.drawRect(0, 20, UI.SCR.X, 398, UI.CCOL.TRANSP_BLACK)
       end;
     };
+    Modal = {
+      active = false;
+      title = "";
+      body = "";
+      options = {"Yes", "No"};
+      selected = 2;
+      OpenExit = function ()
+        LOG("Exit requested")
+        UI.Modal.active = true
+        UI.Modal.title = "Exit"
+        UI.Modal.body = "Return to OSDSYS?"
+        UI.Modal.options = {"Yes", "No"}
+        UI.Modal.selected = 2
+      end;
+      Close = function ()
+        UI.Modal.active = false
+      end;
+      Confirm = function ()
+        LOG("Exit confirmed")
+        UI.LAUNCHING = true
+        System.exitToBrowser()
+      end;
+      HandleInput = function ()
+        if not UI.Modal.active then return end
+        if Pads.check(GPAD, PAD_LEFT) or Pads.check(GPAD, PAD_RIGHT) then
+          if UI.Modal.selected == 1 then
+            UI.Modal.selected = 2
+          else
+            UI.Modal.selected = 1
+          end
+          GPAD = 0
+        elseif Pads.check(GPAD, PAD_CROSS) then
+          if UI.Modal.selected == 1 then
+            UI.Modal.Confirm()
+          else
+            UI.Modal.Close()
+          end
+          GPAD = 0
+        elseif Pads.check(GPAD, PAD_CIRCLE) then
+          UI.Modal.Close()
+          GPAD = 0
+        end
+      end;
+      Draw = function ()
+        if not UI.Modal.active then return end
+        local box_w = 320
+        local box_h = 140
+        local box_x = UI.SCR.X_MID - (box_w / 2)
+        local box_y = UI.SCR.Y_MID - (box_h / 2)
+        Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, 120))
+        Graphics.drawRect(box_x, box_y, box_w, box_h, Color.new(0, 0, 0, 200))
+        Graphics.drawRect(box_x, box_y, box_w, 2, UI.CCOL.GREY)
+        Graphics.drawRect(box_x, box_y + box_h - 2, box_w, 2, UI.CCOL.GREY)
+        Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 10, 8, UI.SCR.X, 16, UI.Modal.title, UI.CCOL.YELLOW)
+        Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 50, 8, UI.SCR.X, 16, UI.Modal.body, UI.CCOL.GREY)
+        local yes_col = UI.Modal.selected == 1 and UI.CCOL.YELLOW or UI.CCOL.GREY
+        local no_col = UI.Modal.selected == 2 and UI.CCOL.YELLOW or UI.CCOL.GREY
+        Font.ftPrint(BFONT, UI.SCR.X_MID - 60, box_y + 95, 0, UI.SCR.X, 16, UI.Modal.options[1], yes_col)
+        Font.ftPrint(BFONT, UI.SCR.X_MID + 20, box_y + 95, 0, UI.SCR.X, 16, UI.Modal.options[2], no_col)
+      end;
+    };
+    HandleGlobalInput = function (allow_exit)
+      if UI.Modal.active then
+        UI.Modal.HandleInput()
+        return true
+      end
+      if allow_exit == nil then allow_exit = true end
+      if not allow_exit then return false end
+      if UI.LAUNCHING then return false end
+      if Pads.check(GPAD, PAD_TRIANGLE) then
+        UI.Modal.OpenExit()
+        GPAD = 0
+        return true
+      end
+      return false
+    end;
     GameList = {
       MAXDRAW = 18;
       CURR = 1;
@@ -120,6 +198,12 @@ UI = {
           Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID+1, UI.SCR.Y_MID+1, 20, UI.SCR.X, 32, "No games found", UI.CCOL.TRANSP_BLACK)
         end
         UI.Pad.Listen()
+        if UI.CURSCENE == UI.SCENES.GSMB then
+          local slots = PLDR.GetMMCESlots()
+          UI.HandleGlobalInput(#slots <= 1)
+        else
+          UI.HandleGlobalInput(true)
+        end
         if Pads.check(GPAD, PAD_CIRCLE) then UI.SceneChange(UI.SCENES.MMAIN) end
         if UI.CURSCENE == UI.SCENES.GSMB then
           local slots = PLDR.GetMMCESlots()
@@ -160,6 +244,7 @@ UI = {
         Font.ftPrint(BFONT, UI.SCR.X_MID, 190, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].DESC, UI.CCOL.GREY)
         Font.ftPrint(BFONT, UI.SCR.X_MID, 280, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].ELF, Color.new(128,128,128, 110))
         UI.Pad.Listen()
+        UI.HandleGlobalInput(true)
         if Pads.check(GPAD, PAD_DOWN) then UI.ProfileQuery.curopt = CLAMP(UI.ProfileQuery.curopt+1, 1, profcnt) GPAD = 0 end
         if Pads.check(GPAD, PAD_UP) then UI.ProfileQuery.curopt = CLAMP(UI.ProfileQuery.curopt-1, 1, profcnt) GPAD = 0 end
         if Pads.check(GPAD, PAD_CIRCLE) then UI.SceneChange(UI.SCENES.MMAIN) end
@@ -185,7 +270,11 @@ UI = {
         end
         Graphics.drawImage(IMG["start"], 20, UI.SCR.Y-65) Font.ftPrint(SFONT, 55, UI.SCR.Y-60, 0, UI.SCR.X, 16, "POPStarter profiles")
         Graphics.drawImage(IMG["select"], 20, UI.SCR.Y-85) Font.ftPrint(SFONT, 55, UI.SCR.Y-80, 0, UI.SCR.X, 16, "About")
+        if not UI.LAUNCHING and not UI.Modal.active then
+          Font.ftPrint(SFONT, 55, UI.SCR.Y-100, 0, UI.SCR.X, 16, "△ Exit")
+        end
         UI.Pad.Listen()
+        UI.HandleGlobalInput(true)
         if Pads.check(GPAD, PAD_RIGHT) then UI.MainMenu.OPT = CLAMP(UI.MainMenu.OPT+1, 1, profcnt) GPAD = 0 end
         if Pads.check(GPAD, PAD_LEFT)  then UI.MainMenu.OPT = CLAMP(UI.MainMenu.OPT-1, 1, profcnt) GPAD = 0 end
         if Pads.check(GPAD, PAD_START) then UI.SceneChange(UI.SCENES.MPROFILE) end
@@ -280,6 +369,7 @@ UI = {
         Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, 120, 20, UI.SCR.X, UI.SCR.Y, "Based on Enceladus by Daniel santos\n\nSpecial thanks to:\nkrHACKen: for making POPStarter\nuyjulian, fjtrujy, HWC and others for always helping me\n\nThis program is free and open source\nif you bought it you've been scammed", currcol)
         Graphics.drawRect(0, UI.SCR.Y-60, UI.SCR.X, 2, currcol)
         UI.Pad.Listen()
+        UI.HandleGlobalInput(true)
         if GPAD ~= 0 then UI.Credits.INCR = 1 end
       end
     };
