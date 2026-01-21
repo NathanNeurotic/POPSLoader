@@ -20,7 +20,7 @@ local IMGS = {
   "PSL.png",
   "select.png",
   "start.png",
-  "Triangle.png",
+  "triangle.png",
   --"circle.png",
   --"cross.png",
   --"down.png",
