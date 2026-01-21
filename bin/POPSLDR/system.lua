@@ -132,7 +132,24 @@ if MMCE_SLOT0_READY ~= nil and MMCE_SLOT0_READY >= 0 then
 end
 
 require("pops_profiles")
-require("ui")
+local ok_ui, ui_or_err = pcall(require, "ui")
+if not ok_ui then
+  LOG("UI load failed")
+  LOG("APP_DIR:", APP_DIR_LOCAL)
+  LOG("Boot cwd:", System.currentDirectory())
+  LOG("package.path:", package.path)
+  error("UI module failed to load: "..tostring(ui_or_err))
+end
+if ui_or_err ~= nil and ui_or_err ~= true then
+  UI = ui_or_err
+end
+if UI == nil then
+  LOG("UI global is nil after require('ui')")
+  LOG("APP_DIR:", APP_DIR_LOCAL)
+  LOG("Boot cwd:", System.currentDirectory())
+  LOG("package.path:", package.path)
+  error("UI global not initialized (module returned nil or did not set UI)")
+end
 require("images")
 
 function PLDR.DetectMMCESlot()

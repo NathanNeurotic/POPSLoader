@@ -7,7 +7,7 @@ local function ensure_dir(path)
 end
 
 local BASE_DIR = ensure_dir(APP_DIR or System.currentDirectory())
-package.path = BASE_DIR.."?.lua;"..BASE_DIR.."POPSLDR/?.lua;./?.lua;./POPSLDR/?.lua;mass:/POPSLDR/?.lua;mc0:/POPSLDR/?.lua;mc1:/POPSLDR/?.lua"
+package.path = BASE_DIR.."?.lua;"..BASE_DIR.."?/init.lua;"..BASE_DIR.."POPSLDR/?.lua;./?.lua;./POPSLDR/?.lua;mass:/POPSLDR/?.lua;mc0:/POPSLDR/?.lua;mc1:/POPSLDR/?.lua"
 function LOG(...)
   print_uart(...)
 end

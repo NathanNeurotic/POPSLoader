@@ -7,7 +7,7 @@
 --]]
 
 LOG("Registering POPSLoader UI")
-UI = {
+local UI = {
     LASTSCENE = 4;
     CURSCENE = 4;
     SCENES = {GUSB=1, GSMB=2, GHDD=3, MMAIN=4, MPROFILE=5, CREDITS=6};
@@ -346,8 +346,8 @@ UI = {
         START = false,
         SELECT = false,
       };
-      REPEAT_DELAY = UI.InputConfig.NAV_REPEAT_DELAY_MS;
-      REPEAT_INTERVAL = UI.InputConfig.NAV_REPEAT_INTERVAL_MS;
+      REPEAT_DELAY = nil;
+      REPEAT_INTERVAL = nil;
       RepeatStart = {};
       RepeatLast = {};
       Listen = function ()
@@ -427,3 +427,7 @@ UI = {
       end
     };
   }
+UI.Pad.REPEAT_DELAY = UI.InputConfig.NAV_REPEAT_DELAY_MS
+UI.Pad.REPEAT_INTERVAL = UI.InputConfig.NAV_REPEAT_INTERVAL_MS
+_G.UI = UI
+return UI
