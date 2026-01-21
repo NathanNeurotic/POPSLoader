@@ -12,8 +12,24 @@
   Licensed under GNU General public license v3.0
 --]]
 LOG(System.currentDirectory())
-if doesFolderExist("POPSLDR/IRX/") then
-  local IRXDIR = System.listDirectory("POPSLDR/IRX/")
+local APP_DIR_LOCAL = APP_DIR or System.currentDirectory()
+if string.sub(APP_DIR_LOCAL, -1) ~= "/" then APP_DIR_LOCAL = APP_DIR_LOCAL.."/" end
+
+local function ResolveAsset(rel)
+  return System.resolveAsset(rel) or (APP_DIR_LOCAL..rel)
+end
+
+local function ResolveWritablePath(rel)
+  local legacy = APP_DIR_LOCAL.."POPSLDR/"..rel
+  local modern = APP_DIR_LOCAL..rel
+  if doesFileExist(legacy) or doesFolderExist(APP_DIR_LOCAL.."POPSLDR/") then
+    return legacy
+  end
+  return modern
+end
+local IRXPATH = System.resolveAsset("IRX/") or (APP_DIR_LOCAL.."IRX/")
+if doesFolderExist(IRXPATH) then
+  local IRXDIR = System.listDirectory(IRXPATH)
   if IRXDIR ~= nil then
     LOG("Found IRX folder")
     for x=1, #IRXDIR do
@@ -233,7 +249,7 @@ end
 function PLDR.HDD.CreateCache()
   if not PLDR.HDD.USECACHE then return end
   LOG("> HDD Cache Create")
-  local C = "POPSLDR/hdd_gamecache.lua"
+  local C = ResolveWritablePath("hdd_gamecache.lua")
   local temp = "LOG(\">HDD CACHE LOAD\")\nPLDR.HDDCACHE = {\n"
   PLDR.HDD.BuildGameList()
   for i = 1, #PLDR.GAMES do
@@ -248,7 +264,7 @@ end
 
 function PLDR.HDD.ReadCache()
   LOG("> HDD Cache Read")
-  local C = "POPSLDR/hdd_gamecache.lua"
+  local C = ResolveWritablePath("hdd_gamecache.lua")
   if doesFileExist(C) then
     dofile(C)
     PLDR.HDD.HAS_CHECKED = true
@@ -257,7 +273,7 @@ end
 
 function PLDR.HDD.WipeCache(CACHE)
   LOG("> HDD Cache Wipe")
-  local C = "POPSLDR/hdd_gamecache.lua"
+  local C = ResolveWritablePath("hdd_gamecache.lua")
   if doesFileExist(C) then
     System.removeFile(C)
     PLDR.HDD.HAS_CHECKED = false
@@ -290,7 +306,7 @@ end
 
 ---MAIN PROGRAM BEHAVIOUR BEGINS
 UI.WelcomeDraw.Play()
-if Touch("POPSLDR/.pldrs") then
+if Touch(ResolveWritablePath(".pldrs")) then
   UI.CURSCENE = UI.SCENES.CREDITS
 end
 

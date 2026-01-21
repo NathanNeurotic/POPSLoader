@@ -10,21 +10,28 @@ local DEFAULT_PROFILE = 1 -- change this for a different default profile. defaul
 -- to register an ELF that is stored on the same folder than POPSLOADER, please do it this way:
 -- System.currentDirectory().."/POPSLDR/PROFILES/YOUR_CUSTOM_PROFILE/POPSTARTER.ELF"
 
+local APP_DIR_LOCAL = APP_DIR or System.currentDirectory()
+if string.sub(APP_DIR_LOCAL, -1) ~= "/" then APP_DIR_LOCAL = APP_DIR_LOCAL.."/" end
+
+local function ResolveProfilePath(rel)
+  return System.resolveAsset(rel) or (APP_DIR_LOCAL..rel)
+end
+
 PLDR.PROFILES = {
   {
-    ELF=System.currentDirectory().."/POPSLDR/PROFILES/MAIN/POPSTARTER.ELF";
+    ELF=ResolveProfilePath("PROFILES/MAIN/POPSTARTER.ELF");
     DESC="Latest popstarter without any modifications";
   },
   {
-    ELF=System.currentDirectory().."/POPSLDR/PROFILES/DEBUG/POPSTARTER.ELF";
+    ELF=ResolveProfilePath("PROFILES/DEBUG/POPSTARTER.ELF");
     DESC="Latest popstarter with debug menus enabled";
   },
   {
-    ELF=System.currentDirectory().."/POPSLDR/PROFILES/USBDELAY/POPSTARTER.ELF";
+    ELF=ResolveProfilePath("PROFILES/USBDELAY/POPSTARTER.ELF");
     DESC="Latest popstarter with increased USB delay";
   },
   {
-    ELF=System.currentDirectory().."POPSLDR/PROFILES/USBDELAY_DEBUG/POPSTARTER.ELF";
+    ELF=ResolveProfilePath("PROFILES/USBDELAY_DEBUG/POPSTARTER.ELF");
     DESC="Latest popstarter with increased USB delay & debug menus enabled";
   },
   {

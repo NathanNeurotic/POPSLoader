@@ -2,6 +2,7 @@
 #define __LUAPLAYER_H
 
 #include <debug.h>
+#include <stddef.h>
 
 extern "C" {
 #include "lua.h"
@@ -10,6 +11,9 @@ extern "C" {
 }
 
 extern char boot_path[255];
+extern char app_dir[255];
+
+int ResolveAssetPath(char* out, size_t outsz, const char* relativeName);
 
 #ifdef DEBUG
 #define dbgprintf(args...) scr_printf(args)
@@ -41,4 +45,3 @@ extern void luaHDD_init(lua_State *L);
 extern void stackDump (lua_State *L);
 
 #endif
-

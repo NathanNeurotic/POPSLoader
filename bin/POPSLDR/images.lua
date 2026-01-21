@@ -7,6 +7,9 @@
 --]]
 
 LOG("Loading images")
+local function ResolveAsset(rel)
+  return System.resolveAsset(rel) or rel
+end
 --- Add your images to this table, just write the name of the file, all images go into POPSLDR/IMG/*
 --- FILES MUST HAVE EXTENSION. filename is parsed to create the access key: USB.PNG will be accesed by typing `IMG["USB"]`
 local IMGS = {
@@ -35,8 +38,8 @@ IMG = {}
 LOGF("%d images registered", #IMGS)
 for x=1, #IMGS do
   local INDX = IMGS[x]:match("(.+)%..+$")
-  IMG[INDX] = Graphics.loadImage("POPSLDR/IMG/"..IMGS[x])
-  if IMG[INDX] == nil then error("Could not load 'POPSLDR/IMG/"..IMGS[x].."'") end
+  local PATH = ResolveAsset("IMG/"..IMGS[x])
+  IMG[INDX] = Graphics.loadImage(PATH)
+  if IMG[INDX] == nil then error("Could not load '"..PATH.."'") end
   Graphics.setImageFilters(IMG[INDX], LINEAR)
 end
-

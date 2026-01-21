@@ -705,6 +705,24 @@ static int lua_popargv0(lua_State *L) {
 	return 1;
 }
 
+static int lua_getAppDir(lua_State *L) {
+	lua_pushstring(L, app_dir);
+	return 1;
+}
+
+static int lua_resolveAsset(lua_State *L) {
+	int argc = lua_gettop(L);
+	if (argc != 1) return luaL_error(L, "Argument error: System.resolveAsset(relativeName) takes one argument.");
+	const char *rel = luaL_checkstring(L, 1);
+	char out[255];
+	if (ResolveAssetPath(out, sizeof(out), rel)) {
+		lua_pushstring(L, out);
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
 static const luaL_Reg System_functions[] = {
 	{"openFile",                   lua_openfile},
 	{"readFile",                   lua_readfile},
@@ -733,6 +751,8 @@ static const luaL_Reg System_functions[] = {
 	{"getDiscType",             lua_getDiscType},
 	{"checkDiscTray",         lua_checkDiscTray},
 	{"GetArgv0",                   lua_popargv0},
+	{"getAppDir",                 lua_getAppDir},
+	{"resolveAsset",           lua_resolveAsset},
 	{0, 0}
 };
 
@@ -821,6 +841,9 @@ void luaSystem_init(lua_State *L) {
 	luaL_setfuncs(L, Sif_functions, 0);
 	lua_setglobal(L, "IOP");
 
+	lua_pushstring(L, app_dir);
+	lua_setglobal(L, "APP_DIR");
+
 	lua_pushinteger(L, O_RDONLY);
 	lua_setglobal(L, "FREAD");
 
@@ -852,4 +875,3 @@ void luaSystem_init(lua_State *L) {
 
 	
 }
-

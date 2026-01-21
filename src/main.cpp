@@ -84,6 +84,7 @@ extern unsigned char mmceman_irx;
 extern unsigned int size_mmceman_irx;
 
 char boot_path[255];
+char app_dir[255];
 
 void setLuaBootPath(int argc, char ** argv, int idx)
 {
@@ -117,6 +118,38 @@ void setLuaBootPath(int argc, char ** argv, int idx)
     }
       
     
+}
+
+static void setAppDirFromPath(const char *path)
+{
+    if (!path || !path[0]) {
+        snprintf(app_dir, sizeof(app_dir), "%s", boot_path);
+        return;
+    }
+
+    char tmp[255];
+    snprintf(tmp, sizeof(tmp), "%s", path);
+
+    char *p = strrchr(tmp, '/');
+    if (p != NULL) {
+        p[1] = '\0';
+    } else if ((p = strrchr(tmp, '\\')) != NULL) {
+        p[1] = '\0';
+    } else if ((p = strchr(tmp, ':')) != NULL) {
+        p[1] = '\0';
+        strncat(tmp, "/", sizeof(tmp) - strlen(tmp) - 1);
+    }
+
+    if (tmp[0] == '\0') {
+        snprintf(app_dir, sizeof(app_dir), "%s", boot_path);
+    } else {
+        snprintf(app_dir, sizeof(app_dir), "%s", tmp);
+    }
+
+    size_t len = strlen(app_dir);
+    if (len > 0 && app_dir[len - 1] != '/') {
+        strncat(app_dir, "/", sizeof(app_dir) - len - 1);
+    }
 }
 
 
@@ -220,6 +253,11 @@ int main(int argc, char * argv[])
     }
 	
         setLuaBootPath (argc, argv, 0);
+        if (argc > 0 && argv[0]) {
+            setAppDirFromPath(argv[0]);
+        } else {
+            setAppDirFromPath(boot_path);
+        }
 	// Lua init
 	// init internals library
     
@@ -233,6 +271,8 @@ int main(int argc, char * argv[])
 
     DPRINTF("boot path : %s\n", boot_path);
 	dbgprintf("boot path : %s\n", boot_path);
+    DPRINTF("app dir : %s\n", app_dir);
+	dbgprintf("app dir : %s\n", app_dir);
     
     while (1)
     {
@@ -260,4 +300,3 @@ int main(int argc, char * argv[])
 
 	return 0;
 }
-
