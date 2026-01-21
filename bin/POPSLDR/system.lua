@@ -79,6 +79,10 @@ PLDR = {
   };
   USB = {
     MASSINDX = 0
+  },
+  MMCE = {
+    PROBED = false,
+    PREFIX = nil
   }
 }
 if BOOTPATH ~= nil then
@@ -89,6 +93,24 @@ end
 require("pops_profiles")
 require("ui")
 require("images")
+
+function PLDR.DetectMMCESlot()
+  if PLDR.MMCE.PROBED then
+    return PLDR.MMCE.PREFIX
+  end
+  PLDR.MMCE.PROBED = true
+  local candidates = {"mmce0:/", "mmce1:/"}
+  for i = 1, #candidates do
+    local candidate = candidates[i]
+    if doesFolderExist(candidate) then
+      PLDR.MMCE.PREFIX = candidate
+      LOG("MMCE slot selected: "..candidate)
+      return candidate
+    end
+  end
+  LOG("MMCE not found")
+  return nil
+end
 
 
 function CLAMP(a, MIN, MAX)

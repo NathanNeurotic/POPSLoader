@@ -177,6 +177,16 @@ UI = {
           if UI.MainMenu.OPT == 1 then
             PLDR.CleanupGameList()
             PLDR.GetPS1GameLists("mass"..PLDR.USB.MASSINDX..":/POPS/", true)
+            UI.SceneChange(UI.MainMenu.OPT)
+          elseif UI.MainMenu.OPT == 2 then
+            local mmce_prefix = PLDR.DetectMMCESlot()
+            if mmce_prefix == nil then
+              UI.Notif_queue.add("No MMCE device found (mmce0/mmce1).")
+            else
+              PLDR.CleanupGameList()
+              PLDR.GetPS1GameLists(mmce_prefix.."POPS/", true)
+              UI.SceneChange(UI.MainMenu.OPT)
+            end
           elseif UI.MainMenu.OPT == 3 then
             PLDR.LoadHDDModules()
             if UI.LASTSCENE == UI.SCENES.GHDD then
@@ -199,8 +209,8 @@ UI = {
             else
               UI.Notif_queue.add("ERROR: Cant detect usable HDD ("..PLDR.HDD.STATUS..")")
             end
+            UI.SceneChange(UI.MainMenu.OPT)
           end --because we still dont support SMB
-          if UI.MainMenu.OPT ~= 2 then UI.SceneChange(UI.MainMenu.OPT) end
           GPAD = 0
         end
       end
