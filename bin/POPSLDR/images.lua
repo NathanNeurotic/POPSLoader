@@ -6,7 +6,7 @@
   Licensed under GNU General public license v3.0
 --]]
 
-LOG("Loading images")
+LOG("Registering images")
 local function ResolveImage(name)
   return System.resolveAssetType(name, ASSET_IMG) or name
 end
@@ -35,12 +35,26 @@ local IMGS = {
   --"triangle.png",
   --"up.png",
 }
-IMG = {}
-LOGF("%d images registered", #IMGS)
+local IMG_SOURCES = {}
 for x=1, #IMGS do
-  local INDX = IMGS[x]:match("(.+)%..+$")
-  local PATH = ResolveImage(IMGS[x])
-  IMG[INDX] = Graphics.loadImage(PATH)
-  if IMG[INDX] == nil then error("Could not load '"..PATH.."'") end
-  Graphics.setImageFilters(IMG[INDX], LINEAR)
+  local key = IMGS[x]:match("(.+)%..+$")
+  IMG_SOURCES[key] = IMGS[x]
 end
+
+IMG = setmetatable({}, {
+  __index = function (tbl, key)
+    local source = IMG_SOURCES[key]
+    if source == nil then return nil end
+    if BOOT_PROF and BOOT_PROF.stamp and not BOOT_PROF.textures_ready then
+      BOOT_PROF.textures_ready = true
+      BOOT_PROF.stamp("UI assets init (textures)")
+    end
+    local path = ResolveImage(source)
+    local img = Graphics.loadImage(path)
+    if img == nil then error("Could not load '"..path.."'") end
+    Graphics.setImageFilters(img, LINEAR)
+    rawset(tbl, key, img)
+    return img
+  end
+})
+LOGF("%d images registered (lazy)", #IMGS)
