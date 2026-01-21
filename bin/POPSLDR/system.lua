@@ -390,7 +390,20 @@ function PLDR.HDD.ReadCache()
   LOG("> HDD Cache Read")
   local C = ResolveWritablePath("hdd_gamecache.lua")
   if doesFileExist(C) then
-    dofile(C)
+    local loader, load_err = loadfile(C)
+    if loader == nil then
+      LOG("HDD cache load failed:", load_err)
+      System.removeFile(C)
+      PLDR.HDD.HAS_CHECKED = false
+      return
+    end
+    local ok, run_err = pcall(loader)
+    if not ok then
+      LOG("HDD cache run failed:", run_err)
+      System.removeFile(C)
+      PLDR.HDD.HAS_CHECKED = false
+      return
+    end
     PLDR.HDD.HAS_CHECKED = true
   end
 end
