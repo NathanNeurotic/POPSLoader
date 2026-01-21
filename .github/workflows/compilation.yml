@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - '*'
+    tags:
+      - v*
+  pull_request:
+  workflow_dispatch:
+  repository_dispatch:
+    types: [run_build]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: ps2dev/ps2dev:latest
+    steps:
+      - name: Install dependencies
+        run: |
+          apk add --no-cache build-base git bash p7zip
+
+      - name: Workaround permission issue
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Compile project
+        run: |
+          make clean elfloader all package
+
+      - name: Verify artifact exists
+        if: ${{ success() }}
+        run: |
+          ls -lah
+          test -f "POPSLoader.7z"
+
+      - name: Upload artifact (no release)
+        if: ${{ success() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: POPSLoader
+          path: POPSLoader.7z
+          if-no-files-found: error
+          compression-level: 0
