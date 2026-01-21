@@ -404,22 +404,56 @@ local function GetLaunchSourceMode(gamelocation)
   return "isra"
 end
 
+local function TranslateMMCEPathForPopStarter(gamelocation)
+  return string.gsub(gamelocation, "^mmce%d:/", "mass:/")
+end
+
 function PLDR.RunPOPStarterGame(gamelocation, game)
+  local is_mmce = string.match(gamelocation, "^mmce") ~= nil
   local source_mode = GetLaunchSourceMode(gamelocation)
+  if is_mmce then
+    source_mode = "isra"
+  end
+  local handoff_gamelocation = gamelocation
+  if is_mmce then
+    handoff_gamelocation = TranslateMMCEPathForPopStarter(gamelocation)
+  end
   local vcd_path = gamelocation..game
   local popstarter = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
 
   local BOOTPARAM
-  if UI.CURSCENE == UI.SCENES.GSMB then
+  if UI.CURSCENE == UI.SCENES.GSMB and not is_mmce then
     -- SMB uses a distinct SB usage format when enabled.
-    BOOTPARAM = PLDR.replace_device(gamelocation, source_mode).."SB."..PLDR.replace_extension(game, "ELF")
+    BOOTPARAM = PLDR.replace_device(handoff_gamelocation, source_mode).."SB."..PLDR.replace_extension(game, "ELF")
   else
-    BOOTPARAM = BuildXXUsageArgs(gamelocation, game, source_mode)
+    BOOTPARAM = BuildXXUsageArgs(handoff_gamelocation, game, source_mode)
   end
 
   LOG("Boot APP_DIR: "..APP_DIR_LOCAL)
   LOG("PopStarter selected: "..popstarter)
   LOG("PopStarter:", popstarter, "VCD:", vcd_path, "mode:", source_mode, "argv_count:", 2, "args:", BOOTPARAM, "--nr")
+  local device_page = "unknown"
+  if string.match(gamelocation, "^mass") then
+    device_page = "USB"
+  elseif string.match(gamelocation, "^mmce") then
+    device_page = "MMCE"
+  elseif string.match(gamelocation, "^pfs") then
+    device_page = "HDD"
+  elseif UI and UI.CURSCENE then
+    if UI.CURSCENE == UI.SCENES.GUSB then
+      device_page = "USB"
+    elseif UI.CURSCENE == UI.SCENES.GSMB then
+      device_page = "SMB/MMCE"
+    elseif UI.CURSCENE == UI.SCENES.GHDD then
+      device_page = "HDD"
+    end
+  end
+  LOG("PopStarter handoff device page:", device_page, "UI scene:", UI and UI.CURSCENE or "unknown")
+  LOG("PopStarter handoff source mode:", source_mode)
+  LOG("PopStarter handoff path:", popstarter)
+  LOG("PopStarter handoff game path (raw):", gamelocation, "translated:", handoff_gamelocation, "game:", game, "vcd_path:", vcd_path)
+  LOG("PopStarter argv[0]:", BOOTPARAM)
+  LOG("PopStarter argv[1]:", "--nr")
   UI.LAUNCHING = true
   System.loadELF(popstarter,
     PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER,
