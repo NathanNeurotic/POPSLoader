@@ -2,34 +2,42 @@
 
 ## Current expected runtime folder structure (today)
 From README and boot scripts:
-- Place `POPSLOADER.ELF` and the `POPSLDR/` folder at the USB or HDD root.【F:README.md†L6-L7】
-- `boot.lua` executes `POPSLDR/system.lua` from the current directory, and adds `POPSLDR/` search paths for `mass:/`, `mc0:/`, and `mc1:/`.【F:etc/boot.lua†L1-L1】【F:etc/boot.lua†L55-L60】
+- Place `POPSLOADER.ELF` and runtime assets in the same folder (no subfolder required).【F:README.md†L17-L21】
+- `boot.lua` executes the resolved `system.lua` via `System.resolveAsset` and prefers APP_DIR paths first, with legacy `POPSLDR/` fallbacks preserved.【F:etc/boot.lua†L1-L81】【F:src/system.cpp†L80-L107】
 
-Example layout (USB root):
+Example layout (USB root, no subfolder):
 ```
 /mass:/
   POPSLOADER.ELF
-  POPSLDR/
-    system.lua
-    ui.lua
-    images.lua
-    pops_profiles.lua
-    PATCH_5.BIN
+  system.lua
+  ui.lua
+  images.lua
+  pops_profiles.lua
+  PATCH_5.BIN
+  IMG/
+    USB.png
+    SMB.png
+    HDD.png
+    PSL.png
+    select.png
+    start.png
 ```
-(See packaged assets under `bin/POPSLDR/` in the repo.)【F:bin/POPSLDR/system.lua†L1-L11】
+(See packaged assets under `bin/POPSLDR/` in the repo; packaging flattens them beside the ELF.)【F:bin/POPSLDR/system.lua†L1-L11】【F:Makefile†L132-L135】
 
 ## Target layout (goal)
-**Goal:** assets should load from the ELF directory first (no subfolder dependency). This is an active refactor goal and must preserve legacy fallback behavior unless intentionally removed and documented. (See `AGENTS.md` for the explicit roadmap statement.)【F:AGENTS.md†L41-L50】
+**Goal:** assets should load from the ELF directory first (no subfolder dependency). This is implemented in the resolver and must preserve legacy fallback behavior unless intentionally removed and documented. (See `AGENTS.md` for the explicit roadmap statement.)【F:AGENTS.md†L41-L50】【F:src/system.cpp†L80-L107】
 
 ## Compatibility strategy (fallback order)
 When resolving Lua scripts/modules:
-1. `./POPSLDR/?.lua`
-2. `./?.lua`
-3. `mass:/POPSLDR/?.lua`
-4. `mc0:/POPSLDR/?.lua`
-5. `mc1:/POPSLDR/?.lua`【F:etc/boot.lua†L1-L1】
+1. `APP_DIR/?.lua`
+2. `APP_DIR/POPSLDR/?.lua` (legacy fallback)
+3. `./?.lua`
+4. `./POPSLDR/?.lua`
+5. `mass:/POPSLDR/?.lua`
+6. `mc0:/POPSLDR/?.lua`
+7. `mc1:/POPSLDR/?.lua`【F:etc/boot.lua†L1-L11】
 
-`boot.lua` expects `POPSLDR/system.lua` to be accessible in the current working directory and will error if it is missing.【F:etc/boot.lua†L55-L60】
+`boot.lua` resolves `system.lua` via `System.resolveAsset` before falling back to error handling.【F:etc/boot.lua†L72-L81】
 
 ## Runtime assets and search locations
 | Asset type | Example(s) | Search / usage location | Evidence |
