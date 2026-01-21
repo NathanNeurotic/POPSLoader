@@ -44,3 +44,6 @@ for x=1, #IMGS do
   if IMG[INDX] == nil then error("Could not load '"..PATH.."'") end
   Graphics.setImageFilters(IMG[INDX], LINEAR)
 end
+if BOOT_PROF and BOOT_PROF.stamp then
+  BOOT_PROF.stamp("UI assets init (textures)")
+end

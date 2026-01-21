@@ -15,6 +15,15 @@ function LOGF(S, ...)
   print_uart(string.format(S, ...))
 end
 
+BOOT_PROF = {
+  timer = Timer.new(),
+  stamp = function (label)
+    local now = Timer.getTime(BOOT_PROF.timer)
+    LOGF("BOOT: %s %d", label, now)
+  end
+}
+BOOT_PROF.stamp("Lua init start")
+
 POPSLDR_VER = "v1.0.0 - rev3"
 
 --- Processes a HDD full path into its components. (eg: `hdd0:__system:pfs:/osd110/hosdsys.elf`)
@@ -68,6 +77,7 @@ SFONT = Font.LoadBuiltinFont()
 LFONT = Font.LoadBuiltinFont()
 Font.ftSetCharSize(BFONT, 800, 800)
 Font.ftSetCharSize(SFONT, 600, 600)
+BOOT_PROF.stamp("UI assets init (fonts)")
 function STOP() LOG("PROGRAM STOP") Screen.clear(Color.new(255,0,0)) Screen.flip() while true do end end
 function RunScript(S)
   dofile(S)

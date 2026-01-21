@@ -507,4 +507,8 @@ while true do
     UI.Credits.Play()
   end
   UI.flip()
+  if BOOT_PROF and not BOOT_PROF.first_main_menu and UI.CURSCENE == UI.SCENES.MMAIN then
+    BOOT_PROF.first_main_menu = true
+    BOOT_PROF.stamp("first frame / main menu visible")
+  end
 end

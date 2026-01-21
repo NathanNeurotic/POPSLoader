@@ -11,6 +11,7 @@
 #include <smod.h>
 #include <audsrv.h>
 #include <sys/stat.h>
+#include <time.h>
 
 #include <dirent.h>
 
@@ -87,6 +88,20 @@ char boot_path[255];
 char app_dir[255];
 int mmce_slot0_ready = -1;
 int mmce_slot1_ready = -1;
+static clock_t boot_start = 0;
+
+static unsigned int boot_ms(void)
+{
+    if (boot_start == 0) {
+        return 0;
+    }
+    return (unsigned int)(((clock() - boot_start) * 1000) / CLOCKS_PER_SEC);
+}
+
+static void BootStamp(const char *stage)
+{
+    DPRINTF("BOOT: %s %u\n", stage, boot_ms());
+}
 
 void setLuaBootPath(int argc, char ** argv, int idx)
 {
@@ -230,40 +245,20 @@ static void DumpLoadedModules(void)
 }
 #endif
 
-static bool ProbeDevicePath(const char *path)
-{
-    DIR *d = opendir(path);
-    if (d) {
-        closedir(d);
-        return true;
-    }
-    struct stat st;
-    if (stat(path, &st) == 0) {
-        return true;
-    }
-    return false;
-}
-
-static void ProbeMmceSlots(void)
-{
-    mmce_slot0_ready = ProbeDevicePath("mmce0:/") ? 1 : 0;
-    mmce_slot1_ready = ProbeDevicePath("mmce1:/") ? 1 : 0;
-    DPRINTF("MMCE probe: mmce0=%s mmce1=%s\n",
-            mmce_slot0_ready ? "OK" : "FAIL",
-            mmce_slot1_ready ? "OK" : "FAIL");
-}
-
 int main(int argc, char * argv[])
 {
     int ID, RET;
     if (argc > 0) ARGV0 = argv[0];
     const char * errMsg;
+    boot_start = clock();
+    BootStamp("EE init start");
 
 #ifdef RESET_IOP  
     SifInitRpc(0);
     while (!SifIopReset("", 0)){};
     while (!SifIopSync()){};
     SifInitRpc(0);
+    BootStamp("IOP reset");
 #endif
     
     // install sbv patch fix
@@ -277,6 +272,7 @@ int main(int argc, char * argv[])
 #endif
 
     bool ioman_ok = LoadIrxChecked("iomanX_irx", iomanX_irx, size_iomanX_irx, NULL, NULL);
+    BootStamp("iomanX load");
     bool filexio_ok = false;
     int filexio_ret = -1;
     if (ioman_ok) {
@@ -291,6 +287,7 @@ int main(int argc, char * argv[])
     } else {
         DPRINTF("Skipping fileXio init; iomanX failed to load.\n");
     }
+    BootStamp("fileXio load/init");
 
 	LOAD_IRX_NARG(sio2man_irx);
     if (filexio_ok) {
@@ -308,8 +305,11 @@ int main(int argc, char * argv[])
             }
         }
 #endif
+        BootStamp("mmceman load/init");
         if (mmceman_ok) {
-            ProbeMmceSlots();
+            mmce_slot0_ready = -1;
+            mmce_slot1_ready = -1;
+            DPRINTF("MMCE probe deferred until MMCE page entry.\n");
         } else {
             mmce_slot0_ready = 0;
             mmce_slot1_ready = 0;
@@ -318,6 +318,7 @@ int main(int argc, char * argv[])
         DPRINTF("Skipping mmceman init; fileXio not ready.\n");
         mmce_slot0_ready = 0;
         mmce_slot1_ready = 0;
+        BootStamp("mmceman load/init (skipped)");
     }
     LOAD_IRX_NARG(mcman_irx);
     LOAD_IRX_NARG(mcserv_irx);
@@ -382,6 +383,7 @@ int main(int argc, char * argv[])
     DPRINTF("app dir : %s\n", app_dir);
 	dbgprintf("app dir : %s\n", app_dir);
     
+    BootStamp("Lua init start");
     while (1)
     {
         errMsg = runScript(bootString, true);
