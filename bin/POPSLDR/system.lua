@@ -498,13 +498,21 @@ local function NormalizeBootBasename(basename, desired_prefix)
   return cleaned
 end
 
-local function BuildBootParamFromVcd(pops_root, basename, prefix)
+local function BuildPopstarterBootString(source_mode, pops_root, basename)
+  local prefix = ""
+  if source_mode == "pfs" then
+    prefix = ""
+  elseif source_mode == "smb" then
+    prefix = "SB."
+  else
+    prefix = "XX."
+  end
   if pops_root == nil then
     pops_root = ""
   end
   local normalized_root = EnsureTrailingSlash(pops_root)
   local normalized_basename = NormalizeBootBasename(basename, prefix)
-  return normalized_root..normalized_basename
+  return normalized_root..normalized_basename, prefix
 end
 
 local function GetDevicePrefix(path)
@@ -767,6 +775,19 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     return
   end
   SetLaunchPhase(LaunchState.PHASE_EXEC)
+  LaunchLog(
+    "LAUNCH: boot source:",
+    context and context.bootparam_source or "unknown",
+    "pops root:",
+    context and context.bootparam_root or "unknown",
+    "vcd basename:",
+    context and context.bootparam_basename or "unknown",
+    "prefix used:",
+    context and context.bootparam_prefix or "none",
+    "boot string:",
+    context and context.bootparam or "unknown"
+  )
+  LogPopstarterArgs(argv)
   LaunchLog("LAUNCH: exec argv[0]:", argv[1])
   LaunchLog("LAUNCH: exec argv[1]:", argv[2])
   local rc = System.loadELF(popstarter, reboot_iop, argv[1], argv[2])
@@ -851,19 +872,17 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   local raw_source_mode = source_mode
   local vcd_path = normalized_gamelocation..game
   local popstarter = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
-  local prefix = ""
   local pops_root = normalized_gamelocation
+  local boot_source_mode = source_mode
   if source_mode == "pfs" then
-    prefix = ""
     pops_root = normalized_gamelocation
   elseif device_page == "SMB/MMCE" then
-    prefix = "SB."
     pops_root = "smb:/POPS/"
+    boot_source_mode = "smb"
   else
-    prefix = "XX."
     pops_root = "mass:/POPS/"
   end
-  local bootparam = BuildBootParamFromVcd(pops_root, game, prefix)
+  local bootparam, prefix = BuildPopstarterBootString(boot_source_mode, pops_root, game)
   local argv = {bootparam, "--nr"}
 
   LOG("Boot APP_DIR: "..APP_DIR_LOCAL)
@@ -883,6 +902,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
     bootparam_prefix = prefix,
     bootparam_root = pops_root,
     bootparam_basename = game,
+    bootparam_source = boot_source_mode,
     hdd_init = hdd_init
   }
   LaunchEngine(popstarter, argv, PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER, context)
