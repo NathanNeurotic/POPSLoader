@@ -14,15 +14,15 @@ Example layout (USB root, no subfolder):
   images.lua
   pops_profiles.lua
   PATCH_5.BIN
-  IMG/
-    USB.png
-    SMB.png
-    HDD.png
-    PSL.png
-    select.png
-    start.png
+  USB.png
+  SMB.png
+  HDD.png
+  PSL.png
+  select.png
+  start.png
+  (optional) *.irx
 ```
-(See packaged assets under `bin/POPSLDR/` in the repo; packaging flattens them beside the ELF.)【F:bin/POPSLDR/system.lua†L1-L11】【F:Makefile†L132-L135】
+(See packaged assets under `bin/POPSLDR/` in the repo; packaging flattens them beside the ELF.)【F:bin/POPSLDR/system.lua†L1-L11】【F:Makefile†L171-L179】
 
 ## Target layout (goal)
 **Goal:** assets should load from the ELF directory first (no subfolder dependency). This is implemented in the resolver and must preserve legacy fallback behavior unless intentionally removed and documented. (See `AGENTS.md` for the explicit roadmap statement.)【F:AGENTS.md†L41-L50】【F:src/system.cpp†L80-L107】
@@ -42,8 +42,8 @@ When resolving Lua scripts/modules:
 ## Runtime assets and search locations
 | Asset type | Example(s) | Search / usage location | Evidence |
 |---|---|---|---|
-| Lua entrypoint | `POPSLDR/system.lua` | `dofile("POPSLDR/system.lua")` from current directory | `etc/boot.lua` |【F:etc/boot.lua†L55-L60】
-| Lua modules (POPSLDR) | `ui.lua`, `images.lua`, `pops_profiles.lua` | `package.path` includes `mass:/POPSLDR/?.lua`, `mc0:/POPSLDR/?.lua`, `mc1:/POPSLDR/?.lua` | `etc/boot.lua` |【F:etc/boot.lua†L1-L1】
+| Lua entrypoint | `system.lua` | `System.resolveAsset("system.lua")` (APP_DIR first, `POPSLDR/` fallback) | `etc/boot.lua` |【F:etc/boot.lua†L72-L81】【F:src/system.cpp†L80-L107】
+| Lua modules | `ui.lua`, `images.lua`, `pops_profiles.lua` | `package.path` includes `APP_DIR/?.lua` plus legacy `POPSLDR/?.lua` locations | `etc/boot.lua` |【F:etc/boot.lua†L1-L11】
 | POPStarter ELF | `mass:/POPS/POPSTARTER.ELF` | Used as `PLDR.POPSTARTER_PATH` when launching games | `bin/POPSLDR/system.lua` |【F:bin/POPSLDR/system.lua†L25-L27】
 | POPStarter dependencies (USB/HDD) | `POPS_IOX.PAK`, `POPS.ELF`, `IOPRP252.IMG` | Checked under `mass:/POPS/` or `pfs1:/POPS/` if enabled | `bin/POPSLDR/system.lua` |【F:bin/POPSLDR/system.lua†L63-L74】
 | Optional IGR textures | `PATCH_5.BIN` | Documented as replaceable in `POPS/` for POPStarter IGR | `bin/README.md` |【F:bin/README.md†L9-L10】

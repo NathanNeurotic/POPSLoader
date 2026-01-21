@@ -27,18 +27,37 @@ local function ResolveWritablePath(rel)
   end
   return modern
 end
-local IRXPATH = System.resolveAsset("IRX/") or (APP_DIR_LOCAL.."IRX/")
-if doesFolderExist(IRXPATH) then
-  local IRXDIR = System.listDirectory(IRXPATH)
-  if IRXDIR ~= nil then
-    LOG("Found IRX folder")
-    for x=1, #IRXDIR do
-      if string.lower(string.sub(IRXDIR[i].name,-4)) == ".irx" then
-        local ID, RET = IOP.loadModule(IRXDIR[x])
-        LOG(IRXDIR[x], ID, RET)
+
+local function ResolveIrx(name)
+  return System.resolveAssetType(name, ASSET_IRX) or (APP_DIR_LOCAL..name)
+end
+
+local function LoadIrxFromDir(dir)
+  if not doesFolderExist(dir) then return false end
+  local IRXDIR = System.listDirectory(dir)
+  if IRXDIR == nil then return false end
+  local loaded = false
+  for x=1, #IRXDIR do
+    local entry = IRXDIR[x]
+    if entry ~= nil and not entry.directory then
+      local name = entry.name
+      if name ~= nil and string.lower(string.sub(name, -4)) == ".irx" then
+        local PATH = ResolveIrx(name) or (dir..name)
+        local ID, RET = IOP.loadModule(PATH)
+        LOG(PATH, ID, RET)
+        loaded = true
       end
     end
   end
+  return loaded
+end
+
+local loadedIrx = LoadIrxFromDir(APP_DIR_LOCAL)
+if not loadedIrx then
+  loadedIrx = LoadIrxFromDir(APP_DIR_LOCAL.."IRX/")
+end
+if not loadedIrx then
+  LoadIrxFromDir(APP_DIR_LOCAL.."POPSLDR/IRX/")
 end
 PLDR = {
   REBOOT_IOP_WHILE_LOADING_POPSTARTER = 0;

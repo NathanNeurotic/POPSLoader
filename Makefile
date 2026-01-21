@@ -169,10 +169,17 @@ reset:
 	ps2client -h $(PS2LINK_IP) reset   
 
 POPSLDR_PKG = POPSLoader.7z
+PKG_DIR = bin/package
 package: $(EE_BIN_PKD)
 	rm -f $(POPSLDR_PKG)
-	7z a $(POPSLDR_PKG) $(EE_BIN_PKD) bin/changelog LICENSE README.md
-	cd bin/POPSLDR; 7z a ../$(POPSLDR_PKG) .
+	rm -rf $(PKG_DIR)
+	mkdir -p $(PKG_DIR)
+	cp $(EE_BIN_PKD) $(PKG_DIR)/
+	cp bin/changelog LICENSE README.md $(PKG_DIR)/
+	find bin/POPSLDR -maxdepth 1 -type f -exec cp {} $(PKG_DIR)/ \;
+	@if ls bin/POPSLDR/IMG/*.png >/dev/null 2>&1; then cp bin/POPSLDR/IMG/*.png $(PKG_DIR)/; fi
+	@if ls bin/POPSLDR/IRX/*.irx >/dev/null 2>&1; then cp bin/POPSLDR/IRX/*.irx $(PKG_DIR)/; fi
+	cd $(PKG_DIR); 7z a ../$(POPSLDR_PKG) .
 
 dummys:
 	touch $(BINDIR)A.vcd
