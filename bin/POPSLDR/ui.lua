@@ -36,7 +36,6 @@ local UI = {
       BGCOL = Color.new(32,0,32);
     };
     InputConfig = {
-      MIN_NAV_EVENT_MS = 180;
       MIN_ACTION_MS = 220;
       DEBUG_INPUT_LOG = true;
     };
@@ -198,7 +197,7 @@ local UI = {
           Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, UI.SCR.Y_MID, 20, UI.SCR.X, 32, "No games found", UI.CCOL.YELLOW)
           Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID+1, UI.SCR.Y_MID+1, 20, UI.SCR.X, 32, "No games found", UI.CCOL.TRANSP_BLACK)
         end
-        UI.Pad.Listen()
+        Input_GetEvent()
         if UI.CURSCENE == UI.SCENES.GSMB then
           local slots = PLDR.GetMMCESlots()
           UI.HandleGlobalInput(#slots <= 1)
@@ -243,7 +242,7 @@ local UI = {
         Font.ftPrint(BFONT, UI.SCR.X_MID, 60, 8, UI.SCR.X, 16, "Profile "..UI.ProfileQuery.curopt, UI.CCOL.GREY)
         Font.ftPrint(BFONT, UI.SCR.X_MID, 190, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].DESC, UI.CCOL.GREY)
         Font.ftPrint(BFONT, UI.SCR.X_MID, 280, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].ELF, Color.new(128,128,128, 110))
-        UI.Pad.Listen()
+        Input_GetEvent()
         UI.HandleGlobalInput(true)
         if UI.Pad.Events.NAV_DOWN then UI.ProfileQuery.curopt = CLAMP(UI.ProfileQuery.curopt+1, 1, profcnt) end
         if UI.Pad.Events.NAV_UP then UI.ProfileQuery.curopt = CLAMP(UI.ProfileQuery.curopt-1, 1, profcnt) end
@@ -274,7 +273,7 @@ local UI = {
           Graphics.drawImage(IMG["triangle"], 20, UI.SCR.Y-105)
           Font.ftPrint(SFONT, 55, UI.SCR.Y-100, 0, UI.SCR.X, 16, "Exit")
         end
-        UI.Pad.Listen()
+        Input_GetEvent()
         UI.HandleGlobalInput(true)
         if UI.Pad.Events.NAV_RIGHT then UI.MainMenu.OPT = CLAMP(UI.MainMenu.OPT+1, 1, profcnt) end
         if UI.Pad.Events.NAV_LEFT  then UI.MainMenu.OPT = CLAMP(UI.MainMenu.OPT-1, 1, profcnt) end
@@ -353,7 +352,9 @@ local UI = {
       Queue = {};
       DebugPadTimer = nil;
       DebugPadLast = 0;
-      LastNavEventMs = 0;
+      NavEventTimer = nil;
+      NavEventLast = 0;
+      NavEventCount = 0;
       LastActionEventMs = 0;
       Listen = function ()
         if UI.Pad.Timer == nil then
@@ -387,6 +388,11 @@ local UI = {
           UI.Pad.Events.ANY = true
         end
 
+        local function emit_nav(event)
+          UI.Pad.NavEventCount = (UI.Pad.NavEventCount or 0) + 1
+          emit(event)
+        end
+
         local function emit_action(event)
           if (now - (UI.Pad.LastActionEventMs or 0)) < UI.InputConfig.MIN_ACTION_MS then
             return
@@ -414,18 +420,14 @@ local UI = {
           if not UI.Pad.NavNeutral[dir] then
             return false
           end
-          if (now - (UI.Pad.LastNavEventMs or 0)) < UI.InputConfig.MIN_NAV_EVENT_MS then
-            return false
-          end
           UI.Pad.NavNeutral[dir] = false
-          UI.Pad.LastNavEventMs = now
           return true
         end
 
-        if resolve_nav("UP", ((UI.Pad.GPAD & PAD_UP) ~= 0)) then emit("NAV_UP") end
-        if resolve_nav("DOWN", ((UI.Pad.GPAD & PAD_DOWN) ~= 0)) then emit("NAV_DOWN") end
-        if resolve_nav("LEFT", ((UI.Pad.GPAD & PAD_LEFT) ~= 0)) then emit("NAV_LEFT") end
-        if resolve_nav("RIGHT", ((UI.Pad.GPAD & PAD_RIGHT) ~= 0)) then emit("NAV_RIGHT") end
+        if resolve_nav("UP", ((UI.Pad.GPAD & PAD_UP) ~= 0)) then emit_nav("NAV_UP") end
+        if resolve_nav("DOWN", ((UI.Pad.GPAD & PAD_DOWN) ~= 0)) then emit_nav("NAV_DOWN") end
+        if resolve_nav("LEFT", ((UI.Pad.GPAD & PAD_LEFT) ~= 0)) then emit_nav("NAV_LEFT") end
+        if resolve_nav("RIGHT", ((UI.Pad.GPAD & PAD_RIGHT) ~= 0)) then emit_nav("NAV_RIGHT") end
 
         if UI.InputConfig.DEBUG_INPUT_LOG then
           if UI.Pad.DebugPadTimer == nil then
@@ -440,6 +442,17 @@ local UI = {
             local circle = (UI.Pad.GPAD & PAD_CIRCLE) ~= 0
             LOGF("PAD mask: 0x%04X | UP:%s DOWN:%s X:%s O:%s", UI.Pad.GPAD, tostring(up), tostring(down), tostring(cross), tostring(circle))
             UI.Pad.DebugPadLast = dbg_now
+          end
+          if UI.Pad.NavEventTimer == nil then
+            UI.Pad.NavEventTimer = Timer.new()
+            UI.Pad.NavEventLast = Timer.getTime(UI.Pad.NavEventTimer)
+            UI.Pad.NavEventCount = 0
+          end
+          local nav_now = Timer.getTime(UI.Pad.NavEventTimer)
+          if (nav_now - UI.Pad.NavEventLast) >= 1000 then
+            LOGF("NAV events/sec: %d", UI.Pad.NavEventCount or 0)
+            UI.Pad.NavEventCount = 0
+            UI.Pad.NavEventLast = nav_now
           end
         end
       end;
@@ -461,11 +474,15 @@ local UI = {
         Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, 100, 20, UI.SCR.X, 40, "Coded By El_isra", currcol)
         Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, 120, 20, UI.SCR.X, UI.SCR.Y, "Based on Enceladus by Daniel santos\n\nSpecial thanks to:\nkrHACKen: for making POPStarter\nuyjulian, fjtrujy, HWC and others for always helping me\n\nThis program is free and open source\nif you bought it you've been scammed", currcol)
         Graphics.drawRect(0, UI.SCR.Y-60, UI.SCR.X, 2, currcol)
-        UI.Pad.Listen()
+        Input_GetEvent()
         UI.HandleGlobalInput(true)
         if UI.Pad.Events.ANY then UI.Credits.INCR = 1 end
       end
     };
   }
+function Input_GetEvent()
+  UI.Pad.Listen()
+  return UI.Pad.Events
+end
 _G.UI = UI
 return UI
