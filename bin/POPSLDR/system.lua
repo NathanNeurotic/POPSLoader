@@ -560,10 +560,16 @@ local function TryOpenForLaunch(path)
   return false, fd_or_err
 end
 
-local function BlockLaunchFailure(rc, popstarter, device_page)
+local function BlockLaunchFailure(rc, popstarter, device_page, argv0, game_path)
   UI.LAUNCHING = false
-  local body = string.format("Exec returned when it should not.\nrc=%s\nDevice: %s\nPath: %s\nPress X/O to continue.",
-    tostring(rc), tostring(device_page), tostring(popstarter))
+  local body = string.format(
+    "Exec returned when it should not.\nrc=%s\nDevice: %s\nPath: %s\nargv[0]: %s\nGame: %s\nPress X/O to continue.",
+    tostring(rc),
+    tostring(device_page),
+    tostring(popstarter),
+    tostring(argv0),
+    tostring(game_path)
+  )
   while true do
     UI.BottomDraw.Play()
     Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, 120, 20, UI.SCR.X, UI.SCR.Y, "LAUNCH FAILED", UI.CCOL.YELLOW)
@@ -578,6 +584,7 @@ end
 
 local function LaunchEngine(popstarter, argv, reboot_iop, context)
   LaunchLog("LAUNCH BEGIN")
+  LaunchLog("LAUNCH: boot path:", System.currentDirectory(), "APP_DIR:", APP_DIR_LOCAL)
   if context ~= nil then
     LaunchLog("LAUNCH: device page:", context.device_page, "UI scene:", context.ui_scene)
     LaunchLog("LAUNCH: source mode:", context.source_mode, "raw_source:", context.raw_source_mode)
@@ -595,7 +602,13 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     LaunchLog("LAUNCH: popstarter open rc:", open_rc)
   else
     LaunchLog("LAUNCH: popstarter open failed:", open_rc)
-    BlockLaunchFailure("popstarter open failed: "..tostring(open_rc), popstarter, context and context.device_page or "unknown")
+    BlockLaunchFailure(
+      "popstarter open failed: "..tostring(open_rc),
+      popstarter,
+      context and context.device_page or "unknown",
+      argv and argv[1] or nil,
+      context and context.vcd_path or nil
+    )
     return
   end
   LogPopstarterArgs(argv)
@@ -603,7 +616,13 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   local rc = System.loadELF(popstarter, reboot_iop, argv[1], argv[2])
   LaunchLog("LAUNCH RETURNED rc="..tostring(rc))
   LOG(">>> UNHANDLED ERROR at Launching game '", context and context.game or "unknown", " via ", popstarter, " Failed")
-  BlockLaunchFailure(rc, popstarter, context and context.device_page or "unknown")
+  BlockLaunchFailure(
+    rc,
+    popstarter,
+    context and context.device_page or "unknown",
+    argv and argv[1] or nil,
+    context and context.vcd_path or nil
+  )
 end
 
 local function ResolveLaunchPolicy(gamelocation)
@@ -641,7 +660,13 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
     hdd_init = EnsureHDDReadyForLaunch(game)
     if not hdd_init.init_ok or hdd_init.status ~= 0 or not hdd_init.mount_ok then
       LaunchLog("LAUNCH: HDD not ready; aborting launch.")
-      BlockLaunchFailure("HDD init/mount failed", ResolvePopstarterPath(PLDR.POPSTARTER_PATH), device_page)
+      BlockLaunchFailure(
+        "HDD init/mount failed",
+        ResolvePopstarterPath(PLDR.POPSTARTER_PATH),
+        device_page,
+        nil,
+        nil
+      )
       return
     end
   end
