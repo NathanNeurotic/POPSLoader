@@ -480,11 +480,20 @@ function PLDR.HDD.WipeCache(CACHE)
   end
 end
 
----DONT TOUCH ME
-local function BuildXXUsageArgs(gamelocation, game, source_mode)
-  -- XX usage: PopStarter expects an XX.-prefixed ELF name for USB-style launches.
-  -- USB (mass:/...) and MMCE (mmce0:/...) share this format; only the source mode changes.
-  return PLDR.replace_device(gamelocation, source_mode).."XX."..PLDR.replace_extension(game, "ELF")
+local function BuildBootParamFromVcd(vcd_path, prefix)
+  if vcd_path == nil or vcd_path == "" then
+    return ""
+  end
+  local dir, name = string.match(vcd_path, "^(.*[/])([^/]+)$")
+  if dir == nil then
+    dir = ""
+    name = vcd_path
+  end
+  local base = PLDR.replace_extension(name, "ELF")
+  if prefix ~= nil and prefix ~= "" and string.sub(base, 1, #prefix) ~= prefix then
+    base = prefix..base
+  end
+  return dir..base
 end
 
 local function GetDevicePrefix(path)
@@ -691,6 +700,12 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     LaunchLog("LAUNCH: source mode:", context.source_mode, "raw_source:", context.raw_source_mode)
     LaunchLog("LAUNCH: game path (raw):", context.gamelocation, "handoff:", context.handoff_gamelocation, "game:", context.game, "vcd_path:", context.vcd_path)
     LaunchLog("LAUNCH: bootparam:", context.bootparam)
+    LaunchLog(
+      "LAUNCH: bootparam prefix:",
+      context.bootparam_prefix or "none",
+      "prefix injected:",
+      tostring((context.bootparam_prefix or "") ~= "")
+    )
     if context.hdd_init ~= nil then
       LaunchLog("LAUNCH: hdd init ok:", context.hdd_init.init_ok, "status:", context.hdd_init.status,
         "mount:", context.hdd_init.mount_partition, "mount_ok:", context.hdd_init.mount_ok)
@@ -738,6 +753,8 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     return
   end
   SetLaunchPhase(LaunchState.PHASE_EXEC)
+  LaunchLog("LAUNCH: exec argv[0]:", argv[1])
+  LaunchLog("LAUNCH: exec argv[1]:", argv[2])
   local rc = System.loadELF(popstarter, reboot_iop, argv[1], argv[2])
   LaunchLog("LAUNCH RETURNED rc="..tostring(rc))
   LOG(">>> UNHANDLED ERROR at Launching game '", context and context.game or "unknown", " via ", popstarter, " Failed")
@@ -820,7 +837,15 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   local raw_source_mode = source_mode
   local vcd_path = normalized_gamelocation..game
   local popstarter = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
-  local bootparam = BuildXXUsageArgs(handoff_gamelocation, game, source_mode)
+  local prefix = ""
+  if source_mode == "pfs" then
+    prefix = ""
+  elseif device_page == "SMB/MMCE" then
+    prefix = "SB."
+  else
+    prefix = "XX."
+  end
+  local bootparam = BuildBootParamFromVcd(vcd_path, prefix)
   local argv = {bootparam, "--nr"}
 
   LOG("Boot APP_DIR: "..APP_DIR_LOCAL)
@@ -837,6 +862,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
     game = game,
     vcd_path = vcd_path,
     bootparam = bootparam,
+    bootparam_prefix = prefix,
     hdd_init = hdd_init
   }
   LaunchEngine(popstarter, argv, PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER, context)
