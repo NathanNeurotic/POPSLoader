@@ -35,6 +35,10 @@ UI = {
       VMODE = _480p;
       BGCOL = Color.new(32,0,32);
     };
+    InputConfig = {
+      NAV_REPEAT_DELAY_MS = 300;
+      NAV_REPEAT_INTERVAL_MS = 150;
+    };
     --- Notifications queue handler
     Notif_queue = {
       display = function ()
@@ -115,23 +119,20 @@ UI = {
       end;
       HandleInput = function ()
         if not UI.Modal.active then return end
-        if Pads.check(GPAD, PAD_LEFT) or Pads.check(GPAD, PAD_RIGHT) then
+        if UI.Pad.Events.LEFT or UI.Pad.Events.RIGHT then
           if UI.Modal.selected == 1 then
             UI.Modal.selected = 2
           else
             UI.Modal.selected = 1
           end
-          GPAD = 0
-        elseif Pads.check(GPAD, PAD_CROSS) then
+        elseif UI.Pad.Events.CROSS then
           if UI.Modal.selected == 1 then
             UI.Modal.Confirm()
           else
             UI.Modal.Close()
           end
-          GPAD = 0
-        elseif Pads.check(GPAD, PAD_CIRCLE) then
+        elseif UI.Pad.Events.CIRCLE then
           UI.Modal.Close()
-          GPAD = 0
         end
       end;
       Draw = function ()
@@ -160,9 +161,8 @@ UI = {
       if allow_exit == nil then allow_exit = true end
       if not allow_exit then return false end
       if UI.LAUNCHING then return false end
-      if Pads.check(GPAD, PAD_TRIANGLE) then
+      if UI.Pad.Events.TRIANGLE then
         UI.Modal.OpenExit()
-        GPAD = 0
         return true
       end
       return false
@@ -204,23 +204,22 @@ UI = {
         else
           UI.HandleGlobalInput(true)
         end
-        if Pads.check(GPAD, PAD_CIRCLE) then UI.SceneChange(UI.SCENES.MMAIN) end
+        if UI.Pad.Events.CIRCLE then UI.SceneChange(UI.SCENES.MMAIN) end
         if UI.CURSCENE == UI.SCENES.GSMB then
           local slots = PLDR.GetMMCESlots()
-          if #slots > 1 and Pads.check(GPAD, PAD_TRIANGLE) then
+          if #slots > 1 and UI.Pad.Events.TRIANGLE then
             local next_prefix = PLDR.SetMMCESlot(PLDR.MMCE.INDEX + 1)
             if next_prefix ~= nil then
               PLDR.CleanupGameList()
               PLDR.GetPS1GameLists(next_prefix.."POPS/", true)
             end
-            GPAD = 0
           end
         end
-        if Pads.check(GPAD, PAD_DOWN) then UI.GameList.CURR = CLAMP(UI.GameList.CURR+1, 1, ammount) GPAD = 0 end
-        if Pads.check(GPAD, PAD_RIGHT) then UI.GameList.CURR = CLAMP(UI.GameList.CURR+UI.GameList.MAXDRAW, 1, ammount) GPAD = 0 end
-        if Pads.check(GPAD, PAD_UP) then UI.GameList.CURR = CLAMP(UI.GameList.CURR-1, 1, ammount) GPAD = 0 end
-        if Pads.check(GPAD, PAD_LEFT) then UI.GameList.CURR = CLAMP(UI.GameList.CURR-UI.GameList.MAXDRAW, 1, ammount) GPAD = 0 end
-        if Pads.check(GPAD, PAD_CROSS) and ammount > 0 then
+        if UI.Pad.Events.DOWN then UI.GameList.CURR = CLAMP(UI.GameList.CURR+1, 1, ammount) end
+        if UI.Pad.Events.RIGHT then UI.GameList.CURR = CLAMP(UI.GameList.CURR+UI.GameList.MAXDRAW, 1, ammount) end
+        if UI.Pad.Events.UP then UI.GameList.CURR = CLAMP(UI.GameList.CURR-1, 1, ammount) end
+        if UI.Pad.Events.LEFT then UI.GameList.CURR = CLAMP(UI.GameList.CURR-UI.GameList.MAXDRAW, 1, ammount) end
+        if UI.Pad.Events.CROSS and ammount > 0 then
           if not doesFileExist(PLDR.POPSTARTER_PATH) then
             UI.Notif_queue.add("Cant find POPSTARTER ELF\n"..PLDR.POPSTARTER_PATH)
           else
@@ -245,10 +244,10 @@ UI = {
         Font.ftPrint(BFONT, UI.SCR.X_MID, 280, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].ELF, Color.new(128,128,128, 110))
         UI.Pad.Listen()
         UI.HandleGlobalInput(true)
-        if Pads.check(GPAD, PAD_DOWN) then UI.ProfileQuery.curopt = CLAMP(UI.ProfileQuery.curopt+1, 1, profcnt) GPAD = 0 end
-        if Pads.check(GPAD, PAD_UP) then UI.ProfileQuery.curopt = CLAMP(UI.ProfileQuery.curopt-1, 1, profcnt) GPAD = 0 end
-        if Pads.check(GPAD, PAD_CIRCLE) then UI.SceneChange(UI.SCENES.MMAIN) end
-        if Pads.check(GPAD, PAD_CROSS) then
+        if UI.Pad.Events.DOWN then UI.ProfileQuery.curopt = CLAMP(UI.ProfileQuery.curopt+1, 1, profcnt) end
+        if UI.Pad.Events.UP then UI.ProfileQuery.curopt = CLAMP(UI.ProfileQuery.curopt-1, 1, profcnt) end
+        if UI.Pad.Events.CIRCLE then UI.SceneChange(UI.SCENES.MMAIN) end
+        if UI.Pad.Events.CROSS then
           if not doesFileExist(PLDR.PROFILES[UI.ProfileQuery.curopt].ELF) then
             UI.Notif_queue.add("POPStarter ELF missing")
           else
@@ -275,11 +274,11 @@ UI = {
         end
         UI.Pad.Listen()
         UI.HandleGlobalInput(true)
-        if Pads.check(GPAD, PAD_RIGHT) then UI.MainMenu.OPT = CLAMP(UI.MainMenu.OPT+1, 1, profcnt) GPAD = 0 end
-        if Pads.check(GPAD, PAD_LEFT)  then UI.MainMenu.OPT = CLAMP(UI.MainMenu.OPT-1, 1, profcnt) GPAD = 0 end
-        if Pads.check(GPAD, PAD_START) then UI.SceneChange(UI.SCENES.MPROFILE) end
-        if Pads.check(GPAD, PAD_SELECT)then UI.SceneChange(UI.SCENES.CREDITS) end
-          if Pads.check(GPAD, PAD_CROSS) then
+        if UI.Pad.Events.RIGHT then UI.MainMenu.OPT = CLAMP(UI.MainMenu.OPT+1, 1, profcnt) end
+        if UI.Pad.Events.LEFT  then UI.MainMenu.OPT = CLAMP(UI.MainMenu.OPT-1, 1, profcnt) end
+        if UI.Pad.Events.START then UI.SceneChange(UI.SCENES.MPROFILE) end
+        if UI.Pad.Events.SELECT then UI.SceneChange(UI.SCENES.CREDITS) end
+          if UI.Pad.Events.CROSS then
           if UI.MainMenu.OPT == 1 then
             PLDR.CleanupGameList()
             PLDR.GetPS1GameLists("mass"..PLDR.USB.MASSINDX..":/POPS/", true)
@@ -298,7 +297,6 @@ UI = {
               local mmce_prefix = PLDR.MMCE.PREFIX or PLDR.SetMMCESlot(1)
               if mmce_prefix == nil then
                 UI.Notif_queue.add("No MMCE device found (mmce0/mmce1).")
-                GPAD = 0
                 return
               end
               PLDR.CleanupGameList()
@@ -329,27 +327,82 @@ UI = {
             end
             UI.SceneChange(UI.MainMenu.OPT)
           end --because we still dont support SMB
-          GPAD = 0
         end
       end
     };
     Pad = {
       OLDPAD = 0;
-      PDELAY = 150;
-      CLK = 0;
+      GPAD = 0;
+      Timer = nil;
+      Events = {
+        UP = false,
+        DOWN = false,
+        LEFT = false,
+        RIGHT = false,
+        CROSS = false,
+        CIRCLE = false,
+        TRIANGLE = false,
+        SQUARE = false,
+        START = false,
+        SELECT = false,
+      };
+      REPEAT_DELAY = UI.InputConfig.NAV_REPEAT_DELAY_MS;
+      REPEAT_INTERVAL = UI.InputConfig.NAV_REPEAT_INTERVAL_MS;
+      RepeatStart = {};
+      RepeatLast = {};
       Listen = function ()
         if UI.Pad.Timer == nil then
           UI.Pad.Timer = Timer.new()
           UI.Pad.CLK = Timer.getTime(UI.Pad.Timer)
         end
-        if (UI.Pad.CLK+UI.Pad.PDELAY) > Timer.getTime(UI.Pad.Timer) then
-          GPAD = 0
-        else
-          GPAD = Pads.get()
-          UI.Pad.CLK = Timer.getTime(UI.Pad.Timer)
+        local now = Timer.getTime(UI.Pad.Timer)
+        UI.Pad.CLK = now
+        UI.Pad.OLDPAD = UI.Pad.GPAD
+        UI.Pad.GPAD = Pads.get()
+        GPAD = UI.Pad.GPAD
+
+        local pressed = UI.Pad.GPAD & ~UI.Pad.OLDPAD
+        local released = ~UI.Pad.GPAD & UI.Pad.OLDPAD
+
+        UI.Pad.Events.UP = false
+        UI.Pad.Events.DOWN = false
+        UI.Pad.Events.LEFT = false
+        UI.Pad.Events.RIGHT = false
+        UI.Pad.Events.CROSS = (pressed & PAD_CROSS) ~= 0
+        UI.Pad.Events.CIRCLE = (pressed & PAD_CIRCLE) ~= 0
+        UI.Pad.Events.TRIANGLE = (pressed & PAD_TRIANGLE) ~= 0
+        UI.Pad.Events.SQUARE = (pressed & PAD_SQUARE) ~= 0
+        UI.Pad.Events.START = (pressed & PAD_START) ~= 0
+        UI.Pad.Events.SELECT = (pressed & PAD_SELECT) ~= 0
+
+        local function handle_repeat(dir, mask)
+          if (released & mask) ~= 0 then
+            UI.Pad.RepeatStart[dir] = nil
+            UI.Pad.RepeatLast[dir] = nil
+          end
+          if (pressed & mask) ~= 0 then
+            UI.Pad.RepeatStart[dir] = now
+            UI.Pad.RepeatLast[dir] = now
+            return true
+          end
+          if (UI.Pad.GPAD & mask) ~= 0 then
+            if UI.Pad.RepeatStart[dir] == nil then
+              UI.Pad.RepeatStart[dir] = now
+              UI.Pad.RepeatLast[dir] = now
+            elseif (now - UI.Pad.RepeatStart[dir]) >= UI.Pad.REPEAT_DELAY
+              and (now - (UI.Pad.RepeatLast[dir] or 0)) >= UI.Pad.REPEAT_INTERVAL then
+              UI.Pad.RepeatLast[dir] = now
+              return true
+            end
+          end
+          return false
         end
+
+        UI.Pad.Events.UP = handle_repeat("UP", PAD_UP)
+        UI.Pad.Events.DOWN = handle_repeat("DOWN", PAD_DOWN)
+        UI.Pad.Events.LEFT = handle_repeat("LEFT", PAD_LEFT)
+        UI.Pad.Events.RIGHT = handle_repeat("RIGHT", PAD_RIGHT)
       end;
-      Timer = nil;
     };
     Credits = {
       Q = 1;
