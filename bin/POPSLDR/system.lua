@@ -12,12 +12,23 @@
   Licensed under GNU General public license v3.0
 --]]
 LOG(System.currentDirectory())
-local function NormalizeDirPath(path)
-  if path == nil or path == "" then return "" end
-  if string.sub(path, -1) ~= "/" then
-    return path.."/"
+local function NormalizeDeviceRoot(path)
+  if path == nil or path == "" then return path end
+  local device = string.match(path, "^([%a]+%d*):/?$")
+  if device ~= nil then
+    return device..":/"
   end
   return path
+end
+
+local function NormalizeDirPath(path)
+  if path == nil or path == "" then return "" end
+  local normalized = NormalizeDeviceRoot(path)
+  normalized = string.gsub(normalized, "/+$", "/")
+  if string.sub(normalized, -1) ~= "/" then
+    normalized = normalized.."/"
+  end
+  return normalized
 end
 
 local function JoinPath(base, rel)
@@ -25,13 +36,12 @@ local function JoinPath(base, rel)
   if rel == nil or rel == "" then
     return normalized
   end
-  if string.sub(rel, 1, 1) == "/" then
-    rel = string.sub(rel, 2)
-  end
-  return normalized..rel
+  local cleaned = string.gsub(rel, "^/+", "")
+  return normalized..cleaned
 end
 
 local APP_DIR_LOCAL = NormalizeDirPath(APP_DIR or System.currentDirectory())
+LOG("APP_DIR="..APP_DIR_LOCAL)
 
 local function ResolveAsset(rel)
   return System.resolveAsset(rel) or JoinPath(APP_DIR_LOCAL, rel)
@@ -116,7 +126,8 @@ PLDR = {
     FOUNDANY = false;
     HAS_CHECKED = false;
     HAS_CHECKED_DEPS = false;
-    STATUS = 3
+    STATUS = 3,
+    GAMEPARTS = {}
   };
   USB = {
     MASSINDX = 0
@@ -338,17 +349,27 @@ end
 function PLDR.HDD.BuildGameList()
   PLDR.GAMES = {}
   if type(PLDR.HDDCACHE) == "table" and PLDR.HDD.USECACHE then PLDR.GAMES = PLDR.HDDCACHE end
+  PLDR.HDD.GAMEPARTS = {}
   if not PLDR.HDD.FOUNDANY then return end
   if PLDR.HDD.MAINPART then
     if HDD.MountPartition("hdd0:__.POPS", 1, FIO_MT_RDONLY) then
+      local start_index = #PLDR.GAMES
       PLDR.GetPS1GameLists("pfs1:/", true)
+      for i = start_index + 1, #PLDR.GAMES do
+        PLDR.HDD.GAMEPARTS[PLDR.GAMES[i]] = "hdd0:__.POPS"
+      end
       HDD.UMountPartition(1)
     end
   end
   for i=1, 9 do
     if PLDR.HDD.EXTRAPARTS[i] then
       if HDD.MountPartition("hdd0:__.POPS"..i, 1, FIO_MT_RDONLY) then
+        local start_index = #PLDR.GAMES
+        local partition = "hdd0:__.POPS"..i
         PLDR.GetPS1GameLists("pfs1:/", true)
+        for j = start_index + 1, #PLDR.GAMES do
+          PLDR.HDD.GAMEPARTS[PLDR.GAMES[j]] = partition
+        end
         HDD.UMountPartition(1)
       end
     end
@@ -444,22 +465,65 @@ local function BuildXXUsageArgs(gamelocation, game, source_mode)
   return PLDR.replace_device(gamelocation, source_mode).."XX."..PLDR.replace_extension(game, "ELF")
 end
 
-local function GetLaunchSourceMode(gamelocation)
-  -- Force PopStarter mode/source to match the working USB/mass behavior.
-  return "isra"
+local function GetDevicePrefix(path)
+  if path == nil then
+    return nil
+  end
+  return string.match(path, "^([%a]+%d*):")
 end
 
-local function TranslateLaunchPath(path)
+local function NormalizeIsraPath(path, device_prefix)
   if path == nil then
     return path
   end
-  if string.match(path, "^mmce%d:") then
-    return string.gsub(path, "^mmce%d:/", "mass:/")
-  end
   if string.match(path, "^isra:") then
-    return "mass:/"..string.sub(path, 6)
+    return device_prefix..":/"..string.sub(path, 6)
   end
   return path
+end
+
+local function TranslateMMCEPathForPopStarter(path)
+  if path == nil then
+    return path
+  end
+  return string.gsub(path, "^mmce%d:/", "mass:/")
+end
+
+local function BuildLaunchPolicy(name, mode, isra_prefix, handoff_transform)
+  return {
+    name = name,
+    mode = mode,
+    isra_prefix = isra_prefix,
+    normalize = function (path)
+      return NormalizeIsraPath(path, isra_prefix)
+    end,
+    handoff = function (path)
+      local normalized = NormalizeIsraPath(path, isra_prefix)
+      if handoff_transform ~= nil then
+        return handoff_transform(normalized)
+      end
+      return normalized
+    end
+  }
+end
+
+local function EnsureHDDReadyForLaunch(game)
+  local result = {
+    init_ok = false,
+    status = nil,
+    mount_partition = nil,
+    mount_ok = nil
+  }
+  PLDR.LoadHDDModules()
+  result.status = PLDR.HDD.STATUS
+  result.init_ok = PLDR.HDD.LOADSTATE == 1
+  if not result.init_ok or result.status ~= 0 then
+    return result
+  end
+  local partition = PLDR.HDD.GAMEPARTS[game] or "hdd0:__.POPS"
+  result.mount_partition = partition
+  result.mount_ok = HDD.MountPartition(partition, 1, FIO_MT_RDONLY)
+  return result
 end
 
 local function LogPopstarterArgs(args)
@@ -506,10 +570,16 @@ local function TryOpenForLaunch(path)
   return false, fd_or_err
 end
 
-local function BlockLaunchFailure(rc, popstarter, device_page)
+local function BlockLaunchFailure(rc, popstarter, device_page, argv0, game_path)
   UI.LAUNCHING = false
-  local body = string.format("Exec returned when it should not.\nrc=%s\nDevice: %s\nPath: %s\nPress X/O to continue.",
-    tostring(rc), tostring(device_page), tostring(popstarter))
+  local body = string.format(
+    "Exec returned when it should not.\nrc=%s\nDevice: %s\nPath: %s\nargv[0]: %s\nGame: %s\nPress X/O to continue.",
+    tostring(rc),
+    tostring(device_page),
+    tostring(popstarter),
+    tostring(argv0),
+    tostring(game_path)
+  )
   while true do
     UI.BottomDraw.Play()
     Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, 120, 20, UI.SCR.X, UI.SCR.Y, "LAUNCH FAILED", UI.CCOL.YELLOW)
@@ -522,60 +592,120 @@ local function BlockLaunchFailure(rc, popstarter, device_page)
   end
 end
 
-function PLDR.RunPOPStarterGame(gamelocation, game)
-  local source_mode = GetLaunchSourceMode(gamelocation)
-  local raw_source_mode = source_mode
-  local handoff_gamelocation = gamelocation
-  local vcd_path = gamelocation..game
-  local popstarter = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
-
-  local device_page = "unknown"
-  if string.match(gamelocation, "^mass") then
-    device_page = "USB"
-  elseif string.match(gamelocation, "^mmce") then
-    device_page = "MMCE"
-  elseif string.match(gamelocation, "^pfs") then
-    device_page = "HDD"
-  elseif UI and UI.CURSCENE then
-    if UI.CURSCENE == UI.SCENES.GUSB then
-      device_page = "USB"
-    elseif UI.CURSCENE == UI.SCENES.GSMB then
-      device_page = "SMB/MMCE"
-    elseif UI.CURSCENE == UI.SCENES.GHDD then
-      device_page = "HDD"
+local function LaunchEngine(popstarter, argv, reboot_iop, context)
+  LaunchLog("LAUNCH BEGIN")
+  LaunchLog("LAUNCH: boot path:", System.currentDirectory(), "APP_DIR:", APP_DIR_LOCAL)
+  if context ~= nil then
+    LaunchLog("LAUNCH: device page:", context.device_page, "UI scene:", context.ui_scene)
+    LaunchLog("LAUNCH: source mode:", context.source_mode, "raw_source:", context.raw_source_mode)
+    LaunchLog("LAUNCH: reboot_iop flag:", reboot_iop)
+    LaunchLog("LAUNCH: popstarter path:", popstarter)
+    LaunchLog("LAUNCH: game path (raw):", context.gamelocation, "handoff:", context.handoff_gamelocation, "game:", context.game, "vcd_path:", context.vcd_path)
+    LaunchLog("LAUNCH: bootparam:", context.bootparam)
+    if context.hdd_init ~= nil then
+      LaunchLog("LAUNCH: hdd init ok:", context.hdd_init.init_ok, "status:", context.hdd_init.status,
+        "mount:", context.hdd_init.mount_partition, "mount_ok:", context.hdd_init.mount_ok)
     end
   end
-
-  local translated_gamelocation = TranslateLaunchPath(handoff_gamelocation)
-  local BOOTPARAM = BuildXXUsageArgs(translated_gamelocation, game, source_mode)
-  local normalized_bootparam = TranslateLaunchPath(BOOTPARAM)
-  local argv = {normalized_bootparam, "--nr"}
-
-  LOG("Boot APP_DIR: "..APP_DIR_LOCAL)
-  LOG("PopStarter selected: "..popstarter)
-  LOG("PopStarter:", popstarter, "VCD:", vcd_path, "mode:", source_mode, "argv_count:", #argv)
-  LaunchLog("LAUNCH BEGIN")
-  LaunchLog("LAUNCH: device page:", device_page, "UI scene:", UI and UI.CURSCENE or "unknown")
-  LaunchLog("LAUNCH: source mode:", source_mode, "raw_source:", raw_source_mode)
-  LaunchLog("LAUNCH: reboot_iop flag:", PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER)
-  LaunchLog("LAUNCH: popstarter path:", popstarter)
-  LaunchLog("LAUNCH: game path (raw):", gamelocation, "translated:", translated_gamelocation, "game:", game, "vcd_path:", vcd_path)
-  LaunchLog("LAUNCH: bootparam raw:", BOOTPARAM, "normalized:", normalized_bootparam)
   local open_ok, open_rc = TryOpenForLaunch(popstarter)
   if open_ok then
     LaunchLog("LAUNCH: popstarter open rc:", open_rc)
   else
     LaunchLog("LAUNCH: popstarter open failed:", open_rc)
+    BlockLaunchFailure(
+      "popstarter open failed: "..tostring(open_rc),
+      popstarter,
+      context and context.device_page or "unknown",
+      argv and argv[1] or nil,
+      context and context.vcd_path or nil
+    )
+    return
   end
   LogPopstarterArgs(argv)
   UI.LAUNCHING = true
-  local rc = System.loadELF(popstarter,
-    PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER,
-    argv[1], argv[2])
+  local rc = System.loadELF(popstarter, reboot_iop, argv[1], argv[2])
   LaunchLog("LAUNCH RETURNED rc="..tostring(rc))
-  LOG(">>> UNHANDLED ERROR at Launching game '", game, " via ", popstarter, " Failed")
-  BlockLaunchFailure(rc, popstarter, device_page)
-  return
+  LOG(">>> UNHANDLED ERROR at Launching game '", context and context.game or "unknown", " via ", popstarter, " Failed")
+  BlockLaunchFailure(
+    rc,
+    popstarter,
+    context and context.device_page or "unknown",
+    argv and argv[1] or nil,
+    context and context.vcd_path or nil
+  )
+end
+
+local function ResolveLaunchPolicy(gamelocation)
+  local ui_scene = UI and UI.CURSCENE or "unknown"
+  if string.match(gamelocation, "^mass") then
+    return BuildLaunchPolicy("USB", "mass", "mass", nil), "USB"
+  end
+  if string.match(gamelocation, "^mmce") then
+    local mmce_prefix = PLDR.MMCE.PREFIX or "mmce0:/"
+    local mmce_device = string.match(mmce_prefix, "^([%a]+%d*)") or "mmce0"
+    return BuildLaunchPolicy("MMCE", "mass", mmce_device, TranslateMMCEPathForPopStarter), "MMCE"
+  end
+  if string.match(gamelocation, "^pfs") then
+    local prefix = GetDevicePrefix(gamelocation) or "pfs"
+    return BuildLaunchPolicy("HDD", prefix, prefix, nil), "HDD"
+  end
+  if ui_scene == UI.SCENES.GUSB then
+    return BuildLaunchPolicy("USB", "mass", "mass", nil), "USB"
+  end
+  if ui_scene == UI.SCENES.GSMB then
+    local mmce_prefix = PLDR.MMCE.PREFIX or "mmce0:/"
+    local mmce_device = string.match(mmce_prefix, "^([%a]+%d*)") or "mmce0"
+    return BuildLaunchPolicy("MMCE", "mass", mmce_device, TranslateMMCEPathForPopStarter), "SMB/MMCE"
+  end
+  if ui_scene == UI.SCENES.GHDD then
+    return BuildLaunchPolicy("HDD", "pfs", "pfs", nil), "HDD"
+  end
+  return BuildLaunchPolicy("unknown", "mass", "mass", nil), "unknown"
+end
+
+function PLDR.RunPOPStarterGame(gamelocation, game)
+  local policy, device_page = ResolveLaunchPolicy(gamelocation)
+  local hdd_init = nil
+  if policy.name == "HDD" then
+    hdd_init = EnsureHDDReadyForLaunch(game)
+    if not hdd_init.init_ok or hdd_init.status ~= 0 or not hdd_init.mount_ok then
+      LaunchLog("LAUNCH: HDD not ready; aborting launch.")
+      BlockLaunchFailure(
+        "HDD init/mount failed",
+        ResolvePopstarterPath(PLDR.POPSTARTER_PATH),
+        device_page,
+        nil,
+        nil
+      )
+      return
+    end
+  end
+  local normalized_gamelocation = policy.normalize(gamelocation)
+  local handoff_gamelocation = policy.handoff(normalized_gamelocation)
+  local source_mode = policy.mode
+  local raw_source_mode = source_mode
+  local vcd_path = normalized_gamelocation..game
+  local popstarter = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
+  local bootparam = BuildXXUsageArgs(handoff_gamelocation, game, source_mode)
+  local argv = {bootparam, "--nr"}
+
+  LOG("Boot APP_DIR: "..APP_DIR_LOCAL)
+  LOG("PopStarter selected: "..popstarter)
+  LOG("PopStarter:", popstarter, "VCD:", vcd_path, "mode:", source_mode, "argv_count:", #argv)
+
+  local context = {
+    device_page = device_page,
+    ui_scene = UI and UI.CURSCENE or "unknown",
+    source_mode = source_mode,
+    raw_source_mode = raw_source_mode,
+    gamelocation = gamelocation,
+    handoff_gamelocation = handoff_gamelocation,
+    game = game,
+    vcd_path = vcd_path,
+    bootparam = bootparam,
+    hdd_init = hdd_init
+  }
+  LaunchEngine(popstarter, argv, PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER, context)
 end
 
 function Touch(FILE)
