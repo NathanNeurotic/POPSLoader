@@ -185,7 +185,6 @@ UI = {
         end
         Graphics.drawImage(IMG["start"], 20, UI.SCR.Y-65) Font.ftPrint(SFONT, 55, UI.SCR.Y-60, 0, UI.SCR.X, 16, "POPStarter profiles")
         Graphics.drawImage(IMG["select"], 20, UI.SCR.Y-85) Font.ftPrint(SFONT, 55, UI.SCR.Y-80, 0, UI.SCR.X, 16, "About")
-        if UI.MainMenu.OPT == 2 then Font.ftPrint(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID+UI.SCR.Y_MID/2, 8, UI.SCR.X, 16, "COMMING SOON", UI.CCOL.RED) end
         UI.Pad.Listen()
         if Pads.check(GPAD, PAD_RIGHT) then UI.MainMenu.OPT = CLAMP(UI.MainMenu.OPT+1, 1, profcnt) GPAD = 0 end
         if Pads.check(GPAD, PAD_LEFT)  then UI.MainMenu.OPT = CLAMP(UI.MainMenu.OPT-1, 1, profcnt) GPAD = 0 end
@@ -200,6 +199,9 @@ UI = {
             local slots = PLDR.GetMMCESlots()
             if #slots < 1 then
               UI.Notif_queue.add("No MMCE device found (mmce0/mmce1).")
+              PLDR.CleanupGameList()
+              PLDR.GAMEPATH = ""
+              UI.SceneChange(UI.MainMenu.OPT)
             else
               if PLDR.MMCE.PREFIX == nil then
                 PLDR.SetMMCESlot(1)
