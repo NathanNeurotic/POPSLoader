@@ -11,9 +11,13 @@
 
   Licensed under GNU General public license v3.0
 --]]
-LOG(System.currentDirectory())
+local BOOT_PATH_RAW = System.currentDirectory()
+LOG(BOOT_PATH_RAW)
 local function NormalizeDeviceRoot(path)
   if path == nil or path == "" then return path end
+  if string.match(path, "^host:/") then
+    return path
+  end
   local device = string.match(path, "^([%a]+%d*):/?$")
   if device ~= nil then
     return device..":/"
@@ -21,9 +25,21 @@ local function NormalizeDeviceRoot(path)
   return path
 end
 
+local function NormalizeHostPath(path)
+  if path == nil or path == "" then return path end
+  if not string.match(path, "^host:/") then
+    return path
+  end
+  local rest = string.sub(path, 7)
+  if string.match(rest, "^[%a]:[^/]") then
+    rest = string.sub(rest, 1, 2).."/"..string.sub(rest, 3)
+  end
+  return "host:/"..rest
+end
+
 local function NormalizeDirPath(path)
   if path == nil or path == "" then return "" end
-  local normalized = NormalizeDeviceRoot(path)
+  local normalized = NormalizeHostPath(NormalizeDeviceRoot(path))
   normalized = string.gsub(normalized, "/+$", "/")
   if string.sub(normalized, -1) ~= "/" then
     normalized = normalized.."/"
@@ -40,8 +56,10 @@ local function JoinPath(base, rel)
   return normalized..cleaned
 end
 
-local APP_DIR_LOCAL = NormalizeDirPath(APP_DIR or System.currentDirectory())
-LOG("APP_DIR="..APP_DIR_LOCAL)
+local APP_DIR_LOCAL = NormalizeDirPath(APP_DIR or BOOT_PATH_RAW)
+LOG("APP_DIR_RAW="..tostring(BOOT_PATH_RAW))
+LOG("APP_DIR_NORM="..APP_DIR_LOCAL)
+LOG("APP_DIR_POPSTARTER_JOIN="..JoinPath(APP_DIR_LOCAL, "POPSTARTER.ELF"))
 
 local function ResolveAsset(rel)
   return System.resolveAsset(rel) or JoinPath(APP_DIR_LOCAL, rel)
