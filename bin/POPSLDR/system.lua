@@ -11,9 +11,13 @@
 
   Licensed under GNU General public license v3.0
 --]]
-LOG(System.currentDirectory())
+local BOOT_PATH_RAW = System.currentDirectory()
+LOG(BOOT_PATH_RAW)
 local function NormalizeDeviceRoot(path)
   if path == nil or path == "" then return path end
+  if string.match(path, "^host:/") then
+    return path
+  end
   local device = string.match(path, "^([%a]+%d*):/?$")
   if device ~= nil then
     return device..":/"
@@ -21,9 +25,21 @@ local function NormalizeDeviceRoot(path)
   return path
 end
 
+local function NormalizeHostPath(path)
+  if path == nil or path == "" then return path end
+  if not string.match(path, "^host:/") then
+    return path
+  end
+  local rest = string.sub(path, 7)
+  if string.match(rest, "^[%a]:[^/]") then
+    rest = string.sub(rest, 1, 2).."/"..string.sub(rest, 3)
+  end
+  return "host:/"..rest
+end
+
 local function NormalizeDirPath(path)
   if path == nil or path == "" then return "" end
-  local normalized = NormalizeDeviceRoot(path)
+  local normalized = NormalizeHostPath(NormalizeDeviceRoot(path))
   normalized = string.gsub(normalized, "/+$", "/")
   if string.sub(normalized, -1) ~= "/" then
     normalized = normalized.."/"
@@ -40,8 +56,10 @@ local function JoinPath(base, rel)
   return normalized..cleaned
 end
 
-local APP_DIR_LOCAL = NormalizeDirPath(APP_DIR or System.currentDirectory())
-LOG("APP_DIR="..APP_DIR_LOCAL)
+local APP_DIR_LOCAL = NormalizeDirPath(APP_DIR or BOOT_PATH_RAW)
+LOG("APP_DIR_RAW="..tostring(BOOT_PATH_RAW))
+LOG("APP_DIR_NORM="..APP_DIR_LOCAL)
+LOG("APP_DIR_POPSTARTER_JOIN="..JoinPath(APP_DIR_LOCAL, "POPSTARTER.ELF"))
 
 local function ResolveAsset(rel)
   return System.resolveAsset(rel) or JoinPath(APP_DIR_LOCAL, rel)
@@ -527,6 +545,11 @@ local function EnsureHDDReadyForLaunch(game)
 end
 
 local function LogPopstarterArgs(args)
+  if args == nil then
+    LaunchLog("LAUNCH: argv: nil")
+    return
+  end
+  LaunchLog("LAUNCH: argv_count:", #args)
   for i = 1, #args do
     LaunchLog("LAUNCH: argv["..(i - 1).."]:", args[i])
   end
@@ -561,6 +584,22 @@ function LaunchLog(...)
   AppendLaunchLog(line)
 end
 
+local LaunchState = {
+  PHASE_VALIDATE = "LAUNCH_VALIDATE",
+  PHASE_FADEOUT = "LAUNCH_FADEOUT",
+  PHASE_EXEC = "LAUNCH_EXEC",
+  PHASE_FAILED = "LAUNCH_FAILED",
+  phase = "IDLE",
+  watchdog_ms = 3000,
+  fade_timer = nil,
+  fade_start = 0
+}
+
+local function SetLaunchPhase(phase)
+  LaunchState.phase = phase
+  LaunchLog("LAUNCH: phase:", phase)
+end
+
 local function EnsureTrailingSlash(path)
   if path == nil then
     return nil
@@ -573,20 +612,30 @@ end
 
 local function TryOpenForLaunch(path)
   local ok, fd_or_err = pcall(System.openFile, path, FREAD)
-  if ok then
-    System.closeFile(fd_or_err)
-    return true, fd_or_err
+  if not ok then
+    return false, fd_or_err, "open"
   end
-  return false, fd_or_err
+  if type(fd_or_err) ~= "number" or fd_or_err < 0 then
+    return false, fd_or_err, "open"
+  end
+  local size = System.sizeFile(fd_or_err)
+  System.closeFile(fd_or_err)
+  if type(size) ~= "number" or size < 0 then
+    return false, size, "stat"
+  end
+  return true, size, "stat"
 end
 
-local function BlockLaunchFailure(rc, popstarter, device_page, argv0, game_path)
+local function BlockLaunchFailure(rc, popstarter, device_page, argv0, game_path, app_dir, open_rc)
+  SetLaunchPhase(LaunchState.PHASE_FAILED)
   UI.LAUNCHING = false
   local body = string.format(
-    "LAUNCH RETURNED\nrc=%s\nDevice: %s\nPOPSTARTER: %s\nargv[0]: %s\nGame arg: %s\nPress X/O to continue.",
+    "LAUNCH RETURNED\nrc=%s\nDevice: %s\nPOPSTARTER: %s\nOpen/stat rc: %s\nAPP_DIR: %s\nargv[0]: %s\nGame arg: %s\nPress X/O to continue.",
     tostring(rc),
     tostring(device_page),
     tostring(popstarter),
+    tostring(open_rc),
+    tostring(app_dir),
     tostring(argv0),
     tostring(game_path)
   )
@@ -594,7 +643,7 @@ local function BlockLaunchFailure(rc, popstarter, device_page, argv0, game_path)
     UI.BottomDraw.Play()
     Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, 120, 20, UI.SCR.X, UI.SCR.Y, "LAUNCH FAILED", UI.CCOL.YELLOW)
     Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, 170, 18, UI.SCR.X, UI.SCR.Y, body, UI.CCOL.GREY)
-    UI.Pad.Listen()
+    Input_GetEvent()
     if UI.Pad.Events.CONFIRM or UI.Pad.Events.BACK or UI.Pad.Events.EXIT then
       break
     end
@@ -607,6 +656,7 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   local app_dir = EnsureTrailingSlash(APP_DIR_LOCAL)
   local boot_path = EnsureTrailingSlash(System.currentDirectory())
   local argv0 = argv and argv[1] or nil
+  SetLaunchPhase(LaunchState.PHASE_VALIDATE)
   LaunchLog("LAUNCH BEGIN")
   LaunchLog("LAUNCH: boot path:", boot_path, "APP_DIR:", app_dir)
   LaunchLog("LAUNCH: reboot_iop flag:", reboot_iop)
@@ -621,35 +671,65 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
         "mount:", context.hdd_init.mount_partition, "mount_ok:", context.hdd_init.mount_ok)
     end
   end
-  local open_ok, open_rc = TryOpenForLaunch(popstarter)
+  LogPopstarterArgs(argv)
+  local open_ok, open_rc, open_stage = TryOpenForLaunch(popstarter)
   if open_ok then
-    LaunchLog("LAUNCH: popstarter open rc:", open_rc)
+    LaunchLog("LAUNCH: popstarter stat ok:", open_rc)
   else
-    LaunchLog("LAUNCH: popstarter open failed:", open_rc)
+    LaunchLog("LAUNCH: popstarter "..tostring(open_stage).." failed:", open_rc)
     BlockLaunchFailure(
-      "popstarter open failed: "..tostring(open_rc),
+      "popstarter "..tostring(open_stage).." failed: "..tostring(open_rc),
       popstarter,
       context and context.device_page or "unknown",
       argv and argv[1] or nil,
-      context and context.vcd_path or nil
+      context and context.vcd_path or nil,
+      app_dir,
+      open_rc
     )
     return
   end
-  LogPopstarterArgs(argv)
-  LaunchLog("LAUNCH: argv[0]:", argv0)
-  LaunchLog("LAUNCH: game path arg:", argv0)
+  SetLaunchPhase(LaunchState.PHASE_FADEOUT)
   UI.LAUNCHING = true
+  LaunchState.fade_timer = Timer.new()
+  LaunchState.fade_start = Timer.getTime(LaunchState.fade_timer)
   Screen.clear(Color.new(0, 0, 0))
   Screen.flip()
+  if (Timer.getTime(LaunchState.fade_timer) - LaunchState.fade_start) >= LaunchState.watchdog_ms then
+    BlockLaunchFailure(
+      "Launch timeout: exec did not transfer control",
+      popstarter,
+      context and context.device_page or "unknown",
+      argv0,
+      argv0,
+      app_dir,
+      nil
+    )
+    return
+  end
+  SetLaunchPhase(LaunchState.PHASE_EXEC)
   local rc = System.loadELF(popstarter, reboot_iop, argv[1], argv[2])
   LaunchLog("LAUNCH RETURNED rc="..tostring(rc))
   LOG(">>> UNHANDLED ERROR at Launching game '", context and context.game or "unknown", " via ", popstarter, " Failed")
+  if (Timer.getTime(LaunchState.fade_timer) - LaunchState.fade_start) >= LaunchState.watchdog_ms then
+    BlockLaunchFailure(
+      "Launch timeout: exec did not transfer control",
+      popstarter,
+      context and context.device_page or "unknown",
+      argv0,
+      argv0,
+      app_dir,
+      nil
+    )
+    return
+  end
   BlockLaunchFailure(
     rc,
     popstarter,
     context and context.device_page or "unknown",
     argv0,
-    argv0
+    argv0,
+    app_dir,
+    nil
   )
 end
 
@@ -693,6 +773,8 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
         ResolvePopstarterPath(PLDR.POPSTARTER_PATH),
         device_page,
         nil,
+        nil,
+        APP_DIR_LOCAL,
         nil
       )
       return
