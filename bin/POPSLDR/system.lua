@@ -75,6 +75,7 @@ end
 local APP_DIR_LOCAL = NormalizeDirPath(APP_DIR or BOOT_PATH_RAW)
 LOG("APP_DIR_NORM="..APP_DIR_LOCAL)
 LOG("APP_DIR_POPSTARTER_JOIN="..JoinPath(APP_DIR_LOCAL, "POPSTARTER.ELF"))
+local SELECTOR_MODE = "basename"
 
 local function ResolveAsset(rel)
   return System.resolveAsset(rel) or JoinPath(APP_DIR_LOCAL, rel)
@@ -993,6 +994,9 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   local game_name = SanitizeGameName(StripVcdExtension(vcd_filename))
   local selector_prefix = "XX."
   local argv0_selector = BuildPopstarterSelector(selector_prefix, game_name)
+  if SELECTOR_MODE == "masspath" then
+    argv0_selector = "mass:/"..argv0_selector
+  end
   if boot_source_mode == "mass" and prefix_added and not bootparam_exists then
     fallback_bootparam = EnsureTrailingSlash(pops_root)..game
     fallback_exists = doesFileExist(fallback_bootparam)
@@ -1015,6 +1019,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   LaunchLog("LAUNCH: vcd basename used:", bootparam_basename_used)
   LaunchLog("LAUNCH: bootparam candidate:", bootparam, "exists:", tostring(bootparam_exists))
   LaunchLog("LAUNCH: derived GameName:", game_name)
+  LaunchLog("LAUNCH: selector mode:", SELECTOR_MODE)
   LaunchLog("LAUNCH: argv0 selector:", argv0_selector)
   if fallback_bootparam ~= nil then
     LaunchLog("LAUNCH: bootparam fallback:", fallback_bootparam, "exists:", tostring(fallback_exists))
