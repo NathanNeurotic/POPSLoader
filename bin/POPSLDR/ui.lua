@@ -191,7 +191,11 @@ local UI = {
         for i = UI.GameList.STARTUP, ammount do
           if i >= (UI.GameList.STARTUP+UI.GameList.MAXDRAW) then break end
           local Y = 20+((i-UI.GameList.STARTUP)*21)
-          Font.ftPrint(BFONT, 30, Y, 0, UI.SCR.X, 16, string.sub(PLDR.GAMES[i],1, -5), i == UI.GameList.CURR and UI.CCOL.YELLOW or UI.CCOL.GREY)
+          local label = string.sub(PLDR.GAMES[i],1, -5)
+          if UI.CURSCENE == UI.SCENES.GHDD then
+            label = PLDR.HDD.DisplayName(PLDR.GAMES[i])
+          end
+          Font.ftPrint(BFONT, 30, Y, 0, UI.SCR.X, 16, label, i == UI.GameList.CURR and UI.CCOL.YELLOW or UI.CCOL.GREY)
         end
         if ammount <= 0 then
           Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, UI.SCR.Y_MID, 20, UI.SCR.X, 32, "No games found", UI.CCOL.YELLOW)
