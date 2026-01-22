@@ -866,6 +866,7 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     "popstarter="..tostring(popstarter),
     "reboot_iop="..tostring(reboot_iop)
   )
+  LaunchLog("LAUNCH: loadELF argc (caller):", exec_args and #exec_args or 0)
   local rc
   if exec_args ~= nil and #exec_args > 0 and unpack_fn ~= nil then
     rc = System.loadELF(popstarter, reboot_iop, unpack_fn(exec_args))
@@ -1021,6 +1022,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   LaunchLog("LAUNCH: derived GameName:", game_name)
   LaunchLog("LAUNCH: selector mode:", SELECTOR_MODE)
   LaunchLog("LAUNCH: argv0 selector:", argv0_selector)
+  LaunchLog("LAUNCH: loadELF argc (caller):", #argv)
   if fallback_bootparam ~= nil then
     LaunchLog("LAUNCH: bootparam fallback:", fallback_bootparam, "exists:", tostring(fallback_exists))
   end

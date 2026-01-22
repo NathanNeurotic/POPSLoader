@@ -129,9 +129,17 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	} else {
 		return fd;
 	}
+	DPRINTF("LAUNCH: argc_in=%d argv_ptr=%s\n", argc, argv ? "set" : "null");
+	{
+		char argc_buf[32];
+		snprintf(argc_buf, sizeof(argc_buf), "%d", argc);
+		append_launch_log_fmt("argc_in", -1, argc_buf);
+	}
+	append_launch_log_fmt("argv_ptr", -1, argv ? "set" : "null");
 	use_default_argv0 = (argc <= 0 || argv == NULL || argv[0] == NULL);
 	new_argc = use_default_argv0 ? 1 : argc;
 	DPRINTF("LAUNCH: argv0 source: %s\n", use_default_argv0 ? "resolved path" : "caller");
+	append_launch_log_fmt("argv0_source", -1, use_default_argv0 ? "resolved path" : "caller");
 	// Preparing filename and partition to be sent in the argv
 	if (new_argc + 1 > kMaxArgc) {
 		return -2;
