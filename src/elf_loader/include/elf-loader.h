@@ -22,6 +22,7 @@ extern "C" {
 
 // Before call this method be sure that you have previously called sbv_patch_disable_prefix_check();
 int LoadELFFromFile(const char *filename, int argc, char *argv[]);
+int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[]);
 
 /** Modify argv[0] when partition info should be kept
  *

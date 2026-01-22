@@ -75,6 +75,7 @@ end
 local APP_DIR_LOCAL = NormalizeDirPath(APP_DIR or BOOT_PATH_RAW)
 LOG("APP_DIR_NORM="..APP_DIR_LOCAL)
 LOG("APP_DIR_POPSTARTER_JOIN="..JoinPath(APP_DIR_LOCAL, "POPSTARTER.ELF"))
+local SELECTOR_MODE = "basename"
 
 local function ResolveAsset(rel)
   return System.resolveAsset(rel) or JoinPath(APP_DIR_LOCAL, rel)
@@ -287,9 +288,9 @@ function PLDR.CheckPOPStarterDEPS(device)
   if device == UI.SCENES.GUSB then
     return doesFileExist("mass:/POPS/POPS_IOX.PAK")
   elseif device == UI.SCENES.GHDD then
-    local a = HDD.MountPartition("hdd0:__common", 1, FIO_MT_RDONLY)
+    local a = HDD.MountPartition("hdd0:__common", 0, FIO_MT_RDONLY)
     if a then
-      return a, doesFileExist("pfs1:/POPS/POPS.ELF"), doesFileExist("pfs1:/POPS/IOPRP252.IMG")
+      return a, doesFileExist("pfs0:/POPS/POPS.ELF"), doesFileExist("pfs0:/POPS/IOPRP252.IMG")
     else
       return a, false, false
     end
@@ -361,17 +362,17 @@ end
 function PLDR.HDD.CheckAvailableHddPopsParts()
   if not PLDR.HDD.HAS_CHECKED then --HDD is checked only once since it cannot be removed/replaced without damaging the console
     LOG("Checking available __.POPS Partitions")
-    if HDD.MountPartition("hdd0:__.POPS", 1, FIO_MT_RDONLY) then
+    if HDD.MountPartition("hdd0:__.POPS", 0, FIO_MT_RDONLY) then
       PLDR.HDD.MAINPART = true
-      HDD.UMountPartition(1)
+      HDD.UMountPartition(0)
     end
     LOG("__.POPS", PLDR.HDD.MAINPART)
     PLDR.HDD.FOUNDANY = PLDR.HDD.MAINPART
     for i=1, 9 do
-      if HDD.MountPartition(("hdd0:__.POPS%d"):format(i), 1, FIO_MT_RDONLY) then
+      if HDD.MountPartition(("hdd0:__.POPS%d"):format(i), 0, FIO_MT_RDONLY) then
         PLDR.HDD.EXTRAPARTS[i] = true
         PLDR.HDD.FOUNDANY = true
-        HDD.UMountPartition(1)
+        HDD.UMountPartition(0)
       end
       LOG("__.POPS"..i, PLDR.HDD.EXTRAPARTS[i])
     end
@@ -385,25 +386,25 @@ function PLDR.HDD.BuildGameList()
   PLDR.HDD.GAMEPARTS = {}
   if not PLDR.HDD.FOUNDANY then return end
   if PLDR.HDD.MAINPART then
-    if HDD.MountPartition("hdd0:__.POPS", 1, FIO_MT_RDONLY) then
+    if HDD.MountPartition("hdd0:__.POPS", 0, FIO_MT_RDONLY) then
       local start_index = #PLDR.GAMES
-      PLDR.GetPS1GameLists("pfs1:/", true)
+      PLDR.GetPS1GameLists("pfs0:/", true)
       for i = start_index + 1, #PLDR.GAMES do
         PLDR.HDD.GAMEPARTS[PLDR.GAMES[i]] = "hdd0:__.POPS"
       end
-      HDD.UMountPartition(1)
+      HDD.UMountPartition(0)
     end
   end
   for i=1, 9 do
     if PLDR.HDD.EXTRAPARTS[i] then
-      if HDD.MountPartition("hdd0:__.POPS"..i, 1, FIO_MT_RDONLY) then
+      if HDD.MountPartition("hdd0:__.POPS"..i, 0, FIO_MT_RDONLY) then
         local start_index = #PLDR.GAMES
         local partition = "hdd0:__.POPS"..i
-        PLDR.GetPS1GameLists("pfs1:/", true)
+        PLDR.GetPS1GameLists("pfs0:/", true)
         for j = start_index + 1, #PLDR.GAMES do
           PLDR.HDD.GAMEPARTS[PLDR.GAMES[j]] = partition
         end
-        HDD.UMountPartition(1)
+        HDD.UMountPartition(0)
       end
     end
   end
@@ -545,6 +546,34 @@ local function BuildPopstarterSelector(prefix, vcd_filename)
   return prefix..vcd_filename..".ELF"
 end
 
+local function SelectPopstarterSelectorPrefix(device_page)
+  if device_page == "USB" or device_page == "MMCE" or device_page == "SMB/MMCE" then
+    return "XX."
+  end
+  if device_page == "HDD" then
+    return ""
+  end
+  return "XX."
+end
+
+local function BuildPopstarterSelectorPath(device_page, game_name)
+  if game_name == nil or game_name == "" then
+    return ""
+  end
+  if device_page == "HDD" then
+    return "hdd0:__.POPS/"..game_name..".ELF"
+  end
+  if device_page == "USB" or device_page == "MMCE" or device_page == "SMB/MMCE" then
+    return "mass:/POPS/XX."..game_name..".ELF"
+  end
+  return game_name..".ELF"
+end
+
+local function DeriveGameNameFromSelection(raw_selection)
+  local vcd_filename = ExtractVcdFilename(raw_selection or "")
+  return SanitizeGameName(StripVcdExtension(vcd_filename))
+end
+
 local function HasBootPrefix(basename, desired_prefix)
   if basename == nil or basename == "" or desired_prefix == nil or desired_prefix == "" then
     return false
@@ -627,7 +656,7 @@ local function EnsureHDDReadyForLaunch(game)
   end
   local partition = PLDR.HDD.GAMEPARTS[game] or "hdd0:__.POPS"
   result.mount_partition = partition
-  result.mount_ok = HDD.MountPartition(partition, 1, FIO_MT_RDONLY)
+  result.mount_ok = HDD.MountPartition(partition, 0, FIO_MT_RDONLY)
   return result
 end
 
@@ -860,6 +889,12 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     context and context.bootparam or "unknown"
   )
   LaunchLog("LAUNCH: stage A argv_count:", exec_args and #exec_args or 0)
+  LaunchLog(
+    "LAUNCH: selector="..tostring(argv0),
+    "popstarter="..tostring(popstarter),
+    "reboot_iop="..tostring(reboot_iop)
+  )
+  LaunchLog("LAUNCH: loadELF argc (caller):", exec_args and #exec_args or 0)
   local rc
   if exec_args ~= nil and #exec_args > 0 and unpack_fn ~= nil then
     rc = System.loadELF(popstarter, reboot_iop, unpack_fn(exec_args))
@@ -984,10 +1019,37 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   local fallback_exists = false
   local bootparam_basename_used = normalized_basename
   local prefix_used = HasBootPrefix(normalized_basename, prefix) and prefix or ""
-  local vcd_filename = ExtractVcdFilename(game)
-  local game_name = SanitizeGameName(StripVcdExtension(vcd_filename))
-  local selector_prefix = "XX."
-  local argv0_selector = BuildPopstarterSelector(selector_prefix, game_name)
+  local game_name = DeriveGameNameFromSelection(game)
+  if game_name == "" or string.upper(game_name) == "POPSTARTER" then
+    LaunchLog("LAUNCH: GameName derivation failed for selection:", game)
+    BlockLaunchFailure(
+      "GameName derivation failed",
+      popstarter,
+      device_page,
+      nil,
+      game,
+      APP_DIR_LOCAL,
+      nil,
+      nil
+    )
+    return
+  end
+  local selector_prefix = SelectPopstarterSelectorPrefix(device_page)
+  local argv0_selector = BuildPopstarterSelectorPath(device_page, game_name)
+  if selector_prefix == "" and string.upper(game_name) == "POPSTARTER" then
+    LaunchLog("LAUNCH: Internal error: game_base derived as POPSTARTER; refusing to launch.", game)
+    BlockLaunchFailure(
+      "Internal error: game_base derived as POPSTARTER; refusing to launch.",
+      popstarter,
+      device_page,
+      nil,
+      game,
+      APP_DIR_LOCAL,
+      nil,
+      nil
+    )
+    return
+  end
   if boot_source_mode == "mass" and prefix_added and not bootparam_exists then
     fallback_bootparam = EnsureTrailingSlash(pops_root)..game
     fallback_exists = doesFileExist(fallback_bootparam)
@@ -1010,7 +1072,10 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   LaunchLog("LAUNCH: vcd basename used:", bootparam_basename_used)
   LaunchLog("LAUNCH: bootparam candidate:", bootparam, "exists:", tostring(bootparam_exists))
   LaunchLog("LAUNCH: derived GameName:", game_name)
+  LaunchLog("LAUNCH: selector mode:", SELECTOR_MODE)
+  LaunchLog("LAUNCH: selector prefix:", selector_prefix)
   LaunchLog("LAUNCH: argv0 selector:", argv0_selector)
+  LaunchLog("LAUNCH: loadELF argc (caller):", #argv)
   if fallback_bootparam ~= nil then
     LaunchLog("LAUNCH: bootparam fallback:", fallback_bootparam, "exists:", tostring(fallback_exists))
   end
