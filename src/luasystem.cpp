@@ -508,10 +508,12 @@ static int lua_loadELF(lua_State *L)
 		snprintf(selector_buf, sizeof(selector_buf), "%s", selector ? selector : "");
 		argv_static[0] = selector_buf;
 		argv_static[1] = NULL;
+		printf("# Loading ELF argv0='%s' argc=1\n", argv_static[0]);
 		int rc = LoadELFFromFile(elftoload, 1, argv_static);
 		lua_pushinteger(L, rc);
 		return 1;
 	}
+	printf("# Loading ELF argv0 default (argc=0)\n");
 	int rc = LoadELFFromFile(elftoload, 0, NULL);
 	lua_pushinteger(L, rc);
 	return 1;
