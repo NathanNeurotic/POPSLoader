@@ -288,9 +288,9 @@ function PLDR.CheckPOPStarterDEPS(device)
   if device == UI.SCENES.GUSB then
     return doesFileExist("mass:/POPS/POPS_IOX.PAK")
   elseif device == UI.SCENES.GHDD then
-    local a = HDD.MountPartition("hdd0:__common", 0, FIO_MT_RDONLY)
+    local a = HDD.MountPartition("hdd0:__common", 2, FIO_MT_RDONLY)
     if a then
-      return a, doesFileExist("pfs0:/POPS/POPS.ELF"), doesFileExist("pfs0:/POPS/IOPRP252.IMG")
+      return a, doesFileExist("pfs2:/POPS/POPS.ELF"), doesFileExist("pfs2:/POPS/IOPRP252.IMG")
     else
       return a, false, false
     end
@@ -641,12 +641,25 @@ local function BuildLaunchPolicy(name, mode, isra_prefix, handoff_transform)
   }
 end
 
+local function EnsureHddAppMount()
+  local app_dir = EnsureTrailingSlash(APP_DIR_LOCAL)
+  local app_fs = "pfs1:/"
+  local ok = string.match(app_dir, "^pfs1:/") ~= nil and doesFolderExist(app_fs)
+  return {
+    ok = ok,
+    app_dir = app_dir,
+    app_fs = app_fs
+  }
+end
+
 local function EnsureHDDReadyForLaunch(game)
   local result = {
     init_ok = false,
     status = nil,
     mount_partition = nil,
-    mount_ok = nil
+    mount_ok = nil,
+    mount_index = 0,
+    unmount_rc = nil
   }
   PLDR.LoadHDDModules()
   result.status = PLDR.HDD.STATUS
@@ -656,7 +669,8 @@ local function EnsureHDDReadyForLaunch(game)
   end
   local partition = PLDR.HDD.GAMEPARTS[game] or "hdd0:__.POPS"
   result.mount_partition = partition
-  result.mount_ok = HDD.MountPartition(partition, 0, FIO_MT_RDONLY)
+  result.unmount_rc = HDD.UMountPartition(result.mount_index)
+  result.mount_ok = HDD.MountPartition(partition, result.mount_index, FIO_MT_RDONLY)
   return result
 end
 
@@ -960,14 +974,45 @@ end
 
 function PLDR.RunPOPStarterGame(gamelocation, game)
   local policy, device_page = ResolveLaunchPolicy(gamelocation)
+  local popstarter = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
   local hdd_init = nil
+  local app_mount = nil
   if policy.name == "HDD" then
+    app_mount = EnsureHddAppMount()
+    if not app_mount.ok then
+      LaunchLog("LAUNCH: HDD app mount missing/unreadable:", app_mount.app_dir, app_mount.app_fs)
+      BlockLaunchFailure(
+        "HDD app mount missing/unreadable (pfs1:/)",
+        popstarter,
+        device_page,
+        nil,
+        nil,
+        APP_DIR_LOCAL,
+        nil,
+        nil
+      )
+      return
+    end
     hdd_init = EnsureHDDReadyForLaunch(game)
     if not hdd_init.init_ok or hdd_init.status ~= 0 or not hdd_init.mount_ok then
       LaunchLog("LAUNCH: HDD not ready; aborting launch.")
       BlockLaunchFailure(
         "HDD init/mount failed",
-        ResolvePopstarterPath(PLDR.POPSTARTER_PATH),
+        popstarter,
+        device_page,
+        nil,
+        nil,
+        APP_DIR_LOCAL,
+        nil,
+        nil
+      )
+      return
+    end
+    if hdd_init.mount_index ~= 0 then
+      LaunchLog("LAUNCH: HDD guard: mount index not pfs0:", hdd_init.mount_index)
+      BlockLaunchFailure(
+        "HDD guard: game mount not pfs0",
+        popstarter,
         device_page,
         nil,
         nil,
@@ -983,7 +1028,20 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   local source_mode = policy.mode
   local raw_source_mode = source_mode
   local vcd_path = normalized_gamelocation..game
-  local popstarter = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
+  if device_page == "HDD" and string.match(vcd_path, "^pfs0:/") == nil then
+    LaunchLog("LAUNCH: HDD guard: VCD path not on pfs0:", vcd_path)
+    BlockLaunchFailure(
+      "HDD guard: VCD path not on pfs0",
+      popstarter,
+      device_page,
+      nil,
+      vcd_path,
+      APP_DIR_LOCAL,
+      nil,
+      nil
+    )
+    return
+  end
   local pops_root = normalized_gamelocation
   local boot_source_mode = source_mode
   local device_mode = "unknown"
@@ -1008,6 +1066,26 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
     pops_root = "mass:/POPS/"
     boot_source_mode = "mass"
     device_mode = "mass"
+  end
+  if device_page == "HDD" and app_mount ~= nil and app_mount.ok then
+    local app_popstarter = JoinPath(app_mount.app_dir, "POPSTARTER.ELF")
+    if doesFileExist(app_popstarter) then
+      popstarter = app_popstarter
+    end
+    if string.match(popstarter, "^pfs0:/") ~= nil then
+      LaunchLog("LAUNCH: HDD guard: POPSTARTER path on pfs0:", popstarter)
+      BlockLaunchFailure(
+        "HDD guard: POPSTARTER path on pfs0",
+        popstarter,
+        device_page,
+        nil,
+        vcd_path,
+        APP_DIR_LOCAL,
+        nil,
+        nil
+      )
+      return
+    end
   end
   local bootparam, prefix, normalized_basename, prefix_added = BuildPopstarterBootString(
     boot_source_mode,
@@ -1078,6 +1156,13 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   LaunchLog("LAUNCH: loadELF argc (caller):", #argv)
   if fallback_bootparam ~= nil then
     LaunchLog("LAUNCH: bootparam fallback:", fallback_bootparam, "exists:", tostring(fallback_exists))
+  end
+  if device_page == "HDD" then
+    LaunchLog("HDD LAUNCH: APP_FS:", app_mount and app_mount.app_fs or "unknown", "APP_DIR:", app_mount and app_mount.app_dir or APP_DIR_LOCAL)
+    LaunchLog("HDD LAUNCH: GAME_FS:", "pfs0:/", "partition:", hdd_init and hdd_init.mount_partition or "unknown")
+    LaunchLog("HDD LAUNCH: POPSTARTER:", popstarter)
+    LaunchLog("HDD LAUNCH: VCD:", vcd_path)
+    LogPopstarterArgs(argv)
   end
   local context = {
     device_page = device_page,

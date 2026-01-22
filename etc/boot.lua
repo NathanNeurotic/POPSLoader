@@ -6,8 +6,6 @@ local function ensure_dir(path)
   return path
 end
 
-local BASE_DIR = ensure_dir(APP_DIR or System.currentDirectory())
-package.path = BASE_DIR.."?.lua;"..BASE_DIR.."?/init.lua;"..BASE_DIR.."POPSLDR/?.lua;./?.lua;./POPSLDR/?.lua;mass:/POPSLDR/?.lua;mc0:/POPSLDR/?.lua;mc1:/POPSLDR/?.lua"
 function LOG(...)
   print_uart(...)
 end
@@ -62,14 +60,19 @@ if string.find(ARGV0, "^hdd0:") then
       LOG("ERROR", MODULE..".IRX", ID, RET)
     else
       System.sleep(2) -- lets give it time to get ready
-      if HDD.MountPartition(MNTPART, 0) then -- mount to "pfs3:" and NEVER USE IT FOR ANYTHING ELSE
+      local app_mount_index = 1
+      if HDD.MountPartition(MNTPART, app_mount_index) then
+        BOOTPATH = string.gsub(BOOTPATH, "^pfs:", ("pfs%d:"):format(app_mount_index))
         BOOTPATH, _, _ = string.match(BOOTPATH, "(.-)([^/]-([^%.]+))$")
         System.currentDirectory(BOOTPATH)
+        APP_DIR = BOOTPATH
         LOGF("new bootpath: '%s'\n", BOOTPATH)
       end
     end
   end
 end
+local BASE_DIR = ensure_dir(APP_DIR or System.currentDirectory())
+package.path = BASE_DIR.."?.lua;"..BASE_DIR.."?/init.lua;"..BASE_DIR.."POPSLDR/?.lua;./?.lua;./POPSLDR/?.lua;mass:/POPSLDR/?.lua;mc0:/POPSLDR/?.lua;mc1:/POPSLDR/?.lua"
 GPAD = 0
 Font.ftInit()
 BFONT = Font.LoadBuiltinFont()
