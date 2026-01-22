@@ -1,4 +1,5 @@
 #include <unistd.h>
+#include <string.h>
 #include <libmc.h>
 #include <malloc.h>
 #include <sys/fcntl.h>
@@ -492,6 +493,7 @@ static int lua_checkexist(lua_State *L){
 extern "C" {
 int LoadELFFromFile(const char *filename, int argc, char *argv[]);
 int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[]);
+int LoadELFFromFileWithLoader(const char *filename, int argc, char *argv[]);
 }
 static int lua_loadELF(lua_State *L)
 {
@@ -516,6 +518,54 @@ static int lua_loadELF(lua_State *L)
 	}
 	printf("# Loading ELF argv0 default (argc=0)\n");
 	int rc = LoadELFFromFile(elftoload, 0, NULL);
+	lua_pushinteger(L, rc);
+	return 1;
+}
+
+static int lua_loadELFBackend(lua_State *L)
+{
+	int argc = lua_gettop(L);
+	if (argc < 3) return luaL_error(L, "%s(path, reboot_iop, backend, args...): not enough args", __FUNCTION__);
+	size_t size;
+	const char *elftoload = luaL_checklstring(L, 1, &size);
+	int rebootIOP = luaL_checkinteger(L, 2);
+	const char *backend = luaL_checkstring(L, 3);
+	int extra_args = argc - 3;
+	static char selector_buf[256];
+	static char *argv_static[2];
+	printf("# Loading ELF '%s' backend=%s iop_reboot=%d, extra_args=%d\n", elftoload, backend ? backend : "(null)", rebootIOP, extra_args);
+	if (extra_args > 0) {
+		const char *selector = luaL_checkstring(L, 4);
+		snprintf(selector_buf, sizeof(selector_buf), "%s", selector ? selector : "");
+		argv_static[0] = selector_buf;
+		argv_static[1] = NULL;
+		printf("# Loading ELF argv0='%s' argc=1\n", argv_static[0]);
+		if (backend && strcmp(backend, "loader") == 0) {
+			int rc = LoadELFFromFileWithLoader(elftoload, 1, argv_static);
+			lua_pushinteger(L, rc);
+			return 1;
+		}
+		if (backend && strcmp(backend, "loadexec") == 0) {
+			int rc = LoadELFFromFile(elftoload, 1, argv_static);
+			lua_pushinteger(L, rc);
+			return 1;
+		}
+		int rc = LoadELFFromFileExecPS2(elftoload, 1, argv_static);
+		lua_pushinteger(L, rc);
+		return 1;
+	}
+	printf("# Loading ELF argv0 default (argc=0)\n");
+	if (backend && strcmp(backend, "loader") == 0) {
+		int rc = LoadELFFromFileWithLoader(elftoload, 0, NULL);
+		lua_pushinteger(L, rc);
+		return 1;
+	}
+	if (backend && strcmp(backend, "loadexec") == 0) {
+		int rc = LoadELFFromFile(elftoload, 0, NULL);
+		lua_pushinteger(L, rc);
+		return 1;
+	}
+	int rc = LoadELFFromFileExecPS2(elftoload, 0, NULL);
 	lua_pushinteger(L, rc);
 	return 1;
 }
@@ -771,6 +821,7 @@ static const luaL_Reg System_functions[] = {
 	{"exitToBrowser",                  lua_exit},
 	{"getMCInfo",                 lua_getmcinfo},
 	{"loadELF",                 	lua_loadELF},
+	{"loadELFBackend",            lua_loadELFBackend},
 	{"checkValidDisc",       lua_checkValidDisc},
 	{"getDiscType",             lua_getDiscType},
 	{"checkDiscTray",         lua_checkDiscTray},

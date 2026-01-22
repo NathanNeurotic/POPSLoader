@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
 
 	elfdata.epc = 0;
 
-	// argv[0]=path to ELF, argv[1..]=arguments
+	// argv[0]=path to ELF, argv[1..]=arguments for target ELF (argv[0] preserved)
 	if (argc < 2) {  
 		SET_GS_BGCOLOUR(RED_BG);
 		return -EINVAL;
@@ -136,11 +136,11 @@ int main(int argc, char *argv[])
 
 		SET_GS_BGCOLOUR(PURPBLE_BG);
 		
-		DPRINTF("POPS EXEC: argc=%d\n", argc);
-		for (i = 0; i < argc; i++) {
-			DPRINTF("POPS EXEC: argv[%d] = %s\n", i, argv[i]);
+		DPRINTF("POPS EXEC: argc=%d\n", argc - 1);
+		for (i = 0; i < argc - 1; i++) {
+			DPRINTF("POPS EXEC: argv[%d] = %s\n", i, argv[i + 1]);
 		}
-		return ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc, argv);
+		return ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc - 1, &argv[1]);
 	} else {
 		SET_GS_BGCOLOUR(MAGENTA_BG);
 		SifExitRpc();

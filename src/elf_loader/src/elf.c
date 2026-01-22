@@ -18,7 +18,46 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <tamtypes.h>
 #define DPRINTF(x...) printf(x)
+
+extern unsigned char loader_elf[];
+extern unsigned int size_loader_elf;
+
+//--------------------------------------------------------------
+// ELF-header structures and identifiers
+#define ELF_MAGIC	0x464c457f
+#define ELF_PT_LOAD	1
+//--------------------------------------------------------------
+typedef struct
+{
+	u8	ident[16];
+	u16	type;
+	u16	machine;
+	u32	version;
+	u32	entry;
+	u32	phoff;
+	u32	shoff;
+	u32	flags;
+	u16	ehsize;
+	u16	phentsize;
+	u16	phnum;
+	u16	shentsize;
+	u16	shnum;
+	u16	shstrndx;
+} elf_header_t;
+//--------------------------------------------------------------
+typedef struct
+{
+	u32	  type;
+	u32	  offset;
+	void *vaddr;
+	u32	  paddr;
+	u32	  filesz;
+	u32	  memsz;
+	u32	  flags;
+	u32	  align;
+} elf_pheader_t;
 
 static bool is_host_path(const char *filename) {
 	return (filename != NULL && strncmp(filename, "host:/", 6) == 0);
@@ -137,6 +176,33 @@ static void wipe_bramMem(void) {
 			"\tsq $0, 32(%0) \n"
 			"\tsq $0, 48(%0) \n" ::"r"(i));
 	}
+}
+
+static int ExecEmbeddedLoader(int argc, char *argv[]) {
+	u8 *boot_elf = (u8 *)&loader_elf;
+	elf_header_t *boot_header = (elf_header_t *)boot_elf;
+	elf_pheader_t *boot_pheader;
+	int i;
+
+	if ((*(u32*)boot_header->ident) != ELF_MAGIC) {
+		return -5;
+	}
+
+	boot_pheader = (elf_pheader_t *)(boot_elf + boot_header->phoff);
+	for (i = 0; i < boot_header->phnum; i++) {
+		if (boot_pheader[i].type != ELF_PT_LOAD) {
+			continue;
+		}
+		memcpy(boot_pheader[i].vaddr, boot_elf + boot_pheader[i].offset, boot_pheader[i].filesz);
+		if (boot_pheader[i].memsz > boot_pheader[i].filesz) {
+			memset((void*)((int)boot_pheader[i].vaddr + boot_pheader[i].filesz), 0,
+				boot_pheader[i].memsz - boot_pheader[i].filesz);
+		}
+	}
+
+	SifExitRpc();
+	ExecPS2((void *)boot_header->entry, 0, argc, argv);
+	return -1;
 }
 
 int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
@@ -278,4 +344,52 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 
 	ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc, argv);
 	return -1;
+}
+
+int LoadELFFromFileWithLoader(const char *filename, int argc, char *argv[])
+{
+	int i;
+	int loader_argc = argc + 1;
+	static const int kMaxArgc = 32;
+	static char *loader_argv[33];
+	static char loader_arg_storage[2048];
+	char resolved_path[256];
+	size_t storage_offset = 0;
+
+	if (argc <= 0 || argv == NULL || argv[0] == NULL) {
+		return -4;
+	}
+	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
+		return -1;
+	}
+
+	DPRINTF("LAUNCH: Using LoaderExecPS2\n");
+	append_launch_log_fmt("backend", -1, "loader");
+	DPRINTF("LAUNCH: loader exec path=%s\n", resolved_path);
+
+	if (loader_argc + 1 > kMaxArgc) {
+		return -2;
+	}
+	loader_argv[0] = store_arg(resolved_path, loader_arg_storage, sizeof(loader_arg_storage), &storage_offset);
+	if (!loader_argv[0]) {
+		return -3;
+	}
+	for (i = 0; i < argc; i++) {
+		char *stored_arg = store_arg(argv[i], loader_arg_storage, sizeof(loader_arg_storage), &storage_offset);
+		if (!stored_arg) {
+			return -3;
+		}
+		loader_argv[i + 1] = stored_arg;
+	}
+	loader_argv[loader_argc] = NULL;
+
+	DPRINTF("LAUNCH: loader argc=%d\n", loader_argc);
+	for (i = 0; i < loader_argc; i++) {
+		DPRINTF("LAUNCH: loader argv[%d]=%s\n", i, loader_argv[i] ? loader_argv[i] : "(null)");
+		append_launch_log_fmt("loader_argv", i, loader_argv[i]);
+	}
+	append_launch_log_fmt("loader_exec_path", -1, resolved_path);
+
+	wipe_bramMem();
+	return ExecEmbeddedLoader(loader_argc, loader_argv);
 }

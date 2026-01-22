@@ -171,6 +171,10 @@ PLDR = {
     PREFIX = nil,
     SLOTS = {},
     INDEX = 1
+  },
+  LAUNCH_BACKEND = {
+    default = "execps2",
+    hdd = "loader"
   }
 }
 if BOOTPATH ~= nil then
@@ -384,13 +388,16 @@ function PLDR.HDD.BuildGameList()
   PLDR.GAMES = {}
   if type(PLDR.HDDCACHE) == "table" and PLDR.HDD.USECACHE then PLDR.GAMES = PLDR.HDDCACHE end
   PLDR.HDD.GAMEPARTS = {}
+  PLDR.HDD.GAMEINFO = {}
   if not PLDR.HDD.FOUNDANY then return end
   if PLDR.HDD.MAINPART then
     if HDD.MountPartition("hdd0:__.POPS", 0, FIO_MT_RDONLY) then
       local start_index = #PLDR.GAMES
       PLDR.GetPS1GameLists("pfs0:/", true)
       for i = start_index + 1, #PLDR.GAMES do
-        PLDR.HDD.GAMEPARTS[PLDR.GAMES[i]] = "hdd0:__.POPS"
+        local game_name = PLDR.GAMES[i]
+        PLDR.HDD.GAMEPARTS[game_name] = "hdd0:__.POPS"
+        PLDR.HDD.GAMEINFO[game_name] = {partition = "__.POPS", mount = "hdd0:__.POPS"}
       end
       HDD.UMountPartition(0)
     end
@@ -400,9 +407,12 @@ function PLDR.HDD.BuildGameList()
       if HDD.MountPartition("hdd0:__.POPS"..i, 0, FIO_MT_RDONLY) then
         local start_index = #PLDR.GAMES
         local partition = "hdd0:__.POPS"..i
+        local partition_label = "__.POPS"..i
         PLDR.GetPS1GameLists("pfs0:/", true)
         for j = start_index + 1, #PLDR.GAMES do
-          PLDR.HDD.GAMEPARTS[PLDR.GAMES[j]] = partition
+          local game_name = PLDR.GAMES[j]
+          PLDR.HDD.GAMEPARTS[game_name] = partition
+          PLDR.HDD.GAMEINFO[game_name] = {partition = partition_label, mount = partition}
         end
         HDD.UMountPartition(0)
       end
@@ -569,6 +579,67 @@ local function BuildPopstarterSelectorPath(device_page, game_name)
   return game_name..".ELF"
 end
 
+local function HexByteDump(value)
+  if value == nil then
+    return ""
+  end
+  local bytes = {}
+  for i = 1, #value do
+    bytes[#bytes + 1] = string.format("%02X", string.byte(value, i))
+  end
+  return table.concat(bytes, " ")
+end
+
+local function FormatFilenameForDebug(value)
+  if value == nil then
+    return "<nil>"
+  end
+  local printable = {}
+  for i = 1, #value do
+    local byte = string.byte(value, i)
+    if byte >= 32 and byte <= 126 then
+      printable[#printable + 1] = string.char(byte)
+    else
+      printable[#printable + 1] = string.format("\\x%02X", byte)
+    end
+  end
+  return table.concat(printable)
+end
+
+local function NormalizeVcdBasenameForMatch(filename, fold_case)
+  if filename == nil then
+    return ""
+  end
+  local basename = StripVcdExtension(filename)
+  basename = string.gsub(basename, "\226\128\153", "'")
+  basename = string.gsub(basename, "\226\128\152", "'")
+  if fold_case then
+    basename = string.lower(basename)
+  end
+  return basename
+end
+
+local function FindVcdNearMatch(target, entries, fold_case)
+  if target == nil or entries == nil then
+    return nil
+  end
+  local target_norm = NormalizeVcdBasenameForMatch(target, fold_case)
+  if target_norm == "" then
+    return nil
+  end
+  for i = 1, #entries do
+    local entry = entries[i]
+    if entry ~= nil and entry.name ~= nil and not entry.directory then
+      if string.lower(string.sub(entry.name, -4)) == ".vcd" then
+        if NormalizeVcdBasenameForMatch(entry.name, fold_case) == target_norm then
+          return entry.name
+        end
+      end
+    end
+  end
+  return nil
+end
+
 local function DeriveGameNameFromSelection(raw_selection)
   local vcd_filename = ExtractVcdFilename(raw_selection or "")
   return SanitizeGameName(StripVcdExtension(vcd_filename))
@@ -646,6 +717,7 @@ local function EnsureHDDReadyForLaunch(game)
     init_ok = false,
     status = nil,
     mount_partition = nil,
+    mount_partition_label = nil,
     mount_ok = nil
   }
   PLDR.LoadHDDModules()
@@ -654,8 +726,10 @@ local function EnsureHDDReadyForLaunch(game)
   if not result.init_ok or result.status ~= 0 then
     return result
   end
-  local partition = PLDR.HDD.GAMEPARTS[game] or "hdd0:__.POPS"
+  local info = PLDR.HDD.GAMEINFO and PLDR.HDD.GAMEINFO[game] or nil
+  local partition = info and info.mount or PLDR.HDD.GAMEPARTS[game] or "hdd0:__.POPS"
   result.mount_partition = partition
+  result.mount_partition_label = info and info.partition or "__.POPS"
   result.mount_ok = HDD.MountPartition(partition, 0, FIO_MT_RDONLY)
   return result
 end
@@ -669,6 +743,14 @@ local function LogPopstarterArgs(args)
   for i = 1, #args do
     LaunchLog("LAUNCH: argv["..(i - 1).."]:", args[i])
   end
+end
+
+local function SelectLaunchBackend(context)
+  local backend = PLDR.LAUNCH_BACKEND or {}
+  if context and context.device_page == "HDD" then
+    return backend.hdd or "loader"
+  end
+  return backend.default or "execps2"
 end
 
 local function AppendLaunchLog(line)
@@ -688,6 +770,30 @@ local function AppendLaunchLog(line)
     System.writeFile(fd, line, #line)
     System.closeFile(fd)
   end
+end
+
+local function ShowHddVcdOpenError(context, mount_partition, partition_label, filename, open_rc, candidate)
+  SetLaunchPhase(LaunchState.PHASE_FAILED)
+  UI.LAUNCHING = false
+  local body = string.format(
+    "HDD VCD OPEN FAILED\npartition: %s\nmount: %s\nfile: %s\nfile(hex): %s\nrc: %s\ncandidate: %s\nPress X/O to continue.",
+    tostring(partition_label),
+    tostring(mount_partition),
+    FormatFilenameForDebug(filename),
+    HexByteDump(filename),
+    tostring(open_rc),
+    tostring(candidate or "<none>")
+  )
+  while true do
+    UI.BottomDraw.Play()
+    Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, 120, 18, UI.SCR.X, UI.SCR.Y, body, UI.CCOL.GREY)
+    Input_GetEvent()
+    if UI.Pad.Events.CONFIRM or UI.Pad.Events.BACK or UI.Pad.Events.EXIT then
+      break
+    end
+    UI.flip()
+  end
+  UI.SceneChange(UI.SCENES.MMAIN)
 end
 
 function LaunchLog(...)
@@ -895,13 +1001,27 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     "reboot_iop="..tostring(reboot_iop)
   )
   LaunchLog("LAUNCH: loadELF argc (caller):", exec_args and #exec_args or 0)
+  local backend = SelectLaunchBackend(context)
+  LaunchLog("LAUNCH: backend:", backend)
   local rc
   if exec_args ~= nil and #exec_args > 0 and unpack_fn ~= nil then
-    rc = System.loadELF(popstarter, reboot_iop, unpack_fn(exec_args))
+    if System.loadELFBackend ~= nil then
+      rc = System.loadELFBackend(popstarter, reboot_iop, backend, unpack_fn(exec_args))
+    else
+      rc = System.loadELF(popstarter, reboot_iop, unpack_fn(exec_args))
+    end
   elseif exec_args ~= nil and #exec_args == 1 then
-    rc = System.loadELF(popstarter, reboot_iop, exec_args[1])
+    if System.loadELFBackend ~= nil then
+      rc = System.loadELFBackend(popstarter, reboot_iop, backend, exec_args[1])
+    else
+      rc = System.loadELF(popstarter, reboot_iop, exec_args[1])
+    end
   else
-    rc = System.loadELF(popstarter, reboot_iop)
+    if System.loadELFBackend ~= nil then
+      rc = System.loadELFBackend(popstarter, reboot_iop, backend)
+    else
+      rc = System.loadELF(popstarter, reboot_iop)
+    end
   end
   LaunchLog("LAUNCH RETURNED rc="..tostring(rc))
   LOG(">>> UNHANDLED ERROR at Launching game '", context and context.game or "unknown", " via ", popstarter, " Failed")
@@ -988,6 +1108,42 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   local boot_source_mode = source_mode
   local device_mode = "unknown"
   local mmce_prefix = nil
+  if policy.name == "HDD" then
+    local open_ok = false
+    local open_rc = nil
+    local ok_open, fd_or_err = pcall(System.openFile, "pfs0:/"..game, FREAD)
+    if ok_open and type(fd_or_err) == "number" and fd_or_err >= 0 then
+      open_ok = true
+      System.closeFile(fd_or_err)
+    else
+      open_rc = fd_or_err
+    end
+    if not open_ok then
+      local entries = System.listDirectory("pfs0:/") or {}
+      local candidate = FindVcdNearMatch(game, entries, false)
+      local candidate_ci = nil
+      if candidate == nil then
+        candidate_ci = FindVcdNearMatch(game, entries, true)
+      end
+      LaunchLog("LAUNCH: HDD VCD open failed.",
+        "mount:", hdd_init and hdd_init.mount_partition or "unknown",
+        "partition:", hdd_init and hdd_init.mount_partition_label or "unknown",
+        "file:", FormatFilenameForDebug(game),
+        "file_hex:", HexByteDump(game),
+        "rc:", tostring(open_rc),
+        "candidate:", tostring(candidate or "<none>"),
+        "candidate_ci:", tostring(candidate_ci or "<none>"))
+      ShowHddVcdOpenError(
+        nil,
+        hdd_init and hdd_init.mount_partition or "unknown",
+        hdd_init and hdd_init.mount_partition_label or "unknown",
+        game,
+        open_rc,
+        candidate or candidate_ci
+      )
+      return
+    end
+  end
   if string.match(source_mode, "^pfs") then
     pops_root = normalized_gamelocation
     boot_source_mode = "pfs"
