@@ -556,6 +556,19 @@ local function SelectPopstarterSelectorPrefix(device_page)
   return "XX."
 end
 
+local function BuildPopstarterSelectorPath(device_page, game_name)
+  if game_name == nil or game_name == "" then
+    return ""
+  end
+  if device_page == "HDD" then
+    return "hdd0:__.POPS/"..game_name..".ELF"
+  end
+  if device_page == "USB" or device_page == "MMCE" or device_page == "SMB/MMCE" then
+    return "mass:/POPS/XX."..game_name..".ELF"
+  end
+  return game_name..".ELF"
+end
+
 local function DeriveGameNameFromSelection(raw_selection)
   local vcd_filename = ExtractVcdFilename(raw_selection or "")
   return SanitizeGameName(StripVcdExtension(vcd_filename))
@@ -1022,7 +1035,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
     return
   end
   local selector_prefix = SelectPopstarterSelectorPrefix(device_page)
-  local argv0_selector = BuildPopstarterSelector(selector_prefix, game_name)
+  local argv0_selector = BuildPopstarterSelectorPath(device_page, game_name)
   if selector_prefix == "" and string.upper(game_name) == "POPSTARTER" then
     LaunchLog("LAUNCH: Internal error: game_base derived as POPSTARTER; refusing to launch.", game)
     BlockLaunchFailure(
@@ -1036,9 +1049,6 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
       nil
     )
     return
-  end
-  if SELECTOR_MODE == "masspath" then
-    argv0_selector = "mass:/"..argv0_selector
   end
   if boot_source_mode == "mass" and prefix_added and not bootparam_exists then
     fallback_bootparam = EnsureTrailingSlash(pops_root)..game

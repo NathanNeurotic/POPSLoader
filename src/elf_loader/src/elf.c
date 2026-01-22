@@ -265,7 +265,7 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 		return -1;
 	}
 	DPRINTF("LAUNCH: Using ExecPS2\n");
-	DPRINTF("Launching POPSTARTER via ExecPS2 argv0=%s argc=%d\n", argv[0], argc);
+	DPRINTF("POPSTARTER ExecPS2 argv0=%s\n", argv[0]);
 
 	SifInitRpc(0);
 	SifLoadFileInit();
