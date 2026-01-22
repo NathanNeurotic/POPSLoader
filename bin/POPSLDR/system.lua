@@ -504,6 +504,47 @@ local function NormalizeBootBasename(basename, desired_prefix)
   return cleaned
 end
 
+local function ExtractVcdFilename(path)
+  if path == nil or path == "" then
+    return ""
+  end
+  local basename = string.match(path, "([^/]+)$") or path
+  local without_device = string.match(basename, "^[%a]+%d*:(.+)$")
+  if without_device ~= nil and without_device ~= "" then
+    return without_device
+  end
+  return basename
+end
+
+local function StripVcdExtension(filename)
+  if filename == nil or filename == "" then
+    return ""
+  end
+  local without_ext = string.gsub(filename, "%.[Vv][Cc][Dd]$", "")
+  return without_ext
+end
+
+local function SanitizeGameName(name)
+  if name == nil or name == "" then
+    return ""
+  end
+  local sanitized = string.gsub(name, "[%z\1-\31]", "")
+  sanitized = string.gsub(sanitized, "\"", "")
+  sanitized = string.gsub(sanitized, "%s+", " ")
+  sanitized = string.gsub(sanitized, "%s+$", "")
+  return sanitized
+end
+
+local function BuildPopstarterSelector(prefix, vcd_filename)
+  if vcd_filename == nil or vcd_filename == "" then
+    return ""
+  end
+  if prefix == nil then
+    prefix = ""
+  end
+  return prefix..vcd_filename..".ELF"
+end
+
 local function HasBootPrefix(basename, desired_prefix)
   if basename == nil or basename == "" or desired_prefix == nil or desired_prefix == "" then
     return false
@@ -712,12 +753,18 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   local app_dir = EnsureTrailingSlash(APP_DIR_LOCAL)
   local boot_path = EnsureTrailingSlash(System.currentDirectory())
   local argv0 = argv and argv[1] or nil
+  local unpack_fn = table.unpack or unpack
   SetLaunchPhase(LaunchState.PHASE_VALIDATE)
   LaunchLog("LAUNCH BEGIN")
   LaunchLog("LAUNCH: boot path raw:", BOOT_PATH_RAW, "boot path cwd:", boot_path)
   LaunchLog("LAUNCH: app dir normalized:", app_dir, "APP_DIR join POPSTARTER:", JoinPath(app_dir, "POPSTARTER.ELF"))
   LaunchLog("LAUNCH: reboot_iop flag:", reboot_iop)
-  LaunchLog("LAUNCH: popstarter path:", popstarter)
+  LaunchLog("LAUNCH: exec =", popstarter)
+  LaunchLog("LAUNCH: argv0 selector =", argv0)
+  if context ~= nil and context.game_name ~= nil then
+    LaunchLog("LAUNCH: derived GameName =", context.game_name)
+  end
+  LogPopstarterArgs(argv)
   if context ~= nil then
     LaunchLog("LAUNCH: device page:", context.device_page, "device mode:", context.device_mode, "UI scene:", context.ui_scene)
     LaunchLog("LAUNCH: source mode:", context.source_mode, "raw_source:", context.raw_source_mode)
@@ -766,7 +813,7 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     LaunchLog("LAUNCH: popstarter path adjusted:", popstarter, "->", open_path)
     popstarter = open_path
   end
-  local exec_args = {argv and argv[1] or nil, argv and argv[2] or nil}
+  local exec_args = argv or {}
   SetLaunchPhase(LaunchState.PHASE_FADEOUT)
   UI.LAUNCHING = true
   LaunchState.fade_timer = Timer.new()
@@ -813,7 +860,14 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     context and context.bootparam or "unknown"
   )
   LaunchLog("LAUNCH: stage A argv_count:", exec_args and #exec_args or 0)
-  local rc = System.loadELF(popstarter, reboot_iop, exec_args[1], exec_args[2])
+  local rc
+  if exec_args ~= nil and #exec_args > 0 and unpack_fn ~= nil then
+    rc = System.loadELF(popstarter, reboot_iop, unpack_fn(exec_args))
+  elseif exec_args ~= nil and #exec_args == 1 then
+    rc = System.loadELF(popstarter, reboot_iop, exec_args[1])
+  else
+    rc = System.loadELF(popstarter, reboot_iop)
+  end
   LaunchLog("LAUNCH RETURNED rc="..tostring(rc))
   LOG(">>> UNHANDLED ERROR at Launching game '", context and context.game or "unknown", " via ", popstarter, " Failed")
   if (Timer.getTime(LaunchState.fade_timer) - LaunchState.fade_start) >= LaunchState.watchdog_ms then
@@ -930,6 +984,10 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   local fallback_exists = false
   local bootparam_basename_used = normalized_basename
   local prefix_used = HasBootPrefix(normalized_basename, prefix) and prefix or ""
+  local vcd_filename = ExtractVcdFilename(game)
+  local game_name = SanitizeGameName(StripVcdExtension(vcd_filename))
+  local selector_prefix = "XX."
+  local argv0_selector = BuildPopstarterSelector(selector_prefix, game_name)
   if boot_source_mode == "mass" and prefix_added and not bootparam_exists then
     fallback_bootparam = EnsureTrailingSlash(pops_root)..game
     fallback_exists = doesFileExist(fallback_bootparam)
@@ -940,7 +998,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
       prefix_used = ""
     end
   end
-  local argv = {bootparam, "--nr"}
+  local argv = {argv0_selector}
 
   LOG("Boot APP_DIR: "..APP_DIR_LOCAL)
   LOG("PopStarter selected: "..popstarter)
@@ -951,6 +1009,8 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   LaunchLog("LAUNCH: vcd basename prefixed:", normalized_basename)
   LaunchLog("LAUNCH: vcd basename used:", bootparam_basename_used)
   LaunchLog("LAUNCH: bootparam candidate:", bootparam, "exists:", tostring(bootparam_exists))
+  LaunchLog("LAUNCH: derived GameName:", game_name)
+  LaunchLog("LAUNCH: argv0 selector:", argv0_selector)
   if fallback_bootparam ~= nil then
     LaunchLog("LAUNCH: bootparam fallback:", fallback_bootparam, "exists:", tostring(fallback_exists))
   end
@@ -972,6 +1032,8 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
     bootparam_basename_raw = game,
     bootparam_basename_prefixed = normalized_basename,
     bootparam_basename = bootparam_basename_used,
+    argv0_selector = argv0_selector,
+    game_name = game_name,
     bootparam_source = boot_source_mode,
     hdd_init = hdd_init
   }
