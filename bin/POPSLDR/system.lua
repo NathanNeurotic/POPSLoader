@@ -1179,7 +1179,12 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   local selector_prefix = SelectPopstarterSelectorPrefix(device_page)
   local argv0_selector = BuildPopstarterSelectorPath(device_page, game_name)
   if policy.name == "HDD" then
-    argv0_selector = vcd_path
+    local hdd_selector_name = StripVcdExtension(ExtractVcdFilename(vcd_basename_raw))
+    if hdd_selector_name == "" then
+      hdd_selector_name = game_name
+    end
+    local selector_elf = BuildPopstarterSelector(selector_prefix, hdd_selector_name)
+    argv0_selector = "pfs0:/"..selector_elf
   end
   if selector_prefix == "" and string.upper(game_name) == "POPSTARTER" then
     LaunchLog("LAUNCH: Internal error: game_base derived as POPSTARTER; refusing to launch.", vcd_basename_raw)
