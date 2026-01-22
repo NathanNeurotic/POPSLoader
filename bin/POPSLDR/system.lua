@@ -766,7 +766,7 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     LaunchLog("LAUNCH: popstarter path adjusted:", popstarter, "->", open_path)
     popstarter = open_path
   end
-  local exec_args = {popstarter, argv and argv[1] or nil, argv and argv[2] or nil}
+  local exec_args = {argv and argv[1] or nil, argv and argv[2] or nil}
   SetLaunchPhase(LaunchState.PHASE_FADEOUT)
   UI.LAUNCHING = true
   LaunchState.fade_timer = Timer.new()
@@ -813,7 +813,7 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     context and context.bootparam or "unknown"
   )
   LaunchLog("LAUNCH: stage A argv_count:", exec_args and #exec_args or 0)
-  local rc = System.loadELF(popstarter, reboot_iop, exec_args[1], exec_args[2], exec_args[3])
+  local rc = System.loadELF(popstarter, reboot_iop, exec_args[1], exec_args[2])
   LaunchLog("LAUNCH RETURNED rc="..tostring(rc))
   LOG(">>> UNHANDLED ERROR at Launching game '", context and context.game or "unknown", " via ", popstarter, " Failed")
   if (Timer.getTime(LaunchState.fade_timer) - LaunchState.fade_start) >= LaunchState.watchdog_ms then
@@ -954,8 +954,6 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   if fallback_bootparam ~= nil then
     LaunchLog("LAUNCH: bootparam fallback:", fallback_bootparam, "exists:", tostring(fallback_exists))
   end
-  LaunchLog("LAUNCH: exec argv:", popstarter, bootparam, "--nr")
-
   local context = {
     device_page = device_page,
     device_mode = device_mode,
