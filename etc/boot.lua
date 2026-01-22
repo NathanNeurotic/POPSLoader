@@ -49,6 +49,31 @@ function GetMountData(PATH)
   return mountpart, pfsindx, filepath
 end
 
+local function NormalizePfsPath(path, index)
+  if path == nil or path == "" then
+    return path
+  end
+  return string.gsub(path, "^pfs:", ("pfs%d:"):format(index))
+end
+
+local function DetermineActivePopsPartition(boot_partition)
+  if boot_partition ~= nil and string.match(boot_partition, "^hdd0:__%.POPS%d*$") then
+    return boot_partition
+  end
+  -- TODO: verify active POPS partition selection per prompt 2 (e.g., config, UI selection, or a saved marker).
+  return "hdd0:__.POPS"
+end
+
+local function MountFirstAvailablePartition(partitions, index, open_mode)
+  for _, partition in ipairs(partitions) do
+    if partition ~= nil and partition ~= "" then
+      if HDD.MountPartition(partition, index, open_mode) then
+        return partition
+      end
+    end
+  end
+  return nil
+end
 
 local ARGV0 = System.GetArgv0()
 if string.find(ARGV0, "^hdd0:") then
@@ -62,7 +87,31 @@ if string.find(ARGV0, "^hdd0:") then
       LOG("ERROR", MODULE..".IRX", ID, RET)
     else
       System.sleep(2) -- lets give it time to get ready
-      if HDD.MountPartition(MNTPART, 0) then -- mount to "pfs3:" and NEVER USE IT FOR ANYTHING ELSE
+      local active_pops = DetermineActivePopsPartition(MNTPART)
+      local pops_candidates = {active_pops}
+      if active_pops ~= "hdd0:__.POPS" then
+        table.insert(pops_candidates, "hdd0:__.POPS")
+      end
+      for i = 1, 9 do
+        table.insert(pops_candidates, ("hdd0:__.POPS%d"):format(i))
+      end
+      -- pfs0 reserved for POPS bank for PopStarter
+      local mounted_pops = MountFirstAvailablePartition(pops_candidates, 0, FIO_MT_RDONLY)
+      if mounted_pops == nil then
+        LOG("ERROR: failed to mount POPS partition to pfs0 (TODO: verify partition selection logic).")
+      end
+
+      local boot_mount_index = 0
+      if MNTPART ~= nil and MNTPART ~= "" and MNTPART ~= mounted_pops then
+        boot_mount_index = 9
+        -- boot partition mounted at pfs9 for assets
+        if not HDD.MountPartition(MNTPART, boot_mount_index) then
+          LOG("ERROR: failed to mount boot partition for assets:", MNTPART)
+        end
+      end
+
+      BOOTPATH = NormalizePfsPath(BOOTPATH, boot_mount_index)
+      if BOOTPATH ~= nil then
         BOOTPATH, _, _ = string.match(BOOTPATH, "(.-)([^/]-([^%.]+))$")
         System.currentDirectory(BOOTPATH)
         LOGF("new bootpath: '%s'\n", BOOTPATH)
