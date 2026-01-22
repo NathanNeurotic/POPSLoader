@@ -384,13 +384,16 @@ function PLDR.HDD.BuildGameList()
   PLDR.GAMES = {}
   if type(PLDR.HDDCACHE) == "table" and PLDR.HDD.USECACHE then PLDR.GAMES = PLDR.HDDCACHE end
   PLDR.HDD.GAMEPARTS = {}
+  PLDR.HDD.GAMEINFO = {}
   if not PLDR.HDD.FOUNDANY then return end
   if PLDR.HDD.MAINPART then
     if HDD.MountPartition("hdd0:__.POPS", 0, FIO_MT_RDONLY) then
       local start_index = #PLDR.GAMES
       PLDR.GetPS1GameLists("pfs0:/", true)
       for i = start_index + 1, #PLDR.GAMES do
-        PLDR.HDD.GAMEPARTS[PLDR.GAMES[i]] = "hdd0:__.POPS"
+        local game_name = PLDR.GAMES[i]
+        PLDR.HDD.GAMEPARTS[game_name] = "hdd0:__.POPS"
+        PLDR.HDD.GAMEINFO[game_name] = {partition = "__.POPS", mount = "hdd0:__.POPS"}
       end
       HDD.UMountPartition(0)
     end
@@ -400,9 +403,12 @@ function PLDR.HDD.BuildGameList()
       if HDD.MountPartition("hdd0:__.POPS"..i, 0, FIO_MT_RDONLY) then
         local start_index = #PLDR.GAMES
         local partition = "hdd0:__.POPS"..i
+        local partition_label = "__.POPS"..i
         PLDR.GetPS1GameLists("pfs0:/", true)
         for j = start_index + 1, #PLDR.GAMES do
-          PLDR.HDD.GAMEPARTS[PLDR.GAMES[j]] = partition
+          local game_name = PLDR.GAMES[j]
+          PLDR.HDD.GAMEPARTS[game_name] = partition
+          PLDR.HDD.GAMEINFO[game_name] = {partition = partition_label, mount = partition}
         end
         HDD.UMountPartition(0)
       end
@@ -646,6 +652,7 @@ local function EnsureHDDReadyForLaunch(game)
     init_ok = false,
     status = nil,
     mount_partition = nil,
+    mount_partition_label = nil,
     mount_ok = nil
   }
   PLDR.LoadHDDModules()
@@ -654,8 +661,10 @@ local function EnsureHDDReadyForLaunch(game)
   if not result.init_ok or result.status ~= 0 then
     return result
   end
-  local partition = PLDR.HDD.GAMEPARTS[game] or "hdd0:__.POPS"
+  local info = PLDR.HDD.GAMEINFO and PLDR.HDD.GAMEINFO[game] or nil
+  local partition = info and info.mount or PLDR.HDD.GAMEPARTS[game] or "hdd0:__.POPS"
   result.mount_partition = partition
+  result.mount_partition_label = info and info.partition or "__.POPS"
   result.mount_ok = HDD.MountPartition(partition, 0, FIO_MT_RDONLY)
   return result
 end
