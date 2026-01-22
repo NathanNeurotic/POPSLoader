@@ -499,14 +499,14 @@ static int lua_loadELF(lua_State *L)
 	size_t size;
 	const char *elftoload = luaL_checklstring(L, 1, &size);
 	int rebootIOP = luaL_checkinteger(L, 2);
-	char** p = (char**)malloc((argc-2) * sizeof(const char*));
-	printf("# Loading ELF '%s' iop_reboot=%d, extra_args=%d\n", elftoload, rebootIOP, argc-2);
+	int extra_args = argc - 2;
+	char** p = (char**)malloc((extra_args + 1) * sizeof(const char*));
+	printf("# Loading ELF '%s' iop_reboot=%d, extra_args=%d\n", elftoload, rebootIOP, extra_args);
 	for (int x = 3; x <= argc; x++) {
-		printf("#  argv[%d] = '%s'\n", (x-3), luaL_checkstring(L, x));
 		p[x-3] = (char*)luaL_checkstring(L, x);
 	}
-	//load_elf(elftoload, rebootIOP, p, (argc-1));
-	int rc = LoadELFFromFile(elftoload, argc-2, p);
+	p[extra_args] = NULL;
+	int rc = LoadELFFromFile(elftoload, extra_args, p);
 	free(p);
 	lua_pushinteger(L, rc);
 	return 1;

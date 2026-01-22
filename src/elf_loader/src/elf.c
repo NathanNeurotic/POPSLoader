@@ -12,21 +12,13 @@
 #include <sifrpc.h>
 #include <stdio.h>
 #include <kernel.h>
+#include <loadfile.h>
 #include <sys/stat.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include "elf.h"
-
 #define DPRINTF(x...) printf(x)
-// Loader ELF variables
-extern u8 loader_elf[];
-extern int size_loader_elf;
-
-// ELF-loading stuff
-#define ELF_MAGIC 0x464c457f
-#define ELF_PT_LOAD 1
 
 static bool is_host_path(const char *filename) {
 	return (filename != NULL && strncmp(filename, "host:/", 6) == 0);
@@ -87,10 +79,6 @@ static void wipe_bramMem(void) {
 }
 
 int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
-	u8 *boot_elf;
-	elf_header_t *eh;
-	elf_pheader_t *eph;
-	void *pdata;
 	int i;
 	int new_argc = argc + 1;
 	int fd = -1;
@@ -121,13 +109,11 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	} else {
 		return fd;
 	}
-	for (i = 0; i < argc; i++) { DPRINTF("LAUNCH: argv[%d]: %s\n", i, argv[i]);}
 	argv_includes_path = (argc > 0 && argv[0] != NULL &&
 		(strcmp(argv[0], resolved_path) == 0 || strcmp(argv[0], filename) == 0));
 	new_argc = argv_includes_path ? argc : (argc + 1);
 	DPRINTF("LAUNCH: argv includes popstarter: %s\n", argv_includes_path ? "yes" : "no");
 	// Preparing filename and partition to be sent in the argv
-	DPRINTF("LAUNCH: argv[0]: %s\n", resolved_path);
 	if (new_argc + 1 > kMaxArgc) {
 		return -2;
 	}
@@ -143,7 +129,6 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 				return -3;
 			}
 			launch_argv[i] = stored_arg;
-			DPRINTF("LAUNCH: argv[%d]: %s\n", i, launch_argv[i]);
 		}
 	} else {
 		for (i = 1; i < new_argc; i++) {
@@ -152,39 +137,20 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 				return -3;
 			}
 			launch_argv[i] = stored_arg;
-			DPRINTF("LAUNCH: argv[%d]: %s\n", i, launch_argv[i]);
 		}
 	}
 	launch_argv[new_argc] = NULL;
-	
-	/* NB: LOADER.ELF is embedded  */
-	boot_elf = (u8 *)loader_elf;
-	eh = (elf_header_t *)boot_elf;
-	if (_lw((u32)&eh->ident) != ELF_MAGIC)
-		asm volatile("break\n");
 
-	eph = (elf_pheader_t *)(boot_elf + eh->phoff);
-
-	/* Scan through the ELF's program headers and copy them into RAM, then zero out any non-loaded regions.  */
-	for (i = 0; i < eh->phnum; i++) {
-		if (eph[i].type != ELF_PT_LOAD)
-			continue;
-
-		pdata = (void *)(boot_elf + eph[i].offset);
-		memcpy(eph[i].vaddr, pdata, eph[i].filesz);
-
-		if (eph[i].memsz > eph[i].filesz)
-			memset((void *)((u8 *)(eph[i].vaddr) + eph[i].filesz), 0, eph[i].memsz - eph[i].filesz);
+	DPRINTF("LAUNCH: Using LoadExecPS2\n");
+	DPRINTF("LAUNCH: argc=%d\n", new_argc);
+	for (i = 0; i < new_argc; i++) {
+		DPRINTF("LAUNCH: argv[%d]=%s\n", i, launch_argv[i] ? launch_argv[i] : "(null)");
 	}
-
-	/* Let's go.  */
-	SifExitRpc();
-	FlushCache(0);
-	FlushCache(2);
-	
-	int rc = ExecPS2((void *)eh->entry, NULL, new_argc, launch_argv);
-	DPRINTF("LAUNCH: RETURNED rc=%d\n", rc);
-	return rc;
+	DPRINTF("LAUNCH: argv[%d] is NULL: %s\n", new_argc, launch_argv[new_argc] == NULL ? "yes" : "no");
+	/* LoadExecPS2 should not return on success. */
+	LoadExecPS2(resolved_path, new_argc, launch_argv);
+	DPRINTF("LAUNCH: RETURNED rc=%d\n", -1);
+	return -1;
 }
 
 int LoadELFFromFile(const char *filename, int argc, char *argv[])

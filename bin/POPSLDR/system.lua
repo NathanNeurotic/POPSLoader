@@ -504,6 +504,13 @@ local function NormalizeBootBasename(basename, desired_prefix)
   return cleaned
 end
 
+local function HasBootPrefix(basename, desired_prefix)
+  if basename == nil or basename == "" or desired_prefix == nil or desired_prefix == "" then
+    return false
+  end
+  return string.upper(string.sub(basename, 1, #desired_prefix)) == string.upper(desired_prefix)
+end
+
 local function BuildPopstarterBootString(source_mode, pops_root, basename)
   local prefix = ""
   if source_mode == "pfs" then
@@ -518,7 +525,8 @@ local function BuildPopstarterBootString(source_mode, pops_root, basename)
   end
   local normalized_root = EnsureTrailingSlash(pops_root)
   local normalized_basename = NormalizeBootBasename(basename, prefix)
-  return normalized_root..normalized_basename, prefix
+  local prefix_added = normalized_basename ~= basename
+  return normalized_root..normalized_basename, prefix, normalized_basename, prefix_added
 end
 
 local function GetDevicePrefix(path)
@@ -711,18 +719,26 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   LaunchLog("LAUNCH: reboot_iop flag:", reboot_iop)
   LaunchLog("LAUNCH: popstarter path:", popstarter)
   if context ~= nil then
-    LaunchLog("LAUNCH: device page:", context.device_page, "UI scene:", context.ui_scene)
+    LaunchLog("LAUNCH: device page:", context.device_page, "device mode:", context.device_mode, "UI scene:", context.ui_scene)
     LaunchLog("LAUNCH: source mode:", context.source_mode, "raw_source:", context.raw_source_mode)
     LaunchLog("LAUNCH: game path (raw):", context.gamelocation, "handoff:", context.handoff_gamelocation, "game:", context.game, "vcd_path:", context.vcd_path)
     LaunchLog("LAUNCH: vcd raw:", context.vcd_path)
-    LaunchLog("LAUNCH: vcd basename:", context.bootparam_basename)
+    if context.bootparam_basename_raw ~= nil then
+      LaunchLog("LAUNCH: vcd basename raw:", context.bootparam_basename_raw)
+      LaunchLog("LAUNCH: vcd basename prefixed:", context.bootparam_basename_prefixed)
+      LaunchLog("LAUNCH: vcd basename used:", context.bootparam_basename)
+    else
+      LaunchLog("LAUNCH: vcd basename:", context.bootparam_basename)
+    end
     LaunchLog("LAUNCH: pops root:", context.bootparam_root)
     LaunchLog("LAUNCH: bootparam:", context.bootparam)
     LaunchLog(
-      "LAUNCH: bootparam prefix:",
-      context.bootparam_prefix or "none",
-      "prefix injected:",
-      tostring((context.bootparam_prefix or "") ~= "")
+      "LAUNCH: bootparam prefix required:",
+      context.bootparam_prefix_required or "none",
+      "used:",
+      context.bootparam_prefix_used or "none",
+      "prefix added:",
+      tostring(context.bootparam_prefix_added)
     )
     if context.hdd_init ~= nil then
       LaunchLog("LAUNCH: hdd init ok:", context.hdd_init.init_ok, "status:", context.hdd_init.status,
@@ -750,7 +766,7 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     LaunchLog("LAUNCH: popstarter path adjusted:", popstarter, "->", open_path)
     popstarter = open_path
   end
-  local exec_args = {popstarter, argv and argv[1] or nil, argv and argv[2] or nil}
+  local exec_args = {argv and argv[1] or nil, argv and argv[2] or nil}
   SetLaunchPhase(LaunchState.PHASE_FADEOUT)
   UI.LAUNCHING = true
   LaunchState.fade_timer = Timer.new()
@@ -779,24 +795,25 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     context and context.bootparam_root or "unknown",
     "vcd basename:",
     context and context.bootparam_basename or "unknown",
+    "prefix required:",
+    context and context.bootparam_prefix_required or "none",
     "prefix used:",
-    context and context.bootparam_prefix or "none",
+    context and context.bootparam_prefix_used or "none",
     "boot string:",
     context and context.bootparam or "unknown"
   )
   LaunchLog(
     "LAUNCH: stage A boot root:",
     context and context.bootparam_root or "unknown",
-    "prefix:",
-    context and context.bootparam_prefix or "none",
+    "prefix required:",
+    context and context.bootparam_prefix_required or "none",
+    "prefix used:",
+    context and context.bootparam_prefix_used or "none",
     "boot string:",
     context and context.bootparam or "unknown"
   )
   LaunchLog("LAUNCH: stage A argv_count:", exec_args and #exec_args or 0)
-  LogPopstarterArgs(exec_args)
-  LaunchLog("LAUNCH: exec argv[0]:", exec_args[1])
-  LaunchLog("LAUNCH: exec argv[1]:", exec_args[2])
-  local rc = System.loadELF(popstarter, reboot_iop, exec_args[1], exec_args[2], exec_args[3])
+  local rc = System.loadELF(popstarter, reboot_iop, exec_args[1], exec_args[2])
   LaunchLog("LAUNCH RETURNED rc="..tostring(rc))
   LOG(">>> UNHANDLED ERROR at Launching game '", context and context.game or "unknown", " via ", popstarter, " Failed")
   if (Timer.getTime(LaunchState.fade_timer) - LaunchState.fade_start) >= LaunchState.watchdog_ms then
@@ -880,28 +897,66 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   local popstarter = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
   local pops_root = normalized_gamelocation
   local boot_source_mode = source_mode
+  local device_mode = "unknown"
+  local mmce_prefix = nil
   if string.match(source_mode, "^pfs") then
     pops_root = normalized_gamelocation
     boot_source_mode = "pfs"
+    device_mode = "pfs"
   elseif string.match(normalized_gamelocation, "^mmce%d:/") then
-    pops_root = normalized_gamelocation
+    mmce_prefix = PLDR.MMCE.PREFIX or string.match(normalized_gamelocation, "^(mmce%d:/)")
+    if mmce_prefix == nil then
+      mmce_prefix = "mmce0:/"
+    end
+    pops_root = mmce_prefix.."POPS/"
     boot_source_mode = "mass"
+    device_mode = mmce_prefix
   elseif string.match(normalized_gamelocation, "^smb:/") or device_page == "SMB/MMCE" then
     pops_root = "smb:/POPS/"
     boot_source_mode = "smb"
+    device_mode = "smb"
   else
     pops_root = "mass:/POPS/"
     boot_source_mode = "mass"
+    device_mode = "mass"
   end
-  local bootparam, prefix = BuildPopstarterBootString(boot_source_mode, pops_root, game)
+  local bootparam, prefix, normalized_basename, prefix_added = BuildPopstarterBootString(
+    boot_source_mode,
+    pops_root,
+    game
+  )
+  local bootparam_exists = doesFileExist(bootparam)
+  local fallback_bootparam = nil
+  local fallback_exists = false
+  local bootparam_basename_used = normalized_basename
+  local prefix_used = HasBootPrefix(normalized_basename, prefix) and prefix or ""
+  if boot_source_mode == "mass" and prefix_added and not bootparam_exists then
+    fallback_bootparam = EnsureTrailingSlash(pops_root)..game
+    fallback_exists = doesFileExist(fallback_bootparam)
+    if fallback_exists then
+      bootparam = fallback_bootparam
+      bootparam_basename_used = game
+      bootparam_exists = true
+      prefix_used = ""
+    end
+  end
   local argv = {bootparam, "--nr"}
 
   LOG("Boot APP_DIR: "..APP_DIR_LOCAL)
   LOG("PopStarter selected: "..popstarter)
   LOG("PopStarter:", popstarter, "VCD:", vcd_path, "mode:", source_mode, "argv_count:", #argv)
-
+  LaunchLog("LAUNCH: device mode:", device_mode)
+  LaunchLog("LAUNCH: pops root:", pops_root)
+  LaunchLog("LAUNCH: vcd basename raw:", game)
+  LaunchLog("LAUNCH: vcd basename prefixed:", normalized_basename)
+  LaunchLog("LAUNCH: vcd basename used:", bootparam_basename_used)
+  LaunchLog("LAUNCH: bootparam candidate:", bootparam, "exists:", tostring(bootparam_exists))
+  if fallback_bootparam ~= nil then
+    LaunchLog("LAUNCH: bootparam fallback:", fallback_bootparam, "exists:", tostring(fallback_exists))
+  end
   local context = {
     device_page = device_page,
+    device_mode = device_mode,
     ui_scene = UI and UI.CURSCENE or "unknown",
     source_mode = source_mode,
     raw_source_mode = raw_source_mode,
@@ -910,9 +965,13 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
     game = game,
     vcd_path = vcd_path,
     bootparam = bootparam,
-    bootparam_prefix = prefix,
+    bootparam_prefix_required = prefix,
+    bootparam_prefix_used = prefix_used,
+    bootparam_prefix_added = prefix_added,
     bootparam_root = pops_root,
-    bootparam_basename = game,
+    bootparam_basename_raw = game,
+    bootparam_basename_prefixed = normalized_basename,
+    bootparam_basename = bootparam_basename_used,
     bootparam_source = boot_source_mode,
     hdd_init = hdd_init
   }
