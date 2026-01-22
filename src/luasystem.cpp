@@ -491,6 +491,7 @@ static int lua_checkexist(lua_State *L){
 }
 extern "C" {
 int LoadELFFromFile(const char *filename, int argc, char *argv[]);
+int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[]);
 }
 static int lua_loadELF(lua_State *L)
 {
@@ -509,7 +510,7 @@ static int lua_loadELF(lua_State *L)
 		argv_static[0] = selector_buf;
 		argv_static[1] = NULL;
 		printf("# Loading ELF argv0='%s' argc=1\n", argv_static[0]);
-		int rc = LoadELFFromFile(elftoload, 1, argv_static);
+		int rc = LoadELFFromFileExecPS2(elftoload, 1, argv_static);
 		lua_pushinteger(L, rc);
 		return 1;
 	}

@@ -561,30 +561,6 @@ local function DeriveGameNameFromSelection(raw_selection)
   return SanitizeGameName(StripVcdExtension(vcd_filename))
 end
 
-local function EnsureVcdBasename(raw_selection)
-  local vcd_filename = ExtractVcdFilename(raw_selection or "")
-  if vcd_filename == "" then
-    return ""
-  end
-  if string.lower(string.sub(vcd_filename, -4)) ~= ".vcd" then
-    vcd_filename = vcd_filename..".VCD"
-  end
-  return vcd_filename
-end
-
-local function BuildPopstarterVcdPath(device_page, vcd_basename)
-  if vcd_basename == "" then
-    return ""
-  end
-  if device_page == "HDD" then
-    return "pfs0:/"..vcd_basename
-  end
-  if device_page == "USB" or device_page == "MMCE" or device_page == "SMB/MMCE" then
-    return "mass:/POPS/"..vcd_basename
-  end
-  return vcd_basename
-end
-
 local function HasBootPrefix(basename, desired_prefix)
   if basename == nil or basename == "" or desired_prefix == nil or desired_prefix == "" then
     return false
@@ -1047,8 +1023,6 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   end
   local selector_prefix = SelectPopstarterSelectorPrefix(device_page)
   local argv0_selector = BuildPopstarterSelector(selector_prefix, game_name)
-  local vcd_basename = EnsureVcdBasename(game)
-  local vcd_path_for_popstarter = BuildPopstarterVcdPath(device_page, vcd_basename)
   if selector_prefix == "" and string.upper(game_name) == "POPSTARTER" then
     LaunchLog("LAUNCH: Internal error: game_base derived as POPSTARTER; refusing to launch.", game)
     BlockLaunchFailure(
@@ -1076,7 +1050,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
       prefix_used = ""
     end
   end
-  local argv = {argv0_selector, vcd_path_for_popstarter}
+  local argv = {argv0_selector}
 
   LOG("Boot APP_DIR: "..APP_DIR_LOCAL)
   LOG("PopStarter selected: "..popstarter)
@@ -1091,7 +1065,6 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   LaunchLog("LAUNCH: selector mode:", SELECTOR_MODE)
   LaunchLog("LAUNCH: selector prefix:", selector_prefix)
   LaunchLog("LAUNCH: argv0 selector:", argv0_selector)
-  LaunchLog("LAUNCH: argv1 vcd path:", vcd_path_for_popstarter)
   LaunchLog("LAUNCH: loadELF argc (caller):", #argv)
   if fallback_bootparam ~= nil then
     LaunchLog("LAUNCH: bootparam fallback:", fallback_bootparam, "exists:", tostring(fallback_exists))
