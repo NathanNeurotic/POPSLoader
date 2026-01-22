@@ -288,7 +288,7 @@ function PLDR.CheckPOPStarterDEPS(device)
   if device == UI.SCENES.GUSB then
     return doesFileExist("mass:/POPS/POPS_IOX.PAK")
   elseif device == UI.SCENES.GHDD then
-    local a = HDD.MountPartition("hdd0:__common", 1, FIO_MT_RDONLY)
+    local a = HDD.MountPartition("hdd0:__common", 0, FIO_MT_RDONLY)
     if a then
       return a, doesFileExist("pfs0:/POPS/POPS.ELF"), doesFileExist("pfs0:/POPS/IOPRP252.IMG")
     else
@@ -362,17 +362,17 @@ end
 function PLDR.HDD.CheckAvailableHddPopsParts()
   if not PLDR.HDD.HAS_CHECKED then --HDD is checked only once since it cannot be removed/replaced without damaging the console
     LOG("Checking available __.POPS Partitions")
-    if HDD.MountPartition("hdd0:__.POPS", 1, FIO_MT_RDONLY) then
+    if HDD.MountPartition("hdd0:__.POPS", 0, FIO_MT_RDONLY) then
       PLDR.HDD.MAINPART = true
-      HDD.UMountPartition(1)
+      HDD.UMountPartition(0)
     end
     LOG("__.POPS", PLDR.HDD.MAINPART)
     PLDR.HDD.FOUNDANY = PLDR.HDD.MAINPART
     for i=1, 9 do
-      if HDD.MountPartition(("hdd0:__.POPS%d"):format(i), 1, FIO_MT_RDONLY) then
+      if HDD.MountPartition(("hdd0:__.POPS%d"):format(i), 0, FIO_MT_RDONLY) then
         PLDR.HDD.EXTRAPARTS[i] = true
         PLDR.HDD.FOUNDANY = true
-        HDD.UMountPartition(1)
+        HDD.UMountPartition(0)
       end
       LOG("__.POPS"..i, PLDR.HDD.EXTRAPARTS[i])
     end
@@ -386,25 +386,25 @@ function PLDR.HDD.BuildGameList()
   PLDR.HDD.GAMEPARTS = {}
   if not PLDR.HDD.FOUNDANY then return end
   if PLDR.HDD.MAINPART then
-    if HDD.MountPartition("hdd0:__.POPS", 1, FIO_MT_RDONLY) then
+    if HDD.MountPartition("hdd0:__.POPS", 0, FIO_MT_RDONLY) then
       local start_index = #PLDR.GAMES
       PLDR.GetPS1GameLists("pfs0:/", true)
       for i = start_index + 1, #PLDR.GAMES do
         PLDR.HDD.GAMEPARTS[PLDR.GAMES[i]] = "hdd0:__.POPS"
       end
-      HDD.UMountPartition(1)
+      HDD.UMountPartition(0)
     end
   end
   for i=1, 9 do
     if PLDR.HDD.EXTRAPARTS[i] then
-      if HDD.MountPartition("hdd0:__.POPS"..i, 1, FIO_MT_RDONLY) then
+      if HDD.MountPartition("hdd0:__.POPS"..i, 0, FIO_MT_RDONLY) then
         local start_index = #PLDR.GAMES
         local partition = "hdd0:__.POPS"..i
         PLDR.GetPS1GameLists("pfs0:/", true)
         for j = start_index + 1, #PLDR.GAMES do
           PLDR.HDD.GAMEPARTS[PLDR.GAMES[j]] = partition
         end
-        HDD.UMountPartition(1)
+        HDD.UMountPartition(0)
       end
     end
   end
@@ -643,7 +643,7 @@ local function EnsureHDDReadyForLaunch(game)
   end
   local partition = PLDR.HDD.GAMEPARTS[game] or "hdd0:__.POPS"
   result.mount_partition = partition
-  result.mount_ok = HDD.MountPartition(partition, 1, FIO_MT_RDONLY)
+  result.mount_ok = HDD.MountPartition(partition, 0, FIO_MT_RDONLY)
   return result
 end
 
