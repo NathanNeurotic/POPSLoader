@@ -290,7 +290,7 @@ function PLDR.CheckPOPStarterDEPS(device)
   elseif device == UI.SCENES.GHDD then
     local a = HDD.MountPartition("hdd0:__common", 1, FIO_MT_RDONLY)
     if a then
-      return a, doesFileExist("pfs1:/POPS/POPS.ELF"), doesFileExist("pfs1:/POPS/IOPRP252.IMG")
+      return a, doesFileExist("pfs0:/POPS/POPS.ELF"), doesFileExist("pfs0:/POPS/IOPRP252.IMG")
     else
       return a, false, false
     end
@@ -388,7 +388,7 @@ function PLDR.HDD.BuildGameList()
   if PLDR.HDD.MAINPART then
     if HDD.MountPartition("hdd0:__.POPS", 1, FIO_MT_RDONLY) then
       local start_index = #PLDR.GAMES
-      PLDR.GetPS1GameLists("pfs1:/", true)
+      PLDR.GetPS1GameLists("pfs0:/", true)
       for i = start_index + 1, #PLDR.GAMES do
         PLDR.HDD.GAMEPARTS[PLDR.GAMES[i]] = "hdd0:__.POPS"
       end
@@ -400,7 +400,7 @@ function PLDR.HDD.BuildGameList()
       if HDD.MountPartition("hdd0:__.POPS"..i, 1, FIO_MT_RDONLY) then
         local start_index = #PLDR.GAMES
         local partition = "hdd0:__.POPS"..i
-        PLDR.GetPS1GameLists("pfs1:/", true)
+        PLDR.GetPS1GameLists("pfs0:/", true)
         for j = start_index + 1, #PLDR.GAMES do
           PLDR.HDD.GAMEPARTS[PLDR.GAMES[j]] = partition
         end
