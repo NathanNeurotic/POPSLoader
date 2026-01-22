@@ -986,7 +986,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   local prefix_used = HasBootPrefix(normalized_basename, prefix) and prefix or ""
   local vcd_filename = ExtractVcdFilename(game)
   local game_name = SanitizeGameName(StripVcdExtension(vcd_filename))
-  local selector_prefix = prefix
+  local selector_prefix = "XX."
   local argv0_selector = BuildPopstarterSelector(selector_prefix, game_name)
   if boot_source_mode == "mass" and prefix_added and not bootparam_exists then
     fallback_bootparam = EnsureTrailingSlash(pops_root)..game

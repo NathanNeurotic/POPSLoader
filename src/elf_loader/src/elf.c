@@ -58,6 +58,26 @@ static char *store_arg(const char *src, char *storage, size_t storage_size, size
 	return dest;
 }
 
+static void append_launch_log_line(const char *line) {
+	int fd = open("launch.log", O_WRONLY | O_CREAT, 0666);
+	if (fd < 0) {
+		return;
+	}
+	lseek(fd, 0, SEEK_END);
+	write(fd, line, strlen(line));
+	close(fd);
+}
+
+static void append_launch_log_fmt(const char *label, int index, const char *value) {
+	char buffer[256];
+	if (index >= 0) {
+		snprintf(buffer, sizeof(buffer), "LAUNCH: %s[%d]=%s\n", label, index, value ? value : "(null)");
+	} else {
+		snprintf(buffer, sizeof(buffer), "LAUNCH: %s=%s\n", label, value ? value : "(null)");
+	}
+	append_launch_log_line(buffer);
+}
+
 /* IMPORTANT: This method wipe memory where the loader is going to be allocated 
 * This values come from the linkfile used by the loader.c
 MEMORY {
@@ -136,13 +156,22 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	DPRINTF("LAUNCH: Using LoadExecPS2\n");
 	DPRINTF("LAUNCH: exec path=%s\n", resolved_path);
 	DPRINTF("LAUNCH: argc=%d\n", new_argc);
+	append_launch_log_fmt("exec path", -1, resolved_path);
+	{
+		char argc_buf[32];
+		snprintf(argc_buf, sizeof(argc_buf), "%d", new_argc);
+		append_launch_log_fmt("argc", -1, argc_buf);
+	}
 	for (i = 0; i < new_argc; i++) {
 		DPRINTF("LAUNCH: argv[%d]=%s\n", i, launch_argv[i] ? launch_argv[i] : "(null)");
+		append_launch_log_fmt("argv", i, launch_argv[i]);
 	}
 	DPRINTF("LAUNCH: argv[%d] is NULL: %s\n", new_argc, launch_argv[new_argc] == NULL ? "yes" : "no");
+	append_launch_log_fmt("argv_null", new_argc, launch_argv[new_argc] == NULL ? "yes" : "no");
 	/* LoadExecPS2 should not return on success. */
 	LoadExecPS2(resolved_path, new_argc, launch_argv);
 	DPRINTF("LAUNCH: RETURNED rc=%d\n", -1);
+	append_launch_log_line("LAUNCH: RETURNED rc=-1\n");
 	return -1;
 }
 
