@@ -187,7 +187,20 @@ function RunScript(S)
   end
 end
 
-local SYS = System.resolveAsset("system.lua")
+local function ResolveSystemScript()
+  local base = ensure_dir(APP_DIR or System.currentDirectory())
+  local modern = base.."system.lua"
+  local legacy = base.."POPSLDR/system.lua"
+  if doesFileExist(modern) then
+    return modern
+  end
+  if doesFileExist(legacy) then
+    return legacy
+  end
+  return System.resolveAsset("system.lua")
+end
+
+local SYS = ResolveSystemScript()
 if SYS ~= nil then
 	RunScript(SYS);
 else
