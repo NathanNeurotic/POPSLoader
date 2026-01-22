@@ -860,6 +860,11 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     context and context.bootparam or "unknown"
   )
   LaunchLog("LAUNCH: stage A argv_count:", exec_args and #exec_args or 0)
+  LaunchLog(
+    "LAUNCH: selector="..tostring(argv0),
+    "popstarter="..tostring(popstarter),
+    "reboot_iop="..tostring(reboot_iop)
+  )
   local rc
   if exec_args ~= nil and #exec_args > 0 and unpack_fn ~= nil then
     rc = System.loadELF(popstarter, reboot_iop, unpack_fn(exec_args))
