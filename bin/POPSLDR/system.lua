@@ -636,6 +636,29 @@ local function GetDevicePrefix(path)
   return string.match(path, "^([%a]+%d*):")
 end
 
+local function DetectBootDevice()
+  local app_dir = APP_DIR_LOCAL or ""
+  if string.match(app_dir, "^pfs%d*:/") then
+    return "HDD"
+  end
+  if string.match(app_dir, "^mass%d*:/") then
+    return "USB"
+  end
+  if string.match(app_dir, "^mmce%d*:/") then
+    return "MMCE"
+  end
+  if string.match(app_dir, "^smb:/") then
+    return "SMB"
+  end
+  if string.match(app_dir, "^mc%d:/") then
+    return "MC"
+  end
+  if string.match(app_dir, "^host:/") then
+    return "HOST"
+  end
+  return "UNKNOWN"
+end
+
 local function NormalizeIsraPath(path, device_prefix)
   if path == nil then
     return path
@@ -1010,6 +1033,8 @@ end
 
 function PLDR.RunPOPStarterGame(gamelocation, game)
   local policy, device_page = ResolveLaunchPolicy(gamelocation)
+  local boot_device = DetectBootDevice()
+  local game_device = policy.name or "unknown"
   local popstarter = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
   local selected_entry = game
   local hdd_partition = nil
@@ -1033,20 +1058,22 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
       )
       return
     end
-    app_mount = EnsureHddAppMount()
-    if not app_mount.ok then
-      LaunchLog("LAUNCH: HDD app mount missing/unreadable:", app_mount.app_dir, app_mount.app_fs)
-      BlockLaunchFailure(
-        "HDD app mount missing/unreadable (pfs1:/)",
-        popstarter,
-        device_page,
-        nil,
-        nil,
-        APP_DIR_LOCAL,
-        nil,
-        nil
-      )
-      return
+    if boot_device == "HDD" then
+      app_mount = EnsureHddAppMount()
+      if not app_mount.ok then
+        LaunchLog("LAUNCH: HDD app mount missing/unreadable:", app_mount.app_dir, app_mount.app_fs)
+        BlockLaunchFailure(
+          "HDD app mount missing/unreadable (pfs1:/)",
+          popstarter,
+          device_page,
+          nil,
+          nil,
+          APP_DIR_LOCAL,
+          nil,
+          nil
+        )
+        return
+      end
     end
     hdd_init = EnsureHDDReadyForLaunch(hdd_partition)
     if not hdd_init.init_ok or hdd_init.status ~= 0 or not hdd_init.mount_ok then
@@ -1219,6 +1246,9 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
     LaunchLog("LAUNCH: bootparam fallback:", fallback_bootparam, "exists:", tostring(fallback_exists))
   end
   if device_page == "HDD" then
+    LaunchLog("HDD LAUNCH: BOOT_DEVICE:", boot_device)
+    LaunchLog("HDD LAUNCH: GAME_DEVICE:", game_device)
+    LaunchLog("HDD LAUNCH: APP_DIR:", APP_DIR_LOCAL)
     LaunchLog("HDD LAUNCH: selected partition:", hdd_partition)
     LaunchLog("HDD LAUNCH: mount target:", "pfs0:/")
     LaunchLog("HDD LAUNCH: APP_FS:", app_mount and app_mount.app_fs or "unknown", "APP_DIR:", app_mount and app_mount.app_dir or APP_DIR_LOCAL)
