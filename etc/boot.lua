@@ -7,7 +7,11 @@ local function ensure_dir(path)
 end
 
 local BASE_DIR = ensure_dir(APP_DIR or System.currentDirectory())
-package.path = BASE_DIR.."?.lua;"..BASE_DIR.."?/init.lua;"..BASE_DIR.."POPSLDR/?.lua;./?.lua;./POPSLDR/?.lua;mass:/POPSLDR/?.lua;mc0:/POPSLDR/?.lua;mc1:/POPSLDR/?.lua"
+local function UpdatePackagePath(base_dir)
+  BASE_DIR = ensure_dir(base_dir or System.currentDirectory())
+  package.path = BASE_DIR.."?.lua;"..BASE_DIR.."?/init.lua;"..BASE_DIR.."POPSLDR/?.lua;./?.lua;./POPSLDR/?.lua;mass:/POPSLDR/?.lua;mc0:/POPSLDR/?.lua;mc1:/POPSLDR/?.lua"
+end
+UpdatePackagePath(APP_DIR or System.currentDirectory())
 function LOG(...)
   print_uart(...)
 end
@@ -114,7 +118,16 @@ if string.find(ARGV0, "^hdd0:") then
       if BOOTPATH ~= nil then
         BOOTPATH, _, _ = string.match(BOOTPATH, "(.-)([^/]-([^%.]+))$")
         System.currentDirectory(BOOTPATH)
+        APP_DIR = System.currentDirectory()
+        UpdatePackagePath(APP_DIR)
         LOGF("new bootpath: '%s'\n", BOOTPATH)
+        if boot_mount_index == 9 then
+          local ui_modern = "pfs9:/POPSLDR/ui.lua"
+          local ui_flat = "pfs9:/ui.lua"
+          if not doesFileExist(ui_modern) and not doesFileExist(ui_flat) then
+            error("HDD boot partition missing ui.lua at pfs9:/ (checked POPSLDR/ui.lua and ui.lua)")
+          end
+        end
       end
     end
   end
