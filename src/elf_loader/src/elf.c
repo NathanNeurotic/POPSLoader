@@ -58,6 +58,47 @@ static char *store_arg(const char *src, char *storage, size_t storage_size, size
 	return dest;
 }
 
+static void copy_span(char *dest, size_t dest_size, const char *start, size_t len) {
+	if (!dest || dest_size == 0) {
+		return;
+	}
+	if (!start) {
+		dest[0] = '\0';
+		return;
+	}
+	if (len >= dest_size) {
+		len = dest_size - 1;
+	}
+	memcpy(dest, start, len);
+	dest[len] = '\0';
+}
+
+static void parse_selector_parts(const char *argv0, char *out_prefix, size_t out_prefix_size, char *out_game, size_t out_game_size) {
+	const char *last_dot;
+	const char *first_dot;
+	if (out_prefix_size > 0) {
+		out_prefix[0] = '\0';
+	}
+	if (out_game_size > 0) {
+		out_game[0] = '\0';
+	}
+	if (!argv0) {
+		return;
+	}
+	last_dot = strrchr(argv0, '.');
+	if (!last_dot) {
+		copy_span(out_game, out_game_size, argv0, strlen(argv0));
+		return;
+	}
+	first_dot = strchr(argv0, '.');
+	if (first_dot && first_dot != last_dot) {
+		copy_span(out_prefix, out_prefix_size, argv0, (size_t)(first_dot - argv0));
+		copy_span(out_game, out_game_size, first_dot + 1, (size_t)(last_dot - (first_dot + 1)));
+		return;
+	}
+	copy_span(out_game, out_game_size, argv0, (size_t)(last_dot - argv0));
+}
+
 static void append_launch_log_line(const char *line) {
 	int fd = open("launch.log", O_WRONLY | O_CREAT, 0666);
 	if (fd < 0) {
@@ -168,6 +209,16 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 		use_default_argv0 ? "true" : "false",
 		launch_argv[0] ? launch_argv[0] : "(null)");
 	DPRINTF("LAUNCH: argv0_final=%s\n", use_default_argv0 ? resolved_path : (launch_argv[0] ? launch_argv[0] : "(null)"));
+	{
+		char selector_prefix[32];
+		char selector_game[128];
+		parse_selector_parts(launch_argv[0], selector_prefix, sizeof(selector_prefix), selector_game, sizeof(selector_game));
+		DPRINTF("LAUNCH: selector_prefix=%s selector_game=%s\n",
+			selector_prefix[0] ? selector_prefix : "(none)",
+			selector_game[0] ? selector_game : "(unknown)");
+		append_launch_log_fmt("selector_prefix", -1, selector_prefix[0] ? selector_prefix : "(none)");
+		append_launch_log_fmt("selector_game", -1, selector_game[0] ? selector_game : "(unknown)");
+	}
 	append_launch_log_fmt("exec path", -1, resolved_path);
 	{
 		char argc_buf[32];

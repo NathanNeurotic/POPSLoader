@@ -543,17 +543,25 @@ local function BuildPopstarterSelector(prefix, vcd_filename)
   if prefix == nil then
     prefix = ""
   end
-  return prefix..vcd_filename..".ELF"
+  if prefix ~= "" then
+    return prefix.."."..vcd_filename..".ELF"
+  end
+  return vcd_filename..".ELF"
 end
 
 local function SelectPopstarterSelectorPrefix(device_page)
   if device_page == "USB" or device_page == "MMCE" or device_page == "SMB/MMCE" then
-    return "XX."
+    return "XX"
   end
   if device_page == "HDD" then
     return ""
   end
-  return "XX."
+  return "XX"
+end
+
+local function DeriveGameNameFromSelection(raw_selection)
+  local vcd_filename = ExtractVcdFilename(raw_selection or "")
+  return SanitizeGameName(StripVcdExtension(vcd_filename))
 end
 
 local function HasBootPrefix(basename, desired_prefix)
@@ -1001,8 +1009,21 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   local fallback_exists = false
   local bootparam_basename_used = normalized_basename
   local prefix_used = HasBootPrefix(normalized_basename, prefix) and prefix or ""
-  local vcd_filename = ExtractVcdFilename(game)
-  local game_name = SanitizeGameName(StripVcdExtension(vcd_filename))
+  local game_name = DeriveGameNameFromSelection(game)
+  if game_name == "" or string.upper(game_name) == "POPSTARTER" then
+    LaunchLog("LAUNCH: GameName derivation failed for selection:", game)
+    BlockLaunchFailure(
+      "GameName derivation failed",
+      popstarter,
+      device_page,
+      nil,
+      game,
+      APP_DIR_LOCAL,
+      nil,
+      nil
+    )
+    return
+  end
   local selector_prefix = SelectPopstarterSelectorPrefix(device_page)
   local argv0_selector = BuildPopstarterSelector(selector_prefix, game_name)
   if SELECTOR_MODE == "masspath" then
@@ -1031,6 +1052,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   LaunchLog("LAUNCH: bootparam candidate:", bootparam, "exists:", tostring(bootparam_exists))
   LaunchLog("LAUNCH: derived GameName:", game_name)
   LaunchLog("LAUNCH: selector mode:", SELECTOR_MODE)
+  LaunchLog("LAUNCH: selector prefix:", selector_prefix)
   LaunchLog("LAUNCH: argv0 selector:", argv0_selector)
   LaunchLog("LAUNCH: loadELF argc (caller):", #argv)
   if fallback_bootparam ~= nil then
