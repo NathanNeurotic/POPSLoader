@@ -144,6 +144,7 @@ end
 if not loadedIrx then
   LoadIrxFromDir(JoinPath(APP_DIR_LOCAL, "POPSLDR/IRX"))
 end
+HDD_DIAG_BYPASS = 1
 PLDR = {
   REBOOT_IOP_WHILE_LOADING_POPSTARTER = 0;
   POPSTARTER_PATH = "mass:/POPS/POPSTARTER.ELF";--"mass:/POPS/POPSTARTER.ELF";
@@ -962,6 +963,35 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   local policy, device_page = ResolveLaunchPolicy(gamelocation)
   local hdd_init = nil
   if policy.name == "HDD" then
+    if HDD_DIAG_BYPASS == 1 then
+      local popstarter = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
+      local argv = {popstarter}
+      UI.BottomDraw.Play()
+      Font.ftPrintMultiLineAligned(
+        LFONT,
+        UI.SCR.X_MID,
+        120,
+        20,
+        UI.SCR.X,
+        UI.SCR.Y,
+        "ABOUT TO EXEC POPSTARTER (HDD BYPASS)",
+        UI.CCOL.YELLOW
+      )
+      UI.flip()
+      local context = {
+        device_page = device_page,
+        device_mode = "pfs",
+        ui_scene = UI and UI.CURSCENE or "unknown",
+        source_mode = "pfs",
+        raw_source_mode = "pfs",
+        gamelocation = gamelocation,
+        game = game,
+        argv0_selector = popstarter,
+        bootparam_source = "pfs"
+      }
+      LaunchEngine(popstarter, argv, PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER, context)
+      return
+    end
     hdd_init = EnsureHDDReadyForLaunch(game)
     if not hdd_init.init_ok or hdd_init.status ~= 0 or not hdd_init.mount_ok then
       LaunchLog("LAUNCH: HDD not ready; aborting launch.")
