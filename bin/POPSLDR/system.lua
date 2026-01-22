@@ -546,6 +546,16 @@ local function BuildPopstarterSelector(prefix, vcd_filename)
   return prefix..vcd_filename..".ELF"
 end
 
+local function SelectPopstarterSelectorPrefix(device_page)
+  if device_page == "USB" or device_page == "MMCE" or device_page == "SMB/MMCE" then
+    return "XX."
+  end
+  if device_page == "HDD" then
+    return ""
+  end
+  return "XX."
+end
+
 local function HasBootPrefix(basename, desired_prefix)
   if basename == nil or basename == "" or desired_prefix == nil or desired_prefix == "" then
     return false
@@ -993,7 +1003,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   local prefix_used = HasBootPrefix(normalized_basename, prefix) and prefix or ""
   local vcd_filename = ExtractVcdFilename(game)
   local game_name = SanitizeGameName(StripVcdExtension(vcd_filename))
-  local selector_prefix = "XX."
+  local selector_prefix = SelectPopstarterSelectorPrefix(device_page)
   local argv0_selector = BuildPopstarterSelector(selector_prefix, game_name)
   if SELECTOR_MODE == "masspath" then
     argv0_selector = "mass:/"..argv0_selector
