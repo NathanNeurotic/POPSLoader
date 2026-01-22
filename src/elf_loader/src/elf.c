@@ -75,7 +75,8 @@ static void copy_span(char *dest, size_t dest_size, const char *start, size_t le
 
 static void parse_selector_parts(const char *argv0, char *out_prefix, size_t out_prefix_size, char *out_game, size_t out_game_size) {
 	const char *last_dot;
-	const char *first_dot;
+	const char *prefix = "XX.";
+	size_t prefix_len = strlen(prefix);
 	if (out_prefix_size > 0) {
 		out_prefix[0] = '\0';
 	}
@@ -90,10 +91,9 @@ static void parse_selector_parts(const char *argv0, char *out_prefix, size_t out
 		copy_span(out_game, out_game_size, argv0, strlen(argv0));
 		return;
 	}
-	first_dot = strchr(argv0, '.');
-	if (first_dot && first_dot != last_dot) {
-		copy_span(out_prefix, out_prefix_size, argv0, (size_t)(first_dot - argv0));
-		copy_span(out_game, out_game_size, first_dot + 1, (size_t)(last_dot - (first_dot + 1)));
+	if (strncmp(argv0, prefix, prefix_len) == 0) {
+		copy_span(out_prefix, out_prefix_size, "XX", 2);
+		copy_span(out_game, out_game_size, argv0 + prefix_len, (size_t)(last_dot - (argv0 + prefix_len)));
 		return;
 	}
 	copy_span(out_game, out_game_size, argv0, (size_t)(last_dot - argv0));
@@ -216,8 +216,10 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 		DPRINTF("LAUNCH: selector_prefix=%s selector_game=%s\n",
 			selector_prefix[0] ? selector_prefix : "(none)",
 			selector_game[0] ? selector_game : "(unknown)");
+		DPRINTF("LAUNCH: selector_mode=%s\n", selector_prefix[0] ? "XX" : "NO_PREFIX");
 		append_launch_log_fmt("selector_prefix", -1, selector_prefix[0] ? selector_prefix : "(none)");
 		append_launch_log_fmt("selector_game", -1, selector_game[0] ? selector_game : "(unknown)");
+		append_launch_log_fmt("selector_mode", -1, selector_prefix[0] ? "XX" : "NO_PREFIX");
 	}
 	append_launch_log_fmt("exec path", -1, resolved_path);
 	{

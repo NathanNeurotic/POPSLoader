@@ -543,20 +543,17 @@ local function BuildPopstarterSelector(prefix, vcd_filename)
   if prefix == nil then
     prefix = ""
   end
-  if prefix ~= "" then
-    return prefix.."."..vcd_filename..".ELF"
-  end
-  return vcd_filename..".ELF"
+  return prefix..vcd_filename..".ELF"
 end
 
 local function SelectPopstarterSelectorPrefix(device_page)
   if device_page == "USB" or device_page == "MMCE" or device_page == "SMB/MMCE" then
-    return "XX"
+    return "XX."
   end
   if device_page == "HDD" then
     return ""
   end
-  return "XX"
+  return "XX."
 end
 
 local function DeriveGameNameFromSelection(raw_selection)
@@ -1026,6 +1023,20 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   end
   local selector_prefix = SelectPopstarterSelectorPrefix(device_page)
   local argv0_selector = BuildPopstarterSelector(selector_prefix, game_name)
+  if selector_prefix == "" and string.upper(game_name) == "POPSTARTER" then
+    LaunchLog("LAUNCH: Internal error: game_base derived as POPSTARTER; refusing to launch.", game)
+    BlockLaunchFailure(
+      "Internal error: game_base derived as POPSTARTER; refusing to launch.",
+      popstarter,
+      device_page,
+      nil,
+      game,
+      APP_DIR_LOCAL,
+      nil,
+      nil
+    )
+    return
+  end
   if SELECTOR_MODE == "masspath" then
     argv0_selector = "mass:/"..argv0_selector
   end
