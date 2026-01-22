@@ -575,6 +575,64 @@ local function BuildPopstarterSelectorPath(device_page, game_name)
   return game_name..".ELF"
 end
 
+local function HexByteDump(value)
+  if value == nil then
+    return ""
+  end
+  local bytes = {}
+  for i = 1, #value do
+    bytes[#bytes + 1] = string.format("%02X", string.byte(value, i))
+  end
+  return table.concat(bytes, " ")
+end
+
+local function FormatFilenameForDebug(value)
+  if value == nil then
+    return "<nil>"
+  end
+  local printable = {}
+  for i = 1, #value do
+    local byte = string.byte(value, i)
+    if byte >= 32 and byte <= 126 then
+      printable[#printable + 1] = string.char(byte)
+    else
+      printable[#printable + 1] = string.format("\\x%02X", byte)
+    end
+  end
+  return table.concat(printable)
+end
+
+local function NormalizeVcdBasenameForMatch(filename)
+  if filename == nil then
+    return ""
+  end
+  local basename = StripVcdExtension(filename)
+  basename = string.gsub(basename, "\226\128\153", "'")
+  basename = string.gsub(basename, "\226\128\152", "'")
+  return string.lower(basename)
+end
+
+local function FindVcdNearMatch(target, entries)
+  if target == nil or entries == nil then
+    return nil
+  end
+  local target_norm = NormalizeVcdBasenameForMatch(target)
+  if target_norm == "" then
+    return nil
+  end
+  for i = 1, #entries do
+    local entry = entries[i]
+    if entry ~= nil and entry.name ~= nil and not entry.directory then
+      if string.lower(string.sub(entry.name, -4)) == ".vcd" then
+        if NormalizeVcdBasenameForMatch(entry.name) == target_norm then
+          return entry.name
+        end
+      end
+    end
+  end
+  return nil
+end
+
 local function DeriveGameNameFromSelection(raw_selection)
   local vcd_filename = ExtractVcdFilename(raw_selection or "")
   return SanitizeGameName(StripVcdExtension(vcd_filename))
@@ -697,6 +755,30 @@ local function AppendLaunchLog(line)
     System.writeFile(fd, line, #line)
     System.closeFile(fd)
   end
+end
+
+local function ShowHddVcdOpenError(context, mount_partition, partition_label, filename, open_rc, candidate)
+  SetLaunchPhase(LaunchState.PHASE_FAILED)
+  UI.LAUNCHING = false
+  local body = string.format(
+    "HDD VCD OPEN FAILED\npartition: %s\nmount: %s\nfile: %s\nfile(hex): %s\nrc: %s\ncandidate: %s\nPress X/O to continue.",
+    tostring(partition_label),
+    tostring(mount_partition),
+    FormatFilenameForDebug(filename),
+    HexByteDump(filename),
+    tostring(open_rc),
+    tostring(candidate or "<none>")
+  )
+  while true do
+    UI.BottomDraw.Play()
+    Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, 120, 18, UI.SCR.X, UI.SCR.Y, body, UI.CCOL.GREY)
+    Input_GetEvent()
+    if UI.Pad.Events.CONFIRM or UI.Pad.Events.BACK or UI.Pad.Events.EXIT then
+      break
+    end
+    UI.flip()
+  end
+  UI.SceneChange(UI.SCENES.MMAIN)
 end
 
 function LaunchLog(...)
@@ -997,6 +1079,37 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   local boot_source_mode = source_mode
   local device_mode = "unknown"
   local mmce_prefix = nil
+  if policy.name == "HDD" then
+    local open_ok = false
+    local open_rc = nil
+    local ok_open, fd_or_err = pcall(System.openFile, "pfs0:/"..game, FREAD)
+    if ok_open and type(fd_or_err) == "number" and fd_or_err >= 0 then
+      open_ok = true
+      System.closeFile(fd_or_err)
+    else
+      open_rc = fd_or_err
+    end
+    if not open_ok then
+      local entries = System.listDirectory("pfs0:/") or {}
+      local candidate = FindVcdNearMatch(game, entries)
+      LaunchLog("LAUNCH: HDD VCD open failed.",
+        "mount:", hdd_init and hdd_init.mount_partition or "unknown",
+        "partition:", hdd_init and hdd_init.mount_partition_label or "unknown",
+        "file:", FormatFilenameForDebug(game),
+        "file_hex:", HexByteDump(game),
+        "rc:", tostring(open_rc),
+        "candidate:", tostring(candidate or "<none>"))
+      ShowHddVcdOpenError(
+        nil,
+        hdd_init and hdd_init.mount_partition or "unknown",
+        hdd_init and hdd_init.mount_partition_label or "unknown",
+        game,
+        open_rc,
+        candidate
+      )
+      return
+    end
+  end
   if string.match(source_mode, "^pfs") then
     pops_root = normalized_gamelocation
     boot_source_mode = "pfs"
