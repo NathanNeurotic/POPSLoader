@@ -599,6 +599,17 @@ local function BuildPopstarterSelectorPath(device_page, game_name)
   return game_name..".ELF"
 end
 
+local function BuildHddSelectorPath(partition_name, game_name)
+  if game_name == nil or game_name == "" then
+    return ""
+  end
+  local partition = partition_name or "__.POPS"
+  if not string.match(partition, "^hdd0:") then
+    partition = "hdd0:"..partition
+  end
+  return partition.."/"..game_name..".ELF"
+end
+
 local function DeriveGameNameFromSelection(raw_selection)
   local vcd_filename = ExtractVcdFilename(raw_selection or "")
   return SanitizeGameName(StripVcdExtension(vcd_filename))
@@ -1202,6 +1213,9 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   end
   local selector_prefix = SelectPopstarterSelectorPrefix(device_page)
   local argv0_selector = BuildPopstarterSelectorPath(device_page, game_name)
+  if device_page == "HDD" then
+    argv0_selector = BuildHddSelectorPath(hdd_partition, game_name)
+  end
   if selector_prefix == "" and string.upper(game_name) == "POPSTARTER" then
     LaunchLog("LAUNCH: Internal error: game_base derived as POPSTARTER; refusing to launch.", game)
     BlockLaunchFailure(
