@@ -500,7 +500,7 @@ static int lua_loadELF(lua_State *L)
 	const char *elftoload = luaL_checklstring(L, 1, &size);
 	int rebootIOP = luaL_checkinteger(L, 2);
 	int extra_args = argc - 2;
-	char** p = (char**)malloc((extra_args + 1) * sizeof(const char*));
+	char** p = (char**)malloc((extra_args + 1) * sizeof(char*));
 	printf("# Loading ELF '%s' iop_reboot=%d, extra_args=%d\n", elftoload, rebootIOP, extra_args);
 	for (int x = 3; x <= argc; x++) {
 		p[x-3] = (char*)luaL_checkstring(L, x);

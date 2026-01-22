@@ -134,6 +134,7 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	launch_argv[new_argc] = NULL;
 
 	DPRINTF("LAUNCH: Using LoadExecPS2\n");
+	DPRINTF("LAUNCH: exec path=%s\n", resolved_path);
 	DPRINTF("LAUNCH: argc=%d\n", new_argc);
 	for (i = 0; i < new_argc; i++) {
 		DPRINTF("LAUNCH: argv[%d]=%s\n", i, launch_argv[i] ? launch_argv[i] : "(null)");
