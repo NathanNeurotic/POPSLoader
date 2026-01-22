@@ -209,6 +209,8 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 		use_default_argv0 ? "true" : "false",
 		launch_argv[0] ? launch_argv[0] : "(null)");
 	DPRINTF("LAUNCH: argv0_final=%s\n", use_default_argv0 ? resolved_path : (launch_argv[0] ? launch_argv[0] : "(null)"));
+	DPRINTF("LAUNCH: argv1=%s\n", launch_argv[1] ? launch_argv[1] : "(null)");
+	DPRINTF("LAUNCH: argv2_is_null=%s\n", launch_argv[2] == NULL ? "yes" : "no");
 	{
 		char selector_prefix[32];
 		char selector_game[128];
@@ -229,6 +231,8 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	}
 	append_launch_log_fmt("use_default_argv0", -1, use_default_argv0 ? "true" : "false");
 	append_launch_log_fmt("argv0", -1, launch_argv[0]);
+	append_launch_log_fmt("argv1", -1, launch_argv[1]);
+	append_launch_log_fmt("argv2_is_null", -1, launch_argv[2] == NULL ? "yes" : "no");
 	append_launch_log_fmt("argv0_final", -1, use_default_argv0 ? resolved_path : launch_argv[0]);
 	for (i = 0; i < new_argc; i++) {
 		DPRINTF("LAUNCH: argv[%d]=%s\n", i, launch_argv[i] ? launch_argv[i] : "(null)");
