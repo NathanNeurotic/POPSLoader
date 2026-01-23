@@ -6,15 +6,15 @@ This report maps the current launch pipeline and documents the observed mismatch
 
 ### Source mode selection
 - `ResolveLaunchPolicy(gamelocation)` in `bin/POPSLDR/system.lua`
-  - Picks a device policy based on `gamelocation` prefix (`mass`, `mmce`, `pfs`) or UI scene fallback (`GUSB`, `GSMB`, `GHDD`).
+  - Picks a device policy based on `gamelocation` prefix (`mass`, `mmce`, `pfs`) or UI scene fallback (`GUSB`, `GSMB`, `GMMCE`, `GHDD`).
   - Returns a policy containing `mode` (e.g., `mass`, `pfs`) and a UI label.
 
 ### POPS root selection
 - `PLDR.RunPOPStarterGame(gamelocation, game)` in `bin/POPSLDR/system.lua`
   - Computes `pops_root` based on `source_mode` and device page:
     - `pfs` → use normalized gamelocation.
-    - `SMB/MMCE` → `smb:/POPS/`.
-    - Else → `mass:/POPS/`.
+    - `SMB` → `smb:/POPS/`.
+    - Else → `mass:/POPS/` (USB/MMCE).
 
 ### Prefix injection / boot string construction
 - `BuildPopstarterBootString(source_mode, pops_root, basename)` in `bin/POPSLDR/system.lua`
@@ -49,13 +49,13 @@ This report maps the current launch pipeline and documents the observed mismatch
 - Prefix selection is tied to `source_mode` (`pfs` → none, `smb` → `SB.`, else `XX.`).
 - POPS root selection uses a three-branch rule:
   - If `source_mode` matches `^pfs`, `pops_root = normalized_gamelocation`.
-  - Else if `device_page == "SMB/MMCE"`, `pops_root = "smb:/POPS/"`.
+  - Else if `device_page == "SMB"`, `pops_root = "smb:/POPS/"`.
   - Else `pops_root = "mass:/POPS/"`.
 
 ### Reported mismatch (user observation)
 - **Observation:** HDD mode produced `mass:/POPS/` and injected `XX.`.
 - **Code path that can cause this:**
-  - If `source_mode` is not `pfs` and device page is not `SMB/MMCE`, the default branch sets `pops_root = "mass:/POPS/"` and `boot_source_mode = "mass"`, which yields the `XX.` prefix.
+  - If `source_mode` is not `pfs` and device page is not `SMB`, the default branch sets `pops_root = "mass:/POPS/"` and `boot_source_mode = "mass"`, which yields the `XX.` prefix.
 - **TODO: verify** the actual `gamelocation` value and the `device_page`/UI scene at the moment of the failing launch. The mismatch suggests the HDD launch path is not being recognized as `pfs` (or the UI scene fallback is not `GHDD`).
 
 ## 3) Recommended fix plan (next step, smallest diffs)

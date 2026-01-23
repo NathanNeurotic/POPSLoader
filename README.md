@@ -34,7 +34,7 @@ See [docs/RUNTIME_LAYOUT.md](docs/RUNTIME_LAYOUT.md) for layout details and comp
 Launch behavior, device rules, and POPStarter handoff are documented in [docs/LAUNCH_PIPELINE.md](docs/LAUNCH_PIPELINE.md). This repo does **not** contain POPStarter’s argument parsing, so POPStarter’s argv index must be verified in POPStarter’s own sources or documentation.
 
 ### Device pages
-- The SMB slot represents MMCE (no SMB networking support); `SMB.png` is reused as the icon.  
+- SMB and MMCE are separate pages. SMB uses SMB labeling and the SMB icon.  
 - MMCE auto-detects `mmce0:/` and `mmce1:/`, with module load order: `iomanX` → `fileXio` → `mmceman`.  
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for implementation details.
 

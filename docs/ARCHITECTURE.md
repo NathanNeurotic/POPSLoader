@@ -10,8 +10,8 @@ This document reflects the current POPSLoader architecture as implemented in the
 - The embedded Lua boot script (`etc/boot.lua`) sets `package.path` and loads the resolved `system.lua` (APP_DIR first, legacy `POPSLDR/` fallback).【F:etc/boot.lua†L1-L11】【F:etc/boot.lua†L72-L81】
 
 ## UI flow (scenes and device pages)
-- The main menu defines three device slots (`USB`, `SMB`, `HDD`); the `SMB` slot is wired to the MMCE device page and uses MMCE slot discovery/selection rather than SMB networking.【F:bin/POPSLDR/ui.lua†L261-L307】
-- MMCE slot detection is driven by `mmce0:/` and `mmce1:/` availability (populated into `PLDR.MMCE.SLOTS`).【F:bin/POPSLDR/system.lua†L116-L127】
+- The main menu defines distinct device slots (`USB`, `SMB`, `MMCE`, `HDD`), each routed to its own scene.【F:bin/POPSLDR/ui.lua†L265-L339】
+- MMCE slot detection is driven by `mmce0:/` and `mmce1:/` availability (populated into `PLDR.MMCE.SLOTS`).【F:bin/POPSLDR/system.lua†L170-L248】
 
 ## Launch pipeline reference
 - POPStarter launch rules (device detection, prefix rules, argv handoff) are documented in `docs/LAUNCH_PIPELINE.md` and should be treated as canonical.

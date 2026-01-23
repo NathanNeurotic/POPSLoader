@@ -10,8 +10,8 @@ This report reconciles documentation against **current code behavior**. It is th
 **POPS root selection**
 - In `PLDR.RunPOPStarterGame(...)`, `pops_root` is chosen as:
   - `pfs*:/` (normalized gamelocation) when `source_mode` is `pfs`.
-  - `smb:/POPS/` when device page is `SMB/MMCE`.
-  - `mass:/POPS/` otherwise.
+  - `smb:/POPS/` when device page is `SMB`.
+  - `mass:/POPS/` otherwise (USB/MMCE).
 
 **Prefix rules**
 - `BuildPopstarterBootString(...)` sets prefixes as:

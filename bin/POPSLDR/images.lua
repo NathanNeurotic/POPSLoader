@@ -16,6 +16,7 @@ end
 local IMGS = {
   "USB.png",
   "SMB.png",
+  "MMCE.png",
   "HDD.png",
   "PSL.png",
   "select.png",
