@@ -7,11 +7,29 @@
 --]]
 
 LOG("Registering POPSLoader UI")
+local DEVLOCK = { NONE = 0, USB = 1, MMCE = 2, MX4SIO = 3 }
 local UI = {
-    LASTSCENE = 4;
-    CURSCENE = 4;
-    SCENES = {GUSB=1, GSMB=2, GHDD=3, MMAIN=4, MPROFILE=5, CREDITS=6};
+    LASTSCENE = 5;
+    CURSCENE = 5;
+    SCENES = {GUSB=1, GSMB=2, GMX4SIO=3, GHDD=4, MMAIN=5, MPROFILE=6, CREDITS=7};
     LAUNCHING = false;
+    device_lock = DEVLOCK.NONE;
+    device_lock_name = function (lock)
+      if lock == DEVLOCK.USB then return "USB" end
+      if lock == DEVLOCK.MMCE then return "MMCE" end
+      if lock == DEVLOCK.MX4SIO then return "MX4SIO" end
+      return "None"
+    end;
+    canEnterDevice = function (target)
+      if UI.device_lock == DEVLOCK.NONE then return true end
+      return UI.device_lock == target
+    end;
+    setDeviceLock = function (target)
+      if UI.device_lock == DEVLOCK.NONE then
+        UI.device_lock = target
+        LOG("Device lock set to "..UI.device_lock_name(target))
+      end
+    end;
     SceneChange = function (SCENE)
       UI.LASTSCENE = UI.CURSCENE
       UI.CURSCENE = SCENE
@@ -101,6 +119,8 @@ local UI = {
       body = "";
       options = {"Yes", "No"};
       selected = 2;
+      confirm_action = nil;
+      cancel_action = nil;
       OpenExit = function ()
         LOG("Exit requested")
         UI.Modal.active = true
@@ -108,11 +128,31 @@ local UI = {
         UI.Modal.body = "Return to OSDSYS?"
         UI.Modal.options = {"Yes", "No"}
         UI.Modal.selected = 2
+        UI.Modal.confirm_action = UI.Modal.ConfirmExit
+        UI.Modal.cancel_action = UI.Modal.Close
+      end;
+      OpenDeviceLock = function (active, target)
+        UI.Modal.active = true
+        UI.Modal.title = "Device drivers already loaded"
+        UI.Modal.body = ("Drivers for %s are already loaded.\nTo use %s, restart POPSLoader to reload drivers."):format(active, target)
+        UI.Modal.options = {"Return", "Exit"}
+        UI.Modal.selected = 1
+        UI.Modal.confirm_action = function ()
+          LOG("Device lock prompt choice: RETURN")
+          UI.Modal.Close()
+          UI.SceneChange(UI.SCENES.MMAIN)
+        end
+        UI.Modal.cancel_action = function ()
+          LOG("Device lock prompt choice: EXIT")
+          UI.Modal.ConfirmExit()
+        end
       end;
       Close = function ()
         UI.Modal.active = false
+        UI.Modal.confirm_action = nil
+        UI.Modal.cancel_action = nil
       end;
-      Confirm = function ()
+      ConfirmExit = function ()
         LOG("Exit confirmed")
         UI.LAUNCHING = true
         System.exitToBrowser()
@@ -127,9 +167,17 @@ local UI = {
           end
         elseif UI.Pad.Events.CONFIRM then
           if UI.Modal.selected == 1 then
-            UI.Modal.Confirm()
+            if UI.Modal.confirm_action ~= nil then
+              UI.Modal.confirm_action()
+            else
+              UI.Modal.Close()
+            end
           else
-            UI.Modal.Close()
+            if UI.Modal.cancel_action ~= nil then
+              UI.Modal.cancel_action()
+            else
+              UI.Modal.Close()
+            end
           end
         elseif UI.Pad.Events.BACK then
           UI.Modal.Close()
@@ -264,9 +312,9 @@ local UI = {
     };
     MainMenu = {
       OPT = 1;
-      opts = {"USB", "SMB", "HDD"};
+      opts = {"USB", "MMCE", "MX4SIO", "HDD"};
       Play = function ()
-        local profcnt = 3
+        local profcnt = #UI.MainMenu.opts
         Font.ftPrint(LFONT, UI.SCR.X_MID, 30, 8, UI.SCR.X, 16, "Welcome to POPStarter Loader", UI.CCOL.GREY)
         for x = 1, #UI.MainMenu.opts do
           Graphics.drawImage(IMG[UI.MainMenu.opts[x]], 256+(110*(x-1))-64, x == UI.MainMenu.OPT and (UI.SCR.Y_MID-65) or (UI.SCR.Y_MID-64),
@@ -286,16 +334,28 @@ local UI = {
         if UI.Pad.Events.SELECT then UI.SceneChange(UI.SCENES.CREDITS) end
           if UI.Pad.Events.CONFIRM then
           if UI.MainMenu.OPT == 1 then
+            if not UI.canEnterDevice(DEVLOCK.USB) then
+              LOG("Device lock denied entry to USB; active lock is "..UI.device_lock_name(UI.device_lock))
+              UI.Modal.OpenDeviceLock(UI.device_lock_name(UI.device_lock), "USB")
+              return
+            end
+            UI.setDeviceLock(DEVLOCK.USB)
             PLDR.CleanupGameList()
             PLDR.GetPS1GameLists("mass"..PLDR.USB.MASSINDX..":/POPS/", true)
-            UI.SceneChange(UI.MainMenu.OPT)
+            UI.SceneChange(UI.SCENES.GUSB)
           elseif UI.MainMenu.OPT == 2 then
+            if not UI.canEnterDevice(DEVLOCK.MMCE) then
+              LOG("Device lock denied entry to MMCE; active lock is "..UI.device_lock_name(UI.device_lock))
+              UI.Modal.OpenDeviceLock(UI.device_lock_name(UI.device_lock), "MMCE")
+              return
+            end
+            UI.setDeviceLock(DEVLOCK.MMCE)
             local slots = PLDR.GetMMCESlots()
             if #slots < 1 then
               UI.Notif_queue.add("No MMCE device found (mmce0/mmce1).")
               PLDR.CleanupGameList()
               PLDR.GAMEPATH = ""
-              UI.SceneChange(UI.MainMenu.OPT)
+              UI.SceneChange(UI.SCENES.GSMB)
             else
               if PLDR.MMCE.PREFIX == nil then
                 PLDR.SetMMCESlot(1)
@@ -307,9 +367,33 @@ local UI = {
               end
               PLDR.CleanupGameList()
               PLDR.GetPS1GameLists(mmce_prefix.."POPS/", true)
-              UI.SceneChange(UI.MainMenu.OPT)
+              UI.SceneChange(UI.SCENES.GSMB)
             end
           elseif UI.MainMenu.OPT == 3 then
+            if not UI.canEnterDevice(DEVLOCK.MX4SIO) then
+              LOG("Device lock denied entry to MX4SIO; active lock is "..UI.device_lock_name(UI.device_lock))
+              UI.Modal.OpenDeviceLock(UI.device_lock_name(UI.device_lock), "MX4SIO")
+              return
+            end
+            UI.setDeviceLock(DEVLOCK.MX4SIO)
+            LOG("Entering MX4SIO page")
+            LOG("MX4SIO init start")
+            PLDR.CleanupGameList()
+            local ok, root = System.initMX4SIO()
+            if not ok or root == nil then
+              PLDR.MX4SIO.READY = false
+              PLDR.MX4SIO.ROOT = nil
+              UI.Notif_queue.add("No MX4SIO device found (mass:/).")
+              PLDR.GAMEPATH = ""
+            else
+              PLDR.MX4SIO.READY = true
+              PLDR.MX4SIO.ROOT = root
+              local list = PLDR.GetPS1GameLists(root.."POPS/", true)
+              local count = list and #list or 0
+              LOG("MX4SIO games found:", count)
+            end
+            UI.SceneChange(UI.SCENES.GMX4SIO)
+          elseif UI.MainMenu.OPT == 4 then
             PLDR.LoadHDDModules()
             if UI.LASTSCENE == UI.SCENES.GHDD then
               LOG("skipping cache cleanup")

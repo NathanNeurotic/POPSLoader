@@ -167,6 +167,10 @@ PLDR = {
   USB = {
     MASSINDX = 0
   },
+  MX4SIO = {
+    READY = false,
+    ROOT = nil
+  },
   MMCE = {
     PROBED = false,
     PREFIX = nil,
@@ -577,7 +581,7 @@ local function BuildPopstarterSelector(prefix, vcd_filename)
 end
 
 local function SelectPopstarterSelectorPrefix(device_page)
-  if device_page == "USB" or device_page == "MMCE" or device_page == "SMB/MMCE" then
+  if device_page == "USB" or device_page == "MMCE" or device_page == "SMB/MMCE" or device_page == "MX4SIO" then
     return "XX."
   end
   if device_page == "HDD" then
@@ -593,7 +597,7 @@ local function BuildPopstarterSelectorPath(device_page, game_name)
   if device_page == "HDD" then
     return "hdd0:__.POPS/"..game_name..".ELF"
   end
-  if device_page == "USB" or device_page == "MMCE" or device_page == "SMB/MMCE" then
+  if device_page == "USB" or device_page == "MMCE" or device_page == "SMB/MMCE" or device_page == "MX4SIO" then
     return "mass:/POPS/XX."..game_name..".ELF"
   end
   return game_name..".ELF"
@@ -1004,6 +1008,9 @@ end
 
 local function ResolveLaunchPolicy(gamelocation)
   local ui_scene = UI and UI.CURSCENE or "unknown"
+  if ui_scene == UI.SCENES.GMX4SIO then
+    return BuildLaunchPolicy("MX4SIO", "mass", "mass", nil), "MX4SIO"
+  end
   if string.match(gamelocation, "^mass") then
     return BuildLaunchPolicy("USB", "mass", "mass", nil), "USB"
   end
@@ -1177,6 +1184,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   if fallback_bootparam ~= nil then
     LaunchLog("LAUNCH: bootparam fallback:", fallback_bootparam, "exists:", tostring(fallback_exists))
   end
+  LOG("Resolved game path:", vcd_path)
   local context = {
     device_page = device_page,
     device_mode = device_mode,

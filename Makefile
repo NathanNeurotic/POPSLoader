@@ -75,7 +75,8 @@ IOP_MODULES = iomanX.o fileXio.o \
 			  sio2man.o mcman.o mcserv.o padman.o libsd.o \
 			  usbd.o audsrv.o bdm.o bdmfs_fatfs.o \
 			  usbmass_bd.o cdfs.o ds34bt.o ds34usb.o \
-			  ps2dev9.o ps2atad.o ps2hdd-osd.o ps2fs.o mmceman.o
+			  ps2dev9.o ps2atad.o ps2hdd-osd.o ps2fs.o mmceman.o \
+			  bdmassault_usbd.o bdmassault_usbhdfsd.o
 
 EMBEDDED_RSC = boot.o builtin_font.o
 
@@ -134,6 +135,15 @@ modules/ds34usb/iop/ds34usb.irx: modules/ds34usb/iop
 
 $(EE_ASM_DIR)ds34usb.c: modules/ds34usb/iop/ds34usb.irx | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ ds34usb_irx
+
+# BDMAssault MX4SIO IRX bundle (embedded)
+BDMASSAULT_MX4SIO_DIR = iop/embed/BDMASSAULT_MX4SIO
+
+$(EE_ASM_DIR)bdmassault_usbd.c: $(BDMASSAULT_MX4SIO_DIR)/usbd.irx | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ bdmassault_usbd_irx
+
+$(EE_ASM_DIR)bdmassault_usbhdfsd.c: $(BDMASSAULT_MX4SIO_DIR)/usbhdfsd.irx | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ bdmassault_usbhdfsd_irx
 
 #------------------------------------------------------------------#
 elfloader: src/elf_loader/libcustom-elf-loader.a

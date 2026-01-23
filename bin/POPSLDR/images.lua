@@ -41,6 +41,8 @@ for x=1, #IMGS do
   local key = IMGS[x]:match("(.+)%..+$")
   IMG_SOURCES[key] = IMGS[x]
 end
+IMG_SOURCES["MMCE"] = "SMB.png"
+IMG_SOURCES["MX4SIO"] = "USB.png"
 
 IMG = setmetatable({}, {
   __index = function (tbl, key)
