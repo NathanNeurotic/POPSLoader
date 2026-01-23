@@ -1204,20 +1204,6 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   if policy.name == "HDD" then
     reboot_iop = 0
   end
-  if policy.name == "HDD" then
-    UI.BottomDraw.Play()
-    Font.ftPrintMultiLineAligned(
-      LFONT,
-      UI.SCR.X_MID,
-      120,
-      20,
-      UI.SCR.X,
-      UI.SCR.Y,
-      "HDD: EXEC POPSTARTER",
-      UI.CCOL.YELLOW
-    )
-    UI.flip()
-  end
   LaunchEngine(popstarter, argv, reboot_iop, context)
 end
 
