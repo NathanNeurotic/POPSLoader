@@ -1,5 +1,6 @@
 #include <bdm.h>
 #include <irx.h>
+#include <loadcore.h>
 #include <sifrpc.h>
 #include <sysclib.h>
 #include <thbase.h>
