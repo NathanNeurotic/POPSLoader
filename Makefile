@@ -76,7 +76,7 @@ IOP_MODULES = iomanX.o fileXio.o \
 			  usbd.o audsrv.o bdm.o bdmfs_fatfs.o \
 			  usbmass_bd.o cdfs.o ds34bt.o ds34usb.o \
 			  ps2dev9.o ps2atad.o ps2hdd-osd.o ps2fs.o mmceman.o \
-			  mx4sio_bd.o
+			  mx4sio_bd.o bdm_query.o
 
 EMBEDDED_RSC = boot.o builtin_font.o
 
@@ -135,6 +135,12 @@ modules/ds34usb/iop/ds34usb.irx: modules/ds34usb/iop
 
 $(EE_ASM_DIR)ds34usb.c: modules/ds34usb/iop/ds34usb.irx | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ ds34usb_irx
+
+iop/bdm_query/bdm_query.irx: iop/bdm_query
+	$(MAKE) -C $<
+
+$(EE_ASM_DIR)bdm_query.c: iop/bdm_query/bdm_query.irx | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ bdm_query_irx
 
 # PS2SDK MX4SIO IRX (embedded)
 PS2SDK_MX4SIO_DIR = iop/embed/PS2SDK_MX4SIO

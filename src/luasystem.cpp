@@ -5,6 +5,8 @@
 #include <sys/fcntl.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <sifrpc.h>
+#include <string.h>
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
 #include <fileio.h>
@@ -19,6 +21,72 @@
 
 extern unsigned char mx4sio_bd_irx[];
 extern unsigned int size_mx4sio_bd_irx;
+extern unsigned char bdm_query_irx[];
+extern unsigned int size_bdm_query_irx;
+
+#define BDM_QUERY_RPC_ID 0xB0D10B00
+#define BDM_QUERY_RPC_GET_LIST 0
+#define BDM_QUERY_MAX_DEVICES 32
+
+typedef struct bdm_dev_info {
+	char name[32];
+	u32 devNr;
+	u32 parNr;
+	u8 parId;
+	u32 sectorSize;
+	u64 sectorCount;
+} bdm_dev_info_t;
+
+typedef struct bdm_dev_list {
+	u32 count;
+	bdm_dev_info_t devs[BDM_QUERY_MAX_DEVICES];
+} bdm_dev_list_t;
+
+static SifRpcClientData_t bdm_rpc_client;
+static bool bdm_rpc_bound = false;
+static bool bdm_rpc_loaded = false;
+static bdm_dev_list_t bdm_rpc_buffer __attribute__((aligned(64)));
+
+static bool EnsureBdmQueryRpc()
+{
+	if (!bdm_rpc_loaded) {
+		if (!LoadIrxCheckedBuffer("bdm_query.irx", bdm_query_irx, size_bdm_query_irx, NULL, NULL)) {
+			return false;
+		}
+		bdm_rpc_loaded = true;
+	}
+	if (!bdm_rpc_bound) {
+		SifInitRpc(0);
+		if (SifBindRpc(&bdm_rpc_client, BDM_QUERY_RPC_ID, 0) < 0) {
+			DPRINTF("BDM query RPC bind failed\n");
+			return false;
+		}
+		if (bdm_rpc_client.server == NULL) {
+			DPRINTF("BDM query RPC server not ready\n");
+			return false;
+		}
+		bdm_rpc_bound = true;
+	}
+	return true;
+}
+
+static bool FetchBdmList(bdm_dev_list_t *out)
+{
+	if (out == NULL) {
+		return false;
+	}
+	if (!EnsureBdmQueryRpc()) {
+		return false;
+	}
+	memset(&bdm_rpc_buffer, 0, sizeof(bdm_rpc_buffer));
+	if (SifCallRpc(&bdm_rpc_client, BDM_QUERY_RPC_GET_LIST, 0, NULL, 0,
+	               &bdm_rpc_buffer, sizeof(bdm_rpc_buffer), NULL, NULL) < 0) {
+		DPRINTF("BDM query RPC call failed\n");
+		return false;
+	}
+	memcpy(out, &bdm_rpc_buffer, sizeof(*out));
+	return true;
+}
 
 static bool LoadIrxCheckedBuffer(const char *name, unsigned char *irx, unsigned int size, int *out_id, int *out_ret)
 {
@@ -107,6 +175,66 @@ int mx4sio_init_and_get_root(const char *hint, char *out_root, size_t out_sz)
 		}
 	}
 	return -1;
+}
+
+static void PushBdmInfo(lua_State *L, const bdm_dev_info_t *info)
+{
+	lua_newtable(L);
+	lua_pushstring(L, info->name);
+	lua_setfield(L, -2, "name");
+	lua_pushinteger(L, info->devNr);
+	lua_setfield(L, -2, "devNr");
+	lua_pushinteger(L, info->parNr);
+	lua_setfield(L, -2, "parNr");
+	lua_pushinteger(L, info->parId);
+	lua_setfield(L, -2, "parId");
+	lua_pushinteger(L, info->sectorSize);
+	lua_setfield(L, -2, "sectorSize");
+	lua_pushnumber(L, (lua_Number)info->sectorCount);
+	lua_setfield(L, -2, "sectorCount");
+}
+
+static int lua_bdm_list(lua_State *L)
+{
+	bdm_dev_list_t list;
+	if (!FetchBdmList(&list)) {
+		lua_pushnil(L);
+		return 1;
+	}
+	DPRINTF("BDM list count=%u\n", list.count);
+	lua_newtable(L);
+	for (u32 i = 0; i < list.count; ++i) {
+		const bdm_dev_info_t *info = &list.devs[i];
+		DPRINTF("BDM device %u name=%s devNr=%u parNr=%u parId=%u sectorSize=%u sectorCount=%llu\n",
+		        i, info->name, info->devNr, info->parNr, info->parId,
+		        info->sectorSize, (unsigned long long)info->sectorCount);
+		PushBdmInfo(L, info);
+		lua_rawseti(L, -2, i + 1);
+	}
+	return 1;
+}
+
+static int lua_find_bdm_by_driver(lua_State *L)
+{
+	int argc = lua_gettop(L);
+	if (argc != 1) {
+		return luaL_error(L, "Argument error: System.findBDMByDriver(driverName) takes one argument.");
+	}
+	const char *driver = luaL_checkstring(L, 1);
+	bdm_dev_list_t list;
+	if (!FetchBdmList(&list)) {
+		lua_pushnil(L);
+		return 1;
+	}
+	for (u32 i = 0; i < list.count; ++i) {
+		const bdm_dev_info_t *info = &list.devs[i];
+		if (strcmp(info->name, driver) == 0) {
+			PushBdmInfo(L, info);
+			return 1;
+		}
+	}
+	lua_pushnil(L);
+	return 1;
 }
 
 static int lua_getCurrentDirectory(lua_State *L)
@@ -896,6 +1024,8 @@ static const luaL_Reg System_functions[] = {
 	{"resolveAsset",           lua_resolveAsset},
 	{"resolveAssetType",   lua_resolveAssetType},
 	{"initMX4SIO",             lua_mx4sio_init},
+	{"bdmList",                lua_bdm_list},
+	{"findBDMByDriver",    lua_find_bdm_by_driver},
 	{0, 0}
 };
 
