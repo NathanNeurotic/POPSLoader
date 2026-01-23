@@ -66,6 +66,17 @@ int mx4sio_init_and_get_root(char *out_root, size_t out_sz)
 	if (!LoadIrxCheckedBuffer("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL)) {
 		return -1;
 	}
+	int massx_pops_ret = -1;
+	bool massx_pops_ok = ProbeDir("massX:/POPS/", &massx_pops_ret);
+	DPRINTF("MX4SIO probe massX:/POPS/ ret=%d ok=%d\n", massx_pops_ret, massx_pops_ok);
+	int massx_root_ret = -1;
+	bool massx_root_ok = ProbeDir("massX:/", &massx_root_ret);
+	DPRINTF("MX4SIO probe massX:/ ret=%d ok=%d\n", massx_root_ret, massx_root_ok);
+	if (massx_pops_ok) {
+		DPRINTF("Chosen MX4SIO prefix: massX:/\n");
+		snprintf(out_root, out_sz, "massX:/");
+		return 0;
+	}
 	const char *candidates[] = {"mx4sio:/", "mx4sio0:/"};
 	for (size_t i = 0; i < sizeof(candidates) / sizeof(candidates[0]); ++i) {
 		const char *prefix = candidates[i];
