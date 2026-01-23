@@ -191,7 +191,12 @@ local UI = {
         for i = UI.GameList.STARTUP, ammount do
           if i >= (UI.GameList.STARTUP+UI.GameList.MAXDRAW) then break end
           local Y = 20+((i-UI.GameList.STARTUP)*21)
-          Font.ftPrint(BFONT, 30, Y, 0, UI.SCR.X, 16, string.sub(PLDR.GAMES[i],1, -5), i == UI.GameList.CURR and UI.CCOL.YELLOW or UI.CCOL.GREY)
+          local display_name = PLDR.GAMES[i]
+          local hdd_relpath = string.match(display_name or "", "^[^|]+|(.+)$")
+          if hdd_relpath ~= nil then
+            display_name = string.match(hdd_relpath, "([^/]+)$") or hdd_relpath
+          end
+          Font.ftPrint(BFONT, 30, Y, 0, UI.SCR.X, 16, string.sub(display_name,1, -5), i == UI.GameList.CURR and UI.CCOL.YELLOW or UI.CCOL.GREY)
         end
         if ammount <= 0 then
           Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, UI.SCR.Y_MID, 20, UI.SCR.X, 32, "No games found", UI.CCOL.YELLOW)
