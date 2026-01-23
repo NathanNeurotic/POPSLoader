@@ -440,7 +440,6 @@ int main(int argc, char * argv[])
         if (errMsg != NULL)
         {
             scr_setfontcolor(0x0000ff);
-            sleep(1); //ensures message is printed no matter what
 		    scr_clear();
 		    scr_setXY(5, 2);
 		    scr_printf("Enceladus ERROR!\n");
@@ -448,7 +447,6 @@ int main(int argc, char * argv[])
 		    puts(errMsg);
 		    scr_printf("\nPress [start] to restart\n");
         	while (!isButtonPressed(PAD_START)) {
-                	sleep(1);
 		    }
             scr_setfontcolor(0xffffff);
         }
