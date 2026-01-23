@@ -1,4 +1,5 @@
 #include <tamtypes.h>
+// SMB-only support. This module is not used for MMCE flows.
 #include <ps2smb.h>
 #include <string.h>
 #define NEWLIB_PORT_AWARE
