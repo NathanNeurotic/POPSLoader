@@ -1030,26 +1030,6 @@ local function ResolveLaunchPolicy(gamelocation)
   return BuildLaunchPolicy("unknown", "mass", "mass", nil), "unknown"
 end
 
-local function ShowHddCheckpoint(message)
-  UI.BottomDraw.Play()
-  Font.ftPrintMultiLineAligned(
-    LFONT,
-    UI.SCR.X_MID,
-    120,
-    20,
-    UI.SCR.X,
-    UI.SCR.Y,
-    message,
-    UI.CCOL.YELLOW
-  )
-  UI.flip()
-  local timer = Timer.new()
-  local start = Timer.getTime(timer)
-  while (Timer.getTime(timer) - start) < 1000 do
-    UI.flip()
-  end
-end
-
 function PLDR.RunPOPStarterGame(gamelocation, game)
   local policy, device_page = ResolveLaunchPolicy(gamelocation)
   local hdd_init = nil
@@ -1061,52 +1041,6 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
     hdd_relpath = NormalizeHddRelpath(hdd_relpath or game)
     if hdd_partition_label ~= nil then
       hdd_partition = "hdd0:"..hdd_partition_label
-    end
-    if HDD_DIAG_BYPASS == 1 then
-      local popstarter = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
-      local argv = {popstarter}
-      UI.BottomDraw.Play()
-      Font.ftPrintMultiLineAligned(
-        LFONT,
-        UI.SCR.X_MID,
-        120,
-        20,
-        UI.SCR.X,
-        UI.SCR.Y,
-        "ABOUT TO EXEC POPSTARTER (HDD BYPASS)",
-        UI.CCOL.YELLOW
-      )
-      UI.flip()
-      local context = {
-        device_page = device_page,
-        device_mode = "pfs",
-        ui_scene = UI and UI.CURSCENE or "unknown",
-        source_mode = "pfs",
-        raw_source_mode = "pfs",
-        gamelocation = gamelocation,
-        game = game,
-        argv0_selector = popstarter,
-        bootparam_source = "pfs"
-      }
-      LaunchEngine(popstarter, argv, PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER, context)
-      return
-    end
-    ShowHddCheckpoint("HDD LAUNCH: pre-mount")
-    HDD.UMountPartition(0)
-    hdd_init = EnsureHDDReadyForLaunch(game, hdd_partition)
-    if not hdd_init.init_ok or hdd_init.status ~= 0 or not hdd_init.mount_ok then
-      LaunchLog("LAUNCH: HDD not ready; aborting launch.")
-      BlockLaunchFailure(
-        "HDD init/mount failed",
-        ResolvePopstarterPath(PLDR.POPSTARTER_PATH),
-        device_page,
-        nil,
-        nil,
-        APP_DIR_LOCAL,
-        nil,
-        nil
-      )
-      return
     end
   end
   local normalized_gamelocation = policy.normalize(gamelocation)
@@ -1200,14 +1134,6 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   end
   local selector_prefix = SelectPopstarterSelectorPrefix(device_page)
   local argv0_selector = BuildPopstarterSelectorPath(device_page, game_name)
-  if policy.name == "HDD" then
-    local hdd_selector_name = StripVcdExtension(ExtractVcdFilename(vcd_basename_raw))
-    if hdd_selector_name == "" then
-      hdd_selector_name = game_name
-    end
-    local selector_elf = BuildPopstarterSelector(selector_prefix, hdd_selector_name)
-    argv0_selector = "pfs0:/"..selector_elf
-  end
   if selector_prefix == "" and string.upper(game_name) == "POPSTARTER" then
     LaunchLog("LAUNCH: Internal error: game_base derived as POPSTARTER; refusing to launch.", vcd_basename_raw)
     BlockLaunchFailure(
@@ -1230,18 +1156,6 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
       bootparam_basename_used = game
       bootparam_exists = true
       prefix_used = ""
-    end
-  end
-  if policy.name == "HDD" then
-    local vcd_ok, vcd_rc, vcd_stage, vcd_api = TryOpenForLaunch(vcd_path)
-    bootparam_exists = vcd_ok
-    if not vcd_ok then
-      local partition_label = hdd_partition_label
-      if partition_label == nil and hdd_init ~= nil and hdd_init.mount_partition ~= nil then
-        partition_label = string.gsub(hdd_init.mount_partition, "^hdd0:", "")
-      end
-      BlockHddLaunchMissingVcd(partition_label, hdd_relpath, vcd_path, vcd_rc, vcd_api)
-      return
     end
   end
   local argv = {argv0_selector}
@@ -1286,12 +1200,23 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
     bootparam_source = boot_source_mode,
     hdd_init = hdd_init
   }
-  if policy.name == "HDD" then
-    ShowHddCheckpoint("HDD LAUNCH: pre-exec")
-  end
   local reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
   if policy.name == "HDD" then
     reboot_iop = 0
+  end
+  if policy.name == "HDD" then
+    UI.BottomDraw.Play()
+    Font.ftPrintMultiLineAligned(
+      LFONT,
+      UI.SCR.X_MID,
+      120,
+      20,
+      UI.SCR.X,
+      UI.SCR.Y,
+      "HDD: EXEC POPSTARTER",
+      UI.CCOL.YELLOW
+    )
+    UI.flip()
   end
   LaunchEngine(popstarter, argv, reboot_iop, context)
 end
