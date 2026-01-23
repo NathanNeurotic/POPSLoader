@@ -1,9 +1,13 @@
+#include <stdio.h>
 #include <unistd.h>
 #include <libmc.h>
 #include <malloc.h>
 #include <sys/fcntl.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#define NEWLIB_PORT_AWARE
+#include <fileXio_rpc.h>
+#include <fileio.h>
 #include "include/luaplayer.h"
 #include "include/md5.h"
 #include "include/graphics.h"
@@ -12,6 +16,79 @@
 #include "include/dprintf.h"
 
 #define MAX_DIR_FILES 512
+
+extern unsigned char mx4sio_bd_irx[];
+extern unsigned int size_mx4sio_bd_irx;
+
+static bool LoadIrxCheckedBuffer(const char *name, unsigned char *irx, unsigned int size, int *out_id, int *out_ret)
+{
+	int id = -1;
+	int ret = -1;
+	id = SifExecModuleBuffer(irx, size, 0, NULL, &ret);
+	if (out_id) {
+		*out_id = id;
+	}
+	if (out_ret) {
+		*out_ret = ret;
+	}
+	DPRINTF("MX4SIO IRX load %s: id=%d ret=%d\n", name, id, ret);
+	if (id < 0 || ret < 0) {
+		DPRINTF("MX4SIO IRX load failed: %s id=%d ret=%d\n", name, id, ret);
+		return false;
+	}
+	return true;
+}
+
+static bool ProbeDir(const char *path, int *out_ret)
+{
+	int fd = fileXioDopen(path);
+	if (out_ret) {
+		*out_ret = fd;
+	}
+	if (fd >= 0) {
+		fileXioDclose(fd);
+		return true;
+	}
+	return false;
+}
+
+// MX4SIO init notes:
+// - Bundle inventory (iop/embed/PS2SDK_MX4SIO): mx4sio_bd.irx.
+// - IRX load order: mx4sio_bd.irx (PS2SDK).
+// - Success condition: chosen MX4SIO prefix and <prefix>/POPS/ are accessible.
+// - TODO: verify any slot or adapter placement requirements for MX4SIO in hardware docs.
+int mx4sio_init_and_get_root(char *out_root, size_t out_sz)
+{
+	if (out_root == NULL || out_sz == 0) {
+		return -1;
+	}
+	DPRINTF("MX4SIO SDK init start\n");
+	if (!LoadIrxCheckedBuffer("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL)) {
+		return -1;
+	}
+	const char *candidates[] = {"mx4sio:/", "mx4sio0:/"};
+	for (size_t i = 0; i < sizeof(candidates) / sizeof(candidates[0]); ++i) {
+		const char *prefix = candidates[i];
+		int root_ret = -1;
+		DPRINTF("MX4SIO probe prefix %s\n", prefix);
+		bool root_ok = ProbeDir(prefix, &root_ret);
+		if (!root_ok) {
+			DPRINTF("MX4SIO probe %s ret=%d ok=%d\n", prefix, root_ret, root_ok);
+			continue;
+		}
+		char pops_path[32];
+		snprintf(pops_path, sizeof(pops_path), "%sPOPS/", prefix);
+		int pops_ret = -1;
+		bool pops_ok = ProbeDir(pops_path, &pops_ret);
+		DPRINTF("MX4SIO probe %s ret=%d ok=%d\n", pops_path, pops_ret, pops_ok);
+		if (pops_ok) {
+			DPRINTF("Chosen MX4SIO prefix: %s\n", prefix);
+			snprintf(out_root, out_sz, "%s", prefix);
+			return 0;
+		}
+	}
+	return -1;
+}
 
 static int lua_getCurrentDirectory(lua_State *L)
 {
@@ -747,6 +824,22 @@ static int lua_resolveAssetType(lua_State *L) {
 	return 1;
 }
 
+static int lua_mx4sio_init(lua_State *L)
+{
+	if (lua_gettop(L) != 0) {
+		return luaL_error(L, "Argument error: System.initMX4SIO() takes no arguments.");
+	}
+	char root[16] = {0};
+	int rc = mx4sio_init_and_get_root(root, sizeof(root));
+	lua_pushboolean(L, rc == 0);
+	if (rc == 0) {
+		lua_pushstring(L, root);
+	} else {
+		lua_pushnil(L);
+	}
+	return 2;
+}
+
 static const luaL_Reg System_functions[] = {
 	{"openFile",                   lua_openfile},
 	{"readFile",                   lua_readfile},
@@ -778,6 +871,7 @@ static const luaL_Reg System_functions[] = {
 	{"getAppDir",                 lua_getAppDir},
 	{"resolveAsset",           lua_resolveAsset},
 	{"resolveAssetType",   lua_resolveAssetType},
+	{"initMX4SIO",             lua_mx4sio_init},
 	{0, 0}
 };
 

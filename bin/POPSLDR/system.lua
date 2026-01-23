@@ -116,6 +116,31 @@ local function ResolveIrx(name)
   return System.resolveAssetType(name, ASSET_IRX) or JoinPath(APP_DIR_LOCAL, name)
 end
 
+local function DetectBootDevice()
+  local boot_path = NormalizeDirPath(BOOT_PATH_RAW or "")
+  local prefix = string.match(boot_path, "^([%a]+%d*):")
+  if prefix == nil then
+    return nil, boot_path, prefix
+  end
+  if string.match(prefix, "^mmce%d*$") then
+    return "MMCE", boot_path, prefix
+  end
+  if string.match(prefix, "^mx4sio%d*$") then
+    return "MX4SIO", boot_path, prefix
+  end
+  if string.match(prefix, "^mass%d*$") then
+    local mx_marker = JoinPath(APP_DIR_LOCAL, ".boot_mx4sio")
+    local usb_marker = JoinPath(APP_DIR_LOCAL, ".boot_usb")
+    if doesFileExist(mx_marker) then
+      return "MX4SIO", boot_path, prefix
+    end
+    if doesFileExist(usb_marker) then
+      return "USB", boot_path, prefix
+    end
+  end
+  return nil, boot_path, prefix
+end
+
 local function LoadIrxFromDir(dir)
   local normalized = NormalizeDirPath(dir)
   if not doesFolderExist(normalized) then return false end
@@ -167,6 +192,10 @@ PLDR = {
   USB = {
     MASSINDX = 0
   },
+  MX4SIO = {
+    READY = false,
+    ROOT = nil
+  },
   MMCE = {
     PROBED = false,
     PREFIX = nil,
@@ -215,6 +244,28 @@ if UI == nil then
   LOG("Boot cwd:", System.currentDirectory())
   LOG("package.path:", package.path)
   error("UI global not initialized (module returned nil or did not set UI)")
+end
+
+if UI.DEVLOCK ~= nil then
+  local boot_name, boot_path, boot_prefix = DetectBootDevice()
+  UI.boot_device = UI.DEVLOCK.NONE
+  UI.boot_locks = {}
+  if boot_name == "MX4SIO" then
+    UI.boot_device = UI.DEVLOCK.MX4SIO
+    UI.boot_locks[UI.DEVLOCK.USB] = true
+    UI.boot_locks[UI.DEVLOCK.MMCE] = true
+  elseif boot_name == "USB" then
+    UI.boot_device = UI.DEVLOCK.USB
+    UI.boot_locks[UI.DEVLOCK.MX4SIO] = true
+  elseif boot_name == "MMCE" then
+    UI.boot_device = UI.DEVLOCK.MMCE
+    UI.boot_locks[UI.DEVLOCK.MX4SIO] = true
+  end
+  if boot_name ~= nil then
+    LOG("Boot device detected:", boot_name, "prefix:", tostring(boot_prefix), "path:", tostring(boot_path))
+  else
+    LOG("Boot device detection ambiguous; no boot locks set.", "prefix:", tostring(boot_prefix), "path:", tostring(boot_path))
+  end
 end
 require("images")
 
@@ -577,7 +628,7 @@ local function BuildPopstarterSelector(prefix, vcd_filename)
 end
 
 local function SelectPopstarterSelectorPrefix(device_page)
-  if device_page == "USB" or device_page == "MMCE" or device_page == "SMB/MMCE" then
+  if device_page == "USB" or device_page == "MMCE" or device_page == "SMB/MMCE" or device_page == "MX4SIO" then
     return "XX."
   end
   if device_page == "HDD" then
@@ -595,6 +646,10 @@ local function BuildPopstarterSelectorPath(device_page, game_name)
   end
   if device_page == "USB" or device_page == "MMCE" or device_page == "SMB/MMCE" then
     return "mass:/POPS/XX."..game_name..".ELF"
+  end
+  if device_page == "MX4SIO" then
+    local root = PLDR and PLDR.MX4SIO and PLDR.MX4SIO.ROOT or "mx4sio:/"
+    return root.."POPS/XX."..game_name..".ELF"
   end
   return game_name..".ELF"
 end
@@ -1004,6 +1059,12 @@ end
 
 local function ResolveLaunchPolicy(gamelocation)
   local ui_scene = UI and UI.CURSCENE or "unknown"
+  if ui_scene == UI.SCENES.GMX4SIO then
+    return BuildLaunchPolicy("MX4SIO", "mx4sio", "mx4sio", nil), "MX4SIO"
+  end
+  if string.match(gamelocation, "^mx4sio") then
+    return BuildLaunchPolicy("MX4SIO", "mx4sio", "mx4sio", nil), "MX4SIO"
+  end
   if string.match(gamelocation, "^mass") then
     return BuildLaunchPolicy("USB", "mass", "mass", nil), "USB"
   end
@@ -1057,6 +1118,10 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
     pops_root = normalized_gamelocation
     boot_source_mode = "pfs"
     device_mode = "pfs"
+  elseif string.match(normalized_gamelocation, "^mx4sio") then
+    pops_root = normalized_gamelocation
+    boot_source_mode = "mx4sio"
+    device_mode = normalized_gamelocation
   elseif string.match(normalized_gamelocation, "^mmce%d:/") then
     mmce_prefix = PLDR.MMCE.PREFIX or string.match(normalized_gamelocation, "^(mmce%d:/)")
     if mmce_prefix == nil then
@@ -1177,6 +1242,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   if fallback_bootparam ~= nil then
     LaunchLog("LAUNCH: bootparam fallback:", fallback_bootparam, "exists:", tostring(fallback_exists))
   end
+  LOG("Resolved game path:", vcd_path)
   local context = {
     device_page = device_page,
     device_mode = device_mode,
