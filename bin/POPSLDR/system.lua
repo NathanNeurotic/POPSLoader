@@ -577,8 +577,11 @@ local function BuildPopstarterSelector(prefix, vcd_filename)
 end
 
 local function SelectPopstarterSelectorPrefix(device_page)
-  if device_page == "USB" or device_page == "MMCE" or device_page == "SMB/MMCE" then
+  if device_page == "USB" or device_page == "MMCE" then
     return "XX."
+  end
+  if device_page == "SMB" then
+    return "SB."
   end
   if device_page == "HDD" then
     return ""
@@ -593,8 +596,11 @@ local function BuildPopstarterSelectorPath(device_page, game_name)
   if device_page == "HDD" then
     return "hdd0:__.POPS/"..game_name..".ELF"
   end
-  if device_page == "USB" or device_page == "MMCE" or device_page == "SMB/MMCE" then
+  if device_page == "USB" or device_page == "MMCE" then
     return "mass:/POPS/XX."..game_name..".ELF"
+  end
+  if device_page == "SMB" then
+    return "smb:/POPS/SB."..game_name..".ELF"
   end
   return game_name..".ELF"
 end
@@ -1016,13 +1022,19 @@ local function ResolveLaunchPolicy(gamelocation)
     local prefix = GetDevicePrefix(gamelocation) or "pfs"
     return BuildLaunchPolicy("HDD", prefix, prefix, nil), "HDD"
   end
+  if string.match(gamelocation, "^smb") then
+    return BuildLaunchPolicy("SMB", "smb", "smb", nil), "SMB"
+  end
   if ui_scene == UI.SCENES.GUSB then
     return BuildLaunchPolicy("USB", "mass", "mass", nil), "USB"
   end
   if ui_scene == UI.SCENES.GSMB then
+    return BuildLaunchPolicy("SMB", "smb", "smb", nil), "SMB"
+  end
+  if ui_scene == UI.SCENES.GMMCE then
     local mmce_prefix = PLDR.MMCE.PREFIX or "mmce0:/"
     local mmce_device = string.match(mmce_prefix, "^([%a]+%d*)") or "mmce0"
-    return BuildLaunchPolicy("MMCE", "mass", mmce_device, TranslateMMCEPathForPopStarter), "SMB/MMCE"
+    return BuildLaunchPolicy("MMCE", "mass", mmce_device, TranslateMMCEPathForPopStarter), "MMCE"
   end
   if ui_scene == UI.SCENES.GHDD then
     return BuildLaunchPolicy("HDD", "pfs", "pfs", nil), "HDD"
@@ -1065,7 +1077,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
     pops_root = mmce_prefix.."POPS/"
     boot_source_mode = "mass"
     device_mode = mmce_prefix
-  elseif string.match(normalized_gamelocation, "^smb:/") or device_page == "SMB/MMCE" then
+  elseif string.match(normalized_gamelocation, "^smb:/") or device_page == "SMB" then
     pops_root = "smb:/POPS/"
     boot_source_mode = "smb"
     device_mode = "smb"

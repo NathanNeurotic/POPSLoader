@@ -59,8 +59,8 @@ These prefix rules are implemented in `BuildPopstarterBootString()`.
    - MMCE paths are translated to `mass:/` for POPStarter handoff.
 4. **Compute `pops_root`**:
    - If `source_mode` matches `^pfs`, use the normalized `pfs*:/` gamelocation.
-   - If UI device page is `SMB/MMCE`, force `pops_root = "smb:/POPS/"`.
-   - Otherwise use `pops_root = "mass:/POPS/"`.
+   - If UI device page is `SMB`, force `pops_root = "smb:/POPS/"`.
+   - Otherwise use `pops_root = "mass:/POPS/"` (USB/MMCE).
 5. **Build the boot string** with `BuildPopstarterBootString(source_mode, pops_root, basename)`:
    - Applies the correct prefix and ensures `pops_root` is slash-terminated.
 6. **Build argv list** (Lua side):

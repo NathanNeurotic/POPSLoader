@@ -10,7 +10,7 @@ LOG("Registering POPSLoader UI")
 local UI = {
     LASTSCENE = 4;
     CURSCENE = 4;
-    SCENES = {GUSB=1, GSMB=2, GHDD=3, MMAIN=4, MPROFILE=5, CREDITS=6};
+    SCENES = {GUSB=1, GSMB=2, GMMCE=3, GHDD=4, MMAIN=5, MPROFILE=6, CREDITS=7};
     LAUNCHING = false;
     SceneChange = function (SCENE)
       UI.LASTSCENE = UI.CURSCENE
@@ -176,7 +176,7 @@ local UI = {
       end;
       Play = function()
         local ammount = #PLDR.GAMES
-        if UI.CURSCENE == UI.SCENES.GSMB then
+        if UI.CURSCENE == UI.SCENES.GMMCE then
           local slots = PLDR.GetMMCESlots()
           if #slots > 1 then
             Font.ftPrint(SFONT, 30, 2, 0, UI.SCR.X, 16, "Slot: "..PLDR.MMCE.PREFIX, UI.CCOL.GREY)
@@ -203,14 +203,14 @@ local UI = {
           Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID+1, UI.SCR.Y_MID+1, 20, UI.SCR.X, 32, "No games found", UI.CCOL.TRANSP_BLACK)
         end
         Input_GetEvent()
-        if UI.CURSCENE == UI.SCENES.GSMB then
+        if UI.CURSCENE == UI.SCENES.GMMCE then
           local slots = PLDR.GetMMCESlots()
           UI.HandleGlobalInput(#slots <= 1)
         else
           UI.HandleGlobalInput(true)
         end
         if UI.Pad.Events.BACK then UI.SceneChange(UI.SCENES.MMAIN) end
-        if UI.CURSCENE == UI.SCENES.GSMB then
+        if UI.CURSCENE == UI.SCENES.GMMCE then
           local slots = PLDR.GetMMCESlots()
           if #slots > 1 and UI.Pad.Events.EXIT then
             local next_prefix = PLDR.SetMMCESlot(PLDR.MMCE.INDEX + 1)
@@ -228,7 +228,7 @@ local UI = {
           if not doesFileExist(PLDR.POPSTARTER_PATH) then
             UI.Notif_queue.add("Cant find POPSTARTER ELF\n"..PLDR.POPSTARTER_PATH)
           else
-            if UI.CURSCENE ~= UI.SCENES.GHDD then -- only check if game can be found on USB and SMB
+            if UI.CURSCENE ~= UI.SCENES.GHDD then -- only check if game can be found on USB, SMB, and MMCE
               if not doesFileExist(PLDR.GAMEPATH .. PLDR.GAMES[UI.GameList.CURR]) then
                 UI.Notif_queue.add("Cant find Game\n"..PLDR.GAMEPATH .. PLDR.GAMES[UI.GameList.CURR])
               end
@@ -264,9 +264,9 @@ local UI = {
     };
     MainMenu = {
       OPT = 1;
-      opts = {"USB", "SMB", "HDD"};
+      opts = {"USB", "SMB", "MMCE", "HDD"};
       Play = function ()
-        local profcnt = 3
+        local profcnt = 4
         Font.ftPrint(LFONT, UI.SCR.X_MID, 30, 8, UI.SCR.X, 16, "Welcome to POPStarter Loader", UI.CCOL.GREY)
         for x = 1, #UI.MainMenu.opts do
           Graphics.drawImage(IMG[UI.MainMenu.opts[x]], 256+(110*(x-1))-64, x == UI.MainMenu.OPT and (UI.SCR.Y_MID-65) or (UI.SCR.Y_MID-64),
@@ -290,12 +290,16 @@ local UI = {
             PLDR.GetPS1GameLists("mass"..PLDR.USB.MASSINDX..":/POPS/", true)
             UI.SceneChange(UI.MainMenu.OPT)
           elseif UI.MainMenu.OPT == 2 then
+            PLDR.CleanupGameList()
+            PLDR.GetPS1GameLists("smb:/POPS/", true)
+            UI.SceneChange(UI.SCENES.GSMB)
+          elseif UI.MainMenu.OPT == 3 then
             local slots = PLDR.GetMMCESlots()
             if #slots < 1 then
               UI.Notif_queue.add("No MMCE device found (mmce0/mmce1).")
               PLDR.CleanupGameList()
               PLDR.GAMEPATH = ""
-              UI.SceneChange(UI.MainMenu.OPT)
+              UI.SceneChange(UI.SCENES.GMMCE)
             else
               if PLDR.MMCE.PREFIX == nil then
                 PLDR.SetMMCESlot(1)
@@ -307,9 +311,9 @@ local UI = {
               end
               PLDR.CleanupGameList()
               PLDR.GetPS1GameLists(mmce_prefix.."POPS/", true)
-              UI.SceneChange(UI.MainMenu.OPT)
+              UI.SceneChange(UI.SCENES.GMMCE)
             end
-          elseif UI.MainMenu.OPT == 3 then
+          elseif UI.MainMenu.OPT == 4 then
             PLDR.LoadHDDModules()
             if UI.LASTSCENE == UI.SCENES.GHDD then
               LOG("skipping cache cleanup")
@@ -332,7 +336,7 @@ local UI = {
               UI.Notif_queue.add("ERROR: Cant detect usable HDD ("..PLDR.HDD.STATUS..")")
             end
             UI.SceneChange(UI.MainMenu.OPT)
-          end --because we still dont support SMB
+          end --main menu confirm
         end
       end
     };
