@@ -1030,6 +1030,26 @@ local function ResolveLaunchPolicy(gamelocation)
   return BuildLaunchPolicy("unknown", "mass", "mass", nil), "unknown"
 end
 
+local function ShowHddCheckpoint(message)
+  UI.BottomDraw.Play()
+  Font.ftPrintMultiLineAligned(
+    LFONT,
+    UI.SCR.X_MID,
+    120,
+    20,
+    UI.SCR.X,
+    UI.SCR.Y,
+    message,
+    UI.CCOL.YELLOW
+  )
+  UI.flip()
+  local timer = Timer.new()
+  local start = Timer.getTime(timer)
+  while (Timer.getTime(timer) - start) < 1000 do
+    UI.flip()
+  end
+end
+
 function PLDR.RunPOPStarterGame(gamelocation, game)
   local policy, device_page = ResolveLaunchPolicy(gamelocation)
   local hdd_init = nil
@@ -1071,6 +1091,8 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
       LaunchEngine(popstarter, argv, PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER, context)
       return
     end
+    ShowHddCheckpoint("HDD LAUNCH: pre-mount")
+    HDD.UMountPartition(0)
     hdd_init = EnsureHDDReadyForLaunch(game, hdd_partition)
     if not hdd_init.init_ok or hdd_init.status ~= 0 or not hdd_init.mount_ok then
       LaunchLog("LAUNCH: HDD not ready; aborting launch.")
@@ -1264,7 +1286,14 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
     bootparam_source = boot_source_mode,
     hdd_init = hdd_init
   }
-  LaunchEngine(popstarter, argv, PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER, context)
+  if policy.name == "HDD" then
+    ShowHddCheckpoint("HDD LAUNCH: pre-exec")
+  end
+  local reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
+  if policy.name == "HDD" then
+    reboot_iop = 0
+  end
+  LaunchEngine(popstarter, argv, reboot_iop, context)
 end
 
 function Touch(FILE)
