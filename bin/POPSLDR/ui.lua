@@ -410,7 +410,8 @@ local UI = {
             LOG("Entering MX4SIO page")
             LOG("MX4SIO init start")
             PLDR.CleanupGameList()
-            local ok, root = System.initMX4SIO()
+            local hint = PLDR and PLDR.MX4SIO and PLDR.MX4SIO.PREFIX_HINT or nil
+            local ok, root = System.initMX4SIO(hint)
             if not ok or root == nil then
               PLDR.MX4SIO.READY = false
               PLDR.MX4SIO.ROOT = nil

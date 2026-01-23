@@ -57,7 +57,7 @@ static bool ProbeDir(const char *path, int *out_ret)
 // - IRX load order: mx4sio_bd.irx (PS2SDK).
 // - Success condition: chosen MX4SIO prefix and <prefix>/POPS/ are accessible.
 // - TODO: verify any slot or adapter placement requirements for MX4SIO in hardware docs.
-int mx4sio_init_and_get_root(char *out_root, size_t out_sz)
+int mx4sio_init_and_get_root(const char *hint, char *out_root, size_t out_sz)
 {
 	if (out_root == NULL || out_sz == 0) {
 		return -1;
@@ -66,16 +66,24 @@ int mx4sio_init_and_get_root(char *out_root, size_t out_sz)
 	if (!LoadIrxCheckedBuffer("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL)) {
 		return -1;
 	}
-	int massx_pops_ret = -1;
-	bool massx_pops_ok = ProbeDir("massX:/POPS/", &massx_pops_ret);
-	DPRINTF("MX4SIO probe massX:/POPS/ ret=%d ok=%d\n", massx_pops_ret, massx_pops_ok);
-	int massx_root_ret = -1;
-	bool massx_root_ok = ProbeDir("massX:/", &massx_root_ret);
-	DPRINTF("MX4SIO probe massX:/ ret=%d ok=%d\n", massx_root_ret, massx_root_ok);
-	if (massx_pops_ok) {
-		DPRINTF("Chosen MX4SIO prefix: massX:/\n");
-		snprintf(out_root, out_sz, "massX:/");
-		return 0;
+	if (hint != NULL && hint[0] != '\0') {
+		int hint_ret = -1;
+		DPRINTF("MX4SIO probe hint %s\n", hint);
+		bool hint_ok = ProbeDir(hint, &hint_ret);
+		if (hint_ok) {
+			char pops_path[32];
+			snprintf(pops_path, sizeof(pops_path), "%sPOPS/", hint);
+			int pops_ret = -1;
+			bool pops_ok = ProbeDir(pops_path, &pops_ret);
+			DPRINTF("MX4SIO probe %s ret=%d ok=%d\n", pops_path, pops_ret, pops_ok);
+			if (pops_ok) {
+				DPRINTF("Chosen MX4SIO prefix: %s\n", hint);
+				snprintf(out_root, out_sz, "%s", hint);
+				return 0;
+			}
+		} else {
+			DPRINTF("MX4SIO probe %s ret=%d ok=%d\n", hint, hint_ret, hint_ok);
+		}
 	}
 	const char *candidates[] = {"mx4sio:/", "mx4sio0:/"};
 	for (size_t i = 0; i < sizeof(candidates) / sizeof(candidates[0]); ++i) {
@@ -837,11 +845,16 @@ static int lua_resolveAssetType(lua_State *L) {
 
 static int lua_mx4sio_init(lua_State *L)
 {
-	if (lua_gettop(L) != 0) {
-		return luaL_error(L, "Argument error: System.initMX4SIO() takes no arguments.");
+	const char *hint = NULL;
+	int argc = lua_gettop(L);
+	if (argc > 1) {
+		return luaL_error(L, "Argument error: System.initMX4SIO() takes at most one argument.");
+	}
+	if (argc == 1 && !lua_isnil(L, 1)) {
+		hint = luaL_checkstring(L, 1);
 	}
 	char root[16] = {0};
-	int rc = mx4sio_init_and_get_root(root, sizeof(root));
+	int rc = mx4sio_init_and_get_root(hint, root, sizeof(root));
 	lua_pushboolean(L, rc == 0);
 	if (rc == 0) {
 		lua_pushstring(L, root);

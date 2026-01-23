@@ -194,7 +194,8 @@ PLDR = {
   },
   MX4SIO = {
     READY = false,
-    ROOT = nil
+    ROOT = nil,
+    PREFIX_HINT = nil
   },
   MMCE = {
     PROBED = false,
@@ -203,6 +204,17 @@ PLDR = {
     INDEX = 1
   }
 }
+local function DetectMX4SIOPrefixHint()
+  local mx_marker = JoinPath(APP_DIR_LOCAL, ".boot_mx4sio")
+  if doesFileExist(mx_marker) then
+    return "mx4sio:/"
+  end
+  return nil
+end
+PLDR.MX4SIO.PREFIX_HINT = DetectMX4SIOPrefixHint()
+if PLDR.MX4SIO.PREFIX_HINT ~= nil then
+  LOG("MX4SIO prefix hint: "..PLDR.MX4SIO.PREFIX_HINT)
+end
 if BOOTPATH ~= nil then
   PLDR.HDD.LOADSTATE = 1
   PLDR.HDD.STATUS = HDD.GetHDDStatus()
