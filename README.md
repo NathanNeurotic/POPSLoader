@@ -1,4 +1,5 @@
-<a href=""><img width="1536" height="1024" alt="Logo" src="https://github.com/user-attachments/assets/4dcc1462-49ac-4fe6-9f4e-32ebcd4b2eb3" /></a>
+<a href=""><img style="width: 80%; height: auto;" alt="POPSLoader" src="https://github.com/user-attachments/assets/744af10d-05d7-40bc-ba59-0eda6cef0e35" />
+</a><br>
 <a href="https://www.github.com/NathanNeurotic/Enceladus/releases">![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/nathanneurotic/enceladus/total?style=plastic&logo=playstation%202&logoColor=red&logoSize=auto&label=Downloads&labelColor=gold&color=turquoise%20&link=https%3A%2F%2Fgithub.com%2FNathanNeurotic%2FEnceladus%2Freleases%2Ftag%2FMMCE)</a>
 
 # POPSLoader
