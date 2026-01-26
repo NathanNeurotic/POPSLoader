@@ -476,7 +476,6 @@ UI = {
           ["BDM HDD"] = "BDHDD",
           ["SMB"] = "SMB"
         }
-        local COLS = 5
         local icon_keys = {}
         local max_w = 0
         local max_h = 0
@@ -497,20 +496,42 @@ UI = {
         local cell_h = max_h
         local gap_x = 24
         local gap_y = 24
-        local rows = math.ceil(#UI.MainMenu.opts / COLS)
-        local total_w = (COLS * cell_w) + ((COLS - 1) * gap_x)
-        local total_h = (rows * cell_h) + ((rows - 1) * gap_y)
-        local grid_x = Round((UI.SCR.X - total_w) / 2)
-        local grid_y = Round(layout.ICON_ROW_Y - (total_h / 2) + (cell_h / 2))
+        local grid_center_x = UI.SCR.X_MID
+        local row_mid_y = layout.ICON_ROW_Y
+        local base_row_y = Round(row_mid_y - gap_y)
+        local function RowY(row)
+          return Round(base_row_y + (row - 1) * (cell_h + gap_y))
+        end
+        local function RowCenterX(count)
+          local total_w = (count * cell_w) + ((count - 1) * gap_x)
+          return Round(grid_center_x - (total_w / 2))
+        end
+        local function ResolveMenuPosition(index)
+          local row
+          local col
+          if index == 1 then
+            row = 1
+            col = 0
+            return RowCenterX(1), RowY(row)
+          elseif index <= 4 then
+            row = 2
+            col = index - 2
+            return Round(RowCenterX(3) + col * (cell_w + gap_x)), RowY(row)
+          elseif index <= 7 then
+            row = 3
+            col = index - 5
+            return Round(RowCenterX(3) + col * (cell_w + gap_x)), RowY(row)
+          end
+          local idx = index - 8
+          row = 4 + math.floor(idx / 3)
+          col = idx % 3
+          return Round(RowCenterX(3) + col * (cell_w + gap_x)), RowY(row)
+        end
         for x = 1, #UI.MainMenu.opts do
           local icon = IMG[icon_keys[x]]
           local icon_w = Graphics.getImageWidth(icon)
           local icon_h = Graphics.getImageHeight(icon)
-          local idx = x - 1
-          local col = idx % COLS
-          local row = math.floor(idx / COLS)
-          local cell_x = grid_x + col * (cell_w + gap_x)
-          local cell_y = grid_y + row * (cell_h + gap_y)
+          local cell_x, cell_y = ResolveMenuPosition(x)
           local pos_x = Round(cell_x + ((cell_w - icon_w) / 2))
           local pos_y = Round(cell_y + ((cell_h - icon_h) / 2))
           Graphics.drawImage(icon, pos_x, pos_y, x == UI.MainMenu.OPT and UI.CCOL.YELLOW or UI.CCOL.GREY)
@@ -523,30 +544,8 @@ UI = {
         })
         Input_GetEvent()
         UI.HandleGlobalInput(false)
-        if UI.Pad.Events.NAV_RIGHT then
-          local col = (UI.MainMenu.OPT - 1) % COLS
-          if col < (COLS - 1) and UI.MainMenu.OPT < profcnt then
-            UI.MainMenu.OPT = UI.MainMenu.OPT + 1
-          end
-        end
-        if UI.Pad.Events.NAV_LEFT then
-          local col = (UI.MainMenu.OPT - 1) % COLS
-          if col > 0 and UI.MainMenu.OPT > 1 then
-            UI.MainMenu.OPT = UI.MainMenu.OPT - 1
-          end
-        end
-        if UI.Pad.Events.NAV_DOWN then
-          local next_opt = UI.MainMenu.OPT + COLS
-          if next_opt <= profcnt then
-            UI.MainMenu.OPT = next_opt
-          end
-        end
-        if UI.Pad.Events.NAV_UP then
-          local next_opt = UI.MainMenu.OPT - COLS
-          if next_opt >= 1 then
-            UI.MainMenu.OPT = next_opt
-          end
-        end
+        if UI.Pad.Events.NAV_RIGHT then UI.MainMenu.OPT = CLAMP(UI.MainMenu.OPT+1, 1, profcnt) end
+        if UI.Pad.Events.NAV_LEFT  then UI.MainMenu.OPT = CLAMP(UI.MainMenu.OPT-1, 1, profcnt) end
         if UI.Pad.Events.START then UI.SceneChange(UI.SCENES.MPROFILE) end
         if UI.Pad.Events.EXIT then UI.SceneChange(UI.SCENES.CREDITS) end
         if UI.Pad.Events.BACK then UI.Modal.OpenExit() end
