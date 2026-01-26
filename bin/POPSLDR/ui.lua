@@ -472,7 +472,7 @@ UI = {
           ["USB exFAT"] = "USB",
           ["MMCE"] = "MMCE",
           ["MX4SIO"] = "MX4SIO",
-          ["APA HDD"] = "HDD",
+          ["APA HDD"] = "APAHDD",
           ["BDM HDD"] = "BDHDD",
           ["SMB"] = "SMB"
         }

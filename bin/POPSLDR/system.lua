@@ -264,6 +264,8 @@ if UI == nil then
   LOG("package.path:", package.path)
   error("UI global not initialized (expected ui.lua to return UI or set _G.UI)")
 end
+UI.CURSCENE = UI.SCENES.MMAIN
+UI.LASTSCENE = UI.SCENES.MMAIN
 
 if UI.DEVLOCK ~= nil then
   local boot_name, boot_path, boot_prefix = DetectBootDevice()

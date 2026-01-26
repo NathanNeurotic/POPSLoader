@@ -19,6 +19,8 @@ local IMGS = {
   "MMCE.png",
   "MX4SIO.png",
   "HDD.png",
+  "APAHDD.png",
+  "BDHDD.png",
   "BKG.png",
   "MISSING.png",
   "PSL.png",
