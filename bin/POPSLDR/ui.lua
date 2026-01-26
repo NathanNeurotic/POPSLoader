@@ -195,10 +195,16 @@ UI = {
       Play = function ()
         local Q=0
         while Q<128 do
-          local psl_w = Graphics.getImageWidth(IMG.PSL) * 2
-          local psl_h = Graphics.getImageHeight(IMG.PSL) * 2
-          local splash_x = Round(UI.SCR.X_MID - (psl_w / 2))
-          local splash_y = Round(UI.SCR.Y_MID - (psl_h / 2))
+          local img_w = Graphics.getImageWidth(IMG.PSL)
+          local img_h = Graphics.getImageHeight(IMG.PSL)
+          local scale = 1
+          if img_w > 0 and img_h > 0 then
+            scale = math.min(UI.SCR.X / img_w, UI.SCR.Y / img_h)
+          end
+          local psl_w = Round(img_w * scale)
+          local psl_h = Round(img_h * scale)
+          local splash_x = Round((UI.SCR.X - psl_w) / 2)
+          local splash_y = Round((UI.SCR.Y - psl_h) / 2)
           Screen.clear(UI.SCR.BGCOL)
           Graphics.drawScaleImage(IMG.PSL, splash_x, splash_y, psl_w, psl_h, Color.new(128,128,128,Q))
           Font.ftPrint(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID+100, 8, UI.SCR.X, 16, "Coded By El_isra", Color.new(128,128,128,Q))
@@ -321,7 +327,6 @@ UI = {
         local layout = UI.LAYOUT
         UI.GameList.MAXDRAW = layout.LIST_MAX
         local placeholders = {
-          [UI.SCENES.GUSBEXFAT] = "USB exFAT",
           [UI.SCENES.GBDMHDD] = "BDM HDD"
         }
         local placeholder_title = placeholders[UI.CURSCENE]
@@ -478,17 +483,36 @@ UI = {
         end
         local cell_w = max_w
         local cell_h = max_h
-        local gap_x = 24
-        local gap_y = 24
-        local grid_center_x = UI.SCR.X_MID
-        local row_mid_y = layout.ICON_ROW_Y
-        local base_row_y = Round(row_mid_y - gap_y)
-        local function RowY(row)
-          return Round(base_row_y + (row - 1) * (cell_h + gap_y))
+        local gap_x = 16
+        local gap_y = 14
+        local safe = UI.LAYOUT.SAFE
+        local safe_l = 32
+        local safe_r = 32
+        local safe_t = 24
+        local safe_b = 40
+        if safe ~= nil then
+          if safe.L ~= nil and safe.L > safe_l then safe_l = safe.L end
+          if safe.R ~= nil and safe.R > safe_r then safe_r = safe.R end
+          if safe.T ~= nil then safe_t = safe.T end
+          if safe.B ~= nil and safe.B > safe_b then safe_b = safe.B end
         end
+        local button_bar_h = UI.SCR.Y - UI.LAYOUT.FOOTER_ICON_Y
+        local box_w = UI.SCR.X - safe_l - safe_r
+        local box_h = UI.SCR.Y - safe_t - safe_b - button_bar_h
+        local box_x = safe_l
+        local box_y = safe_t
+        local row1_y = box_y + Round(box_h * 0.18)
+        local row2_y = box_y + Round(box_h * 0.55)
+        local row3_y = box_y + Round(box_h * 0.82)
         local function RowCenterX(count)
           local total_w = (count * cell_w) + ((count - 1) * gap_x)
-          return Round(grid_center_x - (total_w / 2))
+          return Round(box_x + ((box_w - total_w) / 2))
+        end
+        local function RowCenterY(row)
+          if row == 1 then return row1_y end
+          if row == 2 then return row2_y end
+          if row == 3 then return row3_y end
+          return Round(row3_y + (row - 3) * (cell_h + gap_y))
         end
         local function ResolveMenuPosition(index)
           local row
@@ -496,20 +520,20 @@ UI = {
           if index == 1 then
             row = 1
             col = 0
-            return RowCenterX(1), RowY(row)
+            return RowCenterX(1), Round(RowCenterY(row) - (cell_h / 2))
           elseif index <= 4 then
             row = 2
             col = index - 2
-            return Round(RowCenterX(3) + col * (cell_w + gap_x)), RowY(row)
+            return Round(RowCenterX(3) + col * (cell_w + gap_x)), Round(RowCenterY(row) - (cell_h / 2))
           elseif index <= 7 then
             row = 3
             col = index - 5
-            return Round(RowCenterX(3) + col * (cell_w + gap_x)), RowY(row)
+            return Round(RowCenterX(3) + col * (cell_w + gap_x)), Round(RowCenterY(row) - (cell_h / 2))
           end
           local idx = index - 8
           row = 4 + math.floor(idx / 3)
           col = idx % 3
-          return Round(RowCenterX(3) + col * (cell_w + gap_x)), RowY(row)
+          return Round(RowCenterX(3) + col * (cell_w + gap_x)), Round(RowCenterY(row) - (cell_h / 2))
         end
         for x = 1, #UI.MainMenu.opts do
           local icon = IMG[icon_keys[x]]
@@ -546,8 +570,15 @@ UI = {
             UI.setDeviceLock(DEVLOCK.USB)
             UI.SceneChange(UI.SCENES.GUSBFAT)
           elseif UI.MainMenu.OPT == 2 then
+            local ok, reason, active = UI.canEnterDevice(DEVLOCK.USB)
+            if not ok then
+              LOG("Device lock denied entry to USB; active lock is "..UI.device_lock_name(active))
+              UI.Modal.OpenDeviceLock(reason, active, DEVLOCK.USB)
+              return
+            end
             PLDR.CleanupGameList()
-            PLDR.GAMEPATH = ""
+            PLDR.GetPS1GameLists("mass"..PLDR.USB.MASSINDX..":/POPS/", true)
+            UI.setDeviceLock(DEVLOCK.USB)
             UI.SceneChange(UI.SCENES.GUSBEXFAT)
           elseif UI.MainMenu.OPT == 3 then
             local ok, reason, active = UI.canEnterDevice(DEVLOCK.MMCE)
@@ -777,10 +808,8 @@ UI = {
         local currcol = Color.new(128, 128, 128, UI.Credits.Q)
         UI.Credits.Q = CLAMP(UI.Credits.Q-UI.Credits.INCR, 0, 128)
         Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 20, UI.SCR.X, 40, "POPStarter Loader\n"..POPSLDR_VER, currcol)
-        Graphics.drawRect(0, 20, UI.SCR.X, 2, currcol)
         Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 60, 20, UI.SCR.X, 40, "Coded By El_isra", currcol)
         Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 80, 20, UI.SCR.X, UI.SCR.Y, "Based on Enceladus by Daniel santos\n\nSpecial thanks to:\nkrHACKen: for making POPStarter\nuyjulian, fjtrujy, HWC and others for always helping me\n\nThis program is free and open source\nif you bought it you've been scammed", currcol)
-        Graphics.drawRect(0, UI.SCR.Y-60, UI.SCR.X, 2, currcol)
         Input_GetEvent()
         UI.HandleGlobalInput(false)
         if UI.Pad.Events.EXIT then UI.Credits.INCR = 1 end
