@@ -11,7 +11,19 @@ local DEVLOCK = { NONE = 0, USB = 1, MMCE = 2, MX4SIO = 3 }
 local UI = {
     LASTSCENE = 5;
     CURSCENE = 5;
-    SCENES = {GUSB=1, GSMB=2, GMX4SIO=3, GHDD=4, MMAIN=5, MPROFILE=6, CREDITS=7};
+    SCENES = {
+      GUSBFAT = 1,
+      GUSBEXFAT = 2,
+      GSMB = 3,
+      GMX4SIO = 4,
+      GHDD = 5,
+      GAPAHDD = 5,
+      GBDMHDD = 6,
+      GSMB_PLACE = 7,
+      MMAIN = 8,
+      MPROFILE = 9,
+      CREDITS = 10
+    };
     LAUNCHING = false;
     DEVLOCK = DEVLOCK;
     device_lock = DEVLOCK.NONE;
@@ -316,6 +328,27 @@ local UI = {
       Play = function()
         local layout = UI.LAYOUT
         UI.GameList.MAXDRAW = layout.LIST_MAX
+        local placeholders = {
+          [UI.SCENES.GUSBEXFAT] = "USB exFAT",
+          [UI.SCENES.GBDMHDD] = "BDM HDD",
+          [UI.SCENES.GSMB_PLACE] = "SMB"
+        }
+        local placeholder_title = placeholders[UI.CURSCENE]
+        if placeholder_title ~= nil then
+          Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, placeholder_title, UI.CCOL.GREY)
+          Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID, 20, UI.SCR.X, 32, "Not implemented yet", UI.CCOL.YELLOW)
+          Input_GetEvent()
+          UI.HandleGlobalInput(false)
+          if UI.Pad.Events.EXIT then UI.SceneChange(UI.SCENES.CREDITS) end
+          if UI.Pad.Events.BACK then UI.SceneChange(UI.SCENES.MMAIN) end
+          UI.Footer.Draw({
+            triangle = "Credits",
+            circle = "Back",
+            cross = "Confirm",
+            square = "Cover Art"
+          })
+          return
+        end
         local ammount = #PLDR.GAMES
         if UI.CURSCENE == UI.SCENES.GSMB then
           local slots = PLDR.GetMMCESlots()
@@ -410,7 +443,7 @@ local UI = {
     };
     MainMenu = {
       OPT = 1;
-      opts = {"USB", "MMCE", "MX4SIO", "HDD"};
+      opts = {"USB FAT32", "USB exFAT", "MMCE", "MX4SIO", "APA HDD", "BDM HDD", "SMB"};
       Play = function ()
         local layout = UI.LAYOUT
         local profcnt = #UI.MainMenu.opts
@@ -427,8 +460,17 @@ local UI = {
         if UI.boot_locks ~= nil and (UI.boot_locks[DEVLOCK.USB] or UI.boot_locks[DEVLOCK.MMCE] or UI.boot_locks[DEVLOCK.MX4SIO]) then
           Font.ftPrint(SFONT, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Some devices unavailable this session", UI.CCOL.GREY)
         end
+        local icon_map = {
+          ["USB FAT32"] = "USB",
+          ["USB exFAT"] = "USB",
+          ["MMCE"] = "MMCE",
+          ["MX4SIO"] = "MX4SIO",
+          ["APA HDD"] = "HDD",
+          ["BDM HDD"] = "BDHDD",
+          ["SMB"] = "SMB"
+        }
         for x = 1, #UI.MainMenu.opts do
-          local icon = IMG[UI.MainMenu.opts[x]]
+          local icon = IMG[icon_map[UI.MainMenu.opts[x]] or UI.MainMenu.opts[x]]
           local icon_w = Graphics.getImageWidth(icon)
           local icon_h = Graphics.getImageHeight(icon)
           local pos_x = UI.GetRowPosition(x, #UI.MainMenu.opts) - (icon_w / 2)
@@ -459,8 +501,12 @@ local UI = {
             PLDR.CleanupGameList()
             PLDR.GetPS1GameLists("mass"..PLDR.USB.MASSINDX..":/POPS/", true)
             UI.setDeviceLock(DEVLOCK.USB)
-            UI.SceneChange(UI.SCENES.GUSB)
+            UI.SceneChange(UI.SCENES.GUSBFAT)
           elseif UI.MainMenu.OPT == 2 then
+            PLDR.CleanupGameList()
+            PLDR.GAMEPATH = ""
+            UI.SceneChange(UI.SCENES.GUSBEXFAT)
+          elseif UI.MainMenu.OPT == 3 then
             local ok, reason, active = UI.canEnterDevice(DEVLOCK.MMCE)
             if not ok then
               LOG("Device lock denied entry to MMCE; active lock is "..UI.device_lock_name(active))
@@ -487,7 +533,7 @@ local UI = {
               UI.setDeviceLock(DEVLOCK.MMCE)
               UI.SceneChange(UI.SCENES.GSMB)
             end
-          elseif UI.MainMenu.OPT == 3 then
+          elseif UI.MainMenu.OPT == 4 then
             local ok, reason, active = UI.canEnterDevice(DEVLOCK.MX4SIO)
             if not ok then
               LOG("Device lock denied entry to MX4SIO; active lock is "..UI.device_lock_name(active))
@@ -513,7 +559,7 @@ local UI = {
               UI.setDeviceLock(DEVLOCK.MX4SIO)
             end
             UI.SceneChange(UI.SCENES.GMX4SIO)
-          elseif UI.MainMenu.OPT == 4 then
+          elseif UI.MainMenu.OPT == 5 then
             PLDR.LoadHDDModules()
             if UI.LASTSCENE == UI.SCENES.GHDD then
               LOG("skipping cache cleanup")
@@ -536,6 +582,14 @@ local UI = {
               UI.Notif_queue.add("ERROR: Cant detect usable HDD ("..PLDR.HDD.STATUS..")")
             end
             UI.SceneChange(UI.MainMenu.OPT)
+          elseif UI.MainMenu.OPT == 6 then
+            PLDR.CleanupGameList()
+            PLDR.GAMEPATH = ""
+            UI.SceneChange(UI.SCENES.GBDMHDD)
+          elseif UI.MainMenu.OPT == 7 then
+            PLDR.CleanupGameList()
+            PLDR.GAMEPATH = ""
+            UI.SceneChange(UI.SCENES.GSMB_PLACE)
           end --because we still dont support SMB
         end
       end
