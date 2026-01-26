@@ -476,12 +476,43 @@ UI = {
           ["BDM HDD"] = "BDHDD",
           ["SMB"] = "SMB"
         }
+        local COLS = 5
+        local icon_keys = {}
+        local max_w = 0
+        local max_h = 0
         for x = 1, #UI.MainMenu.opts do
-          local icon = IMG[icon_map[UI.MainMenu.opts[x]] or UI.MainMenu.opts[x]]
+          local opt = UI.MainMenu.opts[x]
+          local key = icon_map[opt] or opt
+          icon_keys[x] = key
+          local icon = IMG[key]
+          if icon == nil then
+            error("Missing icon for menu option '"..tostring(opt).."' (key '"..tostring(key).."')")
+          end
           local icon_w = Graphics.getImageWidth(icon)
           local icon_h = Graphics.getImageHeight(icon)
-          local pos_x = UI.GetRowPosition(x, #UI.MainMenu.opts) - (icon_w / 2)
-          local pos_y = layout.ICON_ROW_Y - (icon_h / 2)
+          if icon_w > max_w then max_w = icon_w end
+          if icon_h > max_h then max_h = icon_h end
+        end
+        local cell_w = max_w
+        local cell_h = max_h
+        local gap_x = 24
+        local gap_y = 24
+        local rows = math.ceil(#UI.MainMenu.opts / COLS)
+        local total_w = (COLS * cell_w) + ((COLS - 1) * gap_x)
+        local total_h = (rows * cell_h) + ((rows - 1) * gap_y)
+        local grid_x = Round((UI.SCR.X - total_w) / 2)
+        local grid_y = Round(layout.ICON_ROW_Y - (total_h / 2) + (cell_h / 2))
+        for x = 1, #UI.MainMenu.opts do
+          local icon = IMG[icon_keys[x]]
+          local icon_w = Graphics.getImageWidth(icon)
+          local icon_h = Graphics.getImageHeight(icon)
+          local idx = x - 1
+          local col = idx % COLS
+          local row = math.floor(idx / COLS)
+          local cell_x = grid_x + col * (cell_w + gap_x)
+          local cell_y = grid_y + row * (cell_h + gap_y)
+          local pos_x = Round(cell_x + ((cell_w - icon_w) / 2))
+          local pos_y = Round(cell_y + ((cell_h - icon_h) / 2))
           Graphics.drawImage(icon, pos_x, pos_y, x == UI.MainMenu.OPT and UI.CCOL.YELLOW or UI.CCOL.GREY)
         end
         UI.Footer.Draw({
@@ -492,8 +523,30 @@ UI = {
         })
         Input_GetEvent()
         UI.HandleGlobalInput(false)
-        if UI.Pad.Events.NAV_RIGHT then UI.MainMenu.OPT = CLAMP(UI.MainMenu.OPT+1, 1, profcnt) end
-        if UI.Pad.Events.NAV_LEFT  then UI.MainMenu.OPT = CLAMP(UI.MainMenu.OPT-1, 1, profcnt) end
+        if UI.Pad.Events.NAV_RIGHT then
+          local col = (UI.MainMenu.OPT - 1) % COLS
+          if col < (COLS - 1) and UI.MainMenu.OPT < profcnt then
+            UI.MainMenu.OPT = UI.MainMenu.OPT + 1
+          end
+        end
+        if UI.Pad.Events.NAV_LEFT then
+          local col = (UI.MainMenu.OPT - 1) % COLS
+          if col > 0 and UI.MainMenu.OPT > 1 then
+            UI.MainMenu.OPT = UI.MainMenu.OPT - 1
+          end
+        end
+        if UI.Pad.Events.NAV_DOWN then
+          local next_opt = UI.MainMenu.OPT + COLS
+          if next_opt <= profcnt then
+            UI.MainMenu.OPT = next_opt
+          end
+        end
+        if UI.Pad.Events.NAV_UP then
+          local next_opt = UI.MainMenu.OPT - COLS
+          if next_opt >= 1 then
+            UI.MainMenu.OPT = next_opt
+          end
+        end
         if UI.Pad.Events.START then UI.SceneChange(UI.SCENES.MPROFILE) end
         if UI.Pad.Events.EXIT then UI.SceneChange(UI.SCENES.CREDITS) end
         if UI.Pad.Events.BACK then UI.Modal.OpenExit() end
