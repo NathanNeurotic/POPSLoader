@@ -326,6 +326,14 @@ UI = {
       Play = function()
         local layout = UI.LAYOUT
         UI.GameList.MAXDRAW = layout.LIST_MAX
+        local titles = {
+          [UI.SCENES.GUSBFAT] = "USB FAT32",
+          [UI.SCENES.GUSBEXFAT] = "USB exFAT"
+        }
+        local scene_title = titles[UI.CURSCENE]
+        if scene_title ~= nil then
+          Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, scene_title, UI.CCOL.GREY)
+        end
         local placeholders = {
           [UI.SCENES.GBDMHDD] = "BDM HDD"
         }
@@ -458,7 +466,7 @@ UI = {
         end
         local icon_map = {
           ["USB FAT32"] = "USB",
-          ["USB exFAT"] = "USB",
+          ["USB exFAT"] = "USBEXFAT",
           ["MMCE"] = "MMCE",
           ["MX4SIO"] = "MX4SIO",
           ["APA HDD"] = "APAHDD",
