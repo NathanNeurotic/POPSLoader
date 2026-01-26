@@ -8,7 +8,11 @@
 
 LOG("Registering POPSLoader UI")
 local DEVLOCK = { NONE = 0, USB = 1, MMCE = 2, MX4SIO = 3 }
-local UI = {
+local UI
+local function Round(value)
+  return math.floor(value + 0.5)
+end
+UI = {
     LASTSCENE = 5;
     CURSCENE = 5;
     SCENES = {
@@ -19,7 +23,6 @@ local UI = {
       GHDD = 5,
       GAPAHDD = 5,
       GBDMHDD = 6,
-      GSMB_PLACE = 7,
       MMAIN = 8,
       MPROFILE = 9,
       CREDITS = 10
@@ -87,16 +90,18 @@ local UI = {
       FOOTER_LABEL_Y_OFFSET = 10;
     };
     RecalcLayout = function ()
+      UI.SCR.X_MID = Round(UI.SCR.X / 2)
+      UI.SCR.Y_MID = Round(UI.SCR.Y / 2)
       local safe = UI.LAYOUT.SAFE
       local safe_w = UI.SCR.X - safe.L - safe.R
       local safe_h = UI.SCR.Y - safe.T - safe.B
       UI.LAYOUT.SAFE_W = safe_w
       UI.LAYOUT.SAFE_H = safe_h
-      UI.LAYOUT.TITLE_Y = safe.T + 6
-      UI.LAYOUT.STATUS_Y = UI.LAYOUT.TITLE_Y + 20
-      UI.LAYOUT.ICON_ROW_Y = UI.SCR.Y_MID - 40
-      UI.LAYOUT.LIST_X = safe.L
-      UI.LAYOUT.LIST_Y = safe.T + 16
+      UI.LAYOUT.TITLE_Y = Round(safe.T + 6)
+      UI.LAYOUT.STATUS_Y = Round(UI.LAYOUT.TITLE_Y + 20)
+      UI.LAYOUT.ICON_ROW_Y = Round(UI.SCR.Y_MID - 40)
+      UI.LAYOUT.LIST_X = Round(safe.L)
+      UI.LAYOUT.LIST_Y = Round(safe.T + 16)
       UI.LAYOUT.LIST_W = math.floor(safe_w * 0.52)
       UI.LAYOUT.LIST_MAX = math.floor((safe_h - 80) / UI.LAYOUT.LIST_ROW_H)
       if UI.LAYOUT.LIST_MAX < 1 then
@@ -112,10 +117,10 @@ local UI = {
       if preview_w < 0 then preview_w = 0 end
       UI.LAYOUT.PREVIEW_W = preview_w
       UI.LAYOUT.PREVIEW_H = preview_h
-      UI.LAYOUT.PREVIEW_X = UI.SCR.X - safe.R - preview_w
-      UI.LAYOUT.PREVIEW_Y = UI.SCR.Y_MID - (preview_h / 2)
-      UI.LAYOUT.FOOTER_ICON_Y = UI.SCR.Y - safe.B - UI.LAYOUT.FOOTER_ICON_Y_OFFSET
-      UI.LAYOUT.FOOTER_LABEL_Y = UI.LAYOUT.FOOTER_ICON_Y + UI.LAYOUT.FOOTER_LABEL_Y_OFFSET
+      UI.LAYOUT.PREVIEW_X = Round(UI.SCR.X - safe.R - preview_w)
+      UI.LAYOUT.PREVIEW_Y = Round(UI.SCR.Y_MID - (preview_h / 2))
+      UI.LAYOUT.FOOTER_ICON_Y = Round(UI.SCR.Y - safe.B - UI.LAYOUT.FOOTER_ICON_Y_OFFSET)
+      UI.LAYOUT.FOOTER_LABEL_Y = Round(UI.LAYOUT.FOOTER_ICON_Y + UI.LAYOUT.FOOTER_LABEL_Y_OFFSET)
     end;
     GetRowPosition = function (index, count)
       local spacing = UI.LAYOUT.ICON_SPACING
@@ -166,7 +171,7 @@ local UI = {
         for i = 1, count do
           local key = UI.Footer.order[i]
           local icon = IMG[key]
-          local x = safe.L + step * (i - 1)
+          local x = Round(safe.L + step * (i - 1))
           local y = UI.LAYOUT.FOOTER_ICON_Y
           if icon ~= nil then
             local w = Graphics.getImageWidth(icon)
@@ -190,9 +195,18 @@ local UI = {
       Play = function ()
         local Q=0
         while Q<128 do
+          local img_w = Graphics.getImageWidth(IMG.PSL)
+          local img_h = Graphics.getImageHeight(IMG.PSL)
+          local scale = 1
+          if img_w > 0 and img_h > 0 then
+            scale = math.min(UI.SCR.X / img_w, UI.SCR.Y / img_h)
+          end
+          local psl_w = Round(img_w * scale)
+          local psl_h = Round(img_h * scale)
+          local splash_x = Round((UI.SCR.X - psl_w) / 2)
+          local splash_y = Round((UI.SCR.Y - psl_h) / 2)
           Screen.clear(UI.SCR.BGCOL)
-          Graphics.drawScaleImage(IMG.PSL, UI.SCR.X_MID-(Graphics.getImageWidth(IMG.PSL)),
-          UI.SCR.Y_MID-(Graphics.getImageHeight(IMG.PSL)), Graphics.getImageWidth(IMG.PSL)*2, Graphics.getImageHeight(IMG.PSL)*2, Color.new(128,128,128,Q))
+          Graphics.drawScaleImage(IMG.PSL, splash_x, splash_y, psl_w, psl_h, Color.new(128,128,128,Q))
           Font.ftPrint(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID+100, 8, UI.SCR.X, 16, "Coded By El_isra", Color.new(128,128,128,Q))
           Screen.flip() -- we dont use UI.flip here because we dont want notifications on the welcome screen
           Q=Q+1
@@ -214,8 +228,7 @@ local UI = {
       active = false;
       title = "";
       body = "";
-      options = {"Yes", "No"};
-      selected = 2;
+      options = {"Confirm", "Cancel"};
       confirm_action = nil;
       cancel_action = nil;
       OpenExit = function ()
@@ -223,8 +236,7 @@ local UI = {
         UI.Modal.active = true
         UI.Modal.title = "Exit"
         UI.Modal.body = "Return to OSDSYS?"
-        UI.Modal.options = {"Yes", "No"}
-        UI.Modal.selected = 2
+        UI.Modal.options = {"Exit", "Cancel"}
         UI.Modal.confirm_action = UI.Modal.ConfirmExit
         UI.Modal.cancel_action = UI.Modal.Close
       end;
@@ -238,17 +250,13 @@ local UI = {
         else
           UI.Modal.body = ("Drivers for %s are already loaded.\nTo use %s, restart POPSLoader to reload drivers."):format(active_name, target_name)
         end
-        UI.Modal.options = {"Return", "Exit"}
-        UI.Modal.selected = 1
+        UI.Modal.options = {"Return", "Back"}
         UI.Modal.confirm_action = function ()
           LOG("Device lock prompt choice: RETURN")
           UI.Modal.Close()
           UI.SceneChange(UI.SCENES.MMAIN)
         end
-        UI.Modal.cancel_action = function ()
-          LOG("Device lock prompt choice: EXIT")
-          UI.Modal.ConfirmExit()
-        end
+        UI.Modal.cancel_action = UI.Modal.Close
       end;
       Close = function ()
         UI.Modal.active = false
@@ -262,28 +270,18 @@ local UI = {
       end;
       HandleInput = function ()
         if not UI.Modal.active then return end
-        if UI.Pad.Events.NAV_LEFT or UI.Pad.Events.NAV_RIGHT then
-          if UI.Modal.selected == 1 then
-            UI.Modal.selected = 2
+        if UI.Pad.Events.CONFIRM then
+          if UI.Modal.confirm_action ~= nil then
+            UI.Modal.confirm_action()
           else
-            UI.Modal.selected = 1
-          end
-        elseif UI.Pad.Events.CONFIRM then
-          if UI.Modal.selected == 1 then
-            if UI.Modal.confirm_action ~= nil then
-              UI.Modal.confirm_action()
-            else
-              UI.Modal.Close()
-            end
-          else
-            if UI.Modal.cancel_action ~= nil then
-              UI.Modal.cancel_action()
-            else
-              UI.Modal.Close()
-            end
+            UI.Modal.Close()
           end
         elseif UI.Pad.Events.BACK then
-          UI.Modal.Close()
+          if UI.Modal.cancel_action ~= nil then
+            UI.Modal.cancel_action()
+          else
+            UI.Modal.Close()
+          end
         end
       end;
       Draw = function ()
@@ -298,10 +296,10 @@ local UI = {
         Graphics.drawRect(box_x, box_y + box_h - 2, box_w, 2, UI.CCOL.GREY)
         Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 10, 8, UI.SCR.X, 16, UI.Modal.title, UI.CCOL.YELLOW)
         Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 50, 8, UI.SCR.X, 16, UI.Modal.body, UI.CCOL.GREY)
-        local yes_col = UI.Modal.selected == 1 and UI.CCOL.YELLOW or UI.CCOL.GREY
-        local no_col = UI.Modal.selected == 2 and UI.CCOL.YELLOW or UI.CCOL.GREY
-        Font.ftPrint(BFONT, UI.SCR.X_MID - 60, box_y + 95, 0, UI.SCR.X, 16, UI.Modal.options[1], yes_col)
-        Font.ftPrint(BFONT, UI.SCR.X_MID + 20, box_y + 95, 0, UI.SCR.X, 16, UI.Modal.options[2], no_col)
+        local confirm_label = UI.Modal.options[1] or "Confirm"
+        local cancel_label = UI.Modal.options[2] or "Cancel"
+        local hint = ("X: %s    O: %s"):format(confirm_label, cancel_label)
+        Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 95, 8, UI.SCR.X, 16, hint, UI.CCOL.GREY)
       end;
     };
     HandleGlobalInput = function (allow_exit)
@@ -329,9 +327,7 @@ local UI = {
         local layout = UI.LAYOUT
         UI.GameList.MAXDRAW = layout.LIST_MAX
         local placeholders = {
-          [UI.SCENES.GUSBEXFAT] = "USB exFAT",
-          [UI.SCENES.GBDMHDD] = "BDM HDD",
-          [UI.SCENES.GSMB_PLACE] = "SMB"
+          [UI.SCENES.GBDMHDD] = "BDM HDD"
         }
         local placeholder_title = placeholders[UI.CURSCENE]
         if placeholder_title ~= nil then
@@ -465,16 +461,87 @@ local UI = {
           ["USB exFAT"] = "USB",
           ["MMCE"] = "MMCE",
           ["MX4SIO"] = "MX4SIO",
-          ["APA HDD"] = "HDD",
+          ["APA HDD"] = "APAHDD",
           ["BDM HDD"] = "BDHDD",
           ["SMB"] = "SMB"
         }
+        local icon_keys = {}
+        local max_w = 0
+        local max_h = 0
         for x = 1, #UI.MainMenu.opts do
-          local icon = IMG[icon_map[UI.MainMenu.opts[x]] or UI.MainMenu.opts[x]]
+          local opt = UI.MainMenu.opts[x]
+          local key = icon_map[opt] or opt
+          icon_keys[x] = key
+          local icon = IMG[key]
+          if icon == nil then
+            error("Missing icon for menu option '"..tostring(opt).."' (key '"..tostring(key).."')")
+          end
           local icon_w = Graphics.getImageWidth(icon)
           local icon_h = Graphics.getImageHeight(icon)
-          local pos_x = UI.GetRowPosition(x, #UI.MainMenu.opts) - (icon_w / 2)
-          local pos_y = layout.ICON_ROW_Y - (icon_h / 2)
+          if icon_w > max_w then max_w = icon_w end
+          if icon_h > max_h then max_h = icon_h end
+        end
+        local cell_w = max_w
+        local cell_h = max_h
+        local gap_x = 16
+        local gap_y = 14
+        local safe = UI.LAYOUT.SAFE
+        local safe_l = 32
+        local safe_r = 32
+        local safe_t = 24
+        local safe_b = 40
+        if safe ~= nil then
+          if safe.L ~= nil and safe.L > safe_l then safe_l = safe.L end
+          if safe.R ~= nil and safe.R > safe_r then safe_r = safe.R end
+          if safe.T ~= nil then safe_t = safe.T end
+          if safe.B ~= nil and safe.B > safe_b then safe_b = safe.B end
+        end
+        local button_bar_h = UI.SCR.Y - UI.LAYOUT.FOOTER_ICON_Y
+        local box_w = UI.SCR.X - safe_l - safe_r
+        local box_h = UI.SCR.Y - safe_t - safe_b - button_bar_h
+        local box_x = safe_l
+        local box_y = safe_t
+        local row1_y = box_y + Round(box_h * 0.18)
+        local row2_y = box_y + Round(box_h * 0.55)
+        local row3_y = box_y + Round(box_h * 0.82)
+        local function RowCenterX(count)
+          local total_w = (count * cell_w) + ((count - 1) * gap_x)
+          return Round(box_x + ((box_w - total_w) / 2))
+        end
+        local function RowCenterY(row)
+          if row == 1 then return row1_y end
+          if row == 2 then return row2_y end
+          if row == 3 then return row3_y end
+          return Round(row3_y + (row - 3) * (cell_h + gap_y))
+        end
+        local function ResolveMenuPosition(index)
+          local row
+          local col
+          if index == 1 then
+            row = 1
+            col = 0
+            return RowCenterX(1), Round(RowCenterY(row) - (cell_h / 2))
+          elseif index <= 4 then
+            row = 2
+            col = index - 2
+            return Round(RowCenterX(3) + col * (cell_w + gap_x)), Round(RowCenterY(row) - (cell_h / 2))
+          elseif index <= 7 then
+            row = 3
+            col = index - 5
+            return Round(RowCenterX(3) + col * (cell_w + gap_x)), Round(RowCenterY(row) - (cell_h / 2))
+          end
+          local idx = index - 8
+          row = 4 + math.floor(idx / 3)
+          col = idx % 3
+          return Round(RowCenterX(3) + col * (cell_w + gap_x)), Round(RowCenterY(row) - (cell_h / 2))
+        end
+        for x = 1, #UI.MainMenu.opts do
+          local icon = IMG[icon_keys[x]]
+          local icon_w = Graphics.getImageWidth(icon)
+          local icon_h = Graphics.getImageHeight(icon)
+          local cell_x, cell_y = ResolveMenuPosition(x)
+          local pos_x = Round(cell_x + ((cell_w - icon_w) / 2))
+          local pos_y = Round(cell_y + ((cell_h - icon_h) / 2))
           Graphics.drawImage(icon, pos_x, pos_y, x == UI.MainMenu.OPT and UI.CCOL.YELLOW or UI.CCOL.GREY)
         end
         UI.Footer.Draw({
@@ -503,8 +570,15 @@ local UI = {
             UI.setDeviceLock(DEVLOCK.USB)
             UI.SceneChange(UI.SCENES.GUSBFAT)
           elseif UI.MainMenu.OPT == 2 then
+            local ok, reason, active = UI.canEnterDevice(DEVLOCK.USB)
+            if not ok then
+              LOG("Device lock denied entry to USB; active lock is "..UI.device_lock_name(active))
+              UI.Modal.OpenDeviceLock(reason, active, DEVLOCK.USB)
+              return
+            end
             PLDR.CleanupGameList()
-            PLDR.GAMEPATH = ""
+            PLDR.GetPS1GameLists("mass"..PLDR.USB.MASSINDX..":/POPS/", true)
+            UI.setDeviceLock(DEVLOCK.USB)
             UI.SceneChange(UI.SCENES.GUSBEXFAT)
           elseif UI.MainMenu.OPT == 3 then
             local ok, reason, active = UI.canEnterDevice(DEVLOCK.MMCE)
@@ -589,7 +663,7 @@ local UI = {
           elseif UI.MainMenu.OPT == 7 then
             PLDR.CleanupGameList()
             PLDR.GAMEPATH = ""
-            UI.SceneChange(UI.SCENES.GSMB_PLACE)
+            UI.Notif_queue.add("SMB not implemented yet.")
           end --because we still dont support SMB
         end
       end
@@ -734,10 +808,8 @@ local UI = {
         local currcol = Color.new(128, 128, 128, UI.Credits.Q)
         UI.Credits.Q = CLAMP(UI.Credits.Q-UI.Credits.INCR, 0, 128)
         Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 20, UI.SCR.X, 40, "POPStarter Loader\n"..POPSLDR_VER, currcol)
-        Graphics.drawRect(0, 20, UI.SCR.X, 2, currcol)
         Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 60, 20, UI.SCR.X, 40, "Coded By El_isra", currcol)
         Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 80, 20, UI.SCR.X, UI.SCR.Y, "Based on Enceladus by Daniel santos\n\nSpecial thanks to:\nkrHACKen: for making POPStarter\nuyjulian, fjtrujy, HWC and others for always helping me\n\nThis program is free and open source\nif you bought it you've been scammed", currcol)
-        Graphics.drawRect(0, UI.SCR.Y-60, UI.SCR.X, 2, currcol)
         Input_GetEvent()
         UI.HandleGlobalInput(false)
         if UI.Pad.Events.EXIT then UI.Credits.INCR = 1 end
@@ -752,10 +824,24 @@ local UI = {
       end
     };
   }
+_G.UI = UI
+UI.GAME_SCENES = {
+  [UI.SCENES.GUSBFAT] = true,
+  [UI.SCENES.GUSBEXFAT] = true,
+  [UI.SCENES.GSMB] = true,
+  [UI.SCENES.GMX4SIO] = true,
+  [UI.SCENES.GHDD] = true,
+  [UI.SCENES.GBDMHDD] = true
+}
+function UI.IsGameScene(scene)
+  return UI.GAME_SCENES[scene] == true
+end
+function UI.IsUsbScene(scene)
+  return scene == UI.SCENES.GUSBFAT or scene == UI.SCENES.GUSBEXFAT
+end
 UI.RecalcLayout()
 function Input_GetEvent()
   UI.Pad.Listen()
   return UI.Pad.Events
 end
-_G.UI = UI
 return UI

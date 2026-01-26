@@ -12,6 +12,7 @@
   Licensed under GNU General public license v3.0
 --]]
 local BOOT_PATH_RAW = System.currentDirectory()
+LOG("system.lua start")
 LOG("BOOT_PATH_RAW="..tostring(BOOT_PATH_RAW))
 local function EnsureTrailingSlash(path)
   if path == nil then
@@ -239,13 +240,19 @@ if MMCE_SLOT0_READY ~= nil and MMCE_SLOT0_READY >= 0 then
 end
 
 require("pops_profiles")
+LOG("system.lua: before require('ui')")
 local ok_ui, ui_or_err = pcall(require, "ui")
+LOG("system.lua: after require('ui')")
 if not ok_ui then
+  local traceback = ui_or_err
+  if debug ~= nil and debug.traceback ~= nil then
+    traceback = debug.traceback(ui_or_err, 2)
+  end
   LOG("UI load failed")
   LOG("APP_DIR:", APP_DIR_LOCAL)
   LOG("Boot cwd:", System.currentDirectory())
   LOG("package.path:", package.path)
-  error("UI module failed to load: "..tostring(ui_or_err))
+  error("UI module failed to load (expected ui.lua to return/set UI): "..tostring(traceback))
 end
 if ui_or_err ~= nil and ui_or_err ~= true then
   UI = ui_or_err
@@ -255,8 +262,10 @@ if UI == nil then
   LOG("APP_DIR:", APP_DIR_LOCAL)
   LOG("Boot cwd:", System.currentDirectory())
   LOG("package.path:", package.path)
-  error("UI global not initialized (module returned nil or did not set UI)")
+  error("UI global not initialized (expected ui.lua to return UI or set _G.UI)")
 end
+UI.CURSCENE = UI.SCENES.MMAIN
+UI.LASTSCENE = UI.SCENES.MMAIN
 
 if UI.DEVLOCK ~= nil then
   local boot_name, boot_path, boot_prefix = DetectBootDevice()
@@ -349,7 +358,7 @@ end
 
 function PLDR.CheckPOPStarterDEPS(device)
   if not PLDR.CHECK_POPSTARTER_FILES then return true, true, true end
-  if device == UI.SCENES.GUSB then
+  if UI.IsUsbScene(device) then
     return doesFileExist("mass:/POPS/POPS_IOX.PAK")
   elseif device == UI.SCENES.GHDD then
     local a = HDD.MountPartition("hdd0:__common", 0, FIO_MT_RDONLY)
@@ -1089,7 +1098,7 @@ local function ResolveLaunchPolicy(gamelocation)
     local prefix = GetDevicePrefix(gamelocation) or "pfs"
     return BuildLaunchPolicy("HDD", prefix, prefix, nil), "HDD"
   end
-  if ui_scene == UI.SCENES.GUSB then
+  if UI.IsUsbScene(ui_scene) then
     return BuildLaunchPolicy("USB", "mass", "mass", nil), "USB"
   end
   if ui_scene == UI.SCENES.GSMB then
@@ -1307,7 +1316,7 @@ while true do
     UI.MainMenu.Play()
   elseif UI.CURSCENE == UI.SCENES.MPROFILE then
     UI.ProfileQuery.Play()
-  elseif UI.CURSCENE <= UI.SCENES.GHDD then
+  elseif UI.IsGameScene(UI.CURSCENE) then
     UI.GameList.Play()
   elseif UI.CURSCENE == UI.SCENES.CREDITS then
     UI.Credits.Play()
