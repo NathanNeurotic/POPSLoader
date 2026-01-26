@@ -222,8 +222,7 @@ UI = {
       active = false;
       title = "";
       body = "";
-      options = {"Yes", "No"};
-      selected = 2;
+      options = {"Confirm", "Cancel"};
       confirm_action = nil;
       cancel_action = nil;
       OpenExit = function ()
@@ -231,8 +230,7 @@ UI = {
         UI.Modal.active = true
         UI.Modal.title = "Exit"
         UI.Modal.body = "Return to OSDSYS?"
-        UI.Modal.options = {"Yes", "No"}
-        UI.Modal.selected = 2
+        UI.Modal.options = {"Exit", "Cancel"}
         UI.Modal.confirm_action = UI.Modal.ConfirmExit
         UI.Modal.cancel_action = UI.Modal.Close
       end;
@@ -246,17 +244,13 @@ UI = {
         else
           UI.Modal.body = ("Drivers for %s are already loaded.\nTo use %s, restart POPSLoader to reload drivers."):format(active_name, target_name)
         end
-        UI.Modal.options = {"Return", "Exit"}
-        UI.Modal.selected = 1
+        UI.Modal.options = {"Return", "Back"}
         UI.Modal.confirm_action = function ()
           LOG("Device lock prompt choice: RETURN")
           UI.Modal.Close()
           UI.SceneChange(UI.SCENES.MMAIN)
         end
-        UI.Modal.cancel_action = function ()
-          LOG("Device lock prompt choice: EXIT")
-          UI.Modal.ConfirmExit()
-        end
+        UI.Modal.cancel_action = UI.Modal.Close
       end;
       Close = function ()
         UI.Modal.active = false
@@ -270,28 +264,18 @@ UI = {
       end;
       HandleInput = function ()
         if not UI.Modal.active then return end
-        if UI.Pad.Events.NAV_LEFT or UI.Pad.Events.NAV_RIGHT then
-          if UI.Modal.selected == 1 then
-            UI.Modal.selected = 2
+        if UI.Pad.Events.CONFIRM then
+          if UI.Modal.confirm_action ~= nil then
+            UI.Modal.confirm_action()
           else
-            UI.Modal.selected = 1
-          end
-        elseif UI.Pad.Events.CONFIRM then
-          if UI.Modal.selected == 1 then
-            if UI.Modal.confirm_action ~= nil then
-              UI.Modal.confirm_action()
-            else
-              UI.Modal.Close()
-            end
-          else
-            if UI.Modal.cancel_action ~= nil then
-              UI.Modal.cancel_action()
-            else
-              UI.Modal.Close()
-            end
+            UI.Modal.Close()
           end
         elseif UI.Pad.Events.BACK then
-          UI.Modal.Close()
+          if UI.Modal.cancel_action ~= nil then
+            UI.Modal.cancel_action()
+          else
+            UI.Modal.Close()
+          end
         end
       end;
       Draw = function ()
@@ -306,10 +290,10 @@ UI = {
         Graphics.drawRect(box_x, box_y + box_h - 2, box_w, 2, UI.CCOL.GREY)
         Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 10, 8, UI.SCR.X, 16, UI.Modal.title, UI.CCOL.YELLOW)
         Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 50, 8, UI.SCR.X, 16, UI.Modal.body, UI.CCOL.GREY)
-        local yes_col = UI.Modal.selected == 1 and UI.CCOL.YELLOW or UI.CCOL.GREY
-        local no_col = UI.Modal.selected == 2 and UI.CCOL.YELLOW or UI.CCOL.GREY
-        Font.ftPrint(BFONT, UI.SCR.X_MID - 60, box_y + 95, 0, UI.SCR.X, 16, UI.Modal.options[1], yes_col)
-        Font.ftPrint(BFONT, UI.SCR.X_MID + 20, box_y + 95, 0, UI.SCR.X, 16, UI.Modal.options[2], no_col)
+        local confirm_label = UI.Modal.options[1] or "Confirm"
+        local cancel_label = UI.Modal.options[2] or "Cancel"
+        local hint = ("X: %s    O: %s"):format(confirm_label, cancel_label)
+        Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 95, 8, UI.SCR.X, 16, hint, UI.CCOL.GREY)
       end;
     };
     HandleGlobalInput = function (allow_exit)
