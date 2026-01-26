@@ -8,7 +8,8 @@
 
 LOG("Registering POPSLoader UI")
 local DEVLOCK = { NONE = 0, USB = 1, MMCE = 2, MX4SIO = 3 }
-local UI = {
+local UI
+UI = {
     LASTSCENE = 5;
     CURSCENE = 5;
     SCENES = {
@@ -19,7 +20,6 @@ local UI = {
       GHDD = 5,
       GAPAHDD = 5,
       GBDMHDD = 6,
-      GSMB_PLACE = 7,
       MMAIN = 8,
       MPROFILE = 9,
       CREDITS = 10
@@ -330,8 +330,7 @@ local UI = {
         UI.GameList.MAXDRAW = layout.LIST_MAX
         local placeholders = {
           [UI.SCENES.GUSBEXFAT] = "USB exFAT",
-          [UI.SCENES.GBDMHDD] = "BDM HDD",
-          [UI.SCENES.GSMB_PLACE] = "SMB"
+          [UI.SCENES.GBDMHDD] = "BDM HDD"
         }
         local placeholder_title = placeholders[UI.CURSCENE]
         if placeholder_title ~= nil then
@@ -589,7 +588,7 @@ local UI = {
           elseif UI.MainMenu.OPT == 7 then
             PLDR.CleanupGameList()
             PLDR.GAMEPATH = ""
-            UI.SceneChange(UI.SCENES.GSMB_PLACE)
+            UI.Notif_queue.add("SMB not implemented yet.")
           end --because we still dont support SMB
         end
       end
@@ -759,8 +758,7 @@ UI.GAME_SCENES = {
   [UI.SCENES.GSMB] = true,
   [UI.SCENES.GMX4SIO] = true,
   [UI.SCENES.GHDD] = true,
-  [UI.SCENES.GBDMHDD] = true,
-  [UI.SCENES.GSMB_PLACE] = true
+  [UI.SCENES.GBDMHDD] = true
 }
 function UI.IsGameScene(scene)
   return UI.GAME_SCENES[scene] == true
