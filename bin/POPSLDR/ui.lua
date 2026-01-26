@@ -752,10 +752,25 @@ local UI = {
       end
     };
   }
+_G.UI = UI
+UI.GAME_SCENES = {
+  [UI.SCENES.GUSBFAT] = true,
+  [UI.SCENES.GUSBEXFAT] = true,
+  [UI.SCENES.GSMB] = true,
+  [UI.SCENES.GMX4SIO] = true,
+  [UI.SCENES.GHDD] = true,
+  [UI.SCENES.GBDMHDD] = true,
+  [UI.SCENES.GSMB_PLACE] = true
+}
+function UI.IsGameScene(scene)
+  return UI.GAME_SCENES[scene] == true
+end
+function UI.IsUsbScene(scene)
+  return scene == UI.SCENES.GUSBFAT or scene == UI.SCENES.GUSBEXFAT
+end
 UI.RecalcLayout()
 function Input_GetEvent()
   UI.Pad.Listen()
   return UI.Pad.Events
 end
-_G.UI = UI
 return UI
