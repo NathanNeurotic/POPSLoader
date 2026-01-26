@@ -64,6 +64,53 @@ local UI = {
       VMODE = _480p;
       BGCOL = Color.new(32,0,32);
     };
+    LAYOUT = {
+      SAFE = {L = 40, R = 40, T = 24, B = 28};
+      ICON_SPACING = 120;
+      LIST_ROW_H = 20;
+      PREVIEW_W = 240;
+      PREVIEW_H = 240;
+      FOOTER_LABEL_W = 140;
+      FOOTER_ICON_Y_OFFSET = 24;
+      FOOTER_LABEL_Y_OFFSET = 10;
+    };
+    RecalcLayout = function ()
+      local safe = UI.LAYOUT.SAFE
+      local safe_w = UI.SCR.X - safe.L - safe.R
+      local safe_h = UI.SCR.Y - safe.T - safe.B
+      UI.LAYOUT.SAFE_W = safe_w
+      UI.LAYOUT.SAFE_H = safe_h
+      UI.LAYOUT.TITLE_Y = safe.T + 6
+      UI.LAYOUT.STATUS_Y = UI.LAYOUT.TITLE_Y + 20
+      UI.LAYOUT.ICON_ROW_Y = UI.SCR.Y_MID - 40
+      UI.LAYOUT.LIST_X = safe.L
+      UI.LAYOUT.LIST_Y = safe.T + 16
+      UI.LAYOUT.LIST_W = math.floor(safe_w * 0.52)
+      UI.LAYOUT.LIST_MAX = math.floor((safe_h - 80) / UI.LAYOUT.LIST_ROW_H)
+      if UI.LAYOUT.LIST_MAX < 1 then
+        UI.LAYOUT.LIST_MAX = 1
+      end
+      local preview_w = UI.LAYOUT.PREVIEW_W
+      local preview_h = UI.LAYOUT.PREVIEW_H
+      local preview_gap = 24
+      local max_preview_w = safe_w - UI.LAYOUT.LIST_W - preview_gap
+      if max_preview_w < preview_w then
+        preview_w = max_preview_w
+      end
+      if preview_w < 0 then preview_w = 0 end
+      UI.LAYOUT.PREVIEW_W = preview_w
+      UI.LAYOUT.PREVIEW_H = preview_h
+      UI.LAYOUT.PREVIEW_X = UI.SCR.X - safe.R - preview_w
+      UI.LAYOUT.PREVIEW_Y = UI.SCR.Y_MID - (preview_h / 2)
+      UI.LAYOUT.FOOTER_ICON_Y = UI.SCR.Y - safe.B - UI.LAYOUT.FOOTER_ICON_Y_OFFSET
+      UI.LAYOUT.FOOTER_LABEL_Y = UI.LAYOUT.FOOTER_ICON_Y + UI.LAYOUT.FOOTER_LABEL_Y_OFFSET
+    end;
+    GetRowPosition = function (index, count)
+      local spacing = UI.LAYOUT.ICON_SPACING
+      local center = UI.SCR.X_MID
+      local offset = (index - (count + 1) / 2) * spacing
+      return center + offset
+    end;
     InputConfig = {
       MIN_ACTION_MS = 220;
       DEBUG_INPUT_LOG = true;
@@ -95,6 +142,32 @@ local UI = {
       end;
       msg = {};
     };
+    Footer = {
+      order = {"triangle", "circle", "cross", "square"};
+      Draw = function (labels)
+        local safe = UI.LAYOUT.SAFE
+        local count = #UI.Footer.order
+        local step = 0
+        if count > 1 then
+          step = UI.LAYOUT.SAFE_W / (count - 1)
+        end
+        for i = 1, count do
+          local key = UI.Footer.order[i]
+          local icon = IMG[key]
+          local x = safe.L + step * (i - 1)
+          local y = UI.LAYOUT.FOOTER_ICON_Y
+          if icon ~= nil then
+            local w = Graphics.getImageWidth(icon)
+            local h = Graphics.getImageHeight(icon)
+            Graphics.drawImage(icon, x - (w / 2), y - (h / 2), UI.CCOL.GREY)
+          end
+          local label = labels and labels[key] or nil
+          if label ~= nil then
+            Font.ftPrint(SFONT, x, UI.LAYOUT.FOOTER_LABEL_Y, 8, UI.LAYOUT.FOOTER_LABEL_W, 16, label, UI.CCOL.GREY)
+          end
+        end
+      end;
+    };
     --- wrapper for Screen.flip(), here you add UI draws that renders on top of everything (for example, error notifications)
     flip = function (notif)
       UI.Notif_queue.display()
@@ -119,9 +192,10 @@ local UI = {
     BottomDraw = {
       Play = function ()
         Screen.clear(UI.SCR.BGCOL)
-        Graphics.drawScaleImage(IMG.PSL, UI.SCR.X_MID-(Graphics.getImageWidth(IMG.PSL)),
-        UI.SCR.Y_MID-(Graphics.getImageHeight(IMG.PSL)), Graphics.getImageWidth(IMG.PSL)*2, Graphics.getImageHeight(IMG.PSL)*2)
-          Graphics.drawRect(0, 20, UI.SCR.X, 398, UI.CCOL.TRANSP_BLACK)
+        if IMG.BKG ~= nil then
+          Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
+        end
+        Graphics.drawRect(0, 20, UI.SCR.X, 398, UI.CCOL.TRANSP_BLACK)
       end;
     };
     Modal = {
@@ -240,12 +314,13 @@ local UI = {
         UI.GameList.CURR = 1;
       end;
       Play = function()
+        local layout = UI.LAYOUT
+        UI.GameList.MAXDRAW = layout.LIST_MAX
         local ammount = #PLDR.GAMES
         if UI.CURSCENE == UI.SCENES.GSMB then
           local slots = PLDR.GetMMCESlots()
           if #slots > 1 then
-            Font.ftPrint(SFONT, 30, 2, 0, UI.SCR.X, 16, "Slot: "..PLDR.MMCE.PREFIX, UI.CCOL.GREY)
-            Font.ftPrint(SFONT, 30, 12, 0, UI.SCR.X, 16, "Triangle: switch slot", UI.CCOL.GREY)
+            Font.ftPrint(SFONT, layout.LIST_X, layout.LIST_Y - 20, 0, UI.SCR.X, 16, "Slot: "..PLDR.MMCE.PREFIX, UI.CCOL.GREY)
           end
         end
         if (UI.GameList.CURR > (UI.GameList.STARTUP+(UI.GameList.MAXDRAW-1))) then
@@ -255,36 +330,28 @@ local UI = {
         end
         for i = UI.GameList.STARTUP, ammount do
           if i >= (UI.GameList.STARTUP+UI.GameList.MAXDRAW) then break end
-          local Y = 20+((i-UI.GameList.STARTUP)*21)
+          local Y = layout.LIST_Y + ((i-UI.GameList.STARTUP) * layout.LIST_ROW_H)
           local display_name = PLDR.GAMES[i]
           local hdd_relpath = string.match(display_name or "", "^[^|]+|(.+)$")
           if hdd_relpath ~= nil then
             display_name = string.match(hdd_relpath, "([^/]+)$") or hdd_relpath
           end
-          Font.ftPrint(BFONT, 30, Y, 0, UI.SCR.X, 16, string.sub(display_name,1, -5), i == UI.GameList.CURR and UI.CCOL.YELLOW or UI.CCOL.GREY)
+          Font.ftPrint(BFONT, layout.LIST_X, Y, 0, layout.LIST_W, 16, string.sub(display_name,1, -5), i == UI.GameList.CURR and UI.CCOL.YELLOW or UI.CCOL.GREY)
+        end
+        if layout.PREVIEW_W > 0 then
+          Graphics.drawRect(layout.PREVIEW_X - 2, layout.PREVIEW_Y - 2, layout.PREVIEW_W + 4, layout.PREVIEW_H + 4, UI.CCOL.GREY)
+          if IMG.MISSING ~= nil then
+            Graphics.drawScaleImage(IMG.MISSING, layout.PREVIEW_X, layout.PREVIEW_Y, layout.PREVIEW_W, layout.PREVIEW_H)
+          end
         end
         if ammount <= 0 then
           Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, UI.SCR.Y_MID, 20, UI.SCR.X, 32, "No games found", UI.CCOL.YELLOW)
           Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID+1, UI.SCR.Y_MID+1, 20, UI.SCR.X, 32, "No games found", UI.CCOL.TRANSP_BLACK)
         end
         Input_GetEvent()
-        if UI.CURSCENE == UI.SCENES.GSMB then
-          local slots = PLDR.GetMMCESlots()
-          UI.HandleGlobalInput(#slots <= 1)
-        else
-          UI.HandleGlobalInput(true)
-        end
+        UI.HandleGlobalInput(false)
+        if UI.Pad.Events.EXIT then UI.SceneChange(UI.SCENES.CREDITS) end
         if UI.Pad.Events.BACK then UI.SceneChange(UI.SCENES.MMAIN) end
-        if UI.CURSCENE == UI.SCENES.GSMB then
-          local slots = PLDR.GetMMCESlots()
-          if #slots > 1 and UI.Pad.Events.EXIT then
-            local next_prefix = PLDR.SetMMCESlot(PLDR.MMCE.INDEX + 1)
-            if next_prefix ~= nil then
-              PLDR.CleanupGameList()
-              PLDR.GetPS1GameLists(next_prefix.."POPS/", true)
-            end
-          end
-        end
         if UI.Pad.Events.NAV_DOWN then UI.GameList.CURR = CLAMP(UI.GameList.CURR+1, 1, ammount) end
         if UI.Pad.Events.NAV_RIGHT then UI.GameList.CURR = CLAMP(UI.GameList.CURR+UI.GameList.MAXDRAW, 1, ammount) end
         if UI.Pad.Events.NAV_UP then UI.GameList.CURR = CLAMP(UI.GameList.CURR-1, 1, ammount) end
@@ -301,19 +368,27 @@ local UI = {
             PLDR.RunPOPStarterGame(PLDR.GAMEPATH, PLDR.GAMES[UI.GameList.CURR])
           end
         end
+        UI.Footer.Draw({
+          triangle = "Credits",
+          circle = "Back",
+          cross = "Confirm",
+          square = "Cover Art"
+        })
       end;
     };
     ProfileQuery = {
       lastopt = 1;
       curopt = 1;
       Play = function ()
+        local layout = UI.LAYOUT
         local profcnt = #PLDR.PROFILES
-        Font.ftPrint(LFONT, UI.SCR.X_MID, 30, 8, UI.SCR.X, 16, "Choose POPStarter Profile", UI.CCOL.GREY)
-        Font.ftPrint(BFONT, UI.SCR.X_MID, 60, 8, UI.SCR.X, 16, "Profile "..UI.ProfileQuery.curopt, UI.CCOL.GREY)
-        Font.ftPrint(BFONT, UI.SCR.X_MID, 190, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].DESC, UI.CCOL.GREY)
-        Font.ftPrint(BFONT, UI.SCR.X_MID, 280, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].ELF, Color.new(128,128,128, 110))
+        Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Choose POPStarter Profile", UI.CCOL.GREY)
+        Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 30, 8, UI.SCR.X, 16, "Profile "..UI.ProfileQuery.curopt, UI.CCOL.GREY)
+        Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 140, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].DESC, UI.CCOL.GREY)
+        Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 220, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].ELF, Color.new(128,128,128, 110))
         Input_GetEvent()
-        UI.HandleGlobalInput(true)
+        UI.HandleGlobalInput(false)
+        if UI.Pad.Events.EXIT then UI.SceneChange(UI.SCENES.CREDITS) end
         if UI.Pad.Events.NAV_DOWN then UI.ProfileQuery.curopt = CLAMP(UI.ProfileQuery.curopt+1, 1, profcnt) end
         if UI.Pad.Events.NAV_UP then UI.ProfileQuery.curopt = CLAMP(UI.ProfileQuery.curopt-1, 1, profcnt) end
         if UI.Pad.Events.BACK then UI.SceneChange(UI.SCENES.MMAIN) end
@@ -325,15 +400,22 @@ local UI = {
             UI.SceneChange(UI.SCENES.MMAIN)
           end
         end
+        UI.Footer.Draw({
+          triangle = "Credits",
+          circle = "Back",
+          cross = "Confirm",
+          square = "Cover Art"
+        })
       end;
     };
     MainMenu = {
       OPT = 1;
       opts = {"USB", "MMCE", "MX4SIO", "HDD"};
       Play = function ()
+        local layout = UI.LAYOUT
         local profcnt = #UI.MainMenu.opts
-        Font.ftPrint(LFONT, UI.SCR.X_MID, 30, 8, UI.SCR.X, 16, "Welcome to POPStarter Loader", UI.CCOL.GREY)
-        local status_y = 50
+        Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Welcome to POPStarter Loader", UI.CCOL.GREY)
+        local status_y = layout.STATUS_Y
         if UI.boot_device ~= nil and UI.boot_device ~= DEVLOCK.NONE then
           Font.ftPrint(SFONT, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Booted from: "..UI.device_lock_name(UI.boot_device), UI.CCOL.GREY)
           status_y = status_y + 12
@@ -346,22 +428,27 @@ local UI = {
           Font.ftPrint(SFONT, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Some devices unavailable this session", UI.CCOL.GREY)
         end
         for x = 1, #UI.MainMenu.opts do
-          Graphics.drawImage(IMG[UI.MainMenu.opts[x]], 256+(110*(x-1))-64, x == UI.MainMenu.OPT and (UI.SCR.Y_MID-65) or (UI.SCR.Y_MID-64),
-            x == UI.MainMenu.OPT and UI.CCOL.YELLOW or UI.CCOL.GREY)
+          local icon = IMG[UI.MainMenu.opts[x]]
+          local icon_w = Graphics.getImageWidth(icon)
+          local icon_h = Graphics.getImageHeight(icon)
+          local pos_x = UI.GetRowPosition(x, #UI.MainMenu.opts) - (icon_w / 2)
+          local pos_y = layout.ICON_ROW_Y - (icon_h / 2)
+          Graphics.drawImage(icon, pos_x, pos_y, x == UI.MainMenu.OPT and UI.CCOL.YELLOW or UI.CCOL.GREY)
         end
-        Graphics.drawImage(IMG["start"], 20, UI.SCR.Y-65) Font.ftPrint(SFONT, 55, UI.SCR.Y-60, 0, UI.SCR.X, 16, "POPStarter profiles")
-        Graphics.drawImage(IMG["select"], 20, UI.SCR.Y-85) Font.ftPrint(SFONT, 55, UI.SCR.Y-80, 0, UI.SCR.X, 16, "About")
-        if not UI.LAUNCHING and not UI.Modal.active then
-          Graphics.drawImage(IMG["triangle"], 20, UI.SCR.Y-105)
-          Font.ftPrint(SFONT, 55, UI.SCR.Y-100, 0, UI.SCR.X, 16, "Exit")
-        end
+        UI.Footer.Draw({
+          triangle = "Credits",
+          circle = "Exit",
+          cross = "Select",
+          square = "Cover Art"
+        })
         Input_GetEvent()
-        UI.HandleGlobalInput(true)
+        UI.HandleGlobalInput(false)
         if UI.Pad.Events.NAV_RIGHT then UI.MainMenu.OPT = CLAMP(UI.MainMenu.OPT+1, 1, profcnt) end
         if UI.Pad.Events.NAV_LEFT  then UI.MainMenu.OPT = CLAMP(UI.MainMenu.OPT-1, 1, profcnt) end
         if UI.Pad.Events.START then UI.SceneChange(UI.SCENES.MPROFILE) end
-        if UI.Pad.Events.SELECT then UI.SceneChange(UI.SCENES.CREDITS) end
-          if UI.Pad.Events.CONFIRM then
+        if UI.Pad.Events.EXIT then UI.SceneChange(UI.SCENES.CREDITS) end
+        if UI.Pad.Events.BACK then UI.Modal.OpenExit() end
+        if UI.Pad.Events.CONFIRM then
           if UI.MainMenu.OPT == 1 then
             local ok, reason, active = UI.canEnterDevice(DEVLOCK.USB)
             if not ok then
@@ -583,6 +670,7 @@ local UI = {
       Q = 1;
       INCR = -1;
       Play = function ()
+        local layout = UI.LAYOUT
         if UI.Credits.Q == 0 then
           UI.SceneChange(UI.SCENES.MMAIN)
           UI.Credits.Q = 1
@@ -591,17 +679,26 @@ local UI = {
         end
         local currcol = Color.new(128, 128, 128, UI.Credits.Q)
         UI.Credits.Q = CLAMP(UI.Credits.Q-UI.Credits.INCR, 0, 128)
-        Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, 040, 20, UI.SCR.X, 40, "POPStarter Loader\n"..POPSLDR_VER, currcol)
+        Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 20, UI.SCR.X, 40, "POPStarter Loader\n"..POPSLDR_VER, currcol)
         Graphics.drawRect(0, 20, UI.SCR.X, 2, currcol)
-        Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, 100, 20, UI.SCR.X, 40, "Coded By El_isra", currcol)
-        Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, 120, 20, UI.SCR.X, UI.SCR.Y, "Based on Enceladus by Daniel santos\n\nSpecial thanks to:\nkrHACKen: for making POPStarter\nuyjulian, fjtrujy, HWC and others for always helping me\n\nThis program is free and open source\nif you bought it you've been scammed", currcol)
+        Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 60, 20, UI.SCR.X, 40, "Coded By El_isra", currcol)
+        Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 80, 20, UI.SCR.X, UI.SCR.Y, "Based on Enceladus by Daniel santos\n\nSpecial thanks to:\nkrHACKen: for making POPStarter\nuyjulian, fjtrujy, HWC and others for always helping me\n\nThis program is free and open source\nif you bought it you've been scammed", currcol)
         Graphics.drawRect(0, UI.SCR.Y-60, UI.SCR.X, 2, currcol)
         Input_GetEvent()
-        UI.HandleGlobalInput(true)
+        UI.HandleGlobalInput(false)
+        if UI.Pad.Events.EXIT then UI.Credits.INCR = 1 end
+        if UI.Pad.Events.BACK then UI.SceneChange(UI.SCENES.MMAIN) end
         if UI.Pad.Events.ANY then UI.Credits.INCR = 1 end
+        UI.Footer.Draw({
+          triangle = "Credits",
+          circle = "Back",
+          cross = "Confirm",
+          square = "Cover Art"
+        })
       end
     };
   }
+UI.RecalcLayout()
 function Input_GetEvent()
   UI.Pad.Listen()
   return UI.Pad.Events
