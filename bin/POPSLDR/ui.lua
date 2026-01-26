@@ -326,6 +326,14 @@ UI = {
       Play = function()
         local layout = UI.LAYOUT
         UI.GameList.MAXDRAW = layout.LIST_MAX
+        local titles = {
+          [UI.SCENES.GUSBFAT] = "USB FAT32",
+          [UI.SCENES.GUSBEXFAT] = "USB exFAT"
+        }
+        local scene_title = titles[UI.CURSCENE]
+        if scene_title ~= nil then
+          Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, scene_title, UI.CCOL.GREY)
+        end
         local placeholders = {
           [UI.SCENES.GBDMHDD] = "BDM HDD"
         }
@@ -458,7 +466,7 @@ UI = {
         end
         local icon_map = {
           ["USB FAT32"] = "USB",
-          ["USB exFAT"] = "USB",
+          ["USB exFAT"] = "USBEXFAT",
           ["MMCE"] = "MMCE",
           ["MX4SIO"] = "MX4SIO",
           ["APA HDD"] = "APAHDD",
@@ -559,34 +567,16 @@ UI = {
         if UI.Pad.Events.BACK then UI.Modal.OpenExit() end
         if UI.Pad.Events.CONFIRM then
           if UI.MainMenu.OPT == 1 then
-            local ok, reason, active = UI.canEnterDevice(DEVLOCK.USB)
-            if not ok then
-              LOG("Device lock denied entry to USB; active lock is "..UI.device_lock_name(active))
-              UI.Modal.OpenDeviceLock(reason, active, DEVLOCK.USB)
-              return
-            end
             PLDR.CleanupGameList()
             PLDR.GetPS1GameLists("mass"..PLDR.USB.MASSINDX..":/POPS/", true)
             UI.setDeviceLock(DEVLOCK.USB)
             UI.SceneChange(UI.SCENES.GUSBFAT)
           elseif UI.MainMenu.OPT == 2 then
-            local ok, reason, active = UI.canEnterDevice(DEVLOCK.USB)
-            if not ok then
-              LOG("Device lock denied entry to USB; active lock is "..UI.device_lock_name(active))
-              UI.Modal.OpenDeviceLock(reason, active, DEVLOCK.USB)
-              return
-            end
             PLDR.CleanupGameList()
             PLDR.GetPS1GameLists("mass"..PLDR.USB.MASSINDX..":/POPS/", true)
             UI.setDeviceLock(DEVLOCK.USB)
             UI.SceneChange(UI.SCENES.GUSBEXFAT)
           elseif UI.MainMenu.OPT == 3 then
-            local ok, reason, active = UI.canEnterDevice(DEVLOCK.MMCE)
-            if not ok then
-              LOG("Device lock denied entry to MMCE; active lock is "..UI.device_lock_name(active))
-              UI.Modal.OpenDeviceLock(reason, active, DEVLOCK.MMCE)
-              return
-            end
             local slots = PLDR.GetMMCESlots()
             if #slots < 1 then
               UI.Notif_queue.add("No MMCE device found (mmce0/mmce1).")
@@ -608,12 +598,6 @@ UI = {
               UI.SceneChange(UI.SCENES.GSMB)
             end
           elseif UI.MainMenu.OPT == 4 then
-            local ok, reason, active = UI.canEnterDevice(DEVLOCK.MX4SIO)
-            if not ok then
-              LOG("Device lock denied entry to MX4SIO; active lock is "..UI.device_lock_name(active))
-              UI.Modal.OpenDeviceLock(reason, active, DEVLOCK.MX4SIO)
-              return
-            end
             LOG("Entering MX4SIO page")
             LOG("MX4SIO init start")
             PLDR.CleanupGameList()
@@ -664,6 +648,7 @@ UI = {
             PLDR.CleanupGameList()
             PLDR.GAMEPATH = ""
             UI.Notif_queue.add("SMB not implemented yet.")
+            UI.SceneChange(UI.SCENES.GSMB)
           end --because we still dont support SMB
         end
       end
