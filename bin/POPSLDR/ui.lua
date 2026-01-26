@@ -9,6 +9,9 @@
 LOG("Registering POPSLoader UI")
 local DEVLOCK = { NONE = 0, USB = 1, MMCE = 2, MX4SIO = 3 }
 local UI
+local function Round(value)
+  return math.floor(value + 0.5)
+end
 UI = {
     LASTSCENE = 5;
     CURSCENE = 5;
@@ -87,16 +90,18 @@ UI = {
       FOOTER_LABEL_Y_OFFSET = 10;
     };
     RecalcLayout = function ()
+      UI.SCR.X_MID = Round(UI.SCR.X / 2)
+      UI.SCR.Y_MID = Round(UI.SCR.Y / 2)
       local safe = UI.LAYOUT.SAFE
       local safe_w = UI.SCR.X - safe.L - safe.R
       local safe_h = UI.SCR.Y - safe.T - safe.B
       UI.LAYOUT.SAFE_W = safe_w
       UI.LAYOUT.SAFE_H = safe_h
-      UI.LAYOUT.TITLE_Y = safe.T + 6
-      UI.LAYOUT.STATUS_Y = UI.LAYOUT.TITLE_Y + 20
-      UI.LAYOUT.ICON_ROW_Y = UI.SCR.Y_MID - 40
-      UI.LAYOUT.LIST_X = safe.L
-      UI.LAYOUT.LIST_Y = safe.T + 16
+      UI.LAYOUT.TITLE_Y = Round(safe.T + 6)
+      UI.LAYOUT.STATUS_Y = Round(UI.LAYOUT.TITLE_Y + 20)
+      UI.LAYOUT.ICON_ROW_Y = Round(UI.SCR.Y_MID - 40)
+      UI.LAYOUT.LIST_X = Round(safe.L)
+      UI.LAYOUT.LIST_Y = Round(safe.T + 16)
       UI.LAYOUT.LIST_W = math.floor(safe_w * 0.52)
       UI.LAYOUT.LIST_MAX = math.floor((safe_h - 80) / UI.LAYOUT.LIST_ROW_H)
       if UI.LAYOUT.LIST_MAX < 1 then
@@ -112,10 +117,10 @@ UI = {
       if preview_w < 0 then preview_w = 0 end
       UI.LAYOUT.PREVIEW_W = preview_w
       UI.LAYOUT.PREVIEW_H = preview_h
-      UI.LAYOUT.PREVIEW_X = UI.SCR.X - safe.R - preview_w
-      UI.LAYOUT.PREVIEW_Y = UI.SCR.Y_MID - (preview_h / 2)
-      UI.LAYOUT.FOOTER_ICON_Y = UI.SCR.Y - safe.B - UI.LAYOUT.FOOTER_ICON_Y_OFFSET
-      UI.LAYOUT.FOOTER_LABEL_Y = UI.LAYOUT.FOOTER_ICON_Y + UI.LAYOUT.FOOTER_LABEL_Y_OFFSET
+      UI.LAYOUT.PREVIEW_X = Round(UI.SCR.X - safe.R - preview_w)
+      UI.LAYOUT.PREVIEW_Y = Round(UI.SCR.Y_MID - (preview_h / 2))
+      UI.LAYOUT.FOOTER_ICON_Y = Round(UI.SCR.Y - safe.B - UI.LAYOUT.FOOTER_ICON_Y_OFFSET)
+      UI.LAYOUT.FOOTER_LABEL_Y = Round(UI.LAYOUT.FOOTER_ICON_Y + UI.LAYOUT.FOOTER_LABEL_Y_OFFSET)
     end;
     GetRowPosition = function (index, count)
       local spacing = UI.LAYOUT.ICON_SPACING
@@ -166,7 +171,7 @@ UI = {
         for i = 1, count do
           local key = UI.Footer.order[i]
           local icon = IMG[key]
-          local x = safe.L + step * (i - 1)
+          local x = Round(safe.L + step * (i - 1))
           local y = UI.LAYOUT.FOOTER_ICON_Y
           if icon ~= nil then
             local w = Graphics.getImageWidth(icon)
@@ -190,9 +195,12 @@ UI = {
       Play = function ()
         local Q=0
         while Q<128 do
+          local psl_w = Graphics.getImageWidth(IMG.PSL) * 2
+          local psl_h = Graphics.getImageHeight(IMG.PSL) * 2
+          local splash_x = Round(UI.SCR.X_MID - (psl_w / 2))
+          local splash_y = Round(UI.SCR.Y_MID - (psl_h / 2))
           Screen.clear(UI.SCR.BGCOL)
-          Graphics.drawScaleImage(IMG.PSL, UI.SCR.X_MID-(Graphics.getImageWidth(IMG.PSL)),
-          UI.SCR.Y_MID-(Graphics.getImageHeight(IMG.PSL)), Graphics.getImageWidth(IMG.PSL)*2, Graphics.getImageHeight(IMG.PSL)*2, Color.new(128,128,128,Q))
+          Graphics.drawScaleImage(IMG.PSL, splash_x, splash_y, psl_w, psl_h, Color.new(128,128,128,Q))
           Font.ftPrint(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID+100, 8, UI.SCR.X, 16, "Coded By El_isra", Color.new(128,128,128,Q))
           Screen.flip() -- we dont use UI.flip here because we dont want notifications on the welcome screen
           Q=Q+1
