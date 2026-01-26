@@ -65,3 +65,9 @@ POPSLoader is an open-source launcher for POPStarter, scripted in Lua and based 
 - Basic runtime smoke checks (without hardware):
   - TODO: verify available emulator/scripted checks. Inspect `bin/POPSLDR/system.lua` and the sample Lua scripts for any lightweight runtime validations that can be run on a host or in PCSX2.【F:bin/POPSLDR/system.lua†L1-L200】【F:samples/fractal.lua†L1-L1】
 - Docs updated if runtime layout changes (e.g., `POPSLDR/` layout, POPStarter paths, or device path rules).【F:README.md†L6-L10】【F:etc/boot.lua†L1-L60】
+
+## 8) AI-assist scaffolding (repo-local)
+- Repo map and ownership/boundary notes: `docs/ai/REPO_MAP.md`.【F:docs/ai/REPO_MAP.md†L1-L28】
+- UI rendering flow, scenes, input mapping, and alignment rules: `docs/ai/UI_MAP.md`.【F:docs/ai/UI_MAP.md†L1-L40】
+- Device detection signals, flags, and call sites: `docs/ai/DEVICE_DETECT.md`.【F:docs/ai/DEVICE_DETECT.md†L1-L30】
+- Change-discipline checklist (including regression checklist): `docs/ai/CHANGE_RULES.md`.【F:docs/ai/CHANGE_RULES.md†L1-L20】
