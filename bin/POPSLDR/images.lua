@@ -23,6 +23,7 @@ local IMGS = {
   "APAHDD.png",
   "BDHDD.png",
   "BKG.png",
+  "BGM.png",
   "MISSING.png",
   "PSL.png",
   "select.png",

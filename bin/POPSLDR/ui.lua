@@ -17,6 +17,11 @@ local function Clamp01(t)
   if t > 1 then return 1 end
   return t
 end
+local function Clamp(v, lo, hi)
+  if v < lo then return lo end
+  if v > hi then return hi end
+  return v
+end
 local function EaseInOutCubic(t)
   t = Clamp01(t)
   if t < 0.5 then
@@ -93,12 +98,15 @@ UI = {
     --- Color Constants
     CCOL = {
       GREY = Color.new(128,128,128,128);
-      YELLOW = Color.new(128,128,0,128);
+      YELLOW = Color.new(80, 170, 255, 128);
       RED = Color.new(128,0,0);
       TRANSP_BLACK = Color.new(0,0,0,40);
     };
     COLORS = {
-      TEXT_PRIMARY = Color.new(140, 200, 255, 128);
+	      TEXT_PRIMARY = Color.new(140, 200, 255, 128);
+	      -- PS2 menu-style blues for lists (selected/unselected)
+	      LIST_SELECTED = Color.new(120, 205, 255, 128);
+	      LIST_UNSELECTED = Color.new(45, 85, 155, 128);
     };
     FONT = {
       TITLE = Font.LoadBuiltinFont();
@@ -109,21 +117,23 @@ UI = {
     };
     --- UI Constants
     SCR = {
-      X = 702;
-      X_MID = 702/2;
-      Y = 480;
-      Y_MID = 480/2;
+	      -- Match GS mode (NTSC 640x448 interlaced field) to prevent right-edge clipping.
+	      X = 640;
+	      X_MID = 640/2;
+	      Y = 448;
+	      Y_MID = 448/2;
       VMODE = _480p;
       BGCOL = Color.new(20, 30, 80);
     };
     LAYOUT = {
       SAFE = {L = 40, R = 40, T = 24, B = 28};
+      BTN_BAR_SAFE_BOTTOM = 72;
       ICON_SPACING = 120;
       LIST_ROW_H = 20;
       PREVIEW_W = 240;
       PREVIEW_H = 240;
-      BTN_BAR_SAFE_BOTTOM = 56;
-      CRT_SAFE_BOTTOM = 56;
+	      -- Raised/tighter footer to avoid overscan and allow icon reflections to overlap slightly.
+	      CAROUSEL_Y_OFFSET = 18;
       FOOTER_LABEL_W = 140;
       FOOTER_ICON_Y_OFFSET = 24;
       FOOTER_LABEL_Y_OFFSET = 10;
@@ -132,6 +142,8 @@ UI = {
       UI.SCR.X_MID = Round(UI.SCR.X / 2)
       UI.SCR.Y_MID = Round(UI.SCR.Y / 2)
       local safe = UI.LAYOUT.SAFE
+      -- Ensure footer layout constants are always defined (avoid nil arithmetic)
+      UI.LAYOUT.BTN_BAR_SAFE_BOTTOM = UI.LAYOUT.BTN_BAR_SAFE_BOTTOM or (((safe and safe.B) or 0) + 44)
       local safe_w = UI.SCR.X - safe.L - safe.R
       local safe_h = UI.SCR.Y - safe.T - safe.B
       UI.LAYOUT.SAFE_W = safe_w
@@ -169,7 +181,7 @@ UI = {
     end;
     InputConfig = {
       MIN_ACTION_MS = 220;
-      DEBUG_INPUT_LOG = true;
+      DEBUG_INPUT_LOG = false;
     };
     --- Notifications queue handler
     Notif_queue = {
@@ -221,14 +233,21 @@ UI = {
           barY = UI.SCR.Y - 8 - (bar_height / 2)
         end
         local labelY = Round(barY + UI.LAYOUT.FOOTER_LABEL_Y_OFFSET)
-        local step = 0
-        if count > 1 then
-          step = UI.LAYOUT.SAFE_W / (count - 1)
-        end
+	        -- Centered/tighter spacing (avoids running off-screen on real CRT overscan).
+	        local spacing
+	        if count <= 1 then
+	          spacing = 0
+	        else
+	          local max_spacing = math.floor(UI.LAYOUT.SAFE_W / (count + 0.5))
+	          spacing = math.min(140, max_spacing)
+	          if spacing < 96 then spacing = 96 end
+	        end
+	        local total_w = spacing * (count - 1)
+	        local start_x = Round(UI.SCR.X_MID - (total_w / 2))
         for i = 1, count do
           local key = entries[i]
           local icon = IMG[key]
-          local x = Round(safe.L + step * (i - 1))
+	          local x = Round(start_x + spacing * (i - 1))
           local y = Round(barY)
           if icon ~= nil then
             local w = Graphics.getImageWidth(icon)
@@ -256,13 +275,10 @@ UI = {
     end;
     WelcomeDraw = {
       Play = function ()
-        local function DrawBackground()
-          if IMG.BKG ~= nil then
-            Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
-          else
-            Screen.clear(UI.SCR.BGCOL)
-          end
-        end
+	        -- Boot splash fades in from black, then fades out over the main menu (no fade-to-black).
+	        local function DrawBackground()
+	          Screen.clear(Color.new(0, 0, 0))
+	        end
         local function DrawSplashCover(img, screen_w, screen_h, alpha)
           local img_w = Graphics.getImageWidth(img)
           local img_h = Graphics.getImageHeight(img)
@@ -296,7 +312,16 @@ UI = {
         end
         for i = 1, fade_out_frames do
           local alpha = Round(128 * (1 - (i / fade_out_frames)))
-          DrawBackground()
+          -- Fade splash out over the main menu (no fade-to-black).
+          Screen.clear(UI.SCR.BGCOL)
+          if IMG.BGM ~= nil then
+            Graphics.drawScaleImage(IMG.BGM, 0, 0, UI.SCR.X, UI.SCR.Y)
+          elseif IMG.BKG ~= nil then
+            Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
+          end
+          if UI.MainMenu ~= nil and UI.MainMenu.DrawOnly ~= nil then
+            UI.MainMenu.DrawOnly()
+          end
           DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
           Font.ftPrint(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID+100, 8, UI.SCR.X, 16, "Coded By El_isra", Color.new(128,128,128,alpha))
           Screen.flip()
@@ -307,13 +332,20 @@ UI = {
     --- UI draw routine applied before drawing UI, add background and stuff you want rendered UNDER UI and text
     BottomDraw = {
       Play = function ()
-        Screen.clear(UI.SCR.BGCOL)
-        if IMG.BKG ~= nil then
-          Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
-        end
-        if UI.CURSCENE ~= UI.SCENES.MMAIN then
-          Graphics.drawRect(0, 20, UI.SCR.X, 398, UI.CCOL.TRANSP_BLACK)
-        end
+	        Screen.clear(UI.SCR.BGCOL)
+	        -- Main menu uses BGM.png; all other scenes use BKG.png.
+	        if UI.CURSCENE == UI.SCENES.MMAIN then
+	          if IMG.BGM ~= nil then
+	            Graphics.drawScaleImage(IMG.BGM, 0, 0, UI.SCR.X, UI.SCR.Y)
+	          elseif IMG.BKG ~= nil then
+	            Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
+	          end
+	        else
+	          if IMG.BKG ~= nil then
+	            Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
+	          end
+	        end
+        -- Removed opaque overlay box on non-main scenes (was masking background).
       end;
     };
     Modal = {
@@ -368,7 +400,7 @@ UI = {
           else
             UI.Modal.Close()
           end
-        elseif UI.Pad.Events.BACK then
+        elseif UI.Pad.Events.BACK or UI.Pad.Events.EXIT then
           if UI.Modal.cancel_action ~= nil then
             UI.Modal.cancel_action()
           else
@@ -486,15 +518,17 @@ UI = {
           Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, placeholder_title, UI.CCOL.GREY)
           Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID, 20, UI.SCR.X, 32, "Not implemented yet", UI.CCOL.YELLOW)
           Input_GetEvent()
-          UI.HandleGlobalInput(false)
+        if UI.HandleGlobalInput(false) then return end
           if UI.Pad.Events.EXIT then UI.SceneChange(UI.SCENES.CREDITS) end
           if UI.Pad.Events.BACK then UI.SceneChange(UI.SCENES.MMAIN) end
           UI.Footer.Draw({
             triangle = "Credits",
             circle = "Back",
             cross = "Confirm",
-            square = "Cover Art"
-          })
+            square = "Cover Art",
+            R2 = ""
+
+          }, UI.Footer.order_with_r2)
           return
         end
         local ammount = #PLDR.GAMES
@@ -517,7 +551,8 @@ UI = {
           if hdd_relpath ~= nil then
             display_name = string.match(hdd_relpath, "([^/]+)$") or hdd_relpath
           end
-          Font.ftPrint(BFONT, layout.LIST_X, Y, 0, layout.LIST_W, 16, string.sub(display_name,1, -5), i == UI.GameList.CURR and UI.CCOL.YELLOW or UI.CCOL.GREY)
+	          local c = (i == UI.GameList.CURR) and UI.COLORS.LIST_SELECTED or UI.COLORS.LIST_UNSELECTED
+	          Font.ftPrint(BFONT, layout.LIST_X, Y, 0, layout.LIST_W, 16, string.sub(display_name,1, -5), c)
         end
         if layout.PREVIEW_W > 0 then
           Graphics.drawRect(layout.PREVIEW_X - 2, layout.PREVIEW_Y - 2, layout.PREVIEW_W + 4, layout.PREVIEW_H + 4, UI.CCOL.GREY)
@@ -530,7 +565,7 @@ UI = {
           Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID+1, UI.SCR.Y_MID+1, 20, UI.SCR.X, 32, "No games found", UI.CCOL.TRANSP_BLACK)
         end
         Input_GetEvent()
-        UI.HandleGlobalInput(false)
+        if UI.HandleGlobalInput(false) then return end
         if UI.Pad.Events.EXIT then UI.SceneChange(UI.SCENES.CREDITS) end
         if UI.Pad.Events.BACK then UI.SceneChange(UI.SCENES.MMAIN) end
         if UI.Pad.Events.NAV_DOWN then UI.GameList.CURR = CLAMP(UI.GameList.CURR+1, 1, ammount) end
@@ -594,7 +629,7 @@ UI = {
         Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 140, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].DESC, UI.CCOL.GREY)
         Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 220, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].ELF, Color.new(128,128,128, 110))
         Input_GetEvent()
-        UI.HandleGlobalInput(false)
+        if UI.HandleGlobalInput(false) then return end
         if UI.Pad.Events.EXIT then UI.SceneChange(UI.SCENES.CREDITS) end
         if UI.Pad.Events.NAV_DOWN then UI.ProfileQuery.curopt = CLAMP(UI.ProfileQuery.curopt+1, 1, profcnt) end
         if UI.Pad.Events.NAV_UP then UI.ProfileQuery.curopt = CLAMP(UI.ProfileQuery.curopt-1, 1, profcnt) end
@@ -611,8 +646,10 @@ UI = {
           triangle = "Credits",
           circle = "Back",
           cross = "Confirm",
-          square = "Cover Art"
-        })
+          square = "Cover Art",
+          R2 = ""
+
+        }, UI.Footer.order_with_r2)
       end;
     };
     MainMenu = {
@@ -631,6 +668,11 @@ UI = {
         timer = nil,
         last_ms = nil
       };
+      DrawOnly = function ()
+        UI.MainMenu._draw_only = true
+        UI.MainMenu.Play()
+        UI.MainMenu._draw_only = false
+      end;
       Play = function ()
         local layout = UI.LAYOUT
         local profcnt = #UI.MainMenu.opts
@@ -640,13 +682,7 @@ UI = {
           Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Booted from: "..UI.device_lock_name(UI.boot_device), UI.COLORS.TEXT_PRIMARY)
           status_y = status_y + 12
         end
-        if UI.device_lock ~= nil and UI.device_lock ~= DEVLOCK.NONE then
-          Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Active Device: "..UI.device_lock_name(UI.device_lock).." (restart to switch)", UI.COLORS.TEXT_PRIMARY)
-          status_y = status_y + 12
-        end
-        if UI.boot_locks ~= nil and (UI.boot_locks[DEVLOCK.USB] or UI.boot_locks[DEVLOCK.MMCE] or UI.boot_locks[DEVLOCK.MX4SIO]) then
-          Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Some devices unavailable this session", UI.COLORS.TEXT_PRIMARY)
-        end
+	        -- Pages are no longer presented as "locked" in the UI.
         if UI.BUILD_INFO ~= nil and UI.BUILD_INFO.stamp ~= nil then
           local stamp_y = Round(layout.FOOTER_LABEL_Y - 18)
           Font.ftPrint(SFONT, layout.SAFE.L, stamp_y, 0, UI.SCR.X, 16, UI.BUILD_INFO.stamp, UI.CCOL.GREY)
@@ -688,7 +724,7 @@ UI = {
             LOG("SNAP BUG: currentIndex changed during anim")
             LOG(GuardTrace())
           end
-          local dt_sec = dt_ms / 1000
+          local dt_sec = Clamp(dt_ms / 1000, 0, 1/30)
           carousel.animT = carousel.animT + dt_sec
           local duration = carousel.animDurSec
           if duration <= 0 then duration = 0.01 end
@@ -710,7 +746,10 @@ UI = {
         local center_x = UI.SCR.X_MID
         local usable_top = layout.STATUS_Y + 24
         local usable_bottom = layout.FOOTER_ICON_Y - 24
-        local center_y = Round((usable_top + usable_bottom) / 2) + 10
+	        local center_y = Round((usable_top + usable_bottom) / 2) + 10
+	        if layout.CAROUSEL_Y_OFFSET ~= nil then
+	          center_y = center_y + layout.CAROUSEL_Y_OFFSET
+	        end
         local side_offset_y = 6
         local side_offset2_y = 10
         local function Clamp(value, min_val, max_val)
@@ -732,15 +771,15 @@ UI = {
         end
         local first_icon = ResolveIcon(icon_keys[1] or "MISSING")
         local base_icon_w = Graphics.getImageWidth(first_icon)
-        local slot_margin = 36
+        local slot_margin = 12
         local max_spacing = (UI.SCR.X - UI.LAYOUT.SAFE.L - UI.LAYOUT.SAFE.R) / 2
-        local slot_spacing = Clamp(base_icon_w + slot_margin, 140, max_spacing)
+        local slot_spacing = Clamp(base_icon_w + slot_margin, 96, max_spacing)
         local base_sel = carousel.currentIndex
         local slide = carousel.slide or 0
         local center_label_x = center_x
         local center_label_y = Round(center_y + 90)
         local center_label_idx = carousel.animActive and carousel.targetIndex or base_sel
-        for k = -2, 2 do
+        for k = -4, 4 do
           local idx = WrapIndex(base_sel + k, profcnt)
           local x = center_x + slot_spacing * (k - slide)
           local dist = math.abs(k - slide)
@@ -752,8 +791,8 @@ UI = {
           else
             y = y + side_offset2_y
           end
-          local alpha = Clamp(1 - dist * 0.35, 0.15, 1.0)
-          local scale = Clamp(1 - dist * 0.12, 0.70, 1.0)
+          local alpha = Clamp(1 - dist * 0.22, 0.04, 1.0)
+          local scale = Clamp(1 - dist * 0.09, 0.55, 1.0)
           local tint = dist < 0.5 and UI.CCOL.YELLOW or Color.new(128, 128, 128, Round(128 * alpha))
           DrawIcon(idx, x, y, scale, tint)
         end
@@ -762,10 +801,13 @@ UI = {
           triangle = "Credits",
           circle = "Exit",
           cross = "Select",
-          square = "Cover Art"
-        })
+          square = "Cover Art",
+          R2 = ""
+
+        }, UI.Footer.order_with_r2)
+        if UI.MainMenu._draw_only then return end
         Input_GetEvent()
-        UI.HandleGlobalInput(false)
+        if UI.HandleGlobalInput(false) then return end
         if not carousel.animActive then
           if UI.Pad.Events.NAV_RIGHT then
             carousel.targetIndex = WrapIndex(carousel.currentIndex + 1, profcnt)
@@ -1005,30 +1047,111 @@ UI = {
     Credits = {
       Q = 1;
       INCR = -1;
+      exit_active = false;
+      exit_timer = nil;
+      exit_start = 0;
+      exit_dur_ms = 550;
       Play = function ()
         local layout = UI.LAYOUT
+
+        -- Crossfade credits -> main menu (no fade-to-black).
+        if UI.Credits.exit_active then
+          if UI.Credits.exit_timer == nil then
+            UI.Credits.exit_timer = Timer.new()
+            UI.Credits.exit_start = Timer.getTime(UI.Credits.exit_timer)
+          end
+          local now = Timer.getTime(UI.Credits.exit_timer)
+          local t = (now - (UI.Credits.exit_start or now)) / (UI.Credits.exit_dur_ms or 1)
+          if t < 0 then t = 0 end
+          if t > 1 then t = 1 end
+          local alpha = Round(128 * (1 - t))
+          local currcol = Color.new(128, 128, 128, alpha)
+
+          -- Draw main menu underlay first.
+          Screen.clear(UI.SCR.BGCOL)
+          if IMG.BGM ~= nil then
+            Graphics.drawScaleImage(IMG.BGM, 0, 0, UI.SCR.X, UI.SCR.Y)
+          elseif IMG.BKG ~= nil then
+            Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
+          end
+          if UI.MainMenu ~= nil and UI.MainMenu.DrawOnly ~= nil then
+            UI.MainMenu.DrawOnly()
+          end
+
+          -- Draw credits on top, fading out.
+          Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 20, UI.SCR.X, 40, "POPStarter Loader\n"..tostring(POPSLDR_VER or ""), currcol)
+          Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 60, 20, UI.SCR.X, 40, "Coded By El_isra", currcol)
+          Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 80, 20, UI.SCR.X, UI.SCR.Y, [[
+Based on Enceladus by Daniel santos
+
+Special thanks to:
+krHACKen: for making POPStarter
+uyjulian, fjtrujy, HWC and others for always helping me
+
+This program is free and open source
+if you bought it you\'ve been scammed
+]], currcol)
+
+          -- When done, switch to main menu without using Transition (avoids black fade).
+          if t >= 1 then
+            UI.Credits.exit_active = false
+            UI.Credits.exit_timer = nil
+            UI.Credits.Q = 1
+            UI.Credits.INCR = -1
+            if UI.Transition ~= nil then UI.Transition.allowSceneWrite = true end
+            UI.CURSCENE = UI.SCENES.MMAIN
+            if UI.Transition ~= nil then
+              UI.Transition.allowSceneWrite = false
+              UI.Transition.active = false
+              UI.Transition.target = nil
+            end
+          end
+          return
+        end
+
         if UI.Credits.Q == 0 then
-          UI.SceneChange(UI.SCENES.MMAIN)
+          -- Start crossfade instead of Transition-to-black.
+          UI.Credits.exit_active = true
+          UI.Credits.exit_timer = nil
+          UI.Credits.exit_start = 0
           UI.Credits.Q = 1
           UI.Credits.INCR = -1
           return
         end
+
         local currcol = Color.new(128, 128, 128, UI.Credits.Q)
         UI.Credits.Q = CLAMP(UI.Credits.Q-UI.Credits.INCR, 0, 128)
-        Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 20, UI.SCR.X, 40, "POPStarter Loader\n"..POPSLDR_VER, currcol)
+        Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 20, UI.SCR.X, 40, "POPStarter Loader\n"..tostring(POPSLDR_VER or ""), currcol)
         Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 60, 20, UI.SCR.X, 40, "Coded By El_isra", currcol)
-        Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 80, 20, UI.SCR.X, UI.SCR.Y, "Based on Enceladus by Daniel santos\n\nSpecial thanks to:\nkrHACKen: for making POPStarter\nuyjulian, fjtrujy, HWC and others for always helping me\n\nThis program is free and open source\nif you bought it you've been scammed", currcol)
+        Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 80, 20, UI.SCR.X, UI.SCR.Y, [[
+Based on Enceladus by Daniel santos
+
+Special thanks to:
+krHACKen: for making POPStarter
+uyjulian, fjtrujy, HWC and others for always helping me
+
+This program is free and open source
+if you bought it you\'ve been scammed
+]], currcol)
+
         Input_GetEvent()
-        UI.HandleGlobalInput(false)
-        if UI.Pad.Events.EXIT then UI.Credits.INCR = 1 end
-        if UI.Pad.Events.BACK then UI.SceneChange(UI.SCENES.MMAIN) end
-        if UI.Pad.Events.ANY then UI.Credits.INCR = 1 end
+        if UI.HandleGlobalInput(false) then return end
+        -- Any input exits credits back to main menu via crossfade (no black).
+        if UI.Pad.Events.EXIT or UI.Pad.Events.BACK or UI.Pad.Events.ANY then
+          UI.Credits.exit_active = true
+          UI.Credits.exit_timer = nil
+          UI.Credits.exit_start = 0
+          UI.Credits.INCR = -1
+        end
+
         UI.Footer.Draw({
           triangle = "Credits",
           circle = "Back",
           cross = "Confirm",
-          square = "Cover Art"
-        })
+          square = "Cover Art",
+          R2 = ""
+
+        }, UI.Footer.order_with_r2)
       end
     };
   }
@@ -1044,8 +1167,8 @@ local function LoadBuildInfo()
   }
   for _, rel in ipairs(candidates) do
     local resolved = System.resolveAsset(rel) or rel
-    local fd = System.openFile(resolved, FREAD)
-    if type(fd) == "number" and fd >= 0 then
+    local ok_open, fd = pcall(System.openFile, resolved, FREAD)
+    if ok_open and type(fd) == "number" and fd >= 0 then
       local size = System.sizeFile(fd)
       local data = ""
       if type(size) == "number" and size > 0 then
