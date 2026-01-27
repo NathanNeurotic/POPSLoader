@@ -57,7 +57,7 @@ UI = {
     end;
     RequestScene = function (SCENE)
       if UI.Transition ~= nil and UI.Transition.Start ~= nil then
-        if UI.Transition.active and UI.Transition.target == SCENE then
+        if UI.Transition.active then
           return
         end
         if UI.CURSCENE ~= SCENE then
@@ -585,7 +585,7 @@ UI = {
         animDir = 0,
         animDurationMs = 520,
         fromIndex = 1,
-        toIndex = 1,
+        requestedIndex = 1,
         timer = nil,
         last_ms = nil
       };
@@ -637,11 +637,14 @@ UI = {
         carousel.last_ms = now_ms
         if dt_ms < 0 then dt_ms = 0 end
         if carousel.animActive then
+          if UI.MainMenu.OPT ~= carousel.fromIndex then
+            LOG("ERROR: state changed while animationActive")
+          end
           carousel.animT = carousel.animT + (dt_ms / carousel.animDurationMs)
           if carousel.animT >= 1 then
             carousel.animT = 1
+            UI.MainMenu.OPT = carousel.requestedIndex
             carousel.animActive = false
-            UI.MainMenu.OPT = carousel.toIndex
           end
         end
         local base_index = carousel.animActive and carousel.fromIndex or UI.MainMenu.OPT
@@ -758,14 +761,14 @@ UI = {
             carousel.animT = 0
             carousel.animDir = 1
             carousel.fromIndex = UI.MainMenu.OPT
-            carousel.toIndex = WrapIndex(UI.MainMenu.OPT + 1, profcnt)
+            carousel.requestedIndex = WrapIndex(UI.MainMenu.OPT + 1, profcnt)
           end
           if UI.Pad.Events.NAV_LEFT then
             carousel.animActive = true
             carousel.animT = 0
             carousel.animDir = -1
             carousel.fromIndex = UI.MainMenu.OPT
-            carousel.toIndex = WrapIndex(UI.MainMenu.OPT - 1, profcnt)
+            carousel.requestedIndex = WrapIndex(UI.MainMenu.OPT - 1, profcnt)
           end
         end
         if UI.Pad.Events.START then UI.SceneChange(UI.SCENES.MPROFILE) end
