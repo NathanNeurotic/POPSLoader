@@ -625,7 +625,8 @@ UI = {
         animActive = false,
         animT = 0,
         animDir = 0,
-        animDurMs = 650,
+        animDurSec = 0.55,
+        slide = 0,
         allowOptWrite = false,
         timer = nil,
         last_ms = nil
@@ -680,22 +681,27 @@ UI = {
         if not carousel.animActive then
           carousel.currentIndex = UI.MainMenu.OPT
           carousel.scrollPos = carousel.currentIndex
+          carousel.slide = 0
         end
         if carousel.animActive then
           if carousel.currentIndex ~= UI.MainMenu.OPT then
             LOG("SNAP BUG: currentIndex changed during anim")
             LOG(GuardTrace())
           end
-          carousel.animT = carousel.animT + (dt_ms / carousel.animDurMs)
-          local t = CLAMP(carousel.animT, 0, 1)
+          local dt_sec = dt_ms / 1000
+          carousel.animT = carousel.animT + dt_sec
+          local duration = carousel.animDurSec
+          if duration <= 0 then duration = 0.01 end
+          local t = CLAMP(carousel.animT / duration, 0, 1)
           assert(type(EaseInOutCubic) == "function")
           local e = EaseInOutCubic(t)
-          carousel.scrollPos = carousel.currentIndex + (carousel.targetIndex - carousel.currentIndex) * e
+          carousel.slide = carousel.animDir * e
           if t >= 1 then
             carousel.animActive = false
             carousel.currentIndex = carousel.targetIndex
             carousel.scrollPos = carousel.currentIndex
             carousel.animDir = 0
+            carousel.slide = 0
             carousel.allowOptWrite = true
             UI.MainMenu.OPT = carousel.currentIndex
             carousel.allowOptWrite = false
@@ -707,15 +713,10 @@ UI = {
         local center_y = Round((usable_top + usable_bottom) / 2) + 10
         local side_offset_y = 6
         local side_offset2_y = 10
-        local function BlendByDist(dist, v0, v1, v2)
-          if dist <= 0 then return v0 end
-          if dist < 1 then
-            return v0 + (v1 - v0) * dist
-          end
-          if dist < 2 then
-            return v1 + (v2 - v1) * (dist - 1)
-          end
-          return v2
+        local function Clamp(value, min_val, max_val)
+          if value < min_val then return min_val end
+          if value > max_val then return max_val end
+          return value
         end
         local function ResolveIcon(key)
           return IMG[key] or IMG["MISSING"]
@@ -729,52 +730,32 @@ UI = {
           local pos_y = Round(y - (icon_h / 2))
           Graphics.drawScaleImage(icon, pos_x, pos_y, icon_w, icon_h, color)
         end
-        local function Lerp(a, b, t)
-          return a + (b - a) * t
-        end
-        local slots = {
-          [-2] = center_x - 320,
-          [-1] = center_x - 180,
-          [0] = center_x,
-          [1] = center_x + 180,
-          [2] = center_x + 320
-        }
-        local slot_y = {
-          [-2] = center_y + side_offset2_y,
-          [-1] = center_y + side_offset_y,
-          [0] = center_y,
-          [1] = center_y + side_offset_y,
-          [2] = center_y + side_offset2_y
-        }
-        local scroll_pos = carousel.scrollPos
-        local base = math.floor(scroll_pos)
-        local frac = scroll_pos - base
-        local step = slots[1] - slots[0]
-        local direction = carousel.animDir
+        local first_icon = ResolveIcon(icon_keys[1] or "MISSING")
+        local base_icon_w = Graphics.getImageWidth(first_icon)
+        local slot_margin = 36
+        local max_spacing = (UI.SCR.X - UI.LAYOUT.SAFE.L - UI.LAYOUT.SAFE.R) / 2
+        local slot_spacing = Clamp(base_icon_w + slot_margin, 140, max_spacing)
+        local base_sel = carousel.currentIndex
+        local slide = carousel.slide or 0
         local center_label_x = center_x
         local center_label_y = Round(center_y + 90)
-        local center_label_idx = WrapIndex(base, profcnt)
-        local closest_dist = 9999
+        local center_label_idx = carousel.animActive and carousel.targetIndex or base_sel
         for k = -2, 2 do
-          local idx = WrapIndex(base + k, profcnt)
-          local x = slots[k]
-          if direction == 1 then
-            x = x - (frac * step)
-          elseif direction == -1 then
-            x = x + (frac * step)
+          local idx = WrapIndex(base_sel + k, profcnt)
+          local x = center_x + slot_spacing * (k - slide)
+          local dist = math.abs(k - slide)
+          local y = center_y
+          if dist <= 1 then
+            y = y + dist * side_offset_y
+          elseif dist <= 2 then
+            y = y + side_offset_y + (dist - 1) * (side_offset2_y - side_offset_y)
+          else
+            y = y + side_offset2_y
           end
-          local y = slot_y[k]
-          local dist = math.abs((base + k) - scroll_pos)
-          local scale = BlendByDist(dist, 1.00, 0.86, 0.74)
-          local alpha = BlendByDist(dist, 128, 128 * 0.22, 128 * 0.10)
-          local tint = dist < 0.5 and UI.CCOL.YELLOW or Color.new(128, 128, 128, Round(alpha))
+          local alpha = Clamp(1 - dist * 0.35, 0.15, 1.0)
+          local scale = Clamp(1 - dist * 0.12, 0.70, 1.0)
+          local tint = dist < 0.5 and UI.CCOL.YELLOW or Color.new(128, 128, 128, Round(128 * alpha))
           DrawIcon(idx, x, y, scale, tint)
-          if dist < closest_dist then
-            closest_dist = dist
-            center_label_x = x
-            center_label_y = Round(y + 90)
-            center_label_idx = idx
-          end
         end
         Font.ftPrint(UI.FONT.LABEL, Round(center_label_x), center_label_y, 8, UI.SCR.X, 16, UI.MainMenu.opts[center_label_idx], UI.COLORS.TEXT_PRIMARY)
         UI.Footer.Draw({
@@ -791,12 +772,14 @@ UI = {
             carousel.animDir = 1
             carousel.animActive = true
             carousel.animT = 0
+            carousel.slide = 0
           end
           if UI.Pad.Events.NAV_LEFT then
             carousel.targetIndex = WrapIndex(carousel.currentIndex - 1, profcnt)
             carousel.animDir = -1
             carousel.animActive = true
             carousel.animT = 0
+            carousel.slide = 0
           end
         end
         if UI.Pad.Events.START then UI.SceneChange(UI.SCENES.MPROFILE) end
