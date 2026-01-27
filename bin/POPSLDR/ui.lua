@@ -605,6 +605,10 @@ UI = {
         if UI.boot_locks ~= nil and (UI.boot_locks[DEVLOCK.USB] or UI.boot_locks[DEVLOCK.MMCE] or UI.boot_locks[DEVLOCK.MX4SIO]) then
           Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Some devices unavailable this session", UI.COLORS.TEXT_PRIMARY)
         end
+        if UI.BUILD_INFO ~= nil and UI.BUILD_INFO.stamp ~= nil then
+          local stamp_y = Round(layout.FOOTER_LABEL_Y - 18)
+          Font.ftPrint(SFONT, layout.SAFE.L, stamp_y, 0, UI.SCR.X, 16, UI.BUILD_INFO.stamp, UI.CCOL.GREY)
+        end
         local icon_map = {
           ["USB FAT32"] = "USB",
           ["USB exFAT"] = "USBEXFAT",
@@ -1014,6 +1018,43 @@ UI = {
       end
     };
   }
+local function LoadBuildInfo()
+  local candidates = {
+    "BUILD_INFO.txt",
+    "POPSLDR/BUILD_INFO.txt"
+  }
+  local info = {
+    hash = nil,
+    timestamp = nil,
+    stamp = nil
+  }
+  for _, rel in ipairs(candidates) do
+    local resolved = System.resolveAsset(rel) or rel
+    local fd = System.openFile(resolved, FREAD)
+    if type(fd) == "number" and fd >= 0 then
+      local size = System.sizeFile(fd)
+      local data = ""
+      if type(size) == "number" and size > 0 then
+        data = System.readFile(fd, size) or ""
+      end
+      System.closeFile(fd)
+      if data ~= "" then
+        local lines = {}
+        for line in string.gmatch(data, "[^\r\n]+") do
+          lines[#lines + 1] = line
+        end
+        info.hash = lines[1]
+        info.timestamp = lines[2]
+        break
+      end
+    end
+  end
+  if info.hash ~= nil and info.timestamp ~= nil then
+    info.stamp = string.format("build %s %s", info.hash, info.timestamp)
+  end
+  return info
+end
+UI.BUILD_INFO = LoadBuildInfo()
 if UI.FONT ~= nil then
   if UI.FONT.TITLE ~= nil then
     Font.ftSetCharSize(UI.FONT.TITLE, UI.FONT.TITLE_SIZE, UI.FONT.TITLE_SIZE)

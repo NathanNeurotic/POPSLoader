@@ -29,6 +29,15 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Generate build info
+        shell: sh
+        run: |
+          set -eu
+          COMMIT_SHORT="$(echo "$GITHUB_SHA" | cut -c1-7)"
+          BUILD_UTC="$(date -u '+%Y-%m-%d %H:%MZ')"
+          printf "%s\n%s\n" "$COMMIT_SHORT" "$BUILD_UTC" > bin/POPSLDR/BUILD_INFO.txt
+          cat bin/POPSLDR/BUILD_INFO.txt
+
       - name: Compile project
         run: |
           make clean elfloader all package
