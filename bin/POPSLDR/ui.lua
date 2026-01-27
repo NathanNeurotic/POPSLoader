@@ -57,6 +57,12 @@ UI = {
       end
     end;
     SceneChange = function (SCENE)
+      if UI.Transition ~= nil and UI.Transition.Start ~= nil then
+        if UI.CURSCENE ~= SCENE then
+          UI.Transition.Start(SCENE)
+        end
+        return
+      end
       UI.LASTSCENE = UI.CURSCENE
       UI.CURSCENE = SCENE
     end;
@@ -161,15 +167,17 @@ UI = {
     };
     Footer = {
       order = {"triangle", "circle", "cross", "square"};
-      Draw = function (labels)
+      order_with_r2 = {"triangle", "circle", "cross", "square", "R2"};
+      Draw = function (labels, order)
         local safe = UI.LAYOUT.SAFE
-        local count = #UI.Footer.order
+        local entries = order or UI.Footer.order
+        local count = #entries
         local step = 0
         if count > 1 then
           step = UI.LAYOUT.SAFE_W / (count - 1)
         end
         for i = 1, count do
-          local key = UI.Footer.order[i]
+          local key = entries[i]
           local icon = IMG[key]
           local x = Round(safe.L + step * (i - 1))
           local y = UI.LAYOUT.FOOTER_ICON_Y
@@ -189,27 +197,53 @@ UI = {
     flip = function (notif)
       UI.Notif_queue.display()
       UI.Modal.Draw()
+      if UI.Transition ~= nil then
+        local alpha = UI.Transition.Update()
+        if alpha > 0 then
+          Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
+        end
+      end
       Screen.flip()
     end;
     WelcomeDraw = {
       Play = function ()
-        local Q=0
-        while Q<128 do
-          local img_w = Graphics.getImageWidth(IMG.PSL)
-          local img_h = Graphics.getImageHeight(IMG.PSL)
+        local function DrawSplashCover(img, screen_w, screen_h, alpha)
+          local img_w = Graphics.getImageWidth(img)
+          local img_h = Graphics.getImageHeight(img)
           local scale = 1
           if img_w > 0 and img_h > 0 then
-            scale = math.min(UI.SCR.X / img_w, UI.SCR.Y / img_h)
+            local cover_scale = math.max(screen_w / img_w, screen_h / img_h)
+            scale = cover_scale * 1.02
           end
-          local psl_w = Round(img_w * scale)
-          local psl_h = Round(img_h * scale)
-          local splash_x = Round((UI.SCR.X - psl_w) / 2)
-          local splash_y = Round((UI.SCR.Y - psl_h) / 2)
+          local draw_w = Round(img_w * scale)
+          local draw_h = Round(img_h * scale)
+          local x = Round((screen_w - draw_w) / 2)
+          local y = Round((screen_h - draw_h) / 2)
+          local tint = Color.new(128, 128, 128, alpha)
+          Graphics.drawScaleImage(img, x, y, draw_w, draw_h, tint)
+        end
+        local fade_in_frames = 24
+        local hold_frames = 24
+        local fade_out_frames = 24
+        for i = 1, fade_in_frames do
+          local alpha = Round(128 * (i / fade_in_frames))
           Screen.clear(UI.SCR.BGCOL)
-          Graphics.drawScaleImage(IMG.PSL, splash_x, splash_y, psl_w, psl_h, Color.new(128,128,128,Q))
-          Font.ftPrint(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID+100, 8, UI.SCR.X, 16, "Coded By El_isra", Color.new(128,128,128,Q))
+          DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
+          Font.ftPrint(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID+100, 8, UI.SCR.X, 16, "Coded By El_isra", Color.new(128,128,128,alpha))
           Screen.flip() -- we dont use UI.flip here because we dont want notifications on the welcome screen
-          Q=Q+1
+        end
+        for _ = 1, hold_frames do
+          Screen.clear(UI.SCR.BGCOL)
+          DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, 128)
+          Font.ftPrint(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID+100, 8, UI.SCR.X, 16, "Coded By El_isra", Color.new(128,128,128,128))
+          Screen.flip()
+        end
+        for i = 1, fade_out_frames do
+          local alpha = Round(128 * (1 - (i / fade_out_frames)))
+          Screen.clear(UI.SCR.BGCOL)
+          DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
+          Font.ftPrint(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID+100, 8, UI.SCR.X, 16, "Coded By El_isra", Color.new(128,128,128,alpha))
+          Screen.flip()
         end
       end
 
@@ -302,6 +336,55 @@ UI = {
         Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 95, 8, UI.SCR.X, 16, hint, UI.CCOL.GREY)
       end;
     };
+    Transition = {
+      active = false,
+      phase = "out",
+      target = nil,
+      timer = nil,
+      start = 0,
+      duration_out = 330,
+      duration_in = 330,
+      Start = function (target)
+        if UI.Transition.timer == nil then
+          UI.Transition.timer = Timer.new()
+        end
+        UI.Transition.active = true
+        UI.Transition.phase = "out"
+        UI.Transition.target = target
+        UI.Transition.start = Timer.getTime(UI.Transition.timer)
+      end,
+      Update = function ()
+        if not UI.Transition.active then
+          return 0
+        end
+        local now = Timer.getTime(UI.Transition.timer)
+        local elapsed = now - (UI.Transition.start or 0)
+        local duration = UI.Transition.phase == "out" and UI.Transition.duration_out or UI.Transition.duration_in
+        if duration <= 0 then duration = 1 end
+        local t = elapsed / duration
+        if t > 1 then t = 1 end
+        local alpha
+        if UI.Transition.phase == "out" then
+          alpha = Round(128 * t)
+        else
+          alpha = Round(128 * (1 - t))
+        end
+        if t >= 1 then
+          if UI.Transition.phase == "out" then
+            UI.LASTSCENE = UI.CURSCENE
+            UI.CURSCENE = UI.Transition.target
+            UI.Transition.phase = "in"
+            UI.Transition.start = now
+            alpha = 128
+          else
+            UI.Transition.active = false
+            UI.Transition.target = nil
+            alpha = 0
+          end
+        end
+        return alpha
+      end
+    };
     HandleGlobalInput = function (allow_exit)
       if UI.Modal.active then
         UI.Modal.HandleInput()
@@ -393,6 +476,17 @@ UI = {
         if UI.Pad.Events.NAV_RIGHT then UI.GameList.CURR = CLAMP(UI.GameList.CURR+UI.GameList.MAXDRAW, 1, ammount) end
         if UI.Pad.Events.NAV_UP then UI.GameList.CURR = CLAMP(UI.GameList.CURR-1, 1, ammount) end
         if UI.Pad.Events.NAV_LEFT then UI.GameList.CURR = CLAMP(UI.GameList.CURR-UI.GameList.MAXDRAW, 1, ammount) end
+        if UI.Pad.Events.R2 then
+          if UI.CURSCENE == UI.SCENES.GUSBFAT then
+            PLDR.ResetPopstarterPack()
+          elseif UI.CURSCENE == UI.SCENES.GUSBEXFAT then
+            PLDR.ApplyPopstarterPack("USBEXFAT")
+          elseif UI.CURSCENE == UI.SCENES.GSMB and UI.device_lock == DEVLOCK.MMCE then
+            PLDR.ApplyPopstarterPack("MMCE")
+          elseif UI.CURSCENE == UI.SCENES.GMX4SIO then
+            PLDR.ApplyPopstarterPack("MX4SIO")
+          end
+        end
         if UI.Pad.Events.CONFIRM and ammount > 0 then
           if not doesFileExist(PLDR.POPSTARTER_PATH) then
             UI.Notif_queue.add("Cant find POPSTARTER ELF\n"..PLDR.POPSTARTER_PATH)
@@ -405,12 +499,27 @@ UI = {
             PLDR.RunPOPStarterGame(PLDR.GAMEPATH, PLDR.GAMES[UI.GameList.CURR])
           end
         end
-        UI.Footer.Draw({
+        local footer_labels = {
           triangle = "Credits",
           circle = "Back",
           cross = "Confirm",
           square = "Cover Art"
-        })
+        }
+        local footer_order = UI.Footer.order
+        if UI.CURSCENE == UI.SCENES.GUSBFAT then
+          footer_labels.R2 = "Reset POPSTARTER"
+          footer_order = UI.Footer.order_with_r2
+        elseif UI.CURSCENE == UI.SCENES.GUSBEXFAT then
+          footer_labels.R2 = "Install USBEXFAT pack"
+          footer_order = UI.Footer.order_with_r2
+        elseif UI.CURSCENE == UI.SCENES.GSMB and UI.device_lock == DEVLOCK.MMCE then
+          footer_labels.R2 = "Install MMCE pack"
+          footer_order = UI.Footer.order_with_r2
+        elseif UI.CURSCENE == UI.SCENES.GMX4SIO then
+          footer_labels.R2 = "Install MX4SIO pack"
+          footer_order = UI.Footer.order_with_r2
+        end
+        UI.Footer.Draw(footer_labels, footer_order)
       end;
     };
     ProfileQuery = {
@@ -489,68 +598,159 @@ UI = {
           if icon_w > max_w then max_w = icon_w end
           if icon_h > max_h then max_h = icon_h end
         end
-        local cell_w = max_w
-        local cell_h = max_h
-        local gap_x = 16
-        local gap_y = 14
-        local safe = UI.LAYOUT.SAFE
-        local safe_l = 32
-        local safe_r = 32
-        local safe_t = 24
-        local safe_b = 40
-        if safe ~= nil then
-          if safe.L ~= nil and safe.L > safe_l then safe_l = safe.L end
-          if safe.R ~= nil and safe.R > safe_r then safe_r = safe.R end
-          if safe.T ~= nil then safe_t = safe.T end
-          if safe.B ~= nil and safe.B > safe_b then safe_b = safe.B end
+        local button_bar_h = nil
+        if UI.LAYOUT ~= nil and UI.LAYOUT.FOOTER_ICON_Y ~= nil then
+          button_bar_h = UI.SCR.Y - UI.LAYOUT.FOOTER_ICON_Y
         end
-        local button_bar_h = UI.SCR.Y - UI.LAYOUT.FOOTER_ICON_Y
-        local box_w = UI.SCR.X - safe_l - safe_r
-        local box_h = UI.SCR.Y - safe_t - safe_b - button_bar_h
-        local box_x = safe_l
-        local box_y = safe_t
-        local row1_y = box_y + Round(box_h * 0.18)
-        local row2_y = box_y + Round(box_h * 0.55)
-        local row3_y = box_y + Round(box_h * 0.82)
-        local function RowCenterX(count)
-          local total_w = (count * cell_w) + ((count - 1) * gap_x)
-          return Round(box_x + ((box_w - total_w) / 2))
+        local base_safe_b = button_bar_h and (button_bar_h + 12) or 56
+        local min_safe_b = button_bar_h and (button_bar_h + 4) or 48
+        local function ComputeScale(box_w, box_h, gx, gy)
+          local row_w_unscaled = (3 * max_w) + (2 * gx)
+          local total_h_unscaled = (3 * max_h) + (2 * gy)
+          local scale_w = box_w / row_w_unscaled
+          local scale_h = box_h / total_h_unscaled
+          local scale = math.min(1.0, scale_w, scale_h)
+          return scale, scale_w, scale_h
         end
-        local function RowCenterY(row)
-          if row == 1 then return row1_y end
-          if row == 2 then return row2_y end
-          if row == 3 then return row3_y end
-          return Round(row3_y + (row - 3) * (cell_h + gap_y))
+        local attempts = {
+          {gap_x = 12, gap_y = 10, min_scale = 0.80, safe_l = 16, safe_r = 16, safe_t = 16, safe_b = base_safe_b},
+          {gap_x = 8, gap_y = 8, min_scale = 0.80, safe_l = 16, safe_r = 16, safe_t = 16, safe_b = base_safe_b},
+          {gap_x = 6, gap_y = 6, min_scale = 0.80, safe_l = 16, safe_r = 16, safe_t = 16, safe_b = base_safe_b},
+          {gap_x = 6, gap_y = 6, min_scale = 0.80, safe_l = 12, safe_r = 12, safe_t = 12, safe_b = math.max(base_safe_b - 8, min_safe_b)},
+          {gap_x = 6, gap_y = 6, min_scale = 0.75, safe_l = 12, safe_r = 12, safe_t = 12, safe_b = math.max(base_safe_b - 8, min_safe_b)}
+        }
+        local layout = nil
+        for i = 1, #attempts do
+          local attempt = attempts[i]
+          local box_w = UI.SCR.X - attempt.safe_l - attempt.safe_r
+          local box_h = UI.SCR.Y - attempt.safe_t - attempt.safe_b
+          local icon_scale, scale_w, scale_h = ComputeScale(box_w, box_h, attempt.gap_x, attempt.gap_y)
+          if icon_scale >= attempt.min_scale then
+            local cell_w = Round(max_w * icon_scale)
+            local cell_h = Round(max_h * icon_scale)
+            local total_rows = 3
+            local total_h = (total_rows * cell_h) + ((total_rows - 1) * attempt.gap_y)
+            local total_w = (3 * cell_w) + (2 * attempt.gap_x)
+            if total_h <= box_h and total_w <= box_w then
+              layout = {
+                safe_l = attempt.safe_l,
+                safe_r = attempt.safe_r,
+                safe_t = attempt.safe_t,
+                safe_b = attempt.safe_b,
+                box_w = box_w,
+                box_h = box_h,
+                box_x = attempt.safe_l,
+                box_y = attempt.safe_t,
+                gap_x = attempt.gap_x,
+                gap_y = attempt.gap_y,
+                icon_scale = icon_scale,
+                cell_w = cell_w,
+                cell_h = cell_h,
+                total_h = total_h,
+                total_w = total_w,
+                total_rows = total_rows
+              }
+              break
+            end
+          end
+        end
+        if layout == nil then
+          local final = attempts[#attempts]
+          local box_w = UI.SCR.X - final.safe_l - final.safe_r
+          local box_h = UI.SCR.Y - final.safe_t - final.safe_b
+          local icon_scale = ComputeScale(box_w, box_h, final.gap_x, final.gap_y)
+          local cell_w = Round(max_w * icon_scale)
+          local cell_h = Round(max_h * icon_scale)
+          local total_rows = 3
+          local total_h = (total_rows * cell_h) + ((total_rows - 1) * final.gap_y)
+          local total_w = (3 * cell_w) + (2 * final.gap_x)
+          local block_y = final.safe_t + Round((box_h - total_h) / 2)
+          local row1_y = block_y
+          local row2_y = row1_y + cell_h + final.gap_y
+          local row3_y = row2_y + cell_h + final.gap_y
+          if UI.MainMenu.layout_overflow_logged ~= true then
+            UI.MainMenu.layout_overflow_logged = true
+            LOGF("Main menu layout overflow: screen=%dx%d safe=%d,%d,%d,%d box=%d,%d,%d,%d menuCount=%d rows=%d",
+              UI.SCR.X, UI.SCR.Y, final.safe_l, final.safe_r, final.safe_t, final.safe_b,
+              final.safe_l, final.safe_t, box_w, box_h, #UI.MainMenu.opts, total_rows)
+            LOGF("Main menu layout overflow: wMax=%d hMax=%d gapX=%d gapY=%d scale=%.3f wS=%d hS=%d totalH=%d totalW=%d",
+              max_w, max_h, final.gap_x, final.gap_y, icon_scale, cell_w, cell_h, total_h, total_w)
+            LOGF("Main menu layout overflow: row1Y=%d row2Y=%d row3Y=%d row1Bottom=%d row2Bottom=%d row3Bottom=%d",
+              row1_y, row2_y, row3_y, row1_y + cell_h, row2_y + cell_h, row3_y + cell_h)
+          end
+          error("Main menu layout overflow: rows exceed CRT-safe box")
+        end
+        local safe_l = layout.safe_l
+        local safe_r = layout.safe_r
+        local safe_t = layout.safe_t
+        local safe_b = layout.safe_b
+        local box_w = layout.box_w
+        local box_h = layout.box_h
+        local box_x = layout.box_x
+        local box_y = layout.box_y
+        local gap_x = layout.gap_x
+        local gap_y = layout.gap_y
+        local icon_scale = layout.icon_scale
+        local cell_w = layout.cell_w
+        local cell_h = layout.cell_h
+        local total_rows = layout.total_rows
+        local total_h = layout.total_h
+        local block_y = box_y + Round((box_h - total_h) / 2)
+        local row1_y = block_y
+        local row2_y = row1_y + cell_h + gap_y
+        local row3_y = row2_y + cell_h + gap_y
+        if UI.MainMenu.layout_logged ~= true then
+          UI.MainMenu.layout_logged = true
+          LOGF("Main menu layout: boxW=%d boxH=%d wMax=%d hMax=%d gapX=%d gapY=%d scale=%.3f wS=%d hS=%d",
+            box_w, box_h, max_w, max_h, gap_x, gap_y, icon_scale, cell_w, cell_h)
+        end
+        local function RowStartX(count)
+          if count == 1 then
+            return box_x + Round((box_w - cell_w) / 2)
+          end
+          local row_w = (count * cell_w) + ((count - 1) * gap_x)
+          return box_x + Round((box_w - row_w) / 2)
+        end
+        local function RowY(row)
+          return block_y + ((row - 1) * (cell_h + gap_y))
         end
         local function ResolveMenuPosition(index)
           local row
           local col
+          local count
           if index == 1 then
             row = 1
-            col = 0
-            return RowCenterX(1), Round(RowCenterY(row) - (cell_h / 2))
-          elseif index <= 4 then
-            row = 2
-            col = index - 2
-            return Round(RowCenterX(3) + col * (cell_w + gap_x)), Round(RowCenterY(row) - (cell_h / 2))
-          elseif index <= 7 then
-            row = 3
-            col = index - 5
-            return Round(RowCenterX(3) + col * (cell_w + gap_x)), Round(RowCenterY(row) - (cell_h / 2))
+            col = 1
+            count = 1
+          else
+            local idx = index - 2
+            row = 2 + math.floor(idx / 3)
+            col = (idx % 3) + 1
+            count = 3
           end
-          local idx = index - 8
-          row = 4 + math.floor(idx / 3)
-          col = idx % 3
-          return Round(RowCenterX(3) + col * (cell_w + gap_x)), Round(RowCenterY(row) - (cell_h / 2))
+          local start_x = RowStartX(count)
+          local x = Round(start_x + ((col - 1) * (cell_w + gap_x)))
+          local y = RowY(row)
+          if x < box_x or (x + cell_w) > (box_x + box_w) then
+            LOGF("Main menu layout overflow: x=%d y=%d w=%d h=%d boxW=%d boxH=%d gapX=%d gapY=%d scale=%.3f",
+              x, y, cell_w, cell_h, box_w, box_h, gap_x, gap_y, icon_scale)
+            error("Main menu layout overflow: icon exceeds CRT-safe width")
+          end
+          if y < box_y or (y + cell_h) > (box_y + box_h) then
+            LOGF("Main menu layout overflow: x=%d y=%d w=%d h=%d boxW=%d boxH=%d gapX=%d gapY=%d scale=%.3f",
+              x, y, cell_w, cell_h, box_w, box_h, gap_x, gap_y, icon_scale)
+            error("Main menu layout overflow: icon exceeds CRT-safe height")
+          end
+          return x, y
         end
         for x = 1, #UI.MainMenu.opts do
           local icon = IMG[icon_keys[x]]
-          local icon_w = Graphics.getImageWidth(icon)
-          local icon_h = Graphics.getImageHeight(icon)
+          local icon_w = Round(Graphics.getImageWidth(icon) * icon_scale)
+          local icon_h = Round(Graphics.getImageHeight(icon) * icon_scale)
           local cell_x, cell_y = ResolveMenuPosition(x)
           local pos_x = Round(cell_x + ((cell_w - icon_w) / 2))
           local pos_y = Round(cell_y + ((cell_h - icon_h) / 2))
-          Graphics.drawImage(icon, pos_x, pos_y, x == UI.MainMenu.OPT and UI.CCOL.YELLOW or UI.CCOL.GREY)
+          Graphics.drawScaleImage(icon, pos_x, pos_y, icon_w, icon_h, x == UI.MainMenu.OPT and UI.CCOL.YELLOW or UI.CCOL.GREY)
         end
         UI.Footer.Draw({
           triangle = "Credits",
@@ -667,6 +867,7 @@ UI = {
         EXIT = false,
         START = false,
         SELECT = false,
+        R2 = false,
         ANY = false,
       };
       NavHeld = {};
@@ -702,6 +903,7 @@ UI = {
         UI.Pad.Events.EXIT = false
         UI.Pad.Events.START = false
         UI.Pad.Events.SELECT = false
+        UI.Pad.Events.R2 = false
         UI.Pad.Events.ANY = false
 
         local function emit(event)
@@ -728,6 +930,7 @@ UI = {
         if (pressed & PAD_TRIANGLE) ~= 0 then emit_action("EXIT") end
         if (pressed & PAD_START) ~= 0 then emit("START") end
         if (pressed & PAD_SELECT) ~= 0 then emit("SELECT") end
+        if (pressed & PAD_R2) ~= 0 then emit_action("R2") end
 
         local function resolve_nav(dir, is_down)
           local was_down = UI.Pad.NavHeld[dir] == true
@@ -827,6 +1030,11 @@ end
 UI.RecalcLayout()
 function Input_GetEvent()
   UI.Pad.Listen()
+  if UI.Transition ~= nil and UI.Transition.active then
+    for key, _ in pairs(UI.Pad.Events) do
+      UI.Pad.Events[key] = false
+    end
+  end
   return UI.Pad.Events
 end
 return UI
