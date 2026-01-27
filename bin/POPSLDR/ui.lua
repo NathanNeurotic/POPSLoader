@@ -12,6 +12,12 @@ local UI
 local function Round(value)
   return math.floor(value + 0.5)
 end
+local function GuardTrace()
+  if debug ~= nil and debug.traceback ~= nil then
+    return debug.traceback("TRACE", 2)
+  end
+  return "TRACE unavailable"
+end
 UI = {
     LASTSCENE = 5;
     SCENES = {
@@ -362,6 +368,7 @@ UI = {
       active = false,
       phase = "out",
       target = nil,
+      allowSceneWrite = false,
       timer = nil,
       start = 0,
       duration_out = 700,
@@ -394,7 +401,9 @@ UI = {
         if t >= 1 then
           if UI.Transition.phase == "out" then
             UI.LASTSCENE = UI.CURSCENE
+            UI.Transition.allowSceneWrite = true
             UI.CURSCENE = UI.Transition.target
+            UI.Transition.allowSceneWrite = false
             UI.Transition.phase = "in"
             UI.Transition.start = now
             alpha = 128
@@ -586,6 +595,7 @@ UI = {
         animDurationMs = 520,
         fromIndex = 1,
         requestedIndex = 1,
+        allowOptWrite = false,
         timer = nil,
         last_ms = nil
       };
@@ -639,11 +649,14 @@ UI = {
         if carousel.animActive then
           if UI.MainMenu.OPT ~= carousel.fromIndex then
             LOG("ERROR: state changed while animationActive")
+            LOG(GuardTrace())
           end
           carousel.animT = carousel.animT + (dt_ms / carousel.animDurationMs)
           if carousel.animT >= 1 then
             carousel.animT = 1
+            carousel.allowOptWrite = true
             UI.MainMenu.OPT = carousel.requestedIndex
+            carousel.allowOptWrite = false
             carousel.animActive = false
           end
         end
@@ -1090,5 +1103,55 @@ function Input_GetEvent()
     end
   end
   return UI.Pad.Events
+end
+do
+  local menu = UI.MainMenu
+  if menu ~= nil then
+    menu._OPT = menu.OPT
+    menu.OPT = nil
+    setmetatable(menu, {
+      __index = function (t, key)
+        if key == "OPT" then
+          return rawget(t, "_OPT")
+        end
+        return rawget(t, key)
+      end,
+      __newindex = function (t, key, value)
+        if key == "OPT" then
+          local carousel = t.Carousel
+          if carousel ~= nil and not carousel.allowOptWrite then
+            LOG("ERROR: state change blocked while animationActive (OPT write)")
+            LOG(GuardTrace())
+            return
+          end
+          rawset(t, "_OPT", value)
+          return
+        end
+        rawset(t, key, value)
+      end
+    })
+  end
+  UI._CURSCENE = UI.CURSCENE
+  UI.CURSCENE = nil
+  setmetatable(UI, {
+    __index = function (t, key)
+      if key == "CURSCENE" then
+        return rawget(t, "_CURSCENE")
+      end
+      return rawget(t, key)
+    end,
+    __newindex = function (t, key, value)
+      if key == "CURSCENE" then
+        if UI.Transition == nil or not UI.Transition.allowSceneWrite then
+          LOG("ERROR: scene change blocked outside transition midpoint")
+          LOG(GuardTrace())
+          return
+        end
+        rawset(t, "_CURSCENE", value)
+        return
+      end
+      rawset(t, key, value)
+    end
+  })
 end
 return UI
