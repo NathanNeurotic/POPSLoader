@@ -264,7 +264,7 @@ if UI == nil then
   LOG("package.path:", package.path)
   error("UI global not initialized (expected ui.lua to return UI or set _G.UI)")
 end
-UI.CURSCENE = UI.SCENES.MMAIN
+UI.CURSCENE = nil
 UI.LASTSCENE = UI.SCENES.MMAIN
 
 if UI.DEVLOCK ~= nil then
@@ -1446,6 +1446,8 @@ end
 UI.WelcomeDraw.Play()
 if Touch(ResolveWritablePath(".pldrs")) then
   UI.CURSCENE = UI.SCENES.CREDITS
+else
+  UI.CURSCENE = UI.SCENES.MMAIN
 end
 
 while true do
