@@ -517,29 +517,26 @@ UI = {
           if icon_w > max_w then max_w = icon_w end
           if icon_h > max_h then max_h = icon_h end
         end
-        local cell_w = max_w
-        local cell_h = max_h
-        local gap_x = 16
-        local gap_y = 14
-        local safe = UI.LAYOUT.SAFE
+        local icon_scale = 0.90
+        local cell_w = Round(max_w * icon_scale)
+        local cell_h = Round(max_h * icon_scale)
+        local gap_x = 14
+        local gap_y = 12
         local safe_l = 32
         local safe_r = 32
         local safe_t = 24
-        local safe_b = 40
-        if safe ~= nil then
-          if safe.L ~= nil and safe.L > safe_l then safe_l = safe.L end
-          if safe.R ~= nil and safe.R > safe_r then safe_r = safe.R end
-          if safe.T ~= nil then safe_t = safe.T end
-          if safe.B ~= nil and safe.B > safe_b then safe_b = safe.B end
-        end
-        local button_bar_h = UI.SCR.Y - UI.LAYOUT.FOOTER_ICON_Y
+        local safe_b = 60
         local box_w = UI.SCR.X - safe_l - safe_r
-        local box_h = UI.SCR.Y - safe_t - safe_b - button_bar_h
+        local box_h = UI.SCR.Y - safe_t - safe_b
         local box_x = safe_l
         local box_y = safe_t
         local row1_y = box_y + Round(box_h * 0.18)
-        local row2_y = box_y + Round(box_h * 0.55)
+        local row2_y = box_y + Round(box_h * 0.52)
         local row3_y = box_y + Round(box_h * 0.82)
+        local row3_max = box_y + box_h - Round(cell_h / 2)
+        if row3_y > row3_max then
+          row3_y = row3_max
+        end
         local function RowCenterX(count)
           local total_w = (count * cell_w) + ((count - 1) * gap_x)
           return Round(box_x + ((box_w - total_w) / 2))
@@ -573,12 +570,12 @@ UI = {
         end
         for x = 1, #UI.MainMenu.opts do
           local icon = IMG[icon_keys[x]]
-          local icon_w = Graphics.getImageWidth(icon)
-          local icon_h = Graphics.getImageHeight(icon)
+          local icon_w = Round(Graphics.getImageWidth(icon) * icon_scale)
+          local icon_h = Round(Graphics.getImageHeight(icon) * icon_scale)
           local cell_x, cell_y = ResolveMenuPosition(x)
           local pos_x = Round(cell_x + ((cell_w - icon_w) / 2))
           local pos_y = Round(cell_y + ((cell_h - icon_h) / 2))
-          Graphics.drawImage(icon, pos_x, pos_y, x == UI.MainMenu.OPT and UI.CCOL.YELLOW or UI.CCOL.GREY)
+          Graphics.drawScaleImage(icon, pos_x, pos_y, icon_w, icon_h, x == UI.MainMenu.OPT and UI.CCOL.YELLOW or UI.CCOL.GREY)
         end
         UI.Footer.Draw({
           triangle = "Credits",
