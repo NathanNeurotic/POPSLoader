@@ -110,6 +110,7 @@ UI = {
       PREVIEW_W = 240;
       PREVIEW_H = 240;
       BTN_BAR_SAFE_BOTTOM = 56;
+      CRT_SAFE_BOTTOM = 56;
       FOOTER_LABEL_W = 140;
       FOOTER_ICON_Y_OFFSET = 24;
       FOOTER_LABEL_Y_OFFSET = 10;
@@ -191,6 +192,22 @@ UI = {
         local safe = UI.LAYOUT.SAFE
         local entries = order or UI.Footer.order
         local count = #entries
+        local bar_height = 0
+        for i = 1, count do
+          local key = entries[i]
+          local icon = IMG[key]
+          if icon ~= nil then
+            local h = Graphics.getImageHeight(icon)
+            if h ~= nil and h > bar_height then
+              bar_height = h
+            end
+          end
+        end
+        local barY = UI.SCR.Y - (UI.LAYOUT.CRT_SAFE_BOTTOM or UI.LAYOUT.BTN_BAR_SAFE_BOTTOM or 0)
+        if bar_height > 0 and (barY + (bar_height / 2)) > (UI.SCR.Y - 8) then
+          barY = UI.SCR.Y - 8 - (bar_height / 2)
+        end
+        local labelY = Round(barY + UI.LAYOUT.FOOTER_LABEL_Y_OFFSET)
         local step = 0
         if count > 1 then
           step = UI.LAYOUT.SAFE_W / (count - 1)
@@ -199,7 +216,7 @@ UI = {
           local key = entries[i]
           local icon = IMG[key]
           local x = Round(safe.L + step * (i - 1))
-          local y = UI.LAYOUT.FOOTER_ICON_Y
+          local y = Round(barY)
           if icon ~= nil then
             local w = Graphics.getImageWidth(icon)
             local h = Graphics.getImageHeight(icon)
@@ -207,7 +224,7 @@ UI = {
           end
           local label = labels and labels[key] or nil
           if label ~= nil then
-            Font.ftPrint(SFONT, x, UI.LAYOUT.FOOTER_LABEL_Y, 8, UI.LAYOUT.FOOTER_LABEL_W, 16, label, UI.CCOL.GREY)
+            Font.ftPrint(SFONT, x, labelY, 8, UI.LAYOUT.FOOTER_LABEL_W, 16, label, UI.CCOL.GREY)
           end
         end
       end;
