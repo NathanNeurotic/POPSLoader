@@ -576,7 +576,7 @@ UI = {
         animActive = false,
         animT = 0,
         animDir = 0,
-        animDurationMs = 320,
+        animDurationMs = 520,
         fromIndex = 1,
         toIndex = 1,
         timer = nil,
@@ -668,9 +668,12 @@ UI = {
         local function Lerp(a, b, t)
           return a + (b - a) * t
         end
-        local function EaseOutCubic(t)
-          local inv = 1 - t
-          return 1 - (inv * inv * inv)
+        local function EaseInOutCubic(t)
+          if t < 0.5 then
+            return 4 * t * t * t
+          end
+          local inv = -2 * t + 2
+          return 1 - (inv * inv * inv) / 2
         end
         local left_x = center_x - side_offset_x
         local right_x = center_x + side_offset_x
@@ -681,7 +684,7 @@ UI = {
         local left2_y = center_y + side_offset2_y
         local right2_y = center_y + side_offset2_y
         if carousel.animActive then
-          local e = EaseOutCubic(carousel.animT)
+          local e = EaseInOutCubic(carousel.animT)
           if carousel.animDir == 1 then
             local out_x = Lerp(center_x, left_x, e)
             local out_y = Lerp(center_y, left_y, e)
