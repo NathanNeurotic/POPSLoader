@@ -577,12 +577,22 @@ UI = {
         local cell_h = Round(max_h * icon_scale)
         local total_rows = 3
         local total_h = (total_rows * cell_h) + ((total_rows - 1) * gap_y)
+        local block_y = box_y + Round((box_h - total_h) / 2)
+        local row1_y = block_y
+        local row2_y = row1_y + cell_h + gap_y
+        local row3_y = row2_y + cell_h + gap_y
         if total_h > box_h then
-          LOGF("Main menu layout overflow: boxH=%d totalH=%d wMax=%d hMax=%d gapX=%d gapY=%d scale=%.3f",
-            box_h, total_h, max_w, max_h, gap_x, gap_y, icon_scale)
+          if UI.MainMenu.layout_overflow_logged ~= true then
+            UI.MainMenu.layout_overflow_logged = true
+            LOGF("Main menu layout overflow: screen=%dx%d safe=%d,%d,%d,%d box=%d,%d,%d,%d menuCount=%d rows=%d",
+              UI.SCR.X, UI.SCR.Y, safe_l, safe_r, safe_t, safe_b, box_x, box_y, box_w, box_h, #UI.MainMenu.opts, total_rows)
+            LOGF("Main menu layout overflow: wMax=%d hMax=%d gapX=%d gapY=%d scale=%.3f wS=%d hS=%d totalH=%d totalW=%d",
+              max_w, max_h, gap_x, gap_y, icon_scale, cell_w, cell_h, total_h, (3 * cell_w) + (2 * gap_x))
+            LOGF("Main menu layout overflow: row1Y=%d row2Y=%d row3Y=%d row1Bottom=%d row2Bottom=%d row3Bottom=%d",
+              row1_y, row2_y, row3_y, row1_y + cell_h, row2_y + cell_h, row3_y + cell_h)
+          end
           error("Main menu layout overflow: rows exceed CRT-safe box")
         end
-        local block_y = box_y + Round((box_h - total_h) / 2)
         if UI.MainMenu.layout_logged ~= true then
           UI.MainMenu.layout_logged = true
           LOGF("Main menu layout: boxW=%d boxH=%d wMax=%d hMax=%d gapX=%d gapY=%d scale=%.3f wS=%d hS=%d",
