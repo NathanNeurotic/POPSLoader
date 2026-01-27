@@ -12,6 +12,25 @@ local UI
 local function Round(value)
   return math.floor(value + 0.5)
 end
+local function Clamp01(t)
+  if t < 0 then return 0 end
+  if t > 1 then return 1 end
+  return t
+end
+local function EaseInOutCubic(t)
+  t = Clamp01(t)
+  if t < 0.5 then
+    return 4 * t * t * t
+  end
+  local f = -2 * t + 2
+  return 1 - (f * f * f) / 2
+end
+local function GuardTrace()
+  if debug ~= nil and debug.traceback ~= nil then
+    return debug.traceback("TRACE", 2)
+  end
+  return "TRACE unavailable"
+end
 UI = {
     LASTSCENE = 5;
     SCENES = {
@@ -57,7 +76,7 @@ UI = {
     end;
     RequestScene = function (SCENE)
       if UI.Transition ~= nil and UI.Transition.Start ~= nil then
-        if UI.Transition.active and UI.Transition.target == SCENE then
+        if UI.Transition.active then
           return
         end
         if UI.CURSCENE ~= SCENE then
@@ -104,6 +123,7 @@ UI = {
       PREVIEW_W = 240;
       PREVIEW_H = 240;
       BTN_BAR_SAFE_BOTTOM = 56;
+      CRT_SAFE_BOTTOM = 56;
       FOOTER_LABEL_W = 140;
       FOOTER_ICON_Y_OFFSET = 24;
       FOOTER_LABEL_Y_OFFSET = 10;
@@ -185,6 +205,22 @@ UI = {
         local safe = UI.LAYOUT.SAFE
         local entries = order or UI.Footer.order
         local count = #entries
+        local bar_height = 0
+        for i = 1, count do
+          local key = entries[i]
+          local icon = IMG[key]
+          if icon ~= nil then
+            local h = Graphics.getImageHeight(icon)
+            if h ~= nil and h > bar_height then
+              bar_height = h
+            end
+          end
+        end
+        local barY = UI.SCR.Y - (UI.LAYOUT.CRT_SAFE_BOTTOM or UI.LAYOUT.BTN_BAR_SAFE_BOTTOM or 0)
+        if bar_height > 0 and (barY + (bar_height / 2)) > (UI.SCR.Y - 8) then
+          barY = UI.SCR.Y - 8 - (bar_height / 2)
+        end
+        local labelY = Round(barY + UI.LAYOUT.FOOTER_LABEL_Y_OFFSET)
         local step = 0
         if count > 1 then
           step = UI.LAYOUT.SAFE_W / (count - 1)
@@ -193,7 +229,7 @@ UI = {
           local key = entries[i]
           local icon = IMG[key]
           local x = Round(safe.L + step * (i - 1))
-          local y = UI.LAYOUT.FOOTER_ICON_Y
+          local y = Round(barY)
           if icon ~= nil then
             local w = Graphics.getImageWidth(icon)
             local h = Graphics.getImageHeight(icon)
@@ -201,7 +237,7 @@ UI = {
           end
           local label = labels and labels[key] or nil
           if label ~= nil then
-            Font.ftPrint(SFONT, x, UI.LAYOUT.FOOTER_LABEL_Y, 8, UI.LAYOUT.FOOTER_LABEL_W, 16, label, UI.CCOL.GREY)
+            Font.ftPrint(SFONT, x, labelY, 8, UI.LAYOUT.FOOTER_LABEL_W, 16, label, UI.CCOL.GREY)
           end
         end
       end;
@@ -243,7 +279,7 @@ UI = {
           Graphics.drawScaleImage(img, x, y, draw_w, draw_h, tint)
         end
         local fade_in_frames = 24
-        local hold_frames = 24
+        local hold_frames = 48
         local fade_out_frames = 24
         for i = 1, fade_in_frames do
           local alpha = Round(128 * (i / fade_in_frames))
@@ -362,6 +398,7 @@ UI = {
       active = false,
       phase = "out",
       target = nil,
+      allowSceneWrite = false,
       timer = nil,
       start = 0,
       duration_out = 700,
@@ -394,7 +431,9 @@ UI = {
         if t >= 1 then
           if UI.Transition.phase == "out" then
             UI.LASTSCENE = UI.CURSCENE
+            UI.Transition.allowSceneWrite = true
             UI.CURSCENE = UI.Transition.target
+            UI.Transition.allowSceneWrite = false
             UI.Transition.phase = "in"
             UI.Transition.start = now
             alpha = 128
@@ -580,12 +619,15 @@ UI = {
       OPT = 1;
       opts = {"USB FAT32", "USB exFAT", "MMCE", "MX4SIO", "APA HDD", "BDM HDD", "SMB"};
       Carousel = {
+        currentIndex = 1,
+        targetIndex = 1,
+        scrollPos = 1.0,
         animActive = false,
         animT = 0,
         animDir = 0,
-        animDurationMs = 520,
-        fromIndex = 1,
-        toIndex = 1,
+        animDurSec = 0.55,
+        slide = 0,
+        allowOptWrite = false,
         timer = nil,
         last_ms = nil
       };
@@ -636,34 +678,46 @@ UI = {
         local dt_ms = now_ms - (carousel.last_ms or now_ms)
         carousel.last_ms = now_ms
         if dt_ms < 0 then dt_ms = 0 end
+        if not carousel.animActive then
+          carousel.currentIndex = UI.MainMenu.OPT
+          carousel.scrollPos = carousel.currentIndex
+          carousel.slide = 0
+        end
         if carousel.animActive then
-          carousel.animT = carousel.animT + (dt_ms / carousel.animDurationMs)
-          if carousel.animT >= 1 then
-            carousel.animT = 1
+          if carousel.currentIndex ~= UI.MainMenu.OPT then
+            LOG("SNAP BUG: currentIndex changed during anim")
+            LOG(GuardTrace())
+          end
+          local dt_sec = dt_ms / 1000
+          carousel.animT = carousel.animT + dt_sec
+          local duration = carousel.animDurSec
+          if duration <= 0 then duration = 0.01 end
+          local t = CLAMP(carousel.animT / duration, 0, 1)
+          assert(type(EaseInOutCubic) == "function")
+          local e = EaseInOutCubic(t)
+          carousel.slide = carousel.animDir * e
+          if t >= 1 then
             carousel.animActive = false
-            UI.MainMenu.OPT = carousel.toIndex
+            carousel.currentIndex = carousel.targetIndex
+            carousel.scrollPos = carousel.currentIndex
+            carousel.animDir = 0
+            carousel.slide = 0
+            carousel.allowOptWrite = true
+            UI.MainMenu.OPT = carousel.currentIndex
+            carousel.allowOptWrite = false
           end
         end
-        local base_index = carousel.animActive and carousel.fromIndex or UI.MainMenu.OPT
-        local center_index = WrapIndex(base_index, profcnt)
-        local prev_index = WrapIndex(center_index - 1, profcnt)
-        local next_index = WrapIndex(center_index + 1, profcnt)
-        local prev2_index = WrapIndex(center_index - 2, profcnt)
-        local next2_index = WrapIndex(center_index + 2, profcnt)
         local center_x = UI.SCR.X_MID
         local usable_top = layout.STATUS_Y + 24
         local usable_bottom = layout.FOOTER_ICON_Y - 24
         local center_y = Round((usable_top + usable_bottom) / 2) + 10
-        local side_offset_x = 120
-        local side_offset2_x = 205
         local side_offset_y = 6
         local side_offset2_y = 10
-        local center_scale = 1.00
-        local side_scale = 0.88
-        local side2_scale = 0.76
-        local center_alpha = 128
-        local side_alpha = 36
-        local side2_alpha = 15
+        local function Clamp(value, min_val, max_val)
+          if value < min_val then return min_val end
+          if value > max_val then return max_val end
+          return value
+        end
         local function ResolveIcon(key)
           return IMG[key] or IMG["MISSING"]
         end
@@ -676,74 +730,34 @@ UI = {
           local pos_y = Round(y - (icon_h / 2))
           Graphics.drawScaleImage(icon, pos_x, pos_y, icon_w, icon_h, color)
         end
-        local function Lerp(a, b, t)
-          return a + (b - a) * t
-        end
-        local function EaseInOutCubic(t)
-          if t < 0.5 then
-            return 4 * t * t * t
+        local first_icon = ResolveIcon(icon_keys[1] or "MISSING")
+        local base_icon_w = Graphics.getImageWidth(first_icon)
+        local slot_margin = 36
+        local max_spacing = (UI.SCR.X - UI.LAYOUT.SAFE.L - UI.LAYOUT.SAFE.R) / 2
+        local slot_spacing = Clamp(base_icon_w + slot_margin, 140, max_spacing)
+        local base_sel = carousel.currentIndex
+        local slide = carousel.slide or 0
+        local center_label_x = center_x
+        local center_label_y = Round(center_y + 90)
+        local center_label_idx = carousel.animActive and carousel.targetIndex or base_sel
+        for k = -2, 2 do
+          local idx = WrapIndex(base_sel + k, profcnt)
+          local x = center_x + slot_spacing * (k - slide)
+          local dist = math.abs(k - slide)
+          local y = center_y
+          if dist <= 1 then
+            y = y + dist * side_offset_y
+          elseif dist <= 2 then
+            y = y + side_offset_y + (dist - 1) * (side_offset2_y - side_offset_y)
+          else
+            y = y + side_offset2_y
           end
-          local inv = -2 * t + 2
-          return 1 - (inv * inv * inv) / 2
+          local alpha = Clamp(1 - dist * 0.35, 0.15, 1.0)
+          local scale = Clamp(1 - dist * 0.12, 0.70, 1.0)
+          local tint = dist < 0.5 and UI.CCOL.YELLOW or Color.new(128, 128, 128, Round(128 * alpha))
+          DrawIcon(idx, x, y, scale, tint)
         end
-        local left_x = center_x - side_offset_x
-        local right_x = center_x + side_offset_x
-        local left2_x = center_x - side_offset2_x
-        local right2_x = center_x + side_offset2_x
-        local left_y = center_y + side_offset_y
-        local right_y = center_y + side_offset_y
-        local left2_y = center_y + side_offset2_y
-        local right2_y = center_y + side_offset2_y
-        if carousel.animActive then
-          local e = EaseInOutCubic(carousel.animT)
-          if carousel.animDir == 1 then
-            local out_x = Lerp(center_x, left_x, e)
-            local out_y = Lerp(center_y, left_y, e)
-            local out_scale = Lerp(center_scale, side_scale, e)
-            local out_alpha = Lerp(center_alpha, side_alpha, e)
-            local in_x = Lerp(right_x, center_x, e)
-            local in_y = Lerp(right_y, center_y, e)
-            local in_scale = Lerp(side_scale, center_scale, e)
-            local in_alpha = Lerp(side_alpha, center_alpha, e)
-            local static_color = Color.new(128, 128, 128, side_alpha)
-            local static2_color = Color.new(128, 128, 128, side2_alpha)
-            DrawIcon(prev2_index, left2_x, left2_y, side2_scale, static2_color)
-            DrawIcon(next2_index, right2_x, right2_y, side2_scale, static2_color)
-            DrawIcon(prev_index, left_x, left_y, side_scale, static_color)
-            DrawIcon(center_index, out_x, out_y, out_scale, Color.new(128, 128, 0, Round(out_alpha)))
-            DrawIcon(next_index, in_x, in_y, in_scale, Color.new(128, 128, 128, Round(in_alpha)))
-            local label_y = Round(out_y + 90)
-            Font.ftPrint(UI.FONT.LABEL, Round(out_x), label_y, 8, UI.SCR.X, 16, UI.MainMenu.opts[center_index], UI.COLORS.TEXT_PRIMARY)
-          elseif carousel.animDir == -1 then
-            local out_x = Lerp(center_x, right_x, e)
-            local out_y = Lerp(center_y, right_y, e)
-            local out_scale = Lerp(center_scale, side_scale, e)
-            local out_alpha = Lerp(center_alpha, side_alpha, e)
-            local in_x = Lerp(left_x, center_x, e)
-            local in_y = Lerp(left_y, center_y, e)
-            local in_scale = Lerp(side_scale, center_scale, e)
-            local in_alpha = Lerp(side_alpha, center_alpha, e)
-            local static_color = Color.new(128, 128, 128, side_alpha)
-            local static2_color = Color.new(128, 128, 128, side2_alpha)
-            DrawIcon(prev2_index, left2_x, left2_y, side2_scale, static2_color)
-            DrawIcon(next2_index, right2_x, right2_y, side2_scale, static2_color)
-            DrawIcon(next_index, right_x, right_y, side_scale, static_color)
-            DrawIcon(center_index, out_x, out_y, out_scale, Color.new(128, 128, 0, Round(out_alpha)))
-            DrawIcon(prev_index, in_x, in_y, in_scale, Color.new(128, 128, 128, Round(in_alpha)))
-            local label_y = Round(out_y + 90)
-            Font.ftPrint(UI.FONT.LABEL, Round(out_x), label_y, 8, UI.SCR.X, 16, UI.MainMenu.opts[center_index], UI.COLORS.TEXT_PRIMARY)
-          end
-        else
-          local side_color = Color.new(128, 128, 128, side_alpha)
-          local side2_color = Color.new(128, 128, 128, side2_alpha)
-          DrawIcon(prev2_index, left2_x, left2_y, side2_scale, side2_color)
-          DrawIcon(next2_index, right2_x, right2_y, side2_scale, side2_color)
-          DrawIcon(prev_index, left_x, left_y, side_scale, side_color)
-          DrawIcon(next_index, right_x, right_y, side_scale, side_color)
-          DrawIcon(center_index, center_x, center_y, center_scale, UI.CCOL.YELLOW)
-          local label_y = Round(center_y + 90)
-          Font.ftPrint(UI.FONT.LABEL, center_x, label_y, 8, UI.SCR.X, 16, UI.MainMenu.opts[center_index], UI.COLORS.TEXT_PRIMARY)
-        end
+        Font.ftPrint(UI.FONT.LABEL, Round(center_label_x), center_label_y, 8, UI.SCR.X, 16, UI.MainMenu.opts[center_label_idx], UI.COLORS.TEXT_PRIMARY)
         UI.Footer.Draw({
           triangle = "Credits",
           circle = "Exit",
@@ -754,18 +768,18 @@ UI = {
         UI.HandleGlobalInput(false)
         if not carousel.animActive then
           if UI.Pad.Events.NAV_RIGHT then
+            carousel.targetIndex = WrapIndex(carousel.currentIndex + 1, profcnt)
+            carousel.animDir = 1
             carousel.animActive = true
             carousel.animT = 0
-            carousel.animDir = 1
-            carousel.fromIndex = UI.MainMenu.OPT
-            carousel.toIndex = WrapIndex(UI.MainMenu.OPT + 1, profcnt)
+            carousel.slide = 0
           end
           if UI.Pad.Events.NAV_LEFT then
+            carousel.targetIndex = WrapIndex(carousel.currentIndex - 1, profcnt)
+            carousel.animDir = -1
             carousel.animActive = true
             carousel.animT = 0
-            carousel.animDir = -1
-            carousel.fromIndex = UI.MainMenu.OPT
-            carousel.toIndex = WrapIndex(UI.MainMenu.OPT - 1, profcnt)
+            carousel.slide = 0
           end
         end
         if UI.Pad.Events.START then UI.SceneChange(UI.SCENES.MPROFILE) end
@@ -1087,5 +1101,55 @@ function Input_GetEvent()
     end
   end
   return UI.Pad.Events
+end
+do
+  local menu = UI.MainMenu
+  if menu ~= nil then
+    menu._OPT = menu.OPT
+    menu.OPT = nil
+    setmetatable(menu, {
+      __index = function (t, key)
+        if key == "OPT" then
+          return rawget(t, "_OPT")
+        end
+        return rawget(t, key)
+      end,
+      __newindex = function (t, key, value)
+        if key == "OPT" then
+          local carousel = t.Carousel
+          if carousel ~= nil and not carousel.allowOptWrite then
+            LOG("ERROR: state change blocked while animationActive (OPT write)")
+            LOG(GuardTrace())
+            return
+          end
+          rawset(t, "_OPT", value)
+          return
+        end
+        rawset(t, key, value)
+      end
+    })
+  end
+  UI._CURSCENE = UI.CURSCENE
+  UI.CURSCENE = nil
+  setmetatable(UI, {
+    __index = function (t, key)
+      if key == "CURSCENE" then
+        return rawget(t, "_CURSCENE")
+      end
+      return rawget(t, key)
+    end,
+    __newindex = function (t, key, value)
+      if key == "CURSCENE" then
+        if UI.Transition == nil or not UI.Transition.allowSceneWrite then
+          LOG("ERROR: scene change blocked outside transition midpoint")
+          LOG(GuardTrace())
+          return
+        end
+        rawset(t, "_CURSCENE", value)
+        return
+      end
+      rawset(t, key, value)
+    end
+  })
 end
 return UI
