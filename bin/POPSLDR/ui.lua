@@ -14,7 +14,6 @@ local function Round(value)
 end
 UI = {
     LASTSCENE = 5;
-    CURSCENE = 5;
     SCENES = {
       GUSBFAT = 1,
       GUSBEXFAT = 2,
@@ -56,15 +55,18 @@ UI = {
         LOG("Device lock set to "..UI.device_lock_name(target))
       end
     end;
-    SceneChange = function (SCENE)
+    RequestScene = function (SCENE)
       if UI.Transition ~= nil and UI.Transition.Start ~= nil then
+        if UI.Transition.active and UI.Transition.target == SCENE then
+          return
+        end
         if UI.CURSCENE ~= SCENE then
           UI.Transition.Start(SCENE)
         end
-        return
       end
-      UI.LASTSCENE = UI.CURSCENE
-      UI.CURSCENE = SCENE
+    end;
+    SceneChange = function (SCENE)
+      UI.RequestScene(SCENE)
     end;
     UpdateVmode = function ()
       Screen.setMode(UI.SCR.VMODE, UI.SCR.X, UI.SCR.Y, CT24, INTERLACED, FIELD)
@@ -76,6 +78,16 @@ UI = {
       RED = Color.new(128,0,0);
       TRANSP_BLACK = Color.new(0,0,0,40);
     };
+    COLORS = {
+      TEXT_PRIMARY = Color.new(140, 200, 255, 128);
+    };
+    FONT = {
+      TITLE = Font.LoadBuiltinFont();
+      LABEL = Font.LoadBuiltinFont();
+      STATUS = SFONT;
+      TITLE_SIZE = 960;
+      LABEL_SIZE = 880;
+    };
     --- UI Constants
     SCR = {
       X = 702;
@@ -83,7 +95,7 @@ UI = {
       Y = 480;
       Y_MID = 480/2;
       VMODE = _480p;
-      BGCOL = Color.new(32,0,32);
+      BGCOL = Color.new(20, 30, 80);
     };
     LAYOUT = {
       SAFE = {L = 40, R = 40, T = 24, B = 28};
@@ -91,6 +103,7 @@ UI = {
       LIST_ROW_H = 20;
       PREVIEW_W = 240;
       PREVIEW_H = 240;
+      BTN_BAR_SAFE_BOTTOM = 56;
       FOOTER_LABEL_W = 140;
       FOOTER_ICON_Y_OFFSET = 24;
       FOOTER_LABEL_Y_OFFSET = 10;
@@ -125,7 +138,7 @@ UI = {
       UI.LAYOUT.PREVIEW_H = preview_h
       UI.LAYOUT.PREVIEW_X = Round(UI.SCR.X - safe.R - preview_w)
       UI.LAYOUT.PREVIEW_Y = Round(UI.SCR.Y_MID - (preview_h / 2))
-      UI.LAYOUT.FOOTER_ICON_Y = Round(UI.SCR.Y - safe.B - UI.LAYOUT.FOOTER_ICON_Y_OFFSET)
+      UI.LAYOUT.FOOTER_ICON_Y = Round(UI.SCR.Y - UI.LAYOUT.BTN_BAR_SAFE_BOTTOM)
       UI.LAYOUT.FOOTER_LABEL_Y = Round(UI.LAYOUT.FOOTER_ICON_Y + UI.LAYOUT.FOOTER_LABEL_Y_OFFSET)
     end;
     GetRowPosition = function (index, count)
@@ -207,6 +220,13 @@ UI = {
     end;
     WelcomeDraw = {
       Play = function ()
+        local function DrawBackground()
+          if IMG.BKG ~= nil then
+            Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
+          else
+            Screen.clear(UI.SCR.BGCOL)
+          end
+        end
         local function DrawSplashCover(img, screen_w, screen_h, alpha)
           local img_w = Graphics.getImageWidth(img)
           local img_h = Graphics.getImageHeight(img)
@@ -227,20 +247,20 @@ UI = {
         local fade_out_frames = 24
         for i = 1, fade_in_frames do
           local alpha = Round(128 * (i / fade_in_frames))
-          Screen.clear(UI.SCR.BGCOL)
+          DrawBackground()
           DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
           Font.ftPrint(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID+100, 8, UI.SCR.X, 16, "Coded By El_isra", Color.new(128,128,128,alpha))
           Screen.flip() -- we dont use UI.flip here because we dont want notifications on the welcome screen
         end
         for _ = 1, hold_frames do
-          Screen.clear(UI.SCR.BGCOL)
+          DrawBackground()
           DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, 128)
           Font.ftPrint(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID+100, 8, UI.SCR.X, 16, "Coded By El_isra", Color.new(128,128,128,128))
           Screen.flip()
         end
         for i = 1, fade_out_frames do
           local alpha = Round(128 * (1 - (i / fade_out_frames)))
-          Screen.clear(UI.SCR.BGCOL)
+          DrawBackground()
           DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
           Font.ftPrint(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID+100, 8, UI.SCR.X, 16, "Coded By El_isra", Color.new(128,128,128,alpha))
           Screen.flip()
@@ -255,7 +275,9 @@ UI = {
         if IMG.BKG ~= nil then
           Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
         end
-        Graphics.drawRect(0, 20, UI.SCR.X, 398, UI.CCOL.TRANSP_BLACK)
+        if UI.CURSCENE ~= UI.SCENES.MMAIN then
+          Graphics.drawRect(0, 20, UI.SCR.X, 398, UI.CCOL.TRANSP_BLACK)
+        end
       end;
     };
     Modal = {
@@ -342,8 +364,8 @@ UI = {
       target = nil,
       timer = nil,
       start = 0,
-      duration_out = 330,
-      duration_in = 330,
+      duration_out = 700,
+      duration_in = 700,
       Start = function (target)
         if UI.Transition.timer == nil then
           UI.Transition.timer = Timer.new()
@@ -557,21 +579,35 @@ UI = {
     MainMenu = {
       OPT = 1;
       opts = {"USB FAT32", "USB exFAT", "MMCE", "MX4SIO", "APA HDD", "BDM HDD", "SMB"};
+      Carousel = {
+        animActive = false,
+        animT = 0,
+        animDir = 0,
+        animDurationMs = 520,
+        fromIndex = 1,
+        toIndex = 1,
+        timer = nil,
+        last_ms = nil
+      };
       Play = function ()
         local layout = UI.LAYOUT
         local profcnt = #UI.MainMenu.opts
-        Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Welcome to POPStarter Loader", UI.CCOL.GREY)
+        Font.ftPrint(UI.FONT.TITLE, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Welcome to POPStarter Loader", UI.COLORS.TEXT_PRIMARY)
         local status_y = layout.STATUS_Y
         if UI.boot_device ~= nil and UI.boot_device ~= DEVLOCK.NONE then
-          Font.ftPrint(SFONT, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Booted from: "..UI.device_lock_name(UI.boot_device), UI.CCOL.GREY)
+          Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Booted from: "..UI.device_lock_name(UI.boot_device), UI.COLORS.TEXT_PRIMARY)
           status_y = status_y + 12
         end
         if UI.device_lock ~= nil and UI.device_lock ~= DEVLOCK.NONE then
-          Font.ftPrint(SFONT, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Active Device: "..UI.device_lock_name(UI.device_lock).." (restart to switch)", UI.CCOL.GREY)
+          Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Active Device: "..UI.device_lock_name(UI.device_lock).." (restart to switch)", UI.COLORS.TEXT_PRIMARY)
           status_y = status_y + 12
         end
         if UI.boot_locks ~= nil and (UI.boot_locks[DEVLOCK.USB] or UI.boot_locks[DEVLOCK.MMCE] or UI.boot_locks[DEVLOCK.MX4SIO]) then
-          Font.ftPrint(SFONT, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Some devices unavailable this session", UI.CCOL.GREY)
+          Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Some devices unavailable this session", UI.COLORS.TEXT_PRIMARY)
+        end
+        if UI.BUILD_INFO ~= nil and UI.BUILD_INFO.stamp ~= nil then
+          local stamp_y = Round(layout.FOOTER_LABEL_Y - 18)
+          Font.ftPrint(SFONT, layout.SAFE.L, stamp_y, 0, UI.SCR.X, 16, UI.BUILD_INFO.stamp, UI.CCOL.GREY)
         end
         local icon_map = {
           ["USB FAT32"] = "USB",
@@ -583,174 +619,130 @@ UI = {
           ["SMB"] = "SMB"
         }
         local icon_keys = {}
-        local max_w = 0
-        local max_h = 0
         for x = 1, #UI.MainMenu.opts do
           local opt = UI.MainMenu.opts[x]
           local key = icon_map[opt] or opt
           icon_keys[x] = key
-          local icon = IMG[key]
-          if icon == nil then
-            error("Missing icon for menu option '"..tostring(opt).."' (key '"..tostring(key).."')")
-          end
-          local icon_w = Graphics.getImageWidth(icon)
-          local icon_h = Graphics.getImageHeight(icon)
-          if icon_w > max_w then max_w = icon_w end
-          if icon_h > max_h then max_h = icon_h end
         end
-        local button_bar_h = nil
-        if UI.LAYOUT ~= nil and UI.LAYOUT.FOOTER_ICON_Y ~= nil then
-          button_bar_h = UI.SCR.Y - UI.LAYOUT.FOOTER_ICON_Y
+        local function WrapIndex(index, count)
+          return ((index - 1) % count) + 1
         end
-        local base_safe_b = button_bar_h and (button_bar_h + 12) or 56
-        local min_safe_b = button_bar_h and (button_bar_h + 4) or 48
-        local function ComputeScale(box_w, box_h, gx, gy)
-          local row_w_unscaled = (3 * max_w) + (2 * gx)
-          local total_h_unscaled = (3 * max_h) + (2 * gy)
-          local scale_w = box_w / row_w_unscaled
-          local scale_h = box_h / total_h_unscaled
-          local scale = math.min(1.0, scale_w, scale_h)
-          return scale, scale_w, scale_h
+        local carousel = UI.MainMenu.Carousel
+        if carousel.timer == nil then
+          carousel.timer = Timer.new()
+          carousel.last_ms = Timer.getTime(carousel.timer)
         end
-        local attempts = {
-          {gap_x = 12, gap_y = 10, min_scale = 0.80, safe_l = 16, safe_r = 16, safe_t = 16, safe_b = base_safe_b},
-          {gap_x = 8, gap_y = 8, min_scale = 0.80, safe_l = 16, safe_r = 16, safe_t = 16, safe_b = base_safe_b},
-          {gap_x = 6, gap_y = 6, min_scale = 0.80, safe_l = 16, safe_r = 16, safe_t = 16, safe_b = base_safe_b},
-          {gap_x = 6, gap_y = 6, min_scale = 0.80, safe_l = 12, safe_r = 12, safe_t = 12, safe_b = math.max(base_safe_b - 8, min_safe_b)},
-          {gap_x = 6, gap_y = 6, min_scale = 0.75, safe_l = 12, safe_r = 12, safe_t = 12, safe_b = math.max(base_safe_b - 8, min_safe_b)}
-        }
-        local layout = nil
-        for i = 1, #attempts do
-          local attempt = attempts[i]
-          local box_w = UI.SCR.X - attempt.safe_l - attempt.safe_r
-          local box_h = UI.SCR.Y - attempt.safe_t - attempt.safe_b
-          local icon_scale, scale_w, scale_h = ComputeScale(box_w, box_h, attempt.gap_x, attempt.gap_y)
-          if icon_scale >= attempt.min_scale then
-            local cell_w = Round(max_w * icon_scale)
-            local cell_h = Round(max_h * icon_scale)
-            local total_rows = 3
-            local total_h = (total_rows * cell_h) + ((total_rows - 1) * attempt.gap_y)
-            local total_w = (3 * cell_w) + (2 * attempt.gap_x)
-            if total_h <= box_h and total_w <= box_w then
-              layout = {
-                safe_l = attempt.safe_l,
-                safe_r = attempt.safe_r,
-                safe_t = attempt.safe_t,
-                safe_b = attempt.safe_b,
-                box_w = box_w,
-                box_h = box_h,
-                box_x = attempt.safe_l,
-                box_y = attempt.safe_t,
-                gap_x = attempt.gap_x,
-                gap_y = attempt.gap_y,
-                icon_scale = icon_scale,
-                cell_w = cell_w,
-                cell_h = cell_h,
-                total_h = total_h,
-                total_w = total_w,
-                total_rows = total_rows
-              }
-              break
-            end
+        local now_ms = Timer.getTime(carousel.timer)
+        local dt_ms = now_ms - (carousel.last_ms or now_ms)
+        carousel.last_ms = now_ms
+        if dt_ms < 0 then dt_ms = 0 end
+        if carousel.animActive then
+          carousel.animT = carousel.animT + (dt_ms / carousel.animDurationMs)
+          if carousel.animT >= 1 then
+            carousel.animT = 1
+            carousel.animActive = false
+            UI.MainMenu.OPT = carousel.toIndex
           end
         end
-        if layout == nil then
-          local final = attempts[#attempts]
-          local box_w = UI.SCR.X - final.safe_l - final.safe_r
-          local box_h = UI.SCR.Y - final.safe_t - final.safe_b
-          local icon_scale = ComputeScale(box_w, box_h, final.gap_x, final.gap_y)
-          local cell_w = Round(max_w * icon_scale)
-          local cell_h = Round(max_h * icon_scale)
-          local total_rows = 3
-          local total_h = (total_rows * cell_h) + ((total_rows - 1) * final.gap_y)
-          local total_w = (3 * cell_w) + (2 * final.gap_x)
-          local block_y = final.safe_t + Round((box_h - total_h) / 2)
-          local row1_y = block_y
-          local row2_y = row1_y + cell_h + final.gap_y
-          local row3_y = row2_y + cell_h + final.gap_y
-          if UI.MainMenu.layout_overflow_logged ~= true then
-            UI.MainMenu.layout_overflow_logged = true
-            LOGF("Main menu layout overflow: screen=%dx%d safe=%d,%d,%d,%d box=%d,%d,%d,%d menuCount=%d rows=%d",
-              UI.SCR.X, UI.SCR.Y, final.safe_l, final.safe_r, final.safe_t, final.safe_b,
-              final.safe_l, final.safe_t, box_w, box_h, #UI.MainMenu.opts, total_rows)
-            LOGF("Main menu layout overflow: wMax=%d hMax=%d gapX=%d gapY=%d scale=%.3f wS=%d hS=%d totalH=%d totalW=%d",
-              max_w, max_h, final.gap_x, final.gap_y, icon_scale, cell_w, cell_h, total_h, total_w)
-            LOGF("Main menu layout overflow: row1Y=%d row2Y=%d row3Y=%d row1Bottom=%d row2Bottom=%d row3Bottom=%d",
-              row1_y, row2_y, row3_y, row1_y + cell_h, row2_y + cell_h, row3_y + cell_h)
-          end
-          error("Main menu layout overflow: rows exceed CRT-safe box")
+        local base_index = carousel.animActive and carousel.fromIndex or UI.MainMenu.OPT
+        local center_index = WrapIndex(base_index, profcnt)
+        local prev_index = WrapIndex(center_index - 1, profcnt)
+        local next_index = WrapIndex(center_index + 1, profcnt)
+        local prev2_index = WrapIndex(center_index - 2, profcnt)
+        local next2_index = WrapIndex(center_index + 2, profcnt)
+        local center_x = UI.SCR.X_MID
+        local usable_top = layout.STATUS_Y + 24
+        local usable_bottom = layout.FOOTER_ICON_Y - 24
+        local center_y = Round((usable_top + usable_bottom) / 2) + 10
+        local side_offset_x = 120
+        local side_offset2_x = 205
+        local side_offset_y = 6
+        local side_offset2_y = 10
+        local center_scale = 1.00
+        local side_scale = 0.88
+        local side2_scale = 0.76
+        local center_alpha = 128
+        local side_alpha = 36
+        local side2_alpha = 15
+        local function ResolveIcon(key)
+          return IMG[key] or IMG["MISSING"]
         end
-        local safe_l = layout.safe_l
-        local safe_r = layout.safe_r
-        local safe_t = layout.safe_t
-        local safe_b = layout.safe_b
-        local box_w = layout.box_w
-        local box_h = layout.box_h
-        local box_x = layout.box_x
-        local box_y = layout.box_y
-        local gap_x = layout.gap_x
-        local gap_y = layout.gap_y
-        local icon_scale = layout.icon_scale
-        local cell_w = layout.cell_w
-        local cell_h = layout.cell_h
-        local total_rows = layout.total_rows
-        local total_h = layout.total_h
-        local block_y = box_y + Round((box_h - total_h) / 2)
-        local row1_y = block_y
-        local row2_y = row1_y + cell_h + gap_y
-        local row3_y = row2_y + cell_h + gap_y
-        if UI.MainMenu.layout_logged ~= true then
-          UI.MainMenu.layout_logged = true
-          LOGF("Main menu layout: boxW=%d boxH=%d wMax=%d hMax=%d gapX=%d gapY=%d scale=%.3f wS=%d hS=%d",
-            box_w, box_h, max_w, max_h, gap_x, gap_y, icon_scale, cell_w, cell_h)
+        local function DrawIcon(index, x, y, scale, color)
+          local key = icon_keys[index]
+          local icon = ResolveIcon(key)
+          local icon_w = Round(Graphics.getImageWidth(icon) * scale)
+          local icon_h = Round(Graphics.getImageHeight(icon) * scale)
+          local pos_x = Round(x - (icon_w / 2))
+          local pos_y = Round(y - (icon_h / 2))
+          Graphics.drawScaleImage(icon, pos_x, pos_y, icon_w, icon_h, color)
         end
-        local function RowStartX(count)
-          if count == 1 then
-            return box_x + Round((box_w - cell_w) / 2)
-          end
-          local row_w = (count * cell_w) + ((count - 1) * gap_x)
-          return box_x + Round((box_w - row_w) / 2)
+        local function Lerp(a, b, t)
+          return a + (b - a) * t
         end
-        local function RowY(row)
-          return block_y + ((row - 1) * (cell_h + gap_y))
+        local function EaseInOutCubic(t)
+          if t < 0.5 then
+            return 4 * t * t * t
+          end
+          local inv = -2 * t + 2
+          return 1 - (inv * inv * inv) / 2
         end
-        local function ResolveMenuPosition(index)
-          local row
-          local col
-          local count
-          if index == 1 then
-            row = 1
-            col = 1
-            count = 1
-          else
-            local idx = index - 2
-            row = 2 + math.floor(idx / 3)
-            col = (idx % 3) + 1
-            count = 3
+        local left_x = center_x - side_offset_x
+        local right_x = center_x + side_offset_x
+        local left2_x = center_x - side_offset2_x
+        local right2_x = center_x + side_offset2_x
+        local left_y = center_y + side_offset_y
+        local right_y = center_y + side_offset_y
+        local left2_y = center_y + side_offset2_y
+        local right2_y = center_y + side_offset2_y
+        if carousel.animActive then
+          local e = EaseInOutCubic(carousel.animT)
+          if carousel.animDir == 1 then
+            local out_x = Lerp(center_x, left_x, e)
+            local out_y = Lerp(center_y, left_y, e)
+            local out_scale = Lerp(center_scale, side_scale, e)
+            local out_alpha = Lerp(center_alpha, side_alpha, e)
+            local in_x = Lerp(right_x, center_x, e)
+            local in_y = Lerp(right_y, center_y, e)
+            local in_scale = Lerp(side_scale, center_scale, e)
+            local in_alpha = Lerp(side_alpha, center_alpha, e)
+            local static_color = Color.new(128, 128, 128, side_alpha)
+            local static2_color = Color.new(128, 128, 128, side2_alpha)
+            DrawIcon(prev2_index, left2_x, left2_y, side2_scale, static2_color)
+            DrawIcon(next2_index, right2_x, right2_y, side2_scale, static2_color)
+            DrawIcon(prev_index, left_x, left_y, side_scale, static_color)
+            DrawIcon(center_index, out_x, out_y, out_scale, Color.new(128, 128, 0, Round(out_alpha)))
+            DrawIcon(next_index, in_x, in_y, in_scale, Color.new(128, 128, 128, Round(in_alpha)))
+            local label_y = Round(out_y + 90)
+            Font.ftPrint(UI.FONT.LABEL, Round(out_x), label_y, 8, UI.SCR.X, 16, UI.MainMenu.opts[center_index], UI.COLORS.TEXT_PRIMARY)
+          elseif carousel.animDir == -1 then
+            local out_x = Lerp(center_x, right_x, e)
+            local out_y = Lerp(center_y, right_y, e)
+            local out_scale = Lerp(center_scale, side_scale, e)
+            local out_alpha = Lerp(center_alpha, side_alpha, e)
+            local in_x = Lerp(left_x, center_x, e)
+            local in_y = Lerp(left_y, center_y, e)
+            local in_scale = Lerp(side_scale, center_scale, e)
+            local in_alpha = Lerp(side_alpha, center_alpha, e)
+            local static_color = Color.new(128, 128, 128, side_alpha)
+            local static2_color = Color.new(128, 128, 128, side2_alpha)
+            DrawIcon(prev2_index, left2_x, left2_y, side2_scale, static2_color)
+            DrawIcon(next2_index, right2_x, right2_y, side2_scale, static2_color)
+            DrawIcon(next_index, right_x, right_y, side_scale, static_color)
+            DrawIcon(center_index, out_x, out_y, out_scale, Color.new(128, 128, 0, Round(out_alpha)))
+            DrawIcon(prev_index, in_x, in_y, in_scale, Color.new(128, 128, 128, Round(in_alpha)))
+            local label_y = Round(out_y + 90)
+            Font.ftPrint(UI.FONT.LABEL, Round(out_x), label_y, 8, UI.SCR.X, 16, UI.MainMenu.opts[center_index], UI.COLORS.TEXT_PRIMARY)
           end
-          local start_x = RowStartX(count)
-          local x = Round(start_x + ((col - 1) * (cell_w + gap_x)))
-          local y = RowY(row)
-          if x < box_x or (x + cell_w) > (box_x + box_w) then
-            LOGF("Main menu layout overflow: x=%d y=%d w=%d h=%d boxW=%d boxH=%d gapX=%d gapY=%d scale=%.3f",
-              x, y, cell_w, cell_h, box_w, box_h, gap_x, gap_y, icon_scale)
-            error("Main menu layout overflow: icon exceeds CRT-safe width")
-          end
-          if y < box_y or (y + cell_h) > (box_y + box_h) then
-            LOGF("Main menu layout overflow: x=%d y=%d w=%d h=%d boxW=%d boxH=%d gapX=%d gapY=%d scale=%.3f",
-              x, y, cell_w, cell_h, box_w, box_h, gap_x, gap_y, icon_scale)
-            error("Main menu layout overflow: icon exceeds CRT-safe height")
-          end
-          return x, y
-        end
-        for x = 1, #UI.MainMenu.opts do
-          local icon = IMG[icon_keys[x]]
-          local icon_w = Round(Graphics.getImageWidth(icon) * icon_scale)
-          local icon_h = Round(Graphics.getImageHeight(icon) * icon_scale)
-          local cell_x, cell_y = ResolveMenuPosition(x)
-          local pos_x = Round(cell_x + ((cell_w - icon_w) / 2))
-          local pos_y = Round(cell_y + ((cell_h - icon_h) / 2))
-          Graphics.drawScaleImage(icon, pos_x, pos_y, icon_w, icon_h, x == UI.MainMenu.OPT and UI.CCOL.YELLOW or UI.CCOL.GREY)
+        else
+          local side_color = Color.new(128, 128, 128, side_alpha)
+          local side2_color = Color.new(128, 128, 128, side2_alpha)
+          DrawIcon(prev2_index, left2_x, left2_y, side2_scale, side2_color)
+          DrawIcon(next2_index, right2_x, right2_y, side2_scale, side2_color)
+          DrawIcon(prev_index, left_x, left_y, side_scale, side_color)
+          DrawIcon(next_index, right_x, right_y, side_scale, side_color)
+          DrawIcon(center_index, center_x, center_y, center_scale, UI.CCOL.YELLOW)
+          local label_y = Round(center_y + 90)
+          Font.ftPrint(UI.FONT.LABEL, center_x, label_y, 8, UI.SCR.X, 16, UI.MainMenu.opts[center_index], UI.COLORS.TEXT_PRIMARY)
         end
         UI.Footer.Draw({
           triangle = "Credits",
@@ -760,8 +752,22 @@ UI = {
         })
         Input_GetEvent()
         UI.HandleGlobalInput(false)
-        if UI.Pad.Events.NAV_RIGHT then UI.MainMenu.OPT = CLAMP(UI.MainMenu.OPT+1, 1, profcnt) end
-        if UI.Pad.Events.NAV_LEFT  then UI.MainMenu.OPT = CLAMP(UI.MainMenu.OPT-1, 1, profcnt) end
+        if not carousel.animActive then
+          if UI.Pad.Events.NAV_RIGHT then
+            carousel.animActive = true
+            carousel.animT = 0
+            carousel.animDir = 1
+            carousel.fromIndex = UI.MainMenu.OPT
+            carousel.toIndex = WrapIndex(UI.MainMenu.OPT + 1, profcnt)
+          end
+          if UI.Pad.Events.NAV_LEFT then
+            carousel.animActive = true
+            carousel.animT = 0
+            carousel.animDir = -1
+            carousel.fromIndex = UI.MainMenu.OPT
+            carousel.toIndex = WrapIndex(UI.MainMenu.OPT - 1, profcnt)
+          end
+        end
         if UI.Pad.Events.START then UI.SceneChange(UI.SCENES.MPROFILE) end
         if UI.Pad.Events.EXIT then UI.SceneChange(UI.SCENES.CREDITS) end
         if UI.Pad.Events.BACK then UI.Modal.OpenExit() end
@@ -1012,6 +1018,51 @@ UI = {
       end
     };
   }
+local function LoadBuildInfo()
+  local candidates = {
+    "BUILD_INFO.txt",
+    "POPSLDR/BUILD_INFO.txt"
+  }
+  local info = {
+    hash = nil,
+    timestamp = nil,
+    stamp = nil
+  }
+  for _, rel in ipairs(candidates) do
+    local resolved = System.resolveAsset(rel) or rel
+    local fd = System.openFile(resolved, FREAD)
+    if type(fd) == "number" and fd >= 0 then
+      local size = System.sizeFile(fd)
+      local data = ""
+      if type(size) == "number" and size > 0 then
+        data = System.readFile(fd, size) or ""
+      end
+      System.closeFile(fd)
+      if data ~= "" then
+        local lines = {}
+        for line in string.gmatch(data, "[^\r\n]+") do
+          lines[#lines + 1] = line
+        end
+        info.hash = lines[1]
+        info.timestamp = lines[2]
+        break
+      end
+    end
+  end
+  if info.hash ~= nil and info.timestamp ~= nil then
+    info.stamp = string.format("build %s %s", info.hash, info.timestamp)
+  end
+  return info
+end
+UI.BUILD_INFO = LoadBuildInfo()
+if UI.FONT ~= nil then
+  if UI.FONT.TITLE ~= nil then
+    Font.ftSetCharSize(UI.FONT.TITLE, UI.FONT.TITLE_SIZE, UI.FONT.TITLE_SIZE)
+  end
+  if UI.FONT.LABEL ~= nil then
+    Font.ftSetCharSize(UI.FONT.LABEL, UI.FONT.LABEL_SIZE, UI.FONT.LABEL_SIZE)
+  end
+end
 _G.UI = UI
 UI.GAME_SCENES = {
   [UI.SCENES.GUSBFAT] = true,
