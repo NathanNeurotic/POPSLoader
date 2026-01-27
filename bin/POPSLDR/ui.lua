@@ -161,15 +161,17 @@ UI = {
     };
     Footer = {
       order = {"triangle", "circle", "cross", "square"};
-      Draw = function (labels)
+      order_with_r2 = {"triangle", "circle", "cross", "square", "R2"};
+      Draw = function (labels, order)
         local safe = UI.LAYOUT.SAFE
-        local count = #UI.Footer.order
+        local entries = order or UI.Footer.order
+        local count = #entries
         local step = 0
         if count > 1 then
           step = UI.LAYOUT.SAFE_W / (count - 1)
         end
         for i = 1, count do
-          local key = UI.Footer.order[i]
+          local key = entries[i]
           local icon = IMG[key]
           local x = Round(safe.L + step * (i - 1))
           local y = UI.LAYOUT.FOOTER_ICON_Y
@@ -393,6 +395,17 @@ UI = {
         if UI.Pad.Events.NAV_RIGHT then UI.GameList.CURR = CLAMP(UI.GameList.CURR+UI.GameList.MAXDRAW, 1, ammount) end
         if UI.Pad.Events.NAV_UP then UI.GameList.CURR = CLAMP(UI.GameList.CURR-1, 1, ammount) end
         if UI.Pad.Events.NAV_LEFT then UI.GameList.CURR = CLAMP(UI.GameList.CURR-UI.GameList.MAXDRAW, 1, ammount) end
+        if UI.Pad.Events.R2 then
+          if UI.CURSCENE == UI.SCENES.GUSBFAT then
+            PLDR.ResetPopstarterPack()
+          elseif UI.CURSCENE == UI.SCENES.GUSBEXFAT then
+            PLDR.ApplyPopstarterPack("USBEXFAT")
+          elseif UI.CURSCENE == UI.SCENES.GSMB and UI.device_lock == DEVLOCK.MMCE then
+            PLDR.ApplyPopstarterPack("MMCE")
+          elseif UI.CURSCENE == UI.SCENES.GMX4SIO then
+            PLDR.ApplyPopstarterPack("MX4SIO")
+          end
+        end
         if UI.Pad.Events.CONFIRM and ammount > 0 then
           if not doesFileExist(PLDR.POPSTARTER_PATH) then
             UI.Notif_queue.add("Cant find POPSTARTER ELF\n"..PLDR.POPSTARTER_PATH)
@@ -405,12 +418,27 @@ UI = {
             PLDR.RunPOPStarterGame(PLDR.GAMEPATH, PLDR.GAMES[UI.GameList.CURR])
           end
         end
-        UI.Footer.Draw({
+        local footer_labels = {
           triangle = "Credits",
           circle = "Back",
           cross = "Confirm",
           square = "Cover Art"
-        })
+        }
+        local footer_order = UI.Footer.order
+        if UI.CURSCENE == UI.SCENES.GUSBFAT then
+          footer_labels.R2 = "Reset POPSTARTER"
+          footer_order = UI.Footer.order_with_r2
+        elseif UI.CURSCENE == UI.SCENES.GUSBEXFAT then
+          footer_labels.R2 = "Install USBEXFAT pack"
+          footer_order = UI.Footer.order_with_r2
+        elseif UI.CURSCENE == UI.SCENES.GSMB and UI.device_lock == DEVLOCK.MMCE then
+          footer_labels.R2 = "Install MMCE pack"
+          footer_order = UI.Footer.order_with_r2
+        elseif UI.CURSCENE == UI.SCENES.GMX4SIO then
+          footer_labels.R2 = "Install MX4SIO pack"
+          footer_order = UI.Footer.order_with_r2
+        end
+        UI.Footer.Draw(footer_labels, footer_order)
       end;
     };
     ProfileQuery = {
@@ -667,6 +695,7 @@ UI = {
         EXIT = false,
         START = false,
         SELECT = false,
+        R2 = false,
         ANY = false,
       };
       NavHeld = {};
@@ -702,6 +731,7 @@ UI = {
         UI.Pad.Events.EXIT = false
         UI.Pad.Events.START = false
         UI.Pad.Events.SELECT = false
+        UI.Pad.Events.R2 = false
         UI.Pad.Events.ANY = false
 
         local function emit(event)
@@ -728,6 +758,7 @@ UI = {
         if (pressed & PAD_TRIANGLE) ~= 0 then emit_action("EXIT") end
         if (pressed & PAD_START) ~= 0 then emit("START") end
         if (pressed & PAD_SELECT) ~= 0 then emit("SELECT") end
+        if (pressed & PAD_R2) ~= 0 then emit_action("R2") end
 
         local function resolve_nav(dir, is_down)
           local was_down = UI.Pad.NavHeld[dir] == true

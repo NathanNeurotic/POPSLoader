@@ -190,6 +190,7 @@ package: $(EE_BIN_PKD)
 	cp $(EE_BIN_PKD) $(PKG_DIR)/
 	cp bin/changelog LICENSE README.md $(PKG_DIR)/
 	find bin/POPSLDR -maxdepth 1 -type f -exec cp {} $(PKG_DIR)/ \;
+	@if [ -d bin/POPSTARTER ]; then cp -r bin/POPSTARTER $(PKG_DIR)/; fi
 	@if ls bin/POPSLDR/IMG/*.png >/dev/null 2>&1; then cp bin/POPSLDR/IMG/*.png $(PKG_DIR)/; fi
 	@if ls bin/POPSLDR/IRX/*.irx >/dev/null 2>&1; then cp bin/POPSLDR/IRX/*.irx $(PKG_DIR)/; fi
 	cd $(PKG_DIR); 7z a ../$(POPSLDR_PKG) .

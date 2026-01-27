@@ -290,6 +290,144 @@ if UI.DEVLOCK ~= nil then
 end
 require("images")
 
+local POPSTARTER_PACK_ROOT = "mc0:/POPSTARTER"
+local POPSTARTER_PACK_FILES = {
+  "usbd.irx",
+  "usbhdfsd.irx",
+  "icon.sys",
+  "list.icn",
+  "del.icn"
+}
+local POPSTARTER_PACKS = {
+  USBEXFAT = {
+    label = "USB exFAT",
+    folder = "USBEXFAT"
+  },
+  MMCE = {
+    label = "MMCE",
+    folder = "MMCE"
+  },
+  MX4SIO = {
+    label = "MX4SIO",
+    folder = "MX4SIO"
+  }
+}
+for key, pack in pairs(POPSTARTER_PACKS) do
+  pack.files = {}
+  for i = 1, #POPSTARTER_PACK_FILES do
+    local name = POPSTARTER_PACK_FILES[i]
+    pack.files[i] = {
+      dest = name,
+      source = string.format("POPSTARTER/%s/%s", pack.folder, name)
+    }
+  end
+end
+
+local function ResolvePackSource(rel)
+  return ResolveAsset(rel) or JoinPath(APP_DIR_LOCAL, rel)
+end
+
+local function EnsureDirectory(path)
+  if doesFolderExist(path) then
+    return true
+  end
+  local ok, err = pcall(System.createDirectory, path)
+  if not ok then
+    LOG("CreateDirectory failed:", path, err)
+  end
+  return ok
+end
+
+local function RemoveDirectoryRecursive(path)
+  local normalized = NormalizeDirPath(path)
+  if not doesFolderExist(normalized) then
+    return true
+  end
+  local ok, entries = pcall(System.listDirectory, normalized)
+  if not ok or entries == nil then
+    return false, "list failed"
+  end
+  for i = 1, #entries do
+    local entry = entries[i]
+    if entry ~= nil and entry.name ~= nil then
+      local name = entry.name
+      if name ~= "." and name ~= ".." then
+        local child = JoinPath(normalized, name)
+        if entry.directory then
+          local child_ok, child_err = RemoveDirectoryRecursive(child)
+          if not child_ok then
+            return false, child_err
+          end
+          local rm_ok, rm_err = pcall(System.removeDirectory, child)
+          if not rm_ok then
+            return false, rm_err
+          end
+        else
+          local rm_ok, rm_err = pcall(System.removeFile, child)
+          if not rm_ok then
+            return false, rm_err
+          end
+        end
+      end
+    end
+  end
+  return true
+end
+
+function PLDR.ApplyPopstarterPack(pack_key)
+  local pack = POPSTARTER_PACKS[pack_key]
+  if pack == nil then
+    UI.Notif_queue.add("Unknown POPSTARTER pack: "..tostring(pack_key))
+    return false
+  end
+  if not EnsureDirectory(POPSTARTER_PACK_ROOT) then
+    UI.Notif_queue.add("Failed to create "..POPSTARTER_PACK_ROOT)
+    return false
+  end
+  local failures = {}
+  for i = 1, #pack.files do
+    local file = pack.files[i]
+    local source = ResolvePackSource(file.source)
+    local dest = POPSTARTER_PACK_ROOT.."/"..file.dest
+    if source == nil or not doesFileExist(source) then
+      failures[#failures + 1] = file.dest
+    else
+      local ok, err = pcall(System.copyFile, source, dest)
+      if not ok then
+        LOG("Copy failed:", source, dest, err)
+        failures[#failures + 1] = file.dest
+      end
+    end
+  end
+  if #failures > 0 then
+    UI.Notif_queue.add("Failed to install "..pack.label.." pack")
+    return false
+  end
+  UI.Notif_queue.add("Installed "..pack.label.." pack to "..POPSTARTER_PACK_ROOT)
+  return true
+end
+
+function PLDR.ResetPopstarterPack()
+  if not doesFolderExist(POPSTARTER_PACK_ROOT) then
+    UI.Notif_queue.add("POPSTARTER reset: folder not found")
+    return true
+  end
+  local ok, err = RemoveDirectoryRecursive(POPSTARTER_PACK_ROOT)
+  if not ok then
+    UI.Notif_queue.add("POPSTARTER reset failed")
+    LOG("Reset POPSTARTER failed:", err)
+    return false
+  end
+  local rm_ok, rm_err = pcall(System.removeDirectory, POPSTARTER_PACK_ROOT)
+  if not rm_ok then
+    UI.Notif_queue.add("POPSTARTER reset failed")
+    LOG("Remove POPSTARTER dir failed:", rm_err)
+    return false
+  end
+  UI.Notif_queue.add("POPSTARTER reset: mc0:/POPSTARTER removed")
+  return true
+end
+
 function PLDR.DetectMMCESlot()
   if PLDR.MMCE.PROBED then
     return PLDR.MMCE.PREFIX
