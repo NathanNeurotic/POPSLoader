@@ -589,12 +589,13 @@ UI = {
       OPT = 1;
       opts = {"USB FAT32", "USB exFAT", "MMCE", "MX4SIO", "APA HDD", "BDM HDD", "SMB"};
       Carousel = {
+        currentIndex = 1,
+        targetIndex = 1,
+        scrollPos = 1.0,
         animActive = false,
         animT = 0,
-        animDurationMs = 2000,
-        scroll = 1,
-        fromScroll = 1,
-        toScroll = 1,
+        animDir = 0,
+        animDurMs = 650,
         allowOptWrite = false,
         timer = nil,
         last_ms = nil
@@ -646,33 +647,36 @@ UI = {
         local dt_ms = now_ms - (carousel.last_ms or now_ms)
         carousel.last_ms = now_ms
         if dt_ms < 0 then dt_ms = 0 end
+        if not carousel.animActive then
+          carousel.currentIndex = UI.MainMenu.OPT
+          carousel.scrollPos = carousel.currentIndex
+        end
         if carousel.animActive then
-          if UI.MainMenu.OPT ~= carousel.fromScroll then
-            LOG("ERROR: state changed while animationActive")
+          if carousel.currentIndex ~= UI.MainMenu.OPT then
+            LOG("SNAP BUG: currentIndex changed during anim")
             LOG(GuardTrace())
           end
-          carousel.animT = carousel.animT + (dt_ms / carousel.animDurationMs)
-          if carousel.animT >= 1 then
-            carousel.animT = 1
-            carousel.allowOptWrite = true
-            UI.MainMenu.OPT = WrapIndex(carousel.toScroll, profcnt)
-            carousel.allowOptWrite = false
+          carousel.animT = carousel.animT + (dt_ms / carousel.animDurMs)
+          local t = CLAMP(carousel.animT, 0, 1)
+          local e = EaseInOutCubic(t)
+          carousel.scrollPos = carousel.currentIndex + (carousel.targetIndex - carousel.currentIndex) * e
+          if t >= 1 then
             carousel.animActive = false
-            carousel.scroll = carousel.toScroll
+            carousel.currentIndex = carousel.targetIndex
+            carousel.scrollPos = carousel.currentIndex
+            carousel.allowOptWrite = true
+            UI.MainMenu.OPT = carousel.currentIndex
+            carousel.allowOptWrite = false
           end
-        else
-          carousel.scroll = UI.MainMenu.OPT
         end
         local center_x = UI.SCR.X_MID
         local usable_top = layout.STATUS_Y + 24
         local usable_bottom = layout.FOOTER_ICON_Y - 24
         local center_y = Round((usable_top + usable_bottom) / 2) + 10
-        local side_offset_x = 260
-        local side_offset2_x = 520
         local side_offset_y = 6
         local side_offset2_y = 10
-        local scale_map = { [0] = 1.00, [1] = 0.88, [2] = 0.76 }
-        local alpha_map = { [0] = 128, [1] = 36, [2] = 15 }
+        local scale_map = { [0] = 1.00, [1] = 0.86, [2] = 0.74 }
+        local alpha_map = { [0] = 128, [1] = Round(128 * 0.22), [2] = Round(128 * 0.10) }
         local function ResolveIcon(key)
           return IMG[key] or IMG["MISSING"]
         end
@@ -696,11 +700,11 @@ UI = {
           return 1 - (inv * inv * inv) / 2
         end
         local slots = {
-          [-2] = center_x - side_offset2_x,
-          [-1] = center_x - side_offset_x,
+          [-2] = center_x - 320,
+          [-1] = center_x - 180,
           [0] = center_x,
-          [1] = center_x + side_offset_x,
-          [2] = center_x + side_offset2_x
+          [1] = center_x + 180,
+          [2] = center_x + 320
         }
         local slot_y = {
           [-2] = center_y + side_offset2_y,
@@ -709,26 +713,21 @@ UI = {
           [1] = center_y + side_offset_y,
           [2] = center_y + side_offset2_y
         }
-        local scroll_pos = carousel.scroll
-        if carousel.animActive then
-          local e = EaseInOutCubic(carousel.animT)
-          scroll_pos = Lerp(carousel.fromScroll, carousel.toScroll, e)
-        end
+        local scroll_pos = carousel.scrollPos
         local base = math.floor(scroll_pos)
         local frac = scroll_pos - base
-        local direction = carousel.animActive and (carousel.toScroll >= carousel.fromScroll and 1 or -1) or 0
+        local step = slots[1] - slots[0]
+        local direction = carousel.animDir
         local center_label_x = center_x
         local center_label_y = Round(center_y + 90)
         local center_label_idx = WrapIndex(base, profcnt)
         for k = -2, 2 do
           local idx = WrapIndex(base + k, profcnt)
-          local x
+          local x = slots[k]
           if direction == 1 then
-            x = Lerp(slots[k], slots[k - 1] or slots[k], frac)
+            x = x - (frac * step)
           elseif direction == -1 then
-            x = Lerp(slots[k], slots[k + 1] or slots[k], frac)
-          else
-            x = slots[k]
+            x = x + (frac * step)
           end
           local y = slot_y[k]
           local dist = math.abs((base + k) - scroll_pos)
@@ -744,9 +743,6 @@ UI = {
             center_label_idx = idx
           end
         end
-        if carousel.animActive then
-          DrawIcon(center_label_idx, center_label_x, center_y, 1.0, UI.CCOL.YELLOW)
-        end
         Font.ftPrint(UI.FONT.LABEL, Round(center_label_x), center_label_y, 8, UI.SCR.X, 16, UI.MainMenu.opts[center_label_idx], UI.COLORS.TEXT_PRIMARY)
         UI.Footer.Draw({
           triangle = "Credits",
@@ -758,16 +754,16 @@ UI = {
         UI.HandleGlobalInput(false)
         if not carousel.animActive then
           if UI.Pad.Events.NAV_RIGHT then
+            carousel.targetIndex = WrapIndex(carousel.currentIndex + 1, profcnt)
+            carousel.animDir = 1
             carousel.animActive = true
             carousel.animT = 0
-            carousel.fromScroll = UI.MainMenu.OPT
-            carousel.toScroll = UI.MainMenu.OPT + 1
           end
           if UI.Pad.Events.NAV_LEFT then
+            carousel.targetIndex = WrapIndex(carousel.currentIndex - 1, profcnt)
+            carousel.animDir = -1
             carousel.animActive = true
             carousel.animT = 0
-            carousel.fromScroll = UI.MainMenu.OPT
-            carousel.toScroll = UI.MainMenu.OPT - 1
           end
         end
         if UI.Pad.Events.START then UI.SceneChange(UI.SCENES.MPROFILE) end
