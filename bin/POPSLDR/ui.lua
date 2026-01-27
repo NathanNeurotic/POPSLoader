@@ -12,6 +12,19 @@ local UI
 local function Round(value)
   return math.floor(value + 0.5)
 end
+local function Clamp01(t)
+  if t < 0 then return 0 end
+  if t > 1 then return 1 end
+  return t
+end
+local function EaseInOutCubic(t)
+  t = Clamp01(t)
+  if t < 0.5 then
+    return 4 * t * t * t
+  end
+  local f = -2 * t + 2
+  return 1 - (f * f * f) / 2
+end
 local function GuardTrace()
   if debug ~= nil and debug.traceback ~= nil then
     return debug.traceback("TRACE", 2)
@@ -675,6 +688,7 @@ UI = {
           end
           carousel.animT = carousel.animT + (dt_ms / carousel.animDurMs)
           local t = CLAMP(carousel.animT, 0, 1)
+          assert(type(EaseInOutCubic) == "function", "EaseInOutCubic missing")
           local e = EaseInOutCubic(t)
           carousel.scrollPos = carousel.currentIndex + (carousel.targetIndex - carousel.currentIndex) * e
           if t >= 1 then
@@ -708,13 +722,6 @@ UI = {
         end
         local function Lerp(a, b, t)
           return a + (b - a) * t
-        end
-        local function EaseInOutCubic(t)
-          if t < 0.5 then
-            return 4 * t * t * t
-          end
-          local inv = -2 * t + 2
-          return 1 - (inv * inv * inv) / 2
         end
         local slots = {
           [-2] = center_x - 320,
