@@ -57,6 +57,12 @@ UI = {
       end
     end;
     SceneChange = function (SCENE)
+      if UI.Transition ~= nil and UI.Transition.Start ~= nil then
+        if UI.CURSCENE ~= SCENE then
+          UI.Transition.Start(SCENE)
+        end
+        return
+      end
       UI.LASTSCENE = UI.CURSCENE
       UI.CURSCENE = SCENE
     end;
@@ -191,6 +197,12 @@ UI = {
     flip = function (notif)
       UI.Notif_queue.display()
       UI.Modal.Draw()
+      if UI.Transition ~= nil then
+        local alpha = UI.Transition.Update()
+        if alpha > 0 then
+          Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
+        end
+      end
       Screen.flip()
     end;
     WelcomeDraw = {
@@ -323,6 +335,55 @@ UI = {
         local hint = ("X: %s    O: %s"):format(confirm_label, cancel_label)
         Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 95, 8, UI.SCR.X, 16, hint, UI.CCOL.GREY)
       end;
+    };
+    Transition = {
+      active = false,
+      phase = "out",
+      target = nil,
+      timer = nil,
+      start = 0,
+      duration_out = 330,
+      duration_in = 330,
+      Start = function (target)
+        if UI.Transition.timer == nil then
+          UI.Transition.timer = Timer.new()
+        end
+        UI.Transition.active = true
+        UI.Transition.phase = "out"
+        UI.Transition.target = target
+        UI.Transition.start = Timer.getTime(UI.Transition.timer)
+      end,
+      Update = function ()
+        if not UI.Transition.active then
+          return 0
+        end
+        local now = Timer.getTime(UI.Transition.timer)
+        local elapsed = now - (UI.Transition.start or 0)
+        local duration = UI.Transition.phase == "out" and UI.Transition.duration_out or UI.Transition.duration_in
+        if duration <= 0 then duration = 1 end
+        local t = elapsed / duration
+        if t > 1 then t = 1 end
+        local alpha
+        if UI.Transition.phase == "out" then
+          alpha = Round(128 * t)
+        else
+          alpha = Round(128 * (1 - t))
+        end
+        if t >= 1 then
+          if UI.Transition.phase == "out" then
+            UI.LASTSCENE = UI.CURSCENE
+            UI.CURSCENE = UI.Transition.target
+            UI.Transition.phase = "in"
+            UI.Transition.start = now
+            alpha = 128
+          else
+            UI.Transition.active = false
+            UI.Transition.target = nil
+            alpha = 0
+          end
+        end
+        return alpha
+      end
     };
     HandleGlobalInput = function (allow_exit)
       if UI.Modal.active then
@@ -969,6 +1030,11 @@ end
 UI.RecalcLayout()
 function Input_GetEvent()
   UI.Pad.Listen()
+  if UI.Transition ~= nil and UI.Transition.active then
+    for key, _ in pairs(UI.Pad.Events) do
+      UI.Pad.Events[key] = false
+    end
+  end
   return UI.Pad.Events
 end
 return UI
