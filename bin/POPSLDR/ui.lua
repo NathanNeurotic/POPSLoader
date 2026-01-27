@@ -93,6 +93,7 @@ UI = {
       LIST_ROW_H = 20;
       PREVIEW_W = 240;
       PREVIEW_H = 240;
+      BTN_BAR_SAFE_BOTTOM = 56;
       FOOTER_LABEL_W = 140;
       FOOTER_ICON_Y_OFFSET = 24;
       FOOTER_LABEL_Y_OFFSET = 10;
@@ -127,7 +128,7 @@ UI = {
       UI.LAYOUT.PREVIEW_H = preview_h
       UI.LAYOUT.PREVIEW_X = Round(UI.SCR.X - safe.R - preview_w)
       UI.LAYOUT.PREVIEW_Y = Round(UI.SCR.Y_MID - (preview_h / 2))
-      UI.LAYOUT.FOOTER_ICON_Y = Round(UI.SCR.Y - safe.B - UI.LAYOUT.FOOTER_ICON_Y_OFFSET)
+      UI.LAYOUT.FOOTER_ICON_Y = Round(UI.SCR.Y - UI.LAYOUT.BTN_BAR_SAFE_BOTTOM)
       UI.LAYOUT.FOOTER_LABEL_Y = Round(UI.LAYOUT.FOOTER_ICON_Y + UI.LAYOUT.FOOTER_LABEL_Y_OFFSET)
     end;
     GetRowPosition = function (index, count)
