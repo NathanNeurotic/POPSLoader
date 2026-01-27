@@ -95,7 +95,7 @@ UI = {
       Y = 480;
       Y_MID = 480/2;
       VMODE = _480p;
-      BGCOL = Color.new(32,0,32);
+      BGCOL = Color.new(20, 30, 80);
     };
     LAYOUT = {
       SAFE = {L = 40, R = 40, T = 24, B = 28};
@@ -220,6 +220,13 @@ UI = {
     end;
     WelcomeDraw = {
       Play = function ()
+        local function DrawBackground()
+          if IMG.BKG ~= nil then
+            Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
+          else
+            Screen.clear(UI.SCR.BGCOL)
+          end
+        end
         local function DrawSplashCover(img, screen_w, screen_h, alpha)
           local img_w = Graphics.getImageWidth(img)
           local img_h = Graphics.getImageHeight(img)
@@ -240,20 +247,20 @@ UI = {
         local fade_out_frames = 24
         for i = 1, fade_in_frames do
           local alpha = Round(128 * (i / fade_in_frames))
-          Screen.clear(UI.SCR.BGCOL)
+          DrawBackground()
           DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
           Font.ftPrint(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID+100, 8, UI.SCR.X, 16, "Coded By El_isra", Color.new(128,128,128,alpha))
           Screen.flip() -- we dont use UI.flip here because we dont want notifications on the welcome screen
         end
         for _ = 1, hold_frames do
-          Screen.clear(UI.SCR.BGCOL)
+          DrawBackground()
           DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, 128)
           Font.ftPrint(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID+100, 8, UI.SCR.X, 16, "Coded By El_isra", Color.new(128,128,128,128))
           Screen.flip()
         end
         for i = 1, fade_out_frames do
           local alpha = Round(128 * (1 - (i / fade_out_frames)))
-          Screen.clear(UI.SCR.BGCOL)
+          DrawBackground()
           DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
           Font.ftPrint(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID+100, 8, UI.SCR.X, 16, "Coded By El_isra", Color.new(128,128,128,alpha))
           Screen.flip()
