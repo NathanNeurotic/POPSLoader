@@ -82,9 +82,11 @@ UI = {
       TEXT_PRIMARY = Color.new(140, 200, 255, 128);
     };
     FONT = {
-      TITLE = LFONT;
-      LABEL = BFONT;
+      TITLE = Font.LoadBuiltinFont();
+      LABEL = Font.LoadBuiltinFont();
       STATUS = SFONT;
+      TITLE_SIZE = 960;
+      LABEL_SIZE = 880;
     };
     --- UI Constants
     SCR = {
@@ -1002,6 +1004,14 @@ UI = {
       end
     };
   }
+if UI.FONT ~= nil then
+  if UI.FONT.TITLE ~= nil then
+    Font.ftSetCharSize(UI.FONT.TITLE, UI.FONT.TITLE_SIZE, UI.FONT.TITLE_SIZE)
+  end
+  if UI.FONT.LABEL ~= nil then
+    Font.ftSetCharSize(UI.FONT.LABEL, UI.FONT.LABEL_SIZE, UI.FONT.LABEL_SIZE)
+  end
+end
 _G.UI = UI
 UI.GAME_SCENES = {
   [UI.SCENES.GUSBFAT] = true,
