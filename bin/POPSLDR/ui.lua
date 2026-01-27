@@ -78,6 +78,14 @@ UI = {
       RED = Color.new(128,0,0);
       TRANSP_BLACK = Color.new(0,0,0,40);
     };
+    COLORS = {
+      TEXT_PRIMARY = Color.new(140, 200, 255, 128);
+    };
+    FONT = {
+      TITLE = LFONT;
+      LABEL = BFONT;
+      STATUS = SFONT;
+    };
     --- UI Constants
     SCR = {
       X = 702;
@@ -258,7 +266,9 @@ UI = {
         if IMG.BKG ~= nil then
           Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
         end
-        Graphics.drawRect(0, 20, UI.SCR.X, 398, UI.CCOL.TRANSP_BLACK)
+        if UI.CURSCENE ~= UI.SCENES.MMAIN then
+          Graphics.drawRect(0, 20, UI.SCR.X, 398, UI.CCOL.TRANSP_BLACK)
+        end
       end;
     };
     Modal = {
@@ -573,18 +583,18 @@ UI = {
       Play = function ()
         local layout = UI.LAYOUT
         local profcnt = #UI.MainMenu.opts
-        Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Welcome to POPStarter Loader", UI.CCOL.GREY)
+        Font.ftPrint(UI.FONT.TITLE, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Welcome to POPStarter Loader", UI.COLORS.TEXT_PRIMARY)
         local status_y = layout.STATUS_Y
         if UI.boot_device ~= nil and UI.boot_device ~= DEVLOCK.NONE then
-          Font.ftPrint(SFONT, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Booted from: "..UI.device_lock_name(UI.boot_device), UI.CCOL.GREY)
+          Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Booted from: "..UI.device_lock_name(UI.boot_device), UI.COLORS.TEXT_PRIMARY)
           status_y = status_y + 12
         end
         if UI.device_lock ~= nil and UI.device_lock ~= DEVLOCK.NONE then
-          Font.ftPrint(SFONT, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Active Device: "..UI.device_lock_name(UI.device_lock).." (restart to switch)", UI.CCOL.GREY)
+          Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Active Device: "..UI.device_lock_name(UI.device_lock).." (restart to switch)", UI.COLORS.TEXT_PRIMARY)
           status_y = status_y + 12
         end
         if UI.boot_locks ~= nil and (UI.boot_locks[DEVLOCK.USB] or UI.boot_locks[DEVLOCK.MMCE] or UI.boot_locks[DEVLOCK.MX4SIO]) then
-          Font.ftPrint(SFONT, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Some devices unavailable this session", UI.CCOL.GREY)
+          Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Some devices unavailable this session", UI.COLORS.TEXT_PRIMARY)
         end
         local icon_map = {
           ["USB FAT32"] = "USB",
@@ -687,7 +697,7 @@ UI = {
             DrawIcon(center_index, out_x, out_y, out_scale, Color.new(128, 128, 0, Round(out_alpha)))
             DrawIcon(next_index, in_x, in_y, in_scale, Color.new(128, 128, 128, Round(in_alpha)))
             local label_y = Round(out_y + 90)
-            Font.ftPrint(SFONT, Round(out_x), label_y, 8, UI.SCR.X, 16, UI.MainMenu.opts[center_index], UI.CCOL.GREY)
+            Font.ftPrint(UI.FONT.LABEL, Round(out_x), label_y, 8, UI.SCR.X, 16, UI.MainMenu.opts[center_index], UI.COLORS.TEXT_PRIMARY)
           elseif carousel.animDir == -1 then
             local out_x = Lerp(center_x, right_x, e)
             local out_y = Lerp(center_y, right_y, e)
@@ -705,7 +715,7 @@ UI = {
             DrawIcon(center_index, out_x, out_y, out_scale, Color.new(128, 128, 0, Round(out_alpha)))
             DrawIcon(prev_index, in_x, in_y, in_scale, Color.new(128, 128, 128, Round(in_alpha)))
             local label_y = Round(out_y + 90)
-            Font.ftPrint(SFONT, Round(out_x), label_y, 8, UI.SCR.X, 16, UI.MainMenu.opts[center_index], UI.CCOL.GREY)
+            Font.ftPrint(UI.FONT.LABEL, Round(out_x), label_y, 8, UI.SCR.X, 16, UI.MainMenu.opts[center_index], UI.COLORS.TEXT_PRIMARY)
           end
         else
           local side_color = Color.new(128, 128, 128, side_alpha)
@@ -716,7 +726,7 @@ UI = {
           DrawIcon(next_index, right_x, right_y, side_scale, side_color)
           DrawIcon(center_index, center_x, center_y, center_scale, UI.CCOL.YELLOW)
           local label_y = Round(center_y + 90)
-          Font.ftPrint(SFONT, center_x, label_y, 8, UI.SCR.X, 16, UI.MainMenu.opts[center_index], UI.CCOL.GREY)
+          Font.ftPrint(UI.FONT.LABEL, center_x, label_y, 8, UI.SCR.X, 16, UI.MainMenu.opts[center_index], UI.COLORS.TEXT_PRIMARY)
         end
         UI.Footer.Draw({
           triangle = "Credits",
