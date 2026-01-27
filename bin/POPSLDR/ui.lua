@@ -279,7 +279,7 @@ UI = {
           Graphics.drawScaleImage(img, x, y, draw_w, draw_h, tint)
         end
         local fade_in_frames = 24
-        local hold_frames = 24
+        local hold_frames = 48
         local fade_out_frames = 24
         for i = 1, fade_in_frames do
           local alpha = Round(128 * (i / fade_in_frames))
@@ -695,6 +695,7 @@ UI = {
             carousel.animActive = false
             carousel.currentIndex = carousel.targetIndex
             carousel.scrollPos = carousel.currentIndex
+            carousel.animDir = 0
             carousel.allowOptWrite = true
             UI.MainMenu.OPT = carousel.currentIndex
             carousel.allowOptWrite = false
@@ -706,8 +707,16 @@ UI = {
         local center_y = Round((usable_top + usable_bottom) / 2) + 10
         local side_offset_y = 6
         local side_offset2_y = 10
-        local scale_map = { [0] = 1.00, [1] = 0.86, [2] = 0.74 }
-        local alpha_map = { [0] = 128, [1] = Round(128 * 0.22), [2] = Round(128 * 0.10) }
+        local function BlendByDist(dist, v0, v1, v2)
+          if dist <= 0 then return v0 end
+          if dist < 1 then
+            return v0 + (v1 - v0) * dist
+          end
+          if dist < 2 then
+            return v1 + (v2 - v1) * (dist - 1)
+          end
+          return v2
+        end
         local function ResolveIcon(key)
           return IMG[key] or IMG["MISSING"]
         end
@@ -745,6 +754,7 @@ UI = {
         local center_label_x = center_x
         local center_label_y = Round(center_y + 90)
         local center_label_idx = WrapIndex(base, profcnt)
+        local closest_dist = 9999
         for k = -2, 2 do
           local idx = WrapIndex(base + k, profcnt)
           local x = slots[k]
@@ -755,13 +765,12 @@ UI = {
           end
           local y = slot_y[k]
           local dist = math.abs((base + k) - scroll_pos)
-          local level = math.floor(dist + 0.5)
-          if level > 2 then level = 2 end
-          local scale = scale_map[level] or scale_map[2]
-          local alpha = alpha_map[level] or alpha_map[2]
-          local tint = level == 0 and UI.CCOL.YELLOW or Color.new(128, 128, 128, alpha)
+          local scale = BlendByDist(dist, 1.00, 0.86, 0.74)
+          local alpha = BlendByDist(dist, 128, 128 * 0.22, 128 * 0.10)
+          local tint = dist < 0.5 and UI.CCOL.YELLOW or Color.new(128, 128, 128, Round(alpha))
           DrawIcon(idx, x, y, scale, tint)
-          if level == 0 then
+          if dist < closest_dist then
+            closest_dist = dist
             center_label_x = x
             center_label_y = Round(y + 90)
             center_label_idx = idx
