@@ -517,56 +517,80 @@ UI = {
           if icon_w > max_w then max_w = icon_w end
           if icon_h > max_h then max_h = icon_h end
         end
-        local icon_scale = 0.90
-        local cell_w = Round(max_w * icon_scale)
-        local cell_h = Round(max_h * icon_scale)
-        local gap_x = 14
-        local gap_y = 12
         local safe_l = 32
         local safe_r = 32
         local safe_t = 24
-        local safe_b = 60
+        local safe_b = 64
         local box_w = UI.SCR.X - safe_l - safe_r
         local box_h = UI.SCR.Y - safe_t - safe_b
         local box_x = safe_l
         local box_y = safe_t
-        local row1_y = box_y + Round(box_h * 0.18)
-        local row2_y = box_y + Round(box_h * 0.52)
-        local row3_y = box_y + Round(box_h * 0.82)
-        local row3_max = box_y + box_h - Round(cell_h / 2)
-        if row3_y > row3_max then
-          row3_y = row3_max
+        local gap_x = 12
+        local gap_y = 10
+        local function ResolveIconScale()
+          local gap = gap_x
+          while true do
+            local total_w = (3 * max_w) + (2 * gap)
+            local scale_max = box_w / total_w
+            if scale_max >= 0.80 or gap <= 6 then
+              return math.min(1.0, scale_max), gap
+            end
+            gap = gap - 2
+          end
         end
-        local function RowCenterX(count)
-          local total_w = (count * cell_w) + ((count - 1) * gap_x)
-          return Round(box_x + ((box_w - total_w) / 2))
+        local icon_scale, resolved_gap_x = ResolveIconScale()
+        gap_x = resolved_gap_x
+        if icon_scale < 0.80 then
+          error("Main menu layout overflow: icon scale below 0.80")
         end
-        local function RowCenterY(row)
-          if row == 1 then return row1_y end
-          if row == 2 then return row2_y end
-          if row == 3 then return row3_y end
-          return Round(row3_y + (row - 3) * (cell_h + gap_y))
+        local cell_w = Round(max_w * icon_scale)
+        local cell_h = Round(max_h * icon_scale)
+        local total_items = #UI.MainMenu.opts
+        local extra = total_items - 1
+        local extra_rows = 0
+        if extra > 0 then
+          extra_rows = math.ceil(extra / 3)
+        end
+        local total_rows = 1 + extra_rows
+        local total_h = (total_rows * cell_h) + ((total_rows - 1) * gap_y)
+        if total_h > box_h then
+          error("Main menu layout overflow: rows exceed CRT-safe box")
+        end
+        local block_y = box_y + Round((box_h - total_h) / 2)
+        local function RowStartX(count)
+          if count == 1 then
+            return box_x + Round((box_w - cell_w) / 2)
+          end
+          local row_w = (count * cell_w) + ((count - 1) * gap_x)
+          return box_x + Round((box_w - row_w) / 2)
+        end
+        local function RowY(row)
+          return block_y + ((row - 1) * (cell_h + gap_y))
         end
         local function ResolveMenuPosition(index)
           local row
           local col
+          local count
           if index == 1 then
             row = 1
-            col = 0
-            return RowCenterX(1), Round(RowCenterY(row) - (cell_h / 2))
-          elseif index <= 4 then
-            row = 2
-            col = index - 2
-            return Round(RowCenterX(3) + col * (cell_w + gap_x)), Round(RowCenterY(row) - (cell_h / 2))
-          elseif index <= 7 then
-            row = 3
-            col = index - 5
-            return Round(RowCenterX(3) + col * (cell_w + gap_x)), Round(RowCenterY(row) - (cell_h / 2))
+            col = 1
+            count = 1
+          else
+            local idx = index - 2
+            row = 2 + math.floor(idx / 3)
+            col = (idx % 3) + 1
+            count = 3
           end
-          local idx = index - 8
-          row = 4 + math.floor(idx / 3)
-          col = idx % 3
-          return Round(RowCenterX(3) + col * (cell_w + gap_x)), Round(RowCenterY(row) - (cell_h / 2))
+          local start_x = RowStartX(count)
+          local x = Round(start_x + ((col - 1) * (cell_w + gap_x)))
+          local y = RowY(row)
+          if x < box_x or (x + cell_w) > (box_x + box_w) then
+            error("Main menu layout overflow: icon exceeds CRT-safe width")
+          end
+          if y < box_y or (y + cell_h) > (box_y + box_h) then
+            error("Main menu layout overflow: icon exceeds CRT-safe height")
+          end
+          return x, y
         end
         for x = 1, #UI.MainMenu.opts do
           local icon = IMG[icon_keys[x]]
