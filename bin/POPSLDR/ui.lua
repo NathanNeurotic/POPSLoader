@@ -591,7 +591,7 @@ UI = {
       Carousel = {
         animActive = false,
         animT = 0,
-        animDurationMs = 520,
+        animDurationMs = 2000,
         scroll = 1,
         fromScroll = 1,
         toScroll = 1,
@@ -667,8 +667,8 @@ UI = {
         local usable_top = layout.STATUS_Y + 24
         local usable_bottom = layout.FOOTER_ICON_Y - 24
         local center_y = Round((usable_top + usable_bottom) / 2) + 10
-        local side_offset_x = 120
-        local side_offset2_x = 205
+        local side_offset_x = 260
+        local side_offset2_x = 520
         local side_offset_y = 6
         local side_offset2_y = 10
         local scale_map = { [0] = 1.00, [1] = 0.88, [2] = 0.76 }
@@ -743,6 +743,9 @@ UI = {
             center_label_y = Round(y + 90)
             center_label_idx = idx
           end
+        end
+        if carousel.animActive then
+          DrawIcon(center_label_idx, center_label_x, center_y, 1.0, UI.CCOL.YELLOW)
         end
         Font.ftPrint(UI.FONT.LABEL, Round(center_label_x), center_label_y, 8, UI.SCR.X, 16, UI.MainMenu.opts[center_label_idx], UI.COLORS.TEXT_PRIMARY)
         UI.Footer.Draw({
