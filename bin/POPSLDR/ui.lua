@@ -195,23 +195,20 @@ UI = {
     end;
     WelcomeDraw = {
       Play = function ()
-        local function DrawCenteredImageNoWarp(img, screen_w, screen_h, alpha)
+        local function DrawSplashCover(img, screen_w, screen_h, alpha)
           local img_w = Graphics.getImageWidth(img)
           local img_h = Graphics.getImageHeight(img)
           local scale = 1
-          if img_w > 0 and img_h > 0 and (img_w > screen_w or img_h > screen_h) then
-            scale = math.min(screen_w / img_w, screen_h / img_h)
+          if img_w > 0 and img_h > 0 then
+            local cover_scale = math.max(screen_w / img_w, screen_h / img_h)
+            scale = cover_scale * 1.02
           end
           local draw_w = Round(img_w * scale)
           local draw_h = Round(img_h * scale)
           local x = Round((screen_w - draw_w) / 2)
           local y = Round((screen_h - draw_h) / 2)
           local tint = Color.new(128, 128, 128, alpha)
-          if scale ~= 1 then
-            Graphics.drawScaleImage(img, x, y, draw_w, draw_h, tint)
-          else
-            Graphics.drawImage(img, x, y, tint)
-          end
+          Graphics.drawScaleImage(img, x, y, draw_w, draw_h, tint)
         end
         local fade_in_frames = 24
         local hold_frames = 24
@@ -219,20 +216,20 @@ UI = {
         for i = 1, fade_in_frames do
           local alpha = Round(128 * (i / fade_in_frames))
           Screen.clear(UI.SCR.BGCOL)
-          DrawCenteredImageNoWarp(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
+          DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
           Font.ftPrint(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID+100, 8, UI.SCR.X, 16, "Coded By El_isra", Color.new(128,128,128,alpha))
           Screen.flip() -- we dont use UI.flip here because we dont want notifications on the welcome screen
         end
         for _ = 1, hold_frames do
           Screen.clear(UI.SCR.BGCOL)
-          DrawCenteredImageNoWarp(IMG.PSL, UI.SCR.X, UI.SCR.Y, 128)
+          DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, 128)
           Font.ftPrint(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID+100, 8, UI.SCR.X, 16, "Coded By El_isra", Color.new(128,128,128,128))
           Screen.flip()
         end
         for i = 1, fade_out_frames do
           local alpha = Round(128 * (1 - (i / fade_out_frames)))
           Screen.clear(UI.SCR.BGCOL)
-          DrawCenteredImageNoWarp(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
+          DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
           Font.ftPrint(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID+100, 8, UI.SCR.X, 16, "Coded By El_isra", Color.new(128,128,128,alpha))
           Screen.flip()
         end
