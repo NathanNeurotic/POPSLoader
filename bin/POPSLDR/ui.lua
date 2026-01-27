@@ -14,7 +14,6 @@ local function Round(value)
 end
 UI = {
     LASTSCENE = 5;
-    CURSCENE = 5;
     SCENES = {
       GUSBFAT = 1,
       GUSBEXFAT = 2,
@@ -56,15 +55,18 @@ UI = {
         LOG("Device lock set to "..UI.device_lock_name(target))
       end
     end;
-    SceneChange = function (SCENE)
+    RequestScene = function (SCENE)
       if UI.Transition ~= nil and UI.Transition.Start ~= nil then
+        if UI.Transition.active and UI.Transition.target == SCENE then
+          return
+        end
         if UI.CURSCENE ~= SCENE then
           UI.Transition.Start(SCENE)
         end
-        return
       end
-      UI.LASTSCENE = UI.CURSCENE
-      UI.CURSCENE = SCENE
+    end;
+    SceneChange = function (SCENE)
+      UI.RequestScene(SCENE)
     end;
     UpdateVmode = function ()
       Screen.setMode(UI.SCR.VMODE, UI.SCR.X, UI.SCR.Y, CT24, INTERLACED, FIELD)
@@ -342,8 +344,8 @@ UI = {
       target = nil,
       timer = nil,
       start = 0,
-      duration_out = 450,
-      duration_in = 450,
+      duration_out = 650,
+      duration_in = 650,
       Start = function (target)
         if UI.Transition.timer == nil then
           UI.Transition.timer = Timer.new()
