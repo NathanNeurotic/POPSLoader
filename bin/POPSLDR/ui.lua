@@ -688,7 +688,7 @@ UI = {
           end
           carousel.animT = carousel.animT + (dt_ms / carousel.animDurMs)
           local t = CLAMP(carousel.animT, 0, 1)
-          assert(type(EaseInOutCubic) == "function", "EaseInOutCubic missing")
+          assert(type(EaseInOutCubic) == "function")
           local e = EaseInOutCubic(t)
           carousel.scrollPos = carousel.currentIndex + (carousel.targetIndex - carousel.currentIndex) * e
           if t >= 1 then
