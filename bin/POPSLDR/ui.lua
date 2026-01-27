@@ -520,43 +520,51 @@ UI = {
         local safe_l = 32
         local safe_r = 32
         local safe_t = 24
-        local safe_b = 64
+        local button_bar_h = UI.SCR.Y - UI.LAYOUT.FOOTER_ICON_Y
+        local reserve_bottom = button_bar_h + 16
+        local safe_b = reserve_bottom
         local box_w = UI.SCR.X - safe_l - safe_r
         local box_h = UI.SCR.Y - safe_t - safe_b
         local box_x = safe_l
         local box_y = safe_t
         local gap_x = 12
         local gap_y = 10
-        local function ResolveIconScale()
-          local gap = gap_x
-          while true do
-            local total_w = (3 * max_w) + (2 * gap)
-            local scale_max = box_w / total_w
-            if scale_max >= 0.80 or gap <= 6 then
-              return math.min(1.0, scale_max), gap
-            end
-            gap = gap - 2
+        local function ComputeScale(gx, gy)
+          local row_w_unscaled = (3 * max_w) + (2 * gx)
+          local total_h_unscaled = (3 * max_h) + (2 * gy)
+          local scale_w = box_w / row_w_unscaled
+          local scale_h = box_h / total_h_unscaled
+          local scale = math.min(1.0, scale_w, scale_h)
+          return scale, scale_w, scale_h
+        end
+        local icon_scale, scale_w, scale_h = ComputeScale(gap_x, gap_y)
+        if icon_scale < 0.90 then
+          while (gap_x > 6 or gap_y > 6) and icon_scale < 0.90 do
+            if gap_x > 6 then gap_x = gap_x - 2 end
+            if gap_y > 6 then gap_y = gap_y - 2 end
+            icon_scale, scale_w, scale_h = ComputeScale(gap_x, gap_y)
           end
         end
-        local icon_scale, resolved_gap_x = ResolveIconScale()
-        gap_x = resolved_gap_x
         if icon_scale < 0.80 then
+          LOGF("Main menu layout overflow: boxW=%d boxH=%d wMax=%d hMax=%d gapX=%d gapY=%d scale=%.3f",
+            box_w, box_h, max_w, max_h, gap_x, gap_y, icon_scale)
           error("Main menu layout overflow: icon scale below 0.80")
         end
         local cell_w = Round(max_w * icon_scale)
         local cell_h = Round(max_h * icon_scale)
-        local total_items = #UI.MainMenu.opts
-        local extra = total_items - 1
-        local extra_rows = 0
-        if extra > 0 then
-          extra_rows = math.ceil(extra / 3)
-        end
-        local total_rows = 1 + extra_rows
+        local total_rows = 3
         local total_h = (total_rows * cell_h) + ((total_rows - 1) * gap_y)
         if total_h > box_h then
+          LOGF("Main menu layout overflow: boxH=%d totalH=%d wMax=%d hMax=%d gapX=%d gapY=%d scale=%.3f",
+            box_h, total_h, max_w, max_h, gap_x, gap_y, icon_scale)
           error("Main menu layout overflow: rows exceed CRT-safe box")
         end
         local block_y = box_y + Round((box_h - total_h) / 2)
+        if UI.MainMenu.layout_logged ~= true then
+          UI.MainMenu.layout_logged = true
+          LOGF("Main menu layout: boxW=%d boxH=%d wMax=%d hMax=%d gapX=%d gapY=%d scale=%.3f wS=%d hS=%d",
+            box_w, box_h, max_w, max_h, gap_x, gap_y, icon_scale, cell_w, cell_h)
+        end
         local function RowStartX(count)
           if count == 1 then
             return box_x + Round((box_w - cell_w) / 2)
@@ -585,9 +593,13 @@ UI = {
           local x = Round(start_x + ((col - 1) * (cell_w + gap_x)))
           local y = RowY(row)
           if x < box_x or (x + cell_w) > (box_x + box_w) then
+            LOGF("Main menu layout overflow: x=%d y=%d w=%d h=%d boxW=%d boxH=%d gapX=%d gapY=%d scale=%.3f",
+              x, y, cell_w, cell_h, box_w, box_h, gap_x, gap_y, icon_scale)
             error("Main menu layout overflow: icon exceeds CRT-safe width")
           end
           if y < box_y or (y + cell_h) > (box_y + box_h) then
+            LOGF("Main menu layout overflow: x=%d y=%d w=%d h=%d boxW=%d boxH=%d gapX=%d gapY=%d scale=%.3f",
+              x, y, cell_w, cell_h, box_w, box_h, gap_x, gap_y, icon_scale)
             error("Main menu layout overflow: icon exceeds CRT-safe height")
           end
           return x, y
