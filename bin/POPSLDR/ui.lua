@@ -624,14 +624,22 @@ UI = {
         local center_index = WrapIndex(base_index, profcnt)
         local prev_index = WrapIndex(center_index - 1, profcnt)
         local next_index = WrapIndex(center_index + 1, profcnt)
+        local prev2_index = WrapIndex(center_index - 2, profcnt)
+        local next2_index = WrapIndex(center_index + 2, profcnt)
         local center_x = UI.SCR.X_MID
-        local center_y = 170
-        local side_offset_x = 170
-        local side_offset_y = 12
+        local usable_top = layout.STATUS_Y + 24
+        local usable_bottom = layout.FOOTER_ICON_Y - 24
+        local center_y = Round((usable_top + usable_bottom) / 2) + 10
+        local side_offset_x = 120
+        local side_offset2_x = 205
+        local side_offset_y = 6
+        local side_offset2_y = 10
         local center_scale = 1.00
-        local side_scale = 0.78
+        local side_scale = 0.88
+        local side2_scale = 0.76
         local center_alpha = 128
-        local side_alpha = 70
+        local side_alpha = 36
+        local side2_alpha = 15
         local function ResolveIcon(key)
           return IMG[key] or IMG["MISSING"]
         end
@@ -653,8 +661,12 @@ UI = {
         end
         local left_x = center_x - side_offset_x
         local right_x = center_x + side_offset_x
+        local left2_x = center_x - side_offset2_x
+        local right2_x = center_x + side_offset2_x
         local left_y = center_y + side_offset_y
         local right_y = center_y + side_offset_y
+        local left2_y = center_y + side_offset2_y
+        local right2_y = center_y + side_offset2_y
         if carousel.animActive then
           local e = EaseOutCubic(carousel.animT)
           if carousel.animDir == 1 then
@@ -667,6 +679,9 @@ UI = {
             local in_scale = Lerp(side_scale, center_scale, e)
             local in_alpha = Lerp(side_alpha, center_alpha, e)
             local static_color = Color.new(128, 128, 128, side_alpha)
+            local static2_color = Color.new(128, 128, 128, side2_alpha)
+            DrawIcon(prev2_index, left2_x, left2_y, side2_scale, static2_color)
+            DrawIcon(next2_index, right2_x, right2_y, side2_scale, static2_color)
             DrawIcon(prev_index, left_x, left_y, side_scale, static_color)
             DrawIcon(center_index, out_x, out_y, out_scale, Color.new(128, 128, 0, Round(out_alpha)))
             DrawIcon(next_index, in_x, in_y, in_scale, Color.new(128, 128, 128, Round(in_alpha)))
@@ -682,6 +697,9 @@ UI = {
             local in_scale = Lerp(side_scale, center_scale, e)
             local in_alpha = Lerp(side_alpha, center_alpha, e)
             local static_color = Color.new(128, 128, 128, side_alpha)
+            local static2_color = Color.new(128, 128, 128, side2_alpha)
+            DrawIcon(prev2_index, left2_x, left2_y, side2_scale, static2_color)
+            DrawIcon(next2_index, right2_x, right2_y, side2_scale, static2_color)
             DrawIcon(next_index, right_x, right_y, side_scale, static_color)
             DrawIcon(center_index, out_x, out_y, out_scale, Color.new(128, 128, 0, Round(out_alpha)))
             DrawIcon(prev_index, in_x, in_y, in_scale, Color.new(128, 128, 128, Round(in_alpha)))
@@ -690,9 +708,12 @@ UI = {
           end
         else
           local side_color = Color.new(128, 128, 128, side_alpha)
+          local side2_color = Color.new(128, 128, 128, side2_alpha)
+          DrawIcon(prev2_index, left2_x, left2_y, side2_scale, side2_color)
+          DrawIcon(next2_index, right2_x, right2_y, side2_scale, side2_color)
           DrawIcon(prev_index, left_x, left_y, side_scale, side_color)
-          DrawIcon(center_index, center_x, center_y, center_scale, UI.CCOL.YELLOW)
           DrawIcon(next_index, right_x, right_y, side_scale, side_color)
+          DrawIcon(center_index, center_x, center_y, center_scale, UI.CCOL.YELLOW)
           local label_y = Round(center_y + 90)
           Font.ftPrint(SFONT, center_x, label_y, 8, UI.SCR.X, 16, UI.MainMenu.opts[center_index], UI.CCOL.GREY)
         end
