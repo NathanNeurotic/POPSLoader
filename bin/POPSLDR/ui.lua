@@ -357,8 +357,8 @@ UI = {
       target = nil,
       timer = nil,
       start = 0,
-      duration_out = 650,
-      duration_in = 650,
+      duration_out = 700,
+      duration_in = 700,
       Start = function (target)
         if UI.Transition.timer == nil then
           UI.Transition.timer = Timer.new()
