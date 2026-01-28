@@ -401,7 +401,11 @@ UI = {
           if UI.BOOT_SOUND == nil or UI.BOOT_SOUND.ENABLED ~= true then return end
           if type(Sound) ~= "table" or type(Sound.loadADPCM) ~= "function" then return end
 
-          local rel = UI.BOOT_SOUND.PATH or "boot.adp"
+          local primary = UI.BOOT_SOUND.PATH or "boot.adp"
+          local names = { primary }
+          if primary ~= "boot.adpcm" then
+            table.insert(names, "boot.adpcm")
+          end
 
 local function file_exists(p)
   if p == nil then return false end
@@ -428,26 +432,86 @@ local function resolve(p)
   return p
 end
 
--- Prefer current folder (CWD) and resolved-asset paths; avoid hardcoding host: when possible.
-local candidates = {
-  resolve(rel),
-  resolve("./" .. rel),
-  rel,
-  "./" .. rel,
-}
-
-local found = nil
-for _, p in ipairs(candidates) do
-  if file_exists(p) then found = p break end
+local function ensure_dir(path)
+  if path == nil or path == "" then return nil end
+  if type(EnsureTrailingSlash) == "function" then
+    return EnsureTrailingSlash(path)
+  end
+  if string.sub(path, -1) ~= "/" then
+    return path .. "/"
+  end
+  return path
 end
 
-if found == nil then
-  -- Last resort: try HostFS prefix in PCSX2 setups.
-  local host_p = "host:" .. rel
-  if file_exists(host_p) then found = host_p end
+local function add_candidate(list, path)
+  if path ~= nil and path ~= "" then
+    table.insert(list, path)
+  end
 end
 
-if found == nil then return end
+local function resolve_candidates(name)
+  local candidates = {}
+  add_candidate(candidates, resolve(name))
+  add_candidate(candidates, resolve("./" .. name))
+
+  local app_dir = APP_DIR
+  if type(System) == "table" and type(System.getAppDir) == "function" then
+    local ok, dir = pcall(System.getAppDir)
+    if ok and dir ~= nil and dir ~= "" then
+      app_dir = dir
+    end
+  end
+  local app_dir_norm = ensure_dir(app_dir)
+  if app_dir_norm ~= nil then
+    add_candidate(candidates, app_dir_norm .. name)
+    add_candidate(candidates, app_dir_norm .. "POPSLDR/" .. name)
+  end
+
+  local cwd = nil
+  if type(System) == "table" and type(System.currentDirectory) == "function" then
+    local ok, dir = pcall(System.currentDirectory)
+    if ok then
+      cwd = dir
+    end
+  end
+  local cwd_norm = ensure_dir(cwd)
+  if cwd_norm ~= nil then
+    add_candidate(candidates, cwd_norm .. name)
+    add_candidate(candidates, cwd_norm .. "POPSLDR/" .. name)
+  end
+
+  add_candidate(candidates, name)
+  add_candidate(candidates, "./" .. name)
+
+  return candidates
+end
+
+          local found = nil
+          local requested = nil
+          for _, rel in ipairs(names) do
+            requested = rel
+            local candidates = resolve_candidates(rel)
+            for _, p in ipairs(candidates) do
+              if file_exists(p) then
+                found = p
+                break
+              end
+            end
+            if found ~= nil then break end
+          end
+
+          if found == nil and requested ~= nil then
+            -- Last resort: try HostFS prefix in PCSX2 setups.
+            local host_p = "host:" .. requested
+            if file_exists(host_p) then found = host_p end
+          end
+
+          if found == nil then
+            LOGF("BOOT SOUND: '%s' not found", tostring(primary))
+            return
+          end
+
+          LOGF("BOOT SOUND: using '%s'", tostring(found))
 
 -- Set volumes/formats defensively; some builds may ignore these.
           pcall(function()
@@ -464,13 +528,17 @@ if found == nil then return end
           end)
 
           local ok_load, audio = pcall(Sound.loadADPCM, found)
-          if not ok_load or audio == nil then return end
+          if not ok_load or audio == nil then
+            LOGF("BOOT SOUND: load failed for '%s'", tostring(found))
+            return
+          end
           boot_sound_loaded = audio
 
           local ok_play = pcall(function()
             Sound.playADPCM(UI.BOOT_SOUND.CHANNEL or 0, boot_sound_loaded)
           end)
           if not ok_play then
+            LOGF("BOOT SOUND: play failed for '%s'", tostring(found))
             if type(Sound.freeADPCM) == "function" then
               pcall(Sound.freeADPCM, boot_sound_loaded)
             end
