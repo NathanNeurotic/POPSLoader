@@ -496,16 +496,8 @@ if found == nil then return end
         end
         for i = 1, fade_out_frames do
           local alpha = Round(128 * (1 - (i / fade_out_frames)))
-          -- Fade splash out over the main menu (no fade-to-black).
-          Screen.clear(UI.SCR.BGCOL)
-          if IMG.BGM ~= nil then
-            Graphics.drawScaleImage(IMG.BGM, 0, 0, UI.SCR.X, UI.SCR.Y)
-          elseif IMG.BKG ~= nil then
-            Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
-          end
-          if UI.MainMenu ~= nil and UI.MainMenu.DrawOnly ~= nil then
-            UI.MainMenu.DrawOnly()
-          end
+          -- Fade splash out to black; next scene will fade in via UI.Transition.
+          DrawBackground()
           DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
           DrawSplashText(alpha)
           Screen.flip()
