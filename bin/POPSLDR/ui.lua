@@ -994,16 +994,21 @@ if found == nil then return end
           if dist <= 2 then
             return Round(Lerp(19, 6, dist - 1))
           end
-          return 6
+          if dist <= 3 then
+            return Round(Lerp(6, 0, dist - 2))
+          end
+          return 0
         end
-        for k = -2, 2 do
+        for k = -3, 3 do
           local idx = WrapIndex(base_scroll + k, profcnt)
           local x = center_x + slot_spacing * (k - scroll_frac)
           local y = center_y
           local dist = math.abs(k - scroll_frac)
           local alpha = SlotAlpha(dist)
-          local tint = Color.new(128, 128, 128, alpha)
-          DrawIcon(idx, x, y, tint)
+          if alpha > 0 then
+            local tint = Color.new(128, 128, 128, alpha)
+            DrawIcon(idx, x, y, tint)
+          end
         end
         Font.ftPrint(UI.FONT.LABEL, Round(center_label_x), center_label_y, 8, UI.SCR.X, 16, UI.MainMenu.opts[center_label_idx], UI.COLORS.TEXT_PRIMARY)
         local labels, order = UI.Footer.ResolveLegend({
