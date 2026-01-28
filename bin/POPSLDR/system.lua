@@ -1180,12 +1180,6 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     )
     return
   end
-  if UI ~= nil and UI.CoverCache ~= nil and UI.CoverCache.Clear ~= nil then
-    UI.CoverCache:Clear()
-  end
-  if IMG ~= nil and IMG.ReleaseAll ~= nil then
-    IMG.ReleaseAll()
-  end
   SetLaunchPhase(LaunchState.PHASE_EXEC)
   LaunchLog("LAUNCH: exec popstarter path:", popstarter)
   LaunchLog(
@@ -1472,6 +1466,9 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   local reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
   if policy.name == "HDD" then
     reboot_iop = 0
+  end
+  if UI ~= nil and UI.CoverCache ~= nil and UI.CoverCache.Clear ~= nil then
+    UI.CoverCache:Clear()
   end
   LaunchEngine(popstarter, argv, reboot_iop, context)
 end
