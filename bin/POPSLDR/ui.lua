@@ -688,6 +688,8 @@ end
           DrawTargetScene(next_scene)
           Screen.flip()
         end
+        DrawTargetScene(next_scene)
+        Screen.flip()
 
         -- Cleanup boot sound resource (safe if audio backend ignores it).
         if boot_sound_loaded ~= nil and type(Sound) == "table" and type(Sound.freeADPCM) == "function" then
