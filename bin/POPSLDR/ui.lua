@@ -609,7 +609,7 @@ end
           Font.ftPrint(BFONT, UI.SCR.X_MID, y0 + 36,  8, UI.SCR.X, 16, "israpps.github.io",    Color.new(0, 0, 0, alpha))
         end
 
-        local fade_in_frames = 30
+        local fade_in_frames = 120
         local fade_mid_frames = 30
         local fade_out_frames = 30
 
@@ -623,9 +623,23 @@ end
         if type(credits_phase_seconds) ~= "number" or credits_phase_seconds < 0 then
           credits_phase_seconds = 7.0
         end
-        local boot_hold_frames = math.floor((boot_phase_seconds * 60) + 0.5)
-        local credits_hold_frames = math.floor((credits_phase_seconds * 60) + 0.5)
-        local total_hold_frames = boot_hold_frames + credits_hold_frames
+        local boot_phase_frames = math.floor((boot_phase_seconds * 60) + 0.5)
+        local credits_phase_frames = math.floor((credits_phase_seconds * 60) + 0.5)
+        if fade_in_frames > boot_phase_frames then
+          fade_in_frames = boot_phase_frames
+        end
+        if fade_mid_frames > credits_phase_frames then
+          fade_mid_frames = credits_phase_frames
+        end
+        if fade_out_frames > credits_phase_frames - fade_mid_frames then
+          fade_out_frames = credits_phase_frames - fade_mid_frames
+        end
+        if fade_out_frames < 0 then fade_out_frames = 0 end
+        local boot_hold_frames = boot_phase_frames - fade_in_frames
+        if boot_hold_frames < 0 then boot_hold_frames = 0 end
+        local credits_hold_frames = credits_phase_frames - fade_mid_frames - fade_out_frames
+        if credits_hold_frames < 0 then credits_hold_frames = 0 end
+        local total_hold_frames = boot_hold_frames + credits_hold_frames + fade_in_frames + fade_mid_frames + fade_out_frames
         if boot_sound_hold_frames ~= nil and boot_sound_hold_frames > total_hold_frames then
           credits_hold_frames = credits_hold_frames + (boot_sound_hold_frames - total_hold_frames)
         end
@@ -633,39 +647,41 @@ end
           local alpha = Round(128 * (i / fade_in_frames))
           DrawBackground()
           DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
+          DrawSplashText(alpha)
           Screen.flip() -- we dont use UI.flip here because we dont want notifications on the welcome screen
         end
         for _ = 1, boot_hold_frames do
           DrawBackground()
           DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, 128)
+          DrawSplashText(128)
           Screen.flip()
         end
         if fade_mid_frames > 0 then
           for i = 1, fade_mid_frames do
             local alpha = Round(128 * (1 - (i / fade_mid_frames)))
-            DrawBackground()
-            DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
-            Screen.flip()
-          end
-        end
-        for _ = 1, credits_hold_frames do
-          DrawBackground()
-          DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, 128)
-          DrawSplashText(128)
-          Screen.flip()
-        end
-        if fade_out_frames > 0 then
-          for i = 1, fade_out_frames do
-            local alpha = Round(128 * (1 - (i / fade_out_frames)))
-            DrawTargetScene(next_scene)
+            DrawTargetScene(UI.SCENES.CREDITS)
             DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
             DrawSplashText(alpha)
             Screen.flip()
           end
-        else
-          DrawTargetScene(next_scene)
+        end
+        for _ = 1, credits_hold_frames do
+          DrawTargetScene(UI.SCENES.CREDITS)
           Screen.flip()
         end
+        if fade_out_frames > 0 then
+          for i = 1, fade_out_frames do
+            local alpha = Round(128 * (i / fade_out_frames))
+            DrawTargetScene(UI.SCENES.CREDITS)
+            Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
+            Screen.flip()
+          end
+        else
+          DrawTargetScene(UI.SCENES.CREDITS)
+          Screen.flip()
+        end
+        DrawTargetScene(next_scene)
+        Screen.flip()
 
         -- Cleanup boot sound resource (safe if audio backend ignores it).
         if boot_sound_loaded ~= nil and type(Sound) == "table" and type(Sound.freeADPCM) == "function" then
