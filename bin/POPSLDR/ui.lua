@@ -222,6 +222,7 @@ UI = {
     Footer = {
       order = {"triangle", "circle", "cross", "square"};
       order_with_r2 = {"triangle", "circle", "cross", "square", "R2"};
+      order_with_start = {"triangle", "circle", "cross", "start"};
       order_with_start_r2 = {"triangle", "circle", "cross", "square", "start", "R2"};
       Draw = function (labels, order)
         local safe = UI.LAYOUT.SAFE
@@ -667,7 +668,7 @@ if found == nil then return end
             circle = "Back",
             cross = "Confirm",
             square = "Cover Art",
-            start = "Profiles",
+            start = "Settings",
             R2 = ""
 
           }, UI.Footer.order_with_start_r2)
@@ -742,7 +743,7 @@ if found == nil then return end
           circle = "Back",
           cross = "Confirm",
           square = "Cover Art",
-          start = "Profiles"
+          start = "Settings"
         }
         local footer_order = UI.Footer.order_with_start_r2
         if UI.CURSCENE == UI.SCENES.GUSBFAT then
@@ -790,7 +791,7 @@ if found == nil then return end
           circle = "Back",
           cross = "Confirm",
           square = "Cover Art",
-          start = "Profiles",
+          start = "Settings",
             R2 = ""
 
         }, UI.Footer.order_with_start_r2)
@@ -798,7 +799,7 @@ if found == nil then return end
     };
     MainMenu = {
       OPT = 1;
-      opts = {"USB FAT32", "USB exFAT", "MMCE", "MX4SIO", "APA HDD", "BDM HDD", "SMB"};
+      opts = {"MMCE", "MX4SIO", "HDD (exFAT)", "HDD (PFS)", "USB (exFAT)", "USB (FAT32)", "SMB (v1)", "Disc (DKWDRV)"};
       Carousel = {
         currentIndex = 1,
         targetIndex = 1,
@@ -820,8 +821,8 @@ if found == nil then return end
       Play = function ()
         local layout = UI.LAYOUT
         local profcnt = #UI.MainMenu.opts
-        Font.ftPrint(UI.FONT.TITLE, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Welcome to POPStarter Loader", UI.COLORS.TEXT_PRIMARY)
-        local status_y = layout.STATUS_Y
+        Font.ftPrintMultiLineAligned(UI.FONT.TITLE, UI.SCR.X_MID, layout.TITLE_Y, 16, UI.SCR.X, 32, "POPSLoader by Matias Israelson\nGUI for POPStarter and BDMAssault", UI.COLORS.TEXT_PRIMARY)
+        local status_y = layout.STATUS_Y + 16
         if UI.boot_device ~= nil and UI.boot_device ~= DEVLOCK.NONE then
           Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Booted from: "..UI.device_lock_name(UI.boot_device), UI.COLORS.TEXT_PRIMARY)
           status_y = status_y + 12
@@ -832,13 +833,14 @@ if found == nil then return end
           Font.ftPrint(SFONT, layout.SAFE.L, stamp_y, 0, UI.SCR.X, 16, UI.BUILD_INFO.stamp, UI.CCOL.GREY)
         end
         local icon_map = {
-          ["USB FAT32"] = "USB",
-          ["USB exFAT"] = "USBEXFAT",
           ["MMCE"] = "MMCE",
           ["MX4SIO"] = "MX4SIO",
-          ["APA HDD"] = "APAHDD",
-          ["BDM HDD"] = "BDHDD",
-          ["SMB"] = "SMB"
+          ["HDD (exFAT)"] = "BDHDD",
+          ["HDD (PFS)"] = "APAHDD",
+          ["USB (exFAT)"] = "USBEXFAT",
+          ["USB (FAT32)"] = "USB",
+          ["SMB (v1)"] = "SMB",
+          ["Disc (DKWDRV)"] = "DISC"
         }
         local icon_keys = {}
         for x = 1, #UI.MainMenu.opts do
@@ -894,8 +896,6 @@ if found == nil then return end
 	        if layout.CAROUSEL_Y_OFFSET ~= nil then
 	          center_y = center_y + layout.CAROUSEL_Y_OFFSET
 	        end
-        local side_offset_y = 6
-        local side_offset2_y = 10
         local function Clamp(value, min_val, max_val)
           if value < min_val then return min_val end
           if value > max_val then return max_val end
@@ -904,15 +904,15 @@ if found == nil then return end
         local function ResolveIcon(key)
           return IMG[key] or IMG["MISSING"]
         end
-        local function DrawIcon(index, x, y, scale, color)
+        local function DrawIcon(index, x, y, color)
           local key = icon_keys[index]
           local icon = ResolveIcon(key)
           if icon == nil then return end
-          local icon_w = Round(Graphics.getImageWidth(icon) * scale)
-          local icon_h = Round(Graphics.getImageHeight(icon) * scale)
+          local icon_w = Graphics.getImageWidth(icon)
+          local icon_h = Graphics.getImageHeight(icon)
           local pos_x = Round(x - (icon_w / 2))
           local pos_y = Round(y - (icon_h / 2))
-          Graphics.drawScaleImage(icon, pos_x, pos_y, icon_w, icon_h, color)
+          Graphics.drawImage(icon, pos_x, pos_y, color)
         end
         local first_icon = ResolveIcon(icon_keys[1] or "MISSING")
         local base_icon_w = 0
@@ -923,9 +923,9 @@ if found == nil then return end
         local safe_w = (UI.SCR.X - UI.LAYOUT.SAFE.L - UI.LAYOUT.SAFE.R)
         -- Target: show 5 icons (-2..2) without clipping on overscan-heavy TVs.
         -- Use a tighter spacing than icon width so side icons remain visible.
-        local ideal_spacing = math.floor(safe_w / 4.3)
-        local min_spacing = 90
-        local max_spacing = math.floor(safe_w / 3.8)
+        local ideal_spacing = math.floor(safe_w / 4.0)
+        local min_spacing = 100
+        local max_spacing = math.floor(safe_w / 3.5)
         local slot_spacing = ideal_spacing
         if slot_spacing < min_spacing then slot_spacing = min_spacing end
         if slot_spacing > max_spacing then slot_spacing = max_spacing end
@@ -934,33 +934,35 @@ if found == nil then return end
         local center_label_x = center_x
         local center_label_y = Round(center_y + 90)
         local center_label_idx = carousel.animActive and carousel.targetIndex or base_sel
-        for k = -3, 3 do
+        local function Lerp(a, b, t)
+          return a + (b - a) * t
+        end
+        local function SlotAlpha(dist)
+          if dist <= 1 then
+            return Round(Lerp(128, 40, dist))
+          end
+          if dist <= 2 then
+            return Round(Lerp(40, 8, dist - 1))
+          end
+          return 8
+        end
+        for k = -2, 2 do
           local idx = WrapIndex(base_sel + k, profcnt)
           local x = center_x + slot_spacing * (k - slide)
-          local dist = math.abs(k - slide)
           local y = center_y
-          if dist <= 1 then
-            y = y + dist * side_offset_y
-          elseif dist <= 2 then
-            y = y + side_offset_y + (dist - 1) * (side_offset2_y - side_offset_y)
-          else
-            y = y + side_offset2_y
-          end
-          local alpha = Clamp(1 - dist * 0.28, 0.0, 1.0)
-          local scale = Clamp(1 - dist * 0.095, 0.45, 1.0)
-          local tint = dist < 0.5 and UI.CCOL.YELLOW or Color.new(128, 128, 128, Round(200 * alpha))
-          DrawIcon(idx, x, y, scale, tint)
+          local dist = math.abs(k - slide)
+          local alpha = SlotAlpha(dist)
+          local tint = Color.new(128, 128, 128, alpha)
+          DrawIcon(idx, x, y, tint)
         end
         Font.ftPrint(UI.FONT.LABEL, Round(center_label_x), center_label_y, 8, UI.SCR.X, 16, UI.MainMenu.opts[center_label_idx], UI.COLORS.TEXT_PRIMARY)
         UI.Footer.Draw({
           triangle = "Credits",
           circle = "Exit",
           cross = "Select",
-          square = "Cover Art",
-          start = "Profiles",
-            R2 = ""
+          start = "Settings"
 
-        }, UI.Footer.order_with_start_r2)
+        }, UI.Footer.order_with_start)
         if UI.MainMenu._draw_only then return end
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
@@ -985,16 +987,6 @@ if found == nil then return end
         if UI.Pad.Events.BACK then UI.Modal.OpenExit() end
         if UI.Pad.Events.CONFIRM then
           if UI.MainMenu.OPT == 1 then
-            PLDR.CleanupGameList()
-            PLDR.GetPS1GameLists("mass"..PLDR.USB.MASSINDX..":/POPS/", true)
-            UI.setDeviceLock(DEVLOCK.USB)
-            UI.SceneChange(UI.SCENES.GUSBFAT)
-          elseif UI.MainMenu.OPT == 2 then
-            PLDR.CleanupGameList()
-            PLDR.GetPS1GameLists("mass"..PLDR.USB.MASSINDX..":/POPS/", true)
-            UI.setDeviceLock(DEVLOCK.USB)
-            UI.SceneChange(UI.SCENES.GUSBEXFAT)
-          elseif UI.MainMenu.OPT == 3 then
             local slots = PLDR.GetMMCESlots()
             if #slots < 1 then
               UI.Notif_queue.add("No MMCE device found (mmce0/mmce1).")
@@ -1015,7 +1007,7 @@ if found == nil then return end
               UI.setDeviceLock(DEVLOCK.MMCE)
               UI.SceneChange(UI.SCENES.GSMB)
             end
-          elseif UI.MainMenu.OPT == 4 then
+          elseif UI.MainMenu.OPT == 2 then
             LOG("Entering MX4SIO page")
             LOG("MX4SIO init start")
             PLDR.CleanupGameList()
@@ -1035,7 +1027,11 @@ if found == nil then return end
               UI.setDeviceLock(DEVLOCK.MX4SIO)
             end
             UI.SceneChange(UI.SCENES.GMX4SIO)
-          elseif UI.MainMenu.OPT == 5 then
+          elseif UI.MainMenu.OPT == 3 then
+            PLDR.CleanupGameList()
+            PLDR.GAMEPATH = ""
+            UI.SceneChange(UI.SCENES.GBDMHDD)
+          elseif UI.MainMenu.OPT == 4 then
             PLDR.LoadHDDModules()
             if UI.LASTSCENE == UI.SCENES.GHDD then
               LOG("skipping cache cleanup")
@@ -1058,15 +1054,38 @@ if found == nil then return end
               UI.Notif_queue.add("ERROR: Cant detect usable HDD ("..PLDR.HDD.STATUS..")")
             end
             UI.SceneChange(UI.MainMenu.OPT)
+          elseif UI.MainMenu.OPT == 5 then
+            PLDR.CleanupGameList()
+            PLDR.GetPS1GameLists("mass"..PLDR.USB.MASSINDX..":/POPS/", true)
+            UI.setDeviceLock(DEVLOCK.USB)
+            UI.SceneChange(UI.SCENES.GUSBEXFAT)
           elseif UI.MainMenu.OPT == 6 then
             PLDR.CleanupGameList()
-            PLDR.GAMEPATH = ""
-            UI.SceneChange(UI.SCENES.GBDMHDD)
+            PLDR.GetPS1GameLists("mass"..PLDR.USB.MASSINDX..":/POPS/", true)
+            UI.setDeviceLock(DEVLOCK.USB)
+            UI.SceneChange(UI.SCENES.GUSBFAT)
           elseif UI.MainMenu.OPT == 7 then
             PLDR.CleanupGameList()
             PLDR.GAMEPATH = ""
             UI.Notif_queue.add("SMB not implemented yet.")
             UI.SceneChange(UI.SCENES.GSMB)
+          elseif UI.MainMenu.OPT == 8 then
+            local dkwdrv_paths = {
+              "mc0:/PS1_DKWDRV/DKWDRV.ELF",
+              "mc1:/PS1_DKWDRV/DKWDRV.ELF"
+            }
+            local dkwdrv_path = nil
+            for i = 1, #dkwdrv_paths do
+              if doesFileExist(dkwdrv_paths[i]) then
+                dkwdrv_path = dkwdrv_paths[i]
+                break
+              end
+            end
+            if dkwdrv_path == nil then
+              UI.Notif_queue.add("mc?:/PS1_DKWDRV/DKWDRV.ELF not found")
+            else
+              System.loadELF(dkwdrv_path)
+            end
           end --because we still dont support SMB
         end
       end
@@ -1305,7 +1324,7 @@ if you bought it you\'ve been scammed
           circle = "Back",
           cross = "Confirm",
           square = "Cover Art",
-          start = "Profiles",
+          start = "Settings",
             R2 = ""
 
         }, UI.Footer.order_with_start_r2)
