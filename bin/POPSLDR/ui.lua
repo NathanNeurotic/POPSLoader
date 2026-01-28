@@ -604,7 +604,7 @@ end
           Font.ftPrint(BFONT, UI.SCR.X_MID, y0 + 36,  8, UI.SCR.X, 16, "israpps.github.io",    Color.new(0, 0, 0, alpha))
         end
 
-        local fade_in_frames = 24        local hold_frames = 48
+        local fade_in_frames = 48        local hold_frames = 48
         local fade_out_frames = 24
 
         -- Start boot sound once, and extend splash hold to cover it (configurable).
