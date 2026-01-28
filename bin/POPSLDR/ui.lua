@@ -891,7 +891,7 @@ if found == nil then return end
       Play = function ()
         local layout = UI.LAYOUT
         local profcnt = #UI.MainMenu.opts
-        Font.ftPrintMultiLineAligned(UI.FONT.TITLE, UI.SCR.X_MID, layout.TITLE_Y, 16, UI.SCR.X, 32, "POPSLoader by Matias Israelson\nGUI for POPStarter and BDMAssault", UI.COLORS.TEXT_PRIMARY)
+        Font.ftPrintMultiLineAligned(UI.FONT.TITLE, UI.SCR.X_MID, layout.TITLE_Y, 16, UI.SCR.X, 32, "POPSLoader\nby Matias Israelson\nGUI for POPStarter and BDMAssault", UI.COLORS.TEXT_PRIMARY)
         local status_y = layout.STATUS_Y + 16
         if UI.boot_device ~= nil and UI.boot_device ~= DEVLOCK.NONE then
           Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Booted from: "..UI.device_lock_name(UI.boot_device), UI.COLORS.TEXT_PRIMARY)
@@ -1009,12 +1009,12 @@ if found == nil then return end
         end
         local function SlotAlpha(dist)
           if dist <= 1 then
-            return Round(Lerp(128, 12, dist))
+            return Round(Lerp(128, 8, dist))
           end
           if dist <= 2 then
-            return Round(Lerp(12, 2, dist - 1))
+            return Round(Lerp(8, 1, dist - 1))
           end
-          return 2
+          return 1
         end
         for k = -2, 2 do
           local idx = WrapIndex(base_sel + k, profcnt)
@@ -1290,82 +1290,10 @@ if found == nil then return end
       end;
     };
     Credits = {
-      Q = 1;
-      INCR = -1;
-      exit_active = false;
-      exit_timer = nil;
-      exit_start = 0;
-      exit_dur_ms = 550;
       Play = function ()
         local layout = UI.LAYOUT
+        local currcol = UI.CCOL.GREY
 
-        -- Crossfade credits -> main menu (no fade-to-black).
-        if UI.Credits.exit_active then
-          if UI.Credits.exit_timer == nil then
-            UI.Credits.exit_timer = Timer.new()
-            UI.Credits.exit_start = Timer.getTime(UI.Credits.exit_timer)
-          end
-          local now = Timer.getTime(UI.Credits.exit_timer)
-          local t = (now - (UI.Credits.exit_start or now)) / (UI.Credits.exit_dur_ms or 1)
-          if t < 0 then t = 0 end
-          if t > 1 then t = 1 end
-          local alpha = Round(128 * (1 - t))
-          local currcol = Color.new(128, 128, 128, alpha)
-
-          -- Draw main menu underlay first.
-          Screen.clear(UI.SCR.BGCOL)
-          if IMG.BGM ~= nil then
-            Graphics.drawScaleImage(IMG.BGM, 0, 0, UI.SCR.X, UI.SCR.Y)
-          elseif IMG.BKG ~= nil then
-            Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
-          end
-          if UI.MainMenu ~= nil and UI.MainMenu.DrawOnly ~= nil then
-            UI.MainMenu.DrawOnly()
-          end
-
-          -- Draw credits on top, fading out.
-          Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 20, UI.SCR.X, 40, "POPStarter Loader\n"..tostring(POPSLDR_VER or ""), currcol)
-          Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 60, 20, UI.SCR.X, 40, "Coded By El_isra", currcol)
-          Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 80, 20, UI.SCR.X, UI.SCR.Y, [[
-Based on Enceladus by Daniel santos
-
-Special thanks to:
-krHACKen: for making POPStarter
-uyjulian, fjtrujy, HWC and others for always helping me
-
-This program is free and open source
-if you bought it you\'ve been scammed
-]], currcol)
-
-          -- When done, switch to main menu without using Transition (avoids black fade).
-          if t >= 1 then
-            UI.Credits.exit_active = false
-            UI.Credits.exit_timer = nil
-            UI.Credits.Q = 1
-            UI.Credits.INCR = -1
-            if UI.Transition ~= nil then UI.Transition.allowSceneWrite = true end
-            UI.CURSCENE = UI.SCENES.MMAIN
-            if UI.Transition ~= nil then
-              UI.Transition.allowSceneWrite = false
-              UI.Transition.active = false
-              UI.Transition.target = nil
-            end
-          end
-          return
-        end
-
-        if UI.Credits.Q == 0 then
-          -- Start crossfade instead of Transition-to-black.
-          UI.Credits.exit_active = true
-          UI.Credits.exit_timer = nil
-          UI.Credits.exit_start = 0
-          UI.Credits.Q = 1
-          UI.Credits.INCR = -1
-          return
-        end
-
-        local currcol = Color.new(128, 128, 128, UI.Credits.Q)
-        UI.Credits.Q = CLAMP(UI.Credits.Q-UI.Credits.INCR, 0, 128)
         Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 20, UI.SCR.X, 40, "POPStarter Loader\n"..tostring(POPSLDR_VER or ""), currcol)
         Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 60, 20, UI.SCR.X, 40, "Coded By El_isra", currcol)
         Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 80, 20, UI.SCR.X, UI.SCR.Y, [[
@@ -1381,12 +1309,8 @@ if you bought it you\'ve been scammed
 
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
-        -- Any input exits credits back to main menu via crossfade (no black).
         if UI.Pad.Events.EXIT or UI.Pad.Events.BACK or UI.Pad.Events.ANY then
-          UI.Credits.exit_active = true
-          UI.Credits.exit_timer = nil
-          UI.Credits.exit_start = 0
-          UI.Credits.INCR = -1
+          UI.SceneChange(UI.SCENES.MMAIN)
         end
 
         local labels, order = UI.Footer.ResolveLegend({
