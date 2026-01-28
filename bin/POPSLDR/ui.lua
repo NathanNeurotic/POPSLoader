@@ -59,6 +59,7 @@ UI = {
       ENABLED = true,
       PATH = "boot.adp",      -- relative to CWD (same folder as ui.lua on HostFS)
       SECONDS = 3.0,          -- splash minimum hold to cover audio (adjust to match boot.adp)
+      PAD_SECONDS = 0.5,      -- extra padding to keep splash visible after audio starts
       CHANNEL = 0,
       VOLUME = 100,           -- master volume (0-100 typical, scaled to audsrv range)
       ADPCM_VOLUME = 100      -- per-channel ADPCM volume (0-100 typical, scaled to audsrv range)
@@ -577,7 +578,9 @@ end
 
           local sec = UI.BOOT_SOUND.SECONDS
           if type(sec) ~= "number" or sec < 0 then sec = 0 end
-          boot_sound_hold_frames = math.floor((sec * 60) + 0.5)
+          local pad = UI.BOOT_SOUND.PAD_SECONDS
+          if type(pad) ~= "number" or pad < 0 then pad = 0 end
+          boot_sound_hold_frames = math.floor(((sec + pad) * 60) + 0.5)
           LOGF("BOOT SOUND: hold frames=%s", tostring(boot_sound_hold_frames))
         end
         local function DrawSplashCover(img, screen_w, screen_h, alpha)
@@ -604,7 +607,7 @@ end
           Font.ftPrint(BFONT, UI.SCR.X_MID, y0 + 36,  8, UI.SCR.X, 16, "israpps.github.io",    Color.new(0, 0, 0, alpha))
         end
 
-        local fade_in_frames = 48        local hold_frames = 48
+        local fade_in_frames = 72        local hold_frames = 48
         local fade_out_frames = 24
 
         -- Start boot sound once, and extend splash hold to cover it (configurable).
