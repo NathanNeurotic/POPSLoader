@@ -978,7 +978,9 @@ if found == nil then return end
         if slot_spacing > max_spacing then slot_spacing = max_spacing end
         local base_sel = carousel.currentIndex
         local slide = carousel.slide or 0
-        local scroll = carousel.currentIndex + (carousel.animActive and slide or 0)
+        local scroll = base_sel + (carousel.animActive and slide or 0)
+        local base_scroll = math.floor(scroll)
+        local scroll_frac = scroll - base_scroll
         local center_label_x = center_x
         local center_label_y = Round(center_y + 90)
         local center_label_idx = carousel.animActive and carousel.targetIndex or base_sel
@@ -995,10 +997,10 @@ if found == nil then return end
           return 6
         end
         for k = -2, 2 do
-          local idx = WrapIndex(math.floor(scroll + k + 0.5), profcnt)
-          local x = center_x + slot_spacing * (k - slide)
+          local idx = WrapIndex(base_scroll + k, profcnt)
+          local x = center_x + slot_spacing * (k - scroll_frac)
           local y = center_y
-          local dist = math.abs(k - slide)
+          local dist = math.abs(k - scroll_frac)
           local alpha = SlotAlpha(dist)
           local tint = Color.new(128, 128, 128, alpha)
           DrawIcon(idx, x, y, tint)
