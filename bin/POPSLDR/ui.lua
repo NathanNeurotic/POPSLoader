@@ -895,7 +895,7 @@ if found == nil then return end
                 UI.Notif_queue.add("Cant find Game\n"..PLDR.GAMEPATH .. PLDR.GAMES[UI.GameList.CURR])
               end
             end
-            PLDR.RunPOPStarterGame(PLDR.GAMEPATH, PLDR.GAMES[UI.GameList.CURR])
+            PLDR.RunPOPStarterGame(PLDR.GAMEPATH, PLDR.GAMES[UI.GameList.CURR], UI.CURSCENE)
           end
         end
         local cross_label = UI.Footer.labels.cross_launch
