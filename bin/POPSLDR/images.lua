@@ -24,6 +24,7 @@ local IMGS = {
   "BDHDD.png",
   "BKG.png",
   "BGM.png",
+  "DISC.png",
   "MISSING.png",
   "PSL.png",
   "select.png",

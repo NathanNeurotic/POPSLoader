@@ -798,7 +798,7 @@ if found == nil then return end
     };
     MainMenu = {
       OPT = 1;
-      opts = {"USB FAT32", "USB exFAT", "MMCE", "MX4SIO", "APA HDD", "BDM HDD", "SMB"};
+      opts = {"USB FAT32", "USB exFAT", "MMCE", "MX4SIO", "APA HDD", "BDM HDD", "SMB", "DKWDRV"};
       Carousel = {
         currentIndex = 1,
         targetIndex = 1,
@@ -838,7 +838,8 @@ if found == nil then return end
           ["MX4SIO"] = "MX4SIO",
           ["APA HDD"] = "APAHDD",
           ["BDM HDD"] = "BDHDD",
-          ["SMB"] = "SMB"
+          ["SMB"] = "SMB",
+          ["DKWDRV"] = "DISC"
         }
         local icon_keys = {}
         for x = 1, #UI.MainMenu.opts do
@@ -894,8 +895,6 @@ if found == nil then return end
 	        if layout.CAROUSEL_Y_OFFSET ~= nil then
 	          center_y = center_y + layout.CAROUSEL_Y_OFFSET
 	        end
-        local side_offset_y = 6
-        local side_offset2_y = 10
         local function Clamp(value, min_val, max_val)
           if value < min_val then return min_val end
           if value > max_val then return max_val end
@@ -904,15 +903,15 @@ if found == nil then return end
         local function ResolveIcon(key)
           return IMG[key] or IMG["MISSING"]
         end
-        local function DrawIcon(index, x, y, scale, color)
+        local function DrawIcon(index, x, y, color)
           local key = icon_keys[index]
           local icon = ResolveIcon(key)
           if icon == nil then return end
-          local icon_w = Round(Graphics.getImageWidth(icon) * scale)
-          local icon_h = Round(Graphics.getImageHeight(icon) * scale)
+          local icon_w = Graphics.getImageWidth(icon)
+          local icon_h = Graphics.getImageHeight(icon)
           local pos_x = Round(x - (icon_w / 2))
           local pos_y = Round(y - (icon_h / 2))
-          Graphics.drawScaleImage(icon, pos_x, pos_y, icon_w, icon_h, color)
+          Graphics.drawImage(icon, pos_x, pos_y, color)
         end
         local first_icon = ResolveIcon(icon_keys[1] or "MISSING")
         local base_icon_w = 0
@@ -934,22 +933,19 @@ if found == nil then return end
         local center_label_x = center_x
         local center_label_y = Round(center_y + 90)
         local center_label_idx = carousel.animActive and carousel.targetIndex or base_sel
-        for k = -3, 3 do
+        local function SlotAlpha(offset)
+          local dist = math.abs(offset)
+          if dist == 0 then return 128 end
+          if dist == 1 then return 80 end
+          return 40
+        end
+        for k = -2, 2 do
           local idx = WrapIndex(base_sel + k, profcnt)
           local x = center_x + slot_spacing * (k - slide)
-          local dist = math.abs(k - slide)
           local y = center_y
-          if dist <= 1 then
-            y = y + dist * side_offset_y
-          elseif dist <= 2 then
-            y = y + side_offset_y + (dist - 1) * (side_offset2_y - side_offset_y)
-          else
-            y = y + side_offset2_y
-          end
-          local alpha = Clamp(1 - dist * 0.28, 0.0, 1.0)
-          local scale = Clamp(1 - dist * 0.095, 0.45, 1.0)
-          local tint = dist < 0.5 and UI.CCOL.YELLOW or Color.new(128, 128, 128, Round(200 * alpha))
-          DrawIcon(idx, x, y, scale, tint)
+          local alpha = SlotAlpha(k)
+          local tint = Color.new(255, 255, 255, alpha)
+          DrawIcon(idx, x, y, tint)
         end
         Font.ftPrint(UI.FONT.LABEL, Round(center_label_x), center_label_y, 8, UI.SCR.X, 16, UI.MainMenu.opts[center_label_idx], UI.COLORS.TEXT_PRIMARY)
         UI.Footer.Draw({
@@ -1067,6 +1063,23 @@ if found == nil then return end
             PLDR.GAMEPATH = ""
             UI.Notif_queue.add("SMB not implemented yet.")
             UI.SceneChange(UI.SCENES.GSMB)
+          elseif UI.MainMenu.OPT == 8 then
+            local dkwdrv_paths = {
+              "mc0:/PS1_DKWDRV/DKWDRV.ELF",
+              "mc1:/PS1_DKWDRV/DKWDRV.ELF"
+            }
+            local dkwdrv_path = nil
+            for i = 1, #dkwdrv_paths do
+              if doesFileExist(dkwdrv_paths[i]) then
+                dkwdrv_path = dkwdrv_paths[i]
+                break
+              end
+            end
+            if dkwdrv_path == nil then
+              UI.Notif_queue.add("mc?:/PS1_DKWDRV/DKWDRV.ELF not found")
+            else
+              System.loadELF(dkwdrv_path)
+            end
           end --because we still dont support SMB
         end
       end
