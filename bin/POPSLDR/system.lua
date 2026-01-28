@@ -515,7 +515,7 @@ function PLDR.ApplyBDMAMode()
     if not EnsureDirectory(dest_root) then
       ok = false
     end
-    local source_root = NormalizeDirPath(JoinPath(APP_DIR_LOCAL, "BDMA"))
+    local source_root = NormalizeDirPath(APP_DIR_LOCAL)
     local ok_list, entries = pcall(System.listDirectory, source_root)
     if not ok_list or entries == nil then
       LOG("BDMA list failed:", source_root, entries)
@@ -541,6 +541,9 @@ function PLDR.ApplyBDMAMode()
     end
   end
   LOG("BDMA apply done: "..label.." ("..(ok and "ok" or "fail")..")")
+  if ok and UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
+    UI.Notif_queue.add("BDMA Applied")
+  end
   return ok
 end
 

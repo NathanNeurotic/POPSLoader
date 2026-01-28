@@ -808,14 +808,20 @@ end
         end
         local boot_phase_frames = math.floor((boot_phase_seconds * 60) + 0.5)
         local credits_phase_frames = math.floor((credits_phase_seconds * 60) + 0.5)
+        local show_credits = next_scene ~= UI.SCENES.CREDITS
         if fade_in_frames > boot_phase_frames then
           fade_in_frames = boot_phase_frames
         end
-        if fade_mid_frames > credits_phase_frames then
-          fade_mid_frames = credits_phase_frames
-        end
-        if fade_out_frames > credits_phase_frames - fade_mid_frames then
-          fade_out_frames = credits_phase_frames - fade_mid_frames
+        if not show_credits then
+          fade_mid_frames = 0
+          credits_phase_frames = 0
+        else
+          if fade_mid_frames > credits_phase_frames then
+            fade_mid_frames = credits_phase_frames
+          end
+          if fade_out_frames > credits_phase_frames - fade_mid_frames then
+            fade_out_frames = credits_phase_frames - fade_mid_frames
+          end
         end
         if fade_out_frames < 0 then fade_out_frames = 0 end
         local boot_hold_frames = boot_phase_frames - fade_in_frames
@@ -839,7 +845,7 @@ end
           DrawSplashText(128)
           Screen.flip()
         end
-        if fade_mid_frames > 0 then
+        if show_credits and fade_mid_frames > 0 then
           for i = 1, fade_mid_frames do
             local alpha = Round(128 * (1 - (i / fade_mid_frames)))
             DrawTargetScene(UI.SCENES.CREDITS)
@@ -848,16 +854,19 @@ end
             Screen.flip()
           end
         end
-        for _ = 1, credits_hold_frames do
-          DrawTargetScene(UI.SCENES.CREDITS)
-          Screen.flip()
+        if show_credits then
+          for _ = 1, credits_hold_frames do
+            DrawTargetScene(UI.SCENES.CREDITS)
+            Screen.flip()
+          end
         end
         if fade_out_frames > 0 then
           local fade_to_black_frames = math.floor(fade_out_frames / 2)
           local fade_in_menu_frames = fade_out_frames - fade_to_black_frames
+          local fade_source_scene = show_credits and UI.SCENES.CREDITS or next_scene
           for i = 1, fade_to_black_frames do
             local alpha = Round(128 * (i / fade_to_black_frames))
-            DrawTargetScene(UI.SCENES.CREDITS)
+            DrawTargetScene(fade_source_scene)
             Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
             Screen.flip()
           end
