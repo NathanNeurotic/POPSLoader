@@ -945,6 +945,12 @@ if found == nil then return end
         local function ResolveIcon(key)
           return IMG[key] or IMG["MISSING"]
         end
+        if not UI.MainMenu.icons_ready then
+          for _, key in ipairs(icon_keys) do
+            ResolveIcon(key)
+          end
+          UI.MainMenu.icons_ready = true
+        end
         local function DrawIcon(index, x, y, color)
           local key = icon_keys[index]
           local icon = ResolveIcon(key)
