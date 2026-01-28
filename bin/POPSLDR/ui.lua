@@ -701,6 +701,9 @@ if found == nil then return end
       allowSceneWrite = false,
       timer = nil,
       start = 0,
+      elapsed = 0,
+      last_time = nil,
+      max_step = 33,
       duration_out = 700,
       duration_in = 700,
       Queue = function (target)
@@ -722,13 +725,22 @@ if found == nil then return end
         UI.Transition.target = target
         UI.Transition.next_target = nil
         UI.Transition.start = Timer.getTime(UI.Transition.timer)
+        UI.Transition.elapsed = 0
+        UI.Transition.last_time = UI.Transition.start
       end,
       Update = function ()
         if not UI.Transition.active then
           return 0
         end
         local now = Timer.getTime(UI.Transition.timer)
-        local elapsed = now - (UI.Transition.start or 0)
+        local last = UI.Transition.last_time or now
+        local delta = now - last
+        if delta < 0 then delta = 0 end
+        local max_step = UI.Transition.max_step or 33
+        if delta > max_step then delta = max_step end
+        UI.Transition.elapsed = (UI.Transition.elapsed or 0) + delta
+        UI.Transition.last_time = now
+        local elapsed = UI.Transition.elapsed or 0
         local duration = UI.Transition.phase == "out" and UI.Transition.duration_out or UI.Transition.duration_in
         if duration <= 0 then duration = 1 end
         local t = elapsed / duration
@@ -747,6 +759,8 @@ if found == nil then return end
             UI.Transition.allowSceneWrite = false
             UI.Transition.phase = "in"
             UI.Transition.start = now
+            UI.Transition.elapsed = 0
+            UI.Transition.last_time = now
             alpha = 128
           else
             local queued = UI.Transition.next_target
