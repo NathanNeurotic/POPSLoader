@@ -610,6 +610,7 @@ end
         end
 
         local fade_in_frames = 90
+        local fade_mid_frames = 30
         local fade_out_frames = 30
 
         -- Start boot sound once, and extend splash hold to cover it (configurable).
@@ -632,7 +633,14 @@ end
         if fade_in_frames > boot_phase_frames then
           fade_in_frames = boot_phase_frames
         end
-        local boot_hold_frames = boot_phase_frames - fade_in_frames
+        if fade_mid_frames > boot_phase_frames then
+          fade_mid_frames = boot_phase_frames
+        end
+        if fade_mid_frames > boot_phase_frames - fade_in_frames then
+          fade_mid_frames = boot_phase_frames - fade_in_frames
+        end
+        if fade_mid_frames < 0 then fade_mid_frames = 0 end
+        local boot_hold_frames = boot_phase_frames - fade_in_frames - fade_mid_frames
         if boot_hold_frames < 0 then boot_hold_frames = 0 end
         if fade_out_frames > credits_phase_frames then
           fade_out_frames = credits_phase_frames
@@ -650,9 +658,16 @@ end
           DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, 128)
           Screen.flip()
         end
+        if fade_mid_frames > 0 then
+          for i = 1, fade_mid_frames do
+            local alpha = Round(128 * (1 - (i / fade_mid_frames)))
+            DrawBackground()
+            DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
+            Screen.flip()
+          end
+        end
         for _ = 1, credits_hold_frames do
-          DrawBackground()
-          DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, 128)
+          Screen.clear(Color.new(0, 0, 0))
           DrawSplashText(128)
           Screen.flip()
         end
@@ -660,7 +675,7 @@ end
           for i = 1, fade_out_frames do
             local alpha = Round(128 * (1 - (i / fade_out_frames)))
             DrawTargetScene(next_scene)
-            DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
+            Screen.clear(Color.new(0, 0, 0))
             DrawSplashText(alpha)
             Screen.flip()
           end
