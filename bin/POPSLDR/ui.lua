@@ -922,9 +922,9 @@ if found == nil then return end
         local safe_w = (UI.SCR.X - UI.LAYOUT.SAFE.L - UI.LAYOUT.SAFE.R)
         -- Target: show 5 icons (-2..2) without clipping on overscan-heavy TVs.
         -- Use a tighter spacing than icon width so side icons remain visible.
-        local ideal_spacing = math.floor(safe_w / 4.3)
-        local min_spacing = 90
-        local max_spacing = math.floor(safe_w / 3.8)
+        local ideal_spacing = math.floor(safe_w / 4.0)
+        local min_spacing = 100
+        local max_spacing = math.floor(safe_w / 3.5)
         local slot_spacing = ideal_spacing
         if slot_spacing < min_spacing then slot_spacing = min_spacing end
         if slot_spacing > max_spacing then slot_spacing = max_spacing end
@@ -935,9 +935,9 @@ if found == nil then return end
         local center_label_idx = carousel.animActive and carousel.targetIndex or base_sel
         local function SlotAlpha(offset)
           local dist = math.abs(offset)
-          if dist == 0 then return 128 end
-          if dist == 1 then return 80 end
-          return 40
+          if dist == 0 then return 255 end
+          if dist == 1 then return 120 end
+          return 60
         end
         for k = -2, 2 do
           local idx = WrapIndex(base_sel + k, profcnt)
