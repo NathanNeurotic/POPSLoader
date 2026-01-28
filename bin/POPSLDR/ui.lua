@@ -535,27 +535,34 @@ end
 
           LOGF("BOOT SOUND: loading '%s'", tostring(found))
           local ok_load, audio = pcall(Sound.loadADPCM, found)
-          if not ok_load or audio == nil or audio == 0 then
+          if not ok_load then
+            LOGF("BOOT SOUND: load threw for '%s': %s", tostring(found), tostring(audio))
+            return
+          end
+          if audio == nil or audio == 0 then
             LOGF("BOOT SOUND: load failed for '%s'", tostring(found))
             return
           end
           boot_sound_loaded = audio
+          LOGF("BOOT SOUND: loaded handle=%s", tostring(boot_sound_loaded))
 
-          local ok_play = pcall(function()
+          local ok_play, play_err = pcall(function()
             Sound.playADPCM(UI.BOOT_SOUND.CHANNEL or 0, boot_sound_loaded)
           end)
           if not ok_play then
-            LOGF("BOOT SOUND: play failed for '%s'", tostring(found))
+            LOGF("BOOT SOUND: play failed for '%s': %s", tostring(found), tostring(play_err))
             if type(Sound.freeADPCM) == "function" then
               pcall(Sound.freeADPCM, boot_sound_loaded)
             end
             boot_sound_loaded = nil
             return
           end
+          LOGF("BOOT SOUND: play started on channel %s", tostring(UI.BOOT_SOUND.CHANNEL or 0))
 
           local sec = UI.BOOT_SOUND.SECONDS
           if type(sec) ~= "number" or sec < 0 then sec = 0 end
           boot_sound_hold_frames = math.floor((sec * 60) + 0.5)
+          LOGF("BOOT SOUND: hold frames=%s", tostring(boot_sound_hold_frames))
         end
         local function DrawSplashCover(img, screen_w, screen_h, alpha)
           if img == nil then return end
