@@ -1009,12 +1009,12 @@ if found == nil then return end
         end
         local function SlotAlpha(dist)
           if dist <= 1 then
-            return Round(Lerp(128, 40, dist))
+            return Round(Lerp(128, 12, dist))
           end
           if dist <= 2 then
-            return Round(Lerp(40, 8, dist - 1))
+            return Round(Lerp(12, 2, dist - 1))
           end
-          return 8
+          return 2
         end
         for k = -2, 2 do
           local idx = WrapIndex(base_sel + k, profcnt)
