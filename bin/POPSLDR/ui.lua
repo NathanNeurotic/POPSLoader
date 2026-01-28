@@ -1526,6 +1526,9 @@ end
         Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 20, UI.SCR.X, 40, "POPStarter Loader\n"..tostring(POPSLDR_VER or ""), currcol)
         Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 60, 20, UI.SCR.X, 40, "Coded By El_isra", currcol)
         Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 80, 20, UI.SCR.X, UI.SCR.Y, [[
+Graphics by Berion
+Scripting by Nuno6573 and Ripto
+
 Based on Enceladus by Daniel santos
 
 Special thanks to:
@@ -1548,15 +1551,6 @@ if you bought it you\'ve been scammed
           end
         end
 
-        local labels, order = UI.Footer.ResolveLegend({
-          order = UI.Footer.order_with_start_r2,
-          order_id = "start_r2",
-          circle = UI.Footer.labels.circle_other,
-          cross = UI.Footer.labels.cross_confirm,
-          square = "Cover Art",
-          start = UI.Footer.labels.start_profiles
-        })
-        UI.Footer.Draw(labels, order)
       end
     };
   }
