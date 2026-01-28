@@ -938,17 +938,20 @@ if found == nil then return end
         end
         local function SlotAlpha(dist)
           if dist <= 1 then
-            return Round(Lerp(128, 80, dist))
+            return Round(Lerp(128, 48, dist))
           end
           if dist <= 2 then
-            return Round(Lerp(80, 40, dist - 1))
+            return Round(Lerp(48, 16, dist - 1))
           end
-          return 40
+          return 16
         end
         for k = -2, 2 do
           local idx = WrapIndex(base_sel + k, profcnt)
           local x = center_x + slot_spacing * (k - slide)
           local y = center_y
+          if icon_keys[idx] == "DISC" then
+            y = y + 4
+          end
           local dist = math.abs(k - slide)
           local alpha = SlotAlpha(dist)
           local tint = Color.new(128, 128, 128, alpha)
