@@ -398,8 +398,14 @@ UI = {
           if boot_sound_tried then return end
           boot_sound_tried = true
 
-          if UI.BOOT_SOUND == nil or UI.BOOT_SOUND.ENABLED ~= true then return end
-          if type(Sound) ~= "table" or type(Sound.loadADPCM) ~= "function" then return end
+          if UI.BOOT_SOUND == nil or UI.BOOT_SOUND.ENABLED ~= true then
+            LOG("BOOT SOUND: disabled")
+            return
+          end
+          if type(Sound) ~= "table" or type(Sound.loadADPCM) ~= "function" then
+            LOG("BOOT SOUND: Sound API not available")
+            return
+          end
 
           local primary = UI.BOOT_SOUND.PATH or "boot.adp"
           local names = { primary }
@@ -527,6 +533,7 @@ end
             end
           end)
 
+          LOGF("BOOT SOUND: loading '%s'", tostring(found))
           local ok_load, audio = pcall(Sound.loadADPCM, found)
           if not ok_load or audio == nil or audio == 0 then
             LOGF("BOOT SOUND: load failed for '%s'", tostring(found))
