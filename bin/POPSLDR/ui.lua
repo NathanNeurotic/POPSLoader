@@ -90,6 +90,9 @@ UI = {
     RequestScene = function (SCENE)
       if UI.Transition ~= nil and UI.Transition.Start ~= nil then
         if UI.Transition.active then
+          if UI.Transition.Queue ~= nil then
+            UI.Transition.Queue(SCENE)
+          end
           return
         end
         if UI.CURSCENE ~= SCENE then
@@ -694,11 +697,22 @@ if found == nil then return end
       active = false,
       phase = "out",
       target = nil,
+      next_target = nil,
       allowSceneWrite = false,
       timer = nil,
       start = 0,
       duration_out = 700,
       duration_in = 700,
+      Queue = function (target)
+        if target == nil then return end
+        if UI.Transition.active and UI.Transition.phase == "out" then
+          UI.Transition.target = target
+          return
+        end
+        if target ~= UI.CURSCENE then
+          UI.Transition.next_target = target
+        end
+      end,
       Start = function (target)
         if UI.Transition.timer == nil then
           UI.Transition.timer = Timer.new()
@@ -706,6 +720,7 @@ if found == nil then return end
         UI.Transition.active = true
         UI.Transition.phase = "out"
         UI.Transition.target = target
+        UI.Transition.next_target = nil
         UI.Transition.start = Timer.getTime(UI.Transition.timer)
       end,
       Update = function ()
@@ -734,9 +749,17 @@ if found == nil then return end
             UI.Transition.start = now
             alpha = 128
           else
-            UI.Transition.active = false
-            UI.Transition.target = nil
-            alpha = 0
+            local queued = UI.Transition.next_target
+            if queued ~= nil and queued ~= UI.CURSCENE then
+              UI.Transition.next_target = nil
+              UI.Transition.Start(queued)
+              alpha = 0
+            else
+              UI.Transition.active = false
+              UI.Transition.target = nil
+              UI.Transition.next_target = nil
+              alpha = 0
+            end
           end
         end
         return alpha
