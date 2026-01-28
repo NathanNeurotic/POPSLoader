@@ -51,8 +51,11 @@ end
 IMG_SOURCES["MMCE"] = "MMCE.png"
 IMG_SOURCES["MX4SIO"] = "MX4SIO.png"
 
+local IMG_FAILED = {}
+
 IMG = setmetatable({}, {
   __index = function (tbl, key)
+    if IMG_FAILED[key] then return nil end
     local source = IMG_SOURCES[key]
     if source == nil then return nil end
     if BOOT_PROF and BOOT_PROF.stamp and not BOOT_PROF.textures_ready then
@@ -61,7 +64,26 @@ IMG = setmetatable({}, {
     end
     local path = ResolveImage(source)
     local img = Graphics.loadImage(path)
-    if img == nil then error("Could not load '"..path.."'") end
+    if img == nil then
+      LOGF("Image load failed: %s", path)
+      IMG_FAILED[key] = true
+      if key ~= "MISSING" then
+        local missing_source = IMG_SOURCES["MISSING"]
+        if missing_source ~= nil and not IMG_FAILED["MISSING"] then
+          local missing_path = ResolveImage(missing_source)
+          local missing_img = Graphics.loadImage(missing_path)
+          if missing_img ~= nil then
+            Graphics.setImageFilters(missing_img, LINEAR)
+            rawset(tbl, "MISSING", missing_img)
+            rawset(tbl, key, missing_img)
+            return missing_img
+          end
+          LOGF("Image load failed: %s", missing_path)
+          IMG_FAILED["MISSING"] = true
+        end
+      end
+      return nil
+    end
     Graphics.setImageFilters(img, LINEAR)
     rawset(tbl, key, img)
     return img
