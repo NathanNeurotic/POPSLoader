@@ -1467,6 +1467,9 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   if policy.name == "HDD" then
     reboot_iop = 0
   end
+  if UI ~= nil and UI.CoverCache ~= nil and UI.CoverCache.Clear ~= nil then
+    UI.CoverCache:Clear()
+  end
   LaunchEngine(popstarter, argv, reboot_iop, context)
 end
 

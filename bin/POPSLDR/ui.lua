@@ -36,6 +36,136 @@ local function GuardTrace()
   end
   return "TRACE unavailable"
 end
+local function SafeDoesFileExist(path)
+  if path == nil or path == "" then return false end
+  if type(doesFileExist) == "function" then
+    local okcall, res = pcall(doesFileExist, path)
+    return okcall and res == true
+  end
+  if type(System) == "table" and type(System.openFile) == "function" and type(System.closeFile) == "function" then
+    local okfd, fd = pcall(System.openFile, path, O_RDONLY)
+    if okfd and fd ~= nil and fd >= 0 then
+      pcall(System.closeFile, fd)
+      return true
+    end
+  end
+  return false
+end
+local function ExtractGameRelPath(entry)
+  if entry == nil then return nil end
+  local relpath = string.match(entry, "^[^|]+|(.+)$")
+  return relpath or entry
+end
+local function StripExtension(path)
+  if path == nil then return nil end
+  local stripped = string.match(path, "(.+)%.[^%.]+$")
+  return stripped or path
+end
+local function BuildCoverCandidates(entry, game_path)
+  -- TODO: verify cover art naming/layout. For now, assume sidecar image next to the VCD.
+  local relpath = ExtractGameRelPath(entry)
+  if relpath == nil or relpath == "" then return {} end
+  local fullpath = relpath
+  if type(JoinPath) == "function" then
+    fullpath = JoinPath(game_path or "", relpath)
+  elseif game_path ~= nil and game_path ~= "" then
+    if string.sub(game_path, -1) == "/" then
+      fullpath = game_path..relpath
+    else
+      fullpath = game_path.."/"..relpath
+    end
+  end
+  local base = StripExtension(fullpath)
+  return {
+    base..".png"
+  }
+end
+local CoverCache = {
+  max = 3,
+  entries = {},
+  order = {},
+  failed = {},
+  last_key = nil,
+  last_img = nil
+}
+function CoverCache:Clear()
+  local free_ok = type(Graphics) == "table" and type(Graphics.freeImage) == "function"
+  for key, img in pairs(self.entries) do
+    if free_ok then
+      pcall(Graphics.freeImage, img)
+    end
+    self.entries[key] = nil
+  end
+  self.order = {}
+  self.failed = {}
+  self.last_key = nil
+  self.last_img = nil
+end
+function CoverCache:EvictIfNeeded()
+  while #self.order > self.max do
+    local evict_key = table.remove(self.order, 1)
+    local img = self.entries[evict_key]
+    if img ~= nil then
+      if type(Graphics) == "table" and type(Graphics.freeImage) == "function" then
+        pcall(Graphics.freeImage, img)
+      end
+      self.entries[evict_key] = nil
+    end
+  end
+end
+function CoverCache:GetOrLoad(path)
+  if path == nil or path == "" then return nil end
+  local cached = self.entries[path]
+  if cached ~= nil then
+    return cached
+  end
+  if self.failed[path] then
+    return nil
+  end
+  if not SafeDoesFileExist(path) then
+    self.failed[path] = true
+    return nil
+  end
+  if type(Graphics) ~= "table" or type(Graphics.loadImage) ~= "function" then
+    self.failed[path] = true
+    return nil
+  end
+  local img = Graphics.loadImage(path)
+  if img == nil then
+    self.failed[path] = true
+    return nil
+  end
+  if type(Graphics.setImageFilters) == "function" then
+    Graphics.setImageFilters(img, LINEAR)
+  end
+  self.entries[path] = img
+  table.insert(self.order, path)
+  self:EvictIfNeeded()
+  return img
+end
+function CoverCache:UpdateSelection(entry, game_path)
+  local key = tostring(entry or "")
+  if game_path ~= nil then
+    key = key.."@"..tostring(game_path)
+  end
+  if self.last_key == key then
+    return self.last_img
+  end
+  self.last_key = key
+  self.last_img = nil
+  if entry == nil or entry == "" then
+    return nil
+  end
+  local candidates = BuildCoverCandidates(entry, game_path)
+  for i = 1, #candidates do
+    local img = self:GetOrLoad(candidates[i])
+    if img ~= nil then
+      self.last_img = img
+      return img
+    end
+  end
+  return nil
+end
 UI = {
     LASTSCENE = 5;
     SCENES = {
@@ -66,6 +196,7 @@ UI = {
       VOLUME = 100,           -- master volume (0-100 typical, scaled to audsrv range)
       ADPCM_VOLUME = 100      -- per-channel ADPCM volume (0-100 typical, scaled to audsrv range)
     };
+    CoverCache = CoverCache;
     device_lock_name = function (lock)
       if lock == DEVLOCK.USB then return "USB" end
       if lock == DEVLOCK.MMCE then return "MMCE" end
@@ -916,10 +1047,17 @@ end
         end
         if t >= 1 then
           if UI.Transition.phase == "out" then
+            local previous_scene = UI.CURSCENE
+            if UI.OnSceneExit ~= nil then
+              UI.OnSceneExit(previous_scene, UI.Transition.target)
+            end
             UI.LASTSCENE = UI.CURSCENE
             UI.Transition.allowSceneWrite = true
             UI.CURSCENE = UI.Transition.target
             UI.Transition.allowSceneWrite = false
+            if UI.OnSceneEnter ~= nil then
+              UI.OnSceneEnter(previous_scene, UI.CURSCENE)
+            end
             UI.Transition.phase = "in"
             UI.Transition.start = now
             UI.Transition.elapsed = 0
@@ -1029,10 +1167,19 @@ end
 	          local c = (i == UI.GameList.CURR) and UI.COLORS.LIST_SELECTED or UI.COLORS.LIST_UNSELECTED
 	          Font.ftPrint(BFONT, layout.LIST_X, Y, 0, layout.LIST_W, 16, string.sub(display_name,1, -5), c)
         end
+        local cover_img = nil
+        if UI.CoverCache ~= nil then
+          if ammount > 0 then
+            cover_img = UI.CoverCache:UpdateSelection(PLDR.GAMES[UI.GameList.CURR], PLDR.GAMEPATH)
+          else
+            UI.CoverCache:UpdateSelection(nil, PLDR.GAMEPATH)
+          end
+        end
         if layout.PREVIEW_W > 0 then
           Graphics.drawRect(layout.PREVIEW_X - 2, layout.PREVIEW_Y - 2, layout.PREVIEW_W + 4, layout.PREVIEW_H + 4, UI.CCOL.GREY)
-          if IMG.MISSING ~= nil then
-            Graphics.drawScaleImage(IMG.MISSING, layout.PREVIEW_X, layout.PREVIEW_Y, layout.PREVIEW_W, layout.PREVIEW_H)
+          local preview_img = cover_img or IMG.MISSING
+          if preview_img ~= nil then
+            Graphics.drawScaleImage(preview_img, layout.PREVIEW_X, layout.PREVIEW_Y, layout.PREVIEW_W, layout.PREVIEW_H)
           end
         end
         if ammount <= 0 then
@@ -1621,6 +1768,13 @@ function UI.IsGameScene(scene)
 end
 function UI.IsUsbScene(scene)
   return scene == UI.SCENES.GUSBFAT or scene == UI.SCENES.GUSBEXFAT
+end
+function UI.OnSceneExit(previous_scene, next_scene)
+  if UI.IsGameScene(previous_scene) and previous_scene ~= next_scene then
+    if UI.CoverCache ~= nil and UI.CoverCache.Clear ~= nil then
+      UI.CoverCache:Clear()
+    end
+  end
 end
 UI.RecalcLayout()
 function Input_GetEvent()
