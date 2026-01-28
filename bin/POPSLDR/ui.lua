@@ -90,6 +90,9 @@ UI = {
     RequestScene = function (SCENE)
       if UI.Transition ~= nil and UI.Transition.Start ~= nil then
         if UI.Transition.active then
+          if UI.Transition.Queue ~= nil then
+            UI.Transition.Queue(SCENE)
+          end
           return
         end
         if UI.CURSCENE ~= SCENE then
@@ -357,11 +360,34 @@ UI = {
       Screen.flip()
     end;
     WelcomeDraw = {
-      Play = function ()
-	        -- Boot splash fades in from black, then fades out over the main menu (no fade-to-black).
+      Play = function (next_scene)
+	        -- Boot splash fades in from black, then fades out into the next scene.
 	        local function DrawBackground()
 	          Screen.clear(Color.new(0, 0, 0))
 	        end
+        local function DrawTargetBackground(scene)
+          Screen.clear(UI.SCR.BGCOL)
+          if scene == UI.SCENES.MMAIN then
+            if IMG.BGM ~= nil then
+              Graphics.drawScaleImage(IMG.BGM, 0, 0, UI.SCR.X, UI.SCR.Y)
+            elseif IMG.BKG ~= nil then
+              Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
+            end
+          else
+            if IMG.BKG ~= nil then
+              Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
+            end
+          end
+        end
+        local function DrawTargetScene(scene)
+          if scene == nil then return end
+          DrawTargetBackground(scene)
+          if scene == UI.SCENES.MMAIN and UI.MainMenu ~= nil and UI.MainMenu.DrawOnly ~= nil then
+            UI.MainMenu.DrawOnly()
+          elseif scene == UI.SCENES.CREDITS and UI.Credits ~= nil and UI.Credits.DrawOnly ~= nil then
+            UI.Credits.DrawOnly()
+          end
+        end
 
 -- Boot audio (relative to current directory). Never fatal.
         local boot_sound_tried = false
@@ -496,16 +522,7 @@ if found == nil then return end
         end
         for i = 1, fade_out_frames do
           local alpha = Round(128 * (1 - (i / fade_out_frames)))
-          -- Fade splash out over the main menu (no fade-to-black).
-          Screen.clear(UI.SCR.BGCOL)
-          if IMG.BGM ~= nil then
-            Graphics.drawScaleImage(IMG.BGM, 0, 0, UI.SCR.X, UI.SCR.Y)
-          elseif IMG.BKG ~= nil then
-            Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
-          end
-          if UI.MainMenu ~= nil and UI.MainMenu.DrawOnly ~= nil then
-            UI.MainMenu.DrawOnly()
-          end
+          DrawTargetScene(next_scene)
           DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
           DrawSplashText(alpha)
           Screen.flip()
@@ -680,11 +697,25 @@ if found == nil then return end
       active = false,
       phase = "out",
       target = nil,
+      next_target = nil,
       allowSceneWrite = false,
       timer = nil,
       start = 0,
+      elapsed = 0,
+      last_time = nil,
+      max_step = 33,
       duration_out = 700,
       duration_in = 700,
+      Queue = function (target)
+        if target == nil then return end
+        if UI.Transition.active and UI.Transition.phase == "out" then
+          UI.Transition.target = target
+          return
+        end
+        if target ~= UI.CURSCENE then
+          UI.Transition.next_target = target
+        end
+      end,
       Start = function (target)
         if UI.Transition.timer == nil then
           UI.Transition.timer = Timer.new()
@@ -692,14 +723,24 @@ if found == nil then return end
         UI.Transition.active = true
         UI.Transition.phase = "out"
         UI.Transition.target = target
+        UI.Transition.next_target = nil
         UI.Transition.start = Timer.getTime(UI.Transition.timer)
+        UI.Transition.elapsed = 0
+        UI.Transition.last_time = UI.Transition.start
       end,
       Update = function ()
         if not UI.Transition.active then
           return 0
         end
         local now = Timer.getTime(UI.Transition.timer)
-        local elapsed = now - (UI.Transition.start or 0)
+        local last = UI.Transition.last_time or now
+        local delta = now - last
+        if delta < 0 then delta = 0 end
+        local max_step = UI.Transition.max_step or 33
+        if delta > max_step then delta = max_step end
+        UI.Transition.elapsed = (UI.Transition.elapsed or 0) + delta
+        UI.Transition.last_time = now
+        local elapsed = UI.Transition.elapsed or 0
         local duration = UI.Transition.phase == "out" and UI.Transition.duration_out or UI.Transition.duration_in
         if duration <= 0 then duration = 1 end
         local t = elapsed / duration
@@ -718,11 +759,21 @@ if found == nil then return end
             UI.Transition.allowSceneWrite = false
             UI.Transition.phase = "in"
             UI.Transition.start = now
+            UI.Transition.elapsed = 0
+            UI.Transition.last_time = now
             alpha = 128
           else
-            UI.Transition.active = false
-            UI.Transition.target = nil
-            alpha = 0
+            local queued = UI.Transition.next_target
+            if queued ~= nil and queued ~= UI.CURSCENE then
+              UI.Transition.next_target = nil
+              UI.Transition.Start(queued)
+              alpha = 0
+            else
+              UI.Transition.active = false
+              UI.Transition.target = nil
+              UI.Transition.next_target = nil
+              alpha = 0
+            end
           end
         end
         return alpha
@@ -1342,6 +1393,11 @@ if found == nil then return end
       end;
     };
     Credits = {
+      DrawOnly = function ()
+        UI.Credits._draw_only = true
+        UI.Credits.Play()
+        UI.Credits._draw_only = false
+      end;
       Play = function ()
         local layout = UI.LAYOUT
         local currcol = UI.CCOL.GREY
@@ -1363,10 +1419,12 @@ if you bought it you\'ve been scammed
           Font.ftPrint(SFONT, layout.SAFE.L, stamp_y, 0, UI.SCR.X, 16, UI.BUILD_INFO.stamp, UI.CCOL.GREY)
         end
 
-        Input_GetEvent()
-        if UI.HandleGlobalInput(false) then return end
-        if UI.Pad.Events.EXIT or UI.Pad.Events.BACK or UI.Pad.Events.ANY then
-          UI.SceneChange(UI.SCENES.MMAIN)
+        if not UI.Credits._draw_only then
+          Input_GetEvent()
+          if UI.HandleGlobalInput(false) then return end
+          if UI.Pad.Events.EXIT or UI.Pad.Events.BACK or UI.Pad.Events.ANY then
+            UI.SceneChange(UI.SCENES.MMAIN)
+          end
         end
 
         local labels, order = UI.Footer.ResolveLegend({
