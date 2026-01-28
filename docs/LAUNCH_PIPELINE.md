@@ -48,6 +48,9 @@ This document describes **how POPSLoader constructs and hands off the POPStarter
 
 These prefix rules are implemented in `BuildPopstarterBootString()`.
 
+**HDD partition enumeration (game list source)**
+- When building the HDD game list, POPSLoader checks `__.POPS` first, then `__.POPS0` through `__.POPS9` in numeric order.【F:bin/POPSLDR/system.lua†L606-L646】
+
 ## 3) End-to-end launch sequence (current code)
 
 1. **User selects a game** (VCD basename) from the UI list.

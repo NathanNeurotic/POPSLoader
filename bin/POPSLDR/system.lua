@@ -182,7 +182,7 @@ PLDR = {
   HDD = {
     USECACHE = false;
     LOADSTATE = 0; -- 0:NOT_LOADED, 1:LOADED, -1:LOADED_BUT_FAILED
-    EXTRAPARTS = {false, false, false, false, false, false, false, false, false};
+    EXTRAPARTS = {[0]=false, false, false, false, false, false, false, false, false, false};
     MAINPART = false;
     FOUNDANY = false;
     HAS_CHECKED = false;
@@ -612,7 +612,7 @@ function PLDR.HDD.CheckAvailableHddPopsParts()
     end
     LOG("__.POPS", PLDR.HDD.MAINPART)
     PLDR.HDD.FOUNDANY = PLDR.HDD.MAINPART
-    for i=1, 9 do
+    for i=0, 9 do
       if HDD.MountPartition(("hdd0:__.POPS%d"):format(i), 0, FIO_MT_RDONLY) then
         PLDR.HDD.EXTRAPARTS[i] = true
         PLDR.HDD.FOUNDANY = true
@@ -637,7 +637,7 @@ function PLDR.HDD.BuildGameList()
       HDD.UMountPartition(0)
     end
   end
-  for i=1, 9 do
+  for i=0, 9 do
     if PLDR.HDD.EXTRAPARTS[i] then
       if HDD.MountPartition("hdd0:__.POPS"..i, 0, FIO_MT_RDONLY) then
         local partition = "__.POPS"..i
