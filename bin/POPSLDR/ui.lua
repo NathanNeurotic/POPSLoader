@@ -1348,29 +1348,9 @@ end
               UI.SceneChange(UI.SCENES.GSMB)
             end
           elseif UI.MainMenu.OPT == 2 then
-            LOG("Entering MX4SIO page")
-            LOG("MX4SIO init start")
-            PLDR.CleanupGameList()
-            local hint = PLDR and PLDR.MX4SIO and PLDR.MX4SIO.PREFIX_HINT or nil
-            local ok, root = System.initMX4SIO(hint)
-            if not ok or root == nil then
-              PLDR.MX4SIO.READY = false
-              PLDR.MX4SIO.ROOT = nil
-              UI.Notif_queue.add("No MX4SIO device found.")
-              PLDR.GAMEPATH = ""
-            else
-              PLDR.MX4SIO.READY = true
-              PLDR.MX4SIO.ROOT = root
-              local list = PLDR.GetPS1GameLists(root.."POPS/", true)
-              local count = list and #list or 0
-              LOG("MX4SIO games found:", count)
-              UI.setDeviceLock(DEVLOCK.MX4SIO)
-            end
-            UI.SceneChange(UI.SCENES.GMX4SIO)
+            UI.Notif_queue.add("Not Implemented Yet")
           elseif UI.MainMenu.OPT == 3 then
-            PLDR.CleanupGameList()
-            PLDR.GAMEPATH = ""
-            UI.SceneChange(UI.SCENES.GBDMHDD)
+            UI.Notif_queue.add("Not Implemented Yet")
           elseif UI.MainMenu.OPT == 4 then
             PLDR.LoadHDDModules()
             if UI.LASTSCENE == UI.SCENES.GHDD then
@@ -1405,27 +1385,9 @@ end
             UI.setDeviceLock(DEVLOCK.USB)
             UI.SceneChange(UI.SCENES.GUSBFAT)
           elseif UI.MainMenu.OPT == 7 then
-            PLDR.CleanupGameList()
-            PLDR.GAMEPATH = ""
-            UI.Notif_queue.add("SMB not implemented yet.")
-            UI.SceneChange(UI.SCENES.GSMB)
+            UI.Notif_queue.add("Not Implemented Yet")
           elseif UI.MainMenu.OPT == 8 then
-            local dkwdrv_paths = {
-              "mc0:/PS1_DKWDRV/DKWDRV.ELF",
-              "mc1:/PS1_DKWDRV/DKWDRV.ELF"
-            }
-            local dkwdrv_path = nil
-            for i = 1, #dkwdrv_paths do
-              if doesFileExist(dkwdrv_paths[i]) then
-                dkwdrv_path = dkwdrv_paths[i]
-                break
-              end
-            end
-            if dkwdrv_path == nil then
-              UI.Notif_queue.add("mc?:/PS1_DKWDRV/DKWDRV.ELF not found")
-            else
-              System.loadELF(dkwdrv_path)
-            end
+            UI.Notif_queue.add("Not Implemented Yet")
           end --because we still dont support SMB
         end
       end
@@ -1572,6 +1534,9 @@ end
         Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 20, UI.SCR.X, 40, "POPStarter Loader\n"..tostring(POPSLDR_VER or ""), currcol)
         Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 60, 20, UI.SCR.X, 40, "Coded By El_isra", currcol)
         Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 80, 20, UI.SCR.X, UI.SCR.Y, [[
+Graphics by Berion
+Scripting by Nuno6573 and Ripto
+
 Based on Enceladus by Daniel santos
 
 Special thanks to:
@@ -1594,15 +1559,6 @@ if you bought it you\'ve been scammed
           end
         end
 
-        local labels, order = UI.Footer.ResolveLegend({
-          order = UI.Footer.order_with_start_r2,
-          order_id = "start_r2",
-          circle = UI.Footer.labels.circle_other,
-          cross = UI.Footer.labels.cross_confirm,
-          square = "Cover Art",
-          start = UI.Footer.labels.start_profiles
-        })
-        UI.Footer.Draw(labels, order)
       end
     };
   }
