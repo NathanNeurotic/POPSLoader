@@ -221,14 +221,14 @@ UI = {
     };
     Footer = {
       order = {"triangle", "circle", "cross", "square"};
-      order_with_r2 = {"triangle", "circle", "cross", "square", "R2"};
+      order_with_r2 = {"triangle", "circle", "cross", "square"};
       order_with_start = {"triangle", "circle", "cross", "start"};
-      order_with_start_r2 = {"triangle", "circle", "cross", "square", "start", "R2"};
+      order_with_start_r2 = {"triangle", "circle", "cross", "square", "start"};
       labels = {
         triangle = "Credits",
         circle_main = "Exit",
         circle_other = "Back",
-        start_profiles = "Profiles",
+        start_profiles = "Settings",
         start_reset = "Reset Defaults",
         cross_confirm = "Confirm",
         cross_enter = "Enter",
@@ -267,9 +267,6 @@ UI = {
         }
         if square_label ~= nil then
           labels.square = square_label
-        end
-        if r2_label ~= nil then
-          labels.R2 = r2_label
         end
         UI.Footer.legend_cache[key] = {labels = labels, order = order}
         return labels, order
@@ -772,17 +769,6 @@ if found == nil then return end
         if UI.Pad.Events.NAV_RIGHT then UI.GameList.CURR = CLAMP(UI.GameList.CURR+UI.GameList.MAXDRAW, 1, ammount) end
         if UI.Pad.Events.NAV_UP then UI.GameList.CURR = CLAMP(UI.GameList.CURR-1, 1, ammount) end
         if UI.Pad.Events.NAV_LEFT then UI.GameList.CURR = CLAMP(UI.GameList.CURR-UI.GameList.MAXDRAW, 1, ammount) end
-        if UI.Pad.Events.R2 then
-          if UI.CURSCENE == UI.SCENES.GUSBFAT then
-            PLDR.ResetPopstarterPack()
-          elseif UI.CURSCENE == UI.SCENES.GUSBEXFAT then
-            PLDR.ApplyPopstarterPack("USBEXFAT")
-          elseif UI.CURSCENE == UI.SCENES.GSMB and UI.device_lock == DEVLOCK.MMCE then
-            PLDR.ApplyPopstarterPack("MMCE")
-          elseif UI.CURSCENE == UI.SCENES.GMX4SIO then
-            PLDR.ApplyPopstarterPack("MX4SIO")
-          end
-        end
         if UI.Pad.Events.CONFIRM then
           if ammount <= 0 then
             UI.Notif_queue.add("No games found")
@@ -797,16 +783,6 @@ if found == nil then return end
             PLDR.RunPOPStarterGame(PLDR.GAMEPATH, PLDR.GAMES[UI.GameList.CURR])
           end
         end
-        local r2_label = nil
-        if UI.CURSCENE == UI.SCENES.GUSBFAT then
-          r2_label = "Reset POPSTARTER"
-        elseif UI.CURSCENE == UI.SCENES.GUSBEXFAT then
-          r2_label = "Install USBEXFAT pack"
-        elseif UI.CURSCENE == UI.SCENES.GSMB and UI.device_lock == DEVLOCK.MMCE then
-          r2_label = "Install MMCE pack"
-        elseif UI.CURSCENE == UI.SCENES.GMX4SIO then
-          r2_label = "Install MX4SIO pack"
-        end
         local cross_label = UI.Footer.labels.cross_launch
         if ammount <= 0 then
           cross_label = UI.Footer.labels.cross_confirm
@@ -817,8 +793,7 @@ if found == nil then return end
           circle = UI.Footer.labels.circle_other,
           cross = cross_label,
           square = "Cover Art",
-          start = UI.Footer.labels.start_profiles,
-          R2 = r2_label
+          start = UI.Footer.labels.start_profiles
         })
         UI.Footer.Draw(labels, order)
       end;
