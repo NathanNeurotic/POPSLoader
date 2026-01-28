@@ -798,7 +798,7 @@ if found == nil then return end
     };
     MainMenu = {
       OPT = 1;
-      opts = {"USB FAT32", "USB exFAT", "MMCE", "MX4SIO", "APA HDD", "DKWDRV", "BDM HDD", "SMB"};
+      opts = {"MMCE", "MX4SIO", "HDD (exFAT)", "HDD (PFS)", "USB (exFAT)", "USB (FAT32)", "SMB (v1)", "Disc (DKWDRV)"};
       Carousel = {
         currentIndex = 1,
         targetIndex = 1,
@@ -832,14 +832,14 @@ if found == nil then return end
           Font.ftPrint(SFONT, layout.SAFE.L, stamp_y, 0, UI.SCR.X, 16, UI.BUILD_INFO.stamp, UI.CCOL.GREY)
         end
         local icon_map = {
-          ["USB FAT32"] = "USB",
-          ["USB exFAT"] = "USBEXFAT",
           ["MMCE"] = "MMCE",
           ["MX4SIO"] = "MX4SIO",
-          ["APA HDD"] = "APAHDD",
-          ["BDM HDD"] = "BDHDD",
-          ["SMB"] = "SMB",
-          ["DKWDRV"] = "DISC"
+          ["HDD (exFAT)"] = "BDHDD",
+          ["HDD (PFS)"] = "APAHDD",
+          ["USB (exFAT)"] = "USBEXFAT",
+          ["USB (FAT32)"] = "USB",
+          ["SMB (v1)"] = "SMB",
+          ["Disc (DKWDRV)"] = "DISC"
         }
         local icon_keys = {}
         for x = 1, #UI.MainMenu.opts do
@@ -988,16 +988,6 @@ if found == nil then return end
         if UI.Pad.Events.BACK then UI.Modal.OpenExit() end
         if UI.Pad.Events.CONFIRM then
           if UI.MainMenu.OPT == 1 then
-            PLDR.CleanupGameList()
-            PLDR.GetPS1GameLists("mass"..PLDR.USB.MASSINDX..":/POPS/", true)
-            UI.setDeviceLock(DEVLOCK.USB)
-            UI.SceneChange(UI.SCENES.GUSBFAT)
-          elseif UI.MainMenu.OPT == 2 then
-            PLDR.CleanupGameList()
-            PLDR.GetPS1GameLists("mass"..PLDR.USB.MASSINDX..":/POPS/", true)
-            UI.setDeviceLock(DEVLOCK.USB)
-            UI.SceneChange(UI.SCENES.GUSBEXFAT)
-          elseif UI.MainMenu.OPT == 3 then
             local slots = PLDR.GetMMCESlots()
             if #slots < 1 then
               UI.Notif_queue.add("No MMCE device found (mmce0/mmce1).")
@@ -1018,7 +1008,7 @@ if found == nil then return end
               UI.setDeviceLock(DEVLOCK.MMCE)
               UI.SceneChange(UI.SCENES.GSMB)
             end
-          elseif UI.MainMenu.OPT == 4 then
+          elseif UI.MainMenu.OPT == 2 then
             LOG("Entering MX4SIO page")
             LOG("MX4SIO init start")
             PLDR.CleanupGameList()
@@ -1038,7 +1028,11 @@ if found == nil then return end
               UI.setDeviceLock(DEVLOCK.MX4SIO)
             end
             UI.SceneChange(UI.SCENES.GMX4SIO)
-          elseif UI.MainMenu.OPT == 5 then
+          elseif UI.MainMenu.OPT == 3 then
+            PLDR.CleanupGameList()
+            PLDR.GAMEPATH = ""
+            UI.SceneChange(UI.SCENES.GBDMHDD)
+          elseif UI.MainMenu.OPT == 4 then
             PLDR.LoadHDDModules()
             if UI.LASTSCENE == UI.SCENES.GHDD then
               LOG("skipping cache cleanup")
@@ -1061,7 +1055,22 @@ if found == nil then return end
               UI.Notif_queue.add("ERROR: Cant detect usable HDD ("..PLDR.HDD.STATUS..")")
             end
             UI.SceneChange(UI.MainMenu.OPT)
+          elseif UI.MainMenu.OPT == 5 then
+            PLDR.CleanupGameList()
+            PLDR.GetPS1GameLists("mass"..PLDR.USB.MASSINDX..":/POPS/", true)
+            UI.setDeviceLock(DEVLOCK.USB)
+            UI.SceneChange(UI.SCENES.GUSBEXFAT)
           elseif UI.MainMenu.OPT == 6 then
+            PLDR.CleanupGameList()
+            PLDR.GetPS1GameLists("mass"..PLDR.USB.MASSINDX..":/POPS/", true)
+            UI.setDeviceLock(DEVLOCK.USB)
+            UI.SceneChange(UI.SCENES.GUSBFAT)
+          elseif UI.MainMenu.OPT == 7 then
+            PLDR.CleanupGameList()
+            PLDR.GAMEPATH = ""
+            UI.Notif_queue.add("SMB not implemented yet.")
+            UI.SceneChange(UI.SCENES.GSMB)
+          elseif UI.MainMenu.OPT == 8 then
             local dkwdrv_paths = {
               "mc0:/PS1_DKWDRV/DKWDRV.ELF",
               "mc1:/PS1_DKWDRV/DKWDRV.ELF"
@@ -1078,15 +1087,6 @@ if found == nil then return end
             else
               System.loadELF(dkwdrv_path)
             end
-          elseif UI.MainMenu.OPT == 7 then
-            PLDR.CleanupGameList()
-            PLDR.GAMEPATH = ""
-            UI.SceneChange(UI.SCENES.GBDMHDD)
-          elseif UI.MainMenu.OPT == 8 then
-            PLDR.CleanupGameList()
-            PLDR.GAMEPATH = ""
-            UI.Notif_queue.add("SMB not implemented yet.")
-            UI.SceneChange(UI.SCENES.GSMB)
           end --because we still dont support SMB
         end
       end
