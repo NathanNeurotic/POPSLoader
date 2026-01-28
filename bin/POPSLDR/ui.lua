@@ -224,6 +224,56 @@ UI = {
       order_with_r2 = {"triangle", "circle", "cross", "square", "R2"};
       order_with_start = {"triangle", "circle", "cross", "start"};
       order_with_start_r2 = {"triangle", "circle", "cross", "square", "start", "R2"};
+      labels = {
+        triangle = "Credits",
+        circle_main = "Exit",
+        circle_other = "Back",
+        start_profiles = "Profiles",
+        start_reset = "Reset Defaults",
+        cross_confirm = "Confirm",
+        cross_enter = "Enter",
+        cross_select = "Select",
+        cross_launch = "Launch"
+      };
+      legend_cache = {};
+      LegendKey = function (order_id, circle_label, cross_label, start_label, square_label, r2_label)
+        return table.concat({
+          tostring(order_id or ""),
+          tostring(circle_label or ""),
+          tostring(cross_label or ""),
+          tostring(start_label or ""),
+          tostring(square_label or ""),
+          tostring(r2_label or "")
+        }, "|")
+      end;
+      ResolveLegend = function (opts)
+        local order = opts.order or UI.Footer.order
+        local order_id = opts.order_id or "default"
+        local circle_label = opts.circle or UI.Footer.labels.circle_other
+        local cross_label = opts.cross or UI.Footer.labels.cross_confirm
+        local start_label = opts.start or UI.Footer.labels.start_profiles
+        local square_label = opts.square
+        local r2_label = opts.R2
+        local key = UI.Footer.LegendKey(order_id, circle_label, cross_label, start_label, square_label, r2_label)
+        local cached = UI.Footer.legend_cache[key]
+        if cached ~= nil then
+          return cached.labels, cached.order
+        end
+        local labels = {
+          triangle = UI.Footer.labels.triangle,
+          circle = circle_label,
+          cross = cross_label,
+          start = start_label
+        }
+        if square_label ~= nil then
+          labels.square = square_label
+        end
+        if r2_label ~= nil then
+          labels.R2 = r2_label
+        end
+        UI.Footer.legend_cache[key] = {labels = labels, order = order}
+        return labels, order
+      end;
       Draw = function (labels, order)
         local safe = UI.LAYOUT.SAFE
         local entries = order or UI.Footer.order
@@ -625,9 +675,13 @@ if found == nil then return end
         UI.Modal.HandleInput()
         return true
       end
+      if UI.LAUNCHING then return false end
+      if UI.Pad.Events.START and UI.CURSCENE ~= UI.SCENES.MPROFILE then
+        UI.SceneChange(UI.SCENES.MPROFILE)
+        return true
+      end
       if allow_exit == nil then allow_exit = true end
       if not allow_exit then return false end
-      if UI.LAUNCHING then return false end
       if UI.Pad.Events.EXIT then
         UI.Modal.OpenExit()
         return true
@@ -663,15 +717,18 @@ if found == nil then return end
         if UI.HandleGlobalInput(false) then return end
           if UI.Pad.Events.EXIT then UI.SceneChange(UI.SCENES.CREDITS) end
           if UI.Pad.Events.BACK then UI.SceneChange(UI.SCENES.MMAIN) end
-          UI.Footer.Draw({
-            triangle = "Credits",
-            circle = "Back",
-            cross = "Confirm",
+          if UI.Pad.Events.CONFIRM then
+            UI.Notif_queue.add("Not implemented yet")
+          end
+          local labels, order = UI.Footer.ResolveLegend({
+            order = UI.Footer.order_with_start_r2,
+            order_id = "start_r2",
+            circle = UI.Footer.labels.circle_other,
+            cross = UI.Footer.labels.cross_confirm,
             square = "Cover Art",
-            start = "Settings",
-            R2 = ""
-
-          }, UI.Footer.order_with_start_r2)
+            start = UI.Footer.labels.start_profiles
+          })
+          UI.Footer.Draw(labels, order)
           return
         end
         local ammount = #PLDR.GAMES
@@ -726,8 +783,10 @@ if found == nil then return end
             PLDR.ApplyPopstarterPack("MX4SIO")
           end
         end
-        if UI.Pad.Events.CONFIRM and ammount > 0 then
-          if not doesFileExist(PLDR.POPSTARTER_PATH) then
+        if UI.Pad.Events.CONFIRM then
+          if ammount <= 0 then
+            UI.Notif_queue.add("No games found")
+          elseif not doesFileExist(PLDR.POPSTARTER_PATH) then
             UI.Notif_queue.add("Cant find POPSTARTER ELF\n"..PLDR.POPSTARTER_PATH)
           else
             if UI.CURSCENE ~= UI.SCENES.GHDD then -- only check if game can be found on USB and SMB
@@ -738,28 +797,30 @@ if found == nil then return end
             PLDR.RunPOPStarterGame(PLDR.GAMEPATH, PLDR.GAMES[UI.GameList.CURR])
           end
         end
-        local footer_labels = {
-          triangle = "Credits",
-          circle = "Back",
-          cross = "Confirm",
-          square = "Cover Art",
-          start = "Settings"
-        }
-        local footer_order = UI.Footer.order_with_start_r2
+        local r2_label = nil
         if UI.CURSCENE == UI.SCENES.GUSBFAT then
-          footer_labels.R2 = "Reset POPSTARTER"
-          footer_order = UI.Footer.order_with_start_r2
+          r2_label = "Reset POPSTARTER"
         elseif UI.CURSCENE == UI.SCENES.GUSBEXFAT then
-          footer_labels.R2 = "Install USBEXFAT pack"
-          footer_order = UI.Footer.order_with_start_r2
+          r2_label = "Install USBEXFAT pack"
         elseif UI.CURSCENE == UI.SCENES.GSMB and UI.device_lock == DEVLOCK.MMCE then
-          footer_labels.R2 = "Install MMCE pack"
-          footer_order = UI.Footer.order_with_start_r2
+          r2_label = "Install MMCE pack"
         elseif UI.CURSCENE == UI.SCENES.GMX4SIO then
-          footer_labels.R2 = "Install MX4SIO pack"
-          footer_order = UI.Footer.order_with_start_r2
+          r2_label = "Install MX4SIO pack"
         end
-        UI.Footer.Draw(footer_labels, footer_order)
+        local cross_label = UI.Footer.labels.cross_launch
+        if ammount <= 0 then
+          cross_label = UI.Footer.labels.cross_confirm
+        end
+        local labels, order = UI.Footer.ResolveLegend({
+          order = UI.Footer.order_with_start_r2,
+          order_id = "start_r2",
+          circle = UI.Footer.labels.circle_other,
+          cross = cross_label,
+          square = "Cover Art",
+          start = UI.Footer.labels.start_profiles,
+          R2 = r2_label
+        })
+        UI.Footer.Draw(labels, order)
       end;
     };
     ProfileQuery = {
@@ -778,6 +839,15 @@ if found == nil then return end
         if UI.Pad.Events.NAV_DOWN then UI.ProfileQuery.curopt = CLAMP(UI.ProfileQuery.curopt+1, 1, profcnt) end
         if UI.Pad.Events.NAV_UP then UI.ProfileQuery.curopt = CLAMP(UI.ProfileQuery.curopt-1, 1, profcnt) end
         if UI.Pad.Events.BACK then UI.SceneChange(UI.SCENES.MMAIN) end
+        if UI.Pad.Events.START then
+          local default_profile = tonumber(PLDR.DEFAULT_PROFILE) or 1
+          UI.ProfileQuery.curopt = CLAMP(default_profile, 1, profcnt)
+          local profile = PLDR.PROFILES[UI.ProfileQuery.curopt]
+          if profile ~= nil then
+            PLDR.POPSTARTER_PATH = profile.ELF
+          end
+          UI.Notif_queue.add("Profile defaults restored")
+        end
         if UI.Pad.Events.CONFIRM then
           if not doesFileExist(PLDR.PROFILES[UI.ProfileQuery.curopt].ELF) then
             UI.Notif_queue.add("POPStarter ELF missing")
@@ -786,15 +856,15 @@ if found == nil then return end
             UI.SceneChange(UI.SCENES.MMAIN)
           end
         end
-        UI.Footer.Draw({
-          triangle = "Credits",
-          circle = "Back",
-          cross = "Confirm",
+        local labels, order = UI.Footer.ResolveLegend({
+          order = UI.Footer.order_with_start_r2,
+          order_id = "start_r2",
+          circle = UI.Footer.labels.circle_other,
+          cross = UI.Footer.labels.cross_select,
           square = "Cover Art",
-          start = "Settings",
-            R2 = ""
-
-        }, UI.Footer.order_with_start_r2)
+          start = UI.Footer.labels.start_reset
+        })
+        UI.Footer.Draw(labels, order)
       end;
     };
     MainMenu = {
@@ -821,7 +891,7 @@ if found == nil then return end
       Play = function ()
         local layout = UI.LAYOUT
         local profcnt = #UI.MainMenu.opts
-        Font.ftPrintMultiLineAligned(UI.FONT.TITLE, UI.SCR.X_MID, layout.TITLE_Y, 16, UI.SCR.X, 32, "POPSLoader by Matias Israelson\nGUI for POPStarter and BDMAssault", UI.COLORS.TEXT_PRIMARY)
+        Font.ftPrintMultiLineAligned(UI.FONT.TITLE, UI.SCR.X_MID, layout.TITLE_Y, 16, UI.SCR.X, 32, "POPSLoader\nby Matias Israelson\nGUI for POPStarter and BDMAssault", UI.COLORS.TEXT_PRIMARY)
         local status_y = layout.STATUS_Y + 16
         if UI.boot_device ~= nil and UI.boot_device ~= DEVLOCK.NONE then
           Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Booted from: "..UI.device_lock_name(UI.boot_device), UI.COLORS.TEXT_PRIMARY)
@@ -939,12 +1009,12 @@ if found == nil then return end
         end
         local function SlotAlpha(dist)
           if dist <= 1 then
-            return Round(Lerp(128, 40, dist))
+            return Round(Lerp(128, 64, dist))
           end
           if dist <= 2 then
-            return Round(Lerp(40, 8, dist - 1))
+            return Round(Lerp(64, 32, dist - 1))
           end
-          return 8
+          return 16
         end
         for k = -2, 2 do
           local idx = WrapIndex(base_sel + k, profcnt)
@@ -956,13 +1026,14 @@ if found == nil then return end
           DrawIcon(idx, x, y, tint)
         end
         Font.ftPrint(UI.FONT.LABEL, Round(center_label_x), center_label_y, 8, UI.SCR.X, 16, UI.MainMenu.opts[center_label_idx], UI.COLORS.TEXT_PRIMARY)
-        UI.Footer.Draw({
-          triangle = "Credits",
-          circle = "Exit",
-          cross = "Select",
-          start = "Settings"
-
-        }, UI.Footer.order_with_start)
+        local labels, order = UI.Footer.ResolveLegend({
+          order = UI.Footer.order_with_start,
+          order_id = "start",
+          circle = UI.Footer.labels.circle_main,
+          cross = UI.Footer.labels.cross_select,
+          start = UI.Footer.labels.start_profiles
+        })
+        UI.Footer.Draw(labels, order)
         if UI.MainMenu._draw_only then return end
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
@@ -982,7 +1053,6 @@ if found == nil then return end
             carousel.slide = 0
           end
         end
-        if UI.Pad.Events.START then UI.SceneChange(UI.SCENES.MPROFILE) end
         if UI.Pad.Events.EXIT then UI.SceneChange(UI.SCENES.CREDITS) end
         if UI.Pad.Events.BACK then UI.Modal.OpenExit() end
         if UI.Pad.Events.CONFIRM then
@@ -1220,82 +1290,28 @@ if found == nil then return end
       end;
     };
     Credits = {
-      Q = 1;
-      INCR = -1;
+      Q = 0;
+      INCR = 1;
       exit_active = false;
-      exit_timer = nil;
-      exit_start = 0;
-      exit_dur_ms = 550;
+      active = false;
       Play = function ()
         local layout = UI.LAYOUT
 
-        -- Crossfade credits -> main menu (no fade-to-black).
+        if not UI.Credits.active then
+          UI.Credits.active = true
+          UI.Credits.exit_active = false
+          UI.Credits.Q = 0
+          UI.Credits.INCR = 1
+        end
+
         if UI.Credits.exit_active then
-          if UI.Credits.exit_timer == nil then
-            UI.Credits.exit_timer = Timer.new()
-            UI.Credits.exit_start = Timer.getTime(UI.Credits.exit_timer)
-          end
-          local now = Timer.getTime(UI.Credits.exit_timer)
-          local t = (now - (UI.Credits.exit_start or now)) / (UI.Credits.exit_dur_ms or 1)
-          if t < 0 then t = 0 end
-          if t > 1 then t = 1 end
-          local alpha = Round(128 * (1 - t))
-          local currcol = Color.new(128, 128, 128, alpha)
-
-          -- Draw main menu underlay first.
-          Screen.clear(UI.SCR.BGCOL)
-          if IMG.BGM ~= nil then
-            Graphics.drawScaleImage(IMG.BGM, 0, 0, UI.SCR.X, UI.SCR.Y)
-          elseif IMG.BKG ~= nil then
-            Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
-          end
-          if UI.MainMenu ~= nil and UI.MainMenu.DrawOnly ~= nil then
-            UI.MainMenu.DrawOnly()
-          end
-
-          -- Draw credits on top, fading out.
-          Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 20, UI.SCR.X, 40, "POPStarter Loader\n"..tostring(POPSLDR_VER or ""), currcol)
-          Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 60, 20, UI.SCR.X, 40, "Coded By El_isra", currcol)
-          Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 80, 20, UI.SCR.X, UI.SCR.Y, [[
-Based on Enceladus by Daniel santos
-
-Special thanks to:
-krHACKen: for making POPStarter
-uyjulian, fjtrujy, HWC and others for always helping me
-
-This program is free and open source
-if you bought it you\'ve been scammed
-]], currcol)
-
-          -- When done, switch to main menu without using Transition (avoids black fade).
-          if t >= 1 then
-            UI.Credits.exit_active = false
-            UI.Credits.exit_timer = nil
-            UI.Credits.Q = 1
-            UI.Credits.INCR = -1
-            if UI.Transition ~= nil then UI.Transition.allowSceneWrite = true end
-            UI.CURSCENE = UI.SCENES.MMAIN
-            if UI.Transition ~= nil then
-              UI.Transition.allowSceneWrite = false
-              UI.Transition.active = false
-              UI.Transition.target = nil
-            end
-          end
-          return
-        end
-
-        if UI.Credits.Q == 0 then
-          -- Start crossfade instead of Transition-to-black.
-          UI.Credits.exit_active = true
-          UI.Credits.exit_timer = nil
-          UI.Credits.exit_start = 0
-          UI.Credits.Q = 1
           UI.Credits.INCR = -1
-          return
+        else
+          UI.Credits.INCR = 1
         end
 
+        UI.Credits.Q = CLAMP(UI.Credits.Q + UI.Credits.INCR, 0, 128)
         local currcol = Color.new(128, 128, 128, UI.Credits.Q)
-        UI.Credits.Q = CLAMP(UI.Credits.Q-UI.Credits.INCR, 0, 128)
         Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 20, UI.SCR.X, 40, "POPStarter Loader\n"..tostring(POPSLDR_VER or ""), currcol)
         Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 60, 20, UI.SCR.X, 40, "Coded By El_isra", currcol)
         Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 80, 20, UI.SCR.X, UI.SCR.Y, [[
@@ -1311,23 +1327,32 @@ if you bought it you\'ve been scammed
 
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
-        -- Any input exits credits back to main menu via crossfade (no black).
         if UI.Pad.Events.EXIT or UI.Pad.Events.BACK or UI.Pad.Events.ANY then
           UI.Credits.exit_active = true
-          UI.Credits.exit_timer = nil
-          UI.Credits.exit_start = 0
-          UI.Credits.INCR = -1
         end
 
-        UI.Footer.Draw({
-          triangle = "Credits",
-          circle = "Back",
-          cross = "Confirm",
-          square = "Cover Art",
-          start = "Settings",
-            R2 = ""
+        if UI.Credits.exit_active and UI.Credits.Q <= 0 then
+          UI.Credits.exit_active = false
+          UI.Credits.active = false
+          if UI.Transition ~= nil then UI.Transition.allowSceneWrite = true end
+          UI.CURSCENE = UI.SCENES.MMAIN
+          if UI.Transition ~= nil then
+            UI.Transition.allowSceneWrite = false
+            UI.Transition.active = false
+            UI.Transition.target = nil
+          end
+          return
+        end
 
-        }, UI.Footer.order_with_start_r2)
+        local labels, order = UI.Footer.ResolveLegend({
+          order = UI.Footer.order_with_start_r2,
+          order_id = "start_r2",
+          circle = UI.Footer.labels.circle_other,
+          cross = UI.Footer.labels.cross_confirm,
+          square = "Cover Art",
+          start = UI.Footer.labels.start_profiles
+        })
+        UI.Footer.Draw(labels, order)
       end
     };
   }
