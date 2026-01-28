@@ -933,17 +933,24 @@ if found == nil then return end
         local center_label_x = center_x
         local center_label_y = Round(center_y + 90)
         local center_label_idx = carousel.animActive and carousel.targetIndex or base_sel
-        local function SlotAlpha(offset)
-          local dist = math.abs(offset)
-          if dist == 0 then return 128 end
-          if dist == 1 then return 64 end
+        local function Lerp(a, b, t)
+          return a + (b - a) * t
+        end
+        local function SlotAlpha(dist)
+          if dist <= 1 then
+            return Round(Lerp(128, 64, dist))
+          end
+          if dist <= 2 then
+            return Round(Lerp(64, 32, dist - 1))
+          end
           return 32
         end
         for k = -2, 2 do
           local idx = WrapIndex(base_sel + k, profcnt)
           local x = center_x + slot_spacing * (k - slide)
           local y = center_y
-          local alpha = SlotAlpha(k)
+          local dist = math.abs(k - slide)
+          local alpha = SlotAlpha(dist)
           local tint = Color.new(255, 255, 255, alpha)
           DrawIcon(idx, x, y, tint)
         end
