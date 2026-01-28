@@ -56,15 +56,24 @@ local function ExtractGameRelPath(entry)
   local relpath = string.match(entry, "^[^|]+|(.+)$")
   return relpath or entry
 end
+local function ParseHddGameEntry(entry)
+  if entry == nil then return nil, nil end
+  local partition, relpath = string.match(entry, "^([^|]+)|(.+)$")
+  return partition, relpath
+end
 local function StripExtension(path)
   if path == nil then return nil end
   local stripped = string.match(path, "(.+)%.[^%.]+$")
   return stripped or path
 end
-local function BuildCoverCandidates(entry, game_path)
+local function BuildCoverCandidates(entry, game_path, device_scene)
   -- TODO: verify cover art naming/layout. For now, assume sidecar image next to the VCD.
   local relpath = ExtractGameRelPath(entry)
-  if relpath == nil or relpath == "" then return {} end
+  if relpath == nil or relpath == "" then return {}, nil end
+  local hdd_partition_label, hdd_relpath = ParseHddGameEntry(entry)
+  if hdd_partition_label ~= nil and hdd_relpath ~= nil then
+    relpath = hdd_relpath
+  end
   local fullpath = relpath
   if type(JoinPath) == "function" then
     fullpath = JoinPath(game_path or "", relpath)
@@ -76,9 +85,15 @@ local function BuildCoverCandidates(entry, game_path)
     end
   end
   local base = StripExtension(fullpath)
+  local mount_partition = nil
+  if hdd_partition_label ~= nil then
+    mount_partition = "hdd0:"..hdd_partition_label
+  elseif device_scene ~= nil and PLDR ~= nil and PLDR.HDD ~= nil and PLDR.HDD.GAMEPARTS ~= nil then
+    mount_partition = PLDR.HDD.GAMEPARTS[entry]
+  end
   return {
     base..".png"
-  }
+  }, mount_partition
 end
 local CoverCache = {
   max = 3,
@@ -86,7 +101,8 @@ local CoverCache = {
   order = {},
   failed = {},
   last_key = nil,
-  last_img = nil
+  last_img = nil,
+  last_missing = false
 }
 function CoverCache:Clear()
   local free_ok = type(Graphics) == "table" and type(Graphics.freeImage) == "function"
@@ -100,6 +116,7 @@ function CoverCache:Clear()
   self.failed = {}
   self.last_key = nil
   self.last_img = nil
+  self.last_missing = false
 end
 function CoverCache:EvictIfNeeded()
   while #self.order > self.max do
@@ -114,26 +131,27 @@ function CoverCache:EvictIfNeeded()
   end
 end
 function CoverCache:GetOrLoad(path)
-  if path == nil or path == "" then return nil end
+  if path == nil or path == "" then return nil, false end
   local cached = self.entries[path]
   if cached ~= nil then
-    return cached
+    return cached, false
   end
-  if self.failed[path] then
-    return nil
+  local failed_reason = self.failed[path]
+  if failed_reason ~= nil then
+    return nil, failed_reason == "missing"
   end
   if not SafeDoesFileExist(path) then
-    self.failed[path] = true
-    return nil
+    self.failed[path] = "missing"
+    return nil, true
   end
   if type(Graphics) ~= "table" or type(Graphics.loadImage) ~= "function" then
-    self.failed[path] = true
-    return nil
+    self.failed[path] = "load"
+    return nil, false
   end
   local img = Graphics.loadImage(path)
   if img == nil then
-    self.failed[path] = true
-    return nil
+    self.failed[path] = "load"
+    return nil, false
   end
   if type(Graphics.setImageFilters) == "function" then
     Graphics.setImageFilters(img, LINEAR)
@@ -141,30 +159,64 @@ function CoverCache:GetOrLoad(path)
   self.entries[path] = img
   table.insert(self.order, path)
   self:EvictIfNeeded()
-  return img
+  return img, false
 end
-function CoverCache:UpdateSelection(entry, game_path)
+function CoverCache:UpdateSelection(entry, game_path, device_scene)
   local key = tostring(entry or "")
   if game_path ~= nil then
     key = key.."@"..tostring(game_path)
   end
+  if device_scene ~= nil then
+    key = key.."#"..tostring(device_scene)
+  end
   if self.last_key == key then
-    return self.last_img
+    return self.last_img, self.last_missing
   end
   self.last_key = key
   self.last_img = nil
+  self.last_missing = false
   if entry == nil or entry == "" then
-    return nil
+    return nil, false
   end
-  local candidates = BuildCoverCandidates(entry, game_path)
-  for i = 1, #candidates do
-    local img = self:GetOrLoad(candidates[i])
-    if img ~= nil then
-      self.last_img = img
-      return img
+  local candidates, mount_partition = BuildCoverCandidates(entry, game_path, device_scene)
+  local mount_ok = true
+  if mount_partition ~= nil and type(HDD) == "table" then
+    mount_ok = false
+    if type(HDD.UMountPartition) == "function" then
+      pcall(HDD.UMountPartition, 0)
+    end
+    if type(HDD.MountPartition) == "function" then
+      local ok, result = pcall(HDD.MountPartition, mount_partition, 0, FIO_MT_RDONLY)
+      mount_ok = ok and result == true
     end
   end
-  return nil
+  local all_missing = true
+  local checked_any = false
+  for i = 1, #candidates do
+    if not mount_ok then
+      break
+    end
+    local img, missing = self:GetOrLoad(candidates[i])
+    checked_any = true
+    if img ~= nil then
+      self.last_img = img
+      if mount_partition ~= nil and type(HDD) == "table" and type(HDD.UMountPartition) == "function" then
+        pcall(HDD.UMountPartition, 0)
+      end
+      return img, false
+    end
+    if not missing then
+      all_missing = false
+    end
+  end
+  if mount_partition ~= nil and mount_ok and type(HDD) == "table" and type(HDD.UMountPartition) == "function" then
+    pcall(HDD.UMountPartition, 0)
+  end
+  if checked_any and all_missing then
+    self.last_missing = true
+    return nil, true
+  end
+  return nil, false
 end
 UI = {
     LASTSCENE = 5;
@@ -1168,16 +1220,20 @@ end
 	          Font.ftPrint(BFONT, layout.LIST_X, Y, 0, layout.LIST_W, 16, string.sub(display_name,1, -5), c)
         end
         local cover_img = nil
+        local cover_missing = false
         if UI.CoverCache ~= nil then
           if ammount > 0 then
-            cover_img = UI.CoverCache:UpdateSelection(PLDR.GAMES[UI.GameList.CURR], PLDR.GAMEPATH)
+            cover_img, cover_missing = UI.CoverCache:UpdateSelection(PLDR.GAMES[UI.GameList.CURR], PLDR.GAMEPATH, UI.CURSCENE)
           else
-            UI.CoverCache:UpdateSelection(nil, PLDR.GAMEPATH)
+            UI.CoverCache:UpdateSelection(nil, PLDR.GAMEPATH, UI.CURSCENE)
           end
         end
         if layout.PREVIEW_W > 0 then
           Graphics.drawRect(layout.PREVIEW_X - 2, layout.PREVIEW_Y - 2, layout.PREVIEW_W + 4, layout.PREVIEW_H + 4, UI.CCOL.GREY)
-          local preview_img = cover_img or IMG.MISSING
+          local preview_img = cover_img
+          if preview_img == nil and cover_missing then
+            preview_img = IMG.MISSING
+          end
           if preview_img ~= nil then
             Graphics.drawScaleImage(preview_img, layout.PREVIEW_X, layout.PREVIEW_Y, layout.PREVIEW_W, layout.PREVIEW_H)
           end
