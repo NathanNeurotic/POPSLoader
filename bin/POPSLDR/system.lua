@@ -1377,7 +1377,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
     if hdd_selector_name == "" then
       hdd_selector_name = game_name
     end
-    argv0_selector = BuildPopstarterSelector(selector_prefix, hdd_selector_name)
+    argv0_selector = BuildPopstarterSelector("", hdd_selector_name)
   end
   if selector_prefix == "" and string.upper(game_name) == "POPSTARTER" then
     LaunchLog("LAUNCH: Internal error: game_base derived as POPSTARTER; refusing to launch.", vcd_basename_raw)
