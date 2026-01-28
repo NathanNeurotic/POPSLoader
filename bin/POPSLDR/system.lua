@@ -916,8 +916,8 @@ local function EnsureHDDReadyForLaunch(game, partition_override)
   end
   local partition = partition_override or PLDR.HDD.GAMEPARTS[game] or "hdd0:__.POPS"
   result.mount_partition = partition
-  HDD.UMountPartition(0)
-  result.mount_ok = HDD.MountPartition(partition, 0, FIO_MT_RDONLY)
+  HDD.UMountPartition(1)
+  result.mount_ok = HDD.MountPartition(partition, 1, FIO_MT_RDONLY)
   return result
 end
 
@@ -1261,6 +1261,21 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
     if hdd_partition_label ~= nil then
       hdd_partition = "hdd0:"..hdd_partition_label
     end
+    hdd_init = EnsureHDDReadyForLaunch(game, hdd_partition)
+    if not hdd_init.init_ok or hdd_init.status ~= 0 or not hdd_init.mount_ok then
+      LaunchLog("LAUNCH: HDD not ready; aborting launch.")
+      BlockLaunchFailure(
+        "HDD init/mount failed",
+        ResolvePopstarterPath(PLDR.POPSTARTER_PATH),
+        device_page,
+        nil,
+        nil,
+        APP_DIR_LOCAL,
+        nil,
+        nil
+      )
+      return
+    end
   end
   local normalized_gamelocation = policy.normalize(gamelocation)
   local handoff_gamelocation = policy.handoff(normalized_gamelocation)
@@ -1298,11 +1313,11 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
     device_mode = "mass"
   end
   if policy.name == "HDD" then
-    vcd_path = "pfs0:/"..NormalizeHddRelpath(hdd_relpath or game)
+    vcd_path = "pfs1:/"..NormalizeHddRelpath(hdd_relpath or game)
     if string.match(NormalizeHddRelpath(hdd_relpath or game), "^POPS/") then
-      pops_root = "pfs0:/POPS/"
+      pops_root = "pfs1:/POPS/"
     else
-      pops_root = "pfs0:/"
+      pops_root = "pfs1:/"
     end
     boot_source_mode = "pfs"
     device_mode = "pfs"
@@ -1357,6 +1372,13 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   end
   local selector_prefix = SelectPopstarterSelectorPrefix(device_page)
   local argv0_selector = BuildPopstarterSelectorPath(device_page, game_name)
+  if policy.name == "HDD" then
+    local hdd_selector_name = StripVcdExtension(ExtractVcdFilename(vcd_basename_raw))
+    if hdd_selector_name == "" then
+      hdd_selector_name = game_name
+    end
+    argv0_selector = BuildPopstarterSelector(selector_prefix, hdd_selector_name)
+  end
   if selector_prefix == "" and string.upper(game_name) == "POPSTARTER" then
     LaunchLog("LAUNCH: Internal error: game_base derived as POPSTARTER; refusing to launch.", vcd_basename_raw)
     BlockLaunchFailure(
