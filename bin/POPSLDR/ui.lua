@@ -544,14 +544,18 @@ if found == nil then return end
       options = {"Confirm", "Cancel"};
       confirm_action = nil;
       cancel_action = nil;
+      triangle_action = nil;
+      ignore_until_release = false;
       OpenExit = function ()
         LOG("Exit requested")
         UI.Modal.active = true
         UI.Modal.title = "Exit"
         UI.Modal.body = "Return to OSDSYS?"
-        UI.Modal.options = {"Exit", "Cancel"}
+        UI.Modal.options = {"OSDSYS", "Cancel", "BOOT.ELF"}
         UI.Modal.confirm_action = UI.Modal.ConfirmExit
         UI.Modal.cancel_action = UI.Modal.Close
+        UI.Modal.triangle_action = UI.Modal.LaunchBootElf
+        UI.Modal.ignore_until_release = true
       end;
       OpenDeviceLock = function (reason, active, target)
         local active_name = UI.device_lock_name(active)
@@ -570,30 +574,83 @@ if found == nil then return end
           UI.SceneChange(UI.SCENES.MMAIN)
         end
         UI.Modal.cancel_action = UI.Modal.Close
+        UI.Modal.triangle_action = nil
+        UI.Modal.ignore_until_release = true
       end;
       Close = function ()
         UI.Modal.active = false
         UI.Modal.confirm_action = nil
         UI.Modal.cancel_action = nil
+        UI.Modal.triangle_action = nil
+        UI.Modal.ignore_until_release = false
       end;
       ConfirmExit = function ()
         LOG("Exit confirmed")
         UI.LAUNCHING = true
         System.exitToBrowser()
       end;
+      LaunchBootElf = function ()
+        LOG("Exit triangle: BOOT.ELF requested")
+        local candidates = {
+          "mc0:/BOOT/BOOT.ELF",
+          "mc1:/BOOT/BOOT.ELF"
+        }
+        local boot_path = nil
+        if type(doesFileExist) == "function" then
+          for _, path in ipairs(candidates) do
+            local okcall, exists = pcall(doesFileExist, path)
+            if okcall and exists == true then
+              boot_path = path
+              break
+            end
+          end
+        end
+        if boot_path == nil and type(System) == "table" and type(System.openFile) == "function" then
+          for _, path in ipairs(candidates) do
+            local okfd, fd = pcall(System.openFile, path, FREAD)
+            if okfd and type(fd) == "number" and fd >= 0 then
+              if type(System.closeFile) == "function" then
+                pcall(System.closeFile, fd)
+              end
+              boot_path = path
+              break
+            end
+          end
+        end
+        if boot_path == nil then
+          if UI.Notif_queue ~= nil and type(UI.Notif_queue.add) == "function" then
+            UI.Notif_queue.add("mc?:/BOOT/BOOT.ELF not found")
+          end
+          return
+        end
+        if type(System) == "table" and type(System.loadELF) == "function" then
+          UI.LAUNCHING = true
+          System.loadELF(boot_path)
+        end
+      end;
       HandleInput = function ()
         if not UI.Modal.active then return end
+        if UI.Modal.ignore_until_release then
+          if UI.Pad.GPAD ~= nil and UI.Pad.GPAD == 0 then
+            UI.Modal.ignore_until_release = false
+          end
+          return
+        end
         if UI.Pad.Events.CONFIRM then
           if UI.Modal.confirm_action ~= nil then
             UI.Modal.confirm_action()
           else
             UI.Modal.Close()
           end
-        elseif UI.Pad.Events.BACK or UI.Pad.Events.EXIT then
+        elseif UI.Pad.Events.BACK then
           if UI.Modal.cancel_action ~= nil then
             UI.Modal.cancel_action()
           else
             UI.Modal.Close()
+          end
+        elseif UI.Pad.Events.EXIT then
+          if UI.Modal.triangle_action ~= nil then
+            UI.Modal.triangle_action()
           end
         end
       end;
@@ -611,7 +668,11 @@ if found == nil then return end
         Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 50, 8, UI.SCR.X, 16, UI.Modal.body, UI.CCOL.GREY)
         local confirm_label = UI.Modal.options[1] or "Confirm"
         local cancel_label = UI.Modal.options[2] or "Cancel"
+        local triangle_label = UI.Modal.options[3]
         local hint = ("X: %s    O: %s"):format(confirm_label, cancel_label)
+        if triangle_label ~= nil then
+          hint = ("%s    Triangle: %s"):format(hint, triangle_label)
+        end
         Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 95, 8, UI.SCR.X, 16, hint, UI.CCOL.GREY)
       end;
     };
@@ -670,6 +731,9 @@ if found == nil then return end
     HandleGlobalInput = function (allow_exit)
       if UI.Modal.active then
         UI.Modal.HandleInput()
+        for key, _ in pairs(UI.Pad.Events) do
+          UI.Pad.Events[key] = false
+        end
         return true
       end
       if UI.LAUNCHING then return false end
@@ -1039,7 +1103,10 @@ if found == nil then return end
           end
         end
         if UI.Pad.Events.EXIT then UI.SceneChange(UI.SCENES.CREDITS) end
-        if UI.Pad.Events.BACK then UI.Modal.OpenExit() end
+        if UI.Pad.Events.BACK then
+          UI.Modal.OpenExit()
+          return
+        end
         if UI.Pad.Events.CONFIRM then
           if UI.MainMenu.OPT == 1 then
             local slots = PLDR.GetMMCESlots()
