@@ -935,9 +935,9 @@ if found == nil then return end
         local center_label_idx = carousel.animActive and carousel.targetIndex or base_sel
         local function SlotAlpha(offset)
           local dist = math.abs(offset)
-          if dist == 0 then return 255 end
-          if dist == 1 then return 120 end
-          return 60
+          if dist == 0 then return 128 end
+          if dist == 1 then return 64 end
+          return 32
         end
         for k = -2, 2 do
           local idx = WrapIndex(base_sel + k, profcnt)
