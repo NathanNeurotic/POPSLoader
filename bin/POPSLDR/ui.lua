@@ -222,6 +222,7 @@ UI = {
     Footer = {
       order = {"triangle", "circle", "cross", "square"};
       order_with_r2 = {"triangle", "circle", "cross", "square", "R2"};
+      order_with_start = {"triangle", "circle", "cross", "start"};
       order_with_start_r2 = {"triangle", "circle", "cross", "square", "start", "R2"};
       Draw = function (labels, order)
         local safe = UI.LAYOUT.SAFE
@@ -667,7 +668,7 @@ if found == nil then return end
             circle = "Back",
             cross = "Confirm",
             square = "Cover Art",
-            start = "Profiles",
+            start = "Settings",
             R2 = ""
 
           }, UI.Footer.order_with_start_r2)
@@ -742,7 +743,7 @@ if found == nil then return end
           circle = "Back",
           cross = "Confirm",
           square = "Cover Art",
-          start = "Profiles"
+          start = "Settings"
         }
         local footer_order = UI.Footer.order_with_start_r2
         if UI.CURSCENE == UI.SCENES.GUSBFAT then
@@ -790,7 +791,7 @@ if found == nil then return end
           circle = "Back",
           cross = "Confirm",
           square = "Cover Art",
-          start = "Profiles",
+          start = "Settings",
             R2 = ""
 
         }, UI.Footer.order_with_start_r2)
@@ -820,8 +821,8 @@ if found == nil then return end
       Play = function ()
         local layout = UI.LAYOUT
         local profcnt = #UI.MainMenu.opts
-        Font.ftPrint(UI.FONT.TITLE, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Welcome to POPStarter Loader", UI.COLORS.TEXT_PRIMARY)
-        local status_y = layout.STATUS_Y
+        Font.ftPrintMultiLineAligned(UI.FONT.TITLE, UI.SCR.X_MID, layout.TITLE_Y, 16, UI.SCR.X, 32, "POPSLoader by Matias Israelson\nGUI for POPStarter and BDMAssault", UI.COLORS.TEXT_PRIMARY)
+        local status_y = layout.STATUS_Y + 16
         if UI.boot_device ~= nil and UI.boot_device ~= DEVLOCK.NONE then
           Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Booted from: "..UI.device_lock_name(UI.boot_device), UI.COLORS.TEXT_PRIMARY)
           status_y = status_y + 12
@@ -959,11 +960,9 @@ if found == nil then return end
           triangle = "Credits",
           circle = "Exit",
           cross = "Select",
-          square = "Cover Art",
-          start = "Profiles",
-            R2 = ""
+          start = "Settings"
 
-        }, UI.Footer.order_with_start_r2)
+        }, UI.Footer.order_with_start)
         if UI.MainMenu._draw_only then return end
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
@@ -1325,7 +1324,7 @@ if you bought it you\'ve been scammed
           circle = "Back",
           cross = "Confirm",
           square = "Cover Art",
-          start = "Profiles",
+          start = "Settings",
             R2 = ""
 
         }, UI.Footer.order_with_start_r2)
