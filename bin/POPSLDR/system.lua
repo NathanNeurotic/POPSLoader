@@ -1442,19 +1442,18 @@ function Touch(FILE)
 end
 
 ---MAIN PROGRAM BEHAVIOUR BEGINS
-UI.WelcomeDraw.Play()
-local function InitializeScene(scene)
-  UI.RequestScene(scene)
-  if UI.Transition ~= nil and UI.Transition.timer ~= nil then
-    local now = Timer.getTime(UI.Transition.timer)
-    UI.Transition.start = now - UI.Transition.duration_out
-    UI.Transition.Update()
-  end
-end
+local initial_scene = UI.SCENES.MMAIN
 if Touch(ResolveWritablePath(".pldrs")) then
-  InitializeScene(UI.SCENES.CREDITS)
-else
-  InitializeScene(UI.SCENES.MMAIN)
+  initial_scene = UI.SCENES.CREDITS
+end
+UI.WelcomeDraw.Play(initial_scene)
+if UI.Transition ~= nil then
+  UI.Transition.allowSceneWrite = true
+end
+UI.CURSCENE = initial_scene
+UI.LASTSCENE = initial_scene
+if UI.Transition ~= nil then
+  UI.Transition.allowSceneWrite = false
 end
 
 while true do

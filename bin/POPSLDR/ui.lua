@@ -357,11 +357,34 @@ UI = {
       Screen.flip()
     end;
     WelcomeDraw = {
-      Play = function ()
-	        -- Boot splash fades in from black, then fades out over the main menu (no fade-to-black).
+      Play = function (next_scene)
+	        -- Boot splash fades in from black, then fades out into the next scene.
 	        local function DrawBackground()
 	          Screen.clear(Color.new(0, 0, 0))
 	        end
+        local function DrawTargetBackground(scene)
+          Screen.clear(UI.SCR.BGCOL)
+          if scene == UI.SCENES.MMAIN then
+            if IMG.BGM ~= nil then
+              Graphics.drawScaleImage(IMG.BGM, 0, 0, UI.SCR.X, UI.SCR.Y)
+            elseif IMG.BKG ~= nil then
+              Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
+            end
+          else
+            if IMG.BKG ~= nil then
+              Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
+            end
+          end
+        end
+        local function DrawTargetScene(scene)
+          if scene == nil then return end
+          DrawTargetBackground(scene)
+          if scene == UI.SCENES.MMAIN and UI.MainMenu ~= nil and UI.MainMenu.DrawOnly ~= nil then
+            UI.MainMenu.DrawOnly()
+          elseif scene == UI.SCENES.CREDITS and UI.Credits ~= nil and UI.Credits.DrawOnly ~= nil then
+            UI.Credits.DrawOnly()
+          end
+        end
 
 -- Boot audio (relative to current directory). Never fatal.
         local boot_sound_tried = false
@@ -496,8 +519,7 @@ if found == nil then return end
         end
         for i = 1, fade_out_frames do
           local alpha = Round(128 * (1 - (i / fade_out_frames)))
-          -- Fade splash out to black; next scene will fade in via UI.Transition.
-          DrawBackground()
+          DrawTargetScene(next_scene)
           DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
           DrawSplashText(alpha)
           Screen.flip()
@@ -1334,6 +1356,11 @@ if found == nil then return end
       end;
     };
     Credits = {
+      DrawOnly = function ()
+        UI.Credits._draw_only = true
+        UI.Credits.Play()
+        UI.Credits._draw_only = false
+      end;
       Play = function ()
         local layout = UI.LAYOUT
         local currcol = UI.CCOL.GREY
@@ -1355,10 +1382,12 @@ if you bought it you\'ve been scammed
           Font.ftPrint(SFONT, layout.SAFE.L, stamp_y, 0, UI.SCR.X, 16, UI.BUILD_INFO.stamp, UI.CCOL.GREY)
         end
 
-        Input_GetEvent()
-        if UI.HandleGlobalInput(false) then return end
-        if UI.Pad.Events.EXIT or UI.Pad.Events.BACK or UI.Pad.Events.ANY then
-          UI.SceneChange(UI.SCENES.MMAIN)
+        if not UI.Credits._draw_only then
+          Input_GetEvent()
+          if UI.HandleGlobalInput(false) then return end
+          if UI.Pad.Events.EXIT or UI.Pad.Events.BACK or UI.Pad.Events.ANY then
+            UI.SceneChange(UI.SCENES.MMAIN)
+          end
         end
 
         local labels, order = UI.Footer.ResolveLegend({
