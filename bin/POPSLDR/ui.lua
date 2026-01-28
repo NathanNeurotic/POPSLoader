@@ -670,14 +670,22 @@ end
           Screen.flip()
         end
         if fade_out_frames > 0 then
-          for i = 1, fade_out_frames do
-            local alpha = Round(128 * (i / fade_out_frames))
+          local fade_to_black_frames = math.floor(fade_out_frames / 2)
+          local fade_in_menu_frames = fade_out_frames - fade_to_black_frames
+          for i = 1, fade_to_black_frames do
+            local alpha = Round(128 * (i / fade_to_black_frames))
             DrawTargetScene(UI.SCENES.CREDITS)
             Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
             Screen.flip()
           end
+          for i = 1, fade_in_menu_frames do
+            local alpha = Round(128 * (1 - (i / fade_in_menu_frames)))
+            DrawTargetScene(next_scene)
+            Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
+            Screen.flip()
+          end
         else
-          DrawTargetScene(UI.SCENES.CREDITS)
+          DrawTargetScene(next_scene)
           Screen.flip()
         end
         DrawTargetScene(next_scene)
