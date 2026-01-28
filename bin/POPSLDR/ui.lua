@@ -467,9 +467,16 @@ if found == nil then return end
           if not ok_load or audio == nil then return end
           boot_sound_loaded = audio
 
-          pcall(function()
+          local ok_play = pcall(function()
             Sound.playADPCM(UI.BOOT_SOUND.CHANNEL or 0, boot_sound_loaded)
           end)
+          if not ok_play then
+            if type(Sound.freeADPCM) == "function" then
+              pcall(Sound.freeADPCM, boot_sound_loaded)
+            end
+            boot_sound_loaded = nil
+            return
+          end
 
           local sec = UI.BOOT_SOUND.SECONDS
           if type(sec) ~= "number" or sec < 0 then sec = 0 end
@@ -504,8 +511,12 @@ if found == nil then return end
 
         -- Start boot sound once, and extend splash hold to cover it (configurable).
         TryBootSound()
-        if boot_sound_hold_frames ~= nil and boot_sound_hold_frames > hold_frames then
-          hold_frames = boot_sound_hold_frames
+        if boot_sound_hold_frames ~= nil then
+          local required_hold = boot_sound_hold_frames - fade_in_frames
+          if required_hold < 0 then required_hold = 0 end
+          if required_hold > hold_frames then
+            hold_frames = required_hold
+          end
         end
         for i = 1, fade_in_frames do
           local alpha = Round(128 * (i / fade_in_frames))

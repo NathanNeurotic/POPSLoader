@@ -141,3 +141,11 @@ void sound_playadpcm(int slot, audsrv_adpcm_t *sample) {
 
 	audsrv_ch_play_adpcm(slot, sample);
 }
+
+void sound_freeadpcm(audsrv_adpcm_t *sample) {
+    if (sample == NULL) {
+        return;
+    }
+    audsrv_free_adpcm(sample);
+    free(sample);
+}
