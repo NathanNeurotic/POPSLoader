@@ -1250,6 +1250,9 @@ end
 
 local function ResolveLaunchPolicy(gamelocation, ui_scene)
   local current_scene = ui_scene or (UI and UI.CURSCENE or "unknown")
+  if current_scene == UI.SCENES.GHDD then
+    return BuildLaunchPolicy("HDD", "pfs", "pfs", nil), "HDD"
+  end
   if current_scene == UI.SCENES.GMX4SIO then
     return BuildLaunchPolicy("MX4SIO", "mx4sio", "mx4sio", nil), "MX4SIO"
   end
@@ -1275,9 +1278,6 @@ local function ResolveLaunchPolicy(gamelocation, ui_scene)
     local mmce_prefix = PLDR.MMCE.PREFIX or "mmce0:/"
     local mmce_device = string.match(mmce_prefix, "^([%a]+%d*)") or "mmce0"
     return BuildLaunchPolicy("MMCE", "mass", mmce_device, TranslateMMCEPathForPopStarter), "SMB/MMCE"
-  end
-  if current_scene == UI.SCENES.GHDD then
-    return BuildLaunchPolicy("HDD", "pfs", "pfs", nil), "HDD"
   end
   return BuildLaunchPolicy("unknown", "mass", "mass", nil), "unknown"
 end
@@ -1433,7 +1433,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   LaunchLog("LAUNCH: selector prefix:", selector_prefix)
   LaunchLog("LAUNCH: argv0 selector:", argv0_selector)
   if policy.name == "HDD" then
-    LaunchLog("HDD LAUNCH argv0:", argv0_selector)
+    LaunchLog("HDD LAUNCH argv0: ["..tostring(argv0_selector).."]")
   end
   LaunchLog("LAUNCH: loadELF argc (caller):", #argv)
   if fallback_bootparam ~= nil then
