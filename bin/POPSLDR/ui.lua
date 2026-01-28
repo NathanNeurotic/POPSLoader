@@ -156,6 +156,7 @@ UI = {
       local safe_h = UI.SCR.Y - safe.T - safe.B
       UI.LAYOUT.SAFE_W = safe_w
       UI.LAYOUT.SAFE_H = safe_h
+      UI.LAYOUT.SAFE_X_MID = Round(safe.L + (safe_w / 2))
       UI.LAYOUT.TITLE_Y = Round(safe.T + 6)
       UI.LAYOUT.STATUS_Y = Round(UI.LAYOUT.TITLE_Y + 20)
       UI.LAYOUT.ICON_ROW_Y = Round(UI.SCR.Y_MID - 40)
@@ -243,16 +244,41 @@ UI = {
         end
         local labelY = UI.LAYOUT.FOOTER_LABEL_Y
         -- Centered/tighter spacing (avoids running off-screen on real CRT overscan).
-	        local spacing
-	        if count <= 1 then
-	          spacing = 0
-	        else
-	          local max_spacing = math.floor(UI.LAYOUT.SAFE_W / (count + 0.5))
-	          spacing = math.min(140, max_spacing)
-	          if spacing < 96 then spacing = 96 end
-	        end
-	        local total_w = spacing * (count - 1)
-	        local start_x = Round(UI.SCR.X_MID - (total_w / 2))
+        local max_w = 0
+        for i = 1, count do
+          local key = entries[i]
+          local icon = IMG[key]
+          if icon ~= nil then
+            local w = Graphics.getImageWidth(icon)
+            if w ~= nil and w > max_w then
+              max_w = w
+            end
+          end
+        end
+        local max_half_w = max_w / 2
+        local spacing
+        if count <= 1 then
+          spacing = 0
+        else
+          local max_spacing = math.floor(UI.LAYOUT.SAFE_W / (count + 0.5))
+          spacing = math.min(140, max_spacing)
+          if spacing < 96 then spacing = 96 end
+        end
+        local safe_left = (safe and safe.L) or 0
+        local safe_right = UI.SCR.X - ((safe and safe.R) or 0)
+        local available = (safe_right - max_half_w) - (safe_left + max_half_w)
+        if available < 0 then available = 0 end
+        if count > 1 then
+          local max_fit_spacing = math.floor(available / (count - 1))
+          if spacing > max_fit_spacing then spacing = max_fit_spacing end
+        end
+        if spacing < 0 then spacing = 0 end
+        local total_w = spacing * (count - 1)
+        local safe_center = UI.LAYOUT.SAFE_X_MID or UI.SCR.X_MID
+        local start_x = Round((safe_left + max_half_w) + ((available - total_w) / 2))
+        if count <= 1 then
+          start_x = safe_center
+        end
         for i = 1, count do
           local key = entries[i]
           local icon = IMG[key]
@@ -376,6 +402,7 @@ if found == nil then return end
           boot_sound_hold_frames = math.floor((sec * 60) + 0.5)
         end
         local function DrawSplashCover(img, screen_w, screen_h, alpha)
+          if img == nil then return end
           local img_w = Graphics.getImageWidth(img)
           local img_h = Graphics.getImageHeight(img)
           local scale = 1
@@ -860,10 +887,10 @@ if found == nil then return end
             carousel.allowOptWrite = false
           end
         end
-        local center_x = UI.SCR.X_MID
+        local center_x = layout.SAFE_X_MID or UI.SCR.X_MID
         local usable_top = layout.STATUS_Y + 24
         local usable_bottom = layout.FOOTER_ICON_Y - 24
-	        local center_y = Round((usable_top + usable_bottom) / 2) + 10
+        local center_y = Round((usable_top + usable_bottom) / 2)
 	        if layout.CAROUSEL_Y_OFFSET ~= nil then
 	          center_y = center_y + layout.CAROUSEL_Y_OFFSET
 	        end
@@ -880,6 +907,7 @@ if found == nil then return end
         local function DrawIcon(index, x, y, scale, color)
           local key = icon_keys[index]
           local icon = ResolveIcon(key)
+          if icon == nil then return end
           local icon_w = Round(Graphics.getImageWidth(icon) * scale)
           local icon_h = Round(Graphics.getImageHeight(icon) * scale)
           local pos_x = Round(x - (icon_w / 2))
@@ -887,7 +915,10 @@ if found == nil then return end
           Graphics.drawScaleImage(icon, pos_x, pos_y, icon_w, icon_h, color)
         end
         local first_icon = ResolveIcon(icon_keys[1] or "MISSING")
-        local base_icon_w = Graphics.getImageWidth(first_icon)
+        local base_icon_w = 0
+        if first_icon ~= nil then
+          base_icon_w = Graphics.getImageWidth(first_icon)
+        end
         local slot_margin = 0
         local safe_w = (UI.SCR.X - UI.LAYOUT.SAFE.L - UI.LAYOUT.SAFE.R)
         -- Target: show 5 icons (-2..2) without clipping on overscan-heavy TVs.
