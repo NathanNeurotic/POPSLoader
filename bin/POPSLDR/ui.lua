@@ -60,8 +60,8 @@ UI = {
       PATH = "boot.adp",      -- relative to CWD (same folder as ui.lua on HostFS)
       SECONDS = 3.0,          -- splash minimum hold to cover audio (adjust to match boot.adp)
       CHANNEL = 0,
-      VOLUME = 90,            -- master volume (0-100 typical)
-      ADPCM_VOLUME = 90       -- per-channel ADPCM volume
+      VOLUME = 100,           -- master volume (0-100 typical, scaled to audsrv range)
+      ADPCM_VOLUME = 100      -- per-channel ADPCM volume (0-100 typical, scaled to audsrv range)
     };
     device_lock_name = function (lock)
       if lock == DEVLOCK.USB then return "USB" end
@@ -520,12 +520,28 @@ end
           LOGF("BOOT SOUND: using '%s'", tostring(found))
 
 -- Set volumes/formats defensively; some builds may ignore these.
-          pcall(function()
-            if type(UI.BOOT_SOUND.VOLUME) == "number" and type(Sound.setVolume) == "function" then
-              Sound.setVolume(UI.BOOT_SOUND.VOLUME)
+          local function normalize_volume(value)
+            if type(value) ~= "number" then
+              return nil
             end
-            if type(UI.BOOT_SOUND.ADPCM_VOLUME) == "number" and type(Sound.setADPCMVolume) == "function" then
-              Sound.setADPCMVolume(UI.BOOT_SOUND.CHANNEL or 0, UI.BOOT_SOUND.ADPCM_VOLUME)
+            if value <= 100 then
+              return math.floor((value * 0x3fff / 100) + 0.5)
+            end
+            return value
+          end
+
+          pcall(function()
+            if type(Sound.setVolume) == "function" then
+              local volume = normalize_volume(UI.BOOT_SOUND.VOLUME)
+              if volume ~= nil then
+                Sound.setVolume(volume)
+              end
+            end
+            if type(Sound.setADPCMVolume) == "function" then
+              local adpcm_volume = normalize_volume(UI.BOOT_SOUND.ADPCM_VOLUME)
+              if adpcm_volume ~= nil then
+                Sound.setADPCMVolume(UI.BOOT_SOUND.CHANNEL or 0, adpcm_volume)
+              end
             end
             if type(Sound.setFormat) == "function" then
               -- Common safe defaults; ADPCM playback may ignore this on some builds.
