@@ -60,6 +60,8 @@ UI = {
       PATH = "boot.adp",      -- relative to CWD (same folder as ui.lua on HostFS)
       SECONDS = 3.0,          -- splash minimum hold to cover audio (adjust to match boot.adp)
       PAD_SECONDS = 0.5,      -- extra padding to keep splash visible after audio starts
+      BOOT_PHASE_SECONDS = 8.0,
+      CREDITS_PHASE_SECONDS = 7.0,
       CHANNEL = 0,
       VOLUME = 100,           -- master volume (0-100 typical, scaled to audsrv range)
       ADPCM_VOLUME = 100      -- per-channel ADPCM volume (0-100 typical, scaled to audsrv range)
@@ -607,36 +609,63 @@ end
           Font.ftPrint(BFONT, UI.SCR.X_MID, y0 + 36,  8, UI.SCR.X, 16, "israpps.github.io",    Color.new(0, 0, 0, alpha))
         end
 
-        local fade_in_frames = 72        local hold_frames = 48
-        local fade_out_frames = 24
+        local fade_in_frames = 90
+        local fade_out_frames = 30
 
         -- Start boot sound once, and extend splash hold to cover it (configurable).
         TryBootSound()
-        if boot_sound_hold_frames ~= nil then
-          local required_hold = boot_sound_hold_frames - (fade_in_frames + fade_out_frames)
-          if required_hold < 0 then required_hold = 0 end
-          if required_hold > hold_frames then
-            hold_frames = required_hold
-          end
+        local boot_phase_seconds = UI.BOOT_SOUND.BOOT_PHASE_SECONDS or 8.0
+        if type(boot_phase_seconds) ~= "number" or boot_phase_seconds < 0 then
+          boot_phase_seconds = 8.0
         end
+        local credits_phase_seconds = UI.BOOT_SOUND.CREDITS_PHASE_SECONDS or 7.0
+        if type(credits_phase_seconds) ~= "number" or credits_phase_seconds < 0 then
+          credits_phase_seconds = 7.0
+        end
+        local boot_phase_frames = math.floor((boot_phase_seconds * 60) + 0.5)
+        local credits_phase_frames = math.floor((credits_phase_seconds * 60) + 0.5)
+        local total_phase_frames = boot_phase_frames + credits_phase_frames
+        if boot_sound_hold_frames ~= nil and boot_sound_hold_frames > total_phase_frames then
+          credits_phase_frames = credits_phase_frames + (boot_sound_hold_frames - total_phase_frames)
+          total_phase_frames = boot_sound_hold_frames
+        end
+        if fade_in_frames > boot_phase_frames then
+          fade_in_frames = boot_phase_frames
+        end
+        local boot_hold_frames = boot_phase_frames - fade_in_frames
+        if boot_hold_frames < 0 then boot_hold_frames = 0 end
+        if fade_out_frames > credits_phase_frames then
+          fade_out_frames = credits_phase_frames
+        end
+        local credits_hold_frames = credits_phase_frames - fade_out_frames
+        if credits_hold_frames < 0 then credits_hold_frames = 0 end
         for i = 1, fade_in_frames do
           local alpha = Round(128 * (i / fade_in_frames))
           DrawBackground()
           DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
-          DrawSplashText(alpha)
           Screen.flip() -- we dont use UI.flip here because we dont want notifications on the welcome screen
         end
-        for _ = 1, hold_frames do
+        for _ = 1, boot_hold_frames do
+          DrawBackground()
+          DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, 128)
+          Screen.flip()
+        end
+        for _ = 1, credits_hold_frames do
           DrawBackground()
           DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, 128)
           DrawSplashText(128)
           Screen.flip()
         end
-        for i = 1, fade_out_frames do
-          local alpha = Round(128 * (1 - (i / fade_out_frames)))
+        if fade_out_frames > 0 then
+          for i = 1, fade_out_frames do
+            local alpha = Round(128 * (1 - (i / fade_out_frames)))
+            DrawTargetScene(next_scene)
+            DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
+            DrawSplashText(alpha)
+            Screen.flip()
+          end
+        else
           DrawTargetScene(next_scene)
-          DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
-          DrawSplashText(alpha)
           Screen.flip()
         end
 
