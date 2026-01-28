@@ -610,7 +610,7 @@ end
         -- Start boot sound once, and extend splash hold to cover it (configurable).
         TryBootSound()
         if boot_sound_hold_frames ~= nil then
-          local required_hold = boot_sound_hold_frames - fade_in_frames
+          local required_hold = boot_sound_hold_frames - (fade_in_frames + fade_out_frames)
           if required_hold < 0 then required_hold = 0 end
           if required_hold > hold_frames then
             hold_frames = required_hold
