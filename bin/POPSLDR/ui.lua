@@ -938,12 +938,12 @@ if found == nil then return end
         end
         local function SlotAlpha(dist)
           if dist <= 1 then
-            return Round(Lerp(128, 64, dist))
+            return Round(Lerp(128, 80, dist))
           end
           if dist <= 2 then
-            return Round(Lerp(64, 32, dist - 1))
+            return Round(Lerp(80, 40, dist - 1))
           end
-          return 32
+          return 40
         end
         for k = -2, 2 do
           local idx = WrapIndex(base_sel + k, profcnt)
@@ -951,7 +951,7 @@ if found == nil then return end
           local y = center_y
           local dist = math.abs(k - slide)
           local alpha = SlotAlpha(dist)
-          local tint = Color.new(255, 255, 255, alpha)
+          local tint = Color.new(128, 128, 128, alpha)
           DrawIcon(idx, x, y, tint)
         end
         Font.ftPrint(UI.FONT.LABEL, Round(center_label_x), center_label_y, 8, UI.SCR.X, 16, UI.MainMenu.opts[center_label_idx], UI.COLORS.TEXT_PRIMARY)
