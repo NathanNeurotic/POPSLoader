@@ -793,94 +793,89 @@ end
         end
 
         local fade_in_frames = 120
-        local fade_mid_frames = 30
-        local fade_out_frames = 30
+        local fade_out_frames = 60
 
-        -- Start boot sound once, and extend splash hold to cover it (configurable).
+        -- Start boot sound once (timing remains fixed to splash/credits durations).
         TryBootSound()
-        local boot_phase_seconds = UI.BOOT_SOUND.BOOT_PHASE_SECONDS or 8.0
-        if type(boot_phase_seconds) ~= "number" or boot_phase_seconds < 0 then
-          boot_phase_seconds = 8.0
+        local splash_seconds = 8.0
+        local credits_seconds = 7.0
+        local splash_frames = math.floor((splash_seconds * 60) + 0.5)
+        local credits_frames = math.floor((credits_seconds * 60) + 0.5)
+        if fade_in_frames > splash_frames then
+          fade_in_frames = splash_frames
         end
-        local credits_phase_seconds = UI.BOOT_SOUND.CREDITS_PHASE_SECONDS or 7.0
-        if type(credits_phase_seconds) ~= "number" or credits_phase_seconds < 0 then
-          credits_phase_seconds = 7.0
-        end
-        local boot_phase_frames = math.floor((boot_phase_seconds * 60) + 0.5)
-        local credits_phase_frames = math.floor((credits_phase_seconds * 60) + 0.5)
-        local show_credits = next_scene ~= UI.SCENES.CREDITS
-        if fade_in_frames > boot_phase_frames then
-          fade_in_frames = boot_phase_frames
-        end
-        if not show_credits then
-          fade_mid_frames = 0
-          credits_phase_frames = 0
-        else
-          if fade_mid_frames > credits_phase_frames then
-            fade_mid_frames = credits_phase_frames
-          end
-          if fade_out_frames > credits_phase_frames - fade_mid_frames then
-            fade_out_frames = credits_phase_frames - fade_mid_frames
-          end
+        if fade_out_frames > splash_frames - fade_in_frames then
+          fade_out_frames = splash_frames - fade_in_frames
         end
         if fade_out_frames < 0 then fade_out_frames = 0 end
-        local boot_hold_frames = boot_phase_frames - fade_in_frames
-        if boot_hold_frames < 0 then boot_hold_frames = 0 end
-        local credits_hold_frames = credits_phase_frames - fade_mid_frames - fade_out_frames
-        if credits_hold_frames < 0 then credits_hold_frames = 0 end
-        local total_hold_frames = boot_hold_frames + credits_hold_frames + fade_in_frames + fade_mid_frames + fade_out_frames
-        if boot_sound_hold_frames ~= nil and boot_sound_hold_frames > total_hold_frames then
-          credits_hold_frames = credits_hold_frames + (boot_sound_hold_frames - total_hold_frames)
+        local splash_hold_frames = splash_frames - fade_in_frames - fade_out_frames
+        if splash_hold_frames < 0 then splash_hold_frames = 0 end
+        local credits_fade_in_frames = fade_in_frames
+        local credits_fade_out_frames = fade_out_frames
+        if credits_fade_in_frames > credits_frames then
+          credits_fade_in_frames = credits_frames
         end
+        if credits_fade_out_frames > credits_frames - credits_fade_in_frames then
+          credits_fade_out_frames = credits_frames - credits_fade_in_frames
+        end
+        if credits_fade_out_frames < 0 then credits_fade_out_frames = 0 end
+        local credits_hold_frames = credits_frames - credits_fade_in_frames - credits_fade_out_frames
+        if credits_hold_frames < 0 then credits_hold_frames = 0 end
+
+        -- Splash: slow fade in -> hold -> fade out to black.
         for i = 1, fade_in_frames do
           local alpha = Round(128 * (i / fade_in_frames))
           DrawBackground()
           DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
           DrawSplashText(alpha)
-          Screen.flip() -- we dont use UI.flip here because we dont want notifications on the welcome screen
+          Screen.flip()
         end
-        for _ = 1, boot_hold_frames do
+        for _ = 1, splash_hold_frames do
           DrawBackground()
           DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, 128)
           DrawSplashText(128)
           Screen.flip()
         end
-        if show_credits and fade_mid_frames > 0 then
-          for i = 1, fade_mid_frames do
-            local alpha = Round(128 * (1 - (i / fade_mid_frames)))
-            DrawTargetScene(UI.SCENES.CREDITS)
-            DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
-            DrawSplashText(alpha)
-            Screen.flip()
-          end
-        end
-        if show_credits then
-          for _ = 1, credits_hold_frames do
-            DrawTargetScene(UI.SCENES.CREDITS)
-            Screen.flip()
-          end
-        end
         if fade_out_frames > 0 then
-          local fade_to_black_frames = math.floor(fade_out_frames / 2)
-          local fade_in_menu_frames = fade_out_frames - fade_to_black_frames
-          local fade_source_scene = show_credits and UI.SCENES.CREDITS or next_scene
-          for i = 1, fade_to_black_frames do
-            local alpha = Round(128 * (i / fade_to_black_frames))
-            DrawTargetScene(fade_source_scene)
+          for i = 1, fade_out_frames do
+            local alpha = Round(128 * (i / fade_out_frames))
+            DrawBackground()
+            DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, 128)
+            DrawSplashText(128)
             Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
             Screen.flip()
           end
-          for i = 1, fade_in_menu_frames do
-            local alpha = Round(128 * (1 - (i / fade_in_menu_frames)))
-            DrawTargetScene(next_scene)
-            Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
-            Screen.flip()
-          end
-        else
-          DrawTargetScene(next_scene)
+        end
+
+        -- Credits: fade in from black -> hold -> fade out to black.
+        for i = 1, credits_fade_in_frames do
+          local alpha = Round(128 * (1 - (i / credits_fade_in_frames)))
+          DrawTargetScene(UI.SCENES.CREDITS)
+          Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
           Screen.flip()
         end
-        DrawTargetScene(next_scene)
+        for _ = 1, credits_hold_frames do
+          DrawTargetScene(UI.SCENES.CREDITS)
+          Screen.flip()
+        end
+        if credits_fade_out_frames > 0 then
+          for i = 1, credits_fade_out_frames do
+            local alpha = Round(128 * (i / credits_fade_out_frames))
+            DrawTargetScene(UI.SCENES.CREDITS)
+            Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
+            Screen.flip()
+          end
+        end
+
+        local final_scene = UI.SCENES.MMAIN
+        -- Main menu: fade in from black.
+        for i = 1, fade_in_frames do
+          local alpha = Round(128 * (1 - (i / fade_in_frames)))
+          DrawTargetScene(final_scene)
+          Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
+          Screen.flip()
+        end
+        DrawTargetScene(final_scene)
         Screen.flip()
 
         -- Cleanup boot sound resource (safe if audio backend ignores it).
