@@ -798,7 +798,7 @@ if found == nil then return end
     };
     MainMenu = {
       OPT = 1;
-      opts = {"USB FAT32", "USB exFAT", "MMCE", "MX4SIO", "APA HDD", "BDM HDD", "SMB", "DKWDRV"};
+      opts = {"USB FAT32", "USB exFAT", "MMCE", "MX4SIO", "APA HDD", "DKWDRV", "BDM HDD", "SMB"};
       Carousel = {
         currentIndex = 1,
         targetIndex = 1,
@@ -938,20 +938,17 @@ if found == nil then return end
         end
         local function SlotAlpha(dist)
           if dist <= 1 then
-            return Round(Lerp(128, 48, dist))
+            return Round(Lerp(128, 40, dist))
           end
           if dist <= 2 then
-            return Round(Lerp(48, 16, dist - 1))
+            return Round(Lerp(40, 8, dist - 1))
           end
-          return 16
+          return 8
         end
         for k = -2, 2 do
           local idx = WrapIndex(base_sel + k, profcnt)
           local x = center_x + slot_spacing * (k - slide)
           local y = center_y
-          if icon_keys[idx] == "DISC" then
-            y = y + 4
-          end
           local dist = math.abs(k - slide)
           local alpha = SlotAlpha(dist)
           local tint = Color.new(128, 128, 128, alpha)
@@ -1065,15 +1062,6 @@ if found == nil then return end
             end
             UI.SceneChange(UI.MainMenu.OPT)
           elseif UI.MainMenu.OPT == 6 then
-            PLDR.CleanupGameList()
-            PLDR.GAMEPATH = ""
-            UI.SceneChange(UI.SCENES.GBDMHDD)
-          elseif UI.MainMenu.OPT == 7 then
-            PLDR.CleanupGameList()
-            PLDR.GAMEPATH = ""
-            UI.Notif_queue.add("SMB not implemented yet.")
-            UI.SceneChange(UI.SCENES.GSMB)
-          elseif UI.MainMenu.OPT == 8 then
             local dkwdrv_paths = {
               "mc0:/PS1_DKWDRV/DKWDRV.ELF",
               "mc1:/PS1_DKWDRV/DKWDRV.ELF"
@@ -1090,6 +1078,15 @@ if found == nil then return end
             else
               System.loadELF(dkwdrv_path)
             end
+          elseif UI.MainMenu.OPT == 7 then
+            PLDR.CleanupGameList()
+            PLDR.GAMEPATH = ""
+            UI.SceneChange(UI.SCENES.GBDMHDD)
+          elseif UI.MainMenu.OPT == 8 then
+            PLDR.CleanupGameList()
+            PLDR.GAMEPATH = ""
+            UI.Notif_queue.add("SMB not implemented yet.")
+            UI.SceneChange(UI.SCENES.GSMB)
           end --because we still dont support SMB
         end
       end
