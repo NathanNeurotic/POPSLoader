@@ -528,7 +528,7 @@ end
           end)
 
           local ok_load, audio = pcall(Sound.loadADPCM, found)
-          if not ok_load or audio == nil then
+          if not ok_load or audio == nil or audio == 0 then
             LOGF("BOOT SOUND: load failed for '%s'", tostring(found))
             return
           end

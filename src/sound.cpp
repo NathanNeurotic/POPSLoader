@@ -96,6 +96,10 @@ void sound_setformat(int bits, int freq, int channels){
 }
 
 void sound_setadpcmvolume(int slot, int volume) {
+    if(!audsrv_started) {
+        audsrv_init();
+        audsrv_started = true;
+    }
     if(!adpcm_started) {
         audsrv_adpcm_init();
         adpcm_started = true;
@@ -105,6 +109,10 @@ void sound_setadpcmvolume(int slot, int volume) {
 }
 
 audsrv_adpcm_t* sound_loadadpcm(const char* path){
+    if(!audsrv_started) {
+        audsrv_init();
+        audsrv_started = true;
+    }
     if(!adpcm_started) {
         audsrv_adpcm_init();
         adpcm_started = true;
@@ -116,12 +124,29 @@ audsrv_adpcm_t* sound_loadadpcm(const char* path){
 	u8* buffer;
 
 	adpcm = fopen(path, "rb");
+    if (adpcm == NULL) {
+        DPRINTF("sound_loadadpcm: fopen failed for %s\n", path);
+        free(sample);
+        return NULL;
+    }
 
 	fseek(adpcm, 0, SEEK_END);
 	size = ftell(adpcm);
 	fseek(adpcm, 0, SEEK_SET);
+    if (size <= 0) {
+        DPRINTF("sound_loadadpcm: invalid size %d for %s\n", size, path);
+        fclose(adpcm);
+        free(sample);
+        return NULL;
+    }
 
 	buffer = (u8*)malloc(size);
+    if (buffer == NULL) {
+        DPRINTF("sound_loadadpcm: alloc failed for %s\n", path);
+        fclose(adpcm);
+        free(sample);
+        return NULL;
+    }
 
 	fread(buffer, 1, size, adpcm);
 	fclose(adpcm);
@@ -134,6 +159,10 @@ audsrv_adpcm_t* sound_loadadpcm(const char* path){
 }
 
 void sound_playadpcm(int slot, audsrv_adpcm_t *sample) {
+    if(!audsrv_started) {
+        audsrv_init();
+        audsrv_started = true;
+    }
     if(!adpcm_started) {
         audsrv_adpcm_init();
         adpcm_started = true;

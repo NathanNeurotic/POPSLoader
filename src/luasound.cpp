@@ -26,7 +26,12 @@ static int lua_setadpcmvolume(lua_State *L) {
 static int lua_loadadpcm(lua_State *L) {
 	int argc = lua_gettop(L);
 	if (argc != 1) return luaL_error(L, "loadADPCM takes only 1 argument");
-	lua_pushinteger(L, (uint32_t)sound_loadadpcm(luaL_checkstring(L, 1)));
+	audsrv_adpcm_t *sample = sound_loadadpcm(luaL_checkstring(L, 1));
+	if (sample == NULL) {
+		lua_pushnil(L);
+		return 1;
+	}
+	lua_pushinteger(L, (uint32_t)sample);
 	return 1;
 }
 
