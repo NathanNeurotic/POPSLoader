@@ -55,6 +55,14 @@ UI = {
     device_lock = DEVLOCK.NONE;
     boot_device = DEVLOCK.NONE;
     boot_locks = {};
+    BOOT_SOUND = {
+      ENABLED = true,
+      PATH = "boot.adp",      -- relative to CWD (same folder as ui.lua on HostFS)
+      SECONDS = 3.0,          -- splash minimum hold to cover audio (adjust to match boot.adp)
+      CHANNEL = 0,
+      VOLUME = 90,            -- master volume (0-100 typical)
+      ADPCM_VOLUME = 90       -- per-channel ADPCM volume
+    };
     device_lock_name = function (lock)
       if lock == DEVLOCK.USB then return "USB" end
       if lock == DEVLOCK.MMCE then return "MMCE" end
@@ -213,6 +221,7 @@ UI = {
     Footer = {
       order = {"triangle", "circle", "cross", "square"};
       order_with_r2 = {"triangle", "circle", "cross", "square", "R2"};
+      order_with_start_r2 = {"triangle", "circle", "cross", "square", "start", "R2"};
       Draw = function (labels, order)
         local safe = UI.LAYOUT.SAFE
         local entries = order or UI.Footer.order
@@ -228,12 +237,12 @@ UI = {
             end
           end
         end
-        local barY = UI.SCR.Y - (UI.LAYOUT.CRT_SAFE_BOTTOM or UI.LAYOUT.BTN_BAR_SAFE_BOTTOM or 0)
+        local barY = UI.LAYOUT.FOOTER_ICON_Y
         if bar_height > 0 and (barY + (bar_height / 2)) > (UI.SCR.Y - 8) then
           barY = UI.SCR.Y - 8 - (bar_height / 2)
         end
-        local labelY = Round(barY + UI.LAYOUT.FOOTER_LABEL_Y_OFFSET)
-	        -- Centered/tighter spacing (avoids running off-screen on real CRT overscan).
+        local labelY = UI.LAYOUT.FOOTER_LABEL_Y
+        -- Centered/tighter spacing (avoids running off-screen on real CRT overscan).
 	        local spacing
 	        if count <= 1 then
 	          spacing = 0
@@ -279,6 +288,93 @@ UI = {
 	        local function DrawBackground()
 	          Screen.clear(Color.new(0, 0, 0))
 	        end
+
+-- Boot audio (relative to current directory). Never fatal.
+        local boot_sound_tried = false
+        local boot_sound_loaded = nil
+        local boot_sound_hold_frames = nil
+
+        local function TryBootSound()
+          if boot_sound_tried then return end
+          boot_sound_tried = true
+
+          if UI.BOOT_SOUND == nil or UI.BOOT_SOUND.ENABLED ~= true then return end
+          if type(Sound) ~= "table" or type(Sound.loadADPCM) ~= "function" then return end
+
+          local rel = UI.BOOT_SOUND.PATH or "boot.adp"
+
+local function file_exists(p)
+  if p == nil then return false end
+  if type(doesFileExist) == "function" then
+    local okcall, res = pcall(doesFileExist, p)
+    return okcall and res == true
+  end
+  if type(System) == "table" and type(System.openFile) == "function" and type(System.closeFile) == "function" then
+    local okfd, fd = pcall(System.openFile, p, O_RDONLY)
+    if okfd and fd ~= nil and fd >= 0 then
+      pcall(System.closeFile, fd)
+      return true
+    end
+  end
+  return false
+end
+
+local function resolve(p)
+  if p == nil then return nil end
+  if type(System) == "table" and type(System.resolveAsset) == "function" then
+    local ok, r = pcall(System.resolveAsset, p)
+    if ok and type(r) == "string" and r ~= "" then return r end
+  end
+  return p
+end
+
+-- Prefer current folder (CWD) and resolved-asset paths; avoid hardcoding host: when possible.
+local candidates = {
+  resolve(rel),
+  resolve("./" .. rel),
+  rel,
+  "./" .. rel,
+}
+
+local found = nil
+for _, p in ipairs(candidates) do
+  if file_exists(p) then found = p break end
+end
+
+if found == nil then
+  -- Last resort: try HostFS prefix in PCSX2 setups.
+  local host_p = "host:" .. rel
+  if file_exists(host_p) then found = host_p end
+end
+
+if found == nil then return end
+
+-- Set volumes/formats defensively; some builds may ignore these.
+          pcall(function()
+            if type(UI.BOOT_SOUND.VOLUME) == "number" and type(Sound.setVolume) == "function" then
+              Sound.setVolume(UI.BOOT_SOUND.VOLUME)
+            end
+            if type(UI.BOOT_SOUND.ADPCM_VOLUME) == "number" and type(Sound.setADPCMVolume) == "function" then
+              Sound.setADPCMVolume(UI.BOOT_SOUND.CHANNEL or 0, UI.BOOT_SOUND.ADPCM_VOLUME)
+            end
+            if type(Sound.setFormat) == "function" then
+              -- Common safe defaults; ADPCM playback may ignore this on some builds.
+              Sound.setFormat(16, 44100, 2)
+            end
+          end)
+
+          local ok_load, audio = pcall(Sound.loadADPCM, found)
+          if not ok_load or audio == nil then return end
+          boot_sound_loaded = audio
+
+          pcall(function()
+            Sound.playADPCM(UI.BOOT_SOUND.CHANNEL or 0, boot_sound_loaded)
+          end)
+
+          local sec = UI.BOOT_SOUND.SECONDS
+          if type(sec) ~= "number" or sec < 0 then sec = 0 end
+          boot_sound_hold_frames = math.floor((sec * 60) + 0.5)
+        end
         local function DrawSplashCover(img, screen_w, screen_h, alpha)
           local img_w = Graphics.getImageWidth(img)
           local img_h = Graphics.getImageHeight(img)
@@ -294,20 +390,33 @@ UI = {
           local tint = Color.new(128, 128, 128, alpha)
           Graphics.drawScaleImage(img, x, y, draw_w, draw_h, tint)
         end
-        local fade_in_frames = 24
-        local hold_frames = 48
+        local function DrawSplashText(alpha)
+          -- Requested: black text because splash image is white.
+          local y0 = UI.SCR.Y_MID + 120
+          Font.ftPrint(BFONT, UI.SCR.X_MID, y0,       8, UI.SCR.X, 16, "Coded by El_isra",      Color.new(0, 0, 0, alpha))
+          Font.ftPrint(BFONT, UI.SCR.X_MID, y0 + 18,  8, UI.SCR.X, 16, "Graphics by Berion",   Color.new(0, 0, 0, alpha))
+          Font.ftPrint(BFONT, UI.SCR.X_MID, y0 + 36,  8, UI.SCR.X, 16, "israpps.github.io",    Color.new(0, 0, 0, alpha))
+        end
+
+        local fade_in_frames = 24        local hold_frames = 48
         local fade_out_frames = 24
+
+        -- Start boot sound once, and extend splash hold to cover it (configurable).
+        TryBootSound()
+        if boot_sound_hold_frames ~= nil and boot_sound_hold_frames > hold_frames then
+          hold_frames = boot_sound_hold_frames
+        end
         for i = 1, fade_in_frames do
           local alpha = Round(128 * (i / fade_in_frames))
           DrawBackground()
           DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
-          Font.ftPrint(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID+100, 8, UI.SCR.X, 16, "Coded By El_isra", Color.new(128,128,128,alpha))
+          DrawSplashText(alpha)
           Screen.flip() -- we dont use UI.flip here because we dont want notifications on the welcome screen
         end
         for _ = 1, hold_frames do
           DrawBackground()
           DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, 128)
-          Font.ftPrint(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID+100, 8, UI.SCR.X, 16, "Coded By El_isra", Color.new(128,128,128,128))
+          DrawSplashText(128)
           Screen.flip()
         end
         for i = 1, fade_out_frames do
@@ -323,8 +432,13 @@ UI = {
             UI.MainMenu.DrawOnly()
           end
           DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
-          Font.ftPrint(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID+100, 8, UI.SCR.X, 16, "Coded By El_isra", Color.new(128,128,128,alpha))
+          DrawSplashText(alpha)
           Screen.flip()
+        end
+
+        -- Cleanup boot sound resource (safe if audio backend ignores it).
+        if boot_sound_loaded ~= nil and type(Sound) == "table" and type(Sound.freeADPCM) == "function" then
+          pcall(Sound.freeADPCM, boot_sound_loaded)
         end
       end
 
@@ -526,9 +640,10 @@ UI = {
             circle = "Back",
             cross = "Confirm",
             square = "Cover Art",
+            start = "Profiles",
             R2 = ""
 
-          }, UI.Footer.order_with_r2)
+          }, UI.Footer.order_with_start_r2)
           return
         end
         local ammount = #PLDR.GAMES
@@ -599,21 +714,22 @@ UI = {
           triangle = "Credits",
           circle = "Back",
           cross = "Confirm",
-          square = "Cover Art"
+          square = "Cover Art",
+          start = "Profiles"
         }
-        local footer_order = UI.Footer.order
+        local footer_order = UI.Footer.order_with_start_r2
         if UI.CURSCENE == UI.SCENES.GUSBFAT then
           footer_labels.R2 = "Reset POPSTARTER"
-          footer_order = UI.Footer.order_with_r2
+          footer_order = UI.Footer.order_with_start_r2
         elseif UI.CURSCENE == UI.SCENES.GUSBEXFAT then
           footer_labels.R2 = "Install USBEXFAT pack"
-          footer_order = UI.Footer.order_with_r2
+          footer_order = UI.Footer.order_with_start_r2
         elseif UI.CURSCENE == UI.SCENES.GSMB and UI.device_lock == DEVLOCK.MMCE then
           footer_labels.R2 = "Install MMCE pack"
-          footer_order = UI.Footer.order_with_r2
+          footer_order = UI.Footer.order_with_start_r2
         elseif UI.CURSCENE == UI.SCENES.GMX4SIO then
           footer_labels.R2 = "Install MX4SIO pack"
-          footer_order = UI.Footer.order_with_r2
+          footer_order = UI.Footer.order_with_start_r2
         end
         UI.Footer.Draw(footer_labels, footer_order)
       end;
@@ -647,9 +763,10 @@ UI = {
           circle = "Back",
           cross = "Confirm",
           square = "Cover Art",
-          R2 = ""
+          start = "Profiles",
+            R2 = ""
 
-        }, UI.Footer.order_with_r2)
+        }, UI.Footer.order_with_start_r2)
       end;
     };
     MainMenu = {
@@ -771,15 +888,22 @@ UI = {
         end
         local first_icon = ResolveIcon(icon_keys[1] or "MISSING")
         local base_icon_w = Graphics.getImageWidth(first_icon)
-        local slot_margin = 12
-        local max_spacing = (UI.SCR.X - UI.LAYOUT.SAFE.L - UI.LAYOUT.SAFE.R) / 2
-        local slot_spacing = Clamp(base_icon_w + slot_margin, 96, max_spacing)
+        local slot_margin = 0
+        local safe_w = (UI.SCR.X - UI.LAYOUT.SAFE.L - UI.LAYOUT.SAFE.R)
+        -- Target: show 5 icons (-2..2) without clipping on overscan-heavy TVs.
+        -- Use a tighter spacing than icon width so side icons remain visible.
+        local ideal_spacing = math.floor(safe_w / 4.3)
+        local min_spacing = 90
+        local max_spacing = math.floor(safe_w / 3.8)
+        local slot_spacing = ideal_spacing
+        if slot_spacing < min_spacing then slot_spacing = min_spacing end
+        if slot_spacing > max_spacing then slot_spacing = max_spacing end
         local base_sel = carousel.currentIndex
         local slide = carousel.slide or 0
         local center_label_x = center_x
         local center_label_y = Round(center_y + 90)
         local center_label_idx = carousel.animActive and carousel.targetIndex or base_sel
-        for k = -4, 4 do
+        for k = -3, 3 do
           local idx = WrapIndex(base_sel + k, profcnt)
           local x = center_x + slot_spacing * (k - slide)
           local dist = math.abs(k - slide)
@@ -791,9 +915,9 @@ UI = {
           else
             y = y + side_offset2_y
           end
-          local alpha = Clamp(1 - dist * 0.22, 0.04, 1.0)
-          local scale = Clamp(1 - dist * 0.09, 0.55, 1.0)
-          local tint = dist < 0.5 and UI.CCOL.YELLOW or Color.new(128, 128, 128, Round(128 * alpha))
+          local alpha = Clamp(1 - dist * 0.28, 0.0, 1.0)
+          local scale = Clamp(1 - dist * 0.095, 0.45, 1.0)
+          local tint = dist < 0.5 and UI.CCOL.YELLOW or Color.new(128, 128, 128, Round(200 * alpha))
           DrawIcon(idx, x, y, scale, tint)
         end
         Font.ftPrint(UI.FONT.LABEL, Round(center_label_x), center_label_y, 8, UI.SCR.X, 16, UI.MainMenu.opts[center_label_idx], UI.COLORS.TEXT_PRIMARY)
@@ -802,9 +926,10 @@ UI = {
           circle = "Exit",
           cross = "Select",
           square = "Cover Art",
-          R2 = ""
+          start = "Profiles",
+            R2 = ""
 
-        }, UI.Footer.order_with_r2)
+        }, UI.Footer.order_with_start_r2)
         if UI.MainMenu._draw_only then return end
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
@@ -1149,9 +1274,10 @@ if you bought it you\'ve been scammed
           circle = "Back",
           cross = "Confirm",
           square = "Cover Art",
-          R2 = ""
+          start = "Profiles",
+            R2 = ""
 
-        }, UI.Footer.order_with_r2)
+        }, UI.Footer.order_with_start_r2)
       end
     };
   }
