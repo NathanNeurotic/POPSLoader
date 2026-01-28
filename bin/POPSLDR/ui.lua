@@ -873,10 +873,6 @@ if found == nil then return end
           status_y = status_y + 12
         end
 	        -- Pages are no longer presented as "locked" in the UI.
-        if UI.BUILD_INFO ~= nil and UI.BUILD_INFO.stamp ~= nil then
-          local stamp_y = Round(layout.FOOTER_LABEL_Y - 18)
-          Font.ftPrint(SFONT, layout.SAFE.L, stamp_y, 0, UI.SCR.X, 16, UI.BUILD_INFO.stamp, UI.CCOL.GREY)
-        end
         local icon_map = {
           ["MMCE"] = "MMCE",
           ["MX4SIO"] = "MX4SIO",
@@ -984,10 +980,10 @@ if found == nil then return end
         end
         local function SlotAlpha(dist)
           if dist <= 1 then
-            return Round(Lerp(128, 51, dist))
+            return Round(Lerp(128, 38, dist))
           end
           if dist <= 2 then
-            return Round(Lerp(51, 13, dist - 1))
+            return Round(Lerp(38, 13, dist - 1))
           end
           return 13
         end
@@ -1281,6 +1277,10 @@ uyjulian, fjtrujy, HWC and others for always helping me
 This program is free and open source
 if you bought it you\'ve been scammed
 ]], currcol)
+        if UI.BUILD_INFO ~= nil and UI.BUILD_INFO.stamp ~= nil then
+          local stamp_y = Round(layout.FOOTER_LABEL_Y - 18)
+          Font.ftPrint(SFONT, layout.SAFE.L, stamp_y, 0, UI.SCR.X, 16, UI.BUILD_INFO.stamp, UI.CCOL.GREY)
+        end
 
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
