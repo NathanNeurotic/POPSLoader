@@ -1180,6 +1180,12 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     )
     return
   end
+  if UI ~= nil and UI.CoverCache ~= nil and UI.CoverCache.Clear ~= nil then
+    UI.CoverCache:Clear()
+  end
+  if IMG ~= nil and IMG.ReleaseAll ~= nil then
+    IMG.ReleaseAll()
+  end
   SetLaunchPhase(LaunchState.PHASE_EXEC)
   LaunchLog("LAUNCH: exec popstarter path:", popstarter)
   LaunchLog(

@@ -90,4 +90,17 @@ IMG = setmetatable({}, {
     return img
   end
 })
+function IMG.ReleaseAll()
+  local free_ok = type(Graphics) == "table" and type(Graphics.freeImage) == "function"
+  for key, _ in pairs(IMG_SOURCES) do
+    local img = rawget(IMG, key)
+    if img ~= nil then
+      if free_ok then
+        pcall(Graphics.freeImage, img)
+      end
+      rawset(IMG, key, nil)
+    end
+  end
+  IMG_FAILED = {}
+end
 LOGF("%d images registered (lazy)", #IMGS)
