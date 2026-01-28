@@ -73,7 +73,8 @@ static bool audsrv_started = false;
 
 void sound_setvolume(int volume) {
     if(!audsrv_started) {
-        audsrv_init();
+        int rc = audsrv_init();
+        DPRINTF("sound_setvolume: audsrv_init rc=%d\n", rc);
         audsrv_started = true;
     }
 
@@ -82,7 +83,8 @@ void sound_setvolume(int volume) {
 
 void sound_setformat(int bits, int freq, int channels){
     if(!audsrv_started) {
-        audsrv_init();
+        int rc = audsrv_init();
+        DPRINTF("sound_setformat: audsrv_init rc=%d\n", rc);
         audsrv_started = true;
     }
 
@@ -96,8 +98,14 @@ void sound_setformat(int bits, int freq, int channels){
 }
 
 void sound_setadpcmvolume(int slot, int volume) {
+    if(!audsrv_started) {
+        int rc = audsrv_init();
+        DPRINTF("sound_setadpcmvolume: audsrv_init rc=%d\n", rc);
+        audsrv_started = true;
+    }
     if(!adpcm_started) {
-        audsrv_adpcm_init();
+        int rc = audsrv_adpcm_init();
+        DPRINTF("sound_setadpcmvolume: adpcm_init rc=%d\n", rc);
         adpcm_started = true;
     }
 
@@ -105,8 +113,14 @@ void sound_setadpcmvolume(int slot, int volume) {
 }
 
 audsrv_adpcm_t* sound_loadadpcm(const char* path){
+    if(!audsrv_started) {
+        int rc = audsrv_init();
+        DPRINTF("sound_loadadpcm: audsrv_init rc=%d\n", rc);
+        audsrv_started = true;
+    }
     if(!adpcm_started) {
-        audsrv_adpcm_init();
+        int rc = audsrv_adpcm_init();
+        DPRINTF("sound_loadadpcm: adpcm_init rc=%d\n", rc);
         adpcm_started = true;
     }
 
@@ -116,12 +130,29 @@ audsrv_adpcm_t* sound_loadadpcm(const char* path){
 	u8* buffer;
 
 	adpcm = fopen(path, "rb");
+    if (adpcm == NULL) {
+    DPRINTF("sound_loadadpcm: fopen failed for %s\n", path);
+        free(sample);
+        return NULL;
+    }
 
 	fseek(adpcm, 0, SEEK_END);
 	size = ftell(adpcm);
 	fseek(adpcm, 0, SEEK_SET);
+    if (size <= 0) {
+        DPRINTF("sound_loadadpcm: invalid size %d for %s\n", size, path);
+        fclose(adpcm);
+        free(sample);
+        return NULL;
+    }
 
 	buffer = (u8*)malloc(size);
+    if (buffer == NULL) {
+        DPRINTF("sound_loadadpcm: alloc failed for %s\n", path);
+        fclose(adpcm);
+        free(sample);
+        return NULL;
+    }
 
 	fread(buffer, 1, size, adpcm);
 	fclose(adpcm);
@@ -130,14 +161,35 @@ audsrv_adpcm_t* sound_loadadpcm(const char* path){
 
 	free(buffer);
 
+    DPRINTF("sound_loadadpcm: loaded %s (%d bytes)\n", path, size);
+
 	return sample;
 }
 
 void sound_playadpcm(int slot, audsrv_adpcm_t *sample) {
+    if(!audsrv_started) {
+        int rc = audsrv_init();
+        DPRINTF("sound_playadpcm: audsrv_init rc=%d\n", rc);
+        audsrv_started = true;
+    }
     if(!adpcm_started) {
-        audsrv_adpcm_init();
+        int rc = audsrv_adpcm_init();
+        DPRINTF("sound_playadpcm: adpcm_init rc=%d\n", rc);
         adpcm_started = true;
     }
 
+    if (sample == NULL) {
+        DPRINTF("sound_playadpcm: sample is NULL\n");
+        return;
+    }
 	audsrv_ch_play_adpcm(slot, sample);
+    DPRINTF("sound_playadpcm: playing slot=%d sample=%p\n", slot, sample);
+}
+
+void sound_freeadpcm(audsrv_adpcm_t *sample) {
+    if (sample == NULL) {
+        return;
+    }
+    audsrv_free_adpcm(sample);
+    free(sample);
 }

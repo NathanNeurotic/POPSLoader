@@ -59,9 +59,12 @@ UI = {
       ENABLED = true,
       PATH = "boot.adp",      -- relative to CWD (same folder as ui.lua on HostFS)
       SECONDS = 3.0,          -- splash minimum hold to cover audio (adjust to match boot.adp)
+      PAD_SECONDS = 0.5,      -- extra padding to keep splash visible after audio starts
+      BOOT_PHASE_SECONDS = 8.0,
+      CREDITS_PHASE_SECONDS = 7.0,
       CHANNEL = 0,
-      VOLUME = 90,            -- master volume (0-100 typical)
-      ADPCM_VOLUME = 90       -- per-channel ADPCM volume
+      VOLUME = 100,           -- master volume (0-100 typical, scaled to audsrv range)
+      ADPCM_VOLUME = 100      -- per-channel ADPCM volume (0-100 typical, scaled to audsrv range)
     };
     device_lock_name = function (lock)
       if lock == DEVLOCK.USB then return "USB" end
@@ -398,10 +401,20 @@ UI = {
           if boot_sound_tried then return end
           boot_sound_tried = true
 
-          if UI.BOOT_SOUND == nil or UI.BOOT_SOUND.ENABLED ~= true then return end
-          if type(Sound) ~= "table" or type(Sound.loadADPCM) ~= "function" then return end
+          if UI.BOOT_SOUND == nil or UI.BOOT_SOUND.ENABLED ~= true then
+            LOG("BOOT SOUND: disabled")
+            return
+          end
+          if type(Sound) ~= "table" or type(Sound.loadADPCM) ~= "function" then
+            LOG("BOOT SOUND: Sound API not available")
+            return
+          end
 
-          local rel = UI.BOOT_SOUND.PATH or "boot.adp"
+          local primary = UI.BOOT_SOUND.PATH or "boot.adp"
+          local names = { primary }
+          if primary ~= "boot.adpcm" then
+            table.insert(names, "boot.adpcm")
+          end
 
 local function file_exists(p)
   if p == nil then return false end
@@ -428,34 +441,110 @@ local function resolve(p)
   return p
 end
 
--- Prefer current folder (CWD) and resolved-asset paths; avoid hardcoding host: when possible.
-local candidates = {
-  resolve(rel),
-  resolve("./" .. rel),
-  rel,
-  "./" .. rel,
-}
-
-local found = nil
-for _, p in ipairs(candidates) do
-  if file_exists(p) then found = p break end
+local function ensure_dir(path)
+  if path == nil or path == "" then return nil end
+  if type(EnsureTrailingSlash) == "function" then
+    return EnsureTrailingSlash(path)
+  end
+  if string.sub(path, -1) ~= "/" then
+    return path .. "/"
+  end
+  return path
 end
 
-if found == nil then
-  -- Last resort: try HostFS prefix in PCSX2 setups.
-  local host_p = "host:" .. rel
-  if file_exists(host_p) then found = host_p end
+local function add_candidate(list, path)
+  if path ~= nil and path ~= "" then
+    table.insert(list, path)
+  end
 end
 
-if found == nil then return end
+local function resolve_candidates(name)
+  local candidates = {}
+  add_candidate(candidates, resolve(name))
+  add_candidate(candidates, resolve("./" .. name))
+
+  local app_dir = APP_DIR
+  if type(System) == "table" and type(System.getAppDir) == "function" then
+    local ok, dir = pcall(System.getAppDir)
+    if ok and dir ~= nil and dir ~= "" then
+      app_dir = dir
+    end
+  end
+  local app_dir_norm = ensure_dir(app_dir)
+  if app_dir_norm ~= nil then
+    add_candidate(candidates, app_dir_norm .. name)
+    add_candidate(candidates, app_dir_norm .. "POPSLDR/" .. name)
+  end
+
+  local cwd = nil
+  if type(System) == "table" and type(System.currentDirectory) == "function" then
+    local ok, dir = pcall(System.currentDirectory)
+    if ok then
+      cwd = dir
+    end
+  end
+  local cwd_norm = ensure_dir(cwd)
+  if cwd_norm ~= nil then
+    add_candidate(candidates, cwd_norm .. name)
+    add_candidate(candidates, cwd_norm .. "POPSLDR/" .. name)
+  end
+
+  add_candidate(candidates, name)
+  add_candidate(candidates, "./" .. name)
+
+  return candidates
+end
+
+          local found = nil
+          local requested = nil
+          for _, rel in ipairs(names) do
+            requested = rel
+            local candidates = resolve_candidates(rel)
+            for _, p in ipairs(candidates) do
+              if file_exists(p) then
+                found = p
+                break
+              end
+            end
+            if found ~= nil then break end
+          end
+
+          if found == nil and requested ~= nil then
+            -- Last resort: try HostFS prefix in PCSX2 setups.
+            local host_p = "host:" .. requested
+            if file_exists(host_p) then found = host_p end
+          end
+
+          if found == nil then
+            LOGF("BOOT SOUND: '%s' not found", tostring(primary))
+            return
+          end
+
+          LOGF("BOOT SOUND: using '%s'", tostring(found))
 
 -- Set volumes/formats defensively; some builds may ignore these.
-          pcall(function()
-            if type(UI.BOOT_SOUND.VOLUME) == "number" and type(Sound.setVolume) == "function" then
-              Sound.setVolume(UI.BOOT_SOUND.VOLUME)
+          local function normalize_volume(value)
+            if type(value) ~= "number" then
+              return nil
             end
-            if type(UI.BOOT_SOUND.ADPCM_VOLUME) == "number" and type(Sound.setADPCMVolume) == "function" then
-              Sound.setADPCMVolume(UI.BOOT_SOUND.CHANNEL or 0, UI.BOOT_SOUND.ADPCM_VOLUME)
+            if value <= 100 then
+              return math.floor((value * 0x3fff / 100) + 0.5)
+            end
+            return value
+          end
+
+          pcall(function()
+            if type(Sound.setVolume) == "function" then
+              local volume = normalize_volume(UI.BOOT_SOUND.VOLUME)
+              if volume ~= nil then
+                Sound.setVolume(volume)
+              end
+            end
+            if type(Sound.setADPCMVolume) == "function" then
+              local adpcm_volume = normalize_volume(UI.BOOT_SOUND.ADPCM_VOLUME)
+              if adpcm_volume ~= nil then
+                Sound.setADPCMVolume(UI.BOOT_SOUND.CHANNEL or 0, adpcm_volume)
+              end
             end
             if type(Sound.setFormat) == "function" then
               -- Common safe defaults; ADPCM playback may ignore this on some builds.
@@ -463,17 +552,38 @@ if found == nil then return end
             end
           end)
 
+          LOGF("BOOT SOUND: loading '%s'", tostring(found))
           local ok_load, audio = pcall(Sound.loadADPCM, found)
-          if not ok_load or audio == nil then return end
+          if not ok_load then
+            LOGF("BOOT SOUND: load threw for '%s': %s", tostring(found), tostring(audio))
+            return
+          end
+          if audio == nil or audio == 0 then
+            LOGF("BOOT SOUND: load failed for '%s'", tostring(found))
+            return
+          end
           boot_sound_loaded = audio
+          LOGF("BOOT SOUND: loaded handle=%s", tostring(boot_sound_loaded))
 
-          pcall(function()
+          local ok_play, play_err = pcall(function()
             Sound.playADPCM(UI.BOOT_SOUND.CHANNEL or 0, boot_sound_loaded)
           end)
+          if not ok_play then
+            LOGF("BOOT SOUND: play failed for '%s': %s", tostring(found), tostring(play_err))
+            if type(Sound.freeADPCM) == "function" then
+              pcall(Sound.freeADPCM, boot_sound_loaded)
+            end
+            boot_sound_loaded = nil
+            return
+          end
+          LOGF("BOOT SOUND: play started on channel %s", tostring(UI.BOOT_SOUND.CHANNEL or 0))
 
           local sec = UI.BOOT_SOUND.SECONDS
           if type(sec) ~= "number" or sec < 0 then sec = 0 end
-          boot_sound_hold_frames = math.floor((sec * 60) + 0.5)
+          local pad = UI.BOOT_SOUND.PAD_SECONDS
+          if type(pad) ~= "number" or pad < 0 then pad = 0 end
+          boot_sound_hold_frames = math.floor(((sec + pad) * 60) + 0.5)
+          LOGF("BOOT SOUND: hold frames=%s", tostring(boot_sound_hold_frames))
         end
         local function DrawSplashCover(img, screen_w, screen_h, alpha)
           if img == nil then return end
@@ -499,13 +609,39 @@ if found == nil then return end
           Font.ftPrint(BFONT, UI.SCR.X_MID, y0 + 36,  8, UI.SCR.X, 16, "israpps.github.io",    Color.new(0, 0, 0, alpha))
         end
 
-        local fade_in_frames = 24        local hold_frames = 48
-        local fade_out_frames = 24
+        local fade_in_frames = 120
+        local fade_mid_frames = 30
+        local fade_out_frames = 30
 
         -- Start boot sound once, and extend splash hold to cover it (configurable).
         TryBootSound()
-        if boot_sound_hold_frames ~= nil and boot_sound_hold_frames > hold_frames then
-          hold_frames = boot_sound_hold_frames
+        local boot_phase_seconds = UI.BOOT_SOUND.BOOT_PHASE_SECONDS or 8.0
+        if type(boot_phase_seconds) ~= "number" or boot_phase_seconds < 0 then
+          boot_phase_seconds = 8.0
+        end
+        local credits_phase_seconds = UI.BOOT_SOUND.CREDITS_PHASE_SECONDS or 7.0
+        if type(credits_phase_seconds) ~= "number" or credits_phase_seconds < 0 then
+          credits_phase_seconds = 7.0
+        end
+        local boot_phase_frames = math.floor((boot_phase_seconds * 60) + 0.5)
+        local credits_phase_frames = math.floor((credits_phase_seconds * 60) + 0.5)
+        if fade_in_frames > boot_phase_frames then
+          fade_in_frames = boot_phase_frames
+        end
+        if fade_mid_frames > credits_phase_frames then
+          fade_mid_frames = credits_phase_frames
+        end
+        if fade_out_frames > credits_phase_frames - fade_mid_frames then
+          fade_out_frames = credits_phase_frames - fade_mid_frames
+        end
+        if fade_out_frames < 0 then fade_out_frames = 0 end
+        local boot_hold_frames = boot_phase_frames - fade_in_frames
+        if boot_hold_frames < 0 then boot_hold_frames = 0 end
+        local credits_hold_frames = credits_phase_frames - fade_mid_frames - fade_out_frames
+        if credits_hold_frames < 0 then credits_hold_frames = 0 end
+        local total_hold_frames = boot_hold_frames + credits_hold_frames + fade_in_frames + fade_mid_frames + fade_out_frames
+        if boot_sound_hold_frames ~= nil and boot_sound_hold_frames > total_hold_frames then
+          credits_hold_frames = credits_hold_frames + (boot_sound_hold_frames - total_hold_frames)
         end
         for i = 1, fade_in_frames do
           local alpha = Round(128 * (i / fade_in_frames))
@@ -514,17 +650,42 @@ if found == nil then return end
           DrawSplashText(alpha)
           Screen.flip() -- we dont use UI.flip here because we dont want notifications on the welcome screen
         end
-        for _ = 1, hold_frames do
+        for _ = 1, boot_hold_frames do
           DrawBackground()
           DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, 128)
           DrawSplashText(128)
           Screen.flip()
         end
-        for i = 1, fade_out_frames do
-          local alpha = Round(128 * (1 - (i / fade_out_frames)))
+        if fade_mid_frames > 0 then
+          for i = 1, fade_mid_frames do
+            local alpha = Round(128 * (1 - (i / fade_mid_frames)))
+            DrawTargetScene(UI.SCENES.CREDITS)
+            DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
+            DrawSplashText(alpha)
+            Screen.flip()
+          end
+        end
+        for _ = 1, credits_hold_frames do
+          DrawTargetScene(UI.SCENES.CREDITS)
+          Screen.flip()
+        end
+        if fade_out_frames > 0 then
+          local fade_to_black_frames = math.floor(fade_out_frames / 2)
+          local fade_in_menu_frames = fade_out_frames - fade_to_black_frames
+          for i = 1, fade_to_black_frames do
+            local alpha = Round(128 * (i / fade_to_black_frames))
+            DrawTargetScene(UI.SCENES.CREDITS)
+            Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
+            Screen.flip()
+          end
+          for i = 1, fade_in_menu_frames do
+            local alpha = Round(128 * (1 - (i / fade_in_menu_frames)))
+            DrawTargetScene(next_scene)
+            Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
+            Screen.flip()
+          end
+        else
           DrawTargetScene(next_scene)
-          DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
-          DrawSplashText(alpha)
           Screen.flip()
         end
 
