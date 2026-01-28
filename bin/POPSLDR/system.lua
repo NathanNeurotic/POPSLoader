@@ -775,6 +775,39 @@ local function SanitizeGameName(name)
   return sanitized
 end
 
+local function TrimTrailingWhitespace(value)
+  if value == nil or value == "" then
+    return ""
+  end
+  return string.gsub(value, "%s+$", "")
+end
+
+local function BuildLiteralElfName(value)
+  if value == nil or value == "" then
+    return ""
+  end
+  local trimmed = TrimTrailingWhitespace(value)
+  if trimmed == "" then
+    return ""
+  end
+  if string.match(trimmed, "%.[Ee][Ll][Ff]$") then
+    return trimmed
+  end
+  return trimmed..".ELF"
+end
+
+local function BuildDisplayNameFromEntry(entry)
+  if entry == nil or entry == "" then
+    return ""
+  end
+  local display_name = entry
+  local hdd_relpath = string.match(display_name, "^[^|]+|(.+)$")
+  if hdd_relpath ~= nil then
+    display_name = string.match(hdd_relpath, "([^/]+)$") or hdd_relpath
+  end
+  return string.gsub(display_name, "%.[Vv][Cc][Dd]$", "")
+end
+
 local function BuildPopstarterSelector(prefix, vcd_filename)
   if vcd_filename == nil or vcd_filename == "" then
     return ""
@@ -1215,9 +1248,12 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   )
 end
 
-local function ResolveLaunchPolicy(gamelocation)
-  local ui_scene = UI and UI.CURSCENE or "unknown"
-  if ui_scene == UI.SCENES.GMX4SIO then
+local function ResolveLaunchPolicy(gamelocation, ui_scene)
+  local current_scene = ui_scene or (UI and UI.CURSCENE or "unknown")
+  if current_scene == UI.SCENES.GHDD then
+    return BuildLaunchPolicy("HDD", "pfs", "pfs", nil), "HDD"
+  end
+  if current_scene == UI.SCENES.GMX4SIO then
     return BuildLaunchPolicy("MX4SIO", "mx4sio", "mx4sio", nil), "MX4SIO"
   end
   if string.match(gamelocation, "^mx4sio") then
@@ -1235,22 +1271,19 @@ local function ResolveLaunchPolicy(gamelocation)
     local prefix = GetDevicePrefix(gamelocation) or "pfs"
     return BuildLaunchPolicy("HDD", prefix, prefix, nil), "HDD"
   end
-  if UI.IsUsbScene(ui_scene) then
+  if UI.IsUsbScene(current_scene) then
     return BuildLaunchPolicy("USB", "mass", "mass", nil), "USB"
   end
-  if ui_scene == UI.SCENES.GSMB then
+  if current_scene == UI.SCENES.GSMB then
     local mmce_prefix = PLDR.MMCE.PREFIX or "mmce0:/"
     local mmce_device = string.match(mmce_prefix, "^([%a]+%d*)") or "mmce0"
     return BuildLaunchPolicy("MMCE", "mass", mmce_device, TranslateMMCEPathForPopStarter), "SMB/MMCE"
   end
-  if ui_scene == UI.SCENES.GHDD then
-    return BuildLaunchPolicy("HDD", "pfs", "pfs", nil), "HDD"
-  end
   return BuildLaunchPolicy("unknown", "mass", "mass", nil), "unknown"
 end
 
-function PLDR.RunPOPStarterGame(gamelocation, game)
-  local policy, device_page = ResolveLaunchPolicy(gamelocation)
+function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
+  local policy, device_page = ResolveLaunchPolicy(gamelocation, ui_scene)
   local hdd_init = nil
   local hdd_partition_label = nil
   local hdd_relpath = nil
@@ -1298,15 +1331,11 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
     device_mode = "mass"
   end
   if policy.name == "HDD" then
-    vcd_path = "pfs0:/"..NormalizeHddRelpath(hdd_relpath or game)
-    if string.match(NormalizeHddRelpath(hdd_relpath or game), "^POPS/") then
-      pops_root = "pfs0:/POPS/"
-    else
-      pops_root = "pfs0:/"
-    end
+    vcd_path = ""
+    pops_root = ""
     boot_source_mode = "pfs"
     device_mode = "pfs"
-    handoff_gamelocation = vcd_path
+    handoff_gamelocation = ""
   end
   local bootparam = nil
   local prefix = ""
@@ -1318,10 +1347,9 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   local bootparam_basename_used = ""
   local prefix_used = ""
   if policy.name == "HDD" then
-    local relpath = NormalizeHddRelpath(hdd_relpath or game)
-    normalized_basename = ExtractVcdFilename(relpath)
-    bootparam = vcd_path
-    bootparam_basename_used = normalized_basename
+    normalized_basename = ""
+    bootparam = ""
+    bootparam_basename_used = ""
   else
     bootparam, prefix, normalized_basename, prefix_added = BuildPopstarterBootString(
       boot_source_mode,
@@ -1341,6 +1369,10 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   if policy.name == "HDD" then
     vcd_basename_raw = NormalizeHddRelpath(hdd_relpath or game)
   end
+  if policy.name == "HDD" then
+    normalized_basename = game_name
+    bootparam_basename_used = game_name
+  end
   if game_name == "" or string.upper(game_name) == "POPSTARTER" then
     LaunchLog("LAUNCH: GameName derivation failed for selection:", vcd_basename_raw)
     BlockLaunchFailure(
@@ -1357,6 +1389,10 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   end
   local selector_prefix = SelectPopstarterSelectorPrefix(device_page)
   local argv0_selector = BuildPopstarterSelectorPath(device_page, game_name)
+  if policy.name == "HDD" then
+    local display_name = BuildDisplayNameFromEntry(game)
+    argv0_selector = BuildLiteralElfName(display_name)
+  end
   if selector_prefix == "" and string.upper(game_name) == "POPSTARTER" then
     LaunchLog("LAUNCH: Internal error: game_base derived as POPSTARTER; refusing to launch.", vcd_basename_raw)
     BlockLaunchFailure(
@@ -1396,6 +1432,9 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   LaunchLog("LAUNCH: selector mode:", SELECTOR_MODE)
   LaunchLog("LAUNCH: selector prefix:", selector_prefix)
   LaunchLog("LAUNCH: argv0 selector:", argv0_selector)
+  if policy.name == "HDD" then
+    LaunchLog("HDD LAUNCH argv0: ["..tostring(argv0_selector).."]")
+  end
   LaunchLog("LAUNCH: loadELF argc (caller):", #argv)
   if fallback_bootparam ~= nil then
     LaunchLog("LAUNCH: bootparam fallback:", fallback_bootparam, "exists:", tostring(fallback_exists))
@@ -1404,7 +1443,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game)
   local context = {
     device_page = device_page,
     device_mode = device_mode,
-    ui_scene = UI and UI.CURSCENE or "unknown",
+    ui_scene = ui_scene or (UI and UI.CURSCENE or "unknown"),
     source_mode = source_mode,
     raw_source_mode = raw_source_mode,
     gamelocation = gamelocation,

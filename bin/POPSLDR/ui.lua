@@ -895,7 +895,11 @@ if found == nil then return end
                 UI.Notif_queue.add("Cant find Game\n"..PLDR.GAMEPATH .. PLDR.GAMES[UI.GameList.CURR])
               end
             end
-            PLDR.RunPOPStarterGame(PLDR.GAMEPATH, PLDR.GAMES[UI.GameList.CURR])
+            local launch_path = PLDR.GAMEPATH
+            if UI.CURSCENE == UI.SCENES.GHDD then
+              launch_path = ""
+            end
+            PLDR.RunPOPStarterGame(launch_path, PLDR.GAMES[UI.GameList.CURR], UI.CURSCENE)
           end
         end
         local cross_label = UI.Footer.labels.cross_launch
@@ -1226,7 +1230,7 @@ if found == nil then return end
             else
               UI.Notif_queue.add("ERROR: Cant detect usable HDD ("..PLDR.HDD.STATUS..")")
             end
-            UI.SceneChange(UI.MainMenu.OPT)
+            UI.SceneChange(UI.SCENES.GHDD)
           elseif UI.MainMenu.OPT == 5 then
             PLDR.CleanupGameList()
             PLDR.GetPS1GameLists("mass"..PLDR.USB.MASSINDX..":/POPS/", true)
