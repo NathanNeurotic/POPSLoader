@@ -233,6 +233,7 @@ UI = {
       CREDITS = 10
     };
     LAUNCHING = false;
+    HideUI = false;
     DEVLOCK = DEVLOCK;
     device_lock = DEVLOCK.NONE;
     boot_device = DEVLOCK.NONE;
@@ -413,6 +414,8 @@ UI = {
       order_with_r2 = {"triangle", "circle", "cross", "square"};
       order_with_start = {"triangle", "circle", "cross", "start"};
       order_with_start_r2 = {"triangle", "circle", "cross", "square", "start"};
+      order_with_start_select = {"triangle", "circle", "cross", "select", "start"};
+      order_with_start_select_square = {"triangle", "circle", "cross", "square", "select", "start"};
       labels = {
         triangle = "Credits",
         circle_main = "Exit",
@@ -425,13 +428,14 @@ UI = {
         cross_launch = "Launch"
       };
       legend_cache = {};
-      LegendKey = function (order_id, circle_label, cross_label, start_label, square_label, r2_label)
+      LegendKey = function (order_id, circle_label, cross_label, start_label, square_label, select_label, r2_label)
         return table.concat({
           tostring(order_id or ""),
           tostring(circle_label or ""),
           tostring(cross_label or ""),
           tostring(start_label or ""),
           tostring(square_label or ""),
+          tostring(select_label or ""),
           tostring(r2_label or "")
         }, "|")
       end;
@@ -442,8 +446,9 @@ UI = {
         local cross_label = opts.cross or UI.Footer.labels.cross_confirm
         local start_label = opts.start or UI.Footer.labels.start_profiles
         local square_label = opts.square
+        local select_label = opts.select
         local r2_label = opts.R2
-        local key = UI.Footer.LegendKey(order_id, circle_label, cross_label, start_label, square_label, r2_label)
+        local key = UI.Footer.LegendKey(order_id, circle_label, cross_label, start_label, square_label, select_label, r2_label)
         local cached = UI.Footer.legend_cache[key]
         if cached ~= nil then
           return cached.labels, cached.order
@@ -456,6 +461,9 @@ UI = {
         }
         if square_label ~= nil then
           labels.square = square_label
+        end
+        if select_label ~= nil then
+          labels.select = select_label
         end
         UI.Footer.legend_cache[key] = {labels = labels, order = order}
         return labels, order
@@ -1191,6 +1199,10 @@ end
         return true
       end
       if UI.LAUNCHING then return false end
+      if UI.Pad.Events.SELECT then
+        UI.HideUI = not UI.HideUI
+        return true
+      end
       if UI.Pad.Events.START and UI.CURSCENE ~= UI.SCENES.MPROFILE then
         UI.SceneChange(UI.SCENES.MPROFILE)
         return true
@@ -1221,7 +1233,7 @@ end
           [UI.SCENES.GMX4SIO] = "MX4SIO"
         }
         local scene_title = titles[UI.CURSCENE]
-        if scene_title ~= nil then
+        if scene_title ~= nil and not UI.HideUI then
           Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, scene_title, UI.CCOL.GREY)
         end
         local placeholders = {
@@ -1229,8 +1241,10 @@ end
         }
         local placeholder_title = placeholders[UI.CURSCENE]
         if placeholder_title ~= nil then
-          Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, placeholder_title, UI.CCOL.GREY)
-          Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID, 20, UI.SCR.X, 32, "Not implemented yet", UI.CCOL.YELLOW)
+          if not UI.HideUI then
+            Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, placeholder_title, UI.CCOL.GREY)
+            Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID, 20, UI.SCR.X, 32, "Not implemented yet", UI.CCOL.YELLOW)
+          end
           Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
           if UI.Pad.Events.EXIT then UI.SceneChange(UI.SCENES.CREDITS) end
@@ -1238,19 +1252,22 @@ end
           if UI.Pad.Events.CONFIRM then
             UI.Notif_queue.add("Not implemented yet")
           end
-          local labels, order = UI.Footer.ResolveLegend({
-            order = UI.Footer.order_with_start_r2,
-            order_id = "start_r2",
-            circle = UI.Footer.labels.circle_other,
-            cross = UI.Footer.labels.cross_confirm,
-            square = "Cover Art",
-            start = UI.Footer.labels.start_profiles
-          })
-          UI.Footer.Draw(labels, order)
+          if not UI.HideUI then
+            local labels, order = UI.Footer.ResolveLegend({
+              order = UI.Footer.order_with_start_select_square,
+              order_id = "start_select_square",
+              circle = UI.Footer.labels.circle_other,
+              cross = UI.Footer.labels.cross_confirm,
+              square = "Cover Art",
+              select = "Hide UI",
+              start = UI.Footer.labels.start_profiles
+            })
+            UI.Footer.Draw(labels, order)
+          end
           return
         end
         local ammount = #PLDR.GAMES
-        if UI.CURSCENE == UI.SCENES.GSMB then
+        if UI.CURSCENE == UI.SCENES.GSMB and not UI.HideUI then
           local slots = PLDR.GetMMCESlots()
           if #slots > 1 then
             Font.ftPrint(SFONT, layout.LIST_X, layout.LIST_Y - 20, 0, UI.SCR.X, 16, "Slot: "..PLDR.MMCE.PREFIX, UI.CCOL.GREY)
@@ -1292,7 +1309,7 @@ end
             end
           end
         end
-        if ammount <= 0 then
+        if ammount <= 0 and not UI.HideUI then
           Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, UI.SCR.Y_MID, 20, UI.SCR.X, 32, "No games found", UI.CCOL.YELLOW)
           Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID+1, UI.SCR.Y_MID+1, 20, UI.SCR.X, 32, "No games found", UI.CCOL.TRANSP_BLACK)
         end
@@ -1337,15 +1354,18 @@ end
         if ammount <= 0 then
           cross_label = UI.Footer.labels.cross_confirm
         end
-        local labels, order = UI.Footer.ResolveLegend({
-          order = UI.Footer.order_with_start_r2,
-          order_id = "start_r2",
-          circle = UI.Footer.labels.circle_other,
-          cross = cross_label,
-          square = "Cover Art",
-          start = UI.Footer.labels.start_profiles
-        })
-        UI.Footer.Draw(labels, order)
+        if not UI.HideUI then
+          local labels, order = UI.Footer.ResolveLegend({
+            order = UI.Footer.order_with_start_select_square,
+            order_id = "start_select_square",
+            circle = UI.Footer.labels.circle_other,
+            cross = cross_label,
+            square = "Cover Art",
+            select = "Hide UI",
+            start = UI.Footer.labels.start_profiles
+          })
+          UI.Footer.Draw(labels, order)
+        end
       end;
     };
     ProfileQuery = {
@@ -1366,11 +1386,13 @@ end
         if PLDR.GetBDMAModeText ~= nil then
           bdma_label = "BDMA: "..PLDR.GetBDMAModeText(bdma_mode)
         end
-        Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Choose POPStarter Profile", UI.CCOL.GREY)
-        Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 30, 8, UI.SCR.X, 16, "Profile "..UI.ProfileQuery.curopt, UI.CCOL.GREY)
-        Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 55, 8, UI.SCR.X, 16, bdma_label, UI.CCOL.GREY)
-        Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 140, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].DESC, UI.CCOL.GREY)
-        Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 220, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].ELF, Color.new(128,128,128, 110))
+        if not UI.HideUI then
+          Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Choose POPStarter Profile", UI.CCOL.GREY)
+          Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 30, 8, UI.SCR.X, 16, "Profile "..UI.ProfileQuery.curopt, UI.CCOL.GREY)
+          Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 55, 8, UI.SCR.X, 16, bdma_label, UI.CCOL.GREY)
+          Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 140, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].DESC, UI.CCOL.GREY)
+          Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 220, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].ELF, Color.new(128,128,128, 110))
+        end
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
         if UI.Pad.Events.EXIT then
@@ -1426,15 +1448,17 @@ end
             UI.SceneChange(UI.SCENES.MMAIN)
           end
         end
-        local labels, order = UI.Footer.ResolveLegend({
-          order = UI.Footer.order_with_start_r2,
-          order_id = "start_r2",
-          circle = UI.Footer.labels.circle_other,
-          cross = UI.Footer.labels.cross_select,
-          square = "Cover Art",
-          start = UI.Footer.labels.start_reset
-        })
-        UI.Footer.Draw(labels, order)
+        if not UI.HideUI then
+          local labels, order = UI.Footer.ResolveLegend({
+            order = UI.Footer.order_with_start_select,
+            order_id = "start_select",
+            circle = UI.Footer.labels.circle_other,
+            cross = UI.Footer.labels.cross_select,
+            select = "Hide UI",
+            start = UI.Footer.labels.start_reset
+          })
+          UI.Footer.Draw(labels, order)
+        end
       end;
     };
     MainMenu = {
@@ -1486,7 +1510,7 @@ end
           return "NONE"
         end
         local top_label_y = layout.STATUS_Y + 16
-        if not UI.MainMenu.hide_ui then
+        if not UI.HideUI then
           Font.ftPrint(UI.FONT.TITLE, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "POPSLoader", UI.COLORS.TEXT_PRIMARY)
           local status_y = layout.STATUS_Y
           Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "ACTIVE BDMA: "..ResolveActiveBDMALabel(), UI.COLORS.TEXT_PRIMARY)
@@ -1636,26 +1660,23 @@ end
             DrawIcon(idx, x, y, tint)
           end
         end
-        if not UI.MainMenu.hide_ui then
+        if not UI.HideUI then
           Font.ftPrint(UI.FONT.LABEL, Round(center_label_x), center_label_y, 8, UI.SCR.X, 16, UI.MainMenu.opts[center_label_idx], UI.COLORS.TEXT_PRIMARY)
         end
-        if not UI.MainMenu.hide_ui then
-          local square_label = "Hide UI"
+        if not UI.HideUI then
+          local select_label = "Hide UI"
           local labels, order = UI.Footer.ResolveLegend({
-            order = UI.Footer.order_with_start,
-            order_id = "start",
+            order = UI.Footer.order_with_start_select,
+            order_id = "start_select",
             circle = UI.Footer.labels.circle_main,
             cross = UI.Footer.labels.cross_select,
-            square = square_label,
+            select = select_label,
             start = UI.Footer.labels.start_profiles
           })
           UI.Footer.Draw(labels, order)
         end
         if UI.MainMenu._draw_only then return end
         Input_GetEvent()
-        if UI.Pad.Events.SQUARE then
-          UI.MainMenu.hide_ui = not UI.MainMenu.hide_ui
-        end
         if UI.HandleGlobalInput(false) then return end
         if not carousel.animActive then
           if UI.Pad.Events.NAV_RIGHT then
@@ -1932,9 +1953,10 @@ end
         local layout = UI.LAYOUT
         local currcol = UI.CCOL.GREY
 
-        Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 20, UI.SCR.X, 40, "POPStarter Loader\n"..tostring(POPSLDR_VER or ""), currcol)
-        Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 60, 20, UI.SCR.X, 40, "Coded By El_isra", currcol)
-        Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 80, 20, UI.SCR.X, UI.SCR.Y, [[
+        if not UI.HideUI then
+          Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 20, UI.SCR.X, 40, "POPStarter Loader\n"..tostring(POPSLDR_VER or ""), currcol)
+          Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 60, 20, UI.SCR.X, 40, "Coded By El_isra", currcol)
+          Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 80, 20, UI.SCR.X, UI.SCR.Y, [[
 Graphics by Berion
 Scripting by Nuno6573 and Ripto
 
@@ -1947,9 +1969,10 @@ uyjulian, fjtrujy, HWC and others for always helping me
 This program is free and open source
 if you bought it you\'ve been scammed
 ]], currcol)
-        if UI.BUILD_INFO ~= nil and UI.BUILD_INFO.stamp ~= nil then
-          local stamp_y = Round(layout.FOOTER_LABEL_Y - 18)
-          Font.ftPrint(SFONT, layout.SAFE.L, stamp_y, 0, UI.SCR.X, 16, UI.BUILD_INFO.stamp, UI.CCOL.GREY)
+          if UI.BUILD_INFO ~= nil and UI.BUILD_INFO.stamp ~= nil then
+            local stamp_y = Round(layout.FOOTER_LABEL_Y - 18)
+            Font.ftPrint(SFONT, layout.SAFE.L, stamp_y, 0, UI.SCR.X, 16, UI.BUILD_INFO.stamp, UI.CCOL.GREY)
+          end
         end
 
         if not UI.Credits._draw_only then
