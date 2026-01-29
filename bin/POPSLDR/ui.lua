@@ -233,6 +233,7 @@ UI = {
       CREDITS = 10
     };
     LAUNCHING = false;
+    HideUI = (PLDR ~= nil and PLDR.SETTINGS ~= nil and PLDR.SETTINGS.hide_ui == true);
     DEVLOCK = DEVLOCK;
     device_lock = DEVLOCK.NONE;
     boot_device = DEVLOCK.NONE;
@@ -266,6 +267,13 @@ UI = {
         return true
       end
       return false, "session", UI.device_lock
+    end;
+    ShouldHideUI = function ()
+      if not UI.HideUI then return false end
+      if UI.CURSCENE == UI.SCENES.MPROFILE or UI.CURSCENE == UI.SCENES.CREDITS then
+        return false
+      end
+      return true
     end;
     setDeviceLock = function (target)
       if UI.device_lock == DEVLOCK.NONE then
@@ -324,13 +332,13 @@ UI = {
     };
     LAYOUT = {
       SAFE = {L = 40, R = 40, T = 24, B = 28};
-      BTN_BAR_SAFE_BOTTOM = 72;
+      BTN_BAR_SAFE_BOTTOM = 56;
       ICON_SPACING = 120;
       LIST_ROW_H = 20;
       PREVIEW_W = 240;
       PREVIEW_H = 240;
 	      -- Raised/tighter footer to avoid overscan and allow icon reflections to overlap slightly.
-	      CAROUSEL_Y_OFFSET = 18;
+	      CAROUSEL_Y_OFFSET = 36;
       FOOTER_LABEL_W = 140;
       FOOTER_ICON_Y_OFFSET = 24;
       FOOTER_LABEL_Y_OFFSET = 10;
@@ -413,6 +421,9 @@ UI = {
       order_with_r2 = {"triangle", "circle", "cross", "square"};
       order_with_start = {"triangle", "circle", "cross", "start"};
       order_with_start_r2 = {"triangle", "circle", "cross", "square", "start"};
+      order_with_start_select = {"triangle", "circle", "cross", "select", "start"};
+      order_with_start_select_square = {"triangle", "circle", "cross", "square", "select", "start"};
+      order_with_start_select_r2 = {"triangle", "circle", "cross", "R2", "select", "start"};
       labels = {
         triangle = "Credits",
         circle_main = "Exit",
@@ -422,16 +433,18 @@ UI = {
         cross_confirm = "Confirm",
         cross_enter = "Enter",
         cross_select = "Select",
-        cross_launch = "Launch"
+        cross_launch = "Launch",
+        R2 = "Edit DKWDRV"
       };
       legend_cache = {};
-      LegendKey = function (order_id, circle_label, cross_label, start_label, square_label, r2_label)
+      LegendKey = function (order_id, circle_label, cross_label, start_label, square_label, select_label, r2_label)
         return table.concat({
           tostring(order_id or ""),
           tostring(circle_label or ""),
           tostring(cross_label or ""),
           tostring(start_label or ""),
           tostring(square_label or ""),
+          tostring(select_label or ""),
           tostring(r2_label or "")
         }, "|")
       end;
@@ -442,8 +455,9 @@ UI = {
         local cross_label = opts.cross or UI.Footer.labels.cross_confirm
         local start_label = opts.start or UI.Footer.labels.start_profiles
         local square_label = opts.square
+        local select_label = opts.select
         local r2_label = opts.R2
-        local key = UI.Footer.LegendKey(order_id, circle_label, cross_label, start_label, square_label, r2_label)
+        local key = UI.Footer.LegendKey(order_id, circle_label, cross_label, start_label, square_label, select_label, r2_label)
         local cached = UI.Footer.legend_cache[key]
         if cached ~= nil then
           return cached.labels, cached.order
@@ -456,6 +470,12 @@ UI = {
         }
         if square_label ~= nil then
           labels.square = square_label
+        end
+        if select_label ~= nil then
+          labels.select = select_label
+        end
+        if r2_label ~= nil then
+          labels.R2 = r2_label
         end
         UI.Footer.legend_cache[key] = {labels = labels, order = order}
         return labels, order
@@ -533,9 +553,149 @@ UI = {
         end
       end;
     };
+    TextEntry = {
+      active = false,
+      title = "",
+      value = "",
+      default_value = nil,
+      confirm_action = nil,
+      cancel_action = nil,
+      row = 1,
+      col = 1,
+      max_len = 128,
+      keys = {
+        {"a","b","c","d","e","f","g","h","i","j"},
+        {"k","l","m","n","o","p","q","r","s","t"},
+        {"u","v","w","x","y","z","0","1","2","3"},
+        {"4","5","6","7","8","9",":","/","_","-"},
+        {".","DEF","DEL","CLR","OK"}
+      },
+      Open = function (title, initial, confirm_action, cancel_action, default_value)
+        UI.TextEntry.active = true
+        UI.TextEntry.title = title or "Edit"
+        UI.TextEntry.value = initial or ""
+        UI.TextEntry.confirm_action = confirm_action
+        UI.TextEntry.cancel_action = cancel_action
+        UI.TextEntry.default_value = default_value
+        UI.TextEntry.row = 1
+        UI.TextEntry.col = 1
+      end;
+      Close = function ()
+        UI.TextEntry.active = false
+        UI.TextEntry.confirm_action = nil
+        UI.TextEntry.cancel_action = nil
+      end;
+      Append = function (char)
+        if char == nil then return end
+        if #UI.TextEntry.value >= UI.TextEntry.max_len then
+          return
+        end
+        UI.TextEntry.value = UI.TextEntry.value..char
+      end;
+      Backspace = function ()
+        if #UI.TextEntry.value > 0 then
+          UI.TextEntry.value = string.sub(UI.TextEntry.value, 1, -2)
+        end
+      end;
+      HandleInput = function ()
+        if not UI.TextEntry.active then return end
+        local keys = UI.TextEntry.keys
+        local row = UI.TextEntry.row
+        local col = UI.TextEntry.col
+        if UI.Pad.Events.NAV_UP then
+          row = row - 1
+        elseif UI.Pad.Events.NAV_DOWN then
+          row = row + 1
+        elseif UI.Pad.Events.NAV_LEFT then
+          col = col - 1
+        elseif UI.Pad.Events.NAV_RIGHT then
+          col = col + 1
+        end
+        if row < 1 then row = 1 end
+        if row > #keys then row = #keys end
+        local row_keys = keys[row]
+        if col < 1 then col = 1 end
+        if col > #row_keys then col = #row_keys end
+        UI.TextEntry.row = row
+        UI.TextEntry.col = col
+        if UI.Pad.Events.EXIT then
+          UI.TextEntry.Backspace()
+          return
+        end
+        if UI.Pad.Events.BACK then
+          if UI.TextEntry.cancel_action ~= nil then
+            UI.TextEntry.cancel_action()
+          end
+          UI.TextEntry.Close()
+          return
+        end
+        if UI.Pad.Events.START then
+          if UI.TextEntry.confirm_action ~= nil then
+            UI.TextEntry.confirm_action(UI.TextEntry.value)
+          end
+          UI.TextEntry.Close()
+          return
+        end
+        if UI.Pad.Events.CONFIRM then
+          local key = keys[row][col]
+          if key == "OK" then
+            if UI.TextEntry.confirm_action ~= nil then
+              UI.TextEntry.confirm_action(UI.TextEntry.value)
+            end
+            UI.TextEntry.Close()
+          elseif key == "DEL" then
+            UI.TextEntry.Backspace()
+          elseif key == "CLR" then
+            UI.TextEntry.value = ""
+          elseif key == "DEF" then
+            if UI.TextEntry.default_value ~= nil then
+              UI.TextEntry.value = UI.TextEntry.default_value
+            end
+          else
+            UI.TextEntry.Append(key)
+          end
+        end
+      end;
+      Draw = function ()
+        if not UI.TextEntry.active then return end
+        local box_w = 520
+        local box_h = 260
+        local box_x = UI.SCR.X_MID - (box_w / 2)
+        local box_y = UI.SCR.Y_MID - (box_h / 2)
+        Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, 120))
+        Graphics.drawRect(box_x, box_y, box_w, box_h, Color.new(0, 0, 0, 200))
+        Graphics.drawRect(box_x, box_y, box_w, 2, UI.CCOL.GREY)
+        Graphics.drawRect(box_x, box_y + box_h - 2, box_w, 2, UI.CCOL.GREY)
+        Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 10, 8, UI.SCR.X, 16, UI.TextEntry.title, UI.CCOL.YELLOW)
+        local value = UI.TextEntry.value
+        if #value > 58 then
+          value = "..."..string.sub(value, -55)
+        end
+        Font.ftPrint(SFONT, UI.SCR.X_MID, box_y + 36, 8, UI.SCR.X, 16, value, UI.CCOL.GREY)
+        local keys = UI.TextEntry.keys
+        local start_x = box_x + 24
+        local start_y = box_y + 70
+        local cell_w = 44
+        local cell_h = 28
+        for r = 1, #keys do
+          local row = keys[r]
+          for c = 1, #row do
+            local x = start_x + (c - 1) * cell_w
+            local y = start_y + (r - 1) * cell_h
+            if r == UI.TextEntry.row and c == UI.TextEntry.col then
+              Graphics.drawRect(x - 2, y - 2, cell_w - 4, cell_h - 4, UI.CCOL.GREY)
+            end
+            Font.ftPrint(SFONT, x + (cell_w / 2), y + 4, 8, cell_w, 16, row[c], UI.CCOL.GREY)
+          end
+        end
+        local hint = "X: Enter  O: Cancel  Start: OK  Triangle: Backspace"
+        Font.ftPrint(SFONT, UI.SCR.X_MID, box_y + box_h - 24, 8, UI.SCR.X, 16, hint, UI.CCOL.GREY)
+      end;
+    };
     --- wrapper for Screen.flip(), here you add UI draws that renders on top of everything (for example, error notifications)
     flip = function (notif)
       UI.Notif_queue.display()
+      UI.TextEntry.Draw()
       UI.Modal.Draw()
       if UI.Transition ~= nil then
         local alpha = UI.Transition.Update()
@@ -1024,10 +1184,15 @@ end
       end;
       LaunchDKWDRV = function ()
         LOG("DKWDRV launch confirmed")
-        local candidates = {
-          "mc0:/PS1_DKWDRV/DKWDRV.ELF",
-          "mc1:/PS1_DKWDRV/DKWDRV.ELF"
-        }
+        local configured = nil
+        local default_path = (PLDR ~= nil and PLDR.DEFAULT_DKWDRV_PATH) or "mc0:/PS1_DKWDRV/DKWDRV.ELF"
+        if PLDR ~= nil and PLDR.SETTINGS ~= nil then
+          configured = PLDR.SETTINGS.dkwdrv_path
+        end
+        if configured == nil or configured == "" then
+          configured = default_path
+        end
+        local candidates = { configured }
         local dkw_path = UI.Modal.ResolveElfPath(candidates)
         if dkw_path == nil then
           if UI.Notif_queue ~= nil and type(UI.Notif_queue.add) == "function" then
@@ -1183,6 +1348,13 @@ end
       end
     };
     HandleGlobalInput = function (allow_exit)
+      if UI.TextEntry ~= nil and UI.TextEntry.active then
+        UI.TextEntry.HandleInput()
+        for key, _ in pairs(UI.Pad.Events) do
+          UI.Pad.Events[key] = false
+        end
+        return true
+      end
       if UI.Modal.active then
         UI.Modal.HandleInput()
         for key, _ in pairs(UI.Pad.Events) do
@@ -1191,6 +1363,16 @@ end
         return true
       end
       if UI.LAUNCHING then return false end
+      if UI.Pad.Events.SELECT then
+        UI.HideUI = not UI.HideUI
+        if PLDR ~= nil and PLDR.SETTINGS ~= nil then
+          PLDR.SETTINGS.hide_ui = UI.HideUI
+          if PLDR.SaveSettings ~= nil then
+            PLDR.SaveSettings()
+          end
+        end
+        return true
+      end
       if UI.Pad.Events.START and UI.CURSCENE ~= UI.SCENES.MPROFILE then
         UI.SceneChange(UI.SCENES.MPROFILE)
         return true
@@ -1207,13 +1389,14 @@ end
       MAXDRAW = 18;
       CURR = 1;
       STARTUP = 1;
-      SHOW_COVER = true;
+      SHOW_COVER = (PLDR ~= nil and PLDR.SETTINGS ~= nil and PLDR.SETTINGS.show_cover ~= false);
       LAST_SQUARE_DOWN = false;
       Reset = function ()
         UI.GameList.CURR = 1;
       end;
       Play = function()
         local layout = UI.LAYOUT
+        local hide_ui = UI.ShouldHideUI()
         UI.GameList.MAXDRAW = layout.LIST_MAX
         local titles = {
           [UI.SCENES.GUSBFAT] = "USB FAT32",
@@ -1221,7 +1404,7 @@ end
           [UI.SCENES.GMX4SIO] = "MX4SIO"
         }
         local scene_title = titles[UI.CURSCENE]
-        if scene_title ~= nil then
+        if scene_title ~= nil and not hide_ui then
           Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, scene_title, UI.CCOL.GREY)
         end
         local placeholders = {
@@ -1229,8 +1412,10 @@ end
         }
         local placeholder_title = placeholders[UI.CURSCENE]
         if placeholder_title ~= nil then
-          Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, placeholder_title, UI.CCOL.GREY)
-          Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID, 20, UI.SCR.X, 32, "Not implemented yet", UI.CCOL.YELLOW)
+          if not hide_ui then
+            Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, placeholder_title, UI.CCOL.GREY)
+            Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID, 20, UI.SCR.X, 32, "Not implemented yet", UI.CCOL.YELLOW)
+          end
           Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
           if UI.Pad.Events.EXIT then UI.SceneChange(UI.SCENES.CREDITS) end
@@ -1238,19 +1423,22 @@ end
           if UI.Pad.Events.CONFIRM then
             UI.Notif_queue.add("Not implemented yet")
           end
-          local labels, order = UI.Footer.ResolveLegend({
-            order = UI.Footer.order_with_start_r2,
-            order_id = "start_r2",
-            circle = UI.Footer.labels.circle_other,
-            cross = UI.Footer.labels.cross_confirm,
-            square = "Cover Art",
-            start = UI.Footer.labels.start_profiles
-          })
-          UI.Footer.Draw(labels, order)
+          if not hide_ui then
+            local labels, order = UI.Footer.ResolveLegend({
+              order = UI.Footer.order_with_start_select_square,
+              order_id = "start_select_square",
+              circle = UI.Footer.labels.circle_other,
+              cross = UI.Footer.labels.cross_confirm,
+              square = "Cover Art",
+              select = "Hide UI",
+              start = UI.Footer.labels.start_profiles
+            })
+            UI.Footer.Draw(labels, order)
+          end
           return
         end
         local ammount = #PLDR.GAMES
-        if UI.CURSCENE == UI.SCENES.GSMB then
+        if UI.CURSCENE == UI.SCENES.GSMB and not hide_ui then
           local slots = PLDR.GetMMCESlots()
           if #slots > 1 then
             Font.ftPrint(SFONT, layout.LIST_X, layout.LIST_Y - 20, 0, UI.SCR.X, 16, "Slot: "..PLDR.MMCE.PREFIX, UI.CCOL.GREY)
@@ -1292,7 +1480,7 @@ end
             end
           end
         end
-        if ammount <= 0 then
+        if ammount <= 0 and not hide_ui then
           Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, UI.SCR.Y_MID, 20, UI.SCR.X, 32, "No games found", UI.CCOL.YELLOW)
           Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID+1, UI.SCR.Y_MID+1, 20, UI.SCR.X, 32, "No games found", UI.CCOL.TRANSP_BLACK)
         end
@@ -1313,6 +1501,12 @@ end
         end
         if square_down and not UI.GameList.LAST_SQUARE_DOWN then
           UI.GameList.SHOW_COVER = not UI.GameList.SHOW_COVER
+          if PLDR ~= nil and PLDR.SETTINGS ~= nil then
+            PLDR.SETTINGS.show_cover = UI.GameList.SHOW_COVER
+            if PLDR.SaveSettings ~= nil then
+              PLDR.SaveSettings()
+            end
+          end
         end
         UI.GameList.LAST_SQUARE_DOWN = square_down
         if UI.Pad.Events.CONFIRM then
@@ -1337,15 +1531,18 @@ end
         if ammount <= 0 then
           cross_label = UI.Footer.labels.cross_confirm
         end
-        local labels, order = UI.Footer.ResolveLegend({
-          order = UI.Footer.order_with_start_r2,
-          order_id = "start_r2",
-          circle = UI.Footer.labels.circle_other,
-          cross = cross_label,
-          square = "Cover Art",
-          start = UI.Footer.labels.start_profiles
-        })
-        UI.Footer.Draw(labels, order)
+        if not hide_ui then
+          local labels, order = UI.Footer.ResolveLegend({
+            order = UI.Footer.order_with_start_select_square,
+            order_id = "start_select_square",
+            circle = UI.Footer.labels.circle_other,
+            cross = cross_label,
+            square = "Cover Art",
+            select = "Hide UI",
+            start = UI.Footer.labels.start_profiles
+          })
+          UI.Footer.Draw(labels, order)
+        end
       end;
     };
     ProfileQuery = {
@@ -1354,6 +1551,7 @@ end
       Play = function ()
         local layout = UI.LAYOUT
         local profcnt = #PLDR.PROFILES
+        local hide_ui = UI.ShouldHideUI()
         if UI.ProfileQuery.bdma_mode == nil then
           if PLDR.GetBDMAMode ~= nil then
             UI.ProfileQuery.bdma_mode = PLDR.GetBDMAMode()
@@ -1362,15 +1560,53 @@ end
           end
         end
         local bdma_mode = UI.ProfileQuery.bdma_mode
-        local bdma_label = "BDMA: USBFAT32(None)"
+        local bdma_label = "USBFAT32(None)"
         if PLDR.GetBDMAModeText ~= nil then
-          bdma_label = "BDMA: "..PLDR.GetBDMAModeText(bdma_mode)
+          bdma_label = PLDR.GetBDMAModeText(bdma_mode)
         end
-        Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Choose POPStarter Profile", UI.CCOL.GREY)
-        Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 30, 8, UI.SCR.X, 16, "Profile "..UI.ProfileQuery.curopt, UI.CCOL.GREY)
-        Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 55, 8, UI.SCR.X, 16, bdma_label, UI.CCOL.GREY)
-        Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 140, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].DESC, UI.CCOL.GREY)
-        Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 220, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].ELF, Color.new(128,128,128, 110))
+        local dkwdrv_path = (PLDR ~= nil and PLDR.SETTINGS ~= nil and PLDR.SETTINGS.dkwdrv_path) or (PLDR and PLDR.DEFAULT_DKWDRV_PATH) or "mc0:/PS1_DKWDRV/DKWDRV.ELF"
+        local dkwdrv_label = dkwdrv_path
+        if #dkwdrv_label > 52 then
+          dkwdrv_label = "..."..string.sub(dkwdrv_label, -49)
+        end
+        if not hide_ui then
+          Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Settings", UI.CCOL.GREY)
+          local function DrawCenteredIcon(icon, x, y)
+            if icon == nil then return end
+            local w = Graphics.getImageWidth(icon) or 0
+            local h = Graphics.getImageHeight(icon) or 0
+            Graphics.drawImage(icon, x - (w / 2), y - (h / 2), UI.CCOL.GREY)
+          end
+          local function DrawIconPair(left_key, right_key, y, offset)
+            local left_icon = IMG[left_key]
+            local right_icon = IMG[right_key]
+            local center_x = UI.SCR.X_MID
+            local icon_offset = offset or 36
+            DrawCenteredIcon(left_icon, center_x - icon_offset, y)
+            DrawCenteredIcon(right_icon, center_x + icon_offset, y)
+          end
+          local info_y = layout.TITLE_Y + 52
+          local bdma_icons_y = info_y
+          DrawIconPair("left", "right", bdma_icons_y, 36)
+          local bdma_y = bdma_icons_y + 24
+          Font.ftPrint(BFONT, UI.SCR.X_MID, bdma_y, 8, UI.SCR.X, 16, "BDMA MODE:", UI.CCOL.GREY)
+          local bdma_value_y = bdma_y + 18
+          Font.ftPrint(BFONT, UI.SCR.X_MID, bdma_value_y, 8, UI.SCR.X, 16, bdma_label, UI.CCOL.GREY)
+          local dkwdrv_icon_y = bdma_value_y + 42
+          DrawCenteredIcon(IMG.R2, UI.SCR.X_MID, dkwdrv_icon_y)
+          local dkwdrv_title_y = dkwdrv_icon_y + 24
+          Font.ftPrint(BFONT, UI.SCR.X_MID, dkwdrv_title_y, 8, UI.SCR.X, 16, "DKWDRV PATH:", UI.CCOL.GREY)
+          local dkwdrv_path_y = dkwdrv_title_y + 18
+          Font.ftPrint(BFONT, UI.SCR.X_MID, dkwdrv_path_y, 8, UI.SCR.X, 16, dkwdrv_label, UI.CCOL.GREY)
+          local profile_icons_y = dkwdrv_path_y + 42
+          DrawIconPair("up", "down", profile_icons_y, 36)
+          local profile_title_y = profile_icons_y + 24
+          Font.ftPrint(BFONT, UI.SCR.X_MID, profile_title_y, 8, UI.SCR.X, 16, "POPStarter Mode:", UI.CCOL.GREY)
+          local profile_desc_y = profile_title_y + 18
+          Font.ftPrint(BFONT, UI.SCR.X_MID, profile_desc_y, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].DESC, UI.CCOL.GREY)
+          local profile_path_y = profile_desc_y + 18
+          Font.ftPrint(BFONT, UI.SCR.X_MID, profile_path_y, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].ELF, Color.new(128,128,128, 110))
+        end
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
         if UI.Pad.Events.EXIT then
@@ -1403,10 +1639,30 @@ end
           if profile ~= nil then
             PLDR.POPSTARTER_PATH = profile.ELF
           end
+          if PLDR.SETTINGS ~= nil then
+            PLDR.SETTINGS.profile_index = UI.ProfileQuery.curopt
+            PLDR.SETTINGS.dkwdrv_path = PLDR.DEFAULT_DKWDRV_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF"
+          end
           if PLDR.GetBDMAMode ~= nil then
             UI.ProfileQuery.bdma_mode = PLDR.GetBDMAMode()
           end
+          if PLDR.SaveSettings ~= nil then
+            PLDR.SaveSettings()
+          end
           UI.Notif_queue.add("Profile defaults restored")
+        end
+        if UI.Pad.Events.R2 then
+          UI.TextEntry.Open("Edit DKWDRV Path", dkwdrv_path, function (new_value)
+            if PLDR ~= nil and PLDR.SETTINGS ~= nil then
+              PLDR.SETTINGS.dkwdrv_path = new_value
+              if PLDR.SaveSettings ~= nil then
+                PLDR.SaveSettings()
+              end
+              if UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
+                UI.Notif_queue.add("DKWDRV path saved")
+              end
+            end
+          end, nil, PLDR and PLDR.DEFAULT_DKWDRV_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
         end
         if UI.Pad.Events.CONFIRM then
           if PLDR.SetBDMAMode ~= nil then
@@ -1414,6 +1670,9 @@ end
           end
           if PLDR.ApplyBDMAMode ~= nil then
             PLDR.ApplyBDMAMode()
+          end
+          if PLDR.SETTINGS ~= nil then
+            PLDR.SETTINGS.profile_index = UI.ProfileQuery.curopt
           end
           if PLDR.SaveSettings ~= nil then
             PLDR.SaveSettings()
@@ -1426,15 +1685,18 @@ end
             UI.SceneChange(UI.SCENES.MMAIN)
           end
         end
-        local labels, order = UI.Footer.ResolveLegend({
-          order = UI.Footer.order_with_start_r2,
-          order_id = "start_r2",
-          circle = UI.Footer.labels.circle_other,
-          cross = UI.Footer.labels.cross_select,
-          square = "Cover Art",
-          start = UI.Footer.labels.start_reset
-        })
-        UI.Footer.Draw(labels, order)
+        if not hide_ui then
+          local labels, order = UI.Footer.ResolveLegend({
+            order = UI.Footer.order_with_start_select_r2,
+            order_id = "start_select_r2",
+            circle = UI.Footer.labels.circle_other,
+            cross = UI.Footer.labels.cross_select,
+            select = "Hide UI",
+            R2 = UI.Footer.labels.R2,
+            start = UI.Footer.labels.start_reset
+          })
+          UI.Footer.Draw(labels, order)
+        end
       end;
     };
     MainMenu = {
@@ -1461,11 +1723,49 @@ end
       Play = function ()
         local layout = UI.LAYOUT
         local profcnt = #UI.MainMenu.opts
-        Font.ftPrintMultiLineAligned(UI.FONT.TITLE, UI.SCR.X_MID, layout.TITLE_Y, 16, UI.SCR.X, 32, "POPSLoader\nby Matias Israelson\nGUI for POPStarter and BDMAssault", UI.COLORS.TEXT_PRIMARY)
-        local status_y = layout.STATUS_Y + 16
-        if UI.boot_device ~= nil and UI.boot_device ~= DEVLOCK.NONE then
-          Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Booted from: "..UI.device_lock_name(UI.boot_device), UI.COLORS.TEXT_PRIMARY)
-          status_y = status_y + 12
+        local hide_ui = UI.ShouldHideUI()
+        local function ResolveActiveBDMALabel()
+          if PLDR == nil then
+            return "NONE"
+          end
+          if PLDR.GetBDMADetectedLabel ~= nil then
+            return PLDR.GetBDMADetectedLabel()
+          end
+          if PLDR.GetBDMAModeText == nil then
+            return "NONE"
+          end
+          local mode = nil
+          if PLDR.GetBDMAMode ~= nil then
+            mode = PLDR.GetBDMAMode()
+          end
+          local raw = PLDR.GetBDMAModeText(mode)
+          if type(raw) ~= "string" then
+            return "NONE"
+          end
+          local upper = string.upper(raw)
+          if string.find(upper, "USBEXFAT", 1, true) then
+            return "USBEXFAT"
+          end
+          if string.find(upper, "MX4SIO", 1, true) then
+            return "MX4SIO"
+          end
+          if string.find(upper, "MMCE", 1, true) then
+            return "MMCE"
+          end
+          return "NONE"
+        end
+        local top_label_y = layout.STATUS_Y + 16
+        if not hide_ui then
+          local title_y = layout.TITLE_Y
+          local status_y = title_y + 16
+          top_label_y = status_y + 16
+          Font.ftPrint(UI.FONT.TITLE, UI.SCR.X_MID, title_y, 8, UI.SCR.X, 16, "POPSLOADER", UI.COLORS.TEXT_PRIMARY)
+          Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "ACTIVE BDMA: "..ResolveActiveBDMALabel(), UI.COLORS.TEXT_PRIMARY)
+          status_y = top_label_y + 12
+          if UI.boot_device ~= nil and UI.boot_device ~= DEVLOCK.NONE then
+            Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Booted from: "..UI.device_lock_name(UI.boot_device), UI.COLORS.TEXT_PRIMARY)
+            status_y = status_y + 12
+          end
         end
 	        -- Pages are no longer presented as "locked" in the UI.
         local icon_map = {
@@ -1577,7 +1877,7 @@ end
         local base_scroll = math.floor(scroll)
         local scroll_frac = scroll - base_scroll
         local center_label_x = center_x
-        local center_label_y = Round(center_y + 90)
+        local center_label_y = Round(top_label_y)
         local center_label_idx = carousel.animActive and carousel.targetIndex or base_sel
         local function Lerp(a, b, t)
           return a + (b - a) * t
@@ -1605,15 +1905,21 @@ end
             DrawIcon(idx, x, y, tint)
           end
         end
-        Font.ftPrint(UI.FONT.LABEL, Round(center_label_x), center_label_y, 8, UI.SCR.X, 16, UI.MainMenu.opts[center_label_idx], UI.COLORS.TEXT_PRIMARY)
-        local labels, order = UI.Footer.ResolveLegend({
-          order = UI.Footer.order_with_start,
-          order_id = "start",
-          circle = UI.Footer.labels.circle_main,
-          cross = UI.Footer.labels.cross_select,
-          start = UI.Footer.labels.start_profiles
-        })
-        UI.Footer.Draw(labels, order)
+        if not hide_ui then
+          Font.ftPrint(UI.FONT.LABEL, Round(center_label_x), center_label_y, 8, UI.SCR.X, 16, UI.MainMenu.opts[center_label_idx], UI.COLORS.TEXT_PRIMARY)
+        end
+        if not hide_ui then
+          local select_label = "Hide UI"
+          local labels, order = UI.Footer.ResolveLegend({
+            order = UI.Footer.order_with_start_select,
+            order_id = "start_select",
+            circle = UI.Footer.labels.circle_main,
+            cross = UI.Footer.labels.cross_select,
+            select = select_label,
+            start = UI.Footer.labels.start_profiles
+          })
+          UI.Footer.Draw(labels, order)
+        end
         if UI.MainMenu._draw_only then return end
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
@@ -1799,6 +2105,7 @@ end
         UI.Pad.Events.CONFIRM = false
         UI.Pad.Events.BACK = false
         UI.Pad.Events.EXIT = false
+        UI.Pad.Events.SQUARE = false
         UI.Pad.Events.START = false
         UI.Pad.Events.SELECT = false
         UI.Pad.Events.R2 = false
@@ -1890,25 +2197,29 @@ end
       Play = function ()
         local layout = UI.LAYOUT
         local currcol = UI.CCOL.GREY
+        local hide_ui = false
 
-        Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 20, UI.SCR.X, 40, "POPStarter Loader\n"..tostring(POPSLDR_VER or ""), currcol)
-        Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 60, 20, UI.SCR.X, 40, "Coded By El_isra", currcol)
-        Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 80, 20, UI.SCR.X, UI.SCR.Y, [[
-Graphics by Berion
-Scripting by Nuno6573 and Ripto
+        if not hide_ui then
+          Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 20, UI.SCR.X, 40, "POPSLoader\nfor POPStarter", currcol)
+          Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 60, 20, UI.SCR.X, 40, "Code by El_isra", currcol)
+          Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 80, 20, UI.SCR.X, UI.SCR.Y, [[
+Design by Berion
+Scripts by Nuno6573 and Ripto
+Based on Enceladus by Daniel Santos
 
-Based on Enceladus by Daniel santos
-
-Special thanks to:
-krHACKen: for making POPStarter
-uyjulian, fjtrujy, HWC and others for always helping me
+Special Thanks To:
+krHACKen for making POPStarter
+uyjulian, fjtrujy, HWC, and others for always helping me
 
 This program is free and open source
-if you bought it you\'ve been scammed
+If you bought it, you have been scammed
+
+israpps.github.io
 ]], currcol)
-        if UI.BUILD_INFO ~= nil and UI.BUILD_INFO.stamp ~= nil then
-          local stamp_y = Round(layout.FOOTER_LABEL_Y - 18)
-          Font.ftPrint(SFONT, layout.SAFE.L, stamp_y, 0, UI.SCR.X, 16, UI.BUILD_INFO.stamp, UI.CCOL.GREY)
+          if UI.BUILD_INFO ~= nil and UI.BUILD_INFO.stamp ~= nil then
+            local stamp_y = Round(layout.FOOTER_LABEL_Y - 18)
+            Font.ftPrint(SFONT, layout.SAFE.L, stamp_y, 0, UI.SCR.X, 16, UI.BUILD_INFO.stamp, UI.CCOL.GREY)
+          end
         end
 
         if not UI.Credits._draw_only then

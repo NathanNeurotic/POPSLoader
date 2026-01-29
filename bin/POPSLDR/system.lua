@@ -205,9 +205,15 @@ PLDR = {
     INDEX = 1
   },
   SETTINGS = {
-    bdma_mode = 1
+    bdma_mode = 1,
+    hide_ui = false,
+    show_cover = true,
+    profile_index = nil,
+    bdma_last_label = nil,
+    dkwdrv_path = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
   }
 }
+PLDR.DEFAULT_DKWDRV_PATH = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
 local BDMA_MODES = {
   {
     label = "USBFAT32(None)",
@@ -262,9 +268,34 @@ function PLDR.LoadSettings()
     if mode ~= nil then
       PLDR.SETTINGS.bdma_mode = mode
     end
+    if type(data.hide_ui) == "boolean" then
+      PLDR.SETTINGS.hide_ui = data.hide_ui
+    end
+    if type(data.show_cover) == "boolean" then
+      PLDR.SETTINGS.show_cover = data.show_cover
+    end
+    local profile_index = tonumber(data.profile_index)
+    if profile_index ~= nil then
+      PLDR.SETTINGS.profile_index = profile_index
+    end
+    if type(data.bdma_last_label) == "string" then
+      PLDR.SETTINGS.bdma_last_label = data.bdma_last_label
+    end
+    if type(data.dkwdrv_path) == "string" and data.dkwdrv_path ~= "" then
+      PLDR.SETTINGS.dkwdrv_path = data.dkwdrv_path
+    end
   end
   if PLDR.SETTINGS.bdma_mode == nil then
     PLDR.SETTINGS.bdma_mode = 1
+  end
+  if PLDR.SETTINGS.hide_ui == nil then
+    PLDR.SETTINGS.hide_ui = false
+  end
+  if PLDR.SETTINGS.show_cover == nil then
+    PLDR.SETTINGS.show_cover = true
+  end
+  if PLDR.SETTINGS.dkwdrv_path == nil or PLDR.SETTINGS.dkwdrv_path == "" then
+    PLDR.SETTINGS.dkwdrv_path = PLDR.DEFAULT_DKWDRV_PATH
   end
   local count = PLDR.GetBDMAModeCount()
   if PLDR.SETTINGS.bdma_mode < 1 or PLDR.SETTINGS.bdma_mode > count then
@@ -276,7 +307,19 @@ function PLDR.SaveSettings()
   local path = ResolveWritablePath("settings.lua")
   local fd = System.openFile(path, FCREATE)
   local mode = tonumber(PLDR.SETTINGS.bdma_mode) or 1
-  local line = string.format("return { bdma_mode = %d }\n", mode)
+  local hide_ui = PLDR.SETTINGS.hide_ui == true
+  local show_cover = PLDR.SETTINGS.show_cover ~= false
+  local profile_index = tonumber(PLDR.SETTINGS.profile_index)
+  local bdma_last_label = PLDR.SETTINGS.bdma_last_label
+  local dkwdrv_path = PLDR.SETTINGS.dkwdrv_path or PLDR.DEFAULT_DKWDRV_PATH
+  local line = "return {\n"
+    ..string.format("  bdma_mode = %d,\n", mode)
+    ..string.format("  hide_ui = %s,\n", tostring(hide_ui))
+    ..string.format("  show_cover = %s,\n", tostring(show_cover))
+    ..string.format("  profile_index = %s,\n", profile_index ~= nil and tostring(profile_index) or "nil")
+    ..string.format("  bdma_last_label = %s,\n", bdma_last_label ~= nil and string.format("%q", bdma_last_label) or "nil")
+    ..string.format("  dkwdrv_path = %s,\n", dkwdrv_path ~= nil and string.format("%q", dkwdrv_path) or "nil")
+    .."}\n"
   System.writeFile(fd, line, #line)
   System.closeFile(fd)
 end
@@ -306,6 +349,31 @@ end
 
 function PLDR.GetBDMAMode()
   return tonumber(PLDR.SETTINGS.bdma_mode) or 1
+end
+
+function PLDR.GetBDMADetectedLabel()
+  if not doesFolderExist("mc0:/POPSTARTER/") then
+    return "NONE"
+  end
+  if type(PLDR.SETTINGS.bdma_last_label) == "string" and PLDR.SETTINGS.bdma_last_label ~= "" then
+    return PLDR.SETTINGS.bdma_last_label
+  end
+  return "UNKNOWN"
+end
+
+function PLDR.ApplyProfileSetting()
+  local default_profile = tonumber(PLDR.DEFAULT_PROFILE) or 1
+  local index = tonumber(PLDR.SETTINGS.profile_index)
+  if index == nil then
+    index = default_profile
+  end
+  if index < 1 or index > #PLDR.PROFILES then
+    index = default_profile
+  end
+  PLDR.SETTINGS.profile_index = index
+  if PLDR.PROFILES[index] ~= nil and PLDR.PROFILES[index].ELF ~= nil then
+    PLDR.POPSTARTER_PATH = PLDR.PROFILES[index].ELF
+  end
 end
 
 local function StripSuffixCaseInsensitive(name, suffix)
@@ -356,6 +424,9 @@ end
 PLDR.LoadSettings()
 
 require("pops_profiles")
+if PLDR.ApplyProfileSetting ~= nil then
+  PLDR.ApplyProfileSetting()
+end
 LOG("system.lua: before require('ui')")
 local ok_ui, ui_or_err = pcall(require, "ui")
 LOG("system.lua: after require('ui')")
@@ -540,6 +611,13 @@ function PLDR.ApplyBDMAMode()
     end
   end
   LOG("BDMA apply done: "..label.." ("..(ok and "ok" or "fail")..")")
+  if ok then
+    if entry.action == "delete" then
+      PLDR.SETTINGS.bdma_last_label = nil
+    else
+      PLDR.SETTINGS.bdma_last_label = label
+    end
+  end
   if ok and UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
     UI.Notif_queue.add("BDMA Applied")
   end
