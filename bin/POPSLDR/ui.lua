@@ -1173,6 +1173,7 @@ end
       MAXDRAW = 18;
       CURR = 1;
       STARTUP = 1;
+      SHOW_COVER = true;
       Reset = function ()
         UI.GameList.CURR = 1;
       end;
@@ -1235,23 +1236,25 @@ end
 	          local c = (i == UI.GameList.CURR) and UI.COLORS.LIST_SELECTED or UI.COLORS.LIST_UNSELECTED
 	          Font.ftPrint(BFONT, layout.LIST_X, Y, 0, layout.LIST_W, 16, string.sub(display_name,1, -5), c)
         end
-        local cover_img = nil
-        local cover_missing = false
-        if UI.CoverCache ~= nil then
-          if ammount > 0 then
-            cover_img, cover_missing = UI.CoverCache:UpdateSelection(PLDR.GAMES[UI.GameList.CURR], PLDR.GAMEPATH, UI.CURSCENE)
-          else
-            UI.CoverCache:UpdateSelection(nil, PLDR.GAMEPATH, UI.CURSCENE)
+        if UI.GameList.SHOW_COVER then
+          local cover_img = nil
+          local cover_missing = false
+          if UI.CoverCache ~= nil then
+            if ammount > 0 then
+              cover_img, cover_missing = UI.CoverCache:UpdateSelection(PLDR.GAMES[UI.GameList.CURR], PLDR.GAMEPATH, UI.CURSCENE)
+            else
+              UI.CoverCache:UpdateSelection(nil, PLDR.GAMEPATH, UI.CURSCENE)
+            end
           end
-        end
-        if layout.PREVIEW_W > 0 then
-          Graphics.drawRect(layout.PREVIEW_X - 2, layout.PREVIEW_Y - 2, layout.PREVIEW_W + 4, layout.PREVIEW_H + 4, UI.CCOL.GREY)
-          local preview_img = cover_img
-          if preview_img == nil and cover_missing then
-            preview_img = IMG.MISSING
-          end
-          if preview_img ~= nil then
-            Graphics.drawScaleImage(preview_img, layout.PREVIEW_X, layout.PREVIEW_Y, layout.PREVIEW_W, layout.PREVIEW_H)
+          if layout.PREVIEW_W > 0 then
+            Graphics.drawRect(layout.PREVIEW_X - 2, layout.PREVIEW_Y - 2, layout.PREVIEW_W + 4, layout.PREVIEW_H + 4, UI.CCOL.GREY)
+            local preview_img = cover_img
+            if preview_img == nil and cover_missing then
+              preview_img = IMG.MISSING
+            end
+            if preview_img ~= nil then
+              Graphics.drawScaleImage(preview_img, layout.PREVIEW_X, layout.PREVIEW_Y, layout.PREVIEW_W, layout.PREVIEW_H)
+            end
           end
         end
         if ammount <= 0 then
@@ -1266,6 +1269,9 @@ end
         if UI.Pad.Events.NAV_RIGHT then UI.GameList.CURR = CLAMP(UI.GameList.CURR+UI.GameList.MAXDRAW, 1, ammount) end
         if UI.Pad.Events.NAV_UP then UI.GameList.CURR = CLAMP(UI.GameList.CURR-1, 1, ammount) end
         if UI.Pad.Events.NAV_LEFT then UI.GameList.CURR = CLAMP(UI.GameList.CURR-UI.GameList.MAXDRAW, 1, ammount) end
+        if UI.Pad.Events.SQUARE then
+          UI.GameList.SHOW_COVER = not UI.GameList.SHOW_COVER
+        end
         if UI.Pad.Events.CONFIRM then
           if ammount <= 0 then
             UI.Notif_queue.add("No games found")
@@ -1719,6 +1725,7 @@ end
         if (pressed & PAD_CROSS) ~= 0 then emit_action("CONFIRM") end
         if (pressed & PAD_CIRCLE) ~= 0 then emit_action("BACK") end
         if (pressed & PAD_TRIANGLE) ~= 0 then emit_action("EXIT") end
+        if (pressed & PAD_SQUARE) ~= 0 then emit_action("SQUARE") end
         if (pressed & PAD_START) ~= 0 then emit("START") end
         if (pressed & PAD_SELECT) ~= 0 then emit("SELECT") end
         if (pressed & PAD_R2) ~= 0 then emit_action("R2") end
