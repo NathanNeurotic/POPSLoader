@@ -1744,7 +1744,7 @@ end
         local top_label_y = layout.STATUS_Y + 16
         if not hide_ui then
           Font.ftPrint(UI.FONT.TITLE, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "POPSLoader", UI.COLORS.TEXT_PRIMARY)
-          local status_y = layout.STATUS_Y - 2
+          local status_y = layout.STATUS_Y - 4
           Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "ACTIVE BDMA: "..ResolveActiveBDMALabel(), UI.COLORS.TEXT_PRIMARY)
           status_y = status_y + 12
           Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Profile Selected: "..ResolveProfileLabel(), UI.COLORS.TEXT_PRIMARY)
