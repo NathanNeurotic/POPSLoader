@@ -1,0 +1,14 @@
+iomanX_IMPORTS_start
+I_iomanX_AddDrv
+iomanX_IMPORTS_end
+
+sysclib_IMPORTS_start
+I_memset
+I_strncpy
+I_strlen
+I_strncmp
+sysclib_IMPORTS_end
+
+bdm_IMPORTS_start
+I_bdm_get_bd
+bdm_IMPORTS_end

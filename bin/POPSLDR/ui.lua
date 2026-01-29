@@ -1354,6 +1354,21 @@ end
       Play = function ()
         local layout = UI.LAYOUT
         local profcnt = #PLDR.PROFILES
+        if not UI.ProfileQuery.logged then
+          local bootpath = "unknown"
+          if System ~= nil and System.currentDirectory ~= nil then
+            bootpath = System.currentDirectory()
+          end
+          local backend = "UNKNOWN"
+          if System ~= nil and System.getMassBackend ~= nil then
+            local ok_backend, value = pcall(System.getMassBackend)
+            if ok_backend and type(value) == "string" then
+              backend = value
+            end
+          end
+          LOG("Profile page entry: current_bootpath=", tostring(bootpath), "mass_backend=", tostring(backend))
+          UI.ProfileQuery.logged = true
+        end
         if UI.ProfileQuery.bdma_mode == nil then
           if PLDR.GetBDMAMode ~= nil then
             UI.ProfileQuery.bdma_mode = PLDR.GetBDMAMode()
@@ -1375,6 +1390,7 @@ end
         if UI.HandleGlobalInput(false) then return end
         if UI.Pad.Events.EXIT then
           UI.ProfileQuery.bdma_mode = nil
+          UI.ProfileQuery.logged = false
           UI.SceneChange(UI.SCENES.CREDITS)
         end
         if UI.Pad.Events.NAV_DOWN then UI.ProfileQuery.curopt = CLAMP(UI.ProfileQuery.curopt+1, 1, profcnt) end
@@ -1394,6 +1410,7 @@ end
         end
         if UI.Pad.Events.BACK then
           UI.ProfileQuery.bdma_mode = nil
+          UI.ProfileQuery.logged = false
           UI.SceneChange(UI.SCENES.MMAIN)
         end
         if UI.Pad.Events.START then
@@ -1423,6 +1440,7 @@ end
           else
             PLDR.POPSTARTER_PATH = PLDR.PROFILES[UI.ProfileQuery.curopt].ELF
             UI.ProfileQuery.bdma_mode = nil
+            UI.ProfileQuery.logged = false
             UI.SceneChange(UI.SCENES.MMAIN)
           end
         end

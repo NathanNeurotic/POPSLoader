@@ -44,7 +44,7 @@ EE_BIN_PKD = $(BINDIR)POPSLOADER.ELF
 
 EE_LIBS = -L$(PS2SDK)/ports/lib -L$(PS2DEV)/gsKit/lib/ -Lmodules/ds34bt/ee/ -Lmodules/ds34usb/ee/ -lpatches -lfileXio -lpad -ldebug -llua -lmath3d -ljpeg -lfreetype -lgskit_toolkit -lgskit -ldmakit -lpng -lz -lmc -laudsrv  -lds34bt -lds34usb
 EE_LIBS += src/elf_loader/libcustom-elf-loader.a
-EE_INCS += -I$(PS2DEV)/gsKit/include -I$(PS2SDK)/ports/include -I$(PS2SDK)/ports/include/freetype2 -I$(PS2SDK)/ports/include/zlib
+EE_INCS += -I$(PS2DEV)/gsKit/include -I$(PS2SDK)/ports/include -I$(PS2SDK)/ports/include/freetype2 -I$(PS2SDK)/ports/include/zlib -Icommon
 EE_INCS += -Imodules/ds34bt/ee -Imodules/ds34usb/ee
 
 EE_CFLAGS   += -Wno-sign-compare -fno-strict-aliasing -fno-exceptions -DLUA_USE_PS2
@@ -76,7 +76,7 @@ IOP_MODULES = iomanX.o fileXio.o \
 			  usbd.o audsrv.o bdm.o bdmfs_fatfs.o \
 			  usbmass_bd.o cdfs.o ds34bt.o ds34usb.o \
 			  ps2dev9.o ps2atad.o ps2hdd-osd.o ps2fs.o mmceman.o \
-			  mx4sio_bd.o bdm_query.o
+			  mx4sio_bd.o bdm_query.o popsbdm.o
 
 EMBEDDED_RSC = boot.o builtin_font.o
 
@@ -141,6 +141,12 @@ iop/bdm_query/bdm_query.irx: iop/bdm_query
 
 $(EE_ASM_DIR)bdm_query.c: iop/bdm_query/bdm_query.irx | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ bdm_query_irx
+
+iop/popsbdm/popsbdm.irx: iop/popsbdm
+	$(MAKE) -C $<
+
+$(EE_ASM_DIR)popsbdm.c: iop/popsbdm/popsbdm.irx | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ popsbdm_irx
 
 # PS2SDK MX4SIO IRX (embedded)
 PS2SDK_MX4SIO_DIR = iop/embed/PS2SDK_MX4SIO

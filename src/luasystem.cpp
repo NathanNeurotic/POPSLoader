@@ -16,6 +16,7 @@
 
 #include "include/system.h"
 #include "include/dprintf.h"
+#include "popsbdm_devctl.h"
 
 #define MAX_DIR_FILES 512
 
@@ -994,6 +995,30 @@ static int lua_mx4sio_init(lua_State *L)
 	return 2;
 }
 
+static int lua_get_mass_backend(lua_State *L)
+{
+	popsbdm_backend_info_t info;
+	memset(&info, 0, sizeof(info));
+	int ret = fileXioDevctl("popsbdm:", POPSBDM_DEVCTL_GET_BACKEND,
+	                        NULL, 0, &info, sizeof(info));
+	if (ret < 0) {
+		lua_pushstring(L, "UNKNOWN");
+		return 1;
+	}
+	switch (info.backend) {
+		case POPSBDM_BACKEND_USB:
+			lua_pushstring(L, "USB");
+			break;
+		case POPSBDM_BACKEND_MX4SIO:
+			lua_pushstring(L, "MX4SIO");
+			break;
+		default:
+			lua_pushstring(L, "UNKNOWN");
+			break;
+	}
+	return 1;
+}
+
 static const luaL_Reg System_functions[] = {
 	{"openFile",                   lua_openfile},
 	{"readFile",                   lua_readfile},
@@ -1026,6 +1051,7 @@ static const luaL_Reg System_functions[] = {
 	{"resolveAsset",           lua_resolveAsset},
 	{"resolveAssetType",   lua_resolveAssetType},
 	{"initMX4SIO",             lua_mx4sio_init},
+	{"getMassBackend",     lua_get_mass_backend},
 	{"bdmList",                lua_bdm_list},
 	{"findBDMByDriver",    lua_find_bdm_by_driver},
 	{0, 0}

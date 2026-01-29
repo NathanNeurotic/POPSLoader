@@ -117,6 +117,16 @@ local function ResolveIrx(name)
   return System.resolveAssetType(name, ASSET_IRX) or JoinPath(APP_DIR_LOCAL, name)
 end
 
+local function GetMassBackend()
+  if System ~= nil and System.getMassBackend ~= nil then
+    local ok, backend = pcall(System.getMassBackend)
+    if ok and type(backend) == "string" then
+      return backend
+    end
+  end
+  return "UNKNOWN"
+end
+
 local function DetectBootDevice()
   local boot_path = NormalizeDirPath(BOOT_PATH_RAW or "")
   local prefix = string.match(boot_path, "^([%a]+%d*):")
@@ -130,6 +140,13 @@ local function DetectBootDevice()
     return "MX4SIO", boot_path, prefix
   end
   if string.match(prefix, "^mass%d*$") then
+    local backend = GetMassBackend()
+    if backend == "MX4SIO" then
+      return "MX4SIO", boot_path, prefix
+    end
+    if backend == "USB" then
+      return "USB", boot_path, prefix
+    end
     local mx_marker = JoinPath(APP_DIR_LOCAL, ".boot_mx4sio")
     local usb_marker = JoinPath(APP_DIR_LOCAL, ".boot_usb")
     if doesFileExist(mx_marker) then
@@ -1433,6 +1450,10 @@ local function ResolveLaunchPolicy(gamelocation, ui_scene)
     return BuildLaunchPolicy("MX4SIO", "mx4sio", "mx4sio", nil), "MX4SIO"
   end
   if string.match(gamelocation, "^mass") then
+    local backend = GetMassBackend()
+    if backend == "MX4SIO" then
+      return BuildLaunchPolicy("MX4SIO", "mx4sio", "mx4sio", nil), "MX4SIO"
+    end
     return BuildLaunchPolicy("USB", "mass", "mass", nil), "USB"
   end
   if string.match(gamelocation, "^mmce") then
@@ -1445,6 +1466,10 @@ local function ResolveLaunchPolicy(gamelocation, ui_scene)
     return BuildLaunchPolicy("HDD", prefix, prefix, nil), "HDD"
   end
   if UI.IsUsbScene(current_scene) then
+    local backend = GetMassBackend()
+    if backend == "MX4SIO" then
+      return BuildLaunchPolicy("MX4SIO", "mx4sio", "mx4sio", nil), "MX4SIO"
+    end
     return BuildLaunchPolicy("USB", "mass", "mass", nil), "USB"
   end
   if current_scene == UI.SCENES.GSMB then
@@ -1482,10 +1507,15 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     pops_root = normalized_gamelocation
     boot_source_mode = "pfs"
     device_mode = "pfs"
-  elseif string.match(normalized_gamelocation, "^mx4sio") then
+  elseif string.match(normalized_gamelocation, "^mx4sio") or source_mode == "mx4sio" then
     pops_root = normalized_gamelocation
     boot_source_mode = "mx4sio"
     device_mode = normalized_gamelocation
+    if source_mode == "mx4sio" and (normalized_gamelocation == nil or normalized_gamelocation == "" or string.match(normalized_gamelocation, "^mass")) then
+      local mx_root = PLDR and PLDR.MX4SIO and PLDR.MX4SIO.ROOT or "mx4sio:/"
+      pops_root = mx_root
+      device_mode = mx_root
+    end
   elseif string.match(normalized_gamelocation, "^mmce%d:/") then
     mmce_prefix = PLDR.MMCE.PREFIX or string.match(normalized_gamelocation, "^(mmce%d:/)")
     if mmce_prefix == nil then
