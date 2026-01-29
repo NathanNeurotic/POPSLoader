@@ -6,7 +6,7 @@ IOP_IMPORT_INCS += \
 	system/iomanx \
 	system/sysclib
 
-IOP_CFLAGS += -I../../common
+IOP_CFLAGS += -I../../common -I$(PS2SDK)/iop/system/iomanx/include
 
 include $(PS2SDK)/Defs.make
 include ../../modules/Rules.bin.make
