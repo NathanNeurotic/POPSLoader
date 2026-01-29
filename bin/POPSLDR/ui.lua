@@ -1731,32 +1731,13 @@ end
           end
           return "NONE"
         end
-        local function ResolveProfileLabel()
-          if PLDR == nil or PLDR.PROFILES == nil then
-            return "Unknown"
-          end
-          local index = nil
-          if PLDR.SETTINGS ~= nil then
-            index = tonumber(PLDR.SETTINGS.profile_index)
-          end
-          if index == nil then
-            index = tonumber(PLDR.DEFAULT_PROFILE) or 1
-          end
-          local profile = PLDR.PROFILES[index]
-          if profile ~= nil and profile.DESC ~= nil then
-            return profile.DESC
-          end
-          return "Profile "..tostring(index or "?")
-        end
         local top_label_y = layout.STATUS_Y + 16
         if not hide_ui then
-          Font.ftPrint(UI.FONT.TITLE, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "POPSLoader", UI.COLORS.TEXT_PRIMARY)
+          Font.ftPrint(UI.FONT.TITLE, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "POPSLOADER", UI.COLORS.TEXT_PRIMARY)
           local status_y = layout.STATUS_Y - 6
           Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "ACTIVE BDMA: "..ResolveActiveBDMALabel(), UI.COLORS.TEXT_PRIMARY)
-          status_y = status_y + 14
-          Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Profile Selected: "..ResolveProfileLabel(), UI.COLORS.TEXT_PRIMARY)
-          status_y = status_y + 13
-          top_label_y = status_y + 3
+          status_y = status_y + 16
+          top_label_y = status_y + 6
           status_y = top_label_y + 12
           if UI.boot_device ~= nil and UI.boot_device ~= DEVLOCK.NONE then
             Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Booted from: "..UI.device_lock_name(UI.boot_device), UI.COLORS.TEXT_PRIMARY)
