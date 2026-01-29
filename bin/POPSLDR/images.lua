@@ -34,16 +34,16 @@ local IMGS = {
   "circle.png",
   "cross.png",
   "R2.png",
-  --"down.png",
+  "down.png",
   --"L1.png",
   --"L2.png",
   --"L3.png",
-  --"left.png",
+  "left.png",
   --"R1.png",
   --"R3.png",
-  --"right.png",
+  "right.png",
   "square.png",
-  --"up.png",
+  "up.png",
 }
 local IMG_SOURCES = {}
 for x=1, #IMGS do

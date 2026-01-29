@@ -1572,17 +1572,37 @@ end
         if not hide_ui then
           Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Settings", UI.CCOL.GREY)
           local info_y = layout.TITLE_Y + 36
-          Font.ftPrint(BFONT, UI.SCR.X_MID, info_y, 8, UI.SCR.X, 16, bdma_label, UI.CCOL.GREY)
+          local bdma_y = info_y
+          Font.ftPrint(BFONT, UI.SCR.X_MID, bdma_y, 8, UI.SCR.X, 16, bdma_label, UI.CCOL.GREY)
           info_y = info_y + 24
-          Font.ftPrint(BFONT, UI.SCR.X_MID, info_y, 8, UI.SCR.X, 16, "DKWDRV Path:", UI.CCOL.GREY)
+          local dkwdrv_title_y = info_y
+          Font.ftPrint(BFONT, UI.SCR.X_MID, dkwdrv_title_y, 8, UI.SCR.X, 16, "DKWDRV Path:", UI.CCOL.GREY)
           info_y = info_y + 16
           Font.ftPrint(BFONT, UI.SCR.X_MID, info_y, 8, UI.SCR.X, 16, dkwdrv_label, UI.CCOL.GREY)
           info_y = info_y + 24
-          Font.ftPrint(BFONT, UI.SCR.X_MID, info_y, 8, UI.SCR.X, 16, "Profile "..UI.ProfileQuery.curopt, UI.CCOL.GREY)
+          local profile_y = info_y
+          Font.ftPrint(BFONT, UI.SCR.X_MID, profile_y, 8, UI.SCR.X, 16, "Profile "..UI.ProfileQuery.curopt, UI.CCOL.GREY)
           info_y = info_y + 16
           Font.ftPrint(BFONT, UI.SCR.X_MID, info_y, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].DESC, UI.CCOL.GREY)
           info_y = info_y + 16
           Font.ftPrint(BFONT, UI.SCR.X_MID, info_y, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].ELF, Color.new(128,128,128, 110))
+          local function DrawSideIcon(icon, x, y)
+            if icon == nil then return end
+            local w = Graphics.getImageWidth(icon) or 0
+            local h = Graphics.getImageHeight(icon) or 0
+            Graphics.drawImage(icon, x - (w / 2), y - (h / 2), UI.CCOL.GREY)
+          end
+          local function DrawSideIcons(left_key, right_key, y, offset)
+            local left_icon = IMG[left_key]
+            local right_icon = IMG[right_key]
+            local center_x = UI.SCR.X_MID
+            local icon_offset = offset or 170
+            DrawSideIcon(left_icon, center_x - icon_offset, y)
+            DrawSideIcon(right_icon, center_x + icon_offset, y)
+          end
+          DrawSideIcons("left", "right", bdma_y, 180)
+          DrawSideIcons("R2", "R2", dkwdrv_title_y, 180)
+          DrawSideIcons("up", "down", profile_y, 180)
         end
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
