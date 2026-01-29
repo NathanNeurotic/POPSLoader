@@ -1560,9 +1560,9 @@ end
           end
         end
         local bdma_mode = UI.ProfileQuery.bdma_mode
-        local bdma_label = "BDMA Mode: USBFAT32(None)"
+        local bdma_label = "USBFAT32(None)"
         if PLDR.GetBDMAModeText ~= nil then
-          bdma_label = "BDMA Mode: "..PLDR.GetBDMAModeText(bdma_mode)
+          bdma_label = PLDR.GetBDMAModeText(bdma_mode)
         end
         local dkwdrv_path = (PLDR ~= nil and PLDR.SETTINGS ~= nil and PLDR.SETTINGS.dkwdrv_path) or (PLDR and PLDR.DEFAULT_DKWDRV_PATH) or "mc0:/PS1_DKWDRV/DKWDRV.ELF"
         local dkwdrv_label = dkwdrv_path
@@ -1571,40 +1571,41 @@ end
         end
         if not hide_ui then
           Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Settings", UI.CCOL.GREY)
-          local info_y = layout.TITLE_Y + 44
-          local bdma_y = info_y
-          Font.ftPrint(BFONT, UI.SCR.X_MID, bdma_y, 8, UI.SCR.X, 16, bdma_label, UI.CCOL.GREY)
-          info_y = info_y + 32
-          local dkwdrv_title_y = info_y
-          Font.ftPrint(BFONT, UI.SCR.X_MID, dkwdrv_title_y, 8, UI.SCR.X, 16, "DKWDRV Path:", UI.CCOL.GREY)
-          local dkwdrv_path_y = info_y + 16
-          Font.ftPrint(BFONT, UI.SCR.X_MID, dkwdrv_path_y, 8, UI.SCR.X, 16, dkwdrv_label, UI.CCOL.GREY)
-          info_y = dkwdrv_path_y + 32
-          local profile_y = info_y
-          Font.ftPrint(BFONT, UI.SCR.X_MID, profile_y, 8, UI.SCR.X, 16, "Profile "..UI.ProfileQuery.curopt, UI.CCOL.GREY)
-          local profile_desc_y = profile_y + 16
-          Font.ftPrint(BFONT, UI.SCR.X_MID, profile_desc_y, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].DESC, UI.CCOL.GREY)
-          local profile_path_y = profile_desc_y + 16
-          Font.ftPrint(BFONT, UI.SCR.X_MID, profile_path_y, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].ELF, Color.new(128,128,128, 110))
-          local function DrawSideIcon(icon, x, y)
+          local function DrawCenteredIcon(icon, x, y)
             if icon == nil then return end
             local w = Graphics.getImageWidth(icon) or 0
             local h = Graphics.getImageHeight(icon) or 0
             Graphics.drawImage(icon, x - (w / 2), y - (h / 2), UI.CCOL.GREY)
           end
-          local function DrawSideIcons(left_key, right_key, y, offset)
+          local function DrawIconPair(left_key, right_key, y, offset)
             local left_icon = IMG[left_key]
             local right_icon = IMG[right_key]
             local center_x = UI.SCR.X_MID
-            local icon_offset = offset or 160
-            DrawSideIcon(left_icon, center_x - icon_offset, y)
-            DrawSideIcon(right_icon, center_x + icon_offset, y)
+            local icon_offset = offset or 36
+            DrawCenteredIcon(left_icon, center_x - icon_offset, y)
+            DrawCenteredIcon(right_icon, center_x + icon_offset, y)
           end
-          local dkwdrv_center_y = Round((dkwdrv_title_y + dkwdrv_path_y) / 2)
-          local profile_center_y = Round((profile_y + profile_path_y) / 2)
-          DrawSideIcons("left", "right", bdma_y, 160)
-          DrawSideIcons("R2", "R2", dkwdrv_center_y, 160)
-          DrawSideIcons("up", "down", profile_center_y, 160)
+          local info_y = layout.TITLE_Y + 36
+          local bdma_icons_y = info_y
+          DrawIconPair("left", "right", bdma_icons_y, 36)
+          local bdma_y = bdma_icons_y + 18
+          Font.ftPrint(BFONT, UI.SCR.X_MID, bdma_y, 8, UI.SCR.X, 16, "BDMA MODE:", UI.CCOL.GREY)
+          local bdma_value_y = bdma_y + 16
+          Font.ftPrint(BFONT, UI.SCR.X_MID, bdma_value_y, 8, UI.SCR.X, 16, bdma_label, UI.CCOL.GREY)
+          local dkwdrv_icon_y = bdma_value_y + 28
+          DrawCenteredIcon(IMG.R2, UI.SCR.X_MID, dkwdrv_icon_y)
+          local dkwdrv_title_y = dkwdrv_icon_y + 18
+          Font.ftPrint(BFONT, UI.SCR.X_MID, dkwdrv_title_y, 8, UI.SCR.X, 16, "DKWDRV PATH:", UI.CCOL.GREY)
+          local dkwdrv_path_y = dkwdrv_title_y + 16
+          Font.ftPrint(BFONT, UI.SCR.X_MID, dkwdrv_path_y, 8, UI.SCR.X, 16, dkwdrv_label, UI.CCOL.GREY)
+          local profile_icons_y = dkwdrv_path_y + 28
+          DrawIconPair("up", "down", profile_icons_y, 36)
+          local profile_title_y = profile_icons_y + 18
+          Font.ftPrint(BFONT, UI.SCR.X_MID, profile_title_y, 8, UI.SCR.X, 16, "POPStarter Mode:", UI.CCOL.GREY)
+          local profile_desc_y = profile_title_y + 16
+          Font.ftPrint(BFONT, UI.SCR.X_MID, profile_desc_y, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].DESC, UI.CCOL.GREY)
+          local profile_path_y = profile_desc_y + 16
+          Font.ftPrint(BFONT, UI.SCR.X_MID, profile_path_y, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].ELF, Color.new(128,128,128, 110))
         end
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
