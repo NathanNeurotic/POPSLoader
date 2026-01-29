@@ -223,7 +223,7 @@ UI = {
     SCENES = {
       GUSBFAT = 1,
       GUSBEXFAT = 2,
-      GSMB = 3,
+      GMMCE = 3,
       GMX4SIO = 4,
       GHDD = 5,
       GAPAHDD = 5,
@@ -1511,7 +1511,7 @@ end
           return
         end
         local ammount = #PLDR.GAMES
-        if UI.CURSCENE == UI.SCENES.GSMB and not hide_ui then
+        if UI.CURSCENE == UI.SCENES.GMMCE and not hide_ui then
           local slots = PLDR.GetMMCESlots()
           if #slots > 1 then
             Font.ftPrint(SFONT, layout.LIST_X, layout.LIST_Y - 20, 0, UI.SCR.X, 16, "Slot: "..PLDR.MMCE.PREFIX, UI.CCOL.GREY)
@@ -2024,7 +2024,7 @@ end
               UI.Notif_queue.add("No MMCE device found (mmce0/mmce1).")
               PLDR.CleanupGameList()
               PLDR.GAMEPATH = ""
-              UI.SceneChange(UI.SCENES.GSMB)
+              UI.SceneChange(UI.SCENES.GMMCE)
             else
               if PLDR.MMCE.PREFIX == nil then
                 PLDR.SetMMCESlot(1)
@@ -2037,7 +2037,7 @@ end
               PLDR.CleanupGameList()
               PLDR.GetPS1GameLists(mmce_prefix.."POPS/", true)
               UI.setDeviceLock(DEVLOCK.MMCE)
-              UI.SceneChange(UI.SCENES.GSMB)
+              UI.SceneChange(UI.SCENES.GMMCE)
             end
           elseif UI.MainMenu.OPT == 2 then
             -- MX4SIO is intentionally disabled for this release to avoid incomplete behavior/crashes.
@@ -2292,7 +2292,8 @@ uyjulian, fjtrujy, HWC, and others for always helping me
 This program is free and open source
 If you bought it, you have been scammed
 
-israpps.github.io
+Compatibility problems? Visit:
+youtube.com/@hugopocked6695
 ]], currcol)
           if UI.BUILD_INFO ~= nil and UI.BUILD_INFO.stamp ~= nil then
             local stamp_y = Round(layout.FOOTER_LABEL_Y - 18)
@@ -2360,7 +2361,7 @@ _G.UI = UI
 UI.GAME_SCENES = {
   [UI.SCENES.GUSBFAT] = true,
   [UI.SCENES.GUSBEXFAT] = true,
-  [UI.SCENES.GSMB] = true,
+  [UI.SCENES.GMMCE] = true,
   [UI.SCENES.GMX4SIO] = true,
   [UI.SCENES.GHDD] = true,
   [UI.SCENES.GBDMHDD] = true
