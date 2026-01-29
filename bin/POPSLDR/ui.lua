@@ -2178,10 +2178,10 @@ end
 
         if not hide_ui then
           Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 20, UI.SCR.X, 40, "POPSLoader\nfor POPStarter", currcol)
-          Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 60, 20, UI.SCR.X, 40, "Coded by El_isra", currcol)
+          Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 60, 20, UI.SCR.X, 40, "Code by El_isra", currcol)
           Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 80, 20, UI.SCR.X, UI.SCR.Y, [[
 Design by Berion
-Scripting by Nuno6573 and Ripto
+Scripts by Nuno6573 and Ripto
 Based on Enceladus by Daniel Santos
 
 Special Thanks To:
@@ -2190,6 +2190,7 @@ uyjulian, fjtrujy, HWC, and others for always helping me
 
 This program is free and open source
 If you bought it, you have been scammed
+israpps.github.io
 ]], currcol)
           if UI.BUILD_INFO ~= nil and UI.BUILD_INFO.stamp ~= nil then
             local stamp_y = Round(layout.FOOTER_LABEL_Y - 18)
