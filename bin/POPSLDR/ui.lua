@@ -934,30 +934,85 @@ end
           boot_sound_hold_frames = math.floor(((sec + pad) * 60) + 0.5)
           LOGF("BOOT SOUND: hold frames=%s", tostring(boot_sound_hold_frames))
         end
-        local function DrawSplashCover(img, screen_w, screen_h, alpha)
-          if img == nil then return end
-          local img_w = Graphics.getImageWidth(img)
-          local img_h = Graphics.getImageHeight(img)
-          local scale = 1
-          if img_w > 0 and img_h > 0 then
-            local cover_scale = math.max(screen_w / img_w, screen_h / img_h)
-            scale = cover_scale * 1.02
-          end
-          local draw_w = Round(img_w * scale)
-          local draw_h = Round(img_h * scale)
-          local x = Round((screen_w - draw_w) / 2)
-          local y = Round((screen_h - draw_h) / 2)
-          local tint = Color.new(128, 128, 128, alpha)
-          Graphics.drawScaleImage(img, x, y, draw_w, draw_h, tint)
-        end
-        local function DrawSplashText(alpha)
-          -- Requested: black text because splash image is white.
-          local y0 = UI.SCR.Y_MID + 120
-          Font.ftPrint(BFONT, UI.SCR.X_MID, y0,       8, UI.SCR.X, 16, "Coded by El_isra",      Color.new(0, 0, 0, alpha))
-          Font.ftPrint(BFONT, UI.SCR.X_MID, y0 + 18,  8, UI.SCR.X, 16, "Graphics by Berion",   Color.new(0, 0, 0, alpha))
-          Font.ftPrint(BFONT, UI.SCR.X_MID, y0 + 36,  8, UI.SCR.X, 16, "israpps.github.io",    Color.new(0, 0, 0, alpha))
-        end
+local function DrawSplashCover(img, screen_w, screen_h, alpha)
+  if img == nil then return end
+  local img_w = Graphics.getImageWidth(img)
+  local img_h = Graphics.getImageHeight(img)
+  local scale = 1
+  if img_w > 0 and img_h > 0 then
+    local cover_scale = math.max(screen_w / img_w, screen_h / img_h)
+    scale = cover_scale * 1.02
+  end
+  local draw_w = Round(img_w * scale)
+  local draw_h = Round(img_h * scale)
+  local x = Round((screen_w - draw_w) / 2)
+  local y = Round((screen_h - draw_h) / 2)
+  local tint = Color.new(128, 128, 128, alpha)
+  Graphics.drawScaleImage(img, x, y, draw_w, draw_h, tint)
+end
 
+local function DrawSplashFit(img, x, y, draw_w, draw_h, alpha)
+  if img == nil then return end
+  local tint = Color.new(128, 128, 128, alpha)
+  Graphics.drawScaleImage(img, x, y, draw_w, draw_h, tint)
+end
+
+local function DrawSplash(alpha)
+  -- New 4-layer splash (bg fill + appname + logo + credits). Falls back to legacy PSL.png + text.
+  if IMG.splash_bg ~= nil and IMG.splash_appname ~= nil and IMG.splash_logo ~= nil and IMG.splash_credits ~= nil then
+    -- Background: cover-fill the screen.
+    DrawSplashCover(IMG.splash_bg, UI.SCR.X, UI.SCR.Y, alpha)
+
+    local pad = 16
+    local max_w = UI.SCR.X - (pad * 2)
+
+    -- App name: top-center.
+    local app_w = Graphics.getImageWidth(IMG.splash_appname)
+    local app_h = Graphics.getImageHeight(IMG.splash_appname)
+    if app_w == nil or app_h == nil or app_w <= 0 or app_h <= 0 then return end
+    local app_scale = math.min(max_w / app_w, 64 / app_h, 1)
+    local app_dw = Round(app_w * app_scale)
+    local app_dh = Round(app_h * app_scale)
+    local app_x = Round((UI.SCR.X - app_dw) / 2)
+    local app_y = pad
+    DrawSplashFit(IMG.splash_appname, app_x, app_y, app_dw, app_dh, alpha)
+
+    -- Credits: bottom-center.
+    local cred_w = Graphics.getImageWidth(IMG.splash_credits)
+    local cred_h = Graphics.getImageHeight(IMG.splash_credits)
+    if cred_w == nil or cred_h == nil or cred_w <= 0 or cred_h <= 0 then return end
+    local cred_scale = math.min(max_w / cred_w, 56 / cred_h, 1)
+    local cred_dw = Round(cred_w * cred_scale)
+    local cred_dh = Round(cred_h * cred_scale)
+    local cred_x = Round((UI.SCR.X - cred_dw) / 2)
+    local cred_y = UI.SCR.Y - cred_dh - pad
+    DrawSplashFit(IMG.splash_credits, cred_x, cred_y, cred_dw, cred_dh, alpha)
+
+    -- Logo: center, fit between app name and credits.
+    local top_reserved = app_y + app_dh + 10
+    local bottom_reserved = (UI.SCR.Y - cred_y) + 10
+    local avail_h = UI.SCR.Y - top_reserved - bottom_reserved
+    if avail_h < 48 then avail_h = UI.SCR.Y end
+
+    local logo_w = Graphics.getImageWidth(IMG.splash_logo)
+    local logo_h = Graphics.getImageHeight(IMG.splash_logo)
+    if logo_w == nil or logo_h == nil or logo_w <= 0 or logo_h <= 0 then return end
+    local logo_scale = math.min(max_w / logo_w, avail_h / logo_h, 1)
+    local logo_dw = Round(logo_w * logo_scale)
+    local logo_dh = Round(logo_h * logo_scale)
+    local logo_x = Round((UI.SCR.X - logo_dw) / 2)
+    local logo_y = Round((UI.SCR.Y - logo_dh) / 2)
+    DrawSplashFit(IMG.splash_logo, logo_x, logo_y, logo_dw, logo_dh, alpha)
+    return
+  end
+
+  -- Legacy fallback (single image + text)
+  DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
+  local y0 = UI.SCR.Y_MID + 120
+  Font.ftPrint(BFONT, UI.SCR.X_MID, y0,       8, UI.SCR.X, 16, "Coded by El_isra",      Color.new(0, 0, 0, alpha))
+  Font.ftPrint(BFONT, UI.SCR.X_MID, y0 + 18,  8, UI.SCR.X, 16, "Graphics by Berion",   Color.new(0, 0, 0, alpha))
+  Font.ftPrint(BFONT, UI.SCR.X_MID, y0 + 36,  8, UI.SCR.X, 16, "israpps.github.io",    Color.new(0, 0, 0, alpha))
+end
         local fade_in_frames = 120
         local fade_out_frames = 60
 
@@ -992,22 +1047,19 @@ end
         for i = 1, fade_in_frames do
           local alpha = Round(128 * (i / fade_in_frames))
           DrawBackground()
-          DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
-          DrawSplashText(alpha)
+          DrawSplash(alpha)
           Screen.flip()
         end
         for _ = 1, splash_hold_frames do
           DrawBackground()
-          DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, 128)
-          DrawSplashText(128)
+          DrawSplash(128)
           Screen.flip()
         end
         if fade_out_frames > 0 then
           for i = 1, fade_out_frames do
             local alpha = Round(128 * (i / fade_out_frames))
             DrawBackground()
-            DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, 128)
-            DrawSplashText(128)
+            DrawSplash(128)
             Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
             Screen.flip()
           end
@@ -1967,53 +2019,58 @@ end
               UI.SceneChange(UI.SCENES.GSMB)
             end
           elseif UI.MainMenu.OPT == 2 then
-            local can_enter, reason, lock = UI.canEnterDevice(DEVLOCK.MX4SIO)
-            if not can_enter then
-              UI.Notif_queue.add("Device locked to "..UI.device_lock_name(lock))
-              return
-            end
-            if System == nil or System.initMX4SIO == nil then
-              UI.Notif_queue.add("MX4SIO init unavailable")
-              return
-            end
-            local hint = nil
-            if PLDR ~= nil and PLDR.MX4SIO ~= nil then
-              hint = PLDR.MX4SIO.PREFIX_HINT
-            end
-            local ok_init, ready, root = pcall(System.initMX4SIO, hint)
-            if not ok_init then
-              UI.Notif_queue.add("MX4SIO init error")
-              if PLDR ~= nil and PLDR.MX4SIO ~= nil then
-                PLDR.MX4SIO.READY = false
-                PLDR.MX4SIO.ROOT = nil
+            -- MX4SIO is intentionally disabled for this release to avoid incomplete behavior/crashes.
+            -- Keeping the original implementation below for later re-enable.
+            UI.Notif_queue.add("Not Implemented Yet")
+            if false then
+              local can_enter, reason, lock = UI.canEnterDevice(DEVLOCK.MX4SIO)
+              if not can_enter then
+                UI.Notif_queue.add("Device locked to "..UI.device_lock_name(lock))
+                return
               end
-              return
-            end
-            if not ready or root == nil then
-              UI.Notif_queue.add("No MX4SIO device found (POPS/ missing)")
-              if PLDR ~= nil and PLDR.MX4SIO ~= nil then
-                PLDR.MX4SIO.READY = false
-                PLDR.MX4SIO.ROOT = nil
+              if System == nil or System.initMX4SIO == nil then
+                UI.Notif_queue.add("MX4SIO init unavailable")
+                return
               end
-              return
+              local hint = nil
+              if PLDR ~= nil and PLDR.MX4SIO ~= nil then
+                hint = PLDR.MX4SIO.PREFIX_HINT
+              end
+              local ok_init, ready, root = pcall(System.initMX4SIO, hint)
+              if not ok_init then
+                UI.Notif_queue.add("MX4SIO init error")
+                if PLDR ~= nil and PLDR.MX4SIO ~= nil then
+                  PLDR.MX4SIO.READY = false
+                  PLDR.MX4SIO.ROOT = nil
+                end
+                return
+              end
+              if not ready or root == nil then
+                UI.Notif_queue.add("No MX4SIO device found (POPS/ missing)")
+                if PLDR ~= nil and PLDR.MX4SIO ~= nil then
+                  PLDR.MX4SIO.READY = false
+                  PLDR.MX4SIO.ROOT = nil
+                end
+                return
+              end
+              if type(EnsureTrailingSlash) == "function" then
+                root = EnsureTrailingSlash(root)
+              elseif string.sub(root, -1) ~= "/" then
+                root = root.."/"
+              end
+              if PLDR ~= nil and PLDR.MX4SIO ~= nil then
+                PLDR.MX4SIO.READY = true
+                PLDR.MX4SIO.ROOT = root
+              end
+              PLDR.CleanupGameList()
+              local game_root = root.."POPS/"
+              if type(JoinPath) == "function" then
+                game_root = JoinPath(root, "POPS/")
+              end
+              PLDR.GetPS1GameLists(game_root, true)
+              UI.setDeviceLock(DEVLOCK.MX4SIO)
+              UI.SceneChange(UI.SCENES.GMX4SIO)
             end
-            if type(EnsureTrailingSlash) == "function" then
-              root = EnsureTrailingSlash(root)
-            elseif string.sub(root, -1) ~= "/" then
-              root = root.."/"
-            end
-            if PLDR ~= nil and PLDR.MX4SIO ~= nil then
-              PLDR.MX4SIO.READY = true
-              PLDR.MX4SIO.ROOT = root
-            end
-            PLDR.CleanupGameList()
-            local game_root = root.."POPS/"
-            if type(JoinPath) == "function" then
-              game_root = JoinPath(root, "POPS/")
-            end
-            PLDR.GetPS1GameLists(game_root, true)
-            UI.setDeviceLock(DEVLOCK.MX4SIO)
-            UI.SceneChange(UI.SCENES.GMX4SIO)
           elseif UI.MainMenu.OPT == 3 then
             UI.Notif_queue.add("Not Implemented Yet")
           elseif UI.MainMenu.OPT == 4 then
