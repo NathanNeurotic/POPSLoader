@@ -1571,15 +1571,15 @@ end
         end
         if not hide_ui then
           Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Settings", UI.CCOL.GREY)
-          local info_y = layout.TITLE_Y + 36
+          local info_y = layout.TITLE_Y + 44
           local bdma_y = info_y
           Font.ftPrint(BFONT, UI.SCR.X_MID, bdma_y, 8, UI.SCR.X, 16, bdma_label, UI.CCOL.GREY)
-          info_y = info_y + 24
+          info_y = info_y + 32
           local dkwdrv_title_y = info_y
           Font.ftPrint(BFONT, UI.SCR.X_MID, dkwdrv_title_y, 8, UI.SCR.X, 16, "DKWDRV Path:", UI.CCOL.GREY)
           info_y = info_y + 16
           Font.ftPrint(BFONT, UI.SCR.X_MID, info_y, 8, UI.SCR.X, 16, dkwdrv_label, UI.CCOL.GREY)
-          info_y = info_y + 24
+          info_y = info_y + 32
           local profile_y = info_y
           Font.ftPrint(BFONT, UI.SCR.X_MID, profile_y, 8, UI.SCR.X, 16, "Profile "..UI.ProfileQuery.curopt, UI.CCOL.GREY)
           info_y = info_y + 16
@@ -1596,13 +1596,13 @@ end
             local left_icon = IMG[left_key]
             local right_icon = IMG[right_key]
             local center_x = UI.SCR.X_MID
-            local icon_offset = offset or 170
+            local icon_offset = offset or 150
             DrawSideIcon(left_icon, center_x - icon_offset, y)
             DrawSideIcon(right_icon, center_x + icon_offset, y)
           end
-          DrawSideIcons("left", "right", bdma_y, 180)
-          DrawSideIcons("R2", "R2", dkwdrv_title_y, 180)
-          DrawSideIcons("up", "down", profile_y, 180)
+          DrawSideIcons("left", "right", bdma_y, 150)
+          DrawSideIcons("R2", "R2", dkwdrv_title_y, 150)
+          DrawSideIcons("up", "down", profile_y, 150)
         end
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
@@ -2210,6 +2210,7 @@ uyjulian, fjtrujy, HWC, and others for always helping me
 
 This program is free and open source
 If you bought it, you have been scammed
+
 israpps.github.io
 ]], currcol)
           if UI.BUILD_INFO ~= nil and UI.BUILD_INFO.stamp ~= nil then
