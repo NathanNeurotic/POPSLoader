@@ -233,7 +233,7 @@ UI = {
       CREDITS = 10
     };
     LAUNCHING = false;
-    HideUI = false;
+    HideUI = (PLDR ~= nil and PLDR.SETTINGS ~= nil and PLDR.SETTINGS.hide_ui == true);
     DEVLOCK = DEVLOCK;
     device_lock = DEVLOCK.NONE;
     boot_device = DEVLOCK.NONE;
@@ -1208,6 +1208,12 @@ end
       if UI.LAUNCHING then return false end
       if UI.Pad.Events.SELECT then
         UI.HideUI = not UI.HideUI
+        if PLDR ~= nil and PLDR.SETTINGS ~= nil then
+          PLDR.SETTINGS.hide_ui = UI.HideUI
+          if PLDR.SaveSettings ~= nil then
+            PLDR.SaveSettings()
+          end
+        end
         return true
       end
       if UI.Pad.Events.START and UI.CURSCENE ~= UI.SCENES.MPROFILE then
@@ -1226,7 +1232,7 @@ end
       MAXDRAW = 18;
       CURR = 1;
       STARTUP = 1;
-      SHOW_COVER = true;
+      SHOW_COVER = (PLDR ~= nil and PLDR.SETTINGS ~= nil and PLDR.SETTINGS.show_cover ~= false);
       LAST_SQUARE_DOWN = false;
       Reset = function ()
         UI.GameList.CURR = 1;
@@ -1338,6 +1344,12 @@ end
         end
         if square_down and not UI.GameList.LAST_SQUARE_DOWN then
           UI.GameList.SHOW_COVER = not UI.GameList.SHOW_COVER
+          if PLDR ~= nil and PLDR.SETTINGS ~= nil then
+            PLDR.SETTINGS.show_cover = UI.GameList.SHOW_COVER
+            if PLDR.SaveSettings ~= nil then
+              PLDR.SaveSettings()
+            end
+          end
         end
         UI.GameList.LAST_SQUARE_DOWN = square_down
         if UI.Pad.Events.CONFIRM then
@@ -1446,6 +1458,9 @@ end
           if PLDR.ApplyBDMAMode ~= nil then
             PLDR.ApplyBDMAMode()
           end
+          if PLDR.SETTINGS ~= nil then
+            PLDR.SETTINGS.profile_index = UI.ProfileQuery.curopt
+          end
           if PLDR.SaveSettings ~= nil then
             PLDR.SaveSettings()
           end
@@ -1496,7 +1511,13 @@ end
         local profcnt = #UI.MainMenu.opts
         local hide_ui = UI.ShouldHideUI()
         local function ResolveActiveBDMALabel()
-          if PLDR == nil or PLDR.GetBDMAModeText == nil then
+          if PLDR == nil then
+            return "NONE"
+          end
+          if PLDR.GetBDMADetectedLabel ~= nil then
+            return PLDR.GetBDMADetectedLabel()
+          end
+          if PLDR.GetBDMAModeText == nil then
             return "NONE"
           end
           local mode = nil
@@ -1519,11 +1540,30 @@ end
           end
           return "NONE"
         end
+        local function ResolveProfileLabel()
+          if PLDR == nil or PLDR.PROFILES == nil then
+            return "Unknown"
+          end
+          local index = nil
+          if PLDR.SETTINGS ~= nil then
+            index = tonumber(PLDR.SETTINGS.profile_index)
+          end
+          if index == nil then
+            index = tonumber(PLDR.DEFAULT_PROFILE) or 1
+          end
+          local profile = PLDR.PROFILES[index]
+          if profile ~= nil and profile.DESC ~= nil then
+            return profile.DESC
+          end
+          return "Profile "..tostring(index or "?")
+        end
         local top_label_y = layout.STATUS_Y + 16
         if not hide_ui then
           Font.ftPrint(UI.FONT.TITLE, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "POPSLoader", UI.COLORS.TEXT_PRIMARY)
           local status_y = layout.STATUS_Y
           Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "ACTIVE BDMA: "..ResolveActiveBDMALabel(), UI.COLORS.TEXT_PRIMARY)
+          status_y = status_y + 12
+          Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Profile Selected: "..ResolveProfileLabel(), UI.COLORS.TEXT_PRIMARY)
           status_y = status_y + 12
           top_label_y = status_y + 4
           status_y = top_label_y + 12
