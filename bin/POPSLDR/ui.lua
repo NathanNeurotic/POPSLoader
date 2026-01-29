@@ -1174,7 +1174,7 @@ end
       CURR = 1;
       STARTUP = 1;
       SHOW_COVER = true;
-      SQUARE_HELD = false;
+      LAST_SQUARE_DOWN = false;
       Reset = function ()
         UI.GameList.CURR = 1;
       end;
@@ -1274,13 +1274,10 @@ end
         if UI.Pad.GPAD ~= nil and PAD_SQUARE ~= nil then
           square_down = (UI.Pad.GPAD & PAD_SQUARE) ~= 0
         end
-        if not square_down then
-          UI.GameList.SQUARE_HELD = false
-        end
-        if UI.Pad.Events.SQUARE and not UI.GameList.SQUARE_HELD then
+        if square_down and not UI.GameList.LAST_SQUARE_DOWN then
           UI.GameList.SHOW_COVER = not UI.GameList.SHOW_COVER
-          UI.GameList.SQUARE_HELD = true
         end
+        UI.GameList.LAST_SQUARE_DOWN = square_down
         if UI.Pad.Events.CONFIRM then
           if ammount <= 0 then
             UI.Notif_queue.add("No games found")
