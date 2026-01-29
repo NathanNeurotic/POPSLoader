@@ -563,6 +563,7 @@ UI = {
       row = 1,
       col = 1,
       max_len = 128,
+      caps = false,
       keys = {
         {"a","b","c","d","e","f","g","h","i","j"},
         {"k","l","m","n","o","p","q","r","s","t"},
@@ -618,6 +619,10 @@ UI = {
         if col > #row_keys then col = #row_keys end
         UI.TextEntry.row = row
         UI.TextEntry.col = col
+        if UI.Pad.Events.SQUARE then
+          UI.TextEntry.caps = not UI.TextEntry.caps
+          return
+        end
         if UI.Pad.Events.EXIT then
           UI.TextEntry.Backspace()
           return
@@ -652,7 +657,15 @@ UI = {
               UI.TextEntry.value = UI.TextEntry.default_value
             end
           else
-            UI.TextEntry.Append(key)
+            local ch = key
+            if type(ch) == "string" and #ch == 1 and string.match(ch, "%a") then
+              if UI.TextEntry.caps then
+                ch = string.upper(ch)
+              else
+                ch = string.lower(ch)
+              end
+            end
+            UI.TextEntry.Append(ch)
           end
         end
       end;
@@ -685,10 +698,18 @@ UI = {
             if r == UI.TextEntry.row and c == UI.TextEntry.col then
               Graphics.drawRect(x - 2, y - 2, cell_w - 4, cell_h - 4, UI.CCOL.GREY)
             end
-            Font.ftPrint(SFONT, x + (cell_w / 2), y + 4, 8, cell_w, 16, row[c], UI.CCOL.GREY)
+            local display_key = row[c]
+            if type(display_key) == "string" and #display_key == 1 and string.match(display_key, "%a") then
+              if UI.TextEntry.caps then
+                display_key = string.upper(display_key)
+              else
+                display_key = string.lower(display_key)
+              end
+            end
+            Font.ftPrint(SFONT, x + (cell_w / 2), y + 4, 8, cell_w, 16, display_key, UI.CCOL.GREY)
           end
         end
-        local hint = "X: Enter  O: Cancel  Start: OK  Triangle: Backspace"
+        local hint = "X: Enter  O: Cancel  Start: OK  Triangle: Backspace  Square: Aa"
         Font.ftPrint(SFONT, UI.SCR.X_MID, box_y + box_h - 24, 8, UI.SCR.X, 16, hint, UI.CCOL.GREY)
       end;
     };
