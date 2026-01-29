@@ -1461,8 +1461,36 @@ end
       Play = function ()
         local layout = UI.LAYOUT
         local profcnt = #UI.MainMenu.opts
-        Font.ftPrintMultiLineAligned(UI.FONT.TITLE, UI.SCR.X_MID, layout.TITLE_Y, 16, UI.SCR.X, 32, "POPSLoader\nby Matias Israelson\nGUI for POPStarter and BDMAssault", UI.COLORS.TEXT_PRIMARY)
-        local status_y = layout.STATUS_Y + 16
+        Font.ftPrint(UI.FONT.TITLE, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "POPSLoader", UI.COLORS.TEXT_PRIMARY)
+        local function ResolveActiveBDMALabel()
+          if PLDR == nil or PLDR.GetBDMAModeText == nil then
+            return "NONE"
+          end
+          local mode = nil
+          if PLDR.GetBDMAMode ~= nil then
+            mode = PLDR.GetBDMAMode()
+          end
+          local raw = PLDR.GetBDMAModeText(mode)
+          if type(raw) ~= "string" then
+            return "NONE"
+          end
+          local upper = string.upper(raw)
+          if string.find(upper, "USBEXFAT", 1, true) then
+            return "USBEXFAT"
+          end
+          if string.find(upper, "MX4SIO", 1, true) then
+            return "MX4SIO"
+          end
+          if string.find(upper, "MMCE", 1, true) then
+            return "MMCE"
+          end
+          return "NONE"
+        end
+        local status_y = layout.STATUS_Y
+        Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "ACTIVE BDMA: "..ResolveActiveBDMALabel(), UI.COLORS.TEXT_PRIMARY)
+        status_y = status_y + 12
+        local top_label_y = status_y
+        status_y = status_y + 12
         if UI.boot_device ~= nil and UI.boot_device ~= DEVLOCK.NONE then
           Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Booted from: "..UI.device_lock_name(UI.boot_device), UI.COLORS.TEXT_PRIMARY)
           status_y = status_y + 12
@@ -1577,7 +1605,7 @@ end
         local base_scroll = math.floor(scroll)
         local scroll_frac = scroll - base_scroll
         local center_label_x = center_x
-        local center_label_y = Round(center_y + 90)
+        local center_label_y = Round(top_label_y)
         local center_label_idx = carousel.animActive and carousel.targetIndex or base_sel
         local function Lerp(a, b, t)
           return a + (b - a) * t
