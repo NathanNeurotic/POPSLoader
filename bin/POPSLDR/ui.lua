@@ -302,8 +302,8 @@ UI = {
     COLORS = {
 	      TEXT_PRIMARY = Color.new(140, 200, 255, 128);
 	      -- PS2 menu-style blues for lists (selected/unselected)
-      LIST_SELECTED = Color.new(140, 210, 255, 128);
-      LIST_UNSELECTED = Color.new(30, 60, 120, 128);
+      LIST_SELECTED = Color.new(120, 200, 255, 128);
+      LIST_UNSELECTED = Color.new(20, 45, 100, 128);
     };
     FONT = {
       TITLE = Font.LoadBuiltinFont();
@@ -1248,7 +1248,6 @@ end
             end
           end
           if layout.PREVIEW_W > 0 then
-            Graphics.drawRect(layout.PREVIEW_X - 2, layout.PREVIEW_Y - 2, layout.PREVIEW_W + 4, layout.PREVIEW_H + 4, UI.CCOL.GREY)
             local preview_img = cover_img
             if preview_img == nil and cover_missing then
               preview_img = IMG.MISSING
