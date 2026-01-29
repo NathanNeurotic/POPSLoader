@@ -302,7 +302,7 @@ UI = {
     COLORS = {
 	      TEXT_PRIMARY = Color.new(140, 200, 255, 128);
 	      -- PS2 menu-style blues for lists (selected/unselected)
-      LIST_SELECTED = Color.new(230, 240, 255, 128);
+      LIST_SELECTED = Color.new(150, 205, 255, 128);
       LIST_UNSELECTED = Color.new(20, 45, 100, 128);
     };
     FONT = {
