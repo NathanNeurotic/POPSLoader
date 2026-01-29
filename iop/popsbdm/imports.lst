@@ -1,5 +1,5 @@
 iomanX_IMPORTS_start
-I_iomanX_AddDrv
+I_AddDrv
 iomanX_IMPORTS_end
 
 sysclib_IMPORTS_start
