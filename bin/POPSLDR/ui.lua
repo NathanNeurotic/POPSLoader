@@ -1753,10 +1753,10 @@ end
           Font.ftPrint(UI.FONT.TITLE, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "POPSLoader", UI.COLORS.TEXT_PRIMARY)
           local status_y = layout.STATUS_Y - 6
           Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "ACTIVE BDMA: "..ResolveActiveBDMALabel(), UI.COLORS.TEXT_PRIMARY)
-          status_y = status_y + 13
+          status_y = status_y + 14
           Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Profile Selected: "..ResolveProfileLabel(), UI.COLORS.TEXT_PRIMARY)
-          status_y = status_y + 12
-          top_label_y = status_y + 4
+          status_y = status_y + 13
+          top_label_y = status_y + 3
           status_y = top_label_y + 12
           if UI.boot_device ~= nil and UI.boot_device ~= DEVLOCK.NONE then
             Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Booted from: "..UI.device_lock_name(UI.boot_device), UI.COLORS.TEXT_PRIMARY)
