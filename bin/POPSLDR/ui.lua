@@ -332,7 +332,7 @@ UI = {
     };
     LAYOUT = {
       SAFE = {L = 40, R = 40, T = 24, B = 28};
-      BTN_BAR_SAFE_BOTTOM = 72;
+      BTN_BAR_SAFE_BOTTOM = 64;
       ICON_SPACING = 120;
       LIST_ROW_H = 20;
       PREVIEW_W = 240;
@@ -1734,10 +1734,9 @@ end
         local top_label_y = layout.STATUS_Y + 16
         if not hide_ui then
           Font.ftPrint(UI.FONT.TITLE, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "POPSLOADER", UI.COLORS.TEXT_PRIMARY)
-          local status_y = layout.STATUS_Y - 6
+          local status_y = layout.STATUS_Y - 4
           Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "ACTIVE BDMA: "..ResolveActiveBDMALabel(), UI.COLORS.TEXT_PRIMARY)
-          status_y = status_y + 16
-          top_label_y = status_y + 6
+          top_label_y = layout.STATUS_Y + 16
           status_y = top_label_y + 12
           if UI.boot_device ~= nil and UI.boot_device ~= DEVLOCK.NONE then
             Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Booted from: "..UI.device_lock_name(UI.boot_device), UI.COLORS.TEXT_PRIMARY)
