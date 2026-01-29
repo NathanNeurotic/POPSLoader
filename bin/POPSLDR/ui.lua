@@ -302,8 +302,8 @@ UI = {
     COLORS = {
 	      TEXT_PRIMARY = Color.new(140, 200, 255, 128);
 	      -- PS2 menu-style blues for lists (selected/unselected)
-	      LIST_SELECTED = Color.new(120, 205, 255, 128);
-	      LIST_UNSELECTED = Color.new(45, 85, 155, 128);
+      LIST_SELECTED = Color.new(140, 210, 255, 128);
+      LIST_UNSELECTED = Color.new(30, 60, 120, 128);
     };
     FONT = {
       TITLE = Font.LoadBuiltinFont();
