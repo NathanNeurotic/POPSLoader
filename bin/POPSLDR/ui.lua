@@ -1461,7 +1461,6 @@ end
       Play = function ()
         local layout = UI.LAYOUT
         local profcnt = #UI.MainMenu.opts
-        Font.ftPrint(UI.FONT.TITLE, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "POPSLoader", UI.COLORS.TEXT_PRIMARY)
         local function ResolveActiveBDMALabel()
           if PLDR == nil or PLDR.GetBDMAModeText == nil then
             return "NONE"
@@ -1486,14 +1485,18 @@ end
           end
           return "NONE"
         end
-        local status_y = layout.STATUS_Y
-        Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "ACTIVE BDMA: "..ResolveActiveBDMALabel(), UI.COLORS.TEXT_PRIMARY)
-        status_y = status_y + 12
-        local top_label_y = status_y
-        status_y = status_y + 12
-        if UI.boot_device ~= nil and UI.boot_device ~= DEVLOCK.NONE then
-          Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Booted from: "..UI.device_lock_name(UI.boot_device), UI.COLORS.TEXT_PRIMARY)
+        local top_label_y = layout.STATUS_Y + 16
+        if not UI.MainMenu.hide_ui then
+          Font.ftPrint(UI.FONT.TITLE, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "POPSLoader", UI.COLORS.TEXT_PRIMARY)
+          local status_y = layout.STATUS_Y
+          Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "ACTIVE BDMA: "..ResolveActiveBDMALabel(), UI.COLORS.TEXT_PRIMARY)
           status_y = status_y + 12
+          top_label_y = status_y + 4
+          status_y = top_label_y + 12
+          if UI.boot_device ~= nil and UI.boot_device ~= DEVLOCK.NONE then
+            Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Booted from: "..UI.device_lock_name(UI.boot_device), UI.COLORS.TEXT_PRIMARY)
+            status_y = status_y + 12
+          end
         end
 	        -- Pages are no longer presented as "locked" in the UI.
         local icon_map = {
@@ -1633,17 +1636,26 @@ end
             DrawIcon(idx, x, y, tint)
           end
         end
-        Font.ftPrint(UI.FONT.LABEL, Round(center_label_x), center_label_y, 8, UI.SCR.X, 16, UI.MainMenu.opts[center_label_idx], UI.COLORS.TEXT_PRIMARY)
-        local labels, order = UI.Footer.ResolveLegend({
-          order = UI.Footer.order_with_start,
-          order_id = "start",
-          circle = UI.Footer.labels.circle_main,
-          cross = UI.Footer.labels.cross_select,
-          start = UI.Footer.labels.start_profiles
-        })
-        UI.Footer.Draw(labels, order)
+        if not UI.MainMenu.hide_ui then
+          Font.ftPrint(UI.FONT.LABEL, Round(center_label_x), center_label_y, 8, UI.SCR.X, 16, UI.MainMenu.opts[center_label_idx], UI.COLORS.TEXT_PRIMARY)
+        end
+        if not UI.MainMenu.hide_ui then
+          local square_label = "Hide UI"
+          local labels, order = UI.Footer.ResolveLegend({
+            order = UI.Footer.order_with_start,
+            order_id = "start",
+            circle = UI.Footer.labels.circle_main,
+            cross = UI.Footer.labels.cross_select,
+            square = square_label,
+            start = UI.Footer.labels.start_profiles
+          })
+          UI.Footer.Draw(labels, order)
+        end
         if UI.MainMenu._draw_only then return end
         Input_GetEvent()
+        if UI.Pad.Events.SQUARE then
+          UI.MainMenu.hide_ui = not UI.MainMenu.hide_ui
+        end
         if UI.HandleGlobalInput(false) then return end
         if not carousel.animActive then
           if UI.Pad.Events.NAV_RIGHT then
@@ -1827,6 +1839,7 @@ end
         UI.Pad.Events.CONFIRM = false
         UI.Pad.Events.BACK = false
         UI.Pad.Events.EXIT = false
+        UI.Pad.Events.SQUARE = false
         UI.Pad.Events.START = false
         UI.Pad.Events.SELECT = false
         UI.Pad.Events.R2 = false
