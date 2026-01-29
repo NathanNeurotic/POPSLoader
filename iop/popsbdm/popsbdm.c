@@ -109,5 +109,8 @@ int _start(int argc, char *argv[])
 {
 	(void)argc;
 	(void)argv;
-	return iomanX_AddDrv(&popsbdm_device) ? MODULE_NO_RESIDENT_END : MODULE_RESIDENT_END;
+	if (iomanX_AddDrv(&popsbdm_device) < 0) {
+		return MODULE_NO_RESIDENT_END;
+	}
+	return MODULE_RESIDENT_END;
 }
