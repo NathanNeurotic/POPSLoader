@@ -2186,7 +2186,7 @@ end
       Play = function ()
         local layout = UI.LAYOUT
         local currcol = UI.CCOL.GREY
-        local hide_ui = UI.ShouldHideUI()
+        local hide_ui = false
 
         if not hide_ui then
           Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 20, UI.SCR.X, 40, "POPStarter Loader\n"..tostring(POPSLDR_VER or ""), currcol)
