@@ -1571,9 +1571,9 @@ end
         end
         if not hide_ui then
           Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Settings", UI.CCOL.GREY)
-          Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 48, 8, UI.SCR.X, 16, "Profile "..UI.ProfileQuery.curopt, UI.CCOL.GREY)
-          Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 72, 8, UI.SCR.X, 16, bdma_label, UI.CCOL.GREY)
-          Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 96, 8, UI.SCR.X, 16, "DKWDRV: "..dkwdrv_label, UI.CCOL.GREY)
+          Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 48, 8, UI.SCR.X, 16, bdma_label, UI.CCOL.GREY)
+          Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 72, 8, UI.SCR.X, 16, "DKWDRV: "..dkwdrv_label, UI.CCOL.GREY)
+          Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 96, 8, UI.SCR.X, 16, "Profile "..UI.ProfileQuery.curopt, UI.CCOL.GREY)
           Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 144, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].DESC, UI.CCOL.GREY)
           Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 220, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].ELF, Color.new(128,128,128, 110))
         end
