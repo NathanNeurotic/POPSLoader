@@ -559,6 +559,12 @@ UI = {
             elseif IMG.BKG ~= nil then
               Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
             end
+          elseif scene == UI.SCENES.MPROFILE or scene == UI.SCENES.CREDITS then
+            if IMG.BG ~= nil then
+              Graphics.drawScaleImage(IMG.BG, 0, 0, UI.SCR.X, UI.SCR.Y)
+            elseif IMG.BKG ~= nil then
+              Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
+            end
           else
             if IMG.BKG ~= nil then
               Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
@@ -889,18 +895,24 @@ end
     BottomDraw = {
       Play = function ()
 	        Screen.clear(UI.SCR.BGCOL)
-	        -- Main menu uses BGM.png; all other scenes use BKG.png.
-	        if UI.CURSCENE == UI.SCENES.MMAIN then
-	          if IMG.BGM ~= nil then
-	            Graphics.drawScaleImage(IMG.BGM, 0, 0, UI.SCR.X, UI.SCR.Y)
-	          elseif IMG.BKG ~= nil then
-	            Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
-	          end
-	        else
-	          if IMG.BKG ~= nil then
-	            Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
-	          end
-	        end
+        -- Main menu uses BGM.png; settings/profile and credits use BG.png.
+        if UI.CURSCENE == UI.SCENES.MMAIN then
+          if IMG.BGM ~= nil then
+            Graphics.drawScaleImage(IMG.BGM, 0, 0, UI.SCR.X, UI.SCR.Y)
+          elseif IMG.BKG ~= nil then
+            Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
+          end
+        elseif UI.CURSCENE == UI.SCENES.MPROFILE or UI.CURSCENE == UI.SCENES.CREDITS then
+          if IMG.BG ~= nil then
+            Graphics.drawScaleImage(IMG.BG, 0, 0, UI.SCR.X, UI.SCR.Y)
+          elseif IMG.BKG ~= nil then
+            Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
+          end
+        else
+          if IMG.BKG ~= nil then
+            Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
+          end
+        end
         -- Removed opaque overlay box on non-main scenes (was masking background).
       end;
     };
