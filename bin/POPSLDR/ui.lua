@@ -925,6 +925,31 @@ end
       cancel_action = nil;
       triangle_action = nil;
       ignore_until_release = false;
+      ResolveElfPath = function (candidates)
+        if type(candidates) ~= "table" then
+          return nil
+        end
+        if type(doesFileExist) == "function" then
+          for _, path in ipairs(candidates) do
+            local okcall, exists = pcall(doesFileExist, path)
+            if okcall and exists == true then
+              return path
+            end
+          end
+        end
+        if type(System) == "table" and type(System.openFile) == "function" then
+          for _, path in ipairs(candidates) do
+            local okfd, fd = pcall(System.openFile, path, FREAD)
+            if okfd and type(fd) == "number" and fd >= 0 then
+              if type(System.closeFile) == "function" then
+                pcall(System.closeFile, fd)
+              end
+              return path
+            end
+          end
+        end
+        return nil
+      end;
       OpenExit = function ()
         LOG("Exit requested")
         UI.Modal.active = true
@@ -934,6 +959,17 @@ end
         UI.Modal.confirm_action = UI.Modal.ConfirmExit
         UI.Modal.cancel_action = UI.Modal.Close
         UI.Modal.triangle_action = UI.Modal.LaunchBootElf
+        UI.Modal.ignore_until_release = true
+      end;
+      OpenDKWDRV = function ()
+        LOG("DKWDRV requested")
+        UI.Modal.active = true
+        UI.Modal.title = "DKWDRV"
+        UI.Modal.body = "Leave and Launch DKWDRV?"
+        UI.Modal.options = {"Confirm", "Cancel"}
+        UI.Modal.confirm_action = UI.Modal.LaunchDKWDRV
+        UI.Modal.cancel_action = UI.Modal.Close
+        UI.Modal.triangle_action = nil
         UI.Modal.ignore_until_release = true
       end;
       OpenDeviceLock = function (reason, active, target)
@@ -974,28 +1010,7 @@ end
           "mc0:/BOOT/BOOT.ELF",
           "mc1:/BOOT/BOOT.ELF"
         }
-        local boot_path = nil
-        if type(doesFileExist) == "function" then
-          for _, path in ipairs(candidates) do
-            local okcall, exists = pcall(doesFileExist, path)
-            if okcall and exists == true then
-              boot_path = path
-              break
-            end
-          end
-        end
-        if boot_path == nil and type(System) == "table" and type(System.openFile) == "function" then
-          for _, path in ipairs(candidates) do
-            local okfd, fd = pcall(System.openFile, path, FREAD)
-            if okfd and type(fd) == "number" and fd >= 0 then
-              if type(System.closeFile) == "function" then
-                pcall(System.closeFile, fd)
-              end
-              boot_path = path
-              break
-            end
-          end
-        end
+        local boot_path = UI.Modal.ResolveElfPath(candidates)
         if boot_path == nil then
           if UI.Notif_queue ~= nil and type(UI.Notif_queue.add) == "function" then
             UI.Notif_queue.add("mc?:/BOOT/BOOT.ELF not found")
@@ -1005,6 +1020,25 @@ end
         if type(System) == "table" and type(System.loadELF) == "function" then
           UI.LAUNCHING = true
           System.loadELF(boot_path)
+        end
+      end;
+      LaunchDKWDRV = function ()
+        LOG("DKWDRV launch confirmed")
+        local candidates = {
+          "mc0:/PS1_DKWDRV/DKWDRV.ELF",
+          "mc1:/PS1_DKWDRV/DKWDRV.ELF"
+        }
+        local dkw_path = UI.Modal.ResolveElfPath(candidates)
+        if dkw_path == nil then
+          if UI.Notif_queue ~= nil and type(UI.Notif_queue.add) == "function" then
+            UI.Notif_queue.add("DKWDRV not found")
+          end
+          UI.Modal.Close()
+          return
+        end
+        if type(System) == "table" and type(System.loadELF) == "function" then
+          UI.LAUNCHING = true
+          System.loadELF(dkw_path, 1)
         end
       end;
       HandleInput = function ()
@@ -1665,7 +1699,7 @@ end
           elseif UI.MainMenu.OPT == 7 then
             UI.Notif_queue.add("Not Implemented Yet")
           elseif UI.MainMenu.OPT == 8 then
-            UI.Notif_queue.add("Not Implemented Yet")
+            UI.Modal.OpenDKWDRV()
           end --because we still dont support SMB
         end
       end
