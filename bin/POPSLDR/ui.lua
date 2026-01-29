@@ -268,6 +268,13 @@ UI = {
       end
       return false, "session", UI.device_lock
     end;
+    ShouldHideUI = function ()
+      if not UI.HideUI then return false end
+      if UI.CURSCENE == UI.SCENES.MPROFILE or UI.CURSCENE == UI.SCENES.CREDITS then
+        return false
+      end
+      return true
+    end;
     setDeviceLock = function (target)
       if UI.device_lock == DEVLOCK.NONE then
         UI.device_lock = target
@@ -1226,6 +1233,7 @@ end
       end;
       Play = function()
         local layout = UI.LAYOUT
+        local hide_ui = UI.ShouldHideUI()
         UI.GameList.MAXDRAW = layout.LIST_MAX
         local titles = {
           [UI.SCENES.GUSBFAT] = "USB FAT32",
@@ -1233,7 +1241,7 @@ end
           [UI.SCENES.GMX4SIO] = "MX4SIO"
         }
         local scene_title = titles[UI.CURSCENE]
-        if scene_title ~= nil and not UI.HideUI then
+        if scene_title ~= nil and not hide_ui then
           Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, scene_title, UI.CCOL.GREY)
         end
         local placeholders = {
@@ -1241,7 +1249,7 @@ end
         }
         local placeholder_title = placeholders[UI.CURSCENE]
         if placeholder_title ~= nil then
-          if not UI.HideUI then
+          if not hide_ui then
             Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, placeholder_title, UI.CCOL.GREY)
             Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID, 20, UI.SCR.X, 32, "Not implemented yet", UI.CCOL.YELLOW)
           end
@@ -1252,7 +1260,7 @@ end
           if UI.Pad.Events.CONFIRM then
             UI.Notif_queue.add("Not implemented yet")
           end
-          if not UI.HideUI then
+          if not hide_ui then
             local labels, order = UI.Footer.ResolveLegend({
               order = UI.Footer.order_with_start_select_square,
               order_id = "start_select_square",
@@ -1267,7 +1275,7 @@ end
           return
         end
         local ammount = #PLDR.GAMES
-        if UI.CURSCENE == UI.SCENES.GSMB and not UI.HideUI then
+        if UI.CURSCENE == UI.SCENES.GSMB and not hide_ui then
           local slots = PLDR.GetMMCESlots()
           if #slots > 1 then
             Font.ftPrint(SFONT, layout.LIST_X, layout.LIST_Y - 20, 0, UI.SCR.X, 16, "Slot: "..PLDR.MMCE.PREFIX, UI.CCOL.GREY)
@@ -1309,7 +1317,7 @@ end
             end
           end
         end
-        if ammount <= 0 and not UI.HideUI then
+        if ammount <= 0 and not hide_ui then
           Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, UI.SCR.Y_MID, 20, UI.SCR.X, 32, "No games found", UI.CCOL.YELLOW)
           Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID+1, UI.SCR.Y_MID+1, 20, UI.SCR.X, 32, "No games found", UI.CCOL.TRANSP_BLACK)
         end
@@ -1354,7 +1362,7 @@ end
         if ammount <= 0 then
           cross_label = UI.Footer.labels.cross_confirm
         end
-        if not UI.HideUI then
+        if not hide_ui then
           local labels, order = UI.Footer.ResolveLegend({
             order = UI.Footer.order_with_start_select_square,
             order_id = "start_select_square",
@@ -1374,6 +1382,7 @@ end
       Play = function ()
         local layout = UI.LAYOUT
         local profcnt = #PLDR.PROFILES
+        local hide_ui = UI.ShouldHideUI()
         if UI.ProfileQuery.bdma_mode == nil then
           if PLDR.GetBDMAMode ~= nil then
             UI.ProfileQuery.bdma_mode = PLDR.GetBDMAMode()
@@ -1386,7 +1395,7 @@ end
         if PLDR.GetBDMAModeText ~= nil then
           bdma_label = "BDMA: "..PLDR.GetBDMAModeText(bdma_mode)
         end
-        if not UI.HideUI then
+        if not hide_ui then
           Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Choose POPStarter Profile", UI.CCOL.GREY)
           Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 30, 8, UI.SCR.X, 16, "Profile "..UI.ProfileQuery.curopt, UI.CCOL.GREY)
           Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 55, 8, UI.SCR.X, 16, bdma_label, UI.CCOL.GREY)
@@ -1448,7 +1457,7 @@ end
             UI.SceneChange(UI.SCENES.MMAIN)
           end
         end
-        if not UI.HideUI then
+        if not hide_ui then
           local labels, order = UI.Footer.ResolveLegend({
             order = UI.Footer.order_with_start_select,
             order_id = "start_select",
@@ -1485,6 +1494,7 @@ end
       Play = function ()
         local layout = UI.LAYOUT
         local profcnt = #UI.MainMenu.opts
+        local hide_ui = UI.ShouldHideUI()
         local function ResolveActiveBDMALabel()
           if PLDR == nil or PLDR.GetBDMAModeText == nil then
             return "NONE"
@@ -1510,7 +1520,7 @@ end
           return "NONE"
         end
         local top_label_y = layout.STATUS_Y + 16
-        if not UI.HideUI then
+        if not hide_ui then
           Font.ftPrint(UI.FONT.TITLE, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "POPSLoader", UI.COLORS.TEXT_PRIMARY)
           local status_y = layout.STATUS_Y
           Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "ACTIVE BDMA: "..ResolveActiveBDMALabel(), UI.COLORS.TEXT_PRIMARY)
@@ -1660,10 +1670,10 @@ end
             DrawIcon(idx, x, y, tint)
           end
         end
-        if not UI.HideUI then
+        if not hide_ui then
           Font.ftPrint(UI.FONT.LABEL, Round(center_label_x), center_label_y, 8, UI.SCR.X, 16, UI.MainMenu.opts[center_label_idx], UI.COLORS.TEXT_PRIMARY)
         end
-        if not UI.HideUI then
+        if not hide_ui then
           local select_label = "Hide UI"
           local labels, order = UI.Footer.ResolveLegend({
             order = UI.Footer.order_with_start_select,
@@ -1952,8 +1962,9 @@ end
       Play = function ()
         local layout = UI.LAYOUT
         local currcol = UI.CCOL.GREY
+        local hide_ui = UI.ShouldHideUI()
 
-        if not UI.HideUI then
+        if not hide_ui then
           Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 20, UI.SCR.X, 40, "POPStarter Loader\n"..tostring(POPSLDR_VER or ""), currcol)
           Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 60, 20, UI.SCR.X, 40, "Coded By El_isra", currcol)
           Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 80, 20, UI.SCR.X, UI.SCR.Y, [[
