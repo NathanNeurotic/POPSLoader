@@ -209,9 +209,11 @@ PLDR = {
     hide_ui = false,
     show_cover = true,
     profile_index = nil,
-    bdma_last_label = nil
+    bdma_last_label = nil,
+    dkwdrv_path = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
   }
 }
+PLDR.DEFAULT_DKWDRV_PATH = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
 local BDMA_MODES = {
   {
     label = "USBFAT32(None)",
@@ -279,6 +281,9 @@ function PLDR.LoadSettings()
     if type(data.bdma_last_label) == "string" then
       PLDR.SETTINGS.bdma_last_label = data.bdma_last_label
     end
+    if type(data.dkwdrv_path) == "string" and data.dkwdrv_path ~= "" then
+      PLDR.SETTINGS.dkwdrv_path = data.dkwdrv_path
+    end
   end
   if PLDR.SETTINGS.bdma_mode == nil then
     PLDR.SETTINGS.bdma_mode = 1
@@ -288,6 +293,9 @@ function PLDR.LoadSettings()
   end
   if PLDR.SETTINGS.show_cover == nil then
     PLDR.SETTINGS.show_cover = true
+  end
+  if PLDR.SETTINGS.dkwdrv_path == nil or PLDR.SETTINGS.dkwdrv_path == "" then
+    PLDR.SETTINGS.dkwdrv_path = PLDR.DEFAULT_DKWDRV_PATH
   end
   local count = PLDR.GetBDMAModeCount()
   if PLDR.SETTINGS.bdma_mode < 1 or PLDR.SETTINGS.bdma_mode > count then
@@ -303,12 +311,14 @@ function PLDR.SaveSettings()
   local show_cover = PLDR.SETTINGS.show_cover ~= false
   local profile_index = tonumber(PLDR.SETTINGS.profile_index)
   local bdma_last_label = PLDR.SETTINGS.bdma_last_label
+  local dkwdrv_path = PLDR.SETTINGS.dkwdrv_path or PLDR.DEFAULT_DKWDRV_PATH
   local line = "return {\n"
     ..string.format("  bdma_mode = %d,\n", mode)
     ..string.format("  hide_ui = %s,\n", tostring(hide_ui))
     ..string.format("  show_cover = %s,\n", tostring(show_cover))
     ..string.format("  profile_index = %s,\n", profile_index ~= nil and tostring(profile_index) or "nil")
     ..string.format("  bdma_last_label = %s,\n", bdma_last_label ~= nil and string.format("%q", bdma_last_label) or "nil")
+    ..string.format("  dkwdrv_path = %s,\n", dkwdrv_path ~= nil and string.format("%q", dkwdrv_path) or "nil")
     .."}\n"
   System.writeFile(fd, line, #line)
   System.closeFile(fd)

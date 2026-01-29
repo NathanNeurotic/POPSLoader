@@ -423,6 +423,7 @@ UI = {
       order_with_start_r2 = {"triangle", "circle", "cross", "square", "start"};
       order_with_start_select = {"triangle", "circle", "cross", "select", "start"};
       order_with_start_select_square = {"triangle", "circle", "cross", "square", "select", "start"};
+      order_with_start_select_r2 = {"triangle", "circle", "cross", "R2", "select", "start"};
       labels = {
         triangle = "Credits",
         circle_main = "Exit",
@@ -432,7 +433,8 @@ UI = {
         cross_confirm = "Confirm",
         cross_enter = "Enter",
         cross_select = "Select",
-        cross_launch = "Launch"
+        cross_launch = "Launch",
+        R2 = "Edit DKWDRV"
       };
       legend_cache = {};
       LegendKey = function (order_id, circle_label, cross_label, start_label, square_label, select_label, r2_label)
@@ -471,6 +473,9 @@ UI = {
         end
         if select_label ~= nil then
           labels.select = select_label
+        end
+        if r2_label ~= nil then
+          labels.R2 = r2_label
         end
         UI.Footer.legend_cache[key] = {labels = labels, order = order}
         return labels, order
@@ -548,9 +553,149 @@ UI = {
         end
       end;
     };
+    TextEntry = {
+      active = false,
+      title = "",
+      value = "",
+      default_value = nil,
+      confirm_action = nil,
+      cancel_action = nil,
+      row = 1,
+      col = 1,
+      max_len = 128,
+      keys = {
+        {"a","b","c","d","e","f","g","h","i","j"},
+        {"k","l","m","n","o","p","q","r","s","t"},
+        {"u","v","w","x","y","z","0","1","2","3"},
+        {"4","5","6","7","8","9",":","/","_","-"},
+        {".","DEF","DEL","CLR","OK"}
+      },
+      Open = function (title, initial, confirm_action, cancel_action, default_value)
+        UI.TextEntry.active = true
+        UI.TextEntry.title = title or "Edit"
+        UI.TextEntry.value = initial or ""
+        UI.TextEntry.confirm_action = confirm_action
+        UI.TextEntry.cancel_action = cancel_action
+        UI.TextEntry.default_value = default_value
+        UI.TextEntry.row = 1
+        UI.TextEntry.col = 1
+      end;
+      Close = function ()
+        UI.TextEntry.active = false
+        UI.TextEntry.confirm_action = nil
+        UI.TextEntry.cancel_action = nil
+      end;
+      Append = function (char)
+        if char == nil then return end
+        if #UI.TextEntry.value >= UI.TextEntry.max_len then
+          return
+        end
+        UI.TextEntry.value = UI.TextEntry.value..char
+      end;
+      Backspace = function ()
+        if #UI.TextEntry.value > 0 then
+          UI.TextEntry.value = string.sub(UI.TextEntry.value, 1, -2)
+        end
+      end;
+      HandleInput = function ()
+        if not UI.TextEntry.active then return end
+        local keys = UI.TextEntry.keys
+        local row = UI.TextEntry.row
+        local col = UI.TextEntry.col
+        if UI.Pad.Events.NAV_UP then
+          row = row - 1
+        elseif UI.Pad.Events.NAV_DOWN then
+          row = row + 1
+        elseif UI.Pad.Events.NAV_LEFT then
+          col = col - 1
+        elseif UI.Pad.Events.NAV_RIGHT then
+          col = col + 1
+        end
+        if row < 1 then row = 1 end
+        if row > #keys then row = #keys end
+        local row_keys = keys[row]
+        if col < 1 then col = 1 end
+        if col > #row_keys then col = #row_keys end
+        UI.TextEntry.row = row
+        UI.TextEntry.col = col
+        if UI.Pad.Events.EXIT then
+          UI.TextEntry.Backspace()
+          return
+        end
+        if UI.Pad.Events.BACK then
+          if UI.TextEntry.cancel_action ~= nil then
+            UI.TextEntry.cancel_action()
+          end
+          UI.TextEntry.Close()
+          return
+        end
+        if UI.Pad.Events.START then
+          if UI.TextEntry.confirm_action ~= nil then
+            UI.TextEntry.confirm_action(UI.TextEntry.value)
+          end
+          UI.TextEntry.Close()
+          return
+        end
+        if UI.Pad.Events.CONFIRM then
+          local key = keys[row][col]
+          if key == "OK" then
+            if UI.TextEntry.confirm_action ~= nil then
+              UI.TextEntry.confirm_action(UI.TextEntry.value)
+            end
+            UI.TextEntry.Close()
+          elseif key == "DEL" then
+            UI.TextEntry.Backspace()
+          elseif key == "CLR" then
+            UI.TextEntry.value = ""
+          elseif key == "DEF" then
+            if UI.TextEntry.default_value ~= nil then
+              UI.TextEntry.value = UI.TextEntry.default_value
+            end
+          else
+            UI.TextEntry.Append(key)
+          end
+        end
+      end;
+      Draw = function ()
+        if not UI.TextEntry.active then return end
+        local box_w = 520
+        local box_h = 260
+        local box_x = UI.SCR.X_MID - (box_w / 2)
+        local box_y = UI.SCR.Y_MID - (box_h / 2)
+        Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, 120))
+        Graphics.drawRect(box_x, box_y, box_w, box_h, Color.new(0, 0, 0, 200))
+        Graphics.drawRect(box_x, box_y, box_w, 2, UI.CCOL.GREY)
+        Graphics.drawRect(box_x, box_y + box_h - 2, box_w, 2, UI.CCOL.GREY)
+        Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 10, 8, UI.SCR.X, 16, UI.TextEntry.title, UI.CCOL.YELLOW)
+        local value = UI.TextEntry.value
+        if #value > 58 then
+          value = "..."..string.sub(value, -55)
+        end
+        Font.ftPrint(SFONT, UI.SCR.X_MID, box_y + 36, 8, UI.SCR.X, 16, value, UI.CCOL.GREY)
+        local keys = UI.TextEntry.keys
+        local start_x = box_x + 24
+        local start_y = box_y + 70
+        local cell_w = 44
+        local cell_h = 28
+        for r = 1, #keys do
+          local row = keys[r]
+          for c = 1, #row do
+            local x = start_x + (c - 1) * cell_w
+            local y = start_y + (r - 1) * cell_h
+            if r == UI.TextEntry.row and c == UI.TextEntry.col then
+              Graphics.drawRect(x - 2, y - 2, cell_w - 4, cell_h - 4, UI.CCOL.GREY)
+            end
+            Font.ftPrint(SFONT, x + (cell_w / 2), y + 4, 8, cell_w, 16, row[c], UI.CCOL.GREY)
+          end
+        end
+        local hint = "X: Enter  O: Cancel  Start: OK  Triangle: Backspace"
+        Font.ftPrint(SFONT, UI.SCR.X_MID, box_y + box_h - 24, 8, UI.SCR.X, 16, hint, UI.CCOL.GREY)
+      end;
+    };
     --- wrapper for Screen.flip(), here you add UI draws that renders on top of everything (for example, error notifications)
     flip = function (notif)
       UI.Notif_queue.display()
+      UI.TextEntry.Draw()
       UI.Modal.Draw()
       if UI.Transition ~= nil then
         local alpha = UI.Transition.Update()
@@ -1039,10 +1184,15 @@ end
       end;
       LaunchDKWDRV = function ()
         LOG("DKWDRV launch confirmed")
-        local candidates = {
-          "mc0:/PS1_DKWDRV/DKWDRV.ELF",
-          "mc1:/PS1_DKWDRV/DKWDRV.ELF"
-        }
+        local configured = nil
+        local default_path = (PLDR ~= nil and PLDR.DEFAULT_DKWDRV_PATH) or "mc0:/PS1_DKWDRV/DKWDRV.ELF"
+        if PLDR ~= nil and PLDR.SETTINGS ~= nil then
+          configured = PLDR.SETTINGS.dkwdrv_path
+        end
+        if configured == nil or configured == "" then
+          configured = default_path
+        end
+        local candidates = { configured }
         local dkw_path = UI.Modal.ResolveElfPath(candidates)
         if dkw_path == nil then
           if UI.Notif_queue ~= nil and type(UI.Notif_queue.add) == "function" then
@@ -1198,6 +1348,13 @@ end
       end
     };
     HandleGlobalInput = function (allow_exit)
+      if UI.TextEntry ~= nil and UI.TextEntry.active then
+        UI.TextEntry.HandleInput()
+        for key, _ in pairs(UI.Pad.Events) do
+          UI.Pad.Events[key] = false
+        end
+        return true
+      end
       if UI.Modal.active then
         UI.Modal.HandleInput()
         for key, _ in pairs(UI.Pad.Events) do
@@ -1407,10 +1564,16 @@ end
         if PLDR.GetBDMAModeText ~= nil then
           bdma_label = "BDMA: "..PLDR.GetBDMAModeText(bdma_mode)
         end
+        local dkwdrv_path = (PLDR ~= nil and PLDR.SETTINGS ~= nil and PLDR.SETTINGS.dkwdrv_path) or (PLDR and PLDR.DEFAULT_DKWDRV_PATH) or "mc0:/PS1_DKWDRV/DKWDRV.ELF"
+        local dkwdrv_label = dkwdrv_path
+        if #dkwdrv_label > 52 then
+          dkwdrv_label = "..."..string.sub(dkwdrv_label, -49)
+        end
         if not hide_ui then
           Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Choose POPStarter Profile", UI.CCOL.GREY)
           Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 30, 8, UI.SCR.X, 16, "Profile "..UI.ProfileQuery.curopt, UI.CCOL.GREY)
           Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 55, 8, UI.SCR.X, 16, bdma_label, UI.CCOL.GREY)
+          Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 80, 8, UI.SCR.X, 16, "DKWDRV: "..dkwdrv_label, UI.CCOL.GREY)
           Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 140, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].DESC, UI.CCOL.GREY)
           Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 220, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].ELF, Color.new(128,128,128, 110))
         end
@@ -1446,10 +1609,30 @@ end
           if profile ~= nil then
             PLDR.POPSTARTER_PATH = profile.ELF
           end
+          if PLDR.SETTINGS ~= nil then
+            PLDR.SETTINGS.profile_index = UI.ProfileQuery.curopt
+            PLDR.SETTINGS.dkwdrv_path = PLDR.DEFAULT_DKWDRV_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF"
+          end
           if PLDR.GetBDMAMode ~= nil then
             UI.ProfileQuery.bdma_mode = PLDR.GetBDMAMode()
           end
+          if PLDR.SaveSettings ~= nil then
+            PLDR.SaveSettings()
+          end
           UI.Notif_queue.add("Profile defaults restored")
+        end
+        if UI.Pad.Events.R2 then
+          UI.TextEntry.Open("Edit DKWDRV Path", dkwdrv_path, function (new_value)
+            if PLDR ~= nil and PLDR.SETTINGS ~= nil then
+              PLDR.SETTINGS.dkwdrv_path = new_value
+              if PLDR.SaveSettings ~= nil then
+                PLDR.SaveSettings()
+              end
+              if UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
+                UI.Notif_queue.add("DKWDRV path saved")
+              end
+            end
+          end, nil, PLDR and PLDR.DEFAULT_DKWDRV_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
         end
         if UI.Pad.Events.CONFIRM then
           if PLDR.SetBDMAMode ~= nil then
@@ -1474,11 +1657,12 @@ end
         end
         if not hide_ui then
           local labels, order = UI.Footer.ResolveLegend({
-            order = UI.Footer.order_with_start_select,
-            order_id = "start_select",
+            order = UI.Footer.order_with_start_select_r2,
+            order_id = "start_select_r2",
             circle = UI.Footer.labels.circle_other,
             cross = UI.Footer.labels.cross_select,
             select = "Hide UI",
+            R2 = UI.Footer.labels.R2,
             start = UI.Footer.labels.start_reset
           })
           UI.Footer.Draw(labels, order)
