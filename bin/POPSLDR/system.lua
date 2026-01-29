@@ -301,7 +301,6 @@ function PLDR.SetBDMAMode(mode)
   if PLDR.SETTINGS.bdma_mode ~= value then
     PLDR.SETTINGS.bdma_mode = value
     LOG("BDMA mode set to: "..PLDR.GetBDMAModeText(value))
-    PLDR.SaveSettings()
   end
 end
 

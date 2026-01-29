@@ -925,6 +925,31 @@ end
       cancel_action = nil;
       triangle_action = nil;
       ignore_until_release = false;
+      ResolveElfPath = function (candidates)
+        if type(candidates) ~= "table" then
+          return nil
+        end
+        if type(doesFileExist) == "function" then
+          for _, path in ipairs(candidates) do
+            local okcall, exists = pcall(doesFileExist, path)
+            if okcall and exists == true then
+              return path
+            end
+          end
+        end
+        if type(System) == "table" and type(System.openFile) == "function" then
+          for _, path in ipairs(candidates) do
+            local okfd, fd = pcall(System.openFile, path, FREAD)
+            if okfd and type(fd) == "number" and fd >= 0 then
+              if type(System.closeFile) == "function" then
+                pcall(System.closeFile, fd)
+              end
+              return path
+            end
+          end
+        end
+        return nil
+      end;
       OpenExit = function ()
         LOG("Exit requested")
         UI.Modal.active = true
@@ -934,6 +959,17 @@ end
         UI.Modal.confirm_action = UI.Modal.ConfirmExit
         UI.Modal.cancel_action = UI.Modal.Close
         UI.Modal.triangle_action = UI.Modal.LaunchBootElf
+        UI.Modal.ignore_until_release = true
+      end;
+      OpenDKWDRV = function ()
+        LOG("DKWDRV requested")
+        UI.Modal.active = true
+        UI.Modal.title = "DKWDRV"
+        UI.Modal.body = "Leave and Launch DKWDRV?"
+        UI.Modal.options = {"Confirm", "Cancel"}
+        UI.Modal.confirm_action = UI.Modal.LaunchDKWDRV
+        UI.Modal.cancel_action = UI.Modal.Close
+        UI.Modal.triangle_action = nil
         UI.Modal.ignore_until_release = true
       end;
       OpenDeviceLock = function (reason, active, target)
@@ -974,28 +1010,7 @@ end
           "mc0:/BOOT/BOOT.ELF",
           "mc1:/BOOT/BOOT.ELF"
         }
-        local boot_path = nil
-        if type(doesFileExist) == "function" then
-          for _, path in ipairs(candidates) do
-            local okcall, exists = pcall(doesFileExist, path)
-            if okcall and exists == true then
-              boot_path = path
-              break
-            end
-          end
-        end
-        if boot_path == nil and type(System) == "table" and type(System.openFile) == "function" then
-          for _, path in ipairs(candidates) do
-            local okfd, fd = pcall(System.openFile, path, FREAD)
-            if okfd and type(fd) == "number" and fd >= 0 then
-              if type(System.closeFile) == "function" then
-                pcall(System.closeFile, fd)
-              end
-              boot_path = path
-              break
-            end
-          end
-        end
+        local boot_path = UI.Modal.ResolveElfPath(candidates)
         if boot_path == nil then
           if UI.Notif_queue ~= nil and type(UI.Notif_queue.add) == "function" then
             UI.Notif_queue.add("mc?:/BOOT/BOOT.ELF not found")
@@ -1005,6 +1020,25 @@ end
         if type(System) == "table" and type(System.loadELF) == "function" then
           UI.LAUNCHING = true
           System.loadELF(boot_path)
+        end
+      end;
+      LaunchDKWDRV = function ()
+        LOG("DKWDRV launch confirmed")
+        local candidates = {
+          "mc0:/PS1_DKWDRV/DKWDRV.ELF",
+          "mc1:/PS1_DKWDRV/DKWDRV.ELF"
+        }
+        local dkw_path = UI.Modal.ResolveElfPath(candidates)
+        if dkw_path == nil then
+          if UI.Notif_queue ~= nil and type(UI.Notif_queue.add) == "function" then
+            UI.Notif_queue.add("DKWDRV not found")
+          end
+          UI.Modal.Close()
+          return
+        end
+        if type(System) == "table" and type(System.loadELF) == "function" then
+          UI.LAUNCHING = true
+          System.loadELF(dkw_path, 1)
         end
       end;
       HandleInput = function ()
@@ -1263,7 +1297,10 @@ end
         end
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
-        if UI.Pad.Events.EXIT then UI.SceneChange(UI.SCENES.CREDITS) end
+        if UI.Pad.Events.EXIT then
+          UI.ProfileQuery.bdma_mode = nil
+          UI.SceneChange(UI.SCENES.CREDITS)
+        end
         if UI.Pad.Events.BACK then UI.SceneChange(UI.SCENES.MMAIN) end
         if UI.Pad.Events.NAV_DOWN then UI.GameList.CURR = CLAMP(UI.GameList.CURR+1, 1, ammount) end
         if UI.Pad.Events.NAV_RIGHT then UI.GameList.CURR = CLAMP(UI.GameList.CURR+UI.GameList.MAXDRAW, 1, ammount) end
@@ -1316,10 +1353,14 @@ end
       Play = function ()
         local layout = UI.LAYOUT
         local profcnt = #PLDR.PROFILES
-        local bdma_mode = 1
-        if PLDR.GetBDMAMode ~= nil then
-          bdma_mode = PLDR.GetBDMAMode()
+        if UI.ProfileQuery.bdma_mode == nil then
+          if PLDR.GetBDMAMode ~= nil then
+            UI.ProfileQuery.bdma_mode = PLDR.GetBDMAMode()
+          else
+            UI.ProfileQuery.bdma_mode = 1
+          end
         end
+        local bdma_mode = UI.ProfileQuery.bdma_mode
         local bdma_label = "BDMA: USBFAT32(None)"
         if PLDR.GetBDMAModeText ~= nil then
           bdma_label = "BDMA: "..PLDR.GetBDMAModeText(bdma_mode)
@@ -1331,7 +1372,10 @@ end
         Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 220, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].ELF, Color.new(128,128,128, 110))
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
-        if UI.Pad.Events.EXIT then UI.SceneChange(UI.SCENES.CREDITS) end
+        if UI.Pad.Events.EXIT then
+          UI.ProfileQuery.bdma_mode = nil
+          UI.SceneChange(UI.SCENES.CREDITS)
+        end
         if UI.Pad.Events.NAV_DOWN then UI.ProfileQuery.curopt = CLAMP(UI.ProfileQuery.curopt+1, 1, profcnt) end
         if UI.Pad.Events.NAV_UP then UI.ProfileQuery.curopt = CLAMP(UI.ProfileQuery.curopt-1, 1, profcnt) end
         if UI.Pad.Events.NAV_LEFT or UI.Pad.Events.NAV_RIGHT then
@@ -1339,20 +1383,18 @@ end
           if PLDR.GetBDMAModeCount ~= nil then
             count = PLDR.GetBDMAModeCount()
           end
-          local mode = 1
-          if PLDR.GetBDMAMode ~= nil then
-            mode = PLDR.GetBDMAMode()
-          end
+          local mode = UI.ProfileQuery.bdma_mode or 1
           if UI.Pad.Events.NAV_LEFT then
             mode = CYCLE_CLAMP(mode - 1, 1, count)
           else
             mode = CYCLE_CLAMP(mode + 1, 1, count)
           end
-          if PLDR.SetBDMAMode ~= nil then
-            PLDR.SetBDMAMode(mode)
-          end
+          UI.ProfileQuery.bdma_mode = mode
         end
-        if UI.Pad.Events.BACK then UI.SceneChange(UI.SCENES.MMAIN) end
+        if UI.Pad.Events.BACK then
+          UI.ProfileQuery.bdma_mode = nil
+          UI.SceneChange(UI.SCENES.MMAIN)
+        end
         if UI.Pad.Events.START then
           local default_profile = tonumber(PLDR.DEFAULT_PROFILE) or 1
           UI.ProfileQuery.curopt = CLAMP(default_profile, 1, profcnt)
@@ -1360,9 +1402,15 @@ end
           if profile ~= nil then
             PLDR.POPSTARTER_PATH = profile.ELF
           end
+          if PLDR.GetBDMAMode ~= nil then
+            UI.ProfileQuery.bdma_mode = PLDR.GetBDMAMode()
+          end
           UI.Notif_queue.add("Profile defaults restored")
         end
         if UI.Pad.Events.CONFIRM then
+          if PLDR.SetBDMAMode ~= nil then
+            PLDR.SetBDMAMode(UI.ProfileQuery.bdma_mode)
+          end
           if PLDR.ApplyBDMAMode ~= nil then
             PLDR.ApplyBDMAMode()
           end
@@ -1373,6 +1421,7 @@ end
             UI.Notif_queue.add("POPStarter ELF missing")
           else
             PLDR.POPSTARTER_PATH = PLDR.PROFILES[UI.ProfileQuery.curopt].ELF
+            UI.ProfileQuery.bdma_mode = nil
             UI.SceneChange(UI.SCENES.MMAIN)
           end
         end
@@ -1650,7 +1699,7 @@ end
           elseif UI.MainMenu.OPT == 7 then
             UI.Notif_queue.add("Not Implemented Yet")
           elseif UI.MainMenu.OPT == 8 then
-            UI.Notif_queue.add("Not Implemented Yet")
+            UI.Modal.OpenDKWDRV()
           end --because we still dont support SMB
         end
       end
