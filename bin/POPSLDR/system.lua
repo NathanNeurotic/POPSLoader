@@ -1666,8 +1666,8 @@ UI.WelcomeDraw.Play(initial_scene)
 if UI.Transition ~= nil then
   UI.Transition.allowSceneWrite = true
 end
-UI.CURSCENE = initial_scene
-UI.LASTSCENE = initial_scene
+UI.CURSCENE = UI.SCENES.MMAIN
+UI.LASTSCENE = UI.SCENES.MMAIN
 if UI.Transition ~= nil then
   UI.Transition.allowSceneWrite = false
 end
