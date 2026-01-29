@@ -1263,7 +1263,10 @@ end
         end
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
-        if UI.Pad.Events.EXIT then UI.SceneChange(UI.SCENES.CREDITS) end
+        if UI.Pad.Events.EXIT then
+          UI.ProfileQuery.bdma_mode = nil
+          UI.SceneChange(UI.SCENES.CREDITS)
+        end
         if UI.Pad.Events.BACK then UI.SceneChange(UI.SCENES.MMAIN) end
         if UI.Pad.Events.NAV_DOWN then UI.GameList.CURR = CLAMP(UI.GameList.CURR+1, 1, ammount) end
         if UI.Pad.Events.NAV_RIGHT then UI.GameList.CURR = CLAMP(UI.GameList.CURR+UI.GameList.MAXDRAW, 1, ammount) end
@@ -1316,10 +1319,14 @@ end
       Play = function ()
         local layout = UI.LAYOUT
         local profcnt = #PLDR.PROFILES
-        local bdma_mode = 1
-        if PLDR.GetBDMAMode ~= nil then
-          bdma_mode = PLDR.GetBDMAMode()
+        if UI.ProfileQuery.bdma_mode == nil then
+          if PLDR.GetBDMAMode ~= nil then
+            UI.ProfileQuery.bdma_mode = PLDR.GetBDMAMode()
+          else
+            UI.ProfileQuery.bdma_mode = 1
+          end
         end
+        local bdma_mode = UI.ProfileQuery.bdma_mode
         local bdma_label = "BDMA: USBFAT32(None)"
         if PLDR.GetBDMAModeText ~= nil then
           bdma_label = "BDMA: "..PLDR.GetBDMAModeText(bdma_mode)
@@ -1331,7 +1338,10 @@ end
         Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 220, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].ELF, Color.new(128,128,128, 110))
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
-        if UI.Pad.Events.EXIT then UI.SceneChange(UI.SCENES.CREDITS) end
+        if UI.Pad.Events.EXIT then
+          UI.ProfileQuery.bdma_mode = nil
+          UI.SceneChange(UI.SCENES.CREDITS)
+        end
         if UI.Pad.Events.NAV_DOWN then UI.ProfileQuery.curopt = CLAMP(UI.ProfileQuery.curopt+1, 1, profcnt) end
         if UI.Pad.Events.NAV_UP then UI.ProfileQuery.curopt = CLAMP(UI.ProfileQuery.curopt-1, 1, profcnt) end
         if UI.Pad.Events.NAV_LEFT or UI.Pad.Events.NAV_RIGHT then
@@ -1339,20 +1349,18 @@ end
           if PLDR.GetBDMAModeCount ~= nil then
             count = PLDR.GetBDMAModeCount()
           end
-          local mode = 1
-          if PLDR.GetBDMAMode ~= nil then
-            mode = PLDR.GetBDMAMode()
-          end
+          local mode = UI.ProfileQuery.bdma_mode or 1
           if UI.Pad.Events.NAV_LEFT then
             mode = CYCLE_CLAMP(mode - 1, 1, count)
           else
             mode = CYCLE_CLAMP(mode + 1, 1, count)
           end
-          if PLDR.SetBDMAMode ~= nil then
-            PLDR.SetBDMAMode(mode)
-          end
+          UI.ProfileQuery.bdma_mode = mode
         end
-        if UI.Pad.Events.BACK then UI.SceneChange(UI.SCENES.MMAIN) end
+        if UI.Pad.Events.BACK then
+          UI.ProfileQuery.bdma_mode = nil
+          UI.SceneChange(UI.SCENES.MMAIN)
+        end
         if UI.Pad.Events.START then
           local default_profile = tonumber(PLDR.DEFAULT_PROFILE) or 1
           UI.ProfileQuery.curopt = CLAMP(default_profile, 1, profcnt)
@@ -1360,9 +1368,15 @@ end
           if profile ~= nil then
             PLDR.POPSTARTER_PATH = profile.ELF
           end
+          if PLDR.GetBDMAMode ~= nil then
+            UI.ProfileQuery.bdma_mode = PLDR.GetBDMAMode()
+          end
           UI.Notif_queue.add("Profile defaults restored")
         end
         if UI.Pad.Events.CONFIRM then
+          if PLDR.SetBDMAMode ~= nil then
+            PLDR.SetBDMAMode(UI.ProfileQuery.bdma_mode)
+          end
           if PLDR.ApplyBDMAMode ~= nil then
             PLDR.ApplyBDMAMode()
           end
@@ -1373,6 +1387,7 @@ end
             UI.Notif_queue.add("POPStarter ELF missing")
           else
             PLDR.POPSTARTER_PATH = PLDR.PROFILES[UI.ProfileQuery.curopt].ELF
+            UI.ProfileQuery.bdma_mode = nil
             UI.SceneChange(UI.SCENES.MMAIN)
           end
         end
