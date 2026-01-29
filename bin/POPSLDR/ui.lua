@@ -1174,6 +1174,7 @@ end
       CURR = 1;
       STARTUP = 1;
       SHOW_COVER = true;
+      SQUARE_HELD = false;
       Reset = function ()
         UI.GameList.CURR = 1;
       end;
@@ -1269,8 +1270,16 @@ end
         if UI.Pad.Events.NAV_RIGHT then UI.GameList.CURR = CLAMP(UI.GameList.CURR+UI.GameList.MAXDRAW, 1, ammount) end
         if UI.Pad.Events.NAV_UP then UI.GameList.CURR = CLAMP(UI.GameList.CURR-1, 1, ammount) end
         if UI.Pad.Events.NAV_LEFT then UI.GameList.CURR = CLAMP(UI.GameList.CURR-UI.GameList.MAXDRAW, 1, ammount) end
-        if UI.Pad.Events.SQUARE then
+        local square_down = false
+        if UI.Pad.GPAD ~= nil and PAD_SQUARE ~= nil then
+          square_down = (UI.Pad.GPAD & PAD_SQUARE) ~= 0
+        end
+        if not square_down then
+          UI.GameList.SQUARE_HELD = false
+        end
+        if UI.Pad.Events.SQUARE and not UI.GameList.SQUARE_HELD then
           UI.GameList.SHOW_COVER = not UI.GameList.SHOW_COVER
+          UI.GameList.SQUARE_HELD = true
         end
         if UI.Pad.Events.CONFIRM then
           if ammount <= 0 then
