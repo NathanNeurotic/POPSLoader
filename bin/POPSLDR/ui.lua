@@ -1585,26 +1585,26 @@ end
             DrawCenteredIcon(left_icon, center_x - icon_offset, y)
             DrawCenteredIcon(right_icon, center_x + icon_offset, y)
           end
-          local info_y = layout.TITLE_Y + 36
+          local info_y = layout.TITLE_Y + 52
           local bdma_icons_y = info_y
           DrawIconPair("left", "right", bdma_icons_y, 36)
-          local bdma_y = bdma_icons_y + 18
+          local bdma_y = bdma_icons_y + 24
           Font.ftPrint(BFONT, UI.SCR.X_MID, bdma_y, 8, UI.SCR.X, 16, "BDMA MODE:", UI.CCOL.GREY)
-          local bdma_value_y = bdma_y + 16
+          local bdma_value_y = bdma_y + 18
           Font.ftPrint(BFONT, UI.SCR.X_MID, bdma_value_y, 8, UI.SCR.X, 16, bdma_label, UI.CCOL.GREY)
-          local dkwdrv_icon_y = bdma_value_y + 28
+          local dkwdrv_icon_y = bdma_value_y + 42
           DrawCenteredIcon(IMG.R2, UI.SCR.X_MID, dkwdrv_icon_y)
-          local dkwdrv_title_y = dkwdrv_icon_y + 18
+          local dkwdrv_title_y = dkwdrv_icon_y + 24
           Font.ftPrint(BFONT, UI.SCR.X_MID, dkwdrv_title_y, 8, UI.SCR.X, 16, "DKWDRV PATH:", UI.CCOL.GREY)
-          local dkwdrv_path_y = dkwdrv_title_y + 16
+          local dkwdrv_path_y = dkwdrv_title_y + 18
           Font.ftPrint(BFONT, UI.SCR.X_MID, dkwdrv_path_y, 8, UI.SCR.X, 16, dkwdrv_label, UI.CCOL.GREY)
-          local profile_icons_y = dkwdrv_path_y + 28
+          local profile_icons_y = dkwdrv_path_y + 42
           DrawIconPair("up", "down", profile_icons_y, 36)
-          local profile_title_y = profile_icons_y + 18
+          local profile_title_y = profile_icons_y + 24
           Font.ftPrint(BFONT, UI.SCR.X_MID, profile_title_y, 8, UI.SCR.X, 16, "POPStarter Mode:", UI.CCOL.GREY)
-          local profile_desc_y = profile_title_y + 16
+          local profile_desc_y = profile_title_y + 18
           Font.ftPrint(BFONT, UI.SCR.X_MID, profile_desc_y, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].DESC, UI.CCOL.GREY)
-          local profile_path_y = profile_desc_y + 16
+          local profile_path_y = profile_desc_y + 18
           Font.ftPrint(BFONT, UI.SCR.X_MID, profile_path_y, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].ELF, Color.new(128,128,128, 110))
         end
         Input_GetEvent()
