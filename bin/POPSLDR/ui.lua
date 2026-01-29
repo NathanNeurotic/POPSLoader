@@ -332,7 +332,7 @@ UI = {
     };
     LAYOUT = {
       SAFE = {L = 40, R = 40, T = 24, B = 28};
-      BTN_BAR_SAFE_BOTTOM = 64;
+      BTN_BAR_SAFE_BOTTOM = 56;
       ICON_SPACING = 120;
       LIST_ROW_H = 20;
       PREVIEW_W = 240;
@@ -1733,10 +1733,11 @@ end
         end
         local top_label_y = layout.STATUS_Y + 16
         if not hide_ui then
-          Font.ftPrint(UI.FONT.TITLE, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "POPSLOADER", UI.COLORS.TEXT_PRIMARY)
-          local status_y = layout.STATUS_Y - 4
+          local title_y = layout.TITLE_Y
+          local status_y = title_y + 16
+          top_label_y = status_y + 16
+          Font.ftPrint(UI.FONT.TITLE, UI.SCR.X_MID, title_y, 8, UI.SCR.X, 16, "POPSLOADER", UI.COLORS.TEXT_PRIMARY)
           Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "ACTIVE BDMA: "..ResolveActiveBDMALabel(), UI.COLORS.TEXT_PRIMARY)
-          top_label_y = layout.STATUS_Y + 16
           status_y = top_label_y + 12
           if UI.boot_device ~= nil and UI.boot_device ~= DEVLOCK.NONE then
             Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Booted from: "..UI.device_lock_name(UI.boot_device), UI.COLORS.TEXT_PRIMARY)
@@ -2176,20 +2177,19 @@ end
         local hide_ui = false
 
         if not hide_ui then
-          Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 20, UI.SCR.X, 40, "POPStarter Loader\n"..tostring(POPSLDR_VER or ""), currcol)
-          Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 60, 20, UI.SCR.X, 40, "Coded By El_isra", currcol)
+          Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 20, UI.SCR.X, 40, "POPSLoader\nfor POPStarter", currcol)
+          Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 60, 20, UI.SCR.X, 40, "Coded by El_isra", currcol)
           Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 80, 20, UI.SCR.X, UI.SCR.Y, [[
-Graphics by Berion
+Design by Berion
 Scripting by Nuno6573 and Ripto
+Based on Enceladus by Daniel Santos
 
-Based on Enceladus by Daniel santos
-
-Special thanks to:
-krHACKen: for making POPStarter
-uyjulian, fjtrujy, HWC and others for always helping me
+Special Thanks To:
+krHACKen for making POPStarter
+uyjulian, fjtrujy, HWC, and others for always helping me
 
 This program is free and open source
-if you bought it you\'ve been scammed
+If you bought it, you have been scammed
 ]], currcol)
           if UI.BUILD_INFO ~= nil and UI.BUILD_INFO.stamp ~= nil then
             local stamp_y = Round(layout.FOOTER_LABEL_Y - 18)
