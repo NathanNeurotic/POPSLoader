@@ -1560,9 +1560,9 @@ end
           end
         end
         local bdma_mode = UI.ProfileQuery.bdma_mode
-        local bdma_label = "BDMA: USBFAT32(None)"
+        local bdma_label = "BDMA Mode: USBFAT32(None)"
         if PLDR.GetBDMAModeText ~= nil then
-          bdma_label = "BDMA: "..PLDR.GetBDMAModeText(bdma_mode)
+          bdma_label = "BDMA Mode: "..PLDR.GetBDMAModeText(bdma_mode)
         end
         local dkwdrv_path = (PLDR ~= nil and PLDR.SETTINGS ~= nil and PLDR.SETTINGS.dkwdrv_path) or (PLDR and PLDR.DEFAULT_DKWDRV_PATH) or "mc0:/PS1_DKWDRV/DKWDRV.ELF"
         local dkwdrv_label = dkwdrv_path
@@ -1571,11 +1571,18 @@ end
         end
         if not hide_ui then
           Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Settings", UI.CCOL.GREY)
-          Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 48, 8, UI.SCR.X, 16, bdma_label, UI.CCOL.GREY)
-          Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 72, 8, UI.SCR.X, 16, "DKWDRV: "..dkwdrv_label, UI.CCOL.GREY)
-          Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 96, 8, UI.SCR.X, 16, "Profile "..UI.ProfileQuery.curopt, UI.CCOL.GREY)
-          Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 144, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].DESC, UI.CCOL.GREY)
-          Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 220, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].ELF, Color.new(128,128,128, 110))
+          local info_y = layout.TITLE_Y + 36
+          Font.ftPrint(BFONT, UI.SCR.X_MID, info_y, 8, UI.SCR.X, 16, bdma_label, UI.CCOL.GREY)
+          info_y = info_y + 24
+          Font.ftPrint(BFONT, UI.SCR.X_MID, info_y, 8, UI.SCR.X, 16, "DKWDRV Path:", UI.CCOL.GREY)
+          info_y = info_y + 16
+          Font.ftPrint(BFONT, UI.SCR.X_MID, info_y, 8, UI.SCR.X, 16, dkwdrv_label, UI.CCOL.GREY)
+          info_y = info_y + 24
+          Font.ftPrint(BFONT, UI.SCR.X_MID, info_y, 8, UI.SCR.X, 16, "Profile "..UI.ProfileQuery.curopt, UI.CCOL.GREY)
+          info_y = info_y + 16
+          Font.ftPrint(BFONT, UI.SCR.X_MID, info_y, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].DESC, UI.CCOL.GREY)
+          info_y = info_y + 16
+          Font.ftPrint(BFONT, UI.SCR.X_MID, info_y, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].ELF, Color.new(128,128,128, 110))
         end
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
