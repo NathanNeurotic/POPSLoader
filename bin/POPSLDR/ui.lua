@@ -302,8 +302,8 @@ UI = {
     COLORS = {
 	      TEXT_PRIMARY = Color.new(140, 200, 255, 128);
 	      -- PS2 menu-style blues for lists (selected/unselected)
-	      LIST_SELECTED = Color.new(120, 205, 255, 128);
-	      LIST_UNSELECTED = Color.new(45, 85, 155, 128);
+      LIST_SELECTED = Color.new(90, 175, 255, 128);
+      LIST_UNSELECTED = Color.new(20, 45, 100, 128);
     };
     FONT = {
       TITLE = Font.LoadBuiltinFont();
@@ -559,6 +559,12 @@ UI = {
             elseif IMG.BKG ~= nil then
               Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
             end
+          elseif scene == UI.SCENES.MPROFILE or scene == UI.SCENES.CREDITS then
+            if IMG.BG ~= nil then
+              Graphics.drawScaleImage(IMG.BG, 0, 0, UI.SCR.X, UI.SCR.Y)
+            elseif IMG.BKG ~= nil then
+              Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
+            end
           else
             if IMG.BKG ~= nil then
               Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
@@ -793,85 +799,89 @@ end
         end
 
         local fade_in_frames = 120
-        local fade_mid_frames = 30
-        local fade_out_frames = 30
+        local fade_out_frames = 60
 
-        -- Start boot sound once, and extend splash hold to cover it (configurable).
+        -- Start boot sound once (timing remains fixed to splash/credits durations).
         TryBootSound()
-        local boot_phase_seconds = UI.BOOT_SOUND.BOOT_PHASE_SECONDS or 8.0
-        if type(boot_phase_seconds) ~= "number" or boot_phase_seconds < 0 then
-          boot_phase_seconds = 8.0
+        local splash_seconds = 8.0
+        local credits_seconds = 7.0
+        local splash_frames = math.floor((splash_seconds * 60) + 0.5)
+        local credits_frames = math.floor((credits_seconds * 60) + 0.5)
+        if fade_in_frames > splash_frames then
+          fade_in_frames = splash_frames
         end
-        local credits_phase_seconds = UI.BOOT_SOUND.CREDITS_PHASE_SECONDS or 7.0
-        if type(credits_phase_seconds) ~= "number" or credits_phase_seconds < 0 then
-          credits_phase_seconds = 7.0
-        end
-        local boot_phase_frames = math.floor((boot_phase_seconds * 60) + 0.5)
-        local credits_phase_frames = math.floor((credits_phase_seconds * 60) + 0.5)
-        if fade_in_frames > boot_phase_frames then
-          fade_in_frames = boot_phase_frames
-        end
-        if fade_mid_frames > credits_phase_frames then
-          fade_mid_frames = credits_phase_frames
-        end
-        if fade_out_frames > credits_phase_frames - fade_mid_frames then
-          fade_out_frames = credits_phase_frames - fade_mid_frames
+        if fade_out_frames > splash_frames - fade_in_frames then
+          fade_out_frames = splash_frames - fade_in_frames
         end
         if fade_out_frames < 0 then fade_out_frames = 0 end
-        local boot_hold_frames = boot_phase_frames - fade_in_frames
-        if boot_hold_frames < 0 then boot_hold_frames = 0 end
-        local credits_hold_frames = credits_phase_frames - fade_mid_frames - fade_out_frames
-        if credits_hold_frames < 0 then credits_hold_frames = 0 end
-        local total_hold_frames = boot_hold_frames + credits_hold_frames + fade_in_frames + fade_mid_frames + fade_out_frames
-        if boot_sound_hold_frames ~= nil and boot_sound_hold_frames > total_hold_frames then
-          credits_hold_frames = credits_hold_frames + (boot_sound_hold_frames - total_hold_frames)
+        local splash_hold_frames = splash_frames - fade_in_frames - fade_out_frames
+        if splash_hold_frames < 0 then splash_hold_frames = 0 end
+        local credits_fade_in_frames = fade_in_frames
+        local credits_fade_out_frames = fade_out_frames
+        if credits_fade_in_frames > credits_frames then
+          credits_fade_in_frames = credits_frames
         end
+        if credits_fade_out_frames > credits_frames - credits_fade_in_frames then
+          credits_fade_out_frames = credits_frames - credits_fade_in_frames
+        end
+        if credits_fade_out_frames < 0 then credits_fade_out_frames = 0 end
+        local credits_hold_frames = credits_frames - credits_fade_in_frames - credits_fade_out_frames
+        if credits_hold_frames < 0 then credits_hold_frames = 0 end
+
+        -- Splash: slow fade in -> hold -> fade out to black.
         for i = 1, fade_in_frames do
           local alpha = Round(128 * (i / fade_in_frames))
           DrawBackground()
           DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
           DrawSplashText(alpha)
-          Screen.flip() -- we dont use UI.flip here because we dont want notifications on the welcome screen
+          Screen.flip()
         end
-        for _ = 1, boot_hold_frames do
+        for _ = 1, splash_hold_frames do
           DrawBackground()
           DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, 128)
           DrawSplashText(128)
           Screen.flip()
         end
-        if fade_mid_frames > 0 then
-          for i = 1, fade_mid_frames do
-            local alpha = Round(128 * (1 - (i / fade_mid_frames)))
-            DrawTargetScene(UI.SCENES.CREDITS)
-            DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
-            DrawSplashText(alpha)
+        if fade_out_frames > 0 then
+          for i = 1, fade_out_frames do
+            local alpha = Round(128 * (i / fade_out_frames))
+            DrawBackground()
+            DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, 128)
+            DrawSplashText(128)
+            Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
             Screen.flip()
           end
+        end
+
+        -- Credits: fade in from black -> hold -> fade out to black.
+        for i = 1, credits_fade_in_frames do
+          local alpha = Round(128 * (1 - (i / credits_fade_in_frames)))
+          DrawTargetScene(UI.SCENES.CREDITS)
+          Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
+          Screen.flip()
         end
         for _ = 1, credits_hold_frames do
           DrawTargetScene(UI.SCENES.CREDITS)
           Screen.flip()
         end
-        if fade_out_frames > 0 then
-          local fade_to_black_frames = math.floor(fade_out_frames / 2)
-          local fade_in_menu_frames = fade_out_frames - fade_to_black_frames
-          for i = 1, fade_to_black_frames do
-            local alpha = Round(128 * (i / fade_to_black_frames))
+        if credits_fade_out_frames > 0 then
+          for i = 1, credits_fade_out_frames do
+            local alpha = Round(128 * (i / credits_fade_out_frames))
             DrawTargetScene(UI.SCENES.CREDITS)
             Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
             Screen.flip()
           end
-          for i = 1, fade_in_menu_frames do
-            local alpha = Round(128 * (1 - (i / fade_in_menu_frames)))
-            DrawTargetScene(next_scene)
-            Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
-            Screen.flip()
-          end
-        else
-          DrawTargetScene(next_scene)
+        end
+
+        local final_scene = UI.SCENES.MMAIN
+        -- Main menu: fade in from black.
+        for i = 1, fade_in_frames do
+          local alpha = Round(128 * (1 - (i / fade_in_frames)))
+          DrawTargetScene(final_scene)
+          Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
           Screen.flip()
         end
-        DrawTargetScene(next_scene)
+        DrawTargetScene(final_scene)
         Screen.flip()
 
         -- Cleanup boot sound resource (safe if audio backend ignores it).
@@ -885,18 +895,24 @@ end
     BottomDraw = {
       Play = function ()
 	        Screen.clear(UI.SCR.BGCOL)
-	        -- Main menu uses BGM.png; all other scenes use BKG.png.
-	        if UI.CURSCENE == UI.SCENES.MMAIN then
-	          if IMG.BGM ~= nil then
-	            Graphics.drawScaleImage(IMG.BGM, 0, 0, UI.SCR.X, UI.SCR.Y)
-	          elseif IMG.BKG ~= nil then
-	            Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
-	          end
-	        else
-	          if IMG.BKG ~= nil then
-	            Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
-	          end
-	        end
+        -- Main menu uses BGM.png; settings/profile and credits use BG.png.
+        if UI.CURSCENE == UI.SCENES.MMAIN then
+          if IMG.BGM ~= nil then
+            Graphics.drawScaleImage(IMG.BGM, 0, 0, UI.SCR.X, UI.SCR.Y)
+          elseif IMG.BKG ~= nil then
+            Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
+          end
+        elseif UI.CURSCENE == UI.SCENES.MPROFILE or UI.CURSCENE == UI.SCENES.CREDITS then
+          if IMG.BG ~= nil then
+            Graphics.drawScaleImage(IMG.BG, 0, 0, UI.SCR.X, UI.SCR.Y)
+          elseif IMG.BKG ~= nil then
+            Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
+          end
+        else
+          if IMG.BKG ~= nil then
+            Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
+          end
+        end
         -- Removed opaque overlay box on non-main scenes (was masking background).
       end;
     };
@@ -1157,6 +1173,8 @@ end
       MAXDRAW = 18;
       CURR = 1;
       STARTUP = 1;
+      SHOW_COVER = true;
+      LAST_SQUARE_DOWN = false;
       Reset = function ()
         UI.GameList.CURR = 1;
       end;
@@ -1219,23 +1237,24 @@ end
 	          local c = (i == UI.GameList.CURR) and UI.COLORS.LIST_SELECTED or UI.COLORS.LIST_UNSELECTED
 	          Font.ftPrint(BFONT, layout.LIST_X, Y, 0, layout.LIST_W, 16, string.sub(display_name,1, -5), c)
         end
-        local cover_img = nil
-        local cover_missing = false
-        if UI.CoverCache ~= nil then
-          if ammount > 0 then
-            cover_img, cover_missing = UI.CoverCache:UpdateSelection(PLDR.GAMES[UI.GameList.CURR], PLDR.GAMEPATH, UI.CURSCENE)
-          else
-            UI.CoverCache:UpdateSelection(nil, PLDR.GAMEPATH, UI.CURSCENE)
+        if UI.GameList.SHOW_COVER then
+          local cover_img = nil
+          local cover_missing = false
+          if UI.CoverCache ~= nil then
+            if ammount > 0 then
+              cover_img, cover_missing = UI.CoverCache:UpdateSelection(PLDR.GAMES[UI.GameList.CURR], PLDR.GAMEPATH, UI.CURSCENE)
+            else
+              UI.CoverCache:UpdateSelection(nil, PLDR.GAMEPATH, UI.CURSCENE)
+            end
           end
-        end
-        if layout.PREVIEW_W > 0 then
-          Graphics.drawRect(layout.PREVIEW_X - 2, layout.PREVIEW_Y - 2, layout.PREVIEW_W + 4, layout.PREVIEW_H + 4, UI.CCOL.GREY)
-          local preview_img = cover_img
-          if preview_img == nil and cover_missing then
-            preview_img = IMG.MISSING
-          end
-          if preview_img ~= nil then
-            Graphics.drawScaleImage(preview_img, layout.PREVIEW_X, layout.PREVIEW_Y, layout.PREVIEW_W, layout.PREVIEW_H)
+          if layout.PREVIEW_W > 0 then
+            local preview_img = cover_img
+            if preview_img == nil and cover_missing then
+              preview_img = IMG.MISSING
+            end
+            if preview_img ~= nil then
+              Graphics.drawScaleImage(preview_img, layout.PREVIEW_X, layout.PREVIEW_Y, layout.PREVIEW_W, layout.PREVIEW_H)
+            end
           end
         end
         if ammount <= 0 then
@@ -1250,6 +1269,14 @@ end
         if UI.Pad.Events.NAV_RIGHT then UI.GameList.CURR = CLAMP(UI.GameList.CURR+UI.GameList.MAXDRAW, 1, ammount) end
         if UI.Pad.Events.NAV_UP then UI.GameList.CURR = CLAMP(UI.GameList.CURR-1, 1, ammount) end
         if UI.Pad.Events.NAV_LEFT then UI.GameList.CURR = CLAMP(UI.GameList.CURR-UI.GameList.MAXDRAW, 1, ammount) end
+        local square_down = false
+        if UI.Pad.GPAD ~= nil and PAD_SQUARE ~= nil then
+          square_down = (UI.Pad.GPAD & PAD_SQUARE) ~= 0
+        end
+        if square_down and not UI.GameList.LAST_SQUARE_DOWN then
+          UI.GameList.SHOW_COVER = not UI.GameList.SHOW_COVER
+        end
+        UI.GameList.LAST_SQUARE_DOWN = square_down
         if UI.Pad.Events.CONFIRM then
           if ammount <= 0 then
             UI.Notif_queue.add("No games found")
@@ -1289,8 +1316,17 @@ end
       Play = function ()
         local layout = UI.LAYOUT
         local profcnt = #PLDR.PROFILES
+        local bdma_mode = 1
+        if PLDR.GetBDMAMode ~= nil then
+          bdma_mode = PLDR.GetBDMAMode()
+        end
+        local bdma_label = "BDMA: USBFAT32(None)"
+        if PLDR.GetBDMAModeText ~= nil then
+          bdma_label = "BDMA: "..PLDR.GetBDMAModeText(bdma_mode)
+        end
         Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Choose POPStarter Profile", UI.CCOL.GREY)
         Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 30, 8, UI.SCR.X, 16, "Profile "..UI.ProfileQuery.curopt, UI.CCOL.GREY)
+        Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 55, 8, UI.SCR.X, 16, bdma_label, UI.CCOL.GREY)
         Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 140, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].DESC, UI.CCOL.GREY)
         Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 220, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].ELF, Color.new(128,128,128, 110))
         Input_GetEvent()
@@ -1298,6 +1334,24 @@ end
         if UI.Pad.Events.EXIT then UI.SceneChange(UI.SCENES.CREDITS) end
         if UI.Pad.Events.NAV_DOWN then UI.ProfileQuery.curopt = CLAMP(UI.ProfileQuery.curopt+1, 1, profcnt) end
         if UI.Pad.Events.NAV_UP then UI.ProfileQuery.curopt = CLAMP(UI.ProfileQuery.curopt-1, 1, profcnt) end
+        if UI.Pad.Events.NAV_LEFT or UI.Pad.Events.NAV_RIGHT then
+          local count = 4
+          if PLDR.GetBDMAModeCount ~= nil then
+            count = PLDR.GetBDMAModeCount()
+          end
+          local mode = 1
+          if PLDR.GetBDMAMode ~= nil then
+            mode = PLDR.GetBDMAMode()
+          end
+          if UI.Pad.Events.NAV_LEFT then
+            mode = CYCLE_CLAMP(mode - 1, 1, count)
+          else
+            mode = CYCLE_CLAMP(mode + 1, 1, count)
+          end
+          if PLDR.SetBDMAMode ~= nil then
+            PLDR.SetBDMAMode(mode)
+          end
+        end
         if UI.Pad.Events.BACK then UI.SceneChange(UI.SCENES.MMAIN) end
         if UI.Pad.Events.START then
           local default_profile = tonumber(PLDR.DEFAULT_PROFILE) or 1
@@ -1309,6 +1363,12 @@ end
           UI.Notif_queue.add("Profile defaults restored")
         end
         if UI.Pad.Events.CONFIRM then
+          if PLDR.ApplyBDMAMode ~= nil then
+            PLDR.ApplyBDMAMode()
+          end
+          if PLDR.SaveSettings ~= nil then
+            PLDR.SaveSettings()
+          end
           if not doesFileExist(PLDR.PROFILES[UI.ProfileQuery.curopt].ELF) then
             UI.Notif_queue.add("POPStarter ELF missing")
           else
@@ -1670,6 +1730,7 @@ end
         if (pressed & PAD_CROSS) ~= 0 then emit_action("CONFIRM") end
         if (pressed & PAD_CIRCLE) ~= 0 then emit_action("BACK") end
         if (pressed & PAD_TRIANGLE) ~= 0 then emit_action("EXIT") end
+        if (pressed & PAD_SQUARE) ~= 0 then emit_action("SQUARE") end
         if (pressed & PAD_START) ~= 0 then emit("START") end
         if (pressed & PAD_SELECT) ~= 0 then emit("SELECT") end
         if (pressed & PAD_R2) ~= 0 then emit_action("R2") end

@@ -22,6 +22,7 @@ local IMGS = {
   "HDD.png",
   "APAHDD.png",
   "BDHDD.png",
+  "BG.png",
   "BKG.png",
   "BGM.png",
   "DISC.png",

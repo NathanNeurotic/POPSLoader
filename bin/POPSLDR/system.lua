@@ -203,8 +203,123 @@ PLDR = {
     PREFIX = nil,
     SLOTS = {},
     INDEX = 1
+  },
+  SETTINGS = {
+    bdma_mode = 1
   }
 }
+local BDMA_MODES = {
+  {
+    label = "USBFAT32(None)",
+    ext = nil,
+    action = "delete"
+  },
+  {
+    label = "USBEXFAT",
+    ext = ".usbexfat",
+    action = "copy"
+  },
+  {
+    label = "MMCE",
+    ext = ".mmce",
+    action = "copy"
+  },
+  {
+    label = "MX4SIO",
+    ext = ".mx4sio",
+    action = "copy"
+  }
+}
+
+local function LoadSettingsTable(path)
+  if path == nil or path == "" then
+    return nil
+  end
+  if not doesFileExist(path) then
+    return nil
+  end
+  local loader, load_err = loadfile(path)
+  if loader == nil then
+    LOG("Settings load failed:", load_err)
+    return nil
+  end
+  local ok, data = pcall(loader)
+  if not ok then
+    LOG("Settings exec failed:", data)
+    return nil
+  end
+  if type(data) ~= "table" then
+    return nil
+  end
+  return data
+end
+
+function PLDR.LoadSettings()
+  local path = ResolveWritablePath("settings.lua")
+  local data = LoadSettingsTable(path)
+  if type(data) == "table" then
+    local mode = tonumber(data.bdma_mode)
+    if mode ~= nil then
+      PLDR.SETTINGS.bdma_mode = mode
+    end
+  end
+  if PLDR.SETTINGS.bdma_mode == nil then
+    PLDR.SETTINGS.bdma_mode = 1
+  end
+  local count = PLDR.GetBDMAModeCount()
+  if PLDR.SETTINGS.bdma_mode < 1 or PLDR.SETTINGS.bdma_mode > count then
+    PLDR.SETTINGS.bdma_mode = 1
+  end
+end
+
+function PLDR.SaveSettings()
+  local path = ResolveWritablePath("settings.lua")
+  local fd = System.openFile(path, FCREATE)
+  local mode = tonumber(PLDR.SETTINGS.bdma_mode) or 1
+  local line = string.format("return { bdma_mode = %d }\n", mode)
+  System.writeFile(fd, line, #line)
+  System.closeFile(fd)
+end
+
+function PLDR.GetBDMAModeCount()
+  return #BDMA_MODES
+end
+
+function PLDR.GetBDMAModeText(mode)
+  local entry = BDMA_MODES[mode or PLDR.SETTINGS.bdma_mode or 1]
+  if entry == nil then
+    entry = BDMA_MODES[1]
+  end
+  return entry.label
+end
+
+function PLDR.SetBDMAMode(mode)
+  local count = PLDR.GetBDMAModeCount()
+  local value = tonumber(mode) or 1
+  if value < 1 then value = 1 end
+  if value > count then value = count end
+  if PLDR.SETTINGS.bdma_mode ~= value then
+    PLDR.SETTINGS.bdma_mode = value
+    LOG("BDMA mode set to: "..PLDR.GetBDMAModeText(value))
+    PLDR.SaveSettings()
+  end
+end
+
+function PLDR.GetBDMAMode()
+  return tonumber(PLDR.SETTINGS.bdma_mode) or 1
+end
+
+local function StripSuffixCaseInsensitive(name, suffix)
+  if name == nil or suffix == nil then
+    return nil
+  end
+  local lower_name = string.lower(name)
+  local lower_suffix = string.lower(suffix)
+  if string.sub(lower_name, -#lower_suffix) ~= lower_suffix then
+    return nil
+  end
+  return string.sub(name, 1, #name - #suffix)
+end
 local function DetectMX4SIOPrefixHint()
   local mx_marker = JoinPath(APP_DIR_LOCAL, ".boot_mx4sio")
   if doesFileExist(mx_marker) then
@@ -238,6 +353,8 @@ if MMCE_SLOT0_READY ~= nil and MMCE_SLOT0_READY >= 0 then
     LOG("MMCE not found")
   end
 end
+
+PLDR.LoadSettings()
 
 require("pops_profiles")
 LOG("system.lua: before require('ui')")
@@ -371,6 +488,63 @@ local function RemoveDirectoryRecursive(path)
     end
   end
   return true
+end
+
+function PLDR.ApplyBDMAMode()
+  local mode = PLDR.GetBDMAMode()
+  local entry = BDMA_MODES[mode] or BDMA_MODES[1]
+  local label = entry.label
+  LOG("BDMA apply start: "..label)
+  local ok = true
+  if entry.action == "delete" then
+    LOG("BDMA delete: mc0:/POPSTARTER/")
+    if doesFolderExist("mc0:/POPSTARTER/") then
+      local rm_ok, rm_err = RemoveDirectoryRecursive("mc0:/POPSTARTER/")
+      if not rm_ok then
+        LOG("BDMA delete failed:", rm_err)
+        ok = false
+      end
+      local dir_ok, dir_err = pcall(System.removeDirectory, "mc0:/POPSTARTER/")
+      if not dir_ok then
+        LOG("BDMA remove dir failed:", dir_err)
+        ok = false
+      end
+    end
+  else
+    local dest_root = NormalizeDirPath("mc0:/POPSTARTER/")
+    if not EnsureDirectory(dest_root) then
+      ok = false
+    end
+    local source_root = NormalizeDirPath(APP_DIR_LOCAL)
+    local ok_list, entries = pcall(System.listDirectory, source_root)
+    if not ok_list or entries == nil then
+      LOG("BDMA list failed:", source_root, entries)
+      ok = false
+    else
+      local suffix = entry.ext
+      for i = 1, #entries do
+        local file = entries[i]
+        if file ~= nil and not file.directory and file.name ~= nil then
+          local dest_name = StripSuffixCaseInsensitive(file.name, suffix)
+          if dest_name ~= nil and dest_name ~= "" then
+            local src = JoinPath(source_root, file.name)
+            local dst = JoinPath(dest_root, dest_name)
+            LOG("BDMA copy: "..src.." -> "..dst)
+            local ok_copy, copy_err = pcall(System.copyFile, src, dst)
+            if not ok_copy then
+              LOG("BDMA copy failed:", copy_err)
+              ok = false
+            end
+          end
+        end
+      end
+    end
+  end
+  LOG("BDMA apply done: "..label.." ("..(ok and "ok" or "fail")..")")
+  if ok and UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
+    UI.Notif_queue.add("BDMA Applied")
+  end
+  return ok
 end
 
 function PLDR.ApplyPopstarterPack(pack_key)
@@ -1492,8 +1666,8 @@ UI.WelcomeDraw.Play(initial_scene)
 if UI.Transition ~= nil then
   UI.Transition.allowSceneWrite = true
 end
-UI.CURSCENE = initial_scene
-UI.LASTSCENE = initial_scene
+UI.CURSCENE = UI.SCENES.MMAIN
+UI.LASTSCENE = UI.SCENES.MMAIN
 if UI.Transition ~= nil then
   UI.Transition.allowSceneWrite = false
 end
