@@ -1577,15 +1577,15 @@ end
           info_y = info_y + 32
           local dkwdrv_title_y = info_y
           Font.ftPrint(BFONT, UI.SCR.X_MID, dkwdrv_title_y, 8, UI.SCR.X, 16, "DKWDRV Path:", UI.CCOL.GREY)
-          info_y = info_y + 16
-          Font.ftPrint(BFONT, UI.SCR.X_MID, info_y, 8, UI.SCR.X, 16, dkwdrv_label, UI.CCOL.GREY)
-          info_y = info_y + 32
+          local dkwdrv_path_y = info_y + 16
+          Font.ftPrint(BFONT, UI.SCR.X_MID, dkwdrv_path_y, 8, UI.SCR.X, 16, dkwdrv_label, UI.CCOL.GREY)
+          info_y = dkwdrv_path_y + 32
           local profile_y = info_y
           Font.ftPrint(BFONT, UI.SCR.X_MID, profile_y, 8, UI.SCR.X, 16, "Profile "..UI.ProfileQuery.curopt, UI.CCOL.GREY)
-          info_y = info_y + 16
-          Font.ftPrint(BFONT, UI.SCR.X_MID, info_y, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].DESC, UI.CCOL.GREY)
-          info_y = info_y + 16
-          Font.ftPrint(BFONT, UI.SCR.X_MID, info_y, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].ELF, Color.new(128,128,128, 110))
+          local profile_desc_y = profile_y + 16
+          Font.ftPrint(BFONT, UI.SCR.X_MID, profile_desc_y, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].DESC, UI.CCOL.GREY)
+          local profile_path_y = profile_desc_y + 16
+          Font.ftPrint(BFONT, UI.SCR.X_MID, profile_path_y, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].ELF, Color.new(128,128,128, 110))
           local function DrawSideIcon(icon, x, y)
             if icon == nil then return end
             local w = Graphics.getImageWidth(icon) or 0
@@ -1596,13 +1596,15 @@ end
             local left_icon = IMG[left_key]
             local right_icon = IMG[right_key]
             local center_x = UI.SCR.X_MID
-            local icon_offset = offset or 150
+            local icon_offset = offset or 160
             DrawSideIcon(left_icon, center_x - icon_offset, y)
             DrawSideIcon(right_icon, center_x + icon_offset, y)
           end
-          DrawSideIcons("left", "right", bdma_y, 150)
-          DrawSideIcons("R2", "R2", dkwdrv_title_y, 150)
-          DrawSideIcons("up", "down", profile_y, 150)
+          local dkwdrv_center_y = Round((dkwdrv_title_y + dkwdrv_path_y) / 2)
+          local profile_center_y = Round((profile_y + profile_path_y) / 2)
+          DrawSideIcons("left", "right", bdma_y, 160)
+          DrawSideIcons("R2", "R2", dkwdrv_center_y, 160)
+          DrawSideIcons("up", "down", profile_center_y, 160)
         end
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
