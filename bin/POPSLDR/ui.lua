@@ -330,7 +330,7 @@ UI = {
       PREVIEW_W = 240;
       PREVIEW_H = 240;
 	      -- Raised/tighter footer to avoid overscan and allow icon reflections to overlap slightly.
-	      CAROUSEL_Y_OFFSET = 18;
+	      CAROUSEL_Y_OFFSET = 22;
       FOOTER_LABEL_W = 140;
       FOOTER_ICON_Y_OFFSET = 24;
       FOOTER_LABEL_Y_OFFSET = 10;
