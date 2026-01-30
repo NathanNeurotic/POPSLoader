@@ -29,6 +29,7 @@ static bool LoadIrxCheckedBuffer(const char *name, unsigned char *irx, unsigned 
 #define BDM_QUERY_RPC_ID 0xB0D10B00
 #define BDM_QUERY_RPC_GET_LIST 0
 #define BDM_QUERY_MAX_DEVICES 32
+#define USBMASS_IOCTL_GET_DRIVERNAME 0x0001
 
 typedef struct bdm_dev_info {
 	char name[32];
@@ -236,6 +237,52 @@ static int lua_find_bdm_by_driver(lua_State *L)
 		}
 	}
 	lua_pushnil(L);
+	return 1;
+}
+
+enum BDM_DEVS {
+	DEV_UNKNOWN = -1,
+	DEV_USB = 0,
+	DEV_MX4SIO,
+	DEV_UDPBD,
+	DEV_ILINK,
+	DEV_HDD,
+	DEV_COUNT
+};
+
+const char* BDM_DEV_NAMES[DEV_COUNT] = {
+	"usb",
+	"sdc",
+	"udp",
+	"sd",
+	"ata"
+};
+
+static int lua_get_bdm_devtype(lua_State *L) {
+	if (lua_gettop(L) < 1) return luaL_error(L, "GetBDMDeviceType(int): wrong args");
+	char mass_path[10] = "mass0:/";
+	int idx = luaL_checkinteger(L, 1);
+	if (idx < 0 || idx > 9) {
+		lua_pushinteger(L, -1);
+		return 1;
+	}
+	mass_path[4] = '0' + idx;
+
+	char devid[5] = {0};
+	int dd = -1;
+	int fd = fileXioDopen(mass_path);
+	if (fd >= 0) {
+		int ret = fileXioIoctl(fd, USBMASS_IOCTL_GET_DRIVERNAME, NULL);
+		*(int*)devid = ret;
+		fileXioDclose(fd);
+		for (int i = 0; i < DEV_COUNT; i++) {
+			if (strncmp(devid, BDM_DEV_NAMES[i], 3) == 0) {
+				dd = i;
+				break;
+			}
+		}
+	}
+	lua_pushinteger(L, dd);
 	return 1;
 }
 
@@ -1028,6 +1075,7 @@ static const luaL_Reg System_functions[] = {
 	{"initMX4SIO",             lua_mx4sio_init},
 	{"bdmList",                lua_bdm_list},
 	{"findBDMByDriver",    lua_find_bdm_by_driver},
+	{"GetBDMDeviceType",   lua_get_bdm_devtype},
 	{0, 0}
 };
 
