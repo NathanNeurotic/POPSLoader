@@ -274,17 +274,25 @@ static int lua_get_bdm_devtype(lua_State *L) {
 
 	char devid[5] = {0};
 	int dd = -1;
+
+	DPRINTF("GetBDMDeviceType: checking %s\n", mass_path);
 	int fd = fileXioDopen(mass_path);
 	if (fd >= 0) {
-		int ret = fileXioIoctl(fd, USBMASS_IOCTL_GET_DRIVERNAME, NULL);
+		DPRINTF("GetBDMDeviceType: open success fd=%d, calling ioctl 0x%X\n", fd, USBMASS_IOCTL_GET_DRIVERNAME);
+		int ret = fileXioIoctl(fd, USBMASS_IOCTL_GET_DRIVERNAME, (void*)"");
+		DPRINTF("GetBDMDeviceType: ioctl returned 0x%X\n", ret);
 		*(int*)devid = ret;
 		fileXioDclose(fd);
+		DPRINTF("GetBDMDeviceType: closed fd, devid='%.4s'\n", devid);
 		for (int i = 0; i < DEV_COUNT; i++) {
 			if (strncmp(devid, BDM_DEV_NAMES[i], 3) == 0) {
 				dd = i;
+				DPRINTF("GetBDMDeviceType: matched type %d (%s)\n", dd, BDM_DEV_NAMES[i]);
 				break;
 			}
 		}
+	} else {
+		DPRINTF("GetBDMDeviceType: open failed for %s\n", mass_path);
 	}
 	lua_pushinteger(L, dd);
 	return 1;
