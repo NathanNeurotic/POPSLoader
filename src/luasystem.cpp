@@ -131,6 +131,7 @@ static bool ProbeDir(const char *path, int *out_ret)
 // - TODO: verify any slot or adapter placement requirements for MX4SIO in hardware docs.
 int mx4sio_init_and_get_root(const char *hint, char *out_root, size_t out_sz)
 {
+	(void)hint;
 	if (out_root == NULL || out_sz == 0) {
 		return -1;
 	}
@@ -141,47 +142,9 @@ int mx4sio_init_and_get_root(const char *hint, char *out_root, size_t out_sz)
 		}
 		mx4sio_loaded = true;
 	}
-	if (hint != NULL && hint[0] != '\0') {
-		int hint_ret = -1;
-		DPRINTF("MX4SIO probe hint %s\n", hint);
-		bool hint_ok = ProbeDir(hint, &hint_ret);
-		if (hint_ok) {
-			char pops_path[32];
-			snprintf(pops_path, sizeof(pops_path), "%sPOPS/", hint);
-			int pops_ret = -1;
-			bool pops_ok = ProbeDir(pops_path, &pops_ret);
-			DPRINTF("MX4SIO probe %s ret=%d ok=%d\n", pops_path, pops_ret, pops_ok);
-			if (pops_ok) {
-				DPRINTF("Chosen MX4SIO prefix: %s\n", hint);
-				snprintf(out_root, out_sz, "%s", hint);
-				return 0;
-			}
-		} else {
-			DPRINTF("MX4SIO probe %s ret=%d ok=%d\n", hint, hint_ret, hint_ok);
-		}
-	}
-	const char *candidates[] = {"mx4sio:/", "mx4sio0:/"};
-	for (size_t i = 0; i < sizeof(candidates) / sizeof(candidates[0]); ++i) {
-		const char *prefix = candidates[i];
-		int root_ret = -1;
-		DPRINTF("MX4SIO probe prefix %s\n", prefix);
-		bool root_ok = ProbeDir(prefix, &root_ret);
-		if (!root_ok) {
-			DPRINTF("MX4SIO probe %s ret=%d ok=%d\n", prefix, root_ret, root_ok);
-			continue;
-		}
-		char pops_path[32];
-		snprintf(pops_path, sizeof(pops_path), "%sPOPS/", prefix);
-		int pops_ret = -1;
-		bool pops_ok = ProbeDir(pops_path, &pops_ret);
-		DPRINTF("MX4SIO probe %s ret=%d ok=%d\n", pops_path, pops_ret, pops_ok);
-		if (pops_ok) {
-			DPRINTF("Chosen MX4SIO prefix: %s\n", prefix);
-			snprintf(out_root, out_sz, "%s", prefix);
-			return 0;
-		}
-	}
-	return -1;
+	// Do not probe 'mx4sio:' here. The module is a BDM driver and will attach to 'mass:'.
+	// We return success (0) so Lua can proceed to the BDM scan loop.
+	return 0;
 }
 
 static void PushBdmInfo(lua_State *L, const bdm_dev_info_t *info)

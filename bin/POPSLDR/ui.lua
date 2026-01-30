@@ -2053,13 +2053,19 @@ end
             if PLDR ~= nil and PLDR.MX4SIO ~= nil then
               hint = PLDR.MX4SIO.PREFIX_HINT
             end
-            -- First, load the module. initMX4SIO attempts legacy probe too, but we need the IRX loaded.
+            -- First, load the module. initMX4SIO loads mx4sio_bd.irx.
             LOG("Calling System.initMX4SIO")
             local ok_init, ready, root = pcall(System.initMX4SIO, hint)
             LOG("initMX4SIO result: ok="..tostring(ok_init).." ready="..tostring(ready).." root="..tostring(root))
 
-            -- If legacy probe failed, try BDM scan
-            if not ready or root == nil then
+            -- Give BDM time to enumerate the new device
+            if ok_init and ready then
+              LOG("Waiting for BDM enumeration...")
+              if System.sleep ~= nil then System.sleep(2) end
+            end
+
+            -- If legacy probe failed (which it will, as we removed it), try BDM scan
+            if not ready or root == nil or root == "" then
               if System.GetBDMDeviceType ~= nil then
                 LOG("Starting BDM scan (0-9)")
                 for i=0, 9 do
