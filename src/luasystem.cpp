@@ -48,6 +48,7 @@ typedef struct bdm_dev_list {
 static SifRpcClientData_t bdm_rpc_client;
 static bool bdm_rpc_bound = false;
 static bool bdm_rpc_loaded = false;
+static bool mx4sio_loaded = false;
 static bdm_dev_list_t bdm_rpc_buffer __attribute__((aligned(64)));
 
 static bool EnsureBdmQueryRpc()
@@ -134,8 +135,11 @@ int mx4sio_init_and_get_root(const char *hint, char *out_root, size_t out_sz)
 		return -1;
 	}
 	DPRINTF("MX4SIO SDK init start\n");
-	if (!LoadIrxCheckedBuffer("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL)) {
-		return -1;
+	if (!mx4sio_loaded) {
+		if (!LoadIrxCheckedBuffer("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL)) {
+			return -1;
+		}
+		mx4sio_loaded = true;
 	}
 	if (hint != NULL && hint[0] != '\0') {
 		int hint_ret = -1;

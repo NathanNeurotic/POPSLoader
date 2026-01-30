@@ -2054,19 +2054,27 @@ end
               hint = PLDR.MX4SIO.PREFIX_HINT
             end
             -- First, load the module. initMX4SIO attempts legacy probe too, but we need the IRX loaded.
+            LOG("Calling System.initMX4SIO")
             local ok_init, ready, root = pcall(System.initMX4SIO, hint)
+            LOG("initMX4SIO result: ok="..tostring(ok_init).." ready="..tostring(ready).." root="..tostring(root))
 
             -- If legacy probe failed, try BDM scan
             if not ready or root == nil then
               if System.GetBDMDeviceType ~= nil then
+                LOG("Starting BDM scan (0-9)")
                 for i=0, 9 do
+                  LOG("Scanning mass"..i)
                   local devtype = System.GetBDMDeviceType(i)
+                  LOG("mass"..i.." type="..tostring(devtype))
                   if devtype == 1 then -- 1 = MX4SIO (sdc)
                      root = "mass"..i..":/"
                      ready = true
+                     LOG("MX4SIO found at "..root)
                      break
                   end
                 end
+              else
+                LOG("System.GetBDMDeviceType is missing")
               end
             end
 
