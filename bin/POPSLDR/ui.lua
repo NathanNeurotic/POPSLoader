@@ -1238,21 +1238,38 @@ end
         System.exitToBrowser()
       end;
       LaunchBootElf = function ()
-        LOG("Exit triangle: BOOT.ELF requested")
+        LOG("Exit triangle: BOOT2/BOOT.ELF requested")
         local candidates = {
+          "mc0:/BOOT/BOOT2.ELF",
           "mc0:/BOOT/BOOT.ELF",
+          "mc1:/BOOT/BOOT2.ELF",
           "mc1:/BOOT/BOOT.ELF"
         }
         local boot_path = UI.Modal.ResolveElfPath(candidates)
         if boot_path == nil then
           if UI.Notif_queue ~= nil and type(UI.Notif_queue.add) == "function" then
-            UI.Notif_queue.add("mc?:/BOOT/BOOT.ELF not found")
+            UI.Notif_queue.add("mc?:/BOOT/BOOT2.ELF or BOOT.ELF not found")
           end
           return
         end
         if type(System) == "table" and type(System.loadELF) == "function" then
           UI.LAUNCHING = true
-          System.loadELF(boot_path)
+          UI.Modal.Close()
+          local ok, rc = pcall(System.loadELF, boot_path, 1, boot_path)
+          if ok ~= true then
+            UI.LAUNCHING = false
+            if UI.Notif_queue ~= nil and type(UI.Notif_queue.add) == "function" then
+              UI.Notif_queue.add("BOOT ELF launch error")
+            end
+            return
+          end
+          if type(rc) == "number" and rc < 0 then
+            UI.LAUNCHING = false
+            if UI.Notif_queue ~= nil and type(UI.Notif_queue.add) == "function" then
+              UI.Notif_queue.add(("BOOT ELF launch failed: %d"):format(rc))
+            end
+            return
+          end
         end
       end;
       LaunchDKWDRV = function ()
