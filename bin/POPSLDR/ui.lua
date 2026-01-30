@@ -1276,7 +1276,21 @@ end
         end
         if type(System) == "table" and type(System.loadELF) == "function" then
           UI.LAUNCHING = true
-          System.loadELF(dkw_path, 1)
+
+          -- Important: Some environments return from loadELF on failure, leaving the UI black
+          -- because UI.LAUNCHING stays true. Also, using an extra argv forces the ExecPS2 path
+          -- in the C binding, which tends to be more robust for certain homebrew.
+          local ok, rc = pcall(System.loadELF, dkw_path, 1, dkw_path)
+          if ok and rc == nil then
+            return
+          end
+          if (not ok) or (type(rc) == "number" and rc < 0) then
+            UI.LAUNCHING = false
+            if UI.Notif_queue ~= nil and type(UI.Notif_queue.add) == "function" then
+              UI.Notif_queue.add("DKWDRV launch failed"..(type(rc) == "number" and (": "..tostring(rc)) or ""))
+            end
+            UI.Modal.Close()
+          end
         end
       end;
       HandleInput = function ()
