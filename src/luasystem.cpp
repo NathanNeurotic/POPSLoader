@@ -986,6 +986,7 @@ static int lua_getMassDriverName(lua_State *L)
 		lua_pushnil(L);
 		return 1;
 	}
+
 	char mass_path[16];
 	snprintf(mass_path, sizeof(mass_path), "mass%d:/", idx);
 
@@ -994,22 +995,25 @@ static int lua_getMassDriverName(lua_State *L)
 		lua_pushnil(L);
 		return 1;
 	}
-	char devid[5];
+
+	char devid[8];
 	memset(devid, 0, sizeof(devid));
+
 	int *intptr_ctl = (int *)devid;
-	int rc = fileXioIoctl(dd, USBMASS_IOCTL_GET_DRIVERNAME, (void *)"");
+	int rc = fileXioIoctl(dd, USBMASS_IOCTL_GET_DRIVERNAME, (void*)"");
 	*intptr_ctl = rc;
 	fileXioDclose(dd);
 
-	if (rc < 0 || devid[0] == ' ') {
+	if (rc < 0 || devid[0] == '\0') {
 		lua_pushnil(L);
 		return 1;
 	}
+
 	lua_pushstring(L, devid);
 	return 1;
 }
 
-(lua_State *L)
+static int lua_mx4sio_init(lua_State *L)
 {
 	const char *hint = NULL;
 	int argc = lua_gettop(L);
@@ -1061,8 +1065,8 @@ static const luaL_Reg System_functions[] = {
 	{"getAppDir",                 lua_getAppDir},
 	{"resolveAsset",           lua_resolveAsset},
 	{"resolveAssetType",   lua_resolveAssetType},
+	{"getMassDriverName",        lua_getMassDriverName},
 	{"initMX4SIO",             lua_mx4sio_init},
-	{"getMassDriverName",     lua_getMassDriverName},
 	{"bdmList",                lua_bdm_list},
 	{"findBDMByDriver",    lua_find_bdm_by_driver},
 	{0, 0}
