@@ -130,6 +130,21 @@ local function DetectBootDevice()
     return "MX4SIO", boot_path, prefix
   end
   if string.match(prefix, "^mass%d*$") then
+    local idx = tonumber(string.match(prefix, "^mass(%d+)$")) or 0
+    local driver = nil
+    if System ~= nil and System.getMassDriverName ~= nil then
+      local ok, name = pcall(System.getMassDriverName, idx)
+      if ok then
+        driver = name
+      end
+    end
+    if driver == "sdc" then
+      return "MX4SIO", boot_path, prefix
+    end
+    if driver == "usb" then
+      return "USB", boot_path, prefix
+    end
+    -- Legacy fallback (marker-based). Prefer IOCTL above.
     local mx_marker = JoinPath(APP_DIR_LOCAL, ".boot_mx4sio")
     local usb_marker = JoinPath(APP_DIR_LOCAL, ".boot_usb")
     if doesFileExist(mx_marker) then
@@ -196,7 +211,8 @@ PLDR = {
   MX4SIO = {
     READY = false,
     ROOT = nil,
-    PREFIX_HINT = nil
+    PREFIX_HINT = nil,
+    MASSINDX = nil
   },
   MMCE = {
     PROBED = false,
@@ -213,6 +229,56 @@ PLDR = {
     dkwdrv_path = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
   }
 }
+
+-- Mass backend detection via USBMASS_IOCTL_GET_DRIVERNAME (requires fileXio + ps2sdk usbhdfsd-common.h support).
+-- Returns a short driver code like: "usb" (USB), "sdc" (MX4SIO SD), "udp" (UDPBD), "sd" (iLink SD), "ata" (HDD).
+function PLDR.GetMassDriverName(index)
+  if System == nil or System.getMassDriverName == nil then
+    return nil
+  end
+  local ok, name = pcall(System.getMassDriverName, index)
+  if not ok then
+    return nil
+  end
+  if type(name) ~= "string" or name == "" then
+    return nil
+  end
+  return name
+end
+
+function PLDR.FindMassByDriver(driver, max_index)
+  local want = type(driver) == "string" and driver or nil
+  if want == nil then
+    return nil
+  end
+  local max = tonumber(max_index) or 4
+  if max < 0 then max = 0 end
+  if max > 9 then max = 9 end
+  for i = 0, max do
+    local name = PLDR.GetMassDriverName(i)
+    if name == want then
+      return i
+    end
+  end
+  return nil
+end
+
+function PLDR.DetectMassBackends()
+  -- Default behavior: keep existing MASSINDX unless we can positively detect a better one.
+  local usb = PLDR.FindMassByDriver("usb", 4)
+  if usb ~= nil then
+    PLDR.USB.MASSINDX = usb
+  end
+  local mx = PLDR.FindMassByDriver("sdc", 4)
+  if mx ~= nil then
+    PLDR.MX4SIO.MASSINDX = mx
+  else
+    PLDR.MX4SIO.MASSINDX = nil
+  end
+end
+
+-- Run detection once during boot.
+PLDR.DetectMassBackends()
 PLDR.DEFAULT_DKWDRV_PATH = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
 local BDMA_MODES = {
   {

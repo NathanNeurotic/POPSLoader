@@ -2071,58 +2071,76 @@ end
               UI.SceneChange(UI.SCENES.GMMCE)
             end
           elseif UI.MainMenu.OPT == 2 then
-            -- MX4SIO is intentionally disabled for this release to avoid incomplete behavior/crashes.
-            -- Keeping the original implementation below for later re-enable.
-            UI.Notif_queue.add("Not Implemented Yet")
-            if false then
-              local can_enter, reason, lock = UI.canEnterDevice(DEVLOCK.MX4SIO)
-              if not can_enter then
-                UI.Notif_queue.add("Device locked to "..UI.device_lock_name(lock))
-                return
-              end
-              if System == nil or System.initMX4SIO == nil then
-                UI.Notif_queue.add("MX4SIO init unavailable")
-                return
-              end
-              local hint = nil
-              if PLDR ~= nil and PLDR.MX4SIO ~= nil then
-                hint = PLDR.MX4SIO.PREFIX_HINT
-              end
-              local ok_init, ready, root = pcall(System.initMX4SIO, hint)
-              if not ok_init then
-                UI.Notif_queue.add("MX4SIO init error")
-                if PLDR ~= nil and PLDR.MX4SIO ~= nil then
-                  PLDR.MX4SIO.READY = false
-                  PLDR.MX4SIO.ROOT = nil
-                end
-                return
-              end
-              if not ready or root == nil then
-                UI.Notif_queue.add("No MX4SIO device found (POPS/ missing)")
-                if PLDR ~= nil and PLDR.MX4SIO ~= nil then
-                  PLDR.MX4SIO.READY = false
-                  PLDR.MX4SIO.ROOT = nil
-                end
-                return
-              end
-              if type(EnsureTrailingSlash) == "function" then
-                root = EnsureTrailingSlash(root)
-              elseif string.sub(root, -1) ~= "/" then
-                root = root.."/"
-              end
+            local can_enter, reason, lock = UI.canEnterDevice(DEVLOCK.MX4SIO)
+            if not can_enter then
+              UI.Notif_queue.add("Device locked to "..UI.device_lock_name(lock))
+              return
+            end
+
+            -- Prefer IOCTL-based backend detection (massX drivername == "sdc") to avoid USB/MX4SIO cross-page confusion.
+            local mx_mass = nil
+            if PLDR ~= nil and type(PLDR.FindMassByDriver) == "function" then
+              mx_mass = PLDR.FindMassByDriver("sdc", 4)
+            end
+            if mx_mass ~= nil then
               if PLDR ~= nil and PLDR.MX4SIO ~= nil then
                 PLDR.MX4SIO.READY = true
-                PLDR.MX4SIO.ROOT = root
+                PLDR.MX4SIO.ROOT = "mass"..tostring(mx_mass)..":/"
+                PLDR.MX4SIO.MASSINDX = mx_mass
               end
               PLDR.CleanupGameList()
-              local game_root = root.."POPS/"
-              if type(JoinPath) == "function" then
-                game_root = JoinPath(root, "POPS/")
-              end
-              PLDR.GetPS1GameLists(game_root, true)
+              PLDR.GetPS1GameLists("mass"..tostring(mx_mass)..":/POPS/", true)
               UI.setDeviceLock(DEVLOCK.MX4SIO)
               UI.SceneChange(UI.SCENES.GMX4SIO)
+              return
             end
+
+            -- Fallback: try the PS2SDK mx4sio: prefix initializer if present.
+            if System == nil or System.initMX4SIO == nil then
+              UI.Notif_queue.add("No MX4SIO device found")
+              return
+            end
+            local hint = nil
+            if PLDR ~= nil and PLDR.MX4SIO ~= nil then
+              hint = PLDR.MX4SIO.PREFIX_HINT
+            end
+            local ok_init, ready, root = pcall(System.initMX4SIO, hint)
+            if not ok_init then
+              UI.Notif_queue.add("MX4SIO init error")
+              if PLDR ~= nil and PLDR.MX4SIO ~= nil then
+                PLDR.MX4SIO.READY = false
+                PLDR.MX4SIO.ROOT = nil
+                PLDR.MX4SIO.MASSINDX = nil
+              end
+              return
+            end
+            if not ready or root == nil then
+              UI.Notif_queue.add("No MX4SIO device found (POPS/ missing)")
+              if PLDR ~= nil and PLDR.MX4SIO ~= nil then
+                PLDR.MX4SIO.READY = false
+                PLDR.MX4SIO.ROOT = nil
+                PLDR.MX4SIO.MASSINDX = nil
+              end
+              return
+            end
+            if type(EnsureTrailingSlash) == "function" then
+              root = EnsureTrailingSlash(root)
+            elseif string.sub(root, -1) ~= "/" then
+              root = root.."/"
+            end
+            if PLDR ~= nil and PLDR.MX4SIO ~= nil then
+              PLDR.MX4SIO.READY = true
+              PLDR.MX4SIO.ROOT = root
+              PLDR.MX4SIO.MASSINDX = nil
+            end
+            PLDR.CleanupGameList()
+            local game_root = root.."POPS/"
+            if type(JoinPath) == "function" then
+              game_root = JoinPath(root, "POPS/")
+            end
+            PLDR.GetPS1GameLists(game_root, true)
+            UI.setDeviceLock(DEVLOCK.MX4SIO)
+            UI.SceneChange(UI.SCENES.GMX4SIO)
           elseif UI.MainMenu.OPT == 3 then
             UI.Notif_queue.add("Not Implemented Yet")
           elseif UI.MainMenu.OPT == 4 then
