@@ -10,52 +10,45 @@ POPSLoader was created by [El_isra](https://www.github.com/israpps), and this re
 
 > **Project lineage**: This project is derived from the [Enceladus](https://github.com/DanielSant0s/Enceladus) Lua environment and retains its GPLv3 licensing.
 
-## Documentation
-- [AGENTS.md](AGENTS.md)
-- [DEVELOPMENT.md](DEVELOPMENT.md)
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-- [docs/RUNTIME_LAYOUT.md](docs/RUNTIME_LAYOUT.md)
-- [docs/LAUNCH_PIPELINE.md](docs/LAUNCH_PIPELINE.md) (canonical launch behavior + device rules)
-- [docs/DEBUGGING.md](docs/DEBUGGING.md)
-- [docs/DOC_AUDIT.md](docs/DOC_AUDIT.md)
+## Installation & Usage
 
-## Status / Roadmap
-- No subfolder dependencies (assets load from ELF directory first).
-- Legacy `POPSLDR/` layout kept as fallback.
+**Recommended Layout (Flat)**
+Place `POPSLOADER.ELF`, `POPSTARTER.ELF`, and all runtime assets (scripts, images, IRX modules) in the **same directory** on your device (USB, MMCE, or HDD). No subfolders are required.
 
-## Usage
-Place `POPSLOADER.ELF`, `POPSTARTER.ELF`, Lua scripts, images, and optional IRX modules in the same directory (no required subdirectories).  
-- `system.lua`, `ui.lua`, `images.lua`, `pops_profiles.lua`, `PATCH_5.BIN`  
-- UI images (`*.png`) and optional external IRX modules (`*.irx`)  
-Legacy folders (`POPSLDR/`, `IMG/`, `IRX/`) are fallback-only.  
-Profiles can override the PopStarter path if needed.  
-See [docs/RUNTIME_LAYOUT.md](docs/RUNTIME_LAYOUT.md) for layout details and compatibility notes.
+Example contents of your folder:
+- `POPSLOADER.ELF`
+- `POPSTARTER.ELF` (Rename your POPStarter binary to this)
+- `system.lua`, `ui.lua`, `images.lua`, `pops_profiles.lua`
+- `PATCH_5.BIN` (Optional, for IGR texture replacement)
+- `*.png` (UI images)
+- `*.irx` (External modules)
 
-## Launch behavior (canonical)
-Launch behavior, device rules, and POPStarter handoff are documented in [docs/LAUNCH_PIPELINE.md](docs/LAUNCH_PIPELINE.md). This repo does **not** contain POPStarter’s argument parsing, so POPStarter’s argv index must be verified in POPStarter’s own sources or documentation.
+*Legacy folders (`POPSLDR/`, `IMG/`, `IRX/`) are supported as a fallback but are not required.*
 
-### Device pages
-- The SMB slot represents MMCE (no SMB networking support); `SMB.png` is reused as the icon.  
-- MMCE auto-detects `mmce0:/` and `mmce1:/`, with module load order: `iomanX` → `fileXio` → `mmceman`.  
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for implementation details.
+### Features
+- **Broad Device Support**: USB Mass Storage, MMCE (multimedia card emulator), HDD (internal hard drive), and MX4SIO.
+- **MMCE Support**: Native detection of `mmce0:/` and `mmce1:/`. The SMB slot in the UI is reused for MMCE.
+- **Flat Architecture**: Simplifies installation by keeping everything in one folder.
 
 ### Controls
-- Triangle: Exit to OSDSYS (with confirmation).
+- **Triangle**: Exit to OSDSYS (with confirmation).
+- **Cross/Circle**: Select/Confirm (depending on region settings).
 
 ### Tips
-- (USB Only) if you want POPStarter IGR to go back to POPSLoader automatically, copy `POPSLOADER.ELF` renamed as `BOOT.ELF` (legacy `POPSLDR/` layout is still supported if you use it)
-- you can replace the POPStarter IGR textures with custom ones that looks like stock POPSLoader UI by pasting the `PATCH_5.BIN` found inside the `POPSLDR/` into the `POPS/` folder
+- **USB Users**: To have POPStarter IGR (In-Game Reset) return automatically to POPSLoader, rename `POPSLOADER.ELF` to `BOOT.ELF`.
+- **Custom UI**: You can replace POPStarter IGR textures with POPSLoader-themed ones by placing `PATCH_5.BIN` (found in the release) into your `POPS/` folder.
 
-## APP_DIR examples (expected)
-These are derived from the startup path parsing logic and used for asset resolution order (APP_DIR first, legacy fallback second).  
-- `mass:/POPSLOADER.ELF` → `APP_DIR = mass:/`  
-- `mc0:/APPS/POPSLOADER.ELF` → `APP_DIR = mc0:/APPS/`  
-- `mmce0:/APPS/POPSLOADER.ELF` → `APP_DIR = mmce0:/APPS/`  
+## Documentation
+For developers and advanced users:
+- [AGENTS.md](AGENTS.md) - Agent guidance and repository map.
+- [DEVELOPMENT.md](DEVELOPMENT.md) - Build instructions and developer notes.
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - Internal architecture and flow.
+- [docs/RUNTIME_LAYOUT.md](docs/RUNTIME_LAYOUT.md) - Detailed asset resolution rules.
+- [docs/LAUNCH_PIPELINE.md](docs/LAUNCH_PIPELINE.md) - Canonical launch behavior and argument passing.
 
 ## Thanks
 - israpps (El_isra) for POPSLoader.
 - Daniel Santos for Enceladus: https://github.com/DanielSant0s/Enceladus
 
-
 # LICENSE
-SInce this project is based on enceladus, it retains the **GNU General public license v3.0**
+Since this project is based on Enceladus, it retains the **GNU General Public License v3.0**.

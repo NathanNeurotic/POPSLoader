@@ -10,15 +10,10 @@
 - Package archive: `make package` → `POPSLoader.7z`.【F:Makefile†L132-L135】
 - Debug build: set `DEBUG=1` (enables `-DDEBUG`), then build normally. Example: `make DEBUG=1 all`.【F:Makefile†L16-L27】
 
-## Where artifacts go
-- `bin/enceladus.elf` (intermediate build output).【F:Makefile†L30-L33】
-- `bin/POPSLOADER.ELF` (packed release).【F:Makefile†L66-L69】
-- `POPSLoader.7z` (packaged release archive).【F:Makefile†L132-L135】
-
 ## Packaging and running on device
-- Place `POPSLOADER.ELF` and runtime assets in the same folder (no subfolder required). Legacy `POPSLDR/` layout remains a fallback.【F:README.md†L17-L24】
-- Lua boot script resolves `system.lua` via `System.resolveAsset` (APP_DIR first), then legacy `POPSLDR/` fallbacks if needed.【F:etc/boot.lua†L1-L81】【F:src/system.cpp†L80-L107】
-- Default POPStarter path is `mass:/POPS/POPSTARTER.ELF` (see runtime script).【F:bin/POPSLDR/system.lua†L25-L27】
+- **Flat Layout (Recommended)**: `POPSLOADER.ELF` and runtime assets (`system.lua`, images, IRX) live in the same directory.
+- **Legacy Layout (Fallback)**: `POPSLOADER.ELF` at root, assets in `POPSLDR/`.
+- The boot script (`etc/boot.lua`) and system script (`bin/POPSLDR/system.lua`) handle asset resolution, prioritizing the application directory (`APP_DIR`) over legacy paths.
 
 ## Troubleshooting (common build issues)
 - **Missing PS2DEV/PS2SDK**: Ensure `PS2SDK`/`PS2DEV` are set and toolchain binaries are on `PATH` (Makefile uses both).【F:Makefile†L30-L49】

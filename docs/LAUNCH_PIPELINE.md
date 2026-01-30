@@ -70,26 +70,25 @@ These prefix rules are implemented in `BuildPopstarterBootString()`.
    - `argv[1] = boot string` (first extra arg)
    - `argv[2] = "--nr"`
 7. **Exec POPStarter** via `System.loadELF(popstarter, reboot_iop, argv[1], argv[2])`.
-   - The ELF loader inserts POPStarter’s path as `argv[0]` and shifts the extra args.
+   - The ELF loader passes the first extra arg as `argv[0]`.
 
-## 4) Argument list and POPStarter handoff (verified vs unknown)
+## 4) Argument list and POPStarter handoff (verified)
 
 ### What POPSLoader passes to the ELF loader (verified)
 POPSLoader’s Lua side passes the boot string and `--nr` as extra args to `System.loadELF()`. The loader then constructs the final `ExecPS2()` argv list as:
 
 ```
-argv[0] = <resolved POPSTARTER path>
-argv[1] = <boot string>     (full VCD path with prefix when required)
-argv[2] = "--nr"            (optional)
+argv[0] = <boot string>     (full VCD path with prefix when required)
+argv[1] = "--nr"            (optional)
 ```
 
 This is verified by:
 - `System.loadELF(popstarter, reboot_iop, argv[1], argv[2])` in Lua.
-- `lua_loadELF` printing extra args as `argv[0]`, `argv[1]`, etc.
-- `LoadELFFromFileWithPartition` inserting POPStarter path into `launch_argv[0]` and shifting extras.
+- `lua_loadELF` in `src/luasystem.cpp` explicitly setting `argv_static[0] = selector`.
+- `LoadELFFromFileExecPS2` in `src/elf_loader/src/elf.c` calling `ExecPS2` with the provided `argc` (which is 1 or 2, starting with the selector).
 
-### Where POPStarter parses argv (unknown in this repo)
-**TODO: verify.** POPStarter argument parsing is **not** present in this repository. To confirm which argv index POPStarter reads for the VCD boot string, locate POPStarter’s source (or official docs) and cite the exact file/function/line.
+### Where POPStarter parses argv (inferred)
+Since the selector (VCD path) is passed as `argv[0]`, POPStarter likely reads `argv[0]` to determine the VCD to launch.
 
 ## 5) Expected log lines (validation)
 
@@ -100,7 +99,7 @@ Use these log lines to validate end-to-end argument construction and handoff:
 - `LAUNCH: pops root: ...`
 - `LAUNCH: bootparam: ...`
 - `LAUNCH: bootparam prefix: ... prefix injected: ...`
-- `LAUNCH: exec argv[0]: ...`
+- `LAUNCH: exec argv[0]: ...` (this corresponds to the selector)
 - `LAUNCH: exec argv[1]: ...`
 - `LAUNCH RETURNED rc=...`
 
@@ -108,8 +107,7 @@ These are written to the on-device `launch.log` via `LaunchLog()`.
 
 ### From the ELF loader (C)
 - `LAUNCH: popstarter path: ...`
-- `LAUNCH: argv[0]: ...` (resolved POPStarter path)
-- `LAUNCH: argv[1]: ...` (boot string)
-- `LAUNCH: argv[2]: ...` (`--nr` if present)
+- `LAUNCH: argv[0]: ...` (boot string / selector)
+- `LAUNCH: argv[1]: ...` (`--nr` if present)
 
 These appear on the console/tty when loader debug output is visible.

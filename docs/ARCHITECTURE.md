@@ -14,7 +14,8 @@ This document reflects the current POPSLoader architecture as implemented in the
 - MMCE slot detection is driven by `mmce0:/` and `mmce1:/` availability (populated into `PLDR.MMCE.SLOTS`).【F:bin/POPSLDR/system.lua†L116-L127】
 
 ## Launch pipeline reference
-- POPStarter launch rules (device detection, prefix rules, argv handoff) are documented in `docs/LAUNCH_PIPELINE.md` and should be treated as canonical.
+- POPStarter launch rules (device detection, prefix rules, argv handoff) are documented in `docs/LAUNCH_PIPELINE.md`.
+- The actual argument construction occurs in `bin/POPSLDR/system.lua` (Lua side) and `src/elf_loader/src/elf.c` (Loader side), ensuring `argv[0]` contains the VCD selector.
 
 ## Exit path (UI → OSDSYS)
 - Triangle opens an exit confirmation modal; confirming calls `System.exitToBrowser()` to return to OSDSYS.【F:bin/POPSLDR/ui.lua†L94-L168】

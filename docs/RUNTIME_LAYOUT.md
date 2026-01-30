@@ -25,7 +25,7 @@ Legacy subfolders (`POPSLDR/`, `IMG/`, `IRX/`) are **fallback only** and should 
 7. `mc1:/POPSLDR/?.lua`
 
 ### Images and IRX modules
-`System.resolveAssetType` and runtime helpers attempt the flat layout first, then legacy folders:
+`System.resolveAssetType` (in `src/system.cpp`) attempts the flat layout first, then legacy folders:
 - Images: `APP_DIR/`, `APP_DIR/IMG/`, `APP_DIR/POPSLDR/IMG/`, `APP_DIR/POPSLDR/`
 - IRX: `APP_DIR/`, `APP_DIR/IRX/`, `APP_DIR/POPSLDR/IRX/`, `APP_DIR/POPSLDR/`
 

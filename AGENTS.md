@@ -38,7 +38,7 @@ POPSLoader is an open-source launcher for POPStarter, scripted in Lua and based 
 - Lua search paths include `mass:/POPSLDR/?.lua`, `mc0:/POPSLDR/?.lua`, and `mc1:/POPSLDR/?.lua`.【F:etc/boot.lua†L1-L1】
 - `main.cpp` patches `mass:/` paths by removing an extra slash (`mass:/X` → `mass:X`).【F:src/main.cpp†L88-L96】
 - Memory card paths (`mc0:`/`mc1:`) are treated specially in directory listing logic.【F:src/luasystem.cpp†L64-L123】
-- TODO: verify `mmce0:/` usage. `mmceman.irx` is embedded, but device path usage is not shown in the reviewed code; inspect other Lua scripts or C/C++ modules for explicit usage.【F:iop/embed/mmceman.irx†L1-L1】
+- MMCE usage (`mmce0:/`) is confirmed in `src/luasystem.cpp` and `src/main.cpp` (mmceman load).
 
 **POPS folder expectations (only when present in code/docs):**
 - Default POPStarter path is `mass:/POPS/POPSTARTER.ELF` in `system.lua`.【F:bin/POPSLDR/system.lua†L25-L27】
@@ -71,3 +71,20 @@ POPSLoader is an open-source launcher for POPStarter, scripted in Lua and based 
 - UI rendering flow, scenes, input mapping, and alignment rules: `docs/ai/UI_MAP.md`.【F:docs/ai/UI_MAP.md†L1-L40】
 - Device detection signals, flags, and call sites: `docs/ai/DEVICE_DETECT.md`.【F:docs/ai/DEVICE_DETECT.md†L1-L30】
 - Change-discipline checklist (including regression checklist): `docs/ai/CHANGE_RULES.md`.【F:docs/ai/CHANGE_RULES.md†L1-L20】
+
+## 9) Agent Guidance / Non-negotiables
+- **DO NOT invent rules.** If a rule is not found in code or repo docs, mark it **TODO: verify** and cite where it should be verified.
+- **Search first, quote exact code, then propose a diff.** Use precise file/line references when describing behavior.
+- **Never change prefix rules:**
+  - HDD: **no prefix**
+  - SMB: `SB.`
+  - MASS/MMCE/USB: `XX.`
+
+### When confused
+- Produce a **short decision table** (source → pops root → prefix → argv example) and cite code locations.
+- If behavior is still unclear, add **TODO: verify** and list the file(s) to inspect next.
+
+### Change discipline (Extended)
+- Prefer small, isolated diffs.
+- Do not refactor unrelated code.
+- Only add logs if they are throttled or change-detected (never per-frame).
