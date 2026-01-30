@@ -10,6 +10,7 @@
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
 #include <fileio.h>
+#include <usbhdfsd-common.h>
 #include "include/luaplayer.h"
 #include "include/md5.h"
 #include "include/graphics.h"
@@ -973,7 +974,42 @@ static int lua_resolveAssetType(lua_State *L) {
 	return 1;
 }
 
-static int lua_mx4sio_init(lua_State *L)
+
+static int lua_getMassDriverName(lua_State *L)
+{
+	int argc = lua_gettop(L);
+	if (argc != 1) {
+		return luaL_error(L, "Argument error: System.getMassDriverName(index) takes one argument.");
+	}
+	int idx = luaL_checkinteger(L, 1);
+	if (idx < 0 || idx > 9) {
+		lua_pushnil(L);
+		return 1;
+	}
+	char mass_path[16];
+	snprintf(mass_path, sizeof(mass_path), "mass%d:/", idx);
+
+	int dd = fileXioDopen(mass_path);
+	if (dd < 0) {
+		lua_pushnil(L);
+		return 1;
+	}
+	char devid[5];
+	memset(devid, 0, sizeof(devid));
+	int *intptr_ctl = (int *)devid;
+	int rc = fileXioIoctl(dd, USBMASS_IOCTL_GET_DRIVERNAME, (void *)"");
+	*intptr_ctl = rc;
+	fileXioDclose(dd);
+
+	if (rc < 0 || devid[0] == ' ') {
+		lua_pushnil(L);
+		return 1;
+	}
+	lua_pushstring(L, devid);
+	return 1;
+}
+
+(lua_State *L)
 {
 	const char *hint = NULL;
 	int argc = lua_gettop(L);
@@ -1026,6 +1062,7 @@ static const luaL_Reg System_functions[] = {
 	{"resolveAsset",           lua_resolveAsset},
 	{"resolveAssetType",   lua_resolveAssetType},
 	{"initMX4SIO",             lua_mx4sio_init},
+	{"getMassDriverName",     lua_getMassDriverName},
 	{"bdmList",                lua_bdm_list},
 	{"findBDMByDriver",    lua_find_bdm_by_driver},
 	{0, 0}
