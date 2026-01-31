@@ -218,6 +218,27 @@ function CoverCache:UpdateSelection(entry, game_path, device_scene)
   end
   return nil, false
 end
+
+
+-- MX4SIO early-boot can reach UI init before fonts are fully ready.
+-- Harden font load + char size so we never crash on nil/invalid args.
+local function _SafeFontLoad()
+  local f = Font.LoadBuiltinFont()
+  if f == nil then
+    -- some environments may succeed on a second attempt
+    f = Font.LoadBuiltinFont()
+  end
+  return f
+end
+
+local function _SafeFTSetCharSize(font, w, h)
+  if font == nil then return end
+  if type(w) ~= "number" then w = 960 end
+  if type(h) ~= "number" then h = w end
+  -- never let a font size issue hard-crash boot
+  pcall(Font.ftSetCharSize, font, w, h)
+end
+
 UI = {
     LASTSCENE = 5;
     SCENES = {
@@ -2397,13 +2418,25 @@ local function LoadBuildInfo()
   end
   return info
 end
+
+-- Ensure FONT table is sane before any ftSetCharSize calls (MX4SIO cold-boot order can expose nils)
+if UI.FONT ~= nil then
+  if UI.FONT.TITLE == nil then UI.FONT.TITLE = _SafeFontLoad() end
+  if UI.FONT.LABEL == nil then UI.FONT.LABEL = _SafeFontLoad() end
+  -- STATUS font is expected to exist; if not, fall back to built-in
+  if UI.FONT.STATUS == nil then UI.FONT.STATUS = _SafeFontLoad() end
+
+  if type(UI.FONT.TITLE_SIZE) ~= "number" then UI.FONT.TITLE_SIZE = 960 end
+  if type(UI.FONT.LABEL_SIZE) ~= "number" then UI.FONT.LABEL_SIZE = 880 end
+end
+
 UI.BUILD_INFO = LoadBuildInfo()
 if UI.FONT ~= nil then
   if UI.FONT.TITLE ~= nil then
-    Font.ftSetCharSize(UI.FONT.TITLE, UI.FONT.TITLE_SIZE, UI.FONT.TITLE_SIZE)
+    _SafeFTSetCharSize(UI.FONT.TITLE, UI.FONT.TITLE_SIZE, UI.FONT.TITLE_SIZE)
   end
   if UI.FONT.LABEL ~= nil then
-    Font.ftSetCharSize(UI.FONT.LABEL, UI.FONT.LABEL_SIZE, UI.FONT.LABEL_SIZE)
+    _SafeFTSetCharSize(UI.FONT.LABEL, UI.FONT.LABEL_SIZE, UI.FONT.LABEL_SIZE)
   end
 end
 _G.UI = UI
