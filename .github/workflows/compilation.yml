@@ -35,6 +35,7 @@ jobs:
           set -eu
           COMMIT_SHORT="$(echo "$GITHUB_SHA" | cut -c1-7)"
           BUILD_UTC="$(date -u '+%Y-%m-%d %H:%MZ')"
+          mkdir -p bin/POPSLDR
           printf "%s\n%s\n" "$COMMIT_SHORT" "$BUILD_UTC" > bin/POPSLDR/BUILD_INFO.txt
           cat bin/POPSLDR/BUILD_INFO.txt
 
@@ -42,75 +43,21 @@ jobs:
         shell: sh
         run: |
           set -eu
+          rm -f bin/POPSLoader_mx4sio.7z ./POPSLoader-mx4sio.7z || true
           make clean elfloader all package VARIANT=mx4sio
-
-      - name: Locate and normalize artifact (mx4sio)
-        shell: sh
-        run: |
-          set -eu
-          OUT="./POPSLoader-mx4sio.7z"
-
-          echo "== Searching for .7z artifacts (mx4sio) =="
-          find . -maxdepth 6 -type f -name '*.7z' -print || true
-
-          # Prefer an exact name match first (any location)
-          EXACT="$(find . -maxdepth 6 -type f -name 'POPSLoader.7z' -print | head -n 1 || true)"
-
-          if [ -n "$EXACT" ]; then
-            echo "Found exact artifact: $EXACT"
-            cp -f "$EXACT" "$OUT"
-          else
-            # Otherwise pick the newest .7z produced
-            NEWEST="$(find . -maxdepth 6 -type f -name '*.7z' -print -exec ls -t {} + 2>/dev/null | head -n 1 || true)"
-
-            if [ -z "$NEWEST" ]; then
-              echo "ERROR: No .7z artifact found after mx4sio build."
-              exit 1
-            fi
-
-            echo "No exact POPSLoader.7z found. Using newest .7z: $NEWEST"
-            cp -f "$NEWEST" "$OUT"
-          fi
-
-          echo "== Final normalized artifact (mx4sio) =="
-          ls -lah "$OUT"
+          test -f bin/POPSLoader_mx4sio.7z
+          cp -f bin/POPSLoader_mx4sio.7z ./POPSLoader-mx4sio.7z
+          ls -lah ./POPSLoader-mx4sio.7z
 
       - name: Build + package (mmce boot variant)
         shell: sh
         run: |
           set -eu
+          rm -f bin/POPSLoader_mmce.7z ./POPSLoader-mmce.7z || true
           make clean elfloader all package VARIANT=mmce
-
-      - name: Locate and normalize artifact (mmce)
-        shell: sh
-        run: |
-          set -eu
-          OUT="./POPSLoader-mmce.7z"
-
-          echo "== Searching for .7z artifacts (mmce) =="
-          find . -maxdepth 6 -type f -name '*.7z' -print || true
-
-          # Prefer an exact name match first (any location)
-          EXACT="$(find . -maxdepth 6 -type f -name 'POPSLoader.7z' -print | head -n 1 || true)"
-
-          if [ -n "$EXACT" ]; then
-            echo "Found exact artifact: $EXACT"
-            cp -f "$EXACT" "$OUT"
-          else
-            # Otherwise pick the newest .7z produced
-            NEWEST="$(find . -maxdepth 6 -type f -name '*.7z' -print -exec ls -t {} + 2>/dev/null | head -n 1 || true)"
-
-            if [ -z "$NEWEST" ]; then
-              echo "ERROR: No .7z artifact found after mmce build."
-              exit 1
-            fi
-
-            echo "No exact POPSLoader.7z found. Using newest .7z: $NEWEST"
-            cp -f "$NEWEST" "$OUT"
-          fi
-
-          echo "== Final normalized artifact (mmce) =="
-          ls -lah "$OUT"
+          test -f bin/POPSLoader_mmce.7z
+          cp -f bin/POPSLoader_mmce.7z ./POPSLoader-mmce.7z
+          ls -lah ./POPSLoader-mmce.7z
 
       - name: Upload artifacts (both boot variants)
         if: ${{ success() }}
