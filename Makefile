@@ -56,6 +56,14 @@ EE_INCS += -Imodules/ds34bt/ee -Imodules/ds34usb/ee
 EE_CFLAGS   += -Wno-sign-compare -fno-strict-aliasing -fno-exceptions -DLUA_USE_PS2
 EE_CXXFLAGS += -Wno-sign-compare -fno-strict-aliasing -fno-exceptions -DLUA_USE_PS2
 EE_ASFLAGS += -call_shared
+
+# Variant-specific boot behavior:
+# - VARIANT=mx4sio: load mx4sio_bd.irx during early boot so the app can boot from MX4SIO.
+# - VARIANT=mmce:  do not load mx4sio_bd.irx during early boot (MX4SIO remains page-init).
+ifeq ($(VARIANT),mx4sio)
+EE_CFLAGS   += -DBOOT_MX4SIO
+EE_CXXFLAGS += -DBOOT_MX4SIO
+endif
 ifeq ($(RESET_IOP),1)
 EE_CXXFLAGS += -DRESET_IOP
 endif
