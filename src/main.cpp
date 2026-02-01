@@ -442,10 +442,17 @@ int main(int argc, char * argv[])
     LOAD_IRX_NARG(bdmfs_fatfs_irx);
     LOAD_IRX_NARG(usbmass_bd_irx);
 
-    /* Load MX4SIO backend early so booting from MX4SIO works before Lua starts. */
+#if defined(BOOT_MX4SIO)
+    /* MX4SIO-boot build: load MX4SIO backend early so booting from MX4SIO works before Lua starts. */
     bool mx4sio_bd_ok = LoadIrxChecked("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL);
     DPRINTF("mx4sio_bd load result: ok=%d\n", mx4sio_bd_ok ? 1 : 0);
     BootStamp("mx4sio_bd load");
+#else
+    /* MMCE-boot build: do NOT load MX4SIO backend at boot.
+       MX4SIO will be loaded later on demand by System.initMX4SIO() when the user enters the MX4SIO page. */
+    DPRINTF("mx4sio_bd load skipped (BOOT_MX4SIO not set)\n");
+    BootStamp("mx4sio_bd load (skipped)");
+#endif
 
 
     LOAD_IRX_NARG(cdfs_irx);
