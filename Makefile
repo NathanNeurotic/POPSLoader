@@ -38,9 +38,15 @@ DEBUG = 0
 PS2LINK_IP = 192.168.1.10
 #------------------------------------------------------------------#
 
+# Build variant selection:
+#   make VARIANT=mx4sio   -> boots from MX4SIO (MX4SIO backend loaded at boot)
+#   make VARIANT=mmce     -> boots from MMCE  (MX4SIO backend NOT loaded at boot)
+# You can build both with: make variants
+VARIANT ?= mx4sio
+
 BINDIR = bin/
-EE_BIN = $(BINDIR)enceladus.elf
-EE_BIN_PKD = $(BINDIR)POPSLOADER.ELF
+EE_BIN = $(BINDIR)enceladus_$(VARIANT).elf
+EE_BIN_PKD = $(BINDIR)POPSLOADER_$(VARIANT).ELF
 
 EE_LIBS = -L$(PS2SDK)/ports/lib -L$(PS2DEV)/gsKit/lib/ -Lmodules/ds34bt/ee/ -Lmodules/ds34usb/ee/ -lpatches -lfileXio -lpad -ldebug -llua -lmath3d -ljpeg -lfreetype -lgskit_toolkit -lgskit -ldmakit -lpng -lz -lmc -laudsrv  -lds34bt -lds34usb
 EE_LIBS += src/elf_loader/libcustom-elf-loader.a
@@ -82,12 +88,19 @@ EMBEDDED_RSC = boot.o builtin_font.o
 
 EE_OBJS = $(APP_CORE) $(LUA_LIBS) $(IOP_MODULES) $(EMBEDDED_RSC)
 
-EE_OBJS_DIR = obj/
+EE_OBJS_DIR = obj/$(VARIANT)/
 EE_SRC_DIR = src/
-EE_ASM_DIR = asm/
+EE_ASM_DIR = asm/$(VARIANT)/
 EE_OBJS := $(EE_OBJS:%=$(EE_OBJS_DIR)%) # remap all EE_OBJ to obj subdir
 
 #------------------------------------------------------------------#
+# Build both boot variants (runs two separate builds with isolated obj/asm dirs).
+variants:
+	@$(MAKE) clean VARIANT=mx4sio
+	@$(MAKE) all VARIANT=mx4sio
+	@$(MAKE) clean VARIANT=mmce
+	@$(MAKE) all VARIANT=mmce
+
 all: $(EXT_LIBS) $(EE_BIN_PKD)
 	@echo "$$HEADER"
 
@@ -166,10 +179,11 @@ debug: $(EE_BIN)
 	echo "Building $(EE_BIN) with debug symbols..."
 
 cleanbin:
-	rm -f $(EE_BIN) $(EE_BIN_PKD)
+	rm -f $(BINDIR)enceladus_mx4sio.elf $(BINDIR)enceladus_mmce.elf
+	rm -f $(BINDIR)POPSLOADER_mx4sio.ELF $(BINDIR)POPSLOADER_mmce.ELF
 clean: cleanbin
-	rm -rf $(EE_OBJS_DIR)
-	rm -rf $(EE_ASM_DIR)
+	rm -rf obj
+	rm -rf asm
 
 	rm -f $(EMBEDDED_RSC)
 
@@ -181,7 +195,7 @@ run:
 reset:
 	ps2client -h $(PS2LINK_IP) reset   
 
-POPSLDR_PKG = POPSLoader.7z
+POPSLDR_PKG = POPSLoader_$(VARIANT).7z
 PKG_DIR = bin/package
 package: $(EE_BIN_PKD)
 	rm -f $(POPSLDR_PKG)
