@@ -195,7 +195,7 @@ run:
 reset:
 	ps2client -h $(PS2LINK_IP) reset   
 
-POPSLDR_PKG = POPSLoader_$(VARIANT).7z
+POPSLDR_PKG = $(BINDIR)POPSLoader_$(VARIANT).7z
 PKG_DIR = bin/package
 package: $(EE_BIN_PKD)
 	rm -f $(POPSLDR_PKG)
@@ -207,7 +207,7 @@ package: $(EE_BIN_PKD)
 	@if [ -d bin/POPSTARTER ]; then cp -r bin/POPSTARTER $(PKG_DIR)/; fi
 	@if ls bin/POPSLDR/IMG/*.png >/dev/null 2>&1; then cp bin/POPSLDR/IMG/*.png $(PKG_DIR)/; fi
 	@if ls bin/POPSLDR/IRX/*.irx >/dev/null 2>&1; then cp bin/POPSLDR/IRX/*.irx $(PKG_DIR)/; fi
-	cd $(PKG_DIR); 7z a ../$(POPSLDR_PKG) .
+	cd $(PKG_DIR); 7z a ../$(notdir $(POPSLDR_PKG)) .
 
 dummys:
 	touch $(BINDIR)A.vcd
