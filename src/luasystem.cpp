@@ -990,28 +990,43 @@ static int lua_getMassDriverName(lua_State *L)
 	char mass_path[16];
 	snprintf(mass_path, sizeof(mass_path), "mass%d:/", idx);
 
-	// NOTE: USBMASS_IOCTL_GET_DRIVERNAME is an *ioctl* that expects a valid fd from the mass filesystem.
-	// Using opendir() here matches how other PS2 homebrew projects query the backing block driver ("usb", "sdc", etc.).
-	DIR *dir = opendir(mass_path);
-	if (dir == NULL) {
-		lua_pushnil(L);
-		return 1;
-	}
+	// Robust backend identification (USB vs SD-backed mass).
+	//
+	// IMPORTANT:
+	// - NEWLIB's opendir()/DIR can be backed by the *fio* layer, while fileXioIoctl/devctl
+	//   expects fileXio handles. Mixing them can hang/crash.
+	// - Some usbhdfsd builds return the 3-letter driver code packed in the return value.
+	// - Others support devctl with an output buffer.
+	//
+	// We try the safest approach first (devctl), then fall back to the legacy directory-fd ioctl.
 
 	char devid[8];
 	memset(devid, 0, sizeof(devid));
 
-	int rc = fileXioIoctl(dir->dd_fd, USBMASS_IOCTL_GET_DRIVERNAME, (void*)"");
-	closedir(dir);
-
-	// Historically, usbhdfsd returns the 3-letter driver code packed into the return value.
-	*(int *)devid = rc;
+	// Try devctl on the device path without the trailing '/'.
+	char dev_path[16];
+	snprintf(dev_path, sizeof(dev_path), "mass%d:", idx);
+	int rc = fileXioDevctl(dev_path, USBMASS_IOCTL_GET_DRIVERNAME, NULL, 0, devid, sizeof(devid));
+	if (rc < 0 || devid[0] == '\0') {
+		// Fall back: directory handle + ioctl, expecting packed return value.
+		int dd = fileXioDopen(mass_path);
+		if (dd < 0) {
+			lua_pushnil(L);
+			return 1;
+		}
+		memset(devid, 0, sizeof(devid));
+		rc = fileXioIoctl(dd, USBMASS_IOCTL_GET_DRIVERNAME, (void*)"");
+		fileXioDclose(dd);
+		*(int *)devid = rc;
+	}
 
 	if (rc < 0 || devid[0] == '\0') {
 		lua_pushnil(L);
 		return 1;
 	}
 
+	// Some implementations return additional bytes; terminate defensively.
+	devid[sizeof(devid) - 1] = '\0';
 	lua_pushstring(L, devid);
 	return 1;
 }
