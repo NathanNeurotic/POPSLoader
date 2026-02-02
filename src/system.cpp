@@ -99,7 +99,27 @@ int ResolveAssetPath(char* out, size_t outsz, const char* relativeName)
 
 	snprintf(candidate, sizeof(candidate), "%sPOPSLDR/%s", app_dir, relativeName);
 	if (stat(candidate, &st) == 0) {
-		DPRINTF("ResolveAssetPath: %s\n", candidate);
+		DPRINTF("ResolveAssetPath: %s
+", candidate);
+		snprintf(out, outsz, "%s", candidate);
+		return 1;
+	}
+
+	/* Fallback: look relative to the boot device root (boot_path), not just app_dir.
+	   This avoids relying on the ambiguous "mass:" alias when USB and MX4SIO are both present,
+	   and supports layouts where POPSLDR is placed at the device root (e.g. mass1:/POPSLDR/). */
+	snprintf(candidate, sizeof(candidate), "%s%s", boot_path, relativeName);
+	if (stat(candidate, &st) == 0) {
+		DPRINTF("ResolveAssetPath: %s
+", candidate);
+		snprintf(out, outsz, "%s", candidate);
+		return 1;
+	}
+
+	snprintf(candidate, sizeof(candidate), "%sPOPSLDR/%s", boot_path, relativeName);
+	if (stat(candidate, &st) == 0) {
+		DPRINTF("ResolveAssetPath: %s
+", candidate);
 		snprintf(out, outsz, "%s", candidate);
 		return 1;
 	}
@@ -143,6 +163,19 @@ int ResolveAssetPathTyped(char* out, size_t outsz, const char* relativeName, Ass
 		snprintf(candidate, sizeof(candidate), "%sPOPSLDR/%s", app_dir, relativeName);
 		if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
 
+		/* Fallback: search from boot device root as well (avoids ambiguous mass: alias). */
+		snprintf(candidate, sizeof(candidate), "%s%s", boot_path, relativeName);
+		if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
+
+		snprintf(candidate, sizeof(candidate), "%sIMG/%s", boot_path, relativeName);
+		if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
+
+		snprintf(candidate, sizeof(candidate), "%sPOPSLDR/IMG/%s", boot_path, relativeName);
+		if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
+
+		snprintf(candidate, sizeof(candidate), "%sPOPSLDR/%s", boot_path, relativeName);
+		if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
+
 		return 0;
 	}
 
@@ -157,6 +190,19 @@ int ResolveAssetPathTyped(char* out, size_t outsz, const char* relativeName, Ass
 		if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
 
 		snprintf(candidate, sizeof(candidate), "%sPOPSLDR/%s", app_dir, relativeName);
+		if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
+
+		/* Fallback: search from boot device root as well (avoids ambiguous mass: alias). */
+		snprintf(candidate, sizeof(candidate), "%s%s", boot_path, relativeName);
+		if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
+
+		snprintf(candidate, sizeof(candidate), "%sIRX/%s", boot_path, relativeName);
+		if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
+
+		snprintf(candidate, sizeof(candidate), "%sPOPSLDR/IRX/%s", boot_path, relativeName);
+		if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
+
+		snprintf(candidate, sizeof(candidate), "%sPOPSLDR/%s", boot_path, relativeName);
 		if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
 
 		return 0;
