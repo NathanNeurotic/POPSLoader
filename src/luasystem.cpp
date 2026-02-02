@@ -990,8 +990,10 @@ static int lua_getMassDriverName(lua_State *L)
 	char mass_path[16];
 	snprintf(mass_path, sizeof(mass_path), "mass%d:/", idx);
 
-	int dd = fileXioDopen(mass_path);
-	if (dd < 0) {
+	// NOTE: USBMASS_IOCTL_GET_DRIVERNAME is an *ioctl* that expects a valid fd from the mass filesystem.
+	// Using opendir() here matches how other PS2 homebrew projects query the backing block driver ("usb", "sdc", etc.).
+	DIR *dir = opendir(mass_path);
+	if (dir == NULL) {
 		lua_pushnil(L);
 		return 1;
 	}
@@ -999,10 +1001,11 @@ static int lua_getMassDriverName(lua_State *L)
 	char devid[8];
 	memset(devid, 0, sizeof(devid));
 
-	int *intptr_ctl = (int *)devid;
-	int rc = fileXioIoctl(dd, USBMASS_IOCTL_GET_DRIVERNAME, (void*)"");
-	*intptr_ctl = rc;
-	fileXioDclose(dd);
+	int rc = fileXioIoctl(dir->dd_fd, USBMASS_IOCTL_GET_DRIVERNAME, (void*)"");
+	closedir(dir);
+
+	// Historically, usbhdfsd returns the 3-letter driver code packed into the return value.
+	*(int *)devid = rc;
 
 	if (rc < 0 || devid[0] == '\0') {
 		lua_pushnil(L);
