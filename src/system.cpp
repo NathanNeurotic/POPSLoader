@@ -99,8 +99,7 @@ int ResolveAssetPath(char* out, size_t outsz, const char* relativeName)
 
 	snprintf(candidate, sizeof(candidate), "%sPOPSLDR/%s", app_dir, relativeName);
 	if (stat(candidate, &st) == 0) {
-		DPRINTF("ResolveAssetPath: %s
-", candidate);
+		DPRINTF("ResolveAssetPath: %s\n", candidate);
 		snprintf(out, outsz, "%s", candidate);
 		return 1;
 	}
@@ -110,16 +109,14 @@ int ResolveAssetPath(char* out, size_t outsz, const char* relativeName)
 	   and supports layouts where POPSLDR is placed at the device root (e.g. mass1:/POPSLDR/). */
 	snprintf(candidate, sizeof(candidate), "%s%s", boot_path, relativeName);
 	if (stat(candidate, &st) == 0) {
-		DPRINTF("ResolveAssetPath: %s
-", candidate);
+		DPRINTF("ResolveAssetPath: %s\n", candidate);
 		snprintf(out, outsz, "%s", candidate);
 		return 1;
 	}
 
 	snprintf(candidate, sizeof(candidate), "%sPOPSLDR/%s", boot_path, relativeName);
 	if (stat(candidate, &st) == 0) {
-		DPRINTF("ResolveAssetPath: %s
-", candidate);
+		DPRINTF("ResolveAssetPath: %s\n", candidate);
 		snprintf(out, outsz, "%s", candidate);
 		return 1;
 	}
