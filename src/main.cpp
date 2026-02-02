@@ -390,6 +390,7 @@ int main(int argc, char * argv[])
     BootStamp("fileXio load/init");
 
 	LOAD_IRX_NARG(sio2man_irx);
+#if defined(BOOT_MMCE)
     if (filexio_ok) {
         int mmceman_id = -1;
         int mmceman_ret = -1;
@@ -420,6 +421,10 @@ int main(int argc, char * argv[])
         mmce_slot1_ready = 0;
         BootStamp("mmceman load/init (skipped)");
     }
+#else
+    DPRINTF("Skipping mmceman boot init (BOOT_MMCE not set); MMCE remains page-init.\n");
+    BootStamp("mmceman load/init (page-init)");
+#endif
     LOAD_IRX_NARG(mcman_irx);
     LOAD_IRX_NARG(mcserv_irx);
     initMC();
