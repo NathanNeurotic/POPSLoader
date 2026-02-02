@@ -63,6 +63,9 @@ EE_ASFLAGS += -call_shared
 ifeq ($(VARIANT),mx4sio)
 EE_CFLAGS   += -DBOOT_MX4SIO
 EE_CXXFLAGS += -DBOOT_MX4SIO
+else ifeq ($(VARIANT),mmce)
+EE_CFLAGS   += -DBOOT_MMCE
+EE_CXXFLAGS += -DBOOT_MMCE
 endif
 ifeq ($(RESET_IOP),1)
 EE_CXXFLAGS += -DRESET_IOP
