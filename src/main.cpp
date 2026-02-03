@@ -34,7 +34,7 @@ extern "C"{
 #include <libds34usb.h>
 }
 
-// Forward declaration (used by EnsureHddStackLoaded)
+// Forward declaration (used before later definition)
 // Must match the later definition (static, C++ linkage).
 static bool LoadIrxChecked(const char *name, unsigned char *irx, unsigned int size, int *out_id, int *out_ret);
 
@@ -221,23 +221,6 @@ static bool IsHddBootPath(const char *path)
     return (strncmp(path, "pfs", 3) == 0) || (strncmp(path, "hdd0:", 5) == 0);
 }
 
-static void EnsureHddStackLoaded(void)
-{
-    int id = -1, ret = -1;
-
-    /* Order matters. Mirror HDD page init dependencies. */
-    (void)LoadIrxChecked("ps2dev9.irx", ps2dev9_irx, size_ps2dev9_irx, &id, &ret);
-    DPRINTF("HDD_BOOT: ps2dev9 id=%d ret=%d\n", id, ret);
-    (void)LoadIrxChecked("ps2atad.irx", ps2atad_irx, size_ps2atad_irx, &id, &ret);
-    DPRINTF("HDD_BOOT: ps2atad id=%d ret=%d\n", id, ret);
-    (void)LoadIrxChecked("ps2hdd_osd.irx", ps2hdd_osd_irx, size_ps2hdd_osd_irx, &id, &ret);
-    DPRINTF("HDD_BOOT: ps2hdd_osd id=%d ret=%d\n", id, ret);
-
-    /* ps2fs expects args. Mirror luaHDD.cpp: "-o 4 -n 24" */
-    char pfsarg[] = "-o 4 -n 24";
-    id = SifExecModuleBuffer(ps2fs_irx, size_ps2fs_irx, sizeof(pfsarg), pfsarg, &ret);
-    DPRINTF("HDD_BOOT: ps2fs id=%d ret=%d\n", id, ret);
-}
 
 void setLuaBootPath(int argc, char ** argv, int idx)
 {
@@ -436,11 +419,6 @@ int main(int argc, char * argv[])
     BootStamp("fileXio load/init");
 
     /* If we're booting from HDD (pfs/hdd0), load the HDD stack BEFORE we touch pfs paths. */
-    if (argc > 0 && argv[0] && IsHddBootPath(argv[0])) {
-        DPRINTF("HDD_BOOT: detected argv0=%s\n", argv[0]);
-        EnsureHddStackLoaded();
-        BootStamp("HDD stack load");
-    }
 
 	LOAD_IRX_NARG(sio2man_irx);
     if (filexio_ok) {
