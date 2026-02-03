@@ -259,13 +259,7 @@ UI = {
     device_lock = DEVLOCK.NONE;
     boot_device = DEVLOCK.NONE;
     boot_locks = {};
-    --
-    -- Device/page lock system toggle.
-    --
-    -- Keep the locking machinery (boot_locks + session device_lock) intact so it can be
-    -- re-enabled in the future, but default to allowing ALL pages.
-    --
-    locks_enabled = false;
+    locks_enabled = false;  -- disable device/page locking without removing the feature
     BOOT_SOUND = {
       ENABLED = true,
       PATH = "boot.adp",      -- relative to CWD (same folder as ui.lua on HostFS)
@@ -285,9 +279,7 @@ UI = {
       return "None"
     end;
     canEnterDevice = function (target)
-      if UI.locks_enabled == false then
-        return true
-      end
+      if UI.locks_enabled == false then return true end
       if UI.boot_locks ~= nil and UI.boot_locks[target] == true then
         return false, "boot", UI.boot_device
       end
