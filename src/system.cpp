@@ -126,23 +126,6 @@ int ResolveAssetPath(char* out, size_t outsz, const char* relativeName)
 		}
 	}
 
-	/* Fallback: look relative to the boot device root (boot_root), not just app_dir.
-	   This avoids relying on the ambiguous "mass:" alias when USB and MX4SIO are both present,
-	   and supports layouts where POPSLDR is placed at the device root (e.g. mass1:/POPSLDR/). */
-	snprintf(candidate, sizeof(candidate), "%s%s", boot_root, relativeName);
-	if (stat(candidate, &st) == 0) {
-		DPRINTF("ResolveAssetPath: %s\n", candidate);
-		snprintf(out, outsz, "%s", candidate);
-		return 1;
-	}
-
-	snprintf(candidate, sizeof(candidate), "%sPOPSLDR/%s", boot_root, relativeName);
-	if (stat(candidate, &st) == 0) {
-		DPRINTF("ResolveAssetPath: %s\n", candidate);
-		snprintf(out, outsz, "%s", candidate);
-		return 1;
-	}
-
 	return 0;
 }
 
@@ -182,18 +165,22 @@ int ResolveAssetPathTyped(char* out, size_t outsz, const char* relativeName, Ass
 		snprintf(candidate, sizeof(candidate), "%sPOPSLDR/%s", app_dir, relativeName);
 		if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
 
-		/* Fallback: search from boot device root as well (avoids ambiguous mass: alias). */
-		snprintf(candidate, sizeof(candidate), "%s%s", boot_root, relativeName);
-		if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
-
-		snprintf(candidate, sizeof(candidate), "%sIMG/%s", boot_root, relativeName);
-		if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
-
-		snprintf(candidate, sizeof(candidate), "%sPOPSLDR/IMG/%s", boot_root, relativeName);
-		if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
-
-		snprintf(candidate, sizeof(candidate), "%sPOPSLDR/%s", boot_root, relativeName);
-		if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
+			/* Fallback: current working directory (assets alongside the ELF folder). */
+			char cwd[256];
+			if (getcwd(cwd, sizeof(cwd)) != NULL) {
+				size_t clen = strlen(cwd);
+				if (clen > 0 && cwd[clen - 1] != '/') {
+					strncat(cwd, "/", sizeof(cwd) - clen - 1);
+				}
+				snprintf(candidate, sizeof(candidate), "%s%s", cwd, relativeName);
+				if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
+				snprintf(candidate, sizeof(candidate), "%sIMG/%s", cwd, relativeName);
+				if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
+				snprintf(candidate, sizeof(candidate), "%sPOPSLDR/IMG/%s", cwd, relativeName);
+				if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
+				snprintf(candidate, sizeof(candidate), "%sPOPSLDR/%s", cwd, relativeName);
+				if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
+			}
 
 		return 0;
 	}
@@ -211,18 +198,22 @@ int ResolveAssetPathTyped(char* out, size_t outsz, const char* relativeName, Ass
 		snprintf(candidate, sizeof(candidate), "%sPOPSLDR/%s", app_dir, relativeName);
 		if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
 
-		/* Fallback: search from boot device root as well (avoids ambiguous mass: alias). */
-		snprintf(candidate, sizeof(candidate), "%s%s", boot_root, relativeName);
-		if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
-
-		snprintf(candidate, sizeof(candidate), "%sIRX/%s", boot_root, relativeName);
-		if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
-
-		snprintf(candidate, sizeof(candidate), "%sPOPSLDR/IRX/%s", boot_root, relativeName);
-		if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
-
-		snprintf(candidate, sizeof(candidate), "%sPOPSLDR/%s", boot_root, relativeName);
-		if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
+			/* Fallback: current working directory (assets alongside the ELF folder). */
+			char cwd[256];
+			if (getcwd(cwd, sizeof(cwd)) != NULL) {
+				size_t clen = strlen(cwd);
+				if (clen > 0 && cwd[clen - 1] != '/') {
+					strncat(cwd, "/", sizeof(cwd) - clen - 1);
+				}
+				snprintf(candidate, sizeof(candidate), "%s%s", cwd, relativeName);
+				if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
+				snprintf(candidate, sizeof(candidate), "%sIRX/%s", cwd, relativeName);
+				if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
+				snprintf(candidate, sizeof(candidate), "%sPOPSLDR/IRX/%s", cwd, relativeName);
+				if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
+				snprintf(candidate, sizeof(candidate), "%sPOPSLDR/%s", cwd, relativeName);
+				if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
+			}
 
 		return 0;
 	}
