@@ -352,13 +352,44 @@ int main(int argc, char * argv[])
     }
     BootStamp("boot path parse");
 
+    /*
+     * HDD boot note:
+     * Many launchers execute an ELF from an already-mounted PFS device (commonly pfs0:/...).
+     * Heavy IOP / mass-stack initialization at boot can deadlock under that loader-owned state
+     * and we may never reach graphics or the error screen (pure black screen).
+     *
+     * For the HDD variant only: if launched from pfsX:/ or hdd0:, keep boot init minimal.
+     */
+    const int booted_from_hdd =
+        (boot_path[0] && (!strncmp(boot_path, "pfs", 3) || !strncmp(boot_path, "hdd0:", 5)));
 
-#ifdef RESET_IOP  
-    SifInitRpc(0);
-    while (!SifIopReset("", 0)){};
-    while (!SifIopSync()){};
-    SifInitRpc(0);
-    BootStamp("IOP reset");
+#if defined(BOOT_HDD)
+    if (booted_from_hdd) {
+        init_scr();
+        scr_setfontcolor(0xffffff);
+        scr_clear();
+        scr_setXY(5, 2);
+        scr_printf("HDD boot: starting...\n");
+        scr_printf("boot_path: %s\n", boot_path);
+        scr_printf("(If this hangs, last line indicates stage)\n");
+    }
+#endif
+
+
+#ifdef RESET_IOP
+    /*
+     * Preserve PFS launcher state when booted from HDD/PFS. If we reset the IOP here,
+     * the loader-owned pfs mount is lost and we can hang before any UI is available.
+     */
+    if (!booted_from_hdd) {
+        SifInitRpc(0);
+        while (!SifIopReset("", 0)){};
+        while (!SifIopSync()){};
+        SifInitRpc(0);
+        BootStamp("IOP reset");
+    } else {
+        BootStamp("IOP reset (skipped: HDD boot)");
+    }
 #endif
     
     // install sbv patch fix
@@ -427,20 +458,32 @@ int main(int argc, char * argv[])
 
     LOAD_IRX_NARG(libsd_irx);
 
+    /*
+     * Avoid mass/USB/BDM stack initialization when we were launched from HDD/PFS.
+     * Those stacks are initialized lazily on page entry anyway.
+     */
+    int init_mass_stack = 1;
+#if defined(BOOT_HDD)
+    if (booted_from_hdd) init_mass_stack = 0;
+#endif
 
-    // load USB modules    
-    LOAD_IRX_NARG(usbd_irx);
+    if (init_mass_stack) {
+        // load USB modules
+        LOAD_IRX_NARG(usbd_irx);
 
-    
-    int ds3pads = 1;
-    LOAD_IRX(ds34usb_irx, 4, (char *)&ds3pads);
-    LOAD_IRX(ds34bt_irx, 4, (char *)&ds3pads);
-    ds34usb_init();
-    ds34bt_init();
+        int ds3pads = 1;
+        LOAD_IRX(ds34usb_irx, 4, (char *)&ds3pads);
+        LOAD_IRX(ds34bt_irx, 4, (char *)&ds3pads);
+        ds34usb_init();
+        ds34bt_init();
 
-    LOAD_IRX_NARG(bdm_irx);
-    LOAD_IRX_NARG(bdmfs_fatfs_irx);
-    LOAD_IRX_NARG(usbmass_bd_irx);
+        LOAD_IRX_NARG(bdm_irx);
+        LOAD_IRX_NARG(bdmfs_fatfs_irx);
+        LOAD_IRX_NARG(usbmass_bd_irx);
+        BootStamp("mass stack load");
+    } else {
+        BootStamp("mass stack load (skipped: HDD boot)");
+    }
 
 #if defined(BOOT_MX4SIO)
     /* Load MX4SIO backend early so booting from MX4SIO works before Lua starts. */
@@ -449,8 +492,9 @@ int main(int argc, char * argv[])
     BootStamp("mx4sio_bd load");
 #endif
 
-
-    LOAD_IRX_NARG(cdfs_irx);
+    if (init_mass_stack) {
+        LOAD_IRX_NARG(cdfs_irx);
+    }
 
     LOAD_IRX_NARG(audsrv_irx);
 
@@ -477,18 +521,21 @@ int main(int argc, char * argv[])
         }
     }
 
+    /* Only wait for mass devices; other roots (mc..., host..., pfs...) are either ready or handled elsewhere. */
     if (ExtractDeviceRoot(boot_path, wait_root, sizeof(wait_root)) < 0) {
-        /* Fallback: previous behavior. */
-        snprintf(wait_root, sizeof(wait_root), "mass:/");
+        wait_root[0] = '\0';
     }
-    BootStamp("mass wait begin");
-
-    while (ret != 0 && retries > 0) {
-        ret = stat(wait_root, &buffer);
-        nopdelay();
-        retries--;
+    if (!strncmp(wait_root, "mass", 4)) {
+        BootStamp("mass wait begin");
+        while (ret != 0 && retries > 0) {
+            ret = stat(wait_root, &buffer);
+            nopdelay();
+            retries--;
+        }
+        BootStamp("mass wait end");
+    } else {
+        BootStamp("mass wait (skipped)");
     }
-    BootStamp("mass wait end");
 	
 	// Lua init
 	// init internals library
