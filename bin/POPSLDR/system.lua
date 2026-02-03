@@ -230,6 +230,20 @@ PLDR = {
   }
 }
 
+--
+-- HDD mount index handling
+--
+-- If the app itself was booted from HDD, pfs0: is typically already occupied by the
+-- app's own partition mount. In that case, mount POPS partitions on pfs1: to avoid
+-- collisions with the app mount.
+--
+PLDR.HDD.PFS_IDX = 0
+PLDR.HDD.PFS = "pfs0:/"
+if boot_prefix ~= nil and string.sub(tostring(boot_prefix), 1, 3) == "pfs" then
+  PLDR.HDD.PFS_IDX = 1
+  PLDR.HDD.PFS = "pfs1:/"
+end
+
 -- Mass backend detection via USBMASS_IOCTL_GET_DRIVERNAME (requires fileXio + ps2sdk usbhdfsd-common.h support).
 -- Returns a short driver code like: "usb" (USB), "sdc" (MX4SIO SD), "udp" (UDPBD), "sd" (iLink SD), "ata" (HDD).
 function PLDR.GetMassDriverName(index)
@@ -815,9 +829,9 @@ function PLDR.CheckPOPStarterDEPS(device)
   if UI.IsUsbScene(device) then
     return doesFileExist("mass:/POPS/POPS_IOX.PAK")
   elseif device == UI.SCENES.GHDD then
-    local a = HDD.MountPartition("hdd0:__common", 0, FIO_MT_RDONLY)
+    local a = HDD.MountPartition("hdd0:__common", PLDR.HDD.PFS_IDX, FIO_MT_RDONLY)
     if a then
-      return a, doesFileExist("pfs0:/POPS/POPS.ELF"), doesFileExist("pfs0:/POPS/IOPRP252.IMG")
+      return a, doesFileExist(PLDR.HDD.PFS.."POPS/POPS.ELF"), doesFileExist(PLDR.HDD.PFS.."POPS/IOPRP252.IMG")
     else
       return a, false, false
     end
@@ -923,17 +937,17 @@ end
 function PLDR.HDD.CheckAvailableHddPopsParts()
   if not PLDR.HDD.HAS_CHECKED then --HDD is checked only once since it cannot be removed/replaced without damaging the console
     LOG("Checking available __.POPS Partitions")
-    if HDD.MountPartition("hdd0:__.POPS", 0, FIO_MT_RDONLY) then
+    if HDD.MountPartition("hdd0:__.POPS", PLDR.HDD.PFS_IDX, FIO_MT_RDONLY) then
       PLDR.HDD.MAINPART = true
-      HDD.UMountPartition(0)
+      HDD.UMountPartition(PLDR.HDD.PFS_IDX)
     end
     LOG("__.POPS", PLDR.HDD.MAINPART)
     PLDR.HDD.FOUNDANY = PLDR.HDD.MAINPART
     for i=0, 9 do
-      if HDD.MountPartition(("hdd0:__.POPS%d"):format(i), 0, FIO_MT_RDONLY) then
+      if HDD.MountPartition(("hdd0:__.POPS%d"):format(i), PLDR.HDD.PFS_IDX, FIO_MT_RDONLY) then
         PLDR.HDD.EXTRAPARTS[i] = true
         PLDR.HDD.FOUNDANY = true
-        HDD.UMountPartition(0)
+        HDD.UMountPartition(PLDR.HDD.PFS_IDX)
       end
       LOG("__.POPS"..i, PLDR.HDD.EXTRAPARTS[i])
     end
@@ -945,22 +959,22 @@ function PLDR.HDD.BuildGameList()
   PLDR.GAMES = {}
   if type(PLDR.HDDCACHE) == "table" and PLDR.HDD.USECACHE then PLDR.GAMES = PLDR.HDDCACHE end
   PLDR.HDD.GAMEPARTS = {}
-  PLDR.GAMEPATH = "pfs0:/"
+  PLDR.GAMEPATH = PLDR.HDD.PFS
   if not PLDR.HDD.FOUNDANY then return end
   if PLDR.HDD.MAINPART then
-    if HDD.MountPartition("hdd0:__.POPS", 0, FIO_MT_RDONLY) then
-      AppendHddGameList("__.POPS", "pfs0:/", "")
-      AppendHddGameList("__.POPS", "pfs0:/POPS/", "POPS/")
-      HDD.UMountPartition(0)
+    if HDD.MountPartition("hdd0:__.POPS", PLDR.HDD.PFS_IDX, FIO_MT_RDONLY) then
+      AppendHddGameList("__.POPS", PLDR.HDD.PFS, "")
+      AppendHddGameList("__.POPS", PLDR.HDD.PFS.."POPS/", "POPS/")
+      HDD.UMountPartition(PLDR.HDD.PFS_IDX)
     end
   end
   for i=0, 9 do
     if PLDR.HDD.EXTRAPARTS[i] then
-      if HDD.MountPartition("hdd0:__.POPS"..i, 0, FIO_MT_RDONLY) then
+      if HDD.MountPartition("hdd0:__.POPS"..i, PLDR.HDD.PFS_IDX, FIO_MT_RDONLY) then
         local partition = "__.POPS"..i
-        AppendHddGameList(partition, "pfs0:/", "")
-        AppendHddGameList(partition, "pfs0:/POPS/", "POPS/")
-        HDD.UMountPartition(0)
+        AppendHddGameList(partition, PLDR.HDD.PFS, "")
+        AppendHddGameList(partition, PLDR.HDD.PFS.."POPS/", "POPS/")
+        HDD.UMountPartition(PLDR.HDD.PFS_IDX)
       end
     end
   end
@@ -1266,8 +1280,8 @@ local function EnsureHDDReadyForLaunch(game, partition_override)
   end
   local partition = partition_override or PLDR.HDD.GAMEPARTS[game] or "hdd0:__.POPS"
   result.mount_partition = partition
-  HDD.UMountPartition(0)
-  result.mount_ok = HDD.MountPartition(partition, 0, FIO_MT_RDONLY)
+  HDD.UMountPartition(PLDR.HDD.PFS_IDX)
+  result.mount_ok = HDD.MountPartition(partition, PLDR.HDD.PFS_IDX, FIO_MT_RDONLY)
   return result
 end
 
