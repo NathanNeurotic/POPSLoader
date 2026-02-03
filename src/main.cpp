@@ -193,6 +193,48 @@ static void BootStamp(const char *stage)
     DPRINTF("BOOT: %s %u\n", stage, boot_ms());
 }
 
+/*
+ * HDD boot support
+ *
+ * When launched from a PFS mount (e.g. pfs0:/...), the HDD stack (dev9/atad/hdd/fs)
+ * must be present before we can chdir() and load Lua assets. Without it, the app can
+ * black-screen very early.
+ *
+ * IMPORTANT: This is ONLY to make boot-from-HDD work; HDD page logic remains page-init.
+ */
+#define IMPORT_BIN2C(_n)       \
+    extern unsigned char _n[]; \
+    extern unsigned int size_##_n
+
+IMPORT_BIN2C(ps2dev9_irx);
+IMPORT_BIN2C(ps2atad_irx);
+IMPORT_BIN2C(ps2hdd_osd_irx);
+IMPORT_BIN2C(ps2fs_irx);
+
+static bool IsHddBootPath(const char *path)
+{
+    if (!path) return false;
+    return (strncmp(path, "pfs", 3) == 0) || (strncmp(path, "hdd0:", 5) == 0);
+}
+
+static void EnsureHddStackLoaded(void)
+{
+    int id = -1, ret = -1;
+
+    /* Order matters. Mirror HDD page init dependencies. */
+    (void)LoadIrxChecked("ps2dev9.irx", ps2dev9_irx, size_ps2dev9_irx, &id, &ret);
+    DPRINTF("HDD_BOOT: ps2dev9 id=%d ret=%d\n", id, ret);
+    (void)LoadIrxChecked("ps2atad.irx", ps2atad_irx, size_ps2atad_irx, &id, &ret);
+    DPRINTF("HDD_BOOT: ps2atad id=%d ret=%d\n", id, ret);
+    (void)LoadIrxChecked("ps2hdd_osd.irx", ps2hdd_osd_irx, size_ps2hdd_osd_irx, &id, &ret);
+    DPRINTF("HDD_BOOT: ps2hdd_osd id=%d ret=%d\n", id, ret);
+
+    /* ps2fs expects args. Mirror luaHDD.cpp: "-o 4 -n 24" */
+    char pfsarg[] = "-o 4 -n 24";
+    id = SifExecModuleBuffer(ps2fs_irx, size_ps2fs_irx, sizeof(pfsarg), pfsarg, &ret);
+    DPRINTF("HDD_BOOT: ps2fs id=%d ret=%d\n", id, ret);
+}
+
 void setLuaBootPath(int argc, char ** argv, int idx)
 {
     if (argc>=(idx+1))
@@ -389,15 +431,14 @@ int main(int argc, char * argv[])
     }
     BootStamp("fileXio load/init");
 
+    /* If we're booting from HDD (pfs/hdd0), load the HDD stack BEFORE we touch pfs paths. */
+    if (argc > 0 && argv[0] && IsHddBootPath(argv[0])) {
+        DPRINTF("HDD_BOOT: detected argv0=%s\n", argv[0]);
+        EnsureHddStackLoaded();
+        BootStamp("HDD stack load");
+    }
+
 	LOAD_IRX_NARG(sio2man_irx);
-    /*
-     * NOTE:
-     * We intentionally keep mmceman loaded at boot for BOTH variants.
-     *
-     * Reason: some builds exhibited a black-screen boot when mmceman was deferred
-     * (even though MMCE probing remains page-init). Loading the module itself is
-     * lightweight and preserves previous known-good boot behavior.
-     */
     if (filexio_ok) {
         int mmceman_id = -1;
         int mmceman_ret = -1;
@@ -450,17 +491,10 @@ int main(int argc, char * argv[])
     LOAD_IRX_NARG(bdmfs_fatfs_irx);
     LOAD_IRX_NARG(usbmass_bd_irx);
 
-#if defined(BOOT_MX4SIO)
-    /* MX4SIO-boot build: load MX4SIO backend early so booting from MX4SIO works before Lua starts. */
+    /* Load MX4SIO backend early so booting from MX4SIO works before Lua starts. */
     bool mx4sio_bd_ok = LoadIrxChecked("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL);
     DPRINTF("mx4sio_bd load result: ok=%d\n", mx4sio_bd_ok ? 1 : 0);
     BootStamp("mx4sio_bd load");
-#else
-    /* MMCE-boot build: do NOT load MX4SIO backend at boot.
-       MX4SIO will be loaded later on demand by System.initMX4SIO() when the user enters the MX4SIO page. */
-    DPRINTF("mx4sio_bd load skipped (BOOT_MX4SIO not set)\n");
-    BootStamp("mx4sio_bd load (skipped)");
-#endif
 
 
     LOAD_IRX_NARG(cdfs_irx);
@@ -490,7 +524,10 @@ int main(int argc, char * argv[])
         }
     }
 
-    if (ExtractDeviceRoot(boot_path, wait_root, sizeof(wait_root)) < 0) {
+    if (IsHddBootPath(boot_path)) {
+        /* When booting from HDD, wait for PFS to be ready instead of mass:/ */
+        snprintf(wait_root, sizeof(wait_root), "pfs0:/");
+    } else if (ExtractDeviceRoot(boot_path, wait_root, sizeof(wait_root)) < 0) {
         /* Fallback: previous behavior. */
         snprintf(wait_root, sizeof(wait_root), "mass:/");
     }
