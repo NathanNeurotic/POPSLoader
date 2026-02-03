@@ -382,12 +382,25 @@ int main(int argc, char * argv[])
     BootStamp("boot path parse");
 
 
-#ifdef RESET_IOP  
-    SifInitRpc(0);
-    while (!SifIopReset("", 0)){};
-    while (!SifIopSync()){};
-    SifInitRpc(0);
-    BootStamp("IOP reset");
+#ifdef RESET_IOP
+    /*
+     * HDD boot note:
+     * Many launchers execute the ELF from an already-mounted PFS (typically pfs0:/...).
+     * If we reset the IOP here, that mount (and the loader's HDD/PFS modules) disappear,
+     * leaving us unable to chdir() or load Lua/assets from pfs* at boot.
+     *
+     * Therefore: when booted from pfs*/hdd0:, keep the loader's IOP state intact.
+     */
+    if (!IsHddBootPath(boot_path)) {
+        SifInitRpc(0);
+        while (!SifIopReset("", 0)){};
+        while (!SifIopSync()){};
+        SifInitRpc(0);
+        BootStamp("IOP reset");
+    } else {
+        SifInitRpc(0);
+        BootStamp("IOP reset skipped (HDD boot)");
+    }
 #endif
     
     // install sbv patch fix
