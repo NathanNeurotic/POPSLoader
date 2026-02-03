@@ -202,7 +202,8 @@ reset:
 POPSLDR_PKG = POPSLoader-$(VARIANT).7z
 PKG_DIR = bin/package
 package: $(EE_BIN_PKD)
-	rm -f $(POPSLDR_PKG)
+	# Remove both possible output locations (older CI/scripts sometimes expected the archive in bin/).
+	rm -f $(POPSLDR_PKG) bin/$(POPSLDR_PKG)
 	rm -rf $(PKG_DIR)
 	mkdir -p $(PKG_DIR)
 	cp $(EE_BIN_PKD) $(PKG_DIR)/POPSLOADER.ELF
@@ -211,7 +212,8 @@ package: $(EE_BIN_PKD)
 	@if [ -d bin/POPSTARTER ]; then cp -r bin/POPSTARTER $(PKG_DIR)/; fi
 	@if ls bin/POPSLDR/IMG/*.png >/dev/null 2>&1; then cp bin/POPSLDR/IMG/*.png $(PKG_DIR)/; fi
 	@if ls bin/POPSLDR/IRX/*.irx >/dev/null 2>&1; then cp bin/POPSLDR/IRX/*.irx $(PKG_DIR)/; fi
-	cd $(PKG_DIR); 7z a ../$(POPSLDR_PKG) .
+	# Create the archive at repo root so CI can upload a stable path.
+	cd $(PKG_DIR); 7z a ../../$(POPSLDR_PKG) .
 
 dummys:
 	touch $(BINDIR)A.vcd
