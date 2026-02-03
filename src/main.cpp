@@ -34,10 +34,6 @@ extern "C"{
 #include <libds34usb.h>
 }
 
-// Forward declaration (used before later definition)
-// Must match the later definition (static, C++ linkage).
-static bool LoadIrxChecked(const char *name, unsigned char *irx, unsigned int size, int *out_id, int *out_ret);
-
 extern char bootString[];
 extern unsigned int size_bootString;
 
@@ -166,6 +162,17 @@ static int ExtractDeviceRoot(const char *path, char *out, size_t out_sz)
     return 0;
 }
 
+static int IsPfsOrHddBootPath(const char *path) {
+    if (!path) return 0;
+    return (strncmp(path, "pfs", 3) == 0) || (strncmp(path, "hdd", 3) == 0);
+}
+
+static int IsMassBootPath(const char *path) {
+    if (!path) return 0;
+    return (strncmp(path, "mass", 4) == 0);
+}
+
+
 static int FixupMassGenericPath(char *io_path, size_t io_sz)
 {
     /* If path begins with mass:/... but the actual device is massN:/..., probe and rewrite. */
@@ -196,31 +203,6 @@ static void BootStamp(const char *stage)
 {
     DPRINTF("BOOT: %s %u\n", stage, boot_ms());
 }
-
-/*
- * HDD boot support
- *
- * When launched from a PFS mount (e.g. pfs0:/...), the HDD stack (dev9/atad/hdd/fs)
- * must be present before we can chdir() and load Lua assets. Without it, the app can
- * black-screen very early.
- *
- * IMPORTANT: This is ONLY to make boot-from-HDD work; HDD page logic remains page-init.
- */
-#define IMPORT_BIN2C(_n)       \
-    extern unsigned char _n[]; \
-    extern unsigned int size_##_n
-
-IMPORT_BIN2C(ps2dev9_irx);
-IMPORT_BIN2C(ps2atad_irx);
-IMPORT_BIN2C(ps2hdd_osd_irx);
-IMPORT_BIN2C(ps2fs_irx);
-
-static bool IsHddBootPath(const char *path)
-{
-    if (!path) return false;
-    return (strncmp(path, "pfs", 3) == 0) || (strncmp(path, "hdd0:", 5) == 0);
-}
-
 
 void setLuaBootPath(int argc, char ** argv, int idx)
 {
@@ -384,14 +366,11 @@ int main(int argc, char * argv[])
 
 #ifdef RESET_IOP
     /*
-     * HDD boot note:
-     * Many launchers execute the ELF from an already-mounted PFS (typically pfs0:/...).
-     * If we reset the IOP here, that mount (and the loader's HDD/PFS modules) disappear,
-     * leaving us unable to chdir() or load Lua/assets from pfs* at boot.
-     *
-     * Therefore: when booted from pfsX:/ or hdd0:, keep the loader's IOP state intact.
+     * When launched from HDD, most loaders execute the ELF from an already-mounted PFS partition (typically pfs0:).
+     * Resetting the IOP at this point can invalidate that mount and/or deadlock, producing a black screen before
+     * any error UI can render. Therefore, when booted from pfsX:/ or hdd0:, keep the loader's IOP state intact.
      */
-    if (!IsHddBootPath(boot_path)) {
+    if (!IsPfsOrHddBootPath(boot_path)) {
         SifInitRpc(0);
         while (!SifIopReset("", 0)){};
         while (!SifIopSync()){};
@@ -430,8 +409,6 @@ int main(int argc, char * argv[])
         DPRINTF("Skipping fileXio init; iomanX failed to load.\n");
     }
     BootStamp("fileXio load/init");
-
-    /* If we're booting from HDD (pfs/hdd0), load the HDD stack BEFORE we touch pfs paths. */
 
 	LOAD_IRX_NARG(sio2man_irx);
     if (filexio_ok) {
@@ -519,21 +496,24 @@ int main(int argc, char * argv[])
         }
     }
 
-    if (IsHddBootPath(boot_path)) {
-        /* When booting from HDD, wait for PFS to be ready instead of mass:/ */
-        snprintf(wait_root, sizeof(wait_root), "pfs0:/");
-    } else if (ExtractDeviceRoot(boot_path, wait_root, sizeof(wait_root)) < 0) {
+    if (ExtractDeviceRoot(boot_path, wait_root, sizeof(wait_root)) < 0) {
         /* Fallback: previous behavior. */
         snprintf(wait_root, sizeof(wait_root), "mass:/");
     }
-    BootStamp("mass wait begin");
-
-    while (ret != 0 && retries > 0) {
-        ret = stat(wait_root, &buffer);
-        nopdelay();
-        retries--;
+    /* Some devices are already ready when the ELF is launched (e.g. pfs0:/ from HDD loaders).
+     * Only poll readiness for mass devices where hotplug timing is common.
+     */
+    if (strncmp(wait_root, "mass", 4) == 0) {
+        BootStamp("mass wait begin");
+        while (ret != 0 && retries > 0) {
+            ret = stat(wait_root, &buffer);
+            nopdelay();
+            retries--;
+        }
+        BootStamp("mass wait end");
+    } else {
+        BootStamp("device wait skipped");
     }
-    BootStamp("mass wait end");
 	
 	// Lua init
 	// init internals library
