@@ -389,7 +389,7 @@ int main(int argc, char * argv[])
      * If we reset the IOP here, that mount (and the loader's HDD/PFS modules) disappear,
      * leaving us unable to chdir() or load Lua/assets from pfs* at boot.
      *
-     * Therefore: when booted from pfs*/hdd0:, keep the loader's IOP state intact.
+     * Therefore: when booted from pfsX:/ or hdd0:, keep the loader's IOP state intact.
      */
     if (!IsHddBootPath(boot_path)) {
         SifInitRpc(0);
