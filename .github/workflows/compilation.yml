@@ -15,57 +15,39 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container: ps2dev/ps2dev:latest
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [mmce, mx4sio, hdd]
     steps:
       - name: Install dependencies
         run: |
           apk add --no-cache build-base git bash p7zip findutils coreutils
 
-      - name: Workaround permission issue
+      - name: Workaround permissions
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          chown -R root:root .
 
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Generate build info
+      - name: Stamp build info
         shell: sh
         run: |
           set -eu
           COMMIT_SHORT="$(echo "$GITHUB_SHA" | cut -c1-7)"
           BUILD_UTC="$(date -u '+%Y-%m-%d %H:%MZ')"
-          mkdir -p bin/POPSLDR
           printf "%s\n%s\n" "$COMMIT_SHORT" "$BUILD_UTC" > bin/POPSLDR/BUILD_INFO.txt
-          cat bin/POPSLDR/BUILD_INFO.txt
 
-      - name: Build + package (mx4sio boot variant)
+      - name: Compile and package (${{ matrix.variant }})
         shell: sh
         run: |
           set -eu
-          rm -f bin/POPSLoader_mx4sio.7z ./POPSLoader-mx4sio.7z || true
-          make clean elfloader all package VARIANT=mx4sio
-          test -f bin/POPSLoader_mx4sio.7z
-          cp -f bin/POPSLoader_mx4sio.7z ./POPSLoader-mx4sio.7z
-          ls -lah ./POPSLoader-mx4sio.7z
+          make clean elfloader all package VARIANT=${{ matrix.variant }}
 
-      - name: Build + package (mmce boot variant)
-        shell: sh
-        run: |
-          set -eu
-          rm -f bin/POPSLoader_mmce.7z ./POPSLoader-mmce.7z || true
-          make clean elfloader all package VARIANT=mmce
-          test -f bin/POPSLoader_mmce.7z
-          cp -f bin/POPSLoader_mmce.7z ./POPSLoader-mmce.7z
-          ls -lah ./POPSLoader-mmce.7z
-
-      - name: Upload artifacts (both boot variants)
-        if: ${{ success() }}
+      - name: Upload artifact (${{ matrix.variant }})
         uses: actions/upload-artifact@v4
         with:
-          name: POPSLoader-dualboot
-          path: |
-            POPSLoader-mx4sio.7z
-            POPSLoader-mmce.7z
-          if-no-files-found: error
-          compression-level: 0
+          name: POPSLoader-${{ matrix.variant }}
+          path: POPSLoader-${{ matrix.variant }}.7z
