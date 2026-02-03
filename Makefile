@@ -53,9 +53,7 @@ EE_CFLAGS   += -Wno-sign-compare -fno-strict-aliasing -fno-exceptions -DLUA_USE_
 EE_CXXFLAGS += -Wno-sign-compare -fno-strict-aliasing -fno-exceptions -DLUA_USE_PS2
 EE_ASFLAGS += -call_shared
 ifeq ($(RESET_IOP),1)
-ifneq ($(VARIANT),hdd)
 EE_CXXFLAGS += -DRESET_IOP
-endif
 endif
 
 ifeq ($(DEBUG),1)
