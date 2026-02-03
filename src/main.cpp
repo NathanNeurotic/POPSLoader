@@ -162,17 +162,6 @@ static int ExtractDeviceRoot(const char *path, char *out, size_t out_sz)
     return 0;
 }
 
-static int IsPfsOrHddBootPath(const char *path) {
-    if (!path) return 0;
-    return (strncmp(path, "pfs", 3) == 0) || (strncmp(path, "hdd", 3) == 0);
-}
-
-static int IsMassBootPath(const char *path) {
-    if (!path) return 0;
-    return (strncmp(path, "mass", 4) == 0);
-}
-
-
 static int FixupMassGenericPath(char *io_path, size_t io_sz)
 {
     /* If path begins with mass:/... but the actual device is massN:/..., probe and rewrite. */
@@ -364,22 +353,12 @@ int main(int argc, char * argv[])
     BootStamp("boot path parse");
 
 
-#ifdef RESET_IOP
-    /*
-     * When launched from HDD, most loaders execute the ELF from an already-mounted PFS partition (typically pfs0:).
-     * Resetting the IOP at this point can invalidate that mount and/or deadlock, producing a black screen before
-     * any error UI can render. Therefore, when booted from pfsX:/ or hdd0:, keep the loader's IOP state intact.
-     */
-    if (!IsPfsOrHddBootPath(boot_path)) {
-        SifInitRpc(0);
-        while (!SifIopReset("", 0)){};
-        while (!SifIopSync()){};
-        SifInitRpc(0);
-        BootStamp("IOP reset");
-    } else {
-        SifInitRpc(0);
-        BootStamp("IOP reset skipped (HDD boot)");
-    }
+#ifdef RESET_IOP  
+    SifInitRpc(0);
+    while (!SifIopReset("", 0)){};
+    while (!SifIopSync()){};
+    SifInitRpc(0);
+    BootStamp("IOP reset");
 #endif
     
     // install sbv patch fix
@@ -463,10 +442,12 @@ int main(int argc, char * argv[])
     LOAD_IRX_NARG(bdmfs_fatfs_irx);
     LOAD_IRX_NARG(usbmass_bd_irx);
 
+#if defined(BOOT_MX4SIO)
     /* Load MX4SIO backend early so booting from MX4SIO works before Lua starts. */
     bool mx4sio_bd_ok = LoadIrxChecked("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL);
     DPRINTF("mx4sio_bd load result: ok=%d\n", mx4sio_bd_ok ? 1 : 0);
     BootStamp("mx4sio_bd load");
+#endif
 
 
     LOAD_IRX_NARG(cdfs_irx);
@@ -500,20 +481,14 @@ int main(int argc, char * argv[])
         /* Fallback: previous behavior. */
         snprintf(wait_root, sizeof(wait_root), "mass:/");
     }
-    /* Some devices are already ready when the ELF is launched (e.g. pfs0:/ from HDD loaders).
-     * Only poll readiness for mass devices where hotplug timing is common.
-     */
-    if (strncmp(wait_root, "mass", 4) == 0) {
-        BootStamp("mass wait begin");
-        while (ret != 0 && retries > 0) {
-            ret = stat(wait_root, &buffer);
-            nopdelay();
-            retries--;
-        }
-        BootStamp("mass wait end");
-    } else {
-        BootStamp("device wait skipped");
+    BootStamp("mass wait begin");
+
+    while (ret != 0 && retries > 0) {
+        ret = stat(wait_root, &buffer);
+        nopdelay();
+        retries--;
     }
+    BootStamp("mass wait end");
 	
 	// Lua init
 	// init internals library
