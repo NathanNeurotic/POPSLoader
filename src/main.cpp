@@ -32,10 +32,11 @@
 extern "C"{
 #include <libds34bt.h>
 #include <libds34usb.h>
+}
 
 // Forward declaration (used by EnsureHddStackLoaded)
-bool LoadIrxChecked(const char *name, unsigned char *irx, unsigned int size, int *out_id, int *out_ret);
-}
+// Must match the later definition (static, C++ linkage).
+static bool LoadIrxChecked(const char *name, unsigned char *irx, unsigned int size, int *out_id, int *out_ret);
 
 extern char bootString[];
 extern unsigned int size_bootString;
