@@ -34,20 +34,16 @@ export HEADER
 RESET_IOP = 1
 #---------------------- enable DEBUGGING MODE ---------------------#
 DEBUG = 0
+#----------------------- Build variant (boot) ----------------------#
+# mmce | mx4sio | hdd
+VARIANT ?= mmce
 #----------------------- Set IP for PS2Client ---------------------#
 PS2LINK_IP = 192.168.1.10
 #------------------------------------------------------------------#
 
-# Build variant selection:
-#   make VARIANT=mx4sio   -> boots from MX4SIO (MX4SIO backend loaded at boot)
-#   make VARIANT=mmce     -> boots from MMCE  (MX4SIO backend NOT loaded at boot)
-# You can build both with: make variants
-VARIANT ?= mx4sio
-
 BINDIR = bin/
-EE_BIN = $(BINDIR)enceladus_$(VARIANT).elf
+EE_BIN = $(BINDIR)enceladus.elf
 EE_BIN_PKD = $(BINDIR)POPSLOADER_$(VARIANT).ELF
-
 EE_LIBS = -L$(PS2SDK)/ports/lib -L$(PS2DEV)/gsKit/lib/ -Lmodules/ds34bt/ee/ -Lmodules/ds34usb/ee/ -lpatches -lfileXio -lpad -ldebug -llua -lmath3d -ljpeg -lfreetype -lgskit_toolkit -lgskit -ldmakit -lpng -lz -lmc -laudsrv  -lds34bt -lds34usb
 EE_LIBS += src/elf_loader/libcustom-elf-loader.a
 EE_INCS += -I$(PS2DEV)/gsKit/include -I$(PS2SDK)/ports/include -I$(PS2SDK)/ports/include/freetype2 -I$(PS2SDK)/ports/include/zlib
@@ -56,23 +52,28 @@ EE_INCS += -Imodules/ds34bt/ee -Imodules/ds34usb/ee
 EE_CFLAGS   += -Wno-sign-compare -fno-strict-aliasing -fno-exceptions -DLUA_USE_PS2
 EE_CXXFLAGS += -Wno-sign-compare -fno-strict-aliasing -fno-exceptions -DLUA_USE_PS2
 EE_ASFLAGS += -call_shared
-
-# Variant-specific boot behavior:
-# - VARIANT=mx4sio: load mx4sio_bd.irx during early boot so the app can boot from MX4SIO.
-# - VARIANT=mmce:  do not load mx4sio_bd.irx during early boot (MX4SIO remains page-init).
-ifeq ($(VARIANT),mx4sio)
-EE_CFLAGS   += -DBOOT_MX4SIO
-EE_CXXFLAGS += -DBOOT_MX4SIO
-else ifeq ($(VARIANT),mmce)
-EE_CFLAGS   += -DBOOT_MMCE
-EE_CXXFLAGS += -DBOOT_MMCE
-endif
 ifeq ($(RESET_IOP),1)
+ifneq ($(VARIANT),hdd)
 EE_CXXFLAGS += -DRESET_IOP
+endif
 endif
 
 ifeq ($(DEBUG),1)
 EE_CXXFLAGS += -DDEBUG
+endif
+
+#----------------------- Variant compile defines -----------------#
+ifeq ($(VARIANT),mmce)
+EE_CFLAGS   += -DBOOT_MMCE
+EE_CXXFLAGS += -DBOOT_MMCE
+endif
+ifeq ($(VARIANT),mx4sio)
+EE_CFLAGS   += -DBOOT_MX4SIO
+EE_CXXFLAGS += -DBOOT_MX4SIO
+endif
+ifeq ($(VARIANT),hdd)
+EE_CFLAGS   += -DBOOT_HDD
+EE_CXXFLAGS += -DBOOT_HDD
 endif
 
 BIN2S = $(PS2SDK)/bin/bin2c
@@ -105,13 +106,6 @@ EE_ASM_DIR = asm/$(VARIANT)/
 EE_OBJS := $(EE_OBJS:%=$(EE_OBJS_DIR)%) # remap all EE_OBJ to obj subdir
 
 #------------------------------------------------------------------#
-# Build both boot variants (runs two separate builds with isolated obj/asm dirs).
-variants:
-	@$(MAKE) clean VARIANT=mx4sio
-	@$(MAKE) all VARIANT=mx4sio
-	@$(MAKE) clean VARIANT=mmce
-	@$(MAKE) all VARIANT=mmce
-
 all: $(EXT_LIBS) $(EE_BIN_PKD)
 	@echo "$$HEADER"
 
@@ -190,11 +184,10 @@ debug: $(EE_BIN)
 	echo "Building $(EE_BIN) with debug symbols..."
 
 cleanbin:
-	rm -f $(BINDIR)enceladus_mx4sio.elf $(BINDIR)enceladus_mmce.elf
-	rm -f $(BINDIR)POPSLOADER_mx4sio.ELF $(BINDIR)POPSLOADER_mmce.ELF
+	rm -f $(EE_BIN) $(EE_BIN_PKD)
 clean: cleanbin
-	rm -rf obj
-	rm -rf asm
+	rm -rf $(EE_OBJS_DIR)
+	rm -rf $(EE_ASM_DIR)
 
 	rm -f $(EMBEDDED_RSC)
 
@@ -206,19 +199,19 @@ run:
 reset:
 	ps2client -h $(PS2LINK_IP) reset   
 
-POPSLDR_PKG = $(BINDIR)POPSLoader_$(VARIANT).7z
+POPSLDR_PKG = POPSLoader-$(VARIANT).7z
 PKG_DIR = bin/package
 package: $(EE_BIN_PKD)
 	rm -f $(POPSLDR_PKG)
 	rm -rf $(PKG_DIR)
 	mkdir -p $(PKG_DIR)
-	cp $(EE_BIN_PKD) $(PKG_DIR)/
+	cp $(EE_BIN_PKD) $(PKG_DIR)/POPSLOADER.ELF
 	cp bin/changelog LICENSE README.md $(PKG_DIR)/
 	find bin/POPSLDR -maxdepth 1 -type f -exec cp {} $(PKG_DIR)/ \;
 	@if [ -d bin/POPSTARTER ]; then cp -r bin/POPSTARTER $(PKG_DIR)/; fi
 	@if ls bin/POPSLDR/IMG/*.png >/dev/null 2>&1; then cp bin/POPSLDR/IMG/*.png $(PKG_DIR)/; fi
 	@if ls bin/POPSLDR/IRX/*.irx >/dev/null 2>&1; then cp bin/POPSLDR/IRX/*.irx $(PKG_DIR)/; fi
-	cd $(PKG_DIR); 7z a ../$(notdir $(POPSLDR_PKG)) .
+	cd $(PKG_DIR); 7z a ../$(POPSLDR_PKG) .
 
 dummys:
 	touch $(BINDIR)A.vcd
