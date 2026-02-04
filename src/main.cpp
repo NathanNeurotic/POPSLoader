@@ -375,8 +375,25 @@ int main(int argc, char * argv[])
     int ID, RET;
     if (argc > 0) ARGV0 = argv[0];
     const char * errMsg;
+
 #if defined(BOOT_HDD)
-    /* If HDD-boot is deadlocking before UI, this gives us a visible marker. */
+    /*
+     * EARLIEST POSSIBLE HDD-variant marker.
+     * Must not call SIF/IOP routines (no SifInitRpc, no fileXio, no stat).
+     * If this does not show when launching from HDD, we are not reaching main().
+     */
+    init_scr();
+    scr_setfontcolor(0xffffff);
+    scr_clear();
+    scr_setXY(5, 1);
+    scr_printf("Entered main() (BOOT_HDD)\n");
+    if (ARGV0) {
+        scr_printf("ARGV0: %s\n", ARGV0);
+    }
+    /*
+     * Optional EE-only GS probe (dark red) when launched from pfs/hdd.
+     * Kept after init_scr so we always get some visible output first.
+     */
     if (ARGV0 && (!strncmp(ARGV0, "pfs", 3) || !strncmp(ARGV0, "hdd", 3))) {
         EarlyVideoProbe_HDD();
     }
