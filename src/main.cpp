@@ -436,11 +436,11 @@ int main(int argc, char * argv[])
 
 #ifdef RESET_IOP
     /*
-     * Preserve PFS launcher state when booted from HDD/PFS. If we reset the IOP here,
-     * the loader-owned pfs mount is lost and we can hang before any UI is available.
+     * If launched from HDD/PFS, do NOT reset the IOP (would drop the loader-owned PFS mount).
+     * But we MUST still initialize SIF RPC before any module loads / RPC subsystems.
      */
+    SifInitRpc(0);
     if (!booted_from_hdd) {
-        SifInitRpc(0);
         while (!SifIopReset("", 0)){};
         while (!SifIopSync()){};
         SifInitRpc(0);
