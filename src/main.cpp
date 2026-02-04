@@ -34,6 +34,41 @@ extern "C"{
 #include <libds34usb.h>
 }
 
+#if defined(BOOT_HDD)
+/*
+ * EE-only early video probe.
+ * Purpose: prove we reach main() when HDD-booted, without any SIF/IOP calls.
+ * Draws a solid dark-red frame once, then continues.
+ */
+static void EarlyVideoProbe_HDD(void)
+{
+    GSGLOBAL *gsGlobal = gsKit_init_global();
+
+    /* Safe defaults */
+    gsGlobal->Mode = GS_MODE_NTSC;
+    gsGlobal->Interlace = GS_INTERLACED;
+    gsGlobal->Field = GS_FIELD;
+    gsGlobal->Width = 640;
+    gsGlobal->Height = 448;
+    gsGlobal->PSM = GS_PSM_CT24;
+    gsGlobal->ZBuffering = GS_SETTING_OFF;
+
+    dmaKit_init(D_CTRL_RELE_OFF, D_CTRL_MFD_OFF, D_CTRL_STS_UNSPEC, D_CTRL_STD_OFF, D_CTRL_RCYC_8, 1<<DMA_CHANNEL_GIF);
+    dmaKit_chan_init(DMA_CHANNEL_GIF);
+
+    gsKit_init_screen(gsGlobal);
+
+    /* Solid dark-red clear */
+    gsKit_clear(gsGlobal, GS_SETREG_RGBAQ(0x40, 0x00, 0x00, 0x80, 0x00));
+    gsKit_sync_flip(gsGlobal);
+    gsKit_queue_exec(gsGlobal);
+    gsKit_finish();
+
+    /* Leave GS initialized; the normal graphics init will reconfigure later. */
+}
+#endif
+
+
 extern char bootString[];
 extern unsigned int size_bootString;
 
@@ -340,6 +375,12 @@ int main(int argc, char * argv[])
     int ID, RET;
     if (argc > 0) ARGV0 = argv[0];
     const char * errMsg;
+#if defined(BOOT_HDD)
+    /* If HDD-boot is deadlocking before UI, this gives us a visible marker. */
+    if (ARGV0 && (!strncmp(ARGV0, "pfs", 3) || !strncmp(ARGV0, "hdd", 3))) {
+        EarlyVideoProbe_HDD();
+    }
+#endif
     boot_start = clock();
     BootStamp("EE init start");
 
