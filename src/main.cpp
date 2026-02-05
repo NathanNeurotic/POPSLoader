@@ -38,9 +38,9 @@ extern "C"{
 /*
  * EE-only early video probe.
  * Purpose: prove we reach main() when HDD-booted, without any SIF/IOP calls.
- * Draws a solid dark-red frame once, then continues.
+ * Draws a solid color frame once, then continues.
  */
-static void EarlyVideoProbe_HDD(void)
+static void EarlyVideoProbe_HDD(unsigned char r, unsigned char g, unsigned char b)
 {
     GSGLOBAL *gsGlobal = gsKit_init_global();
 
@@ -58,8 +58,8 @@ static void EarlyVideoProbe_HDD(void)
 
     gsKit_init_screen(gsGlobal);
 
-    /* Solid dark-red clear */
-    gsKit_clear(gsGlobal, GS_SETREG_RGBAQ(0x40, 0x00, 0x00, 0x80, 0x00));
+    /* Solid color clear */
+    gsKit_clear(gsGlobal, GS_SETREG_RGBAQ(r, g, b, 0x80, 0x00));
     gsKit_sync_flip(gsGlobal);
     gsKit_queue_exec(gsGlobal);
     gsKit_finish();
@@ -132,6 +132,8 @@ static clock_t boot_start = 0;
 static int g_booted_from_hdd = 0;
 static int g_status_line = 2;
 static int g_status_inited = 0;
+static int g_status_allow_text = 0;
+static unsigned int g_status_stage = 0;
 
 static unsigned int boot_ms(void)
 {
@@ -236,6 +238,22 @@ static void BootStatus(const char *stage)
     BootStamp(stage);
 #if defined(BOOT_HDD)
     if (g_booted_from_hdd) {
+        g_status_stage++;
+        if (!g_status_allow_text) {
+            unsigned char r = 0x20;
+            unsigned char g = 0x20;
+            unsigned char b = 0x20;
+            switch (g_status_stage % 6) {
+            case 0: r = 0x80; g = 0x00; b = 0x00; break;
+            case 1: r = 0x00; g = 0x80; b = 0x00; break;
+            case 2: r = 0x00; g = 0x00; b = 0x80; break;
+            case 3: r = 0x80; g = 0x80; b = 0x00; break;
+            case 4: r = 0x00; g = 0x80; b = 0x80; break;
+            default: r = 0x80; g = 0x00; b = 0x80; break;
+            }
+            EarlyVideoProbe_HDD(r, g, b);
+            return;
+        }
         if (!g_status_inited) {
             init_scr();
             scr_setfontcolor(0xffffff);
@@ -405,21 +423,7 @@ int main(int argc, char * argv[])
      * Must not call SIF/IOP routines (no SifInitRpc, no fileXio, no stat).
      * If this does not show when launching from HDD, we are not reaching main().
      */
-    init_scr();
-    scr_setfontcolor(0xffffff);
-    scr_clear();
-    scr_setXY(5, 1);
-    scr_printf("Entered main() (BOOT_HDD)\n");
-    if (ARGV0) {
-        scr_printf("ARGV0: %s\n", ARGV0);
-    }
-    /*
-     * Optional EE-only GS probe (dark red) when launched from pfs/hdd.
-     * Kept after init_scr so we always get some visible output first.
-     */
-    if (ARGV0 && (!strncmp(ARGV0, "pfs", 3) || !strncmp(ARGV0, "hdd", 3))) {
-        EarlyVideoProbe_HDD();
-    }
+    EarlyVideoProbe_HDD(0x10, 0x10, 0x40);
 #endif
     boot_start = clock();
     BootStamp("EE init start");
@@ -506,10 +510,14 @@ int main(int argc, char * argv[])
         BootStatus("fileXio init failed");
 #if defined(BOOT_HDD)
         if (g_booted_from_hdd) {
-            scr_setfontcolor(0x0000ff);
-            scr_printf("Fatal: fileXio unavailable\n");
-            scr_printf("Check iomanX/fileXio IRX\n");
-            scr_printf("Restart required\n");
+            if (!g_status_allow_text) {
+                EarlyVideoProbe_HDD(0x80, 0x00, 0x00);
+            } else {
+                scr_setfontcolor(0x0000ff);
+                scr_printf("Fatal: fileXio unavailable\n");
+                scr_printf("Check iomanX/fileXio IRX\n");
+                scr_printf("Restart required\n");
+            }
             for (;;) {
                 nopdelay();
             }
@@ -586,6 +594,8 @@ int main(int argc, char * argv[])
     // graphics (gsKit)
     BootStatus("graphics init");
     initGraphics();
+    g_status_allow_text = 1;
+    BootStatus("graphics init done");
 
     BootStatus("IOP modules (pad/sound/usb) init");
     LOAD_IRX_NARG(sio2man_irx);
