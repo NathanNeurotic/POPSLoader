@@ -6,8 +6,6 @@ local function ensure_dir(path)
   return path
 end
 
-local BASE_DIR = ensure_dir(APP_DIR or System.currentDirectory())
-package.path = BASE_DIR.."?.lua;"..BASE_DIR.."?/init.lua;"..BASE_DIR.."POPSLDR/?.lua;./?.lua;./POPSLDR/?.lua;mass:/POPSLDR/?.lua;mc0:/POPSLDR/?.lua;mc1:/POPSLDR/?.lua"
 function LOG(...)
   print_uart(...)
 end
@@ -49,27 +47,47 @@ function GetMountData(PATH)
   return mountpart, pfsindx, filepath
 end
 
+local function MountHddPartition(partition, pfs_index)
+  local SUCCESS, MODULE, ID, RET = HDD.Initialize()
+  if not SUCCESS then
+    LOG("ERROR", MODULE..".IRX", ID, RET)
+    return false
+  end
+  System.sleep(2) -- lets give it time to get ready
+  return HDD.MountPartition(partition, pfs_index)
+end
+
+local function SetBootPathFromFilepath(filepath, pfs_index)
+  local bootpath = string.gsub(filepath, "^pfs%d*:", pfs_index..":")
+  bootpath, _, _ = string.match(bootpath, "(.-)([^/]-([^%.]+))$")
+  BOOTPATH = bootpath
+  System.currentDirectory(BOOTPATH)
+  LOGF("new bootpath: '%s'\n", BOOTPATH)
+end
+
 
 local ARGV0 = System.GetArgv0()
 if string.find(ARGV0, "^hdd0:") then
   LOG("Booting from HDD!", ARGV0)
-  local MNTPART
   BOOTPATH = nil
-  MNTPART, _, BOOTPATH = GetMountData(ARGV0)
-  if string.find(BOOTPATH, "^pfs") then
-    SUCCESS, MODULE, ID, RET = HDD.Initialize()
-    if not SUCCESS then
-      LOG("ERROR", MODULE..".IRX", ID, RET)
-    else
-      System.sleep(2) -- lets give it time to get ready
-      if HDD.MountPartition(MNTPART, 1) then -- mount to "pfs1:" and NEVER USE IT FOR ANYTHING ELSE
-        BOOTPATH, _, _ = string.match(BOOTPATH, "(.-)([^/]-([^%.]+))$")
-        System.currentDirectory(BOOTPATH)
-        LOGF("new bootpath: '%s'\n", BOOTPATH)
+  local mountpart, _, filepath = GetMountData(ARGV0)
+  if filepath ~= "" and string.find(filepath, "^pfs") then
+    if MountHddPartition(mountpart, 1) then -- mount to "pfs1:" and NEVER USE IT FOR ANYTHING ELSE
+      SetBootPathFromFilepath(filepath, "pfs1")
+    end
+  else
+    local part_label, rest = string.match(ARGV0, "^hdd0:([^/]+)/(.+)$")
+    if part_label ~= nil and rest ~= nil then
+      mountpart = string.format("hdd0:%s", part_label)
+      if MountHddPartition(mountpart, 1) then -- mount to "pfs1:" and NEVER USE IT FOR ANYTHING ELSE
+        local remapped = string.format("pfs1:/%s", rest)
+        SetBootPathFromFilepath(remapped, "pfs1")
       end
     end
   end
 end
+local BASE_DIR = ensure_dir(BOOTPATH or APP_DIR or System.currentDirectory())
+package.path = BASE_DIR.."?.lua;"..BASE_DIR.."?/init.lua;"..BASE_DIR.."POPSLDR/?.lua;./?.lua;./POPSLDR/?.lua;mass:/POPSLDR/?.lua;mc0:/POPSLDR/?.lua;mc1:/POPSLDR/?.lua"
 GPAD = 0
 Font.ftInit()
 BFONT = Font.LoadBuiltinFont()
