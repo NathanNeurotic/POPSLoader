@@ -62,10 +62,20 @@ if string.find(ARGV0, "^hdd0:") then
       LOG("ERROR", MODULE..".IRX", ID, RET)
     else
       System.sleep(2) -- lets give it time to get ready
-      if HDD.MountPartition(MNTPART, 1) then -- mount to "pfs1:" and NEVER USE IT FOR ANYTHING ELSE
-        BOOTPATH, _, _ = string.match(BOOTPATH, "(.-)([^/]-([^%.]+))$")
-        System.currentDirectory(BOOTPATH)
-        LOGF("new bootpath: '%s'\n", BOOTPATH)
+      local function try_mount(idx)
+        if HDD.MountPartition(MNTPART, idx) then
+          BOOTPATH, _, _ = string.match(BOOTPATH, "(.-)([^/]-([^%.]+))$")
+          System.currentDirectory(BOOTPATH)
+          LOGF("new bootpath (pfs%d): '%s'\n", idx, BOOTPATH)
+          return true
+        end
+        return false
+      end
+      if not try_mount(1) then -- preferred mount slot for POPSLoader
+        LOG("WARN: pfs1 mount failed, trying pfs0")
+        if not try_mount(0) then
+          LOG("ERROR: HDD mount failed for", MNTPART)
+        end
       end
     end
   end
