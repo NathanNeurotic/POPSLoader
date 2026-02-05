@@ -10,6 +10,7 @@
 #include "include/system.h"
 #include "include/luaplayer.h"
 #include "include/dprintf.h"
+#include "include/bootdiag.h"
 
 //extern int size_loader_elf;
 
@@ -79,12 +80,22 @@ char* __ps2_normalize_path(char *path_name)
 
 int ResolveAssetPath(char* out, size_t outsz, const char* relativeName)
 {
+	static bool first_asset_logged = false;
 	if (!out || outsz == 0 || !relativeName) return 0;
+
+	if (!first_asset_logged) {
+		BootDiagLog("asset resolve start: %s", relativeName);
+	}
 
 	if (strchr(relativeName, ':') != NULL) {
 		snprintf(out, outsz, "%s", relativeName);
 		struct stat st;
-		return (stat(out, &st) == 0);
+		int ok = (stat(out, &st) == 0);
+		if (!first_asset_logged) {
+			BootDiagLog("asset resolve direct: %s ok=%d", out, ok);
+			first_asset_logged = true;
+		}
+		return ok;
 	}
 
 	char candidate[255];
@@ -94,6 +105,10 @@ int ResolveAssetPath(char* out, size_t outsz, const char* relativeName)
 	if (stat(candidate, &st) == 0) {
 		DPRINTF("ResolveAssetPath: %s\n", candidate);
 		snprintf(out, outsz, "%s", candidate);
+		if (!first_asset_logged) {
+			BootDiagLog("asset resolve ok: %s", candidate);
+			first_asset_logged = true;
+		}
 		return 1;
 	}
 
@@ -101,6 +116,10 @@ int ResolveAssetPath(char* out, size_t outsz, const char* relativeName)
 	if (stat(candidate, &st) == 0) {
 		DPRINTF("ResolveAssetPath: %s\n", candidate);
 		snprintf(out, outsz, "%s", candidate);
+		if (!first_asset_logged) {
+			BootDiagLog("asset resolve ok: %s", candidate);
+			first_asset_logged = true;
+		}
 		return 1;
 	}
 
@@ -116,16 +135,28 @@ int ResolveAssetPath(char* out, size_t outsz, const char* relativeName)
 		if (stat(candidate, &st) == 0) {
 			DPRINTF("ResolveAssetPath: %s\n", candidate);
 			snprintf(out, outsz, "%s", candidate);
+			if (!first_asset_logged) {
+				BootDiagLog("asset resolve ok: %s", candidate);
+				first_asset_logged = true;
+			}
 			return 1;
 		}
 		snprintf(candidate, sizeof(candidate), "%sPOPSLDR/%s", cwd, relativeName);
 		if (stat(candidate, &st) == 0) {
 			DPRINTF("ResolveAssetPath: %s\n", candidate);
 			snprintf(out, outsz, "%s", candidate);
+			if (!first_asset_logged) {
+				BootDiagLog("asset resolve ok: %s", candidate);
+				first_asset_logged = true;
+			}
 			return 1;
 		}
 	}
 
+	if (!first_asset_logged) {
+		BootDiagLog("asset resolve failed: %s", relativeName);
+		first_asset_logged = true;
+	}
 	return 0;
 }
 

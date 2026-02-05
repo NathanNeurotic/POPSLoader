@@ -35,7 +35,7 @@ RESET_IOP = 1
 #---------------------- enable DEBUGGING MODE ---------------------#
 DEBUG = 0
 #----------------------- Build variant (boot) ----------------------#
-# mmce | mx4sio | hdd
+# mmce | mx4sio | hdd | hdd_diag
 VARIANT ?= mmce
 #----------------------- Set IP for PS2Client ---------------------#
 PS2LINK_IP = 192.168.1.10
@@ -73,13 +73,17 @@ ifeq ($(VARIANT),hdd)
 EE_CFLAGS   += -DBOOT_HDD
 EE_CXXFLAGS += -DBOOT_HDD
 endif
+ifeq ($(VARIANT),hdd_diag)
+EE_CFLAGS   += -DBOOT_HDD -DBOOT_DIAG
+EE_CXXFLAGS += -DBOOT_HDD -DBOOT_DIAG
+endif
 
 BIN2S = $(PS2SDK)/bin/bin2c
 
 #-------------------------- App Content ---------------------------#
 EXT_LIBS = modules/ds34usb/ee/libds34usb.a modules/ds34bt/ee/libds34bt.a
 
-APP_CORE = main.o system.o pad.o graphics.o render.o \
+APP_CORE = main.o system.o pad.o graphics.o render.o bootdiag.o \
 		   calc_3d.o gsKit3d_sup.o atlas.o fntsys.o md5.o \
 		   sound.o #strUtils.o
 

@@ -17,6 +17,7 @@
 
 #include "include/system.h"
 #include "include/dprintf.h"
+#include "include/bootdiag.h"
 
 #define MAX_DIR_FILES 512
 
@@ -638,14 +639,27 @@ static int lua_getmcinfo(lua_State *L){
 }
 
 static int lua_openfile(lua_State *L){
+	static bool first_open_logged = false;
 	int argc = lua_gettop(L);
 	if (argc != 2) return luaL_error(L, "wrong number of arguments");
 	const char *file_tbo = luaL_checkstring(L, 1);
 	int type = luaL_checkinteger(L, 2);
+	if (!first_open_logged) {
+		BootDiagLog("System.openFile first: %s mode=%d", file_tbo ? file_tbo : "<null>", type);
+		first_open_logged = true;
+	}
 	int fileHandle = open(file_tbo, type, 0777);
 	if (fileHandle < 0) return luaL_error(L, "cannot open '%s'\n\tfd:%d.", file_tbo, fileHandle);
 	lua_pushinteger(L,fileHandle);
 	return 1;
+}
+
+static int lua_bootlog(lua_State *L){
+	int argc = lua_gettop(L);
+	if (argc < 1) return 0;
+	const char *msg = luaL_checkstring(L, 1);
+	BootDiagLog("LUA: %s", msg ? msg : "<null>");
+	return 0;
 }
 
 
@@ -1071,6 +1085,7 @@ static const luaL_Reg System_functions[] = {
 	{"removeFile",               lua_removeFile},
 	{"rename",                       lua_rename},
 	{"md5sum",                       lua_md5sum},
+	{"bootLog",                    lua_bootlog},
 	{"sleep",                         lua_sleep},
 	{"getFreeMemory",         lua_getFreeMemory},
 	{"exitToBrowser",                  lua_exit},
@@ -1213,6 +1228,13 @@ void luaSystem_init(lua_State *L) {
 
 	lua_pushinteger(L, SEEK_CUR);
 	lua_setglobal(L, "CUR");
+
+#if defined(BOOT_DIAG)
+	lua_pushboolean(L, 1);
+#else
+	lua_pushboolean(L, 0);
+#endif
+	lua_setglobal(L, "BOOT_DIAG");
 
 	lua_pushinteger(L, 1);
 	lua_setglobal(L, "READ_ONLY");
