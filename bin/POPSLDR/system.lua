@@ -239,7 +239,7 @@ PLDR = {
 --
 PLDR.HDD.PFS_IDX = 0
 PLDR.HDD.PFS = "pfs0:/"
-if boot_prefix ~= nil and string.sub(tostring(boot_prefix), 1, 3) == "pfs" then
+if boot_prefix ~= nil and (string.sub(tostring(boot_prefix), 1, 3) == "pfs" or string.sub(tostring(boot_prefix), 1, 3) == "hdd") then
   PLDR.HDD.PFS_IDX = 1
   PLDR.HDD.PFS = "pfs1:/"
 end
