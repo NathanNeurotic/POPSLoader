@@ -129,6 +129,9 @@ char app_dir[255];
 int mmce_slot0_ready = -1;
 int mmce_slot1_ready = -1;
 static clock_t boot_start = 0;
+static int g_booted_from_hdd = 0;
+static int g_status_line = 2;
+static int g_status_inited = 0;
 
 static unsigned int boot_ms(void)
 {
@@ -226,6 +229,26 @@ static int FixupMassGenericPath(char *io_path, size_t io_sz)
 static void BootStamp(const char *stage)
 {
     DPRINTF("BOOT: %s %u\n", stage, boot_ms());
+}
+
+static void BootStatus(const char *stage)
+{
+    BootStamp(stage);
+#if defined(BOOT_HDD)
+    if (g_booted_from_hdd) {
+        if (!g_status_inited) {
+            init_scr();
+            scr_setfontcolor(0xffffff);
+            scr_clear();
+            scr_setXY(5, 1);
+            scr_printf("HDD boot status\n");
+            g_status_inited = 1;
+            g_status_line = 3;
+        }
+        scr_setXY(5, g_status_line++);
+        scr_printf("%s\n", stage);
+    }
+#endif
 }
 
 void setLuaBootPath(int argc, char ** argv, int idx)
@@ -420,16 +443,13 @@ int main(int argc, char * argv[])
      */
     const int booted_from_hdd =
         (boot_path[0] && (!strncmp(boot_path, "pfs", 3) || !strncmp(boot_path, "hdd0:", 5)));
+    g_booted_from_hdd = booted_from_hdd ? 1 : 0;
 
 #if defined(BOOT_HDD)
     if (booted_from_hdd) {
-        init_scr();
-        scr_setfontcolor(0xffffff);
-        scr_clear();
-        scr_setXY(5, 2);
-        scr_printf("HDD boot: starting...\n");
-        scr_printf("boot_path: %s\n", boot_path);
-        scr_printf("(If this hangs, last line indicates stage)\n");
+        BootStatus("HDD boot: starting");
+        BootStatus(boot_path);
+        BootStatus("(If this hangs, last line indicates stage)");
     }
 #endif
 
@@ -444,10 +464,13 @@ int main(int argc, char * argv[])
         while (!SifIopReset("", 0)){};
         while (!SifIopSync()){};
         SifInitRpc(0);
-        BootStamp("IOP reset");
+        BootStatus("IOP reset");
     } else {
-        BootStamp("IOP reset (skipped: HDD boot)");
+        BootStatus("IOP reset (skipped: HDD boot)");
     }
+#else
+    SifInitRpc(0);
+    BootStatus("SIF RPC init");
 #endif
     
     // install sbv patch fix
@@ -460,11 +483,12 @@ int main(int argc, char * argv[])
 	LOAD_IRX_NARG(ppctty_irx);
 #endif
 
+    BootStatus("iomanX load");
     bool ioman_ok = LoadIrxChecked("iomanX_irx", iomanX_irx, size_iomanX_irx, NULL, NULL);
-    BootStamp("iomanX load");
     bool filexio_ok = false;
     int filexio_ret = -1;
     if (ioman_ok) {
+        BootStatus("fileXio load");
         filexio_ok = LoadIrxChecked("fileXio_irx", fileXio_irx, size_fileXio_irx, NULL, NULL);
         if (filexio_ok) {
             filexio_ret = fileXioInit();
@@ -476,45 +500,11 @@ int main(int argc, char * argv[])
     } else {
         DPRINTF("Skipping fileXio init; iomanX failed to load.\n");
     }
-    BootStamp("fileXio load/init");
-
-	LOAD_IRX_NARG(sio2man_irx);
-    if (filexio_ok) {
-        int mmceman_id = -1;
-        int mmceman_ret = -1;
-        bool mmceman_ok = LoadIrxChecked("mmceman_irx", &mmceman_irx, size_mmceman_irx, &mmceman_id, &mmceman_ret);
-        DPRINTF("mmceman load result: id=%d ret=%d\n", mmceman_id, mmceman_ret);
-#ifdef DEBUG
-        if (mmceman_ok) {
-            smod_mod_info_t info;
-            int lookup_ret = smod_get_mod_by_name("mmceman", &info);
-            if (lookup_ret < 0) {
-                DPRINTF("mmceman module lookup failed: ret=%d\n", lookup_ret);
-                DumpLoadedModules();
-            }
-        }
-#endif
-        BootStamp("mmceman load/init");
-        if (mmceman_ok) {
-            mmce_slot0_ready = -1;
-            mmce_slot1_ready = -1;
-            DPRINTF("MMCE probe deferred until MMCE page entry.\n");
-        } else {
-            mmce_slot0_ready = 0;
-            mmce_slot1_ready = 0;
-        }
+    if (!ioman_ok || !filexio_ok) {
+        BootStatus("fileXio init failed");
     } else {
-        DPRINTF("Skipping mmceman init; fileXio not ready.\n");
-        mmce_slot0_ready = 0;
-        mmce_slot1_ready = 0;
-        BootStamp("mmceman load/init (skipped)");
+        BootStatus("fileXio init ok");
     }
-    LOAD_IRX_NARG(mcman_irx);
-    LOAD_IRX_NARG(mcserv_irx);
-    initMC();
-    LOAD_IRX_NARG(padman_irx);
-
-    LOAD_IRX_NARG(libsd_irx);
 
     /*
      * Avoid mass/USB/BDM stack initialization when we were launched from HDD/PFS.
@@ -526,35 +516,17 @@ int main(int argc, char * argv[])
 #endif
 
     if (init_mass_stack) {
-        // load USB modules
-        LOAD_IRX_NARG(usbd_irx);
-
-        int ds3pads = 1;
-        LOAD_IRX(ds34usb_irx, 4, (char *)&ds3pads);
-        LOAD_IRX(ds34bt_irx, 4, (char *)&ds3pads);
-        ds34usb_init();
-        ds34bt_init();
-
-        LOAD_IRX_NARG(bdm_irx);
-        LOAD_IRX_NARG(bdmfs_fatfs_irx);
-        LOAD_IRX_NARG(usbmass_bd_irx);
-        BootStamp("mass stack load");
+        BootStatus("mass stack deferred");
     } else {
-        BootStamp("mass stack load (skipped: HDD boot)");
+        BootStatus("mass stack skipped (HDD boot)");
     }
 
 #if defined(BOOT_MX4SIO)
     /* Load MX4SIO backend early so booting from MX4SIO works before Lua starts. */
     bool mx4sio_bd_ok = LoadIrxChecked("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL);
     DPRINTF("mx4sio_bd load result: ok=%d\n", mx4sio_bd_ok ? 1 : 0);
-    BootStamp("mx4sio_bd load");
+    BootStatus("mx4sio_bd load");
 #endif
-
-    if (init_mass_stack) {
-        LOAD_IRX_NARG(cdfs_irx);
-    }
-
-    LOAD_IRX_NARG(audsrv_irx);
 
     //waitUntilDeviceIsReady by fjtrujy
 
@@ -584,23 +556,78 @@ int main(int argc, char * argv[])
         wait_root[0] = '\0';
     }
     if (!strncmp(wait_root, "mass", 4)) {
-        BootStamp("mass wait begin");
+        BootStatus("mass wait begin");
         while (ret != 0 && retries > 0) {
             ret = stat(wait_root, &buffer);
             nopdelay();
             retries--;
         }
-        BootStamp("mass wait end");
+        BootStatus("mass wait end");
     } else {
-        BootStamp("mass wait (skipped)");
+        BootStatus("mass wait skipped");
     }
 	
 	// Lua init
 	// init internals library
     
     // graphics (gsKit)
+    BootStatus("graphics init");
     initGraphics();
 
+    BootStatus("IOP modules (pad/sound/usb) init");
+    LOAD_IRX_NARG(sio2man_irx);
+    if (filexio_ok) {
+        int mmceman_id = -1;
+        int mmceman_ret = -1;
+        bool mmceman_ok = LoadIrxChecked("mmceman_irx", &mmceman_irx, size_mmceman_irx, &mmceman_id, &mmceman_ret);
+        DPRINTF("mmceman load result: id=%d ret=%d\n", mmceman_id, mmceman_ret);
+#ifdef DEBUG
+        if (mmceman_ok) {
+            smod_mod_info_t info;
+            int lookup_ret = smod_get_mod_by_name("mmceman", &info);
+            if (lookup_ret < 0) {
+                DPRINTF("mmceman module lookup failed: ret=%d\n", lookup_ret);
+                DumpLoadedModules();
+            }
+        }
+#endif
+        if (mmceman_ok) {
+            mmce_slot0_ready = -1;
+            mmce_slot1_ready = -1;
+            DPRINTF("MMCE probe deferred until MMCE page entry.\n");
+        } else {
+            mmce_slot0_ready = 0;
+            mmce_slot1_ready = 0;
+        }
+    } else {
+        DPRINTF("Skipping mmceman init; fileXio not ready.\n");
+        mmce_slot0_ready = 0;
+        mmce_slot1_ready = 0;
+    }
+    LOAD_IRX_NARG(mcman_irx);
+    LOAD_IRX_NARG(mcserv_irx);
+    initMC();
+    LOAD_IRX_NARG(padman_irx);
+    LOAD_IRX_NARG(libsd_irx);
+    LOAD_IRX_NARG(audsrv_irx);
+
+    if (init_mass_stack) {
+        // load USB modules
+        LOAD_IRX_NARG(usbd_irx);
+
+        int ds3pads = 1;
+        LOAD_IRX(ds34usb_irx, 4, (char *)&ds3pads);
+        LOAD_IRX(ds34bt_irx, 4, (char *)&ds3pads);
+        ds34usb_init();
+        ds34bt_init();
+
+        LOAD_IRX_NARG(bdm_irx);
+        LOAD_IRX_NARG(bdmfs_fatfs_irx);
+        LOAD_IRX_NARG(usbmass_bd_irx);
+        LOAD_IRX_NARG(cdfs_irx);
+    }
+
+    BootStatus("pad init");
     pad_init();
 
     // set base path luaplayer
