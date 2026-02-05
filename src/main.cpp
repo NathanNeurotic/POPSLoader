@@ -84,6 +84,9 @@ extern unsigned char mmceman_irx;
 extern unsigned int size_mmceman_irx;
 
 char boot_path[255];
+char app_dir[255];
+int mmce_slot0_ready = -1;
+int mmce_slot1_ready = -1;
 
 void setLuaBootPath(int argc, char ** argv, int idx)
 {
@@ -204,11 +207,11 @@ int main(int argc, char * argv[])
 
     LOAD_IRX_NARG(audsrv_irx);
 
-    //waitUntilDeviceIsReady by fjtrujy
+	//waitUntilDeviceIsReady by fjtrujy
 
-    struct stat buffer;
-    int ret = -1;
-    int retries = 50;
+	struct stat buffer;
+	int ret = -1;
+	int retries = 50;
 
     while(ret != 0 && retries > 0)
     {
@@ -219,7 +222,8 @@ int main(int argc, char * argv[])
         retries--;
     }
 	
-        setLuaBootPath (argc, argv, 0);
+		setLuaBootPath (argc, argv, 0);
+		snprintf(app_dir, sizeof(app_dir), "%s", boot_path);
 	// Lua init
 	// init internals library
     
@@ -260,4 +264,3 @@ int main(int argc, char * argv[])
 
 	return 0;
 }
-
