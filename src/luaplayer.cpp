@@ -9,6 +9,7 @@
 #include "include/luaplayer.h"
 #include "include/graphics.h"
 #include "include/dprintf.h"
+#include "include/bootdiag.h"
 
 #ifndef FORBID_LUA_ATPANIC_TEXTDUMP
 #define LOGDUMP(x...) if (LOG != NULL) fprintf(x)
@@ -37,6 +38,7 @@ int test_error(lua_State * L) {
     int i;
         scr_printf("\t");
     TPRINTF("LUA ERR.\n");
+    BootDiagLog("LUA panic handler invoked");
 
     if (n == 0) {
         scr_printf("\t");
@@ -121,9 +123,10 @@ const char * runScript(const char* script, bool isStringBuffer )
 		
 	if (s == 0) s = lua_pcall(L, 0, LUA_MULTRET, 0);
 
-	if (s) {
+    if (s) {
 		sprintf((char*)errMsg, "%s\n", lua_tostring(L, -1));
     DPRINTF("%s\n", lua_tostring(L, -1));
+		BootDiagLog("Lua error: %s", lua_tostring(L, -1));
 		lua_pop(L, 1); // remove error message
 	}
 	lua_close(L);

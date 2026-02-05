@@ -13,6 +13,12 @@ function LOGF(S, ...)
   print_uart(string.format(S, ...))
 end
 
+local function DIAG_LOG(msg)
+  if BOOT_DIAG and System.bootLog ~= nil then
+    System.bootLog(msg)
+  end
+end
+
 BOOT_PROF = {
   timer = Timer.new(),
   stamp = function (label)
@@ -21,6 +27,7 @@ BOOT_PROF = {
   end
 }
 BOOT_PROF.stamp("Lua init start")
+DIAG_LOG("Lua init start")
 
 POPSLDR_VER = "v1.0.0 - rev3"
 
@@ -99,12 +106,27 @@ BOOT_PROF.stamp("UI assets init (fonts)")
 function STOP() LOG("PROGRAM STOP") Screen.clear(Color.new(255,0,0)) Screen.flip() while true do end end
 
 local function ReadWholeFile(path)
+  if BOOT_DIAG then
+    DIAG_LOG("ReadWholeFile start: "..path)
+  end
+  local timeout_ms = 3000
+  local timer = nil
+  if BOOT_DIAG then
+    timer = Timer.new()
+  end
   local fd = System.openFile(path, FREAD)
   if fd == nil then
     return nil, "open failed"
   end
   local chunks = {}
   while true do
+    if BOOT_DIAG and timer ~= nil then
+      if Timer.getTime(timer) > timeout_ms then
+        DIAG_LOG("HANG AT: ReadWholeFile("..path..")")
+        System.closeFile(fd)
+        return nil, "read timeout"
+      end
+    end
     local buffer = System.readFile(fd, 4096)
     if buffer == nil or buffer == "" then
       break
@@ -112,12 +134,21 @@ local function ReadWholeFile(path)
     chunks[#chunks + 1] = buffer
   end
   System.closeFile(fd)
+  if BOOT_DIAG then
+    DIAG_LOG("ReadWholeFile done: "..path)
+  end
   return table.concat(chunks)
 end
 
 local function LoadLuaFile(path)
+  if BOOT_DIAG then
+    DIAG_LOG("LoadLuaFile start: "..path)
+  end
   local loader, load_err = loadfile(path)
   if loader ~= nil then
+    if BOOT_DIAG then
+      DIAG_LOG("LoadLuaFile loadfile ok: "..path)
+    end
     return loader
   end
   LOG("Lua load failed:", load_err)
@@ -128,6 +159,9 @@ local function LoadLuaFile(path)
   local sanitized, count = string.gsub(data, "[\128-\255]", "?")
   if count > 0 then
     LOGF("Sanitized %d non-ASCII bytes in %s", count, path)
+  end
+  if BOOT_DIAG then
+    DIAG_LOG("LoadLuaFile loadstring: "..path)
   end
   return loadstring(sanitized, "@"..path)
 end
@@ -145,6 +179,9 @@ end
 
 local SYS = System.resolveAsset("system.lua")
 if SYS ~= nil then
+  if BOOT_DIAG then
+    DIAG_LOG("Resolved system.lua: "..SYS)
+  end
 	RunScript(SYS);
 else
   error("Cant access POPSLDR/system.lua\n\n\tcurrent_bootpath: "..System.currentDirectory())

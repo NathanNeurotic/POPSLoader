@@ -24,6 +24,7 @@
 #include "include/luaplayer.h"
 #include "include/pad.h"
 #include "include/dprintf.h"
+#include "include/bootdiag.h"
 
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
@@ -272,6 +273,7 @@ static bool RemountHddPartitionFromBootPath(const char *argv0)
     if (!ExtractHddPartitionPath(boot_path, hdd_part, sizeof(hdd_part))) {
         if (!ExtractHddPartitionPath(argv0, hdd_part, sizeof(hdd_part))) {
             DPRINTF("HDD remount: unable to derive partition from boot path.\n");
+            BootDiagLog("HDD remount: unable to derive partition (boot_path=%s argv0=%s)", boot_path, argv0 ? argv0 : "<null>");
             return false;
         }
     }
@@ -281,11 +283,17 @@ static bool RemountHddPartitionFromBootPath(const char *argv0)
     char pfs_root[6] = "pfs0:";
     pfs_root[3] = '0' + pfs_index;
 
+    BootDiagHeartbeat("HDD mount pre");
+    BootDiagLog("HDD remount: mount %s -> %s", hdd_part, pfs_root);
     int mount_ret = fileXioMount(pfs_root, hdd_part, FIO_MT_RDWR);
+    BootDiagHeartbeat("HDD mount post");
+    BootDiagLog("HDD remount: mount ret=%d", mount_ret);
     if (mount_ret < 0) {
         DPRINTF("HDD remount: mount failed (%d), retrying after unmount.\n", mount_ret);
+        BootDiagLog("HDD remount: retry after umount ret=%d", mount_ret);
         fileXioUmount(pfs_root);
         mount_ret = fileXioMount(pfs_root, hdd_part, FIO_MT_RDWR);
+        BootDiagLog("HDD remount: mount retry ret=%d", mount_ret);
     }
 
     if (mount_ret < 0) {
@@ -296,6 +304,7 @@ static bool RemountHddPartitionFromBootPath(const char *argv0)
     RewritePathWithPfsRoot(pfs_root, boot_path, sizeof(boot_path));
     RewritePathWithPfsRoot(pfs_root, app_dir, sizeof(app_dir));
     DPRINTF("HDD remount: %s mounted to %s (boot_path=%s, app_dir=%s).\n", hdd_part, pfs_root, boot_path, app_dir);
+    BootDiagLog("HDD remount ok: %s -> %s boot_path=%s app_dir=%s", hdd_part, pfs_root, boot_path, app_dir);
     return true;
 }
 
@@ -475,6 +484,8 @@ int main(int argc, char * argv[])
         EarlyVideoProbe_HDD();
     }
 #endif
+    BootDiagHeartbeat("Entered main()");
+    BootDiagLog("Entered main() argv0=%s argc=%d", ARGV0 ? ARGV0 : "<null>", argc);
     boot_start = clock();
     BootStamp("EE init start");
 
@@ -485,6 +496,7 @@ int main(int argc, char * argv[])
     } else {
         setAppDirFromPath(boot_path);
     }
+    BootDiagLog("boot_path=%s app_dir=%s", boot_path, app_dir);
     BootStamp("boot path parse");
 
     /*
@@ -497,6 +509,7 @@ int main(int argc, char * argv[])
      */
     const int booted_from_hdd =
         (boot_path[0] && (!strncmp(boot_path, "pfs", 3) || !strncmp(boot_path, "hdd0:", 5)));
+    BootDiagLog("booted_from_hdd=%d boot_path=%s", booted_from_hdd, boot_path);
 
 #if defined(BOOT_HDD)
     if (booted_from_hdd) {
@@ -516,14 +529,23 @@ int main(int argc, char * argv[])
      * If launched from HDD/PFS, do NOT reset the IOP (would drop the loader-owned PFS mount).
      * But we MUST still initialize SIF RPC before any module loads / RPC subsystems.
      */
+    BootDiagHeartbeat("SifInitRpc pre");
+    BootDiagLog("SifInitRpc pre");
     SifInitRpc(0);
+    BootDiagHeartbeat("SifInitRpc post");
+    BootDiagLog("SifInitRpc post");
     if (!booted_from_hdd) {
+        BootDiagHeartbeat("SifIopReset pre");
+        BootDiagLog("SifIopReset pre");
         while (!SifIopReset("", 0)){};
         while (!SifIopSync()){};
+        BootDiagHeartbeat("SifIopReset post");
+        BootDiagLog("SifIopReset post");
         SifInitRpc(0);
         BootStamp("IOP reset");
     } else {
         BootStamp("IOP reset (skipped: HDD boot)");
+        BootDiagLog("IOP reset skipped (HDD boot)");
     }
 #endif
     
@@ -546,12 +568,16 @@ int main(int argc, char * argv[])
     }
 
     bool ioman_ok = false;
+    BootDiagHeartbeat("iomanX load pre");
+    BootDiagLog("iomanX load pre");
     if (ioman_loaded) {
         ioman_ok = true;
         DPRINTF("iomanX already loaded; skipping reload to preserve PFS mount.\n");
     } else {
         ioman_ok = LoadIrxChecked("iomanX_irx", iomanX_irx, size_iomanX_irx, NULL, NULL);
     }
+    BootDiagHeartbeat("iomanX load post");
+    BootDiagLog("iomanX load post ok=%d", ioman_ok ? 1 : 0);
     BootStamp("iomanX load");
     bool filexio_ok = false;
     int filexio_ret = -1;
@@ -560,6 +586,8 @@ int main(int argc, char * argv[])
             filexio_ok = true;
             DPRINTF("fileXio already loaded; skipping reload/init to preserve PFS mount.\n");
         } else {
+            BootDiagHeartbeat("fileXio load pre");
+            BootDiagLog("fileXio load pre");
             filexio_ok = LoadIrxChecked("fileXio_irx", fileXio_irx, size_fileXio_irx, NULL, NULL);
             if (filexio_ok) {
                 filexio_ret = fileXioInit();
@@ -568,9 +596,12 @@ int main(int argc, char * argv[])
                     filexio_ok = false;
                 }
             }
+            BootDiagHeartbeat("fileXio load post");
+            BootDiagLog("fileXio load post ok=%d ret=%d", filexio_ok ? 1 : 0, filexio_ret);
         }
     } else {
         DPRINTF("Skipping fileXio init; iomanX failed to load.\n");
+        BootDiagLog("Skipping fileXio init (iomanX failed)");
     }
     BootStamp("fileXio load/init");
 
@@ -615,7 +646,11 @@ int main(int argc, char * argv[])
     }
     LOAD_IRX_NARG(mcman_irx);
     LOAD_IRX_NARG(mcserv_irx);
+    BootDiagHeartbeat("initMC pre");
+    BootDiagLog("initMC pre");
     initMC();
+    BootDiagHeartbeat("initMC post");
+    BootDiagLog("initMC post");
     LOAD_IRX_NARG(padman_irx);
 
     LOAD_IRX_NARG(libsd_irx);
@@ -703,7 +738,11 @@ int main(int argc, char * argv[])
 	// init internals library
     
     // graphics (gsKit)
+    BootDiagHeartbeat("GS init pre");
+    BootDiagLog("GS init pre");
     initGraphics();
+    BootDiagHeartbeat("GS init post");
+    BootDiagLog("GS init post");
 
     pad_init();
 
@@ -715,7 +754,14 @@ int main(int argc, char * argv[])
     DPRINTF("app dir : %s\n", app_dir);
 	dbgprintf("app dir : %s\n", app_dir);
     
+    {
+        char cwd[256];
+        if (getcwd(cwd, sizeof(cwd)) != NULL) {
+            BootDiagLog("cwd=%s", cwd);
+        }
+    }
     BootStamp("Lua init start");
+    BootDiagHeartbeat("Lua init start");
     while (1)
     {
         errMsg = runScript(bootString, true);
