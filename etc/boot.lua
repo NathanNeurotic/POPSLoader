@@ -31,25 +31,49 @@ function GetMountData(PATH)
   return mountpart, pfsindx, filepath
 end
 
+local function PfsIndexFromPrefix(pfsindx)
+  if pfsindx == nil then return 0 end
+  local idx = string.match(pfsindx, "^pfs(%d+):")
+  if idx == nil then
+    return 0
+  end
+  return tonumber(idx) or 0
+end
+
+local function NormalizePfsPath(path, idx)
+  if path == nil then return path end
+  local prefix = string.format("pfs%d:", idx)
+  if string.match(path, "^pfs:") then
+    return string.gsub(path, "^pfs:", prefix)
+  end
+  if string.match(path, "^pfs%d+:") then
+    return string.gsub(path, "^pfs%d+:", prefix)
+  end
+  return path
+end
+
 
 local ARGV0 = System.GetArgv0()
 if string.find(ARGV0, "^hdd0:") then
   LOG("Booting from HDD!", ARGV0)
   local MNTPART
   BOOTPATH = nil
-  MNTPART, _, BOOTPATH = GetMountData(ARGV0)
+  local PFSINDX
+  MNTPART, PFSINDX, BOOTPATH = GetMountData(ARGV0)
   if string.find(BOOTPATH, "^pfs") then
     SUCCESS, MODULE, ID, RET = HDD.Initialize()
     if not SUCCESS then
       LOG("ERROR", MODULE..".IRX", ID, RET)
     else
       System.sleep(2) -- lets give it time to get ready
-      if HDD.MountPartition(MNTPART, 0) then -- mount to "pfs3:" and NEVER USE IT FOR ANYTHING ELSE
+      local idx = PfsIndexFromPrefix(PFSINDX)
+      if HDD.MountPartition(MNTPART, idx) then -- mount to requested pfs index
         BOOTPATH, _, _ = string.match(BOOTPATH, "(.-)([^/]-([^%.]+))$")
+        BOOTPATH = NormalizePfsPath(BOOTPATH, idx)
         System.currentDirectory(BOOTPATH)
-        LOGF("new bootpath: '%s'\n", BOOTPATH)
+        LOGF("new bootpath (pfs%d): '%s'\n", idx, BOOTPATH)
       else
-        LOG("ERROR: HDD mount failed for", MNTPART)
+        LOG("ERROR: HDD mount failed for", MNTPART, "pfs index", idx)
       end
     end
   end
