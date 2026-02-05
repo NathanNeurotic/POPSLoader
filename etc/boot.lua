@@ -62,7 +62,7 @@ if string.find(ARGV0, "^hdd0:") then
       LOG("ERROR", MODULE..".IRX", ID, RET)
     else
       System.sleep(2) -- lets give it time to get ready
-      if HDD.MountPartition(MNTPART, 0) then
+      if HDD.MountPartition(MNTPART, 0) then -- mount to "pfs3:" and NEVER USE IT FOR ANYTHING ELSE
         BOOTPATH, _, _ = string.match(BOOTPATH, "(.-)([^/]-([^%.]+))$")
         BOOTPATH = string.gsub(BOOTPATH, "^pfs:", "pfs0:")
         System.currentDirectory(BOOTPATH)
