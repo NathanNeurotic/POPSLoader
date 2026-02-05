@@ -459,6 +459,7 @@ int main(int argc, char * argv[])
      * If launched from HDD/PFS, do NOT reset the IOP (would drop the loader-owned PFS mount).
      * But we MUST still initialize SIF RPC before any module loads / RPC subsystems.
      */
+    BootStatus("SIF RPC init (begin)");
     SifInitRpc(0);
     if (!booted_from_hdd) {
         while (!SifIopReset("", 0)){};
@@ -469,8 +470,9 @@ int main(int argc, char * argv[])
         BootStatus("IOP reset (skipped: HDD boot)");
     }
 #else
+    BootStatus("SIF RPC init (begin)");
     SifInitRpc(0);
-    BootStatus("SIF RPC init");
+    BootStatus("SIF RPC init (done)");
 #endif
     
     // install sbv patch fix
@@ -502,6 +504,17 @@ int main(int argc, char * argv[])
     }
     if (!ioman_ok || !filexio_ok) {
         BootStatus("fileXio init failed");
+#if defined(BOOT_HDD)
+        if (g_booted_from_hdd) {
+            scr_setfontcolor(0x0000ff);
+            scr_printf("Fatal: fileXio unavailable\n");
+            scr_printf("Check iomanX/fileXio IRX\n");
+            scr_printf("Restart required\n");
+            for (;;) {
+                nopdelay();
+            }
+        }
+#endif
     } else {
         BootStatus("fileXio init ok");
     }
