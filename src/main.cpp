@@ -222,6 +222,83 @@ static int FixupMassGenericPath(char *io_path, size_t io_sz)
     return -1; /* not found */
 }
 
+static bool IsIopModuleLoadedByName(const char *name)
+{
+    if (!name || !name[0]) return false;
+    smod_mod_info_t info;
+    return smod_get_mod_by_name(name, &info) >= 0;
+}
+
+static bool IsIopModuleLoadedAny(const char *primary, const char *fallback)
+{
+    if (IsIopModuleLoadedByName(primary)) return true;
+    if (fallback && IsIopModuleLoadedByName(fallback)) return true;
+    return false;
+}
+
+static int ExtractPfsIndex(const char *path)
+{
+    if (!path || strncmp(path, "pfs", 3) != 0) return -1;
+    if (isdigit((unsigned char)path[3])) return path[3] - '0';
+    if (path[3] == ':') return 0;
+    return -1;
+}
+
+static bool ExtractHddPartitionPath(const char *path, char *out, size_t out_sz)
+{
+    if (!path || strncmp(path, "hdd0:", 5) != 0) return false;
+    const char *slash = strchr(path, '/');
+    size_t len = slash ? (size_t)(slash - path) : strlen(path);
+    if (len + 1 > out_sz) return false;
+    memcpy(out, path, len);
+    out[len] = '\0';
+    return true;
+}
+
+static void RewritePathWithPfsRoot(const char *pfs_root, char *path, size_t path_sz)
+{
+    if (!path || strncmp(path, "hdd0:", 5) != 0) return;
+    const char *suffix = strchr(path, '/');
+    if (!suffix) {
+        suffix = "/";
+    }
+    snprintf(path, path_sz, "%s%s", pfs_root, suffix);
+    NormalizeDirPath(path, path_sz);
+}
+
+static bool RemountHddPartitionFromBootPath(const char *argv0)
+{
+    char hdd_part[64];
+    if (!ExtractHddPartitionPath(boot_path, hdd_part, sizeof(hdd_part))) {
+        if (!ExtractHddPartitionPath(argv0, hdd_part, sizeof(hdd_part))) {
+            DPRINTF("HDD remount: unable to derive partition from boot path.\n");
+            return false;
+        }
+    }
+
+    int pfs_index = ExtractPfsIndex(boot_path);
+    if (pfs_index < 0) pfs_index = 0;
+    char pfs_root[6] = "pfs0:";
+    pfs_root[3] = '0' + pfs_index;
+
+    int mount_ret = fileXioMount(pfs_root, hdd_part, FIO_MT_RDWR);
+    if (mount_ret < 0) {
+        DPRINTF("HDD remount: mount failed (%d), retrying after unmount.\n", mount_ret);
+        fileXioUmount(pfs_root);
+        mount_ret = fileXioMount(pfs_root, hdd_part, FIO_MT_RDWR);
+    }
+
+    if (mount_ret < 0) {
+        DPRINTF("HDD remount: mount failed (%d).\n", mount_ret);
+        return false;
+    }
+
+    RewritePathWithPfsRoot(pfs_root, boot_path, sizeof(boot_path));
+    RewritePathWithPfsRoot(pfs_root, app_dir, sizeof(app_dir));
+    DPRINTF("HDD remount: %s mounted to %s (boot_path=%s, app_dir=%s).\n", hdd_part, pfs_root, boot_path, app_dir);
+    return true;
+}
+
 
 static void BootStamp(const char *stage)
 {
@@ -460,23 +537,50 @@ int main(int argc, char * argv[])
 	LOAD_IRX_NARG(ppctty_irx);
 #endif
 
-    bool ioman_ok = LoadIrxChecked("iomanX_irx", iomanX_irx, size_iomanX_irx, NULL, NULL);
+    bool ioman_loaded = false;
+    bool filexio_loaded = false;
+    if (booted_from_hdd) {
+        ioman_loaded = IsIopModuleLoadedAny("iomanX", "iomanX_irx");
+        filexio_loaded = IsIopModuleLoadedAny("fileXio", "fileXio_irx");
+        DPRINTF("HDD boot: iomanX loaded=%d fileXio loaded=%d\n", ioman_loaded ? 1 : 0, filexio_loaded ? 1 : 0);
+    }
+
+    bool ioman_ok = false;
+    if (ioman_loaded) {
+        ioman_ok = true;
+        DPRINTF("iomanX already loaded; skipping reload to preserve PFS mount.\n");
+    } else {
+        ioman_ok = LoadIrxChecked("iomanX_irx", iomanX_irx, size_iomanX_irx, NULL, NULL);
+    }
     BootStamp("iomanX load");
     bool filexio_ok = false;
     int filexio_ret = -1;
     if (ioman_ok) {
-        filexio_ok = LoadIrxChecked("fileXio_irx", fileXio_irx, size_fileXio_irx, NULL, NULL);
-        if (filexio_ok) {
-            filexio_ret = fileXioInit();
-            if (filexio_ret < 0) {
-                DPRINTF("fileXioInit failed: ret=%d\n", filexio_ret);
-                filexio_ok = false;
+        if (filexio_loaded) {
+            filexio_ok = true;
+            DPRINTF("fileXio already loaded; skipping reload/init to preserve PFS mount.\n");
+        } else {
+            filexio_ok = LoadIrxChecked("fileXio_irx", fileXio_irx, size_fileXio_irx, NULL, NULL);
+            if (filexio_ok) {
+                filexio_ret = fileXioInit();
+                if (filexio_ret < 0) {
+                    DPRINTF("fileXioInit failed: ret=%d\n", filexio_ret);
+                    filexio_ok = false;
+                }
             }
         }
     } else {
         DPRINTF("Skipping fileXio init; iomanX failed to load.\n");
     }
     BootStamp("fileXio load/init");
+
+#if defined(BOOT_HDD)
+    if (booted_from_hdd && (!ioman_loaded || !filexio_loaded) && filexio_ok) {
+        if (!RemountHddPartitionFromBootPath(ARGV0)) {
+            DPRINTF("HDD remount: failed to restore PFS mount after fileXio reload.\n");
+        }
+    }
+#endif
 
 	LOAD_IRX_NARG(sio2man_irx);
     if (filexio_ok) {
