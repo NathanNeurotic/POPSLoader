@@ -249,7 +249,14 @@ static bool ExtractHddPartitionPath(const char *path, char *out, size_t out_sz)
 {
     if (!path || strncmp(path, "hdd0:", 5) != 0) return false;
     const char *slash = strchr(path, '/');
-    size_t len = slash ? (size_t)(slash - path) : strlen(path);
+    const char *second_colon = strchr(path + 5, ':');
+    const char *end = NULL;
+    if (second_colon && (!slash || second_colon < slash)) {
+        end = second_colon;
+    } else {
+        end = slash;
+    }
+    size_t len = end ? (size_t)(end - path) : strlen(path);
     if (len + 1 > out_sz) return false;
     memcpy(out, path, len);
     out[len] = '\0';
