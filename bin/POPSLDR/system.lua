@@ -1568,6 +1568,7 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   end
   SetLaunchPhase(LaunchState.PHASE_EXEC)
   LaunchLog("LAUNCH: exec popstarter path:", popstarter)
+  ShowExecMarker("STAGE: exec")
   ShowExecMarker("EXEC NOW")
   LaunchLog(
     "LAUNCH: exec boot source:",
@@ -1734,6 +1735,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   local fallback_exists = false
   local bootparam_basename_used = ""
   local prefix_used = ""
+  ShowExecMarker("STAGE: build title")
   if policy.name == "HDD" then
     normalized_basename = ""
     bootparam = ""
@@ -1828,6 +1830,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     LaunchLog("LAUNCH: bootparam fallback:", fallback_bootparam, "exists:", tostring(fallback_exists))
   end
   LOG("Resolved game path:", vcd_path)
+  ShowExecMarker("STAGE: write config")
   local context = {
     device_page = device_page,
     device_mode = device_mode,
@@ -1858,6 +1861,8 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   if UI ~= nil and UI.CoverCache ~= nil and UI.CoverCache.Clear ~= nil then
     UI.CoverCache:Clear()
   end
+  ShowExecMarker("STAGE: close handles")
+  ShowExecMarker("STAGE: stop audio")
   LaunchEngine(popstarter, argv, reboot_iop, context)
 end
 
