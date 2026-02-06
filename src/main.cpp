@@ -263,6 +263,19 @@ static bool ExtractHddPartitionPath(const char *path, char *out, size_t out_sz)
     return true;
 }
 
+static bool ExtractHddPartitionPathFromString(const char *path, char *out, size_t out_sz)
+{
+    if (!path || !out || out_sz == 0) return false;
+    if (ExtractHddPartitionPath(path, out, out_sz)) {
+        return true;
+    }
+    const char *needle = strstr(path, "hdd0:");
+    if (needle != NULL) {
+        return ExtractHddPartitionPath(needle, out, out_sz);
+    }
+    return false;
+}
+
 static void RewritePathWithPfsRoot(const char *pfs_root, char *path, size_t path_sz)
 {
     if (!path || strncmp(path, "hdd0:", 5) != 0) return;
@@ -277,12 +290,20 @@ static void RewritePathWithPfsRoot(const char *pfs_root, char *path, size_t path
 static bool RemountHddPartitionFromBootPath(const char *argv0)
 {
     char hdd_part[64];
-    if (!ExtractHddPartitionPath(boot_path, hdd_part, sizeof(hdd_part))) {
-        if (!ExtractHddPartitionPath(argv0, hdd_part, sizeof(hdd_part))) {
-            DPRINTF("HDD remount: unable to derive partition from boot path.\n");
-            BootDiagLog("HDD remount: unable to derive partition (boot_path=%s argv0=%s)", boot_path, argv0 ? argv0 : "<null>");
-            return false;
+    bool got_part = ExtractHddPartitionPathFromString(boot_path, hdd_part, sizeof(hdd_part));
+    if (!got_part) {
+        got_part = ExtractHddPartitionPathFromString(argv0, hdd_part, sizeof(hdd_part));
+    }
+    if (!got_part) {
+        char cwd[256];
+        if (getcwd(cwd, sizeof(cwd)) != NULL) {
+            got_part = ExtractHddPartitionPathFromString(cwd, hdd_part, sizeof(hdd_part));
         }
+    }
+    if (!got_part) {
+        DPRINTF("HDD remount: unable to derive partition from boot path.\n");
+        BootDiagLog("HDD remount: unable to derive partition (boot_path=%s argv0=%s)", boot_path, argv0 ? argv0 : "<null>");
+        return false;
     }
 
     int pfs_index = ExtractPfsIndex(boot_path);
