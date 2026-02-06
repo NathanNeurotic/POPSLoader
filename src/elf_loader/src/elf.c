@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <kernel.h>
 #include <loadfile.h>
+#include <debug.h>
 #include <sys/stat.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -244,6 +245,18 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	LoadExecPS2(resolved_path, new_argc, launch_argv);
 	DPRINTF("LAUNCH: RETURNED rc=%d\n", -1);
 	append_launch_log_line("LAUNCH: RETURNED rc=-1\n");
+	init_scr();
+	scr_setfontcolor(0x0000ff);
+	scr_clear();
+	scr_setXY(5, 2);
+	scr_printf("POPSLoader ERROR!\n");
+	scr_printf("LoadExecPS2 returned.\n");
+	scr_printf("path: %s\n", resolved_path);
+	scr_printf("rc: %d\n", -1);
+	scr_printf("Restart required.\n");
+	for (;;) {
+		SleepThread();
+	}
 	return -1;
 }
 
