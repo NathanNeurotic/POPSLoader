@@ -11,9 +11,6 @@
 
   Licensed under GNU General public license v3.0
 --]]
-local BOOT_PATH_RAW = APP_DIR or System.currentDirectory()
-LOG("system.lua start")
-LOG("BOOT_PATH_RAW="..tostring(BOOT_PATH_RAW))
 local function EnsureTrailingSlash(path)
   if path == nil then
     return nil
@@ -64,6 +61,34 @@ function NormalizeDirPath(path)
   return normalized
 end
 
+local function CanonicalizeBasePath()
+  local app_dir = NormalizeDirPath(APP_DIR or "")
+  local cwd = NormalizeDirPath(System.currentDirectory() or "")
+  local function IsPfs(path)
+    return path ~= nil and string.match(path, "^pfs%d*:") ~= nil
+  end
+  local function HasEmbeddedPfs(path)
+    return path ~= nil and string.find(path, ":pfs:", 1, true) ~= nil
+  end
+  if IsPfs(app_dir) then
+    return app_dir
+  end
+  if HasEmbeddedPfs(app_dir) and IsPfs(cwd) then
+    return cwd
+  end
+  if IsPfs(cwd) then
+    return cwd
+  end
+  if app_dir ~= "" then
+    return app_dir
+  end
+  return cwd
+end
+
+local BOOT_PATH_RAW = CanonicalizeBasePath()
+LOG("system.lua start")
+LOG("BOOT_PATH_RAW="..tostring(BOOT_PATH_RAW))
+
 function JoinPath(base, rel)
   local normalized = NormalizeDirPath(base)
   if rel == nil or rel == "" then
@@ -73,7 +98,7 @@ function JoinPath(base, rel)
   return normalized..cleaned
 end
 
-local APP_DIR_LOCAL = NormalizeDirPath(APP_DIR or BOOT_PATH_RAW)
+local APP_DIR_LOCAL = NormalizeDirPath(BOOT_PATH_RAW)
 LOG("APP_DIR_NORM="..APP_DIR_LOCAL)
 LOG("APP_DIR_POPSTARTER_JOIN="..JoinPath(APP_DIR_LOCAL, "POPSTARTER.ELF"))
 local SELECTOR_MODE = "basename"
