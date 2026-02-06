@@ -30,7 +30,7 @@
  * - Using POSIX open/read/lseek on pfs:/ paths has proven fragile in this
  *   project’s HDD-boot scenario.
  *
- * For pfs*/hdd* paths we will use fileXio* calls for raw ELF reading in the
+ * For PFS/HDD paths (e.g. "pfs0:/..." or "hdd0:...") we will use fileXio* calls for raw ELF reading in the
  * FileIO loader path.
  */
 #define NEWLIB_PORT_AWARE
@@ -422,7 +422,7 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	/*
 	 * HDD/PFS launch:
 	 * LoadExecPS2/LOADFILE can deadlock depending on the IOP state left by the
-	 * launcher. When the target ELF is on pfs*/hdd*, prefer the FileIO loader
+	 * launcher. When the target ELF is on PFS/HDD (pfs*:... or hdd0:...), prefer the FileIO loader
 	 * path which reads the ELF ourselves (using fileXio* for pfs/hdd) and then
 	 * hands off via ExecPS2.
 	 */
