@@ -306,6 +306,7 @@ static void NormalizeSubpath(char *path, size_t path_sz)
 }
 
 static bool RemountHddBootPathToPfs(const char *path, int pfs_index, char *out_path, size_t out_sz);
+static void setAppDirFromPath(const char *path);
 
 static void SetCanonicalBaseDir(const char *path)
 {
@@ -629,19 +630,6 @@ int main(int argc, char * argv[])
     const int booted_from_hdd =
         (boot_path[0] && (!strncmp(boot_path, "pfs", 3) || !strncmp(boot_path, "hdd0:", 5)));
     BootDiagLog("booted_from_hdd=%d boot_path=%s", booted_from_hdd, boot_path);
-
-#if defined(BOOT_HDD)
-    if (booted_from_hdd) {
-        init_scr();
-        scr_setfontcolor(0xffffff);
-        scr_clear();
-        scr_setXY(5, 2);
-        scr_printf("HDD boot: starting...\n");
-        scr_printf("boot_path: %s\n", boot_path);
-        scr_printf("(If this hangs, last line indicates stage)\n");
-    }
-#endif
-
 
 #ifdef RESET_IOP
     BootDiagHeartbeat("SifInitRpc pre");
