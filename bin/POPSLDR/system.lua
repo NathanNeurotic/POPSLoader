@@ -122,9 +122,11 @@ local function IsAbsoluteDevicePath(path)
 end
 
 local function ResolvePopstarterPath(path)
-  local chosen = JoinPath(APP_DIR_LOCAL, "POPSTARTER.ELF")
-  if doesFileExist(chosen) then
-    return chosen
+  local chosen = path
+  if chosen == nil or chosen == "" then
+    chosen = JoinPath(APP_DIR_LOCAL, "POPSTARTER.ELF")
+  elseif not IsAbsoluteDevicePath(chosen) then
+    chosen = JoinPath(APP_DIR_LOCAL, chosen)
   end
   return chosen
 end
