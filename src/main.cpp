@@ -264,24 +264,6 @@ static bool ExtractHddPartitionPathFromString(const char *path, char *out, size_
     return false;
 }
 
-static bool ExtractOplPfsPath(const char *path, char *out_part, size_t part_sz, char *out_subpath, size_t subpath_sz)
-{
-    if (!path || !out_part || !out_subpath || part_sz == 0 || subpath_sz == 0) return false;
-    const char *token = strstr(path, ":pfs:");
-    if (!token) return false;
-    size_t part_len = (size_t)(token - path);
-    if (part_len == 0 || part_len + 1 > part_sz) return false;
-    memcpy(out_part, path, part_len);
-    out_part[part_len] = '\0';
-    const char *sub = token + 5; /* skip ":pfs:" */
-    if (sub[0] == '\0') {
-        snprintf(out_subpath, subpath_sz, "/");
-        return true;
-    }
-    snprintf(out_subpath, subpath_sz, "%s", sub);
-    return true;
-}
-
 static void RewritePathWithPfsRoot(const char *pfs_root, char *path, size_t path_sz)
 {
     if (!path || strncmp(path, "hdd0:", 5) != 0) return;
@@ -293,22 +275,82 @@ static void RewritePathWithPfsRoot(const char *pfs_root, char *path, size_t path
     NormalizeDirPath(path, path_sz);
 }
 
-static bool RemountOplPfsPath(const char *path, char *out_path, size_t out_sz)
+static int GetExistingPfsIndex(const char *path)
+{
+    if (!path) return -1;
+    if (!strncmp(path, "pfs", 3)) {
+        return ExtractPfsIndex(path);
+    }
+    return -1;
+}
+
+static void NormalizeSubpath(char *path, size_t path_sz)
+{
+    if (!path || path_sz == 0) return;
+    for (char *p = path; *p; ++p) {
+        if (*p == '\\') {
+            *p = '/';
+        }
+    }
+    if (path[0] == '\0') {
+        snprintf(path, path_sz, "/");
+        return;
+    }
+    if (path[0] != '/') {
+        size_t len = strlen(path);
+        if (len + 1 < path_sz) {
+            memmove(path + 1, path, len + 1);
+            path[0] = '/';
+        }
+    }
+}
+
+static bool ParseHddBootPath(const char *path, char *out_part, size_t part_sz, char *out_subpath, size_t subpath_sz)
+{
+    if (!path || !out_part || !out_subpath || part_sz == 0 || subpath_sz == 0) return false;
+    const char *token = strstr(path, ":pfs:");
+    if (token) {
+        size_t part_len = (size_t)(token - path);
+        if (part_len == 0 || part_len + 1 > part_sz) return false;
+        memcpy(out_part, path, part_len);
+        out_part[part_len] = '\0';
+        const char *sub = token + 5; /* skip ":pfs:" */
+        snprintf(out_subpath, subpath_sz, "%s", sub);
+        NormalizeSubpath(out_subpath, subpath_sz);
+        return true;
+    }
+
+    if (strncmp(path, "hdd0:", 5) != 0) return false;
+    char part[64];
+    if (!ExtractHddPartitionPath(path, part, sizeof(part))) return false;
+    size_t part_len = strlen(part);
+    const char *sub = path + part_len;
+    snprintf(out_part, part_sz, "%s", part);
+    snprintf(out_subpath, subpath_sz, "%s", sub);
+    NormalizeSubpath(out_subpath, subpath_sz);
+    return true;
+}
+
+static bool RemountHddBootPathToPfs(const char *path, int pfs_index, char *out_path, size_t out_sz)
 {
     char part[64];
     char subpath[255];
-    if (!ExtractOplPfsPath(path, part, sizeof(part), subpath, sizeof(subpath))) {
+    if (!ParseHddBootPath(path, part, sizeof(part), subpath, sizeof(subpath))) {
         return false;
     }
-    int mount_ret = fileXioMount("pfs0:", part, FIO_MT_RDWR);
+    char pfs_root[6] = "pfs0:";
+    if (pfs_index >= 0 && pfs_index <= 9) {
+        pfs_root[3] = '0' + pfs_index;
+    }
+    int mount_ret = fileXioMount(pfs_root, part, FIO_MT_RDWR);
     if (mount_ret < 0) {
-        fileXioUmount("pfs0:");
-        mount_ret = fileXioMount("pfs0:", part, FIO_MT_RDWR);
+        fileXioUmount(pfs_root);
+        mount_ret = fileXioMount(pfs_root, part, FIO_MT_RDWR);
     }
     if (mount_ret < 0) {
         return false;
     }
-    snprintf(out_path, out_sz, "pfs0:%s", subpath);
+    snprintf(out_path, out_sz, "%s%s", pfs_root, subpath);
     NormalizeDirPath(out_path, out_sz);
     return true;
 }
@@ -611,19 +653,20 @@ int main(int argc, char * argv[])
 
 #if defined(BOOT_HDD)
     if (filexio_ok) {
-        char opl_fix[255];
-        char opl_part[64];
-        char opl_sub[255];
-        if (ARGV0 && ExtractOplPfsPath(ARGV0, opl_part, sizeof(opl_part), opl_sub, sizeof(opl_sub))) {
-            if (RemountOplPfsPath(ARGV0, opl_fix, sizeof(opl_fix))) {
-                snprintf(boot_path, sizeof(boot_path), "%s", opl_fix);
-                setAppDirFromPath(boot_path);
-            }
-        } else if (ExtractOplPfsPath(boot_path, opl_part, sizeof(opl_part), opl_sub, sizeof(opl_sub))) {
-            if (RemountOplPfsPath(boot_path, opl_fix, sizeof(opl_fix))) {
-                snprintf(boot_path, sizeof(boot_path), "%s", opl_fix);
-                setAppDirFromPath(boot_path);
-            }
+        int pfs_index = GetExistingPfsIndex(boot_path);
+        if (pfs_index < 0) {
+            pfs_index = GetExistingPfsIndex(ARGV0);
+        }
+        if (pfs_index < 0) {
+            pfs_index = 0;
+        }
+        char hdd_fix[255];
+        if (ARGV0 && RemountHddBootPathToPfs(ARGV0, pfs_index, hdd_fix, sizeof(hdd_fix))) {
+            snprintf(boot_path, sizeof(boot_path), "%s", hdd_fix);
+            setAppDirFromPath(boot_path);
+        } else if (RemountHddBootPathToPfs(boot_path, pfs_index, hdd_fix, sizeof(hdd_fix))) {
+            snprintf(boot_path, sizeof(boot_path), "%s", hdd_fix);
+            setAppDirFromPath(boot_path);
         }
     }
     if (filexio_ok && ((boot_path[0] && !strncmp(boot_path, "hdd0:", 5)) || (ARGV0 && !strncmp(ARGV0, "hdd0:", 5)))) {
