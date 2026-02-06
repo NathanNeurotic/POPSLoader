@@ -284,15 +284,6 @@ static int GetExistingPfsIndex(const char *path)
     return -1;
 }
 
-static int GetPfsIndexFromCwd(void)
-{
-    char cwd[256];
-    if (getcwd(cwd, sizeof(cwd)) != NULL) {
-        return GetExistingPfsIndex(cwd);
-    }
-    return -1;
-}
-
 static void NormalizeSubpath(char *path, size_t path_sz)
 {
     if (!path || path_sz == 0) return;
@@ -312,6 +303,52 @@ static void NormalizeSubpath(char *path, size_t path_sz)
             path[0] = '/';
         }
     }
+}
+
+static bool RemountHddBootPathToPfs(const char *path, int pfs_index, char *out_path, size_t out_sz);
+
+static void SetCanonicalBaseDir(const char *path)
+{
+    if (!path || !path[0]) return;
+    char tmp[255];
+    snprintf(tmp, sizeof(tmp), "%s", path);
+    for (char *p = tmp; *p; ++p) {
+        if (*p == '\\') {
+            *p = '/';
+        }
+    }
+    char *p = strrchr(tmp, '/');
+    if (p != NULL) {
+        p[1] = '\0';
+    } else if ((p = strchr(tmp, ':')) != NULL) {
+        p[1] = '\0';
+        strncat(tmp, "/", sizeof(tmp) - strlen(tmp) - 1);
+    }
+    snprintf(boot_path, sizeof(boot_path), "%s", tmp);
+    NormalizeDirPath(boot_path, sizeof(boot_path));
+    setAppDirFromPath(boot_path);
+}
+
+static bool CanonicalizeBootBase(const char *argv0)
+{
+    if (argv0 && !strncmp(argv0, "pfs", 3)) {
+        SetCanonicalBaseDir(argv0);
+        return true;
+    }
+    if (boot_path[0] && !strncmp(boot_path, "pfs", 3)) {
+        SetCanonicalBaseDir(boot_path);
+        return true;
+    }
+    char hdd_fix[255];
+    if (argv0 && RemountHddBootPathToPfs(argv0, 0, hdd_fix, sizeof(hdd_fix))) {
+        SetCanonicalBaseDir(hdd_fix);
+        return true;
+    }
+    if (RemountHddBootPathToPfs(boot_path, 0, hdd_fix, sizeof(hdd_fix))) {
+        SetCanonicalBaseDir(hdd_fix);
+        return true;
+    }
+    return false;
 }
 
 static bool ParseHddBootPath(const char *path, char *out_part, size_t part_sz, char *out_subpath, size_t subpath_sz)
@@ -662,34 +699,7 @@ int main(int argc, char * argv[])
 
 #if defined(BOOT_HDD)
     if (filexio_ok) {
-        int pfs_index = GetExistingPfsIndex(boot_path);
-        if (pfs_index < 0) {
-            pfs_index = GetExistingPfsIndex(ARGV0);
-        }
-        if (pfs_index < 0) {
-            pfs_index = GetPfsIndexFromCwd();
-        }
-        if (pfs_index < 0) {
-            pfs_index = 0;
-        }
-        char hdd_fix[255];
-        if (ARGV0 && RemountHddBootPathToPfs(ARGV0, pfs_index, hdd_fix, sizeof(hdd_fix))) {
-            snprintf(boot_path, sizeof(boot_path), "%s", hdd_fix);
-            setAppDirFromPath(boot_path);
-        } else if (RemountHddBootPathToPfs(boot_path, pfs_index, hdd_fix, sizeof(hdd_fix))) {
-            snprintf(boot_path, sizeof(boot_path), "%s", hdd_fix);
-            setAppDirFromPath(boot_path);
-        }
-        if (GetExistingPfsIndex(boot_path) < 0) {
-            char cwd[256];
-            if (getcwd(cwd, sizeof(cwd)) != NULL) {
-                NormalizeDirPath(cwd, sizeof(cwd));
-                if (GetExistingPfsIndex(cwd) >= 0) {
-                    snprintf(boot_path, sizeof(boot_path), "%s", cwd);
-                    setAppDirFromPath(boot_path);
-                }
-            }
-        }
+        CanonicalizeBootBase(ARGV0);
     }
     if (filexio_ok && ((boot_path[0] && !strncmp(boot_path, "hdd0:", 5)) || (ARGV0 && !strncmp(ARGV0, "hdd0:", 5)))) {
         if (!RemountHddPartitionFromBootPath(ARGV0)) {
