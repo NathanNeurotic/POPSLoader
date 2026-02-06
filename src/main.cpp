@@ -35,7 +35,6 @@ extern "C"{
 #include <libds34usb.h>
 }
 
-#if defined(BOOT_HDD)
 /*
  * EE-only early video probe.
  * Purpose: prove we reach main() when HDD-booted, without any SIF/IOP calls.
@@ -43,6 +42,7 @@ extern "C"{
  */
 static void EarlyVideoProbe_HDD(void)
 {
+#if defined(BOOT_HDD)
     GSGLOBAL *gsGlobal = gsKit_init_global();
 
     /* Safe defaults */
@@ -66,8 +66,10 @@ static void EarlyVideoProbe_HDD(void)
     gsKit_finish();
 
     /* Leave GS initialized; the normal graphics init will reconfigure later. */
-}
+#else
+    (void)0;
 #endif
+}
 
 
 extern char bootString[];
@@ -486,32 +488,24 @@ static void DumpLoadedModules(void)
 
 int main(int argc, char * argv[])
 {
-    int ID, RET;
-    if (argc > 0) ARGV0 = argv[0];
-    const char * errMsg;
-
-#if defined(BOOT_HDD)
     /*
-     * EARLIEST POSSIBLE HDD-variant marker.
+     * Unconditional earliest marker.
      * Must not call SIF/IOP routines (no SifInitRpc, no fileXio, no stat).
-     * If this does not show when launching from HDD, we are not reaching main().
      */
+    EarlyVideoProbe_HDD();
     init_scr();
     scr_setfontcolor(0xffffff);
     scr_clear();
     scr_setXY(5, 1);
-    scr_printf("Entered main() (BOOT_HDD)\n");
-    if (ARGV0) {
-        scr_printf("ARGV0: %s\n", ARGV0);
+    scr_printf("MAIN START\n");
+    scr_printf("argc=%d\n", argc);
+    if (argc > 0 && argv && argv[0]) {
+        scr_printf("argv0: %s\n", argv[0]);
     }
-    /*
-     * Optional EE-only GS probe (dark red) when launched from pfs/hdd.
-     * Kept after init_scr so we always get some visible output first.
-     */
-    if (ARGV0 && (!strncmp(ARGV0, "pfs", 3) || !strncmp(ARGV0, "hdd", 3))) {
-        EarlyVideoProbe_HDD();
-    }
-#endif
+
+    int ID, RET;
+    if (argc > 0) ARGV0 = argv[0];
+    const char * errMsg;
     BootDiagHeartbeat("Entered main()");
     BootDiagLog("Entered main() argv0=%s argc=%d", ARGV0 ? ARGV0 : "<null>", argc);
     boot_start = clock();
