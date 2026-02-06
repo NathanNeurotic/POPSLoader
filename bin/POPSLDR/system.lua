@@ -1415,6 +1415,8 @@ local function BlockLaunchFailure(rc, popstarter, device_page, argv0, game_path,
     tostring(argv0),
     tostring(game_path)
   )
+  local timer = Timer.new()
+  local start = Timer.getTime(timer)
   while true do
     UI.BottomDraw.Play()
     Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, 120, 20, UI.SCR.X, UI.SCR.Y, "LAUNCH FAILED", UI.CCOL.YELLOW)
@@ -1424,6 +1426,9 @@ local function BlockLaunchFailure(rc, popstarter, device_page, argv0, game_path,
       break
     end
     UI.flip()
+    if (Timer.getTime(timer) - start) >= 5000 then
+      break
+    end
   end
   UI.SceneChange(UI.SCENES.MMAIN)
 end
@@ -1439,6 +1444,8 @@ local function BlockHddLaunchMissingVcd(partition, relpath, vcd_path, open_rc, o
     tostring(open_rc),
     tostring(open_api)
   )
+  local timer = Timer.new()
+  local start = Timer.getTime(timer)
   while true do
     UI.BottomDraw.Play()
     Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, 120, 20, UI.SCR.X, UI.SCR.Y, "HDD LAUNCH FAILED", UI.CCOL.YELLOW)
@@ -1448,8 +1455,17 @@ local function BlockHddLaunchMissingVcd(partition, relpath, vcd_path, open_rc, o
       break
     end
     UI.flip()
+    if (Timer.getTime(timer) - start) >= 5000 then
+      break
+    end
   end
   UI.SceneChange(UI.SCENES.MMAIN)
+end
+
+local function ShowExecMarker(text)
+  UI.BottomDraw.Play()
+  Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, 120, 20, UI.SCR.X, UI.SCR.Y, tostring(text), UI.CCOL.YELLOW)
+  UI.flip()
 end
 
 local function LaunchEngine(popstarter, argv, reboot_iop, context)
@@ -1552,6 +1568,7 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   end
   SetLaunchPhase(LaunchState.PHASE_EXEC)
   LaunchLog("LAUNCH: exec popstarter path:", popstarter)
+  ShowExecMarker("EXEC NOW")
   LaunchLog(
     "LAUNCH: exec boot source:",
     context and context.bootparam_source or "unknown",
@@ -1592,6 +1609,7 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     rc = System.loadELF(popstarter, reboot_iop)
   end
   LaunchLog("LAUNCH RETURNED rc="..tostring(rc))
+  ShowExecMarker(string.format("EXEC RETURNED rc=%s", tostring(rc)))
   LOG(">>> UNHANDLED ERROR at Launching game '", context and context.game or "unknown", " via ", popstarter, " Failed")
   if (Timer.getTime(LaunchState.fade_timer) - LaunchState.fade_start) >= LaunchState.watchdog_ms then
     BlockLaunchFailure(
