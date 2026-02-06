@@ -13,7 +13,6 @@
 #include <stdio.h>
 #include <kernel.h>
 #include <loadfile.h>
-#include <debug.h>
 #include <sys/stat.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -120,21 +119,6 @@ static void append_launch_log_fmt(const char *label, int index, const char *valu
 	append_launch_log_line(buffer);
 }
 
-static void show_exec_fatal(const char *path, int rc) {
-	init_scr();
-	scr_setfontcolor(0x0000ff);
-	scr_clear();
-	scr_setXY(5, 2);
-	scr_printf("POPSLoader ERROR!\n");
-	scr_printf("POPStarter exec failed.\n");
-	scr_printf("path: %s\n", path ? path : "(null)");
-	scr_printf("rc: %d\n", rc);
-	scr_printf("Restart required.\n");
-	for (;;) {
-		SleepThread();
-	}
-}
-
 /* IMPORTANT: This method wipe memory where the loader is going to be allocated 
 * This values come from the linkfile used by the loader.c
 MEMORY {
@@ -168,7 +152,6 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	
 	// We need to check that the ELF file before continue
 	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
-		show_exec_fatal(filename, -1);
 		return -1; // ELF file doesn't exists
 	}
 	// ELF Exists
@@ -185,7 +168,6 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	if (fd >= 0) {
 		close(fd);
 	} else {
-		show_exec_fatal(resolved_path, fd);
 		return fd;
 	}
 	DPRINTF("LAUNCH: argc_in=%d argv_ptr=%s\n", argc, argv ? "set" : "null");
@@ -262,7 +244,6 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	LoadExecPS2(resolved_path, new_argc, launch_argv);
 	DPRINTF("LAUNCH: RETURNED rc=%d\n", -1);
 	append_launch_log_line("LAUNCH: RETURNED rc=-1\n");
-	show_exec_fatal(resolved_path, -1);
 	return -1;
 }
 

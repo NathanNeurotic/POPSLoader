@@ -1499,9 +1499,10 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   if open_ok then
     LaunchLog("LAUNCH: popstarter stat ok:", open_rc)
   else
-    LaunchLog("LAUNCH: popstarter "..tostring(open_stage).." failed:", open_rc, "api:", open_api)
+    local failed_path = open_path or popstarter
+    LaunchLog("LAUNCH: popstarter "..tostring(open_stage).." failed:", open_rc, "api:", open_api, "path:", failed_path)
     BlockLaunchFailure(
-      "popstarter "..tostring(open_stage).." failed: "..tostring(open_rc),
+      "POPSTARTER missing/unreadable: "..tostring(failed_path).." errno="..tostring(open_rc),
       popstarter,
       context and context.device_page or "unknown",
       argv and argv[1] or nil,
