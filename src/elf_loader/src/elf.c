@@ -18,7 +18,6 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <audsrv.h>
 #include "elf.h"
 #define DPRINTF(x...) printf(x)
 
@@ -270,8 +269,6 @@ int LoadELFFromFileFileIO(const char *filename, int argc, char *argv[]) {
 	find_gp_value(fd, &eh, &gp);
 	close(fd);
 
-	audsrv_quit();
-	gsKit_finish();
 	FlushCache(0);
 	FlushCache(2);
 	ExecPS2((void *)eh.entry, (void *)gp, argc, argv);
@@ -379,8 +376,6 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	}
 	DPRINTF("LAUNCH: argv[%d] is NULL: %s\n", new_argc, launch_argv[new_argc] == NULL ? "yes" : "no");
 	append_launch_log_fmt("argv_null", new_argc, launch_argv[new_argc] == NULL ? "yes" : "no");
-	audsrv_quit();
-	gsKit_finish();
 	FlushCache(0);
 	FlushCache(2);
 	/* LoadExecPS2 should not return on success. */
