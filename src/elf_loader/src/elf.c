@@ -18,7 +18,10 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <audsrv.h>
 #define DPRINTF(x...) printf(x)
+
+extern void gsKit_finish(void);
 
 static bool is_host_path(const char *filename) {
 	return (filename != NULL && strncmp(filename, "host:/", 6) == 0);
@@ -240,6 +243,8 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	}
 	DPRINTF("LAUNCH: argv[%d] is NULL: %s\n", new_argc, launch_argv[new_argc] == NULL ? "yes" : "no");
 	append_launch_log_fmt("argv_null", new_argc, launch_argv[new_argc] == NULL ? "yes" : "no");
+	audsrv_quit();
+	gsKit_finish();
 	/* LoadExecPS2 should not return on success. */
 	LoadExecPS2(resolved_path, new_argc, launch_argv);
 	DPRINTF("LAUNCH: RETURNED rc=%d\n", -1);
