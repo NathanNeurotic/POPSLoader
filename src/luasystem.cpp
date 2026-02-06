@@ -733,6 +733,13 @@ static int lua_checkexist(lua_State *L){
 extern "C" {
 int LoadELFFromFile(const char *filename, int argc, char *argv[]);
 int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[]);
+int LoadELFFromFileFileIO(const char *filename, int argc, char *argv[]);
+}
+static bool UseElfLoaderBackend(const char *path)
+{
+	return (path != NULL &&
+		(strncmp(path, "pfs", 3) == 0 ||
+		strncmp(path, "hdd", 3) == 0));
 }
 static int lua_loadELF(lua_State *L)
 {
@@ -745,18 +752,24 @@ static int lua_loadELF(lua_State *L)
 	static char selector_buf[256];
 	static char *argv_static[2];
 	printf("# Loading ELF '%s' iop_reboot=%d, extra_args=%d\n", elftoload, rebootIOP, extra_args);
+	bool use_fileio_loader = UseElfLoaderBackend(elftoload);
+	printf("EXEC BACKEND: %s\n", use_fileio_loader ? "ELF_LOADER" : "LOADEXEC");
 	if (extra_args > 0) {
 		const char *selector = luaL_checkstring(L, 3);
 		snprintf(selector_buf, sizeof(selector_buf), "%s", selector ? selector : "");
 		argv_static[0] = selector_buf;
 		argv_static[1] = NULL;
 		printf("# Loading ELF argv0='%s' argc=1\n", argv_static[0]);
-		int rc = LoadELFFromFile(elftoload, 1, argv_static);
+		int rc = use_fileio_loader
+			? LoadELFFromFileFileIO(elftoload, 1, argv_static)
+			: LoadELFFromFile(elftoload, 1, argv_static);
 		lua_pushinteger(L, rc);
 		return 1;
 	}
 	printf("# Loading ELF argv0 default (argc=0)\n");
-	int rc = LoadELFFromFile(elftoload, 0, NULL);
+	int rc = use_fileio_loader
+		? LoadELFFromFileFileIO(elftoload, 0, NULL)
+		: LoadELFFromFile(elftoload, 0, NULL);
 	lua_pushinteger(L, rc);
 	return 1;
 }
