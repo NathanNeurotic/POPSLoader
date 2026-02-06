@@ -225,20 +225,6 @@ static int FixupMassGenericPath(char *io_path, size_t io_sz)
     return -1; /* not found */
 }
 
-static bool IsIopModuleLoadedByName(const char *name)
-{
-    if (!name || !name[0]) return false;
-    smod_mod_info_t info;
-    return smod_get_mod_by_name(name, &info) >= 0;
-}
-
-static bool IsIopModuleLoadedAny(const char *primary, const char *fallback)
-{
-    if (IsIopModuleLoadedByName(primary)) return true;
-    if (fallback && IsIopModuleLoadedByName(fallback)) return true;
-    return false;
-}
-
 static int ExtractPfsIndex(const char *path)
 {
     if (!path || strncmp(path, "pfs", 3) != 0) return -1;
@@ -488,21 +474,6 @@ static void DumpLoadedModules(void)
 
 int main(int argc, char * argv[])
 {
-    /*
-     * Unconditional earliest marker.
-     * Must not call SIF/IOP routines (no SifInitRpc, no fileXio, no stat).
-     */
-    EarlyVideoProbe_HDD();
-    init_scr();
-    scr_setfontcolor(0xffffff);
-    scr_clear();
-    scr_setXY(5, 1);
-    scr_printf("MAIN START\n");
-    scr_printf("argc=%d\n", argc);
-    if (argc > 0 && argv && argv[0]) {
-        scr_printf("argv0: %s\n", argv[0]);
-    }
-
     int ID, RET;
     if (argc > 0) ARGV0 = argv[0];
     const char * errMsg;
@@ -547,28 +518,19 @@ int main(int argc, char * argv[])
 
 
 #ifdef RESET_IOP
-    /*
-     * If launched from HDD/PFS, do NOT reset the IOP (would drop the loader-owned PFS mount).
-     * But we MUST still initialize SIF RPC before any module loads / RPC subsystems.
-     */
     BootDiagHeartbeat("SifInitRpc pre");
     BootDiagLog("SifInitRpc pre");
     SifInitRpc(0);
     BootDiagHeartbeat("SifInitRpc post");
     BootDiagLog("SifInitRpc post");
-    if (!booted_from_hdd) {
-        BootDiagHeartbeat("SifIopReset pre");
-        BootDiagLog("SifIopReset pre");
-        while (!SifIopReset("", 0)){};
-        while (!SifIopSync()){};
-        BootDiagHeartbeat("SifIopReset post");
-        BootDiagLog("SifIopReset post");
-        SifInitRpc(0);
-        BootStamp("IOP reset");
-    } else {
-        BootStamp("IOP reset (skipped: HDD boot)");
-        BootDiagLog("IOP reset skipped (HDD boot)");
-    }
+    BootDiagHeartbeat("SifIopReset pre");
+    BootDiagLog("SifIopReset pre");
+    while (!SifIopReset("", 0)){};
+    while (!SifIopSync()){};
+    BootDiagHeartbeat("SifIopReset post");
+    BootDiagLog("SifIopReset post");
+    SifInitRpc(0);
+    BootStamp("IOP reset");
 #endif
     
     // install sbv patch fix
@@ -581,46 +543,28 @@ int main(int argc, char * argv[])
 	LOAD_IRX_NARG(ppctty_irx);
 #endif
 
-    bool ioman_loaded = false;
-    bool filexio_loaded = false;
-    if (booted_from_hdd) {
-        ioman_loaded = IsIopModuleLoadedAny("iomanX", "iomanX_irx");
-        filexio_loaded = IsIopModuleLoadedAny("fileXio", "fileXio_irx");
-        DPRINTF("HDD boot: iomanX loaded=%d fileXio loaded=%d\n", ioman_loaded ? 1 : 0, filexio_loaded ? 1 : 0);
-    }
-
     bool ioman_ok = false;
     BootDiagHeartbeat("iomanX load pre");
     BootDiagLog("iomanX load pre");
-    if (ioman_loaded) {
-        ioman_ok = true;
-        DPRINTF("iomanX already loaded; skipping reload to preserve PFS mount.\n");
-    } else {
-        ioman_ok = LoadIrxChecked("iomanX_irx", iomanX_irx, size_iomanX_irx, NULL, NULL);
-    }
+    ioman_ok = LoadIrxChecked("iomanX_irx", iomanX_irx, size_iomanX_irx, NULL, NULL);
     BootDiagHeartbeat("iomanX load post");
     BootDiagLog("iomanX load post ok=%d", ioman_ok ? 1 : 0);
     BootStamp("iomanX load");
     bool filexio_ok = false;
     int filexio_ret = -1;
     if (ioman_ok) {
-        if (filexio_loaded) {
-            filexio_ok = true;
-            DPRINTF("fileXio already loaded; skipping reload/init to preserve PFS mount.\n");
-        } else {
-            BootDiagHeartbeat("fileXio load pre");
-            BootDiagLog("fileXio load pre");
-            filexio_ok = LoadIrxChecked("fileXio_irx", fileXio_irx, size_fileXio_irx, NULL, NULL);
-            if (filexio_ok) {
-                filexio_ret = fileXioInit();
-                if (filexio_ret < 0) {
-                    DPRINTF("fileXioInit failed: ret=%d\n", filexio_ret);
-                    filexio_ok = false;
-                }
+        BootDiagHeartbeat("fileXio load pre");
+        BootDiagLog("fileXio load pre");
+        filexio_ok = LoadIrxChecked("fileXio_irx", fileXio_irx, size_fileXio_irx, NULL, NULL);
+        if (filexio_ok) {
+            filexio_ret = fileXioInit();
+            if (filexio_ret < 0) {
+                DPRINTF("fileXioInit failed: ret=%d\n", filexio_ret);
+                filexio_ok = false;
             }
-            BootDiagHeartbeat("fileXio load post");
-            BootDiagLog("fileXio load post ok=%d ret=%d", filexio_ok ? 1 : 0, filexio_ret);
         }
+        BootDiagHeartbeat("fileXio load post");
+        BootDiagLog("fileXio load post ok=%d ret=%d", filexio_ok ? 1 : 0, filexio_ret);
     } else {
         DPRINTF("Skipping fileXio init; iomanX failed to load.\n");
         BootDiagLog("Skipping fileXio init (iomanX failed)");
@@ -628,7 +572,7 @@ int main(int argc, char * argv[])
     BootStamp("fileXio load/init");
 
 #if defined(BOOT_HDD)
-    if (booted_from_hdd && (!ioman_loaded || !filexio_loaded) && filexio_ok) {
+    if (filexio_ok && ((boot_path[0] && !strncmp(boot_path, "hdd0:", 5)) || (ARGV0 && !strncmp(ARGV0, "hdd0:", 5)))) {
         if (!RemountHddPartitionFromBootPath(ARGV0)) {
             DPRINTF("HDD remount: failed to restore PFS mount after fileXio reload.\n");
         }
