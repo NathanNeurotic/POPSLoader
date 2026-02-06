@@ -245,6 +245,8 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	append_launch_log_fmt("argv_null", new_argc, launch_argv[new_argc] == NULL ? "yes" : "no");
 	audsrv_quit();
 	gsKit_finish();
+	FlushCache(0);
+	FlushCache(2);
 	/* LoadExecPS2 should not return on success. */
 	LoadExecPS2(resolved_path, new_argc, launch_argv);
 	DPRINTF("LAUNCH: RETURNED rc=%d\n", -1);

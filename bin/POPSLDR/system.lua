@@ -1507,6 +1507,7 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   local open_ok, open_rc, open_stage, open_api, open_path = TryOpenForLaunch(popstarter)
   if open_ok then
     LaunchLog("LAUNCH: popstarter stat ok:", open_rc)
+    ShowExecMarker("STAT OK")
   else
     local failed_path = open_path or popstarter
     LaunchLog("LAUNCH: popstarter "..tostring(open_stage).." failed:", open_rc, "api:", open_api, "path:", failed_path)
@@ -1594,6 +1595,7 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     "reboot_iop="..tostring(reboot_iop)
   )
   LaunchLog("LAUNCH: loadELF argc (caller):", exec_args and #exec_args or 0)
+  ShowExecMarker("SHUTDOWN OK")
   local rc
   if exec_args ~= nil and #exec_args > 0 and unpack_fn ~= nil then
     rc = System.loadELF(popstarter, reboot_iop, unpack_fn(exec_args))
