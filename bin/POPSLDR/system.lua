@@ -11,7 +11,7 @@
 
   Licensed under GNU General public license v3.0
 --]]
-local BOOT_PATH_RAW = System.currentDirectory()
+local BOOT_PATH_RAW = APP_DIR or System.currentDirectory()
 LOG("system.lua start")
 LOG("BOOT_PATH_RAW="..tostring(BOOT_PATH_RAW))
 local function EnsureTrailingSlash(path)

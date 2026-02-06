@@ -284,6 +284,15 @@ static int GetExistingPfsIndex(const char *path)
     return -1;
 }
 
+static int GetPfsIndexFromCwd(void)
+{
+    char cwd[256];
+    if (getcwd(cwd, sizeof(cwd)) != NULL) {
+        return GetExistingPfsIndex(cwd);
+    }
+    return -1;
+}
+
 static void NormalizeSubpath(char *path, size_t path_sz)
 {
     if (!path || path_sz == 0) return;
@@ -658,6 +667,9 @@ int main(int argc, char * argv[])
             pfs_index = GetExistingPfsIndex(ARGV0);
         }
         if (pfs_index < 0) {
+            pfs_index = GetPfsIndexFromCwd();
+        }
+        if (pfs_index < 0) {
             pfs_index = 0;
         }
         char hdd_fix[255];
@@ -667,6 +679,16 @@ int main(int argc, char * argv[])
         } else if (RemountHddBootPathToPfs(boot_path, pfs_index, hdd_fix, sizeof(hdd_fix))) {
             snprintf(boot_path, sizeof(boot_path), "%s", hdd_fix);
             setAppDirFromPath(boot_path);
+        }
+        if (GetExistingPfsIndex(boot_path) < 0) {
+            char cwd[256];
+            if (getcwd(cwd, sizeof(cwd)) != NULL) {
+                NormalizeDirPath(cwd, sizeof(cwd));
+                if (GetExistingPfsIndex(cwd) >= 0) {
+                    snprintf(boot_path, sizeof(boot_path), "%s", cwd);
+                    setAppDirFromPath(boot_path);
+                }
+            }
         }
     }
     if (filexio_ok && ((boot_path[0] && !strncmp(boot_path, "hdd0:", 5)) || (ARGV0 && !strncmp(ARGV0, "hdd0:", 5)))) {
