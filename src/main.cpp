@@ -35,7 +35,6 @@ extern "C"{
 #include <libds34usb.h>
 }
 
-#if defined(BOOT_HDD)
 /*
  * EE-only early video probe.
  * Purpose: prove we reach main() when HDD-booted, without any SIF/IOP calls.
@@ -43,6 +42,7 @@ extern "C"{
  */
 static void EarlyVideoProbe_HDD(void)
 {
+#if defined(BOOT_HDD)
     GSGLOBAL *gsGlobal = gsKit_init_global();
 
     /* Safe defaults */
@@ -66,8 +66,10 @@ static void EarlyVideoProbe_HDD(void)
     gsKit_finish();
 
     /* Leave GS initialized; the normal graphics init will reconfigure later. */
-}
+#else
+    (void)0;
 #endif
+}
 
 
 extern char bootString[];
@@ -223,20 +225,6 @@ static int FixupMassGenericPath(char *io_path, size_t io_sz)
     return -1; /* not found */
 }
 
-static bool IsIopModuleLoadedByName(const char *name)
-{
-    if (!name || !name[0]) return false;
-    smod_mod_info_t info;
-    return smod_get_mod_by_name(name, &info) >= 0;
-}
-
-static bool IsIopModuleLoadedAny(const char *primary, const char *fallback)
-{
-    if (IsIopModuleLoadedByName(primary)) return true;
-    if (fallback && IsIopModuleLoadedByName(fallback)) return true;
-    return false;
-}
-
 static int ExtractPfsIndex(const char *path)
 {
     if (!path || strncmp(path, "pfs", 3) != 0) return -1;
@@ -249,11 +237,31 @@ static bool ExtractHddPartitionPath(const char *path, char *out, size_t out_sz)
 {
     if (!path || strncmp(path, "hdd0:", 5) != 0) return false;
     const char *slash = strchr(path, '/');
-    size_t len = slash ? (size_t)(slash - path) : strlen(path);
+    const char *second_colon = strchr(path + 5, ':');
+    const char *end = NULL;
+    if (second_colon && (!slash || second_colon < slash)) {
+        end = second_colon;
+    } else {
+        end = slash;
+    }
+    size_t len = end ? (size_t)(end - path) : strlen(path);
     if (len + 1 > out_sz) return false;
     memcpy(out, path, len);
     out[len] = '\0';
     return true;
+}
+
+static bool ExtractHddPartitionPathFromString(const char *path, char *out, size_t out_sz)
+{
+    if (!path || !out || out_sz == 0) return false;
+    if (ExtractHddPartitionPath(path, out, out_sz)) {
+        return true;
+    }
+    const char *needle = strstr(path, "hdd0:");
+    if (needle != NULL) {
+        return ExtractHddPartitionPath(needle, out, out_sz);
+    }
+    return false;
 }
 
 static void RewritePathWithPfsRoot(const char *pfs_root, char *path, size_t path_sz)
@@ -267,15 +275,150 @@ static void RewritePathWithPfsRoot(const char *pfs_root, char *path, size_t path
     NormalizeDirPath(path, path_sz);
 }
 
+static int GetExistingPfsIndex(const char *path)
+{
+    if (!path) return -1;
+    if (!strncmp(path, "pfs", 3)) {
+        return ExtractPfsIndex(path);
+    }
+    return -1;
+}
+
+static void NormalizeSubpath(char *path, size_t path_sz)
+{
+    if (!path || path_sz == 0) return;
+    for (char *p = path; *p; ++p) {
+        if (*p == '\\') {
+            *p = '/';
+        }
+    }
+    if (path[0] == '\0') {
+        snprintf(path, path_sz, "/");
+        return;
+    }
+    if (path[0] != '/') {
+        size_t len = strlen(path);
+        if (len + 1 < path_sz) {
+            memmove(path + 1, path, len + 1);
+            path[0] = '/';
+        }
+    }
+}
+
+static bool RemountHddBootPathToPfs(const char *path, int pfs_index, char *out_path, size_t out_sz);
+static void setAppDirFromPath(const char *path);
+
+static void SetCanonicalBaseDir(const char *path)
+{
+    if (!path || !path[0]) return;
+    char tmp[255];
+    snprintf(tmp, sizeof(tmp), "%s", path);
+    for (char *p = tmp; *p; ++p) {
+        if (*p == '\\') {
+            *p = '/';
+        }
+    }
+    char *p = strrchr(tmp, '/');
+    if (p != NULL) {
+        p[1] = '\0';
+    } else if ((p = strchr(tmp, ':')) != NULL) {
+        p[1] = '\0';
+        strncat(tmp, "/", sizeof(tmp) - strlen(tmp) - 1);
+    }
+    snprintf(boot_path, sizeof(boot_path), "%s", tmp);
+    NormalizeDirPath(boot_path, sizeof(boot_path));
+    setAppDirFromPath(boot_path);
+}
+
+static bool CanonicalizeBootBase(const char *argv0)
+{
+    if (argv0 && !strncmp(argv0, "pfs", 3)) {
+        SetCanonicalBaseDir(argv0);
+        return true;
+    }
+    if (boot_path[0] && !strncmp(boot_path, "pfs", 3)) {
+        SetCanonicalBaseDir(boot_path);
+        return true;
+    }
+    char hdd_fix[255];
+    if (argv0 && RemountHddBootPathToPfs(argv0, 0, hdd_fix, sizeof(hdd_fix))) {
+        SetCanonicalBaseDir(hdd_fix);
+        return true;
+    }
+    if (RemountHddBootPathToPfs(boot_path, 0, hdd_fix, sizeof(hdd_fix))) {
+        SetCanonicalBaseDir(hdd_fix);
+        return true;
+    }
+    return false;
+}
+
+static bool ParseHddBootPath(const char *path, char *out_part, size_t part_sz, char *out_subpath, size_t subpath_sz)
+{
+    if (!path || !out_part || !out_subpath || part_sz == 0 || subpath_sz == 0) return false;
+    const char *token = strstr(path, ":pfs:");
+    if (token) {
+        size_t part_len = (size_t)(token - path);
+        if (part_len == 0 || part_len + 1 > part_sz) return false;
+        memcpy(out_part, path, part_len);
+        out_part[part_len] = '\0';
+        const char *sub = token + 5; /* skip ":pfs:" */
+        snprintf(out_subpath, subpath_sz, "%s", sub);
+        NormalizeSubpath(out_subpath, subpath_sz);
+        return true;
+    }
+
+    if (strncmp(path, "hdd0:", 5) != 0) return false;
+    char part[64];
+    if (!ExtractHddPartitionPath(path, part, sizeof(part))) return false;
+    size_t part_len = strlen(part);
+    const char *sub = path + part_len;
+    snprintf(out_part, part_sz, "%s", part);
+    snprintf(out_subpath, subpath_sz, "%s", sub);
+    NormalizeSubpath(out_subpath, subpath_sz);
+    return true;
+}
+
+static bool RemountHddBootPathToPfs(const char *path, int pfs_index, char *out_path, size_t out_sz)
+{
+    char part[64];
+    char subpath[255];
+    if (!ParseHddBootPath(path, part, sizeof(part), subpath, sizeof(subpath))) {
+        return false;
+    }
+    char pfs_root[6] = "pfs0:";
+    if (pfs_index >= 0 && pfs_index <= 9) {
+        pfs_root[3] = '0' + pfs_index;
+    }
+    int mount_ret = fileXioMount(pfs_root, part, FIO_MT_RDWR);
+    if (mount_ret < 0) {
+        fileXioUmount(pfs_root);
+        mount_ret = fileXioMount(pfs_root, part, FIO_MT_RDWR);
+    }
+    if (mount_ret < 0) {
+        return false;
+    }
+    snprintf(out_path, out_sz, "%s%s", pfs_root, subpath);
+    NormalizeDirPath(out_path, out_sz);
+    return true;
+}
+
 static bool RemountHddPartitionFromBootPath(const char *argv0)
 {
     char hdd_part[64];
-    if (!ExtractHddPartitionPath(boot_path, hdd_part, sizeof(hdd_part))) {
-        if (!ExtractHddPartitionPath(argv0, hdd_part, sizeof(hdd_part))) {
-            DPRINTF("HDD remount: unable to derive partition from boot path.\n");
-            BootDiagLog("HDD remount: unable to derive partition (boot_path=%s argv0=%s)", boot_path, argv0 ? argv0 : "<null>");
-            return false;
+    bool got_part = ExtractHddPartitionPathFromString(boot_path, hdd_part, sizeof(hdd_part));
+    if (!got_part) {
+        got_part = ExtractHddPartitionPathFromString(argv0, hdd_part, sizeof(hdd_part));
+    }
+    if (!got_part) {
+        char cwd[256];
+        if (getcwd(cwd, sizeof(cwd)) != NULL) {
+            got_part = ExtractHddPartitionPathFromString(cwd, hdd_part, sizeof(hdd_part));
         }
+    }
+    if (!got_part) {
+        DPRINTF("HDD remount: unable to derive partition from boot path.\n");
+        BootDiagLog("HDD remount: unable to derive partition (boot_path=%s argv0=%s)", boot_path, argv0 ? argv0 : "<null>");
+        return false;
     }
 
     int pfs_index = ExtractPfsIndex(boot_path);
@@ -461,29 +604,6 @@ int main(int argc, char * argv[])
     int ID, RET;
     if (argc > 0) ARGV0 = argv[0];
     const char * errMsg;
-
-#if defined(BOOT_HDD)
-    /*
-     * EARLIEST POSSIBLE HDD-variant marker.
-     * Must not call SIF/IOP routines (no SifInitRpc, no fileXio, no stat).
-     * If this does not show when launching from HDD, we are not reaching main().
-     */
-    init_scr();
-    scr_setfontcolor(0xffffff);
-    scr_clear();
-    scr_setXY(5, 1);
-    scr_printf("Entered main() (BOOT_HDD)\n");
-    if (ARGV0) {
-        scr_printf("ARGV0: %s\n", ARGV0);
-    }
-    /*
-     * Optional EE-only GS probe (dark red) when launched from pfs/hdd.
-     * Kept after init_scr so we always get some visible output first.
-     */
-    if (ARGV0 && (!strncmp(ARGV0, "pfs", 3) || !strncmp(ARGV0, "hdd", 3))) {
-        EarlyVideoProbe_HDD();
-    }
-#endif
     BootDiagHeartbeat("Entered main()");
     BootDiagLog("Entered main() argv0=%s argc=%d", ARGV0 ? ARGV0 : "<null>", argc);
     boot_start = clock();
@@ -511,42 +631,20 @@ int main(int argc, char * argv[])
         (boot_path[0] && (!strncmp(boot_path, "pfs", 3) || !strncmp(boot_path, "hdd0:", 5)));
     BootDiagLog("booted_from_hdd=%d boot_path=%s", booted_from_hdd, boot_path);
 
-#if defined(BOOT_HDD)
-    if (booted_from_hdd) {
-        init_scr();
-        scr_setfontcolor(0xffffff);
-        scr_clear();
-        scr_setXY(5, 2);
-        scr_printf("HDD boot: starting...\n");
-        scr_printf("boot_path: %s\n", boot_path);
-        scr_printf("(If this hangs, last line indicates stage)\n");
-    }
-#endif
-
-
 #ifdef RESET_IOP
-    /*
-     * If launched from HDD/PFS, do NOT reset the IOP (would drop the loader-owned PFS mount).
-     * But we MUST still initialize SIF RPC before any module loads / RPC subsystems.
-     */
     BootDiagHeartbeat("SifInitRpc pre");
     BootDiagLog("SifInitRpc pre");
     SifInitRpc(0);
     BootDiagHeartbeat("SifInitRpc post");
     BootDiagLog("SifInitRpc post");
-    if (!booted_from_hdd) {
-        BootDiagHeartbeat("SifIopReset pre");
-        BootDiagLog("SifIopReset pre");
-        while (!SifIopReset("", 0)){};
-        while (!SifIopSync()){};
-        BootDiagHeartbeat("SifIopReset post");
-        BootDiagLog("SifIopReset post");
-        SifInitRpc(0);
-        BootStamp("IOP reset");
-    } else {
-        BootStamp("IOP reset (skipped: HDD boot)");
-        BootDiagLog("IOP reset skipped (HDD boot)");
-    }
+    BootDiagHeartbeat("SifIopReset pre");
+    BootDiagLog("SifIopReset pre");
+    while (!SifIopReset("", 0)){};
+    while (!SifIopSync()){};
+    BootDiagHeartbeat("SifIopReset post");
+    BootDiagLog("SifIopReset post");
+    SifInitRpc(0);
+    BootStamp("IOP reset");
 #endif
     
     // install sbv patch fix
@@ -559,46 +657,28 @@ int main(int argc, char * argv[])
 	LOAD_IRX_NARG(ppctty_irx);
 #endif
 
-    bool ioman_loaded = false;
-    bool filexio_loaded = false;
-    if (booted_from_hdd) {
-        ioman_loaded = IsIopModuleLoadedAny("iomanX", "iomanX_irx");
-        filexio_loaded = IsIopModuleLoadedAny("fileXio", "fileXio_irx");
-        DPRINTF("HDD boot: iomanX loaded=%d fileXio loaded=%d\n", ioman_loaded ? 1 : 0, filexio_loaded ? 1 : 0);
-    }
-
     bool ioman_ok = false;
     BootDiagHeartbeat("iomanX load pre");
     BootDiagLog("iomanX load pre");
-    if (ioman_loaded) {
-        ioman_ok = true;
-        DPRINTF("iomanX already loaded; skipping reload to preserve PFS mount.\n");
-    } else {
-        ioman_ok = LoadIrxChecked("iomanX_irx", iomanX_irx, size_iomanX_irx, NULL, NULL);
-    }
+    ioman_ok = LoadIrxChecked("iomanX_irx", iomanX_irx, size_iomanX_irx, NULL, NULL);
     BootDiagHeartbeat("iomanX load post");
     BootDiagLog("iomanX load post ok=%d", ioman_ok ? 1 : 0);
     BootStamp("iomanX load");
     bool filexio_ok = false;
     int filexio_ret = -1;
     if (ioman_ok) {
-        if (filexio_loaded) {
-            filexio_ok = true;
-            DPRINTF("fileXio already loaded; skipping reload/init to preserve PFS mount.\n");
-        } else {
-            BootDiagHeartbeat("fileXio load pre");
-            BootDiagLog("fileXio load pre");
-            filexio_ok = LoadIrxChecked("fileXio_irx", fileXio_irx, size_fileXio_irx, NULL, NULL);
-            if (filexio_ok) {
-                filexio_ret = fileXioInit();
-                if (filexio_ret < 0) {
-                    DPRINTF("fileXioInit failed: ret=%d\n", filexio_ret);
-                    filexio_ok = false;
-                }
+        BootDiagHeartbeat("fileXio load pre");
+        BootDiagLog("fileXio load pre");
+        filexio_ok = LoadIrxChecked("fileXio_irx", fileXio_irx, size_fileXio_irx, NULL, NULL);
+        if (filexio_ok) {
+            filexio_ret = fileXioInit();
+            if (filexio_ret < 0) {
+                DPRINTF("fileXioInit failed: ret=%d\n", filexio_ret);
+                filexio_ok = false;
             }
-            BootDiagHeartbeat("fileXio load post");
-            BootDiagLog("fileXio load post ok=%d ret=%d", filexio_ok ? 1 : 0, filexio_ret);
         }
+        BootDiagHeartbeat("fileXio load post");
+        BootDiagLog("fileXio load post ok=%d ret=%d", filexio_ok ? 1 : 0, filexio_ret);
     } else {
         DPRINTF("Skipping fileXio init; iomanX failed to load.\n");
         BootDiagLog("Skipping fileXio init (iomanX failed)");
@@ -606,7 +686,10 @@ int main(int argc, char * argv[])
     BootStamp("fileXio load/init");
 
 #if defined(BOOT_HDD)
-    if (booted_from_hdd && (!ioman_loaded || !filexio_loaded) && filexio_ok) {
+    if (filexio_ok) {
+        CanonicalizeBootBase(ARGV0);
+    }
+    if (filexio_ok && ((boot_path[0] && !strncmp(boot_path, "hdd0:", 5)) || (ARGV0 && !strncmp(ARGV0, "hdd0:", 5)))) {
         if (!RemountHddPartitionFromBootPath(ARGV0)) {
             DPRINTF("HDD remount: failed to restore PFS mount after fileXio reload.\n");
         }

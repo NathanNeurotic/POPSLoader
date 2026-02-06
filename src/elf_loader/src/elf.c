@@ -18,7 +18,10 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include "elf.h"
 #define DPRINTF(x...) printf(x)
+
+extern void gsKit_finish(void);
 
 static bool is_host_path(const char *filename) {
 	return (filename != NULL && strncmp(filename, "host:/", 6) == 0);
@@ -139,6 +142,139 @@ static void wipe_bramMem(void) {
 	}
 }
 
+typedef struct
+{
+	u32 name;
+	u32 type;
+	u32 flags;
+	u32 addr;
+	u32 offset;
+	u32 size;
+	u32 link;
+	u32 info;
+	u32 addralign;
+	u32 entsize;
+} elf_sheader_t;
+
+typedef struct
+{
+	u32 gprmask;
+	u32 cprmask[4];
+	s32 gp_value;
+} elf_reginfo_t;
+
+static int read_full(int fd, void *buf, size_t size) {
+	size_t total = 0;
+	while (total < size) {
+		ssize_t rc = read(fd, (char *)buf + total, size - total);
+		if (rc <= 0) {
+			return -1;
+		}
+		total += (size_t)rc;
+	}
+	return 0;
+}
+
+static int load_elf_segments(int fd, const elf_header_t *eh) {
+	elf_pheader_t ph;
+	u32 i;
+	if (eh->phoff == 0 || eh->phnum == 0) {
+		return -1;
+	}
+	if (lseek(fd, (off_t)eh->phoff, SEEK_SET) < 0) {
+		return -1;
+	}
+	for (i = 0; i < eh->phnum; ++i) {
+		if (read_full(fd, &ph, sizeof(ph)) < 0) {
+			return -1;
+		}
+		if (ph.type != 1 || ph.memsz == 0) {
+			continue;
+		}
+		void *dest = ph.paddr ? (void *)ph.paddr : ph.vaddr;
+		if (lseek(fd, (off_t)ph.offset, SEEK_SET) < 0) {
+			return -1;
+		}
+		if (read_full(fd, dest, ph.filesz) < 0) {
+			return -1;
+		}
+		if (ph.memsz > ph.filesz) {
+			memset((char *)dest + ph.filesz, 0, ph.memsz - ph.filesz);
+		}
+		if (lseek(fd, (off_t)(eh->phoff + (i + 1) * sizeof(ph)), SEEK_SET) < 0) {
+			return -1;
+		}
+	}
+	return 0;
+}
+
+static int find_gp_value(int fd, const elf_header_t *eh, u32 *out_gp) {
+	u32 i;
+	elf_sheader_t sh;
+	if (!out_gp) {
+		return -1;
+	}
+	*out_gp = 0;
+	if (eh->shoff == 0 || eh->shnum == 0) {
+		return -1;
+	}
+	if (lseek(fd, (off_t)eh->shoff, SEEK_SET) < 0) {
+		return -1;
+	}
+	for (i = 0; i < eh->shnum; ++i) {
+		if (read_full(fd, &sh, sizeof(sh)) < 0) {
+			return -1;
+		}
+		if (sh.type == 0x70000006 && sh.size >= sizeof(elf_reginfo_t)) {
+			elf_reginfo_t reginfo;
+			if (lseek(fd, (off_t)sh.offset, SEEK_SET) < 0) {
+				return -1;
+			}
+			if (read_full(fd, &reginfo, sizeof(reginfo)) < 0) {
+				return -1;
+			}
+			*out_gp = (u32)reginfo.gp_value;
+			return 0;
+		}
+		if (lseek(fd, (off_t)(eh->shoff + (i + 1) * sizeof(sh)), SEEK_SET) < 0) {
+			return -1;
+		}
+	}
+	return -1;
+}
+
+int LoadELFFromFileFileIO(const char *filename, int argc, char *argv[]) {
+	int fd;
+	elf_header_t eh;
+	u32 gp = 0;
+	if (!filename) {
+		return -1;
+	}
+	fd = open(filename, O_RDONLY);
+	if (fd < 0) {
+		return fd;
+	}
+	if (read_full(fd, &eh, sizeof(eh)) < 0) {
+		close(fd);
+		return -2;
+	}
+	if (eh.ident[0] != 0x7f || eh.ident[1] != 'E' || eh.ident[2] != 'L' || eh.ident[3] != 'F') {
+		close(fd);
+		return -3;
+	}
+	if (load_elf_segments(fd, &eh) < 0) {
+		close(fd);
+		return -4;
+	}
+	find_gp_value(fd, &eh, &gp);
+	close(fd);
+
+	FlushCache(0);
+	FlushCache(2);
+	ExecPS2((void *)eh.entry, (void *)gp, argc, argv);
+	return -1;
+}
+
 int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	int i;
 	int new_argc = argc + 1;
@@ -240,6 +376,8 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	}
 	DPRINTF("LAUNCH: argv[%d] is NULL: %s\n", new_argc, launch_argv[new_argc] == NULL ? "yes" : "no");
 	append_launch_log_fmt("argv_null", new_argc, launch_argv[new_argc] == NULL ? "yes" : "no");
+	FlushCache(0);
+	FlushCache(2);
 	/* LoadExecPS2 should not return on success. */
 	LoadExecPS2(resolved_path, new_argc, launch_argv);
 	DPRINTF("LAUNCH: RETURNED rc=%d\n", -1);

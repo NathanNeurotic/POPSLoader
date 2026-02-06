@@ -11,9 +11,6 @@
 
   Licensed under GNU General public license v3.0
 --]]
-local BOOT_PATH_RAW = System.currentDirectory()
-LOG("system.lua start")
-LOG("BOOT_PATH_RAW="..tostring(BOOT_PATH_RAW))
 local function EnsureTrailingSlash(path)
   if path == nil then
     return nil
@@ -64,6 +61,34 @@ function NormalizeDirPath(path)
   return normalized
 end
 
+local function CanonicalizeBasePath()
+  local app_dir = NormalizeDirPath(APP_DIR or "")
+  local cwd = NormalizeDirPath(System.currentDirectory() or "")
+  local function IsPfs(path)
+    return path ~= nil and string.match(path, "^pfs%d*:") ~= nil
+  end
+  local function HasEmbeddedPfs(path)
+    return path ~= nil and string.find(path, ":pfs:", 1, true) ~= nil
+  end
+  if IsPfs(app_dir) then
+    return app_dir
+  end
+  if HasEmbeddedPfs(app_dir) and IsPfs(cwd) then
+    return cwd
+  end
+  if IsPfs(cwd) then
+    return cwd
+  end
+  if app_dir ~= "" then
+    return app_dir
+  end
+  return cwd
+end
+
+local BOOT_PATH_RAW = CanonicalizeBasePath()
+LOG("system.lua start")
+LOG("BOOT_PATH_RAW="..tostring(BOOT_PATH_RAW))
+
 function JoinPath(base, rel)
   local normalized = NormalizeDirPath(base)
   if rel == nil or rel == "" then
@@ -73,7 +98,7 @@ function JoinPath(base, rel)
   return normalized..cleaned
 end
 
-local APP_DIR_LOCAL = NormalizeDirPath(APP_DIR or BOOT_PATH_RAW)
+local APP_DIR_LOCAL = NormalizeDirPath(BOOT_PATH_RAW)
 LOG("APP_DIR_NORM="..APP_DIR_LOCAL)
 LOG("APP_DIR_POPSTARTER_JOIN="..JoinPath(APP_DIR_LOCAL, "POPSTARTER.ELF"))
 local SELECTOR_MODE = "basename"
@@ -97,18 +122,11 @@ local function IsAbsoluteDevicePath(path)
 end
 
 local function ResolvePopstarterPath(path)
-  local fallback = "mass:/POPS/POPSTARTER.ELF"
   local chosen = path
   if chosen == nil or chosen == "" then
     chosen = JoinPath(APP_DIR_LOCAL, "POPSTARTER.ELF")
   elseif not IsAbsoluteDevicePath(chosen) then
     chosen = JoinPath(APP_DIR_LOCAL, chosen)
-  end
-  if doesFileExist(chosen) then
-    return chosen
-  end
-  if chosen ~= fallback and doesFileExist(fallback) then
-    return fallback
   end
   return chosen
 end
@@ -1390,6 +1408,8 @@ local function BlockLaunchFailure(rc, popstarter, device_page, argv0, game_path,
     tostring(argv0),
     tostring(game_path)
   )
+  local timer = Timer.new()
+  local start = Timer.getTime(timer)
   while true do
     UI.BottomDraw.Play()
     Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, 120, 20, UI.SCR.X, UI.SCR.Y, "LAUNCH FAILED", UI.CCOL.YELLOW)
@@ -1399,6 +1419,9 @@ local function BlockLaunchFailure(rc, popstarter, device_page, argv0, game_path,
       break
     end
     UI.flip()
+    if (Timer.getTime(timer) - start) >= 5000 then
+      break
+    end
   end
   UI.SceneChange(UI.SCENES.MMAIN)
 end
@@ -1414,6 +1437,8 @@ local function BlockHddLaunchMissingVcd(partition, relpath, vcd_path, open_rc, o
     tostring(open_rc),
     tostring(open_api)
   )
+  local timer = Timer.new()
+  local start = Timer.getTime(timer)
   while true do
     UI.BottomDraw.Play()
     Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, 120, 20, UI.SCR.X, UI.SCR.Y, "HDD LAUNCH FAILED", UI.CCOL.YELLOW)
@@ -1423,8 +1448,17 @@ local function BlockHddLaunchMissingVcd(partition, relpath, vcd_path, open_rc, o
       break
     end
     UI.flip()
+    if (Timer.getTime(timer) - start) >= 5000 then
+      break
+    end
   end
   UI.SceneChange(UI.SCENES.MMAIN)
+end
+
+local function ShowExecMarker(text)
+  UI.BottomDraw.Play()
+  Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, 120, 20, UI.SCR.X, UI.SCR.Y, tostring(text), UI.CCOL.YELLOW)
+  UI.flip()
 end
 
 local function LaunchEngine(popstarter, argv, reboot_iop, context)
@@ -1473,10 +1507,12 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   local open_ok, open_rc, open_stage, open_api, open_path = TryOpenForLaunch(popstarter)
   if open_ok then
     LaunchLog("LAUNCH: popstarter stat ok:", open_rc)
+    ShowExecMarker("STAT OK")
   else
-    LaunchLog("LAUNCH: popstarter "..tostring(open_stage).." failed:", open_rc, "api:", open_api)
+    local failed_path = open_path or popstarter
+    LaunchLog("LAUNCH: popstarter "..tostring(open_stage).." failed:", open_rc, "api:", open_api, "path:", failed_path)
     BlockLaunchFailure(
-      "popstarter "..tostring(open_stage).." failed: "..tostring(open_rc),
+      "POPSTARTER unreadable: "..tostring(failed_path).." errno="..tostring(open_rc),
       popstarter,
       context and context.device_page or "unknown",
       argv and argv[1] or nil,
@@ -1490,6 +1526,19 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   if open_path ~= nil and open_path ~= popstarter then
     LaunchLog("LAUNCH: popstarter path adjusted:", popstarter, "->", open_path)
     popstarter = open_path
+  end
+  if string.find(popstarter or "", ":pfs:", 1, true) ~= nil then
+    BlockLaunchFailure(
+      "POPSTARTER unreadable: "..tostring(popstarter).." errno=INVALID_PATH",
+      popstarter,
+      context and context.device_page or "unknown",
+      argv and argv[1] or nil,
+      context and context.vcd_path or nil,
+      app_dir,
+      "INVALID_PATH",
+      "path_validation"
+    )
+    return
   end
   local exec_args = argv or {}
   SetLaunchPhase(LaunchState.PHASE_FADEOUT)
@@ -1513,6 +1562,8 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   end
   SetLaunchPhase(LaunchState.PHASE_EXEC)
   LaunchLog("LAUNCH: exec popstarter path:", popstarter)
+  ShowExecMarker("STAGE: exec")
+  ShowExecMarker("EXEC NOW")
   LaunchLog(
     "LAUNCH: exec boot source:",
     context and context.bootparam_source or "unknown",
@@ -1544,6 +1595,7 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     "reboot_iop="..tostring(reboot_iop)
   )
   LaunchLog("LAUNCH: loadELF argc (caller):", exec_args and #exec_args or 0)
+  ShowExecMarker("SHUTDOWN OK")
   local rc
   if exec_args ~= nil and #exec_args > 0 and unpack_fn ~= nil then
     rc = System.loadELF(popstarter, reboot_iop, unpack_fn(exec_args))
@@ -1553,6 +1605,7 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     rc = System.loadELF(popstarter, reboot_iop)
   end
   LaunchLog("LAUNCH RETURNED rc="..tostring(rc))
+  ShowExecMarker(string.format("EXEC RETURNED rc=%s", tostring(rc)))
   LOG(">>> UNHANDLED ERROR at Launching game '", context and context.game or "unknown", " via ", popstarter, " Failed")
   if (Timer.getTime(LaunchState.fade_timer) - LaunchState.fade_start) >= LaunchState.watchdog_ms then
     BlockLaunchFailure(
@@ -1568,14 +1621,14 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     return
   end
   BlockLaunchFailure(
-    rc,
+    "LoadExecPS2 returned rc="..tostring(rc).." path="..tostring(popstarter),
     popstarter,
     context and context.device_page or "unknown",
     argv0,
     argv0,
     app_dir,
-    nil,
-    nil
+    rc,
+    "LoadExecPS2"
   )
 end
 
@@ -1677,6 +1730,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   local fallback_exists = false
   local bootparam_basename_used = ""
   local prefix_used = ""
+  ShowExecMarker("STAGE: build title")
   if policy.name == "HDD" then
     normalized_basename = ""
     bootparam = ""
@@ -1771,6 +1825,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     LaunchLog("LAUNCH: bootparam fallback:", fallback_bootparam, "exists:", tostring(fallback_exists))
   end
   LOG("Resolved game path:", vcd_path)
+  ShowExecMarker("STAGE: write config")
   local context = {
     device_page = device_page,
     device_mode = device_mode,
@@ -1801,6 +1856,8 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   if UI ~= nil and UI.CoverCache ~= nil and UI.CoverCache.Clear ~= nil then
     UI.CoverCache:Clear()
   end
+  ShowExecMarker("STAGE: close handles")
+  ShowExecMarker("STAGE: stop audio")
   LaunchEngine(popstarter, argv, reboot_iop, context)
 end
 
