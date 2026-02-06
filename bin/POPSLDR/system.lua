@@ -1502,7 +1502,7 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     local failed_path = open_path or popstarter
     LaunchLog("LAUNCH: popstarter "..tostring(open_stage).." failed:", open_rc, "api:", open_api, "path:", failed_path)
     BlockLaunchFailure(
-      "POPSTARTER missing/unreadable: "..tostring(failed_path).." errno="..tostring(open_rc),
+      "POPSTARTER unreadable: "..tostring(failed_path).." errno="..tostring(open_rc),
       popstarter,
       context and context.device_page or "unknown",
       argv and argv[1] or nil,
@@ -1516,6 +1516,19 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   if open_path ~= nil and open_path ~= popstarter then
     LaunchLog("LAUNCH: popstarter path adjusted:", popstarter, "->", open_path)
     popstarter = open_path
+  end
+  if string.find(popstarter or "", ":pfs:", 1, true) ~= nil then
+    BlockLaunchFailure(
+      "POPSTARTER unreadable: "..tostring(popstarter).." errno=INVALID_PATH",
+      popstarter,
+      context and context.device_page or "unknown",
+      argv and argv[1] or nil,
+      context and context.vcd_path or nil,
+      app_dir,
+      "INVALID_PATH",
+      "path_validation"
+    )
+    return
   end
   local exec_args = argv or {}
   SetLaunchPhase(LaunchState.PHASE_FADEOUT)
@@ -1594,14 +1607,14 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     return
   end
   BlockLaunchFailure(
-    rc,
+    "LoadExecPS2 returned rc="..tostring(rc).." path="..tostring(popstarter),
     popstarter,
     context and context.device_page or "unknown",
     argv0,
     argv0,
     app_dir,
-    nil,
-    nil
+    rc,
+    "LoadExecPS2"
   )
 end
 
