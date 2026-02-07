@@ -19,142 +19,97 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+/* Allow direct fileXio usage under newlib (PS2SDK guard). */
+#ifndef NEWLIB_PORT_AWARE
 #define NEWLIB_PORT_AWARE
+#endif
 #include <fileXio_rpc.h>
+
 #include "elf.h"
 #define DPRINTF(x...) printf(x)
 
 extern void gsKit_finish(void);
 
-typedef struct elfio_ops {
-    int (*open_fn)(const char *path);
-    int (*close_fn)(int fd);
-    int (*lseek_fn)(int fd, int offset, int whence);
-    int (*read_fn)(int fd, void *buf, int size);
-    bool use_bounce;
-} elfio_ops_t;
+/*
+ * IO backend notes:
+ * - For targets on PFS/HDD (paths starting with "pfs" or "hdd0:"), use fileXio* with an aligned bounce buffer.
+ *   This avoids cases where a direct read into stack/unaligned buffers yields short/0 reads (causing -2).
+ * - For all other paths, use standard POSIX open/read/lseek/close.
+ */
+typedef struct {
+    int fd;
+    int use_filexio;
+} elfio_handle_t;
 
-static int elfio_posix_open(const char *path) { return open(path, O_RDONLY); }
-static int elfio_posix_close(int fd) { return close(fd); }
-static int elfio_posix_lseek(int fd, int offset, int whence) { return (int)lseek(fd, (off_t)offset, whence); }
-static int elfio_posix_read(int fd, void *buf, int size) { return (int)read(fd, buf, (size_t)size); }
-
-static int elfio_filexio_open(const char *path) { return fileXioOpen(path, O_RDONLY, 0); }
-static int elfio_filexio_close(int fd) { return fileXioClose(fd); }
-static int elfio_filexio_lseek(int fd, int offset, int whence) { return fileXioLseek(fd, offset, whence); }
-static int elfio_filexio_read(int fd, void *buf, int size) { return fileXioRead(fd, buf, size); }
-
-static const elfio_ops_t g_ops_posix = { elfio_posix_open, elfio_posix_close, elfio_posix_lseek, elfio_posix_read, false };
-static const elfio_ops_t g_ops_filexio = { elfio_filexio_open, elfio_filexio_close, elfio_filexio_lseek, elfio_filexio_read, true };
-
-static const elfio_ops_t *select_elfio_ops(const char *path)
-{
-    if (path && (strncmp(path, "pfs", 3) == 0 || strncmp(path, "hdd0:", 5) == 0)) {
-        return &g_ops_filexio;
-    }
-    return &g_ops_posix;
-}
-
-static int read_full_ex(const elfio_ops_t *ops, int fd, void *buf, size_t size)
-{
-    size_t total = 0;
-    static unsigned char bounce[2048] __attribute__((aligned(64)));
-    while (total < size) {
-        size_t want = size - total;
-        if (want > sizeof(bounce)) want = sizeof(bounce);
-
-        void *dst = (char *)buf + total;
-        void *read_buf = dst;
-
-        if (ops->use_bounce) {
-            read_buf = bounce;
-        }
-
-        int rc = ops->read_fn(fd, read_buf, (int)want);
-        if (rc <= 0) {
-            return -1;
-        }
-        if (ops->use_bounce) {
-            memcpy(dst, bounce, (size_t)rc);
-        }
-        total += (size_t)rc;
-    }
+static int is_pfs_or_hdd_path(const char *path) {
+    if (!path) return 0;
+    if (!strncmp(path, "hdd0:", 5)) return 1;
+    if (!strncmp(path, "pfs", 3)) return 1;
     return 0;
 }
 
-static int lseek_ex(const elfio_ops_t *ops, int fd, int offset, int whence)
-{
-    return ops->lseek_fn(fd, offset, whence);
+static int elfio_open(elfio_handle_t *h, const char *path) {
+    if (!h) return -1;
+    h->fd = -1;
+    h->use_filexio = is_pfs_or_hdd_path(path);
+    if (h->use_filexio) {
+        h->fd = fileXioOpen(path, O_RDONLY, 0);
+    } else {
+        h->fd = open(path, O_RDONLY);
+    }
+    return h->fd;
 }
 
+static int elfio_close(elfio_handle_t *h) {
+    if (!h) return -1;
+    if (h->fd < 0) return 0;
+    if (h->use_filexio) return fileXioClose(h->fd);
+    return close(h->fd);
+}
+
+static int elfio_lseek(elfio_handle_t *h, int offset, int whence) {
+    if (!h || h->fd < 0) return -1;
+    if (h->use_filexio) return fileXioLseek(h->fd, offset, whence);
+    return (int)lseek(h->fd, (off_t)offset, whence);
+}
+
+static int elfio_read_raw(elfio_handle_t *h, void *buf, int size) {
+    if (!h || h->fd < 0) return -1;
+    if (size <= 0) return 0;
+
+    if (h->use_filexio) {
+        static unsigned char bounce[512] __attribute__((aligned(64)));
+        unsigned char *dst = (unsigned char *)buf;
+        int total = 0;
+        while (total < size) {
+            int chunk = size - total;
+            if (chunk > (int)sizeof(bounce)) chunk = (int)sizeof(bounce);
+            int r = fileXioRead(h->fd, bounce, chunk);
+            if (r <= 0) return (total > 0) ? total : r;
+            memcpy(dst + total, bounce, (size_t)r);
+            total += r;
+        }
+        return total;
+    }
+
+    return read(h->fd, buf, size);
+}
+
+static int elfio_read_full(elfio_handle_t *h, void *buf, size_t size) {
+    unsigned char *p = (unsigned char *)buf;
+    size_t remaining = size;
+    while (remaining > 0) {
+        int r = elfio_read_raw(h, p, (int)remaining);
+        if (r <= 0) return -1;
+        p += (size_t)r;
+        remaining -= (size_t)r;
+    }
+    return 0;
+}
 
 
 static bool is_host_path(const char *filename) {
 	return (filename != NULL && strncmp(filename, "host:/", 6) == 0);
-}
-
-
-static int load_elf_segments_ex(const elfio_ops_t *ops, int fd, const elf_header_t *eh) {
-    elf_pheader_t ph;
-    u32 i;
-    if (eh->phoff == 0 || eh->phnum == 0) {
-        return -1;
-    }
-    if (lseek_ex(ops, fd, (int)eh->phoff, SEEK_SET) < 0) {
-        return -1;
-    }
-    for (i = 0; i < eh->phnum; ++i) {
-        if (read_full_ex(ops, fd, &ph, sizeof(ph)) < 0) {
-            return -1;
-        }
-        if (ph.type != 1 || ph.memsz == 0) {
-            continue;
-        }
-        void *dest = ph.paddr ? (void *)ph.paddr : ph.vaddr;
-        if (lseek_ex(ops, fd, (int)ph.offset, SEEK_SET) < 0) {
-            return -1;
-        }
-        if (read_full_ex(ops, fd, dest, ph.filesz) < 0) {
-            return -1;
-        }
-        if (ph.memsz > ph.filesz) {
-            memset((char *)dest + ph.filesz, 0, ph.memsz - ph.filesz);
-        }
-        if (lseek_ex(ops, fd, (int)(eh->phoff + (i + 1) * sizeof(ph)), SEEK_SET) < 0) {
-            return -1;
-        }
-    }
-    return 0;
-}
-
-static int find_gp_value_ex(const elfio_ops_t *ops, int fd, const elf_header_t *eh, u32 *out_gp) {
-    u32 i;
-    elf_sheader_t sh;
-    if (!out_gp) {
-        return -1;
-    }
-    *out_gp = 0;
-    if (eh->shoff == 0 || eh->shnum == 0) {
-        return -1;
-    }
-    if (lseek_ex(ops, fd, (int)eh->shoff, SEEK_SET) < 0) {
-        return -1;
-    }
-    for (i = 0; i < eh->shnum; ++i) {
-        if (read_full_ex(ops, fd, &sh, sizeof(sh)) < 0) {
-            return -1;
-        }
-        if (sh.type == 0x70000030) {
-            if (lseek_ex(ops, fd, (int)sh.offset + 0x10, SEEK_SET) < 0) {
-                return -1;
-            }
-            if (read_full_ex(ops, fd, out_gp, sizeof(*out_gp)) < 0) {
-                return -1;
-            }
-            return 0;
-        }
-    }
-    return -1;
 }
 
 static bool build_host_alt_path(const char *filename, char *out, size_t out_size) {
@@ -237,7 +192,7 @@ static void append_launch_log_line(const char *line) {
 	if (fd < 0) {
 		return;
 	}
-	lseek(fd, 0, SEEK_END);
+	elfio_lseek(h, 0, SEEK_END);
 	write(fd, line, strlen(line));
 	close(fd);
 }
@@ -293,48 +248,119 @@ typedef struct
 	s32 gp_value;
 } elf_reginfo_t;
 
-
-
-
-
-int LoadELFFromFileFileIO(const char *filename, int argc, char *argv[]) {
-    int fd;
-    elf_header_t eh;
-    u32 gp = 0;
-    if (!filename) {
-        return -1;
-    }
-
-    const elfio_ops_t *ops = select_elfio_ops(filename);
-    fd = ops->open_fn(filename);
-    if (fd < 0) {
-        return fd;
-    }
-
-    if (read_full_ex(ops, fd, &eh, sizeof(eh)) < 0) {
-        ops->close_fn(fd);
-        return -2;
-    }
-
-    if (eh.ident[0] != 0x7f || eh.ident[1] != 'E' || eh.ident[2] != 'L' || eh.ident[3] != 'F') {
-        ops->close_fn(fd);
-        return -3;
-    }
-
-    if (load_elf_segments_ex(ops, fd, &eh) < 0) {
-        ops->close_fn(fd);
-        return -4;
-    }
-
-    find_gp_value_ex(ops, fd, &eh, &gp);
-    ops->close_fn(fd);
-
-    FlushCache(0);
-    FlushCache(2);
-    ExecPS2((void *)eh.entry, (void *)gp, argc, argv);
-    return -1;
+static int read_full(elfio_handle_t *h, void *buf, size_t size) {
+	return elfio_read_full(h, buf, size);
 }
 
+		total += (size_t)rc;
+	}
+	return 0;
+}
+
+static int load_elf_segments(elfio_handle_t *h, const elf_header_t *eh) {
+	elf_pheader_t ph;
+	u32 i;
+	if (eh->phoff == 0 || eh->phnum == 0) {
+		return -1;
+	}
+	if (elfio_lseek(h, (off_t)eh->phoff, SEEK_SET) < 0) {
+		return -1;
+	}
+	for (i = 0; i < eh->phnum; ++i) {
+		if (read_full(h, &ph, sizeof(ph)) < 0) {
+			return -1;
+		}
+		if (ph.type != 1 || ph.memsz == 0) {
+			continue;
+		}
+		void *dest = ph.paddr ? (void *)ph.paddr : ph.vaddr;
+		if (elfio_lseek(h, (off_t)ph.offset, SEEK_SET) < 0) {
+			return -1;
+		}
+		if (read_full(h, dest, ph.filesz) < 0) {
+			return -1;
+		}
+		if (ph.memsz > ph.filesz) {
+			memset((char *)dest + ph.filesz, 0, ph.memsz - ph.filesz);
+		}
+		if (elfio_lseek(h, (off_t)(eh->phoff + (i + 1) * sizeof(ph)), SEEK_SET) < 0) {
+			return -1;
+		}
+	}
+	return 0;
+}
+
+static int find_gp_value(elfio_handle_t *h, const elf_header_t *eh, u32 *out_gp) {
+	u32 i;
+	elf_sheader_t sh;
+	if (!out_gp) {
+		return -1;
+	}
+	*out_gp = 0;
+	if (eh->shoff == 0 || eh->shnum == 0) {
+		return -1;
+	}
+	if (elfio_lseek(h, (off_t)eh->shoff, SEEK_SET) < 0) {
+		return -1;
+	}
+	for (i = 0; i < eh->shnum; ++i) {
+		if (read_full(h, &sh, sizeof(sh)) < 0) {
+			return -1;
+		}
+		if (sh.type == 0x70000006 && sh.size >= sizeof(elf_reginfo_t)) {
+			elf_reginfo_t reginfo;
+			if (elfio_lseek(h, (off_t)sh.offset, SEEK_SET) < 0) {
+				return -1;
+			}
+			if (read_full(h, &reginfo, sizeof(reginfo)) < 0) {
+				return -1;
+			}
+			*out_gp = (u32)reginfo.gp_value;
+			return 0;
+		}
+		if (elfio_lseek(h, (off_t)(eh->shoff + (i + 1) * sizeof(sh)), SEEK_SET) < 0) {
+			return -1;
+		}
+	}
+	return -1;
+}
+
+int LoadELFFromFileFileIO(const char *filename, int argc, char *argv[]) {
+	elfio_handle_t h;
+	elf_header_t eh;
+	u32 gp = 0;
+
+	if (!filename) {
+		return -1;
+	}
+
+	if (elfio_open(&h, filename) < 0) {
+		return h.fd;
+	}
+
+	if (read_full(&h, &eh, sizeof(eh)) < 0) {
+		elfio_close(&h);
+		return -2;
+	}
+
+	if (eh.ident[0] != 0x7f || eh.ident[1] != 'E' || eh.ident[2] != 'L' || eh.ident[3] != 'F') {
+		elfio_close(&h);
+		return -3;
+	}
+
+	if (load_elf_segments(&h, &eh) < 0) {
+		elfio_close(&h);
+		return -4;
+	}
+
+	find_gp_value(&h, &eh, &gp);
+	elfio_close(&h);
+
+	FlushCache(0);
+	FlushCache(2);
+	ExecPS2((void *)eh.entry, (void *)gp, argc, argv);
+	return -1;
+}
 
 int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	int i;
