@@ -278,20 +278,14 @@ UI = {
       if lock == DEVLOCK.MX4SIO then return "MX4SIO" end
       return "None"
     end;
+    -- Always allow entry into device pages.  The original implementation
+    -- enforced cross‑device locks based on the boot source or session state,
+    -- which could block access to USB/MMCE/MX4SIO pages when another device
+    -- was active.  This behaviour has been removed to honour the design goal
+    -- of "no device may block another."  Callers expecting three return values
+    -- (can_enter, reason, lock) will simply receive `true` as the first value.
     canEnterDevice = function (target)
-      if UI.locks_enabled == false then
-        return true
-      end
-      if UI.boot_locks ~= nil and UI.boot_locks[target] == true then
-        return false, "boot", UI.boot_device
-      end
-      if UI.device_lock == DEVLOCK.NONE then
-        return true
-      end
-      if UI.device_lock == target then
-        return true
-      end
-      return false, "session", UI.device_lock
+      return true
     end;
     ShouldHideUI = function ()
       if not UI.HideUI then return false end
@@ -300,11 +294,17 @@ UI = {
       end
       return true
     end;
+    -- Disable session device locks entirely.  This function previously set
+    -- `UI.device_lock` on first use to prevent switching to another device
+    -- without rebooting the runtime.  Since page/device locking has been
+    -- abolished, this setter now performs no state changes.  Logging is
+    -- retained for debugging but always indicates the absence of a lock.
     setDeviceLock = function (target)
-      if UI.device_lock == DEVLOCK.NONE then
-        UI.device_lock = target
-        LOG("Device lock set to "..UI.device_lock_name(target))
+      -- Ignore requests to lock to a specific device; always remain unlocked.
+      if UI.device_lock ~= DEVLOCK.NONE then
+        UI.device_lock = DEVLOCK.NONE
       end
+      LOG("Device lock ignored; locks disabled")
     end;
     RequestScene = function (SCENE)
       if UI.Transition ~= nil and UI.Transition.Start ~= nil then
@@ -854,39 +854,24 @@ local function add_candidate(list, path)
 end
 
 local function resolve_candidates(name)
+  -- Centralize candidate resolution through the runtime resolver.  This function
+  -- formerly constructed many potential file paths by hand (mixing APP_DIR,
+  -- current working directory and POPSLDR subfolders).  Such behaviour could
+  -- diverge from the authoritative resolution used elsewhere and break after
+  -- device switches.  The updated implementation leverages `System.resolveAsset`
+  -- (via `resolve`) to locate assets relative to the application directory or
+  -- embedded resources.  It also falls back to the raw name and "./name"
+  -- without performing its own directory juggling.  Additional fallback logic
+  -- (e.g. host: prefixes) is handled outside of this helper.
   local candidates = {}
   add_candidate(candidates, resolve(name))
   add_candidate(candidates, resolve("./" .. name))
-
-  local app_dir = APP_DIR
-  if type(System) == "table" and type(System.getAppDir) == "function" then
-    local ok, dir = pcall(System.getAppDir)
-    if ok and dir ~= nil and dir ~= "" then
-      app_dir = dir
-    end
-  end
-  local app_dir_norm = ensure_dir(app_dir)
-  if app_dir_norm ~= nil then
-    add_candidate(candidates, app_dir_norm .. name)
-    add_candidate(candidates, app_dir_norm .. "POPSLDR/" .. name)
-  end
-
-  local cwd = nil
-  if type(System) == "table" and type(System.currentDirectory) == "function" then
-    local ok, dir = pcall(System.currentDirectory)
-    if ok then
-      cwd = dir
-    end
-  end
-  local cwd_norm = ensure_dir(cwd)
-  if cwd_norm ~= nil then
-    add_candidate(candidates, cwd_norm .. name)
-    add_candidate(candidates, cwd_norm .. "POPSLDR/" .. name)
-  end
-
+  -- Also return the direct names so that the caller may try them if
+  -- System.resolveAsset did not produce a result.  This preserves the final
+  -- fallback behaviour of the original code without reproducing its complex
+  -- search heuristics.
   add_candidate(candidates, name)
   add_candidate(candidates, "./" .. name)
-
   return candidates
 end
 

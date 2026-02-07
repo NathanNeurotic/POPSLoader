@@ -162,15 +162,12 @@ local function DetectBootDevice()
     if driver == "usb" then
       return "USB", boot_path, prefix
     end
-    -- Legacy fallback (marker-based). Prefer IOCTL above.
-    local mx_marker = JoinPath(APP_DIR_LOCAL, ".boot_mx4sio")
-    local usb_marker = JoinPath(APP_DIR_LOCAL, ".boot_usb")
-    if doesFileExist(mx_marker) then
-      return "MX4SIO", boot_path, prefix
-    end
-    if doesFileExist(usb_marker) then
-      return "USB", boot_path, prefix
-    end
+    -- Do not fall back to marker files for MX4SIO/USB detection.  Marker-based
+    -- identification can incorrectly shadow other devices (for example, a USB or
+    -- MMCE boot that happens to contain a ".boot_mx4sio" file).  When driver names
+    -- cannot be queried, simply return nil here to indicate that the boot device
+    -- could not be unambiguously determined.  Higher-level code will avoid
+    -- enforcing cross-device locks when `boot_name` is nil.
   end
   return nil, boot_path, prefix
 end
@@ -255,11 +252,32 @@ PLDR = {
 -- app's own partition mount. In that case, mount POPS partitions on pfs1: to avoid
 -- collisions with the app mount.
 --
+-- Determine the boot prefix from the raw boot path prior to selecting the HDD PFS index.
+-- Historically this logic relied on a free‑floating `boot_prefix` variable, but that
+-- variable is never assigned before this point.  As a result HDD boots would always
+-- default to pfs0:/ even when launched from pfsX:/hdd0:, breaking root detection.
+-- To honour the real boot prefix we derive it directly from BOOT_PATH_RAW.
 PLDR.HDD.PFS_IDX = 0
 PLDR.HDD.PFS = "pfs0:/"
-if boot_prefix ~= nil and (string.sub(tostring(boot_prefix), 1, 3) == "pfs" or string.sub(tostring(boot_prefix), 1, 3) == "hdd") then
-  PLDR.HDD.PFS_IDX = 1
-  PLDR.HDD.PFS = "pfs1:/"
+do
+  -- Extract the leading device prefix from the canonicalized boot path.  Examples:
+  -- "pfs0:/" → "pfs0", "hdd0:/" → "hdd0", "mass1:/" → "mass1".
+  local detected_prefix = nil
+  local path = BOOT_PATH_RAW or ""
+  if type(path) == "string" then
+    detected_prefix = string.match(path, "^([%a]+%d*):")
+  end
+  -- If we booted from a pfsX or hddX context then pfs0 is already consumed by
+  -- the loader itself.  Use pfs1: when mounting POPS partitions to avoid clobbering
+  -- the app's own mount point.
+  if detected_prefix ~= nil then
+    local lp = tostring(detected_prefix)
+    local tag = string.sub(lp, 1, 3)
+    if tag == "pfs" or tag == "hdd" then
+      PLDR.HDD.PFS_IDX = 1
+      PLDR.HDD.PFS = "pfs1:/"
+    end
+  end
 end
 
 -- Mass backend detection via USBMASS_IOCTL_GET_DRIVERNAME (requires fileXio + ps2sdk usbhdfsd-common.h support).
@@ -486,9 +504,15 @@ local function StripSuffixCaseInsensitive(name, suffix)
   return string.sub(name, 1, #name - #suffix)
 end
 local function DetectMX4SIOPrefixHint()
-  local mx_marker = JoinPath(APP_DIR_LOCAL, ".boot_mx4sio")
-  if doesFileExist(mx_marker) then
-    return "mx4sio:/"
+  -- Prefer driver-based detection over marker files.  When a mass storage device
+  -- uses the "sdc" backend (MX4SIO), PLDR.FindMassByDriver will return its index.
+  -- We use this to construct the prefix (e.g. "mass0:/") rather than relying on
+  -- special marker files, which can accidentally shadow other devices.
+  if PLDR ~= nil and type(PLDR.FindMassByDriver) == "function" then
+    local idx = PLDR.FindMassByDriver("sdc", 4)
+    if idx ~= nil then
+      return "mass"..tostring(idx)..":/"
+    end
   end
   return nil
 end
