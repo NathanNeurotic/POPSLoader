@@ -307,6 +307,9 @@ UI = {
       LOG("Device lock ignored; locks disabled")
     end;
     RequestScene = function (SCENE)
+      if UI.CURSCENE ~= SCENE then
+        UI.FlushSettings()
+      end
       if UI.Transition ~= nil and UI.Transition.Start ~= nil then
         if UI.Transition.active then
           if UI.Transition.Queue ~= nil then
@@ -321,6 +324,17 @@ UI = {
     end;
     SceneChange = function (SCENE)
       UI.RequestScene(SCENE)
+    end;
+    _SETTINGS_DIRTY = false;
+    MarkSettingsDirty = function ()
+      UI._SETTINGS_DIRTY = true
+    end;
+    FlushSettings = function ()
+      if UI._SETTINGS_DIRTY ~= true then return end
+      if PLDR ~= nil and PLDR.SaveSettings ~= nil then
+        pcall(PLDR.SaveSettings)
+      end
+      UI._SETTINGS_DIRTY = false
     end;
     BuildListCacheKey = function (device_type, game_path)
       return tostring(device_type or "").."|"..tostring(game_path or "")
@@ -1494,9 +1508,7 @@ end
         UI.HideUI = not UI.HideUI
         if PLDR ~= nil and PLDR.SETTINGS ~= nil then
           PLDR.SETTINGS.hide_ui = UI.HideUI
-          if PLDR.SaveSettings ~= nil then
-            PLDR.SaveSettings()
-          end
+          UI.MarkSettingsDirty()
         end
         return true
       end
@@ -1648,9 +1660,7 @@ end
           end
           if PLDR ~= nil and PLDR.SETTINGS ~= nil then
             PLDR.SETTINGS.show_cover = UI.GameList.SHOW_COVER
-            if PLDR.SaveSettings ~= nil then
-              PLDR.SaveSettings()
-            end
+            UI.MarkSettingsDirty()
           end
         end
         UI.GameList.LAST_SQUARE_DOWN = square_down

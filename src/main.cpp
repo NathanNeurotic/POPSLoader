@@ -115,6 +115,36 @@ static unsigned int boot_ms(void)
     return (unsigned int)(((clock() - boot_start) * 1000) / CLOCKS_PER_SEC);
 }
 
+static void DrawBootProgress(const char *label, int step, int total)
+{
+    if (total <= 0) {
+        total = 1;
+    }
+    if (step < 0) {
+        step = 0;
+    }
+    if (step > total) {
+        step = total;
+    }
+
+    const int bar_width = 42;
+    int filled = (step * bar_width) / total;
+    int pct = (step * 100) / total;
+
+    init_scr();
+    scr_clear();
+    scr_setXY(2, 2);
+    scr_printf("POPSLoader boot loading...\n");
+    if (label != NULL) {
+        scr_printf("%s\n", label);
+    }
+    scr_printf("[");
+    for (int i = 0; i < bar_width; i++) {
+        scr_printf(i < filled ? "#" : "-");
+    }
+    scr_printf("] %d%%\n", pct);
+}
+
 static void InsertChar(char *base, size_t base_size, char *pos, char ch)
 {
     size_t len = strlen(base);
@@ -813,6 +843,7 @@ int main(int argc, char * argv[])
     BootDiagLog("GS init post");
 
     pad_init();
+    DrawBootProgress("Initializing runtime", 1, 3);
 
     // set base path luaplayer
     int chdir_ret = chdir(boot_path);
@@ -834,8 +865,10 @@ int main(int argc, char * argv[])
     }
     BootStamp("Lua init start");
     BootDiagHeartbeat("Lua init start");
+    DrawBootProgress("Loading scripts", 2, 3);
     while (1)
     {
+        DrawBootProgress("Starting UI", 3, 3);
         errMsg = runScript(bootString, true, size_bootString);
 
         init_scr();
