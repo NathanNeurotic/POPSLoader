@@ -187,10 +187,10 @@ local function FullPathForAttempt(path)
 end
 
 local ATTEMPTS = {
-  "system.lua",
   BASE_DIR.."system.lua",
-  "POPSLDR/system.lua",
-  BASE_DIR.."POPSLDR/system.lua"
+  BASE_DIR.."POPSLDR/system.lua",
+  "system.lua",
+  "POPSLDR/system.lua"
 }
 
 local tried = {}
@@ -208,7 +208,7 @@ for i = 1, #ATTEMPTS do
 end
 
 if not loaded then
-  local msg = "Cant access system.lua\n\ncurrent_bootpath: "..tostring(System.currentDirectory()).."\n\nattempted paths:\n - "..table.concat(tried, "\n - ")
+  local msg = "Cant access system.lua\n\nboot_dir: "..tostring(BASE_DIR).."\ncwd: "..tostring(System.currentDirectory()).."\nargv0: "..tostring(System.GetArgv0()).."\n\nattempted paths:\n - "..table.concat(tried, "\n - ")
   if #errs > 0 then
     msg = msg.."\n\nlast error:\n"..errs[#errs]
   end

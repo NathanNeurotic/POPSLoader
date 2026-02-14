@@ -37,39 +37,12 @@ extern "C"{
 }
 
 /*
- * EE-only early video probe.
- * Purpose: prove we reach main() when HDD-booted, without any SIF/IOP calls.
- * Draws a solid dark-red frame once, then continues.
+ * EE-only early video probe placeholder.
+ * Kept as a no-op in universal build.
  */
 static void EarlyVideoProbe_HDD(void)
 {
-#if defined(BOOT_HDD)
-    GSGLOBAL *gsGlobal = gsKit_init_global();
-
-    /* Safe defaults */
-    gsGlobal->Mode = GS_MODE_NTSC;
-    gsGlobal->Interlace = GS_INTERLACED;
-    gsGlobal->Field = GS_FIELD;
-    gsGlobal->Width = 640;
-    gsGlobal->Height = 448;
-    gsGlobal->PSM = GS_PSM_CT24;
-    gsGlobal->ZBuffering = GS_SETTING_OFF;
-
-    dmaKit_init(D_CTRL_RELE_OFF, D_CTRL_MFD_OFF, D_CTRL_STS_UNSPEC, D_CTRL_STD_OFF, D_CTRL_RCYC_8, 1<<DMA_CHANNEL_GIF);
-    dmaKit_chan_init(DMA_CHANNEL_GIF);
-
-    gsKit_init_screen(gsGlobal);
-
-    /* Solid dark-red clear */
-    gsKit_clear(gsGlobal, GS_SETREG_RGBAQ(0x40, 0x00, 0x00, 0x80, 0x00));
-    gsKit_sync_flip(gsGlobal);
-    gsKit_queue_exec(gsGlobal);
-    gsKit_finish();
-
-    /* Leave GS initialized; the normal graphics init will reconfigure later. */
-#else
     (void)0;
-#endif
 }
 
 
@@ -637,9 +610,22 @@ int main(int argc, char * argv[])
      *
      * For the HDD variant only: if launched from pfsX:/ or hdd0:, keep boot init minimal.
      */
-    const int booted_from_hdd =
-        (boot_path[0] && (!strncmp(boot_path, "pfs", 3) || !strncmp(boot_path, "hdd0:", 5)));
-    BootDiagLog("booted_from_hdd=%d boot_path=%s", booted_from_hdd, boot_path);
+    const int is_pfs_boot =
+        ((boot_path[0] && !strncmp(boot_path, "pfs", 3)) ||
+         (ARGV0 && !strncmp(ARGV0, "pfs", 3)) ||
+         (strstr(boot_path, "hdd0:") != NULL) ||
+         (ARGV0 && strstr(ARGV0, "hdd0:") != NULL));
+    const int is_mass_boot =
+        ((boot_path[0] && !strncmp(boot_path, "mass", 4)) ||
+         (ARGV0 && !strncmp(ARGV0, "mass", 4)));
+    const int is_mmce_boot =
+        ((boot_path[0] && !strncmp(boot_path, "mmce", 4)) ||
+         (ARGV0 && !strncmp(ARGV0, "mmce", 4)));
+    const int is_mx4sio_boot =
+        ((boot_path[0] && !strncmp(boot_path, "mx4sio", 6)) ||
+         (ARGV0 && !strncmp(ARGV0, "mx4sio", 6)));
+    BootDiagLog("boot classification: pfs=%d mass=%d mmce=%d mx4sio=%d boot_path=%s argv0=%s",
+        is_pfs_boot, is_mass_boot, is_mmce_boot, is_mx4sio_boot, boot_path, ARGV0 ? ARGV0 : "<null>");
 
 #ifdef RESET_IOP
     BootDiagHeartbeat("SifInitRpc pre");
@@ -695,16 +681,14 @@ int main(int argc, char * argv[])
     }
     BootStamp("fileXio load/init");
 
-#if defined(BOOT_HDD)
-    if (filexio_ok) {
+    if (filexio_ok && is_pfs_boot) {
         CanonicalizeBootBase(ARGV0);
     }
-    if (filexio_ok && ((boot_path[0] && !strncmp(boot_path, "hdd0:", 5)) || (ARGV0 && !strncmp(ARGV0, "hdd0:", 5)))) {
+    if (filexio_ok && (strstr(boot_path, "hdd0:") != NULL || (ARGV0 && strstr(ARGV0, "hdd0:") != NULL))) {
         if (!RemountHddPartitionFromBootPath(ARGV0)) {
             DPRINTF("HDD remount: failed to restore PFS mount after fileXio reload.\n");
         }
     }
-#endif
 
 	LOAD_IRX_NARG(sio2man_irx);
     if (filexio_ok) {
@@ -753,9 +737,7 @@ int main(int argc, char * argv[])
      * Those stacks are initialized lazily on page entry anyway.
      */
     int init_mass_stack = 1;
-#if defined(BOOT_HDD)
-    if (booted_from_hdd) init_mass_stack = 0;
-#endif
+    if (is_pfs_boot) init_mass_stack = 0;
 
     if (init_mass_stack) {
         // load USB modules
@@ -774,13 +756,6 @@ int main(int argc, char * argv[])
     } else {
         BootStamp("mass stack load (skipped: HDD boot)");
     }
-
-#if defined(BOOT_MX4SIO)
-    /* Load MX4SIO backend early so booting from MX4SIO works before Lua starts. */
-    bool mx4sio_bd_ok = LoadIrxChecked("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL);
-    DPRINTF("mx4sio_bd load result: ok=%d\n", mx4sio_bd_ok ? 1 : 0);
-    BootStamp("mx4sio_bd load");
-#endif
 
     if (init_mass_stack) {
         LOAD_IRX_NARG(cdfs_irx);
@@ -815,7 +790,7 @@ int main(int argc, char * argv[])
     if (ExtractDeviceRoot(boot_path, wait_root, sizeof(wait_root)) < 0) {
         wait_root[0] = '\0';
     }
-    if (!strncmp(wait_root, "mass", 4)) {
+    if (is_mass_boot && !strncmp(wait_root, "mass", 4)) {
         BootStamp("mass wait begin");
         while (ret != 0 && retries > 0) {
             ret = stat(wait_root, &buffer);
@@ -842,8 +817,8 @@ int main(int argc, char * argv[])
     // set base path luaplayer
     int chdir_ret = chdir(boot_path);
     if (chdir_ret < 0) {
-        DPRINTF("chdir failed: path=%s errno=%d (%s)\n", boot_path, errno, strerror(errno));
-        BootDiagLog("chdir failed: path=%s errno=%d", boot_path, errno);
+        DPRINTF("chdir failed: path=%s argv0=%s errno=%d (%s)\n", boot_path, ARGV0 ? ARGV0 : "<null>", errno, strerror(errno));
+        BootDiagLog("chdir failed: path=%s argv0=%s errno=%d", boot_path, ARGV0 ? ARGV0 : "<null>", errno);
     }
 
     DPRINTF("boot path : %s\n", boot_path);
