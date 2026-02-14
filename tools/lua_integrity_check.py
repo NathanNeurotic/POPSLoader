@@ -23,7 +23,7 @@ def iter_lua_files(root: Path) -> list[Path]:
     return sorted([p for p in root.rglob("*.lua") if p.is_file()])
 
 
-def check_file(path: Path, check_punct: bool) -> list[str]:
+def check_file(path: Path, check_punct: bool, ascii_only: bool) -> list[str]:
     issues: list[str] = []
     raw = path.read_bytes()
 
@@ -41,6 +41,12 @@ def check_file(path: Path, check_punct: bool) -> list[str]:
             issues.append(f"disallowed control char 0x{b:02X} at byte {idx}")
             break
 
+    if ascii_only:
+        for i, ch in enumerate(text):
+            if ord(ch) > 0x7F:
+                issues.append(f"non-ASCII character U+{ord(ch):04X} at char {i}")
+                break
+
     if check_punct:
         for i, ch in enumerate(text):
             cp = ord(ch)
@@ -55,13 +61,18 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Validate Lua file encoding/integrity.")
     ap.add_argument("--root", default=".", help="repository root")
     ap.add_argument("--check-punctuation", action="store_true", help="also fail on smart/high punctuation")
+    ap.add_argument(
+        "--no-ascii-only",
+        action="store_true",
+        help="allow non-ASCII Unicode text (default is ASCII-only for Lua safety)",
+    )
     args = ap.parse_args()
 
     root = Path(args.root)
     files = iter_lua_files(root)
     bad = 0
     for f in files:
-        issues = check_file(f, args.check_punctuation)
+        issues = check_file(f, args.check_punctuation, not args.no_ascii_only)
         if issues:
             bad += 1
             print(f"[FAIL] {f}")

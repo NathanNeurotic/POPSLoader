@@ -261,7 +261,7 @@ PLDR.HDD.PFS_IDX = 0
 PLDR.HDD.PFS = "pfs0:/"
 do
   -- Extract the leading device prefix from the canonicalized boot path.  Examples:
-  -- "pfs0:/" → "pfs0", "hdd0:/" → "hdd0", "mass1:/" → "mass1".
+  -- "pfs0:/" -> "pfs0", "hdd0:/" -> "hdd0", "mass1:/" -> "mass1".
   local detected_prefix = nil
   local path = BOOT_PATH_RAW or ""
   if type(path) == "string" then
