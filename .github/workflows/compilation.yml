@@ -15,10 +15,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container: ps2dev/ps2dev:latest
-    strategy:
-      fail-fast: false
-      matrix:
-        variant: [mmce, mx4sio, hdd]
     steps:
       - name: Install dependencies
         run: |
@@ -40,14 +36,16 @@ jobs:
           BUILD_UTC="$(date -u '+%Y-%m-%d %H:%MZ')"
           printf "%s\n%s\n" "$COMMIT_SHORT" "$BUILD_UTC" > bin/POPSLDR/BUILD_INFO.txt
 
-      - name: Compile and package (${{ matrix.variant }})
+      - name: Compile and package
         shell: sh
         run: |
           set -eu
-          make clean elfloader all package VARIANT=${{ matrix.variant }}
+          make clean
+          make
+          make package
 
-      - name: Upload artifact (${{ matrix.variant }})
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: POPSLoader-${{ matrix.variant }}
-          path: POPSLoader-${{ matrix.variant }}.7z
+          name: POPSLoader
+          path: POPSLoader.7z
