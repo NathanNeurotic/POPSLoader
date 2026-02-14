@@ -13,6 +13,7 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <ctype.h>
+#include <errno.h>
 
 #include <dirent.h>
 
@@ -459,32 +460,41 @@ static void BootStamp(const char *stage)
 
 void setLuaBootPath(int argc, char ** argv, int idx)
 {
-    if (argc>=(idx+1))
+    if (argc >= (idx + 1) && argv[idx] != NULL)
     {
+        char tmp[255];
+        snprintf(tmp, sizeof(tmp), "%s", argv[idx]);
+        for (char *q = tmp; *q; ++q) {
+            if (*q == '\\') *q = '/';
+        }
 
-	char *p;
-	if ((p = strrchr(argv[idx], '/'))!=NULL) {
-	    snprintf(boot_path, sizeof(boot_path), "%s", argv[idx]);
-	    p = strrchr(boot_path, '/');
-	if (p!=NULL)
-	    p[1]='\0';
-	} else if ((p = strrchr(argv[idx], '\\'))!=NULL) {
-	   snprintf(boot_path, sizeof(boot_path), "%s", argv[idx]);
-	   p = strrchr(boot_path, '\\');
-	   if (p!=NULL)
-	     p[1]='\0';
-	} else if ((p = strchr(argv[idx], ':'))!=NULL) {
-	   snprintf(boot_path, sizeof(boot_path), "%s", argv[idx]);
-	   p = strchr(boot_path, ':');
-	   if (p!=NULL)
-	   p[1]='\0';
-	}
+        size_t len = strlen(tmp);
+        int has_elf_suffix = 0;
+        if (len >= 4) {
+            char c1 = (char)tolower((unsigned char)tmp[len - 4]);
+            char c2 = (char)tolower((unsigned char)tmp[len - 3]);
+            char c3 = (char)tolower((unsigned char)tmp[len - 2]);
+            char c4 = (char)tolower((unsigned char)tmp[len - 1]);
+            has_elf_suffix = (c1 == '.' && c2 == 'e' && c3 == 'l' && c4 == 'f');
+        }
 
+        if (has_elf_suffix) {
+            char *p = strrchr(tmp, '/');
+            if (p != NULL) {
+                p[1] = '\0';
+            } else {
+                p = strchr(tmp, ':');
+                if (p != NULL) {
+                    p[1] = '\0';
+                }
+            }
+            snprintf(boot_path, sizeof(boot_path), "%s", tmp);
+        } else {
+            snprintf(boot_path, sizeof(boot_path), "%s", tmp);
+        }
     }
-    
+
     NormalizeDirPath(boot_path, sizeof(boot_path));
-    
-    
 }
 
 static void setAppDirFromPath(const char *path)
@@ -830,7 +840,11 @@ int main(int argc, char * argv[])
     pad_init();
 
     // set base path luaplayer
-    chdir(boot_path); 
+    int chdir_ret = chdir(boot_path);
+    if (chdir_ret < 0) {
+        DPRINTF("chdir failed: path=%s errno=%d (%s)\n", boot_path, errno, strerror(errno));
+        BootDiagLog("chdir failed: path=%s errno=%d", boot_path, errno);
+    }
 
     DPRINTF("boot path : %s\n", boot_path);
 	dbgprintf("boot path : %s\n", boot_path);

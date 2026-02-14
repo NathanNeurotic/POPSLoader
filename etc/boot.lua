@@ -177,12 +177,40 @@ function RunScript(S)
   end
 end
 
-local SYS = System.resolveAsset("system.lua")
-if SYS ~= nil then
-  if BOOT_DIAG then
-    DIAG_LOG("Resolved system.lua: "..SYS)
+local function FullPathForAttempt(path)
+  if path == nil then return "<nil>" end
+  if string.match(path, "^[%a]+%d*:/") then
+    return path
   end
-	RunScript(SYS);
-else
-  error("Cant access POPSLDR/system.lua\n\n\tcurrent_bootpath: "..System.currentDirectory())
+  local cwd = ensure_dir(System.currentDirectory() or "")
+  return cwd..path
+end
+
+local ATTEMPTS = {
+  "system.lua",
+  BASE_DIR.."system.lua",
+  "POPSLDR/system.lua",
+  BASE_DIR.."POPSLDR/system.lua"
+}
+
+local tried = {}
+local errs = {}
+local loaded = false
+for i = 1, #ATTEMPTS do
+  local candidate = ATTEMPTS[i]
+  tried[#tried + 1] = FullPathForAttempt(candidate)
+  local ok, err = pcall(RunScript, candidate)
+  if ok then
+    loaded = true
+    break
+  end
+  errs[#errs + 1] = tostring(err)
+end
+
+if not loaded then
+  local msg = "Cant access system.lua\n\ncurrent_bootpath: "..tostring(System.currentDirectory()).."\n\nattempted paths:\n - "..table.concat(tried, "\n - ")
+  if #errs > 0 then
+    msg = msg.."\n\nlast error:\n"..errs[#errs]
+  end
+  error(msg)
 end
