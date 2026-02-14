@@ -253,7 +253,7 @@ PLDR = {
 -- collisions with the app mount.
 --
 -- Determine the boot prefix from the raw boot path prior to selecting the HDD PFS index.
--- Historically this logic relied on a free‑floating `boot_prefix` variable, but that
+-- Historically this logic relied on a free-floating `boot_prefix` variable, but that
 -- variable is never assigned before this point.  As a result HDD boots would always
 -- default to pfs0:/ even when launched from pfsX:/hdd0:, breaking root detection.
 -- To honour the real boot prefix we derive it directly from BOOT_PATH_RAW.

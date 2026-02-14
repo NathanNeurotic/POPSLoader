@@ -279,7 +279,7 @@ UI = {
       return "None"
     end;
     -- Always allow entry into device pages.  The original implementation
-    -- enforced cross‑device locks based on the boot source or session state,
+    -- enforced cross-device locks based on the boot source or session state,
     -- which could block access to USB/MMCE/MX4SIO pages when another device
     -- was active.  This behaviour has been removed to honour the design goal
     -- of "no device may block another."  Callers expecting three return values
