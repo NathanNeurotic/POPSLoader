@@ -631,6 +631,7 @@ int main(int argc, char * argv[])
     }
     BootDiagLog("boot_path=%s app_dir=%s", boot_path, app_dir);
     BootStamp("boot path parse");
+    DrawBootProgress("Loading core modules", 1, 3);
 
     /*
      * HDD boot note:
@@ -804,7 +805,7 @@ int main(int argc, char * argv[])
     BootDiagHeartbeat("GS init post");
     BootDiagLog("GS init post");
     pad_init();
-    DrawBootProgress("Initializing runtime", 1, 3);
+    DrawBootProgress("Initializing runtime", 2, 3);
 
     //waitUntilDeviceIsReady by fjtrujy
 
@@ -866,10 +867,9 @@ int main(int argc, char * argv[])
     }
     BootStamp("Lua init start");
     BootDiagHeartbeat("Lua init start");
-    DrawBootProgress("Loading scripts", 2, 3);
+    DrawBootProgress("Loading scripts", 3, 3);
     while (1)
     {
-        DrawBootProgress("Starting UI", 3, 3);
         errMsg = runScript(bootString, true, size_bootString);
 
         init_scr();
