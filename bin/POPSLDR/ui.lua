@@ -1518,6 +1518,7 @@ end
       STARTUP = 1;
       SHOW_COVER = (PLDR ~= nil and PLDR.SETTINGS ~= nil and PLDR.SETTINGS.show_cover ~= false);
       LAST_SQUARE_DOWN = false;
+      DEFER_COVER_LOAD_UNTIL_MOVE = false;
       Reset = function ()
         UI.GameList.CURR = 1;
       end;
@@ -1590,9 +1591,15 @@ end
         if UI.GameList.SHOW_COVER then
           local cover_img = nil
           local cover_missing = false
+          local can_load_cover = not UI.GameList.DEFER_COVER_LOAD_UNTIL_MOVE
           if UI.CoverCache ~= nil then
             if ammount > 0 then
-              cover_img, cover_missing = UI.CoverCache:UpdateSelection(PLDR.GAMES[UI.GameList.CURR], PLDR.GAMEPATH, UI.CURSCENE)
+              if can_load_cover then
+                cover_img, cover_missing = UI.CoverCache:UpdateSelection(PLDR.GAMES[UI.GameList.CURR], PLDR.GAMEPATH, UI.CURSCENE)
+              else
+                cover_img = UI.CoverCache.last_img
+                cover_missing = UI.CoverCache.last_missing
+              end
             else
               UI.CoverCache:UpdateSelection(nil, PLDR.GAMEPATH, UI.CURSCENE)
             end
@@ -1604,6 +1611,8 @@ end
             end
             if preview_img ~= nil then
               Graphics.drawScaleImage(preview_img, layout.PREVIEW_X, layout.PREVIEW_Y, layout.PREVIEW_W, layout.PREVIEW_H)
+            elseif UI.GameList.DEFER_COVER_LOAD_UNTIL_MOVE and not hide_ui then
+              Font.ftPrint(SFONT, layout.PREVIEW_X, layout.PREVIEW_Y + 8, 0, layout.PREVIEW_W, 16, "Cover deferred - move cursor", UI.CCOL.GREY)
             end
           end
         end
@@ -1618,16 +1627,25 @@ end
           UI.SceneChange(UI.SCENES.CREDITS)
         end
         if UI.Pad.Events.BACK then UI.SceneChange(UI.SCENES.MMAIN) end
+        local prev_curr = UI.GameList.CURR
         if UI.Pad.Events.NAV_DOWN then UI.GameList.CURR = CLAMP(UI.GameList.CURR+1, 1, ammount) end
         if UI.Pad.Events.NAV_RIGHT then UI.GameList.CURR = CLAMP(UI.GameList.CURR+UI.GameList.MAXDRAW, 1, ammount) end
         if UI.Pad.Events.NAV_UP then UI.GameList.CURR = CLAMP(UI.GameList.CURR-1, 1, ammount) end
         if UI.Pad.Events.NAV_LEFT then UI.GameList.CURR = CLAMP(UI.GameList.CURR-UI.GameList.MAXDRAW, 1, ammount) end
+        if UI.GameList.CURR ~= prev_curr then
+          UI.GameList.DEFER_COVER_LOAD_UNTIL_MOVE = false
+        end
         local square_down = false
         if UI.Pad.GPAD ~= nil and PAD_SQUARE ~= nil then
           square_down = (UI.Pad.GPAD & PAD_SQUARE) ~= 0
         end
         if square_down and not UI.GameList.LAST_SQUARE_DOWN then
           UI.GameList.SHOW_COVER = not UI.GameList.SHOW_COVER
+          if UI.GameList.SHOW_COVER then
+            UI.GameList.DEFER_COVER_LOAD_UNTIL_MOVE = true
+          else
+            UI.GameList.DEFER_COVER_LOAD_UNTIL_MOVE = false
+          end
           if PLDR ~= nil and PLDR.SETTINGS ~= nil then
             PLDR.SETTINGS.show_cover = UI.GameList.SHOW_COVER
             if PLDR.SaveSettings ~= nil then
