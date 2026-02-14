@@ -2110,6 +2110,7 @@ end
                 return
               end
               local list_path = mmce_prefix.."POPS/"
+              PLDR.GAMEPATH = list_path
               if not UI.ShouldReuseListCache("MMCE", list_path) then
                 PLDR.CleanupGameList()
                 PLDR.GetPS1GameLists(list_path, true)
@@ -2137,6 +2138,7 @@ end
                 PLDR.MX4SIO.MASSINDX = mx_mass
               end
               local list_path = "mass"..tostring(mx_mass)..":/POPS/"
+              PLDR.GAMEPATH = list_path
               if not UI.ShouldReuseListCache("MX4SIO", list_path) then
                 PLDR.CleanupGameList()
                 PLDR.GetPS1GameLists(list_path, true)
@@ -2189,6 +2191,7 @@ end
             if type(JoinPath) == "function" then
               game_root = JoinPath(root, "POPS/")
             end
+            PLDR.GAMEPATH = game_root
             if not UI.ShouldReuseListCache("MX4SIO", game_root) then
               PLDR.CleanupGameList()
               PLDR.GetPS1GameLists(game_root, true)
@@ -2223,6 +2226,7 @@ end
             UI.SceneChange(UI.SCENES.GHDD)
           elseif UI.MainMenu.OPT == 5 then
             local list_path = "mass"..PLDR.USB.MASSINDX..":/POPS/"
+            PLDR.GAMEPATH = list_path
             if not UI.ShouldReuseListCache("USBEXFAT", list_path) then
               PLDR.CleanupGameList()
               PLDR.GetPS1GameLists(list_path, true)
@@ -2232,6 +2236,7 @@ end
             UI.SceneChange(UI.SCENES.GUSBEXFAT)
           elseif UI.MainMenu.OPT == 6 then
             local list_path = "mass"..PLDR.USB.MASSINDX..":/POPS/"
+            PLDR.GAMEPATH = list_path
             if not UI.ShouldReuseListCache("USBFAT", list_path) then
               PLDR.CleanupGameList()
               PLDR.GetPS1GameLists(list_path, true)
