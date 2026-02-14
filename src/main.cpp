@@ -793,6 +793,19 @@ int main(int argc, char * argv[])
 
     LOAD_IRX_NARG(audsrv_irx);
 
+	
+	// Lua init
+	// init internals library
+    
+    // graphics (gsKit)
+    BootDiagHeartbeat("GS init pre");
+    BootDiagLog("GS init pre");
+    initGraphics();
+    BootDiagHeartbeat("GS init post");
+    BootDiagLog("GS init post");
+    pad_init();
+    DrawBootProgress("Initializing runtime", 1, 3);
+
     //waitUntilDeviceIsReady by fjtrujy
 
     struct stat buffer;
@@ -831,19 +844,7 @@ int main(int argc, char * argv[])
     } else {
         BootStamp("mass wait (skipped)");
     }
-	
-	// Lua init
-	// init internals library
-    
-    // graphics (gsKit)
-    BootDiagHeartbeat("GS init pre");
-    BootDiagLog("GS init pre");
-    initGraphics();
-    BootDiagHeartbeat("GS init post");
-    BootDiagLog("GS init post");
 
-    pad_init();
-    DrawBootProgress("Initializing runtime", 1, 3);
 
     // set base path luaplayer
     int chdir_ret = chdir(boot_path);
