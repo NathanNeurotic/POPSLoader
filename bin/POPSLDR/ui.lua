@@ -1648,13 +1648,18 @@ end
             cache_device = "USBFAT"
           end
           if cache_device ~= nil and PLDR ~= nil then
-            UI.InvalidateListCache()
-            PLDR.CleanupGameList()
-            PLDR.GetPS1GameLists(PLDR.GAMEPATH, true)
-            UI.RememberListCache(cache_device, PLDR.GAMEPATH)
-            UI.GameList.CURR = 1
-            UI.GameList.STARTUP = 1
-            UI.Notif_queue.add("Game list refreshed")
+            local refresh_path = PLDR.GAMEPATH
+            if refresh_path == nil or refresh_path == "" then
+              UI.Notif_queue.add("No device path to refresh")
+            else
+              UI.InvalidateListCache()
+              PLDR.CleanupGameList()
+              PLDR.GetPS1GameLists(refresh_path, true)
+              UI.RememberListCache(cache_device, refresh_path)
+              UI.GameList.CURR = 1
+              UI.GameList.STARTUP = 1
+              UI.Notif_queue.add("Game list refreshed")
+            end
           end
         end
         if UI.Pad.Events.CONFIRM then
