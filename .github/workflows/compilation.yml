@@ -41,7 +41,7 @@ jobs:
         run: |
           set -eu
           make clean
-          make
+          make elfloader all
           make package
 
       - name: Upload artifact
