@@ -322,6 +322,19 @@ UI = {
     SceneChange = function (SCENE)
       UI.RequestScene(SCENE)
     end;
+    BuildListCacheKey = function (device_type, game_path)
+      return tostring(device_type or "").."|"..tostring(game_path or "")
+    end;
+    ShouldReuseListCache = function (device_type, game_path)
+      local key = UI.BuildListCacheKey(device_type, game_path)
+      return UI._LAST_LIST_CACHE_KEY == key and PLDR ~= nil and type(PLDR.GAMES) == "table" and #PLDR.GAMES > 0
+    end;
+    RememberListCache = function (device_type, game_path)
+      UI._LAST_LIST_CACHE_KEY = UI.BuildListCacheKey(device_type, game_path)
+    end;
+    InvalidateListCache = function ()
+      UI._LAST_LIST_CACHE_KEY = nil
+    end;
     UpdateVmode = function ()
       Screen.setMode(UI.SCR.VMODE, UI.SCR.X, UI.SCR.Y, CT24, INTERLACED, FIELD)
     end;
@@ -1623,6 +1636,27 @@ end
           end
         end
         UI.GameList.LAST_SQUARE_DOWN = square_down
+        if UI.Pad.Events.R2 then
+          local cache_device = nil
+          if UI.CURSCENE == UI.SCENES.GMMCE then
+            cache_device = "MMCE"
+          elseif UI.CURSCENE == UI.SCENES.GMX4SIO then
+            cache_device = "MX4SIO"
+          elseif UI.CURSCENE == UI.SCENES.GUSBEXFAT then
+            cache_device = "USBEXFAT"
+          elseif UI.CURSCENE == UI.SCENES.GUSBFAT then
+            cache_device = "USBFAT"
+          end
+          if cache_device ~= nil and PLDR ~= nil then
+            UI.InvalidateListCache()
+            PLDR.CleanupGameList()
+            PLDR.GetPS1GameLists(PLDR.GAMEPATH, true)
+            UI.RememberListCache(cache_device, PLDR.GAMEPATH)
+            UI.GameList.CURR = 1
+            UI.GameList.STARTUP = 1
+            UI.Notif_queue.add("Game list refreshed")
+          end
+        end
         if UI.Pad.Events.CONFIRM then
           if ammount <= 0 then
             UI.Notif_queue.add("No games found")
@@ -2075,8 +2109,12 @@ end
                 UI.Notif_queue.add("No MMCE device found (mmce0/mmce1).")
                 return
               end
-              PLDR.CleanupGameList()
-              PLDR.GetPS1GameLists(mmce_prefix.."POPS/", true)
+              local list_path = mmce_prefix.."POPS/"
+              if not UI.ShouldReuseListCache("MMCE", list_path) then
+                PLDR.CleanupGameList()
+                PLDR.GetPS1GameLists(list_path, true)
+                UI.RememberListCache("MMCE", list_path)
+              end
               UI.setDeviceLock(DEVLOCK.MMCE)
               UI.SceneChange(UI.SCENES.GMMCE)
             end
@@ -2098,8 +2136,12 @@ end
                 PLDR.MX4SIO.ROOT = "mass"..tostring(mx_mass)..":/"
                 PLDR.MX4SIO.MASSINDX = mx_mass
               end
-              PLDR.CleanupGameList()
-              PLDR.GetPS1GameLists("mass"..tostring(mx_mass)..":/POPS/", true)
+              local list_path = "mass"..tostring(mx_mass)..":/POPS/"
+              if not UI.ShouldReuseListCache("MX4SIO", list_path) then
+                PLDR.CleanupGameList()
+                PLDR.GetPS1GameLists(list_path, true)
+                UI.RememberListCache("MX4SIO", list_path)
+              end
               UI.setDeviceLock(DEVLOCK.MX4SIO)
               UI.SceneChange(UI.SCENES.GMX4SIO)
               return
@@ -2143,12 +2185,15 @@ end
               PLDR.MX4SIO.ROOT = root
               PLDR.MX4SIO.MASSINDX = nil
             end
-            PLDR.CleanupGameList()
             local game_root = root.."POPS/"
             if type(JoinPath) == "function" then
               game_root = JoinPath(root, "POPS/")
             end
-            PLDR.GetPS1GameLists(game_root, true)
+            if not UI.ShouldReuseListCache("MX4SIO", game_root) then
+              PLDR.CleanupGameList()
+              PLDR.GetPS1GameLists(game_root, true)
+              UI.RememberListCache("MX4SIO", game_root)
+            end
             UI.setDeviceLock(DEVLOCK.MX4SIO)
             UI.SceneChange(UI.SCENES.GMX4SIO)
           elseif UI.MainMenu.OPT == 3 then
@@ -2177,13 +2222,21 @@ end
             end
             UI.SceneChange(UI.SCENES.GHDD)
           elseif UI.MainMenu.OPT == 5 then
-            PLDR.CleanupGameList()
-            PLDR.GetPS1GameLists("mass"..PLDR.USB.MASSINDX..":/POPS/", true)
+            local list_path = "mass"..PLDR.USB.MASSINDX..":/POPS/"
+            if not UI.ShouldReuseListCache("USBEXFAT", list_path) then
+              PLDR.CleanupGameList()
+              PLDR.GetPS1GameLists(list_path, true)
+              UI.RememberListCache("USBEXFAT", list_path)
+            end
             UI.setDeviceLock(DEVLOCK.USB)
             UI.SceneChange(UI.SCENES.GUSBEXFAT)
           elseif UI.MainMenu.OPT == 6 then
-            PLDR.CleanupGameList()
-            PLDR.GetPS1GameLists("mass"..PLDR.USB.MASSINDX..":/POPS/", true)
+            local list_path = "mass"..PLDR.USB.MASSINDX..":/POPS/"
+            if not UI.ShouldReuseListCache("USBFAT", list_path) then
+              PLDR.CleanupGameList()
+              PLDR.GetPS1GameLists(list_path, true)
+              UI.RememberListCache("USBFAT", list_path)
+            end
             UI.setDeviceLock(DEVLOCK.USB)
             UI.SceneChange(UI.SCENES.GUSBFAT)
           elseif UI.MainMenu.OPT == 7 then
