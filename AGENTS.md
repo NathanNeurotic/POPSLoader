@@ -6,20 +6,24 @@ This project targets PlayStation 2 (PS2) homebrew and must remain safe for real 
 
 Performance (“speed”) is currently the highest priority, but boot safety and cross-device stability are non-negotiable.
 
+All performance work must be structural and conservative. The maintainer validates behavior on real PS2 hardware.
+
 ---
 
 # 1) Performance Contract (MANDATORY FOR AI WORK)
 
 ## Primary Objective
 
-Reduce perceived and measured latency in:
+Reduce perceived latency in:
 
 - UI page transitions
 - Device switching
 - Game list building (USB/MMCE/MX4SIO/HDD)
-- Game launch pipeline (select → handoff to POPStarter)
+- Game launch pipeline (select → POPStarter handoff)
 
-All improvements must be measurable.
+Performance improvements must focus on eliminating unnecessary work and blocking operations.
+
+Millisecond-level benchmarking is not required.
 
 ---
 
@@ -33,7 +37,7 @@ All improvements must be measurable.
 - Avoid excessive filesystem operations during UI interaction.
 - Prefer small, reviewable PRs over sweeping changes.
 
-If you cannot measure improvement, you cannot claim improvement.
+If you cannot justify reduced work (fewer scans, fewer rebuilds, less blocking I/O), you cannot claim improvement.
 
 ---
 
@@ -49,31 +53,36 @@ Every optimization must follow this sequence:
    - selection change
    - launch pipeline
 
-2. Measure  
-   - Instrument only confirmed hot paths.
-   - Instrumentation must be disabled by default.
-   - Use low-overhead timers and buffered logging.
+2. Analyze  
+   Determine what work is happening and what can be eliminated:
+   - repeated directory scans (System.listDirectory)
+   - O(N) loops on transitions
+   - rebuilds triggered per page enter or per input
+   - repeated sorting/filtering
+   - synchronous cover/art loads in navigation paths
+   - systems running that are not required for the current path
 
 3. Fix  
-   - Implement the smallest safe change.
-   - No large refactors.
+   Implement the smallest safe change that reduces unnecessary work.
 
 4. Verify  
-   - Provide reproducible test steps.
-   - Provide before/after timing deltas.
-   - Explain rollback strategy.
+   Provide reproducible steps for the maintainer to validate on real hardware.
+   Describe what should feel faster and what behavior must remain identical.
 
 Skipping steps is not allowed.
 
 ---
 
-## Instrumentation Rules
+## Instrumentation Rules (Optional)
 
-- Must be disabled by default.
-- Must add minimal runtime overhead.
-- Must clearly label timing sections.
-- Must report elapsed time in milliseconds.
-- Must not introduce new dependencies.
+Instrumentation is allowed but must be:
+
+- disabled by default
+- low overhead
+- used to count operations (e.g., number of directory scans)
+- not required to produce millisecond deltas
+
+No new dependencies.
 
 ---
 
@@ -90,7 +99,23 @@ Any optimization must respect these constraints.
 
 ---
 
-# 2) Project Architecture Overview
+# 2) Testing Responsibility Boundary
+
+Codex and CI cannot validate on real PS2 hardware.
+
+The maintainer validates on real hardware.
+
+PRs must include:
+
+- What changed
+- Why it reduces unnecessary work
+- How to test on hardware
+- What should feel faster
+- Rollback instructions
+
+---
+
+# 3) Project Architecture Overview
 
 The project consists of two layers:
 
@@ -138,7 +163,7 @@ If you see a black screen before graphics:
 
 ---
 
-# 3) Boot Flow (EE Side)
+# 4) Boot Flow (EE Side)
 
 Primary entry: src/main.cpp
 
@@ -163,50 +188,32 @@ If graphics never initialize:
 
 ---
 
-# 4) Asset Resolution Model
-
-Implemented in src/system.cpp:
-- ResolveAssetPath
-- ResolveAssetPathTyped
-
-Behavior:
-
-- Absolute PS2 paths (contain “:”) are used as-is.
-- Otherwise resolution attempts:
-  - <app_dir><relative>
-  - <app_dir>POPSLDR/<relative>
-  - Typed fallbacks for IMG/IRX folders
-- Fallback to current working directory paths.
-
-For HDD/PFS boots, argv[0], boot_path, app_dir, and cwd are high-risk areas.
-
-Never hardcode device roots.
-
----
-
 # 5) POPStarter Constraints
 
-POPStarter typically:
-- Reboots the IOP
-- Relies on argv[0]
-- Discards launcher-loaded modules
+POPStarter behavior is determined by its own naming/argv semantics (e.g., argv[0] when launched).
 
-Implications:
-- Do not assume persistent mounts.
-- Do not rely on preloaded IRX surviving.
-- Launch path correctness is critical.
+POPStarter itself is not modified by this project.
+
+Implications for POPSLoader:
+
+- The launch pipeline should do the minimum required preparation and hand off immediately.
+- Do not add optional work (device scans, list rebuilds, art loads, cache writes) to the launch path.
+- Do not assume mounts or loaded modules persist after handoff.
+- Keep launch logic minimal and stable.
 
 ---
 
 # 6) HDD / PFS Boot Considerations
 
 Risks:
+
 - Incorrect IOP reset order
 - Skipping SIF initialization
 - Loading USB stacks too early
 - Deadlocks on certain launchers
 
 Rules:
+
 - Avoid mass:/ assumptions.
 - Avoid blocking waits for USB when launched from HDD.
 - Ensure initGraphics() is always reachable.
@@ -221,6 +228,7 @@ Rules:
 - Never partially edit boot logic.
 - Never hardcode device paths.
 - Preserve dynamic resolution logic.
+- Do not remove systems without producing an UNUSED_SYSTEMS_REPORT first.
 
 ---
 
@@ -245,13 +253,15 @@ Common usage:
 # 9) Smoke Tests (Before and After Any Change)
 
 Test boot from:
+
 - mc0:
-- mass0: (single and dual USB)
-- mmce0: / mmce1:
+- mass0:
+- mmce0:
 - mx4sio:
-- pfs0: (HDD partition launcher)
+- pfs0:
 
 Confirm:
+
 - UI appears
 - Pages load
 - Game lists populate
@@ -260,6 +270,7 @@ Confirm:
 - No black screen regressions
 
 At minimum verify:
+
 - No infinite loops before graphics init
 - boot_path and app_dir normalize correctly
 - No device-lock regressions
@@ -269,14 +280,15 @@ At minimum verify:
 # 10) PR Requirements
 
 Every PR must include:
+
 - Files changed
 - Why the change is safe
-- How to test
-- How to revert
-- Measured results (if performance-related)
+- Why it reduces unnecessary work
+- Hardware test instructions
+- Rollback instructions
 - Caching invalidation strategy (if applicable)
 
-Large refactors without prior mapping and measurement are not allowed.
+Large refactors without prior mapping and analysis are not allowed.
 
 ---
 
