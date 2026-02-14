@@ -438,7 +438,7 @@ UI = {
       return center + offset
     end;
     InputConfig = {
-      MIN_ACTION_MS = 220;
+      MIN_ACTION_MS = 90;
       DEBUG_INPUT_LOG = false;
     };
     --- Notifications queue handler
@@ -1406,8 +1406,8 @@ end
       elapsed = 0,
       last_time = nil,
       max_step = 33,
-      duration_out = 700,
-      duration_in = 700,
+      duration_out = 180,
+      duration_in = 180,
       Queue = function (target)
         if target == nil then return end
         if UI.Transition.active and UI.Transition.phase == "out" then
@@ -1890,7 +1890,7 @@ end
         animActive = false,
         animT = 0,
         animDir = 0,
-        animDurSec = 0.55,
+        animDurSec = 0.18,
         slide = 0,
         allowOptWrite = false,
         timer = nil,
