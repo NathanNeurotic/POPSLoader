@@ -279,7 +279,7 @@ UI = {
       return "None"
     end;
     -- Always allow entry into device pages.  The original implementation
-    -- enforced cross‑device locks based on the boot source or session state,
+    -- enforced cross-device locks based on the boot source or session state,
     -- which could block access to USB/MMCE/MX4SIO pages when another device
     -- was active.  This behaviour has been removed to honour the design goal
     -- of "no device may block another."  Callers expecting three return values
@@ -307,6 +307,9 @@ UI = {
       LOG("Device lock ignored; locks disabled")
     end;
     RequestScene = function (SCENE)
+      if UI.CURSCENE ~= SCENE then
+        UI.FlushSettings()
+      end
       if UI.Transition ~= nil and UI.Transition.Start ~= nil then
         if UI.Transition.active then
           if UI.Transition.Queue ~= nil then
@@ -321,6 +324,30 @@ UI = {
     end;
     SceneChange = function (SCENE)
       UI.RequestScene(SCENE)
+    end;
+    _SETTINGS_DIRTY = false;
+    MarkSettingsDirty = function ()
+      UI._SETTINGS_DIRTY = true
+    end;
+    FlushSettings = function ()
+      if UI._SETTINGS_DIRTY ~= true then return end
+      if PLDR ~= nil and PLDR.SaveSettings ~= nil then
+        pcall(PLDR.SaveSettings)
+      end
+      UI._SETTINGS_DIRTY = false
+    end;
+    BuildListCacheKey = function (device_type, game_path)
+      return tostring(device_type or "").."|"..tostring(game_path or "")
+    end;
+    ShouldReuseListCache = function (device_type, game_path)
+      local key = UI.BuildListCacheKey(device_type, game_path)
+      return UI._LAST_LIST_CACHE_KEY == key and PLDR ~= nil and type(PLDR.GAMES) == "table" and #PLDR.GAMES > 0
+    end;
+    RememberListCache = function (device_type, game_path)
+      UI._LAST_LIST_CACHE_KEY = UI.BuildListCacheKey(device_type, game_path)
+    end;
+    InvalidateListCache = function ()
+      UI._LAST_LIST_CACHE_KEY = nil
     end;
     UpdateVmode = function ()
       Screen.setMode(UI.SCR.VMODE, UI.SCR.X, UI.SCR.Y, CT24, INTERLACED, FIELD)
@@ -411,7 +438,7 @@ UI = {
       return center + offset
     end;
     InputConfig = {
-      MIN_ACTION_MS = 220;
+      MIN_ACTION_MS = 90;
       DEBUG_INPUT_LOG = false;
     };
     --- Notifications queue handler
@@ -1379,8 +1406,8 @@ end
       elapsed = 0,
       last_time = nil,
       max_step = 33,
-      duration_out = 700,
-      duration_in = 700,
+      duration_out = 180,
+      duration_in = 180,
       Queue = function (target)
         if target == nil then return end
         if UI.Transition.active and UI.Transition.phase == "out" then
@@ -1481,9 +1508,7 @@ end
         UI.HideUI = not UI.HideUI
         if PLDR ~= nil and PLDR.SETTINGS ~= nil then
           PLDR.SETTINGS.hide_ui = UI.HideUI
-          if PLDR.SaveSettings ~= nil then
-            PLDR.SaveSettings()
-          end
+          UI.MarkSettingsDirty()
         end
         return true
       end
@@ -1505,6 +1530,7 @@ end
       STARTUP = 1;
       SHOW_COVER = (PLDR ~= nil and PLDR.SETTINGS ~= nil and PLDR.SETTINGS.show_cover ~= false);
       LAST_SQUARE_DOWN = false;
+      DEFER_COVER_LOAD_UNTIL_MOVE = false;
       Reset = function ()
         UI.GameList.CURR = 1;
       end;
@@ -1577,9 +1603,15 @@ end
         if UI.GameList.SHOW_COVER then
           local cover_img = nil
           local cover_missing = false
+          local can_load_cover = not UI.GameList.DEFER_COVER_LOAD_UNTIL_MOVE
           if UI.CoverCache ~= nil then
             if ammount > 0 then
-              cover_img, cover_missing = UI.CoverCache:UpdateSelection(PLDR.GAMES[UI.GameList.CURR], PLDR.GAMEPATH, UI.CURSCENE)
+              if can_load_cover then
+                cover_img, cover_missing = UI.CoverCache:UpdateSelection(PLDR.GAMES[UI.GameList.CURR], PLDR.GAMEPATH, UI.CURSCENE)
+              else
+                cover_img = UI.CoverCache.last_img
+                cover_missing = UI.CoverCache.last_missing
+              end
             else
               UI.CoverCache:UpdateSelection(nil, PLDR.GAMEPATH, UI.CURSCENE)
             end
@@ -1591,6 +1623,8 @@ end
             end
             if preview_img ~= nil then
               Graphics.drawScaleImage(preview_img, layout.PREVIEW_X, layout.PREVIEW_Y, layout.PREVIEW_W, layout.PREVIEW_H)
+            elseif UI.GameList.DEFER_COVER_LOAD_UNTIL_MOVE and not hide_ui then
+              Font.ftPrint(SFONT, layout.PREVIEW_X, layout.PREVIEW_Y + 8, 0, layout.PREVIEW_W, 16, "Cover deferred - move cursor", UI.CCOL.GREY)
             end
           end
         end
@@ -1605,24 +1639,57 @@ end
           UI.SceneChange(UI.SCENES.CREDITS)
         end
         if UI.Pad.Events.BACK then UI.SceneChange(UI.SCENES.MMAIN) end
+        local prev_curr = UI.GameList.CURR
         if UI.Pad.Events.NAV_DOWN then UI.GameList.CURR = CLAMP(UI.GameList.CURR+1, 1, ammount) end
         if UI.Pad.Events.NAV_RIGHT then UI.GameList.CURR = CLAMP(UI.GameList.CURR+UI.GameList.MAXDRAW, 1, ammount) end
         if UI.Pad.Events.NAV_UP then UI.GameList.CURR = CLAMP(UI.GameList.CURR-1, 1, ammount) end
         if UI.Pad.Events.NAV_LEFT then UI.GameList.CURR = CLAMP(UI.GameList.CURR-UI.GameList.MAXDRAW, 1, ammount) end
+        if UI.GameList.CURR ~= prev_curr then
+          UI.GameList.DEFER_COVER_LOAD_UNTIL_MOVE = false
+        end
         local square_down = false
         if UI.Pad.GPAD ~= nil and PAD_SQUARE ~= nil then
           square_down = (UI.Pad.GPAD & PAD_SQUARE) ~= 0
         end
         if square_down and not UI.GameList.LAST_SQUARE_DOWN then
           UI.GameList.SHOW_COVER = not UI.GameList.SHOW_COVER
+          if UI.GameList.SHOW_COVER then
+            UI.GameList.DEFER_COVER_LOAD_UNTIL_MOVE = true
+          else
+            UI.GameList.DEFER_COVER_LOAD_UNTIL_MOVE = false
+          end
           if PLDR ~= nil and PLDR.SETTINGS ~= nil then
             PLDR.SETTINGS.show_cover = UI.GameList.SHOW_COVER
-            if PLDR.SaveSettings ~= nil then
-              PLDR.SaveSettings()
-            end
+            UI.MarkSettingsDirty()
           end
         end
         UI.GameList.LAST_SQUARE_DOWN = square_down
+        if UI.Pad.Events.R2 then
+          local cache_device = nil
+          if UI.CURSCENE == UI.SCENES.GMMCE then
+            cache_device = "MMCE"
+          elseif UI.CURSCENE == UI.SCENES.GMX4SIO then
+            cache_device = "MX4SIO"
+          elseif UI.CURSCENE == UI.SCENES.GUSBEXFAT then
+            cache_device = "USBEXFAT"
+          elseif UI.CURSCENE == UI.SCENES.GUSBFAT then
+            cache_device = "USBFAT"
+          end
+          if cache_device ~= nil and PLDR ~= nil then
+            local refresh_path = PLDR.GAMEPATH
+            if refresh_path == nil or refresh_path == "" then
+              UI.Notif_queue.add("No device path to refresh")
+            else
+              UI.InvalidateListCache()
+              PLDR.CleanupGameList()
+              PLDR.GetPS1GameLists(refresh_path, true)
+              UI.RememberListCache(cache_device, refresh_path)
+              UI.GameList.CURR = 1
+              UI.GameList.STARTUP = 1
+              UI.Notif_queue.add("Game list refreshed")
+            end
+          end
+        end
         if UI.Pad.Events.CONFIRM then
           if ammount <= 0 then
             UI.Notif_queue.add("No games found")
@@ -1823,7 +1890,7 @@ end
         animActive = false,
         animT = 0,
         animDir = 0,
-        animDurSec = 0.55,
+        animDurSec = 0.18,
         slide = 0,
         allowOptWrite = false,
         timer = nil,
@@ -2075,8 +2142,13 @@ end
                 UI.Notif_queue.add("No MMCE device found (mmce0/mmce1).")
                 return
               end
-              PLDR.CleanupGameList()
-              PLDR.GetPS1GameLists(mmce_prefix.."POPS/", true)
+              local list_path = mmce_prefix.."POPS/"
+              PLDR.GAMEPATH = list_path
+              if not UI.ShouldReuseListCache("MMCE", list_path) then
+                PLDR.CleanupGameList()
+                PLDR.GetPS1GameLists(list_path, true)
+                UI.RememberListCache("MMCE", list_path)
+              end
               UI.setDeviceLock(DEVLOCK.MMCE)
               UI.SceneChange(UI.SCENES.GMMCE)
             end
@@ -2098,8 +2170,13 @@ end
                 PLDR.MX4SIO.ROOT = "mass"..tostring(mx_mass)..":/"
                 PLDR.MX4SIO.MASSINDX = mx_mass
               end
-              PLDR.CleanupGameList()
-              PLDR.GetPS1GameLists("mass"..tostring(mx_mass)..":/POPS/", true)
+              local list_path = "mass"..tostring(mx_mass)..":/POPS/"
+              PLDR.GAMEPATH = list_path
+              if not UI.ShouldReuseListCache("MX4SIO", list_path) then
+                PLDR.CleanupGameList()
+                PLDR.GetPS1GameLists(list_path, true)
+                UI.RememberListCache("MX4SIO", list_path)
+              end
               UI.setDeviceLock(DEVLOCK.MX4SIO)
               UI.SceneChange(UI.SCENES.GMX4SIO)
               return
@@ -2143,12 +2220,16 @@ end
               PLDR.MX4SIO.ROOT = root
               PLDR.MX4SIO.MASSINDX = nil
             end
-            PLDR.CleanupGameList()
             local game_root = root.."POPS/"
             if type(JoinPath) == "function" then
               game_root = JoinPath(root, "POPS/")
             end
-            PLDR.GetPS1GameLists(game_root, true)
+            PLDR.GAMEPATH = game_root
+            if not UI.ShouldReuseListCache("MX4SIO", game_root) then
+              PLDR.CleanupGameList()
+              PLDR.GetPS1GameLists(game_root, true)
+              UI.RememberListCache("MX4SIO", game_root)
+            end
             UI.setDeviceLock(DEVLOCK.MX4SIO)
             UI.SceneChange(UI.SCENES.GMX4SIO)
           elseif UI.MainMenu.OPT == 3 then
@@ -2177,13 +2258,23 @@ end
             end
             UI.SceneChange(UI.SCENES.GHDD)
           elseif UI.MainMenu.OPT == 5 then
-            PLDR.CleanupGameList()
-            PLDR.GetPS1GameLists("mass"..PLDR.USB.MASSINDX..":/POPS/", true)
+            local list_path = "mass"..PLDR.USB.MASSINDX..":/POPS/"
+            PLDR.GAMEPATH = list_path
+            if not UI.ShouldReuseListCache("USBEXFAT", list_path) then
+              PLDR.CleanupGameList()
+              PLDR.GetPS1GameLists(list_path, true)
+              UI.RememberListCache("USBEXFAT", list_path)
+            end
             UI.setDeviceLock(DEVLOCK.USB)
             UI.SceneChange(UI.SCENES.GUSBEXFAT)
           elseif UI.MainMenu.OPT == 6 then
-            PLDR.CleanupGameList()
-            PLDR.GetPS1GameLists("mass"..PLDR.USB.MASSINDX..":/POPS/", true)
+            local list_path = "mass"..PLDR.USB.MASSINDX..":/POPS/"
+            PLDR.GAMEPATH = list_path
+            if not UI.ShouldReuseListCache("USBFAT", list_path) then
+              PLDR.CleanupGameList()
+              PLDR.GetPS1GameLists(list_path, true)
+              UI.RememberListCache("USBFAT", list_path)
+            end
             UI.setDeviceLock(DEVLOCK.USB)
             UI.SceneChange(UI.SCENES.GUSBFAT)
           elseif UI.MainMenu.OPT == 7 then
