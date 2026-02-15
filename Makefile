@@ -36,14 +36,14 @@ RESET_IOP = 1
 DEBUG = 0
 #----------------------- Build variant (boot) ----------------------#
 # mmce | mx4sio | hdd | hdd_diag
-VARIANT ?= mmce
+VARIANT ?= universal
 #----------------------- Set IP for PS2Client ---------------------#
 PS2LINK_IP = 192.168.1.10
 #------------------------------------------------------------------#
 
 BINDIR = bin/
 EE_BIN = $(BINDIR)enceladus.elf
-EE_BIN_PKD = $(BINDIR)POPSLOADER_$(VARIANT).ELF
+EE_BIN_PKD = $(BINDIR)POPSLOADER.ELF
 EE_LIBS = -L$(PS2SDK)/ports/lib -L$(PS2DEV)/gsKit/lib/ -Lmodules/ds34bt/ee/ -Lmodules/ds34usb/ee/ -lpatches -lfileXio -lpad -ldebug -llua -lmath3d -ljpeg -lfreetype -lgskit_toolkit -lgskit -ldmakit -lpng -lz -lmc -laudsrv  -lds34bt -lds34usb
 EE_LIBS += src/elf_loader/libcustom-elf-loader.a
 EE_INCS += -I$(PS2DEV)/gsKit/include -I$(PS2SDK)/ports/include -I$(PS2SDK)/ports/include/freetype2 -I$(PS2SDK)/ports/include/zlib
@@ -58,24 +58,6 @@ endif
 
 ifeq ($(DEBUG),1)
 EE_CXXFLAGS += -DDEBUG
-endif
-
-#----------------------- Variant compile defines -----------------#
-ifeq ($(VARIANT),mmce)
-EE_CFLAGS   += -DBOOT_MMCE
-EE_CXXFLAGS += -DBOOT_MMCE
-endif
-ifeq ($(VARIANT),mx4sio)
-EE_CFLAGS   += -DBOOT_MX4SIO
-EE_CXXFLAGS += -DBOOT_MX4SIO
-endif
-ifeq ($(VARIANT),hdd)
-EE_CFLAGS   += -DBOOT_HDD
-EE_CXXFLAGS += -DBOOT_HDD
-endif
-ifeq ($(VARIANT),hdd_diag)
-EE_CFLAGS   += -DBOOT_HDD -DBOOT_DIAG
-EE_CXXFLAGS += -DBOOT_HDD -DBOOT_DIAG
 endif
 
 BIN2S = $(PS2SDK)/bin/bin2c
@@ -201,7 +183,7 @@ run:
 reset:
 	ps2client -h $(PS2LINK_IP) reset   
 
-POPSLDR_PKG = POPSLoader-$(VARIANT).7z
+POPSLDR_PKG = POPSLoader.7z
 PKG_DIR = bin/package
 package: $(EE_BIN_PKD)
 	# Remove both possible output locations (older CI/scripts sometimes expected the archive in bin/).
