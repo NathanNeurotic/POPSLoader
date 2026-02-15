@@ -123,8 +123,10 @@ const char * runScript(const char* script, bool isStringBuffer, size_t scriptSiz
 		if (scriptSize == 0) {
 			loadSize = strlen(script);
 		} else {
-			const void* firstNull = memchr(script, '\0', scriptSize);
-			loadSize = (firstNull != NULL) ? (size_t)((const char*)firstNull - script) : scriptSize;
+			loadSize = scriptSize;
+			while (loadSize > 0 && loadScript[loadSize - 1] == '\0') {
+				loadSize--;
+			}
 		}
 
 		if (loadSize >= 3 &&
