@@ -117,15 +117,25 @@ const char * runScript(const char* script, bool isStringBuffer, size_t scriptSiz
 
 	if(!isStringBuffer) s = luaL_loadfile(L, script);
 	else {
-		size_t loadSize = scriptSize;
-		if (loadSize == 0) {
+		const char* loadScript = script;
+		size_t loadSize = 0;
+
+		if (scriptSize == 0) {
 			loadSize = strlen(script);
 		} else {
-			while (loadSize > 0 && script[loadSize - 1] == '\0') {
-				loadSize--;
-			}
+			const void* firstNull = memchr(script, '\0', scriptSize);
+			loadSize = (firstNull != NULL) ? (size_t)((const char*)firstNull - script) : scriptSize;
 		}
-		s = luaL_loadbuffer(L, script, loadSize, NULL);
+
+		if (loadSize >= 3 &&
+			(unsigned char)loadScript[0] == 0xEF &&
+			(unsigned char)loadScript[1] == 0xBB &&
+			(unsigned char)loadScript[2] == 0xBF) {
+			loadScript += 3;
+			loadSize -= 3;
+		}
+
+		s = luaL_loadbuffer(L, loadScript, loadSize, "@embedded_boot.lua");
 	}
 
 		
