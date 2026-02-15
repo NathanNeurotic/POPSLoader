@@ -186,12 +186,48 @@ local function FullPathForAttempt(path)
   return cwd..path
 end
 
-local ATTEMPTS = {
-  BASE_DIR.."system.lua",
-  BASE_DIR.."POPSLDR/system.lua",
-  "system.lua",
-  "POPSLDR/system.lua"
-}
+local function ExpandDevicePrefix(path)
+  local expanded = { path }
+  if path == nil then
+    return expanded
+  end
+  if string.find(path, "^mass:/") then
+    local suffix = string.sub(path, 6)
+    for i = 0, 6 do
+      expanded[#expanded + 1] = string.format("mass%d:/%s", i, suffix)
+    end
+  elseif string.find(path, "^mmce:/") then
+    local suffix = string.sub(path, 6)
+    for i = 0, 1 do
+      expanded[#expanded + 1] = string.format("mmce%d:/%s", i, suffix)
+    end
+  end
+  return expanded
+end
+
+local function BuildAttemptList()
+  local base_attempts = {
+    BASE_DIR.."system.lua",
+    BASE_DIR.."POPSLDR/system.lua",
+    "system.lua",
+    "POPSLDR/system.lua"
+  }
+  local out = {}
+  local seen = {}
+  for i = 1, #base_attempts do
+    local variants = ExpandDevicePrefix(base_attempts[i])
+    for j = 1, #variants do
+      local candidate = variants[j]
+      if candidate ~= nil and seen[candidate] ~= true then
+        seen[candidate] = true
+        out[#out + 1] = candidate
+      end
+    end
+  end
+  return out
+end
+
+local ATTEMPTS = BuildAttemptList()
 
 local tried = {}
 local errs = {}

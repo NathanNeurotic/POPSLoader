@@ -867,7 +867,7 @@ int main(int argc, char * argv[])
     }
     BootStamp("Lua init start");
     BootDiagHeartbeat("Lua init start");
-    DrawBootProgress("Loading scripts", 3, 3);
+    DrawBootProgress("Loading scripts (please wait)", 2, 3);
     while (1)
     {
         errMsg = runScript(bootString, true, size_bootString);
