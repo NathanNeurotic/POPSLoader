@@ -206,11 +206,20 @@ local function ExpandDevicePrefix(path)
 end
 
 local function BuildAttemptList()
+  local app_base = ensure_dir(APP_DIR or "")
   local base_attempts = {
     BASE_DIR.."system.lua",
     BASE_DIR.."POPSLDR/system.lua",
+    BASE_DIR.."bin/system.lua",
+    BASE_DIR.."bin/POPSLDR/system.lua",
     "system.lua",
-    "POPSLDR/system.lua"
+    "POPSLDR/system.lua",
+    "bin/system.lua",
+    "bin/POPSLDR/system.lua",
+    app_base.."system.lua",
+    app_base.."POPSLDR/system.lua",
+    app_base.."bin/system.lua",
+    app_base.."bin/POPSLDR/system.lua"
   }
   local out = {}
   local seen = {}
