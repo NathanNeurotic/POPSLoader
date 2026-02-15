@@ -363,7 +363,30 @@ local function LoadSettingsTable(path)
   local loader, load_err = loadfile(path)
   if loader == nil then
     LOG("Settings load failed:", load_err)
-    return nil
+    local fd = System.openFile(path, FREAD)
+    if fd ~= nil then
+      local chunks = {}
+      while true do
+        local buffer = System.readFile(fd, 4096)
+        if buffer == nil or buffer == "" then
+          break
+        end
+        chunks[#chunks + 1] = buffer
+      end
+      System.closeFile(fd)
+      local data = table.concat(chunks)
+      local ascii_safe, replaced = string.gsub(data, "[\128-\255]", "?")
+      if replaced > 0 then
+        LOG("Settings contained non-ASCII bytes:", replaced)
+      end
+      loader, load_err = loadstring(ascii_safe, "@"..path)
+      if loader == nil then
+        LOG("Settings fallback load failed:", load_err)
+        return nil
+      end
+    else
+      return nil
+    end
   end
   local ok, data = pcall(loader)
   if not ok then
@@ -374,6 +397,34 @@ local function LoadSettingsTable(path)
     return nil
   end
   return data
+end
+
+local function QuoteLuaStringSafe(value)
+  if value == nil then
+    return "nil"
+  end
+  local in_string = tostring(value)
+  local out = { '"' }
+  for i = 1, #in_string do
+    local byte = string.byte(in_string, i)
+    if byte == 34 then
+      out[#out + 1] = '\\"'
+    elseif byte == 92 then
+      out[#out + 1] = "\\\\"
+    elseif byte == 10 then
+      out[#out + 1] = "\\n"
+    elseif byte == 13 then
+      out[#out + 1] = "\\r"
+    elseif byte == 9 then
+      out[#out + 1] = "\\t"
+    elseif byte < 32 or byte > 126 then
+      out[#out + 1] = string.format("\\%03d", byte)
+    else
+      out[#out + 1] = string.char(byte)
+    end
+  end
+  out[#out + 1] = '"'
+  return table.concat(out)
 end
 
 function PLDR.LoadSettings()
@@ -433,8 +484,8 @@ function PLDR.SaveSettings()
     ..string.format("  hide_ui = %s,\n", tostring(hide_ui))
     ..string.format("  show_cover = %s,\n", tostring(show_cover))
     ..string.format("  profile_index = %s,\n", profile_index ~= nil and tostring(profile_index) or "nil")
-    ..string.format("  bdma_last_label = %s,\n", bdma_last_label ~= nil and string.format("%q", bdma_last_label) or "nil")
-    ..string.format("  dkwdrv_path = %s,\n", dkwdrv_path ~= nil and string.format("%q", dkwdrv_path) or "nil")
+    ..string.format("  bdma_last_label = %s,\n", QuoteLuaStringSafe(bdma_last_label))
+    ..string.format("  dkwdrv_path = %s,\n", QuoteLuaStringSafe(dkwdrv_path))
     .."}\n"
   System.writeFile(fd, line, #line)
   System.closeFile(fd)
@@ -1064,7 +1115,7 @@ function PLDR.HDD.CreateCache()
   local temp = "LOG(\">HDD CACHE LOAD\")\nPLDR.HDDCACHE = {\n"
   PLDR.HDD.BuildGameList()
   for i = 1, #PLDR.GAMES do
-    temp = temp..("  %q,\n"):format(PLDR.GAMES[i])
+    temp = temp..("  %s,\n"):format(QuoteLuaStringSafe(PLDR.GAMES[i]))
   end
   temp = temp.."\n}\n"
   local fd = System.openFile(C, FCREATE)
