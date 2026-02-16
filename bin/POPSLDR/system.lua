@@ -228,7 +228,8 @@ PLDR = {
   USB = {
     MASSINDX = 0,
     ROOTS = {},
-    GAME_SOURCES = {}
+    GAME_SOURCES = {},
+    GAME_META = {}
   },
   MX4SIO = {
     READY = false,
@@ -680,10 +681,16 @@ local function BuildUsbSortKey(entry)
   return lower_display, lower_root, lower_name
 end
 
+local function UsbRootLabel(root)
+  return string.match(root or "", "^([%a]+%d*):/$") or (root or "?")
+end
+
 function PLDR.GetMergedUsbGameList(updating)
   local roots = PLDR.USB.GetRoots()
   local collected = {}
   local source_map = {}
+  local meta_map = {}
+  local basename_counts = {}
   for i = 1, #roots do
     local root = roots[i]
     local pops_path = root.."POPS/"
@@ -697,13 +704,15 @@ function PLDR.GetMergedUsbGameList(updating)
           local filename = entry.name
           if filename ~= nil and string.lower(string.sub(filename, -4)) == ".vcd" then
             local encoded = root.."|"..filename
+            local display_base = string.gsub(filename, "%.[Vv][Cc][Dd]$", "")
             table.insert(collected, {
               id = encoded,
               source = root,
               name = filename,
-              display = string.gsub(filename, "%.[Vv][Cc][Dd]$", "")
+              display = display_base
             })
             source_map[encoded] = root
+            basename_counts[string.lower(display_base)] = (basename_counts[string.lower(display_base)] or 0) + 1
           end
         end
       end
@@ -722,9 +731,22 @@ function PLDR.GetMergedUsbGameList(updating)
   end)
   local games = {}
   for i = 1, #collected do
-    games[i] = collected[i].id
+    local item = collected[i]
+    local display_name = item.display
+    if (basename_counts[string.lower(item.display)] or 0) > 1 then
+      display_name = item.display.." ["..UsbRootLabel(item.source).."]"
+    end
+    games[i] = item.id
+    meta_map[item.id] = {
+      key = item.id,
+      source_root = item.source,
+      filename = item.name,
+      display_name = display_name,
+      full_path = item.source.."POPS/"..item.name
+    }
   end
   PLDR.USB.GAME_SOURCES = source_map
+  PLDR.USB.GAME_META = meta_map
   if updating then
     PLDR.GAMES = games
   else
@@ -745,11 +767,38 @@ local function ParseUsbGameEntry(entry)
 end
 
 function PLDR.ResolveSelectedGamePath(base_path, entry)
+  local usb_meta = PLDR.USB.GAME_META and PLDR.USB.GAME_META[entry] or nil
+  if usb_meta ~= nil and usb_meta.full_path ~= nil then
+    return usb_meta.full_path
+  end
   local source_root, filename = ParseUsbGameEntry(entry)
   if source_root ~= nil and filename ~= nil then
     return source_root.."POPS/"..filename
   end
   return (base_path or "")..(entry or "")
+end
+
+function PLDR.GetSelectedUsbGameMeta(entry)
+  if entry == nil then
+    return nil
+  end
+  if PLDR.USB.GAME_META ~= nil then
+    return PLDR.USB.GAME_META[entry]
+  end
+  return nil
+end
+
+function PLDR.GetGameDisplayName(entry)
+  local usb_meta = PLDR.GetSelectedUsbGameMeta(entry)
+  if usb_meta ~= nil and usb_meta.display_name ~= nil then
+    return usb_meta.display_name
+  end
+  local display_name = entry
+  local hdd_relpath = string.match(display_name or "", "^[^|]+|(.+)$")
+  if hdd_relpath ~= nil then
+    display_name = string.match(hdd_relpath, "([^/]+)$") or hdd_relpath
+  end
+  return string.gsub(display_name or "", "%.[Vv][Cc][Dd]$", "")
 end
 
 local function EncodeHddGameEntry(partition, relpath)
@@ -893,6 +942,8 @@ function PLDR.CleanupGameList()
   LOG("gamelist cleanup")
   local count = #PLDR.GAMES
   for i=0, count do PLDR.GAMES[i]=nil end
+  PLDR.USB.GAME_SOURCES = {}
+  PLDR.USB.GAME_META = {}
 end
 
 function PLDR.HDD.CreateCache()
@@ -1494,7 +1545,7 @@ local function ResolveLaunchPolicy(gamelocation, ui_scene)
   return BuildLaunchPolicy("unknown", "mass", "mass", nil), "unknown"
 end
 
-function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
+function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, selected_root)
   local policy, device_page = ResolveLaunchPolicy(gamelocation, ui_scene)
   local hdd_init = nil
   local hdd_partition_label = nil
@@ -1512,6 +1563,16 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   local usb_file = nil
   if policy.name ~= "HDD" then
     usb_root, usb_file = ParseUsbGameEntry(game)
+  end
+  if usb_root == nil then
+    local usb_meta = PLDR.GetSelectedUsbGameMeta(game)
+    if usb_meta ~= nil then
+      usb_root = usb_meta.source_root
+      usb_file = usb_meta.filename
+    end
+  end
+  if selected_root ~= nil and selected_root ~= "" then
+    usb_root = selected_root
   end
   local handoff_gamelocation = policy.handoff(normalized_gamelocation)
   if usb_root ~= nil then

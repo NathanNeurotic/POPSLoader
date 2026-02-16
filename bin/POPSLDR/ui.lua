@@ -856,13 +856,9 @@ if found == nil then return end
         for i = UI.GameList.STARTUP, ammount do
           if i >= (UI.GameList.STARTUP+UI.GameList.MAXDRAW) then break end
           local Y = layout.LIST_Y + ((i-UI.GameList.STARTUP) * layout.LIST_ROW_H)
-          local display_name = PLDR.GAMES[i]
-          local hdd_relpath = string.match(display_name or "", "^[^|]+|(.+)$")
-          if hdd_relpath ~= nil then
-            display_name = string.match(hdd_relpath, "([^/]+)$") or hdd_relpath
-          end
+          local display_name = PLDR.GetGameDisplayName(PLDR.GAMES[i])
 	          local c = (i == UI.GameList.CURR) and UI.COLORS.LIST_SELECTED or UI.COLORS.LIST_UNSELECTED
-	          Font.ftPrint(BFONT, layout.LIST_X, Y, 0, layout.LIST_W, 16, string.sub(display_name,1, -5), c)
+	          Font.ftPrint(BFONT, layout.LIST_X, Y, 0, layout.LIST_W, 16, display_name, c)
         end
         if layout.PREVIEW_W > 0 then
           Graphics.drawRect(layout.PREVIEW_X - 2, layout.PREVIEW_Y - 2, layout.PREVIEW_W + 4, layout.PREVIEW_H + 4, UI.CCOL.GREY)
@@ -893,13 +889,20 @@ if found == nil then return end
               local selected_path = PLDR.ResolveSelectedGamePath(PLDR.GAMEPATH, selected_game)
               if not doesFileExist(selected_path) then
                 UI.Notif_queue.add("Cant find Game\n"..selected_path)
+                return
               end
             end
             local launch_path = PLDR.GAMEPATH
+            local selected_game = PLDR.GAMES[UI.GameList.CURR]
+            local selected_meta = PLDR.GetSelectedUsbGameMeta(selected_game)
+            local selected_root = nil
+            if selected_meta ~= nil then
+              selected_root = selected_meta.source_root
+            end
             if UI.CURSCENE == UI.SCENES.GHDD then
               launch_path = ""
             end
-            PLDR.RunPOPStarterGame(launch_path, PLDR.GAMES[UI.GameList.CURR], UI.CURSCENE)
+            PLDR.RunPOPStarterGame(launch_path, selected_game, UI.CURSCENE, selected_root)
           end
         end
         local cross_label = UI.Footer.labels.cross_launch
