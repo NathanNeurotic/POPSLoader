@@ -6,8 +6,48 @@ local function ensure_dir(path)
   return path
 end
 
-local BASE_DIR = ensure_dir(APP_DIR or System.currentDirectory())
-package.path = BASE_DIR.."?.lua;"..BASE_DIR.."?/init.lua;"..BASE_DIR.."POPSLDR/?.lua;./?.lua;./POPSLDR/?.lua;mass:/POPSLDR/?.lua;mc0:/POPSLDR/?.lua;mc1:/POPSLDR/?.lua"
+local function normalize_root_path(path)
+  if path == nil then
+    return nil
+  end
+
+  local normalized = string.gsub(path, "\\", "/")
+  if string.find(normalized, "^host:") then
+    if string.sub(normalized, 6, 6) ~= "/" and string.sub(normalized, 6, 6) ~= "" then
+      normalized = "host:/"..string.sub(normalized, 6)
+    end
+    local drive = string.match(normalized, "^host:/([A-Za-z]:)(.*)$")
+    if drive ~= nil then
+      normalized = string.gsub(normalized, "^(host:/[A-Za-z]:)([^/])", "%1/%2")
+    end
+  else
+    local first_colon = string.find(normalized, ":", 1, true)
+    local second_colon = nil
+    if first_colon ~= nil then
+      second_colon = string.find(normalized, ":", first_colon + 1, true)
+    end
+    if first_colon ~= nil and second_colon == nil and string.sub(normalized, first_colon + 1, first_colon + 1) ~= "/" then
+      normalized = string.sub(normalized, 1, first_colon).."/"..string.sub(normalized, first_colon + 1)
+    end
+  end
+
+  return ensure_dir(normalized)
+end
+
+local function derive_app_root()
+  local current_dir = System.currentDirectory()
+  if current_dir ~= nil and current_dir ~= "" then
+    return normalize_root_path(current_dir)
+  end
+  local app_dir = normalize_root_path(APP_DIR)
+  if app_dir ~= nil and app_dir ~= "" then
+    return app_dir
+  end
+  return "./"
+end
+
+APP_ROOT = derive_app_root()
+package.path = APP_ROOT.."?.lua;"..APP_ROOT.."?/init.lua;"..APP_ROOT.."POPSLDR/?.lua;./?.lua;./POPSLDR/?.lua;mass:/POPSLDR/?.lua;mc0:/POPSLDR/?.lua;mc1:/POPSLDR/?.lua"
 function LOG(...)
   print_uart(...)
 end
