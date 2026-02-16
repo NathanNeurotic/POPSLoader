@@ -117,16 +117,8 @@ const char * runScript(const char* script, bool isStringBuffer, size_t scriptSiz
 
 	if(!isStringBuffer) s = luaL_loadfile(L, script);
 	else {
-		size_t loadSize = scriptSize;
-		if (loadSize == 0) {
-			loadSize = strlen(script);
-		} else {
-			while (loadSize > 0 && script[loadSize - 1] == '\0') {
-				loadSize--;
-			}
-		}
-		s = luaL_loadbuffer(L, script, loadSize, NULL);
-	}
+    s = luaL_loadbuffer(L, script, strlen(script), NULL);
+  }
 
 		
 	if (s == 0) s = lua_pcall(L, 0, LUA_MULTRET, 0);

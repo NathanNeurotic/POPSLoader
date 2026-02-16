@@ -105,69 +105,8 @@ Font.ftSetCharSize(SFONT, 600, 600)
 BOOT_PROF.stamp("UI assets init (fonts)")
 function STOP() LOG("PROGRAM STOP") Screen.clear(Color.new(255,0,0)) Screen.flip() while true do end end
 
-local function ReadWholeFile(path)
-  if BOOT_DIAG then
-    DIAG_LOG("ReadWholeFile start: "..path)
-  end
-  local timeout_ms = 3000
-  local timer = nil
-  if BOOT_DIAG then
-    timer = Timer.new()
-  end
-  local fd = System.openFile(path, FREAD)
-  if fd == nil then
-    return nil, "open failed"
-  end
-  local chunks = {}
-  while true do
-    if BOOT_DIAG and timer ~= nil then
-      if Timer.getTime(timer) > timeout_ms then
-        DIAG_LOG("HANG AT: ReadWholeFile("..path..")")
-        System.closeFile(fd)
-        return nil, "read timeout"
-      end
-    end
-    local buffer = System.readFile(fd, 4096)
-    if buffer == nil or buffer == "" then
-      break
-    end
-    chunks[#chunks + 1] = buffer
-  end
-  System.closeFile(fd)
-  if BOOT_DIAG then
-    DIAG_LOG("ReadWholeFile done: "..path)
-  end
-  return table.concat(chunks)
-end
-
-local function LoadLuaFile(path)
-  if BOOT_DIAG then
-    DIAG_LOG("LoadLuaFile start: "..path)
-  end
-  local loader, load_err = loadfile(path)
-  if loader ~= nil then
-    if BOOT_DIAG then
-      DIAG_LOG("LoadLuaFile loadfile ok: "..path)
-    end
-    return loader
-  end
-  LOG("Lua load failed:", load_err)
-  local data, read_err = ReadWholeFile(path)
-  if data == nil then
-    return nil, read_err
-  end
-  local sanitized, count = string.gsub(data, "[\128-\255]", "?")
-  if count > 0 then
-    LOGF("Sanitized %d non-ASCII bytes in %s", count, path)
-  end
-  if BOOT_DIAG then
-    DIAG_LOG("LoadLuaFile loadstring: "..path)
-  end
-  return loadstring(sanitized, "@"..path)
-end
-
 function RunScript(S)
-  local loader, load_err = LoadLuaFile(S)
+  local loader, load_err = loadfile(S)
   if loader == nil then
     error(load_err)
   end
@@ -206,11 +145,16 @@ local function ExpandDevicePrefix(path)
 end
 
 local function BuildAttemptList()
+  -- Prefer packaged app layout first to avoid expensive misses on slow devices.
   local base_attempts = {
-    BASE_DIR.."system.lua",
+    BASE_DIR.."bin/POPSLDR/system.lua",
     BASE_DIR.."POPSLDR/system.lua",
+    BASE_DIR.."system.lua",
+    BASE_DIR.."bin/system.lua",
+    "bin/POPSLDR/system.lua",
+    "POPSLDR/system.lua",
     "system.lua",
-    "POPSLDR/system.lua"
+    "bin/system.lua"
   }
   local out = {}
   local seen = {}
