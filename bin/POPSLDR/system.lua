@@ -273,6 +273,12 @@ function PLDR.GetDefaultDkwdrvPath()
   return "mc0:/PS1_DKWDRV/DKWDRV.ELF"
 end
 
+local function ClampValue(value, min_val, max_val)
+  if value < min_val then return min_val end
+  if value > max_val then return max_val end
+  return value
+end
+
 local function LoadSettingsFile()
   local path = ResolveWritablePath(SETTINGS_FILE)
   if not doesFileExist(path) then
@@ -305,7 +311,7 @@ function PLDR.LoadSettings()
     mode = defaults.BDMA_MODE
   end
   local profile = tonumber(cfg.PROFILE_INDEX) or defaults.PROFILE_INDEX
-  profile = CLAMP(profile, 1, math.max(#PLDR.PROFILES, 1))
+  profile = ClampValue(profile, 1, math.max(#PLDR.PROFILES, 1))
   local dkwdrv = tostring(cfg.DKWDRV_PATH or defaults.DKWDRV_PATH)
   if dkwdrv == "" then
     dkwdrv = defaults.DKWDRV_PATH
