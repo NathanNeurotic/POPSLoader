@@ -1571,7 +1571,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, selected_root)
       usb_file = usb_meta.filename
     end
   end
-  if selected_root ~= nil and selected_root ~= "" then
+  if policy.name == "USB" and selected_root ~= nil and selected_root ~= "" then
     usb_root = selected_root
   end
   local handoff_gamelocation = policy.handoff(normalized_gamelocation)
