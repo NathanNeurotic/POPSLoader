@@ -214,6 +214,11 @@ PLDR = {
   GAMES = {};
   HDDCACHE = nil;
   PROFILES = {};
+  SETTINGS = {
+    BDMA_MODE = "NONE",
+    PROFILE_INDEX = 1,
+    DKWDRV_PATH = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
+  };
   HDD = {
     USECACHE = false;
     LOADSTATE = 0; -- 0:NOT_LOADED, 1:LOADED, -1:LOADED_BUT_FAILED
@@ -243,6 +248,95 @@ PLDR = {
     INDEX = 1
   }
 }
+
+local SETTINGS_FILE = "settings.lua"
+local BDMA_MODES = {
+  { key = "NONE", label = "None", suffix = nil },
+  { key = "USBEXFAT", label = "USB exFAT", suffix = ".usbexfat" },
+  { key = "MMCE", label = "MMCE", suffix = ".mmce" },
+  { key = "MX4SIO", label = "MX4SIO", suffix = ".mx4sio" }
+}
+local BDMA_MODE_INDEX = {}
+for i = 1, #BDMA_MODES do
+  BDMA_MODE_INDEX[BDMA_MODES[i].key] = i
+end
+
+function PLDR.GetBdmaModes()
+  return BDMA_MODES
+end
+
+function PLDR.GetBdmaModeIndex(mode_key)
+  return BDMA_MODE_INDEX[mode_key] or 1
+end
+
+function PLDR.GetDefaultDkwdrvPath()
+  return "mc0:/PS1_DKWDRV/DKWDRV.ELF"
+end
+
+local function LoadSettingsFile()
+  local path = ResolveWritablePath(SETTINGS_FILE)
+  if not doesFileExist(path) then
+    return nil
+  end
+  local loader, err = loadfile(path)
+  if loader == nil then
+    LOG("Settings load failed:", err)
+    return nil
+  end
+  local ok, data = pcall(loader)
+  if not ok then
+    LOG("Settings run failed:", data)
+    return nil
+  end
+  if type(data) == "table" then
+    return data
+  end
+  return nil
+end
+
+function PLDR.LoadSettings()
+  local cfg = LoadSettingsFile()
+  local defaults = PLDR.SETTINGS
+  if type(cfg) ~= "table" then
+    cfg = {}
+  end
+  local mode = tostring(cfg.BDMA_MODE or defaults.BDMA_MODE)
+  if BDMA_MODE_INDEX[mode] == nil then
+    mode = defaults.BDMA_MODE
+  end
+  local profile = tonumber(cfg.PROFILE_INDEX) or defaults.PROFILE_INDEX
+  profile = CLAMP(profile, 1, math.max(#PLDR.PROFILES, 1))
+  local dkwdrv = tostring(cfg.DKWDRV_PATH or defaults.DKWDRV_PATH)
+  if dkwdrv == "" then
+    dkwdrv = defaults.DKWDRV_PATH
+  end
+  PLDR.SETTINGS = {
+    BDMA_MODE = mode,
+    PROFILE_INDEX = profile,
+    DKWDRV_PATH = dkwdrv
+  }
+  if #PLDR.PROFILES > 0 and PLDR.PROFILES[profile] ~= nil then
+    PLDR.POPSTARTER_PATH = PLDR.PROFILES[profile].ELF
+  end
+end
+
+local function SaveSettingsFile(settings)
+  local path = ResolveWritablePath(SETTINGS_FILE)
+  local payload = string.format(
+    "return {\n  BDMA_MODE = %q,\n  PROFILE_INDEX = %d,\n  DKWDRV_PATH = %q\n}\n",
+    settings.BDMA_MODE,
+    settings.PROFILE_INDEX,
+    settings.DKWDRV_PATH
+  )
+  local ok, fd = pcall(System.openFile, path, FCREATE)
+  if not ok or fd == nil or fd < 0 then
+    LOG("Settings save open failed:", path, fd)
+    return false
+  end
+  System.writeFile(fd, payload, #payload)
+  System.closeFile(fd)
+  return true
+end
 local function DetectMX4SIOPrefixHint()
   local mx_marker = JoinPath(APP_DIR_LOCAL, ".boot_mx4sio")
   if doesFileExist(mx_marker) then
@@ -278,6 +372,7 @@ if MMCE_SLOT0_READY ~= nil and MMCE_SLOT0_READY >= 0 then
 end
 
 require("pops_profiles")
+PLDR.LoadSettings()
 LOG("system.lua: before require('ui')")
 local ok_ui, ui_or_err = pcall(require, "ui")
 LOG("system.lua: after require('ui')")
@@ -328,39 +423,21 @@ end
 require("images")
 
 local POPSTARTER_PACK_ROOT = "mc0:/POPSTARTER"
-local POPSTARTER_PACK_FILES = {
+local BDMA_PAYLOAD_SOURCE_DIR = "POPSLDR"
+local BDMA_PAYLOAD_INVENTORY = {
   "usbd.irx",
   "usbhdfsd.irx",
   "icon.sys",
   "list.icn",
   "del.icn"
 }
-local POPSTARTER_PACKS = {
-  USBEXFAT = {
-    label = "USB exFAT",
-    folder = "USBEXFAT"
-  },
-  MMCE = {
-    label = "MMCE",
-    folder = "MMCE"
-  },
-  MX4SIO = {
-    label = "MX4SIO",
-    folder = "MX4SIO"
-  }
-}
-for key, pack in pairs(POPSTARTER_PACKS) do
-  pack.files = {}
-  for i = 1, #POPSTARTER_PACK_FILES do
-    local name = POPSTARTER_PACK_FILES[i]
-    pack.files[i] = {
-      dest = name,
-      source = string.format("POPSTARTER/%s/%s", pack.folder, name)
-    }
-  end
-end
 
-local function ResolvePackSource(rel)
+local function ResolveBdmaSource(name, mode)
+  local suffix = mode.suffix
+  if suffix == nil then
+    return nil
+  end
+  local rel = BDMA_PAYLOAD_SOURCE_DIR.."/"..name..suffix
   return ResolveAsset(rel) or JoinPath(APP_DIR_LOCAL, rel)
 end
 
@@ -375,7 +452,7 @@ local function EnsureDirectory(path)
   return ok
 end
 
-local function RemoveDirectoryRecursive(path)
+local function RemoveDirectoryRecursive(path, progress)
   local normalized = NormalizeDirPath(path)
   if not doesFolderExist(normalized) then
     return true
@@ -391,7 +468,7 @@ local function RemoveDirectoryRecursive(path)
       if name ~= "." and name ~= ".." then
         local child = JoinPath(normalized, name)
         if entry.directory then
-          local child_ok, child_err = RemoveDirectoryRecursive(child)
+          local child_ok, child_err = RemoveDirectoryRecursive(child, progress)
           if not child_ok then
             return false, child_err
           end
@@ -407,61 +484,162 @@ local function RemoveDirectoryRecursive(path)
         end
       end
     end
-  end
-  return true
-end
-
-function PLDR.ApplyPopstarterPack(pack_key)
-  local pack = POPSTARTER_PACKS[pack_key]
-  if pack == nil then
-    UI.Notif_queue.add("Unknown POPSTARTER pack: "..tostring(pack_key))
-    return false
-  end
-  if not EnsureDirectory(POPSTARTER_PACK_ROOT) then
-    UI.Notif_queue.add("Failed to create "..POPSTARTER_PACK_ROOT)
-    return false
-  end
-  local failures = {}
-  for i = 1, #pack.files do
-    local file = pack.files[i]
-    local source = ResolvePackSource(file.source)
-    local dest = POPSTARTER_PACK_ROOT.."/"..file.dest
-    if source == nil or not doesFileExist(source) then
-      failures[#failures + 1] = file.dest
-    else
-      local ok, err = pcall(System.copyFile, source, dest)
-      if not ok then
-        LOG("Copy failed:", source, dest, err)
-        failures[#failures + 1] = file.dest
+    if progress ~= nil then
+      progress.current = progress.current + 1
+      if progress.tick ~= nil then
+        progress.tick()
       end
     end
   end
-  if #failures > 0 then
-    UI.Notif_queue.add("Failed to install "..pack.label.." pack")
-    return false
-  end
-  UI.Notif_queue.add("Installed "..pack.label.." pack to "..POPSTARTER_PACK_ROOT)
   return true
 end
 
-function PLDR.ResetPopstarterPack()
-  if not doesFolderExist(POPSTARTER_PACK_ROOT) then
-    UI.Notif_queue.add("POPSTARTER reset: folder not found")
-    return true
+function PLDR.CountPopstarterEntries()
+  local function count_entries(path)
+    local normalized = NormalizeDirPath(path)
+    if not doesFolderExist(normalized) then
+      return 0
+    end
+    local ok, entries = pcall(System.listDirectory, normalized)
+    if not ok or entries == nil then
+      return 0
+    end
+    local total = 0
+    for i = 1, #entries do
+      local entry = entries[i]
+      if entry ~= nil and entry.name ~= nil then
+        local name = entry.name
+        if name ~= "." and name ~= ".." then
+          total = total + 1
+          if entry.directory then
+            total = total + count_entries(JoinPath(normalized, name))
+          end
+        end
+      end
+    end
+    return total
   end
-  local ok, err = RemoveDirectoryRecursive(POPSTARTER_PACK_ROOT)
+  return count_entries(POPSTARTER_PACK_ROOT)
+end
+
+function PLDR.ApplyBdmaMode(mode_key, progress_cb)
+  local mode = nil
+  local modes = PLDR.GetBdmaModes()
+  for i = 1, #modes do
+    if modes[i].key == mode_key then
+      mode = modes[i]
+      break
+    end
+  end
+  if mode == nil then
+    return false, "unknown mode"
+  end
+
+  local total_delete = PLDR.CountPopstarterEntries()
+  local total_copy = 0
+  if mode.suffix ~= nil then
+    total_copy = #BDMA_PAYLOAD_INVENTORY
+  end
+  local total = total_delete + total_copy + 2
+  if total < 1 then total = 1 end
+
+  local state = {
+    stage = "Deleting/Preparing",
+    current = 0,
+    total = total,
+    copied = 0,
+    copy_total = total_copy,
+    message = ""
+  }
+  local function tick()
+    if progress_cb ~= nil then
+      progress_cb(state)
+    end
+  end
+  tick()
+
+  local ok, err = RemoveDirectoryRecursive(POPSTARTER_PACK_ROOT, {current = 0, tick = function()
+    state.current = state.current + 1
+    tick()
+  end})
   if not ok then
-    UI.Notif_queue.add("POPSTARTER reset failed")
-    LOG("Reset POPSTARTER failed:", err)
-    return false
+    state.stage = "Error"
+    state.message = tostring(err)
+    tick()
+    return false, err
   end
-  local rm_ok, rm_err = pcall(System.removeDirectory, POPSTARTER_PACK_ROOT)
-  if not rm_ok then
-    UI.Notif_queue.add("POPSTARTER reset failed")
-    LOG("Remove POPSTARTER dir failed:", rm_err)
-    return false
+  if doesFolderExist(POPSTARTER_PACK_ROOT) then
+    local rm_ok, rm_err = pcall(System.removeDirectory, POPSTARTER_PACK_ROOT)
+    if not rm_ok then
+      state.stage = "Error"
+      state.message = tostring(rm_err)
+      tick()
+      return false, rm_err
+    end
   end
-  UI.Notif_queue.add("POPSTARTER reset: mc0:/POPSTARTER removed")
+
+  state.current = state.current + 1
+  tick()
+
+  if mode.suffix ~= nil then
+    if not EnsureDirectory(POPSTARTER_PACK_ROOT) then
+      state.stage = "Error"
+      state.message = "create directory failed"
+      tick()
+      return false, state.message
+    end
+    state.stage = "Copying"
+    tick()
+    for i = 1, #BDMA_PAYLOAD_INVENTORY do
+      local name = BDMA_PAYLOAD_INVENTORY[i]
+      local source = ResolveBdmaSource(name, mode)
+      local dest = JoinPath(POPSTARTER_PACK_ROOT, name)
+      if source == nil or not doesFileExist(source) then
+        state.stage = "Error"
+        state.message = "missing payload "..name..mode.suffix
+        tick()
+        return false, state.message
+      end
+      local cp_ok, cp_err = pcall(System.copyFile, source, dest)
+      if not cp_ok then
+        state.stage = "Error"
+        state.message = tostring(cp_err)
+        tick()
+        return false, cp_err
+      end
+      state.copied = i
+      state.current = state.current + 1
+      tick()
+    end
+  end
+
+  state.stage = "Finalizing"
+  state.current = total - 1
+  tick()
+  state.stage = "Done"
+  state.current = total
+  tick()
+  return true
+end
+
+function PLDR.SaveSettings(settings, opts)
+  local previous_mode = PLDR.SETTINGS.BDMA_MODE
+  PLDR.SETTINGS = {
+    BDMA_MODE = settings.BDMA_MODE,
+    PROFILE_INDEX = settings.PROFILE_INDEX,
+    DKWDRV_PATH = settings.DKWDRV_PATH
+  }
+  local ok = SaveSettingsFile(PLDR.SETTINGS)
+  if not ok then
+    return false, "save failed"
+  end
+  if #PLDR.PROFILES > 0 and PLDR.PROFILES[settings.PROFILE_INDEX] ~= nil then
+    PLDR.POPSTARTER_PATH = PLDR.PROFILES[settings.PROFILE_INDEX].ELF
+  end
+  local apply_bdma = opts ~= nil and opts.apply_bdma == true
+  if apply_bdma and previous_mode ~= settings.BDMA_MODE then
+    return PLDR.ApplyBdmaMode(settings.BDMA_MODE, opts.progress_cb)
+  end
   return true
 end
 

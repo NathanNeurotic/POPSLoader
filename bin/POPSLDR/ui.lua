@@ -781,6 +781,9 @@ if found == nil then return end
       end
       if UI.LAUNCHING then return false end
       if UI.Pad.Events.START and UI.CURSCENE ~= UI.SCENES.MPROFILE then
+        if UI.ProfileQuery ~= nil then
+          UI.ProfileQuery.init_done = false
+        end
         UI.SceneChange(UI.SCENES.MPROFILE)
         return true
       end
@@ -914,44 +917,159 @@ if found == nil then return end
       end;
     };
     ProfileQuery = {
-      lastopt = 1;
       curopt = 1;
+      bdma_mode_index = 1;
+      dkwdrv_path = "";
+      init_done = false;
+      progress = nil;
+      _reset_from_defaults = function ()
+        local profcnt = #PLDR.PROFILES
+        local default_profile = tonumber(PLDR.DEFAULT_PROFILE) or 1
+        UI.ProfileQuery.curopt = CLAMP(default_profile, 1, math.max(profcnt, 1))
+        UI.ProfileQuery.bdma_mode_index = PLDR.GetBdmaModeIndex("NONE")
+        UI.ProfileQuery.dkwdrv_path = PLDR.GetDefaultDkwdrvPath()
+      end;
+      Init = function ()
+        local profcnt = #PLDR.PROFILES
+        local settings = PLDR.SETTINGS or {}
+        local profile_index = tonumber(settings.PROFILE_INDEX) or tonumber(PLDR.DEFAULT_PROFILE) or 1
+        UI.ProfileQuery.curopt = CLAMP(profile_index, 1, math.max(profcnt, 1))
+        UI.ProfileQuery.bdma_mode_index = PLDR.GetBdmaModeIndex(settings.BDMA_MODE)
+        UI.ProfileQuery.dkwdrv_path = tostring(settings.DKWDRV_PATH or PLDR.GetDefaultDkwdrvPath())
+        if UI.ProfileQuery.dkwdrv_path == "" then
+          UI.ProfileQuery.dkwdrv_path = PLDR.GetDefaultDkwdrvPath()
+        end
+        UI.ProfileQuery.init_done = true
+      end;
+      EditDkwdrvPath = function ()
+        -- TODO: verify the intended external path editor entrypoint in this branch.
+        if type(ExternalPathEditor) == "table" and type(ExternalPathEditor.Edit) == "function" then
+          local ok, value = pcall(ExternalPathEditor.Edit, UI.ProfileQuery.dkwdrv_path)
+          if ok and type(value) == "string" and value ~= "" then
+            UI.ProfileQuery.dkwdrv_path = value
+            UI.Notif_queue.add("DKWDRV path updated")
+          end
+          return
+        end
+        UI.Notif_queue.add("Path editor unavailable\nTODO: verify external editor hook")
+      end;
+      DrawProgress = function (info)
+        local layout = UI.LAYOUT
+        local box_w = 360
+        local box_h = 130
+        local box_x = UI.SCR.X_MID - (box_w / 2)
+        local box_y = UI.SCR.Y_MID - (box_h / 2)
+        local cur = tonumber(info.current) or 0
+        local total = tonumber(info.total) or 1
+        if total < 1 then total = 1 end
+        if cur < 0 then cur = 0 end
+        if cur > total then cur = total end
+        local pct = math.floor((cur / total) * 100)
+        local bar_w = box_w - 40
+        local bar_h = 16
+        local fill_w = math.floor((bar_w * pct) / 100)
+
+        Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, 130))
+        Graphics.drawRect(box_x, box_y, box_w, box_h, Color.new(0, 0, 0, 220))
+        Graphics.drawRect(box_x, box_y, box_w, 2, UI.CCOL.GREY)
+        Graphics.drawRect(box_x, box_y + box_h - 2, box_w, 2, UI.CCOL.GREY)
+
+        Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 12, 8, UI.SCR.X, 16, "Applying BDMA...", UI.CCOL.YELLOW)
+        Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 36, 8, UI.SCR.X, 16, tostring(info.stage or "Working"), UI.CCOL.GREY)
+        Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 54, 8, UI.SCR.X, 16, string.format("%d%%", pct), UI.CCOL.GREY)
+
+        local copy_cur = tonumber(info.copied) or 0
+        local copy_total = tonumber(info.copy_total) or 0
+        Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 72, 8, UI.SCR.X, 16, string.format("Copy progress: (%d/%d)", copy_cur, copy_total), UI.CCOL.GREY)
+
+        Graphics.drawRect(box_x + 20, box_y + 94, bar_w, bar_h, Color.new(25, 25, 25, 128))
+        if fill_w > 0 then
+          Graphics.drawRect(box_x + 20, box_y + 94, fill_w, bar_h, Color.new(80, 170, 255, 128))
+        end
+        Screen.flip()
+      end;
+      SaveAndExit = function (target_scene)
+        local modes = PLDR.GetBdmaModes()
+        local selected_mode = modes[UI.ProfileQuery.bdma_mode_index] or modes[1]
+        local profcnt = #PLDR.PROFILES
+        local profile_index = CLAMP(UI.ProfileQuery.curopt, 1, math.max(profcnt, 1))
+        local payload = {
+          BDMA_MODE = selected_mode.key,
+          PROFILE_INDEX = profile_index,
+          DKWDRV_PATH = UI.ProfileQuery.dkwdrv_path
+        }
+        UI.ProfileQuery.progress = {
+          stage = "Deleting/Preparing",
+          current = 0,
+          total = 1,
+          copied = 0,
+          copy_total = 0
+        }
+        local ok, err = PLDR.SaveSettings(payload, {
+          apply_bdma = true,
+          progress_cb = function (info)
+            UI.ProfileQuery.progress = info
+            UI.ProfileQuery.DrawProgress(info)
+          end
+        })
+        if not ok then
+          UI.Notif_queue.add("Settings save failed")
+          LOG("Settings save failed:", err)
+          return
+        end
+        UI.ProfileQuery.progress = nil
+        UI.SceneChange(target_scene)
+      end;
       Play = function ()
+        if not UI.ProfileQuery.init_done then
+          UI.ProfileQuery.Init()
+        end
         local layout = UI.LAYOUT
         local profcnt = #PLDR.PROFILES
-        Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Choose POPStarter Profile", UI.CCOL.GREY)
-        Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 30, 8, UI.SCR.X, 16, "Profile "..UI.ProfileQuery.curopt, UI.CCOL.GREY)
-        Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 140, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].DESC, UI.CCOL.GREY)
-        Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 220, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].ELF, Color.new(128,128,128, 110))
+        local modes = PLDR.GetBdmaModes()
+        local mode = modes[UI.ProfileQuery.bdma_mode_index] or modes[1]
+        local profile = PLDR.PROFILES[UI.ProfileQuery.curopt]
+
+        Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Settings", UI.CCOL.GREY)
+        Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 30, 8, UI.SCR.X, 16, "LEFT/RIGHT BDMA MODE: "..mode.label, UI.CCOL.GREY)
+        Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 60, 8, UI.SCR.X, 16, "UP/DOWN PROFILE: "..UI.ProfileQuery.curopt.."/"..math.max(profcnt, 1), UI.CCOL.GREY)
+
+        if profile ~= nil then
+          Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 92, 8, UI.SCR.X, 16, profile.DESC, UI.CCOL.GREY)
+          Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 116, 8, UI.SCR.X, 16, profile.ELF, Color.new(128,128,128, 110))
+        end
+        Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 156, 8, UI.SCR.X, 16, "X: Edit DKWDRV Path", UI.CCOL.GREY)
+        Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 180, 8, UI.SCR.X, 16, UI.ProfileQuery.dkwdrv_path, Color.new(128,128,128, 110))
+
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
-        if UI.Pad.Events.EXIT then UI.SceneChange(UI.SCENES.CREDITS) end
-        if UI.Pad.Events.NAV_DOWN then UI.ProfileQuery.curopt = CLAMP(UI.ProfileQuery.curopt+1, 1, profcnt) end
-        if UI.Pad.Events.NAV_UP then UI.ProfileQuery.curopt = CLAMP(UI.ProfileQuery.curopt-1, 1, profcnt) end
-        if UI.Pad.Events.BACK then UI.SceneChange(UI.SCENES.MMAIN) end
+        if UI.Pad.Events.EXIT then UI.ProfileQuery.SaveAndExit(UI.SCENES.CREDITS) end
+        if UI.Pad.Events.NAV_RIGHT then
+          UI.ProfileQuery.bdma_mode_index = UI.ProfileQuery.bdma_mode_index + 1
+          if UI.ProfileQuery.bdma_mode_index > #modes then UI.ProfileQuery.bdma_mode_index = 1 end
+        end
+        if UI.Pad.Events.NAV_LEFT then
+          UI.ProfileQuery.bdma_mode_index = UI.ProfileQuery.bdma_mode_index - 1
+          if UI.ProfileQuery.bdma_mode_index < 1 then UI.ProfileQuery.bdma_mode_index = #modes end
+        end
+        if UI.Pad.Events.NAV_DOWN then UI.ProfileQuery.curopt = CLAMP(UI.ProfileQuery.curopt+1, 1, math.max(profcnt, 1)) end
+        if UI.Pad.Events.NAV_UP then UI.ProfileQuery.curopt = CLAMP(UI.ProfileQuery.curopt-1, 1, math.max(profcnt, 1)) end
         if UI.Pad.Events.START then
-          local default_profile = tonumber(PLDR.DEFAULT_PROFILE) or 1
-          UI.ProfileQuery.curopt = CLAMP(default_profile, 1, profcnt)
-          local profile = PLDR.PROFILES[UI.ProfileQuery.curopt]
-          if profile ~= nil then
-            PLDR.POPSTARTER_PATH = profile.ELF
-          end
-          UI.Notif_queue.add("Profile defaults restored")
+          UI.ProfileQuery._reset_from_defaults()
+          UI.Notif_queue.add("Settings defaults restored")
         end
         if UI.Pad.Events.CONFIRM then
-          if not doesFileExist(PLDR.PROFILES[UI.ProfileQuery.curopt].ELF) then
-            UI.Notif_queue.add("POPStarter ELF missing")
-          else
-            PLDR.POPSTARTER_PATH = PLDR.PROFILES[UI.ProfileQuery.curopt].ELF
-            UI.SceneChange(UI.SCENES.MMAIN)
-          end
+          UI.ProfileQuery.EditDkwdrvPath()
         end
+        if UI.Pad.Events.BACK then
+          UI.ProfileQuery.SaveAndExit(UI.SCENES.MMAIN)
+        end
+
         local labels, order = UI.Footer.ResolveLegend({
-          order = UI.Footer.order_with_start_r2,
-          order_id = "start_r2",
+          order = UI.Footer.order_with_start,
+          order_id = "start",
           circle = UI.Footer.labels.circle_other,
-          cross = UI.Footer.labels.cross_select,
-          square = "Cover Art",
+          cross = "Edit DKWDRV",
           start = UI.Footer.labels.start_reset
         })
         UI.Footer.Draw(labels, order)
@@ -1237,19 +1355,13 @@ if found == nil then return end
             UI.Notif_queue.add("SMB not implemented yet.")
             UI.SceneChange(UI.SCENES.GSMB)
           elseif UI.MainMenu.OPT == 7 then
-            local dkwdrv_paths = {
-              "mc0:/PS1_DKWDRV/DKWDRV.ELF",
-              "mc1:/PS1_DKWDRV/DKWDRV.ELF"
-            }
-            local dkwdrv_path = nil
-            for i = 1, #dkwdrv_paths do
-              if doesFileExist(dkwdrv_paths[i]) then
-                dkwdrv_path = dkwdrv_paths[i]
-                break
-              end
+            local configured = PLDR and PLDR.SETTINGS and PLDR.SETTINGS.DKWDRV_PATH or nil
+            local dkwdrv_path = configured
+            if dkwdrv_path == nil or dkwdrv_path == "" then
+              dkwdrv_path = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
             end
-            if dkwdrv_path == nil then
-              UI.Notif_queue.add("mc?:/PS1_DKWDRV/DKWDRV.ELF not found")
+            if not doesFileExist(dkwdrv_path) then
+              UI.Notif_queue.add("DKWDRV not found\n"..dkwdrv_path)
             else
               System.loadELF(dkwdrv_path)
             end
