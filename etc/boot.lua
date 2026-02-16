@@ -105,72 +105,8 @@ Font.ftSetCharSize(SFONT, 600, 600)
 BOOT_PROF.stamp("UI assets init (fonts)")
 function STOP() LOG("PROGRAM STOP") Screen.clear(Color.new(255,0,0)) Screen.flip() while true do end end
 
-local function IsValidFd(fd)
-  return type(fd) == "number" and fd >= 0
-end
-
-local function ReadWholeFile(path)
-  if BOOT_DIAG then
-    DIAG_LOG("ReadWholeFile start: "..path)
-  end
-  local timeout_ms = 3000
-  local timer = Timer.new()
-  local fd = System.openFile(path, FREAD)
-  if not IsValidFd(fd) then
-    return nil, string.format("open failed (fd=%s)", tostring(fd))
-  end
-  local chunks = {}
-  while true do
-    if Timer.getTime(timer) > timeout_ms then
-      DIAG_LOG("HANG AT: ReadWholeFile("..path..")")
-      System.closeFile(fd)
-      return nil, "read timeout"
-    end
-    local buffer = System.readFile(fd, 4096)
-    if buffer == nil or buffer == "" then
-      break
-    end
-    chunks[#chunks + 1] = buffer
-  end
-  System.closeFile(fd)
-  if BOOT_DIAG then
-    DIAG_LOG("ReadWholeFile done: "..path)
-  end
-  return table.concat(chunks)
-end
-
-local function LoadLuaFile(path)
-  if BOOT_DIAG then
-    DIAG_LOG("LoadLuaFile start: "..path)
-  end
-  local data, read_err = ReadWholeFile(path)
-  if data == nil then
-    return nil, read_err
-  end
-
-  if #data >= 3 and string.byte(data, 1) == 0xEF and string.byte(data, 2) == 0xBB and string.byte(data, 3) == 0xBF then
-    data = string.sub(data, 4)
-  end
-
-  local loader, load_err = loadstring(data, "@"..path)
-  if loader ~= nil then
-    return loader
-  end
-
-  local sanitized, count = string.gsub(data, "[\128-\255]", "?")
-  if count > 0 then
-    LOGF("Sanitized %d non-ASCII bytes in %s", count, path)
-    loader, load_err = loadstring(sanitized, "@"..path)
-    if loader ~= nil then
-      return loader
-    end
-  end
-
-  return nil, load_err
-end
-
 function RunScript(S)
-  local loader, load_err = LoadLuaFile(S)
+  local loader, load_err = loadfile(S)
   if loader == nil then
     error(load_err)
   end
