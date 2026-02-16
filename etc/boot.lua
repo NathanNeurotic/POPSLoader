@@ -105,6 +105,10 @@ Font.ftSetCharSize(SFONT, 600, 600)
 BOOT_PROF.stamp("UI assets init (fonts)")
 function STOP() LOG("PROGRAM STOP") Screen.clear(Color.new(255,0,0)) Screen.flip() while true do end end
 
+local function IsValidFd(fd)
+  return type(fd) == "number" and fd >= 0
+end
+
 local function ReadWholeFile(path)
   if BOOT_DIAG then
     DIAG_LOG("ReadWholeFile start: "..path)
@@ -115,8 +119,8 @@ local function ReadWholeFile(path)
     timer = Timer.new()
   end
   local fd = System.openFile(path, FREAD)
-  if fd == nil then
-    return nil, "open failed"
+  if not IsValidFd(fd) then
+    return nil, string.format("open failed (fd=%s)", tostring(fd))
   end
   local chunks = {}
   while true do
