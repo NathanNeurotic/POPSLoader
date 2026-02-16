@@ -313,47 +313,18 @@ function RunScript(S)
   end
 end
 
-local function build_boot_candidates(rel)
-  local out = {}
-  local seen = {}
-  add_unique(out, seen, System.resolveAsset(rel))
+
+local SYS = resolve_boot_script("system.lua")
+if SYS ~= nil then
+  RunScript(SYS)
+else
   local roots = boot_roots()
-  for _, root in ipairs(roots) do
-    add_unique(out, seen, root..rel)
-    add_unique(out, seen, root.."POPSLDR/"..rel)
-  end
-  return out
-end
-
-local function RunScriptWithFallback(rel)
-  local candidates = build_boot_candidates(rel)
-  local last_err = nil
-  for _, candidate in ipairs(candidates) do
-    local loader, load_err = LoadLuaFile(candidate)
-    if loader ~= nil then
-      local ok, run_err = pcall(loader)
-      if ok then
-        return true, candidate
-      end
-      LOG("Boot script runtime failed:", tostring(candidate), tostring(run_err))
-      return false, run_err, candidates
-    end
-    last_err = load_err
-    LOG("Boot script probe failed:", tostring(candidate), tostring(load_err))
-  end
-  return false, last_err, candidates
-end
-
-local ok_boot, loaded_from_or_err, attempted = RunScriptWithFallback("system.lua")
-if not ok_boot then
   error(
     "Cant access POPSLDR/system.lua"
     .."\n\n\tcurrent_bootpath: "..System.currentDirectory()
     .."\n\tapp_root: "..APP_ROOT
     .."\n\tapp_dir: "..tostring(APP_DIR)
     .."\n\targv0: "..tostring(ARGV0_RAW)
-    .."\n\tattempted: "..table.concat(attempted or {}, ", ")
-    .."\n\tlast_error: "..tostring(loaded_from_or_err)
+    .."\n\troots: "..table.concat(roots or {}, ", ")
   )
 end
-LOG("Boot script loaded from:", tostring(loaded_from_or_err))

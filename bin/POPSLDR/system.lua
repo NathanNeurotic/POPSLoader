@@ -118,7 +118,9 @@ local function ResolveIrx(name)
 end
 
 local function ClassifyMassDevice(path_hint)
-  local ok, result = pcall(System.classifyMassDevice, path_hint, APP_DIR_LOCAL)
+  -- Keep classification non-blocking during boot/UI routing; avoid loading extra IRX here.
+  -- TODO: verify whether enabling RPC module autoload is safe on all target hardware.
+  local ok, result = pcall(System.classifyMassDevice, path_hint, APP_DIR_LOCAL, false)
   if ok and type(result) == "table" then
     return result
   end
@@ -132,7 +134,10 @@ local function DetectBootDevice()
   local boot_path = NormalizeDirPath(BOOT_PATH_RAW or "")
   local prefix = string.match(boot_path, "^([%a]+%d*):")
   if prefix == nil then
-    return nil, boot_path, prefix, ClassifyMassDevice(boot_path)
+    return nil, boot_path, prefix, {
+      class = "UNKNOWN",
+      source = "prefix"
+    }
   end
   if string.match(prefix, "^mmce%d*$") then
     return "MMCE", boot_path, prefix, {
@@ -140,14 +145,36 @@ local function DetectBootDevice()
       source = "prefix"
     }
   end
-  local classifier = ClassifyMassDevice(boot_path)
-  if classifier.class == "MX4SIO" then
-    return "MX4SIO", boot_path, prefix, classifier
+  if string.match(prefix, "^mx4sio%d*$") then
+    return "MX4SIO", boot_path, prefix, {
+      class = "MX4SIO",
+      source = "prefix"
+    }
   end
-  if classifier.class == "USB" then
-    return "USB", boot_path, prefix, classifier
+  if string.match(prefix, "^mass%d*$") then
+    local mx_marker = JoinPath(APP_DIR_LOCAL, ".boot_mx4sio")
+    local usb_marker = JoinPath(APP_DIR_LOCAL, ".boot_usb")
+    if doesFileExist(mx_marker) then
+      return "MX4SIO", boot_path, prefix, {
+        class = "MX4SIO",
+        source = "marker"
+      }
+    end
+    if doesFileExist(usb_marker) then
+      return "USB", boot_path, prefix, {
+        class = "USB",
+        source = "marker"
+      }
+    end
+    return "USB", boot_path, prefix, {
+      class = "USB",
+      source = "prefix"
+    }
   end
-  return nil, boot_path, prefix, classifier
+  return nil, boot_path, prefix, {
+    class = "UNKNOWN",
+    source = "prefix"
+  }
 end
 
 local function LoadIrxFromDir(dir)

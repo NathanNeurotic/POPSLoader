@@ -50,9 +50,12 @@ static bool bdm_rpc_bound = false;
 static bool bdm_rpc_loaded = false;
 static bdm_dev_list_t bdm_rpc_buffer __attribute__((aligned(64)));
 
-static bool EnsureBdmQueryRpc()
+static bool EnsureBdmQueryRpc(bool allow_load)
 {
 	if (!bdm_rpc_loaded) {
+		if (!allow_load) {
+			return false;
+		}
 		if (!LoadIrxCheckedBuffer("bdm_query.irx", bdm_query_irx, size_bdm_query_irx, NULL, NULL)) {
 			return false;
 		}
@@ -73,12 +76,12 @@ static bool EnsureBdmQueryRpc()
 	return true;
 }
 
-static bool FetchBdmList(bdm_dev_list_t *out)
+static bool FetchBdmList(bdm_dev_list_t *out, bool allow_load)
 {
 	if (out == NULL) {
 		return false;
 	}
-	if (!EnsureBdmQueryRpc()) {
+	if (!EnsureBdmQueryRpc(allow_load)) {
 		return false;
 	}
 	memset(&bdm_rpc_buffer, 0, sizeof(bdm_rpc_buffer));
@@ -200,7 +203,7 @@ static void PushBdmInfo(lua_State *L, const bdm_dev_info_t *info)
 static int lua_bdm_list(lua_State *L)
 {
 	bdm_dev_list_t list;
-	if (!FetchBdmList(&list)) {
+	if (!FetchBdmList(&list, true)) {
 		lua_pushnil(L);
 		return 1;
 	}
@@ -225,7 +228,7 @@ static int lua_find_bdm_by_driver(lua_State *L)
 	}
 	const char *driver = luaL_checkstring(L, 1);
 	bdm_dev_list_t list;
-	if (!FetchBdmList(&list)) {
+	if (!FetchBdmList(&list, true)) {
 		lua_pushnil(L);
 		return 1;
 	}
@@ -357,15 +360,19 @@ static int lua_classify_mass_device(lua_State *L)
 {
 	const char *path_hint = NULL;
 	const char *app_dir_hint = NULL;
+	bool allow_rpc_load = false;
 	int argc = lua_gettop(L);
-	if (argc > 2) {
-		return luaL_error(L, "Argument error: System.classifyMassDevice(pathHint, appDirHint) takes at most two arguments.");
+	if (argc > 3) {
+		return luaL_error(L, "Argument error: System.classifyMassDevice(pathHint, appDirHint, allowRpcLoad) takes at most three arguments.");
 	}
 	if (argc >= 1 && !lua_isnil(L, 1)) {
 		path_hint = luaL_checkstring(L, 1);
 	}
 	if (argc >= 2 && !lua_isnil(L, 2)) {
 		app_dir_hint = luaL_checkstring(L, 2);
+	}
+	if (argc >= 3 && !lua_isnil(L, 3)) {
+		allow_rpc_load = lua_toboolean(L, 3);
 	}
 
 	char prefix[32] = {0};
@@ -383,7 +390,8 @@ static int lua_classify_mass_device(lua_State *L)
 	}
 
 	bdm_dev_list_t list;
-	if (FetchBdmList(&list)) {
+	// TODO: verify safest boot-time policy for loading bdm_query.irx on all hardware variants.
+	if (FetchBdmList(&list, allow_rpc_load)) {
 		int best_index = -1;
 		for (u32 i = 0; i < list.count; ++i) {
 			const bdm_dev_info_t *info = &list.devs[i];
