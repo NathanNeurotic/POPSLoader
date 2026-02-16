@@ -1757,21 +1757,8 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, selected_root)
   LaunchEngine(popstarter, argv, reboot_iop, context)
 end
 
-function Touch(FILE)
-  if not doesFileExist(FILE) then
-    local FD = System.openFile(FILE, FCREATE)
-    System.closeFile(FD)
-    return true
-  else
-    return false
-  end
-end
-
 ---MAIN PROGRAM BEHAVIOUR BEGINS
-local initial_scene = UI.SCENES.MMAIN
-if Touch(ResolveWritablePath(".pldrs")) then
-  initial_scene = UI.SCENES.CREDITS
-end
+local initial_scene = UI.SCENES.CREDITS
 UI.WelcomeDraw.Play(initial_scene)
 if UI.Transition ~= nil then
   UI.Transition.allowSceneWrite = true
