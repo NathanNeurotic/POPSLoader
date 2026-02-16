@@ -22,6 +22,45 @@
 
 static lua_State *L;
 
+static char *SanitizeLuaBuffer(const char *script, size_t *outReplaced)
+{
+    if (outReplaced) {
+        *outReplaced = 0;
+    }
+    if (script == NULL) {
+        return NULL;
+    }
+
+    size_t len = strlen(script);
+    char *sanitized = (char *)malloc(len + 1);
+    if (sanitized == NULL) {
+        return NULL;
+    }
+
+    size_t src = 0;
+    if (len >= 3 && (unsigned char)script[0] == 0xEF && (unsigned char)script[1] == 0xBB && (unsigned char)script[2] == 0xBF) {
+        src = 3;
+    }
+
+    size_t dst = 0;
+    size_t replaced = 0;
+    for (; src < len; ++src) {
+        unsigned char ch = (unsigned char)script[src];
+        if (ch >= 0x80) {
+            sanitized[dst++] = '?';
+            replaced++;
+        } else {
+            sanitized[dst++] = (char)ch;
+        }
+    }
+
+    sanitized[dst] = '\0';
+    if (outReplaced) {
+        *outReplaced = replaced;
+    }
+    return sanitized;
+}
+
 int test_error(lua_State * L) {
     scr_clear();
     //normalize video mode in case it was changed on lua script
@@ -113,10 +152,21 @@ const char * runScript(const char* script, bool isStringBuffer )
 	int s = 0;
 	const char * errMsg =(const char*)malloc(sizeof(char)*512);
 
-	if(!isStringBuffer) s = luaL_loadfile(L, script);
+	if(!isStringBuffer) {
+		s = luaL_loadfile(L, script);
+	}
 	else {
-    s = luaL_loadbuffer(L, script, strlen(script), NULL);
-  }
+		size_t replaced = 0;
+		char *sanitizedScript = SanitizeLuaBuffer(script, &replaced);
+		const char *buffer = (sanitizedScript != NULL) ? sanitizedScript : script;
+		if (replaced > 0) {
+			DPRINTF("SanitizeLuaBuffer: replaced %u non-ASCII byte(s).\n", (unsigned int)replaced);
+		}
+		s = luaL_loadbuffer(L, buffer, strlen(buffer), NULL);
+		if (sanitizedScript != NULL) {
+			free(sanitizedScript);
+		}
+	}
 
 		
 	if (s == 0) s = lua_pcall(L, 0, LUA_MULTRET, 0);
