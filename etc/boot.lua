@@ -78,10 +78,7 @@ local function file_exists(path)
   if not ok or not is_valid_fd(fd) then
     return false
   end
-  local close_ok, close_err = pcall(System.closeFile, fd)
-  if not close_ok then
-    LOG("close failed while probing:", tostring(path), tostring(close_err))
-  end
+  pcall(System.closeFile, fd)
   return true
 end
 
@@ -338,12 +335,11 @@ local function RunScriptWithFallback(rel)
       if ok then
         return true, candidate
       end
-      last_err = run_err
       LOG("Boot script runtime failed:", tostring(candidate), tostring(run_err))
-    else
-      last_err = load_err
-      LOG("Boot script probe failed:", tostring(candidate), tostring(load_err))
+      return false, run_err, candidates
     end
+    last_err = load_err
+    LOG("Boot script probe failed:", tostring(candidate), tostring(load_err))
   end
   return false, last_err, candidates
 end
