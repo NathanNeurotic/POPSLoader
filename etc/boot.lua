@@ -125,9 +125,79 @@ function RunScript(S)
   end
 end
 
-local SYS = System.resolveAsset("system.lua")
+local function IsReadableFile(path)
+  if path == nil or path == "" then
+    return false
+  end
+  if type(doesFileExist) == "function" then
+    local ok_exists, exists = pcall(doesFileExist, path)
+    if ok_exists and not exists then
+      return false
+    end
+  end
+  local ok_open, fd = pcall(System.openFile, path, FREAD)
+  if not ok_open or fd == nil then
+    return false
+  end
+  System.closeFile(fd)
+  return true
+end
+
+local function ResolveSystemScript()
+  -- Deterministic boot probe order:
+  -- 1) APP_ROOT/POPSLDR/system.lua
+  -- 2) APP_ROOT/system.lua
+  -- 3) APP_ROOT/*/POPSLDR/system.lua (one level deep)
+  -- 4) System.resolveAsset("system.lua") compatibility probe
+  local candidates = {
+    BASE_DIR.."POPSLDR/system.lua",
+    BASE_DIR.."system.lua"
+  }
+
+  local ok_list, entries = pcall(System.listDirectory, BASE_DIR)
+  if ok_list and entries ~= nil then
+    local child_dirs = {}
+    for i = 1, #entries do
+      local entry = entries[i]
+      if entry ~= nil and entry.directory and entry.name ~= nil then
+        local name = entry.name
+        if name ~= "." and name ~= ".." then
+          child_dirs[#child_dirs + 1] = name
+        end
+      end
+    end
+    table.sort(child_dirs)
+    for i = 1, #child_dirs do
+      candidates[#candidates + 1] = BASE_DIR..child_dirs[i].."/POPSLDR/system.lua"
+    end
+  end
+
+  local compat = System.resolveAsset("system.lua")
+  if compat ~= nil and compat ~= "" then
+    candidates[#candidates + 1] = compat
+  end
+
+  local checked = {}
+  local seen = {}
+  for i = 1, #candidates do
+    local candidate = candidates[i]
+    if candidate ~= nil and candidate ~= "" and not seen[candidate] then
+      seen[candidate] = true
+      checked[#checked + 1] = candidate
+      if IsReadableFile(candidate) then
+        return candidate, checked
+      end
+    end
+  end
+  return nil, checked
+end
+
+local SYS, checked_candidates = ResolveSystemScript()
 if SYS ~= nil then
-	RunScript(SYS);
+  RunScript(SYS)
 else
-  error("Cant access POPSLDR/system.lua\n\n\tcurrent_bootpath: "..System.currentDirectory())
+  error(
+    "Cant access POPSLDR/system.lua\n\n\tcurrent_bootpath: "..System.currentDirectory()..
+    "\n\tchecked_candidates: "..table.concat(checked_candidates, ", ")
+  )
 end
