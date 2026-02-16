@@ -807,11 +807,6 @@ int main(int argc, char * argv[])
     pad_init();
     DrawBootProgress("Initializing runtime", 2, 3);
 
-    //waitUntilDeviceIsReady by fjtrujy
-
-    struct stat buffer;
-    int ret = -1;
-    int retries = 80;
     char wait_root[16];
     wait_root[0] = '\0';
 
@@ -834,21 +829,22 @@ int main(int argc, char * argv[])
     if (ExtractDeviceRoot(boot_path, wait_root, sizeof(wait_root)) < 0) {
         wait_root[0] = '\0';
     }
-    if (is_mass_boot && !strncmp(wait_root, "mass", 4)) {
-        BootStamp("mass wait begin");
-        while (ret != 0 && retries > 0) {
-            ret = stat(wait_root, &buffer);
-            nopdelay();
-            retries--;
-        }
-        BootStamp("mass wait end");
-    } else {
-        BootStamp("mass wait (skipped)");
-    }
-
 
     // set base path luaplayer
-    int chdir_ret = chdir(boot_path);
+    int chdir_ret = -1;
+    if (is_mass_boot && !strncmp(wait_root, "mass", 4)) {
+        clock_t wait_start = clock();
+        const clock_t wait_budget = (clock_t)(CLOCKS_PER_SEC * 2);
+        do {
+            chdir_ret = chdir(boot_path);
+            if (chdir_ret == 0) {
+                break;
+            }
+            nopdelay();
+        } while ((clock() - wait_start) < wait_budget);
+    } else {
+        chdir_ret = chdir(boot_path);
+    }
     if (chdir_ret < 0) {
         DPRINTF("chdir failed: path=%s argv0=%s errno=%d (%s)\n", boot_path, ARGV0 ? ARGV0 : "<null>", errno, strerror(errno));
         BootDiagLog("chdir failed: path=%s argv0=%s errno=%d", boot_path, ARGV0 ? ARGV0 : "<null>", errno);
