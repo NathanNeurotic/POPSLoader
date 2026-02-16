@@ -114,22 +114,17 @@ local function ReadWholeFile(path)
     DIAG_LOG("ReadWholeFile start: "..path)
   end
   local timeout_ms = 3000
-  local timer = nil
-  if BOOT_DIAG then
-    timer = Timer.new()
-  end
+  local timer = Timer.new()
   local fd = System.openFile(path, FREAD)
   if not IsValidFd(fd) then
     return nil, string.format("open failed (fd=%s)", tostring(fd))
   end
   local chunks = {}
   while true do
-    if BOOT_DIAG and timer ~= nil then
-      if Timer.getTime(timer) > timeout_ms then
-        DIAG_LOG("HANG AT: ReadWholeFile("..path..")")
-        System.closeFile(fd)
-        return nil, "read timeout"
-      end
+    if Timer.getTime(timer) > timeout_ms then
+      DIAG_LOG("HANG AT: ReadWholeFile("..path..")")
+      System.closeFile(fd)
+      return nil, "read timeout"
     end
     local buffer = System.readFile(fd, 4096)
     if buffer == nil or buffer == "" then
@@ -148,26 +143,30 @@ local function LoadLuaFile(path)
   if BOOT_DIAG then
     DIAG_LOG("LoadLuaFile start: "..path)
   end
-  local loader, load_err = loadfile(path)
-  if loader ~= nil then
-    if BOOT_DIAG then
-      DIAG_LOG("LoadLuaFile loadfile ok: "..path)
-    end
-    return loader
-  end
-  LOG("Lua load failed:", load_err)
   local data, read_err = ReadWholeFile(path)
   if data == nil then
     return nil, read_err
   end
+
+  if #data >= 3 and string.byte(data, 1) == 0xEF and string.byte(data, 2) == 0xBB and string.byte(data, 3) == 0xBF then
+    data = string.sub(data, 4)
+  end
+
+  local loader, load_err = loadstring(data, "@"..path)
+  if loader ~= nil then
+    return loader
+  end
+
   local sanitized, count = string.gsub(data, "[\128-\255]", "?")
   if count > 0 then
     LOGF("Sanitized %d non-ASCII bytes in %s", count, path)
+    loader, load_err = loadstring(sanitized, "@"..path)
+    if loader ~= nil then
+      return loader
+    end
   end
-  if BOOT_DIAG then
-    DIAG_LOG("LoadLuaFile loadstring: "..path)
-  end
-  return loadstring(sanitized, "@"..path)
+
+  return nil, load_err
 end
 
 function RunScript(S)
