@@ -53,3 +53,46 @@ From ELF loader (C):
    - `LAUNCH: popstarter path: ...` and `open rc` should show success.
 4. **Does the launch phase stall before `LAUNCH_EXEC`?**
    - If so, note the last phase and review `launch.log`.
+
+## Boot from anywhere matrix (asset resolution expectations)
+
+This matrix is for QA to validate current behavior with different launch vectors **without changing runtime behavior**.
+
+### Resolution rules used by `System.resolveAsset("system.lua")`
+
+`boot.lua` asks `System.resolveAsset("system.lua")` for the script path. The resolver checks in this order:
+
+1. `APP_DIR/system.lua`
+2. `APP_DIR/POPSLDR/system.lua` (legacy fallback)
+3. Fail (`nil`) and boot.lua throws an error containing `current_bootpath`.
+
+`APP_DIR` is derived from launch path (`argv[0]`) when available, otherwise from `boot_path`. `boot_path` is normalized from the launch source and set as current directory before Lua boot. `host:` and generic `device:` paths are normalized to include slash separators. (See cited sources for exact logic.)
+
+### Launch vector matrix
+
+| Launch vector | Expected `APP_DIR` (derived app root) | `system.lua` resolution order | Expected fallback behavior |
+|---|---|---|---|
+| `mass:/POPSLOADER.ELF` with flat assets | `mass:/` | 1) `mass:/system.lua` → 2) `mass:/POPSLDR/system.lua` | If flat file exists, it wins. If only legacy layout exists, fallback to `POPSLDR/`. If neither exists, Lua error with `current_bootpath` is expected. |
+| `mass:/APPS/POPSLoader/POPSLOADER.ELF` | `mass:/APPS/POPSLoader/` | 1) `mass:/APPS/POPSLoader/system.lua` → 2) `mass:/APPS/POPSLoader/POPSLDR/system.lua` | Same behavior: flat-first, legacy fallback second, hard error if both missing. |
+| `mc0:/.../POPSLOADER.ELF` | **TODO: verify exact normalized form in your launch environment**; expected intent is launch directory on `mc0:` | 1) `<mc0 launch dir>/system.lua` → 2) `<mc0 launch dir>/POPSLDR/system.lua` | Resolver behavior should match other devices because it keys off `APP_DIR`; **TODO: verify end-to-end direct `mc0:` boot path in your loader stack**. |
+| `host:/.../POPSLOADER.ELF` (dev/debug) | Normalized `host:/.../` path (including slash normalization for `host:` and Windows-style drive fragments) | 1) `<host app dir>/system.lua` → 2) `<host app dir>/POPSLDR/system.lua` | Same flat-first fallback behavior; useful for rapid iteration in debug/dev setups. |
+
+## QA capture points (before/after quick diff)
+
+Capture these three values for each vector so regressions are obvious:
+
+1. **`current_bootpath`**
+   - Source: boot failure message in `boot.lua` includes `current_bootpath: ` + `System.currentDirectory()` when `system.lua` cannot be resolved.
+2. **Derived app root (`APP_DIR`)**
+   - Source: C debug output logs `app dir : ...` during startup.
+3. **Final resolved `system.lua` path**
+   - Source: `ResolveAssetPath: ...` debug print shows the winning path when resolution succeeds.
+
+### Suggested capture checklist per vector
+
+- Launch ELF from the target vector.
+- Record startup logs containing:
+  - `boot path : ...`
+  - `app dir : ...`
+  - `ResolveAssetPath: ...system.lua` (if success)
+- If launch fails before script load, record full Lua error with `current_bootpath`.
