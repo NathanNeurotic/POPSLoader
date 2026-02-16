@@ -62,6 +62,7 @@ local function derive_app_root()
 end
 
 APP_ROOT = derive_app_root()
+local ARGV0_RAW = System.GetArgv0()
 package.path = APP_ROOT.."?.lua;"..APP_ROOT.."?/init.lua;"..APP_ROOT.."POPSLDR/?.lua;./?.lua;./POPSLDR/?.lua;mass:/POPSLDR/?.lua;mc0:/POPSLDR/?.lua;mc1:/POPSLDR/?.lua"
 
 
@@ -93,6 +94,21 @@ local function add_unique(list, seen, value)
   end
   seen[value] = true
   list[#list + 1] = value
+end
+
+local function extract_dir(path)
+  if path == nil or path == "" then
+    return nil
+  end
+  local dir = string.match(path, "^(.*[/\\])")
+  if dir ~= nil and dir ~= "" then
+    return normalize_root_path(dir)
+  end
+  local device = string.match(path, "^([%a]+%d*:)")
+  if device ~= nil then
+    return ensure_dir(device)
+  end
+  return normalize_root_path(path)
 end
 
 local function normalize_colon_variants(path)
@@ -152,6 +168,7 @@ local function boot_roots()
   add_mass_alias_variants(roots, seen, APP_ROOT)
   add_mass_alias_variants(roots, seen, System.currentDirectory())
   add_mass_alias_variants(roots, seen, APP_DIR)
+  add_mass_alias_variants(roots, seen, extract_dir(ARGV0_RAW))
   return roots
 end
 
@@ -218,8 +235,8 @@ function GetMountData(PATH)
 end
 
 
-local ARGV0 = System.GetArgv0()
-if string.find(ARGV0, "^hdd0:") then
+local ARGV0 = ARGV0_RAW
+if ARGV0 ~= nil and string.find(ARGV0, "^hdd0:") then
   LOG("Booting from HDD!", ARGV0)
   local MNTPART
   BOOTPATH = nil
@@ -299,9 +316,48 @@ function RunScript(S)
   end
 end
 
-local SYS = resolve_boot_script("system.lua")
-if SYS ~= nil then
-	RunScript(SYS);
-else
-  error("Cant access POPSLDR/system.lua\n\n\tcurrent_bootpath: "..System.currentDirectory().."\n\tapp_root: "..APP_ROOT.."\n\tapp_dir: "..tostring(APP_DIR))
+local function build_boot_candidates(rel)
+  local out = {}
+  local seen = {}
+  add_unique(out, seen, System.resolveAsset(rel))
+  local roots = boot_roots()
+  for _, root in ipairs(roots) do
+    add_unique(out, seen, root..rel)
+    add_unique(out, seen, root.."POPSLDR/"..rel)
+  end
+  return out
 end
+
+local function RunScriptWithFallback(rel)
+  local candidates = build_boot_candidates(rel)
+  local last_err = nil
+  for _, candidate in ipairs(candidates) do
+    local loader, load_err = LoadLuaFile(candidate)
+    if loader ~= nil then
+      local ok, run_err = pcall(loader)
+      if ok then
+        return true, candidate
+      end
+      last_err = run_err
+      LOG("Boot script runtime failed:", tostring(candidate), tostring(run_err))
+    else
+      last_err = load_err
+      LOG("Boot script probe failed:", tostring(candidate), tostring(load_err))
+    end
+  end
+  return false, last_err, candidates
+end
+
+local ok_boot, loaded_from_or_err, attempted = RunScriptWithFallback("system.lua")
+if not ok_boot then
+  error(
+    "Cant access POPSLDR/system.lua"
+    .."\n\n\tcurrent_bootpath: "..System.currentDirectory()
+    .."\n\tapp_root: "..APP_ROOT
+    .."\n\tapp_dir: "..tostring(APP_DIR)
+    .."\n\targv0: "..tostring(ARGV0_RAW)
+    .."\n\tattempted: "..table.concat(attempted or {}, ", ")
+    .."\n\tlast_error: "..tostring(loaded_from_or_err)
+  )
+end
+LOG("Boot script loaded from:", tostring(loaded_from_or_err))
