@@ -1436,15 +1436,6 @@ If you bought it, you've been scammed.]]
           end
         end
 
-        local labels, order = UI.Footer.ResolveLegend({
-          order = UI.Footer.order_with_start_r2,
-          order_id = "start_r2",
-          circle = UI.Footer.labels.circle_other,
-          cross = UI.Footer.labels.cross_confirm,
-          square = "Cover Art",
-          start = UI.Footer.labels.start_profiles
-        })
-        UI.Footer.Draw(labels, order)
       end
     };
   }
