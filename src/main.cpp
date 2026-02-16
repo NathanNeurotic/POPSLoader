@@ -29,6 +29,8 @@
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
 #include <fileio.h>
+#include <usbhdfsd-common.h>
+#include <kernel.h>
 
 extern "C"{
 #include <libds34bt.h>
@@ -205,39 +207,29 @@ static int ExtractDeviceRoot(const char *path, char *out, size_t out_sz)
 
 static int FixupMassGenericPath(char *io_path, size_t io_sz)
 {
-    /* If path begins with mass:/... but the actual device is massN:/..., probe and rewrite. */
+    /* If path begins with mass:/... but the actual device is massN:/..., rewrite via IOCTL-ready slot. */
     if (!io_path || io_path[0] == '\0') return -1;
     for (char *p = io_path; *p; ++p) {
         if (*p == '\\') *p = '/';
     }
     if (strncmp(io_path, "mass:/", 6) != 0) return 0; /* nothing to do */
 
-    char cwd[256];
-    int have_cwd = (getcwd(cwd, sizeof(cwd)) != NULL);
-
-    if (chdir(io_path) == 0) {
-        if (have_cwd) {
-            chdir(cwd);
-        }
-        return 0; /* mass:/ works */
-    }
-
     const char *suffix = io_path + 4; /* points at :/... */
+    char dev_path[16];
+    char devid[8];
     char cand[255];
+
     for (int i = 0; i <= 9; ++i) {
-        snprintf(cand, sizeof(cand), "mass%d%s", i, suffix);
-        if (chdir(cand) == 0) {
-            if (have_cwd) {
-                chdir(cwd);
-            }
+        snprintf(dev_path, sizeof(dev_path), "mass%d:", i);
+        memset(devid, 0, sizeof(devid));
+        int rc = fileXioDevctl(dev_path, USBMASS_IOCTL_GET_DRIVERNAME, NULL, 0, devid, sizeof(devid));
+        if (rc >= 0 && devid[0] != '\0') {
+            snprintf(cand, sizeof(cand), "mass%d%s", i, suffix);
             snprintf(io_path, io_sz, "%s", cand);
             return 1; /* rewritten */
         }
     }
 
-    if (have_cwd) {
-        chdir(cwd);
-    }
     return -1; /* not found */
 }
 
@@ -845,15 +837,37 @@ int main(int argc, char * argv[])
     // set base path luaplayer
     int chdir_ret = -1;
     if (is_mass_boot && !strncmp(wait_root, "mass", 4)) {
-        clock_t wait_start = clock();
-        const clock_t wait_budget = (clock_t)(CLOCKS_PER_SEC * 5);
-        do {
+        const int max_retries = 60;
+        for (int attempt = 0; attempt < max_retries; ++attempt) {
+            if (!strncmp(wait_root, "mass:/", 6)) {
+                char argv0_retry[255];
+                snprintf(argv0_retry, sizeof(argv0_retry), "%s", boot_path);
+                if (FixupMassGenericPath(argv0_retry, sizeof(argv0_retry)) > 0) {
+                    char *tmpv[1]; tmpv[0] = argv0_retry;
+                    setLuaBootPath(1, tmpv, 0);
+                    setAppDirFromPath(argv0_retry);
+                    ExtractDeviceRoot(boot_path, wait_root, sizeof(wait_root));
+                }
+            }
+
+            if (!strncmp(wait_root, "mass", 4) && isdigit((unsigned char)wait_root[4])) {
+                char dev_path[16];
+                char devid[8];
+                snprintf(dev_path, sizeof(dev_path), "mass%c:", wait_root[4]);
+                memset(devid, 0, sizeof(devid));
+                int rc = fileXioDevctl(dev_path, USBMASS_IOCTL_GET_DRIVERNAME, NULL, 0, devid, sizeof(devid));
+                if (rc < 0 || devid[0] == '\0') {
+                    DelayThread(100000);
+                    continue;
+                }
+            }
+
             chdir_ret = chdir(boot_path);
             if (chdir_ret == 0) {
                 break;
             }
-            nopdelay();
-        } while ((clock() - wait_start) < wait_budget);
+            DelayThread(100000);
+        }
     } else {
         chdir_ret = chdir(boot_path);
     }
