@@ -37,6 +37,8 @@ extern "C"{
 #include <libds34usb.h>
 }
 
+extern "C" int DelayThread(unsigned int usec);
+
 /*
  * EE-only early video probe placeholder.
  * Kept as a no-op in universal build.
