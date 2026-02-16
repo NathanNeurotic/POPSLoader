@@ -9,6 +9,7 @@
 - **Scene table:** `UI.SCENES = {GUSB, GSMB, GMX4SIO, GHDD, MMAIN, MPROFILE, CREDITS}` in `ui.lua`.【F:bin/POPSLDR/ui.lua†L11-L15】
 - **Scene dispatch:** In the main loop, `MMAIN` → main menu, `MPROFILE` → profile picker, `<= GHDD` → game list, `CREDITS` → credits screen.【F:bin/POPSLDR/system.lua†L1304-L1314】
 - **Main menu options:** UI presents `USB`, `MMCE`, `MX4SIO`, `HDD` and routes to the corresponding device pages and game list population logic.【F:bin/POPSLDR/ui.lua†L330-L428】
+- **USB page model:** There is one USB game-list scene (`GUSB`) and it is fed by merged USB roots; do not document or design separate FAT32/exFAT USB pages in this branch.
 
 ## Input mapping (Pads → UI events)
 - **Event mapping:** `Pad.Listen()` translates pad state into events:
@@ -32,8 +33,8 @@
 
 ## UI behaviors & pages (high-level)
 - **Exit modal:** `UI.Modal.OpenExit()` shows a confirmation box and `System.exitToBrowser()` is called on confirm.【F:bin/POPSLDR/ui.lua†L135-L176】
-- **Game list page:** `UI.GameList.Play()` renders the list, handles navigation, and calls `PLDR.RunPOPStarterGame` on confirm when a game is selected.【F:bin/POPSLDR/ui.lua†L242-L303】
-- **Main menu routing:** Selecting a device option triggers device detection and game list population (`PLDR.GetPS1GameLists` for USB/MMCE/MX4SIO; HDD module init + list build for HDD).【F:bin/POPSLDR/ui.lua†L365-L451】
+- **Game list page:** `UI.GameList.Play()` renders the list, handles navigation, and calls `PLDR.RunPOPStarterGame` on confirm when a game is selected; for USB this launch now uses per-entry source metadata instead of a single global `mass` index.【F:bin/POPSLDR/ui.lua†L242-L303】【F:bin/POPSLDR/ui.lua†L1185-L1240】【F:bin/POPSLDR/system.lua†L1548-L1619】
+- **Main menu routing:** Selecting USB triggers merged USB list population via `PLDR.GetMergedUsbGameList`, which aggregates games from detected `mass*:/POPS/` roots into the single USB page. MMCE/MX4SIO keep dedicated detection/list logic; HDD uses HDD module init and list build.【F:bin/POPSLDR/ui.lua†L1185-L1240】【F:bin/POPSLDR/system.lua†L639-L757】
 
 ## UNKNOWNs (not found in repo)
 - **Exact meaning of alignment constants at the Lua call sites** beyond the `ALIGN_*` bitmask definitions is not described in docs; to confirm usage, inspect `fntRenderString` and call sites.
