@@ -65,12 +65,16 @@ APP_ROOT = derive_app_root()
 package.path = APP_ROOT.."?.lua;"..APP_ROOT.."?/init.lua;"..APP_ROOT.."POPSLDR/?.lua;./?.lua;./POPSLDR/?.lua;mass:/POPSLDR/?.lua;mc0:/POPSLDR/?.lua;mc1:/POPSLDR/?.lua"
 
 
+local function is_valid_fd(fd)
+  return type(fd) == "number" and fd >= 0
+end
+
 local function file_exists(path)
   if path == nil or path == "" then
     return false
   end
   local fd = System.openFile(path, FREAD)
-  if fd == nil then
+  if not is_valid_fd(fd) then
     return false
   end
   System.closeFile(fd)
@@ -243,7 +247,7 @@ function STOP() LOG("PROGRAM STOP") Screen.clear(Color.new(255,0,0)) Screen.flip
 
 local function ReadWholeFile(path)
   local fd = System.openFile(path, FREAD)
-  if fd == nil then
+  if not is_valid_fd(fd) then
     return nil, "open failed"
   end
   local chunks = {}
