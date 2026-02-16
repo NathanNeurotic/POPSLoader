@@ -6,8 +6,15 @@ local function ensure_dir(path)
   return path
 end
 
-local function normalize_root_path(path)
+local function path_prefix(path)
   if path == nil then
+    return nil
+  end
+  return string.match(path, "^([%a]+%d*):")
+end
+
+local function normalize_root_path(path)
+  if path == nil or path == "" then
     return nil
   end
 
@@ -16,18 +23,15 @@ local function normalize_root_path(path)
     if string.sub(normalized, 6, 6) ~= "/" and string.sub(normalized, 6, 6) ~= "" then
       normalized = "host:/"..string.sub(normalized, 6)
     end
-    local drive = string.match(normalized, "^host:/([A-Za-z]:)(.*)$")
-    if drive ~= nil then
-      normalized = string.gsub(normalized, "^(host:/[A-Za-z]:)([^/])", "%1/%2")
-    end
+    normalized = string.gsub(normalized, "^(host:/[A-Za-z]:)([^/])", "%1/%2")
   else
     local first_colon = string.find(normalized, ":", 1, true)
-    local second_colon = nil
-    if first_colon ~= nil then
-      second_colon = string.find(normalized, ":", first_colon + 1, true)
-    end
-    if first_colon ~= nil and second_colon == nil and string.sub(normalized, first_colon + 1, first_colon + 1) ~= "/" then
-      normalized = string.sub(normalized, 1, first_colon).."/"..string.sub(normalized, first_colon + 1)
+    local second_colon = first_colon and string.find(normalized, ":", first_colon + 1, true) or nil
+    if first_colon ~= nil and second_colon == nil then
+      local after_colon = string.sub(normalized, first_colon + 1, first_colon + 1)
+      if after_colon ~= "/" and after_colon ~= "" then
+        normalized = string.sub(normalized, 1, first_colon).."/"..string.sub(normalized, first_colon + 1)
+      end
     end
   end
 
@@ -35,12 +39,23 @@ local function normalize_root_path(path)
 end
 
 local function derive_app_root()
-  local current_dir = System.currentDirectory()
-  if current_dir ~= nil and current_dir ~= "" then
-    return normalize_root_path(current_dir)
-  end
+  local current_dir = normalize_root_path(System.currentDirectory())
   local app_dir = normalize_root_path(APP_DIR)
-  if app_dir ~= nil and app_dir ~= "" then
+
+  if current_dir ~= nil and app_dir ~= nil then
+    local current_prefix = path_prefix(current_dir)
+    local app_prefix = path_prefix(app_dir)
+
+    -- Keep launch-device stability when mass aliases can drift between mass:/ and massN:/.
+    if current_prefix ~= nil and app_prefix ~= nil and current_prefix ~= app_prefix then
+      return app_dir
+    end
+  end
+
+  if current_dir ~= nil then
+    return current_dir
+  end
+  if app_dir ~= nil then
     return app_dir
   end
   return "./"
