@@ -63,6 +63,112 @@ end
 
 APP_ROOT = derive_app_root()
 package.path = APP_ROOT.."?.lua;"..APP_ROOT.."?/init.lua;"..APP_ROOT.."POPSLDR/?.lua;./?.lua;./POPSLDR/?.lua;mass:/POPSLDR/?.lua;mc0:/POPSLDR/?.lua;mc1:/POPSLDR/?.lua"
+
+
+local function file_exists(path)
+  if path == nil or path == "" then
+    return false
+  end
+  local fd = System.openFile(path, FREAD)
+  if fd == nil then
+    return false
+  end
+  System.closeFile(fd)
+  return true
+end
+
+local function add_unique(list, seen, value)
+  if value == nil or value == "" then
+    return
+  end
+  if seen[value] then
+    return
+  end
+  seen[value] = true
+  list[#list + 1] = value
+end
+
+local function normalize_colon_variants(path)
+  local variants = {}
+  local seen = {}
+  local normalized = normalize_root_path(path)
+  add_unique(variants, seen, normalized)
+  if normalized == nil then
+    return variants
+  end
+
+  local first_colon = string.find(normalized, ":", 1, true)
+  if first_colon ~= nil then
+    local after_colon = string.sub(normalized, first_colon + 1, first_colon + 1)
+    if after_colon == "/" then
+      add_unique(variants, seen, ensure_dir(string.sub(normalized, 1, first_colon)..string.sub(normalized, first_colon + 2)))
+    else
+      add_unique(variants, seen, ensure_dir(string.sub(normalized, 1, first_colon).."/"..string.sub(normalized, first_colon + 1)))
+    end
+  end
+
+  return variants
+end
+
+local function add_mass_alias_variants(out, seen, root)
+  local normalized = normalize_root_path(root)
+  if normalized == nil then
+    return
+  end
+
+  local prefix, suffix = string.match(normalized, "^([%a]+%d*):(.*)$")
+  if prefix == nil then
+    add_unique(out, seen, normalized)
+    return
+  end
+
+  if prefix == "mass" or string.find(prefix, "^mass%d+$") then
+    for i = 0, 3 do
+      for _, candidate in ipairs(normalize_colon_variants("mass"..i..":"..suffix)) do
+        add_unique(out, seen, candidate)
+      end
+    end
+    for _, candidate in ipairs(normalize_colon_variants("mass:"..suffix)) do
+      add_unique(out, seen, candidate)
+    end
+    return
+  end
+
+  for _, candidate in ipairs(normalize_colon_variants(normalized)) do
+    add_unique(out, seen, candidate)
+  end
+end
+
+local function boot_roots()
+  local roots = {}
+  local seen = {}
+  add_mass_alias_variants(roots, seen, APP_ROOT)
+  add_mass_alias_variants(roots, seen, System.currentDirectory())
+  add_mass_alias_variants(roots, seen, APP_DIR)
+  return roots
+end
+
+local function resolve_boot_script(rel)
+  local resolved = System.resolveAsset(rel)
+  if file_exists(resolved) then
+    return resolved
+  end
+
+  local roots = boot_roots()
+  for _, root in ipairs(roots) do
+    local modern = root..rel
+    if file_exists(modern) then
+      return modern
+    end
+
+    local legacy = root.."POPSLDR/"..rel
+    if file_exists(legacy) then
+      return legacy
+    end
+  end
+
+  return nil
+end
 function LOG(...)
   print_uart(...)
 end
@@ -180,9 +286,9 @@ function RunScript(S)
   end
 end
 
-local SYS = System.resolveAsset("system.lua")
+local SYS = resolve_boot_script("system.lua")
 if SYS ~= nil then
 	RunScript(SYS);
 else
-  error("Cant access POPSLDR/system.lua\n\n\tcurrent_bootpath: "..System.currentDirectory())
+  error("Cant access POPSLDR/system.lua\n\n\tcurrent_bootpath: "..System.currentDirectory().."\n\tapp_root: "..APP_ROOT.."\n\tapp_dir: "..tostring(APP_DIR))
 end
