@@ -268,11 +268,10 @@ local function LoadLuaFile(path)
   if data == nil then
     return nil, read_err
   end
-  local sanitized, count = string.gsub(data, "[\128-\255]", "?")
-  if count > 0 then
-    LOGF("Sanitized %d non-ASCII bytes in %s", count, path)
+  if string.byte(data, 1) == 0xEF and string.byte(data, 2) == 0xBB and string.byte(data, 3) == 0xBF then
+    data = string.sub(data, 4)
   end
-  return loadstring(sanitized, "@"..path)
+  return loadstring(data, "@"..path)
 end
 
 function RunScript(S)

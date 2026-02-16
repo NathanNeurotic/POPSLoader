@@ -22,43 +22,26 @@
 
 static lua_State *L;
 
-static char *SanitizeLuaBuffer(const char *script, size_t *outReplaced)
+static char *StripUtf8Bom(const char *script)
 {
-    if (outReplaced) {
-        *outReplaced = 0;
-    }
     if (script == NULL) {
         return NULL;
     }
 
     size_t len = strlen(script);
-    char *sanitized = (char *)malloc(len + 1);
-    if (sanitized == NULL) {
-        return NULL;
-    }
-
     size_t src = 0;
     if (len >= 3 && (unsigned char)script[0] == 0xEF && (unsigned char)script[1] == 0xBB && (unsigned char)script[2] == 0xBF) {
         src = 3;
     }
 
-    size_t dst = 0;
-    size_t replaced = 0;
-    for (; src < len; ++src) {
-        unsigned char ch = (unsigned char)script[src];
-        if (ch >= 0x80) {
-            sanitized[dst++] = '?';
-            replaced++;
-        } else {
-            sanitized[dst++] = (char)ch;
-        }
+    char *copy = (char *)malloc((len - src) + 1);
+    if (copy == NULL) {
+        return NULL;
     }
 
-    sanitized[dst] = '\0';
-    if (outReplaced) {
-        *outReplaced = replaced;
-    }
-    return sanitized;
+    memcpy(copy, script + src, len - src);
+    copy[len - src] = '\0';
+    return copy;
 }
 
 int test_error(lua_State * L) {
@@ -156,15 +139,11 @@ const char * runScript(const char* script, bool isStringBuffer )
 		s = luaL_loadfile(L, script);
 	}
 	else {
-		size_t replaced = 0;
-		char *sanitizedScript = SanitizeLuaBuffer(script, &replaced);
-		const char *buffer = (sanitizedScript != NULL) ? sanitizedScript : script;
-		if (replaced > 0) {
-			DPRINTF("SanitizeLuaBuffer: replaced %u non-ASCII byte(s).\n", (unsigned int)replaced);
-		}
+		char *scriptNoBom = StripUtf8Bom(script);
+		const char *buffer = (scriptNoBom != NULL) ? scriptNoBom : script;
 		s = luaL_loadbuffer(L, buffer, strlen(buffer), NULL);
-		if (sanitizedScript != NULL) {
-			free(sanitizedScript);
+		if (scriptNoBom != NULL) {
+			free(scriptNoBom);
 		}
 	}
 
