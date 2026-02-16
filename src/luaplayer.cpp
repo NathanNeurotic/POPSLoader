@@ -81,7 +81,7 @@ int test_error(lua_State * L) {
     return 0;
 }
 
-const char * runScript(const char* script, bool isStringBuffer )
+const char * runScript(const char* script, bool isStringBuffer, size_t scriptSize )
 {	
     DPRINTF("Creating luaVM... \n");
 
@@ -113,10 +113,26 @@ const char * runScript(const char* script, bool isStringBuffer )
 	int s = 0;
 	const char * errMsg =(const char*)malloc(sizeof(char)*512);
 
-	if(!isStringBuffer) s = luaL_loadfile(L, script);
+	if(!isStringBuffer) {
+		s = luaL_loadfile(L, script);
+	}
 	else {
-    s = luaL_loadbuffer(L, script, strlen(script), NULL);
-  }
+		size_t bufferSize = scriptSize;
+		if (bufferSize == 0) {
+			bufferSize = strlen(script);
+		}
+		if (bufferSize > 0 && script[bufferSize - 1] == '\0') {
+			bufferSize--;
+		}
+
+		const char *buffer = script;
+		if (bufferSize >= 3 && (unsigned char)buffer[0] == 0xEF && (unsigned char)buffer[1] == 0xBB && (unsigned char)buffer[2] == 0xBF) {
+			buffer += 3;
+			bufferSize -= 3;
+		}
+
+		s = luaL_loadbuffer(L, buffer, bufferSize, "boot.lua");
+	}
 
 		
 	if (s == 0) s = lua_pcall(L, 0, LUA_MULTRET, 0);

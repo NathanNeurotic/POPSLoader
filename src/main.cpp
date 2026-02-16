@@ -150,69 +150,57 @@ static void BootStamp(const char *stage)
     DPRINTF("BOOT: %s %u\n", stage, boot_ms());
 }
 
+static int ExtractDirPath(const char *input, char *output, size_t size)
+{
+    if (input == NULL || output == NULL || size == 0) {
+        return 0;
+    }
+
+    snprintf(output, size, "%s", input);
+
+    char *p = strrchr(output, '/');
+    if (p != NULL) {
+        p[1] = '\0';
+        return 1;
+    }
+
+    p = strrchr(output, '\\');
+    if (p != NULL) {
+        p[1] = '\0';
+        return 1;
+    }
+
+    p = strchr(output, ':');
+    if (p != NULL) {
+        p[1] = '\0';
+        return 1;
+    }
+
+    output[0] = '\0';
+    return 0;
+}
+
 void setLuaBootPath(int argc, char ** argv, int idx)
 {
-    if (argc>=(idx+1))
-    {
-
-	char *p;
-	if ((p = strrchr(argv[idx], '/'))!=NULL) {
-	    snprintf(boot_path, sizeof(boot_path), "%s", argv[idx]);
-	    p = strrchr(boot_path, '/');
-	if (p!=NULL)
-	    p[1]='\0';
-	} else if ((p = strrchr(argv[idx], '\\'))!=NULL) {
-	   snprintf(boot_path, sizeof(boot_path), "%s", argv[idx]);
-	   p = strrchr(boot_path, '\\');
-	   if (p!=NULL)
-	     p[1]='\0';
-	} else if ((p = strchr(argv[idx], ':'))!=NULL) {
-	   snprintf(boot_path, sizeof(boot_path), "%s", argv[idx]);
-	   p = strchr(boot_path, ':');
-	   if (p!=NULL)
-	   p[1]='\0';
-	}
-
+    boot_path[0] = '\0';
+    if (argc >= (idx + 1) && argv[idx] != NULL) {
+        ExtractDirPath(argv[idx], boot_path, sizeof(boot_path));
     }
-    
+
     NormalizeDirPath(boot_path, sizeof(boot_path));
-    
-    
 }
 
 static void setAppDirFromPath(const char *path)
 {
-    if (!path || !path[0]) {
+    app_dir[0] = '\0';
+    if (path && path[0]) {
+        ExtractDirPath(path, app_dir, sizeof(app_dir));
+    }
+
+    if (app_dir[0] == '\0') {
         snprintf(app_dir, sizeof(app_dir), "%s", boot_path);
-        return;
     }
 
-    char tmp[255];
-    snprintf(tmp, sizeof(tmp), "%s", path);
-    for (char *p = tmp; *p; ++p) {
-        if (*p == '\\') {
-            *p = '/';
-        }
-    }
-
-    char *p = strrchr(tmp, '/');
-    if (p != NULL) {
-        p[1] = '\0';
-    } else if ((p = strchr(tmp, ':')) != NULL) {
-        p[1] = '\0';
-        strncat(tmp, "/", sizeof(tmp) - strlen(tmp) - 1);
-    }
-
-    if (tmp[0] == '\0') {
-        snprintf(app_dir, sizeof(app_dir), "%s", boot_path);
-    } else {
-        snprintf(app_dir, sizeof(app_dir), "%s", tmp);
-    }
-
-    size_t len = strlen(app_dir);
-    if (len > 0 && app_dir[len - 1] != '/') {
-        strncat(app_dir, "/", sizeof(app_dir) - len - 1);
-    }
     NormalizeDirPath(app_dir, sizeof(app_dir));
 }
 
@@ -433,7 +421,7 @@ int main(int argc, char * argv[])
     BootStamp("Lua init start");
     while (1)
     {
-        errMsg = runScript(bootString, true);
+        errMsg = runScript(bootString, true, size_bootString);
 
         init_scr();
 

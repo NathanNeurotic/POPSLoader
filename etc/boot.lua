@@ -6,8 +6,173 @@ local function ensure_dir(path)
   return path
 end
 
-local BASE_DIR = ensure_dir(APP_DIR or System.currentDirectory())
-package.path = BASE_DIR.."?.lua;"..BASE_DIR.."?/init.lua;"..BASE_DIR.."POPSLDR/?.lua;./?.lua;./POPSLDR/?.lua;mass:/POPSLDR/?.lua;mc0:/POPSLDR/?.lua;mc1:/POPSLDR/?.lua"
+local function path_prefix(path)
+  if path == nil then
+    return nil
+  end
+  return string.match(path, "^([%a]+%d*):")
+end
+
+local function normalize_root_path(path)
+  if path == nil or path == "" then
+    return nil
+  end
+
+  local normalized = string.gsub(path, "\\", "/")
+  if string.find(normalized, "^host:") then
+    if string.sub(normalized, 6, 6) ~= "/" and string.sub(normalized, 6, 6) ~= "" then
+      normalized = "host:/"..string.sub(normalized, 6)
+    end
+    normalized = string.gsub(normalized, "^(host:/[A-Za-z]:)([^/])", "%1/%2")
+  else
+    local first_colon = string.find(normalized, ":", 1, true)
+    local second_colon = first_colon and string.find(normalized, ":", first_colon + 1, true) or nil
+    if first_colon ~= nil and second_colon == nil then
+      local after_colon = string.sub(normalized, first_colon + 1, first_colon + 1)
+      if after_colon ~= "/" and after_colon ~= "" then
+        normalized = string.sub(normalized, 1, first_colon).."/"..string.sub(normalized, first_colon + 1)
+      end
+    end
+  end
+
+  return ensure_dir(normalized)
+end
+
+local function derive_app_root()
+  local current_dir = normalize_root_path(System.currentDirectory())
+  local app_dir = normalize_root_path(APP_DIR)
+
+  if current_dir ~= nil and app_dir ~= nil then
+    local current_prefix = path_prefix(current_dir)
+    local app_prefix = path_prefix(app_dir)
+
+    -- Keep launch-device stability when mass aliases can drift between mass:/ and massN:/.
+    if current_prefix ~= nil and app_prefix ~= nil and current_prefix ~= app_prefix then
+      return app_dir
+    end
+  end
+
+  if current_dir ~= nil then
+    return current_dir
+  end
+  if app_dir ~= nil then
+    return app_dir
+  end
+  return "./"
+end
+
+APP_ROOT = derive_app_root()
+package.path = APP_ROOT.."?.lua;"..APP_ROOT.."?/init.lua;"..APP_ROOT.."POPSLDR/?.lua;./?.lua;./POPSLDR/?.lua;mass:/POPSLDR/?.lua;mc0:/POPSLDR/?.lua;mc1:/POPSLDR/?.lua"
+
+
+local function is_valid_fd(fd)
+  return type(fd) == "number" and fd >= 0
+end
+
+local function file_exists(path)
+  if path == nil or path == "" then
+    return false
+  end
+  local fd = System.openFile(path, FREAD)
+  if not is_valid_fd(fd) then
+    return false
+  end
+  System.closeFile(fd)
+  return true
+end
+
+local function add_unique(list, seen, value)
+  if value == nil or value == "" then
+    return
+  end
+  if seen[value] then
+    return
+  end
+  seen[value] = true
+  list[#list + 1] = value
+end
+
+local function normalize_colon_variants(path)
+  local variants = {}
+  local seen = {}
+  local normalized = normalize_root_path(path)
+  add_unique(variants, seen, normalized)
+  if normalized == nil then
+    return variants
+  end
+
+  local first_colon = string.find(normalized, ":", 1, true)
+  if first_colon ~= nil then
+    local after_colon = string.sub(normalized, first_colon + 1, first_colon + 1)
+    if after_colon == "/" then
+      add_unique(variants, seen, ensure_dir(string.sub(normalized, 1, first_colon)..string.sub(normalized, first_colon + 2)))
+    else
+      add_unique(variants, seen, ensure_dir(string.sub(normalized, 1, first_colon).."/"..string.sub(normalized, first_colon + 1)))
+    end
+  end
+
+  return variants
+end
+
+local function add_mass_alias_variants(out, seen, root)
+  local normalized = normalize_root_path(root)
+  if normalized == nil then
+    return
+  end
+
+  local prefix, suffix = string.match(normalized, "^([%a]+%d*):(.*)$")
+  if prefix == nil then
+    add_unique(out, seen, normalized)
+    return
+  end
+
+  if prefix == "mass" or string.find(prefix, "^mass%d+$") then
+    for i = 0, 3 do
+      for _, candidate in ipairs(normalize_colon_variants("mass"..i..":"..suffix)) do
+        add_unique(out, seen, candidate)
+      end
+    end
+    for _, candidate in ipairs(normalize_colon_variants("mass:"..suffix)) do
+      add_unique(out, seen, candidate)
+    end
+    return
+  end
+
+  for _, candidate in ipairs(normalize_colon_variants(normalized)) do
+    add_unique(out, seen, candidate)
+  end
+end
+
+local function boot_roots()
+  local roots = {}
+  local seen = {}
+  add_mass_alias_variants(roots, seen, APP_ROOT)
+  add_mass_alias_variants(roots, seen, System.currentDirectory())
+  add_mass_alias_variants(roots, seen, APP_DIR)
+  return roots
+end
+
+local function resolve_boot_script(rel)
+  local resolved = System.resolveAsset(rel)
+  if file_exists(resolved) then
+    return resolved
+  end
+
+  local roots = boot_roots()
+  for _, root in ipairs(roots) do
+    local modern = root..rel
+    if file_exists(modern) then
+      return modern
+    end
+
+    local legacy = root.."POPSLDR/"..rel
+    if file_exists(legacy) then
+      return legacy
+    end
+  end
+
+  return nil
+end
 function LOG(...)
   print_uart(...)
 end
@@ -82,7 +247,7 @@ function STOP() LOG("PROGRAM STOP") Screen.clear(Color.new(255,0,0)) Screen.flip
 
 local function ReadWholeFile(path)
   local fd = System.openFile(path, FREAD)
-  if fd == nil then
+  if not is_valid_fd(fd) then
     return nil, "open failed"
   end
   local chunks = {}
@@ -107,11 +272,10 @@ local function LoadLuaFile(path)
   if data == nil then
     return nil, read_err
   end
-  local sanitized, count = string.gsub(data, "[\128-\255]", "?")
-  if count > 0 then
-    LOGF("Sanitized %d non-ASCII bytes in %s", count, path)
+  if string.byte(data, 1) == 0xEF and string.byte(data, 2) == 0xBB and string.byte(data, 3) == 0xBF then
+    data = string.sub(data, 4)
   end
-  return loadstring(sanitized, "@"..path)
+  return loadstring(data, "@"..path)
 end
 
 function RunScript(S)
@@ -125,9 +289,9 @@ function RunScript(S)
   end
 end
 
-local SYS = System.resolveAsset("system.lua")
+local SYS = resolve_boot_script("system.lua")
 if SYS ~= nil then
 	RunScript(SYS);
 else
-  error("Cant access POPSLDR/system.lua\n\n\tcurrent_bootpath: "..System.currentDirectory())
+  error("Cant access POPSLDR/system.lua\n\n\tcurrent_bootpath: "..System.currentDirectory().."\n\tapp_root: "..APP_ROOT.."\n\tapp_dir: "..tostring(APP_DIR))
 end
