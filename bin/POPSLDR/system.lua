@@ -226,7 +226,9 @@ PLDR = {
     GAMEPARTS = {}
   };
   USB = {
-    MASSINDX = 0
+    MASSINDX = 0,
+    ROOTS = {},
+    GAME_SOURCES = {}
   },
   MX4SIO = {
     READY = false,
@@ -543,6 +545,9 @@ function PLDR.CheckPOPStarterDEPS(device)
 end
 
 function PLDR.GetPS1GameLists(path, updating)
+  if path ~= nil and string.match(path, "^mass%d*:/POPS/?$") then
+    return PLDR.GetMergedUsbGameList(updating)
+  end
   LOG("Listing games on ", path)
   local RET = {}
   local found_smth = false
@@ -574,6 +579,177 @@ function PLDR.GetPS1GameLists(path, updating)
   else
     return nil
   end
+end
+
+local USB_SCAN_MAX_ROOTS = 8
+
+local function SortUsbRoots(roots)
+  table.sort(roots, function(a, b)
+    local ai = tonumber(string.match(a, "^mass(%d*):/$") or "")
+    local bi = tonumber(string.match(b, "^mass(%d*):/$") or "")
+    if ai == nil then ai = 0 end
+    if bi == nil then bi = 0 end
+    if ai ~= bi then
+      return ai < bi
+    end
+    return a < b
+  end)
+end
+
+local function AddUniqueRoot(roots, seen, root)
+  local normalized = NormalizeDirPath(root)
+  if normalized == nil then
+    return
+  end
+  if not string.match(normalized, "^mass%d*:/$") then
+    return
+  end
+  if seen[normalized] then
+    return
+  end
+  seen[normalized] = true
+  table.insert(roots, normalized)
+end
+
+local function IsUsbClass(class_name)
+  if class_name == nil then
+    return false
+  end
+  return string.upper(class_name) == "USB"
+end
+
+local function ProbeUsbRootsByPopsDir(max_roots)
+  local roots = {}
+  local seen = {}
+  for idx = 0, max_roots do
+    local root = "mass"..idx..":/"
+    local pops_root = root.."POPS/"
+    local ok, exists = pcall(doesFolderExist, pops_root)
+    if ok and exists then
+      AddUniqueRoot(roots, seen, root)
+    elseif not ok then
+      LOG("USB root probe failed for", pops_root)
+    end
+  end
+  SortUsbRoots(roots)
+  return roots
+end
+
+function PLDR.USB.GetRoots()
+  local roots = {}
+  local seen = {}
+  local bdm_list = nil
+  local ok_bdm, bdm_result = pcall(System.bdmList)
+  if ok_bdm and type(bdm_result) == "table" then
+    bdm_list = bdm_result
+  end
+  for idx = 0, USB_SCAN_MAX_ROOTS do
+    local root = "mass"..idx..":/"
+    local metadata = ClassifyMassDevice(root)
+    if IsUsbClass(metadata.class) then
+      AddUniqueRoot(roots, seen, root)
+    end
+  end
+  if type(bdm_list) == "table" then
+    for i = 1, #bdm_list do
+      local info = bdm_list[i]
+      if type(info) == "table" and IsUsbClass(info.class) then
+        -- TODO: verify bdm metadata mapping contract (`class`, `port`, `index`, `driver`)
+        -- between src/luasystem.cpp:PushBdmInfo/lua_classify_mass_device and
+        -- iop/bdm_query/bdm_query.c device copy fields before locking strict matching logic.
+        local index = tonumber(info.index)
+        if index ~= nil and index >= 0 then
+          AddUniqueRoot(roots, seen, "mass"..index..":/")
+        end
+      end
+    end
+  end
+  local fallback_roots = ProbeUsbRootsByPopsDir(USB_SCAN_MAX_ROOTS)
+  for i = 1, #fallback_roots do
+    AddUniqueRoot(roots, seen, fallback_roots[i])
+  end
+  SortUsbRoots(roots)
+  PLDR.USB.ROOTS = roots
+  return roots
+end
+
+local function BuildUsbSortKey(entry)
+  local lower_display = string.lower(entry.display or "")
+  local lower_root = string.lower(entry.source or "")
+  local lower_name = string.lower(entry.name or "")
+  return lower_display, lower_root, lower_name
+end
+
+function PLDR.GetMergedUsbGameList(updating)
+  local roots = PLDR.USB.GetRoots()
+  local collected = {}
+  local source_map = {}
+  for i = 1, #roots do
+    local root = roots[i]
+    local pops_path = root.."POPS/"
+    local ok, dir = pcall(System.listDirectory, pops_path)
+    if not ok then
+      LOG("cannot opendir", pops_path)
+    elseif dir ~= nil then
+      for j = 1, #dir do
+        local entry = dir[j]
+        if entry ~= nil and not entry.directory then
+          local filename = entry.name
+          if filename ~= nil and string.lower(string.sub(filename, -4)) == ".vcd" then
+            local encoded = root.."|"..filename
+            table.insert(collected, {
+              id = encoded,
+              source = root,
+              name = filename,
+              display = string.gsub(filename, "%.[Vv][Cc][Dd]$", "")
+            })
+            source_map[encoded] = root
+          end
+        end
+      end
+    end
+  end
+  table.sort(collected, function(a, b)
+    local ad, ar, an = BuildUsbSortKey(a)
+    local bd, br, bn = BuildUsbSortKey(b)
+    if ad ~= bd then
+      return ad < bd
+    end
+    if ar ~= br then
+      return ar < br
+    end
+    return an < bn
+  end)
+  local games = {}
+  for i = 1, #collected do
+    games[i] = collected[i].id
+  end
+  PLDR.USB.GAME_SOURCES = source_map
+  if updating then
+    PLDR.GAMES = games
+  else
+    PLDR.GAMES = games
+  end
+  if #games > 0 then
+    return PLDR.GAMES
+  end
+  return nil
+end
+
+local function ParseUsbGameEntry(entry)
+  if entry == nil then
+    return nil, nil
+  end
+  local source, name = string.match(entry, "^(mass%d*:/)|(.+)$")
+  return source, name
+end
+
+function PLDR.ResolveSelectedGamePath(base_path, entry)
+  local source_root, filename = ParseUsbGameEntry(entry)
+  if source_root ~= nil and filename ~= nil then
+    return source_root.."POPS/"..filename
+  end
+  return (base_path or "")..(entry or "")
 end
 
 local function EncodeHddGameEntry(partition, relpath)
@@ -1332,10 +1508,19 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     end
   end
   local normalized_gamelocation = policy.normalize(gamelocation)
+  local usb_root = nil
+  local usb_file = nil
+  if policy.name ~= "HDD" then
+    usb_root, usb_file = ParseUsbGameEntry(game)
+  end
   local handoff_gamelocation = policy.handoff(normalized_gamelocation)
+  if usb_root ~= nil then
+    handoff_gamelocation = policy.handoff(usb_root.."POPS/")
+  end
   local source_mode = policy.mode
   local raw_source_mode = source_mode
-  local vcd_path = normalized_gamelocation..game
+  local game_entry_name = usb_file or game
+  local vcd_path = normalized_gamelocation..game_entry_name
   local popstarter = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
   local pops_root = normalized_gamelocation
   local boot_source_mode = source_mode
@@ -1362,9 +1547,14 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     boot_source_mode = "smb"
     device_mode = "smb"
   else
-    pops_root = "mass:/POPS/"
+    if usb_root ~= nil then
+      pops_root = usb_root.."POPS/"
+      device_mode = usb_root
+    else
+      pops_root = "mass:/POPS/"
+      device_mode = "mass"
+    end
     boot_source_mode = "mass"
-    device_mode = "mass"
   end
   if policy.name == "HDD" then
     vcd_path = ""
@@ -1390,18 +1580,18 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     bootparam, prefix, normalized_basename, prefix_added = BuildPopstarterBootString(
       boot_source_mode,
       pops_root,
-      game
+      game_entry_name
     )
     bootparam_exists = doesFileExist(bootparam)
     bootparam_basename_used = normalized_basename
     prefix_used = HasBootPrefix(normalized_basename, prefix) and prefix or ""
   end
-  local selection_for_name = game
+  local selection_for_name = game_entry_name
   if policy.name == "HDD" then
     selection_for_name = NormalizeHddRelpath(hdd_relpath or game)
   end
   local game_name = DeriveGameNameFromSelection(selection_for_name)
-  local vcd_basename_raw = game
+  local vcd_basename_raw = game_entry_name
   if policy.name == "HDD" then
     vcd_basename_raw = NormalizeHddRelpath(hdd_relpath or game)
   end
@@ -1444,11 +1634,11 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     return
   end
   if boot_source_mode == "mass" and prefix_added and not bootparam_exists then
-    fallback_bootparam = EnsureTrailingSlash(pops_root)..game
+    fallback_bootparam = EnsureTrailingSlash(pops_root)..game_entry_name
     fallback_exists = doesFileExist(fallback_bootparam)
     if fallback_exists then
       bootparam = fallback_bootparam
-      bootparam_basename_used = game
+      bootparam_basename_used = game_entry_name
       bootparam_exists = true
       prefix_used = ""
     end

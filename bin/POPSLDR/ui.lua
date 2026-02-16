@@ -889,8 +889,10 @@ if found == nil then return end
             UI.Notif_queue.add("Cant find POPSTARTER ELF\n"..PLDR.POPSTARTER_PATH)
           else
             if UI.CURSCENE ~= UI.SCENES.GHDD then -- only check if game can be found on USB and SMB
-              if not doesFileExist(PLDR.GAMEPATH .. PLDR.GAMES[UI.GameList.CURR]) then
-                UI.Notif_queue.add("Cant find Game\n"..PLDR.GAMEPATH .. PLDR.GAMES[UI.GameList.CURR])
+              local selected_game = PLDR.GAMES[UI.GameList.CURR]
+              local selected_path = PLDR.ResolveSelectedGamePath(PLDR.GAMEPATH, selected_game)
+              if not doesFileExist(selected_path) then
+                UI.Notif_queue.add("Cant find Game\n"..selected_path)
               end
             end
             local launch_path = PLDR.GAMEPATH
