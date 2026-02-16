@@ -490,12 +490,8 @@ if found == nil then return end
           local tint = Color.new(128, 128, 128, alpha)
           Graphics.drawScaleImage(img, x, y, draw_w, draw_h, tint)
         end
-        local function DrawSplashText(alpha)
-          -- Requested: black text because splash image is white.
-          local y0 = UI.SCR.Y_MID + 120
-          Font.ftPrint(BFONT, UI.SCR.X_MID, y0,       8, UI.SCR.X, 16, "Coded by El_isra",      Color.new(0, 0, 0, alpha))
-          Font.ftPrint(BFONT, UI.SCR.X_MID, y0 + 18,  8, UI.SCR.X, 16, "Graphics by Berion",   Color.new(0, 0, 0, alpha))
-          Font.ftPrint(BFONT, UI.SCR.X_MID, y0 + 36,  8, UI.SCR.X, 16, "israpps.github.io",    Color.new(0, 0, 0, alpha))
+        local function DrawSplashText(_alpha)
+          -- no-op placeholder for future custom splash text
         end
 
         local fade_in_frames = 24        local hold_frames = 48
@@ -510,20 +506,17 @@ if found == nil then return end
           local alpha = Round(128 * (i / fade_in_frames))
           DrawBackground()
           DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
-          DrawSplashText(alpha)
           Screen.flip() -- we dont use UI.flip here because we dont want notifications on the welcome screen
         end
         for _ = 1, hold_frames do
           DrawBackground()
           DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, 128)
-          DrawSplashText(128)
           Screen.flip()
         end
         for i = 1, fade_out_frames do
           local alpha = Round(128 * (1 - (i / fade_out_frames)))
           DrawTargetScene(next_scene)
           DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
-          DrawSplashText(alpha)
           Screen.flip()
         end
 
