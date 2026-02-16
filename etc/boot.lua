@@ -62,6 +62,7 @@ local function derive_app_root()
 end
 
 APP_ROOT = derive_app_root()
+local ARGV0_RAW = System.GetArgv0()
 package.path = APP_ROOT.."?.lua;"..APP_ROOT.."?/init.lua;"..APP_ROOT.."POPSLDR/?.lua;./?.lua;./POPSLDR/?.lua;mass:/POPSLDR/?.lua;mc0:/POPSLDR/?.lua;mc1:/POPSLDR/?.lua"
 
 
@@ -73,11 +74,11 @@ local function file_exists(path)
   if path == nil or path == "" then
     return false
   end
-  local fd = System.openFile(path, FREAD)
-  if not is_valid_fd(fd) then
+  local ok, fd = pcall(System.openFile, path, FREAD)
+  if not ok or not is_valid_fd(fd) then
     return false
   end
-  System.closeFile(fd)
+  pcall(System.closeFile, fd)
   return true
 end
 
@@ -90,6 +91,21 @@ local function add_unique(list, seen, value)
   end
   seen[value] = true
   list[#list + 1] = value
+end
+
+local function extract_dir(path)
+  if path == nil or path == "" then
+    return nil
+  end
+  local dir = string.match(path, "^(.*[/\\])")
+  if dir ~= nil and dir ~= "" then
+    return normalize_root_path(dir)
+  end
+  local device = string.match(path, "^([%a]+%d*:)")
+  if device ~= nil then
+    return ensure_dir(device)
+  end
+  return normalize_root_path(path)
 end
 
 local function normalize_colon_variants(path)
@@ -149,6 +165,7 @@ local function boot_roots()
   add_mass_alias_variants(roots, seen, APP_ROOT)
   add_mass_alias_variants(roots, seen, System.currentDirectory())
   add_mass_alias_variants(roots, seen, APP_DIR)
+  add_mass_alias_variants(roots, seen, extract_dir(ARGV0_RAW))
   return roots
 end
 
@@ -215,8 +232,8 @@ function GetMountData(PATH)
 end
 
 
-local ARGV0 = System.GetArgv0()
-if string.find(ARGV0, "^hdd0:") then
+local ARGV0 = ARGV0_RAW
+if ARGV0 ~= nil and string.find(ARGV0, "^hdd0:") then
   LOG("Booting from HDD!", ARGV0)
   local MNTPART
   BOOTPATH = nil
@@ -246,19 +263,26 @@ BOOT_PROF.stamp("UI assets init (fonts)")
 function STOP() LOG("PROGRAM STOP") Screen.clear(Color.new(255,0,0)) Screen.flip() while true do end end
 
 local function ReadWholeFile(path)
-  local fd = System.openFile(path, FREAD)
-  if not is_valid_fd(fd) then
+  local ok_open, fd = pcall(System.openFile, path, FREAD)
+  if not ok_open or not is_valid_fd(fd) then
     return nil, "open failed"
   end
   local chunks = {}
   while true do
-    local buffer = System.readFile(fd, 4096)
+    local ok_read, buffer = pcall(System.readFile, fd, 4096)
+    if not ok_read then
+      pcall(System.closeFile, fd)
+      return nil, "read failed"
+    end
     if buffer == nil or buffer == "" then
       break
     end
     chunks[#chunks + 1] = buffer
   end
-  System.closeFile(fd)
+  local ok_close = pcall(System.closeFile, fd)
+  if not ok_close then
+    return nil, "close failed"
+  end
   return table.concat(chunks)
 end
 
@@ -289,9 +313,18 @@ function RunScript(S)
   end
 end
 
+
 local SYS = resolve_boot_script("system.lua")
 if SYS ~= nil then
-	RunScript(SYS);
+  RunScript(SYS)
 else
-  error("Cant access POPSLDR/system.lua\n\n\tcurrent_bootpath: "..System.currentDirectory().."\n\tapp_root: "..APP_ROOT.."\n\tapp_dir: "..tostring(APP_DIR))
+  local roots = boot_roots()
+  error(
+    "Cant access POPSLDR/system.lua"
+    .."\n\n\tcurrent_bootpath: "..System.currentDirectory()
+    .."\n\tapp_root: "..APP_ROOT
+    .."\n\tapp_dir: "..tostring(APP_DIR)
+    .."\n\targv0: "..tostring(ARGV0_RAW)
+    .."\n\troots: "..table.concat(roots or {}, ", ")
+  )
 end
