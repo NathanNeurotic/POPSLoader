@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <sifrpc.h>
 #include <string.h>
+#include <stdlib.h>
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
 #include <fileio.h>
@@ -236,6 +237,189 @@ static int lua_find_bdm_by_driver(lua_State *L)
 		}
 	}
 	lua_pushnil(L);
+	return 1;
+}
+
+enum class MassDeviceClass {
+	UNKNOWN = 0,
+	USB,
+	MX4SIO
+};
+
+static const char *MassDeviceClassToString(MassDeviceClass klass)
+{
+	switch (klass) {
+		case MassDeviceClass::USB:
+			return "USB";
+		case MassDeviceClass::MX4SIO:
+			return "MX4SIO";
+		default:
+			return "UNKNOWN";
+	}
+}
+
+static MassDeviceClass ClassifyBdmDriverName(const char *driver_name)
+{
+	if (driver_name == NULL || driver_name[0] == '\0') {
+		return MassDeviceClass::UNKNOWN;
+	}
+	char lowered[32] = {0};
+	size_t i;
+	for (i = 0; i < sizeof(lowered) - 1 && driver_name[i] != '\0'; ++i) {
+		char c = driver_name[i];
+		if (c >= 'A' && c <= 'Z') {
+			c = (char)(c - 'A' + 'a');
+		}
+		lowered[i] = c;
+	}
+	lowered[i] = '\0';
+	if (strstr(lowered, "mx4sio") != NULL) {
+		return MassDeviceClass::MX4SIO;
+	}
+	if (strstr(lowered, "usb") != NULL) {
+		return MassDeviceClass::USB;
+	}
+	// TODO: verify exact driver-name to class mapping against block-device naming in
+	// iop/bdm_query/bdm_query.c (bd->name copy at lines 54-57) and ps2sdk bdm.h contract.
+	return MassDeviceClass::UNKNOWN;
+}
+
+static bool ParsePathPrefix(const char *path, char *out_prefix, size_t out_sz, int *out_index)
+{
+	if (out_prefix == NULL || out_sz == 0) {
+		return false;
+	}
+	out_prefix[0] = '\0';
+	if (out_index != NULL) {
+		*out_index = -1;
+	}
+	if (path == NULL || path[0] == '\0') {
+		return false;
+	}
+	const char *colon = strchr(path, ':');
+	if (colon == NULL) {
+		return false;
+	}
+	size_t len = (size_t)(colon - path);
+	if (len == 0 || len >= out_sz) {
+		return false;
+	}
+	memcpy(out_prefix, path, len);
+	out_prefix[len] = '\0';
+	if (out_index != NULL) {
+		const char *digit = out_prefix;
+		while (*digit != '\0' && !(*digit >= '0' && *digit <= '9')) {
+			digit++;
+		}
+		if (*digit >= '0' && *digit <= '9') {
+			*out_index = atoi(digit);
+		}
+	}
+	return true;
+}
+
+static bool FileExists(const char *path)
+{
+	if (path == NULL || path[0] == '\0') {
+		return false;
+	}
+	int fd = fileXioOpen(path, O_RDONLY, 0);
+	if (fd >= 0) {
+		fileXioClose(fd);
+		return true;
+	}
+	return false;
+}
+
+static void PushMassClassifierResult(lua_State *L, MassDeviceClass klass, const char *source,
+	                                  int port, int index, const char *driver_name)
+{
+	lua_newtable(L);
+	lua_pushstring(L, MassDeviceClassToString(klass));
+	lua_setfield(L, -2, "class");
+	lua_pushstring(L, source != NULL ? source : "unknown");
+	lua_setfield(L, -2, "source");
+	if (port >= 0) {
+		lua_pushinteger(L, port);
+		lua_setfield(L, -2, "port");
+	}
+	if (index >= 0) {
+		lua_pushinteger(L, index);
+		lua_setfield(L, -2, "index");
+	}
+	if (driver_name != NULL && driver_name[0] != '\0') {
+		lua_pushstring(L, driver_name);
+		lua_setfield(L, -2, "driver");
+	}
+}
+
+static int lua_classify_mass_device(lua_State *L)
+{
+	const char *path_hint = NULL;
+	const char *app_dir_hint = NULL;
+	int argc = lua_gettop(L);
+	if (argc > 2) {
+		return luaL_error(L, "Argument error: System.classifyMassDevice(pathHint, appDirHint) takes at most two arguments.");
+	}
+	if (argc >= 1 && !lua_isnil(L, 1)) {
+		path_hint = luaL_checkstring(L, 1);
+	}
+	if (argc >= 2 && !lua_isnil(L, 2)) {
+		app_dir_hint = luaL_checkstring(L, 2);
+	}
+
+	char prefix[32] = {0};
+	int prefix_index = -1;
+	bool has_prefix = ParsePathPrefix(path_hint, prefix, sizeof(prefix), &prefix_index);
+	if (has_prefix) {
+		if (strncmp(prefix, "mx4sio", 6) == 0) {
+			PushMassClassifierResult(L, MassDeviceClass::MX4SIO, "prefix", -1, prefix_index, NULL);
+			return 1;
+		}
+		if (strncmp(prefix, "mmce", 4) == 0) {
+			PushMassClassifierResult(L, MassDeviceClass::UNKNOWN, "prefix", -1, prefix_index, NULL);
+			return 1;
+		}
+	}
+
+	bdm_dev_list_t list;
+	if (FetchBdmList(&list)) {
+		int best_index = -1;
+		for (u32 i = 0; i < list.count; ++i) {
+			const bdm_dev_info_t *info = &list.devs[i];
+			MassDeviceClass klass = ClassifyBdmDriverName(info->name);
+			if (klass == MassDeviceClass::UNKNOWN) {
+				continue;
+			}
+			if (prefix_index >= 0 && (int)info->parNr != prefix_index) {
+				continue;
+			}
+			best_index = (int)i;
+			break;
+		}
+		if (best_index >= 0) {
+			const bdm_dev_info_t *match = &list.devs[best_index];
+			MassDeviceClass klass = ClassifyBdmDriverName(match->name);
+			PushMassClassifierResult(L, klass, "bdm_rpc", (int)match->devNr, (int)match->parNr, match->name);
+			return 1;
+		}
+	}
+
+	if (app_dir_hint != NULL && app_dir_hint[0] != '\0') {
+		char marker_path[256];
+		snprintf(marker_path, sizeof(marker_path), "%s/.boot_mx4sio", app_dir_hint);
+		if (FileExists(marker_path)) {
+			PushMassClassifierResult(L, MassDeviceClass::MX4SIO, "marker", -1, prefix_index, NULL);
+			return 1;
+		}
+		snprintf(marker_path, sizeof(marker_path), "%s/.boot_usb", app_dir_hint);
+		if (FileExists(marker_path)) {
+			PushMassClassifierResult(L, MassDeviceClass::USB, "marker", -1, prefix_index, NULL);
+			return 1;
+		}
+	}
+
+	PushMassClassifierResult(L, MassDeviceClass::UNKNOWN, "fallback", -1, prefix_index, NULL);
 	return 1;
 }
 
@@ -1028,6 +1212,7 @@ static const luaL_Reg System_functions[] = {
 	{"initMX4SIO",             lua_mx4sio_init},
 	{"bdmList",                lua_bdm_list},
 	{"findBDMByDriver",    lua_find_bdm_by_driver},
+	{"classifyMassDevice", lua_classify_mass_device},
 	{0, 0}
 };
 

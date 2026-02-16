@@ -117,29 +117,37 @@ local function ResolveIrx(name)
   return System.resolveAssetType(name, ASSET_IRX) or JoinPath(APP_DIR_LOCAL, name)
 end
 
+local function ClassifyMassDevice(path_hint)
+  local ok, result = pcall(System.classifyMassDevice, path_hint, APP_DIR_LOCAL)
+  if ok and type(result) == "table" then
+    return result
+  end
+  return {
+    class = "UNKNOWN",
+    source = "fallback"
+  }
+end
+
 local function DetectBootDevice()
   local boot_path = NormalizeDirPath(BOOT_PATH_RAW or "")
   local prefix = string.match(boot_path, "^([%a]+%d*):")
   if prefix == nil then
-    return nil, boot_path, prefix
+    return nil, boot_path, prefix, ClassifyMassDevice(boot_path)
   end
   if string.match(prefix, "^mmce%d*$") then
-    return "MMCE", boot_path, prefix
+    return "MMCE", boot_path, prefix, {
+      class = "UNKNOWN",
+      source = "prefix"
+    }
   end
-  if string.match(prefix, "^mx4sio%d*$") then
-    return "MX4SIO", boot_path, prefix
+  local classifier = ClassifyMassDevice(boot_path)
+  if classifier.class == "MX4SIO" then
+    return "MX4SIO", boot_path, prefix, classifier
   end
-  if string.match(prefix, "^mass%d*$") then
-    local mx_marker = JoinPath(APP_DIR_LOCAL, ".boot_mx4sio")
-    local usb_marker = JoinPath(APP_DIR_LOCAL, ".boot_usb")
-    if doesFileExist(mx_marker) then
-      return "MX4SIO", boot_path, prefix
-    end
-    if doesFileExist(usb_marker) then
-      return "USB", boot_path, prefix
-    end
+  if classifier.class == "USB" then
+    return "USB", boot_path, prefix, classifier
   end
-  return nil, boot_path, prefix
+  return nil, boot_path, prefix, classifier
 end
 
 local function LoadIrxFromDir(dir)
@@ -267,7 +275,7 @@ end
 UI.LASTSCENE = UI.SCENES.MMAIN
 
 if UI.DEVLOCK ~= nil then
-  local boot_name, boot_path, boot_prefix = DetectBootDevice()
+  local boot_name, boot_path, boot_prefix, boot_meta = DetectBootDevice()
   UI.boot_device = UI.DEVLOCK.NONE
   UI.boot_locks = {}
   if boot_name == "MX4SIO" then
@@ -282,9 +290,9 @@ if UI.DEVLOCK ~= nil then
     UI.boot_locks[UI.DEVLOCK.MX4SIO] = true
   end
   if boot_name ~= nil then
-    LOG("Boot device detected:", boot_name, "prefix:", tostring(boot_prefix), "path:", tostring(boot_path))
+    LOG("Boot device detected:", boot_name, "prefix:", tostring(boot_prefix), "path:", tostring(boot_path), "source:", tostring(boot_meta and boot_meta.source), "class:", tostring(boot_meta and boot_meta.class), "port:", tostring(boot_meta and boot_meta.port), "index:", tostring(boot_meta and boot_meta.index))
   else
-    LOG("Boot device detection ambiguous; no boot locks set.", "prefix:", tostring(boot_prefix), "path:", tostring(boot_path))
+    LOG("Boot device detection ambiguous; no boot locks set.", "prefix:", tostring(boot_prefix), "path:", tostring(boot_path), "source:", tostring(boot_meta and boot_meta.source), "class:", tostring(boot_meta and boot_meta.class), "port:", tostring(boot_meta and boot_meta.port), "index:", tostring(boot_meta and boot_meta.index))
   end
 end
 require("images")
@@ -1256,10 +1264,11 @@ local function ResolveLaunchPolicy(gamelocation, ui_scene)
   if current_scene == UI.SCENES.GMX4SIO then
     return BuildLaunchPolicy("MX4SIO", "mx4sio", "mx4sio", nil), "MX4SIO"
   end
-  if string.match(gamelocation, "^mx4sio") then
+  local mass_classifier = ClassifyMassDevice(gamelocation)
+  if mass_classifier.class == "MX4SIO" then
     return BuildLaunchPolicy("MX4SIO", "mx4sio", "mx4sio", nil), "MX4SIO"
   end
-  if string.match(gamelocation, "^mass") then
+  if mass_classifier.class == "USB" then
     return BuildLaunchPolicy("USB", "mass", "mass", nil), "USB"
   end
   if string.match(gamelocation, "^mmce") then
