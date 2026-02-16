@@ -150,6 +150,26 @@ static void BootStamp(const char *stage)
     DPRINTF("BOOT: %s %u\n", stage, boot_ms());
 }
 
+static void EarlyBootDraw(const char *msg)
+{
+    static int scr_ready = 0;
+
+    if (!scr_ready) {
+        init_scr();
+        scr_setfontcolor(0xffffff);
+        scr_clear();
+        scr_setXY(5, 2);
+        scr_ready = 1;
+    }
+
+    if (msg == NULL) {
+        return;
+    }
+
+    scr_printf("%s\n", msg);
+    DPRINTF("EARLY_BOOT: %s\n", msg);
+}
+
 static int ExtractDirPath(const char *input, char *output, size_t size)
 {
     if (input == NULL || output == NULL || size == 0) {
@@ -287,12 +307,15 @@ int main(int argc, char * argv[])
     const char * errMsg;
     boot_start = clock();
     BootStamp("EE init start");
+    EarlyBootDraw("Initializing IOP...");
 
 #ifdef RESET_IOP  
     SifInitRpc(0);
+    EarlyBootDraw("Resetting IOP...");
     while (!SifIopReset("", 0)){};
     while (!SifIopSync()){};
     SifInitRpc(0);
+    EarlyBootDraw("IOP reset complete.");
     BootStamp("IOP reset");
 #endif
     
@@ -306,6 +329,7 @@ int main(int argc, char * argv[])
 	LOAD_IRX_NARG(ppctty_irx);
 #endif
 
+    EarlyBootDraw("Loading modules...");
     bool ioman_ok = LoadIrxChecked("iomanX_irx", iomanX_irx, size_iomanX_irx, NULL, NULL);
     BootStamp("iomanX load");
     bool filexio_ok = false;
@@ -387,6 +411,8 @@ int main(int argc, char * argv[])
     int ret = -1;
     int retries = 50;
 
+    EarlyBootDraw("Waiting storage...");
+
     while(ret != 0 && retries > 0)
     {
         ret = stat("mass:/", &buffer);
@@ -394,6 +420,12 @@ int main(int argc, char * argv[])
         nopdelay();
 
         retries--;
+    }
+
+    if (ret == 0) {
+        EarlyBootDraw("Storage ready.");
+    } else {
+        EarlyBootDraw("Storage wait timeout.");
     }
 	
         setLuaBootPath (argc, argv, 0);
@@ -418,6 +450,7 @@ int main(int argc, char * argv[])
     DPRINTF("app dir : %s\n", app_dir);
 	dbgprintf("app dir : %s\n", app_dir);
     
+    EarlyBootDraw("Starting Lua boot...");
     BootStamp("Lua init start");
     while (1)
     {
