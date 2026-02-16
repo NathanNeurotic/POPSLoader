@@ -666,7 +666,7 @@ if found == nil then return end
       Draw = function ()
         if not UI.Modal.active then return end
         local box_w = 320
-        local box_h = 140
+        local box_h = 160
         local box_x = UI.SCR.X_MID - (box_w / 2)
         local box_y = UI.SCR.Y_MID - (box_h / 2)
         Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, 120))
@@ -674,15 +674,15 @@ if found == nil then return end
         Graphics.drawRect(box_x, box_y, box_w, 2, UI.CCOL.GREY)
         Graphics.drawRect(box_x, box_y + box_h - 2, box_w, 2, UI.CCOL.GREY)
         Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 10, 8, UI.SCR.X, 16, UI.Modal.title, UI.CCOL.YELLOW)
-        Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 50, 8, UI.SCR.X, 16, UI.Modal.body, UI.CCOL.GREY)
+        Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 48, 8, UI.SCR.X, 16, UI.Modal.body, UI.CCOL.GREY)
         local confirm_label = UI.Modal.options[1] or "Confirm"
         local cancel_label = UI.Modal.options[2] or "Cancel"
         local triangle_label = UI.Modal.options[3]
         local hint = ("X: %s    O: %s"):format(confirm_label, cancel_label)
         if triangle_label ~= nil then
-          hint = ("%s    Triangle: %s"):format(hint, triangle_label)
+          hint = ("%s\nTriangle: %s"):format(hint, triangle_label)
         end
-        Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 95, 8, UI.SCR.X, 16, hint, UI.CCOL.GREY)
+        Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, box_y + 96, 16, UI.SCR.X, 16, hint, UI.CCOL.GREY)
       end;
     };
     Transition = {
