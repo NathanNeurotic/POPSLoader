@@ -22,28 +22,6 @@
 
 static lua_State *L;
 
-static char *StripUtf8Bom(const char *script)
-{
-    if (script == NULL) {
-        return NULL;
-    }
-
-    size_t len = strlen(script);
-    size_t src = 0;
-    if (len >= 3 && (unsigned char)script[0] == 0xEF && (unsigned char)script[1] == 0xBB && (unsigned char)script[2] == 0xBF) {
-        src = 3;
-    }
-
-    char *copy = (char *)malloc((len - src) + 1);
-    if (copy == NULL) {
-        return NULL;
-    }
-
-    memcpy(copy, script + src, len - src);
-    copy[len - src] = '\0';
-    return copy;
-}
-
 int test_error(lua_State * L) {
     scr_clear();
     //normalize video mode in case it was changed on lua script
@@ -103,7 +81,7 @@ int test_error(lua_State * L) {
     return 0;
 }
 
-const char * runScript(const char* script, bool isStringBuffer )
+const char * runScript(const char* script, bool isStringBuffer, size_t scriptSize )
 {	
     DPRINTF("Creating luaVM... \n");
 
@@ -139,12 +117,21 @@ const char * runScript(const char* script, bool isStringBuffer )
 		s = luaL_loadfile(L, script);
 	}
 	else {
-		char *scriptNoBom = StripUtf8Bom(script);
-		const char *buffer = (scriptNoBom != NULL) ? scriptNoBom : script;
-		s = luaL_loadbuffer(L, buffer, strlen(buffer), NULL);
-		if (scriptNoBom != NULL) {
-			free(scriptNoBom);
+		size_t bufferSize = scriptSize;
+		if (bufferSize == 0) {
+			bufferSize = strlen(script);
 		}
+		if (bufferSize > 0 && script[bufferSize - 1] == '\0') {
+			bufferSize--;
+		}
+
+		const char *buffer = script;
+		if (bufferSize >= 3 && (unsigned char)buffer[0] == 0xEF && (unsigned char)buffer[1] == 0xBB && (unsigned char)buffer[2] == 0xBF) {
+			buffer += 3;
+			bufferSize -= 3;
+		}
+
+		s = luaL_loadbuffer(L, buffer, bufferSize, "boot.lua");
 	}
 
 		
