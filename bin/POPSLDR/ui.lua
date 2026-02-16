@@ -39,8 +39,7 @@ end
 UI = {
     LASTSCENE = 5;
     SCENES = {
-      GUSBFAT = 1,
-      GUSBEXFAT = 2,
+      GUSB = 1,
       GSMB = 3,
       GMX4SIO = 4,
       GHDD = 5,
@@ -811,8 +810,7 @@ if found == nil then return end
         local layout = UI.LAYOUT
         UI.GameList.MAXDRAW = layout.LIST_MAX
         local titles = {
-          [UI.SCENES.GUSBFAT] = "USB FAT32",
-          [UI.SCENES.GUSBEXFAT] = "USB exFAT"
+          [UI.SCENES.GUSB] = "USB"
         }
         local scene_title = titles[UI.CURSCENE]
         if scene_title ~= nil then
@@ -963,7 +961,7 @@ if found == nil then return end
     };
     MainMenu = {
       OPT = 1;
-      opts = {"MMCE", "MX4SIO", "HDD (exFAT)", "HDD (PFS)", "USB (exFAT)", "USB (FAT32)", "SMB (v1)", "Disc (DKWDRV)"};
+      opts = {"MMCE", "MX4SIO", "HDD (exFAT)", "HDD (PFS)", "USB", "SMB (v1)", "Disc (DKWDRV)"};
       Carousel = {
         currentIndex = 1,
         targetIndex = 1,
@@ -997,8 +995,7 @@ if found == nil then return end
           ["MX4SIO"] = "MX4SIO",
           ["HDD (exFAT)"] = "BDHDD",
           ["HDD (PFS)"] = "APAHDD",
-          ["USB (exFAT)"] = "USBEXFAT",
-          ["USB (FAT32)"] = "USB",
+          ["USB"] = "USB",
           ["SMB (v1)"] = "SMB",
           ["Disc (DKWDRV)"] = "DISC"
         }
@@ -1235,18 +1232,13 @@ if found == nil then return end
             PLDR.CleanupGameList()
             PLDR.GetPS1GameLists("mass"..PLDR.USB.MASSINDX..":/POPS/", true)
             UI.setDeviceLock(DEVLOCK.USB)
-            UI.SceneChange(UI.SCENES.GUSBEXFAT)
+            UI.SceneChange(UI.SCENES.GUSB)
           elseif UI.MainMenu.OPT == 6 then
-            PLDR.CleanupGameList()
-            PLDR.GetPS1GameLists("mass"..PLDR.USB.MASSINDX..":/POPS/", true)
-            UI.setDeviceLock(DEVLOCK.USB)
-            UI.SceneChange(UI.SCENES.GUSBFAT)
-          elseif UI.MainMenu.OPT == 7 then
             PLDR.CleanupGameList()
             PLDR.GAMEPATH = ""
             UI.Notif_queue.add("SMB not implemented yet.")
             UI.SceneChange(UI.SCENES.GSMB)
-          elseif UI.MainMenu.OPT == 8 then
+          elseif UI.MainMenu.OPT == 7 then
             local dkwdrv_paths = {
               "mc0:/PS1_DKWDRV/DKWDRV.ELF",
               "mc1:/PS1_DKWDRV/DKWDRV.ELF"
@@ -1490,8 +1482,7 @@ if UI.FONT ~= nil then
 end
 _G.UI = UI
 UI.GAME_SCENES = {
-  [UI.SCENES.GUSBFAT] = true,
-  [UI.SCENES.GUSBEXFAT] = true,
+  [UI.SCENES.GUSB] = true,
   [UI.SCENES.GSMB] = true,
   [UI.SCENES.GMX4SIO] = true,
   [UI.SCENES.GHDD] = true,
@@ -1501,7 +1492,7 @@ function UI.IsGameScene(scene)
   return UI.GAME_SCENES[scene] == true
 end
 function UI.IsUsbScene(scene)
-  return scene == UI.SCENES.GUSBFAT or scene == UI.SCENES.GUSBEXFAT
+  return scene == UI.SCENES.GUSB
 end
 UI.RecalcLayout()
 function Input_GetEvent()
