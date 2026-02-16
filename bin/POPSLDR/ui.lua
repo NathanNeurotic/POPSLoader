@@ -1398,19 +1398,19 @@ if found == nil then return end
       Play = function ()
         local layout = UI.LAYOUT
         local currcol = UI.CCOL.GREY
+        local credits_text = [[POPSLoader for POPStarter
+based off v1.0.0 - rev3
+BETA - 6
+Coded by El_isra
+Based on Enceladus by Daniel Sant0s, Graphics by Berion, Modified by Ripto
+Special Thanks To:
+krHACKen for making POPStarter
+uyjulian, fjtrujy, HWC, and others for always helping
+This Program is FREE and OPEN-SOURCE
+If you bought it, you've been scammed.]]
 
-        Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 20, UI.SCR.X, 40, "POPStarter Loader\n"..tostring(POPSLDR_VER or ""), currcol)
-        Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 60, 20, UI.SCR.X, 40, "Coded By El_isra", currcol)
-        Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 80, 20, UI.SCR.X, UI.SCR.Y, [[
-Based on Enceladus by Daniel santos
-
-Special thanks to:
-krHACKen: for making POPStarter
-uyjulian, fjtrujy, HWC and others for always helping me
-
-This program is free and open source
-if you bought it you\'ve been scammed
-]], currcol)
+        Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y, 22, UI.SCR.X, UI.SCR.Y, credits_text, currcol)
+        -- TODO: verify whether POPSLDR_VER should still be shown anywhere else after this copy change.
         if UI.BUILD_INFO ~= nil and UI.BUILD_INFO.stamp ~= nil then
           local stamp_y = Round(layout.FOOTER_LABEL_Y - 18)
           Font.ftPrint(SFONT, layout.SAFE.L, stamp_y, 0, UI.SCR.X, 16, UI.BUILD_INFO.stamp, UI.CCOL.GREY)
