@@ -942,19 +942,61 @@ if found == nil then return end
         UI.ProfileQuery.init_done = true
       end;
       EditDkwdrvPath = function ()
-        -- TODO: verify the intended external path editor entrypoint in this branch.
-        if type(ExternalPathEditor) == "table" and type(ExternalPathEditor.Edit) == "function" then
-          local ok, value = pcall(ExternalPathEditor.Edit, UI.ProfileQuery.dkwdrv_path)
+        local current = UI.ProfileQuery.dkwdrv_path
+        local function try_editor(fn)
+          local ok, value = pcall(fn, current)
           if ok and type(value) == "string" and value ~= "" then
             UI.ProfileQuery.dkwdrv_path = value
             UI.Notif_queue.add("DKWDRV path updated")
+            return true
           end
+          return false
+        end
+        if type(ExternalPathEditor) == "table" and type(ExternalPathEditor.Edit) == "function" and try_editor(ExternalPathEditor.Edit) then
           return
         end
-        UI.Notif_queue.add("Path editor unavailable\nTODO: verify external editor hook")
+        if type(PathEditor) == "table" and type(PathEditor.Edit) == "function" and try_editor(PathEditor.Edit) then
+          return
+        end
+        if type(OSK) == "table" then
+          if type(OSK.EditPath) == "function" and try_editor(OSK.EditPath) then return end
+          if type(OSK.Edit) == "function" and try_editor(OSK.Edit) then return end
+        end
+        if type(System) == "table" then
+          if type(System.editPath) == "function" and try_editor(System.editPath) then return end
+          if type(System.openOSK) == "function" and try_editor(System.openOSK) then return end
+        end
+        UI.Notif_queue.add("Path editor unavailable")
+      end;
+      DrawHintWithIcons = function (left_key, right_key, text, y)
+        local cx = UI.SCR.X_MID
+        local left_icon = IMG[left_key]
+        local right_icon = IMG[right_key]
+        local gap = 10
+        local max_w = 0
+        if left_icon ~= nil then
+          local w = Graphics.getImageWidth(left_icon)
+          if w ~= nil and w > max_w then max_w = w end
+        end
+        if right_icon ~= nil then
+          local w = Graphics.getImageWidth(right_icon)
+          if w ~= nil and w > max_w then max_w = w end
+        end
+        local text_half = 130
+        local left_x = cx - text_half - gap - max_w
+        local right_x = cx + text_half + gap
+        if left_icon ~= nil then
+          local w = Graphics.getImageWidth(left_icon)
+          local h = Graphics.getImageHeight(left_icon)
+          Graphics.drawImage(left_icon, left_x, y - (h / 2), UI.CCOL.GREY)
+        end
+        if right_icon ~= nil then
+          local h = Graphics.getImageHeight(right_icon)
+          Graphics.drawImage(right_icon, right_x, y - (h / 2), UI.CCOL.GREY)
+        end
+        Font.ftPrint(BFONT, cx, y - 9, 8, UI.SCR.X, 16, text, UI.CCOL.GREY)
       end;
       DrawProgress = function (info)
-        local layout = UI.LAYOUT
         local box_w = 360
         local box_h = 130
         local box_x = UI.SCR.X_MID - (box_w / 2)
@@ -988,7 +1030,7 @@ if found == nil then return end
         end
         Screen.flip()
       end;
-      SaveAndExit = function (target_scene)
+      Save = function (target_scene)
         local modes = PLDR.GetBdmaModes()
         local selected_mode = modes[UI.ProfileQuery.bdma_mode_index] or modes[1]
         local profcnt = #PLDR.PROFILES
@@ -997,13 +1039,6 @@ if found == nil then return end
           BDMA_MODE = selected_mode.key,
           PROFILE_INDEX = profile_index,
           DKWDRV_PATH = UI.ProfileQuery.dkwdrv_path
-        }
-        UI.ProfileQuery.progress = {
-          stage = "Deleting/Preparing",
-          current = 0,
-          total = 1,
-          copied = 0,
-          copy_total = 0
         }
         local ok, err = PLDR.SaveSettings(payload, {
           apply_bdma = true,
@@ -1015,8 +1050,14 @@ if found == nil then return end
         if not ok then
           UI.Notif_queue.add("Settings save failed")
           LOG("Settings save failed:", err)
-          return
+          return false
         end
+        UI.ProfileQuery.progress = nil
+        UI.SceneChange(target_scene)
+        return true
+      end;
+      Cancel = function (target_scene)
+        UI.ProfileQuery.init_done = false
         UI.ProfileQuery.progress = nil
         UI.SceneChange(target_scene)
       end;
@@ -1031,19 +1072,22 @@ if found == nil then return end
         local profile = PLDR.PROFILES[UI.ProfileQuery.curopt]
 
         Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Settings", UI.CCOL.GREY)
-        Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 30, 8, UI.SCR.X, 16, "LEFT/RIGHT BDMA MODE: "..mode.label, UI.CCOL.GREY)
-        Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 60, 8, UI.SCR.X, 16, "UP/DOWN PROFILE: "..UI.ProfileQuery.curopt.."/"..math.max(profcnt, 1), UI.CCOL.GREY)
 
+        UI.ProfileQuery.DrawHintWithIcons("left", "right", "BDMA MODE", layout.TITLE_Y + 40)
+        Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 58, 8, UI.SCR.X, 16, mode.label, UI.CCOL.GREY)
+
+        UI.ProfileQuery.DrawHintWithIcons("up", "down", "POPS PROFILE", layout.TITLE_Y + 98)
+        Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 116, 8, UI.SCR.X, 16, tostring(UI.ProfileQuery.curopt).."/"..tostring(math.max(profcnt, 1)), UI.CCOL.GREY)
         if profile ~= nil then
-          Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 92, 8, UI.SCR.X, 16, profile.DESC, UI.CCOL.GREY)
-          Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 116, 8, UI.SCR.X, 16, profile.ELF, Color.new(128,128,128, 110))
+          Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 136, 8, UI.SCR.X, 16, profile.DESC, UI.CCOL.GREY)
         end
-        Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 156, 8, UI.SCR.X, 16, "X: Edit DKWDRV Path", UI.CCOL.GREY)
-        Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 180, 8, UI.SCR.X, 16, UI.ProfileQuery.dkwdrv_path, Color.new(128,128,128, 110))
+
+        UI.ProfileQuery.DrawHintWithIcons("cross", "cross", "DKWDRV PATH", layout.TITLE_Y + 176)
+        Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 194, 8, UI.SCR.X, 16, UI.ProfileQuery.dkwdrv_path, Color.new(128,128,128, 110))
 
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
-        if UI.Pad.Events.EXIT then UI.ProfileQuery.SaveAndExit(UI.SCENES.CREDITS) end
+
         if UI.Pad.Events.NAV_RIGHT then
           UI.ProfileQuery.bdma_mode_index = UI.ProfileQuery.bdma_mode_index + 1
           if UI.ProfileQuery.bdma_mode_index > #modes then UI.ProfileQuery.bdma_mode_index = 1 end
@@ -1054,23 +1098,25 @@ if found == nil then return end
         end
         if UI.Pad.Events.NAV_DOWN then UI.ProfileQuery.curopt = CLAMP(UI.ProfileQuery.curopt+1, 1, math.max(profcnt, 1)) end
         if UI.Pad.Events.NAV_UP then UI.ProfileQuery.curopt = CLAMP(UI.ProfileQuery.curopt-1, 1, math.max(profcnt, 1)) end
-        if UI.Pad.Events.START then
-          UI.ProfileQuery._reset_from_defaults()
-          UI.Notif_queue.add("Settings defaults restored")
-        end
+
         if UI.Pad.Events.CONFIRM then
           UI.ProfileQuery.EditDkwdrvPath()
         end
+        if UI.Pad.Events.START then
+          UI.ProfileQuery.Save(UI.SCENES.MMAIN)
+        end
         if UI.Pad.Events.BACK then
-          UI.ProfileQuery.SaveAndExit(UI.SCENES.MMAIN)
+          UI.ProfileQuery.Cancel(UI.SCENES.MMAIN)
+        end
+        if UI.Pad.Events.EXIT then
+          UI.ProfileQuery.Cancel(UI.SCENES.CREDITS)
         end
 
         local labels, order = UI.Footer.ResolveLegend({
-          order = UI.Footer.order_with_start,
-          order_id = "start",
-          circle = UI.Footer.labels.circle_other,
-          cross = "Edit DKWDRV",
-          start = UI.Footer.labels.start_reset
+          order = {"circle", "start"},
+          order_id = "settings_save_cancel",
+          circle = "Cancel",
+          start = "Save"
         })
         UI.Footer.Draw(labels, order)
       end;
