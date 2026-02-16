@@ -145,15 +145,16 @@ local function ExpandDevicePrefix(path)
 end
 
 local function BuildAttemptList()
+  -- Prefer packaged app layout first to avoid expensive misses on slow devices.
   local base_attempts = {
-    BASE_DIR.."system.lua",
-    BASE_DIR.."POPSLDR/system.lua",
-    BASE_DIR.."bin/system.lua",
     BASE_DIR.."bin/POPSLDR/system.lua",
-    "system.lua",
+    BASE_DIR.."POPSLDR/system.lua",
+    BASE_DIR.."system.lua",
+    BASE_DIR.."bin/system.lua",
+    "bin/POPSLDR/system.lua",
     "POPSLDR/system.lua",
-    "bin/system.lua",
-    "bin/POPSLDR/system.lua"
+    "system.lua",
+    "bin/system.lua"
   }
   local out = {}
   local seen = {}

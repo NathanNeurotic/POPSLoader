@@ -363,30 +363,7 @@ local function LoadSettingsTable(path)
   local loader, load_err = loadfile(path)
   if loader == nil then
     LOG("Settings load failed:", load_err)
-    local fd = System.openFile(path, FREAD)
-    if fd ~= nil then
-      local chunks = {}
-      while true do
-        local buffer = System.readFile(fd, 4096)
-        if buffer == nil or buffer == "" then
-          break
-        end
-        chunks[#chunks + 1] = buffer
-      end
-      System.closeFile(fd)
-      local data = table.concat(chunks)
-      local ascii_safe, replaced = string.gsub(data, "[\128-\255]", "?")
-      if replaced > 0 then
-        LOG("Settings contained non-ASCII bytes:", replaced)
-      end
-      loader, load_err = loadstring(ascii_safe, "@"..path)
-      if loader == nil then
-        LOG("Settings fallback load failed:", load_err)
-        return nil
-      end
-    else
-      return nil
-    end
+    return nil
   end
   local ok, data = pcall(loader)
   if not ok then
