@@ -57,7 +57,7 @@ UI = {
     BOOT_SOUND = {
       ENABLED = true,
       PATH = "boot.adp",      -- relative to CWD (same folder as ui.lua on HostFS)
-      SECONDS = 3.0,          -- splash minimum hold to cover audio (adjust to match boot.adp)
+      SECONDS = 4.0,          -- splash minimum hold to cover audio (adjust to match boot.adp)
       CHANNEL = 0,
       VOLUME = 90,            -- master volume (0-100 typical)
       ADPCM_VOLUME = 90       -- per-channel ADPCM volume
@@ -1387,6 +1387,9 @@ if found == nil then return end
       end;
     };
     Credits = {
+      AUTO_EXIT_MS = 3000;
+      Timer = nil;
+      StartTime = 0;
       DrawOnly = function ()
         UI.Credits._draw_only = true
         UI.Credits.Play()
@@ -1414,9 +1417,21 @@ if you bought it you\'ve been scammed
         end
 
         if not UI.Credits._draw_only then
+          if UI.Credits.Timer == nil then
+            UI.Credits.Timer = Timer.new()
+            UI.Credits.StartTime = Timer.getTime(UI.Credits.Timer)
+          end
+          local now = Timer.getTime(UI.Credits.Timer)
+          if (now - UI.Credits.StartTime) >= UI.Credits.AUTO_EXIT_MS then
+            UI.Credits.Timer = nil
+            UI.SceneChange(UI.SCENES.MMAIN)
+            return
+          end
+
           Input_GetEvent()
           if UI.HandleGlobalInput(false) then return end
           if UI.Pad.Events.EXIT or UI.Pad.Events.BACK or UI.Pad.Events.ANY then
+            UI.Credits.Timer = nil
             UI.SceneChange(UI.SCENES.MMAIN)
           end
         end
