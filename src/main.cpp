@@ -10,7 +10,6 @@
 #include <iopcontrol.h>
 #include <smod.h>
 #include <audsrv.h>
-#include <sys/stat.h>
 #include <time.h>
 #include <ctype.h>
 #include <errno.h>
@@ -208,23 +207,36 @@ static int FixupMassGenericPath(char *io_path, size_t io_sz)
 {
     /* If path begins with mass:/... but the actual device is massN:/..., probe and rewrite. */
     if (!io_path || io_path[0] == '\0') return -1;
-    /* Normalize backslashes to slashes for consistency. */
     for (char *p = io_path; *p; ++p) {
         if (*p == '\\') *p = '/';
     }
     if (strncmp(io_path, "mass:/", 6) != 0) return 0; /* nothing to do */
 
-    struct stat st;
-    if (stat(io_path, &st) == 0) return 0; /* mass:/ works */
+    char cwd[256];
+    int have_cwd = (getcwd(cwd, sizeof(cwd)) != NULL);
+
+    if (chdir(io_path) == 0) {
+        if (have_cwd) {
+            chdir(cwd);
+        }
+        return 0; /* mass:/ works */
+    }
 
     const char *suffix = io_path + 4; /* points at :/... */
     char cand[255];
-    for (int i = 0; i <= 6; ++i) {
+    for (int i = 0; i <= 9; ++i) {
         snprintf(cand, sizeof(cand), "mass%d%s", i, suffix);
-        if (stat(cand, &st) == 0) {
+        if (chdir(cand) == 0) {
+            if (have_cwd) {
+                chdir(cwd);
+            }
             snprintf(io_path, io_sz, "%s", cand);
             return 1; /* rewritten */
         }
+    }
+
+    if (have_cwd) {
+        chdir(cwd);
     }
     return -1; /* not found */
 }
@@ -834,7 +846,7 @@ int main(int argc, char * argv[])
     int chdir_ret = -1;
     if (is_mass_boot && !strncmp(wait_root, "mass", 4)) {
         clock_t wait_start = clock();
-        const clock_t wait_budget = (clock_t)(CLOCKS_PER_SEC * 2);
+        const clock_t wait_budget = (clock_t)(CLOCKS_PER_SEC * 5);
         do {
             chdir_ret = chdir(boot_path);
             if (chdir_ret == 0) {
