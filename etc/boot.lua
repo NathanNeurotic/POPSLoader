@@ -73,11 +73,14 @@ local function file_exists(path)
   if path == nil or path == "" then
     return false
   end
-  local fd = System.openFile(path, FREAD)
-  if not is_valid_fd(fd) then
+  local ok, fd = pcall(System.openFile, path, FREAD)
+  if not ok or not is_valid_fd(fd) then
     return false
   end
-  System.closeFile(fd)
+  local close_ok, close_err = pcall(System.closeFile, fd)
+  if not close_ok then
+    LOG("close failed while probing:", tostring(path), tostring(close_err))
+  end
   return true
 end
 
@@ -246,19 +249,26 @@ BOOT_PROF.stamp("UI assets init (fonts)")
 function STOP() LOG("PROGRAM STOP") Screen.clear(Color.new(255,0,0)) Screen.flip() while true do end end
 
 local function ReadWholeFile(path)
-  local fd = System.openFile(path, FREAD)
-  if not is_valid_fd(fd) then
+  local ok_open, fd = pcall(System.openFile, path, FREAD)
+  if not ok_open or not is_valid_fd(fd) then
     return nil, "open failed"
   end
   local chunks = {}
   while true do
-    local buffer = System.readFile(fd, 4096)
+    local ok_read, buffer = pcall(System.readFile, fd, 4096)
+    if not ok_read then
+      pcall(System.closeFile, fd)
+      return nil, "read failed"
+    end
     if buffer == nil or buffer == "" then
       break
     end
     chunks[#chunks + 1] = buffer
   end
-  System.closeFile(fd)
+  local ok_close = pcall(System.closeFile, fd)
+  if not ok_close then
+    return nil, "close failed"
+  end
   return table.concat(chunks)
 end
 
