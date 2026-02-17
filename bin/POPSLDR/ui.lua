@@ -364,30 +364,6 @@ UI = {
 	        local function DrawBackground()
 	          Screen.clear(Color.new(0, 0, 0))
 	        end
-        local function DrawTargetBackground(scene)
-          Screen.clear(UI.SCR.BGCOL)
-          if scene == UI.SCENES.MMAIN then
-            if IMG.BGM ~= nil then
-              Graphics.drawScaleImage(IMG.BGM, 0, 0, UI.SCR.X, UI.SCR.Y)
-            elseif IMG.BKG ~= nil then
-              Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
-            end
-          else
-            if IMG.BKG ~= nil then
-              Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
-            end
-          end
-        end
-        local function DrawTargetScene(scene)
-          if scene == nil then return end
-          DrawTargetBackground(scene)
-          if scene == UI.SCENES.MMAIN and UI.MainMenu ~= nil and UI.MainMenu.DrawOnly ~= nil then
-            UI.MainMenu.DrawOnly()
-          elseif scene == UI.SCENES.CREDITS and UI.Credits ~= nil and UI.Credits.DrawOnly ~= nil then
-            UI.Credits.DrawOnly()
-          end
-        end
-
 -- Boot audio (relative to current directory). Never fatal.
         local boot_sound_tried = false
         local boot_sound_loaded = nil
@@ -527,7 +503,8 @@ if found == nil then return end
           end
           Screen.flip()
         end
-        DrawTargetScene(next_scene)
+        DrawBackground()
+        Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, 128))
         Screen.flip()
 
         -- Cleanup boot sound resource (safe if audio backend ignores it).
@@ -537,6 +514,24 @@ if found == nil then return end
       end
 
     };
+    BootFadeInScene = function (scene, frames)
+      local total = tonumber(frames) or 24
+      if total < 1 then total = 1 end
+      for i = 1, total do
+        UI.BottomDraw.Play()
+        if scene == UI.SCENES.MMAIN and UI.MainMenu ~= nil and UI.MainMenu.DrawOnly ~= nil then
+          UI.MainMenu.DrawOnly()
+        elseif scene == UI.SCENES.CREDITS and UI.Credits ~= nil and UI.Credits.DrawOnly ~= nil then
+          UI.Credits.DrawOnly()
+        end
+        local t = i / total
+        local overlay_alpha = Round(128 * (1 - t))
+        if overlay_alpha > 0 then
+          Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, overlay_alpha))
+        end
+        Screen.flip()
+      end
+    end;
     --- UI draw routine applied before drawing UI, add background and stuff you want rendered UNDER UI and text
     BottomDraw = {
       Play = function ()
@@ -1591,13 +1586,13 @@ if found == nil then return end
           if overlay_alpha > 0 then
             Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, overlay_alpha))
           end
-          UI.flip()
+          Screen.flip()
         end
 
         for _ = 1, hold_frames do
           UI.BottomDraw.Play()
           UI.Credits.DrawOnly()
-          UI.flip()
+          Screen.flip()
         end
 
         for i = 1, fade_out_frames do
@@ -1608,7 +1603,7 @@ if found == nil then return end
           if overlay_alpha > 0 then
             Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, overlay_alpha))
           end
-          UI.flip()
+          Screen.flip()
         end
 
         UI.Credits.is_boot_sequence = false

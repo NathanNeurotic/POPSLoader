@@ -1927,6 +1927,9 @@ UI.LASTSCENE = UI.SCENES.MMAIN
 if UI.Transition ~= nil then
   UI.Transition.allowSceneWrite = false
 end
+if UI.BootFadeInScene ~= nil then
+  UI.BootFadeInScene(UI.SCENES.MMAIN, 24)
+end
 
 while true do
   UI.BottomDraw.Play()
