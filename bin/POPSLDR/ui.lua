@@ -494,13 +494,38 @@ if found == nil then return end
           -- no-op placeholder for future custom splash text
         end
 
-        -- Exact target: 3.0s splash at 60Hz = 180 frames.
-        local splash_frames = 180
+        -- Exact boot splash timing: 3.0 seconds total at 60Hz.
+        local splash_total_frames = 180
+        local splash_fade_in_frames = 24
+        local splash_fade_out_frames = 24
+        local splash_hold_frames = splash_total_frames - splash_fade_in_frames - splash_fade_out_frames
+        if splash_hold_frames < 0 then splash_hold_frames = 0 end
+
         TryBootSound()
-        for _ = 1, splash_frames do
+        for i = 1, splash_fade_in_frames do
           DrawBackground()
           DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, 128)
-          Screen.flip() -- keep rendering during timed wait
+          local t = i / splash_fade_in_frames
+          local overlay_alpha = Round(128 * (1 - t))
+          if overlay_alpha > 0 then
+            Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, overlay_alpha))
+          end
+          Screen.flip()
+        end
+        for _ = 1, splash_hold_frames do
+          DrawBackground()
+          DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, 128)
+          Screen.flip()
+        end
+        for i = 1, splash_fade_out_frames do
+          DrawBackground()
+          DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, 128)
+          local t = i / splash_fade_out_frames
+          local overlay_alpha = Round(128 * t)
+          if overlay_alpha > 0 then
+            Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, overlay_alpha))
+          end
+          Screen.flip()
         end
         DrawTargetScene(next_scene)
         Screen.flip()
@@ -1537,15 +1562,8 @@ if found == nil then return end
     Credits = {
       BOOT_AUTO_EXIT_MS = 4000;
       is_boot_sequence = false;
-      Timer = nil;
-      StartTime = 0;
-      ResetTimer = function ()
-        UI.Credits.Timer = nil
-        UI.Credits.StartTime = 0
-      end;
       Open = function (is_boot_sequence)
         UI.Credits.is_boot_sequence = (is_boot_sequence == true)
-        UI.Credits.ResetTimer()
         UI.SceneChange(UI.SCENES.CREDITS)
       end;
       DrawOnly = function ()
@@ -1558,15 +1576,42 @@ if found == nil then return end
         if total_ms < 0 then total_ms = 0 end
         local total_frames = math.floor((total_ms / 1000) * 60 + 0.5)
         if total_frames < 1 then total_frames = 1 end
+        local fade_in_frames = 24
+        local fade_out_frames = 24
+        local hold_frames = total_frames - fade_in_frames - fade_out_frames
+        if hold_frames < 0 then hold_frames = 0 end
+
         UI.Credits.is_boot_sequence = true
-        UI.Credits.ResetTimer()
-        for _ = 1, total_frames do
+
+        for i = 1, fade_in_frames do
+          UI.BottomDraw.Play()
+          UI.Credits.DrawOnly()
+          local t = i / fade_in_frames
+          local overlay_alpha = Round(128 * (1 - t))
+          if overlay_alpha > 0 then
+            Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, overlay_alpha))
+          end
+          UI.flip()
+        end
+
+        for _ = 1, hold_frames do
           UI.BottomDraw.Play()
           UI.Credits.DrawOnly()
           UI.flip()
         end
+
+        for i = 1, fade_out_frames do
+          UI.BottomDraw.Play()
+          UI.Credits.DrawOnly()
+          local t = i / fade_out_frames
+          local overlay_alpha = Round(128 * t)
+          if overlay_alpha > 0 then
+            Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, overlay_alpha))
+          end
+          UI.flip()
+        end
+
         UI.Credits.is_boot_sequence = false
-        UI.Credits.ResetTimer()
       end;
       Play = function ()
         local layout = UI.LAYOUT
@@ -1592,26 +1637,10 @@ youtube.com/@hugopocked6695]]
         end
 
         if not UI.Credits._draw_only then
-          if UI.Credits.Timer == nil then
-            UI.Credits.Timer = Timer.new()
-            UI.Credits.StartTime = Timer.getTime(UI.Credits.Timer)
-          end
-
-          if UI.Credits.is_boot_sequence then
-            local now = Timer.getTime(UI.Credits.Timer)
-            if (now - UI.Credits.StartTime) >= UI.Credits.BOOT_AUTO_EXIT_MS then
-              UI.Credits.is_boot_sequence = false
-              UI.Credits.ResetTimer()
-              UI.SceneChange(UI.SCENES.MMAIN)
-              return
-            end
-          end
-
           Input_GetEvent()
           if UI.HandleGlobalInput(false) then return end
           if UI.Pad.Events.EXIT or UI.Pad.Events.BACK then
             UI.Credits.is_boot_sequence = false
-            UI.Credits.ResetTimer()
             UI.SceneChange(UI.SCENES.MMAIN)
           end
         end
