@@ -494,24 +494,13 @@ if found == nil then return end
           -- no-op placeholder for future custom splash text
         end
 
-        -- Exact boot splash duration target: 3.0 seconds.
-        local splash_duration_ms = 3000
-        local splash_elapsed_ms = 0
-        local splash_step_ms = 16
+        -- Exact target: 3.0s splash at 60Hz = 180 frames.
+        local splash_frames = 180
         TryBootSound()
-        while splash_elapsed_ms < splash_duration_ms do
+        for _ = 1, splash_frames do
           DrawBackground()
           DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, 128)
           Screen.flip() -- keep rendering during timed wait
-          local remaining = splash_duration_ms - splash_elapsed_ms
-          local sleep_ms = splash_step_ms
-          if remaining < sleep_ms then sleep_ms = remaining end
-          if sleep_ms > 0 then
-            System.sleep(sleep_ms)
-            splash_elapsed_ms = splash_elapsed_ms + sleep_ms
-          else
-            break
-          end
         end
         DrawTargetScene(next_scene)
         Screen.flip()
@@ -1567,23 +1556,14 @@ if found == nil then return end
       PlayBootSequence = function (duration_ms)
         local total_ms = tonumber(duration_ms) or UI.Credits.BOOT_AUTO_EXIT_MS
         if total_ms < 0 then total_ms = 0 end
-        local elapsed_ms = 0
-        local step_ms = 16
+        local total_frames = math.floor((total_ms / 1000) * 60 + 0.5)
+        if total_frames < 1 then total_frames = 1 end
         UI.Credits.is_boot_sequence = true
         UI.Credits.ResetTimer()
-        while elapsed_ms < total_ms do
+        for _ = 1, total_frames do
           UI.BottomDraw.Play()
           UI.Credits.DrawOnly()
           UI.flip()
-          local remaining = total_ms - elapsed_ms
-          local sleep_ms = step_ms
-          if remaining < sleep_ms then sleep_ms = remaining end
-          if sleep_ms > 0 then
-            System.sleep(sleep_ms)
-            elapsed_ms = elapsed_ms + sleep_ms
-          else
-            break
-          end
         end
         UI.Credits.is_boot_sequence = false
         UI.Credits.ResetTimer()
