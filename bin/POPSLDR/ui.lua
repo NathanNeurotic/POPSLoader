@@ -705,15 +705,28 @@ if found == nil then return end
       duration_in = 700,
       Queue = function (target)
         if target == nil then return end
-        if UI.Transition.active and UI.Transition.phase == "out" then
-          UI.Transition.target = target
+        if UI.Transition.active then
+          if UI.Transition.phase == "out" then
+            UI.Transition.target = target
+            return
+          end
+          if target ~= UI.CURSCENE then
+            UI.Transition.next_target = target
+          end
           return
         end
         if target ~= UI.CURSCENE then
-          UI.Transition.next_target = target
+          UI.Transition.Start(target)
         end
       end,
       Start = function (target)
+        if target == nil or target == UI.CURSCENE then
+          return
+        end
+        if UI.Transition.active then
+          UI.Transition.Queue(target)
+          return
+        end
         if UI.Transition.timer == nil then
           UI.Transition.timer = Timer.new()
         end
@@ -948,30 +961,85 @@ if found == nil then return end
       end;
       EditDkwdrvPath = function ()
         local current = UI.ProfileQuery.dkwdrv_path
-        local function try_editor(fn)
-          local ok, value = pcall(fn, current)
-          if ok and type(value) == "string" and value ~= "" then
-            UI.ProfileQuery.dkwdrv_path = value
+
+        local function normalize_result(value)
+          if type(value) == "string" then
+            local cleaned = value:gsub("^%s+", ""):gsub("%s+$", "")
+            if cleaned ~= "" then
+              return cleaned
+            end
+          end
+          return nil
+        end
+
+        local function try_editor(fn, ...)
+          local ok, value = pcall(fn, ...)
+          if not ok then
+            return false
+          end
+          local normalized = normalize_result(value)
+          if normalized ~= nil then
+            UI.ProfileQuery.dkwdrv_path = normalized
             UI.Notif_queue.add("DKWDRV path updated")
             return true
           end
           return false
         end
-        if type(ExternalPathEditor) == "table" and type(ExternalPathEditor.Edit) == "function" and try_editor(ExternalPathEditor.Edit) then
-          return
+
+        local prompts = {
+          "DKWDRV path",
+          "Edit DKWDRV path",
+          "Enter DKWDRV path"
+        }
+
+        if type(ExternalPathEditor) == "table" and type(ExternalPathEditor.Edit) == "function" then
+          for i = 1, #prompts do
+            if try_editor(ExternalPathEditor.Edit, prompts[i], current) then return end
+            if try_editor(ExternalPathEditor.Edit, current, prompts[i]) then return end
+          end
+          if try_editor(ExternalPathEditor.Edit, current) then return end
         end
-        if type(PathEditor) == "table" and type(PathEditor.Edit) == "function" and try_editor(PathEditor.Edit) then
-          return
+        if type(PathEditor) == "table" and type(PathEditor.Edit) == "function" then
+          for i = 1, #prompts do
+            if try_editor(PathEditor.Edit, prompts[i], current) then return end
+            if try_editor(PathEditor.Edit, current, prompts[i]) then return end
+          end
+          if try_editor(PathEditor.Edit, current) then return end
         end
         if type(OSK) == "table" then
-          if type(OSK.EditPath) == "function" and try_editor(OSK.EditPath) then return end
-          if type(OSK.Edit) == "function" and try_editor(OSK.Edit) then return end
+          if type(OSK.EditPath) == "function" then
+            for i = 1, #prompts do
+              if try_editor(OSK.EditPath, prompts[i], current) then return end
+              if try_editor(OSK.EditPath, current, prompts[i]) then return end
+            end
+            if try_editor(OSK.EditPath, current) then return end
+          end
+          if type(OSK.Edit) == "function" then
+            for i = 1, #prompts do
+              if try_editor(OSK.Edit, prompts[i], current) then return end
+              if try_editor(OSK.Edit, current, prompts[i]) then return end
+            end
+            if try_editor(OSK.Edit, current) then return end
+          end
         end
         if type(System) == "table" then
-          if type(System.editPath) == "function" and try_editor(System.editPath) then return end
-          if type(System.openOSK) == "function" and try_editor(System.openOSK) then return end
+          if type(System.editPath) == "function" then
+            for i = 1, #prompts do
+              if try_editor(System.editPath, prompts[i], current) then return end
+              if try_editor(System.editPath, current, prompts[i]) then return end
+            end
+            if try_editor(System.editPath, current) then return end
+          end
+          if type(System.openOSK) == "function" then
+            for i = 1, #prompts do
+              if try_editor(System.openOSK, prompts[i], current) then return end
+              if try_editor(System.openOSK, current, prompts[i]) then return end
+            end
+            if try_editor(System.openOSK, current) then return end
+          end
         end
-        if string.sub(current, 1, 26) == "mc0:/PS1_DKWDRV/DKWDRV.ELF" then
+
+        if string.match(string.lower(current), "^mc0:") then
           UI.ProfileQuery.dkwdrv_path = "mc1:/PS1_DKWDRV/DKWDRV.ELF"
         else
           UI.ProfileQuery.dkwdrv_path = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
@@ -1083,17 +1151,24 @@ if found == nil then return end
 
         Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Settings", UI.CCOL.GREY)
 
-        UI.ProfileQuery.DrawHintWithIcons("left", "right", "BDMA MODE", layout.TITLE_Y + 40)
-        Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 58, 8, UI.SCR.X, 16, mode.label, UI.CCOL.GREY)
+        local base_y = layout.TITLE_Y + 32
+        local row_gap = 78
+        local value_offset = 22
+        local detail_offset = 42
 
-        UI.ProfileQuery.DrawHintWithIcons("up", "down", "POPS PROFILE", layout.TITLE_Y + 98)
-        Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 116, 8, UI.SCR.X, 16, tostring(UI.ProfileQuery.curopt).."/"..tostring(math.max(profcnt, 1)), UI.CCOL.GREY)
+        UI.ProfileQuery.DrawHintWithIcons("left", "right", "BDMA MODE", base_y)
+        Font.ftPrint(BFONT, UI.SCR.X_MID, base_y + value_offset, 8, UI.SCR.X, 16, mode.label, UI.CCOL.GREY)
+
+        local profile_row_y = base_y + row_gap
+        UI.ProfileQuery.DrawHintWithIcons("up", "down", "POPS PROFILE", profile_row_y)
+        Font.ftPrint(BFONT, UI.SCR.X_MID, profile_row_y + value_offset, 8, UI.SCR.X, 16, tostring(UI.ProfileQuery.curopt).."/"..tostring(math.max(profcnt, 1)), UI.CCOL.GREY)
         if profile ~= nil then
-          Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 136, 8, UI.SCR.X, 16, profile.DESC, UI.CCOL.GREY)
+          Font.ftPrint(BFONT, UI.SCR.X_MID, profile_row_y + detail_offset, 8, UI.SCR.X, 16, profile.DESC, UI.CCOL.GREY)
         end
 
-        UI.ProfileQuery.DrawHintWithIcons("cross", "cross", "DKWDRV PATH", layout.TITLE_Y + 176)
-        Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 194, 8, UI.SCR.X, 16, UI.ProfileQuery.dkwdrv_path, Color.new(128,128,128, 110))
+        local dkwdrv_row_y = profile_row_y + row_gap
+        UI.ProfileQuery.DrawHintWithIcons("cross", "cross", "DKWDRV PATH", dkwdrv_row_y)
+        Font.ftPrint(BFONT, UI.SCR.X_MID, dkwdrv_row_y + value_offset, 8, UI.SCR.X, 16, UI.ProfileQuery.dkwdrv_path, Color.new(128,128,128, 110))
 
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end

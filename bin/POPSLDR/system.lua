@@ -428,7 +428,6 @@ if UI.DEVLOCK ~= nil then
 end
 require("images")
 
-local POPSTARTER_PACK_ROOT = "mc0:/POPSTARTER"
 local BDMA_PAYLOAD_SOURCE_DIR = "POPSLDR"
 local BDMA_PAYLOAD_INVENTORY = {
   "usbd.irx",
@@ -445,6 +444,20 @@ local function ResolveBdmaSource(name, mode)
   end
   local rel = BDMA_PAYLOAD_SOURCE_DIR.."/"..name..suffix
   return ResolveAsset(rel) or JoinPath(APP_DIR_LOCAL, rel)
+end
+
+function PLDR.GetSelectedMemoryCardRoot(settings)
+  local source = settings or PLDR.SETTINGS or {}
+  local path = tostring(source.DKWDRV_PATH or PLDR.GetDefaultDkwdrvPath())
+  local lowered = string.lower(path)
+  if string.match(lowered, "^mc1:") then
+    return "mc1:/"
+  end
+  return "mc0:/"
+end
+
+local function GetBdmaPackRoot(settings)
+  return JoinPath(PLDR.GetSelectedMemoryCardRoot(settings), "POPSTARTER")
 end
 
 local function EnsureDirectory(path)
@@ -507,6 +520,8 @@ function PLDR.ApplyBdmaMode(mode_key, progress_cb)
     return false, "unknown mode"
   end
 
+  local popstarter_pack_root = GetBdmaPackRoot()
+
   local total_copy = 0
   if mode.suffix ~= nil then
     total_copy = #BDMA_PAYLOAD_INVENTORY
@@ -529,7 +544,7 @@ function PLDR.ApplyBdmaMode(mode_key, progress_cb)
   end
   tick()
 
-  local ok, err = RemoveDirectoryRecursive(POPSTARTER_PACK_ROOT)
+  local ok, err = RemoveDirectoryRecursive(popstarter_pack_root)
   if not ok then
     state.stage = "Error"
     state.message = tostring(err)
@@ -538,8 +553,8 @@ function PLDR.ApplyBdmaMode(mode_key, progress_cb)
   end
   state.stage = "Deleting/Preparing"
   tick()
-  if doesFolderExist(POPSTARTER_PACK_ROOT) then
-    local rm_ok, rm_err = pcall(System.removeDirectory, POPSTARTER_PACK_ROOT)
+  if doesFolderExist(popstarter_pack_root) then
+    local rm_ok, rm_err = pcall(System.removeDirectory, popstarter_pack_root)
     if not rm_ok then
       state.stage = "Error"
       state.message = tostring(rm_err)
@@ -552,7 +567,7 @@ function PLDR.ApplyBdmaMode(mode_key, progress_cb)
   tick()
 
   if mode.suffix ~= nil then
-    if not EnsureDirectory(POPSTARTER_PACK_ROOT) then
+    if not EnsureDirectory(popstarter_pack_root) then
       state.stage = "Error"
       state.message = "create directory failed"
       tick()
@@ -563,7 +578,7 @@ function PLDR.ApplyBdmaMode(mode_key, progress_cb)
     for i = 1, #BDMA_PAYLOAD_INVENTORY do
       local name = BDMA_PAYLOAD_INVENTORY[i]
       local source = ResolveBdmaSource(name, mode)
-      local dest = JoinPath(POPSTARTER_PACK_ROOT, name)
+      local dest = JoinPath(popstarter_pack_root, name)
       if source == nil or not doesFileExist(source) then
         state.stage = "Error"
         state.message = "missing payload "..name..mode.suffix
@@ -593,7 +608,9 @@ function PLDR.ApplyBdmaMode(mode_key, progress_cb)
 end
 
 function PLDR.SaveSettings(settings, opts)
-  local previous_mode = PLDR.SETTINGS.BDMA_MODE
+  local previous_settings = PLDR.SETTINGS or {}
+  local previous_mode = previous_settings.BDMA_MODE
+  local previous_mc_root = PLDR.GetSelectedMemoryCardRoot(previous_settings)
   PLDR.SETTINGS = {
     BDMA_MODE = settings.BDMA_MODE,
     PROFILE_INDEX = settings.PROFILE_INDEX,
@@ -607,7 +624,9 @@ function PLDR.SaveSettings(settings, opts)
     PLDR.POPSTARTER_PATH = PLDR.PROFILES[settings.PROFILE_INDEX].ELF
   end
   local apply_bdma = opts ~= nil and opts.apply_bdma == true
-  if apply_bdma and previous_mode ~= settings.BDMA_MODE then
+  local current_mc_root = PLDR.GetSelectedMemoryCardRoot(PLDR.SETTINGS)
+  local mc_root_changed = previous_mc_root ~= current_mc_root
+  if apply_bdma and (previous_mode ~= settings.BDMA_MODE or mc_root_changed) then
     return PLDR.ApplyBdmaMode(settings.BDMA_MODE, opts.progress_cb)
   end
   return true
