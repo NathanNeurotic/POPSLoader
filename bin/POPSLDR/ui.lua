@@ -494,31 +494,22 @@ if found == nil then return end
           -- no-op placeholder for future custom splash text
         end
 
-        local fade_in_frames = 24        local hold_frames = 48
-        local fade_out_frames = 24
-
-        -- Start boot sound once, and extend splash hold to cover it (configurable).
+        -- Exact boot splash duration target: 3.0 seconds.
+        local splash_duration_ms = 3000
         TryBootSound()
-        if boot_sound_hold_frames ~= nil and boot_sound_hold_frames > hold_frames then
-          hold_frames = boot_sound_hold_frames
-        end
-        for i = 1, fade_in_frames do
-          local alpha = Round(128 * (i / fade_in_frames))
-          DrawBackground()
-          DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
-          Screen.flip() -- we dont use UI.flip here because we dont want notifications on the welcome screen
-        end
-        for _ = 1, hold_frames do
+        local splash_timer = Timer.new()
+        local splash_start = Timer.getTime(splash_timer)
+        while true do
+          local now = Timer.getTime(splash_timer)
+          if (now - splash_start) >= splash_duration_ms then
+            break
+          end
           DrawBackground()
           DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, 128)
-          Screen.flip()
+          Screen.flip() -- keep rendering during timed wait
         end
-        for i = 1, fade_out_frames do
-          local alpha = Round(128 * (1 - (i / fade_out_frames)))
-          DrawTargetScene(next_scene)
-          DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
-          Screen.flip()
-        end
+        DrawTargetScene(next_scene)
+        Screen.flip()
 
         -- Cleanup boot sound resource (safe if audio backend ignores it).
         if boot_sound_loaded ~= nil and type(Sound) == "table" and type(Sound.freeADPCM) == "function" then
@@ -821,7 +812,7 @@ if found == nil then return end
           Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID, 20, UI.SCR.X, 32, "Not implemented yet", UI.CCOL.YELLOW)
           Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
-          if UI.Pad.Events.EXIT then UI.SceneChange(UI.SCENES.CREDITS) end
+          if UI.Pad.Events.EXIT then UI.Credits.Open(false) end
           if UI.Pad.Events.BACK then UI.SceneChange(UI.SCENES.MMAIN) end
           if UI.Pad.Events.CONFIRM then
             UI.Notif_queue.add("Not implemented yet")
@@ -868,7 +859,7 @@ if found == nil then return end
         end
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
-        if UI.Pad.Events.EXIT then UI.SceneChange(UI.SCENES.CREDITS) end
+        if UI.Pad.Events.EXIT then UI.Credits.Open(false) end
         if UI.Pad.Events.BACK then UI.SceneChange(UI.SCENES.MMAIN) end
         if UI.Pad.Events.NAV_DOWN then UI.GameList.CURR = CLAMP(UI.GameList.CURR+1, 1, ammount) end
         if UI.Pad.Events.NAV_RIGHT then UI.GameList.CURR = CLAMP(UI.GameList.CURR+UI.GameList.MAXDRAW, 1, ammount) end
@@ -1316,7 +1307,7 @@ if found == nil then return end
             carousel.slide = 0
           end
         end
-        if UI.Pad.Events.EXIT then UI.SceneChange(UI.SCENES.CREDITS) end
+        if UI.Pad.Events.EXIT then UI.Credits.Open(false) end
         if UI.Pad.Events.BACK then
           UI.Modal.OpenExit()
           return
@@ -1545,9 +1536,19 @@ if found == nil then return end
       end;
     };
     Credits = {
-      AUTO_EXIT_MS = 3000;
+      BOOT_AUTO_EXIT_MS = 4000;
+      is_boot_sequence = false;
       Timer = nil;
       StartTime = 0;
+      ResetTimer = function ()
+        UI.Credits.Timer = nil
+        UI.Credits.StartTime = 0
+      end;
+      Open = function (is_boot_sequence)
+        UI.Credits.is_boot_sequence = (is_boot_sequence == true)
+        UI.Credits.ResetTimer()
+        UI.SceneChange(UI.SCENES.CREDITS)
+      end;
       DrawOnly = function ()
         UI.Credits._draw_only = true
         UI.Credits.Play()
@@ -1565,10 +1566,12 @@ Special Thanks To:
 krHACKen for making POPStarter
 uyjulian, fjtrujy, HWC, and others for always helping
 This Program is FREE and OPEN-SOURCE
-If you bought it, you've been scammed.]]
+If you bought it, you've been scammed.
+Compatibility Problems?
+Visit
+youtube.com/@hugopocked6695]]
 
         Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y, 22, UI.SCR.X, UI.SCR.Y, credits_text, currcol)
-        -- TODO: verify whether POPSLDR_VER should still be shown anywhere else after this copy change.
         if UI.BUILD_INFO ~= nil and UI.BUILD_INFO.stamp ~= nil then
           local stamp_y = Round(layout.FOOTER_LABEL_Y - 18)
           Font.ftPrint(SFONT, layout.SAFE.L, stamp_y, 0, UI.SCR.X, 16, UI.BUILD_INFO.stamp, UI.CCOL.GREY)
@@ -1579,17 +1582,22 @@ If you bought it, you've been scammed.]]
             UI.Credits.Timer = Timer.new()
             UI.Credits.StartTime = Timer.getTime(UI.Credits.Timer)
           end
-          local now = Timer.getTime(UI.Credits.Timer)
-          if (now - UI.Credits.StartTime) >= UI.Credits.AUTO_EXIT_MS then
-            UI.Credits.Timer = nil
-            UI.SceneChange(UI.SCENES.MMAIN)
-            return
+
+          if UI.Credits.is_boot_sequence then
+            local now = Timer.getTime(UI.Credits.Timer)
+            if (now - UI.Credits.StartTime) >= UI.Credits.BOOT_AUTO_EXIT_MS then
+              UI.Credits.is_boot_sequence = false
+              UI.Credits.ResetTimer()
+              UI.SceneChange(UI.SCENES.MMAIN)
+              return
+            end
           end
 
           Input_GetEvent()
           if UI.HandleGlobalInput(false) then return end
-          if UI.Pad.Events.EXIT or UI.Pad.Events.BACK or UI.Pad.Events.ANY then
-            UI.Credits.Timer = nil
+          if UI.Pad.Events.EXIT or UI.Pad.Events.BACK then
+            UI.Credits.is_boot_sequence = false
+            UI.Credits.ResetTimer()
             UI.SceneChange(UI.SCENES.MMAIN)
           end
         end

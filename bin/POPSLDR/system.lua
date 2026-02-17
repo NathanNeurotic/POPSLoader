@@ -1943,6 +1943,12 @@ end
 
 ---MAIN PROGRAM BEHAVIOUR BEGINS
 local initial_scene = UI.SCENES.CREDITS
+if UI.Credits ~= nil then
+  UI.Credits.is_boot_sequence = true
+  if UI.Credits.ResetTimer ~= nil then
+    UI.Credits.ResetTimer()
+  end
+end
 UI.WelcomeDraw.Play(initial_scene)
 if UI.Transition ~= nil then
   UI.Transition.allowSceneWrite = true
