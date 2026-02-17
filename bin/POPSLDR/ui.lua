@@ -470,8 +470,8 @@ if found == nil then return end
           -- no-op placeholder for future custom splash text
         end
 
-        -- Exact boot splash timing: 3.0 seconds total at 60Hz.
-        local splash_total_frames = 180
+        -- Exact boot splash timing: 4.0 seconds total at 60Hz.
+        local splash_total_frames = 240
         local splash_fade_in_frames = 24
         local splash_fade_out_frames = 24
         local splash_hold_frames = splash_total_frames - splash_fade_in_frames - splash_fade_out_frames
@@ -962,80 +962,64 @@ if found == nil then return end
       EditDkwdrvPath = function ()
         local current = UI.ProfileQuery.dkwdrv_path
 
-        local function normalize_result(value)
-          if type(value) == "string" then
-            local cleaned = value:gsub("^%s+", ""):gsub("%s+$", "")
-            if cleaned ~= "" then
-              return cleaned
+        local function normalize_result(...)
+          local count = select("#", ...)
+          for i = 1, count do
+            local value = select(i, ...)
+            if type(value) == "string" then
+              local cleaned = value:gsub("^%s+", ""):gsub("%s+$", "")
+              if cleaned ~= "" then
+                return cleaned
+              end
+            elseif type(value) == "table" then
+              local candidates = { value.path, value.text, value.value, value.result }
+              for j = 1, #candidates do
+                local c = candidates[j]
+                if type(c) == "string" then
+                  local cleaned = c:gsub("^%s+", ""):gsub("%s+$", "")
+                  if cleaned ~= "" then
+                    return cleaned
+                  end
+                end
+              end
             end
           end
           return nil
         end
 
         local function try_editor(fn, ...)
-          local ok, value = pcall(fn, ...)
-          if not ok then
-            return false
-          end
-          local normalized = normalize_result(value)
-          if normalized ~= nil then
-            UI.ProfileQuery.dkwdrv_path = normalized
-            UI.Notif_queue.add("DKWDRV path updated")
-            return true
-          end
-          return false
+          local ok, a, b, c = pcall(fn, ...)
+          if not ok then return false end
+          local normalized = normalize_result(a, b, c)
+          if normalized == nil then return false end
+          UI.ProfileQuery.dkwdrv_path = normalized
+          UI.Notif_queue.add("DKWDRV path updated")
+          return true
         end
 
-        local prompts = {
-          "DKWDRV path",
-          "Edit DKWDRV path",
-          "Enter DKWDRV path"
-        }
-
-        if type(ExternalPathEditor) == "table" and type(ExternalPathEditor.Edit) == "function" then
-          for i = 1, #prompts do
-            if try_editor(ExternalPathEditor.Edit, prompts[i], current) then return end
-            if try_editor(ExternalPathEditor.Edit, current, prompts[i]) then return end
-          end
-          if try_editor(ExternalPathEditor.Edit, current) then return end
-        end
-        if type(PathEditor) == "table" and type(PathEditor.Edit) == "function" then
-          for i = 1, #prompts do
-            if try_editor(PathEditor.Edit, prompts[i], current) then return end
-            if try_editor(PathEditor.Edit, current, prompts[i]) then return end
-          end
-          if try_editor(PathEditor.Edit, current) then return end
-        end
+        local prompts = { "DKWDRV path", "Edit DKWDRV path" }
+        local editors = {}
+        if type(ExternalPathEditor) == "table" and type(ExternalPathEditor.Edit) == "function" then table.insert(editors, ExternalPathEditor.Edit) end
+        if type(PathEditor) == "table" and type(PathEditor.Edit) == "function" then table.insert(editors, PathEditor.Edit) end
         if type(OSK) == "table" then
-          if type(OSK.EditPath) == "function" then
-            for i = 1, #prompts do
-              if try_editor(OSK.EditPath, prompts[i], current) then return end
-              if try_editor(OSK.EditPath, current, prompts[i]) then return end
-            end
-            if try_editor(OSK.EditPath, current) then return end
-          end
-          if type(OSK.Edit) == "function" then
-            for i = 1, #prompts do
-              if try_editor(OSK.Edit, prompts[i], current) then return end
-              if try_editor(OSK.Edit, current, prompts[i]) then return end
-            end
-            if try_editor(OSK.Edit, current) then return end
-          end
+          if type(OSK.EditPath) == "function" then table.insert(editors, OSK.EditPath) end
+          if type(OSK.Edit) == "function" then table.insert(editors, OSK.Edit) end
+          if type(OSK.Open) == "function" then table.insert(editors, OSK.Open) end
+          if type(OSK.Show) == "function" then table.insert(editors, OSK.Show) end
         end
         if type(System) == "table" then
-          if type(System.editPath) == "function" then
-            for i = 1, #prompts do
-              if try_editor(System.editPath, prompts[i], current) then return end
-              if try_editor(System.editPath, current, prompts[i]) then return end
-            end
-            if try_editor(System.editPath, current) then return end
-          end
-          if type(System.openOSK) == "function" then
-            for i = 1, #prompts do
-              if try_editor(System.openOSK, prompts[i], current) then return end
-              if try_editor(System.openOSK, current, prompts[i]) then return end
-            end
-            if try_editor(System.openOSK, current) then return end
+          if type(System.editPath) == "function" then table.insert(editors, System.editPath) end
+          if type(System.openOSK) == "function" then table.insert(editors, System.openOSK) end
+          if type(System.openKeyboard) == "function" then table.insert(editors, System.openKeyboard) end
+        end
+
+        for i = 1, #editors do
+          local fn = editors[i]
+          if try_editor(fn, current) then return end
+          if try_editor(fn) then return end
+          for j = 1, #prompts do
+            if try_editor(fn, prompts[j], current) then return end
+            if try_editor(fn, current, prompts[j]) then return end
           end
         end
 
@@ -1152,7 +1136,7 @@ if found == nil then return end
         Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Settings", UI.CCOL.GREY)
 
         local base_y = layout.TITLE_Y + 32
-        local row_gap = 78
+        local row_gap = 92
         local value_offset = 22
         local detail_offset = 42
 

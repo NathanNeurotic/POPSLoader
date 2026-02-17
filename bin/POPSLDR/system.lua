@@ -1936,7 +1936,7 @@ if UI.Transition ~= nil then
   UI.Transition.allowSceneWrite = false
 end
 if UI.Credits ~= nil and UI.Credits.PlayBootSequence ~= nil then
-  UI.Credits.PlayBootSequence(4000)
+  UI.Credits.PlayBootSequence(3000)
 end
 if UI.Transition ~= nil then
   UI.Transition.allowSceneWrite = true
