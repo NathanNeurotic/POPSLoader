@@ -496,17 +496,22 @@ if found == nil then return end
 
         -- Exact boot splash duration target: 3.0 seconds.
         local splash_duration_ms = 3000
+        local splash_elapsed_ms = 0
+        local splash_step_ms = 16
         TryBootSound()
-        local splash_timer = Timer.new()
-        local splash_start = Timer.getTime(splash_timer)
-        while true do
-          local now = Timer.getTime(splash_timer)
-          if (now - splash_start) >= splash_duration_ms then
-            break
-          end
+        while splash_elapsed_ms < splash_duration_ms do
           DrawBackground()
           DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, 128)
           Screen.flip() -- keep rendering during timed wait
+          local remaining = splash_duration_ms - splash_elapsed_ms
+          local sleep_ms = splash_step_ms
+          if remaining < sleep_ms then sleep_ms = remaining end
+          if sleep_ms > 0 then
+            System.sleep(sleep_ms)
+            splash_elapsed_ms = splash_elapsed_ms + sleep_ms
+          else
+            break
+          end
         end
         DrawTargetScene(next_scene)
         Screen.flip()
@@ -625,7 +630,7 @@ if found == nil then return end
         end
         if type(System) == "table" and type(System.loadELF) == "function" then
           UI.LAUNCHING = true
-          System.loadELF(boot_path)
+          System.loadELF(boot_path, 0)
         end
       end;
       HandleInput = function ()
@@ -957,7 +962,12 @@ if found == nil then return end
           if type(System.editPath) == "function" and try_editor(System.editPath) then return end
           if type(System.openOSK) == "function" and try_editor(System.openOSK) then return end
         end
-        UI.Notif_queue.add("Path editor unavailable")
+        if string.sub(current, 1, 26) == "mc0:/PS1_DKWDRV/DKWDRV.ELF" then
+          UI.ProfileQuery.dkwdrv_path = "mc1:/PS1_DKWDRV/DKWDRV.ELF"
+        else
+          UI.ProfileQuery.dkwdrv_path = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
+        end
+        UI.Notif_queue.add("Path editor unavailable\nSwitched MC slot fallback")
       end;
       DrawHintWithIcons = function (left_key, right_key, text, y)
         local cx = UI.SCR.X_MID
@@ -1400,7 +1410,7 @@ if found == nil then return end
             if not doesFileExist(dkwdrv_path) then
               UI.Notif_queue.add("DKWDRV not found\n"..dkwdrv_path)
             else
-              System.loadELF(dkwdrv_path)
+              System.loadELF(dkwdrv_path, 0)
             end
           end --because we still dont support SMB
         end
@@ -1553,6 +1563,30 @@ if found == nil then return end
         UI.Credits._draw_only = true
         UI.Credits.Play()
         UI.Credits._draw_only = false
+      end;
+      PlayBootSequence = function (duration_ms)
+        local total_ms = tonumber(duration_ms) or UI.Credits.BOOT_AUTO_EXIT_MS
+        if total_ms < 0 then total_ms = 0 end
+        local elapsed_ms = 0
+        local step_ms = 16
+        UI.Credits.is_boot_sequence = true
+        UI.Credits.ResetTimer()
+        while elapsed_ms < total_ms do
+          UI.BottomDraw.Play()
+          UI.Credits.DrawOnly()
+          UI.flip()
+          local remaining = total_ms - elapsed_ms
+          local sleep_ms = step_ms
+          if remaining < sleep_ms then sleep_ms = remaining end
+          if sleep_ms > 0 then
+            System.sleep(sleep_ms)
+            elapsed_ms = elapsed_ms + sleep_ms
+          else
+            break
+          end
+        end
+        UI.Credits.is_boot_sequence = false
+        UI.Credits.ResetTimer()
       end;
       Play = function ()
         local layout = UI.LAYOUT

@@ -458,7 +458,7 @@ local function EnsureDirectory(path)
   return ok
 end
 
-local function RemoveDirectoryRecursive(path, progress)
+local function RemoveDirectoryRecursive(path)
   local normalized = NormalizeDirPath(path)
   if not doesFolderExist(normalized) then
     return true
@@ -474,7 +474,7 @@ local function RemoveDirectoryRecursive(path, progress)
       if name ~= "." and name ~= ".." then
         local child = JoinPath(normalized, name)
         if entry.directory then
-          local child_ok, child_err = RemoveDirectoryRecursive(child, progress)
+          local child_ok, child_err = RemoveDirectoryRecursive(child)
           if not child_ok then
             return false, child_err
           end
@@ -490,42 +490,8 @@ local function RemoveDirectoryRecursive(path, progress)
         end
       end
     end
-    if progress ~= nil then
-      progress.current = progress.current + 1
-      if progress.tick ~= nil then
-        progress.tick()
-      end
-    end
   end
   return true
-end
-
-function PLDR.CountPopstarterEntries()
-  local function count_entries(path)
-    local normalized = NormalizeDirPath(path)
-    if not doesFolderExist(normalized) then
-      return 0
-    end
-    local ok, entries = pcall(System.listDirectory, normalized)
-    if not ok or entries == nil then
-      return 0
-    end
-    local total = 0
-    for i = 1, #entries do
-      local entry = entries[i]
-      if entry ~= nil and entry.name ~= nil then
-        local name = entry.name
-        if name ~= "." and name ~= ".." then
-          total = total + 1
-          if entry.directory then
-            total = total + count_entries(JoinPath(normalized, name))
-          end
-        end
-      end
-    end
-    return total
-  end
-  return count_entries(POPSTARTER_PACK_ROOT)
 end
 
 function PLDR.ApplyBdmaMode(mode_key, progress_cb)
@@ -541,12 +507,11 @@ function PLDR.ApplyBdmaMode(mode_key, progress_cb)
     return false, "unknown mode"
   end
 
-  local total_delete = PLDR.CountPopstarterEntries()
   local total_copy = 0
   if mode.suffix ~= nil then
     total_copy = #BDMA_PAYLOAD_INVENTORY
   end
-  local total = total_delete + total_copy + 2
+  local total = total_copy + 3
   if total < 1 then total = 1 end
 
   local state = {
@@ -564,16 +529,15 @@ function PLDR.ApplyBdmaMode(mode_key, progress_cb)
   end
   tick()
 
-  local ok, err = RemoveDirectoryRecursive(POPSTARTER_PACK_ROOT, {current = 0, tick = function()
-    state.current = state.current + 1
-    tick()
-  end})
+  local ok, err = RemoveDirectoryRecursive(POPSTARTER_PACK_ROOT)
   if not ok then
     state.stage = "Error"
     state.message = tostring(err)
     tick()
     return false, err
   end
+  state.stage = "Deleting/Preparing"
+  tick()
   if doesFolderExist(POPSTARTER_PACK_ROOT) then
     local rm_ok, rm_err = pcall(System.removeDirectory, POPSTARTER_PACK_ROOT)
     if not rm_ok then
@@ -1943,18 +1907,23 @@ end
 
 ---MAIN PROGRAM BEHAVIOUR BEGINS
 local initial_scene = UI.SCENES.CREDITS
-if UI.Credits ~= nil then
-  UI.Credits.is_boot_sequence = true
-  if UI.Credits.ResetTimer ~= nil then
-    UI.Credits.ResetTimer()
-  end
-end
 UI.WelcomeDraw.Play(initial_scene)
 if UI.Transition ~= nil then
   UI.Transition.allowSceneWrite = true
 end
 UI.CURSCENE = initial_scene
 UI.LASTSCENE = initial_scene
+if UI.Transition ~= nil then
+  UI.Transition.allowSceneWrite = false
+end
+if UI.Credits ~= nil and UI.Credits.PlayBootSequence ~= nil then
+  UI.Credits.PlayBootSequence(4000)
+end
+if UI.Transition ~= nil then
+  UI.Transition.allowSceneWrite = true
+end
+UI.CURSCENE = UI.SCENES.MMAIN
+UI.LASTSCENE = UI.SCENES.MMAIN
 if UI.Transition ~= nil then
   UI.Transition.allowSceneWrite = false
 end
