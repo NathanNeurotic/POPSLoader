@@ -91,7 +91,8 @@ local function folder_exists(path)
     if doesFolderExist(with_trailing) == true then
       return true
     end
-    if doesFolderExist(string.gsub(with_trailing, "/+$", "")) == true then
+    local without_trailing = string.gsub(with_trailing, "/+$", "")
+    if doesFolderExist(without_trailing) == true then
       return true
     end
     return nil
