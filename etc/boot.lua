@@ -1,12 +1,25 @@
-local function ensure_dir(path)
-  if path == nil or path == "" then return "./" end
-  if string.sub(path, -1) ~= "/" then
-    return path.."/"
+local function normalize_path(path)
+  if path == nil then
+    return nil
   end
-  return path
+  local normalized = tostring(path)
+  normalized = string.gsub(normalized, "\\", "/")
+  normalized = string.gsub(normalized, "([%a%d_]+)::+", "%1:")
+  normalized = string.gsub(normalized, "//+", "/")
+  return normalized
+end
+
+local function ensure_dir(path)
+  local normalized = normalize_path(path)
+  if normalized == nil or normalized == "" then return "./" end
+  if string.sub(normalized, -1) ~= "/" then
+    return normalized.."/"
+  end
+  return normalized
 end
 
 local function dirname(p)
+  p = normalize_path(p)
   if p == nil or p == "" then
     return nil
   end
@@ -17,6 +30,55 @@ local function dirname(p)
   return dir
 end
 
+local function parent_dir(path)
+  local dir = ensure_dir(path)
+  if dir == nil or dir == "" then
+    return nil
+  end
+  local trimmed = string.gsub(dir, "/+$", "")
+  local parent = string.match(trimmed, "^(.*)/[^/]*$")
+  if parent == nil or parent == "" then
+    return nil
+  end
+  return ensure_dir(parent)
+end
+
+local function add_candidate(list, path)
+  local normalized = normalize_path(path)
+  if normalized == nil or normalized == "" then
+    return
+  end
+  list[#list + 1] = normalized
+  if string.sub(normalized, 1, 6) == "mass:/" then
+    list[#list + 1] = "mass:"..string.sub(normalized, 7)
+  end
+end
+
+local function resolve_script_path(path)
+  local normalized = normalize_path(path)
+  if normalized == nil or normalized == "" then
+    return nil
+  end
+  local resolved = System.resolveAsset(normalized)
+  if resolved ~= nil then
+    return resolved
+  end
+  if doesFileExist(normalized) then
+    return normalized
+  end
+  if string.sub(normalized, 1, 6) == "mass:/" then
+    local compact = "mass:"..string.sub(normalized, 7)
+    resolved = System.resolveAsset(compact)
+    if resolved ~= nil then
+      return resolved
+    end
+    if doesFileExist(compact) then
+      return compact
+    end
+  end
+  return nil
+end
+
 local function dir_exists(path)
   if path == nil or path == "" then
     return false
@@ -24,13 +86,13 @@ local function dir_exists(path)
   return doesFolderExist(ensure_dir(path)) == true
 end
 
-local ARGV0 = System.GetArgv0()
+local ARGV0 = normalize_path(System.GetArgv0())
 local BASE_DIR = dirname(ARGV0)
 if BASE_DIR == nil or BASE_DIR == "" or not dir_exists(BASE_DIR) then
-  BASE_DIR = APP_DIR or System.currentDirectory()
+  BASE_DIR = normalize_path(APP_DIR) or normalize_path(System.currentDirectory())
 end
 if BASE_DIR == nil or BASE_DIR == "" or not dir_exists(BASE_DIR) then
-  BASE_DIR = System.currentDirectory()
+  BASE_DIR = normalize_path(System.currentDirectory())
 end
 BASE_DIR = ensure_dir(BASE_DIR)
 System.currentDirectory(BASE_DIR)
@@ -174,15 +236,48 @@ function RunScript(S)
   end
 end
 
-local SYS = System.resolveAsset("system.lua")
-if SYS == nil then
-  SYS = System.resolveAsset("POPSLDR/system.lua")
+local APP_DIR_NORM = ensure_dir(normalize_path(APP_DIR))
+local BASE_PARENT = parent_dir(BASE_DIR)
+local SYS_CANDIDATES = {}
+add_candidate(SYS_CANDIDATES, "system.lua")
+add_candidate(SYS_CANDIDATES, "POPSLDR/system.lua")
+add_candidate(SYS_CANDIDATES, BASE_DIR.."system.lua")
+add_candidate(SYS_CANDIDATES, BASE_DIR.."POPSLDR/system.lua")
+if APP_DIR_NORM ~= nil then
+  add_candidate(SYS_CANDIDATES, APP_DIR_NORM.."system.lua")
+  add_candidate(SYS_CANDIDATES, APP_DIR_NORM.."POPSLDR/system.lua")
 end
-if SYS == nil then
-  SYS = System.resolveAsset(BASE_DIR.."system.lua")
+if BASE_PARENT ~= nil then
+  add_candidate(SYS_CANDIDATES, BASE_PARENT.."system.lua")
+  add_candidate(SYS_CANDIDATES, BASE_PARENT.."POPSLDR/system.lua")
 end
+
+local SYS = nil
+for i = 1, #SYS_CANDIDATES do
+  SYS = resolve_script_path(SYS_CANDIDATES[i])
+  if SYS ~= nil then
+    break
+  end
+end
+
 if SYS == nil then
-  SYS = System.resolveAsset(BASE_DIR.."POPSLDR/system.lua")
+  for i = 1, #SYS_CANDIDATES do
+    local candidate = normalize_path(SYS_CANDIDATES[i])
+    local loader = nil
+    loader = LoadLuaFile(candidate)
+    if loader ~= nil then
+      SYS = candidate
+      break
+    end
+    if string.sub(candidate, 1, 6) == "mass:/" then
+      local compact = "mass:"..string.sub(candidate, 7)
+      loader = LoadLuaFile(compact)
+      if loader ~= nil then
+        SYS = compact
+        break
+      end
+    end
+  end
 end
 if SYS ~= nil then
   RunScript(SYS)
