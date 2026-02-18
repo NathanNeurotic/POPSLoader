@@ -281,21 +281,15 @@ UI = {
     setDeviceLock = function (target)
       return
     end;
-    RequestScene = function (SCENE)
-      if UI.Transition ~= nil and UI.Transition.Start ~= nil then
-        if UI.Transition.active then
-          if UI.Transition.Queue ~= nil then
-            UI.Transition.Queue(SCENE)
-          end
-          return
-        end
-        if UI.CURSCENE ~= SCENE then
-          UI.Transition.Start(SCENE)
-        end
+    RequestScene = function (SCENE, args)
+      if UI.Transition ~= nil and UI.Transition.request ~= nil then
+        UI.Transition.request(SCENE, args)
       end
     end;
-    SceneChange = function (SCENE)
-      UI.RequestScene(SCENE)
+    SceneChange = function (SCENE, args)
+      if UI.Transition ~= nil and UI.Transition.request ~= nil then
+        UI.Transition.request(SCENE, args)
+      end
     end;
     UpdateVmode = function ()
       Screen.setMode(UI.SCR.VMODE, UI.SCR.X, UI.SCR.Y, CT24, INTERLACED, FIELD)
@@ -1361,7 +1355,7 @@ end
       active = false,
       phase = "out",
       target = nil,
-      next_target = nil,
+      args = nil,
       allowSceneWrite = false,
       timer = nil,
       start = 0,
@@ -1370,24 +1364,17 @@ end
       max_step = 33,
       duration_out = 140,
       duration_in = 120,
-      Queue = function (target)
-        if target == nil then return end
-        if UI.Transition.active and UI.Transition.phase == "out" then
-          UI.Transition.target = target
-          return
-        end
-        if target ~= UI.CURSCENE then
-          UI.Transition.next_target = target
-        end
-      end,
-      Start = function (target)
+      request = function (next_scene_id, optional_args)
+        if next_scene_id == nil then return end
+        if next_scene_id == UI.CURSCENE then return end
+        if UI.Transition.active == true then return end
         if UI.Transition.timer == nil then
           UI.Transition.timer = Timer.new()
         end
         UI.Transition.active = true
         UI.Transition.phase = "out"
-        UI.Transition.target = target
-        UI.Transition.next_target = nil
+        UI.Transition.target = next_scene_id
+        UI.Transition.args = optional_args
         UI.Transition.start = Timer.getTime(UI.Transition.timer)
         UI.Transition.elapsed = 0
         UI.Transition.last_time = UI.Transition.start
@@ -1434,17 +1421,10 @@ end
             UI.Transition.last_time = now
             alpha = 128
           else
-            local queued = UI.Transition.next_target
-            if queued ~= nil and queued ~= UI.CURSCENE then
-              UI.Transition.next_target = nil
-              UI.Transition.Start(queued)
-              alpha = 0
-            else
-              UI.Transition.active = false
-              UI.Transition.target = nil
-              UI.Transition.next_target = nil
-              alpha = 0
-            end
+            UI.Transition.active = false
+            UI.Transition.target = nil
+            UI.Transition.args = nil
+            alpha = 0
           end
         end
         return alpha
