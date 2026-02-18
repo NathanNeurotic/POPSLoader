@@ -123,10 +123,46 @@ static bool ProbeDir(const char *path, int *out_ret)
 	return false;
 }
 
+static bool QueryMassDriverName(int idx, char out_driver[8])
+{
+	if (out_driver == NULL) {
+		return false;
+	}
+	if (idx < 0 || idx > 9) {
+		out_driver[0] = '\0';
+		return false;
+	}
+
+	char mass_path[16];
+	snprintf(mass_path, sizeof(mass_path), "mass%d:/", idx);
+
+	int dd = fileXioDopen(mass_path);
+	if (dd < 0) {
+		out_driver[0] = '\0';
+		return false;
+	}
+
+	char devid[8];
+	memset(devid, 0, sizeof(devid));
+
+	int *intptr_ctl = (int *)devid;
+	int rc = fileXioIoctl(dd, USBMASS_IOCTL_GET_DRIVERNAME, (void*)"");
+	*intptr_ctl = rc;
+	fileXioDclose(dd);
+
+	if (rc < 0 || devid[0] == '\0') {
+		out_driver[0] = '\0';
+		return false;
+	}
+
+	snprintf(out_driver, 8, "%s", devid);
+	return true;
+}
+
 // MX4SIO init notes:
 // - Bundle inventory (iop/embed/PS2SDK_MX4SIO): mx4sio_bd.irx.
 // - IRX load order: mx4sio_bd.irx (PS2SDK).
-// - Success condition: chosen MX4SIO prefix and <prefix>/POPS/ are accessible.
+// - Success condition: chosen MX4SIO prefix root is accessible.
 // - TODO: verify any slot or adapter placement requirements for MX4SIO in hardware docs.
 int mx4sio_init_and_get_root(const char *hint, char *out_root, size_t out_sz)
 {
@@ -137,43 +173,46 @@ int mx4sio_init_and_get_root(const char *hint, char *out_root, size_t out_sz)
 	if (!LoadIrxCheckedBuffer("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL)) {
 		return -1;
 	}
+	const char *dedicated_candidates[] = {"mx4sio:/", "mx4sio0:/"};
+	for (size_t i = 0; i < sizeof(dedicated_candidates) / sizeof(dedicated_candidates[0]); ++i) {
+		const char *prefix = dedicated_candidates[i];
+		int root_ret = -1;
+		DPRINTF("MX4SIO probe dedicated prefix %s\n", prefix);
+		bool root_ok = ProbeDir(prefix, &root_ret);
+		DPRINTF("MX4SIO probe %s ret=%d ok=%d\n", prefix, root_ret, root_ok);
+		if (root_ok) {
+			DPRINTF("Chosen MX4SIO dedicated prefix: %s\n", prefix);
+			snprintf(out_root, out_sz, "%s", prefix);
+			return 0;
+		}
+	}
 	if (hint != NULL && hint[0] != '\0') {
 		int hint_ret = -1;
 		DPRINTF("MX4SIO probe hint %s\n", hint);
 		bool hint_ok = ProbeDir(hint, &hint_ret);
 		if (hint_ok) {
-			char pops_path[32];
-			snprintf(pops_path, sizeof(pops_path), "%sPOPS/", hint);
-			int pops_ret = -1;
-			bool pops_ok = ProbeDir(pops_path, &pops_ret);
-			DPRINTF("MX4SIO probe %s ret=%d ok=%d\n", pops_path, pops_ret, pops_ok);
-			if (pops_ok) {
-				DPRINTF("Chosen MX4SIO prefix: %s\n", hint);
-				snprintf(out_root, out_sz, "%s", hint);
-				return 0;
-			}
+			DPRINTF("Chosen MX4SIO hint prefix: %s\n", hint);
+			snprintf(out_root, out_sz, "%s", hint);
+			return 0;
 		} else {
 			DPRINTF("MX4SIO probe %s ret=%d ok=%d\n", hint, hint_ret, hint_ok);
 		}
 	}
-	const char *candidates[] = {"mx4sio:/", "mx4sio0:/"};
-	for (size_t i = 0; i < sizeof(candidates) / sizeof(candidates[0]); ++i) {
-		const char *prefix = candidates[i];
-		int root_ret = -1;
-		DPRINTF("MX4SIO probe prefix %s\n", prefix);
-		bool root_ok = ProbeDir(prefix, &root_ret);
-		if (!root_ok) {
-			DPRINTF("MX4SIO probe %s ret=%d ok=%d\n", prefix, root_ret, root_ok);
+	for (int i = 0; i <= 9; ++i) {
+		char driver[8];
+		bool has_driver = QueryMassDriverName(i, driver);
+		DPRINTF("MX4SIO probe mass%d driver=%s ok=%d\n", i, has_driver ? driver : "", has_driver);
+		if (!has_driver || strcmp(driver, "sdc") != 0) {
 			continue;
 		}
-		char pops_path[32];
-		snprintf(pops_path, sizeof(pops_path), "%sPOPS/", prefix);
-		int pops_ret = -1;
-		bool pops_ok = ProbeDir(pops_path, &pops_ret);
-		DPRINTF("MX4SIO probe %s ret=%d ok=%d\n", pops_path, pops_ret, pops_ok);
-		if (pops_ok) {
-			DPRINTF("Chosen MX4SIO prefix: %s\n", prefix);
-			snprintf(out_root, out_sz, "%s", prefix);
+		char mass_prefix[16];
+		snprintf(mass_prefix, sizeof(mass_prefix), "mass%d:/", i);
+		int root_ret = -1;
+		bool root_ok = ProbeDir(mass_prefix, &root_ret);
+		DPRINTF("MX4SIO probe %s ret=%d ok=%d\n", mass_prefix, root_ret, root_ok);
+		if (root_ok) {
+			DPRINTF("Chosen MX4SIO mass prefix: %s\n", mass_prefix);
+			snprintf(out_root, out_sz, "%s", mass_prefix);
 			return 0;
 		}
 	}
@@ -987,29 +1026,12 @@ static int lua_getMassDriverName(lua_State *L)
 		return 1;
 	}
 
-	char mass_path[16];
-	snprintf(mass_path, sizeof(mass_path), "mass%d:/", idx);
-
-	int dd = fileXioDopen(mass_path);
-	if (dd < 0) {
+	char driver[8];
+	if (!QueryMassDriverName(idx, driver)) {
 		lua_pushnil(L);
 		return 1;
 	}
-
-	char devid[8];
-	memset(devid, 0, sizeof(devid));
-
-	int *intptr_ctl = (int *)devid;
-	int rc = fileXioIoctl(dd, USBMASS_IOCTL_GET_DRIVERNAME, (void*)"");
-	*intptr_ctl = rc;
-	fileXioDclose(dd);
-
-	if (rc < 0 || devid[0] == '\0') {
-		lua_pushnil(L);
-		return 1;
-	}
-
-	lua_pushstring(L, devid);
+	lua_pushstring(L, driver);
 	return 1;
 }
 

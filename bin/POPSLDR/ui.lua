@@ -2351,19 +2351,53 @@ function UI.RefreshMassDevicePage(device_kind)
   end
 
   PLDR.CleanupGameList()
-  local slots = PLDR.EnumerateMassSlots(9) or {}
-  local routed = PLDR.RouteMassSlotsForPage(device_kind, slots) or {}
-  local target = routed[1]
 
-  if target == nil then
-    if device_kind == "MX4SIO" then
+  if device_kind == "MX4SIO" then
+    local hint = nil
+    if PLDR.MX4SIO ~= nil then
+      hint = PLDR.MX4SIO.PREFIX_HINT
+    end
+    local ok, ready, root = pcall(System.initMX4SIO, hint)
+    if not ok then
       if PLDR.MX4SIO ~= nil then
         PLDR.MX4SIO.READY = false
         PLDR.MX4SIO.MASSINDX = nil
         PLDR.MX4SIO.ROOT = nil
       end
-      UI.Notif_queue.add("No MX4SIO slot routed for MX4SIO page")
-    else
+      UI.Notif_queue.add("MX4SIO init failed (searched mass0..mass9)")
+      return false
+    end
+    if not ready or type(root) ~= "string" or root == "" then
+      if PLDR.MX4SIO ~= nil then
+        PLDR.MX4SIO.READY = false
+        PLDR.MX4SIO.MASSINDX = nil
+        PLDR.MX4SIO.ROOT = nil
+      end
+      UI.Notif_queue.add("MX4SIO not detected (searched mass0..mass9)")
+      return false
+    end
+
+    local mass_idx = string.match(root, "^mass(%d+):/?$")
+    if mass_idx ~= nil then
+      mass_idx = tonumber(mass_idx)
+    end
+
+    if PLDR.MX4SIO ~= nil then
+      PLDR.MX4SIO.READY = true
+      PLDR.MX4SIO.MASSINDX = mass_idx
+      PLDR.MX4SIO.ROOT = root
+    end
+    PLDR.GetPS1GameLists(root.."POPS/", true)
+    UI.GameList.Reset()
+    return true
+  end
+
+  local slots = PLDR.EnumerateMassSlots(9) or {}
+  local routed = PLDR.RouteMassSlotsForPage(device_kind, slots) or {}
+  local target = routed[1]
+
+  if target == nil then
+    if device_kind ~= "MX4SIO" then
       if PLDR.USB ~= nil then
         PLDR.USB.MASSINDX = nil
         PLDR.USB.ROOT = "mass:/"
@@ -2373,20 +2407,11 @@ function UI.RefreshMassDevicePage(device_kind)
     return false
   end
 
-  if device_kind == "MX4SIO" then
-    if PLDR.MX4SIO ~= nil then
-      PLDR.MX4SIO.READY = true
-      PLDR.MX4SIO.MASSINDX = target.source_slot
-      PLDR.MX4SIO.ROOT = target.source_prefix
-    end
-    PLDR.GetPS1GameLists(target.source_prefix.."POPS/", true)
-  else
-    if PLDR.USB ~= nil then
-      PLDR.USB.MASSINDX = target.source_slot
-      PLDR.USB.ROOT = target.source_prefix
-    end
-    PLDR.GetPS1GameLists(target.source_prefix.."POPS/", true)
+  if PLDR.USB ~= nil then
+    PLDR.USB.MASSINDX = target.source_slot
+    PLDR.USB.ROOT = target.source_prefix
   end
+  PLDR.GetPS1GameLists(target.source_prefix.."POPS/", true)
 
   UI.GameList.Reset()
   return true
