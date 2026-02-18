@@ -206,7 +206,8 @@ PLDR = {
     GAMEPARTS = {}
   };
   USB = {
-    MASSINDX = 0
+    MASSINDX = 0,
+    ROOT = "mass:/"
   },
   MX4SIO = {
     READY = false,
@@ -296,6 +297,42 @@ function PLDR.EnumerateMassSlots(max_index)
   end
 
   return slots
+end
+
+-- Route classified mass slots to a specific device page.
+-- Only USB/MX4SIO are eligible targets; UNKNOWN/OTHER and all non-target kinds are dropped.
+function PLDR.RouteMassSlotsForPage(device_page, classified_slots)
+  local page = type(device_page) == "string" and string.upper(device_page) or ""
+  local target_kind = nil
+  if page == "USB" then
+    target_kind = "USB"
+  elseif page == "MX4SIO" then
+    target_kind = "MX4SIO"
+  else
+    return {}
+  end
+
+  local slots = classified_slots
+  if type(slots) ~= "table" then
+    slots = PLDR.EnumerateMassSlots(9) or {}
+  end
+
+  local routed = {}
+  for i = 1, #slots do
+    local slot = slots[i]
+    if slot ~= nil and slot.kind == target_kind and slot.present == true then
+      routed[#routed + 1] = {
+        index = slot.index,
+        driver = slot.driver,
+        kind = slot.kind,
+        present = slot.present,
+        prefix = slot.prefix,
+        source_slot = slot.index,
+        source_prefix = slot.prefix
+      }
+    end
+  end
+  return routed
 end
 
 
@@ -1161,19 +1198,29 @@ local function SelectPopstarterSelectorPrefix(device_page)
   return "XX."
 end
 
-local function BuildPopstarterSelectorPath(device_page, game_name)
+local function BuildPopstarterSelectorPath(device_page, game_name, routed_gamelocation)
   if game_name == nil or game_name == "" then
     return ""
   end
   if device_page == "HDD" then
     return "hdd0:__.POPS/"..game_name..".ELF"
   end
-  if device_page == "USB" or device_page == "MMCE" or device_page == "SMB/MMCE" then
+  if device_page == "USB" then
+    local root = routed_gamelocation
+    if type(root) ~= "string" or not string.match(root, "^mass%d*:/") then
+      root = PLDR and PLDR.USB and PLDR.USB.ROOT or "mass:/"
+    end
+    return EnsureTrailingSlash(root).."POPS/XX."..game_name..".ELF"
+  end
+  if device_page == "MMCE" or device_page == "SMB/MMCE" then
     return "mass:/POPS/XX."..game_name..".ELF"
   end
   if device_page == "MX4SIO" then
-    local root = PLDR and PLDR.MX4SIO and PLDR.MX4SIO.ROOT or "mx4sio:/"
-    return root.."POPS/XX."..game_name..".ELF"
+    local root = routed_gamelocation
+    if type(root) ~= "string" or not string.match(root, "^mx4sio%d*:/") then
+      root = PLDR and PLDR.MX4SIO and PLDR.MX4SIO.ROOT or "mx4sio:/"
+    end
+    return EnsureTrailingSlash(root).."POPS/XX."..game_name..".ELF"
   end
   return game_name..".ELF"
 end
@@ -1583,17 +1630,26 @@ end
 
 local function ResolveLaunchPolicy(gamelocation, ui_scene)
   local current_scene = ui_scene or (UI and UI.CURSCENE or "unknown")
+  local game_prefix = GetDevicePrefix(gamelocation)
+  local usb_root = PLDR and PLDR.USB and PLDR.USB.ROOT or "mass:/"
+  local usb_device = (game_prefix ~= nil and string.match(game_prefix, "^mass%d*$") and game_prefix)
+    or string.match(usb_root, "^([%a]+%d*)")
+    or "mass"
+  local mx4sio_root = PLDR and PLDR.MX4SIO and PLDR.MX4SIO.ROOT or "mx4sio:/"
+  local mx4sio_device = (game_prefix ~= nil and string.match(game_prefix, "^mx4sio%d*$") and game_prefix)
+    or string.match(mx4sio_root, "^([%a]+%d*)")
+    or "mx4sio"
   if current_scene == UI.SCENES.GHDD then
     return BuildLaunchPolicy("HDD", "pfs", "pfs", nil), "HDD"
   end
   if current_scene == UI.SCENES.GMX4SIO then
-    return BuildLaunchPolicy("MX4SIO", "mx4sio", "mx4sio", nil), "MX4SIO"
+    return BuildLaunchPolicy("MX4SIO", "mx4sio", mx4sio_device, nil), "MX4SIO"
   end
   if string.match(gamelocation, "^mx4sio") then
-    return BuildLaunchPolicy("MX4SIO", "mx4sio", "mx4sio", nil), "MX4SIO"
+    return BuildLaunchPolicy("MX4SIO", "mx4sio", mx4sio_device, nil), "MX4SIO"
   end
   if string.match(gamelocation, "^mass") then
-    return BuildLaunchPolicy("USB", "mass", "mass", nil), "USB"
+    return BuildLaunchPolicy("USB", "mass", usb_device, nil), "USB"
   end
   if string.match(gamelocation, "^mmce") then
     local mmce_prefix = PLDR.MMCE.PREFIX or "mmce0:/"
@@ -1605,14 +1661,14 @@ local function ResolveLaunchPolicy(gamelocation, ui_scene)
     return BuildLaunchPolicy("HDD", prefix, prefix, nil), "HDD"
   end
   if UI.IsUsbScene(current_scene) then
-    return BuildLaunchPolicy("USB", "mass", "mass", nil), "USB"
+    return BuildLaunchPolicy("USB", "mass", usb_device, nil), "USB"
   end
   if current_scene == UI.SCENES.GSMB then
     local mmce_prefix = PLDR.MMCE.PREFIX or "mmce0:/"
     local mmce_device = string.match(mmce_prefix, "^([%a]+%d*)") or "mmce0"
     return BuildLaunchPolicy("MMCE", "mass", mmce_device, TranslateMMCEPathForPopStarter), "SMB/MMCE"
   end
-  return BuildLaunchPolicy("unknown", "mass", "mass", nil), "unknown"
+  return BuildLaunchPolicy("unknown", "mass", usb_device, nil), "unknown"
 end
 
 function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
@@ -1658,6 +1714,10 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     pops_root = "smb:/POPS/"
     boot_source_mode = "smb"
     device_mode = "smb"
+  elseif string.match(normalized_gamelocation, "^mass%d*:/") then
+    pops_root = normalized_gamelocation
+    boot_source_mode = "mass"
+    device_mode = normalized_gamelocation
   else
     pops_root = "mass:/POPS/"
     boot_source_mode = "mass"
@@ -1721,7 +1781,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     return
   end
   local selector_prefix = SelectPopstarterSelectorPrefix(device_page)
-  local argv0_selector = BuildPopstarterSelectorPath(device_page, game_name)
+  local argv0_selector = BuildPopstarterSelectorPath(device_page, game_name, normalized_gamelocation)
   if policy.name == "HDD" then
     local display_name = BuildDisplayNameFromEntry(game)
     argv0_selector = BuildLiteralElfName(display_name)
