@@ -290,9 +290,7 @@ UI = {
       end
     end;
     SceneChange = function (SCENE, args)
-      if UI.Transition ~= nil and UI.Transition.request ~= nil then
-        UI.Transition.request(SCENE, args)
-      end
+      UI.RequestScene(SCENE, args)
     end;
     UpdateVmode = function ()
       Screen.setMode(UI.SCR.VMODE, UI.SCR.X, UI.SCR.Y, CT24, INTERLACED, FIELD)
@@ -2401,7 +2399,7 @@ do
     })
   end
   UI._CURSCENE = UI.CURSCENE
-  UI.CURSCENE = nil
+  rawset(UI, "_CURSCENE", nil)
   setmetatable(UI, {
     __index = function (t, key)
       if key == "CURSCENE" then
