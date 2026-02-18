@@ -1,12 +1,25 @@
-local function ensure_dir(path)
-  if path == nil or path == "" then return "./" end
-  if string.sub(path, -1) ~= "/" then
-    return path.."/"
+local function normalize_path(path)
+  if path == nil then
+    return nil
   end
-  return path
+  local normalized = tostring(path)
+  normalized = string.gsub(normalized, "\\", "/")
+  normalized = string.gsub(normalized, "([%a%d_]+)::+", "%1:")
+  normalized = string.gsub(normalized, "//+", "/")
+  return normalized
+end
+
+local function ensure_dir(path)
+  local normalized = normalize_path(path)
+  if normalized == nil or normalized == "" then return "./" end
+  if string.sub(normalized, -1) ~= "/" then
+    return normalized.."/"
+  end
+  return normalized
 end
 
 local function dirname(p)
+  p = normalize_path(p)
   if p == nil or p == "" then
     return nil
   end
@@ -37,13 +50,13 @@ local function dir_exists(path)
   return doesFolderExist(ensure_dir(path)) == true
 end
 
-local ARGV0 = System.GetArgv0()
+local ARGV0 = normalize_path(System.GetArgv0())
 local BASE_DIR = dirname(ARGV0)
 if BASE_DIR == nil or BASE_DIR == "" or not dir_exists(BASE_DIR) then
-  BASE_DIR = APP_DIR or System.currentDirectory()
+  BASE_DIR = normalize_path(APP_DIR) or normalize_path(System.currentDirectory())
 end
 if BASE_DIR == nil or BASE_DIR == "" or not dir_exists(BASE_DIR) then
-  BASE_DIR = System.currentDirectory()
+  BASE_DIR = normalize_path(System.currentDirectory())
 end
 BASE_DIR = ensure_dir(BASE_DIR)
 System.currentDirectory(BASE_DIR)
@@ -187,7 +200,7 @@ function RunScript(S)
   end
 end
 
-local APP_DIR_NORM = ensure_dir(APP_DIR)
+local APP_DIR_NORM = ensure_dir(normalize_path(APP_DIR))
 local BASE_PARENT = parent_dir(BASE_DIR)
 local SYS_CANDIDATES = {
   "system.lua",
@@ -206,7 +219,7 @@ end
 
 local SYS = nil
 for i = 1, #SYS_CANDIDATES do
-  local candidate = SYS_CANDIDATES[i]
+  local candidate = normalize_path(SYS_CANDIDATES[i])
   SYS = System.resolveAsset(candidate)
   if SYS ~= nil then
     break
