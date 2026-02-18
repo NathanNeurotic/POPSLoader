@@ -400,9 +400,9 @@ UI = {
         MENU_FADE_IN = 7,
         DONE = 8
       };
-      SPLASH_HOLD_MS = 5000;
-      CREDITS_HOLD_MS = 9000;
-      BOOT_FADE_MS = 1200;
+      SPLASH_HOLD_MS = 3000;
+      CREDITS_HOLD_MS = 5000;
+      BOOT_FADE_MS = 1800;
       DrawSplash = function ()
         if IMG.PSL == nil then return end
         local img_w = Graphics.getImageWidth(IMG.PSL)
