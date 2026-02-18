@@ -47,23 +47,25 @@ local function TimerMsToTicks(ms)
   end
   return value
 end
-local function ms_to_us(ms)
-  local value = tonumber(ms) or 0
-  if value <= 0 then return 0 end
-  return value * 1000
-end
-local now_us_fallback_timer = nil
-local function now_us()
-  if type(Timer) == "table" and type(Timer.getTimeUS) == "function" then
-    local ok, t = pcall(Timer.getTimeUS)
+local now_ms_fallback_timer = nil
+local function now_ms()
+  if type(Timer) == "table" and type(Timer.getTimeMS) == "function" then
+    local ok, t = pcall(Timer.getTimeMS)
     if ok and type(t) == "number" then
-      return t
+      return math.floor(t)
     end
   end
-  if now_us_fallback_timer == nil then
-    now_us_fallback_timer = Timer.new()
+  if now_ms_fallback_timer == nil and type(Timer) == "table" and type(Timer.new) == "function" then
+    now_ms_fallback_timer = Timer.new()
   end
-  return Timer.getTime(now_us_fallback_timer)
+  if now_ms_fallback_timer ~= nil and type(Timer.getTime) == "function" and type(Timer.getClockPerSec) == "function" then
+    local ticks = Timer.getTime(now_ms_fallback_timer)
+    local ok, cps = pcall(Timer.getClockPerSec)
+    if ok and type(cps) == "number" and cps > 0 then
+      return math.floor((ticks * 1000) / cps)
+    end
+  end
+  return 0
 end
 UI = {
     LASTSCENE = 5;
@@ -478,75 +480,80 @@ UI = {
         end
       end;
       Play = function ()
-        local state = UI.BootIntro.STATES.SPLASH_HOLD
-        local state_start_us = 0
-        local duration_us = 0
+        local intro = {
+          state = UI.BootIntro.STATES.SPLASH_HOLD,
+          state_start_ms = 0,
+          state_duration_ms = 0
+        }
         local boot_sound = UI.BootIntro.StartBootSound()
 
-        local function state_duration_us(curr)
-          if curr == UI.BootIntro.STATES.SPLASH_HOLD then return ms_to_us(UI.BootIntro.SPLASH_HOLD_MS) end
-          if curr == UI.BootIntro.STATES.SPLASH_FADE_OUT then return ms_to_us(UI.BootIntro.BOOT_FADE_MS) end
-          if curr == UI.BootIntro.STATES.CREDITS_FADE_IN then return ms_to_us(UI.BootIntro.BOOT_FADE_MS) end
-          if curr == UI.BootIntro.STATES.CREDITS_HOLD then return ms_to_us(UI.BootIntro.CREDITS_HOLD_MS) end
-          if curr == UI.BootIntro.STATES.CREDITS_FADE_OUT then return ms_to_us(UI.BootIntro.BOOT_FADE_MS) end
-          if curr == UI.BootIntro.STATES.MENU_FADE_IN then return ms_to_us(UI.BootIntro.BOOT_FADE_MS) end
+        local function state_duration_ms(curr)
+          if curr == UI.BootIntro.STATES.SPLASH_HOLD then return 3000 end
+          if curr == UI.BootIntro.STATES.SPLASH_FADE_OUT then return UI.BootIntro.BOOT_FADE_MS end
+          if curr == UI.BootIntro.STATES.CREDITS_FADE_IN then return UI.BootIntro.BOOT_FADE_MS end
+          if curr == UI.BootIntro.STATES.CREDITS_HOLD then return 4000 end
+          if curr == UI.BootIntro.STATES.CREDITS_FADE_OUT then return UI.BootIntro.BOOT_FADE_MS end
+          if curr == UI.BootIntro.STATES.MENU_FADE_IN then return UI.BootIntro.BOOT_FADE_MS end
           return 0
         end
 
-        local function set_state(next_state, at_us)
-          state = next_state
-          state_start_us = at_us
-          duration_us = state_duration_us(next_state)
+        local function next_state(curr)
+          if curr == UI.BootIntro.STATES.SPLASH_HOLD then return UI.BootIntro.STATES.SPLASH_FADE_OUT end
+          if curr == UI.BootIntro.STATES.SPLASH_FADE_OUT then return UI.BootIntro.STATES.CREDITS_FADE_IN end
+          if curr == UI.BootIntro.STATES.CREDITS_FADE_IN then return UI.BootIntro.STATES.CREDITS_HOLD end
+          if curr == UI.BootIntro.STATES.CREDITS_HOLD then return UI.BootIntro.STATES.CREDITS_FADE_OUT end
+          if curr == UI.BootIntro.STATES.CREDITS_FADE_OUT then return UI.BootIntro.STATES.MENU_FADE_IN end
+          if curr == UI.BootIntro.STATES.MENU_FADE_IN then return UI.BootIntro.STATES.DONE end
+          return UI.BootIntro.STATES.DONE
         end
 
-        set_state(UI.BootIntro.STATES.SPLASH_HOLD, now_us())
+        local function IntroEnter(state)
+          intro.state = state
+          intro.state_start_ms = now_ms()
+          intro.state_duration_ms = state_duration_ms(state)
+        end
 
-        while state ~= UI.BootIntro.STATES.DONE do
-          local frame_now_us = now_us()
-          local elapsed_us = frame_now_us - state_start_us
-          local progress = 1
-          if duration_us > 0 then
-            progress = Clamp01(elapsed_us / duration_us)
+        local function IntroProgress(elapsed_ms)
+          if intro.state_duration_ms <= 0 then
+            return 1
+          end
+          return Clamp01(elapsed_ms / intro.state_duration_ms)
+        end
+
+        IntroEnter(UI.BootIntro.STATES.SPLASH_HOLD)
+
+        while intro.state ~= UI.BootIntro.STATES.DONE do
+          local frame_now_ms = now_ms()
+          local elapsed_ms = frame_now_ms - intro.state_start_ms
+
+          if intro.state_duration_ms > 0 and elapsed_ms >= intro.state_duration_ms then
+            IntroEnter(next_state(intro.state))
+            elapsed_ms = 0
           end
 
-          if state == UI.BootIntro.STATES.SPLASH_HOLD or state == UI.BootIntro.STATES.SPLASH_FADE_OUT then
+          local progress = IntroProgress(elapsed_ms)
+
+          if intro.state == UI.BootIntro.STATES.SPLASH_HOLD or intro.state == UI.BootIntro.STATES.SPLASH_FADE_OUT then
             Screen.clear(Color.new(0, 0, 0))
             UI.BootIntro.DrawSplash()
-          elseif state == UI.BootIntro.STATES.CREDITS_FADE_IN or state == UI.BootIntro.STATES.CREDITS_HOLD or state == UI.BootIntro.STATES.CREDITS_FADE_OUT then
+          elseif intro.state == UI.BootIntro.STATES.CREDITS_FADE_IN or intro.state == UI.BootIntro.STATES.CREDITS_HOLD or intro.state == UI.BootIntro.STATES.CREDITS_FADE_OUT then
             UI.BottomDraw.Play()
             UI.Credits.DrawOnly()
-          elseif state == UI.BootIntro.STATES.MENU_FADE_IN then
+          elseif intro.state == UI.BootIntro.STATES.MENU_FADE_IN then
             UI.BottomDraw.Play()
             UI.MainMenu.DrawOnly()
           end
 
           local overlay_alpha = 0
-          if state == UI.BootIntro.STATES.SPLASH_FADE_OUT then
+          if intro.state == UI.BootIntro.STATES.SPLASH_FADE_OUT then
             overlay_alpha = Round(255 * progress)
-          elseif state == UI.BootIntro.STATES.CREDITS_FADE_IN or state == UI.BootIntro.STATES.MENU_FADE_IN then
+          elseif intro.state == UI.BootIntro.STATES.CREDITS_FADE_IN or intro.state == UI.BootIntro.STATES.MENU_FADE_IN then
             overlay_alpha = Round(255 * (1 - progress))
-          elseif state == UI.BootIntro.STATES.CREDITS_FADE_OUT then
+          elseif intro.state == UI.BootIntro.STATES.CREDITS_FADE_OUT then
             overlay_alpha = Round(255 * progress)
           end
           UI.BootIntro.DrawBlackOverlay(overlay_alpha)
-
           Screen.flip()
-
-          if progress >= 1 then
-            if state == UI.BootIntro.STATES.SPLASH_HOLD then
-              set_state(UI.BootIntro.STATES.SPLASH_FADE_OUT, frame_now_us)
-            elseif state == UI.BootIntro.STATES.SPLASH_FADE_OUT then
-              set_state(UI.BootIntro.STATES.CREDITS_FADE_IN, frame_now_us)
-            elseif state == UI.BootIntro.STATES.CREDITS_FADE_IN then
-              set_state(UI.BootIntro.STATES.CREDITS_HOLD, frame_now_us)
-            elseif state == UI.BootIntro.STATES.CREDITS_HOLD then
-              set_state(UI.BootIntro.STATES.CREDITS_FADE_OUT, frame_now_us)
-            elseif state == UI.BootIntro.STATES.CREDITS_FADE_OUT then
-              set_state(UI.BootIntro.STATES.MENU_FADE_IN, frame_now_us)
-            elseif state == UI.BootIntro.STATES.MENU_FADE_IN then
-              set_state(UI.BootIntro.STATES.DONE, frame_now_us)
-            end
-          end
         end
 
         if boot_sound ~= nil and type(Sound) == "table" and type(Sound.freeADPCM) == "function" then

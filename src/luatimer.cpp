@@ -24,9 +24,15 @@ static inline uint64_t timer_now_ticks()
 	return GetTimerSystemTime();
 }
 
-static inline uint64_t now_us()
+static inline uint64_t timer_now_us()
 {
-	return GetTimerSystemTime();
+	const uint64_t ticks = GetTimerSystemTime();
+	return (ticks * 1000000ULL) / TIMER_TICKS_PER_SEC;
+}
+
+static inline uint64_t timer_now_ms()
+{
+	return timer_now_us() / 1000ULL;
 }
 
 static int lua_newT(lua_State *L) {
@@ -129,7 +135,14 @@ static int lua_clockPerSec(lua_State *L) {
 static int lua_nowUS(lua_State *L) {
 	int argc = lua_gettop(L);
 	if (argc != 0) return luaL_error(L, "wrong number of arguments");
-	lua_pushnumber(L, (lua_Number)now_us());
+	lua_pushnumber(L, (lua_Number)timer_now_us());
+	return 1;
+}
+
+static int lua_nowMS(lua_State *L) {
+	int argc = lua_gettop(L);
+	if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	lua_pushnumber(L, (lua_Number)timer_now_ms());
 	return 1;
 }
 
@@ -149,6 +162,7 @@ static const luaL_Reg Timer_functions[] = {
   {"new",        		  lua_newT},
   {"getTime",    		  lua_time},
   {"getTimeUS", 		  lua_nowUS},
+  {"getTimeMS", 		  lua_nowMS},
   {"getClockPerSec",      lua_clockPerSec},
   {"setTime",    		   lua_set},
   {"destroy",    	   lua_destroy},
