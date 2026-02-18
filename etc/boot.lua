@@ -6,8 +6,26 @@ local function ensure_dir(path)
   return path
 end
 
-local BASE_DIR = ensure_dir(APP_DIR or System.currentDirectory())
-package.path = BASE_DIR.."?.lua;"..BASE_DIR.."?/init.lua;"..BASE_DIR.."POPSLDR/?.lua;./?.lua;./POPSLDR/?.lua;mass:/POPSLDR/?.lua;mc0:/POPSLDR/?.lua;mc1:/POPSLDR/?.lua"
+local function dirname(p)
+  if p == nil or p == "" then
+    return nil
+  end
+  local dir = string.match(p, "^(.*)/[^/]*$")
+  if dir == nil or dir == "" then
+    return nil
+  end
+  return dir
+end
+
+local ARGV0 = System.GetArgv0()
+local BASE_DIR = dirname(ARGV0)
+if BASE_DIR == nil or BASE_DIR == "" then
+  BASE_DIR = APP_DIR or System.currentDirectory()
+end
+BASE_DIR = ensure_dir(BASE_DIR)
+System.currentDirectory(BASE_DIR)
+
+package.path = BASE_DIR.."?.lua;"..BASE_DIR.."?/init.lua;"..BASE_DIR.."POPSLDR/?.lua;./?.lua;./?/init.lua;./POPSLDR/?.lua"
 function LOG(...)
   print_uart(...)
 end
@@ -50,7 +68,6 @@ function GetMountData(PATH)
 end
 
 
-local ARGV0 = System.GetArgv0()
 if string.find(ARGV0, "^hdd0:") then
   LOG("Booting from HDD!", ARGV0)
   local MNTPART
@@ -64,7 +81,9 @@ if string.find(ARGV0, "^hdd0:") then
       System.sleep(2) -- lets give it time to get ready
       if HDD.MountPartition(MNTPART, 1) then -- mount to "pfs1:" and NEVER USE IT FOR ANYTHING ELSE
         BOOTPATH, _, _ = string.match(BOOTPATH, "(.-)([^/]-([^%.]+))$")
+        BOOTPATH = string.gsub(BOOTPATH, "^pfs:/", "pfs1:/")
         System.currentDirectory(BOOTPATH)
+        BASE_DIR = ensure_dir(BOOTPATH)
         LOGF("new bootpath: '%s'\n", BOOTPATH)
       end
     end
@@ -126,8 +145,11 @@ function RunScript(S)
 end
 
 local SYS = System.resolveAsset("system.lua")
+if SYS == nil then
+  SYS = System.resolveAsset("POPSLDR/system.lua")
+end
 if SYS ~= nil then
-	RunScript(SYS);
+  RunScript(SYS)
 else
-  error("Cant access POPSLDR/system.lua\n\n\tcurrent_bootpath: "..System.currentDirectory())
+  error("Cant access system.lua (flat) or POPSLDR/system.lua (fallback)\n\n\targv0: "..tostring(ARGV0).."\n\tcwd: "..tostring(System.currentDirectory()))
 end
