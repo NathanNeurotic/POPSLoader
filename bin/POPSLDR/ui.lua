@@ -47,6 +47,24 @@ local function TimerMsToTicks(ms)
   end
   return value
 end
+local function ms_to_us(ms)
+  local value = tonumber(ms) or 0
+  if value <= 0 then return 0 end
+  return value * 1000
+end
+local now_us_fallback_timer = nil
+local function now_us()
+  if type(Timer) == "table" and type(Timer.getTimeUS) == "function" then
+    local ok, t = pcall(Timer.getTimeUS)
+    if ok and type(t) == "number" then
+      return t
+    end
+  end
+  if now_us_fallback_timer == nil then
+    now_us_fallback_timer = Timer.new()
+  end
+  return Timer.getTime(now_us_fallback_timer)
+end
 UI = {
     LASTSCENE = 5;
     SCENES = {
@@ -453,31 +471,42 @@ UI = {
         end)
         return audio
       end;
+      DrawBlackOverlay = function (alpha)
+        local a = Clamp(Round(alpha or 0), 0, 255)
+        if a > 0 then
+          Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, a))
+        end
+      end;
       Play = function ()
         local state = UI.BootIntro.STATES.SPLASH_HOLD
-        local state_start_ticks = 0
-        local timer = Timer.new()
+        local state_start_us = 0
+        local duration_us = 0
         local boot_sound = UI.BootIntro.StartBootSound()
-        local function set_state(next_state, now_ticks)
-          state = next_state
-          state_start_ticks = now_ticks
-        end
-        local function get_duration_ticks(curr)
-          if curr == UI.BootIntro.STATES.SPLASH_HOLD then return TimerMsToTicks(UI.BootIntro.SPLASH_HOLD_MS) end
-          if curr == UI.BootIntro.STATES.SPLASH_FADE_OUT then return TimerMsToTicks(UI.BootIntro.BOOT_FADE_MS) end
-          if curr == UI.BootIntro.STATES.CREDITS_FADE_IN then return TimerMsToTicks(UI.BootIntro.BOOT_FADE_MS) end
-          if curr == UI.BootIntro.STATES.CREDITS_HOLD then return TimerMsToTicks(UI.BootIntro.CREDITS_HOLD_MS) end
-          if curr == UI.BootIntro.STATES.CREDITS_FADE_OUT then return TimerMsToTicks(UI.BootIntro.BOOT_FADE_MS) end
-          if curr == UI.BootIntro.STATES.MENU_FADE_IN then return TimerMsToTicks(UI.BootIntro.BOOT_FADE_MS) end
+
+        local function state_duration_us(curr)
+          if curr == UI.BootIntro.STATES.SPLASH_HOLD then return ms_to_us(UI.BootIntro.SPLASH_HOLD_MS) end
+          if curr == UI.BootIntro.STATES.SPLASH_FADE_OUT then return ms_to_us(UI.BootIntro.BOOT_FADE_MS) end
+          if curr == UI.BootIntro.STATES.CREDITS_FADE_IN then return ms_to_us(UI.BootIntro.BOOT_FADE_MS) end
+          if curr == UI.BootIntro.STATES.CREDITS_HOLD then return ms_to_us(UI.BootIntro.CREDITS_HOLD_MS) end
+          if curr == UI.BootIntro.STATES.CREDITS_FADE_OUT then return ms_to_us(UI.BootIntro.BOOT_FADE_MS) end
+          if curr == UI.BootIntro.STATES.MENU_FADE_IN then return ms_to_us(UI.BootIntro.BOOT_FADE_MS) end
           return 0
         end
-        set_state(UI.BootIntro.STATES.SPLASH_HOLD, Timer.getTime(timer))
+
+        local function set_state(next_state, at_us)
+          state = next_state
+          state_start_us = at_us
+          duration_us = state_duration_us(next_state)
+        end
+
+        set_state(UI.BootIntro.STATES.SPLASH_HOLD, now_us())
+
         while state ~= UI.BootIntro.STATES.DONE do
-          local now_ticks = Timer.getTime(timer)
-          local duration_ticks = get_duration_ticks(state)
+          local frame_now_us = now_us()
+          local elapsed_us = frame_now_us - state_start_us
           local progress = 1
-          if duration_ticks > 0 then
-            progress = Clamp01((now_ticks - state_start_ticks) / duration_ticks)
+          if duration_us > 0 then
+            progress = Clamp01(elapsed_us / duration_us)
           end
 
           if state == UI.BootIntro.STATES.SPLASH_HOLD or state == UI.BootIntro.STATES.SPLASH_FADE_OUT then
@@ -493,33 +522,33 @@ UI = {
 
           local overlay_alpha = 0
           if state == UI.BootIntro.STATES.SPLASH_FADE_OUT then
-            overlay_alpha = Round(128 * progress)
+            overlay_alpha = Round(255 * progress)
           elseif state == UI.BootIntro.STATES.CREDITS_FADE_IN or state == UI.BootIntro.STATES.MENU_FADE_IN then
-            overlay_alpha = Round(128 * (1 - progress))
+            overlay_alpha = Round(255 * (1 - progress))
           elseif state == UI.BootIntro.STATES.CREDITS_FADE_OUT then
-            overlay_alpha = Round(128 * progress)
+            overlay_alpha = Round(255 * progress)
           end
-          if overlay_alpha > 0 then
-            Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, overlay_alpha))
-          end
+          UI.BootIntro.DrawBlackOverlay(overlay_alpha)
+
           Screen.flip()
 
           if progress >= 1 then
             if state == UI.BootIntro.STATES.SPLASH_HOLD then
-              set_state(UI.BootIntro.STATES.SPLASH_FADE_OUT, now_ticks)
+              set_state(UI.BootIntro.STATES.SPLASH_FADE_OUT, frame_now_us)
             elseif state == UI.BootIntro.STATES.SPLASH_FADE_OUT then
-              set_state(UI.BootIntro.STATES.CREDITS_FADE_IN, now_ticks)
+              set_state(UI.BootIntro.STATES.CREDITS_FADE_IN, frame_now_us)
             elseif state == UI.BootIntro.STATES.CREDITS_FADE_IN then
-              set_state(UI.BootIntro.STATES.CREDITS_HOLD, now_ticks)
+              set_state(UI.BootIntro.STATES.CREDITS_HOLD, frame_now_us)
             elseif state == UI.BootIntro.STATES.CREDITS_HOLD then
-              set_state(UI.BootIntro.STATES.CREDITS_FADE_OUT, now_ticks)
+              set_state(UI.BootIntro.STATES.CREDITS_FADE_OUT, frame_now_us)
             elseif state == UI.BootIntro.STATES.CREDITS_FADE_OUT then
-              set_state(UI.BootIntro.STATES.MENU_FADE_IN, now_ticks)
+              set_state(UI.BootIntro.STATES.MENU_FADE_IN, frame_now_us)
             elseif state == UI.BootIntro.STATES.MENU_FADE_IN then
-              set_state(UI.BootIntro.STATES.DONE, now_ticks)
+              set_state(UI.BootIntro.STATES.DONE, frame_now_us)
             end
           end
         end
+
         if boot_sound ~= nil and type(Sound) == "table" and type(Sound.freeADPCM) == "function" then
           pcall(Sound.freeADPCM, boot_sound)
         end
