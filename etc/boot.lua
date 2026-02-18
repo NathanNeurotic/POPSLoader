@@ -17,6 +17,19 @@ local function dirname(p)
   return dir
 end
 
+local function parent_dir(path)
+  local dir = ensure_dir(path)
+  if dir == nil or dir == "" then
+    return nil
+  end
+  local trimmed = string.gsub(dir, "/+$", "")
+  local parent = string.match(trimmed, "^(.*)/[^/]*$")
+  if parent == nil or parent == "" then
+    return nil
+  end
+  return ensure_dir(parent)
+end
+
 local function dir_exists(path)
   if path == nil or path == "" then
     return false
@@ -174,15 +187,30 @@ function RunScript(S)
   end
 end
 
-local SYS = System.resolveAsset("system.lua")
-if SYS == nil then
-  SYS = System.resolveAsset("POPSLDR/system.lua")
+local APP_DIR_NORM = ensure_dir(APP_DIR)
+local BASE_PARENT = parent_dir(BASE_DIR)
+local SYS_CANDIDATES = {
+  "system.lua",
+  "POPSLDR/system.lua",
+  BASE_DIR.."system.lua",
+  BASE_DIR.."POPSLDR/system.lua"
+}
+if APP_DIR_NORM ~= nil then
+  table.insert(SYS_CANDIDATES, APP_DIR_NORM.."system.lua")
+  table.insert(SYS_CANDIDATES, APP_DIR_NORM.."POPSLDR/system.lua")
 end
-if SYS == nil then
-  SYS = System.resolveAsset(BASE_DIR.."system.lua")
+if BASE_PARENT ~= nil then
+  table.insert(SYS_CANDIDATES, BASE_PARENT.."system.lua")
+  table.insert(SYS_CANDIDATES, BASE_PARENT.."POPSLDR/system.lua")
 end
-if SYS == nil then
-  SYS = System.resolveAsset(BASE_DIR.."POPSLDR/system.lua")
+
+local SYS = nil
+for i = 1, #SYS_CANDIDATES do
+  local candidate = SYS_CANDIDATES[i]
+  SYS = System.resolveAsset(candidate)
+  if SYS ~= nil then
+    break
+  end
 end
 if SYS ~= nil then
   RunScript(SYS)
