@@ -30,6 +30,10 @@ local function EaseInOutCubic(t)
   local f = -2 * t + 2
   return 1 - (f * f * f) / 2
 end
+
+local TRANSITION_OUT_MS = 350
+local TRANSITION_IN_MS = 350
+
 local function GuardTrace()
   if debug ~= nil and debug.traceback ~= nil then
     return debug.traceback("TRACE", 2)
@@ -1362,8 +1366,8 @@ end
       elapsed = 0,
       last_time = nil,
       max_step = 33,
-      duration_out = 140,
-      duration_in = 120,
+      duration_out = TRANSITION_OUT_MS,
+      duration_in = TRANSITION_IN_MS,
       request = function (next_scene_id, optional_args)
         if next_scene_id == nil then return end
         if next_scene_id == UI.CURSCENE then return end
