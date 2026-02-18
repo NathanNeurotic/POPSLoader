@@ -2331,22 +2331,15 @@ function UI.IsMx4sioScene(scene)
 end
 
 function UI.RefreshMassDevicePage(device_kind)
-  if PLDR == nil or type(PLDR.EnumerateMassSlots) ~= "function" then
-    UI.Notif_queue.add("Mass enumeration helper unavailable")
+  if PLDR == nil or type(PLDR.EnumerateMassSlots) ~= "function" or type(PLDR.RouteMassSlotsForPage) ~= "function" then
+    UI.Notif_queue.add("Mass routing helper unavailable")
     return false
   end
 
   PLDR.CleanupGameList()
   local slots = PLDR.EnumerateMassSlots(9) or {}
-  local target = nil
-
-  for i = 1, #slots do
-    local slot = slots[i]
-    if slot ~= nil and slot.kind == device_kind then
-      target = slot
-      break
-    end
-  end
+  local routed = PLDR.RouteMassSlotsForPage(device_kind, slots) or {}
+  local target = routed[1]
 
   if target == nil then
     if device_kind == "MX4SIO" then
@@ -2355,12 +2348,13 @@ function UI.RefreshMassDevicePage(device_kind)
         PLDR.MX4SIO.MASSINDX = nil
         PLDR.MX4SIO.ROOT = nil
       end
-      UI.Notif_queue.add("No MX4SIO device found")
+      UI.Notif_queue.add("No MX4SIO slot routed for MX4SIO page")
     else
       if PLDR.USB ~= nil then
         PLDR.USB.MASSINDX = nil
+        PLDR.USB.ROOT = "mass:/"
       end
-      UI.Notif_queue.add("No USB device found")
+      UI.Notif_queue.add("No USB slot routed for USB page")
     end
     return false
   end
@@ -2368,15 +2362,16 @@ function UI.RefreshMassDevicePage(device_kind)
   if device_kind == "MX4SIO" then
     if PLDR.MX4SIO ~= nil then
       PLDR.MX4SIO.READY = true
-      PLDR.MX4SIO.MASSINDX = target.index
-      PLDR.MX4SIO.ROOT = target.prefix
+      PLDR.MX4SIO.MASSINDX = target.source_slot
+      PLDR.MX4SIO.ROOT = target.source_prefix
     end
-    PLDR.GetPS1GameLists(target.prefix.."POPS/", true)
+    PLDR.GetPS1GameLists(target.source_prefix.."POPS/", true)
   else
     if PLDR.USB ~= nil then
-      PLDR.USB.MASSINDX = target.index
+      PLDR.USB.MASSINDX = target.source_slot
+      PLDR.USB.ROOT = target.source_prefix
     end
-    PLDR.GetPS1GameLists(target.prefix.."POPS/", true)
+    PLDR.GetPS1GameLists(target.source_prefix.."POPS/", true)
   end
 
   UI.GameList.Reset()
