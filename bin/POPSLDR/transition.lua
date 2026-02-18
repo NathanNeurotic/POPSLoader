@@ -38,7 +38,8 @@ function Transition.new(hooks, options)
     last_time = nil,
     max_step = options.max_step or 33,
     duration_out = options.duration_out or 350,
-    duration_in = options.duration_in or 350
+    duration_in = options.duration_in or 350,
+    alpha = 0
   }
 
   local instance = {}
@@ -54,10 +55,12 @@ function Transition.new(hooks, options)
     state.args = optional_args
     state.elapsed = 0
     state.last_time = nil
+    state.alpha = 0
   end
 
   function instance.update(dt_or_timer_time)
     if not state.active then
+      state.alpha = 0
       return 0
     end
 
@@ -104,8 +107,29 @@ function Transition.new(hooks, options)
         alpha = 0
       end
     end
-
+    state.alpha = alpha
     return alpha
+  end
+
+  function instance.reset()
+    state.active = false
+    state.phase = "out"
+    state.target = nil
+    state.args = nil
+    state.allow_scene_write = false
+    state.elapsed = 0
+    state.last_time = nil
+    state.alpha = 0
+  end
+
+  function instance.drawOverlay()
+    if not state.active then
+      return
+    end
+    local alpha = instance.update()
+    if alpha > 0 then
+      Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
+    end
   end
 
   function instance.isSceneWriteAllowed()
