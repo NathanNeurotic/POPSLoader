@@ -153,7 +153,9 @@ if BASE_DIR == nil then
 end
 System.currentDirectory(BASE_DIR)
 
-package.path = BASE_DIR.."?.lua;"..BASE_DIR.."?/init.lua;"..BASE_DIR.."POPSLDR/?.lua;./?.lua;./?/init.lua;./POPSLDR/?.lua"
+package.path = BASE_DIR.."?.lua;"..BASE_DIR.."?/init.lua;"..BASE_DIR.."POPSLDR/?.lua;"..
+               "mass:/POPSLDR/?.lua;mass:POPSLDR/?.lua;mc0:/POPSLDR/?.lua;mc1:/POPSLDR/?.lua;"..
+               "./?.lua;./?/init.lua;./POPSLDR/?.lua"
 function LOG(...)
   print_uart(...)
 end
@@ -250,6 +252,21 @@ function RunScript(S)
   RunLoader(loader)
 end
 
+
+local function add_legacy_device_candidates(list, name)
+  local roots = {
+    "mass:/",
+    "mass:",
+    "mc0:/",
+    "mc1:/"
+  }
+  for i = 1, #roots do
+    local root = roots[i]
+    add_candidate(list, root..name)
+    add_candidate(list, root.."POPSLDR/"..name)
+  end
+end
+
 local APP_DIR_NORM = ensure_dir(normalize_path(APP_DIR))
 local BASE_PARENT = parent_dir(BASE_DIR)
 local SYS_CANDIDATES = {}
@@ -265,6 +282,8 @@ if BASE_PARENT ~= nil then
   add_candidate(SYS_CANDIDATES, BASE_PARENT.."system.lua")
   add_candidate(SYS_CANDIDATES, BASE_PARENT.."POPSLDR/system.lua")
 end
+
+add_legacy_device_candidates(SYS_CANDIDATES, "system.lua")
 
 local SYS_LOADER = nil
 local SYS_LOAD_ERRORS = {}
