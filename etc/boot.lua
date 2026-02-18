@@ -89,10 +89,6 @@ end
 
 local function resolve_script_path(path)
   return each_path_variant(path, function (candidate)
-    local resolved = System.resolveAsset(candidate)
-    if type(resolved) == "string" and resolved ~= "" then
-      return resolved
-    end
     if doesFileExist(candidate) then
       return candidate
     end
