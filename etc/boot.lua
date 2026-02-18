@@ -43,28 +43,46 @@ local function parent_dir(path)
   return ensure_dir(parent)
 end
 
-local function add_candidate(list, path)
+local function get_mass_path_variants(path)
   local normalized = normalize_path(path)
   if normalized == nil or normalized == "" then
-    return
+    return {}
   end
-  list[#list + 1] = normalized
-  if string.sub(normalized, 1, 6) == "mass:/" then
-    list[#list + 1] = "mass:"..string.sub(normalized, 7)
+
+  local variants = {normalized}
+
+  local dev_slash, tail_slash = string.match(normalized, "^(mass%d*):/(.+)$")
+  if dev_slash ~= nil and tail_slash ~= nil and tail_slash ~= "" then
+    variants[#variants + 1] = dev_slash..":"..tail_slash
+  end
+
+  local dev_noslash, tail_noslash = string.match(normalized, "^(mass%d*):([^/].*)$")
+  if dev_noslash ~= nil and tail_noslash ~= nil and tail_noslash ~= "" then
+    variants[#variants + 1] = dev_noslash..":/"..tail_noslash
+  end
+
+  return variants
+end
+
+local function add_candidate(list, path)
+  local variants = get_mass_path_variants(path)
+  for i = 1, #variants do
+    list[#list + 1] = variants[i]
   end
 end
 
 local function each_path_variant(path, fn)
-  local normalized = normalize_path(path)
-  if normalized == nil or normalized == "" then
-    return nil
-  end
-  local result = fn(normalized)
-  if result ~= nil then
-    return result
-  end
-  if string.sub(normalized, 1, 6) == "mass:/" then
-    return fn("mass:"..string.sub(normalized, 7))
+  local variants = get_mass_path_variants(path)
+  local seen = {}
+  for i = 1, #variants do
+    local candidate = variants[i]
+    if candidate ~= nil and seen[candidate] ~= true then
+      seen[candidate] = true
+      local result = fn(candidate)
+      if result ~= nil then
+        return result
+      end
+    end
   end
   return nil
 end
