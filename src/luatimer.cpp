@@ -1,5 +1,6 @@
 #include <stdlib.h>
-#include <time.h>
+#include <stdint.h>
+#include <timer.h>
 #include "include/luaplayer.h"
 
 // if the timer is running:
@@ -13,14 +14,21 @@
 struct Timer{
 	uint32_t magic;
 	bool isPlaying;
-	clock_t tick;
+	uint64_t tick;
 };
+
+static const uint32_t TIMER_TICKS_PER_SEC = kBUSCLK;
+
+static inline uint64_t timer_now_ticks()
+{
+	return GetTimerSystemTime();
+}
 
 static int lua_newT(lua_State *L) {
 	int argc = lua_gettop(L);
 	if (argc != 0) return luaL_error(L, "wrong number of arguments");
 	Timer* new_timer = (Timer*)malloc(sizeof(Timer));
-	new_timer->tick = clock();
+	new_timer->tick = timer_now_ticks();
 	new_timer->magic = 0x4C544D52;
 	new_timer->isPlaying = true;
 	lua_pushinteger(L,(uint32_t)new_timer);
@@ -35,9 +43,9 @@ static int lua_time(lua_State *L) {
 	if (src->magic != 0x4C544D52) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	if (src->isPlaying){
-		lua_pushinteger(L, (clock() - src->tick));
+		lua_pushinteger(L, (uint32_t)(timer_now_ticks() - src->tick));
 	}else{
-		lua_pushinteger(L, src->tick);
+		lua_pushinteger(L, (uint32_t)src->tick);
 	}
 	return 1;
 }
@@ -51,7 +59,7 @@ static int lua_pause(lua_State *L){
 	#endif
 	if (src->isPlaying){
 		src->isPlaying = false;
-		src->tick = (clock()-src->tick);
+		src->tick = (timer_now_ticks() - src->tick);
 	}
 	return 0;
 }
@@ -65,7 +73,7 @@ static int lua_resume(lua_State *L){
 	#endif
 	if (!src->isPlaying){
 		src->isPlaying = true;
-		src->tick = (clock()-src->tick);
+		src->tick = (timer_now_ticks() - src->tick);
 	}
 	return 0;
 }
@@ -77,7 +85,7 @@ static int lua_reset(lua_State *L){
 	#ifndef SKIP_ERROR_HANDLING
 	if (src->magic != 0x4C544D52) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
-	if (src->isPlaying) src->tick = clock();
+	if (src->isPlaying) src->tick = timer_now_ticks();
 	else src->tick = 0;
 	return 0;
 }
@@ -90,7 +98,7 @@ static int lua_set(lua_State *L){
 	#ifndef SKIP_ERROR_HANDLING
 	if (src->magic != 0x4C544D52) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
-	if (src->isPlaying) src->tick = clock() + val;
+	if (src->isPlaying) src->tick = timer_now_ticks() + val;
 	else src->tick = val;
 	return 0;
 }
@@ -109,7 +117,7 @@ static int lua_wisPlaying(lua_State *L){
 static int lua_clockPerSec(lua_State *L) {
 	int argc = lua_gettop(L);
 	if (argc != 0) return luaL_error(L, "wrong number of arguments");
-	lua_pushinteger(L, (uint32_t)CLOCKS_PER_SEC);
+	lua_pushinteger(L, TIMER_TICKS_PER_SEC);
 	return 1;
 }
 
