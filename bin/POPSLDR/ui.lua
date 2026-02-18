@@ -369,191 +369,169 @@ UI = {
       end
       Screen.flip()
     end;
-    WelcomeDraw = {
-      Play = function (next_scene)
-	        -- Boot splash fades in from black, then fades out into the next scene.
-	        local function DrawBackground()
-	          Screen.clear(Color.new(0, 0, 0))
-	        end
--- Boot audio (relative to current directory). Never fatal.
-        local boot_sound_tried = false
-        local boot_sound_loaded = nil
-        local boot_sound_hold_frames = nil
-
-        local function TryBootSound()
-          if boot_sound_tried then return end
-          boot_sound_tried = true
-
-          if UI.BOOT_SOUND == nil or UI.BOOT_SOUND.ENABLED ~= true then return end
-          if type(Sound) ~= "table" or type(Sound.loadADPCM) ~= "function" then return end
-
-          local rel = UI.BOOT_SOUND.PATH or "boot.adp"
-
-local function file_exists(p)
-  if p == nil then return false end
-  if type(doesFileExist) == "function" then
-    local okcall, res = pcall(doesFileExist, p)
-    return okcall and res == true
-  end
-  if type(System) == "table" and type(System.openFile) == "function" and type(System.closeFile) == "function" then
-    local okfd, fd = pcall(System.openFile, p, O_RDONLY)
-    if okfd and fd ~= nil and fd >= 0 then
-      pcall(System.closeFile, fd)
-      return true
-    end
-  end
-  return false
-end
-
-local function resolve(p)
-  if p == nil then return nil end
-  if type(System) == "table" and type(System.resolveAsset) == "function" then
-    local ok, r = pcall(System.resolveAsset, p)
-    if ok and type(r) == "string" and r ~= "" then return r end
-  end
-  return p
-end
-
--- Prefer current folder (CWD) and resolved-asset paths; avoid hardcoding host: when possible.
-local candidates = {
-  resolve(rel),
-  resolve("./" .. rel),
-  rel,
-  "./" .. rel,
-}
-
-local found = nil
-for _, p in ipairs(candidates) do
-  if file_exists(p) then found = p break end
-end
-
-if found == nil then
-  -- Last resort: try HostFS prefix in PCSX2 setups.
-  local host_p = "host:" .. rel
-  if file_exists(host_p) then found = host_p end
-end
-
-if found == nil then return end
-
--- Set volumes/formats defensively; some builds may ignore these.
-          pcall(function()
-            if type(UI.BOOT_SOUND.VOLUME) == "number" and type(Sound.setVolume) == "function" then
-              Sound.setVolume(UI.BOOT_SOUND.VOLUME)
-            end
-            if type(UI.BOOT_SOUND.ADPCM_VOLUME) == "number" and type(Sound.setADPCMVolume) == "function" then
-              Sound.setADPCMVolume(UI.BOOT_SOUND.CHANNEL or 0, UI.BOOT_SOUND.ADPCM_VOLUME)
-            end
-            if type(Sound.setFormat) == "function" then
-              -- Common safe defaults; ADPCM playback may ignore this on some builds.
-              Sound.setFormat(16, 44100, 2)
-            end
-          end)
-
-          local ok_load, audio = pcall(Sound.loadADPCM, found)
-          if not ok_load or audio == nil then return end
-          boot_sound_loaded = audio
-
-          pcall(function()
-            Sound.playADPCM(UI.BOOT_SOUND.CHANNEL or 0, boot_sound_loaded)
-          end)
-
-          local sec = UI.BOOT_SOUND.SECONDS
-          if type(sec) ~= "number" or sec < 0 then sec = 0 end
-          boot_sound_hold_frames = math.floor((sec * 60) + 0.5)
+    BootIntro = {
+      STATES = {
+        SPLASH_HOLD = 1,
+        SPLASH_FADE_OUT = 2,
+        CREDITS_FADE_IN = 3,
+        CREDITS_HOLD = 4,
+        CREDITS_FADE_OUT = 5,
+        MENU_FADE_IN = 6,
+        DONE = 7
+      };
+      SPLASH_HOLD_MS = 3000;
+      CREDITS_HOLD_MS = 4000;
+      BOOT_FADE_MS = 450;
+      DrawSplash = function ()
+        if IMG.PSL == nil then return end
+        local img_w = Graphics.getImageWidth(IMG.PSL)
+        local img_h = Graphics.getImageHeight(IMG.PSL)
+        local scale = 1
+        if img_w > 0 and img_h > 0 then
+          scale = math.max(UI.SCR.X / img_w, UI.SCR.Y / img_h) * 1.02
         end
-        local function DrawSplashCover(img, screen_w, screen_h, alpha)
-          if img == nil then return end
-          local img_w = Graphics.getImageWidth(img)
-          local img_h = Graphics.getImageHeight(img)
-          local scale = 1
-          if img_w > 0 and img_h > 0 then
-            local cover_scale = math.max(screen_w / img_w, screen_h / img_h)
-            scale = cover_scale * 1.02
+        local draw_w = Round(img_w * scale)
+        local draw_h = Round(img_h * scale)
+        local x = Round((UI.SCR.X - draw_w) / 2)
+        local y = Round((UI.SCR.Y - draw_h) / 2)
+        Graphics.drawScaleImage(IMG.PSL, x, y, draw_w, draw_h, Color.new(128, 128, 128, 128))
+      end;
+      StartBootSound = function ()
+        if UI.BOOT_SOUND == nil or UI.BOOT_SOUND.ENABLED ~= true then return nil end
+        if type(Sound) ~= "table" or type(Sound.loadADPCM) ~= "function" then return nil end
+        local rel = UI.BOOT_SOUND.PATH or "boot.adp"
+        local function file_exists(path)
+          if path == nil then return false end
+          if type(doesFileExist) == "function" then
+            local okcall, res = pcall(doesFileExist, path)
+            return okcall and res == true
           end
-          local draw_w = Round(img_w * scale)
-          local draw_h = Round(img_h * scale)
-          local x = Round((screen_w - draw_w) / 2)
-          local y = Round((screen_h - draw_h) / 2)
-          local tint = Color.new(128, 128, 128, alpha)
-          Graphics.drawScaleImage(img, x, y, draw_w, draw_h, tint)
-        end
-        local function DrawSplashText(_alpha)
-          -- no-op placeholder for future custom splash text
-        end
-
-        -- Exact boot splash timing: 4.0s total, timed by Timer (not frame count).
-        local splash_total_ms = 4000
-        local splash_fade_ms = 400
-        local splash_hold_ms = splash_total_ms - (splash_fade_ms * 2)
-        if splash_hold_ms < 0 then splash_hold_ms = 0 end
-
-        local function run_phase(duration_ms, draw_fn)
-          local duration_ticks = TimerMsToTicks(duration_ms)
-          if duration_ticks <= 0 then
-            draw_fn(1)
-            Screen.flip()
-            return
+          if type(System) == "table" and type(System.openFile) == "function" and type(System.closeFile) == "function" then
+            local okfd, fd = pcall(System.openFile, path, O_RDONLY)
+            if okfd and fd ~= nil and fd >= 0 then
+              pcall(System.closeFile, fd)
+              return true
+            end
           end
-          local tmr = Timer.new()
-          while true do
-            local elapsed = Timer.getTime(tmr)
-            local t = elapsed / duration_ticks
-            if t > 1 then t = 1 end
-            draw_fn(t)
-            Screen.flip()
-            if elapsed >= duration_ticks then break end
+          return false
+        end
+        local function resolve(path)
+          if path == nil then return nil end
+          if type(System) == "table" and type(System.resolveAsset) == "function" then
+            local ok, out = pcall(System.resolveAsset, path)
+            if ok and type(out) == "string" and out ~= "" then return out end
+          end
+          return path
+        end
+        local found = nil
+        local candidates = { resolve(rel), resolve("./" .. rel), rel, "./" .. rel }
+        for _, path in ipairs(candidates) do
+          if file_exists(path) then
+            found = path
+            break
           end
         end
+        if found == nil and file_exists("host:" .. rel) then
+          found = "host:" .. rel
+        end
+        if found == nil then return nil end
+        pcall(function()
+          if type(UI.BOOT_SOUND.VOLUME) == "number" and type(Sound.setVolume) == "function" then
+            Sound.setVolume(UI.BOOT_SOUND.VOLUME)
+          end
+          if type(UI.BOOT_SOUND.ADPCM_VOLUME) == "number" and type(Sound.setADPCMVolume) == "function" then
+            Sound.setADPCMVolume(UI.BOOT_SOUND.CHANNEL or 0, UI.BOOT_SOUND.ADPCM_VOLUME)
+          end
+          if type(Sound.setFormat) == "function" then
+            Sound.setFormat(16, 44100, 2)
+          end
+        end)
+        local ok_load, audio = pcall(Sound.loadADPCM, found)
+        if not ok_load or audio == nil then return nil end
+        pcall(function()
+          Sound.playADPCM(UI.BOOT_SOUND.CHANNEL or 0, audio)
+        end)
+        return audio
+      end;
+      Play = function ()
+        local state = UI.BootIntro.STATES.SPLASH_HOLD
+        local state_start_ticks = 0
+        local timer = Timer.new()
+        local boot_sound = UI.BootIntro.StartBootSound()
+        local function set_state(next_state, now_ticks)
+          state = next_state
+          state_start_ticks = now_ticks
+        end
+        local function get_duration_ticks(curr)
+          if curr == UI.BootIntro.STATES.SPLASH_HOLD then return TimerMsToTicks(UI.BootIntro.SPLASH_HOLD_MS) end
+          if curr == UI.BootIntro.STATES.SPLASH_FADE_OUT then return TimerMsToTicks(UI.BootIntro.BOOT_FADE_MS) end
+          if curr == UI.BootIntro.STATES.CREDITS_FADE_IN then return TimerMsToTicks(UI.BootIntro.BOOT_FADE_MS) end
+          if curr == UI.BootIntro.STATES.CREDITS_HOLD then return TimerMsToTicks(UI.BootIntro.CREDITS_HOLD_MS) end
+          if curr == UI.BootIntro.STATES.CREDITS_FADE_OUT then return TimerMsToTicks(UI.BootIntro.BOOT_FADE_MS) end
+          if curr == UI.BootIntro.STATES.MENU_FADE_IN then return TimerMsToTicks(UI.BootIntro.BOOT_FADE_MS) end
+          return 0
+        end
+        set_state(UI.BootIntro.STATES.SPLASH_HOLD, Timer.getTime(timer))
+        while state ~= UI.BootIntro.STATES.DONE do
+          local now_ticks = Timer.getTime(timer)
+          local duration_ticks = get_duration_ticks(state)
+          local progress = 1
+          if duration_ticks > 0 then
+            progress = Clamp01((now_ticks - state_start_ticks) / duration_ticks)
+          end
 
-        TryBootSound()
-        run_phase(splash_fade_ms, function (t)
-          DrawBackground()
-          DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, 128)
-          local overlay_alpha = Round(128 * (1 - t))
+          if state == UI.BootIntro.STATES.SPLASH_HOLD or state == UI.BootIntro.STATES.SPLASH_FADE_OUT then
+            Screen.clear(Color.new(0, 0, 0))
+            UI.BootIntro.DrawSplash()
+          elseif state == UI.BootIntro.STATES.CREDITS_FADE_IN or state == UI.BootIntro.STATES.CREDITS_HOLD or state == UI.BootIntro.STATES.CREDITS_FADE_OUT then
+            UI.BottomDraw.Play()
+            UI.Credits.DrawOnly()
+          elseif state == UI.BootIntro.STATES.MENU_FADE_IN then
+            UI.BottomDraw.Play()
+            UI.MainMenu.DrawOnly()
+          end
+
+          local overlay_alpha = 0
+          if state == UI.BootIntro.STATES.SPLASH_FADE_OUT then
+            overlay_alpha = Round(128 * progress)
+          elseif state == UI.BootIntro.STATES.CREDITS_FADE_IN or state == UI.BootIntro.STATES.MENU_FADE_IN then
+            overlay_alpha = Round(128 * (1 - progress))
+          elseif state == UI.BootIntro.STATES.CREDITS_FADE_OUT then
+            overlay_alpha = Round(128 * progress)
+          end
           if overlay_alpha > 0 then
             Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, overlay_alpha))
           end
-        end)
-        run_phase(splash_hold_ms, function (_)
-          DrawBackground()
-          DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, 128)
-        end)
-        run_phase(splash_fade_ms, function (t)
-          DrawBackground()
-          DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, 128)
-          local overlay_alpha = Round(128 * t)
-          if overlay_alpha > 0 then
-            Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, overlay_alpha))
+          Screen.flip()
+
+          if progress >= 1 then
+            if state == UI.BootIntro.STATES.SPLASH_HOLD then
+              set_state(UI.BootIntro.STATES.SPLASH_FADE_OUT, now_ticks)
+            elseif state == UI.BootIntro.STATES.SPLASH_FADE_OUT then
+              set_state(UI.BootIntro.STATES.CREDITS_FADE_IN, now_ticks)
+            elseif state == UI.BootIntro.STATES.CREDITS_FADE_IN then
+              set_state(UI.BootIntro.STATES.CREDITS_HOLD, now_ticks)
+            elseif state == UI.BootIntro.STATES.CREDITS_HOLD then
+              set_state(UI.BootIntro.STATES.CREDITS_FADE_OUT, now_ticks)
+            elseif state == UI.BootIntro.STATES.CREDITS_FADE_OUT then
+              set_state(UI.BootIntro.STATES.MENU_FADE_IN, now_ticks)
+            elseif state == UI.BootIntro.STATES.MENU_FADE_IN then
+              set_state(UI.BootIntro.STATES.DONE, now_ticks)
+            end
           end
-        end)
-        DrawBackground()
-        Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, 128))
-        Screen.flip()
-
-        -- Cleanup boot sound resource (safe if audio backend ignores it).
-        if boot_sound_loaded ~= nil and type(Sound) == "table" and type(Sound.freeADPCM) == "function" then
-          pcall(Sound.freeADPCM, boot_sound_loaded)
         end
-      end
-
+        if boot_sound ~= nil and type(Sound) == "table" and type(Sound.freeADPCM) == "function" then
+          pcall(Sound.freeADPCM, boot_sound)
+        end
+      end;
     };
-    BootFadeInScene = function (scene, frames)
-      local total = tonumber(frames) or 24
-      if total < 1 then total = 1 end
-      for i = 1, total do
-        UI.BottomDraw.Play()
-        if scene == UI.SCENES.MMAIN and UI.MainMenu ~= nil and UI.MainMenu.DrawOnly ~= nil then
-          UI.MainMenu.DrawOnly()
-        elseif scene == UI.SCENES.CREDITS and UI.Credits ~= nil and UI.Credits.DrawOnly ~= nil then
-          UI.Credits.DrawOnly()
-        end
-        local t = i / total
-        local overlay_alpha = Round(128 * (1 - t))
-        if overlay_alpha > 0 then
-          Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, overlay_alpha))
-        end
-        Screen.flip()
+    WelcomeDraw = {
+      Play = function ()
+        UI.BootIntro.Play()
       end
+    };
+    BootFadeInScene = function ()
+      -- Deprecated by UI.BootIntro.Play; kept for compatibility with external scripts.
     end;
     --- UI draw routine applied before drawing UI, add background and stuff you want rendered UNDER UI and text
     BottomDraw = {
