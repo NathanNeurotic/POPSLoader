@@ -38,52 +38,45 @@ jobs:
           printf "%s\n%s\n" "$COMMIT_SHORT" "$BUILD_UTC" > bin/POPSLDR/BUILD_INFO.txt
           cat bin/POPSLDR/BUILD_INFO.txt
 
-      - name: Compile project
-        run: |
-          make clean elfloader all package
-
-      # This step is the key: it discovers wherever your Makefile put the .7z,
-      # then copies it to repo root as POPSLoader.7z so upload-artifact is stable.
-      - name: Locate and normalize POPSLoader.7z
+      - name: Compile and package variants
         shell: sh
         run: |
           set -eu
 
-          echo "== Workspace contents (top-level) =="
-          ls -lah
+          for variant in standard mmce mx4sio; do
+            echo "Building variant: ${variant}"
+            make clean elfloader all package VARIANT="${variant}"
 
-          echo "== Searching for .7z artifacts (up to 6 levels deep) =="
-          # Show all matches for debugging
-          find . -maxdepth 6 -type f -name '*.7z' -print || true
+            mkdir -p "artifacts/${variant}"
+            7z x -y "bin/POPSLoader.7z" "-oartifacts/${variant}" >/dev/null
+            (cd "artifacts/${variant}" && 7z a -tzip -y "../../PS1_POPSLOADER-${variant}.zip" ./* >/dev/null)
+          done
 
-          # Prefer an exact name match first (any location)
-          EXACT="$(find . -maxdepth 6 -type f -name 'POPSLoader.7z' -print | head -n 1 || true)"
+          ls -lah PS1_POPSLOADER-*.zip
 
-          if [ -n "$EXACT" ]; then
-            echo "Found exact artifact: $EXACT"
-            cp -f "$EXACT" "./POPSLoader.7z"
-          else
-            # Otherwise pick the newest .7z produced (common when Makefile names differ)
-            NEWEST="$(find . -maxdepth 6 -type f -name '*.7z' -print -exec ls -t {} + 2>/dev/null | head -n 1 || true)"
-
-            if [ -z "$NEWEST" ]; then
-              echo "ERROR: No .7z artifact found after build."
-              echo "Hint: your Makefile 'package' target may be outputting a different extension or skipping packaging."
-              exit 1
-            fi
-
-            echo "No exact POPSLoader.7z found. Using newest .7z: $NEWEST"
-            cp -f "$NEWEST" "./POPSLoader.7z"
-          fi
-
-          echo "== Final normalized artifact =="
-          ls -lah "./POPSLoader.7z"
-
-      - name: Upload artifact (no release)
+      - name: Upload standard artifact
         if: ${{ success() }}
         uses: actions/upload-artifact@v4
         with:
-          name: POPSLoader
-          path: POPSLoader.7z
+          name: PS1_POPSLOADER-standard
+          path: PS1_POPSLOADER-standard.zip
+          if-no-files-found: error
+          compression-level: 0
+
+      - name: Upload mmce artifact
+        if: ${{ success() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: PS1_POPSLOADER-mmce
+          path: PS1_POPSLOADER-mmce.zip
+          if-no-files-found: error
+          compression-level: 0
+
+      - name: Upload mx4sio artifact
+        if: ${{ success() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: PS1_POPSLOADER-mx4sio
+          path: PS1_POPSLOADER-mx4sio.zip
           if-no-files-found: error
           compression-level: 0

@@ -36,6 +36,8 @@ RESET_IOP = 1
 DEBUG = 0
 #----------------------- Set IP for PS2Client ---------------------#
 PS2LINK_IP = 192.168.1.10
+#---------------------------- Build Variant ------------------------#
+VARIANT ?= standard
 #------------------------------------------------------------------#
 
 BINDIR = bin/
@@ -49,6 +51,21 @@ EE_INCS += -Imodules/ds34bt/ee -Imodules/ds34usb/ee
 
 EE_CFLAGS   += -Wno-sign-compare -fno-strict-aliasing -fno-exceptions -DLUA_USE_PS2
 EE_CXXFLAGS += -Wno-sign-compare -fno-strict-aliasing -fno-exceptions -DLUA_USE_PS2
+
+ifeq ($(VARIANT),standard)
+VARIANT_DEFINES = -DPOPSLDR_BASE=1
+else ifeq ($(VARIANT),mmce)
+VARIANT_DEFINES = -DPOPSLDR_BASE=1 -DPOPSLDR_MMCE_BOOT=1
+else ifeq ($(VARIANT),mx4sio)
+VARIANT_DEFINES = -DPOPSLDR_BASE=1 -DPOPSLDR_MX4SIO_BOOT=1
+else ifeq ($(VARIANT),hdd)
+VARIANT_DEFINES = -DPOPSLDR_BASE=1 -DPOPSLDR_HDD_BOOT=1
+else
+$(error Unsupported VARIANT '$(VARIANT)'. Valid values: standard mmce mx4sio hdd)
+endif
+
+EE_CFLAGS += $(VARIANT_DEFINES)
+EE_CXXFLAGS += $(VARIANT_DEFINES)
 EE_ASFLAGS += -call_shared
 ifeq ($(RESET_IOP),1)
 EE_CXXFLAGS += -DRESET_IOP

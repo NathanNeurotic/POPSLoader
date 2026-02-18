@@ -91,6 +91,11 @@ int mmce_slot0_ready = -1;
 int mmce_slot1_ready = -1;
 static clock_t boot_start = 0;
 
+static bool LoadIrxChecked(const char *name, unsigned char *irx, unsigned int size, int *out_id, int *out_ret);
+#ifdef DEBUG
+static void DumpLoadedModules(void);
+#endif
+
 static unsigned int boot_ms(void)
 {
     if (boot_start == 0) {
@@ -148,6 +153,75 @@ static void NormalizeDirPath(char *path, size_t size)
 static void BootStamp(const char *stage)
 {
     DPRINTF("BOOT: %s %u\n", stage, boot_ms());
+}
+
+static bool MmceBootInit(bool filexio_ok)
+{
+    if (!filexio_ok) {
+        DPRINTF("Skipping mmceman init; fileXio not ready.\n");
+        mmce_slot0_ready = 0;
+        mmce_slot1_ready = 0;
+        BootStamp("mmceman load/init (skipped)");
+        return false;
+    }
+
+    int mmceman_id = -1;
+    int mmceman_ret = -1;
+    bool mmceman_ok = LoadIrxChecked("mmceman_irx", &mmceman_irx, size_mmceman_irx, &mmceman_id, &mmceman_ret);
+    DPRINTF("mmceman load result: id=%d ret=%d\n", mmceman_id, mmceman_ret);
+#ifdef DEBUG
+    if (mmceman_ok) {
+        smod_mod_info_t info;
+        int lookup_ret = smod_get_mod_by_name("mmceman", &info);
+        if (lookup_ret < 0) {
+            DPRINTF("mmceman module lookup failed: ret=%d\n", lookup_ret);
+            DumpLoadedModules();
+        }
+    }
+#endif
+    BootStamp("mmceman load/init");
+    if (mmceman_ok) {
+        mmce_slot0_ready = -1;
+        mmce_slot1_ready = -1;
+        DPRINTF("MMCE probe deferred until MMCE page entry.\n");
+    } else {
+        mmce_slot0_ready = 0;
+        mmce_slot1_ready = 0;
+    }
+
+    return mmceman_ok;
+}
+
+static bool Mx4sioBootInit(bool filexio_ok)
+{
+    if (!filexio_ok) {
+        DPRINTF("Skipping MX4SIO boot init; fileXio not ready.\n");
+        return false;
+    }
+    return true;
+}
+
+static bool HddBootInit(void)
+{
+    return true;
+}
+
+static void BootInitExtras(bool filexio_ok)
+{
+#ifdef POPSLDR_MMCE_BOOT
+    MmceBootInit(filexio_ok);
+#else
+    mmce_slot0_ready = 0;
+    mmce_slot1_ready = 0;
+#endif
+
+#ifdef POPSLDR_MX4SIO_BOOT
+    Mx4sioBootInit(filexio_ok);
+#endif
+
+#ifdef POPSLDR_HDD_BOOT
+    HddBootInit();
+#endif
 }
 
 void setLuaBootPath(int argc, char ** argv, int idx)
@@ -337,36 +411,7 @@ int main(int argc, char * argv[])
     BootStamp("fileXio load/init");
 
 	LOAD_IRX_NARG(sio2man_irx);
-    if (filexio_ok) {
-        int mmceman_id = -1;
-        int mmceman_ret = -1;
-        bool mmceman_ok = LoadIrxChecked("mmceman_irx", &mmceman_irx, size_mmceman_irx, &mmceman_id, &mmceman_ret);
-        DPRINTF("mmceman load result: id=%d ret=%d\n", mmceman_id, mmceman_ret);
-#ifdef DEBUG
-        if (mmceman_ok) {
-            smod_mod_info_t info;
-            int lookup_ret = smod_get_mod_by_name("mmceman", &info);
-            if (lookup_ret < 0) {
-                DPRINTF("mmceman module lookup failed: ret=%d\n", lookup_ret);
-                DumpLoadedModules();
-            }
-        }
-#endif
-        BootStamp("mmceman load/init");
-        if (mmceman_ok) {
-            mmce_slot0_ready = -1;
-            mmce_slot1_ready = -1;
-            DPRINTF("MMCE probe deferred until MMCE page entry.\n");
-        } else {
-            mmce_slot0_ready = 0;
-            mmce_slot1_ready = 0;
-        }
-    } else {
-        DPRINTF("Skipping mmceman init; fileXio not ready.\n");
-        mmce_slot0_ready = 0;
-        mmce_slot1_ready = 0;
-        BootStamp("mmceman load/init (skipped)");
-    }
+    BootInitExtras(filexio_ok);
     LOAD_IRX_NARG(mcman_irx);
     LOAD_IRX_NARG(mcserv_irx);
     initMC();
