@@ -1586,6 +1586,13 @@ end
         if UI.Pad.Events.NAV_RIGHT then UI.GameList.CURR = CLAMP(UI.GameList.CURR+UI.GameList.MAXDRAW, 1, ammount) end
         if UI.Pad.Events.NAV_UP then UI.GameList.CURR = CLAMP(UI.GameList.CURR-1, 1, ammount) end
         if UI.Pad.Events.NAV_LEFT then UI.GameList.CURR = CLAMP(UI.GameList.CURR-UI.GameList.MAXDRAW, 1, ammount) end
+        if (UI.IsUsbScene(UI.CURSCENE) or UI.IsMx4sioScene(UI.CURSCENE)) and UI.Pad.Events.R2 then
+          if UI.RefreshCurrentMassScene(UI.CURSCENE) then
+            UI.Notif_queue.add("Device list refreshed")
+            ammount = #PLDR.GAMES
+          end
+          return
+        end
         local square_down = false
         if UI.Pad.GPAD ~= nil and PAD_SQUARE ~= nil then
           square_down = (UI.Pad.GPAD & PAD_SQUARE) ~= 0
@@ -1623,12 +1630,23 @@ end
           cross_label = UI.Footer.labels.cross_confirm
         end
         if not hide_ui then
+          local footer_order = UI.Footer.order_with_start_select_square
+          local footer_id = "start_select_square"
+          local footer_square = "Cover Art"
+          local footer_r2 = nil
+          if UI.IsUsbScene(UI.CURSCENE) or UI.IsMx4sioScene(UI.CURSCENE) then
+            footer_order = UI.Footer.order_with_start_select_r2
+            footer_id = "start_select_r2_refresh"
+            footer_square = nil
+            footer_r2 = "Refresh"
+          end
           local labels, order = UI.Footer.ResolveLegend({
-            order = UI.Footer.order_with_start_select_square,
-            order_id = "start_select_square",
+            order = footer_order,
+            order_id = footer_id,
             circle = UI.Footer.labels.circle_other,
             cross = cross_label,
-            square = "Cover Art",
+            square = footer_square,
+            R2 = footer_r2,
             select = "Hide UI",
             start = UI.Footer.labels.start_profiles
           })
@@ -2053,68 +2071,9 @@ end
               UI.SceneChange(UI.SCENES.GMMCE)
             end
           elseif UI.MainMenu.OPT == 2 then
-            -- Prefer IOCTL-based backend detection (massX drivername == "sdc") to avoid USB/MX4SIO cross-page confusion.
-            local mx_mass = nil
-            if PLDR ~= nil and type(PLDR.FindMassByDriver) == "function" then
-              mx_mass = PLDR.FindMassByDriver("sdc", 4)
-            end
-            if mx_mass ~= nil then
-              if PLDR ~= nil and PLDR.MX4SIO ~= nil then
-                PLDR.MX4SIO.READY = true
-                PLDR.MX4SIO.ROOT = "mass"..tostring(mx_mass)..":/"
-                PLDR.MX4SIO.MASSINDX = mx_mass
-              end
-              PLDR.CleanupGameList()
-              PLDR.GetPS1GameLists("mass"..tostring(mx_mass)..":/POPS/", true)
-              UI.setDeviceLock(DEVLOCK.MX4SIO)
-              UI.SceneChange(UI.SCENES.GMX4SIO)
+            if not UI.RefreshMassDevicePage("MX4SIO") then
               return
             end
-
-            -- Fallback: try the PS2SDK mx4sio: prefix initializer if present.
-            if System == nil or System.initMX4SIO == nil then
-              UI.Notif_queue.add("No MX4SIO device found")
-              return
-            end
-            local hint = nil
-            if PLDR ~= nil and PLDR.MX4SIO ~= nil then
-              hint = PLDR.MX4SIO.PREFIX_HINT
-            end
-            local ok_init, ready, root = pcall(System.initMX4SIO, hint)
-            if not ok_init then
-              UI.Notif_queue.add("MX4SIO init error")
-              if PLDR ~= nil and PLDR.MX4SIO ~= nil then
-                PLDR.MX4SIO.READY = false
-                PLDR.MX4SIO.ROOT = nil
-                PLDR.MX4SIO.MASSINDX = nil
-              end
-              return
-            end
-            if not ready or root == nil then
-              UI.Notif_queue.add("No MX4SIO device found (POPS/ missing)")
-              if PLDR ~= nil and PLDR.MX4SIO ~= nil then
-                PLDR.MX4SIO.READY = false
-                PLDR.MX4SIO.ROOT = nil
-                PLDR.MX4SIO.MASSINDX = nil
-              end
-              return
-            end
-            if type(EnsureTrailingSlash) == "function" then
-              root = EnsureTrailingSlash(root)
-            elseif string.sub(root, -1) ~= "/" then
-              root = root.."/"
-            end
-            if PLDR ~= nil and PLDR.MX4SIO ~= nil then
-              PLDR.MX4SIO.READY = true
-              PLDR.MX4SIO.ROOT = root
-              PLDR.MX4SIO.MASSINDX = nil
-            end
-            PLDR.CleanupGameList()
-            local game_root = root.."POPS/"
-            if type(JoinPath) == "function" then
-              game_root = JoinPath(root, "POPS/")
-            end
-            PLDR.GetPS1GameLists(game_root, true)
             UI.setDeviceLock(DEVLOCK.MX4SIO)
             UI.SceneChange(UI.SCENES.GMX4SIO)
           elseif UI.MainMenu.OPT == 3 then
@@ -2143,13 +2102,15 @@ end
             end
             UI.SceneChange(UI.SCENES.GHDD)
           elseif UI.MainMenu.OPT == 5 then
-            PLDR.CleanupGameList()
-            PLDR.GetPS1GameLists("mass"..PLDR.USB.MASSINDX..":/POPS/", true)
+            if not UI.RefreshMassDevicePage("USB") then
+              return
+            end
             UI.setDeviceLock(DEVLOCK.USB)
             UI.SceneChange(UI.SCENES.GUSBEXFAT)
           elseif UI.MainMenu.OPT == 6 then
-            PLDR.CleanupGameList()
-            PLDR.GetPS1GameLists("mass"..PLDR.USB.MASSINDX..":/POPS/", true)
+            if not UI.RefreshMassDevicePage("USB") then
+              return
+            end
             UI.setDeviceLock(DEVLOCK.USB)
             UI.SceneChange(UI.SCENES.GUSBFAT)
           elseif UI.MainMenu.OPT == 7 then
@@ -2365,6 +2326,79 @@ end
 function UI.IsUsbScene(scene)
   return scene == UI.SCENES.GUSBFAT or scene == UI.SCENES.GUSBEXFAT
 end
+function UI.IsMx4sioScene(scene)
+  return scene == UI.SCENES.GMX4SIO
+end
+
+function UI.RefreshMassDevicePage(device_kind)
+  if PLDR == nil or type(PLDR.EnumerateMassSlots) ~= "function" then
+    UI.Notif_queue.add("Mass enumeration helper unavailable")
+    return false
+  end
+
+  PLDR.CleanupGameList()
+  local slots = PLDR.EnumerateMassSlots(9) or {}
+  local target = nil
+
+  for i = 1, #slots do
+    local slot = slots[i]
+    if slot ~= nil and slot.kind == device_kind then
+      target = slot
+      break
+    end
+  end
+
+  if target == nil then
+    if device_kind == "MX4SIO" then
+      if PLDR.MX4SIO ~= nil then
+        PLDR.MX4SIO.READY = false
+        PLDR.MX4SIO.MASSINDX = nil
+        PLDR.MX4SIO.ROOT = nil
+      end
+      UI.Notif_queue.add("No MX4SIO device found")
+    else
+      if PLDR.USB ~= nil then
+        PLDR.USB.MASSINDX = nil
+      end
+      UI.Notif_queue.add("No USB device found")
+    end
+    return false
+  end
+
+  if device_kind == "MX4SIO" then
+    if PLDR.MX4SIO ~= nil then
+      PLDR.MX4SIO.READY = true
+      PLDR.MX4SIO.MASSINDX = target.index
+      PLDR.MX4SIO.ROOT = target.prefix
+    end
+    PLDR.GetPS1GameLists(target.prefix.."POPS/", true)
+  else
+    if PLDR.USB ~= nil then
+      PLDR.USB.MASSINDX = target.index
+    end
+    PLDR.GetPS1GameLists(target.prefix.."POPS/", true)
+  end
+
+  UI.GameList.Reset()
+  return true
+end
+
+function UI.RefreshCurrentMassScene(scene)
+  local current = scene or UI.CURSCENE
+  if UI.IsMx4sioScene(current) then
+    return UI.RefreshMassDevicePage("MX4SIO")
+  end
+  if UI.IsUsbScene(current) then
+    return UI.RefreshMassDevicePage("USB")
+  end
+  return false
+end
+function UI.OnSceneEnter(previous_scene, next_scene)
+  if UI.IsUsbScene(next_scene) or UI.IsMx4sioScene(next_scene) then
+    UI.RefreshCurrentMassScene(next_scene)
+  end
+end
+
 function UI.OnSceneExit(previous_scene, next_scene)
   if UI.IsGameScene(previous_scene) and previous_scene ~= next_scene then
     if UI.CoverCache ~= nil and UI.CoverCache.Clear ~= nil then

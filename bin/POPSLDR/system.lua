@@ -251,7 +251,7 @@ function PLDR.FindMassByDriver(driver, max_index)
   if want == nil then
     return nil
   end
-  local max = tonumber(max_index) or 4
+  local max = tonumber(max_index) or 9
   if max < 0 then max = 0 end
   if max > 9 then max = 9 end
   for i = 0, max do
@@ -263,22 +263,42 @@ function PLDR.FindMassByDriver(driver, max_index)
   return nil
 end
 
-function PLDR.DetectMassBackends()
-  -- Default behavior: keep existing MASSINDX unless we can positively detect a better one.
-  local usb = PLDR.FindMassByDriver("usb", 4)
-  if usb ~= nil then
-    PLDR.USB.MASSINDX = usb
+function PLDR.EnumerateMassSlots(max_index)
+  local max = tonumber(max_index) or 9
+  if max < 0 then max = 0 end
+  if max > 9 then max = 9 end
+
+  local slots = {}
+
+  for i = 0, max do
+    local driver = PLDR.GetMassDriverName(i)
+    local kind = "UNKNOWN/OTHER"
+    local present = false
+
+    if driver == "usb" then
+      kind = "USB"
+      present = true
+    elseif driver == "sdc" then
+      kind = "MX4SIO"
+      present = true
+    elseif type(driver) == "string" and driver ~= "" then
+      present = true
+    end
+
+    local prefix = "mass"..tostring(i)..":/"
+    slots[#slots + 1] = {
+      index = i,
+      driver = driver,
+      kind = kind,
+      present = present,
+      prefix = prefix
+    }
   end
-  local mx = PLDR.FindMassByDriver("sdc", 4)
-  if mx ~= nil then
-    PLDR.MX4SIO.MASSINDX = mx
-  else
-    PLDR.MX4SIO.MASSINDX = nil
-  end
+
+  return slots
 end
 
--- Run detection once during boot.
-PLDR.DetectMassBackends()
+
 PLDR.DEFAULT_DKWDRV_PATH = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
 local BDMA_MODES = {
   {
