@@ -36,6 +36,17 @@ local function GuardTrace()
   end
   return "TRACE unavailable"
 end
+local function TimerMsToTicks(ms)
+  local value = tonumber(ms) or 0
+  if value <= 0 then return 0 end
+  if type(Timer) == "table" and type(Timer.getClockPerSec) == "function" then
+    local ok, cps = pcall(Timer.getClockPerSec)
+    if ok and type(cps) == "number" and cps > 0 then
+      return (value * cps) / 1000
+    end
+  end
+  return value
+end
 UI = {
     LASTSCENE = 5;
     SCENES = {
@@ -470,39 +481,51 @@ if found == nil then return end
           -- no-op placeholder for future custom splash text
         end
 
-        -- Exact boot splash timing: 3.0 seconds total at 60Hz.
-        local splash_total_frames = 180
-        local splash_fade_in_frames = 24
-        local splash_fade_out_frames = 24
-        local splash_hold_frames = splash_total_frames - splash_fade_in_frames - splash_fade_out_frames
-        if splash_hold_frames < 0 then splash_hold_frames = 0 end
+        -- Exact boot splash timing: 4.0s total, timed by Timer (not frame count).
+        local splash_total_ms = 4000
+        local splash_fade_ms = 400
+        local splash_hold_ms = splash_total_ms - (splash_fade_ms * 2)
+        if splash_hold_ms < 0 then splash_hold_ms = 0 end
+
+        local function run_phase(duration_ms, draw_fn)
+          local duration_ticks = TimerMsToTicks(duration_ms)
+          if duration_ticks <= 0 then
+            draw_fn(1)
+            Screen.flip()
+            return
+          end
+          local tmr = Timer.new()
+          while true do
+            local elapsed = Timer.getTime(tmr)
+            local t = elapsed / duration_ticks
+            if t > 1 then t = 1 end
+            draw_fn(t)
+            Screen.flip()
+            if elapsed >= duration_ticks then break end
+          end
+        end
 
         TryBootSound()
-        for i = 1, splash_fade_in_frames do
+        run_phase(splash_fade_ms, function (t)
           DrawBackground()
           DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, 128)
-          local t = i / splash_fade_in_frames
           local overlay_alpha = Round(128 * (1 - t))
           if overlay_alpha > 0 then
             Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, overlay_alpha))
           end
-          Screen.flip()
-        end
-        for _ = 1, splash_hold_frames do
+        end)
+        run_phase(splash_hold_ms, function (_)
           DrawBackground()
           DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, 128)
-          Screen.flip()
-        end
-        for i = 1, splash_fade_out_frames do
+        end)
+        run_phase(splash_fade_ms, function (t)
           DrawBackground()
           DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, 128)
-          local t = i / splash_fade_out_frames
           local overlay_alpha = Round(128 * t)
           if overlay_alpha > 0 then
             Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, overlay_alpha))
           end
-          Screen.flip()
-        end
+        end)
         DrawBackground()
         Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, 128))
         Screen.flip()
@@ -705,15 +728,28 @@ if found == nil then return end
       duration_in = 700,
       Queue = function (target)
         if target == nil then return end
-        if UI.Transition.active and UI.Transition.phase == "out" then
-          UI.Transition.target = target
+        if UI.Transition.active then
+          if UI.Transition.phase == "out" then
+            UI.Transition.target = target
+            return
+          end
+          if target ~= UI.CURSCENE then
+            UI.Transition.next_target = target
+          end
           return
         end
         if target ~= UI.CURSCENE then
-          UI.Transition.next_target = target
+          UI.Transition.Start(target)
         end
       end,
       Start = function (target)
+        if target == nil or target == UI.CURSCENE then
+          return
+        end
+        if UI.Transition.active then
+          UI.Transition.Queue(target)
+          return
+        end
         if UI.Transition.timer == nil then
           UI.Transition.timer = Timer.new()
         end
@@ -948,35 +984,68 @@ if found == nil then return end
       end;
       EditDkwdrvPath = function ()
         local current = UI.ProfileQuery.dkwdrv_path
-        local function try_editor(fn)
-          local ok, value = pcall(fn, current)
-          if ok and type(value) == "string" and value ~= "" then
-            UI.ProfileQuery.dkwdrv_path = value
-            UI.Notif_queue.add("DKWDRV path updated")
-            return true
+        local default_path = PLDR.GetDefaultDkwdrvPath()
+
+        -- Try to load optional keyboard providers if runtime ships them.
+        pcall(require, "osk")
+        pcall(require, "keyboard")
+        pcall(require, "path_editor")
+
+        local function clean_path(value)
+          if type(value) ~= "string" then return nil end
+          local trimmed = value:gsub("^%s+", ""):gsub("%s+$", "")
+          if trimmed == "" then
+            return default_path
           end
-          return false
+          return trimmed
         end
-        if type(ExternalPathEditor) == "table" and type(ExternalPathEditor.Edit) == "function" and try_editor(ExternalPathEditor.Edit) then
-          return
+
+        local function resolve_editor_result(a, b)
+          local first = clean_path(a)
+          if first ~= nil then return first end
+          if type(a) == "boolean" then
+            return clean_path(b)
+          end
+          if type(a) == "table" then
+            return clean_path(a.path) or clean_path(a.text) or clean_path(a.value) or clean_path(a.result)
+          end
+          return clean_path(b)
         end
-        if type(PathEditor) == "table" and type(PathEditor.Edit) == "function" and try_editor(PathEditor.Edit) then
-          return
+
+        local function try_editor(fn, ...)
+          local ok, a, b = pcall(fn, ...)
+          if not ok then return false end
+          local next_path = resolve_editor_result(a, b)
+          if next_path == nil then return false end
+          UI.ProfileQuery.dkwdrv_path = next_path
+          UI.Notif_queue.add("DKWDRV path updated")
+          return true
         end
+
+        local editors = {}
+        if type(ExternalPathEditor) == "table" and type(ExternalPathEditor.Edit) == "function" then table.insert(editors, ExternalPathEditor.Edit) end
+        if type(PathEditor) == "table" and type(PathEditor.Edit) == "function" then table.insert(editors, PathEditor.Edit) end
         if type(OSK) == "table" then
-          if type(OSK.EditPath) == "function" and try_editor(OSK.EditPath) then return end
-          if type(OSK.Edit) == "function" and try_editor(OSK.Edit) then return end
+          if type(OSK.EditPath) == "function" then table.insert(editors, OSK.EditPath) end
+          if type(OSK.Edit) == "function" then table.insert(editors, OSK.Edit) end
+          if type(OSK.Open) == "function" then table.insert(editors, OSK.Open) end
+          if type(OSK.Show) == "function" then table.insert(editors, OSK.Show) end
         end
         if type(System) == "table" then
-          if type(System.editPath) == "function" and try_editor(System.editPath) then return end
-          if type(System.openOSK) == "function" and try_editor(System.openOSK) then return end
+          if type(System.editPath) == "function" then table.insert(editors, System.editPath) end
+          if type(System.openOSK) == "function" then table.insert(editors, System.openOSK) end
+          if type(System.openKeyboard) == "function" then table.insert(editors, System.openKeyboard) end
         end
-        if string.sub(current, 1, 26) == "mc0:/PS1_DKWDRV/DKWDRV.ELF" then
-          UI.ProfileQuery.dkwdrv_path = "mc1:/PS1_DKWDRV/DKWDRV.ELF"
-        else
-          UI.ProfileQuery.dkwdrv_path = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
+
+        for i = 1, #editors do
+          local fn = editors[i]
+          if try_editor(fn, current) then return end
+          if try_editor(fn, "DKWDRV PATH", current) then return end
+          if try_editor(fn, "DKWDRV PATH", current, 255) then return end
+          if try_editor(fn, default_path) then return end
         end
-        UI.Notif_queue.add("Path editor unavailable\nSwitched MC slot fallback")
+
+        UI.Notif_queue.add("Keyboard unavailable")
       end;
       DrawHintWithIcons = function (left_key, right_key, text, y)
         local cx = UI.SCR.X_MID
@@ -1083,17 +1152,24 @@ if found == nil then return end
 
         Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Settings", UI.CCOL.GREY)
 
-        UI.ProfileQuery.DrawHintWithIcons("left", "right", "BDMA MODE", layout.TITLE_Y + 40)
-        Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 58, 8, UI.SCR.X, 16, mode.label, UI.CCOL.GREY)
+        local base_y = layout.TITLE_Y + 32
+        local row_gap = 92
+        local value_offset = 22
+        local detail_offset = 42
 
-        UI.ProfileQuery.DrawHintWithIcons("up", "down", "POPS PROFILE", layout.TITLE_Y + 98)
-        Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 116, 8, UI.SCR.X, 16, tostring(UI.ProfileQuery.curopt).."/"..tostring(math.max(profcnt, 1)), UI.CCOL.GREY)
+        UI.ProfileQuery.DrawHintWithIcons("left", "right", "BDMA MODE", base_y)
+        Font.ftPrint(BFONT, UI.SCR.X_MID, base_y + value_offset, 8, UI.SCR.X, 16, mode.label, UI.CCOL.GREY)
+
+        local profile_row_y = base_y + row_gap
+        UI.ProfileQuery.DrawHintWithIcons("up", "down", "POPS PROFILE", profile_row_y)
+        Font.ftPrint(BFONT, UI.SCR.X_MID, profile_row_y + value_offset, 8, UI.SCR.X, 16, tostring(UI.ProfileQuery.curopt).."/"..tostring(math.max(profcnt, 1)), UI.CCOL.GREY)
         if profile ~= nil then
-          Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 136, 8, UI.SCR.X, 16, profile.DESC, UI.CCOL.GREY)
+          Font.ftPrint(BFONT, UI.SCR.X_MID, profile_row_y + detail_offset, 8, UI.SCR.X, 16, profile.DESC, UI.CCOL.GREY)
         end
 
-        UI.ProfileQuery.DrawHintWithIcons("cross", "cross", "DKWDRV PATH", layout.TITLE_Y + 176)
-        Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 194, 8, UI.SCR.X, 16, UI.ProfileQuery.dkwdrv_path, Color.new(128,128,128, 110))
+        local dkwdrv_row_y = profile_row_y + row_gap
+        UI.ProfileQuery.DrawHintWithIcons("cross", "cross", "DKWDRV PATH", dkwdrv_row_y)
+        Font.ftPrint(BFONT, UI.SCR.X_MID, dkwdrv_row_y + value_offset, 8, UI.SCR.X, 16, UI.ProfileQuery.dkwdrv_path, Color.new(128,128,128, 110))
 
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
@@ -1569,42 +1645,52 @@ if found == nil then return end
       PlayBootSequence = function (duration_ms)
         local total_ms = tonumber(duration_ms) or UI.Credits.BOOT_AUTO_EXIT_MS
         if total_ms < 0 then total_ms = 0 end
-        local total_frames = math.floor((total_ms / 1000) * 60 + 0.5)
-        if total_frames < 1 then total_frames = 1 end
-        local fade_in_frames = 24
-        local fade_out_frames = 24
-        local hold_frames = total_frames - fade_in_frames - fade_out_frames
-        if hold_frames < 0 then hold_frames = 0 end
+        local fade_ms = 400
+        local hold_ms = total_ms - (fade_ms * 2)
+        if hold_ms < 0 then hold_ms = 0 end
+
+        local function run_phase(duration_ms, draw_fn)
+          local duration_ticks = TimerMsToTicks(duration_ms)
+          if duration_ticks <= 0 then
+            draw_fn(1)
+            Screen.flip()
+            return
+          end
+          local tmr = Timer.new()
+          while true do
+            local elapsed = Timer.getTime(tmr)
+            local t = elapsed / duration_ticks
+            if t > 1 then t = 1 end
+            draw_fn(t)
+            Screen.flip()
+            if elapsed >= duration_ticks then break end
+          end
+        end
 
         UI.Credits.is_boot_sequence = true
 
-        for i = 1, fade_in_frames do
+        run_phase(fade_ms, function (t)
           UI.BottomDraw.Play()
           UI.Credits.DrawOnly()
-          local t = i / fade_in_frames
           local overlay_alpha = Round(128 * (1 - t))
           if overlay_alpha > 0 then
             Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, overlay_alpha))
           end
-          Screen.flip()
-        end
+        end)
 
-        for _ = 1, hold_frames do
+        run_phase(hold_ms, function (_)
           UI.BottomDraw.Play()
           UI.Credits.DrawOnly()
-          Screen.flip()
-        end
+        end)
 
-        for i = 1, fade_out_frames do
+        run_phase(fade_ms, function (t)
           UI.BottomDraw.Play()
           UI.Credits.DrawOnly()
-          local t = i / fade_out_frames
           local overlay_alpha = Round(128 * t)
           if overlay_alpha > 0 then
             Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, overlay_alpha))
           end
-          Screen.flip()
-        end
+        end)
 
         UI.Credits.is_boot_sequence = false
       end;
