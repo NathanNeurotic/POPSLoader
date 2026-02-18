@@ -248,21 +248,18 @@ end
 
 
 local APP_DIR_NORM = ensure_dir(normalize_path(APP_DIR))
-local BASE_PARENT = parent_dir(BASE_DIR)
 local SYS_CANDIDATES = {}
-add_candidate(SYS_CANDIDATES, "system.lua")
-add_candidate(SYS_CANDIDATES, "POPSLDR/system.lua")
+
+-- Deterministic startup lookup rooted at the boot ELF directory.
+-- Flat-first in boot dir, then legacy POPSLDR subfolder in same dir.
 add_candidate(SYS_CANDIDATES, BASE_DIR.."system.lua")
 add_candidate(SYS_CANDIDATES, BASE_DIR.."POPSLDR/system.lua")
-if APP_DIR_NORM ~= nil then
+
+-- Compatibility fallback for callers that provide a different app_dir.
+if APP_DIR_NORM ~= nil and APP_DIR_NORM ~= BASE_DIR then
   add_candidate(SYS_CANDIDATES, APP_DIR_NORM.."system.lua")
   add_candidate(SYS_CANDIDATES, APP_DIR_NORM.."POPSLDR/system.lua")
 end
-if BASE_PARENT ~= nil then
-  add_candidate(SYS_CANDIDATES, BASE_PARENT.."system.lua")
-  add_candidate(SYS_CANDIDATES, BASE_PARENT.."POPSLDR/system.lua")
-end
-
 
 local SYS_LOADER = nil
 local SYS_LOAD_ERRORS = {}
