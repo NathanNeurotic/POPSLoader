@@ -72,7 +72,7 @@ end
 local function resolve_script_path(path)
   return each_path_variant(path, function (candidate)
     local resolved = System.resolveAsset(candidate)
-    if resolved ~= nil then
+    if type(resolved) == "string" and resolved ~= "" then
       return resolved
     end
     if doesFileExist(candidate) then
@@ -209,58 +209,12 @@ Font.ftSetCharSize(SFONT, 600, 600)
 BOOT_PROF.stamp("UI assets init (fonts)")
 function STOP() LOG("PROGRAM STOP") Screen.clear(Color.new(255,0,0)) Screen.flip() while true do end end
 
-local function ReadWholeFile(path)
-  local fd = System.openFile(path, FREAD)
-  if fd == nil then
-    return nil, "open failed"
-  end
-  local chunks = {}
-  while true do
-    local buffer = System.readFile(fd, 4096)
-    if buffer == nil or buffer == "" then
-      break
-    end
-    chunks[#chunks + 1] = buffer
-  end
-  System.closeFile(fd)
-  return table.concat(chunks)
-end
-
-local function IsLikelyTextLua(data)
-  if data == nil or data == "" then
-    return false
-  end
-  if string.find(data, "\0", 1, true) then
-    return false
-  end
-  if string.find(data, "[\001-\008\011\012\014-\031]") then
-    return false
-  end
-  return true
-end
-
 local function LoadLuaFile(path)
   local loader, load_err = loadfile(path)
   if loader ~= nil then
     return loader
   end
-  LOG("Lua load failed:", load_err)
-  local data, read_err = ReadWholeFile(path)
-  if data == nil then
-    return nil, read_err
-  end
-  if not IsLikelyTextLua(data) then
-    return nil, load_err
-  end
-  local sanitized, count = string.gsub(data, "[\128-\255]", "?")
-  if count > 0 then
-    LOGF("Sanitized %d non-ASCII bytes in %s", count, path)
-  end
-  local text_loader, text_err = loadstring(sanitized, "@"..path)
-  if text_loader ~= nil then
-    return text_loader
-  end
-  return nil, (load_err or "loadfile failed").." | "..tostring(text_err)
+  return nil, load_err
 end
 
 function RunScript(S)
@@ -298,25 +252,6 @@ for i = 1, #SYS_CANDIDATES do
   end
 end
 
-if SYS == nil then
-  for i = 1, #SYS_CANDIDATES do
-    local candidate = normalize_path(SYS_CANDIDATES[i])
-    local loader = nil
-    loader = LoadLuaFile(candidate)
-    if loader ~= nil then
-      SYS = candidate
-      break
-    end
-    if string.sub(candidate, 1, 6) == "mass:/" then
-      local compact = "mass:"..string.sub(candidate, 7)
-      loader = LoadLuaFile(compact)
-      if loader ~= nil then
-        SYS = compact
-        break
-      end
-    end
-  end
-end
 if SYS ~= nil then
   RunScript(SYS)
 else
