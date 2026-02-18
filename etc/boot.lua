@@ -54,47 +54,84 @@ local function add_candidate(list, path)
   end
 end
 
-local function resolve_script_path(path)
+local function each_path_variant(path, fn)
   local normalized = normalize_path(path)
   if normalized == nil or normalized == "" then
     return nil
   end
-  local resolved = System.resolveAsset(normalized)
-  if resolved ~= nil then
-    return resolved
-  end
-  if doesFileExist(normalized) then
-    return normalized
+  local result = fn(normalized)
+  if result ~= nil then
+    return result
   end
   if string.sub(normalized, 1, 6) == "mass:/" then
-    local compact = "mass:"..string.sub(normalized, 7)
-    resolved = System.resolveAsset(compact)
+    return fn("mass:"..string.sub(normalized, 7))
+  end
+  return nil
+end
+
+local function resolve_script_path(path)
+  return each_path_variant(path, function (candidate)
+    local resolved = System.resolveAsset(candidate)
     if resolved ~= nil then
       return resolved
     end
-    if doesFileExist(compact) then
-      return compact
+    if doesFileExist(candidate) then
+      return candidate
+    end
+    return nil
+  end)
+end
+
+local function folder_exists(path)
+  if path == nil or path == "" then
+    return false
+  end
+  return each_path_variant(path, function (candidate)
+    local with_trailing = ensure_dir(candidate)
+    if doesFolderExist(with_trailing) == true then
+      return true
+    end
+    if doesFolderExist(string.gsub(with_trailing, "/+$", "")) == true then
+      return true
+    end
+    return nil
+  end) == true
+end
+
+local function pick_accessible_dir(path)
+  return each_path_variant(path, function (candidate)
+    if folder_exists(candidate) then
+      return ensure_dir(candidate)
+    end
+    return nil
+  end)
+end
+
+local function first_valid_dir(...)
+  local paths = {...}
+  for i = 1, #paths do
+    local picked = pick_accessible_dir(paths[i])
+    if picked ~= nil then
+      return picked
     end
   end
   return nil
 end
 
 local function dir_exists(path)
-  if path == nil or path == "" then
-    return false
-  end
-  return doesFolderExist(ensure_dir(path)) == true
+  return folder_exists(path)
 end
 
 local ARGV0 = normalize_path(System.GetArgv0())
 local BASE_DIR = dirname(ARGV0)
-if BASE_DIR == nil or BASE_DIR == "" or not dir_exists(BASE_DIR) then
-  BASE_DIR = normalize_path(APP_DIR) or normalize_path(System.currentDirectory())
+BASE_DIR = first_valid_dir(
+  BASE_DIR,
+  normalize_path(APP_DIR),
+  normalize_path(System.currentDirectory())
+)
+if BASE_DIR == nil then
+  BASE_DIR = ensure_dir(normalize_path(System.currentDirectory()))
 end
-if BASE_DIR == nil or BASE_DIR == "" or not dir_exists(BASE_DIR) then
-  BASE_DIR = normalize_path(System.currentDirectory())
-end
-BASE_DIR = ensure_dir(BASE_DIR)
 System.currentDirectory(BASE_DIR)
 
 package.path = BASE_DIR.."?.lua;"..BASE_DIR.."?/init.lua;"..BASE_DIR.."POPSLDR/?.lua;./?.lua;./?/init.lua;./POPSLDR/?.lua"
