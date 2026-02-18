@@ -89,6 +89,10 @@ end
 
 local function resolve_script_path(path)
   return each_path_variant(path, function (candidate)
+    local resolved = System.resolveAsset(candidate)
+    if type(resolved) == "string" and resolved ~= "" then
+      return resolved
+    end
     if doesFileExist(candidate) then
       return candidate
     end
@@ -231,56 +235,43 @@ local function LoadLuaFile(path)
   return nil, load_err
 end
 
-local function RunLoader(loader)
+function RunScript(S)
+  local loader, load_err = LoadLuaFile(S)
+  if loader == nil then
+    error(load_err)
+  end
   local ok, run_err = pcall(loader)
   if not ok then
     error(run_err)
   end
 end
 
-function RunScript(S)
-  local loader, load_err = LoadLuaFile(S)
-  if loader == nil then
-    error(load_err)
-  end
-  RunLoader(loader)
-end
-
-
 local APP_DIR_NORM = ensure_dir(normalize_path(APP_DIR))
+local BASE_PARENT = parent_dir(BASE_DIR)
 local SYS_CANDIDATES = {}
-
--- Deterministic startup lookup rooted at the boot ELF directory.
--- Flat-first in boot dir, then legacy POPSLDR subfolder in same dir.
+add_candidate(SYS_CANDIDATES, "system.lua")
+add_candidate(SYS_CANDIDATES, "POPSLDR/system.lua")
 add_candidate(SYS_CANDIDATES, BASE_DIR.."system.lua")
 add_candidate(SYS_CANDIDATES, BASE_DIR.."POPSLDR/system.lua")
-
--- Compatibility fallback for callers that provide a different app_dir.
-if APP_DIR_NORM ~= nil and APP_DIR_NORM ~= BASE_DIR then
+if APP_DIR_NORM ~= nil then
   add_candidate(SYS_CANDIDATES, APP_DIR_NORM.."system.lua")
   add_candidate(SYS_CANDIDATES, APP_DIR_NORM.."POPSLDR/system.lua")
 end
+if BASE_PARENT ~= nil then
+  add_candidate(SYS_CANDIDATES, BASE_PARENT.."system.lua")
+  add_candidate(SYS_CANDIDATES, BASE_PARENT.."POPSLDR/system.lua")
+end
 
-local SYS_LOADER = nil
-local SYS_LOAD_ERRORS = {}
+local SYS = nil
 for i = 1, #SYS_CANDIDATES do
-  local resolved = resolve_script_path(SYS_CANDIDATES[i])
-  if resolved ~= nil then
-    local loader, load_err = LoadLuaFile(resolved)
-    if loader ~= nil then
-      SYS_LOADER = loader
-      break
-    end
-    SYS_LOAD_ERRORS[#SYS_LOAD_ERRORS + 1] = tostring(resolved).." => "..tostring(load_err)
+  SYS = resolve_script_path(SYS_CANDIDATES[i])
+  if SYS ~= nil then
+    break
   end
 end
 
-if SYS_LOADER ~= nil then
-  RunLoader(SYS_LOADER)
+if SYS ~= nil then
+  RunScript(SYS)
 else
-  local detail = ""
-  if #SYS_LOAD_ERRORS > 0 then
-    detail = "\n\n\tload errors:\n\t"..table.concat(SYS_LOAD_ERRORS, "\n\t")
-  end
-  error("Cant access valid system.lua (flat) or POPSLDR/system.lua (fallback)\n\n\targv0: "..tostring(ARGV0).."\n\tcwd: "..tostring(System.currentDirectory())..detail)
+  error("Cant access system.lua (flat) or POPSLDR/system.lua (fallback)\n\n\targv0: "..tostring(ARGV0).."\n\tcwd: "..tostring(System.currentDirectory()))
 end
