@@ -974,43 +974,39 @@ if found == nil then return end
       end;
       EditDkwdrvPath = function ()
         local current = UI.ProfileQuery.dkwdrv_path
+        local default_path = PLDR.GetDefaultDkwdrvPath()
 
-        local function normalize_result(...)
-          local count = select("#", ...)
-          for i = 1, count do
-            local value = select(i, ...)
-            if type(value) == "string" then
-              local cleaned = value:gsub("^%s+", ""):gsub("%s+$", "")
-              if cleaned ~= "" then
-                return cleaned
-              end
-            elseif type(value) == "table" then
-              local candidates = { value.path, value.text, value.value, value.result }
-              for j = 1, #candidates do
-                local c = candidates[j]
-                if type(c) == "string" then
-                  local cleaned = c:gsub("^%s+", ""):gsub("%s+$", "")
-                  if cleaned ~= "" then
-                    return cleaned
-                  end
-                end
-              end
-            end
+        local function clean_path(value)
+          if type(value) ~= "string" then return nil end
+          local trimmed = value:gsub("^%s+", ""):gsub("%s+$", "")
+          if trimmed == "" then
+            return default_path
           end
-          return nil
+          return trimmed
+        end
+
+        local function resolve_editor_result(a, b)
+          local first = clean_path(a)
+          if first ~= nil then return first end
+          if type(a) == "boolean" then
+            return clean_path(b)
+          end
+          if type(a) == "table" then
+            return clean_path(a.path) or clean_path(a.text) or clean_path(a.value) or clean_path(a.result)
+          end
+          return clean_path(b)
         end
 
         local function try_editor(fn, ...)
-          local ok, a, b, c = pcall(fn, ...)
+          local ok, a, b = pcall(fn, ...)
           if not ok then return false end
-          local normalized = normalize_result(a, b, c)
-          if normalized == nil then return false end
-          UI.ProfileQuery.dkwdrv_path = normalized
+          local next_path = resolve_editor_result(a, b)
+          if next_path == nil then return false end
+          UI.ProfileQuery.dkwdrv_path = next_path
           UI.Notif_queue.add("DKWDRV path updated")
           return true
         end
 
-        local prompts = { "DKWDRV path", "Edit DKWDRV path" }
         local editors = {}
         if type(ExternalPathEditor) == "table" and type(ExternalPathEditor.Edit) == "function" then table.insert(editors, ExternalPathEditor.Edit) end
         if type(PathEditor) == "table" and type(PathEditor.Edit) == "function" then table.insert(editors, PathEditor.Edit) end
@@ -1029,72 +1025,12 @@ if found == nil then return end
         for i = 1, #editors do
           local fn = editors[i]
           if try_editor(fn, current) then return end
-          if try_editor(fn) then return end
-          for j = 1, #prompts do
-            if try_editor(fn, prompts[j], current) then return end
-            if try_editor(fn, current, prompts[j]) then return end
-          end
+          if try_editor(fn, "DKWDRV PATH", current) then return end
+          if try_editor(fn, "DKWDRV PATH", current, 255) then return end
+          if try_editor(fn, default_path) then return end
         end
 
-        local function append_path(base, name)
-          local prefix = base
-          if string.sub(prefix, -1) ~= "/" then
-            prefix = prefix.."/"
-          end
-          return prefix..name
-        end
-
-        local found = {}
-        local seen = {}
-        local function push_found(path)
-          if path == nil or seen[path] then return end
-          seen[path] = true
-          table.insert(found, path)
-        end
-        local function scan_dkwdrv(dir, depth)
-          if depth < 0 then return end
-          local ok, entries = pcall(System.listDirectory, dir)
-          if not ok or type(entries) ~= "table" then return end
-          for i = 1, #entries do
-            local entry = entries[i]
-            if entry ~= nil and entry.name ~= nil and entry.name ~= "." and entry.name ~= ".." then
-              local child = append_path(dir, entry.name)
-              if entry.directory == true then
-                scan_dkwdrv(child, depth - 1)
-              else
-                if string.upper(entry.name) == "DKWDRV.ELF" then
-                  push_found(child)
-                end
-              end
-            end
-          end
-        end
-
-        scan_dkwdrv("mc0:/", 3)
-        scan_dkwdrv("mc1:/", 3)
-        table.sort(found)
-
-        if #found > 0 then
-          local idx = 0
-          for i = 1, #found do
-            if found[i] == current then
-              idx = i
-              break
-            end
-          end
-          idx = idx + 1
-          if idx > #found then idx = 1 end
-          UI.ProfileQuery.dkwdrv_path = found[idx]
-          UI.Notif_queue.add("Path editor unavailable\nUsing detected DKWDRV.ELF")
-          return
-        end
-
-        if string.match(string.lower(current), "^mc0:") then
-          UI.ProfileQuery.dkwdrv_path = "mc1:/PS1_DKWDRV/DKWDRV.ELF"
-        else
-          UI.ProfileQuery.dkwdrv_path = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
-        end
-        UI.Notif_queue.add("Path editor unavailable\nSwitched MC slot fallback")
+        UI.Notif_queue.add("Keyboard unavailable")
       end;
       DrawHintWithIcons = function (left_key, right_key, text, y)
         local cx = UI.SCR.X_MID
