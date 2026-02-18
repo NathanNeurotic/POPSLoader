@@ -537,7 +537,7 @@ UI = {
         while intro.state ~= UI.BootIntro.STATES.DONE do
           local transitioned, elapsed_ms = IntroUpdate()
           if transitioned then
-            goto intro_next_frame
+            elapsed_ms = 0
           end
 
           local progress = IntroProgress(elapsed_ms)
@@ -562,7 +562,6 @@ UI = {
           UI.BootIntro.DrawBlackOverlay(overlay_alpha)
           Screen.flip()
 
-          ::intro_next_frame::
         end
 
         if boot_sound ~= nil and type(Sound) == "table" and type(Sound.freeADPCM) == "function" then
