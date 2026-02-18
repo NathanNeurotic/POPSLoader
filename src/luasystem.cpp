@@ -49,6 +49,7 @@ static SifRpcClientData_t bdm_rpc_client;
 static bool bdm_rpc_bound = false;
 static bool bdm_rpc_loaded = false;
 static bdm_dev_list_t bdm_rpc_buffer __attribute__((aligned(64)));
+static bool mx4sio_bd_loaded = false;
 
 static bool EnsureBdmQueryRpc()
 {
@@ -162,7 +163,7 @@ static bool QueryMassDriverName(int idx, char out_driver[8])
 // MX4SIO init notes:
 // - Bundle inventory (iop/embed/PS2SDK_MX4SIO): mx4sio_bd.irx.
 // - IRX load order: mx4sio_bd.irx (PS2SDK).
-// - Success condition: chosen MX4SIO prefix root is accessible.
+// - Success condition: chosen MX4SIO dedicated prefix root is accessible.
 // - TODO: verify any slot or adapter placement requirements for MX4SIO in hardware docs.
 int mx4sio_init_and_get_root(const char *hint, char *out_root, size_t out_sz)
 {
@@ -170,8 +171,11 @@ int mx4sio_init_and_get_root(const char *hint, char *out_root, size_t out_sz)
 		return -1;
 	}
 	DPRINTF("MX4SIO SDK init start\n");
-	if (!LoadIrxCheckedBuffer("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL)) {
-		return -1;
+	if (!mx4sio_bd_loaded) {
+		if (!LoadIrxCheckedBuffer("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL)) {
+			return -1;
+		}
+		mx4sio_bd_loaded = true;
 	}
 	const char *dedicated_candidates[] = {"mx4sio:/", "mx4sio0:/"};
 	for (size_t i = 0; i < sizeof(dedicated_candidates) / sizeof(dedicated_candidates[0]); ++i) {
@@ -196,24 +200,6 @@ int mx4sio_init_and_get_root(const char *hint, char *out_root, size_t out_sz)
 			return 0;
 		} else {
 			DPRINTF("MX4SIO probe %s ret=%d ok=%d\n", hint, hint_ret, hint_ok);
-		}
-	}
-	for (int i = 0; i <= 9; ++i) {
-		char driver[8];
-		bool has_driver = QueryMassDriverName(i, driver);
-		DPRINTF("MX4SIO probe mass%d driver=%s ok=%d\n", i, has_driver ? driver : "", has_driver);
-		if (!has_driver || strcmp(driver, "sdc") != 0) {
-			continue;
-		}
-		char mass_prefix[16];
-		snprintf(mass_prefix, sizeof(mass_prefix), "mass%d:/", i);
-		int root_ret = -1;
-		bool root_ok = ProbeDir(mass_prefix, &root_ret);
-		DPRINTF("MX4SIO probe %s ret=%d ok=%d\n", mass_prefix, root_ret, root_ok);
-		if (root_ok) {
-			DPRINTF("Chosen MX4SIO mass prefix: %s\n", mass_prefix);
-			snprintf(out_root, out_sz, "%s", mass_prefix);
-			return 0;
 		}
 	}
 	return -1;

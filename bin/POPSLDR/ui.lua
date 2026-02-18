@@ -2092,9 +2092,6 @@ end
               UI.SceneChange(UI.SCENES.GMMCE)
             end
           elseif UI.MainMenu.OPT == 2 then
-            if not UI.RefreshMassDevicePage("MX4SIO") then
-              return
-            end
             UI.setDeviceLock(DEVLOCK.MX4SIO)
             UI.SceneChange(UI.SCENES.GMX4SIO)
           elseif UI.MainMenu.OPT == 3 then
@@ -2345,7 +2342,7 @@ function UI.IsMx4sioScene(scene)
 end
 
 function UI.RefreshMassDevicePage(device_kind)
-  if PLDR == nil or type(PLDR.EnumerateMassSlots) ~= "function" or type(PLDR.RouteMassSlotsForPage) ~= "function" then
+  if PLDR == nil then
     UI.Notif_queue.add("Mass routing helper unavailable")
     return false
   end
@@ -2390,6 +2387,11 @@ function UI.RefreshMassDevicePage(device_kind)
     PLDR.GetPS1GameLists(root.."POPS/", true)
     UI.GameList.Reset()
     return true
+  end
+
+  if type(PLDR.EnumerateMassSlots) ~= "function" or type(PLDR.RouteMassSlotsForPage) ~= "function" then
+    UI.Notif_queue.add("Mass routing helper unavailable")
+    return false
   end
 
   local slots = PLDR.EnumerateMassSlots(9) or {}
