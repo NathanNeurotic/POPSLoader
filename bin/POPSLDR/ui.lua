@@ -9,6 +9,7 @@
 LOG("Registering POPSLoader UI")
 local DEVLOCK = { NONE = 0, USB = 1, MMCE = 2, MX4SIO = 3 }
 local UI
+local Transition = require("transition")
 local function Round(value)
   return math.floor(value + 0.5)
 end
@@ -31,8 +32,6 @@ local function EaseInOutCubic(t)
   return 1 - (f * f * f) / 2
 end
 
-local TRANSITION_OUT_MS = 350
-local TRANSITION_IN_MS = 350
 
 local function GuardTrace()
   if debug ~= nil and debug.traceback ~= nil then
@@ -716,7 +715,7 @@ UI = {
       UI.TextEntry.Draw()
       UI.Modal.Draw()
       if UI.Transition ~= nil then
-        local alpha = UI.Transition.Update()
+        local alpha = UI.Transition.update()
         if alpha > 0 then
           Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
         end
@@ -1355,85 +1354,7 @@ end
         Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 95, 8, UI.SCR.X, 16, hint, UI.CCOL.GREY)
       end;
     };
-    Transition = {
-      active = false,
-      phase = "out",
-      target = nil,
-      args = nil,
-      allowSceneWrite = false,
-      timer = nil,
-      start = 0,
-      elapsed = 0,
-      last_time = nil,
-      max_step = 33,
-      duration_out = TRANSITION_OUT_MS,
-      duration_in = TRANSITION_IN_MS,
-      request = function (next_scene_id, optional_args)
-        if next_scene_id == nil then return end
-        if next_scene_id == UI.CURSCENE then return end
-        if UI.Transition.active == true then return end
-        if UI.Transition.timer == nil then
-          UI.Transition.timer = Timer.new()
-        end
-        UI.Transition.active = true
-        UI.Transition.phase = "out"
-        UI.Transition.target = next_scene_id
-        UI.Transition.args = optional_args
-        UI.Transition.start = Timer.getTime(UI.Transition.timer)
-        UI.Transition.elapsed = 0
-        UI.Transition.last_time = UI.Transition.start
-      end,
-      Update = function ()
-        if not UI.Transition.active then
-          return 0
-        end
-        local now = Timer.getTime(UI.Transition.timer)
-        local last = UI.Transition.last_time or now
-        local delta = now - last
-        if delta < 0 then delta = 0 end
-        local max_step = UI.Transition.max_step or 33
-        if delta > max_step then delta = max_step end
-        UI.Transition.elapsed = (UI.Transition.elapsed or 0) + delta
-        UI.Transition.last_time = now
-        local elapsed = UI.Transition.elapsed or 0
-        local duration = UI.Transition.phase == "out" and UI.Transition.duration_out or UI.Transition.duration_in
-        if duration <= 0 then duration = 1 end
-        local t = elapsed / duration
-        if t > 1 then t = 1 end
-        local alpha
-        if UI.Transition.phase == "out" then
-          alpha = Round(128 * t)
-        else
-          alpha = Round(128 * (1 - t))
-        end
-        if t >= 1 then
-          if UI.Transition.phase == "out" then
-            local previous_scene = UI.CURSCENE
-            if UI.OnSceneExit ~= nil then
-              UI.OnSceneExit(previous_scene, UI.Transition.target)
-            end
-            UI.LASTSCENE = UI.CURSCENE
-            UI.Transition.allowSceneWrite = true
-            UI.CURSCENE = UI.Transition.target
-            UI.Transition.allowSceneWrite = false
-            if UI.OnSceneEnter ~= nil then
-              UI.OnSceneEnter(previous_scene, UI.CURSCENE)
-            end
-            UI.Transition.phase = "in"
-            UI.Transition.start = now
-            UI.Transition.elapsed = 0
-            UI.Transition.last_time = now
-            alpha = 128
-          else
-            UI.Transition.active = false
-            UI.Transition.target = nil
-            UI.Transition.args = nil
-            alpha = 0
-          end
-        end
-        return alpha
-      end
-    };
+    Transition = nil;
     HandleGlobalInput = function (allow_exit)
       if UI.TextEntry ~= nil and UI.TextEntry.active then
         UI.TextEntry.HandleInput()
@@ -2427,6 +2348,21 @@ function UI.OnSceneExit(previous_scene, next_scene)
     end
   end
 end
+UI.Transition = Transition.new({
+  get_scene = function () return UI.CURSCENE end,
+  set_scene = function (scene_id) UI.CURSCENE = scene_id end,
+  set_last_scene = function (scene_id) UI.LASTSCENE = scene_id end,
+  on_scene_exit = function (previous_scene, next_scene)
+    if UI.OnSceneExit ~= nil then
+      UI.OnSceneExit(previous_scene, next_scene)
+    end
+  end,
+  on_scene_enter = function (previous_scene, next_scene)
+    if UI.OnSceneEnter ~= nil then
+      UI.OnSceneEnter(previous_scene, next_scene)
+    end
+  end
+})
 UI.RecalcLayout()
 function Input_GetEvent()
   UI.Pad.Listen()
@@ -2475,7 +2411,7 @@ do
     end,
     __newindex = function (t, key, value)
       if key == "CURSCENE" then
-        if UI.Transition == nil or not UI.Transition.allowSceneWrite then
+        if UI.Transition == nil or not UI.Transition.isSceneWriteAllowed or not UI.Transition.isSceneWriteAllowed() then
           LOG("ERROR: scene change blocked outside transition midpoint")
           LOG(GuardTrace())
           return
