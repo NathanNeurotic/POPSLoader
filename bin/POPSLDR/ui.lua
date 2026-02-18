@@ -36,6 +36,17 @@ local function GuardTrace()
   end
   return "TRACE unavailable"
 end
+local function TimerMsToTicks(ms)
+  local value = tonumber(ms) or 0
+  if value <= 0 then return 0 end
+  if type(Timer) == "table" and type(Timer.getClockPerSec) == "function" then
+    local ok, cps = pcall(Timer.getClockPerSec)
+    if ok and type(cps) == "number" and cps > 0 then
+      return (value * cps) / 1000
+    end
+  end
+  return value
+end
 UI = {
     LASTSCENE = 5;
     SCENES = {
@@ -477,21 +488,20 @@ if found == nil then return end
         if splash_hold_ms < 0 then splash_hold_ms = 0 end
 
         local function run_phase(duration_ms, draw_fn)
-          if duration_ms <= 0 then
+          local duration_ticks = TimerMsToTicks(duration_ms)
+          if duration_ticks <= 0 then
             draw_fn(1)
             Screen.flip()
             return
           end
           local tmr = Timer.new()
-          local start = Timer.getTime(tmr)
           while true do
-            local now = Timer.getTime(tmr)
-            local elapsed = now - start
-            local t = elapsed / duration_ms
+            local elapsed = Timer.getTime(tmr)
+            local t = elapsed / duration_ticks
             if t > 1 then t = 1 end
             draw_fn(t)
             Screen.flip()
-            if elapsed >= duration_ms then break end
+            if elapsed >= duration_ticks then break end
           end
         end
 
@@ -975,6 +985,11 @@ if found == nil then return end
       EditDkwdrvPath = function ()
         local current = UI.ProfileQuery.dkwdrv_path
         local default_path = PLDR.GetDefaultDkwdrvPath()
+
+        -- Try to load optional keyboard providers if runtime ships them.
+        pcall(require, "osk")
+        pcall(require, "keyboard")
+        pcall(require, "path_editor")
 
         local function clean_path(value)
           if type(value) ~= "string" then return nil end
@@ -1635,21 +1650,20 @@ if found == nil then return end
         if hold_ms < 0 then hold_ms = 0 end
 
         local function run_phase(duration_ms, draw_fn)
-          if duration_ms <= 0 then
+          local duration_ticks = TimerMsToTicks(duration_ms)
+          if duration_ticks <= 0 then
             draw_fn(1)
             Screen.flip()
             return
           end
           local tmr = Timer.new()
-          local start = Timer.getTime(tmr)
           while true do
-            local now = Timer.getTime(tmr)
-            local elapsed = now - start
-            local t = elapsed / duration_ms
+            local elapsed = Timer.getTime(tmr)
+            local t = elapsed / duration_ticks
             if t > 1 then t = 1 end
             draw_fn(t)
             Screen.flip()
-            if elapsed >= duration_ms then break end
+            if elapsed >= duration_ticks then break end
           end
         end
 

@@ -106,6 +106,13 @@ static int lua_wisPlaying(lua_State *L){
 	return 1;
 }
 
+static int lua_clockPerSec(lua_State *L) {
+	int argc = lua_gettop(L);
+	if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	lua_pushinteger(L, (uint32_t)CLOCKS_PER_SEC);
+	return 1;
+}
+
 static int lua_destroy(lua_State *L) {
 	int argc = lua_gettop(L);
 	if (argc != 1) return luaL_error(L, "wrong number of arguments");
@@ -121,6 +128,7 @@ static int lua_destroy(lua_State *L) {
 static const luaL_Reg Timer_functions[] = {
   {"new",        		  lua_newT},
   {"getTime",    		  lua_time},
+  {"getClockPerSec",      lua_clockPerSec},
   {"setTime",    		   lua_set},
   {"destroy",    	   lua_destroy},
   {"pause",      		 lua_pause},
