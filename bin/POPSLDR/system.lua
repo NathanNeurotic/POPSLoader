@@ -525,14 +525,10 @@ if UI.DEVLOCK ~= nil then
   UI.boot_locks = {}
   if boot_name == "MX4SIO" then
     UI.boot_device = UI.DEVLOCK.MX4SIO
-    UI.boot_locks[UI.DEVLOCK.USB] = true
-    UI.boot_locks[UI.DEVLOCK.MMCE] = true
   elseif boot_name == "USB" then
     UI.boot_device = UI.DEVLOCK.USB
-    UI.boot_locks[UI.DEVLOCK.MX4SIO] = true
   elseif boot_name == "MMCE" then
     UI.boot_device = UI.DEVLOCK.MMCE
-    UI.boot_locks[UI.DEVLOCK.MX4SIO] = true
   end
   if boot_name ~= nil then
     LOG("Boot device detected:", boot_name, "prefix:", tostring(boot_prefix), "path:", tostring(boot_path))

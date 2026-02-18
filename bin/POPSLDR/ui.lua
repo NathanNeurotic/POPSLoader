@@ -257,16 +257,7 @@ UI = {
       return "None"
     end;
     canEnterDevice = function (target)
-      if UI.boot_locks ~= nil and UI.boot_locks[target] == true then
-        return false, "boot", UI.boot_device
-      end
-      if UI.device_lock == DEVLOCK.NONE then
-        return true
-      end
-      if UI.device_lock == target then
-        return true
-      end
-      return false, "session", UI.device_lock
+      return true
     end;
     ShouldHideUI = function ()
       if not UI.HideUI then return false end
@@ -276,10 +267,7 @@ UI = {
       return true
     end;
     setDeviceLock = function (target)
-      if UI.device_lock == DEVLOCK.NONE then
-        UI.device_lock = target
-        LOG("Device lock set to "..UI.device_lock_name(target))
-      end
+      return
     end;
     RequestScene = function (SCENE)
       if UI.Transition ~= nil and UI.Transition.Start ~= nil then
@@ -1864,11 +1852,6 @@ end
           top_label_y = status_y + 16
           Font.ftPrint(UI.FONT.TITLE, UI.SCR.X_MID, title_y, 8, UI.SCR.X, 16, "POPSLOADER", UI.COLORS.TEXT_PRIMARY)
           Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "ACTIVE BDMA: "..ResolveActiveBDMALabel(), UI.COLORS.TEXT_PRIMARY)
-          status_y = top_label_y + 12
-          if UI.boot_device ~= nil and UI.boot_device ~= DEVLOCK.NONE then
-            Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Booted from: "..UI.device_lock_name(UI.boot_device), UI.COLORS.TEXT_PRIMARY)
-            status_y = status_y + 12
-          end
         end
 	        -- Pages are no longer presented as "locked" in the UI.
         local icon_map = {
@@ -2070,12 +2053,6 @@ end
               UI.SceneChange(UI.SCENES.GMMCE)
             end
           elseif UI.MainMenu.OPT == 2 then
-            local can_enter, reason, lock = UI.canEnterDevice(DEVLOCK.MX4SIO)
-            if not can_enter then
-              UI.Notif_queue.add("Device locked to "..UI.device_lock_name(lock))
-              return
-            end
-
             -- Prefer IOCTL-based backend detection (massX drivername == "sdc") to avoid USB/MX4SIO cross-page confusion.
             local mx_mass = nil
             if PLDR ~= nil and type(PLDR.FindMassByDriver) == "function" then
