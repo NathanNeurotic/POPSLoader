@@ -1925,8 +1925,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, selected_root)
 end
 
 ---MAIN PROGRAM BEHAVIOUR BEGINS
-local initial_scene = UI.SCENES.CREDITS
-UI.WelcomeDraw.Play(initial_scene)
+local initial_scene = UI.SCENES.MMAIN
 if UI.Transition ~= nil then
   UI.Transition.allowSceneWrite = true
 end
@@ -1935,19 +1934,11 @@ UI.LASTSCENE = initial_scene
 if UI.Transition ~= nil then
   UI.Transition.allowSceneWrite = false
 end
-if UI.Credits ~= nil and UI.Credits.PlayBootSequence ~= nil then
-  UI.Credits.PlayBootSequence(3000)
-end
-if UI.Transition ~= nil then
-  UI.Transition.allowSceneWrite = true
-end
-UI.CURSCENE = UI.SCENES.MMAIN
-UI.LASTSCENE = UI.SCENES.MMAIN
-if UI.Transition ~= nil then
-  UI.Transition.allowSceneWrite = false
-end
-if UI.BootFadeInScene ~= nil then
-  UI.BootFadeInScene(UI.SCENES.MMAIN, 24)
+if UI.BootIntro ~= nil and UI.BootIntro.Play ~= nil then
+  UI.BootIntro.Play()
+elseif UI.WelcomeDraw ~= nil and UI.WelcomeDraw.Play ~= nil then
+  -- Legacy fallback path if BootIntro is unavailable.
+  UI.WelcomeDraw.Play(initial_scene)
 end
 
 while true do
