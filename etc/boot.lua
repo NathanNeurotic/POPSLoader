@@ -43,6 +43,42 @@ local function parent_dir(path)
   return ensure_dir(parent)
 end
 
+local function add_candidate(list, path)
+  local normalized = normalize_path(path)
+  if normalized == nil or normalized == "" then
+    return
+  end
+  list[#list + 1] = normalized
+  if string.sub(normalized, 1, 6) == "mass:/" then
+    list[#list + 1] = "mass:"..string.sub(normalized, 7)
+  end
+end
+
+local function resolve_script_path(path)
+  local normalized = normalize_path(path)
+  if normalized == nil or normalized == "" then
+    return nil
+  end
+  local resolved = System.resolveAsset(normalized)
+  if resolved ~= nil then
+    return resolved
+  end
+  if doesFileExist(normalized) then
+    return normalized
+  end
+  if string.sub(normalized, 1, 6) == "mass:/" then
+    local compact = "mass:"..string.sub(normalized, 7)
+    resolved = System.resolveAsset(compact)
+    if resolved ~= nil then
+      return resolved
+    end
+    if doesFileExist(compact) then
+      return compact
+    end
+  end
+  return nil
+end
+
 local function dir_exists(path)
   if path == nil or path == "" then
     return false
@@ -202,27 +238,45 @@ end
 
 local APP_DIR_NORM = ensure_dir(normalize_path(APP_DIR))
 local BASE_PARENT = parent_dir(BASE_DIR)
-local SYS_CANDIDATES = {
-  "system.lua",
-  "POPSLDR/system.lua",
-  BASE_DIR.."system.lua",
-  BASE_DIR.."POPSLDR/system.lua"
-}
+local SYS_CANDIDATES = {}
+add_candidate(SYS_CANDIDATES, "system.lua")
+add_candidate(SYS_CANDIDATES, "POPSLDR/system.lua")
+add_candidate(SYS_CANDIDATES, BASE_DIR.."system.lua")
+add_candidate(SYS_CANDIDATES, BASE_DIR.."POPSLDR/system.lua")
 if APP_DIR_NORM ~= nil then
-  table.insert(SYS_CANDIDATES, APP_DIR_NORM.."system.lua")
-  table.insert(SYS_CANDIDATES, APP_DIR_NORM.."POPSLDR/system.lua")
+  add_candidate(SYS_CANDIDATES, APP_DIR_NORM.."system.lua")
+  add_candidate(SYS_CANDIDATES, APP_DIR_NORM.."POPSLDR/system.lua")
 end
 if BASE_PARENT ~= nil then
-  table.insert(SYS_CANDIDATES, BASE_PARENT.."system.lua")
-  table.insert(SYS_CANDIDATES, BASE_PARENT.."POPSLDR/system.lua")
+  add_candidate(SYS_CANDIDATES, BASE_PARENT.."system.lua")
+  add_candidate(SYS_CANDIDATES, BASE_PARENT.."POPSLDR/system.lua")
 end
 
 local SYS = nil
 for i = 1, #SYS_CANDIDATES do
-  local candidate = normalize_path(SYS_CANDIDATES[i])
-  SYS = System.resolveAsset(candidate)
+  SYS = resolve_script_path(SYS_CANDIDATES[i])
   if SYS ~= nil then
     break
+  end
+end
+
+if SYS == nil then
+  for i = 1, #SYS_CANDIDATES do
+    local candidate = normalize_path(SYS_CANDIDATES[i])
+    local loader = nil
+    loader = LoadLuaFile(candidate)
+    if loader ~= nil then
+      SYS = candidate
+      break
+    end
+    if string.sub(candidate, 1, 6) == "mass:/" then
+      local compact = "mass:"..string.sub(candidate, 7)
+      loader = LoadLuaFile(compact)
+      if loader ~= nil then
+        SYS = compact
+        break
+      end
+    end
   end
 end
 if SYS ~= nil then
