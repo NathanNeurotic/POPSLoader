@@ -1917,6 +1917,13 @@ UI.WelcomeDraw.Play(initial_scene)
 if UI.Transition ~= nil and UI.Transition.reset ~= nil then
   UI.Transition.reset()
 end
+if UI.ForceScene ~= nil then
+  UI.ForceScene(UI.SCENES.MMAIN)
+else
+  -- TODO: verify legacy fallback path if UI.ForceScene is unavailable.
+  rawset(UI, "_CURSCENE", UI.SCENES.MMAIN)
+  UI.LASTSCENE = UI.SCENES.MMAIN
+end
 
 while true do
   UI.RenderFrame()

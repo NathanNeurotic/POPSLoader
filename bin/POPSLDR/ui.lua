@@ -2386,6 +2386,11 @@ function Input_GetEvent()
   end
   return UI.Pad.Events
 end
+function UI.ForceScene(scene_id)
+  if scene_id == nil then return end
+  rawset(UI, "_CURSCENE", scene_id)
+  UI.LASTSCENE = scene_id
+end
 do
   local menu = UI.MainMenu
   if menu ~= nil then
