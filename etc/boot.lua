@@ -17,10 +17,20 @@ local function dirname(p)
   return dir
 end
 
+local function dir_exists(path)
+  if path == nil or path == "" then
+    return false
+  end
+  return doesFolderExist(ensure_dir(path)) == true
+end
+
 local ARGV0 = System.GetArgv0()
 local BASE_DIR = dirname(ARGV0)
-if BASE_DIR == nil or BASE_DIR == "" then
+if BASE_DIR == nil or BASE_DIR == "" or not dir_exists(BASE_DIR) then
   BASE_DIR = APP_DIR or System.currentDirectory()
+end
+if BASE_DIR == nil or BASE_DIR == "" or not dir_exists(BASE_DIR) then
+  BASE_DIR = System.currentDirectory()
 end
 BASE_DIR = ensure_dir(BASE_DIR)
 System.currentDirectory(BASE_DIR)
@@ -147,6 +157,12 @@ end
 local SYS = System.resolveAsset("system.lua")
 if SYS == nil then
   SYS = System.resolveAsset("POPSLDR/system.lua")
+end
+if SYS == nil then
+  SYS = System.resolveAsset(BASE_DIR.."system.lua")
+end
+if SYS == nil then
+  SYS = System.resolveAsset(BASE_DIR.."POPSLDR/system.lua")
 end
 if SYS ~= nil then
   RunScript(SYS)
