@@ -1913,27 +1913,13 @@ if Touch(ResolveWritablePath(".pldrs")) then
   initial_scene = UI.SCENES.CREDITS
 end
 UI.WelcomeDraw.Play(initial_scene)
-if UI.Transition ~= nil then
-  UI.Transition.allowSceneWrite = true
-end
-UI.CURSCENE = UI.SCENES.MMAIN
-UI.LASTSCENE = UI.SCENES.MMAIN
-if UI.Transition ~= nil then
-  UI.Transition.allowSceneWrite = false
+
+if UI.Transition ~= nil and UI.Transition.reset ~= nil then
+  UI.Transition.reset()
 end
 
 while true do
-  UI.BottomDraw.Play()
-  if UI.CURSCENE == UI.SCENES.MMAIN then
-    UI.MainMenu.Play()
-  elseif UI.CURSCENE == UI.SCENES.MPROFILE then
-    UI.ProfileQuery.Play()
-  elseif UI.IsGameScene(UI.CURSCENE) then
-    UI.GameList.Play()
-  elseif UI.CURSCENE == UI.SCENES.CREDITS then
-    UI.Credits.Play()
-  end
-  UI.flip()
+  UI.RenderFrame()
   if BOOT_PROF and not BOOT_PROF.first_main_menu and UI.CURSCENE == UI.SCENES.MMAIN then
     BOOT_PROF.first_main_menu = true
     BOOT_PROF.stamp("first frame / main menu visible")

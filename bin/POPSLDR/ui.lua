@@ -247,6 +247,59 @@ UI = {
       MPROFILE = 9,
       CREDITS = 10
     };
+
+    DrawBackgroundForScene = function (scene)
+      Screen.clear(UI.SCR.BGCOL)
+      if scene == UI.SCENES.MMAIN then
+        if IMG.BGM ~= nil then
+          Graphics.drawScaleImage(IMG.BGM, 0, 0, UI.SCR.X, UI.SCR.Y)
+        elseif IMG.BKG ~= nil then
+          Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
+        end
+      elseif scene == UI.SCENES.MPROFILE or scene == UI.SCENES.CREDITS then
+        if IMG.BG ~= nil then
+          Graphics.drawScaleImage(IMG.BG, 0, 0, UI.SCR.X, UI.SCR.Y)
+        elseif IMG.BKG ~= nil then
+          Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
+        end
+      else
+        if IMG.BKG ~= nil then
+          Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
+        end
+      end
+    end;
+
+    DrawSceneContent = function (scene, draw_only)
+      if scene == UI.SCENES.MMAIN then
+        if draw_only and UI.MainMenu ~= nil and UI.MainMenu.DrawOnly ~= nil then
+          UI.MainMenu.DrawOnly()
+        elseif UI.MainMenu ~= nil and UI.MainMenu.Play ~= nil then
+          UI.MainMenu.Play()
+        end
+      elseif scene == UI.SCENES.MPROFILE then
+        if draw_only then return end
+        if UI.ProfileQuery ~= nil and UI.ProfileQuery.Play ~= nil then
+          UI.ProfileQuery.Play()
+        end
+      elseif UI.IsGameScene(scene) then
+        if draw_only then return end
+        if UI.GameList ~= nil and UI.GameList.Play ~= nil then
+          UI.GameList.Play()
+        end
+      elseif scene == UI.SCENES.CREDITS then
+        if draw_only and UI.Credits ~= nil and UI.Credits.DrawOnly ~= nil then
+          UI.Credits.DrawOnly()
+        elseif UI.Credits ~= nil and UI.Credits.Play ~= nil then
+          UI.Credits.Play()
+        end
+      end
+    end;
+
+    RenderFrame = function ()
+      UI.BottomDraw.Play()
+      UI.DrawSceneContent(UI.CURSCENE, false)
+      UI.flip()
+    end;
     LAUNCHING = false;
     HideUI = (PLDR ~= nil and PLDR.SETTINGS ~= nil and PLDR.SETTINGS.hide_ui == true);
     DEVLOCK = DEVLOCK;
@@ -712,11 +765,8 @@ UI = {
       UI.Notif_queue.display()
       UI.TextEntry.Draw()
       UI.Modal.Draw()
-      if UI.Transition ~= nil then
-        local alpha = UI.Transition.update()
-        if alpha > 0 then
-          Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
-        end
+      if UI.Transition ~= nil and UI.Transition.drawOverlay ~= nil then
+        UI.Transition.drawOverlay()
       end
       Screen.flip()
     end;
@@ -727,24 +777,7 @@ UI = {
 	          Screen.clear(Color.new(0, 0, 0))
 	        end
         local function DrawTargetBackground(scene)
-          Screen.clear(UI.SCR.BGCOL)
-          if scene == UI.SCENES.MMAIN then
-            if IMG.BGM ~= nil then
-              Graphics.drawScaleImage(IMG.BGM, 0, 0, UI.SCR.X, UI.SCR.Y)
-            elseif IMG.BKG ~= nil then
-              Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
-            end
-          elseif scene == UI.SCENES.MPROFILE or scene == UI.SCENES.CREDITS then
-            if IMG.BG ~= nil then
-              Graphics.drawScaleImage(IMG.BG, 0, 0, UI.SCR.X, UI.SCR.Y)
-            elseif IMG.BKG ~= nil then
-              Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
-            end
-          else
-            if IMG.BKG ~= nil then
-              Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
-            end
-          end
+          UI.DrawBackgroundForScene(scene)
         end
         local function DrawTargetScene(scene)
           if scene == nil then return end
@@ -1121,25 +1154,7 @@ end
     --- UI draw routine applied before drawing UI, add background and stuff you want rendered UNDER UI and text
     BottomDraw = {
       Play = function ()
-	        Screen.clear(UI.SCR.BGCOL)
-        -- Main menu uses BGM.png; settings/profile and credits use BG.png.
-        if UI.CURSCENE == UI.SCENES.MMAIN then
-          if IMG.BGM ~= nil then
-            Graphics.drawScaleImage(IMG.BGM, 0, 0, UI.SCR.X, UI.SCR.Y)
-          elseif IMG.BKG ~= nil then
-            Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
-          end
-        elseif UI.CURSCENE == UI.SCENES.MPROFILE or UI.CURSCENE == UI.SCENES.CREDITS then
-          if IMG.BG ~= nil then
-            Graphics.drawScaleImage(IMG.BG, 0, 0, UI.SCR.X, UI.SCR.Y)
-          elseif IMG.BKG ~= nil then
-            Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
-          end
-        else
-          if IMG.BKG ~= nil then
-            Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
-          end
-        end
+	        UI.DrawBackgroundForScene(UI.CURSCENE)
         -- Removed opaque overlay box on non-main scenes (was masking background).
       end;
     };
