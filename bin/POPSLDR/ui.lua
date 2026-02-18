@@ -61,6 +61,11 @@ local function ParseHddGameEntry(entry)
   local partition, relpath = string.match(entry, "^([^|]+)|(.+)$")
   return partition, relpath
 end
+local function ParseMassGameEntry(entry)
+  if entry == nil then return nil, nil end
+  local prefix, relpath = string.match(entry, "^(mass%d*:/)|(.+)$")
+  return prefix, relpath
+end
 local function StripExtension(path)
   if path == nil then return nil end
   local stripped = string.match(path, "(.+)%.[^%.]+$")
@@ -69,19 +74,27 @@ end
 local function BuildCoverCandidates(entry, game_path, device_scene)
   -- TODO: verify cover art naming/layout. For now, assume sidecar image next to the VCD.
   local relpath = ExtractGameRelPath(entry)
+  local mass_prefix, mass_relpath = ParseMassGameEntry(entry)
+  if mass_relpath ~= nil then
+    relpath = mass_relpath
+  end
   if relpath == nil or relpath == "" then return {}, nil end
   local hdd_partition_label, hdd_relpath = ParseHddGameEntry(entry)
   if hdd_partition_label ~= nil and hdd_relpath ~= nil then
     relpath = hdd_relpath
   end
   local fullpath = relpath
+  local cover_root = game_path
+  if mass_prefix ~= nil then
+    cover_root = mass_prefix
+  end
   if type(JoinPath) == "function" then
-    fullpath = JoinPath(game_path or "", relpath)
-  elseif game_path ~= nil and game_path ~= "" then
-    if string.sub(game_path, -1) == "/" then
-      fullpath = game_path..relpath
+    fullpath = JoinPath(cover_root or "", relpath)
+  elseif cover_root ~= nil and cover_root ~= "" then
+    if string.sub(cover_root, -1) == "/" then
+      fullpath = cover_root..relpath
     else
-      fullpath = game_path.."/"..relpath
+      fullpath = cover_root.."/"..relpath
     end
   end
   local base = StripExtension(fullpath)
@@ -221,8 +234,7 @@ end
 UI = {
     LASTSCENE = 5;
     SCENES = {
-      GUSBFAT = 1,
-      GUSBEXFAT = 2,
+      GUSB = 1,
       GMMCE = 3,
       GMX4SIO = 4,
       GHDD = 5,
@@ -1490,8 +1502,7 @@ end
         local hide_ui = UI.ShouldHideUI()
         UI.GameList.MAXDRAW = layout.LIST_MAX
         local titles = {
-          [UI.SCENES.GUSBFAT] = "USB FAT32",
-          [UI.SCENES.GUSBEXFAT] = "USB exFAT",
+          [UI.SCENES.GUSB] = "USB",
           [UI.SCENES.GMX4SIO] = "MX4SIO"
         }
         local scene_title = titles[UI.CURSCENE]
@@ -1544,9 +1555,13 @@ end
           if i >= (UI.GameList.STARTUP+UI.GameList.MAXDRAW) then break end
           local Y = layout.LIST_Y + ((i-UI.GameList.STARTUP) * layout.LIST_ROW_H)
           local display_name = PLDR.GAMES[i]
-          local hdd_relpath = string.match(display_name or "", "^[^|]+|(.+)$")
-          if hdd_relpath ~= nil then
-            display_name = string.match(hdd_relpath, "([^/]+)$") or hdd_relpath
+          local _, mass_relpath = ParseMassGameEntry(display_name)
+          local relpath = ExtractGameRelPath(display_name)
+          if mass_relpath ~= nil then
+            relpath = mass_relpath
+          end
+          if relpath ~= nil then
+            display_name = string.match(relpath, "([^/]+)$") or relpath
           end
 	          local c = (i == UI.GameList.CURR) and UI.COLORS.LIST_SELECTED or UI.COLORS.LIST_UNSELECTED
 	          Font.ftPrint(BFONT, layout.LIST_X, Y, 0, layout.LIST_W, 16, string.sub(display_name,1, -5), c)
@@ -1614,8 +1629,15 @@ end
             UI.Notif_queue.add("Cant find POPSTARTER ELF\n"..PLDR.POPSTARTER_PATH)
           else
             if UI.CURSCENE ~= UI.SCENES.GHDD then -- only check if game can be found on USB and SMB
-              if not doesFileExist(PLDR.GAMEPATH .. PLDR.GAMES[UI.GameList.CURR]) then
-                UI.Notif_queue.add("Cant find Game\n"..PLDR.GAMEPATH .. PLDR.GAMES[UI.GameList.CURR])
+              local selected_entry = PLDR.GAMES[UI.GameList.CURR]
+              local mass_prefix, mass_relpath = ParseMassGameEntry(selected_entry)
+              local selected_relpath = mass_relpath or selected_entry
+              local selected_root = PLDR.GAMEPATH
+              if mass_prefix ~= nil then
+                selected_root = mass_prefix
+              end
+              if not doesFileExist(selected_root .. selected_relpath) then
+                UI.Notif_queue.add("Cant find Game\n"..selected_root .. selected_relpath)
               end
             end
             local launch_path = PLDR.GAMEPATH
@@ -1810,7 +1832,7 @@ end
     };
     MainMenu = {
       OPT = 1;
-      opts = {"MMCE", "MX4SIO", "HDD (exFAT)", "HDD (PFS)", "USB (exFAT)", "USB (FAT32)", "SMB (v1)", "Disc (DKWDRV)"};
+      opts = {"MMCE", "MX4SIO", "HDD (exFAT)", "HDD (PFS)", "USB", "SMB (v1)", "Disc (DKWDRV)"};
       Carousel = {
         currentIndex = 1,
         targetIndex = 1,
@@ -1877,8 +1899,7 @@ end
           ["MX4SIO"] = "MX4SIO",
           ["HDD (exFAT)"] = "BDHDD",
           ["HDD (PFS)"] = "APAHDD",
-          ["USB (exFAT)"] = "USBEXFAT",
-          ["USB (FAT32)"] = "USB",
+          ["USB"] = "USB",
           ["SMB (v1)"] = "SMB",
           ["Disc (DKWDRV)"] = "DISC"
         }
@@ -2106,16 +2127,10 @@ end
               return
             end
             UI.setDeviceLock(DEVLOCK.USB)
-            UI.SceneChange(UI.SCENES.GUSBEXFAT)
+            UI.SceneChange(UI.SCENES.GUSB)
           elseif UI.MainMenu.OPT == 6 then
-            if not UI.RefreshMassDevicePage("USB") then
-              return
-            end
-            UI.setDeviceLock(DEVLOCK.USB)
-            UI.SceneChange(UI.SCENES.GUSBFAT)
-          elseif UI.MainMenu.OPT == 7 then
             UI.Notif_queue.add("Not Implemented Yet")
-          elseif UI.MainMenu.OPT == 8 then
+          elseif UI.MainMenu.OPT == 7 then
             UI.Modal.OpenDKWDRV()
           end --because we still dont support SMB
         end
@@ -2313,8 +2328,7 @@ if UI.FONT ~= nil then
 end
 _G.UI = UI
 UI.GAME_SCENES = {
-  [UI.SCENES.GUSBFAT] = true,
-  [UI.SCENES.GUSBEXFAT] = true,
+  [UI.SCENES.GUSB] = true,
   [UI.SCENES.GMMCE] = true,
   [UI.SCENES.GMX4SIO] = true,
   [UI.SCENES.GHDD] = true,
@@ -2324,7 +2338,7 @@ function UI.IsGameScene(scene)
   return UI.GAME_SCENES[scene] == true
 end
 function UI.IsUsbScene(scene)
-  return scene == UI.SCENES.GUSBFAT or scene == UI.SCENES.GUSBEXFAT
+  return scene == UI.SCENES.GUSB
 end
 function UI.IsMx4sioScene(scene)
   return scene == UI.SCENES.GMX4SIO
