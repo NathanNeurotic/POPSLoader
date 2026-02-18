@@ -15,6 +15,19 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container: ps2dev/ps2dev:latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - boot_variant: standard
+            artifact_name: PS1_POPSLOADER.ZIP
+            upload_name: POPSLoader-standard
+          - boot_variant: mmce
+            artifact_name: PS1_POPSLOADER-MMCE.ZIP
+            upload_name: POPSLoader-mmce
+          - boot_variant: mx4sio
+            artifact_name: PS1_POPSLOADER-MX4SIO.ZIP
+            upload_name: POPSLoader-mx4sio
     steps:
       - name: Install dependencies
         run: |
@@ -34,56 +47,28 @@ jobs:
         run: |
           set -eu
           COMMIT_SHORT="$(echo "$GITHUB_SHA" | cut -c1-7)"
-          BUILD_UTC="$(date -u '+%Y-%m-%d %H:%MZ')"
+          BUILD_UTC="$(date -u '%Y-%m-%d %H:%MZ')"
           printf "%s\n%s\n" "$COMMIT_SHORT" "$BUILD_UTC" > bin/POPSLDR/BUILD_INFO.txt
           cat bin/POPSLDR/BUILD_INFO.txt
 
-      - name: Compile project
-        run: |
-          make clean elfloader all package
-
-      # This step is the key: it discovers wherever your Makefile put the .7z,
-      # then copies it to repo root as POPSLoader.7z so upload-artifact is stable.
-      - name: Locate and normalize POPSLoader.7z
+      - name: Compile project variant
         shell: sh
         run: |
           set -eu
+          make clean elfloader all package-variant BOOT_VARIANT=${{ matrix.boot_variant }}
 
-          echo "== Workspace contents (top-level) =="
-          ls -lah
-
-          echo "== Searching for .7z artifacts (up to 6 levels deep) =="
-          # Show all matches for debugging
-          find . -maxdepth 6 -type f -name '*.7z' -print || true
-
-          # Prefer an exact name match first (any location)
-          EXACT="$(find . -maxdepth 6 -type f -name 'POPSLoader.7z' -print | head -n 1 || true)"
-
-          if [ -n "$EXACT" ]; then
-            echo "Found exact artifact: $EXACT"
-            cp -f "$EXACT" "./POPSLoader.7z"
-          else
-            # Otherwise pick the newest .7z produced (common when Makefile names differ)
-            NEWEST="$(find . -maxdepth 6 -type f -name '*.7z' -print -exec ls -t {} + 2>/dev/null | head -n 1 || true)"
-
-            if [ -z "$NEWEST" ]; then
-              echo "ERROR: No .7z artifact found after build."
-              echo "Hint: your Makefile 'package' target may be outputting a different extension or skipping packaging."
-              exit 1
-            fi
-
-            echo "No exact POPSLoader.7z found. Using newest .7z: $NEWEST"
-            cp -f "$NEWEST" "./POPSLoader.7z"
-          fi
-
-          echo "== Final normalized artifact =="
-          ls -lah "./POPSLoader.7z"
+      - name: Verify variant artifact
+        shell: sh
+        run: |
+          set -eu
+          test -f "bin/${{ matrix.artifact_name }}"
+          ls -lah "bin/${{ matrix.artifact_name }}"
 
       - name: Upload artifact (no release)
         if: ${{ success() }}
         uses: actions/upload-artifact@v4
         with:
-          name: POPSLoader
-          path: POPSLoader.7z
+          name: ${{ matrix.upload_name }}
+          path: bin/${{ matrix.artifact_name }}
           if-no-files-found: error
           compression-level: 0

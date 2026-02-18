@@ -36,6 +36,8 @@ RESET_IOP = 1
 DEBUG = 0
 #----------------------- Set IP for PS2Client ---------------------#
 PS2LINK_IP = 192.168.1.10
+#--------------------- Boot startup build variant ------------------#
+BOOT_VARIANT ?= standard
 #------------------------------------------------------------------#
 
 BINDIR = bin/
@@ -57,6 +59,8 @@ endif
 ifeq ($(DEBUG),1)
 EE_CXXFLAGS += -DDEBUG
 endif
+
+EE_CXXFLAGS += -DBOOT_VARIANT_STR=\"$(BOOT_VARIANT)\"
 
 BIN2S = $(PS2SDK)/bin/bin2c
 
@@ -183,6 +187,12 @@ reset:
 
 POPSLDR_PKG = POPSLoader.7z
 PKG_DIR = bin/package
+PKG_FOLDER = PS1_POPSLOADER
+VARIANT_ZIP_NAME_standard = PS1_POPSLOADER.ZIP
+VARIANT_ZIP_NAME_mmce = PS1_POPSLOADER-MMCE.ZIP
+VARIANT_ZIP_NAME_mx4sio = PS1_POPSLOADER-MX4SIO.ZIP
+VARIANT_ZIP_NAME = $(VARIANT_ZIP_NAME_$(BOOT_VARIANT))
+
 package: $(EE_BIN_PKD)
 	rm -f $(POPSLDR_PKG)
 	rm -rf $(PKG_DIR)
@@ -194,6 +204,19 @@ package: $(EE_BIN_PKD)
 	@if ls bin/POPSLDR/IMG/*.png >/dev/null 2>&1; then cp bin/POPSLDR/IMG/*.png $(PKG_DIR)/; fi
 	@if ls bin/POPSLDR/IRX/*.irx >/dev/null 2>&1; then cp bin/POPSLDR/IRX/*.irx $(PKG_DIR)/; fi
 	cd $(PKG_DIR); 7z a ../$(POPSLDR_PKG) .
+
+package-variant: $(EE_BIN_PKD)
+	@if [ -z "$(VARIANT_ZIP_NAME)" ]; then echo "Unsupported BOOT_VARIANT='$(BOOT_VARIANT)'"; exit 1; fi
+	rm -rf $(PKG_DIR)
+	rm -f bin/$(VARIANT_ZIP_NAME)
+	mkdir -p $(PKG_DIR)/$(PKG_FOLDER)
+	cp $(EE_BIN_PKD) $(PKG_DIR)/$(PKG_FOLDER)/
+	cp bin/changelog LICENSE README.md $(PKG_DIR)/$(PKG_FOLDER)/
+	find bin/POPSLDR -maxdepth 1 -type f -exec cp {} $(PKG_DIR)/$(PKG_FOLDER)/ \;
+	@if [ -d bin/POPSTARTER ]; then cp -r bin/POPSTARTER $(PKG_DIR)/$(PKG_FOLDER)/; fi
+	@if ls bin/POPSLDR/IMG/*.png >/dev/null 2>&1; then cp bin/POPSLDR/IMG/*.png $(PKG_DIR)/$(PKG_FOLDER)/; fi
+	@if ls bin/POPSLDR/IRX/*.irx >/dev/null 2>&1; then cp bin/POPSLDR/IRX/*.irx $(PKG_DIR)/$(PKG_FOLDER)/; fi
+	cd $(PKG_DIR); 7z a -tzip ../$(VARIANT_ZIP_NAME) $(PKG_FOLDER)
 
 dummys:
 	touch $(BINDIR)A.vcd

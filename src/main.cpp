@@ -85,6 +85,12 @@ extern unsigned int size_ds34bt_irx;
 extern unsigned char mmceman_irx;
 extern unsigned int size_mmceman_irx;
 
+int mx4sio_init_and_get_root(const char *hint, char *out_root, size_t out_sz);
+
+#ifndef BOOT_VARIANT_STR
+#define BOOT_VARIANT_STR "standard"
+#endif
+
 char boot_path[255];
 char app_dir[255];
 int mmce_slot0_ready = -1;
@@ -148,6 +154,131 @@ static void NormalizeDirPath(char *path, size_t size)
 static void BootStamp(const char *stage)
 {
     DPRINTF("BOOT: %s %u\n", stage, boot_ms());
+}
+
+static bool LoadIrxChecked(const char *name, unsigned char *irx, unsigned int size, int *out_id, int *out_ret);
+
+static bool HasSystemLuaAtRoot(const char *root)
+{
+    if (root == NULL || root[0] == '\0') {
+        return false;
+    }
+    char candidate[255];
+    struct stat st;
+
+    snprintf(candidate, sizeof(candidate), "%ssystem.lua", root);
+    if (stat(candidate, &st) == 0) {
+        return true;
+    }
+
+    snprintf(candidate, sizeof(candidate), "%sPOPSLDR/system.lua", root);
+    if (stat(candidate, &st) == 0) {
+        return true;
+    }
+
+    return false;
+}
+
+static bool TryBootRootCandidate(const char *root)
+{
+    if (root == NULL || root[0] == '\0') {
+        return false;
+    }
+
+    char normalized[255];
+    snprintf(normalized, sizeof(normalized), "%s", root);
+    NormalizeDirPath(normalized, sizeof(normalized));
+
+    if (!HasSystemLuaAtRoot(normalized)) {
+        return false;
+    }
+
+    snprintf(boot_path, sizeof(boot_path), "%s", normalized);
+    snprintf(app_dir, sizeof(app_dir), "%s", normalized);
+    DPRINTF("Boot root selected: %s\n", normalized);
+    return true;
+}
+
+static bool IsBootVariant(const char *name)
+{
+    return (strcmp(BOOT_VARIANT_STR, name) == 0);
+}
+
+static void initMMCEManager(bool filexio_ok)
+{
+    if (!filexio_ok) {
+        DPRINTF("Skipping mmceman init; fileXio not ready.\n");
+        mmce_slot0_ready = 0;
+        mmce_slot1_ready = 0;
+        BootStamp("mmceman load/init (skipped)");
+        return;
+    }
+
+    int mmceman_id = -1;
+    int mmceman_ret = -1;
+    bool mmceman_ok = LoadIrxChecked("mmceman_irx", &mmceman_irx, size_mmceman_irx, &mmceman_id, &mmceman_ret);
+    DPRINTF("mmceman load result: id=%d ret=%d\n", mmceman_id, mmceman_ret);
+#ifdef DEBUG
+    if (mmceman_ok) {
+        smod_mod_info_t info;
+        int lookup_ret = smod_get_mod_by_name("mmceman", &info);
+        if (lookup_ret < 0) {
+            DPRINTF("mmceman module lookup failed: ret=%d\n", lookup_ret);
+            DumpLoadedModules();
+        }
+    }
+#endif
+    BootStamp("mmceman load/init");
+
+    if (mmceman_ok) {
+        mmce_slot0_ready = -1;
+        mmce_slot1_ready = -1;
+        DPRINTF("MMCE probe deferred until MMCE page entry.\n");
+    } else {
+        mmce_slot0_ready = 0;
+        mmce_slot1_ready = 0;
+    }
+}
+
+static void ResolveBootRootFromVariant(const char *mx4_hint_root)
+{
+    char cwd[255] = {0};
+    getcwd(cwd, sizeof(cwd));
+
+    if (TryBootRootCandidate(boot_path) ||
+        TryBootRootCandidate(app_dir) ||
+        TryBootRootCandidate(cwd)) {
+        return;
+    }
+
+    const char *standard_order[] = {"mass:/", "mc0:/", "mc1:/", "host:/"};
+    const char *mmce_order[] = {"mmce0:/", "mmce1:/", "mass:/", "mc0:/", "mc1:/", "host:/"};
+    const char *mx4_order[] = {"mx4sio:/", "mx4sio0:/", "mass0:/", "mass:/", "mc0:/", "mc1:/", "host:/"};
+
+    if (IsBootVariant("mmce")) {
+        for (size_t i = 0; i < sizeof(mmce_order) / sizeof(mmce_order[0]); ++i) {
+            if (TryBootRootCandidate(mmce_order[i])) {
+                return;
+            }
+        }
+    } else if (IsBootVariant("mx4sio")) {
+        if (mx4_hint_root != NULL && TryBootRootCandidate(mx4_hint_root)) {
+            return;
+        }
+        for (size_t i = 0; i < sizeof(mx4_order) / sizeof(mx4_order[0]); ++i) {
+            if (TryBootRootCandidate(mx4_order[i])) {
+                return;
+            }
+        }
+    } else {
+        for (size_t i = 0; i < sizeof(standard_order) / sizeof(standard_order[0]); ++i) {
+            if (TryBootRootCandidate(standard_order[i])) {
+                return;
+            }
+        }
+    }
+
+    DPRINTF("No validated boot root found for variant '%s'. Keeping argv-derived root.\n", BOOT_VARIANT_STR);
 }
 
 void setLuaBootPath(int argc, char ** argv, int idx)
@@ -337,36 +468,7 @@ int main(int argc, char * argv[])
     BootStamp("fileXio load/init");
 
 	LOAD_IRX_NARG(sio2man_irx);
-    if (filexio_ok) {
-        int mmceman_id = -1;
-        int mmceman_ret = -1;
-        bool mmceman_ok = LoadIrxChecked("mmceman_irx", &mmceman_irx, size_mmceman_irx, &mmceman_id, &mmceman_ret);
-        DPRINTF("mmceman load result: id=%d ret=%d\n", mmceman_id, mmceman_ret);
-#ifdef DEBUG
-        if (mmceman_ok) {
-            smod_mod_info_t info;
-            int lookup_ret = smod_get_mod_by_name("mmceman", &info);
-            if (lookup_ret < 0) {
-                DPRINTF("mmceman module lookup failed: ret=%d\n", lookup_ret);
-                DumpLoadedModules();
-            }
-        }
-#endif
-        BootStamp("mmceman load/init");
-        if (mmceman_ok) {
-            mmce_slot0_ready = -1;
-            mmce_slot1_ready = -1;
-            DPRINTF("MMCE probe deferred until MMCE page entry.\n");
-        } else {
-            mmce_slot0_ready = 0;
-            mmce_slot1_ready = 0;
-        }
-    } else {
-        DPRINTF("Skipping mmceman init; fileXio not ready.\n");
-        mmce_slot0_ready = 0;
-        mmce_slot1_ready = 0;
-        BootStamp("mmceman load/init (skipped)");
-    }
+    initMMCEManager(filexio_ok);
     LOAD_IRX_NARG(mcman_irx);
     LOAD_IRX_NARG(mcserv_irx);
     initMC();
@@ -408,12 +510,26 @@ int main(int argc, char * argv[])
         retries--;
     }
 	
-        setLuaBootPath (argc, argv, 0);
-        if (argc > 0 && argv[0]) {
-            setAppDirFromPath(argv[0]);
+    char mx4_root_hint[32] = {0};
+    if (IsBootVariant("mx4sio")) {
+        int mx4_init_rc = mx4sio_init_and_get_root(NULL, mx4_root_hint, sizeof(mx4_root_hint));
+        if (mx4_init_rc == 0) {
+            DPRINTF("MX4SIO early boot init ready: %s\n", mx4_root_hint);
         } else {
-            setAppDirFromPath(boot_path);
+            DPRINTF("MX4SIO early boot init failed; falling back to standard root probing.\n");
+            mx4_root_hint[0] = '\0';
         }
+        BootStamp("mx4sio load/init");
+    }
+
+    setLuaBootPath (argc, argv, 0);
+    if (argc > 0 && argv[0]) {
+        setAppDirFromPath(argv[0]);
+    } else {
+        setAppDirFromPath(boot_path);
+    }
+
+    ResolveBootRootFromVariant(mx4_root_hint[0] ? mx4_root_hint : NULL);
 	// Lua init
 	// init internals library
     
