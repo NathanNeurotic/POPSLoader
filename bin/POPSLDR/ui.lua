@@ -470,39 +470,52 @@ if found == nil then return end
           -- no-op placeholder for future custom splash text
         end
 
-        -- Exact boot splash timing: 4.0 seconds total at 60Hz.
-        local splash_total_frames = 240
-        local splash_fade_in_frames = 24
-        local splash_fade_out_frames = 24
-        local splash_hold_frames = splash_total_frames - splash_fade_in_frames - splash_fade_out_frames
-        if splash_hold_frames < 0 then splash_hold_frames = 0 end
+        -- Exact boot splash timing: 4.0s total, timed by Timer (not frame count).
+        local splash_total_ms = 4000
+        local splash_fade_ms = 400
+        local splash_hold_ms = splash_total_ms - (splash_fade_ms * 2)
+        if splash_hold_ms < 0 then splash_hold_ms = 0 end
+
+        local function run_phase(duration_ms, draw_fn)
+          if duration_ms <= 0 then
+            draw_fn(1)
+            Screen.flip()
+            return
+          end
+          local tmr = Timer.new()
+          local start = Timer.getTime(tmr)
+          while true do
+            local now = Timer.getTime(tmr)
+            local elapsed = now - start
+            local t = elapsed / duration_ms
+            if t > 1 then t = 1 end
+            draw_fn(t)
+            Screen.flip()
+            if elapsed >= duration_ms then break end
+          end
+        end
 
         TryBootSound()
-        for i = 1, splash_fade_in_frames do
+        run_phase(splash_fade_ms, function (t)
           DrawBackground()
           DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, 128)
-          local t = i / splash_fade_in_frames
           local overlay_alpha = Round(128 * (1 - t))
           if overlay_alpha > 0 then
             Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, overlay_alpha))
           end
-          Screen.flip()
-        end
-        for _ = 1, splash_hold_frames do
+        end)
+        run_phase(splash_hold_ms, function (_)
           DrawBackground()
           DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, 128)
-          Screen.flip()
-        end
-        for i = 1, splash_fade_out_frames do
+        end)
+        run_phase(splash_fade_ms, function (t)
           DrawBackground()
           DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, 128)
-          local t = i / splash_fade_out_frames
           local overlay_alpha = Round(128 * t)
           if overlay_alpha > 0 then
             Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, overlay_alpha))
           end
-          Screen.flip()
-        end
+        end)
         DrawBackground()
         Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, 128))
         Screen.flip()
@@ -1021,6 +1034,59 @@ if found == nil then return end
             if try_editor(fn, prompts[j], current) then return end
             if try_editor(fn, current, prompts[j]) then return end
           end
+        end
+
+        local function append_path(base, name)
+          local prefix = base
+          if string.sub(prefix, -1) ~= "/" then
+            prefix = prefix.."/"
+          end
+          return prefix..name
+        end
+
+        local found = {}
+        local seen = {}
+        local function push_found(path)
+          if path == nil or seen[path] then return end
+          seen[path] = true
+          table.insert(found, path)
+        end
+        local function scan_dkwdrv(dir, depth)
+          if depth < 0 then return end
+          local ok, entries = pcall(System.listDirectory, dir)
+          if not ok or type(entries) ~= "table" then return end
+          for i = 1, #entries do
+            local entry = entries[i]
+            if entry ~= nil and entry.name ~= nil and entry.name ~= "." and entry.name ~= ".." then
+              local child = append_path(dir, entry.name)
+              if entry.directory == true then
+                scan_dkwdrv(child, depth - 1)
+              else
+                if string.upper(entry.name) == "DKWDRV.ELF" then
+                  push_found(child)
+                end
+              end
+            end
+          end
+        end
+
+        scan_dkwdrv("mc0:/", 3)
+        scan_dkwdrv("mc1:/", 3)
+        table.sort(found)
+
+        if #found > 0 then
+          local idx = 0
+          for i = 1, #found do
+            if found[i] == current then
+              idx = i
+              break
+            end
+          end
+          idx = idx + 1
+          if idx > #found then idx = 1 end
+          UI.ProfileQuery.dkwdrv_path = found[idx]
+          UI.Notif_queue.add("Path editor unavailable\nUsing detected DKWDRV.ELF")
+          return
         end
 
         if string.match(string.lower(current), "^mc0:") then
@@ -1628,42 +1694,53 @@ if found == nil then return end
       PlayBootSequence = function (duration_ms)
         local total_ms = tonumber(duration_ms) or UI.Credits.BOOT_AUTO_EXIT_MS
         if total_ms < 0 then total_ms = 0 end
-        local total_frames = math.floor((total_ms / 1000) * 60 + 0.5)
-        if total_frames < 1 then total_frames = 1 end
-        local fade_in_frames = 24
-        local fade_out_frames = 24
-        local hold_frames = total_frames - fade_in_frames - fade_out_frames
-        if hold_frames < 0 then hold_frames = 0 end
+        local fade_ms = 400
+        local hold_ms = total_ms - (fade_ms * 2)
+        if hold_ms < 0 then hold_ms = 0 end
+
+        local function run_phase(duration_ms, draw_fn)
+          if duration_ms <= 0 then
+            draw_fn(1)
+            Screen.flip()
+            return
+          end
+          local tmr = Timer.new()
+          local start = Timer.getTime(tmr)
+          while true do
+            local now = Timer.getTime(tmr)
+            local elapsed = now - start
+            local t = elapsed / duration_ms
+            if t > 1 then t = 1 end
+            draw_fn(t)
+            Screen.flip()
+            if elapsed >= duration_ms then break end
+          end
+        end
 
         UI.Credits.is_boot_sequence = true
 
-        for i = 1, fade_in_frames do
+        run_phase(fade_ms, function (t)
           UI.BottomDraw.Play()
           UI.Credits.DrawOnly()
-          local t = i / fade_in_frames
           local overlay_alpha = Round(128 * (1 - t))
           if overlay_alpha > 0 then
             Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, overlay_alpha))
           end
-          Screen.flip()
-        end
+        end)
 
-        for _ = 1, hold_frames do
+        run_phase(hold_ms, function (_)
           UI.BottomDraw.Play()
           UI.Credits.DrawOnly()
-          Screen.flip()
-        end
+        end)
 
-        for i = 1, fade_out_frames do
+        run_phase(fade_ms, function (t)
           UI.BottomDraw.Play()
           UI.Credits.DrawOnly()
-          local t = i / fade_out_frames
           local overlay_alpha = Round(128 * t)
           if overlay_alpha > 0 then
             Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, overlay_alpha))
           end
-          Screen.flip()
-        end
+        end)
 
         UI.Credits.is_boot_sequence = false
       end;
