@@ -1852,11 +1852,6 @@ end
           top_label_y = status_y + 16
           Font.ftPrint(UI.FONT.TITLE, UI.SCR.X_MID, title_y, 8, UI.SCR.X, 16, "POPSLOADER", UI.COLORS.TEXT_PRIMARY)
           Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "ACTIVE BDMA: "..ResolveActiveBDMALabel(), UI.COLORS.TEXT_PRIMARY)
-          status_y = top_label_y + 12
-          if UI.boot_device ~= nil and UI.boot_device ~= DEVLOCK.NONE then
-            Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Booted from: "..UI.device_lock_name(UI.boot_device), UI.COLORS.TEXT_PRIMARY)
-            status_y = status_y + 12
-          end
         end
 	        -- Pages are no longer presented as "locked" in the UI.
         local icon_map = {
