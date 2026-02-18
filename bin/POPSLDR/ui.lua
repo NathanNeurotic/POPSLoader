@@ -386,8 +386,7 @@ UI = {
       return center + offset
     end;
     InputConfig = {
-      MIN_ACTION_MS = 220;
-      DEBUG_INPUT_LOG = false;
+      MIN_ACTION_MS = 90;
     };
     --- Notifications queue handler
     Notif_queue = {
@@ -1369,8 +1368,8 @@ end
       elapsed = 0,
       last_time = nil,
       max_step = 33,
-      duration_out = 700,
-      duration_in = 700,
+      duration_out = 140,
+      duration_in = 120,
       Queue = function (target)
         if target == nil then return end
         if UI.Transition.active and UI.Transition.phase == "out" then
@@ -2204,11 +2203,6 @@ end
       NavHeld = {};
       NavNeutral = {UP = true, DOWN = true, LEFT = true, RIGHT = true};
       Queue = {};
-      DebugPadTimer = nil;
-      DebugPadLast = 0;
-      NavEventTimer = nil;
-      NavEventLast = 0;
-      NavEventCount = 0;
       LastActionEventMs = 0;
       Listen = function ()
         if UI.Pad.Timer == nil then
@@ -2245,7 +2239,6 @@ end
         end
 
         local function emit_nav(event)
-          UI.Pad.NavEventCount = (UI.Pad.NavEventCount or 0) + 1
           emit(event)
         end
 
@@ -2287,32 +2280,6 @@ end
         if resolve_nav("LEFT", ((UI.Pad.GPAD & PAD_LEFT) ~= 0)) then emit_nav("NAV_LEFT") end
         if resolve_nav("RIGHT", ((UI.Pad.GPAD & PAD_RIGHT) ~= 0)) then emit_nav("NAV_RIGHT") end
 
-        if UI.InputConfig.DEBUG_INPUT_LOG then
-          if UI.Pad.DebugPadTimer == nil then
-            UI.Pad.DebugPadTimer = Timer.new()
-            UI.Pad.DebugPadLast = Timer.getTime(UI.Pad.DebugPadTimer)
-          end
-          local dbg_now = Timer.getTime(UI.Pad.DebugPadTimer)
-          if (dbg_now - UI.Pad.DebugPadLast) >= 1000 then
-            local up = (UI.Pad.GPAD & PAD_UP) ~= 0
-            local down = (UI.Pad.GPAD & PAD_DOWN) ~= 0
-            local cross = (UI.Pad.GPAD & PAD_CROSS) ~= 0
-            local circle = (UI.Pad.GPAD & PAD_CIRCLE) ~= 0
-            LOGF("PAD mask: 0x%04X | UP:%s DOWN:%s X:%s O:%s", UI.Pad.GPAD, tostring(up), tostring(down), tostring(cross), tostring(circle))
-            UI.Pad.DebugPadLast = dbg_now
-          end
-          if UI.Pad.NavEventTimer == nil then
-            UI.Pad.NavEventTimer = Timer.new()
-            UI.Pad.NavEventLast = Timer.getTime(UI.Pad.NavEventTimer)
-            UI.Pad.NavEventCount = 0
-          end
-          local nav_now = Timer.getTime(UI.Pad.NavEventTimer)
-          if (nav_now - UI.Pad.NavEventLast) >= 1000 then
-            LOGF("NAV events/sec: %d", UI.Pad.NavEventCount or 0)
-            UI.Pad.NavEventCount = 0
-            UI.Pad.NavEventLast = nav_now
-          end
-        end
       end;
     };
     Credits = {
