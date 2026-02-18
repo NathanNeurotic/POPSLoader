@@ -126,6 +126,19 @@ local function ReadWholeFile(path)
   return table.concat(chunks)
 end
 
+local function IsLikelyTextLua(data)
+  if data == nil or data == "" then
+    return false
+  end
+  if string.find(data, "\0", 1, true) then
+    return false
+  end
+  if string.find(data, "[\001-\008\011\012\014-\031]") then
+    return false
+  end
+  return true
+end
+
 local function LoadLuaFile(path)
   local loader, load_err = loadfile(path)
   if loader ~= nil then
@@ -136,7 +149,7 @@ local function LoadLuaFile(path)
   if data == nil then
     return nil, read_err
   end
-  if string.find(data, "\0", 1, true) then
+  if not IsLikelyTextLua(data) then
     return nil, load_err
   end
   local sanitized, count = string.gsub(data, "[\128-\255]", "?")
