@@ -265,25 +265,61 @@ static bool StartsWithMassPath(const char *path)
     return (p[0] == ':' && p[1] == '/');
 }
 
+static const char *GetMassSuffix(const char *path)
+{
+    if (path == NULL) {
+        return NULL;
+    }
+    if (strncmp(path, "mass:/", 6) == 0) {
+        return path + 6;
+    }
+    if (strncmp(path, "mass", 4) != 0) {
+        return NULL;
+    }
+    const char *p = path + 4;
+    if (*p < '0' || *p > '9') {
+        return NULL;
+    }
+    while (*p >= '0' && *p <= '9') {
+        ++p;
+    }
+    if (p[0] == ':' && p[1] == '/') {
+        return p + 2;
+    }
+    return NULL;
+}
+
+static bool PathExists(const char *path)
+{
+    if (path == NULL || path[0] == '\0') {
+        return false;
+    }
+    struct stat st;
+    return stat(path, &st) == 0;
+}
+
 static void RewriteMassArgv0ToDetectedSlot(int argc, char **argv)
 {
     if (argc <= 0 || argv == NULL || argv[0] == NULL) {
         return;
     }
-    if (strncmp(argv[0], "mass:/", 6) != 0) {
+
+    const char *suffix = GetMassSuffix(argv[0]);
+    if (suffix == NULL) {
         return;
     }
 
-    const char *suffix = argv[0] + 6;
+    if (PathExists(argv[0])) {
+        return;
+    }
+
     static char rewritten_argv0[255];
-    struct stat st;
     for (int tick = 0; tick < 100; ++tick) {
         for (int i = 0; i <= 9; ++i) {
             snprintf(rewritten_argv0, sizeof(rewritten_argv0), "mass%d:/%s", i, suffix);
-            if (stat(rewritten_argv0, &st) == 0) {
+            if (PathExists(rewritten_argv0)) {
                 argv[0] = rewritten_argv0;
                 ARGV0 = argv[0];
-                DPRINTF("Resolved mass:/ argv0 to slot path: %s\n", argv[0]);
                 return;
             }
         }

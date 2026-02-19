@@ -278,11 +278,34 @@ if BASE_PARENT ~= nil then
   add_candidate(SYS_CANDIDATES, BASE_PARENT.."POPSLDR/system.lua")
 end
 
+local function wait_for_mass_root_script(path)
+  local normalized = normalize_path(path)
+  if normalized == nil then
+    return nil
+  end
+  if string.sub(normalized, 1, 4) ~= "mass" then
+    return resolve_script_path(normalized)
+  end
+  for i = 1, 100 do
+    local resolved = resolve_script_path(normalized)
+    if resolved ~= nil then
+      return resolved
+    end
+    if i < 100 then
+      System.delayThreadMs(250)
+    end
+  end
+  return nil
+end
+
 local SYS = nil
-for i = 1, #SYS_CANDIDATES do
-  SYS = resolve_script_path(SYS_CANDIDATES[i])
-  if SYS ~= nil then
-    break
+SYS = wait_for_mass_root_script(BASE_DIR.."system.lua")
+if SYS == nil then
+  for i = 1, #SYS_CANDIDATES do
+    SYS = resolve_script_path(SYS_CANDIDATES[i])
+    if SYS ~= nil then
+      break
+    end
   end
 end
 
