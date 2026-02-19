@@ -162,6 +162,27 @@ static bool ExtractMassSuffixPath(const char *argv0, char *out_suffix, size_t ou
     return true;
 }
 
+
+static bool ExtractMassRelativeAppDir(const char *argv0, char *out_dir, size_t out_size)
+{
+    char suffix_path[255];
+    if (!ExtractMassSuffixPath(argv0, suffix_path, sizeof(suffix_path))) {
+        return false;
+    }
+
+    char tmp[255];
+    snprintf(tmp, sizeof(tmp), "%s", suffix_path);
+    char *slash = strrchr(tmp, '/');
+    if (slash != NULL) {
+        slash[1] = '\0';
+    } else {
+        tmp[0] = '\0';
+    }
+
+    snprintf(out_dir, out_size, "%s", tmp);
+    return true;
+}
+
 static backend IdentifyMassSlot(int slot)
 {
     if (slot < 0 || slot > 9) {
@@ -207,65 +228,62 @@ static backend IdentifyMassSlot(int slot)
 
 static int ResolveBootMassSlot(const char *argv0)
 {
-    char suffix_path[255];
-    if (!ExtractMassSuffixPath(argv0, suffix_path, sizeof(suffix_path))) {
+    char rel_app_dir[255];
+    if (!ExtractMassRelativeAppDir(argv0, rel_app_dir, sizeof(rel_app_dir))) {
         return -1;
     }
 
     const unsigned int total_ms = 25000;
     const unsigned int tick_ms = 250;
     unsigned int elapsed = 0;
-    int prev_mx_slot = -1;
-    int prev_any_slot = -1;
+    int prev_slot = -1;
 
     while (elapsed <= total_ms) {
-        int mx_slot = -1;
-        int mx_count = 0;
-        int any_slot = -1;
-        int any_count = 0;
-        bool saw_not_ready = false;
+        int valid_slot = -1;
+        int valid_count = 0;
+        int valid_mx_slot = -1;
+        int valid_mx_count = 0;
 
         for (int slot = 0; slot <= 9; ++slot) {
-            backend b = IdentifyMassSlot(slot);
-            if (b == BACKEND_NOT_READY) {
-                saw_not_ready = true;
-            }
-
-            char candidate[300];
+            char candidate1[320];
+            char candidate2[320];
             struct stat st;
-            snprintf(candidate, sizeof(candidate), "mass%d:/%s", slot, suffix_path);
-            if (stat(candidate, &st) != 0) {
+
+            snprintf(candidate1, sizeof(candidate1), "mass%d:/%ssystem.lua", slot, rel_app_dir);
+            snprintf(candidate2, sizeof(candidate2), "mass%d:/%sPOPSLDR/system.lua", slot, rel_app_dir);
+
+            bool has_system = (stat(candidate1, &st) == 0) || (stat(candidate2, &st) == 0);
+            if (!has_system) {
                 continue;
             }
 
-            ++any_count;
-            if (any_slot < 0) {
-                any_slot = slot;
+            ++valid_count;
+            if (valid_slot < 0) {
+                valid_slot = slot;
             }
-            if (b == BACKEND_MX4SIO) {
-                ++mx_count;
-                if (mx_slot < 0) {
-                    mx_slot = slot;
+
+            if (IdentifyMassSlot(slot) == BACKEND_MX4SIO) {
+                ++valid_mx_count;
+                if (valid_mx_slot < 0) {
+                    valid_mx_slot = slot;
                 }
             }
         }
 
-        if (mx_count == 1) {
-            if (prev_mx_slot == mx_slot) {
-                return mx_slot;
+        int chosen_slot = -1;
+        if (valid_count == 1) {
+            chosen_slot = valid_slot;
+        } else if (valid_count > 1 && valid_mx_count == 1) {
+            chosen_slot = valid_mx_slot;
+        }
+
+        if (chosen_slot >= 0) {
+            if (prev_slot == chosen_slot) {
+                return chosen_slot;
             }
-            prev_mx_slot = mx_slot;
-            prev_any_slot = -1;
+            prev_slot = chosen_slot;
         } else {
-            prev_mx_slot = -1;
-            if (mx_count == 0 && !saw_not_ready && any_count == 1) {
-                if (prev_any_slot == any_slot) {
-                    return any_slot;
-                }
-                prev_any_slot = any_slot;
-            } else {
-                prev_any_slot = -1;
-            }
+            prev_slot = -1;
         }
 
         if (elapsed == total_ms) {
@@ -281,6 +299,7 @@ static int ResolveBootMassSlot(const char *argv0)
 
     return -1;
 }
+
 
 static bool RemapMassArgv0(const char *argv0, char *out_path, size_t out_size)
 {
