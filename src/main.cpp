@@ -96,7 +96,7 @@ int mmce_slot0_ready = -1;
 int mmce_slot1_ready = -1;
 static clock_t boot_start = 0;
 
-static unsigned int boot_ms(void)
+static __attribute__((unused)) unsigned int boot_ms(void)
 {
     if (boot_start == 0) {
         return 0;
@@ -275,7 +275,7 @@ static int ResolveBootMassSlot(const char *argv0)
         if (elapsed + delay > total_ms) {
             delay = total_ms - elapsed;
         }
-        DelayThread(delay * 1000);
+        usleep(delay * 1000);
         elapsed += delay;
     }
 
