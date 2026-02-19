@@ -43,16 +43,30 @@ local function parent_dir(path)
   return ensure_dir(parent)
 end
 
+local function to_compact_mass_path(path)
+  local normalized = normalize_path(path)
+  if normalized == nil then
+    return nil
+  end
+  local head, tail = string.match(normalized, "^(mass%d*):/(.*)$")
+  if head ~= nil then
+    return head..":"..tail
+  end
+  return nil
+end
+
 local function add_candidate(list, path)
   local normalized = normalize_path(path)
   if normalized == nil or normalized == "" then
     return
   end
   list[#list + 1] = normalized
-  if string.sub(normalized, 1, 6) == "mass:/" then
-    list[#list + 1] = "mass:"..string.sub(normalized, 7)
+  local compact = to_compact_mass_path(normalized)
+  if compact ~= nil then
+    list[#list + 1] = compact
   end
 end
+
 
 local function resolve_script_path(path)
   local normalized = normalize_path(path)
@@ -66,8 +80,8 @@ local function resolve_script_path(path)
   if doesFileExist(normalized) then
     return normalized
   end
-  if string.sub(normalized, 1, 6) == "mass:/" then
-    local compact = "mass:"..string.sub(normalized, 7)
+  local compact = to_compact_mass_path(normalized)
+  if compact ~= nil then
     resolved = System.resolveAsset(compact)
     if resolved ~= nil then
       return resolved
@@ -319,8 +333,8 @@ if SYS == nil then
       SYS = candidate
       break
     end
-    if string.sub(candidate, 1, 6) == "mass:/" then
-      local compact = "mass:"..string.sub(candidate, 7)
+    local compact = to_compact_mass_path(candidate)
+    if compact ~= nil then
       loader = LoadLuaFile(compact)
       if loader ~= nil then
         SYS = compact
