@@ -113,6 +113,24 @@ local function wait_for_readable_script(path)
   return path
 end
 
+local LoadLuaFile
+
+local function load_script_with_retry(path)
+  local attempts = is_retryable_boot_root(path) and 100 or 1
+  local last_err = nil
+  for i = 1, attempts do
+    local loader, err = LoadLuaFile(path)
+    if loader ~= nil then
+      return loader
+    end
+    last_err = err
+    if i < attempts then
+      System.delayThreadMs(250)
+    end
+  end
+  return nil, last_err
+end
+
 local function dir_exists(path)
   if path == nil or path == "" then
     return false
@@ -235,7 +253,7 @@ local function IsLikelyTextLua(data)
   return true
 end
 
-local function LoadLuaFile(path)
+LoadLuaFile = function(path)
   local loader, load_err = loadfile(path)
   if loader ~= nil then
     return loader
@@ -315,7 +333,14 @@ if SYS == nil then
 end
 if SYS ~= nil then
   SYS = wait_for_readable_script(SYS)
-  RunScript(SYS)
+  local loader, load_err = load_script_with_retry(SYS)
+  if loader == nil then
+    error(load_err)
+  end
+  local ok, run_err = pcall(loader)
+  if not ok then
+    error(run_err)
+  end
 else
   error("Cant access system.lua (flat) or POPSLDR/system.lua (fallback)\n\n\targv0: "..tostring(ARGV0).."\n\tcwd: "..tostring(System.currentDirectory()))
 end
