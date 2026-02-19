@@ -36,6 +36,8 @@ RESET_IOP = 1
 DEBUG = 0
 #----------------------- Set IP for PS2Client ---------------------#
 PS2LINK_IP = 192.168.1.10
+#------------------------ Boot root variant ------------------------#
+BOOT_VARIANT ?= STANDARD
 #------------------------------------------------------------------#
 
 BINDIR = bin/
@@ -56,6 +58,19 @@ endif
 
 ifeq ($(DEBUG),1)
 EE_CXXFLAGS += -DDEBUG
+endif
+
+ifeq ($(BOOT_VARIANT),STANDARD)
+EE_CXXFLAGS += -DBOOT_VARIANT_STANDARD
+PACKAGE_NAME = PS1_POPSLOADER.ZIP
+else ifeq ($(BOOT_VARIANT),MMCE)
+EE_CXXFLAGS += -DBOOT_VARIANT_MMCE
+PACKAGE_NAME = PS1_POPSLOADER-MMCE.ZIP
+else ifeq ($(BOOT_VARIANT),MX4SIO)
+EE_CXXFLAGS += -DBOOT_VARIANT_MX4SIO
+PACKAGE_NAME = PS1_POPSLOADER-MX4SIO.ZIP
+else
+$(error Unsupported BOOT_VARIANT '$(BOOT_VARIANT)'. Use STANDARD, MMCE, or MX4SIO.)
 endif
 
 BIN2S = $(PS2SDK)/bin/bin2c
@@ -181,7 +196,7 @@ run:
 reset:
 	ps2client -h $(PS2LINK_IP) reset   
 
-POPSLDR_PKG = POPSLoader.7z
+POPSLDR_PKG = $(PACKAGE_NAME)
 PKG_DIR = bin/package
 package: $(EE_BIN_PKD)
 	rm -f $(POPSLDR_PKG)

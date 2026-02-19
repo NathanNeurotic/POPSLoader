@@ -85,11 +85,21 @@ extern unsigned int size_ds34bt_irx;
 extern unsigned char mmceman_irx;
 extern unsigned int size_mmceman_irx;
 
+extern unsigned char mx4sio_bd_irx[];
+extern unsigned int size_mx4sio_bd_irx;
+
 char boot_path[255];
 char app_dir[255];
 int mmce_slot0_ready = -1;
 int mmce_slot1_ready = -1;
 static clock_t boot_start = 0;
+
+static bool LoadIrxChecked(const char *name, unsigned char *irx, unsigned int size, int *out_id, int *out_ret);
+static void setAppDirFromPath(const char *path);
+
+#if !defined(BOOT_VARIANT_STANDARD) && !defined(BOOT_VARIANT_MMCE) && !defined(BOOT_VARIANT_MX4SIO)
+#define BOOT_VARIANT_STANDARD
+#endif
 
 static unsigned int boot_ms(void)
 {
@@ -178,6 +188,129 @@ void setLuaBootPath(int argc, char ** argv, int idx)
     NormalizeDirPath(boot_path, sizeof(boot_path));
     
     
+}
+
+static bool ProbeDirReady(const char *path)
+{
+    struct stat st;
+    int ret = stat(path, &st);
+    DPRINTF("Boot root probe %s ret=%d\n", path, ret);
+    return (ret == 0);
+}
+
+static bool BuildPath(char *out, size_t out_size, const char *root, const char *leaf)
+{
+    if (out == NULL || out_size == 0 || root == NULL || leaf == NULL) {
+        return false;
+    }
+    int n = snprintf(out, out_size, "%s%s", root, leaf);
+    if (n < 0 || (size_t)n >= out_size) {
+        return false;
+    }
+    return true;
+}
+
+static bool boot_root_valid_from(const char *root)
+{
+    if (root == NULL || root[0] == '\0') {
+        return false;
+    }
+    if (!ProbeDirReady(root)) {
+        return false;
+    }
+
+    char flat[255];
+    char legacy[255];
+    if (!BuildPath(flat, sizeof(flat), root, "system.lua")) {
+        return false;
+    }
+    if (!BuildPath(legacy, sizeof(legacy), root, "POPSLDR/system.lua")) {
+        return false;
+    }
+
+    return (access(flat, F_OK) == 0 || access(legacy, F_OK) == 0);
+}
+
+static void boot_root_standard(int argc, char *argv[])
+{
+    setLuaBootPath(argc, argv, 0);
+    if (argc > 0 && argv[0]) {
+        setAppDirFromPath(argv[0]);
+    } else {
+        setAppDirFromPath(boot_path);
+    }
+}
+
+static bool boot_init_mmce_minimal(void)
+{
+    return (mmce_slot0_ready != 0 || mmce_slot1_ready != 0);
+}
+
+static bool boot_root_variant_mmce(void)
+{
+    if (boot_root_valid_from(boot_path)) {
+        return true;
+    }
+    if (!boot_init_mmce_minimal()) {
+        return false;
+    }
+
+    const char *candidates[] = {"mmce0:/", "mmce1:/", "mmce:/"};
+    for (size_t i = 0; i < (sizeof(candidates) / sizeof(candidates[0])); ++i) {
+        if (boot_root_valid_from(candidates[i])) {
+            snprintf(boot_path, sizeof(boot_path), "%s", candidates[i]);
+            setAppDirFromPath(candidates[i]);
+            DPRINTF("MMCE variant boot root selected: %s\n", boot_path);
+            return true;
+        }
+    }
+
+    return false;
+}
+
+static bool boot_init_mx4sio_minimal(void)
+{
+    return LoadIrxChecked("mx4sio_bd_irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL);
+}
+
+static bool boot_root_variant_mx4sio(void)
+{
+    if (boot_root_valid_from(boot_path)) {
+        return true;
+    }
+
+    if (!boot_init_mx4sio_minimal()) {
+        return false;
+    }
+
+    const char *candidates[] = {"mx4sio:/", "mx4sio0:/"};
+    for (size_t i = 0; i < (sizeof(candidates) / sizeof(candidates[0])); ++i) {
+        if (boot_root_valid_from(candidates[i])) {
+            snprintf(boot_path, sizeof(boot_path), "%s", candidates[i]);
+            setAppDirFromPath(candidates[i]);
+            DPRINTF("MX4SIO variant boot root selected: %s\n", boot_path);
+            return true;
+        }
+    }
+
+    return false;
+}
+
+static void configure_boot_root(int argc, char *argv[])
+{
+    boot_root_standard(argc, argv);
+#if defined(BOOT_VARIANT_STANDARD)
+    return;
+#elif defined(BOOT_VARIANT_MMCE)
+    if (boot_root_variant_mmce()) {
+        return;
+    }
+#elif defined(BOOT_VARIANT_MX4SIO)
+    if (boot_root_variant_mx4sio()) {
+        return;
+    }
+#endif
+    boot_root_standard(argc, argv);
 }
 
 static void setAppDirFromPath(const char *path)
@@ -408,12 +541,7 @@ int main(int argc, char * argv[])
         retries--;
     }
 	
-        setLuaBootPath (argc, argv, 0);
-        if (argc > 0 && argv[0]) {
-            setAppDirFromPath(argv[0]);
-        } else {
-            setAppDirFromPath(boot_path);
-        }
+        configure_boot_root(argc, argv);
 	// Lua init
 	// init internals library
     
