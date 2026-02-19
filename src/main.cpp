@@ -153,6 +153,44 @@ static void BootStamp(const char *stage)
     DPRINTF("BOOT: %s %u\n", stage, boot_ms());
 }
 
+static int ExtractDeviceRoot(const char *path, char *out, size_t out_sz)
+{
+    if (!path || !out || out_sz == 0) return -1;
+    const char *colon = strchr(path, ':');
+    if (!colon) return -1;
+    size_t n = (size_t)(colon - path) + 1; /* include ':' */
+    if (n + 1 >= out_sz) return -1;
+    memcpy(out, path, n);
+    out[n] = '/';
+    out[n + 1] = '\0';
+    return 0;
+}
+
+static int FixupMassGenericPath(char *io_path, size_t io_sz)
+{
+    /* If path begins with mass:/... but the actual device is massN:/..., probe and rewrite. */
+    if (!io_path || io_path[0] == '\0') return -1;
+    /* Normalize backslashes to slashes for consistency. */
+    for (char *p = io_path; *p; ++p) {
+        if (*p == '\\') *p = '/';
+    }
+    if (strncmp(io_path, "mass:/", 6) != 0) return 0; /* nothing to do */
+
+    struct stat st;
+    if (stat(io_path, &st) == 0) return 0; /* mass:/ works */
+
+    const char *suffix = io_path + 4; /* points at :/... */
+    char cand[255];
+    for (int i = 0; i <= 6; ++i) {
+        snprintf(cand, sizeof(cand), "mass%d%s", i, suffix);
+        if (stat(cand, &st) == 0) {
+            snprintf(io_path, io_sz, "%s", cand);
+            return 1; /* rewritten */
+        }
+    }
+    return -1; /* not found */
+}
+
 void setLuaBootPath(int argc, char ** argv, int idx)
 {
     if (argc>=(idx+1))
@@ -303,6 +341,15 @@ int main(int argc, char * argv[])
     boot_start = clock();
     BootStamp("EE init start");
 
+    /* Capture boot path early (before media readiness waits). */
+    setLuaBootPath(argc, argv, 0);
+    if (argc > 0 && argv[0]) {
+        setAppDirFromPath(argv[0]);
+    } else {
+        setAppDirFromPath(boot_path);
+    }
+    BootStamp("boot path parse");
+
 #ifdef RESET_IOP  
     SifInitRpc(0);
     while (!SifIopReset("", 0)){};
@@ -401,23 +448,45 @@ int main(int argc, char * argv[])
 
     struct stat buffer;
     int ret = -1;
-    int retries = 50;
+    int retries = 80;
+    char wait_root[16];
+    wait_root[0] = '\0';
 
-    while(ret != 0 && retries > 0)
-    {
-        ret = stat("mass:/", &buffer);
+    /* If launched with generic mass:/ path, rewrite to the detected massN:/ prefix when needed. */
+    char argv0_fix[255];
+    argv0_fix[0] = '\0';
+    if (argc > 0 && argv[0]) {
+        snprintf(argv0_fix, sizeof(argv0_fix), "%s", argv[0]);
+        NormalizeDirPath(argv0_fix, sizeof(argv0_fix));
+        int fix = FixupMassGenericPath(argv0_fix, sizeof(argv0_fix));
+        if (fix > 0) {
+            char *tmpv[1];
+            tmpv[0] = argv0_fix;
+            setLuaBootPath(1, tmpv, 0);
+            setAppDirFromPath(argv0_fix);
+            DPRINTF("boot path rewritten to %s (argv0=%s)\n", boot_path, argv0_fix);
+        }
+    }
+
+    if (ExtractDeviceRoot(boot_path, wait_root, sizeof(wait_root)) < 0) {
+        snprintf(wait_root, sizeof(wait_root), "mass:/");
+    }
+    BootStamp("media wait begin");
+
+    while (ret != 0 && retries > 0) {
+        ret = stat(wait_root, &buffer);
         /* Wait until the device is ready */
         nopdelay();
-
         retries--;
     }
-	
-        setLuaBootPath (argc, argv, 0);
-        if (argc > 0 && argv[0]) {
-            setAppDirFromPath(argv[0]);
-        } else {
-            setAppDirFromPath(boot_path);
-        }
+    BootStamp("media wait end");
+
+	setLuaBootPath(argc, argv, 0);
+	if (argc > 0 && argv[0]) {
+	    setAppDirFromPath(argv[0]);
+	} else {
+	    setAppDirFromPath(boot_path);
+	}
 	// Lua init
 	// init internals library
     

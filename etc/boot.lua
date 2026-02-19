@@ -101,8 +101,8 @@ local function wait_for_readable_script(path)
   end
   local attempts = 100
   for i = 1, attempts do
-    local fd = System.openFile(path, FREAD)
-    if fd ~= nil then
+    local ok, fd = pcall(System.openFile, path, FREAD)
+    if ok and fd ~= nil then
       System.closeFile(fd)
       return path
     end
@@ -224,8 +224,8 @@ BOOT_PROF.stamp("UI assets init (fonts)")
 function STOP() LOG("PROGRAM STOP") Screen.clear(Color.new(255,0,0)) Screen.flip() while true do end end
 
 local function ReadWholeFile(path)
-  local fd = System.openFile(path, FREAD)
-  if fd == nil then
+  local ok, fd = pcall(System.openFile, path, FREAD)
+  if not ok or fd == nil then
     return nil, "open failed"
   end
   local chunks = {}
@@ -291,8 +291,6 @@ end
 local APP_DIR_NORM = ensure_dir(normalize_path(APP_DIR))
 local BASE_PARENT = parent_dir(BASE_DIR)
 local SYS_CANDIDATES = {}
-add_candidate(SYS_CANDIDATES, "system.lua")
-add_candidate(SYS_CANDIDATES, "POPSLDR/system.lua")
 add_candidate(SYS_CANDIDATES, BASE_DIR.."system.lua")
 add_candidate(SYS_CANDIDATES, BASE_DIR.."POPSLDR/system.lua")
 if APP_DIR_NORM ~= nil then
@@ -303,6 +301,8 @@ if BASE_PARENT ~= nil then
   add_candidate(SYS_CANDIDATES, BASE_PARENT.."system.lua")
   add_candidate(SYS_CANDIDATES, BASE_PARENT.."POPSLDR/system.lua")
 end
+add_candidate(SYS_CANDIDATES, "system.lua")
+add_candidate(SYS_CANDIDATES, "POPSLDR/system.lua")
 
 local function TryLoadScriptCandidate(candidate)
   local normalized = normalize_path(candidate)
