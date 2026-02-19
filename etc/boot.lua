@@ -304,43 +304,51 @@ if BASE_PARENT ~= nil then
   add_candidate(SYS_CANDIDATES, BASE_PARENT.."POPSLDR/system.lua")
 end
 
+local function TryLoadScriptCandidate(candidate)
+  local normalized = normalize_path(candidate)
+  if normalized == nil or normalized == "" then
+    return nil, nil, nil
+  end
+
+  local paths = {}
+  local resolved = resolve_script_path(normalized)
+  if resolved ~= nil then
+    paths[#paths + 1] = resolved
+  else
+    paths[#paths + 1] = normalized
+    if string.sub(normalized, 1, 6) == "mass:/" then
+      paths[#paths + 1] = "mass:"..string.sub(normalized, 7)
+    end
+  end
+
+  local last_err = nil
+  for i = 1, #paths do
+    local path = wait_for_readable_script(paths[i])
+    local loader, load_err = load_script_with_retry(path)
+    if loader ~= nil then
+      return path, loader, nil
+    end
+    last_err = load_err
+  end
+
+  return nil, nil, last_err
+end
+
 local SYS = nil
+local SYS_LOADER = nil
+local SYS_ERR = nil
 for i = 1, #SYS_CANDIDATES do
-  SYS = resolve_script_path(SYS_CANDIDATES[i])
-  if SYS ~= nil then
+  SYS, SYS_LOADER, SYS_ERR = TryLoadScriptCandidate(SYS_CANDIDATES[i])
+  if SYS_LOADER ~= nil then
     break
   end
 end
 
-if SYS == nil then
-  for i = 1, #SYS_CANDIDATES do
-    local candidate = normalize_path(SYS_CANDIDATES[i])
-    local loader = nil
-    loader = LoadLuaFile(candidate)
-    if loader ~= nil then
-      SYS = candidate
-      break
-    end
-    if string.sub(candidate, 1, 6) == "mass:/" then
-      local compact = "mass:"..string.sub(candidate, 7)
-      loader = LoadLuaFile(compact)
-      if loader ~= nil then
-        SYS = compact
-        break
-      end
-    end
-  end
-end
-if SYS ~= nil then
-  SYS = wait_for_readable_script(SYS)
-  local loader, load_err = load_script_with_retry(SYS)
-  if loader == nil then
-    error(load_err)
-  end
-  local ok, run_err = pcall(loader)
+if SYS_LOADER ~= nil then
+  local ok, run_err = pcall(SYS_LOADER)
   if not ok then
     error(run_err)
   end
 else
-  error("Cant access system.lua (flat) or POPSLDR/system.lua (fallback)\n\n\targv0: "..tostring(ARGV0).."\n\tcwd: "..tostring(System.currentDirectory()))
+  error((SYS_ERR or "Cant access system.lua (flat) or POPSLDR/system.lua (fallback)").."\n\n\targv0: "..tostring(ARGV0).."\n\tcwd: "..tostring(System.currentDirectory()))
 end
