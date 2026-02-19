@@ -144,13 +144,15 @@ local function DetectBootDevice()
     if driver == "usb" then
       return "USB", boot_path, prefix
     end
-    -- Legacy fallback (marker-based). Prefer IOCTL above.
+    -- Legacy fallback (marker-based). Prefer IOCTL above and avoid cross-device bleed.
     local mx_marker = JoinPath(APP_DIR_LOCAL, ".boot_mx4sio")
     local usb_marker = JoinPath(APP_DIR_LOCAL, ".boot_usb")
-    if doesFileExist(mx_marker) then
+    local has_mx_marker = doesFileExist(mx_marker)
+    local has_usb_marker = doesFileExist(usb_marker)
+    if has_mx_marker and not has_usb_marker then
       return "MX4SIO", boot_path, prefix
     end
-    if doesFileExist(usb_marker) then
+    if has_usb_marker and not has_mx_marker then
       return "USB", boot_path, prefix
     end
   end
