@@ -52,6 +52,11 @@ local function add_candidate(list, path)
   if string.sub(normalized, 1, 6) == "mass:/" then
     list[#list + 1] = "mass:"..string.sub(normalized, 7)
   end
+  if string.sub(normalized, 1, 8) == "mx4sio:/" then
+    list[#list + 1] = "mx4sio0:/"..string.sub(normalized, 9)
+  elseif string.sub(normalized, 1, 9) == "mx4sio0:/" then
+    list[#list + 1] = "mx4sio:/"..string.sub(normalized, 10)
+  end
 end
 
 local function resolve_script_path(path)
