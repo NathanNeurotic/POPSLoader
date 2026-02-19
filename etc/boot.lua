@@ -105,13 +105,27 @@ local function wait_for_readable_script(path)
   if not is_mass_storage_root(path) then
     return path
   end
+  local compact = to_compact_mass_path(path)
   local attempts = 100
   for i = 1, attempts do
-    local fd = System.openFile(path, FREAD)
-    if fd ~= nil then
+    if doesFileExist(path) or (compact ~= nil and doesFileExist(compact)) then
+      return path
+    end
+
+    local ok, fd = pcall(System.openFile, path, FREAD)
+    if ok and fd ~= nil then
       System.closeFile(fd)
       return path
     end
+
+    if compact ~= nil then
+      local ok_compact, fd_compact = pcall(System.openFile, compact, FREAD)
+      if ok_compact and fd_compact ~= nil then
+        System.closeFile(fd_compact)
+        return compact
+      end
+    end
+
     if i < attempts then
       System.delayThreadMs(250)
     end
