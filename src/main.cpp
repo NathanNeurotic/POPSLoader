@@ -85,6 +85,9 @@ extern unsigned int size_ds34bt_irx;
 extern unsigned char mmceman_irx;
 extern unsigned int size_mmceman_irx;
 
+extern unsigned char mx4sio_bd_irx[];
+extern unsigned int size_mx4sio_bd_irx;
+
 char boot_path[255];
 char app_dir[255];
 int mmce_slot0_ready = -1;
@@ -265,6 +268,29 @@ static bool LoadIrxChecked(const char *name, unsigned char *irx, unsigned int si
     return true;
 }
 
+static bool IsModuleLoadedByName(const char *name)
+{
+    smod_mod_info_t info;
+    return (name != NULL && smod_get_mod_by_name(name, &info) >= 0);
+}
+
+static bool LoadIrxAdditive(const char *log_name, const char *module_name, unsigned char *irx, unsigned int size)
+{
+    if (IsModuleLoadedByName(module_name)) {
+        DPRINTF("IOP module already loaded: %s\n", module_name);
+        return true;
+    }
+
+    int id = -1;
+    int ret = -1;
+    bool loaded = LoadIrxChecked(log_name, irx, size, &id, &ret);
+    if (!loaded && IsModuleLoadedByName(module_name)) {
+        DPRINTF("IOP module became available despite load error: %s id=%d ret=%d\n", module_name, id, ret);
+        return true;
+    }
+    return loaded;
+}
+
 #ifdef DEBUG
 static void DumpLoadedModules(void)
 {
@@ -388,6 +414,7 @@ int main(int argc, char * argv[])
     LOAD_IRX_NARG(bdm_irx);
     LOAD_IRX_NARG(bdmfs_fatfs_irx);
     LOAD_IRX_NARG(usbmass_bd_irx);
+    LoadIrxAdditive("mx4sio_bd_irx", "mx4sio_bd", mx4sio_bd_irx, size_mx4sio_bd_irx);
 
     LOAD_IRX_NARG(cdfs_irx);
 

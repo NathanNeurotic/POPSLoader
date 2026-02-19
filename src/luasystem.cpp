@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <sifrpc.h>
 #include <string.h>
+#include <smod.h>
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
 #include <fileio.h>
@@ -50,6 +51,12 @@ static bool bdm_rpc_bound = false;
 static bool bdm_rpc_loaded = false;
 static bdm_dev_list_t bdm_rpc_buffer __attribute__((aligned(64)));
 static bool mx4sio_bd_loaded = false;
+
+static bool IsModuleLoadedByName(const char *name)
+{
+	smod_mod_info_t info;
+	return (name != NULL && smod_get_mod_by_name(name, &info) >= 0);
+}
 
 static bool EnsureBdmQueryRpc()
 {
@@ -172,7 +179,8 @@ int mx4sio_init_and_get_root(const char *hint, char *out_root, size_t out_sz)
 	}
 	DPRINTF("MX4SIO SDK init start\n");
 	if (!mx4sio_bd_loaded) {
-		if (!LoadIrxCheckedBuffer("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL)) {
+		if (!LoadIrxCheckedBuffer("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL) &&
+		    !IsModuleLoadedByName("mx4sio_bd")) {
 			return -1;
 		}
 		mx4sio_bd_loaded = true;

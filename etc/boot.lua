@@ -105,6 +105,33 @@ local function wait_for_readable_script(path)
   return path
 end
 
+local function read_wait_open(path, attempts)
+  for i = 1, attempts do
+    local fd = System.openFile(path, FREAD)
+    if fd ~= nil then
+      System.closeFile(fd)
+      return true
+    end
+    if i < attempts then
+      System.delayThreadMs(250)
+    end
+  end
+  return false
+end
+
+local function mx4sio_path_from(base_dir, leaf)
+  local normalized = ensure_dir(normalize_path(base_dir))
+  if normalized == nil then
+    return nil
+  end
+  local suffix = string.gsub(normalized, "^[%a%d_]+:/?", "")
+  suffix = string.gsub(suffix, "^/+", "")
+  if suffix ~= "" and string.sub(suffix, -1) ~= "/" then
+    suffix = suffix.."/"
+  end
+  return normalize_path("mx4sio:/"..suffix..leaf)
+end
+
 local function dir_exists(path)
   if path == nil or path == "" then
     return false
@@ -192,8 +219,12 @@ Font.ftInit()
 BFONT = Font.LoadBuiltinFont()
 SFONT = Font.LoadBuiltinFont()
 LFONT = Font.LoadBuiltinFont()
-Font.ftSetCharSize(BFONT, 800, 800)
-Font.ftSetCharSize(SFONT, 600, 600)
+if BFONT ~= nil then
+  Font.ftSetCharSize(BFONT, 800, 800)
+end
+if SFONT ~= nil then
+  Font.ftSetCharSize(SFONT, 600, 600)
+end
 BOOT_PROF.stamp("UI assets init (fonts)")
 function STOP() LOG("PROGRAM STOP") Screen.clear(Color.new(255,0,0)) Screen.flip() while true do end end
 
@@ -309,5 +340,23 @@ if SYS ~= nil then
   SYS = wait_for_readable_script(SYS)
   RunScript(SYS)
 else
+  local first_candidate = normalize_path(SYS_CANDIDATES[1])
+  if first_candidate ~= nil and is_usb_mass_root(first_candidate) then
+    local mx4_flat = mx4sio_path_from(BASE_DIR, "system.lua")
+    local mx4_pop = mx4sio_path_from(BASE_DIR, "POPSLDR/system.lua")
+    local mx4_candidates = {mx4_flat, mx4_pop}
+    for i = 1, #mx4_candidates do
+      local p = mx4_candidates[i]
+      if p ~= nil and read_wait_open(p, 100) then
+        local script_dir = dirname(p)
+        if script_dir ~= nil then
+          BASE_DIR = ensure_dir(script_dir)
+          System.currentDirectory(BASE_DIR)
+        end
+        RunScript(p)
+        return
+      end
+    end
+  end
   error("Cant access system.lua (flat) or POPSLDR/system.lua (fallback)\n\n\targv0: "..tostring(ARGV0).."\n\tcwd: "..tostring(System.currentDirectory()))
 end
