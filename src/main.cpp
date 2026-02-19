@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sifrpc.h>
+#include <kernel.h>
 #include <loadfile.h>
 #include <libmc.h>
 #include <libcdvd.h>
@@ -13,6 +14,7 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <ctype.h>
+#include <errno.h>
 
 #include <dirent.h>
 
@@ -28,6 +30,7 @@
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
 #include <fileio.h>
+#include <usbhdfsd-common.h>
 
 extern "C"{
 #include <libds34bt.h>
@@ -84,6 +87,8 @@ extern unsigned int size_ds34bt_irx;
 
 extern unsigned char mmceman_irx;
 extern unsigned int size_mmceman_irx;
+extern unsigned char mx4sio_bd_irx[];
+extern unsigned int size_mx4sio_bd_irx;
 
 char boot_path[255];
 char app_dir[255];
@@ -97,6 +102,200 @@ static unsigned int boot_ms(void)
         return 0;
     }
     return (unsigned int)(((clock() - boot_start) * 1000) / CLOCKS_PER_SEC);
+}
+
+enum backend {
+    BACKEND_MX4SIO,
+    BACKEND_USB,
+    BACKEND_UNKNOWN,
+    BACKEND_NOT_READY
+};
+
+static bool IsMassBootArgv0(const char *argv0)
+{
+    if (argv0 == NULL) {
+        return false;
+    }
+    if (strncmp(argv0, "mass:/", 6) == 0) {
+        return true;
+    }
+    if (strncmp(argv0, "mass", 4) != 0) {
+        return false;
+    }
+    const char *p = argv0 + 4;
+    if (!isdigit((unsigned char)*p)) {
+        return false;
+    }
+    while (isdigit((unsigned char)*p)) {
+        ++p;
+    }
+    return (p[0] == ':' && p[1] == '/');
+}
+
+static bool ExtractMassSuffixPath(const char *argv0, char *out_suffix, size_t out_size)
+{
+    if (argv0 == NULL || out_suffix == NULL || out_size == 0) {
+        return false;
+    }
+    const char *prefix_end = NULL;
+    if (strncmp(argv0, "mass:/", 6) == 0) {
+        prefix_end = argv0 + 6;
+    } else if (strncmp(argv0, "mass", 4) == 0) {
+        const char *p = argv0 + 4;
+        if (!isdigit((unsigned char)*p)) {
+            return false;
+        }
+        while (isdigit((unsigned char)*p)) {
+            ++p;
+        }
+        if (p[0] != ':' || p[1] != '/') {
+            return false;
+        }
+        prefix_end = p + 2;
+    } else {
+        return false;
+    }
+    if (prefix_end[0] == '\0') {
+        return false;
+    }
+    snprintf(out_suffix, out_size, "%s", prefix_end);
+    return true;
+}
+
+static backend IdentifyMassSlot(int slot)
+{
+    if (slot < 0 || slot > 9) {
+        return BACKEND_UNKNOWN;
+    }
+
+    char mass_path[16];
+    snprintf(mass_path, sizeof(mass_path), "mass%d:/", slot);
+    int dd = fileXioDopen(mass_path);
+    if (dd < 0) {
+        if (dd == -ENODEV || dd == -EIO || dd == -EBUSY || dd == -EAGAIN) {
+            return BACKEND_NOT_READY;
+        }
+        return BACKEND_UNKNOWN;
+    }
+
+    char driver[8];
+    memset(driver, 0, sizeof(driver));
+    int rc = fileXioIoctl(dd, USBMASS_IOCTL_GET_DRIVERNAME, (void*)"");
+    ((int *)driver)[0] = rc;
+    fileXioDclose(dd);
+
+    driver[sizeof(driver) - 1] = '\0';
+    if (rc < 0 || driver[0] == '\0') {
+        if (rc == -ENODEV || rc == -EIO || rc == -EBUSY || rc == -EAGAIN) {
+            return BACKEND_NOT_READY;
+        }
+        return BACKEND_UNKNOWN;
+    }
+
+    for (char *p = driver; *p; ++p) {
+        *p = (char)tolower((unsigned char)*p);
+    }
+
+    if (strstr(driver, "sdc") != NULL || strstr(driver, "mx4") != NULL) {
+        return BACKEND_MX4SIO;
+    }
+    if (strstr(driver, "usb") != NULL) {
+        return BACKEND_USB;
+    }
+    return BACKEND_UNKNOWN;
+}
+
+static int ResolveBootMassSlot(const char *argv0)
+{
+    char suffix_path[255];
+    if (!ExtractMassSuffixPath(argv0, suffix_path, sizeof(suffix_path))) {
+        return -1;
+    }
+
+    const unsigned int total_ms = 25000;
+    const unsigned int tick_ms = 250;
+    unsigned int elapsed = 0;
+    int prev_mx_slot = -1;
+    int prev_any_slot = -1;
+
+    while (elapsed <= total_ms) {
+        int mx_slot = -1;
+        int mx_count = 0;
+        int any_slot = -1;
+        int any_count = 0;
+        bool saw_not_ready = false;
+
+        for (int slot = 0; slot <= 9; ++slot) {
+            backend b = IdentifyMassSlot(slot);
+            if (b == BACKEND_NOT_READY) {
+                saw_not_ready = true;
+            }
+
+            char candidate[300];
+            struct stat st;
+            snprintf(candidate, sizeof(candidate), "mass%d:/%s", slot, suffix_path);
+            if (stat(candidate, &st) != 0) {
+                continue;
+            }
+
+            ++any_count;
+            if (any_slot < 0) {
+                any_slot = slot;
+            }
+            if (b == BACKEND_MX4SIO) {
+                ++mx_count;
+                if (mx_slot < 0) {
+                    mx_slot = slot;
+                }
+            }
+        }
+
+        if (mx_count == 1) {
+            if (prev_mx_slot == mx_slot) {
+                return mx_slot;
+            }
+            prev_mx_slot = mx_slot;
+            prev_any_slot = -1;
+        } else {
+            prev_mx_slot = -1;
+            if (mx_count == 0 && !saw_not_ready && any_count == 1) {
+                if (prev_any_slot == any_slot) {
+                    return any_slot;
+                }
+                prev_any_slot = any_slot;
+            } else {
+                prev_any_slot = -1;
+            }
+        }
+
+        if (elapsed == total_ms) {
+            break;
+        }
+        unsigned int delay = tick_ms;
+        if (elapsed + delay > total_ms) {
+            delay = total_ms - elapsed;
+        }
+        DelayThread(delay * 1000);
+        elapsed += delay;
+    }
+
+    return -1;
+}
+
+static bool RemapMassArgv0(const char *argv0, char *out_path, size_t out_size)
+{
+    char suffix_path[255];
+    if (!ExtractMassSuffixPath(argv0, suffix_path, sizeof(suffix_path))) {
+        return false;
+    }
+
+    int slot = ResolveBootMassSlot(argv0);
+    if (slot < 0) {
+        return false;
+    }
+
+    snprintf(out_path, out_size, "mass%d:/%s", slot, suffix_path);
+    return true;
 }
 
 static void InsertChar(char *base, size_t base_size, char *pos, char ch)
@@ -388,6 +587,9 @@ int main(int argc, char * argv[])
     LOAD_IRX_NARG(bdm_irx);
     LOAD_IRX_NARG(bdmfs_fatfs_irx);
     LOAD_IRX_NARG(usbmass_bd_irx);
+    if (argc > 0 && IsMassBootArgv0(argv[0])) {
+        LoadIrxChecked("mx4sio_bd_irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL);
+    }
 
     LOAD_IRX_NARG(cdfs_irx);
 
@@ -408,6 +610,13 @@ int main(int argc, char * argv[])
         retries--;
     }
 	
+        char remapped_argv0[255];
+        if (argc > 0 && argv[0] != NULL && IsMassBootArgv0(argv[0])) {
+            if (RemapMassArgv0(argv[0], remapped_argv0, sizeof(remapped_argv0))) {
+                argv[0] = remapped_argv0;
+                ARGV0 = argv[0];
+            }
+        }
         setLuaBootPath (argc, argv, 0);
         if (argc > 0 && argv[0]) {
             setAppDirFromPath(argv[0]);
