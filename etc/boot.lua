@@ -95,14 +95,22 @@ local function is_retryable_boot_root(path)
     or string.match(normalized, "^mx4sio%d*:") ~= nil
 end
 
+local function safe_open_read(path)
+  local ok, fd = pcall(System.openFile, path, FREAD)
+  if ok and fd ~= nil then
+    return fd
+  end
+  return nil
+end
+
 local function wait_for_readable_script(path)
   if not is_retryable_boot_root(path) then
     return path
   end
   local attempts = 100
   for i = 1, attempts do
-    local ok, fd = pcall(System.openFile, path, FREAD)
-    if ok and fd ~= nil then
+    local fd = safe_open_read(path)
+    if fd ~= nil then
       System.closeFile(fd)
       return path
     end
@@ -110,7 +118,7 @@ local function wait_for_readable_script(path)
       System.delayThreadMs(250)
     end
   end
-  return path
+  return nil
 end
 
 local LoadLuaFile
@@ -224,8 +232,8 @@ BOOT_PROF.stamp("UI assets init (fonts)")
 function STOP() LOG("PROGRAM STOP") Screen.clear(Color.new(255,0,0)) Screen.flip() while true do end end
 
 local function ReadWholeFile(path)
-  local ok, fd = pcall(System.openFile, path, FREAD)
-  if not ok or fd == nil then
+  local fd = safe_open_read(path)
+  if fd == nil then
     return nil, "open failed"
   end
   local chunks = {}
@@ -324,11 +332,15 @@ local function TryLoadScriptCandidate(candidate)
   local last_err = nil
   for i = 1, #paths do
     local path = wait_for_readable_script(paths[i])
-    local loader, load_err = load_script_with_retry(path)
-    if loader ~= nil then
-      return path, loader, nil
+    if path ~= nil then
+      local loader, load_err = load_script_with_retry(path)
+      if loader ~= nil then
+        return path, loader, nil
+      end
+      last_err = load_err
+    else
+      last_err = "open failed"
     end
-    last_err = load_err
   end
 
   return nil, nil, last_err
