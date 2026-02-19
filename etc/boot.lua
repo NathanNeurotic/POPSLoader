@@ -108,20 +108,23 @@ local function wait_for_readable_script(path)
   local compact = to_compact_mass_path(path)
   local attempts = 20
   for i = 1, attempts do
-    if doesFileExist(path) or (compact ~= nil and doesFileExist(compact)) then
+    if doesFileExist(path) then
       return path
+    end
+    if compact ~= nil and doesFileExist(compact) then
+      return compact
     end
 
     local ok, fd = pcall(System.openFile, path, FREAD)
     if ok and fd ~= nil then
-      System.closeFile(fd)
+      pcall(System.closeFile, fd)
       return path
     end
 
     if compact ~= nil then
       local ok_compact, fd_compact = pcall(System.openFile, compact, FREAD)
       if ok_compact and fd_compact ~= nil then
-        System.closeFile(fd_compact)
+        pcall(System.closeFile, fd_compact)
         return compact
       end
     end
@@ -226,19 +229,22 @@ BOOT_PROF.stamp("UI assets init (fonts)")
 function STOP() LOG("PROGRAM STOP") Screen.clear(Color.new(255,0,0)) Screen.flip() while true do end end
 
 local function ReadWholeFile(path)
-  local fd = System.openFile(path, FREAD)
-  if fd == nil then
+  local ok_open, fd = pcall(System.openFile, path, FREAD)
+  if not ok_open or fd == nil then
     return nil, "open failed"
   end
   local chunks = {}
   while true do
-    local buffer = System.readFile(fd, 4096)
+    local ok_read, buffer = pcall(System.readFile, fd, 4096)
+    if not ok_read then
+      break
+    end
     if buffer == nil or buffer == "" then
       break
     end
     chunks[#chunks + 1] = buffer
   end
-  System.closeFile(fd)
+  pcall(System.closeFile, fd)
   return table.concat(chunks)
 end
 
