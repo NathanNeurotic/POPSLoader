@@ -175,11 +175,32 @@ static const char *TryResolveGenericMassArgv0(const char *argv0, char *out, size
         return argv0;
     }
 
+    auto stat_path = [](const char *path) {
+        struct stat st;
+        if (stat(path, &st) == 0) {
+            return true;
+        }
+        if (path != NULL && strncmp(path, "mass", 4) == 0) {
+            const char *sep = strstr(path, ":/");
+            if (sep != NULL) {
+                char compact[512];
+                size_t head = (size_t)(sep - path) + 1;
+                if (head < sizeof(compact)) {
+                    memcpy(compact, path, head);
+                    snprintf(compact + head, sizeof(compact) - head, "%s", sep + 2);
+                    if (stat(compact, &st) == 0) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    };
+
     const char *suffix = argv0 + 6;
-    struct stat st;
     for (int slot = 0; slot <= 9; ++slot) {
         snprintf(out, out_sz, "mass%d:/%s", slot, suffix);
-        if (stat(out, &st) == 0) {
+        if (stat_path(out)) {
             return out;
         }
     }
