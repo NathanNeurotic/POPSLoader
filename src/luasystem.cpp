@@ -177,53 +177,45 @@ int mx4sio_init_and_get_root(const char *hint, char *out_root, size_t out_sz)
 		}
 		mx4sio_bd_loaded = true;
 	}
-	const char *dedicated_candidates[] = {"mx4sio:/", "mx4sio0:/"};
-	for (size_t i = 0; i < sizeof(dedicated_candidates) / sizeof(dedicated_candidates[0]); ++i) {
-		const char *prefix = dedicated_candidates[i];
-		int root_ret = -1;
-		DPRINTF("MX4SIO probe dedicated prefix %s\n", prefix);
-		bool root_ok = ProbeDir(prefix, &root_ret);
-		DPRINTF("MX4SIO probe %s ret=%d ok=%d\n", prefix, root_ret, root_ok);
-		if (root_ok) {
-			DPRINTF("Chosen MX4SIO dedicated prefix: %s\n", prefix);
-			snprintf(out_root, out_sz, "%s", prefix);
-			return 0;
-		}
-	}
 	if (hint != NULL && hint[0] != '\0') {
 		int hint_ret = -1;
 		DPRINTF("MX4SIO probe hint %s\n", hint);
 		bool hint_ok = ProbeDir(hint, &hint_ret);
 		if (hint_ok) {
-			DPRINTF("Chosen MX4SIO hint prefix: %s\n", hint);
-			snprintf(out_root, out_sz, "%s", hint);
-			return 0;
+			char pops_path[32];
+			snprintf(pops_path, sizeof(pops_path), "%sPOPS/", hint);
+			int pops_ret = -1;
+			bool pops_ok = ProbeDir(pops_path, &pops_ret);
+			DPRINTF("MX4SIO probe %s ret=%d ok=%d\n", pops_path, pops_ret, pops_ok);
+			if (pops_ok) {
+				DPRINTF("Chosen MX4SIO hint prefix: %s\n", hint);
+				snprintf(out_root, out_sz, "%s", hint);
+				return 0;
+			}
 		} else {
 			DPRINTF("MX4SIO probe %s ret=%d ok=%d\n", hint, hint_ret, hint_ok);
 		}
 	}
-
-	for (int i = 0; i <= 9; ++i) {
-		char driver[8];
-		bool has_driver = QueryMassDriverName(i, driver);
-		DPRINTF("MX4SIO probe mass%d driver=%s ok=%d\n", i, has_driver ? driver : "", has_driver);
-		if (!has_driver) {
-			continue;
-		}
-		if (strcmp(driver, "sdc") != 0 && strcmp(driver, "mx4sio") != 0) {
-			continue;
-		}
-		char mass_prefix[16];
-		snprintf(mass_prefix, sizeof(mass_prefix), "mass%d:/", i);
+	const char *candidates[] = {"mx4sio:/", "mx4sio0:/"};
+	for (size_t i = 0; i < sizeof(candidates) / sizeof(candidates[0]); ++i) {
+		const char *prefix = candidates[i];
 		int root_ret = -1;
-		bool root_ok = ProbeDir(mass_prefix, &root_ret);
-		DPRINTF("MX4SIO probe %s ret=%d ok=%d\n", mass_prefix, root_ret, root_ok);
+		DPRINTF("MX4SIO probe dedicated prefix %s\n", prefix);
+		bool root_ok = ProbeDir(prefix, &root_ret);
 		if (!root_ok) {
+			DPRINTF("MX4SIO probe %s ret=%d ok=%d\n", prefix, root_ret, root_ok);
 			continue;
 		}
-		DPRINTF("Chosen MX4SIO mass prefix: %s\n", mass_prefix);
-		snprintf(out_root, out_sz, "%s", mass_prefix);
-		return 0;
+		char pops_path[32];
+		snprintf(pops_path, sizeof(pops_path), "%sPOPS/", prefix);
+		int pops_ret = -1;
+		bool pops_ok = ProbeDir(pops_path, &pops_ret);
+		DPRINTF("MX4SIO probe %s ret=%d ok=%d\n", pops_path, pops_ret, pops_ok);
+		if (pops_ok) {
+			DPRINTF("Chosen MX4SIO dedicated prefix: %s\n", prefix);
+			snprintf(out_root, out_sz, "%s", prefix);
+			return 0;
+		}
 	}
 	return -1;
 }
