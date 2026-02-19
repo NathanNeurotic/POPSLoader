@@ -160,6 +160,17 @@ static bool QueryMassDriverName(int idx, char out_driver[8])
 	return true;
 }
 
+static bool QueryMassDriverNameWithRetry(int idx, char out_driver[8])
+{
+	if (QueryMassDriverName(idx, out_driver)) {
+		return true;
+	}
+
+	// MX4SIO can fail to report on first probe right after init; allow one retry.
+	usleep(200 * 1000);
+	return QueryMassDriverName(idx, out_driver);
+}
+
 // MX4SIO init notes:
 // - Bundle inventory (iop/embed/PS2SDK_MX4SIO): mx4sio_bd.irx.
 // - IRX load order: mx4sio_bd.irx (PS2SDK).
@@ -205,7 +216,7 @@ int mx4sio_init_and_get_root(const char *hint, char *out_root, size_t out_sz)
 
 	for (int i = 0; i <= 9; ++i) {
 		char driver[8];
-		bool has_driver = QueryMassDriverName(i, driver);
+		bool has_driver = QueryMassDriverNameWithRetry(i, driver);
 		DPRINTF("MX4SIO probe mass%d driver=%s ok=%d\n", i, has_driver ? driver : "", has_driver);
 		if (!has_driver) {
 			continue;
@@ -1047,7 +1058,7 @@ static int lua_getMassDriverName(lua_State *L)
 	}
 
 	char driver[8];
-	if (!QueryMassDriverName(idx, driver)) {
+	if (!QueryMassDriverNameWithRetry(idx, driver)) {
 		lua_pushnil(L);
 		return 1;
 	}
