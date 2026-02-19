@@ -288,7 +288,7 @@ static void RewriteMassArgv0ToDetectedSlot(int argc, char **argv)
             }
         }
         if (tick < 99) {
-            DelayThread(250 * 1000);
+            usleep(250 * 1000);
         }
     }
 }
