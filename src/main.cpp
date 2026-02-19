@@ -73,6 +73,9 @@ extern unsigned int size_bdmfs_fatfs_irx;
 extern unsigned char usbmass_bd_irx;
 extern unsigned int size_usbmass_bd_irx;
 
+extern unsigned char mx4sio_bd_irx;
+extern unsigned int size_mx4sio_bd_irx;
+
 extern unsigned char audsrv_irx;
 extern unsigned int size_audsrv_irx;
 
@@ -148,6 +151,58 @@ static void NormalizeDirPath(char *path, size_t size)
 static void BootStamp(const char *stage)
 {
     DPRINTF("BOOT: %s %u\n", stage, boot_ms());
+}
+
+static bool IsMassGenericPath(const char *path)
+{
+    return (path != NULL && strncmp(path, "mass:/", 6) == 0);
+}
+
+static bool IsMassSlotPath(const char *path)
+{
+    return (path != NULL && strncmp(path, "mass", 4) == 0 && path[4] >= '0' && path[4] <= '9' && strncmp(path + 5, ":/", 2) == 0);
+}
+
+static bool ResolveGenericMassArgv0(const char *in, char *out, size_t out_sz)
+{
+    if (!IsMassGenericPath(in) || out == NULL || out_sz == 0) {
+        return false;
+    }
+
+    const char *suffix = in + 6;
+    while (*suffix == '/') {
+        ++suffix;
+    }
+
+    struct stat st;
+    for (int slot = 0; slot <= 9; ++slot) {
+        char candidate[255];
+        snprintf(candidate, sizeof(candidate), "mass%d:/%s", slot, suffix);
+        if (stat(candidate, &st) == 0) {
+            snprintf(out, out_sz, "%s", candidate);
+            return true;
+        }
+    }
+
+    return false;
+}
+
+static void ExtractRootPrefix(const char *path, char *out, size_t out_sz)
+{
+    if (out == NULL || out_sz == 0) {
+        return;
+    }
+    out[0] = '\0';
+    if (path == NULL || path[0] == '\0') {
+        return;
+    }
+    const char *slash = strchr(path, '/');
+    size_t len = slash ? (size_t)(slash - path + 1) : strlen(path);
+    if (len >= out_sz) {
+        len = out_sz - 1;
+    }
+    memcpy(out, path, len);
+    out[len] = '\0';
 }
 
 void setLuaBootPath(int argc, char ** argv, int idx)
@@ -295,7 +350,12 @@ static void DumpLoadedModules(void)
 int main(int argc, char * argv[])
 {
     int ID, RET;
-    if (argc > 0) ARGV0 = argv[0];
+    char rewritten_argv0[255] = {0};
+    bool argv_rewritten = false;
+    if (argc > 0) {
+        ARGV0 = argv[0];
+        DPRINTF("BOOT argv0: %s\n", argv[0] ? argv[0] : "(null)");
+    }
     const char * errMsg;
     boot_start = clock();
     BootStamp("EE init start");
@@ -389,6 +449,25 @@ int main(int argc, char * argv[])
     LOAD_IRX_NARG(bdmfs_fatfs_irx);
     LOAD_IRX_NARG(usbmass_bd_irx);
 
+    bool mx4_boot_irx_attempted = false;
+    bool mx4_boot_irx_ok = false;
+    bool mx4_boot_irx_from_generic = false;
+    if (argc > 0 && IsMassGenericPath(argv[0])) {
+        argv_rewritten = ResolveGenericMassArgv0(argv[0], rewritten_argv0, sizeof(rewritten_argv0));
+        if (argv_rewritten) {
+            argv[0] = rewritten_argv0;
+            ARGV0 = argv[0];
+            DPRINTF("BOOT argv0 rewrite: %s\n", argv[0]);
+        } else {
+            DPRINTF("BOOT argv0 rewrite: no massN match for %s\n", argv[0]);
+        }
+
+        mx4_boot_irx_attempted = true;
+        mx4_boot_irx_from_generic = true;
+        mx4_boot_irx_ok = LoadIrxChecked("mx4sio_bd_irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL);
+        DPRINTF("BOOT mx4sio_bd load: attempted=%d ok=%d reason=mass:/\n", mx4_boot_irx_attempted, mx4_boot_irx_ok);
+    }
+
     LOAD_IRX_NARG(cdfs_irx);
 
     LOAD_IRX_NARG(audsrv_irx);
@@ -406,6 +485,25 @@ int main(int argc, char * argv[])
         nopdelay();
 
         retries--;
+    }
+
+    if (!mx4_boot_irx_attempted && argc > 0 && IsMassSlotPath(argv[0])) {
+        struct stat boot_root_probe;
+        char probe_root[16] = {0};
+        const char *slash = strchr(argv[0], '/');
+        if (slash != NULL) {
+            size_t len = (size_t)(slash - argv[0] + 1);
+            if (len >= sizeof(probe_root)) {
+                len = sizeof(probe_root) - 1;
+            }
+            memcpy(probe_root, argv[0], len);
+            probe_root[len] = '\0';
+        }
+        if (probe_root[0] != '\0' && stat(probe_root, &boot_root_probe) != 0) {
+            mx4_boot_irx_attempted = true;
+            mx4_boot_irx_ok = LoadIrxChecked("mx4sio_bd_irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL);
+            DPRINTF("BOOT mx4sio_bd load: attempted=%d ok=%d reason=massN retry\n", mx4_boot_irx_attempted, mx4_boot_irx_ok);
+        }
     }
 	
         setLuaBootPath (argc, argv, 0);
@@ -429,6 +527,12 @@ int main(int argc, char * argv[])
 	dbgprintf("boot path : %s\n", boot_path);
     DPRINTF("app dir : %s\n", app_dir);
 	dbgprintf("app dir : %s\n", app_dir);
+    char root_prefix[32] = {0};
+    ExtractRootPrefix(app_dir, root_prefix, sizeof(root_prefix));
+    DPRINTF("BOOT root prefix: %s\n", root_prefix[0] ? root_prefix : "(none)");
+    if (mx4_boot_irx_attempted && !mx4_boot_irx_from_generic) {
+        DPRINTF("BOOT mx4sio_bd load final: ok=%d\n", mx4_boot_irx_ok);
+    }
     
     BootStamp("Lua init start");
     while (1)

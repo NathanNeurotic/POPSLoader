@@ -11,6 +11,8 @@
 #include <fileXio_rpc.h>
 #include <fileio.h>
 #include <usbhdfsd-common.h>
+#include <smod.h>
+#include <smem.h>
 #include "include/luaplayer.h"
 #include "include/md5.h"
 #include "include/graphics.h"
@@ -26,6 +28,16 @@ extern unsigned char bdm_query_irx[];
 extern unsigned int size_bdm_query_irx;
 
 static bool LoadIrxCheckedBuffer(const char *name, unsigned char *irx, unsigned int size, int *out_id, int *out_ret);
+
+
+static bool IsIopModuleLoaded(const char *module_name)
+{
+	if (module_name == NULL || module_name[0] == '\0') {
+		return false;
+	}
+	smod_mod_info_t info;
+	return smod_get_mod_by_name(module_name, &info) >= 0;
+}
 
 #define BDM_QUERY_RPC_ID 0xB0D10B00
 #define BDM_QUERY_RPC_GET_LIST 0
@@ -172,10 +184,21 @@ int mx4sio_init_and_get_root(const char *hint, char *out_root, size_t out_sz)
 	}
 	DPRINTF("MX4SIO SDK init start\n");
 	if (!mx4sio_bd_loaded) {
-		if (!LoadIrxCheckedBuffer("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL)) {
-			return -1;
+		if (IsIopModuleLoaded("mx4sio_bd")) {
+			mx4sio_bd_loaded = true;
+			DPRINTF("MX4SIO SDK backend already loaded\n");
+		} else {
+			if (!LoadIrxCheckedBuffer("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL)) {
+				if (IsIopModuleLoaded("mx4sio_bd")) {
+					mx4sio_bd_loaded = true;
+					DPRINTF("MX4SIO SDK backend load race treated as ready\n");
+				} else {
+					return -1;
+				}
+			} else {
+				mx4sio_bd_loaded = true;
+			}
 		}
-		mx4sio_bd_loaded = true;
 	}
 	const char *dedicated_candidates[] = {"mx4sio:/", "mx4sio0:/"};
 	for (size_t i = 0; i < sizeof(dedicated_candidates) / sizeof(dedicated_candidates[0]); ++i) {
