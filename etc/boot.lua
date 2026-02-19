@@ -79,6 +79,32 @@ local function resolve_script_path(path)
   return nil
 end
 
+local function is_usb_mass_root(path)
+  local normalized = normalize_path(path)
+  if normalized == nil then
+    return false
+  end
+  return string.sub(normalized, 1, 4) == "mass"
+end
+
+local function wait_for_readable_script(path)
+  if not is_usb_mass_root(path) then
+    return path
+  end
+  local attempts = 100
+  for i = 1, attempts do
+    local fd = System.openFile(path, FREAD)
+    if fd ~= nil then
+      System.closeFile(fd)
+      return path
+    end
+    if i < attempts then
+      System.delayThreadMs(250)
+    end
+  end
+  return path
+end
+
 local function dir_exists(path)
   if path == nil or path == "" then
     return false
@@ -280,6 +306,7 @@ if SYS == nil then
   end
 end
 if SYS ~= nil then
+  SYS = wait_for_readable_script(SYS)
   RunScript(SYS)
 else
   error("Cant access system.lua (flat) or POPSLDR/system.lua (fallback)\n\n\targv0: "..tostring(ARGV0).."\n\tcwd: "..tostring(System.currentDirectory()))

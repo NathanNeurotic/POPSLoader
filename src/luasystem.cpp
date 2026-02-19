@@ -622,6 +622,17 @@ static int lua_sleep(lua_State *L)
 	return 0;
 }
 
+static int lua_delayThreadMs(lua_State *L)
+{
+	if (lua_gettop(L) != 1) return luaL_error(L, "milliseconds expected.");
+	int ms = luaL_checkinteger(L, 1);
+	if (ms < 0) {
+		ms = 0;
+	}
+	usleep((useconds_t)ms * 1000);
+	return 0;
+}
+
 static int lua_getFreeMemory(lua_State *L)
 {
 	if (lua_gettop(L) != 0) return luaL_error(L, "no arguments expected.");
@@ -1085,6 +1096,7 @@ static const luaL_Reg System_functions[] = {
 	{"rename",                       lua_rename},
 	{"md5sum",                       lua_md5sum},
 	{"sleep",                         lua_sleep},
+	{"delayThreadMs",          lua_delayThreadMs},
 	{"getFreeMemory",         lua_getFreeMemory},
 	{"exitToBrowser",                  lua_exit},
 	{"getMCInfo",                 lua_getmcinfo},
