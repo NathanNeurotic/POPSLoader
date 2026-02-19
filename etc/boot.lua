@@ -54,6 +54,18 @@ local function add_candidate(list, path)
   end
 end
 
+local function mass_compact_path(path)
+  local normalized = normalize_path(path)
+  if normalized == nil then
+    return nil
+  end
+  local head, tail = string.match(normalized, "^(mass%d*):/(.*)$")
+  if head == nil then
+    return nil
+  end
+  return head..":"..tail
+end
+
 local function resolve_script_path(path)
   local normalized = normalize_path(path)
   if normalized == nil or normalized == "" then
@@ -66,8 +78,8 @@ local function resolve_script_path(path)
   if doesFileExist(normalized) then
     return normalized
   end
-  if string.sub(normalized, 1, 6) == "mass:/" then
-    local compact = "mass:"..string.sub(normalized, 7)
+  local compact = mass_compact_path(normalized)
+  if compact ~= nil then
     resolved = System.resolveAsset(compact)
     if resolved ~= nil then
       return resolved
@@ -94,9 +106,17 @@ local function wait_for_readable_script(path)
   local attempts = 100
   for i = 1, attempts do
     local fd = System.openFile(path, FREAD)
-    if fd ~= nil then
+    if type(fd) == "number" and fd >= 0 then
       System.closeFile(fd)
       return path
+    end
+    local compact = mass_compact_path(path)
+    if compact ~= nil then
+      local fd2 = System.openFile(compact, FREAD)
+      if type(fd2) == "number" and fd2 >= 0 then
+        System.closeFile(fd2)
+        return compact
+      end
     end
     if i < attempts then
       System.delayThreadMs(250)
@@ -199,7 +219,16 @@ function STOP() LOG("PROGRAM STOP") Screen.clear(Color.new(255,0,0)) Screen.flip
 
 local function ReadWholeFile(path)
   local fd = System.openFile(path, FREAD)
-  if fd == nil then
+  if (type(fd) ~= "number" or fd < 0) and is_usb_mass_root(path) then
+    local compact = mass_compact_path(path)
+    if compact ~= nil then
+      fd = System.openFile(compact, FREAD)
+      if type(fd) == "number" and fd >= 0 then
+        path = compact
+      end
+    end
+  end
+  if type(fd) ~= "number" or fd < 0 then
     return nil, "open failed"
   end
   local chunks = {}
