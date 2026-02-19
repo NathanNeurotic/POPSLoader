@@ -187,6 +187,26 @@ static bool ResolveGenericMassArgv0(const char *in, char *out, size_t out_sz)
     return false;
 }
 
+static bool ResolveGenericMassArgv0WithRetry(const char *in, char *out, size_t out_sz)
+{
+    if (!IsMassGenericPath(in)) {
+        return false;
+    }
+
+    if (ResolveGenericMassArgv0(in, out, out_sz)) {
+        return true;
+    }
+
+    for (int i = 0; i < 100; ++i) {
+        usleep(250000);
+        if (ResolveGenericMassArgv0(in, out, out_sz)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 static void ExtractRootPrefix(const char *path, char *out, size_t out_sz)
 {
     if (out == NULL || out_sz == 0) {
@@ -453,7 +473,12 @@ int main(int argc, char * argv[])
     bool mx4_boot_irx_ok = false;
     bool mx4_boot_irx_from_generic = false;
     if (argc > 0 && IsMassGenericPath(argv[0])) {
-        argv_rewritten = ResolveGenericMassArgv0(argv[0], rewritten_argv0, sizeof(rewritten_argv0));
+        mx4_boot_irx_attempted = true;
+        mx4_boot_irx_from_generic = true;
+        mx4_boot_irx_ok = LoadIrxChecked("mx4sio_bd_irx", &mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL);
+        DPRINTF("BOOT mx4sio_bd load: attempted=%d ok=%d reason=mass:/\n", mx4_boot_irx_attempted, mx4_boot_irx_ok);
+
+        argv_rewritten = ResolveGenericMassArgv0WithRetry(argv[0], rewritten_argv0, sizeof(rewritten_argv0));
         if (argv_rewritten) {
             argv[0] = rewritten_argv0;
             ARGV0 = argv[0];
@@ -461,11 +486,6 @@ int main(int argc, char * argv[])
         } else {
             DPRINTF("BOOT argv0 rewrite: no massN match for %s\n", argv[0]);
         }
-
-        mx4_boot_irx_attempted = true;
-        mx4_boot_irx_from_generic = true;
-        mx4_boot_irx_ok = LoadIrxChecked("mx4sio_bd_irx", &mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL);
-        DPRINTF("BOOT mx4sio_bd load: attempted=%d ok=%d reason=mass:/\n", mx4_boot_irx_attempted, mx4_boot_irx_ok);
     }
 
     LOAD_IRX_NARG(cdfs_irx);
