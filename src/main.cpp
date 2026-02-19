@@ -163,17 +163,32 @@ static bool HasSystemLuaAtRoot(const char *root)
     if (root == NULL || root[0] == '\0') {
         return false;
     }
-    char candidate[255];
-    struct stat st;
 
-    snprintf(candidate, sizeof(candidate), "%ssystem.lua", root);
-    if (stat(candidate, &st) == 0) {
-        return true;
+    char roots[2][255] = {{0}};
+    snprintf(roots[0], sizeof(roots[0]), "%s", root);
+    NormalizeDirPath(roots[0], sizeof(roots[0]));
+
+    if (strncmp(roots[0], "mass:/", 6) == 0) {
+        snprintf(roots[1], sizeof(roots[1]), "mass:%s", roots[0] + 6);
     }
 
-    snprintf(candidate, sizeof(candidate), "%sPOPSLDR/system.lua", root);
-    if (stat(candidate, &st) == 0) {
-        return true;
+    struct stat st;
+    char candidate[255];
+
+    for (size_t i = 0; i < 2; ++i) {
+        if (roots[i][0] == '\0') {
+            continue;
+        }
+
+        snprintf(candidate, sizeof(candidate), "%ssystem.lua", roots[i]);
+        if (stat(candidate, &st) == 0) {
+            return true;
+        }
+
+        snprintf(candidate, sizeof(candidate), "%sPOPSLDR/system.lua", roots[i]);
+        if (stat(candidate, &st) == 0) {
+            return true;
+        }
     }
 
     return false;
