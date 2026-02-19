@@ -299,8 +299,7 @@ end
 local APP_DIR_NORM = ensure_dir(normalize_path(APP_DIR))
 local BASE_PARENT = parent_dir(BASE_DIR)
 local SYS_CANDIDATES = {}
-add_candidate(SYS_CANDIDATES, "system.lua")
-add_candidate(SYS_CANDIDATES, "POPSLDR/system.lua")
+-- Prefer explicit app/boot directories first to avoid accidentally picking unrelated local scripts.
 add_candidate(SYS_CANDIDATES, BASE_DIR.."system.lua")
 add_candidate(SYS_CANDIDATES, BASE_DIR.."POPSLDR/system.lua")
 if APP_DIR_NORM ~= nil then
@@ -311,6 +310,8 @@ if BASE_PARENT ~= nil then
   add_candidate(SYS_CANDIDATES, BASE_PARENT.."system.lua")
   add_candidate(SYS_CANDIDATES, BASE_PARENT.."POPSLDR/system.lua")
 end
+add_candidate(SYS_CANDIDATES, "system.lua")
+add_candidate(SYS_CANDIDATES, "POPSLDR/system.lua")
 
 local SYS = nil
 for i = 1, #SYS_CANDIDATES do
@@ -342,6 +343,7 @@ if SYS == nil then
 end
 if SYS ~= nil then
   SYS = wait_for_readable_script(SYS)
+  LOG("Selected system script:", tostring(SYS))
   RunScript(SYS)
 else
   error("Cant access system.lua (flat) or POPSLDR/system.lua (fallback)\n\n\targv0: "..tostring(ARGV0).."\n\tcwd: "..tostring(System.currentDirectory()))
