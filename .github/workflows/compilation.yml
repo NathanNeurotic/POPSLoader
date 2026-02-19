@@ -47,7 +47,7 @@ jobs:
         run: |
           set -eu
           COMMIT_SHORT="$(echo "$GITHUB_SHA" | cut -c1-7)"
-          BUILD_UTC="$(date -u '%Y-%m-%d %H:%MZ')"
+          BUILD_UTC="$(date -u '+%Y-%m-%d %H:%MZ')"
           printf "%s\n%s\n" "$COMMIT_SHORT" "$BUILD_UTC" > bin/POPSLDR/BUILD_INFO.txt
           cat bin/POPSLDR/BUILD_INFO.txt
 
