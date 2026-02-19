@@ -79,16 +79,16 @@ local function resolve_script_path(path)
   return nil
 end
 
-local function is_usb_mass_root(path)
+local function is_mass_storage_root(path)
   local normalized = normalize_path(path)
   if normalized == nil then
     return false
   end
-  return string.sub(normalized, 1, 4) == "mass"
+  return string.match(normalized, "^mass%d*:/") ~= nil or string.match(normalized, "^mx4sio%d*:/") ~= nil
 end
 
 local function wait_for_readable_script(path)
-  if not is_usb_mass_root(path) then
+  if not is_mass_storage_root(path) then
     return path
   end
   local attempts = 100
@@ -114,10 +114,10 @@ end
 
 local ARGV0 = normalize_path(System.GetArgv0())
 local BASE_DIR = dirname(ARGV0)
-if BASE_DIR == nil or BASE_DIR == "" or not dir_exists(BASE_DIR) then
+if BASE_DIR == nil or BASE_DIR == "" then
   BASE_DIR = normalize_path(APP_DIR) or normalize_path(System.currentDirectory())
 end
-if BASE_DIR == nil or BASE_DIR == "" or not dir_exists(BASE_DIR) then
+if BASE_DIR == nil or BASE_DIR == "" then
   BASE_DIR = normalize_path(System.currentDirectory())
 end
 BASE_DIR = ensure_dir(BASE_DIR)
@@ -189,9 +189,26 @@ if string.find(ARGV0, "^hdd0:") then
 end
 GPAD = 0
 Font.ftInit()
-BFONT = Font.LoadBuiltinFont()
-SFONT = Font.LoadBuiltinFont()
-LFONT = Font.LoadBuiltinFont()
+
+local function load_builtin_font_with_retry()
+  for i = 1, 5 do
+    local font = Font.LoadBuiltinFont()
+    if font ~= nil then
+      return font
+    end
+    if i < 5 then
+      System.delayThreadMs(100)
+    end
+  end
+  return nil
+end
+
+BFONT = load_builtin_font_with_retry()
+SFONT = load_builtin_font_with_retry()
+LFONT = load_builtin_font_with_retry()
+if BFONT == nil or SFONT == nil or LFONT == nil then
+  error("Builtin font init failed")
+end
 Font.ftSetCharSize(BFONT, 800, 800)
 Font.ftSetCharSize(SFONT, 600, 600)
 BOOT_PROF.stamp("UI assets init (fonts)")
@@ -280,7 +297,11 @@ end
 
 local SYS = nil
 for i = 1, #SYS_CANDIDATES do
-  SYS = resolve_script_path(SYS_CANDIDATES[i])
+  local candidate = SYS_CANDIDATES[i]
+  if is_mass_storage_root(candidate) then
+    candidate = wait_for_readable_script(candidate)
+  end
+  SYS = resolve_script_path(candidate)
   if SYS ~= nil then
     break
   end
@@ -289,6 +310,9 @@ end
 if SYS == nil then
   for i = 1, #SYS_CANDIDATES do
     local candidate = normalize_path(SYS_CANDIDATES[i])
+    if is_mass_storage_root(candidate) then
+      candidate = wait_for_readable_script(candidate)
+    end
     local loader = nil
     loader = LoadLuaFile(candidate)
     if loader ~= nil then
