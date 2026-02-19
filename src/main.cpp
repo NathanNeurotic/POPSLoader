@@ -73,6 +73,9 @@ extern unsigned int size_bdmfs_fatfs_irx;
 extern unsigned char usbmass_bd_irx;
 extern unsigned int size_usbmass_bd_irx;
 
+extern unsigned char mx4sio_bd_irx[];
+extern unsigned int size_mx4sio_bd_irx;
+
 extern unsigned char audsrv_irx;
 extern unsigned int size_audsrv_irx;
 
@@ -241,6 +244,55 @@ char* GetArgv0(void) {
     return ARGV0;
 }
 
+static bool StartsWithMassPath(const char *path)
+{
+    if (path == NULL) {
+        return false;
+    }
+    if (strncmp(path, "mass:/", 6) == 0) {
+        return true;
+    }
+    if (strncmp(path, "mass", 4) != 0) {
+        return false;
+    }
+    const char *p = path + 4;
+    if (*p < '0' || *p > '9') {
+        return false;
+    }
+    while (*p >= '0' && *p <= '9') {
+        ++p;
+    }
+    return (p[0] == ':' && p[1] == '/');
+}
+
+static void RewriteMassArgv0ToDetectedSlot(int argc, char **argv)
+{
+    if (argc <= 0 || argv == NULL || argv[0] == NULL) {
+        return;
+    }
+    if (strncmp(argv[0], "mass:/", 6) != 0) {
+        return;
+    }
+
+    const char *suffix = argv[0] + 6;
+    static char rewritten_argv0[255];
+    struct stat st;
+    for (int tick = 0; tick < 100; ++tick) {
+        for (int i = 0; i <= 9; ++i) {
+            snprintf(rewritten_argv0, sizeof(rewritten_argv0), "mass%d:/%s", i, suffix);
+            if (stat(rewritten_argv0, &st) == 0) {
+                argv[0] = rewritten_argv0;
+                ARGV0 = argv[0];
+                DPRINTF("Resolved mass:/ argv0 to slot path: %s\n", argv[0]);
+                return;
+            }
+        }
+        if (tick < 99) {
+            DelayThread(250 * 1000);
+        }
+    }
+}
+
 #define LOAD_IRX(_irx, argc, arglist) \
     ID = SifExecModuleBuffer(&_irx, size_##_irx, argc, arglist, &RET); \
     printf("%s: id:%d, ret:%d\n", #_irx, ID, RET)
@@ -388,6 +440,11 @@ int main(int argc, char * argv[])
     LOAD_IRX_NARG(bdm_irx);
     LOAD_IRX_NARG(bdmfs_fatfs_irx);
     LOAD_IRX_NARG(usbmass_bd_irx);
+    if (argc > 0 && StartsWithMassPath(argv[0])) {
+        int mx4sio_id = -1;
+        int mx4sio_ret = -1;
+        LoadIrxChecked("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, &mx4sio_id, &mx4sio_ret);
+    }
 
     LOAD_IRX_NARG(cdfs_irx);
 
@@ -407,6 +464,8 @@ int main(int argc, char * argv[])
 
         retries--;
     }
+
+    RewriteMassArgv0ToDetectedSlot(argc, argv);
 	
         setLuaBootPath (argc, argv, 0);
         if (argc > 0 && argv[0]) {
