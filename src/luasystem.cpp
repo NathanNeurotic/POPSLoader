@@ -5,7 +5,9 @@
 #include <sys/fcntl.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <errno.h>
 #include <sifrpc.h>
+#include <smod.h>
 #include <string.h>
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
@@ -26,6 +28,7 @@ extern unsigned char bdm_query_irx[];
 extern unsigned int size_bdm_query_irx;
 
 static bool LoadIrxCheckedBuffer(const char *name, unsigned char *irx, unsigned int size, int *out_id, int *out_ret);
+int mx4sio_init_and_get_root(const char *hint, char *out_root, size_t out_sz);
 
 #define BDM_QUERY_RPC_ID 0xB0D10B00
 #define BDM_QUERY_RPC_GET_LIST 0
@@ -50,6 +53,14 @@ static bool bdm_rpc_bound = false;
 static bool bdm_rpc_loaded = false;
 static bdm_dev_list_t bdm_rpc_buffer __attribute__((aligned(64)));
 static bool mx4sio_bd_loaded = false;
+static int g_locked_mass_slot = -1;
+
+typedef enum {
+	MASS_BACKEND_MX4SIO = 0,
+	MASS_BACKEND_USB,
+	MASS_BACKEND_UNKNOWN,
+	MASS_BACKEND_NOT_READY
+} mass_backend_t;
 
 static bool EnsureBdmQueryRpc()
 {
@@ -124,14 +135,20 @@ static bool ProbeDir(const char *path, int *out_ret)
 	return false;
 }
 
-static bool QueryMassDriverName(int idx, char out_driver[8])
+static bool IsTransientMassError(int rc)
 {
-	if (out_driver == NULL) {
-		return false;
+	int abs_rc = rc < 0 ? -rc : rc;
+	return abs_rc == ENODEV || abs_rc == EIO || abs_rc == EBUSY || abs_rc == EAGAIN;
+}
+
+static mass_backend_t IdentifyMassSlotBackend(int idx, char out_driver[8], size_t out_sz)
+{
+	if (out_driver == NULL || out_sz == 0) {
+		return MASS_BACKEND_UNKNOWN;
 	}
+	out_driver[0] = '\0';
 	if (idx < 0 || idx > 9) {
-		out_driver[0] = '\0';
-		return false;
+		return MASS_BACKEND_UNKNOWN;
 	}
 
 	char mass_path[16];
@@ -139,25 +156,177 @@ static bool QueryMassDriverName(int idx, char out_driver[8])
 
 	int dd = fileXioDopen(mass_path);
 	if (dd < 0) {
-		out_driver[0] = '\0';
-		return false;
+		return IsTransientMassError(dd) ? MASS_BACKEND_NOT_READY : MASS_BACKEND_UNKNOWN;
 	}
 
 	char devid[8];
 	memset(devid, 0, sizeof(devid));
-
-	int *intptr_ctl = (int *)devid;
-	int rc = fileXioIoctl(dd, USBMASS_IOCTL_GET_DRIVERNAME, (void*)"");
-	*intptr_ctl = rc;
+	int rc = fileXioIoctl(dd, USBMASS_IOCTL_GET_DRIVERNAME, devid);
 	fileXioDclose(dd);
 
-	if (rc < 0 || devid[0] == '\0') {
-		out_driver[0] = '\0';
-		return false;
+	if (rc < 0) {
+		return IsTransientMassError(rc) ? MASS_BACKEND_NOT_READY : MASS_BACKEND_UNKNOWN;
 	}
 
-	snprintf(out_driver, 8, "%s", devid);
-	return true;
+	devid[sizeof(devid) - 1] = '\0';
+	snprintf(out_driver, out_sz, "%s", devid);
+	out_driver[out_sz - 1] = '\0';
+
+	if (out_driver[0] == '\0') {
+		return MASS_BACKEND_UNKNOWN;
+	}
+
+ 	if (strcmp(out_driver, "sdc") == 0 || strcmp(out_driver, "mx4sio") == 0) {
+		return MASS_BACKEND_MX4SIO;
+	}
+	if (strcmp(out_driver, "usb") == 0) {
+		return MASS_BACKEND_USB;
+	}
+	return MASS_BACKEND_UNKNOWN;
+}
+
+static bool QueryMassDriverName(int idx, char out_driver[8])
+{
+	mass_backend_t backend = IdentifyMassSlotBackend(idx, out_driver, 8);
+	return backend != MASS_BACKEND_NOT_READY && out_driver[0] != '\0';
+}
+
+static bool IsMx4sioBackendLoaded()
+{
+	smod_mod_info_t info;
+	if (smod_get_mod_by_name("mx4sio_bd", &info) >= 0) {
+		return true;
+	}
+	if (smod_get_mod_by_name("mx4sio_bd.irx", &info) >= 0) {
+		return true;
+	}
+	return false;
+}
+
+static bool PathExists(const char *path)
+{
+	if (path == NULL || path[0] == '\0') {
+		return false;
+	}
+	struct stat st;
+	return stat(path, &st) == 0;
+}
+
+static bool ResolveMassAliasBySuffix(const char *argv0, char *out_path, size_t out_sz)
+{
+	if (argv0 == NULL || out_path == NULL || out_sz == 0) {
+		return false;
+	}
+	if (strncmp(argv0, "mass:/", 6) != 0) {
+		return false;
+	}
+	const char *suffix = argv0 + 6;
+	if (suffix[0] == '\0') {
+		return false;
+	}
+	if (g_locked_mass_slot >= 0 && g_locked_mass_slot <= 9) {
+		snprintf(out_path, out_sz, "mass%d:/%s", g_locked_mass_slot, suffix);
+		return true;
+	}
+
+	int prev_ioctl_slot = -1;
+	int ioctl_stable = 0;
+	int prev_fallback_slot = -1;
+	int fallback_stable = 0;
+	for (int attempt = 0; attempt < 100; ++attempt) {
+		int mx4_count = 0;
+		int mx4_slot = -1;
+		for (int i = 0; i <= 9; ++i) {
+			char driver[8];
+			mass_backend_t backend = IdentifyMassSlotBackend(i, driver, sizeof(driver));
+			if (backend == MASS_BACKEND_MX4SIO) {
+				mx4_count++;
+				mx4_slot = i;
+			}
+		}
+
+		if (mx4_count == 1) {
+			if (prev_ioctl_slot == mx4_slot) {
+				ioctl_stable++;
+			} else {
+				prev_ioctl_slot = mx4_slot;
+				ioctl_stable = 1;
+			}
+			if (ioctl_stable >= 2) {
+				g_locked_mass_slot = mx4_slot;
+				snprintf(out_path, out_sz, "mass%d:/%s", g_locked_mass_slot, suffix);
+				return true;
+			}
+		} else {
+			prev_ioctl_slot = -1;
+			ioctl_stable = 0;
+		}
+
+		if (mx4_count == 0) {
+			int fallback_slot = -1;
+			for (int i = 0; i <= 9; ++i) {
+				char probe[255];
+				snprintf(probe, sizeof(probe), "mass%d:/%s", i, suffix);
+				if (PathExists(probe)) {
+					fallback_slot = i;
+					break;
+				}
+			}
+			if (fallback_slot >= 0) {
+				if (prev_fallback_slot == fallback_slot) {
+					fallback_stable++;
+				} else {
+					prev_fallback_slot = fallback_slot;
+					fallback_stable = 1;
+				}
+				if (fallback_stable >= 2) {
+					g_locked_mass_slot = fallback_slot;
+					snprintf(out_path, out_sz, "mass%d:/%s", g_locked_mass_slot, suffix);
+					return true;
+				}
+			} else {
+				prev_fallback_slot = -1;
+				fallback_stable = 0;
+			}
+		} else {
+			prev_fallback_slot = -1;
+			fallback_stable = 0;
+		}
+		if (attempt < 99) {
+			usleep(250000);
+		}
+	}
+	return false;
+}
+
+static bool ResolveMassPathWithLock(const char *path, char *out_path, size_t out_sz)
+{
+	if (path == NULL || out_path == NULL || out_sz == 0) {
+		return false;
+	}
+	if (strncmp(path, "mass:/", 6) != 0) {
+		snprintf(out_path, out_sz, "%s", path);
+		return true;
+	}
+	return ResolveMassAliasBySuffix(path, out_path, out_sz);
+}
+
+static bool EnsureMx4sioReady(char *out_root, size_t out_sz)
+{
+	for (int attempt = 1; attempt <= 2; ++attempt) {
+		char root[16] = {0};
+		int rc = mx4sio_init_and_get_root(NULL, root, sizeof(root));
+		if (rc == 0) {
+			if (out_root != NULL && out_sz > 0) {
+				snprintf(out_root, out_sz, "%s", root);
+			}
+			return true;
+		}
+		if (attempt < 2) {
+			usleep(250000);
+		}
+	}
+	return false;
 }
 
 // MX4SIO init notes:
@@ -170,58 +339,50 @@ int mx4sio_init_and_get_root(const char *hint, char *out_root, size_t out_sz)
 	if (out_root == NULL || out_sz == 0) {
 		return -1;
 	}
-	DPRINTF("MX4SIO SDK init start\n");
 	if (!mx4sio_bd_loaded) {
+		static bool load_fail_logged = false;
 		if (!LoadIrxCheckedBuffer("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL)) {
-			return -1;
+			bool already_loaded = IsMx4sioBackendLoaded();
+			if (already_loaded) {
+				mx4sio_bd_loaded = true;
+			}
+			if (!load_fail_logged) {
+				DPRINTF("MX4SIO backend load failed; module_already_loaded=%d\n", already_loaded ? 1 : 0);
+				load_fail_logged = true;
+			}
+		} else {
+			mx4sio_bd_loaded = true;
 		}
-		mx4sio_bd_loaded = true;
 	}
 	const char *dedicated_candidates[] = {"mx4sio:/", "mx4sio0:/"};
 	for (size_t i = 0; i < sizeof(dedicated_candidates) / sizeof(dedicated_candidates[0]); ++i) {
 		const char *prefix = dedicated_candidates[i];
-		int root_ret = -1;
-		DPRINTF("MX4SIO probe dedicated prefix %s\n", prefix);
-		bool root_ok = ProbeDir(prefix, &root_ret);
-		DPRINTF("MX4SIO probe %s ret=%d ok=%d\n", prefix, root_ret, root_ok);
+		bool root_ok = ProbeDir(prefix, NULL);
 		if (root_ok) {
-			DPRINTF("Chosen MX4SIO dedicated prefix: %s\n", prefix);
 			snprintf(out_root, out_sz, "%s", prefix);
 			return 0;
 		}
 	}
 	if (hint != NULL && hint[0] != '\0') {
-		int hint_ret = -1;
-		DPRINTF("MX4SIO probe hint %s\n", hint);
-		bool hint_ok = ProbeDir(hint, &hint_ret);
+		bool hint_ok = ProbeDir(hint, NULL);
 		if (hint_ok) {
-			DPRINTF("Chosen MX4SIO hint prefix: %s\n", hint);
 			snprintf(out_root, out_sz, "%s", hint);
 			return 0;
-		} else {
-			DPRINTF("MX4SIO probe %s ret=%d ok=%d\n", hint, hint_ret, hint_ok);
 		}
 	}
 
 	for (int i = 0; i <= 9; ++i) {
 		char driver[8];
-		bool has_driver = QueryMassDriverName(i, driver);
-		DPRINTF("MX4SIO probe mass%d driver=%s ok=%d\n", i, has_driver ? driver : "", has_driver);
-		if (!has_driver) {
-			continue;
-		}
-		if (strcmp(driver, "sdc") != 0 && strcmp(driver, "mx4sio") != 0) {
+		mass_backend_t backend = IdentifyMassSlotBackend(i, driver, sizeof(driver));
+		if (backend != MASS_BACKEND_MX4SIO) {
 			continue;
 		}
 		char mass_prefix[16];
 		snprintf(mass_prefix, sizeof(mass_prefix), "mass%d:/", i);
-		int root_ret = -1;
-		bool root_ok = ProbeDir(mass_prefix, &root_ret);
-		DPRINTF("MX4SIO probe %s ret=%d ok=%d\n", mass_prefix, root_ret, root_ok);
+		bool root_ok = ProbeDir(mass_prefix, NULL);
 		if (!root_ok) {
 			continue;
 		}
-		DPRINTF("Chosen MX4SIO mass prefix: %s\n", mass_prefix);
 		snprintf(out_root, out_sz, "%s", mass_prefix);
 		return 0;
 	}
@@ -1075,6 +1236,46 @@ static int lua_mx4sio_init(lua_State *L)
 	}
 	return 2;
 }
+static int lua_ensure_mx4sio_boot_path(lua_State *L)
+{
+	int argc = lua_gettop(L);
+	if (argc != 1) {
+		return luaL_error(L, "Argument error: System.ensureMX4SIOBootPath(argv0) takes one argument.");
+	}
+	const char *argv0 = luaL_checkstring(L, 1);
+	char root[16] = {0};
+	if (!EnsureMx4sioReady(root, sizeof(root))) {
+		lua_pushnil(L);
+		lua_pushnil(L);
+		return 2;
+	}
+
+	char resolved[255] = {0};
+	if (ResolveMassPathWithLock(argv0, resolved, sizeof(resolved))) {
+		lua_pushstring(L, resolved);
+	} else {
+		lua_pushnil(L);
+	}
+	lua_pushstring(L, root);
+	return 2;
+}
+
+static int lua_resolve_mass_boot_path(lua_State *L)
+{
+	int argc = lua_gettop(L);
+	if (argc != 1) {
+		return luaL_error(L, "Argument error: System.resolveMassBootPath(path) takes one argument.");
+	}
+	const char *path = luaL_checkstring(L, 1);
+	char resolved[255] = {0};
+	if (!ResolveMassPathWithLock(path, resolved, sizeof(resolved))) {
+		lua_pushnil(L);
+		return 1;
+	}
+	lua_pushstring(L, resolved);
+	return 1;
+}
+
 
 static const luaL_Reg System_functions[] = {
 	{"openFile",                   lua_openfile},
@@ -1110,6 +1311,8 @@ static const luaL_Reg System_functions[] = {
 	{"resolveAssetType",   lua_resolveAssetType},
 	{"getMassDriverName",        lua_getMassDriverName},
 	{"initMX4SIO",             lua_mx4sio_init},
+	{"ensureMX4SIOBootPath", lua_ensure_mx4sio_boot_path},
+	{"resolveMassBootPath", lua_resolve_mass_boot_path},
 	{"bdmList",                lua_bdm_list},
 	{"findBDMByDriver",    lua_find_bdm_by_driver},
 	{0, 0}

@@ -59,6 +59,12 @@ local function resolve_script_path(path)
   if normalized == nil or normalized == "" then
     return nil
   end
+  if string.sub(normalized, 1, 6) == "mass:/" and System.resolveMassBootPath ~= nil then
+    local ok, resolved_mass = pcall(System.resolveMassBootPath, normalized)
+    if ok and type(resolved_mass) == "string" and resolved_mass ~= "" then
+      normalized = normalize_path(resolved_mass)
+    end
+  end
   local resolved = System.resolveAsset(normalized)
   if resolved ~= nil then
     return resolved
@@ -264,6 +270,58 @@ end
 
 local APP_DIR_NORM = ensure_dir(normalize_path(APP_DIR))
 local BASE_PARENT = parent_dir(BASE_DIR)
+local function wait_for_mass_script(path, attempts)
+  attempts = attempts or 1
+  local candidate = normalize_path(path)
+  if candidate == nil then
+    return nil
+  end
+  if string.sub(candidate, 1, 6) == "mass:/" and System.resolveMassBootPath ~= nil then
+    local ok, resolved_mass = pcall(System.resolveMassBootPath, candidate)
+    if ok and type(resolved_mass) == "string" and resolved_mass ~= "" then
+      candidate = normalize_path(resolved_mass)
+    end
+  end
+  for i = 1, attempts do
+    local fd = System.openFile(candidate, FREAD)
+    if fd ~= nil then
+      System.closeFile(fd)
+      return candidate
+    end
+    if i < attempts then
+      System.delayThreadMs(250)
+    end
+  end
+  return nil
+end
+
+local function load_absolute_system(base_dir, mass_retries)
+  local base = ensure_dir(base_dir)
+  local abs = normalize_path(base.."system.lua")
+  local ready = wait_for_mass_script(abs, mass_retries or 1)
+  if ready ~= nil then
+    RunScript(ready)
+    return true
+  end
+  return false
+end
+
+
+local loaded = load_absolute_system(BASE_DIR, is_usb_mass_root(BASE_DIR) and 100 or 1)
+if not loaded then
+  local ok, resolved_argv0, mx4_root = pcall(System.ensureMX4SIOBootPath, ARGV0)
+  if ok and type(resolved_argv0) == "string" and resolved_argv0 ~= "" then
+    local resolved_base = dirname(resolved_argv0)
+    if resolved_base ~= nil and resolved_base ~= "" then
+      BASE_DIR = ensure_dir(resolved_base)
+      System.currentDirectory(BASE_DIR)
+    end
+    loaded = load_absolute_system(BASE_DIR, is_usb_mass_root(BASE_DIR) and 100 or 1)
+  end
+end
+
+if not loaded then
+
 local SYS_CANDIDATES = {}
 add_candidate(SYS_CANDIDATES, "system.lua")
 add_candidate(SYS_CANDIDATES, "POPSLDR/system.lua")
@@ -286,28 +344,11 @@ for i = 1, #SYS_CANDIDATES do
   end
 end
 
-if SYS == nil then
-  for i = 1, #SYS_CANDIDATES do
-    local candidate = normalize_path(SYS_CANDIDATES[i])
-    local loader = nil
-    loader = LoadLuaFile(candidate)
-    if loader ~= nil then
-      SYS = candidate
-      break
-    end
-    if string.sub(candidate, 1, 6) == "mass:/" then
-      local compact = "mass:"..string.sub(candidate, 7)
-      loader = LoadLuaFile(compact)
-      if loader ~= nil then
-        SYS = compact
-        break
-      end
-    end
-  end
-end
 if SYS ~= nil then
   SYS = wait_for_readable_script(SYS)
   RunScript(SYS)
 else
-  error("Cant access system.lua (flat) or POPSLDR/system.lua (fallback)\n\n\targv0: "..tostring(ARGV0).."\n\tcwd: "..tostring(System.currentDirectory()))
+  error("Cant access system.lua (flat) or POPSLDR/system.lua (fallback)\n\n\targv0: "..tostring(ARGV0).."\n\tbase: "..tostring(BASE_DIR).."\n\tcwd: "..tostring(System.currentDirectory()))
+end
+
 end
