@@ -464,7 +464,7 @@ int main(int argc, char * argv[])
 
         mx4_boot_irx_attempted = true;
         mx4_boot_irx_from_generic = true;
-        mx4_boot_irx_ok = LoadIrxChecked("mx4sio_bd_irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL);
+        mx4_boot_irx_ok = LoadIrxChecked("mx4sio_bd_irx", &mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL);
         DPRINTF("BOOT mx4sio_bd load: attempted=%d ok=%d reason=mass:/\n", mx4_boot_irx_attempted, mx4_boot_irx_ok);
     }
 
@@ -501,7 +501,7 @@ int main(int argc, char * argv[])
         }
         if (probe_root[0] != '\0' && stat(probe_root, &boot_root_probe) != 0) {
             mx4_boot_irx_attempted = true;
-            mx4_boot_irx_ok = LoadIrxChecked("mx4sio_bd_irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL);
+            mx4_boot_irx_ok = LoadIrxChecked("mx4sio_bd_irx", &mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL);
             DPRINTF("BOOT mx4sio_bd load: attempted=%d ok=%d reason=massN retry\n", mx4_boot_irx_attempted, mx4_boot_irx_ok);
         }
     }
