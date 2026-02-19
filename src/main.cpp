@@ -255,6 +255,41 @@ static void initMMCEManager(bool filexio_ok)
     }
 }
 
+static bool GetDevicePrefix(const char *path, char *out_prefix, size_t out_size)
+{
+    if (out_prefix == NULL || out_size == 0) {
+        return false;
+    }
+    out_prefix[0] = '\0';
+    if (path == NULL || path[0] == '\0') {
+        return false;
+    }
+
+    const char *colon = strchr(path, ':');
+    if (colon == NULL || colon == path) {
+        return false;
+    }
+
+    size_t len = (size_t)(colon - path);
+    if (len + 1 > out_size) {
+        return false;
+    }
+
+    memcpy(out_prefix, path, len);
+    out_prefix[len] = '\0';
+    return true;
+}
+
+static bool TryPrefixRoot(const char *prefix)
+{
+    if (prefix == NULL || prefix[0] == '\0') {
+        return false;
+    }
+    char candidate[64];
+    snprintf(candidate, sizeof(candidate), "%s:/", prefix);
+    return TryBootRootCandidate(candidate);
+}
+
 static void ResolveBootRootFromVariant(const char *mx4_hint_root)
 {
     char cwd[255] = {0};
@@ -263,6 +298,25 @@ static void ResolveBootRootFromVariant(const char *mx4_hint_root)
     if (TryBootRootCandidate(boot_path) ||
         TryBootRootCandidate(app_dir) ||
         TryBootRootCandidate(cwd)) {
+        return;
+    }
+
+    char boot_prefix[32] = {0};
+    char app_prefix[32] = {0};
+    bool has_boot_prefix = GetDevicePrefix(boot_path, boot_prefix, sizeof(boot_prefix));
+    bool has_app_prefix = GetDevicePrefix(app_dir, app_prefix, sizeof(app_prefix));
+
+    if (has_boot_prefix && TryPrefixRoot(boot_prefix)) {
+        return;
+    }
+    if (has_app_prefix && strcmp(app_prefix, boot_prefix) != 0 && TryPrefixRoot(app_prefix)) {
+        return;
+    }
+
+    if (has_boot_prefix || has_app_prefix) {
+        DPRINTF("Boot root not found on launch device (boot=%s app=%s). Not probing unrelated devices.\n",
+                has_boot_prefix ? boot_prefix : "<none>",
+                has_app_prefix ? app_prefix : "<none>");
         return;
     }
 
