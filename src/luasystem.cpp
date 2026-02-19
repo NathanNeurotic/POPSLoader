@@ -50,6 +50,7 @@ static bool bdm_rpc_bound = false;
 static bool bdm_rpc_loaded = false;
 static bdm_dev_list_t bdm_rpc_buffer __attribute__((aligned(64)));
 static bool mx4sio_bd_loaded = false;
+extern bool g_mx4sio_bd_loaded_boot;
 
 static bool EnsureBdmQueryRpc()
 {
@@ -171,11 +172,16 @@ int mx4sio_init_and_get_root(const char *hint, char *out_root, size_t out_sz)
 		return -1;
 	}
 	DPRINTF("MX4SIO SDK init start\n");
+	if (g_mx4sio_bd_loaded_boot) {
+		mx4sio_bd_loaded = true;
+	}
 	if (!mx4sio_bd_loaded) {
 		if (!LoadIrxCheckedBuffer("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL)) {
 			return -1;
 		}
 		mx4sio_bd_loaded = true;
+	} else {
+		DPRINTF("MX4SIO IRX already loaded, skipping reload\n");
 	}
 	const char *dedicated_candidates[] = {"mx4sio:/", "mx4sio0:/"};
 	for (size_t i = 0; i < sizeof(dedicated_candidates) / sizeof(dedicated_candidates[0]); ++i) {

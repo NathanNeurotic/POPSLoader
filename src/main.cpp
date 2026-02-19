@@ -85,11 +85,15 @@ extern unsigned int size_ds34bt_irx;
 extern unsigned char mmceman_irx;
 extern unsigned int size_mmceman_irx;
 
+extern unsigned char mx4sio_bd_irx[];
+extern unsigned int size_mx4sio_bd_irx;
+
 char boot_path[255];
 char app_dir[255];
 int mmce_slot0_ready = -1;
 int mmce_slot1_ready = -1;
 static clock_t boot_start = 0;
+bool g_mx4sio_bd_loaded_boot = false;
 
 static unsigned int boot_ms(void)
 {
@@ -148,6 +152,59 @@ static void NormalizeDirPath(char *path, size_t size)
 static void BootStamp(const char *stage)
 {
     DPRINTF("BOOT: %s %u\n", stage, boot_ms());
+}
+
+static bool StartsWith(const char *s, const char *prefix)
+{
+    if (s == NULL || prefix == NULL) {
+        return false;
+    }
+    return strncmp(s, prefix, strlen(prefix)) == 0;
+}
+
+static bool IsMassNumberedPath(const char *path)
+{
+    return path != NULL &&
+           path[0] == 'm' && path[1] == 'a' && path[2] == 's' && path[3] == 's' &&
+           isdigit((unsigned char)path[4]) && path[5] == ':' && path[6] == '/';
+}
+
+static const char *TryResolveGenericMassArgv0(const char *argv0, char *out, size_t out_sz)
+{
+    if (!StartsWith(argv0, "mass:/") || out == NULL || out_sz == 0) {
+        return argv0;
+    }
+
+    const char *suffix = argv0 + 6;
+    struct stat st;
+    for (int slot = 0; slot <= 9; ++slot) {
+        snprintf(out, out_sz, "mass%d:/%s", slot, suffix);
+        if (stat(out, &st) == 0) {
+            return out;
+        }
+    }
+    return argv0;
+}
+
+static void GetPathPrefix(const char *path, char *out, size_t out_sz)
+{
+    if (out == NULL || out_sz == 0) {
+        return;
+    }
+    out[0] = '\0';
+    if (path == NULL) {
+        return;
+    }
+    const char *sep = strstr(path, ":/");
+    if (sep == NULL) {
+        return;
+    }
+    size_t n = (size_t)(sep - path) + 2;
+    if (n >= out_sz) {
+        n = out_sz - 1;
+    }
+    memcpy(out, path, n);
+    out[n] = '\0';
 }
 
 void setLuaBootPath(int argc, char ** argv, int idx)
@@ -296,6 +353,7 @@ int main(int argc, char * argv[])
 {
     int ID, RET;
     if (argc > 0) ARGV0 = argv[0];
+    DPRINTF("BOOT argv0 original: %s\n", (argc > 0 && argv[0]) ? argv[0] : "<none>");
     const char * errMsg;
     boot_start = clock();
     BootStamp("EE init start");
@@ -389,6 +447,15 @@ int main(int argc, char * argv[])
     LOAD_IRX_NARG(bdmfs_fatfs_irx);
     LOAD_IRX_NARG(usbmass_bd_irx);
 
+    bool argv_mass_generic = (argc > 0 && StartsWith(argv[0], "mass:/"));
+    bool argv_mass_numbered = (argc > 0 && IsMassNumberedPath(argv[0]));
+    bool mx4sio_boot_attempted = false;
+    if (argv_mass_generic) {
+        mx4sio_boot_attempted = true;
+        g_mx4sio_bd_loaded_boot = LoadIrxChecked("mx4sio_bd_irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL);
+        DPRINTF("BOOT mx4sio backend attempted=1 ok=%d\n", g_mx4sio_bd_loaded_boot ? 1 : 0);
+    }
+
     LOAD_IRX_NARG(cdfs_irx);
 
     LOAD_IRX_NARG(audsrv_irx);
@@ -398,19 +465,46 @@ int main(int argc, char * argv[])
     struct stat buffer;
     int ret = -1;
     int retries = 50;
+    char probe_root[16] = "mass:/";
+    if (argv_mass_numbered) {
+        snprintf(probe_root, sizeof(probe_root), "mass%c:/", argv[0][4]);
+    }
 
     while(ret != 0 && retries > 0)
     {
-        ret = stat("mass:/", &buffer);
+        ret = stat(probe_root, &buffer);
+        if (!mx4sio_boot_attempted && argv_mass_numbered && ret != 0) {
+            mx4sio_boot_attempted = true;
+            g_mx4sio_bd_loaded_boot = LoadIrxChecked("mx4sio_bd_irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL);
+            DPRINTF("BOOT mx4sio backend attempted=1 ok=%d\n", g_mx4sio_bd_loaded_boot ? 1 : 0);
+        }
         /* Wait until the device is ready */
         nopdelay();
 
         retries--;
     }
 	
-        setLuaBootPath (argc, argv, 0);
-        if (argc > 0 && argv[0]) {
-            setAppDirFromPath(argv[0]);
+        const char *argv0_effective = (argc > 0) ? argv[0] : NULL;
+        static char resolved_argv0[512];
+        const char *resolved = TryResolveGenericMassArgv0(argv0_effective, resolved_argv0, sizeof(resolved_argv0));
+        if (resolved != NULL && resolved != argv0_effective) {
+            ARGV0 = resolved_argv0;
+            DPRINTF("BOOT argv0 rewritten: %s\n", resolved_argv0);
+        } else {
+            DPRINTF("BOOT argv0 rewritten: <none>\n");
+        }
+
+        char root_prefix[16];
+        GetPathPrefix((ARGV0 != NULL) ? ARGV0 : argv0_effective, root_prefix, sizeof(root_prefix));
+        DPRINTF("BOOT chosen root prefix: %s\n", root_prefix[0] ? root_prefix : "<unknown>");
+
+        char *lua_boot_argv[1];
+        if (argc > 0) {
+            lua_boot_argv[0] = (char *)((ARGV0 != NULL) ? ARGV0 : argv[0]);
+        }
+        setLuaBootPath(argc, (argc > 0) ? lua_boot_argv : argv, 0);
+        if (argc > 0 && ((ARGV0 != NULL) ? ARGV0 : argv[0])) {
+            setAppDirFromPath((ARGV0 != NULL) ? ARGV0 : argv[0]);
         } else {
             setAppDirFromPath(boot_path);
         }
