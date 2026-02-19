@@ -212,15 +212,32 @@ static bool PathExists(const char *path)
 	return stat(path, &st) == 0;
 }
 
+static const char *GetMassSuffixPath(const char *path)
+{
+	if (path == NULL) {
+		return NULL;
+	}
+	if (strncmp(path, "mass:/", 6) == 0) {
+		return path + 6;
+	}
+	if (strncmp(path, "mass", 4) == 0) {
+		const char *colon = strchr(path, ':');
+		if (colon != NULL && colon[1] == '/') {
+			return colon + 2;
+		}
+	}
+	return NULL;
+}
+
 static bool ResolveMassAliasBySuffix(const char *argv0, char *out_path, size_t out_sz)
 {
 	if (argv0 == NULL || out_path == NULL || out_sz == 0) {
 		return false;
 	}
-	if (strncmp(argv0, "mass:/", 6) != 0) {
+	const char *suffix = GetMassSuffixPath(argv0);
+	if (suffix == NULL) {
 		return false;
 	}
-	const char *suffix = argv0 + 6;
 	if (suffix[0] == '\0') {
 		return false;
 	}
@@ -237,6 +254,11 @@ static bool ResolveMassAliasBySuffix(const char *argv0, char *out_path, size_t o
 		int mx4_count = 0;
 		int mx4_slot = -1;
 		for (int i = 0; i <= 9; ++i) {
+			char probe[255];
+			snprintf(probe, sizeof(probe), "mass%d:/%s", i, suffix);
+			if (!PathExists(probe)) {
+				continue;
+			}
 			char driver[8];
 			mass_backend_t backend = IdentifyMassSlotBackend(i, driver, sizeof(driver));
 			if (backend == MASS_BACKEND_MX4SIO) {
@@ -304,7 +326,7 @@ static bool ResolveMassPathWithLock(const char *path, char *out_path, size_t out
 	if (path == NULL || out_path == NULL || out_sz == 0) {
 		return false;
 	}
-	if (strncmp(path, "mass:/", 6) != 0) {
+	if (GetMassSuffixPath(path) == NULL) {
 		snprintf(out_path, out_sz, "%s", path);
 		return true;
 	}

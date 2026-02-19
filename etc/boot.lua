@@ -270,6 +270,7 @@ end
 
 local APP_DIR_NORM = ensure_dir(normalize_path(APP_DIR))
 local BASE_PARENT = parent_dir(BASE_DIR)
+local LAST_SYSTEM_ATTEMPT = nil
 local function wait_for_mass_script(path, attempts)
   attempts = attempts or 1
   local candidate = normalize_path(path)
@@ -298,8 +299,10 @@ end
 local function load_absolute_system(base_dir, mass_retries)
   local base = ensure_dir(base_dir)
   local abs = normalize_path(base.."system.lua")
+  LAST_SYSTEM_ATTEMPT = abs
   local ready = wait_for_mass_script(abs, mass_retries or 1)
   if ready ~= nil then
+    LAST_SYSTEM_ATTEMPT = ready
     RunScript(ready)
     return true
   end
@@ -311,6 +314,7 @@ local loaded = load_absolute_system(BASE_DIR, is_usb_mass_root(BASE_DIR) and 100
 if not loaded then
   local ok, resolved_argv0, mx4_root = pcall(System.ensureMX4SIOBootPath, ARGV0)
   if ok and type(resolved_argv0) == "string" and resolved_argv0 ~= "" then
+    ARGV0 = normalize_path(resolved_argv0)
     local resolved_base = dirname(resolved_argv0)
     if resolved_base ~= nil and resolved_base ~= "" then
       BASE_DIR = ensure_dir(resolved_base)
@@ -348,7 +352,7 @@ if SYS ~= nil then
   SYS = wait_for_readable_script(SYS)
   RunScript(SYS)
 else
-  error("Cant access system.lua (flat) or POPSLDR/system.lua (fallback)\n\n\targv0: "..tostring(ARGV0).."\n\tbase: "..tostring(BASE_DIR).."\n\tcwd: "..tostring(System.currentDirectory()))
+  error("Cant access system.lua (flat) or POPSLDR/system.lua (fallback)\n\n\targv0: "..tostring(ARGV0).."\n\tbase: "..tostring(BASE_DIR).."\n\tattempted: "..tostring(LAST_SYSTEM_ATTEMPT).."\n\tcwd: "..tostring(System.currentDirectory()))
 end
 
 end
