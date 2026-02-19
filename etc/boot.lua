@@ -79,16 +79,19 @@ local function resolve_script_path(path)
   return nil
 end
 
-local function is_usb_mass_root(path)
+local function is_retryable_boot_root(path)
   local normalized = normalize_path(path)
   if normalized == nil then
     return false
   end
-  return string.sub(normalized, 1, 4) == "mass"
+  return string.match(normalized, "^mass%d*:/") ~= nil
+    or string.match(normalized, "^mass%d*:") ~= nil
+    or string.match(normalized, "^mx4sio%d*:/") ~= nil
+    or string.match(normalized, "^mx4sio%d*:") ~= nil
 end
 
 local function wait_for_readable_script(path)
-  if not is_usb_mass_root(path) then
+  if not is_retryable_boot_root(path) then
     return path
   end
   local attempts = 100
