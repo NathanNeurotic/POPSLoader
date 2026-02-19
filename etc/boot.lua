@@ -106,7 +106,7 @@ local function wait_for_readable_script(path)
     return path
   end
   local compact = to_compact_mass_path(path)
-  local attempts = 100
+  local attempts = 20
   for i = 1, attempts do
     if doesFileExist(path) or (compact ~= nil and doesFileExist(compact)) then
       return path
@@ -142,10 +142,10 @@ end
 
 local ARGV0 = normalize_path(System.GetArgv0())
 local BASE_DIR = dirname(ARGV0)
-if BASE_DIR == nil or BASE_DIR == "" then
+if BASE_DIR == nil or BASE_DIR == "" or not dir_exists(BASE_DIR) then
   BASE_DIR = normalize_path(APP_DIR) or normalize_path(System.currentDirectory())
 end
-if BASE_DIR == nil or BASE_DIR == "" then
+if BASE_DIR == nil or BASE_DIR == "" or not dir_exists(BASE_DIR) then
   BASE_DIR = normalize_path(System.currentDirectory())
 end
 BASE_DIR = ensure_dir(BASE_DIR)
@@ -217,26 +217,9 @@ if string.find(ARGV0, "^hdd0:") then
 end
 GPAD = 0
 Font.ftInit()
-
-local function load_builtin_font_with_retry()
-  for i = 1, 5 do
-    local font = Font.LoadBuiltinFont()
-    if font ~= nil then
-      return font
-    end
-    if i < 5 then
-      System.delayThreadMs(100)
-    end
-  end
-  return nil
-end
-
-BFONT = load_builtin_font_with_retry()
-SFONT = load_builtin_font_with_retry()
-LFONT = load_builtin_font_with_retry()
-if BFONT == nil or SFONT == nil or LFONT == nil then
-  error("Builtin font init failed")
-end
+BFONT = Font.LoadBuiltinFont()
+SFONT = Font.LoadBuiltinFont()
+LFONT = Font.LoadBuiltinFont()
 Font.ftSetCharSize(BFONT, 800, 800)
 Font.ftSetCharSize(SFONT, 600, 600)
 BOOT_PROF.stamp("UI assets init (fonts)")
@@ -326,9 +309,6 @@ end
 local SYS = nil
 for i = 1, #SYS_CANDIDATES do
   local candidate = SYS_CANDIDATES[i]
-  if is_mass_storage_root(candidate) then
-    candidate = wait_for_readable_script(candidate)
-  end
   SYS = resolve_script_path(candidate)
   if SYS ~= nil then
     break
@@ -338,9 +318,6 @@ end
 if SYS == nil then
   for i = 1, #SYS_CANDIDATES do
     local candidate = normalize_path(SYS_CANDIDATES[i])
-    if is_mass_storage_root(candidate) then
-      candidate = wait_for_readable_script(candidate)
-    end
     local loader = nil
     loader = LoadLuaFile(candidate)
     if loader ~= nil then
