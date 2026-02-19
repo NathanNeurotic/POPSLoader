@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <unistd.h>
-#include <kernel.h>
 #include <libmc.h>
 #include <malloc.h>
 #include <sys/fcntl.h>
@@ -630,7 +629,7 @@ static int lua_delayThreadMs(lua_State *L)
 	if (ms < 0) {
 		ms = 0;
 	}
-	DelayThread((u32)ms * 1000);
+	usleep((useconds_t)ms * 1000);
 	return 0;
 }
 
