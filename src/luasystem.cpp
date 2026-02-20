@@ -6,6 +6,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sifrpc.h>
+#include <smod.h>
 #include <string.h>
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
@@ -50,6 +51,8 @@ static bool bdm_rpc_bound = false;
 static bool bdm_rpc_loaded = false;
 static bdm_dev_list_t bdm_rpc_buffer __attribute__((aligned(64)));
 static bool mx4sio_bd_loaded = false;
+static bool mx4sio_runtime_ready = false;
+static char mx4sio_runtime_root[16] = {0};
 
 static bool EnsureBdmQueryRpc()
 {
@@ -170,13 +173,63 @@ int mx4sio_init_and_get_root(const char *hint, char *out_root, size_t out_sz)
 	if (out_root == NULL || out_sz == 0) {
 		return -1;
 	}
+
+	if (mx4sio_runtime_ready && mx4sio_runtime_root[0] != '\0') {
+		snprintf(out_root, out_sz, "%s", mx4sio_runtime_root);
+		return 0;
+	}
+
 	DPRINTF("MX4SIO SDK init start\n");
 	if (!mx4sio_bd_loaded) {
-		if (!LoadIrxCheckedBuffer("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL)) {
-			return -1;
+		smod_mod_info_t info;
+		if (smod_get_mod_by_name("mx4sio_bd", &info) >= 0) {
+			mx4sio_bd_loaded = true;
+		} else {
+			if (!LoadIrxCheckedBuffer("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL)) {
+				return -1;
+			}
+			mx4sio_bd_loaded = true;
 		}
-		mx4sio_bd_loaded = true;
 	}
+
+	char boot_root[16] = {0};
+	const char *slash = strchr(boot_path, '/');
+	if (slash != NULL) {
+		const size_t len = (size_t)(slash - boot_path + 1);
+		if (len > 0 && len < sizeof(boot_root)) {
+			memcpy(boot_root, boot_path, len);
+			boot_root[len] = '\0';
+			bool boot_is_mx4 = false;
+			if (strncmp(boot_root, "mx4sio", 6) == 0) {
+				boot_is_mx4 = true;
+			} else {
+				int boot_mass_idx = -1;
+				if (strcmp(boot_root, "mass:/") == 0) {
+					boot_mass_idx = 0;
+				} else if (sscanf(boot_root, "mass%d:/", &boot_mass_idx) != 1) {
+					boot_mass_idx = -1;
+				}
+				if (boot_mass_idx >= 0 && boot_mass_idx <= 9) {
+					char driver[8];
+					if (QueryMassDriverName(boot_mass_idx, driver)) {
+						if (strcmp(driver, "sdc") == 0 || strcmp(driver, "mx4sio") == 0) {
+							boot_is_mx4 = true;
+						}
+					}
+				}
+			}
+			if (boot_is_mx4) {
+				int boot_ret = -1;
+				if (ProbeDir(boot_root, &boot_ret)) {
+					snprintf(mx4sio_runtime_root, sizeof(mx4sio_runtime_root), "%s", boot_root);
+					mx4sio_runtime_ready = true;
+					snprintf(out_root, out_sz, "%s", mx4sio_runtime_root);
+					return 0;
+				}
+			}
+		}
+	}
+
 	const char *dedicated_candidates[] = {"mx4sio:/", "mx4sio0:/"};
 	for (size_t i = 0; i < sizeof(dedicated_candidates) / sizeof(dedicated_candidates[0]); ++i) {
 		const char *prefix = dedicated_candidates[i];
@@ -186,7 +239,9 @@ int mx4sio_init_and_get_root(const char *hint, char *out_root, size_t out_sz)
 		DPRINTF("MX4SIO probe %s ret=%d ok=%d\n", prefix, root_ret, root_ok);
 		if (root_ok) {
 			DPRINTF("Chosen MX4SIO dedicated prefix: %s\n", prefix);
-			snprintf(out_root, out_sz, "%s", prefix);
+			snprintf(mx4sio_runtime_root, sizeof(mx4sio_runtime_root), "%s", prefix);
+			mx4sio_runtime_ready = true;
+			snprintf(out_root, out_sz, "%s", mx4sio_runtime_root);
 			return 0;
 		}
 	}
@@ -196,7 +251,9 @@ int mx4sio_init_and_get_root(const char *hint, char *out_root, size_t out_sz)
 		bool hint_ok = ProbeDir(hint, &hint_ret);
 		if (hint_ok) {
 			DPRINTF("Chosen MX4SIO hint prefix: %s\n", hint);
-			snprintf(out_root, out_sz, "%s", hint);
+			snprintf(mx4sio_runtime_root, sizeof(mx4sio_runtime_root), "%s", hint);
+			mx4sio_runtime_ready = true;
+			snprintf(out_root, out_sz, "%s", mx4sio_runtime_root);
 			return 0;
 		} else {
 			DPRINTF("MX4SIO probe %s ret=%d ok=%d\n", hint, hint_ret, hint_ok);
@@ -222,7 +279,9 @@ int mx4sio_init_and_get_root(const char *hint, char *out_root, size_t out_sz)
 			continue;
 		}
 		DPRINTF("Chosen MX4SIO mass prefix: %s\n", mass_prefix);
-		snprintf(out_root, out_sz, "%s", mass_prefix);
+		snprintf(mx4sio_runtime_root, sizeof(mx4sio_runtime_root), "%s", mass_prefix);
+		mx4sio_runtime_ready = true;
+		snprintf(out_root, out_sz, "%s", mx4sio_runtime_root);
 		return 0;
 	}
 	return -1;
