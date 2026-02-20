@@ -134,6 +134,30 @@ ERR:
     HDDLOADSTATE = HDDLOADSTATES::FAILED_TO_LOAD;
     return 4;
 }
+
+
+bool HDDInitializeStack(void)
+{
+    lua_State *L = luaL_newstate();
+    if (L == NULL) {
+        return false;
+    }
+
+    int result_count = Load_HDD_IRX(L);
+    bool ok = false;
+    if (result_count >= 1 && lua_isboolean(L, -result_count)) {
+        ok = lua_toboolean(L, -result_count) != 0;
+    }
+
+    lua_close(L);
+    return ok;
+}
+
+int HDDMountPartition(const char *path, int index, int openmod)
+{
+    return mnt(path, index, openmod);
+}
+
 static const luaL_Reg HDD_functions[] = {
   	{"MountPartition",    MountPart},
   	{"UMountPartition",    UmountPart},

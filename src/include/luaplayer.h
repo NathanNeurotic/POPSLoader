@@ -49,6 +49,8 @@ extern void luaSystem_init(lua_State *L);
 extern void luaSound_init(lua_State *L);
 extern void luaRender_init(lua_State *L);
 extern void luaHDD_init(lua_State *L);
+extern bool HDDInitializeStack(void);
+extern int HDDMountPartition(const char *path, int index, int openmod);
 extern void stackDump (lua_State *L);
 
 #endif

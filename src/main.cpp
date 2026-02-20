@@ -202,6 +202,160 @@ static void NormalizeArgv0Path(char *path)
     }
 }
 
+
+
+static bool StartsWith(const char *text, const char *prefix)
+{
+    if (text == NULL || prefix == NULL) {
+        return false;
+    }
+    size_t prefix_len = strlen(prefix);
+    return strncmp(text, prefix, prefix_len) == 0;
+}
+
+static bool IsHDDBootPath(const char *path)
+{
+    if (path == NULL) {
+        return false;
+    }
+    return StartsWith(path, "hdd0:/") || strstr(path, ":pfs/") != NULL || StartsWith(path, "pfs");
+}
+
+static int ParsePfsIndex(const char *pfs_name)
+{
+    if (!StartsWith(pfs_name, "pfs")) {
+        return -1;
+    }
+    const char *digit = pfs_name + 3;
+    if (*digit < '0' || *digit > '9') {
+        return -1;
+    }
+    return *digit - '0';
+}
+
+static void ExtractDirName(const char *path, char *out, size_t out_size)
+{
+    if (out == NULL || out_size == 0) {
+        return;
+    }
+    out[0] = '\0';
+    if (path == NULL || path[0] == '\0') {
+        return;
+    }
+
+    snprintf(out, out_size, "%s", path);
+    char *slash = strrchr(out, '/');
+    if (slash != NULL) {
+        slash[1] = '\0';
+    } else {
+        char *colon = strchr(out, ':');
+        if (colon != NULL && (size_t)(colon - out + 2) < out_size) {
+            colon[1] = '/';
+            colon[2] = '\0';
+        }
+    }
+}
+
+static bool HDDProbeReadable(const char *resolved_path)
+{
+    if (resolved_path == NULL || resolved_path[0] == '\0') {
+        return false;
+    }
+
+    char dir[255];
+    char syslua[255];
+    struct stat st;
+    ExtractDirName(resolved_path, dir, sizeof(dir));
+    if (dir[0] == '\0') {
+        return false;
+    }
+    snprintf(syslua, sizeof(syslua), "%ssystem.lua", dir);
+
+    for (int tick = 0; tick < 100; ++tick) {
+        if (stat(syslua, &st) == 0 || stat(dir, &st) == 0) {
+            return true;
+        }
+        usleep(250000);
+    }
+    return false;
+}
+
+static const char *EnsureHDDBootPath(const char *argv0)
+{
+    static char resolved[255];
+
+    if (argv0 == NULL || argv0[0] == '\0') {
+        return argv0;
+    }
+    if (!IsHDDBootPath(argv0)) {
+        return argv0;
+    }
+
+    resolved[0] = '\0';
+    if (!HDDInitializeStack()) {
+        return resolved;
+    }
+
+    int mount_index = -1;
+    char mount_part[128] = {0};
+    const char *mapped_suffix = NULL;
+
+    if (StartsWith(argv0, "pfs")) {
+        const char *colon = strchr(argv0, ':');
+        if (colon != NULL) {
+            char pfs_name[8] = {0};
+            size_t name_len = (size_t)(colon - argv0);
+            if (name_len < sizeof(pfs_name)) {
+                memcpy(pfs_name, argv0, name_len);
+                pfs_name[name_len] = '\0';
+                mount_index = ParsePfsIndex(pfs_name);
+            }
+        }
+    }
+
+    const char *pfs_marker = strstr(argv0, ":pfs/");
+    if (pfs_marker != NULL && StartsWith(argv0, "hdd0:")) {
+        size_t part_len = (size_t)(pfs_marker - argv0);
+        if (part_len < sizeof(mount_part)) {
+            memcpy(mount_part, argv0, part_len);
+            mount_part[part_len] = '\0';
+            mapped_suffix = pfs_marker + strlen(":pfs/") - 1; // keep leading '/'
+        }
+    } else if (pfs_marker != NULL) {
+        const char *hdd = strstr(argv0, "hdd0:");
+        if (hdd != NULL && hdd < pfs_marker) {
+            size_t part_len = (size_t)(pfs_marker - hdd);
+            if (part_len < sizeof(mount_part)) {
+                memcpy(mount_part, hdd, part_len);
+                mount_part[part_len] = '\0';
+                mapped_suffix = pfs_marker + strlen(":pfs/") - 1;
+            }
+        }
+    }
+
+    if (mount_part[0] != '\0') {
+        if (mount_index < 0) {
+            mount_index = 1;
+        }
+        if (mount_index >= 0 && mount_index <= 9) {
+            HDDMountPartition(mount_part, mount_index, FIO_MT_RDONLY);
+            if (mapped_suffix != NULL) {
+                snprintf(resolved, sizeof(resolved), "pfs%d:%s", mount_index, mapped_suffix);
+            }
+        }
+    }
+
+    if (resolved[0] == '\0') {
+        snprintf(resolved, sizeof(resolved), "%s", argv0);
+    }
+
+    if (!HDDProbeReadable(resolved)) {
+        resolved[0] = '\0';
+    }
+
+    return resolved;
+}
+
 static bool BootPathMatchesLaunchPath(const char *launch_path)
 {
     if (boot_path[0] == '\0') {
@@ -503,6 +657,10 @@ int main(int argc, char * argv[])
     LOAD_IRX_NARG(audsrv_irx);
 
     ResolveMassLaunchPath(argc, argv);
+    if (argc > 0 && argv[0] != NULL) {
+        const char *hdd_path = EnsureHDDBootPath(argv[0]);
+        argv[0] = (char *)hdd_path;
+    }
     setLuaBootPath (argc, argv, 0);
     if (argc > 0 && argv[0]) {
         setAppDirFromPath(argv[0]);
