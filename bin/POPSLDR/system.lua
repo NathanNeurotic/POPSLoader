@@ -92,6 +92,24 @@ local function ResolveWritablePath(rel)
   return modern
 end
 
+local function ResolveStateFilePath()
+  local base_root = NormalizeDirPath(BASE_DIR or APP_DIR_LOCAL)
+  local state_path = JoinPath(base_root, ".pldrs")
+  if string.match(state_path, "^hdd0:[^:]+:pfs/") then
+    local partition = string.match(state_path, "^(hdd0:[^:]+):pfs/")
+    local suffix = string.match(state_path, "^hdd0:[^:]+:pfs(/.*)$")
+    if partition ~= nil and suffix ~= nil and HDD ~= nil and HDD.Initialize ~= nil and HDD.MountPartition ~= nil then
+      local ok = HDD.Initialize()
+      if ok then
+        if HDD.MountPartition(partition, 1, FIO_MT_RDWR) then
+          return "pfs1:"..suffix
+        end
+      end
+    end
+  end
+  return state_path
+end
+
 local function IsAbsoluteDevicePath(path)
   return path ~= nil and string.match(path, "^[%a]+%d*:/") ~= nil
 end
@@ -1898,18 +1916,27 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
 end
 
 function Touch(FILE)
-  if not doesFileExist(FILE) then
-    local FD = System.openFile(FILE, FCREATE)
-    System.closeFile(FD)
-    return true
-  else
+  if FILE == nil or FILE == "" then
     return false
   end
+  if doesFileExist(FILE) then
+    return false
+  end
+  local parent = string.match(FILE, "^(.*)/[^/]*$")
+  if parent ~= nil and parent ~= "" then
+    EnsureDirectory(NormalizeDirPath(parent))
+  end
+  local FD = System.openFile(FILE, FCREATE)
+  if FD == nil or FD < 0 then
+    return false
+  end
+  System.closeFile(FD)
+  return true
 end
 
 ---MAIN PROGRAM BEHAVIOUR BEGINS
 local initial_scene = UI.SCENES.MMAIN
-if Touch(ResolveWritablePath(".pldrs")) then
+if Touch(ResolveStateFilePath()) then
   initial_scene = UI.SCENES.CREDITS
 end
 UI.WelcomeDraw.Play(initial_scene)
