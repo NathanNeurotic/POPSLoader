@@ -286,6 +286,44 @@ static void setAppDirFromPath(const char *path)
     NormalizeDirPath(app_dir, sizeof(app_dir));
 }
 
+static bool ExtractDeviceRoot(const char *path, char *root, size_t root_size)
+{
+    if (path == NULL || root == NULL || root_size < 4) {
+        return false;
+    }
+
+    const char *colon = strchr(path, ':');
+    if (colon == NULL) {
+        return false;
+    }
+
+    size_t prefix_len = (size_t)(colon - path) + 1;
+    if (prefix_len + 1 >= root_size) {
+        return false;
+    }
+
+    memcpy(root, path, prefix_len);
+    root[prefix_len] = '/';
+    root[prefix_len + 1] = '\0';
+    return true;
+}
+
+static int WaitUntilDeviceRootIsReady(const char *root, int retries)
+{
+    struct stat buffer;
+    int ret = -1;
+
+    while (ret != 0 && retries > 0)
+    {
+        ret = stat(root, &buffer);
+        /* Wait until the device is ready */
+        nopdelay();
+        retries--;
+    }
+
+    return ret;
+}
+
 
 void initMC(void)
 {
@@ -464,20 +502,21 @@ int main(int argc, char * argv[])
 
     LOAD_IRX_NARG(audsrv_irx);
 
-    //waitUntilDeviceIsReady by fjtrujy
-
-    struct stat buffer;
-    int ret = -1;
-    int retries = 50;
-
-    while(ret != 0 && retries > 0)
-    {
-        ret = stat("mass:/", &buffer);
-        /* Wait until the device is ready */
-        nopdelay();
-
-        retries--;
+    ResolveMassLaunchPath(argc, argv);
+    setLuaBootPath (argc, argv, 0);
+    if (argc > 0 && argv[0]) {
+        setAppDirFromPath(argv[0]);
+    } else {
+        setAppDirFromPath(boot_path);
     }
+
+    // waitUntilDeviceIsReady by fjtrujy (root path derived from boot path when possible)
+    char device_root[16];
+    const char *ready_root = "mass:/";
+    if (ExtractDeviceRoot(boot_path, device_root, sizeof(device_root))) {
+        ready_root = device_root;
+    }
+    WaitUntilDeviceRootIsReady(ready_root, 50);
 	
         ResolveMassLaunchPath(argc, argv);
         if (argc > 0 && argv[0]) {
