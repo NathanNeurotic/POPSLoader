@@ -185,6 +185,41 @@ static void ResolveMassLaunchPath(int argc, char **argv)
     }
 }
 
+static void NormalizeArgv0Path(char *path)
+{
+    if (path == NULL || path[0] == '\0') {
+        return;
+    }
+
+    for (char *p = path; *p; ++p) {
+        if (*p == '\\') {
+            *p = '/';
+        }
+    }
+
+    if (strncmp(path, "mass://", 7) == 0) {
+        memmove(path + 6, path + 7, strlen(path + 7) + 1);
+    }
+}
+
+static bool BootPathMatchesLaunchPath(const char *launch_path)
+{
+    if (boot_path[0] == '\0') {
+        return false;
+    }
+
+    size_t boot_len = strlen(boot_path);
+    if (boot_len == 0 || boot_path[boot_len - 1] != '/') {
+        return false;
+    }
+
+    if (launch_path == NULL || launch_path[0] == '\0') {
+        return true;
+    }
+
+    return strncmp(launch_path, boot_path, boot_len) == 0;
+}
+
 void setLuaBootPath(int argc, char ** argv, int idx)
 {
     if (argc>=(idx+1))
@@ -445,11 +480,19 @@ int main(int argc, char * argv[])
     }
 	
         ResolveMassLaunchPath(argc, argv);
+        if (argc > 0 && argv[0]) {
+            NormalizeArgv0Path(argv[0]);
+        }
         setLuaBootPath (argc, argv, 0);
         if (argc > 0 && argv[0]) {
             setAppDirFromPath(argv[0]);
         } else {
             setAppDirFromPath(boot_path);
+        }
+        if (!BootPathMatchesLaunchPath((argc > 0) ? argv[0] : NULL)) {
+            DPRINTF("boot_path verification failed for argv0=%s; using app_dir fallback\n", (argc > 0 && argv[0]) ? argv[0] : "<null>");
+            snprintf(boot_path, sizeof(boot_path), "%s", app_dir);
+            NormalizeDirPath(boot_path, sizeof(boot_path));
         }
 	// Lua init
 	// init internals library
@@ -459,14 +502,14 @@ int main(int argc, char * argv[])
 
     pad_init();
 
-    // set base path luaplayer
-    chdir(boot_path); 
-
     DPRINTF("boot path : %s\n", boot_path);
 	dbgprintf("boot path : %s\n", boot_path);
     DPRINTF("app dir : %s\n", app_dir);
 	dbgprintf("app dir : %s\n", app_dir);
     
+    // set base path luaplayer (after argv0 normalization and finalized boot_path computation)
+    chdir(boot_path);
+
     BootStamp("Lua init start");
     while (1)
     {
