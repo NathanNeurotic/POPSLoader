@@ -153,6 +153,38 @@ static void BootStamp(const char *stage)
     DPRINTF("BOOT: %s %u\n", stage, boot_ms());
 }
 
+static void ResolveMassLaunchPath(int argc, char **argv)
+{
+    if (argc <= 0 || argv == NULL || argv[0] == NULL) {
+        return;
+    }
+
+    const char *prefix = "mass:/";
+    if (strncmp(argv[0], prefix, strlen(prefix)) != 0) {
+        return;
+    }
+
+    const char *suffix = argv[0] + strlen(prefix);
+    struct stat path_stat;
+    char probe[255];
+
+    for (int tick = 0; tick < 100; ++tick) {
+        for (int idx = 0; idx < 10; ++idx) {
+            snprintf(probe, sizeof(probe), "mass%d:/%s", idx, suffix);
+            if (stat(probe, &path_stat) == 0) {
+                size_t len = strlen(probe) + 1;
+                char *resolved = (char *)malloc(len);
+                if (resolved != NULL) {
+                    memcpy(resolved, probe, len);
+                    argv[0] = resolved;
+                }
+                return;
+            }
+        }
+        usleep(250000);
+    }
+}
+
 void setLuaBootPath(int argc, char ** argv, int idx)
 {
     if (argc>=(idx+1))
@@ -412,6 +444,7 @@ int main(int argc, char * argv[])
         retries--;
     }
 	
+        ResolveMassLaunchPath(argc, argv);
         setLuaBootPath (argc, argv, 0);
         if (argc > 0 && argv[0]) {
             setAppDirFromPath(argv[0]);
