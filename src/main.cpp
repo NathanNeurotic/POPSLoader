@@ -73,6 +73,9 @@ extern unsigned int size_bdmfs_fatfs_irx;
 extern unsigned char usbmass_bd_irx;
 extern unsigned int size_usbmass_bd_irx;
 
+extern unsigned char mx4sio_bd_irx;
+extern unsigned int size_mx4sio_bd_irx;
+
 extern unsigned char audsrv_irx;
 extern unsigned int size_audsrv_irx;
 
@@ -388,6 +391,7 @@ int main(int argc, char * argv[])
     LOAD_IRX_NARG(bdm_irx);
     LOAD_IRX_NARG(bdmfs_fatfs_irx);
     LOAD_IRX_NARG(usbmass_bd_irx);
+    LOAD_IRX_NARG(mx4sio_bd_irx);
 
     LOAD_IRX_NARG(cdfs_irx);
 
