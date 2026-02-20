@@ -92,22 +92,28 @@ local function ResolveWritablePath(rel)
   return modern
 end
 
-local function ResolveStateFilePath()
-  local base_root = NormalizeDirPath(BASE_DIR or APP_DIR_LOCAL)
-  local state_path = JoinPath(base_root, ".pldrs")
-  if string.match(state_path, "^hdd0:[^:]+:pfs/") then
-    local partition = string.match(state_path, "^(hdd0:[^:]+):pfs/")
-    local suffix = string.match(state_path, "^hdd0:[^:]+:pfs(/.*)$")
-    if partition ~= nil and suffix ~= nil and HDD ~= nil and HDD.Initialize ~= nil and HDD.MountPartition ~= nil then
-      local ok = HDD.Initialize()
-      if ok then
-        if HDD.MountPartition(partition, 1, FIO_MT_RDWR) then
-          return "pfs1:"..suffix
-        end
-      end
+local function ResolveHddPfsAlias(path)
+  if path == nil then
+    return nil
+  end
+  if not string.match(path, "^hdd0:[^:]+:pfs/") then
+    return path
+  end
+  local partition = string.match(path, "^(hdd0:[^:]+):pfs/")
+  local suffix = string.match(path, "^hdd0:[^:]+:pfs(/.*)$")
+  if partition ~= nil and suffix ~= nil and HDD ~= nil and HDD.Initialize ~= nil and HDD.MountPartition ~= nil then
+    local ok = HDD.Initialize()
+    if ok and HDD.MountPartition(partition, 1, FIO_MT_RDWR) then
+      return "pfs1:"..suffix
     end
   end
-  return state_path
+  return path
+end
+
+local function ResolveStateFilePath()
+  local base_root = NormalizeDirPath(BASE_DIR or APP_DIR_LOCAL)
+  local primary = JoinPath(base_root, ".pldrs")
+  return ResolveHddPfsAlias(primary)
 end
 
 local function IsAbsoluteDevicePath(path)
@@ -1936,8 +1942,17 @@ end
 
 ---MAIN PROGRAM BEHAVIOUR BEGINS
 local initial_scene = UI.SCENES.MMAIN
-if Touch(ResolveStateFilePath()) then
-  initial_scene = UI.SCENES.CREDITS
+local state_path = ResolveStateFilePath()
+if not doesFileExist(state_path) then
+  if Touch(state_path) then
+    initial_scene = UI.SCENES.CREDITS
+  else
+    local legacy_state = ResolveWritablePath(".pldrs")
+    legacy_state = ResolveHddPfsAlias(legacy_state)
+    if legacy_state ~= state_path and not doesFileExist(legacy_state) and Touch(legacy_state) then
+      initial_scene = UI.SCENES.CREDITS
+    end
+  end
 end
 UI.WelcomeDraw.Play(initial_scene)
 if UI.Transition ~= nil then
