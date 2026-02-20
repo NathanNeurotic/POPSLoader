@@ -2351,6 +2351,12 @@ function UI.RefreshMassDevicePage(device_kind)
   PLDR.CleanupGameList()
 
   if device_kind == "MX4SIO" then
+    if PLDR.MX4SIO ~= nil and PLDR.MX4SIO.READY and type(PLDR.MX4SIO.ROOT) == "string" and PLDR.MX4SIO.ROOT ~= "" then
+      PLDR.GetPS1GameLists(PLDR.MX4SIO.ROOT.."POPS/", true)
+      UI.GameList.Reset()
+      return true
+    end
+
     local hint = nil
     if PLDR.MX4SIO ~= nil then
       hint = PLDR.MX4SIO.PREFIX_HINT
