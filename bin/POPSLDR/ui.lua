@@ -97,16 +97,175 @@ local function ResolveBootSoundCandidates(name)
     name,
     "POPSLDR/"..name
   }
+  if BOOT_ASSET_BASE_DIR ~= nil then
+    for _, rel in ipairs(rels) do
+      AddUniquePath(candidates, seen, JoinPathSimple(BOOT_ASSET_BASE_DIR, rel))
+    end
+  end
   for _, rel in ipairs(rels) do
     AddUniquePath(candidates, seen, ResolveAssetSafe(rel))
   end
-  if BOOT_ASSET_BASE_DIR ~= nil then
-    for _, rel in ipairs(rels) do
-      local full = JoinPathSimple(BOOT_ASSET_BASE_DIR, rel)
-      AddUniquePath(candidates, seen, ResolveAssetSafe(full))
-    end
-  end
   return candidates
+end
+local function ClassifyBootSoundLoadFailure(err)
+  if err == nil then return "transient" end
+  local msg = string.lower(tostring(err))
+  if string.find(msg, "enoent", 1, true) ~= nil then
+    return "missing"
+  end
+  if string.find(msg, "no such file", 1, true) ~= nil then
+    return "missing"
+  end
+  return "transient"
+end
+local function EnsureBootSoundState()
+  if UI == nil or UI.BOOT_SOUND == nil then return nil end
+  UI.BOOT_SOUND.STATE = UI.BOOT_SOUND.STATE or {}
+  local state = UI.BOOT_SOUND.STATE
+  if state.started == nil then state.started = false end
+  if state.attempted == nil then state.attempted = false end
+  if state.done == nil then state.done = false end
+  if state.path_resolved == nil then state.path_resolved = false end
+  if state.retry_count == nil then state.retry_count = 0 end
+  if state.max_retries == nil then state.max_retries = 8 end
+  if state.retry_interval_frames == nil then state.retry_interval_frames = 12 end
+  if state.next_try_frame == nil then state.next_try_frame = 0 end
+  if state.frame == nil then state.frame = 0 end
+  return state
+end
+local function TryBootSoundTick()
+  local state = EnsureBootSoundState()
+  if state == nil or state.done == true then return end
+  if state.started ~= true then
+    state.started = true
+    state.path_resolved = false
+  end
+  state.frame = (state.frame or 0) + 1
+  if state.frame < (state.next_try_frame or 0) then
+    return
+  end
+  state.attempted = true
+  state.retry_count = (state.retry_count or 0) + 1
+
+  if UI.BOOT_SOUND.ENABLED ~= true then
+    LOG("BOOT SOUND: disabled")
+    state.done = true
+    state.path_resolved = true
+    return
+  end
+  if type(Sound) ~= "table" or type(Sound.loadADPCM) ~= "function" then
+    LOG("BOOT SOUND: Sound API not available")
+    state.done = true
+    state.path_resolved = true
+    return
+  end
+
+  local primary = UI.BOOT_SOUND.PATH or "boot.adp"
+  local names = { primary }
+  if primary ~= "boot.adpcm" then
+    table.insert(names, "boot.adpcm")
+  end
+
+  local chosen_path = nil
+  local chosen_audio = nil
+  local transient_seen = false
+
+  local function try_load(path)
+    LOGF("BOOT SOUND: loading '%s'", tostring(path))
+    local ok_load, audio = pcall(Sound.loadADPCM, path)
+    if not ok_load then
+      if ClassifyBootSoundLoadFailure(audio) ~= "missing" then
+        transient_seen = true
+      end
+      return false
+    end
+    if audio == nil or audio == 0 then
+      transient_seen = true
+      return false
+    end
+    chosen_path = path
+    chosen_audio = audio
+    return true
+  end
+
+  for _, rel in ipairs(names) do
+    local candidates = ResolveBootSoundCandidates(rel)
+    for _, p in ipairs(candidates) do
+      if try_load(p) then break end
+    end
+    if chosen_audio ~= nil then break end
+  end
+
+  if chosen_audio == nil and names[1] ~= nil then
+    local host_p = "host:" .. names[1]
+    try_load(host_p)
+  end
+
+  if chosen_audio == nil then
+    if state.retry_count >= state.max_retries then
+      LOGF("BOOT SOUND: '%s' not ready or not found (giving up after %d tries)", tostring(primary), state.retry_count)
+      state.done = true
+      state.path_resolved = true
+    else
+      state.next_try_frame = state.frame + state.retry_interval_frames
+      if transient_seen then
+        LOGF("BOOT SOUND: '%s' temporarily unavailable (retry %d/%d)", tostring(primary), state.retry_count, state.max_retries)
+      end
+    end
+    return
+  end
+
+  local function normalize_volume(value)
+    if type(value) ~= "number" then
+      return nil
+    end
+    if value <= 100 then
+      return math.floor((value * 0x3fff / 100) + 0.5)
+    end
+    return value
+  end
+
+  pcall(function()
+    if type(Sound.setVolume) == "function" then
+      local volume = normalize_volume(UI.BOOT_SOUND.VOLUME)
+      if volume ~= nil then
+        Sound.setVolume(volume)
+      end
+    end
+    if type(Sound.setADPCMVolume) == "function" then
+      local adpcm_volume = normalize_volume(UI.BOOT_SOUND.ADPCM_VOLUME)
+      if adpcm_volume ~= nil then
+        Sound.setADPCMVolume(UI.BOOT_SOUND.CHANNEL or 0, adpcm_volume)
+      end
+    end
+    if type(Sound.setFormat) == "function" then
+      Sound.setFormat(16, 44100, 2)
+    end
+  end)
+
+  LOGF("BOOT SOUND: loaded handle=%s", tostring(chosen_audio))
+  local ok_play, play_err = pcall(function()
+    Sound.playADPCM(UI.BOOT_SOUND.CHANNEL or 0, chosen_audio)
+  end)
+  if not ok_play then
+    LOGF("BOOT SOUND: play failed for '%s': %s", tostring(chosen_path), tostring(play_err))
+    if type(Sound.freeADPCM) == "function" then
+      pcall(Sound.freeADPCM, chosen_audio)
+    end
+    if state.retry_count >= state.max_retries then
+      state.done = true
+      state.path_resolved = true
+    else
+      state.next_try_frame = state.frame + state.retry_interval_frames
+    end
+    return
+  end
+
+  state.loaded_handle = chosen_audio
+  state.done = true
+  state.path_resolved = true
+  LOGF("BOOT SOUND: using '%s'", tostring(chosen_path))
+  LOGF("BOOT SOUND: play started on channel %s", tostring(UI.BOOT_SOUND.CHANNEL or 0))
 end
 local function ExtractGameRelPath(entry)
   if entry == nil then return nil end
@@ -769,8 +928,12 @@ UI = {
         Font.ftPrint(SFONT, UI.SCR.X_MID, box_y + box_h - 24, 8, UI.SCR.X, 16, hint, UI.CCOL.GREY)
       end;
     };
+    TickBootSound = function ()
+      TryBootSoundTick()
+    end;
     --- wrapper for Screen.flip(), here you add UI draws that renders on top of everything (for example, error notifications)
     flip = function (notif)
+      UI.TickBootSound()
       UI.Notif_queue.display()
       UI.TextEntry.Draw()
       UI.Modal.Draw()
@@ -819,128 +982,6 @@ UI = {
         end
 
 -- Boot audio (stable APP_DIR-derived lookup). Never fatal.
-        local boot_sound_loaded = nil
-        local boot_sound_hold_frames = nil
-
-        local function TryBootSound()
-          if UI.BOOT_SOUND == nil then
-            return
-          end
-          UI.BOOT_SOUND.STATE = UI.BOOT_SOUND.STATE or {
-            attempted = false,
-            path_resolved = false
-          }
-          if UI.BOOT_SOUND.STATE.attempted then return end
-          UI.BOOT_SOUND.STATE.attempted = true
-
-          if UI.BOOT_SOUND.ENABLED ~= true then
-            LOG("BOOT SOUND: disabled")
-            UI.BOOT_SOUND.STATE.path_resolved = true
-            return
-          end
-          if type(Sound) ~= "table" or type(Sound.loadADPCM) ~= "function" then
-            LOG("BOOT SOUND: Sound API not available")
-            UI.BOOT_SOUND.STATE.path_resolved = true
-            return
-          end
-
-          local primary = UI.BOOT_SOUND.PATH or "boot.adp"
-          local names = { primary }
-          if primary ~= "boot.adpcm" then
-            table.insert(names, "boot.adpcm")
-          end
-
-          local found = nil
-          local requested = nil
-          for _, rel in ipairs(names) do
-            requested = rel
-            local candidates = ResolveBootSoundCandidates(rel)
-            UI.BOOT_SOUND.STATE.path_resolved = true
-            for _, p in ipairs(candidates) do
-              if SafeDoesFileExist(p) then
-                found = p
-                break
-              end
-            end
-            if found ~= nil then break end
-          end
-
-          if found == nil and requested ~= nil then
-            -- Last resort: try HostFS prefix in PCSX2 setups.
-            local host_p = "host:" .. requested
-            if SafeDoesFileExist(host_p) then found = host_p end
-          end
-
-          if found == nil then
-            LOGF("BOOT SOUND: '%s' not found", tostring(primary))
-            return
-          end
-
-          LOGF("BOOT SOUND: using '%s'", tostring(found))
-
--- Set volumes/formats defensively; some builds may ignore these.
-          local function normalize_volume(value)
-            if type(value) ~= "number" then
-              return nil
-            end
-            if value <= 100 then
-              return math.floor((value * 0x3fff / 100) + 0.5)
-            end
-            return value
-          end
-
-          pcall(function()
-            if type(Sound.setVolume) == "function" then
-              local volume = normalize_volume(UI.BOOT_SOUND.VOLUME)
-              if volume ~= nil then
-                Sound.setVolume(volume)
-              end
-            end
-            if type(Sound.setADPCMVolume) == "function" then
-              local adpcm_volume = normalize_volume(UI.BOOT_SOUND.ADPCM_VOLUME)
-              if adpcm_volume ~= nil then
-                Sound.setADPCMVolume(UI.BOOT_SOUND.CHANNEL or 0, adpcm_volume)
-              end
-            end
-            if type(Sound.setFormat) == "function" then
-              -- Common safe defaults; ADPCM playback may ignore this on some builds.
-              Sound.setFormat(16, 44100, 2)
-            end
-          end)
-
-          LOGF("BOOT SOUND: loading '%s'", tostring(found))
-          local ok_load, audio = pcall(Sound.loadADPCM, found)
-          if not ok_load then
-            LOGF("BOOT SOUND: load threw for '%s': %s", tostring(found), tostring(audio))
-            return
-          end
-          if audio == nil or audio == 0 then
-            LOGF("BOOT SOUND: load failed for '%s'", tostring(found))
-            return
-          end
-          boot_sound_loaded = audio
-          LOGF("BOOT SOUND: loaded handle=%s", tostring(boot_sound_loaded))
-
-          local ok_play, play_err = pcall(function()
-            Sound.playADPCM(UI.BOOT_SOUND.CHANNEL or 0, boot_sound_loaded)
-          end)
-          if not ok_play then
-            LOGF("BOOT SOUND: play failed for '%s': %s", tostring(found), tostring(play_err))
-            if type(Sound.freeADPCM) == "function" then
-              pcall(Sound.freeADPCM, boot_sound_loaded)
-            end
-            boot_sound_loaded = nil
-            return
-          end
-          LOGF("BOOT SOUND: play started on channel %s", tostring(UI.BOOT_SOUND.CHANNEL or 0))
-
-          local sec = UI.BOOT_SOUND.SECONDS
-          if type(sec) ~= "number" or sec < 0 then sec = 0 end
-          local pad = UI.BOOT_SOUND.PAD_SECONDS
-          if type(pad) ~= "number" or pad < 0 then pad = 0 end
-          boot_sound_hold_frames = math.floor(((sec + pad) * 60) + 0.5)
-          LOGF("BOOT SOUND: hold frames=%s", tostring(boot_sound_hold_frames))
-        end
 local function DrawSplashCover(img, screen_w, screen_h, alpha)
   if img == nil then return end
   local img_w = Graphics.getImageWidth(img)
@@ -1023,8 +1064,8 @@ end
         local fade_in_frames = 120
         local fade_out_frames = 60
 
-        -- Start boot sound once (timing remains fixed to splash/credits durations).
-        TryBootSound()
+        -- Start boot sound retries without blocking boot timing.
+        UI.TickBootSound()
         local splash_seconds = 8.0
         local credits_seconds = 7.0
         local splash_frames = math.floor((splash_seconds * 60) + 0.5)
@@ -1052,18 +1093,21 @@ end
 
         -- Splash: slow fade in -> hold -> fade out to black.
         for i = 1, fade_in_frames do
+          UI.TickBootSound()
           local alpha = Round(128 * (i / fade_in_frames))
           DrawBackground()
           DrawSplash(alpha)
           Screen.flip()
         end
         for _ = 1, splash_hold_frames do
+          UI.TickBootSound()
           DrawBackground()
           DrawSplash(128)
           Screen.flip()
         end
         if fade_out_frames > 0 then
           for i = 1, fade_out_frames do
+            UI.TickBootSound()
             local alpha = Round(128 * (i / fade_out_frames))
             DrawBackground()
             DrawSplash(128)
@@ -1074,17 +1118,20 @@ end
 
         -- Credits: fade in from black -> hold -> fade out to black.
         for i = 1, credits_fade_in_frames do
+          UI.TickBootSound()
           local alpha = Round(128 * (1 - (i / credits_fade_in_frames)))
           DrawTargetScene(UI.SCENES.CREDITS)
           Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
           Screen.flip()
         end
         for _ = 1, credits_hold_frames do
+          UI.TickBootSound()
           DrawTargetScene(UI.SCENES.CREDITS)
           Screen.flip()
         end
         if credits_fade_out_frames > 0 then
           for i = 1, credits_fade_out_frames do
+            UI.TickBootSound()
             local alpha = Round(128 * (i / credits_fade_out_frames))
             DrawTargetScene(UI.SCENES.CREDITS)
             Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
@@ -1104,8 +1151,10 @@ end
         Screen.flip()
 
         -- Cleanup boot sound resource (safe if audio backend ignores it).
-        if boot_sound_loaded ~= nil and type(Sound) == "table" and type(Sound.freeADPCM) == "function" then
-          pcall(Sound.freeADPCM, boot_sound_loaded)
+        local boot_state = UI.BOOT_SOUND ~= nil and UI.BOOT_SOUND.STATE or nil
+        if boot_state ~= nil and boot_state.loaded_handle ~= nil and type(Sound) == "table" and type(Sound.freeADPCM) == "function" then
+          pcall(Sound.freeADPCM, boot_state.loaded_handle)
+          boot_state.loaded_handle = nil
         end
       end
 
