@@ -51,6 +51,63 @@ local function SafeDoesFileExist(path)
   end
   return false
 end
+local function ResolveAssetSafe(path)
+  if path == nil then return nil end
+  if type(System) == "table" and type(System.resolveAsset) == "function" then
+    local ok, resolved = pcall(System.resolveAsset, path)
+    if ok and type(resolved) == "string" and resolved ~= "" then
+      return resolved
+    end
+  end
+  return path
+end
+local function EnsureDirPath(path)
+  if path == nil or path == "" then return nil end
+  if type(EnsureTrailingSlash) == "function" then
+    return EnsureTrailingSlash(path)
+  end
+  if string.sub(path, -1) ~= "/" then
+    return path.."/"
+  end
+  return path
+end
+local function AddUniquePath(list, seen, path)
+  if path == nil or path == "" then return end
+  if seen[path] == true then return end
+  seen[path] = true
+  table.insert(list, path)
+end
+local function JoinPathSimple(base, rel)
+  if base == nil or base == "" then return rel end
+  if rel == nil or rel == "" then return base end
+  return EnsureDirPath(base)..rel
+end
+local BOOT_ASSET_BASE_DIR = APP_DIR
+if type(System) == "table" and type(System.getAppDir) == "function" then
+  local ok, app_dir = pcall(System.getAppDir)
+  if ok and type(app_dir) == "string" and app_dir ~= "" then
+    BOOT_ASSET_BASE_DIR = app_dir
+  end
+end
+BOOT_ASSET_BASE_DIR = EnsureDirPath(BOOT_ASSET_BASE_DIR)
+local function ResolveBootSoundCandidates(name)
+  local candidates = {}
+  local seen = {}
+  local rels = {
+    name,
+    "POPSLDR/"..name
+  }
+  for _, rel in ipairs(rels) do
+    AddUniquePath(candidates, seen, ResolveAssetSafe(rel))
+  end
+  if BOOT_ASSET_BASE_DIR ~= nil then
+    for _, rel in ipairs(rels) do
+      local full = JoinPathSimple(BOOT_ASSET_BASE_DIR, rel)
+      AddUniquePath(candidates, seen, ResolveAssetSafe(full))
+    end
+  end
+  return candidates
+end
 local function ExtractGameRelPath(entry)
   if entry == nil then return nil end
   local relpath = string.match(entry, "^[^|]+|(.+)$")
@@ -761,21 +818,29 @@ UI = {
           end
         end
 
--- Boot audio (relative to current directory). Never fatal.
-        local boot_sound_tried = false
+-- Boot audio (stable APP_DIR-derived lookup). Never fatal.
         local boot_sound_loaded = nil
         local boot_sound_hold_frames = nil
 
         local function TryBootSound()
-          if boot_sound_tried then return end
-          boot_sound_tried = true
+          if UI.BOOT_SOUND == nil then
+            return
+          end
+          UI.BOOT_SOUND.STATE = UI.BOOT_SOUND.STATE or {
+            attempted = false,
+            path_resolved = false
+          }
+          if UI.BOOT_SOUND.STATE.attempted then return end
+          UI.BOOT_SOUND.STATE.attempted = true
 
-          if UI.BOOT_SOUND == nil or UI.BOOT_SOUND.ENABLED ~= true then
+          if UI.BOOT_SOUND.ENABLED ~= true then
             LOG("BOOT SOUND: disabled")
+            UI.BOOT_SOUND.STATE.path_resolved = true
             return
           end
           if type(Sound) ~= "table" or type(Sound.loadADPCM) ~= "function" then
             LOG("BOOT SOUND: Sound API not available")
+            UI.BOOT_SOUND.STATE.path_resolved = true
             return
           end
 
@@ -785,92 +850,14 @@ UI = {
             table.insert(names, "boot.adpcm")
           end
 
-local function file_exists(p)
-  if p == nil then return false end
-  if type(doesFileExist) == "function" then
-    local okcall, res = pcall(doesFileExist, p)
-    return okcall and res == true
-  end
-  if type(System) == "table" and type(System.openFile) == "function" and type(System.closeFile) == "function" then
-    local okfd, fd = pcall(System.openFile, p, O_RDONLY)
-    if okfd and fd ~= nil and fd >= 0 then
-      pcall(System.closeFile, fd)
-      return true
-    end
-  end
-  return false
-end
-
-local function resolve(p)
-  if p == nil then return nil end
-  if type(System) == "table" and type(System.resolveAsset) == "function" then
-    local ok, r = pcall(System.resolveAsset, p)
-    if ok and type(r) == "string" and r ~= "" then return r end
-  end
-  return p
-end
-
-local function ensure_dir(path)
-  if path == nil or path == "" then return nil end
-  if type(EnsureTrailingSlash) == "function" then
-    return EnsureTrailingSlash(path)
-  end
-  if string.sub(path, -1) ~= "/" then
-    return path .. "/"
-  end
-  return path
-end
-
-local function add_candidate(list, path)
-  if path ~= nil and path ~= "" then
-    table.insert(list, path)
-  end
-end
-
-local function resolve_candidates(name)
-  local candidates = {}
-  add_candidate(candidates, resolve(name))
-  add_candidate(candidates, resolve("./" .. name))
-
-  local app_dir = APP_DIR
-  if type(System) == "table" and type(System.getAppDir) == "function" then
-    local ok, dir = pcall(System.getAppDir)
-    if ok and dir ~= nil and dir ~= "" then
-      app_dir = dir
-    end
-  end
-  local app_dir_norm = ensure_dir(app_dir)
-  if app_dir_norm ~= nil then
-    add_candidate(candidates, app_dir_norm .. name)
-    add_candidate(candidates, app_dir_norm .. "POPSLDR/" .. name)
-  end
-
-  local cwd = nil
-  if type(System) == "table" and type(System.currentDirectory) == "function" then
-    local ok, dir = pcall(System.currentDirectory)
-    if ok then
-      cwd = dir
-    end
-  end
-  local cwd_norm = ensure_dir(cwd)
-  if cwd_norm ~= nil then
-    add_candidate(candidates, cwd_norm .. name)
-    add_candidate(candidates, cwd_norm .. "POPSLDR/" .. name)
-  end
-
-  add_candidate(candidates, name)
-  add_candidate(candidates, "./" .. name)
-
-  return candidates
-end
-
           local found = nil
           local requested = nil
           for _, rel in ipairs(names) do
             requested = rel
-            local candidates = resolve_candidates(rel)
+            local candidates = ResolveBootSoundCandidates(rel)
+            UI.BOOT_SOUND.STATE.path_resolved = true
             for _, p in ipairs(candidates) do
-              if file_exists(p) then
+              if SafeDoesFileExist(p) then
                 found = p
                 break
               end
@@ -881,7 +868,7 @@ end
           if found == nil and requested ~= nil then
             -- Last resort: try HostFS prefix in PCSX2 setups.
             local host_p = "host:" .. requested
-            if file_exists(host_p) then found = host_p end
+            if SafeDoesFileExist(host_p) then found = host_p end
           end
 
           if found == nil then
@@ -2480,6 +2467,9 @@ function UI.RefreshCurrentMassScene(scene)
   return false
 end
 function UI.OnSceneEnter(previous_scene, next_scene)
+  if UI.BOOT_SOUND ~= nil and UI.BOOT_SOUND.STATE ~= nil and UI.BOOT_SOUND.STATE.path_resolved ~= true then
+    return
+  end
   if UI.IsUsbScene(next_scene) then
     if PLDR ~= nil and type(PLDR.RefreshMassSlots) == "function" then
       PLDR.RefreshMassSlots("scene-enter-usb")
