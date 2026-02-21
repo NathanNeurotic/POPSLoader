@@ -2403,9 +2403,8 @@ function UI.RefreshMassDevicePage(device_kind)
 
   local slots = PLDR.EnumerateMassSlots(9) or {}
   local routed = PLDR.RouteMassSlotsForPage(device_kind, slots) or {}
-  local target = routed[1]
 
-  if target == nil then
+  if routed[1] == nil then
     if device_kind ~= "MX4SIO" then
       if PLDR.USB ~= nil then
         PLDR.USB.MASSINDX = nil
@@ -2417,13 +2416,27 @@ function UI.RefreshMassDevicePage(device_kind)
   end
 
   if PLDR.USB ~= nil then
-    PLDR.USB.MASSINDX = target.source_slot
-    PLDR.USB.ROOT = target.source_prefix
+    PLDR.USB.MASSINDX = routed[1].source_slot
+    PLDR.USB.ROOT = routed[1].source_prefix
   end
-  PLDR.GetPS1GameLists(target.source_prefix.."POPS/", true)
+
+  local found_any = false
+  for i = 1, #routed do
+    local source_prefix = routed[i] and routed[i].source_prefix
+    if type(source_prefix) == "string" and source_prefix ~= "" then
+      local list = PLDR.GetPS1GameLists(source_prefix.."POPS/", true)
+      if type(list) == "table" and #list > 0 then
+        found_any = true
+      end
+    end
+  end
+
+  if type(PLDR.DedupeAndSortMassGames) == "function" then
+    PLDR.GAMES = PLDR.DedupeAndSortMassGames(PLDR.GAMES)
+  end
 
   UI.GameList.Reset()
-  return true
+  return found_any or (#PLDR.GAMES > 0)
 end
 
 function UI.RefreshCurrentMassScene(scene)
