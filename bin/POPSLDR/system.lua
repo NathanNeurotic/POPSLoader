@@ -231,6 +231,12 @@ PLDR = {
   }
 }
 
+PLDR.MASS_ENUM = {
+  cache = nil,
+  stamp = 0,
+  dirty = true
+}
+
 -- Mass backend detection via USBMASS_IOCTL_GET_DRIVERNAME (requires fileXio + ps2sdk usbhdfsd-common.h support).
 -- Returns a short driver code like: "usb" (USB), "sdc" (MX4SIO SD), "udp" (UDPBD), "sd" (iLink SD), "ata" (HDD).
 function PLDR.GetMassDriverName(index)
@@ -279,7 +285,7 @@ function PLDR.EnumerateMassSlots(max_index)
     if driver == "usb" then
       kind = "USB"
       present = true
-    elseif driver == "sdc" then
+    elseif driver == "sdc" or driver == "mx4sio" then
       kind = "MX4SIO"
       present = true
     elseif type(driver) == "string" and driver ~= "" then
@@ -299,6 +305,47 @@ function PLDR.EnumerateMassSlots(max_index)
   return slots
 end
 
+function PLDR.RefreshMassSlots(reason)
+  local state = PLDR.MASS_ENUM
+  if type(state) ~= "table" then
+    state = { cache = nil, stamp = 0, dirty = true }
+    PLDR.MASS_ENUM = state
+  end
+
+  local slots = PLDR.EnumerateMassSlots(9) or {}
+  state.cache = slots
+  state.stamp = (state.stamp or 0) + 1
+  state.dirty = false
+  if reason ~= nil then
+    LOG("Mass slot cache refreshed:", tostring(reason), "stamp:", tostring(state.stamp))
+  end
+  return slots
+end
+
+function PLDR.GetMassSlotsCached()
+  local state = PLDR.MASS_ENUM
+  if type(state) ~= "table" then
+    PLDR.MASS_ENUM = { cache = nil, stamp = 0, dirty = true }
+    state = PLDR.MASS_ENUM
+  end
+  if state.dirty or type(state.cache) ~= "table" then
+    return PLDR.RefreshMassSlots("auto")
+  end
+  return state.cache
+end
+
+function PLDR.MarkMassSlotsDirty(reason)
+  local state = PLDR.MASS_ENUM
+  if type(state) ~= "table" then
+    PLDR.MASS_ENUM = { cache = nil, stamp = 0, dirty = true }
+    state = PLDR.MASS_ENUM
+  end
+  state.dirty = true
+  if reason ~= nil then
+    LOG("Mass slot cache marked dirty:", tostring(reason))
+  end
+end
+
 -- Route classified mass slots to a specific device page.
 -- Only USB/MX4SIO are eligible targets; UNKNOWN/OTHER and all non-target kinds are dropped.
 function PLDR.RouteMassSlotsForPage(device_page, classified_slots)
@@ -314,7 +361,7 @@ function PLDR.RouteMassSlotsForPage(device_page, classified_slots)
 
   local slots = classified_slots
   if type(slots) ~= "table" then
-    slots = PLDR.EnumerateMassSlots(9) or {}
+    slots = PLDR.GetMassSlotsCached() or {}
   end
 
   local routed = {}
