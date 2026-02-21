@@ -333,7 +333,10 @@ static bool BuildSystemLuaPath(const char *dir, char *out_path, size_t out_size)
 
 static bool RebindAppDirFromLaunchPath(const char *launch_path)
 {
-    if (launch_path == NULL || strncmp(launch_path, "mass", 4) != 0) {
+    if (launch_path == NULL) {
+        return false;
+    }
+    if (strncmp(launch_path, "mass", 4) != 0 && strncmp(launch_path, "mx4sio", 6) != 0) {
         return false;
     }
 
@@ -635,13 +638,23 @@ int main(int argc, char * argv[])
     }
 
     if (!BuildSystemLuaPath(app_dir, system_lua_path, sizeof(system_lua_path)) || stat(system_lua_path, &st) != 0) {
-        printf("BOOT FATAL: cannot open system.lua in APP_DIR=%s\n", app_dir);
-        dbgprintf("BOOT FATAL: cannot open system.lua in APP_DIR=%s\n", app_dir);
-        DPRINTF("BOOT FATAL: cannot open system.lua in APP_DIR=%s\n", app_dir);
+        printf("BOOT FATAL: APP_DIR=%s missing system.lua\n", app_dir);
         return 1;
     }
 
     setenv("APP_DIR", app_dir, 1);
+
+    const char *boot_script = bootString;
+    const char *app_dir_prefix = "APP_DIR=[[";
+    const char *app_dir_suffix = "]]\n";
+    size_t app_dir_len = strlen(app_dir);
+    size_t boot_len = strlen(bootString);
+    size_t script_len = strlen(app_dir_prefix) + app_dir_len + strlen(app_dir_suffix) + boot_len;
+    char *boot_script_with_app_dir = (char *)malloc(script_len + 1);
+    if (boot_script_with_app_dir != NULL) {
+        snprintf(boot_script_with_app_dir, script_len + 1, "%s%s%s%s", app_dir_prefix, app_dir, app_dir_suffix, bootString);
+        boot_script = boot_script_with_app_dir;
+    }
 	// Lua init
 	// init internals library
     
@@ -661,7 +674,7 @@ int main(int argc, char * argv[])
     BootStamp("Lua init start");
     while (1)
     {
-        errMsg = runScript(bootString, true);
+        errMsg = runScript(boot_script, true);
 
         init_scr();
 
@@ -681,5 +694,6 @@ int main(int argc, char * argv[])
 
     }
 
+    free(boot_script_with_app_dir);
 	return 0;
 }
