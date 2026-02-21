@@ -885,6 +885,51 @@ local function ParseMassGameEntry(entry)
   return prefix, relpath
 end
 
+function PLDR.NormalizeMassGameEntry(entry)
+  local prefix, relpath = ParseMassGameEntry(entry)
+  if prefix == nil or relpath == nil then
+    return nil
+  end
+  local normalized_relpath = tostring(relpath)
+  normalized_relpath = string.gsub(normalized_relpath, "\\", "/")
+  normalized_relpath = string.gsub(normalized_relpath, "^/+", "")
+  return string.lower(prefix..normalized_relpath)
+end
+
+function PLDR.SortMassGames(list)
+  if type(list) ~= "table" then
+    return {}
+  end
+  table.sort(list, function(a, b)
+    local _, mass_rel_a = ParseMassGameEntry(a)
+    local _, mass_rel_b = ParseMassGameEntry(b)
+    local sort_a = string.lower(mass_rel_a or a or "")
+    local sort_b = string.lower(mass_rel_b or b or "")
+    if sort_a == sort_b then
+      return tostring(a) < tostring(b)
+    end
+    return sort_a < sort_b
+  end)
+  return list
+end
+
+function PLDR.DedupeAndSortMassGames(list)
+  if type(list) ~= "table" then
+    return {}
+  end
+  local merged = {}
+  local seen = {}
+  for i = 1, #list do
+    local entry = list[i]
+    local key = PLDR.NormalizeMassGameEntry(entry) or tostring(entry)
+    if not seen[key] then
+      seen[key] = true
+      table.insert(merged, entry)
+    end
+  end
+  return PLDR.SortMassGames(merged)
+end
+
 function PLDR.GetPS1GameLists(path, updating)
   LOG("Listing games on ", path)
   local RET = {}
@@ -917,16 +962,7 @@ function PLDR.GetPS1GameLists(path, updating)
     if not updating then
       PLDR.GAMES = RET
     end
-    table.sort(PLDR.GAMES, function(a, b)
-      local _, mass_rel_a = ParseMassGameEntry(a)
-      local _, mass_rel_b = ParseMassGameEntry(b)
-      local sort_a = string.lower(mass_rel_a or a or "")
-      local sort_b = string.lower(mass_rel_b or b or "")
-      if sort_a == sort_b then
-        return tostring(a) < tostring(b)
-      end
-      return sort_a < sort_b
-    end)
+    PLDR.GAMES = PLDR.DedupeAndSortMassGames(PLDR.GAMES)
     return PLDR.GAMES
   else
     return nil
