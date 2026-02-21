@@ -2348,6 +2348,14 @@ function UI.RefreshMassDevicePage(device_kind)
     return false
   end
 
+  if device_kind == "USB" and type(PLDR.RefreshMassSlots) == "function" then
+    local state = PLDR.MASS_ENUM
+    if type(state) == "table" and not state.usb_init_refresh_done then
+      PLDR.RefreshMassSlots("usb-stack-init")
+      state.usb_init_refresh_done = true
+    end
+  end
+
   PLDR.CleanupGameList()
 
   if device_kind == "MX4SIO" then
@@ -2401,7 +2409,12 @@ function UI.RefreshMassDevicePage(device_kind)
     return false
   end
 
-  local slots = PLDR.EnumerateMassSlots(9) or {}
+  local slots = nil
+  if type(PLDR.GetMassSlotsCached) == "function" then
+    slots = PLDR.GetMassSlotsCached() or {}
+  else
+    slots = PLDR.EnumerateMassSlots(9) or {}
+  end
   local routed = PLDR.RouteMassSlotsForPage(device_kind, slots) or {}
 
   if routed[1] == nil then
@@ -2450,7 +2463,15 @@ function UI.RefreshCurrentMassScene(scene)
   return false
 end
 function UI.OnSceneEnter(previous_scene, next_scene)
-  if UI.IsUsbScene(next_scene) or UI.IsMx4sioScene(next_scene) then
+  if UI.IsUsbScene(next_scene) then
+    if PLDR ~= nil and type(PLDR.RefreshMassSlots) == "function" then
+      PLDR.RefreshMassSlots("scene-enter-usb")
+    end
+    UI.RefreshCurrentMassScene(next_scene)
+  elseif UI.IsMx4sioScene(next_scene) then
+    if PLDR ~= nil and type(PLDR.RefreshMassSlots) == "function" then
+      PLDR.RefreshMassSlots("scene-enter-mx4sio")
+    end
     UI.RefreshCurrentMassScene(next_scene)
   end
 end
