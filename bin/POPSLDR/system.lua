@@ -231,6 +231,8 @@ PLDR = {
   }
 }
 
+PLDR.BOOT_DEVICE_KIND = nil
+
 PLDR.MASS_ENUM = {
   cache = nil,
   stamp = 0,
@@ -332,6 +334,26 @@ function PLDR.GetMassSlotsCached()
     return PLDR.RefreshMassSlots("auto")
   end
   return state.cache
+end
+
+function PLDR.HasClassifiedMassSlot(kind, classified_slots)
+  if type(kind) ~= "string" or kind == "" then
+    return false
+  end
+
+  local slots = classified_slots
+  if type(slots) ~= "table" then
+    slots = PLDR.GetMassSlotsCached() or {}
+  end
+
+  for i = 1, #slots do
+    local slot = slots[i]
+    if slot ~= nil and slot.kind == kind and slot.present == true then
+      return true
+    end
+  end
+
+  return false
 end
 
 function PLDR.MarkMassSlotsDirty(reason)
@@ -625,6 +647,7 @@ UI.LASTSCENE = UI.SCENES.MMAIN
 
 if UI.DEVLOCK ~= nil then
   local boot_name, boot_path, boot_prefix = DetectBootDevice()
+  PLDR.BOOT_DEVICE_KIND = boot_name
   UI.boot_device = UI.DEVLOCK.NONE
   UI.boot_locks = {}
   if boot_name == "MX4SIO" then

@@ -2365,6 +2365,23 @@ function UI.RefreshMassDevicePage(device_kind)
       return true
     end
 
+    local boot_is_mx4sio = (PLDR ~= nil and PLDR.BOOT_DEVICE_KIND == "MX4SIO")
+    local scene_is_mx4sio = UI.IsMx4sioScene(UI.CURSCENE)
+    local enum_has_mx4sio = false
+    if PLDR ~= nil and type(PLDR.HasClassifiedMassSlot) == "function" then
+      enum_has_mx4sio = PLDR.HasClassifiedMassSlot("MX4SIO")
+    end
+
+    if not boot_is_mx4sio and not (scene_is_mx4sio and enum_has_mx4sio) then
+      if PLDR.MX4SIO ~= nil then
+        PLDR.MX4SIO.READY = false
+        PLDR.MX4SIO.MASSINDX = nil
+        PLDR.MX4SIO.ROOT = nil
+      end
+      UI.Notif_queue.add("MX4SIO not detected (searched mass0..mass9)")
+      return false
+    end
+
     local hint = nil
     if PLDR.MX4SIO ~= nil then
       hint = PLDR.MX4SIO.PREFIX_HINT
