@@ -10,6 +10,7 @@
 #include <iopcontrol.h>
 #include <smod.h>
 #include <audsrv.h>
+#include <kernel.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <ctype.h>
@@ -292,6 +293,33 @@ static bool ExtractDeviceRoot(const char *path, char *root, size_t root_size)
     return true;
 }
 
+static bool ResolveMassAliasLaunchPath(const char *launch_path, char *resolved_path, size_t resolved_size)
+{
+    if (launch_path == NULL || resolved_path == NULL || resolved_size == 0) {
+        return false;
+    }
+    if (strncmp(launch_path, "mass:/", 6) != 0) {
+        return false;
+    }
+    int explicit_idx = -1;
+    if (sscanf(launch_path, "mass%d:/", &explicit_idx) == 1) {
+        return false;
+    }
+
+    const char *relative = launch_path + 6;
+    struct stat st;
+    for (int i = 0; i <= 9; ++i) {
+        char candidate[255];
+        snprintf(candidate, sizeof(candidate), "mass%d:/%s", i, relative);
+        if (stat(candidate, &st) == 0) {
+            snprintf(resolved_path, resolved_size, "%s", candidate);
+            return true;
+        }
+    }
+
+    return false;
+}
+
 static int WaitUntilDeviceRootIsReady(const char *root, int retries)
 {
     struct stat buffer;
@@ -301,7 +329,7 @@ static int WaitUntilDeviceRootIsReady(const char *root, int retries)
     {
         ret = stat(root, &buffer);
         /* Wait until the device is ready */
-        nopdelay();
+        DelayThread(100 * 1000);
         retries--;
     }
 
@@ -487,6 +515,12 @@ int main(int argc, char * argv[])
     LOAD_IRX_NARG(audsrv_irx);
 
     const char *launch_path = GetLaunchPath(argc, argv);
+    char resolved_launch_path[255];
+    bool mass_alias_resolved = false;
+    if (ResolveMassAliasLaunchPath(launch_path, resolved_launch_path, sizeof(resolved_launch_path))) {
+        launch_path = resolved_launch_path;
+        mass_alias_resolved = true;
+    }
     if (launch_path != NULL && (argc <= 0 || argv == NULL || argv[0] == NULL)) {
         setAppDirFromPath(launch_path);
         snprintf(boot_path, sizeof(boot_path), "%s", app_dir);
@@ -501,13 +535,20 @@ int main(int argc, char * argv[])
     NormalizeDirPath(boot_path, sizeof(boot_path));
     NormalizeDirPath(app_dir, sizeof(app_dir));
 
+    if (mass_alias_resolved) {
+        setAppDirFromPath(launch_path);
+        snprintf(boot_path, sizeof(boot_path), "%s", app_dir);
+        NormalizeDirPath(boot_path, sizeof(boot_path));
+        NormalizeDirPath(app_dir, sizeof(app_dir));
+    }
+
     // waitUntilDeviceIsReady by fjtrujy (root path derived from boot path when possible)
     char device_root[16];
-    const char *ready_root = "mass:/";
+    const char *ready_root = boot_path;
     if (ExtractDeviceRoot(boot_path, device_root, sizeof(device_root))) {
         ready_root = device_root;
     }
-    WaitUntilDeviceRootIsReady(ready_root, 50);
+    WaitUntilDeviceRootIsReady(ready_root, 60);
 
     if (!BootPathMatchesLaunchPath(launch_path)) {
         DPRINTF("boot_path verification failed for argv0=%s; using app_dir fallback\n", launch_path ? launch_path : "<null>");

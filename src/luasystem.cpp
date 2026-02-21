@@ -140,19 +140,16 @@ static bool QueryMassDriverName(int idx, char out_driver[8])
 	char mass_path[16];
 	snprintf(mass_path, sizeof(mass_path), "mass%d:/", idx);
 
-	int dd = fileXioDopen(mass_path);
-	if (dd < 0) {
+	int fd = fileXioOpen(mass_path, O_RDONLY, 0);
+	if (fd < 0) {
 		out_driver[0] = '\0';
 		return false;
 	}
 
-	char devid[8];
-	memset(devid, 0, sizeof(devid));
-
-	int *intptr_ctl = (int *)devid;
-	int rc = fileXioIoctl(dd, USBMASS_IOCTL_GET_DRIVERNAME, (void*)"");
-	*intptr_ctl = rc;
-	fileXioDclose(dd);
+	char devid[16] = {0};
+	int rc = fileXioIoctl(fd, USBMASS_IOCTL_GET_DRIVERNAME, devid);
+	fileXioClose(fd);
+	devid[sizeof(devid) - 1] = '\0';
 
 	if (rc < 0 || devid[0] == '\0') {
 		out_driver[0] = '\0';
@@ -204,9 +201,7 @@ int mx4sio_init_and_get_root(const char *hint, char *out_root, size_t out_sz)
 				boot_is_mx4 = true;
 			} else {
 				int boot_mass_idx = -1;
-				if (strcmp(boot_root, "mass:/") == 0) {
-					boot_mass_idx = 0;
-				} else if (sscanf(boot_root, "mass%d:/", &boot_mass_idx) != 1) {
+				if (sscanf(boot_root, "mass%d:/", &boot_mass_idx) != 1) {
 					boot_mass_idx = -1;
 				}
 				if (boot_mass_idx >= 0 && boot_mass_idx <= 9) {
