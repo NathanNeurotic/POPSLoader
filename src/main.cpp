@@ -30,6 +30,8 @@
 #include <fileXio_rpc.h>
 #include <fileio.h>
 
+extern "C" int DelayThread(int usec);
+
 extern "C"{
 #include <libds34bt.h>
 #include <libds34usb.h>
