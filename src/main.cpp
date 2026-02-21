@@ -592,7 +592,19 @@ int main(int argc, char * argv[])
     const char *launch_path = GetLaunchPath(argc, argv);
     char resolved_launch_path[255];
     bool mass_alias_resolved = false;
-    if (ResolveMassAliasLaunchPath(launch_path, resolved_launch_path, sizeof(resolved_launch_path))) {
+    if (launch_path != NULL && strncmp(launch_path, "mass:/", 6) == 0) {
+        int explicit_idx = -1;
+        if (sscanf(launch_path, "mass%d:/", &explicit_idx) != 1) {
+            for (int tries = 0; tries < 60; ++tries) {
+                if (ResolveMassAliasLaunchPath(launch_path, resolved_launch_path, sizeof(resolved_launch_path))) {
+                    launch_path = resolved_launch_path;
+                    mass_alias_resolved = true;
+                    break;
+                }
+                DelayThread(100 * 1000);
+            }
+        }
+    } else if (ResolveMassAliasLaunchPath(launch_path, resolved_launch_path, sizeof(resolved_launch_path))) {
         launch_path = resolved_launch_path;
         mass_alias_resolved = true;
     }

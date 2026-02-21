@@ -252,6 +252,18 @@ function PLDR.GetMassDriverName(index)
   if type(name) ~= "string" or name == "" then
     return nil
   end
+
+  name = string.lower(string.gsub(name, "^%s*(.-)%s*$", "%1"))
+  if name == "" then
+    return nil
+  end
+  if string.match(name, "^usb") then
+    return "usb"
+  end
+  if string.match(name, "^sdc") then
+    return "sdc"
+  end
+
   return name
 end
 
