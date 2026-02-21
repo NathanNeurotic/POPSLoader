@@ -153,38 +153,6 @@ static void BootStamp(const char *stage)
     DPRINTF("BOOT: %s %u\n", stage, boot_ms());
 }
 
-static void ResolveMassLaunchPath(int argc, char **argv)
-{
-    if (argc <= 0 || argv == NULL || argv[0] == NULL) {
-        return;
-    }
-
-    const char *prefix = "mass:/";
-    if (strncmp(argv[0], prefix, strlen(prefix)) != 0) {
-        return;
-    }
-
-    const char *suffix = argv[0] + strlen(prefix);
-    struct stat path_stat;
-    char probe[255];
-
-    for (int tick = 0; tick < 100; ++tick) {
-        for (int idx = 0; idx < 10; ++idx) {
-            snprintf(probe, sizeof(probe), "mass%d:/%s", idx, suffix);
-            if (stat(probe, &path_stat) == 0) {
-                size_t len = strlen(probe) + 1;
-                char *resolved = (char *)malloc(len);
-                if (resolved != NULL) {
-                    memcpy(resolved, probe, len);
-                    argv[0] = resolved;
-                }
-                return;
-            }
-        }
-        usleep(250000);
-    }
-}
-
 static void NormalizeArgv0Path(char *path)
 {
     if (path == NULL || path[0] == '\0') {
@@ -218,6 +186,22 @@ static bool BootPathMatchesLaunchPath(const char *launch_path)
     }
 
     return strncmp(launch_path, boot_path, boot_len) == 0;
+}
+
+static const char *GetLaunchPath(int argc, char **argv)
+{
+    if (argc > 0 && argv != NULL && argv[0] != NULL && argv[0][0] != '\0') {
+        NormalizeArgv0Path(argv[0]);
+        return argv[0];
+    }
+
+    static char cwd_path[255];
+    if (getcwd(cwd_path, sizeof(cwd_path)) != NULL) {
+        NormalizeDirPath(cwd_path, sizeof(cwd_path));
+        return cwd_path;
+    }
+
+    return NULL;
 }
 
 void setLuaBootPath(int argc, char ** argv, int idx)
@@ -502,13 +486,20 @@ int main(int argc, char * argv[])
 
     LOAD_IRX_NARG(audsrv_irx);
 
-    ResolveMassLaunchPath(argc, argv);
-    setLuaBootPath (argc, argv, 0);
-    if (argc > 0 && argv[0]) {
-        setAppDirFromPath(argv[0]);
+    const char *launch_path = GetLaunchPath(argc, argv);
+    if (launch_path != NULL && (argc <= 0 || argv == NULL || argv[0] == NULL)) {
+        setAppDirFromPath(launch_path);
+        snprintf(boot_path, sizeof(boot_path), "%s", app_dir);
     } else {
-        setAppDirFromPath(boot_path);
+        setLuaBootPath(argc, argv, 0);
+        if (launch_path != NULL) {
+            setAppDirFromPath(launch_path);
+        } else {
+            setAppDirFromPath(boot_path);
+        }
     }
+    NormalizeDirPath(boot_path, sizeof(boot_path));
+    NormalizeDirPath(app_dir, sizeof(app_dir));
 
     // waitUntilDeviceIsReady by fjtrujy (root path derived from boot path when possible)
     char device_root[16];
@@ -517,22 +508,12 @@ int main(int argc, char * argv[])
         ready_root = device_root;
     }
     WaitUntilDeviceRootIsReady(ready_root, 50);
-	
-        ResolveMassLaunchPath(argc, argv);
-        if (argc > 0 && argv[0]) {
-            NormalizeArgv0Path(argv[0]);
-        }
-        setLuaBootPath (argc, argv, 0);
-        if (argc > 0 && argv[0]) {
-            setAppDirFromPath(argv[0]);
-        } else {
-            setAppDirFromPath(boot_path);
-        }
-        if (!BootPathMatchesLaunchPath((argc > 0) ? argv[0] : NULL)) {
-            DPRINTF("boot_path verification failed for argv0=%s; using app_dir fallback\n", (argc > 0 && argv[0]) ? argv[0] : "<null>");
-            snprintf(boot_path, sizeof(boot_path), "%s", app_dir);
-            NormalizeDirPath(boot_path, sizeof(boot_path));
-        }
+
+    if (!BootPathMatchesLaunchPath(launch_path)) {
+        DPRINTF("boot_path verification failed for argv0=%s; using app_dir fallback\n", launch_path ? launch_path : "<null>");
+        snprintf(boot_path, sizeof(boot_path), "%s", app_dir);
+        NormalizeDirPath(boot_path, sizeof(boot_path));
+    }
 	// Lua init
 	// init internals library
     
