@@ -322,6 +322,76 @@ static bool ResolveMassAliasLaunchPath(const char *launch_path, char *resolved_p
     return false;
 }
 
+static bool BuildSystemLuaPath(const char *dir, char *out_path, size_t out_size)
+{
+    if (dir == NULL || out_path == NULL || out_size == 0) {
+        return false;
+    }
+    int written = snprintf(out_path, out_size, "%ssystem.lua", dir);
+    return written > 0 && (size_t)written < out_size;
+}
+
+static bool RebindAppDirFromLaunchPath(const char *launch_path)
+{
+    if (launch_path == NULL || strncmp(launch_path, "mass", 4) != 0) {
+        return false;
+    }
+
+    char launch_copy[255];
+    snprintf(launch_copy, sizeof(launch_copy), "%s", launch_path);
+    for (char *p = launch_copy; *p; ++p) {
+        if (*p == '\\') {
+            *p = '/';
+        }
+    }
+
+    const char *suffix = strchr(launch_copy, ':');
+    if (suffix == NULL || suffix[1] != '/') {
+        return false;
+    }
+
+    char launch_dir[255];
+    snprintf(launch_dir, sizeof(launch_dir), "%s", launch_copy);
+    char *last_slash = strrchr(launch_dir, '/');
+    if (last_slash == NULL) {
+        return false;
+    }
+    last_slash[1] = '\0';
+
+    const char *dir_suffix = strchr(launch_dir, ':');
+    if (dir_suffix == NULL || dir_suffix[1] != '/') {
+        return false;
+    }
+
+    struct stat st;
+    for (int i = 0; i <= 9; ++i) {
+        char candidate_launch[255];
+        char candidate_dir[255];
+        char candidate_system[255];
+        snprintf(candidate_launch, sizeof(candidate_launch), "mass%d:%s", i, suffix + 1);
+        snprintf(candidate_dir, sizeof(candidate_dir), "mass%d:%s", i, dir_suffix + 1);
+
+        if (stat(candidate_launch, &st) != 0) {
+            continue;
+        }
+        if (!BuildSystemLuaPath(candidate_dir, candidate_system, sizeof(candidate_system))) {
+            continue;
+        }
+        if (stat(candidate_system, &st) != 0) {
+            continue;
+        }
+
+        snprintf(app_dir, sizeof(app_dir), "%s", candidate_dir);
+        snprintf(boot_path, sizeof(boot_path), "%s", candidate_dir);
+        NormalizeDirPath(app_dir, sizeof(app_dir));
+        NormalizeDirPath(boot_path, sizeof(boot_path));
+        setenv("APP_DIR", app_dir, 1);
+        return true;
+    }
+
+    return false;
+}
+
 static int WaitUntilDeviceRootIsReady(const char *root, int retries)
 {
     struct stat buffer;
@@ -557,6 +627,21 @@ int main(int argc, char * argv[])
         snprintf(boot_path, sizeof(boot_path), "%s", app_dir);
         NormalizeDirPath(boot_path, sizeof(boot_path));
     }
+
+    char system_lua_path[255];
+    struct stat st;
+    if (!BuildSystemLuaPath(app_dir, system_lua_path, sizeof(system_lua_path)) || stat(system_lua_path, &st) != 0) {
+        RebindAppDirFromLaunchPath(launch_path);
+    }
+
+    if (!BuildSystemLuaPath(app_dir, system_lua_path, sizeof(system_lua_path)) || stat(system_lua_path, &st) != 0) {
+        printf("BOOT FATAL: cannot open system.lua in APP_DIR=%s\n", app_dir);
+        dbgprintf("BOOT FATAL: cannot open system.lua in APP_DIR=%s\n", app_dir);
+        DPRINTF("BOOT FATAL: cannot open system.lua in APP_DIR=%s\n", app_dir);
+        return 1;
+    }
+
+    setenv("APP_DIR", app_dir, 1);
 	// Lua init
 	// init internals library
     
