@@ -127,12 +127,14 @@ static bool ProbeDir(const char *path, int *out_ret)
 	return false;
 }
 
+static const int kMaxMassDriverQueryIndex = 255;
+
 static bool QueryMassDriverName(int idx, char out_driver[8])
 {
 	if (out_driver == NULL) {
 		return false;
 	}
-	if (idx < 0) {
+	if (idx < 0 || idx > kMaxMassDriverQueryIndex) {
 		out_driver[0] = '\0';
 		return false;
 	}
@@ -1093,6 +1095,52 @@ static int lua_resolveAssetType(lua_State *L) {
 }
 
 
+
+static bool ParseMassMountIndex(const char *mount, int *out_idx)
+{
+	if (out_idx == NULL) {
+		return false;
+	}
+	*out_idx = -1;
+	if (mount == NULL) {
+		return false;
+	}
+
+	if (strcmp(mount, "mass:/") == 0) {
+		*out_idx = 0;
+		return true;
+	}
+
+	int idx = -1;
+	if (sscanf(mount, "mass%d:/", &idx) == 1 && idx >= 0 && idx <= kMaxMassDriverQueryIndex) {
+		*out_idx = idx;
+		return true;
+	}
+	return false;
+}
+
+static int lua_getMassDriverNameFromMount(lua_State *L)
+{
+	int argc = lua_gettop(L);
+	if (argc != 1) {
+		return luaL_error(L, "Argument error: System.getMassDriverNameFromMount(mount) takes one argument.");
+	}
+	const char *mount = luaL_checkstring(L, 1);
+	int idx = -1;
+	if (!ParseMassMountIndex(mount, &idx)) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	char driver[8];
+	if (!QueryMassDriverName(idx, driver)) {
+		lua_pushnil(L);
+		return 1;
+	}
+	lua_pushstring(L, driver);
+	return 1;
+}
+
 static int lua_getMassDriverName(lua_State *L)
 {
 	int argc = lua_gettop(L);
@@ -1100,7 +1148,7 @@ static int lua_getMassDriverName(lua_State *L)
 		return luaL_error(L, "Argument error: System.getMassDriverName(index) takes one argument.");
 	}
 	int idx = luaL_checkinteger(L, 1);
-	if (idx < 0) {
+	if (idx < 0 || idx > kMaxMassDriverQueryIndex) {
 		lua_pushnil(L);
 		return 1;
 	}
@@ -1167,7 +1215,8 @@ static const luaL_Reg System_functions[] = {
 	{"getAppDir",                 lua_getAppDir},
 	{"resolveAsset",           lua_resolveAsset},
 	{"resolveAssetType",   lua_resolveAssetType},
-	{"getMassDriverName",        lua_getMassDriverName},
+	{"getMassDriverName",                 lua_getMassDriverName},
+	{"getMassDriverNameFromMount",        lua_getMassDriverNameFromMount},
 	{"initMX4SIO",             lua_mx4sio_init},
 	{"bdmList",                lua_bdm_list},
 	{"findBDMByDriver",    lua_find_bdm_by_driver},

@@ -899,6 +899,11 @@ local function DrawSplash(alpha)
   Font.ftPrint(BFONT, UI.SCR.X_MID, y0 + 18,  8, UI.SCR.X, 16, "Graphics by Berion",   Color.new(0, 0, 0, alpha))
   Font.ftPrint(BFONT, UI.SCR.X_MID, y0 + 36,  8, UI.SCR.X, 16, "israpps.github.io",    Color.new(0, 0, 0, alpha))
 end
+        local function FlipFrame()
+          UI.BootSoundTick()
+          Screen.flip()
+        end
+
         local fade_in_frames = 120
         local fade_out_frames = 60
 
@@ -935,12 +940,12 @@ end
           local alpha = Round(128 * (i / fade_in_frames))
           DrawBackground()
           DrawSplash(alpha)
-          Screen.flip()
+          FlipFrame()
         end
         for _ = 1, splash_hold_frames do
           DrawBackground()
           DrawSplash(128)
-          Screen.flip()
+          FlipFrame()
         end
         if fade_out_frames > 0 then
           for i = 1, fade_out_frames do
@@ -948,7 +953,7 @@ end
             DrawBackground()
             DrawSplash(128)
             Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
-            Screen.flip()
+            FlipFrame()
           end
         end
 
@@ -957,18 +962,18 @@ end
           local alpha = Round(128 * (1 - (i / credits_fade_in_frames)))
           DrawTargetScene(UI.SCENES.CREDITS)
           Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
-          Screen.flip()
+          FlipFrame()
         end
         for _ = 1, credits_hold_frames do
           DrawTargetScene(UI.SCENES.CREDITS)
-          Screen.flip()
+          FlipFrame()
         end
         if credits_fade_out_frames > 0 then
           for i = 1, credits_fade_out_frames do
             local alpha = Round(128 * (i / credits_fade_out_frames))
             DrawTargetScene(UI.SCENES.CREDITS)
             Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
-            Screen.flip()
+            FlipFrame()
           end
         end
 
@@ -978,10 +983,10 @@ end
           local alpha = Round(128 * (1 - (i / fade_in_frames)))
           DrawTargetScene(final_scene)
           Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
-          Screen.flip()
+          FlipFrame()
         end
         DrawTargetScene(final_scene)
-        Screen.flip()
+        FlipFrame()
 
         -- Cleanup boot sound resource (safe if audio backend ignores it).
         UI.BootSoundRelease()

@@ -209,18 +209,37 @@ function PLDR.GetMassDriverName(index)
   return name
 end
 
-local function ParseMassIndexFromMount(mount)
+local function ReadableMassMount(mount)
+  if type(mount) ~= "string" or mount == "" then
+    return false
+  end
+  if doesFolderExist(mount) then
+    return true
+  end
+  local ok, entries = pcall(System.listDirectory, mount)
+  return ok and type(entries) == "table"
+end
+
+function PLDR.GetMassDriverNameFromMount(mount)
   if type(mount) ~= "string" then
     return nil
   end
-  if mount == "mass:/" then
-    return 0
+  if System ~= nil and System.getMassDriverNameFromMount ~= nil then
+    local ok, name = pcall(System.getMassDriverNameFromMount, mount)
+    if ok and type(name) == "string" and name ~= "" then
+      return name
+    end
   end
-  local idx = string.match(mount, "^mass(%d+):/$")
+  local idx = nil
+  if mount == "mass:/" then
+    idx = 0
+  else
+    idx = tonumber(string.match(mount, "^mass(%d+):/$"))
+  end
   if idx == nil then
     return nil
   end
-  return tonumber(idx)
+  return PLDR.GetMassDriverName(idx)
 end
 
 function PLDR.EnumerateMassMounts()
@@ -236,11 +255,13 @@ function PLDR.EnumerateMassMounts()
 
   while index < hard_cap and missing_streak < max_gap do
     local mount = (index == 0) and "mass:/" or ("mass"..tostring(index)..":/")
-    local present = false
-    if doesFolderExist(mount) then
-      present = true
-    elseif PLDR.GetMassDriverName(index) ~= nil then
-      present = true
+    local present = ReadableMassMount(mount)
+    if not present then
+      local driver = PLDR.GetMassDriverNameFromMount(mount)
+      if driver ~= nil then
+        System.delayThreadMs(50)
+        present = ReadableMassMount(mount)
+      end
     end
 
     if present then
@@ -263,13 +284,12 @@ function PLDR.ClassifyMassMount(mount)
     details = {}
   }
 
-  local index = ParseMassIndexFromMount(mount)
-  if index == nil then
+  if type(mount) ~= "string" or string.match(mount, "^mass%d*:/$") == nil then
     result.details.error = "not-mass-mount"
     return result
   end
 
-  local driver = PLDR.GetMassDriverName(index)
+  local driver = PLDR.GetMassDriverNameFromMount(mount)
   result.details.driver = driver
 
   if driver == "usb" then
