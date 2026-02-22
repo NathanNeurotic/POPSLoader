@@ -449,7 +449,6 @@ static bool QueryMassDriverNameRaw(int idx, char out_driver[16])
 
 static void ShowBootDiagnostics(const char *launch_path, bool mass_alias_resolved)
 {
-    struct stat st;
     char diag_root[16] = {0};
     const char *root = ExtractDeviceRoot(app_dir, diag_root, sizeof(diag_root)) ? diag_root : "<none>";
 
@@ -466,7 +465,11 @@ static void ShowBootDiagnostics(const char *launch_path, bool mass_alias_resolve
         char mass_root[16];
         char driver[16] = {0};
         snprintf(mass_root, sizeof(mass_root), "mass%d:/", i);
-        int root_ok = (stat(mass_root, &st) == 0) ? 1 : 0;
+        int dd = fileXioDopen(mass_root);
+        int root_ok = (dd >= 0) ? 1 : 0;
+        if (dd >= 0) {
+            fileXioDclose(dd);
+        }
         bool has_driver = QueryMassDriverNameRaw(i, driver);
         scr_printf("mass%d root=%d driver=%s\n", i, root_ok, has_driver ? driver : "<nil>");
     }
@@ -723,6 +726,7 @@ int main(int argc, char * argv[])
     while (!BuildSystemLuaPath(app_dir, system_lua_path, sizeof(system_lua_path)) || stat(system_lua_path, &st) != 0) {
         ShowBootDiagnostics(launch_path, mass_alias_resolved);
         while (!isButtonPressed(PAD_START)) {
+            DelayThread(16 * 1000);
         }
     }
 
