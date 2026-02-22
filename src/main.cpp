@@ -860,22 +860,29 @@ int main(int argc, char * argv[])
 		int explicit_idx = -1;
 		if (sscanf(launch_path, "mass%d:/", &explicit_idx) != 1) {
 			const char *relative = launch_path + 6;
-			for (int i = 0; i <= 9; ++i) {
-				char candidate[255];
-				snprintf(candidate, sizeof(candidate), "mass%d:/%s", i, relative);
-				if (FileExistsXio(candidate)) {
-					snprintf(resolved_launch_path, sizeof(resolved_launch_path), "%s", candidate);
-					launch_path = resolved_launch_path;
-					mass_alias_resolved = true;
-					break;
+			for (int tries = 0; tries < 60 && !mass_alias_resolved; ++tries) {
+				for (int i = 0; i <= 9; ++i) {
+					char candidate[255];
+					snprintf(candidate, sizeof(candidate), "mass%d:/%s", i, relative);
+					if (FileExistsXio(candidate)) {
+						snprintf(resolved_launch_path, sizeof(resolved_launch_path), "%s", candidate);
+						launch_path = resolved_launch_path;
+						mass_alias_resolved = true;
+						break;
+					}
+				}
+				if (!mass_alias_resolved) {
+					DelayThread(100 * 1000);
 				}
 			}
 			if (!mass_alias_resolved) {
-				int only_idx = GetOnlyMountedMassIndexOrNeg1();
-				if (only_idx >= 0) {
-					RewriteMassAliasToIndex(launch_path, only_idx, resolved_launch_path, sizeof(resolved_launch_path));
-					launch_path = resolved_launch_path;
-					mass_alias_resolved = true;
+				if (CountMountedMassRoots() == 1) {
+					int only_idx = GetOnlyMountedMassIndexOrNeg1();
+					if (only_idx >= 0) {
+						RewriteMassAliasToIndex(launch_path, only_idx, resolved_launch_path, sizeof(resolved_launch_path));
+						launch_path = resolved_launch_path;
+						mass_alias_resolved = true;
+					}
 				}
 			}
 		}
