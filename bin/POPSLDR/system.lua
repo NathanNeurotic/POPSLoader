@@ -377,10 +377,17 @@ function PLDR.DebugMassIdentitySnapshot()
   end
   PLDR.DEBUG_MASS_IDENTITY_DONE = true
 
-  LOG("Mass identity snapshot begin")
+  local slots = {}
   for i = 0, 9 do
-    local root = "mass"..tostring(i)..":/"
-    if doesFolderExist(root) then
+    local exists = false
+    if System ~= nil and System.massRootExists ~= nil then
+      local ok_exists, present = pcall(System.massRootExists, i)
+      exists = (ok_exists and present == true)
+    else
+      exists = doesFolderExist("mass"..tostring(i)..":/") == true
+    end
+
+    if exists then
       local raw = nil
       if System ~= nil and System.getMassDriverName ~= nil then
         local ok, name = pcall(System.getMassDriverName, i)
@@ -389,12 +396,31 @@ function PLDR.DebugMassIdentitySnapshot()
         end
       end
       local norm = PLDR.GetMassDriverName(i)
-      LOGF("mass%d raw=%s norm=%s", i, tostring(raw or "<nil>"), tostring(norm or "<nil>"))
+      slots[#slots + 1] = { idx = i, raw = raw, norm = norm }
     end
   end
-  LOG("Mass identity snapshot end")
-end
 
+  local routed_usb = "<none>"
+  local routed_mx4 = "<none>"
+  local all_slots = PLDR.EnumerateMassSlots(9) or {}
+  local usb = PLDR.RouteMassSlotsForPage("USB", all_slots) or {}
+  local mx4 = PLDR.RouteMassSlotsForPage("MX4SIO", all_slots) or {}
+  if usb[1] ~= nil and usb[1].source_slot ~= nil then
+    routed_usb = "mass"..tostring(usb[1].source_slot)
+  end
+  if mx4[1] ~= nil and mx4[1].source_slot ~= nil then
+    routed_mx4 = "mass"..tostring(mx4[1].source_slot)
+  end
+
+  if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
+    UI.Notif_queue.add("Mass ID snapshot")
+    for i = 1, #slots do
+      local s = slots[i]
+      UI.Notif_queue.add(string.format("mass%d raw=%s norm=%s", s.idx, tostring(s.raw or "<nil>"), tostring(s.norm or "<nil>")))
+    end
+    UI.Notif_queue.add(string.format("routed USB=%s MX4SIO=%s", routed_usb, routed_mx4))
+  end
+end
 function PLDR.MarkMassSlotsDirty(reason)
   local state = PLDR.MASS_ENUM
   if type(state) ~= "table" then

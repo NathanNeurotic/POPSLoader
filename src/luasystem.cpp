@@ -127,7 +127,7 @@ static bool ProbeDir(const char *path, int *out_ret)
 	return false;
 }
 
-static bool QueryMassDriverName(int idx, char out_driver[8])
+static bool QueryMassDriverName(int idx, char out_driver[16])
 {
 	if (out_driver == NULL) {
 		return false;
@@ -137,31 +137,11 @@ static bool QueryMassDriverName(int idx, char out_driver[8])
 		return false;
 	}
 
-	char mass_path[16];
-	snprintf(mass_path, sizeof(mass_path), "mass%d:/", idx);
+	char mass_dev[8];
+	snprintf(mass_dev, sizeof(mass_dev), "mass%d:", idx);
 
 	char devid[16] = {0};
-	int rc = -1;
-
-	int dd = fileXioDopen(mass_path);
-	if (dd >= 0) {
-		rc = fileXioIoctl(dd, USBMASS_IOCTL_GET_DRIVERNAME, devid);
-		fileXioDclose(dd);
-	}
-
-	if (dd < 0 || rc < 0) {
-		devid[0] = '\0';
-		int fd = fileXioOpen(mass_path, O_RDONLY, 0);
-		if (fd < 0) {
-			char mass_path_dot[18];
-			snprintf(mass_path_dot, sizeof(mass_path_dot), "mass%d:/.", idx);
-			fd = fileXioOpen(mass_path_dot, O_RDONLY, 0);
-		}
-		if (fd >= 0) {
-			rc = fileXioIoctl(fd, USBMASS_IOCTL_GET_DRIVERNAME, devid);
-			fileXioClose(fd);
-		}
-	}
+	int rc = fileXioDevctl(mass_dev, USBMASS_IOCTL_GET_DRIVERNAME, NULL, 0, devid, sizeof(devid));
 
 	devid[sizeof(devid) - 1] = '\0';
 	if (rc < 0 || devid[0] == '\0') {
@@ -169,8 +149,33 @@ static bool QueryMassDriverName(int idx, char out_driver[8])
 		return false;
 	}
 
-	snprintf(out_driver, 8, "%s", devid);
+	snprintf(out_driver, 16, "%s", devid);
 	return true;
+}
+
+static int lua_massRootExists(lua_State *L)
+{
+	int argc = lua_gettop(L);
+	if (argc != 1) {
+		return luaL_error(L, "Argument error: System.massRootExists(index) takes one argument.");
+	}
+	int idx = luaL_checkinteger(L, 1);
+	if (idx < 0 || idx > 9) {
+		lua_pushboolean(L, 0);
+		return 1;
+	}
+
+	char mass_root[16];
+	snprintf(mass_root, sizeof(mass_root), "mass%d:/", idx);
+	int dd = fileXioDopen(mass_root);
+	if (dd >= 0) {
+		fileXioDclose(dd);
+		lua_pushboolean(L, 1);
+		return 1;
+	}
+
+	lua_pushboolean(L, 0);
+	return 1;
 }
 
 // MX4SIO init notes:
@@ -218,7 +223,7 @@ int mx4sio_init_and_get_root(const char *hint, char *out_root, size_t out_sz)
 					boot_mass_idx = -1;
 				}
 				if (boot_mass_idx >= 0 && boot_mass_idx <= 9) {
-					char driver[8];
+					char driver[16];
 					if (QueryMassDriverName(boot_mass_idx, driver)) {
 						if (strcmp(driver, "sdc") == 0 || strcmp(driver, "mx4sio") == 0) {
 							boot_is_mx4 = true;
@@ -269,7 +274,7 @@ int mx4sio_init_and_get_root(const char *hint, char *out_root, size_t out_sz)
 	}
 
 	for (int i = 0; i <= 9; ++i) {
-		char driver[8];
+		char driver[16];
 		bool has_driver = QueryMassDriverName(i, driver);
 		DPRINTF("MX4SIO probe mass%d driver=%s ok=%d\n", i, has_driver ? driver : "", has_driver);
 		if (!has_driver) {
@@ -1113,7 +1118,7 @@ static int lua_getMassDriverName(lua_State *L)
 		return 1;
 	}
 
-	char driver[8];
+	char driver[16];
 	if (!QueryMassDriverName(idx, driver)) {
 		lua_pushnil(L);
 		return 1;
@@ -1176,6 +1181,7 @@ static const luaL_Reg System_functions[] = {
 	{"resolveAsset",           lua_resolveAsset},
 	{"resolveAssetType",   lua_resolveAssetType},
 	{"getMassDriverName",        lua_getMassDriverName},
+	{"massRootExists",           lua_massRootExists},
 	{"initMX4SIO",             lua_mx4sio_init},
 	{"bdmList",                lua_bdm_list},
 	{"findBDMByDriver",    lua_find_bdm_by_driver},
