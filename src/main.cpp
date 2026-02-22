@@ -412,6 +412,22 @@ static int WaitUntilDeviceRootIsReady(const char *root, int retries)
     return ret;
 }
 
+
+static int CountMountedMassRoots()
+{
+    int count = 0;
+    for (int i = 0; i <= 9; ++i) {
+        char path[16];
+        snprintf(path, sizeof(path), "mass%d:/", i);
+        int dd = fileXioDopen(path);
+        if (dd >= 0) {
+            fileXioDclose(dd);
+            count++;
+        }
+    }
+    return count;
+}
+
 static bool QueryMassDriverNameRaw(int idx, char out_driver[16])
 {
     if (out_driver == NULL || idx < 0 || idx > 9) {
@@ -655,6 +671,22 @@ int main(int argc, char * argv[])
     LOAD_IRX_NARG(audsrv_irx);
 
     const char *launch_path = GetLaunchPath(argc, argv);
+    int last_mass_count = -1;
+    int stable_frames = 0;
+    for (int tries = 0; tries < 80; ++tries) {
+        int current_mass_count = CountMountedMassRoots();
+        if (current_mass_count == last_mass_count) {
+            stable_frames++;
+        } else {
+            stable_frames = 0;
+        }
+        if (stable_frames >= 5) {
+            break;
+        }
+        last_mass_count = current_mass_count;
+        DelayThread(100 * 1000);
+    }
+
     char resolved_launch_path[255];
     bool mass_alias_resolved = false;
     if (launch_path != NULL && strncmp(launch_path, "mass:/", 6) == 0) {
