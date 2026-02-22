@@ -29,6 +29,7 @@
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
 #include <fileio.h>
+#include <usbhdfsd-common.h>
 
 extern "C" int DelayThread(int usec);
 
@@ -411,6 +412,67 @@ static int WaitUntilDeviceRootIsReady(const char *root, int retries)
     return ret;
 }
 
+static bool QueryMassDriverNameRaw(int idx, char out_driver[16])
+{
+    if (out_driver == NULL || idx < 0 || idx > 9) {
+        return false;
+    }
+
+    char mass_path[16];
+    snprintf(mass_path, sizeof(mass_path), "mass%d:/", idx);
+
+    char devid[16] = {0};
+    int rc = -1;
+
+    int dd = fileXioDopen(mass_path);
+    if (dd >= 0) {
+        rc = fileXioIoctl(dd, USBMASS_IOCTL_GET_DRIVERNAME, devid);
+        fileXioDclose(dd);
+    }
+
+    if (dd < 0 || rc < 0) {
+        int fd = fileXioOpen(mass_path, O_RDONLY, 0);
+        if (fd >= 0) {
+            rc = fileXioIoctl(fd, USBMASS_IOCTL_GET_DRIVERNAME, devid);
+            fileXioClose(fd);
+        }
+    }
+
+    devid[sizeof(devid) - 1] = '\0';
+    if (rc < 0 || devid[0] == '\0') {
+        return false;
+    }
+
+    snprintf(out_driver, 16, "%s", devid);
+    return true;
+}
+
+static void ShowBootDiagnostics(const char *launch_path, bool mass_alias_resolved)
+{
+    struct stat st;
+    char diag_root[16] = {0};
+    const char *root = ExtractDeviceRoot(app_dir, diag_root, sizeof(diag_root)) ? diag_root : "<none>";
+
+    init_scr();
+    scr_clear();
+    scr_printf("BOOT DIAGNOSTICS\n");
+    scr_printf("launch_path: %s\n", launch_path ? launch_path : "<null>");
+    scr_printf("app_dir: %s\n", app_dir);
+    scr_printf("boot_path: %s\n", boot_path);
+    scr_printf("device_root: %s\n", root);
+    scr_printf("mass_alias_resolved: %d\n", mass_alias_resolved ? 1 : 0);
+    scr_printf("\nMass slots:\n");
+    for (int i = 0; i <= 9; ++i) {
+        char mass_root[16];
+        char driver[16] = {0};
+        snprintf(mass_root, sizeof(mass_root), "mass%d:/", i);
+        int root_ok = (stat(mass_root, &st) == 0) ? 1 : 0;
+        bool has_driver = QueryMassDriverNameRaw(i, driver);
+        scr_printf("mass%d root=%d driver=%s\n", i, root_ok, has_driver ? driver : "<nil>");
+    }
+    scr_printf("\nPress START to retry\n");
+}
+
 
 void initMC(void)
 {
@@ -650,8 +712,18 @@ int main(int argc, char * argv[])
     }
 
     if (!BuildSystemLuaPath(app_dir, system_lua_path, sizeof(system_lua_path)) || stat(system_lua_path, &st) != 0) {
-        printf("BOOT FATAL: APP_DIR=%s missing system.lua\n", app_dir);
-        return 1;
+        char app_root[16];
+        const char *retry_root = app_dir;
+        if (ExtractDeviceRoot(app_dir, app_root, sizeof(app_root))) {
+            retry_root = app_root;
+        }
+        WaitUntilDeviceRootIsReady(retry_root, 60);
+    }
+
+    while (!BuildSystemLuaPath(app_dir, system_lua_path, sizeof(system_lua_path)) || stat(system_lua_path, &st) != 0) {
+        ShowBootDiagnostics(launch_path, mass_alias_resolved);
+        while (!isButtonPressed(PAD_START)) {
+        }
     }
 
     setenv("APP_DIR", app_dir, 1);
