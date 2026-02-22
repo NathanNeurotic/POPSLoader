@@ -441,6 +441,37 @@ static int CountMountedMassRoots()
     return count;
 }
 
+
+static int GetOnlyMountedMassIndexOrNeg1()
+{
+    int found = -1;
+    for (int i = 0; i <= 9; ++i) {
+        char path[16];
+        snprintf(path, sizeof(path), "mass%d:/", i);
+        int dd = fileXioDopen(path);
+        if (dd >= 0) {
+            fileXioDclose(dd);
+            if (found != -1) {
+                return -1;
+            }
+            found = i;
+        }
+    }
+    return found;
+}
+
+static void RewriteMassAliasToIndex(const char *src, int idx, char *out, size_t out_size)
+{
+    if (src == NULL || out == NULL || out_size == 0) {
+        return;
+    }
+    if (idx < 0 || idx > 9 || strncmp(src, "mass:/", 6) != 0) {
+        snprintf(out, out_size, "%s", src);
+        return;
+    }
+    snprintf(out, out_size, "mass%d:/%s", idx, src + 6);
+}
+
 static bool QueryMassDriverNameRaw(int idx, char out_driver[16])
 {
     if (out_driver == NULL || idx < 0 || idx > 9) {
@@ -734,6 +765,14 @@ int main(int argc, char * argv[])
                 }
                 DelayThread(100 * 1000);
             }
+            if (!mass_alias_resolved) {
+                int only_idx = GetOnlyMountedMassIndexOrNeg1();
+                if (only_idx >= 0) {
+                    RewriteMassAliasToIndex(launch_path, only_idx, resolved_launch_path, sizeof(resolved_launch_path));
+                    launch_path = resolved_launch_path;
+                    mass_alias_resolved = true;
+                }
+            }
         }
     } else if (ResolveMassAliasLaunchPath(launch_path, resolved_launch_path, sizeof(resolved_launch_path))) {
         launch_path = resolved_launch_path;
@@ -756,6 +795,16 @@ int main(int argc, char * argv[])
     if (mass_alias_resolved) {
         setAppDirFromPath(launch_path);
         snprintf(boot_path, sizeof(boot_path), "%s", app_dir);
+        if (strncmp(app_dir, "mass:/", 6) == 0 || strncmp(boot_path, "mass:/", 6) == 0) {
+            int explicit_idx = -1;
+            if (sscanf(launch_path, "mass%d:/", &explicit_idx) == 1) {
+                char rewritten[255];
+                RewriteMassAliasToIndex(app_dir, explicit_idx, rewritten, sizeof(rewritten));
+                snprintf(app_dir, sizeof(app_dir), "%s", rewritten);
+                RewriteMassAliasToIndex(boot_path, explicit_idx, rewritten, sizeof(rewritten));
+                snprintf(boot_path, sizeof(boot_path), "%s", rewritten);
+            }
+        }
         NormalizeDirPath(boot_path, sizeof(boot_path));
         NormalizeDirPath(app_dir, sizeof(app_dir));
     }
