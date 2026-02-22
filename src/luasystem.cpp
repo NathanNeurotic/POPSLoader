@@ -132,7 +132,7 @@ static bool QueryMassDriverName(int idx, char out_driver[8])
 	if (out_driver == NULL) {
 		return false;
 	}
-	if (idx < 0 || idx > 9) {
+	if (idx < 0) {
 		out_driver[0] = '\0';
 		return false;
 	}
@@ -1100,7 +1100,7 @@ static int lua_getMassDriverName(lua_State *L)
 		return luaL_error(L, "Argument error: System.getMassDriverName(index) takes one argument.");
 	}
 	int idx = luaL_checkinteger(L, 1);
-	if (idx < 0 || idx > 9) {
+	if (idx < 0) {
 		lua_pushnil(L);
 		return 1;
 	}

@@ -97,64 +97,17 @@ local function IsAbsoluteDevicePath(path)
 end
 
 local function ResolvePopstarterPath(path)
-  local fallback = "mass:/POPS/POPSTARTER.ELF"
   local chosen = path
   if chosen == nil or chosen == "" then
     chosen = JoinPath(APP_DIR_LOCAL, "POPSTARTER.ELF")
   elseif not IsAbsoluteDevicePath(chosen) then
     chosen = JoinPath(APP_DIR_LOCAL, chosen)
   end
-  if doesFileExist(chosen) then
-    return chosen
-  end
-  if chosen ~= fallback and doesFileExist(fallback) then
-    return fallback
-  end
   return chosen
 end
 
 local function ResolveIrx(name)
   return System.resolveAssetType(name, ASSET_IRX) or JoinPath(APP_DIR_LOCAL, name)
-end
-
-local function DetectBootDevice()
-  local boot_path = NormalizeDirPath(BOOT_PATH_RAW or "")
-  local prefix = string.match(boot_path, "^([%a]+%d*):")
-  if prefix == nil then
-    return nil, boot_path, prefix
-  end
-  if string.match(prefix, "^mmce%d*$") then
-    return "MMCE", boot_path, prefix
-  end
-  if string.match(prefix, "^mx4sio%d*$") then
-    return "MX4SIO", boot_path, prefix
-  end
-  if string.match(prefix, "^mass%d*$") then
-    local idx = tonumber(string.match(prefix, "^mass(%d+)$")) or 0
-    local driver = nil
-    if System ~= nil and System.getMassDriverName ~= nil then
-      local ok, name = pcall(System.getMassDriverName, idx)
-      if ok then
-        driver = name
-      end
-    end
-    if driver == "sdc" then
-      return "MX4SIO", boot_path, prefix
-    end
-    if driver == "usb" then
-      return "USB", boot_path, prefix
-    end
-    -- Legacy fallback (marker-based). Prefer IOCTL above.
-    local mx_marker = JoinPath(APP_DIR_LOCAL, ".boot_mx4sio")
-    local usb_marker = JoinPath(APP_DIR_LOCAL, ".boot_usb")
-    if doesFileExist(mx_marker) then
-      return "MX4SIO", boot_path, prefix
-    end
-    if doesFileExist(usb_marker) then
-      return "USB", boot_path, prefix
-    end
-  end
-  return nil, boot_path, prefix
 end
 
 local function LoadIrxFromDir(dir)
@@ -236,11 +189,12 @@ PLDR.BOOT_DEVICE_KIND = nil
 PLDR.MASS_ENUM = {
   cache = nil,
   stamp = 0,
-  dirty = true
+  dirty = true,
+  max_gap = 2,
+  hard_cap = 32
 }
 
 -- Mass backend detection via USBMASS_IOCTL_GET_DRIVERNAME (requires fileXio + ps2sdk usbhdfsd-common.h support).
--- Returns a short driver code like: "usb" (USB), "sdc" (MX4SIO SD), "udp" (UDPBD), "sd" (iLink SD), "ata" (HDD).
 function PLDR.GetMassDriverName(index)
   if System == nil or System.getMassDriverName == nil then
     return nil
@@ -255,79 +209,202 @@ function PLDR.GetMassDriverName(index)
   return name
 end
 
-function PLDR.FindMassByDriver(driver, max_index)
-  local want = type(driver) == "string" and driver or nil
-  if want == nil then
+local function ParseMassIndexFromMount(mount)
+  if type(mount) ~= "string" then
     return nil
   end
-  local max = tonumber(max_index) or 9
-  if max < 0 then max = 0 end
-  if max > 9 then max = 9 end
-  for i = 0, max do
-    local name = PLDR.GetMassDriverName(i)
-    if name == want then
-      return i
-    end
+  if mount == "mass:/" then
+    return 0
   end
-  return nil
+  local idx = string.match(mount, "^mass(%d+):/$")
+  if idx == nil then
+    return nil
+  end
+  return tonumber(idx)
 end
 
-function PLDR.EnumerateMassSlots(max_index)
-  local max = tonumber(max_index) or 9
-  if max < 0 then max = 0 end
-  if max > 9 then max = 9 end
+function PLDR.EnumerateMassMounts()
+  local state = PLDR.MASS_ENUM or {}
+  local max_gap = tonumber(state.max_gap) or 2
+  local hard_cap = tonumber(state.hard_cap) or 32
+  if max_gap < 1 then max_gap = 1 end
+  if hard_cap < 1 then hard_cap = 1 end
 
-  local slots = {}
+  local mounts = {}
+  local missing_streak = 0
+  local index = 0
 
-  for i = 0, max do
-    local driver = PLDR.GetMassDriverName(i)
-    local kind = "UNKNOWN/OTHER"
+  while index < hard_cap and missing_streak < max_gap do
+    local mount = (index == 0) and "mass:/" or ("mass"..tostring(index)..":/")
     local present = false
-
-    if driver == "usb" then
-      kind = "USB"
+    if doesFolderExist(mount) then
       present = true
-    elseif driver == "sdc" or driver == "mx4sio" then
-      kind = "MX4SIO"
-      present = true
-    elseif type(driver) == "string" and driver ~= "" then
+    elseif PLDR.GetMassDriverName(index) ~= nil then
       present = true
     end
 
-    local prefix = "mass"..tostring(i)..":/"
-    slots[#slots + 1] = {
-      index = i,
-      driver = driver,
-      kind = kind,
-      present = present,
-      prefix = prefix
-    }
+    if present then
+      mounts[#mounts + 1] = mount
+      missing_streak = 0
+    else
+      missing_streak = missing_streak + 1
+    end
+    index = index + 1
   end
 
-  return slots
+  return mounts
+end
+
+function PLDR.ClassifyMassMount(mount)
+  local result = {
+    mount = mount,
+    kind = "UNKNOWN",
+    stable_id = nil,
+    details = {}
+  }
+
+  local index = ParseMassIndexFromMount(mount)
+  if index == nil then
+    result.details.error = "not-mass-mount"
+    return result
+  end
+
+  local driver = PLDR.GetMassDriverName(index)
+  result.details.driver = driver
+
+  if driver == "usb" then
+    result.kind = "USB"
+    result.stable_id = "usb:"..mount
+  elseif driver == "sdc" or driver == "mx4sio" then
+    result.kind = "MX4SIO"
+    result.stable_id = "mx4sio:"..mount
+  else
+    result.kind = "UNKNOWN"
+    result.stable_id = "unknown:"..mount
+  end
+
+  return result
+end
+
+function PLDR.DetectBootOrigin(base_dir, mounts, classified)
+  local origin = { kind = "UNKNOWN" }
+  if type(base_dir) ~= "string" or base_dir == "" then
+    return origin
+  end
+
+  local dir = NormalizeDirPath(base_dir)
+  if string.match(dir, "^mc%d*:/") then
+    return { kind = "MC" }
+  end
+  if string.match(dir, "^host:/") then
+    return { kind = "HOST" }
+  end
+
+  local mount_map = {}
+  if type(classified) == "table" then
+    for i = 1, #classified do
+      local item = classified[i]
+      if item ~= nil and type(item.mount) == "string" then
+        mount_map[item.mount] = item
+      end
+    end
+  end
+
+  if type(mounts) == "table" then
+    for i = 1, #mounts do
+      local mount = mounts[i]
+      if type(mount) == "string" and string.sub(dir, 1, #mount) == mount then
+        local info = mount_map[mount]
+        if info ~= nil then
+          if info.kind == "USB" then
+            return { kind = "USB", mount = mount }
+          elseif info.kind == "MX4SIO" then
+            return { kind = "MX4SIO", mount = mount }
+          end
+          return { kind = "UNKNOWN_MASS", mount = mount }
+        end
+        return { kind = "UNKNOWN_MASS", mount = mount }
+      end
+    end
+  end
+
+  if string.match(dir, "^mass%d*:/") then
+    return { kind = "UNKNOWN_MASS" }
+  end
+
+  return origin
+end
+
+local function SortMassClassifications(items)
+  table.sort(items, function(a, b)
+    local a_id = a.stable_id
+    local b_id = b.stable_id
+    if a_id ~= nil and b_id ~= nil and a_id ~= b_id then
+      return a_id < b_id
+    end
+    if a_id ~= nil and b_id == nil then
+      return true
+    end
+    if a_id == nil and b_id ~= nil then
+      return false
+    end
+    return (a.mount or "") < (b.mount or "")
+  end)
 end
 
 function PLDR.RefreshMassSlots(reason)
   local state = PLDR.MASS_ENUM
   if type(state) ~= "table" then
-    state = { cache = nil, stamp = 0, dirty = true }
+    state = { cache = nil, stamp = 0, dirty = true, max_gap = 2, hard_cap = 32 }
     PLDR.MASS_ENUM = state
   end
 
-  local slots = PLDR.EnumerateMassSlots(9) or {}
-  state.cache = slots
+  local mounts = PLDR.EnumerateMassMounts() or {}
+  local classified = {}
+  for i = 1, #mounts do
+    classified[#classified + 1] = PLDR.ClassifyMassMount(mounts[i])
+  end
+
+  local usb_mounts = {}
+  local mx4sio_mounts = {}
+  local unknown_mass_mounts = {}
+  for i = 1, #classified do
+    local item = classified[i]
+    if item.kind == "USB" then
+      usb_mounts[#usb_mounts + 1] = item
+    elseif item.kind == "MX4SIO" then
+      mx4sio_mounts[#mx4sio_mounts + 1] = item
+    else
+      unknown_mass_mounts[#unknown_mass_mounts + 1] = item
+    end
+  end
+
+  SortMassClassifications(usb_mounts)
+  SortMassClassifications(mx4sio_mounts)
+  SortMassClassifications(unknown_mass_mounts)
+
+  local boot_origin = PLDR.DetectBootOrigin(APP_DIR_LOCAL, mounts, classified)
+
+  state.cache = {
+    mounts = mounts,
+    classified = classified,
+    usb_mounts = usb_mounts,
+    mx4sio_mounts = mx4sio_mounts,
+    unknown_mass_mounts = unknown_mass_mounts,
+    boot_origin = boot_origin
+  }
   state.stamp = (state.stamp or 0) + 1
   state.dirty = false
   if reason ~= nil then
-    LOG("Mass slot cache refreshed:", tostring(reason), "stamp:", tostring(state.stamp))
+    LOG("Mass mount cache refreshed:", tostring(reason), "stamp:", tostring(state.stamp))
   end
-  return slots
+  return state.cache
 end
 
 function PLDR.GetMassSlotsCached()
   local state = PLDR.MASS_ENUM
   if type(state) ~= "table" then
-    PLDR.MASS_ENUM = { cache = nil, stamp = 0, dirty = true }
+    PLDR.MASS_ENUM = { cache = nil, stamp = 0, dirty = true, max_gap = 2, hard_cap = 32 }
     state = PLDR.MASS_ENUM
   end
   if state.dirty or type(state.cache) ~= "table" then
@@ -336,30 +413,37 @@ function PLDR.GetMassSlotsCached()
   return state.cache
 end
 
-function PLDR.HasClassifiedMassSlot(kind, classified_slots)
-  if type(kind) ~= "string" or kind == "" then
-    return false
+function PLDR.GetMassMountsByKind(kind)
+  local cache = PLDR.GetMassSlotsCached() or {}
+  if kind == "USB" then
+    return cache.usb_mounts or {}
+  elseif kind == "MX4SIO" then
+    return cache.mx4sio_mounts or {}
+  elseif kind == "UNKNOWN" then
+    return cache.unknown_mass_mounts or {}
   end
+  return {}
+end
 
-  local slots = classified_slots
-  if type(slots) ~= "table" then
-    slots = PLDR.GetMassSlotsCached() or {}
+function PLDR.HasClassifiedMassSlot(kind, cached)
+  local info = cached
+  if type(info) ~= "table" then
+    info = PLDR.GetMassSlotsCached() or {}
   end
-
-  for i = 1, #slots do
-    local slot = slots[i]
-    if slot ~= nil and slot.kind == kind and slot.present == true then
-      return true
-    end
+  if kind == "USB" then
+    return type(info.usb_mounts) == "table" and #info.usb_mounts > 0
+  elseif kind == "MX4SIO" then
+    return type(info.mx4sio_mounts) == "table" and #info.mx4sio_mounts > 0
+  elseif kind == "UNKNOWN" then
+    return type(info.unknown_mass_mounts) == "table" and #info.unknown_mass_mounts > 0
   end
-
   return false
 end
 
 function PLDR.MarkMassSlotsDirty(reason)
   local state = PLDR.MASS_ENUM
   if type(state) ~= "table" then
-    PLDR.MASS_ENUM = { cache = nil, stamp = 0, dirty = true }
+    PLDR.MASS_ENUM = { cache = nil, stamp = 0, dirty = true, max_gap = 2, hard_cap = 32 }
     state = PLDR.MASS_ENUM
   end
   state.dirty = true
@@ -368,42 +452,20 @@ function PLDR.MarkMassSlotsDirty(reason)
   end
 end
 
--- Route classified mass slots to a specific device page.
--- Only USB/MX4SIO are eligible targets; UNKNOWN/OTHER and all non-target kinds are dropped.
-function PLDR.RouteMassSlotsForPage(device_page, classified_slots)
+function PLDR.RouteMassSlotsForPage(device_page, cached)
   local page = type(device_page) == "string" and string.upper(device_page) or ""
-  local target_kind = nil
+  local info = cached
+  if type(info) ~= "table" then
+    info = PLDR.GetMassSlotsCached() or {}
+  end
+
   if page == "USB" then
-    target_kind = "USB"
+    return info.usb_mounts or {}
   elseif page == "MX4SIO" then
-    target_kind = "MX4SIO"
-  else
-    return {}
+    return info.mx4sio_mounts or {}
   end
-
-  local slots = classified_slots
-  if type(slots) ~= "table" then
-    slots = PLDR.GetMassSlotsCached() or {}
-  end
-
-  local routed = {}
-  for i = 1, #slots do
-    local slot = slots[i]
-    if slot ~= nil and slot.kind == target_kind and slot.present == true then
-      routed[#routed + 1] = {
-        index = slot.index,
-        driver = slot.driver,
-        kind = slot.kind,
-        present = slot.present,
-        prefix = slot.prefix,
-        source_slot = slot.index,
-        source_prefix = slot.prefix
-      }
-    end
-  end
-  return routed
+  return {}
 end
-
 
 PLDR.DEFAULT_DKWDRV_PATH = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
 local BDMA_MODES = {
@@ -646,8 +708,19 @@ end
 UI.LASTSCENE = UI.SCENES.MMAIN
 
 if UI.DEVLOCK ~= nil then
-  local boot_name, boot_path, boot_prefix = DetectBootDevice()
+  local mass_cache = PLDR.GetMassSlotsCached()
+  local origin = mass_cache and mass_cache.boot_origin or { kind = "UNKNOWN" }
+  local boot_name = nil
+  if origin.kind == "USB" then
+    boot_name = "USB"
+  elseif origin.kind == "MX4SIO" then
+    boot_name = "MX4SIO"
+  elseif origin.kind == "MC" then
+    boot_name = "MMCE"
+  end
   PLDR.BOOT_DEVICE_KIND = boot_name
+  PLDR.BOOT_ORIGIN = origin
+
   UI.boot_device = UI.DEVLOCK.NONE
   UI.boot_locks = {}
   if boot_name == "MX4SIO" then
@@ -657,11 +730,8 @@ if UI.DEVLOCK ~= nil then
   elseif boot_name == "MMCE" then
     UI.boot_device = UI.DEVLOCK.MMCE
   end
-  if boot_name ~= nil then
-    LOG("Boot device detected:", boot_name, "prefix:", tostring(boot_prefix), "path:", tostring(boot_path))
-  else
-    LOG("Boot device detection ambiguous; no boot locks set.", "prefix:", tostring(boot_prefix), "path:", tostring(boot_path))
-  end
+
+  LOG("Boot origin:", tostring(origin.kind), "mount:", tostring(origin.mount), "base:", tostring(APP_DIR_LOCAL))
 end
 require("images")
 

@@ -93,19 +93,18 @@ BOOT_ASSET_BASE_DIR = EnsureDirPath(BOOT_ASSET_BASE_DIR)
 local function ResolveBootSoundCandidates(name)
   local candidates = {}
   local seen = {}
-  local rels = {
-    name,
-    "POPSLDR/"..name
-  }
-  for _, rel in ipairs(rels) do
-    AddUniquePath(candidates, seen, ResolveAssetSafe(rel))
-  end
+  local rels = { name, "POPSLDR/"..name }
+
   if BOOT_ASSET_BASE_DIR ~= nil then
     for _, rel in ipairs(rels) do
       local full = JoinPathSimple(BOOT_ASSET_BASE_DIR, rel)
       AddUniquePath(candidates, seen, ResolveAssetSafe(full))
     end
   end
+  for _, rel in ipairs(rels) do
+    AddUniquePath(candidates, seen, ResolveAssetSafe(rel))
+  end
+
   return candidates
 end
 local function ExtractGameRelPath(entry)
@@ -818,129 +817,9 @@ UI = {
           end
         end
 
--- Boot audio (stable APP_DIR-derived lookup). Never fatal.
+-- Boot audio (global tick-driven state machine). Never fatal.
         local boot_sound_loaded = nil
-        local boot_sound_hold_frames = nil
 
-        local function TryBootSound()
-          if UI.BOOT_SOUND == nil then
-            return
-          end
-          UI.BOOT_SOUND.STATE = UI.BOOT_SOUND.STATE or {
-            attempted = false,
-            path_resolved = false
-          }
-          if UI.BOOT_SOUND.STATE.attempted then return end
-          UI.BOOT_SOUND.STATE.attempted = true
-
-          if UI.BOOT_SOUND.ENABLED ~= true then
-            LOG("BOOT SOUND: disabled")
-            UI.BOOT_SOUND.STATE.path_resolved = true
-            return
-          end
-          if type(Sound) ~= "table" or type(Sound.loadADPCM) ~= "function" then
-            LOG("BOOT SOUND: Sound API not available")
-            UI.BOOT_SOUND.STATE.path_resolved = true
-            return
-          end
-
-          local primary = UI.BOOT_SOUND.PATH or "boot.adp"
-          local names = { primary }
-          if primary ~= "boot.adpcm" then
-            table.insert(names, "boot.adpcm")
-          end
-
-          local found = nil
-          local requested = nil
-          for _, rel in ipairs(names) do
-            requested = rel
-            local candidates = ResolveBootSoundCandidates(rel)
-            UI.BOOT_SOUND.STATE.path_resolved = true
-            for _, p in ipairs(candidates) do
-              if SafeDoesFileExist(p) then
-                found = p
-                break
-              end
-            end
-            if found ~= nil then break end
-          end
-
-          if found == nil and requested ~= nil then
-            -- Last resort: try HostFS prefix in PCSX2 setups.
-            local host_p = "host:" .. requested
-            if SafeDoesFileExist(host_p) then found = host_p end
-          end
-
-          if found == nil then
-            LOGF("BOOT SOUND: '%s' not found", tostring(primary))
-            return
-          end
-
-          LOGF("BOOT SOUND: using '%s'", tostring(found))
-
--- Set volumes/formats defensively; some builds may ignore these.
-          local function normalize_volume(value)
-            if type(value) ~= "number" then
-              return nil
-            end
-            if value <= 100 then
-              return math.floor((value * 0x3fff / 100) + 0.5)
-            end
-            return value
-          end
-
-          pcall(function()
-            if type(Sound.setVolume) == "function" then
-              local volume = normalize_volume(UI.BOOT_SOUND.VOLUME)
-              if volume ~= nil then
-                Sound.setVolume(volume)
-              end
-            end
-            if type(Sound.setADPCMVolume) == "function" then
-              local adpcm_volume = normalize_volume(UI.BOOT_SOUND.ADPCM_VOLUME)
-              if adpcm_volume ~= nil then
-                Sound.setADPCMVolume(UI.BOOT_SOUND.CHANNEL or 0, adpcm_volume)
-              end
-            end
-            if type(Sound.setFormat) == "function" then
-              -- Common safe defaults; ADPCM playback may ignore this on some builds.
-              Sound.setFormat(16, 44100, 2)
-            end
-          end)
-
-          LOGF("BOOT SOUND: loading '%s'", tostring(found))
-          local ok_load, audio = pcall(Sound.loadADPCM, found)
-          if not ok_load then
-            LOGF("BOOT SOUND: load threw for '%s': %s", tostring(found), tostring(audio))
-            return
-          end
-          if audio == nil or audio == 0 then
-            LOGF("BOOT SOUND: load failed for '%s'", tostring(found))
-            return
-          end
-          boot_sound_loaded = audio
-          LOGF("BOOT SOUND: loaded handle=%s", tostring(boot_sound_loaded))
-
-          local ok_play, play_err = pcall(function()
-            Sound.playADPCM(UI.BOOT_SOUND.CHANNEL or 0, boot_sound_loaded)
-          end)
-          if not ok_play then
-            LOGF("BOOT SOUND: play failed for '%s': %s", tostring(found), tostring(play_err))
-            if type(Sound.freeADPCM) == "function" then
-              pcall(Sound.freeADPCM, boot_sound_loaded)
-            end
-            boot_sound_loaded = nil
-            return
-          end
-          LOGF("BOOT SOUND: play started on channel %s", tostring(UI.BOOT_SOUND.CHANNEL or 0))
-
-          local sec = UI.BOOT_SOUND.SECONDS
-          if type(sec) ~= "number" or sec < 0 then sec = 0 end
-          local pad = UI.BOOT_SOUND.PAD_SECONDS
-          if type(pad) ~= "number" or pad < 0 then pad = 0 end
-          boot_sound_hold_frames = math.floor(((sec + pad) * 60) + 0.5)
-          LOGF("BOOT SOUND: hold frames=%s", tostring(boot_sound_hold_frames))
-        end
 local function DrawSplashCover(img, screen_w, screen_h, alpha)
   if img == nil then return end
   local img_w = Graphics.getImageWidth(img)
@@ -1024,7 +903,8 @@ end
         local fade_out_frames = 60
 
         -- Start boot sound once (timing remains fixed to splash/credits durations).
-        TryBootSound()
+        UI.BootSoundEnsureStarted()
+        boot_sound_loaded = UI.BOOT_SOUND.STATE and UI.BOOT_SOUND.STATE.handle or nil
         local splash_seconds = 8.0
         local credits_seconds = 7.0
         local splash_frames = math.floor((splash_seconds * 60) + 0.5)
@@ -1104,9 +984,7 @@ end
         Screen.flip()
 
         -- Cleanup boot sound resource (safe if audio backend ignores it).
-        if boot_sound_loaded ~= nil and type(Sound) == "table" and type(Sound.freeADPCM) == "function" then
-          pcall(Sound.freeADPCM, boot_sound_loaded)
-        end
+        UI.BootSoundRelease()
       end
 
     };
@@ -2302,6 +2180,105 @@ local function LoadBuildInfo()
   end
   return info
 end
+function UI.BootSoundEnsureStarted()
+  if UI.BOOT_SOUND == nil then return end
+  UI.BOOT_SOUND.STATE = UI.BOOT_SOUND.STATE or {
+    phase = "INIT",
+    retries = 0,
+    max_retries = 2,
+    retry_at = 0,
+    status = "INIT",
+    path = nil,
+    handle = nil,
+    transient = false
+  }
+  local st = UI.BOOT_SOUND.STATE
+  if st.phase ~= "INIT" then return end
+
+  if UI.BOOT_SOUND.ENABLED ~= true then
+    st.phase = "MISSING"
+    st.status = "MISSING"
+    return
+  end
+
+  local primary = UI.BOOT_SOUND.PATH or "boot.adp"
+  local names = { primary }
+  if primary ~= "boot.adpcm" then table.insert(names, "boot.adpcm") end
+
+  for _, rel in ipairs(names) do
+    for _, p in ipairs(ResolveBootSoundCandidates(rel)) do
+      if SafeDoesFileExist(p) then
+        st.path = p
+        break
+      end
+    end
+    if st.path ~= nil then break end
+  end
+
+  if st.path == nil then
+    st.phase = "MISSING"
+    st.status = "MISSING"
+    LOGF("BOOT SOUND: '%s' not found", tostring(primary))
+    return
+  end
+
+  st.phase = "LOADING"
+  st.status = "LOADING"
+end
+
+function UI.BootSoundTick()
+  if UI.BOOT_SOUND == nil then return end
+  UI.BootSoundEnsureStarted()
+  local st = UI.BOOT_SOUND.STATE
+  if st == nil or st.phase ~= "LOADING" then return end
+
+  if type(Timer) == "table" and type(Timer.getTime) == "function" then
+    if UI.BOOT_SOUND.TIMER == nil then
+      UI.BOOT_SOUND.TIMER = Timer.new()
+    end
+    local now = Timer.getTime(UI.BOOT_SOUND.TIMER)
+    if now < (st.retry_at or 0) then
+      return
+    end
+  end
+
+  if type(Sound) ~= "table" or type(Sound.loadADPCM) ~= "function" then
+    st.phase = "FAILED"
+    st.status = "FAILED"
+    return
+  end
+
+  local ok_load, audio = pcall(Sound.loadADPCM, st.path)
+  if ok_load and audio ~= nil and audio ~= 0 then
+    st.handle = audio
+    st.phase = "READY"
+    st.status = "READY"
+    if type(Sound.playADPCM) == "function" then
+      pcall(Sound.playADPCM, UI.BOOT_SOUND.CHANNEL or 0, audio)
+    end
+    return
+  end
+
+  st.retries = (st.retries or 0) + 1
+  if st.retries > (st.max_retries or 2) then
+    st.phase = "FAILED"
+    st.status = "FAILED"
+  else
+    st.retry_at = (type(Timer) == "table" and type(Timer.getTime) == "function" and UI.BOOT_SOUND.TIMER ~= nil)
+      and (Timer.getTime(UI.BOOT_SOUND.TIMER) + 150)
+      or 0
+  end
+end
+
+function UI.BootSoundRelease()
+  if UI.BOOT_SOUND == nil or UI.BOOT_SOUND.STATE == nil then return end
+  local st = UI.BOOT_SOUND.STATE
+  if st.handle ~= nil and type(Sound) == "table" and type(Sound.freeADPCM) == "function" then
+    pcall(Sound.freeADPCM, st.handle)
+  end
+  st.handle = nil
+end
+
 UI.BUILD_INFO = LoadBuildInfo()
 if UI.FONT ~= nil then
   if UI.FONT.TITLE ~= nil then
@@ -2352,50 +2329,27 @@ function UI.RefreshMassDevicePage(device_kind)
       return true
     end
 
-    local boot_is_mx4sio = (PLDR ~= nil and PLDR.BOOT_DEVICE_KIND == "MX4SIO")
-    local scene_is_mx4sio = UI.IsMx4sioScene(UI.CURSCENE)
-    local enum_has_mx4sio = false
-    if PLDR ~= nil and type(PLDR.HasClassifiedMassSlot) == "function" then
-      enum_has_mx4sio = PLDR.HasClassifiedMassSlot("MX4SIO")
+    local cache = nil
+    if type(PLDR.GetMassSlotsCached) == "function" then
+      cache = PLDR.GetMassSlotsCached() or {}
     end
+    local mx_mounts = type(PLDR.GetMassMountsByKind) == "function" and (PLDR.GetMassMountsByKind("MX4SIO") or {}) or {}
 
-    if not boot_is_mx4sio and not (scene_is_mx4sio and enum_has_mx4sio) then
+    if mx_mounts[1] == nil then
       if PLDR.MX4SIO ~= nil then
         PLDR.MX4SIO.READY = false
         PLDR.MX4SIO.MASSINDX = nil
         PLDR.MX4SIO.ROOT = nil
       end
-      UI.Notif_queue.add("MX4SIO not detected (searched mass0..mass9)")
+      UI.Notif_queue.add("MX4SIO not detected")
       return false
     end
 
-    local hint = nil
-    if PLDR.MX4SIO ~= nil then
-      hint = PLDR.MX4SIO.PREFIX_HINT
-    end
-    local ok, ready, root = pcall(System.initMX4SIO, hint)
-    if not ok then
-      if PLDR.MX4SIO ~= nil then
-        PLDR.MX4SIO.READY = false
-        PLDR.MX4SIO.MASSINDX = nil
-        PLDR.MX4SIO.ROOT = nil
-      end
-      UI.Notif_queue.add("MX4SIO init failed (searched mass0..mass9)")
-      return false
-    end
-    if not ready or type(root) ~= "string" or root == "" then
-      if PLDR.MX4SIO ~= nil then
-        PLDR.MX4SIO.READY = false
-        PLDR.MX4SIO.MASSINDX = nil
-        PLDR.MX4SIO.ROOT = nil
-      end
-      UI.Notif_queue.add("MX4SIO not detected (searched mass0..mass9)")
-      return false
-    end
-
-    local mass_idx = string.match(root, "^mass(%d+):/?$")
-    if mass_idx ~= nil then
-      mass_idx = tonumber(mass_idx)
+    local first = mx_mounts[1]
+    local root = first.mount
+    local mass_idx = tonumber(string.match(root or "", "^mass(%d*):/?$"))
+    if root == "mass:/" then
+      mass_idx = 0
     end
 
     if PLDR.MX4SIO ~= nil then
@@ -2403,23 +2357,36 @@ function UI.RefreshMassDevicePage(device_kind)
       PLDR.MX4SIO.MASSINDX = mass_idx
       PLDR.MX4SIO.ROOT = root
     end
-    PLDR.GetPS1GameLists(root.."POPS/", true)
+
+    local found_any = false
+    for i = 1, #mx_mounts do
+      local mount = mx_mounts[i] and mx_mounts[i].mount
+      if type(mount) == "string" and mount ~= "" then
+        local list = PLDR.GetPS1GameLists(mount.."POPS/", true)
+        if type(list) == "table" and #list > 0 then
+          found_any = true
+        end
+      end
+    end
+
+    if type(PLDR.DedupeAndSortMassGames) == "function" then
+      PLDR.GAMES = PLDR.DedupeAndSortMassGames(PLDR.GAMES)
+    end
+
     UI.GameList.Reset()
-    return true
+    return found_any or (#PLDR.GAMES > 0)
   end
 
-  if type(PLDR.EnumerateMassSlots) ~= "function" or type(PLDR.RouteMassSlotsForPage) ~= "function" then
+  if type(PLDR.GetMassSlotsCached) ~= "function" or type(PLDR.RouteMassSlotsForPage) ~= "function" then
     UI.Notif_queue.add("Mass routing helper unavailable")
     return false
   end
 
-  local slots = nil
+  local cache = nil
   if type(PLDR.GetMassSlotsCached) == "function" then
-    slots = PLDR.GetMassSlotsCached() or {}
-  else
-    slots = PLDR.EnumerateMassSlots(9) or {}
+    cache = PLDR.GetMassSlotsCached() or {}
   end
-  local routed = PLDR.RouteMassSlotsForPage(device_kind, slots) or {}
+  local routed = PLDR.RouteMassSlotsForPage(device_kind, cache) or {}
 
   if routed[1] == nil then
     if device_kind ~= "MX4SIO" then
@@ -2433,13 +2400,18 @@ function UI.RefreshMassDevicePage(device_kind)
   end
 
   if PLDR.USB ~= nil then
-    PLDR.USB.MASSINDX = routed[1].source_slot
-    PLDR.USB.ROOT = routed[1].source_prefix
+    local first_mount = routed[1].mount
+    local idx = tonumber(string.match(first_mount or "", "^mass(%d*):/?$"))
+    if first_mount == "mass:/" then
+      idx = 0
+    end
+    PLDR.USB.MASSINDX = idx
+    PLDR.USB.ROOT = first_mount
   end
 
   local found_any = false
   for i = 1, #routed do
-    local source_prefix = routed[i] and routed[i].source_prefix
+    local source_prefix = routed[i] and routed[i].mount
     if type(source_prefix) == "string" and source_prefix ~= "" then
       local list = PLDR.GetPS1GameLists(source_prefix.."POPS/", true)
       if type(list) == "table" and #list > 0 then
@@ -2467,9 +2439,6 @@ function UI.RefreshCurrentMassScene(scene)
   return false
 end
 function UI.OnSceneEnter(previous_scene, next_scene)
-  if UI.BOOT_SOUND ~= nil and UI.BOOT_SOUND.STATE ~= nil and UI.BOOT_SOUND.STATE.path_resolved ~= true then
-    return
-  end
   if UI.IsUsbScene(next_scene) then
     if PLDR ~= nil and type(PLDR.RefreshMassSlots) == "function" then
       PLDR.RefreshMassSlots("scene-enter-usb")
@@ -2492,6 +2461,7 @@ function UI.OnSceneExit(previous_scene, next_scene)
 end
 UI.RecalcLayout()
 function Input_GetEvent()
+  UI.BootSoundTick()
   UI.Pad.Listen()
   if UI.Transition ~= nil and UI.Transition.active then
     for key, _ in pairs(UI.Pad.Events) do
