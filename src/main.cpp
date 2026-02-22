@@ -412,6 +412,19 @@ static int WaitUntilDeviceRootIsReady(const char *root, int retries)
     return ret;
 }
 
+static bool FileExistsXio(const char *path)
+{
+    if (path == NULL || path[0] == '\0') {
+        return false;
+    }
+    int fd = fileXioOpen(path, O_RDONLY, 0);
+    if (fd >= 0) {
+        fileXioClose(fd);
+        return true;
+    }
+    return false;
+}
+
 
 static int CountMountedMassRoots()
 {
@@ -463,10 +476,15 @@ static bool QueryMassDriverNameRaw(int idx, char out_driver[16])
     return true;
 }
 
-static void ShowBootDiagnostics(const char *launch_path, bool mass_alias_resolved)
+static void ShowBootDiagnostics(const char *launch_path, bool mass_alias_resolved, const char *system_lua_path)
 {
     char diag_root[16] = {0};
     const char *root = ExtractDeviceRoot(app_dir, diag_root, sizeof(diag_root)) ? diag_root : "<none>";
+    int system_lua_fd = fileXioOpen(system_lua_path, O_RDONLY, 0);
+    int system_lua_rc = system_lua_fd;
+    if (system_lua_fd >= 0) {
+        fileXioClose(system_lua_fd);
+    }
 
     init_scr();
     scr_clear();
@@ -476,6 +494,9 @@ static void ShowBootDiagnostics(const char *launch_path, bool mass_alias_resolve
     scr_printf("boot_path: %s\n", boot_path);
     scr_printf("device_root: %s\n", root);
     scr_printf("mass_alias_resolved: %d\n", mass_alias_resolved ? 1 : 0);
+    scr_printf("system.lua: %s\n", system_lua_path ? system_lua_path : "<null>");
+    scr_printf("system.lua open rc: %d\n", system_lua_rc);
+    dbgprintf("BOOT DIAG system.lua path: %s rc=%d\n", system_lua_path ? system_lua_path : "<null>", system_lua_rc);
     scr_printf("\nMass slots:\n");
     for (int i = 0; i <= 9; ++i) {
         char mass_root[16];
@@ -754,12 +775,11 @@ int main(int argc, char * argv[])
     }
 
     char system_lua_path[255];
-    struct stat st;
-    if (!BuildSystemLuaPath(app_dir, system_lua_path, sizeof(system_lua_path)) || stat(system_lua_path, &st) != 0) {
+    if (!BuildSystemLuaPath(app_dir, system_lua_path, sizeof(system_lua_path)) || !FileExistsXio(system_lua_path)) {
         RebindAppDirFromLaunchPath(launch_path);
     }
 
-    if (!BuildSystemLuaPath(app_dir, system_lua_path, sizeof(system_lua_path)) || stat(system_lua_path, &st) != 0) {
+    if (!BuildSystemLuaPath(app_dir, system_lua_path, sizeof(system_lua_path)) || !FileExistsXio(system_lua_path)) {
         char app_root[16];
         const char *retry_root = app_dir;
         if (ExtractDeviceRoot(app_dir, app_root, sizeof(app_root))) {
@@ -768,8 +788,8 @@ int main(int argc, char * argv[])
         WaitUntilDeviceRootIsReady(retry_root, 60);
     }
 
-    while (!BuildSystemLuaPath(app_dir, system_lua_path, sizeof(system_lua_path)) || stat(system_lua_path, &st) != 0) {
-        ShowBootDiagnostics(launch_path, mass_alias_resolved);
+    while (!BuildSystemLuaPath(app_dir, system_lua_path, sizeof(system_lua_path)) || !FileExistsXio(system_lua_path)) {
+        ShowBootDiagnostics(launch_path, mass_alias_resolved, system_lua_path);
         while (!isButtonPressed(PAD_START)) {
             DelayThread(16 * 1000);
         }
