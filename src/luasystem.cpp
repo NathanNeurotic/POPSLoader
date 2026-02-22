@@ -137,11 +137,31 @@ static bool QueryMassDriverName(int idx, char out_driver[16])
 		return false;
 	}
 
-	char mass_dev[8];
-	snprintf(mass_dev, sizeof(mass_dev), "mass%d:", idx);
+	char mass_path[16];
+	snprintf(mass_path, sizeof(mass_path), "mass%d:/", idx);
 
 	char devid[16] = {0};
-	int rc = fileXioDevctl(mass_dev, USBMASS_IOCTL_GET_DRIVERNAME, NULL, 0, devid, sizeof(devid));
+	int rc = -1;
+
+	int dd = fileXioDopen(mass_path);
+	if (dd >= 0) {
+		rc = fileXioIoctl(dd, USBMASS_IOCTL_GET_DRIVERNAME, devid);
+		fileXioDclose(dd);
+	}
+
+	if (dd < 0 || rc < 0) {
+		devid[0] = '\0';
+		int fd = fileXioOpen(mass_path, O_RDONLY, 0);
+		if (fd < 0) {
+			char mass_path_dot[18];
+			snprintf(mass_path_dot, sizeof(mass_path_dot), "mass%d:/.", idx);
+			fd = fileXioOpen(mass_path_dot, O_RDONLY, 0);
+		}
+		if (fd >= 0) {
+			rc = fileXioIoctl(fd, USBMASS_IOCTL_GET_DRIVERNAME, devid);
+			fileXioClose(fd);
+		}
+	}
 
 	devid[sizeof(devid) - 1] = '\0';
 	if (rc < 0 || devid[0] == '\0') {
