@@ -233,6 +233,9 @@ PLDR = {
 
 PLDR.BOOT_DEVICE_KIND = nil
 
+PLDR.DEBUG_MASS_IDENTITY = false
+PLDR.DEBUG_MASS_IDENTITY_DONE = false
+
 PLDR.MASS_ENUM = {
   cache = nil,
   stamp = 0,
@@ -366,6 +369,30 @@ function PLDR.HasClassifiedMassSlot(kind, classified_slots)
   end
 
   return false
+end
+
+function PLDR.DebugMassIdentitySnapshot()
+  if PLDR.DEBUG_MASS_IDENTITY ~= true or PLDR.DEBUG_MASS_IDENTITY_DONE == true then
+    return
+  end
+  PLDR.DEBUG_MASS_IDENTITY_DONE = true
+
+  LOG("Mass identity snapshot begin")
+  for i = 0, 9 do
+    local root = "mass"..tostring(i)..":/"
+    if doesFolderExist(root) then
+      local raw = nil
+      if System ~= nil and System.getMassDriverName ~= nil then
+        local ok, name = pcall(System.getMassDriverName, i)
+        if ok and type(name) == "string" and name ~= "" then
+          raw = name
+        end
+      end
+      local norm = PLDR.GetMassDriverName(i)
+      LOGF("mass%d raw=%s norm=%s", i, tostring(raw or "<nil>"), tostring(norm or "<nil>"))
+    end
+  end
+  LOG("Mass identity snapshot end")
 end
 
 function PLDR.MarkMassSlotsDirty(reason)
@@ -2055,5 +2082,8 @@ while true do
   if BOOT_PROF and not BOOT_PROF.first_main_menu and UI.CURSCENE == UI.SCENES.MMAIN then
     BOOT_PROF.first_main_menu = true
     BOOT_PROF.stamp("first frame / main menu visible")
+  end
+  if UI.CURSCENE == UI.SCENES.MMAIN then
+    PLDR.DebugMassIdentitySnapshot()
   end
 end
