@@ -543,6 +543,50 @@ static int CountMountedMassRoots()
     return count;
 }
 
+static bool HasAnyMassDriverReady()
+{
+    char alias_driver[16] = {0};
+    int alias_rc = fileXioDevctl("mass:", USBMASS_IOCTL_GET_DRIVERNAME, NULL, 0, alias_driver, sizeof(alias_driver));
+    alias_driver[sizeof(alias_driver) - 1] = '\0';
+    if (alias_rc >= 0 && alias_driver[0] != '\0') {
+        return true;
+    }
+
+    for (int i = 0; i <= 9; ++i) {
+        char mass_path[16];
+        snprintf(mass_path, sizeof(mass_path), "mass%d:/", i);
+        int dd = fileXioDopen(mass_path);
+        if (dd < 0) {
+            continue;
+        }
+        char devid[16] = {0};
+        int rc = fileXioIoctl(dd, USBMASS_IOCTL_GET_DRIVERNAME, devid);
+        fileXioDclose(dd);
+        devid[sizeof(devid) - 1] = '\0';
+        if (rc >= 0 && devid[0] != '\0') {
+            return true;
+        }
+    }
+    return false;
+}
+
+static void EnsureStorageDriversReady()
+{
+    if (HasAnyMassDriverReady()) {
+        return;
+    }
+
+    SifLoadModule("rom0:USBD", 0, NULL);
+    SifLoadModule("rom0:USBHDFSD", 0, NULL);
+
+    for (int tries = 0; tries < 60; ++tries) {
+        if (HasAnyMassDriverReady()) {
+            return;
+        }
+        DelayThread(100 * 1000);
+    }
+}
+
 
 static int GetOnlyMountedMassIndexOrNeg1()
 {
@@ -820,11 +864,13 @@ int main(int argc, char * argv[])
     LOAD_IRX_NARG(usbmass_bd_irx);
     LOAD_IRX_NARG(mx4sio_bd_irx);
 
-    LOAD_IRX_NARG(cdfs_irx);
+	LOAD_IRX_NARG(cdfs_irx);
 
-    LOAD_IRX_NARG(audsrv_irx);
+	LOAD_IRX_NARG(audsrv_irx);
 
-    const char *launch_path = GetLaunchPath(argc, argv);
+	EnsureStorageDriversReady();
+
+	const char *launch_path = GetLaunchPath(argc, argv);
     char norm_launch[255];
     if (launch_path != NULL) {
         snprintf(norm_launch, sizeof(norm_launch), "%s", launch_path);
