@@ -480,16 +480,51 @@ static bool ResolveMassAliasByElfOrigin(const char *launch_path, char *resolved_
         return false;
     }
 
-    const char *relative = launch_path + 6;
-    for (int i = 0; i <= 9; ++i) {
-        char candidate[255];
-        snprintf(candidate, sizeof(candidate), "mass%d:/%s", i, relative);
-        if (FileExistsXio(candidate)) {
-            snprintf(resolved_path, resolved_size, "%s", candidate);
-            return true;
-        }
-    }
-    return false;
+	char relative_norm[255];
+	snprintf(relative_norm, sizeof(relative_norm), "%s", launch_path + 6);
+	for (char *p = relative_norm; *p; ++p) {
+		if (*p == '\\') {
+			*p = '/';
+		}
+	}
+	char collapsed[255];
+	size_t w = 0;
+	for (size_t r = 0; relative_norm[r] != '\0' && w + 1 < sizeof(collapsed); ++r) {
+		if (relative_norm[r] == '/' && w > 0 && collapsed[w - 1] == '/') {
+			continue;
+		}
+		collapsed[w++] = relative_norm[r];
+	}
+	collapsed[w] = '\0';
+
+	int best_idx = -1;
+	for (int i = 0; i <= 9; ++i) {
+		char candidate_elf[255];
+		snprintf(candidate_elf, sizeof(candidate_elf), "mass%d:/%s", i, collapsed);
+		if (!FileExistsXio(candidate_elf)) {
+			continue;
+		}
+		if (best_idx < 0) {
+			best_idx = i;
+		}
+		char candidate_dir[255];
+		char candidate_system[255];
+		snprintf(candidate_dir, sizeof(candidate_dir), "%s", candidate_elf);
+		char *slash = strrchr(candidate_dir, '/');
+		if (slash != NULL) {
+			slash[1] = '\0';
+			if (BuildSystemLuaPath(candidate_dir, candidate_system, sizeof(candidate_system)) && FileExistsXio(candidate_system)) {
+				best_idx = i;
+				break;
+			}
+		}
+	}
+
+	if (best_idx >= 0) {
+		snprintf(resolved_path, resolved_size, "mass%d:/%s", best_idx, collapsed);
+		return true;
+	}
+	return false;
 }
 
 
@@ -846,6 +881,7 @@ int main(int argc, char * argv[])
 		snprintf(boot_path, sizeof(boot_path), "%s", app_dir);
 		NormalizeDirPath(boot_path, sizeof(boot_path));
 		NormalizeDirPath(app_dir, sizeof(app_dir));
+		setenv("APP_DIR", app_dir, 1);
 	}
     if (launch_path != NULL && (argc <= 0 || argv == NULL || argv[0] == NULL)) {
         setAppDirFromPath(launch_path);
