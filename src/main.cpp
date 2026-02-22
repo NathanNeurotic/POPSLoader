@@ -332,6 +332,35 @@ static bool BuildSystemLuaPath(const char *dir, char *out_path, size_t out_size)
     return written > 0 && (size_t)written < out_size;
 }
 
+static bool ResolveMassAliasAppDir(char *dir, size_t dir_size)
+{
+    if (dir == NULL || dir[0] == '\0') {
+        return false;
+    }
+    if (strncmp(dir, "mass:/", 6) != 0) {
+        return false;
+    }
+
+    const char *relative = dir + 6;
+    for (int i = 0; i <= 9; ++i) {
+        char candidate_dir[255];
+        char candidate_system[255];
+        snprintf(candidate_dir, sizeof(candidate_dir), "mass%d:/%s", i, relative);
+        if (!BuildSystemLuaPath(candidate_dir, candidate_system, sizeof(candidate_system))) {
+            continue;
+        }
+        int fd = fileXioOpen(candidate_system, O_RDONLY, 0);
+        if (fd >= 0) {
+            fileXioClose(fd);
+            snprintf(dir, dir_size, "%s", candidate_dir);
+            NormalizeDirPath(dir, dir_size);
+            return true;
+        }
+    }
+
+    return false;
+}
+
 static bool RebindAppDirFromLaunchPath(const char *launch_path)
 {
     if (launch_path == NULL) {
@@ -821,6 +850,13 @@ int main(int argc, char * argv[])
         DPRINTF("boot_path verification failed for argv0=%s; using app_dir fallback\n", launch_path ? launch_path : "<null>");
         snprintf(boot_path, sizeof(boot_path), "%s", app_dir);
         NormalizeDirPath(boot_path, sizeof(boot_path));
+    }
+
+    if (strncmp(app_dir, "mass:/", 6) == 0) {
+        if (ResolveMassAliasAppDir(app_dir, sizeof(app_dir))) {
+            snprintf(boot_path, sizeof(boot_path), "%s", app_dir);
+            NormalizeDirPath(boot_path, sizeof(boot_path));
+        }
     }
 
     char system_lua_path[255];
