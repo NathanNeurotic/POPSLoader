@@ -467,6 +467,31 @@ static bool FileExistsXio(const char *path)
     return false;
 }
 
+static bool ResolveMassAliasByElfOrigin(const char *launch_path, char *resolved_path, size_t resolved_size)
+{
+    if (launch_path == NULL || resolved_path == NULL || resolved_size == 0) {
+        return false;
+    }
+    if (strncmp(launch_path, "mass:/", 6) != 0) {
+        return false;
+    }
+    int explicit_idx = -1;
+    if (sscanf(launch_path, "mass%d:/", &explicit_idx) == 1) {
+        return false;
+    }
+
+    const char *relative = launch_path + 6;
+    for (int i = 0; i <= 9; ++i) {
+        char candidate[255];
+        snprintf(candidate, sizeof(candidate), "mass%d:/%s", i, relative);
+        if (FileExistsXio(candidate)) {
+            snprintf(resolved_path, resolved_size, "%s", candidate);
+            return true;
+        }
+    }
+    return false;
+}
+
 
 static int CountMountedMassRoots()
 {
@@ -799,7 +824,8 @@ int main(int argc, char * argv[])
 	if (launch_path != NULL && strncmp(launch_path, "mass:/", 6) == 0) {
 		int explicit_idx = -1;
 		if (sscanf(launch_path, "mass%d:/", &explicit_idx) != 1) {
-			if (ResolveMassAliasLaunchPath(launch_path, resolved_launch_path, sizeof(resolved_launch_path))) {
+			if (ResolveMassAliasByElfOrigin(launch_path, resolved_launch_path, sizeof(resolved_launch_path)) ||
+				ResolveMassAliasLaunchPath(launch_path, resolved_launch_path, sizeof(resolved_launch_path))) {
 				launch_path = resolved_launch_path;
 				mass_alias_resolved = true;
 			} else {
