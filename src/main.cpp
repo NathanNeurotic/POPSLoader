@@ -671,6 +671,19 @@ int main(int argc, char * argv[])
     LOAD_IRX_NARG(audsrv_irx);
 
     const char *launch_path = GetLaunchPath(argc, argv);
+    char norm_launch[255];
+    if (launch_path != NULL) {
+        snprintf(norm_launch, sizeof(norm_launch), "%s", launch_path);
+        for (char *p = norm_launch; *p; ++p) {
+            if (*p == '\\') {
+                *p = '/';
+            }
+        }
+        if (strncmp(norm_launch, "mass://", 7) == 0) {
+            memmove(norm_launch + 6, norm_launch + 7, strlen(norm_launch + 7) + 1);
+        }
+        launch_path = norm_launch;
+    }
     int last_mass_count = -1;
     int stable_frames = 0;
     for (int tries = 0; tries < 80; ++tries) {
