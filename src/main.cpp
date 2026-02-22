@@ -309,16 +309,17 @@ static bool ResolveMassAliasLaunchPath(const char *launch_path, char *resolved_p
         return false;
     }
 
-    const char *relative = launch_path + 6;
-    struct stat st;
-    for (int i = 0; i <= 9; ++i) {
-        char candidate[255];
-        snprintf(candidate, sizeof(candidate), "mass%d:/%s", i, relative);
-        if (stat(candidate, &st) == 0) {
-            snprintf(resolved_path, resolved_size, "%s", candidate);
-            return true;
-        }
-    }
+	const char *relative = launch_path + 6;
+	for (int i = 0; i <= 9; ++i) {
+		char candidate[255];
+		snprintf(candidate, sizeof(candidate), "mass%d:/%s", i, relative);
+		int fd = fileXioOpen(candidate, O_RDONLY, 0);
+		if (fd >= 0) {
+			fileXioClose(fd);
+			snprintf(resolved_path, resolved_size, "%s", candidate);
+			return true;
+		}
+	}
 
     return false;
 }
@@ -783,30 +784,23 @@ int main(int argc, char * argv[])
 
     char resolved_launch_path[255];
     bool mass_alias_resolved = false;
-    if (launch_path != NULL && strncmp(launch_path, "mass:/", 6) == 0) {
-        int explicit_idx = -1;
-        if (sscanf(launch_path, "mass%d:/", &explicit_idx) != 1) {
-            for (int tries = 0; tries < 60; ++tries) {
-                if (ResolveMassAliasLaunchPath(launch_path, resolved_launch_path, sizeof(resolved_launch_path))) {
-                    launch_path = resolved_launch_path;
-                    mass_alias_resolved = true;
-                    break;
-                }
-                DelayThread(100 * 1000);
-            }
-            if (!mass_alias_resolved) {
-                int only_idx = GetOnlyMountedMassIndexOrNeg1();
-                if (only_idx >= 0) {
-                    RewriteMassAliasToIndex(launch_path, only_idx, resolved_launch_path, sizeof(resolved_launch_path));
-                    launch_path = resolved_launch_path;
-                    mass_alias_resolved = true;
-                }
-            }
-        }
-    } else if (ResolveMassAliasLaunchPath(launch_path, resolved_launch_path, sizeof(resolved_launch_path))) {
-        launch_path = resolved_launch_path;
-        mass_alias_resolved = true;
-    }
+	if (launch_path != NULL && strncmp(launch_path, "mass:/", 6) == 0) {
+		int explicit_idx = -1;
+		if (sscanf(launch_path, "mass%d:/", &explicit_idx) != 1 &&
+			ResolveMassAliasLaunchPath(launch_path, resolved_launch_path, sizeof(resolved_launch_path))) {
+			launch_path = resolved_launch_path;
+			mass_alias_resolved = true;
+		}
+	} else if (ResolveMassAliasLaunchPath(launch_path, resolved_launch_path, sizeof(resolved_launch_path))) {
+		launch_path = resolved_launch_path;
+		mass_alias_resolved = true;
+	}
+	if (mass_alias_resolved) {
+		setAppDirFromPath(launch_path);
+		snprintf(boot_path, sizeof(boot_path), "%s", app_dir);
+		NormalizeDirPath(boot_path, sizeof(boot_path));
+		NormalizeDirPath(app_dir, sizeof(app_dir));
+	}
     if (launch_path != NULL && (argc <= 0 || argv == NULL || argv[0] == NULL)) {
         setAppDirFromPath(launch_path);
         snprintf(boot_path, sizeof(boot_path), "%s", app_dir);
