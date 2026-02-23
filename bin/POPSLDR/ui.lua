@@ -44,11 +44,14 @@ local function GetDeviceIconKey(mode)
   return mode
 end
 
+local _BG_PROBE_ENABLED = false
+
 local function DrawFullScreen(tex, alpha)
   if tex == nil then return false end
   local a = alpha or 128
   if a < 0 then a = 0 end
   if a > 128 then a = 128 end
+  if _BG_PROBE_ENABLED then a = 128 end
   Graphics.drawScaleImage(tex, 0, 0, UI.SCR.X, UI.SCR.Y, Color.new(128, 128, 128, a))
   return true
 end
@@ -825,7 +828,7 @@ UI = {
           Screen.clear(UI.SCR.BGCOL)
           local bg = nil
           if scene == UI.SCENES.MMAIN then
-            bg = IMG.BGM or IMG.BKG
+            bg = IMG.BG or IMG.BGM or IMG.BKG
           elseif scene == UI.SCENES.MPROFILE or scene == UI.SCENES.CREDITS then
             bg = IMG.BG or IMG.BKG
           else
@@ -1096,7 +1099,7 @@ end
 	        Screen.clear(UI.SCR.BGCOL)
         local bg = nil
         if UI.CURSCENE == UI.SCENES.MMAIN then
-          bg = IMG.BGM or IMG.BKG
+          bg = IMG.BG or IMG.BGM or IMG.BKG
         elseif UI.CURSCENE == UI.SCENES.MPROFILE or UI.CURSCENE == UI.SCENES.CREDITS then
           bg = IMG.BG or IMG.BKG
         else
@@ -1105,9 +1108,12 @@ end
         if bg ~= nil then
           local alpha = 128
           DrawFullScreen(bg, alpha)
+          if _BG_PROBE_ENABLED and IMG.triangle ~= nil then
+            Graphics.drawImage(IMG.triangle, 10, 10, UI.CCOL.GREY)
+          end
           if UI._BG_LOG_SCENE ~= UI.CURSCENE then
             UI._BG_LOG_SCENE = UI.CURSCENE
-            LOG(string.format("BG_DRAW scene=%s handle=%s alpha=%d", tostring(UI.CURSCENE), tostring(bg), alpha))
+            LOG(string.format("BG_STATE key=%s bgTex=%s alpha=%d overlayAlpha=%d", tostring(UI.CURSCENE), tostring(bg), alpha, 0))
           end
         end
       end;
@@ -1962,10 +1968,13 @@ end
           return value
         end
         local function ResolveIcon(mode, key)
+          if mode ~= "USB" and key == "USB" then
+            LogOnce("ICON_REVERT:"..tostring(mode), string.format("ICON_REVERT mode=%s path=ResolveIcon", tostring(mode)))
+          end
           local icon = IMG[key]
           if icon ~= nil then return icon end
-          LogOnce("ICONFALLBACK:"..tostring(mode), string.format("ICONFALLBACK mode=%s missing IMG/%s.png -> IMG/USB.png", tostring(mode), tostring(key)))
-          return IMG.USB or IMG["MISSING"]
+          LogOnce("ICONFALLBACK:"..tostring(mode), string.format("ICONFALLBACK mode=%s missing IMG/%s.png -> IMG/MISSING.png", tostring(mode), tostring(key)))
+          return IMG["MISSING"]
         end
         if not UI.MainMenu.icons_ready then
           for i, key in ipairs(icon_keys) do
