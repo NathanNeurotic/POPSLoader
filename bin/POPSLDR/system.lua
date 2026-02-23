@@ -83,13 +83,17 @@ local function ResolveAsset(rel)
 end
 
 local function ResolveWritablePath(rel)
-  local legacy_root = JoinPath(APP_DIR_LOCAL, "POPSLDR")
-  local legacy = JoinPath(legacy_root, rel)
-  local modern = JoinPath(APP_DIR_LOCAL, rel)
-  if doesFileExist(legacy) or doesFolderExist(legacy_root) then
-    return legacy
+  local mc_root = "mc0:/POPSLOADER/"
+  local mc_target = mc_root..rel
+  if doesFolderExist(mc_root) then
+    return mc_target
   end
-  return modern
+  pcall(System.createDirectory, mc_root)
+  if doesFolderExist(mc_root) then
+    return mc_target
+  end
+  local fallback = JoinPath(APP_DIR_LOCAL, rel)
+  return fallback
 end
 
 local function IsAbsoluteDevicePath(path)

@@ -1,3 +1,4 @@
+#include <stddef.h>
 #ifndef GRAPHICS_H
 #define GRAPHICS_H
 
@@ -86,6 +87,7 @@ extern float FPSCounter(int interval);
 extern void setVideoMode(s16 mode, int width, int height, int psm, s16 interlace, s16 field, bool zbuffering, int psmz);
 
 extern GSTEXTURE* load_image(const char* path, bool delayed);
+extern GSTEXTURE* load_image_from_buffer(const void* data, size_t size, bool delayed);
 extern GSTEXTURE* loadEmbeddedPNG(uint8_t * data, size_t size, bool delayed);
 
 

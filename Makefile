@@ -63,7 +63,7 @@ BIN2S = $(PS2SDK)/bin/bin2c
 #-------------------------- App Content ---------------------------#
 EXT_LIBS = modules/ds34usb/ee/libds34usb.a modules/ds34bt/ee/libds34bt.a
 
-APP_CORE = main.o system.o pad.o graphics.o render.o \
+APP_CORE = main.o system.o asset_loader.o embedded_registry.o pad.o graphics.o render.o \
 		   calc_3d.o gsKit3d_sup.o atlas.o fntsys.o md5.o \
 		   sound.o #strUtils.o
 
@@ -78,9 +78,23 @@ IOP_MODULES = iomanX.o fileXio.o \
 			  ps2dev9.o ps2atad.o ps2hdd-osd.o ps2fs.o mmceman.o \
 			  mx4sio_bd.o bdm_query.o
 
-EMBEDDED_RSC = boot.o builtin_font.o
+EMBEDDED_RSC = builtin_font.o
 
-EE_OBJS = $(APP_CORE) $(LUA_LIBS) $(IOP_MODULES) $(EMBEDDED_RSC)
+EMBED_ASSET_DIR = $(EE_ASM_DIR)embedded
+EMBED_ASSET_TMP = $(EMBED_ASSET_DIR)/tmp
+EMBED_ASSETS = \
+	etc/boot.lua \
+	bin/POPSLDR/system.lua \
+	bin/POPSLDR/ui.lua \
+	bin/POPSLDR/images.lua \
+	bin/POPSLDR/pops_profiles.lua \
+	bin/POPSLDR/IMG/images.lua \
+	bin/POPSLDR/boot.adp \
+	$(wildcard bin/POPSLDR/IMG/*.png)
+EMBED_ASSET_IDS = $(patsubst %,_%,$(subst .,_,$(subst /,_,$(EMBED_ASSETS))))
+EMBED_ASSET_OBJS = $(addprefix embed_asset,$(addsuffix .o,$(EMBED_ASSET_IDS)))
+
+EE_OBJS = $(APP_CORE) $(LUA_LIBS) $(IOP_MODULES) $(EMBEDDED_RSC) $(EMBED_ASSET_OBJS)
 
 EE_OBJS_DIR = obj/
 EE_SRC_DIR = src/
@@ -96,9 +110,18 @@ $(EE_BIN_PKD): $(EE_BIN)
 	ps2-packer $< $@ > /dev/null
 #--------------------- Embedded ressources ------------------------#
 
-$(EE_ASM_DIR)boot.c: etc/boot.lua | $(EE_ASM_DIR)
-	echo "Embedding boot script..."
-	$(BIN2S) $< $@ bootString
+$(EE_ASM_DIR)embedded_registry.generated.h: $(EMBED_ASSETS) | $(EE_ASM_DIR)
+	python3 scripts/gen_embedded_registry.py "$@" $(EMBED_ASSETS)
+
+$(EMBED_ASSET_TMP):
+	@mkdir -p $@
+
+$(EMBED_ASSET_TMP)/_%.gz: | $(EMBED_ASSET_TMP)
+	@:
+
+$(EE_OBJS_DIR)embed_asset_%.o: $(EMBED_ASSET_TMP)/_%.gz | $(EE_OBJS_DIR)
+	@echo "  - $@"
+	$(EE_OBJCOPY) -I binary -O elf32-tradlittlemips -B mips $< $@
 
 # Images
 $(EE_ASM_DIR)%.c: EMBED/%.png
@@ -107,6 +130,13 @@ $(EE_ASM_DIR)%.c: EMBED/%.ttf
 	$(BIN2S) $< $@ $(shell basename $< .ttf)
 #------------------------------------------------------------------#
 
+define EMBED_ASSET_RULE
+$(EMBED_ASSET_TMP)/$(2).gz: $(1) | $(EMBED_ASSET_TMP)
+	@echo "Compressing embedded asset $(1)..."
+	gzip -n -9 -c $$< > $$@
+endef
+
+$(foreach a,$(EMBED_ASSETS),$(eval $(call EMBED_ASSET_RULE,$(a),$(patsubst %,_%,$(subst .,_,$(subst /,_,$(a)))))))
 
 #-------------------- Embedded IOP Modules ------------------------#
 
@@ -170,6 +200,7 @@ cleanbin:
 clean: cleanbin
 	rm -rf $(EE_OBJS_DIR)
 	rm -rf $(EE_ASM_DIR)
+	rm -rf $(EMBED_ASSET_DIR)
 
 	rm -f $(EMBEDDED_RSC)
 
@@ -240,6 +271,11 @@ $(EE_OBJS_DIR)%.o: $(EE_ASM_DIR)%.c | $(EE_OBJS_DIR)
 	@$(EE_CC) $(EE_CFLAGS) $(EE_INCS) -c $< -o $@
 
 $(EE_OBJS_DIR)%.o: $(EE_SRC_DIR)%.cpp | $(EE_OBJS_DIR)
+	@echo "  - $@"
+	$(EE_CXX) $(EE_CXXFLAGS) $(EE_INCS) -c $< -o $@
+
+
+$(EE_OBJS_DIR)embedded_registry.o: $(EE_SRC_DIR)embedded_registry.cpp $(EE_ASM_DIR)embedded_registry.generated.h | $(EE_OBJS_DIR)
 	@echo "  - $@"
 	$(EE_CXX) $(EE_CXXFLAGS) $(EE_INCS) -c $< -o $@
 

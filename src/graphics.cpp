@@ -10,6 +10,7 @@
 #include <png.h>
 
 #include "include/graphics.h"
+#include "include/asset_loader.h"
 #include "include/dprintf.h"
 
 #define DEG2RAD(x) ((x)*0.01745329251)
@@ -791,17 +792,25 @@ GSTEXTURE* loadjpeg(FILE* fp, bool scale_down, bool delayed)
 
 }
 
-GSTEXTURE* load_image(const char* path, bool delayed){
-	FILE* file = fopen(path, "rb");
-	uint16_t magic;
-	fread(&magic, 1, 2, file);
-	fseek(file, 0, SEEK_SET);
-	GSTEXTURE* image = NULL;
-	if (magic == 0x4D42) image =      loadbmp(file, delayed);
-	else if (magic == 0xD8FF) image = loadjpeg(file, false, delayed);
-	else if (magic == 0x5089) image = loadpng(file, delayed);
-	if (image == NULL) DPRINTF("Failed to load image %s.", path);
+GSTEXTURE* load_image_from_buffer(const void* data, size_t size, bool delayed){
+	if (data == NULL || size < 2) return NULL;
+	const unsigned char* bytes = (const unsigned char*)data;
+	uint16_t magic = (uint16_t)(bytes[0] | (bytes[1] << 8));
+	if (magic == 0x5089) {
+		return loadEmbeddedPNG((uint8_t*)data, size, delayed);
+	}
+	return NULL;
+}
 
+GSTEXTURE* load_image(const char* path, bool delayed){
+	AssetBuffer asset;
+	if (!LoadAsset(path, &asset)) {
+		DPRINTF("Failed to load image %s.", path);
+		return NULL;
+	}
+	GSTEXTURE* image = load_image_from_buffer(asset.data, asset.size, delayed);
+	FreeAsset(&asset);
+	if (image == NULL) DPRINTF("Failed to decode image %s.", path);
 	return image;
 }
 

@@ -79,6 +79,38 @@ local function resolve_script_path(path)
   return nil
 end
 
+
+local function ReadAsset(path)
+  if type(System) == "table" and type(System.readAsset) == "function" then
+    local ok, data = pcall(System.readAsset, path)
+    if ok and type(data) == "string" and data ~= "" then
+      return data
+    end
+  end
+  return nil
+end
+
+local function EmbeddedLuaSearcher(modname)
+  local rel = string.gsub(modname, "[.]", "/")..".lua"
+  local probes = {
+    rel,
+    "POPSLDR/"..rel,
+    modname..".lua",
+    "POPSLDR/"..modname..".lua"
+  }
+  for _, probe in ipairs(probes) do
+    local chunk = ReadAsset(probe)
+    if chunk ~= nil then
+      local fn, err = loadstring(chunk, "@"..probe)
+      if fn ~= nil then
+        return fn
+      end
+      return "\n\tembedded load error: "..tostring(err)
+    end
+  end
+  return "\n\tno embedded module for "..modname
+end
+
 local function is_usb_mass_root(path)
   local normalized = normalize_path(path)
   if normalized == nil then
@@ -124,6 +156,13 @@ BASE_DIR = ensure_dir(BASE_DIR)
 System.currentDirectory(BASE_DIR)
 
 package.path = BASE_DIR.."?.lua;"..BASE_DIR.."?/init.lua;"..BASE_DIR.."POPSLDR/?.lua;./?.lua;./?/init.lua;./POPSLDR/?.lua"
+if type(package) == "table" then
+  if type(package.searchers) == "table" then
+    table.insert(package.searchers, 1, EmbeddedLuaSearcher)
+  elseif type(package.loaders) == "table" then
+    table.insert(package.loaders, 1, EmbeddedLuaSearcher)
+  end
+end
 function LOG(...)
   print_uart(...)
 end
@@ -279,11 +318,25 @@ if BASE_PARENT ~= nil then
 end
 
 local SYS = nil
+local embedded_sys = ReadAsset("system.lua") or ReadAsset("POPSLDR/system.lua")
+if embedded_sys ~= nil then
+  local loader, err = loadstring(embedded_sys, "@system.lua")
+  if loader == nil then
+    error(err)
+  end
+  local ok, run_err = pcall(loader)
+  if not ok then
+    error(run_err)
+  end
+  SYS = "embedded"
+end
+if SYS == nil then
 for i = 1, #SYS_CANDIDATES do
   SYS = resolve_script_path(SYS_CANDIDATES[i])
   if SYS ~= nil then
     break
   end
+end
 end
 
 if SYS == nil then

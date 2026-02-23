@@ -18,6 +18,7 @@
 
 #include "include/system.h"
 #include "include/dprintf.h"
+#include "include/asset_loader.h"
 
 #define MAX_DIR_FILES 512
 
@@ -1093,6 +1094,32 @@ static int lua_resolveAssetType(lua_State *L) {
 }
 
 
+
+static int lua_assetExists(lua_State *L) {
+	int argc = lua_gettop(L);
+	if (argc != 1) return luaL_error(L, "Argument error: System.assetExists(path) takes one argument.");
+	const char *path = luaL_checkstring(L, 1);
+	AssetBuffer asset;
+	bool ok = LoadAsset(path, &asset);
+	if (ok) FreeAsset(&asset);
+	lua_pushboolean(L, ok);
+	return 1;
+}
+
+static int lua_readAsset(lua_State *L) {
+	int argc = lua_gettop(L);
+	if (argc != 1) return luaL_error(L, "Argument error: System.readAsset(path) takes one argument.");
+	const char *path = luaL_checkstring(L, 1);
+	AssetBuffer asset;
+	if (!LoadAsset(path, &asset)) {
+		lua_pushnil(L);
+		return 1;
+	}
+	lua_pushlstring(L, (const char*)asset.data, asset.size);
+	FreeAsset(&asset);
+	return 1;
+}
+
 static int lua_getMassDriverName(lua_State *L)
 {
 	int argc = lua_gettop(L);
@@ -1167,6 +1194,8 @@ static const luaL_Reg System_functions[] = {
 	{"getAppDir",                 lua_getAppDir},
 	{"resolveAsset",           lua_resolveAsset},
 	{"resolveAssetType",   lua_resolveAssetType},
+	{"assetExists",              lua_assetExists},
+	{"readAsset",                 lua_readAsset},
 	{"getMassDriverName",        lua_getMassDriverName},
 	{"initMX4SIO",             lua_mx4sio_init},
 	{"bdmList",                lua_bdm_list},

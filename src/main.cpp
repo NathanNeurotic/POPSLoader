@@ -22,6 +22,7 @@
 #include "include/graphics.h"
 #include "include/sound.h"
 #include "include/luaplayer.h"
+#include "include/asset_loader.h"
 #include "include/pad.h"
 #include "include/dprintf.h"
 
@@ -33,9 +34,6 @@ extern "C"{
 #include <libds34bt.h>
 #include <libds34usb.h>
 }
-
-extern char bootString[];
-extern unsigned int size_bootString;
 
 extern unsigned char iomanX_irx[];
 extern unsigned int size_iomanX_irx;
@@ -533,7 +531,21 @@ int main(int argc, char * argv[])
     BootStamp("Lua init start");
     while (1)
     {
-        errMsg = runScript(bootString, true);
+        AssetBuffer bootAsset;
+        if (LoadAsset("etc/boot.lua", &bootAsset) || LoadAsset("boot.lua", &bootAsset)) {
+            char* bootScript = (char*)malloc(bootAsset.size + 1);
+            if (bootScript != NULL) {
+                memcpy(bootScript, bootAsset.data, bootAsset.size);
+                bootScript[bootAsset.size] = '\0';
+                errMsg = runScript(bootScript, true);
+                free(bootScript);
+            } else {
+                errMsg = "ERROR: unable to allocate boot script buffer";
+            }
+            FreeAsset(&bootAsset);
+        } else {
+            errMsg = "ERROR: embedded boot.lua not found";
+        }
 
         init_scr();
 
