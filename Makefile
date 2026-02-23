@@ -82,7 +82,7 @@ EMBEDDED_RSC = builtin_font.o
 
 EMBED_ASSET_DIR = $(EE_ASM_DIR)embedded
 EMBED_ASSET_TMP = $(EMBED_ASSET_DIR)/tmp
-EMBED_ASSETS = \
+EMBED_SRCS = \
 	etc/boot.lua \
 	bin/POPSLDR/system.lua \
 	bin/POPSLDR/ui.lua \
@@ -91,8 +91,10 @@ EMBED_ASSETS = \
 	bin/POPSLDR/IMG/images.lua \
 	bin/POPSLDR/boot.adp \
 	$(wildcard bin/POPSLDR/IMG/*.png)
-EMBED_ASSET_IDS = $(patsubst %,_%,$(subst .,_,$(subst /,_,$(EMBED_ASSETS))))
-EMBED_ASSET_OBJS = $(addprefix embed_asset,$(addsuffix .o,$(EMBED_ASSET_IDS)))
+
+sanitize = $(shell printf '%s' '$(1)' | sed 's/[^A-Za-z0-9]/_/g')
+EMBED_STEMS = $(foreach f,$(EMBED_SRCS),$(call sanitize,$(f)))
+EMBED_ASSET_OBJS = $(foreach f,$(EMBED_SRCS),embed_asset_$(call sanitize,$(f)).o)
 
 EE_OBJS = $(APP_CORE) $(LUA_LIBS) $(IOP_MODULES) $(EMBEDDED_RSC) $(EMBED_ASSET_OBJS)
 
@@ -110,54 +112,60 @@ $(EE_BIN_PKD): $(EE_BIN)
 	ps2-packer $< $@ > /dev/null
 #--------------------- Embedded ressources ------------------------#
 
-$(EE_ASM_DIR)embedded_registry.generated.h: $(EMBED_ASSETS) | $(EE_ASM_DIR)
+$(EE_ASM_DIR)embedded_registry.generated.h: $(EMBED_SRCS) | $(EE_ASM_DIR)
 	@echo "Generating $@ (no python)..."
 	@{ \
 		echo "// generated; do not edit"; \
 		echo "struct EmbeddedEntryDef { const char* path; const unsigned char* start; unsigned int size; bool compressed; };"; \
-		for asset in $(EMBED_ASSETS); do \
-			id=$$(printf '%s' "$$asset" | sed 's/[^A-Za-z0-9]/_/g'); \
-			gz="$(EMBED_ASSET_TMP)/_$$id.gz"; \
-			sym=$$(printf '%s' "$$gz" | sed 's/[^A-Za-z0-9]/_/g'); \
-			printf 'extern const unsigned char _binary_%s_start[];' "$$sym"; echo; \
-			printf 'extern const unsigned char _binary_%s_end[];' "$$sym"; echo; \
+		for asset in $(EMBED_SRCS); do \
+			stem=$$(printf '%s' "$$asset" | sed 's/[^A-Za-z0-9]/_/g'); \
+			sym=$$(printf '%s' "$(EMBED_ASSET_TMP)/$$stem.gz" | sed 's/[^A-Za-z0-9]/_/g'); \
+			echo "extern const unsigned char _binary_$${sym}_start[];"; \
+			echo "extern const unsigned char _binary_$${sym}_end[];"; \
 		done; \
 		echo "static const EmbeddedEntryDef kEmbeddedEntries[] = {"; \
-		for asset in $(EMBED_ASSETS); do \
-			id=$$(printf '%s' "$$asset" | sed 's/[^A-Za-z0-9]/_/g'); \
-			gz="$(EMBED_ASSET_TMP)/_$$id.gz"; \
-			sym=$$(printf '%s' "$$gz" | sed 's/[^A-Za-z0-9]/_/g'); \
+		for asset in $(EMBED_SRCS); do \
+			stem=$$(printf '%s' "$$asset" | sed 's/[^A-Za-z0-9]/_/g'); \
+			sym=$$(printf '%s' "$(EMBED_ASSET_TMP)/$$stem.gz" | sed 's/[^A-Za-z0-9]/_/g'); \
 			if printf '%s' "$$asset" | grep -q '^bin/POPSLDR/'; then \
 				rel=$${asset#bin/POPSLDR/}; \
-				printf '    {"%s", _binary_%s_start, (unsigned int)(_binary_%s_end - _binary_%s_start), true},' "$$asset" "$$sym" "$$sym" "$$sym"; echo; \
-				printf '    {"%s", _binary_%s_start, (unsigned int)(_binary_%s_end - _binary_%s_start), true},' "$$rel" "$$sym" "$$sym" "$$sym"; echo; \
-				printf '    {"POPSLDR/%s", _binary_%s_start, (unsigned int)(_binary_%s_end - _binary_%s_start), true},' "$$rel" "$$sym" "$$sym" "$$sym"; echo; \
+				printf '    {"%s", _binary_%s_start, (unsigned int)(_binary_%s_end - _binary_%s_start), true},\n' "$$asset" "$$sym" "$$sym" "$$sym"; \
+				printf '    {"%s", _binary_%s_start, (unsigned int)(_binary_%s_end - _binary_%s_start), true},\n' "$$rel" "$$sym" "$$sym" "$$sym"; \
+				printf '    {"POPSLDR/%s", _binary_%s_start, (unsigned int)(_binary_%s_end - _binary_%s_start), true},\n' "$$rel" "$$sym" "$$sym" "$$sym"; \
 			elif printf '%s' "$$asset" | grep -q '^etc/'; then \
 				rel=$${asset#etc/}; \
-				printf '    {"%s", _binary_%s_start, (unsigned int)(_binary_%s_end - _binary_%s_start), true},' "$$asset" "$$sym" "$$sym" "$$sym"; echo; \
-				printf '    {"%s", _binary_%s_start, (unsigned int)(_binary_%s_end - _binary_%s_start), true},' "$$rel" "$$sym" "$$sym" "$$sym"; echo; \
+				printf '    {"%s", _binary_%s_start, (unsigned int)(_binary_%s_end - _binary_%s_start), true},\n' "$$asset" "$$sym" "$$sym" "$$sym"; \
+				printf '    {"%s", _binary_%s_start, (unsigned int)(_binary_%s_end - _binary_%s_start), true},\n' "$$rel" "$$sym" "$$sym" "$$sym"; \
 			else \
-				printf '    {"%s", _binary_%s_start, (unsigned int)(_binary_%s_end - _binary_%s_start), true},' "$$asset" "$$sym" "$$sym" "$$sym"; echo; \
+				printf '    {"%s", _binary_%s_start, (unsigned int)(_binary_%s_end - _binary_%s_start), true},\n' "$$asset" "$$sym" "$$sym" "$$sym"; \
 			fi; \
 		done; \
 		echo "};"; \
 	} > "$@"
-# Images
-$(EE_ASM_DIR)%.c: EMBED/%.png
-	$(BIN2S) $< $@ $(shell basename $< .png)
-$(EE_ASM_DIR)%.c: EMBED/%.ttf
-	$(BIN2S) $< $@ $(shell basename $< .ttf)
-#------------------------------------------------------------------#
 
-define EMBED_ASSET_RULE
-$(EMBED_ASSET_TMP)/$(2).gz: $(1) | $(EMBED_ASSET_TMP)
-	@echo "Compressing embedded asset $(1)..."
-	gzip -n -9 -c $$< > $$@
+$(EMBED_ASSET_TMP):
+	@mkdir -p $@
+
+embed-assets-check:
+	@echo "Embedded assets:"; \
+	for a in $(EMBED_SRCS); do echo "  $$a"; done
+	@echo "Embedded objects:"; \
+	for o in $(EMBED_ASSET_OBJS); do echo "  $(EE_OBJS_DIR)$$o"; done
+	@for a in $(EMBED_SRCS); do test -f "$$a" || { echo "Missing embedded asset: $$a"; exit 1; }; done
+
+
+define EMBED_OBJ_RULE
+$(EE_OBJS_DIR)embed_asset_$(call sanitize,$(1)).o: $(1) | $(EE_OBJS_DIR) $(EMBED_ASSET_TMP)
+	@echo "  - $$@"
+	@test -f "$$<" || { echo "Missing embedded asset: $$<"; exit 1; }
+	@gzip -n -9 -c "$$<" > "$(EMBED_ASSET_TMP)/$(call sanitize,$(1)).gz"
+	$(EE_OBJCOPY) -I binary -O elf32-tradlittlemips -B mips "$(EMBED_ASSET_TMP)/$(call sanitize,$(1)).gz" "$$@"
 endef
 
-$(foreach a,$(EMBED_ASSETS),$(eval $(call EMBED_ASSET_RULE,$(a),$(patsubst %,_%,$(subst .,_,$(subst /,_,$(a)))))))
+$(foreach a,$(EMBED_SRCS),$(eval $(call EMBED_OBJ_RULE,$(a))))
 
 #-------------------- Embedded IOP Modules ------------------------#
+
 
 vpath %.irx iop/embed/
 vpath %.irx $(PS2SDK)/iop/irx/
