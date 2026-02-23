@@ -543,10 +543,24 @@ int main(int argc, char * argv[])
     // set base path luaplayer (after argv0 normalization and finalized boot_path computation)
     chdir(boot_path);
 
+    const void* boot_ptr = NULL;
+    size_t boot_size = 0;
+    bool boot_embedded = false;
+    if (!Asset_Exists("system.lua") || Asset_ReadAll("system.lua", &boot_ptr, &boot_size, &boot_embedded) != 0) {
+        init_scr();
+        scr_setfontcolor(0x0000ff);
+        scr_clear();
+        scr_setXY(2, 2);
+        scr_printf("Missing embedded key: system.lua (registry key mismatch)\n");
+        for(;;) { }
+    }
+    DPRINTF("system.lua %s size=%u\n", boot_embedded ? "EMBEDDED" : "DISK", (unsigned int)boot_size);
+    Asset_FreeIfNeeded(boot_ptr, boot_embedded);
+
     BootStamp("Lua init start");
     while (1)
     {
-        errMsg = runScript(bootString, true);
+        errMsg = runScript("system.lua", false);
 
         init_scr();
 

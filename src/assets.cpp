@@ -62,7 +62,7 @@ static EmbeddedAsset g_assets[] = {
     {"images.lua", asset_bin_POPSLDR_images_lua, size_asset_bin_POPSLDR_images_lua},
     {"pops_profiles.lua", asset_bin_POPSLDR_pops_profiles_lua, size_asset_bin_POPSLDR_pops_profiles_lua},
     {"boot.adp", asset_bin_POPSLDR_boot_adp, size_asset_bin_POPSLDR_boot_adp},
-    {"builtin_font.ttf", builtin_font, size_builtin_font},
+    {"builtin_font.bin", builtin_font, size_builtin_font},
     {"IMG/APAHDD.png", asset_bin_POPSLDR_IMG_APAHDD_png, size_asset_bin_POPSLDR_IMG_APAHDD_png},
     {"IMG/BDHDD.png", asset_bin_POPSLDR_IMG_BDHDD_png, size_asset_bin_POPSLDR_IMG_BDHDD_png},
     {"IMG/BG.png", asset_bin_POPSLDR_IMG_BG_png, size_asset_bin_POPSLDR_IMG_BG_png},
@@ -185,7 +185,7 @@ void Asset_InitSettingsRoot(const char* bootPath) {
 const char* Asset_GetSettingsRoot(void) { return g_settings_root; }
 
 int Asset_BootAuditAndReport(void) {
-    const char* req[] = {"system.lua", "ui.lua", "images.lua", "boot.adp", "builtin_font.ttf", "IMG/BG.png", "IMG/MISSING.png"};
+    const char* req[] = {"system.lua", "ui.lua", "images.lua", "boot.adp", "builtin_font.bin", "IMG/BG.png", "IMG/MISSING.png"};
     int missing = 0;
     for (size_t i = 0; i < sizeof(req)/sizeof(req[0]); ++i) {
         const void* p = NULL; size_t s = 0; bool emb = false;
