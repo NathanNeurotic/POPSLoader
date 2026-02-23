@@ -62,7 +62,7 @@ BIN2S = $(PS2SDK)/bin/bin2c
 EE_OBJCOPY ?= mips64r5900el-ps2-elf-objcopy
 EE_READELF ?= mips64r5900el-ps2-elf-readelf
 EE_OBJDUMP ?= mips64r5900el-ps2-elf-objdump
-EE_OBJCOPY_ELF_FMT ?= elf32-tradlittlemips
+EE_OBJCOPY_ELF_FMT ?= elf32-littlemips
 EE_OBJCOPY_BFDARCH ?= mips:5900
 
 #-------------------------- App Content ---------------------------#
@@ -161,7 +161,19 @@ embed-assets-check:
 embed-rule-sample:
 	@$(MAKE) -n $(EE_OBJS_DIR)embed_asset_etc_boot_lua.o
 
+objcopy-targets:
+	@echo "== $(EE_OBJCOPY) --version =="
+	@$(EE_OBJCOPY) --version || true
+	@echo "== $(EE_OBJCOPY) --help (supported targets excerpt) =="
+	@$(EE_OBJCOPY) --help | sed -n '/supported targets/,$$p' || true
+	@echo "== $(EE_OBJCOPY) -i =="
+	@$(EE_OBJCOPY) -i || true
+
 embed-abi-check: $(EE_OBJS_DIR)main.o $(EE_OBJS_DIR)embed_asset_etc_boot_lua.o
+	@if ! command -v $(EE_READELF) >/dev/null 2>&1 || ! command -v $(EE_OBJDUMP) >/dev/null 2>&1; then \
+		echo "embed-abi-check: skipping (missing $(EE_READELF) or $(EE_OBJDUMP))"; \
+		exit 0; \
+	fi
 	@echo "== ABI check: normal object ($(EE_OBJS_DIR)main.o) =="
 	@$(EE_READELF) -h $(EE_OBJS_DIR)main.o
 	@$(EE_READELF) -A $(EE_OBJS_DIR)main.o 2>/dev/null || true
@@ -170,7 +182,20 @@ embed-abi-check: $(EE_OBJS_DIR)main.o $(EE_OBJS_DIR)embed_asset_etc_boot_lua.o
 	@$(EE_READELF) -h $(EE_OBJS_DIR)embed_asset_etc_boot_lua.o
 	@$(EE_READELF) -A $(EE_OBJS_DIR)embed_asset_etc_boot_lua.o 2>/dev/null || true
 	@$(EE_OBJDUMP) -f $(EE_OBJS_DIR)embed_asset_etc_boot_lua.o
-	@set -eu; 	n_hdr="$(EE_OBJS_DIR)main.o"; e_hdr="$(EE_OBJS_DIR)embed_asset_etc_boot_lua.o"; 	n_class=`$(EE_READELF) -h $$n_hdr | sed -n 's/^ *Class: *//p'`; 	e_class=`$(EE_READELF) -h $$e_hdr | sed -n 's/^ *Class: *//p'`; 	n_data=`$(EE_READELF) -h $$n_hdr | sed -n 's/^ *Data: *//p'`; 	e_data=`$(EE_READELF) -h $$e_hdr | sed -n 's/^ *Data: *//p'`; 	n_machine=`$(EE_READELF) -h $$n_hdr | sed -n 's/^ *Machine: *//p'`; 	e_machine=`$(EE_READELF) -h $$e_hdr | sed -n 's/^ *Machine: *//p'`; 	n_flags=`$(EE_READELF) -h $$n_hdr | sed -n 's/^ *Flags: *//p'`; 	e_flags=`$(EE_READELF) -h $$e_hdr | sed -n 's/^ *Flags: *//p'`; 	[ "$$n_class" = "$$e_class" ] || { echo "ABI mismatch: Class"; exit 1; }; 	[ "$$n_data" = "$$e_data" ] || { echo "ABI mismatch: Data"; exit 1; }; 	[ "$$n_machine" = "$$e_machine" ] || { echo "ABI mismatch: Machine"; exit 1; }; 	[ "$$n_flags" = "$$e_flags" ] || { echo "ABI mismatch: Flags"; exit 1; }
+	@set -eu; \
+	n_hdr="$(EE_OBJS_DIR)main.o"; e_hdr="$(EE_OBJS_DIR)embed_asset_etc_boot_lua.o"; \
+	n_class=`$(EE_READELF) -h $$n_hdr | sed -n 's/^ *Class: *//p'`; \
+	e_class=`$(EE_READELF) -h $$e_hdr | sed -n 's/^ *Class: *//p'`; \
+	n_data=`$(EE_READELF) -h $$n_hdr | sed -n 's/^ *Data: *//p'`; \
+	e_data=`$(EE_READELF) -h $$e_hdr | sed -n 's/^ *Data: *//p'`; \
+	n_machine=`$(EE_READELF) -h $$n_hdr | sed -n 's/^ *Machine: *//p'`; \
+	e_machine=`$(EE_READELF) -h $$e_hdr | sed -n 's/^ *Machine: *//p'`; \
+	n_flags=`$(EE_READELF) -h $$n_hdr | sed -n 's/^ *Flags: *//p'`; \
+	e_flags=`$(EE_READELF) -h $$e_hdr | sed -n 's/^ *Flags: *//p'`; \
+	[ "$$n_class" = "$$e_class" ] || { echo "ABI mismatch: Class"; exit 1; }; \
+	[ "$$n_data" = "$$e_data" ] || { echo "ABI mismatch: Data"; exit 1; }; \
+	[ "$$n_machine" = "$$e_machine" ] || { echo "ABI mismatch: Machine"; exit 1; }; \
+	[ "$$n_flags" = "$$e_flags" ] || { echo "ABI mismatch: Flags"; exit 1; }
 
 
 define EMBED_OBJ_RULE
@@ -181,7 +206,16 @@ $(EE_OBJS_DIR)embed_asset_$(call sanitize,$(1)).o: $(1) | $(EE_OBJS_DIR) $(EMBED
 	test -f "$$<" || { echo "Missing embedded asset: $$<"; exit 1; }; \
 	gz="$(EMBED_ASSET_TMP)/$(call sanitize,$(1)).gz"; \
 	gzip -n -9 -c "$$<" > "$$$$gz"; \
-	$(EE_OBJCOPY) -I binary -O $(EE_OBJCOPY_ELF_FMT) --binary-architecture=$(EE_OBJCOPY_BFDARCH) "$$$$gz" "$$@"; \
+	if $(EE_OBJCOPY) --help 2>/dev/null | grep -q -- '--binary-architecture'; then \
+		echo "objcopy: format=$(EE_OBJCOPY_ELF_FMT), arch=$(EE_OBJCOPY_BFDARCH)"; \
+		if ! $(EE_OBJCOPY) -I binary -O $(EE_OBJCOPY_ELF_FMT) --binary-architecture=$(EE_OBJCOPY_BFDARCH) "$$$$gz" "$$@"; then \
+			echo "objcopy: arch $(EE_OBJCOPY_BFDARCH) rejected; retrying without explicit arch"; \
+			$(EE_OBJCOPY) -I binary -O $(EE_OBJCOPY_ELF_FMT) "$$$$gz" "$$@"; \
+		fi; \
+	else \
+		echo "objcopy: format=$(EE_OBJCOPY_ELF_FMT), no --binary-architecture support"; \
+		$(EE_OBJCOPY) -I binary -O $(EE_OBJCOPY_ELF_FMT) "$$$$gz" "$$@"; \
+	fi; \
 	rm -f "$$$$gz"
 endef
 
