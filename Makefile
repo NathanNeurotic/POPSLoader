@@ -164,6 +164,14 @@ endef
 
 $(foreach a,$(EMBED_SRCS),$(eval $(call EMBED_OBJ_RULE,$(a))))
 
+# Embedded resources built as C translation units (non-asset-pack path)
+# Keep these generic rules so objects like obj/builtin_font.o resolve from EMBED/builtin_font.ttf.
+$(EE_ASM_DIR)%.c: EMBED/%.png | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ $(shell basename $< .png)
+
+$(EE_ASM_DIR)%.c: EMBED/%.ttf | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ $(shell basename $< .ttf)
+
 #-------------------- Embedded IOP Modules ------------------------#
 
 
