@@ -38,6 +38,77 @@ typedef struct {
 static int error_count = 0;
 static int warning_count = 0;
 
+static bool was_texupload_logged(GSTEXTURE* source)
+{
+	static GSTEXTURE* logged[32] = {0};
+	static int logged_count = 0;
+
+	for (int i = 0; i < logged_count; i++) {
+		if (logged[i] == source) return true;
+	}
+
+	if (logged_count < (int)(sizeof(logged) / sizeof(logged[0]))) {
+		logged[logged_count++] = source;
+	}
+
+	return false;
+}
+
+static bool ensureTextureReady(GSTEXTURE* source)
+{
+	if (source == NULL) return false;
+	if (source->Width <= 0 || source->Height <= 0) return false;
+
+	if (source->Vram != 0) return true;
+
+	if (source->Delayed == true) {
+		gsKit_TexManager_bind(gsGlobal, source);
+	}
+
+	if (source->Vram == 0) {
+		if (source->Mem == NULL) {
+			DPRINTF("TEXUPLOAD_FAIL tex=%p mem=NULL w=%d h=%d psm=%d\n", source, source->Width, source->Height, source->PSM);
+			return false;
+		}
+
+		source->Vram = gsKit_vram_alloc(gsGlobal, gsKit_texture_size(source->Width, source->Height, source->PSM), GSKIT_ALLOC_USERBUFFER);
+		if (source->Vram == GSKIT_ALLOC_ERROR) {
+			DPRINTF("TEXUPLOAD_FAIL tex=%p vram_alloc_failed w=%d h=%d psm=%d\n", source, source->Width, source->Height, source->PSM);
+			source->Vram = 0;
+			return false;
+		}
+
+		if (source->Clut != NULL && source->VramClut == 0) {
+			if (source->PSM == GS_PSM_T4)
+				source->VramClut = gsKit_vram_alloc(gsGlobal, gsKit_texture_size(8, 2, GS_PSM_CT32), GSKIT_ALLOC_USERBUFFER);
+			else
+				source->VramClut = gsKit_vram_alloc(gsGlobal, gsKit_texture_size(16, 16, GS_PSM_CT32), GSKIT_ALLOC_USERBUFFER);
+
+			if (source->VramClut == GSKIT_ALLOC_ERROR) {
+				DPRINTF("TEXUPLOAD_FAIL tex=%p vram_clut_alloc_failed\n", source);
+				source->VramClut = 0;
+				return false;
+			}
+		}
+
+		gsKit_texture_upload(gsGlobal, source);
+		if (source->Delayed == false) {
+			free(source->Mem);
+			source->Mem = NULL;
+			if (source->Clut != NULL) {
+				free(source->Clut);
+				source->Clut = NULL;
+			}
+		}
+	}
+
+	if (!was_texupload_logged(source)) {
+		DPRINTF("TEXUPLOAD tex=%p w=%d h=%d psm=%d vram=%u\n", source, source->Width, source->Height, source->PSM, source->Vram);
+	}
+
+	return source->Vram != 0;
+}
+
 typedef struct
 {
    const char *file_name;
@@ -937,10 +1008,7 @@ int getFreeVRAM(){
 
 void drawImageCentered(GSTEXTURE* source, float x, float y, float width, float height, float startx, float starty, float endx, float endy, Color color)
 {
-
-	if (source->Delayed == true) {
-		gsKit_TexManager_bind(gsGlobal, source);
-	}
+	if (!ensureTextureReady(source)) return;
 	gsKit_prim_sprite_texture(gsGlobal, source,
 					x-width/2, // X1
 					y-height/2, // Y1
@@ -957,10 +1025,7 @@ void drawImageCentered(GSTEXTURE* source, float x, float y, float width, float h
 
 void drawImage(GSTEXTURE* source, float x, float y, float width, float height, float startx, float starty, float endx, float endy, Color color)
 {
-
-	if (source->Delayed == true) {
-		gsKit_TexManager_bind(gsGlobal, source);
-	}
+	if (!ensureTextureReady(source)) return;
 	gsKit_prim_sprite_texture(gsGlobal, source,
 					x-0.5f, // X1
 					y-0.5f, // Y1
@@ -980,9 +1045,7 @@ void drawImageRotate(GSTEXTURE* source, float x, float y, float width, float hei
 	float c = cosf(angle);
 	float s = sinf(angle);
 
-	if (source->Delayed == true) {
-		gsKit_TexManager_bind(gsGlobal, source);
-	}
+	if (!ensureTextureReady(source)) return;
 	gsKit_prim_quad_texture(gsGlobal, source,
 							(-width/2)*c - (-height/2)*s+x, (-height/2)*c + (-width/2)*s+y, startx, starty,
 							(-width/2)*c - height/2*s+x, height/2*c + (-width/2)*s+y, startx, endy,
