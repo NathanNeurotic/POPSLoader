@@ -23,18 +23,11 @@
 
 static lua_State *L;
 
-static const char* kBootstrapPrelude =
-    "function LOG(...)\\n"
-    "  if type(print_uart) == 'function' then\\n"
-    "    print_uart(...)\\n"
-    "  else\\n"
-    "    print(...)\\n"
-    "  end\\n"
-    "end\\n"
-    "function LOGF(fmt, ...)\\n"
-    "  LOG(string.format(fmt, ...))\\n"
-    "end\\n"
-    "if type(print_uart) == 'function' then print_uart('BOOT: Lua prelude installed (LOG/LOGF)\\n') end\\n";
+static const char kBootstrapPrelude[] =
+    "local _pu = rawget(_G, \"print_uart\") or rawget(_G, \"print\")\n"
+    "function LOG(...) if _pu then return _pu(...) end end\n"
+    "function LOGF(fmt, ...) return LOG(string.format(fmt, ...)) end\n"
+    "if _pu then _pu(\"BOOT: Lua prelude installed (LOG/LOGF)\\n\") end\n";
 
 static inline size_t AssetLua_RawLen(lua_State* Lstate, int idx)
 {
@@ -231,6 +224,15 @@ const char * runScript(const char* script, bool isStringBuffer )
 
     s = luaL_loadbuffer(L, kBootstrapPrelude, strlen(kBootstrapPrelude), "@bootstrap_prelude");
     if (s == 0) s = lua_pcall(L, 0, 0, 0);
+    if (s != 0) {
+        const char *preludeErr = lua_tostring(L, -1);
+        DPRINTF("BOOT: prelude failed: %s\n", preludeErr ? preludeErr : "<nil>");
+        printf("BOOT: prelude failed: %s\n", preludeErr ? preludeErr : "<nil>");
+        scr_printf("BOOT: prelude failed: %s\n", preludeErr ? preludeErr : "<nil>");
+        for (;;) {
+            SleepThread();
+        }
+    }
 
     if(s == 0 && !isStringBuffer) {
         DPRINTF("Loading script : `%s'\n", script);
