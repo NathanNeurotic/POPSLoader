@@ -111,18 +111,37 @@ $(EE_BIN_PKD): $(EE_BIN)
 #--------------------- Embedded ressources ------------------------#
 
 $(EE_ASM_DIR)embedded_registry.generated.h: $(EMBED_ASSETS) | $(EE_ASM_DIR)
-	python3 scripts/gen_embedded_registry.py "$@" $(EMBED_ASSETS)
-
-$(EMBED_ASSET_TMP):
-	@mkdir -p $@
-
-$(EMBED_ASSET_TMP)/_%.gz: | $(EMBED_ASSET_TMP)
-	@:
-
-$(EE_OBJS_DIR)embed_asset_%.o: $(EMBED_ASSET_TMP)/_%.gz | $(EE_OBJS_DIR)
-	@echo "  - $@"
-	$(EE_OBJCOPY) -I binary -O elf32-tradlittlemips -B mips $< $@
-
+	@echo "Generating $@ (no python)..."
+	@{ \
+		echo "// generated; do not edit"; \
+		echo "struct EmbeddedEntryDef { const char* path; const unsigned char* start; unsigned int size; bool compressed; };"; \
+		for asset in $(EMBED_ASSETS); do \
+			id=$$(printf '%s' "$$asset" | sed 's/[^A-Za-z0-9]/_/g'); \
+			gz="$(EMBED_ASSET_TMP)/_$$id.gz"; \
+			sym=$$(printf '%s' "$$gz" | sed 's/[^A-Za-z0-9]/_/g'); \
+			printf 'extern const unsigned char _binary_%s_start[];' "$$sym"; echo; \
+			printf 'extern const unsigned char _binary_%s_end[];' "$$sym"; echo; \
+		done; \
+		echo "static const EmbeddedEntryDef kEmbeddedEntries[] = {"; \
+		for asset in $(EMBED_ASSETS); do \
+			id=$$(printf '%s' "$$asset" | sed 's/[^A-Za-z0-9]/_/g'); \
+			gz="$(EMBED_ASSET_TMP)/_$$id.gz"; \
+			sym=$$(printf '%s' "$$gz" | sed 's/[^A-Za-z0-9]/_/g'); \
+			if printf '%s' "$$asset" | grep -q '^bin/POPSLDR/'; then \
+				rel=$${asset#bin/POPSLDR/}; \
+				printf '    {"%s", _binary_%s_start, (unsigned int)(_binary_%s_end - _binary_%s_start), true},' "$$asset" "$$sym" "$$sym" "$$sym"; echo; \
+				printf '    {"%s", _binary_%s_start, (unsigned int)(_binary_%s_end - _binary_%s_start), true},' "$$rel" "$$sym" "$$sym" "$$sym"; echo; \
+				printf '    {"POPSLDR/%s", _binary_%s_start, (unsigned int)(_binary_%s_end - _binary_%s_start), true},' "$$rel" "$$sym" "$$sym" "$$sym"; echo; \
+			elif printf '%s' "$$asset" | grep -q '^etc/'; then \
+				rel=$${asset#etc/}; \
+				printf '    {"%s", _binary_%s_start, (unsigned int)(_binary_%s_end - _binary_%s_start), true},' "$$asset" "$$sym" "$$sym" "$$sym"; echo; \
+				printf '    {"%s", _binary_%s_start, (unsigned int)(_binary_%s_end - _binary_%s_start), true},' "$$rel" "$$sym" "$$sym" "$$sym"; echo; \
+			else \
+				printf '    {"%s", _binary_%s_start, (unsigned int)(_binary_%s_end - _binary_%s_start), true},' "$$asset" "$$sym" "$$sym" "$$sym"; echo; \
+			fi; \
+		done; \
+		echo "};"; \
+	} > "$@"
 # Images
 $(EE_ASM_DIR)%.c: EMBED/%.png
 	$(BIN2S) $< $@ $(shell basename $< .png)
