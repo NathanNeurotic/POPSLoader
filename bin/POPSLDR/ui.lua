@@ -803,7 +803,7 @@ UI = {
             bg = IMG.BKG
           end
           if bg ~= nil then
-            Graphics.drawScaleImage(bg, 0, 0, UI.SCR.X, UI.SCR.Y, Color.new(128, 128, 128, 128))
+            Graphics.drawScaleImage(bg, 0, 0, UI.SCR.X, UI.SCR.Y, Color.new(255, 255, 255, 128))
           end
         end
         local function DrawTargetScene(scene)
@@ -952,19 +952,25 @@ local function DrawSplashCover(img, screen_w, screen_h, alpha)
   local draw_h = Round(img_h * scale)
   local x = Round((screen_w - draw_w) / 2)
   local y = Round((screen_h - draw_h) / 2)
-  local tint = Color.new(128, 128, 128, alpha)
+  local tint = Color.new(255, 255, 255, alpha)
   Graphics.drawScaleImage(img, x, y, draw_w, draw_h, tint)
 end
 
 local function DrawSplashFit(img, x, y, draw_w, draw_h, alpha)
   if img == nil then return end
-  local tint = Color.new(128, 128, 128, alpha)
+  local tint = Color.new(255, 255, 255, alpha)
   Graphics.drawScaleImage(img, x, y, draw_w, draw_h, tint)
 end
 
 local function DrawSplash(alpha)
   -- Standard splash: single logical asset IMG/PSL.png, non-fatal fallback to solid color.
   if IMG.PSL ~= nil then
+    if UI._SPLASH_BG_LOGGED ~= true then
+      local iw = Graphics.getImageWidth(IMG.PSL)
+      local ih = Graphics.getImageHeight(IMG.PSL)
+      LOGF("SCENE_BG splash handle=%s type=%s w=%s h=%s", tostring(IMG.PSL), type(IMG.PSL), tostring(iw), tostring(ih))
+      UI._SPLASH_BG_LOGGED = true
+    end
     DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
     return
   end
@@ -1074,12 +1080,7 @@ end
         end
         if bg ~= nil then
           local alpha = 128
-          Graphics.drawScaleImage(bg, 0, 0, UI.SCR.X, UI.SCR.Y, Color.new(128, 128, 128, alpha))
-          UI._BG_LOG_FRAMES = (UI._BG_LOG_FRAMES or 0) + 1
-          if (UI._BG_LOG_FRAMES % 60) == 0 then
-            LOGF("DRAWBG handle=%s alpha=%s", tostring(bg), tostring(alpha))
-            LOGF("DRAWTYPE type=%s", type(bg))
-          end
+          Graphics.drawScaleImage(bg, 0, 0, UI.SCR.X, UI.SCR.Y, Color.new(255, 255, 255, alpha))
         end
       end;
     };
@@ -1733,10 +1734,13 @@ end
           if PLDR.GetBDMAMode ~= nil then
             UI.ProfileQuery.bdma_mode = PLDR.GetBDMAMode()
           end
+          local saved = true
           if PLDR.SaveSettings ~= nil then
-            PLDR.SaveSettings()
+            saved = (PLDR.SaveSettings() == true)
           end
-          UI.Notif_queue.add("Profile defaults restored")
+          if saved then
+            UI.Notif_queue.add("Profile defaults restored")
+          end
         end
         if UI.Pad.Events.R2 then
           UI.TextEntry.Open("Edit POPStarter Path", popstarter_path, function (new_value)
@@ -1750,10 +1754,11 @@ end
                 PLDR.PROFILES[1].ELF = resolved
               end
               PLDR.POPSTARTER_PATH = resolved
+              local saved = true
               if PLDR.SaveSettings ~= nil then
-                PLDR.SaveSettings()
+                saved = (PLDR.SaveSettings() == true)
               end
-              if UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
+              if saved and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
                 UI.Notif_queue.add("POPStarter path saved")
               end
             end
@@ -1763,10 +1768,11 @@ end
           UI.TextEntry.Open("Edit DKWDRV Path", dkwdrv_path, function (new_value)
             if PLDR ~= nil and PLDR.SETTINGS ~= nil then
               PLDR.SETTINGS.dkwdrv_path = new_value
+              local saved = true
               if PLDR.SaveSettings ~= nil then
-                PLDR.SaveSettings()
+                saved = (PLDR.SaveSettings() == true)
               end
-              if UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
+              if saved and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
                 UI.Notif_queue.add("DKWDRV path saved")
               end
             end
@@ -2474,6 +2480,20 @@ function UI.OnSceneEnter(previous_scene, next_scene)
       PLDR.RefreshMassSlots("scene-enter-mx4sio")
     end
     UI.RefreshCurrentMassScene(next_scene)
+  end
+  local bg = nil
+  local tag = "OTHER"
+  if next_scene == UI.SCENES.MMAIN then
+    bg = IMG.BGM or IMG.BKG
+    tag = "MMAIN"
+  elseif next_scene == UI.SCENES.MPROFILE or next_scene == UI.SCENES.CREDITS then
+    bg = IMG.BG or IMG.BKG
+    tag = (next_scene == UI.SCENES.CREDITS) and "CREDITS" or "MPROFILE"
+  end
+  if bg ~= nil then
+    local iw = Graphics.getImageWidth(bg)
+    local ih = Graphics.getImageHeight(bg)
+    LOGF("SCENE_BG scene=%s handle=%s type=%s w=%s h=%s", tostring(tag), tostring(bg), type(bg), tostring(iw), tostring(ih))
   end
 end
 

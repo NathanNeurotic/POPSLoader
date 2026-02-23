@@ -9,7 +9,7 @@
 LOG("Registering images")
 local function ResolveImage(name)
   local logical = "IMG/"..name
-  return System.resolveAssetType(name, ASSET_IMG) or System.resolveAsset(logical) or logical
+  return System.resolveAssetType(name, ASSET_IMG) or System.resolveAsset(logical) or JoinPath(APP_DIR_LOCAL, logical)
 end
 
 local function IsBootBgKey(key)
@@ -74,6 +74,11 @@ IMG = setmetatable({}, {
     if IsBootBgKey(key) then
       LOGF("IMGLOAD: key=IMG/%s handle=%s", tostring(source), tostring(img))
       LOGF("IMGTYPE key=%s type=%s", tostring(key), type(img))
+      if img ~= nil then
+        local iw = Graphics.getImageWidth(img)
+        local ih = Graphics.getImageHeight(img)
+        LOGF("IMGDIM key=%s width=%s height=%s path=%s", tostring(key), tostring(iw), tostring(ih), tostring(path))
+      end
     end
     if img == nil then
       LOGF("Image load failed: %s", path)

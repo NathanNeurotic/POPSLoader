@@ -82,16 +82,66 @@ local function ResolveAsset(rel)
   return System.resolveAsset(rel) or JoinPath(APP_DIR_LOCAL, rel)
 end
 
-local SETTINGS_ROOT = NormalizeDirPath((System and System.getSettingsRoot and System.getSettingsRoot()) or "mc0:/POPSTARTER/")
-if SETTINGS_ROOT == nil or SETTINGS_ROOT == "" then
-  SETTINGS_ROOT = "mc0:/POPSTARTER/"
-end
-if not doesFolderExist(SETTINGS_ROOT) then
-  pcall(System.createDirectory, SETTINGS_ROOT)
+local function StripTrailingSlash(path)
+  if path == nil then return nil end
+  local stripped = string.gsub(path, "/+$", "")
+  local device_root = string.match(stripped, "^([%a]+%d*):$")
+  if device_root ~= nil then
+    return device_root..":/"
+  end
+  return stripped
 end
 
+local function EnsureDir(path)
+  if path == nil or path == "" then return nil end
+  local normalized = NormalizeDirPath(path)
+  if doesFolderExist(normalized) then
+    return normalized
+  end
+  local create_path = StripTrailingSlash(normalized)
+  local ok = pcall(System.createDirectory, create_path)
+  if ok and doesFolderExist(normalized) then
+    return normalized
+  end
+  return nil
+end
+
+local function CanWriteDirectory(path)
+  if path == nil then return false end
+  local probe = JoinPath(path, ".pldr_probe")
+  local ok, fd = pcall(System.openFile, probe, FCREATE)
+  if not ok or type(fd) ~= "number" or fd < 0 then
+    return false
+  end
+  pcall(System.closeFile, fd)
+  pcall(System.removeFile, probe)
+  return true
+end
+
+local function ResolveSettingsRoot()
+  local candidates = {
+    "mc0:/POPSLOADER/",
+    "mc1:/POPSLOADER/"
+  }
+  for _, root in ipairs(candidates) do
+    local ensured = EnsureDir(root)
+    if ensured ~= nil and CanWriteDirectory(ensured) then
+      return ensured
+    end
+  end
+  local boot_fallback = EnsureDir(APP_DIR_LOCAL)
+  if boot_fallback ~= nil and CanWriteDirectory(boot_fallback) then
+    return boot_fallback
+  end
+  return NormalizeDirPath(candidates[1])
+end
+
+local SETTINGS_ROOT = ResolveSettingsRoot()
+LOG("SETTINGS_ROOT="..tostring(SETTINGS_ROOT))
+
 local function ResolveWritablePath(rel)
-  return JoinPath(SETTINGS_ROOT, rel)
+  local base = SETTINGS_ROOT or NormalizeDirPath("mc0:/POPSLOADER/")
+  return JoinPath(base, rel)
 end
 
 local function IsAbsoluteDevicePath(path)
@@ -508,7 +558,22 @@ end
 
 function PLDR.SaveSettings()
   local path = ResolveWritablePath("settings.lua")
-  local fd = System.openFile(path, FCREATE)
+  local dir = string.match(path, "^(.*)/[^/]+$")
+  if EnsureDir(dir) == nil then
+    LOG("SaveSettings: failed to ensure settings dir: "..tostring(dir))
+    if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
+      UI.Notif_queue.add("Could not save settings")
+    end
+    return false
+  end
+  local ok_open, fd = pcall(System.openFile, path, FCREATE)
+  if not ok_open or type(fd) ~= "number" or fd < 0 then
+    LOG("SaveSettings: open failed path="..tostring(path).." fd="..tostring(fd))
+    if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
+      UI.Notif_queue.add("Could not save settings")
+    end
+    return false
+  end
   local mode = tonumber(PLDR.SETTINGS.bdma_mode) or 1
   local hide_ui = PLDR.SETTINGS.hide_ui == true
   local show_cover = PLDR.SETTINGS.show_cover ~= false
@@ -525,8 +590,16 @@ function PLDR.SaveSettings()
     ..string.format("  dkwdrv_path = %s,\n", dkwdrv_path ~= nil and string.format("%q", dkwdrv_path) or "nil")
     ..string.format("  popstarter_path = %s,\n", popstarter_path ~= nil and string.format("%q", popstarter_path) or "nil")
     .."}\n"
-  System.writeFile(fd, line, #line)
-  System.closeFile(fd)
+  local ok_write, write_err = pcall(System.writeFile, fd, line, #line)
+  local ok_close, close_err = pcall(System.closeFile, fd)
+  if not ok_write or not ok_close then
+    LOG("SaveSettings: write/close failed", tostring(write_err), tostring(close_err))
+    if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
+      UI.Notif_queue.add("Could not save settings")
+    end
+    return false
+  end
+  return true
 end
 
 function PLDR.GetBDMAModeCount()

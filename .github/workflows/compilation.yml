@@ -18,7 +18,7 @@ jobs:
     steps:
       - name: Install dependencies
         run: |
-          apk add --no-cache build-base git bash p7zip findutils coreutils
+          apk add --no-cache build-base git bash findutils coreutils
 
       - name: Workaround permission issue
         run: |
@@ -40,50 +40,13 @@ jobs:
 
       - name: Compile project
         run: |
-          make clean elfloader all package
-
-      # This step is the key: it discovers wherever your Makefile put the .7z,
-      # then copies it to repo root as POPSLoader.7z so upload-artifact is stable.
-      - name: Locate and normalize POPSLoader.7z
-        shell: sh
-        run: |
-          set -eu
-
-          echo "== Workspace contents (top-level) =="
-          ls -lah
-
-          echo "== Searching for .7z artifacts (up to 6 levels deep) =="
-          # Show all matches for debugging
-          find . -maxdepth 6 -type f -name '*.7z' -print || true
-
-          # Prefer an exact name match first (any location)
-          EXACT="$(find . -maxdepth 6 -type f -name 'POPSLoader.7z' -print | head -n 1 || true)"
-
-          if [ -n "$EXACT" ]; then
-            echo "Found exact artifact: $EXACT"
-            cp -f "$EXACT" "./POPSLoader.7z"
-          else
-            # Otherwise pick the newest .7z produced (common when Makefile names differ)
-            NEWEST="$(find . -maxdepth 6 -type f -name '*.7z' -print -exec ls -t {} + 2>/dev/null | head -n 1 || true)"
-
-            if [ -z "$NEWEST" ]; then
-              echo "ERROR: No .7z artifact found after build."
-              echo "Hint: your Makefile 'package' target may be outputting a different extension or skipping packaging."
-              exit 1
-            fi
-
-            echo "No exact POPSLoader.7z found. Using newest .7z: $NEWEST"
-            cp -f "$NEWEST" "./POPSLoader.7z"
-          fi
-
-          echo "== Final normalized artifact =="
-          ls -lah "./POPSLoader.7z"
+          make clean elfloader all
 
       - name: Upload artifact (no release)
         if: ${{ success() }}
         uses: actions/upload-artifact@v4
         with:
-          name: POPSLoader
-          path: POPSLoader.7z
+          name: POPSLOADER.ELF
+          path: bin/POPSLOADER.ELF
           if-no-files-found: error
           compression-level: 0
