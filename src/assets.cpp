@@ -156,13 +156,13 @@ void Asset_FreeIfNeeded(const void* ptr, bool isEmbedded) {
     if (!isEmbedded && ptr) free((void*)ptr);
 }
 
-static char g_settings_root[255] = "mc0:/POPSTARTER/";
+static char g_settings_root[255] = "mc0:/POPSLOADER/";
 
 void Asset_InitSettingsRoot(const char* bootPath) {
     struct stat st;
-    mkdir("mc0:/POPSTARTER", 0777);
-    if (stat("mc0:/POPSTARTER/", &st) == 0) {
-        snprintf(g_settings_root, sizeof(g_settings_root), "mc0:/POPSTARTER/");
+    mkdir("mc0:/POPSLOADER", 0777);
+    if (stat("mc0:/POPSLOADER/", &st) == 0) {
+        snprintf(g_settings_root, sizeof(g_settings_root), "mc0:/POPSLOADER/");
         return;
     }
     char root[64] = {0};
@@ -174,8 +174,8 @@ void Asset_InitSettingsRoot(const char* bootPath) {
                 memcpy(root, bootPath, n);
                 root[n] = '/';
                 root[n+1] = 0;
-                snprintf(g_settings_root, sizeof(g_settings_root), "%sPOPSTARTER/", root);
-                char mk[255]; snprintf(mk, sizeof(mk), "%sPOPSTARTER", root);
+                snprintf(g_settings_root, sizeof(g_settings_root), "%sPOPSLOADER/", root);
+                char mk[255]; snprintf(mk, sizeof(mk), "%sPOPSLOADER", root);
                 mkdir(mk, 0777);
             }
         }

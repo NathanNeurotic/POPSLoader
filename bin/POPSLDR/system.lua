@@ -82,9 +82,9 @@ local function ResolveAsset(rel)
   return System.resolveAsset(rel) or JoinPath(APP_DIR_LOCAL, rel)
 end
 
-local SETTINGS_ROOT = NormalizeDirPath((System and System.getSettingsRoot and System.getSettingsRoot()) or "mc0:/POPSTARTER/")
+local SETTINGS_ROOT = NormalizeDirPath((System and System.getSettingsRoot and System.getSettingsRoot()) or "mc0:/POPSLOADER/")
 if SETTINGS_ROOT == nil or SETTINGS_ROOT == "" then
-  SETTINGS_ROOT = "mc0:/POPSTARTER/"
+  SETTINGS_ROOT = "mc0:/POPSLOADER/"
 end
 if not doesFolderExist(SETTINGS_ROOT) then
   pcall(System.createDirectory, SETTINGS_ROOT)
@@ -456,7 +456,9 @@ local function LoadSettingsTable(path)
 end
 
 function PLDR.LoadSettings()
-  local path = ResolveWritablePath("settings.lua")
+  local root = (System and System.getSettingsRoot and System.getSettingsRoot()) or SETTINGS_ROOT
+  if root == nil or root == "" then return end
+  local path = NormalizeDirPath(root) .. "settings.lua"
   local data = LoadSettingsTable(path)
   if type(data) == "table" then
     local mode = tonumber(data.bdma_mode)
@@ -507,8 +509,17 @@ function System.GetPOPStarterElfPath()
 end
 
 function PLDR.SaveSettings()
-  local path = ResolveWritablePath("settings.lua")
+  local root = (System and System.getSettingsRoot and System.getSettingsRoot()) or SETTINGS_ROOT
+  if root == nil or root == "" then
+    return false, "cannot open settings root"
+  end
+  root = NormalizeDirPath(root)
+  pcall(System.createDirectory, root)
+  local path = root .. "settings.lua"
   local fd = System.openFile(path, FCREATE)
+  if fd == nil or fd < 0 then
+    return false, "cannot open " .. path
+  end
   local mode = tonumber(PLDR.SETTINGS.bdma_mode) or 1
   local hide_ui = PLDR.SETTINGS.hide_ui == true
   local show_cover = PLDR.SETTINGS.show_cover ~= false
@@ -527,6 +538,7 @@ function PLDR.SaveSettings()
     .."}\n"
   System.writeFile(fd, line, #line)
   System.closeFile(fd)
+  return true
 end
 
 function PLDR.GetBDMAModeCount()
@@ -557,7 +569,8 @@ function PLDR.GetBDMAMode()
 end
 
 function PLDR.GetBDMADetectedLabel()
-  if not doesFolderExist("mc0:/POPSTARTER/") then
+  local settings_root = (System and System.getSettingsRoot and System.getSettingsRoot()) or SETTINGS_ROOT
+  if settings_root == nil or not doesFolderExist(settings_root) then
     return "NONE"
   end
   if type(PLDR.SETTINGS.bdma_last_label) == "string" and PLDR.SETTINGS.bdma_last_label ~= "" then

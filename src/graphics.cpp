@@ -13,6 +13,16 @@
 #include "include/dprintf.h"
 #include "include/assets.h"
 
+#ifndef POPSLOADER_DIAG
+#define POPSLOADER_DIAG 0
+#endif
+
+#if POPSLOADER_DIAG
+#define DIAGF(...) printf(__VA_ARGS__)
+#else
+#define DIAGF(...) do {} while (0)
+#endif
+
 #define DEG2RAD(x) ((x)*0.01745329251)
 
 
@@ -69,13 +79,13 @@ static bool ensureTextureReady(GSTEXTURE* source)
 
 	if (source->Vram == 0) {
 		if (source->Mem == NULL) {
-			DPRINTF("TEXUPLOAD_FAIL tex=%p mem=NULL w=%d h=%d psm=%d\n", source, source->Width, source->Height, source->PSM);
+			DIAGF("TEXUPLOAD_FAIL tex=%p mem=NULL w=%d h=%d psm=%d\n", source, source->Width, source->Height, source->PSM);
 			return false;
 		}
 
 		source->Vram = gsKit_vram_alloc(gsGlobal, gsKit_texture_size(source->Width, source->Height, source->PSM), GSKIT_ALLOC_USERBUFFER);
 		if (source->Vram == GSKIT_ALLOC_ERROR) {
-			DPRINTF("TEXUPLOAD_FAIL tex=%p vram_alloc_failed w=%d h=%d psm=%d\n", source, source->Width, source->Height, source->PSM);
+			DIAGF("TEXUPLOAD_FAIL tex=%p vram_alloc_failed w=%d h=%d psm=%d\n", source, source->Width, source->Height, source->PSM);
 			source->Vram = 0;
 			return false;
 		}
@@ -87,7 +97,7 @@ static bool ensureTextureReady(GSTEXTURE* source)
 				source->VramClut = gsKit_vram_alloc(gsGlobal, gsKit_texture_size(16, 16, GS_PSM_CT32), GSKIT_ALLOC_USERBUFFER);
 
 			if (source->VramClut == GSKIT_ALLOC_ERROR) {
-				DPRINTF("TEXUPLOAD_FAIL tex=%p vram_clut_alloc_failed\n", source);
+				DIAGF("TEXUPLOAD_FAIL tex=%p vram_clut_alloc_failed\n", source);
 				source->VramClut = 0;
 				return false;
 			}
@@ -105,7 +115,7 @@ static bool ensureTextureReady(GSTEXTURE* source)
 	}
 
 	if (!was_texupload_logged(source)) {
-		DPRINTF("TEXUPLOAD tex=%p w=%d h=%d psm=%d vram=%u\n", source, source->Width, source->Height, source->PSM, source->Vram);
+		DIAGF("TEXUPLOAD tex=%p w=%d h=%d psm=%d vram=%u\n", source, source->Width, source->Height, source->PSM, source->Vram);
 	}
 
 	return source->Vram != 0;
@@ -914,6 +924,7 @@ GSTEXTURE* load_image(const char* path, bool delayed){
 	else if (magic == 0xD8FF) image = loadjpeg(file, false, delayed);
 	else if (magic == 0x5089) image = loadpng(file, delayed);
 	if (image == NULL) DPRINTF("Failed to load image %s.", path);
+	if (image != NULL) DIAGF("TEXNEW key=%s tex=%p w=%d h=%d psm=%d vram=%u clut=%u\n", path, image, image->Width, image->Height, image->PSM, image->Vram, image->VramClut);
 
 	return image;
 }

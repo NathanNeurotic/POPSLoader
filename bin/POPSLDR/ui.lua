@@ -1843,6 +1843,15 @@ end
         end
       end;
     };
+    ResolveDeviceIcon = function (mode)
+      local key = GetDeviceIconKey(mode)
+      local tex = IMG[key]
+      if tex ~= nil then
+        return key, tex
+      end
+      LogOnce("ICONFALLBACK:"..tostring(mode), string.format("ICONFALLBACK mode=%s missing IMG/%s.png -> IMG/MISSING.png", tostring(mode), tostring(key)))
+      return "MISSING", IMG["MISSING"]
+    end;
     MainMenu = {
       OPT = 1;
       opts = {"MMCE", "MX4SIO", "HDD (exFAT)", "HDD (PFS)", "USB", "SMB (v1)", "Disc (DKWDRV)"};
@@ -1967,24 +1976,22 @@ end
           if value > max_val then return max_val end
           return value
         end
-        local function ResolveIcon(mode, key)
+        local function ResolveIcon(mode)
+          local key, tex = UI.ResolveDeviceIcon(mode)
           if mode ~= "USB" and key == "USB" then
             LogOnce("ICON_REVERT:"..tostring(mode), string.format("ICON_REVERT mode=%s path=ResolveIcon", tostring(mode)))
           end
-          local icon = IMG[key]
-          if icon ~= nil then return icon end
-          LogOnce("ICONFALLBACK:"..tostring(mode), string.format("ICONFALLBACK mode=%s missing IMG/%s.png -> IMG/MISSING.png", tostring(mode), tostring(key)))
-          return IMG["MISSING"]
+          return key, tex
         end
         if not UI.MainMenu.icons_ready then
-          for i, key in ipairs(icon_keys) do
-            ResolveIcon(icon_modes[i] or key, key)
+          for i, mode in ipairs(icon_modes) do
+            ResolveIcon(mode)
           end
           UI.MainMenu.icons_ready = true
         end
         local function DrawIcon(index, x, y, color)
-          local key = icon_keys[index]
-          local icon = ResolveIcon(icon_modes[index] or key, key)
+          local mode = icon_modes[index] or icon_keys[index]
+          local _, icon = ResolveIcon(mode)
           if icon == nil then return end
           local icon_w = Graphics.getImageWidth(icon)
           local icon_h = Graphics.getImageHeight(icon)
@@ -1992,7 +1999,7 @@ end
           local pos_y = Round(y - (icon_h / 2))
           Graphics.drawImage(icon, pos_x, pos_y, color)
         end
-        local first_icon = ResolveIcon(icon_modes[1] or "MISSING", icon_keys[1] or "MISSING")
+        local _, first_icon = ResolveIcon(icon_modes[1] or "MISSING")
         local base_icon_w = 0
         if first_icon ~= nil then
           base_icon_w = Graphics.getImageWidth(first_icon)
