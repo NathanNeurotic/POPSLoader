@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include "include/luaplayer.h"
 #include "include/sound.h"
+#include "include/assets.h"
 
 static int lua_setformat(lua_State *L) {
 	int argc = lua_gettop(L);
@@ -31,6 +32,32 @@ static int lua_loadadpcm(lua_State *L) {
 		lua_pushnil(L);
 		return 1;
 	}
+	lua_pushinteger(L, (uint32_t)sample);
+	return 1;
+}
+
+static int lua_loadadpcmfrombuffer(lua_State *L) {
+	int argc = lua_gettop(L);
+	if (argc != 1) return luaL_error(L, "loadADPCMFromBuffer takes only 1 argument");
+
+	const char* logicalPath = luaL_checkstring(L, 1);
+	const void* ptr = NULL;
+	size_t size = 0;
+	bool isEmbedded = false;
+
+	if (Asset_ReadAll(logicalPath, &ptr, &size, &isEmbedded) != 0) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	audsrv_adpcm_t *sample = sound_loadadpcmBuffer(ptr, size);
+	Asset_FreeIfNeeded(ptr, isEmbedded);
+
+	if (sample == NULL) {
+		lua_pushnil(L);
+		return 1;
+	}
+
 	lua_pushinteger(L, (uint32_t)sample);
 	return 1;
 }
