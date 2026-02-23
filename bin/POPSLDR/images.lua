@@ -73,6 +73,7 @@ IMG = setmetatable({}, {
     local img = Graphics.loadImage(path)
     if IsBootBgKey(key) then
       LOGF("IMGLOAD: key=IMG/%s handle=%s", tostring(source), tostring(img))
+      LOGF("IMGTYPE key=%s type=%s", tostring(key), type(img))
     end
     if img == nil then
       LOGF("Image load failed: %s", path)

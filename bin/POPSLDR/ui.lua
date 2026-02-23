@@ -1078,6 +1078,7 @@ end
           UI._BG_LOG_FRAMES = (UI._BG_LOG_FRAMES or 0) + 1
           if (UI._BG_LOG_FRAMES % 60) == 0 then
             LOGF("DRAWBG handle=%s alpha=%s", tostring(bg), tostring(alpha))
+            LOGF("DRAWTYPE type=%s", type(bg))
           end
         end
       end;
