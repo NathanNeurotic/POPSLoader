@@ -11,6 +11,7 @@
 
 #include "include/graphics.h"
 #include "include/dprintf.h"
+#include "include/assets.h"
 
 #define DEG2RAD(x) ((x)*0.01745329251)
 
@@ -45,8 +46,14 @@ typedef struct
 //2D drawing functions
 GSTEXTURE* loadpng(FILE* File, bool delayed)
 {
-	GSTEXTURE* tex = (GSTEXTURE*)malloc(sizeof(GSTEXTURE));
+	GSTEXTURE* tex = (GSTEXTURE*)calloc(1, sizeof(GSTEXTURE));
+	if (tex == NULL) return NULL;
 	tex->Delayed = delayed;
+	tex->Filter = GS_FILTER_NEAREST;
+	tex->Vram = 0;
+	tex->VramClut = 0;
+	tex->Clut = NULL;
+	tex->ClutStorageMode = GS_CLUT_STORAGE_CSM1;
 
 	if (File == NULL)
 	{
@@ -342,8 +349,14 @@ GSTEXTURE* loadbmp(FILE* File, bool delayed)
 	u8  *image;
 	u8  *p;
 
-    GSTEXTURE* tex = (GSTEXTURE*)malloc(sizeof(GSTEXTURE));
+    GSTEXTURE* tex = (GSTEXTURE*)calloc(1, sizeof(GSTEXTURE));
+	if (tex == NULL) return NULL;
 	tex->Delayed = delayed;
+	tex->Filter = GS_FILTER_NEAREST;
+	tex->Vram = 0;
+	tex->VramClut = 0;
+	tex->Clut = NULL;
+	tex->ClutStorageMode = GS_CLUT_STORAGE_CSM1;
 
 	if (File == NULL)
 	{
@@ -705,8 +718,14 @@ GSTEXTURE* loadjpeg(FILE* fp, bool scale_down, bool delayed)
 {
 
 
-    GSTEXTURE* tex = (GSTEXTURE*)malloc(sizeof(GSTEXTURE));
+    GSTEXTURE* tex = (GSTEXTURE*)calloc(1, sizeof(GSTEXTURE));
+	if (tex == NULL) return NULL;
 	tex->Delayed = delayed;
+	tex->Filter = GS_FILTER_NEAREST;
+	tex->Vram = 0;
+	tex->VramClut = 0;
+	tex->Clut = NULL;
+	tex->ClutStorageMode = GS_CLUT_STORAGE_CSM1;
 
 	struct jpeg_decompress_struct cinfo;
 	struct my_error_mgr jerr;
@@ -791,8 +810,29 @@ GSTEXTURE* loadjpeg(FILE* fp, bool scale_down, bool delayed)
 
 }
 
+
+GSTEXTURE* loadImageFromBuffer(const void* data, size_t size, bool delayed){
+	if (data == NULL || size < 4) return NULL;
+	uint16_t magic = *((uint16_t*)data);
+	if (magic == 0x5089) return loadEmbeddedPNG((uint8_t*)data, size, delayed);
+	DPRINTF("Unsupported embedded image format magic=0x%04x\n", magic);
+	return NULL;
+}
+
 GSTEXTURE* load_image(const char* path, bool delayed){
+	const void* ptr = NULL;
+	size_t size = 0;
+	bool isEmbedded = false;
+	if (Asset_ReadAll(path, &ptr, &size, &isEmbedded) == 0 && isEmbedded) {
+		GSTEXTURE* embedded = loadImageFromBuffer(ptr, size, delayed);
+		if (embedded != NULL) return embedded;
+	}
+
 	FILE* file = fopen(path, "rb");
+	if (file == NULL) {
+		DPRINTF("Failed to open image %s.\n", path);
+		return NULL;
+	}
 	uint16_t magic;
 	fread(&magic, 1, 2, file);
 	fseek(file, 0, SEEK_SET);
@@ -1236,8 +1276,14 @@ static void PNG_read_data(png_structp png_ptr, png_bytep data, png_size_t length
 // thanks to HWC for the embedded PNG feature to keep users away of Berion's work
 GSTEXTURE* loadEmbeddedPNG(uint8_t * data, size_t size, bool delayed)
 {
-	GSTEXTURE* tex = (GSTEXTURE*)malloc(sizeof(GSTEXTURE));
+	GSTEXTURE* tex = (GSTEXTURE*)calloc(1, sizeof(GSTEXTURE));
+	if (tex == NULL) return NULL;
 	tex->Delayed = delayed;
+	tex->Filter = GS_FILTER_NEAREST;
+	tex->Vram = 0;
+	tex->VramClut = 0;
+	tex->Clut = NULL;
+	tex->ClutStorageMode = GS_CLUT_STORAGE_CSM1;
 
 	png_structp png_ptr;
 	png_infop info_ptr;

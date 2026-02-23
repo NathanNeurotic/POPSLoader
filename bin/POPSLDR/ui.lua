@@ -9,6 +9,10 @@
 LOG("Registering POPSLoader UI")
 local DEVLOCK = { NONE = 0, USB = 1, MMCE = 2, MX4SIO = 3 }
 local UI
+local IMG = rawget(_G, "IMG")
+if type(IMG) ~= "table" then
+  error("IMG not initialized before ui.lua")
+end
 local function Round(value)
   return math.floor(value + 0.5)
 end
@@ -790,22 +794,16 @@ UI = {
 	        end
         local function DrawTargetBackground(scene)
           Screen.clear(UI.SCR.BGCOL)
+          local bg = nil
           if scene == UI.SCENES.MMAIN then
-            if IMG.BGM ~= nil then
-              Graphics.drawScaleImage(IMG.BGM, 0, 0, UI.SCR.X, UI.SCR.Y)
-            elseif IMG.BKG ~= nil then
-              Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
-            end
+            bg = IMG.BGM or IMG.BKG
           elseif scene == UI.SCENES.MPROFILE or scene == UI.SCENES.CREDITS then
-            if IMG.BG ~= nil then
-              Graphics.drawScaleImage(IMG.BG, 0, 0, UI.SCR.X, UI.SCR.Y)
-            elseif IMG.BKG ~= nil then
-              Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
-            end
+            bg = IMG.BG or IMG.BKG
           else
-            if IMG.BKG ~= nil then
-              Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
-            end
+            bg = IMG.BKG
+          end
+          if bg ~= nil then
+            Graphics.drawScaleImage(bg, 0, 0, UI.SCR.X, UI.SCR.Y, Color.new(128, 128, 128, 128))
           end
         end
         local function DrawTargetScene(scene)
@@ -872,8 +870,8 @@ UI = {
           end
 
           if found == nil then
-            LOGF("BOOT SOUND: '%s' not found", tostring(primary))
-            return
+            -- Embedded-first fallback: allow logical asset key even when no filesystem path exists.
+            found = primary
           end
 
           LOGF("BOOT SOUND: using '%s'", tostring(found))
@@ -965,60 +963,12 @@ local function DrawSplashFit(img, x, y, draw_w, draw_h, alpha)
 end
 
 local function DrawSplash(alpha)
-  -- New 4-layer splash (bg fill + appname + logo + credits). Falls back to legacy PSL.png + text.
-  if IMG.splash_bg ~= nil and IMG.splash_appname ~= nil and IMG.splash_logo ~= nil and IMG.splash_credits ~= nil then
-    -- Background: cover-fill the screen.
-    DrawSplashCover(IMG.splash_bg, UI.SCR.X, UI.SCR.Y, alpha)
-
-    local pad = 16
-    local max_w = UI.SCR.X - (pad * 2)
-
-    -- App name: top-center.
-    local app_w = Graphics.getImageWidth(IMG.splash_appname)
-    local app_h = Graphics.getImageHeight(IMG.splash_appname)
-    if app_w == nil or app_h == nil or app_w <= 0 or app_h <= 0 then return end
-    local app_scale = math.min(max_w / app_w, 64 / app_h, 1)
-    local app_dw = Round(app_w * app_scale)
-    local app_dh = Round(app_h * app_scale)
-    local app_x = Round((UI.SCR.X - app_dw) / 2)
-    local app_y = pad
-    DrawSplashFit(IMG.splash_appname, app_x, app_y, app_dw, app_dh, alpha)
-
-    -- Credits: bottom-center.
-    local cred_w = Graphics.getImageWidth(IMG.splash_credits)
-    local cred_h = Graphics.getImageHeight(IMG.splash_credits)
-    if cred_w == nil or cred_h == nil or cred_w <= 0 or cred_h <= 0 then return end
-    local cred_scale = math.min(max_w / cred_w, 56 / cred_h, 1)
-    local cred_dw = Round(cred_w * cred_scale)
-    local cred_dh = Round(cred_h * cred_scale)
-    local cred_x = Round((UI.SCR.X - cred_dw) / 2)
-    local cred_y = UI.SCR.Y - cred_dh - pad
-    DrawSplashFit(IMG.splash_credits, cred_x, cred_y, cred_dw, cred_dh, alpha)
-
-    -- Logo: center, fit between app name and credits.
-    local top_reserved = app_y + app_dh + 10
-    local bottom_reserved = (UI.SCR.Y - cred_y) + 10
-    local avail_h = UI.SCR.Y - top_reserved - bottom_reserved
-    if avail_h < 48 then avail_h = UI.SCR.Y end
-
-    local logo_w = Graphics.getImageWidth(IMG.splash_logo)
-    local logo_h = Graphics.getImageHeight(IMG.splash_logo)
-    if logo_w == nil or logo_h == nil or logo_w <= 0 or logo_h <= 0 then return end
-    local logo_scale = math.min(max_w / logo_w, avail_h / logo_h, 1)
-    local logo_dw = Round(logo_w * logo_scale)
-    local logo_dh = Round(logo_h * logo_scale)
-    local logo_x = Round((UI.SCR.X - logo_dw) / 2)
-    local logo_y = Round((UI.SCR.Y - logo_dh) / 2)
-    DrawSplashFit(IMG.splash_logo, logo_x, logo_y, logo_dw, logo_dh, alpha)
+  -- Standard splash: single logical asset IMG/PSL.png, non-fatal fallback to solid color.
+  if IMG.PSL ~= nil then
+    DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
     return
   end
-
-  -- Legacy fallback (single image + text)
-  DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
-  local y0 = UI.SCR.Y_MID + 120
-  Font.ftPrint(BFONT, UI.SCR.X_MID, y0,       8, UI.SCR.X, 16, "Coded by El_isra",      Color.new(0, 0, 0, alpha))
-  Font.ftPrint(BFONT, UI.SCR.X_MID, y0 + 18,  8, UI.SCR.X, 16, "Graphics by Berion",   Color.new(0, 0, 0, alpha))
-  Font.ftPrint(BFONT, UI.SCR.X_MID, y0 + 36,  8, UI.SCR.X, 16, "israpps.github.io",    Color.new(0, 0, 0, alpha))
+  Screen.clear(Color.new(0, 0, 0))
 end
         local fade_in_frames = 120
         local fade_out_frames = 60
@@ -1114,25 +1064,23 @@ end
     BottomDraw = {
       Play = function ()
 	        Screen.clear(UI.SCR.BGCOL)
-        -- Main menu uses BGM.png; settings/profile and credits use BG.png.
+        local bg = nil
         if UI.CURSCENE == UI.SCENES.MMAIN then
-          if IMG.BGM ~= nil then
-            Graphics.drawScaleImage(IMG.BGM, 0, 0, UI.SCR.X, UI.SCR.Y)
-          elseif IMG.BKG ~= nil then
-            Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
-          end
+          bg = IMG.BGM or IMG.BKG
         elseif UI.CURSCENE == UI.SCENES.MPROFILE or UI.CURSCENE == UI.SCENES.CREDITS then
-          if IMG.BG ~= nil then
-            Graphics.drawScaleImage(IMG.BG, 0, 0, UI.SCR.X, UI.SCR.Y)
-          elseif IMG.BKG ~= nil then
-            Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
-          end
+          bg = IMG.BG or IMG.BKG
         else
-          if IMG.BKG ~= nil then
-            Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
+          bg = IMG.BKG
+        end
+        if bg ~= nil then
+          local alpha = 128
+          Graphics.drawScaleImage(bg, 0, 0, UI.SCR.X, UI.SCR.Y, Color.new(128, 128, 128, alpha))
+          UI._BG_LOG_FRAMES = (UI._BG_LOG_FRAMES or 0) + 1
+          if (UI._BG_LOG_FRAMES % 60) == 0 then
+            LOGF("DRAWBG handle=%s alpha=%s", tostring(bg), tostring(alpha))
+            LOGF("DRAWTYPE type=%s", type(bg))
           end
         end
-        -- Removed opaque overlay box on non-main scenes (was masking background).
       end;
     };
     Modal = {
@@ -1668,7 +1616,16 @@ end
       curopt = 1;
       Play = function ()
         local layout = UI.LAYOUT
-        local profcnt = #PLDR.PROFILES
+        local profiles = (PLDR ~= nil and type(PLDR.PROFILES) == "table") and PLDR.PROFILES or {}
+        local profcnt = #profiles
+        local function GetSelectedProfile()
+          if profcnt < 1 then
+            return { DESC = "No POPStarter profiles available", ELF = "" }
+          end
+          UI.ProfileQuery.curopt = CLAMP(tonumber(UI.ProfileQuery.curopt) or 1, 1, profcnt)
+          return profiles[UI.ProfileQuery.curopt] or { DESC = "Invalid profile entry", ELF = "" }
+        end
+        local selected_profile = GetSelectedProfile()
         local hide_ui = UI.ShouldHideUI()
         if UI.ProfileQuery.bdma_mode == nil then
           if PLDR.GetBDMAMode ~= nil then
@@ -1683,9 +1640,14 @@ end
           bdma_label = PLDR.GetBDMAModeText(bdma_mode)
         end
         local dkwdrv_path = (PLDR ~= nil and PLDR.SETTINGS ~= nil and PLDR.SETTINGS.dkwdrv_path) or (PLDR and PLDR.DEFAULT_DKWDRV_PATH) or "mc0:/PS1_DKWDRV/DKWDRV.ELF"
+        local popstarter_path = (System ~= nil and System.GetPOPStarterElfPath ~= nil and System.GetPOPStarterElfPath()) or (PLDR and PLDR.POPSTARTER_PATH) or ""
         local dkwdrv_label = dkwdrv_path
         if #dkwdrv_label > 52 then
           dkwdrv_label = "..."..string.sub(dkwdrv_label, -49)
+        end
+        local popstarter_label = popstarter_path
+        if #popstarter_label > 52 then
+          popstarter_label = "..."..string.sub(popstarter_label, -49)
         end
         if not hide_ui then
           Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Settings", UI.CCOL.GREY)
@@ -1716,14 +1678,20 @@ end
           Font.ftPrint(BFONT, UI.SCR.X_MID, dkwdrv_title_y, 8, UI.SCR.X, 16, "DKWDRV PATH:", UI.CCOL.GREY)
           local dkwdrv_path_y = dkwdrv_title_y + 18
           Font.ftPrint(BFONT, UI.SCR.X_MID, dkwdrv_path_y, 8, UI.SCR.X, 16, dkwdrv_label, UI.CCOL.GREY)
-          local profile_icons_y = dkwdrv_path_y + 42
+          local popstarter_icon_y = dkwdrv_path_y + 42
+          DrawCenteredIcon(IMG.R2, UI.SCR.X_MID, popstarter_icon_y)
+          local popstarter_title_y = popstarter_icon_y + 24
+          Font.ftPrint(BFONT, UI.SCR.X_MID, popstarter_title_y, 8, UI.SCR.X, 16, "POPSTARTER PATH:", UI.CCOL.GREY)
+          local popstarter_path_y = popstarter_title_y + 18
+          Font.ftPrint(BFONT, UI.SCR.X_MID, popstarter_path_y, 8, UI.SCR.X, 16, popstarter_label, UI.CCOL.GREY)
+          local profile_icons_y = popstarter_path_y + 42
           DrawIconPair("up", "down", profile_icons_y, 36)
           local profile_title_y = profile_icons_y + 24
           Font.ftPrint(BFONT, UI.SCR.X_MID, profile_title_y, 8, UI.SCR.X, 16, "POPStarter Mode:", UI.CCOL.GREY)
           local profile_desc_y = profile_title_y + 18
-          Font.ftPrint(BFONT, UI.SCR.X_MID, profile_desc_y, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].DESC, UI.CCOL.GREY)
+          Font.ftPrint(BFONT, UI.SCR.X_MID, profile_desc_y, 8, UI.SCR.X, 16, selected_profile.DESC or "", UI.CCOL.GREY)
           local profile_path_y = profile_desc_y + 18
-          Font.ftPrint(BFONT, UI.SCR.X_MID, profile_path_y, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].ELF, Color.new(128,128,128, 110))
+          Font.ftPrint(BFONT, UI.SCR.X_MID, profile_path_y, 8, UI.SCR.X, 16, selected_profile.ELF or "", Color.new(128,128,128, 110))
         end
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
@@ -1733,6 +1701,7 @@ end
         end
         if UI.Pad.Events.NAV_DOWN then UI.ProfileQuery.curopt = CLAMP(UI.ProfileQuery.curopt+1, 1, profcnt) end
         if UI.Pad.Events.NAV_UP then UI.ProfileQuery.curopt = CLAMP(UI.ProfileQuery.curopt-1, 1, profcnt) end
+        selected_profile = GetSelectedProfile()
         if UI.Pad.Events.NAV_LEFT or UI.Pad.Events.NAV_RIGHT then
           local count = 4
           if PLDR.GetBDMAModeCount ~= nil then
@@ -1753,7 +1722,7 @@ end
         if UI.Pad.Events.START then
           local default_profile = tonumber(PLDR.DEFAULT_PROFILE) or 1
           UI.ProfileQuery.curopt = CLAMP(default_profile, 1, profcnt)
-          local profile = PLDR.PROFILES[UI.ProfileQuery.curopt]
+          local profile = GetSelectedProfile()
           if profile ~= nil then
             PLDR.POPSTARTER_PATH = profile.ELF
           end
@@ -1770,6 +1739,27 @@ end
           UI.Notif_queue.add("Profile defaults restored")
         end
         if UI.Pad.Events.R2 then
+          UI.TextEntry.Open("Edit POPStarter Path", popstarter_path, function (new_value)
+            if PLDR ~= nil and PLDR.SETTINGS ~= nil then
+              PLDR.SETTINGS.popstarter_path = new_value
+              local resolved = new_value
+              if System ~= nil and System.GetPOPStarterElfPath ~= nil then
+                resolved = System.GetPOPStarterElfPath()
+              end
+              if PLDR.PROFILES ~= nil and PLDR.PROFILES[1] ~= nil then
+                PLDR.PROFILES[1].ELF = resolved
+              end
+              PLDR.POPSTARTER_PATH = resolved
+              if PLDR.SaveSettings ~= nil then
+                PLDR.SaveSettings()
+              end
+              if UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
+                UI.Notif_queue.add("POPStarter path saved")
+              end
+            end
+          end, nil, (PLDR and PLDR.SETTINGS and PLDR.SETTINGS.popstarter_path) or JoinPath(APP_DIR or System.currentDirectory(), "POPSTARTER.ELF"))
+        end
+        if UI.Pad.Events.SQUARE then
           UI.TextEntry.Open("Edit DKWDRV Path", dkwdrv_path, function (new_value)
             if PLDR ~= nil and PLDR.SETTINGS ~= nil then
               PLDR.SETTINGS.dkwdrv_path = new_value
@@ -1795,10 +1785,11 @@ end
           if PLDR.SaveSettings ~= nil then
             PLDR.SaveSettings()
           end
-          if not doesFileExist(PLDR.PROFILES[UI.ProfileQuery.curopt].ELF) then
+          local confirm_profile = GetSelectedProfile()
+          if type(confirm_profile.ELF) ~= "string" or confirm_profile.ELF == "" or not doesFileExist(confirm_profile.ELF) then
             UI.Notif_queue.add("POPStarter ELF missing")
           else
-            PLDR.POPSTARTER_PATH = PLDR.PROFILES[UI.ProfileQuery.curopt].ELF
+            PLDR.POPSTARTER_PATH = confirm_profile.ELF
             UI.ProfileQuery.bdma_mode = nil
             UI.SceneChange(UI.SCENES.MMAIN)
           end
@@ -2346,6 +2337,33 @@ function UI.RefreshMassDevicePage(device_kind)
   PLDR.CleanupGameList()
 
   if device_kind == "MX4SIO" then
+    local host_boot = type(APP_DIR) == "string" and string.match(string.lower(APP_DIR), "^host:") ~= nil
+    if host_boot then
+      if PLDR.MX4SIO ~= nil then
+        PLDR.MX4SIO.READY = false
+        PLDR.MX4SIO.MASSINDX = nil
+        PLDR.MX4SIO.ROOT = nil
+      end
+      UI.Notif_queue.add("MX4SIO unavailable on host boot")
+      return false
+    end
+
+    LOG("Initializing MX4SIO...")
+    local hint = nil
+    if PLDR.MX4SIO ~= nil then
+      hint = PLDR.MX4SIO.PREFIX_HINT
+    end
+    local ok, ready, root = pcall(System.initMX4SIO, hint)
+    if not ok or not ready or type(root) ~= "string" or root == "" then
+      if PLDR.MX4SIO ~= nil then
+        PLDR.MX4SIO.READY = false
+        PLDR.MX4SIO.MASSINDX = nil
+        PLDR.MX4SIO.ROOT = nil
+      end
+      UI.Notif_queue.add("MX4SIO init failed (searched mass0..mass9)")
+      return false
+    end
+
     if PLDR.MX4SIO ~= nil and PLDR.MX4SIO.READY and type(PLDR.MX4SIO.ROOT) == "string" and PLDR.MX4SIO.ROOT ~= "" then
       PLDR.GetPS1GameLists(PLDR.MX4SIO.ROOT.."POPS/", true)
       UI.GameList.Reset()
@@ -2360,30 +2378,6 @@ function UI.RefreshMassDevicePage(device_kind)
     end
 
     if not boot_is_mx4sio and not (scene_is_mx4sio and enum_has_mx4sio) then
-      if PLDR.MX4SIO ~= nil then
-        PLDR.MX4SIO.READY = false
-        PLDR.MX4SIO.MASSINDX = nil
-        PLDR.MX4SIO.ROOT = nil
-      end
-      UI.Notif_queue.add("MX4SIO not detected (searched mass0..mass9)")
-      return false
-    end
-
-    local hint = nil
-    if PLDR.MX4SIO ~= nil then
-      hint = PLDR.MX4SIO.PREFIX_HINT
-    end
-    local ok, ready, root = pcall(System.initMX4SIO, hint)
-    if not ok then
-      if PLDR.MX4SIO ~= nil then
-        PLDR.MX4SIO.READY = false
-        PLDR.MX4SIO.MASSINDX = nil
-        PLDR.MX4SIO.ROOT = nil
-      end
-      UI.Notif_queue.add("MX4SIO init failed (searched mass0..mass9)")
-      return false
-    end
-    if not ready or type(root) ~= "string" or root == "" then
       if PLDR.MX4SIO ~= nil then
         PLDR.MX4SIO.READY = false
         PLDR.MX4SIO.MASSINDX = nil

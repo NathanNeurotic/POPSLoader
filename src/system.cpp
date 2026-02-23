@@ -9,6 +9,7 @@
 
 #include "include/system.h"
 #include "include/luaplayer.h"
+#include "include/assets.h"
 #include "include/dprintf.h"
 
 //extern int size_loader_elf;
@@ -80,37 +81,12 @@ char* __ps2_normalize_path(char *path_name)
 int ResolveAssetPath(char* out, size_t outsz, const char* relativeName)
 {
 	if (!out || outsz == 0 || !relativeName) return 0;
-
-	if (strchr(relativeName, ':') != NULL) {
-		snprintf(out, outsz, "%s", relativeName);
-		struct stat st;
-		return (stat(out, &st) == 0);
-	}
-
-	char candidate[255];
-	struct stat st;
-
-	snprintf(candidate, sizeof(candidate), "%s%s", app_dir, relativeName);
-	if (stat(candidate, &st) == 0) {
-		DPRINTF("ResolveAssetPath: %s\n", candidate);
-		snprintf(out, outsz, "%s", candidate);
-		return 1;
-	}
-
-	snprintf(candidate, sizeof(candidate), "%sPOPSLDR/%s", app_dir, relativeName);
-	if (stat(candidate, &st) == 0) {
-		DPRINTF("ResolveAssetPath: %s\n", candidate);
-		snprintf(out, outsz, "%s", candidate);
-		return 1;
-	}
-
-	return 0;
+	return Asset_ResolvePath(out, outsz, relativeName);
 }
 
 static int ResolveAssetCandidate(char* out, size_t outsz, const char* candidate)
 {
-	struct stat st;
-	if (stat(candidate, &st) == 0) {
+	if (Asset_Exists(candidate)) {
 		DPRINTF("ResolveAssetPath: %s\n", candidate);
 		snprintf(out, outsz, "%s", candidate);
 		return 1;
@@ -131,6 +107,12 @@ int ResolveAssetPathTyped(char* out, size_t outsz, const char* relativeName, Ass
 	char candidate[255];
 
 	if (kind == ASSET_IMG) {
+		snprintf(candidate, sizeof(candidate), "IMG/%s", relativeName);
+		if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
+
+		snprintf(candidate, sizeof(candidate), "POPSLDR/IMG/%s", relativeName);
+		if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
+
 		snprintf(candidate, sizeof(candidate), "%s%s", app_dir, relativeName);
 		if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
 

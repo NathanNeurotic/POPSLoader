@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include <malloc.h>
 #include <string.h>
 #include <unistd.h>
@@ -7,6 +8,7 @@
 #include "include/graphics.h"
 #include "include/fntsys.h"
 #include "include/luaplayer.h"
+#include "include/assets.h"
 
 static bool asyncDelayed = true;
 
@@ -217,16 +219,44 @@ static int lua_loadimgasync(lua_State *L){
 	return 0;
 }
 
+static int lua_loadimgfrombuffer(lua_State *L) {
+	int argc = lua_gettop(L);
+	if (argc != 1 && argc != 2) return luaL_error(L, "wrong number of arguments");
+	size_t sz = 0;
+	const void* data = luaL_checklstring(L, 1, &sz);
+	bool delayed = true;
+	if (argc == 2) delayed = lua_toboolean(L, 2);
+	GSTEXTURE* image = loadImageFromBuffer(data, sz, delayed);
+	if (image != NULL) lua_pushinteger(L, (uint32_t)(image)); else lua_pushnil(L);
+	return 1;
+}
+
 static int lua_loadimg(lua_State *L) {
 	int argc = lua_gettop(L);
 	if (argc != 1 && argc != 2) return luaL_error(L, "wrong number of arguments");
 	const char* text = luaL_checkstring(L, 1);
 	bool delayed = true;
 	if (argc == 2) delayed = lua_toboolean(L, 2);
-	GSTEXTURE* image = load_image(text, delayed);
 
-	if (image != NULL)
+	const void* ptr = NULL;
+	size_t sz = 0;
+	bool isEmbedded = false;
+	GSTEXTURE* image = NULL;
+	if (Asset_ReadAll(text, &ptr, &sz, &isEmbedded) == 0 && isEmbedded) {
+		image = loadImageFromBuffer(ptr, sz, delayed);
+	}
+	if (image == NULL) {
+		image = load_image(text, delayed);
+	}
+
+	if (image != NULL && (image->Width <= 0 || image->Height <= 0)) {
+		printf("IMGFAIL key=%s decode=ok upload=unknown w=%d h=%d psm=%d\n", text, image->Width, image->Height, image->PSM);
+		image = NULL;
+	}
+	if (image != NULL) {
+		printf("IMGUPLOAD key=%s w=%d h=%d psm=%d vram=%u\n", text, image->Width, image->Height, image->PSM, image->Vram);
 		lua_pushinteger(L, (uint32_t)(image));
+	}
 	else
 		lua_pushnil(L);
 	return 1;
@@ -535,6 +565,7 @@ static const luaL_Reg Graphics_functions[] = {
 	{"drawTriangle",        		lua_triangle},
 	{"drawQuad",        				lua_quad},
     {"loadImage",           		 lua_loadimg},
+    {"loadImageFromBuffer",    lua_loadimgfrombuffer},
   	{"threadLoadImage",        	lua_loadimgasync},
   //{"loadAnimatedImage",   	   lua_loadanimg},
   //{"getImageFramesNum",   	lua_getnumframes},

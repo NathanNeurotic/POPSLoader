@@ -65,7 +65,7 @@ EXT_LIBS = modules/ds34usb/ee/libds34usb.a modules/ds34bt/ee/libds34bt.a
 
 APP_CORE = main.o system.o pad.o graphics.o render.o \
 		   calc_3d.o gsKit3d_sup.o atlas.o fntsys.o md5.o \
-		   sound.o #strUtils.o
+		   sound.o assets.o #strUtils.o
 
 LUA_LIBS =	luaplayer.o luasound.o luacontrols.o \
 			luatimer.o luaScreen.o luagraphics.o \
@@ -78,7 +78,23 @@ IOP_MODULES = iomanX.o fileXio.o \
 			  ps2dev9.o ps2atad.o ps2hdd-osd.o ps2fs.o mmceman.o \
 			  mx4sio_bd.o bdm_query.o
 
-EMBEDDED_RSC = boot.o builtin_font.o
+EMBED_LUA_FILES = bin/POPSLDR/system.lua bin/POPSLDR/ui.lua bin/POPSLDR/images.lua bin/POPSLDR/pops_profiles.lua
+EMBED_AUDIO_FILES = bin/POPSLDR/boot.adp
+EMBED_FONT_FILES = EMBED/builtin_font.ttf
+EMBED_IMG_FILES = \
+	bin/POPSLDR/IMG/APAHDD.png bin/POPSLDR/IMG/BDHDD.png bin/POPSLDR/IMG/BG.png bin/POPSLDR/IMG/BGM.png bin/POPSLDR/IMG/BKG.png \
+	bin/POPSLDR/IMG/DISC.png bin/POPSLDR/IMG/HDD.png bin/POPSLDR/IMG/L1.png bin/POPSLDR/IMG/L2.png bin/POPSLDR/IMG/L3.png \
+	bin/POPSLDR/IMG/MISSING.png bin/POPSLDR/IMG/MMCE.png bin/POPSLDR/IMG/MX4SIO.png bin/POPSLDR/IMG/PSL.png bin/POPSLDR/IMG/R1.png \
+	bin/POPSLDR/IMG/R2.png bin/POPSLDR/IMG/R3.png bin/POPSLDR/IMG/SMB.png bin/POPSLDR/IMG/USB.png bin/POPSLDR/IMG/circle.png \
+	bin/POPSLDR/IMG/cross.png bin/POPSLDR/IMG/down.png bin/POPSLDR/IMG/frame.png bin/POPSLDR/IMG/horz.png bin/POPSLDR/IMG/left.png \
+	bin/POPSLDR/IMG/right.png bin/POPSLDR/IMG/select.png bin/POPSLDR/IMG/square.png bin/POPSLDR/IMG/start.png bin/POPSLDR/IMG/triangle.png \
+	bin/POPSLDR/IMG/up.png bin/POPSLDR/IMG/vert.png
+EMBED_IMG_OBJS = $(patsubst bin/POPSLDR/IMG/%.png,asset_bin_POPSLDR_IMG_%_png.o,$(EMBED_IMG_FILES))
+
+EMBEDDED_RSC = boot.o builtin_font.o \
+	asset_bin_POPSLDR_system_lua.o asset_bin_POPSLDR_ui_lua.o asset_bin_POPSLDR_images_lua.o asset_bin_POPSLDR_pops_profiles_lua.o \
+	asset_bin_POPSLDR_boot_adp.o \
+	$(EMBED_IMG_OBJS)
 
 EE_OBJS = $(APP_CORE) $(LUA_LIBS) $(IOP_MODULES) $(EMBEDDED_RSC)
 
@@ -88,7 +104,7 @@ EE_ASM_DIR = asm/
 EE_OBJS := $(EE_OBJS:%=$(EE_OBJS_DIR)%) # remap all EE_OBJ to obj subdir
 
 #------------------------------------------------------------------#
-all: $(EXT_LIBS) $(EE_BIN_PKD)
+all: embed-verify-assets $(EXT_LIBS) $(EE_BIN_PKD)
 	@echo "$$HEADER"
 
 $(EE_BIN_PKD): $(EE_BIN)
@@ -106,6 +122,30 @@ $(EE_ASM_DIR)%.c: EMBED/%.png
 $(EE_ASM_DIR)%.c: EMBED/%.ttf
 	$(BIN2S) $< $@ $(shell basename $< .ttf)
 #------------------------------------------------------------------#
+
+$(EE_ASM_DIR)asset_bin_POPSLDR_system_lua.c: bin/POPSLDR/system.lua | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_bin_POPSLDR_system_lua
+$(EE_ASM_DIR)asset_bin_POPSLDR_ui_lua.c: bin/POPSLDR/ui.lua | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_bin_POPSLDR_ui_lua
+$(EE_ASM_DIR)asset_bin_POPSLDR_images_lua.c: bin/POPSLDR/images.lua | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_bin_POPSLDR_images_lua
+$(EE_ASM_DIR)asset_bin_POPSLDR_pops_profiles_lua.c: bin/POPSLDR/pops_profiles.lua | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_bin_POPSLDR_pops_profiles_lua
+$(EE_ASM_DIR)asset_bin_POPSLDR_boot_adp.c: bin/POPSLDR/boot.adp | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_bin_POPSLDR_boot_adp
+
+define GEN_POPSLDR_IMG_RULE
+$(EE_ASM_DIR)asset_bin_POPSLDR_IMG_$(basename $(notdir $(1)))_png.c: $(1) | $(EE_ASM_DIR)
+	$(BIN2S) $$< $$@ asset_bin_POPSLDR_IMG_$(basename $(notdir $(1)))_png
+endef
+$(foreach _img,$(EMBED_IMG_FILES),$(eval $(call GEN_POPSLDR_IMG_RULE,$(_img))))
+
+embed-verify-assets:
+	@missing=0; \
+	for f in $(EMBED_LUA_FILES) $(EMBED_AUDIO_FILES) $(EMBED_FONT_FILES) $(EMBED_IMG_FILES); do \
+		if [ ! -f "$$f" ]; then echo "MISSING: $$f"; missing=1; fi; \
+	done; \
+	test $$missing -eq 0
 
 
 #-------------------- Embedded IOP Modules ------------------------#
@@ -174,6 +214,14 @@ clean: cleanbin
 	rm -f $(EMBEDDED_RSC)
 
 rebuild: clean all
+
+embed-toolchain-report:
+	@echo "objcopy: $(EE_OBJCOPY)"
+	@$(EE_OBJCOPY) --help | sed -n "1,80p"
+	@echo "main.o header:"
+	@$(EE_READELF) -h $(EE_OBJS_DIR)main.o
+	@echo "embedded object header:"
+	@$(EE_READELF) -h $(EE_OBJS_DIR)asset_bin_POPSLDR_system_lua.o
 
 run:
 	cd bin; ps2client -h $(PS2LINK_IP) execee host:$(EE_BIN)

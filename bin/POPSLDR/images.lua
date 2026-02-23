@@ -8,7 +8,12 @@
 
 LOG("Registering images")
 local function ResolveImage(name)
-  return System.resolveAssetType(name, ASSET_IMG) or name
+  local logical = "IMG/"..name
+  return System.resolveAssetType(name, ASSET_IMG) or System.resolveAsset(logical) or logical
+end
+
+local function IsBootBgKey(key)
+  return key == "BG" or key == "BGM" or key == "BKG" or key == "PSL"
 end
 --- Add your images to this table, just write the name of the file.
 --- Flat layout places images beside POPSLOADER.ELF; legacy installs can still use POPSLDR/IMG/*
@@ -28,10 +33,6 @@ local IMGS = {
   "DISC.png",
   "MISSING.png",
   "PSL.png",
-  --"splash_bg.png",
-  --"splash_appname.png",
-  --"splash_logo.png",
-  --"splash_credits.png",
   "select.png",
   "start.png",
   "triangle.png",
@@ -70,6 +71,10 @@ IMG = setmetatable({}, {
     end
     local path = ResolveImage(source)
     local img = Graphics.loadImage(path)
+    if IsBootBgKey(key) then
+      LOGF("IMGLOAD: key=IMG/%s handle=%s", tostring(source), tostring(img))
+      LOGF("IMGTYPE key=%s type=%s", tostring(key), type(img))
+    end
     if img == nil then
       LOGF("Image load failed: %s", path)
       IMG_FAILED[key] = true

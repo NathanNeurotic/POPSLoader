@@ -44,8 +44,8 @@ end
 
 PLDR.PROFILES = {
   {
-    ELF="POPSTARTER.ELF";
-    DESC="PopStarter located next to POPSLOADER.ELF";
+    ELF=(System.GetPOPStarterElfPath and System.GetPOPStarterElfPath()) or JoinPathCompat(APP_DIR_LOCAL, "POPSTARTER.ELF");
+    DESC="Auto (APP_DIR POPSTARTER.ELF)";
   },
   {
     ELF=ResolveProfilePath("PROFILES/MAIN/POPSTARTER.ELF");

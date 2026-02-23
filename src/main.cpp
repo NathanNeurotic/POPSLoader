@@ -24,6 +24,7 @@
 #include "include/luaplayer.h"
 #include "include/pad.h"
 #include "include/dprintf.h"
+#include "include/assets.h"
 
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
@@ -480,7 +481,7 @@ int main(int argc, char * argv[])
     LOAD_IRX_NARG(bdm_irx);
     LOAD_IRX_NARG(bdmfs_fatfs_irx);
     LOAD_IRX_NARG(usbmass_bd_irx);
-    LOAD_IRX_NARG(mx4sio_bd_irx);
+    DPRINTF("MX4SIO init deferred until page entry\n");
 
     LOAD_IRX_NARG(cdfs_irx);
 
@@ -500,6 +501,7 @@ int main(int argc, char * argv[])
     }
     NormalizeDirPath(boot_path, sizeof(boot_path));
     NormalizeDirPath(app_dir, sizeof(app_dir));
+    Asset_InitSettingsRoot(boot_path);
 
     // waitUntilDeviceIsReady by fjtrujy (root path derived from boot path when possible)
     char device_root[16];
@@ -527,13 +529,38 @@ int main(int argc, char * argv[])
     DPRINTF("app dir : %s\n", app_dir);
 	dbgprintf("app dir : %s\n", app_dir);
     
+    int missing_assets = Asset_BootAuditAndReport();
+    if (missing_assets > 0) {
+        init_scr();
+        scr_setfontcolor(0x0000ff);
+        scr_clear();
+        scr_setXY(2, 2);
+        scr_printf("Fatal: required assets missing (%d).\n", missing_assets);
+        scr_printf("Check embedded registry/runtime media.\n");
+        for(;;) { }
+    }
+
     // set base path luaplayer (after argv0 normalization and finalized boot_path computation)
     chdir(boot_path);
+
+    const void* boot_ptr = NULL;
+    size_t boot_size = 0;
+    bool boot_embedded = false;
+    if (!Asset_Exists("system.lua") || Asset_ReadAll("system.lua", &boot_ptr, &boot_size, &boot_embedded) != 0) {
+        init_scr();
+        scr_setfontcolor(0x0000ff);
+        scr_clear();
+        scr_setXY(2, 2);
+        scr_printf("Missing embedded key: system.lua (registry key mismatch)\n");
+        for(;;) { }
+    }
+    DPRINTF("system.lua %s size=%u\n", boot_embedded ? "EMBEDDED" : "DISK", (unsigned int)boot_size);
+    Asset_FreeIfNeeded(boot_ptr, boot_embedded);
 
     BootStamp("Lua init start");
     while (1)
     {
-        errMsg = runScript(bootString, true);
+        errMsg = runScript("system.lua", false);
 
         init_scr();
 

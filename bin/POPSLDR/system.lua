@@ -82,14 +82,16 @@ local function ResolveAsset(rel)
   return System.resolveAsset(rel) or JoinPath(APP_DIR_LOCAL, rel)
 end
 
+local SETTINGS_ROOT = NormalizeDirPath((System and System.getSettingsRoot and System.getSettingsRoot()) or "mc0:/POPSTARTER/")
+if SETTINGS_ROOT == nil or SETTINGS_ROOT == "" then
+  SETTINGS_ROOT = "mc0:/POPSTARTER/"
+end
+if not doesFolderExist(SETTINGS_ROOT) then
+  pcall(System.createDirectory, SETTINGS_ROOT)
+end
+
 local function ResolveWritablePath(rel)
-  local legacy_root = JoinPath(APP_DIR_LOCAL, "POPSLDR")
-  local legacy = JoinPath(legacy_root, rel)
-  local modern = JoinPath(APP_DIR_LOCAL, rel)
-  if doesFileExist(legacy) or doesFolderExist(legacy_root) then
-    return legacy
-  end
-  return modern
+  return JoinPath(SETTINGS_ROOT, rel)
 end
 
 local function IsAbsoluteDevicePath(path)
@@ -227,7 +229,8 @@ PLDR = {
     show_cover = true,
     profile_index = nil,
     bdma_last_label = nil,
-    dkwdrv_path = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
+    dkwdrv_path = "mc0:/PS1_DKWDRV/DKWDRV.ELF",
+    popstarter_path = nil
   }
 }
 
@@ -476,6 +479,9 @@ function PLDR.LoadSettings()
     if type(data.dkwdrv_path) == "string" and data.dkwdrv_path ~= "" then
       PLDR.SETTINGS.dkwdrv_path = data.dkwdrv_path
     end
+    if type(data.popstarter_path) == "string" and data.popstarter_path ~= "" then
+      PLDR.SETTINGS.popstarter_path = data.popstarter_path
+    end
   end
   if PLDR.SETTINGS.bdma_mode == nil then
     PLDR.SETTINGS.bdma_mode = 1
@@ -495,6 +501,11 @@ function PLDR.LoadSettings()
   end
 end
 
+function System.GetPOPStarterElfPath()
+  local configured = PLDR and PLDR.SETTINGS and PLDR.SETTINGS.popstarter_path or nil
+  return ResolvePopstarterPath(configured)
+end
+
 function PLDR.SaveSettings()
   local path = ResolveWritablePath("settings.lua")
   local fd = System.openFile(path, FCREATE)
@@ -504,6 +515,7 @@ function PLDR.SaveSettings()
   local profile_index = tonumber(PLDR.SETTINGS.profile_index)
   local bdma_last_label = PLDR.SETTINGS.bdma_last_label
   local dkwdrv_path = PLDR.SETTINGS.dkwdrv_path or PLDR.DEFAULT_DKWDRV_PATH
+  local popstarter_path = PLDR.SETTINGS.popstarter_path
   local line = "return {\n"
     ..string.format("  bdma_mode = %d,\n", mode)
     ..string.format("  hide_ui = %s,\n", tostring(hide_ui))
@@ -511,6 +523,7 @@ function PLDR.SaveSettings()
     ..string.format("  profile_index = %s,\n", profile_index ~= nil and tostring(profile_index) or "nil")
     ..string.format("  bdma_last_label = %s,\n", bdma_last_label ~= nil and string.format("%q", bdma_last_label) or "nil")
     ..string.format("  dkwdrv_path = %s,\n", dkwdrv_path ~= nil and string.format("%q", dkwdrv_path) or "nil")
+    ..string.format("  popstarter_path = %s,\n", popstarter_path ~= nil and string.format("%q", popstarter_path) or "nil")
     .."}\n"
   System.writeFile(fd, line, #line)
   System.closeFile(fd)
@@ -563,8 +576,28 @@ function PLDR.ApplyProfileSetting()
     index = default_profile
   end
   PLDR.SETTINGS.profile_index = index
+  local profile_elf = System.GetPOPStarterElfPath and System.GetPOPStarterElfPath() or nil
   if PLDR.PROFILES[index] ~= nil and PLDR.PROFILES[index].ELF ~= nil then
-    PLDR.POPSTARTER_PATH = PLDR.PROFILES[index].ELF
+    profile_elf = PLDR.PROFILES[index].ELF
+  end
+  if type(profile_elf) == "string" and profile_elf ~= "" then
+    PLDR.POPSTARTER_PATH = ResolvePopstarterPath(profile_elf)
+  end
+end
+
+function PLDR.EnsureDefaultProfile()
+  if type(PLDR.PROFILES) ~= "table" then
+    PLDR.PROFILES = {}
+  end
+  local default_elf = System.GetPOPStarterElfPath and System.GetPOPStarterElfPath() or JoinPath(APP_DIR_LOCAL, "POPSTARTER.ELF")
+  if type(PLDR.PROFILES[1]) ~= "table" then
+    PLDR.PROFILES[1] = {}
+  end
+  if PLDR.PROFILES[1].DESC == nil or PLDR.PROFILES[1].DESC == "" then
+    PLDR.PROFILES[1].DESC = "Auto (APP_DIR POPSTARTER.ELF)"
+  end
+  if PLDR.PROFILES[1].ELF == nil or PLDR.PROFILES[1].ELF == "" or PLDR.PROFILES[1].ELF == "POPSTARTER.ELF" then
+    PLDR.PROFILES[1].ELF = default_elf
   end
 end
 
@@ -616,9 +649,45 @@ end
 PLDR.LoadSettings()
 
 require("pops_profiles")
+if PLDR.EnsureDefaultProfile ~= nil then
+  PLDR.EnsureDefaultProfile()
+end
 if PLDR.ApplyProfileSetting ~= nil then
   PLDR.ApplyProfileSetting()
 end
+
+if type(Font) == "table" and type(Font.ftInit) == "function" and type(Font.LoadBuiltinFont) == "function" then
+  Font.ftInit()
+  if type(BFONT) ~= "number" then BFONT = Font.LoadBuiltinFont() end
+  if type(SFONT) ~= "number" then SFONT = Font.LoadBuiltinFont() end
+  if type(LFONT) ~= "number" then LFONT = Font.LoadBuiltinFont() end
+  if type(Font.ftSetCharSize) == "function" then
+    Font.ftSetCharSize(BFONT, 800, 800)
+    Font.ftSetCharSize(SFONT, 600, 600)
+  end
+end
+assert(type(BFONT) == "number", "BFONT contract broken: expected number, got "..type(BFONT))
+assert(type(SFONT) == "number", "SFONT contract broken: expected number, got "..type(SFONT))
+assert(type(LFONT) == "number", "LFONT contract broken: expected number, got "..type(LFONT))
+local settings_root = (System ~= nil and System.getSettingsRoot ~= nil) and System.getSettingsRoot() or nil
+assert(type(settings_root) == "string" and settings_root ~= "", "Settings root contract broken: expected non-empty string")
+
+local ok_img, img_or_err = pcall(require, "images")
+if not ok_img then
+  error("images module failed to load: "..tostring(img_or_err))
+end
+if type(img_or_err) == "function" then
+  local ok_img_loader, img_loader_ret = pcall(img_or_err)
+  if not ok_img_loader then
+    error("images module loader execution failed: "..tostring(img_loader_ret))
+  end
+  img_or_err = img_loader_ret
+end
+if type(img_or_err) == "table" then
+  _G.IMG = img_or_err
+end
+assert(type(_G.IMG) == "table", "IMG contract broken: expected table, got "..type(_G.IMG))
+IMG = _G.IMG
 LOG("system.lua: before require('ui')")
 local ok_ui, ui_or_err = pcall(require, "ui")
 LOG("system.lua: after require('ui')")
@@ -633,16 +702,28 @@ if not ok_ui then
   LOG("package.path:", package.path)
   error("UI module failed to load (expected ui.lua to return/set UI): "..tostring(traceback))
 end
-if ui_or_err ~= nil and ui_or_err ~= true then
-  UI = ui_or_err
+if type(ui_or_err) == "function" then
+  LOG("UI module returned loader function; executing once to realize module table")
+  local ok_loader, loader_ret = pcall(ui_or_err)
+  if not ok_loader then
+    error("UI module loader execution failed: "..tostring(loader_ret))
+  end
+  ui_or_err = loader_ret
 end
-if UI == nil then
-  LOG("UI global is nil after require('ui')")
+if ui_or_err ~= nil and ui_or_err ~= true then
+  if type(ui_or_err) == "table" then
+    _G.UI = ui_or_err
+  end
+end
+if type(_G.UI) ~= "table" then
+  LOG("UI contract broken after require('ui'): ", type(_G.UI))
   LOG("APP_DIR:", APP_DIR_LOCAL)
   LOG("Boot cwd:", System.currentDirectory())
   LOG("package.path:", package.path)
-  error("UI global not initialized (expected ui.lua to return UI or set _G.UI)")
+  error("UI contract broken: expected _G.UI table, got "..type(_G.UI))
 end
+UI = _G.UI
+assert(type(_G.UI) == "table", "UI contract broken: expected table, got "..type(_G.UI))
 UI.LASTSCENE = UI.SCENES.MMAIN
 
 if UI.DEVLOCK ~= nil then
@@ -663,8 +744,6 @@ if UI.DEVLOCK ~= nil then
     LOG("Boot device detection ambiguous; no boot locks set.", "prefix:", tostring(boot_prefix), "path:", tostring(boot_path))
   end
 end
-require("images")
-
 local POPSTARTER_PACK_ROOT = "mc0:/POPSTARTER"
 local POPSTARTER_PACK_FILES = {
   "usbd.irx",
