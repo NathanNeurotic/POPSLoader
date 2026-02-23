@@ -621,6 +621,21 @@ require("pops_profiles")
 if PLDR.ApplyProfileSetting ~= nil then
   PLDR.ApplyProfileSetting()
 end
+
+if type(Font) == "table" and type(Font.ftInit) == "function" and type(Font.LoadBuiltinFont) == "function" then
+  Font.ftInit()
+  if type(BFONT) ~= "number" then BFONT = Font.LoadBuiltinFont() end
+  if type(SFONT) ~= "number" then SFONT = Font.LoadBuiltinFont() end
+  if type(LFONT) ~= "number" then LFONT = Font.LoadBuiltinFont() end
+  if type(Font.ftSetCharSize) == "function" then
+    Font.ftSetCharSize(BFONT, 800, 800)
+    Font.ftSetCharSize(SFONT, 600, 600)
+  end
+end
+assert(type(BFONT) == "number", "BFONT contract broken: expected number, got "..type(BFONT))
+assert(type(SFONT) == "number", "SFONT contract broken: expected number, got "..type(SFONT))
+assert(type(LFONT) == "number", "LFONT contract broken: expected number, got "..type(LFONT))
+
 local ok_img, img_or_err = pcall(require, "images")
 if not ok_img then
   error("images module failed to load: "..tostring(img_or_err))
