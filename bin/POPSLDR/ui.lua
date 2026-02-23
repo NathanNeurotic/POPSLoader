@@ -1672,7 +1672,16 @@ end
       curopt = 1;
       Play = function ()
         local layout = UI.LAYOUT
-        local profcnt = #PLDR.PROFILES
+        local profiles = (PLDR ~= nil and type(PLDR.PROFILES) == "table") and PLDR.PROFILES or {}
+        local profcnt = #profiles
+        local function GetSelectedProfile()
+          if profcnt < 1 then
+            return { DESC = "No POPStarter profiles available", ELF = "" }
+          end
+          UI.ProfileQuery.curopt = CLAMP(tonumber(UI.ProfileQuery.curopt) or 1, 1, profcnt)
+          return profiles[UI.ProfileQuery.curopt] or { DESC = "Invalid profile entry", ELF = "" }
+        end
+        local selected_profile = GetSelectedProfile()
         local hide_ui = UI.ShouldHideUI()
         if UI.ProfileQuery.bdma_mode == nil then
           if PLDR.GetBDMAMode ~= nil then
@@ -1725,9 +1734,9 @@ end
           local profile_title_y = profile_icons_y + 24
           Font.ftPrint(BFONT, UI.SCR.X_MID, profile_title_y, 8, UI.SCR.X, 16, "POPStarter Mode:", UI.CCOL.GREY)
           local profile_desc_y = profile_title_y + 18
-          Font.ftPrint(BFONT, UI.SCR.X_MID, profile_desc_y, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].DESC, UI.CCOL.GREY)
+          Font.ftPrint(BFONT, UI.SCR.X_MID, profile_desc_y, 8, UI.SCR.X, 16, selected_profile.DESC or "", UI.CCOL.GREY)
           local profile_path_y = profile_desc_y + 18
-          Font.ftPrint(BFONT, UI.SCR.X_MID, profile_path_y, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].ELF, Color.new(128,128,128, 110))
+          Font.ftPrint(BFONT, UI.SCR.X_MID, profile_path_y, 8, UI.SCR.X, 16, selected_profile.ELF or "", Color.new(128,128,128, 110))
         end
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
@@ -1737,6 +1746,7 @@ end
         end
         if UI.Pad.Events.NAV_DOWN then UI.ProfileQuery.curopt = CLAMP(UI.ProfileQuery.curopt+1, 1, profcnt) end
         if UI.Pad.Events.NAV_UP then UI.ProfileQuery.curopt = CLAMP(UI.ProfileQuery.curopt-1, 1, profcnt) end
+        selected_profile = GetSelectedProfile()
         if UI.Pad.Events.NAV_LEFT or UI.Pad.Events.NAV_RIGHT then
           local count = 4
           if PLDR.GetBDMAModeCount ~= nil then
@@ -1757,7 +1767,7 @@ end
         if UI.Pad.Events.START then
           local default_profile = tonumber(PLDR.DEFAULT_PROFILE) or 1
           UI.ProfileQuery.curopt = CLAMP(default_profile, 1, profcnt)
-          local profile = PLDR.PROFILES[UI.ProfileQuery.curopt]
+          local profile = GetSelectedProfile()
           if profile ~= nil then
             PLDR.POPSTARTER_PATH = profile.ELF
           end
@@ -1799,10 +1809,11 @@ end
           if PLDR.SaveSettings ~= nil then
             PLDR.SaveSettings()
           end
-          if not doesFileExist(PLDR.PROFILES[UI.ProfileQuery.curopt].ELF) then
+          local confirm_profile = GetSelectedProfile()
+          if type(confirm_profile.ELF) ~= "string" or confirm_profile.ELF == "" or not doesFileExist(confirm_profile.ELF) then
             UI.Notif_queue.add("POPStarter ELF missing")
           else
-            PLDR.POPSTARTER_PATH = PLDR.PROFILES[UI.ProfileQuery.curopt].ELF
+            PLDR.POPSTARTER_PATH = confirm_profile.ELF
             UI.ProfileQuery.bdma_mode = nil
             UI.SceneChange(UI.SCENES.MMAIN)
           end

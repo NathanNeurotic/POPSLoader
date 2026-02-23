@@ -635,6 +635,8 @@ end
 assert(type(BFONT) == "number", "BFONT contract broken: expected number, got "..type(BFONT))
 assert(type(SFONT) == "number", "SFONT contract broken: expected number, got "..type(SFONT))
 assert(type(LFONT) == "number", "LFONT contract broken: expected number, got "..type(LFONT))
+local settings_root = (System ~= nil and System.getSettingsRoot ~= nil) and System.getSettingsRoot() or nil
+assert(type(settings_root) == "string" and settings_root ~= "", "Settings root contract broken: expected non-empty string")
 
 local ok_img, img_or_err = pcall(require, "images")
 if not ok_img then
