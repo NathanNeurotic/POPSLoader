@@ -2369,6 +2369,18 @@ function UI.RefreshMassDevicePage(device_kind)
       return false
     end
 
+    local host_boot = type(APP_DIR) == "string" and string.match(string.lower(APP_DIR), "^host:") ~= nil
+    if host_boot then
+      if PLDR.MX4SIO ~= nil then
+        PLDR.MX4SIO.READY = false
+        PLDR.MX4SIO.MASSINDX = nil
+        PLDR.MX4SIO.ROOT = nil
+      end
+      UI.Notif_queue.add("MX4SIO unavailable on host boot")
+      return false
+    end
+
+    LOG("Initializing MX4SIO...")
     local hint = nil
     if PLDR.MX4SIO ~= nil then
       hint = PLDR.MX4SIO.PREFIX_HINT

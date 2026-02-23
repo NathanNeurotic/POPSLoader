@@ -481,7 +481,7 @@ int main(int argc, char * argv[])
     LOAD_IRX_NARG(bdm_irx);
     LOAD_IRX_NARG(bdmfs_fatfs_irx);
     LOAD_IRX_NARG(usbmass_bd_irx);
-    LOAD_IRX_NARG(mx4sio_bd_irx);
+    DPRINTF("MX4SIO init deferred until page entry\n");
 
     LOAD_IRX_NARG(cdfs_irx);
 
