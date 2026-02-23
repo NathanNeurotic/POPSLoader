@@ -78,16 +78,23 @@ IOP_MODULES = iomanX.o fileXio.o \
 			  ps2dev9.o ps2atad.o ps2hdd-osd.o ps2fs.o mmceman.o \
 			  mx4sio_bd.o bdm_query.o
 
+EMBED_LUA_FILES = bin/POPSLDR/system.lua bin/POPSLDR/ui.lua bin/POPSLDR/images.lua bin/POPSLDR/pops_profiles.lua
+EMBED_AUDIO_FILES = bin/POPSLDR/boot.adp
+EMBED_FONT_FILES = EMBED/builtin_font.ttf
+EMBED_IMG_FILES = \
+	bin/POPSLDR/IMG/APAHDD.png bin/POPSLDR/IMG/BDHDD.png bin/POPSLDR/IMG/BG.png bin/POPSLDR/IMG/BGM.png bin/POPSLDR/IMG/BKG.png \
+	bin/POPSLDR/IMG/DISC.png bin/POPSLDR/IMG/HDD.png bin/POPSLDR/IMG/L1.png bin/POPSLDR/IMG/L2.png bin/POPSLDR/IMG/L3.png \
+	bin/POPSLDR/IMG/MISSING.png bin/POPSLDR/IMG/MMCE.png bin/POPSLDR/IMG/MX4SIO.png bin/POPSLDR/IMG/PSL.png bin/POPSLDR/IMG/R1.png \
+	bin/POPSLDR/IMG/R2.png bin/POPSLDR/IMG/R3.png bin/POPSLDR/IMG/SMB.png bin/POPSLDR/IMG/USB.png bin/POPSLDR/IMG/circle.png \
+	bin/POPSLDR/IMG/cross.png bin/POPSLDR/IMG/down.png bin/POPSLDR/IMG/frame.png bin/POPSLDR/IMG/horz.png bin/POPSLDR/IMG/left.png \
+	bin/POPSLDR/IMG/right.png bin/POPSLDR/IMG/select.png bin/POPSLDR/IMG/square.png bin/POPSLDR/IMG/start.png bin/POPSLDR/IMG/triangle.png \
+	bin/POPSLDR/IMG/up.png bin/POPSLDR/IMG/vert.png
+EMBED_IMG_OBJS = $(patsubst bin/POPSLDR/IMG/%.png,asset_bin_POPSLDR_IMG_%_png.o,$(EMBED_IMG_FILES))
+
 EMBEDDED_RSC = boot.o builtin_font.o \
 	asset_bin_POPSLDR_system_lua.o asset_bin_POPSLDR_ui_lua.o asset_bin_POPSLDR_images_lua.o asset_bin_POPSLDR_pops_profiles_lua.o \
 	asset_bin_POPSLDR_boot_adp.o \
-	asset_bin_POPSLDR_IMG_APAHDD_png.o asset_bin_POPSLDR_IMG_BDHDD_png.o asset_bin_POPSLDR_IMG_BG_png.o asset_bin_POPSLDR_IMG_BGM_png.o asset_bin_POPSLDR_IMG_BKG_png.o \
-	asset_bin_POPSLDR_IMG_DISC_png.o asset_bin_POPSLDR_IMG_HDD_png.o asset_bin_POPSLDR_IMG_L1_png.o asset_bin_POPSLDR_IMG_L2_png.o asset_bin_POPSLDR_IMG_L3_png.o \
-	asset_bin_POPSLDR_IMG_MISSING_png.o asset_bin_POPSLDR_IMG_MMCE_png.o asset_bin_POPSLDR_IMG_MX4SIO_png.o asset_bin_POPSLDR_IMG_PSL_png.o asset_bin_POPSLDR_IMG_R1_png.o \
-	asset_bin_POPSLDR_IMG_R2_png.o asset_bin_POPSLDR_IMG_R3_png.o asset_bin_POPSLDR_IMG_SMB_png.o asset_bin_POPSLDR_IMG_USB_png.o asset_bin_POPSLDR_IMG_circle_png.o \
-	asset_bin_POPSLDR_IMG_cross_png.o asset_bin_POPSLDR_IMG_down_png.o asset_bin_POPSLDR_IMG_frame_png.o asset_bin_POPSLDR_IMG_horz_png.o asset_bin_POPSLDR_IMG_left_png.o \
-	asset_bin_POPSLDR_IMG_right_png.o asset_bin_POPSLDR_IMG_select_png.o asset_bin_POPSLDR_IMG_square_png.o asset_bin_POPSLDR_IMG_start_png.o asset_bin_POPSLDR_IMG_triangle_png.o \
-	asset_bin_POPSLDR_IMG_up_png.o asset_bin_POPSLDR_IMG_vert_png.o
+	$(EMBED_IMG_OBJS)
 
 EE_OBJS = $(APP_CORE) $(LUA_LIBS) $(IOP_MODULES) $(EMBEDDED_RSC)
 
@@ -97,7 +104,7 @@ EE_ASM_DIR = asm/
 EE_OBJS := $(EE_OBJS:%=$(EE_OBJS_DIR)%) # remap all EE_OBJ to obj subdir
 
 #------------------------------------------------------------------#
-all: $(EXT_LIBS) $(EE_BIN_PKD)
+all: embed-verify-assets $(EXT_LIBS) $(EE_BIN_PKD)
 	@echo "$$HEADER"
 
 $(EE_BIN_PKD): $(EE_BIN)
@@ -127,8 +134,18 @@ $(EE_ASM_DIR)asset_bin_POPSLDR_pops_profiles_lua.c: bin/POPSLDR/pops_profiles.lu
 $(EE_ASM_DIR)asset_bin_POPSLDR_boot_adp.c: bin/POPSLDR/boot.adp | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_bin_POPSLDR_boot_adp
 
-$(EE_ASM_DIR)asset_bin_POPSLDR_IMG_%.c: bin/POPSLDR/IMG/%.png | $(EE_ASM_DIR)
-	$(BIN2S) $< $@ asset_bin_POPSLDR_IMG_$(basename $(notdir $<))_png
+define GEN_POPSLDR_IMG_RULE
+$(EE_ASM_DIR)asset_bin_POPSLDR_IMG_$(basename $(notdir $(1)))_png.c: $(1) | $(EE_ASM_DIR)
+	$(BIN2S) $$< $$@ asset_bin_POPSLDR_IMG_$(basename $(notdir $(1)))_png
+endef
+$(foreach _img,$(EMBED_IMG_FILES),$(eval $(call GEN_POPSLDR_IMG_RULE,$(_img))))
+
+embed-verify-assets:
+	@missing=0; \
+	for f in $(EMBED_LUA_FILES) $(EMBED_AUDIO_FILES) $(EMBED_FONT_FILES) $(EMBED_IMG_FILES); do \
+		if [ ! -f "$$f" ]; then echo "MISSING: $$f"; missing=1; fi; \
+	done; \
+	test $$missing -eq 0
 
 
 #-------------------- Embedded IOP Modules ------------------------#
