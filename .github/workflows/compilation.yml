@@ -42,23 +42,12 @@ jobs:
         run: |
           make clean elfloader all package
 
-      - name: Locate and normalize APP_POPSLOADER.zip
+      - name: Verify APP_POPSLOADER.zip exists
         shell: sh
         run: |
           set -eu
-
-          echo "== Workspace contents (top-level) =="
-          ls -lah
-
-          EXACT="$(find . -maxdepth 6 -type f -name 'APP_POPSLOADER.zip' -print | head -n 1 || true)"
-          if [ -z "$EXACT" ]; then
-            echo "ERROR: APP_POPSLOADER.zip not found after build."
-            exit 1
-          fi
-
-          cp -f "$EXACT" "./APP_POPSLOADER.zip"
-          echo "== Final normalized artifact =="
-          ls -lah "./APP_POPSLOADER.zip"
+          test -f APP_POPSLOADER.zip
+          ls -lh APP_POPSLOADER.zip
 
       - name: Upload artifact (no release)
         if: ${{ success() }}
