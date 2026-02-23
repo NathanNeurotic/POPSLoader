@@ -23,6 +23,19 @@
 
 static lua_State *L;
 
+static const char* kBootstrapPrelude =
+    "function LOG(...)\\n"
+    "  if type(print_uart) == 'function' then\\n"
+    "    print_uart(...)\\n"
+    "  else\\n"
+    "    print(...)\\n"
+    "  end\\n"
+    "end\\n"
+    "function LOGF(fmt, ...)\\n"
+    "  LOG(string.format(fmt, ...))\\n"
+    "end\\n"
+    "if type(print_uart) == 'function' then print_uart('BOOT: Lua prelude installed (LOG/LOGF)\\n') end\\n";
+
 static inline size_t AssetLua_RawLen(lua_State* Lstate, int idx)
 {
 #if defined(LUA_VERSION_NUM) && LUA_VERSION_NUM >= 502
@@ -216,10 +229,13 @@ const char * runScript(const char* script, bool isStringBuffer )
     int s = 0;
     const char * errMsg =(const char*)malloc(sizeof(char)*512);
 
-    if(!isStringBuffer) {
+    s = luaL_loadbuffer(L, kBootstrapPrelude, strlen(kBootstrapPrelude), "@bootstrap_prelude");
+    if (s == 0) s = lua_pcall(L, 0, 0, 0);
+
+    if(s == 0 && !isStringBuffer) {
         DPRINTF("Loading script : `%s'\n", script);
         s = LuaLoadLogical(L, script);
-    } else {
+    } else if (s == 0) {
         s = luaL_loadbuffer(L, script, strlen(script), NULL);
     }
 
