@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include <malloc.h>
 #include <string.h>
 #include <unistd.h>
@@ -249,11 +250,11 @@ static int lua_loadimg(lua_State *L) {
 	}
 
 	if (image != NULL && (image->Width <= 0 || image->Height <= 0)) {
-		DPRINTF("IMGFAIL key=%s decode=ok upload=unknown w=%d h=%d psm=%d\n", text, image->Width, image->Height, image->PSM);
+		printf("IMGFAIL key=%s decode=ok upload=unknown w=%d h=%d psm=%d\n", text, image->Width, image->Height, image->PSM);
 		image = NULL;
 	}
 	if (image != NULL) {
-		DPRINTF("IMGUPLOAD key=%s w=%d h=%d psm=%d vram=%u\n", text, image->Width, image->Height, image->PSM, image->Vram);
+		printf("IMGUPLOAD key=%s w=%d h=%d psm=%d vram=%u\n", text, image->Width, image->Height, image->PSM, image->Vram);
 		lua_pushinteger(L, (uint32_t)(image));
 	}
 	else
