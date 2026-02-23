@@ -229,7 +229,8 @@ PLDR = {
     show_cover = true,
     profile_index = nil,
     bdma_last_label = nil,
-    dkwdrv_path = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
+    dkwdrv_path = "mc0:/PS1_DKWDRV/DKWDRV.ELF",
+    popstarter_path = nil
   }
 }
 
@@ -478,6 +479,9 @@ function PLDR.LoadSettings()
     if type(data.dkwdrv_path) == "string" and data.dkwdrv_path ~= "" then
       PLDR.SETTINGS.dkwdrv_path = data.dkwdrv_path
     end
+    if type(data.popstarter_path) == "string" and data.popstarter_path ~= "" then
+      PLDR.SETTINGS.popstarter_path = data.popstarter_path
+    end
   end
   if PLDR.SETTINGS.bdma_mode == nil then
     PLDR.SETTINGS.bdma_mode = 1
@@ -497,6 +501,11 @@ function PLDR.LoadSettings()
   end
 end
 
+function System.GetPOPStarterElfPath()
+  local configured = PLDR and PLDR.SETTINGS and PLDR.SETTINGS.popstarter_path or nil
+  return ResolvePopstarterPath(configured)
+end
+
 function PLDR.SaveSettings()
   local path = ResolveWritablePath("settings.lua")
   local fd = System.openFile(path, FCREATE)
@@ -506,6 +515,7 @@ function PLDR.SaveSettings()
   local profile_index = tonumber(PLDR.SETTINGS.profile_index)
   local bdma_last_label = PLDR.SETTINGS.bdma_last_label
   local dkwdrv_path = PLDR.SETTINGS.dkwdrv_path or PLDR.DEFAULT_DKWDRV_PATH
+  local popstarter_path = PLDR.SETTINGS.popstarter_path
   local line = "return {\n"
     ..string.format("  bdma_mode = %d,\n", mode)
     ..string.format("  hide_ui = %s,\n", tostring(hide_ui))
@@ -513,6 +523,7 @@ function PLDR.SaveSettings()
     ..string.format("  profile_index = %s,\n", profile_index ~= nil and tostring(profile_index) or "nil")
     ..string.format("  bdma_last_label = %s,\n", bdma_last_label ~= nil and string.format("%q", bdma_last_label) or "nil")
     ..string.format("  dkwdrv_path = %s,\n", dkwdrv_path ~= nil and string.format("%q", dkwdrv_path) or "nil")
+    ..string.format("  popstarter_path = %s,\n", popstarter_path ~= nil and string.format("%q", popstarter_path) or "nil")
     .."}\n"
   System.writeFile(fd, line, #line)
   System.closeFile(fd)
@@ -565,8 +576,28 @@ function PLDR.ApplyProfileSetting()
     index = default_profile
   end
   PLDR.SETTINGS.profile_index = index
+  local profile_elf = System.GetPOPStarterElfPath and System.GetPOPStarterElfPath() or nil
   if PLDR.PROFILES[index] ~= nil and PLDR.PROFILES[index].ELF ~= nil then
-    PLDR.POPSTARTER_PATH = PLDR.PROFILES[index].ELF
+    profile_elf = PLDR.PROFILES[index].ELF
+  end
+  if type(profile_elf) == "string" and profile_elf ~= "" then
+    PLDR.POPSTARTER_PATH = ResolvePopstarterPath(profile_elf)
+  end
+end
+
+function PLDR.EnsureDefaultProfile()
+  if type(PLDR.PROFILES) ~= "table" then
+    PLDR.PROFILES = {}
+  end
+  local default_elf = System.GetPOPStarterElfPath and System.GetPOPStarterElfPath() or JoinPath(APP_DIR_LOCAL, "POPSTARTER.ELF")
+  if type(PLDR.PROFILES[1]) ~= "table" then
+    PLDR.PROFILES[1] = {}
+  end
+  if PLDR.PROFILES[1].DESC == nil or PLDR.PROFILES[1].DESC == "" then
+    PLDR.PROFILES[1].DESC = "Auto (APP_DIR POPSTARTER.ELF)"
+  end
+  if PLDR.PROFILES[1].ELF == nil or PLDR.PROFILES[1].ELF == "" or PLDR.PROFILES[1].ELF == "POPSTARTER.ELF" then
+    PLDR.PROFILES[1].ELF = default_elf
   end
 end
 
@@ -618,6 +649,9 @@ end
 PLDR.LoadSettings()
 
 require("pops_profiles")
+if PLDR.EnsureDefaultProfile ~= nil then
+  PLDR.EnsureDefaultProfile()
+end
 if PLDR.ApplyProfileSetting ~= nil then
   PLDR.ApplyProfileSetting()
 end

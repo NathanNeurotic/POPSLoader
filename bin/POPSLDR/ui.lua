@@ -1696,9 +1696,14 @@ end
           bdma_label = PLDR.GetBDMAModeText(bdma_mode)
         end
         local dkwdrv_path = (PLDR ~= nil and PLDR.SETTINGS ~= nil and PLDR.SETTINGS.dkwdrv_path) or (PLDR and PLDR.DEFAULT_DKWDRV_PATH) or "mc0:/PS1_DKWDRV/DKWDRV.ELF"
+        local popstarter_path = (System ~= nil and System.GetPOPStarterElfPath ~= nil and System.GetPOPStarterElfPath()) or (PLDR and PLDR.POPSTARTER_PATH) or ""
         local dkwdrv_label = dkwdrv_path
         if #dkwdrv_label > 52 then
           dkwdrv_label = "..."..string.sub(dkwdrv_label, -49)
+        end
+        local popstarter_label = popstarter_path
+        if #popstarter_label > 52 then
+          popstarter_label = "..."..string.sub(popstarter_label, -49)
         end
         if not hide_ui then
           Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Settings", UI.CCOL.GREY)
@@ -1729,7 +1734,13 @@ end
           Font.ftPrint(BFONT, UI.SCR.X_MID, dkwdrv_title_y, 8, UI.SCR.X, 16, "DKWDRV PATH:", UI.CCOL.GREY)
           local dkwdrv_path_y = dkwdrv_title_y + 18
           Font.ftPrint(BFONT, UI.SCR.X_MID, dkwdrv_path_y, 8, UI.SCR.X, 16, dkwdrv_label, UI.CCOL.GREY)
-          local profile_icons_y = dkwdrv_path_y + 42
+          local popstarter_icon_y = dkwdrv_path_y + 42
+          DrawCenteredIcon(IMG.R2, UI.SCR.X_MID, popstarter_icon_y)
+          local popstarter_title_y = popstarter_icon_y + 24
+          Font.ftPrint(BFONT, UI.SCR.X_MID, popstarter_title_y, 8, UI.SCR.X, 16, "POPSTARTER PATH:", UI.CCOL.GREY)
+          local popstarter_path_y = popstarter_title_y + 18
+          Font.ftPrint(BFONT, UI.SCR.X_MID, popstarter_path_y, 8, UI.SCR.X, 16, popstarter_label, UI.CCOL.GREY)
+          local profile_icons_y = popstarter_path_y + 42
           DrawIconPair("up", "down", profile_icons_y, 36)
           local profile_title_y = profile_icons_y + 24
           Font.ftPrint(BFONT, UI.SCR.X_MID, profile_title_y, 8, UI.SCR.X, 16, "POPStarter Mode:", UI.CCOL.GREY)
@@ -1784,6 +1795,27 @@ end
           UI.Notif_queue.add("Profile defaults restored")
         end
         if UI.Pad.Events.R2 then
+          UI.TextEntry.Open("Edit POPStarter Path", popstarter_path, function (new_value)
+            if PLDR ~= nil and PLDR.SETTINGS ~= nil then
+              PLDR.SETTINGS.popstarter_path = new_value
+              local resolved = new_value
+              if System ~= nil and System.GetPOPStarterElfPath ~= nil then
+                resolved = System.GetPOPStarterElfPath()
+              end
+              if PLDR.PROFILES ~= nil and PLDR.PROFILES[1] ~= nil then
+                PLDR.PROFILES[1].ELF = resolved
+              end
+              PLDR.POPSTARTER_PATH = resolved
+              if PLDR.SaveSettings ~= nil then
+                PLDR.SaveSettings()
+              end
+              if UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
+                UI.Notif_queue.add("POPStarter path saved")
+              end
+            end
+          end, nil, (PLDR and PLDR.SETTINGS and PLDR.SETTINGS.popstarter_path) or JoinPath(APP_DIR or System.currentDirectory(), "POPSTARTER.ELF"))
+        end
+        if UI.Pad.Events.SQUARE then
           UI.TextEntry.Open("Edit DKWDRV Path", dkwdrv_path, function (new_value)
             if PLDR ~= nil and PLDR.SETTINGS ~= nil then
               PLDR.SETTINGS.dkwdrv_path = new_value
@@ -2361,29 +2393,6 @@ function UI.RefreshMassDevicePage(device_kind)
   PLDR.CleanupGameList()
 
   if device_kind == "MX4SIO" then
-    if PLDR.MX4SIO ~= nil and PLDR.MX4SIO.READY and type(PLDR.MX4SIO.ROOT) == "string" and PLDR.MX4SIO.ROOT ~= "" then
-      PLDR.GetPS1GameLists(PLDR.MX4SIO.ROOT.."POPS/", true)
-      UI.GameList.Reset()
-      return true
-    end
-
-    local boot_is_mx4sio = (PLDR ~= nil and PLDR.BOOT_DEVICE_KIND == "MX4SIO")
-    local scene_is_mx4sio = UI.IsMx4sioScene(UI.CURSCENE)
-    local enum_has_mx4sio = false
-    if PLDR ~= nil and type(PLDR.HasClassifiedMassSlot) == "function" then
-      enum_has_mx4sio = PLDR.HasClassifiedMassSlot("MX4SIO")
-    end
-
-    if not boot_is_mx4sio and not (scene_is_mx4sio and enum_has_mx4sio) then
-      if PLDR.MX4SIO ~= nil then
-        PLDR.MX4SIO.READY = false
-        PLDR.MX4SIO.MASSINDX = nil
-        PLDR.MX4SIO.ROOT = nil
-      end
-      UI.Notif_queue.add("MX4SIO not detected (searched mass0..mass9)")
-      return false
-    end
-
     local host_boot = type(APP_DIR) == "string" and string.match(string.lower(APP_DIR), "^host:") ~= nil
     if host_boot then
       if PLDR.MX4SIO ~= nil then
@@ -2401,7 +2410,7 @@ function UI.RefreshMassDevicePage(device_kind)
       hint = PLDR.MX4SIO.PREFIX_HINT
     end
     local ok, ready, root = pcall(System.initMX4SIO, hint)
-    if not ok then
+    if not ok or not ready or type(root) ~= "string" or root == "" then
       if PLDR.MX4SIO ~= nil then
         PLDR.MX4SIO.READY = false
         PLDR.MX4SIO.MASSINDX = nil
@@ -2410,7 +2419,21 @@ function UI.RefreshMassDevicePage(device_kind)
       UI.Notif_queue.add("MX4SIO init failed (searched mass0..mass9)")
       return false
     end
-    if not ready or type(root) ~= "string" or root == "" then
+
+    if PLDR.MX4SIO ~= nil and PLDR.MX4SIO.READY and type(PLDR.MX4SIO.ROOT) == "string" and PLDR.MX4SIO.ROOT ~= "" then
+      PLDR.GetPS1GameLists(PLDR.MX4SIO.ROOT.."POPS/", true)
+      UI.GameList.Reset()
+      return true
+    end
+
+    local boot_is_mx4sio = (PLDR ~= nil and PLDR.BOOT_DEVICE_KIND == "MX4SIO")
+    local scene_is_mx4sio = UI.IsMx4sioScene(UI.CURSCENE)
+    local enum_has_mx4sio = false
+    if PLDR ~= nil and type(PLDR.HasClassifiedMassSlot) == "function" then
+      enum_has_mx4sio = PLDR.HasClassifiedMassSlot("MX4SIO")
+    end
+
+    if not boot_is_mx4sio and not (scene_is_mx4sio and enum_has_mx4sio) then
       if PLDR.MX4SIO ~= nil then
         PLDR.MX4SIO.READY = false
         PLDR.MX4SIO.MASSINDX = nil
