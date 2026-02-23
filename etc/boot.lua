@@ -113,17 +113,8 @@ local function dir_exists(path)
 end
 
 local ARGV0 = normalize_path(System.GetArgv0())
-local BASE_DIR = dirname(ARGV0)
-if BASE_DIR == nil or BASE_DIR == "" or not dir_exists(BASE_DIR) then
-  BASE_DIR = normalize_path(APP_DIR) or normalize_path(System.currentDirectory())
-end
-if BASE_DIR == nil or BASE_DIR == "" or not dir_exists(BASE_DIR) then
-  BASE_DIR = normalize_path(System.currentDirectory())
-end
-BASE_DIR = ensure_dir(BASE_DIR)
-System.currentDirectory(BASE_DIR)
+local BASE_DIR = ensure_dir(normalize_path(APP_DIR or System.currentDirectory()))
 
-package.path = BASE_DIR.."?.lua;"..BASE_DIR.."?/init.lua;"..BASE_DIR.."POPSLDR/?.lua;./?.lua;./?/init.lua;./POPSLDR/?.lua"
 function LOG(...)
   print_uart(...)
 end
@@ -180,9 +171,7 @@ if string.find(ARGV0, "^hdd0:") then
       if HDD.MountPartition(MNTPART, 1) then -- mount to "pfs1:" and NEVER USE IT FOR ANYTHING ELSE
         BOOTPATH, _, _ = string.match(BOOTPATH, "(.-)([^/]-([^%.]+))$")
         BOOTPATH = string.gsub(BOOTPATH, "^pfs:/", "pfs1:/")
-        System.currentDirectory(BOOTPATH)
-        BASE_DIR = ensure_dir(BOOTPATH)
-        LOGF("new bootpath: '%s'\n", BOOTPATH)
+        LOGF("new bootpath (BASE_DIR unchanged): '%s'\n", BOOTPATH)
       end
     end
   end
@@ -262,52 +251,38 @@ function RunScript(S)
   end
 end
 
-local APP_DIR_NORM = ensure_dir(normalize_path(APP_DIR))
-local BASE_PARENT = parent_dir(BASE_DIR)
-local SYS_CANDIDATES = {}
-add_candidate(SYS_CANDIDATES, "system.lua")
-add_candidate(SYS_CANDIDATES, "POPSLDR/system.lua")
-add_candidate(SYS_CANDIDATES, BASE_DIR.."system.lua")
-add_candidate(SYS_CANDIDATES, BASE_DIR.."POPSLDR/system.lua")
-if APP_DIR_NORM ~= nil then
-  add_candidate(SYS_CANDIDATES, APP_DIR_NORM.."system.lua")
-  add_candidate(SYS_CANDIDATES, APP_DIR_NORM.."POPSLDR/system.lua")
-end
-if BASE_PARENT ~= nil then
-  add_candidate(SYS_CANDIDATES, BASE_PARENT.."system.lua")
-  add_candidate(SYS_CANDIDATES, BASE_PARENT.."POPSLDR/system.lua")
-end
+local SYS_CANDIDATES = {
+  BASE_DIR.."POPSLDR/system.lua",
+  BASE_DIR.."system.lua",
+  "./POPSLDR/system.lua",
+  "POPSLDR/system.lua"
+}
 
 local SYS = nil
+local SYS_ERRORS = {}
 for i = 1, #SYS_CANDIDATES do
-  SYS = resolve_script_path(SYS_CANDIDATES[i])
-  if SYS ~= nil then
-    break
+  local candidate = normalize_path(SYS_CANDIDATES[i])
+  local loader, load_err = LoadLuaFile(candidate)
+  if loader == nil then
+    SYS_ERRORS[#SYS_ERRORS + 1] = string.format("%s => %s", tostring(candidate), tostring(load_err))
+  else
+    package.path = BASE_DIR.."?.lua;"..BASE_DIR.."?/init.lua;"..BASE_DIR.."POPSLDR/?.lua;./?.lua;./?/init.lua;./POPSLDR/?.lua"
+    local ok, run_err = pcall(loader)
+    if ok then
+      SYS = candidate
+      break
+    end
+    SYS_ERRORS[#SYS_ERRORS + 1] = string.format("%s => %s", tostring(candidate), tostring(run_err))
   end
 end
 
 if SYS == nil then
-  for i = 1, #SYS_CANDIDATES do
-    local candidate = normalize_path(SYS_CANDIDATES[i])
-    local loader = nil
-    loader = LoadLuaFile(candidate)
-    if loader ~= nil then
-      SYS = candidate
-      break
-    end
-    if string.sub(candidate, 1, 6) == "mass:/" then
-      local compact = "mass:"..string.sub(candidate, 7)
-      loader = LoadLuaFile(compact)
-      if loader ~= nil then
-        SYS = compact
-        break
-      end
-    end
-  end
-end
-if SYS ~= nil then
-  SYS = wait_for_readable_script(SYS)
-  RunScript(SYS)
-else
-  error("Cant access system.lua (flat) or POPSLDR/system.lua (fallback)\n\n\targv0: "..tostring(ARGV0).."\n\tcwd: "..tostring(System.currentDirectory()))
+  error(
+    "Cannot load system.lua from BASE_DIR candidates"
+    .."\nBASE_DIR="..tostring(BASE_DIR)
+    .."\nAPP_DIR="..tostring(APP_DIR)
+    .."\ncurrentDirectory="..tostring(System.currentDirectory())
+    .."\nargv0="..tostring(ARGV0)
+    .."\nCandidates/errors:\n  "..table.concat(SYS_ERRORS, "\n  ")
+  )
 end
