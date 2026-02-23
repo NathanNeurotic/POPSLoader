@@ -82,14 +82,16 @@ local function ResolveAsset(rel)
   return System.resolveAsset(rel) or JoinPath(APP_DIR_LOCAL, rel)
 end
 
+local SETTINGS_ROOT = NormalizeDirPath((System and System.getSettingsRoot and System.getSettingsRoot()) or "mc0:/POPSTARTER/")
+if SETTINGS_ROOT == nil or SETTINGS_ROOT == "" then
+  SETTINGS_ROOT = "mc0:/POPSTARTER/"
+end
+if not doesFolderExist(SETTINGS_ROOT) then
+  pcall(System.createDirectory, SETTINGS_ROOT)
+end
+
 local function ResolveWritablePath(rel)
-  local legacy_root = JoinPath(APP_DIR_LOCAL, "POPSLDR")
-  local legacy = JoinPath(legacy_root, rel)
-  local modern = JoinPath(APP_DIR_LOCAL, rel)
-  if doesFileExist(legacy) or doesFolderExist(legacy_root) then
-    return legacy
-  end
-  return modern
+  return JoinPath(SETTINGS_ROOT, rel)
 end
 
 local function IsAbsoluteDevicePath(path)

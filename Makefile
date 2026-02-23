@@ -65,7 +65,7 @@ EXT_LIBS = modules/ds34usb/ee/libds34usb.a modules/ds34bt/ee/libds34bt.a
 
 APP_CORE = main.o system.o pad.o graphics.o render.o \
 		   calc_3d.o gsKit3d_sup.o atlas.o fntsys.o md5.o \
-		   sound.o #strUtils.o
+		   sound.o assets.o #strUtils.o
 
 LUA_LIBS =	luaplayer.o luasound.o luacontrols.o \
 			luatimer.o luaScreen.o luagraphics.o \
@@ -78,7 +78,16 @@ IOP_MODULES = iomanX.o fileXio.o \
 			  ps2dev9.o ps2atad.o ps2hdd-osd.o ps2fs.o mmceman.o \
 			  mx4sio_bd.o bdm_query.o
 
-EMBEDDED_RSC = boot.o builtin_font.o
+EMBEDDED_RSC = boot.o builtin_font.o \
+	asset_bin_POPSLDR_system_lua.o asset_bin_POPSLDR_ui_lua.o asset_bin_POPSLDR_images_lua.o asset_bin_POPSLDR_pops_profiles_lua.o \
+	asset_bin_POPSLDR_boot_adp.o \
+	asset_bin_POPSLDR_IMG_APAHDD_png.o asset_bin_POPSLDR_IMG_BDHDD_png.o asset_bin_POPSLDR_IMG_BG_png.o asset_bin_POPSLDR_IMG_BGM_png.o asset_bin_POPSLDR_IMG_BKG_png.o \
+	asset_bin_POPSLDR_IMG_DISC_png.o asset_bin_POPSLDR_IMG_HDD_png.o asset_bin_POPSLDR_IMG_L1_png.o asset_bin_POPSLDR_IMG_L2_png.o asset_bin_POPSLDR_IMG_L3_png.o \
+	asset_bin_POPSLDR_IMG_MISSING_png.o asset_bin_POPSLDR_IMG_MMCE_png.o asset_bin_POPSLDR_IMG_MX4SIO_png.o asset_bin_POPSLDR_IMG_PSL_png.o asset_bin_POPSLDR_IMG_R1_png.o \
+	asset_bin_POPSLDR_IMG_R2_png.o asset_bin_POPSLDR_IMG_R3_png.o asset_bin_POPSLDR_IMG_SMB_png.o asset_bin_POPSLDR_IMG_USB_png.o asset_bin_POPSLDR_IMG_circle_png.o \
+	asset_bin_POPSLDR_IMG_cross_png.o asset_bin_POPSLDR_IMG_down_png.o asset_bin_POPSLDR_IMG_frame_png.o asset_bin_POPSLDR_IMG_horz_png.o asset_bin_POPSLDR_IMG_left_png.o \
+	asset_bin_POPSLDR_IMG_right_png.o asset_bin_POPSLDR_IMG_select_png.o asset_bin_POPSLDR_IMG_square_png.o asset_bin_POPSLDR_IMG_start_png.o asset_bin_POPSLDR_IMG_triangle_png.o \
+	asset_bin_POPSLDR_IMG_up_png.o asset_bin_POPSLDR_IMG_vert_png.o
 
 EE_OBJS = $(APP_CORE) $(LUA_LIBS) $(IOP_MODULES) $(EMBEDDED_RSC)
 
@@ -106,6 +115,20 @@ $(EE_ASM_DIR)%.c: EMBED/%.png
 $(EE_ASM_DIR)%.c: EMBED/%.ttf
 	$(BIN2S) $< $@ $(shell basename $< .ttf)
 #------------------------------------------------------------------#
+
+$(EE_ASM_DIR)asset_bin_POPSLDR_system_lua.c: bin/POPSLDR/system.lua | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_bin_POPSLDR_system_lua
+$(EE_ASM_DIR)asset_bin_POPSLDR_ui_lua.c: bin/POPSLDR/ui.lua | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_bin_POPSLDR_ui_lua
+$(EE_ASM_DIR)asset_bin_POPSLDR_images_lua.c: bin/POPSLDR/images.lua | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_bin_POPSLDR_images_lua
+$(EE_ASM_DIR)asset_bin_POPSLDR_pops_profiles_lua.c: bin/POPSLDR/pops_profiles.lua | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_bin_POPSLDR_pops_profiles_lua
+$(EE_ASM_DIR)asset_bin_POPSLDR_boot_adp.c: bin/POPSLDR/boot.adp | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_bin_POPSLDR_boot_adp
+
+$(EE_ASM_DIR)asset_bin_POPSLDR_IMG_%.c: bin/POPSLDR/IMG/%.png | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_bin_POPSLDR_IMG_$(basename $(notdir $<))_png
 
 
 #-------------------- Embedded IOP Modules ------------------------#
@@ -174,6 +197,14 @@ clean: cleanbin
 	rm -f $(EMBEDDED_RSC)
 
 rebuild: clean all
+
+embed-toolchain-report:
+	@echo "objcopy: $(EE_OBJCOPY)"
+	@$(EE_OBJCOPY) --help | sed -n "1,80p"
+	@echo "main.o header:"
+	@$(EE_READELF) -h $(EE_OBJS_DIR)main.o
+	@echo "embedded object header:"
+	@$(EE_READELF) -h $(EE_OBJS_DIR)asset_bin_POPSLDR_system_lua.o
 
 run:
 	cd bin; ps2client -h $(PS2LINK_IP) execee host:$(EE_BIN)

@@ -54,6 +54,7 @@ static const luaL_Reg Sound_functions[] = {
 	{"setVolume",      				   			 lua_setvolume},
 	{"setADPCMVolume",      				lua_setadpcmvolume},
 	{"loadADPCM",      							 lua_loadadpcm},
+	{"loadADPCMFromBuffer",			 lua_loadadpcmfrombuffer},
 	{"playADPCM",      							 lua_playadpcm},
 	{"freeADPCM",      							 lua_freeadpcm},
 	{0, 0}

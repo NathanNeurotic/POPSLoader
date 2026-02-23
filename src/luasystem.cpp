@@ -18,6 +18,7 @@
 
 #include "include/system.h"
 #include "include/dprintf.h"
+#include "include/assets.h"
 
 #define MAX_DIR_FILES 512
 
@@ -1093,6 +1094,12 @@ static int lua_resolveAssetType(lua_State *L) {
 }
 
 
+
+static int lua_getSettingsRoot(lua_State *L) {
+	lua_pushstring(L, Asset_GetSettingsRoot());
+	return 1;
+}
+
 static int lua_getMassDriverName(lua_State *L)
 {
 	int argc = lua_gettop(L);
@@ -1165,6 +1172,7 @@ static const luaL_Reg System_functions[] = {
 	{"checkDiscTray",         lua_checkDiscTray},
 	{"GetArgv0",                   lua_popargv0},
 	{"getAppDir",                 lua_getAppDir},
+	{"getSettingsRoot",       lua_getSettingsRoot},
 	{"resolveAsset",           lua_resolveAsset},
 	{"resolveAssetType",   lua_resolveAssetType},
 	{"getMassDriverName",        lua_getMassDriverName},

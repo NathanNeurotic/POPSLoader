@@ -6,6 +6,7 @@
 
 #include "include/sound.h"
 #include "include/dprintf.h"
+#include "include/assets.h"
 
 static bool adpcm_started = false;
 static bool audsrv_started = false;
@@ -112,58 +113,41 @@ void sound_setadpcmvolume(int slot, int volume) {
 	audsrv_adpcm_set_volume(slot, volume);
 }
 
-audsrv_adpcm_t* sound_loadadpcm(const char* path){
-    if(!audsrv_started) {
+audsrv_adpcm_t* sound_loadadpcmBuffer(const void* ptr, size_t size){
+    if (ptr == NULL || size == 0) return NULL;
+    if (!audsrv_started) {
         int rc = audsrv_init();
-        DPRINTF("sound_loadadpcm: audsrv_init rc=%d\n", rc);
+        DPRINTF("sound_loadadpcmBuffer: audsrv_init rc=%d\n", rc);
         audsrv_started = true;
     }
     if(!adpcm_started) {
         int rc = audsrv_adpcm_init();
-        DPRINTF("sound_loadadpcm: adpcm_init rc=%d\n", rc);
+        DPRINTF("sound_loadadpcmBuffer: adpcm_init rc=%d\n", rc);
         adpcm_started = true;
     }
-
-	FILE* adpcm;
-	audsrv_adpcm_t *sample = (audsrv_adpcm_t *)malloc(sizeof(audsrv_adpcm_t));
-	int size;
-	u8* buffer;
-
-	adpcm = fopen(path, "rb");
-    if (adpcm == NULL) {
-    DPRINTF("sound_loadadpcm: fopen failed for %s\n", path);
+    audsrv_adpcm_t *sample = (audsrv_adpcm_t *)malloc(sizeof(audsrv_adpcm_t));
+    if (sample == NULL) return NULL;
+    if (audsrv_load_adpcm(sample, (void*)ptr, (int)size) < 0) {
         free(sample);
         return NULL;
     }
+    return sample;
+}
 
-	fseek(adpcm, 0, SEEK_END);
-	size = ftell(adpcm);
-	fseek(adpcm, 0, SEEK_SET);
-    if (size <= 0) {
-        DPRINTF("sound_loadadpcm: invalid size %d for %s\n", size, path);
-        fclose(adpcm);
-        free(sample);
+audsrv_adpcm_t* sound_loadadpcm(const char* path){
+    const void* ptr = NULL;
+    size_t size = 0;
+    bool isEmbedded = false;
+    if (Asset_ReadAll(path, &ptr, &size, &isEmbedded) != 0) {
+        DPRINTF("sound_loadadpcm: Asset_ReadAll failed for %s\n", path);
         return NULL;
     }
-
-	buffer = (u8*)malloc(size);
-    if (buffer == NULL) {
-        DPRINTF("sound_loadadpcm: alloc failed for %s\n", path);
-        fclose(adpcm);
-        free(sample);
-        return NULL;
+    audsrv_adpcm_t *sample = sound_loadadpcmBuffer(ptr, size);
+    Asset_FreeIfNeeded(ptr, isEmbedded);
+    if (sample != NULL) {
+        DPRINTF("sound_loadadpcm: loaded %s (%u bytes)\n", path, (unsigned int)size);
     }
-
-	fread(buffer, 1, size, adpcm);
-	fclose(adpcm);
-
-	audsrv_load_adpcm(sample, buffer, size);
-
-	free(buffer);
-
-    DPRINTF("sound_loadadpcm: loaded %s (%d bytes)\n", path, size);
-
-	return sample;
+    return sample;
 }
 
 void sound_playadpcm(int slot, audsrv_adpcm_t *sample) {

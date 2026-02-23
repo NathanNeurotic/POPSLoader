@@ -11,6 +11,7 @@
 
 #include "include/graphics.h"
 #include "include/dprintf.h"
+#include "include/assets.h"
 
 #define DEG2RAD(x) ((x)*0.01745329251)
 
@@ -791,8 +792,29 @@ GSTEXTURE* loadjpeg(FILE* fp, bool scale_down, bool delayed)
 
 }
 
+
+GSTEXTURE* loadImageFromBuffer(const void* data, size_t size, bool delayed){
+	if (data == NULL || size < 4) return NULL;
+	uint16_t magic = *((uint16_t*)data);
+	if (magic == 0x5089) return loadEmbeddedPNG((uint8_t*)data, size, delayed);
+	DPRINTF("Unsupported embedded image format magic=0x%04x\n", magic);
+	return NULL;
+}
+
 GSTEXTURE* load_image(const char* path, bool delayed){
+	const void* ptr = NULL;
+	size_t size = 0;
+	bool isEmbedded = false;
+	if (Asset_ReadAll(path, &ptr, &size, &isEmbedded) == 0 && isEmbedded) {
+		GSTEXTURE* embedded = loadImageFromBuffer(ptr, size, delayed);
+		if (embedded != NULL) return embedded;
+	}
+
 	FILE* file = fopen(path, "rb");
+	if (file == NULL) {
+		DPRINTF("Failed to open image %s.\n", path);
+		return NULL;
+	}
 	uint16_t magic;
 	fread(&magic, 1, 2, file);
 	fseek(file, 0, SEEK_SET);
