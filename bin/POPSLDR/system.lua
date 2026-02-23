@@ -621,6 +621,22 @@ require("pops_profiles")
 if PLDR.ApplyProfileSetting ~= nil then
   PLDR.ApplyProfileSetting()
 end
+local ok_img, img_or_err = pcall(require, "images")
+if not ok_img then
+  error("images module failed to load: "..tostring(img_or_err))
+end
+if type(img_or_err) == "function" then
+  local ok_img_loader, img_loader_ret = pcall(img_or_err)
+  if not ok_img_loader then
+    error("images module loader execution failed: "..tostring(img_loader_ret))
+  end
+  img_or_err = img_loader_ret
+end
+if type(img_or_err) == "table" then
+  _G.IMG = img_or_err
+end
+assert(type(_G.IMG) == "table", "IMG contract broken: expected table, got "..type(_G.IMG))
+IMG = _G.IMG
 LOG("system.lua: before require('ui')")
 local ok_ui, ui_or_err = pcall(require, "ui")
 LOG("system.lua: after require('ui')")
@@ -656,6 +672,7 @@ if type(_G.UI) ~= "table" then
   error("UI contract broken: expected _G.UI table, got "..type(_G.UI))
 end
 UI = _G.UI
+assert(type(_G.UI) == "table", "UI contract broken: expected table, got "..type(_G.UI))
 UI.LASTSCENE = UI.SCENES.MMAIN
 
 if UI.DEVLOCK ~= nil then
@@ -676,8 +693,6 @@ if UI.DEVLOCK ~= nil then
     LOG("Boot device detection ambiguous; no boot locks set.", "prefix:", tostring(boot_prefix), "path:", tostring(boot_path))
   end
 end
-require("images")
-
 local POPSTARTER_PACK_ROOT = "mc0:/POPSTARTER"
 local POPSTARTER_PACK_FILES = {
   "usbd.irx",

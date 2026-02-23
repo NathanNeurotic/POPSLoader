@@ -9,6 +9,10 @@
 LOG("Registering POPSLoader UI")
 local DEVLOCK = { NONE = 0, USB = 1, MMCE = 2, MX4SIO = 3 }
 local UI
+local IMG = rawget(_G, "IMG")
+if type(IMG) ~= "table" then
+  error("IMG not initialized before ui.lua")
+end
 local function Round(value)
   return math.floor(value + 0.5)
 end
@@ -872,8 +876,8 @@ UI = {
           end
 
           if found == nil then
-            LOGF("BOOT SOUND: '%s' not found", tostring(primary))
-            return
+            -- Embedded-first fallback: allow logical asset key even when no filesystem path exists.
+            found = primary
           end
 
           LOGF("BOOT SOUND: using '%s'", tostring(found))
