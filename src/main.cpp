@@ -535,10 +535,8 @@ int main(int argc, char * argv[])
         scr_setfontcolor(0x0000ff);
         scr_clear();
         scr_setXY(2, 2);
-        scr_printf("Fatal: required assets missing (%d).
-", missing_assets);
-        scr_printf("Check embedded registry/runtime media.
-");
+        scr_printf("Fatal: required assets missing (%d).\n", missing_assets);
+        scr_printf("Check embedded registry/runtime media.\n");
         for(;;) { }
     }
 
