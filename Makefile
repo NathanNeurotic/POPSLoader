@@ -60,6 +60,10 @@ endif
 
 BIN2S = $(PS2SDK)/bin/bin2c
 EE_OBJCOPY ?= mips64r5900el-ps2-elf-objcopy
+EE_READELF ?= mips64r5900el-ps2-elf-readelf
+EE_OBJDUMP ?= mips64r5900el-ps2-elf-objdump
+EE_OBJCOPY_ELF_FMT ?= elf32-tradlittlemips
+EE_OBJCOPY_BFDARCH ?= mips:5900
 
 #-------------------------- App Content ---------------------------#
 EXT_LIBS = modules/ds34usb/ee/libds34usb.a modules/ds34bt/ee/libds34bt.a
@@ -157,6 +161,17 @@ embed-assets-check:
 embed-rule-sample:
 	@$(MAKE) -n $(EE_OBJS_DIR)embed_asset_etc_boot_lua.o
 
+embed-abi-check: $(EE_OBJS_DIR)main.o $(EE_OBJS_DIR)embed_asset_etc_boot_lua.o
+	@echo "== ABI check: normal object ($(EE_OBJS_DIR)main.o) =="
+	@$(EE_READELF) -h $(EE_OBJS_DIR)main.o
+	@$(EE_READELF) -A $(EE_OBJS_DIR)main.o 2>/dev/null || true
+	@$(EE_OBJDUMP) -f $(EE_OBJS_DIR)main.o
+	@echo "== ABI check: embedded object ($(EE_OBJS_DIR)embed_asset_etc_boot_lua.o) =="
+	@$(EE_READELF) -h $(EE_OBJS_DIR)embed_asset_etc_boot_lua.o
+	@$(EE_READELF) -A $(EE_OBJS_DIR)embed_asset_etc_boot_lua.o 2>/dev/null || true
+	@$(EE_OBJDUMP) -f $(EE_OBJS_DIR)embed_asset_etc_boot_lua.o
+	@set -eu; 	n_hdr="$(EE_OBJS_DIR)main.o"; e_hdr="$(EE_OBJS_DIR)embed_asset_etc_boot_lua.o"; 	n_class=`$(EE_READELF) -h $$n_hdr | sed -n 's/^ *Class: *//p'`; 	e_class=`$(EE_READELF) -h $$e_hdr | sed -n 's/^ *Class: *//p'`; 	n_data=`$(EE_READELF) -h $$n_hdr | sed -n 's/^ *Data: *//p'`; 	e_data=`$(EE_READELF) -h $$e_hdr | sed -n 's/^ *Data: *//p'`; 	n_machine=`$(EE_READELF) -h $$n_hdr | sed -n 's/^ *Machine: *//p'`; 	e_machine=`$(EE_READELF) -h $$e_hdr | sed -n 's/^ *Machine: *//p'`; 	n_flags=`$(EE_READELF) -h $$n_hdr | sed -n 's/^ *Flags: *//p'`; 	e_flags=`$(EE_READELF) -h $$e_hdr | sed -n 's/^ *Flags: *//p'`; 	[ "$$n_class" = "$$e_class" ] || { echo "ABI mismatch: Class"; exit 1; }; 	[ "$$n_data" = "$$e_data" ] || { echo "ABI mismatch: Data"; exit 1; }; 	[ "$$n_machine" = "$$e_machine" ] || { echo "ABI mismatch: Machine"; exit 1; }; 	[ "$$n_flags" = "$$e_flags" ] || { echo "ABI mismatch: Flags"; exit 1; }
+
 
 define EMBED_OBJ_RULE
 $(EE_OBJS_DIR)embed_asset_$(call sanitize,$(1)).o: $(1) | $(EE_OBJS_DIR) $(EMBED_ASSET_TMP)
@@ -166,7 +181,7 @@ $(EE_OBJS_DIR)embed_asset_$(call sanitize,$(1)).o: $(1) | $(EE_OBJS_DIR) $(EMBED
 	test -f "$$<" || { echo "Missing embedded asset: $$<"; exit 1; }; \
 	gz="$(EMBED_ASSET_TMP)/$(call sanitize,$(1)).gz"; \
 	gzip -n -9 -c "$$<" > "$$$$gz"; \
-	$(EE_OBJCOPY) -I binary -O elf32-littlemips -B mips "$$$$gz" "$$@"; \
+	$(EE_OBJCOPY) -I binary -O $(EE_OBJCOPY_ELF_FMT) --binary-architecture=$(EE_OBJCOPY_BFDARCH) "$$$$gz" "$$@"; \
 	rm -f "$$$$gz"
 endef
 
