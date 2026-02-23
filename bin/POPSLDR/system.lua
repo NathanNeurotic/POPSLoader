@@ -635,16 +635,27 @@ if not ok_ui then
   LOG("package.path:", package.path)
   error("UI module failed to load (expected ui.lua to return/set UI): "..tostring(traceback))
 end
-if ui_or_err ~= nil and ui_or_err ~= true then
-  UI = ui_or_err
+if type(ui_or_err) == "function" then
+  LOG("UI module returned loader function; executing once to realize module table")
+  local ok_loader, loader_ret = pcall(ui_or_err)
+  if not ok_loader then
+    error("UI module loader execution failed: "..tostring(loader_ret))
+  end
+  ui_or_err = loader_ret
 end
-if UI == nil then
-  LOG("UI global is nil after require('ui')")
+if ui_or_err ~= nil and ui_or_err ~= true then
+  if type(ui_or_err) == "table" then
+    _G.UI = ui_or_err
+  end
+end
+if type(_G.UI) ~= "table" then
+  LOG("UI contract broken after require('ui'): ", type(_G.UI))
   LOG("APP_DIR:", APP_DIR_LOCAL)
   LOG("Boot cwd:", System.currentDirectory())
   LOG("package.path:", package.path)
-  error("UI global not initialized (expected ui.lua to return UI or set _G.UI)")
+  error("UI contract broken: expected _G.UI table, got "..type(_G.UI))
 end
+UI = _G.UI
 UI.LASTSCENE = UI.SCENES.MMAIN
 
 if UI.DEVLOCK ~= nil then
