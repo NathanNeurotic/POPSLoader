@@ -26,6 +26,32 @@ local function Clamp(v, lo, hi)
   if v > hi then return hi end
   return v
 end
+local _LOG_ONCE = {}
+local function LogOnce(tag, msg)
+  if _LOG_ONCE[tag] then return end
+  _LOG_ONCE[tag] = true
+  LOG(msg)
+end
+
+local function GetDeviceIconKey(mode)
+  if mode == "USB" then return "USB" end
+  if mode == "MMCE" then return "MMCE" end
+  if mode == "MX4SIO" then return "MX4SIO" end
+  if mode == "HDD (PFS)" or mode == "HDD" then return "APAHDD" end
+  if mode == "HDD (exFAT)" then return "BDHDD" end
+  if mode == "SMB (v1)" then return "SMB" end
+  if mode == "Disc (DKWDRV)" then return "DISC" end
+  return mode
+end
+
+local function DrawFullScreen(tex, alpha)
+  if tex == nil then return false end
+  local a = alpha or 128
+  if a < 0 then a = 0 end
+  if a > 128 then a = 128 end
+  Graphics.drawScaleImage(tex, 0, 0, UI.SCR.X, UI.SCR.Y, Color.new(128, 128, 128, a))
+  return true
+end
 local function EaseInOutCubic(t)
   t = Clamp01(t)
   if t < 0.5 then
@@ -604,7 +630,10 @@ UI = {
           if icon ~= nil then
             local w = Graphics.getImageWidth(icon)
             local h = Graphics.getImageHeight(icon)
-            Graphics.drawImage(icon, x - (w / 2), y - (h / 2), UI.CCOL.GREY)
+            local scale = 0.70
+            local draw_w = Round(w * scale)
+            local draw_h = Round(h * scale)
+            Graphics.drawScaleImage(icon, x - (draw_w / 2), y - (draw_h / 2), draw_w, draw_h, UI.CCOL.GREY)
           end
           local label = labels and labels[key] or nil
           if label ~= nil then
@@ -803,7 +832,7 @@ UI = {
             bg = IMG.BKG
           end
           if bg ~= nil then
-            Graphics.drawScaleImage(bg, 0, 0, UI.SCR.X, UI.SCR.Y, Color.new(128, 128, 128, 128))
+            DrawFullScreen(bg, 128)
           end
         end
         local function DrawTargetScene(scene)
@@ -965,7 +994,8 @@ end
 local function DrawSplash(alpha)
   -- Standard splash: single logical asset IMG/PSL.png, non-fatal fallback to solid color.
   if IMG.PSL ~= nil then
-    DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
+    DrawFullScreen(IMG.PSL, alpha)
+    LogOnce("SPLASH_DRAW", string.format("SPLASH_DRAW key=IMG/PSL.png handle=%s alpha=%d", tostring(IMG.PSL), alpha or 128))
     return
   end
   Screen.clear(Color.new(0, 0, 0))
@@ -1074,11 +1104,10 @@ end
         end
         if bg ~= nil then
           local alpha = 128
-          Graphics.drawScaleImage(bg, 0, 0, UI.SCR.X, UI.SCR.Y, Color.new(128, 128, 128, alpha))
-          UI._BG_LOG_FRAMES = (UI._BG_LOG_FRAMES or 0) + 1
-          if (UI._BG_LOG_FRAMES % 60) == 0 then
-            LOGF("DRAWBG handle=%s alpha=%s", tostring(bg), tostring(alpha))
-            LOGF("DRAWTYPE type=%s", type(bg))
+          DrawFullScreen(bg, alpha)
+          if UI._BG_LOG_SCENE ~= UI.CURSCENE then
+            UI._BG_LOG_SCENE = UI.CURSCENE
+            LOG(string.format("BG_DRAW scene=%s handle=%s alpha=%d", tostring(UI.CURSCENE), tostring(bg), alpha))
           end
         end
       end;
@@ -1872,20 +1901,12 @@ end
           Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "ACTIVE BDMA: "..ResolveActiveBDMALabel(), UI.COLORS.TEXT_PRIMARY)
         end
 	        -- Pages are no longer presented as "locked" in the UI.
-        local icon_map = {
-          ["MMCE"] = "MMCE",
-          ["MX4SIO"] = "MX4SIO",
-          ["HDD (exFAT)"] = "BDHDD",
-          ["HDD (PFS)"] = "APAHDD",
-          ["USB"] = "USB",
-          ["SMB (v1)"] = "SMB",
-          ["Disc (DKWDRV)"] = "DISC"
-        }
         local icon_keys = {}
+        local icon_modes = {}
         for x = 1, #UI.MainMenu.opts do
           local opt = UI.MainMenu.opts[x]
-          local key = icon_map[opt] or opt
-          icon_keys[x] = key
+          icon_modes[x] = opt
+          icon_keys[x] = GetDeviceIconKey(opt)
         end
         local function WrapIndex(index, count)
           return ((index - 1) % count) + 1
@@ -1940,18 +1961,21 @@ end
           if value > max_val then return max_val end
           return value
         end
-        local function ResolveIcon(key)
-          return IMG[key] or IMG["MISSING"]
+        local function ResolveIcon(mode, key)
+          local icon = IMG[key]
+          if icon ~= nil then return icon end
+          LogOnce("ICONFALLBACK:"..tostring(mode), string.format("ICONFALLBACK mode=%s missing IMG/%s.png -> IMG/USB.png", tostring(mode), tostring(key)))
+          return IMG.USB or IMG["MISSING"]
         end
         if not UI.MainMenu.icons_ready then
-          for _, key in ipairs(icon_keys) do
-            ResolveIcon(key)
+          for i, key in ipairs(icon_keys) do
+            ResolveIcon(icon_modes[i] or key, key)
           end
           UI.MainMenu.icons_ready = true
         end
         local function DrawIcon(index, x, y, color)
           local key = icon_keys[index]
-          local icon = ResolveIcon(key)
+          local icon = ResolveIcon(icon_modes[index] or key, key)
           if icon == nil then return end
           local icon_w = Graphics.getImageWidth(icon)
           local icon_h = Graphics.getImageHeight(icon)
@@ -1959,7 +1983,7 @@ end
           local pos_y = Round(y - (icon_h / 2))
           Graphics.drawImage(icon, pos_x, pos_y, color)
         end
-        local first_icon = ResolveIcon(icon_keys[1] or "MISSING")
+        local first_icon = ResolveIcon(icon_modes[1] or "MISSING", icon_keys[1] or "MISSING")
         local base_icon_w = 0
         if first_icon ~= nil then
           base_icon_w = Graphics.getImageWidth(first_icon)

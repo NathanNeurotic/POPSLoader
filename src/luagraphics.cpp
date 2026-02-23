@@ -10,6 +10,16 @@
 #include "include/luaplayer.h"
 #include "include/assets.h"
 
+#ifndef POPSLOADER_DIAG
+#define POPSLOADER_DIAG 0
+#endif
+
+#if POPSLOADER_DIAG
+#define DIAGF(...) printf(__VA_ARGS__)
+#else
+#define DIAGF(...) do {} while (0)
+#endif
+
 static bool asyncDelayed = true;
 
 volatile int imgThreadResult = 1;
@@ -262,11 +272,11 @@ static int lua_loadimg(lua_State *L) {
 	}
 
 	if (image != NULL && (image->Width <= 0 || image->Height <= 0)) {
-		printf("IMGFAIL key=%s decode=ok upload=unknown w=%d h=%d psm=%d\n", text, image->Width, image->Height, image->PSM);
+		DIAGF("IMGFAIL key=%s decode=ok upload=unknown w=%d h=%d psm=%d\n", text, image->Width, image->Height, image->PSM);
 		image = NULL;
 	}
 	if (image != NULL) {
-		printf("IMGUPLOAD key=%s tex=%p w=%d h=%d psm=%d vram=%u\n", text, (void*)image, image->Width, image->Height, image->PSM, image->Vram);
+		DIAGF("IMGUPLOAD key=%s tex=%p w=%d h=%d psm=%d vram=%u\n", text, (void*)image, image->Width, image->Height, image->PSM, image->Vram);
 		lua_pushlightuserdata(L, image);
 	}
 	else

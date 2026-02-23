@@ -12,9 +12,6 @@ local function ResolveImage(name)
   return System.resolveAssetType(name, ASSET_IMG) or System.resolveAsset(logical) or logical
 end
 
-local function IsBootBgKey(key)
-  return key == "BG" or key == "BGM" or key == "BKG" or key == "PSL"
-end
 --- Add your images to this table, just write the name of the file.
 --- Flat layout places images beside POPSLOADER.ELF; legacy installs can still use POPSLDR/IMG/*
 --- FILES MUST HAVE EXTENSION. filename is parsed to create the access key: USB.PNG will be accesed by typing `IMG["USB"]`
@@ -71,10 +68,6 @@ IMG = setmetatable({}, {
     end
     local path = ResolveImage(source)
     local img = Graphics.loadImage(path)
-    if IsBootBgKey(key) then
-      LOGF("IMGLOAD: key=IMG/%s handle=%s", tostring(source), tostring(img))
-      LOGF("IMGTYPE key=%s type=%s", tostring(key), type(img))
-    end
     if img == nil then
       LOGF("Image load failed: %s", path)
       IMG_FAILED[key] = true
