@@ -50,7 +50,9 @@ static int imgThread(void* data)
 {
 	char* text = (char*)data;
 	bool delayed = asyncDelayed;
+	Graphics_SetDiagKey(text);
 	GSTEXTURE* image = load_image(text, delayed);
+	Graphics_SetDiagKey(NULL);
 	if (image == NULL) 
 	{
 		imgThreadResult = 1;
@@ -248,7 +250,9 @@ static int lua_loadimgfrombuffer(lua_State *L) {
 	const void* data = luaL_checklstring(L, 1, &sz);
 	bool delayed = true;
 	if (argc == 2) delayed = lua_toboolean(L, 2);
+	Graphics_SetDiagKey("<buffer>");
 	GSTEXTURE* image = loadImageFromBuffer(data, sz, delayed);
+	Graphics_SetDiagKey(NULL);
 	if (image != NULL) lua_pushlightuserdata(L, image); else lua_pushnil(L);
 	return 1;
 }
@@ -265,10 +269,14 @@ static int lua_loadimg(lua_State *L) {
 	bool isEmbedded = false;
 	GSTEXTURE* image = NULL;
 	if (Asset_ReadAll(text, &ptr, &sz, &isEmbedded) == 0 && isEmbedded) {
+		Graphics_SetDiagKey(text);
 		image = loadImageFromBuffer(ptr, sz, delayed);
+		Graphics_SetDiagKey(NULL);
 	}
 	if (image == NULL) {
+		Graphics_SetDiagKey(text);
 		image = load_image(text, delayed);
+		Graphics_SetDiagKey(NULL);
 	}
 
 	if (image != NULL && (image->Width <= 0 || image->Height <= 0)) {
@@ -571,7 +579,9 @@ static int lua_load_embedded_png(lua_State *L) {
 	uint8_t* ptr = (uint8_t *)luaL_checkstring(L, 1);
 	size_t siz = luaL_checkinteger(L, 2);
 	GSTEXTURE* image = NULL;
+	Graphics_SetDiagKey("<embedded>");
 	image = loadEmbeddedPNG(ptr, siz, true);
+	Graphics_SetDiagKey(NULL);
 	lua_pushlightuserdata(L, image);
 	return 1;
 }

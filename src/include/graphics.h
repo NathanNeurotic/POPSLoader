@@ -88,6 +88,9 @@ extern void setVideoMode(s16 mode, int width, int height, int psm, s16 interlace
 extern GSTEXTURE* load_image(const char* path, bool delayed);
 extern GSTEXTURE* loadImageFromBuffer(const void* data, size_t size, bool delayed);
 extern GSTEXTURE* loadEmbeddedPNG(uint8_t * data, size_t size, bool delayed);
+extern void Graphics_SetDiagKey(const char* key);
+extern const char* Graphics_GetDiagKeyForTexture(const GSTEXTURE* tex);
+
 
 
 extern void drawImage(GSTEXTURE* source, float x, float y, float width, float height, float startx, float starty, float endx, float endy, Color color);

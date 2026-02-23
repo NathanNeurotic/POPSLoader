@@ -50,6 +50,55 @@ typedef struct {
 static int error_count = 0;
 static int warning_count = 0;
 
+typedef struct {
+	GSTEXTURE* tex;
+	char key[96];
+} diag_tex_owner_t;
+
+static const char* g_diag_pending_key = NULL;
+static diag_tex_owner_t g_diag_tex_owner[128] = {{0}};
+static int g_diag_tex_owner_count = 0;
+
+void Graphics_SetDiagKey(const char* key)
+{
+	g_diag_pending_key = key;
+}
+
+static const char* diag_tex_key(const GSTEXTURE* tex)
+{
+	for (int i = 0; i < g_diag_tex_owner_count; i++) {
+		if (g_diag_tex_owner[i].tex == tex) return g_diag_tex_owner[i].key;
+	}
+	return g_diag_pending_key ? g_diag_pending_key : "<unknown>";
+}
+
+const char* Graphics_GetDiagKeyForTexture(const GSTEXTURE* tex)
+{
+	return diag_tex_key(tex);
+}
+
+static void diag_register_texture(GSTEXTURE* tex, const char* key)
+{
+#if POPSLOADER_DIAG
+	const char* use_key = (key && key[0]) ? key : "<unknown>";
+	for (int i = 0; i < g_diag_tex_owner_count; i++) {
+		if (g_diag_tex_owner[i].tex == tex) {
+			if (strncmp(g_diag_tex_owner[i].key, use_key, sizeof(g_diag_tex_owner[i].key) - 1) != 0) {
+				DIAGF("TEXREUSE BUG: tex=%p old=%s new=%s\n", tex, g_diag_tex_owner[i].key, use_key);
+				abort();
+			}
+			return;
+		}
+	}
+	if (g_diag_tex_owner_count < (int)(sizeof(g_diag_tex_owner) / sizeof(g_diag_tex_owner[0]))) {
+		g_diag_tex_owner[g_diag_tex_owner_count].tex = tex;
+		strncpy(g_diag_tex_owner[g_diag_tex_owner_count].key, use_key, sizeof(g_diag_tex_owner[g_diag_tex_owner_count].key) - 1);
+		g_diag_tex_owner[g_diag_tex_owner_count].key[sizeof(g_diag_tex_owner[g_diag_tex_owner_count].key) - 1] = 0;
+		g_diag_tex_owner_count++;
+	}
+#endif
+}
+
 static bool was_texupload_logged(GSTEXTURE* source)
 {
 	static GSTEXTURE* logged[32] = {0};
@@ -115,7 +164,7 @@ static bool ensureTextureReady(GSTEXTURE* source)
 	}
 
 	if (!was_texupload_logged(source)) {
-		DIAGF("TEXUPLOAD tex=%p w=%d h=%d psm=%d vram=%u\n", source, source->Width, source->Height, source->PSM, source->Vram);
+		DIAGF("TEXUP  key=%s tex=%p vram=%u clut=%u\n", diag_tex_key(source), source, source->Vram, source->VramClut);
 	}
 
 	return source->Vram != 0;
@@ -924,7 +973,7 @@ GSTEXTURE* load_image(const char* path, bool delayed){
 	else if (magic == 0xD8FF) image = loadjpeg(file, false, delayed);
 	else if (magic == 0x5089) image = loadpng(file, delayed);
 	if (image == NULL) DPRINTF("Failed to load image %s.", path);
-	if (image != NULL) DIAGF("TEXNEW key=%s tex=%p w=%d h=%d psm=%d vram=%u clut=%u\n", path, image, image->Width, image->Height, image->PSM, image->Vram, image->VramClut);
+	if (image != NULL) { diag_register_texture(image, path); DIAGF("TEXNEW key=%s tex=%p w=%d h=%d psm=%d vram=%u clut=%u\n", path, image, image->Width, image->Height, image->PSM, image->Vram, image->VramClut); }
 
 	return image;
 }
@@ -1041,6 +1090,9 @@ void drawImage(GSTEXTURE* source, float x, float y, float width, float height, f
 {
 	if (!ensureTextureReady(source)) return;
 	gsKit_set_test(gsGlobal, GS_ATEST_OFF);
+	if (x <= 1.0f && y <= 1.0f && width >= (float)(gsGlobal->Width - 1) && height >= (float)(gsGlobal->Height - 1)) {
+		DIAGF("TEXDRW key=%s tex=%p alpha=%d\n", diag_tex_key(source), source, A(color));
+	}
 	gsKit_prim_sprite_texture(gsGlobal, source,
 					x-0.5f, // X1
 					y-0.5f, // Y1
