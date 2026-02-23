@@ -13,10 +13,25 @@
 static bool asyncDelayed = true;
 
 volatile int imgThreadResult = 1;
-unsigned char* imgThreadData = NULL;
-uint32_t imgThreadSize = 0;
+GSTEXTURE* imgThreadData = NULL;
 
 static u8 imgThreadStack[4096] __attribute__((aligned(16)));
+
+static GSTEXTURE* lua_checktexture(lua_State* L, int idx)
+{
+	if (!lua_islightuserdata(L, idx) && !lua_isuserdata(L, idx)) {
+		luaL_error(L, "texture argument %d must be lightuserdata", idx);
+		return NULL;
+	}
+
+	GSTEXTURE* texture = (GSTEXTURE*)lua_touserdata(L, idx);
+	if (texture == NULL) {
+		luaL_error(L, "texture argument %d is NULL", idx);
+		return NULL;
+	}
+
+	return texture;
+}
 
 // Extern symbol 
 extern void *_gp;
@@ -29,14 +44,11 @@ static int imgThread(void* data)
 	if (image == NULL) 
 	{
 		imgThreadResult = 1;
+		imgThreadData = NULL;
 		ExitDeleteThread();
 		return 0;
 	}
-	char* buffer = (char*)malloc(16);
-	memset(buffer, 0, 16);
-	sprintf(buffer, "%i", (int)image);
-	imgThreadData = (unsigned char*)buffer;
-	imgThreadSize = strlen(buffer);
+	imgThreadData = image;
 	imgThreadResult = 1;
 	ExitDeleteThread();
 	return 0;
@@ -227,7 +239,7 @@ static int lua_loadimgfrombuffer(lua_State *L) {
 	bool delayed = true;
 	if (argc == 2) delayed = lua_toboolean(L, 2);
 	GSTEXTURE* image = loadImageFromBuffer(data, sz, delayed);
-	if (image != NULL) lua_pushinteger(L, (uint32_t)(image)); else lua_pushnil(L);
+	if (image != NULL) lua_pushlightuserdata(L, image); else lua_pushnil(L);
 	return 1;
 }
 
@@ -254,8 +266,8 @@ static int lua_loadimg(lua_State *L) {
 		image = NULL;
 	}
 	if (image != NULL) {
-		printf("IMGUPLOAD key=%s w=%d h=%d psm=%d vram=%u\n", text, image->Width, image->Height, image->PSM, image->Vram);
-		lua_pushinteger(L, (uint32_t)(image));
+		printf("IMGUPLOAD key=%s tex=%p w=%d h=%d psm=%d vram=%u\n", text, (void*)image, image->Width, image->Height, image->PSM, image->Vram);
+		lua_pushlightuserdata(L, image);
 	}
 	else
 		lua_pushnil(L);
@@ -265,7 +277,7 @@ static int lua_loadimg(lua_State *L) {
 static int lua_drawimg(lua_State *L) {
 	int argc = lua_gettop(L);
 	if (argc != 3 && argc != 4) return luaL_error(L, "wrong number of arguments");
-    GSTEXTURE* source = (GSTEXTURE*)(luaL_checkinteger(L, 1));
+    GSTEXTURE* source = lua_checktexture(L, 1);
 	float x = luaL_checknumber(L, 2);
 	float y = luaL_checknumber(L, 3);
 	Color color = 0x80808080;
@@ -285,7 +297,7 @@ static int lua_drawimg(lua_State *L) {
 static int lua_drawimg_rotate(lua_State *L) {
 	int argc = lua_gettop(L);
 	if (argc != 4 && argc != 5) return luaL_error(L, "wrong number of arguments");
-    GSTEXTURE* source = (GSTEXTURE*)(luaL_checkinteger(L, 1));
+    GSTEXTURE* source = lua_checktexture(L, 1);
 	float x = luaL_checknumber(L, 2);
 	float y = luaL_checknumber(L, 3);
 	float radius = luaL_checknumber(L, 4);
@@ -306,7 +318,7 @@ static int lua_drawimg_rotate(lua_State *L) {
 static int lua_drawimg_scale(lua_State *L) {
 	int argc = lua_gettop(L);
 	if (argc != 5 && argc != 6) return luaL_error(L, "wrong number of arguments");
-    GSTEXTURE* source = (GSTEXTURE*)(luaL_checkinteger(L, 1));
+    GSTEXTURE* source = lua_checktexture(L, 1);
 	float x = luaL_checknumber(L, 2);
 	float y = luaL_checknumber(L, 3);
 	float width = luaL_checknumber(L, 4);
@@ -326,7 +338,7 @@ static int lua_drawimg_scale(lua_State *L) {
 static int lua_drawimg_part(lua_State *L) {
 	int argc = lua_gettop(L);
 	if (argc != 7 && argc != 8) return luaL_error(L, "wrong number of arguments");
-    GSTEXTURE* source = (GSTEXTURE*)(luaL_checkinteger(L, 1));
+    GSTEXTURE* source = lua_checktexture(L, 1);
 	float x = luaL_checknumber(L, 2);
 	float y = luaL_checknumber(L, 3);
 	float startx = (float)luaL_checknumber(L, 4);
@@ -346,7 +358,7 @@ static int lua_drawimg_part(lua_State *L) {
 static int lua_drawimg_full(lua_State *L) {
 	int argc = lua_gettop(L);
 	if (argc != 10 && argc != 11) return luaL_error(L, "wrong number of arguments");
-    GSTEXTURE* source = (GSTEXTURE*)(luaL_checkinteger(L, 1));
+    GSTEXTURE* source = lua_checktexture(L, 1);
 	float x = luaL_checknumber(L, 2);
 	float y = luaL_checknumber(L, 3);
 	float startx = (float)luaL_checknumber(L, 4);
@@ -367,7 +379,7 @@ static int lua_drawimg_full(lua_State *L) {
 static int lua_width(lua_State *L) {
 	int argc = lua_gettop(L);
 	if (argc != 1) return luaL_error(L, "wrong number of arguments");
-    GSTEXTURE* source = (GSTEXTURE*)(luaL_checkinteger(L, 1));
+    GSTEXTURE* source = lua_checktexture(L, 1);
 	lua_pushinteger(L, (uint32_t)(source->Width));
 	return 1;
 }
@@ -375,7 +387,7 @@ static int lua_width(lua_State *L) {
 static int lua_height(lua_State *L) {
 	int argc = lua_gettop(L);
 	if (argc != 1) return luaL_error(L, "wrong number of arguments");
-    GSTEXTURE* source = (GSTEXTURE*)(luaL_checkinteger(L, 1));
+    GSTEXTURE* source = lua_checktexture(L, 1);
 	lua_pushinteger(L, (uint32_t)(source->Height));
 	return 1;
 }
@@ -383,7 +395,7 @@ static int lua_height(lua_State *L) {
 static int lua_filters(lua_State *L) {
 	int argc = lua_gettop(L);
 	if (argc != 2) return luaL_error(L, "wrong number of arguments");
-    GSTEXTURE* source = (GSTEXTURE*)(luaL_checkinteger(L, 1));
+    GSTEXTURE* source = lua_checktexture(L, 1);
 	source->Filter = luaL_checknumber(L, 2);
 	return 0;
 }
@@ -500,7 +512,7 @@ static int lua_free(lua_State *L) {
 	if (argc != 1) return luaL_error(L, "wrong number of arguments");
 #endif
 	
-	GSTEXTURE* source = (GSTEXTURE*)(luaL_checkinteger(L, 1));
+	GSTEXTURE* source = lua_checktexture(L, 1);
 
 	UnloadTexture(source);
 
@@ -536,8 +548,7 @@ static int lua_getloaddata(lua_State *L){
 	if(argc != 0) return luaL_error(L, "wrong number of arguments.");
 #endif
 	if (imgThreadData != NULL){
-		lua_pushlstring(L,(const char*)imgThreadData,imgThreadSize);
-		free(imgThreadData);
+		lua_pushlightuserdata(L, imgThreadData);
 		imgThreadData = NULL;
 		return 1;
 	}else return 0;
@@ -551,7 +562,7 @@ static int lua_load_embedded_png(lua_State *L) {
 	size_t siz = luaL_checkinteger(L, 2);
 	GSTEXTURE* image = NULL;
 	image = loadEmbeddedPNG(ptr, siz, true);
-	lua_pushinteger(L, (uint32_t)(image));
+	lua_pushlightuserdata(L, image);
 	return 1;
 }
 //Register our Graphics Functions
