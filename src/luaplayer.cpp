@@ -23,7 +23,7 @@
 
 static lua_State *L;
 
-static inline size_t lua_len(lua_State* Lstate, int idx)
+static inline size_t AssetLua_RawLen(lua_State* Lstate, int idx)
 {
 #if defined(LUA_VERSION_NUM) && LUA_VERSION_NUM >= 502
     return lua_rawlen(Lstate, idx);
@@ -120,7 +120,7 @@ static void InstallAssetLuaHooks(lua_State *Lstate)
         lua_pop(Lstate, 2);
         return;
     }
-    int n = (int)lua_len(Lstate, -1);
+    int n = (int)AssetLua_RawLen(Lstate, -1);
     lua_pushcfunction(Lstate, lua_asset_searcher);
     lua_rawseti(Lstate, -2, n + 1);
     lua_pop(Lstate, 2);
