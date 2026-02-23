@@ -59,6 +59,7 @@ EE_CXXFLAGS += -DDEBUG
 endif
 
 BIN2S = $(PS2SDK)/bin/bin2c
+EE_OBJCOPY ?= mips64r5900el-ps2-elf-objcopy
 
 #-------------------------- App Content ---------------------------#
 EXT_LIBS = modules/ds34usb/ee/libds34usb.a modules/ds34bt/ee/libds34bt.a
@@ -153,13 +154,20 @@ embed-assets-check:
 	for o in $(EMBED_ASSET_OBJS); do echo "  $(EE_OBJS_DIR)$$o"; done
 	@for a in $(EMBED_SRCS); do test -f "$$a" || { echo "Missing embedded asset: $$a"; exit 1; }; done
 
+embed-rule-sample:
+	@$(MAKE) -n $(EE_OBJS_DIR)embed_asset_etc_boot_lua.o
+
 
 define EMBED_OBJ_RULE
 $(EE_OBJS_DIR)embed_asset_$(call sanitize,$(1)).o: $(1) | $(EE_OBJS_DIR) $(EMBED_ASSET_TMP)
 	@echo "  - $$@"
-	@test -f "$$<" || { echo "Missing embedded asset: $$<"; exit 1; }
-	@gzip -n -9 -c "$$<" > "$(EMBED_ASSET_TMP)/$(call sanitize,$(1)).gz"
-	$(EE_OBJCOPY) -I binary -O elf32-tradlittlemips -B mips "$(EMBED_ASSET_TMP)/$(call sanitize,$(1)).gz" "$$@"
+	@set -eu; \
+	mkdir -p "$(EE_OBJS_DIR)" "$(EMBED_ASSET_TMP)" "$(EE_ASM_DIR)"; \
+	test -f "$$<" || { echo "Missing embedded asset: $$<"; exit 1; }; \
+	gz="$(EMBED_ASSET_TMP)/$(call sanitize,$(1)).gz"; \
+	gzip -n -9 -c "$$<" > "$$$$gz"; \
+	$(EE_OBJCOPY) -I binary -O elf32-littlemips -B mips "$$$$gz" "$$@"; \
+	rm -f "$$$$gz"
 endef
 
 $(foreach a,$(EMBED_SRCS),$(eval $(call EMBED_OBJ_RULE,$(a))))
