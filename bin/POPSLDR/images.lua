@@ -14,7 +14,6 @@ end
 
 local function IsBootBgKey(key)
   return key == "BG" or key == "BGM" or key == "BKG" or key == "PSL"
-    or key == "splash_bg" or key == "splash_appname" or key == "splash_logo" or key == "splash_credits"
 end
 --- Add your images to this table, just write the name of the file.
 --- Flat layout places images beside POPSLOADER.ELF; legacy installs can still use POPSLDR/IMG/*
@@ -34,10 +33,6 @@ local IMGS = {
   "DISC.png",
   "MISSING.png",
   "PSL.png",
-  "splash_bg.png",
-  "splash_appname.png",
-  "splash_logo.png",
-  "splash_credits.png",
   "select.png",
   "start.png",
   "triangle.png",
@@ -77,7 +72,7 @@ IMG = setmetatable({}, {
     local path = ResolveImage(source)
     local img = Graphics.loadImage(path)
     if IsBootBgKey(key) then
-      LOGF("IMGLOAD: key=%s path=%s handle=%s", tostring(key), tostring(path), tostring(img))
+      LOGF("IMGLOAD: key=IMG/%s handle=%s", tostring(source), tostring(img))
     end
     if img == nil then
       LOGF("Image load failed: %s", path)

@@ -794,22 +794,16 @@ UI = {
 	        end
         local function DrawTargetBackground(scene)
           Screen.clear(UI.SCR.BGCOL)
+          local bg = nil
           if scene == UI.SCENES.MMAIN then
-            if IMG.BGM ~= nil then
-              Graphics.drawScaleImage(IMG.BGM, 0, 0, UI.SCR.X, UI.SCR.Y)
-            elseif IMG.BKG ~= nil then
-              Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
-            end
+            bg = IMG.BGM or IMG.BKG
           elseif scene == UI.SCENES.MPROFILE or scene == UI.SCENES.CREDITS then
-            if IMG.BG ~= nil then
-              Graphics.drawScaleImage(IMG.BG, 0, 0, UI.SCR.X, UI.SCR.Y)
-            elseif IMG.BKG ~= nil then
-              Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
-            end
+            bg = IMG.BG or IMG.BKG
           else
-            if IMG.BKG ~= nil then
-              Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
-            end
+            bg = IMG.BKG
+          end
+          if bg ~= nil then
+            Graphics.drawScaleImage(bg, 0, 0, UI.SCR.X, UI.SCR.Y, Color.new(128, 128, 128, 128))
           end
         end
         local function DrawTargetScene(scene)
@@ -969,60 +963,12 @@ local function DrawSplashFit(img, x, y, draw_w, draw_h, alpha)
 end
 
 local function DrawSplash(alpha)
-  -- New 4-layer splash (bg fill + appname + logo + credits). Falls back to legacy PSL.png + text.
-  if IMG.splash_bg ~= nil and IMG.splash_appname ~= nil and IMG.splash_logo ~= nil and IMG.splash_credits ~= nil then
-    -- Background: cover-fill the screen.
-    DrawSplashCover(IMG.splash_bg, UI.SCR.X, UI.SCR.Y, alpha)
-
-    local pad = 16
-    local max_w = UI.SCR.X - (pad * 2)
-
-    -- App name: top-center.
-    local app_w = Graphics.getImageWidth(IMG.splash_appname)
-    local app_h = Graphics.getImageHeight(IMG.splash_appname)
-    if app_w == nil or app_h == nil or app_w <= 0 or app_h <= 0 then return end
-    local app_scale = math.min(max_w / app_w, 64 / app_h, 1)
-    local app_dw = Round(app_w * app_scale)
-    local app_dh = Round(app_h * app_scale)
-    local app_x = Round((UI.SCR.X - app_dw) / 2)
-    local app_y = pad
-    DrawSplashFit(IMG.splash_appname, app_x, app_y, app_dw, app_dh, alpha)
-
-    -- Credits: bottom-center.
-    local cred_w = Graphics.getImageWidth(IMG.splash_credits)
-    local cred_h = Graphics.getImageHeight(IMG.splash_credits)
-    if cred_w == nil or cred_h == nil or cred_w <= 0 or cred_h <= 0 then return end
-    local cred_scale = math.min(max_w / cred_w, 56 / cred_h, 1)
-    local cred_dw = Round(cred_w * cred_scale)
-    local cred_dh = Round(cred_h * cred_scale)
-    local cred_x = Round((UI.SCR.X - cred_dw) / 2)
-    local cred_y = UI.SCR.Y - cred_dh - pad
-    DrawSplashFit(IMG.splash_credits, cred_x, cred_y, cred_dw, cred_dh, alpha)
-
-    -- Logo: center, fit between app name and credits.
-    local top_reserved = app_y + app_dh + 10
-    local bottom_reserved = (UI.SCR.Y - cred_y) + 10
-    local avail_h = UI.SCR.Y - top_reserved - bottom_reserved
-    if avail_h < 48 then avail_h = UI.SCR.Y end
-
-    local logo_w = Graphics.getImageWidth(IMG.splash_logo)
-    local logo_h = Graphics.getImageHeight(IMG.splash_logo)
-    if logo_w == nil or logo_h == nil or logo_w <= 0 or logo_h <= 0 then return end
-    local logo_scale = math.min(max_w / logo_w, avail_h / logo_h, 1)
-    local logo_dw = Round(logo_w * logo_scale)
-    local logo_dh = Round(logo_h * logo_scale)
-    local logo_x = Round((UI.SCR.X - logo_dw) / 2)
-    local logo_y = Round((UI.SCR.Y - logo_dh) / 2)
-    DrawSplashFit(IMG.splash_logo, logo_x, logo_y, logo_dw, logo_dh, alpha)
+  -- Standard splash: single logical asset IMG/PSL.png, non-fatal fallback to solid color.
+  if IMG.PSL ~= nil then
+    DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
     return
   end
-
-  -- Legacy fallback (single image + text)
-  DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
-  local y0 = UI.SCR.Y_MID + 120
-  Font.ftPrint(BFONT, UI.SCR.X_MID, y0,       8, UI.SCR.X, 16, "Coded by El_isra",      Color.new(0, 0, 0, alpha))
-  Font.ftPrint(BFONT, UI.SCR.X_MID, y0 + 18,  8, UI.SCR.X, 16, "Graphics by Berion",   Color.new(0, 0, 0, alpha))
-  Font.ftPrint(BFONT, UI.SCR.X_MID, y0 + 36,  8, UI.SCR.X, 16, "israpps.github.io",    Color.new(0, 0, 0, alpha))
+  Screen.clear(Color.new(0, 0, 0))
 end
         local fade_in_frames = 120
         local fade_out_frames = 60
@@ -1118,25 +1064,22 @@ end
     BottomDraw = {
       Play = function ()
 	        Screen.clear(UI.SCR.BGCOL)
-        -- Main menu uses BGM.png; settings/profile and credits use BG.png.
+        local bg = nil
         if UI.CURSCENE == UI.SCENES.MMAIN then
-          if IMG.BGM ~= nil then
-            Graphics.drawScaleImage(IMG.BGM, 0, 0, UI.SCR.X, UI.SCR.Y)
-          elseif IMG.BKG ~= nil then
-            Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
-          end
+          bg = IMG.BGM or IMG.BKG
         elseif UI.CURSCENE == UI.SCENES.MPROFILE or UI.CURSCENE == UI.SCENES.CREDITS then
-          if IMG.BG ~= nil then
-            Graphics.drawScaleImage(IMG.BG, 0, 0, UI.SCR.X, UI.SCR.Y)
-          elseif IMG.BKG ~= nil then
-            Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
-          end
+          bg = IMG.BG or IMG.BKG
         else
-          if IMG.BKG ~= nil then
-            Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
+          bg = IMG.BKG
+        end
+        if bg ~= nil then
+          local alpha = 128
+          Graphics.drawScaleImage(bg, 0, 0, UI.SCR.X, UI.SCR.Y, Color.new(128, 128, 128, alpha))
+          UI._BG_LOG_FRAMES = (UI._BG_LOG_FRAMES or 0) + 1
+          if (UI._BG_LOG_FRAMES % 60) == 0 then
+            LOGF("DRAWBG handle=%s alpha=%s", tostring(bg), tostring(alpha))
           end
         end
-        -- Removed opaque overlay box on non-main scenes (was masking background).
       end;
     };
     Modal = {
