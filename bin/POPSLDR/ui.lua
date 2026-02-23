@@ -340,6 +340,7 @@ UI = {
     device_lock = DEVLOCK.NONE;
     boot_device = DEVLOCK.NONE;
     boot_locks = {};
+    BOOT_STATE = { detected = false, finalized = false };
     BOOT_SOUND = {
       ENABLED = true,
       PATH = "boot.adp",      -- relative to CWD (same folder as ui.lua on HostFS)
@@ -820,6 +821,10 @@ UI = {
     end;
     WelcomeDraw = {
       Play = function (next_scene)
+        UI.WelcomeDraw._state = UI.WelcomeDraw._state or { finished = false }
+        if UI.WelcomeDraw._state.finished then
+          return
+        end
 	        -- Boot splash fades in from black, then fades out into the next scene.
 	        local function DrawBackground()
 	          Screen.clear(Color.new(0, 0, 0))
@@ -1085,6 +1090,8 @@ end
         end
         DrawTargetScene(final_scene)
         Screen.flip()
+
+        UI.WelcomeDraw._state.finished = true
 
         -- Cleanup boot sound resource (safe if audio backend ignores it).
         if boot_sound_loaded ~= nil and type(Sound) == "table" and type(Sound.freeADPCM) == "function" then

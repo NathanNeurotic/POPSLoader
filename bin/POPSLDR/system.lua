@@ -744,18 +744,20 @@ if UI.DEVLOCK ~= nil then
   PLDR.BOOT_DEVICE_KIND = boot_name
   UI.boot_device = UI.DEVLOCK.NONE
   UI.boot_locks = {}
+  UI.BOOT_STATE = UI.BOOT_STATE or {}
+  UI.BOOT_STATE.detected = false
+  UI.BOOT_STATE.finalized = false
   if boot_name == "MX4SIO" then
     UI.boot_device = UI.DEVLOCK.MX4SIO
+    UI.BOOT_STATE.detected = true
   elseif boot_name == "USB" then
     UI.boot_device = UI.DEVLOCK.USB
+    UI.BOOT_STATE.detected = true
   elseif boot_name == "MMCE" then
     UI.boot_device = UI.DEVLOCK.MMCE
+    UI.BOOT_STATE.detected = true
   end
-  if boot_name ~= nil then
-    LOG("Boot device detected:", boot_name, "prefix:", tostring(boot_prefix), "path:", tostring(boot_path))
-  else
-    LOG("Boot device detection ambiguous; no boot locks set.", "prefix:", tostring(boot_prefix), "path:", tostring(boot_path))
-  end
+  UI.BOOT_STATE.finalized = true
 end
 local POPSTARTER_PACK_ROOT = "mc0:/POPSTARTER"
 local POPSTARTER_PACK_FILES = {
