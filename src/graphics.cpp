@@ -15,6 +15,7 @@
 
 #define DEG2RAD(x) ((x)*0.01745329251)
 
+
 static const u64 BLACK_RGBAQ   = GS_SETREG_RGBAQ(0x00,0x00,0x00,0x80,0x00);
 static const u64 TEXTURE_RGBAQ = GS_SETREG_RGBAQ(0x80,0x80,0x80,0x80,0x00);
 
@@ -28,6 +29,7 @@ static float fps = 0.0f;
 
 static int frames = 0;
 static int frame_interval = -1;
+
 
 typedef struct {
 	uint8_t *buf;
@@ -208,7 +210,7 @@ GSTEXTURE* loadpng(FILE* File, bool delayed)
 		for (i = 0; i < tex->Height; i++) {
 			for (j = 0; j < tex->Width; j++) {
 				memcpy(&Pixels[k], &row_pointers[i][4 * j], 3);
-				Pixels[k++].a = row_pointers[i][4 * j + 3] >> 1;
+				Pixels[k++].a = (row_pointers[i][4 * j + 3] + 1) >> 1;
 			}
 		}
 
@@ -286,7 +288,7 @@ GSTEXTURE* loadpng(FILE* File, bool delayed)
     		}
 
     		for (i = 0; i < num_trans; i++)
-    		    clut[i].a = trans[i] >> 1;
+    		    clut[i].a = (trans[i] + 1) >> 1;
 
     		for (i = 0; i < tex->Height; i++) {
     		    for (j = 0; j < tex->Width / 2; j++)
@@ -334,7 +336,7 @@ GSTEXTURE* loadpng(FILE* File, bool delayed)
     		}
 
     		for (i = 0; i < num_trans; i++)
-    		    clut[i].a = trans[i] >> 1;
+    		    clut[i].a = (trans[i] + 1) >> 1;
 
     		// rotate clut
     		for (i = 0; i < num_pallete; i++) {
@@ -1009,6 +1011,7 @@ int getFreeVRAM(){
 void drawImageCentered(GSTEXTURE* source, float x, float y, float width, float height, float startx, float starty, float endx, float endy, Color color)
 {
 	if (!ensureTextureReady(source)) return;
+	gsKit_set_test(gsGlobal, GS_ATEST_OFF);
 	gsKit_prim_sprite_texture(gsGlobal, source,
 					x-width/2, // X1
 					y-height/2, // Y1
@@ -1026,6 +1029,7 @@ void drawImageCentered(GSTEXTURE* source, float x, float y, float width, float h
 void drawImage(GSTEXTURE* source, float x, float y, float width, float height, float startx, float starty, float endx, float endy, Color color)
 {
 	if (!ensureTextureReady(source)) return;
+	gsKit_set_test(gsGlobal, GS_ATEST_OFF);
 	gsKit_prim_sprite_texture(gsGlobal, source,
 					x-0.5f, // X1
 					y-0.5f, // Y1
@@ -1046,6 +1050,7 @@ void drawImageRotate(GSTEXTURE* source, float x, float y, float width, float hei
 	float s = sinf(angle);
 
 	if (!ensureTextureReady(source)) return;
+	gsKit_set_test(gsGlobal, GS_ATEST_OFF);
 	gsKit_prim_quad_texture(gsGlobal, source,
 							(-width/2)*c - (-height/2)*s+x, (-height/2)*c + (-width/2)*s+y, startx, starty,
 							(-width/2)*c - height/2*s+x, height/2*c + (-width/2)*s+y, startx, endy,
@@ -1437,7 +1442,7 @@ GSTEXTURE* loadEmbeddedPNG(uint8_t * data, size_t size, bool delayed)
 		for (i = 0; i < tex->Height; i++) {
 			for (j = 0; j < tex->Width; j++) {
 				memcpy(&Pixels[k], &row_pointers[i][4 * j], 3);
-				Pixels[k++].a = row_pointers[i][4 * j + 3] >> 1;
+				Pixels[k++].a = (row_pointers[i][4 * j + 3] + 1) >> 1;
 			}
 		}
 
