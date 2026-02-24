@@ -1323,7 +1323,6 @@ GSTEXTURE* loadEmbeddedPNG(uint8_t * data, size_t size, bool delayed)
 	d.size = size;
 	d.cur = 0;
 	//png_set_error_fn(png_ptr, &error_parameters, pngtest_error, pngtest_warning);
-	DPRINTF("%s: Info: %p %d \n",__func__, d.buf, d.size);
 	png_set_read_fn(png_ptr, (png_voidp)&d, (png_rw_ptr)PNG_read_data);
 
 	//png_init_io(png_ptr, hwc_credits_png);
