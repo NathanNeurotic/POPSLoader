@@ -309,6 +309,8 @@ GSTEXTURE* loadpng(FILE* File, bool delayed)
 	}
 
 	tex->Filter = GS_FILTER_NEAREST;
+	if (tex->PSM == GS_PSM_T4 || tex->PSM == GS_PSM_T8)
+		tex->Delayed = false;
 	png_read_end(png_ptr, NULL);
 	png_destroy_read_struct(&png_ptr, &info_ptr, (png_infopp) NULL);
 	fclose(File);
@@ -338,14 +340,18 @@ GSTEXTURE* loadpng(FILE* File, bool delayed)
 
 		// Upload texture
 		gsKit_texture_upload(gsGlobal, tex);
-		// Free texture
-		free(tex->Mem);
-		tex->Mem = NULL;
-		// Free texture CLUT
-		if(tex->Clut != NULL)
+		const bool paletted = (tex->PSM == GS_PSM_T4 || tex->PSM == GS_PSM_T8);
+		if(!paletted)
 		{
-			free(tex->Clut);
-			tex->Clut = NULL;
+			// Free texture
+			free(tex->Mem);
+			tex->Mem = NULL;
+			// Free texture CLUT
+			if(tex->Clut != NULL)
+			{
+				free(tex->Clut);
+				tex->Clut = NULL;
+			}
 		}
 	}
 	else
@@ -651,14 +657,18 @@ GSTEXTURE* loadbmp(FILE* File, bool delayed)
 
 		// Upload texture
 		gsKit_texture_upload(gsGlobal, tex);
-		// Free texture
-		free(tex->Mem);
-		tex->Mem = NULL;
-		// Free texture CLUT
-		if(tex->Clut != NULL)
+		const bool paletted = (tex->PSM == GS_PSM_T4 || tex->PSM == GS_PSM_T8);
+		if(!paletted)
 		{
-			free(tex->Clut);
-			tex->Clut = NULL;
+			// Free texture
+			free(tex->Mem);
+			tex->Mem = NULL;
+			// Free texture CLUT
+			if(tex->Clut != NULL)
+			{
+				free(tex->Clut);
+				tex->Clut = NULL;
+			}
 		}
 	}
 	else
@@ -808,14 +818,18 @@ GSTEXTURE* loadjpeg(FILE* fp, bool scale_down, bool delayed)
 
 		// Upload texture
 		gsKit_texture_upload(gsGlobal, tex);
-		// Free texture
-		free(tex->Mem);
-		tex->Mem = NULL;
-		// Free texture CLUT
-		if(tex->Clut != NULL)
+		const bool paletted = (tex->PSM == GS_PSM_T4 || tex->PSM == GS_PSM_T8);
+		if(!paletted)
 		{
-			free(tex->Clut);
-			tex->Clut = NULL;
+			// Free texture
+			free(tex->Mem);
+			tex->Mem = NULL;
+			// Free texture CLUT
+			if(tex->Clut != NULL)
+			{
+				free(tex->Clut);
+				tex->Clut = NULL;
+			}
 		}
 	}
 	else
@@ -1526,6 +1540,8 @@ GSTEXTURE* loadEmbeddedPNG(uint8_t * data, size_t size, bool delayed)
 		DPRINTF("%s: This texture depth is not supported yet!\n", __func__);
 		return NULL;
 	}
+	if (tex->PSM == GS_PSM_T4 || tex->PSM == GS_PSM_T8)
+		tex->Delayed = false;
 	png_read_end(png_ptr, NULL);
 	png_destroy_read_struct(&png_ptr, &info_ptr, (png_infopp) NULL);
 
@@ -1554,14 +1570,18 @@ GSTEXTURE* loadEmbeddedPNG(uint8_t * data, size_t size, bool delayed)
 
 		// Upload texture
 		gsKit_texture_upload(gsGlobal, tex);
-		// Free texture
-		free(tex->Mem);
-		tex->Mem = NULL;
-		// Free texture CLUT
-		if(tex->Clut != NULL)
+		const bool paletted = (tex->PSM == GS_PSM_T4 || tex->PSM == GS_PSM_T8);
+		if(!paletted)
 		{
-			free(tex->Clut);
-			tex->Clut = NULL;
+			// Free texture
+			free(tex->Mem);
+			tex->Mem = NULL;
+			// Free texture CLUT
+			if(tex->Clut != NULL)
+			{
+				free(tex->Clut);
+				tex->Clut = NULL;
+			}
 		}
 	}
 	else
