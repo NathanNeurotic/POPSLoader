@@ -46,7 +46,6 @@ jobs:
         if: ${{ success() }}
         uses: actions/upload-artifact@v4
         with:
-          name: POPSLOADER.ELF
+          name: POPSLOADER-ELF
           path: bin/POPSLOADER.ELF
           if-no-files-found: error
-          compression-level: 0

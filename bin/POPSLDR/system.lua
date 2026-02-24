@@ -106,42 +106,40 @@ local function EnsureDir(path)
   return nil
 end
 
-local function CanWriteDirectory(path)
-  if path == nil then return false end
-  local probe = JoinPath(path, ".pldr_probe")
-  local ok, fd = pcall(System.openFile, probe, FCREATE)
-  if not ok or type(fd) ~= "number" or fd < 0 then
-    return false
-  end
-  pcall(System.closeFile, fd)
-  pcall(System.removeFile, probe)
-  return true
-end
-
-local function ResolveSettingsRoot()
-  local candidates = {
-    "mc0:/POPSLOADER/",
-    "mc1:/POPSLOADER/"
-  }
-  for _, root in ipairs(candidates) do
-    local ensured = EnsureDir(root)
-    if ensured ~= nil and CanWriteDirectory(ensured) then
-      return ensured
-    end
-  end
-  local boot_fallback = EnsureDir(APP_DIR_LOCAL)
-  if boot_fallback ~= nil and CanWriteDirectory(boot_fallback) then
-    return boot_fallback
-  end
-  return NormalizeDirPath(candidates[1])
-end
-
-local SETTINGS_ROOT = ResolveSettingsRoot()
-LOG("SETTINGS_ROOT="..tostring(SETTINGS_ROOT))
+local SETTINGS_ROOT = NormalizeDirPath("mc0:/POPSLOADER/")
+LOG("SETTINGS_ROOT="..tostring(SETTINGS_ROOT).." (forced)")
 
 local function ResolveWritablePath(rel)
-  local base = SETTINGS_ROOT or NormalizeDirPath("mc0:/POPSLOADER/")
-  return JoinPath(base, rel)
+  return JoinPath(SETTINGS_ROOT, rel)
+end
+
+local function SafeOpenForWrite(path)
+  local dir = string.match(path or "", "^(.*)/[^/]+$")
+  if EnsureDir(dir) == nil then
+    return nil, "mkdir_failed"
+  end
+  if doesFileExist(path) then
+    pcall(System.removeFile, path)
+  end
+  local ok_open, fd = pcall(System.openFile, path, FCREATE)
+  if not ok_open or type(fd) ~= "number" or fd < 0 then
+    return nil, "open_failed"
+  end
+  return fd, nil
+end
+
+local function SafeWriteAll(fd, data)
+  if type(fd) ~= "number" or fd < 0 then
+    return false, "invalid_fd"
+  end
+  local ok_write, wrote_or_err = pcall(System.writeFile, fd, data, #data)
+  if not ok_write then
+    return false, tostring(wrote_or_err)
+  end
+  if type(wrote_or_err) == "number" and wrote_or_err < #data then
+    return false, "short_write"
+  end
+  return true, nil
 end
 
 local function IsAbsoluteDevicePath(path)
@@ -558,19 +556,11 @@ end
 
 function PLDR.SaveSettings()
   local path = ResolveWritablePath("settings.lua")
-  local dir = string.match(path, "^(.*)/[^/]+$")
-  if EnsureDir(dir) == nil then
-    LOG("SaveSettings: failed to ensure settings dir: "..tostring(dir))
+  local fd, open_err = SafeOpenForWrite(path)
+  if fd == nil then
+    LOG("SaveSettings failed: "..tostring(path).." fd=nil err="..tostring(open_err))
     if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
-      UI.Notif_queue.add("Could not save settings")
-    end
-    return false
-  end
-  local ok_open, fd = pcall(System.openFile, path, FCREATE)
-  if not ok_open or type(fd) ~= "number" or fd < 0 then
-    LOG("SaveSettings: open failed path="..tostring(path).." fd="..tostring(fd))
-    if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
-      UI.Notif_queue.add("Could not save settings")
+      UI.Notif_queue.add("Could not save settings to mc0:/POPSLOADER/")
     end
     return false
   end
@@ -590,12 +580,12 @@ function PLDR.SaveSettings()
     ..string.format("  dkwdrv_path = %s,\n", dkwdrv_path ~= nil and string.format("%q", dkwdrv_path) or "nil")
     ..string.format("  popstarter_path = %s,\n", popstarter_path ~= nil and string.format("%q", popstarter_path) or "nil")
     .."}\n"
-  local ok_write, write_err = pcall(System.writeFile, fd, line, #line)
+  local ok_write, write_err = SafeWriteAll(fd, line)
   local ok_close, close_err = pcall(System.closeFile, fd)
   if not ok_write or not ok_close then
-    LOG("SaveSettings: write/close failed", tostring(write_err), tostring(close_err))
+    LOG("SaveSettings failed: "..tostring(path).." fd="..tostring(fd).." err="..tostring(write_err or close_err))
     if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
-      UI.Notif_queue.add("Could not save settings")
+      UI.Notif_queue.add("Could not save settings to mc0:/POPSLOADER/")
     end
     return false
   end

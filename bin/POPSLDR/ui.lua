@@ -803,7 +803,7 @@ UI = {
             bg = IMG.BKG
           end
           if bg ~= nil then
-            Graphics.drawScaleImage(bg, 0, 0, UI.SCR.X, UI.SCR.Y, Color.new(255, 255, 255, 128))
+            Graphics.drawScaleImage(bg, 0, 0, UI.SCR.X, UI.SCR.Y, Color.new(255, 255, 255, 255))
           end
         end
         local function DrawTargetScene(scene)
@@ -968,7 +968,7 @@ local function DrawSplash(alpha)
     if UI._SPLASH_BG_LOGGED ~= true then
       local iw = Graphics.getImageWidth(IMG.PSL)
       local ih = Graphics.getImageHeight(IMG.PSL)
-      LOGF("SCENE_BG splash handle=%s type=%s w=%s h=%s", tostring(IMG.PSL), type(IMG.PSL), tostring(iw), tostring(ih))
+      LOGF("DRAW_SPLASH: img=%s w=%s h=%s alpha=%s tint=255,255,255", tostring(IMG.PSL), tostring(iw), tostring(ih), tostring(alpha))
       UI._SPLASH_BG_LOGGED = true
     end
     DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
@@ -1008,21 +1008,21 @@ end
 
         -- Splash: slow fade in -> hold -> fade out to black.
         for i = 1, fade_in_frames do
-          local alpha = Round(128 * (i / fade_in_frames))
+          local alpha = Round(255 * (i / fade_in_frames))
           DrawBackground()
           DrawSplash(alpha)
           Screen.flip()
         end
         for _ = 1, splash_hold_frames do
           DrawBackground()
-          DrawSplash(128)
+          DrawSplash(255)
           Screen.flip()
         end
         if fade_out_frames > 0 then
           for i = 1, fade_out_frames do
-            local alpha = Round(128 * (i / fade_out_frames))
+            local alpha = Round(255 * (i / fade_out_frames))
             DrawBackground()
-            DrawSplash(128)
+            DrawSplash(255)
             Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
             Screen.flip()
           end
@@ -1030,7 +1030,7 @@ end
 
         -- Credits: fade in from black -> hold -> fade out to black.
         for i = 1, credits_fade_in_frames do
-          local alpha = Round(128 * (1 - (i / credits_fade_in_frames)))
+          local alpha = Round(255 * (1 - (i / credits_fade_in_frames)))
           DrawTargetScene(UI.SCENES.CREDITS)
           Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
           Screen.flip()
@@ -1041,7 +1041,7 @@ end
         end
         if credits_fade_out_frames > 0 then
           for i = 1, credits_fade_out_frames do
-            local alpha = Round(128 * (i / credits_fade_out_frames))
+            local alpha = Round(255 * (i / credits_fade_out_frames))
             DrawTargetScene(UI.SCENES.CREDITS)
             Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
             Screen.flip()
@@ -1051,7 +1051,7 @@ end
         local final_scene = UI.SCENES.MMAIN
         -- Main menu: fade in from black.
         for i = 1, fade_in_frames do
-          local alpha = Round(128 * (1 - (i / fade_in_frames)))
+          local alpha = Round(255 * (1 - (i / fade_in_frames)))
           DrawTargetScene(final_scene)
           Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
           Screen.flip()
@@ -1079,7 +1079,7 @@ end
           bg = IMG.BKG
         end
         if bg ~= nil then
-          local alpha = 128
+          local alpha = 255
           Graphics.drawScaleImage(bg, 0, 0, UI.SCR.X, UI.SCR.Y, Color.new(255, 255, 255, alpha))
         end
       end;
@@ -2493,7 +2493,7 @@ function UI.OnSceneEnter(previous_scene, next_scene)
   if bg ~= nil then
     local iw = Graphics.getImageWidth(bg)
     local ih = Graphics.getImageHeight(bg)
-    LOGF("SCENE_BG scene=%s handle=%s type=%s w=%s h=%s", tostring(tag), tostring(bg), type(bg), tostring(iw), tostring(ih))
+    LOGF("DRAW_SCENE_BG: scene=%s img=%s w=%s h=%s alpha=255 tint=255,255,255", tostring(tag), tostring(bg), tostring(iw), tostring(ih))
   end
 end
 
