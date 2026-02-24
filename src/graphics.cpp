@@ -137,7 +137,7 @@ GSTEXTURE* loadpng(FILE* File, bool delayed)
 		for (i = 0; i < tex->Height; i++) {
 			for (j = 0; j < tex->Width; j++) {
 				memcpy(&Pixels[k], &row_pointers[i][4 * j], 3);
-				Pixels[k++].a = row_pointers[i][4 * j + 3] >> 1;
+				Pixels[k++].a = (row_pointers[i][4 * j + 3] + 1) >> 1;
 			}
 		}
 
@@ -215,7 +215,7 @@ GSTEXTURE* loadpng(FILE* File, bool delayed)
     		}
 
     		for (i = 0; i < num_trans; i++)
-    		    clut[i].a = trans[i] >> 1;
+    		    clut[i].a = (trans[i] + 1) >> 1;
 
     		for (i = 0; i < tex->Height; i++) {
     		    for (j = 0; j < tex->Width / 2; j++)
@@ -263,7 +263,7 @@ GSTEXTURE* loadpng(FILE* File, bool delayed)
     		}
 
     		for (i = 0; i < num_trans; i++)
-    		    clut[i].a = trans[i] >> 1;
+    		    clut[i].a = (trans[i] + 1) >> 1;
 
     		// rotate clut
     		for (i = 0; i < num_pallete; i++) {
@@ -937,6 +937,7 @@ int getFreeVRAM(){
 
 void drawImageCentered(GSTEXTURE* source, float x, float y, float width, float height, float startx, float starty, float endx, float endy, Color color)
 {
+	gsKit_set_test(gsGlobal, GS_ATEST_OFF);
 
 	if (source->Delayed == true) {
 		gsKit_TexManager_bind(gsGlobal, source);
@@ -957,6 +958,7 @@ void drawImageCentered(GSTEXTURE* source, float x, float y, float width, float h
 
 void drawImage(GSTEXTURE* source, float x, float y, float width, float height, float startx, float starty, float endx, float endy, Color color)
 {
+	gsKit_set_test(gsGlobal, GS_ATEST_OFF);
 
 	if (source->Delayed == true) {
 		gsKit_TexManager_bind(gsGlobal, source);
@@ -976,6 +978,7 @@ void drawImage(GSTEXTURE* source, float x, float y, float width, float height, f
 
 
 void drawImageRotate(GSTEXTURE* source, float x, float y, float width, float height, float startx, float starty, float endx, float endy, float angle, Color color){
+	gsKit_set_test(gsGlobal, GS_ATEST_OFF);
 
 	float c = cosf(angle);
 	float s = sinf(angle);
@@ -1374,7 +1377,7 @@ GSTEXTURE* loadEmbeddedPNG(uint8_t * data, size_t size, bool delayed)
 		for (i = 0; i < tex->Height; i++) {
 			for (j = 0; j < tex->Width; j++) {
 				memcpy(&Pixels[k], &row_pointers[i][4 * j], 3);
-				Pixels[k++].a = row_pointers[i][4 * j + 3] >> 1;
+				Pixels[k++].a = (row_pointers[i][4 * j + 3] + 1) >> 1;
 			}
 		}
 
