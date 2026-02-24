@@ -803,7 +803,7 @@ UI = {
             bg = IMG.BKG
           end
           if bg ~= nil then
-            Graphics.drawScaleImage(bg, 0, 0, UI.SCR.X, UI.SCR.Y, Color.new(128, 128, 128, 128))
+            Graphics.drawScaleImage(bg, 0, 0, UI.SCR.X, UI.SCR.Y, Color.new(255, 255, 255, 255))
           end
         end
         local function DrawTargetScene(scene)
@@ -952,19 +952,25 @@ local function DrawSplashCover(img, screen_w, screen_h, alpha)
   local draw_h = Round(img_h * scale)
   local x = Round((screen_w - draw_w) / 2)
   local y = Round((screen_h - draw_h) / 2)
-  local tint = Color.new(128, 128, 128, alpha)
+  local tint = Color.new(255, 255, 255, alpha)
   Graphics.drawScaleImage(img, x, y, draw_w, draw_h, tint)
 end
 
 local function DrawSplashFit(img, x, y, draw_w, draw_h, alpha)
   if img == nil then return end
-  local tint = Color.new(128, 128, 128, alpha)
+  local tint = Color.new(255, 255, 255, alpha)
   Graphics.drawScaleImage(img, x, y, draw_w, draw_h, tint)
 end
 
 local function DrawSplash(alpha)
   -- Standard splash: single logical asset IMG/PSL.png, non-fatal fallback to solid color.
   if IMG.PSL ~= nil then
+    if UI._SPLASH_BG_LOGGED ~= true then
+      local iw = Graphics.getImageWidth(IMG.PSL)
+      local ih = Graphics.getImageHeight(IMG.PSL)
+      LOGF("DRAW_SPLASH: img=%s w=%s h=%s alpha=%s tint=255,255,255", tostring(IMG.PSL), tostring(iw), tostring(ih), tostring(alpha))
+      UI._SPLASH_BG_LOGGED = true
+    end
     DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
     return
   end
@@ -1002,21 +1008,21 @@ end
 
         -- Splash: slow fade in -> hold -> fade out to black.
         for i = 1, fade_in_frames do
-          local alpha = Round(128 * (i / fade_in_frames))
+          local alpha = Round(255 * (i / fade_in_frames))
           DrawBackground()
           DrawSplash(alpha)
           Screen.flip()
         end
         for _ = 1, splash_hold_frames do
           DrawBackground()
-          DrawSplash(128)
+          DrawSplash(255)
           Screen.flip()
         end
         if fade_out_frames > 0 then
           for i = 1, fade_out_frames do
-            local alpha = Round(128 * (i / fade_out_frames))
+            local alpha = Round(255 * (i / fade_out_frames))
             DrawBackground()
-            DrawSplash(128)
+            DrawSplash(255)
             Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
             Screen.flip()
           end
@@ -1024,7 +1030,7 @@ end
 
         -- Credits: fade in from black -> hold -> fade out to black.
         for i = 1, credits_fade_in_frames do
-          local alpha = Round(128 * (1 - (i / credits_fade_in_frames)))
+          local alpha = Round(255 * (1 - (i / credits_fade_in_frames)))
           DrawTargetScene(UI.SCENES.CREDITS)
           Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
           Screen.flip()
@@ -1035,7 +1041,7 @@ end
         end
         if credits_fade_out_frames > 0 then
           for i = 1, credits_fade_out_frames do
-            local alpha = Round(128 * (i / credits_fade_out_frames))
+            local alpha = Round(255 * (i / credits_fade_out_frames))
             DrawTargetScene(UI.SCENES.CREDITS)
             Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
             Screen.flip()
@@ -1045,7 +1051,7 @@ end
         local final_scene = UI.SCENES.MMAIN
         -- Main menu: fade in from black.
         for i = 1, fade_in_frames do
-          local alpha = Round(128 * (1 - (i / fade_in_frames)))
+          local alpha = Round(255 * (1 - (i / fade_in_frames)))
           DrawTargetScene(final_scene)
           Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
           Screen.flip()
@@ -1073,13 +1079,8 @@ end
           bg = IMG.BKG
         end
         if bg ~= nil then
-          local alpha = 128
-          Graphics.drawScaleImage(bg, 0, 0, UI.SCR.X, UI.SCR.Y, Color.new(128, 128, 128, alpha))
-          UI._BG_LOG_FRAMES = (UI._BG_LOG_FRAMES or 0) + 1
-          if (UI._BG_LOG_FRAMES % 60) == 0 then
-            LOGF("DRAWBG handle=%s alpha=%s", tostring(bg), tostring(alpha))
-            LOGF("DRAWTYPE type=%s", type(bg))
-          end
+          local alpha = 255
+          Graphics.drawScaleImage(bg, 0, 0, UI.SCR.X, UI.SCR.Y, Color.new(255, 255, 255, alpha))
         end
       end;
     };
@@ -1733,10 +1734,13 @@ end
           if PLDR.GetBDMAMode ~= nil then
             UI.ProfileQuery.bdma_mode = PLDR.GetBDMAMode()
           end
+          local saved = true
           if PLDR.SaveSettings ~= nil then
-            PLDR.SaveSettings()
+            saved = (PLDR.SaveSettings() == true)
           end
-          UI.Notif_queue.add("Profile defaults restored")
+          if saved then
+            UI.Notif_queue.add("Profile defaults restored")
+          end
         end
         if UI.Pad.Events.R2 then
           UI.TextEntry.Open("Edit POPStarter Path", popstarter_path, function (new_value)
@@ -1750,10 +1754,11 @@ end
                 PLDR.PROFILES[1].ELF = resolved
               end
               PLDR.POPSTARTER_PATH = resolved
+              local saved = true
               if PLDR.SaveSettings ~= nil then
-                PLDR.SaveSettings()
+                saved = (PLDR.SaveSettings() == true)
               end
-              if UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
+              if saved and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
                 UI.Notif_queue.add("POPStarter path saved")
               end
             end
@@ -1763,10 +1768,11 @@ end
           UI.TextEntry.Open("Edit DKWDRV Path", dkwdrv_path, function (new_value)
             if PLDR ~= nil and PLDR.SETTINGS ~= nil then
               PLDR.SETTINGS.dkwdrv_path = new_value
+              local saved = true
               if PLDR.SaveSettings ~= nil then
-                PLDR.SaveSettings()
+                saved = (PLDR.SaveSettings() == true)
               end
-              if UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
+              if saved and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
                 UI.Notif_queue.add("DKWDRV path saved")
               end
             end
@@ -2474,6 +2480,20 @@ function UI.OnSceneEnter(previous_scene, next_scene)
       PLDR.RefreshMassSlots("scene-enter-mx4sio")
     end
     UI.RefreshCurrentMassScene(next_scene)
+  end
+  local bg = nil
+  local tag = "OTHER"
+  if next_scene == UI.SCENES.MMAIN then
+    bg = IMG.BGM or IMG.BKG
+    tag = "MMAIN"
+  elseif next_scene == UI.SCENES.MPROFILE or next_scene == UI.SCENES.CREDITS then
+    bg = IMG.BG or IMG.BKG
+    tag = (next_scene == UI.SCENES.CREDITS) and "CREDITS" or "MPROFILE"
+  end
+  if bg ~= nil then
+    local iw = Graphics.getImageWidth(bg)
+    local ih = Graphics.getImageHeight(bg)
+    LOGF("DRAW_SCENE_BG: scene=%s img=%s w=%s h=%s alpha=255 tint=255,255,255", tostring(tag), tostring(bg), tostring(iw), tostring(ih))
   end
 end
 

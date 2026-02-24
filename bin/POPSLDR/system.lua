@@ -82,16 +82,64 @@ local function ResolveAsset(rel)
   return System.resolveAsset(rel) or JoinPath(APP_DIR_LOCAL, rel)
 end
 
-local SETTINGS_ROOT = NormalizeDirPath((System and System.getSettingsRoot and System.getSettingsRoot()) or "mc0:/POPSTARTER/")
-if SETTINGS_ROOT == nil or SETTINGS_ROOT == "" then
-  SETTINGS_ROOT = "mc0:/POPSTARTER/"
+local function StripTrailingSlash(path)
+  if path == nil then return nil end
+  local stripped = string.gsub(path, "/+$", "")
+  local device_root = string.match(stripped, "^([%a]+%d*):$")
+  if device_root ~= nil then
+    return device_root..":/"
+  end
+  return stripped
 end
-if not doesFolderExist(SETTINGS_ROOT) then
-  pcall(System.createDirectory, SETTINGS_ROOT)
+
+local function EnsureDir(path)
+  if path == nil or path == "" then return nil end
+  local normalized = NormalizeDirPath(path)
+  if doesFolderExist(normalized) then
+    return normalized
+  end
+  local create_path = StripTrailingSlash(normalized)
+  local ok = pcall(System.createDirectory, create_path)
+  if ok and doesFolderExist(normalized) then
+    return normalized
+  end
+  return nil
 end
+
+local SETTINGS_ROOT = NormalizeDirPath("mc0:/POPSLOADER/")
+LOG("SETTINGS_ROOT="..tostring(SETTINGS_ROOT).." (forced)")
 
 local function ResolveWritablePath(rel)
   return JoinPath(SETTINGS_ROOT, rel)
+end
+
+local function SafeOpenForWrite(path)
+  local dir = string.match(path or "", "^(.*)/[^/]+$")
+  if EnsureDir(dir) == nil then
+    return nil, "mkdir_failed"
+  end
+  if doesFileExist(path) then
+    pcall(System.removeFile, path)
+  end
+  local ok_open, fd = pcall(System.openFile, path, FCREATE)
+  if not ok_open or type(fd) ~= "number" or fd < 0 then
+    return nil, "open_failed"
+  end
+  return fd, nil
+end
+
+local function SafeWriteAll(fd, data)
+  if type(fd) ~= "number" or fd < 0 then
+    return false, "invalid_fd"
+  end
+  local ok_write, wrote_or_err = pcall(System.writeFile, fd, data, #data)
+  if not ok_write then
+    return false, tostring(wrote_or_err)
+  end
+  if type(wrote_or_err) == "number" and wrote_or_err < #data then
+    return false, "short_write"
+  end
+  return true, nil
 end
 
 local function IsAbsoluteDevicePath(path)
@@ -508,7 +556,14 @@ end
 
 function PLDR.SaveSettings()
   local path = ResolveWritablePath("settings.lua")
-  local fd = System.openFile(path, FCREATE)
+  local fd, open_err = SafeOpenForWrite(path)
+  if fd == nil then
+    LOG("SaveSettings failed: "..tostring(path).." fd=nil err="..tostring(open_err))
+    if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
+      UI.Notif_queue.add("Could not save settings to mc0:/POPSLOADER/")
+    end
+    return false
+  end
   local mode = tonumber(PLDR.SETTINGS.bdma_mode) or 1
   local hide_ui = PLDR.SETTINGS.hide_ui == true
   local show_cover = PLDR.SETTINGS.show_cover ~= false
@@ -525,8 +580,16 @@ function PLDR.SaveSettings()
     ..string.format("  dkwdrv_path = %s,\n", dkwdrv_path ~= nil and string.format("%q", dkwdrv_path) or "nil")
     ..string.format("  popstarter_path = %s,\n", popstarter_path ~= nil and string.format("%q", popstarter_path) or "nil")
     .."}\n"
-  System.writeFile(fd, line, #line)
-  System.closeFile(fd)
+  local ok_write, write_err = SafeWriteAll(fd, line)
+  local ok_close, close_err = pcall(System.closeFile, fd)
+  if not ok_write or not ok_close then
+    LOG("SaveSettings failed: "..tostring(path).." fd="..tostring(fd).." err="..tostring(write_err or close_err))
+    if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
+      UI.Notif_queue.add("Could not save settings to mc0:/POPSLOADER/")
+    end
+    return false
+  end
+  return true
 end
 
 function PLDR.GetBDMAModeCount()
