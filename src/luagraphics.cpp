@@ -19,7 +19,7 @@ uint32_t imgThreadSize = 0;
 static u8 imgThreadStack[4096] __attribute__((aligned(16)));
 
 
-static bool shouldForceOpaqueTexture(const char* key) {
+static bool isKnownFullscreenBackgroundKey(const char* key) {
 	if (key == NULL) return false;
 	return strcmp(key, "IMG/PSL.png") == 0 ||
 	       strcmp(key, "IMG/BKG.png") == 0 ||
@@ -255,6 +255,11 @@ static int lua_loadimg(lua_State *L) {
 	const char* text = luaL_checkstring(L, 1);
 	bool delayed = true;
 	if (argc == 2) delayed = lua_toboolean(L, 2);
+	bool force_immediate = isKnownFullscreenBackgroundKey(text);
+	if (force_immediate && delayed) {
+		delayed = false;
+		printf("IMGMODE key=%s delayed=0 reason=fullscreen_bg\n", text);
+	}
 
 	const void* ptr = NULL;
 	size_t sz = 0;
@@ -271,7 +276,7 @@ static int lua_loadimg(lua_State *L) {
 		printf("IMGFAIL key=%s decode=ok upload=unknown w=%d h=%d psm=%d\n", text, image->Width, image->Height, image->PSM);
 		image = NULL;
 	}
-	if (image != NULL && shouldForceOpaqueTexture(text)) {
+	if (image != NULL && isKnownFullscreenBackgroundKey(text)) {
 		forceTextureOpaqueAlpha(image);
 		printf("IMGALPHAFIX key=%s mode=force_opaque a=128\n", text);
 	}
