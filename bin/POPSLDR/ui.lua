@@ -2517,6 +2517,19 @@ function UI.OnSceneEnter(previous_scene, next_scene)
   if UI.BOOT_SOUND ~= nil and UI.BOOT_SOUND.STATE ~= nil and UI.BOOT_SOUND.STATE.path_resolved ~= true then
     return
   end
+
+  -- Keep VRAM pressure low: release large splash/background textures that are not needed
+  -- for the scene we are entering. This avoids accumulation across splash->credits->menu.
+  if IMG ~= nil and type(IMG.ReleaseKey) == "function" then
+    if next_scene == UI.SCENES.MMAIN or next_scene == UI.SCENES.MPROFILE or next_scene == UI.SCENES.CREDITS then
+      IMG.ReleaseKey("PSL")
+    end
+    if next_scene == UI.SCENES.MMAIN then
+      IMG.ReleaseKey("BG")
+    elseif next_scene == UI.SCENES.MPROFILE or next_scene == UI.SCENES.CREDITS then
+      IMG.ReleaseKey("BGM")
+    end
+  end
   if UI.IsUsbScene(next_scene) then
     if PLDR ~= nil and type(PLDR.RefreshMassSlots) == "function" then
       PLDR.RefreshMassSlots("scene-enter-usb")
