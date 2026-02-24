@@ -155,7 +155,10 @@ static int lua_color(lua_State *L) {
 	int g = luaL_checkinteger(L, 2);
 	int b = luaL_checkinteger(L, 3);
 	int a = 0x80;
-	if (argc==4) a = CLAMP(luaL_checkinteger(L, 4), 0, 128);
+	if (argc==4) {
+		int a255 = CLAMP(luaL_checkinteger(L, 4), 0, 255);
+		a = (a255 * 128 + 127) / 255;
+	}
 	int color = r | (g << 8) | (b << 16) | (a << 24);
 	lua_pushinteger(L,color);
 	return 1;
