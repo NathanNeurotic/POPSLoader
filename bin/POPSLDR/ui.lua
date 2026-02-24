@@ -26,6 +26,9 @@ local function Clamp(v, lo, hi)
   if v > hi then return hi end
   return v
 end
+local function Alpha255FromT(t)
+  return Round(Clamp01(t) * 255)
+end
 local function EaseInOutCubic(t)
   t = Clamp01(t)
   if t < 0.5 then
@@ -789,6 +792,12 @@ UI = {
     WelcomeDraw = {
       Play = function (next_scene)
 	        -- Boot splash fades in from black, then fades out into the next scene.
+	        local phase_log_once = {}
+	        local function LogFadeOnce(phase, t, overlay_a)
+	          if phase_log_once[phase] == true then return end
+	          phase_log_once[phase] = true
+	          LOGF("DRAW_FADE: phase=%s t=%.3f overlay_a=%d", tostring(phase), t or 0, overlay_a or 0)
+	        end
 	        local function DrawBackground()
 	          Screen.clear(Color.new(0, 0, 0))
 	        end
@@ -803,6 +812,12 @@ UI = {
             bg = IMG.BKG
           end
           if bg ~= nil then
+            if phase_log_once["bg_"..tostring(scene)] ~= true then
+              local iw = Graphics.getImageWidth(bg)
+              local ih = Graphics.getImageHeight(bg)
+              LOGF("DRAW_BG: key=%s a=255 tint=255,255,255 w=%s h=%s", tostring(scene), tostring(iw), tostring(ih))
+              phase_log_once["bg_"..tostring(scene)] = true
+            end
             Graphics.drawScaleImage(bg, 0, 0, UI.SCR.X, UI.SCR.Y, Color.new(255, 255, 255, 255))
           end
         end
@@ -1008,9 +1023,14 @@ end
 
         -- Splash: slow fade in -> hold -> fade out to black.
         for i = 1, fade_in_frames do
-          local alpha = Round(255 * (i / fade_in_frames))
+          local alpha = Alpha255FromT(i / fade_in_frames)
+          local overlay_alpha = 255 - alpha
           DrawBackground()
-          DrawSplash(alpha)
+          DrawSplash(255)
+          if overlay_alpha > 0 then
+            Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, overlay_alpha))
+          end
+          LogFadeOnce("splash_fade_in", i / fade_in_frames, overlay_alpha)
           Screen.flip()
         end
         for _ = 1, splash_hold_frames do
@@ -1020,19 +1040,22 @@ end
         end
         if fade_out_frames > 0 then
           for i = 1, fade_out_frames do
-            local alpha = Round(255 * (i / fade_out_frames))
+            local alpha = Alpha255FromT(1 - (i / fade_out_frames))
+            local overlay_alpha = 255 - alpha
             DrawBackground()
             DrawSplash(255)
-            Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
+            Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, overlay_alpha))
+            LogFadeOnce("splash_fade_out", i / fade_out_frames, overlay_alpha)
             Screen.flip()
           end
         end
 
         -- Credits: fade in from black -> hold -> fade out to black.
         for i = 1, credits_fade_in_frames do
-          local alpha = Round(255 * (1 - (i / credits_fade_in_frames)))
+          local alpha = Alpha255FromT(1 - (i / credits_fade_in_frames))
           DrawTargetScene(UI.SCENES.CREDITS)
           Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
+          LogFadeOnce("credits_fade_in", i / credits_fade_in_frames, alpha)
           Screen.flip()
         end
         for _ = 1, credits_hold_frames do
@@ -1041,9 +1064,10 @@ end
         end
         if credits_fade_out_frames > 0 then
           for i = 1, credits_fade_out_frames do
-            local alpha = Round(255 * (i / credits_fade_out_frames))
+            local alpha = Alpha255FromT(i / credits_fade_out_frames)
             DrawTargetScene(UI.SCENES.CREDITS)
             Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
+            LogFadeOnce("credits_fade_out", i / credits_fade_out_frames, alpha)
             Screen.flip()
           end
         end
@@ -1051,9 +1075,10 @@ end
         local final_scene = UI.SCENES.MMAIN
         -- Main menu: fade in from black.
         for i = 1, fade_in_frames do
-          local alpha = Round(255 * (1 - (i / fade_in_frames)))
+          local alpha = Alpha255FromT(1 - (i / fade_in_frames))
           DrawTargetScene(final_scene)
           Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
+          LogFadeOnce("menu_fade_in", i / fade_in_frames, alpha)
           Screen.flip()
         end
         DrawTargetScene(final_scene)
@@ -1304,6 +1329,9 @@ end
       elapsed = 0,
       last_time = nil,
       max_step = 33,
+      min_step = 16,
+      debug_frames = 0,
+      no_progress_frames = 0,
       duration_out = 140,
       duration_in = 120,
       Queue = function (target)
@@ -1327,6 +1355,9 @@ end
         UI.Transition.start = Timer.getTime(UI.Transition.timer)
         UI.Transition.elapsed = 0
         UI.Transition.last_time = UI.Transition.start
+        UI.Transition.debug_frames = 0
+        UI.Transition.no_progress_frames = 0
+        LOGF("TRANSITION_START: target=%s phase=out active=true", tostring(target))
       end,
       Update = function ()
         if not UI.Transition.active then
@@ -1336,6 +1367,14 @@ end
         local last = UI.Transition.last_time or now
         local delta = now - last
         if delta < 0 then delta = 0 end
+        if delta == 0 then
+          UI.Transition.no_progress_frames = (UI.Transition.no_progress_frames or 0) + 1
+          if UI.Transition.no_progress_frames >= 2 then
+            delta = UI.Transition.min_step or 16
+          end
+        else
+          UI.Transition.no_progress_frames = 0
+        end
         local max_step = UI.Transition.max_step or 33
         if delta > max_step then delta = max_step end
         UI.Transition.elapsed = (UI.Transition.elapsed or 0) + delta
@@ -1347,9 +1386,13 @@ end
         if t > 1 then t = 1 end
         local alpha
         if UI.Transition.phase == "out" then
-          alpha = Round(128 * t)
+          alpha = Alpha255FromT(t)
         else
-          alpha = Round(128 * (1 - t))
+          alpha = Alpha255FromT(1 - t)
+        end
+        UI.Transition.debug_frames = (UI.Transition.debug_frames or 0) + 1
+        if UI.Transition.debug_frames == 1 or (UI.Transition.debug_frames % 60) == 0 then
+          LOGF("TRANSITION_TICK: active=%s phase=%s t=%.3f alpha=%d elapsed=%d", tostring(UI.Transition.active), tostring(UI.Transition.phase), t, alpha, elapsed)
         end
         if t >= 1 then
           if UI.Transition.phase == "out" then
@@ -1368,7 +1411,10 @@ end
             UI.Transition.start = now
             UI.Transition.elapsed = 0
             UI.Transition.last_time = now
-            alpha = 128
+            UI.Transition.debug_frames = 0
+            UI.Transition.no_progress_frames = 0
+            alpha = 255
+            LOGF("TRANSITION_PHASE: phase=in active=true target=%s", tostring(UI.CURSCENE))
           else
             local queued = UI.Transition.next_target
             if queued ~= nil and queued ~= UI.CURSCENE then
@@ -1380,6 +1426,7 @@ end
               UI.Transition.target = nil
               UI.Transition.next_target = nil
               alpha = 0
+              LOG("TRANSITION_END: active=false")
             end
           end
         end

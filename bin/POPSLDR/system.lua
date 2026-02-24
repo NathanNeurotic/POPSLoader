@@ -118,9 +118,6 @@ local function SafeOpenForWrite(path)
   if EnsureDir(dir) == nil then
     return nil, "mkdir_failed"
   end
-  if doesFileExist(path) then
-    pcall(System.removeFile, path)
-  end
   local ok_open, fd = pcall(System.openFile, path, FCREATE)
   if not ok_open or type(fd) ~= "number" or fd < 0 then
     return nil, "open_failed"
@@ -140,6 +137,69 @@ local function SafeWriteAll(fd, data)
     return false, "short_write"
   end
   return true, nil
+end
+
+local function SerializeSettingsLua(settings)
+  local lines = {
+    "return {",
+    string.format("  bdma_mode = %d,", tonumber(settings.bdma_mode) or 1),
+    string.format("  hide_ui = %s,", tostring(settings.hide_ui == true)),
+    string.format("  show_cover = %s,", tostring(settings.show_cover ~= false)),
+    string.format("  profile_index = %s,", settings.profile_index ~= nil and tostring(tonumber(settings.profile_index) or 0) or "nil"),
+    string.format("  bdma_last_label = %s,", settings.bdma_last_label ~= nil and string.format("%q", tostring(settings.bdma_last_label)) or "nil"),
+    string.format("  dkwdrv_path = %s,", settings.dkwdrv_path ~= nil and string.format("%q", tostring(settings.dkwdrv_path)) or "nil"),
+    string.format("  popstarter_path = %s,", settings.popstarter_path ~= nil and string.format("%q", tostring(settings.popstarter_path)) or "nil"),
+    "}",
+    ""
+  }
+  return table.concat(lines, "\n")
+end
+
+local function CopyFileContents(source, dest)
+  local ok_copy, copy_err = pcall(System.copyFile, source, dest)
+  if not ok_copy then
+    return false, tostring(copy_err)
+  end
+  return true, nil
+end
+
+local function AtomicWriteFile(path, data)
+  local tmp_path = path..".tmp"
+  local fd, open_err = SafeOpenForWrite(tmp_path)
+  if fd == nil then
+    return false, "tmp_open_failed:"..tostring(open_err)
+  end
+  local ok_write, write_err = SafeWriteAll(fd, data)
+  local ok_close, close_err = pcall(System.closeFile, fd)
+  if not ok_write or not ok_close then
+    pcall(System.removeFile, tmp_path)
+    return false, tostring(write_err or close_err)
+  end
+
+  local ok_rename, rename_err = pcall(System.rename, tmp_path, path)
+  if ok_rename then
+    return true, nil
+  end
+
+  pcall(System.removeFile, path)
+  local ok_copy, copy_err = CopyFileContents(tmp_path, path)
+  pcall(System.removeFile, tmp_path)
+  if not ok_copy then
+    return false, "rename_failed:"..tostring(rename_err).." copy_failed:"..tostring(copy_err)
+  end
+  return true, nil
+end
+
+local function NextBadSettingsPath(base_path)
+  local idx = 1
+  while idx < 1000 do
+    local bad = string.format("%s.bad.%d", base_path, idx)
+    if not doesFileExist(bad) then
+      return bad
+    end
+    idx = idx + 1
+  end
+  return base_path..".bad"
 end
 
 local function IsAbsoluteDevicePath(path)
@@ -482,30 +542,28 @@ local BDMA_MODES = {
 
 local function LoadSettingsTable(path)
   if path == nil or path == "" then
-    return nil
+    return nil, "missing_path"
   end
   if not doesFileExist(path) then
-    return nil
+    return nil, "missing"
   end
   local loader, load_err = loadfile(path)
   if loader == nil then
-    LOG("Settings load failed:", load_err)
-    return nil
+    return nil, "parse:"..tostring(load_err)
   end
   local ok, data = pcall(loader)
   if not ok then
-    LOG("Settings exec failed:", data)
-    return nil
+    return nil, "exec:"..tostring(data)
   end
   if type(data) ~= "table" then
-    return nil
+    return nil, "not_table"
   end
-  return data
+  return data, nil
 end
 
 function PLDR.LoadSettings()
   local path = ResolveWritablePath("settings.lua")
-  local data = LoadSettingsTable(path)
+  local data, load_err = LoadSettingsTable(path)
   if type(data) == "table" then
     local mode = tonumber(data.bdma_mode)
     if mode ~= nil then
@@ -530,6 +588,27 @@ function PLDR.LoadSettings()
     if type(data.popstarter_path) == "string" and data.popstarter_path ~= "" then
       PLDR.SETTINGS.popstarter_path = data.popstarter_path
     end
+  elseif load_err ~= "missing" then
+    LOG("Settings load failed: "..tostring(load_err))
+    if doesFileExist(path) then
+      local bad_path = NextBadSettingsPath(path)
+      local moved = false
+      local ok_rename = pcall(System.rename, path, bad_path)
+      if ok_rename then
+        moved = true
+      else
+        local ok_copy = pcall(System.copyFile, path, bad_path)
+        if ok_copy then
+          pcall(System.removeFile, path)
+          moved = true
+        end
+      end
+      if moved then
+        LOG("Settings quarantined to: "..tostring(bad_path))
+      else
+        LOG("Settings quarantine failed for: "..tostring(path))
+      end
+    end
   end
   if PLDR.SETTINGS.bdma_mode == nil then
     PLDR.SETTINGS.bdma_mode = 1
@@ -547,6 +626,9 @@ function PLDR.LoadSettings()
   if PLDR.SETTINGS.bdma_mode < 1 or PLDR.SETTINGS.bdma_mode > count then
     PLDR.SETTINGS.bdma_mode = 1
   end
+  if load_err ~= nil and load_err ~= "missing" then
+    PLDR.SaveSettings()
+  end
 end
 
 function System.GetPOPStarterElfPath()
@@ -556,34 +638,18 @@ end
 
 function PLDR.SaveSettings()
   local path = ResolveWritablePath("settings.lua")
-  local fd, open_err = SafeOpenForWrite(path)
-  if fd == nil then
-    LOG("SaveSettings failed: "..tostring(path).." fd=nil err="..tostring(open_err))
-    if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
-      UI.Notif_queue.add("Could not save settings to mc0:/POPSLOADER/")
-    end
-    return false
-  end
-  local mode = tonumber(PLDR.SETTINGS.bdma_mode) or 1
-  local hide_ui = PLDR.SETTINGS.hide_ui == true
-  local show_cover = PLDR.SETTINGS.show_cover ~= false
-  local profile_index = tonumber(PLDR.SETTINGS.profile_index)
-  local bdma_last_label = PLDR.SETTINGS.bdma_last_label
-  local dkwdrv_path = PLDR.SETTINGS.dkwdrv_path or PLDR.DEFAULT_DKWDRV_PATH
-  local popstarter_path = PLDR.SETTINGS.popstarter_path
-  local line = "return {\n"
-    ..string.format("  bdma_mode = %d,\n", mode)
-    ..string.format("  hide_ui = %s,\n", tostring(hide_ui))
-    ..string.format("  show_cover = %s,\n", tostring(show_cover))
-    ..string.format("  profile_index = %s,\n", profile_index ~= nil and tostring(profile_index) or "nil")
-    ..string.format("  bdma_last_label = %s,\n", bdma_last_label ~= nil and string.format("%q", bdma_last_label) or "nil")
-    ..string.format("  dkwdrv_path = %s,\n", dkwdrv_path ~= nil and string.format("%q", dkwdrv_path) or "nil")
-    ..string.format("  popstarter_path = %s,\n", popstarter_path ~= nil and string.format("%q", popstarter_path) or "nil")
-    .."}\n"
-  local ok_write, write_err = SafeWriteAll(fd, line)
-  local ok_close, close_err = pcall(System.closeFile, fd)
-  if not ok_write or not ok_close then
-    LOG("SaveSettings failed: "..tostring(path).." fd="..tostring(fd).." err="..tostring(write_err or close_err))
+  local payload = SerializeSettingsLua({
+    bdma_mode = tonumber(PLDR.SETTINGS.bdma_mode) or 1,
+    hide_ui = PLDR.SETTINGS.hide_ui == true,
+    show_cover = PLDR.SETTINGS.show_cover ~= false,
+    profile_index = tonumber(PLDR.SETTINGS.profile_index),
+    bdma_last_label = PLDR.SETTINGS.bdma_last_label,
+    dkwdrv_path = PLDR.SETTINGS.dkwdrv_path or PLDR.DEFAULT_DKWDRV_PATH,
+    popstarter_path = PLDR.SETTINGS.popstarter_path
+  })
+  local ok, save_err = AtomicWriteFile(path, payload)
+  if not ok then
+    LOG("SaveSettings failed: "..tostring(path).." err="..tostring(save_err))
     if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
       UI.Notif_queue.add("Could not save settings to mc0:/POPSLOADER/")
     end

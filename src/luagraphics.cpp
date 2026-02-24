@@ -18,6 +18,24 @@ uint32_t imgThreadSize = 0;
 
 static u8 imgThreadStack[4096] __attribute__((aligned(16)));
 
+
+static bool isKnownFullscreenBackgroundKey(const char* key) {
+	if (key == NULL) return false;
+	return strcmp(key, "IMG/PSL.png") == 0 ||
+	       strcmp(key, "IMG/BKG.png") == 0 ||
+	       strcmp(key, "IMG/BG.png") == 0 ||
+	       strcmp(key, "IMG/BGM.png") == 0;
+}
+
+static void forceTextureOpaqueAlpha(GSTEXTURE* image) {
+	if (image == NULL || image->PSM != GS_PSM_CT32 || image->Mem == NULL) return;
+	struct pixel { u8 r, g, b, a; };
+	struct pixel* pixels = (struct pixel*)image->Mem;
+	int total = image->Width * image->Height;
+	for (int i = 0; i < total; ++i) {
+		pixels[i].a = 0x80;
+	}
+}
 // Extern symbol 
 extern void *_gp;
 
@@ -237,6 +255,11 @@ static int lua_loadimg(lua_State *L) {
 	const char* text = luaL_checkstring(L, 1);
 	bool delayed = true;
 	if (argc == 2) delayed = lua_toboolean(L, 2);
+	bool force_immediate = isKnownFullscreenBackgroundKey(text);
+	if (force_immediate && delayed) {
+		delayed = false;
+		printf("IMGMODE key=%s delayed=0 reason=fullscreen_bg\n", text);
+	}
 
 	const void* ptr = NULL;
 	size_t sz = 0;
@@ -252,6 +275,10 @@ static int lua_loadimg(lua_State *L) {
 	if (image != NULL && (image->Width <= 0 || image->Height <= 0)) {
 		printf("IMGFAIL key=%s decode=ok upload=unknown w=%d h=%d psm=%d\n", text, image->Width, image->Height, image->PSM);
 		image = NULL;
+	}
+	if (image != NULL && isKnownFullscreenBackgroundKey(text)) {
+		forceTextureOpaqueAlpha(image);
+		printf("IMGALPHAFIX key=%s mode=force_opaque a=128\n", text);
 	}
 	if (image != NULL) {
 		printf("IMGUPLOAD key=%s w=%d h=%d psm=%d vram=%u\n", text, image->Width, image->Height, image->PSM, image->Vram);
