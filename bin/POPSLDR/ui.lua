@@ -1048,6 +1048,11 @@ end
           end
         end
 
+        if IMG.PSL ~= nil and type(Graphics) == "table" and type(Graphics.freeImage) == "function" then
+          pcall(Graphics.freeImage, IMG.PSL)
+          IMG.PSL = nil
+        end
+
         local final_scene = UI.SCENES.MMAIN
         -- Main menu: fade in from black.
         for i = 1, fade_in_frames do
@@ -1058,11 +1063,6 @@ end
         end
         DrawTargetScene(final_scene)
         Screen.flip()
-
-        if IMG.PSL ~= nil and type(Graphics) == "table" and type(Graphics.freeImage) == "function" then
-          pcall(Graphics.freeImage, IMG.PSL)
-          IMG.PSL = nil
-        end
 
         -- Cleanup boot sound resource (safe if audio backend ignores it).
         if boot_sound_loaded ~= nil and type(Sound) == "table" and type(Sound.freeADPCM) == "function" then
