@@ -4,6 +4,7 @@
 #include <malloc.h>
 #include <math.h>
 #include <fcntl.h>
+#include <string.h>
 
 #include <jpeglib.h>
 #include <time.h>
@@ -811,20 +812,31 @@ GSTEXTURE* loadjpeg(FILE* fp, bool scale_down, bool delayed)
 }
 
 
-GSTEXTURE* loadImageFromBuffer(const void* data, size_t size, bool delayed){
+static bool shouldForceImmediateNonClut(const char* path)
+{
+	return path != NULL && (
+		strcmp(path, "IMG/PSL.png") == 0 ||
+		strcmp(path, "IMG/BG.png") == 0 ||
+		strcmp(path, "IMG/BGM.png") == 0 ||
+		strcmp(path, "IMG/BKG.png") == 0
+	);
+}
+
+GSTEXTURE* loadImageFromBuffer(const void* data, size_t size, bool delayed, const char* path){
 	if (data == NULL || size < 4) return NULL;
 	uint16_t magic = *((uint16_t*)data);
-	if (magic == 0x5089) return loadEmbeddedPNG((uint8_t*)data, size, delayed);
+	if (magic == 0x5089) return loadEmbeddedPNG((uint8_t*)data, size, delayed, path);
 	DPRINTF("Unsupported embedded image format magic=0x%04x\n", magic);
 	return NULL;
 }
 
 GSTEXTURE* load_image(const char* path, bool delayed){
+	if (shouldForceImmediateNonClut(path)) delayed = false;
 	const void* ptr = NULL;
 	size_t size = 0;
 	bool isEmbedded = false;
 	if (Asset_ReadAll(path, &ptr, &size, &isEmbedded) == 0 && isEmbedded) {
-		GSTEXTURE* embedded = loadImageFromBuffer(ptr, size, delayed);
+		GSTEXTURE* embedded = loadImageFromBuffer(ptr, size, delayed, path);
 		if (embedded != NULL) return embedded;
 	}
 
@@ -1274,10 +1286,12 @@ static void PNG_read_data(png_structp png_ptr, png_bytep data, png_size_t length
 	d->cur += length;
 }
 // thanks to HWC for the embedded PNG feature to keep users away of Berion's work
-GSTEXTURE* loadEmbeddedPNG(uint8_t * data, size_t size, bool delayed)
+GSTEXTURE* loadEmbeddedPNG(uint8_t * data, size_t size, bool delayed, const char* path)
 {
 	GSTEXTURE* tex = (GSTEXTURE*)calloc(1, sizeof(GSTEXTURE));
 	if (tex == NULL) return NULL;
+	bool force_non_clut = shouldForceImmediateNonClut(path);
+	if (force_non_clut) delayed = false;
 	tex->Delayed = delayed;
 	tex->Filter = GS_FILTER_NEAREST;
 	tex->Vram = 0;
@@ -1356,10 +1370,10 @@ GSTEXTURE* loadEmbeddedPNG(uint8_t * data, size_t size, bool delayed)
         tex->VramClut = 0;
         tex->Clut = NULL;
 
-	if(png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_RGB_ALPHA)
+	if(force_non_clut || png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_RGB_ALPHA)
 	{
 		int row_bytes = png_get_rowbytes(png_ptr, info_ptr);
-		tex->PSM = GS_PSM_CT32;
+		tex->PSM = force_non_clut ? GS_PSM_CT16 : GS_PSM_CT32;
 		tex->Mem = (u32*)memalign(128, gsKit_texture_size_ee(tex->Width, tex->Height, tex->PSM));
 
 		row_pointers = (png_byte**)calloc(height, sizeof(png_bytep));
@@ -1368,13 +1382,24 @@ GSTEXTURE* loadEmbeddedPNG(uint8_t * data, size_t size, bool delayed)
 
 		png_read_image(png_ptr, row_pointers);
 
-		struct pixel { u8 r,g,b,a; };
-		struct pixel *Pixels = (struct pixel *) tex->Mem;
-
-		for (i = 0; i < tex->Height; i++) {
-			for (j = 0; j < tex->Width; j++) {
-				memcpy(&Pixels[k], &row_pointers[i][4 * j], 3);
-				Pixels[k++].a = row_pointers[i][4 * j + 3] >> 1;
+		if (force_non_clut) {
+			u16 *Pixels = (u16 *)tex->Mem;
+			for (i = 0; i < tex->Height; i++) {
+				for (j = 0; j < tex->Width; j++) {
+					u8 r = row_pointers[i][4 * j + 0];
+					u8 g = row_pointers[i][4 * j + 1];
+					u8 b = row_pointers[i][4 * j + 2];
+					Pixels[k++] = ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3);
+				}
+			}
+		} else {
+			struct pixel { u8 r,g,b,a; };
+			struct pixel *Pixels = (struct pixel *) tex->Mem;
+			for (i = 0; i < tex->Height; i++) {
+				for (j = 0; j < tex->Width; j++) {
+					memcpy(&Pixels[k], &row_pointers[i][4 * j], 3);
+					Pixels[k++].a = row_pointers[i][4 * j + 3] >> 1;
+				}
 			}
 		}
 
