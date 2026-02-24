@@ -38,13 +38,54 @@ typedef struct {
 static int error_count = 0;
 static int warning_count = 0;
 
+GSTEXTURE* loadEmbeddedPNG(uint8_t * data, size_t size, bool delayed, bool force_ct16);
+
 typedef struct
 {
    const char *file_name;
 }  pngtest_error_parameters;
 
+static bool isForcedCT16Background(const char* path)
+{
+	return path != NULL && (!strcmp(path, "IMG/PSL.png") || !strcmp(path, "IMG/BG.png") || !strcmp(path, "IMG/BGM.png") || !strcmp(path, "IMG/BKG.png"));
+}
+
+static void convertDirectTextureToCT16(GSTEXTURE* tex)
+{
+	if (tex == NULL || tex->Mem == NULL) return;
+	if (tex->PSM != GS_PSM_CT32 && tex->PSM != GS_PSM_CT24) return;
+
+	u16* dst = (u16*)memalign(128, gsKit_texture_size_ee(tex->Width, tex->Height, GS_PSM_CT16));
+	if (dst == NULL) return;
+
+	int count = tex->Width * tex->Height;
+	if (tex->PSM == GS_PSM_CT32) {
+		struct pixel { u8 r,g,b,a; };
+		struct pixel* src = (struct pixel*)tex->Mem;
+		for (int i = 0; i < count; i++) {
+			dst[i] = ((src[i].r >> 3) << 11) | ((src[i].g >> 2) << 5) | (src[i].b >> 3);
+		}
+	} else {
+		struct pixel3 { u8 r,g,b; };
+		struct pixel3* src = (struct pixel3*)tex->Mem;
+		for (int i = 0; i < count; i++) {
+			dst[i] = ((src[i].r >> 3) << 11) | ((src[i].g >> 2) << 5) | (src[i].b >> 3);
+		}
+	}
+
+	free(tex->Mem);
+	tex->Mem = (u32*)dst;
+	tex->PSM = GS_PSM_CT16;
+	tex->Delayed = false;
+	if (tex->Clut != NULL) {
+		free(tex->Clut);
+		tex->Clut = NULL;
+	}
+	tex->VramClut = 0;
+}
+
 //2D drawing functions
-GSTEXTURE* loadpng(FILE* File, bool delayed)
+GSTEXTURE* loadpng(FILE* File, bool delayed, bool force_ct16)
 {
 	GSTEXTURE* tex = (GSTEXTURE*)calloc(1, sizeof(GSTEXTURE));
 	if (tex == NULL) return NULL;
@@ -105,6 +146,7 @@ GSTEXTURE* loadpng(FILE* File, bool delayed)
 	png_get_IHDR(png_ptr, info_ptr, &width, &height, &bit_depth, &color_type,&interlace_type, NULL, NULL);
 
 	if (bit_depth == 16) png_set_strip_16(png_ptr);
+	if (force_ct16 && color_type == PNG_COLOR_TYPE_PALETTE) png_set_expand(png_ptr);
 	if (color_type == PNG_COLOR_TYPE_GRAY || bit_depth < 4) png_set_expand(png_ptr);
 	if (png_get_valid(png_ptr, info_ptr, PNG_INFO_tRNS)) png_set_tRNS_to_alpha(png_ptr);
 
@@ -295,6 +337,8 @@ GSTEXTURE* loadpng(FILE* File, bool delayed)
 	png_read_end(png_ptr, NULL);
 	png_destroy_read_struct(&png_ptr, &info_ptr, (png_infopp) NULL);
 	fclose(File);
+
+	if (force_ct16) convertDirectTextureToCT16(tex);
 
 	if(!tex->Delayed)
 	{
@@ -811,20 +855,26 @@ GSTEXTURE* loadjpeg(FILE* fp, bool scale_down, bool delayed)
 }
 
 
-GSTEXTURE* loadImageFromBuffer(const void* data, size_t size, bool delayed){
+GSTEXTURE* loadImageFromBuffer(const void* data, size_t size, bool delayed, bool force_ct16){
 	if (data == NULL || size < 4) return NULL;
 	uint16_t magic = *((uint16_t*)data);
-	if (magic == 0x5089) return loadEmbeddedPNG((uint8_t*)data, size, delayed);
+	if (magic == 0x5089) return loadEmbeddedPNG((uint8_t*)data, size, delayed, force_ct16);
 	DPRINTF("Unsupported embedded image format magic=0x%04x\n", magic);
 	return NULL;
 }
 
+GSTEXTURE* loadImageFromBuffer(const void* data, size_t size, bool delayed){
+	return loadImageFromBuffer(data, size, delayed, false);
+}
+
 GSTEXTURE* load_image(const char* path, bool delayed){
+	bool force_ct16 = isForcedCT16Background(path);
+	bool effective_delayed = force_ct16 ? false : delayed;
 	const void* ptr = NULL;
 	size_t size = 0;
 	bool isEmbedded = false;
 	if (Asset_ReadAll(path, &ptr, &size, &isEmbedded) == 0 && isEmbedded) {
-		GSTEXTURE* embedded = loadImageFromBuffer(ptr, size, delayed);
+		GSTEXTURE* embedded = loadImageFromBuffer(ptr, size, effective_delayed, force_ct16);
 		if (embedded != NULL) return embedded;
 	}
 
@@ -839,7 +889,7 @@ GSTEXTURE* load_image(const char* path, bool delayed){
 	GSTEXTURE* image = NULL;
 	if (magic == 0x4D42) image =      loadbmp(file, delayed);
 	else if (magic == 0xD8FF) image = loadjpeg(file, false, delayed);
-	else if (magic == 0x5089) image = loadpng(file, delayed);
+	else if (magic == 0x5089) image = loadpng(file, effective_delayed, force_ct16);
 	if (image == NULL) DPRINTF("Failed to load image %s.", path);
 
 	return image;
@@ -1274,7 +1324,7 @@ static void PNG_read_data(png_structp png_ptr, png_bytep data, png_size_t length
 	d->cur += length;
 }
 // thanks to HWC for the embedded PNG feature to keep users away of Berion's work
-GSTEXTURE* loadEmbeddedPNG(uint8_t * data, size_t size, bool delayed)
+GSTEXTURE* loadEmbeddedPNG(uint8_t * data, size_t size, bool delayed, bool force_ct16)
 {
 	GSTEXTURE* tex = (GSTEXTURE*)calloc(1, sizeof(GSTEXTURE));
 	if (tex == NULL) return NULL;
@@ -1335,6 +1385,7 @@ GSTEXTURE* loadEmbeddedPNG(uint8_t * data, size_t size, bool delayed)
 	png_get_IHDR(png_ptr, info_ptr, &width, &height, &bit_depth, &color_type,&interlace_type, NULL, NULL);
 
 	if (bit_depth == 16) png_set_strip_16(png_ptr);
+	if (force_ct16 && color_type == PNG_COLOR_TYPE_PALETTE) png_set_expand(png_ptr);
 	if (color_type == PNG_COLOR_TYPE_GRAY || bit_depth < 4) png_set_expand(png_ptr);
 	if (png_get_valid(png_ptr, info_ptr, PNG_INFO_tRNS)) png_set_tRNS_to_alpha(png_ptr);
 
@@ -1521,6 +1572,8 @@ GSTEXTURE* loadEmbeddedPNG(uint8_t * data, size_t size, bool delayed)
 	png_read_end(png_ptr, NULL);
 	png_destroy_read_struct(&png_ptr, &info_ptr, (png_infopp) NULL);
 
+	if (force_ct16) convertDirectTextureToCT16(tex);
+
 	if(!tex->Delayed)
 	{
 		tex->Vram = gsKit_vram_alloc(gsGlobal, gsKit_texture_size(tex->Width, tex->Height, tex->PSM), GSKIT_ALLOC_USERBUFFER);
@@ -1563,4 +1616,9 @@ GSTEXTURE* loadEmbeddedPNG(uint8_t * data, size_t size, bool delayed)
 
 	return tex;
 
+}
+
+GSTEXTURE* loadEmbeddedPNG(uint8_t * data, size_t size, bool delayed)
+{
+	return loadEmbeddedPNG(data, size, delayed, false);
 }
