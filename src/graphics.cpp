@@ -162,7 +162,7 @@ GSTEXTURE* loadpng(FILE* File, bool delayed)
 
 		for (i = 0; i < tex->Height; i++) {
 			for (j = 0; j < tex->Width; j++) {
-				memcpy(&Pixels[k++], &row_pointers[i][4 * j], 3);
+				memcpy(&Pixels[k++], &row_pointers[i][3 * j], 3);
 			}
 		}
 
@@ -1402,7 +1402,7 @@ GSTEXTURE* loadEmbeddedPNG(uint8_t * data, size_t size, bool delayed)
 
 		for (i = 0; i < tex->Height; i++) {
 			for (j = 0; j < tex->Width; j++) {
-				memcpy(&Pixels[k++], &row_pointers[i][4 * j], 3);
+				memcpy(&Pixels[k++], &row_pointers[i][3 * j], 3);
 			}
 		}
 
