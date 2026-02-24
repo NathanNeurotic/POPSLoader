@@ -8,8 +8,8 @@
 
 LOG("Registering images")
 local function ResolveImage(name)
-  local logical = "IMG/"..name
-  return System.resolveAssetType(name, ASSET_IMG) or System.resolveAsset(logical) or JoinPath(APP_DIR_LOCAL, logical)
+  -- Force logical embedded image key first; this ensures bundled IMG/* assets are used.
+  return "IMG/"..name
 end
 
 local function IsBootBgKey(key)
