@@ -137,7 +137,7 @@ GSTEXTURE* loadpng(FILE* File, bool delayed)
 		for (i = 0; i < tex->Height; i++) {
 			for (j = 0; j < tex->Width; j++) {
 				memcpy(&Pixels[k], &row_pointers[i][4 * j], 3);
-				Pixels[k++].a = row_pointers[i][4 * j + 3] >> 1;
+				Pixels[k++].a = (row_pointers[i][4 * j + 3] + 1) >> 1;
 			}
 		}
 
@@ -215,7 +215,7 @@ GSTEXTURE* loadpng(FILE* File, bool delayed)
     		}
 
     		for (i = 0; i < num_trans; i++)
-    		    clut[i].a = trans[i] >> 1;
+    		    clut[i].a = (trans[i] + 1) >> 1;
 
     		for (i = 0; i < tex->Height; i++) {
     		    for (j = 0; j < tex->Width / 2; j++)
@@ -263,7 +263,7 @@ GSTEXTURE* loadpng(FILE* File, bool delayed)
     		}
 
     		for (i = 0; i < num_trans; i++)
-    		    clut[i].a = trans[i] >> 1;
+    		    clut[i].a = (trans[i] + 1) >> 1;
 
     		// rotate clut
     		for (i = 0; i < num_pallete; i++) {
@@ -1374,7 +1374,7 @@ GSTEXTURE* loadEmbeddedPNG(uint8_t * data, size_t size, bool delayed)
 		for (i = 0; i < tex->Height; i++) {
 			for (j = 0; j < tex->Width; j++) {
 				memcpy(&Pixels[k], &row_pointers[i][4 * j], 3);
-				Pixels[k++].a = row_pointers[i][4 * j + 3] >> 1;
+				Pixels[k++].a = (row_pointers[i][4 * j + 3] + 1) >> 1;
 			}
 		}
 
