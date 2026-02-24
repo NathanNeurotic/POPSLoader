@@ -311,12 +311,11 @@ static int lua_drawimg_scale(lua_State *L) {
 	Color color = 0x80808080;
 	if (argc == 6) {
 		double alpha = luaL_checknumber(L, 6);
-		if (alpha <= 255.0) {
-			if (alpha <= 1.0) alpha = (alpha * 255.0) + 0.5;
-			int a = (int)alpha;
-			if (a < 0) a = 0;
-			if (a > 255) a = 255;
-			color = GS_SETREG_RGBAQ(0x80, 0x80, 0x80, a >> 1, 0x00);
+		if (alpha >= 0.0 && alpha <= 255.0) {
+			if (alpha <= 1.0) alpha = (int)(alpha * 255.0 + 0.5);
+			if (alpha < 0.0) alpha = 0.0;
+			if (alpha > 255.0) alpha = 255.0;
+			color = GS_SETREG_RGBAQ(0x80, 0x80, 0x80, ((int)alpha) >> 1, 0x00);
 		} else {
 			color = (Color)alpha;
 		}
