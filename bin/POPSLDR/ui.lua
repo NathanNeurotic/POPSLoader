@@ -939,8 +939,17 @@ UI = {
           boot_sound_hold_frames = math.floor(((sec + pad) * 60) + 0.5)
           LOGF("BOOT SOUND: hold frames=%s", tostring(boot_sound_hold_frames))
         end
+local function Alpha255(a)
+  if type(a) ~= "number" then a = 255 end
+  if a <= 1 then a = a * 255 end
+  if a < 0 then a = 0 end
+  if a > 255 then a = 255 end
+  return math.floor(a + 0.5)
+end
+
 local function DrawSplashCover(img, screen_w, screen_h, alpha)
   if img == nil then return end
+  alpha = Alpha255(alpha)
   local img_w = Graphics.getImageWidth(img)
   local img_h = Graphics.getImageHeight(img)
   local scale = 1
@@ -958,19 +967,15 @@ end
 
 local function DrawSplashFit(img, x, y, draw_w, draw_h, alpha)
   if img == nil then return end
+  alpha = Alpha255(alpha)
   local tint = Color.new(255, 255, 255, alpha)
   Graphics.drawScaleImage(img, x, y, draw_w, draw_h, tint)
 end
 
 local function DrawSplash(alpha)
+  alpha = Alpha255(alpha)
   -- Standard splash: single logical asset IMG/PSL.png, non-fatal fallback to solid color.
   if IMG.PSL ~= nil then
-    if UI._SPLASH_BG_LOGGED ~= true then
-      local iw = Graphics.getImageWidth(IMG.PSL)
-      local ih = Graphics.getImageHeight(IMG.PSL)
-      LOGF("DRAW_SPLASH: img=%s w=%s h=%s alpha=%s tint=255,255,255", tostring(IMG.PSL), tostring(iw), tostring(ih), tostring(alpha))
-      UI._SPLASH_BG_LOGGED = true
-    end
     DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
     return
   end
@@ -1079,7 +1084,7 @@ end
           bg = IMG.BKG
         end
         if bg ~= nil then
-          local alpha = 255
+          local alpha = Alpha255(255)
           Graphics.drawScaleImage(bg, 0, 0, UI.SCR.X, UI.SCR.Y, Color.new(255, 255, 255, alpha))
         end
       end;
