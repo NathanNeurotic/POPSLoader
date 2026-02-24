@@ -250,13 +250,10 @@ static int lua_loadimg(lua_State *L) {
 	}
 
 	if (image != NULL && (image->Width <= 0 || image->Height <= 0)) {
-		printf("IMGFAIL key=%s decode=ok upload=unknown w=%d h=%d psm=%d\n", text, image->Width, image->Height, image->PSM);
 		image = NULL;
 	}
-	if (image != NULL) {
-		printf("IMGUPLOAD key=%s w=%d h=%d psm=%d vram=%u\n", text, image->Width, image->Height, image->PSM, image->Vram);
+	if (image != NULL)
 		lua_pushinteger(L, (uint32_t)(image));
-	}
 	else
 		lua_pushnil(L);
 	return 1;
@@ -312,7 +309,18 @@ static int lua_drawimg_scale(lua_State *L) {
 	float width = luaL_checknumber(L, 4);
 	float height = luaL_checknumber(L, 5);
 	Color color = 0x80808080;
-	if (argc == 6) color = (Color)luaL_checknumber(L, 6);
+	if (argc == 6) {
+		double alpha = luaL_checknumber(L, 6);
+		if (alpha <= 255.0) {
+			if (alpha <= 1.0) alpha = (alpha * 255.0) + 0.5;
+			int a = (int)alpha;
+			if (a < 0) a = 0;
+			if (a > 255) a = 255;
+			color = GS_SETREG_RGBAQ(0x80, 0x80, 0x80, a >> 1, 0x00);
+		} else {
+			color = (Color)alpha;
+		}
+	}
 	float startx = 0.0f;
 	float starty = 0.0f;
 	float endx = source->Width;
