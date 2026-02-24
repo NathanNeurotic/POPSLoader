@@ -937,6 +937,7 @@ int getFreeVRAM(){
 
 void drawImageCentered(GSTEXTURE* source, float x, float y, float width, float height, float startx, float starty, float endx, float endy, Color color)
 {
+	gsKit_set_test(gsGlobal, GS_ATEST_OFF);
 
 	if (source->Delayed == true) {
 		gsKit_TexManager_bind(gsGlobal, source);
@@ -957,6 +958,7 @@ void drawImageCentered(GSTEXTURE* source, float x, float y, float width, float h
 
 void drawImage(GSTEXTURE* source, float x, float y, float width, float height, float startx, float starty, float endx, float endy, Color color)
 {
+	gsKit_set_test(gsGlobal, GS_ATEST_OFF);
 
 	if (source->Delayed == true) {
 		gsKit_TexManager_bind(gsGlobal, source);
@@ -976,6 +978,7 @@ void drawImage(GSTEXTURE* source, float x, float y, float width, float height, f
 
 
 void drawImageRotate(GSTEXTURE* source, float x, float y, float width, float height, float startx, float starty, float endx, float endy, float angle, Color color){
+	gsKit_set_test(gsGlobal, GS_ATEST_OFF);
 
 	float c = cosf(angle);
 	float s = sinf(angle);
