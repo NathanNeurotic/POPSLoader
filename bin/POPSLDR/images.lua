@@ -70,7 +70,15 @@ IMG = setmetatable({}, {
       BOOT_PROF.stamp("UI assets init (textures)")
     end
     local path = ResolveImage(source)
-    local img = Graphics.loadImage(path)
+    local delayed = true
+    if IsBootBgKey(key) then
+      delayed = false
+    end
+    local img = Graphics.loadImage(path, delayed)
+    if img == nil and not delayed then
+      LOGF("IMGLOAD retry delayed=true key=%s path=%s", tostring(key), tostring(path))
+      img = Graphics.loadImage(path, true)
+    end
     if IsBootBgKey(key) then
       LOGF("IMGLOAD: key=IMG/%s handle=%s", tostring(source), tostring(img))
       LOGF("IMGTYPE key=%s type=%s", tostring(key), type(img))
