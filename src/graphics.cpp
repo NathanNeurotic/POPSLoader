@@ -38,128 +38,6 @@ typedef struct {
 static int error_count = 0;
 static int warning_count = 0;
 
-typedef struct {
-	GSTEXTURE *tex;
-	u8 tried_upload_fallback;
-} texture_upload_state_t;
-
-static texture_upload_state_t *texture_upload_states = NULL;
-static size_t texture_upload_states_count = 0;
-static size_t texture_upload_states_capacity = 0;
-
-static bool texture_in_vram(const GSTEXTURE *tex)
-{
-	return tex != NULL && tex->Vram != 0 && tex->Vram != GSKIT_ALLOC_ERROR;
-}
-
-static texture_upload_state_t *get_texture_upload_state(GSTEXTURE *tex, bool create)
-{
-	for (size_t i = 0; i < texture_upload_states_count; i++)
-	{
-		if (texture_upload_states[i].tex == tex)
-			return &texture_upload_states[i];
-	}
-
-	if (!create)
-		return NULL;
-
-	if (texture_upload_states_count == texture_upload_states_capacity)
-	{
-		size_t next_capacity = texture_upload_states_capacity == 0 ? 16 : texture_upload_states_capacity * 2;
-		texture_upload_state_t *next = (texture_upload_state_t *)realloc(texture_upload_states, next_capacity * sizeof(texture_upload_state_t));
-		if (next == NULL)
-			return NULL;
-
-		texture_upload_states = next;
-		texture_upload_states_capacity = next_capacity;
-	}
-
-	texture_upload_states[texture_upload_states_count].tex = tex;
-	texture_upload_states[texture_upload_states_count].tried_upload_fallback = 0;
-	texture_upload_states_count++;
-
-	return &texture_upload_states[texture_upload_states_count - 1];
-}
-
-static void forget_texture_upload_state(GSTEXTURE *tex)
-{
-	for (size_t i = 0; i < texture_upload_states_count; i++)
-	{
-		if (texture_upload_states[i].tex == tex)
-		{
-			texture_upload_states[i] = texture_upload_states[texture_upload_states_count - 1];
-			texture_upload_states_count--;
-			return;
-		}
-	}
-}
-
-static bool attempt_texture_upload_fallback(GSTEXTURE *tex)
-{
-	texture_upload_state_t *state = get_texture_upload_state(tex, true);
-	if (state != NULL)
-	{
-		if (state->tried_upload_fallback)
-		{
-			tex->Delayed = false;
-			return texture_in_vram(tex);
-		}
-
-		state->tried_upload_fallback = 1;
-	}
-
-	if (!texture_in_vram(tex))
-	{
-		tex->Vram = gsKit_vram_alloc(gsGlobal, gsKit_texture_size(tex->Width, tex->Height, tex->PSM), GSKIT_ALLOC_USERBUFFER);
-		if (tex->Vram == GSKIT_ALLOC_ERROR)
-			tex->Vram = 0;
-	}
-
-	if (texture_in_vram(tex) && tex->Clut != NULL && tex->VramClut == 0)
-	{
-		if (tex->PSM == GS_PSM_T4)
-			tex->VramClut = gsKit_vram_alloc(gsGlobal, gsKit_texture_size(8, 2, GS_PSM_CT32), GSKIT_ALLOC_USERBUFFER);
-		else
-			tex->VramClut = gsKit_vram_alloc(gsGlobal, gsKit_texture_size(16, 16, GS_PSM_CT32), GSKIT_ALLOC_USERBUFFER);
-
-		if (tex->VramClut == GSKIT_ALLOC_ERROR)
-			tex->VramClut = 0;
-	}
-
-	if (texture_in_vram(tex) && (tex->Clut == NULL || tex->VramClut != 0))
-	{
-		gsKit_texture_upload(gsGlobal, tex);
-		if (tex->Mem != NULL)
-		{
-			free(tex->Mem);
-			tex->Mem = NULL;
-		}
-		if (tex->Clut != NULL)
-		{
-			free(tex->Clut);
-			tex->Clut = NULL;
-		}
-	}
-
-	tex->Delayed = false;
-	return texture_in_vram(tex);
-}
-
-static bool bind_texture_for_draw(GSTEXTURE *tex)
-{
-	if (tex == NULL)
-		return false;
-
-	if (tex->Delayed)
-	{
-		gsKit_TexManager_bind(gsGlobal, tex);
-		if (!texture_in_vram(tex))
-			return attempt_texture_upload_fallback(tex);
-	}
-
-	return true;
-}
-
 typedef struct
 {
    const char *file_name;
@@ -1037,7 +915,6 @@ void printFontText(GSFONT* font, const char* text, float x, float y, float scale
 
 void unloadFont(GSFONT* font)
 {
-	forget_texture_upload_state(font->Texture);
 	gsKit_TexManager_free(gsGlobal, font->Texture);
 	// clut was pointing to static memory, so do not free
 	font->Texture->Clut = NULL;
@@ -1061,8 +938,9 @@ int getFreeVRAM(){
 void drawImageCentered(GSTEXTURE* source, float x, float y, float width, float height, float startx, float starty, float endx, float endy, Color color)
 {
 
-	if (!bind_texture_for_draw(source))
-		return;
+	if (source->Delayed == true) {
+		gsKit_TexManager_bind(gsGlobal, source);
+	}
 	gsKit_prim_sprite_texture(gsGlobal, source,
 					x-width/2, // X1
 					y-height/2, // Y1
@@ -1080,8 +958,9 @@ void drawImageCentered(GSTEXTURE* source, float x, float y, float width, float h
 void drawImage(GSTEXTURE* source, float x, float y, float width, float height, float startx, float starty, float endx, float endy, Color color)
 {
 
-	if (!bind_texture_for_draw(source))
-		return;
+	if (source->Delayed == true) {
+		gsKit_TexManager_bind(gsGlobal, source);
+	}
 	gsKit_prim_sprite_texture(gsGlobal, source,
 					x-0.5f, // X1
 					y-0.5f, // Y1
@@ -1101,8 +980,9 @@ void drawImageRotate(GSTEXTURE* source, float x, float y, float width, float hei
 	float c = cosf(angle);
 	float s = sinf(angle);
 
-	if (!bind_texture_for_draw(source))
-		return;
+	if (source->Delayed == true) {
+		gsKit_TexManager_bind(gsGlobal, source);
+	}
 	gsKit_prim_quad_texture(gsGlobal, source,
 							(-width/2)*c - (-height/2)*s+x, (-height/2)*c + (-width/2)*s+y, startx, starty,
 							(-width/2)*c - height/2*s+x, height/2*c + (-width/2)*s+y, startx, endy,
@@ -1183,7 +1063,6 @@ void InvalidateTexture(GSTEXTURE *txt)
 
 void UnloadTexture(GSTEXTURE *txt)
 {
-	forget_texture_upload_state(txt);
 	gsKit_TexManager_free(gsGlobal, txt);
 
 }
@@ -1234,9 +1113,7 @@ void setVideoMode(s16 mode, int width, int height, int psm, s16 interlace, s16 f
 
 void fntDrawQuad(rm_quad_t *q)
 {
-    if (!bind_texture_for_draw(q->txt))
-        return;
-
+    gsKit_TexManager_bind(gsGlobal, q->txt);
     gsKit_prim_sprite_texture(gsGlobal, q->txt,
                               q->ul.x-0.5f, q->ul.y-0.5f,
                               q->ul.u, q->ul.v,
