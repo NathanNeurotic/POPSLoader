@@ -8,8 +8,8 @@
 
 LOG("Registering images")
 local function ResolveImage(name)
-  local logical = "IMG/"..name
-  return System.resolveAssetType(name, ASSET_IMG) or System.resolveAsset(logical) or JoinPath(APP_DIR_LOCAL, logical)
+  -- Force logical embedded image key first; this ensures bundled IMG/* assets are used.
+  return "IMG/"..name
 end
 
 local function IsBootBgKey(key)
@@ -114,6 +114,17 @@ IMG = setmetatable({}, {
     return img
   end
 })
+function IMG.ReleaseKey(key)
+  if key == nil then return end
+  local img = rawget(IMG, key)
+  if img ~= nil then
+    if type(Graphics) == "table" and type(Graphics.freeImage) == "function" then
+      pcall(Graphics.freeImage, img)
+    end
+    rawset(IMG, key, nil)
+  end
+  IMG_FAILED[key] = nil
+end
 function IMG.ReleaseAll()
   local free_ok = type(Graphics) == "table" and type(Graphics.freeImage) == "function"
   for key, _ in pairs(IMG_SOURCES) do
