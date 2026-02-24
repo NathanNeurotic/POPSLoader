@@ -1329,6 +1329,9 @@ end
       elapsed = 0,
       last_time = nil,
       max_step = 33,
+      min_step = 16,
+      debug_frames = 0,
+      no_progress_frames = 0,
       duration_out = 140,
       duration_in = 120,
       Queue = function (target)
@@ -1352,6 +1355,9 @@ end
         UI.Transition.start = Timer.getTime(UI.Transition.timer)
         UI.Transition.elapsed = 0
         UI.Transition.last_time = UI.Transition.start
+        UI.Transition.debug_frames = 0
+        UI.Transition.no_progress_frames = 0
+        LOGF("TRANSITION_START: target=%s phase=out active=true", tostring(target))
       end,
       Update = function ()
         if not UI.Transition.active then
@@ -1361,6 +1367,14 @@ end
         local last = UI.Transition.last_time or now
         local delta = now - last
         if delta < 0 then delta = 0 end
+        if delta == 0 then
+          UI.Transition.no_progress_frames = (UI.Transition.no_progress_frames or 0) + 1
+          if UI.Transition.no_progress_frames >= 2 then
+            delta = UI.Transition.min_step or 16
+          end
+        else
+          UI.Transition.no_progress_frames = 0
+        end
         local max_step = UI.Transition.max_step or 33
         if delta > max_step then delta = max_step end
         UI.Transition.elapsed = (UI.Transition.elapsed or 0) + delta
@@ -1375,6 +1389,10 @@ end
           alpha = Alpha255FromT(t)
         else
           alpha = Alpha255FromT(1 - t)
+        end
+        UI.Transition.debug_frames = (UI.Transition.debug_frames or 0) + 1
+        if UI.Transition.debug_frames == 1 or (UI.Transition.debug_frames % 60) == 0 then
+          LOGF("TRANSITION_TICK: active=%s phase=%s t=%.3f alpha=%d elapsed=%d", tostring(UI.Transition.active), tostring(UI.Transition.phase), t, alpha, elapsed)
         end
         if t >= 1 then
           if UI.Transition.phase == "out" then
@@ -1393,7 +1411,10 @@ end
             UI.Transition.start = now
             UI.Transition.elapsed = 0
             UI.Transition.last_time = now
+            UI.Transition.debug_frames = 0
+            UI.Transition.no_progress_frames = 0
             alpha = 255
+            LOGF("TRANSITION_PHASE: phase=in active=true target=%s", tostring(UI.CURSCENE))
           else
             local queued = UI.Transition.next_target
             if queued ~= nil and queued ~= UI.CURSCENE then
@@ -1405,6 +1426,7 @@ end
               UI.Transition.target = nil
               UI.Transition.next_target = nil
               alpha = 0
+              LOG("TRANSITION_END: active=false")
             end
           end
         end
