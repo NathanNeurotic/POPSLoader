@@ -965,12 +965,6 @@ end
 local function DrawSplash(alpha)
   -- Standard splash: single logical asset IMG/PSL.png, non-fatal fallback to solid color.
   if IMG.PSL ~= nil then
-    if UI._SPLASH_BG_LOGGED ~= true then
-      local iw = Graphics.getImageWidth(IMG.PSL)
-      local ih = Graphics.getImageHeight(IMG.PSL)
-      LOGF("DRAW_SPLASH: img=%s w=%s h=%s alpha=%s tint=255,255,255", tostring(IMG.PSL), tostring(iw), tostring(ih), tostring(alpha))
-      UI._SPLASH_BG_LOGGED = true
-    end
     DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
     return
   end
@@ -2489,11 +2483,6 @@ function UI.OnSceneEnter(previous_scene, next_scene)
   elseif next_scene == UI.SCENES.MPROFILE or next_scene == UI.SCENES.CREDITS then
     bg = IMG.BG or IMG.BKG
     tag = (next_scene == UI.SCENES.CREDITS) and "CREDITS" or "MPROFILE"
-  end
-  if bg ~= nil then
-    local iw = Graphics.getImageWidth(bg)
-    local ih = Graphics.getImageHeight(bg)
-    LOGF("DRAW_SCENE_BG: scene=%s img=%s w=%s h=%s alpha=255 tint=255,255,255", tostring(tag), tostring(bg), tostring(iw), tostring(ih))
   end
 end
 

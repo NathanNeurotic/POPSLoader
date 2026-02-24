@@ -1323,7 +1323,6 @@ GSTEXTURE* loadEmbeddedPNG(uint8_t * data, size_t size, bool delayed)
 	d.size = size;
 	d.cur = 0;
 	//png_set_error_fn(png_ptr, &error_parameters, pngtest_error, pngtest_warning);
-	DPRINTF("%s: Info: %p %d \n",__func__, d.buf, d.size);
 	png_set_read_fn(png_ptr, (png_voidp)&d, (png_rw_ptr)PNG_read_data);
 
 	//png_init_io(png_ptr, hwc_credits_png);
@@ -1335,12 +1334,10 @@ GSTEXTURE* loadEmbeddedPNG(uint8_t * data, size_t size, bool delayed)
 
 	png_get_IHDR(png_ptr, info_ptr, &width, &height, &bit_depth, &color_type,&interlace_type, NULL, NULL);
 
-	png_set_strip_16(png_ptr);
+	if (bit_depth == 16)
+		png_set_strip_16(png_ptr);
 
-	if (color_type == PNG_COLOR_TYPE_PALETTE)
-		png_set_expand(png_ptr);
-
-	if (color_type == PNG_COLOR_TYPE_GRAY && bit_depth < 8)
+	if (color_type == PNG_COLOR_TYPE_GRAY || bit_depth < 4)
 		png_set_expand(png_ptr);
 
 	if (png_get_valid(png_ptr, info_ptr, PNG_INFO_tRNS))

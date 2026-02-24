@@ -249,16 +249,8 @@ static int lua_loadimg(lua_State *L) {
 		image = load_image(text, delayed);
 	}
 
-	if (image != NULL && (image->Width <= 0 || image->Height <= 0)) {
-		printf("IMGFAIL key=%s decode=ok upload=unknown w=%d h=%d psm=%d\n", text, image->Width, image->Height, image->PSM);
-		image = NULL;
-	}
-	if (image != NULL) {
-		printf("IMGUPLOAD key=%s w=%d h=%d psm=%d vram=%u\n", text, image->Width, image->Height, image->PSM, image->Vram);
-		lua_pushinteger(L, (uint32_t)(image));
-	}
-	else
-		lua_pushnil(L);
+	if (image != NULL) lua_pushinteger(L, (uint32_t)(image));
+	else lua_pushnil(L);
 	return 1;
 }
 
