@@ -6,6 +6,7 @@
 
 #include "include/sound.h"
 #include "include/dprintf.h"
+#include "include/embedfs.h"
 
 static bool adpcm_started = false;
 static bool audsrv_started = false;
@@ -128,6 +129,17 @@ audsrv_adpcm_t* sound_loadadpcm(const char* path){
 	audsrv_adpcm_t *sample = (audsrv_adpcm_t *)malloc(sizeof(audsrv_adpcm_t));
 	int size;
 	u8* buffer;
+	const uint8_t *embed_data = NULL;
+	size_t embed_size = 0;
+
+	if (embedfs_get(path, &embed_data, &embed_size)) {
+		if (embed_size == 0) {
+			free(sample);
+			return NULL;
+		}
+		audsrv_load_adpcm(sample, (void*)embed_data, embed_size);
+		return sample;
+	}
 
 	adpcm = fopen(path, "rb");
     if (adpcm == NULL) {

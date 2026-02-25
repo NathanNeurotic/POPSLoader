@@ -29,22 +29,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Generate build info
-        shell: sh
-        run: |
-          set -eu
-          COMMIT_SHORT="$(echo "$GITHUB_SHA" | cut -c1-7)"
-          BUILD_UTC="$(date -u '+%Y-%m-%d %H:%MZ')"
-          printf "%s\n%s\n" "$COMMIT_SHORT" "$BUILD_UTC" > bin/POPSLDR/BUILD_INFO.txt
-          cat bin/POPSLDR/BUILD_INFO.txt
-
       - name: Compile project
         run: |
           make clean elfloader all package
 
-      # This step is the key: it discovers wherever your Makefile put the .7z,
-      # then copies it to repo root as POPSLoader.7z so upload-artifact is stable.
-      - name: Locate and normalize POPSLoader.7z
+      - name: Locate and normalize POPSLoader.zip
         shell: sh
         run: |
           set -eu
@@ -52,38 +41,38 @@ jobs:
           echo "== Workspace contents (top-level) =="
           ls -lah
 
-          echo "== Searching for .7z artifacts (up to 6 levels deep) =="
+          echo "== Searching for .zip artifacts (up to 6 levels deep) =="
           # Show all matches for debugging
-          find . -maxdepth 6 -type f -name '*.7z' -print || true
+          find . -maxdepth 6 -type f -name '*.zip' -print || true
 
           # Prefer an exact name match first (any location)
-          EXACT="$(find . -maxdepth 6 -type f -name 'POPSLoader.7z' -print | head -n 1 || true)"
+          EXACT="$(find . -maxdepth 6 -type f -name 'POPSLoader.zip' -print | head -n 1 || true)"
 
           if [ -n "$EXACT" ]; then
             echo "Found exact artifact: $EXACT"
-            cp -f "$EXACT" "./POPSLoader.7z"
+            cp -f "$EXACT" "./POPSLoader.zip"
           else
-            # Otherwise pick the newest .7z produced (common when Makefile names differ)
-            NEWEST="$(find . -maxdepth 6 -type f -name '*.7z' -print -exec ls -t {} + 2>/dev/null | head -n 1 || true)"
+            # Otherwise pick the newest .zip produced (common when Makefile names differ)
+            NEWEST="$(find . -maxdepth 6 -type f -name '*.zip' -print -exec ls -t {} + 2>/dev/null | head -n 1 || true)"
 
             if [ -z "$NEWEST" ]; then
-              echo "ERROR: No .7z artifact found after build."
+              echo "ERROR: No .zip artifact found after build."
               echo "Hint: your Makefile 'package' target may be outputting a different extension or skipping packaging."
               exit 1
             fi
 
-            echo "No exact POPSLoader.7z found. Using newest .7z: $NEWEST"
-            cp -f "$NEWEST" "./POPSLoader.7z"
+            echo "No exact POPSLoader.zip found. Using newest .zip: $NEWEST"
+            cp -f "$NEWEST" "./POPSLoader.zip"
           fi
 
           echo "== Final normalized artifact =="
-          ls -lah "./POPSLoader.7z"
+          ls -lah "./POPSLoader.zip"
 
       - name: Upload artifact (no release)
         if: ${{ success() }}
         uses: actions/upload-artifact@v4
         with:
           name: POPSLoader
-          path: POPSLoader.7z
+          path: POPSLoader.zip
           if-no-files-found: error
           compression-level: 0

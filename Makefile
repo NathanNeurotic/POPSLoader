@@ -65,7 +65,7 @@ EXT_LIBS = modules/ds34usb/ee/libds34usb.a modules/ds34bt/ee/libds34bt.a
 
 APP_CORE = main.o system.o pad.o graphics.o render.o \
 		   calc_3d.o gsKit3d_sup.o atlas.o fntsys.o md5.o \
-		   sound.o #strUtils.o
+		   sound.o embedfs.o #strUtils.o
 
 LUA_LIBS =	luaplayer.o luasound.o luacontrols.o \
 			luatimer.o luaScreen.o luagraphics.o \
@@ -78,7 +78,7 @@ IOP_MODULES = iomanX.o fileXio.o \
 			  ps2dev9.o ps2atad.o ps2hdd-osd.o ps2fs.o mmceman.o \
 			  mx4sio_bd.o bdm_query.o
 
-EMBEDDED_RSC = boot.o builtin_font.o
+EMBEDDED_RSC = boot.o builtin_font.o embedded_assets.o
 
 EE_OBJS = $(APP_CORE) $(LUA_LIBS) $(IOP_MODULES) $(EMBEDDED_RSC)
 
@@ -99,6 +99,9 @@ $(EE_BIN_PKD): $(EE_BIN)
 $(EE_ASM_DIR)boot.c: etc/boot.lua | $(EE_ASM_DIR)
 	echo "Embedding boot script..."
 	$(BIN2S) $< $@ bootString
+
+$(EE_ASM_DIR)embedded_assets.c: assets/embed_manifest.txt tools/gen_embed_assets.py | $(EE_ASM_DIR)
+	python3 tools/gen_embed_assets.py --manifest $< --output $@
 
 # Images
 $(EE_ASM_DIR)%.c: EMBED/%.png
@@ -170,6 +173,7 @@ cleanbin:
 clean: cleanbin
 	rm -rf $(EE_OBJS_DIR)
 	rm -rf $(EE_ASM_DIR)
+	rm -f $(EE_ASM_DIR)embedded_assets.c
 
 	rm -f $(EMBEDDED_RSC)
 
@@ -181,19 +185,30 @@ run:
 reset:
 	ps2client -h $(PS2LINK_IP) reset   
 
-POPSLDR_PKG = POPSLoader.7z
+POPSLDR_PKG = POPSLoader.zip
 PKG_DIR = bin/package
 package: $(EE_BIN_PKD)
 	rm -f $(POPSLDR_PKG)
 	rm -rf $(PKG_DIR)
 	mkdir -p $(PKG_DIR)
-	cp $(EE_BIN_PKD) $(PKG_DIR)/
-	cp bin/changelog LICENSE README.md $(PKG_DIR)/
-	find bin/POPSLDR -maxdepth 1 -type f -exec cp {} $(PKG_DIR)/ \;
-	@if [ -d bin/POPSTARTER ]; then cp -r bin/POPSTARTER $(PKG_DIR)/; fi
-	@if ls bin/POPSLDR/IMG/*.png >/dev/null 2>&1; then cp bin/POPSLDR/IMG/*.png $(PKG_DIR)/; fi
-	@if ls bin/POPSLDR/IRX/*.irx >/dev/null 2>&1; then cp bin/POPSLDR/IRX/*.irx $(PKG_DIR)/; fi
-	cd $(PKG_DIR); 7z a ../$(POPSLDR_PKG) .
+	cp $(EE_BIN_PKD) $(PKG_DIR)/POPSLOADER.ELF
+	cp bin/POPSLDR/POPSTARTER.ELF $(PKG_DIR)/
+	cp bin/POPSLDR/icon.sys $(PKG_DIR)/
+	cp bin/POPSLDR/list.icn $(PKG_DIR)/
+	cp bin/POPSLDR/copy.icn $(PKG_DIR)/
+	cp bin/POPSLDR/del.icn $(PKG_DIR)/
+	cp bin/POPSLDR/APPINFO.PBT $(PKG_DIR)/
+	cp bin/POPSLDR/title.cfg $(PKG_DIR)/
+	cd $(PKG_DIR); 7z a -tzip ../$(POPSLDR_PKG) .
+	cp bin/$(POPSLDR_PKG) ./$(POPSLDR_PKG)
+
+verify: package
+	python3 tools/gen_embed_assets.py --check
+	! grep -R "mass:/POPSLDR" -n etc/boot.lua bin/POPSLDR/*.lua
+	! grep -R "mc0:/POPSLDR" -n etc/boot.lua bin/POPSLDR/*.lua
+	grep -n "POPSLDR/IMG" src/system.cpp
+	bash -lc 'set -euo pipefail; mapfile -t files < <(7z l POPSLoader.zip | awk "{print \$$NF}" | sed -n "s#^\(POPSLOADER\\.ELF\\|POPSTARTER\\.ELF\\|icon\\.sys\\|list\\.icn\\|copy\\.icn\\|del\\.icn\\|APPINFO\\.PBT\\|title\\.cfg\)$$#\\1#p"); mapfile -t all < <(7z l POPSLoader.zip | awk "{print \$$NF}" | rg -v "^Name$|^-------------------$|^$" || true); if [ "${#all[@]}" -ne 8 ]; then echo "Unexpected file count: ${#all[@]}"; printf "%s\n" "${all[@]}"; exit 1; fi; expected=(POPSLOADER.ELF POPSTARTER.ELF icon.sys list.icn copy.icn del.icn APPINFO.PBT title.cfg); for f in "${expected[@]}"; do printf "%s\n" "${all[@]}" | rg -qx "$f" || { echo "Missing $f"; exit 1; }; done'
+	ls -lah bin/POPSLOADER.ELF
 
 dummys:
 	touch $(BINDIR)A.vcd

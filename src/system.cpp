@@ -10,6 +10,7 @@
 #include "include/system.h"
 #include "include/luaplayer.h"
 #include "include/dprintf.h"
+#include "include/embedfs.h"
 
 //extern int size_loader_elf;
 
@@ -83,39 +84,18 @@ int ResolveAssetPath(char* out, size_t outsz, const char* relativeName)
 
 	if (strchr(relativeName, ':') != NULL) {
 		snprintf(out, outsz, "%s", relativeName);
-		struct stat st;
-		return (stat(out, &st) == 0);
-	}
-
-	char candidate[255];
-	struct stat st;
-
-	snprintf(candidate, sizeof(candidate), "%s%s", app_dir, relativeName);
-	if (stat(candidate, &st) == 0) {
-		DPRINTF("ResolveAssetPath: %s\n", candidate);
-		snprintf(out, outsz, "%s", candidate);
 		return 1;
 	}
 
-	snprintf(candidate, sizeof(candidate), "%sPOPSLDR/%s", app_dir, relativeName);
-	if (stat(candidate, &st) == 0) {
-		DPRINTF("ResolveAssetPath: %s\n", candidate);
-		snprintf(out, outsz, "%s", candidate);
-		return 1;
-	}
+	char candidate[512];
+	if (!strncmp(relativeName, "POPSLDR/", 8))
+		snprintf(candidate, sizeof(candidate), "embed:/%s", relativeName);
+	else
+		snprintf(candidate, sizeof(candidate), "embed:/POPSLDR/%s", relativeName);
 
-	return 0;
-}
-
-static int ResolveAssetCandidate(char* out, size_t outsz, const char* candidate)
-{
-	struct stat st;
-	if (stat(candidate, &st) == 0) {
-		DPRINTF("ResolveAssetPath: %s\n", candidate);
-		snprintf(out, outsz, "%s", candidate);
-		return 1;
-	}
-	return 0;
+	if (!embedfs_exists(candidate)) return 0;
+	snprintf(out, outsz, "%s", candidate);
+	return 1;
 }
 
 int ResolveAssetPathTyped(char* out, size_t outsz, const char* relativeName, AssetKind kind)
@@ -124,42 +104,20 @@ int ResolveAssetPathTyped(char* out, size_t outsz, const char* relativeName, Ass
 
 	if (strchr(relativeName, ':') != NULL) {
 		snprintf(out, outsz, "%s", relativeName);
-		struct stat st;
-		return (stat(out, &st) == 0);
+		return 1;
 	}
-
-	char candidate[255];
+	char candidate[512];
 
 	if (kind == ASSET_IMG) {
-		snprintf(candidate, sizeof(candidate), "%s%s", app_dir, relativeName);
-		if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
-
-		snprintf(candidate, sizeof(candidate), "%sIMG/%s", app_dir, relativeName);
-		if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
-
-		snprintf(candidate, sizeof(candidate), "%sPOPSLDR/IMG/%s", app_dir, relativeName);
-		if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
-
-		snprintf(candidate, sizeof(candidate), "%sPOPSLDR/%s", app_dir, relativeName);
-		if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
-
-		return 0;
-	}
-
-	if (kind == ASSET_IRX) {
-		snprintf(candidate, sizeof(candidate), "%s%s", app_dir, relativeName);
-		if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
-
-		snprintf(candidate, sizeof(candidate), "%sIRX/%s", app_dir, relativeName);
-		if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
-
-		snprintf(candidate, sizeof(candidate), "%sPOPSLDR/IRX/%s", app_dir, relativeName);
-		if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
-
-		snprintf(candidate, sizeof(candidate), "%sPOPSLDR/%s", app_dir, relativeName);
-		if (ResolveAssetCandidate(out, outsz, candidate)) return 1;
-
-		return 0;
+		if (!strncmp(relativeName, "POPSLDR/IMG/", 12))
+			snprintf(candidate, sizeof(candidate), "embed:/%s", relativeName);
+		else if (!strncmp(relativeName, "IMG/", 4))
+			snprintf(candidate, sizeof(candidate), "embed:/POPSLDR/%s", relativeName);
+		else
+			snprintf(candidate, sizeof(candidate), "embed:/POPSLDR/IMG/%s", relativeName);
+		if (!embedfs_exists(candidate)) return 0;
+		snprintf(out, outsz, "%s", candidate);
+		return 1;
 	}
 
 	return ResolveAssetPath(out, outsz, relativeName);

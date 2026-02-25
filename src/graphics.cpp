@@ -11,6 +11,7 @@
 
 #include "include/graphics.h"
 #include "include/dprintf.h"
+#include "include/embedfs.h"
 
 #define DEG2RAD(x) ((x)*0.01745329251)
 
@@ -648,6 +649,47 @@ struct my_error_mgr {
 
 typedef struct my_error_mgr *my_error_ptr;
 
+typedef struct {
+	struct jpeg_source_mgr pub;
+	const JOCTET *data;
+	size_t len;
+	boolean start_of_file;
+} mem_source_mgr;
+
+static void mem_init_source(j_decompress_ptr cinfo)
+{
+	mem_source_mgr *src = (mem_source_mgr *)cinfo->src;
+	src->start_of_file = TRUE;
+}
+
+static boolean mem_fill_input_buffer(j_decompress_ptr cinfo)
+{
+	mem_source_mgr *src = (mem_source_mgr *)cinfo->src;
+	static const JOCTET EOI_BUFFER[2] = {0xFF, JPEG_EOI};
+	src->pub.next_input_byte = EOI_BUFFER;
+	src->pub.bytes_in_buffer = 2;
+	src->start_of_file = FALSE;
+	return TRUE;
+}
+
+static void mem_skip_input_data(j_decompress_ptr cinfo, long num_bytes)
+{
+	mem_source_mgr *src = (mem_source_mgr *)cinfo->src;
+	if (num_bytes > 0) {
+		if ((size_t)num_bytes > src->pub.bytes_in_buffer) {
+			mem_fill_input_buffer(cinfo);
+			return;
+		}
+		src->pub.next_input_byte += (size_t)num_bytes;
+		src->pub.bytes_in_buffer -= (size_t)num_bytes;
+	}
+}
+
+static void mem_term_source(j_decompress_ptr cinfo)
+{
+	(void)cinfo;
+}
+
 METHODDEF(void)
 my_error_exit(j_common_ptr cinfo)
 {
@@ -791,15 +833,111 @@ GSTEXTURE* loadjpeg(FILE* fp, bool scale_down, bool delayed)
 
 }
 
+GSTEXTURE* loadpng_mem(const uint8_t *data, size_t size, bool delayed)
+{
+	if (data == NULL || size == 0) {
+		return NULL;
+	}
+	return loadEmbeddedPNG((uint8_t *)data, size, delayed);
+}
+
+GSTEXTURE* loadjpeg_mem(const uint8_t *data, size_t size, bool delayed)
+{
+	if (data == NULL || size == 0) {
+		return NULL;
+	}
+
+	GSTEXTURE* tex = (GSTEXTURE*)malloc(sizeof(GSTEXTURE));
+	if (tex == NULL) return NULL;
+	tex->Delayed = delayed;
+	tex->Mem = NULL;
+
+	struct jpeg_decompress_struct cinfo;
+	struct my_error_mgr jerr;
+
+	cinfo.err = jpeg_std_error(&jerr.pub);
+	jerr.pub.error_exit = my_error_exit;
+	if (setjmp(jerr.setjmp_buffer)) {
+		jpeg_destroy_decompress(&cinfo);
+		if (tex->Mem) free(tex->Mem);
+		free(tex);
+		return NULL;
+	}
+
+	jpeg_create_decompress(&cinfo);
+#if defined(MEM_SRCDST_SUPPORTED) || (JPEG_LIB_VERSION >= 80)
+	jpeg_mem_src(&cinfo, (unsigned char*)data, size);
+#else
+	mem_source_mgr src;
+	memset(&src, 0, sizeof(src));
+	src.pub.init_source = mem_init_source;
+	src.pub.fill_input_buffer = mem_fill_input_buffer;
+	src.pub.skip_input_data = mem_skip_input_data;
+	src.pub.resync_to_restart = jpeg_resync_to_restart;
+	src.pub.term_source = mem_term_source;
+	src.pub.bytes_in_buffer = size;
+	src.pub.next_input_byte = (const JOCTET*)data;
+	cinfo.src = (struct jpeg_source_mgr *)&src;
+#endif
+	jpeg_read_header(&cinfo, TRUE);
+	_ps2_load_JPEG_generic(tex, &cinfo, &jerr, false);
+	jpeg_destroy_decompress(&cinfo);
+
+	if(!tex->Delayed)
+	{
+		tex->Vram = gsKit_vram_alloc(gsGlobal, gsKit_texture_size(tex->Width, tex->Height, tex->PSM), GSKIT_ALLOC_USERBUFFER);
+		if(tex->Vram == GSKIT_ALLOC_ERROR)
+		{
+			DPRINTF("VRAM Allocation Failed. Will not upload texture.\n");
+			return NULL;
+		}
+		gsKit_texture_upload(gsGlobal, tex);
+		free(tex->Mem);
+		tex->Mem = NULL;
+	}
+	else
+	{
+		gsKit_setup_tbw(tex);
+	}
+
+	return tex;
+}
+
+GSTEXTURE* loadbmp_mem(const uint8_t *data, size_t size, bool delayed)
+{
+	(void)data;
+	(void)size;
+	(void)delayed;
+	return NULL;
+}
+
 GSTEXTURE* load_image(const char* path, bool delayed){
-	FILE* file = fopen(path, "rb");
-	uint16_t magic;
-	fread(&magic, 1, 2, file);
-	fseek(file, 0, SEEK_SET);
+	uint16_t magic = 0;
 	GSTEXTURE* image = NULL;
-	if (magic == 0x4D42) image =      loadbmp(file, delayed);
-	else if (magic == 0xD8FF) image = loadjpeg(file, false, delayed);
-	else if (magic == 0x5089) image = loadpng(file, delayed);
+	const uint8_t *embed_data = NULL;
+	size_t embed_size = 0;
+	const char *embed_key = embedfs_normalize_path(path);
+	if (embed_key != NULL && embedfs_get(embed_key, &embed_data, &embed_size) && embed_size >= 2) {
+		magic = (uint16_t)(embed_data[0] | (embed_data[1] << 8));
+		if (magic == 0x4D42) image =      loadbmp_mem(embed_data, embed_size, delayed);
+		else if (magic == 0xD8FF) image = loadjpeg_mem(embed_data, embed_size, delayed);
+		else if (magic == 0x5089) image = loadpng_mem(embed_data, embed_size, delayed);
+	} else {
+		FILE* file = fopen(path, "rb");
+		if (file == NULL) {
+			DPRINTF("Failed to load image %s.", path);
+			return NULL;
+		}
+		if (fread(&magic, 1, 2, file) != 2) {
+			fclose(file);
+			DPRINTF("Failed to load image %s.", path);
+			return NULL;
+		}
+		fseek(file, 0, SEEK_SET);
+		if (magic == 0x4D42) image =      loadbmp(file, delayed);
+		else if (magic == 0xD8FF) image = loadjpeg(file, false, delayed);
+		else if (magic == 0x5089) image = loadpng(file, delayed);
+	}
 	if (image == NULL) DPRINTF("Failed to load image %s.", path);
 
 	return image;

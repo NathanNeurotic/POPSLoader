@@ -7,7 +7,34 @@ local function ensure_dir(path)
 end
 
 local BASE_DIR = ensure_dir(APP_DIR or System.currentDirectory())
-package.path = BASE_DIR.."?.lua;"..BASE_DIR.."?/init.lua;"..BASE_DIR.."POPSLDR/?.lua;./?.lua;./POPSLDR/?.lua;mass:/POPSLDR/?.lua;mc0:/POPSLDR/?.lua;mc1:/POPSLDR/?.lua"
+package.path = ""
+
+local function embed_searcher(modname)
+  local rel = string.gsub(modname, "%.", "/")
+  local candidates = {
+    "POPSLDR/"..rel..".lua",
+    "POPSLDR/"..rel.."/init.lua"
+  }
+
+  for _, candidate in ipairs(candidates) do
+    local text = System.embedReadText(candidate)
+    if text ~= nil then
+      local loader, err = loadstring(text, "@embed:"..candidate)
+      if loader ~= nil then
+        return loader
+      end
+      return "\n\t(embedfs) "..tostring(err)
+    end
+  end
+
+  return "\n\tno embedded module '"..modname.."'"
+end
+
+local loaders = package.loaders or package.searchers
+if loaders ~= nil then
+  table.insert(loaders, 1, embed_searcher)
+end
+
 function LOG(...)
   print_uart(...)
 end
@@ -80,54 +107,4 @@ Font.ftSetCharSize(SFONT, 600, 600)
 BOOT_PROF.stamp("UI assets init (fonts)")
 function STOP() LOG("PROGRAM STOP") Screen.clear(Color.new(255,0,0)) Screen.flip() while true do end end
 
-local function ReadWholeFile(path)
-  local fd = System.openFile(path, FREAD)
-  if fd == nil then
-    return nil, "open failed"
-  end
-  local chunks = {}
-  while true do
-    local buffer = System.readFile(fd, 4096)
-    if buffer == nil or buffer == "" then
-      break
-    end
-    chunks[#chunks + 1] = buffer
-  end
-  System.closeFile(fd)
-  return table.concat(chunks)
-end
-
-local function LoadLuaFile(path)
-  local loader, load_err = loadfile(path)
-  if loader ~= nil then
-    return loader
-  end
-  LOG("Lua load failed:", load_err)
-  local data, read_err = ReadWholeFile(path)
-  if data == nil then
-    return nil, read_err
-  end
-  local sanitized, count = string.gsub(data, "[\128-\255]", "?")
-  if count > 0 then
-    LOGF("Sanitized %d non-ASCII bytes in %s", count, path)
-  end
-  return loadstring(sanitized, "@"..path)
-end
-
-function RunScript(S)
-  local loader, load_err = LoadLuaFile(S)
-  if loader == nil then
-    error(load_err)
-  end
-  local ok, run_err = pcall(loader)
-  if not ok then
-    error(run_err)
-  end
-end
-
-local SYS = System.resolveAsset("system.lua")
-if SYS ~= nil then
-	RunScript(SYS);
-else
-  error("Cant access POPSLDR/system.lua\n\n\tcurrent_bootpath: "..System.currentDirectory())
-end
+require("system")

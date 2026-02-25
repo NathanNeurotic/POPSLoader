@@ -17,6 +17,7 @@
 
 #include "include/system.h"
 #include "include/dprintf.h"
+#include "include/embedfs.h"
 
 #define MAX_DIR_FILES 512
 
@@ -974,6 +975,47 @@ static int lua_resolveAssetType(lua_State *L) {
 	return 1;
 }
 
+static int lua_embedExists(lua_State *L)
+{
+	int argc = lua_gettop(L);
+	if (argc != 1) return luaL_error(L, "Argument error: System.embedExists(path) takes one argument.");
+	const char *path = luaL_checkstring(L, 1);
+	lua_pushboolean(L, embedfs_exists(path));
+	return 1;
+}
+
+static int lua_embedReadText(lua_State *L)
+{
+	int argc = lua_gettop(L);
+	if (argc != 1) return luaL_error(L, "Argument error: System.embedReadText(path) takes one argument.");
+	const char *path = luaL_checkstring(L, 1);
+	const uint8_t *data = NULL;
+	size_t size = 0;
+	if (!embedfs_get(path, &data, &size)) {
+		lua_pushnil(L);
+		return 1;
+	}
+	lua_pushlstring(L, (const char *)data, size);
+	return 1;
+}
+
+static int lua_embedReadBytes(lua_State *L)
+{
+	int argc = lua_gettop(L);
+	if (argc != 1) return luaL_error(L, "Argument error: System.embedReadBytes(path) takes one argument.");
+	const char *path = luaL_checkstring(L, 1);
+	const uint8_t *data = NULL;
+	size_t size = 0;
+	if (!embedfs_get(path, &data, &size)) {
+		lua_pushnil(L);
+		lua_pushinteger(L, 0);
+		return 2;
+	}
+	lua_pushlstring(L, (const char *)data, size);
+	lua_pushinteger(L, size);
+	return 2;
+}
+
 
 static int lua_getMassDriverName(lua_State *L)
 {
@@ -1065,6 +1107,9 @@ static const luaL_Reg System_functions[] = {
 	{"getAppDir",                 lua_getAppDir},
 	{"resolveAsset",           lua_resolveAsset},
 	{"resolveAssetType",   lua_resolveAssetType},
+	{"embedExists",          lua_embedExists},
+	{"embedReadText",      lua_embedReadText},
+	{"embedReadBytes",    lua_embedReadBytes},
 	{"getMassDriverName",        lua_getMassDriverName},
 	{"initMX4SIO",             lua_mx4sio_init},
 	{"bdmList",                lua_bdm_list},
