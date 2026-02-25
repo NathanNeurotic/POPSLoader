@@ -12,6 +12,29 @@
 #include "include/dprintf.h"
 #include "include/embedfs.h"
 
+
+extern unsigned char mx4sio_bd_irx[];
+extern unsigned int size_mx4sio_bd_irx;
+
+static int g_mx4sio_initialized = 0;
+
+int EnsureMx4sioInit(void)
+{
+	if (g_mx4sio_initialized) {
+		return 1;
+	}
+
+	int id = -1;
+	int ret = -1;
+	id = SifExecModuleBuffer(mx4sio_bd_irx, size_mx4sio_bd_irx, 0, NULL, &ret);
+	if (id < 0 || ret < 0) {
+		return 0;
+	}
+
+	g_mx4sio_initialized = 1;
+	return 1;
+}
+
 //extern int size_loader_elf;
 
 void IOP_Reset(void);

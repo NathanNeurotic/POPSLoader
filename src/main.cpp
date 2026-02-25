@@ -24,6 +24,7 @@
 #include "include/luaplayer.h"
 #include "include/pad.h"
 #include "include/dprintf.h"
+#include "include/system.h"
 
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
@@ -72,9 +73,6 @@ extern unsigned int size_bdmfs_fatfs_irx;
 
 extern unsigned char usbmass_bd_irx;
 extern unsigned int size_usbmass_bd_irx;
-
-extern unsigned char mx4sio_bd_irx[];
-extern unsigned int size_mx4sio_bd_irx;
 
 
 extern unsigned char audsrv_irx;
@@ -192,6 +190,27 @@ static void BootStamp(const char *stage)
 {
     DPRINTF("BOOT: %s %u\n", stage, boot_ms());
 }
+
+static bool IsBootedFromMx4sioPath(const char *path)
+{
+    if (path == NULL || path[0] == '\0') {
+        return false;
+    }
+
+    char prefix[32] = {0};
+    const char *colon = strchr(path, ':');
+    size_t n = colon ? (size_t)(colon - path) : strlen(path);
+    if (n >= sizeof(prefix)) {
+        n = sizeof(prefix) - 1;
+    }
+    for (size_t i = 0; i < n; ++i) {
+        prefix[i] = (char)tolower((unsigned char)path[i]);
+    }
+    prefix[n] = '\0';
+
+    return strstr(prefix, "mx4sio") != NULL;
+}
+
 
 void setLuaBootPath(int argc, char ** argv, int idx)
 {
@@ -442,9 +461,10 @@ int main(int argc, char * argv[])
     LOAD_IRX_NARG(bdmfs_fatfs_irx);
     LOAD_IRX_NARG(usbmass_bd_irx);
 
-    /* Load MX4SIO backend early so booting from MX4SIO works before Lua starts. */
-    bool mx4sio_bd_ok = LoadIrxChecked("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL);
-    DPRINTF("mx4sio_bd load result: ok=%d\n", mx4sio_bd_ok ? 1 : 0);
+    bool booted_from_mx4sio = IsBootedFromMx4sioPath(boot_path) || IsBootedFromMx4sioPath(app_dir);
+    if (booted_from_mx4sio) {
+        EnsureMx4sioInit();
+    }
     BootStamp("mx4sio_bd load");
 
 

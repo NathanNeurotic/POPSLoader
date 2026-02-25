@@ -21,8 +21,6 @@
 
 #define MAX_DIR_FILES 512
 
-extern unsigned char mx4sio_bd_irx[];
-extern unsigned int size_mx4sio_bd_irx;
 extern unsigned char bdm_query_irx[];
 extern unsigned int size_bdm_query_irx;
 
@@ -135,7 +133,7 @@ int mx4sio_init_and_get_root(const char *hint, char *out_root, size_t out_sz)
 		return -1;
 	}
 	DPRINTF("MX4SIO SDK init start\n");
-	if (!LoadIrxCheckedBuffer("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL)) {
+	if (!EnsureMx4sioInit()) {
 		return -1;
 	}
 	if (hint != NULL && hint[0] != '\0') {
@@ -1076,6 +1074,15 @@ static int lua_mx4sio_init(lua_State *L)
 	return 2;
 }
 
+static int lua_ensure_mx4sio_init(lua_State *L)
+{
+	if (lua_gettop(L) != 0) {
+		return luaL_error(L, "Argument error: System.ensureMx4sioInit() takes no arguments.");
+	}
+	lua_pushboolean(L, EnsureMx4sioInit());
+	return 1;
+}
+
 static const luaL_Reg System_functions[] = {
 	{"openFile",                   lua_openfile},
 	{"readFile",                   lua_readfile},
@@ -1112,6 +1119,7 @@ static const luaL_Reg System_functions[] = {
 	{"embedReadBytes",    lua_embedReadBytes},
 	{"getMassDriverName",        lua_getMassDriverName},
 	{"initMX4SIO",             lua_mx4sio_init},
+	{"ensureMx4sioInit",      lua_ensure_mx4sio_init},
 	{"bdmList",                lua_bdm_list},
 	{"findBDMByDriver",    lua_find_bdm_by_driver},
 	{0, 0}
