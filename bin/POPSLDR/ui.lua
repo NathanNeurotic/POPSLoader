@@ -2204,18 +2204,25 @@ end
             end
             UI.SceneChange(UI.SCENES.GHDD)
           elseif UI.MainMenu.OPT == 5 then
+            if PLDR.EnsureUsbReady ~= nil then
+              PLDR.EnsureUsbReady()
+            end
             if PLDR.DetectMassBackends ~= nil then
               PLDR.DetectMassBackends()
             end
             local found = nil
             if PLDR.GetPS1GameListsUSB ~= nil then
-              found = PLDR.GetPS1GameListsUSB(4)
+              found = PLDR.GetPS1GameListsUSB(9)
             else
               PLDR.CleanupGameList()
               found = PLDR.GetPS1GameLists("mass"..PLDR.USB.MASSINDX..":/POPS/", true)
             end
             if found == nil then
-              UI.Notif_queue.add("No USB device found (POPS/ missing)")
+              if PLDR ~= nil and PLDR.USB ~= nil and PLDR.USB.ROOTS ~= nil and #PLDR.USB.ROOTS > 0 then
+                UI.Notif_queue.add("No games found on USB (POPS/)")
+              else
+                UI.Notif_queue.add("No USB device found")
+              end
             end
             UI.SceneChange(UI.SCENES.GUSBFAT)
           elseif UI.MainMenu.OPT == 6 then
