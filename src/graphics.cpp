@@ -148,7 +148,7 @@ GSTEXTURE* loadpng(FILE* File, bool delayed)
 	else if(png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_RGB)
 	{
 		int row_bytes = png_get_rowbytes(png_ptr, info_ptr);
-		tex->PSM = GS_PSM_CT32;
+		tex->PSM = GS_PSM_CT24;
 		tex->Mem = (u32*)memalign(128, gsKit_texture_size_ee(tex->Width, tex->Height, tex->PSM));
 
 		row_pointers = (png_byte**)calloc(height, sizeof(png_bytep));
@@ -157,13 +157,12 @@ GSTEXTURE* loadpng(FILE* File, bool delayed)
 
 		png_read_image(png_ptr, row_pointers);
 
-		struct pixel { u8 r,g,b,a; };
-		struct pixel *Pixels = (struct pixel *) tex->Mem;
+		struct pixel3 { u8 r,g,b; };
+		struct pixel3 *Pixels = (struct pixel3 *) tex->Mem;
 
 		for (i = 0; i < tex->Height; i++) {
 			for (j = 0; j < tex->Width; j++) {
-				memcpy(&Pixels[k], &row_pointers[i][4 * j], 3);
-				Pixels[k++].a = 0x80;
+				memcpy(&Pixels[k++], &row_pointers[i][4 * j], 3);
 			}
 		}
 
@@ -1386,7 +1385,7 @@ GSTEXTURE* loadEmbeddedPNG(uint8_t * data, size_t size, bool delayed)
 	else if(png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_RGB)
 	{
 		int row_bytes = png_get_rowbytes(png_ptr, info_ptr);
-		tex->PSM = GS_PSM_CT24;
+		tex->PSM = GS_PSM_CT32;
 		tex->Mem = (u32*)memalign(128, gsKit_texture_size_ee(tex->Width, tex->Height, tex->PSM));
 
 		row_pointers = (png_byte**)calloc(height, sizeof(png_bytep));
@@ -1395,12 +1394,13 @@ GSTEXTURE* loadEmbeddedPNG(uint8_t * data, size_t size, bool delayed)
 
 		png_read_image(png_ptr, row_pointers);
 
-		struct pixel3 { u8 r,g,b; };
-		struct pixel3 *Pixels = (struct pixel3 *) tex->Mem;
+		struct pixel { u8 r,g,b,a; };
+		struct pixel *Pixels = (struct pixel *) tex->Mem;
 
 		for (i = 0; i < tex->Height; i++) {
 			for (j = 0; j < tex->Width; j++) {
-				memcpy(&Pixels[k++], &row_pointers[i][4 * j], 3);
+				memcpy(&Pixels[k], &row_pointers[i][4 * j], 3);
+				Pixels[k++].a = 0x80;
 			}
 		}
 
