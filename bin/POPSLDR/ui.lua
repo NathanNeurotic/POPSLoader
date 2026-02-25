@@ -1691,6 +1691,16 @@ end
         if #dkwdrv_label > 52 then
           dkwdrv_label = "..."..string.sub(dkwdrv_label, -49)
         end
+        local popstarter_path = (PLDR and PLDR.GetResolvedPopstarterPath and PLDR.GetResolvedPopstarterPath()) or (PLDR and PLDR.POPSTARTER_PATH) or "POPSTARTER.ELF"
+        local popstarter_ok = false
+        if PLDR ~= nil and PLDR.GetPopstarterProbeStatus ~= nil then
+          popstarter_path, popstarter_ok = PLDR.GetPopstarterProbeStatus()
+        end
+        local popstarter_state = popstarter_ok and "[OK]" or "[MISSING]"
+        local popstarter_label = string.format("POPSTARTER: %s %s", tostring(popstarter_path), popstarter_state)
+        if #popstarter_label > 56 then
+          popstarter_label = "POPSTARTER: ..."..string.sub(tostring(popstarter_path), -38).." "..popstarter_state
+        end
         if not hide_ui then
           Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Settings", UI.CCOL.GREY)
           local function DrawCenteredIcon(icon, x, y)
@@ -1720,7 +1730,9 @@ end
           Font.ftPrint(BFONT, UI.SCR.X_MID, dkwdrv_title_y, 8, UI.SCR.X, 16, "DKWDRV PATH:", UI.CCOL.GREY)
           local dkwdrv_path_y = dkwdrv_title_y + 18
           Font.ftPrint(BFONT, UI.SCR.X_MID, dkwdrv_path_y, 8, UI.SCR.X, 16, dkwdrv_label, UI.CCOL.GREY)
-          local profile_icons_y = dkwdrv_path_y + 42
+          local popstarter_status_y = dkwdrv_path_y + 20
+          Font.ftPrint(SFONT, UI.SCR.X_MID, popstarter_status_y, 8, UI.SCR.X, 16, popstarter_label, UI.CCOL.GREY)
+          local profile_icons_y = popstarter_status_y + 30
           DrawIconPair("up", "down", profile_icons_y, 36)
           local profile_title_y = profile_icons_y + 24
           Font.ftPrint(BFONT, UI.SCR.X_MID, profile_title_y, 8, UI.SCR.X, 16, "POPStarter Mode:", UI.CCOL.GREY)

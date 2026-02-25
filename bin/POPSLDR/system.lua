@@ -75,7 +75,7 @@ end
 
 local APP_DIR_LOCAL = NormalizeDirPath(APP_DIR or BOOT_PATH_RAW)
 
-local function DeriveElfDirectory()
+local function GetLaunchElfDirFromBootPathLocal()
   local source = BOOT_PATH_RAW
   if type(source) ~= "string" or source == "" then
     return APP_DIR_LOCAL
@@ -91,7 +91,7 @@ local function DeriveElfDirectory()
   return NormalizeDirPath(parent)
 end
 
-local ELF_DIR_LOCAL = DeriveElfDirectory()
+local ELF_DIR_LOCAL = GetLaunchElfDirFromBootPathLocal()
 local SELECTOR_MODE = "basename"
 
 local function ResolveAsset(rel)
@@ -121,19 +121,7 @@ local function GetLaunchElfPathLocal()
 end
 
 local function GetLaunchElfDirLocal()
-  local launch_path = GetLaunchElfPathLocal()
-  if type(launch_path) ~= "string" or launch_path == "" then
-    return ELF_DIR_LOCAL
-  end
-  launch_path = string.gsub(launch_path, "\\", "/")
-  local parent = string.match(launch_path, "^(.*)/[^/]+$")
-  if parent ~= nil and parent ~= "" then
-    return NormalizeDirPath(parent)
-  end
-  if string.match(launch_path, "^[%a]+%d*:/") then
-    return NormalizeDirPath(launch_path)
-  end
-  return ELF_DIR_LOCAL
+  return GetLaunchElfDirFromBootPathLocal()
 end
 
 local function ResolveSettingsDir()
@@ -241,66 +229,20 @@ end
 
 local function ResolvePopstarterPath(path)
   local chosen = NormalizePopstarterPath(path)
-  local candidates = {}
-
-  local function add_candidate(candidate)
-    if type(candidate) ~= "string" or candidate == "" then
-      return
-    end
-    candidate = NormalizePopstarterPath(candidate)
-    for i = 1, #candidates do
-      if candidates[i] == candidate then
-        return
-      end
-    end
-    table.insert(candidates, candidate)
-  end
-
-  local boot_dir = GetLaunchElfDirLocal()
-  local primary_sidecar = JoinPath(boot_dir, "POPSTARTER.ELF")
-  add_candidate(primary_sidecar)
-
-  local boot_root, boot_suffix = string.match(primary_sidecar, "^(mass%d*:/)(.*)$")
-  if boot_root ~= nil and boot_suffix ~= nil then
-    local variants = BuildMassPrefixVariants(5)
-    for i = 1, #variants do
-      if variants[i] ~= boot_root then
-        add_candidate(variants[i]..boot_suffix)
-      end
-    end
-  end
-
+  local launch_dir = GetLaunchElfDirFromBootPathLocal()
   if chosen == nil or chosen == "" then
-    if APP_DIR_LOCAL ~= boot_dir then
-      add_candidate(JoinPath(APP_DIR_LOCAL, "POPSTARTER.ELF"))
-    end
-  elseif IsAbsoluteDevicePath(chosen) then
-    add_candidate(chosen)
-  elseif not IsAbsoluteDevicePath(chosen) then
-    add_candidate(JoinPath(boot_dir, chosen))
-    if APP_DIR_LOCAL ~= boot_dir then
-      add_candidate(JoinPath(APP_DIR_LOCAL, chosen))
-    end
-  else
-    add_candidate(chosen)
+    return JoinPath(launch_dir, "POPSTARTER.ELF")
   end
-
-  for i = 1, #candidates do
-    if FileExistsOpenProbe(candidates[i]) then
-      return candidates[i]
-    end
+  if IsAbsoluteDevicePath(chosen) then
+    return chosen
   end
-
-  if #candidates > 0 then
-    return candidates[1]
-  end
-  return chosen
+  return JoinPath(launch_dir, chosen)
 end
 
 HDD_DIAG_BYPASS = 0
 PLDR = {
   REBOOT_IOP_WHILE_LOADING_POPSTARTER = 0;
-  POPSTARTER_PATH = "mass:/POPS/POPSTARTER.ELF";--"mass:/POPS/POPSTARTER.ELF";
+  POPSTARTER_PATH = JoinPath(GetLaunchElfDirFromBootPathLocal(), "POPSTARTER.ELF");
   CHECK_POPSTARTER_FILES = false;
   GAMEPATH = ".";
   GAMES = {};
@@ -353,8 +295,21 @@ function PLDR.GetLaunchElfDir()
   return GetLaunchElfDirLocal()
 end
 
+function PLDR.GetLaunchElfDirFromBootPath()
+  return GetLaunchElfDirFromBootPathLocal()
+end
+
 function PLDR.ResolvePopstarterPath(path)
   return ResolvePopstarterPath(path)
+end
+
+function PLDR.GetResolvedPopstarterPath()
+  return ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
+end
+
+function PLDR.GetPopstarterProbeStatus()
+  local path = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
+  return path, FileExistsOpenProbe(path)
 end
 
 function PLDR.PopstarterExists(path)
@@ -893,6 +848,45 @@ function PLDR.ReadAssetBytes(name)
   return nil, nil
 end
 
+local BDMA_IRX_CACHE_DIR = "mc0:/POPSLOADER/IRX/"
+local BDMA_IRX_VARIANTS = {
+  "usbd.irx.usbexfat",
+  "usbhdfsd.irx.usbexfat",
+  "usbd.irx.mmce",
+  "usbhdfsd.irx.mmce",
+  "usbd.irx.mx4sio",
+  "usbhdfsd.irx.mx4sio"
+}
+
+local function ReadBdmaVariantBytes(name)
+  local key = "POPSLDR/"..name
+  local resolved = ResolveAsset(key)
+  if type(resolved) == "string" then
+    local data, size = ReadAllBytes(resolved)
+    if data ~= nil then
+      return data, size
+    end
+  end
+  return ReadAllBytes("embed:/"..key)
+end
+
+local function ExtractBdmaIrxIfMissing()
+  if not EnsureDirectory(BDMA_IRX_CACHE_DIR) then
+    return false
+  end
+  for i = 1, #BDMA_IRX_VARIANTS do
+    local name = BDMA_IRX_VARIANTS[i]
+    local cache_path = JoinPath(BDMA_IRX_CACHE_DIR, name)
+    if not doesFileExist(cache_path) then
+      local data = ReadBdmaVariantBytes(name)
+      if type(data) ~= "string" or not PLDR.WriteFile(cache_path, data) then
+        return false
+      end
+    end
+  end
+  return true
+end
+
 function PLDR.WriteFile(path, data)
   if type(path) ~= "string" or path == "" or type(data) ~= "string" then
     return false
@@ -990,10 +984,16 @@ function PLDR.ApplyBDMAOnSettingsSave(mode)
   elseif entry.action == "copy" then
     if not EnsureDirectory(dest_root) then
       ok = false
+    elseif not ExtractBdmaIrxIfMissing() then
+      if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
+        UI.Notif_queue.add("BDMA IRX unavailable")
+      end
+      ok = false
     else
       for i = 1, #targets do
         local target = targets[i]
-        local data = PLDR.ReadAssetBytes(target.source..entry.source_suffix)
+        local cache_source = JoinPath(BDMA_IRX_CACHE_DIR, target.source..entry.source_suffix)
+        local data = ReadAllBytes(cache_source)
         if type(data) == "string" then
           if not PLDR.WriteFile(target.dest, data) then
             ok = false
