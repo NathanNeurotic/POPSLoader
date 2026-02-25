@@ -779,7 +779,7 @@ UI = {
       UI.Notif_queue.display()
       UI.TextEntry.Draw()
       UI.Modal.Draw()
-      if UI.Transition ~= nil then
+      if UI.Transition ~= nil and UI.Transition.active == true then
         local alpha = UI.Transition.Update()
         if alpha > 0 then
           Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
@@ -1304,6 +1304,7 @@ end
       start = 0,
       elapsed = 0,
       last_time = nil,
+      alpha = 0,
       max_step = 33,
       duration_out = 140,
       duration_in = 120,
@@ -1328,9 +1329,11 @@ end
         UI.Transition.start = Timer.getTime(UI.Transition.timer)
         UI.Transition.elapsed = 0
         UI.Transition.last_time = UI.Transition.start
+        UI.Transition.alpha = 0
       end,
       Update = function ()
         if not UI.Transition.active then
+          UI.Transition.alpha = 0
           return 0
         end
         local now = Timer.getTime(UI.Transition.timer)
@@ -1348,10 +1351,13 @@ end
         if t > 1 then t = 1 end
         local alpha
         if UI.Transition.phase == "out" then
-          alpha = Round(128 * t)
+          alpha = Round(UI_ALPHA_OPAQUE * t)
         else
-          alpha = Round(128 * (1 - t))
+          alpha = Round(UI_ALPHA_OPAQUE * (1 - t))
         end
+        if alpha < 0 then alpha = 0 end
+        if alpha > UI_ALPHA_OPAQUE then alpha = UI_ALPHA_OPAQUE end
+
         if t >= 1 then
           if UI.Transition.phase == "out" then
             local previous_scene = UI.CURSCENE
@@ -1369,7 +1375,7 @@ end
             UI.Transition.start = now
             UI.Transition.elapsed = 0
             UI.Transition.last_time = now
-            alpha = 128
+            alpha = UI_ALPHA_OPAQUE
           else
             local queued = UI.Transition.next_target
             if queued ~= nil and queued ~= UI.CURSCENE then
@@ -1378,12 +1384,16 @@ end
               alpha = 0
             else
               UI.Transition.active = false
+              UI.Transition.phase = "out"
               UI.Transition.target = nil
               UI.Transition.next_target = nil
+              UI.Transition.elapsed = 0
+              UI.Transition.last_time = nil
               alpha = 0
             end
           end
         end
+        UI.Transition.alpha = alpha
         return alpha
       end
     };
