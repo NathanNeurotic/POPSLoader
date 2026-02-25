@@ -1370,12 +1370,21 @@ GSTEXTURE* loadEmbeddedPNG(uint8_t * data, size_t size, bool delayed)
 
 		struct pixel { u8 r,g,b,a; };
 		struct pixel *Pixels = (struct pixel *) tex->Mem;
+		bool hasNonZeroAlpha = false;
 
 		for (i = 0; i < tex->Height; i++) {
 			for (j = 0; j < tex->Width; j++) {
+				const u8 alpha = row_pointers[i][4 * j + 3] >> 1;
 				memcpy(&Pixels[k], &row_pointers[i][4 * j], 3);
-				Pixels[k++].a = row_pointers[i][4 * j + 3] >> 1;
+				Pixels[k++].a = alpha;
+				if (alpha != 0) hasNonZeroAlpha = true;
 			}
+		}
+
+		if (!hasNonZeroAlpha)
+		{
+			for (i = 0; i < (tex->Width * tex->Height); i++)
+				Pixels[i].a = 0x80;
 		}
 
 		for(row = 0; row < height; row++) free(row_pointers[row]);
