@@ -841,33 +841,37 @@ function PLDR.ReadAssetBytes(name)
   if type(name) ~= "string" or name == "" then
     return nil, nil
   end
+  local keys = {name}
+  local basename = string.match(name, "([^/]+)$") or name
+  if not string.match(name, "^bin/POPSLDR/") then
+    keys[#keys + 1] = "bin/POPSLDR/"..name
+  end
+  if not string.match(name, "^POPSLDR/") then
+    keys[#keys + 1] = "POPSLDR/"..name
+  end
+  if not string.match(name, "/") then
+    keys[#keys + 1] = "bin/POPSLDR/"..basename
+  end
 
-  local rel = "POPSLDR/"..name
-  local embed_paths = {
-    "embed:/"..rel,
-    "embed:/"..name
-  }
-
-  if type(System) == "table" and type(System.embedExists) == "function" then
-    local ok_embed, exists = pcall(System.embedExists, rel)
-    if ok_embed and exists then
-      local data, size = ReadAllBytes(embed_paths[1])
+  for i = 1, #keys do
+    local key = keys[i]
+    if type(System) == "table" and type(System.embedExists) == "function" then
+      local ok_embed, exists = pcall(System.embedExists, key)
+      if ok_embed and exists then
+        local data, size = ReadAllBytes("embed:/"..key)
+        if data ~= nil then
+          return data, size
+        end
+      end
+    end
+    local resolved = ResolveAsset(key)
+    if type(resolved) == "string" then
+      local data, size = ReadAllBytes(resolved)
       if data ~= nil then
         return data, size
       end
     end
-  end
-
-  local resolved = ResolveAsset(rel)
-  if type(resolved) == "string" then
-    local data, size = ReadAllBytes(resolved)
-    if data ~= nil then
-      return data, size
-    end
-  end
-
-  for i = 1, #embed_paths do
-    local data, size = ReadAllBytes(embed_paths[i])
+    local data, size = ReadAllBytes("embed:/"..key)
     if data ~= nil then
       return data, size
     end
@@ -875,7 +879,9 @@ function PLDR.ReadAssetBytes(name)
 
   local candidates = {
     JoinPath(APP_DIR_LOCAL, name),
-    JoinPath(ELF_DIR_LOCAL, name)
+    JoinPath(ELF_DIR_LOCAL, name),
+    JoinPath(APP_DIR_LOCAL, basename),
+    JoinPath(ELF_DIR_LOCAL, basename)
   }
   for i = 1, #candidates do
     local data, size = ReadAllBytes(candidates[i])
@@ -1906,31 +1912,11 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   else
     rc = System.loadELF(popstarter, reboot_iop)
   end
-  LaunchLog("LAUNCH RETURNED rc="..tostring(rc))
-  LOG(">>> UNHANDLED ERROR at Launching game '", context and context.game or "unknown", " via ", popstarter, " Failed")
-  if (Timer.getTime(LaunchState.fade_timer) - LaunchState.fade_start) >= LaunchState.watchdog_ms then
-    BlockLaunchFailure(
-      "Launch timeout: exec did not transfer control",
-      popstarter,
-      context and context.device_page or "unknown",
-      argv0,
-      argv0,
-      app_dir,
-      nil,
-      nil
-    )
-    return
+  UI.LAUNCHING = false
+  if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
+    UI.Notif_queue.add("Failed to execute POPSTARTER")
   end
-  BlockLaunchFailure(
-    rc,
-    popstarter,
-    context and context.device_page or "unknown",
-    argv0,
-    argv0,
-    app_dir,
-    nil,
-    nil
-  )
+  SetLaunchPhase(LaunchState.PHASE_FAILED)
 end
 
 local function ResolveLaunchPolicy(gamelocation, ui_scene)
@@ -1988,6 +1974,12 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   local popstarter = PLDR.POPSTARTER_PATH
   if not FileExistsOpenProbe(popstarter) then
     popstarter = ResolvePopstarterPath(popstarter)
+    if not FileExistsOpenProbe(popstarter) then
+      if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
+        UI.Notif_queue.add("POPSTARTER.ELF not found")
+      end
+      return
+    end
   end
   PLDR.POPSTARTER_PATH = popstarter
   local pops_root = normalized_gamelocation
