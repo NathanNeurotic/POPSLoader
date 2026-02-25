@@ -58,6 +58,12 @@ IMG_SOURCES["MMCE"] = "MMCE.png"
 IMG_SOURCES["MX4SIO"] = "MX4SIO.png"
 
 local IMG_FAILED = {}
+local IMG_RETRY_ON_FAIL = {
+  BG = true,
+  BKG = true,
+  BGM = true,
+  splash_bg = true,
+}
 
 IMG = setmetatable({}, {
   __index = function (tbl, key)
@@ -72,7 +78,9 @@ IMG = setmetatable({}, {
     local img = Graphics.loadImage(path)
     if img == nil then
       LOGF("Image load failed: %s", path)
-      IMG_FAILED[key] = true
+      if not IMG_RETRY_ON_FAIL[key] then
+        IMG_FAILED[key] = true
+      end
       if key ~= "MISSING" then
         local missing_source = IMG_SOURCES["MISSING"]
         if missing_source ~= nil and not IMG_FAILED["MISSING"] then
