@@ -1289,6 +1289,10 @@ GSTEXTURE* loadEmbeddedPNG(uint8_t * data, size_t size, bool delayed)
 	png_infop info_ptr;
 	png_uint_32 width, height;
 	png_bytep *row_pointers;
+	png_colorp palette = NULL;
+	png_bytep trans = NULL;
+	int num_palette = 0;
+	int num_trans = 0;
 	pngtest_error_parameters error_parameters;
 
 	u32 sig_read = 0;
@@ -1335,26 +1339,72 @@ GSTEXTURE* loadEmbeddedPNG(uint8_t * data, size_t size, bool delayed)
 
 	png_get_IHDR(png_ptr, info_ptr, &width, &height, &bit_depth, &color_type,&interlace_type, NULL, NULL);
 
-	png_set_strip_16(png_ptr);
-
-	if (color_type == PNG_COLOR_TYPE_PALETTE)
-		png_set_expand(png_ptr);
-
-	if (color_type == PNG_COLOR_TYPE_GRAY && bit_depth < 8)
-		png_set_expand(png_ptr);
-
-	if (png_get_valid(png_ptr, info_ptr, PNG_INFO_tRNS))
-		png_set_tRNS_to_alpha(png_ptr);
-
-	png_set_filler(png_ptr, 0xff, PNG_FILLER_AFTER);
-
-	png_read_update_info(png_ptr, info_ptr);
-
 	tex->Width = width;
 	tex->Height = height;
 
         tex->VramClut = 0;
         tex->Clut = NULL;
+	tex->ClutStorageMode = GS_CLUT_STORAGE_CSM1;
+
+	if (color_type == PNG_COLOR_TYPE_PALETTE)
+	{
+		if (bit_depth != 8)
+			return NULL;
+
+		png_read_update_info(png_ptr, info_ptr);
+
+		int row_bytes = png_get_rowbytes(png_ptr, info_ptr);
+		tex->PSM = GS_PSM_T8;
+		tex->Mem = (u32*)memalign(128, gsKit_texture_size_ee(tex->Width, tex->Height, tex->PSM));
+		tex->ClutPSM = GS_PSM_CT32;
+		tex->Clut = (u32*)memalign(128, gsKit_texture_size_ee(16, 16, GS_PSM_CT32));
+
+		if (tex->Mem == NULL || tex->Clut == NULL)
+			return NULL;
+
+		row_pointers = (png_byte**)calloc(height, sizeof(png_bytep));
+		for (row = 0; row < height; row++) row_pointers[row] = (png_bytep)malloc(row_bytes);
+
+		png_read_image(png_ptr, row_pointers);
+
+		if (!png_get_PLTE(png_ptr, info_ptr, &palette, &num_palette))
+			num_palette = 0;
+		if (!png_get_tRNS(png_ptr, info_ptr, &trans, &num_trans, NULL))
+			num_trans = 0;
+
+		struct png_clut { u8 r, g, b, a; };
+		unsigned char *pixel = (unsigned char *)tex->Mem;
+		struct png_clut *clut = (struct png_clut *)tex->Clut;
+
+		memset(tex->Clut, 0, gsKit_texture_size_ee(16, 16, GS_PSM_CT32));
+
+		for (i = 0; i < num_palette; i++) {
+			clut[i].r = palette[i].red;
+			clut[i].g = palette[i].green;
+			clut[i].b = palette[i].blue;
+			clut[i].a = (i < num_trans ? trans[i] : 0xFF) >> 1;
+		}
+
+		for (i = 0; i < tex->Height; i++) {
+			memcpy(&pixel[i * tex->Width], row_pointers[i], tex->Width);
+		}
+
+		for(row = 0; row < height; row++) free(row_pointers[row]);
+		free(row_pointers);
+	}
+	else
+	{
+		png_set_strip_16(png_ptr);
+
+		if (color_type == PNG_COLOR_TYPE_GRAY && bit_depth < 8)
+			png_set_expand(png_ptr);
+
+		if (png_get_valid(png_ptr, info_ptr, PNG_INFO_tRNS))
+			png_set_tRNS_to_alpha(png_ptr);
+
+		png_set_filler(png_ptr, 0xff, PNG_FILLER_AFTER);
+
+		png_read_update_info(png_ptr, info_ptr);
 
 	if(png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_RGB_ALPHA)
 	{
@@ -1412,6 +1462,7 @@ GSTEXTURE* loadEmbeddedPNG(uint8_t * data, size_t size, bool delayed)
 	{
 		DPRINTF("%s: This texture depth is not supported yet!\n", __func__);
 		return NULL;
+	}
 	}
 	png_read_end(png_ptr, NULL);
 	png_destroy_read_struct(&png_ptr, &info_ptr, (png_infopp) NULL);
