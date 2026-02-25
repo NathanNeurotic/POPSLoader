@@ -1772,10 +1772,15 @@ end
           if PLDR.GetBDMAMode ~= nil then
             UI.ProfileQuery.bdma_mode = PLDR.GetBDMAMode()
           end
+          local save_ok = true
           if PLDR.SaveSettings ~= nil then
-            PLDR.SaveSettings()
+            save_ok = PLDR.SaveSettings() == true
           end
-          UI.Notif_queue.add("Profile defaults restored")
+          if save_ok then
+            UI.Notif_queue.add("Profile defaults restored")
+          else
+            UI.Notif_queue.add("Failed to save settings")
+          end
         end
         if UI.Pad.Events.R2 then
           UI.TextEntry.Open("Edit DKWDRV Path", dkwdrv_path, function (new_value)

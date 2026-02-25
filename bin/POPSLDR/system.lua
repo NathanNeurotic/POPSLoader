@@ -77,12 +77,6 @@ local APP_DIR_LOCAL = NormalizeDirPath(APP_DIR or BOOT_PATH_RAW)
 
 local function DeriveElfDirectory()
   local source = BOOT_PATH_RAW
-  if System ~= nil and System.GetArgv0 ~= nil then
-    local ok_arg, arg0 = pcall(System.GetArgv0)
-    if ok_arg and type(arg0) == "string" and arg0 ~= "" then
-      source = arg0
-    end
-  end
   if type(source) ~= "string" or source == "" then
     return APP_DIR_LOCAL
   end
@@ -118,7 +112,14 @@ local function ResolveWritablePath(rel)
   return modern
 end
 
-local SETTINGS_DIR = "mc0:/POPSTARTER/"
+local function ResolveSettingsDir()
+  if doesFolderExist("mc0:/") then
+    return "mc0:/POPSLOADER/"
+  end
+  return JoinPath(ELF_DIR_LOCAL, "POPSLOADER/")
+end
+
+local SETTINGS_DIR = ResolveSettingsDir()
 local SETTINGS_FILE = SETTINGS_DIR.."settings.lua"
 local SESSION_STAMP_FILE = SETTINGS_DIR..".pldrs"
 local WARN_ONCE = {}
@@ -182,12 +183,45 @@ local function NormalizePopstarterPath(path)
   end
   local normalized = TrimWhitespace(path)
   normalized = string.gsub(normalized, "\\", "/")
-  local device, rest = string.match(normalized, "^([%a]+%d*):/*(.*)$")
-  if device ~= nil then
-    rest = string.gsub(rest or "", "/+", "/")
-    return device..":/"..rest
-  end
   return normalized
+end
+
+local function GetBootElfDir()
+  local source = BOOT_PATH_RAW
+  if type(source) ~= "string" or source == "" then
+    return ELF_DIR_LOCAL
+  end
+  source = string.gsub(source, "\\", "/")
+  if string.sub(source, -1) == "/" then
+    return NormalizeDirPath(source)
+  end
+  local parent = string.match(source, "^(.*)/[^/]+$")
+  if parent ~= nil and parent ~= "" then
+    return NormalizeDirPath(parent)
+  end
+  return NormalizeDirPath(source)
+end
+
+local function GetResponsiveMassRoots(max_index)
+  local roots = {}
+  local seen = {}
+  local max = tonumber(max_index) or 4
+  if max < 0 then max = 0 end
+  if max > 9 then max = 9 end
+  local function add(root)
+    if root == nil or seen[root] then
+      return
+    end
+    if doesFolderExist(root) then
+      seen[root] = true
+      table.insert(roots, root)
+    end
+  end
+  add("mass:/")
+  for i = 0, max do
+    add("mass"..tostring(i)..":/")
+  end
+  return roots
 end
 
 local function PopstarterPathExists(path)
@@ -224,16 +258,29 @@ local function ResolvePopstarterPath(path)
     table.insert(candidates, candidate)
   end
 
+  local boot_dir = GetBootElfDir()
+  local primary_sidecar = JoinPath(boot_dir, "POPSTARTER.ELF")
+  add_candidate(primary_sidecar)
+
+  local boot_root, boot_suffix = string.match(primary_sidecar, "^(mass%d*:/)(.*)$")
+  if boot_root ~= nil and boot_suffix ~= nil then
+    local roots = GetResponsiveMassRoots(4)
+    for i = 1, #roots do
+      if roots[i] ~= boot_root then
+        add_candidate(roots[i]..boot_suffix)
+      end
+    end
+  end
+
   if chosen == nil or chosen == "" then
-    add_candidate(JoinPath(ELF_DIR_LOCAL, "POPSTARTER.ELF"))
-    if APP_DIR_LOCAL ~= ELF_DIR_LOCAL then
+    if APP_DIR_LOCAL ~= boot_dir then
       add_candidate(JoinPath(APP_DIR_LOCAL, "POPSTARTER.ELF"))
     end
   elseif IsAbsoluteDevicePath(chosen) then
     add_candidate(chosen)
   elseif not IsAbsoluteDevicePath(chosen) then
-    add_candidate(JoinPath(ELF_DIR_LOCAL, chosen))
-    if APP_DIR_LOCAL ~= ELF_DIR_LOCAL then
+    add_candidate(JoinPath(boot_dir, chosen))
+    if APP_DIR_LOCAL ~= boot_dir then
       add_candidate(JoinPath(APP_DIR_LOCAL, chosen))
     end
   else
@@ -305,7 +352,11 @@ end
 
 function PLDR.PopstarterExists(path)
   local target = ResolvePopstarterPath(path or PLDR.POPSTARTER_PATH)
-  return PopstarterPathExists(target), target
+  local exists = PopstarterPathExists(target)
+  if exists then
+    PLDR.POPSTARTER_PATH = target
+  end
+  return exists, target
 end
 
 -- Mass backend detection via USBMASS_IOCTL_GET_DRIVERNAME (requires fileXio + ps2sdk usbhdfsd-common.h support).
@@ -355,8 +406,6 @@ function PLDR.DetectMassBackends()
   end
 end
 
--- Run detection once during boot.
-PLDR.DetectMassBackends()
 PLDR.DEFAULT_DKWDRV_PATH = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
 local BDMA_MODES = {
   {
@@ -477,7 +526,7 @@ function PLDR.SaveSettings()
     .."}\n"
   local wr = System.writeFile(fd, line, #line)
   System.closeFile(fd)
-  if wr == nil or wr < 0 then
+  if wr == nil or wr < #line then
     pcall(System.removeFile, tmp_path)
     NotifyOnce("settings_save", "Failed to save settings")
     Touch(SESSION_STAMP_FILE, "pldrs_create")
@@ -564,6 +613,7 @@ function PLDR.ApplyProfileSetting()
   else
     PLDR.POPSTARTER_PATH = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
   end
+  PLDR.PopstarterExists(PLDR.POPSTARTER_PATH)
 end
 
 local function StripSuffixCaseInsensitive(name, suffix)
@@ -1804,7 +1854,10 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   local source_mode = policy.mode
   local raw_source_mode = source_mode
   local vcd_path = normalized_gamelocation..game
-  local popstarter = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
+  local popstarter = PLDR.POPSTARTER_PATH
+  if not PopstarterPathExists(popstarter) then
+    popstarter = ResolvePopstarterPath(popstarter)
+  end
   PLDR.POPSTARTER_PATH = popstarter
   local pops_root = normalized_gamelocation
   local boot_source_mode = source_mode
