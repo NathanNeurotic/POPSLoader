@@ -14,6 +14,37 @@
 local BOOT_PATH_RAW = System.currentDirectory()
 LOG("system.lua start")
 LOG("BOOT_PATH_RAW="..tostring(BOOT_PATH_RAW))
+
+local function OpenProbe(path)
+  if type(path) ~= "string" or path == "" then
+    return false
+  end
+  local ok_open, fd = pcall(System.openFile, path, FREAD)
+  if ok_open and type(fd) == "number" and fd >= 0 then
+    System.closeFile(fd)
+    return true
+  end
+  return false
+end
+
+local function CanonicalizeLaunchElfPath(raw_path)
+  if type(raw_path) ~= "string" or raw_path == "" then
+    return raw_path
+  end
+  if not string.match(raw_path, "^mass:/") then
+    return raw_path
+  end
+  local suffix = string.sub(raw_path, 7)
+  for i = 0, 9 do
+    local candidate = "mass"..tostring(i)..":/"..suffix
+    if OpenProbe(candidate) then
+      return candidate
+    end
+  end
+  return raw_path
+end
+
+local BOOT_PATH_CANON = CanonicalizeLaunchElfPath(BOOT_PATH_RAW)
 local function EnsureTrailingSlash(path)
   if path == nil then
     return nil
@@ -73,10 +104,10 @@ function JoinPath(base, rel)
   return normalized..cleaned
 end
 
-local APP_DIR_LOCAL = NormalizeDirPath(APP_DIR or BOOT_PATH_RAW)
+local APP_DIR_LOCAL = NormalizeDirPath(APP_DIR or BOOT_PATH_CANON)
 
 local function GetLaunchElfDirFromBootPathLocal()
-  local source = BOOT_PATH_RAW
+  local source = BOOT_PATH_CANON
   if type(source) ~= "string" or source == "" then
     return APP_DIR_LOCAL
   end
@@ -109,7 +140,7 @@ local function ResolveWritablePath(rel)
 end
 
 local function GetLaunchElfPathLocal()
-  local source = BOOT_PATH_RAW
+  local source = BOOT_PATH_CANON
   if type(source) ~= "string" or source == "" then
     source = APP_DIR_LOCAL
   end
@@ -211,32 +242,14 @@ local function BuildMassPrefixVariants(max_index)
 end
 
 local function FileExistsOpenProbe(path)
-  if type(path) ~= "string" or path == "" then
-    return false
-  end
   if doesFileExist(path) then
     return true
   end
-  if type(System) == "table" and type(System.openFile) == "function" and type(System.closeFile) == "function" then
-    local ok_open, fd = pcall(System.openFile, path, FREAD)
-    if ok_open and fd ~= nil and fd >= 0 then
-      pcall(System.closeFile, fd)
-      return true
-    end
-  end
-  return false
+  return OpenProbe(path)
 end
 
 local function ResolvePopstarterPath(path)
-  local chosen = NormalizePopstarterPath(path)
-  local launch_dir = GetLaunchElfDirFromBootPathLocal()
-  if chosen == nil or chosen == "" then
-    return JoinPath(launch_dir, "POPSTARTER.ELF")
-  end
-  if IsAbsoluteDevicePath(chosen) then
-    return chosen
-  end
-  return JoinPath(launch_dir, chosen)
+  return JoinPath(GetLaunchElfDirFromBootPathLocal(), "POPSTARTER.ELF")
 end
 
 HDD_DIAG_BYPASS = 0
@@ -299,6 +312,14 @@ function PLDR.GetLaunchElfDirFromBootPath()
   return GetLaunchElfDirFromBootPathLocal()
 end
 
+function PLDR.OpenProbe(path)
+  return OpenProbe(path)
+end
+
+function PLDR.CanonicalizeLaunchElfPath(raw_path)
+  return CanonicalizeLaunchElfPath(raw_path)
+end
+
 function PLDR.ResolvePopstarterPath(path)
   return ResolvePopstarterPath(path)
 end
@@ -309,7 +330,7 @@ end
 
 function PLDR.GetPopstarterProbeStatus()
   local path = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
-  return path, FileExistsOpenProbe(path)
+  return path, OpenProbe(path)
 end
 
 function PLDR.PopstarterExists(path)
@@ -796,95 +817,47 @@ function PLDR.ReadAssetBytes(name)
   if type(name) ~= "string" or name == "" then
     return nil, nil
   end
-  local keys = {name}
-  local basename = string.match(name, "([^/]+)$") or name
-  if not string.match(name, "^bin/POPSLDR/") then
-    keys[#keys + 1] = "bin/POPSLDR/"..name
-  end
-  if not string.match(name, "^POPSLDR/") then
-    keys[#keys + 1] = "POPSLDR/"..name
-  end
-  if not string.match(name, "/") then
-    keys[#keys + 1] = "bin/POPSLDR/"..basename
+
+  local embed_candidates = {
+    "embed:/bin/POPSLDR/"..name,
+    "embed:/POPSLDR/"..name,
+    "embed:/"..name
+  }
+  for i = 1, #embed_candidates do
+    local data, size = ReadAllBytes(embed_candidates[i])
+    if data ~= nil then
+      return data, size
+    end
   end
 
-  for i = 1, #keys do
-    local key = keys[i]
-    if type(System) == "table" and type(System.embedExists) == "function" then
-      local ok_embed, exists = pcall(System.embedExists, key)
-      if ok_embed and exists then
-        local data, size = ReadAllBytes("embed:/"..key)
-        if data ~= nil then
-          return data, size
-        end
-      end
-    end
-    local resolved = ResolveAsset(key)
+  local resolve_candidates = {
+    "bin/POPSLDR/"..name,
+    "POPSLDR/"..name
+  }
+  for i = 1, #resolve_candidates do
+    local resolved = ResolveAsset(resolve_candidates[i])
     if type(resolved) == "string" then
       local data, size = ReadAllBytes(resolved)
       if data ~= nil then
         return data, size
       end
     end
-    local data, size = ReadAllBytes("embed:/"..key)
-    if data ~= nil then
-      return data, size
-    end
   end
 
-  local candidates = {
+  local fs_candidates = {
+    JoinPath(APP_DIR_LOCAL, "bin/POPSLDR/"..name),
     JoinPath(APP_DIR_LOCAL, name),
-    JoinPath(ELF_DIR_LOCAL, name),
-    JoinPath(APP_DIR_LOCAL, basename),
-    JoinPath(ELF_DIR_LOCAL, basename)
+    JoinPath(ELF_DIR_LOCAL, "bin/POPSLDR/"..name),
+    JoinPath(ELF_DIR_LOCAL, name)
   }
-  for i = 1, #candidates do
-    local data, size = ReadAllBytes(candidates[i])
+  for i = 1, #fs_candidates do
+    local data, size = ReadAllBytes(fs_candidates[i])
     if data ~= nil then
       return data, size
     end
   end
 
   return nil, nil
-end
-
-local BDMA_IRX_CACHE_DIR = "mc0:/POPSLOADER/IRX/"
-local BDMA_IRX_VARIANTS = {
-  "usbd.irx.usbexfat",
-  "usbhdfsd.irx.usbexfat",
-  "usbd.irx.mmce",
-  "usbhdfsd.irx.mmce",
-  "usbd.irx.mx4sio",
-  "usbhdfsd.irx.mx4sio"
-}
-
-local function ReadBdmaVariantBytes(name)
-  local key = "POPSLDR/"..name
-  local resolved = ResolveAsset(key)
-  if type(resolved) == "string" then
-    local data, size = ReadAllBytes(resolved)
-    if data ~= nil then
-      return data, size
-    end
-  end
-  return ReadAllBytes("embed:/"..key)
-end
-
-local function ExtractBdmaIrxIfMissing()
-  if not EnsureDirectory(BDMA_IRX_CACHE_DIR) then
-    return false
-  end
-  for i = 1, #BDMA_IRX_VARIANTS do
-    local name = BDMA_IRX_VARIANTS[i]
-    local cache_path = JoinPath(BDMA_IRX_CACHE_DIR, name)
-    if not doesFileExist(cache_path) then
-      local data = ReadBdmaVariantBytes(name)
-      if type(data) ~= "string" or not PLDR.WriteFile(cache_path, data) then
-        return false
-      end
-    end
-  end
-  return true
 end
 
 function PLDR.WriteFile(path, data)
@@ -984,16 +957,10 @@ function PLDR.ApplyBDMAOnSettingsSave(mode)
   elseif entry.action == "copy" then
     if not EnsureDirectory(dest_root) then
       ok = false
-    elseif not ExtractBdmaIrxIfMissing() then
-      if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
-        UI.Notif_queue.add("BDMA IRX unavailable")
-      end
-      ok = false
     else
       for i = 1, #targets do
         local target = targets[i]
-        local cache_source = JoinPath(BDMA_IRX_CACHE_DIR, target.source..entry.source_suffix)
-        local data = ReadAllBytes(cache_source)
+        local data = PLDR.ReadAssetBytes(target.source..entry.source_suffix)
         if type(data) == "string" then
           if not PLDR.WriteFile(target.dest, data) then
             ok = false
@@ -1971,16 +1938,13 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   local source_mode = policy.mode
   local raw_source_mode = source_mode
   local vcd_path = normalized_gamelocation..game
-  local popstarter = PLDR.POPSTARTER_PATH
-  if not FileExistsOpenProbe(popstarter) then
-    popstarter = ResolvePopstarterPath(popstarter)
-    if not FileExistsOpenProbe(popstarter) then
+  local popstarter = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
+  if not OpenProbe(popstarter) then
       if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
         UI.Notif_queue.add("POPSTARTER.ELF not found")
       end
       return
     end
-  end
   PLDR.POPSTARTER_PATH = popstarter
   local pops_root = normalized_gamelocation
   local boot_source_mode = source_mode
