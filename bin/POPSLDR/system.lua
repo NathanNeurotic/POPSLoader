@@ -44,7 +44,19 @@ local function CanonicalizeLaunchElfPath(raw_path)
   return raw_path
 end
 
-local BOOT_PATH_CANON = CanonicalizeLaunchElfPath(BOOT_PATH_RAW)
+local BOOT_PATH_CANON = nil
+local function GetBootPathCanonLocal()
+  if BOOT_PATH_CANON ~= nil then
+    return BOOT_PATH_CANON
+  end
+  local source = BOOT_PATH_RAW
+  if type(source) == "string" and string.match(source, "^mass:/") and PLDR ~= nil and PLDR.EnsureMassReady ~= nil then
+    PLDR.EnsureMassReady()
+  end
+  BOOT_PATH_CANON = CanonicalizeLaunchElfPath(source)
+  return BOOT_PATH_CANON
+end
+
 local function EnsureTrailingSlash(path)
   if path == nil then
     return nil
@@ -104,10 +116,10 @@ function JoinPath(base, rel)
   return normalized..cleaned
 end
 
-local APP_DIR_LOCAL = NormalizeDirPath(APP_DIR or BOOT_PATH_CANON)
+local APP_DIR_LOCAL = NormalizeDirPath(APP_DIR or BOOT_PATH_RAW)
 
 local function GetLaunchElfDirFromBootPathLocal()
-  local source = BOOT_PATH_CANON
+  local source = GetBootPathCanonLocal()
   if type(source) ~= "string" or source == "" then
     return APP_DIR_LOCAL
   end
@@ -140,7 +152,7 @@ local function ResolveWritablePath(rel)
 end
 
 local function GetLaunchElfPathLocal()
-  local source = BOOT_PATH_CANON
+  local source = GetBootPathCanonLocal()
   if type(source) ~= "string" or source == "" then
     source = APP_DIR_LOCAL
   end
@@ -257,6 +269,7 @@ PLDR = {
   REBOOT_IOP_WHILE_LOADING_POPSTARTER = 0;
   POPSTARTER_PATH = JoinPath(GetLaunchElfDirFromBootPathLocal(), "POPSTARTER.ELF");
   CHECK_POPSTARTER_FILES = false;
+  _mass_ready = false;
   GAMEPATH = ".";
   GAMES = {};
   HDDCACHE = nil;
@@ -330,11 +343,17 @@ end
 
 function PLDR.GetPopstarterProbeStatus()
   local path = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
+  if string.match(path or "", "^mass%d*:/") then
+    PLDR.EnsureMassReady()
+  end
   return path, OpenProbe(path)
 end
 
 function PLDR.PopstarterExists(path)
   local target = ResolvePopstarterPath(path or PLDR.POPSTARTER_PATH)
+  if string.match(target or "", "^mass%d*:/") then
+    PLDR.EnsureMassReady()
+  end
   local exists = FileExistsOpenProbe(target)
   if exists then
     PLDR.POPSTARTER_PATH = target
@@ -395,6 +414,20 @@ function PLDR.EnsureUsbReady()
   end
   PLDR.USB._INIT_DONE = true
   pcall(System.listDirectory, "mass:/")
+end
+
+function PLDR.EnsureMassReady()
+  if PLDR._mass_ready then
+    return true
+  end
+  PLDR.EnsureUsbReady()
+  PLDR.DetectMassBackends()
+  pcall(System.listDirectory, "mass:/")
+  pcall(System.listDirectory, "mass0:/")
+  if doesFolderExist("mass:/") or doesFolderExist("mass0:/") or OpenProbe("mass:/") or OpenProbe("mass0:/") then
+    PLDR._mass_ready = true
+  end
+  return PLDR._mass_ready == true
 end
 
 PLDR.DEFAULT_DKWDRV_PATH = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
@@ -865,11 +898,33 @@ function PLDR.WriteFile(path, data)
     return false
   end
 
-  local ok_open, fd = pcall(System.openFile, path, FCREATE)
+  local flags = FCREATE
+  if type(FWRITE) == "number" then
+    flags = flags + FWRITE
+  end
+  if type(FTRUNC) == "number" then
+    flags = flags + FTRUNC
+  end
+
+  local ok_open, fd = pcall(System.openFile, path, flags)
+  if (not ok_open or type(fd) ~= "number" or fd < 0) and flags ~= FCREATE then
+    ok_open, fd = pcall(System.openFile, path, FCREATE)
+  end
   if ok_open and type(fd) == "number" and fd >= 0 then
-    local written = System.writeFile(fd, data, #data)
+    local offset = 1
+    local total = #data
+    local ok_write = true
+    while offset <= total do
+      local chunk = string.sub(data, offset)
+      local written = System.writeFile(fd, chunk, #chunk)
+      if type(written) ~= "number" or written <= 0 then
+        ok_write = false
+        break
+      end
+      offset = offset + written
+    end
     System.closeFile(fd)
-    if type(written) == "number" and written >= #data then
+    if ok_write and offset > total then
       return true
     end
   end
@@ -929,56 +984,50 @@ function PLDR.ApplyBDMAOnSettingsSave(mode)
   if selected_mode == nil then
     selected_mode = 1
   end
-  local mode = selected_mode
-  local entry = BDMA_MODES[mode] or BDMA_MODES[1]
+  local entry = BDMA_MODES[selected_mode] or BDMA_MODES[1]
   local label = entry.label
   local dest_root = NormalizeDirPath("mc0:/POPSTARTER/")
   local targets = {
-    {
-      dest = JoinPath(dest_root, "usbd.irx"),
-      source = "usbd.irx"
-    },
-    {
-      dest = JoinPath(dest_root, "usbhdfsd.irx"),
-      source = "usbhdfsd.irx"
-    }
+    { dest = JoinPath(dest_root, "usbd.irx"), source = "usbd.irx", out = "usbd.irx" },
+    { dest = JoinPath(dest_root, "usbhdfsd.irx"), source = "usbhdfsd.irx", out = "usbhdfsd.irx" }
   }
-  local ok = true
+
   if entry.action == "delete" then
     for i = 1, #targets do
       local target = targets[i]
       if doesFileExist(target.dest) then
-        local rm_ok = pcall(System.removeFile, target.dest)
-        if not rm_ok then
-          ok = false
-        end
+        pcall(System.removeFile, target.dest)
       end
     end
-  elseif entry.action == "copy" then
-    if not EnsureDirectory(dest_root) then
-      ok = false
-    else
-      for i = 1, #targets do
-        local target = targets[i]
-        local data = PLDR.ReadAssetBytes(target.source..entry.source_suffix)
-        if type(data) == "string" then
-          if not PLDR.WriteFile(target.dest, data) then
-            ok = false
-          end
-        else
-          ok = false
-        end
-      end
+    PLDR.SETTINGS.bdma_last_label = nil
+    return true, nil
+  end
+
+  if entry.action ~= "copy" then
+    return true, nil
+  end
+
+  if not doesFolderExist(dest_root) then
+    local ok_mkdir = pcall(System.createDirectory, "mc0:/POPSTARTER")
+    if not ok_mkdir and not doesFolderExist(dest_root) then
+      return false, "POPSTARTER folder missing"
     end
   end
-  if ok then
-    if entry.action == "delete" then
-      PLDR.SETTINGS.bdma_last_label = nil
-    else
-      PLDR.SETTINGS.bdma_last_label = label
+
+  for i = 1, #targets do
+    local target = targets[i]
+    local source_name = target.source..entry.source_suffix
+    local data = PLDR.ReadAssetBytes(source_name)
+    if type(data) ~= "string" then
+      return false, "BDMA source missing: "..source_name
+    end
+    if not PLDR.WriteFile(target.dest, data) then
+      return false, "BDMA write failed: "..target.out
     end
   end
-  return ok
+
+  PLDR.SETTINGS.bdma_last_label = label
+  return true, nil
 end
 
 function PLDR.ApplyBDMAMode(mode)
@@ -1939,6 +1988,9 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   local raw_source_mode = source_mode
   local vcd_path = normalized_gamelocation..game
   local popstarter = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
+  if string.match(popstarter or "", "^mass%d*:/") then
+    PLDR.EnsureMassReady()
+  end
   if not OpenProbe(popstarter) then
       if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
         UI.Notif_queue.add("POPSTARTER.ELF not found")

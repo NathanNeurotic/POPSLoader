@@ -1789,8 +1789,9 @@ end
             save_ok = PLDR.SaveSettings()
           end
           if save_ok and PLDR.ApplyBDMAOnSettingsSave ~= nil then
-            if not PLDR.ApplyBDMAOnSettingsSave(nil) then
-              UI.Notif_queue.add("BDMA apply failed")
+            local bdma_ok, bdma_reason = PLDR.ApplyBDMAOnSettingsSave(nil)
+            if not bdma_ok then
+              UI.Notif_queue.add(bdma_reason or "BDMA apply failed")
             end
           end
           if save_ok then
@@ -1806,8 +1807,9 @@ end
               if PLDR.SaveSettings ~= nil then
                 if PLDR.SaveSettings() then
                   if PLDR.ApplyBDMAOnSettingsSave ~= nil then
-                    if not PLDR.ApplyBDMAOnSettingsSave(nil) then
-                      UI.Notif_queue.add("BDMA apply failed")
+                    local bdma_ok, bdma_reason = PLDR.ApplyBDMAOnSettingsSave(nil)
+                    if not bdma_ok then
+                      UI.Notif_queue.add(bdma_reason or "BDMA apply failed")
                     end
                   end
                   if UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
@@ -1844,8 +1846,9 @@ end
             pop_ok = doesFileExist(PLDR.POPSTARTER_PATH)
           end
           if save_ok and PLDR.ApplyBDMAOnSettingsSave ~= nil then
-            if not PLDR.ApplyBDMAOnSettingsSave(nil) then
-              UI.Notif_queue.add("BDMA apply failed")
+            local bdma_ok, bdma_reason = PLDR.ApplyBDMAOnSettingsSave(nil)
+            if not bdma_ok then
+              UI.Notif_queue.add(bdma_reason or "BDMA apply failed")
             end
           end
           if not pop_ok then
