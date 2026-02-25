@@ -21,14 +21,10 @@ POPSLDR/IMG/SMB.png|bin/POPSLDR/IMG/SMB.png
 POPSLDR/IMG/USB.png|bin/POPSLDR/IMG/USB.png
 POPSLDR/IMG/circle.png|bin/POPSLDR/IMG/circle.png
 POPSLDR/IMG/cross.png|bin/POPSLDR/IMG/cross.png
-POPSLDR/IMG/default.png|bin/POPSLDR/IMG/default.png
-POPSLDR/IMG/disable_art.png|bin/POPSLDR/IMG/disable_art.png
 POPSLDR/IMG/down.png|bin/POPSLDR/IMG/down.png
 POPSLDR/IMG/frame.png|bin/POPSLDR/IMG/frame.png
-POPSLDR/IMG/frame_branded.png|bin/POPSLDR/IMG/frame_branded.png
 POPSLDR/IMG/horz.png|bin/POPSLDR/IMG/horz.png
 POPSLDR/IMG/left.png|bin/POPSLDR/IMG/left.png
-POPSLDR/IMG/logo.png|bin/POPSLDR/IMG/logo.png
 POPSLDR/IMG/right.png|bin/POPSLDR/IMG/right.png
 POPSLDR/IMG/select.png|bin/POPSLDR/IMG/select.png
 POPSLDR/IMG/splash_appname.png|bin/POPSLDR/IMG/splash_appname.png
