@@ -61,7 +61,10 @@ endif
 BIN2S = $(PS2SDK)/bin/bin2c
 
 # Prefer python3, fallback to python if needed
-PYTHON ?= $(shell command -v python3 2>/dev/null || command -v python 2>/dev/null)
+PYTHON ?= $(shell \
+	(command -v python3 >/dev/null 2>&1 && python3 -V >/dev/null 2>&1 && command -v python3) || \
+	(command -v python  >/dev/null 2>&1 && python  -V >/dev/null 2>&1 && command -v python) \
+)
 
 # Hard fail early if neither interpreter exists
 ifeq ($(PYTHON),)
