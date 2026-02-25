@@ -349,6 +349,11 @@ function PLDR.GetPopstarterProbeStatus()
   return path, OpenProbe(path)
 end
 
+function PLDR.GetBootPathCanonProbeStatus()
+  local path = GetBootPathCanonLocal()
+  return path, OpenProbe(path)
+end
+
 function PLDR.PopstarterExists(path)
   local target = ResolvePopstarterPath(path or PLDR.POPSTARTER_PATH)
   if string.match(target or "", "^mass%d*:/") then
@@ -893,6 +898,44 @@ function PLDR.ReadAssetBytes(name)
   return nil, nil
 end
 
+function PLDR.ResolveBdmaIrxAssetPath(name)
+  if type(name) ~= "string" or name == "" then
+    return nil
+  end
+  local asset_keys = {
+    "POPSLDR/"..name,
+    "POPSLDR/IRX/"..name,
+    "bin/POPSLDR/"..name,
+    "bin/POPSLDR/IRX/"..name
+  }
+  if type(System) == "table" and type(System.resolveAsset) == "function" then
+    for i = 1, #asset_keys do
+      local resolved = System.resolveAsset(asset_keys[i])
+      if type(resolved) == "string" and resolved ~= "" then
+        return resolved
+      end
+    end
+  end
+  for i = 1, #asset_keys do
+    local embed_path = "embed:/"..asset_keys[i]
+    if OpenProbe(embed_path) then
+      return embed_path
+    end
+  end
+  local fs_candidates = {
+    JoinPath(APP_DIR_LOCAL, "bin/POPSLDR/"..name),
+    JoinPath(APP_DIR_LOCAL, name),
+    JoinPath(ELF_DIR_LOCAL, "bin/POPSLDR/"..name),
+    JoinPath(ELF_DIR_LOCAL, name)
+  }
+  for i = 1, #fs_candidates do
+    if OpenProbe(fs_candidates[i]) then
+      return fs_candidates[i]
+    end
+  end
+  return nil
+end
+
 function PLDR.WriteFile(path, data)
   if type(path) ~= "string" or path == "" or type(data) ~= "string" then
     return false
@@ -1017,7 +1060,11 @@ function PLDR.ApplyBDMAOnSettingsSave(mode)
   for i = 1, #targets do
     local target = targets[i]
     local source_name = target.source..entry.source_suffix
-    local data = PLDR.ReadAssetBytes(source_name)
+    local source_path = PLDR.ResolveBdmaIrxAssetPath(source_name)
+    if source_path == nil then
+      return false, "BDMA source missing: "..source_name
+    end
+    local data = ReadAllBytes(source_path)
     if type(data) ~= "string" then
       return false, "BDMA source missing: "..source_name
     end
