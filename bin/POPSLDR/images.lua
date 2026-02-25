@@ -7,7 +7,20 @@
 --]]
 
 LOG("Registering images")
-local function ResolveImage(name)
+local IMG_EMBED_OVERRIDES = {
+  BG = "embed:/POPSLDR/IMG/BG.png",
+  BKG = "embed:/POPSLDR/IMG/BKG.png",
+  BGM = "embed:/POPSLDR/IMG/BGM.png",
+  splash_bg = "embed:/POPSLDR/IMG/splash_bg.png",
+}
+
+local function ResolveImage(name, key)
+  if key ~= nil then
+    local explicit = IMG_EMBED_OVERRIDES[key]
+    if explicit ~= nil then
+      return explicit
+    end
+  end
   return "embed:/POPSLDR/IMG/"..name
 end
 --- Add your images to this table, just write the name of the file.
@@ -68,7 +81,7 @@ IMG = setmetatable({}, {
       BOOT_PROF.textures_ready = true
       BOOT_PROF.stamp("UI assets init (textures)")
     end
-    local path = ResolveImage(source)
+    local path = ResolveImage(source, key)
     local img = Graphics.loadImage(path)
     if img == nil then
       LOGF("Image load failed: %s", path)
@@ -95,6 +108,8 @@ IMG = setmetatable({}, {
     return img
   end
 })
+
+
 function IMG.ReleaseAll()
   local free_ok = type(Graphics) == "table" and type(Graphics.freeImage) == "function"
   for key, _ in pairs(IMG_SOURCES) do
