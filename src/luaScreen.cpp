@@ -155,7 +155,16 @@ static int lua_color(lua_State *L) {
 	int g = luaL_checkinteger(L, 2);
 	int b = luaL_checkinteger(L, 3);
 	int a = 0x80;
-	if (argc==4) a = CLAMP((int)luaL_checkinteger(L, 4), 0, 128);
+	if (argc == 4) {
+		const lua_Integer alpha = luaL_checkinteger(L, 4);
+
+		// Clamp in lua_Integer domain to avoid overflow
+		lua_Integer clamped = alpha;
+		if (clamped < 0) clamped = 0;
+		else if (clamped > 128) clamped = 128;
+
+		a = (int)clamped;
+	}
 	int color = r | (g << 8) | (b << 16) | (a << 24);
 	lua_pushinteger(L,color);
 	return 1;
