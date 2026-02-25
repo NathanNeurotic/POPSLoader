@@ -4,6 +4,7 @@
 #include <malloc.h>
 #include <math.h>
 #include <fcntl.h>
+#include <string.h>
 
 #include <jpeglib.h>
 #include <time.h>
@@ -37,6 +38,31 @@ typedef struct {
 
 static int error_count = 0;
 static int warning_count = 0;
+
+static const char* g_texture_upload_path_hint = NULL;
+
+static bool ends_with(const char* value, const char* suffix)
+{
+	if (value == NULL || suffix == NULL) return false;
+	size_t vlen = strlen(value);
+	size_t slen = strlen(suffix);
+	if (slen > vlen) return false;
+	return strcmp(value + (vlen - slen), suffix) == 0;
+}
+
+static bool should_upload_texture_path(const char* path)
+{
+	if (path == NULL) return false;
+	return ends_with(path, "IMG/PSL.png")
+		|| ends_with(path, "IMG/BG.png")
+		|| ends_with(path, "IMG/BGM.png")
+		|| ends_with(path, "IMG/BKG.png");
+}
+
+static bool should_upload_current_texture(void)
+{
+	return should_upload_texture_path(g_texture_upload_path_hint);
+}
 
 typedef struct
 {
@@ -319,16 +345,23 @@ GSTEXTURE* loadpng(FILE* File, bool delayed)
 			}
 		}
 
-		// Upload texture
-		gsKit_texture_upload(gsGlobal, tex);
-		// Free texture
-		free(tex->Mem);
-		tex->Mem = NULL;
-		// Free texture CLUT
-		if(tex->Clut != NULL)
+		if (should_upload_current_texture())
 		{
-			free(tex->Clut);
-			tex->Clut = NULL;
+			// Upload texture
+			gsKit_texture_upload(gsGlobal, tex);
+			// Free texture
+			free(tex->Mem);
+			tex->Mem = NULL;
+			// Free texture CLUT
+			if(tex->Clut != NULL)
+			{
+				free(tex->Clut);
+				tex->Clut = NULL;
+			}
+		}
+		else
+		{
+			tex->Delayed = true;
 		}
 	}
 	else
@@ -632,16 +665,23 @@ GSTEXTURE* loadbmp(FILE* File, bool delayed)
 			}
 		}
 
-		// Upload texture
-		gsKit_texture_upload(gsGlobal, tex);
-		// Free texture
-		free(tex->Mem);
-		tex->Mem = NULL;
-		// Free texture CLUT
-		if(tex->Clut != NULL)
+		if (should_upload_current_texture())
 		{
-			free(tex->Clut);
-			tex->Clut = NULL;
+			// Upload texture
+			gsKit_texture_upload(gsGlobal, tex);
+			// Free texture
+			free(tex->Mem);
+			tex->Mem = NULL;
+			// Free texture CLUT
+			if(tex->Clut != NULL)
+			{
+				free(tex->Clut);
+				tex->Clut = NULL;
+			}
+		}
+		else
+		{
+			tex->Delayed = true;
 		}
 	}
 	else
@@ -789,16 +829,23 @@ GSTEXTURE* loadjpeg(FILE* fp, bool scale_down, bool delayed)
 			}
 		}
 
-		// Upload texture
-		gsKit_texture_upload(gsGlobal, tex);
-		// Free texture
-		free(tex->Mem);
-		tex->Mem = NULL;
-		// Free texture CLUT
-		if(tex->Clut != NULL)
+		if (should_upload_current_texture())
 		{
-			free(tex->Clut);
-			tex->Clut = NULL;
+			// Upload texture
+			gsKit_texture_upload(gsGlobal, tex);
+			// Free texture
+			free(tex->Mem);
+			tex->Mem = NULL;
+			// Free texture CLUT
+			if(tex->Clut != NULL)
+			{
+				free(tex->Clut);
+				tex->Clut = NULL;
+			}
+		}
+		else
+		{
+			tex->Delayed = true;
 		}
 	}
 	else
@@ -823,13 +870,18 @@ GSTEXTURE* load_image(const char* path, bool delayed){
 	const void* ptr = NULL;
 	size_t size = 0;
 	bool isEmbedded = false;
+	g_texture_upload_path_hint = path;
 	if (Asset_ReadAll(path, &ptr, &size, &isEmbedded) == 0 && isEmbedded) {
 		GSTEXTURE* embedded = loadImageFromBuffer(ptr, size, delayed);
-		if (embedded != NULL) return embedded;
+		if (embedded != NULL) {
+			g_texture_upload_path_hint = NULL;
+			return embedded;
+		}
 	}
 
 	FILE* file = fopen(path, "rb");
 	if (file == NULL) {
+		g_texture_upload_path_hint = NULL;
 		DPRINTF("Failed to open image %s.\n", path);
 		return NULL;
 	}
@@ -840,6 +892,7 @@ GSTEXTURE* load_image(const char* path, bool delayed){
 	if (magic == 0x4D42) image =      loadbmp(file, delayed);
 	else if (magic == 0xD8FF) image = loadjpeg(file, false, delayed);
 	else if (magic == 0x5089) image = loadpng(file, delayed);
+	g_texture_upload_path_hint = NULL;
 	if (image == NULL) DPRINTF("Failed to load image %s.", path);
 
 	return image;
@@ -1448,17 +1501,25 @@ GSTEXTURE* loadEmbeddedPNG(uint8_t * data, size_t size, bool delayed)
 			}
 		}
 
-		// Upload texture
-		gsKit_setup_tbw(tex);
-		gsKit_texture_upload(gsGlobal, tex);
-		// Free texture
-		free(tex->Mem);
-		tex->Mem = NULL;
-		// Free texture CLUT
-		if(tex->Clut != NULL)
+		if (should_upload_current_texture())
 		{
-			free(tex->Clut);
-			tex->Clut = NULL;
+			// Upload texture
+			gsKit_setup_tbw(tex);
+			gsKit_texture_upload(gsGlobal, tex);
+			// Free texture
+			free(tex->Mem);
+			tex->Mem = NULL;
+			// Free texture CLUT
+			if(tex->Clut != NULL)
+			{
+				free(tex->Clut);
+				tex->Clut = NULL;
+			}
+		}
+		else
+		{
+			tex->Delayed = true;
+			gsKit_setup_tbw(tex);
 		}
 	}
 	else
