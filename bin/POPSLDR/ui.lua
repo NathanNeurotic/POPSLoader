@@ -26,6 +26,13 @@ local function Clamp(v, lo, hi)
   if v > hi then return hi end
   return v
 end
+function Alpha255(a)
+  if a == nil then return 255 end
+  if a <= 1 then a = a * 255 end
+  if a < 0 then a = 0 elseif a > 255 then a = 255 end
+  return math.floor(a + 0.5)
+end
+
 local function EaseInOutCubic(t)
   t = Clamp01(t)
   if t < 0.5 then
@@ -939,14 +946,6 @@ UI = {
           boot_sound_hold_frames = math.floor(((sec + pad) * 60) + 0.5)
           LOGF("BOOT SOUND: hold frames=%s", tostring(boot_sound_hold_frames))
         end
-local function Alpha255(a)
-  if type(a) ~= "number" then a = 255 end
-  if a <= 1 then a = a * 255 end
-  if a < 0 then a = 0 end
-  if a > 255 then a = 255 end
-  return math.floor(a + 0.5)
-end
-
 local function DrawSplashCover(img, screen_w, screen_h, alpha)
   if img == nil then return end
   alpha = Alpha255(alpha)
