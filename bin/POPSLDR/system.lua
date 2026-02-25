@@ -74,6 +74,34 @@ function JoinPath(base, rel)
 end
 
 local APP_DIR_LOCAL = NormalizeDirPath(APP_DIR or BOOT_PATH_RAW)
+
+local function DeriveElfDirectory()
+  local source = BOOT_PATH_RAW
+  if System ~= nil and System.GetArgv0 ~= nil then
+    local ok_arg, arg0 = pcall(System.GetArgv0)
+    if ok_arg and type(arg0) == "string" and arg0 ~= "" then
+      source = arg0
+    end
+  end
+  if type(source) ~= "string" or source == "" then
+    return APP_DIR_LOCAL
+  end
+  source = string.gsub(source, "\\", "/")
+  if string.sub(source, -1) ~= "/" then
+    local parent = string.match(source, "^(.*)/[^/]+$")
+    if parent ~= nil and parent ~= "" then
+      source = parent.."/"
+    elseif string.match(source, "^[%a]+%d*:[^/].*$") then
+      local device, rest = string.match(source, "^([%a]+%d*):(.+)$")
+      if device ~= nil and rest ~= nil and string.match(rest, "^[^/]+$") then
+        source = device..":/"
+      end
+    end
+  end
+  return NormalizeDirPath(source)
+end
+
+local ELF_DIR_LOCAL = DeriveElfDirectory()
 local SELECTOR_MODE = "basename"
 
 local function ResolveAsset(rel)
@@ -141,19 +169,85 @@ local function IsAbsoluteDevicePath(path)
   return path ~= nil and string.match(path, "^[%a]+%d*:/") ~= nil
 end
 
+local function TrimWhitespace(path)
+  if type(path) ~= "string" then
+    return path
+  end
+  return string.match(path, "^%s*(.-)%s*$")
+end
+
+local function NormalizePopstarterPath(path)
+  if type(path) ~= "string" then
+    return path
+  end
+  local normalized = TrimWhitespace(path)
+  normalized = string.gsub(normalized, "\\", "/")
+  local device, rest = string.match(normalized, "^([%a]+%d*):/*(.*)$")
+  if device ~= nil then
+    rest = string.gsub(rest or "", "/+", "/")
+    return device..":/"..rest
+  end
+  return normalized
+end
+
+local function PopstarterPathExists(path)
+  if type(path) ~= "string" or path == "" then
+    return false
+  end
+  if doesFileExist(path) then
+    return true
+  end
+  if type(System) == "table" and type(System.openFile) == "function" and type(System.closeFile) == "function" then
+    local ok_open, fd = pcall(System.openFile, path, FREAD)
+    if ok_open and fd ~= nil and fd >= 0 then
+      pcall(System.closeFile, fd)
+      return true
+    end
+  end
+  return false
+end
+
 local function ResolvePopstarterPath(path)
-  local fallback = "mass:/POPS/POPSTARTER.ELF"
-  local chosen = path
+  local chosen = NormalizePopstarterPath(path)
+  local candidates = {}
+
+  local function add_candidate(candidate)
+    if type(candidate) ~= "string" or candidate == "" then
+      return
+    end
+    candidate = NormalizePopstarterPath(candidate)
+    for i = 1, #candidates do
+      if candidates[i] == candidate then
+        return
+      end
+    end
+    table.insert(candidates, candidate)
+  end
+
   if chosen == nil or chosen == "" then
-    chosen = JoinPath(APP_DIR_LOCAL, "POPSTARTER.ELF")
+    add_candidate(JoinPath(ELF_DIR_LOCAL, "POPSTARTER.ELF"))
+    if APP_DIR_LOCAL ~= ELF_DIR_LOCAL then
+      add_candidate(JoinPath(APP_DIR_LOCAL, "POPSTARTER.ELF"))
+    end
+  elseif IsAbsoluteDevicePath(chosen) then
+    add_candidate(chosen)
   elseif not IsAbsoluteDevicePath(chosen) then
-    chosen = JoinPath(APP_DIR_LOCAL, chosen)
+    add_candidate(JoinPath(ELF_DIR_LOCAL, chosen))
+    if APP_DIR_LOCAL ~= ELF_DIR_LOCAL then
+      add_candidate(JoinPath(APP_DIR_LOCAL, chosen))
+    end
+  else
+    add_candidate(chosen)
   end
-  if doesFileExist(chosen) then
-    return chosen
+
+  for i = 1, #candidates do
+    if PopstarterPathExists(candidates[i]) then
+      return candidates[i]
+    end
   end
-  if chosen ~= fallback and doesFileExist(fallback) then
-    return fallback
+
+  if #candidates > 0 then
+    return candidates[1]
   end
   return chosen
 end
@@ -207,6 +301,11 @@ PLDR = {
 
 function PLDR.ResolvePopstarterPath(path)
   return ResolvePopstarterPath(path)
+end
+
+function PLDR.PopstarterExists(path)
+  local target = ResolvePopstarterPath(path or PLDR.POPSTARTER_PATH)
+  return PopstarterPathExists(target), target
 end
 
 -- Mass backend detection via USBMASS_IOCTL_GET_DRIVERNAME (requires fileXio + ps2sdk usbhdfsd-common.h support).
@@ -360,7 +459,7 @@ function PLDR.SaveSettings()
   if fd == nil or fd < 0 then
     NotifyOnce("settings_save", "Failed to save settings")
     Touch(SESSION_STAMP_FILE, "pldrs_create")
-    return
+    return false
   end
   local mode = tonumber(PLDR.SETTINGS.bdma_mode) or 1
   local hide_ui = PLDR.SETTINGS.hide_ui == true
@@ -382,7 +481,7 @@ function PLDR.SaveSettings()
     pcall(System.removeFile, tmp_path)
     NotifyOnce("settings_save", "Failed to save settings")
     Touch(SESSION_STAMP_FILE, "pldrs_create")
-    return
+    return false
   end
   local ok_rename, rename_rc = pcall(System.rename, tmp_path, path)
   if (not ok_rename) or (type(rename_rc) == "number" and rename_rc < 0) then
@@ -390,10 +489,27 @@ function PLDR.SaveSettings()
     ok_rename, rename_rc = pcall(System.rename, tmp_path, path)
   end
   if (not ok_rename) or (type(rename_rc) == "number" and rename_rc < 0) then
-    pcall(System.removeFile, tmp_path)
+    local ok_copy = pcall(System.copyFile, tmp_path, path)
+    if ok_copy then
+      pcall(System.removeFile, tmp_path)
+    end
+  end
+
+  local verified = false
+  if doesFileExist(path) then
+    local ok_loader, loader = pcall(loadfile, path)
+    if ok_loader and loader ~= nil then
+      local ok_data, data = pcall(loader)
+      if ok_data and type(data) == "table" then
+        verified = true
+      end
+    end
+  end
+  if not verified then
     NotifyOnce("settings_save", "Failed to save settings")
   end
   Touch(SESSION_STAMP_FILE, "pldrs_create")
+  return verified
 end
 
 function PLDR.GetBDMAModeCount()
@@ -827,24 +943,70 @@ end
 
 function PLDR.GetActiveUsbRoots(max_index)
   local roots = {}
+  local seen = {}
   local max = tonumber(max_index) or 4
   if max < 0 then max = 0 end
   if max > 9 then max = 9 end
+
+  local function classify_mass_root(root)
+    local index = string.match(root or "", "^mass(%d+):/$")
+    if index ~= nil then
+      local driver = PLDR.GetMassDriverName(tonumber(index))
+      if driver == "usb" then
+        return "usb"
+      end
+      if driver == "sdc" then
+        return "mx4sio"
+      end
+      return "unknown"
+    end
+    return "unknown"
+  end
+
+  local function add_root(root)
+    if root == nil or seen[root] then
+      return
+    end
+    if not doesFolderExist(root) then
+      return
+    end
+    if not doesFolderExist(root.."POPS/") then
+      return
+    end
+    if classify_mass_root(root) == "usb" then
+      seen[root] = true
+      table.insert(roots, root)
+    end
+  end
+
+  -- Stage 1: conservative probe by responsiveness + existing driver classification.
+  add_root("mass:/")
+  for i = 0, max do
+    add_root("mass"..tostring(i)..":/")
+  end
+
+  -- Stage 2: keep drivername preference/order, without excluding already-qualified USB roots.
   for i = 0, max do
     if PLDR.GetMassDriverName(i) == "usb" then
       local root = "mass"..tostring(i)..":/"
-      if doesFolderExist(root.."POPS/") then
-        table.insert(roots, root)
+      if seen[root] then
+        local ordered = {root}
+        for j = 1, #roots do
+          if roots[j] ~= root then
+            table.insert(ordered, roots[j])
+          end
+        end
+        roots = ordered
+      else
+        add_root(root)
       end
     end
   end
+
   if #roots < 1 then
     local fallback = tonumber(PLDR.USB.MASSINDX)
     if fallback ~= nil then
-      local root = "mass"..tostring(fallback)..":/"
-      if doesFolderExist(root.."POPS/") then
-        table.insert(roots, root)
-      end
+      add_root("mass"..tostring(fallback)..":/")
     end
   end
   return roots
@@ -1642,7 +1804,8 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   local source_mode = policy.mode
   local raw_source_mode = source_mode
   local vcd_path = normalized_gamelocation..game
-  local popstarter = PLDR.POPSTARTER_PATH
+  local popstarter = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
+  PLDR.POPSTARTER_PATH = popstarter
   local pops_root = normalized_gamelocation
   local boot_source_mode = source_mode
   local device_mode = "unknown"
