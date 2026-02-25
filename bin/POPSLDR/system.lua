@@ -203,6 +203,10 @@ PLDR = {
   }
 }
 
+function PLDR.ResolvePopstarterPath(path)
+  return ResolvePopstarterPath(path)
+end
+
 -- Mass backend detection via USBMASS_IOCTL_GET_DRIVERNAME (requires fileXio + ps2sdk usbhdfsd-common.h support).
 -- Returns a short driver code like: "usb" (USB), "sdc" (MX4SIO SD), "udp" (UDPBD), "sd" (iLink SD), "ata" (HDD).
 function PLDR.GetMassDriverName(index)
@@ -438,7 +442,9 @@ function PLDR.ApplyProfileSetting()
   end
   PLDR.SETTINGS.profile_index = index
   if PLDR.PROFILES[index] ~= nil and PLDR.PROFILES[index].ELF ~= nil then
-    PLDR.POPSTARTER_PATH = PLDR.PROFILES[index].ELF
+    PLDR.POPSTARTER_PATH = ResolvePopstarterPath(PLDR.PROFILES[index].ELF)
+  else
+    PLDR.POPSTARTER_PATH = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
   end
 end
 
