@@ -2347,10 +2347,10 @@ end
 Design by Berion
 Scripts by Nuno6573 and Ripto
 Based on Enceladus by Daniel Santos
-
+Testing by P4NCHOL1NO
 Special Thanks To:
 krHACKen for making POPStarter
-uyjulian, fjtrujy, HWC, and others for always helping me
+uyjulian, fjtrujy, HWC, and others for always helping
 
 This program is free and open source
 If you bought it, you have been scammed
