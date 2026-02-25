@@ -1580,6 +1580,11 @@ GSTEXTURE* loadEmbeddedPNG(uint8_t * data, size_t size, bool delayed)
 
 		// Upload texture
 		gsKit_setup_tbw(tex);
+		if((tex->PSM == GS_PSM_T4 || tex->PSM == GS_PSM_T8) && tex->Clut != NULL)
+		{
+			tex->ClutPSM = GS_PSM_CT32;
+			tex->ClutStorageMode = GS_CLUT_STORAGE_CSM1;
+		}
 		gsKit_texture_upload(gsGlobal, tex);
 		// Free texture
 		free(tex->Mem);
