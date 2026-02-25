@@ -186,32 +186,6 @@ static int FixupMassGenericPath(char *io_path, size_t io_sz)
 }
 
 
-static void BootStamp(const char *stage)
-{
-    DPRINTF("BOOT: %s %u\n", stage, boot_ms());
-}
-
-static bool IsBootedFromMx4sioPath(const char *path)
-{
-    if (path == NULL || path[0] == '\0') {
-        return false;
-    }
-
-    char prefix[32] = {0};
-    const char *colon = strchr(path, ':');
-    size_t n = colon ? (size_t)(colon - path) : strlen(path);
-    if (n >= sizeof(prefix)) {
-        n = sizeof(prefix) - 1;
-    }
-    for (size_t i = 0; i < n; ++i) {
-        prefix[i] = (char)tolower((unsigned char)path[i]);
-    }
-    prefix[n] = '\0';
-
-    return strstr(prefix, "mx4sio") != NULL;
-}
-
-
 void setLuaBootPath(int argc, char ** argv, int idx)
 {
     if (argc>=(idx+1))
@@ -360,7 +334,6 @@ int main(int argc, char * argv[])
     if (argc > 0) ARGV0 = argv[0];
     const char * errMsg;
     boot_start = clock();
-    BootStamp("EE init start");
 
     /* Capture boot path early (before any mass readiness waits). */
     setLuaBootPath(argc, argv, 0);
@@ -369,7 +342,6 @@ int main(int argc, char * argv[])
     } else {
         setAppDirFromPath(boot_path);
     }
-    BootStamp("boot path parse");
 
 
 #ifdef RESET_IOP  
@@ -377,7 +349,6 @@ int main(int argc, char * argv[])
     while (!SifIopReset("", 0)){};
     while (!SifIopSync()){};
     SifInitRpc(0);
-    BootStamp("IOP reset");
 #endif
     
     // install sbv patch fix
@@ -391,7 +362,6 @@ int main(int argc, char * argv[])
 #endif
 
     bool ioman_ok = LoadIrxChecked("iomanX_irx", iomanX_irx, size_iomanX_irx, NULL, NULL);
-    BootStamp("iomanX load");
     bool filexio_ok = false;
     int filexio_ret = -1;
     if (ioman_ok) {
@@ -406,7 +376,6 @@ int main(int argc, char * argv[])
     } else {
         DPRINTF("Skipping fileXio init; iomanX failed to load.\n");
     }
-    BootStamp("fileXio load/init");
 
 	LOAD_IRX_NARG(sio2man_irx);
     if (filexio_ok) {
@@ -424,11 +393,9 @@ int main(int argc, char * argv[])
             }
         }
 #endif
-        BootStamp("mmceman load/init");
         if (mmceman_ok) {
             mmce_slot0_ready = -1;
             mmce_slot1_ready = -1;
-            DPRINTF("MMCE probe deferred until MMCE page entry.\n");
         } else {
             mmce_slot0_ready = 0;
             mmce_slot1_ready = 0;
@@ -437,7 +404,6 @@ int main(int argc, char * argv[])
         DPRINTF("Skipping mmceman init; fileXio not ready.\n");
         mmce_slot0_ready = 0;
         mmce_slot1_ready = 0;
-        BootStamp("mmceman load/init (skipped)");
     }
     LOAD_IRX_NARG(mcman_irx);
     LOAD_IRX_NARG(mcserv_irx);
@@ -460,12 +426,6 @@ int main(int argc, char * argv[])
     LOAD_IRX_NARG(bdm_irx);
     LOAD_IRX_NARG(bdmfs_fatfs_irx);
     LOAD_IRX_NARG(usbmass_bd_irx);
-
-    bool booted_from_mx4sio = IsBootedFromMx4sioPath(boot_path) || IsBootedFromMx4sioPath(app_dir);
-    if (booted_from_mx4sio) {
-        EnsureMx4sioInit();
-    }
-    BootStamp("mx4sio_bd load");
 
 
     LOAD_IRX_NARG(cdfs_irx);
@@ -491,7 +451,6 @@ int main(int argc, char * argv[])
             char *tmpv[1]; tmpv[0] = argv0_fix;
             setLuaBootPath(1, tmpv, 0);
             setAppDirFromPath(argv0_fix);
-            DPRINTF("boot path rewritten to %s (argv0=%s)\n", boot_path, argv0_fix);
         }
     }
 
@@ -499,14 +458,12 @@ int main(int argc, char * argv[])
         /* Fallback: previous behavior. */
         snprintf(wait_root, sizeof(wait_root), "mass:/");
     }
-    BootStamp("mass wait begin");
 
     while (ret != 0 && retries > 0) {
         ret = stat(wait_root, &buffer);
         nopdelay();
         retries--;
     }
-    BootStamp("mass wait end");
 	
 	// Lua init
 	// init internals library
@@ -519,12 +476,6 @@ int main(int argc, char * argv[])
     // set base path luaplayer
     chdir(boot_path); 
 
-    DPRINTF("boot path : %s\n", boot_path);
-	dbgprintf("boot path : %s\n", boot_path);
-    DPRINTF("app dir : %s\n", app_dir);
-	dbgprintf("app dir : %s\n", app_dir);
-    
-    BootStamp("Lua init start");
     while (1)
     {
         errMsg = runScript(bootString, true);

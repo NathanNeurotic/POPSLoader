@@ -74,8 +74,6 @@ function JoinPath(base, rel)
 end
 
 local APP_DIR_LOCAL = NormalizeDirPath(APP_DIR or BOOT_PATH_RAW)
-LOG("APP_DIR_NORM="..APP_DIR_LOCAL)
-LOG("APP_DIR_POPSTARTER_JOIN="..JoinPath(APP_DIR_LOCAL, "POPSTARTER.ELF"))
 local SELECTOR_MODE = "basename"
 
 local function ResolveAsset(rel)
@@ -90,6 +88,53 @@ local function ResolveWritablePath(rel)
     return legacy
   end
   return modern
+end
+
+local SETTINGS_DIR = "mc0:/POPSTARTER/"
+local SETTINGS_FILE = SETTINGS_DIR.."settings.lua"
+local SESSION_STAMP_FILE = SETTINGS_DIR..".pldrs"
+local WARN_ONCE = {}
+local PENDING_NOTIFS = {}
+
+local function NotifyOnce(key, msg)
+  if WARN_ONCE[key] then
+    return
+  end
+  WARN_ONCE[key] = true
+  if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
+    UI.Notif_queue.add(msg)
+  else
+    table.insert(PENDING_NOTIFS, msg)
+  end
+end
+
+local function FlushPendingNotifications()
+  if UI == nil or UI.Notif_queue == nil or UI.Notif_queue.add == nil then
+    return
+  end
+  for i = 1, #PENDING_NOTIFS do
+    UI.Notif_queue.add(PENDING_NOTIFS[i])
+  end
+  PENDING_NOTIFS = {}
+end
+
+local function EnsureDirectory(path)
+  if doesFolderExist(path) then
+    return true
+  end
+  local ok, _ = pcall(System.createDirectory, path)
+  return ok
+end
+
+local function EnsureParentDirectory(path)
+  if type(path) ~= "string" then
+    return false
+  end
+  local parent = string.match(path, "^(.*)/[^/]+$")
+  if parent == nil or parent == "" then
+    return true
+  end
+  return EnsureDirectory(parent.."/")
 end
 
 local function IsAbsoluteDevicePath(path)
@@ -111,46 +156,6 @@ local function ResolvePopstarterPath(path)
     return fallback
   end
   return chosen
-end
-
-local function DetectBootDevice()
-  local boot_path = NormalizeDirPath(BOOT_PATH_RAW or "")
-  local prefix = string.match(boot_path, "^([%a]+%d*):")
-  if prefix == nil then
-    return nil, boot_path, prefix
-  end
-  if string.match(prefix, "^mmce%d*$") then
-    return "MMCE", boot_path, prefix
-  end
-  if string.match(prefix, "^mx4sio%d*$") then
-    return "MX4SIO", boot_path, prefix
-  end
-  if string.match(prefix, "^mass%d*$") then
-    local idx = tonumber(string.match(prefix, "^mass(%d+)$")) or 0
-    local driver = nil
-    if System ~= nil and System.getMassDriverName ~= nil then
-      local ok, name = pcall(System.getMassDriverName, idx)
-      if ok then
-        driver = name
-      end
-    end
-    if driver == "sdc" then
-      return "MX4SIO", boot_path, prefix
-    end
-    if driver == "usb" then
-      return "USB", boot_path, prefix
-    end
-    -- Legacy fallback (marker-based). Prefer IOCTL above.
-    local mx_marker = JoinPath(APP_DIR_LOCAL, ".boot_mx4sio")
-    local usb_marker = JoinPath(APP_DIR_LOCAL, ".boot_usb")
-    if doesFileExist(mx_marker) then
-      return "MX4SIO", boot_path, prefix
-    end
-    if doesFileExist(usb_marker) then
-      return "USB", boot_path, prefix
-    end
-  end
-  return nil, boot_path, prefix
 end
 
 HDD_DIAG_BYPASS = 0
@@ -273,30 +278,29 @@ local BDMA_MODES = {
 
 local function LoadSettingsTable(path)
   if path == nil or path == "" then
-    return nil
+    return nil, "missing"
   end
   if not doesFileExist(path) then
-    return nil
+    return nil, "missing"
   end
   local loader, load_err = loadfile(path)
   if loader == nil then
     LOG("Settings load failed:", load_err)
-    return nil
+    return nil, "parse"
   end
   local ok, data = pcall(loader)
   if not ok then
     LOG("Settings exec failed:", data)
-    return nil
+    return nil, "parse"
   end
   if type(data) ~= "table" then
-    return nil
+    return nil, "parse"
   end
-  return data
+  return data, nil
 end
 
 function PLDR.LoadSettings()
-  local path = ResolveWritablePath("settings.lua")
-  local data = LoadSettingsTable(path)
+  local data, err = LoadSettingsTable(SETTINGS_FILE)
   if type(data) == "table" then
     local mode = tonumber(data.bdma_mode)
     if mode ~= nil then
@@ -318,6 +322,11 @@ function PLDR.LoadSettings()
     if type(data.dkwdrv_path) == "string" and data.dkwdrv_path ~= "" then
       PLDR.SETTINGS.dkwdrv_path = data.dkwdrv_path
     end
+  else
+    NotifyOnce("settings_load", "Settings unavailable, using defaults")
+    if err == "missing" then
+      EnsureDirectory(SETTINGS_DIR)
+    end
   end
   if PLDR.SETTINGS.bdma_mode == nil then
     PLDR.SETTINGS.bdma_mode = 1
@@ -338,8 +347,15 @@ function PLDR.LoadSettings()
 end
 
 function PLDR.SaveSettings()
-  local path = ResolveWritablePath("settings.lua")
-  local fd = System.openFile(path, FCREATE)
+  EnsureDirectory(SETTINGS_DIR)
+  local path = SETTINGS_FILE
+  local tmp_path = path..".tmp"
+  local fd = System.openFile(tmp_path, FCREATE)
+  if fd == nil or fd < 0 then
+    NotifyOnce("settings_save", "Failed to save settings")
+    Touch(SESSION_STAMP_FILE, "pldrs_create")
+    return
+  end
   local mode = tonumber(PLDR.SETTINGS.bdma_mode) or 1
   local hide_ui = PLDR.SETTINGS.hide_ui == true
   local show_cover = PLDR.SETTINGS.show_cover ~= false
@@ -354,8 +370,24 @@ function PLDR.SaveSettings()
     ..string.format("  bdma_last_label = %s,\n", bdma_last_label ~= nil and string.format("%q", bdma_last_label) or "nil")
     ..string.format("  dkwdrv_path = %s,\n", dkwdrv_path ~= nil and string.format("%q", dkwdrv_path) or "nil")
     .."}\n"
-  System.writeFile(fd, line, #line)
+  local wr = System.writeFile(fd, line, #line)
   System.closeFile(fd)
+  if wr == nil or wr < 0 then
+    pcall(System.removeFile, tmp_path)
+    NotifyOnce("settings_save", "Failed to save settings")
+    Touch(SESSION_STAMP_FILE, "pldrs_create")
+    return
+  end
+  local ok_rename, rename_rc = pcall(System.rename, tmp_path, path)
+  if (not ok_rename) or (type(rename_rc) == "number" and rename_rc < 0) then
+    pcall(System.removeFile, path)
+    ok_rename, rename_rc = pcall(System.rename, tmp_path, path)
+  end
+  if (not ok_rename) or (type(rename_rc) == "number" and rename_rc < 0) then
+    pcall(System.removeFile, tmp_path)
+    NotifyOnce("settings_save", "Failed to save settings")
+  end
+  Touch(SESSION_STAMP_FILE, "pldrs_create")
 end
 
 function PLDR.GetBDMAModeCount()
@@ -461,53 +493,23 @@ require("pops_profiles")
 if PLDR.ApplyProfileSetting ~= nil then
   PLDR.ApplyProfileSetting()
 end
-LOG("system.lua: before require('ui')")
 local ok_ui, ui_or_err = pcall(require, "ui")
-LOG("system.lua: after require('ui')")
 if not ok_ui then
   local traceback = ui_or_err
   if debug ~= nil and debug.traceback ~= nil then
     traceback = debug.traceback(ui_or_err, 2)
   end
-  LOG("UI load failed")
-  LOG("APP_DIR:", APP_DIR_LOCAL)
-  LOG("Boot cwd:", System.currentDirectory())
-  LOG("package.path:", package.path)
   error("UI module failed to load (expected ui.lua to return/set UI): "..tostring(traceback))
 end
 if ui_or_err ~= nil and ui_or_err ~= true then
   UI = ui_or_err
 end
 if UI == nil then
-  LOG("UI global is nil after require('ui')")
-  LOG("APP_DIR:", APP_DIR_LOCAL)
-  LOG("Boot cwd:", System.currentDirectory())
-  LOG("package.path:", package.path)
   error("UI global not initialized (expected ui.lua to return UI or set _G.UI)")
 end
 UI.LASTSCENE = UI.SCENES.MMAIN
+FlushPendingNotifications()
 
-if UI.DEVLOCK ~= nil then
-  local boot_name, boot_path, boot_prefix = DetectBootDevice()
-  UI.boot_device = UI.DEVLOCK.NONE
-  UI.boot_locks = {}
-  if boot_name == "MX4SIO" then
-    UI.boot_device = UI.DEVLOCK.MX4SIO
-    UI.boot_locks[UI.DEVLOCK.USB] = true
-    UI.boot_locks[UI.DEVLOCK.MMCE] = true
-  elseif boot_name == "USB" then
-    UI.boot_device = UI.DEVLOCK.USB
-    UI.boot_locks[UI.DEVLOCK.MX4SIO] = true
-  elseif boot_name == "MMCE" then
-    UI.boot_device = UI.DEVLOCK.MMCE
-    UI.boot_locks[UI.DEVLOCK.MX4SIO] = true
-  end
-  if boot_name ~= nil then
-    LOG("Boot device detected:", boot_name, "prefix:", tostring(boot_prefix), "path:", tostring(boot_path))
-  else
-    LOG("Boot device detection ambiguous; no boot locks set.", "prefix:", tostring(boot_prefix), "path:", tostring(boot_path))
-  end
-end
 require("images")
 
 local POPSTARTER_PACK_ROOT = "mc0:/POPSTARTER"
@@ -545,17 +547,6 @@ end
 
 local function ResolvePackSource(rel)
   return ResolveAsset(rel) or JoinPath(APP_DIR_LOCAL, rel)
-end
-
-local function EnsureDirectory(path)
-  if doesFolderExist(path) then
-    return true
-  end
-  local ok, err = pcall(System.createDirectory, path)
-  if not ok then
-    LOG("CreateDirectory failed:", path, err)
-  end
-  return ok
 end
 
 local function RemoveDirectoryRecursive(path)
@@ -1758,19 +1749,23 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   LaunchEngine(popstarter, argv, reboot_iop, context)
 end
 
-function Touch(FILE)
-  if not doesFileExist(FILE) then
-    local FD = System.openFile(FILE, FCREATE)
-    System.closeFile(FD)
-    return true
-  else
+function Touch(FILE, warn_key)
+  if doesFileExist(FILE) then
     return false
   end
+  EnsureParentDirectory(FILE)
+  local FD = System.openFile(FILE, FCREATE)
+  if FD == nil or FD < 0 then
+    NotifyOnce(warn_key or "touch", "Storage not ready")
+    return false
+  end
+  System.closeFile(FD)
+  return true
 end
 
 ---MAIN PROGRAM BEHAVIOUR BEGINS
 local initial_scene = UI.SCENES.MMAIN
-if Touch(ResolveWritablePath(".pldrs")) then
+if Touch(SESSION_STAMP_FILE, "pldrs_create") then
   initial_scene = UI.SCENES.CREDITS
 end
 UI.WelcomeDraw.Play(initial_scene)
