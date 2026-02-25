@@ -108,6 +108,32 @@ IMG = setmetatable({}, {
     return img
   end
 })
+
+local BACKGROUND_EMBED_URIS = IMG_EMBED_OVERRIDES
+
+local backgrounds_realized = false
+local function ForceRealizeBackground(key, uri)
+  local img = Graphics.loadImage(uri, false)
+  if img == nil then
+    return
+  end
+  Graphics.setImageFilters(img, LINEAR)
+  IMG_FAILED[key] = nil
+  rawset(IMG, key, img)
+end
+
+local function ForceRealizeBackgrounds()
+  if backgrounds_realized then
+    return
+  end
+  backgrounds_realized = true
+  for key, uri in pairs(BACKGROUND_EMBED_URIS) do
+    ForceRealizeBackground(key, uri)
+  end
+end
+
+ForceRealizeBackgrounds()
+
 function IMG.ReleaseAll()
   local free_ok = type(Graphics) == "table" and type(Graphics.freeImage) == "function"
   for key, _ in pairs(IMG_SOURCES) do
