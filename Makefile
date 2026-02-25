@@ -60,6 +60,14 @@ endif
 
 BIN2S = $(PS2SDK)/bin/bin2c
 
+# Prefer python3, fallback to python if needed
+PYTHON ?= $(shell command -v python3 2>/dev/null || command -v python 2>/dev/null)
+
+# Hard fail early if neither interpreter exists
+ifeq ($(PYTHON),)
+$(error Python interpreter not found. Install python3 or provide PYTHON=/path/to/python)
+endif
+
 #-------------------------- App Content ---------------------------#
 EXT_LIBS = modules/ds34usb/ee/libds34usb.a modules/ds34bt/ee/libds34bt.a
 
@@ -101,7 +109,7 @@ $(EE_ASM_DIR)boot.c: etc/boot.lua | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ bootString
 
 $(EE_ASM_DIR)embedded_assets.c: assets/embed_manifest.txt tools/gen_embed_assets.py | $(EE_ASM_DIR)
-	python3 tools/gen_embed_assets.py --manifest $< --output $@
+	$(PYTHON) tools/gen_embed_assets.py --manifest $< --output $@
 
 # Images
 $(EE_ASM_DIR)%.c: EMBED/%.png
@@ -203,7 +211,7 @@ package: $(EE_BIN_PKD)
 	cp bin/$(POPSLDR_PKG) ./$(POPSLDR_PKG)
 
 verify: package
-	python3 tools/gen_embed_assets.py --check
+	$(PYTHON) tools/gen_embed_assets.py --check
 	! grep -R "mass:/POPSLDR" -n etc/boot.lua bin/POPSLDR/*.lua
 	! grep -R "mc0:/POPSLDR" -n etc/boot.lua bin/POPSLDR/*.lua
 	grep -n "POPSLDR/IMG" src/system.cpp
