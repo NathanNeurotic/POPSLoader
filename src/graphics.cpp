@@ -1440,6 +1440,7 @@ GSTEXTURE* loadEmbeddedPNG(uint8_t * data, size_t size, bool delayed)
 		}
 
 		// Upload texture
+		gsKit_setup_tbw(tex);
 		gsKit_texture_upload(gsGlobal, tex);
 		// Free texture
 		free(tex->Mem);
