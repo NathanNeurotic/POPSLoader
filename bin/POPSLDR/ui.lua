@@ -1777,7 +1777,7 @@ end
             save_ok = PLDR.SaveSettings()
           end
           if save_ok and PLDR.ApplyBDMAOnSettingsSave ~= nil then
-            PLDR.ApplyBDMAOnSettingsSave((PLDR.GetBDMAMode and PLDR.GetBDMAMode()) or nil)
+            PLDR.ApplyBDMAOnSettingsSave(nil)
           end
           if save_ok then
             UI.Notif_queue.add("Profile defaults restored")
@@ -1792,7 +1792,7 @@ end
               if PLDR.SaveSettings ~= nil then
                 if PLDR.SaveSettings() then
                   if PLDR.ApplyBDMAOnSettingsSave ~= nil then
-                    PLDR.ApplyBDMAOnSettingsSave((PLDR.GetBDMAMode and PLDR.GetBDMAMode()) or nil)
+                    PLDR.ApplyBDMAOnSettingsSave(nil)
                   end
                   if UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
                     UI.Notif_queue.add("DKWDRV path saved")
@@ -1828,7 +1828,7 @@ end
             pop_ok = doesFileExist(PLDR.POPSTARTER_PATH)
           end
           if save_ok and PLDR.ApplyBDMAOnSettingsSave ~= nil then
-            PLDR.ApplyBDMAOnSettingsSave((PLDR.GetBDMAMode and PLDR.GetBDMAMode()) or nil)
+            PLDR.ApplyBDMAOnSettingsSave(nil)
           end
           if not pop_ok then
             UI.Notif_queue.add("POPStarter ELF missing")

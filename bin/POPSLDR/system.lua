@@ -430,7 +430,7 @@ local BDMA_MODES = {
   },
   {
     label = "USBEXFAT",
-    source_suffix = ".exfat",
+    source_suffix = ".usbexfat",
     action = "copy"
   },
   {
@@ -444,6 +444,39 @@ local BDMA_MODES = {
     action = "copy"
   }
 }
+
+local BDMA_MODE_NAME_MAP = {
+  USBFAT32 = 1,
+  FAT32 = 1,
+  NONE = 1,
+  USBEXFAT = 2,
+  EXFAT = 2,
+  MMCE = 3,
+  MX4SIO = 4
+}
+
+local function NormalizeBDMAModeValue(mode)
+  local value = tonumber(mode)
+  if value == nil and type(mode) == "string" then
+    local key = string.upper((string.match(mode, "^%s*(.-)%s*$") or ""))
+    value = BDMA_MODE_NAME_MAP[key]
+  end
+  if value == nil and type(mode) == "string" then
+    local upper_mode = string.upper(mode)
+    for i = 1, #BDMA_MODES do
+      local label = BDMA_MODES[i].label
+      if type(label) == "string" and upper_mode == string.upper(label) then
+        value = i
+        break
+      end
+    end
+  end
+  local count = #BDMA_MODES
+  if value == nil or value < 1 or value > count then
+    return nil
+  end
+  return value
+end
 
 local function LoadSettingsTable(path)
   if path == nil or path == "" then
@@ -472,7 +505,7 @@ function PLDR.LoadSettings()
   local settings_dir, settings_file = ResolveSettingsPaths()
   local data, err = LoadSettingsTable(settings_file)
   if type(data) == "table" then
-    local mode = tonumber(data.bdma_mode)
+    local mode = NormalizeBDMAModeValue(data.bdma_mode)
     if mode ~= nil then
       PLDR.SETTINGS.bdma_mode = mode
     end
@@ -618,7 +651,11 @@ function PLDR.GetBDMAModeCount()
 end
 
 function PLDR.GetBDMAModeText(mode)
-  local entry = BDMA_MODES[mode or PLDR.SETTINGS.bdma_mode or 1]
+  local normalized_mode = NormalizeBDMAModeValue(mode)
+  if normalized_mode == nil then
+    normalized_mode = NormalizeBDMAModeValue(PLDR.SETTINGS.bdma_mode) or 1
+  end
+  local entry = BDMA_MODES[normalized_mode]
   if entry == nil then
     entry = BDMA_MODES[1]
   end
@@ -626,10 +663,7 @@ function PLDR.GetBDMAModeText(mode)
 end
 
 function PLDR.SetBDMAMode(mode)
-  local count = PLDR.GetBDMAModeCount()
-  local value = tonumber(mode) or 1
-  if value < 1 then value = 1 end
-  if value > count then value = count end
+  local value = NormalizeBDMAModeValue(mode) or 1
   if PLDR.SETTINGS.bdma_mode ~= value then
     PLDR.SETTINGS.bdma_mode = value
     LOG("BDMA mode set to: "..PLDR.GetBDMAModeText(value))
@@ -637,7 +671,7 @@ function PLDR.SetBDMAMode(mode)
 end
 
 function PLDR.GetBDMAMode()
-  return tonumber(PLDR.SETTINGS.bdma_mode) or 1
+  return NormalizeBDMAModeValue(PLDR.SETTINGS.bdma_mode) or 1
 end
 
 function PLDR.GetBDMADetectedLabel()
@@ -775,6 +809,109 @@ local function ResolvePackSource(rel)
   return ResolveAsset(rel) or JoinPath(APP_DIR_LOCAL, rel)
 end
 
+local function ReadAllBytes(path)
+  if type(path) ~= "string" or path == "" then
+    return nil, nil
+  end
+  local ok_open, fd = pcall(System.openFile, path, FREAD)
+  if ok_open and type(fd) == "number" and fd >= 0 then
+    local size = System.sizeFile(fd)
+    local data = ""
+    if type(size) == "number" and size > 0 then
+      data = System.readFile(fd, size)
+    end
+    System.closeFile(fd)
+    if type(data) == "string" then
+      return data, #data
+    end
+  end
+
+  local file = io.open(path, "rb")
+  if file ~= nil then
+    local data = file:read("*a")
+    file:close()
+    if type(data) == "string" then
+      return data, #data
+    end
+  end
+  return nil, nil
+end
+
+function PLDR.ReadAssetBytes(name)
+  if type(name) ~= "string" or name == "" then
+    return nil, nil
+  end
+
+  local rel = "POPSLDR/"..name
+  local embed_paths = {
+    "embed:/"..rel,
+    "embed:/"..name
+  }
+
+  if type(System) == "table" and type(System.embedExists) == "function" then
+    local ok_embed, exists = pcall(System.embedExists, rel)
+    if ok_embed and exists then
+      local data, size = ReadAllBytes(embed_paths[1])
+      if data ~= nil then
+        return data, size
+      end
+    end
+  end
+
+  local resolved = ResolveAsset(rel)
+  if type(resolved) == "string" then
+    local data, size = ReadAllBytes(resolved)
+    if data ~= nil then
+      return data, size
+    end
+  end
+
+  for i = 1, #embed_paths do
+    local data, size = ReadAllBytes(embed_paths[i])
+    if data ~= nil then
+      return data, size
+    end
+  end
+
+  local candidates = {
+    JoinPath(APP_DIR_LOCAL, name),
+    JoinPath(ELF_DIR_LOCAL, name)
+  }
+  for i = 1, #candidates do
+    local data, size = ReadAllBytes(candidates[i])
+    if data ~= nil then
+      return data, size
+    end
+  end
+
+  return nil, nil
+end
+
+function PLDR.WriteFile(path, data)
+  if type(path) ~= "string" or path == "" or type(data) ~= "string" then
+    return false
+  end
+
+  local ok_open, fd = pcall(System.openFile, path, FCREATE)
+  if ok_open and type(fd) == "number" and fd >= 0 then
+    local written = System.writeFile(fd, data, #data)
+    System.closeFile(fd)
+    if type(written) == "number" and written >= #data then
+      return true
+    end
+  end
+
+  local file = io.open(path, "wb")
+  if file ~= nil then
+    local ok = file:write(data) ~= nil
+    file:close()
+    if ok then
+      return true
+    end
+  end
+  return false
+end
+
 local function RemoveDirectoryRecursive(path)
   local normalized = NormalizeDirPath(path)
   if not doesFolderExist(normalized) then
@@ -812,10 +949,13 @@ local function RemoveDirectoryRecursive(path)
 end
 
 function PLDR.ApplyBDMAOnSettingsSave(mode)
-  local selected_mode = tonumber(mode) or PLDR.GetBDMAMode()
-  local count = PLDR.GetBDMAModeCount()
-  if selected_mode < 1 then selected_mode = 1 end
-  if selected_mode > count then selected_mode = count end
+  local selected_mode = NormalizeBDMAModeValue(mode)
+  if selected_mode == nil then
+    selected_mode = NormalizeBDMAModeValue(PLDR.SETTINGS.bdma_mode)
+  end
+  if selected_mode == nil then
+    selected_mode = 1
+  end
   local mode = selected_mode
   local entry = BDMA_MODES[mode] or BDMA_MODES[1]
   local label = entry.label
@@ -845,20 +985,11 @@ function PLDR.ApplyBDMAOnSettingsSave(mode)
     if not EnsureDirectory(dest_root) then
       ok = false
     else
-      local source_root = NormalizeDirPath(APP_DIR_LOCAL)
       for i = 1, #targets do
         local target = targets[i]
-        local src = JoinPath(source_root, target.source..entry.source_suffix)
-        if doesFileExist(src) then
-          local removed = true
-          if doesFileExist(target.dest) then
-            removed = pcall(System.removeFile, target.dest)
-          end
-          local ok_copy = false
-          if removed then
-            ok_copy = pcall(System.copyFile, src, target.dest)
-          end
-          if not ok_copy then
+        local data = PLDR.ReadAssetBytes(target.source..entry.source_suffix)
+        if type(data) == "string" then
+          if not PLDR.WriteFile(target.dest, data) then
             ok = false
           end
         else
