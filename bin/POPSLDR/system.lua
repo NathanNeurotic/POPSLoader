@@ -81,18 +81,14 @@ local function DeriveElfDirectory()
     return APP_DIR_LOCAL
   end
   source = string.gsub(source, "\\", "/")
-  if string.sub(source, -1) ~= "/" then
-    local parent = string.match(source, "^(.*)/[^/]+$")
-    if parent ~= nil and parent ~= "" then
-      source = parent.."/"
-    elseif string.match(source, "^[%a]+%d*:[^/].*$") then
-      local device, rest = string.match(source, "^([%a]+%d*):(.+)$")
-      if device ~= nil and rest ~= nil and string.match(rest, "^[^/]+$") then
-        source = device..":/"
-      end
-    end
+  if string.sub(source, -1) == "/" then
+    return NormalizeDirPath(source)
   end
-  return NormalizeDirPath(source)
+  local parent = string.match(source, "^(.*[/])[^/]-$")
+  if parent == nil or parent == "" then
+    return APP_DIR_LOCAL
+  end
+  return NormalizeDirPath(parent)
 end
 
 local ELF_DIR_LOCAL = DeriveElfDirectory()
