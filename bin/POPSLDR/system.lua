@@ -179,7 +179,9 @@ PLDR = {
     GAMEPARTS = {}
   };
   USB = {
-    MASSINDX = 0
+    MASSINDX = 0,
+    ROOTS = {},
+    GAME_ENTRIES = {}
   },
   MX4SIO = {
     READY = false,
@@ -821,6 +823,64 @@ function PLDR.GetPS1GameLists(path, updating)
   else
     return nil
   end
+end
+
+function PLDR.GetActiveUsbRoots(max_index)
+  local roots = {}
+  local max = tonumber(max_index) or 4
+  if max < 0 then max = 0 end
+  if max > 9 then max = 9 end
+  for i = 0, max do
+    if PLDR.GetMassDriverName(i) == "usb" then
+      local root = "mass"..tostring(i)..":/"
+      if doesFolderExist(root.."POPS/") then
+        table.insert(roots, root)
+      end
+    end
+  end
+  if #roots < 1 then
+    local fallback = tonumber(PLDR.USB.MASSINDX)
+    if fallback ~= nil then
+      local root = "mass"..tostring(fallback)..":/"
+      if doesFolderExist(root.."POPS/") then
+        table.insert(roots, root)
+      end
+    end
+  end
+  return roots
+end
+
+function PLDR.GetPS1GameListsUSB(max_index)
+  PLDR.CleanupGameList()
+  local roots = PLDR.GetActiveUsbRoots(max_index)
+  PLDR.USB.ROOTS = roots
+  PLDR.USB.GAME_ENTRIES = {}
+  for _, root in ipairs(roots) do
+    local list_path = root.."POPS/"
+    local dir = System.listDirectory(list_path)
+    local names = {}
+    if dir ~= nil then
+      for i = 1, #dir do
+        local entry = dir[i]
+        if not entry.directory and string.lower(string.sub(entry.name, -4)) == ".vcd" then
+          table.insert(names, entry.name)
+        end
+      end
+    end
+    table.sort(names)
+    for i = 1, #names do
+      table.insert(PLDR.GAMES, names[i])
+      table.insert(PLDR.USB.GAME_ENTRIES, {
+        root = list_path,
+        name = names[i]
+      })
+    end
+  end
+  if #PLDR.GAMES > 0 then
+    PLDR.GAMEPATH = (PLDR.USB.GAME_ENTRIES[1] and PLDR.USB.GAME_ENTRIES[1].root) or "mass:/POPS/"
+    return PLDR.GAMES
+  end
+  return nil
 end
 
 local function EncodeHddGameEntry(partition, relpath)
@@ -1582,7 +1642,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   local source_mode = policy.mode
   local raw_source_mode = source_mode
   local vcd_path = normalized_gamelocation..game
-  local popstarter = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
+  local popstarter = PLDR.POPSTARTER_PATH
   local pops_root = normalized_gamelocation
   local boot_source_mode = source_mode
   local device_mode = "unknown"
