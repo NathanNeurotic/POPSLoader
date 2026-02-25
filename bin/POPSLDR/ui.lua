@@ -1675,7 +1675,7 @@ end
         local profcnt = #PLDR.PROFILES
         local hide_ui = UI.ShouldHideUI()
         if UI.ProfileQuery.bdma_mode == nil then
-          if PLDR.GetBDMAMode ~= nil then
+          if PLDR.GetBDMAMode then
             UI.ProfileQuery.bdma_mode = PLDR.GetBDMAMode()
           else
             UI.ProfileQuery.bdma_mode = 1
@@ -1769,7 +1769,7 @@ end
             PLDR.SETTINGS.profile_index = UI.ProfileQuery.curopt
             PLDR.SETTINGS.dkwdrv_path = PLDR.DEFAULT_DKWDRV_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF"
           end
-          if PLDR.GetBDMAMode ~= nil then
+          if PLDR.GetBDMAMode then
             UI.ProfileQuery.bdma_mode = PLDR.GetBDMAMode()
           end
           local save_ok = false
@@ -1777,7 +1777,7 @@ end
             save_ok = PLDR.SaveSettings()
           end
           if save_ok and PLDR.ApplyBDMAOnSettingsSave ~= nil then
-            PLDR.ApplyBDMAOnSettingsSave(PLDR.GetBDMAMode ~= nil and PLDR.GetBDMAMode() or nil)
+            PLDR.ApplyBDMAOnSettingsSave((PLDR.GetBDMAMode and PLDR.GetBDMAMode()) or nil)
           end
           if save_ok then
             UI.Notif_queue.add("Profile defaults restored")
@@ -1792,7 +1792,7 @@ end
               if PLDR.SaveSettings ~= nil then
                 if PLDR.SaveSettings() then
                   if PLDR.ApplyBDMAOnSettingsSave ~= nil then
-                    PLDR.ApplyBDMAOnSettingsSave(PLDR.GetBDMAMode ~= nil and PLDR.GetBDMAMode() or nil)
+                    PLDR.ApplyBDMAOnSettingsSave((PLDR.GetBDMAMode and PLDR.GetBDMAMode()) or nil)
                   end
                   if UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
                     UI.Notif_queue.add("DKWDRV path saved")
@@ -1828,7 +1828,7 @@ end
             pop_ok = doesFileExist(PLDR.POPSTARTER_PATH)
           end
           if save_ok and PLDR.ApplyBDMAOnSettingsSave ~= nil then
-            PLDR.ApplyBDMAOnSettingsSave(PLDR.GetBDMAMode ~= nil and PLDR.GetBDMAMode() or nil)
+            PLDR.ApplyBDMAOnSettingsSave((PLDR.GetBDMAMode and PLDR.GetBDMAMode()) or nil)
           end
           if not pop_ok then
             UI.Notif_queue.add("POPStarter ELF missing")
@@ -1889,7 +1889,7 @@ end
             return "NONE"
           end
           local mode = nil
-          if PLDR.GetBDMAMode ~= nil then
+          if PLDR.GetBDMAMode then
             mode = PLDR.GetBDMAMode()
           end
           local raw = PLDR.GetBDMAModeText(mode)

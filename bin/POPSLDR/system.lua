@@ -841,7 +841,7 @@ function PLDR.ApplyBDMAOnSettingsSave(mode)
         end
       end
     end
-  elseif mode == 2 or mode == 3 or mode == 4 then
+  elseif entry.action == "copy" then
     if not EnsureDirectory(dest_root) then
       ok = false
     else
