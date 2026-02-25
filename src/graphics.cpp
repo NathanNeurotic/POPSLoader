@@ -1386,8 +1386,20 @@ GSTEXTURE* loadEmbeddedPNG(uint8_t * data, size_t size, bool delayed)
 				clut[i].a = 0x80;
 			}
 
-			for (i = 0; i < num_trans; i++)
-				clut[i].a = trans[i] >> 1;
+			if (num_trans > 0) {
+				int any_nonzero = 0;
+				int any_nonopaque = 0;
+
+				for (i = 0; i < num_trans; i++) {
+					if (trans[i] != 0) any_nonzero = 1;
+					if (trans[i] != 0xFF) any_nonopaque = 1;
+				}
+
+				if (any_nonopaque && any_nonzero) {
+					for (i = 0; i < num_trans; i++)
+						clut[i].a = trans[i] >> 1;
+				}
+			}
 
 			k = 0;
 			for (i = 0; i < tex->Height; i++) {
@@ -1430,8 +1442,20 @@ GSTEXTURE* loadEmbeddedPNG(uint8_t * data, size_t size, bool delayed)
 				clut[i].a = 0x80;
 			}
 
-			for (i = 0; i < num_trans; i++)
-				clut[i].a = trans[i] >> 1;
+			if (num_trans > 0) {
+				int any_nonzero = 0;
+				int any_nonopaque = 0;
+
+				for (i = 0; i < num_trans; i++) {
+					if (trans[i] != 0) any_nonzero = 1;
+					if (trans[i] != 0xFF) any_nonopaque = 1;
+				}
+
+				if (any_nonopaque && any_nonzero) {
+					for (i = 0; i < num_trans; i++)
+						clut[i].a = trans[i] >> 1;
+				}
+			}
 
 			for (i = 0; i < num_palette; i++) {
 				if ((i & 0x18) == 8) {
