@@ -1621,9 +1621,17 @@ end
         if UI.Pad.Events.CONFIRM then
           if ammount <= 0 then
             UI.Notif_queue.add("No games found")
-          elseif not doesFileExist(PLDR.POPSTARTER_PATH) then
-            UI.Notif_queue.add("Cant find POPSTARTER ELF\n"..PLDR.POPSTARTER_PATH)
           else
+            local pop_ok = false
+            if PLDR.PopstarterExists ~= nil then
+              pop_ok, PLDR.POPSTARTER_PATH = PLDR.PopstarterExists(PLDR.POPSTARTER_PATH)
+            else
+              pop_ok = doesFileExist(PLDR.POPSTARTER_PATH)
+            end
+            if not pop_ok then
+              UI.Notif_queue.add("Cant find POPSTARTER ELF\n"..tostring(PLDR.POPSTARTER_PATH))
+              return
+            end
             if UI.CURSCENE ~= UI.SCENES.GHDD then -- only check if game can be found on USB and SMB
               if not doesFileExist(PLDR.GAMEPATH .. PLDR.GAMES[UI.GameList.CURR]) then
                 UI.Notif_queue.add("Cant find Game\n"..PLDR.GAMEPATH .. PLDR.GAMES[UI.GameList.CURR])
@@ -1774,10 +1782,13 @@ end
             if PLDR ~= nil and PLDR.SETTINGS ~= nil then
               PLDR.SETTINGS.dkwdrv_path = new_value
               if PLDR.SaveSettings ~= nil then
-                PLDR.SaveSettings()
-              end
-              if UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
-                UI.Notif_queue.add("DKWDRV path saved")
+                if PLDR.SaveSettings() then
+                  if UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
+                    UI.Notif_queue.add("DKWDRV path saved")
+                  end
+                elseif UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
+                  UI.Notif_queue.add("Failed to save settings")
+                end
               end
             end
           end, nil, PLDR and PLDR.DEFAULT_DKWDRV_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
@@ -1792,8 +1803,9 @@ end
           if PLDR.SETTINGS ~= nil then
             PLDR.SETTINGS.profile_index = UI.ProfileQuery.curopt
           end
+          local save_ok = true
           if PLDR.SaveSettings ~= nil then
-            PLDR.SaveSettings()
+            save_ok = PLDR.SaveSettings() == true
           end
           local selected_elf = PLDR.PROFILES[UI.ProfileQuery.curopt].ELF
           if PLDR.ResolvePopstarterPath ~= nil then
@@ -1801,8 +1813,16 @@ end
           else
             PLDR.POPSTARTER_PATH = selected_elf
           end
-          if not doesFileExist(PLDR.POPSTARTER_PATH) then
+          local pop_ok = false
+          if PLDR.PopstarterExists ~= nil then
+            pop_ok, PLDR.POPSTARTER_PATH = PLDR.PopstarterExists(PLDR.POPSTARTER_PATH)
+          else
+            pop_ok = doesFileExist(PLDR.POPSTARTER_PATH)
+          end
+          if not pop_ok then
             UI.Notif_queue.add("POPStarter ELF missing")
+          elseif not save_ok then
+            UI.Notif_queue.add("Failed to save settings")
           else
             UI.ProfileQuery.bdma_mode = nil
             UI.SceneChange(UI.SCENES.MMAIN)
@@ -2179,6 +2199,9 @@ end
             end
             UI.SceneChange(UI.SCENES.GHDD)
           elseif UI.MainMenu.OPT == 5 then
+            if PLDR.DetectMassBackends ~= nil then
+              PLDR.DetectMassBackends()
+            end
             local found = nil
             if PLDR.GetPS1GameListsUSB ~= nil then
               found = PLDR.GetPS1GameListsUSB(4)
