@@ -2054,6 +2054,15 @@ end
           })
           UI.Footer.Draw(labels, order)
         end
+
+        local stamp_alpha = 128
+        if IMG.BG ~= nil then
+          Graphics.drawScaleImage(IMG.BG, 0, 0, 128, 128, Color.new(255, 255, 255, stamp_alpha))
+        end
+        if IMG.BGM ~= nil then
+          Graphics.drawScaleImage(IMG.BGM, 140, 0, 128, 128, Color.new(255, 255, 255, stamp_alpha))
+        end
+
         if UI.MainMenu._draw_only then return end
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
