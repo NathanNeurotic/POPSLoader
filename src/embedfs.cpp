@@ -43,6 +43,17 @@ static const char *normalize_core(const char *in, char *buf, size_t bufsz)
     return NULL;
   }
 
+  if (strchr(path, '/') == NULL) {
+    if (!strcmp(path, "BG.png") ||
+        !strcmp(path, "BKG.png") ||
+        !strcmp(path, "BGM.png") ||
+        !strcmp(path, "splash_bg.png")) {
+      snprintf(buf, bufsz, "POPSLDR/%s", path);
+      return buf;
+    }
+    return NULL;
+  }
+
   snprintf(buf, bufsz, "POPSLDR/%s", path);
   return buf;
 }
