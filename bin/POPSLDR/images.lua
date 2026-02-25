@@ -8,7 +8,7 @@
 
 LOG("Registering images")
 local function ResolveImage(name)
-  return System.resolveAssetType(name, ASSET_IMG) or name
+  return "embed:/POPSLDR/IMG/"..name
 end
 --- Add your images to this table, just write the name of the file.
 --- Flat layout places images beside POPSLOADER.ELF; legacy installs can still use POPSLDR/IMG/*

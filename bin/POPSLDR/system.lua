@@ -113,10 +113,6 @@ local function ResolvePopstarterPath(path)
   return chosen
 end
 
-local function ResolveIrx(name)
-  return System.resolveAssetType(name, ASSET_IRX) or JoinPath(APP_DIR_LOCAL, name)
-end
-
 local function DetectBootDevice()
   local boot_path = NormalizeDirPath(BOOT_PATH_RAW or "")
   local prefix = string.match(boot_path, "^([%a]+%d*):")
@@ -157,34 +153,6 @@ local function DetectBootDevice()
   return nil, boot_path, prefix
 end
 
-local function LoadIrxFromDir(dir)
-  local normalized = NormalizeDirPath(dir)
-  if not doesFolderExist(normalized) then return false end
-  local IRXDIR = System.listDirectory(normalized)
-  if IRXDIR == nil then return false end
-  local loaded = false
-  for x=1, #IRXDIR do
-    local entry = IRXDIR[x]
-    if entry ~= nil and not entry.directory then
-      local name = entry.name
-      if name ~= nil and string.lower(string.sub(name, -4)) == ".irx" then
-        local PATH = ResolveIrx(name) or JoinPath(normalized, name)
-        local ID, RET = IOP.loadModule(PATH)
-        LOG(PATH, ID, RET)
-        loaded = true
-      end
-    end
-  end
-  return loaded
-end
-
-local loadedIrx = LoadIrxFromDir(APP_DIR_LOCAL)
-if not loadedIrx then
-  loadedIrx = LoadIrxFromDir(JoinPath(APP_DIR_LOCAL, "IRX"))
-end
-if not loadedIrx then
-  LoadIrxFromDir(JoinPath(APP_DIR_LOCAL, "POPSLDR/IRX"))
-end
 HDD_DIAG_BYPASS = 0
 PLDR = {
   REBOOT_IOP_WHILE_LOADING_POPSTARTER = 0;

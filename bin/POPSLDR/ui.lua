@@ -261,7 +261,7 @@ UI = {
     boot_locks = {};
     BOOT_SOUND = {
       ENABLED = true,
-      PATH = "boot.adp",      -- relative to CWD (same folder as ui.lua on HostFS)
+      PATH = "embed:/POPSLDR/boot.adp",
       SECONDS = 3.0,          -- splash minimum hold to cover audio (adjust to match boot.adp)
       PAD_SECONDS = 0.5,      -- extra padding to keep splash visible after audio starts
       BOOT_PHASE_SECONDS = 8.0,
@@ -801,11 +801,8 @@ UI = {
             return
           end
 
-          local primary = UI.BOOT_SOUND.PATH or "boot.adp"
+          local primary = UI.BOOT_SOUND.PATH or "embed:/POPSLDR/boot.adp"
           local names = { primary }
-          if primary ~= "boot.adpcm" then
-            table.insert(names, "boot.adpcm")
-          end
 
 local function file_exists(p)
   if p == nil then return false end
@@ -887,23 +884,14 @@ local function resolve_candidates(name)
 end
 
           local found = nil
-          local requested = nil
           for _, rel in ipairs(names) do
-            requested = rel
-            local candidates = resolve_candidates(rel)
-            for _, p in ipairs(candidates) do
-              if file_exists(p) then
-                found = p
+            if type(System) == "table" and type(System.embedExists) == "function" then
+              local ok, exists = pcall(System.embedExists, rel)
+              if ok and exists then
+                found = rel
                 break
               end
             end
-            if found ~= nil then break end
-          end
-
-          if found == nil and requested ~= nil then
-            -- Last resort: try HostFS prefix in PCSX2 setups.
-            local host_p = "host:" .. requested
-            if file_exists(host_p) then found = host_p end
           end
 
           if found == nil then
