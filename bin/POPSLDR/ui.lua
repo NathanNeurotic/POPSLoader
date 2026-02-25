@@ -778,10 +778,14 @@ UI = {
       UI.Notif_queue.display()
       UI.TextEntry.Draw()
       UI.Modal.Draw()
-      if UI.Transition ~= nil then
+      if UI.Transition ~= nil and UI.Transition.active then
         local alpha = UI.Transition.Update()
-        if alpha > 0 then
-          Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
+        if alpha ~= nil then
+          if alpha < 0 then alpha = 0 end
+          if alpha > 128 then alpha = 128 end
+          if UI.Transition.active and alpha > 0 then
+            Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
+          end
         end
       end
       Screen.flip()
