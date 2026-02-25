@@ -9,6 +9,16 @@ end
 local BASE_DIR = ensure_dir(APP_DIR or System.currentDirectory())
 package.path = ""
 
+local function compile_chunk(src, chunkname)
+  if type(loadstring) == "function" then
+    return loadstring(src, chunkname)
+  end
+  if type(load) == "function" then
+    return load(src, chunkname, "t")
+  end
+  return nil, "no load/loadstring available"
+end
+
 local function embed_searcher(modname)
   local rel = string.gsub(modname, "%.", "/")
   local candidates = {
@@ -19,7 +29,7 @@ local function embed_searcher(modname)
   for _, candidate in ipairs(candidates) do
     local text = System.embedReadText(candidate)
     if text ~= nil then
-      local loader, err = loadstring(text, "@embed:"..candidate)
+      local loader, err = compile_chunk(text, "@embed:" .. candidate)
       if loader ~= nil then
         return loader
       end
