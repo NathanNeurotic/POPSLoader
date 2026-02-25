@@ -28,7 +28,6 @@ end
 --- FILES MUST HAVE EXTENSION. filename is parsed to create the access key: USB.PNG will be accesed by typing `IMG["USB"]`
 local IMGS = {
   "USB.png",
-  "USBEXFAT.png",
   "SMB.png",
   "MMCE.png",
   "MX4SIO.png",

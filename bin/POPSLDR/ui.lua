@@ -1511,8 +1511,8 @@ end
         local hide_ui = UI.ShouldHideUI()
         UI.GameList.MAXDRAW = layout.LIST_MAX
         local titles = {
-          [UI.SCENES.GUSBFAT] = "USB FAT32",
-          [UI.SCENES.GUSBEXFAT] = "USB exFAT",
+          [UI.SCENES.GUSBFAT] = "USB",
+          [UI.SCENES.GUSBEXFAT] = "USB",
           [UI.SCENES.GMX4SIO] = "MX4SIO"
         }
         local scene_title = titles[UI.CURSCENE]
@@ -1632,6 +1632,11 @@ end
             local launch_path = PLDR.GAMEPATH
             if UI.CURSCENE == UI.SCENES.GHDD then
               launch_path = ""
+            elseif UI.IsUsbScene(UI.CURSCENE) and PLDR ~= nil and PLDR.USB ~= nil and PLDR.USB.GAME_ENTRIES ~= nil then
+              local usb_entry = PLDR.USB.GAME_ENTRIES[UI.GameList.CURR]
+              if usb_entry ~= nil and usb_entry.root ~= nil then
+                launch_path = usb_entry.root
+              end
             end
             PLDR.RunPOPStarterGame(launch_path, PLDR.GAMES[UI.GameList.CURR], UI.CURSCENE)
           end
@@ -1819,7 +1824,7 @@ end
     };
     MainMenu = {
       OPT = 1;
-      opts = {"MMCE", "MX4SIO", "HDD (exFAT)", "HDD (PFS)", "USB (exFAT)", "USB (FAT32)", "SMB (v1)", "Disc (DKWDRV)"};
+      opts = {"MMCE", "MX4SIO", "HDD (exFAT)", "HDD (PFS)", "USB", "SMB (v1)", "Disc (DKWDRV)"};
       Carousel = {
         currentIndex = 1,
         targetIndex = 1,
@@ -1886,8 +1891,7 @@ end
           ["MX4SIO"] = "MX4SIO",
           ["HDD (exFAT)"] = "BDHDD",
           ["HDD (PFS)"] = "APAHDD",
-          ["USB (exFAT)"] = "USBEXFAT",
-          ["USB (FAT32)"] = "USB",
+          ["USB"] = "USB",
           ["SMB (v1)"] = "SMB",
           ["Disc (DKWDRV)"] = "DISC"
         }
@@ -2175,16 +2179,20 @@ end
             end
             UI.SceneChange(UI.SCENES.GHDD)
           elseif UI.MainMenu.OPT == 5 then
-            PLDR.CleanupGameList()
-            PLDR.GetPS1GameLists("mass"..PLDR.USB.MASSINDX..":/POPS/", true)
-            UI.SceneChange(UI.SCENES.GUSBEXFAT)
-          elseif UI.MainMenu.OPT == 6 then
-            PLDR.CleanupGameList()
-            PLDR.GetPS1GameLists("mass"..PLDR.USB.MASSINDX..":/POPS/", true)
+            local found = nil
+            if PLDR.GetPS1GameListsUSB ~= nil then
+              found = PLDR.GetPS1GameListsUSB(4)
+            else
+              PLDR.CleanupGameList()
+              found = PLDR.GetPS1GameLists("mass"..PLDR.USB.MASSINDX..":/POPS/", true)
+            end
+            if found == nil then
+              UI.Notif_queue.add("No USB device found (POPS/ missing)")
+            end
             UI.SceneChange(UI.SCENES.GUSBFAT)
-          elseif UI.MainMenu.OPT == 7 then
+          elseif UI.MainMenu.OPT == 6 then
             UI.Notif_queue.add("Not Implemented Yet")
-          elseif UI.MainMenu.OPT == 8 then
+          elseif UI.MainMenu.OPT == 7 then
             UI.Modal.OpenDKWDRV()
           end --because we still dont support SMB
         end
