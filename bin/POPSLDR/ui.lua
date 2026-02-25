@@ -1899,9 +1899,10 @@ end
           local title_y = layout.TITLE_Y
           local status_y = title_y + 16
           top_label_y = status_y + 16
-          Font.ftPrint(UI.FONT.TITLE, UI.SCR.X_MID, title_y, 8, UI.SCR.X, 16, "POPSLOADER", UI.COLORS.TEXT_PRIMARY)
+          Font.ftPrint(UI.FONT.TITLE, UI.SCR.X_MID, title_y, 8, UI.SCR.X, 16, "POPSLOADER  [UI-LUA-PROOF-1]", UI.COLORS.TEXT_PRIMARY)
           Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "ACTIVE BDMA: "..ResolveActiveBDMALabel(), UI.COLORS.TEXT_PRIMARY)
         end
+        Font.ftPrint(UI.FONT.STATUS, 8, 8, 0, UI.SCR.X, 16, "UI-LUA-PROOF-1", UI.COLORS.TEXT_PRIMARY)
 	        -- Pages are no longer presented as "locked" in the UI.
         local icon_map = {
           ["MMCE"] = "MMCE",
