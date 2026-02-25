@@ -7,7 +7,6 @@
 --]]
 
 LOG("Registering POPSLoader UI")
-local DEVLOCK = { NONE = 0, USB = 1, MMCE = 2, MX4SIO = 3 }
 local UI
 local GetBackgroundTexture
 local function Round(value)
@@ -256,10 +255,6 @@ UI = {
     };
     LAUNCHING = false;
     HideUI = (PLDR ~= nil and PLDR.SETTINGS ~= nil and PLDR.SETTINGS.hide_ui == true);
-    DEVLOCK = DEVLOCK;
-    device_lock = DEVLOCK.NONE;
-    boot_device = DEVLOCK.NONE;
-    boot_locks = {};
     BOOT_SOUND = {
       ENABLED = true,
       PATH = "embed:/POPSLDR/boot.adp",
@@ -272,36 +267,12 @@ UI = {
       ADPCM_VOLUME = 100      -- per-channel ADPCM volume (0-100 typical, scaled to audsrv range)
     };
     CoverCache = CoverCache;
-    device_lock_name = function (lock)
-      if lock == DEVLOCK.USB then return "USB" end
-      if lock == DEVLOCK.MMCE then return "MMCE" end
-      if lock == DEVLOCK.MX4SIO then return "MX4SIO" end
-      return "None"
-    end;
-    canEnterDevice = function (target)
-      if UI.boot_locks ~= nil and UI.boot_locks[target] == true then
-        return false, "boot", UI.boot_device
-      end
-      if UI.device_lock == DEVLOCK.NONE then
-        return true
-      end
-      if UI.device_lock == target then
-        return true
-      end
-      return false, "session", UI.device_lock
-    end;
     ShouldHideUI = function ()
       if not UI.HideUI then return false end
       if UI.CURSCENE == UI.SCENES.MPROFILE or UI.CURSCENE == UI.SCENES.CREDITS then
         return false
       end
       return true
-    end;
-    setDeviceLock = function (target)
-      if UI.device_lock == DEVLOCK.NONE then
-        UI.device_lock = target
-        LOG("Device lock set to "..UI.device_lock_name(target))
-      end
     end;
     RequestScene = function (SCENE)
       if UI.Transition ~= nil and UI.Transition.Start ~= nil then
@@ -1265,26 +1236,6 @@ end
         UI.Modal.triangle_action = nil
         UI.Modal.ignore_until_release = true
       end;
-      OpenDeviceLock = function (reason, active, target)
-        local active_name = UI.device_lock_name(active)
-        local target_name = UI.device_lock_name(target)
-        UI.Modal.active = true
-        UI.Modal.title = "Device drivers already loaded"
-        if reason == "boot" then
-          UI.Modal.body = ("Current boot device (%s) requires drivers already loaded.\nTo use %s, restart POPSLoader to reload drivers."):format(active_name, target_name)
-        else
-          UI.Modal.body = ("Drivers for %s are already loaded.\nTo use %s, restart POPSLoader to reload drivers."):format(active_name, target_name)
-        end
-        UI.Modal.options = {"Return", "Back"}
-        UI.Modal.confirm_action = function ()
-          LOG("Device lock prompt choice: RETURN")
-          UI.Modal.Close()
-          UI.SceneChange(UI.SCENES.MMAIN)
-        end
-        UI.Modal.cancel_action = UI.Modal.Close
-        UI.Modal.triangle_action = nil
-        UI.Modal.ignore_until_release = true
-      end;
       Close = function ()
         UI.Modal.active = false
         UI.Modal.confirm_action = nil
@@ -1926,12 +1877,7 @@ end
           Font.ftPrint(UI.FONT.TITLE, UI.SCR.X_MID, title_y, 8, UI.SCR.X, 16, "POPSLOADER", UI.COLORS.TEXT_PRIMARY)
           Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "ACTIVE BDMA: "..ResolveActiveBDMALabel(), UI.COLORS.TEXT_PRIMARY)
           status_y = top_label_y + 12
-          if UI.boot_device ~= nil and UI.boot_device ~= DEVLOCK.NONE then
-            Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Booted from: "..UI.device_lock_name(UI.boot_device), UI.COLORS.TEXT_PRIMARY)
-            status_y = status_y + 12
-          end
         end
-	        -- Pages are no longer presented as "locked" in the UI.
         local icon_map = {
           ["MMCE"] = "MMCE",
           ["MX4SIO"] = "MX4SIO",
@@ -2127,16 +2073,9 @@ end
               end
               PLDR.CleanupGameList()
               PLDR.GetPS1GameLists(mmce_prefix.."POPS/", true)
-              UI.setDeviceLock(DEVLOCK.MMCE)
               UI.SceneChange(UI.SCENES.GMMCE)
             end
           elseif UI.MainMenu.OPT == 2 then
-            local can_enter, reason, lock = UI.canEnterDevice(DEVLOCK.MX4SIO)
-            if not can_enter then
-              UI.Notif_queue.add("Device locked to "..UI.device_lock_name(lock))
-              return
-            end
-
             if System ~= nil and System.ensureMx4sioInit ~= nil then
               local ok_gate, gate_ready = pcall(System.ensureMx4sioInit)
               if not ok_gate or not gate_ready then
@@ -2158,7 +2097,6 @@ end
               end
               PLDR.CleanupGameList()
               PLDR.GetPS1GameLists("mass"..tostring(mx_mass)..":/POPS/", true)
-              UI.setDeviceLock(DEVLOCK.MX4SIO)
               UI.SceneChange(UI.SCENES.GMX4SIO)
               return
             end
@@ -2207,7 +2145,6 @@ end
               game_root = JoinPath(root, "POPS/")
             end
             PLDR.GetPS1GameLists(game_root, true)
-            UI.setDeviceLock(DEVLOCK.MX4SIO)
             UI.SceneChange(UI.SCENES.GMX4SIO)
           elseif UI.MainMenu.OPT == 3 then
             UI.Notif_queue.add("Not Implemented Yet")
@@ -2237,12 +2174,10 @@ end
           elseif UI.MainMenu.OPT == 5 then
             PLDR.CleanupGameList()
             PLDR.GetPS1GameLists("mass"..PLDR.USB.MASSINDX..":/POPS/", true)
-            UI.setDeviceLock(DEVLOCK.USB)
             UI.SceneChange(UI.SCENES.GUSBEXFAT)
           elseif UI.MainMenu.OPT == 6 then
             PLDR.CleanupGameList()
             PLDR.GetPS1GameLists("mass"..PLDR.USB.MASSINDX..":/POPS/", true)
-            UI.setDeviceLock(DEVLOCK.USB)
             UI.SceneChange(UI.SCENES.GUSBFAT)
           elseif UI.MainMenu.OPT == 7 then
             UI.Notif_queue.add("Not Implemented Yet")

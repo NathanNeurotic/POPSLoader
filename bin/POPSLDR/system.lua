@@ -74,8 +74,6 @@ function JoinPath(base, rel)
 end
 
 local APP_DIR_LOCAL = NormalizeDirPath(APP_DIR or BOOT_PATH_RAW)
-LOG("APP_DIR_NORM="..APP_DIR_LOCAL)
-LOG("APP_DIR_POPSTARTER_JOIN="..JoinPath(APP_DIR_LOCAL, "POPSTARTER.ELF"))
 local SELECTOR_MODE = "basename"
 
 local function ResolveAsset(rel)
@@ -111,46 +109,6 @@ local function ResolvePopstarterPath(path)
     return fallback
   end
   return chosen
-end
-
-local function DetectBootDevice()
-  local boot_path = NormalizeDirPath(BOOT_PATH_RAW or "")
-  local prefix = string.match(boot_path, "^([%a]+%d*):")
-  if prefix == nil then
-    return nil, boot_path, prefix
-  end
-  if string.match(prefix, "^mmce%d*$") then
-    return "MMCE", boot_path, prefix
-  end
-  if string.match(prefix, "^mx4sio%d*$") then
-    return "MX4SIO", boot_path, prefix
-  end
-  if string.match(prefix, "^mass%d*$") then
-    local idx = tonumber(string.match(prefix, "^mass(%d+)$")) or 0
-    local driver = nil
-    if System ~= nil and System.getMassDriverName ~= nil then
-      local ok, name = pcall(System.getMassDriverName, idx)
-      if ok then
-        driver = name
-      end
-    end
-    if driver == "sdc" then
-      return "MX4SIO", boot_path, prefix
-    end
-    if driver == "usb" then
-      return "USB", boot_path, prefix
-    end
-    -- Legacy fallback (marker-based). Prefer IOCTL above.
-    local mx_marker = JoinPath(APP_DIR_LOCAL, ".boot_mx4sio")
-    local usb_marker = JoinPath(APP_DIR_LOCAL, ".boot_usb")
-    if doesFileExist(mx_marker) then
-      return "MX4SIO", boot_path, prefix
-    end
-    if doesFileExist(usb_marker) then
-      return "USB", boot_path, prefix
-    end
-  end
-  return nil, boot_path, prefix
 end
 
 HDD_DIAG_BYPASS = 0
@@ -461,53 +419,22 @@ require("pops_profiles")
 if PLDR.ApplyProfileSetting ~= nil then
   PLDR.ApplyProfileSetting()
 end
-LOG("system.lua: before require('ui')")
 local ok_ui, ui_or_err = pcall(require, "ui")
-LOG("system.lua: after require('ui')")
 if not ok_ui then
   local traceback = ui_or_err
   if debug ~= nil and debug.traceback ~= nil then
     traceback = debug.traceback(ui_or_err, 2)
   end
-  LOG("UI load failed")
-  LOG("APP_DIR:", APP_DIR_LOCAL)
-  LOG("Boot cwd:", System.currentDirectory())
-  LOG("package.path:", package.path)
   error("UI module failed to load (expected ui.lua to return/set UI): "..tostring(traceback))
 end
 if ui_or_err ~= nil and ui_or_err ~= true then
   UI = ui_or_err
 end
 if UI == nil then
-  LOG("UI global is nil after require('ui')")
-  LOG("APP_DIR:", APP_DIR_LOCAL)
-  LOG("Boot cwd:", System.currentDirectory())
-  LOG("package.path:", package.path)
   error("UI global not initialized (expected ui.lua to return UI or set _G.UI)")
 end
 UI.LASTSCENE = UI.SCENES.MMAIN
 
-if UI.DEVLOCK ~= nil then
-  local boot_name, boot_path, boot_prefix = DetectBootDevice()
-  UI.boot_device = UI.DEVLOCK.NONE
-  UI.boot_locks = {}
-  if boot_name == "MX4SIO" then
-    UI.boot_device = UI.DEVLOCK.MX4SIO
-    UI.boot_locks[UI.DEVLOCK.USB] = true
-    UI.boot_locks[UI.DEVLOCK.MMCE] = true
-  elseif boot_name == "USB" then
-    UI.boot_device = UI.DEVLOCK.USB
-    UI.boot_locks[UI.DEVLOCK.MX4SIO] = true
-  elseif boot_name == "MMCE" then
-    UI.boot_device = UI.DEVLOCK.MMCE
-    UI.boot_locks[UI.DEVLOCK.MX4SIO] = true
-  end
-  if boot_name ~= nil then
-    LOG("Boot device detected:", boot_name, "prefix:", tostring(boot_prefix), "path:", tostring(boot_path))
-  else
-    LOG("Boot device detection ambiguous; no boot locks set.", "prefix:", tostring(boot_prefix), "path:", tostring(boot_path))
-  end
-end
 require("images")
 
 local POPSTARTER_PACK_ROOT = "mc0:/POPSTARTER"
