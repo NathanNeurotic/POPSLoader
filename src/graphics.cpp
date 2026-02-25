@@ -1348,49 +1348,113 @@ GSTEXTURE* loadEmbeddedPNG(uint8_t * data, size_t size, bool delayed)
 
 	if (color_type == PNG_COLOR_TYPE_PALETTE)
 	{
-		if (bit_depth != 8)
-			return NULL;
+		struct png_clut { u8 r, g, b, a; };
 
-		png_read_update_info(png_ptr, info_ptr);
-
-		int row_bytes = png_get_rowbytes(png_ptr, info_ptr);
-		tex->PSM = GS_PSM_T8;
-		tex->Mem = (u32*)memalign(128, gsKit_texture_size_ee(tex->Width, tex->Height, tex->PSM));
 		tex->ClutPSM = GS_PSM_CT32;
-		tex->Clut = (u32*)memalign(128, gsKit_texture_size_ee(16, 16, GS_PSM_CT32));
-
-		if (tex->Mem == NULL || tex->Clut == NULL)
-			return NULL;
-
-		row_pointers = (png_byte**)calloc(height, sizeof(png_bytep));
-		for (row = 0; row < height; row++) row_pointers[row] = (png_bytep)malloc(row_bytes);
-
-		png_read_image(png_ptr, row_pointers);
+		png_read_update_info(png_ptr, info_ptr);
 
 		if (!png_get_PLTE(png_ptr, info_ptr, &palette, &num_palette))
 			num_palette = 0;
 		if (!png_get_tRNS(png_ptr, info_ptr, &trans, &num_trans, NULL))
 			num_trans = 0;
 
-		struct png_clut { u8 r, g, b, a; };
-		unsigned char *pixel = (unsigned char *)tex->Mem;
-		struct png_clut *clut = (struct png_clut *)tex->Clut;
+		if (bit_depth == 4)
+		{
+			int row_bytes = png_get_rowbytes(png_ptr, info_ptr);
+			tex->PSM = GS_PSM_T4;
+			tex->Mem = (u32*)memalign(128, gsKit_texture_size_ee(tex->Width, tex->Height, tex->PSM));
+			tex->Clut = (u32*)memalign(128, gsKit_texture_size_ee(8, 2, GS_PSM_CT32));
 
-		memset(tex->Clut, 0, gsKit_texture_size_ee(16, 16, GS_PSM_CT32));
+			if (tex->Mem == NULL || tex->Clut == NULL)
+				return NULL;
 
-		for (i = 0; i < num_palette; i++) {
-			clut[i].r = palette[i].red;
-			clut[i].g = palette[i].green;
-			clut[i].b = palette[i].blue;
-			clut[i].a = (i < num_trans ? trans[i] : 0xFF) >> 1;
+			row_pointers = (png_byte**)calloc(height, sizeof(png_bytep));
+			for (row = 0; row < height; row++) row_pointers[row] = (png_bytep)malloc(row_bytes);
+
+			png_read_image(png_ptr, row_pointers);
+
+			memset(tex->Clut, 0, gsKit_texture_size_ee(8, 2, GS_PSM_CT32));
+
+			unsigned char *pixel = (unsigned char *)tex->Mem;
+			struct png_clut *clut = (struct png_clut *)tex->Clut;
+			int byte;
+
+			for (i = 0; i < num_palette; i++) {
+				clut[i].r = palette[i].red;
+				clut[i].g = palette[i].green;
+				clut[i].b = palette[i].blue;
+				clut[i].a = 0x80;
+			}
+
+			for (i = 0; i < num_trans; i++)
+				clut[i].a = trans[i] >> 1;
+
+			k = 0;
+			for (i = 0; i < tex->Height; i++) {
+				for (j = 0; j < tex->Width / 2; j++)
+					memcpy(&pixel[k++], &row_pointers[i][j], 1);
+			}
+
+			unsigned char *tmpdst = (unsigned char *)tex->Mem;
+			unsigned char *tmpsrc = (unsigned char *)pixel;
+			for (byte = 0; byte < gsKit_texture_size_ee(tex->Width, tex->Height, tex->PSM); byte++)
+				tmpdst[byte] = (tmpsrc[byte] << 4) | (tmpsrc[byte] >> 4);
+
+			for(row = 0; row < height; row++) free(row_pointers[row]);
+			free(row_pointers);
 		}
+		else if (bit_depth == 8)
+		{
+			int row_bytes = png_get_rowbytes(png_ptr, info_ptr);
+			tex->PSM = GS_PSM_T8;
+			tex->Mem = (u32*)memalign(128, gsKit_texture_size_ee(tex->Width, tex->Height, tex->PSM));
+			tex->Clut = (u32*)memalign(128, gsKit_texture_size_ee(16, 16, GS_PSM_CT32));
 
-		for (i = 0; i < tex->Height; i++) {
-			memcpy(&pixel[i * tex->Width], row_pointers[i], tex->Width);
+			if (tex->Mem == NULL || tex->Clut == NULL)
+				return NULL;
+
+			row_pointers = (png_byte**)calloc(height, sizeof(png_bytep));
+			for (row = 0; row < height; row++) row_pointers[row] = (png_bytep)malloc(row_bytes);
+
+			png_read_image(png_ptr, row_pointers);
+
+			memset(tex->Clut, 0, gsKit_texture_size_ee(16, 16, GS_PSM_CT32));
+
+			unsigned char *pixel = (unsigned char *)tex->Mem;
+			struct png_clut *clut = (struct png_clut *)tex->Clut;
+
+			for (i = 0; i < num_palette; i++) {
+				clut[i].r = palette[i].red;
+				clut[i].g = palette[i].green;
+				clut[i].b = palette[i].blue;
+				clut[i].a = 0x80;
+			}
+
+			for (i = 0; i < num_trans; i++)
+				clut[i].a = trans[i] >> 1;
+
+			for (i = 0; i < num_palette; i++) {
+				if ((i & 0x18) == 8) {
+					struct png_clut tmp = clut[i];
+					clut[i] = clut[i + 8];
+					clut[i + 8] = tmp;
+				}
+			}
+
+			k = 0;
+			for (i = 0; i < tex->Height; i++) {
+				for (j = 0; j < tex->Width; j++) {
+					memcpy(&pixel[k++], &row_pointers[i][j], 1);
+				}
+			}
+
+			for(row = 0; row < height; row++) free(row_pointers[row]);
+			free(row_pointers);
 		}
-
-		for(row = 0; row < height; row++) free(row_pointers[row]);
-		free(row_pointers);
+		else
+		{
+			return NULL;
+		}
 	}
 	else
 	{
