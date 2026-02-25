@@ -425,22 +425,22 @@ PLDR.DEFAULT_DKWDRV_PATH = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
 local BDMA_MODES = {
   {
     label = "USBFAT32(None)",
-    ext = nil,
+    source_suffix = nil,
     action = "delete"
   },
   {
     label = "USBEXFAT",
-    ext = ".usbexfat",
+    source_suffix = ".exfat",
     action = "copy"
   },
   {
     label = "MMCE",
-    ext = ".mmce",
+    source_suffix = ".mmce",
     action = "copy"
   },
   {
     label = "MX4SIO",
-    ext = ".mx4sio",
+    source_suffix = ".mx4sio",
     action = "copy"
   }
 }
@@ -811,57 +811,62 @@ local function RemoveDirectoryRecursive(path)
   return true
 end
 
-function PLDR.ApplyBDMAMode()
-  local mode = PLDR.GetBDMAMode()
+function PLDR.ApplyBDMAOnSettingsSave(mode)
+  local selected_mode = tonumber(mode) or PLDR.GetBDMAMode()
+  local count = PLDR.GetBDMAModeCount()
+  if selected_mode < 1 then selected_mode = 1 end
+  if selected_mode > count then selected_mode = count end
+  local mode = selected_mode
   local entry = BDMA_MODES[mode] or BDMA_MODES[1]
   local label = entry.label
-  LOG("BDMA apply start: "..label)
+  local dest_root = NormalizeDirPath("mc0:/POPSTARTER/")
+  local targets = {
+    {
+      dest = JoinPath(dest_root, "usbd.irx"),
+      source = "usbd.irx"
+    },
+    {
+      dest = JoinPath(dest_root, "usbhdfsd.irx"),
+      source = "usbhdfsd.irx"
+    }
+  }
   local ok = true
   if entry.action == "delete" then
-    LOG("BDMA delete: mc0:/POPSTARTER/")
-    if doesFolderExist("mc0:/POPSTARTER/") then
-      local rm_ok, rm_err = RemoveDirectoryRecursive("mc0:/POPSTARTER/")
-      if not rm_ok then
-        LOG("BDMA delete failed:", rm_err)
-        ok = false
-      end
-      local dir_ok, dir_err = pcall(System.removeDirectory, "mc0:/POPSTARTER/")
-      if not dir_ok then
-        LOG("BDMA remove dir failed:", dir_err)
-        ok = false
+    for i = 1, #targets do
+      local target = targets[i]
+      if doesFileExist(target.dest) then
+        local rm_ok = pcall(System.removeFile, target.dest)
+        if not rm_ok then
+          ok = false
+        end
       end
     end
-  else
-    local dest_root = NormalizeDirPath("mc0:/POPSTARTER/")
+  elseif entry.action == "copy" then
     if not EnsureDirectory(dest_root) then
       ok = false
-    end
-    local source_root = NormalizeDirPath(APP_DIR_LOCAL)
-    local ok_list, entries = pcall(System.listDirectory, source_root)
-    if not ok_list or entries == nil then
-      LOG("BDMA list failed:", source_root, entries)
-      ok = false
     else
-      local suffix = entry.ext
-      for i = 1, #entries do
-        local file = entries[i]
-        if file ~= nil and not file.directory and file.name ~= nil then
-          local dest_name = StripSuffixCaseInsensitive(file.name, suffix)
-          if dest_name ~= nil and dest_name ~= "" then
-            local src = JoinPath(source_root, file.name)
-            local dst = JoinPath(dest_root, dest_name)
-            LOG("BDMA copy: "..src.." -> "..dst)
-            local ok_copy, copy_err = pcall(System.copyFile, src, dst)
-            if not ok_copy then
-              LOG("BDMA copy failed:", copy_err)
-              ok = false
-            end
+      local source_root = NormalizeDirPath(APP_DIR_LOCAL)
+      for i = 1, #targets do
+        local target = targets[i]
+        local src = JoinPath(source_root, target.source..entry.source_suffix)
+        if doesFileExist(src) then
+          local removed = true
+          if doesFileExist(target.dest) then
+            removed = pcall(System.removeFile, target.dest)
           end
+          local ok_copy = false
+          if removed then
+            ok_copy = pcall(System.copyFile, src, target.dest)
+          end
+          if not ok_copy then
+            ok = false
+          end
+        else
+          ok = false
         end
       end
     end
   end
-  LOG("BDMA apply done: "..label.." ("..(ok and "ok" or "fail")..")")
   if ok then
     if entry.action == "delete" then
       PLDR.SETTINGS.bdma_last_label = nil
@@ -869,10 +874,11 @@ function PLDR.ApplyBDMAMode()
       PLDR.SETTINGS.bdma_last_label = label
     end
   end
-  if ok and UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
-    UI.Notif_queue.add("BDMA Applied")
-  end
   return ok
+end
+
+function PLDR.ApplyBDMAMode(mode)
+  return PLDR.ApplyBDMAOnSettingsSave(mode)
 end
 
 function PLDR.ApplyPopstarterPack(pack_key)
