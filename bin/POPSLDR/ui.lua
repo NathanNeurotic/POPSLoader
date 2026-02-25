@@ -9,6 +9,7 @@
 LOG("Registering POPSLoader UI")
 local DEVLOCK = { NONE = 0, USB = 1, MMCE = 2, MX4SIO = 3 }
 local UI
+local GetBackgroundTexture
 local function Round(value)
   return math.floor(value + 0.5)
 end
@@ -756,20 +757,29 @@ UI = {
         local function DrawTargetBackground(scene)
           Screen.clear(UI.SCR.BGCOL)
           if scene == UI.SCENES.MMAIN then
-            if IMG.BGM ~= nil then
-              Graphics.drawScaleImage(IMG.BGM, 0, 0, UI.SCR.X, UI.SCR.Y)
-            elseif IMG.BKG ~= nil then
-              Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
+            local bg = GetBackgroundTexture("BGM")
+            if bg ~= nil then
+              Graphics.drawScaleImage(bg, 0, 0, UI.SCR.X, UI.SCR.Y)
+            else
+              bg = GetBackgroundTexture("BKG")
+              if bg ~= nil then
+                Graphics.drawScaleImage(bg, 0, 0, UI.SCR.X, UI.SCR.Y)
+              end
             end
           elseif scene == UI.SCENES.MPROFILE or scene == UI.SCENES.CREDITS then
-            if IMG.BG ~= nil then
-              Graphics.drawScaleImage(IMG.BG, 0, 0, UI.SCR.X, UI.SCR.Y)
-            elseif IMG.BKG ~= nil then
-              Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
+            local bg = GetBackgroundTexture("BG")
+            if bg ~= nil then
+              Graphics.drawScaleImage(bg, 0, 0, UI.SCR.X, UI.SCR.Y)
+            else
+              bg = GetBackgroundTexture("BKG")
+              if bg ~= nil then
+                Graphics.drawScaleImage(bg, 0, 0, UI.SCR.X, UI.SCR.Y)
+              end
             end
           else
-            if IMG.BKG ~= nil then
-              Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
+            local bg = GetBackgroundTexture("BKG")
+            if bg ~= nil then
+              Graphics.drawScaleImage(bg, 0, 0, UI.SCR.X, UI.SCR.Y)
             end
           end
         end
@@ -987,11 +997,43 @@ local function DrawSplashFit(img, x, y, draw_w, draw_h, alpha)
   Graphics.drawScaleImage(img, x, y, draw_w, draw_h, tint)
 end
 
+local BACKGROUND_KEYS = {
+  BG = true,
+  BKG = true,
+  BGM = true,
+  splash_bg = true,
+}
+local ACTIVE_BACKGROUND_KEY = nil
+
+local function FreeBackgroundTexture(key)
+  if key == nil or BACKGROUND_KEYS[key] ~= true then return end
+  local img = rawget(IMG, key)
+  if img == nil then return end
+  if type(Graphics) == "table" and type(Graphics.freeImage) == "function" then
+    pcall(Graphics.freeImage, img)
+  end
+  rawset(IMG, key, nil)
+end
+
+GetBackgroundTexture = function (key)
+  if key == nil or BACKGROUND_KEYS[key] ~= true then return nil end
+  if ACTIVE_BACKGROUND_KEY ~= nil and ACTIVE_BACKGROUND_KEY ~= key then
+    FreeBackgroundTexture(ACTIVE_BACKGROUND_KEY)
+  end
+  ACTIVE_BACKGROUND_KEY = key
+  local current = rawget(IMG, key)
+  if current ~= nil then
+    return current
+  end
+  return IMG[key]
+end
+
 local function DrawSplash(alpha)
   -- New 4-layer splash (bg fill + appname + logo + credits). Falls back to legacy PSL.png + text.
-  if IMG.splash_bg ~= nil and IMG.splash_appname ~= nil and IMG.splash_logo ~= nil and IMG.splash_credits ~= nil then
+  local splash_bg = GetBackgroundTexture("splash_bg")
+  if splash_bg ~= nil and IMG.splash_appname ~= nil and IMG.splash_logo ~= nil and IMG.splash_credits ~= nil then
     -- Background: cover-fill the screen.
-    DrawSplashCover(IMG.splash_bg, UI.SCR.X, UI.SCR.Y, alpha)
+    DrawSplashCover(splash_bg, UI.SCR.X, UI.SCR.Y, alpha)
 
     local pad = 16
     local max_w = UI.SCR.X - (pad * 2)
@@ -1139,20 +1181,29 @@ end
 	        Screen.clear(UI.SCR.BGCOL)
         -- Main menu uses BGM.png; settings/profile and credits use BG.png.
         if UI.CURSCENE == UI.SCENES.MMAIN then
-          if IMG.BGM ~= nil then
-            Graphics.drawScaleImage(IMG.BGM, 0, 0, UI.SCR.X, UI.SCR.Y)
-          elseif IMG.BKG ~= nil then
-            Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
+          local bg = GetBackgroundTexture("BGM")
+          if bg ~= nil then
+            Graphics.drawScaleImage(bg, 0, 0, UI.SCR.X, UI.SCR.Y)
+          else
+            bg = GetBackgroundTexture("BKG")
+            if bg ~= nil then
+              Graphics.drawScaleImage(bg, 0, 0, UI.SCR.X, UI.SCR.Y)
+            end
           end
         elseif UI.CURSCENE == UI.SCENES.MPROFILE or UI.CURSCENE == UI.SCENES.CREDITS then
-          if IMG.BG ~= nil then
-            Graphics.drawScaleImage(IMG.BG, 0, 0, UI.SCR.X, UI.SCR.Y)
-          elseif IMG.BKG ~= nil then
-            Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
+          local bg = GetBackgroundTexture("BG")
+          if bg ~= nil then
+            Graphics.drawScaleImage(bg, 0, 0, UI.SCR.X, UI.SCR.Y)
+          else
+            bg = GetBackgroundTexture("BKG")
+            if bg ~= nil then
+              Graphics.drawScaleImage(bg, 0, 0, UI.SCR.X, UI.SCR.Y)
+            end
           end
         else
-          if IMG.BKG ~= nil then
-            Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
+          local bg = GetBackgroundTexture("BKG")
+          if bg ~= nil then
+            Graphics.drawScaleImage(bg, 0, 0, UI.SCR.X, UI.SCR.Y)
           end
         end
         -- Removed opaque overlay box on non-main scenes (was masking background).
