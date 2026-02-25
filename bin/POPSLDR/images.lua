@@ -7,7 +7,20 @@
 --]]
 
 LOG("Registering images")
-local function ResolveImage(name)
+local IMG_EMBED_OVERRIDES = {
+  BG = "embed:/POPSLDR/IMG/BG.png",
+  BKG = "embed:/POPSLDR/IMG/BKG.png",
+  BGM = "embed:/POPSLDR/IMG/BGM.png",
+  splash_bg = "embed:/POPSLDR/IMG/splash_bg.png",
+}
+
+local function ResolveImage(name, key)
+  if key ~= nil then
+    local explicit = IMG_EMBED_OVERRIDES[key]
+    if explicit ~= nil then
+      return explicit
+    end
+  end
   return "embed:/POPSLDR/IMG/"..name
 end
 --- Add your images to this table, just write the name of the file.
@@ -58,12 +71,6 @@ IMG_SOURCES["MMCE"] = "MMCE.png"
 IMG_SOURCES["MX4SIO"] = "MX4SIO.png"
 
 local IMG_FAILED = {}
-local IMG_RETRY_ON_FAIL = {
-  BG = true,
-  BKG = true,
-  BGM = true,
-  splash_bg = true,
-}
 
 IMG = setmetatable({}, {
   __index = function (tbl, key)
@@ -74,13 +81,11 @@ IMG = setmetatable({}, {
       BOOT_PROF.textures_ready = true
       BOOT_PROF.stamp("UI assets init (textures)")
     end
-    local path = ResolveImage(source)
+    local path = ResolveImage(source, key)
     local img = Graphics.loadImage(path)
     if img == nil then
       LOGF("Image load failed: %s", path)
-      if not IMG_RETRY_ON_FAIL[key] then
-        IMG_FAILED[key] = true
-      end
+      IMG_FAILED[key] = true
       if key ~= "MISSING" then
         local missing_source = IMG_SOURCES["MISSING"]
         if missing_source ~= nil and not IMG_FAILED["MISSING"] then
