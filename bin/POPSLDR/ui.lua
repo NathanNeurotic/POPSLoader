@@ -736,7 +736,9 @@ UI = {
         local box_h = 260
         local box_x = UI.SCR.X_MID - (box_w / 2)
         local box_y = UI.SCR.Y_MID - (box_h / 2)
+        if false then
         Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, 120))
+        end
         Graphics.drawRect(box_x, box_y, box_w, box_h, Color.new(0, 0, 0, 200))
         Graphics.drawRect(box_x, box_y, box_w, 2, UI.CCOL.GREY)
         Graphics.drawRect(box_x, box_y + box_h - 2, box_w, 2, UI.CCOL.GREY)
@@ -782,7 +784,9 @@ UI = {
       if UI.Transition ~= nil and UI.Transition.active == true then
         local alpha = UI.Transition.Update()
         if alpha > 0 then
+          if false then
           Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
+          end
         end
       end
       Screen.flip()
@@ -1024,7 +1028,9 @@ end
             local alpha = Round(UI_ALPHA_OPAQUE * (i / fade_out_frames))
             DrawBackground()
             DrawSplash(UI_ALPHA_OPAQUE)
+            if false then
             Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
+            end
             Screen.flip()
           end
         end
@@ -1033,7 +1039,9 @@ end
         for i = 1, credits_fade_in_frames do
           local alpha = Round(UI_ALPHA_OPAQUE * (1 - (i / credits_fade_in_frames)))
           DrawTargetScene(UI.SCENES.CREDITS)
+          if false then
           Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
+          end
           Screen.flip()
         end
         for _ = 1, credits_hold_frames do
@@ -1044,7 +1052,9 @@ end
           for i = 1, credits_fade_out_frames do
             local alpha = Round(UI_ALPHA_OPAQUE * (i / credits_fade_out_frames))
             DrawTargetScene(UI.SCENES.CREDITS)
+            if false then
             Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
+            end
             Screen.flip()
           end
         end
@@ -1054,7 +1064,9 @@ end
         for i = 1, fade_in_frames do
           local alpha = Round(UI_ALPHA_OPAQUE * (1 - (i / fade_in_frames)))
           DrawTargetScene(final_scene)
+          if false then
           Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
+          end
           Screen.flip()
         end
         DrawTargetScene(final_scene)
@@ -1278,7 +1290,9 @@ end
         local box_h = 140
         local box_x = UI.SCR.X_MID - (box_w / 2)
         local box_y = UI.SCR.Y_MID - (box_h / 2)
+        if false then
         Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, 120))
+        end
         Graphics.drawRect(box_x, box_y, box_w, box_h, Color.new(0, 0, 0, 200))
         Graphics.drawRect(box_x, box_y, box_w, 2, UI.CCOL.GREY)
         Graphics.drawRect(box_x, box_y + box_h - 2, box_w, 2, UI.CCOL.GREY)
