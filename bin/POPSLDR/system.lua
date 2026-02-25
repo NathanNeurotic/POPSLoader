@@ -74,6 +74,34 @@ function JoinPath(base, rel)
 end
 
 local APP_DIR_LOCAL = NormalizeDirPath(APP_DIR or BOOT_PATH_RAW)
+
+local function DeriveElfDirectory()
+  local source = BOOT_PATH_RAW
+  if System ~= nil and System.GetArgv0 ~= nil then
+    local ok_arg, arg0 = pcall(System.GetArgv0)
+    if ok_arg and type(arg0) == "string" and arg0 ~= "" then
+      source = arg0
+    end
+  end
+  if type(source) ~= "string" or source == "" then
+    return APP_DIR_LOCAL
+  end
+  source = string.gsub(source, "\\", "/")
+  if string.sub(source, -1) ~= "/" then
+    local parent = string.match(source, "^(.*)/[^/]+$")
+    if parent ~= nil and parent ~= "" then
+      source = parent.."/"
+    elseif string.match(source, "^[%a]+%d*:[^/].*$") then
+      local device, rest = string.match(source, "^([%a]+%d*):(.+)$")
+      if device ~= nil and rest ~= nil and string.match(rest, "^[^/]+$") then
+        source = device..":/"
+      end
+    end
+  end
+  return NormalizeDirPath(source)
+end
+
+local ELF_DIR_LOCAL = DeriveElfDirectory()
 local SELECTOR_MODE = "basename"
 
 local function ResolveAsset(rel)
@@ -180,20 +208,46 @@ local function PopstarterPathExists(path)
 end
 
 local function ResolvePopstarterPath(path)
-  local fallback = "mass:/POPS/POPSTARTER.ELF"
   local chosen = NormalizePopstarterPath(path)
+  local candidates = {}
+
+  local function add_candidate(candidate)
+    if type(candidate) ~= "string" or candidate == "" then
+      return
+    end
+    candidate = NormalizePopstarterPath(candidate)
+    for i = 1, #candidates do
+      if candidates[i] == candidate then
+        return
+      end
+    end
+    table.insert(candidates, candidate)
+  end
+
   if chosen == nil or chosen == "" then
-    chosen = JoinPath(APP_DIR_LOCAL, "POPSTARTER.ELF")
+    add_candidate(JoinPath(ELF_DIR_LOCAL, "POPSTARTER.ELF"))
+    if APP_DIR_LOCAL ~= ELF_DIR_LOCAL then
+      add_candidate(JoinPath(APP_DIR_LOCAL, "POPSTARTER.ELF"))
+    end
+  elseif IsAbsoluteDevicePath(chosen) then
+    add_candidate(chosen)
   elseif not IsAbsoluteDevicePath(chosen) then
-    chosen = JoinPath(APP_DIR_LOCAL, chosen)
+    add_candidate(JoinPath(ELF_DIR_LOCAL, chosen))
+    if APP_DIR_LOCAL ~= ELF_DIR_LOCAL then
+      add_candidate(JoinPath(APP_DIR_LOCAL, chosen))
+    end
+  else
+    add_candidate(chosen)
   end
-  chosen = NormalizePopstarterPath(chosen)
-  fallback = NormalizePopstarterPath(fallback)
-  if PopstarterPathExists(chosen) then
-    return chosen
+
+  for i = 1, #candidates do
+    if PopstarterPathExists(candidates[i]) then
+      return candidates[i]
+    end
   end
-  if chosen ~= fallback and PopstarterPathExists(fallback) then
-    return fallback
+
+  if #candidates > 0 then
+    return candidates[1]
   end
   return chosen
 end
@@ -894,22 +948,44 @@ function PLDR.GetActiveUsbRoots(max_index)
   if max < 0 then max = 0 end
   if max > 9 then max = 9 end
 
+  local function classify_mass_root(root)
+    local index = string.match(root or "", "^mass(%d+):/$")
+    if index ~= nil then
+      local driver = PLDR.GetMassDriverName(tonumber(index))
+      if driver == "usb" then
+        return "usb"
+      end
+      if driver == "sdc" then
+        return "mx4sio"
+      end
+      return "unknown"
+    end
+    return "unknown"
+  end
+
   local function add_root(root)
     if root == nil or seen[root] then
       return
     end
-    if doesFolderExist(root) and doesFolderExist(root.."POPS/") then
+    if not doesFolderExist(root) then
+      return
+    end
+    if not doesFolderExist(root.."POPS/") then
+      return
+    end
+    if classify_mass_root(root) == "usb" then
       seen[root] = true
       table.insert(roots, root)
     end
   end
 
-  -- Stage 1: conservative probe by responsiveness.
+  -- Stage 1: conservative probe by responsiveness + existing driver classification.
+  add_root("mass:/")
   for i = 0, max do
     add_root("mass"..tostring(i)..":/")
   end
 
-  -- Stage 2: keep drivername preference/order, without excluding responsive devices.
+  -- Stage 2: keep drivername preference/order, without excluding already-qualified USB roots.
   for i = 0, max do
     if PLDR.GetMassDriverName(i) == "usb" then
       local root = "mass"..tostring(i)..":/"
