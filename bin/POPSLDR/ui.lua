@@ -1482,9 +1482,6 @@ end
         UI.HideUI = not UI.HideUI
         if PLDR ~= nil and PLDR.SETTINGS ~= nil then
           PLDR.SETTINGS.hide_ui = UI.HideUI
-          if PLDR.SaveSettings ~= nil then
-            PLDR.SaveSettings()
-          end
         end
         return true
       end
@@ -1618,9 +1615,6 @@ end
           UI.GameList.SHOW_COVER = not UI.GameList.SHOW_COVER
           if PLDR ~= nil and PLDR.SETTINGS ~= nil then
             PLDR.SETTINGS.show_cover = UI.GameList.SHOW_COVER
-            if PLDR.SaveSettings ~= nil then
-              PLDR.SaveSettings()
-            end
           end
         end
         UI.GameList.LAST_SQUARE_DOWN = square_down
@@ -1752,7 +1746,11 @@ end
           UI.ProfileQuery.curopt = CLAMP(default_profile, 1, profcnt)
           local profile = PLDR.PROFILES[UI.ProfileQuery.curopt]
           if profile ~= nil then
-            PLDR.POPSTARTER_PATH = profile.ELF
+            if PLDR.ResolvePopstarterPath ~= nil then
+              PLDR.POPSTARTER_PATH = PLDR.ResolvePopstarterPath(profile.ELF)
+            else
+              PLDR.POPSTARTER_PATH = profile.ELF
+            end
           end
           if PLDR.SETTINGS ~= nil then
             PLDR.SETTINGS.profile_index = UI.ProfileQuery.curopt
@@ -1792,10 +1790,15 @@ end
           if PLDR.SaveSettings ~= nil then
             PLDR.SaveSettings()
           end
-          if not doesFileExist(PLDR.PROFILES[UI.ProfileQuery.curopt].ELF) then
+          local selected_elf = PLDR.PROFILES[UI.ProfileQuery.curopt].ELF
+          if PLDR.ResolvePopstarterPath ~= nil then
+            PLDR.POPSTARTER_PATH = PLDR.ResolvePopstarterPath(selected_elf)
+          else
+            PLDR.POPSTARTER_PATH = selected_elf
+          end
+          if not doesFileExist(PLDR.POPSTARTER_PATH) then
             UI.Notif_queue.add("POPStarter ELF missing")
           else
-            PLDR.POPSTARTER_PATH = PLDR.PROFILES[UI.ProfileQuery.curopt].ELF
             UI.ProfileQuery.bdma_mode = nil
             UI.SceneChange(UI.SCENES.MMAIN)
           end
