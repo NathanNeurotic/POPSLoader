@@ -1772,9 +1772,9 @@ end
           if PLDR.GetBDMAMode ~= nil then
             UI.ProfileQuery.bdma_mode = PLDR.GetBDMAMode()
           end
-          local save_ok = true
+          local save_ok = false
           if PLDR.SaveSettings ~= nil then
-            save_ok = PLDR.SaveSettings() == true
+            save_ok = PLDR.SaveSettings()
           end
           if save_ok then
             UI.Notif_queue.add("Profile defaults restored")
@@ -1808,9 +1808,9 @@ end
           if PLDR.SETTINGS ~= nil then
             PLDR.SETTINGS.profile_index = UI.ProfileQuery.curopt
           end
-          local save_ok = true
+          local save_ok = false
           if PLDR.SaveSettings ~= nil then
-            save_ok = PLDR.SaveSettings() == true
+            save_ok = PLDR.SaveSettings()
           end
           local selected_elf = PLDR.PROFILES[UI.ProfileQuery.curopt].ELF
           if PLDR.ResolvePopstarterPath ~= nil then
