@@ -142,6 +142,104 @@ local function SafeWriteAll(fd, data)
   return true, nil
 end
 
+local function ClassifyLoadError(err)
+  local msg = string.lower(tostring(err or ""))
+  if string.find(msg, "not found", 1, true) ~= nil or string.find(msg, "no such file", 1, true) ~= nil then
+    return "missing"
+  end
+  if string.find(msg, "syntax", 1, true) ~= nil or string.find(msg, "unexpected", 1, true) ~= nil then
+    return "parse_error"
+  end
+  return "io_error"
+end
+
+local function QuarantineBadFile(path)
+  if path == nil or path == "" or not doesFileExist(path) then
+    return nil
+  end
+  for i = 1, 99 do
+    local bad_path = path..".bad."..tostring(i)
+    if not doesFileExist(bad_path) then
+      local moved = false
+      local ok_move = pcall(System.moveFile, path, bad_path)
+      if ok_move and doesFileExist(bad_path) then
+        moved = true
+      end
+      if not moved then
+        local ok_copy = pcall(System.copyFile, path, bad_path)
+        if ok_copy and doesFileExist(bad_path) then
+          pcall(System.removeFile, path)
+          moved = true
+        end
+      end
+      if moved then
+        return bad_path
+      end
+      return nil
+    end
+  end
+  return nil
+end
+
+local function LoadSettingsTable(path)
+  if path == nil or path == "" then
+    return nil, "missing"
+  end
+  if not doesFileExist(path) then
+    return nil, "missing"
+  end
+  local loader, load_err = loadfile(path)
+  if loader == nil then
+    local status = ClassifyLoadError(load_err)
+    if status == "parse_error" then
+      local bad_path = QuarantineBadFile(path)
+      LOG("Settings parse error; quarantined", tostring(path), "->", tostring(bad_path))
+    else
+      LOG("Settings load warning:", tostring(path), tostring(load_err))
+    end
+    return nil, status
+  end
+  local ok, data = pcall(loader)
+  if not ok or type(data) ~= "table" then
+    local bad_path = QuarantineBadFile(path)
+    LOG("Settings parse error; quarantined", tostring(path), "->", tostring(bad_path))
+    return nil, "parse_error"
+  end
+  return data, "loaded"
+end
+
+local function SaveFileAtomic(path, data)
+  local tmp = tostring(path)..".tmp"
+  local fd, open_err = SafeOpenForWrite(tmp)
+  if fd == nil then
+    return false, "tmp_open_failed:"..tostring(open_err)
+  end
+  local ok_write, write_err = SafeWriteAll(fd, data)
+  local ok_close, close_err = pcall(System.closeFile, fd)
+  if not ok_write or not ok_close then
+    pcall(System.removeFile, tmp)
+    return false, tostring(write_err or close_err)
+  end
+
+  pcall(System.removeFile, path)
+  local replaced = false
+  local ok_move = pcall(System.moveFile, tmp, path)
+  if ok_move and doesFileExist(path) then
+    replaced = true
+  end
+  if not replaced then
+    local ok_copy = pcall(System.copyFile, tmp, path)
+    if ok_copy and doesFileExist(path) then
+      pcall(System.removeFile, tmp)
+      replaced = true
+    end
+  end
+  if not replaced then
+    return false, "replace_failed"
+  end
+  return true, nil
+end
+
 local function IsAbsoluteDevicePath(path)
   return path ~= nil and string.match(path, "^[%a]+%d*:/") ~= nil
 end
@@ -480,32 +578,14 @@ local BDMA_MODES = {
   }
 }
 
-local function LoadSettingsTable(path)
-  if path == nil or path == "" then
-    return nil
-  end
-  if not doesFileExist(path) then
-    return nil
-  end
-  local loader, load_err = loadfile(path)
-  if loader == nil then
-    LOG("Settings load failed:", load_err)
-    return nil
-  end
-  local ok, data = pcall(loader)
-  if not ok then
-    LOG("Settings exec failed:", data)
-    return nil
-  end
-  if type(data) ~= "table" then
-    return nil
-  end
-  return data
-end
-
 function PLDR.LoadSettings()
   local path = ResolveWritablePath("settings.lua")
-  local data = LoadSettingsTable(path)
+  local data, status = LoadSettingsTable(path)
+  if status == "missing" then
+    LOG("Settings not found, using defaults:", tostring(path))
+  elseif status == "io_error" then
+    LOG("Settings I/O warning, using defaults:", tostring(path))
+  end
   if type(data) == "table" then
     local mode = tonumber(data.bdma_mode)
     if mode ~= nil then
@@ -556,14 +636,6 @@ end
 
 function PLDR.SaveSettings()
   local path = ResolveWritablePath("settings.lua")
-  local fd, open_err = SafeOpenForWrite(path)
-  if fd == nil then
-    LOG("SaveSettings failed: "..tostring(path).." fd=nil err="..tostring(open_err))
-    if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
-      UI.Notif_queue.add("Could not save settings to mc0:/POPSLOADER/")
-    end
-    return false
-  end
   local mode = tonumber(PLDR.SETTINGS.bdma_mode) or 1
   local hide_ui = PLDR.SETTINGS.hide_ui == true
   local show_cover = PLDR.SETTINGS.show_cover ~= false
@@ -580,10 +652,9 @@ function PLDR.SaveSettings()
     ..string.format("  dkwdrv_path = %s,\n", dkwdrv_path ~= nil and string.format("%q", dkwdrv_path) or "nil")
     ..string.format("  popstarter_path = %s,\n", popstarter_path ~= nil and string.format("%q", popstarter_path) or "nil")
     .."}\n"
-  local ok_write, write_err = SafeWriteAll(fd, line)
-  local ok_close, close_err = pcall(System.closeFile, fd)
-  if not ok_write or not ok_close then
-    LOG("SaveSettings failed: "..tostring(path).." fd="..tostring(fd).." err="..tostring(write_err or close_err))
+  local ok_save, save_err = SaveFileAtomic(path, line)
+  if not ok_save then
+    LOG("SaveSettings failed: "..tostring(path).." err="..tostring(save_err))
     if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
       UI.Notif_queue.add("Could not save settings to mc0:/POPSLOADER/")
     end
@@ -2146,18 +2217,25 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
 end
 
 function Touch(FILE)
-  if not doesFileExist(FILE) then
-    local FD = System.openFile(FILE, FCREATE)
-    System.closeFile(FD)
-    return true
-  else
+  if FILE == nil or FILE == "" then
     return false
   end
+  if doesFileExist(FILE) then
+    return false
+  end
+  local ok_open, fd = pcall(System.openFile, FILE, FCREATE)
+  if not ok_open or type(fd) ~= "number" or fd < 0 then
+    LOG("state marker create skipped:", tostring(FILE), tostring(fd))
+    return true
+  end
+  pcall(System.closeFile, fd)
+  return true
 end
 
 ---MAIN PROGRAM BEHAVIOUR BEGINS
 local initial_scene = UI.SCENES.MMAIN
-if Touch(ResolveWritablePath(".pldrs")) then
+local pldrs_path = ResolveWritablePath(".pldrs")
+if Touch(pldrs_path) then
   initial_scene = UI.SCENES.CREDITS
 end
 UI.WelcomeDraw.Play(initial_scene)
