@@ -79,46 +79,38 @@ jobs:
         run: |
           make clean elfloader all package
 
-      - name: Locate and normalize POPSLoader.zip
-        shell: sh
+      - name: Stage release zip
+        shell: bash
         run: |
-          set -eu
+          set -euo pipefail
+          mkdir -p dist
 
-          echo "== Workspace contents (top-level) =="
-          ls -lah
+          echo "== Searching for POPSLoader.zip (up to 6 levels deep) =="
+          found="$(find . -maxdepth 6 -type f -name 'POPSLoader.zip' -print | head -n 1 || true)"
 
-          echo "== Searching for .zip artifacts (up to 6 levels deep) =="
-          # Show all matches for debugging
-          find . -maxdepth 6 -type f -name '*.zip' -print || true
-
-          # Prefer an exact name match first (any location)
-          EXACT="$(find . -maxdepth 6 -type f -name 'POPSLoader.zip' -print | head -n 1 || true)"
-
-          if [ -n "$EXACT" ]; then
-            echo "Found exact artifact: $EXACT"
-            cp -f "$EXACT" "./POPSLoader.zip"
-          else
-            # Otherwise pick the newest .zip produced (common when Makefile names differ)
-            NEWEST="$(find . -maxdepth 6 -type f -name '*.zip' -print -exec ls -t {} + 2>/dev/null | head -n 1 || true)"
-
-            if [ -z "$NEWEST" ]; then
-              echo "ERROR: No .zip artifact found after build."
-              echo "Hint: your Makefile 'package' target may be outputting a different extension or skipping packaging."
-              exit 1
-            fi
-
-            echo "No exact POPSLoader.zip found. Using newest .zip: $NEWEST"
-            cp -f "$NEWEST" "./POPSLoader.zip"
+          if [ -z "$found" ]; then
+            echo "ERROR: POPSLoader.zip not found"
+            echo "Workspace listing:"
+            find . -maxdepth 6 -type f -name '*.zip' -print || true
+            exit 1
           fi
 
-          echo "== Final normalized artifact =="
-          ls -lah "./POPSLoader.zip"
+          echo "Found: $found"
+          # Always stage into dist with a fixed filename; avoid same-file copy.
+          if [ "$found" = "./dist/POPSLoader.zip" ]; then
+            echo "Already staged at dist/POPSLoader.zip"
+          else
+            cp -f "$found" "dist/POPSLoader.zip"
+          fi
 
-      - name: Upload artifact (no release)
-        if: ${{ success() }}
+          echo "== Staged contents =="
+          ls -lah dist
+          echo "== Verifying zip integrity =="
+          7z t dist/POPSLoader.zip
+
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: POPSLoader
-          path: POPSLoader.zip
+          path: dist/POPSLoader.zip
           if-no-files-found: error
-          compression-level: 0
