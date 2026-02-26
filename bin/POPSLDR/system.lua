@@ -1252,24 +1252,26 @@ end
 function PLDR.GetActiveUsbRoots(max_index)
   local roots = {}
 
-  local function probe(root)
-    local ok, dir = pcall(System.listDirectory, root)
-    return ok and type(dir) == "table"
-  end
-
   local max = tonumber(max_index) or 9
   if max < 0 then max = 0 end
   if max > 9 then max = 9 end
 
   for i = 0, max do
-    local root = "mass"..tostring(i)..":/"
-    if probe(root) then
-      table.insert(roots, root)
+    local name = PLDR.GetMassDriverName(i)
+    if name == nil or name == "" then
+      pcall(System.listDirectory, "mass"..tostring(i)..":/")
+      name = PLDR.GetMassDriverName(i)
+    end
+    if type(name) == "string" and string.find(string.lower(name), "usb", 1, true) ~= nil then
+      table.insert(roots, "mass"..tostring(i)..":/")
     end
   end
 
-  if #roots == 0 and probe("mass:/") then
-    table.insert(roots, "mass:/")
+  if #roots == 0 then
+    local ok, dir = pcall(System.listDirectory, "mass:/POPS/")
+    if ok and type(dir) == "table" then
+      table.insert(roots, "mass:/")
+    end
   end
 
   return roots

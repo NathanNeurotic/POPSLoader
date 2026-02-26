@@ -2151,135 +2151,39 @@ end
               pcall(System.ensureMx4sioInit)
             end
 
-            local preinit_ready = false
-            local preinit_root = nil
+            local ok1, ready1, root1 = false, false, nil
             if System ~= nil and System.initMX4SIO ~= nil then
-              local ok_pre, ready_pre, root_pre = pcall(System.initMX4SIO, "mx4sio0:/")
-              if ok_pre and ready_pre and root_pre ~= nil then
-                preinit_ready = true
-                preinit_root = root_pre
-              else
-                ok_pre, ready_pre, root_pre = pcall(System.initMX4SIO, "mx4sio:/")
-                if ok_pre and ready_pre and root_pre ~= nil then
-                  preinit_ready = true
-                  preinit_root = root_pre
-                end
+              ok1, ready1, root1 = pcall(System.initMX4SIO, "mx4sio0:/")
+              if not ok1 or not ready1 or root1 == nil then
+                local ok2, ready2, root2 = pcall(System.initMX4SIO, "mx4sio:/")
+                ready1, root1 = ready2, root2
               end
             end
 
-            -- Prefer IOCTL-based backend detection (massX drivername == "sdc") to avoid USB/MX4SIO cross-page confusion.
-            local mx_mass = nil
-            if PLDR ~= nil and type(PLDR.FindMassByDriver) == "function" then
-              mx_mass = PLDR.FindMassByDriver("sdc", 9)
-              if mx_mass == nil then mx_mass = PLDR.FindMassByDriver("sd", 9) end
-              if mx_mass == nil then mx_mass = PLDR.FindMassByDriver("sdd", 9) end
-              if mx_mass == nil then mx_mass = PLDR.FindMassByDriver("mx4", 9) end
-              if mx_mass == nil then mx_mass = PLDR.FindMassByDriver("mx4sio", 9) end
-            end
-            if mx_mass ~= nil then
+            if ready1 and root1 ~= nil then
+              if type(EnsureTrailingSlash) == "function" then
+                root1 = EnsureTrailingSlash(root1)
+              elseif string.sub(root1, -1) ~= "/" then
+                root1 = root1.."/"
+              end
               if PLDR ~= nil and PLDR.MX4SIO ~= nil then
                 PLDR.MX4SIO.READY = true
-                PLDR.MX4SIO.ROOT = "mass"..tostring(mx_mass)..":/"
-                PLDR.MX4SIO.MASSINDX = mx_mass
+                PLDR.MX4SIO.ROOT = root1
+                PLDR.MX4SIO.MASSINDX = nil
               end
               PLDR.CleanupGameList()
-              PLDR.GetPS1GameLists("mass"..tostring(mx_mass)..":/POPS/", true)
+              PLDR.GetPS1GameLists(root1.."POPS/", true)
               UI.SceneChange(UI.SCENES.GMX4SIO)
               return
             end
 
-            -- Fallback: try the PS2SDK mx4sio: prefix initializer if present.
-            local hint = nil
+            UI.Notif_queue.add("No MX4SIO device found (POPS/ missing)")
             if PLDR ~= nil and PLDR.MX4SIO ~= nil then
-              hint = PLDR.MX4SIO.PREFIX_HINT
-            end
-            local ok_init, ready, root = false, false, nil
-            if preinit_ready and preinit_root ~= nil then
-              ok_init, ready, root = true, true, preinit_root
-            elseif System ~= nil and System.initMX4SIO ~= nil then
-              ok_init, ready, root = pcall(System.initMX4SIO, hint)
-            end
-            if not ok_init or not ready or root == nil then
-              local function probe_root(path)
-                local ok_probe, dir_probe = pcall(System.listDirectory, path)
-                return ok_probe and type(dir_probe) == "table"
-              end
-
-              local mx_prefixes = {"mx4sio:/", "mx4sio0:/", "mx4sio1:/", "mx4:/"}
-              for _, prefix in ipairs(mx_prefixes) do
-                if probe_root(prefix.."POPS/") then
-                  root = prefix
-                  if type(EnsureTrailingSlash) == "function" then
-                    root = EnsureTrailingSlash(root)
-                  elseif string.sub(root, -1) ~= "/" then
-                    root = root.."/"
-                  end
-                  if PLDR ~= nil and PLDR.MX4SIO ~= nil then
-                    PLDR.MX4SIO.READY = true
-                    PLDR.MX4SIO.ROOT = root
-                    PLDR.MX4SIO.MASSINDX = nil
-                  end
-                  PLDR.CleanupGameList()
-                  local game_root = root.."POPS/"
-                  if type(JoinPath) == "function" then
-                    game_root = JoinPath(root, "POPS/")
-                  end
-                  PLDR.GetPS1GameLists(game_root, true)
-                  UI.SceneChange(UI.SCENES.GMX4SIO)
-                  return
-                end
-              end
-
-              local usb_seen = {}
-              if PLDR ~= nil and type(PLDR.GetActiveUsbRoots) == "function" then
-                local usb_roots = PLDR.GetActiveUsbRoots(9)
-                if type(usb_roots) == "table" then
-                  for _, usb_root in ipairs(usb_roots) do
-                    usb_seen[usb_root] = true
-                  end
-                end
-              end
-
-              for i = 0, 9 do
-                local r = "mass"..tostring(i)..":/"
-                if not usb_seen[r] and probe_root(r.."POPS/") then
-                  if PLDR ~= nil and PLDR.MX4SIO ~= nil then
-                    PLDR.MX4SIO.READY = true
-                    PLDR.MX4SIO.ROOT = r
-                    PLDR.MX4SIO.MASSINDX = i
-                  end
-                  PLDR.CleanupGameList()
-                  PLDR.GetPS1GameLists(r.."POPS/", true)
-                  UI.SceneChange(UI.SCENES.GMX4SIO)
-                  return
-                end
-              end
-
-              UI.Notif_queue.add("No MX4SIO device found (POPS/ missing)")
-              if PLDR ~= nil and PLDR.MX4SIO ~= nil then
-                PLDR.MX4SIO.READY = false
-                PLDR.MX4SIO.ROOT = nil
-                PLDR.MX4SIO.MASSINDX = nil
-              end
-              return
-            end
-            if type(EnsureTrailingSlash) == "function" then
-              root = EnsureTrailingSlash(root)
-            elseif string.sub(root, -1) ~= "/" then
-              root = root.."/"
-            end
-            if PLDR ~= nil and PLDR.MX4SIO ~= nil then
-              PLDR.MX4SIO.READY = true
-              PLDR.MX4SIO.ROOT = root
+              PLDR.MX4SIO.READY = false
+              PLDR.MX4SIO.ROOT = nil
               PLDR.MX4SIO.MASSINDX = nil
             end
-            PLDR.CleanupGameList()
-            local game_root = root.."POPS/"
-            if type(JoinPath) == "function" then
-              game_root = JoinPath(root, "POPS/")
-            end
-            PLDR.GetPS1GameLists(game_root, true)
-            UI.SceneChange(UI.SCENES.GMX4SIO)
+            return
           elseif UI.MainMenu.OPT == 3 then
             UI.Notif_queue.add("Not Implemented Yet")
           elseif UI.MainMenu.OPT == 4 then
