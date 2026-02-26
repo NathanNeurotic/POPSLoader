@@ -2488,6 +2488,13 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   end
   local argv = {argv0_selector}
 
+  if policy.name ~= "HDD" then
+    -- bootparam_basename_used is the authoritative "XX.<VCDNAME>" string
+    if bootparam_basename_used ~= nil and bootparam_basename_used ~= "" then
+      table.insert(argv, bootparam_basename_used)
+    end
+  end
+
   LOG("Boot APP_DIR: "..APP_DIR_LOCAL)
   LOG("PopStarter selected: "..popstarter)
   LOG("PopStarter:", popstarter, "VCD:", vcd_path, "mode:", source_mode, "argv_count:", #argv)
