@@ -15,8 +15,6 @@
 
 extern unsigned char mx4sio_bd_irx[];
 extern unsigned int size_mx4sio_bd_irx;
-extern unsigned char mx4sio_bd_mini_irx[];
-extern unsigned int size_mx4sio_bd_mini_irx;
 
 static int g_mx4sio_initialized = 0;
 
@@ -30,12 +28,7 @@ int EnsureMx4sioInit(void)
 	int ret = -1;
 	id = SifExecModuleBuffer(mx4sio_bd_irx, size_mx4sio_bd_irx, 0, NULL, &ret);
 	if (id < 0 || ret < 0) {
-		id = -1;
-		ret = -1;
-		id = SifExecModuleBuffer(mx4sio_bd_mini_irx, size_mx4sio_bd_mini_irx, 0, NULL, &ret);
-		if (id < 0 || ret < 0) {
-			return 0;
-		}
+		return 0;
 	}
 
 	g_mx4sio_initialized = 1;
