@@ -2500,7 +2500,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     if not string.match(bootarg, "%.ELF$") then
       bootarg = bootarg..".ELF"
     end
-    argv = {bootarg}
+    argv = {bootarg, bootarg}
   else
     -- Preserve existing HDD argv behavior.
     argv = {argv0_selector}
