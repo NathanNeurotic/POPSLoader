@@ -1577,7 +1577,6 @@ end
           end
           return
         end
-        UI.UpdateUsbDelayedRefresh()
         local ammount = #PLDR.GAMES
         if UI.CURSCENE == UI.SCENES.GMMCE and not hide_ui then
           local slots = PLDR.GetMMCESlots()
@@ -2551,7 +2550,6 @@ function UI.OnSceneEnter(previous_scene, current_scene)
         UI.Notif_queue.add("No USB device found")
       end
     end
-    UI.ScheduleUsbDelayedRefresh(30)
   end
 end
 function UI.OnSceneExit(previous_scene, next_scene)
@@ -2559,9 +2557,6 @@ function UI.OnSceneExit(previous_scene, next_scene)
     if UI.CoverCache ~= nil and UI.CoverCache.Clear ~= nil then
       UI.CoverCache:Clear()
     end
-  end
-  if UI.IsUsbScene(previous_scene) and previous_scene ~= next_scene then
-    UI.ClearUsbDelayedRefresh()
   end
 end
 UI.RecalcLayout()

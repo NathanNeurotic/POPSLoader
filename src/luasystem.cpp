@@ -1053,6 +1053,41 @@ static int lua_getMassDriverName(lua_State *L)
 	return 1;
 }
 
+static int lua_listMassIndices(lua_State *L)
+{
+	int argc = lua_gettop(L);
+	if (argc > 1) {
+		return luaL_error(L, "Argument error: System.listMassIndices([max_index]) takes zero or one argument.");
+	}
+
+	int max_index = 9;
+	if (argc == 1 && !lua_isnil(L, 1)) {
+		max_index = luaL_checkinteger(L, 1);
+	}
+	if (max_index < 0) {
+		max_index = 0;
+	}
+	if (max_index > 9) {
+		max_index = 9;
+	}
+
+	lua_newtable(L);
+	int out_idx = 1;
+	for (int i = 0; i <= max_index; ++i) {
+		char mass_path[16];
+		snprintf(mass_path, sizeof(mass_path), "mass%d:/", i);
+
+		int dd = fileXioDopen(mass_path);
+		if (dd >= 0) {
+			fileXioDclose(dd);
+			lua_pushinteger(L, i);
+			lua_rawseti(L, -2, out_idx++);
+		}
+	}
+
+	return 1;
+}
+
 static int lua_mx4sio_init(lua_State *L)
 {
 	const char *hint = NULL;
@@ -1118,6 +1153,7 @@ static const luaL_Reg System_functions[] = {
 	{"embedReadText",      lua_embedReadText},
 	{"embedReadBytes",    lua_embedReadBytes},
 	{"getMassDriverName",        lua_getMassDriverName},
+	{"listMassIndices",          lua_listMassIndices},
 	{"initMX4SIO",             lua_mx4sio_init},
 	{"ensureMx4sioInit",      lua_ensure_mx4sio_init},
 	{"bdmList",                lua_bdm_list},

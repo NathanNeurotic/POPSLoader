@@ -1470,67 +1470,36 @@ function PLDR.GetPS1GameLists(path, updating)
   end
 end
 
-function PLDR.GetUsbMassRoots(max_index)
-  max_index = tonumber(max_index) or 9
-  if max_index < 0 then max_index = 0 end
-  if max_index > 9 then max_index = 9 end
-
-  -- Warmup first, then probe POPS.
-  PLDR.EnsureUsbReady()
-  PLDR.MassWarmup(max_index)
-
+function PLDR.GetUsbRootsFromPresentMass()
   local roots = {}
-
-  for i = 0, max_index do
-    -- Exclude MX4SIO by known index when available.
-    if PLDR.MX4SIO ~= nil and PLDR.MX4SIO.MASSINDX ~= nil and PLDR.MX4SIO.MASSINDX == i then
-      goto continue
-    end
-
-    -- Also exclude by driver name if it is available (optional safety).
-    local dn = nil
-    if PLDR.GetMassDriverName ~= nil then dn = PLDR.GetMassDriverName(i) end
-    if dn == "sdc" then
-      goto continue
-    end
-
-    if PLDR.MassHasPops(i) then
-      table.insert(roots, "mass"..tostring(i)..":/")
-    end
-
-    ::continue::
+  if System == nil or System.listMassIndices == nil then
+    return roots
   end
 
-  -- Bounded retry: if nothing found, do one more warmup + probe pass.
-  if #roots == 0 then
-    PLDR.MassWarmup(max_index)
-    for i = 0, max_index do
-      if PLDR.MX4SIO ~= nil and PLDR.MX4SIO.MASSINDX ~= nil and PLDR.MX4SIO.MASSINDX == i then
-        goto continue2
-      end
-      local dn = nil
-      if PLDR.GetMassDriverName ~= nil then dn = PLDR.GetMassDriverName(i) end
-      if dn == "sdc" then goto continue2 end
-      if PLDR.MassHasPops(i) then
-        table.insert(roots, "mass"..tostring(i)..":/")
-      end
-      ::continue2::
-    end
+  local ok, present = pcall(System.listMassIndices, 9)
+  if not ok or type(present) ~= "table" then
+    return roots
   end
 
-  if #roots == 0 then
-    local alias_dn = nil
-    if PLDR.GetMassAliasDriverName ~= nil then
-      alias_dn = PLDR.GetMassAliasDriverName()
-    end
-    if alias_dn ~= nil and alias_dn ~= "" and alias_dn ~= "sdc" then
-      if PLDR.MassHasPopsAlias ~= nil and PLDR.MassHasPopsAlias() then
-        return {"mass:/"}
+  for i = 1, #present do
+    local idx = tonumber(present[i])
+    if idx ~= nil then
+      local is_mx4sio = (PLDR.MX4SIO ~= nil and PLDR.MX4SIO.MASSINDX ~= nil and PLDR.MX4SIO.MASSINDX == idx)
+      if not is_mx4sio then
+        local pops_path = "mass"..tostring(idx)..":/POPS/"
+        local dir = System.listDirectory(pops_path)
+        if dir ~= nil or OpenProbe(pops_path) then
+          table.insert(roots, "mass"..tostring(idx)..":/")
+        end
       end
     end
   end
 
   return roots
+end
+
+function PLDR.GetUsbMassRoots(max_index)
+  return PLDR.GetUsbRootsFromPresentMass()
 end
 
 function PLDR.GetActiveUsbRoots(max_index)
@@ -1604,13 +1573,11 @@ function PLDR.RefreshUsbGames(max_index)
   PLDR.GAMEART = {}
   PLDR.GAMEPATH = nil
 
-  local roots = PLDR.GetUsbMassRoots(max_index or 9)
+  local roots = PLDR.GetUsbRootsFromPresentMass()
   PLDR.USB.ROOTS = roots
 
-  -- Merge listing from each root's POPS folder.
   for _, root in ipairs(roots) do
-    local pops = root.."POPS/"
-    PLDR.GetPS1GameListsUSB(pops, root)
+    PLDR.GetPS1GameListsUSB(root.."POPS/", root)
   end
 
   if #PLDR.GAMES > 0 then
