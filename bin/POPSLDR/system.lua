@@ -228,18 +228,9 @@ end
 
 local function TrimWhitespace(path)
   if type(path) ~= "string" then
-    return path
+    return ""
   end
   return string.match(path, "^%s*(.-)%s*$")
-end
-
-local function NormalizePopstarterPath(path)
-  if type(path) ~= "string" then
-    return path
-  end
-  local normalized = TrimWhitespace(path)
-  normalized = string.gsub(normalized, "\\", "/")
-  return normalized
 end
 
 local function BuildMassPrefixVariants(max_index)
@@ -253,21 +244,10 @@ local function BuildMassPrefixVariants(max_index)
   return variants
 end
 
-local function FileExistsOpenProbe(path)
-  if doesFileExist(path) then
-    return true
-  end
-  return OpenProbe(path)
-end
-
-local function ResolvePopstarterPath(path)
-  return JoinPath(GetLaunchElfDirFromBootPathLocal(), "POPSTARTER.ELF")
-end
-
 HDD_DIAG_BYPASS = 0
 PLDR = {
   REBOOT_IOP_WHILE_LOADING_POPSTARTER = 0;
-  POPSTARTER_PATH = JoinPath(GetLaunchElfDirFromBootPathLocal(), "POPSTARTER.ELF");
+  POPSTARTER_PATH = "";
   CHECK_POPSTARTER_FILES = false;
   _mass_ready = false;
   GAMEPATH = ".";
@@ -309,7 +289,8 @@ PLDR = {
     show_cover = true,
     profile_index = nil,
     bdma_last_label = nil,
-    dkwdrv_path = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
+    dkwdrv_path = "mc0:/PS1_DKWDRV/DKWDRV.ELF",
+    popstarter_path = ""
   }
 }
 
@@ -333,20 +314,32 @@ function PLDR.CanonicalizeLaunchElfPath(raw_path)
   return CanonicalizeLaunchElfPath(raw_path)
 end
 
-function PLDR.ResolvePopstarterPath(path)
-  return ResolvePopstarterPath(path)
+function PLDR.GetConfiguredPopstarterPath()
+  local path = TrimWhitespace(PLDR.SETTINGS.popstarter_path)
+  if path == "" then
+    return nil
+  end
+  return path
 end
 
-function PLDR.GetResolvedPopstarterPath()
-  return ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
+function PLDR.PopstarterExistsAt(path)
+  if type(path) ~= "string" or path == "" then
+    return false
+  end
+  local fd = System.openFile(path, FREAD)
+  if fd ~= nil and fd >= 0 then
+    System.closeFile(fd)
+    return true
+  end
+  return false
 end
 
 function PLDR.GetPopstarterProbeStatus()
-  local path = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
-  if string.match(path or "", "^mass%d*:/") then
-    PLDR.EnsureMassReady()
+  local path = PLDR.GetConfiguredPopstarterPath()
+  if path == nil then
+    return nil, false
   end
-  return path, OpenProbe(path)
+  return path, PLDR.PopstarterExistsAt(path)
 end
 
 function PLDR.GetBootPathCanonProbeStatus()
@@ -355,14 +348,8 @@ function PLDR.GetBootPathCanonProbeStatus()
 end
 
 function PLDR.PopstarterExists(path)
-  local target = ResolvePopstarterPath(path or PLDR.POPSTARTER_PATH)
-  if string.match(target or "", "^mass%d*:/") then
-    PLDR.EnsureMassReady()
-  end
-  local exists = FileExistsOpenProbe(target)
-  if exists then
-    PLDR.POPSTARTER_PATH = target
-  end
+  local target = path or PLDR.GetConfiguredPopstarterPath()
+  local exists = PLDR.PopstarterExistsAt(target)
   return exists, target
 end
 
@@ -539,6 +526,7 @@ function PLDR.LoadSettings()
     if type(data.dkwdrv_path) == "string" and data.dkwdrv_path ~= "" then
       PLDR.SETTINGS.dkwdrv_path = data.dkwdrv_path
     end
+    PLDR.SETTINGS.popstarter_path = TrimWhitespace(data.popstarter_path)
   else
     NotifyOnce("settings_load", "Settings unavailable, using defaults")
     if err == "missing" then
@@ -557,6 +545,7 @@ function PLDR.LoadSettings()
   if PLDR.SETTINGS.dkwdrv_path == nil or PLDR.SETTINGS.dkwdrv_path == "" then
     PLDR.SETTINGS.dkwdrv_path = PLDR.DEFAULT_DKWDRV_PATH
   end
+  PLDR.SETTINGS.popstarter_path = TrimWhitespace(PLDR.SETTINGS.popstarter_path)
   local count = PLDR.GetBDMAModeCount()
   if PLDR.SETTINGS.bdma_mode < 1 or PLDR.SETTINGS.bdma_mode > count then
     PLDR.SETTINGS.bdma_mode = 1
@@ -574,6 +563,7 @@ function PLDR.SaveSettings()
   local profile_index = tonumber(PLDR.SETTINGS.profile_index)
   local bdma_last_label = PLDR.SETTINGS.bdma_last_label
   local dkwdrv_path = PLDR.SETTINGS.dkwdrv_path or PLDR.DEFAULT_DKWDRV_PATH
+  local popstarter_path = TrimWhitespace(PLDR.SETTINGS.popstarter_path)
   local line = "return {\n"
     ..string.format("  bdma_mode = %d,\n", mode)
     ..string.format("  hide_ui = %s,\n", tostring(hide_ui))
@@ -581,6 +571,7 @@ function PLDR.SaveSettings()
     ..string.format("  profile_index = %s,\n", profile_index ~= nil and tostring(profile_index) or "nil")
     ..string.format("  bdma_last_label = %s,\n", bdma_last_label ~= nil and string.format("%q", bdma_last_label) or "nil")
     ..string.format("  dkwdrv_path = %s,\n", dkwdrv_path ~= nil and string.format("%q", dkwdrv_path) or "nil")
+    ..string.format("  popstarter_path = %s,\n", popstarter_path ~= nil and string.format("%q", popstarter_path) or "nil")
     .."}\n"
 
   local wrote_tmp = false
@@ -708,12 +699,6 @@ function PLDR.ApplyProfileSetting()
     index = default_profile
   end
   PLDR.SETTINGS.profile_index = index
-  if PLDR.PROFILES[index] ~= nil and PLDR.PROFILES[index].ELF ~= nil then
-    PLDR.POPSTARTER_PATH = ResolvePopstarterPath(PLDR.PROFILES[index].ELF)
-  else
-    PLDR.POPSTARTER_PATH = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
-  end
-  PLDR.PopstarterExists(PLDR.POPSTARTER_PATH)
 end
 
 local function StripSuffixCaseInsensitive(name, suffix)
@@ -2034,11 +2019,14 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   local source_mode = policy.mode
   local raw_source_mode = source_mode
   local vcd_path = normalized_gamelocation..game
-  local popstarter = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
-  if string.match(popstarter or "", "^mass%d*:/") then
-    PLDR.EnsureMassReady()
-  end
-  if not OpenProbe(popstarter) then
+  local popstarter = PLDR.GetConfiguredPopstarterPath()
+  if popstarter == nil then
+      if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
+        UI.Notif_queue.add("Set POPSTARTER path in Settings")
+      end
+      return
+    end
+  if not PLDR.PopstarterExistsAt(popstarter) then
       if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
         UI.Notif_queue.add("POPSTARTER.ELF not found")
       end

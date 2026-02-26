@@ -1622,14 +1622,14 @@ end
           if ammount <= 0 then
             UI.Notif_queue.add("No games found")
           else
-            local pop_ok = false
-            if PLDR.PopstarterExists ~= nil then
-              pop_ok, PLDR.POPSTARTER_PATH = PLDR.PopstarterExists(PLDR.POPSTARTER_PATH)
-            else
-              pop_ok = doesFileExist(PLDR.POPSTARTER_PATH)
+            local pop_path = PLDR.GetConfiguredPopstarterPath and PLDR.GetConfiguredPopstarterPath() or nil
+            if pop_path == nil then
+              UI.Notif_queue.add("Set POPSTARTER path in Settings")
+              return
             end
+            local pop_ok = PLDR.PopstarterExistsAt and PLDR.PopstarterExistsAt(pop_path) or false
             if not pop_ok then
-              UI.Notif_queue.add("Cant find POPSTARTER ELF\n"..tostring(PLDR.POPSTARTER_PATH))
+              UI.Notif_queue.add("POPSTARTER.ELF not found")
               return
             end
             if UI.CURSCENE ~= UI.SCENES.GHDD then -- only check if game can be found on USB and SMB
@@ -1691,10 +1691,11 @@ end
         if #dkwdrv_label > 52 then
           dkwdrv_label = "..."..string.sub(dkwdrv_label, -49)
         end
-        local popstarter_path = (PLDR and PLDR.GetResolvedPopstarterPath and PLDR.GetResolvedPopstarterPath()) or (PLDR and PLDR.POPSTARTER_PATH) or "POPSTARTER.ELF"
+        local popstarter_path = (PLDR and PLDR.SETTINGS and PLDR.SETTINGS.popstarter_path) or ""
+        local popstarter_probe_path = nil
         local popstarter_ok = false
         if PLDR ~= nil and PLDR.GetPopstarterProbeStatus ~= nil then
-          popstarter_path, popstarter_ok = PLDR.GetPopstarterProbeStatus()
+          popstarter_probe_path, popstarter_ok = PLDR.GetPopstarterProbeStatus()
         end
         local boot_elf_path = (PLDR and PLDR.GetLaunchElfPath and PLDR.GetLaunchElfPath()) or "POPSLOADER.ELF"
         local boot_elf_ok = false
@@ -1706,10 +1707,14 @@ end
         if #boot_elf_label > 56 then
           boot_elf_label = "BOOT ELF: ..."..string.sub(tostring(boot_elf_path), -40).." "..boot_elf_state
         end
-        local popstarter_state = popstarter_ok and "[OK]" or "[MISSING]"
-        local popstarter_label = string.format("POPSTARTER: %s %s", tostring(popstarter_path), popstarter_state)
+        local popstarter_state = "[NOT SET]"
+        if popstarter_probe_path ~= nil then
+          popstarter_state = popstarter_ok and "[OK]" or "[MISSING]"
+        end
+        local popstarter_display = popstarter_path ~= "" and popstarter_path or "(not set)"
+        local popstarter_label = string.format("POPSTARTER Path: %s %s", tostring(popstarter_display), popstarter_state)
         if #popstarter_label > 56 then
-          popstarter_label = "POPSTARTER: ..."..string.sub(tostring(popstarter_path), -38).." "..popstarter_state
+          popstarter_label = "POPSTARTER Path: ..."..string.sub(tostring(popstarter_display), -33).." "..popstarter_state
         end
         if not hide_ui then
           Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Settings", UI.CCOL.GREY)
@@ -1781,14 +1786,6 @@ end
         if UI.Pad.Events.START then
           local default_profile = tonumber(PLDR.DEFAULT_PROFILE) or 1
           UI.ProfileQuery.curopt = CLAMP(default_profile, 1, profcnt)
-          local profile = PLDR.PROFILES[UI.ProfileQuery.curopt]
-          if profile ~= nil then
-            if PLDR.ResolvePopstarterPath ~= nil then
-              PLDR.POPSTARTER_PATH = PLDR.ResolvePopstarterPath(profile.ELF)
-            else
-              PLDR.POPSTARTER_PATH = profile.ELF
-            end
-          end
           if PLDR.SETTINGS ~= nil then
             PLDR.SETTINGS.profile_index = UI.ProfileQuery.curopt
             PLDR.SETTINGS.dkwdrv_path = PLDR.DEFAULT_DKWDRV_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF"
@@ -1813,26 +1810,11 @@ end
           end
         end
         if UI.Pad.Events.R2 then
-          UI.TextEntry.Open("Edit DKWDRV Path", dkwdrv_path, function (new_value)
+          UI.TextEntry.Open("Edit POPSTARTER Path", popstarter_path, function (new_value)
             if PLDR ~= nil and PLDR.SETTINGS ~= nil then
-              PLDR.SETTINGS.dkwdrv_path = new_value
-              if PLDR.SaveSettings ~= nil then
-                if PLDR.SaveSettings() then
-                  if PLDR.ApplyBDMAOnSettingsSave ~= nil then
-                    local bdma_ok, bdma_reason = PLDR.ApplyBDMAOnSettingsSave(nil)
-                    if not bdma_ok then
-                      UI.Notif_queue.add(bdma_reason or "BDMA apply failed")
-                    end
-                  end
-                  if UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
-                    UI.Notif_queue.add("DKWDRV path saved")
-                  end
-                elseif UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
-                  UI.Notif_queue.add("Failed to save settings")
-                end
-              end
+              PLDR.SETTINGS.popstarter_path = new_value
             end
-          end, nil, PLDR and PLDR.DEFAULT_DKWDRV_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
+          end, nil, "")
         end
         if UI.Pad.Events.CONFIRM then
           if PLDR.SetBDMAMode ~= nil then
@@ -1845,27 +1827,13 @@ end
           if PLDR.SaveSettings ~= nil then
             save_ok = PLDR.SaveSettings()
           end
-          local selected_elf = PLDR.PROFILES[UI.ProfileQuery.curopt].ELF
-          if PLDR.ResolvePopstarterPath ~= nil then
-            PLDR.POPSTARTER_PATH = PLDR.ResolvePopstarterPath(selected_elf)
-          else
-            PLDR.POPSTARTER_PATH = selected_elf
-          end
-          local pop_ok = false
-          if PLDR.PopstarterExists ~= nil then
-            pop_ok, PLDR.POPSTARTER_PATH = PLDR.PopstarterExists(PLDR.POPSTARTER_PATH)
-          else
-            pop_ok = doesFileExist(PLDR.POPSTARTER_PATH)
-          end
           if save_ok and PLDR.ApplyBDMAOnSettingsSave ~= nil then
             local bdma_ok, bdma_reason = PLDR.ApplyBDMAOnSettingsSave(nil)
             if not bdma_ok then
               UI.Notif_queue.add(bdma_reason or "BDMA apply failed")
             end
           end
-          if not pop_ok then
-            UI.Notif_queue.add("POPStarter ELF missing")
-          elseif not save_ok then
+          if not save_ok then
             UI.Notif_queue.add("Failed to save settings")
           else
             UI.ProfileQuery.bdma_mode = nil
