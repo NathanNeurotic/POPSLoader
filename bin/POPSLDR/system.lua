@@ -438,6 +438,12 @@ function PLDR.DetectMassBackends()
   end
 end
 
+function PLDR.ResetMX4SIOState()
+  PLDR.MX4SIO.READY = false
+  PLDR.MX4SIO.ROOT = nil
+  PLDR.MX4SIO.MASSINDX = nil
+end
+
 function PLDR.EnsureUsbReady()
   if PLDR.USB._INIT_DONE then
     return
