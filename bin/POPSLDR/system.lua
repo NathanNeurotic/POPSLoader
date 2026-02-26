@@ -353,6 +353,65 @@ function PLDR.PopstarterExists(path)
   return exists, target
 end
 
+function PLDR.InitMX4SIO(hint)
+  if System == nil or System.initMX4SIO == nil then
+    return false, nil
+  end
+  local ok_init, ready, root = pcall(System.initMX4SIO, hint)
+  if not ok_init then
+    return false, nil
+  end
+  return ready == true, root
+end
+
+function PLDR.EnsureDeviceReadyForPath(path)
+  if type(path) ~= "string" or path == "" then
+    return false, "POPSTARTER path not set"
+  end
+  local prefix = string.match(path, "^([%a]+%d*):/")
+  if prefix == nil then
+    return false, "Invalid POPSTARTER path"
+  end
+  local lower = string.lower(prefix)
+  if lower == "mass" or string.match(lower, "^mass%d+$") then
+    local ok, ready = pcall(PLDR.EnsureMassReady)
+    if not ok or not ready then
+      return false, "USB device not ready"
+    end
+    return true, nil
+  elseif lower == "mx4sio" then
+    local hint = PLDR ~= nil and PLDR.MX4SIO ~= nil and PLDR.MX4SIO.PREFIX_HINT or nil
+    local ready = false
+    if PLDR.InitMX4SIO ~= nil then
+      ready = (PLDR.InitMX4SIO(hint) == true)
+    end
+    if not ready then
+      return false, "MX4SIO device not ready"
+    end
+    return true, nil
+  elseif lower == "mmce0" or lower == "mmce1" then
+    local ok_slots, slots = pcall(PLDR.GetMMCESlots)
+    if not ok_slots or type(slots) ~= "table" then
+      return false, "MMCE device not ready"
+    end
+    for i = 1, #slots do
+      if string.lower(slots[i]) == lower..":/" then
+        return true, nil
+      end
+    end
+    return false, "MMCE device not ready"
+  elseif lower == "hdd0" then
+    local ok_hdd = pcall(PLDR.LoadHDDModules)
+    if not ok_hdd or PLDR.HDD == nil or PLDR.HDD.LOADSTATE ~= 1 then
+      return false, "HDD device not ready"
+    end
+    return true, nil
+  elseif lower == "mc0" or lower == "mc1" or lower == "host" then
+    return true, nil
+  end
+  return false, "Unsupported POPSTARTER device"
+end
+
 -- Mass backend detection via USBMASS_IOCTL_GET_DRIVERNAME (requires fileXio + ps2sdk usbhdfsd-common.h support).
 -- Returns a short driver code like: "usb" (USB), "sdc" (MX4SIO SD), "udp" (UDPBD), "sd" (iLink SD), "ata" (HDD).
 function PLDR.GetMassDriverName(index)
@@ -1052,14 +1111,14 @@ function PLDR.ApplyBDMAOnSettingsSave(mode)
     local source_name = target.source..entry.source_suffix
     local source_path = PLDR.ResolveBdmaIrxAssetPath(source_name)
     if source_path == nil then
-      return false, "BDMA source missing: "..source_name
+      return false, "BDMA: failed resolve "..source_name
     end
     local data = ReadAllBytes(source_path)
     if type(data) ~= "string" then
-      return false, "BDMA source missing: "..source_name
+      return false, "BDMA: failed read "..source_path
     end
     if not PLDR.WriteFile(target.dest, data) then
-      return false, "BDMA write failed: "..target.out
+      return false, "BDMA: failed write "..target.dest
     end
   end
 
@@ -2028,6 +2087,13 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   if popstarter == nil then
       if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
         UI.Notif_queue.add("Set POPSTARTER path in Settings")
+      end
+      return
+    end
+  local dev_ready, dev_reason = PLDR.EnsureDeviceReadyForPath(popstarter)
+  if not dev_ready then
+      if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
+        UI.Notif_queue.add(dev_reason or "POPSTARTER device not ready")
       end
       return
     end
