@@ -1027,29 +1027,33 @@ static int lua_getMassDriverName(lua_State *L)
 		return 1;
 	}
 
+	char mass_dev[16];
+	snprintf(mass_dev, sizeof(mass_dev), "mass%d:", idx);
+
 	char mass_path[16];
 	snprintf(mass_path, sizeof(mass_path), "mass%d:/", idx);
 
-	int dd = fileXioDopen(mass_path);
-	if (dd < 0) {
+	char out[32];
+	memset(out, 0, sizeof(out));
+	out[sizeof(out) - 1] = '\0';
+
+	int rc = fileXioDevctl(mass_dev, USBMASS_IOCTL_GET_DRIVERNAME, NULL, 0, out, sizeof(out));
+	if (rc < 0 || out[0] == '\0') {
+		int dd = fileXioDopen(mass_path);
+		if (dd >= 0) {
+			fileXioDclose(dd);
+		}
+		memset(out, 0, sizeof(out));
+		out[sizeof(out) - 1] = '\0';
+		rc = fileXioDevctl(mass_dev, USBMASS_IOCTL_GET_DRIVERNAME, NULL, 0, out, sizeof(out));
+	}
+
+	if (rc < 0 || out[0] == '\0') {
 		lua_pushnil(L);
 		return 1;
 	}
 
-	char devid[8];
-	memset(devid, 0, sizeof(devid));
-
-	int *intptr_ctl = (int *)devid;
-	int rc = fileXioIoctl(dd, USBMASS_IOCTL_GET_DRIVERNAME, (void*)"");
-	*intptr_ctl = rc;
-	fileXioDclose(dd);
-
-	if (rc < 0 || devid[0] == '\0') {
-		lua_pushnil(L);
-		return 1;
-	}
-
-	lua_pushstring(L, devid);
+	lua_pushstring(L, out);
 	return 1;
 }
 
