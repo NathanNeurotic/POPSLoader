@@ -446,6 +446,60 @@ function PLDR.MassHasPops(i)
   return false
 end
 
+function PLDR.MassHasPopsAlias()
+  local base = "mass:/POPS"
+
+  local ok1, d1 = pcall(System.listDirectory, base.."/")
+  if ok1 and type(d1) == "table" then return true end
+
+  local ok2, d2 = pcall(System.listDirectory, base)
+  if ok2 and type(d2) == "table" then return true end
+
+  if OpenProbe(base.."/") or OpenProbe(base) then return true end
+  return false
+end
+
+function PLDR.GetMassAliasDriverName()
+  if System == nil then
+    return nil
+  end
+
+  pcall(System.listDirectory, "mass:/")
+
+  local function normalize(name)
+    if type(name) ~= "string" then
+      return nil
+    end
+    name = string.lower(name)
+    if name == "" then
+      return nil
+    end
+    return name
+  end
+
+  if type(System.getMassAliasDriverName) == "function" then
+    local ok_alias, alias = pcall(System.getMassAliasDriverName)
+    if ok_alias then
+      local parsed = normalize(alias)
+      if parsed ~= nil then return parsed end
+    end
+  end
+
+  if type(System.getMassDriverName) == "function" then
+    local probes = {-1, "mass:", "mass"}
+    for _, probe in ipairs(probes) do
+      local ok_dn, dn = pcall(System.getMassDriverName, probe)
+      if ok_dn then
+        local parsed = normalize(dn)
+        if parsed ~= nil then return parsed end
+      end
+    end
+  end
+
+  return nil
+end
+
+
 function PLDR.ProbeMassHasPops(i)
   return PLDR.MassHasPops(i)
 end
@@ -1459,6 +1513,18 @@ function PLDR.GetUsbMassRoots(max_index)
         table.insert(roots, "mass"..tostring(i)..":/")
       end
       ::continue2::
+    end
+  end
+
+  if #roots == 0 then
+    local alias_dn = nil
+    if PLDR.GetMassAliasDriverName ~= nil then
+      alias_dn = PLDR.GetMassAliasDriverName()
+    end
+    if alias_dn ~= nil and alias_dn ~= "" and alias_dn ~= "sdc" then
+      if PLDR.MassHasPopsAlias ~= nil and PLDR.MassHasPopsAlias() then
+        return {"mass:/"}
+      end
     end
   end
 
