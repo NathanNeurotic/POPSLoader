@@ -2148,11 +2148,7 @@ end
             end
           elseif UI.MainMenu.OPT == 2 then
             if System ~= nil and System.ensureMx4sioInit ~= nil then
-              local ok_gate, gate_ready = pcall(System.ensureMx4sioInit)
-              if not ok_gate or not gate_ready then
-                UI.Notif_queue.add("No MX4SIO device found")
-                return
-              end
+              pcall(System.ensureMx4sioInit)
             end
 
             -- Prefer IOCTL-based backend detection (massX drivername == "sdc") to avoid USB/MX4SIO cross-page confusion.
