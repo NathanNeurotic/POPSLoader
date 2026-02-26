@@ -31,6 +31,9 @@ local function CanonicalizeLaunchElfPath(raw_path)
   if type(raw_path) ~= "string" or raw_path == "" then
     return raw_path
   end
+  if string.match(raw_path, "^mass%d+:/") then
+    return raw_path
+  end
   if not string.match(raw_path, "^mass:/") then
     return raw_path
   end
@@ -50,7 +53,7 @@ local function GetBootPathCanonLocal()
     return BOOT_PATH_CANON
   end
   local source = BOOT_PATH_RAW
-  if type(source) == "string" and string.match(source, "^mass:/") and PLDR ~= nil and PLDR.EnsureMassReady ~= nil then
+  if type(source) == "string" and string.match(source, "^mass%d*:/") and PLDR ~= nil and PLDR.EnsureMassReady ~= nil then
     PLDR.EnsureMassReady()
   end
   BOOT_PATH_CANON = CanonicalizeLaunchElfPath(source)
@@ -261,7 +264,20 @@ local function FileExistsOpenProbe(path)
 end
 
 local function ResolvePopstarterPath(path)
-  return JoinPath(GetLaunchElfDirFromBootPathLocal(), "POPSTARTER.ELF")
+  local candidate = JoinPath(GetLaunchElfDirFromBootPathLocal(), "POPSTARTER.ELF")
+  if string.match(candidate or "", "^mass:/") then
+    if PLDR ~= nil and PLDR.EnsureMassReady ~= nil then
+      PLDR.EnsureMassReady()
+    end
+    local suffix = string.sub(candidate, 7)
+    for i = 0, 9 do
+      local c = "mass"..tostring(i)..":/"..suffix
+      if OpenProbe(c) then
+        return c
+      end
+    end
+  end
+  return candidate
 end
 
 HDD_DIAG_BYPASS = 0
@@ -344,7 +360,7 @@ end
 
 function PLDR.GetPopstarterProbeStatus()
   local path = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
-  if string.match(path or "", "^mass%d*:/") then
+  if string.match(path or "", "^mass%d*:/") or string.match(path or "", "^mass:/") then
     PLDR.EnsureMassReady()
     PLDR.TouchMassIndices(9)
   end
@@ -358,7 +374,7 @@ end
 
 function PLDR.PopstarterExists(path)
   local target = ResolvePopstarterPath(path or PLDR.POPSTARTER_PATH)
-  if string.match(target or "", "^mass%d*:/") then
+  if string.match(target or "", "^mass%d*:/") or string.match(target or "", "^mass:/") then
     PLDR.EnsureMassReady()
     PLDR.TouchMassIndices(9)
   end
