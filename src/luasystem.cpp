@@ -1041,11 +1041,11 @@ static int lua_getMassDriverName(lua_State *L)
 	if (rc < 0 || out[0] == '\0') {
 		int dd = fileXioDopen(mass_path);
 		if (dd >= 0) {
+			memset(out, 0, sizeof(out));
+			out[sizeof(out) - 1] = '\0';
+			rc = fileXioIoctl(dd, USBMASS_IOCTL_GET_DRIVERNAME, out);
 			fileXioDclose(dd);
 		}
-		memset(out, 0, sizeof(out));
-		out[sizeof(out) - 1] = '\0';
-		rc = fileXioDevctl(mass_dev, USBMASS_IOCTL_GET_DRIVERNAME, NULL, 0, out, sizeof(out));
 	}
 
 	if (rc < 0 || out[0] == '\0') {
@@ -1056,7 +1056,6 @@ static int lua_getMassDriverName(lua_State *L)
 	lua_pushstring(L, out);
 	return 1;
 }
-
 static int lua_mx4sio_init(lua_State *L)
 {
 	const char *hint = NULL;

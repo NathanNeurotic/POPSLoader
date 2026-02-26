@@ -1251,22 +1251,10 @@ end
 
 function PLDR.GetActiveUsbRoots(max_index)
   local roots = {}
-  local seen = {}
-
-  local function add(root)
-    if not seen[root] then
-      seen[root] = true
-      table.insert(roots, root)
-    end
-  end
 
   local function probe(root)
     local ok, dir = pcall(System.listDirectory, root)
     return ok and type(dir) == "table"
-  end
-
-  if probe("mass:/") then
-    add("mass:/")
   end
 
   local max = tonumber(max_index) or 9
@@ -1276,8 +1264,12 @@ function PLDR.GetActiveUsbRoots(max_index)
   for i = 0, max do
     local root = "mass"..tostring(i)..":/"
     if probe(root) then
-      add(root)
+      table.insert(roots, root)
     end
+  end
+
+  if #roots == 0 and probe("mass:/") then
+    table.insert(roots, "mass:/")
   end
 
   return roots
