@@ -2192,6 +2192,61 @@ end
               return
             end
             if not ready or root == nil then
+              local function probe_root(path)
+                local ok_probe, dir_probe = pcall(System.listDirectory, path)
+                return ok_probe and type(dir_probe) == "table"
+              end
+
+              local mx_prefixes = {"mx4sio:/", "mx4sio0:/", "mx4sio1:/", "mx4:/"}
+              for _, prefix in ipairs(mx_prefixes) do
+                if probe_root(prefix) then
+                  root = prefix
+                  if type(EnsureTrailingSlash) == "function" then
+                    root = EnsureTrailingSlash(root)
+                  elseif string.sub(root, -1) ~= "/" then
+                    root = root.."/"
+                  end
+                  if PLDR ~= nil and PLDR.MX4SIO ~= nil then
+                    PLDR.MX4SIO.READY = true
+                    PLDR.MX4SIO.ROOT = root
+                    PLDR.MX4SIO.MASSINDX = nil
+                  end
+                  PLDR.CleanupGameList()
+                  local game_root = root.."POPS/"
+                  if type(JoinPath) == "function" then
+                    game_root = JoinPath(root, "POPS/")
+                  end
+                  PLDR.GetPS1GameLists(game_root, true)
+                  UI.SceneChange(UI.SCENES.GMX4SIO)
+                  return
+                end
+              end
+
+              local usb_seen = {}
+              if PLDR ~= nil and type(PLDR.GetActiveUsbRoots) == "function" then
+                local usb_roots = PLDR.GetActiveUsbRoots(9)
+                if type(usb_roots) == "table" then
+                  for _, usb_root in ipairs(usb_roots) do
+                    usb_seen[usb_root] = true
+                  end
+                end
+              end
+
+              for i = 0, 9 do
+                local r = "mass"..tostring(i)..":/"
+                if not usb_seen[r] and probe_root(r.."POPS/") then
+                  if PLDR ~= nil and PLDR.MX4SIO ~= nil then
+                    PLDR.MX4SIO.READY = true
+                    PLDR.MX4SIO.ROOT = r
+                    PLDR.MX4SIO.MASSINDX = i
+                  end
+                  PLDR.CleanupGameList()
+                  PLDR.GetPS1GameLists(r.."POPS/", true)
+                  UI.SceneChange(UI.SCENES.GMX4SIO)
+                  return
+                end
+              end
+
               UI.Notif_queue.add("No MX4SIO device found (POPS/ missing)")
               if PLDR ~= nil and PLDR.MX4SIO ~= nil then
                 PLDR.MX4SIO.READY = false
