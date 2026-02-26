@@ -15,6 +15,8 @@ local BOOT_PATH_RAW = System.currentDirectory()
 LOG("system.lua start")
 LOG("BOOT_PATH_RAW="..tostring(BOOT_PATH_RAW))
 
+local _unpack = unpack or (table and table.unpack) or nil
+
 local function OpenProbe(path)
   if type(path) ~= "string" or path == "" then
     return false
@@ -2209,7 +2211,6 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   local app_dir = EnsureTrailingSlash(APP_DIR_LOCAL)
   local boot_path = EnsureTrailingSlash(System.currentDirectory())
   local argv0 = argv and argv[1] or nil
-  local unpack_fn = table.unpack or unpack
   SetLaunchPhase(LaunchState.PHASE_VALIDATE)
   LaunchLog("LAUNCH BEGIN")
   LaunchLog("LAUNCH: boot path raw:", BOOT_PATH_RAW, "boot path cwd:", boot_path)
@@ -2323,8 +2324,8 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   )
   LaunchLog("LAUNCH: loadELF argc (caller):", exec_args and #exec_args or 0)
   local rc
-  if exec_args ~= nil and #exec_args > 0 and unpack_fn ~= nil then
-    rc = System.loadELF(popstarter, reboot_iop, unpack_fn(exec_args))
+  if exec_args ~= nil and #exec_args > 0 and _unpack ~= nil then
+    rc = System.loadELF(popstarter, reboot_iop, _unpack(exec_args))
   elseif exec_args ~= nil and #exec_args == 1 then
     rc = System.loadELF(popstarter, reboot_iop, exec_args[1])
   else
@@ -2623,7 +2624,14 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     return
   end
 
-  local ok, rc = pcall(System.loadELF, popstarter, reboot_iop, unpack(argv))
+  if not _unpack then
+    if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
+      UI.Notif_queue.add("Launch failed: unpack unavailable")
+    end
+    return
+  end
+
+  local ok, rc = pcall(System.loadELF, popstarter, reboot_iop, _unpack(argv))
   if not ok then
     if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
       UI.Notif_queue.add("POPSTARTER launch failed:\n"..tostring(rc))
