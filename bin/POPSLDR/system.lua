@@ -422,26 +422,86 @@ function PLDR.IsUsbMassIndex(i)
   return n ~= nil and n ~= "sdc"
 end
 
-function PLDR.ProbeMassHasPops(i)
+function PLDR.MassWarmup(max_index)
+  max_index = tonumber(max_index) or 9
+  if max_index < 0 then max_index = 0 end
+  if max_index > 9 then max_index = 9 end
+
+  -- Nudge each index root; no POPS listing here.
+  for i = 0, max_index do
+    pcall(System.listDirectory, "mass"..tostring(i)..":/")
+  end
+end
+
+function PLDR.MassHasPops(i)
   local base = "mass"..tostring(i)..":/POPS"
-  local probes = {
-    { kind = "list", path = base.."/" },
-    { kind = "list", path = base },
-    { kind = "open", path = base.."/" },
-    { kind = "open", path = base },
-  }
-  for idx = 1, #probes do
-    local probe = probes[idx]
-    if probe.kind == "list" then
-      local ok, dir = pcall(System.listDirectory, probe.path)
-      if ok and type(dir) == "table" then
-        return true
-      end
-    elseif OpenProbe(probe.path) then
-      return true
+
+  local ok1, d1 = pcall(System.listDirectory, base.."/")
+  if ok1 and type(d1) == "table" then return true end
+
+  local ok2, d2 = pcall(System.listDirectory, base)
+  if ok2 and type(d2) == "table" then return true end
+
+  if OpenProbe(base.."/") or OpenProbe(base) then return true end
+  return false
+end
+
+function PLDR.MassHasPopsAlias()
+  local base = "mass:/POPS"
+
+  local ok1, d1 = pcall(System.listDirectory, base.."/")
+  if ok1 and type(d1) == "table" then return true end
+
+  local ok2, d2 = pcall(System.listDirectory, base)
+  if ok2 and type(d2) == "table" then return true end
+
+  if OpenProbe(base.."/") or OpenProbe(base) then return true end
+  return false
+end
+
+function PLDR.GetMassAliasDriverName()
+  if System == nil then
+    return nil
+  end
+
+  pcall(System.listDirectory, "mass:/")
+
+  local function normalize(name)
+    if type(name) ~= "string" then
+      return nil
+    end
+    name = string.lower(name)
+    if name == "" then
+      return nil
+    end
+    return name
+  end
+
+  if type(System.getMassAliasDriverName) == "function" then
+    local ok_alias, alias = pcall(System.getMassAliasDriverName)
+    if ok_alias then
+      local parsed = normalize(alias)
+      if parsed ~= nil then return parsed end
     end
   end
-  return false
+
+  if type(System.getMassDriverName) == "function" then
+    local probes = {-1, "mass:", "mass"}
+    for _, probe in ipairs(probes) do
+      local ok_dn, dn = pcall(System.getMassDriverName, probe)
+      if ok_dn then
+        local parsed = normalize(dn)
+        if parsed ~= nil then return parsed end
+      end
+    end
+  end
+
+  return nil
+end
+
+
+function PLDR.ProbeMassHasPops(i)
+  return PLDR.MassHasPops(i)
 end
 
 function PLDR.FindMassByDriver(driver, max_index)
@@ -1408,82 +1468,154 @@ function PLDR.GetPS1GameLists(path, updating)
   end
 end
 
-function PLDR.GetActiveUsbRoots(max_index)
-  PLDR.EnsureMassReady()
-  local max = tonumber(max_index) or 9
-  if max < 0 then max = 0 end
-  if max > 9 then max = 9 end
+function PLDR.GetUsbMassRoots(max_index)
+  max_index = tonumber(max_index) or 9
+  if max_index < 0 then max_index = 0 end
+  if max_index > 9 then max_index = 9 end
 
-  local function pass()
-    local roots = {}
-    for i = 0, max do
-      pcall(System.listDirectory, "mass"..tostring(i)..":/")
-      local mx_index = PLDR and PLDR.MX4SIO and PLDR.MX4SIO.MASSINDX or nil
-      if mx_index ~= nil and mx_index == i then
-        goto continue
+  -- Warmup first, then probe POPS.
+  PLDR.EnsureUsbReady()
+  PLDR.MassWarmup(max_index)
+
+  local roots = {}
+
+  for i = 0, max_index do
+    -- Exclude MX4SIO by known index when available.
+    if PLDR.MX4SIO ~= nil and PLDR.MX4SIO.MASSINDX ~= nil and PLDR.MX4SIO.MASSINDX == i then
+      goto continue
+    end
+
+    -- Also exclude by driver name if it is available (optional safety).
+    local dn = nil
+    if PLDR.GetMassDriverName ~= nil then dn = PLDR.GetMassDriverName(i) end
+    if dn == "sdc" then
+      goto continue
+    end
+
+    if PLDR.MassHasPops(i) then
+      table.insert(roots, "mass"..tostring(i)..":/")
+    end
+
+    ::continue::
+  end
+
+  -- Bounded retry: if nothing found, do one more warmup + probe pass.
+  if #roots == 0 then
+    PLDR.MassWarmup(max_index)
+    for i = 0, max_index do
+      if PLDR.MX4SIO ~= nil and PLDR.MX4SIO.MASSINDX ~= nil and PLDR.MX4SIO.MASSINDX == i then
+        goto continue2
       end
-      local dn = PLDR.MassDriverName(i)
-      if dn == "sdc" then
-        goto continue
-      end
-      if PLDR.ProbeMassHasPops(i) then
+      local dn = nil
+      if PLDR.GetMassDriverName ~= nil then dn = PLDR.GetMassDriverName(i) end
+      if dn == "sdc" then goto continue2 end
+      if PLDR.MassHasPops(i) then
         table.insert(roots, "mass"..tostring(i)..":/")
       end
-      ::continue::
+      ::continue2::
     end
-    return roots
   end
 
-  local roots = pass()
-  if #roots > 0 then
-    return roots
-  end
-
-  for attempt = 1, 2 do
-    PLDR.TouchMassIndices(max)
-    roots = pass()
-    if #roots > 0 then
-      return roots
+  if #roots == 0 then
+    local alias_dn = nil
+    if PLDR.GetMassAliasDriverName ~= nil then
+      alias_dn = PLDR.GetMassAliasDriverName()
+    end
+    if alias_dn ~= nil and alias_dn ~= "" and alias_dn ~= "sdc" then
+      if PLDR.MassHasPopsAlias ~= nil and PLDR.MassHasPopsAlias() then
+        return {"mass:/"}
+      end
     end
   end
 
   return roots
 end
 
-function PLDR.GetPS1GameListsUSB(max_index)
-  PLDR.CleanupGameList()
-  local roots = PLDR.GetActiveUsbRoots(max_index)
-  PLDR.USB.ROOTS = roots
-  PLDR.USB.GAME_ENTRIES = {}
-  for _, root in ipairs(roots) do
-    root = PLDR.CanonicalizeMassRoot(root)
-    local list_path = root.."POPS/"
-    local dir = System.listDirectory(list_path)
-    local names = {}
-    if dir ~= nil then
-      for i = 1, #dir do
-        local entry = dir[i]
-        if not entry.directory and string.lower(string.sub(entry.name, -4)) == ".vcd" then
-          table.insert(names, entry.name)
-        end
+function PLDR.GetActiveUsbRoots(max_index)
+  return PLDR.GetUsbMassRoots(max_index)
+end
+
+function PLDR.GetPS1GameListsUSB(pops, root)
+  local list_path = pops
+  local mass_root = root
+  if root == nil and (type(pops) ~= "string" or not string.find(pops, "POPS", 1, true)) then
+    local roots = PLDR.GetUsbMassRoots(pops)
+    PLDR.USB.ROOTS = roots
+    PLDR.USB.GAME_ENTRIES = {}
+    PLDR.GAMES = {}
+    PLDR.GAMEART = {}
+    PLDR.GAMEPATH = nil
+    for _, usb_root in ipairs(roots) do
+      PLDR.GetPS1GameListsUSB(usb_root.."POPS/", usb_root)
+    end
+    if #PLDR.GAMES > 0 then
+      PLDR.GAMEPATH = (PLDR.USB.GAME_ENTRIES[1] and PLDR.USB.GAME_ENTRIES[1].pops_path) or nil
+      return PLDR.GAMES
+    end
+    return nil
+  end
+
+  if mass_root == nil then
+    if type(list_path) == "string" then
+      mass_root = string.match(list_path, "^(mass%d+:/)")
+    end
+    if mass_root == nil then
+      return nil
+    end
+  end
+
+  if type(list_path) ~= "string" then
+    list_path = mass_root.."POPS/"
+  end
+  mass_root = PLDR.CanonicalizeMassRoot(mass_root)
+  list_path = mass_root.."POPS/"
+
+  local dir = System.listDirectory(list_path)
+  local names = {}
+  if dir ~= nil then
+    for i = 1, #dir do
+      local entry = dir[i]
+      if not entry.directory and string.lower(string.sub(entry.name, -4)) == ".vcd" then
+        table.insert(names, entry.name)
       end
     end
-    table.sort(names)
-    for i = 1, #names do
-      table.insert(PLDR.GAMES, names[i])
-      table.insert(PLDR.USB.GAME_ENTRIES, {
-        root = root,
-        pops_path = list_path,
-        vcd_path = list_path..names[i],
-        name = names[i]
-      })
-    end
   end
-  if #PLDR.GAMES > 0 then
-    PLDR.GAMEPATH = (PLDR.USB.GAME_ENTRIES[1] and PLDR.USB.GAME_ENTRIES[1].pops_path) or "mass0:/POPS/"
-    return PLDR.GAMES
+  table.sort(names)
+  for i = 1, #names do
+    table.insert(PLDR.GAMES, names[i])
+    table.insert(PLDR.USB.GAME_ENTRIES, {
+      root = mass_root,
+      pops_path = list_path,
+      vcd_path = list_path..names[i],
+      name = names[i]
+    })
+  end
+  if #names > 0 then
+    return names
   end
   return nil
+end
+
+function PLDR.RefreshUsbGames(max_index)
+  PLDR.USB.GAME_ENTRIES = {}
+  PLDR.GAMES = {}
+  PLDR.GAMEART = {}
+  PLDR.GAMEPATH = nil
+
+  local roots = PLDR.GetUsbMassRoots(max_index or 9)
+  PLDR.USB.ROOTS = roots
+
+  -- Merge listing from each root's POPS folder.
+  for _, root in ipairs(roots) do
+    local pops = root.."POPS/"
+    PLDR.GetPS1GameListsUSB(pops, root)
+  end
+
+  if #PLDR.GAMES > 0 then
+    PLDR.GAMEPATH = (PLDR.USB.GAME_ENTRIES[1] and PLDR.USB.GAME_ENTRIES[1].pops_path) or nil
+  end
+
+  return #roots, #PLDR.GAMES
 end
 
 local function EncodeHddGameEntry(partition, relpath)
@@ -2420,7 +2552,17 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
       prefix_used = ""
     end
   end
-  local argv = {argv0_selector}
+  local bootarg = bootparam_basename_used
+  if bootarg == nil or bootarg == "" then
+    if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
+      UI.Notif_queue.add("Launch failed: missing boot selector")
+    end
+    return
+  end
+  if not string.match(bootarg, "%.ELF$") then
+    bootarg = bootarg..".ELF"
+  end
+  local argv = {argv0_selector, bootarg, bootarg}
 
   LOG("Boot APP_DIR: "..APP_DIR_LOCAL)
   LOG("PopStarter selected: "..popstarter)
@@ -2466,20 +2608,32 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     bootparam_source = boot_source_mode,
     hdd_init = hdd_init
   }
-  local reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
-  if policy.name == "HDD" then
-    reboot_iop = 0
-  end
+  local reboot_iop = 0
   if UI ~= nil and UI.CoverCache ~= nil and UI.CoverCache.Clear ~= nil then
     UI.CoverCache:Clear()
   end
   PLDR.CleanupGameList()
   collectgarbage("collect")
-  if policy.name ~= "HDD" then
-    System.loadELF(popstarter, 0, vcd_path)
+
+  popstarter = PLDR.ResolvePopstarterPath()
+  if popstarter == nil or popstarter == "" or not OpenProbe(popstarter) then
+    if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
+      UI.Notif_queue.add("POPSTARTER missing:\n"..tostring(popstarter))
+    end
     return
   end
-  LaunchEngine(popstarter, argv, reboot_iop, context)
+
+  local ok, rc = pcall(System.loadELF, popstarter, reboot_iop, unpack(argv))
+  if not ok then
+    if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
+      UI.Notif_queue.add("POPSTARTER launch failed:\n"..tostring(rc))
+    end
+    return
+  end
+  if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
+    UI.Notif_queue.add("POPSTARTER returned unexpectedly")
+  end
+  return
 end
 
 function Touch(FILE, warn_key)

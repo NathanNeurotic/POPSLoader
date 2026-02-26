@@ -255,6 +255,8 @@ UI = {
     };
     LAUNCHING = false;
     HideUI = (PLDR ~= nil and PLDR.SETTINGS ~= nil and PLDR.SETTINGS.hide_ui == true);
+    USBRefreshPending = false;
+    USBRefreshDelay = 0;
     BOOT_SOUND = {
       ENABLED = true,
       PATH = "embed:/POPSLDR/boot.adp",
@@ -267,6 +269,32 @@ UI = {
       ADPCM_VOLUME = 100      -- per-channel ADPCM volume (0-100 typical, scaled to audsrv range)
     };
     CoverCache = CoverCache;
+    ScheduleUsbDelayedRefresh = function (delay_frames)
+      local delay = tonumber(delay_frames) or 30
+      if delay < 0 then delay = 0 end
+      UI.USBRefreshPending = true
+      UI.USBRefreshDelay = delay
+    end;
+    ClearUsbDelayedRefresh = function ()
+      UI.USBRefreshPending = false
+      UI.USBRefreshDelay = 0
+    end;
+    UpdateUsbDelayedRefresh = function ()
+      if not UI.IsUsbScene(UI.CURSCENE) then
+        return
+      end
+      if UI.USBRefreshPending ~= true then
+        return
+      end
+      UI.USBRefreshDelay = (tonumber(UI.USBRefreshDelay) or 0) - 1
+      if UI.USBRefreshDelay <= 0 then
+        if PLDR ~= nil and PLDR.RefreshUsbGames ~= nil then
+          PLDR.RefreshUsbGames(9)
+        end
+        UI.USBRefreshPending = false
+        UI.USBRefreshDelay = 0
+      end
+    end;
     ShouldHideUI = function ()
       if not UI.HideUI then return false end
       if UI.CURSCENE == UI.SCENES.MPROFILE or UI.CURSCENE == UI.SCENES.CREDITS then
@@ -1549,6 +1577,7 @@ end
           end
           return
         end
+        UI.UpdateUsbDelayedRefresh()
         local ammount = #PLDR.GAMES
         if UI.CURSCENE == UI.SCENES.GMMCE and not hide_ui then
           local slots = PLDR.GetMMCESlots()
@@ -1622,6 +1651,23 @@ end
           if ammount <= 0 then
             UI.Notif_queue.add("No games found")
           else
+            local game = nil
+            if PLDR ~= nil and PLDR.GAMES ~= nil then
+              game = PLDR.GAMES[UI.GameList.CURR]
+            end
+            if game == nil then
+              UI.Notif_queue.add("Invalid game selection")
+              return
+            end
+            local launch_path = PLDR.GAMEPATH or ""
+            if UI.CURSCENE == UI.SCENES.GHDD then
+              launch_path = ""
+            elseif UI.IsUsbScene(UI.CURSCENE) and PLDR ~= nil and PLDR.USB ~= nil and PLDR.USB.GAME_ENTRIES ~= nil then
+              local usb_entry = PLDR.USB.GAME_ENTRIES[UI.GameList.CURR]
+              if usb_entry ~= nil and usb_entry.root ~= nil then
+                launch_path = usb_entry.root
+              end
+            end
             local pop_ok = false
             if PLDR.PopstarterExists ~= nil then
               pop_ok, PLDR.POPSTARTER_PATH = PLDR.PopstarterExists(PLDR.POPSTARTER_PATH)
@@ -1633,20 +1679,13 @@ end
               return
             end
             if UI.CURSCENE ~= UI.SCENES.GHDD then -- only check if game can be found on USB and SMB
-              if not doesFileExist(PLDR.GAMEPATH .. PLDR.GAMES[UI.GameList.CURR]) then
-                UI.Notif_queue.add("Cant find Game\n"..PLDR.GAMEPATH .. PLDR.GAMES[UI.GameList.CURR])
+              local full = tostring(launch_path) .. tostring(game)
+              if not doesFileExist(full) then
+                UI.Notif_queue.add("Cant find Game\n"..full)
+                return
               end
             end
-            local launch_path = PLDR.GAMEPATH
-            if UI.CURSCENE == UI.SCENES.GHDD then
-              launch_path = ""
-            elseif UI.IsUsbScene(UI.CURSCENE) and PLDR ~= nil and PLDR.USB ~= nil and PLDR.USB.GAME_ENTRIES ~= nil then
-              local usb_entry = PLDR.USB.GAME_ENTRIES[UI.GameList.CURR]
-              if usb_entry ~= nil and usb_entry.root ~= nil then
-                launch_path = usb_entry.root
-              end
-            end
-            PLDR.RunPOPStarterGame(launch_path, PLDR.GAMES[UI.GameList.CURR], UI.CURSCENE)
+            PLDR.RunPOPStarterGame(launch_path, game, UI.CURSCENE)
           end
         end
         local cross_label = UI.Footer.labels.cross_launch
@@ -2235,26 +2274,6 @@ end
             end
             UI.SceneChange(UI.SCENES.GHDD)
           elseif UI.MainMenu.OPT == 5 then
-            if PLDR.EnsureUsbReady ~= nil then
-              PLDR.EnsureUsbReady()
-            end
-            if PLDR.DetectMassBackends ~= nil then
-              PLDR.DetectMassBackends()
-            end
-            local found = nil
-            if PLDR.GetPS1GameListsUSB ~= nil then
-              found = PLDR.GetPS1GameListsUSB(9)
-            else
-              PLDR.CleanupGameList()
-              found = PLDR.GetPS1GameLists("mass"..PLDR.USB.MASSINDX..":/POPS/", true)
-            end
-            if found == nil then
-              if PLDR ~= nil and PLDR.USB ~= nil and PLDR.USB.ROOTS ~= nil and #PLDR.USB.ROOTS > 0 then
-                UI.Notif_queue.add("No games found on USB (POPS/)")
-              else
-                UI.Notif_queue.add("No USB device found")
-              end
-            end
             UI.SceneChange(UI.SCENES.GUSBFAT)
           elseif UI.MainMenu.OPT == 6 then
             UI.Notif_queue.add("Not Implemented Yet")
@@ -2514,11 +2533,35 @@ end
 function UI.IsUsbScene(scene)
   return scene == UI.SCENES.GUSBFAT or scene == UI.SCENES.GUSBEXFAT
 end
+function UI.OnSceneEnter(previous_scene, current_scene)
+  if UI.IsUsbScene(current_scene) then
+    local roots_count = 0
+    local games_count = 0
+    if PLDR ~= nil and PLDR.RefreshUsbGames ~= nil then
+      roots_count, games_count = PLDR.RefreshUsbGames(9)
+    elseif PLDR ~= nil and PLDR.GetPS1GameListsUSB ~= nil then
+      local found = PLDR.GetPS1GameListsUSB(9)
+      roots_count = (PLDR.USB ~= nil and PLDR.USB.ROOTS ~= nil) and #PLDR.USB.ROOTS or 0
+      games_count = (found ~= nil and #found) or 0
+    end
+    if games_count <= 0 then
+      if roots_count > 0 then
+        UI.Notif_queue.add("No games found on USB (POPS/)")
+      else
+        UI.Notif_queue.add("No USB device found")
+      end
+    end
+    UI.ScheduleUsbDelayedRefresh(30)
+  end
+end
 function UI.OnSceneExit(previous_scene, next_scene)
   if UI.IsGameScene(previous_scene) and previous_scene ~= next_scene then
     if UI.CoverCache ~= nil and UI.CoverCache.Clear ~= nil then
       UI.CoverCache:Clear()
     end
+  end
+  if UI.IsUsbScene(previous_scene) and previous_scene ~= next_scene then
+    UI.ClearUsbDelayedRefresh()
   end
 end
 UI.RecalcLayout()
