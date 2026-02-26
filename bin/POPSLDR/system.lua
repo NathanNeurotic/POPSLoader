@@ -2631,10 +2631,10 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     return
   end
 
-  local ok, rc = pcall(System.loadELF, popstarter, reboot_iop, _unpack(argv))
+  local ok, err = pcall(System.loadELF, popstarter, reboot_iop, _unpack(argv))
   if not ok then
     if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
-      UI.Notif_queue.add("POPSTARTER launch failed:\n"..tostring(rc))
+      UI.Notif_queue.add("POPSTARTER launch failed:\n"..tostring(err))
     end
     return
   end
