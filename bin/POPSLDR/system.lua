@@ -401,11 +401,11 @@ end
 
 function PLDR.DetectMassBackends()
   -- Default behavior: keep existing MASSINDX unless we can positively detect a better one.
-  local usb = PLDR.FindMassByDriver("usb", 4)
+  local usb = PLDR.FindMassByDriver("usb", 9)
   if usb ~= nil then
     PLDR.USB.MASSINDX = usb
   end
-  local mx = PLDR.FindMassByDriver("sdc", 4)
+  local mx = PLDR.FindMassByDriver("sdc", 9)
   if mx ~= nil then
     PLDR.MX4SIO.MASSINDX = mx
   else

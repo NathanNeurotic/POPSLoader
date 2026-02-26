@@ -2154,7 +2154,11 @@ end
             -- Prefer IOCTL-based backend detection (massX drivername == "sdc") to avoid USB/MX4SIO cross-page confusion.
             local mx_mass = nil
             if PLDR ~= nil and type(PLDR.FindMassByDriver) == "function" then
-              mx_mass = PLDR.FindMassByDriver("sdc", 4)
+              mx_mass = PLDR.FindMassByDriver("sdc", 9)
+              if mx_mass == nil then mx_mass = PLDR.FindMassByDriver("sd", 9) end
+              if mx_mass == nil then mx_mass = PLDR.FindMassByDriver("sdd", 9) end
+              if mx_mass == nil then mx_mass = PLDR.FindMassByDriver("mx4", 9) end
+              if mx_mass == nil then mx_mass = PLDR.FindMassByDriver("mx4sio", 9) end
             end
             if mx_mass ~= nil then
               if PLDR ~= nil and PLDR.MX4SIO ~= nil then
