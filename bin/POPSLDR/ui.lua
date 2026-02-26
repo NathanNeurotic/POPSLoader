@@ -2421,7 +2421,7 @@ end
 Design by Berion
 Scripts by Nuno6573 and Ripto
 Based on Enceladus by Daniel Santos
-Testing by P4NCHOL1NO
+Testing by P4NCHOL1NO and VizoR
 
 Special Thanks To:
 krHACKen for making POPStarter
