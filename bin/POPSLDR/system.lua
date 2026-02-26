@@ -467,6 +467,43 @@ function PLDR.EnsureMassReady()
   return PLDR._mass_ready == true
 end
 
+
+function PLDR.CanonicalizeMassRoot(root)
+  if type(root) ~= "string" then
+    return root
+  end
+  if not string.match(root, "^mass:/") then
+    return root
+  end
+
+  PLDR.EnsureMassReady()
+
+  for i = 0, 9 do
+    pcall(System.listDirectory, "mass"..tostring(i)..":/")
+  end
+
+  for i = 0, 9 do
+    local dn = PLDR.MassDriverName(i)
+    if dn ~= nil and dn ~= "sdc" then
+      local ok, _ = pcall(System.listDirectory, "mass"..tostring(i)..":/")
+      if ok then
+        return "mass"..tostring(i)..":/"
+      end
+    end
+  end
+
+  for i = 0, 9 do
+    if PLDR.IsMx4MassIndex(i) then
+      local ok, _ = pcall(System.listDirectory, "mass"..tostring(i)..":/")
+      if ok then
+        return "mass"..tostring(i)..":/"
+      end
+    end
+  end
+
+  return root
+end
+
 PLDR.DEFAULT_DKWDRV_PATH = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
 local BDMA_MODES = {
   {
@@ -1252,6 +1289,12 @@ function PLDR.GetPS1GameLists(path, updating)
   local RET = {}
   local found_smth = false
   if path ~= nil then PLDR.GAMEPATH = path end
+  if type(PLDR.GAMEPATH) == "string" and string.match(PLDR.GAMEPATH, "^mass:/") then
+    local canonical_root = PLDR.CanonicalizeMassRoot("mass:/")
+    if type(canonical_root) == "string" and string.match(canonical_root, "^mass%d+:/") then
+      PLDR.GAMEPATH = string.gsub(PLDR.GAMEPATH, "^mass:/", canonical_root)
+    end
+  end
   local mass_root = nil
   local pops_path = nil
   if type(PLDR.GAMEPATH) == "string" then
@@ -1319,6 +1362,7 @@ function PLDR.GetPS1GameListsUSB(max_index)
   PLDR.USB.ROOTS = roots
   PLDR.USB.GAME_ENTRIES = {}
   for _, root in ipairs(roots) do
+    root = PLDR.CanonicalizeMassRoot(root)
     local list_path = root.."POPS/"
     local dir = System.listDirectory(list_path)
     local names = {}
@@ -2107,6 +2151,16 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     gamelocation = selected_entry.pops_path or selected_entry.root or gamelocation
     game = selected_entry.name or game
     ui_scene = selected_scene or ui_scene
+  end
+  if selected_entry ~= nil and type(selected_entry.root) == "string" and string.match(selected_entry.root, "^mass:/") then
+    local canonical_root = PLDR.CanonicalizeMassRoot(selected_entry.root)
+    if type(canonical_root) == "string" and string.match(canonical_root, "^mass%d+:/") then
+      selected_entry.root = canonical_root
+      local selected_name = selected_entry.name or game or ""
+      selected_entry.pops_path = canonical_root.."POPS/"
+      selected_entry.vcd_path = selected_entry.pops_path..selected_name
+      gamelocation = selected_entry.pops_path
+    end
   end
   local policy, device_page = ResolveLaunchPolicy(gamelocation, ui_scene)
   local hdd_init = nil
