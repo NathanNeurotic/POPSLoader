@@ -323,15 +323,30 @@ function PLDR.GetConfiguredPopstarterPath()
 end
 
 function PLDR.PopstarterExistsAt(path)
+  local function ProbePath(candidate)
+    if type(candidate) ~= "string" or candidate == "" then
+      return false
+    end
+    local ok_open, fd = pcall(System.openFile, candidate, FREAD)
+    if ok_open and type(fd) == "number" and fd >= 0 then
+      pcall(System.closeFile, fd)
+      return true
+    end
+    local ok_exists, exists = pcall(System.doesFileExist, candidate)
+    return ok_exists and exists == true
+  end
+
   if type(path) ~= "string" or path == "" then
     return false
   end
-  local ok_open, fd = pcall(System.openFile, path, FREAD)
-  if not ok_open or fd == nil or type(fd) ~= "number" or fd < 0 then
-    return false
+  if ProbePath(path) then
+    return true
   end
-  pcall(System.closeFile, fd)
-  return true
+  local normalized = string.gsub(path, "^mass%d+:", "mass:")
+  if normalized ~= path and ProbePath(normalized) then
+    return true
+  end
+  return false
 end
 
 function PLDR.GetPopstarterProbeStatus()
@@ -1110,11 +1125,27 @@ function PLDR.ApplyBDMAOnSettingsSave(mode)
     local target = targets[i]
     local source_name = target.source..entry.source_suffix
     local source_path = PLDR.ResolveBdmaIrxAssetPath(source_name)
-    if source_path == nil then
-      return false, "BDMA: failed resolve "..source_name
+    local data = nil
+    if source_path ~= nil then
+      data = ReadAllBytes(source_path)
     end
-    local data = ReadAllBytes(source_path)
     if type(data) ~= "string" then
+      local fs_candidates = {
+        JoinPath(APP_DIR_LOCAL, "bin/POPSLDR/"..source_name),
+        JoinPath(APP_DIR_LOCAL, source_name)
+      }
+      for j = 1, #fs_candidates do
+        source_path = fs_candidates[j]
+        data = ReadAllBytes(source_path)
+        if type(data) == "string" then
+          break
+        end
+      end
+    end
+    if type(data) ~= "string" then
+      if source_path == nil then
+        return false, "BDMA: failed resolve "..source_name
+      end
       return false, "BDMA: failed read "..source_path
     end
     if not PLDR.WriteFile(target.dest, data) then
@@ -2097,13 +2128,20 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
       end
       return
     end
-  if not PLDR.PopstarterExistsAt(popstarter) then
+  local exec_popstarter = popstarter
+  if string.match(popstarter, "^mass%d+:/") then
+    local normalized_popstarter = string.gsub(popstarter, "^mass%d+:", "mass:")
+    if normalized_popstarter ~= popstarter and PLDR.PopstarterExistsAt(normalized_popstarter) then
+      exec_popstarter = normalized_popstarter
+    end
+  end
+  if not PLDR.PopstarterExistsAt(exec_popstarter) then
       if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
         UI.Notif_queue.add("POPSTARTER.ELF not found")
       end
       return
     end
-  PLDR.POPSTARTER_PATH = popstarter
+  PLDR.POPSTARTER_PATH = exec_popstarter
   local pops_root = normalized_gamelocation
   local boot_source_mode = source_mode
   local device_mode = "unknown"

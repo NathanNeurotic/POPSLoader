@@ -2114,49 +2114,33 @@ end
               ready, root = PLDR.InitMX4SIO(hint)
             end
 
-            if ready and root ~= nil then
-              if type(EnsureTrailingSlash) == "function" then
-                root = EnsureTrailingSlash(root)
-              elseif string.sub(root, -1) ~= "/" then
-                root = root.."/"
-              end
+            if not ready or root == nil then
+              UI.Notif_queue.add("No MX4SIO device found (POPS/ missing)")
               if PLDR ~= nil and PLDR.MX4SIO ~= nil then
-                PLDR.MX4SIO.READY = true
-                PLDR.MX4SIO.ROOT = root
+                PLDR.MX4SIO.READY = false
+                PLDR.MX4SIO.ROOT = nil
                 PLDR.MX4SIO.MASSINDX = nil
               end
-              PLDR.CleanupGameList()
-              local game_root = root.."POPS/"
-              if type(JoinPath) == "function" then
-                game_root = JoinPath(root, "POPS/")
-              end
-              PLDR.GetPS1GameLists(game_root, true)
-              UI.SceneChange(UI.SCENES.GMX4SIO)
               return
             end
-
-            local mx_mass = nil
-            if PLDR ~= nil and type(PLDR.FindMassByDriver) == "function" then
-              mx_mass = PLDR.FindMassByDriver("sdc", 4)
+            if type(EnsureTrailingSlash) == "function" then
+              root = EnsureTrailingSlash(root)
+            elseif string.sub(root, -1) ~= "/" then
+              root = root.."/"
             end
-            if mx_mass ~= nil then
-              if PLDR ~= nil and PLDR.MX4SIO ~= nil then
-                PLDR.MX4SIO.READY = true
-                PLDR.MX4SIO.ROOT = "mass"..tostring(mx_mass)..":/"
-                PLDR.MX4SIO.MASSINDX = mx_mass
-              end
-              PLDR.CleanupGameList()
-              PLDR.GetPS1GameLists("mass"..tostring(mx_mass)..":/POPS/", true)
-              UI.SceneChange(UI.SCENES.GMX4SIO)
-              return
-            end
-
-            UI.Notif_queue.add("No MX4SIO device found")
             if PLDR ~= nil and PLDR.MX4SIO ~= nil then
-              PLDR.MX4SIO.READY = false
-              PLDR.MX4SIO.ROOT = nil
+              PLDR.MX4SIO.READY = true
+              PLDR.MX4SIO.ROOT = root
               PLDR.MX4SIO.MASSINDX = nil
             end
+            PLDR.CleanupGameList()
+            local game_root = root.."POPS/"
+            if type(JoinPath) == "function" then
+              game_root = JoinPath(root, "POPS/")
+            end
+            PLDR.GetPS1GameLists(game_root, true)
+            UI.SceneChange(UI.SCENES.GMX4SIO)
+            return
           elseif UI.MainMenu.OPT == 3 then
             UI.Notif_queue.add("Not Implemented Yet")
           elseif UI.MainMenu.OPT == 4 then
