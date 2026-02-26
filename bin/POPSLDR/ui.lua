@@ -2177,6 +2177,29 @@ end
               return
             end
 
+            if PLDR ~= nil and PLDR.EnsureMassReady ~= nil then
+              PLDR.EnsureMassReady()
+            end
+            local mx_index = nil
+            if PLDR ~= nil and type(PLDR.FindMassByDriver) == "function" then
+              mx_index = PLDR.FindMassByDriver("sdc", 9)
+            end
+            if mx_index ~= nil then
+              local mx_root = "mass"..tostring(mx_index)..":/"
+              local ok_mx, dir_mx = pcall(System.listDirectory, mx_root.."POPS/")
+              if ok_mx and type(dir_mx) == "table" then
+                if PLDR ~= nil and PLDR.MX4SIO ~= nil then
+                  PLDR.MX4SIO.READY = true
+                  PLDR.MX4SIO.ROOT = mx_root
+                  PLDR.MX4SIO.MASSINDX = mx_index
+                end
+                PLDR.CleanupGameList()
+                PLDR.GetPS1GameLists(mx_root.."POPS/", true)
+                UI.SceneChange(UI.SCENES.GMX4SIO)
+                return
+              end
+            end
+
             UI.Notif_queue.add("No MX4SIO device found (POPS/ missing)")
             if PLDR ~= nil and PLDR.MX4SIO ~= nil then
               PLDR.MX4SIO.READY = false
