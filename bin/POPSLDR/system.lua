@@ -422,9 +422,25 @@ function PLDR.IsUsbMassIndex(i)
 end
 
 function PLDR.ProbeMassHasPops(i)
-  local path = "mass"..tostring(i)..":/POPS/"
-  local ok, dir = pcall(System.listDirectory, path)
-  return ok and type(dir) == "table"
+  local base = "mass"..tostring(i)..":/POPS"
+  local probes = {
+    { kind = "list", path = base.."/" },
+    { kind = "list", path = base },
+    { kind = "open", path = base.."/" },
+    { kind = "open", path = base },
+  }
+  for idx = 1, #probes do
+    local probe = probes[idx]
+    if probe.kind == "list" then
+      local ok, dir = pcall(System.listDirectory, probe.path)
+      if ok and type(dir) == "table" then
+        return true
+      end
+    elseif OpenProbe(probe.path) then
+      return true
+    end
+  end
+  return false
 end
 
 function PLDR.FindMassByDriver(driver, max_index)
@@ -1385,26 +1401,46 @@ function PLDR.GetPS1GameLists(path, updating)
 end
 
 function PLDR.GetActiveUsbRoots(max_index)
-  local roots = {}
   PLDR.EnsureMassReady()
   local max = tonumber(max_index) or 9
   if max < 0 then max = 0 end
   if max > 9 then max = 9 end
-  for i = 0, max do
-    pcall(System.listDirectory, "mass"..tostring(i)..":/")
-    local mx_index = PLDR and PLDR.MX4SIO and PLDR.MX4SIO.MASSINDX or nil
-    if mx_index ~= nil and mx_index == i then
-      goto continue
+
+  local function pass()
+    local roots = {}
+    for i = 0, max do
+      pcall(System.listDirectory, "mass"..tostring(i)..":/")
+      local mx_index = PLDR and PLDR.MX4SIO and PLDR.MX4SIO.MASSINDX or nil
+      if mx_index ~= nil and mx_index == i then
+        goto continue
+      end
+      local dn = PLDR.MassDriverName(i)
+      if dn == "sdc" then
+        goto continue
+      end
+      if PLDR.ProbeMassHasPops(i) then
+        table.insert(roots, "mass"..tostring(i)..":/")
+      end
+      ::continue::
     end
-    local dn = PLDR.MassDriverName(i)
-    if dn == "sdc" then
-      goto continue
-    end
-    if PLDR.ProbeMassHasPops(i) then
-      table.insert(roots, "mass"..tostring(i)..":/")
-    end
-    ::continue::
+    return roots
   end
+
+  local roots = pass()
+  if #roots > 0 then
+    return roots
+  end
+
+  for attempt = 1, 2 do
+    for i = 0, max do
+      pcall(System.listDirectory, "mass"..tostring(i)..":/")
+    end
+    roots = pass()
+    if #roots > 0 then
+      return roots
+    end
+  end
+
   return roots
 end
 
