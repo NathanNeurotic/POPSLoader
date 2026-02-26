@@ -2151,6 +2151,22 @@ end
               pcall(System.ensureMx4sioInit)
             end
 
+            local preinit_ready = false
+            local preinit_root = nil
+            if System ~= nil and System.initMX4SIO ~= nil then
+              local ok_pre, ready_pre, root_pre = pcall(System.initMX4SIO, "mx4sio0:/")
+              if ok_pre and ready_pre and root_pre ~= nil then
+                preinit_ready = true
+                preinit_root = root_pre
+              else
+                ok_pre, ready_pre, root_pre = pcall(System.initMX4SIO, "mx4sio:/")
+                if ok_pre and ready_pre and root_pre ~= nil then
+                  preinit_ready = true
+                  preinit_root = root_pre
+                end
+              end
+            end
+
             -- Prefer IOCTL-based backend detection (massX drivername == "sdc") to avoid USB/MX4SIO cross-page confusion.
             local mx_mass = nil
             if PLDR ~= nil and type(PLDR.FindMassByDriver) == "function" then
@@ -2181,7 +2197,12 @@ end
             if PLDR ~= nil and PLDR.MX4SIO ~= nil then
               hint = PLDR.MX4SIO.PREFIX_HINT
             end
-            local ok_init, ready, root = pcall(System.initMX4SIO, hint)
+            local ok_init, ready, root
+            if preinit_ready and preinit_root ~= nil then
+              ok_init, ready, root = true, true, preinit_root
+            else
+              ok_init, ready, root = pcall(System.initMX4SIO, hint)
+            end
             if not ok_init then
               UI.Notif_queue.add("MX4SIO init error")
               if PLDR ~= nil and PLDR.MX4SIO ~= nil then
