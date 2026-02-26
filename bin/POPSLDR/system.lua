@@ -1376,9 +1376,18 @@ function PLDR.GetActiveUsbRoots(max_index)
   if max > 9 then max = 9 end
   for i = 0, max do
     pcall(System.listDirectory, "mass"..tostring(i)..":/")
-    if PLDR.IsUsbMassIndex(i) and PLDR.ProbeMassHasPops(i) then
+    local mx_index = PLDR and PLDR.MX4SIO and PLDR.MX4SIO.MASSINDX or nil
+    if mx_index ~= nil and mx_index == i then
+      goto continue
+    end
+    local dn = PLDR.MassDriverName(i)
+    if dn == "sdc" then
+      goto continue
+    end
+    if PLDR.ProbeMassHasPops(i) then
       table.insert(roots, "mass"..tostring(i)..":/")
     end
+    ::continue::
   end
   return roots
 end
@@ -2409,7 +2418,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   PLDR.CleanupGameList()
   collectgarbage("collect")
   if policy.name ~= "HDD" then
-    System.loadELF(popstarter, vcd_path)
+    System.loadELF(popstarter, 0, vcd_path)
     return
   end
   LaunchEngine(popstarter, argv, reboot_iop, context)
