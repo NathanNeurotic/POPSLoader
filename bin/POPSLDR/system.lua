@@ -50,7 +50,7 @@ local function GetBootPathCanonLocal()
     return BOOT_PATH_CANON
   end
   local source = BOOT_PATH_RAW
-  if type(source) == "string" and string.match(source, "^mass:/") and PLDR ~= nil and PLDR.EnsureMassReady ~= nil then
+  if type(source) == "string" and string.match(source, "^mass%d*:/") and PLDR ~= nil and PLDR.EnsureMassReady ~= nil then
     PLDR.EnsureMassReady()
   end
   BOOT_PATH_CANON = CanonicalizeLaunchElfPath(source)
@@ -261,7 +261,24 @@ local function FileExistsOpenProbe(path)
 end
 
 local function ResolvePopstarterPath(path)
-  return JoinPath(GetLaunchElfDirFromBootPathLocal(), "POPSTARTER.ELF")
+  local parent = GetLaunchElfDirFromBootPathLocal()
+  if type(parent) ~= "string" or parent == "" then
+    parent = APP_DIR_LOCAL
+  end
+  parent = NormalizeDirPath(parent)
+  if string.match(parent, "^mass%d+:/") then
+    return parent.."POPSTARTER.ELF"
+  end
+  if parent == "mass:/" then
+    for i = 0, 9 do
+      local candidate_root = "mass"..tostring(i)..":/"
+      local candidate = candidate_root.."POPSTARTER.ELF"
+      if OpenProbe(candidate) then
+        return candidate
+      end
+    end
+  end
+  return parent.."POPSTARTER.ELF"
 end
 
 HDD_DIAG_BYPASS = 0
@@ -429,6 +446,11 @@ function PLDR.EnsureMassReady()
   PLDR.DetectMassBackends()
   pcall(System.listDirectory, "mass:/")
   pcall(System.listDirectory, "mass0:/")
+  if type(BOOT_PATH_RAW) == "string" and string.match(BOOT_PATH_RAW, "^mass%d*:/") then
+    for i = 0, 9 do
+      pcall(System.listDirectory, "mass"..tostring(i)..":/")
+    end
+  end
   if doesFolderExist("mass:/") or doesFolderExist("mass0:/") or OpenProbe("mass:/") or OpenProbe("mass0:/") then
     PLDR._mass_ready = true
   end
