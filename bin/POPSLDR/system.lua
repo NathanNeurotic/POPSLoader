@@ -295,7 +295,8 @@ PLDR = {
     READY = false,
     ROOT = nil,
     PREFIX_HINT = nil,
-    MASSINDX = nil
+    MASSINDX = nil,
+    GAME_ENTRIES = {}
   },
   MMCE = {
     PROBED = false,
@@ -1251,6 +1252,15 @@ function PLDR.GetPS1GameLists(path, updating)
   local RET = {}
   local found_smth = false
   if path ~= nil then PLDR.GAMEPATH = path end
+  local mass_root = nil
+  local pops_path = nil
+  if type(PLDR.GAMEPATH) == "string" then
+    mass_root = string.match(PLDR.GAMEPATH, "^(mass%d+:/)POPS/")
+    if mass_root ~= nil then
+      pops_path = mass_root.."POPS/"
+      PLDR.MX4SIO.GAME_ENTRIES = {}
+    end
+  end
   local DIR = System.listDirectory(PLDR.GAMEPATH)
   if DIR ~= nil then
     for i = 1, #DIR do
@@ -1262,6 +1272,14 @@ function PLDR.GetPS1GameLists(path, updating)
             table.insert(PLDR.GAMES, DIR[i].name)
           else
             table.insert(RET, DIR[i].name)
+          end
+          if mass_root ~= nil then
+            table.insert(PLDR.MX4SIO.GAME_ENTRIES, {
+              root = mass_root,
+              pops_path = pops_path,
+              vcd_path = pops_path..DIR[i].name,
+              name = DIR[i].name
+            })
           end
         end
       end
@@ -1316,13 +1334,15 @@ function PLDR.GetPS1GameListsUSB(max_index)
     for i = 1, #names do
       table.insert(PLDR.GAMES, names[i])
       table.insert(PLDR.USB.GAME_ENTRIES, {
-        root = list_path,
+        root = root,
+        pops_path = list_path,
+        vcd_path = list_path..names[i],
         name = names[i]
       })
     end
   end
   if #PLDR.GAMES > 0 then
-    PLDR.GAMEPATH = (PLDR.USB.GAME_ENTRIES[1] and PLDR.USB.GAME_ENTRIES[1].root) or "mass:/POPS/"
+    PLDR.GAMEPATH = (PLDR.USB.GAME_ENTRIES[1] and PLDR.USB.GAME_ENTRIES[1].pops_path) or "mass0:/POPS/"
     return PLDR.GAMES
   end
   return nil
@@ -1469,6 +1489,38 @@ function PLDR.CleanupGameList()
   LOG("gamelist cleanup")
   local count = #PLDR.GAMES
   for i=0, count do PLDR.GAMES[i]=nil end
+  PLDR.USB.GAME_ENTRIES = {}
+  PLDR.MX4SIO.GAME_ENTRIES = {}
+end
+
+local function ResolveSelectedGameEntry(gamelocation, game, ui_scene)
+  if type(gamelocation) == "table" then
+    return gamelocation, game, ui_scene
+  end
+  local current_scene = ui_scene or (UI and UI.CURSCENE or "unknown")
+  local normalized_location = NormalizeDirPath(gamelocation or "")
+  local entries = nil
+  if current_scene == UI.SCENES.GUSB then
+    entries = PLDR.USB.GAME_ENTRIES
+  elseif current_scene == UI.SCENES.GMX4SIO then
+    entries = PLDR.MX4SIO.GAME_ENTRIES
+  end
+  if entries ~= nil then
+    for i = 1, #entries do
+      local entry = entries[i]
+      if entry ~= nil and entry.name == game then
+        if normalized_location == "" or entry.pops_path == normalized_location or entry.root == normalized_location then
+          return entry, nil, current_scene
+        end
+      end
+    end
+  end
+  return {
+    root = string.match(normalized_location, "^(mass%d+:/)") or "",
+    pops_path = normalized_location,
+    vcd_path = normalized_location..(game or ""),
+    name = game
+  }, nil, current_scene
 end
 
 function PLDR.HDD.CreateCache()
@@ -2050,6 +2102,12 @@ local function ResolveLaunchPolicy(gamelocation, ui_scene)
 end
 
 function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
+  local selected_entry, _, selected_scene = ResolveSelectedGameEntry(gamelocation, game, ui_scene)
+  if selected_entry ~= nil then
+    gamelocation = selected_entry.pops_path or selected_entry.root or gamelocation
+    game = selected_entry.name or game
+    ui_scene = selected_scene or ui_scene
+  end
   local policy, device_page = ResolveLaunchPolicy(gamelocation, ui_scene)
   local hdd_init = nil
   local hdd_partition_label = nil
@@ -2066,14 +2124,34 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   local handoff_gamelocation = policy.handoff(normalized_gamelocation)
   local source_mode = policy.mode
   local raw_source_mode = source_mode
-  local vcd_path = normalized_gamelocation..game
-  local popstarter = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
-  if string.match(popstarter or "", "^mass%d*:/") then
+  local vcd_path = selected_entry and selected_entry.vcd_path or nil
+  if (vcd_path == nil or vcd_path == "") and selected_entry ~= nil then
+    local base = selected_entry.pops_path or normalized_gamelocation
+    if base ~= nil and game ~= nil then
+      vcd_path = base..game
+    end
+  end
+  if vcd_path == nil or vcd_path == "" then
+    vcd_path = normalized_gamelocation..game
+  end
+  local root = selected_entry and selected_entry.root or string.match(normalized_gamelocation, "^(mass%d+:/)")
+  if root ~= nil and string.match(root, "^mass%d+:/") then
+    PLDR.EnsureMassReady()
+    pcall(System.listDirectory, root)
+  end
+  if policy.name ~= "HDD" and not OpenProbe(vcd_path) then
+    if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
+      UI.Notif_queue.add("Launch failed: VCD missing")
+    end
+    return
+  end
+  local popstarter = PLDR.ResolvePopstarterPath()
+  if string.match(popstarter or "", "^mass%d+:/") then
     PLDR.EnsureMassReady()
   end
-  if not OpenProbe(popstarter) then
+  if popstarter == nil or not OpenProbe(popstarter) then
       if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
-        UI.Notif_queue.add("POPSTARTER.ELF not found")
+        UI.Notif_queue.add("Launch failed: POPSTARTER missing")
       end
       return
     end
@@ -2103,9 +2181,9 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     boot_source_mode = "smb"
     device_mode = "smb"
   else
-    pops_root = "mass:/POPS/"
+    pops_root = normalized_gamelocation
     boot_source_mode = "mass"
-    device_mode = "mass"
+    device_mode = string.match(normalized_gamelocation, "^([%a]+%d*):/") or "mass"
   end
   if policy.name == "HDD" then
     vcd_path = ""
@@ -2246,6 +2324,12 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   end
   if UI ~= nil and UI.CoverCache ~= nil and UI.CoverCache.Clear ~= nil then
     UI.CoverCache:Clear()
+  end
+  PLDR.CleanupGameList()
+  collectgarbage("collect")
+  if policy.name ~= "HDD" then
+    System.loadELF(popstarter, vcd_path)
+    return
   end
   LaunchEngine(popstarter, argv, reboot_iop, context)
 end
