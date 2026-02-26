@@ -346,6 +346,7 @@ function PLDR.GetPopstarterProbeStatus()
   local path = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
   if string.match(path or "", "^mass%d*:/") then
     PLDR.EnsureMassReady()
+    PLDR.TouchMassIndices(9)
   end
   return path, OpenProbe(path)
 end
@@ -359,6 +360,7 @@ function PLDR.PopstarterExists(path)
   local target = ResolvePopstarterPath(path or PLDR.POPSTARTER_PATH)
   if string.match(target or "", "^mass%d*:/") then
     PLDR.EnsureMassReady()
+    PLDR.TouchMassIndices(9)
   end
   local exists = FileExistsOpenProbe(target)
   if exists then
@@ -373,6 +375,7 @@ function PLDR.GetMassDriverName(index)
   if System == nil or System.getMassDriverName == nil then
     return nil
   end
+  pcall(System.listDirectory, "mass"..tostring(index)..":/")
   local ok, name = pcall(System.getMassDriverName, index)
   if not ok then
     return nil
@@ -453,18 +456,42 @@ function PLDR.EnsureUsbReady()
   pcall(System.listDirectory, "mass:/")
 end
 
+function PLDR.TouchMassIndices(max_index)
+  max_index = tonumber(max_index) or 9
+  if max_index < 0 then max_index = 0 end
+  if max_index > 9 then max_index = 9 end
+  pcall(System.listDirectory, "mass:/")
+  for i = 0, max_index do
+    pcall(System.listDirectory, "mass"..tostring(i)..":/")
+  end
+end
+
 function PLDR.EnsureMassReady()
   if PLDR._mass_ready then
+    PLDR.TouchMassIndices(9)
     return true
   end
   PLDR.EnsureUsbReady()
   PLDR.DetectMassBackends()
-  pcall(System.listDirectory, "mass:/")
-  pcall(System.listDirectory, "mass0:/")
-  if doesFolderExist("mass:/") or doesFolderExist("mass0:/") or OpenProbe("mass:/") or OpenProbe("mass0:/") then
-    PLDR._mass_ready = true
+  PLDR.TouchMassIndices(9)
+
+  local any = false
+  for i = 0, 9 do
+    local root = "mass"..tostring(i)..":/"
+    if doesFolderExist(root) or OpenProbe(root) then
+      any = true
+      break
+    end
   end
-  return PLDR._mass_ready == true
+
+  if not any then
+    if doesFolderExist("mass:/") or OpenProbe("mass:/") then
+      any = true
+    end
+  end
+
+  PLDR._mass_ready = (any == true)
+  return PLDR._mass_ready
 end
 
 
