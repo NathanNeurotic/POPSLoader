@@ -1691,6 +1691,26 @@ end
         if #dkwdrv_label > 52 then
           dkwdrv_label = "..."..string.sub(dkwdrv_label, -49)
         end
+        local popstarter_path = (PLDR and PLDR.GetResolvedPopstarterPath and PLDR.GetResolvedPopstarterPath()) or (PLDR and PLDR.POPSTARTER_PATH) or "POPSTARTER.ELF"
+        local popstarter_ok = false
+        if PLDR ~= nil and PLDR.GetPopstarterProbeStatus ~= nil then
+          popstarter_path, popstarter_ok = PLDR.GetPopstarterProbeStatus()
+        end
+        local boot_elf_path = (PLDR and PLDR.GetLaunchElfPath and PLDR.GetLaunchElfPath()) or "POPSLOADER.ELF"
+        local boot_elf_ok = false
+        if PLDR ~= nil and PLDR.GetBootPathCanonProbeStatus ~= nil then
+          boot_elf_path, boot_elf_ok = PLDR.GetBootPathCanonProbeStatus()
+        end
+        local boot_elf_state = boot_elf_ok and "[ELF OK]" or "[ELF MISSING]"
+        local boot_elf_label = string.format("BOOT ELF: %s %s", tostring(boot_elf_path), boot_elf_state)
+        if #boot_elf_label > 56 then
+          boot_elf_label = "BOOT ELF: ..."..string.sub(tostring(boot_elf_path), -40).." "..boot_elf_state
+        end
+        local popstarter_state = popstarter_ok and "[OK]" or "[MISSING]"
+        local popstarter_label = string.format("POPSTARTER: %s %s", tostring(popstarter_path), popstarter_state)
+        if #popstarter_label > 56 then
+          popstarter_label = "POPSTARTER: ..."..string.sub(tostring(popstarter_path), -38).." "..popstarter_state
+        end
         if not hide_ui then
           Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Settings", UI.CCOL.GREY)
           local function DrawCenteredIcon(icon, x, y)
@@ -1720,7 +1740,11 @@ end
           Font.ftPrint(BFONT, UI.SCR.X_MID, dkwdrv_title_y, 8, UI.SCR.X, 16, "DKWDRV PATH:", UI.CCOL.GREY)
           local dkwdrv_path_y = dkwdrv_title_y + 18
           Font.ftPrint(BFONT, UI.SCR.X_MID, dkwdrv_path_y, 8, UI.SCR.X, 16, dkwdrv_label, UI.CCOL.GREY)
-          local profile_icons_y = dkwdrv_path_y + 42
+          local boot_elf_status_y = dkwdrv_path_y + 20
+          Font.ftPrint(SFONT, UI.SCR.X_MID, boot_elf_status_y, 8, UI.SCR.X, 16, boot_elf_label, UI.CCOL.GREY)
+          local popstarter_status_y = boot_elf_status_y + 16
+          Font.ftPrint(SFONT, UI.SCR.X_MID, popstarter_status_y, 8, UI.SCR.X, 16, popstarter_label, UI.CCOL.GREY)
+          local profile_icons_y = popstarter_status_y + 26
           DrawIconPair("up", "down", profile_icons_y, 36)
           local profile_title_y = profile_icons_y + 24
           Font.ftPrint(BFONT, UI.SCR.X_MID, profile_title_y, 8, UI.SCR.X, 16, "POPStarter Mode:", UI.CCOL.GREY)
@@ -1777,7 +1801,10 @@ end
             save_ok = PLDR.SaveSettings()
           end
           if save_ok and PLDR.ApplyBDMAOnSettingsSave ~= nil then
-            PLDR.ApplyBDMAOnSettingsSave((PLDR.GetBDMAMode and PLDR.GetBDMAMode()) or nil)
+            local bdma_ok, bdma_reason = PLDR.ApplyBDMAOnSettingsSave(nil)
+            if not bdma_ok then
+              UI.Notif_queue.add(bdma_reason or "BDMA apply failed")
+            end
           end
           if save_ok then
             UI.Notif_queue.add("Profile defaults restored")
@@ -1792,7 +1819,10 @@ end
               if PLDR.SaveSettings ~= nil then
                 if PLDR.SaveSettings() then
                   if PLDR.ApplyBDMAOnSettingsSave ~= nil then
-                    PLDR.ApplyBDMAOnSettingsSave((PLDR.GetBDMAMode and PLDR.GetBDMAMode()) or nil)
+                    local bdma_ok, bdma_reason = PLDR.ApplyBDMAOnSettingsSave(nil)
+                    if not bdma_ok then
+                      UI.Notif_queue.add(bdma_reason or "BDMA apply failed")
+                    end
                   end
                   if UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
                     UI.Notif_queue.add("DKWDRV path saved")
@@ -1828,7 +1858,10 @@ end
             pop_ok = doesFileExist(PLDR.POPSTARTER_PATH)
           end
           if save_ok and PLDR.ApplyBDMAOnSettingsSave ~= nil then
-            PLDR.ApplyBDMAOnSettingsSave((PLDR.GetBDMAMode and PLDR.GetBDMAMode()) or nil)
+            local bdma_ok, bdma_reason = PLDR.ApplyBDMAOnSettingsSave(nil)
+            if not bdma_ok then
+              UI.Notif_queue.add(bdma_reason or "BDMA apply failed")
+            end
           end
           if not pop_ok then
             UI.Notif_queue.add("POPStarter ELF missing")
