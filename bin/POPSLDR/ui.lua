@@ -2189,30 +2189,17 @@ end
             end
 
             -- Fallback: try the PS2SDK mx4sio: prefix initializer if present.
-            if System == nil or System.initMX4SIO == nil then
-              UI.Notif_queue.add("No MX4SIO device found")
-              return
-            end
             local hint = nil
             if PLDR ~= nil and PLDR.MX4SIO ~= nil then
               hint = PLDR.MX4SIO.PREFIX_HINT
             end
-            local ok_init, ready, root
+            local ok_init, ready, root = false, false, nil
             if preinit_ready and preinit_root ~= nil then
               ok_init, ready, root = true, true, preinit_root
-            else
+            elseif System ~= nil and System.initMX4SIO ~= nil then
               ok_init, ready, root = pcall(System.initMX4SIO, hint)
             end
-            if not ok_init then
-              UI.Notif_queue.add("MX4SIO init error")
-              if PLDR ~= nil and PLDR.MX4SIO ~= nil then
-                PLDR.MX4SIO.READY = false
-                PLDR.MX4SIO.ROOT = nil
-                PLDR.MX4SIO.MASSINDX = nil
-              end
-              return
-            end
-            if not ready or root == nil then
+            if not ok_init or not ready or root == nil then
               local function probe_root(path)
                 local ok_probe, dir_probe = pcall(System.listDirectory, path)
                 return ok_probe and type(dir_probe) == "table"
@@ -2220,7 +2207,7 @@ end
 
               local mx_prefixes = {"mx4sio:/", "mx4sio0:/", "mx4sio1:/", "mx4:/"}
               for _, prefix in ipairs(mx_prefixes) do
-                if probe_root(prefix) then
+                if probe_root(prefix.."POPS/") then
                   root = prefix
                   if type(EnsureTrailingSlash) == "function" then
                     root = EnsureTrailingSlash(root)
