@@ -382,6 +382,31 @@ function PLDR.GetMassDriverName(index)
   return name
 end
 
+function PLDR.MassDriverName(i)
+  local n = PLDR.GetMassDriverName(i)
+  if type(n) == "string" then
+    n = string.lower(n)
+    if n == "" then return nil end
+    return n
+  end
+  return nil
+end
+
+function PLDR.IsMx4MassIndex(i)
+  return PLDR.MassDriverName(i) == "sdc"
+end
+
+function PLDR.IsUsbMassIndex(i)
+  local n = PLDR.MassDriverName(i)
+  return n ~= nil and n ~= "sdc"
+end
+
+function PLDR.ProbeMassHasPops(i)
+  local path = "mass"..tostring(i)..":/POPS/"
+  local ok, dir = pcall(System.listDirectory, path)
+  return ok and type(dir) == "table"
+end
+
 function PLDR.FindMassByDriver(driver, max_index)
   local want = type(driver) == "string" and driver or nil
   if want == nil then
@@ -411,6 +436,12 @@ function PLDR.DetectMassBackends()
   else
     PLDR.MX4SIO.MASSINDX = nil
   end
+end
+
+function PLDR.ResetMX4SIOState()
+  PLDR.MX4SIO.READY = false
+  PLDR.MX4SIO.ROOT = nil
+  PLDR.MX4SIO.MASSINDX = nil
 end
 
 function PLDR.EnsureUsbReady()
@@ -1251,11 +1282,13 @@ end
 
 function PLDR.GetActiveUsbRoots(max_index)
   local roots = {}
+  PLDR.EnsureMassReady()
   local max = tonumber(max_index) or 9
   if max < 0 then max = 0 end
   if max > 9 then max = 9 end
   for i = 0, max do
-    if PLDR.GetMassDriverName(i) == "usb" then
+    pcall(System.listDirectory, "mass"..tostring(i)..":/")
+    if PLDR.IsUsbMassIndex(i) and PLDR.ProbeMassHasPops(i) then
       table.insert(roots, "mass"..tostring(i)..":/")
     end
   end
