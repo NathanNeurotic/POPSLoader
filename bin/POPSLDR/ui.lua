@@ -2192,6 +2192,24 @@ end
               return
             end
             if not ready or root == nil then
+              PLDR.EnsureMassReady()
+              local mx = nil
+              for i = 0, 9 do
+                if PLDR.IsMx4MassIndex(i) and PLDR.ProbeMassHasPops(i) then
+                  mx = i
+                  break
+                end
+              end
+              if mx ~= nil then
+                local root1 = "mass"..tostring(mx)..":/"
+                PLDR.MX4SIO.READY = true
+                PLDR.MX4SIO.ROOT = root1
+                PLDR.MX4SIO.MASSINDX = mx
+                PLDR.CleanupGameList()
+                PLDR.GetPS1GameLists(root1.."POPS/", true)
+                UI.SceneChange(UI.SCENES.GMX4SIO)
+                return
+              end
               UI.Notif_queue.add("No MX4SIO device found (POPS/ missing)")
               if PLDR ~= nil and PLDR.MX4SIO ~= nil then
                 PLDR.MX4SIO.READY = false
