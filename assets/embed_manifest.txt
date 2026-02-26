@@ -41,3 +41,9 @@ POPSLDR/images.lua|bin/POPSLDR/images.lua
 POPSLDR/pops_profiles.lua|bin/POPSLDR/pops_profiles.lua
 POPSLDR/system.lua|bin/POPSLDR/system.lua
 POPSLDR/ui.lua|bin/POPSLDR/ui.lua
+POPSLDR/usbd.irx.mmce|bin/POPSLDR/usbd.irx.mmce
+POPSLDR/usbd.irx.mx4sio|bin/POPSLDR/usbd.irx.mx4sio
+POPSLDR/usbd.irx.usbexfat|bin/POPSLDR/usbd.irx.usbexfat
+POPSLDR/usbhdfsd.irx.mmce|bin/POPSLDR/usbhdfsd.irx.mmce
+POPSLDR/usbhdfsd.irx.mx4sio|bin/POPSLDR/usbhdfsd.irx.mx4sio
+POPSLDR/usbhdfsd.irx.usbexfat|bin/POPSLDR/usbhdfsd.irx.usbexfat
