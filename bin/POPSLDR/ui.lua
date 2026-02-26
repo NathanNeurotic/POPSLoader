@@ -1622,6 +1622,23 @@ end
           if ammount <= 0 then
             UI.Notif_queue.add("No games found")
           else
+            local game = nil
+            if PLDR ~= nil and PLDR.GAMES ~= nil then
+              game = PLDR.GAMES[UI.GameList.CURR]
+            end
+            if game == nil then
+              UI.Notif_queue.add("Invalid game selection")
+              return
+            end
+            local launch_path = PLDR.GAMEPATH or ""
+            if UI.CURSCENE == UI.SCENES.GHDD then
+              launch_path = ""
+            elseif UI.IsUsbScene(UI.CURSCENE) and PLDR ~= nil and PLDR.USB ~= nil and PLDR.USB.GAME_ENTRIES ~= nil then
+              local usb_entry = PLDR.USB.GAME_ENTRIES[UI.GameList.CURR]
+              if usb_entry ~= nil and usb_entry.root ~= nil then
+                launch_path = usb_entry.root
+              end
+            end
             local pop_ok = false
             if PLDR.PopstarterExists ~= nil then
               pop_ok, PLDR.POPSTARTER_PATH = PLDR.PopstarterExists(PLDR.POPSTARTER_PATH)
@@ -1633,20 +1650,13 @@ end
               return
             end
             if UI.CURSCENE ~= UI.SCENES.GHDD then -- only check if game can be found on USB and SMB
-              if not doesFileExist(PLDR.GAMEPATH .. PLDR.GAMES[UI.GameList.CURR]) then
-                UI.Notif_queue.add("Cant find Game\n"..PLDR.GAMEPATH .. PLDR.GAMES[UI.GameList.CURR])
+              local full = tostring(launch_path) .. tostring(game)
+              if not doesFileExist(full) then
+                UI.Notif_queue.add("Cant find Game\n"..full)
+                return
               end
             end
-            local launch_path = PLDR.GAMEPATH
-            if UI.CURSCENE == UI.SCENES.GHDD then
-              launch_path = ""
-            elseif UI.IsUsbScene(UI.CURSCENE) and PLDR ~= nil and PLDR.USB ~= nil and PLDR.USB.GAME_ENTRIES ~= nil then
-              local usb_entry = PLDR.USB.GAME_ENTRIES[UI.GameList.CURR]
-              if usb_entry ~= nil and usb_entry.root ~= nil then
-                launch_path = usb_entry.root
-              end
-            end
-            PLDR.RunPOPStarterGame(launch_path, PLDR.GAMES[UI.GameList.CURR], UI.CURSCENE)
+            PLDR.RunPOPStarterGame(launch_path, game, UI.CURSCENE)
           end
         end
         local cross_label = UI.Footer.labels.cross_launch
