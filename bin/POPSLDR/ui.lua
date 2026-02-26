@@ -255,8 +255,8 @@ UI = {
     };
     LAUNCHING = false;
     HideUI = (PLDR ~= nil and PLDR.SETTINGS ~= nil and PLDR.SETTINGS.hide_ui == true);
-    USBRefreshPending = false;
-    USBRefreshDelay = 0;
+    USB_RESCAN_PENDING = false;
+    USB_RESCAN_DELAY = 0;
     BOOT_SOUND = {
       ENABLED = true,
       PATH = "embed:/POPSLDR/boot.adp",
@@ -272,27 +272,27 @@ UI = {
     ScheduleUsbDelayedRefresh = function (delay_frames)
       local delay = tonumber(delay_frames) or 30
       if delay < 0 then delay = 0 end
-      UI.USBRefreshPending = true
-      UI.USBRefreshDelay = delay
+      UI.USB_RESCAN_PENDING = true
+      UI.USB_RESCAN_DELAY = delay
     end;
     ClearUsbDelayedRefresh = function ()
-      UI.USBRefreshPending = false
-      UI.USBRefreshDelay = 0
+      UI.USB_RESCAN_PENDING = false
+      UI.USB_RESCAN_DELAY = 0
     end;
     UpdateUsbDelayedRefresh = function ()
       if not UI.IsUsbScene(UI.CURSCENE) then
         return
       end
-      if UI.USBRefreshPending ~= true then
+      if UI.USB_RESCAN_PENDING ~= true then
         return
       end
-      UI.USBRefreshDelay = (tonumber(UI.USBRefreshDelay) or 0) - 1
-      if UI.USBRefreshDelay <= 0 then
+      UI.USB_RESCAN_DELAY = (tonumber(UI.USB_RESCAN_DELAY) or 0) - 1
+      if UI.USB_RESCAN_DELAY <= 0 then
         if PLDR ~= nil and PLDR.RefreshUsbGames ~= nil then
           PLDR.RefreshUsbGames(9)
         end
-        UI.USBRefreshPending = false
-        UI.USBRefreshDelay = 0
+        UI.USB_RESCAN_PENDING = false
+        UI.USB_RESCAN_DELAY = 0
       end
     end;
     ShouldHideUI = function ()
@@ -1664,8 +1664,8 @@ end
               launch_path = ""
             elseif UI.IsUsbScene(UI.CURSCENE) and PLDR ~= nil and PLDR.USB ~= nil and PLDR.USB.GAME_ENTRIES ~= nil then
               local usb_entry = PLDR.USB.GAME_ENTRIES[UI.GameList.CURR]
-              if usb_entry ~= nil and usb_entry.root ~= nil then
-                launch_path = usb_entry.root
+              if usb_entry ~= nil and usb_entry.pops_path ~= nil then
+                launch_path = usb_entry.pops_path
               end
             end
             local pop_ok = false

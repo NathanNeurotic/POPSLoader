@@ -1537,9 +1537,13 @@ function PLDR.GetActiveUsbRoots(max_index)
   return PLDR.GetUsbMassRoots(max_index)
 end
 
-function PLDR.GetPS1GameListsUSB(pops, root)
+function PLDR.GetPS1GameListsUSB(pops, root, seen)
   local list_path = pops
   local mass_root = root
+  local dedupe = seen
+  if type(dedupe) ~= "table" then
+    dedupe = {}
+  end
   if root == nil and (type(pops) ~= "string" or not string.find(pops, "POPS", 1, true)) then
     local roots = PLDR.GetUsbMassRoots(pops)
     PLDR.USB.ROOTS = roots
@@ -1548,7 +1552,7 @@ function PLDR.GetPS1GameListsUSB(pops, root)
     PLDR.GAMEART = {}
     PLDR.GAMEPATH = nil
     for _, usb_root in ipairs(roots) do
-      PLDR.GetPS1GameListsUSB(usb_root.."POPS/", usb_root)
+      PLDR.GetPS1GameListsUSB(usb_root.."POPS/", usb_root, dedupe)
     end
     if #PLDR.GAMES > 0 then
       PLDR.GAMEPATH = (PLDR.USB.GAME_ENTRIES[1] and PLDR.USB.GAME_ENTRIES[1].pops_path) or nil
@@ -1584,13 +1588,17 @@ function PLDR.GetPS1GameListsUSB(pops, root)
   end
   table.sort(names)
   for i = 1, #names do
-    table.insert(PLDR.GAMES, names[i])
-    table.insert(PLDR.USB.GAME_ENTRIES, {
-      root = mass_root,
-      pops_path = list_path,
-      vcd_path = list_path..names[i],
-      name = names[i]
-    })
+    local key = list_path..names[i]
+    if not dedupe[key] then
+      dedupe[key] = true
+      table.insert(PLDR.GAMES, names[i])
+      table.insert(PLDR.USB.GAME_ENTRIES, {
+        root = mass_root,
+        pops_path = list_path,
+        vcd_path = key,
+        name = names[i]
+      })
+    end
   end
   if #names > 0 then
     return names
@@ -1603,6 +1611,7 @@ function PLDR.RefreshUsbGames(max_index)
   PLDR.GAMES = {}
   PLDR.GAMEART = {}
   PLDR.GAMEPATH = nil
+  local seen = {}
 
   local roots = PLDR.GetUsbMassRoots(max_index or 9)
   PLDR.USB.ROOTS = roots
@@ -1610,7 +1619,7 @@ function PLDR.RefreshUsbGames(max_index)
   -- Merge listing from each root's POPS folder.
   for _, root in ipairs(roots) do
     local pops = root.."POPS/"
-    PLDR.GetPS1GameListsUSB(pops, root)
+    PLDR.GetPS1GameListsUSB(pops, root, seen)
   end
 
   if #PLDR.GAMES > 0 then
