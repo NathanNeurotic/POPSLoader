@@ -326,12 +326,12 @@ function PLDR.PopstarterExistsAt(path)
   if type(path) ~= "string" or path == "" then
     return false
   end
-  local fd = System.openFile(path, FREAD)
-  if fd ~= nil and fd >= 0 then
-    System.closeFile(fd)
-    return true
+  local ok_open, fd = pcall(System.openFile, path, FREAD)
+  if not ok_open or fd == nil or type(fd) ~= "number" or fd < 0 then
+    return false
   end
-  return false
+  pcall(System.closeFile, fd)
+  return true
 end
 
 function PLDR.GetPopstarterProbeStatus()
@@ -646,6 +646,11 @@ function PLDR.SaveSettings()
   end
   if not verified then
     NotifyOnce("settings_save", "Failed to save settings")
+  else
+    local bdma_ok, bdma_reason = PLDR.ApplyBDMAOnSettingsSave(nil)
+    if not bdma_ok then
+      NotifyOnce("bdma_save", bdma_reason or "BDMA apply failed")
+    end
   end
   Touch(session_stamp, "pldrs_create")
   return verified

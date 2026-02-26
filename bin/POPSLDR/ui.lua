@@ -1797,12 +1797,6 @@ end
           if PLDR.SaveSettings ~= nil then
             save_ok = PLDR.SaveSettings()
           end
-          if save_ok and PLDR.ApplyBDMAOnSettingsSave ~= nil then
-            local bdma_ok, bdma_reason = PLDR.ApplyBDMAOnSettingsSave(nil)
-            if not bdma_ok then
-              UI.Notif_queue.add(bdma_reason or "BDMA apply failed")
-            end
-          end
           if save_ok then
             UI.Notif_queue.add("Profile defaults restored")
           else
@@ -1826,12 +1820,6 @@ end
           local save_ok = false
           if PLDR.SaveSettings ~= nil then
             save_ok = PLDR.SaveSettings()
-          end
-          if save_ok and PLDR.ApplyBDMAOnSettingsSave ~= nil then
-            local bdma_ok, bdma_reason = PLDR.ApplyBDMAOnSettingsSave(nil)
-            if not bdma_ok then
-              UI.Notif_queue.add(bdma_reason or "BDMA apply failed")
-            end
           end
           if not save_ok then
             UI.Notif_queue.add("Failed to save settings")
