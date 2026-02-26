@@ -1255,7 +1255,22 @@ function PLDR.GetActiveUsbRoots(max_index)
   if max < 0 then max = 0 end
   if max > 9 then max = 9 end
   for i = 0, max do
-    if PLDR.GetMassDriverName(i) == "usb" then
+    local is_usb = false
+    local name = PLDR.GetMassDriverName(i)
+    if type(name) == "string" then
+      name = string.lower(name)
+      if string.find(name, "usb", 1, true) ~= nil then
+        is_usb = true
+      end
+    end
+    if not is_usb then
+      local root = "mass"..tostring(i)..":/"
+      local ok, dir = pcall(System.listDirectory, root)
+      if ok and dir ~= nil then
+        is_usb = true
+      end
+    end
+    if is_usb then
       table.insert(roots, "mass"..tostring(i)..":/")
     end
   end
