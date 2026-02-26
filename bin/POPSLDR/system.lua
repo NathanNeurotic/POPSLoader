@@ -2486,13 +2486,24 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
       prefix_used = ""
     end
   end
-  local argv = {argv0_selector}
+  local argv = {}
 
   if policy.name ~= "HDD" then
-    -- bootparam_basename_used is the authoritative "XX.<VCDNAME>" string
-    if bootparam_basename_used ~= nil and bootparam_basename_used ~= "" then
-      table.insert(argv, bootparam_basename_used)
+    -- Use the already computed basename; ensure it ends with ".ELF"
+    local bootarg = bootparam_basename_used
+    if bootarg == nil or bootarg == "" then
+      if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
+        UI.Notif_queue.add("Launch failed: missing boot basename")
+      end
+      return
     end
+    if not string.match(bootarg, "%.ELF$") then
+      bootarg = bootarg..".ELF"
+    end
+    argv = {bootarg}
+  else
+    -- Preserve existing HDD argv behavior.
+    argv = {argv0_selector}
   end
 
   LOG("Boot APP_DIR: "..APP_DIR_LOCAL)
