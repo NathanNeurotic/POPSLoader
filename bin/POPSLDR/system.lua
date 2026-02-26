@@ -31,6 +31,9 @@ local function CanonicalizeLaunchElfPath(raw_path)
   if type(raw_path) ~= "string" or raw_path == "" then
     return raw_path
   end
+  if string.match(raw_path, "^mass%d+:/") then
+    return raw_path
+  end
   if not string.match(raw_path, "^mass:/") then
     return raw_path
   end
@@ -50,7 +53,7 @@ local function GetBootPathCanonLocal()
     return BOOT_PATH_CANON
   end
   local source = BOOT_PATH_RAW
-  if type(source) == "string" and string.match(source, "^mass:/") and PLDR ~= nil and PLDR.EnsureMassReady ~= nil then
+  if type(source) == "string" and string.match(source, "^mass%d*:/") and PLDR ~= nil and PLDR.EnsureMassReady ~= nil then
     PLDR.EnsureMassReady()
   end
   BOOT_PATH_CANON = CanonicalizeLaunchElfPath(source)
@@ -261,7 +264,20 @@ local function FileExistsOpenProbe(path)
 end
 
 local function ResolvePopstarterPath(path)
-  return JoinPath(GetLaunchElfDirFromBootPathLocal(), "POPSTARTER.ELF")
+  local candidate = JoinPath(GetLaunchElfDirFromBootPathLocal(), "POPSTARTER.ELF")
+  if string.match(candidate or "", "^mass:/") then
+    if PLDR ~= nil and PLDR.EnsureMassReady ~= nil then
+      PLDR.EnsureMassReady()
+    end
+    local suffix = string.sub(candidate, 7)
+    for i = 0, 9 do
+      local c = "mass"..tostring(i)..":/"..suffix
+      if OpenProbe(c) then
+        return c
+      end
+    end
+  end
+  return candidate
 end
 
 HDD_DIAG_BYPASS = 0
@@ -295,7 +311,8 @@ PLDR = {
     READY = false,
     ROOT = nil,
     PREFIX_HINT = nil,
-    MASSINDX = nil
+    MASSINDX = nil,
+    GAME_ENTRIES = {}
   },
   MMCE = {
     PROBED = false,
@@ -343,8 +360,9 @@ end
 
 function PLDR.GetPopstarterProbeStatus()
   local path = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
-  if string.match(path or "", "^mass%d*:/") then
+  if string.match(path or "", "^mass%d*:/") or string.match(path or "", "^mass:/") then
     PLDR.EnsureMassReady()
+    PLDR.TouchMassIndices(9)
   end
   return path, OpenProbe(path)
 end
@@ -356,8 +374,9 @@ end
 
 function PLDR.PopstarterExists(path)
   local target = ResolvePopstarterPath(path or PLDR.POPSTARTER_PATH)
-  if string.match(target or "", "^mass%d*:/") then
+  if string.match(target or "", "^mass%d*:/") or string.match(target or "", "^mass:/") then
     PLDR.EnsureMassReady()
+    PLDR.TouchMassIndices(9)
   end
   local exists = FileExistsOpenProbe(target)
   if exists then
@@ -372,6 +391,7 @@ function PLDR.GetMassDriverName(index)
   if System == nil or System.getMassDriverName == nil then
     return nil
   end
+  pcall(System.listDirectory, "mass"..tostring(index)..":/")
   local ok, name = pcall(System.getMassDriverName, index)
   if not ok then
     return nil
@@ -452,18 +472,79 @@ function PLDR.EnsureUsbReady()
   pcall(System.listDirectory, "mass:/")
 end
 
+function PLDR.TouchMassIndices(max_index)
+  max_index = tonumber(max_index) or 9
+  if max_index < 0 then max_index = 0 end
+  if max_index > 9 then max_index = 9 end
+  pcall(System.listDirectory, "mass:/")
+  for i = 0, max_index do
+    pcall(System.listDirectory, "mass"..tostring(i)..":/")
+  end
+end
+
 function PLDR.EnsureMassReady()
   if PLDR._mass_ready then
+    PLDR.TouchMassIndices(9)
     return true
   end
   PLDR.EnsureUsbReady()
   PLDR.DetectMassBackends()
-  pcall(System.listDirectory, "mass:/")
-  pcall(System.listDirectory, "mass0:/")
-  if doesFolderExist("mass:/") or doesFolderExist("mass0:/") or OpenProbe("mass:/") or OpenProbe("mass0:/") then
-    PLDR._mass_ready = true
+  PLDR.TouchMassIndices(9)
+
+  local any = false
+  for i = 0, 9 do
+    local root = "mass"..tostring(i)..":/"
+    if doesFolderExist(root) or OpenProbe(root) then
+      any = true
+      break
+    end
   end
-  return PLDR._mass_ready == true
+
+  if not any then
+    if doesFolderExist("mass:/") or OpenProbe("mass:/") then
+      any = true
+    end
+  end
+
+  PLDR._mass_ready = (any == true)
+  return PLDR._mass_ready
+end
+
+
+function PLDR.CanonicalizeMassRoot(root)
+  if type(root) ~= "string" then
+    return root
+  end
+  if not string.match(root, "^mass:/") then
+    return root
+  end
+
+  PLDR.EnsureMassReady()
+
+  for i = 0, 9 do
+    pcall(System.listDirectory, "mass"..tostring(i)..":/")
+  end
+
+  for i = 0, 9 do
+    local dn = PLDR.MassDriverName(i)
+    if dn ~= nil and dn ~= "sdc" then
+      local ok, _ = pcall(System.listDirectory, "mass"..tostring(i)..":/")
+      if ok then
+        return "mass"..tostring(i)..":/"
+      end
+    end
+  end
+
+  for i = 0, 9 do
+    if PLDR.IsMx4MassIndex(i) then
+      local ok, _ = pcall(System.listDirectory, "mass"..tostring(i)..":/")
+      if ok then
+        return "mass"..tostring(i)..":/"
+      end
+    end
+  end
+
+  return root
 end
 
 PLDR.DEFAULT_DKWDRV_PATH = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
@@ -1251,6 +1332,21 @@ function PLDR.GetPS1GameLists(path, updating)
   local RET = {}
   local found_smth = false
   if path ~= nil then PLDR.GAMEPATH = path end
+  if type(PLDR.GAMEPATH) == "string" and string.match(PLDR.GAMEPATH, "^mass:/") then
+    local canonical_root = PLDR.CanonicalizeMassRoot("mass:/")
+    if type(canonical_root) == "string" and string.match(canonical_root, "^mass%d+:/") then
+      PLDR.GAMEPATH = string.gsub(PLDR.GAMEPATH, "^mass:/", canonical_root)
+    end
+  end
+  local mass_root = nil
+  local pops_path = nil
+  if type(PLDR.GAMEPATH) == "string" then
+    mass_root = string.match(PLDR.GAMEPATH, "^(mass%d+:/)POPS/")
+    if mass_root ~= nil then
+      pops_path = mass_root.."POPS/"
+      PLDR.MX4SIO.GAME_ENTRIES = {}
+    end
+  end
   local DIR = System.listDirectory(PLDR.GAMEPATH)
   if DIR ~= nil then
     for i = 1, #DIR do
@@ -1262,6 +1358,14 @@ function PLDR.GetPS1GameLists(path, updating)
             table.insert(PLDR.GAMES, DIR[i].name)
           else
             table.insert(RET, DIR[i].name)
+          end
+          if mass_root ~= nil then
+            table.insert(PLDR.MX4SIO.GAME_ENTRIES, {
+              root = mass_root,
+              pops_path = pops_path,
+              vcd_path = pops_path..DIR[i].name,
+              name = DIR[i].name
+            })
           end
         end
       end
@@ -1288,9 +1392,18 @@ function PLDR.GetActiveUsbRoots(max_index)
   if max > 9 then max = 9 end
   for i = 0, max do
     pcall(System.listDirectory, "mass"..tostring(i)..":/")
-    if PLDR.IsUsbMassIndex(i) and PLDR.ProbeMassHasPops(i) then
+    local mx_index = PLDR and PLDR.MX4SIO and PLDR.MX4SIO.MASSINDX or nil
+    if mx_index ~= nil and mx_index == i then
+      goto continue
+    end
+    local dn = PLDR.MassDriverName(i)
+    if dn == "sdc" then
+      goto continue
+    end
+    if PLDR.ProbeMassHasPops(i) then
       table.insert(roots, "mass"..tostring(i)..":/")
     end
+    ::continue::
   end
   return roots
 end
@@ -1301,6 +1414,7 @@ function PLDR.GetPS1GameListsUSB(max_index)
   PLDR.USB.ROOTS = roots
   PLDR.USB.GAME_ENTRIES = {}
   for _, root in ipairs(roots) do
+    root = PLDR.CanonicalizeMassRoot(root)
     local list_path = root.."POPS/"
     local dir = System.listDirectory(list_path)
     local names = {}
@@ -1316,13 +1430,15 @@ function PLDR.GetPS1GameListsUSB(max_index)
     for i = 1, #names do
       table.insert(PLDR.GAMES, names[i])
       table.insert(PLDR.USB.GAME_ENTRIES, {
-        root = list_path,
+        root = root,
+        pops_path = list_path,
+        vcd_path = list_path..names[i],
         name = names[i]
       })
     end
   end
   if #PLDR.GAMES > 0 then
-    PLDR.GAMEPATH = (PLDR.USB.GAME_ENTRIES[1] and PLDR.USB.GAME_ENTRIES[1].root) or "mass:/POPS/"
+    PLDR.GAMEPATH = (PLDR.USB.GAME_ENTRIES[1] and PLDR.USB.GAME_ENTRIES[1].pops_path) or "mass0:/POPS/"
     return PLDR.GAMES
   end
   return nil
@@ -1469,6 +1585,38 @@ function PLDR.CleanupGameList()
   LOG("gamelist cleanup")
   local count = #PLDR.GAMES
   for i=0, count do PLDR.GAMES[i]=nil end
+  PLDR.USB.GAME_ENTRIES = {}
+  PLDR.MX4SIO.GAME_ENTRIES = {}
+end
+
+local function ResolveSelectedGameEntry(gamelocation, game, ui_scene)
+  if type(gamelocation) == "table" then
+    return gamelocation, game, ui_scene
+  end
+  local current_scene = ui_scene or (UI and UI.CURSCENE or "unknown")
+  local normalized_location = NormalizeDirPath(gamelocation or "")
+  local entries = nil
+  if current_scene == UI.SCENES.GUSB then
+    entries = PLDR.USB.GAME_ENTRIES
+  elseif current_scene == UI.SCENES.GMX4SIO then
+    entries = PLDR.MX4SIO.GAME_ENTRIES
+  end
+  if entries ~= nil then
+    for i = 1, #entries do
+      local entry = entries[i]
+      if entry ~= nil and entry.name == game then
+        if normalized_location == "" or entry.pops_path == normalized_location or entry.root == normalized_location then
+          return entry, nil, current_scene
+        end
+      end
+    end
+  end
+  return {
+    root = string.match(normalized_location, "^(mass%d+:/)") or "",
+    pops_path = normalized_location,
+    vcd_path = normalized_location..(game or ""),
+    name = game
+  }, nil, current_scene
 end
 
 function PLDR.HDD.CreateCache()
@@ -2050,6 +2198,22 @@ local function ResolveLaunchPolicy(gamelocation, ui_scene)
 end
 
 function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
+  local selected_entry, _, selected_scene = ResolveSelectedGameEntry(gamelocation, game, ui_scene)
+  if selected_entry ~= nil then
+    gamelocation = selected_entry.pops_path or selected_entry.root or gamelocation
+    game = selected_entry.name or game
+    ui_scene = selected_scene or ui_scene
+  end
+  if selected_entry ~= nil and type(selected_entry.root) == "string" and string.match(selected_entry.root, "^mass:/") then
+    local canonical_root = PLDR.CanonicalizeMassRoot(selected_entry.root)
+    if type(canonical_root) == "string" and string.match(canonical_root, "^mass%d+:/") then
+      selected_entry.root = canonical_root
+      local selected_name = selected_entry.name or game or ""
+      selected_entry.pops_path = canonical_root.."POPS/"
+      selected_entry.vcd_path = selected_entry.pops_path..selected_name
+      gamelocation = selected_entry.pops_path
+    end
+  end
   local policy, device_page = ResolveLaunchPolicy(gamelocation, ui_scene)
   local hdd_init = nil
   local hdd_partition_label = nil
@@ -2066,14 +2230,34 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   local handoff_gamelocation = policy.handoff(normalized_gamelocation)
   local source_mode = policy.mode
   local raw_source_mode = source_mode
-  local vcd_path = normalized_gamelocation..game
-  local popstarter = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
-  if string.match(popstarter or "", "^mass%d*:/") then
+  local vcd_path = selected_entry and selected_entry.vcd_path or nil
+  if (vcd_path == nil or vcd_path == "") and selected_entry ~= nil then
+    local base = selected_entry.pops_path or normalized_gamelocation
+    if base ~= nil and game ~= nil then
+      vcd_path = base..game
+    end
+  end
+  if vcd_path == nil or vcd_path == "" then
+    vcd_path = normalized_gamelocation..game
+  end
+  local root = selected_entry and selected_entry.root or string.match(normalized_gamelocation, "^(mass%d+:/)")
+  if root ~= nil and string.match(root, "^mass%d+:/") then
+    PLDR.EnsureMassReady()
+    pcall(System.listDirectory, root)
+  end
+  if policy.name ~= "HDD" and not OpenProbe(vcd_path) then
+    if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
+      UI.Notif_queue.add("Launch failed: VCD missing")
+    end
+    return
+  end
+  local popstarter = PLDR.ResolvePopstarterPath()
+  if string.match(popstarter or "", "^mass%d+:/") then
     PLDR.EnsureMassReady()
   end
-  if not OpenProbe(popstarter) then
+  if popstarter == nil or not OpenProbe(popstarter) then
       if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
-        UI.Notif_queue.add("POPSTARTER.ELF not found")
+        UI.Notif_queue.add("Launch failed: POPSTARTER missing")
       end
       return
     end
@@ -2103,9 +2287,9 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     boot_source_mode = "smb"
     device_mode = "smb"
   else
-    pops_root = "mass:/POPS/"
+    pops_root = normalized_gamelocation
     boot_source_mode = "mass"
-    device_mode = "mass"
+    device_mode = string.match(normalized_gamelocation, "^([%a]+%d*):/") or "mass"
   end
   if policy.name == "HDD" then
     vcd_path = ""
@@ -2246,6 +2430,12 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   end
   if UI ~= nil and UI.CoverCache ~= nil and UI.CoverCache.Clear ~= nil then
     UI.CoverCache:Clear()
+  end
+  PLDR.CleanupGameList()
+  collectgarbage("collect")
+  if policy.name ~= "HDD" then
+    System.loadELF(popstarter, 0, vcd_path)
+    return
   end
   LaunchEngine(popstarter, argv, reboot_iop, context)
 end
