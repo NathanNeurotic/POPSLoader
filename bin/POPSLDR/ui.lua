@@ -1691,10 +1691,13 @@ end
         if #dkwdrv_label > 52 then
           dkwdrv_label = "..."..string.sub(dkwdrv_label, -49)
         end
-        local popstarter_path = (PLDR and PLDR.GetResolvedPopstarterPath and PLDR.GetResolvedPopstarterPath()) or (PLDR and PLDR.POPSTARTER_PATH) or "POPSTARTER.ELF"
+        local popstarter_path = (PLDR and PLDR.POPSTARTER_PATH) or "POPSTARTER.ELF"
         local popstarter_ok = false
-        if PLDR ~= nil and PLDR.GetPopstarterProbeStatus ~= nil then
-          popstarter_path, popstarter_ok = PLDR.GetPopstarterProbeStatus()
+        if type(popstarter_path) == "string" and popstarter_path ~= "" then
+          popstarter_ok = doesFileExist(popstarter_path)
+          if not popstarter_ok and PLDR ~= nil and PLDR.OpenProbe ~= nil then
+            popstarter_ok = PLDR.OpenProbe(popstarter_path)
+          end
         end
         local boot_elf_path = (PLDR and PLDR.GetLaunchElfPath and PLDR.GetLaunchElfPath()) or "POPSLOADER.ELF"
         local boot_elf_ok = false
@@ -2171,8 +2174,8 @@ end
             end
 
             if not ready then
-              for i = 0, 9 do
-                pcall(System.listDirectory, "mass"..tostring(i)..":/")
+              if PLDR.TouchMassIndices ~= nil then
+                PLDR.TouchMassIndices(9)
               end
               local mx = nil
               for i = 0, 9 do
