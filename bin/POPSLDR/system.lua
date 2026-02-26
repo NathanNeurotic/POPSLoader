@@ -2486,25 +2486,17 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
       prefix_used = ""
     end
   end
-  local argv = {}
-
-  if policy.name ~= "HDD" then
-    -- Use the already computed basename; ensure it ends with ".ELF"
-    local bootarg = bootparam_basename_used
-    if bootarg == nil or bootarg == "" then
-      if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
-        UI.Notif_queue.add("Launch failed: missing boot basename")
-      end
-      return
+  local bootarg = bootparam_basename_used
+  if bootarg == nil or bootarg == "" then
+    if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
+      UI.Notif_queue.add("Launch failed: missing boot selector")
     end
-    if not string.match(bootarg, "%.ELF$") then
-      bootarg = bootarg..".ELF"
-    end
-    argv = {bootarg, bootarg}
-  else
-    -- Preserve existing HDD argv behavior.
-    argv = {argv0_selector}
+    return
   end
+  if not string.match(bootarg, "%.ELF$") then
+    bootarg = bootarg..".ELF"
+  end
+  local argv = {argv0_selector, bootarg, bootarg}
 
   LOG("Boot APP_DIR: "..APP_DIR_LOCAL)
   LOG("PopStarter selected: "..popstarter)
@@ -2550,20 +2542,32 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     bootparam_source = boot_source_mode,
     hdd_init = hdd_init
   }
-  local reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
-  if policy.name == "HDD" then
-    reboot_iop = 0
-  end
+  local reboot_iop = 0
   if UI ~= nil and UI.CoverCache ~= nil and UI.CoverCache.Clear ~= nil then
     UI.CoverCache:Clear()
   end
   PLDR.CleanupGameList()
   collectgarbage("collect")
-  if policy.name ~= "HDD" then
-    System.loadELF(popstarter, 0, vcd_path)
+
+  popstarter = PLDR.ResolvePopstarterPath()
+  if popstarter == nil or popstarter == "" or not OpenProbe(popstarter) then
+    if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
+      UI.Notif_queue.add("POPSTARTER missing:\n"..tostring(popstarter))
+    end
     return
   end
-  LaunchEngine(popstarter, argv, reboot_iop, context)
+
+  local ok, rc = pcall(System.loadELF, popstarter, reboot_iop, unpack(argv))
+  if not ok then
+    if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
+      UI.Notif_queue.add("POPSTARTER launch failed:\n"..tostring(rc))
+    end
+    return
+  end
+  if UI ~= nil and UI.Notif_queue ~= nil and UI.Notif_queue.add ~= nil then
+    UI.Notif_queue.add("POPSTARTER returned unexpectedly")
+  end
+  return
 end
 
 function Touch(FILE, warn_key)
