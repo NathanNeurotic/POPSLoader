@@ -1271,66 +1271,96 @@ function PLDR.GetPS1GameLists(path, updating)
   end
 end
 
-function PLDR.GetActiveUsbRoots(max_index)
+function PLDR.ProbeMassIndexHasPops(i)
+  local root = "mass"..tostring(i)..":/"
+  local list_path = root.."POPS/"
+  local ok, dir = pcall(System.listDirectory, list_path)
+  return ok and type(dir) == "table"
+end
+
+function PLDR.GetActiveUsbRoots(max_index, fallback_only)
   local roots = {}
 
   local max = tonumber(max_index) or 9
   if max < 0 then max = 0 end
   if max > 9 then max = 9 end
 
-  for i = 0, max do
-    local name = PLDR.GetMassDriverName(i)
-    if name == nil or name == "" then
+  local used_phase_a = false
+  if not fallback_only then
+    for i = 0, max do
       pcall(System.listDirectory, "mass"..tostring(i)..":/")
-      name = PLDR.GetMassDriverName(i)
+      local name = PLDR.GetMassDriverName(i)
+      if type(name) == "string" and string.find(string.lower(name), "usb", 1, true) ~= nil then
+        table.insert(roots, "mass"..tostring(i)..":/")
+      end
     end
-    if type(name) == "string" and string.find(string.lower(name), "usb", 1, true) ~= nil then
+    if #roots > 0 then
+      used_phase_a = true
+      return roots, used_phase_a
+    end
+  end
+
+  if PLDR ~= nil and PLDR.EnsureMassReady ~= nil then
+    PLDR.EnsureMassReady()
+  end
+  local mx_index = nil
+  if PLDR ~= nil and type(PLDR.FindMassByDriver) == "function" then
+    mx_index = PLDR.FindMassByDriver("sdc", 9)
+  end
+  for i = 0, max do
+    if i ~= mx_index and PLDR.ProbeMassIndexHasPops(i) then
       table.insert(roots, "mass"..tostring(i)..":/")
     end
   end
 
-  if #roots == 0 then
-    local ok, dir = pcall(System.listDirectory, "mass:/POPS/")
-    if ok and type(dir) == "table" then
-      table.insert(roots, "mass:/")
-    end
-  end
-
-  return roots
+  return roots, used_phase_a
 end
 
 function PLDR.GetPS1GameListsUSB(max_index)
   PLDR.CleanupGameList()
-  local roots = PLDR.GetActiveUsbRoots(max_index)
-  PLDR.USB.ROOTS = roots
-  PLDR.USB.GAME_ENTRIES = {}
-  for _, root in ipairs(roots) do
-    local list_path = root.."POPS/"
-    local dir = System.listDirectory(list_path)
-    local names = {}
-    if dir ~= nil then
-      for i = 1, #dir do
-        local entry = dir[i]
-        if not entry.directory and string.lower(string.sub(entry.name, -4)) == ".vcd" then
-          table.insert(names, entry.name)
+  local roots, used_phase_a = PLDR.GetActiveUsbRoots(max_index)
+
+  local function fill_from_roots(active_roots)
+    PLDR.USB.ROOTS = active_roots
+    PLDR.USB.GAME_ENTRIES = {}
+    PLDR.GAMES = {}
+    for _, root in ipairs(active_roots) do
+      local list_path = root.."POPS/"
+      local dir = System.listDirectory(list_path)
+      local names = {}
+      if dir ~= nil then
+        for i = 1, #dir do
+          local entry = dir[i]
+          if not entry.directory and string.lower(string.sub(entry.name, -4)) == ".vcd" then
+            table.insert(names, entry.name)
+          end
         end
       end
-    end
-    table.sort(names)
-    for i = 1, #names do
-      table.insert(PLDR.GAMES, names[i])
-      table.insert(PLDR.USB.GAME_ENTRIES, {
-        root = list_path,
-        name = names[i]
-      })
+      table.sort(names)
+      for i = 1, #names do
+        table.insert(PLDR.GAMES, names[i])
+        table.insert(PLDR.USB.GAME_ENTRIES, {
+          root = list_path,
+          name = names[i]
+        })
+      end
     end
   end
+
+  fill_from_roots(roots)
+
+  if used_phase_a and #roots > 0 and #PLDR.GAMES == 0 then
+    roots = PLDR.GetActiveUsbRoots(max_index, true)
+    fill_from_roots(roots)
+  end
+
   if #PLDR.GAMES > 0 then
     PLDR.GAMEPATH = (PLDR.USB.GAME_ENTRIES[1] and PLDR.USB.GAME_ENTRIES[1].root) or "mass:/POPS/"
     return PLDR.GAMES
   end
   return nil
 end
+
 
 local function EncodeHddGameEntry(partition, relpath)
   if partition == nil or relpath == nil then
