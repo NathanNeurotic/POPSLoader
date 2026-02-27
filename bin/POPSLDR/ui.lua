@@ -776,8 +776,8 @@ end
         end
 
         local show_credits = show_boot_credits == true
-        local FADE_IN_MS = 1100
-        local FADE_OUT_MS = 900
+        local FADE_IN_MS = 1500
+        local FADE_OUT_MS = 1200
 
         local function Clamp01(value)
           if value < 0 then return 0 end
@@ -1066,8 +1066,8 @@ end
       elapsed = 0,
       last_time = nil,
       max_step = 33,
-      duration_out = 900,
-      duration_in = 1100,
+      duration_out = 1200,
+      duration_in = 1500,
       Queue = function (target)
         if target == nil then return end
         if UI.Transition.active and UI.Transition.phase == "out" then
