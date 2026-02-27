@@ -61,24 +61,6 @@ IMG = setmetatable({}, {
       end
     end
 
-    if img == nil and type(Graphics) == "table" and type(Graphics.loadImage) == "function" then
-      local candidates = {source, "IMG/"..source}
-      for i = 1, #candidates do
-        local rel = candidates[i]
-        local path = rel
-        if type(System) == "table" and type(System.resolveAsset) == "function" then
-          local ok_resolve, resolved = pcall(System.resolveAsset, rel)
-          if ok_resolve and resolved ~= nil then
-            path = resolved
-          end
-        end
-        local ok_load, loaded = pcall(Graphics.loadImage, path)
-        if ok_load and loaded ~= nil then
-          img = loaded
-          break
-        end
-      end
-    end
 
     if img == nil then
       IMG_FAILED[key] = true

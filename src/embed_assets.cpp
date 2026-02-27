@@ -23,6 +23,8 @@ extern unsigned char asset_apahdd_png[];
 extern unsigned int size_asset_apahdd_png;
 extern unsigned char asset_bdhdd_png[];
 extern unsigned int size_asset_bdhdd_png;
+extern unsigned char asset_bg_png[];
+extern unsigned int size_asset_bg_png;
 extern unsigned char asset_bkg_png[];
 extern unsigned int size_asset_bkg_png;
 extern unsigned char asset_bgm_png[];
@@ -70,7 +72,7 @@ static const embedded_asset_t g_embedded_assets[] = {
 	ASSET_ENTRY("HDD.png", asset_hdd_png),
 	ASSET_ENTRY("APAHDD.png", asset_apahdd_png),
 	ASSET_ENTRY("BDHDD.png", asset_bdhdd_png),
-	ASSET_ENTRY("BG.png", asset_bkg_png),
+	ASSET_ENTRY("BG.png", asset_bg_png),
 	ASSET_ENTRY("BKG.png", asset_bkg_png),
 	ASSET_ENTRY("BGM.png", asset_bgm_png),
 	ASSET_ENTRY("DISC.png", asset_disc_png),
@@ -97,7 +99,7 @@ static const embedded_asset_t g_embedded_assets[] = {
 	ASSET_ENTRY("POPSLDR/IMG/HDD.png", asset_hdd_png),
 	ASSET_ENTRY("POPSLDR/IMG/APAHDD.png", asset_apahdd_png),
 	ASSET_ENTRY("POPSLDR/IMG/BDHDD.png", asset_bdhdd_png),
-	ASSET_ENTRY("POPSLDR/IMG/BG.png", asset_bkg_png),
+	ASSET_ENTRY("POPSLDR/IMG/BG.png", asset_bg_png),
 	ASSET_ENTRY("POPSLDR/IMG/BKG.png", asset_bkg_png),
 	ASSET_ENTRY("POPSLDR/IMG/BGM.png", asset_bgm_png),
 	ASSET_ENTRY("POPSLDR/IMG/DISC.png", asset_disc_png),
