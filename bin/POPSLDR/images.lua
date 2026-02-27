@@ -73,20 +73,6 @@ for x=1, #IMG_REGISTRATIONS do
   RegisterImageIfExists(name, path)
 end
 
-if IMG_SOURCES["MISSING"] == nil then
-  if not RegisterImageIfExists("MISSING", "splash_bg.png") then
-    RegisterImageIfExists("MISSING", "USB.png")
-  end
-end
-if IMG_SOURCES["BKG"] == nil then
-  if not RegisterImageIfExists("BKG", "splash_bg.png") then
-    RegisterImageIfExists("BKG", "MISSING.png")
-  end
-end
-if IMG_SOURCES["BGM"] == nil then
-  IMG_SOURCES["BGM"] = IMG_SOURCES["BKG"]
-end
-
 local IMG_FAILED = {}
 
 IMG = setmetatable({}, {
@@ -103,21 +89,6 @@ IMG = setmetatable({}, {
     if img == nil then
       LOGF("Image load failed: %s", path)
       IMG_FAILED[key] = true
-      if key ~= "MISSING" then
-        local missing_source = IMG_SOURCES["MISSING"]
-        if missing_source ~= nil and not IMG_FAILED["MISSING"] then
-          local missing_path = ResolveImage(missing_source)
-          local missing_img = Graphics.loadImage(missing_path)
-          if missing_img ~= nil then
-            Graphics.setImageFilters(missing_img, LINEAR)
-            rawset(tbl, "MISSING", missing_img)
-            rawset(tbl, key, missing_img)
-            return missing_img
-          end
-          LOGF("Image load failed: %s", missing_path)
-          IMG_FAILED["MISSING"] = true
-        end
-      end
       return nil
     end
     Graphics.setImageFilters(img, LINEAR)

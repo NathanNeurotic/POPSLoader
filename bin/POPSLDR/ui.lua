@@ -740,10 +740,14 @@ end
         end
         local function DrawSplashLayered(alpha)
           local splash_alpha = alpha or 128
-          DrawSplashCover(IMG.SPLASH1 or IMG.BKG, UI.SCR.X, UI.SCR.Y, splash_alpha)
-          DrawSplashCover(IMG.SPLASH2, UI.SCR.X, UI.SCR.Y, splash_alpha)
-          DrawSplashCover(IMG.SPLASH3, UI.SCR.X, UI.SCR.Y, splash_alpha)
-          DrawSplashCover(IMG.SPLASH4, UI.SCR.X, UI.SCR.Y, splash_alpha)
+          local splash1 = IMG.SPLASH1
+          local splash2 = IMG.SPLASH2
+          local splash3 = IMG.SPLASH3
+          local splash4 = IMG.SPLASH4
+          if splash1 ~= nil then DrawSplashCover(splash1, UI.SCR.X, UI.SCR.Y, splash_alpha) end
+          if splash2 ~= nil then DrawSplashCover(splash2, UI.SCR.X, UI.SCR.Y, splash_alpha) end
+          if splash3 ~= nil then DrawSplashCover(splash3, UI.SCR.X, UI.SCR.Y, splash_alpha) end
+          if splash4 ~= nil then DrawSplashCover(splash4, UI.SCR.X, UI.SCR.Y, splash_alpha) end
         end
 
         local fade_in_frames = 120
@@ -1188,7 +1192,7 @@ end
         end
         if layout.PREVIEW_W > 0 then
           Graphics.drawRect(layout.PREVIEW_X - 2, layout.PREVIEW_Y - 2, layout.PREVIEW_W + 4, layout.PREVIEW_H + 4, UI.CCOL.GREY)
-          local preview_img = cover_img or IMG.MISSING
+          local preview_img = cover_img
           if preview_img ~= nil then
             Graphics.drawScaleImage(preview_img, layout.PREVIEW_X, layout.PREVIEW_Y, layout.PREVIEW_W, layout.PREVIEW_H)
           end
