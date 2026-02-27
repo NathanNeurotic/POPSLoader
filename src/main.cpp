@@ -96,8 +96,6 @@ int mmce_slot0_ready = -1;
 int mmce_slot1_ready = -1;
 static clock_t boot_start = 0;
 
-static const char *kLuaErrorOutOfMemory = "(out of memory building lua error)";
-
 static unsigned int boot_ms(void)
 {
     if (boot_start == 0) {
@@ -444,6 +442,10 @@ int main(int argc, char * argv[])
 
         init_scr();
 
+        if (errMsg == NULL) {
+            errMsg = runScript("system.lua", false);
+        }
+
         if (errMsg != NULL)
         {
             scr_setfontcolor(0x0000ff);
@@ -455,13 +457,15 @@ int main(int argc, char * argv[])
 		    scr_printf("\nPress [start] to restart\n");
         	while (!isButtonPressed(PAD_START)) {
 		    }
-            if (strcmp(errMsg, kLuaErrorOutOfMemory) != 0) {
+            if (luaErrorIsHeapOwned(errMsg)) {
                 free((void*)errMsg);
             }
             errMsg = NULL;
             scr_setfontcolor(0xffffff);
+            continue;
         }
 
+        break;
     }
 
 	return 0;

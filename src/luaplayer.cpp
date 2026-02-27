@@ -164,6 +164,12 @@ static void DisableLuaFilesystemScriptLoaders(lua_State *L)
 static lua_State *L;
 
 static const char *kLuaErrorOutOfMemory = "(out of memory building lua error)";
+static const char *kLuaErrorCreateState = "Failed to create LUA STATE\n";
+
+int luaErrorIsHeapOwned(const char *errMsg)
+{
+    return errMsg != NULL && errMsg != kLuaErrorOutOfMemory && errMsg != kLuaErrorCreateState;
+}
 
 
 int test_error(lua_State * L) {
@@ -230,7 +236,14 @@ const char * runScript(const char* script, bool isStringBuffer )
     DPRINTF("Creating luaVM... \n");
 
   	L = luaL_newstate();
-	if (!L) return "Failed to create LUA STATE\n";
+	if (!L) {
+        char *errMsg = (char*)malloc(512);
+        if (errMsg != NULL) {
+            snprintf(errMsg, 512, "%s", kLuaErrorCreateState);
+            return errMsg;
+        }
+        return kLuaErrorCreateState;
+    }
     lua_atpanic(L, test_error);
 	
 	  // Init Standard libraries
