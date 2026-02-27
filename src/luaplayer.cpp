@@ -163,6 +163,9 @@ static void DisableLuaFilesystemScriptLoaders(lua_State *L)
 
 static lua_State *L;
 
+static const char *kLuaErrorOutOfMemory = "(out of memory building lua error)";
+
+
 int test_error(lua_State * L) {
     scr_clear();
     //normalize video mode in case it was changed on lua script
@@ -262,7 +265,7 @@ const char * runScript(const char* script, bool isStringBuffer )
                 DPRINTF("%s", errMsg);
             }
             lua_close(L);
-            return errMsg;
+            return (errMsg != NULL) ? errMsg : kLuaErrorOutOfMemory;
         }
         s = luaL_loadbuffer(L, (const char *)embedded_script, embedded_size, script);
         if (s == 0) {
@@ -312,5 +315,5 @@ const char * runScript(const char* script, bool isStringBuffer )
 	lua_pop(L, 1); // remove error message
 	lua_close(L);
 	
-	return errMsg;
+	return (errMsg != NULL) ? errMsg : kLuaErrorOutOfMemory;
 }
