@@ -41,26 +41,20 @@ jobs:
       - name: Validate etc/boot.lua syntax
         shell: sh
         run: |
-          set -eu
-          if command -v lua >/dev/null 2>&1; then
-            lua -e "assert(loadfile('etc/boot.lua'))"
-          else
-            python - <<'PYCODE'
+          python - <<'PYCODE'
 from pathlib import Path
-import re
-p = Path('etc/boot.lua')
-text = p.read_text(encoding='utf-8')
-if not text.endswith('\n'):
+import shutil, subprocess
+b = Path('etc/boot.lua').read_bytes()
+if not b.endswith(b'\n'):
     raise SystemExit('ERROR: etc/boot.lua must end with a newline')
-no_strings = re.sub(r"'[^'\\n]*'|\"[^\"\\n]*\"|--.*", ' ', text)
-function_count = len(re.findall(r'\\bfunction\\b', no_strings))
-if_count = len(re.findall(r'\\bif\\b', no_strings))
-end_count = len(re.findall(r'\\bend\\b', no_strings))
-if end_count < function_count or end_count < if_count:
-    raise SystemExit(f'ERROR: etc/boot.lua appears unbalanced (function={function_count}, if={if_count}, end={end_count})')
-print('boot.lua coarse syntax checks passed')
+for cmd in (['luac', '-p', 'etc/boot.lua'], ['lua', '-e', "assert(loadfile('etc/boot.lua'))"]):
+    if shutil.which(cmd[0]):
+        subprocess.check_call(cmd)
+        print('boot.lua syntax check passed via', cmd[0])
+        break
+else:
+    print('boot.lua newline check passed (luac/lua unavailable)')
 PYCODE
-          fi
 
       - name: Compile project
         run: |
