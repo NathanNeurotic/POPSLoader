@@ -5,6 +5,7 @@
 #include <string.h>
 #include <malloc.h>
 #include <debug.h>
+#include <stdint.h>
 
 #include "include/luaplayer.h"
 #include "include/graphics.h"
@@ -36,37 +37,69 @@ static const embedded_asset_t g_embedded_lua_assets[] = {
     {"pops_profiles.lua", asset_pops_profiles_lua, size_asset_pops_profiles_lua}
 };
 
-static const embedded_asset_t* FindEmbeddedLuaAsset(const char *name)
+static const uint8_t* FindEmbeddedLua(const char *key, size_t *out_size)
 {
-    if (name == NULL) {
+    if (out_size != NULL) {
+        *out_size = 0;
+    }
+    if (key == NULL) {
         return NULL;
     }
     for (size_t i = 0; i < sizeof(g_embedded_lua_assets) / sizeof(g_embedded_lua_assets[0]); ++i) {
-        if (strcmp(name, g_embedded_lua_assets[i].name) == 0) {
-            return &g_embedded_lua_assets[i];
+        if (strcmp(key, g_embedded_lua_assets[i].name) == 0) {
+            if (out_size != NULL) {
+                *out_size = (size_t)g_embedded_lua_assets[i].size;
+            }
+            return (const uint8_t *)g_embedded_lua_assets[i].data;
         }
     }
     return NULL;
 }
 
+static int BuildEmbeddedLuaModuleKey(const char *module_name, char *out_key, size_t out_key_size, int map_dots)
+{
+    if (module_name == NULL || out_key == NULL || out_key_size == 0) {
+        return 0;
+    }
+    size_t idx = 0;
+    while (module_name[idx] != '\0' && idx < out_key_size - 5) {
+        char c = module_name[idx];
+        out_key[idx] = (map_dots && c == '.') ? '/' : c;
+        idx++;
+    }
+    if (module_name[idx] != '\0') {
+        return 0;
+    }
+    out_key[idx++] = '.';
+    out_key[idx++] = 'l';
+    out_key[idx++] = 'u';
+    out_key[idx++] = 'a';
+    out_key[idx] = '\0';
+    return 1;
+}
+
 static int lua_embedded_searcher(lua_State *L)
 {
     const char *module_name = luaL_checkstring(L, 1);
-    char embedded_name[128];
-    size_t i = 0;
-    for (; module_name[i] != '\0' && i < sizeof(embedded_name) - 5; ++i) {
-        embedded_name[i] = (module_name[i] == '.') ? '/' : module_name[i];
-    }
-    embedded_name[i] = '\0';
-    strcat(embedded_name, ".lua");
+    char module_key[128];
+    size_t module_size = 0;
+    const uint8_t *module_data = NULL;
 
-    const embedded_asset_t *asset = FindEmbeddedLuaAsset(embedded_name);
-    if (asset == NULL) {
+    if (BuildEmbeddedLuaModuleKey(module_name, module_key, sizeof(module_key), 1)) {
+        module_data = FindEmbeddedLua(module_key, &module_size);
+    }
+
+    if (module_data == NULL && strchr(module_name, '.') == NULL &&
+        BuildEmbeddedLuaModuleKey(module_name, module_key, sizeof(module_key), 0)) {
+        module_data = FindEmbeddedLua(module_key, &module_size);
+    }
+
+    if (module_data == NULL) {
         lua_pushfstring(L, "\n\tno embedded Lua module '%s'", module_name);
         return 1;
     }
 
-    int load_ret = luaL_loadbuffer(L, (const char *)asset->data, asset->size, embedded_name);
+    int load_ret = luaL_loadbuffer(L, (const char *)module_data, module_size, module_key);
     if (load_ret != 0) {
         lua_pushfstring(L, "\n\terror loading embedded module '%s': %s", module_name, lua_tostring(L, -1));
         return 1;
@@ -83,7 +116,7 @@ static void InstallEmbeddedLuaSearcher(lua_State *L)
         return;
     }
 
-    int n = (int)lua_objlen(L, -1);
+    int n = (int)lua_rawlen(L, -1);
     for (int i = n + 1; i > 1; --i) {
         lua_rawgeti(L, -1, i - 1);
         lua_rawseti(L, -2, i);
@@ -91,7 +124,7 @@ static void InstallEmbeddedLuaSearcher(lua_State *L)
     lua_pushcfunction(L, lua_embedded_searcher);
     lua_rawseti(L, -2, 1);
 
-    int n_after = (int)lua_objlen(L, -1);
+    int n_after = (int)lua_rawlen(L, -1);
     for (int i = 2; i <= n_after; ++i) {
         lua_pushnil(L);
         lua_rawseti(L, -2, i);
@@ -201,20 +234,38 @@ const char * runScript(const char* script, bool isStringBuffer )
 
 	if(!isStringBuffer){
         DPRINTF("Loading embedded script key: `%s'\n", script);
-        const embedded_asset_t *asset = FindEmbeddedLuaAsset(script);
-        if (asset == NULL) {
+        size_t embedded_size = 0;
+        const uint8_t *embedded_script = FindEmbeddedLua(script, &embedded_size);
+        if (embedded_script == NULL) {
             sprintf((char*)errMsg, "FATAL: embedded Lua script missing: %s\n", script);
             DPRINTF("%s", errMsg);
             lua_close(L);
             return errMsg;
         }
-        s = luaL_loadbuffer(L, (const char *)asset->data, asset->size, script);
+        s = luaL_loadbuffer(L, (const char *)embedded_script, embedded_size, script);
+        if (s == 0) {
+            s = lua_pcall(L, 0, LUA_MULTRET, 0);
+        }
 	} else {
-        s = luaL_loadbuffer(L, script, strlen(script), NULL);
+        s = luaL_loadbuffer(L, script, strlen(script), "boot.lua");
+        if (s == 0) {
+            s = lua_pcall(L, 0, LUA_MULTRET, 0);
+        }
+        if (s == 0) {
+            const char *boot_entry = "system.lua";
+            size_t boot_entry_size = 0;
+            const uint8_t *boot_entry_data = FindEmbeddedLua(boot_entry, &boot_entry_size);
+            if (boot_entry_data == NULL) {
+                s = LUA_ERRFILE;
+                lua_pushfstring(L, "FATAL: embedded Lua script missing: %s", boot_entry);
+            } else {
+                s = luaL_loadbuffer(L, (const char *)boot_entry_data, boot_entry_size, boot_entry);
+                if (s == 0) {
+                    s = lua_pcall(L, 0, LUA_MULTRET, 0);
+                }
+            }
+        }
     }
-
-		
-	if (s == 0) s = lua_pcall(L, 0, LUA_MULTRET, 0);
 
 	if (s) {
 		sprintf((char*)errMsg, "%s\n", lua_tostring(L, -1));
