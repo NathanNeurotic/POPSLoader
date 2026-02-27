@@ -78,7 +78,11 @@ IOP_MODULES = iomanX.o fileXio.o \
 			  ps2dev9.o ps2atad.o ps2hdd-osd.o ps2fs.o mmceman.o \
 			  mx4sio_bd.o bdm_query.o
 
-EMBEDDED_RSC = boot.o builtin_font.o
+EMBEDDED_RSC = boot.o builtin_font.o \
+	asset_usb_png.o asset_smb_png.o asset_mmce_png.o asset_mx4sio_png.o asset_hdd_png.o asset_apahdd_png.o \
+	asset_bdhdd_png.o asset_bkg_png.o asset_bgm_png.o asset_disc_png.o asset_splash_bg_png.o \
+	asset_splash_logo_png.o asset_splash_appname_png.o asset_splash_credits_png.o asset_select_png.o \
+	asset_start_png.o asset_triangle_png.o asset_circle_png.o asset_cross_png.o asset_r2_png.o asset_square_png.o
 
 EE_OBJS = $(APP_CORE) $(LUA_LIBS) $(IOP_MODULES) $(EMBEDDED_RSC)
 
@@ -105,6 +109,50 @@ $(EE_ASM_DIR)%.c: EMBED/%.png
 	$(BIN2S) $< $@ $(shell basename $< .png)
 $(EE_ASM_DIR)%.c: EMBED/%.ttf
 	$(BIN2S) $< $@ $(shell basename $< .ttf)
+
+$(EE_ASM_DIR)asset_usb_png.c: bin/POPSLDR/IMG/USB.png | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_usb_png
+$(EE_ASM_DIR)asset_smb_png.c: bin/POPSLDR/IMG/SMB.png | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_smb_png
+$(EE_ASM_DIR)asset_mmce_png.c: bin/POPSLDR/IMG/MMCE.png | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_mmce_png
+$(EE_ASM_DIR)asset_mx4sio_png.c: bin/POPSLDR/IMG/MX4SIO.png | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_mx4sio_png
+$(EE_ASM_DIR)asset_hdd_png.c: bin/POPSLDR/IMG/HDD.png | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_hdd_png
+$(EE_ASM_DIR)asset_apahdd_png.c: bin/POPSLDR/IMG/APAHDD.png | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_apahdd_png
+$(EE_ASM_DIR)asset_bdhdd_png.c: bin/POPSLDR/IMG/BDHDD.png | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_bdhdd_png
+$(EE_ASM_DIR)asset_bkg_png.c: bin/POPSLDR/IMG/BKG.png | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_bkg_png
+$(EE_ASM_DIR)asset_bgm_png.c: bin/POPSLDR/IMG/BGM.png | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_bgm_png
+$(EE_ASM_DIR)asset_disc_png.c: bin/POPSLDR/IMG/DISC.png | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_disc_png
+$(EE_ASM_DIR)asset_splash_bg_png.c: bin/POPSLDR/IMG/splash_bg.png | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_splash_bg_png
+$(EE_ASM_DIR)asset_splash_logo_png.c: bin/POPSLDR/IMG/splash_logo.png | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_splash_logo_png
+$(EE_ASM_DIR)asset_splash_appname_png.c: bin/POPSLDR/IMG/splash_appname.png | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_splash_appname_png
+$(EE_ASM_DIR)asset_splash_credits_png.c: bin/POPSLDR/IMG/splash_credits.png | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_splash_credits_png
+$(EE_ASM_DIR)asset_select_png.c: bin/POPSLDR/IMG/select.png | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_select_png
+$(EE_ASM_DIR)asset_start_png.c: bin/POPSLDR/IMG/start.png | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_start_png
+$(EE_ASM_DIR)asset_triangle_png.c: bin/POPSLDR/IMG/triangle.png | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_triangle_png
+$(EE_ASM_DIR)asset_circle_png.c: bin/POPSLDR/IMG/circle.png | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_circle_png
+$(EE_ASM_DIR)asset_cross_png.c: bin/POPSLDR/IMG/cross.png | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_cross_png
+$(EE_ASM_DIR)asset_r2_png.c: bin/POPSLDR/IMG/R2.png | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_r2_png
+$(EE_ASM_DIR)asset_square_png.c: bin/POPSLDR/IMG/square.png | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_square_png
+
 #------------------------------------------------------------------#
 
 

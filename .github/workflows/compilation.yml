@@ -40,44 +40,97 @@ jobs:
 
       - name: Compile project
         run: |
-          make clean elfloader all package
+          make clean elfloader all
 
-      # This step is the key: it discovers wherever your Makefile put the .7z,
-      # then copies it to repo root as POPSLoader.7z so upload-artifact is stable.
-      - name: Locate and normalize POPSLoader.7z
+      - name: Create allowlisted release package
         shell: sh
         run: |
           set -eu
 
-          echo "== Workspace contents (top-level) =="
-          ls -lah
+          rm -rf dist POPSLoader.7z
+          mkdir -p dist
 
-          echo "== Searching for .7z artifacts (up to 6 levels deep) =="
-          # Show all matches for debugging
-          find . -maxdepth 6 -type f -name '*.7z' -print || true
+          required_files="
+          bin/POPSLOADER.ELF:POPSLOADER.ELF
+          bin/POPSLDR/POPSTARTER.ELF:POPSTARTER.ELF
+          bin/POPSLDR/APPINFO.PBT:APPINFO.PBT
+          bin/POPSLDR/IGR_BG.tm2:IGR_BG.tm2
+          bin/POPSLDR/IGR_NO.tm2:IGR_NO.tm2
+          bin/POPSLDR/IGR_YES.tm2:IGR_YES.tm2
+          bin/POPSLDR/PATCH_5.BIN:PATCH_5.BIN
+          bin/POPSLDR/boot.adp:boot.adp
+          bin/POPSLDR/icon.sys:icon.sys
+          bin/POPSLDR/title.cfg:title.cfg
+          bin/POPSLDR/list.icn:list.icn
+          bin/POPSLDR/copy.icn:copy.icn
+          bin/POPSLDR/del.icn:del.icn
+          "
 
-          # Prefer an exact name match first (any location)
-          EXACT="$(find . -maxdepth 6 -type f -name 'POPSLoader.7z' -print | head -n 1 || true)"
-
-          if [ -n "$EXACT" ]; then
-            echo "Found exact artifact: $EXACT"
-            cp -f "$EXACT" "./POPSLoader.7z"
-          else
-            # Otherwise pick the newest .7z produced (common when Makefile names differ)
-            NEWEST="$(find . -maxdepth 6 -type f -name '*.7z' -print -exec ls -t {} + 2>/dev/null | head -n 1 || true)"
-
-            if [ -z "$NEWEST" ]; then
-              echo "ERROR: No .7z artifact found after build."
-              echo "Hint: your Makefile 'package' target may be outputting a different extension or skipping packaging."
+          echo "$required_files" | while IFS=':' read -r src dst; do
+            src="$(echo "$src" | xargs)"
+            dst="$(echo "$dst" | xargs)"
+            [ -n "$src" ] || continue
+            if [ ! -f "$src" ]; then
+              echo "ERROR: required release file missing: $src"
               exit 1
             fi
+            cp -f "$src" "dist/$dst"
+          done
 
-            echo "No exact POPSLoader.7z found. Using newest .7z: $NEWEST"
-            cp -f "$NEWEST" "./POPSLoader.7z"
+          (
+            cd dist
+            7z a -t7z ../POPSLoader.7z ./* >/dev/null
+          )
+
+          echo "== Package contents =="
+          7z l -slt POPSLoader.7z
+
+      - name: Verify allowlisted package contents
+        shell: sh
+        run: |
+          set -eu
+
+          listed_paths="$(7z l -slt POPSLoader.7z | sed -n 's/^Path = //p')"
+          file_paths="$(printf '%s\n' "$listed_paths" | awk 'NF > 0 && $0 !~ /\/$/')"
+          file_count="$(printf '%s\n' "$file_paths" | wc -l | tr -d ' ')"
+
+          if [ "$file_count" -ne 13 ]; then
+            echo "ERROR: package must contain exactly 13 files, found $file_count"
+            printf '%s\n' "$file_paths"
+            exit 1
           fi
 
-          echo "== Final normalized artifact =="
-          ls -lah "./POPSLoader.7z"
+          expected="APPINFO.PBT
+          IGR_BG.tm2
+          IGR_NO.tm2
+          IGR_YES.tm2
+          PATCH_5.BIN
+          POPSLOADER.ELF
+          POPSTARTER.ELF
+          boot.adp
+          copy.icn
+          del.icn
+          icon.sys
+          list.icn
+          title.cfg"
+
+          actual_names="$(printf '%s\n' "$file_paths" | awk -F/ '{print $NF}' | sort)"
+          expected_names="$(printf '%s\n' "$expected" | awk 'NF > 0' | sort)"
+
+          if [ "$actual_names" != "$expected_names" ]; then
+            echo "ERROR: package file set mismatch"
+            echo "Expected:"
+            printf '%s\n' "$expected_names"
+            echo "Actual:"
+            printf '%s\n' "$actual_names"
+            exit 1
+          fi
+
+          if printf '%s\n' "$file_paths" | grep -Eiq '(^|/)(IMG|embed)(/|$)|\.png$|\.o$|\.a$|\.c$|\.irx$|\.tmp$'; then
+            echo "ERROR: forbidden file patterns detected in package"
+            printf '%s\n' "$file_paths"
+            exit 1
+          fi
 
       - name: Upload artifact (no release)
         if: ${{ success() }}
