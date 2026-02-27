@@ -1115,8 +1115,15 @@ end
       MAXDRAW = 18;
       CURR = 1;
       STARTUP = 1;
+      CoverLastIndex = nil;
+      CoverPending = false;
+      CoverPendingAt = 0;
+      CoverIdleMs = 200;
       Reset = function ()
         UI.GameList.CURR = 1;
+        UI.GameList.CoverLastIndex = nil
+        UI.GameList.CoverPending = false
+        UI.GameList.CoverPendingAt = 0
       end;
       Play = function()
         local layout = UI.LAYOUT
@@ -1178,17 +1185,7 @@ end
         end
         local cover_img = nil
         if UI.CoverCache ~= nil then
-          if ammount > 0 then
-            local entry = PLDR.GAMES[UI.GameList.CURR]
-            local cover_path = PLDR.GAMEPATH
-            local root = string.match(entry or "", "^([^|]+)|.+$")
-            if root ~= nil then
-              cover_path = root
-            end
-            cover_img = UI.CoverCache:UpdateSelection(entry, cover_path)
-          else
-            UI.CoverCache:UpdateSelection(nil, PLDR.GAMEPATH)
-          end
+          cover_img = UI.CoverCache.last_img
         end
         if layout.PREVIEW_W > 0 then
           Graphics.drawRect(layout.PREVIEW_X - 2, layout.PREVIEW_Y - 2, layout.PREVIEW_W + 4, layout.PREVIEW_H + 4, UI.CCOL.GREY)
@@ -1209,6 +1206,35 @@ end
         if UI.Pad.Events.NAV_RIGHT then UI.GameList.CURR = CLAMP(UI.GameList.CURR+UI.GameList.MAXDRAW, 1, ammount) end
         if UI.Pad.Events.NAV_UP then UI.GameList.CURR = CLAMP(UI.GameList.CURR-1, 1, ammount) end
         if UI.Pad.Events.NAV_LEFT then UI.GameList.CURR = CLAMP(UI.GameList.CURR-UI.GameList.MAXDRAW, 1, ammount) end
+        if UI.CoverCache ~= nil then
+          local now = 0
+          if UI.Pad.Timer ~= nil then
+            now = Timer.getTime(UI.Pad.Timer)
+          end
+          local nav_event = UI.Pad.Events.NAV_DOWN or UI.Pad.Events.NAV_RIGHT or UI.Pad.Events.NAV_UP or UI.Pad.Events.NAV_LEFT
+          if ammount <= 0 then
+            UI.GameList.CoverLastIndex = nil
+            UI.GameList.CoverPending = false
+            UI.GameList.CoverPendingAt = now
+            UI.CoverCache:UpdateSelection(nil, PLDR.GAMEPATH)
+          else
+            if UI.GameList.CURR ~= UI.GameList.CoverLastIndex then
+              UI.GameList.CoverLastIndex = UI.GameList.CURR
+              UI.GameList.CoverPending = true
+              UI.GameList.CoverPendingAt = now
+            end
+            if UI.GameList.CoverPending and not nav_event and (now - UI.GameList.CoverPendingAt) >= UI.GameList.CoverIdleMs then
+              local entry = PLDR.GAMES[UI.GameList.CURR]
+              local cover_path = PLDR.GAMEPATH
+              local root = string.match(entry or "", "^([^|]+)|.+$")
+              if root ~= nil then
+                cover_path = root
+              end
+              UI.CoverCache:UpdateSelection(entry, cover_path)
+              UI.GameList.CoverPending = false
+            end
+          end
+        end
         if UI.Pad.Events.CONFIRM then
           if ammount <= 0 then
             UI.Notif_queue.add("No games found")
