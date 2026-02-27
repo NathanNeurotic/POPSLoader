@@ -793,14 +793,15 @@ GSTEXTURE* loadjpeg(FILE* fp, bool scale_down, bool delayed)
 }
 
 GSTEXTURE* load_image(const char* path, bool delayed){
-	if (path != NULL && strncmp(path, "embed:/", 7) == 0) {
+	if (path != NULL) {
 		const uint8_t *data = NULL;
 		size_t size = 0;
 		if (embedded_get(path, &data, &size)) {
 			return loadEmbeddedPNG((uint8_t *)data, size, delayed);
 		}
-		DPRINTF("Failed to load image %s.", path);
-		return NULL;
+		if (strncmp(path, "embed:/", 7) == 0) {
+			return NULL;
+		}
 	}
 
 	FILE* file = fopen(path, "rb");
