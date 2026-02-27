@@ -257,7 +257,7 @@ const char * runScript(const char* script, bool isStringBuffer )
         size_t embedded_size = 0;
         const uint8_t *embedded_script = FindEmbeddedLua(script, &embedded_size);
         if (embedded_script == NULL) {
-            sprintf((char*)errMsg, "FATAL: embedded Lua script missing: %s\n", script);
+            snprintf((char*)errMsg, 512, "FATAL: embedded Lua script missing: %s\n", script);
             DPRINTF("%s", errMsg);
             lua_close(L);
             return errMsg;
@@ -296,8 +296,9 @@ const char * runScript(const char* script, bool isStringBuffer )
     }
 
 	if (s) {
-		sprintf((char*)errMsg, "%s\n", lua_tostring(L, -1));
-    DPRINTF("%s\n", lua_tostring(L, -1));
+		const char *lua_error = lua_tostring(L, -1);
+		snprintf((char*)errMsg, 512, "%s\n", lua_error != NULL ? lua_error : "(unknown lua error)");
+    DPRINTF("%s\n", lua_error != NULL ? lua_error : "(unknown lua error)");
 		lua_pop(L, 1); // remove error message
 	}
 	lua_close(L);
