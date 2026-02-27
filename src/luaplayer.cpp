@@ -29,8 +29,11 @@ extern unsigned char asset_images_lua[];
 extern unsigned int size_asset_images_lua;
 extern unsigned char asset_pops_profiles_lua[];
 extern unsigned int size_asset_pops_profiles_lua;
+extern unsigned char bootString[];
+extern unsigned int size_bootString;
 
 static const embedded_asset_t g_embedded_lua_assets[] = {
+    {"boot.lua", (const unsigned char *)bootString, size_bootString},
     {"system.lua", asset_system_lua, size_asset_system_lua},
     {"ui.lua", asset_ui_lua, size_asset_ui_lua},
     {"images.lua", asset_images_lua, size_asset_images_lua},
@@ -247,10 +250,18 @@ const char * runScript(const char* script, bool isStringBuffer )
             s = lua_pcall(L, 0, LUA_MULTRET, 0);
         }
 	} else {
-        s = luaL_loadbuffer(L, script, strlen(script), "boot.lua");
-        if (s == 0) {
-            s = lua_pcall(L, 0, LUA_MULTRET, 0);
-        }
+            const char *boot_script_key = "boot.lua";
+            size_t boot_script_size = 0;
+            const uint8_t *boot_script_data = FindEmbeddedLua(boot_script_key, &boot_script_size);
+            if (boot_script_data == NULL) {
+                s = LUA_ERRFILE;
+                lua_pushfstring(L, "FATAL: embedded Lua script missing: %s", boot_script_key);
+            } else {
+                s = luaL_loadbuffer(L, (const char *)boot_script_data, boot_script_size, boot_script_key);
+                if (s == 0) {
+                    s = lua_pcall(L, 0, LUA_MULTRET, 0);
+                }
+            }
         if (s == 0) {
             const char *boot_entry = "system.lua";
             size_t boot_entry_size = 0;

@@ -38,6 +38,30 @@ jobs:
           printf "%s\n%s\n" "$COMMIT_SHORT" "$BUILD_UTC" > bin/POPSLDR/BUILD_INFO.txt
           cat bin/POPSLDR/BUILD_INFO.txt
 
+      - name: Validate etc/boot.lua syntax
+        shell: sh
+        run: |
+          set -eu
+          if command -v lua >/dev/null 2>&1; then
+            lua -e "assert(loadfile('etc/boot.lua'))"
+          else
+            python - <<'PYCODE'
+from pathlib import Path
+import re
+p = Path('etc/boot.lua')
+text = p.read_text(encoding='utf-8')
+if not text.endswith('\n'):
+    raise SystemExit('ERROR: etc/boot.lua must end with a newline')
+no_strings = re.sub(r"'[^'\\n]*'|\"[^\"\\n]*\"|--.*", ' ', text)
+function_count = len(re.findall(r'\\bfunction\\b', no_strings))
+if_count = len(re.findall(r'\\bif\\b', no_strings))
+end_count = len(re.findall(r'\\bend\\b', no_strings))
+if end_count < function_count or end_count < if_count:
+    raise SystemExit(f'ERROR: etc/boot.lua appears unbalanced (function={function_count}, if={if_count}, end={end_count})')
+print('boot.lua coarse syntax checks passed')
+PYCODE
+          fi
+
       - name: Compile project
         run: |
           make clean elfloader all
@@ -54,16 +78,31 @@ jobs:
           bin/POPSLOADER.ELF:POPSLOADER.ELF
           bin/POPSLDR/POPSTARTER.ELF:POPSTARTER.ELF
           bin/POPSLDR/APPINFO.PBT:APPINFO.PBT
+          bin/POPSLDR/PATCH_5.BIN:PATCH_5.BIN
           bin/POPSLDR/IGR_BG.tm2:IGR_BG.tm2
           bin/POPSLDR/IGR_NO.tm2:IGR_NO.tm2
           bin/POPSLDR/IGR_YES.tm2:IGR_YES.tm2
-          bin/POPSLDR/PATCH_5.BIN:PATCH_5.BIN
           bin/POPSLDR/boot.adp:boot.adp
-          bin/POPSLDR/icon.sys:icon.sys
           bin/POPSLDR/title.cfg:title.cfg
+          bin/POPSLDR/icon.sys:icon.sys
           bin/POPSLDR/list.icn:list.icn
           bin/POPSLDR/copy.icn:copy.icn
           bin/POPSLDR/del.icn:del.icn
+          bin/POPSLDR/icon.sys.mmce:icon.sys.mmce
+          bin/POPSLDR/icon.sys.mx4sio:icon.sys.mx4sio
+          bin/POPSLDR/icon.sys.usbexfat:icon.sys.usbexfat
+          bin/POPSLDR/list.icn.mmce:list.icn.mmce
+          bin/POPSLDR/list.icn.mx4sio:list.icn.mx4sio
+          bin/POPSLDR/list.icn.usbexfat:list.icn.usbexfat
+          bin/POPSLDR/del.icn.mmce:del.icn.mmce
+          bin/POPSLDR/del.icn.mx4sio:del.icn.mx4sio
+          bin/POPSLDR/del.icn.usbexfat:del.icn.usbexfat
+          bin/POPSLDR/usbd.irx.mmce:usbd.irx.mmce
+          bin/POPSLDR/usbd.irx.mx4sio:usbd.irx.mx4sio
+          bin/POPSLDR/usbd.irx.usbexfat:usbd.irx.usbexfat
+          bin/POPSLDR/usbhdfsd.irx.mmce:usbhdfsd.irx.mmce
+          bin/POPSLDR/usbhdfsd.irx.mx4sio:usbhdfsd.irx.mx4sio
+          bin/POPSLDR/usbhdfsd.irx.usbexfat:usbhdfsd.irx.usbexfat
           "
 
           echo "$required_files" | while IFS=':' read -r src dst; do
@@ -106,8 +145,8 @@ jobs:
 
           file_count="$(printf '%s\n' "$file_paths" | wc -l | tr -d ' ')"
 
-          if [ "$file_count" -ne 13 ]; then
-            echo "ERROR: package must contain exactly 13 files, found $file_count"
+          if [ "$file_count" -ne 28 ]; then
+            echo "ERROR: package must contain exactly 28 files, found $file_count"
             printf '%s\n' "$file_paths"
             exit 1
           fi
@@ -122,9 +161,24 @@ jobs:
           boot.adp
           copy.icn
           del.icn
+          del.icn.mmce
+          del.icn.mx4sio
+          del.icn.usbexfat
           icon.sys
+          icon.sys.mmce
+          icon.sys.mx4sio
+          icon.sys.usbexfat
           list.icn
-          title.cfg"
+          list.icn.mmce
+          list.icn.mx4sio
+          list.icn.usbexfat
+          title.cfg
+          usbd.irx.mmce
+          usbd.irx.mx4sio
+          usbd.irx.usbexfat
+          usbhdfsd.irx.mmce
+          usbhdfsd.irx.mx4sio
+          usbhdfsd.irx.usbexfat"
 
           actual_names="$(printf '%s\n' "$file_paths" | sort)"
           expected_names="$(printf '%s\n' "$expected" | awk 'NF > 0' | sort)"
@@ -138,7 +192,7 @@ jobs:
             exit 1
           fi
 
-          if printf '%s\n' "$file_paths" | grep -Eiq '^IMG/|\.png$|\.o$|\.a$|\.c$|\.irx$|\.tmp$'; then
+          if printf '%s\n' "$file_paths" | grep -Eiq '(^IMG/)|(^POPSLDR/)|(\.lua$)|(\.png$)|(\.o$)|(\.a$)|(\.c$)|(\.tmp$)'; then
             echo "ERROR: forbidden file patterns detected in package"
             printf '%s\n' "$file_paths"
             exit 1
