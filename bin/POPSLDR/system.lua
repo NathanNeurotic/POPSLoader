@@ -290,40 +290,98 @@ end
 require("images")
 
 local POPSTARTER_PACK_ROOT = "mc0:/POPSTARTER"
-local POPSTARTER_PACK_FILES = {
-  "usbd.irx",
-  "usbhdfsd.irx",
+local POPSTARTER_UI_FILES = {
   "icon.sys",
   "list.icn",
   "del.icn"
 }
-local POPSTARTER_PACKS = {
-  USBEXFAT = {
-    label = "USB exFAT",
-    folder = "USBEXFAT"
-  },
-  MMCE = {
-    label = "MMCE",
-    folder = "MMCE"
-  },
-  MX4SIO = {
-    label = "MX4SIO",
-    folder = "MX4SIO"
-  }
+local BDMA_MODE_KEYS = {
+  USBEXFAT = "usbexfat",
+  MMCE = "fat32",
+  MX4SIO = "mx4sio"
 }
-for key, pack in pairs(POPSTARTER_PACKS) do
-  pack.files = {}
-  for i = 1, #POPSTARTER_PACK_FILES do
-    local name = POPSTARTER_PACK_FILES[i]
-    pack.files[i] = {
-      dest = name,
-      source = string.format("POPSTARTER/%s/%s", pack.folder, name)
-    }
+
+local function ExternalCandidatesFor(name, mode_key)
+  local suffix = string.lower(mode_key or "")
+  local candidates = {}
+  if suffix ~= "" then
+    candidates[#candidates + 1] = JoinPath(APP_DIR_LOCAL, name.."."..suffix)
+    candidates[#candidates + 1] = JoinPath(APP_DIR_LOCAL, "POPSLDR/"..name.."."..suffix)
+    candidates[#candidates + 1] = JoinPath(APP_DIR_LOCAL, "POPSTARTER/"..string.upper(suffix).."/"..name)
   end
+  return candidates
 end
 
-local function ResolvePackSource(rel)
-  return ResolveAsset(rel) or JoinPath(APP_DIR_LOCAL, rel)
+local function ResolveExternalBdmaSource(name, mode_key)
+  local candidates = ExternalCandidatesFor(name, mode_key)
+  for i = 1, #candidates do
+    local source = candidates[i]
+    if doesFileExist(source) then
+      return source
+    end
+  end
+  return nil
+end
+
+local function ReadWholeFile(path)
+  local fd = System.openFile(path, FREAD)
+  if fd == nil then
+    return nil, "open failed"
+  end
+  local chunks = {}
+  while true do
+    local buffer = System.readFile(fd, 4096)
+    if buffer == nil or buffer == "" then
+      break
+    end
+    chunks[#chunks + 1] = buffer
+  end
+  System.closeFile(fd)
+  return table.concat(chunks)
+end
+
+local function WriteAtomic(dest, data)
+  local tmp = dest..".tmp"
+  if doesFileExist(tmp) then
+    pcall(System.removeFile, tmp)
+  end
+  local fd = System.openFile(tmp, FCREATE)
+  if fd == nil then
+    return false
+  end
+  System.writeFile(fd, data, string.len(data))
+  System.closeFile(fd)
+  if doesFileExist(dest) then
+    pcall(System.removeFile, dest)
+  end
+  local ok = pcall(System.rename, tmp, dest)
+  if not ok then
+    pcall(System.removeFile, tmp)
+    return false
+  end
+  return true
+end
+
+local function CopyExternalAtomic(source, dest)
+  local data, err = ReadWholeFile(source)
+  if data == nil then
+    return false, err
+  end
+  if not WriteAtomic(dest, data) then
+    return false, "write failed"
+  end
+  return true
+end
+
+local function WriteEmbeddedAsset(dest, name)
+  if type(System) ~= "table" or type(System.getEmbeddedAsset) ~= "function" then
+    return false
+  end
+  local ok, data = pcall(System.getEmbeddedAsset, name)
+  if not ok or data == nil then
+    return false
+  end
+  return WriteAtomic(dest, data)
 end
 
 local function EnsureDirectory(path)
@@ -373,9 +431,21 @@ local function RemoveDirectoryRecursive(path)
   return true
 end
 
+local function ResolvePackUiSource(name)
+  local source = ResolveAsset(name)
+  if source ~= nil and doesFileExist(source) then
+    return source
+  end
+  local legacy = JoinPath(APP_DIR_LOCAL, "POPSLDR/"..name)
+  if doesFileExist(legacy) then
+    return legacy
+  end
+  return JoinPath(APP_DIR_LOCAL, name)
+end
+
 function PLDR.ApplyPopstarterPack(pack_key)
-  local pack = POPSTARTER_PACKS[pack_key]
-  if pack == nil then
+  local mode_key = BDMA_MODE_KEYS[pack_key]
+  if mode_key == nil then
     UI.Notif_queue.add("Unknown POPSTARTER pack: "..tostring(pack_key))
     return false
   end
@@ -383,26 +453,44 @@ function PLDR.ApplyPopstarterPack(pack_key)
     UI.Notif_queue.add("Failed to create "..POPSTARTER_PACK_ROOT)
     return false
   end
-  local failures = {}
-  for i = 1, #pack.files do
-    local file = pack.files[i]
-    local source = ResolvePackSource(file.source)
-    local dest = POPSTARTER_PACK_ROOT.."/"..file.dest
-    if source == nil or not doesFileExist(source) then
-      failures[#failures + 1] = file.dest
+
+  local had_failure = false
+  local bdma_files = {"usbd.irx", "usbhdfsd.irx"}
+  for i = 1, #bdma_files do
+    local name = bdma_files[i]
+    local source = ResolveExternalBdmaSource(name, mode_key)
+    local dest = POPSTARTER_PACK_ROOT.."/"..name
+    if source == nil then
+      UI.Notif_queue.add("BDMA module missing: "..name)
+      had_failure = true
     else
-      local ok, err = pcall(System.copyFile, source, dest)
+      local ok = CopyExternalAtomic(source, dest)
       if not ok then
-        LOG("Copy failed:", source, dest, err)
-        failures[#failures + 1] = file.dest
+        UI.Notif_queue.add("BDMA module missing: "..name)
+        had_failure = true
       end
     end
   end
-  if #failures > 0 then
-    UI.Notif_queue.add("Failed to install "..pack.label.." pack")
+
+  for i = 1, #POPSTARTER_UI_FILES do
+    local name = POPSTARTER_UI_FILES[i]
+    local dest = POPSTARTER_PACK_ROOT.."/"..name
+    local source = ResolvePackUiSource(name)
+    if doesFileExist(source) then
+      local ok = CopyExternalAtomic(source, dest)
+      if not ok then
+        had_failure = true
+      end
+    elseif not WriteEmbeddedAsset(dest, name) then
+      had_failure = true
+    end
+  end
+
+  if had_failure then
+    UI.Notif_queue.add("Applied "..pack_key.." pack with missing files")
     return false
   end
-  UI.Notif_queue.add("Installed "..pack.label.." pack to "..POPSTARTER_PACK_ROOT)
+  UI.Notif_queue.add("Installed "..pack_key.." pack to "..POPSTARTER_PACK_ROOT)
   return true
 end
 

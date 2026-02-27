@@ -24,6 +24,55 @@ extern unsigned int size_mx4sio_bd_irx;
 extern unsigned char bdm_query_irx[];
 extern unsigned int size_bdm_query_irx;
 
+extern unsigned char asset_usb_png[];
+extern unsigned int size_asset_usb_png;
+extern unsigned char asset_smb_png[];
+extern unsigned int size_asset_smb_png;
+extern unsigned char asset_mmce_png[];
+extern unsigned int size_asset_mmce_png;
+extern unsigned char asset_mx4sio_png[];
+extern unsigned int size_asset_mx4sio_png;
+extern unsigned char asset_hdd_png[];
+extern unsigned int size_asset_hdd_png;
+extern unsigned char asset_apahdd_png[];
+extern unsigned int size_asset_apahdd_png;
+extern unsigned char asset_bdhdd_png[];
+extern unsigned int size_asset_bdhdd_png;
+extern unsigned char asset_bkg_png[];
+extern unsigned int size_asset_bkg_png;
+extern unsigned char asset_bgm_png[];
+extern unsigned int size_asset_bgm_png;
+extern unsigned char asset_disc_png[];
+extern unsigned int size_asset_disc_png;
+extern unsigned char asset_splash_bg_png[];
+extern unsigned int size_asset_splash_bg_png;
+extern unsigned char asset_splash_logo_png[];
+extern unsigned int size_asset_splash_logo_png;
+extern unsigned char asset_splash_appname_png[];
+extern unsigned int size_asset_splash_appname_png;
+extern unsigned char asset_splash_credits_png[];
+extern unsigned int size_asset_splash_credits_png;
+extern unsigned char asset_select_png[];
+extern unsigned int size_asset_select_png;
+extern unsigned char asset_start_png[];
+extern unsigned int size_asset_start_png;
+extern unsigned char asset_triangle_png[];
+extern unsigned int size_asset_triangle_png;
+extern unsigned char asset_circle_png[];
+extern unsigned int size_asset_circle_png;
+extern unsigned char asset_cross_png[];
+extern unsigned int size_asset_cross_png;
+extern unsigned char asset_r2_png[];
+extern unsigned int size_asset_r2_png;
+extern unsigned char asset_square_png[];
+extern unsigned int size_asset_square_png;
+extern unsigned char asset_icon_sys[];
+extern unsigned int size_asset_icon_sys;
+extern unsigned char asset_list_icn[];
+extern unsigned int size_asset_list_icn;
+extern unsigned char asset_del_icn[];
+extern unsigned int size_asset_del_icn;
+
 static bool LoadIrxCheckedBuffer(const char *name, unsigned char *irx, unsigned int size, int *out_id, int *out_ret);
 
 #define BDM_QUERY_RPC_ID 0xB0D10B00
@@ -232,6 +281,59 @@ static int lua_find_bdm_by_driver(lua_State *L)
 		const bdm_dev_info_t *info = &list.devs[i];
 		if (strcmp(info->name, driver) == 0) {
 			PushBdmInfo(L, info);
+			return 1;
+		}
+	}
+	lua_pushnil(L);
+	return 1;
+}
+
+
+
+typedef struct embedded_asset {
+	const char *name;
+	const unsigned char *data;
+	unsigned int size;
+} embedded_asset_t;
+
+static const embedded_asset_t g_embedded_assets[] = {
+	{"USB.png", asset_usb_png, size_asset_usb_png},
+	{"SMB.png", asset_smb_png, size_asset_smb_png},
+	{"MMCE.png", asset_mmce_png, size_asset_mmce_png},
+	{"MX4SIO.png", asset_mx4sio_png, size_asset_mx4sio_png},
+	{"HDD.png", asset_hdd_png, size_asset_hdd_png},
+	{"APAHDD.png", asset_apahdd_png, size_asset_apahdd_png},
+	{"BDHDD.png", asset_bdhdd_png, size_asset_bdhdd_png},
+	{"BKG.png", asset_bkg_png, size_asset_bkg_png},
+	{"BGM.png", asset_bgm_png, size_asset_bgm_png},
+	{"DISC.png", asset_disc_png, size_asset_disc_png},
+	{"splash_bg.png", asset_splash_bg_png, size_asset_splash_bg_png},
+	{"splash_logo.png", asset_splash_logo_png, size_asset_splash_logo_png},
+	{"splash_appname.png", asset_splash_appname_png, size_asset_splash_appname_png},
+	{"splash_credits.png", asset_splash_credits_png, size_asset_splash_credits_png},
+	{"select.png", asset_select_png, size_asset_select_png},
+	{"start.png", asset_start_png, size_asset_start_png},
+	{"triangle.png", asset_triangle_png, size_asset_triangle_png},
+	{"circle.png", asset_circle_png, size_asset_circle_png},
+	{"cross.png", asset_cross_png, size_asset_cross_png},
+	{"R2.png", asset_r2_png, size_asset_r2_png},
+	{"square.png", asset_square_png, size_asset_square_png},
+	{"icon.sys", asset_icon_sys, size_asset_icon_sys},
+	{"list.icn", asset_list_icn, size_asset_list_icn},
+	{"del.icn", asset_del_icn, size_asset_del_icn}
+};
+
+static int lua_getEmbeddedAsset(lua_State *L)
+{
+	int argc = lua_gettop(L);
+	if (argc != 1) {
+		return luaL_error(L, "Argument error: System.getEmbeddedAsset(name) takes one argument.");
+	}
+	const char *name = luaL_checkstring(L, 1);
+	for (size_t i = 0; i < sizeof(g_embedded_assets) / sizeof(g_embedded_assets[0]); ++i) {
+		const embedded_asset_t *asset = &g_embedded_assets[i];
+		if (strcmp(name, asset->name) == 0) {
+			lua_pushlstring(L, (const char *)asset->data, asset->size);
 			return 1;
 		}
 	}
@@ -1023,6 +1125,7 @@ static const luaL_Reg System_functions[] = {
 	{"checkDiscTray",         lua_checkDiscTray},
 	{"GetArgv0",                   lua_popargv0},
 	{"getAppDir",                 lua_getAppDir},
+	{"getEmbeddedAsset",      lua_getEmbeddedAsset},
 	{"resolveAsset",           lua_resolveAsset},
 	{"resolveAssetType",   lua_resolveAssetType},
 	{"initMX4SIO",             lua_mx4sio_init},

@@ -83,12 +83,21 @@ IMG = setmetatable({}, {
       BOOT_PROF.textures_ready = true
       BOOT_PROF.stamp("UI assets init (textures)")
     end
-    local path = ResolveImage(source)
-    local img = Graphics.loadImage(path)
+    local img = nil
+    if type(System) == "table" and type(System.getEmbeddedAsset) == "function" and type(Graphics) == "table" and type(Graphics.loadImageEmbedded) == "function" then
+      local ok, blob = pcall(System.getEmbeddedAsset, source)
+      if ok and blob ~= nil then
+        img = Graphics.loadImageEmbedded(blob, string.len(blob))
+      end
+    end
     if img == nil then
-      LOGF("Image load failed: %s", path)
-      IMG_FAILED[key] = true
-      return nil
+      local path = ResolveImage(source)
+      img = Graphics.loadImage(path)
+      if img == nil then
+        LOGF("Image load failed: %s", path)
+        IMG_FAILED[key] = true
+        return nil
+      end
     end
     Graphics.setImageFilters(img, LINEAR)
     rawset(tbl, key, img)
