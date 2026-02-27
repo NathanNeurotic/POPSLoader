@@ -66,6 +66,14 @@ extern unsigned char asset_r2_png[];
 extern unsigned int size_asset_r2_png;
 extern unsigned char asset_square_png[];
 extern unsigned int size_asset_square_png;
+extern unsigned char asset_system_lua[];
+extern unsigned int size_asset_system_lua;
+extern unsigned char asset_ui_lua[];
+extern unsigned int size_asset_ui_lua;
+extern unsigned char asset_images_lua[];
+extern unsigned int size_asset_images_lua;
+extern unsigned char asset_pops_profiles_lua[];
+extern unsigned int size_asset_pops_profiles_lua;
 
 static bool LoadIrxCheckedBuffer(const char *name, unsigned char *irx, unsigned int size, int *out_id, int *out_ret);
 
@@ -311,7 +319,11 @@ static const embedded_asset_t g_embedded_assets[] = {
 	{"circle.png", asset_circle_png, size_asset_circle_png},
 	{"cross.png", asset_cross_png, size_asset_cross_png},
 	{"R2.png", asset_r2_png, size_asset_r2_png},
-	{"square.png", asset_square_png, size_asset_square_png}
+	{"square.png", asset_square_png, size_asset_square_png},
+	{"system.lua", asset_system_lua, size_asset_system_lua},
+	{"ui.lua", asset_ui_lua, size_asset_ui_lua},
+	{"images.lua", asset_images_lua, size_asset_images_lua},
+	{"pops_profiles.lua", asset_pops_profiles_lua, size_asset_pops_profiles_lua}
 };
 
 static int lua_getEmbeddedAsset(lua_State *L)

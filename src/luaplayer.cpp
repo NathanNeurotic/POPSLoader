@@ -10,6 +10,91 @@
 #include "include/graphics.h"
 #include "include/dprintf.h"
 
+typedef struct embedded_asset {
+    const char *name;
+    const unsigned char *data;
+    unsigned int size;
+} embedded_asset_t;
+
+extern unsigned char asset_system_lua[];
+extern unsigned int size_asset_system_lua;
+extern unsigned char asset_ui_lua[];
+extern unsigned int size_asset_ui_lua;
+extern unsigned char asset_images_lua[];
+extern unsigned int size_asset_images_lua;
+extern unsigned char asset_pops_profiles_lua[];
+extern unsigned int size_asset_pops_profiles_lua;
+
+static const embedded_asset_t g_embedded_lua_assets[] = {
+    {"system.lua", asset_system_lua, size_asset_system_lua},
+    {"ui.lua", asset_ui_lua, size_asset_ui_lua},
+    {"images.lua", asset_images_lua, size_asset_images_lua},
+    {"pops_profiles.lua", asset_pops_profiles_lua, size_asset_pops_profiles_lua}
+};
+
+static const embedded_asset_t* FindEmbeddedLuaAsset(const char *name)
+{
+    if (name == NULL) {
+        return NULL;
+    }
+    for (size_t i = 0; i < sizeof(g_embedded_lua_assets) / sizeof(g_embedded_lua_assets[0]); ++i) {
+        if (strcmp(name, g_embedded_lua_assets[i].name) == 0) {
+            return &g_embedded_lua_assets[i];
+        }
+    }
+    return NULL;
+}
+
+static int lua_embedded_searcher(lua_State *L)
+{
+    const char *module_name = luaL_checkstring(L, 1);
+    char embedded_name[128];
+    size_t i = 0;
+    for (; module_name[i] != '\0' && i < sizeof(embedded_name) - 5; ++i) {
+        embedded_name[i] = (module_name[i] == '.') ? '/' : module_name[i];
+    }
+    embedded_name[i] = '\0';
+    strcat(embedded_name, ".lua");
+
+    const embedded_asset_t *asset = FindEmbeddedLuaAsset(embedded_name);
+    if (asset == NULL) {
+        lua_pushfstring(L, "\n\tno embedded Lua module '%s'", module_name);
+        return 1;
+    }
+
+    int load_ret = luaL_loadbuffer(L, (const char *)asset->data, asset->size, embedded_name);
+    if (load_ret != 0) {
+        lua_pushfstring(L, "\n\terror loading embedded module '%s': %s", module_name, lua_tostring(L, -1));
+        return 1;
+    }
+    return 1;
+}
+
+static void InstallEmbeddedLuaSearcher(lua_State *L)
+{
+    lua_getglobal(L, "package");
+    lua_getfield(L, -1, "loaders");
+    if (!lua_istable(L, -1)) {
+        lua_pop(L, 2);
+        return;
+    }
+
+    int n = (int)lua_objlen(L, -1);
+    for (int i = n + 1; i > 1; --i) {
+        lua_rawgeti(L, -1, i - 1);
+        lua_rawseti(L, -2, i);
+    }
+    lua_pushcfunction(L, lua_embedded_searcher);
+    lua_rawseti(L, -2, 1);
+
+    int n_after = (int)lua_objlen(L, -1);
+    for (int i = 2; i <= n_after; ++i) {
+        lua_pushnil(L);
+        lua_rawseti(L, -2, i);
+    }
+    lua_pop(L, 2);
+}
+
 #ifndef FORBID_LUA_ATPANIC_TEXTDUMP
 #define LOGDUMP(x...) if (LOG != NULL) fprintf(x)
 #else
@@ -91,6 +176,7 @@ const char * runScript(const char* script, bool isStringBuffer )
 	
 	  // Init Standard libraries
 	  luaL_openlibs(L);
+      InstallEmbeddedLuaSearcher(L);
 
     DPRINTF("Loading libs... ");
 
@@ -106,17 +192,22 @@ const char * runScript(const char* script, bool isStringBuffer )
     	
     DPRINTF("done !\n");
      
-	if(!isStringBuffer){
-        DPRINTF("Loading script : `%s'\n", script);
-	}
-
 	int s = 0;
 	const char * errMsg =(const char*)malloc(sizeof(char)*512);
 
-	if(!isStringBuffer) s = luaL_loadfile(L, script);
-	else {
-    s = luaL_loadbuffer(L, script, strlen(script), NULL);
-  }
+	if(!isStringBuffer){
+        DPRINTF("Loading embedded script key: `%s'\n", script);
+        const embedded_asset_t *asset = FindEmbeddedLuaAsset(script);
+        if (asset == NULL) {
+            sprintf((char*)errMsg, "FATAL: embedded Lua script missing: %s\n", script);
+            DPRINTF("%s", errMsg);
+            lua_close(L);
+            return errMsg;
+        }
+        s = luaL_loadbuffer(L, (const char *)asset->data, asset->size, script);
+	} else {
+        s = luaL_loadbuffer(L, script, strlen(script), NULL);
+    }
 
 		
 	if (s == 0) s = lua_pcall(L, 0, LUA_MULTRET, 0);
