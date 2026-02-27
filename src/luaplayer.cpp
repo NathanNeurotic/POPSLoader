@@ -253,11 +253,12 @@ int test_error(lua_State * L) {
 }
 
 const char * runScript(const char* script, bool isStringBuffer )
-{	
+{
+    (void)isStringBuffer;
     DPRINTF("Creating luaVM... \n");
 
-  	L = luaL_newstate();
-	if (!L) {
+    L = luaL_newstate();
+    if (!L) {
         char *errMsg = (char*)malloc(512);
         if (errMsg != NULL) {
             snprintf(errMsg, 512, "%s", kLuaErrorCreateState);
@@ -266,75 +267,60 @@ const char * runScript(const char* script, bool isStringBuffer )
         return kLuaErrorCreateState;
     }
     lua_atpanic(L, test_error);
-	
-	  // Init Standard libraries
-	  luaL_openlibs(L);
-      InstallEmbeddedLuaSearcher(L);
-      DisableLuaFilesystemScriptLoaders(L);
+
+    // Init Standard libraries
+    luaL_openlibs(L);
+    InstallEmbeddedLuaSearcher(L);
+    DisableLuaFilesystemScriptLoaders(L);
 
     DPRINTF("Loading libs... ");
 
-	  // init graphics
+    // init graphics
     luaGraphics_init(L);
     luaControls_init(L);
-	luaScreen_init(L);
+    luaScreen_init(L);
     luaTimer_init(L);
     luaSystem_init(L);
     luaSound_init(L);
     luaRender_init(L);
-	luaHDD_init(L);
-    	
-    DPRINTF("done !\n");
-     
-	int s = 0;
+    luaHDD_init(L);
 
-	if(!isStringBuffer){
-        DPRINTF("Loading embedded script key: `%s'\n", script);
-        size_t embedded_size = 0;
-        const uint8_t *embedded_script = FindEmbeddedLua(script, &embedded_size);
-        if (embedded_script == NULL) {
-            char *errMsg = (char*)malloc(512);
-            if (errMsg != NULL) {
-                snprintf(errMsg, 512, "FATAL: embedded Lua script missing: %s\n", script);
-                DPRINTF("%s", errMsg);
-            }
-            lua_close(L);
-            return (errMsg != NULL) ? errMsg : kLuaErrorOutOfMemory;
+    DPRINTF("done !\n");
+
+    int s = 0;
+
+    DPRINTF("Loading embedded script key: `%s'\n", script);
+    size_t embedded_size = 0;
+    const uint8_t *embedded_script = FindEmbeddedLua(script, &embedded_size);
+    if (embedded_script == NULL) {
+        char *errMsg = (char*)malloc(512);
+        if (errMsg != NULL) {
+            snprintf(errMsg, 512, "FATAL: embedded Lua script missing: %s\n", script);
+            DPRINTF("%s", errMsg);
         }
-        s = luaL_loadbuffer(L, (const char *)embedded_script, embedded_size, script);
-        if (s == 0) {
-            s = lua_pcall(L, 0, LUA_MULTRET, 0);
-        }
-	} else {
-            const char *boot_script_key = "boot.lua";
-            size_t boot_script_size = 0;
-            const uint8_t *boot_script_data = FindEmbeddedLua(boot_script_key, &boot_script_size);
-            if (boot_script_data == NULL) {
-                s = LUA_ERRFILE;
-                lua_pushfstring(L, "FATAL: embedded Lua script missing: %s", boot_script_key);
-            } else {
-                s = luaL_loadbuffer(L, (const char *)boot_script_data, boot_script_size, boot_script_key);
-                if (s == 0) {
-                    s = lua_pcall(L, 0, LUA_MULTRET, 0);
-                }
-            }
-        }
+        lua_close(L);
+        return (errMsg != NULL) ? errMsg : kLuaErrorOutOfMemory;
     }
 
-	if (s == 0) {
-		lua_close(L);
-		return NULL;
-	}
+    s = luaL_loadbuffer(L, (const char *)embedded_script, embedded_size, script);
+    if (s == 0) {
+        s = lua_pcall(L, 0, LUA_MULTRET, 0);
+    }
 
-	const char *lua_error = lua_tostring(L, -1);
-	const char *safe_error = (lua_error != NULL) ? lua_error : "(unknown lua error)";
-	char *errMsg = (char*)malloc(512);
-	if (errMsg != NULL) {
-		snprintf(errMsg, 512, "%s\n", safe_error);
-	}
+    if (s == 0) {
+        lua_close(L);
+        return NULL;
+    }
+
+    const char *lua_err_str = lua_tostring(L, -1);
+    const char *safe_error = (lua_err_str != NULL) ? lua_err_str : "(unknown lua error)";
+    char *errMsg = (char*)malloc(512);
+    if (errMsg != NULL) {
+        snprintf(errMsg, 512, "%s\n", safe_error);
+    }
     DPRINTF("%s\n", safe_error);
-	lua_pop(L, 1); // remove error message
-	lua_close(L);
-	
-	return (errMsg != NULL) ? errMsg : kLuaErrorOutOfMemory;
+    lua_pop(L, 1); // remove error message
+    lua_close(L);
+
+    return (errMsg != NULL) ? errMsg : kLuaErrorOutOfMemory;
 }
