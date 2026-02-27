@@ -506,6 +506,12 @@ UI = {
             elseif IMG.BKG ~= nil then
               Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
             end
+          elseif scene == UI.SCENES.CREDITS or scene == UI.SCENES.MPROFILE then
+            if IMG.BG ~= nil then
+              Graphics.drawScaleImage(IMG.BG, 0, 0, UI.SCR.X, UI.SCR.Y)
+            elseif IMG.BKG ~= nil then
+              Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
+            end
           else
             if IMG.BKG ~= nil then
               Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
@@ -731,6 +737,14 @@ end
           local tint = Color.new(128, 128, 128, alpha)
           Graphics.drawScaleImage(img, x, y, draw_w, draw_h, tint)
         end
+        local function DrawSplashNative(img, x, y, alpha)
+          if img == nil then return end
+          local img_w = Graphics.getImageWidth(img)
+          local img_h = Graphics.getImageHeight(img)
+          if img_w <= 0 or img_h <= 0 then return end
+          local tint = Color.new(128, 128, 128, alpha)
+          Graphics.drawScaleImage(img, Round(x), Round(y), img_w, img_h, tint)
+        end
         local function DrawSplashText(alpha)
           -- Requested: black text because splash image is white.
           local y0 = UI.SCR.Y_MID + 120
@@ -744,10 +758,24 @@ end
           local splash2 = IMG.SPLASH2
           local splash3 = IMG.SPLASH3
           local splash4 = IMG.SPLASH4
+          local safe = UI.LAYOUT.SAFE or {}
+          local margin_top = safe.T or 16
+          local margin_bottom = safe.B or 16
           if splash1 ~= nil then DrawSplashCover(splash1, UI.SCR.X, UI.SCR.Y, splash_alpha) end
-          if splash2 ~= nil then DrawSplashCover(splash2, UI.SCR.X, UI.SCR.Y, splash_alpha) end
-          if splash3 ~= nil then DrawSplashCover(splash3, UI.SCR.X, UI.SCR.Y, splash_alpha) end
-          if splash4 ~= nil then DrawSplashCover(splash4, UI.SCR.X, UI.SCR.Y, splash_alpha) end
+          if splash2 ~= nil then
+            local w = Graphics.getImageWidth(splash2)
+            local h = Graphics.getImageHeight(splash2)
+            DrawSplashNative(splash2, (UI.SCR.X - w) / 2, (UI.SCR.Y - h) / 2, splash_alpha)
+          end
+          if splash3 ~= nil then
+            local w = Graphics.getImageWidth(splash3)
+            DrawSplashNative(splash3, (UI.SCR.X - w) / 2, margin_top, splash_alpha)
+          end
+          if splash4 ~= nil then
+            local w = Graphics.getImageWidth(splash4)
+            local h = Graphics.getImageHeight(splash4)
+            DrawSplashNative(splash4, (UI.SCR.X - w) / 2, UI.SCR.Y - h - margin_bottom, splash_alpha)
+          end
         end
 
         local fade_in_frames = 120
@@ -854,6 +882,12 @@ end
 	        if UI.CURSCENE == UI.SCENES.MMAIN then
 	          if IMG.BGM ~= nil then
 	            Graphics.drawScaleImage(IMG.BGM, 0, 0, UI.SCR.X, UI.SCR.Y)
+	          elseif IMG.BKG ~= nil then
+	            Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
+	          end
+	        elseif UI.CURSCENE == UI.SCENES.CREDITS or UI.CURSCENE == UI.SCENES.MPROFILE then
+	          if IMG.BG ~= nil then
+	            Graphics.drawScaleImage(IMG.BG, 0, 0, UI.SCR.X, UI.SCR.Y)
 	          elseif IMG.BKG ~= nil then
 	            Graphics.drawScaleImage(IMG.BKG, 0, 0, UI.SCR.X, UI.SCR.Y)
 	          end

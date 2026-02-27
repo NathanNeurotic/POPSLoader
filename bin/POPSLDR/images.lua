@@ -19,6 +19,7 @@ local IMG_REGISTRATIONS = {
   {"BDHDD", "BDHDD.png"},
   {"BKG", "BKG.png"},
   {"BGM", "BGM.png"},
+  {"BG", "BG.png"},
   {"DISC", "DISC.png"},
   {"SPLASH1", "splash_bg.png"},
   {"SPLASH2", "splash_logo.png"},
@@ -59,6 +60,7 @@ IMG = setmetatable({}, {
         img = Graphics.loadImageEmbedded(blob, string.len(blob))
       end
     end
+
 
     if img == nil then
       IMG_FAILED[key] = true
