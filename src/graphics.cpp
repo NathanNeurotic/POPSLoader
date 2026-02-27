@@ -71,6 +71,13 @@ static GSTEXTURE* decode_png_stream(png_structp png_ptr, png_infop info_ptr, boo
 	int row, i, k = 0, j, bit_depth, color_type, interlace_type;
 
 	png_read_info(png_ptr, info_ptr);
+	/* Enable proper handling for interlaced PNGs.
+	   Required before png_read_update_info/png_read_image.
+	   No performance impact for non-interlaced images. */
+	if (png_get_interlace_type(png_ptr, info_ptr) != PNG_INTERLACE_NONE)
+	{
+		png_set_interlace_handling(png_ptr);
+	}
 	png_get_IHDR(png_ptr, info_ptr, &width, &height, &bit_depth, &color_type, &interlace_type, NULL, NULL);
 
 	if (bit_depth == 16) png_set_strip_16(png_ptr);
