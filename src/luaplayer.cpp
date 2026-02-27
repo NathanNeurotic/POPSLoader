@@ -32,13 +32,9 @@ extern unsigned int size_asset_pops_profiles_lua;
 
 static const embedded_asset_t g_embedded_lua_assets[] = {
     {"system.lua", asset_system_lua, size_asset_system_lua},
-    {"POPSLDR/system.lua", asset_system_lua, size_asset_system_lua},
     {"ui.lua", asset_ui_lua, size_asset_ui_lua},
-    {"POPSLDR/ui.lua", asset_ui_lua, size_asset_ui_lua},
     {"images.lua", asset_images_lua, size_asset_images_lua},
-    {"POPSLDR/images.lua", asset_images_lua, size_asset_images_lua},
-    {"pops_profiles.lua", asset_pops_profiles_lua, size_asset_pops_profiles_lua},
-    {"POPSLDR/pops_profiles.lua", asset_pops_profiles_lua, size_asset_pops_profiles_lua}
+    {"pops_profiles.lua", asset_pops_profiles_lua, size_asset_pops_profiles_lua}
 };
 
 static const uint8_t* FindEmbeddedLua(const char *key, size_t *out_size)
