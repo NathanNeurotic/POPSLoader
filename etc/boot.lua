@@ -72,11 +72,25 @@ if string.find(ARGV0, "^hdd0:") then
 end
 GPAD = 0
 Font.ftInit()
-BFONT = Font.LoadBuiltinFont()
-SFONT = Font.LoadBuiltinFont()
-LFONT = Font.LoadBuiltinFont()
+local BOOT_FONT_KEY = "fonts/Roboto-Regular.ttf"
+local function load_boot_font_or_die()
+  local h = Font.ftLoadEmbedded(BOOT_FONT_KEY)
+  if type(h) ~= "number" then
+    Screen.clear(Color.new(0,0,0))
+    Font.fmLoad()
+    Font.fmPrint(40, 40, 0.8, "FATAL: embedded boot font missing: "..BOOT_FONT_KEY, Color.new(255, 0, 0))
+    Screen.flip()
+    while true do end
+  end
+  return h
+end
+
+BFONT = load_boot_font_or_die()
+SFONT = load_boot_font_or_die()
+LFONT = load_boot_font_or_die()
 Font.ftSetCharSize(BFONT, 800, 800)
 Font.ftSetCharSize(SFONT, 600, 600)
+Font.ftSetCharSize(LFONT, 900, 900)
 BOOT_PROF.stamp("UI assets init (fonts)")
 function STOP() LOG("PROGRAM STOP") Screen.clear(Color.new(255,0,0)) Screen.flip() while true do end end
 
