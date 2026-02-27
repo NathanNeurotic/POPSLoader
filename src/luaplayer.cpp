@@ -10,6 +10,10 @@
 #include "include/graphics.h"
 #include "include/dprintf.h"
 
+#ifndef lua_objlen
+#define lua_objlen lua_rawlen
+#endif
+
 typedef struct embedded_asset {
     const char *name;
     const unsigned char *data;
