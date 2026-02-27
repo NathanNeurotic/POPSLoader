@@ -250,15 +250,17 @@ const char * runScript(const char* script, bool isStringBuffer )
     DPRINTF("done !\n");
      
 	int s = 0;
-	const char * errMsg =(const char*)malloc(sizeof(char)*512);
 
 	if(!isStringBuffer){
         DPRINTF("Loading embedded script key: `%s'\n", script);
         size_t embedded_size = 0;
         const uint8_t *embedded_script = FindEmbeddedLua(script, &embedded_size);
         if (embedded_script == NULL) {
-            snprintf((char*)errMsg, 512, "FATAL: embedded Lua script missing: %s\n", script);
-            DPRINTF("%s", errMsg);
+            char *errMsg = (char*)malloc(512);
+            if (errMsg != NULL) {
+                snprintf(errMsg, 512, "FATAL: embedded Lua script missing: %s\n", script);
+                DPRINTF("%s", errMsg);
+            }
             lua_close(L);
             return errMsg;
         }
@@ -295,12 +297,19 @@ const char * runScript(const char* script, bool isStringBuffer )
         }
     }
 
-	if (s) {
-		const char *lua_error = lua_tostring(L, -1);
-		snprintf((char*)errMsg, 512, "%s\n", lua_error != NULL ? lua_error : "(unknown lua error)");
-    DPRINTF("%s\n", lua_error != NULL ? lua_error : "(unknown lua error)");
-		lua_pop(L, 1); // remove error message
+	if (s == 0) {
+		lua_close(L);
+		return NULL;
 	}
+
+	const char *lua_error = lua_tostring(L, -1);
+	const char *safe_error = (lua_error != NULL) ? lua_error : "(unknown lua error)";
+	char *errMsg = (char*)malloc(512);
+	if (errMsg != NULL) {
+		snprintf(errMsg, 512, "%s\n", safe_error);
+	}
+    DPRINTF("%s\n", safe_error);
+	lua_pop(L, 1); // remove error message
 	lua_close(L);
 	
 	return errMsg;
