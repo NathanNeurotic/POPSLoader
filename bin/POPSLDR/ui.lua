@@ -776,8 +776,8 @@ end
         end
 
         local show_credits = show_boot_credits == true
-        local FADE_IN_MS = 700
-        local FADE_OUT_MS = 700
+        local FADE_IN_MS = 1100
+        local FADE_OUT_MS = 900
 
         local function Clamp01(value)
           if value < 0 then return 0 end
@@ -861,25 +861,14 @@ end
           DrawTargetScene(next_scene or UI.SCENES.MMAIN)
         end
 
-        -- Start boot sound once, and extend splash hold to cover it (configurable).
+        -- Start boot sound once; fixed boot totals must not be lengthened by audio duration.
         TryBootSound()
-        local splash_hold_ms = 1500
-        if UI.BOOT_SOUND ~= nil then
-          local sec = UI.BOOT_SOUND.SECONDS
-          if type(sec) ~= "number" or sec < 0 then sec = 0 end
-          local pad = UI.BOOT_SOUND.PAD_SECONDS
-          if type(pad) ~= "number" or pad < 0 then pad = 0 end
-          local sound_hold_ms = math.floor(((sec + pad) * 1000) + 0.5)
-          if sound_hold_ms > splash_hold_ms then
-            splash_hold_ms = sound_hold_ms
-          end
-        end
-        local credits_phase_seconds = UI.BOOT_SOUND.CREDITS_PHASE_SECONDS or 7.0
-        if type(credits_phase_seconds) ~= "number" or credits_phase_seconds < 0 then
-          credits_phase_seconds = 7.0
-        end
-        local credits_hold_ms = math.floor((credits_phase_seconds * 1000) + 0.5) - FADE_IN_MS - FADE_OUT_MS
-        if credits_hold_ms < 1200 then credits_hold_ms = 1200 end
+        local SPLASH_TOTAL_MS = 3000
+        local CREDITS_TOTAL_MS = 4000
+        local splash_hold_ms = SPLASH_TOTAL_MS - (FADE_IN_MS + FADE_OUT_MS)
+        if splash_hold_ms < 0 then splash_hold_ms = 0 end
+        local credits_hold_ms = CREDITS_TOTAL_MS - (FADE_IN_MS + FADE_OUT_MS)
+        if credits_hold_ms < 0 then credits_hold_ms = 0 end
 
         StepFade(DrawSplash, 128, 0, FADE_IN_MS)
         StepHold(DrawSplash, splash_hold_ms)
@@ -1077,8 +1066,8 @@ end
       elapsed = 0,
       last_time = nil,
       max_step = 33,
-      duration_out = 700,
-      duration_in = 700,
+      duration_out = 900,
+      duration_in = 1100,
       Queue = function (target)
         if target == nil then return end
         if UI.Transition.active and UI.Transition.phase == "out" then
