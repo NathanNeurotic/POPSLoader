@@ -738,6 +738,13 @@ end
           Font.ftPrint(BFONT, UI.SCR.X_MID, y0 + 18,  8, UI.SCR.X, 16, "Graphics by Berion",   Color.new(0, 0, 0, alpha))
           Font.ftPrint(BFONT, UI.SCR.X_MID, y0 + 36,  8, UI.SCR.X, 16, "israpps.github.io",    Color.new(0, 0, 0, alpha))
         end
+        local function DrawSplashLayered(alpha)
+          local splash_alpha = alpha or 128
+          DrawSplashCover(IMG.SPLASH1 or IMG.BKG, UI.SCR.X, UI.SCR.Y, splash_alpha)
+          DrawSplashCover(IMG.SPLASH2, UI.SCR.X, UI.SCR.Y, splash_alpha)
+          DrawSplashCover(IMG.SPLASH3, UI.SCR.X, UI.SCR.Y, splash_alpha)
+          DrawSplashCover(IMG.SPLASH4, UI.SCR.X, UI.SCR.Y, splash_alpha)
+        end
 
         local fade_in_frames = 120
         local fade_mid_frames = 30
@@ -776,13 +783,13 @@ end
         for i = 1, fade_in_frames do
           local alpha = Round(128 * (i / fade_in_frames))
           DrawBackground()
-          DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
+          DrawSplashLayered(alpha)
           DrawSplashText(alpha)
           Screen.flip() -- we dont use UI.flip here because we dont want notifications on the welcome screen
         end
         for _ = 1, boot_hold_frames do
           DrawBackground()
-          DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, 128)
+          DrawSplashLayered(128)
           DrawSplashText(128)
           Screen.flip()
         end
@@ -790,7 +797,7 @@ end
           for i = 1, fade_mid_frames do
             local alpha = Round(128 * (1 - (i / fade_mid_frames)))
             DrawTargetScene(UI.SCENES.CREDITS)
-            DrawSplashCover(IMG.PSL, UI.SCR.X, UI.SCR.Y, alpha)
+            DrawSplashLayered(alpha)
             DrawSplashText(alpha)
             Screen.flip()
           end
