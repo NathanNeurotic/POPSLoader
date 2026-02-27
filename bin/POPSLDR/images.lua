@@ -63,6 +63,7 @@ IMG = setmetatable({}, {
       local ok, blob = pcall(System.getEmbeddedAsset, source)
       if ok and blob ~= nil then
         img = Graphics.loadImageEmbedded(blob, string.len(blob))
+        if img == 0 then img = nil end
       end
     end
 

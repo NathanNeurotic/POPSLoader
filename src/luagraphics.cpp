@@ -563,12 +563,22 @@ static int lua_getloaddata(lua_State *L){
 static int lua_load_embedded_png(lua_State *L) {
 	int argc = lua_gettop(L);
 	if (argc != 2) return luaL_error(L, "wrong number of arguments");
-    lua_gc(L, LUA_GCCOLLECT, 0);
-	uint8_t* ptr = (uint8_t *)luaL_checkstring(L, 1);
-	size_t siz = luaL_checkinteger(L, 2);
-	GSTEXTURE* image = NULL;
-	image = loadEmbeddedPNG(ptr, siz, true);
-	lua_pushinteger(L, (uint32_t)(image));
+	size_t blob_len = 0;
+	const char *blob = luaL_checklstring(L, 1, &blob_len);
+
+	// Respect caller-supplied length, but clamp to real string length to avoid overruns.
+	size_t siz = (size_t)luaL_checkinteger(L, 2);
+	if (siz > blob_len) siz = blob_len;
+
+	lua_gc(L, LUA_GCCOLLECT, 0);
+	GSTEXTURE *image = loadEmbeddedPNG((uint8_t*)blob, siz, true);
+
+	if (image == NULL) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	lua_pushinteger(L, (uint32_t)image);
 	return 1;
 }
 //Register our Graphics Functions
