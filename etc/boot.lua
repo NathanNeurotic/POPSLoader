@@ -94,4 +94,4 @@ Font.ftSetCharSize(LFONT, 900, 900)
 BOOT_PROF.stamp("UI assets init (fonts)")
 function STOP() LOG("PROGRAM STOP") Screen.clear(Color.new(255,0,0)) Screen.flip() while true do end end
 
--- system.lua is launched explicitly by the native boot sequence.
+require("system")

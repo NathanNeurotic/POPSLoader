@@ -442,9 +442,6 @@ int main(int argc, char * argv[])
 
         init_scr();
 
-        if (errMsg == NULL) {
-            errMsg = runScript("system.lua", false);
-        }
 
         if (errMsg != NULL)
         {
