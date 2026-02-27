@@ -59,15 +59,15 @@ static const uint8_t* FindEmbeddedLua(const char *key, size_t *out_size)
     return NULL;
 }
 
-static int BuildEmbeddedLuaModuleKey(const char *module_name, char *out_key, size_t out_key_size, int map_dots)
+static int BuildEmbeddedLuaModuleKey(const char *module_name, char *out_key, size_t out_key_size)
 {
     if (module_name == NULL || out_key == NULL || out_key_size == 0) {
         return 0;
     }
     size_t idx = 0;
     while (module_name[idx] != '\0' && idx < out_key_size - 5) {
-        char c = module_name[idx];
-        out_key[idx] = (map_dots && c == '.') ? '/' : c;
+        const char c = module_name[idx];
+        out_key[idx] = (c == '.') ? '/' : c;
         idx++;
     }
     if (module_name[idx] != '\0') {
@@ -88,12 +88,7 @@ static int lua_embedded_searcher(lua_State *L)
     size_t module_size = 0;
     const uint8_t *module_data = NULL;
 
-    if (BuildEmbeddedLuaModuleKey(module_name, module_key, sizeof(module_key), 1)) {
-        module_data = FindEmbeddedLua(module_key, &module_size);
-    }
-
-    if (module_data == NULL && strchr(module_name, '.') == NULL &&
-        BuildEmbeddedLuaModuleKey(module_name, module_key, sizeof(module_key), 0)) {
+    if (BuildEmbeddedLuaModuleKey(module_name, module_key, sizeof(module_key))) {
         module_data = FindEmbeddedLua(module_key, &module_size);
     }
 
