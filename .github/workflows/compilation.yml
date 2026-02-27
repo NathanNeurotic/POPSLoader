@@ -38,28 +38,20 @@ jobs:
           printf "%s\n%s\n" "$COMMIT_SHORT" "$BUILD_UTC" > bin/POPSLDR/BUILD_INFO.txt
           cat bin/POPSLDR/BUILD_INFO.txt
 
-      - name: Validate etc/boot.lua syntax
-        shell: sh
+      - name: Validate etc/boot.lua (syntax/newline)
+        shell: bash
         run: |
           set -eu
-          if command -v lua >/dev/null 2>&1; then
-            lua -e "assert(loadfile('etc/boot.lua'))"
+          BOOT_LUA="etc/boot.lua"
+          [ -f "$BOOT_LUA" ] || { echo "ERROR: $BOOT_LUA not found" >&2; exit 1; }
+          LAST_BYTE_HEX="$(tail -c 1 "$BOOT_LUA" | od -An -tx1 | tr -d '[:space:]')"
+          [ "$LAST_BYTE_HEX" = "0a" ] || { echo "ERROR: $BOOT_LUA must end with newline (0x0A)" >&2; exit 1; }
+          if command -v luac >/dev/null 2>&1; then
+            luac -p "$BOOT_LUA"
+          elif command -v lua >/dev/null 2>&1; then
+            lua -e "assert(loadfile('$BOOT_LUA'))"
           else
-            python - <<'PYCODE'
-from pathlib import Path
-import re
-p = Path('etc/boot.lua')
-text = p.read_text(encoding='utf-8')
-if not text.endswith('\n'):
-    raise SystemExit('ERROR: etc/boot.lua must end with a newline')
-no_strings = re.sub(r"'[^'\\n]*'|\"[^\"\\n]*\"|--.*", ' ', text)
-function_count = len(re.findall(r'\\bfunction\\b', no_strings))
-if_count = len(re.findall(r'\\bif\\b', no_strings))
-end_count = len(re.findall(r'\\bend\\b', no_strings))
-if end_count < function_count or end_count < if_count:
-    raise SystemExit(f'ERROR: etc/boot.lua appears unbalanced (function={function_count}, if={if_count}, end={end_count})')
-print('boot.lua coarse syntax checks passed')
-PYCODE
+            echo "NOTE: luac/lua not found; skipped Lua syntax validation"
           fi
 
       - name: Compile project

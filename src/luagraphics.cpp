@@ -8,6 +8,12 @@
 #include "include/fntsys.h"
 #include "include/luaplayer.h"
 
+typedef struct embedded_font_asset {
+    const char *key;
+    const unsigned char *data;
+    unsigned int size;
+} embedded_font_asset_t;
+
 static bool asyncDelayed = true;
 
 volatile int imgThreadResult = 1;
@@ -87,10 +93,50 @@ static int lua_ftload(lua_State *L){
 }
 extern unsigned char builtin_font[];
 extern unsigned int size_builtin_font;
+
+static const embedded_font_asset_t g_embedded_font_assets[] = {
+    {"fonts/Roboto-Regular.ttf", builtin_font, size_builtin_font},
+    {"builtin_font.ttf", builtin_font, size_builtin_font}
+};
+
+static const embedded_font_asset_t *FindEmbeddedFontAsset(const char *key)
+{
+    if (key == NULL) {
+        return NULL;
+    }
+
+    for (size_t i = 0; i < sizeof(g_embedded_font_assets) / sizeof(g_embedded_font_assets[0]); ++i) {
+        if (strcmp(key, g_embedded_font_assets[i].key) == 0) {
+            return &g_embedded_font_assets[i];
+        }
+    }
+
+    return NULL;
+}
+
 static int lua_ftloadDefault(lua_State *L){
 	int fntHandle = fntLoadbuff(builtin_font, size_builtin_font);
 	if (fntHandle == -1) lua_pushnil(L); else lua_pushinteger(L, fntHandle);
 	return 1;
+}
+
+static int lua_ftloadEmbedded(lua_State *L)
+{
+    if (lua_gettop(L) != 1) return luaL_error(L, "wrong number of arguments");
+    const char *fontkey = luaL_checkstring(L, 1);
+    const embedded_font_asset_t *asset = FindEmbeddedFontAsset(fontkey);
+    if (asset == NULL) {
+        lua_pushnil(L);
+        return 1;
+    }
+
+    int fntHandle = fntLoadbuff((void *)asset->data, (int)asset->size);
+    if (fntHandle < 0) {
+        lua_pushnil(L);
+    } else {
+        lua_pushinteger(L, fntHandle);
+    }
+    return 1;
 }
 
 static int lua_ftSetPixelSize(lua_State *L) {
@@ -175,6 +221,7 @@ static const luaL_Reg Font_functions[] = {
 	{"ftInit",            		  lua_ftinit},
 	{"ftLoad",            		  lua_ftload},
 	{"LoadBuiltinFont",    lua_ftloadDefault},
+	{"ftLoadEmbedded",     lua_ftloadEmbedded},
 	{"ftSetPixelSize",    lua_ftSetPixelSize},
 	{"ftSetCharSize", 	   lua_ftSetCharSize},
 	{"ftPrint",         		 lua_ftprint},

@@ -38,6 +38,7 @@ int getBootDevice(void);
 extern size_t GetFreeSize(void);
 
 extern const char * runScript(const char* script, bool isStringBuffer);
+extern int luaErrorIsHeapOwned(const char *errMsg);
 extern void luaC_collectgarbage (lua_State *L);
 
 //extern void luaSound_init(lua_State *L);

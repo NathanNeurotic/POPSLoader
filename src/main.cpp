@@ -3,7 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sifrpc.h>
-#include <loadfile.h>
+#include <sifcmd.h>
 #include <libmc.h>
 #include <libcdvd.h>
 #include <iopheap.h>
@@ -33,6 +33,11 @@ extern "C"{
 #include <libds34bt.h>
 #include <libds34usb.h>
 }
+
+
+#ifndef __SIFEXECMODULEBUFFER_DECLARED
+extern "C" int SifExecModuleBuffer(void *ptr, int size, int arg_len, const char *args, int *mod_res);
+#endif
 
 extern char bootString[];
 extern unsigned int size_bootString;
@@ -437,20 +442,27 @@ int main(int argc, char * argv[])
 
         init_scr();
 
+
         if (errMsg != NULL)
         {
             scr_setfontcolor(0x0000ff);
 		    scr_clear();
 		    scr_setXY(5, 2);
 		    scr_printf("Enceladus ERROR!\n");
-		    scr_printf(errMsg);
+		    scr_printf("%s", errMsg);
 		    puts(errMsg);
 		    scr_printf("\nPress [start] to restart\n");
         	while (!isButtonPressed(PAD_START)) {
 		    }
+            if (luaErrorIsHeapOwned(errMsg)) {
+                free((void*)errMsg);
+            }
+            errMsg = NULL;
             scr_setfontcolor(0xffffff);
+            continue;
         }
 
+        break;
     }
 
 	return 0;
