@@ -11,6 +11,7 @@
 
 #include "include/graphics.h"
 #include "include/dprintf.h"
+#include "include/embed_assets.h"
 
 #define DEG2RAD(x) ((x)*0.01745329251)
 
@@ -792,7 +793,21 @@ GSTEXTURE* loadjpeg(FILE* fp, bool scale_down, bool delayed)
 }
 
 GSTEXTURE* load_image(const char* path, bool delayed){
+	if (path != NULL && strncmp(path, "embed:/", 7) == 0) {
+		const uint8_t *data = NULL;
+		size_t size = 0;
+		if (embedded_get(path, &data, &size)) {
+			return loadEmbeddedPNG((uint8_t *)data, size, delayed);
+		}
+		DPRINTF("Failed to load image %s.", path);
+		return NULL;
+	}
+
 	FILE* file = fopen(path, "rb");
+	if (file == NULL) {
+		DPRINTF("Failed to load image %s.", path);
+		return NULL;
+	}
 	uint16_t magic;
 	fread(&magic, 1, 2, file);
 	fseek(file, 0, SEEK_SET);
@@ -800,6 +815,7 @@ GSTEXTURE* load_image(const char* path, bool delayed){
 	if (magic == 0x4D42) image =      loadbmp(file, delayed);
 	else if (magic == 0xD8FF) image = loadjpeg(file, false, delayed);
 	else if (magic == 0x5089) image = loadpng(file, delayed);
+	else fclose(file);
 	if (image == NULL) DPRINTF("Failed to load image %s.", path);
 
 	return image;

@@ -1,0 +1,182 @@
+#include <string.h>
+#include <stdio.h>
+
+#include "include/embed_assets.h"
+
+typedef struct embedded_asset {
+	const char *key;
+	const uint8_t *data;
+	size_t size;
+} embedded_asset_t;
+
+extern unsigned char asset_usb_png[];
+extern unsigned int size_asset_usb_png;
+extern unsigned char asset_smb_png[];
+extern unsigned int size_asset_smb_png;
+extern unsigned char asset_mmce_png[];
+extern unsigned int size_asset_mmce_png;
+extern unsigned char asset_mx4sio_png[];
+extern unsigned int size_asset_mx4sio_png;
+extern unsigned char asset_hdd_png[];
+extern unsigned int size_asset_hdd_png;
+extern unsigned char asset_apahdd_png[];
+extern unsigned int size_asset_apahdd_png;
+extern unsigned char asset_bdhdd_png[];
+extern unsigned int size_asset_bdhdd_png;
+extern unsigned char asset_bkg_png[];
+extern unsigned int size_asset_bkg_png;
+extern unsigned char asset_bgm_png[];
+extern unsigned int size_asset_bgm_png;
+extern unsigned char asset_disc_png[];
+extern unsigned int size_asset_disc_png;
+extern unsigned char asset_splash_bg_png[];
+extern unsigned int size_asset_splash_bg_png;
+extern unsigned char asset_splash_logo_png[];
+extern unsigned int size_asset_splash_logo_png;
+extern unsigned char asset_splash_appname_png[];
+extern unsigned int size_asset_splash_appname_png;
+extern unsigned char asset_splash_credits_png[];
+extern unsigned int size_asset_splash_credits_png;
+extern unsigned char asset_select_png[];
+extern unsigned int size_asset_select_png;
+extern unsigned char asset_start_png[];
+extern unsigned int size_asset_start_png;
+extern unsigned char asset_triangle_png[];
+extern unsigned int size_asset_triangle_png;
+extern unsigned char asset_circle_png[];
+extern unsigned int size_asset_circle_png;
+extern unsigned char asset_cross_png[];
+extern unsigned int size_asset_cross_png;
+extern unsigned char asset_r2_png[];
+extern unsigned int size_asset_r2_png;
+extern unsigned char asset_square_png[];
+extern unsigned int size_asset_square_png;
+extern unsigned char asset_system_lua[];
+extern unsigned int size_asset_system_lua;
+extern unsigned char asset_ui_lua[];
+extern unsigned int size_asset_ui_lua;
+extern unsigned char asset_images_lua[];
+extern unsigned int size_asset_images_lua;
+extern unsigned char asset_pops_profiles_lua[];
+extern unsigned int size_asset_pops_profiles_lua;
+
+#define ASSET_ENTRY(key_name, symbol_name) { key_name, symbol_name, (size_t)size_##symbol_name }
+
+static const embedded_asset_t g_embedded_assets[] = {
+	ASSET_ENTRY("USB.png", asset_usb_png),
+	ASSET_ENTRY("SMB.png", asset_smb_png),
+	ASSET_ENTRY("MMCE.png", asset_mmce_png),
+	ASSET_ENTRY("MX4SIO.png", asset_mx4sio_png),
+	ASSET_ENTRY("HDD.png", asset_hdd_png),
+	ASSET_ENTRY("APAHDD.png", asset_apahdd_png),
+	ASSET_ENTRY("BDHDD.png", asset_bdhdd_png),
+	ASSET_ENTRY("BG.png", asset_bkg_png),
+	ASSET_ENTRY("BKG.png", asset_bkg_png),
+	ASSET_ENTRY("BGM.png", asset_bgm_png),
+	ASSET_ENTRY("DISC.png", asset_disc_png),
+	ASSET_ENTRY("splash_bg.png", asset_splash_bg_png),
+	ASSET_ENTRY("splash_logo.png", asset_splash_logo_png),
+	ASSET_ENTRY("splash_appname.png", asset_splash_appname_png),
+	ASSET_ENTRY("splash_credits.png", asset_splash_credits_png),
+	ASSET_ENTRY("select.png", asset_select_png),
+	ASSET_ENTRY("start.png", asset_start_png),
+	ASSET_ENTRY("triangle.png", asset_triangle_png),
+	ASSET_ENTRY("circle.png", asset_circle_png),
+	ASSET_ENTRY("cross.png", asset_cross_png),
+	ASSET_ENTRY("R2.png", asset_r2_png),
+	ASSET_ENTRY("square.png", asset_square_png),
+	ASSET_ENTRY("system.lua", asset_system_lua),
+	ASSET_ENTRY("ui.lua", asset_ui_lua),
+	ASSET_ENTRY("images.lua", asset_images_lua),
+	ASSET_ENTRY("pops_profiles.lua", asset_pops_profiles_lua),
+
+	ASSET_ENTRY("POPSLDR/IMG/USB.png", asset_usb_png),
+	ASSET_ENTRY("POPSLDR/IMG/SMB.png", asset_smb_png),
+	ASSET_ENTRY("POPSLDR/IMG/MMCE.png", asset_mmce_png),
+	ASSET_ENTRY("POPSLDR/IMG/MX4SIO.png", asset_mx4sio_png),
+	ASSET_ENTRY("POPSLDR/IMG/HDD.png", asset_hdd_png),
+	ASSET_ENTRY("POPSLDR/IMG/APAHDD.png", asset_apahdd_png),
+	ASSET_ENTRY("POPSLDR/IMG/BDHDD.png", asset_bdhdd_png),
+	ASSET_ENTRY("POPSLDR/IMG/BG.png", asset_bkg_png),
+	ASSET_ENTRY("POPSLDR/IMG/BKG.png", asset_bkg_png),
+	ASSET_ENTRY("POPSLDR/IMG/BGM.png", asset_bgm_png),
+	ASSET_ENTRY("POPSLDR/IMG/DISC.png", asset_disc_png),
+	ASSET_ENTRY("POPSLDR/IMG/splash_bg.png", asset_splash_bg_png),
+	ASSET_ENTRY("POPSLDR/IMG/splash_logo.png", asset_splash_logo_png),
+	ASSET_ENTRY("POPSLDR/IMG/splash_appname.png", asset_splash_appname_png),
+	ASSET_ENTRY("POPSLDR/IMG/splash_credits.png", asset_splash_credits_png),
+	ASSET_ENTRY("POPSLDR/IMG/select.png", asset_select_png),
+	ASSET_ENTRY("POPSLDR/IMG/start.png", asset_start_png),
+	ASSET_ENTRY("POPSLDR/IMG/triangle.png", asset_triangle_png),
+	ASSET_ENTRY("POPSLDR/IMG/circle.png", asset_circle_png),
+	ASSET_ENTRY("POPSLDR/IMG/cross.png", asset_cross_png),
+	ASSET_ENTRY("POPSLDR/IMG/R2.png", asset_r2_png),
+	ASSET_ENTRY("POPSLDR/IMG/square.png", asset_square_png),
+	ASSET_ENTRY("POPSLDR/system.lua", asset_system_lua),
+	ASSET_ENTRY("POPSLDR/ui.lua", asset_ui_lua),
+	ASSET_ENTRY("POPSLDR/images.lua", asset_images_lua),
+	ASSET_ENTRY("POPSLDR/pops_profiles.lua", asset_pops_profiles_lua)
+};
+
+static const embedded_asset_t *embedded_find(const char *key)
+{
+	for (size_t i = 0; i < sizeof(g_embedded_assets) / sizeof(g_embedded_assets[0]); ++i) {
+		if (strcmp(g_embedded_assets[i].key, key) == 0) {
+			return &g_embedded_assets[i];
+		}
+	}
+
+	return NULL;
+}
+
+int embedded_get(const char* path_or_name, const uint8_t** out_data, size_t* out_size)
+{
+	if (out_data == NULL || out_size == NULL || path_or_name == NULL) {
+		return 0;
+	}
+
+	*out_data = NULL;
+	*out_size = 0;
+
+	const char *input = path_or_name;
+	if (strncmp(input, "embed:/", 7) == 0) {
+		input += 7;
+	}
+
+	while (input[0] == '.' && input[1] == '/') {
+		input += 2;
+	}
+	while (*input == '/') {
+		++input;
+	}
+
+	if (*input == '\0') {
+		return 0;
+	}
+
+	char normalized[256];
+	const char *lookup_key = input;
+
+	if (strncmp(input, "POPSLDR/", 8) == 0) {
+		snprintf(normalized, sizeof(normalized), "%s", input);
+		lookup_key = normalized;
+	} else if (strncmp(input, "IMG/", 4) == 0) {
+		snprintf(normalized, sizeof(normalized), "POPSLDR/IMG/%s", input + 4);
+		lookup_key = normalized;
+	} else if (strchr(input, '/') != NULL) {
+		snprintf(normalized, sizeof(normalized), "POPSLDR/%s", input);
+		lookup_key = normalized;
+	}
+
+	const embedded_asset_t *asset = embedded_find(lookup_key);
+	if (asset == NULL && lookup_key != input && strchr(input, '/') == NULL) {
+		asset = embedded_find(input);
+	}
+	if (asset == NULL) {
+		return 0;
+	}
+
+	*out_data = asset->data;
+	*out_size = asset->size;
+	return 1;
+}
