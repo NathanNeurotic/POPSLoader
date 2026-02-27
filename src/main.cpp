@@ -39,6 +39,8 @@ extern "C"{
 extern "C" int SifExecModuleBuffer(void *ptr, int size, int arg_len, const char *args, int *mod_res);
 #endif
 
+extern "C" void EmbeddedAssets_Init(void);
+
 extern char bootString[];
 extern unsigned int size_bootString;
 
@@ -401,6 +403,9 @@ int main(int argc, char * argv[])
 	dbgprintf("boot path : %s\n", boot_path);
     DPRINTF("app dir : %s\n", app_dir);
 	dbgprintf("app dir : %s\n", app_dir);
+
+    EmbeddedAssets_Init();
+    BootStamp("embed fs init");
     
     BootStamp("Lua init start");
     while (1)
