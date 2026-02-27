@@ -42,26 +42,17 @@ jobs:
         shell: bash
         run: |
           set -eu
-          if command -v python3 >/dev/null 2>&1; then
-            PYTHON_BIN=python3
-          elif command -v python >/dev/null 2>&1; then
-            PYTHON_BIN=python
+          BOOT_LUA="etc/boot.lua"
+          [ -f "$BOOT_LUA" ] || { echo "ERROR: $BOOT_LUA not found" >&2; exit 1; }
+          LAST_BYTE_HEX="$(tail -c 1 "$BOOT_LUA" | od -An -tx1 | tr -d '[:space:]')"
+          [ "$LAST_BYTE_HEX" = "0a" ] || { echo "ERROR: $BOOT_LUA must end with newline (0x0A)" >&2; exit 1; }
+          if command -v luac >/dev/null 2>&1; then
+            luac -p "$BOOT_LUA"
+          elif command -v lua >/dev/null 2>&1; then
+            lua -e "assert(loadfile('$BOOT_LUA'))"
           else
-            echo "ERROR: python3/python not found" >&2
-            exit 1
+            echo "NOTE: luac/lua not found; skipped Lua syntax validation"
           fi
-          "$PYTHON_BIN" - <<'PY'
-          from pathlib import Path
-          p = Path("etc/boot.lua")
-          b = p.read_bytes()
-          if not b.endswith(b"\n"):
-              raise SystemExit("ERROR: etc/boot.lua must end with newline")
-          import shutil, subprocess
-          if shutil.which("luac"):
-              subprocess.check_call(["luac", "-p", str(p)])
-          elif shutil.which("lua"):
-              subprocess.check_call(["lua", "-e", f"assert(loadfile('{p}'))"])
-          PY
 
       - name: Compile project
         run: |
