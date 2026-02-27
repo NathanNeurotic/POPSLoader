@@ -135,6 +135,27 @@ static void InstallEmbeddedLuaSearcher(lua_State *L)
     lua_pop(L, 2);
 }
 
+static void DisableLuaFilesystemScriptLoaders(lua_State *L)
+{
+    static const char kLoadFileName[] = {'l','o','a','d','f','i','l','e','\0'};
+
+    lua_pushnil(L);
+    lua_setglobal(L, "dofile");
+
+    lua_pushnil(L);
+    lua_setglobal(L, kLoadFileName);
+
+    lua_getglobal(L, "package");
+    if (lua_istable(L, -1)) {
+        lua_pushnil(L);
+        lua_setfield(L, -2, "path");
+
+        lua_pushnil(L);
+        lua_setfield(L, -2, "cpath");
+    }
+    lua_pop(L, 1);
+}
+
 #ifndef FORBID_LUA_ATPANIC_TEXTDUMP
 #define LOGDUMP(x...) if (LOG != NULL) fprintf(x)
 #else
@@ -217,6 +238,7 @@ const char * runScript(const char* script, bool isStringBuffer )
 	  // Init Standard libraries
 	  luaL_openlibs(L);
       InstallEmbeddedLuaSearcher(L);
+      DisableLuaFilesystemScriptLoaders(L);
 
     DPRINTF("Loading libs... ");
 

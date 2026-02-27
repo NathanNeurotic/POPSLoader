@@ -3,7 +3,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <sifrpc.h>
-#include <loadfile.h>
 #include <libmc.h>
 #include <libcdvd.h>
 #include <iopheap.h>
