@@ -776,8 +776,8 @@ end
         end
 
         local show_credits = show_boot_credits == true
-        local FADE_IN_MS = 1500
-        local FADE_OUT_MS = 1200
+        local FADE_IN_MS = 1600
+        local FADE_OUT_MS = 1400
 
         local function Clamp01(value)
           if value < 0 then return 0 end
@@ -863,8 +863,8 @@ end
 
         -- Start boot sound once; fixed boot totals must not be lengthened by audio duration.
         TryBootSound()
-        local SPLASH_TOTAL_MS = 3000
-        local CREDITS_TOTAL_MS = 4000
+        local SPLASH_TOTAL_MS = 5500
+        local CREDITS_TOTAL_MS = 6500
         local splash_hold_ms = SPLASH_TOTAL_MS - (FADE_IN_MS + FADE_OUT_MS)
         if splash_hold_ms < 0 then splash_hold_ms = 0 end
         local credits_hold_ms = CREDITS_TOTAL_MS - (FADE_IN_MS + FADE_OUT_MS)
@@ -1066,8 +1066,8 @@ end
       elapsed = 0,
       last_time = nil,
       max_step = 33,
-      duration_out = 1200,
-      duration_in = 1500,
+      duration_out = 1400,
+      duration_in = 1600,
       Queue = function (target)
         if target == nil then return end
         if UI.Transition.active and UI.Transition.phase == "out" then
