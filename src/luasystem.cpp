@@ -66,12 +66,6 @@ extern unsigned char asset_r2_png[];
 extern unsigned int size_asset_r2_png;
 extern unsigned char asset_square_png[];
 extern unsigned int size_asset_square_png;
-extern unsigned char asset_icon_sys[];
-extern unsigned int size_asset_icon_sys;
-extern unsigned char asset_list_icn[];
-extern unsigned int size_asset_list_icn;
-extern unsigned char asset_del_icn[];
-extern unsigned int size_asset_del_icn;
 
 static bool LoadIrxCheckedBuffer(const char *name, unsigned char *irx, unsigned int size, int *out_id, int *out_ret);
 
@@ -317,10 +311,7 @@ static const embedded_asset_t g_embedded_assets[] = {
 	{"circle.png", asset_circle_png, size_asset_circle_png},
 	{"cross.png", asset_cross_png, size_asset_cross_png},
 	{"R2.png", asset_r2_png, size_asset_r2_png},
-	{"square.png", asset_square_png, size_asset_square_png},
-	{"icon.sys", asset_icon_sys, size_asset_icon_sys},
-	{"list.icn", asset_list_icn, size_asset_list_icn},
-	{"del.icn", asset_del_icn, size_asset_del_icn}
+	{"square.png", asset_square_png, size_asset_square_png}
 };
 
 static int lua_getEmbeddedAsset(lua_State *L)

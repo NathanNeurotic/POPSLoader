@@ -373,16 +373,6 @@ local function CopyExternalAtomic(source, dest)
   return true
 end
 
-local function WriteEmbeddedAsset(dest, name)
-  if type(System) ~= "table" or type(System.getEmbeddedAsset) ~= "function" then
-    return false
-  end
-  local ok, data = pcall(System.getEmbeddedAsset, name)
-  if not ok or data == nil then
-    return false
-  end
-  return WriteAtomic(dest, data)
-end
 
 local function EnsureDirectory(path)
   if doesFolderExist(path) then
@@ -479,9 +469,11 @@ function PLDR.ApplyPopstarterPack(pack_key)
     if doesFileExist(source) then
       local ok = CopyExternalAtomic(source, dest)
       if not ok then
+        UI.Notif_queue.add("Missing pack file: "..name)
         had_failure = true
       end
-    elseif not WriteEmbeddedAsset(dest, name) then
+    else
+      UI.Notif_queue.add("Missing pack file: "..name)
       had_failure = true
     end
   end
