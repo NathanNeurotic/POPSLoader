@@ -34,6 +34,11 @@ extern "C"{
 #include <libds34usb.h>
 }
 
+
+#ifndef __SIFEXECMODULEBUFFER_DECLARED
+extern "C" int SifExecModuleBuffer(void *ptr, int size, int arg_len, const char *args, int *mod_res);
+#endif
+
 extern char bootString[];
 extern unsigned int size_bootString;
 
