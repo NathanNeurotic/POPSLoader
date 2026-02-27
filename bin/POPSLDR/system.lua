@@ -541,6 +541,58 @@ function PLDR.GetPS1GameLists(path, updating)
   end
 end
 
+function PLDR.BuildUsbGameListMulti()
+  PLDR.CleanupGameList()
+  local roots = {
+    "mass0:/POPS/",
+    "mass1:/POPS/",
+    "mass2:/POPS/",
+    "mass3:/POPS/",
+    "mass4:/POPS/"
+  }
+  local found_any = false
+  for i = 1, #roots do
+    local root = roots[i]
+    local DIR = System.listDirectory(root)
+    if DIR ~= nil then
+      for j = 1, #DIR do
+        local entry = DIR[j]
+        if not entry.directory and string.lower(string.sub(entry.name, -4)) == ".vcd" then
+          found_any = true
+          table.insert(PLDR.GAMES, root.."|"..entry.name)
+        end
+      end
+    end
+  end
+  if not found_any then
+    local fallback_root = "mass:/POPS/"
+    local DIR = System.listDirectory(fallback_root)
+    if DIR ~= nil then
+      for j = 1, #DIR do
+        local entry = DIR[j]
+        if not entry.directory and string.lower(string.sub(entry.name, -4)) == ".vcd" then
+          found_any = true
+          table.insert(PLDR.GAMES, fallback_root.."|"..entry.name)
+        end
+      end
+    end
+  end
+  if found_any then
+    table.sort(PLDR.GAMES, function(a, b)
+      local root_a, name_a = string.match(a or "", "^([^|]+)|(.+)$")
+      local root_b, name_b = string.match(b or "", "^([^|]+)|(.+)$")
+      name_a = name_a or (a or "")
+      name_b = name_b or (b or "")
+      if name_a == name_b then
+        return (root_a or "") < (root_b or "")
+      end
+      return name_a < name_b
+    end)
+    return PLDR.GAMES
+  end
+  return nil
+end
+
 local function EncodeHddGameEntry(partition, relpath)
   if partition == nil or relpath == nil then
     return nil

@@ -170,7 +170,6 @@ UI = {
     LASTSCENE = 5;
     SCENES = {
       GUSBFAT = 1,
-      GUSBEXFAT = 2,
       GSMB = 3,
       GMX4SIO = 4,
       GHDD = 5,
@@ -1112,8 +1111,7 @@ end
         local layout = UI.LAYOUT
         UI.GameList.MAXDRAW = layout.LIST_MAX
         local titles = {
-          [UI.SCENES.GUSBFAT] = "USB FAT32",
-          [UI.SCENES.GUSBEXFAT] = "USB exFAT"
+          [UI.SCENES.GUSBFAT] = "USB"
         }
         local scene_title = titles[UI.CURSCENE]
         if scene_title ~= nil then
@@ -1170,7 +1168,13 @@ end
         local cover_img = nil
         if UI.CoverCache ~= nil then
           if ammount > 0 then
-            cover_img = UI.CoverCache:UpdateSelection(PLDR.GAMES[UI.GameList.CURR], PLDR.GAMEPATH)
+            local entry = PLDR.GAMES[UI.GameList.CURR]
+            local cover_path = PLDR.GAMEPATH
+            local root = string.match(entry or "", "^([^|]+)|.+$")
+            if root ~= nil then
+              cover_path = root
+            end
+            cover_img = UI.CoverCache:UpdateSelection(entry, cover_path)
           else
             UI.CoverCache:UpdateSelection(nil, PLDR.GAMEPATH)
           end
@@ -1200,16 +1204,28 @@ end
           elseif not doesFileExist(PLDR.POPSTARTER_PATH) then
             UI.Notif_queue.add("Cant find POPSTARTER ELF\n"..PLDR.POPSTARTER_PATH)
           else
+            local entry = PLDR.GAMES[UI.GameList.CURR]
+            local root, rel = string.match(entry or "", "^([^|]+)|(.+)$")
+            local vcd_full = nil
+            if root ~= nil then
+              vcd_full = root..rel
+            else
+              vcd_full = PLDR.GAMEPATH..entry
+            end
             if UI.CURSCENE ~= UI.SCENES.GHDD then -- only check if game can be found on USB and SMB
-              if not doesFileExist(PLDR.GAMEPATH .. PLDR.GAMES[UI.GameList.CURR]) then
-                UI.Notif_queue.add("Cant find Game\n"..PLDR.GAMEPATH .. PLDR.GAMES[UI.GameList.CURR])
+              if not doesFileExist(vcd_full) then
+                UI.Notif_queue.add("Cant find Game\n"..vcd_full)
               end
             end
             local launch_path = PLDR.GAMEPATH
             if UI.CURSCENE == UI.SCENES.GHDD then
               launch_path = ""
             end
-            PLDR.RunPOPStarterGame(launch_path, PLDR.GAMES[UI.GameList.CURR], UI.CURSCENE)
+            if root ~= nil then
+              PLDR.RunPOPStarterGame(root, rel, UI.CURSCENE)
+            else
+              PLDR.RunPOPStarterGame(launch_path, entry, UI.CURSCENE)
+            end
           end
         end
         local cross_label = UI.Footer.labels.cross_launch
@@ -1273,7 +1289,7 @@ end
     };
     MainMenu = {
       OPT = 1;
-      opts = {"MMCE", "MX4SIO", "HDD (exFAT)", "HDD (PFS)", "USB (exFAT)", "USB (FAT32)", "SMB (v1)", "Disc (DKWDRV)"};
+      opts = {"MMCE", "MX4SIO", "HDD (exFAT)", "HDD (PFS)", "USB", "SMB (v1)", "Disc (DKWDRV)"};
       Carousel = {
         currentIndex = 1,
         targetIndex = 1,
@@ -1307,8 +1323,7 @@ end
           ["MX4SIO"] = "MX4SIO",
           ["HDD (exFAT)"] = "BDHDD",
           ["HDD (PFS)"] = "APAHDD",
-          ["USB (exFAT)"] = "USBEXFAT",
-          ["USB (FAT32)"] = "USB",
+          ["USB"] = "USB",
           ["SMB (v1)"] = "SMB",
           ["Disc (DKWDRV)"] = "DISC"
         }
@@ -1523,17 +1538,12 @@ end
             UI.SceneChange(UI.SCENES.GHDD)
           elseif UI.MainMenu.OPT == 5 then
             PLDR.CleanupGameList()
-            PLDR.GetPS1GameLists("mass"..PLDR.USB.MASSINDX..":/POPS/", true)
-            UI.setDeviceLock(DEVLOCK.USB)
-            UI.SceneChange(UI.SCENES.GUSBEXFAT)
-          elseif UI.MainMenu.OPT == 6 then
-            PLDR.CleanupGameList()
-            PLDR.GetPS1GameLists("mass"..PLDR.USB.MASSINDX..":/POPS/", true)
+            PLDR.BuildUsbGameListMulti()
             UI.setDeviceLock(DEVLOCK.USB)
             UI.SceneChange(UI.SCENES.GUSBFAT)
-          elseif UI.MainMenu.OPT == 7 then
+          elseif UI.MainMenu.OPT == 6 then
             UI.Notif_queue.add("Not Implemented Yet")
-          elseif UI.MainMenu.OPT == 8 then
+          elseif UI.MainMenu.OPT == 7 then
             UI.Notif_queue.add("Not Implemented Yet")
           end --because we still dont support SMB
         end
@@ -1757,7 +1767,6 @@ end
 _G.UI = UI
 UI.GAME_SCENES = {
   [UI.SCENES.GUSBFAT] = true,
-  [UI.SCENES.GUSBEXFAT] = true,
   [UI.SCENES.GSMB] = true,
   [UI.SCENES.GMX4SIO] = true,
   [UI.SCENES.GHDD] = true,
@@ -1767,7 +1776,7 @@ function UI.IsGameScene(scene)
   return UI.GAME_SCENES[scene] == true
 end
 function UI.IsUsbScene(scene)
-  return scene == UI.SCENES.GUSBFAT or scene == UI.SCENES.GUSBEXFAT
+  return scene == UI.SCENES.GUSBFAT
 end
 function UI.OnSceneExit(previous_scene, next_scene)
   if UI.IsGameScene(previous_scene) and previous_scene ~= next_scene then
