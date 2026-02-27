@@ -14,7 +14,6 @@ local IMG_REGISTRATIONS = {
   "SMB.png",
   "MMCE.png",
   "MX4SIO.png",
-  "HDD.png",
   "APAHDD.png",
   "BDHDD.png",
   "BG.png",
