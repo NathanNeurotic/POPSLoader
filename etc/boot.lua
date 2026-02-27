@@ -1,13 +1,3 @@
-local function ensure_dir(path)
-  if path == nil or path == "" then return "./" end
-  if string.sub(path, -1) ~= "/" then
-    return path.."/"
-  end
-  return path
-end
-
-local BASE_DIR = ensure_dir(APP_DIR or System.currentDirectory())
-package.path = BASE_DIR.."?.lua;"..BASE_DIR.."?/init.lua;"..BASE_DIR.."POPSLDR/?.lua;./?.lua;./POPSLDR/?.lua;mass:/POPSLDR/?.lua;mc0:/POPSLDR/?.lua;mc1:/POPSLDR/?.lua"
 function LOG(...)
   print_uart(...)
 end
