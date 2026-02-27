@@ -493,7 +493,7 @@ UI = {
       Screen.flip()
     end;
     WelcomeDraw = {
-      Play = function (next_scene)
+      Play = function (next_scene, show_boot_credits)
 	        -- Boot splash fades in from black, then fades out into the next scene.
 	        local function DrawBackground()
 	          Screen.clear(Color.new(0, 0, 0))
@@ -753,6 +753,7 @@ end
         local fade_in_frames = 120
         local fade_mid_frames = 30
         local fade_out_frames = 30
+        local show_credits = show_boot_credits == true
 
         -- Start boot sound once, and extend splash hold to cover it (configurable).
         TryBootSound()
@@ -797,7 +798,7 @@ end
           DrawSplashText(128)
           Screen.flip()
         end
-        if fade_mid_frames > 0 then
+        if show_credits and fade_mid_frames > 0 then
           for i = 1, fade_mid_frames do
             local alpha = Round(128 * (1 - (i / fade_mid_frames)))
             DrawTargetScene(UI.SCENES.CREDITS)
@@ -806,16 +807,22 @@ end
             Screen.flip()
           end
         end
-        for _ = 1, credits_hold_frames do
-          DrawTargetScene(UI.SCENES.CREDITS)
-          Screen.flip()
+        if show_credits then
+          for _ = 1, credits_hold_frames do
+            DrawTargetScene(UI.SCENES.CREDITS)
+            Screen.flip()
+          end
         end
         if fade_out_frames > 0 then
           local fade_to_black_frames = math.floor(fade_out_frames / 2)
           local fade_in_menu_frames = fade_out_frames - fade_to_black_frames
           for i = 1, fade_to_black_frames do
             local alpha = Round(128 * (i / fade_to_black_frames))
-            DrawTargetScene(UI.SCENES.CREDITS)
+            if show_credits then
+              DrawTargetScene(UI.SCENES.CREDITS)
+            else
+              DrawBackground()
+            end
             Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
             Screen.flip()
           end
@@ -1115,8 +1122,15 @@ end
       MAXDRAW = 18;
       CURR = 1;
       STARTUP = 1;
+      CoverLastIndex = nil;
+      CoverPending = false;
+      CoverPendingAt = 0;
+      CoverIdleMs = 200;
       Reset = function ()
         UI.GameList.CURR = 1;
+        UI.GameList.CoverLastIndex = nil
+        UI.GameList.CoverPending = false
+        UI.GameList.CoverPendingAt = 0
       end;
       Play = function()
         local layout = UI.LAYOUT
@@ -1178,17 +1192,7 @@ end
         end
         local cover_img = nil
         if UI.CoverCache ~= nil then
-          if ammount > 0 then
-            local entry = PLDR.GAMES[UI.GameList.CURR]
-            local cover_path = PLDR.GAMEPATH
-            local root = string.match(entry or "", "^([^|]+)|.+$")
-            if root ~= nil then
-              cover_path = root
-            end
-            cover_img = UI.CoverCache:UpdateSelection(entry, cover_path)
-          else
-            UI.CoverCache:UpdateSelection(nil, PLDR.GAMEPATH)
-          end
+          cover_img = UI.CoverCache.last_img
         end
         if layout.PREVIEW_W > 0 then
           Graphics.drawRect(layout.PREVIEW_X - 2, layout.PREVIEW_Y - 2, layout.PREVIEW_W + 4, layout.PREVIEW_H + 4, UI.CCOL.GREY)
@@ -1209,6 +1213,35 @@ end
         if UI.Pad.Events.NAV_RIGHT then UI.GameList.CURR = CLAMP(UI.GameList.CURR+UI.GameList.MAXDRAW, 1, ammount) end
         if UI.Pad.Events.NAV_UP then UI.GameList.CURR = CLAMP(UI.GameList.CURR-1, 1, ammount) end
         if UI.Pad.Events.NAV_LEFT then UI.GameList.CURR = CLAMP(UI.GameList.CURR-UI.GameList.MAXDRAW, 1, ammount) end
+        if UI.CoverCache ~= nil then
+          local now = 0
+          if UI.Pad.Timer ~= nil then
+            now = Timer.getTime(UI.Pad.Timer)
+          end
+          local nav_event = UI.Pad.Events.NAV_DOWN or UI.Pad.Events.NAV_RIGHT or UI.Pad.Events.NAV_UP or UI.Pad.Events.NAV_LEFT
+          if ammount <= 0 then
+            UI.GameList.CoverLastIndex = nil
+            UI.GameList.CoverPending = false
+            UI.GameList.CoverPendingAt = now
+            UI.CoverCache:UpdateSelection(nil, PLDR.GAMEPATH)
+          else
+            if UI.GameList.CURR ~= UI.GameList.CoverLastIndex then
+              UI.GameList.CoverLastIndex = UI.GameList.CURR
+              UI.GameList.CoverPending = true
+              UI.GameList.CoverPendingAt = now
+            end
+            if UI.GameList.CoverPending and not nav_event and (now - UI.GameList.CoverPendingAt) >= UI.GameList.CoverIdleMs then
+              local entry = PLDR.GAMES[UI.GameList.CURR]
+              local cover_path = PLDR.GAMEPATH
+              local root = string.match(entry or "", "^([^|]+)|.+$")
+              if root ~= nil then
+                cover_path = root
+              end
+              UI.CoverCache:UpdateSelection(entry, cover_path)
+              UI.GameList.CoverPending = false
+            end
+          end
+        end
         if UI.Pad.Events.CONFIRM then
           if ammount <= 0 then
             UI.Notif_queue.add("No games found")
@@ -1521,6 +1554,9 @@ end
               UI.SceneChange(UI.SCENES.GSMB)
             end
           elseif UI.MainMenu.OPT == 2 then
+            if type(System) == "table" and type(System.ensureBDMFatFs) == "function" then
+              System.ensureBDMFatFs()
+            end
             UI.Notif_queue.add("Not Implemented Yet")
           elseif UI.MainMenu.OPT == 3 then
             UI.Notif_queue.add("Not Implemented Yet")
@@ -1548,6 +1584,9 @@ end
             end
             UI.SceneChange(UI.SCENES.GHDD)
           elseif UI.MainMenu.OPT == 5 then
+            if type(System) == "table" and type(System.ensureUsbMass) == "function" then
+              System.ensureUsbMass()
+            end
             PLDR.CleanupGameList()
             PLDR.BuildUsbGameListMulti()
             UI.setDeviceLock(DEVLOCK.USB)
@@ -1555,6 +1594,9 @@ end
           elseif UI.MainMenu.OPT == 6 then
             UI.Notif_queue.add("Not Implemented Yet")
           elseif UI.MainMenu.OPT == 7 then
+            if type(System) == "table" and type(System.ensureCDFS) == "function" then
+              System.ensureCDFS()
+            end
             UI.Notif_queue.add("Not Implemented Yet")
           end --because we still dont support SMB
         end

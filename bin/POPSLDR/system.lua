@@ -1617,10 +1617,8 @@ end
 
 ---MAIN PROGRAM BEHAVIOUR BEGINS
 local initial_scene = UI.SCENES.MMAIN
-if Touch(ResolveWritablePath(".pldrs")) then
-  initial_scene = UI.SCENES.CREDITS
-end
-UI.WelcomeDraw.Play(initial_scene)
+local show_boot_credits = Touch(ResolveWritablePath(".pldrs"))
+UI.WelcomeDraw.Play(initial_scene, show_boot_credits)
 if UI.Transition ~= nil then
   UI.Transition.allowSceneWrite = true
 end
