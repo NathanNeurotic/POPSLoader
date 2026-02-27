@@ -7,38 +7,45 @@
 --]]
 
 LOG("Registering images")
---- Add your images to this table, just write the name of the file.
---- FILES MUST HAVE EXTENSION. filename is parsed to create the access key: USB.PNG will be accesed by typing `IMG["USB"]`
+--- Add your images to this table, just write the file name.
+--- Access key is generated from basename without extension (e.g. USB.png -> IMG["USB"]).
 local IMG_REGISTRATIONS = {
-  {"USB", "USB.png"},
-  {"SMB", "SMB.png"},
-  {"MMCE", "MMCE.png"},
-  {"MX4SIO", "MX4SIO.png"},
-  {"HDD", "HDD.png"},
-  {"APAHDD", "APAHDD.png"},
-  {"BDHDD", "BDHDD.png"},
-  {"BKG", "BKG.png"},
-  {"BGM", "BGM.png"},
-  {"DISC", "DISC.png"},
-  {"SPLASH1", "splash_bg.png"},
-  {"SPLASH2", "splash_logo.png"},
-  {"SPLASH3", "splash_appname.png"},
-  {"SPLASH4", "splash_credits.png"},
-  {"select", "select.png"},
-  {"start", "start.png"},
-  {"triangle", "triangle.png"},
-  {"circle", "circle.png"},
-  {"cross", "cross.png"},
-  {"R2", "R2.png"},
-  {"square", "square.png"},
+  "USB.png",
+  "SMB.png",
+  "MMCE.png",
+  "MX4SIO.png",
+  "HDD.png",
+  "APAHDD.png",
+  "BDHDD.png",
+  "BG.png",
+  "BKG.png",
+  "BGM.png",
+  "DISC.png",
+  "splash_bg.png",
+  "splash_logo.png",
+  "splash_appname.png",
+  "splash_credits.png",
+  "select.png",
+  "start.png",
+  "triangle.png",
+  "circle.png",
+  "cross.png",
+  "R2.png",
+  "square.png",
 }
 
 local IMG_SOURCES = {}
 for x = 1, #IMG_REGISTRATIONS do
-  local name = IMG_REGISTRATIONS[x][1]
-  local path = IMG_REGISTRATIONS[x][2]
-  IMG_SOURCES[name] = path
+  local file = IMG_REGISTRATIONS[x]
+  local name = string.match(file, "^(.*)%.[^%.]+$") or file
+  IMG_SOURCES[name] = file
 end
+
+-- legacy splash aliases
+IMG_SOURCES["SPLASH1"] = "splash_bg.png"
+IMG_SOURCES["SPLASH2"] = "splash_logo.png"
+IMG_SOURCES["SPLASH3"] = "splash_appname.png"
+IMG_SOURCES["SPLASH4"] = "splash_credits.png"
 
 local IMG_FAILED = {}
 
