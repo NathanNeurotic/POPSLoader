@@ -11,6 +11,7 @@
 
 #include "include/graphics.h"
 #include "include/dprintf.h"
+#include "include/embed_assets.h"
 
 #define DEG2RAD(x) ((x)*0.01745329251)
 
@@ -43,90 +44,60 @@ typedef struct
 }  pngtest_error_parameters;
 
 //2D drawing functions
-GSTEXTURE* loadpng(FILE* File, bool delayed)
+typedef struct {
+	const uint8_t *data;
+	size_t size;
+	size_t off;
+} PngMemReader;
+
+static void PngReadFromMemory(png_structp png_ptr, png_bytep outBytes, png_size_t byteCountToRead)
+{
+	PngMemReader *reader = (PngMemReader *)png_get_io_ptr(png_ptr);
+	if (reader == NULL || reader->off > reader->size || byteCountToRead > (reader->size - reader->off)) {
+		png_error(png_ptr, "png memory read overflow");
+		return;
+	}
+	memcpy(outBytes, reader->data + reader->off, byteCountToRead);
+	reader->off += byteCountToRead;
+}
+
+static GSTEXTURE* decode_png_stream(png_structp png_ptr, png_infop info_ptr, bool delayed)
 {
 	GSTEXTURE* tex = (GSTEXTURE*)malloc(sizeof(GSTEXTURE));
 	tex->Delayed = delayed;
 
-	if (File == NULL)
-	{
-		DPRINTF("Failed to load PNG file\n");
-		return NULL;
-	}
-
-	png_structp png_ptr;
-	png_infop info_ptr;
 	png_uint_32 width, height;
 	png_bytep *row_pointers;
-
-	u32 sig_read = 0;
-        int row, i, k=0, j, bit_depth, color_type, interlace_type;
-
-	png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, (png_voidp) NULL, NULL, NULL);
-
-	if(!png_ptr)
-	{
-		DPRINTF("PNG Read Struct Init Failed\n");
-		fclose(File);
-		return NULL;
-	}
-
-	info_ptr = png_create_info_struct(png_ptr);
-
-	if(!info_ptr)
-	{
-		DPRINTF("PNG Info Struct Init Failed\n");
-		fclose(File);
-		png_destroy_read_struct(&png_ptr, (png_infopp)NULL, (png_infopp)NULL);
-		return NULL;
-	}
-
-	if(setjmp(png_jmpbuf(png_ptr)))
-	{
-		DPRINTF("Got PNG Error!\n");
-		png_destroy_read_struct(&png_ptr, &info_ptr, (png_infopp)NULL);
-		fclose(File);
-		return NULL;
-	}
-
-	png_init_io(png_ptr, File);
-
-	png_set_sig_bytes(png_ptr, sig_read);
+	int row, i, k = 0, j, bit_depth, color_type, interlace_type;
 
 	png_read_info(png_ptr, info_ptr);
-
-	png_get_IHDR(png_ptr, info_ptr, &width, &height, &bit_depth, &color_type,&interlace_type, NULL, NULL);
+	png_get_IHDR(png_ptr, info_ptr, &width, &height, &bit_depth, &color_type, &interlace_type, NULL, NULL);
 
 	if (bit_depth == 16) png_set_strip_16(png_ptr);
 	if (color_type == PNG_COLOR_TYPE_GRAY || bit_depth < 4) png_set_expand(png_ptr);
 	if (png_get_valid(png_ptr, info_ptr, PNG_INFO_tRNS)) png_set_tRNS_to_alpha(png_ptr);
 
 	png_set_filler(png_ptr, 0xff, PNG_FILLER_AFTER);
-
 	png_read_update_info(png_ptr, info_ptr);
 
 	tex->Width = width;
 	tex->Height = height;
-
-    tex->VramClut = 0;
-    tex->Clut = NULL;
+	tex->VramClut = 0;
+	tex->Clut = NULL;
 	tex->ClutStorageMode = GS_CLUT_STORAGE_CSM1;
 
-	if(png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_RGB_ALPHA)
+	if (png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_RGB_ALPHA)
 	{
 		int row_bytes = png_get_rowbytes(png_ptr, info_ptr);
 		tex->PSM = GS_PSM_CT32;
 		tex->Mem = (u32*)memalign(128, gsKit_texture_size_ee(tex->Width, tex->Height, tex->PSM));
 
 		row_pointers = (png_byte**)calloc(height, sizeof(png_bytep));
-
-		for (row = 0; row < height; row++) row_pointers[row] = (png_bytep)malloc(row_bytes);
-
+		for (row = 0; row < (int)height; row++) row_pointers[row] = (png_bytep)malloc(row_bytes);
 		png_read_image(png_ptr, row_pointers);
 
 		struct pixel { u8 r,g,b,a; };
 		struct pixel *Pixels = (struct pixel *) tex->Mem;
-
 		for (i = 0; i < tex->Height; i++) {
 			for (j = 0; j < tex->Width; j++) {
 				memcpy(&Pixels[k], &row_pointers[i][4 * j], 3);
@@ -134,191 +105,142 @@ GSTEXTURE* loadpng(FILE* File, bool delayed)
 			}
 		}
 
-		for(row = 0; row < height; row++) free(row_pointers[row]);
-
+		for (row = 0; row < (int)height; row++) free(row_pointers[row]);
 		free(row_pointers);
 	}
-	else if(png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_RGB)
+	else if (png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_RGB)
 	{
 		int row_bytes = png_get_rowbytes(png_ptr, info_ptr);
 		tex->PSM = GS_PSM_CT24;
 		tex->Mem = (u32*)memalign(128, gsKit_texture_size_ee(tex->Width, tex->Height, tex->PSM));
 
 		row_pointers = (png_byte**)calloc(height, sizeof(png_bytep));
-
-		for(row = 0; row < height; row++) row_pointers[row] = (png_bytep)malloc(row_bytes);
-
+		for (row = 0; row < (int)height; row++) row_pointers[row] = (png_bytep)malloc(row_bytes);
 		png_read_image(png_ptr, row_pointers);
 
 		struct pixel3 { u8 r,g,b; };
 		struct pixel3 *Pixels = (struct pixel3 *) tex->Mem;
-
 		for (i = 0; i < tex->Height; i++) {
 			for (j = 0; j < tex->Width; j++) {
-				memcpy(&Pixels[k++], &row_pointers[i][4 * j], 3);
+				memcpy(&Pixels[k++], &row_pointers[i][3 * j], 3);
 			}
 		}
 
-		for(row = 0; row < height; row++) free(row_pointers[row]);
-
+		for (row = 0; row < (int)height; row++) free(row_pointers[row]);
 		free(row_pointers);
 	}
-	else if(png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_PALETTE){
-
+	else if (png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_PALETTE) {
 		struct png_clut { u8 r, g, b, a; };
-
 		png_colorp palette = NULL;
 		int num_pallete = 0;
 		png_bytep trans = NULL;
 		int num_trans = 0;
 
-        png_get_PLTE(png_ptr, info_ptr, &palette, &num_pallete);
-        png_get_tRNS(png_ptr, info_ptr, &trans, &num_trans, NULL);
-        tex->ClutPSM = GS_PSM_CT32;
+		png_get_PLTE(png_ptr, info_ptr, &palette, &num_pallete);
+		png_get_tRNS(png_ptr, info_ptr, &trans, &num_trans, NULL);
+		tex->ClutPSM = GS_PSM_CT32;
 
 		if (bit_depth == 4) {
-
 			int row_bytes = png_get_rowbytes(png_ptr, info_ptr);
 			tex->PSM = GS_PSM_T4;
 			tex->Mem = (u32*)memalign(128, gsKit_texture_size_ee(tex->Width, tex->Height, tex->PSM));
 
 			row_pointers = (png_byte**)calloc(height, sizeof(png_bytep));
-
-			for(row = 0; row < height; row++) row_pointers[row] = (png_bytep)malloc(row_bytes);
-
+			for (row = 0; row < (int)height; row++) row_pointers[row] = (png_bytep)malloc(row_bytes);
 			png_read_image(png_ptr, row_pointers);
 
-            tex->Clut = (u32*)memalign(128, gsKit_texture_size_ee(8, 2, GS_PSM_CT32));
-            memset(tex->Clut, 0, gsKit_texture_size_ee(8, 2, GS_PSM_CT32));
+			tex->Clut = (u32*)memalign(128, gsKit_texture_size_ee(8, 2, GS_PSM_CT32));
+			memset(tex->Clut, 0, gsKit_texture_size_ee(8, 2, GS_PSM_CT32));
 
-            unsigned char *pixel = (unsigned char *)tex->Mem;
-    		struct png_clut *clut = (struct png_clut *)tex->Clut;
+			unsigned char *pixel = (unsigned char *)tex->Mem;
+			struct png_clut *clut = (struct png_clut *)tex->Clut;
+			int ii, jj, kk = 0;
 
-    		int i, j, k = 0;
+			for (ii = num_pallete; ii < 16; ii++) memset(&clut[ii], 0, sizeof(clut[ii]));
+			for (ii = 0; ii < num_pallete; ii++) {
+				clut[ii].r = palette[ii].red;
+				clut[ii].g = palette[ii].green;
+				clut[ii].b = palette[ii].blue;
+				clut[ii].a = 0x80;
+			}
+			for (ii = 0; ii < num_trans; ii++) clut[ii].a = trans[ii] >> 1;
+			for (ii = 0; ii < tex->Height; ii++) {
+				for (jj = 0; jj < tex->Width / 2; jj++) memcpy(&pixel[kk++], &row_pointers[ii][1 * jj], 1);
+			}
 
-    		for (i = num_pallete; i < 16; i++) {
-    		    memset(&clut[i], 0, sizeof(clut[i]));
-    		}
+			int byte;
+			unsigned char *tmpdst = (unsigned char *)tex->Mem;
+			unsigned char *tmpsrc = (unsigned char *)pixel;
+			for (byte = 0; byte < gsKit_texture_size_ee(tex->Width, tex->Height, tex->PSM); byte++) tmpdst[byte] = (tmpsrc[byte] << 4) | (tmpsrc[byte] >> 4);
 
-    		for (i = 0; i < num_pallete; i++) {
-    		    clut[i].r = palette[i].red;
-    		    clut[i].g = palette[i].green;
-    		    clut[i].b = palette[i].blue;
-    		    clut[i].a = 0x80;
-    		}
-
-    		for (i = 0; i < num_trans; i++)
-    		    clut[i].a = trans[i] >> 1;
-
-    		for (i = 0; i < tex->Height; i++) {
-    		    for (j = 0; j < tex->Width / 2; j++)
-    		        memcpy(&pixel[k++], &row_pointers[i][1 * j], 1);
-    		}
-
-    		int byte;
-    		unsigned char *tmpdst = (unsigned char *)tex->Mem;
-    		unsigned char *tmpsrc = (unsigned char *)pixel;
-
-    		for (byte = 0; byte < gsKit_texture_size_ee(tex->Width, tex->Height, tex->PSM); byte++) tmpdst[byte] = (tmpsrc[byte] << 4) | (tmpsrc[byte] >> 4);
-
-			for(row = 0; row < height; row++) free(row_pointers[row]);
-
+			for (row = 0; row < (int)height; row++) free(row_pointers[row]);
 			free(row_pointers);
-
-        } else if (bit_depth == 8) {
+		}
+		else if (bit_depth == 8) {
 			int row_bytes = png_get_rowbytes(png_ptr, info_ptr);
 			tex->PSM = GS_PSM_T8;
 			tex->Mem = (u32*)memalign(128, gsKit_texture_size_ee(tex->Width, tex->Height, tex->PSM));
 
 			row_pointers = (png_byte**)calloc(height, sizeof(png_bytep));
-
-			for(row = 0; row < height; row++) row_pointers[row] = (png_bytep)malloc(row_bytes);
-
+			for (row = 0; row < (int)height; row++) row_pointers[row] = (png_bytep)malloc(row_bytes);
 			png_read_image(png_ptr, row_pointers);
 
-            tex->Clut = (u32*)memalign(128, gsKit_texture_size_ee(16, 16, GS_PSM_CT32));
-            memset(tex->Clut, 0, gsKit_texture_size_ee(16, 16, GS_PSM_CT32));
+			tex->Clut = (u32*)memalign(128, gsKit_texture_size_ee(16, 16, GS_PSM_CT32));
+			memset(tex->Clut, 0, gsKit_texture_size_ee(16, 16, GS_PSM_CT32));
 
-            unsigned char *pixel = (unsigned char *)tex->Mem;
-    		struct png_clut *clut = (struct png_clut *)tex->Clut;
+			unsigned char *pixel = (unsigned char *)tex->Mem;
+			struct png_clut *clut = (struct png_clut *)tex->Clut;
+			int ii, jj, kk = 0;
 
-    		int i, j, k = 0;
+			for (ii = num_pallete; ii < 256; ii++) memset(&clut[ii], 0, sizeof(clut[ii]));
+			for (ii = 0; ii < num_pallete; ii++) {
+				clut[ii].r = palette[ii].red;
+				clut[ii].g = palette[ii].green;
+				clut[ii].b = palette[ii].blue;
+				clut[ii].a = 0x80;
+			}
+			for (ii = 0; ii < num_trans; ii++) clut[ii].a = trans[ii] >> 1;
+			for (ii = 0; ii < num_pallete; ii++) {
+				if ((ii & 0x18) == 8) {
+					struct png_clut tmp = clut[ii];
+					clut[ii] = clut[ii + 8];
+					clut[ii + 8] = tmp;
+				}
+			}
+			for (ii = 0; ii < tex->Height; ii++) {
+				for (jj = 0; jj < tex->Width; jj++) memcpy(&pixel[kk++], &row_pointers[ii][1 * jj], 1);
+			}
 
-    		for (i = num_pallete; i < 256; i++) {
-    		    memset(&clut[i], 0, sizeof(clut[i]));
-    		}
-
-    		for (i = 0; i < num_pallete; i++) {
-    		    clut[i].r = palette[i].red;
-    		    clut[i].g = palette[i].green;
-    		    clut[i].b = palette[i].blue;
-    		    clut[i].a = 0x80;
-    		}
-
-    		for (i = 0; i < num_trans; i++)
-    		    clut[i].a = trans[i] >> 1;
-
-    		// rotate clut
-    		for (i = 0; i < num_pallete; i++) {
-    		    if ((i & 0x18) == 8) {
-    		        struct png_clut tmp = clut[i];
-    		        clut[i] = clut[i + 8];
-    		        clut[i + 8] = tmp;
-    		    }
-    		}
-
-    		for (i = 0; i < tex->Height; i++) {
-    		    for (j = 0; j < tex->Width; j++) {
-    		        memcpy(&pixel[k++], &row_pointers[i][1 * j], 1);
-    		    }
-    		}
-
-			for(row = 0; row < height; row++) free(row_pointers[row]);
-
+			for (row = 0; row < (int)height; row++) free(row_pointers[row]);
 			free(row_pointers);
-        }
+		}
 	}
-	else
-	{
-		DPRINTF("This texture depth is not supported yet!\n");
+	else {
 		return NULL;
 	}
 
 	tex->Filter = GS_FILTER_NEAREST;
 	png_read_end(png_ptr, NULL);
-	png_destroy_read_struct(&png_ptr, &info_ptr, (png_infopp) NULL);
-	fclose(File);
 
-	if(!tex->Delayed)
+	if (!tex->Delayed)
 	{
 		tex->Vram = gsKit_vram_alloc(gsGlobal, gsKit_texture_size(tex->Width, tex->Height, tex->PSM), GSKIT_ALLOC_USERBUFFER);
-		if(tex->Vram == GSKIT_ALLOC_ERROR)
-		{
-			DPRINTF("VRAM Allocation Failed. Will not upload texture.\n");
-			return NULL;
-		}
+		if (tex->Vram == GSKIT_ALLOC_ERROR) return NULL;
 
-		if(tex->Clut != NULL)
+		if (tex->Clut != NULL)
 		{
-			if(tex->PSM == GS_PSM_T4)
+			if (tex->PSM == GS_PSM_T4)
 				tex->VramClut = gsKit_vram_alloc(gsGlobal, gsKit_texture_size(8, 2, GS_PSM_CT32), GSKIT_ALLOC_USERBUFFER);
 			else
 				tex->VramClut = gsKit_vram_alloc(gsGlobal, gsKit_texture_size(16, 16, GS_PSM_CT32), GSKIT_ALLOC_USERBUFFER);
 
-			if(tex->VramClut == GSKIT_ALLOC_ERROR)
-			{
-				DPRINTF("VRAM CLUT Allocation Failed. Will not upload texture.\n");
-				return NULL;
-			}
+			if (tex->VramClut == GSKIT_ALLOC_ERROR) return NULL;
 		}
 
-		// Upload texture
 		gsKit_texture_upload(gsGlobal, tex);
-		// Free texture
 		free(tex->Mem);
 		tex->Mem = NULL;
-		// Free texture CLUT
-		if(tex->Clut != NULL)
+		if (tex->Clut != NULL)
 		{
 			free(tex->Clut);
 			tex->Clut = NULL;
@@ -330,7 +252,73 @@ GSTEXTURE* loadpng(FILE* File, bool delayed)
 	}
 
 	return tex;
+}
 
+static GSTEXTURE* DecodePngFromMemory(const uint8_t *data, size_t size, bool delayed)
+{
+	if (data == NULL || size == 0) {
+		return NULL;
+	}
+
+	png_structp png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, (png_voidp)NULL, NULL, NULL);
+	if (!png_ptr) {
+		return NULL;
+	}
+
+	png_infop info_ptr = png_create_info_struct(png_ptr);
+	if (!info_ptr) {
+		png_destroy_read_struct(&png_ptr, (png_infopp)NULL, (png_infopp)NULL);
+		return NULL;
+	}
+
+	if (setjmp(png_jmpbuf(png_ptr))) {
+		png_destroy_read_struct(&png_ptr, &info_ptr, (png_infopp)NULL);
+		return NULL;
+	}
+
+	PngMemReader reader = { data, size, 0 };
+	png_set_read_fn(png_ptr, &reader, PngReadFromMemory);
+	png_set_sig_bytes(png_ptr, 0);
+	GSTEXTURE* tex = decode_png_stream(png_ptr, info_ptr, delayed);
+	png_destroy_read_struct(&png_ptr, &info_ptr, (png_infopp)NULL);
+	return tex;
+}
+
+GSTEXTURE* loadpng(FILE* File, bool delayed)
+{
+	if (File == NULL)
+	{
+		return NULL;
+	}
+
+	png_structp png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, (png_voidp)NULL, NULL, NULL);
+	if (!png_ptr)
+	{
+		fclose(File);
+		return NULL;
+	}
+
+	png_infop info_ptr = png_create_info_struct(png_ptr);
+	if (!info_ptr)
+	{
+		fclose(File);
+		png_destroy_read_struct(&png_ptr, (png_infopp)NULL, (png_infopp)NULL);
+		return NULL;
+	}
+
+	if (setjmp(png_jmpbuf(png_ptr)))
+	{
+		png_destroy_read_struct(&png_ptr, &info_ptr, (png_infopp)NULL);
+		fclose(File);
+		return NULL;
+	}
+
+	png_init_io(png_ptr, File);
+	png_set_sig_bytes(png_ptr, 0);
+	GSTEXTURE* tex = decode_png_stream(png_ptr, info_ptr, delayed);
+	png_destroy_read_struct(&png_ptr, &info_ptr, (png_infopp)NULL);
+	fclose(File);
+	return tex;
 }
 
 GSTEXTURE* loadbmp(FILE* File, bool delayed)
@@ -792,7 +780,22 @@ GSTEXTURE* loadjpeg(FILE* fp, bool scale_down, bool delayed)
 }
 
 GSTEXTURE* load_image(const char* path, bool delayed){
+	if (path != NULL) {
+		const uint8_t *data = NULL;
+		size_t size = 0;
+		if (embedded_get(path, &data, &size)) {
+			return loadEmbeddedPNG((uint8_t *)data, size, delayed);
+		}
+		if (strncmp(path, "embed:/", 7) == 0) {
+			return NULL;
+		}
+	}
+
 	FILE* file = fopen(path, "rb");
+	if (file == NULL) {
+		DPRINTF("Failed to load image %s.", path);
+		return NULL;
+	}
 	uint16_t magic;
 	fread(&magic, 1, 2, file);
 	fseek(file, 0, SEEK_SET);
@@ -800,6 +803,7 @@ GSTEXTURE* load_image(const char* path, bool delayed){
 	if (magic == 0x4D42) image =      loadbmp(file, delayed);
 	else if (magic == 0xD8FF) image = loadjpeg(file, false, delayed);
 	else if (magic == 0x5089) image = loadpng(file, delayed);
+	else fclose(file);
 	if (image == NULL) DPRINTF("Failed to load image %s.", path);
 
 	return image;
@@ -1206,209 +1210,8 @@ void graphicWaitVblankStart(){
 
 }
 
-static void PNGCBAPI pngtest_warning(png_structp png_ptr, png_const_charp message)
-{
-   ++warning_count;
-
-   DPRINTF("%s: libpng warning: %s\n",__func__, message);
-}
-
-static void PNGCBAPI pngtest_error(png_structp png_ptr, png_const_charp message)
-{
-   ++error_count;
-
-   pngtest_warning(png_ptr, message);
-
-   /* We can return because png_error calls the default handler, which is
-    * actually OK in this case.
-    */
-}
-
-static void PNG_read_data(png_structp png_ptr, png_bytep data, png_size_t length)
-{
-    data_pointer *d = ((data_pointer *)png_get_io_ptr(png_ptr));
-	if (d->cur + length > d->size)
-		length = d->size - d->cur;
-
-	memcpy(data, d->buf + d->cur, length);
-	d->cur += length;
-}
-// thanks to HWC for the embedded PNG feature to keep users away of Berion's work
 GSTEXTURE* loadEmbeddedPNG(uint8_t * data, size_t size, bool delayed)
 {
-	GSTEXTURE* tex = (GSTEXTURE*)malloc(sizeof(GSTEXTURE));
-	tex->Delayed = delayed;
-
-	png_structp png_ptr;
-	png_infop info_ptr;
-	png_uint_32 width, height;
-	png_bytep *row_pointers;
-	pngtest_error_parameters error_parameters;
-
-	u32 sig_read = 0;
-        int row, i, k=0, j, bit_depth, color_type, interlace_type;
-
-	png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, (png_voidp) NULL, NULL, NULL);
-
-	if(!png_ptr)
-	{
-		DPRINTF("%s: PNG Read Struct Init Failed\n", __func__);
-		return NULL;
-	}
-
-	info_ptr = png_create_info_struct(png_ptr);
-
-	if(!info_ptr)
-	{
-		DPRINTF("%s: PNG Info Struct Init Failed\n", __func__);
-		png_destroy_read_struct(&png_ptr, (png_infopp)NULL, (png_infopp)NULL);
-		return NULL;
-	}
-	png_set_error_fn(png_ptr, &error_parameters, pngtest_error, pngtest_warning);
-	if(setjmp(png_jmpbuf(png_ptr)))
-	{
-		DPRINTF("%s: Got PNG Error!\n", __func__);
-		png_destroy_read_struct(&png_ptr, &info_ptr, (png_infopp)NULL);
-		return NULL;
-	}
-
-	data_pointer d;
-	d.buf = data;
-	d.size = size;
-	d.cur = 0;
-	//png_set_error_fn(png_ptr, &error_parameters, pngtest_error, pngtest_warning);
-	DPRINTF("%s: Info: %p %d \n",__func__, d.buf, d.size);
-	png_set_read_fn(png_ptr, (png_voidp)&d, (png_rw_ptr)PNG_read_data);
-
-	//png_init_io(png_ptr, hwc_credits_png);
-
-	png_set_sig_bytes(png_ptr, sig_read);
-	//png_set_sig_bytes(png_ptr, 8);
-
-	png_read_info(png_ptr, info_ptr);
-
-	png_get_IHDR(png_ptr, info_ptr, &width, &height, &bit_depth, &color_type,&interlace_type, NULL, NULL);
-
-	png_set_strip_16(png_ptr);
-
-	if (color_type == PNG_COLOR_TYPE_PALETTE)
-		png_set_expand(png_ptr);
-
-	if (color_type == PNG_COLOR_TYPE_GRAY && bit_depth < 8)
-		png_set_expand(png_ptr);
-
-	if (png_get_valid(png_ptr, info_ptr, PNG_INFO_tRNS))
-		png_set_tRNS_to_alpha(png_ptr);
-
-	png_set_filler(png_ptr, 0xff, PNG_FILLER_AFTER);
-
-	png_read_update_info(png_ptr, info_ptr);
-
-	tex->Width = width;
-	tex->Height = height;
-
-        tex->VramClut = 0;
-        tex->Clut = NULL;
-
-	if(png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_RGB_ALPHA)
-	{
-		int row_bytes = png_get_rowbytes(png_ptr, info_ptr);
-		tex->PSM = GS_PSM_CT32;
-		tex->Mem = (u32*)memalign(128, gsKit_texture_size_ee(tex->Width, tex->Height, tex->PSM));
-
-		row_pointers = (png_byte**)calloc(height, sizeof(png_bytep));
-
-		for (row = 0; row < height; row++) row_pointers[row] = (png_bytep)malloc(row_bytes);
-
-		png_read_image(png_ptr, row_pointers);
-
-		struct pixel { u8 r,g,b,a; };
-		struct pixel *Pixels = (struct pixel *) tex->Mem;
-
-		for (i = 0; i < tex->Height; i++) {
-			for (j = 0; j < tex->Width; j++) {
-				memcpy(&Pixels[k], &row_pointers[i][4 * j], 3);
-				Pixels[k++].a = row_pointers[i][4 * j + 3] >> 1;
-			}
-		}
-
-		for(row = 0; row < height; row++) free(row_pointers[row]);
-
-		free(row_pointers);
-	}
-	else if(png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_RGB)
-	{
-		int row_bytes = png_get_rowbytes(png_ptr, info_ptr);
-		tex->PSM = GS_PSM_CT24;
-		tex->Mem = (u32*)memalign(128, gsKit_texture_size_ee(tex->Width, tex->Height, tex->PSM));
-
-		row_pointers = (png_byte**)calloc(height, sizeof(png_bytep));
-
-		for(row = 0; row < height; row++) row_pointers[row] = (png_bytep)malloc(row_bytes);
-
-		png_read_image(png_ptr, row_pointers);
-
-		struct pixel3 { u8 r,g,b; };
-		struct pixel3 *Pixels = (struct pixel3 *) tex->Mem;
-
-		for (i = 0; i < tex->Height; i++) {
-			for (j = 0; j < tex->Width; j++) {
-				memcpy(&Pixels[k++], &row_pointers[i][4 * j], 3);
-			}
-		}
-
-		for(row = 0; row < height; row++) free(row_pointers[row]);
-
-		free(row_pointers);
-	}
-	else
-	{
-		DPRINTF("%s: This texture depth is not supported yet!\n", __func__);
-		return NULL;
-	}
-	png_read_end(png_ptr, NULL);
-	png_destroy_read_struct(&png_ptr, &info_ptr, (png_infopp) NULL);
-
-	if(!tex->Delayed)
-	{
-		tex->Vram = gsKit_vram_alloc(gsGlobal, gsKit_texture_size(tex->Width, tex->Height, tex->PSM), GSKIT_ALLOC_USERBUFFER);
-		if(tex->Vram == GSKIT_ALLOC_ERROR)
-		{
-			DPRINTF("%s: VRAM Allocation Failed. Will not upload texture.\n", __func__);
-			return NULL;
-		}
-
-		if(tex->Clut != NULL)
-		{
-			if(tex->PSM == GS_PSM_T4)
-				tex->VramClut = gsKit_vram_alloc(gsGlobal, gsKit_texture_size(8, 2, GS_PSM_CT32), GSKIT_ALLOC_USERBUFFER);
-			else
-				tex->VramClut = gsKit_vram_alloc(gsGlobal, gsKit_texture_size(16, 16, GS_PSM_CT32), GSKIT_ALLOC_USERBUFFER);
-
-			if(tex->VramClut == GSKIT_ALLOC_ERROR)
-			{
-				DPRINTF("%s: VRAM CLUT Allocation Failed. Will not upload texture.\n", __func__);
-				return NULL;
-			}
-		}
-
-		// Upload texture
-		gsKit_texture_upload(gsGlobal, tex);
-		// Free texture
-		free(tex->Mem);
-		tex->Mem = NULL;
-		// Free texture CLUT
-		if(tex->Clut != NULL)
-		{
-			free(tex->Clut);
-			tex->Clut = NULL;
-		}
-	}
-	else
-	{
-		gsKit_setup_tbw(tex);
-	}
-
-	return tex;
-
+	return DecodePngFromMemory(data, size, delayed);
 }
+
