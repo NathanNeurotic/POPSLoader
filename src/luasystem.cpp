@@ -24,6 +24,15 @@ extern unsigned int size_mx4sio_bd_irx;
 extern unsigned char bdm_query_irx[];
 extern unsigned int size_bdm_query_irx;
 
+extern unsigned char bdm_irx[];
+extern unsigned int size_bdm_irx;
+extern unsigned char bdmfs_fatfs_irx[];
+extern unsigned int size_bdmfs_fatfs_irx;
+extern unsigned char usbmass_bd_irx[];
+extern unsigned int size_usbmass_bd_irx;
+extern unsigned char cdfs_irx[];
+extern unsigned int size_cdfs_irx;
+
 extern unsigned char asset_usb_png[];
 extern unsigned int size_asset_usb_png;
 extern unsigned char asset_smb_png[];
@@ -99,6 +108,65 @@ static SifRpcClientData_t bdm_rpc_client;
 static bool bdm_rpc_bound = false;
 static bool bdm_rpc_loaded = false;
 static bdm_dev_list_t bdm_rpc_buffer __attribute__((aligned(64)));
+
+static bool bdm_irx_loaded = false;
+static bool bdm_fatfs_irx_loaded = false;
+static bool usbmass_irx_loaded = false;
+static bool cdfs_irx_loaded = false;
+
+static bool EnsureBDM()
+{
+	if (bdm_irx_loaded) {
+		return true;
+	}
+	if (!LoadIrxCheckedBuffer("bdm.irx", bdm_irx, size_bdm_irx, NULL, NULL)) {
+		return false;
+	}
+	bdm_irx_loaded = true;
+	return true;
+}
+
+static bool EnsureBDMFatFs()
+{
+	if (bdm_fatfs_irx_loaded) {
+		return true;
+	}
+	if (!EnsureBDM()) {
+		return false;
+	}
+	if (!LoadIrxCheckedBuffer("bdmfs_fatfs.irx", bdmfs_fatfs_irx, size_bdmfs_fatfs_irx, NULL, NULL)) {
+		return false;
+	}
+	bdm_fatfs_irx_loaded = true;
+	return true;
+}
+
+static bool EnsureUsbMass()
+{
+	if (usbmass_irx_loaded) {
+		return true;
+	}
+	if (!EnsureBDMFatFs()) {
+		return false;
+	}
+	if (!LoadIrxCheckedBuffer("usbmass_bd.irx", usbmass_bd_irx, size_usbmass_bd_irx, NULL, NULL)) {
+		return false;
+	}
+	usbmass_irx_loaded = true;
+	return true;
+}
+
+static bool EnsureCDFS()
+{
+	if (cdfs_irx_loaded) {
+		return true;
+	}
+	if (!LoadIrxCheckedBuffer("cdfs.irx", cdfs_irx, size_cdfs_irx, NULL, NULL)) {
+		return false;
+	}
+	cdfs_irx_loaded = true;
+	return true;
+}
 
 static bool EnsureBdmQueryRpc()
 {
@@ -184,6 +252,9 @@ int mx4sio_init_and_get_root(const char *hint, char *out_root, size_t out_sz)
 		return -1;
 	}
 	DPRINTF("MX4SIO SDK init start\n");
+	if (!EnsureBDMFatFs()) {
+		return -1;
+	}
 	if (!LoadIrxCheckedBuffer("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL)) {
 		return -1;
 	}
@@ -1078,6 +1149,30 @@ static int lua_resolveAssetType(lua_State *L) {
 	return 1;
 }
 
+static int lua_ensure_bdm(lua_State *L)
+{
+	lua_pushboolean(L, EnsureBDM());
+	return 1;
+}
+
+static int lua_ensure_bdm_fatfs(lua_State *L)
+{
+	lua_pushboolean(L, EnsureBDMFatFs());
+	return 1;
+}
+
+static int lua_ensure_usb_mass(lua_State *L)
+{
+	lua_pushboolean(L, EnsureUsbMass());
+	return 1;
+}
+
+static int lua_ensure_cdfs(lua_State *L)
+{
+	lua_pushboolean(L, EnsureCDFS());
+	return 1;
+}
+
 static int lua_mx4sio_init(lua_State *L)
 {
 	const char *hint = NULL;
@@ -1131,6 +1226,10 @@ static const luaL_Reg System_functions[] = {
 	{"getEmbeddedAsset",      lua_getEmbeddedAsset},
 	{"resolveAsset",           lua_resolveAsset},
 	{"resolveAssetType",   lua_resolveAssetType},
+	{"ensureBDM",              lua_ensure_bdm},
+	{"ensureBDMFatFs",         lua_ensure_bdm_fatfs},
+	{"ensureUsbMass",          lua_ensure_usb_mass},
+	{"ensureCDFS",             lua_ensure_cdfs},
 	{"initMX4SIO",             lua_mx4sio_init},
 	{"bdmList",                lua_bdm_list},
 	{"findBDMByDriver",    lua_find_bdm_by_driver},

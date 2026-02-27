@@ -1547,6 +1547,9 @@ end
               UI.SceneChange(UI.SCENES.GSMB)
             end
           elseif UI.MainMenu.OPT == 2 then
+            if type(System) == "table" and type(System.ensureBDMFatFs) == "function" then
+              System.ensureBDMFatFs()
+            end
             UI.Notif_queue.add("Not Implemented Yet")
           elseif UI.MainMenu.OPT == 3 then
             UI.Notif_queue.add("Not Implemented Yet")
@@ -1574,6 +1577,9 @@ end
             end
             UI.SceneChange(UI.SCENES.GHDD)
           elseif UI.MainMenu.OPT == 5 then
+            if type(System) == "table" and type(System.ensureUsbMass) == "function" then
+              System.ensureUsbMass()
+            end
             PLDR.CleanupGameList()
             PLDR.BuildUsbGameListMulti()
             UI.setDeviceLock(DEVLOCK.USB)
@@ -1581,6 +1587,9 @@ end
           elseif UI.MainMenu.OPT == 6 then
             UI.Notif_queue.add("Not Implemented Yet")
           elseif UI.MainMenu.OPT == 7 then
+            if type(System) == "table" and type(System.ensureCDFS) == "function" then
+              System.ensureCDFS()
+            end
             UI.Notif_queue.add("Not Implemented Yet")
           end --because we still dont support SMB
         end

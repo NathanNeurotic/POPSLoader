@@ -63,20 +63,8 @@ extern unsigned int size_padman_irx;
 extern unsigned char libsd_irx;
 extern unsigned int size_libsd_irx;
 
-extern unsigned char cdfs_irx;
-extern unsigned int size_cdfs_irx;
-
 extern unsigned char usbd_irx;
 extern unsigned int size_usbd_irx;
-
-extern unsigned char bdm_irx;
-extern unsigned int size_bdm_irx;
-
-extern unsigned char bdmfs_fatfs_irx;
-extern unsigned int size_bdmfs_fatfs_irx;
-
-extern unsigned char usbmass_bd_irx;
-extern unsigned int size_usbmass_bd_irx;
 
 extern unsigned char audsrv_irx;
 extern unsigned int size_audsrv_irx;
@@ -390,28 +378,7 @@ int main(int argc, char * argv[])
     ds34usb_init();
     ds34bt_init();
 
-    LOAD_IRX_NARG(bdm_irx);
-    LOAD_IRX_NARG(bdmfs_fatfs_irx);
-    LOAD_IRX_NARG(usbmass_bd_irx);
-
-    LOAD_IRX_NARG(cdfs_irx);
-
     LOAD_IRX_NARG(audsrv_irx);
-
-    //waitUntilDeviceIsReady by fjtrujy
-
-    struct stat buffer;
-    int ret = -1;
-    int retries = 50;
-
-    while(ret != 0 && retries > 0)
-    {
-        ret = stat("mass:/", &buffer);
-        /* Wait until the device is ready */
-        nopdelay();
-
-        retries--;
-    }
 	
         setLuaBootPath (argc, argv, 0);
         if (argc > 0 && argv[0]) {
