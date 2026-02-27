@@ -38,23 +38,22 @@ jobs:
           printf "%s\n%s\n" "$COMMIT_SHORT" "$BUILD_UTC" > bin/POPSLDR/BUILD_INFO.txt
           cat bin/POPSLDR/BUILD_INFO.txt
 
-      - name: Validate etc/boot.lua syntax
-        shell: sh
+      - name: Validate etc/boot.lua (syntax/newline)
+        shell: bash
         run: |
-          python - <<'PYCODE'
-from pathlib import Path
-import shutil, subprocess
-b = Path('etc/boot.lua').read_bytes()
-if not b.endswith(b'\n'):
-    raise SystemExit('ERROR: etc/boot.lua must end with a newline')
-for cmd in (['luac', '-p', 'etc/boot.lua'], ['lua', '-e', "assert(loadfile('etc/boot.lua'))"]):
-    if shutil.which(cmd[0]):
-        subprocess.check_call(cmd)
-        print('boot.lua syntax check passed via', cmd[0])
-        break
-else:
-    print('boot.lua newline check passed (luac/lua unavailable)')
-PYCODE
+          set -eu
+          python - <<'PY'
+          from pathlib import Path
+          p = Path("etc/boot.lua")
+          b = p.read_bytes()
+          if not b.endswith(b"\n"):
+              raise SystemExit("ERROR: etc/boot.lua must end with newline")
+          import shutil, subprocess
+          if shutil.which("luac"):
+              subprocess.check_call(["luac", "-p", str(p)])
+          elif shutil.which("lua"):
+              subprocess.check_call(["lua", "-e", f"assert(loadfile('{p}'))"])
+          PY
 
       - name: Compile project
         run: |
