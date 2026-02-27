@@ -42,7 +42,15 @@ jobs:
         shell: bash
         run: |
           set -eu
-          python - <<'PY'
+          if command -v python3 >/dev/null 2>&1; then
+            PYTHON_BIN=python3
+          elif command -v python >/dev/null 2>&1; then
+            PYTHON_BIN=python
+          else
+            echo "ERROR: python3/python not found" >&2
+            exit 1
+          fi
+          "$PYTHON_BIN" - <<'PY'
           from pathlib import Path
           p = Path("etc/boot.lua")
           b = p.read_bytes()
