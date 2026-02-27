@@ -10,29 +10,42 @@ LOG("Registering images")
 local function ResolveImage(name)
   return System.resolveAssetType(name, ASSET_IMG) or name
 end
+local function DoesAssetExist(path)
+  if path == nil or path == "" then return false end
+  if type(System) == "table" and type(System.doesFileExist) == "function" then
+    local ok, found = pcall(System.doesFileExist, path)
+    if ok and found == true then return true end
+  end
+  if type(doesFileExist) == "function" then
+    local ok, found = pcall(doesFileExist, path)
+    if ok and found == true then return true end
+  end
+  return false
+end
 --- Add your images to this table, just write the name of the file.
 --- Flat layout places images beside POPSLOADER.ELF; legacy installs can still use POPSLDR/IMG/*
 --- FILES MUST HAVE EXTENSION. filename is parsed to create the access key: USB.PNG will be accesed by typing `IMG["USB"]`
-local IMGS = {
-  "USB.png",
-  "USBEXFAT.png",
-  "SMB.png",
-  "MMCE.png",
-  "MX4SIO.png",
-  "HDD.png",
-  "APAHDD.png",
-  "BDHDD.png",
-  "BKG.png",
-  "BGM.png",
-  "DISC.png",
-  "MISSING.png",
-  "PSL.png",
-  "select.png",
-  "start.png",
-  "triangle.png",
-  "circle.png",
-  "cross.png",
-  "R2.png",
+local IMG_REGISTRATIONS = {
+  {"USB", "USB.png"},
+  {"SMB", "SMB.png"},
+  {"MMCE", "MMCE.png"},
+  {"MX4SIO", "MX4SIO.png"},
+  {"HDD", "HDD.png"},
+  {"APAHDD", "APAHDD.png"},
+  {"BDHDD", "BDHDD.png"},
+  {"BKG", "BKG.png"},
+  {"BGM", "BGM.png"},
+  {"DISC", "DISC.png"},
+  {"SPLASH1", "splash_bg.png"},
+  {"SPLASH2", "splash_logo.png"},
+  {"SPLASH3", "splash_appname.png"},
+  {"SPLASH4", "splash_credits.png"},
+  {"select", "select.png"},
+  {"start", "start.png"},
+  {"triangle", "triangle.png"},
+  {"circle", "circle.png"},
+  {"cross", "cross.png"},
+  {"R2", "R2.png"},
   --"down.png",
   --"L1.png",
   --"L2.png",
@@ -41,16 +54,23 @@ local IMGS = {
   --"R1.png",
   --"R3.png",
   --"right.png",
-  "square.png",
+  {"square", "square.png"},
   --"up.png",
 }
 local IMG_SOURCES = {}
-for x=1, #IMGS do
-  local key = IMGS[x]:match("(.+)%..+$")
-  IMG_SOURCES[key] = IMGS[x]
+local function RegisterImageIfExists(name, path)
+  local resolved = ResolveImage(path)
+  if DoesAssetExist(resolved) then
+    IMG_SOURCES[name] = path
+    return true
+  end
+  return false
 end
-IMG_SOURCES["MMCE"] = "MMCE.png"
-IMG_SOURCES["MX4SIO"] = "MX4SIO.png"
+for x=1, #IMG_REGISTRATIONS do
+  local name = IMG_REGISTRATIONS[x][1]
+  local path = IMG_REGISTRATIONS[x][2]
+  RegisterImageIfExists(name, path)
+end
 
 local IMG_FAILED = {}
 
@@ -68,21 +88,6 @@ IMG = setmetatable({}, {
     if img == nil then
       LOGF("Image load failed: %s", path)
       IMG_FAILED[key] = true
-      if key ~= "MISSING" then
-        local missing_source = IMG_SOURCES["MISSING"]
-        if missing_source ~= nil and not IMG_FAILED["MISSING"] then
-          local missing_path = ResolveImage(missing_source)
-          local missing_img = Graphics.loadImage(missing_path)
-          if missing_img ~= nil then
-            Graphics.setImageFilters(missing_img, LINEAR)
-            rawset(tbl, "MISSING", missing_img)
-            rawset(tbl, key, missing_img)
-            return missing_img
-          end
-          LOGF("Image load failed: %s", missing_path)
-          IMG_FAILED["MISSING"] = true
-        end
-      end
       return nil
     end
     Graphics.setImageFilters(img, LINEAR)
@@ -103,4 +108,8 @@ function IMG.ReleaseAll()
   end
   IMG_FAILED = {}
 end
-LOGF("%d images registered (lazy)", #IMGS)
+local registered_count = 0
+for _, _ in pairs(IMG_SOURCES) do
+  registered_count = registered_count + 1
+end
+LOGF("%d images registered (lazy)", registered_count)
