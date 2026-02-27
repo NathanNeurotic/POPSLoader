@@ -59,36 +59,41 @@ static const uint8_t* FindEmbeddedLua(const char *key, size_t *out_size)
     return NULL;
 }
 
-static int BuildEmbeddedLuaModuleKey(const char *module_name, char *out_key, size_t out_key_size)
+static int BuildEmbeddedLuaModulePath(const char *module_name, char *out_path, size_t out_path_size)
 {
-    if (module_name == NULL || out_key == NULL || out_key_size == 0) {
+    if (module_name == NULL || out_path == NULL || out_path_size == 0) {
         return 0;
     }
     size_t idx = 0;
-    while (module_name[idx] != '\0' && idx < out_key_size - 5) {
+    while (module_name[idx] != '\0' && idx < out_path_size - 1) {
         const char c = module_name[idx];
-        out_key[idx] = (c == '.') ? '/' : c;
+        out_path[idx] = (c == '.') ? '/' : c;
         idx++;
     }
     if (module_name[idx] != '\0') {
         return 0;
     }
-    out_key[idx++] = '.';
-    out_key[idx++] = 'l';
-    out_key[idx++] = 'u';
-    out_key[idx++] = 'a';
-    out_key[idx] = '\0';
+    out_path[idx] = '\0';
     return 1;
 }
 
 static int lua_embedded_searcher(lua_State *L)
 {
     const char *module_name = luaL_checkstring(L, 1);
-    char module_key[128];
+    char module_path[128];
+    char module_key[160];
     size_t module_size = 0;
     const uint8_t *module_data = NULL;
 
-    if (BuildEmbeddedLuaModuleKey(module_name, module_key, sizeof(module_key))) {
+    if (!BuildEmbeddedLuaModulePath(module_name, module_path, sizeof(module_path))) {
+        lua_pushfstring(L, "\n\tinvalid embedded Lua module '%s'", module_name);
+        return 1;
+    }
+
+    snprintf(module_key, sizeof(module_key), "%s.lua", module_path);
+    module_data = FindEmbeddedLua(module_key, &module_size);
+    if (module_data == NULL) {
+        snprintf(module_key, sizeof(module_key), "%s/init.lua", module_path);
         module_data = FindEmbeddedLua(module_key, &module_size);
     }
 
@@ -99,7 +104,8 @@ static int lua_embedded_searcher(lua_State *L)
 
     int load_ret = luaL_loadbuffer(L, (const char *)module_data, module_size, module_key);
     if (load_ret != 0) {
-        lua_pushfstring(L, "\n\terror loading embedded module '%s': %s", module_name, lua_tostring(L, -1));
+        const char *load_err = lua_tostring(L, -1);
+        lua_pushfstring(L, "\n\terror loading embedded module '%s': %s", module_name, load_err != NULL ? load_err : "(unknown lua error)");
         return 1;
     }
     return 1;
@@ -108,25 +114,32 @@ static int lua_embedded_searcher(lua_State *L)
 static void InstallEmbeddedLuaSearcher(lua_State *L)
 {
     lua_getglobal(L, "package");
+    if (!lua_istable(L, -1)) {
+        lua_pop(L, 1);
+        return;
+    }
+
     lua_getfield(L, -1, "loaders");
+    if (!lua_istable(L, -1)) {
+        lua_pop(L, 1);
+        lua_getfield(L, -1, "searchers");
+    }
     if (!lua_istable(L, -1)) {
         lua_pop(L, 2);
         return;
     }
 
-    int n = (int)lua_rawlen(L, -1);
-    for (int i = n + 1; i > 1; --i) {
-        lua_rawgeti(L, -1, i - 1);
-        lua_rawseti(L, -2, i);
-    }
+    lua_rawgeti(L, -1, 1); // preload loader
     lua_pushcfunction(L, lua_embedded_searcher);
+    lua_rawseti(L, -3, 2);
     lua_rawseti(L, -2, 1);
 
     int n_after = (int)lua_rawlen(L, -1);
-    for (int i = 2; i <= n_after; ++i) {
+    for (int i = 3; i <= n_after; ++i) {
         lua_pushnil(L);
         lua_rawseti(L, -2, i);
     }
+
     lua_pop(L, 2);
 }
 
@@ -141,13 +154,31 @@ static void DisableLuaFilesystemScriptLoaders(lua_State *L)
     lua_setglobal(L, kLoadFileName);
 
     lua_getglobal(L, "package");
-    if (lua_istable(L, -1)) {
-        lua_pushnil(L);
-        lua_setfield(L, -2, "path");
-
-        lua_pushnil(L);
-        lua_setfield(L, -2, "cpath");
+    if (!lua_istable(L, -1)) {
+        lua_pop(L, 1);
+        lua_newtable(L);
+        lua_setglobal(L, "package");
+        lua_getglobal(L, "package");
     }
+
+    lua_getfield(L, -1, "path");
+    if (!lua_isstring(L, -1)) {
+        lua_pop(L, 1);
+        lua_pushliteral(L, "");
+        lua_setfield(L, -2, "path");
+    } else {
+        lua_pop(L, 1);
+    }
+
+    lua_getfield(L, -1, "cpath");
+    if (!lua_isstring(L, -1)) {
+        lua_pop(L, 1);
+        lua_pushliteral(L, "");
+        lua_setfield(L, -2, "cpath");
+    } else {
+        lua_pop(L, 1);
+    }
+
     lua_pop(L, 1);
 }
 
