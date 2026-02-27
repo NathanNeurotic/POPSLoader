@@ -715,39 +715,38 @@ end
           boot_sound_hold_frames = math.floor(((sec + pad) * 60) + 0.5)
           LOGF("BOOT SOUND: hold frames=%s", tostring(boot_sound_hold_frames))
         end
-        local function DrawSplashCover(img, screen_w, screen_h, alpha)
+        local function DrawSplashCover(img, alpha)
           if img == nil then return end
+          local screen_w = UI.SCR.X
+          local screen_h = UI.SCR.Y
           local img_w = Graphics.getImageWidth(img)
           local img_h = Graphics.getImageHeight(img)
-          local scale = 1
-          if img_w > 0 and img_h > 0 then
-            local cover_scale = math.max(screen_w / img_w, screen_h / img_h)
-            scale = cover_scale * 1.02
-          end
+          if img_w == nil or img_h == nil or img_w <= 0 or img_h <= 0 then return end
+          local scale = math.max(screen_w / img_w, screen_h / img_h)
           local draw_w = Round(img_w * scale)
           local draw_h = Round(img_h * scale)
           local x = Round((screen_w - draw_w) / 2)
           local y = Round((screen_h - draw_h) / 2)
-          local tint = Color.new(128, 128, 128, alpha)
-          Graphics.drawScaleImage(img, x, y, draw_w, draw_h, tint)
+          Graphics.drawScaleImage(img, x, y, draw_w, draw_h, Color.new(128, 128, 128, alpha or 128))
         end
-        local function DrawSplashText(alpha)
-          -- Requested: black text because splash image is white.
-          local y0 = UI.SCR.Y_MID + 120
-          Font.ftPrint(BFONT, UI.SCR.X_MID, y0,       8, UI.SCR.X, 16, "Coded by El_isra",      Color.new(0, 0, 0, alpha))
-          Font.ftPrint(BFONT, UI.SCR.X_MID, y0 + 18,  8, UI.SCR.X, 16, "Graphics by Berion",   Color.new(0, 0, 0, alpha))
-          Font.ftPrint(BFONT, UI.SCR.X_MID, y0 + 36,  8, UI.SCR.X, 16, "israpps.github.io",    Color.new(0, 0, 0, alpha))
+        local function DrawSplashFit(img, x, y, w, h, alpha)
+          if img == nil then return end
+          local img_w = Graphics.getImageWidth(img)
+          local img_h = Graphics.getImageHeight(img)
+          if img_w == nil or img_h == nil or img_w <= 0 or img_h <= 0 then return end
+          local scale = math.min(w / img_w, h / img_h)
+          local draw_w = Round(img_w * scale)
+          local draw_h = Round(img_h * scale)
+          local draw_x = Round(x + ((w - draw_w) / 2))
+          local draw_y = Round(y + ((h - draw_h) / 2))
+          Graphics.drawScaleImage(img, draw_x, draw_y, draw_w, draw_h, Color.new(128, 128, 128, alpha or 128))
         end
-        local function DrawSplashLayered(alpha)
+        local function DrawSplash(alpha)
           local splash_alpha = alpha or 128
-          local splash1 = IMG.SPLASH1
-          local splash2 = IMG.SPLASH2
-          local splash3 = IMG.SPLASH3
-          local splash4 = IMG.SPLASH4
-          if splash1 ~= nil then DrawSplashCover(splash1, UI.SCR.X, UI.SCR.Y, splash_alpha) end
-          if splash2 ~= nil then DrawSplashCover(splash2, UI.SCR.X, UI.SCR.Y, splash_alpha) end
-          if splash3 ~= nil then DrawSplashCover(splash3, UI.SCR.X, UI.SCR.Y, splash_alpha) end
-          if splash4 ~= nil then DrawSplashCover(splash4, UI.SCR.X, UI.SCR.Y, splash_alpha) end
+          DrawSplashCover(IMG.splash_bg, splash_alpha)
+          DrawSplashFit(IMG.splash_logo, 80, 44, 480, 188, splash_alpha)
+          DrawSplashFit(IMG.splash_appname, 120, 214, 400, 64, splash_alpha)
+          DrawSplashFit(IMG.splash_credits, 160, 304, 320, 84, splash_alpha)
         end
 
         local fade_in_frames = 120
@@ -788,22 +787,19 @@ end
         for i = 1, fade_in_frames do
           local alpha = Round(128 * (i / fade_in_frames))
           DrawBackground()
-          DrawSplashLayered(alpha)
-          DrawSplashText(alpha)
+          DrawSplash(alpha)
           Screen.flip() -- we dont use UI.flip here because we dont want notifications on the welcome screen
         end
         for _ = 1, boot_hold_frames do
           DrawBackground()
-          DrawSplashLayered(128)
-          DrawSplashText(128)
+          DrawSplash(128)
           Screen.flip()
         end
         if show_credits and fade_mid_frames > 0 then
           for i = 1, fade_mid_frames do
             local alpha = Round(128 * (1 - (i / fade_mid_frames)))
             DrawTargetScene(UI.SCENES.CREDITS)
-            DrawSplashLayered(alpha)
-            DrawSplashText(alpha)
+            DrawSplash(alpha)
             Screen.flip()
           end
         end

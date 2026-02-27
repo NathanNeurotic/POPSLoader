@@ -17,13 +17,14 @@ local IMG_REGISTRATIONS = {
   {"HDD", "HDD.png"},
   {"APAHDD", "APAHDD.png"},
   {"BDHDD", "BDHDD.png"},
+  {"BG", "BG.png"},
   {"BKG", "BKG.png"},
   {"BGM", "BGM.png"},
   {"DISC", "DISC.png"},
-  {"SPLASH1", "splash_bg.png"},
-  {"SPLASH2", "splash_logo.png"},
-  {"SPLASH3", "splash_appname.png"},
-  {"SPLASH4", "splash_credits.png"},
+  {"splash_bg", "splash_bg.png"},
+  {"splash_logo", "splash_logo.png"},
+  {"splash_appname", "splash_appname.png"},
+  {"splash_credits", "splash_credits.png"},
   {"select", "select.png"},
   {"start", "start.png"},
   {"triangle", "triangle.png"},
@@ -40,25 +41,40 @@ for x = 1, #IMG_REGISTRATIONS do
   IMG_SOURCES[name] = path
 end
 
+local IMG_EMBED_ROOT = "embed:/POPSLDR/IMG/"
+
+local IMG_EMBED_OVERRIDES = {
+  BG = "embed:/POPSLDR/IMG/BG.png",
+  BKG = "embed:/POPSLDR/IMG/BKG.png",
+  BGM = "embed:/POPSLDR/IMG/BGM.png",
+
+  splash_bg = "embed:/POPSLDR/IMG/splash_bg.png",
+  splash_logo = "embed:/POPSLDR/IMG/splash_logo.png",
+  splash_appname = "embed:/POPSLDR/IMG/splash_appname.png",
+  splash_credits = "embed:/POPSLDR/IMG/splash_credits.png",
+}
+
+local function ResolveImage(name, key)
+  if IMG_EMBED_OVERRIDES[key] then
+    return IMG_EMBED_OVERRIDES[key]
+  end
+  return IMG_EMBED_ROOT .. name
+end
+
 local IMG_FAILED = {}
 
 IMG = setmetatable({}, {
   __index = function (tbl, key)
     if IMG_FAILED[key] then return nil end
-    local source = IMG_SOURCES[key]
-    if source == nil then return nil end
+    local name = IMG_SOURCES[key]
+    if name == nil then return nil end
     if BOOT_PROF and BOOT_PROF.stamp and not BOOT_PROF.textures_ready then
       BOOT_PROF.textures_ready = true
       BOOT_PROF.stamp("UI assets init (textures)")
     end
 
-    local img = nil
-    if type(System) == "table" and type(System.getEmbeddedAsset) == "function" and type(Graphics) == "table" and type(Graphics.loadImageEmbedded) == "function" then
-      local ok, blob = pcall(System.getEmbeddedAsset, source)
-      if ok and blob ~= nil then
-        img = Graphics.loadImageEmbedded(blob, string.len(blob))
-      end
-    end
+    local path = ResolveImage(name, key)
+    local img = Graphics.loadImage(path)
 
     if img == nil then
       IMG_FAILED[key] = true
