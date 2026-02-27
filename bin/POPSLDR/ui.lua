@@ -493,7 +493,7 @@ UI = {
       Screen.flip()
     end;
     WelcomeDraw = {
-      Play = function (next_scene)
+      Play = function (next_scene, show_boot_credits)
 	        -- Boot splash fades in from black, then fades out into the next scene.
 	        local function DrawBackground()
 	          Screen.clear(Color.new(0, 0, 0))
@@ -753,6 +753,7 @@ end
         local fade_in_frames = 120
         local fade_mid_frames = 30
         local fade_out_frames = 30
+        local show_credits = show_boot_credits == true
 
         -- Start boot sound once, and extend splash hold to cover it (configurable).
         TryBootSound()
@@ -797,7 +798,7 @@ end
           DrawSplashText(128)
           Screen.flip()
         end
-        if fade_mid_frames > 0 then
+        if show_credits and fade_mid_frames > 0 then
           for i = 1, fade_mid_frames do
             local alpha = Round(128 * (1 - (i / fade_mid_frames)))
             DrawTargetScene(UI.SCENES.CREDITS)
@@ -806,16 +807,22 @@ end
             Screen.flip()
           end
         end
-        for _ = 1, credits_hold_frames do
-          DrawTargetScene(UI.SCENES.CREDITS)
-          Screen.flip()
+        if show_credits then
+          for _ = 1, credits_hold_frames do
+            DrawTargetScene(UI.SCENES.CREDITS)
+            Screen.flip()
+          end
         end
         if fade_out_frames > 0 then
           local fade_to_black_frames = math.floor(fade_out_frames / 2)
           local fade_in_menu_frames = fade_out_frames - fade_to_black_frames
           for i = 1, fade_to_black_frames do
             local alpha = Round(128 * (i / fade_to_black_frames))
-            DrawTargetScene(UI.SCENES.CREDITS)
+            if show_credits then
+              DrawTargetScene(UI.SCENES.CREDITS)
+            else
+              DrawBackground()
+            end
             Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
             Screen.flip()
           end
