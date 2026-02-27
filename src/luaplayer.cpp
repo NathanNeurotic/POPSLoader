@@ -116,7 +116,9 @@ static void InstallEmbeddedLuaSearcher(lua_State *L)
     lua_getglobal(L, "package");
     if (!lua_istable(L, -1)) {
         lua_pop(L, 1);
-        return;
+        lua_newtable(L);
+        lua_setglobal(L, "package");
+        lua_getglobal(L, "package");
     }
 
     lua_getfield(L, -1, "loaders");
@@ -125,11 +127,11 @@ static void InstallEmbeddedLuaSearcher(lua_State *L)
         lua_getfield(L, -1, "searchers");
     }
     if (!lua_istable(L, -1)) {
-        lua_pop(L, 2);
-        return;
+        lua_pop(L, 1);
+        lua_newtable(L);
     }
 
-    lua_rawgeti(L, -1, 1); // preload loader
+    lua_rawgeti(L, -1, 1);
     lua_pushcfunction(L, lua_embedded_searcher);
     lua_rawseti(L, -3, 2);
     lua_rawseti(L, -2, 1);
@@ -161,23 +163,11 @@ static void DisableLuaFilesystemScriptLoaders(lua_State *L)
         lua_getglobal(L, "package");
     }
 
-    lua_getfield(L, -1, "path");
-    if (!lua_isstring(L, -1)) {
-        lua_pop(L, 1);
-        lua_pushliteral(L, "");
-        lua_setfield(L, -2, "path");
-    } else {
-        lua_pop(L, 1);
-    }
+    lua_pushliteral(L, "");
+    lua_setfield(L, -2, "path");
 
-    lua_getfield(L, -1, "cpath");
-    if (!lua_isstring(L, -1)) {
-        lua_pop(L, 1);
-        lua_pushliteral(L, "");
-        lua_setfield(L, -2, "cpath");
-    } else {
-        lua_pop(L, 1);
-    }
+    lua_pushliteral(L, "");
+    lua_setfield(L, -2, "cpath");
 
     lua_pop(L, 1);
 }
@@ -324,19 +314,6 @@ const char * runScript(const char* script, bool isStringBuffer )
                 lua_pushfstring(L, "FATAL: embedded Lua script missing: %s", boot_script_key);
             } else {
                 s = luaL_loadbuffer(L, (const char *)boot_script_data, boot_script_size, boot_script_key);
-                if (s == 0) {
-                    s = lua_pcall(L, 0, LUA_MULTRET, 0);
-                }
-            }
-        if (s == 0) {
-            const char *boot_entry = "system.lua";
-            size_t boot_entry_size = 0;
-            const uint8_t *boot_entry_data = FindEmbeddedLua(boot_entry, &boot_entry_size);
-            if (boot_entry_data == NULL) {
-                s = LUA_ERRFILE;
-                lua_pushfstring(L, "FATAL: embedded Lua script missing: %s", boot_entry);
-            } else {
-                s = luaL_loadbuffer(L, (const char *)boot_entry_data, boot_entry_size, boot_entry);
                 if (s == 0) {
                     s = lua_pcall(L, 0, LUA_MULTRET, 0);
                 }
