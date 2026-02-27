@@ -36,7 +36,6 @@ local IMG_REGISTRATIONS = {
   {"BKG", "BKG.png"},
   {"BGM", "BGM.png"},
   {"DISC", "DISC.png"},
-  {"MISSING", "MISSING.png"},
   {"SPLASH1", "splash_bg.png"},
   {"SPLASH2", "splash_logo.png"},
   {"SPLASH3", "splash_appname.png"},
