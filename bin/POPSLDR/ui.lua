@@ -531,7 +531,6 @@ UI = {
 -- Boot audio (relative to current directory). Never fatal.
         local boot_sound_tried = false
         local boot_sound_loaded = nil
-        local boot_sound_hold_frames = nil
 
         local function TryBootSound()
           if boot_sound_tried then return end
@@ -718,8 +717,6 @@ end
           if type(sec) ~= "number" or sec < 0 then sec = 0 end
           local pad = UI.BOOT_SOUND.PAD_SECONDS
           if type(pad) ~= "number" or pad < 0 then pad = 0 end
-          boot_sound_hold_frames = math.floor(((sec + pad) * 60) + 0.5)
-          LOGF("BOOT SOUND: hold frames=%s", tostring(boot_sound_hold_frames))
         end
         local function DrawSplashCover(img, screen_w, screen_h, alpha)
           if img == nil then return end
@@ -778,93 +775,124 @@ end
           end
         end
 
-        local fade_in_frames = 120
-        local fade_mid_frames = 30
-        local fade_out_frames = 30
         local show_credits = show_boot_credits == true
+        local FADE_IN_MS = 700
+        local FADE_OUT_MS = 700
+
+        local function Clamp01(value)
+          if value < 0 then return 0 end
+          if value > 1 then return 1 end
+          return value
+        end
+
+        local function StepFade(drawFn, alphaFrom, alphaTo, durationMs)
+          local timer = Timer.new()
+          local last_ms = Timer.getTime(timer)
+          local elapsed = 0
+          local max_step = (UI.Transition and UI.Transition.max_step) or 33
+          if durationMs <= 0 then
+            drawFn()
+            local alpha = Round(alphaTo)
+            if alpha > 0 then
+              Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
+            end
+            Screen.flip()
+            return
+          end
+          while true do
+            local now_ms = Timer.getTime(timer)
+            local dt = now_ms - last_ms
+            last_ms = now_ms
+            if dt < 0 then dt = 0 end
+            if dt > max_step then dt = max_step end
+            elapsed = elapsed + dt
+            if elapsed > durationMs then elapsed = durationMs end
+            local t = Clamp01(elapsed / durationMs)
+            local e = EaseInOutCubic(t)
+            local alpha = Round(alphaFrom + (alphaTo - alphaFrom) * e)
+            drawFn()
+            if alpha > 0 then
+              Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
+            end
+            Screen.flip()
+            if elapsed >= durationMs then
+              break
+            end
+          end
+        end
+
+        local function StepHold(drawFn, durationMs)
+          local timer = Timer.new()
+          local last_ms = Timer.getTime(timer)
+          local elapsed = 0
+          local max_step = (UI.Transition and UI.Transition.max_step) or 33
+          if durationMs <= 0 then
+            drawFn()
+            Screen.flip()
+            return
+          end
+          while true do
+            local now_ms = Timer.getTime(timer)
+            local dt = now_ms - last_ms
+            last_ms = now_ms
+            if dt < 0 then dt = 0 end
+            if dt > max_step then dt = max_step end
+            elapsed = elapsed + dt
+            if elapsed > durationMs then elapsed = durationMs end
+            drawFn()
+            Screen.flip()
+            if elapsed >= durationMs then
+              break
+            end
+          end
+        end
+
+        local function DrawSplash()
+          DrawBackground()
+          DrawSplashLayered(128)
+          DrawSplashText(128)
+        end
+
+        local function DrawCredits()
+          DrawTargetScene(UI.SCENES.CREDITS)
+        end
+
+        local function DrawMenu()
+          DrawTargetScene(next_scene or UI.SCENES.MMAIN)
+        end
 
         -- Start boot sound once, and extend splash hold to cover it (configurable).
         TryBootSound()
-        local boot_phase_seconds = UI.BOOT_SOUND.BOOT_PHASE_SECONDS or 8.0
-        if type(boot_phase_seconds) ~= "number" or boot_phase_seconds < 0 then
-          boot_phase_seconds = 8.0
+        local splash_hold_ms = 1500
+        if UI.BOOT_SOUND ~= nil then
+          local sec = UI.BOOT_SOUND.SECONDS
+          if type(sec) ~= "number" or sec < 0 then sec = 0 end
+          local pad = UI.BOOT_SOUND.PAD_SECONDS
+          if type(pad) ~= "number" or pad < 0 then pad = 0 end
+          local sound_hold_ms = math.floor(((sec + pad) * 1000) + 0.5)
+          if sound_hold_ms > splash_hold_ms then
+            splash_hold_ms = sound_hold_ms
+          end
         end
         local credits_phase_seconds = UI.BOOT_SOUND.CREDITS_PHASE_SECONDS or 7.0
         if type(credits_phase_seconds) ~= "number" or credits_phase_seconds < 0 then
           credits_phase_seconds = 7.0
         end
-        local boot_phase_frames = math.floor((boot_phase_seconds * 60) + 0.5)
-        local credits_phase_frames = math.floor((credits_phase_seconds * 60) + 0.5)
-        if fade_in_frames > boot_phase_frames then
-          fade_in_frames = boot_phase_frames
-        end
-        if fade_mid_frames > credits_phase_frames then
-          fade_mid_frames = credits_phase_frames
-        end
-        if fade_out_frames > credits_phase_frames - fade_mid_frames then
-          fade_out_frames = credits_phase_frames - fade_mid_frames
-        end
-        if fade_out_frames < 0 then fade_out_frames = 0 end
-        local boot_hold_frames = boot_phase_frames - fade_in_frames
-        if boot_hold_frames < 0 then boot_hold_frames = 0 end
-        local credits_hold_frames = credits_phase_frames - fade_mid_frames - fade_out_frames
-        if credits_hold_frames < 0 then credits_hold_frames = 0 end
-        local total_hold_frames = boot_hold_frames + credits_hold_frames + fade_in_frames + fade_mid_frames + fade_out_frames
-        if boot_sound_hold_frames ~= nil and boot_sound_hold_frames > total_hold_frames then
-          credits_hold_frames = credits_hold_frames + (boot_sound_hold_frames - total_hold_frames)
-        end
-        for i = 1, fade_in_frames do
-          local alpha = Round(128 * (i / fade_in_frames))
-          DrawBackground()
-          DrawSplashLayered(alpha)
-          DrawSplashText(alpha)
-          Screen.flip() -- we dont use UI.flip here because we dont want notifications on the welcome screen
-        end
-        for _ = 1, boot_hold_frames do
-          DrawBackground()
-          DrawSplashLayered(128)
-          DrawSplashText(128)
-          Screen.flip()
-        end
-        if show_credits and fade_mid_frames > 0 then
-          for i = 1, fade_mid_frames do
-            local alpha = Round(128 * (1 - (i / fade_mid_frames)))
-            DrawTargetScene(UI.SCENES.CREDITS)
-            DrawSplashLayered(alpha)
-            DrawSplashText(alpha)
-            Screen.flip()
-          end
-        end
+        local credits_hold_ms = math.floor((credits_phase_seconds * 1000) + 0.5) - FADE_IN_MS - FADE_OUT_MS
+        if credits_hold_ms < 1200 then credits_hold_ms = 1200 end
+
+        StepFade(DrawSplash, 128, 0, FADE_IN_MS)
+        StepHold(DrawSplash, splash_hold_ms)
+        StepFade(DrawSplash, 0, 128, FADE_OUT_MS)
+
         if show_credits then
-          for _ = 1, credits_hold_frames do
-            DrawTargetScene(UI.SCENES.CREDITS)
-            Screen.flip()
-          end
+          StepFade(DrawCredits, 128, 0, FADE_IN_MS)
+          StepHold(DrawCredits, credits_hold_ms)
+          StepFade(DrawCredits, 0, 128, FADE_OUT_MS)
         end
-        if fade_out_frames > 0 then
-          local fade_to_black_frames = math.floor(fade_out_frames / 2)
-          local fade_in_menu_frames = fade_out_frames - fade_to_black_frames
-          for i = 1, fade_to_black_frames do
-            local alpha = Round(128 * (i / fade_to_black_frames))
-            if show_credits then
-              DrawTargetScene(UI.SCENES.CREDITS)
-            else
-              DrawBackground()
-            end
-            Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
-            Screen.flip()
-          end
-          for i = 1, fade_in_menu_frames do
-            local alpha = Round(128 * (1 - (i / fade_in_menu_frames)))
-            DrawTargetScene(next_scene)
-            Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
-            Screen.flip()
-          end
-        else
-          DrawTargetScene(next_scene)
-          Screen.flip()
-        end
-        DrawTargetScene(next_scene)
+
+        StepFade(DrawMenu, 128, 0, FADE_IN_MS)
+        DrawMenu()
         Screen.flip()
 
         -- Cleanup boot sound resource (safe if audio backend ignores it).
@@ -1090,11 +1118,12 @@ end
         if duration <= 0 then duration = 1 end
         local t = elapsed / duration
         if t > 1 then t = 1 end
+        local e = EaseInOutCubic(t)
         local alpha
         if UI.Transition.phase == "out" then
-          alpha = Round(128 * t)
+          alpha = Round(128 * e)
         else
-          alpha = Round(128 * (1 - t))
+          alpha = Round(128 * (1 - e))
         end
         if t >= 1 then
           if UI.Transition.phase == "out" then
