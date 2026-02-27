@@ -82,7 +82,8 @@ EMBEDDED_RSC = boot.o builtin_font.o \
 	asset_usb_png.o asset_smb_png.o asset_mmce_png.o asset_mx4sio_png.o asset_hdd_png.o asset_apahdd_png.o \
 	asset_bdhdd_png.o asset_bkg_png.o asset_bgm_png.o asset_disc_png.o asset_splash_bg_png.o \
 	asset_splash_logo_png.o asset_splash_appname_png.o asset_splash_credits_png.o asset_select_png.o \
-	asset_start_png.o asset_triangle_png.o asset_circle_png.o asset_cross_png.o asset_r2_png.o asset_square_png.o
+	asset_start_png.o asset_triangle_png.o asset_circle_png.o asset_cross_png.o asset_r2_png.o asset_square_png.o \
+	asset_system_lua.o asset_ui_lua.o asset_images_lua.o asset_pops_profiles_lua.o
 
 EE_OBJS = $(APP_CORE) $(LUA_LIBS) $(IOP_MODULES) $(EMBEDDED_RSC)
 
@@ -152,6 +153,16 @@ $(EE_ASM_DIR)asset_r2_png.c: bin/POPSLDR/IMG/R2.png | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_r2_png
 $(EE_ASM_DIR)asset_square_png.c: bin/POPSLDR/IMG/square.png | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_square_png
+
+# Lua scripts
+$(EE_ASM_DIR)asset_system_lua.c: bin/POPSLDR/system.lua | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_system_lua
+$(EE_ASM_DIR)asset_ui_lua.c: bin/POPSLDR/ui.lua | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_ui_lua
+$(EE_ASM_DIR)asset_images_lua.c: bin/POPSLDR/images.lua | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_images_lua
+$(EE_ASM_DIR)asset_pops_profiles_lua.c: bin/POPSLDR/pops_profiles.lua | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_pops_profiles_lua
 
 #------------------------------------------------------------------#
 

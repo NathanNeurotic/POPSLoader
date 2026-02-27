@@ -18,7 +18,7 @@ jobs:
     steps:
       - name: Install dependencies
         run: |
-          apk add --no-cache build-base git bash p7zip findutils coreutils
+          apk add --no-cache build-base git bash p7zip findutils coreutils zip unzip
 
       - name: Workaround permission issue
         run: |
@@ -42,12 +42,12 @@ jobs:
         run: |
           make clean elfloader all
 
-      - name: Create allowlisted release package
+      - name: Create flat allowlisted release package
         shell: sh
         run: |
           set -eu
 
-          rm -rf dist POPSLoader.7z
+          rm -rf dist APP_POPSLOADER.zip
           mkdir -p dist
 
           required_files="
@@ -77,21 +77,33 @@ jobs:
             cp -f "$src" "dist/$dst"
           done
 
-          (
-            cd dist
-            7z a -t7z ../POPSLoader.7z ./* >/dev/null
-          )
+          cd dist
+          if command -v zip >/dev/null 2>&1; then
+            zip -9 ../APP_POPSLOADER.zip ./* >/dev/null
+          elif command -v 7z >/dev/null 2>&1; then
+            7z a -tzip ../APP_POPSLOADER.zip ./* >/dev/null
+          else
+            echo "ERROR: neither zip nor 7z is available to create APP_POPSLOADER.zip"
+            exit 1
+          fi
+          cd - >/dev/null
 
           echo "== Package contents =="
-          7z l -slt POPSLoader.7z
+          unzip -Z1 APP_POPSLOADER.zip
 
-      - name: Verify allowlisted package contents
+      - name: Verify flat allowlisted package contents
         shell: sh
         run: |
           set -eu
 
-          listed_paths="$(7z l -slt POPSLoader.7z | sed -n 's/^Path = //p')"
-          file_paths="$(printf '%s\n' "$listed_paths" | awk 'NF > 0 && $0 !~ /\/$/')"
+          file_paths="$(unzip -Z1 APP_POPSLOADER.zip | sed '/^$/d')"
+
+          if printf '%s\n' "$file_paths" | grep -q '/'; then
+            echo "ERROR: archive must be flat (no directory entries or nested paths)"
+            printf '%s\n' "$file_paths"
+            exit 1
+          fi
+
           file_count="$(printf '%s\n' "$file_paths" | wc -l | tr -d ' ')"
 
           if [ "$file_count" -ne 13 ]; then
@@ -114,7 +126,7 @@ jobs:
           list.icn
           title.cfg"
 
-          actual_names="$(printf '%s\n' "$file_paths" | awk -F/ '{print $NF}' | sort)"
+          actual_names="$(printf '%s\n' "$file_paths" | sort)"
           expected_names="$(printf '%s\n' "$expected" | awk 'NF > 0' | sort)"
 
           if [ "$actual_names" != "$expected_names" ]; then
@@ -126,7 +138,7 @@ jobs:
             exit 1
           fi
 
-          if printf '%s\n' "$file_paths" | grep -Eiq '(^|/)(IMG|embed)(/|$)|\.png$|\.o$|\.a$|\.c$|\.irx$|\.tmp$'; then
+          if printf '%s\n' "$file_paths" | grep -Eiq '^IMG/|\.png$|\.o$|\.a$|\.c$|\.irx$|\.tmp$'; then
             echo "ERROR: forbidden file patterns detected in package"
             printf '%s\n' "$file_paths"
             exit 1
@@ -137,6 +149,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: POPSLoader
-          path: POPSLoader.7z
+          path: APP_POPSLOADER.zip
           if-no-files-found: error
           compression-level: 0
