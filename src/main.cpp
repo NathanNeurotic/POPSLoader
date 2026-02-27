@@ -433,7 +433,7 @@ int main(int argc, char * argv[])
     BootStamp("Lua init start");
     while (1)
     {
-        errMsg = runScript(bootString, true);
+        errMsg = runScript("boot.lua", false);
 
         init_scr();
 

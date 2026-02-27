@@ -38,6 +38,30 @@ jobs:
           printf "%s\n%s\n" "$COMMIT_SHORT" "$BUILD_UTC" > bin/POPSLDR/BUILD_INFO.txt
           cat bin/POPSLDR/BUILD_INFO.txt
 
+      - name: Validate etc/boot.lua syntax
+        shell: sh
+        run: |
+          set -eu
+          if command -v lua >/dev/null 2>&1; then
+            lua -e "assert(loadfile('etc/boot.lua'))"
+          else
+            python - <<'PYCODE'
+from pathlib import Path
+import re
+p = Path('etc/boot.lua')
+text = p.read_text(encoding='utf-8')
+if not text.endswith('\n'):
+    raise SystemExit('ERROR: etc/boot.lua must end with a newline')
+no_strings = re.sub(r"'[^'\\n]*'|\"[^\"\\n]*\"|--.*", ' ', text)
+function_count = len(re.findall(r'\\bfunction\\b', no_strings))
+if_count = len(re.findall(r'\\bif\\b', no_strings))
+end_count = len(re.findall(r'\\bend\\b', no_strings))
+if end_count < function_count or end_count < if_count:
+    raise SystemExit(f'ERROR: etc/boot.lua appears unbalanced (function={function_count}, if={if_count}, end={end_count})')
+print('boot.lua coarse syntax checks passed')
+PYCODE
+          fi
+
       - name: Compile project
         run: |
           make clean elfloader all
