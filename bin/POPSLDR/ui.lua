@@ -991,7 +991,11 @@ end
         end
         if type(System) == "table" and type(System.loadELF) == "function" then
           UI.LAUNCHING = true
-          System.loadELF(boot_path)
+          local reboot_iop = 1
+          if _G.PLDR ~= nil and PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER ~= nil then
+            reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
+          end
+          System.loadELF(boot_path, reboot_iop)
         end
       end;
       HandleInput = function ()
