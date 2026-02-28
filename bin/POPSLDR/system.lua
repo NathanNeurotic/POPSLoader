@@ -1050,10 +1050,10 @@ function PLDR.GetRootsByType(kind, mass_snapshot)
       local is_mx4_root = (mx4_root ~= nil and root == mx4_root)
       if not is_mx4_idx and not is_mx4_root then
         local name = PLDR.GetMassDriverName(i)
-        local norm = PLDR.NormalizeDriverCode(name)
-        if norm == "usb" then
+        local norm, rev = PLDR.NormalizeDriverCode(name)
+        if norm == "usb" or rev == "usb" then
           add_root(root)
-        elseif name == nil then
+        else
           local has_pops = false
           if type(System) == "table" and type(System.doesDirExist) == "function" then
             local ok, exists = pcall(System.doesDirExist, root.."POPS/")
