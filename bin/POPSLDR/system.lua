@@ -396,6 +396,15 @@ function PLDR.EnsureTrailingSlashNorm(p)
   return EnsureTrailingSlashNormRaw(p)
 end
 
+function PLDR.CanOpenFile(path)
+  local fd = System.openFile(path, FREAD)
+  if fd == nil then
+    return false
+  end
+  System.closeFile(fd)
+  return true
+end
+
 APP_DIR_NORM = PLDR.EnsureTrailingSlashNorm(APP_DIR or System.currentDirectory() or "")
 APP_DIR_LOCAL = APP_DIR_NORM
 
@@ -560,22 +569,19 @@ function PLDR.ApplyBdmaMode(mode_key)
   end
 
   local had_failure = false
-  local missing_notified = false
   for i = 1, #BDMA_COPY_FILES do
     local name = BDMA_COPY_FILES[i]
     local source = PLDR.AppDirPath(name.."."..suffix)
     local dest = POPSTARTER_PACK_ROOT.."/"..name
-    if not doesFileExist(source) then
-      had_failure = true
-      if not missing_notified and UI ~= nil and UI.Notif_queue ~= nil then
+    if not PLDR.CanOpenFile(source) then
+      if UI ~= nil and UI.Notif_queue ~= nil then
         UI.Notif_queue.add("Missing BDMA source:\n"..source)
-        missing_notified = true
       end
-    else
-      local ok = CopyExternalAtomic(source, dest)
-      if not ok then
-        had_failure = true
-      end
+      return false
+    end
+    local ok = CopyExternalAtomic(source, dest)
+    if not ok then
+      had_failure = true
     end
   end
   return not had_failure
