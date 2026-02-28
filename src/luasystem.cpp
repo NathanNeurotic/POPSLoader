@@ -316,7 +316,6 @@ enum {
 int mx4sio_init_and_get_root(const char *hint, char *out_root, size_t out_sz)
 {
 	static bool mx4sio_irx_loaded = false;
-	bool saw_sdc_driver = false;
 
 	if (out_root == NULL || out_sz == 0) {
 		return MX4SIO_INIT_ROOT_NOT_FOUND;
@@ -331,24 +330,23 @@ int mx4sio_init_and_get_root(const char *hint, char *out_root, size_t out_sz)
 		mx4sio_irx_loaded = true;
 	}
 
-	for (int i = 0; i <= 9; ++i) {
-		char code[5];
-		char rev[5];
-		if (!QueryMassDriverCode(i, code, sizeof(code), rev, sizeof(rev))) {
-			continue;
-		}
-		if (!IsDriverCodeMatch(code, rev, "sdc")) {
-			continue;
-		}
-		saw_sdc_driver = true;
-		char root[16];
-		char pops_path[32];
-		BuildMassRootPath(i, root, sizeof(root));
-		snprintf(pops_path, sizeof(pops_path), "%sPOPS/", root);
-		int pops_ret = -1;
-		if (ProbeDir(pops_path, &pops_ret)) {
-			snprintf(out_root, out_sz, "%s", root);
-			return MX4SIO_INIT_OK;
+	mass_backend_cache_valid = false;
+	if (FetchBdmList(&mass_backend_cache)) {
+		mass_backend_cache_valid = true;
+		for (u32 i = 0; i < mass_backend_cache.count; ++i) {
+			const bdm_dev_info_t *info = &mass_backend_cache.devs[i];
+			if (strcmp(info->name, "sdc") != 0) {
+				continue;
+			}
+			char root[16];
+			char pops_path[32];
+			BuildMassRootPath((int)info->devNr, root, sizeof(root));
+			snprintf(pops_path, sizeof(pops_path), "%sPOPS/", root);
+			int pops_ret = -1;
+			if (ProbeDir(pops_path, &pops_ret)) {
+				snprintf(out_root, out_sz, "%s", root);
+				return MX4SIO_INIT_OK;
+			}
 		}
 	}
 
@@ -377,28 +375,6 @@ int mx4sio_init_and_get_root(const char *hint, char *out_root, size_t out_sz)
 		if (ProbeDir(pops_path, &pops_ret)) {
 			snprintf(out_root, out_sz, "%s", prefix);
 			return MX4SIO_INIT_OK;
-		}
-	}
-
-	if (!saw_sdc_driver) {
-		for (int i = 0; i <= 9; ++i) {
-			char code[5];
-			char rev[5];
-			if (!QueryMassDriverCode(i, code, sizeof(code), rev, sizeof(rev))) {
-				continue;
-			}
-			if (IsDriverCodeMatch(code, rev, "usb")) {
-				continue;
-			}
-			char root[16];
-			char pops_path[32];
-			BuildMassRootPath(i, root, sizeof(root));
-			snprintf(pops_path, sizeof(pops_path), "%sPOPS/", root);
-			int pops_ret = -1;
-			if (ProbeDir(pops_path, &pops_ret)) {
-				snprintf(out_root, out_sz, "%s", root);
-				return MX4SIO_INIT_OK;
-			}
 		}
 	}
 

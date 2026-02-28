@@ -882,7 +882,7 @@ end
 function PLDR.NormalizeDriverCode(driver)
   if type(driver) ~= "string" then return nil end
   local d = string.lower(driver)
-  if string.find(d, "sdc", 1, true) ~= nil then
+  if d == "sdc" then
     return "sdc"
   end
   if string.find(d, "usb", 1, true) ~= nil then
@@ -901,11 +901,11 @@ function PLDR.RefreshMassBackends()
 
   local function classify_driver(driver)
     local d = string.lower(tostring(driver or ""))
+    if d == "sdc" then
+      return "mx4sio"
+    end
     if string.find(d, "usb", 1, true) ~= nil then
       return "usb"
-    end
-    if string.find(d, "sdc", 1, true) ~= nil then
-      return "mx4sio"
     end
     return "other"
   end
@@ -1042,29 +1042,12 @@ function PLDR.GetRootsByType(kind, mass_snapshot)
   end
 
   if wanted == "usb" then
-    local mx4_idx = PLDR.MX4SIO and PLDR.MX4SIO.MASSINDX or nil
-    local mx4_root = PLDR.MX4SIO and PLDR.MX4SIO.ROOT or nil
-    for i = 0, 4 do
+    for i = 0, 9 do
       local root = (i == 0) and "mass:/" or ("mass"..i..":/")
-      local is_mx4_idx = (mx4_idx ~= nil and i == mx4_idx)
-      local is_mx4_root = (mx4_root ~= nil and root == mx4_root)
-      if not is_mx4_idx and not is_mx4_root then
-        local name = PLDR.GetMassDriverName(i)
-        local norm, rev = PLDR.NormalizeDriverCode(name)
-        if norm == "usb" or rev == "usb" then
-          add_root(root)
-        else
-          local has_pops = false
-          if type(System) == "table" and type(System.doesDirExist) == "function" then
-            local ok, exists = pcall(System.doesDirExist, root.."POPS/")
-            has_pops = ok and exists == true
-          else
-            has_pops = doesFolderExist(root.."POPS/")
-          end
-          if has_pops then
-            add_root(root)
-          end
-        end
+      local name = PLDR.GetMassDriverName(i)
+      local norm, rev = PLDR.NormalizeDriverCode(name)
+      if norm == "usb" or rev == "usb" then
+        add_root(root)
       end
     end
   elseif wanted == "mx4sio" then

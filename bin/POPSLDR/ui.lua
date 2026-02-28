@@ -1685,17 +1685,11 @@ end
             PLDR.CleanupGameList()
             PLDR.GAMEPATH = ""
             if type(System) == "table" and type(System.initMX4SIO) == "function" then
-              local ok, ready, root, err = pcall(System.initMX4SIO, "mx4sio0:/")
+              local ok, ready, root, err = pcall(System.initMX4SIO)
               if ok and ready and root ~= nil then
                 mx4sio_root = root.."POPS/"
-              else
-                if ok then mx4sio_err = err end
-                ok, ready, root, err = pcall(System.initMX4SIO, "mx4sio:/")
-                if ok and ready and root ~= nil then
-                  mx4sio_root = root.."POPS/"
-                elseif ok then
-                  mx4sio_err = err
-                end
+              elseif ok then
+                mx4sio_err = err
               end
             end
             if mx4sio_root ~= nil and type(PLDR) == "table" then
