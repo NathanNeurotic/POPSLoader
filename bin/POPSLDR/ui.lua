@@ -775,7 +775,6 @@ end
           end
         end
 
-        local show_credits = show_boot_credits == true
         local FADE_IN_MS = 1400
         local FADE_OUT_MS = 1200
 
@@ -870,11 +869,9 @@ end
         StepHold(DrawSplash, SPLASH_HOLD_MS)
         StepFade(DrawSplash, 0, 128, FADE_OUT_MS)
 
-        if show_credits then
-          StepFade(DrawCredits, 128, 0, FADE_IN_MS)
-          StepHold(DrawCredits, CREDITS_HOLD_MS)
-          StepFade(DrawCredits, 0, 128, FADE_OUT_MS)
-        end
+        StepFade(DrawCredits, 128, 0, FADE_IN_MS)
+        StepHold(DrawCredits, CREDITS_HOLD_MS)
+        StepFade(DrawCredits, 0, 128, FADE_OUT_MS)
 
         StepFade(DrawMenu, 128, 0, FADE_IN_MS)
         DrawMenu()
