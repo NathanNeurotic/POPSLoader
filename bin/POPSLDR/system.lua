@@ -1147,6 +1147,24 @@ local function WriteBdmaModeMarker(mode_key)
   return WriteAtomic(BDMA_MODE_MARKER_PATH, tostring(mode_key or ""))
 end
 
+local function DeleteIfExists(path)
+  local exists = false
+  local ok_exists, file_exists = pcall(doesFileExist, path)
+  if ok_exists and file_exists == true then
+    exists = true
+  end
+  if not exists then
+    local ok_open, fd = pcall(System.openFile, path, FREAD)
+    if ok_open and type(fd) == "number" and fd >= 0 then
+      exists = true
+      pcall(System.closeFile, fd)
+    end
+  end
+  if exists then
+    pcall(System.removeFile, path)
+  end
+end
+
 function PLDR.NextBdmaApplyToken()
   PLDR._bdma_apply_seq = (tonumber(PLDR._bdma_apply_seq) or 0) + 1
   return "bdma:"..tostring(PLDR._bdma_apply_seq)
@@ -1185,14 +1203,15 @@ function PLDR.ApplyBdmaMode(mode_key)
     return false
   end
 
-  local last_applied = ReadBdmaModeMarker()
-  if last_applied == selected then
+  if selected == "FAT32" then
+    DeleteIfExists(POPSTARTER_PACK_ROOT.."/usbd.irx")
+    DeleteIfExists(POPSTARTER_PACK_ROOT.."/usbhdfsd.irx")
+    WriteBdmaModeMarker(selected)
     return true
   end
-  if selected == "FAT32" then
-    pcall(System.removeFile, POPSTARTER_PACK_ROOT.."/usbd.irx")
-    pcall(System.removeFile, POPSTARTER_PACK_ROOT.."/usbhdfsd.irx")
-    WriteBdmaModeMarker(selected)
+
+  local last_applied = ReadBdmaModeMarker()
+  if last_applied == selected then
     return true
   end
 
