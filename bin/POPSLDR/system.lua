@@ -12,8 +12,6 @@
   Licensed under GNU General public license v3.0
 --]]
 local BOOT_PATH_RAW = System.currentDirectory()
-LOG("system.lua start")
-LOG("BOOT_PATH_RAW="..tostring(BOOT_PATH_RAW))
 local function EnsureTrailingSlash(path)
   if path == nil then
     return nil
@@ -24,7 +22,6 @@ local function EnsureTrailingSlash(path)
   return path.."/"
 end
 _G.EnsureTrailingSlash = EnsureTrailingSlash
-LOG("EnsureTrailingSlash loaded from system.lua")
 local function NormalizeDeviceRoot(path)
   if path == nil or path == "" then return path end
   if string.match(path, "^host:/") then
@@ -74,8 +71,6 @@ function JoinPath(base, rel)
 end
 
 local APP_DIR_LOCAL = NormalizeDirPath(APP_DIR or BOOT_PATH_RAW)
-LOG("APP_DIR_NORM="..APP_DIR_LOCAL)
-LOG("APP_DIR_POPSTARTER_JOIN="..JoinPath(APP_DIR_LOCAL, "POPSTARTER.ELF"))
 local SELECTOR_MODE = "basename"
 
 local function ResolveAsset(rel)
@@ -155,7 +150,6 @@ local function LoadIrxFromDir(dir)
       if name ~= nil and string.lower(string.sub(name, -4)) == ".irx" then
         local PATH = ResolveIrx(name) or JoinPath(normalized, name)
         local ID, RET = IOP.loadModule(PATH)
-        LOG(PATH, ID, RET)
         loaded = true
       end
     end
@@ -214,7 +208,6 @@ local function DetectMX4SIOPrefixHint()
 end
 PLDR.MX4SIO.PREFIX_HINT = DetectMX4SIOPrefixHint()
 if PLDR.MX4SIO.PREFIX_HINT ~= nil then
-  LOG("MX4SIO prefix hint: "..PLDR.MX4SIO.PREFIX_HINT)
 end
 if BOOTPATH ~= nil then
   PLDR.HDD.LOADSTATE = 1
@@ -233,35 +226,23 @@ if MMCE_SLOT0_READY ~= nil and MMCE_SLOT0_READY >= 0 then
   end
   if #PLDR.MMCE.SLOTS > 0 then
     PLDR.MMCE.PREFIX = PLDR.MMCE.SLOTS[PLDR.MMCE.INDEX]
-    LOG("MMCE slot selected: "..PLDR.MMCE.PREFIX)
   else
-    LOG("MMCE not found")
   end
 end
 
 require("pops_profiles")
-LOG("system.lua: before require('ui')")
 local ok_ui, ui_or_err = pcall(require, "ui")
-LOG("system.lua: after require('ui')")
 if not ok_ui then
   local traceback = ui_or_err
   if debug ~= nil and debug.traceback ~= nil then
     traceback = debug.traceback(ui_or_err, 2)
   end
-  LOG("UI load failed")
-  LOG("APP_DIR:", APP_DIR_LOCAL)
-  LOG("Boot cwd:", System.currentDirectory())
-  LOG("package.path:", package.path)
   error("UI module failed to load (expected ui.lua to return/set UI): "..tostring(traceback))
 end
 if ui_or_err ~= nil and ui_or_err ~= true then
   UI = ui_or_err
 end
 if UI == nil then
-  LOG("UI global is nil after require('ui')")
-  LOG("APP_DIR:", APP_DIR_LOCAL)
-  LOG("Boot cwd:", System.currentDirectory())
-  LOG("package.path:", package.path)
   error("UI global not initialized (expected ui.lua to return UI or set _G.UI)")
 end
 UI.LASTSCENE = UI.SCENES.MMAIN
@@ -282,9 +263,7 @@ if UI.DEVLOCK ~= nil then
     UI.boot_locks[UI.DEVLOCK.MX4SIO] = true
   end
   if boot_name ~= nil then
-    LOG("Boot device detected:", boot_name, "prefix:", tostring(boot_prefix), "path:", tostring(boot_path))
   else
-    LOG("Boot device detection ambiguous; no boot locks set.", "prefix:", tostring(boot_prefix), "path:", tostring(boot_path))
   end
 end
 require("images")
@@ -380,7 +359,6 @@ local function EnsureDirectory(path)
   end
   local ok, err = pcall(System.createDirectory, path)
   if not ok then
-    LOG("CreateDirectory failed:", path, err)
   end
   return ok
 end
@@ -494,13 +472,11 @@ function PLDR.ResetPopstarterPack()
   local ok, err = RemoveDirectoryRecursive(POPSTARTER_PACK_ROOT)
   if not ok then
     UI.Notif_queue.add("POPSTARTER reset failed")
-    LOG("Reset POPSTARTER failed:", err)
     return false
   end
   local rm_ok, rm_err = pcall(System.removeDirectory, POPSTARTER_PACK_ROOT)
   if not rm_ok then
     UI.Notif_queue.add("POPSTARTER reset failed")
-    LOG("Remove POPSTARTER dir failed:", rm_err)
     return false
   end
   UI.Notif_queue.add("POPSTARTER reset: mc0:/POPSTARTER removed")
@@ -523,10 +499,8 @@ function PLDR.DetectMMCESlot()
   end
   if #PLDR.MMCE.SLOTS > 0 then
     PLDR.MMCE.PREFIX = PLDR.MMCE.SLOTS[PLDR.MMCE.INDEX]
-    LOG("MMCE slot selected: "..PLDR.MMCE.PREFIX)
     return PLDR.MMCE.PREFIX
   end
-  LOG("MMCE not found")
   return nil
 end
 
@@ -546,7 +520,6 @@ function PLDR.SetMMCESlot(index)
   if index > #slots then index = 1 end
   PLDR.MMCE.INDEX = index
   PLDR.MMCE.PREFIX = slots[index]
-  LOG("MMCE slot selected: "..PLDR.MMCE.PREFIX)
   return PLDR.MMCE.PREFIX
 end
 
@@ -588,7 +561,6 @@ function PLDR.CheckPOPStarterDEPS(device)
 end
 
 function PLDR.GetPS1GameLists(path, updating)
-  LOG("Listing games on ", path)
   local RET = {}
   local found_smth = false
   if path ~= nil then PLDR.GAMEPATH = path end
@@ -597,7 +569,6 @@ function PLDR.GetPS1GameLists(path, updating)
     for i = 1, #DIR do
       if not DIR[i].directory then -- not a folder
         if string.lower(string.sub(DIR[i].name,-4)) == ".vcd" then
-          LOG(" Found", DIR[i].name)
           found_smth = true
           if updating then
             table.insert(PLDR.GAMES, DIR[i].name)
@@ -608,7 +579,6 @@ function PLDR.GetPS1GameLists(path, updating)
       end
     end
   else
-    LOG("cannot opendir")
   end
   if found_smth then
     if not updating then
@@ -686,7 +656,6 @@ local function AppendHddGameList(partition, list_path, rel_prefix)
   end
   local DIR = System.listDirectory(list_path)
   if DIR == nil then
-    LOG("cannot opendir")
     return
   end
   for i = 1, #DIR do
@@ -698,7 +667,6 @@ local function AppendHddGameList(partition, list_path, rel_prefix)
         end
         local encoded = EncodeHddGameEntry(partition, relpath)
         if encoded ~= nil then
-          LOG(" Found", encoded)
           table.insert(PLDR.GAMES, encoded)
           PLDR.HDD.GAMEPARTS[encoded] = "hdd0:"..partition
         end
@@ -712,7 +680,6 @@ function PLDR.GetVCDGameID(path)
   local RET = "ERR"
   local fd = System.openFile(path, FREAD)
   if System.sizeFile(fd) < 0x10d900 then
-    LOG("ERROR: VCD Size is not big enough to pull ID")
   else
     System.seekFile(fd, 0x10c900, SET)
     local buffer = System.readFile(fd, 4096)
@@ -737,12 +704,10 @@ end
 
 function PLDR.HDD.CheckAvailableHddPopsParts()
   if not PLDR.HDD.HAS_CHECKED then --HDD is checked only once since it cannot be removed/replaced without damaging the console
-    LOG("Checking available __.POPS Partitions")
     if HDD.MountPartition("hdd0:__.POPS", 0, FIO_MT_RDONLY) then
       PLDR.HDD.MAINPART = true
       HDD.UMountPartition(0)
     end
-    LOG("__.POPS", PLDR.HDD.MAINPART)
     PLDR.HDD.FOUNDANY = PLDR.HDD.MAINPART
     for i=1, 9 do
       if HDD.MountPartition(("hdd0:__.POPS%d"):format(i), 0, FIO_MT_RDONLY) then
@@ -750,7 +715,6 @@ function PLDR.HDD.CheckAvailableHddPopsParts()
         PLDR.HDD.FOUNDANY = true
         HDD.UMountPartition(0)
       end
-      LOG("__.POPS"..i, PLDR.HDD.EXTRAPARTS[i])
     end
     PLDR.HDD.HAS_CHECKED = true
   end
@@ -811,16 +775,14 @@ function PLDR.LoadHDDModules()
 end
 
 function PLDR.CleanupGameList()
-  LOG("gamelist cleanup")
   local count = #PLDR.GAMES
   for i=0, count do PLDR.GAMES[i]=nil end
 end
 
 function PLDR.HDD.CreateCache()
   if not PLDR.HDD.USECACHE then return end
-  LOG("> HDD Cache Create")
   local C = ResolveWritablePath("hdd_gamecache.lua")
-  local temp = "LOG(\">HDD CACHE LOAD\")\nPLDR.HDDCACHE = {\n"
+  local temp = "PLDR.HDDCACHE = {\n"
   PLDR.HDD.BuildGameList()
   for i = 1, #PLDR.GAMES do
     temp = temp..("  %q,\n"):format(PLDR.GAMES[i])
@@ -833,19 +795,16 @@ function PLDR.HDD.CreateCache()
 end
 
 function PLDR.HDD.ReadCache()
-  LOG("> HDD Cache Read")
   local C = ResolveWritablePath("hdd_gamecache.lua")
   if doesFileExist(C) then
     local loader, load_err = loadfile(C)
     if loader == nil then
-      LOG("HDD cache load failed:", load_err)
       System.removeFile(C)
       PLDR.HDD.HAS_CHECKED = false
       return
     end
     local ok, run_err = pcall(loader)
     if not ok then
-      LOG("HDD cache run failed:", run_err)
       System.removeFile(C)
       PLDR.HDD.HAS_CHECKED = false
       return
@@ -855,7 +814,6 @@ function PLDR.HDD.ReadCache()
 end
 
 function PLDR.HDD.WipeCache(CACHE)
-  LOG("> HDD Cache Wipe")
   local C = ResolveWritablePath("hdd_gamecache.lua")
   if doesFileExist(C) then
     System.removeFile(C)
@@ -1086,46 +1044,6 @@ local function EnsureHDDReadyForLaunch(game, partition_override)
   return result
 end
 
-local function LogPopstarterArgs(args)
-  if args == nil then
-    LaunchLog("LAUNCH: argv: nil")
-    return
-  end
-  LaunchLog("LAUNCH: argv_count:", #args)
-  for i = 1, #args do
-    LaunchLog("LAUNCH: argv["..(i - 1).."]:", args[i])
-  end
-end
-
-local function AppendLaunchLog(line)
-  local path = ResolveWritablePath("launch.log")
-  local fd
-  local ok, rc = pcall(System.openFile, path, FRDWR)
-  if ok then
-    fd = rc
-    System.seekFile(fd, 0, END)
-  else
-    ok, rc = pcall(System.openFile, path, FCREATE)
-    if ok then
-      fd = rc
-    end
-  end
-  if fd ~= nil then
-    System.writeFile(fd, line, #line)
-    System.closeFile(fd)
-  end
-end
-
-function LaunchLog(...)
-  LOG(...)
-  local parts = {...}
-  for i = 1, #parts do
-    parts[i] = tostring(parts[i])
-  end
-  local line = table.concat(parts, " ").."\n"
-  AppendLaunchLog(line)
-end
-
 local LaunchState = {
   PHASE_VALIDATE = "LAUNCH_VALIDATE",
   PHASE_FADEOUT = "LAUNCH_FADEOUT",
@@ -1139,7 +1057,6 @@ local LaunchState = {
 
 local function SetLaunchPhase(phase)
   LaunchState.phase = phase
-  LaunchLog("LAUNCH: phase:", phase)
 end
 
 local function HostAltPath(path)
@@ -1234,48 +1151,8 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   local argv0 = argv and argv[1] or nil
   local unpack_fn = table.unpack or unpack
   SetLaunchPhase(LaunchState.PHASE_VALIDATE)
-  LaunchLog("LAUNCH BEGIN")
-  LaunchLog("LAUNCH: boot path raw:", BOOT_PATH_RAW, "boot path cwd:", boot_path)
-  LaunchLog("LAUNCH: app dir normalized:", app_dir, "APP_DIR join POPSTARTER:", JoinPath(app_dir, "POPSTARTER.ELF"))
-  LaunchLog("LAUNCH: reboot_iop flag:", reboot_iop)
-  LaunchLog("LAUNCH: exec =", popstarter)
-  LaunchLog("LAUNCH: argv0 selector =", argv0)
-  if context ~= nil and context.game_name ~= nil then
-    LaunchLog("LAUNCH: derived GameName =", context.game_name)
-  end
-  LogPopstarterArgs(argv)
-  if context ~= nil then
-    LaunchLog("LAUNCH: device page:", context.device_page, "device mode:", context.device_mode, "UI scene:", context.ui_scene)
-    LaunchLog("LAUNCH: source mode:", context.source_mode, "raw_source:", context.raw_source_mode)
-    LaunchLog("LAUNCH: game path (raw):", context.gamelocation, "handoff:", context.handoff_gamelocation, "game:", context.game, "vcd_path:", context.vcd_path)
-    LaunchLog("LAUNCH: vcd raw:", context.vcd_path)
-    if context.bootparam_basename_raw ~= nil then
-      LaunchLog("LAUNCH: vcd basename raw:", context.bootparam_basename_raw)
-      LaunchLog("LAUNCH: vcd basename prefixed:", context.bootparam_basename_prefixed)
-      LaunchLog("LAUNCH: vcd basename used:", context.bootparam_basename)
-    else
-      LaunchLog("LAUNCH: vcd basename:", context.bootparam_basename)
-    end
-    LaunchLog("LAUNCH: pops root:", context.bootparam_root)
-    LaunchLog("LAUNCH: bootparam:", context.bootparam)
-    LaunchLog(
-      "LAUNCH: bootparam prefix required:",
-      context.bootparam_prefix_required or "none",
-      "used:",
-      context.bootparam_prefix_used or "none",
-      "prefix added:",
-      tostring(context.bootparam_prefix_added)
-    )
-    if context.hdd_init ~= nil then
-      LaunchLog("LAUNCH: hdd init ok:", context.hdd_init.init_ok, "status:", context.hdd_init.status,
-        "mount:", context.hdd_init.mount_partition, "mount_ok:", context.hdd_init.mount_ok)
-    end
-  end
   local open_ok, open_rc, open_stage, open_api, open_path = TryOpenForLaunch(popstarter)
-  if open_ok then
-    LaunchLog("LAUNCH: popstarter stat ok:", open_rc)
-  else
-    LaunchLog("LAUNCH: popstarter "..tostring(open_stage).." failed:", open_rc, "api:", open_api)
+  if not open_ok then
     BlockLaunchFailure(
       "popstarter "..tostring(open_stage).." failed: "..tostring(open_rc),
       popstarter,
@@ -1289,7 +1166,6 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     return
   end
   if open_path ~= nil and open_path ~= popstarter then
-    LaunchLog("LAUNCH: popstarter path adjusted:", popstarter, "->", open_path)
     popstarter = open_path
   end
   local exec_args = argv or {}
@@ -1313,38 +1189,6 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     return
   end
   SetLaunchPhase(LaunchState.PHASE_EXEC)
-  LaunchLog("LAUNCH: exec popstarter path:", popstarter)
-  LaunchLog(
-    "LAUNCH: exec boot source:",
-    context and context.bootparam_source or "unknown",
-    "pops root:",
-    context and context.bootparam_root or "unknown",
-    "vcd basename:",
-    context and context.bootparam_basename or "unknown",
-    "prefix required:",
-    context and context.bootparam_prefix_required or "none",
-    "prefix used:",
-    context and context.bootparam_prefix_used or "none",
-    "boot string:",
-    context and context.bootparam or "unknown"
-  )
-  LaunchLog(
-    "LAUNCH: stage A boot root:",
-    context and context.bootparam_root or "unknown",
-    "prefix required:",
-    context and context.bootparam_prefix_required or "none",
-    "prefix used:",
-    context and context.bootparam_prefix_used or "none",
-    "boot string:",
-    context and context.bootparam or "unknown"
-  )
-  LaunchLog("LAUNCH: stage A argv_count:", exec_args and #exec_args or 0)
-  LaunchLog(
-    "LAUNCH: selector="..tostring(argv0),
-    "popstarter="..tostring(popstarter),
-    "reboot_iop="..tostring(reboot_iop)
-  )
-  LaunchLog("LAUNCH: loadELF argc (caller):", exec_args and #exec_args or 0)
   local rc
   if exec_args ~= nil and #exec_args > 0 and unpack_fn ~= nil then
     rc = System.loadELF(popstarter, reboot_iop, unpack_fn(exec_args))
@@ -1353,8 +1197,6 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   else
     rc = System.loadELF(popstarter, reboot_iop)
   end
-  LaunchLog("LAUNCH RETURNED rc="..tostring(rc))
-  LOG(">>> UNHANDLED ERROR at Launching game '", context and context.game or "unknown", " via ", popstarter, " Failed")
   if (Timer.getTime(LaunchState.fade_timer) - LaunchState.fade_start) >= LaunchState.watchdog_ms then
     BlockLaunchFailure(
       "Launch timeout: exec did not transfer control",
@@ -1506,7 +1348,6 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     bootparam_basename_used = game_name
   end
   if game_name == "" or string.upper(game_name) == "POPSTARTER" then
-    LaunchLog("LAUNCH: GameName derivation failed for selection:", vcd_basename_raw)
     BlockLaunchFailure(
       "GameName derivation failed",
       popstarter,
@@ -1526,7 +1367,6 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     argv0_selector = BuildLiteralElfName(display_name)
   end
   if selector_prefix == "" and string.upper(game_name) == "POPSTARTER" then
-    LaunchLog("LAUNCH: Internal error: game_base derived as POPSTARTER; refusing to launch.", vcd_basename_raw)
     BlockLaunchFailure(
       "Internal error: game_base derived as POPSTARTER; refusing to launch.",
       popstarter,
@@ -1551,27 +1391,6 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   end
   local argv = {argv0_selector}
 
-  LOG("Boot APP_DIR: "..APP_DIR_LOCAL)
-  LOG("PopStarter selected: "..popstarter)
-  LOG("PopStarter:", popstarter, "VCD:", vcd_path, "mode:", source_mode, "argv_count:", #argv)
-  LaunchLog("LAUNCH: device mode:", device_mode)
-  LaunchLog("LAUNCH: pops root:", pops_root)
-  LaunchLog("LAUNCH: vcd basename raw:", vcd_basename_raw)
-  LaunchLog("LAUNCH: vcd basename prefixed:", normalized_basename)
-  LaunchLog("LAUNCH: vcd basename used:", bootparam_basename_used)
-  LaunchLog("LAUNCH: bootparam candidate:", bootparam, "exists:", tostring(bootparam_exists))
-  LaunchLog("LAUNCH: derived GameName:", game_name)
-  LaunchLog("LAUNCH: selector mode:", SELECTOR_MODE)
-  LaunchLog("LAUNCH: selector prefix:", selector_prefix)
-  LaunchLog("LAUNCH: argv0 selector:", argv0_selector)
-  if policy.name == "HDD" then
-    LaunchLog("HDD LAUNCH argv0: ["..tostring(argv0_selector).."]")
-  end
-  LaunchLog("LAUNCH: loadELF argc (caller):", #argv)
-  if fallback_bootparam ~= nil then
-    LaunchLog("LAUNCH: bootparam fallback:", fallback_bootparam, "exists:", tostring(fallback_exists))
-  end
-  LOG("Resolved game path:", vcd_path)
   local context = {
     device_page = device_page,
     device_mode = device_mode,
@@ -1640,8 +1459,4 @@ while true do
     UI.Credits.Play()
   end
   UI.flip()
-  if BOOT_PROF and not BOOT_PROF.first_main_menu and UI.CURSCENE == UI.SCENES.MMAIN then
-    BOOT_PROF.first_main_menu = true
-    BOOT_PROF.stamp("first frame / main menu visible")
-  end
 end

@@ -6,7 +6,6 @@
   Licensed under GNU General public license v3.0
 --]]
 
-LOG("Registering POPSLoader UI")
 local DEVLOCK = { NONE = 0, USB = 1, MMCE = 2, MX4SIO = 3 }
 local UI
 local function Round(value)
@@ -29,12 +28,6 @@ local function EaseInOutCubic(t)
   end
   local f = -2 * t + 2
   return 1 - (f * f * f) / 2
-end
-local function GuardTrace()
-  if debug ~= nil and debug.traceback ~= nil then
-    return debug.traceback("TRACE", 2)
-  end
-  return "TRACE unavailable"
 end
 local function SafeDoesFileExist(path)
   if path == nil or path == "" then return false end
@@ -217,7 +210,6 @@ UI = {
     setDeviceLock = function (target)
       if UI.device_lock == DEVLOCK.NONE then
         UI.device_lock = target
-        LOG("Device lock set to "..UI.device_lock_name(target))
       end
     end;
     RequestScene = function (SCENE)
@@ -350,7 +342,6 @@ UI = {
       end;
       ALFA = 0x80;
       add = function (NOTIF)
-        LOG(NOTIF)
         table.insert(UI.Notif_queue.msg, NOTIF)
       end;
       msg = {};
@@ -537,11 +528,9 @@ UI = {
           boot_sound_tried = true
 
           if UI.BOOT_SOUND == nil or UI.BOOT_SOUND.ENABLED ~= true then
-            LOG("BOOT SOUND: disabled")
             return
           end
           if type(Sound) ~= "table" or type(Sound.loadADPCM) ~= "function" then
-            LOG("BOOT SOUND: Sound API not available")
             return
           end
 
@@ -651,11 +640,9 @@ end
           end
 
           if found == nil then
-            LOGF("BOOT SOUND: '%s' not found", tostring(primary))
             return
           end
 
-          LOGF("BOOT SOUND: using '%s'", tostring(found))
 
 -- Set volumes/formats defensively; some builds may ignore these.
           local function normalize_volume(value)
@@ -687,31 +674,25 @@ end
             end
           end)
 
-          LOGF("BOOT SOUND: loading '%s'", tostring(found))
           local ok_load, audio = pcall(Sound.loadADPCM, found)
           if not ok_load then
-            LOGF("BOOT SOUND: load threw for '%s': %s", tostring(found), tostring(audio))
             return
           end
           if audio == nil or audio == 0 then
-            LOGF("BOOT SOUND: load failed for '%s'", tostring(found))
             return
           end
           boot_sound_loaded = audio
-          LOGF("BOOT SOUND: loaded handle=%s", tostring(boot_sound_loaded))
 
           local ok_play, play_err = pcall(function()
             Sound.playADPCM(UI.BOOT_SOUND.CHANNEL or 0, boot_sound_loaded)
           end)
           if not ok_play then
-            LOGF("BOOT SOUND: play failed for '%s': %s", tostring(found), tostring(play_err))
             if type(Sound.freeADPCM) == "function" then
               pcall(Sound.freeADPCM, boot_sound_loaded)
             end
             boot_sound_loaded = nil
             return
           end
-          LOGF("BOOT SOUND: play started on channel %s", tostring(UI.BOOT_SOUND.CHANNEL or 0))
 
           local sec = UI.BOOT_SOUND.SECONDS
           if type(sec) ~= "number" or sec < 0 then sec = 0 end
@@ -919,7 +900,6 @@ end
       triangle_action = nil;
       ignore_until_release = false;
       OpenExit = function ()
-        LOG("Exit requested")
         UI.Modal.active = true
         UI.Modal.title = "Exit"
         UI.Modal.body = "Return to OSDSYS?"
@@ -941,7 +921,6 @@ end
         end
         UI.Modal.options = {"Return", "Back"}
         UI.Modal.confirm_action = function ()
-          LOG("Device lock prompt choice: RETURN")
           UI.Modal.Close()
           UI.SceneChange(UI.SCENES.MMAIN)
         end
@@ -957,12 +936,10 @@ end
         UI.Modal.ignore_until_release = false
       end;
       ConfirmExit = function ()
-        LOG("Exit confirmed")
         UI.LAUNCHING = true
         System.exitToBrowser()
       end;
       LaunchBootElf = function ()
-        LOG("Exit triangle: BOOT.ELF requested")
         local candidates = {
           "mc0:/BOOT/BOOT.ELF",
           "mc1:/BOOT/BOOT.ELF"
@@ -1441,8 +1418,6 @@ end
         end
         if carousel.animActive then
           if carousel.currentIndex ~= UI.MainMenu.OPT then
-            LOG("SNAP BUG: currentIndex changed during anim")
-            LOG(GuardTrace())
           end
           local dt_sec = Clamp(dt_ms / 1000, 0, 1/30)
           carousel.animT = carousel.animT + dt_sec
@@ -1608,7 +1583,6 @@ end
           elseif UI.MainMenu.OPT == 4 then
             PLDR.LoadHDDModules()
             if UI.LASTSCENE == UI.SCENES.GHDD then
-              LOG("skipping cache cleanup")
             else
               PLDR.CleanupGameList()
             end
@@ -1759,7 +1733,6 @@ end
             local down = (UI.Pad.GPAD & PAD_DOWN) ~= 0
             local cross = (UI.Pad.GPAD & PAD_CROSS) ~= 0
             local circle = (UI.Pad.GPAD & PAD_CIRCLE) ~= 0
-            LOGF("PAD mask: 0x%04X | UP:%s DOWN:%s X:%s O:%s", UI.Pad.GPAD, tostring(up), tostring(down), tostring(cross), tostring(circle))
             UI.Pad.DebugPadLast = dbg_now
           end
           if UI.Pad.NavEventTimer == nil then
@@ -1769,7 +1742,6 @@ end
           end
           local nav_now = Timer.getTime(UI.Pad.NavEventTimer)
           if (nav_now - UI.Pad.NavEventLast) >= 1000 then
-            LOGF("NAV events/sec: %d", UI.Pad.NavEventCount or 0)
             UI.Pad.NavEventCount = 0
             UI.Pad.NavEventLast = nav_now
           end
@@ -1909,8 +1881,6 @@ do
         if key == "OPT" then
           local carousel = t.Carousel
           if carousel ~= nil and not carousel.allowOptWrite then
-            LOG("ERROR: state change blocked while animationActive (OPT write)")
-            LOG(GuardTrace())
             return
           end
           rawset(t, "_OPT", value)
@@ -1932,8 +1902,6 @@ do
     __newindex = function (t, key, value)
       if key == "CURSCENE" then
         if UI.Transition == nil or not UI.Transition.allowSceneWrite then
-          LOG("ERROR: scene change blocked outside transition midpoint")
-          LOG(GuardTrace())
           return
         end
         rawset(t, "_CURSCENE", value)

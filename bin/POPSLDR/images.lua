@@ -6,7 +6,6 @@
   Licensed under GNU General public license v3.0
 --]]
 
-LOG("Registering images")
 --- Add your images to this table, just write the name of the file.
 --- FILES MUST HAVE EXTENSION. filename is parsed to create the access key: USB.PNG will be accesed by typing `IMG["USB"]`
 local IMG_REGISTRATIONS = {
@@ -48,11 +47,6 @@ IMG = setmetatable({}, {
     if IMG_FAILED[key] then return nil end
     local source = IMG_SOURCES[key]
     if source == nil then return nil end
-    if BOOT_PROF and BOOT_PROF.stamp and not BOOT_PROF.textures_ready then
-      BOOT_PROF.textures_ready = true
-      BOOT_PROF.stamp("UI assets init (textures)")
-    end
-
     local img = nil
     if type(System) == "table" and type(System.getEmbeddedAsset) == "function" and type(Graphics) == "table" and type(Graphics.loadImageEmbedded) == "function" then
       local ok, blob = pcall(System.getEmbeddedAsset, source)
@@ -91,4 +85,3 @@ local registered_count = 0
 for _, _ in pairs(IMG_SOURCES) do
   registered_count = registered_count + 1
 end
-LOGF("%d images registered (lazy)", registered_count)
