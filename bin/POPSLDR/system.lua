@@ -231,6 +231,19 @@ if MMCE_SLOT0_READY ~= nil and MMCE_SLOT0_READY >= 0 then
   end
 end
 
+
+function CLAMP(a, MIN, MAX)
+  if a < MIN then return MIN end
+  if a > MAX then return MAX end
+  return a
+end
+
+function CYCLE_CLAMP(a, MIN, MAX)
+  if a < MIN then return MAX end
+  if a > MAX then return MIN end
+  return a
+end
+
 require("pops_profiles")
 local ok_ui, ui_or_err = pcall(require, "ui")
 if not ok_ui then
@@ -554,18 +567,6 @@ function PLDR.SetMMCESlot(index)
   return PLDR.MMCE.PREFIX
 end
 
-
-function CLAMP(a, MIN, MAX)
-  if a < MIN then return MIN end
-  if a > MAX then return MAX end
-  return a
-end
-
-function CYCLE_CLAMP(a, MIN, MAX)
-  if a < MIN then return MAX end
-  if a > MAX then return MIN end
-  return a
-end
 
 function Font.ftPrintMultiLineAligned(font, x, y, spacing, width, height, text, color)
   local internal_y = y
