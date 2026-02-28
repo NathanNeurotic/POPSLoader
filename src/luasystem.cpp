@@ -10,6 +10,7 @@
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
 #include <fileio.h>
+#include <usbhdfsd-common.h>
 #include "include/luaplayer.h"
 #include "include/md5.h"
 #include "include/graphics.h"
@@ -383,6 +384,40 @@ static int lua_get_mass_backend_info(lua_State *L)
 		}
 	}
 	lua_pushnil(L);
+	return 1;
+}
+
+static int lua_getMassDriverName(lua_State *L)
+{
+	int argc = lua_gettop(L);
+	if (argc != 1) {
+		return luaL_error(L, "Argument error: System.getMassDriverName(index) takes one argument.");
+	}
+	int index = luaL_checkinteger(L, 1);
+	if (index < 0 || index > 9) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	char mount[16];
+	snprintf(mount, sizeof(mount), "mass%d:/", index);
+	int dd = fileXioDopen(mount);
+	if (dd < 0) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	int rc = fileXioIoctl(dd, USBMASS_IOCTL_GET_DRIVERNAME, (void*)"");
+	fileXioDclose(dd);
+
+	char devid[8] = {0};
+	*(int*)devid = rc;
+	if (rc < 0 || devid[0] == '\0') {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	lua_pushstring(L, devid);
 	return 1;
 }
 
@@ -1225,6 +1260,7 @@ static const luaL_Reg System_functions[] = {
 	{"bdmList",                lua_bdm_list},
 	{"refreshMassBackends",    lua_refresh_mass_backends},
 	{"getMassBackendInfo",     lua_get_mass_backend_info},
+	{"getMassDriverName",      lua_getMassDriverName},
 	{"findBDMByDriver",    lua_find_bdm_by_driver},
 	{0, 0}
 };

@@ -832,25 +832,24 @@ function PLDR.ParseMassIndexFromPath(path)
   return nil
 end
 
+-- Returns "usb", "sdc", etc. or nil
 function PLDR.GetMassDriverName(index)
-  if index == nil then return nil end
-  local cached = PLDR.MASS.CACHE[index]
-  if cached ~= nil and cached.driver ~= nil then
-    return cached.driver
-  end
-  if type(System) == "table" then
-    if type(System.getMassDriverName) == "function" then
-      local ok, driver = pcall(System.getMassDriverName, index)
-      if ok and type(driver) == "string" and driver ~= "" then
-        return string.lower(driver)
-      end
-    end
-    if type(System.getMassDriver) == "function" then
-      local ok, driver = pcall(System.getMassDriver, index)
-      if ok and type(driver) == "string" and driver ~= "" then
-        return string.lower(driver)
-      end
-    end
+  if System == nil or System.getMassDriverName == nil then return nil end
+  local ok, name = pcall(System.getMassDriverName, index)
+  if not ok then return nil end
+  if type(name) ~= "string" or name == "" then return nil end
+  return string.lower(name)
+end
+
+function PLDR.FindMassByDriver(driver, max_index)
+  if type(driver) ~= "string" or driver == "" then return nil end
+  local max = tonumber(max_index) or 9
+  if max < 0 then max = 0 end
+  if max > 9 then max = 9 end
+  local wanted = string.lower(driver)
+  for i=0,max do
+    local name = PLDR.GetMassDriverName(i)
+    if name == wanted then return i end
   end
   return nil
 end
@@ -1006,10 +1005,8 @@ function PLDR.GetRootsByType(kind, mass_snapshot)
     for _, i in ipairs(state.ORDER or {}) do
       local info = state.CACHE and state.CACHE[i] or nil
       if info ~= nil and info.present then
-        local driver = string.lower(tostring(PLDR.GetMassDriverName(i) or info.driver or ""))
-        local is_usb = string.find(driver, "usb", 1, true) ~= nil
-        local blocked = string.find(driver, "sdc", 1, true) ~= nil or string.find(driver, "mx4", 1, true) ~= nil or string.find(driver, "mmce", 1, true) ~= nil
-        if is_usb and not blocked then
+        local driver = PLDR.GetMassDriverName(i)
+        if driver == "usb" then
           if i == 0 then
             add_root("mass:/")
           else
@@ -1021,11 +1018,14 @@ function PLDR.GetRootsByType(kind, mass_snapshot)
   elseif wanted == "mx4sio" then
     for _, i in ipairs(state.ORDER or {}) do
       local info = state.CACHE and state.CACHE[i] or nil
-      if info ~= nil and info.present and info.kind == "mx4sio" then
-        if i == 0 then
-          add_root("mass:/")
-        else
-          add_root("mass"..i..":/")
+      if info ~= nil and info.present then
+        local driver = PLDR.GetMassDriverName(i)
+        if driver == "sdc" then
+          if i == 0 then
+            add_root("mass:/")
+          else
+            add_root("mass"..i..":/")
+          end
         end
       end
     end
