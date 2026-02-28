@@ -865,7 +865,10 @@ function PLDR.RefreshMassBackends()
     if string.find(d, "usb", 1, true) ~= nil then
       return "usb"
     end
-    if string.find(d, "sdc", 1, true) ~= nil or string.find(d, "mx4sio", 1, true) ~= nil then
+    if string.find(d, "mmce", 1, true) ~= nil then
+      return "mmce"
+    end
+    if string.find(d, "sdc", 1, true) ~= nil or string.find(d, "mx4", 1, true) ~= nil or string.find(d, "sd2psx", 1, true) ~= nil then
       return "mx4sio"
     end
     return "other"
@@ -1467,14 +1470,10 @@ function PLDR.InitMX4SIOPopsRoot()
     end
 
     local found_driver_match = false
-    local all_drivers_empty = true
 
     for i = 0, 9 do
       local driver = string.lower(tostring(PLDR.GetMassDriverName(i) or ""))
-      if driver ~= "" then
-        all_drivers_empty = false
-      end
-      if string.find(driver, "sdc", 1, true) ~= nil or string.find(driver, "mx4", 1, true) ~= nil then
+      if string.find(driver, "sdc", 1, true) ~= nil or string.find(driver, "mx4", 1, true) ~= nil or string.find(driver, "sd2psx", 1, true) ~= nil then
         found_driver_match = true
         local roots = {}
         if i == 0 then
@@ -1492,12 +1491,11 @@ function PLDR.InitMX4SIOPopsRoot()
       end
     end
 
-    if not found_driver_match and all_drivers_empty then
+    if not found_driver_match then
       for i = 0, 9 do
         local driver = string.lower(tostring(PLDR.GetMassDriverName(i) or ""))
         local is_usb = string.find(driver, "usb", 1, true) ~= nil
-        local is_mmce = string.find(driver, "mmce", 1, true) ~= nil
-        if not is_usb and not is_mmce then
+        if not is_usb then
           local roots = {}
           if i == 0 then
             roots[1] = "mass:/"
