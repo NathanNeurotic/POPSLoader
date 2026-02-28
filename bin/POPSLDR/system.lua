@@ -50,9 +50,30 @@ local function NormalizeHostPath(path)
   return "host:/"..rest
 end
 
+local function NormalizeFsPathRaw(path)
+  if path == nil then return "" end
+  local normalized = string.gsub(path, "\\", "/")
+  if string.match(normalized, "^host:") and not string.match(normalized, "^host:/") then
+    normalized = "host:/"..string.sub(normalized, 6)
+  end
+  local prefix = ""
+  if string.match(normalized, "^host:/") then
+    prefix = "host:/"
+    normalized = string.sub(normalized, 7)
+  end
+  normalized = string.gsub(normalized, "/+", "/")
+  return prefix..normalized
+end
+
+local function EnsureTrailingSlashNormRaw(path)
+  local normalized = NormalizeFsPathRaw(path)
+  normalized = string.gsub(normalized, "/+$", "")
+  return normalized.."/"
+end
+
 function NormalizeDirPath(path)
   if path == nil or path == "" then return "" end
-  local normalized = string.gsub(path, "\\", "/")
+  local normalized = NormalizeFsPathRaw(path)
   normalized = NormalizeHostPath(NormalizeDeviceRoot(normalized))
   normalized = string.gsub(normalized, "/+$", "/")
   if string.sub(normalized, -1) ~= "/" then
@@ -70,7 +91,7 @@ function JoinPath(base, rel)
   return normalized..cleaned
 end
 
-local APP_DIR_LOCAL = NormalizeDirPath(APP_DIR or BOOT_PATH_RAW)
+local APP_DIR_LOCAL = EnsureTrailingSlashNormRaw(APP_DIR or System.currentDirectory() or "")
 APP_DIR_NORM = APP_DIR_LOCAL
 local SELECTOR_MODE = "basename"
 
@@ -293,7 +314,6 @@ local BDMA_COPY_FILES = {
   "usbhdfsd.irx",
   "icon.sys",
   "list.icn",
-  "copy.icn",
   "del.icn"
 }
 local BDMA_SUFFIX = {
@@ -367,11 +387,52 @@ function PLDR.EnsurePopstarterDir()
   return EnsureDirectory(PLDR.POPSTARTER_DIR)
 end
 
-function PLDR.AppDirPath(rel)
-  if rel == nil or rel == "" then
-    return APP_DIR_LOCAL
+function PLDR.NormalizeFsPath(p)
+  return NormalizeFsPathRaw(p)
+end
+
+function PLDR.EnsureTrailingSlashNorm(p)
+  return EnsureTrailingSlashNormRaw(p)
+end
+
+function PLDR.TryOpenFirst(paths)
+  for _, path in ipairs(paths) do
+    local ok, fd = pcall(System.openFile, path, FREAD)
+    if ok and fd ~= nil and (type(fd) ~= "number" or fd >= 0) then
+      return fd, path
+    end
   end
-  return JoinPath(APP_DIR_LOCAL, rel)
+  return -1, nil
+end
+
+APP_DIR_NORM = PLDR.EnsureTrailingSlashNorm(APP_DIR or System.currentDirectory() or "")
+APP_DIR_LOCAL = APP_DIR_NORM
+
+function PLDR.AppDirPath(rel)
+  local base = APP_DIR_NORM or ""
+  rel = (rel or ""):gsub("\\", "/")
+  if rel:sub(1, 1) == "/" then rel = rel:sub(2) end
+  return base..rel
+end
+
+
+function PLDR.BdmaSourceCandidates(rel)
+  local out = {}
+  local base = APP_DIR_NORM or APP_DIR_LOCAL or ""
+  rel = (rel or ""):gsub("\\", "/")
+  base = base:gsub("\\", "/")
+  if base ~= "" and base:sub(-1) ~= "/" then
+    base = base.."/"
+  end
+
+  if base:sub(1, 5) == "host:" then
+    table.insert(out, "host:./"..rel)
+    table.insert(out, "host:"..rel)
+    table.insert(out, base..rel)
+  else
+    table.insert(out, base..rel)
+  end
+  return out
 end
 
 local function EncodeSettings()
@@ -528,22 +589,25 @@ function PLDR.ApplyBdmaMode(mode_key)
   end
 
   local had_failure = false
-  local missing_notified = false
   for i = 1, #BDMA_COPY_FILES do
     local name = BDMA_COPY_FILES[i]
-    local source = PLDR.AppDirPath(name..suffix)
+    local rel = name..suffix
+    local paths = PLDR.BdmaSourceCandidates(rel)
+    local fd, source = PLDR.TryOpenFirst(paths)
+    if fd ~= nil and (type(fd) ~= "number" or fd >= 0) then
+      System.closeFile(fd)
+    end
+    if source == nil then
+      if UI ~= nil and UI.Notif_queue ~= nil then
+        UI.Notif_queue.add("Missing BDMA source (tried):\n"..table.concat(paths, "\n"))
+      end
+      return false
+    end
     local dest = POPSTARTER_PACK_ROOT.."/"..name
-    if not doesFileExist(source) then
+    local ok, copied = pcall(CopyExternalAtomic, source, dest)
+    if not ok or not copied then
       had_failure = true
-      if not missing_notified and UI ~= nil and UI.Notif_queue ~= nil then
-        UI.Notif_queue.add("Missing BDMA source:\n"..source)
-        missing_notified = true
-      end
-    else
-      local ok = CopyExternalAtomic(source, dest)
-      if not ok then
-        had_failure = true
-      end
+      return false
     end
   end
   return not had_failure
