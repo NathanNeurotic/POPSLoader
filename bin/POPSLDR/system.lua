@@ -1460,24 +1460,18 @@ function PLDR.InitMX4SIOPopsRoot()
       pcall(System.sleep, 0.05)
     end
 
-    if type(System) == "table" and type(System.refreshMassBackends) == "function" then
-      pcall(System.refreshMassBackends)
+    local info = nil
+    if type(System) == "table" and type(System.findBDMByDriver) == "function" then
+      local ok, got = pcall(System.findBDMByDriver, "sdc")
+      if ok and type(got) == "table" then
+        info = got
+      end
     end
 
-    for i = 0, 9 do
-      local info = nil
-      if type(System) == "table" and type(System.getMassBackendInfo) == "function" then
-        local ok, got = pcall(System.getMassBackendInfo, i)
-        if ok and type(got) == "table" then
-          info = got
-        end
-      end
-      local drv = ""
-      if info ~= nil and info.driver ~= nil then
-        drv = string.lower(tostring(info.driver))
-      end
-      if drv == "sdc" then
-        local root = (i == 0) and "mass:/" or ("mass"..i..":/")
+    if info ~= nil and info.devNr ~= nil then
+      local dev = tonumber(info.devNr)
+      if dev ~= nil then
+        local root = (dev == 0) and "mass:/" or ("mass"..dev..":/")
         local pops = root.."POPS/"
         if doesFolderExist(pops) then
           PLDR.MX4SIO.READY = true

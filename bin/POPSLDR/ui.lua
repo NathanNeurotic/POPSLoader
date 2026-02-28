@@ -1689,6 +1689,7 @@ end
             end
             if mx4sio_root == nil then
               UI.Notif_queue.add("No MX4SIO device found (POPS/ missing)")
+              return
             else
               PLDR.CleanupGameList()
               PLDR.GetPS1GameLists(mx4sio_root, true)
