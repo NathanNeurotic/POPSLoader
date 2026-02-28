@@ -71,6 +71,7 @@ function JoinPath(base, rel)
 end
 
 local APP_DIR_LOCAL = NormalizeDirPath(APP_DIR or BOOT_PATH_RAW)
+APP_DIR_NORM = APP_DIR_LOCAL
 local SELECTOR_MODE = "basename"
 
 local function ResolveAsset(rel)
@@ -268,39 +269,25 @@ if UI.DEVLOCK ~= nil then
 end
 require("images")
 
-local POPSTARTER_PACK_ROOT = "mc0:/POPSTARTER"
-local POPSTARTER_UI_FILES = {
+PLDR.POPSTARTER_DIR = "mc0:/POPSTARTER"
+PLDR.SETTINGS_PATH = "mc0:/POPSTARTER/.pldrs"
+PLDR.BDMA_MODE_KEY = "FAT32"
+PLDR.SELECTED_PROFILE = tonumber(PLDR.DEFAULT_PROFILE) or 1
+
+local POPSTARTER_PACK_ROOT = PLDR.POPSTARTER_DIR
+local BDMA_COPY_FILES = {
+  "usbd.irx",
+  "usbhdfsd.irx",
   "icon.sys",
   "list.icn",
+  "copy.icn",
   "del.icn"
 }
-local BDMA_MODE_KEYS = {
-  USBEXFAT = "usbexfat",
-  MMCE = "fat32",
-  MX4SIO = "mx4sio"
+local BDMA_SUFFIX = {
+  USBEXFAT = ".usbexfat",
+  MX4SIO = ".mx4sio",
+  MMCE = ".mmce"
 }
-
-local function ExternalCandidatesFor(name, mode_key)
-  local suffix = string.lower(mode_key or "")
-  local candidates = {}
-  if suffix ~= "" then
-    candidates[#candidates + 1] = JoinPath(APP_DIR_LOCAL, name.."."..suffix)
-    candidates[#candidates + 1] = JoinPath(APP_DIR_LOCAL, "POPSLDR/"..name.."."..suffix)
-    candidates[#candidates + 1] = JoinPath(APP_DIR_LOCAL, "POPSTARTER/"..string.upper(suffix).."/"..name)
-  end
-  return candidates
-end
-
-local function ResolveExternalBdmaSource(name, mode_key)
-  local candidates = ExternalCandidatesFor(name, mode_key)
-  for i = 1, #candidates do
-    local source = candidates[i]
-    if doesFileExist(source) then
-      return source
-    end
-  end
-  return nil
-end
 
 local function ReadWholeFile(path)
   local fd = System.openFile(path, FREAD)
@@ -363,6 +350,99 @@ local function EnsureDirectory(path)
   return ok
 end
 
+function PLDR.EnsurePopstarterDir()
+  return EnsureDirectory(PLDR.POPSTARTER_DIR)
+end
+
+local function EncodeSettings()
+  local lines = {
+    "PROFILE="..tostring(tonumber(PLDR.SELECTED_PROFILE) or 1),
+    "POPSTARTER_PATH="..tostring(PLDR.POPSTARTER_PATH or ""),
+    "BDMA_MODE="..tostring(PLDR.BDMA_MODE_KEY or "FAT32")
+  }
+  return table.concat(lines, "\n").."\n"
+end
+
+function PLDR.SaveSettingsAtomic()
+  PLDR.EnsurePopstarterDir()
+  local data = EncodeSettings()
+  local ok = WriteAtomic(PLDR.SETTINGS_PATH, data)
+  if not ok and UI ~= nil and UI.Notif_queue ~= nil then
+    UI.Notif_queue.add("Failed to save settings")
+  end
+  return ok
+end
+
+function PLDR.LoadSettingsNonFatal()
+  local defaults_profile = tonumber(PLDR.DEFAULT_PROFILE) or 1
+  PLDR.SELECTED_PROFILE = defaults_profile
+  PLDR.BDMA_MODE_KEY = "FAT32"
+  if PLDR.PROFILES ~= nil and PLDR.PROFILES[defaults_profile] ~= nil then
+    PLDR.POPSTARTER_PATH = PLDR.PROFILES[defaults_profile].ELF
+  end
+  if not doesFileExist(PLDR.SETTINGS_PATH) then
+    return false
+  end
+  local data = ReadWholeFile(PLDR.SETTINGS_PATH)
+  if data == nil then
+    return false
+  end
+  local profile = tonumber(string.match(data, "\nPROFILE=([^\n]+)")) or tonumber(string.match(data, "^PROFILE=([^\n]+)"))
+  local popstarter_path = string.match(data, "\nPOPSTARTER_PATH=([^\n]*)") or string.match(data, "^POPSTARTER_PATH=([^\n]*)")
+  local bdma_mode = string.match(data, "\nBDMA_MODE=([^\n]+)") or string.match(data, "^BDMA_MODE=([^\n]+)")
+  if profile ~= nil and PLDR.PROFILES ~= nil and PLDR.PROFILES[profile] ~= nil then
+    PLDR.SELECTED_PROFILE = profile
+    PLDR.POPSTARTER_PATH = PLDR.PROFILES[profile].ELF
+  end
+  if popstarter_path ~= nil and popstarter_path ~= "" then
+    PLDR.POPSTARTER_PATH = popstarter_path
+  end
+  if bdma_mode == "FAT32" or bdma_mode == "USBEXFAT" or bdma_mode == "MX4SIO" or bdma_mode == "MMCE" then
+    PLDR.BDMA_MODE_KEY = bdma_mode
+  end
+  return true
+end
+
+function PLDR.ApplyBdmaMode(mode_key)
+  local selected = mode_key or "FAT32"
+  PLDR.EnsurePopstarterDir()
+  if selected == "FAT32" then
+    pcall(System.removeFile, POPSTARTER_PACK_ROOT.."/usbd.irx")
+    pcall(System.removeFile, POPSTARTER_PACK_ROOT.."/usbhdfsd.irx")
+    return true
+  end
+
+  local suffix = BDMA_SUFFIX[selected]
+  if suffix == nil then
+    if UI ~= nil and UI.Notif_queue ~= nil then
+      UI.Notif_queue.add("Unknown BDMA mode: "..tostring(selected))
+    end
+    return false
+  end
+
+  local had_failure = false
+  for i = 1, #BDMA_COPY_FILES do
+    local name = BDMA_COPY_FILES[i]
+    local source = APP_DIR_NORM..name..suffix
+    local dest = POPSTARTER_PACK_ROOT.."/"..name
+    if not doesFileExist(source) then
+      had_failure = true
+      if UI ~= nil and UI.Notif_queue ~= nil then
+        UI.Notif_queue.add("Missing BDMA source: "..source)
+      end
+    else
+      local ok = CopyExternalAtomic(source, dest)
+      if not ok then
+        had_failure = true
+        if UI ~= nil and UI.Notif_queue ~= nil then
+          UI.Notif_queue.add("Failed BDMA copy: "..source)
+        end
+      end
+    end
+  end
+  return not had_failure
+end
+
 local function RemoveDirectoryRecursive(path)
   local normalized = NormalizeDirPath(path)
   if not doesFolderExist(normalized) then
@@ -412,56 +492,7 @@ local function ResolvePackUiSource(name)
 end
 
 function PLDR.ApplyPopstarterPack(pack_key)
-  local mode_key = BDMA_MODE_KEYS[pack_key]
-  if mode_key == nil then
-    UI.Notif_queue.add("Unknown POPSTARTER pack: "..tostring(pack_key))
-    return false
-  end
-  if not EnsureDirectory(POPSTARTER_PACK_ROOT) then
-    UI.Notif_queue.add("Failed to create "..POPSTARTER_PACK_ROOT)
-    return false
-  end
-
-  local had_failure = false
-  local bdma_files = {"usbd.irx", "usbhdfsd.irx"}
-  for i = 1, #bdma_files do
-    local name = bdma_files[i]
-    local source = ResolveExternalBdmaSource(name, mode_key)
-    local dest = POPSTARTER_PACK_ROOT.."/"..name
-    if source == nil then
-      UI.Notif_queue.add("BDMA module missing: "..name)
-      had_failure = true
-    else
-      local ok = CopyExternalAtomic(source, dest)
-      if not ok then
-        UI.Notif_queue.add("BDMA module missing: "..name)
-        had_failure = true
-      end
-    end
-  end
-
-  for i = 1, #POPSTARTER_UI_FILES do
-    local name = POPSTARTER_UI_FILES[i]
-    local dest = POPSTARTER_PACK_ROOT.."/"..name
-    local source = ResolvePackUiSource(name)
-    if doesFileExist(source) then
-      local ok = CopyExternalAtomic(source, dest)
-      if not ok then
-        UI.Notif_queue.add("Missing pack file: "..name)
-        had_failure = true
-      end
-    else
-      UI.Notif_queue.add("Missing pack file: "..name)
-      had_failure = true
-    end
-  end
-
-  if had_failure then
-    UI.Notif_queue.add("Applied "..pack_key.." pack with missing files")
-    return false
-  end
-  UI.Notif_queue.add("Installed "..pack_key.." pack to "..POPSTARTER_PACK_ROOT)
-  return true
+  return PLDR.ApplyBdmaMode(pack_key)
 end
 
 function PLDR.ResetPopstarterPack()
@@ -1433,6 +1464,8 @@ function Touch(FILE)
     return false
   end
 end
+
+PLDR.LoadSettingsNonFatal()
 
 ---MAIN PROGRAM BEHAVIOUR BEGINS
 local initial_scene = UI.SCENES.MMAIN

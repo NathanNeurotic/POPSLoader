@@ -31,6 +31,8 @@ local IMG_REGISTRATIONS = {
   {"cross", "cross.png"},
   {"R2", "R2.png"},
   {"square", "square.png"},
+  {"left", "left.png"},
+  {"right", "right.png"},
 }
 
 local IMG_SOURCES = {}

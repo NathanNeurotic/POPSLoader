@@ -320,6 +320,27 @@ UI = {
       MIN_ACTION_MS = 220;
       DEBUG_INPUT_LOG = false;
     };
+    BdmaModes = {
+      { key = "FAT32", label = "FAT32-USB (None)" },
+      { key = "USBEXFAT", label = "exFAT-USB" },
+      { key = "MX4SIO", label = "MX4SIO" },
+      { key = "MMCE", label = "MMCE" }
+    };
+    BdmaModeIndex = 1;
+    BdmaDirty = false;
+    ProfileDirty = false;
+    ShowSavingOverlay = function ()
+      UI.Modal.active = true
+      UI.Modal.title = "Saving..."
+      UI.Modal.body = "Applying profile and BDMA settings"
+      UI.Modal.options = {"", ""}
+      UI.Modal.confirm_action = nil
+      UI.Modal.cancel_action = nil
+      UI.Modal.triangle_action = nil
+      UI.Modal.ignore_until_release = false
+      UI.flip()
+      UI.Modal.Close()
+    end;
     --- Notifications queue handler
     Notif_queue = {
       display = function ()
@@ -1319,35 +1340,86 @@ end
         Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 30, 8, UI.SCR.X, 16, "Profile "..UI.ProfileQuery.curopt, UI.CCOL.GREY)
         Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 140, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].DESC, UI.CCOL.GREY)
         Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 220, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].ELF, Color.new(128,128,128, 110))
+
+        local mode = UI.BdmaModes[UI.BdmaModeIndex]
+        local mode_y = layout.TITLE_Y + 92
+        local left_icon = IMG.left
+        local right_icon = IMG.right
+        Font.ftPrint(BFONT, UI.SCR.X_MID - 180, mode_y, 0, 200, 16, "BDMA Mode", UI.CCOL.GREY)
+        if left_icon ~= nil then
+          Graphics.drawImage(left_icon, UI.SCR.X_MID - 36, mode_y - 2, UI.CCOL.GREY)
+        end
+        Font.ftPrint(BFONT, UI.SCR.X_MID, mode_y, 8, UI.SCR.X, 16, mode.label, UI.CCOL.GREY)
+        if right_icon ~= nil then
+          Graphics.drawImage(right_icon, UI.SCR.X_MID + 18, mode_y - 2, UI.CCOL.GREY)
+        end
+
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
-        if UI.Pad.Events.EXIT then UI.SceneChange(UI.SCENES.CREDITS) end
-        if UI.Pad.Events.NAV_DOWN then UI.ProfileQuery.curopt = CLAMP(UI.ProfileQuery.curopt+1, 1, profcnt) end
-        if UI.Pad.Events.NAV_UP then UI.ProfileQuery.curopt = CLAMP(UI.ProfileQuery.curopt-1, 1, profcnt) end
-        if UI.Pad.Events.BACK then UI.SceneChange(UI.SCENES.MMAIN) end
+
+        local function queue_exit(target_scene)
+          if UI.ProfileDirty or UI.BdmaDirty then
+            UI.ShowSavingOverlay()
+            PLDR.EnsurePopstarterDir()
+            PLDR.SELECTED_PROFILE = UI.ProfileQuery.curopt
+            PLDR.POPSTARTER_PATH = PLDR.PROFILES[UI.ProfileQuery.curopt].ELF
+            PLDR.BDMA_MODE_KEY = UI.BdmaModes[UI.BdmaModeIndex].key
+            PLDR.SaveSettingsAtomic()
+            PLDR.ApplyBdmaMode(PLDR.BDMA_MODE_KEY)
+            UI.ProfileDirty = false
+            UI.BdmaDirty = false
+          end
+          UI.SceneChange(target_scene)
+        end
+
+        if UI.Pad.Events.EXIT then queue_exit(UI.SCENES.CREDITS) end
+        if UI.Pad.Events.NAV_DOWN then
+          local next_opt = CLAMP(UI.ProfileQuery.curopt+1, 1, profcnt)
+          if next_opt ~= UI.ProfileQuery.curopt then
+            UI.ProfileQuery.curopt = next_opt
+            UI.ProfileDirty = true
+          end
+        end
+        if UI.Pad.Events.NAV_UP then
+          local next_opt = CLAMP(UI.ProfileQuery.curopt-1, 1, profcnt)
+          if next_opt ~= UI.ProfileQuery.curopt then
+            UI.ProfileQuery.curopt = next_opt
+            UI.ProfileDirty = true
+          end
+        end
+        if UI.Pad.Events.NAV_RIGHT then
+          UI.BdmaModeIndex = UI.BdmaModeIndex + 1
+          if UI.BdmaModeIndex > #UI.BdmaModes then UI.BdmaModeIndex = 1 end
+          UI.BdmaDirty = true
+        end
+        if UI.Pad.Events.NAV_LEFT then
+          UI.BdmaModeIndex = UI.BdmaModeIndex - 1
+          if UI.BdmaModeIndex < 1 then UI.BdmaModeIndex = #UI.BdmaModes end
+          UI.BdmaDirty = true
+        end
+        if UI.Pad.Events.BACK then queue_exit(UI.SCENES.MMAIN) end
         if UI.Pad.Events.START then
           local default_profile = tonumber(PLDR.DEFAULT_PROFILE) or 1
-          UI.ProfileQuery.curopt = CLAMP(default_profile, 1, profcnt)
-          local profile = PLDR.PROFILES[UI.ProfileQuery.curopt]
-          if profile ~= nil then
-            PLDR.POPSTARTER_PATH = profile.ELF
+          local next_default = CLAMP(default_profile, 1, profcnt)
+          if next_default ~= UI.ProfileQuery.curopt then
+            UI.ProfileQuery.curopt = next_default
+            UI.ProfileDirty = true
+          end
+          if UI.BdmaModeIndex ~= 1 then
+            UI.BdmaModeIndex = 1
+            UI.BdmaDirty = true
           end
           UI.Notif_queue.add("Profile defaults restored")
         end
         if UI.Pad.Events.CONFIRM then
-          if not doesFileExist(PLDR.PROFILES[UI.ProfileQuery.curopt].ELF) then
-            UI.Notif_queue.add("POPStarter ELF missing")
-          else
-            PLDR.POPSTARTER_PATH = PLDR.PROFILES[UI.ProfileQuery.curopt].ELF
-            UI.SceneChange(UI.SCENES.MMAIN)
-          end
+          queue_exit(UI.SCENES.MMAIN)
         end
         local labels, order = UI.Footer.ResolveLegend({
           order = UI.Footer.order_with_start_r2,
           order_id = "start_r2",
           circle = UI.Footer.labels.circle_other,
           cross = UI.Footer.labels.cross_select,
-          square = "Cover Art",
+          square = "BDMA Mode",
           start = UI.Footer.labels.start_reset
         })
         UI.Footer.Draw(labels, order)
@@ -1856,6 +1928,17 @@ function UI.OnSceneExit(previous_scene, next_scene)
   end
 end
 UI.RecalcLayout()
+do
+  local mode_key = PLDR.BDMA_MODE_KEY or "FAT32"
+  for i = 1, #UI.BdmaModes do
+    if UI.BdmaModes[i].key == mode_key then
+      UI.BdmaModeIndex = i
+      break
+    end
+  end
+  local selected_profile = tonumber(PLDR.SELECTED_PROFILE) or tonumber(PLDR.DEFAULT_PROFILE) or 1
+  UI.ProfileQuery.curopt = CLAMP(selected_profile, 1, #PLDR.PROFILES)
+end
 function Input_GetEvent()
   UI.Pad.Listen()
   if UI.Transition ~= nil and UI.Transition.active then
