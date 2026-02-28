@@ -1642,10 +1642,18 @@ end
               UI.SceneChange(UI.SCENES.GSMB)
             end
           elseif UI.MainMenu.OPT == 2 then
-            if type(System) == "table" and type(System.ensureBDMFatFs) == "function" then
-              System.ensureBDMFatFs()
+            local mx4sio_root = nil
+            if type(PLDR) == "table" and type(PLDR.InitMX4SIOPopsRoot) == "function" then
+              mx4sio_root = PLDR.InitMX4SIOPopsRoot()
             end
-            UI.Notif_queue.add("Not Implemented Yet")
+            if mx4sio_root == nil then
+              UI.Notif_queue.add("No MX4SIO device found (POPS/ missing)")
+            else
+              PLDR.CleanupGameList()
+              PLDR.GetPS1GameLists(mx4sio_root, true)
+              UI.setDeviceLock(DEVLOCK.MX4SIO)
+              UI.SceneChange(UI.SCENES.GMX4SIO)
+            end
           elseif UI.MainMenu.OPT == 3 then
             UI.Notif_queue.add("Not Implemented Yet")
           elseif UI.MainMenu.OPT == 4 then

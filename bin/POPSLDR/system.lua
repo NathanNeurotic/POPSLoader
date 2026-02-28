@@ -832,6 +832,39 @@ function PLDR.BuildUsbGameListMulti()
   return nil
 end
 
+function PLDR.InitMX4SIOPopsRoot()
+  local roots = {
+    "mx4sio:/POPS/",
+    "mx4sio0:/POPS/"
+  }
+
+  if type(System) == "table" and type(System.ensureBDMFatFs) == "function" then
+    pcall(System.ensureBDMFatFs)
+  end
+
+  PLDR.MX4SIO.READY = false
+  PLDR.MX4SIO.ROOT = nil
+
+  for i = 1, #roots do
+    if type(_G.ensureMx4sioInit) == "function" then
+      pcall(_G.ensureMx4sioInit)
+    end
+    if type(System) == "table" and type(System.initMX4SIO) == "function" then
+      pcall(System.initMX4SIO)
+    end
+
+    local path = roots[i]
+    local dir = System.listDirectory(path)
+    if dir ~= nil then
+      PLDR.MX4SIO.READY = true
+      PLDR.MX4SIO.ROOT = string.match(path, "^(mx4sio%d*:/)") or "mx4sio:/"
+      return path
+    end
+  end
+
+  return nil
+end
+
 local function EncodeHddGameEntry(partition, relpath)
   if partition == nil or relpath == nil then
     return nil
