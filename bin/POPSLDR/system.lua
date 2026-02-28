@@ -289,6 +289,8 @@ local pldr_defaults = {
   MX4SIO = {
     READY = false,
     ROOT = nil,
+    MASSINDX = nil,
+    IS_MASS_ALIAS = false,
     PREFIX_HINT = nil
   },
   MMCE = {
@@ -303,6 +305,28 @@ for k, v in pairs(pldr_defaults) do
     PLDR[k] = v
   end
 end
+
+local function ParseMassIndexFromRoot(root)
+  if type(root) ~= "string" then return nil end
+  if string.match(root, "^mass:/") then
+    return 0
+  end
+  local idx = string.match(root, "^mass(%d+):/")
+  if idx ~= nil then
+    return tonumber(idx)
+  end
+  return nil
+end
+
+function PLDR.SetMX4SIORoot(root)
+  PLDR.MX4SIO.ROOT = root
+  local idx = ParseMassIndexFromRoot(root)
+  PLDR.MX4SIO.MASSINDX = idx
+  PLDR.MX4SIO.IS_MASS_ALIAS = (idx ~= nil)
+  PLDR.MX4SIO.READY = (root ~= nil)
+  return root
+end
+
 local function DetectMX4SIOPrefixHint()
   local mx_marker = JoinPath(APP_DIR_LOCAL, ".boot_mx4sio")
   if doesFileExist(mx_marker) then
@@ -1003,17 +1027,20 @@ function PLDR.GetRootsByType(kind, mass_snapshot)
   end
 
   if wanted == "usb" then
+    local mx4_idx = PLDR.MX4SIO and PLDR.MX4SIO.MASSINDX or nil
+    local mx4_root = PLDR.MX4SIO and PLDR.MX4SIO.ROOT or nil
     for _, i in ipairs(state.ORDER or {}) do
-      local info = state.CACHE and state.CACHE[i] or nil
-      if info ~= nil and info.present then
-        local driver = string.lower(tostring(PLDR.GetMassDriverName(i) or info.driver or ""))
-        local is_usb = string.find(driver, "usb", 1, true) ~= nil
-        local blocked = string.find(driver, "sdc", 1, true) ~= nil or string.find(driver, "mx4", 1, true) ~= nil or string.find(driver, "mmce", 1, true) ~= nil
-        if is_usb and not blocked then
-          if i == 0 then
-            add_root("mass:/")
-          else
-            add_root("mass"..i..":/")
+      if mx4_idx == nil or i ~= mx4_idx then
+        local info = state.CACHE and state.CACHE[i] or nil
+        if info ~= nil and info.present then
+          local driver = string.lower(tostring(PLDR.GetMassDriverName(i) or info.driver or ""))
+          local is_usb = string.find(driver, "usb", 1, true) ~= nil
+          local blocked = string.find(driver, "sdc", 1, true) ~= nil or string.find(driver, "mx4", 1, true) ~= nil or string.find(driver, "mmce", 1, true) ~= nil
+          if is_usb and not blocked then
+            local root = (i == 0) and "mass:/" or ("mass"..i..":/")
+            if mx4_root == nil or root ~= mx4_root then
+              add_root(root)
+            end
           end
         end
       end
@@ -1442,6 +1469,8 @@ end
 function PLDR.InitMX4SIOPopsRoot()
   PLDR.MX4SIO.READY = false
   PLDR.MX4SIO.ROOT = nil
+  PLDR.MX4SIO.MASSINDX = nil
+  PLDR.MX4SIO.IS_MASS_ALIAS = false
 
   for pass = 1, 2 do
     if type(_G.ensureMx4sioInit) == "function" then
@@ -1468,8 +1497,7 @@ function PLDR.InitMX4SIOPopsRoot()
         local root = (dev == 0) and "mass:/" or ("mass"..dev..":/")
         local pops = root.."POPS/"
         if doesFolderExist(pops) then
-          PLDR.MX4SIO.READY = true
-          PLDR.MX4SIO.ROOT = root
+          PLDR.SetMX4SIORoot(root)
           return pops
         end
       end

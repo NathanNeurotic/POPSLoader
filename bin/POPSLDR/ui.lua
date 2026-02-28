@@ -1698,6 +1698,9 @@ end
                 end
               end
             end
+            if mx4sio_root ~= nil and type(PLDR) == "table" and type(PLDR.SetMX4SIORoot) == "function" then
+              pcall(PLDR.SetMX4SIORoot, string.gsub(mx4sio_root, "POPS/$", ""))
+            end
             if mx4sio_root == nil then
               local suffix = ""
               if mx4sio_err ~= nil and mx4sio_err ~= "" then
