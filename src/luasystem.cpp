@@ -236,6 +236,8 @@ static bool ProbeDir(const char *path, int *out_ret)
 // - TODO: verify any slot or adapter placement requirements for MX4SIO in hardware docs.
 int mx4sio_init_and_get_root(const char *hint, char *out_root, size_t out_sz)
 {
+	static bool mx4sio_irx_loaded = false;
+
 	if (out_root == NULL || out_sz == 0) {
 		return -1;
 	}
@@ -243,8 +245,11 @@ int mx4sio_init_and_get_root(const char *hint, char *out_root, size_t out_sz)
 	if (!EnsureBDMFatFs()) {
 		return -1;
 	}
-	if (!LoadIrxCheckedBuffer("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL)) {
-		return -1;
+	if (!mx4sio_irx_loaded) {
+		if (!LoadIrxCheckedBuffer("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL)) {
+			return -1;
+		}
+		mx4sio_irx_loaded = true;
 	}
 	if (hint != NULL && hint[0] != '\0') {
 		int hint_ret = -1;

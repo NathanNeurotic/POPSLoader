@@ -1683,9 +1683,16 @@ end
             local mx4sio_root = nil
             PLDR.CleanupGameList()
             PLDR.GAMEPATH = ""
-            if type(PLDR) == "table" and type(PLDR.InitMX4SIOPopsRoot) == "function" then
-              local ok, res = pcall(PLDR.InitMX4SIOPopsRoot)
-              if ok then mx4sio_root = res else mx4sio_root = nil end
+            if type(System) == "table" and type(System.initMX4SIO) == "function" then
+              local ok, ready, root = pcall(System.initMX4SIO, "mx4sio0:/")
+              if ok and ready and root ~= nil then
+                mx4sio_root = root.."POPS/"
+              else
+                ok, ready, root = pcall(System.initMX4SIO, "mx4sio:/")
+                if ok and ready and root ~= nil then
+                  mx4sio_root = root.."POPS/"
+                end
+              end
             end
             if mx4sio_root == nil then
               UI.Notif_queue.add("No MX4SIO device found (POPS/ missing)")
