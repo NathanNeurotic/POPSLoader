@@ -1073,25 +1073,53 @@ function PLDR.InitMX4SIOPopsRoot()
   PLDR.MX4SIO.READY = false
   PLDR.MX4SIO.ROOT = nil
 
-  local hints = {
+  if type(_G.ensureMx4sioInit) == "function" then
+    pcall(_G.ensureMx4sioInit)
+  end
+
+  local roots = {
     "mx4sio0:/",
     "mx4sio:/"
   }
-  for i = 1, #hints do
-    local hint = hints[i]
+
+  for i = 1, #roots do
+    local candidate = roots[i]
+    local call_ok = false
+    local ret1, ret2 = nil, nil
+
     if type(System) == "table" and type(System.initMX4SIO) == "function" then
-      local ok_init, ok, root = pcall(System.initMX4SIO, hint)
-      if ok_init and ok and root ~= nil and root ~= "" then
-        local normalized_root = EnsureTrailingSlash(root)
-        local pops_root = normalized_root.."POPS/"
-        if doesFolderExist(pops_root) then
-          PLDR.MX4SIO.READY = true
-          PLDR.MX4SIO.ROOT = normalized_root
-          return pops_root
-        end
+      call_ok, ret1, ret2 = pcall(System.initMX4SIO, candidate)
+      if not call_ok then
+        call_ok, ret1, ret2 = pcall(System.initMX4SIO)
+      end
+    end
+
+    local init_ok = false
+    if call_ok then
+      if ret1 == true then
+        init_ok = true
+      elseif type(ret1) == "string" and ret1 ~= "" then
+        init_ok = true
+      end
+    end
+
+    if init_ok then
+      local final_root = candidate
+      if type(ret1) == "string" and ret1 ~= "" then
+        final_root = ret1
+      elseif type(ret2) == "string" and ret2 ~= "" then
+        final_root = ret2
+      end
+      final_root = EnsureTrailingSlash(final_root)
+      local pops_root = final_root.."POPS/"
+      if doesFolderExist(pops_root) then
+        PLDR.MX4SIO.READY = true
+        PLDR.MX4SIO.ROOT = final_root
+        return pops_root
       end
     end
   end
+
   return nil
 end
 
