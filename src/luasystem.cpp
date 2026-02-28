@@ -227,10 +227,6 @@ static bool ProbeDir(const char *path, int *out_ret)
 	return false;
 }
 
-#ifndef USBMASS_IOCTL_GET_DRIVERNAME
-#define USBMASS_IOCTL_GET_DRIVERNAME 0x0003
-#endif
-
 static void BuildMassRootPath(int index, char *out_root, size_t out_sz)
 {
 	if (index == 0) {
@@ -238,68 +234,6 @@ static void BuildMassRootPath(int index, char *out_root, size_t out_sz)
 	} else {
 		snprintf(out_root, out_sz, "mass%d:/", index);
 	}
-}
-
-static void DecodeDriverCodePair(int rc, char *out_code, size_t out_code_sz, char *out_rev, size_t out_rev_sz)
-{
-	unsigned char b[4];
-	b[0] = (unsigned char)(rc & 0xFF);
-	b[1] = (unsigned char)((rc >> 8) & 0xFF);
-	b[2] = (unsigned char)((rc >> 16) & 0xFF);
-	b[3] = (unsigned char)((rc >> 24) & 0xFF);
-
-	size_t n = 0;
-	for (size_t i = 0; i < 4 && n + 1 < out_code_sz; ++i) {
-		char c = (char)b[i];
-		if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) {
-			if (c >= 'A' && c <= 'Z') c = (char)(c - 'A' + 'a');
-			out_code[n++] = c;
-		}
-	}
-	out_code[n] = '\0';
-
-	n = 0;
-	for (size_t i = 0; i < 4 && n + 1 < out_rev_sz; ++i) {
-		char c = (char)b[3 - i];
-		if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) {
-			if (c >= 'A' && c <= 'Z') c = (char)(c - 'A' + 'a');
-			out_rev[n++] = c;
-		}
-	}
-	out_rev[n] = '\0';
-}
-
-static bool QueryMassDriverCode(int index, char *out_code, size_t out_code_sz, char *out_rev, size_t out_rev_sz)
-{
-	if (out_code == NULL || out_code_sz == 0 || out_rev == NULL || out_rev_sz == 0) {
-		return false;
-	}
-	char root[16];
-	BuildMassRootPath(index, root, sizeof(root));
-	int dd = fileXioDopen(root);
-	if (dd < 0) {
-		out_code[0] = '\0';
-		out_rev[0] = '\0';
-		return false;
-	}
-	int rc = fileXioIoctl(dd, USBMASS_IOCTL_GET_DRIVERNAME, (void*)"");
-	fileXioDclose(dd);
-	DecodeDriverCodePair(rc, out_code, out_code_sz, out_rev, out_rev_sz);
-	return out_code[0] != '\0' || out_rev[0] != '\0';
-}
-
-static bool IsDriverCodeMatch(const char *code, const char *rev, const char *want)
-{
-	if (want == NULL || want[0] == '\0') {
-		return false;
-	}
-	if (code != NULL && strcmp(code, want) == 0) {
-		return true;
-	}
-	if (rev != NULL && strcmp(rev, want) == 0) {
-		return true;
-	}
-	return false;
 }
 
 // MX4SIO init notes:
@@ -316,7 +250,7 @@ enum {
 int mx4sio_init_and_get_root(const char *hint, char *out_root, size_t out_sz)
 {
 	static bool mx4sio_irx_loaded = false;
-	bool saw_sdc_driver = false;
+	(void)hint;
 
 	if (out_root == NULL || out_sz == 0) {
 		return MX4SIO_INIT_ROOT_NOT_FOUND;
@@ -330,75 +264,25 @@ int mx4sio_init_and_get_root(const char *hint, char *out_root, size_t out_sz)
 		}
 		mx4sio_irx_loaded = true;
 	}
+	mass_backend_cache_valid = false;
+	if (!FetchBdmList(&mass_backend_cache)) {
+		return MX4SIO_INIT_ROOT_NOT_FOUND;
+	}
+	mass_backend_cache_valid = true;
 
-	for (int i = 0; i <= 9; ++i) {
-		char code[5];
-		char rev[5];
-		if (!QueryMassDriverCode(i, code, sizeof(code), rev, sizeof(rev))) {
+	for (u32 i = 0; i < mass_backend_cache.count; ++i) {
+		const bdm_dev_info_t *info = &mass_backend_cache.devs[i];
+		if (strcmp(info->name, "sdc") != 0) {
 			continue;
 		}
-		if (!IsDriverCodeMatch(code, rev, "sdc")) {
-			continue;
-		}
-		saw_sdc_driver = true;
 		char root[16];
 		char pops_path[32];
-		BuildMassRootPath(i, root, sizeof(root));
+		BuildMassRootPath((int)info->devNr, root, sizeof(root));
 		snprintf(pops_path, sizeof(pops_path), "%sPOPS/", root);
 		int pops_ret = -1;
 		if (ProbeDir(pops_path, &pops_ret)) {
 			snprintf(out_root, out_sz, "%s", root);
 			return MX4SIO_INIT_OK;
-		}
-	}
-
-	if (hint != NULL && hint[0] != '\0') {
-		int hint_ret = -1;
-		if (ProbeDir(hint, &hint_ret)) {
-			char pops_path[32];
-			snprintf(pops_path, sizeof(pops_path), "%sPOPS/", hint);
-			int pops_ret = -1;
-			if (ProbeDir(pops_path, &pops_ret)) {
-				snprintf(out_root, out_sz, "%s", hint);
-				return MX4SIO_INIT_OK;
-			}
-		}
-	}
-	const char *candidates[] = {"mx4sio:/", "mx4sio0:/"};
-	for (size_t i = 0; i < sizeof(candidates) / sizeof(candidates[0]); ++i) {
-		const char *prefix = candidates[i];
-		int root_ret = -1;
-		if (!ProbeDir(prefix, &root_ret)) {
-			continue;
-		}
-		char pops_path[32];
-		snprintf(pops_path, sizeof(pops_path), "%sPOPS/", prefix);
-		int pops_ret = -1;
-		if (ProbeDir(pops_path, &pops_ret)) {
-			snprintf(out_root, out_sz, "%s", prefix);
-			return MX4SIO_INIT_OK;
-		}
-	}
-
-	if (!saw_sdc_driver) {
-		for (int i = 0; i <= 9; ++i) {
-			char code[5];
-			char rev[5];
-			if (!QueryMassDriverCode(i, code, sizeof(code), rev, sizeof(rev))) {
-				continue;
-			}
-			if (IsDriverCodeMatch(code, rev, "usb")) {
-				continue;
-			}
-			char root[16];
-			char pops_path[32];
-			BuildMassRootPath(i, root, sizeof(root));
-			snprintf(pops_path, sizeof(pops_path), "%sPOPS/", root);
-			int pops_ret = -1;
-			if (ProbeDir(pops_path, &pops_ret)) {
-				snprintf(out_root, out_sz, "%s", root);
-				return MX4SIO_INIT_OK;
-			}
 		}
 	}
 

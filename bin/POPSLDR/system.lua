@@ -1042,28 +1042,30 @@ function PLDR.GetRootsByType(kind, mass_snapshot)
   end
 
   if wanted == "usb" then
-    local mx4_idx = PLDR.MX4SIO and PLDR.MX4SIO.MASSINDX or nil
     local mx4_root = PLDR.MX4SIO and PLDR.MX4SIO.ROOT or nil
-    for i = 0, 4 do
+    if mx4_root == nil and type(_G.ensureMx4sioInit) == "function" then
+      pcall(_G.ensureMx4sioInit)
+      mx4_root = PLDR.MX4SIO and PLDR.MX4SIO.ROOT or nil
+    end
+    if mx4_root == nil and type(System) == "table" and type(System.initMX4SIO) == "function" then
+      local ok, ready, root = pcall(System.initMX4SIO)
+      if ok and ready == true and type(root) == "string" and root ~= "" then
+        PLDR.SetMX4SIORoot(root)
+        mx4_root = root
+      end
+    end
+    for i = 0, 9 do
       local root = (i == 0) and "mass:/" or ("mass"..i..":/")
-      local is_mx4_idx = (mx4_idx ~= nil and i == mx4_idx)
-      local is_mx4_root = (mx4_root ~= nil and root == mx4_root)
-      if not is_mx4_idx and not is_mx4_root then
-        local name = PLDR.GetMassDriverName(i)
-        local norm, rev = PLDR.NormalizeDriverCode(name)
-        if norm == "usb" or rev == "usb" then
-          add_root(root)
+      if mx4_root == nil or root ~= mx4_root then
+        local exists = false
+        if type(System) == "table" and type(System.doesDirExist) == "function" then
+          local ok, present = pcall(System.doesDirExist, root)
+          exists = ok and present == true
         else
-          local has_pops = false
-          if type(System) == "table" and type(System.doesDirExist) == "function" then
-            local ok, exists = pcall(System.doesDirExist, root.."POPS/")
-            has_pops = ok and exists == true
-          else
-            has_pops = doesFolderExist(root.."POPS/")
-          end
-          if has_pops then
-            add_root(root)
-          end
+          exists = doesFolderExist(root)
+        end
+        if exists then
+          add_root(root)
         end
       end
     end
