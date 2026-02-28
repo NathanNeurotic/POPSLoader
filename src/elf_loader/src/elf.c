@@ -99,26 +99,6 @@ static void parse_selector_parts(const char *argv0, char *out_prefix, size_t out
 	copy_span(out_game, out_game_size, argv0, (size_t)(last_dot - argv0));
 }
 
-static void append_launch_log_line(const char *line) {
-	int fd = open("launch.log", O_WRONLY | O_CREAT, 0666);
-	if (fd < 0) {
-		return;
-	}
-	lseek(fd, 0, SEEK_END);
-	write(fd, line, strlen(line));
-	close(fd);
-}
-
-static void append_launch_log_fmt(const char *label, int index, const char *value) {
-	char buffer[256];
-	if (index >= 0) {
-		snprintf(buffer, sizeof(buffer), "LAUNCH: %s[%d]=%s\n", label, index, value ? value : "(null)");
-	} else {
-		snprintf(buffer, sizeof(buffer), "LAUNCH: %s=%s\n", label, value ? value : "(null)");
-	}
-	append_launch_log_line(buffer);
-}
-
 /* IMPORTANT: This method wipe memory where the loader is going to be allocated 
 * This values come from the linkfile used by the loader.c
 MEMORY {
@@ -171,16 +151,9 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 		return fd;
 	}
 	DPRINTF("LAUNCH: argc_in=%d argv_ptr=%s\n", argc, argv ? "set" : "null");
-	{
-		char argc_buf[32];
-		snprintf(argc_buf, sizeof(argc_buf), "%d", argc);
-		append_launch_log_fmt("argc_in", -1, argc_buf);
-	}
-	append_launch_log_fmt("argv_ptr", -1, argv ? "set" : "null");
 	use_default_argv0 = (argc <= 0 || argv == NULL || argv[0] == NULL);
 	new_argc = use_default_argv0 ? 1 : argc;
 	DPRINTF("LAUNCH: argv0 source: %s\n", use_default_argv0 ? "resolved path" : "caller");
-	append_launch_log_fmt("argv0_source", -1, use_default_argv0 ? "resolved path" : "caller");
 	// Preparing filename and partition to be sent in the argv
 	if (new_argc + 1 > kMaxArgc) {
 		return -2;
@@ -219,31 +192,14 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 			selector_prefix[0] ? selector_prefix : "(none)",
 			selector_game[0] ? selector_game : "(unknown)");
 		DPRINTF("LAUNCH: selector_mode=%s\n", selector_prefix[0] ? "XX" : "NO_PREFIX");
-		append_launch_log_fmt("selector_prefix", -1, selector_prefix[0] ? selector_prefix : "(none)");
-		append_launch_log_fmt("selector_game", -1, selector_game[0] ? selector_game : "(unknown)");
-		append_launch_log_fmt("selector_mode", -1, selector_prefix[0] ? "XX" : "NO_PREFIX");
 	}
-	append_launch_log_fmt("exec path", -1, resolved_path);
-	{
-		char argc_buf[32];
-		snprintf(argc_buf, sizeof(argc_buf), "%d", new_argc);
-		append_launch_log_fmt("argc", -1, argc_buf);
-	}
-	append_launch_log_fmt("use_default_argv0", -1, use_default_argv0 ? "true" : "false");
-	append_launch_log_fmt("argv0", -1, launch_argv[0]);
-	append_launch_log_fmt("argv1", -1, launch_argv[1]);
-	append_launch_log_fmt("argv2_is_null", -1, launch_argv[2] == NULL ? "yes" : "no");
-	append_launch_log_fmt("argv0_final", -1, use_default_argv0 ? resolved_path : launch_argv[0]);
 	for (i = 0; i < new_argc; i++) {
 		DPRINTF("LAUNCH: argv[%d]=%s\n", i, launch_argv[i] ? launch_argv[i] : "(null)");
-		append_launch_log_fmt("argv", i, launch_argv[i]);
 	}
 	DPRINTF("LAUNCH: argv[%d] is NULL: %s\n", new_argc, launch_argv[new_argc] == NULL ? "yes" : "no");
-	append_launch_log_fmt("argv_null", new_argc, launch_argv[new_argc] == NULL ? "yes" : "no");
 	/* LoadExecPS2 should not return on success. */
 	LoadExecPS2(resolved_path, new_argc, launch_argv);
 	DPRINTF("LAUNCH: RETURNED rc=%d\n", -1);
-	append_launch_log_line("LAUNCH: RETURNED rc=-1\n");
 	return -1;
 }
 
