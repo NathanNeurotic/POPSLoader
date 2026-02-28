@@ -775,8 +775,7 @@ end
           end
         end
 
-        local show_credits = show_boot_credits == true
-        local FADE_IN_MS = 1500
+        local FADE_IN_MS = 1400
         local FADE_OUT_MS = 1200
 
         local function Clamp01(value)
@@ -861,24 +860,18 @@ end
           DrawTargetScene(next_scene or UI.SCENES.MMAIN)
         end
 
-        -- Start boot sound once; fixed boot totals must not be lengthened by audio duration.
+        -- Start boot sound once; explicit holds must not be lengthened by audio duration.
         TryBootSound()
-        local SPLASH_TOTAL_MS = 3000
-        local CREDITS_TOTAL_MS = 4000
-        local splash_hold_ms = SPLASH_TOTAL_MS - (FADE_IN_MS + FADE_OUT_MS)
-        if splash_hold_ms < 0 then splash_hold_ms = 0 end
-        local credits_hold_ms = CREDITS_TOTAL_MS - (FADE_IN_MS + FADE_OUT_MS)
-        if credits_hold_ms < 0 then credits_hold_ms = 0 end
+        local SPLASH_HOLD_MS = 3000
+        local CREDITS_HOLD_MS = 4000
 
         StepFade(DrawSplash, 128, 0, FADE_IN_MS)
-        StepHold(DrawSplash, splash_hold_ms)
+        StepHold(DrawSplash, SPLASH_HOLD_MS)
         StepFade(DrawSplash, 0, 128, FADE_OUT_MS)
 
-        if show_credits then
-          StepFade(DrawCredits, 128, 0, FADE_IN_MS)
-          StepHold(DrawCredits, credits_hold_ms)
-          StepFade(DrawCredits, 0, 128, FADE_OUT_MS)
-        end
+        StepFade(DrawCredits, 128, 0, FADE_IN_MS)
+        StepHold(DrawCredits, CREDITS_HOLD_MS)
+        StepFade(DrawCredits, 0, 128, FADE_OUT_MS)
 
         StepFade(DrawMenu, 128, 0, FADE_IN_MS)
         DrawMenu()
@@ -1067,7 +1060,7 @@ end
       last_time = nil,
       max_step = 33,
       duration_out = 1200,
-      duration_in = 1500,
+      duration_in = 1400,
       Queue = function (target)
         if target == nil then return end
         if UI.Transition.active and UI.Transition.phase == "out" then
