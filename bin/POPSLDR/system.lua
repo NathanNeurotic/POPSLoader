@@ -396,13 +396,14 @@ function PLDR.EnsureTrailingSlashNorm(p)
   return EnsureTrailingSlashNormRaw(p)
 end
 
-function PLDR.CanOpenFile(path)
-  local fd = System.openFile(path, FREAD)
-  if fd == nil then
-    return false
+function PLDR.TryOpenFirst(paths)
+  for _, path in ipairs(paths) do
+    local fd = System.openFile(path, FREAD)
+    if fd ~= nil and (type(fd) ~= "number" or fd >= 0) then
+      return fd, path
+    end
   end
-  System.closeFile(fd)
-  return true
+  return -1, nil
 end
 
 APP_DIR_NORM = PLDR.EnsureTrailingSlashNorm(APP_DIR or System.currentDirectory() or "")
@@ -571,17 +572,30 @@ function PLDR.ApplyBdmaMode(mode_key)
   local had_failure = false
   for i = 1, #BDMA_COPY_FILES do
     local name = BDMA_COPY_FILES[i]
-    local source = PLDR.AppDirPath(name.."."..suffix)
-    local dest = POPSTARTER_PACK_ROOT.."/"..name
-    if not PLDR.CanOpenFile(source) then
+    local rel = name.."."..suffix
+    local p1 = PLDR.AppDirPath(rel)
+    local paths = {p1}
+    if string.match(APP_DIR_NORM or "", "^host:") then
+      local p2 = "host:./"..rel
+      local p3 = "host:"..rel
+      table.insert(paths, p2)
+      table.insert(paths, p3)
+    end
+    local fd, source = PLDR.TryOpenFirst(paths)
+    if fd ~= nil and (type(fd) ~= "number" or fd >= 0) then
+      System.closeFile(fd)
+    end
+    if source == nil then
       if UI ~= nil and UI.Notif_queue ~= nil then
-        UI.Notif_queue.add("Missing BDMA source:\n"..source)
+        UI.Notif_queue.add("Missing BDMA source:\n"..table.concat(paths, "\n"))
       end
       return false
     end
-    local ok = CopyExternalAtomic(source, dest)
-    if not ok then
+    local dest = POPSTARTER_PACK_ROOT.."/"..name
+    local ok, copied = pcall(CopyExternalAtomic, source, dest)
+    if not ok or not copied then
       had_failure = true
+      return false
     end
   end
   return not had_failure
