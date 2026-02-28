@@ -119,6 +119,64 @@ local function IsMassPath(path)
   return path ~= nil and string.match(path, "^mass%d*:/") ~= nil
 end
 
+function PLDR.EnsureMmceReadyOnce()
+  if PLDR._mmce_ready then
+    return true
+  end
+
+  if type(_G.ensureMmceInit) == "function" then
+    pcall(_G.ensureMmceInit)
+  end
+  if type(System) == "table" and type(System.initMMCE) == "function" then
+    pcall(System.initMMCE)
+  end
+
+  PLDR._mmce_ready = true
+  return true
+end
+
+function PLDR.PopstarterProbeWithEnsure(path)
+  local function probe(p)
+    local candidate = tostring(p or "")
+    if candidate == "" then
+      return false
+    end
+    local ok, fd_or_err = pcall(System.openFile, candidate, FREAD)
+    if ok and type(fd_or_err) == "number" and fd_or_err >= 0 then
+      System.closeFile(fd_or_err)
+      return true
+    end
+    local exists_ok, exists = pcall(doesFileExist, candidate)
+    return exists_ok and exists == true
+  end
+
+  local candidate = tostring(path or "")
+  local low = string.lower(candidate)
+  local is_mass = low:find("^mass") ~= nil
+  local is_mmce = low:find("^mmce") ~= nil
+
+  for pass = 1, 2 do
+    if probe(candidate) then
+      return true
+    end
+    if pass == 1 then
+      if is_mass then
+        if type(PLDR) == "table" and type(PLDR.EnsureUsbMassReadyOnce) == "function" then
+          pcall(PLDR.EnsureUsbMassReadyOnce)
+        end
+      elseif is_mmce then
+        if type(PLDR) == "table" and type(PLDR.EnsureMmceReadyOnce) == "function" then
+          pcall(PLDR.EnsureMmceReadyOnce)
+        end
+      end
+      if type(System) == "table" and type(System.sleep) == "function" then
+        pcall(System.sleep, 0.05)
+      end
+    end
+  end
+  return false
+end
+
 local function ResolvePopstarterPath(path)
   local chosen = path
   if chosen == nil or chosen == "" then
@@ -126,14 +184,8 @@ local function ResolvePopstarterPath(path)
   elseif not IsAbsoluteDevicePath(chosen) then
     chosen = JoinPath(APP_DIR_LOCAL, chosen)
   end
-  if doesFileExist(chosen) then
+  if PLDR.PopstarterProbeWithEnsure(chosen) then
     return chosen
-  end
-  if IsMassPath(chosen) and type(PLDR) == "table" and type(PLDR.EnsureUsbMassReadyOnce) == "function" then
-    pcall(PLDR.EnsureUsbMassReadyOnce)
-    if doesFileExist(chosen) then
-      return chosen
-    end
   end
 
   local fallbacks = {
@@ -143,7 +195,7 @@ local function ResolvePopstarterPath(path)
   }
   for i = 1, #fallbacks do
     local candidate = fallbacks[i]
-    if candidate ~= chosen and doesFileExist(candidate) then
+    if candidate ~= chosen and PLDR.PopstarterProbeWithEnsure(candidate) then
       return candidate
     end
   end
@@ -339,6 +391,7 @@ PLDR.BDMA_MODE_KEY = "FAT32"
 PLDR.SELECTED_PROFILE = tonumber(PLDR.DEFAULT_PROFILE) or 1
 
 local POPSTARTER_PACK_ROOT = PLDR.POPSTARTER_DIR
+local BDMA_MODE_MARKER_PATH = POPSTARTER_PACK_ROOT.."/.pldr_bdma_mode"
 local BDMA_COPY_FILES = {
   "usbd.irx",
   "usbhdfsd.irx",
@@ -357,6 +410,9 @@ PLDR.MASS = PLDR.MASS or {
   ORDER = {},
   REFRESHED = false
 }
+
+PLDR._bdma_apply_guard = PLDR._bdma_apply_guard or { in_progress = false, last_token = nil }
+PLDR._bdma_apply_seq = PLDR._bdma_apply_seq or 0
 
 local function ReadWholeFile(path)
   local ok_open, fd = pcall(System.openFile, path, FREAD)
@@ -511,11 +567,6 @@ local function CopyExternalAtomicBounded(source, dest, expected_size)
     end
   end
 
-  if expected == nil then
-    pcall(System.closeFile, src_fd)
-    return false, "size unknown"
-  end
-
   local ok_dst, dst_fd = pcall(System.openFile, tmp, FCREATE)
   if not ok_dst or dst_fd == nil or (type(dst_fd) == "number" and dst_fd < 0) then
     pcall(System.closeFile, src_fd)
@@ -526,17 +577,22 @@ local function CopyExternalAtomicBounded(source, dest, expected_size)
   local copied_bytes = 0
   local iters = 0
   local MAX_ITERS = 4096
+  local max_bytes = (expected or 0) + 65536
+  if max_bytes < 65536 then
+    max_bytes = 65536
+  end
 
   while true do
     iters = iters + 1
-    if copied_bytes >= expected then
-      break
-    end
     if iters > MAX_ITERS then
       copied = false
       break
     end
+    if expected ~= nil and copied_bytes >= expected then
+      break
+    end
 
+    local before = copied_bytes
     local ok_read, chunk = pcall(System.readFile, src_fd, 32768)
     if not ok_read then
       copied = false
@@ -548,13 +604,25 @@ local function CopyExternalAtomicBounded(source, dest, expected_size)
 
     local chunk_len = string.len(chunk)
     local ok_write, wrote = pcall(System.writeFile, dst_fd, chunk, chunk_len)
-    if not ok_write or type(wrote) ~= "number" or wrote ~= chunk_len then
+    if not ok_write or type(wrote) ~= "number" then
+      copied = false
+      break
+    end
+    if wrote <= 0 then
       copied = false
       break
     end
 
-    copied_bytes = copied_bytes + chunk_len
-    if copied_bytes > expected + 65536 then
+    copied_bytes = copied_bytes + wrote
+    if copied_bytes == before then
+      copied = false
+      break
+    end
+    if wrote ~= chunk_len then
+      copied = false
+      break
+    end
+    if copied_bytes > max_bytes then
       copied = false
       break
     end
@@ -562,6 +630,10 @@ local function CopyExternalAtomicBounded(source, dest, expected_size)
 
   pcall(System.closeFile, src_fd)
   pcall(System.closeFile, dst_fd)
+
+  if expected ~= nil and copied and copied_bytes < expected then
+    copied = false
+  end
 
   if not copied then
     pcall(System.removeFile, tmp)
@@ -793,7 +865,7 @@ function PLDR.RefreshMassBackends()
     if string.find(d, "usb", 1, true) ~= nil then
       return "usb"
     end
-    if string.find(d, "sdc", 1, true) ~= nil or string.find(d, "mx4sio", 1, true) ~= nil then
+    if string.find(d, "sdc", 1, true) ~= nil then
       return "mx4sio"
     end
     return "other"
@@ -833,7 +905,7 @@ function PLDR.RefreshMassBackends()
 
   if not listed and type(System) == "table" and type(System.getMassBackendInfo) == "function" then
     -- Compatibility fallback: bounded probe for older runtimes without bdmList details.
-    for i = 0, 31 do
+    for i = 0, 9 do
       local ok, info = pcall(System.getMassBackendInfo, i)
       if ok and type(info) == "table" and info.present == true then
         local idx = tonumber(info.index or i)
@@ -914,6 +986,13 @@ end
 
 function PLDR.GetRootsByType(kind, mass_snapshot)
   local roots = {}
+  local seen = {}
+  local function add_root(root)
+    if root ~= nil and not seen[root] then
+      seen[root] = true
+      table.insert(roots, root)
+    end
+  end
   local wanted = string.lower(tostring(kind or ""))
   local state = mass_snapshot
   if state == nil then
@@ -932,9 +1011,10 @@ function PLDR.GetRootsByType(kind, mass_snapshot)
         local blocked = string.find(driver, "sdc", 1, true) ~= nil or string.find(driver, "mx4", 1, true) ~= nil or string.find(driver, "mmce", 1, true) ~= nil
         if is_usb and not blocked then
           if i == 0 then
-            table.insert(roots, "mass:/")
+            add_root("mass:/")
+          else
+            add_root("mass"..i..":/")
           end
-          table.insert(roots, "mass"..i..":/")
         end
       end
     end
@@ -943,9 +1023,10 @@ function PLDR.GetRootsByType(kind, mass_snapshot)
       local info = state.CACHE and state.CACHE[i] or nil
       if info ~= nil and info.present and info.kind == "mx4sio" then
         if i == 0 then
-          table.insert(roots, "mass:/")
+          add_root("mass:/")
+        else
+          add_root("mass"..i..":/")
         end
-        table.insert(roots, "mass"..i..":/")
       end
     end
   end
@@ -1001,6 +1082,51 @@ function PLDR.EnsureBackendForAppDir()
   return true
 end
 
+local function ReadBdmaModeMarker()
+  local marker = ReadWholeFile(BDMA_MODE_MARKER_PATH)
+  if marker == nil then
+    return nil
+  end
+  marker = string.gsub(marker, "[\r\n]+", "")
+  if marker == "" then
+    return nil
+  end
+  return marker
+end
+
+local function WriteBdmaModeMarker(mode_key)
+  return WriteAtomic(BDMA_MODE_MARKER_PATH, tostring(mode_key or ""))
+end
+
+function PLDR.NextBdmaApplyToken()
+  PLDR._bdma_apply_seq = (tonumber(PLDR._bdma_apply_seq) or 0) + 1
+  return "bdma:"..tostring(PLDR._bdma_apply_seq)
+end
+
+function PLDR.ApplyBdmaModeOnce(mode_key, token)
+  if PLDR._bdma_apply_guard.in_progress then
+    return false, "busy"
+  end
+  if token ~= nil and PLDR._bdma_apply_guard.last_token == token then
+    return true
+  end
+
+  PLDR._bdma_apply_guard.in_progress = true
+  local ok, res, err = xpcall(function()
+    local aok, aerr = PLDR.ApplyBdmaMode(mode_key)
+    return aok, aerr
+  end, function(e)
+    return false, tostring(e)
+  end)
+  PLDR._bdma_apply_guard.in_progress = false
+
+  if ok and res == true then
+    PLDR._bdma_apply_guard.last_token = token
+    return true
+  end
+  return false, err or res or "apply failed"
+end
+
 function PLDR.ApplyBdmaMode(mode_key)
   local selected = mode_key or "FAT32"
   if not PLDR.EnsurePopstarterDir() then
@@ -1009,9 +1135,15 @@ function PLDR.ApplyBdmaMode(mode_key)
     end
     return false
   end
+
+  local last_applied = ReadBdmaModeMarker()
+  if last_applied == selected then
+    return true
+  end
   if selected == "FAT32" then
     pcall(System.removeFile, POPSTARTER_PACK_ROOT.."/usbd.irx")
     pcall(System.removeFile, POPSTARTER_PACK_ROOT.."/usbhdfsd.irx")
+    WriteBdmaModeMarker(selected)
     return true
   end
 
@@ -1076,7 +1208,11 @@ function PLDR.ApplyBdmaMode(mode_key)
       end
     end
   end
-  return not had_failure
+  if had_failure then
+    return false
+  end
+  WriteBdmaModeMarker(selected)
+  return true
 end
 
 local function RemoveDirectoryRecursive(path)
@@ -1248,16 +1384,10 @@ end
 
 function PLDR.BuildUsbGameListMulti()
   PLDR.CleanupGameList()
-  local roots = {
-    "mass0:/POPS/",
-    "mass1:/POPS/",
-    "mass2:/POPS/",
-    "mass3:/POPS/",
-    "mass4:/POPS/"
-  }
+  local roots = PLDR.GetRootsByType("usb")
   local found_any = false
   for i = 1, #roots do
-    local root = roots[i]
+    local root = roots[i].."POPS/"
     local DIR = System.listDirectory(root)
     if DIR ~= nil then
       for j = 1, #DIR do
@@ -1265,19 +1395,6 @@ function PLDR.BuildUsbGameListMulti()
         if not entry.directory and string.lower(string.sub(entry.name, -4)) == ".vcd" then
           found_any = true
           table.insert(PLDR.GAMES, root.."|"..entry.name)
-        end
-      end
-    end
-  end
-  if not found_any then
-    local fallback_root = "mass:/POPS/"
-    local DIR = System.listDirectory(fallback_root)
-    if DIR ~= nil then
-      for j = 1, #DIR do
-        local entry = DIR[j]
-        if not entry.directory and string.lower(string.sub(entry.name, -4)) == ".vcd" then
-          found_any = true
-          table.insert(PLDR.GAMES, fallback_root.."|"..entry.name)
         end
       end
     end
@@ -1298,6 +1415,30 @@ function PLDR.BuildUsbGameListMulti()
   return nil
 end
 
+function PLDR.RefreshMassBackendsBoundedOnce()
+  if PLDR._mass_refreshed_bounded then
+    return true
+  end
+
+  if type(System) == "table" and type(System.refreshMassBackends) == "function" then
+    pcall(System.refreshMassBackends)
+  end
+  if type(System) == "table" and type(System.bdmList) == "function" then
+    pcall(System.bdmList)
+  end
+  if type(System) == "table" and type(System.getMassBackendInfo) == "function" then
+    for i = 0, 9 do
+      pcall(System.getMassBackendInfo, i)
+    end
+  end
+  if type(PLDR.RefreshMassBackends) == "function" then
+    pcall(PLDR.RefreshMassBackends)
+  end
+
+  PLDR._mass_refreshed_bounded = true
+  return true
+end
+
 function PLDR.InitMX4SIOPopsRoot()
   PLDR.MX4SIO.READY = false
   PLDR.MX4SIO.ROOT = nil
@@ -1313,23 +1454,23 @@ function PLDR.InitMX4SIOPopsRoot()
       pcall(System.sleep, 0.05)
     end
 
-    for i = 0, 9 do
-      local driver = string.lower(tostring(PLDR.GetMassDriverName(i) or ""))
-      if string.find(driver, "sdc", 1, true) ~= nil or string.find(driver, "mx4", 1, true) ~= nil then
-        local candidates = {}
-        if i == 0 then
-          table.insert(candidates, "mass:/")
-        end
-        table.insert(candidates, "mass"..i..":/")
+    local info = nil
+    if type(System) == "table" and type(System.findBDMByDriver) == "function" then
+      local ok, got = pcall(System.findBDMByDriver, "sdc")
+      if ok and type(got) == "table" then
+        info = got
+      end
+    end
 
-        for j = 1, #candidates do
-          local root = EnsureTrailingSlash(candidates[j])
-          local pops_root = root.."POPS/"
-          if doesFolderExist(pops_root) then
-            PLDR.MX4SIO.READY = true
-            PLDR.MX4SIO.ROOT = root
-            return pops_root
-          end
+    if info ~= nil and info.devNr ~= nil then
+      local dev = tonumber(info.devNr)
+      if dev ~= nil then
+        local root = (dev == 0) and "mass:/" or ("mass"..dev..":/")
+        local pops = root.."POPS/"
+        if doesFolderExist(pops) then
+          PLDR.MX4SIO.READY = true
+          PLDR.MX4SIO.ROOT = root
+          return pops
         end
       end
     end
@@ -1877,6 +2018,19 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   local argv0 = argv and argv[1] or nil
   local unpack_fn = table.unpack or unpack
   SetLaunchPhase(LaunchState.PHASE_VALIDATE)
+  if not PLDR.PopstarterProbeWithEnsure(popstarter) then
+    BlockLaunchFailure(
+      "popstarter missing",
+      popstarter,
+      context and context.device_page or "unknown",
+      argv and argv[1] or nil,
+      context and context.vcd_path or nil,
+      app_dir,
+      nil,
+      nil
+    )
+    return
+  end
   local open_ok, open_rc, open_stage, open_api, open_path = TryOpenForLaunch(popstarter)
   if not open_ok then
     BlockLaunchFailure(

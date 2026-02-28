@@ -991,7 +991,7 @@ end
         end
         if type(System) == "table" and type(System.loadELF) == "function" then
           UI.LAUNCHING = true
-          System.loadELF(boot_path)
+          System.loadELF(boot_path, 1, boot_path)
         end
       end;
       HandleInput = function ()
@@ -1289,7 +1289,13 @@ end
             if type(PLDR.ResolvePopstarterPath) == "function" then
               popstarter_path = PLDR.ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
             end
-            if not doesFileExist(popstarter_path) then
+            local popstarter_ok = false
+            if type(PLDR.PopstarterProbeWithEnsure) == "function" then
+              popstarter_ok = PLDR.PopstarterProbeWithEnsure(popstarter_path)
+            else
+              popstarter_ok = doesFileExist(popstarter_path)
+            end
+            if not popstarter_ok then
               UI.Notif_queue.add("Cant find POPSTARTER ELF\n"..tostring(popstarter_path))
               return
             end
@@ -1367,11 +1373,22 @@ end
             PLDR.POPSTARTER_PATH = PLDR.PROFILES[UI.ProfileQuery.curopt].ELF
             PLDR.BDMA_MODE_KEY = UI.BdmaModes[UI.BdmaModeIndex].key
             UI.SavingActive = true
+            local save_token = nil
+            if type(PLDR.NextBdmaApplyToken) == "function" then
+              save_token = PLDR.NextBdmaApplyToken()
+            else
+              PLDR._bdma_apply_seq = (tonumber(PLDR._bdma_apply_seq) or 0) + 1
+              save_token = "bdma:"..tostring(PLDR._bdma_apply_seq)
+            end
             local ok_run, result = xpcall(function()
               local saved = PLDR.SaveSettingsAtomic()
               local applied = true
               if UI.BdmaDirty then
-                applied = PLDR.ApplyBdmaMode(PLDR.BDMA_MODE_KEY)
+                if type(PLDR.ApplyBdmaModeOnce) == "function" then
+                  applied = PLDR.ApplyBdmaModeOnce(PLDR.BDMA_MODE_KEY, save_token)
+                else
+                  applied = PLDR.ApplyBdmaMode(PLDR.BDMA_MODE_KEY)
+                end
               end
               return saved and applied
             end, function(e) return e end)
@@ -1672,6 +1689,7 @@ end
             end
             if mx4sio_root == nil then
               UI.Notif_queue.add("No MX4SIO device found (POPS/ missing)")
+              return
             else
               PLDR.CleanupGameList()
               PLDR.GetPS1GameLists(mx4sio_root, true)
