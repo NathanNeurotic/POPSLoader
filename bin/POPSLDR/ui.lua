@@ -269,7 +269,7 @@ UI = {
       PREVIEW_W = 240;
       PREVIEW_H = 240;
 	      -- Raised/tighter footer to avoid overscan and allow icon reflections to overlap slightly.
-	      CAROUSEL_Y_OFFSET = 18;
+	      CAROUSEL_Y_OFFSET = 28;
       FOOTER_LABEL_W = 140;
       FOOTER_ICON_Y_OFFSET = 24;
       FOOTER_LABEL_Y_OFFSET = 10;
@@ -920,10 +920,10 @@ end
         UI.Modal.active = true
         UI.Modal.title = "Exit"
         UI.Modal.body = "Return to OSDSYS?"
-        UI.Modal.options = {"OSDSYS", "Cancel", "BOOT.ELF"}
+        UI.Modal.options = {"OSDSYS", "Cancel", "BOOT2.ELF"}
         UI.Modal.confirm_action = UI.Modal.ConfirmExit
         UI.Modal.cancel_action = UI.Modal.Close
-        UI.Modal.triangle_action = UI.Modal.LaunchBootElf
+        UI.Modal.triangle_action = UI.Modal.LaunchBoot2Elf
         UI.Modal.ignore_until_release = true
       end;
       OpenDeviceLock = function (reason, active, target)
@@ -956,10 +956,12 @@ end
         UI.LAUNCHING = true
         System.exitToBrowser()
       end;
-      LaunchBootElf = function ()
+      LaunchBoot2Elf = function ()
         local candidates = {
-          "mc0:/BOOT/BOOT.ELF",
-          "mc1:/BOOT/BOOT.ELF"
+          "mc0:/BOOT/BOOT2.ELF",
+          "mc1:/BOOT/BOOT2.ELF",
+          "mc0:/BOOT2.ELF",
+          "mc1:/BOOT2.ELF"
         }
         local boot_path = nil
         if type(doesFileExist) == "function" then
@@ -985,13 +987,24 @@ end
         end
         if boot_path == nil then
           if UI.Notif_queue ~= nil and type(UI.Notif_queue.add) == "function" then
-            UI.Notif_queue.add("mc?:/BOOT/BOOT.ELF not found")
+            UI.Notif_queue.add("BOOT2.ELF not found")
           end
           return
         end
         if type(System) == "table" and type(System.loadELF) == "function" then
           UI.LAUNCHING = true
-          System.loadELF(boot_path, 1, boot_path)
+          UI.Modal.Close()
+          Screen.clear(Color.new(0, 0, 0))
+          Screen.flip()
+          local ok, rc = pcall(System.loadELF, boot_path, 1)
+          UI.LAUNCHING = false
+          if UI.Notif_queue ~= nil and type(UI.Notif_queue.add) == "function" then
+            if ok then
+              UI.Notif_queue.add("BOOT2.ELF launch returned rc="..tostring(rc))
+            else
+              UI.Notif_queue.add("BOOT2.ELF launch failed")
+            end
+          end
         end
       end;
       HandleInput = function ()
@@ -1344,8 +1357,10 @@ end
       Play = function ()
         local layout = UI.LAYOUT
         local profcnt = #PLDR.PROFILES
+        local row_h = 16
         Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Choose POPStarter Profile", UI.CCOL.GREY)
-        Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 30, 8, UI.SCR.X, 16, "Profile "..UI.ProfileQuery.curopt, UI.CCOL.GREY)
+        local profile_y = layout.TITLE_Y + 30
+        Font.ftPrint(BFONT, UI.SCR.X_MID, profile_y, 8, UI.SCR.X, 16, "Profile "..UI.ProfileQuery.curopt, UI.CCOL.GREY)
         Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 140, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].DESC, UI.CCOL.GREY)
         Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 220, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].ELF, Color.new(128,128,128, 110))
 
@@ -1353,13 +1368,41 @@ end
         local mode_y = layout.TITLE_Y + 92
         local left_icon = IMG.left
         local right_icon = IMG.right
+        local up_icon = IMG.up
+        local down_icon = IMG.down
         Font.ftPrint(BFONT, UI.SCR.X_MID - 180, mode_y, 0, 200, 16, "BDMA Mode", UI.CCOL.GREY)
         if left_icon ~= nil then
-          Graphics.drawImage(left_icon, UI.SCR.X_MID - 36, mode_y - 2, UI.CCOL.GREY)
+          local w = Graphics.getImageWidth(left_icon)
+          local h = Graphics.getImageHeight(left_icon)
+          local anchor_x = UI.SCR.X_MID - 28
+          local x = math.floor(anchor_x - (w / 2))
+          local y = mode_y + math.floor((row_h - h) / 2)
+          Graphics.drawImage(left_icon, x, y, UI.CCOL.GREY)
         end
         Font.ftPrint(BFONT, UI.SCR.X_MID, mode_y, 8, UI.SCR.X, 16, mode.label, UI.CCOL.GREY)
         if right_icon ~= nil then
-          Graphics.drawImage(right_icon, UI.SCR.X_MID + 18, mode_y - 2, UI.CCOL.GREY)
+          local w = Graphics.getImageWidth(right_icon)
+          local h = Graphics.getImageHeight(right_icon)
+          local anchor_x = UI.SCR.X_MID + 26
+          local x = math.floor(anchor_x - (w / 2))
+          local y = mode_y + math.floor((row_h - h) / 2)
+          Graphics.drawImage(right_icon, x, y, UI.CCOL.GREY)
+        end
+        if up_icon ~= nil then
+          local w = Graphics.getImageWidth(up_icon)
+          local h = Graphics.getImageHeight(up_icon)
+          local anchor_x = UI.SCR.X_MID - 56
+          local x = math.floor(anchor_x - (w / 2))
+          local y = profile_y + math.floor((row_h - h) / 2)
+          Graphics.drawImage(up_icon, x, y, UI.CCOL.GREY)
+        end
+        if down_icon ~= nil then
+          local w = Graphics.getImageWidth(down_icon)
+          local h = Graphics.getImageHeight(down_icon)
+          local anchor_x = UI.SCR.X_MID + 56
+          local x = math.floor(anchor_x - (w / 2))
+          local y = profile_y + math.floor((row_h - h) / 2)
+          Graphics.drawImage(down_icon, x, y, UI.CCOL.GREY)
         end
 
         Input_GetEvent()
