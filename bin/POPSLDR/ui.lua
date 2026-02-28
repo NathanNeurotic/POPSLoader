@@ -1650,6 +1650,8 @@ end
             end
           elseif UI.MainMenu.OPT == 2 then
             local mx4sio_root = nil
+            PLDR.CleanupGameList()
+            PLDR.GAMEPATH = ""
             if type(PLDR) == "table" and type(PLDR.InitMX4SIOPopsRoot) == "function" then
               mx4sio_root = PLDR.InitMX4SIOPopsRoot()
             end
@@ -1689,8 +1691,13 @@ end
             if type(System) == "table" and type(System.ensureUsbMass) == "function" then
               System.ensureUsbMass()
             end
-            PLDR.RefreshMassBackends()
-            PLDR.BuildMassGameListByType("usb")
+            if type(System) == "table" and type(System.sleep) == "function" then
+              pcall(System.sleep, 1)
+            end
+            PLDR.CleanupGameList()
+            PLDR.GAMEPATH = ""
+            local snapshot = PLDR.RefreshMassStateSnapshot()
+            PLDR.BuildMassGameListByType("usb", snapshot)
             UI.setDeviceLock(DEVLOCK.USB)
             UI.SceneChange(UI.SCENES.GUSBFAT)
           elseif UI.MainMenu.OPT == 6 then

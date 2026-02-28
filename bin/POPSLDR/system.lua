@@ -588,9 +588,8 @@ function PLDR.GetMassDriverName(index)
 end
 
 function PLDR.RefreshMassBackends()
-  PLDR.MASS.CACHE = {}
-  PLDR.MASS.ORDER = {}
-  PLDR.MASS.REFRESHED = false
+  local new_cache = {}
+  local new_order = {}
   local seen_index = {}
 
   local function classify_driver(driver)
@@ -622,13 +621,13 @@ function PLDR.RefreshMassBackends()
           local idx = tonumber(info.devNr)
           local driver = string.lower(tostring(info.name or ""))
           local kind = classify_driver(driver)
-          PLDR.MASS.CACHE[idx] = {
+          new_cache[idx] = {
             present = true,
             driver = driver,
             kind = kind
           }
           if not seen_index[idx] then
-            table.insert(PLDR.MASS.ORDER, idx)
+            table.insert(new_order, idx)
             seen_index[idx] = true
           end
         end
@@ -644,34 +643,70 @@ function PLDR.RefreshMassBackends()
         local idx = tonumber(info.index or i)
         local driver = string.lower(tostring(info.driver or ""))
         local kind = classify_driver(driver)
-        PLDR.MASS.CACHE[idx] = {
+        new_cache[idx] = {
           present = true,
           driver = driver,
           kind = kind
         }
         if not seen_index[idx] then
-          table.insert(PLDR.MASS.ORDER, idx)
+          table.insert(new_order, idx)
           seen_index[idx] = true
         end
       end
     end
   end
 
-  table.sort(PLDR.MASS.ORDER)
+  table.sort(new_order)
+  PLDR.MASS.CACHE = new_cache
+  PLDR.MASS.ORDER = new_order
   PLDR.MASS.REFRESHED = true
   return true
 end
 
-function PLDR.GetRootsByType(kind)
+function PLDR.InvalidateMassBackends()
+  PLDR.MASS.CACHE = {}
+  PLDR.MASS.ORDER = {}
+  PLDR.MASS.REFRESHED = false
+end
+
+function PLDR.RefreshMassStateSnapshot()
+  PLDR.InvalidateMassBackends()
+  if not PLDR.RefreshMassBackends() then
+    return nil
+  end
+  local snapshot = {
+    CACHE = {},
+    ORDER = {}
+  }
+  for i = 1, #PLDR.MASS.ORDER do
+    local idx = PLDR.MASS.ORDER[i]
+    local item = PLDR.MASS.CACHE[idx]
+    snapshot.ORDER[i] = idx
+    if item ~= nil then
+      snapshot.CACHE[idx] = {
+        present = item.present == true,
+        driver = item.driver,
+        kind = item.kind
+      }
+    end
+  end
+  return snapshot
+end
+
+function PLDR.GetRootsByType(kind, mass_snapshot)
   local roots = {}
   local wanted = string.lower(tostring(kind or ""))
-  if not PLDR.MASS.REFRESHED then
-    PLDR.RefreshMassBackends()
+  local state = mass_snapshot
+  if state == nil then
+    if not PLDR.MASS.REFRESHED then
+      PLDR.RefreshMassBackends()
+    end
+    state = PLDR.MASS
   end
 
   if wanted == "usb" then
-    for _, i in ipairs(PLDR.MASS.ORDER) do
-      local info = PLDR.MASS.CACHE[i]
+    for _, i in ipairs(state.ORDER or {}) do
+      local info = state.CACHE and state.CACHE[i] or nil
       if info ~= nil and info.present and info.kind == "usb" then
         if i == 0 then
           table.insert(roots, "mass:/")
@@ -681,8 +716,8 @@ function PLDR.GetRootsByType(kind)
     end
   elseif wanted == "mx4sio" then
     local has_mx = false
-    for _, i in ipairs(PLDR.MASS.ORDER) do
-      local info = PLDR.MASS.CACHE[i]
+    for _, i in ipairs(state.ORDER or {}) do
+      local info = state.CACHE and state.CACHE[i] or nil
       if info ~= nil and info.present and info.kind == "mx4sio" then
         has_mx = true
         break
@@ -1023,14 +1058,14 @@ function PLDR.InitMX4SIOPopsRoot()
   PLDR.MX4SIO.ROOT = nil
 
   for pass = 1, 2 do
-    if type(_G.ensureMx4sioInit) == "function" then
-      pcall(_G.ensureMx4sioInit)
-    end
     if type(System) == "table" and type(System.initMX4SIO) == "function" then
       pcall(System.initMX4SIO)
     end
-    PLDR.RefreshMassBackends()
-    local roots = PLDR.GetRootsByType("mx4sio")
+    if type(System) == "table" and type(System.sleep) == "function" then
+      pcall(System.sleep, 1)
+    end
+    local snapshot = PLDR.RefreshMassStateSnapshot()
+    local roots = PLDR.GetRootsByType("mx4sio", snapshot)
     for i = 1, #roots do
       local pops_root = roots[i].."POPS/"
       if doesFolderExist(pops_root) then
@@ -1039,26 +1074,25 @@ function PLDR.InitMX4SIOPopsRoot()
         return pops_root
       end
     end
-    if pass == 1 and type(System) == "table" and type(System.sleep) == "function" then
-      pcall(System.sleep, 1)
-    end
   end
   return nil
 end
 
-function PLDR.BuildMassGameListByType(kind)
+function PLDR.BuildMassGameListByType(kind, mass_snapshot)
   PLDR.CleanupGameList()
-  local roots = PLDR.GetRootsByType(kind)
+  local roots = PLDR.GetRootsByType(kind, mass_snapshot)
   local found_any = false
   for i = 1, #roots do
     local pops_root = roots[i].."POPS/"
-    local DIR = System.listDirectory(pops_root)
-    if DIR ~= nil then
-      for j = 1, #DIR do
-        local entry = DIR[j]
-        if not entry.directory and string.lower(string.sub(entry.name, -4)) == ".vcd" then
-          found_any = true
-          table.insert(PLDR.GAMES, pops_root.."|"..entry.name)
+    if doesFolderExist(pops_root) then
+      local DIR = System.listDirectory(pops_root)
+      if DIR ~= nil then
+        for j = 1, #DIR do
+          local entry = DIR[j]
+          if not entry.directory and string.lower(string.sub(entry.name, -4)) == ".vcd" then
+            found_any = true
+            table.insert(PLDR.GAMES, pops_root.."|"..entry.name)
+          end
         end
       end
     end
