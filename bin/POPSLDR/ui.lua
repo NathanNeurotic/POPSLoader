@@ -1681,11 +1681,29 @@ end
             end
           elseif UI.MainMenu.OPT == 2 then
             local mx4sio_root = nil
+            local hint = nil
             PLDR.CleanupGameList()
             PLDR.GAMEPATH = ""
-            if type(PLDR) == "table" and type(PLDR.InitMX4SIOPopsRoot) == "function" then
-              local ok, res = pcall(PLDR.InitMX4SIOPopsRoot)
-              if ok then mx4sio_root = res else mx4sio_root = nil end
+            if type(PLDR) == "table" and type(PLDR.FindMassByDriver) == "function" then
+              local mx_mass = PLDR.FindMassByDriver("sdc", 4)
+              if mx_mass ~= nil then
+                local root = (mx_mass == 0) and "mass:/" or ("mass"..mx_mass..":/")
+                local pops = root.."POPS/"
+                if doesFolderExist(pops) then
+                  mx4sio_root = pops
+                end
+                hint = root
+              end
+            end
+            if mx4sio_root == nil and type(System) == "table" and type(System.initMX4SIO) == "function" then
+              local ok_init, init_ok, root = pcall(System.initMX4SIO, hint)
+              if ok_init and init_ok and type(root) == "string" and root ~= "" then
+                local pop_root = root
+                if string.sub(pop_root, -1) ~= "/" then
+                  pop_root = pop_root.."/"
+                end
+                mx4sio_root = pop_root.."POPS/"
+              end
             end
             if mx4sio_root == nil then
               UI.Notif_queue.add("No MX4SIO device found (POPS/ missing)")

@@ -855,6 +855,25 @@ function PLDR.GetMassDriverName(index)
   return nil
 end
 
+function PLDR.FindMassByDriver(driver, max)
+  local wanted = string.lower(tostring(driver or ""))
+  if wanted == "" then
+    return nil
+  end
+  local max_index = tonumber(max)
+  if max_index == nil then
+    max_index = 4
+  end
+  max_index = CLAMP(math.floor(max_index), 0, 9)
+  for i = 0, max_index do
+    local found = string.lower(tostring(PLDR.GetMassDriverName(i) or ""))
+    if found == wanted then
+      return i
+    end
+  end
+  return nil
+end
+
 function PLDR.RefreshMassBackends()
   local new_cache = {}
   local new_order = {}
@@ -1427,7 +1446,7 @@ function PLDR.RefreshMassBackendsBoundedOnce()
     pcall(System.bdmList)
   end
   if type(System) == "table" and type(System.getMassBackendInfo) == "function" then
-    for i = 0, 9 do
+    for i = 0, 4 do
       pcall(System.getMassBackendInfo, i)
     end
   end
