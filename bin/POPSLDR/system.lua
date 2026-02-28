@@ -879,6 +879,21 @@ function PLDR.GetMassDriverName(index)
   return nil
 end
 
+function PLDR.NormalizeDriverCode(driver)
+  if type(driver) ~= "string" then return nil end
+  local d = string.lower(driver)
+  if string.find(d, "sdc", 1, true) ~= nil then
+    return "sdc"
+  end
+  if string.find(d, "usb", 1, true) ~= nil then
+    return "usb"
+  end
+  if string.find(d, "mmce", 1, true) ~= nil then
+    return "mmce"
+  end
+  return nil
+end
+
 function PLDR.RefreshMassBackends()
   local new_cache = {}
   local new_order = {}
@@ -1033,10 +1048,9 @@ function PLDR.GetRootsByType(kind, mass_snapshot)
       if mx4_idx == nil or i ~= mx4_idx then
         local info = state.CACHE and state.CACHE[i] or nil
         if info ~= nil and info.present then
-          local driver = string.lower(tostring(PLDR.GetMassDriverName(i) or info.driver or ""))
-          local is_usb = string.find(driver, "usb", 1, true) ~= nil
-          local blocked = string.find(driver, "sdc", 1, true) ~= nil or string.find(driver, "mx4", 1, true) ~= nil or string.find(driver, "mmce", 1, true) ~= nil
-          if is_usb and not blocked then
+          local driver = PLDR.GetMassDriverName(i) or info.driver
+          local code = PLDR.NormalizeDriverCode(driver)
+          if code == "usb" then
             local root = (i == 0) and "mass:/" or ("mass"..i..":/")
             if mx4_root == nil or root ~= mx4_root then
               add_root(root)
