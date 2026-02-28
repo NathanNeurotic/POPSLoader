@@ -1,18 +1,7 @@
 function LOG(...)
-  print_uart(...)
 end
 function LOGF(S, ...)
-  print_uart(string.format(S, ...))
 end
-
-BOOT_PROF = {
-  timer = Timer.new(),
-  stamp = function (label)
-    local now = Timer.getTime(BOOT_PROF.timer)
-    LOGF("BOOT: %s %d", label, now)
-  end
-}
-BOOT_PROF.stamp("Lua init start")
 
 POPSLDR_VER = "v1.0.0 - rev3"
 
@@ -42,20 +31,16 @@ end
 
 local ARGV0 = System.GetArgv0()
 if string.find(ARGV0, "^hdd0:") then
-  LOG("Booting from HDD!", ARGV0)
   local MNTPART
   BOOTPATH = nil
   MNTPART, _, BOOTPATH = GetMountData(ARGV0)
   if string.find(BOOTPATH, "^pfs") then
     SUCCESS, MODULE, ID, RET = HDD.Initialize()
-    if not SUCCESS then
-      LOG("ERROR", MODULE..".IRX", ID, RET)
-    else
+    if SUCCESS then
       System.sleep(2) -- lets give it time to get ready
       if HDD.MountPartition(MNTPART, 1) then -- mount to "pfs1:" and NEVER USE IT FOR ANYTHING ELSE
         BOOTPATH, _, _ = string.match(BOOTPATH, "(.-)([^/]-([^%.]+))$")
         System.currentDirectory(BOOTPATH)
-        LOGF("new bootpath: '%s'\n", BOOTPATH)
       end
     end
   end
@@ -81,7 +66,6 @@ LFONT = load_boot_font_or_die()
 Font.ftSetCharSize(BFONT, 800, 800)
 Font.ftSetCharSize(SFONT, 600, 600)
 Font.ftSetCharSize(LFONT, 900, 900)
-BOOT_PROF.stamp("UI assets init (fonts)")
 function STOP() LOG("PROGRAM STOP") Screen.clear(Color.new(255,0,0)) Screen.flip() while true do end end
 
 require("system")

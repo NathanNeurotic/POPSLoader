@@ -1086,46 +1086,6 @@ local function EnsureHDDReadyForLaunch(game, partition_override)
   return result
 end
 
-local function LogPopstarterArgs(args)
-  if args == nil then
-    LaunchLog("LAUNCH: argv: nil")
-    return
-  end
-  LaunchLog("LAUNCH: argv_count:", #args)
-  for i = 1, #args do
-    LaunchLog("LAUNCH: argv["..(i - 1).."]:", args[i])
-  end
-end
-
-local function AppendLaunchLog(line)
-  local path = ResolveWritablePath("launch.log")
-  local fd
-  local ok, rc = pcall(System.openFile, path, FRDWR)
-  if ok then
-    fd = rc
-    System.seekFile(fd, 0, END)
-  else
-    ok, rc = pcall(System.openFile, path, FCREATE)
-    if ok then
-      fd = rc
-    end
-  end
-  if fd ~= nil then
-    System.writeFile(fd, line, #line)
-    System.closeFile(fd)
-  end
-end
-
-function LaunchLog(...)
-  LOG(...)
-  local parts = {...}
-  for i = 1, #parts do
-    parts[i] = tostring(parts[i])
-  end
-  local line = table.concat(parts, " ").."\n"
-  AppendLaunchLog(line)
-end
-
 local LaunchState = {
   PHASE_VALIDATE = "LAUNCH_VALIDATE",
   PHASE_FADEOUT = "LAUNCH_FADEOUT",
@@ -1139,7 +1099,6 @@ local LaunchState = {
 
 local function SetLaunchPhase(phase)
   LaunchState.phase = phase
-  LaunchLog("LAUNCH: phase:", phase)
 end
 
 local function HostAltPath(path)
@@ -1234,48 +1193,8 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   local argv0 = argv and argv[1] or nil
   local unpack_fn = table.unpack or unpack
   SetLaunchPhase(LaunchState.PHASE_VALIDATE)
-  LaunchLog("LAUNCH BEGIN")
-  LaunchLog("LAUNCH: boot path raw:", BOOT_PATH_RAW, "boot path cwd:", boot_path)
-  LaunchLog("LAUNCH: app dir normalized:", app_dir, "APP_DIR join POPSTARTER:", JoinPath(app_dir, "POPSTARTER.ELF"))
-  LaunchLog("LAUNCH: reboot_iop flag:", reboot_iop)
-  LaunchLog("LAUNCH: exec =", popstarter)
-  LaunchLog("LAUNCH: argv0 selector =", argv0)
-  if context ~= nil and context.game_name ~= nil then
-    LaunchLog("LAUNCH: derived GameName =", context.game_name)
-  end
-  LogPopstarterArgs(argv)
-  if context ~= nil then
-    LaunchLog("LAUNCH: device page:", context.device_page, "device mode:", context.device_mode, "UI scene:", context.ui_scene)
-    LaunchLog("LAUNCH: source mode:", context.source_mode, "raw_source:", context.raw_source_mode)
-    LaunchLog("LAUNCH: game path (raw):", context.gamelocation, "handoff:", context.handoff_gamelocation, "game:", context.game, "vcd_path:", context.vcd_path)
-    LaunchLog("LAUNCH: vcd raw:", context.vcd_path)
-    if context.bootparam_basename_raw ~= nil then
-      LaunchLog("LAUNCH: vcd basename raw:", context.bootparam_basename_raw)
-      LaunchLog("LAUNCH: vcd basename prefixed:", context.bootparam_basename_prefixed)
-      LaunchLog("LAUNCH: vcd basename used:", context.bootparam_basename)
-    else
-      LaunchLog("LAUNCH: vcd basename:", context.bootparam_basename)
-    end
-    LaunchLog("LAUNCH: pops root:", context.bootparam_root)
-    LaunchLog("LAUNCH: bootparam:", context.bootparam)
-    LaunchLog(
-      "LAUNCH: bootparam prefix required:",
-      context.bootparam_prefix_required or "none",
-      "used:",
-      context.bootparam_prefix_used or "none",
-      "prefix added:",
-      tostring(context.bootparam_prefix_added)
-    )
-    if context.hdd_init ~= nil then
-      LaunchLog("LAUNCH: hdd init ok:", context.hdd_init.init_ok, "status:", context.hdd_init.status,
-        "mount:", context.hdd_init.mount_partition, "mount_ok:", context.hdd_init.mount_ok)
-    end
-  end
   local open_ok, open_rc, open_stage, open_api, open_path = TryOpenForLaunch(popstarter)
-  if open_ok then
-    LaunchLog("LAUNCH: popstarter stat ok:", open_rc)
-  else
-    LaunchLog("LAUNCH: popstarter "..tostring(open_stage).." failed:", open_rc, "api:", open_api)
+  if not open_ok then
     BlockLaunchFailure(
       "popstarter "..tostring(open_stage).." failed: "..tostring(open_rc),
       popstarter,
@@ -1289,7 +1208,6 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     return
   end
   if open_path ~= nil and open_path ~= popstarter then
-    LaunchLog("LAUNCH: popstarter path adjusted:", popstarter, "->", open_path)
     popstarter = open_path
   end
   local exec_args = argv or {}
@@ -1313,38 +1231,6 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     return
   end
   SetLaunchPhase(LaunchState.PHASE_EXEC)
-  LaunchLog("LAUNCH: exec popstarter path:", popstarter)
-  LaunchLog(
-    "LAUNCH: exec boot source:",
-    context and context.bootparam_source or "unknown",
-    "pops root:",
-    context and context.bootparam_root or "unknown",
-    "vcd basename:",
-    context and context.bootparam_basename or "unknown",
-    "prefix required:",
-    context and context.bootparam_prefix_required or "none",
-    "prefix used:",
-    context and context.bootparam_prefix_used or "none",
-    "boot string:",
-    context and context.bootparam or "unknown"
-  )
-  LaunchLog(
-    "LAUNCH: stage A boot root:",
-    context and context.bootparam_root or "unknown",
-    "prefix required:",
-    context and context.bootparam_prefix_required or "none",
-    "prefix used:",
-    context and context.bootparam_prefix_used or "none",
-    "boot string:",
-    context and context.bootparam or "unknown"
-  )
-  LaunchLog("LAUNCH: stage A argv_count:", exec_args and #exec_args or 0)
-  LaunchLog(
-    "LAUNCH: selector="..tostring(argv0),
-    "popstarter="..tostring(popstarter),
-    "reboot_iop="..tostring(reboot_iop)
-  )
-  LaunchLog("LAUNCH: loadELF argc (caller):", exec_args and #exec_args or 0)
   local rc
   if exec_args ~= nil and #exec_args > 0 and unpack_fn ~= nil then
     rc = System.loadELF(popstarter, reboot_iop, unpack_fn(exec_args))
@@ -1353,7 +1239,6 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   else
     rc = System.loadELF(popstarter, reboot_iop)
   end
-  LaunchLog("LAUNCH RETURNED rc="..tostring(rc))
   LOG(">>> UNHANDLED ERROR at Launching game '", context and context.game or "unknown", " via ", popstarter, " Failed")
   if (Timer.getTime(LaunchState.fade_timer) - LaunchState.fade_start) >= LaunchState.watchdog_ms then
     BlockLaunchFailure(
@@ -1506,7 +1391,6 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     bootparam_basename_used = game_name
   end
   if game_name == "" or string.upper(game_name) == "POPSTARTER" then
-    LaunchLog("LAUNCH: GameName derivation failed for selection:", vcd_basename_raw)
     BlockLaunchFailure(
       "GameName derivation failed",
       popstarter,
@@ -1526,7 +1410,6 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     argv0_selector = BuildLiteralElfName(display_name)
   end
   if selector_prefix == "" and string.upper(game_name) == "POPSTARTER" then
-    LaunchLog("LAUNCH: Internal error: game_base derived as POPSTARTER; refusing to launch.", vcd_basename_raw)
     BlockLaunchFailure(
       "Internal error: game_base derived as POPSTARTER; refusing to launch.",
       popstarter,
@@ -1554,23 +1437,6 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   LOG("Boot APP_DIR: "..APP_DIR_LOCAL)
   LOG("PopStarter selected: "..popstarter)
   LOG("PopStarter:", popstarter, "VCD:", vcd_path, "mode:", source_mode, "argv_count:", #argv)
-  LaunchLog("LAUNCH: device mode:", device_mode)
-  LaunchLog("LAUNCH: pops root:", pops_root)
-  LaunchLog("LAUNCH: vcd basename raw:", vcd_basename_raw)
-  LaunchLog("LAUNCH: vcd basename prefixed:", normalized_basename)
-  LaunchLog("LAUNCH: vcd basename used:", bootparam_basename_used)
-  LaunchLog("LAUNCH: bootparam candidate:", bootparam, "exists:", tostring(bootparam_exists))
-  LaunchLog("LAUNCH: derived GameName:", game_name)
-  LaunchLog("LAUNCH: selector mode:", SELECTOR_MODE)
-  LaunchLog("LAUNCH: selector prefix:", selector_prefix)
-  LaunchLog("LAUNCH: argv0 selector:", argv0_selector)
-  if policy.name == "HDD" then
-    LaunchLog("HDD LAUNCH argv0: ["..tostring(argv0_selector).."]")
-  end
-  LaunchLog("LAUNCH: loadELF argc (caller):", #argv)
-  if fallback_bootparam ~= nil then
-    LaunchLog("LAUNCH: bootparam fallback:", fallback_bootparam, "exists:", tostring(fallback_exists))
-  end
   LOG("Resolved game path:", vcd_path)
   local context = {
     device_page = device_page,
