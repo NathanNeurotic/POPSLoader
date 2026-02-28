@@ -1,13 +1,13 @@
 name: CI
 
-on:
+"on":
   push:
     branches:
       - "*"
     tags:
       - "v*"
-  pull_request: {}
-  workflow_dispatch: {}
+  pull_request:
+  workflow_dispatch:
   repository_dispatch:
     types:
       - run_build
@@ -135,7 +135,6 @@ EOF
 
           file_paths="$(unzip -Z1 POPSLOADER.zip | sed '/^$/d')"
 
-          # Root must contain exactly POPS/ and PS1_POPSLOADER/
           top_dirs="$(printf '%s\n' "$file_paths" | awk -F'/' 'NF > 1 {print $1}' | sort -u)"
           top_count="$(printf '%s\n' "$top_dirs" | wc -l | tr -d ' ')"
           if [ "$top_count" -ne 2 ]; then
@@ -146,14 +145,12 @@ EOF
           echo "$top_dirs" | grep -qx "POPS" || { echo "ERROR: missing POPS/ at root" >&2; printf '%s\n' "$top_dirs"; exit 1; }
           echo "$top_dirs" | grep -qx "PS1_POPSLOADER" || { echo "ERROR: missing PS1_POPSLOADER/ at root" >&2; printf '%s\n' "$top_dirs"; exit 1; }
 
-          # No files at zip root
           if printf '%s\n' "$file_paths" | awk -F'/' 'NF == 1 {found=1} END {exit (found?0:1)}'; then
             echo "ERROR: archive must not contain files at zip root" >&2
             printf '%s\n' "$file_paths"
             exit 1
           fi
 
-          # Exact file count
           file_count="$(printf '%s\n' "$file_paths" | wc -l | tr -d ' ')"
           if [ "$file_count" -ne 27 ]; then
             echo "ERROR: package must contain exactly 27 files, found $file_count" >&2
@@ -161,7 +158,6 @@ EOF
             exit 1
           fi
 
-          # Exact file set
           cat > /tmp/expected_files.txt <<'EOF'
 POPS/IGR_BG.tm2
 POPS/IGR_NO.tm2
@@ -194,7 +190,6 @@ EOF
 
           actual_names="$(printf '%s\n' "$file_paths" | sort)"
           expected_names="$(sort /tmp/expected_files.txt)"
-
           if [ "$actual_names" != "$expected_names" ]; then
             echo "ERROR: package file set mismatch" >&2
             echo "Expected:" >&2
@@ -204,7 +199,6 @@ EOF
             exit 1
           fi
 
-          # Forbidden patterns (incl PATCH5.bin)
           if printf '%s\n' "$file_paths" | grep -Eiq '(PATCH_?5\.BIN$)|(PATCH5\.BIN$)|(\.lua$)|(\.png$)|(\.o$)|(\.a$)|(\.c$)|(\.tmp$)'; then
             echo "ERROR: forbidden file patterns detected in package" >&2
             printf '%s\n' "$file_paths"
