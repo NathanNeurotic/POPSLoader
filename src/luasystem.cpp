@@ -208,9 +208,7 @@ static bool LoadIrxCheckedBuffer(const char *name, unsigned char *irx, unsigned 
 	if (out_ret) {
 		*out_ret = ret;
 	}
-	DPRINTF("MX4SIO IRX load %s: id=%d ret=%d\n", name, id, ret);
 	if (id < 0 || ret < 0) {
-		DPRINTF("MX4SIO IRX load failed: %s id=%d ret=%d\n", name, id, ret);
 		return false;
 	}
 	return true;
@@ -234,64 +232,71 @@ static bool ProbeDir(const char *path, int *out_ret)
 // - IRX load order: mx4sio_bd.irx (PS2SDK).
 // - Success condition: chosen MX4SIO prefix and <prefix>/POPS/ are accessible.
 // - TODO: verify any slot or adapter placement requirements for MX4SIO in hardware docs.
+enum {
+	MX4SIO_INIT_OK = 0,
+	MX4SIO_INIT_IRX_LOAD_FAIL = -1,
+	MX4SIO_INIT_ROOT_NOT_FOUND = -2
+};
+
 int mx4sio_init_and_get_root(const char *hint, char *out_root, size_t out_sz)
 {
 	static bool mx4sio_irx_loaded = false;
 
 	if (out_root == NULL || out_sz == 0) {
-		return -1;
+		return MX4SIO_INIT_ROOT_NOT_FOUND;
 	}
-	DPRINTF("MX4SIO SDK init start\n");
 	if (!EnsureBDMFatFs()) {
-		return -1;
+		return MX4SIO_INIT_ROOT_NOT_FOUND;
 	}
 	if (!mx4sio_irx_loaded) {
 		if (!LoadIrxCheckedBuffer("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL)) {
-			return -1;
+			return MX4SIO_INIT_IRX_LOAD_FAIL;
 		}
 		mx4sio_irx_loaded = true;
 	}
 	if (hint != NULL && hint[0] != '\0') {
 		int hint_ret = -1;
-		DPRINTF("MX4SIO probe hint %s\n", hint);
-		bool hint_ok = ProbeDir(hint, &hint_ret);
-		if (hint_ok) {
+		if (ProbeDir(hint, &hint_ret)) {
 			char pops_path[32];
 			snprintf(pops_path, sizeof(pops_path), "%sPOPS/", hint);
 			int pops_ret = -1;
-			bool pops_ok = ProbeDir(pops_path, &pops_ret);
-			DPRINTF("MX4SIO probe %s ret=%d ok=%d\n", pops_path, pops_ret, pops_ok);
-			if (pops_ok) {
-				DPRINTF("Chosen MX4SIO prefix: %s\n", hint);
+			if (ProbeDir(pops_path, &pops_ret)) {
 				snprintf(out_root, out_sz, "%s", hint);
-				return 0;
+				return MX4SIO_INIT_OK;
 			}
-		} else {
-			DPRINTF("MX4SIO probe %s ret=%d ok=%d\n", hint, hint_ret, hint_ok);
 		}
 	}
 	const char *candidates[] = {"mx4sio:/", "mx4sio0:/"};
 	for (size_t i = 0; i < sizeof(candidates) / sizeof(candidates[0]); ++i) {
 		const char *prefix = candidates[i];
 		int root_ret = -1;
-		DPRINTF("MX4SIO probe prefix %s\n", prefix);
-		bool root_ok = ProbeDir(prefix, &root_ret);
-		if (!root_ok) {
-			DPRINTF("MX4SIO probe %s ret=%d ok=%d\n", prefix, root_ret, root_ok);
+		if (!ProbeDir(prefix, &root_ret)) {
 			continue;
 		}
 		char pops_path[32];
 		snprintf(pops_path, sizeof(pops_path), "%sPOPS/", prefix);
 		int pops_ret = -1;
-		bool pops_ok = ProbeDir(pops_path, &pops_ret);
-		DPRINTF("MX4SIO probe %s ret=%d ok=%d\n", pops_path, pops_ret, pops_ok);
-		if (pops_ok) {
-			DPRINTF("Chosen MX4SIO prefix: %s\n", prefix);
+		if (ProbeDir(pops_path, &pops_ret)) {
 			snprintf(out_root, out_sz, "%s", prefix);
-			return 0;
+			return MX4SIO_INIT_OK;
 		}
 	}
-	return -1;
+	for (int i = 0; i <= 9; ++i) {
+		char root[16];
+		char pops_path[32];
+		if (i == 0) {
+			snprintf(root, sizeof(root), "mass:/");
+		} else {
+			snprintf(root, sizeof(root), "mass%d:/", i);
+		}
+		snprintf(pops_path, sizeof(pops_path), "%sPOPS/", root);
+		int pops_ret = -1;
+		if (ProbeDir(pops_path, &pops_ret)) {
+			snprintf(out_root, out_sz, "%s", root);
+			return MX4SIO_INIT_OK;
+		}
+	}
+	return MX4SIO_INIT_ROOT_NOT_FOUND;
 }
 
 static void PushBdmInfo(lua_State *L, const bdm_dev_info_t *info)
@@ -1181,13 +1186,19 @@ static int lua_mx4sio_init(lua_State *L)
 	}
 	char root[16] = {0};
 	int rc = mx4sio_init_and_get_root(hint, root, sizeof(root));
-	lua_pushboolean(L, rc == 0);
-	if (rc == 0) {
+	lua_pushboolean(L, rc == MX4SIO_INIT_OK);
+	if (rc == MX4SIO_INIT_OK) {
 		lua_pushstring(L, root);
+		lua_pushnil(L);
 	} else {
 		lua_pushnil(L);
+		if (rc == MX4SIO_INIT_IRX_LOAD_FAIL) {
+			lua_pushstring(L, "IRX_LOAD_FAIL");
+		} else {
+			lua_pushstring(L, "ROOT_NOT_FOUND");
+		}
 	}
-	return 2;
+	return 3;
 }
 
 static const luaL_Reg System_functions[] = {
