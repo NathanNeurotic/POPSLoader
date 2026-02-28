@@ -115,6 +115,10 @@ local function IsAbsoluteDevicePath(path)
   return path ~= nil and string.match(path, "^[%a]+%d*:/") ~= nil
 end
 
+local function IsMassPath(path)
+  return path ~= nil and string.match(path, "^mass%d*:/") ~= nil
+end
+
 local function ResolvePopstarterPath(path)
   local chosen = path
   if chosen == nil or chosen == "" then
@@ -124,6 +128,12 @@ local function ResolvePopstarterPath(path)
   end
   if doesFileExist(chosen) then
     return chosen
+  end
+  if IsMassPath(chosen) and type(PLDR) == "table" and type(PLDR.EnsureUsbMassReadyOnce) == "function" then
+    pcall(PLDR.EnsureUsbMassReadyOnce)
+    if doesFileExist(chosen) then
+      return chosen
+    end
   end
 
   local fallbacks = {
@@ -837,6 +847,25 @@ function PLDR.RefreshMassBackends()
   PLDR.MASS.CACHE = new_cache
   PLDR.MASS.ORDER = new_order
   PLDR.MASS.REFRESHED = true
+  return true
+end
+
+function PLDR.EnsureUsbMassReadyOnce()
+  if PLDR._usb_mass_ready then
+    return true
+  end
+
+  if type(System) == "table" and type(System.initUSBMass) == "function" then
+    pcall(System.initUSBMass)
+  end
+  if type(System) == "table" and type(System.initUSB) == "function" then
+    pcall(System.initUSB)
+  end
+  if type(PLDR.RefreshMassBackends) == "function" then
+    pcall(PLDR.RefreshMassBackends)
+  end
+
+  PLDR._usb_mass_ready = true
   return true
 end
 
@@ -1751,6 +1780,10 @@ end
 
 local function TryOpenForLaunch(path)
   local ok, fd_or_err = pcall(System.openFile, path, FREAD)
+  if (not ok or type(fd_or_err) ~= "number" or fd_or_err < 0) and IsMassPath(path) and type(PLDR) == "table" and type(PLDR.EnsureUsbMassReadyOnce) == "function" then
+    pcall(PLDR.EnsureUsbMassReadyOnce)
+    ok, fd_or_err = pcall(System.openFile, path, FREAD)
+  end
   if not ok or type(fd_or_err) ~= "number" or fd_or_err < 0 then
     local alt = HostAltPath(path)
     if alt ~= nil then
