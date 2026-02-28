@@ -726,8 +726,6 @@ end
         local function DrawSplashText(alpha)
           -- Requested: black text because splash image is white.
           local y0 = UI.SCR.Y_MID + 120
-          Font.ftPrint(BFONT, UI.SCR.X_MID, y0,       8, UI.SCR.X, 16, "Coded by El_isra",      Color.new(0, 0, 0, alpha))
-          Font.ftPrint(BFONT, UI.SCR.X_MID, y0 + 18,  8, UI.SCR.X, 16, "Graphics by Berion",   Color.new(0, 0, 0, alpha))
           Font.ftPrint(BFONT, UI.SCR.X_MID, y0 + 36,  8, UI.SCR.X, 16, "israpps.github.io",    Color.new(0, 0, 0, alpha))
         end
         local function DrawSplashLayered(alpha)
@@ -1757,21 +1755,24 @@ end
       Play = function ()
         local layout = UI.LAYOUT
         local currcol = UI.CCOL.GREY
+		
+          Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 20, UI.SCR.X, 40, "POPSLoader\nfor POPStarter", currcol)
+          Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 60, 20, UI.SCR.X, 40, "Code by El_isra", currcol)
+          Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 80, 20, UI.SCR.X, UI.SCR.Y, [[
+Design by Berion
+Scripts by Nuno6573 and Ripto
+Based on Enceladus by Daniel Santos
+Testing by P4NCHOL1NO, VizoR, and Community
 
-        Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 20, UI.SCR.X, 40, "POPStarter Loader\n"..tostring(POPSLDR_VER or ""), currcol)
-        Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 60, 20, UI.SCR.X, 40, "Coded By El_isra", currcol)
-        Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 80, 20, UI.SCR.X, UI.SCR.Y, [[
-Graphics by Berion
-Scripting by Nuno6573 and Ripto
-
-Based on Enceladus by Daniel santos
-
-Special thanks to:
-krHACKen: for making POPStarter
-uyjulian, fjtrujy, HWC and others for always helping me
+Special Thanks To:
+krHACKen for making POPStarter
+uyjulian, fjtrujy, HWC, and others for always helping
 
 This program is free and open source
-if you bought it you\'ve been scammed
+If you bought it, you have been scammed
+
+Compatibility problems? Visit:
+youtube.com/@hugopocked6695
 ]], currcol)
         if UI.BUILD_INFO ~= nil and UI.BUILD_INFO.stamp ~= nil then
           local stamp_y = Round(layout.FOOTER_LABEL_Y - 18)
