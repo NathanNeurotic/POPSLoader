@@ -59,6 +59,8 @@ static SifRpcClientData_t bdm_rpc_client;
 static bool bdm_rpc_bound = false;
 static bool bdm_rpc_loaded = false;
 static bdm_dev_list_t bdm_rpc_buffer __attribute__((aligned(64)));
+static bdm_dev_list_t mass_backend_cache;
+static bool mass_backend_cache_valid = false;
 
 static bool bdm_irx_loaded = false;
 static bool bdm_fatfs_irx_loaded = false;
@@ -158,6 +160,41 @@ static bool FetchBdmList(bdm_dev_list_t *out)
 	}
 	memcpy(out, &bdm_rpc_buffer, sizeof(*out));
 	return true;
+}
+
+static const char *ClassifyMassBackend(const char *driver)
+{
+	if (driver == NULL) {
+		return NULL;
+	}
+	if (strstr(driver, "usb") != NULL) {
+		return "usb";
+	}
+	if (strstr(driver, "sdc") != NULL || strstr(driver, "mx4sio") != NULL) {
+		return "mx4sio";
+	}
+	if (strstr(driver, "mmce") != NULL) {
+		return "mmce";
+	}
+	return "other";
+}
+
+static bool RefreshMassBackendCache()
+{
+	mass_backend_cache_valid = false;
+	if (!FetchBdmList(&mass_backend_cache)) {
+		return false;
+	}
+	mass_backend_cache_valid = true;
+	return true;
+}
+
+static bool EnsureMassBackendCache()
+{
+	if (mass_backend_cache_valid) {
+		return true;
+	}
+	return RefreshMassBackendCache();
 }
 
 static bool LoadIrxCheckedBuffer(const char *name, unsigned char *irx, unsigned int size, int *out_id, int *out_ret)
@@ -305,6 +342,43 @@ static int lua_find_bdm_by_driver(lua_State *L)
 		const bdm_dev_info_t *info = &list.devs[i];
 		if (strcmp(info->name, driver) == 0) {
 			PushBdmInfo(L, info);
+			return 1;
+		}
+	}
+	lua_pushnil(L);
+	return 1;
+}
+
+static int lua_refresh_mass_backends(lua_State *L)
+{
+	bdm_rpc_bound = false;
+	lua_pushboolean(L, RefreshMassBackendCache());
+	return 1;
+}
+
+static int lua_get_mass_backend_info(lua_State *L)
+{
+	int argc = lua_gettop(L);
+	if (argc != 1) {
+		return luaL_error(L, "Argument error: System.getMassBackendInfo(index) takes one argument.");
+	}
+	int index = luaL_checkinteger(L, 1);
+	if (!EnsureMassBackendCache()) {
+		lua_pushnil(L);
+		return 1;
+	}
+	for (u32 i = 0; i < mass_backend_cache.count; ++i) {
+		const bdm_dev_info_t *info = &mass_backend_cache.devs[i];
+		if ((int)info->devNr == index) {
+			lua_newtable(L);
+			lua_pushboolean(L, 1);
+			lua_setfield(L, -2, "present");
+			lua_pushstring(L, info->name);
+			lua_setfield(L, -2, "driver");
+			lua_pushstring(L, ClassifyMassBackend(info->name));
+			lua_setfield(L, -2, "kind");
+			lua_pushinteger(L, info->devNr);
+			lua_setfield(L, -2, "index");
 			return 1;
 		}
 	}
@@ -760,8 +834,9 @@ static int lua_writefile(lua_State *L){
 	int fileHandle = luaL_checkinteger(L, 1);
 	const char *text = luaL_checkstring(L, 2);
 	int size = luaL_checknumber(L, 3);
-	write(fileHandle, text, size);
-	return 0;
+	int written = write(fileHandle, text, size);
+	lua_pushinteger(L, written);
+	return 1;
 }
 
 static int lua_closefile(lua_State *L){
@@ -1148,6 +1223,8 @@ static const luaL_Reg System_functions[] = {
 	{"ensureCDFS",             lua_ensure_cdfs},
 	{"initMX4SIO",             lua_mx4sio_init},
 	{"bdmList",                lua_bdm_list},
+	{"refreshMassBackends",    lua_refresh_mass_backends},
+	{"getMassBackendInfo",     lua_get_mass_backend_info},
 	{"findBDMByDriver",    lua_find_bdm_by_driver},
 	{0, 0}
 };

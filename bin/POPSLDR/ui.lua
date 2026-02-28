@@ -1360,10 +1360,14 @@ end
             PLDR.SELECTED_PROFILE = UI.ProfileQuery.curopt
             PLDR.POPSTARTER_PATH = PLDR.PROFILES[UI.ProfileQuery.curopt].ELF
             PLDR.BDMA_MODE_KEY = UI.BdmaModes[UI.BdmaModeIndex].key
-            PLDR.SaveSettingsAtomic()
-            PLDR.ApplyBdmaMode(PLDR.BDMA_MODE_KEY)
-            UI.ProfileDirty = false
-            UI.BdmaDirty = false
+            local saved = PLDR.SaveSettingsAtomic()
+            local applied = PLDR.ApplyBdmaMode(PLDR.BDMA_MODE_KEY)
+            if saved and applied then
+              UI.ProfileDirty = false
+              UI.BdmaDirty = false
+            else
+              UI.Notif_queue.add("Failed to save settings")
+            end
           end
           UI.SceneChange(target_scene)
         end
@@ -1621,17 +1625,22 @@ end
         end
         if UI.Pad.Events.CONFIRM then
           if UI.MainMenu.OPT == 1 then
-            local slots = PLDR.GetMMCESlots()
+            if type(System) == "table" and type(System.initMMCE) == "function" then
+              pcall(System.initMMCE)
+            end
+            PLDR.RefreshMassBackends()
+            local slots = PLDR.GetRootsByType("mmce")
             if #slots < 1 then
               UI.Notif_queue.add("No MMCE device found (mmce0/mmce1).")
               PLDR.CleanupGameList()
               PLDR.GAMEPATH = ""
               UI.SceneChange(UI.SCENES.GSMB)
             else
-              if PLDR.MMCE.PREFIX == nil then
-                PLDR.SetMMCESlot(1)
+              PLDR.MMCE.SLOTS = slots
+              local mmce_prefix = PLDR.MMCE.PREFIX
+              if mmce_prefix == nil or not doesFolderExist(mmce_prefix) then
+                mmce_prefix = PLDR.SetMMCESlot(1)
               end
-              local mmce_prefix = PLDR.MMCE.PREFIX or PLDR.SetMMCESlot(1)
               if mmce_prefix == nil then
                 UI.Notif_queue.add("No MMCE device found (mmce0/mmce1).")
                 return
@@ -1682,8 +1691,8 @@ end
             if type(System) == "table" and type(System.ensureUsbMass) == "function" then
               System.ensureUsbMass()
             end
-            PLDR.CleanupGameList()
-            PLDR.BuildUsbGameListMulti()
+            PLDR.RefreshMassBackends()
+            PLDR.BuildMassGameListByType("usb")
             UI.setDeviceLock(DEVLOCK.USB)
             UI.SceneChange(UI.SCENES.GUSBFAT)
           elseif UI.MainMenu.OPT == 6 then
