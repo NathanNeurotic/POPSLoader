@@ -324,6 +324,7 @@ local BDMA_SUFFIX = {
 
 PLDR.MASS = PLDR.MASS or {
   CACHE = {},
+  ORDER = {},
   REFRESHED = false
 }
 
@@ -588,31 +589,75 @@ end
 
 function PLDR.RefreshMassBackends()
   PLDR.MASS.CACHE = {}
+  PLDR.MASS.ORDER = {}
   PLDR.MASS.REFRESHED = false
+  local seen_index = {}
+
+  local function classify_driver(driver)
+    local d = string.lower(tostring(driver or ""))
+    if string.find(d, "usb", 1, true) ~= nil then
+      return "usb"
+    end
+    if string.find(d, "sdc", 1, true) ~= nil or string.find(d, "mx4sio", 1, true) ~= nil then
+      return "mx4sio"
+    end
+    return "other"
+  end
+
   if type(System) == "table" and type(System.refreshMassBackends) == "function" then
     local ok, refreshed = pcall(System.refreshMassBackends)
     if not ok or not refreshed then
       return false
     end
   end
-  for i = 0, 9 do
-    local info = nil
-    if type(System) == "table" and type(System.getMassBackendInfo) == "function" then
-      local ok, result = pcall(System.getMassBackendInfo, i)
-      if ok and type(result) == "table" then
-        info = result
+
+  local listed = false
+  if type(System) == "table" and type(System.bdmList) == "function" then
+    local ok, list = pcall(System.bdmList)
+    if ok and type(list) == "table" then
+      listed = true
+      for i = 1, #list do
+        local info = list[i]
+        if type(info) == "table" and type(info.devNr) == "number" then
+          local idx = tonumber(info.devNr)
+          local driver = string.lower(tostring(info.name or ""))
+          local kind = classify_driver(driver)
+          PLDR.MASS.CACHE[idx] = {
+            present = true,
+            driver = driver,
+            kind = kind
+          }
+          if not seen_index[idx] then
+            table.insert(PLDR.MASS.ORDER, idx)
+            seen_index[idx] = true
+          end
+        end
       end
     end
-    if info ~= nil then
-      local driver = string.lower(tostring(info.driver or ""))
-      local kind = string.lower(tostring(info.kind or "other"))
-      PLDR.MASS.CACHE[i] = {
-        present = (info.present == true),
-        driver = driver,
-        kind = kind
-      }
+  end
+
+  if not listed and type(System) == "table" and type(System.getMassBackendInfo) == "function" then
+    -- Compatibility fallback: bounded probe for older runtimes without bdmList details.
+    for i = 0, 31 do
+      local ok, info = pcall(System.getMassBackendInfo, i)
+      if ok and type(info) == "table" and info.present == true then
+        local idx = tonumber(info.index or i)
+        local driver = string.lower(tostring(info.driver or ""))
+        local kind = classify_driver(driver)
+        PLDR.MASS.CACHE[idx] = {
+          present = true,
+          driver = driver,
+          kind = kind
+        }
+        if not seen_index[idx] then
+          table.insert(PLDR.MASS.ORDER, idx)
+          seen_index[idx] = true
+        end
+      end
     end
   end
+
+  table.sort(PLDR.MASS.ORDER)
   PLDR.MASS.REFRESHED = true
   return true
 end
@@ -625,7 +670,7 @@ function PLDR.GetRootsByType(kind)
   end
 
   if wanted == "usb" then
-    for i = 0, 9 do
+    for _, i in ipairs(PLDR.MASS.ORDER) do
       local info = PLDR.MASS.CACHE[i]
       if info ~= nil and info.present and info.kind == "usb" then
         if i == 0 then
@@ -636,7 +681,7 @@ function PLDR.GetRootsByType(kind)
     end
   elseif wanted == "mx4sio" then
     local has_mx = false
-    for i = 0, 9 do
+    for _, i in ipairs(PLDR.MASS.ORDER) do
       local info = PLDR.MASS.CACHE[i]
       if info ~= nil and info.present and info.kind == "mx4sio" then
         has_mx = true
