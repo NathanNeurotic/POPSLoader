@@ -50,9 +50,30 @@ local function NormalizeHostPath(path)
   return "host:/"..rest
 end
 
+local function NormalizeFsPathRaw(path)
+  if path == nil then return "" end
+  local normalized = string.gsub(path, "\\", "/")
+  if string.match(normalized, "^host:") and not string.match(normalized, "^host:/") then
+    normalized = "host:/"..string.sub(normalized, 6)
+  end
+  local prefix = ""
+  if string.match(normalized, "^host:/") then
+    prefix = "host:/"
+    normalized = string.sub(normalized, 7)
+  end
+  normalized = string.gsub(normalized, "/+", "/")
+  return prefix..normalized
+end
+
+local function EnsureTrailingSlashNormRaw(path)
+  local normalized = NormalizeFsPathRaw(path)
+  normalized = string.gsub(normalized, "/+$", "")
+  return normalized.."/"
+end
+
 function NormalizeDirPath(path)
   if path == nil or path == "" then return "" end
-  local normalized = string.gsub(path, "\\", "/")
+  local normalized = NormalizeFsPathRaw(path)
   normalized = NormalizeHostPath(NormalizeDeviceRoot(normalized))
   normalized = string.gsub(normalized, "/+$", "/")
   if string.sub(normalized, -1) ~= "/" then
@@ -70,7 +91,7 @@ function JoinPath(base, rel)
   return normalized..cleaned
 end
 
-local APP_DIR_LOCAL = NormalizeDirPath(APP_DIR or BOOT_PATH_RAW)
+local APP_DIR_LOCAL = EnsureTrailingSlashNormRaw(APP_DIR or System.currentDirectory() or "")
 APP_DIR_NORM = APP_DIR_LOCAL
 local SELECTOR_MODE = "basename"
 
@@ -297,9 +318,9 @@ local BDMA_COPY_FILES = {
   "del.icn"
 }
 local BDMA_SUFFIX = {
-  USBEXFAT = ".usbexfat",
-  MX4SIO = ".mx4sio",
-  MMCE = ".mmce"
+  USBEXFAT = "usbexfat",
+  MX4SIO = "mx4sio",
+  MMCE = "mmce"
 }
 
 local function ReadWholeFile(path)
@@ -367,11 +388,22 @@ function PLDR.EnsurePopstarterDir()
   return EnsureDirectory(PLDR.POPSTARTER_DIR)
 end
 
+function PLDR.NormalizeFsPath(p)
+  return NormalizeFsPathRaw(p)
+end
+
+function PLDR.EnsureTrailingSlashNorm(p)
+  return EnsureTrailingSlashNormRaw(p)
+end
+
+APP_DIR_NORM = PLDR.EnsureTrailingSlashNorm(APP_DIR or System.currentDirectory() or "")
+APP_DIR_LOCAL = APP_DIR_NORM
+
 function PLDR.AppDirPath(rel)
-  if rel == nil or rel == "" then
-    return APP_DIR_LOCAL
-  end
-  return JoinPath(APP_DIR_LOCAL, rel)
+  local base = APP_DIR_NORM or ""
+  rel = (rel or ""):gsub("\\", "/")
+  if rel:sub(1, 1) == "/" then rel = rel:sub(2) end
+  return base..rel
 end
 
 local function EncodeSettings()
@@ -531,7 +563,7 @@ function PLDR.ApplyBdmaMode(mode_key)
   local missing_notified = false
   for i = 1, #BDMA_COPY_FILES do
     local name = BDMA_COPY_FILES[i]
-    local source = PLDR.AppDirPath(name..suffix)
+    local source = PLDR.AppDirPath(name.."."..suffix)
     local dest = POPSTARTER_PACK_ROOT.."/"..name
     if not doesFileExist(source) then
       had_failure = true
