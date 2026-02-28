@@ -314,7 +314,6 @@ local BDMA_COPY_FILES = {
   "usbhdfsd.irx",
   "icon.sys",
   "list.icn",
-  "copy.icn",
   "del.icn"
 }
 local BDMA_SUFFIX = {
