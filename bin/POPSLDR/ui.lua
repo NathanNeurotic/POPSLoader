@@ -1360,11 +1360,14 @@ end
             PLDR.SELECTED_PROFILE = UI.ProfileQuery.curopt
             PLDR.POPSTARTER_PATH = PLDR.PROFILES[UI.ProfileQuery.curopt].ELF
             PLDR.BDMA_MODE_KEY = UI.BdmaModes[UI.BdmaModeIndex].key
-            local ok1, saved = pcall(PLDR.SaveSettingsAtomic)
-            local ok2, applied = pcall(PLDR.ApplyBdmaMode, PLDR.BDMA_MODE_KEY)
-            saved = ok1 and saved
-            applied = ok2 and applied
-            if saved and applied then
+            UI.SavingActive = true
+            local ok_run, result = xpcall(function()
+              local saved = PLDR.SaveSettingsAtomic()
+              local applied = PLDR.ApplyBdmaMode(PLDR.BDMA_MODE_KEY)
+              return saved and applied
+            end, function(e) return e end)
+            UI.SavingActive = false
+            if ok_run and result then
               UI.ProfileDirty = false
               UI.BdmaDirty = false
             else

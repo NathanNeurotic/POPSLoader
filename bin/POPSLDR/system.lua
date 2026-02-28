@@ -522,6 +522,63 @@ local function CopyExternalAtomicBounded(source, dest)
 end
 
 
+local function WriteBytesAtomicBounded(data, dest)
+  if type(data) ~= "string" then
+    return false, "invalid data"
+  end
+
+  local tmp = dest..".tmp"
+  if doesFileExist(tmp) then
+    pcall(System.removeFile, tmp)
+  end
+
+  local ok_open, fd = pcall(System.openFile, tmp, FCREATE)
+  if not ok_open or fd == nil or (type(fd) == "number" and fd < 0) then
+    return false, "open destination failed"
+  end
+
+  local expected = string.len(data)
+  local offset = 1
+  local iters = 0
+  local MAX_ITERS = 4096
+  local wrote_all = true
+
+  while offset <= expected and iters < MAX_ITERS do
+    iters = iters + 1
+    local chunk = string.sub(data, offset, math.min(offset + 32768 - 1, expected))
+    local chunk_len = string.len(chunk)
+    local ok_write, wrote = pcall(System.writeFile, fd, chunk, chunk_len)
+    if not ok_write or type(wrote) ~= "number" or wrote ~= chunk_len then
+      wrote_all = false
+      break
+    end
+    offset = offset + chunk_len
+  end
+
+  if offset <= expected then
+    wrote_all = false
+  end
+
+  pcall(System.closeFile, fd)
+
+  if not wrote_all then
+    pcall(System.removeFile, tmp)
+    return false, "write failed"
+  end
+
+  if doesFileExist(dest) then
+    pcall(System.removeFile, dest)
+  end
+  local ok_rename = pcall(System.rename, tmp, dest)
+  if not ok_rename then
+    pcall(System.removeFile, tmp)
+    return false, "rename failed"
+  end
+  return true
+end
+
+
+
 local function EnsureDirectory(path)
   if doesFolderExist(path) then
     return true
@@ -788,11 +845,16 @@ function PLDR.GetRootsByType(kind, mass_snapshot)
   if wanted == "usb" then
     for _, i in ipairs(state.ORDER or {}) do
       local info = state.CACHE and state.CACHE[i] or nil
-      if info ~= nil and info.present and info.kind == "usb" then
-        if i == 0 then
-          table.insert(roots, "mass:/")
+      if info ~= nil and info.present then
+        local driver = string.lower(tostring(PLDR.GetMassDriverName(i) or info.driver or ""))
+        local is_usb = string.find(driver, "usb", 1, true) ~= nil
+        local blocked = string.find(driver, "sdc", 1, true) ~= nil or string.find(driver, "mx4", 1, true) ~= nil or string.find(driver, "mmce", 1, true) ~= nil
+        if is_usb and not blocked then
+          if i == 0 then
+            table.insert(roots, "mass:/")
+          end
+          table.insert(roots, "mass"..i..":/")
         end
-        table.insert(roots, "mass"..i..":/")
       end
     end
   elseif wanted == "mx4sio" then
@@ -911,7 +973,7 @@ function PLDR.ApplyBdmaMode(mode_key)
         return false
       end
       local dest = POPSTARTER_PACK_ROOT.."/"..name
-      local ok_write, wrote = pcall(WriteAtomic, dest, bytes)
+      local ok_write, wrote = pcall(WriteBytesAtomicBounded, bytes, dest)
       if not ok_write or not wrote then
         had_failure = true
         return false
@@ -1159,18 +1221,27 @@ function PLDR.InitMX4SIOPopsRoot()
       pcall(System.initMX4SIO)
     end
     if type(System) == "table" and type(System.sleep) == "function" then
-      pcall(System.sleep, 0.1)
+      pcall(System.sleep, 0.05)
     end
 
-    local snapshot = PLDR.RefreshMassStateSnapshot()
-    local roots = PLDR.GetRootsByType("mx4sio", snapshot)
-    for i = 1, #roots do
-      local root = EnsureTrailingSlash(roots[i])
-      local pops_root = root.."POPS/"
-      if doesFolderExist(pops_root) then
-        PLDR.MX4SIO.READY = true
-        PLDR.MX4SIO.ROOT = root
-        return pops_root
+    for i = 0, 9 do
+      local driver = string.lower(tostring(PLDR.GetMassDriverName(i) or ""))
+      if string.find(driver, "sdc", 1, true) ~= nil or string.find(driver, "mx4", 1, true) ~= nil then
+        local candidates = {}
+        if i == 0 then
+          table.insert(candidates, "mass:/")
+        end
+        table.insert(candidates, "mass"..i..":/")
+
+        for j = 1, #candidates do
+          local root = EnsureTrailingSlash(candidates[j])
+          local pops_root = root.."POPS/"
+          if doesFolderExist(pops_root) then
+            PLDR.MX4SIO.READY = true
+            PLDR.MX4SIO.ROOT = root
+            return pops_root
+          end
+        end
       end
     end
   end
