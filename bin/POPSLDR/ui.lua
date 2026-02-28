@@ -1373,11 +1373,22 @@ end
             PLDR.POPSTARTER_PATH = PLDR.PROFILES[UI.ProfileQuery.curopt].ELF
             PLDR.BDMA_MODE_KEY = UI.BdmaModes[UI.BdmaModeIndex].key
             UI.SavingActive = true
+            local save_token = nil
+            if type(PLDR.NextBdmaApplyToken) == "function" then
+              save_token = PLDR.NextBdmaApplyToken()
+            else
+              PLDR._bdma_apply_seq = (tonumber(PLDR._bdma_apply_seq) or 0) + 1
+              save_token = "bdma:"..tostring(PLDR._bdma_apply_seq)
+            end
             local ok_run, result = xpcall(function()
               local saved = PLDR.SaveSettingsAtomic()
               local applied = true
               if UI.BdmaDirty then
-                applied = PLDR.ApplyBdmaMode(PLDR.BDMA_MODE_KEY)
+                if type(PLDR.ApplyBdmaModeOnce) == "function" then
+                  applied = PLDR.ApplyBdmaModeOnce(PLDR.BDMA_MODE_KEY, save_token)
+                else
+                  applied = PLDR.ApplyBdmaMode(PLDR.BDMA_MODE_KEY)
+                end
               end
               return saved and applied
             end, function(e) return e end)
