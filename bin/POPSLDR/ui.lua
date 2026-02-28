@@ -1696,7 +1696,18 @@ end
               end
             end
             if mx4sio_root == nil and type(System) == "table" and type(System.initMX4SIO) == "function" then
+              if UI.MX4SIO ~= nil and UI.MX4SIO.in_flight then
+                return
+              end
+              local now_ms = Timer.getTime(UI.MX4SIO.init_timer)
+              if (now_ms - UI.MX4SIO.last_init_ms) < UI.MX4SIO.cooldown_ms then
+                UI.Notif_queue.add("MX4SIO: wait a moment before retrying")
+                return
+              end
+              UI.MX4SIO.in_flight = true
+              UI.MX4SIO.last_init_ms = now_ms
               local ok_init, init_ok, root = pcall(System.initMX4SIO, hint)
+              UI.MX4SIO.in_flight = false
               if ok_init and init_ok and type(root) == "string" and root ~= "" then
                 local pop_root = root
                 if string.sub(pop_root, -1) ~= "/" then
@@ -1979,7 +1990,13 @@ if UI.FONT ~= nil then
   end
 end
 _G.UI = UI
+UI.MX4SIO = UI.MX4SIO or {}
+UI.MX4SIO.init_timer = UI.MX4SIO.init_timer or Timer.new()
+UI.MX4SIO.last_init_ms = UI.MX4SIO.last_init_ms or 0
+UI.MX4SIO.in_flight = UI.MX4SIO.in_flight or false
+UI.MX4SIO.cooldown_ms = UI.MX4SIO.cooldown_ms or 2500
 UI.GAME_SCENES = {
+
   [UI.SCENES.GUSBFAT] = true,
   [UI.SCENES.GSMB] = true,
   [UI.SCENES.GMX4SIO] = true,
