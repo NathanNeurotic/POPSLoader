@@ -1133,6 +1133,19 @@ static int lua_direxists(lua_State *L)
     lua_pushboolean(L, ret);
     return 1;
 }
+
+
+static int lua_path_exists(lua_State *L)
+{
+    int argc = lua_gettop(L);
+    if (argc != 1)
+        return luaL_error(L, "Argument error: System.pathExists(path) takes one argument.");
+    const char *path = luaL_checkstring(L, 1);
+    iox_stat_t st;
+    int rc = fileXioGetStat(path, &st);
+    lua_pushboolean(L, rc >= 0);
+    return 1;
+}
 extern char* GetArgv0(void);
 static int lua_popargv0(lua_State *L) {
 	const char* A = GetArgv0();
@@ -1232,6 +1245,7 @@ static const luaL_Reg System_functions[] = {
 	{"listDirectory",           	    lua_dir},
 	{"createDirectory",           lua_createDir},
 	{"removeDirectory",           lua_removeDir},
+	{"pathExists",              lua_path_exists},
 	{"moveFile",	               lua_movefile},
 	{"copyFile",	               lua_copyfile},
 	{"threadCopyFile",	          lua_copyasync},
@@ -1339,6 +1353,7 @@ void luaSystem_init(lua_State *L) {
 
 	lua_register(L, "doesFileExist", lua_checkexist);
 	lua_register(L, "doesFolderExist", lua_direxists);
+	lua_register(L, "pathExists", lua_path_exists);
 	lua_register(L, "print_uart", lua_sio_print);
 
 	setModulePath();

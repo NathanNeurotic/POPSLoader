@@ -1680,39 +1680,42 @@ end
               UI.SceneChange(UI.SCENES.GSMB)
             end
           elseif UI.MainMenu.OPT == 2 then
-            local mx = (PLDR and PLDR.FindMassByDriver) and PLDR.FindMassByDriver("sdc", 9) or nil
-            if mx ~= nil then
-              local root = (mx == 0) and "mass:/" or ("mass"..tostring(mx)..":/")
-              local pops = root.."POPS/"
-              if doesFolderExist(pops) then
-                PLDR.CleanupGameList()
-                PLDR.GetPS1GameLists(pops, true)
-                UI.setDeviceLock(DEVLOCK.MX4SIO)
-                UI.SceneChange(UI.SCENES.GMX4SIO)
-                return
+            local function findMx4sioMassIndexByPopsMarker()
+              for i = 0, 9 do
+                local root = (i == 0) and "mass:/" or ("mass"..tostring(i)..":/")
+                local pops_path = root.."POPS"
+                if type(System) == "table" and type(System.pathExists) == "function" then
+                  local ok, exists = pcall(System.pathExists, pops_path)
+                  if ok and exists then
+                    return i
+                  end
+                end
               end
+              return nil
             end
 
+            local mx = nil
             for pass = 1, 2 do
               if type(_G.ensureMx4sioInit) == "function" then pcall(_G.ensureMx4sioInit) end
               if System and System.initMX4SIO then pcall(System.initMX4SIO) end
               if System and System.sleep then pcall(System.sleep, 0.05) end
-
-              mx = (PLDR and PLDR.FindMassByDriver) and PLDR.FindMassByDriver("sdc", 9) or nil
+              mx = findMx4sioMassIndexByPopsMarker()
               if mx ~= nil then
-                local root = (mx == 0) and "mass:/" or ("mass"..tostring(mx)..":/")
-                local pops = root.."POPS/"
-                if doesFolderExist(pops) then
-                  PLDR.CleanupGameList()
-                  PLDR.GetPS1GameLists(pops, true)
-                  UI.setDeviceLock(DEVLOCK.MX4SIO)
-                  UI.SceneChange(UI.SCENES.GMX4SIO)
-                  return
-                end
+                break
               end
             end
 
-            UI.Notif_queue.add("No MX4SIO device found (POPS/ missing)")
+            if mx == nil then
+              UI.Notif_queue.add("No MX4SIO device found (POPS/ missing)")
+              return
+            end
+
+            local root = (mx == 0) and "mass:/" or ("mass"..tostring(mx)..":/")
+            local pops = root.."POPS/"
+            PLDR.CleanupGameList()
+            PLDR.GetPS1GameLists(pops, true)
+            UI.setDeviceLock(DEVLOCK.MX4SIO)
+            UI.SceneChange(UI.SCENES.GMX4SIO)
             return
           elseif UI.MainMenu.OPT == 3 then
             UI.Notif_queue.add("Not Implemented Yet")
