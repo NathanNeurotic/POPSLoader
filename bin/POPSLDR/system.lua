@@ -318,9 +318,9 @@ local BDMA_COPY_FILES = {
   "del.icn"
 }
 local BDMA_SUFFIX = {
-  USBEXFAT = "usbexfat",
-  MX4SIO = "mx4sio",
-  MMCE = "mmce"
+  USBEXFAT = ".usbexfat",
+  MX4SIO = ".mx4sio",
+  MMCE = ".mmce"
 }
 
 local function ReadWholeFile(path)
@@ -398,8 +398,8 @@ end
 
 function PLDR.TryOpenFirst(paths)
   for _, path in ipairs(paths) do
-    local fd = System.openFile(path, FREAD)
-    if fd ~= nil and (type(fd) ~= "number" or fd >= 0) then
+    local ok, fd = pcall(System.openFile, path, FREAD)
+    if ok and fd ~= nil and (type(fd) ~= "number" or fd >= 0) then
       return fd, path
     end
   end
@@ -414,6 +414,26 @@ function PLDR.AppDirPath(rel)
   rel = (rel or ""):gsub("\\", "/")
   if rel:sub(1, 1) == "/" then rel = rel:sub(2) end
   return base..rel
+end
+
+
+function PLDR.BdmaSourceCandidates(rel)
+  local out = {}
+  local base = APP_DIR_NORM or APP_DIR_LOCAL or ""
+  rel = (rel or ""):gsub("\\", "/")
+  base = base:gsub("\\", "/")
+  if base ~= "" and base:sub(-1) ~= "/" then
+    base = base.."/"
+  end
+
+  if base:sub(1, 5) == "host:" then
+    table.insert(out, "host:./"..rel)
+    table.insert(out, "host:"..rel)
+    table.insert(out, base..rel)
+  else
+    table.insert(out, base..rel)
+  end
+  return out
 end
 
 local function EncodeSettings()
@@ -572,22 +592,15 @@ function PLDR.ApplyBdmaMode(mode_key)
   local had_failure = false
   for i = 1, #BDMA_COPY_FILES do
     local name = BDMA_COPY_FILES[i]
-    local rel = name.."."..suffix
-    local p1 = PLDR.AppDirPath(rel)
-    local paths = {p1}
-    if string.match(APP_DIR_NORM or "", "^host:") then
-      local p2 = "host:./"..rel
-      local p3 = "host:"..rel
-      table.insert(paths, p2)
-      table.insert(paths, p3)
-    end
+    local rel = name..suffix
+    local paths = PLDR.BdmaSourceCandidates(rel)
     local fd, source = PLDR.TryOpenFirst(paths)
     if fd ~= nil and (type(fd) ~= "number" or fd >= 0) then
       System.closeFile(fd)
     end
     if source == nil then
       if UI ~= nil and UI.Notif_queue ~= nil then
-        UI.Notif_queue.add("Missing BDMA source:\n"..table.concat(paths, "\n"))
+        UI.Notif_queue.add("Missing BDMA source (tried):\n"..table.concat(paths, "\n"))
       end
       return false
     end
