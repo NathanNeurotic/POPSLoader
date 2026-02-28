@@ -1443,29 +1443,30 @@ function PLDR.InitMX4SIOPopsRoot()
   PLDR.MX4SIO.READY = false
   PLDR.MX4SIO.ROOT = nil
 
-  for pass = 1, 2 do
-    if type(_G.ensureMx4sioInit) == "function" then
-      pcall(_G.ensureMx4sioInit)
-    end
-    if type(System) == "table" and type(System.initMX4SIO) == "function" then
-      pcall(System.initMX4SIO)
-    end
-    if type(System) == "table" and type(System.sleep) == "function" then
-      pcall(System.sleep, 0.05)
-    end
+  if type(_G.ensureMx4sioInit) == "function" then
+    pcall(_G.ensureMx4sioInit)
+  end
+  if type(System) == "table" and type(System.initMX4SIO) == "function" then
+    pcall(System.initMX4SIO)
+  end
+  if type(System) == "table" and type(System.sleep) == "function" then
+    pcall(System.sleep, 0.05)
+  end
 
-    local info = nil
-    if type(System) == "table" and type(System.findBDMByDriver) == "function" then
-      local ok, got = pcall(System.findBDMByDriver, "sdc")
-      if ok and type(got) == "table" then
-        info = got
-      end
-    end
+  if type(System) ~= "table" or type(System.massDevctl) ~= "function" then
+    return nil
+  end
 
-    if info ~= nil and info.devNr ~= nil then
-      local dev = tonumber(info.devNr)
-      if dev ~= nil then
-        local root = (dev == 0) and "mass:/" or ("mass"..dev..":/")
+  -- USBMASS ioctl cmd from usbhdfsd-common.h: returns backing block-driver name.
+  -- 0x0003 => USBMASS_IOCTL_GET_DRIVERNAME (expecting "sdc" for MX4SIO path).
+  local MX4SIO_IDENT_CMD = 0x0003
+  for i = 0, 9 do
+    local ok, outbuf, res = pcall(System.massDevctl, i, MX4SIO_IDENT_CMD, nil, 32)
+    if ok and tonumber(res) ~= nil and tonumber(res) >= 0 and type(outbuf) == "string" then
+      local driver = string.match(outbuf, "^[^\0]*") or ""
+      driver = string.lower(driver)
+      if string.find(driver, "sdc", 1, true) ~= nil then
+        local root = (i == 0) and "mass:/" or ("mass"..i..":/")
         local pops = root.."POPS/"
         if doesFolderExist(pops) then
           PLDR.MX4SIO.READY = true

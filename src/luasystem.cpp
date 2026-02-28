@@ -349,6 +349,69 @@ static int lua_find_bdm_by_driver(lua_State *L)
 	return 1;
 }
 
+static int lua_mass_devctl(lua_State *L)
+{
+	int argc = lua_gettop(L);
+	if (argc != 4) {
+		return luaL_error(L, "Argument error: System.massDevctl(index, cmd, inbuf, outLen) takes four arguments.");
+	}
+
+	int index = luaL_checkinteger(L, 1);
+	if (index < 0 || index > 99) {
+		return luaL_error(L, "Argument error: System.massDevctl index must be in range 0..99.");
+	}
+	int cmd = luaL_checkinteger(L, 2);
+	size_t in_len = 0;
+	const char *in_buf = NULL;
+	if (!lua_isnil(L, 3)) {
+		in_buf = luaL_checklstring(L, 3, &in_len);
+	}
+	int out_len = luaL_checkinteger(L, 4);
+	if (out_len < 0 || out_len > 4096) {
+		return luaL_error(L, "Argument error: System.massDevctl outLen must be in range 0..4096.");
+	}
+
+	char root_path[18];
+	if (index == 0) {
+		snprintf(root_path, sizeof(root_path), "mass:/");
+	} else {
+		snprintf(root_path, sizeof(root_path), "mass%d:/", index);
+	}
+
+	int fd = fileXioOpen(root_path, O_RDONLY, 0);
+	if (fd < 0) {
+		lua_pushnil(L);
+		lua_pushinteger(L, fd);
+		return 2;
+	}
+
+	void *out_buf = NULL;
+	if (out_len > 0) {
+		out_buf = malloc(out_len);
+		if (out_buf == NULL) {
+			fileXioClose(fd);
+			lua_pushnil(L);
+			lua_pushinteger(L, -12);
+			return 2;
+		}
+		memset(out_buf, 0, out_len);
+	}
+
+	int res = fileXioIoctl2(fd, cmd, (void *)in_buf, (unsigned int)in_len, out_buf, (unsigned int)out_len);
+	fileXioClose(fd);
+	if (out_len > 0 && res >= 0 && out_buf != NULL) {
+		lua_pushlstring(L, (const char *)out_buf, out_len);
+	} else {
+		lua_pushnil(L);
+	}
+	lua_pushinteger(L, res);
+
+	if (out_buf != NULL) {
+		free(out_buf);
+	}
+	return 2;
+}
+
 static int lua_refresh_mass_backends(lua_State *L)
 {
 	bdm_rpc_bound = false;
@@ -1226,6 +1289,7 @@ static const luaL_Reg System_functions[] = {
 	{"refreshMassBackends",    lua_refresh_mass_backends},
 	{"getMassBackendInfo",     lua_get_mass_backend_info},
 	{"findBDMByDriver",    lua_find_bdm_by_driver},
+	{"massDevctl",            lua_mass_devctl},
 	{0, 0}
 };
 
