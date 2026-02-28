@@ -1006,14 +1006,15 @@ function PLDR.GetRootsByType(kind, mass_snapshot)
     for _, i in ipairs(state.ORDER or {}) do
       local info = state.CACHE and state.CACHE[i] or nil
       if info ~= nil and info.present then
-        local driver = string.lower(tostring(PLDR.GetMassDriverName(i) or info.driver or ""))
+        local idx = tonumber(i)
+        local driver = string.lower(tostring(PLDR.GetMassDriverName(idx) or info.driver or ""))
         local is_usb = string.find(driver, "usb", 1, true) ~= nil
-        local blocked = string.find(driver, "sdc", 1, true) ~= nil or string.find(driver, "mx4", 1, true) ~= nil or string.find(driver, "mmce", 1, true) ~= nil
-        if is_usb and not blocked then
-          if i == 0 then
+        local is_sdc = string.find(driver, "sdc", 1, true) ~= nil
+        if is_usb and not is_sdc then
+          if idx == 0 then
             add_root("mass:/")
-          else
-            add_root("mass"..i..":/")
+          elseif idx ~= nil then
+            add_root("mass"..idx..":/")
           end
         end
       end
@@ -1453,19 +1454,23 @@ function PLDR.InitMX4SIOPopsRoot()
     pcall(System.sleep, 0.05)
   end
 
-  if type(System) ~= "table" or type(System.massDevctl) ~= "function" then
+  if type(System) ~= "table" then
     return nil
   end
 
-  -- USBMASS ioctl cmd from usbhdfsd-common.h: returns backing block-driver name.
-  -- 0x0003 => USBMASS_IOCTL_GET_DRIVERNAME (expecting "sdc" for MX4SIO path).
-  local MX4SIO_IDENT_CMD = 0x0003
+  if type(System.refreshMassBackends) == "function" then
+    pcall(System.refreshMassBackends)
+  end
+
+  if type(System.getMassBackendInfo) ~= "function" then
+    return nil
+  end
+
   for i = 0, 9 do
-    local ok, outbuf, res = pcall(System.massDevctl, i, MX4SIO_IDENT_CMD, nil, 32)
-    if ok and tonumber(res) ~= nil and tonumber(res) >= 0 and type(outbuf) == "string" then
-      local driver = string.match(outbuf, "^[^\0]*") or ""
-      driver = string.lower(driver)
-      if string.find(driver, "sdc", 1, true) ~= nil then
+    local ok, info = pcall(System.getMassBackendInfo, i)
+    if ok and type(info) == "table" then
+      local driver = string.lower(tostring(info.driver or ""))
+      if driver == "sdc" then
         local root = (i == 0) and "mass:/" or ("mass"..i..":/")
         local pops = root.."POPS/"
         if doesFolderExist(pops) then
