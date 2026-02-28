@@ -441,6 +441,87 @@ local function CopyExternalAtomic(source, dest)
 end
 
 
+local function CopyExternalAtomicBounded(source, dest)
+  local tmp = dest..".tmp"
+  if doesFileExist(tmp) then
+    pcall(System.removeFile, tmp)
+  end
+
+  local ok_src, src_fd = pcall(System.openFile, source, FREAD)
+  if not ok_src or src_fd == nil or (type(src_fd) == "number" and src_fd < 0) then
+    return false, "open source failed"
+  end
+
+  local expected = nil
+  local ok_size, size_val = pcall(System.sizeFile, src_fd)
+  if ok_size and type(size_val) == "number" and size_val > 0 then
+    expected = size_val
+  end
+
+  local ok_dst, dst_fd = pcall(System.openFile, tmp, FCREATE)
+  if not ok_dst or dst_fd == nil or (type(dst_fd) == "number" and dst_fd < 0) then
+    pcall(System.closeFile, src_fd)
+    return false, "open destination failed"
+  end
+
+  local copied = true
+  local copied_bytes = 0
+  local iters = 0
+  local MAX_ITERS = 4096
+
+  while true do
+    iters = iters + 1
+    if expected ~= nil and copied_bytes >= expected then
+      break
+    end
+    if iters > MAX_ITERS then
+      copied = false
+      break
+    end
+
+    local ok_read, chunk = pcall(System.readFile, src_fd, 32768)
+    if not ok_read then
+      copied = false
+      break
+    end
+    if chunk == nil or chunk == "" then
+      break
+    end
+
+    local chunk_len = string.len(chunk)
+    local ok_write, wrote = pcall(System.writeFile, dst_fd, chunk, chunk_len)
+    if not ok_write or type(wrote) ~= "number" or wrote ~= chunk_len then
+      copied = false
+      break
+    end
+
+    copied_bytes = copied_bytes + chunk_len
+    if expected ~= nil and copied_bytes > expected + 65536 then
+      copied = false
+      break
+    end
+  end
+
+  pcall(System.closeFile, src_fd)
+  pcall(System.closeFile, dst_fd)
+
+  if not copied then
+    pcall(System.removeFile, tmp)
+    return false, "copy failed"
+  end
+
+  if doesFileExist(dest) then
+    pcall(System.removeFile, dest)
+  end
+  local ok_rename = pcall(System.rename, tmp, dest)
+  if not ok_rename then
+    pcall(System.removeFile, tmp)
+    return false, "rename failed"
+  end
+  return true
+end
+
+
 local function EnsureDirectory(path)
   if doesFolderExist(path) then
     return true
@@ -715,17 +796,14 @@ function PLDR.GetRootsByType(kind, mass_snapshot)
       end
     end
   elseif wanted == "mx4sio" then
-    local has_mx = false
     for _, i in ipairs(state.ORDER or {}) do
       local info = state.CACHE and state.CACHE[i] or nil
       if info ~= nil and info.present and info.kind == "mx4sio" then
-        has_mx = true
-        break
+        if i == 0 then
+          table.insert(roots, "mass:/")
+        end
+        table.insert(roots, "mass"..i..":/")
       end
-    end
-    if has_mx then
-      table.insert(roots, "mx4sio0:/")
-      table.insert(roots, "mx4sio:/")
     end
   end
   return roots
@@ -840,7 +918,7 @@ function PLDR.ApplyBdmaMode(mode_key)
       end
     else
       local dest = POPSTARTER_PACK_ROOT.."/"..name
-      local ok, copied = pcall(CopyExternalAtomic, source, dest)
+      local ok, copied = pcall(CopyExternalAtomicBounded, source, dest)
       if not ok or not copied then
         had_failure = true
         return false
@@ -1074,6 +1152,9 @@ function PLDR.InitMX4SIOPopsRoot()
   PLDR.MX4SIO.ROOT = nil
 
   for pass = 1, 2 do
+    if type(_G.ensureMx4sioInit) == "function" then
+      pcall(_G.ensureMx4sioInit)
+    end
     if type(System) == "table" and type(System.initMX4SIO) == "function" then
       pcall(System.initMX4SIO)
     end
@@ -1081,24 +1162,15 @@ function PLDR.InitMX4SIOPopsRoot()
       pcall(System.sleep, 0.1)
     end
 
-    for i = 0, 9 do
-      local driver = string.lower(tostring(PLDR.GetMassDriverName(i) or ""))
-      if string.find(driver, "sdc", 1, true) ~= nil or string.find(driver, "mx4", 1, true) ~= nil then
-        local candidates = {}
-        if i == 0 then
-          table.insert(candidates, "mass:/")
-        end
-        table.insert(candidates, "mass"..i..":/")
-
-        for j = 1, #candidates do
-          local root = EnsureTrailingSlash(candidates[j])
-          local pops_root = root.."POPS/"
-          if doesFolderExist(pops_root) then
-            PLDR.MX4SIO.READY = true
-            PLDR.MX4SIO.ROOT = root
-            return pops_root
-          end
-        end
+    local snapshot = PLDR.RefreshMassStateSnapshot()
+    local roots = PLDR.GetRootsByType("mx4sio", snapshot)
+    for i = 1, #roots do
+      local root = EnsureTrailingSlash(roots[i])
+      local pops_root = root.."POPS/"
+      if doesFolderExist(pops_root) then
+        PLDR.MX4SIO.READY = true
+        PLDR.MX4SIO.ROOT = root
+        return pops_root
       end
     end
   end
