@@ -114,7 +114,6 @@ local function IsAbsoluteDevicePath(path)
 end
 
 local function ResolvePopstarterPath(path)
-  local fallback = "mass:/POPS/POPSTARTER.ELF"
   local chosen = path
   if chosen == nil or chosen == "" then
     chosen = JoinPath(APP_DIR_LOCAL, "POPSTARTER.ELF")
@@ -124,14 +123,28 @@ local function ResolvePopstarterPath(path)
   if doesFileExist(chosen) then
     return chosen
   end
-  if chosen ~= fallback and doesFileExist(fallback) then
-    return fallback
+
+  local fallbacks = {
+    JoinPath(APP_DIR_LOCAL, "POPSTARTER.ELF"),
+    "mc0:/POPSTARTER/POPSTARTER.ELF",
+    "mc1:/POPSTARTER/POPSTARTER.ELF"
+  }
+  for i = 1, #fallbacks do
+    local candidate = fallbacks[i]
+    if candidate ~= chosen and doesFileExist(candidate) then
+      return candidate
+    end
   end
+
   return chosen
 end
 
 local function ResolveIrx(name)
   return System.resolveAssetType(name, ASSET_IRX) or JoinPath(APP_DIR_LOCAL, name)
+end
+
+function PLDR.ResolvePopstarterPath(path)
+  return ResolvePopstarterPath(path)
 end
 
 local function DetectBootDevice()
@@ -440,6 +453,25 @@ local function CopyExternalAtomic(source, dest)
   return true
 end
 
+
+local function GetFileSizeSafe(path)
+  if path == nil or path == "" then
+    return nil
+  end
+  if not doesFileExist(path) then
+    return nil
+  end
+  local ok_open, fd = pcall(System.openFile, path, FREAD)
+  if not ok_open or fd == nil or (type(fd) == "number" and fd < 0) then
+    return nil
+  end
+  local ok_size, size_val = pcall(System.sizeFile, fd)
+  pcall(System.closeFile, fd)
+  if not ok_size or type(size_val) ~= "number" or size_val < 0 then
+    return nil
+  end
+  return size_val
+end
 
 local function CopyExternalAtomicBounded(source, dest)
   local tmp = dest..".tmp"
@@ -973,17 +1005,25 @@ function PLDR.ApplyBdmaMode(mode_key)
         return false
       end
       local dest = POPSTARTER_PACK_ROOT.."/"..name
-      local ok_write, wrote = pcall(WriteBytesAtomicBounded, bytes, dest)
-      if not ok_write or not wrote then
-        had_failure = true
-        return false
+      local expected = string.len(bytes)
+      local current_size = GetFileSizeSafe(dest)
+      if current_size == nil or current_size ~= expected then
+        local ok_write, wrote = pcall(WriteBytesAtomicBounded, bytes, dest)
+        if not ok_write or not wrote then
+          had_failure = true
+          return false
+        end
       end
     else
       local dest = POPSTARTER_PACK_ROOT.."/"..name
-      local ok, copied = pcall(CopyExternalAtomicBounded, source, dest)
-      if not ok or not copied then
-        had_failure = true
-        return false
+      local src_size = GetFileSizeSafe(source)
+      local dst_size = GetFileSizeSafe(dest)
+      if src_size == nil or dst_size == nil or src_size ~= dst_size then
+        local ok, copied = pcall(CopyExternalAtomicBounded, source, dest)
+        if not ok or not copied then
+          had_failure = true
+          return false
+        end
       end
     end
   end

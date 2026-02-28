@@ -1284,9 +1284,15 @@ end
         if UI.Pad.Events.CONFIRM then
           if ammount <= 0 then
             UI.Notif_queue.add("No games found")
-          elseif not doesFileExist(PLDR.POPSTARTER_PATH) then
-            UI.Notif_queue.add("Cant find POPSTARTER ELF\n"..PLDR.POPSTARTER_PATH)
           else
+            local popstarter_path = PLDR.POPSTARTER_PATH
+            if type(PLDR.ResolvePopstarterPath) == "function" then
+              popstarter_path = PLDR.ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
+            end
+            if not doesFileExist(popstarter_path) then
+              UI.Notif_queue.add("Cant find POPSTARTER ELF\n"..tostring(popstarter_path))
+              return
+            end
             local entry = PLDR.GAMES[UI.GameList.CURR]
             local root, rel = string.match(entry or "", "^([^|]+)|(.+)$")
             local vcd_full = nil
@@ -1363,7 +1369,10 @@ end
             UI.SavingActive = true
             local ok_run, result = xpcall(function()
               local saved = PLDR.SaveSettingsAtomic()
-              local applied = PLDR.ApplyBdmaMode(PLDR.BDMA_MODE_KEY)
+              local applied = true
+              if UI.BdmaDirty then
+                applied = PLDR.ApplyBdmaMode(PLDR.BDMA_MODE_KEY)
+              end
               return saved and applied
             end, function(e) return e end)
             UI.SavingActive = false
