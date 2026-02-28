@@ -1444,12 +1444,6 @@ function PLDR.InitMX4SIOPopsRoot()
   PLDR.MX4SIO.ROOT = nil
 
   for pass = 1, 2 do
-    if type(System) == "table" and type(System.ensureBDM) == "function" then
-      pcall(System.ensureBDM)
-    end
-    if type(System) == "table" and type(System.ensureBDMFatFs) == "function" then
-      pcall(System.ensureBDMFatFs)
-    end
     if type(_G.ensureMx4sioInit) == "function" then
       pcall(_G.ensureMx4sioInit)
     end
