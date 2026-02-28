@@ -6,26 +6,29 @@ on:
       - "*"
     tags:
       - "v*"
-  pull_request:
-  workflow_dispatch:
+  pull_request: {}
+  workflow_dispatch: {}
   repository_dispatch:
-    types: [run_build]
+    types:
+      - run_build
 
 jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: "ps2dev/ps2dev:latest"
+      image: ps2dev/ps2dev:latest
 
     steps:
       - name: Install dependencies
         shell: sh
         run: |
+          set -eu
           apk add --no-cache build-base git bash p7zip findutils coreutils zip unzip
 
       - name: Workaround permission issue
         shell: sh
         run: |
+          set -eu
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Checkout
@@ -61,6 +64,7 @@ jobs:
       - name: Compile project
         shell: sh
         run: |
+          set -eu
           make clean elfloader all
 
       - name: Create release package (PS1_POPSLOADER + POPS)
@@ -71,46 +75,44 @@ jobs:
           rm -rf dist_root POPSLOADER.zip
           mkdir -p dist_root/PS1_POPSLOADER dist_root/POPS
 
-          required_files="
-          bin/POPSLOADER.ELF:PS1_POPSLOADER/POPSLOADER.ELF
-          bin/POPSLDR/POPSTARTER.ELF:PS1_POPSLOADER/POPSTARTER.ELF
-          bin/POPSLDR/APPINFO.PBT:PS1_POPSLOADER/APPINFO.PBT
-          bin/POPSLDR/boot.adp:PS1_POPSLOADER/boot.adp
-          bin/POPSLDR/title.cfg:PS1_POPSLOADER/title.cfg
-          bin/POPSLDR/icon.sys:PS1_POPSLOADER/icon.sys
-          bin/POPSLDR/list.icn:PS1_POPSLOADER/list.icn
-          bin/POPSLDR/copy.icn:PS1_POPSLOADER/copy.icn
-          bin/POPSLDR/del.icn:PS1_POPSLOADER/del.icn
-          bin/POPSLDR/icon.sys.mmce:PS1_POPSLOADER/icon.sys.mmce
-          bin/POPSLDR/icon.sys.mx4sio:PS1_POPSLOADER/icon.sys.mx4sio
-          bin/POPSLDR/icon.sys.usbexfat:PS1_POPSLOADER/icon.sys.usbexfat
-          bin/POPSLDR/list.icn.mmce:PS1_POPSLOADER/list.icn.mmce
-          bin/POPSLDR/list.icn.mx4sio:PS1_POPSLOADER/list.icn.mx4sio
-          bin/POPSLDR/list.icn.usbexfat:PS1_POPSLOADER/list.icn.usbexfat
-          bin/POPSLDR/del.icn.mmce:PS1_POPSLOADER/del.icn.mmce
-          bin/POPSLDR/del.icn.mx4sio:PS1_POPSLOADER/del.icn.mx4sio
-          bin/POPSLDR/del.icn.usbexfat:PS1_POPSLOADER/del.icn.usbexfat
-          bin/POPSLDR/usbd.irx.mmce:PS1_POPSLOADER/usbd.irx.mmce
-          bin/POPSLDR/usbd.irx.mx4sio:PS1_POPSLOADER/usbd.irx.mx4sio
-          bin/POPSLDR/usbd.irx.usbexfat:PS1_POPSLOADER/usbd.irx.usbexfat
-          bin/POPSLDR/usbhdfsd.irx.mmce:PS1_POPSLOADER/usbhdfsd.irx.mmce
-          bin/POPSLDR/usbhdfsd.irx.mx4sio:PS1_POPSLOADER/usbhdfsd.irx.mx4sio
-          bin/POPSLDR/usbhdfsd.irx.usbexfat:PS1_POPSLOADER/usbhdfsd.irx.usbexfat
-          bin/POPSLDR/IGR_BG.tm2:POPS/IGR_BG.tm2
-          bin/POPSLDR/IGR_NO.tm2:POPS/IGR_NO.tm2
-          bin/POPSLDR/IGR_YES.tm2:POPS/IGR_YES.tm2
-          "
+          cat > /tmp/required_files.txt <<'EOF'
+bin/POPSLOADER.ELF:PS1_POPSLOADER/POPSLOADER.ELF
+bin/POPSLDR/POPSTARTER.ELF:PS1_POPSLOADER/POPSTARTER.ELF
+bin/POPSLDR/APPINFO.PBT:PS1_POPSLOADER/APPINFO.PBT
+bin/POPSLDR/boot.adp:PS1_POPSLOADER/boot.adp
+bin/POPSLDR/title.cfg:PS1_POPSLOADER/title.cfg
+bin/POPSLDR/icon.sys:PS1_POPSLOADER/icon.sys
+bin/POPSLDR/list.icn:PS1_POPSLOADER/list.icn
+bin/POPSLDR/copy.icn:PS1_POPSLOADER/copy.icn
+bin/POPSLDR/del.icn:PS1_POPSLOADER/del.icn
+bin/POPSLDR/icon.sys.mmce:PS1_POPSLOADER/icon.sys.mmce
+bin/POPSLDR/icon.sys.mx4sio:PS1_POPSLOADER/icon.sys.mx4sio
+bin/POPSLDR/icon.sys.usbexfat:PS1_POPSLOADER/icon.sys.usbexfat
+bin/POPSLDR/list.icn.mmce:PS1_POPSLOADER/list.icn.mmce
+bin/POPSLDR/list.icn.mx4sio:PS1_POPSLOADER/list.icn.mx4sio
+bin/POPSLDR/list.icn.usbexfat:PS1_POPSLOADER/list.icn.usbexfat
+bin/POPSLDR/del.icn.mmce:PS1_POPSLOADER/del.icn.mmce
+bin/POPSLDR/del.icn.mx4sio:PS1_POPSLOADER/del.icn.mx4sio
+bin/POPSLDR/del.icn.usbexfat:PS1_POPSLOADER/del.icn.usbexfat
+bin/POPSLDR/usbd.irx.mmce:PS1_POPSLOADER/usbd.irx.mmce
+bin/POPSLDR/usbd.irx.mx4sio:PS1_POPSLOADER/usbd.irx.mx4sio
+bin/POPSLDR/usbd.irx.usbexfat:PS1_POPSLOADER/usbd.irx.usbexfat
+bin/POPSLDR/usbhdfsd.irx.mmce:PS1_POPSLOADER/usbhdfsd.irx.mmce
+bin/POPSLDR/usbhdfsd.irx.mx4sio:PS1_POPSLOADER/usbhdfsd.irx.mx4sio
+bin/POPSLDR/usbhdfsd.irx.usbexfat:PS1_POPSLOADER/usbhdfsd.irx.usbexfat
+bin/POPSLDR/IGR_BG.tm2:POPS/IGR_BG.tm2
+bin/POPSLDR/IGR_NO.tm2:POPS/IGR_NO.tm2
+bin/POPSLDR/IGR_YES.tm2:POPS/IGR_YES.tm2
+EOF
 
-          echo "$required_files" | while IFS=':' read -r src dst; do
-            src="$(echo "$src" | xargs)"
-            dst="$(echo "$dst" | xargs)"
+          while IFS=':' read -r src dst; do
             [ -n "$src" ] || continue
             if [ ! -f "$src" ]; then
-              echo "ERROR: required release file missing: $src"
+              echo "ERROR: required release file missing: $src" >&2
               exit 1
             fi
             cp -f "$src" "dist_root/$dst"
-          done
+          done < /tmp/required_files.txt
 
           cd dist_root
           if command -v zip >/dev/null 2>&1; then
@@ -118,13 +120,13 @@ jobs:
           elif command -v 7z >/dev/null 2>&1; then
             7z a -tzip ../POPSLOADER.zip ./PS1_POPSLOADER/* ./POPS/* >/dev/null
           else
-            echo "ERROR: neither zip nor 7z is available to create POPSLOADER.zip"
+            echo "ERROR: neither zip nor 7z is available to create POPSLOADER.zip" >&2
             exit 1
           fi
           cd - >/dev/null
 
           echo "== Package contents =="
-          unzip -Z1 POPSLOADER.zip
+          unzip -Z1 POPSLOADER.zip | sed '/^$/d'
 
       - name: Verify release package contents
         shell: sh
@@ -133,28 +135,35 @@ jobs:
 
           file_paths="$(unzip -Z1 POPSLOADER.zip | sed '/^$/d')"
 
+          # Root must contain exactly POPS/ and PS1_POPSLOADER/
           top_dirs="$(printf '%s\n' "$file_paths" | awk -F'/' 'NF > 1 {print $1}' | sort -u)"
-          if [ "$(printf '%s\n' "$top_dirs" | wc -l | tr -d ' ')" -ne 2 ] || [ "$(printf '%s\n' "$top_dirs")" != "POPS
-PS1_POPSLOADER" ]; then
-            echo "ERROR: archive root must contain exactly POPS/ and PS1_POPSLOADER/"
+          top_count="$(printf '%s\n' "$top_dirs" | wc -l | tr -d ' ')"
+          if [ "$top_count" -ne 2 ]; then
+            echo "ERROR: archive root must contain exactly 2 directories (POPS/ and PS1_POPSLOADER/)" >&2
             printf '%s\n' "$top_dirs"
             exit 1
           fi
+          echo "$top_dirs" | grep -qx "POPS" || { echo "ERROR: missing POPS/ at root" >&2; printf '%s\n' "$top_dirs"; exit 1; }
+          echo "$top_dirs" | grep -qx "PS1_POPSLOADER" || { echo "ERROR: missing PS1_POPSLOADER/ at root" >&2; printf '%s\n' "$top_dirs"; exit 1; }
 
-          if printf '%s\n' "$file_paths" | awk -F'/' 'NF == 1 {exit 0} END {exit 1}'; then
-            echo "ERROR: archive must not contain files at zip root"
+          # No files at zip root
+          if printf '%s\n' "$file_paths" | awk -F'/' 'NF == 1 {found=1} END {exit (found?0:1)}'; then
+            echo "ERROR: archive must not contain files at zip root" >&2
             printf '%s\n' "$file_paths"
             exit 1
           fi
 
+          # Exact file count
           file_count="$(printf '%s\n' "$file_paths" | wc -l | tr -d ' ')"
           if [ "$file_count" -ne 27 ]; then
-            echo "ERROR: package must contain exactly 27 files, found $file_count"
+            echo "ERROR: package must contain exactly 27 files, found $file_count" >&2
             printf '%s\n' "$file_paths"
             exit 1
           fi
 
-          expected="POPS/IGR_BG.tm2
+          # Exact file set
+          cat > /tmp/expected_files.txt <<'EOF'
+POPS/IGR_BG.tm2
 POPS/IGR_NO.tm2
 POPS/IGR_YES.tm2
 PS1_POPSLOADER/APPINFO.PBT
@@ -180,21 +189,24 @@ PS1_POPSLOADER/usbd.irx.mx4sio
 PS1_POPSLOADER/usbd.irx.usbexfat
 PS1_POPSLOADER/usbhdfsd.irx.mmce
 PS1_POPSLOADER/usbhdfsd.irx.mx4sio
-PS1_POPSLOADER/usbhdfsd.irx.usbexfat"
+PS1_POPSLOADER/usbhdfsd.irx.usbexfat
+EOF
 
           actual_names="$(printf '%s\n' "$file_paths" | sort)"
-          expected_names="$(printf '%s\n' "$expected" | awk 'NF > 0' | sort)"
+          expected_names="$(sort /tmp/expected_files.txt)"
+
           if [ "$actual_names" != "$expected_names" ]; then
-            echo "ERROR: package file set mismatch"
-            echo "Expected:"
+            echo "ERROR: package file set mismatch" >&2
+            echo "Expected:" >&2
             printf '%s\n' "$expected_names"
-            echo "Actual:"
+            echo "Actual:" >&2
             printf '%s\n' "$actual_names"
             exit 1
           fi
 
+          # Forbidden patterns (incl PATCH5.bin)
           if printf '%s\n' "$file_paths" | grep -Eiq '(PATCH_?5\.BIN$)|(PATCH5\.BIN$)|(\.lua$)|(\.png$)|(\.o$)|(\.a$)|(\.c$)|(\.tmp$)'; then
-            echo "ERROR: forbidden file patterns detected in package"
+            echo "ERROR: forbidden file patterns detected in package" >&2
             printf '%s\n' "$file_paths"
             exit 1
           fi
