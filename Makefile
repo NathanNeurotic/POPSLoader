@@ -83,7 +83,11 @@ EMBEDDED_RSC = boot.o builtin_font.o \
 	asset_bdhdd_png.o asset_bg_png.o asset_bkg_png.o asset_bgm_png.o asset_disc_png.o asset_splash_bg_png.o \
 	asset_splash_logo_png.o asset_splash_appname_png.o asset_splash_credits_png.o asset_select_png.o \
 	asset_start_png.o asset_triangle_png.o asset_circle_png.o asset_cross_png.o asset_r2_png.o asset_square_png.o \
-	asset_system_lua.o asset_ui_lua.o asset_images_lua.o asset_pops_profiles_lua.o
+	asset_system_lua.o asset_ui_lua.o asset_images_lua.o asset_pops_profiles_lua.o \
+	asset_usbd_irx_usbexfat.o asset_usbhdfsd_irx_usbexfat.o asset_usbd_irx_mx4sio.o asset_usbhdfsd_irx_mx4sio.o \
+	asset_usbd_irx_mmce.o asset_usbhdfsd_irx_mmce.o asset_icon_sys_mx4sio.o asset_list_icn_mx4sio.o asset_del_icn_mx4sio.o \
+	asset_icon_sys_mmce.o asset_list_icn_mmce.o asset_del_icn_mmce.o asset_icon_sys_usbexfat.o asset_list_icn_usbexfat.o \
+	asset_del_icn_usbexfat.o
 
 EE_OBJS = $(APP_CORE) $(LUA_LIBS) $(IOP_MODULES) $(EMBEDDED_RSC)
 
@@ -165,6 +169,37 @@ $(EE_ASM_DIR)asset_images_lua.c: bin/POPSLDR/images.lua | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_images_lua
 $(EE_ASM_DIR)asset_pops_profiles_lua.c: bin/POPSLDR/pops_profiles.lua | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_pops_profiles_lua
+
+$(EE_ASM_DIR)asset_usbd_irx_usbexfat.c: bin/POPSLDR/usbd.irx.usbexfat | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_usbd_irx_usbexfat
+$(EE_ASM_DIR)asset_usbhdfsd_irx_usbexfat.c: bin/POPSLDR/usbhdfsd.irx.usbexfat | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_usbhdfsd_irx_usbexfat
+$(EE_ASM_DIR)asset_usbd_irx_mx4sio.c: bin/POPSLDR/usbd.irx.mx4sio | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_usbd_irx_mx4sio
+$(EE_ASM_DIR)asset_usbhdfsd_irx_mx4sio.c: bin/POPSLDR/usbhdfsd.irx.mx4sio | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_usbhdfsd_irx_mx4sio
+$(EE_ASM_DIR)asset_usbd_irx_mmce.c: bin/POPSLDR/usbd.irx.mmce | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_usbd_irx_mmce
+$(EE_ASM_DIR)asset_usbhdfsd_irx_mmce.c: bin/POPSLDR/usbhdfsd.irx.mmce | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_usbhdfsd_irx_mmce
+$(EE_ASM_DIR)asset_icon_sys_mx4sio.c: bin/POPSLDR/icon.sys.mx4sio | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_icon_sys_mx4sio
+$(EE_ASM_DIR)asset_list_icn_mx4sio.c: bin/POPSLDR/list.icn.mx4sio | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_list_icn_mx4sio
+$(EE_ASM_DIR)asset_del_icn_mx4sio.c: bin/POPSLDR/del.icn.mx4sio | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_del_icn_mx4sio
+$(EE_ASM_DIR)asset_icon_sys_mmce.c: bin/POPSLDR/icon.sys.mmce | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_icon_sys_mmce
+$(EE_ASM_DIR)asset_list_icn_mmce.c: bin/POPSLDR/list.icn.mmce | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_list_icn_mmce
+$(EE_ASM_DIR)asset_del_icn_mmce.c: bin/POPSLDR/del.icn.mmce | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_del_icn_mmce
+$(EE_ASM_DIR)asset_icon_sys_usbexfat.c: bin/POPSLDR/icon.sys.usbexfat | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_icon_sys_usbexfat
+$(EE_ASM_DIR)asset_list_icn_usbexfat.c: bin/POPSLDR/list.icn.usbexfat | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_list_icn_usbexfat
+$(EE_ASM_DIR)asset_del_icn_usbexfat.c: bin/POPSLDR/del.icn.usbexfat | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_del_icn_usbexfat
 
 #------------------------------------------------------------------#
 

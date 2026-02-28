@@ -61,6 +61,36 @@ extern unsigned char asset_images_lua[];
 extern unsigned int size_asset_images_lua;
 extern unsigned char asset_pops_profiles_lua[];
 extern unsigned int size_asset_pops_profiles_lua;
+extern unsigned char asset_usbd_irx_usbexfat[];
+extern unsigned int size_asset_usbd_irx_usbexfat;
+extern unsigned char asset_usbhdfsd_irx_usbexfat[];
+extern unsigned int size_asset_usbhdfsd_irx_usbexfat;
+extern unsigned char asset_usbd_irx_mx4sio[];
+extern unsigned int size_asset_usbd_irx_mx4sio;
+extern unsigned char asset_usbhdfsd_irx_mx4sio[];
+extern unsigned int size_asset_usbhdfsd_irx_mx4sio;
+extern unsigned char asset_usbd_irx_mmce[];
+extern unsigned int size_asset_usbd_irx_mmce;
+extern unsigned char asset_usbhdfsd_irx_mmce[];
+extern unsigned int size_asset_usbhdfsd_irx_mmce;
+extern unsigned char asset_icon_sys_mx4sio[];
+extern unsigned int size_asset_icon_sys_mx4sio;
+extern unsigned char asset_list_icn_mx4sio[];
+extern unsigned int size_asset_list_icn_mx4sio;
+extern unsigned char asset_del_icn_mx4sio[];
+extern unsigned int size_asset_del_icn_mx4sio;
+extern unsigned char asset_icon_sys_mmce[];
+extern unsigned int size_asset_icon_sys_mmce;
+extern unsigned char asset_list_icn_mmce[];
+extern unsigned int size_asset_list_icn_mmce;
+extern unsigned char asset_del_icn_mmce[];
+extern unsigned int size_asset_del_icn_mmce;
+extern unsigned char asset_icon_sys_usbexfat[];
+extern unsigned int size_asset_icon_sys_usbexfat;
+extern unsigned char asset_list_icn_usbexfat[];
+extern unsigned int size_asset_list_icn_usbexfat;
+extern unsigned char asset_del_icn_usbexfat[];
+extern unsigned int size_asset_del_icn_usbexfat;
 
 #define ASSET_ENTRY(key_name, symbol_name) { key_name, symbol_name, (size_t)size_##symbol_name }
 
@@ -91,6 +121,22 @@ static const embedded_asset_t g_embedded_assets[] = {
 	ASSET_ENTRY("ui.lua", asset_ui_lua),
 	ASSET_ENTRY("images.lua", asset_images_lua),
 	ASSET_ENTRY("pops_profiles.lua", asset_pops_profiles_lua),
+	ASSET_ENTRY("usbd.irx.usbexfat", asset_usbd_irx_usbexfat),
+	ASSET_ENTRY("usbhdfsd.irx.usbexfat", asset_usbhdfsd_irx_usbexfat),
+	ASSET_ENTRY("usbd.irx.mx4sio", asset_usbd_irx_mx4sio),
+	ASSET_ENTRY("usbhdfsd.irx.mx4sio", asset_usbhdfsd_irx_mx4sio),
+	ASSET_ENTRY("usbd.irx.mmce", asset_usbd_irx_mmce),
+	ASSET_ENTRY("usbhdfsd.irx.mmce", asset_usbhdfsd_irx_mmce),
+	ASSET_ENTRY("icon.sys.mx4sio", asset_icon_sys_mx4sio),
+	ASSET_ENTRY("list.icn.mx4sio", asset_list_icn_mx4sio),
+	ASSET_ENTRY("del.icn.mx4sio", asset_del_icn_mx4sio),
+	ASSET_ENTRY("icon.sys.mmce", asset_icon_sys_mmce),
+	ASSET_ENTRY("list.icn.mmce", asset_list_icn_mmce),
+	ASSET_ENTRY("del.icn.mmce", asset_del_icn_mmce),
+	ASSET_ENTRY("icon.sys.usbexfat", asset_icon_sys_usbexfat),
+	ASSET_ENTRY("list.icn.usbexfat", asset_list_icn_usbexfat),
+	ASSET_ENTRY("del.icn.usbexfat", asset_del_icn_usbexfat),
+
 
 	ASSET_ENTRY("POPSLDR/IMG/USB.png", asset_usb_png),
 	ASSET_ENTRY("POPSLDR/IMG/SMB.png", asset_smb_png),
@@ -117,7 +163,22 @@ static const embedded_asset_t g_embedded_assets[] = {
 	ASSET_ENTRY("POPSLDR/system.lua", asset_system_lua),
 	ASSET_ENTRY("POPSLDR/ui.lua", asset_ui_lua),
 	ASSET_ENTRY("POPSLDR/images.lua", asset_images_lua),
-	ASSET_ENTRY("POPSLDR/pops_profiles.lua", asset_pops_profiles_lua)
+	ASSET_ENTRY("POPSLDR/pops_profiles.lua", asset_pops_profiles_lua),
+	ASSET_ENTRY("POPSLDR/usbd.irx.usbexfat", asset_usbd_irx_usbexfat),
+	ASSET_ENTRY("POPSLDR/usbhdfsd.irx.usbexfat", asset_usbhdfsd_irx_usbexfat),
+	ASSET_ENTRY("POPSLDR/usbd.irx.mx4sio", asset_usbd_irx_mx4sio),
+	ASSET_ENTRY("POPSLDR/usbhdfsd.irx.mx4sio", asset_usbhdfsd_irx_mx4sio),
+	ASSET_ENTRY("POPSLDR/usbd.irx.mmce", asset_usbd_irx_mmce),
+	ASSET_ENTRY("POPSLDR/usbhdfsd.irx.mmce", asset_usbhdfsd_irx_mmce),
+	ASSET_ENTRY("POPSLDR/icon.sys.mx4sio", asset_icon_sys_mx4sio),
+	ASSET_ENTRY("POPSLDR/list.icn.mx4sio", asset_list_icn_mx4sio),
+	ASSET_ENTRY("POPSLDR/del.icn.mx4sio", asset_del_icn_mx4sio),
+	ASSET_ENTRY("POPSLDR/icon.sys.mmce", asset_icon_sys_mmce),
+	ASSET_ENTRY("POPSLDR/list.icn.mmce", asset_list_icn_mmce),
+	ASSET_ENTRY("POPSLDR/del.icn.mmce", asset_del_icn_mmce),
+	ASSET_ENTRY("POPSLDR/icon.sys.usbexfat", asset_icon_sys_usbexfat),
+	ASSET_ENTRY("POPSLDR/list.icn.usbexfat", asset_list_icn_usbexfat),
+	ASSET_ENTRY("POPSLDR/del.icn.usbexfat", asset_del_icn_usbexfat)
 };
 
 static const embedded_asset_t *embedded_find(const char *key)
