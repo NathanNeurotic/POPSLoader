@@ -1698,8 +1698,20 @@ end
                 end
               end
             end
-            if mx4sio_root ~= nil and type(PLDR) == "table" and type(PLDR.SetMX4SIORoot) == "function" then
-              pcall(PLDR.SetMX4SIORoot, string.gsub(mx4sio_root, "POPS/$", ""))
+            if mx4sio_root ~= nil and type(PLDR) == "table" then
+              local mx4_root = string.gsub(mx4sio_root, "POPS/$", "")
+              PLDR.MX4SIO = PLDR.MX4SIO or {}
+              PLDR.MX4SIO.ROOT = mx4_root
+              PLDR.MX4SIO.MASSINDX = nil
+              local mx4_idx = mx4_root:match("^mass(%d+):/")
+              if mx4_idx then
+                PLDR.MX4SIO.MASSINDX = tonumber(mx4_idx)
+              elseif mx4_root:match("^mass:/") then
+                PLDR.MX4SIO.MASSINDX = 0
+              end
+              if type(PLDR.SetMX4SIORoot) == "function" then
+                pcall(PLDR.SetMX4SIORoot, mx4_root)
+              end
             end
             if mx4sio_root == nil then
               local suffix = ""
