@@ -1464,44 +1464,18 @@ function PLDR.InitMX4SIOPopsRoot()
   PLDR.MX4SIO.READY = false
   PLDR.MX4SIO.ROOT = nil
 
-  if type(System) ~= "table" then
-    return nil
-  end
-
   for pass = 1, 2 do
-    if type(_G.ensureMx4sioInit) == "function" then
-      pcall(_G.ensureMx4sioInit)
-    end
-    if type(System.initMX4SIO) == "function" then
-      pcall(System.initMX4SIO)
-    end
-    if type(System.sleep) == "function" then
-      pcall(System.sleep, 0.05)
-    end
-    if type(System.refreshMassBackends) == "function" then
-      pcall(System.refreshMassBackends)
-    end
+    if type(_G.ensureMx4sioInit) == "function" then pcall(_G.ensureMx4sioInit) end
+    if type(System) == "table" and type(System.initMX4SIO) == "function" then pcall(System.initMX4SIO) end
+    if type(System) == "table" and type(System.sleep) == "function" then pcall(System.sleep, 0.05) end
 
     local info = nil
-    if type(System.findBDMByDriver) == "function" then
+    if type(System) == "table" and type(System.findBDMByDriver) == "function" then
       local ok, got = pcall(System.findBDMByDriver, "sdc")
-      if ok and type(got) == "table" then
-        info = got
-      end
-    elseif type(System.bdmList) == "function" then
-      local ok, list = pcall(System.bdmList)
-      if ok and type(list) == "table" then
-        for i = 1, #list do
-          local item = list[i]
-          if type(item) == "table" and string.lower(tostring(item.name or "")) == "sdc" then
-            info = item
-            break
-          end
-        end
-      end
+      if ok and type(got) == "table" then info = got end
     end
 
-    if info ~= nil and info.devNr ~= nil then
+    if info and info.devNr ~= nil then
       local dev = tonumber(info.devNr)
       if dev ~= nil then
         local root = (dev == 0) and "mass:/" or ("mass"..dev..":/")
