@@ -1003,18 +1003,38 @@ function PLDR.GetRootsByType(kind, mass_snapshot)
   end
 
   if wanted == "usb" then
-    for _, i in ipairs(state.ORDER or {}) do
-      local info = state.CACHE and state.CACHE[i] or nil
-      if info ~= nil and info.present then
-        local idx = tonumber(i)
-        local driver = string.lower(tostring(PLDR.GetMassDriverName(idx) or info.driver or ""))
-        local is_usb = string.find(driver, "usb", 1, true) ~= nil
-        local is_sdc = string.find(driver, "sdc", 1, true) ~= nil
-        if is_usb and not is_sdc then
-          if idx == 0 then
-            add_root("mass:/")
-          elseif idx ~= nil then
-            add_root("mass"..idx..":/")
+    if type(System) == "table" and type(System.bdmList) == "function" then
+      local ok, list = pcall(System.bdmList)
+      if ok and type(list) == "table" then
+        for i = 1, #list do
+          local info = list[i]
+          if type(info) == "table" then
+            local dev = tonumber(info.devNr)
+            local name = string.lower(tostring(info.name or ""))
+            if dev ~= nil and name == "usb" then
+              if dev == 0 then
+                add_root("mass:/")
+              else
+                add_root("mass"..dev..":/")
+              end
+            end
+          end
+        end
+      end
+    end
+
+    if #roots == 0 then
+      for _, i in ipairs(state.ORDER or {}) do
+        local info = state.CACHE and state.CACHE[i] or nil
+        if info ~= nil and info.present then
+          local idx = tonumber(i)
+          local driver = string.lower(tostring(PLDR.GetMassDriverName(idx) or info.driver or ""))
+          if idx ~= nil and driver == "usb" then
+            if idx == 0 then
+              add_root("mass:/")
+            else
+              add_root("mass"..idx..":/")
+            end
           end
         end
       end
@@ -1444,34 +1464,47 @@ function PLDR.InitMX4SIOPopsRoot()
   PLDR.MX4SIO.READY = false
   PLDR.MX4SIO.ROOT = nil
 
-  if type(_G.ensureMx4sioInit) == "function" then
-    pcall(_G.ensureMx4sioInit)
-  end
-  if type(System) == "table" and type(System.initMX4SIO) == "function" then
-    pcall(System.initMX4SIO)
-  end
-  if type(System) == "table" and type(System.sleep) == "function" then
-    pcall(System.sleep, 0.05)
-  end
-
   if type(System) ~= "table" then
     return nil
   end
 
-  if type(System.refreshMassBackends) == "function" then
-    pcall(System.refreshMassBackends)
-  end
+  for pass = 1, 2 do
+    if type(_G.ensureMx4sioInit) == "function" then
+      pcall(_G.ensureMx4sioInit)
+    end
+    if type(System.initMX4SIO) == "function" then
+      pcall(System.initMX4SIO)
+    end
+    if type(System.sleep) == "function" then
+      pcall(System.sleep, 0.05)
+    end
+    if type(System.refreshMassBackends) == "function" then
+      pcall(System.refreshMassBackends)
+    end
 
-  if type(System.getMassBackendInfo) ~= "function" then
-    return nil
-  end
+    local info = nil
+    if type(System.findBDMByDriver) == "function" then
+      local ok, got = pcall(System.findBDMByDriver, "sdc")
+      if ok and type(got) == "table" then
+        info = got
+      end
+    elseif type(System.bdmList) == "function" then
+      local ok, list = pcall(System.bdmList)
+      if ok and type(list) == "table" then
+        for i = 1, #list do
+          local item = list[i]
+          if type(item) == "table" and string.lower(tostring(item.name or "")) == "sdc" then
+            info = item
+            break
+          end
+        end
+      end
+    end
 
-  for i = 0, 9 do
-    local ok, info = pcall(System.getMassBackendInfo, i)
-    if ok and type(info) == "table" then
-      local driver = string.lower(tostring(info.driver or ""))
-      if driver == "sdc" then
-        local root = (i == 0) and "mass:/" or ("mass"..i..":/")
+    if info ~= nil and info.devNr ~= nil then
+      local dev = tonumber(info.devNr)
+      if dev ~= nil then
+        local root = (dev == 0) and "mass:/" or ("mass"..dev..":/")
         local pops = root.."POPS/"
         if doesFolderExist(pops) then
           PLDR.MX4SIO.READY = true
