@@ -47,11 +47,6 @@ IMG = setmetatable({}, {
     if IMG_FAILED[key] then return nil end
     local source = IMG_SOURCES[key]
     if source == nil then return nil end
-    if BOOT_PROF and BOOT_PROF.stamp and not BOOT_PROF.textures_ready then
-      BOOT_PROF.textures_ready = true
-      BOOT_PROF.stamp("UI assets init (textures)")
-    end
-
     local img = nil
     if type(System) == "table" and type(System.getEmbeddedAsset) == "function" and type(Graphics) == "table" and type(Graphics.loadImageEmbedded) == "function" then
       local ok, blob = pcall(System.getEmbeddedAsset, source)

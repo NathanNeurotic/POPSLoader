@@ -29,12 +29,6 @@ local function EaseInOutCubic(t)
   local f = -2 * t + 2
   return 1 - (f * f * f) / 2
 end
-local function GuardTrace()
-  if debug ~= nil and debug.traceback ~= nil then
-    return debug.traceback("TRACE", 2)
-  end
-  return "TRACE unavailable"
-end
 local function SafeDoesFileExist(path)
   if path == nil or path == "" then return false end
   if type(doesFileExist) == "function" then
