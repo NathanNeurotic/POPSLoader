@@ -1628,19 +1628,17 @@ end
             if type(System) == "table" and type(System.initMMCE) == "function" then
               pcall(System.initMMCE)
             end
-            PLDR.RefreshMassBackends()
-            local slots = PLDR.GetRootsByType("mmce")
+            local slots = PLDR.GetMMCESlots()
             if #slots < 1 then
               UI.Notif_queue.add("No MMCE device found (mmce0/mmce1).")
               PLDR.CleanupGameList()
               PLDR.GAMEPATH = ""
               UI.SceneChange(UI.SCENES.GSMB)
             else
-              PLDR.MMCE.SLOTS = slots
-              local mmce_prefix = PLDR.MMCE.PREFIX
-              if mmce_prefix == nil or not doesFolderExist(mmce_prefix) then
-                mmce_prefix = PLDR.SetMMCESlot(1)
+              if PLDR.MMCE.PREFIX == nil then
+                PLDR.SetMMCESlot(1)
               end
+              local mmce_prefix = PLDR.MMCE.PREFIX or PLDR.SetMMCESlot(1)
               if mmce_prefix == nil then
                 UI.Notif_queue.add("No MMCE device found (mmce0/mmce1).")
                 return

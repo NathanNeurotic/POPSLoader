@@ -647,13 +647,6 @@ function PLDR.GetRootsByType(kind)
       table.insert(roots, "mx4sio0:/")
       table.insert(roots, "mx4sio:/")
     end
-  elseif wanted == "mmce" then
-    local candidates = {"mmce0:/", "mmce1:/"}
-    for i = 1, #candidates do
-      if doesFolderExist(candidates[i]) then
-        table.insert(roots, candidates[i])
-      end
-    end
   end
   return roots
 end
@@ -839,9 +832,12 @@ function PLDR.DetectMMCESlot()
   PLDR.MMCE.PROBED = true
   PLDR.MMCE.SLOTS = {}
   PLDR.MMCE.INDEX = 1
-  local roots = PLDR.GetRootsByType("mmce")
-  for i = 1, #roots do
-    table.insert(PLDR.MMCE.SLOTS, roots[i])
+  local candidates = {"mmce0:/", "mmce1:/"}
+  for i = 1, #candidates do
+    local candidate = candidates[i]
+    if doesFolderExist(candidate) then
+      table.insert(PLDR.MMCE.SLOTS, candidate)
+    end
   end
   if #PLDR.MMCE.SLOTS > 0 then
     PLDR.MMCE.PREFIX = PLDR.MMCE.SLOTS[PLDR.MMCE.INDEX]
