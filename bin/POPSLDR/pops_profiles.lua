@@ -5,7 +5,6 @@
  |_|  \___/|_|  |___/____\___/\__,_\__,_\___|_|  
   Licensed under GNU General public license v3.0
 --]]
-LOG("Registering POPStarter profiles...")
 local DEFAULT_PROFILE = 1 -- change this for a different default profile. default package points to local popstarter path
 PLDR.DEFAULT_PROFILE = DEFAULT_PROFILE
 -- to register an ELF that is stored on the same folder than POPSLOADER, please do it this way:

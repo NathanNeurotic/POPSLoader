@@ -6,7 +6,6 @@
   Licensed under GNU General public license v3.0
 --]]
 
-LOG("Registering images")
 --- Add your images to this table, just write the name of the file.
 --- FILES MUST HAVE EXTENSION. filename is parsed to create the access key: USB.PNG will be accesed by typing `IMG["USB"]`
 local IMG_REGISTRATIONS = {
@@ -91,4 +90,3 @@ local registered_count = 0
 for _, _ in pairs(IMG_SOURCES) do
   registered_count = registered_count + 1
 end
-LOGF("%d images registered (lazy)", registered_count)

@@ -12,8 +12,6 @@
   Licensed under GNU General public license v3.0
 --]]
 local BOOT_PATH_RAW = System.currentDirectory()
-LOG("system.lua start")
-LOG("BOOT_PATH_RAW="..tostring(BOOT_PATH_RAW))
 local function EnsureTrailingSlash(path)
   if path == nil then
     return nil
@@ -24,7 +22,6 @@ local function EnsureTrailingSlash(path)
   return path.."/"
 end
 _G.EnsureTrailingSlash = EnsureTrailingSlash
-LOG("EnsureTrailingSlash loaded from system.lua")
 local function NormalizeDeviceRoot(path)
   if path == nil or path == "" then return path end
   if string.match(path, "^host:/") then
@@ -74,8 +71,6 @@ function JoinPath(base, rel)
 end
 
 local APP_DIR_LOCAL = NormalizeDirPath(APP_DIR or BOOT_PATH_RAW)
-LOG("APP_DIR_NORM="..APP_DIR_LOCAL)
-LOG("APP_DIR_POPSTARTER_JOIN="..JoinPath(APP_DIR_LOCAL, "POPSTARTER.ELF"))
 local SELECTOR_MODE = "basename"
 
 local function ResolveAsset(rel)
@@ -155,7 +150,6 @@ local function LoadIrxFromDir(dir)
       if name ~= nil and string.lower(string.sub(name, -4)) == ".irx" then
         local PATH = ResolveIrx(name) or JoinPath(normalized, name)
         local ID, RET = IOP.loadModule(PATH)
-        LOG(PATH, ID, RET)
         loaded = true
       end
     end
@@ -214,7 +208,6 @@ local function DetectMX4SIOPrefixHint()
 end
 PLDR.MX4SIO.PREFIX_HINT = DetectMX4SIOPrefixHint()
 if PLDR.MX4SIO.PREFIX_HINT ~= nil then
-  LOG("MX4SIO prefix hint: "..PLDR.MX4SIO.PREFIX_HINT)
 end
 if BOOTPATH ~= nil then
   PLDR.HDD.LOADSTATE = 1
@@ -233,35 +226,23 @@ if MMCE_SLOT0_READY ~= nil and MMCE_SLOT0_READY >= 0 then
   end
   if #PLDR.MMCE.SLOTS > 0 then
     PLDR.MMCE.PREFIX = PLDR.MMCE.SLOTS[PLDR.MMCE.INDEX]
-    LOG("MMCE slot selected: "..PLDR.MMCE.PREFIX)
   else
-    LOG("MMCE not found")
   end
 end
 
 require("pops_profiles")
-LOG("system.lua: before require('ui')")
 local ok_ui, ui_or_err = pcall(require, "ui")
-LOG("system.lua: after require('ui')")
 if not ok_ui then
   local traceback = ui_or_err
   if debug ~= nil and debug.traceback ~= nil then
     traceback = debug.traceback(ui_or_err, 2)
   end
-  LOG("UI load failed")
-  LOG("APP_DIR:", APP_DIR_LOCAL)
-  LOG("Boot cwd:", System.currentDirectory())
-  LOG("package.path:", package.path)
   error("UI module failed to load (expected ui.lua to return/set UI): "..tostring(traceback))
 end
 if ui_or_err ~= nil and ui_or_err ~= true then
   UI = ui_or_err
 end
 if UI == nil then
-  LOG("UI global is nil after require('ui')")
-  LOG("APP_DIR:", APP_DIR_LOCAL)
-  LOG("Boot cwd:", System.currentDirectory())
-  LOG("package.path:", package.path)
   error("UI global not initialized (expected ui.lua to return UI or set _G.UI)")
 end
 UI.LASTSCENE = UI.SCENES.MMAIN
@@ -282,9 +263,7 @@ if UI.DEVLOCK ~= nil then
     UI.boot_locks[UI.DEVLOCK.MX4SIO] = true
   end
   if boot_name ~= nil then
-    LOG("Boot device detected:", boot_name, "prefix:", tostring(boot_prefix), "path:", tostring(boot_path))
   else
-    LOG("Boot device detection ambiguous; no boot locks set.", "prefix:", tostring(boot_prefix), "path:", tostring(boot_path))
   end
 end
 require("images")
@@ -380,7 +359,6 @@ local function EnsureDirectory(path)
   end
   local ok, err = pcall(System.createDirectory, path)
   if not ok then
-    LOG("CreateDirectory failed:", path, err)
   end
   return ok
 end
@@ -494,13 +472,11 @@ function PLDR.ResetPopstarterPack()
   local ok, err = RemoveDirectoryRecursive(POPSTARTER_PACK_ROOT)
   if not ok then
     UI.Notif_queue.add("POPSTARTER reset failed")
-    LOG("Reset POPSTARTER failed:", err)
     return false
   end
   local rm_ok, rm_err = pcall(System.removeDirectory, POPSTARTER_PACK_ROOT)
   if not rm_ok then
     UI.Notif_queue.add("POPSTARTER reset failed")
-    LOG("Remove POPSTARTER dir failed:", rm_err)
     return false
   end
   UI.Notif_queue.add("POPSTARTER reset: mc0:/POPSTARTER removed")
@@ -523,10 +499,8 @@ function PLDR.DetectMMCESlot()
   end
   if #PLDR.MMCE.SLOTS > 0 then
     PLDR.MMCE.PREFIX = PLDR.MMCE.SLOTS[PLDR.MMCE.INDEX]
-    LOG("MMCE slot selected: "..PLDR.MMCE.PREFIX)
     return PLDR.MMCE.PREFIX
   end
-  LOG("MMCE not found")
   return nil
 end
 
@@ -546,7 +520,6 @@ function PLDR.SetMMCESlot(index)
   if index > #slots then index = 1 end
   PLDR.MMCE.INDEX = index
   PLDR.MMCE.PREFIX = slots[index]
-  LOG("MMCE slot selected: "..PLDR.MMCE.PREFIX)
   return PLDR.MMCE.PREFIX
 end
 
@@ -588,7 +561,6 @@ function PLDR.CheckPOPStarterDEPS(device)
 end
 
 function PLDR.GetPS1GameLists(path, updating)
-  LOG("Listing games on ", path)
   local RET = {}
   local found_smth = false
   if path ~= nil then PLDR.GAMEPATH = path end
@@ -597,7 +569,6 @@ function PLDR.GetPS1GameLists(path, updating)
     for i = 1, #DIR do
       if not DIR[i].directory then -- not a folder
         if string.lower(string.sub(DIR[i].name,-4)) == ".vcd" then
-          LOG(" Found", DIR[i].name)
           found_smth = true
           if updating then
             table.insert(PLDR.GAMES, DIR[i].name)
@@ -608,7 +579,6 @@ function PLDR.GetPS1GameLists(path, updating)
       end
     end
   else
-    LOG("cannot opendir")
   end
   if found_smth then
     if not updating then
@@ -686,7 +656,6 @@ local function AppendHddGameList(partition, list_path, rel_prefix)
   end
   local DIR = System.listDirectory(list_path)
   if DIR == nil then
-    LOG("cannot opendir")
     return
   end
   for i = 1, #DIR do
@@ -698,7 +667,6 @@ local function AppendHddGameList(partition, list_path, rel_prefix)
         end
         local encoded = EncodeHddGameEntry(partition, relpath)
         if encoded ~= nil then
-          LOG(" Found", encoded)
           table.insert(PLDR.GAMES, encoded)
           PLDR.HDD.GAMEPARTS[encoded] = "hdd0:"..partition
         end
@@ -712,7 +680,6 @@ function PLDR.GetVCDGameID(path)
   local RET = "ERR"
   local fd = System.openFile(path, FREAD)
   if System.sizeFile(fd) < 0x10d900 then
-    LOG("ERROR: VCD Size is not big enough to pull ID")
   else
     System.seekFile(fd, 0x10c900, SET)
     local buffer = System.readFile(fd, 4096)
@@ -737,12 +704,10 @@ end
 
 function PLDR.HDD.CheckAvailableHddPopsParts()
   if not PLDR.HDD.HAS_CHECKED then --HDD is checked only once since it cannot be removed/replaced without damaging the console
-    LOG("Checking available __.POPS Partitions")
     if HDD.MountPartition("hdd0:__.POPS", 0, FIO_MT_RDONLY) then
       PLDR.HDD.MAINPART = true
       HDD.UMountPartition(0)
     end
-    LOG("__.POPS", PLDR.HDD.MAINPART)
     PLDR.HDD.FOUNDANY = PLDR.HDD.MAINPART
     for i=1, 9 do
       if HDD.MountPartition(("hdd0:__.POPS%d"):format(i), 0, FIO_MT_RDONLY) then
@@ -750,7 +715,6 @@ function PLDR.HDD.CheckAvailableHddPopsParts()
         PLDR.HDD.FOUNDANY = true
         HDD.UMountPartition(0)
       end
-      LOG("__.POPS"..i, PLDR.HDD.EXTRAPARTS[i])
     end
     PLDR.HDD.HAS_CHECKED = true
   end
@@ -811,16 +775,14 @@ function PLDR.LoadHDDModules()
 end
 
 function PLDR.CleanupGameList()
-  LOG("gamelist cleanup")
   local count = #PLDR.GAMES
   for i=0, count do PLDR.GAMES[i]=nil end
 end
 
 function PLDR.HDD.CreateCache()
   if not PLDR.HDD.USECACHE then return end
-  LOG("> HDD Cache Create")
   local C = ResolveWritablePath("hdd_gamecache.lua")
-  local temp = "LOG(\">HDD CACHE LOAD\")\nPLDR.HDDCACHE = {\n"
+  local temp = "PLDR.HDDCACHE = {\n"
   PLDR.HDD.BuildGameList()
   for i = 1, #PLDR.GAMES do
     temp = temp..("  %q,\n"):format(PLDR.GAMES[i])
@@ -833,19 +795,16 @@ function PLDR.HDD.CreateCache()
 end
 
 function PLDR.HDD.ReadCache()
-  LOG("> HDD Cache Read")
   local C = ResolveWritablePath("hdd_gamecache.lua")
   if doesFileExist(C) then
     local loader, load_err = loadfile(C)
     if loader == nil then
-      LOG("HDD cache load failed:", load_err)
       System.removeFile(C)
       PLDR.HDD.HAS_CHECKED = false
       return
     end
     local ok, run_err = pcall(loader)
     if not ok then
-      LOG("HDD cache run failed:", run_err)
       System.removeFile(C)
       PLDR.HDD.HAS_CHECKED = false
       return
@@ -855,7 +814,6 @@ function PLDR.HDD.ReadCache()
 end
 
 function PLDR.HDD.WipeCache(CACHE)
-  LOG("> HDD Cache Wipe")
   local C = ResolveWritablePath("hdd_gamecache.lua")
   if doesFileExist(C) then
     System.removeFile(C)
@@ -1239,7 +1197,6 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   else
     rc = System.loadELF(popstarter, reboot_iop)
   end
-  LOG(">>> UNHANDLED ERROR at Launching game '", context and context.game or "unknown", " via ", popstarter, " Failed")
   if (Timer.getTime(LaunchState.fade_timer) - LaunchState.fade_start) >= LaunchState.watchdog_ms then
     BlockLaunchFailure(
       "Launch timeout: exec did not transfer control",
@@ -1434,10 +1391,6 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   end
   local argv = {argv0_selector}
 
-  LOG("Boot APP_DIR: "..APP_DIR_LOCAL)
-  LOG("PopStarter selected: "..popstarter)
-  LOG("PopStarter:", popstarter, "VCD:", vcd_path, "mode:", source_mode, "argv_count:", #argv)
-  LOG("Resolved game path:", vcd_path)
   local context = {
     device_page = device_page,
     device_mode = device_mode,

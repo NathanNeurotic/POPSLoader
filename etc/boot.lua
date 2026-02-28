@@ -1,8 +1,3 @@
-function LOG(...)
-end
-function LOGF(S, ...)
-end
-
 POPSLDR_VER = "v1.0.0 - rev3"
 
 --- Processes a HDD full path into its components. (eg: `hdd0:__system:pfs:/osd110/hosdsys.elf`)
@@ -66,6 +61,6 @@ LFONT = load_boot_font_or_die()
 Font.ftSetCharSize(BFONT, 800, 800)
 Font.ftSetCharSize(SFONT, 600, 600)
 Font.ftSetCharSize(LFONT, 900, 900)
-function STOP() LOG("PROGRAM STOP") Screen.clear(Color.new(255,0,0)) Screen.flip() while true do end end
+function STOP() Screen.clear(Color.new(255,0,0)) Screen.flip() while true do end end
 
 require("system")
