@@ -367,6 +367,13 @@ function PLDR.EnsurePopstarterDir()
   return EnsureDirectory(PLDR.POPSTARTER_DIR)
 end
 
+function PLDR.AppDirPath(rel)
+  if rel == nil or rel == "" then
+    return APP_DIR_LOCAL
+  end
+  return JoinPath(APP_DIR_LOCAL, rel)
+end
+
 local function EncodeSettings()
   local lines = {
     "PROFILE="..tostring(tonumber(PLDR.SELECTED_PROFILE) or 1),
@@ -436,7 +443,7 @@ function PLDR.ApplyBdmaMode(mode_key)
   local had_failure = false
   for i = 1, #BDMA_COPY_FILES do
     local name = BDMA_COPY_FILES[i]
-    local source = APP_DIR_NORM..name..suffix
+    local source = PLDR.AppDirPath(name..suffix)
     local dest = POPSTARTER_PACK_ROOT.."/"..name
     if not doesFileExist(source) then
       had_failure = true
