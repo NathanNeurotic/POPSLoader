@@ -1289,7 +1289,13 @@ end
             if type(PLDR.ResolvePopstarterPath) == "function" then
               popstarter_path = PLDR.ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
             end
-            if not doesFileExist(popstarter_path) then
+            local popstarter_ok = false
+            if type(PLDR.PopstarterProbeWithEnsure) == "function" then
+              popstarter_ok = PLDR.PopstarterProbeWithEnsure(popstarter_path)
+            else
+              popstarter_ok = doesFileExist(popstarter_path)
+            end
+            if not popstarter_ok then
               UI.Notif_queue.add("Cant find POPSTARTER ELF\n"..tostring(popstarter_path))
               return
             end

@@ -119,6 +119,64 @@ local function IsMassPath(path)
   return path ~= nil and string.match(path, "^mass%d*:/") ~= nil
 end
 
+function PLDR.EnsureMmceReadyOnce()
+  if PLDR._mmce_ready then
+    return true
+  end
+
+  if type(_G.ensureMmceInit) == "function" then
+    pcall(_G.ensureMmceInit)
+  end
+  if type(System) == "table" and type(System.initMMCE) == "function" then
+    pcall(System.initMMCE)
+  end
+
+  PLDR._mmce_ready = true
+  return true
+end
+
+function PLDR.PopstarterProbeWithEnsure(path)
+  local function probe(p)
+    local candidate = tostring(p or "")
+    if candidate == "" then
+      return false
+    end
+    local ok, fd_or_err = pcall(System.openFile, candidate, FREAD)
+    if ok and type(fd_or_err) == "number" and fd_or_err >= 0 then
+      System.closeFile(fd_or_err)
+      return true
+    end
+    local exists_ok, exists = pcall(doesFileExist, candidate)
+    return exists_ok and exists == true
+  end
+
+  local candidate = tostring(path or "")
+  local low = string.lower(candidate)
+  local is_mass = low:find("^mass") ~= nil
+  local is_mmce = low:find("^mmce") ~= nil
+
+  for pass = 1, 2 do
+    if probe(candidate) then
+      return true
+    end
+    if pass == 1 then
+      if is_mass then
+        if type(PLDR) == "table" and type(PLDR.EnsureUsbMassReadyOnce) == "function" then
+          pcall(PLDR.EnsureUsbMassReadyOnce)
+        end
+      elseif is_mmce then
+        if type(PLDR) == "table" and type(PLDR.EnsureMmceReadyOnce) == "function" then
+          pcall(PLDR.EnsureMmceReadyOnce)
+        end
+      end
+      if type(System) == "table" and type(System.sleep) == "function" then
+        pcall(System.sleep, 0.05)
+      end
+    end
+  end
+  return false
+end
+
 local function ResolvePopstarterPath(path)
   local chosen = path
   if chosen == nil or chosen == "" then
@@ -126,14 +184,8 @@ local function ResolvePopstarterPath(path)
   elseif not IsAbsoluteDevicePath(chosen) then
     chosen = JoinPath(APP_DIR_LOCAL, chosen)
   end
-  if doesFileExist(chosen) then
+  if PLDR.PopstarterProbeWithEnsure(chosen) then
     return chosen
-  end
-  if IsMassPath(chosen) and type(PLDR) == "table" and type(PLDR.EnsureUsbMassReadyOnce) == "function" then
-    pcall(PLDR.EnsureUsbMassReadyOnce)
-    if doesFileExist(chosen) then
-      return chosen
-    end
   end
 
   local fallbacks = {
@@ -143,7 +195,7 @@ local function ResolvePopstarterPath(path)
   }
   for i = 1, #fallbacks do
     local candidate = fallbacks[i]
-    if candidate ~= chosen and doesFileExist(candidate) then
+    if candidate ~= chosen and PLDR.PopstarterProbeWithEnsure(candidate) then
       return candidate
     end
   end
@@ -1877,6 +1929,19 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   local argv0 = argv and argv[1] or nil
   local unpack_fn = table.unpack or unpack
   SetLaunchPhase(LaunchState.PHASE_VALIDATE)
+  if not PLDR.PopstarterProbeWithEnsure(popstarter) then
+    BlockLaunchFailure(
+      "popstarter missing",
+      popstarter,
+      context and context.device_page or "unknown",
+      argv and argv[1] or nil,
+      context and context.vcd_path or nil,
+      app_dir,
+      nil,
+      nil
+    )
+    return
+  end
   local open_ok, open_rc, open_stage, open_api, open_path = TryOpenForLaunch(popstarter)
   if not open_ok then
     BlockLaunchFailure(
