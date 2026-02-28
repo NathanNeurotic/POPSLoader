@@ -11,6 +11,8 @@
 
   Licensed under GNU General public license v3.0
 --]]
+_G.PLDR = _G.PLDR or {}
+PLDR = _G.PLDR
 local BOOT_PATH_RAW = System.currentDirectory()
 local function EnsureTrailingSlash(path)
   if path == nil then
@@ -200,7 +202,7 @@ if not loadedIrx then
   LoadIrxFromDir(JoinPath(APP_DIR_LOCAL, "POPSLDR/IRX"))
 end
 HDD_DIAG_BYPASS = 0
-PLDR = {
+local pldr_defaults = {
   REBOOT_IOP_WHILE_LOADING_POPSTARTER = 0;
   POPSTARTER_PATH = "mass:/POPS/POPSTARTER.ELF";--"mass:/POPS/POPSTARTER.ELF";
   CHECK_POPSTARTER_FILES = false;
@@ -234,6 +236,11 @@ PLDR = {
     INDEX = 1
   }
 }
+for k, v in pairs(pldr_defaults) do
+  if PLDR[k] == nil then
+    PLDR[k] = v
+  end
+end
 local function DetectMX4SIOPrefixHint()
   local mx_marker = JoinPath(APP_DIR_LOCAL, ".boot_mx4sio")
   if doesFileExist(mx_marker) then
