@@ -398,10 +398,21 @@ static int lua_get_mass_driver_name(lua_State *L)
 		return luaL_error(L, "Argument error: System.getMassDriverName(index) takes one argument.");
 	}
 	int index = luaL_checkinteger(L, 1);
-	char path[16];
+	char path[16] = {0};
+	const char *target = path;
 	char devid[8] = {0};
-	snprintf(path, sizeof(path), "mass%d:/", index);
-	int dd = fileXioOpen(path, O_RDONLY, 0);
+	if (index == 0) {
+		int dd_probe = fileXioDopen("mass:/");
+		if (dd_probe >= 0) {
+			fileXioDclose(dd_probe);
+			target = "mass:/";
+		} else {
+			target = "mass0:/";
+		}
+	} else {
+		snprintf(path, sizeof(path), "mass%d:/", index);
+	}
+	int dd = fileXioOpen(target, O_RDONLY, 0);
 	if (dd < 0) {
 		lua_pushnil(L);
 		return 1;

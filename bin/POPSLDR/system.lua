@@ -855,6 +855,52 @@ function PLDR.GetMassDriverName(index)
   return nil
 end
 
+function PLDR.NormalizeDriverCode(name)
+  if type(name) ~= "string" then
+    return nil, nil
+  end
+
+  local function collect_alpha3(source)
+    local out = {}
+    for i = 1, #source do
+      local ch = string.sub(source, i, i)
+      if string.byte(ch) == 0 then
+        break
+      end
+      if string.match(ch, "%a") ~= nil then
+        out[#out + 1] = string.lower(ch)
+        if #out == 3 then
+          return table.concat(out)
+        end
+      end
+    end
+    return nil
+  end
+
+  local function collect_non_nul3(source)
+    local out = {}
+    for i = 1, #source do
+      local ch = string.sub(source, i, i)
+      if string.byte(ch) == 0 then
+        break
+      end
+      out[#out + 1] = string.lower(ch)
+      if #out == 3 then
+        return table.concat(out)
+      end
+    end
+    return nil
+  end
+
+  local norm = collect_alpha3(name) or collect_non_nul3(name)
+  if norm == nil or #norm ~= 3 then
+    return nil, nil
+  end
+
+  local rev = string.sub(norm, 3, 3)..string.sub(norm, 2, 2)..string.sub(norm, 1, 1)
+  return norm, rev
+end
+
 function PLDR.FindMassByDriver(driver, max)
   local wanted = string.lower(tostring(driver or ""))
   if wanted == "" then
@@ -866,8 +912,9 @@ function PLDR.FindMassByDriver(driver, max)
   end
   max_index = CLAMP(math.floor(max_index), 0, 9)
   for i = 0, max_index do
-    local found = string.lower(tostring(PLDR.GetMassDriverName(i) or ""))
-    if found == wanted then
+    local name = PLDR.GetMassDriverName(i)
+    local norm, rev = PLDR.NormalizeDriverCode(name)
+    if norm == wanted or rev == wanted then
       return i
     end
   end

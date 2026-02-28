@@ -1681,11 +1681,12 @@ end
             end
           elseif UI.MainMenu.OPT == 2 then
             local mx4sio_root = nil
+            local mx_mass = nil
             local hint = nil
             PLDR.CleanupGameList()
             PLDR.GAMEPATH = ""
             if type(PLDR) == "table" and type(PLDR.FindMassByDriver) == "function" then
-              local mx_mass = PLDR.FindMassByDriver("sdc", 4)
+              mx_mass = PLDR.FindMassByDriver("sdc", 4)
               if mx_mass ~= nil then
                 local root = (mx_mass == 0) and "mass:/" or ("mass"..mx_mass..":/")
                 local pops = root.."POPS/"
@@ -1717,7 +1718,18 @@ end
               end
             end
             if mx4sio_root == nil then
-              UI.Notif_queue.add("No MX4SIO device found (POPS/ missing)")
+              local msg = "No MX4SIO device found (POPS/ missing)"
+              if mx_mass == nil and type(PLDR) == "table" and type(PLDR.GetMassDriverName) == "function" and type(PLDR.NormalizeDriverCode) == "function" then
+                local parts = {}
+                for i = 0, 4 do
+                  local raw = PLDR.GetMassDriverName(i)
+                  local norm = PLDR.NormalizeDriverCode(raw)
+                  local shown = norm or "nil"
+                  parts[#parts + 1] = tostring(i).."="..shown
+                end
+                msg = msg.."\nDrivers: "..table.concat(parts, " ")
+              end
+              UI.Notif_queue.add(msg)
               return
             else
               PLDR.CleanupGameList()
