@@ -322,20 +322,34 @@ local BDMA_SUFFIX = {
   MMCE = ".mmce"
 }
 
+PLDR.MASS = PLDR.MASS or {
+  CACHE = {},
+  ORDER = {},
+  REFRESHED = false
+}
+
 local function ReadWholeFile(path)
-  local fd = System.openFile(path, FREAD)
-  if fd == nil then
+  local ok_open, fd = pcall(System.openFile, path, FREAD)
+  if not ok_open or fd == nil or (type(fd) == "number" and fd < 0) then
     return nil, "open failed"
   end
   local chunks = {}
+  local ok = true
   while true do
-    local buffer = System.readFile(fd, 4096)
+    local ok_read, buffer = pcall(System.readFile, fd, 32768)
+    if not ok_read then
+      ok = false
+      break
+    end
     if buffer == nil or buffer == "" then
       break
     end
     chunks[#chunks + 1] = buffer
   end
-  System.closeFile(fd)
+  pcall(System.closeFile, fd)
+  if not ok then
+    return nil, "read failed"
+  end
   return table.concat(chunks)
 end
 
@@ -344,12 +358,23 @@ local function WriteAtomic(dest, data)
   if doesFileExist(tmp) then
     pcall(System.removeFile, tmp)
   end
-  local fd = System.openFile(tmp, FCREATE)
-  if fd == nil then
+  local ok_open, fd = pcall(System.openFile, tmp, FCREATE)
+  if not ok_open or fd == nil or (type(fd) == "number" and fd < 0) then
     return false
   end
-  System.writeFile(fd, data, string.len(data))
-  System.closeFile(fd)
+  local total = string.len(data)
+  local offset = 1
+  while offset <= total do
+    local chunk = string.sub(data, offset, math.min(offset + 32768 - 1, total))
+    local ok_write = pcall(System.writeFile, fd, chunk, string.len(chunk))
+    if not ok_write then
+      pcall(System.closeFile, fd)
+      pcall(System.removeFile, tmp)
+      return false
+    end
+    offset = offset + string.len(chunk)
+  end
+  pcall(System.closeFile, fd)
   if doesFileExist(dest) then
     pcall(System.removeFile, dest)
   end
@@ -362,12 +387,55 @@ local function WriteAtomic(dest, data)
 end
 
 local function CopyExternalAtomic(source, dest)
-  local data, err = ReadWholeFile(source)
-  if data == nil then
-    return false, err
+  local tmp = dest..".tmp"
+  if doesFileExist(tmp) then
+    pcall(System.removeFile, tmp)
   end
-  if not WriteAtomic(dest, data) then
-    return false, "write failed"
+
+  local ok_src, src_fd = pcall(System.openFile, source, FREAD)
+  if not ok_src or src_fd == nil or (type(src_fd) == "number" and src_fd < 0) then
+    return false, "open source failed"
+  end
+
+  local ok_dst, dst_fd = pcall(System.openFile, tmp, FCREATE)
+  if not ok_dst or dst_fd == nil or (type(dst_fd) == "number" and dst_fd < 0) then
+    pcall(System.closeFile, src_fd)
+    return false, "open destination failed"
+  end
+
+  local copied = true
+  while true do
+    local ok_read, chunk = pcall(System.readFile, src_fd, 32768)
+    if not ok_read then
+      copied = false
+      break
+    end
+    if chunk == nil or chunk == "" then
+      break
+    end
+    local chunk_len = string.len(chunk)
+    local ok_write, wrote = pcall(System.writeFile, dst_fd, chunk, chunk_len)
+    if not ok_write or type(wrote) ~= "number" or wrote ~= chunk_len then
+      copied = false
+      break
+    end
+  end
+
+  pcall(System.closeFile, src_fd)
+  pcall(System.closeFile, dst_fd)
+
+  if not copied then
+    pcall(System.removeFile, tmp)
+    return false, "copy failed"
+  end
+
+  if doesFileExist(dest) then
+    pcall(System.removeFile, dest)
+  end
+  local ok_rename = pcall(System.rename, tmp, dest)
+  if not ok_rename then
+    pcall(System.removeFile, tmp)
+    return false, "rename failed"
   end
   return true
 end
@@ -498,6 +566,10 @@ end
 
 function PLDR.GetMassDriverName(index)
   if index == nil then return nil end
+  local cached = PLDR.MASS.CACHE[index]
+  if cached ~= nil and cached.driver ~= nil then
+    return cached.driver
+  end
   if type(System) == "table" then
     if type(System.getMassDriverName) == "function" then
       local ok, driver = pcall(System.getMassDriverName, index)
@@ -513,6 +585,150 @@ function PLDR.GetMassDriverName(index)
     end
   end
   return nil
+end
+
+function PLDR.RefreshMassBackends()
+  local new_cache = {}
+  local new_order = {}
+  local seen_index = {}
+
+  local function classify_driver(driver)
+    local d = string.lower(tostring(driver or ""))
+    if string.find(d, "usb", 1, true) ~= nil then
+      return "usb"
+    end
+    if string.find(d, "sdc", 1, true) ~= nil or string.find(d, "mx4sio", 1, true) ~= nil then
+      return "mx4sio"
+    end
+    return "other"
+  end
+
+  if type(System) == "table" and type(System.refreshMassBackends) == "function" then
+    local ok, refreshed = pcall(System.refreshMassBackends)
+    if not ok or not refreshed then
+      return false
+    end
+  end
+
+  local listed = false
+  if type(System) == "table" and type(System.bdmList) == "function" then
+    local ok, list = pcall(System.bdmList)
+    if ok and type(list) == "table" then
+      listed = true
+      for i = 1, #list do
+        local info = list[i]
+        if type(info) == "table" and type(info.devNr) == "number" then
+          local idx = tonumber(info.devNr)
+          local driver = string.lower(tostring(info.name or ""))
+          local kind = classify_driver(driver)
+          new_cache[idx] = {
+            present = true,
+            driver = driver,
+            kind = kind
+          }
+          if not seen_index[idx] then
+            table.insert(new_order, idx)
+            seen_index[idx] = true
+          end
+        end
+      end
+    end
+  end
+
+  if not listed and type(System) == "table" and type(System.getMassBackendInfo) == "function" then
+    -- Compatibility fallback: bounded probe for older runtimes without bdmList details.
+    for i = 0, 31 do
+      local ok, info = pcall(System.getMassBackendInfo, i)
+      if ok and type(info) == "table" and info.present == true then
+        local idx = tonumber(info.index or i)
+        local driver = string.lower(tostring(info.driver or ""))
+        local kind = classify_driver(driver)
+        new_cache[idx] = {
+          present = true,
+          driver = driver,
+          kind = kind
+        }
+        if not seen_index[idx] then
+          table.insert(new_order, idx)
+          seen_index[idx] = true
+        end
+      end
+    end
+  end
+
+  table.sort(new_order)
+  PLDR.MASS.CACHE = new_cache
+  PLDR.MASS.ORDER = new_order
+  PLDR.MASS.REFRESHED = true
+  return true
+end
+
+function PLDR.InvalidateMassBackends()
+  PLDR.MASS.CACHE = {}
+  PLDR.MASS.ORDER = {}
+  PLDR.MASS.REFRESHED = false
+end
+
+function PLDR.RefreshMassStateSnapshot()
+  PLDR.InvalidateMassBackends()
+  if not PLDR.RefreshMassBackends() then
+    return nil
+  end
+  local snapshot = {
+    CACHE = {},
+    ORDER = {}
+  }
+  for i = 1, #PLDR.MASS.ORDER do
+    local idx = PLDR.MASS.ORDER[i]
+    local item = PLDR.MASS.CACHE[idx]
+    snapshot.ORDER[i] = idx
+    if item ~= nil then
+      snapshot.CACHE[idx] = {
+        present = item.present == true,
+        driver = item.driver,
+        kind = item.kind
+      }
+    end
+  end
+  return snapshot
+end
+
+function PLDR.GetRootsByType(kind, mass_snapshot)
+  local roots = {}
+  local wanted = string.lower(tostring(kind or ""))
+  local state = mass_snapshot
+  if state == nil then
+    if not PLDR.MASS.REFRESHED then
+      PLDR.RefreshMassBackends()
+    end
+    state = PLDR.MASS
+  end
+
+  if wanted == "usb" then
+    for _, i in ipairs(state.ORDER or {}) do
+      local info = state.CACHE and state.CACHE[i] or nil
+      if info ~= nil and info.present and info.kind == "usb" then
+        if i == 0 then
+          table.insert(roots, "mass:/")
+        end
+        table.insert(roots, "mass"..i..":/")
+      end
+    end
+  elseif wanted == "mx4sio" then
+    local has_mx = false
+    for _, i in ipairs(state.ORDER or {}) do
+      local info = state.CACHE and state.CACHE[i] or nil
+      if info ~= nil and info.present and info.kind == "mx4sio" then
+        has_mx = true
+        break
+      end
+    end
+    if has_mx then
+      table.insert(roots, "mx4sio0:/")
+      table.insert(roots, "mx4sio:/")
+    end
+  end
+  return roots
 end
 
 function PLDR.EnsureBackendForAppDir()
@@ -566,7 +782,12 @@ end
 
 function PLDR.ApplyBdmaMode(mode_key)
   local selected = mode_key or "FAT32"
-  PLDR.EnsurePopstarterDir()
+  if not PLDR.EnsurePopstarterDir() then
+    if UI ~= nil and UI.Notif_queue ~= nil then
+      UI.Notif_queue.add("Cannot access mc0:/POPSTARTER")
+    end
+    return false
+  end
   if selected == "FAT32" then
     pcall(System.removeFile, POPSTARTER_PACK_ROOT.."/usbd.irx")
     pcall(System.removeFile, POPSTARTER_PACK_ROOT.."/usbhdfsd.irx")
@@ -833,35 +1054,53 @@ function PLDR.BuildUsbGameListMulti()
 end
 
 function PLDR.InitMX4SIOPopsRoot()
-  local roots = {
-    "mx4sio:/POPS/",
-    "mx4sio0:/POPS/"
-  }
-
-  if type(System) == "table" and type(System.ensureBDMFatFs) == "function" then
-    pcall(System.ensureBDMFatFs)
-  end
-
   PLDR.MX4SIO.READY = false
   PLDR.MX4SIO.ROOT = nil
 
-  for i = 1, #roots do
-    if type(_G.ensureMx4sioInit) == "function" then
-      pcall(_G.ensureMx4sioInit)
-    end
+  for pass = 1, 2 do
     if type(System) == "table" and type(System.initMX4SIO) == "function" then
       pcall(System.initMX4SIO)
     end
-
-    local path = roots[i]
-    local dir = System.listDirectory(path)
-    if dir ~= nil then
-      PLDR.MX4SIO.READY = true
-      PLDR.MX4SIO.ROOT = string.match(path, "^(mx4sio%d*:/)") or "mx4sio:/"
-      return path
+    if type(System) == "table" and type(System.sleep) == "function" then
+      pcall(System.sleep, 1)
+    end
+    local snapshot = PLDR.RefreshMassStateSnapshot()
+    local roots = PLDR.GetRootsByType("mx4sio", snapshot)
+    for i = 1, #roots do
+      local pops_root = roots[i].."POPS/"
+      if doesFolderExist(pops_root) then
+        PLDR.MX4SIO.READY = true
+        PLDR.MX4SIO.ROOT = roots[i]
+        return pops_root
+      end
     end
   end
+  return nil
+end
 
+function PLDR.BuildMassGameListByType(kind, mass_snapshot)
+  PLDR.CleanupGameList()
+  local roots = PLDR.GetRootsByType(kind, mass_snapshot)
+  local found_any = false
+  for i = 1, #roots do
+    local pops_root = roots[i].."POPS/"
+    if doesFolderExist(pops_root) then
+      local DIR = System.listDirectory(pops_root)
+      if DIR ~= nil then
+        for j = 1, #DIR do
+          local entry = DIR[j]
+          if not entry.directory and string.lower(string.sub(entry.name, -4)) == ".vcd" then
+            found_any = true
+            table.insert(PLDR.GAMES, pops_root.."|"..entry.name)
+          end
+        end
+      end
+    end
+  end
+  if found_any then
+    table.sort(PLDR.GAMES)
+    return PLDR.GAMES
+  end
   return nil
 end
 
