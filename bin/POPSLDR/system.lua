@@ -490,7 +490,7 @@ local function GetFileSizeSafe(path)
   return size_val
 end
 
-local function CopyExternalAtomicBounded(source, dest)
+local function CopyExternalAtomicBounded(source, dest, expected_size)
   local tmp = dest..".tmp"
   if doesFileExist(tmp) then
     pcall(System.removeFile, tmp)
@@ -502,9 +502,18 @@ local function CopyExternalAtomicBounded(source, dest)
   end
 
   local expected = nil
-  local ok_size, size_val = pcall(System.sizeFile, src_fd)
-  if ok_size and type(size_val) == "number" and size_val > 0 then
-    expected = size_val
+  if type(expected_size) == "number" and expected_size > 0 then
+    expected = expected_size
+  else
+    local ok_size, size_val = pcall(System.sizeFile, src_fd)
+    if ok_size and type(size_val) == "number" and size_val > 0 then
+      expected = size_val
+    end
+  end
+
+  if expected == nil then
+    pcall(System.closeFile, src_fd)
+    return false, "size unknown"
   end
 
   local ok_dst, dst_fd = pcall(System.openFile, tmp, FCREATE)
@@ -520,7 +529,7 @@ local function CopyExternalAtomicBounded(source, dest)
 
   while true do
     iters = iters + 1
-    if expected ~= nil and copied_bytes >= expected then
+    if copied_bytes >= expected then
       break
     end
     if iters > MAX_ITERS then
@@ -545,7 +554,7 @@ local function CopyExternalAtomicBounded(source, dest)
     end
 
     copied_bytes = copied_bytes + chunk_len
-    if expected ~= nil and copied_bytes > expected + 65536 then
+    if copied_bytes > expected + 65536 then
       copied = false
       break
     end
@@ -855,13 +864,17 @@ function PLDR.EnsureUsbMassReadyOnce()
     return true
   end
 
-  if type(System) == "table" and type(System.initUSBMass) == "function" then
+  if type(System) == "table" and type(System.ensureUsbMass) == "function" then
+    pcall(System.ensureUsbMass)
+  elseif type(System) == "table" and type(System.initUSBMass) == "function" then
     pcall(System.initUSBMass)
   end
   if type(System) == "table" and type(System.initUSB) == "function" then
     pcall(System.initUSB)
   end
-  if type(PLDR.RefreshMassBackends) == "function" then
+  if type(PLDR.RefreshMassStateSnapshot) == "function" then
+    pcall(PLDR.RefreshMassStateSnapshot)
+  elseif type(PLDR.RefreshMassBackends) == "function" then
     pcall(PLDR.RefreshMassBackends)
   end
 
@@ -1055,7 +1068,7 @@ function PLDR.ApplyBdmaMode(mode_key)
       local src_size = GetFileSizeSafe(source)
       local dst_size = GetFileSizeSafe(dest)
       if src_size == nil or dst_size == nil or src_size ~= dst_size then
-        local ok, copied = pcall(CopyExternalAtomicBounded, source, dest)
+        local ok, copied = pcall(CopyExternalAtomicBounded, source, dest, src_size)
         if not ok or not copied then
           had_failure = true
           return false
