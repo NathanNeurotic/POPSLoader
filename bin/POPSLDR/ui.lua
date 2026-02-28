@@ -991,8 +991,7 @@ end
         end
         if type(System) == "table" and type(System.loadELF) == "function" then
           UI.LAUNCHING = true
-          local reboot_iop = 0
-          System.loadELF(boot_path, reboot_iop, boot_path)
+          System.loadELF(boot_path, 1, boot_path)
         end
       end;
       HandleInput = function ()

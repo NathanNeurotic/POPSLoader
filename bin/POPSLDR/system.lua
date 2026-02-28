@@ -865,10 +865,7 @@ function PLDR.RefreshMassBackends()
     if string.find(d, "usb", 1, true) ~= nil then
       return "usb"
     end
-    if string.find(d, "mmce", 1, true) ~= nil then
-      return "mmce"
-    end
-    if string.find(d, "sdc", 1, true) ~= nil or string.find(d, "mx4", 1, true) ~= nil or string.find(d, "sd2psx", 1, true) ~= nil then
+    if string.find(d, "sdc", 1, true) ~= nil then
       return "mx4sio"
     end
     return "other"
@@ -1447,6 +1444,12 @@ function PLDR.InitMX4SIOPopsRoot()
   PLDR.MX4SIO.ROOT = nil
 
   for pass = 1, 2 do
+    if type(System) == "table" and type(System.ensureBDM) == "function" then
+      pcall(System.ensureBDM)
+    end
+    if type(System) == "table" and type(System.ensureBDMFatFs) == "function" then
+      pcall(System.ensureBDMFatFs)
+    end
     if type(_G.ensureMx4sioInit) == "function" then
       pcall(_G.ensureMx4sioInit)
     end
@@ -1457,58 +1460,29 @@ function PLDR.InitMX4SIOPopsRoot()
       pcall(System.sleep, 0.05)
     end
 
-    if type(System) == "table" and type(System.bdmList) == "function" then
-      pcall(System.bdmList)
+    if type(System) == "table" and type(System.refreshMassBackends) == "function" then
+      pcall(System.refreshMassBackends)
     end
-    if type(System) == "table" and type(System.getMassBackendInfo) == "function" then
-      for i = 0, 9 do
-        pcall(System.getMassBackendInfo, i)
-      end
-    end
-    if type(PLDR.RefreshMassBackends) == "function" then
-      pcall(PLDR.RefreshMassBackends)
-    end
-
-    local found_driver_match = false
 
     for i = 0, 9 do
-      local driver = string.lower(tostring(PLDR.GetMassDriverName(i) or ""))
-      if string.find(driver, "sdc", 1, true) ~= nil or string.find(driver, "mx4", 1, true) ~= nil or string.find(driver, "sd2psx", 1, true) ~= nil then
-        found_driver_match = true
-        local roots = {}
-        if i == 0 then
-          roots[1] = "mass:/"
-        end
-        roots[#roots + 1] = "mass"..i..":/"
-        for _, root in ipairs(roots) do
-          local pops_root = root.."POPS/"
-          if doesFolderExist(pops_root) then
-            PLDR.MX4SIO.READY = true
-            PLDR.MX4SIO.ROOT = root
-            return pops_root
-          end
+      local info = nil
+      if type(System) == "table" and type(System.getMassBackendInfo) == "function" then
+        local ok, got = pcall(System.getMassBackendInfo, i)
+        if ok and type(got) == "table" then
+          info = got
         end
       end
-    end
-
-    if not found_driver_match then
-      for i = 0, 9 do
-        local driver = string.lower(tostring(PLDR.GetMassDriverName(i) or ""))
-        local is_usb = string.find(driver, "usb", 1, true) ~= nil
-        if not is_usb then
-          local roots = {}
-          if i == 0 then
-            roots[1] = "mass:/"
-          end
-          roots[#roots + 1] = "mass"..i..":/"
-          for _, root in ipairs(roots) do
-            local pops_root = root.."POPS/"
-            if doesFolderExist(pops_root) then
-              PLDR.MX4SIO.READY = true
-              PLDR.MX4SIO.ROOT = root
-              return pops_root
-            end
-          end
+      local drv = ""
+      if info ~= nil and info.driver ~= nil then
+        drv = string.lower(tostring(info.driver))
+      end
+      if drv == "sdc" then
+        local root = (i == 0) and "mass:/" or ("mass"..i..":/")
+        local pops = root.."POPS/"
+        if doesFolderExist(pops) then
+          PLDR.MX4SIO.READY = true
+          PLDR.MX4SIO.ROOT = root
+          return pops
         end
       end
     end
