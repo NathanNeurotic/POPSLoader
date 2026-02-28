@@ -378,7 +378,7 @@ local function EncodeSettings()
   local lines = {
     "PROFILE="..tostring(tonumber(PLDR.SELECTED_PROFILE) or 1),
     "POPSTARTER_PATH="..tostring(PLDR.POPSTARTER_PATH or ""),
-    "BDMA_MODE="..tostring(PLDR.BDMA_MODE_KEY or "FAT32")
+    "BDMA="..tostring(PLDR.BDMA_MODE_KEY or "FAT32")
   }
   return table.concat(lines, "\n").."\n"
 end
@@ -409,7 +409,7 @@ function PLDR.LoadSettingsNonFatal()
   end
   local profile = tonumber(string.match(data, "\nPROFILE=([^\n]+)")) or tonumber(string.match(data, "^PROFILE=([^\n]+)"))
   local popstarter_path = string.match(data, "\nPOPSTARTER_PATH=([^\n]*)") or string.match(data, "^POPSTARTER_PATH=([^\n]*)")
-  local bdma_mode = string.match(data, "\nBDMA_MODE=([^\n]+)") or string.match(data, "^BDMA_MODE=([^\n]+)")
+  local bdma_mode = string.match(data, "\nBDMA=([^\n]+)") or string.match(data, "^BDMA=([^\n]+)") or string.match(data, "\nBDMA_MODE=([^\n]+)") or string.match(data, "^BDMA_MODE=([^\n]+)")
   if profile ~= nil and PLDR.PROFILES ~= nil and PLDR.PROFILES[profile] ~= nil then
     PLDR.SELECTED_PROFILE = profile
     PLDR.POPSTARTER_PATH = PLDR.PROFILES[profile].ELF
@@ -419,6 +419,86 @@ function PLDR.LoadSettingsNonFatal()
   end
   if bdma_mode == "FAT32" or bdma_mode == "USBEXFAT" or bdma_mode == "MX4SIO" or bdma_mode == "MMCE" then
     PLDR.BDMA_MODE_KEY = bdma_mode
+  end
+  return true
+end
+
+function PLDR.ParseMassIndexFromPath(path)
+  local source = NormalizeDirPath(path or APP_DIR_NORM)
+  local index = string.match(source, "^mass(%d+):/")
+  if index ~= nil then
+    return tonumber(index)
+  end
+  if string.match(source, "^mass:/") then
+    return 0
+  end
+  return nil
+end
+
+function PLDR.GetMassDriverName(index)
+  if index == nil then return nil end
+  if type(System) == "table" then
+    if type(System.getMassDriverName) == "function" then
+      local ok, driver = pcall(System.getMassDriverName, index)
+      if ok and type(driver) == "string" and driver ~= "" then
+        return string.lower(driver)
+      end
+    end
+    if type(System.getMassDriver) == "function" then
+      local ok, driver = pcall(System.getMassDriver, index)
+      if ok and type(driver) == "string" and driver ~= "" then
+        return string.lower(driver)
+      end
+    end
+  end
+  return nil
+end
+
+function PLDR.EnsureBackendForAppDir()
+  local path = APP_DIR_NORM
+  if path == nil then return false end
+  if string.match(path, "^host:/") then
+    return true
+  end
+  if string.match(path, "^mmce%d*:/") then
+    if type(System) == "table" and type(System.initMMCE) == "function" then
+      local ok = pcall(System.initMMCE)
+      return ok
+    end
+    return true
+  end
+  if string.match(path, "^mx4sio%d*:/") then
+    if type(_G.ensureMx4sioInit) == "function" then
+      local ok = pcall(_G.ensureMx4sioInit)
+      if ok then return true end
+    end
+    if type(System) == "table" and type(System.initMX4SIO) == "function" then
+      local ok = pcall(System.initMX4SIO)
+      return ok
+    end
+    return true
+  end
+  if string.match(path, "^mass%d*:/") then
+    local idx = PLDR.ParseMassIndexFromPath(path)
+    local driver = PLDR.GetMassDriverName(idx)
+    if driver ~= nil then
+      if string.find(driver, "sdc", 1, true) ~= nil then
+        if type(_G.ensureMx4sioInit) == "function" then
+          local ok = pcall(_G.ensureMx4sioInit)
+          if ok then return true end
+        end
+        if type(System) == "table" and type(System.initMX4SIO) == "function" then
+          local ok = pcall(System.initMX4SIO)
+          if ok then return true end
+        end
+      elseif string.find(driver, "usb", 1, true) ~= nil then
+        if type(System) == "table" and type(System.initUSB) == "function" then
+          local ok = pcall(System.initUSB)
+          if ok then return true end
+        end
+      end
+    end
+    return true
   end
   return true
 end
@@ -440,23 +520,29 @@ function PLDR.ApplyBdmaMode(mode_key)
     return false
   end
 
+  if not PLDR.EnsureBackendForAppDir() then
+    if UI ~= nil and UI.Notif_queue ~= nil then
+      UI.Notif_queue.add("BDMA source backend not ready:\n"..APP_DIR_NORM)
+    end
+    return false
+  end
+
   local had_failure = false
+  local missing_notified = false
   for i = 1, #BDMA_COPY_FILES do
     local name = BDMA_COPY_FILES[i]
     local source = PLDR.AppDirPath(name..suffix)
     local dest = POPSTARTER_PACK_ROOT.."/"..name
     if not doesFileExist(source) then
       had_failure = true
-      if UI ~= nil and UI.Notif_queue ~= nil then
-        UI.Notif_queue.add("Missing BDMA source: "..source)
+      if not missing_notified and UI ~= nil and UI.Notif_queue ~= nil then
+        UI.Notif_queue.add("Missing BDMA source:\n"..source)
+        missing_notified = true
       end
     else
       local ok = CopyExternalAtomic(source, dest)
       if not ok then
         had_failure = true
-        if UI ~= nil and UI.Notif_queue ~= nil then
-          UI.Notif_queue.add("Failed BDMA copy: "..source)
-        end
       end
     end
   end

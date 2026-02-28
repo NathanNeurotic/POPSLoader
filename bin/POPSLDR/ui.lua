@@ -329,17 +329,11 @@ UI = {
     BdmaModeIndex = 1;
     BdmaDirty = false;
     ProfileDirty = false;
+    SavingActive = false;
     ShowSavingOverlay = function ()
-      UI.Modal.active = true
-      UI.Modal.title = "Saving..."
-      UI.Modal.body = "Applying profile and BDMA settings"
-      UI.Modal.options = {"", ""}
-      UI.Modal.confirm_action = nil
-      UI.Modal.cancel_action = nil
-      UI.Modal.triangle_action = nil
-      UI.Modal.ignore_until_release = false
+      UI.SavingActive = true
       UI.flip()
-      UI.Modal.Close()
+      UI.SavingActive = false
     end;
     --- Notifications queue handler
     Notif_queue = {
@@ -496,6 +490,10 @@ UI = {
     flip = function (notif)
       UI.Notif_queue.display()
       UI.Modal.Draw()
+      if UI.SavingActive then
+        Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, 140))
+        Font.ftPrint(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID - 8, 8, UI.SCR.X, 16, "Saving...", UI.CCOL.YELLOW)
+      end
       if UI.Transition ~= nil then
         local alpha = UI.Transition.Update()
         if alpha > 0 then
