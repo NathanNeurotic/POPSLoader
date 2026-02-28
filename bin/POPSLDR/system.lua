@@ -819,16 +819,32 @@ function PLDR.ApplyBdmaMode(mode_key)
       System.closeFile(fd)
     end
     if source == nil then
-      if UI ~= nil and UI.Notif_queue ~= nil then
-        UI.Notif_queue.add("Missing BDMA source (tried):\n"..table.concat(paths, "\n"))
+      local bytes = nil
+      if type(System) == "table" and type(System.getEmbeddedAsset) == "function" then
+        local ok_embedded, embedded = pcall(System.getEmbeddedAsset, rel)
+        if ok_embedded and embedded ~= nil then
+          bytes = embedded
+        end
       end
-      return false
-    end
-    local dest = POPSTARTER_PACK_ROOT.."/"..name
-    local ok, copied = pcall(CopyExternalAtomic, source, dest)
-    if not ok or not copied then
-      had_failure = true
-      return false
+      if bytes == nil then
+        if UI ~= nil and UI.Notif_queue ~= nil then
+          UI.Notif_queue.add("Missing BDMA source (tried):\n"..table.concat(paths, "\n"))
+        end
+        return false
+      end
+      local dest = POPSTARTER_PACK_ROOT.."/"..name
+      local ok_write, wrote = pcall(WriteAtomic, dest, bytes)
+      if not ok_write or not wrote then
+        had_failure = true
+        return false
+      end
+    else
+      local dest = POPSTARTER_PACK_ROOT.."/"..name
+      local ok, copied = pcall(CopyExternalAtomic, source, dest)
+      if not ok or not copied then
+        had_failure = true
+        return false
+      end
     end
   end
   return not had_failure
@@ -1057,21 +1073,22 @@ function PLDR.InitMX4SIOPopsRoot()
   PLDR.MX4SIO.READY = false
   PLDR.MX4SIO.ROOT = nil
 
-  for pass = 1, 2 do
+  local hints = {
+    "mx4sio0:/",
+    "mx4sio:/"
+  }
+  for i = 1, #hints do
+    local hint = hints[i]
     if type(System) == "table" and type(System.initMX4SIO) == "function" then
-      pcall(System.initMX4SIO)
-    end
-    if type(System) == "table" and type(System.sleep) == "function" then
-      pcall(System.sleep, 1)
-    end
-    local snapshot = PLDR.RefreshMassStateSnapshot()
-    local roots = PLDR.GetRootsByType("mx4sio", snapshot)
-    for i = 1, #roots do
-      local pops_root = roots[i].."POPS/"
-      if doesFolderExist(pops_root) then
-        PLDR.MX4SIO.READY = true
-        PLDR.MX4SIO.ROOT = roots[i]
-        return pops_root
+      local ok_init, ok, root = pcall(System.initMX4SIO, hint)
+      if ok_init and ok and root ~= nil and root ~= "" then
+        local normalized_root = EnsureTrailingSlash(root)
+        local pops_root = normalized_root.."POPS/"
+        if doesFolderExist(pops_root) then
+          PLDR.MX4SIO.READY = true
+          PLDR.MX4SIO.ROOT = normalized_root
+          return pops_root
+        end
       end
     end
   end
