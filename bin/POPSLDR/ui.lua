@@ -1681,14 +1681,32 @@ end
             end
           elseif UI.MainMenu.OPT == 2 then
             local mx4sio_root = nil
+            local mx4sio_err = nil
             PLDR.CleanupGameList()
             PLDR.GAMEPATH = ""
-            if type(PLDR) == "table" and type(PLDR.InitMX4SIOPopsRoot) == "function" then
-              local ok, res = pcall(PLDR.InitMX4SIOPopsRoot)
-              if ok then mx4sio_root = res else mx4sio_root = nil end
+            if type(System) == "table" and type(System.initMX4SIO) == "function" then
+              local ok, ready, root, err = pcall(System.initMX4SIO, "mx4sio0:/")
+              if ok and ready and root ~= nil then
+                mx4sio_root = root.."POPS/"
+              else
+                if ok then mx4sio_err = err end
+                ok, ready, root, err = pcall(System.initMX4SIO, "mx4sio:/")
+                if ok and ready and root ~= nil then
+                  mx4sio_root = root.."POPS/"
+                elseif ok then
+                  mx4sio_err = err
+                end
+              end
+            end
+            if mx4sio_root ~= nil and type(PLDR) == "table" and type(PLDR.SetMX4SIORoot) == "function" then
+              pcall(PLDR.SetMX4SIORoot, string.gsub(mx4sio_root, "POPS/$", ""))
             end
             if mx4sio_root == nil then
-              UI.Notif_queue.add("No MX4SIO device found (POPS/ missing)")
+              local suffix = ""
+              if mx4sio_err ~= nil and mx4sio_err ~= "" then
+                suffix = " ("..tostring(mx4sio_err)..")"
+              end
+              UI.Notif_queue.add("No MX4SIO device found (POPS/ missing)"..suffix)
               return
             else
               PLDR.CleanupGameList()
