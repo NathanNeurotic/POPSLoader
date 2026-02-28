@@ -1073,49 +1073,32 @@ function PLDR.InitMX4SIOPopsRoot()
   PLDR.MX4SIO.READY = false
   PLDR.MX4SIO.ROOT = nil
 
-  if type(_G.ensureMx4sioInit) == "function" then
-    pcall(_G.ensureMx4sioInit)
-  end
-
-  local roots = {
-    "mx4sio0:/",
-    "mx4sio:/"
-  }
-
-  for i = 1, #roots do
-    local candidate = roots[i]
-    local call_ok = false
-    local ret1, ret2 = nil, nil
-
+  for pass = 1, 2 do
     if type(System) == "table" and type(System.initMX4SIO) == "function" then
-      call_ok, ret1, ret2 = pcall(System.initMX4SIO, candidate)
-      if not call_ok then
-        call_ok, ret1, ret2 = pcall(System.initMX4SIO)
-      end
+      pcall(System.initMX4SIO)
+    end
+    if type(System) == "table" and type(System.sleep) == "function" then
+      pcall(System.sleep, 0.1)
     end
 
-    local init_ok = false
-    if call_ok then
-      if ret1 == true then
-        init_ok = true
-      elseif type(ret1) == "string" and ret1 ~= "" then
-        init_ok = true
-      end
-    end
+    for i = 0, 9 do
+      local driver = string.lower(tostring(PLDR.GetMassDriverName(i) or ""))
+      if string.find(driver, "sdc", 1, true) ~= nil or string.find(driver, "mx4", 1, true) ~= nil then
+        local candidates = {}
+        if i == 0 then
+          table.insert(candidates, "mass:/")
+        end
+        table.insert(candidates, "mass"..i..":/")
 
-    if init_ok then
-      local final_root = candidate
-      if type(ret1) == "string" and ret1 ~= "" then
-        final_root = ret1
-      elseif type(ret2) == "string" and ret2 ~= "" then
-        final_root = ret2
-      end
-      final_root = EnsureTrailingSlash(final_root)
-      local pops_root = final_root.."POPS/"
-      if doesFolderExist(pops_root) then
-        PLDR.MX4SIO.READY = true
-        PLDR.MX4SIO.ROOT = final_root
-        return pops_root
+        for j = 1, #candidates do
+          local root = EnsureTrailingSlash(candidates[j])
+          local pops_root = root.."POPS/"
+          if doesFolderExist(pops_root) then
+            PLDR.MX4SIO.READY = true
+            PLDR.MX4SIO.ROOT = root
+            return pops_root
+          end
+        end
       end
     end
   end
@@ -1435,7 +1418,8 @@ local function BuildPopstarterSelectorPath(device_page, game_name)
     return "mass:/POPS/XX."..game_name..".ELF"
   end
   if device_page == "MX4SIO" then
-    local root = PLDR and PLDR.MX4SIO and PLDR.MX4SIO.ROOT or "mx4sio:/"
+    local root = PLDR and PLDR.MX4SIO and PLDR.MX4SIO.ROOT or "mass:/"
+    root = EnsureTrailingSlash(root)
     return root.."POPS/XX."..game_name..".ELF"
   end
   return game_name..".ELF"
