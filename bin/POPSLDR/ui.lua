@@ -926,6 +926,16 @@ end
         UI.Modal.triangle_action = UI.Modal.LaunchBootElf
         UI.Modal.ignore_until_release = true
       end;
+      OpenDKWDRV = function ()
+        UI.Modal.active = true
+        UI.Modal.title = "Exit"
+        UI.Modal.body = "Exit to DKWDRV?"
+        UI.Modal.options = {"DKWDRV", "Cancel"}
+        UI.Modal.confirm_action = UI.Modal.LaunchDKWDRV
+        UI.Modal.cancel_action = UI.Modal.Close
+        UI.Modal.triangle_action = nil
+        UI.Modal.ignore_until_release = true
+      end;
       OpenDeviceLock = function (reason, active, target)
         local active_name = UI.device_lock_name(active)
         local target_name = UI.device_lock_name(target)
@@ -991,7 +1001,41 @@ end
         end
         if type(System) == "table" and type(System.loadELF) == "function" then
           UI.LAUNCHING = true
-          System.loadELF(boot_path, 1)
+          local ok, ret = pcall(System.loadELF, boot_path, 1)
+          if (not ok) or ret == false or ret == nil then
+            UI.LAUNCHING = false
+            UI.Notif_queue.add("BOOT.ELF launch failed")
+            return
+          end
+        end
+      end;
+      LaunchDKWDRV = function ()
+        local dkwdrv_path = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
+        local dkwdrv_exists = false
+        if type(doesFileExist) == "function" then
+          local okcall, exists = pcall(doesFileExist, dkwdrv_path)
+          dkwdrv_exists = okcall and exists == true
+        end
+        if not dkwdrv_exists and type(System) == "table" and type(System.openFile) == "function" then
+          local okfd, fd = pcall(System.openFile, dkwdrv_path, FREAD)
+          if okfd and type(fd) == "number" and fd >= 0 then
+            if type(System.closeFile) == "function" then
+              pcall(System.closeFile, fd)
+            end
+            dkwdrv_exists = true
+          end
+        end
+        if not dkwdrv_exists then
+          UI.Notif_queue.add("mc0:/PS1_DKWDRV/DKWDRV.ELF not found")
+          UI.LAUNCHING = false
+          return
+        end
+        UI.LAUNCHING = true
+        local ok, ret = pcall(System.loadELF, dkwdrv_path, 1)
+        if (not ok) or ret == false or ret == nil then
+          UI.LAUNCHING = false
+          UI.Notif_queue.add("DKWDRV launch failed")
+          return
         end
       end;
       HandleInput = function ()
@@ -1735,27 +1779,7 @@ end
             if type(System) == "table" and type(System.ensureCDFS) == "function" then
               System.ensureCDFS()
             end
-            local dkwdrv_path = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
-            local dkwdrv_exists = false
-            if type(doesFileExist) == "function" then
-              local okcall, exists = pcall(doesFileExist, dkwdrv_path)
-              dkwdrv_exists = okcall and exists == true
-            end
-            if not dkwdrv_exists and type(System) == "table" and type(System.openFile) == "function" then
-              local okfd, fd = pcall(System.openFile, dkwdrv_path, FREAD)
-              if okfd and type(fd) == "number" and fd >= 0 then
-                if type(System.closeFile) == "function" then
-                  pcall(System.closeFile, fd)
-                end
-                dkwdrv_exists = true
-              end
-            end
-            if not dkwdrv_exists then
-              UI.Notif_queue.add("mc0:/PS1_DKWDRV/DKWDRV.ELF not found")
-              return
-            end
-            UI.LAUNCHING = true
-            System.loadELF(dkwdrv_path, 1)
+            UI.Modal.OpenDKWDRV()
           end --because we still dont support SMB
         end
       end
