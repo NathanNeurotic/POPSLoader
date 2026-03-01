@@ -861,9 +861,30 @@ UI = {
         System.exitToBrowser()
       end;
       LaunchBootElf = function ()
+        UI.Modal.Close()
+        if type(Sound) == "table" then
+          if type(Sound.stopADPCM) == "function" then
+            pcall(Sound.stopADPCM, 0)
+          end
+          if type(Sound.pauseADPCM) == "function" then
+            pcall(Sound.pauseADPCM, 0)
+          end
+          if type(Sound.stop) == "function" then
+            pcall(Sound.stop)
+          end
+          if type(Sound.setADPCMVolume) == "function" then
+            pcall(Sound.setADPCMVolume, 0, 0)
+          end
+        end
+        Screen.clear(UI.SCR.BGCOL)
+        Screen.flip()
         local elf_path = "mc0:/BOOT/BOOT.ELF"
         UI.LAUNCHING = true
-        UI.do_chainload("mc0:/BOOT", elf_path, nil)
+        System.loadELF(elf_path, 0, elf_path)
+        UI.LAUNCHING = false
+        if UI.Notif_queue and UI.Notif_queue.add then
+          UI.Notif_queue.add("BOOT.ELF did not chainload (returned)")
+        end
         return
       end;
       HandleInput = function ()
