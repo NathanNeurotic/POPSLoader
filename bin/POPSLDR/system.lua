@@ -976,8 +976,9 @@ function PLDR.GetUsbRootsFromSlots(slots)
   slots = slots or PLDR.GetMassSlots()
   for slot = 0, 9 do
     local item = slots[slot]
-    if item ~= nil and item.present == true and item.name ~= "sdc" then
-      table.insert(roots, item.root)
+    local name = string.lower(tostring(item and item.name or ""))
+    if item ~= nil and item.present == true and name ~= "sdc" then
+      table.insert(roots, GetMassRootFromSlot(slot))
     end
   end
   return roots
@@ -987,8 +988,9 @@ function PLDR.GetMx4RootFromSlots(slots)
   slots = slots or PLDR.GetMassSlots()
   for slot = 0, 9 do
     local item = slots[slot]
-    if item ~= nil and item.present == true and item.name == "sdc" then
-      return item.root
+    local name = string.lower(tostring(item and item.name or ""))
+    if item ~= nil and item.present == true and name == "sdc" then
+      return GetMassRootFromSlot(slot)
     end
   end
   return nil

@@ -1735,13 +1735,10 @@ end
             end
             PLDR.CleanupGameList()
             PLDR.GAMEPATH = ""
-            local slots = nil
-            if type(PLDR.RefreshMassStateSnapshot) == "function" then
-              slots = PLDR.RefreshMassStateSnapshot()
-            elseif type(PLDR.RefreshMassBackends) == "function" then
+            if type(PLDR.RefreshMassBackends) == "function" then
               pcall(PLDR.RefreshMassBackends)
             end
-            slots = slots or PLDR.GetMassSlots()
+            local slots = PLDR.GetMassSlots()
             PLDR.BuildMassGameListByType("usb", slots)
             UI.setDeviceLock(DEVLOCK.USB)
             UI.SceneChange(UI.SCENES.GUSBFAT)
