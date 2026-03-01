@@ -988,9 +988,25 @@ function PLDR.EnsureBackendForAppDir()
     return true
   end
   if string.match(path, "^mass%d*:/") then
-    if type(System) == "table" and type(System.initUSB) == "function" then
-      local ok = pcall(System.initUSB)
-      if ok then return true end
+    local mx4_root_now = PLDR.GetMX4SIOMassRootNow()
+    local is_mx4_mass_path = false
+    if mx4_root_now ~= nil then
+      is_mx4_mass_path = string.sub(path, 1, string.len(mx4_root_now)) == mx4_root_now
+    end
+    if is_mx4_mass_path then
+      if type(_G.ensureMx4sioInit) == "function" then
+        local ok = pcall(_G.ensureMx4sioInit)
+        if ok then return true end
+      end
+      if type(System) == "table" and type(System.initMX4SIO) == "function" then
+        local ok = pcall(System.initMX4SIO)
+        if ok then return true end
+      end
+    else
+      if type(System) == "table" and type(System.initUSB) == "function" then
+        local ok = pcall(System.initUSB)
+        if ok then return true end
+      end
     end
     return true
   end

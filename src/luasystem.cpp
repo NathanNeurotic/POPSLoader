@@ -215,7 +215,7 @@ static bool GetMassRootByBackendNameInternal(const char *backend_name, char *out
 	for (u32 i = 0; i < list.count; ++i) {
 		const bdm_dev_info_t *info = &list.devs[i];
 		if (strcmp(info->name, backend_name) == 0) {
-			BuildMassRootPath((int)info->devNr, out_root, out_sz);
+			BuildMassRootPath((int)info->parId, out_root, out_sz);
 			return true;
 		}
 	}
