@@ -925,13 +925,16 @@ function PLDR.RefreshMassBackends()
       for i = 1, #list do
         local info = list[i]
         if type(info) == "table" and type(info.devNr) == "number" then
-          local idx = tonumber(info.devNr)
+          local idx = tonumber(info.parId)
           local driver = string.lower(tostring(info.name or ""))
           local kind = classify_driver(driver)
           new_cache[idx] = {
             present = true,
             driver = driver,
-            kind = kind
+            kind = kind,
+            devNr = tonumber(info.devNr),
+            parNr = tonumber(info.parNr),
+            parId = tonumber(info.parId)
           }
           if not seen_index[idx] then
             table.insert(new_order, idx)
@@ -953,7 +956,10 @@ function PLDR.RefreshMassBackends()
         new_cache[idx] = {
           present = true,
           driver = driver,
-          kind = kind
+          kind = kind,
+          devNr = tonumber(info.devNr),
+          parNr = tonumber(info.parNr),
+          parId = tonumber(info.parId or idx)
         }
         if not seen_index[idx] then
           table.insert(new_order, idx)
@@ -1016,7 +1022,10 @@ function PLDR.RefreshMassStateSnapshot()
       snapshot.CACHE[idx] = {
         present = item.present == true,
         driver = item.driver,
-        kind = item.kind
+        kind = item.kind,
+        devNr = item.devNr,
+        parNr = item.parNr,
+        parId = item.parId
       }
     end
   end
@@ -1042,12 +1051,18 @@ function PLDR.GetRootsByType(kind, mass_snapshot)
   end
 
   if wanted == "usb" then
-    for i = 0, 9 do
-      local root = (i == 0) and "mass:/" or ("mass"..i..":/")
-      local name = PLDR.GetMassDriverName(i)
-      local norm, rev = PLDR.NormalizeDriverCode(name)
-      if norm == "usb" or rev == "usb" then
-        add_root(root)
+    for _, i in ipairs(state.ORDER or {}) do
+      local info = state.CACHE and state.CACHE[i] or nil
+      if info ~= nil and info.present and info.kind == "usb" then
+        local par_id = tonumber(info.parId)
+        if par_id == nil then
+          par_id = tonumber(i)
+        end
+        if par_id == 0 then
+          add_root("mass:/")
+        elseif par_id ~= nil and par_id > 0 and par_id <= 9 then
+          add_root("mass"..par_id..":/")
+        end
       end
     end
   elseif wanted == "mx4sio" then

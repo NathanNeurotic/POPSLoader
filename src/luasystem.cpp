@@ -340,7 +340,7 @@ int mx4sio_init_and_get_root(const char *hint, char *out_root, size_t out_sz)
 			}
 			char root[16];
 			char pops_path[32];
-			BuildMassRootPath((int)info->devNr, root, sizeof(root));
+			BuildMassRootPath((int)info->parId, root, sizeof(root));
 			snprintf(pops_path, sizeof(pops_path), "%sPOPS/", root);
 			int pops_ret = -1;
 			if (ProbeDir(pops_path, &pops_ret)) {
@@ -460,7 +460,7 @@ static int lua_get_mass_backend_info(lua_State *L)
 	}
 	for (u32 i = 0; i < mass_backend_cache.count; ++i) {
 		const bdm_dev_info_t *info = &mass_backend_cache.devs[i];
-		if ((int)info->devNr == index) {
+		if ((int)info->parId == index) {
 			lua_newtable(L);
 			lua_pushboolean(L, 1);
 			lua_setfield(L, -2, "present");
@@ -468,8 +468,14 @@ static int lua_get_mass_backend_info(lua_State *L)
 			lua_setfield(L, -2, "driver");
 			lua_pushstring(L, ClassifyMassBackend(info->name));
 			lua_setfield(L, -2, "kind");
-			lua_pushinteger(L, info->devNr);
+			lua_pushinteger(L, info->parId);
 			lua_setfield(L, -2, "index");
+			lua_pushinteger(L, info->devNr);
+			lua_setfield(L, -2, "devNr");
+			lua_pushinteger(L, info->parNr);
+			lua_setfield(L, -2, "parNr");
+			lua_pushinteger(L, info->parId);
+			lua_setfield(L, -2, "parId");
 			return 1;
 		}
 	}
