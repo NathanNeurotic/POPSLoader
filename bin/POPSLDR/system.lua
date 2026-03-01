@@ -244,7 +244,7 @@ function PLDR.LaunchExternalELF(path)
     PLDR.RequestUiExit()
   end
 
-  System.loadELF(path, "", 1)
+  System.loadELF(path, 1, path)
   return true
 end
 
