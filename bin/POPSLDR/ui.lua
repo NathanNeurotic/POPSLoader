@@ -179,8 +179,8 @@ UI = {
     boot_locks = {};
     BOOT_SOUND = {
       ENABLED = true,
-      PATH = "boot.adp",      -- relative to CWD (same folder as ui.lua on HostFS)
-      SECONDS = 3.0,          -- splash minimum hold to cover audio (adjust to match boot.adp)
+      PATH = "embed:/boot_audio.adp",
+      SECONDS = 4.0,
       PAD_SECONDS = 0.5,      -- extra padding to keep splash visible after audio starts
       BOOT_PHASE_SECONDS = 8.0,
       CREDITS_PHASE_SECONDS = 7.0,
@@ -477,7 +477,10 @@ UI = {
           if icon ~= nil then
             local w = Graphics.getImageWidth(icon)
             local h = Graphics.getImageHeight(icon)
-            Graphics.drawImage(icon, x - (w / 2), y - (h / 2), UI.CCOL.GREY)
+            local scale = 0.75
+            local draw_w = Round(w * scale)
+            local draw_h = Round(h * scale)
+            Graphics.drawScaleImage(icon, x - (draw_w / 2), y - (draw_h / 2), draw_w, draw_h, UI.CCOL.GREY)
           end
           local label = labels and labels[key] or nil
           if label ~= nil then
@@ -553,115 +556,7 @@ UI = {
             return
           end
 
-          local primary = UI.BOOT_SOUND.PATH or "boot.adp"
-          local names = { primary }
-          if primary ~= "boot.adpcm" then
-            table.insert(names, "boot.adpcm")
-          end
-
-local function file_exists(p)
-  if p == nil then return false end
-  if type(doesFileExist) == "function" then
-    local okcall, res = pcall(doesFileExist, p)
-    return okcall and res == true
-  end
-  if type(System) == "table" and type(System.openFile) == "function" and type(System.closeFile) == "function" then
-    local okfd, fd = pcall(System.openFile, p, O_RDONLY)
-    if okfd and fd ~= nil and fd >= 0 then
-      pcall(System.closeFile, fd)
-      return true
-    end
-  end
-  return false
-end
-
-local function resolve(p)
-  if p == nil then return nil end
-  if type(System) == "table" and type(System.resolveAsset) == "function" then
-    local ok, r = pcall(System.resolveAsset, p)
-    if ok and type(r) == "string" and r ~= "" then return r end
-  end
-  return p
-end
-
-local function ensure_dir(path)
-  if path == nil or path == "" then return nil end
-  if type(EnsureTrailingSlash) == "function" then
-    return EnsureTrailingSlash(path)
-  end
-  if string.sub(path, -1) ~= "/" then
-    return path .. "/"
-  end
-  return path
-end
-
-local function add_candidate(list, path)
-  if path ~= nil and path ~= "" then
-    table.insert(list, path)
-  end
-end
-
-local function resolve_candidates(name)
-  local candidates = {}
-  add_candidate(candidates, resolve(name))
-  add_candidate(candidates, resolve("./" .. name))
-
-  local app_dir = APP_DIR
-  if type(System) == "table" and type(System.getAppDir) == "function" then
-    local ok, dir = pcall(System.getAppDir)
-    if ok and dir ~= nil and dir ~= "" then
-      app_dir = dir
-    end
-  end
-  local app_dir_norm = ensure_dir(app_dir)
-  if app_dir_norm ~= nil then
-    add_candidate(candidates, app_dir_norm .. name)
-    add_candidate(candidates, app_dir_norm .. "POPSLDR/" .. name)
-  end
-
-  local cwd = nil
-  if type(System) == "table" and type(System.currentDirectory) == "function" then
-    local ok, dir = pcall(System.currentDirectory)
-    if ok then
-      cwd = dir
-    end
-  end
-  local cwd_norm = ensure_dir(cwd)
-  if cwd_norm ~= nil then
-    add_candidate(candidates, cwd_norm .. name)
-    add_candidate(candidates, cwd_norm .. "POPSLDR/" .. name)
-  end
-
-  add_candidate(candidates, name)
-  add_candidate(candidates, "./" .. name)
-
-  return candidates
-end
-
-          local found = nil
-          local requested = nil
-          for _, rel in ipairs(names) do
-            requested = rel
-            local candidates = resolve_candidates(rel)
-            for _, p in ipairs(candidates) do
-              if file_exists(p) then
-                found = p
-                break
-              end
-            end
-            if found ~= nil then break end
-          end
-
-          if found == nil and requested ~= nil then
-            -- Last resort: try HostFS prefix in PCSX2 setups.
-            local host_p = "host:" .. requested
-            if file_exists(host_p) then found = host_p end
-          end
-
-          if found == nil then
-            return
-          end
-
+          local source = UI.BOOT_SOUND.PATH or "embed:/boot_audio.adp"
 
 -- Set volumes/formats defensively; some builds may ignore these.
           local function normalize_volume(value)
@@ -693,7 +588,7 @@ end
             end
           end)
 
-          local ok_load, audio = pcall(Sound.loadADPCM, found)
+          local ok_load, audio = pcall(Sound.loadADPCM, source)
           if not ok_load then
             return
           end
@@ -860,8 +755,8 @@ end
 
         -- Start boot sound once; explicit holds must not be lengthened by audio duration.
         TryBootSound()
-        local SPLASH_HOLD_MS = 3000
-        local CREDITS_HOLD_MS = 4000
+        local SPLASH_HOLD_MS = 4000
+        local CREDITS_HOLD_MS = 3000
 
         StepFade(DrawSplash, 128, 0, FADE_IN_MS)
         StepHold(DrawSplash, SPLASH_HOLD_MS)
@@ -957,38 +852,52 @@ end
         System.exitToBrowser()
       end;
       LaunchBootElf = function ()
-        local candidates = {
-          "mc0:/BOOT/BOOT.ELF",
-          "mc1:/BOOT/BOOT.ELF"
-        }
-        local boot_path = nil
+        local boot_path = "mc0:/BOOT/BOOT.ELF"
+        local exists = false
         if type(doesFileExist) == "function" then
-          for _, path in ipairs(candidates) do
-            local okcall, exists = pcall(doesFileExist, path)
-            if okcall and exists == true then
-              boot_path = path
-              break
+          local okcall, result = pcall(doesFileExist, boot_path)
+          exists = okcall and result == true
+        elseif type(System) == "table" and type(System.openFile) == "function" then
+          local okfd, fd = pcall(System.openFile, boot_path, FREAD)
+          if okfd and type(fd) == "number" and fd >= 0 then
+            exists = true
+            if type(System.closeFile) == "function" then
+              pcall(System.closeFile, fd)
             end
           end
         end
-        if boot_path == nil and type(System) == "table" and type(System.openFile) == "function" then
-          for _, path in ipairs(candidates) do
-            local okfd, fd = pcall(System.openFile, path, FREAD)
-            if okfd and type(fd) == "number" and fd >= 0 then
-              if type(System.closeFile) == "function" then
-                pcall(System.closeFile, fd)
-              end
-              boot_path = path
-              break
-            end
-          end
-        end
-        if boot_path == nil then
-          if UI.Notif_queue ~= nil and type(UI.Notif_queue.add) == "function" then
-            UI.Notif_queue.add("mc?:/BOOT/BOOT.ELF not found")
-          end
+
+        if not exists then
+          UI.Modal.active = true
+          UI.Modal.title = "Exit"
+          UI.Modal.body = "BOOT.ELF not found"
+          UI.Modal.options = {"OK", "Back"}
+          UI.Modal.confirm_action = UI.Modal.Close
+          UI.Modal.cancel_action = UI.Modal.Close
+          UI.Modal.triangle_action = nil
+          UI.Modal.ignore_until_release = true
           return
         end
+
+        if UI.Transition ~= nil and UI.Transition.StepFadeToBlack ~= nil then
+          pcall(UI.Transition.StepFadeToBlack, 240)
+        else
+          pcall(function()
+            Screen.clear(Color.new(0, 0, 0))
+            Screen.flip()
+          end)
+        end
+
+        if type(Sound) == "table" and type(Sound.pause) == "function" then
+          pcall(Sound.pause)
+        elseif type(Sound) == "table" and type(Sound.stop) == "function" then
+          pcall(Sound.stop)
+        end
+
+        if type(System) == "table" and type(System.sleep) == "function" then
+          pcall(System.sleep, 0.3)
+        end
+
         if type(System) == "table" and type(System.loadELF) == "function" then
           UI.LAUNCHING = true
           System.loadELF(boot_path, 1, boot_path)
@@ -1076,6 +985,28 @@ end
         UI.Transition.start = Timer.getTime(UI.Transition.timer)
         UI.Transition.elapsed = 0
         UI.Transition.last_time = UI.Transition.start
+      end,
+      StepFadeToBlack = function (duration_ms)
+        local fade_ms = tonumber(duration_ms) or 240
+        if fade_ms < 0 then fade_ms = 0 end
+        local timer = Timer.new()
+        local start = Timer.getTime(timer)
+        while true do
+          local now = Timer.getTime(timer)
+          local elapsed = now - start
+          if elapsed < 0 then elapsed = 0 end
+          if elapsed > fade_ms then elapsed = fade_ms end
+          local t = (fade_ms > 0) and (elapsed / fade_ms) or 1
+          local alpha = Round(128 * t)
+          Screen.clear(Color.new(0, 0, 0))
+          if alpha > 0 then
+            Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
+          end
+          Screen.flip()
+          if elapsed >= fade_ms then
+            break
+          end
+        end
       end,
       Update = function ()
         if not UI.Transition.active then
@@ -1548,6 +1479,7 @@ end
 	        if layout.CAROUSEL_Y_OFFSET ~= nil then
 	          center_y = center_y + layout.CAROUSEL_Y_OFFSET
 	        end
+        center_y = center_y + 10
         local function Clamp(value, min_val, max_val)
           if value < min_val then return min_val end
           if value > max_val then return max_val end
@@ -1732,10 +1664,55 @@ end
           elseif UI.MainMenu.OPT == 6 then
             UI.Notif_queue.add("Not Implemented Yet")
           elseif UI.MainMenu.OPT == 7 then
-            if type(System) == "table" and type(System.ensureCDFS) == "function" then
-              System.ensureCDFS()
+            UI.Modal.active = true
+            UI.Modal.title = "Disc"
+            UI.Modal.body = "Launch DKWDRV?"
+            UI.Modal.options = {"Yes", "No"}
+            UI.Modal.confirm_action = function ()
+              local dkwdrv_path = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
+              local exists = false
+              if type(doesFileExist) == "function" then
+                local okcall, result = pcall(doesFileExist, dkwdrv_path)
+                exists = okcall and result == true
+              elseif type(System) == "table" and type(System.openFile) == "function" then
+                local okfd, fd = pcall(System.openFile, dkwdrv_path, FREAD)
+                if okfd and type(fd) == "number" and fd >= 0 then
+                  exists = true
+                  if type(System.closeFile) == "function" then
+                    pcall(System.closeFile, fd)
+                  end
+                end
+              end
+
+              if not exists then
+                UI.Modal.title = "Disc"
+                UI.Modal.body = "DKWDRV not found"
+                UI.Modal.options = {"OK", "Back"}
+                UI.Modal.confirm_action = UI.Modal.Close
+                UI.Modal.cancel_action = UI.Modal.Close
+                UI.Modal.triangle_action = nil
+                UI.Modal.ignore_until_release = true
+                return
+              end
+
+              UI.Modal.Close()
+              if UI.Transition ~= nil and UI.Transition.StepFadeToBlack ~= nil then
+                pcall(UI.Transition.StepFadeToBlack, 240)
+              else
+                pcall(function()
+                  Screen.clear(Color.new(0, 0, 0))
+                  Screen.flip()
+                end)
+              end
+
+              if type(System) == "table" and type(System.loadELF) == "function" then
+                UI.LAUNCHING = true
+                System.loadELF(dkwdrv_path)
+              end
             end
-            UI.Notif_queue.add("Not Implemented Yet")
+            UI.Modal.cancel_action = UI.Modal.Close
+            UI.Modal.triangle_action = nil
+            UI.Modal.ignore_until_release = true
           end --because we still dont support SMB
         end
       end

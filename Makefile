@@ -87,7 +87,7 @@ EMBEDDED_RSC = boot.o builtin_font.o \
 	asset_usbd_irx_usbexfat.o asset_usbhdfsd_irx_usbexfat.o asset_usbd_irx_mx4sio.o asset_usbhdfsd_irx_mx4sio.o \
 	asset_usbd_irx_mmce.o asset_usbhdfsd_irx_mmce.o asset_icon_sys_mx4sio.o asset_list_icn_mx4sio.o asset_del_icn_mx4sio.o \
 	asset_icon_sys_mmce.o asset_list_icn_mmce.o asset_del_icn_mmce.o asset_icon_sys_usbexfat.o asset_list_icn_usbexfat.o \
-	asset_del_icn_usbexfat.o
+	asset_del_icn_usbexfat.o asset_boot_audio_adp.o
 
 EE_OBJS = $(APP_CORE) $(LUA_LIBS) $(IOP_MODULES) $(EMBEDDED_RSC)
 
@@ -169,6 +169,9 @@ $(EE_ASM_DIR)asset_images_lua.c: bin/POPSLDR/images.lua | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_images_lua
 $(EE_ASM_DIR)asset_pops_profiles_lua.c: bin/POPSLDR/pops_profiles.lua | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_pops_profiles_lua
+
+$(EE_ASM_DIR)asset_boot_audio_adp.c: bin/POPSLDR/boot.adp | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_boot_audio_adp
 
 $(EE_ASM_DIR)asset_usbd_irx_usbexfat.c: bin/POPSLDR/usbd.irx.usbexfat | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_usbd_irx_usbexfat

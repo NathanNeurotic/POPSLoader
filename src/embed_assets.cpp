@@ -91,6 +91,8 @@ extern unsigned char asset_list_icn_usbexfat[];
 extern unsigned int size_asset_list_icn_usbexfat;
 extern unsigned char asset_del_icn_usbexfat[];
 extern unsigned int size_asset_del_icn_usbexfat;
+extern unsigned char asset_boot_audio_adp[];
+extern unsigned int size_asset_boot_audio_adp;
 
 #define ASSET_ENTRY(key_name, symbol_name) { key_name, symbol_name, (size_t)size_##symbol_name }
 
@@ -136,6 +138,7 @@ static const embedded_asset_t g_embedded_assets[] = {
 	ASSET_ENTRY("icon.sys.usbexfat", asset_icon_sys_usbexfat),
 	ASSET_ENTRY("list.icn.usbexfat", asset_list_icn_usbexfat),
 	ASSET_ENTRY("del.icn.usbexfat", asset_del_icn_usbexfat),
+	ASSET_ENTRY("boot_audio.adp", asset_boot_audio_adp),
 
 
 	ASSET_ENTRY("POPSLDR/IMG/USB.png", asset_usb_png),
@@ -178,7 +181,8 @@ static const embedded_asset_t g_embedded_assets[] = {
 	ASSET_ENTRY("POPSLDR/del.icn.mmce", asset_del_icn_mmce),
 	ASSET_ENTRY("POPSLDR/icon.sys.usbexfat", asset_icon_sys_usbexfat),
 	ASSET_ENTRY("POPSLDR/list.icn.usbexfat", asset_list_icn_usbexfat),
-	ASSET_ENTRY("POPSLDR/del.icn.usbexfat", asset_del_icn_usbexfat)
+	ASSET_ENTRY("POPSLDR/del.icn.usbexfat", asset_del_icn_usbexfat),
+	ASSET_ENTRY("POPSLDR/boot_audio.adp", asset_boot_audio_adp)
 };
 
 static const embedded_asset_t *embedded_find(const char *key)
