@@ -211,6 +211,39 @@ function PLDR.ResolvePopstarterPath(path)
   return ResolvePopstarterPath(path)
 end
 
+function PLDR.RequestUiExit()
+  _G.PLDR_UI_RUNNING = false
+end
+
+function PLDR.LaunchExternalELF(path)
+  if path == nil or path == "" then
+    return
+  end
+
+  if UI ~= nil then
+    UI.LAUNCHING = true
+    if UI.Transition ~= nil and UI.Transition.Start ~= nil and UI.CURSCENE ~= nil then
+      UI.Transition.Start(UI.CURSCENE)
+      while UI.Transition.active and UI.Transition.phase == "out" do
+        UI.BottomDraw.Play()
+        UI.flip()
+      end
+    else
+      for _ = 1, 6 do
+        Screen.clear(Color.new(0, 0, 0))
+        Screen.flip()
+      end
+    end
+  end
+
+  if type(PLDR.RequestUiExit) == "function" then
+    PLDR.RequestUiExit()
+  end
+
+  System.loadELF(path, "", 1)
+  return
+end
+
 local function DetectBootDevice()
   local boot_path = NormalizeDirPath(BOOT_PATH_RAW or "")
   local prefix = string.match(boot_path, "^([%a]+%d*):")
@@ -2313,7 +2346,8 @@ if UI.Transition ~= nil then
   UI.Transition.allowSceneWrite = false
 end
 
-while true do
+_G.PLDR_UI_RUNNING = true
+while _G.PLDR_UI_RUNNING do
   UI.BottomDraw.Play()
   if UI.CURSCENE == UI.SCENES.MMAIN then
     UI.MainMenu.Play()
