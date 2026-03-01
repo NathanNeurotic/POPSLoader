@@ -846,41 +846,15 @@ UI = {
         System.exitToBrowser()
       end;
       LaunchBootElf = function ()
-        local candidates = {
-          "mc0:/BOOT/BOOT.ELF",
-          "mc1:/BOOT/BOOT.ELF"
-        }
-        local boot_path = nil
-        if type(doesFileExist) == "function" then
-          for _, path in ipairs(candidates) do
-            local okcall, exists = pcall(doesFileExist, path)
-            if okcall and exists == true then
-              boot_path = path
-              break
-            end
-          end
-        end
-        if boot_path == nil and type(System) == "table" and type(System.openFile) == "function" then
-          for _, path in ipairs(candidates) do
-            local okfd, fd = pcall(System.openFile, path, FREAD)
-            if okfd and type(fd) == "number" and fd >= 0 then
-              if type(System.closeFile) == "function" then
-                pcall(System.closeFile, fd)
-              end
-              boot_path = path
-              break
-            end
-          end
-        end
-        if boot_path == nil then
-          if UI.Notif_queue ~= nil and type(UI.Notif_queue.add) == "function" then
-            UI.Notif_queue.add("mc?:/BOOT/BOOT.ELF not found")
-          end
+        local boot = "mc0:/BOOT/BOOT.ELF"
+
+        UI.LAUNCHING = true
+        local ok = pcall(System.loadELF, boot, 1, boot)
+
+        if not ok then
+          UI.LAUNCHING = false
+          UI.Notif_queue.add("BOOT.ELF not found")
           return
-        end
-        if type(System) == "table" and type(System.loadELF) == "function" then
-          UI.LAUNCHING = true
-          System.loadELF(boot_path, 1, boot_path)
         end
       end;
       HandleInput = function ()
@@ -1621,10 +1595,16 @@ UI = {
           elseif UI.MainMenu.OPT == 6 then
             UI.Notif_queue.add("Not Implemented Yet")
           elseif UI.MainMenu.OPT == 7 then
-            if type(System) == "table" and type(System.ensureCDFS) == "function" then
-              System.ensureCDFS()
+            local path = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
+
+            UI.LAUNCHING = true
+            local ok = pcall(System.loadELF, path, 1, path)
+
+            if not ok then
+              UI.LAUNCHING = false
+              UI.Notif_queue.add("DKWDRV.ELF not found")
+              return
             end
-            UI.Notif_queue.add("Not Implemented Yet")
           end --because we still dont support SMB
         end
       end
