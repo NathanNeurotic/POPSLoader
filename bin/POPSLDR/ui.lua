@@ -849,6 +849,8 @@ UI = {
         local boot = "mc0:/BOOT/BOOT.ELF"
 
         UI.LAUNCHING = true
+        Screen.flip()
+        System.sleep(200)
         local ok = pcall(System.loadELF, boot, 1, boot, 1)
 
         if not ok then
