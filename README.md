@@ -9,49 +9,6 @@ POPSLoader is an open-source launcher for POPStarter that is scripted in Lua and
 POPSLoader was created by [El_isra](https://www.github.com/israpps), and this repository is a fork of his work. Endless thanks to Isra for his contributions and open-source projects gifted to the community.
 
 > **Project lineage**: This project is derived from the [Enceladus](https://github.com/DanielSant0s/Enceladus) Lua environment and retains its GPLv3 licensing.
-
-## Documentation
-- [AGENTS.md](AGENTS.md)
-- [DEVELOPMENT.md](DEVELOPMENT.md)
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-- [docs/RUNTIME_LAYOUT.md](docs/RUNTIME_LAYOUT.md)
-- [docs/LAUNCH_PIPELINE.md](docs/LAUNCH_PIPELINE.md) (canonical launch behavior + device rules)
-- [docs/DEBUGGING.md](docs/DEBUGGING.md)
-- [docs/DOC_AUDIT.md](docs/DOC_AUDIT.md)
-
-## Status / Roadmap
-- No subfolder dependencies (assets load from ELF directory first).
-- Legacy `POPSLDR/` layout kept as fallback.
-
-## Usage
-Place `POPSLOADER.ELF`, `POPSTARTER.ELF`, Lua scripts, images, and optional IRX modules in the same directory (no required subdirectories).  
-- `system.lua`, `ui.lua`, `images.lua`, `pops_profiles.lua`, `PATCH_5.BIN`  
-- UI images (`*.png`) and optional external IRX modules (`*.irx`)  
-Legacy folders (`POPSLDR/`, `IMG/`, `IRX/`) are fallback-only.  
-Profiles can override the PopStarter path if needed.  
-See [docs/RUNTIME_LAYOUT.md](docs/RUNTIME_LAYOUT.md) for layout details and compatibility notes.
-
-## Launch behavior (canonical)
-Launch behavior, device rules, and POPStarter handoff are documented in [docs/LAUNCH_PIPELINE.md](docs/LAUNCH_PIPELINE.md). This repo does **not** contain POPStarter’s argument parsing, so POPStarter’s argv index must be verified in POPStarter’s own sources or documentation.
-
-### Device pages
-- The SMB slot represents MMCE (no SMB networking support); `SMB.png` is reused as the icon.  
-- MMCE auto-detects `mmce0:/` and `mmce1:/`, with module load order: `iomanX` → `fileXio` → `mmceman`.  
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for implementation details.
-
-### Controls
-- Triangle: Exit to OSDSYS (with confirmation).
-
-### Tips
-- (USB Only) if you want POPStarter IGR to go back to POPSLoader automatically, copy `POPSLOADER.ELF` renamed as `BOOT.ELF` (legacy `POPSLDR/` layout is still supported if you use it)
-- you can replace the POPStarter IGR textures with custom ones that looks like stock POPSLoader UI by pasting the `PATCH_5.BIN` found inside the `POPSLDR/` into the `POPS/` folder
-
-## APP_DIR examples (expected)
-These are derived from the startup path parsing logic and used for asset resolution order (APP_DIR first, legacy fallback second).  
-- `mass:/POPSLOADER.ELF` → `APP_DIR = mass:/`  
-- `mc0:/APPS/POPSLOADER.ELF` → `APP_DIR = mc0:/APPS/`  
-- `mmce0:/APPS/POPSLOADER.ELF` → `APP_DIR = mmce0:/APPS/`  
-
 ## Thanks
 - israpps (El_isra) for POPSLoader.
 - Daniel Santos for Enceladus: https://github.com/DanielSant0s/Enceladus
