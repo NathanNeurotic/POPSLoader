@@ -86,15 +86,9 @@ jobs:
           req bin/POPSLDR/list.icn
           req bin/POPSLDR/copy.icn
           req bin/POPSLDR/del.icn
-          req bin/POPSLDR/icon.sys.mmce
-          req bin/POPSLDR/icon.sys.mx4sio
-          req bin/POPSLDR/icon.sys.usbexfat
-          req bin/POPSLDR/list.icn.mmce
-          req bin/POPSLDR/list.icn.mx4sio
-          req bin/POPSLDR/list.icn.usbexfat
-          req bin/POPSLDR/del.icn.mmce
-          req bin/POPSLDR/del.icn.mx4sio
-          req bin/POPSLDR/del.icn.usbexfat
+          req bin/POPSLDR/icon.sys.bdma
+          req bin/POPSLDR/list.icn.bdma
+          req bin/POPSLDR/del.icn.bdma
           req bin/POPSLDR/usbd.irx.mmce
           req bin/POPSLDR/usbd.irx.mx4sio
           req bin/POPSLDR/usbd.irx.usbexfat
@@ -114,15 +108,9 @@ jobs:
           cp -f bin/POPSLDR/list.icn dist_root/PS1_POPSLOADER/list.icn
           cp -f bin/POPSLDR/copy.icn dist_root/PS1_POPSLOADER/copy.icn
           cp -f bin/POPSLDR/del.icn dist_root/PS1_POPSLOADER/del.icn
-          cp -f bin/POPSLDR/icon.sys.mmce dist_root/PS1_POPSLOADER/icon.sys.mmce
-          cp -f bin/POPSLDR/icon.sys.mx4sio dist_root/PS1_POPSLOADER/icon.sys.mx4sio
-          cp -f bin/POPSLDR/icon.sys.usbexfat dist_root/PS1_POPSLOADER/icon.sys.usbexfat
-          cp -f bin/POPSLDR/list.icn.mmce dist_root/PS1_POPSLOADER/list.icn.mmce
-          cp -f bin/POPSLDR/list.icn.mx4sio dist_root/PS1_POPSLOADER/list.icn.mx4sio
-          cp -f bin/POPSLDR/list.icn.usbexfat dist_root/PS1_POPSLOADER/list.icn.usbexfat
-          cp -f bin/POPSLDR/del.icn.mmce dist_root/PS1_POPSLOADER/del.icn.mmce
-          cp -f bin/POPSLDR/del.icn.mx4sio dist_root/PS1_POPSLOADER/del.icn.mx4sio
-          cp -f bin/POPSLDR/del.icn.usbexfat dist_root/PS1_POPSLOADER/del.icn.usbexfat
+          cp -f bin/POPSLDR/icon.sys.bdma dist_root/PS1_POPSLOADER/icon.sys.bdma
+          cp -f bin/POPSLDR/list.icn.bdma dist_root/PS1_POPSLOADER/list.icn.bdma
+          cp -f bin/POPSLDR/del.icn.bdma dist_root/PS1_POPSLOADER/del.icn.bdma
           cp -f bin/POPSLDR/usbd.irx.mmce dist_root/PS1_POPSLOADER/usbd.irx.mmce
           cp -f bin/POPSLDR/usbd.irx.mx4sio dist_root/PS1_POPSLOADER/usbd.irx.mx4sio
           cp -f bin/POPSLDR/usbd.irx.usbexfat dist_root/PS1_POPSLOADER/usbd.irx.usbexfat
@@ -159,17 +147,11 @@ jobs:
               "PS1_POPSLOADER/boot.adp",
               "PS1_POPSLOADER/copy.icn",
               "PS1_POPSLOADER/del.icn",
-              "PS1_POPSLOADER/del.icn.mmce",
-              "PS1_POPSLOADER/del.icn.mx4sio",
-              "PS1_POPSLOADER/del.icn.usbexfat",
+              "PS1_POPSLOADER/del.icn.bdma",
               "PS1_POPSLOADER/icon.sys",
-              "PS1_POPSLOADER/icon.sys.mmce",
-              "PS1_POPSLOADER/icon.sys.mx4sio",
-              "PS1_POPSLOADER/icon.sys.usbexfat",
+              "PS1_POPSLOADER/icon.sys.bdma",
               "PS1_POPSLOADER/list.icn",
-              "PS1_POPSLOADER/list.icn.mmce",
-              "PS1_POPSLOADER/list.icn.mx4sio",
-              "PS1_POPSLOADER/list.icn.usbexfat",
+              "PS1_POPSLOADER/list.icn.bdma",
               "PS1_POPSLOADER/title.cfg",
               "PS1_POPSLOADER/usbd.irx.mmce",
               "PS1_POPSLOADER/usbd.irx.mx4sio",
