@@ -436,9 +436,9 @@ int main(int argc, char * argv[])
 
     if (luaWantsExitToBoot())
     {
-        static char boot_argv0[] = "mc0:/BOOT/BOOT.ELF";
-        char *argv[2] = {boot_argv0, NULL};
-        LoadELFFromFileExecPS2RebootIOP(boot_argv0, 1, argv);
+        static const char *argv0 = "mc0:/BOOT/BOOT.ELF";
+        const char *argv[1] = {argv0};
+        LoadELFFromFileExecPS2RebootIOP(argv0, 1, (char **)argv);
     }
 
 	return 0;

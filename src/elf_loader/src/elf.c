@@ -242,7 +242,27 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 
 int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[])
 {
+	t_ExecData elfdata;
+	char resolved_path[256];
+	int ret;
+
+	if (argc <= 0 || argv == NULL || argv[0] == NULL) {
+		return -4;
+	}
+	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
+		return -1;
+	}
+
 	SifInitRpc(0);
+	FlushCache(0);
+	SifLoadFileInit();
+	ret = SifLoadElf(resolved_path, &elfdata);
+	SifLoadFileExit();
+	if (ret != 0 || elfdata.epc == 0) {
+		SifExitRpc();
+		return -2;
+	}
+
 	while (!SifIopReset(NULL, 0)){};
 	while (!SifIopSync()){};
 	fioExit();
@@ -252,6 +272,14 @@ int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]
 
 	SifInitRpc(0);
 	SifLoadFileInit();
+	SifLoadModule("rom0:SIO2MAN", 0, NULL);
+	SifLoadModule("rom0:MCMAN", 0, NULL);
+	SifLoadModule("rom0:MCSERV", 0, NULL);
+	SifLoadFileExit();
+	SifExitRpc();
 
-	return LoadELFFromFileWithPartition(filename, argc, argv);
+	FlushCache(0);
+	FlushCache(2);
+	ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc, argv);
+	return -1;
 }

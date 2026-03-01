@@ -256,7 +256,9 @@ static int g_ui_exit_to_boot = 0;
 
 int luaWantsExitToBoot(void)
 {
-    return g_ui_exit_to_boot;
+    int wants_exit_to_boot = g_ui_exit_to_boot;
+    g_ui_exit_to_boot = 0;
+    return wants_exit_to_boot;
 }
 
 const char * runScript(const char* script, bool isStringBuffer )
