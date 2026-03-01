@@ -1012,7 +1012,7 @@ function PLDR.RefreshMassBackends()
       new_cache[slot] = {
         present = true,
         driver = info.name,
-        kind = (info.name == "sdc") and "mx4sio" or "usb"
+        kind = (info.name == "sdc") and "mx4sio" or ((string.find(info.name, "usb", 1, true) ~= nil) and "usb" or "other")
       }
       table.insert(new_order, slot)
     end
