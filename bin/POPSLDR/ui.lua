@@ -1680,45 +1680,11 @@ end
               UI.SceneChange(UI.SCENES.GSMB)
             end
           elseif UI.MainMenu.OPT == 2 then
-            local mx4sio_root = nil
-            local mx4sio_err = nil
             PLDR.CleanupGameList()
             PLDR.GAMEPATH = ""
-            if type(System) == "table" and type(System.initMX4SIO) == "function" then
-              local ok, ready, root, err = pcall(System.initMX4SIO, "mx4sio0:/")
-              if ok and ready and root ~= nil then
-                mx4sio_root = root.."POPS/"
-              else
-                if ok then mx4sio_err = err end
-                ok, ready, root, err = pcall(System.initMX4SIO, "mx4sio:/")
-                if ok and ready and root ~= nil then
-                  mx4sio_root = root.."POPS/"
-                elseif ok then
-                  mx4sio_err = err
-                end
-              end
-            end
-            if mx4sio_root ~= nil and type(PLDR) == "table" then
-              local mx4_root = string.gsub(mx4sio_root, "POPS/$", "")
-              PLDR.MX4SIO = PLDR.MX4SIO or {}
-              PLDR.MX4SIO.ROOT = mx4_root
-              PLDR.MX4SIO.MASSINDX = nil
-              local mx4_idx = mx4_root:match("^mass(%d+):/")
-              if mx4_idx then
-                PLDR.MX4SIO.MASSINDX = tonumber(mx4_idx)
-              elseif mx4_root:match("^mass:/") then
-                PLDR.MX4SIO.MASSINDX = 0
-              end
-              if type(PLDR.SetMX4SIORoot) == "function" then
-                pcall(PLDR.SetMX4SIORoot, mx4_root)
-              end
-            end
+            local mx4sio_root = PLDR.InitMX4SIOPopsRoot()
             if mx4sio_root == nil then
-              local suffix = ""
-              if mx4sio_err ~= nil and mx4sio_err ~= "" then
-                suffix = " ("..tostring(mx4sio_err)..")"
-              end
-              UI.Notif_queue.add("No MX4SIO device found (POPS/ missing)"..suffix)
+              UI.Notif_queue.add("No MX4SIO device found")
               return
             else
               PLDR.CleanupGameList()

@@ -36,6 +36,7 @@ extern unsigned int size_cdfs_irx;
 
 
 static bool LoadIrxCheckedBuffer(const char *name, unsigned char *irx, unsigned int size, int *out_id, int *out_ret);
+static void BuildMassRootPath(int index, char *out_root, size_t out_sz);
 
 #define BDM_QUERY_RPC_ID 0xB0D10B00
 #define BDM_QUERY_RPC_GET_LIST 0
@@ -197,6 +198,31 @@ static bool EnsureMassBackendCache()
 	return RefreshMassBackendCache();
 }
 
+static bool GetMassRootByBackendNameInternal(const char *backend_name, char *out_root, size_t out_sz)
+{
+	if (backend_name == NULL || backend_name[0] == '\0' || out_root == NULL || out_sz == 0) {
+		return false;
+	}
+
+	mass_backend_cache_valid = false;
+	bdm_rpc_bound = false;
+
+	bdm_dev_list_t list;
+	if (!FetchBdmList(&list)) {
+		return false;
+	}
+
+	for (u32 i = 0; i < list.count; ++i) {
+		const bdm_dev_info_t *info = &list.devs[i];
+		if (strcmp(info->name, backend_name) == 0) {
+			BuildMassRootPath((int)info->devNr, out_root, out_sz);
+			return true;
+		}
+	}
+
+	return false;
+}
+
 static bool LoadIrxCheckedBuffer(const char *name, unsigned char *irx, unsigned int size, int *out_id, int *out_ret)
 {
 	int id = -1;
@@ -227,10 +253,6 @@ static bool ProbeDir(const char *path, int *out_ret)
 	return false;
 }
 
-#ifndef USBMASS_IOCTL_GET_DRIVERNAME
-#define USBMASS_IOCTL_GET_DRIVERNAME 0x0003
-#endif
-
 static void BuildMassRootPath(int index, char *out_root, size_t out_sz)
 {
 	if (index == 0) {
@@ -238,68 +260,6 @@ static void BuildMassRootPath(int index, char *out_root, size_t out_sz)
 	} else {
 		snprintf(out_root, out_sz, "mass%d:/", index);
 	}
-}
-
-static void DecodeDriverCodePair(int rc, char *out_code, size_t out_code_sz, char *out_rev, size_t out_rev_sz)
-{
-	unsigned char b[4];
-	b[0] = (unsigned char)(rc & 0xFF);
-	b[1] = (unsigned char)((rc >> 8) & 0xFF);
-	b[2] = (unsigned char)((rc >> 16) & 0xFF);
-	b[3] = (unsigned char)((rc >> 24) & 0xFF);
-
-	size_t n = 0;
-	for (size_t i = 0; i < 4 && n + 1 < out_code_sz; ++i) {
-		char c = (char)b[i];
-		if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) {
-			if (c >= 'A' && c <= 'Z') c = (char)(c - 'A' + 'a');
-			out_code[n++] = c;
-		}
-	}
-	out_code[n] = '\0';
-
-	n = 0;
-	for (size_t i = 0; i < 4 && n + 1 < out_rev_sz; ++i) {
-		char c = (char)b[3 - i];
-		if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) {
-			if (c >= 'A' && c <= 'Z') c = (char)(c - 'A' + 'a');
-			out_rev[n++] = c;
-		}
-	}
-	out_rev[n] = '\0';
-}
-
-static bool QueryMassDriverCode(int index, char *out_code, size_t out_code_sz, char *out_rev, size_t out_rev_sz)
-{
-	if (out_code == NULL || out_code_sz == 0 || out_rev == NULL || out_rev_sz == 0) {
-		return false;
-	}
-	char root[16];
-	BuildMassRootPath(index, root, sizeof(root));
-	int dd = fileXioDopen(root);
-	if (dd < 0) {
-		out_code[0] = '\0';
-		out_rev[0] = '\0';
-		return false;
-	}
-	int rc = fileXioIoctl(dd, USBMASS_IOCTL_GET_DRIVERNAME, (void*)"");
-	fileXioDclose(dd);
-	DecodeDriverCodePair(rc, out_code, out_code_sz, out_rev, out_rev_sz);
-	return out_code[0] != '\0' || out_rev[0] != '\0';
-}
-
-static bool IsDriverCodeMatch(const char *code, const char *rev, const char *want)
-{
-	if (want == NULL || want[0] == '\0') {
-		return false;
-	}
-	if (code != NULL && strcmp(code, want) == 0) {
-		return true;
-	}
-	if (rev != NULL && strcmp(rev, want) == 0) {
-		return true;
-	}
-	return false;
 }
 
 // MX4SIO init notes:
@@ -316,7 +276,6 @@ enum {
 int mx4sio_init_and_get_root(const char *hint, char *out_root, size_t out_sz)
 {
 	static bool mx4sio_irx_loaded = false;
-	bool saw_sdc_driver = false;
 
 	if (out_root == NULL || out_sz == 0) {
 		return MX4SIO_INIT_ROOT_NOT_FOUND;
@@ -331,22 +290,10 @@ int mx4sio_init_and_get_root(const char *hint, char *out_root, size_t out_sz)
 		mx4sio_irx_loaded = true;
 	}
 
-	for (int i = 0; i <= 9; ++i) {
-		char code[5];
-		char rev[5];
-		if (!QueryMassDriverCode(i, code, sizeof(code), rev, sizeof(rev))) {
-			continue;
-		}
-		if (!IsDriverCodeMatch(code, rev, "sdc")) {
-			continue;
-		}
-		saw_sdc_driver = true;
-		char root[16];
-		char pops_path[32];
-		BuildMassRootPath(i, root, sizeof(root));
-		snprintf(pops_path, sizeof(pops_path), "%sPOPS/", root);
-		int pops_ret = -1;
-		if (ProbeDir(pops_path, &pops_ret)) {
+	char root[16];
+	if (GetMassRootByBackendNameInternal("sdc", root, sizeof(root))) {
+		int root_ret = -1;
+		if (ProbeDir(root, &root_ret)) {
 			snprintf(out_root, out_sz, "%s", root);
 			return MX4SIO_INIT_OK;
 		}
@@ -377,28 +324,6 @@ int mx4sio_init_and_get_root(const char *hint, char *out_root, size_t out_sz)
 		if (ProbeDir(pops_path, &pops_ret)) {
 			snprintf(out_root, out_sz, "%s", prefix);
 			return MX4SIO_INIT_OK;
-		}
-	}
-
-	if (!saw_sdc_driver) {
-		for (int i = 0; i <= 9; ++i) {
-			char code[5];
-			char rev[5];
-			if (!QueryMassDriverCode(i, code, sizeof(code), rev, sizeof(rev))) {
-				continue;
-			}
-			if (IsDriverCodeMatch(code, rev, "usb")) {
-				continue;
-			}
-			char root[16];
-			char pops_path[32];
-			BuildMassRootPath(i, root, sizeof(root));
-			snprintf(pops_path, sizeof(pops_path), "%sPOPS/", root);
-			int pops_ret = -1;
-			if (ProbeDir(pops_path, &pops_ret)) {
-				snprintf(out_root, out_sz, "%s", root);
-				return MX4SIO_INIT_OK;
-			}
 		}
 	}
 
@@ -497,6 +422,24 @@ static int lua_get_mass_backend_info(lua_State *L)
 			return 1;
 		}
 	}
+	lua_pushnil(L);
+	return 1;
+}
+
+static int lua_get_mass_root_by_backend_name(lua_State *L)
+{
+	int argc = lua_gettop(L);
+	if (argc != 1) {
+		return luaL_error(L, "Argument error: System.getMassRootByBackendName(name) takes one argument.");
+	}
+
+	const char *backend_name = luaL_checkstring(L, 1);
+	char root[16];
+	if (GetMassRootByBackendNameInternal(backend_name, root, sizeof(root))) {
+		lua_pushstring(L, root);
+		return 1;
+	}
+
 	lua_pushnil(L);
 	return 1;
 }
@@ -1346,6 +1289,7 @@ static const luaL_Reg System_functions[] = {
 	{"bdmList",                lua_bdm_list},
 	{"refreshMassBackends",    lua_refresh_mass_backends},
 	{"getMassBackendInfo",     lua_get_mass_backend_info},
+	{"getMassRootByBackendName", lua_get_mass_root_by_backend_name},
 	{"findBDMByDriver",    lua_find_bdm_by_driver},
 	{0, 0}
 };
