@@ -79,6 +79,8 @@ extern unsigned char asset_list_icn_bdma[];
 extern unsigned int size_asset_list_icn_bdma;
 extern unsigned char asset_del_icn_bdma[];
 extern unsigned int size_asset_del_icn_bdma;
+extern unsigned char asset_boot_adp[];
+extern unsigned int size_asset_boot_adp;
 
 #define ASSET_ENTRY(key_name, symbol_name) { key_name, symbol_name, (size_t)size_##symbol_name }
 
@@ -118,6 +120,7 @@ static const embedded_asset_t g_embedded_assets[] = {
 	ASSET_ENTRY("icon.sys.bdma", asset_icon_sys_bdma),
 	ASSET_ENTRY("list.icn.bdma", asset_list_icn_bdma),
 	ASSET_ENTRY("del.icn.bdma", asset_del_icn_bdma),
+	ASSET_ENTRY("boot.adp", asset_boot_adp),
 
 
 	ASSET_ENTRY("POPSLDR/IMG/USB.png", asset_usb_png),
@@ -154,7 +157,8 @@ static const embedded_asset_t g_embedded_assets[] = {
 	ASSET_ENTRY("POPSLDR/usbhdfsd.irx.mmce", asset_usbhdfsd_irx_mmce),
 	ASSET_ENTRY("POPSLDR/icon.sys.bdma", asset_icon_sys_bdma),
 	ASSET_ENTRY("POPSLDR/list.icn.bdma", asset_list_icn_bdma),
-	ASSET_ENTRY("POPSLDR/del.icn.bdma", asset_del_icn_bdma)
+	ASSET_ENTRY("POPSLDR/del.icn.bdma", asset_del_icn_bdma),
+	ASSET_ENTRY("POPSLDR/boot.adp", asset_boot_adp)
 };
 
 static const embedded_asset_t *embedded_find(const char *key)
