@@ -6,6 +6,7 @@
 
 #include "include/sound.h"
 #include "include/dprintf.h"
+#include "include/embed_assets.h"
 
 static bool adpcm_started = false;
 static bool audsrv_started = false;
@@ -124,8 +125,27 @@ audsrv_adpcm_t* sound_loadadpcm(const char* path){
         adpcm_started = true;
     }
 
-	FILE* adpcm;
 	audsrv_adpcm_t *sample = (audsrv_adpcm_t *)malloc(sizeof(audsrv_adpcm_t));
+    if (sample == NULL) {
+        return NULL;
+    }
+
+    if (strncmp(path, "embed:", 6) == 0) {
+        const uint8_t *data = NULL;
+        size_t size = 0;
+        const char *name = path + 6;
+
+        if (!embedded_get(name, &data, &size) || data == NULL || size == 0) {
+            free(sample);
+            return NULL;
+        }
+
+	audsrv_load_adpcm(sample, (u8*)data, size);
+        DPRINTF("sound_loadadpcm: loaded embedded %s (%u bytes)\n", name, (unsigned int)size);
+        return sample;
+    }
+
+	FILE* adpcm;
 	int size;
 	u8* buffer;
 

@@ -552,20 +552,6 @@ UI = {
           if type(Sound) ~= "table" or type(Sound.loadADPCM) ~= "function" then
             return
           end
-          if type(System) ~= "table" or type(System.resolveAsset) ~= "function" then
-            return
-          end
-
-          local resolved = nil
-          local ok_resolve, asset_path = pcall(System.resolveAsset, "boot.adp")
-          if ok_resolve and type(asset_path) == "string" and asset_path ~= "" then
-            resolved = asset_path
-          end
-          if resolved == nil then
-            return
-          end
-
-
 -- Set volumes/formats defensively; some builds may ignore these.
           local function normalize_volume(value)
             if type(value) ~= "number" then
@@ -596,7 +582,7 @@ UI = {
             end
           end)
 
-          local ok_load, audio = pcall(Sound.loadADPCM, resolved)
+          local ok_load, audio = pcall(Sound.loadADPCM, "embed:boot.adp")
           if not ok_load then
             return
           end
