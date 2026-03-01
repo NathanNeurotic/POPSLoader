@@ -406,9 +406,12 @@ int mx4sio_init_and_get_root(const char *hint, char *out_root, size_t out_sz)
 }
 static void PushBdmInfo(lua_State *L, const bdm_dev_info_t *info)
 {
+	int slot = (int)info->parNr;
 	lua_newtable(L);
 	lua_pushstring(L, info->name);
 	lua_setfield(L, -2, "name");
+	lua_pushinteger(L, slot);
+	lua_setfield(L, -2, "slot");
 	lua_pushinteger(L, info->devNr);
 	lua_setfield(L, -2, "devNr");
 	lua_pushinteger(L, info->parNr);
@@ -428,13 +431,24 @@ static int lua_bdm_list(lua_State *L)
 		lua_pushnil(L);
 		return 1;
 	}
-	DPRINTF("BDM list count=%u\n", list.count);
 	lua_newtable(L);
 	for (u32 i = 0; i < list.count; ++i) {
 		const bdm_dev_info_t *info = &list.devs[i];
-		DPRINTF("BDM device %u name=%s devNr=%u parNr=%u parId=%u sectorSize=%u sectorCount=%llu\n",
-		        i, info->name, info->devNr, info->parNr, info->parId,
-		        info->sectorSize, (unsigned long long)info->sectorCount);
+		PushBdmInfo(L, info);
+		lua_rawseti(L, -2, i + 1);
+	}
+	return 1;
+}
+
+static int lua_get_mass_backends(lua_State *L)
+{
+	if (!EnsureMassBackendCache()) {
+		lua_pushnil(L);
+		return 1;
+	}
+	lua_newtable(L);
+	for (u32 i = 0; i < mass_backend_cache.count; ++i) {
+		const bdm_dev_info_t *info = &mass_backend_cache.devs[i];
 		PushBdmInfo(L, info);
 		lua_rawseti(L, -2, i + 1);
 	}
@@ -484,7 +498,7 @@ static int lua_get_mass_backend_info(lua_State *L)
 	}
 	for (u32 i = 0; i < mass_backend_cache.count; ++i) {
 		const bdm_dev_info_t *info = &mass_backend_cache.devs[i];
-		if ((int)info->devNr == index) {
+		if ((int)info->parNr == index) {
 			lua_newtable(L);
 			lua_pushboolean(L, 1);
 			lua_setfield(L, -2, "present");
@@ -492,8 +506,10 @@ static int lua_get_mass_backend_info(lua_State *L)
 			lua_setfield(L, -2, "driver");
 			lua_pushstring(L, ClassifyMassBackend(info->name));
 			lua_setfield(L, -2, "kind");
-			lua_pushinteger(L, info->devNr);
+			lua_pushinteger(L, info->parNr);
 			lua_setfield(L, -2, "index");
+			lua_pushinteger(L, info->parNr);
+			lua_setfield(L, -2, "slot");
 			return 1;
 		}
 	}
@@ -1345,6 +1361,7 @@ static const luaL_Reg System_functions[] = {
 	{"initMX4SIO",             lua_mx4sio_init},
 	{"bdmList",                lua_bdm_list},
 	{"refreshMassBackends",    lua_refresh_mass_backends},
+	{"getMassBackends",        lua_get_mass_backends},
 	{"getMassBackendInfo",     lua_get_mass_backend_info},
 	{"findBDMByDriver",    lua_find_bdm_by_driver},
 	{0, 0}

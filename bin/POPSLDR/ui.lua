@@ -1680,49 +1680,25 @@ end
               UI.SceneChange(UI.SCENES.GSMB)
             end
           elseif UI.MainMenu.OPT == 2 then
-            local mx4sio_root = nil
-            local mx4sio_err = nil
+            local mx4_root = nil
             PLDR.CleanupGameList()
             PLDR.GAMEPATH = ""
             if type(System) == "table" and type(System.initMX4SIO) == "function" then
-              local ok, ready, root, err = pcall(System.initMX4SIO, "mx4sio0:/")
-              if ok and ready and root ~= nil then
-                mx4sio_root = root.."POPS/"
-              else
-                if ok then mx4sio_err = err end
-                ok, ready, root, err = pcall(System.initMX4SIO, "mx4sio:/")
-                if ok and ready and root ~= nil then
-                  mx4sio_root = root.."POPS/"
-                elseif ok then
-                  mx4sio_err = err
-                end
-              end
+              pcall(System.initMX4SIO)
             end
-            if mx4sio_root ~= nil and type(PLDR) == "table" then
-              local mx4_root = string.gsub(mx4sio_root, "POPS/$", "")
-              PLDR.MX4SIO = PLDR.MX4SIO or {}
-              PLDR.MX4SIO.ROOT = mx4_root
-              PLDR.MX4SIO.MASSINDX = nil
-              local mx4_idx = mx4_root:match("^mass(%d+):/")
-              if mx4_idx then
-                PLDR.MX4SIO.MASSINDX = tonumber(mx4_idx)
-              elseif mx4_root:match("^mass:/") then
-                PLDR.MX4SIO.MASSINDX = 0
-              end
-              if type(PLDR.SetMX4SIORoot) == "function" then
-                pcall(PLDR.SetMX4SIORoot, mx4_root)
-              end
+            if type(System) == "table" and type(System.refreshMassBackends) == "function" then
+              pcall(System.refreshMassBackends)
             end
-            if mx4sio_root == nil then
-              local suffix = ""
-              if mx4sio_err ~= nil and mx4sio_err ~= "" then
-                suffix = " ("..tostring(mx4sio_err)..")"
-              end
-              UI.Notif_queue.add("No MX4SIO device found (POPS/ missing)"..suffix)
+            local slots = PLDR.GetMassSlots()
+            mx4_root = PLDR.GetMx4RootFromSlots(slots)
+            if mx4_root ~= nil and type(PLDR.SetMX4SIORoot) == "function" then
+              pcall(PLDR.SetMX4SIORoot, mx4_root)
+            end
+            if mx4_root == nil then
+              UI.Notif_queue.add("No MX4SIO device found")
               return
             else
-              PLDR.CleanupGameList()
-              PLDR.GetPS1GameLists(mx4sio_root, true)
+              PLDR.BuildMassGameListByType("mx4sio", slots)
               UI.setDeviceLock(DEVLOCK.MX4SIO)
               UI.SceneChange(UI.SCENES.GMX4SIO)
             end
@@ -1759,8 +1735,8 @@ end
             end
             PLDR.CleanupGameList()
             PLDR.GAMEPATH = ""
-            local snapshot = PLDR.RefreshMassStateSnapshot()
-            PLDR.BuildMassGameListByType("usb", snapshot)
+            local slots = PLDR.GetMassSlots()
+            PLDR.BuildMassGameListByType("usb", slots)
             UI.setDeviceLock(DEVLOCK.USB)
             UI.SceneChange(UI.SCENES.GUSBFAT)
           elseif UI.MainMenu.OPT == 6 then
