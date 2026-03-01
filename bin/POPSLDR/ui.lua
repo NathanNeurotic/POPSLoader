@@ -879,6 +879,7 @@ UI = {
           return
         end
 
+        UI.Modal.Close()
         if UI.Transition ~= nil and UI.Transition.StepFadeToBlack ~= nil then
           pcall(UI.Transition.StepFadeToBlack, 240)
         else
@@ -898,26 +899,13 @@ UI = {
           pcall(System.sleep, 0.3)
         end
 
-        if type(System) == "table" and type(System.loadELF) == "function" then
-          UI.LAUNCHING = true
-          local reboot_iop = 1
-          local ok_load, _ = pcall(System.loadELF, boot_path, reboot_iop, boot_path)
-          if not ok_load then
-            UI.LAUNCHING = false
-            if UI.CURSCENE ~= UI.SCENES.MMAIN then
-              UI.SceneChange(UI.SCENES.MMAIN)
-            end
-            UI.Modal.active = true
-            UI.Modal.title = "Exit"
-            UI.Modal.body = "Failed to launch BOOT.ELF"
-            UI.Modal.options = {"OK", "Back"}
-            UI.Modal.confirm_action = UI.Modal.Close
-            UI.Modal.cancel_action = UI.Modal.Close
-            UI.Modal.triangle_action = nil
-            UI.Modal.ignore_until_release = true
-            return
-          end
+        local function RecoverBootLaunchFailure()
           UI.LAUNCHING = false
+          if UI.Transition ~= nil then
+            UI.Transition.active = false
+            UI.Transition.target = nil
+            UI.Transition.next_target = nil
+          end
           if UI.CURSCENE ~= UI.SCENES.MMAIN then
             UI.SceneChange(UI.SCENES.MMAIN)
           end
@@ -929,6 +917,17 @@ UI = {
           UI.Modal.cancel_action = UI.Modal.Close
           UI.Modal.triangle_action = nil
           UI.Modal.ignore_until_release = true
+        end
+
+        if type(System) == "table" and type(System.loadELF) == "function" then
+          UI.LAUNCHING = true
+          local reboot_iop = 1
+          local ok_load, _ = pcall(System.loadELF, boot_path, reboot_iop, boot_path)
+          if not ok_load then
+            RecoverBootLaunchFailure()
+            return
+          end
+          RecoverBootLaunchFailure()
         end
       end;
       HandleInput = function ()
