@@ -1001,7 +1001,7 @@ end
         end
         if type(System) == "table" and type(System.loadELF) == "function" then
           UI.LAUNCHING = true
-          local ok, ret = pcall(System.loadELF, boot_path, 1)
+          local ok, ret = pcall(System.loadELF, boot_path, 1, "BOOT")
           if (not ok) or ret == false or ret == nil then
             UI.LAUNCHING = false
             UI.Notif_queue.add("BOOT.ELF launch failed")
@@ -1031,7 +1031,7 @@ end
           return
         end
         UI.LAUNCHING = true
-        local ok, ret = pcall(System.loadELF, dkwdrv_path, 1)
+        local ok, ret = pcall(System.loadELF, dkwdrv_path, 1, "DKWDRV")
         if (not ok) or ret == false or ret == nil then
           UI.LAUNCHING = false
           UI.Notif_queue.add("DKWDRV launch failed")
