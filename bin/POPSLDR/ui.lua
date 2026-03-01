@@ -552,113 +552,16 @@ UI = {
           if type(Sound) ~= "table" or type(Sound.loadADPCM) ~= "function" then
             return
           end
-
-          local primary = UI.BOOT_SOUND.PATH or "boot.adp"
-          local names = { primary }
-          if primary ~= "boot.adpcm" then
-            table.insert(names, "boot.adpcm")
+          if type(System) ~= "table" or type(System.resolveAsset) ~= "function" then
+            return
           end
 
-local function file_exists(p)
-  if p == nil then return false end
-  if type(doesFileExist) == "function" then
-    local okcall, res = pcall(doesFileExist, p)
-    return okcall and res == true
-  end
-  if type(System) == "table" and type(System.openFile) == "function" and type(System.closeFile) == "function" then
-    local okfd, fd = pcall(System.openFile, p, O_RDONLY)
-    if okfd and fd ~= nil and fd >= 0 then
-      pcall(System.closeFile, fd)
-      return true
-    end
-  end
-  return false
-end
-
-local function resolve(p)
-  if p == nil then return nil end
-  if type(System) == "table" and type(System.resolveAsset) == "function" then
-    local ok, r = pcall(System.resolveAsset, p)
-    if ok and type(r) == "string" and r ~= "" then return r end
-  end
-  return p
-end
-
-local function ensure_dir(path)
-  if path == nil or path == "" then return nil end
-  if type(EnsureTrailingSlash) == "function" then
-    return EnsureTrailingSlash(path)
-  end
-  if string.sub(path, -1) ~= "/" then
-    return path .. "/"
-  end
-  return path
-end
-
-local function add_candidate(list, path)
-  if path ~= nil and path ~= "" then
-    table.insert(list, path)
-  end
-end
-
-local function resolve_candidates(name)
-  local candidates = {}
-  add_candidate(candidates, resolve(name))
-  add_candidate(candidates, resolve("./" .. name))
-
-  local app_dir = APP_DIR
-  if type(System) == "table" and type(System.getAppDir) == "function" then
-    local ok, dir = pcall(System.getAppDir)
-    if ok and dir ~= nil and dir ~= "" then
-      app_dir = dir
-    end
-  end
-  local app_dir_norm = ensure_dir(app_dir)
-  if app_dir_norm ~= nil then
-    add_candidate(candidates, app_dir_norm .. name)
-    add_candidate(candidates, app_dir_norm .. "POPSLDR/" .. name)
-  end
-
-  local cwd = nil
-  if type(System) == "table" and type(System.currentDirectory) == "function" then
-    local ok, dir = pcall(System.currentDirectory)
-    if ok then
-      cwd = dir
-    end
-  end
-  local cwd_norm = ensure_dir(cwd)
-  if cwd_norm ~= nil then
-    add_candidate(candidates, cwd_norm .. name)
-    add_candidate(candidates, cwd_norm .. "POPSLDR/" .. name)
-  end
-
-  add_candidate(candidates, name)
-  add_candidate(candidates, "./" .. name)
-
-  return candidates
-end
-
-          local found = nil
-          local requested = nil
-          for _, rel in ipairs(names) do
-            requested = rel
-            local candidates = resolve_candidates(rel)
-            for _, p in ipairs(candidates) do
-              if file_exists(p) then
-                found = p
-                break
-              end
-            end
-            if found ~= nil then break end
+          local resolved = nil
+          local ok_resolve, asset_path = pcall(System.resolveAsset, "boot.adp")
+          if ok_resolve and type(asset_path) == "string" and asset_path ~= "" then
+            resolved = asset_path
           end
-
-          if found == nil and requested ~= nil then
-            -- Last resort: try HostFS prefix in PCSX2 setups.
-            local host_p = "host:" .. requested
-            if file_exists(host_p) then found = host_p end
-          end
-
-          if found == nil then
+          if resolved == nil then
             return
           end
 
@@ -693,7 +596,7 @@ end
             end
           end)
 
-          local ok_load, audio = pcall(Sound.loadADPCM, found)
+          local ok_load, audio = pcall(Sound.loadADPCM, resolved)
           if not ok_load then
             return
           end
