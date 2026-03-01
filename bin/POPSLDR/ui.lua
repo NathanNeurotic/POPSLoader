@@ -849,7 +849,7 @@ UI = {
         local boot = "mc0:/BOOT/BOOT.ELF"
 
         UI.LAUNCHING = true
-        local ok = pcall(System.loadELF, boot, 0, nil, 1)
+        local ok = pcall(System.loadELF, boot, 1, boot, 1)
 
         if not ok then
           UI.LAUNCHING = false
