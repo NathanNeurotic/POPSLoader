@@ -2072,34 +2072,20 @@ function UI.OnSceneEnter(previous_scene, scene)
     return
   end
   if scene == UI.SCENES.GMX4SIO then
-    PLDR.CleanupGameList()
-    PLDR.GAMEPATH = ""
-    local mx4sio_root = nil
     if type(_G.ensureMx4sioInit) == "function" then
       pcall(_G.ensureMx4sioInit)
     end
     if type(System) == "table" and type(System.initMX4SIO) == "function" then
       pcall(System.initMX4SIO)
     end
-    local mx4_roots = CollectRootsByDriver(IsMx4MassDriver)
-    if #mx4_roots > 0 then
-      mx4sio_root = mx4_roots[1]
-      if type(PLDR.SetMX4SIORoot) == "function" then
-        pcall(PLDR.SetMX4SIORoot, mx4sio_root)
-      end
-    end
-    if mx4sio_root == nil then
+    local mx4sio_pops = PLDR.InitMX4SIOPopsRoot()
+    if mx4sio_pops == nil then
       UI.Notif_queue.add("No MX4SIO device found")
       return
     end
-    local found_games = BuildMassGameListFromRoots({mx4sio_root})
-    if not found_games then
-      PLDR.CleanupGameList()
-      local mx4sio_pops = mx4sio_root.."POPS/"
-      if doesFolderExist(mx4sio_pops) then
-        PLDR.GetPS1GameLists(mx4sio_pops, true)
-      end
-    end
+    PLDR.CleanupGameList()
+    PLDR.GAMEPATH = ""
+    PLDR.GetPS1GameLists(mx4sio_pops, true)
   end
 end
 UI.RecalcLayout()
