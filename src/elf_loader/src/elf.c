@@ -34,12 +34,21 @@ static bool build_host_alt_path(const char *filename, char *out, size_t out_size
 
 static int resolve_exec_path(const char *filename, char *out, size_t out_size) {
 	struct stat buffer;
+	if (filename != NULL && (strncmp(filename, "mc0:/", 5) == 0 || strncmp(filename, "mc1:/", 5) == 0)) {
+		snprintf(out, out_size, "%s", filename);
+		return 0;
+	}
 	if (stat(filename, &buffer) == 0) {
 		snprintf(out, out_size, "%s", filename);
 		return 0;
 	}
-	if (build_host_alt_path(filename, out, out_size) && stat(out, &buffer) == 0) {
-		return 0;
+	if (build_host_alt_path(filename, out, out_size)) {
+		if (strncmp(out, "mc0:/", 5) == 0 || strncmp(out, "mc1:/", 5) == 0) {
+			return 0;
+		}
+		if (stat(out, &buffer) == 0) {
+			return 0;
+		}
 	}
 	return -1;
 }
