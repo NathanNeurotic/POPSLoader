@@ -252,9 +252,17 @@ int test_error(lua_State * L) {
     return 0;
 }
 
+static int g_ui_exit_to_boot = 0;
+
+int luaWantsExitToBoot(void)
+{
+    return g_ui_exit_to_boot;
+}
+
 const char * runScript(const char* script, bool isStringBuffer )
 {
     (void)isStringBuffer;
+    g_ui_exit_to_boot = 0;
     DPRINTF("Creating luaVM... \n");
 
     L = luaL_newstate();
@@ -308,6 +316,15 @@ const char * runScript(const char* script, bool isStringBuffer )
     }
 
     if (s == 0) {
+        lua_getglobal(L, "UI");
+        if (lua_istable(L, -1)) {
+            lua_getfield(L, -1, "EXIT_TO_BOOT");
+            g_ui_exit_to_boot = lua_toboolean(L, -1) ? 1 : 0;
+            lua_pop(L, 1);
+        } else {
+            g_ui_exit_to_boot = 0;
+        }
+        lua_pop(L, 1);
         lua_close(L);
         return NULL;
     }

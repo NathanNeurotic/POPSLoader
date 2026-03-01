@@ -10,9 +10,13 @@
 
 #include <string.h>
 #include <sifrpc.h>
+#include <sifcmd.h>
+#include <loadfile.h>
+#include <iopcontrol.h>
+#include <iopheap.h>
+#include <fileio.h>
 #include <stdio.h>
 #include <kernel.h>
-#include <loadfile.h>
 #include <sys/stat.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -234,4 +238,20 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 
 	ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc, argv);
 	return -1;
+}
+
+int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[])
+{
+	SifInitRpc(0);
+	while (!SifIopReset(NULL, 0)){};
+	while (!SifIopSync()){};
+	fioExit();
+	SifExitIopHeap();
+	SifLoadFileExit();
+	SifExitRpc();
+
+	SifInitRpc(0);
+	SifLoadFileInit();
+
+	return LoadELFFromFileWithPartition(filename, argc, argv);
 }

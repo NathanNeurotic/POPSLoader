@@ -24,6 +24,7 @@
 #include "include/luaplayer.h"
 #include "include/pad.h"
 #include "include/dprintf.h"
+#include "elf_loader/include/elf-loader.h"
 
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
@@ -430,6 +431,14 @@ int main(int argc, char * argv[])
         }
 
         break;
+    }
+
+
+    if (luaWantsExitToBoot())
+    {
+        static char boot_argv0[] = "mc0:/BOOT/BOOT.ELF";
+        char *argv[2] = {boot_argv0, NULL};
+        LoadELFFromFileExecPS2RebootIOP(boot_argv0, 1, argv);
     }
 
 	return 0;

@@ -846,18 +846,9 @@ UI = {
         System.exitToBrowser()
       end;
       LaunchBootElf = function ()
-        local boot = "mc0:/BOOT/BOOT.ELF"
-
         UI.LAUNCHING = true
-        Screen.flip()
-        System.sleep(200)
-        local ok = pcall(System.loadELF, boot, 1, boot, 1)
-
-        if not ok then
-          UI.LAUNCHING = false
-          UI.Notif_queue.add("BOOT.ELF not found")
-          return
-        end
+        UI.EXIT_TO_BOOT = true
+        return
       end;
       HandleInput = function ()
         if not UI.Modal.active then return end
