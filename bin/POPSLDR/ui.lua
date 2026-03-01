@@ -863,11 +863,7 @@ UI = {
       LaunchBootElf = function ()
         local elf_path = "mc0:/BOOT/BOOT.ELF"
         UI.LAUNCHING = true
-        local rc = System.loadELF(elf_path, 0, elf_path)
-        UI.LAUNCHING = false
-        if UI.Notif_queue and UI.Notif_queue.add then
-          UI.Notif_queue.add("BOOT.ELF launch failed rc="..tostring(rc))
-        end
+        UI.do_chainload("mc0:/BOOT", elf_path, nil)
         return
       end;
       HandleInput = function ()
