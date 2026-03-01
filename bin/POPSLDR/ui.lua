@@ -269,7 +269,7 @@ UI = {
       PREVIEW_W = 240;
       PREVIEW_H = 240;
 	      -- Raised/tighter footer to avoid overscan and allow icon reflections to overlap slightly.
-	      CAROUSEL_Y_OFFSET = 18;
+	      CAROUSEL_Y_OFFSET = 28;
       FOOTER_LABEL_W = 140;
       FOOTER_ICON_Y_OFFSET = 24;
       FOOTER_LABEL_Y_OFFSET = 10;
@@ -900,7 +900,8 @@ UI = {
 
         if type(System) == "table" and type(System.loadELF) == "function" then
           UI.LAUNCHING = true
-          System.loadELF(boot_path, 1, boot_path)
+          local reboot_iop = 0
+          System.loadELF(boot_path, reboot_iop)
         end
       end;
       HandleInput = function ()
@@ -1479,7 +1480,6 @@ UI = {
 	        if layout.CAROUSEL_Y_OFFSET ~= nil then
 	          center_y = center_y + layout.CAROUSEL_Y_OFFSET
 	        end
-        center_y = center_y + 10
         local function Clamp(value, min_val, max_val)
           if value < min_val then return min_val end
           if value > max_val then return max_val end
@@ -1707,7 +1707,8 @@ UI = {
 
               if type(System) == "table" and type(System.loadELF) == "function" then
                 UI.LAUNCHING = true
-                System.loadELF(dkwdrv_path)
+                local reboot_iop = 0
+                System.loadELF(dkwdrv_path, reboot_iop)
               end
             end
             UI.Modal.cancel_action = UI.Modal.Close
