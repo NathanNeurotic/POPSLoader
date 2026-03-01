@@ -217,7 +217,11 @@ end
 
 function PLDR.LaunchExternalELF(path)
   if path == nil or path == "" then
-    return
+    return false
+  end
+
+  if path ~= "mc0:/PS1_DKWDRV/DKWDRV.ELF" and path ~= "mc0:/BOOT/BOOT.ELF" then
+    return false
   end
 
   if UI ~= nil then
@@ -241,7 +245,7 @@ function PLDR.LaunchExternalELF(path)
   end
 
   System.loadELF(path, "", 1)
-  return
+  return true
 end
 
 local function DetectBootDevice()
