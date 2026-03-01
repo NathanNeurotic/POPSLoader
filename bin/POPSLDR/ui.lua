@@ -44,6 +44,78 @@ local function SafeDoesFileExist(path)
   end
   return false
 end
+local function ReadFilePrefix(path, bytes)
+  if path == nil or path == "" then return nil end
+  if type(System) ~= "table" or type(System.openFile) ~= "function" or type(System.readFile) ~= "function" then
+    return nil
+  end
+  local ok_open, fd = pcall(System.openFile, path, FREAD)
+  if not ok_open or type(fd) ~= "number" or fd < 0 then
+    return nil
+  end
+  local data = nil
+  local ok_read, read_data = pcall(System.readFile, fd, bytes)
+  if ok_read and type(read_data) == "string" then
+    data = read_data
+  end
+  if type(System.closeFile) == "function" then
+    pcall(System.closeFile, fd)
+  end
+  return data
+end
+local function ParseMassRootIndex(root)
+  if root == nil then return nil end
+  if root == "mass:/" then return 0 end
+  local idx = string.match(root, "^mass(%d+):/$")
+  if idx == nil then return nil end
+  return tonumber(idx)
+end
+local function IsMx4MassDriver(driver)
+  local driver_lc = string.lower(tostring(driver or ""))
+  return string.find(driver_lc, "sdc", 1, true) ~= nil
+end
+local function IsUsbMassDriver(driver)
+  return not IsMx4MassDriver(driver)
+end
+local function CollectRootsByDriver(predicate)
+  local roots = {}
+  if type(PLDR) ~= "table" or type(PLDR.GetPresentMassRootsBounded) ~= "function" or type(PLDR.GetMassDriverName) ~= "function" then
+    return roots
+  end
+  local present = PLDR.GetPresentMassRootsBounded() or {}
+  for i = 1, #present do
+    local root = present[i]
+    local index = ParseMassRootIndex(root)
+    local driver = PLDR.GetMassDriverName(index)
+    if predicate(driver) then
+      roots[#roots + 1] = root
+    end
+  end
+  return roots
+end
+local function BuildMassGameListFromRoots(roots)
+  PLDR.CleanupGameList()
+  local found_any = false
+  for i = 1, #roots do
+    local pops_root = roots[i].."POPS/"
+    if doesFolderExist(pops_root) then
+      local dir = System.listDirectory(pops_root)
+      if dir ~= nil then
+        for j = 1, #dir do
+          local entry = dir[j]
+          if not entry.directory and string.lower(string.sub(entry.name, -4)) == ".vcd" then
+            found_any = true
+            table.insert(PLDR.GAMES, pops_root.."|"..entry.name)
+          end
+        end
+      end
+    end
+  end
+  if found_any then
+    table.sort(PLDR.GAMES)
+  end
+  return found_any
+end
 local function ExtractGameRelPath(entry)
   if entry == nil then return nil end
   local relpath = string.match(entry, "^[^|]+|(.+)$")
@@ -206,6 +278,19 @@ UI = {
         return true
       end
       return false, "session", UI.device_lock
+    end;
+    IsValidElf = function (path)
+      local ok, valid = pcall(function ()
+        local header = ReadFilePrefix(path, 4)
+        if header == nil or string.len(header) < 4 then
+          return false
+        end
+        return string.byte(header, 1) == 0x7F
+          and string.byte(header, 2) == string.byte("E")
+          and string.byte(header, 3) == string.byte("L")
+          and string.byte(header, 4) == string.byte("F")
+      end)
+      return ok and valid == true
     end;
     setDeviceLock = function (target)
       if UI.device_lock == DEVLOCK.NONE then
@@ -989,6 +1074,17 @@ end
           end
           return
         end
+        if not UI.IsValidElf(boot_path) then
+          UI.Modal.active = true
+          UI.Modal.title = "Exit"
+          UI.Modal.body = "BOOT.ELF is not a valid ELF"
+          UI.Modal.options = {"Return", "Back"}
+          UI.Modal.confirm_action = UI.Modal.Close
+          UI.Modal.cancel_action = UI.Modal.Close
+          UI.Modal.triangle_action = nil
+          UI.Modal.ignore_until_release = true
+          return
+        end
         if type(System) == "table" and type(System.loadELF) == "function" then
           UI.LAUNCHING = true
           System.loadELF(boot_path, 1, boot_path)
@@ -1682,16 +1778,8 @@ end
           elseif UI.MainMenu.OPT == 2 then
             PLDR.CleanupGameList()
             PLDR.GAMEPATH = ""
-            local mx4sio_root = PLDR.InitMX4SIOPopsRoot()
-            if mx4sio_root == nil then
-              UI.Notif_queue.add("No MX4SIO device found")
-              return
-            else
-              PLDR.CleanupGameList()
-              PLDR.GetPS1GameLists(mx4sio_root, true)
-              UI.setDeviceLock(DEVLOCK.MX4SIO)
-              UI.SceneChange(UI.SCENES.GMX4SIO)
-            end
+            UI.setDeviceLock(DEVLOCK.MX4SIO)
+            UI.SceneChange(UI.SCENES.GMX4SIO)
           elseif UI.MainMenu.OPT == 3 then
             UI.Notif_queue.add("Not Implemented Yet")
           elseif UI.MainMenu.OPT == 4 then
@@ -1725,8 +1813,6 @@ end
             end
             PLDR.CleanupGameList()
             PLDR.GAMEPATH = ""
-            local snapshot = PLDR.RefreshMassStateSnapshot()
-            PLDR.BuildMassGameListByType("usb", snapshot)
             UI.setDeviceLock(DEVLOCK.USB)
             UI.SceneChange(UI.SCENES.GUSBFAT)
           elseif UI.MainMenu.OPT == 6 then
@@ -1974,6 +2060,45 @@ function UI.OnSceneExit(previous_scene, next_scene)
   if UI.IsGameScene(previous_scene) and previous_scene ~= next_scene then
     if UI.CoverCache ~= nil and UI.CoverCache.Clear ~= nil then
       UI.CoverCache:Clear()
+    end
+  end
+end
+function UI.OnSceneEnter(previous_scene, scene)
+  if scene == UI.SCENES.GUSBFAT then
+    PLDR.CleanupGameList()
+    PLDR.GAMEPATH = ""
+    local usb_roots = CollectRootsByDriver(IsUsbMassDriver)
+    BuildMassGameListFromRoots(usb_roots)
+    return
+  end
+  if scene == UI.SCENES.GMX4SIO then
+    PLDR.CleanupGameList()
+    PLDR.GAMEPATH = ""
+    local mx4sio_root = nil
+    if type(_G.ensureMx4sioInit) == "function" then
+      pcall(_G.ensureMx4sioInit)
+    end
+    if type(System) == "table" and type(System.initMX4SIO) == "function" then
+      pcall(System.initMX4SIO)
+    end
+    local mx4_roots = CollectRootsByDriver(IsMx4MassDriver)
+    if #mx4_roots > 0 then
+      mx4sio_root = mx4_roots[1]
+      if type(PLDR.SetMX4SIORoot) == "function" then
+        pcall(PLDR.SetMX4SIORoot, mx4sio_root)
+      end
+    end
+    if mx4sio_root == nil then
+      UI.Notif_queue.add("No MX4SIO device found")
+      return
+    end
+    local found_games = BuildMassGameListFromRoots({mx4sio_root})
+    if not found_games then
+      PLDR.CleanupGameList()
+      local mx4sio_pops = mx4sio_root.."POPS/"
+      if doesFolderExist(mx4sio_pops) then
+        PLDR.GetPS1GameLists(mx4sio_pops, true)
+      end
     end
   end
 end
