@@ -900,8 +900,35 @@ UI = {
 
         if type(System) == "table" and type(System.loadELF) == "function" then
           UI.LAUNCHING = true
-          local reboot_iop = 0
-          System.loadELF(boot_path, reboot_iop)
+          local reboot_iop = 1
+          local ok_load, _ = pcall(System.loadELF, boot_path, reboot_iop, boot_path)
+          if not ok_load then
+            UI.LAUNCHING = false
+            if UI.CURSCENE ~= UI.SCENES.MMAIN then
+              UI.SceneChange(UI.SCENES.MMAIN)
+            end
+            UI.Modal.active = true
+            UI.Modal.title = "Exit"
+            UI.Modal.body = "Failed to launch BOOT.ELF"
+            UI.Modal.options = {"OK", "Back"}
+            UI.Modal.confirm_action = UI.Modal.Close
+            UI.Modal.cancel_action = UI.Modal.Close
+            UI.Modal.triangle_action = nil
+            UI.Modal.ignore_until_release = true
+            return
+          end
+          UI.LAUNCHING = false
+          if UI.CURSCENE ~= UI.SCENES.MMAIN then
+            UI.SceneChange(UI.SCENES.MMAIN)
+          end
+          UI.Modal.active = true
+          UI.Modal.title = "Exit"
+          UI.Modal.body = "Failed to launch BOOT.ELF"
+          UI.Modal.options = {"OK", "Back"}
+          UI.Modal.confirm_action = UI.Modal.Close
+          UI.Modal.cancel_action = UI.Modal.Close
+          UI.Modal.triangle_action = nil
+          UI.Modal.ignore_until_release = true
         end
       end;
       HandleInput = function ()
@@ -1705,10 +1732,47 @@ UI = {
                 end)
               end
 
+              if type(Sound) == "table" and type(Sound.pause) == "function" then
+                pcall(Sound.pause)
+              elseif type(Sound) == "table" and type(Sound.stop) == "function" then
+                pcall(Sound.stop)
+              end
+
+              if type(System) == "table" and type(System.sleep) == "function" then
+                pcall(System.sleep, 0.3)
+              end
+
               if type(System) == "table" and type(System.loadELF) == "function" then
                 UI.LAUNCHING = true
-                local reboot_iop = 0
-                System.loadELF(dkwdrv_path, reboot_iop)
+                local reboot_iop = 1
+                local ok_load, _ = pcall(System.loadELF, dkwdrv_path, reboot_iop, dkwdrv_path)
+                if not ok_load then
+                  UI.LAUNCHING = false
+                  if UI.CURSCENE ~= UI.SCENES.MMAIN then
+                    UI.SceneChange(UI.SCENES.MMAIN)
+                  end
+                  UI.Modal.active = true
+                  UI.Modal.title = "Disc"
+                  UI.Modal.body = "Failed to launch DKWDRV"
+                  UI.Modal.options = {"OK", "Back"}
+                  UI.Modal.confirm_action = UI.Modal.Close
+                  UI.Modal.cancel_action = UI.Modal.Close
+                  UI.Modal.triangle_action = nil
+                  UI.Modal.ignore_until_release = true
+                  return
+                end
+                UI.LAUNCHING = false
+                if UI.CURSCENE ~= UI.SCENES.MMAIN then
+                  UI.SceneChange(UI.SCENES.MMAIN)
+                end
+                UI.Modal.active = true
+                UI.Modal.title = "Disc"
+                UI.Modal.body = "Failed to launch DKWDRV"
+                UI.Modal.options = {"OK", "Back"}
+                UI.Modal.confirm_action = UI.Modal.Close
+                UI.Modal.cancel_action = UI.Modal.Close
+                UI.Modal.triangle_action = nil
+                UI.Modal.ignore_until_release = true
               end
             end
             UI.Modal.cancel_action = UI.Modal.Close
