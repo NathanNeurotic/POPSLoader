@@ -991,7 +991,7 @@ end
         end
         if type(System) == "table" and type(System.loadELF) == "function" then
           UI.LAUNCHING = true
-          System.loadELF(boot_path, 1, boot_path)
+          System.loadELF(boot_path, 1)
         end
       end;
       HandleInput = function ()
@@ -1735,7 +1735,27 @@ end
             if type(System) == "table" and type(System.ensureCDFS) == "function" then
               System.ensureCDFS()
             end
-            UI.Notif_queue.add("Not Implemented Yet")
+            local dkwdrv_path = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
+            local dkwdrv_exists = false
+            if type(doesFileExist) == "function" then
+              local okcall, exists = pcall(doesFileExist, dkwdrv_path)
+              dkwdrv_exists = okcall and exists == true
+            end
+            if not dkwdrv_exists and type(System) == "table" and type(System.openFile) == "function" then
+              local okfd, fd = pcall(System.openFile, dkwdrv_path, FREAD)
+              if okfd and type(fd) == "number" and fd >= 0 then
+                if type(System.closeFile) == "function" then
+                  pcall(System.closeFile, fd)
+                end
+                dkwdrv_exists = true
+              end
+            end
+            if not dkwdrv_exists then
+              UI.Notif_queue.add("mc0:/PS1_DKWDRV/DKWDRV.ELF not found")
+              return
+            end
+            UI.LAUNCHING = true
+            System.loadELF(dkwdrv_path, 1)
           end --because we still dont support SMB
         end
       end
