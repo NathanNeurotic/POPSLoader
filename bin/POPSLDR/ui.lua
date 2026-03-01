@@ -815,6 +815,20 @@ UI = {
         UI.Modal.triangle_action = UI.Modal.LaunchBootElf
         UI.Modal.ignore_until_release = true
       end;
+      OpenDKWDRV = function ()
+        UI.Modal.active = true
+        UI.Modal.title = "Disc (DKWDRV)"
+        UI.Modal.body = "Launch DKWDRV?"
+        UI.Modal.options = {"Yes", "Cancel"}
+        UI.Modal.confirm_action = function ()
+          local elf_path = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
+          System.loadELF(elf_path, 1, elf_path)
+          return
+        end
+        UI.Modal.cancel_action = UI.Modal.Close
+        UI.Modal.triangle_action = nil
+        UI.Modal.ignore_until_release = true
+      end;
       OpenDeviceLock = function (reason, active, target)
         local active_name = UI.device_lock_name(active)
         local target_name = UI.device_lock_name(target)
@@ -846,42 +860,9 @@ UI = {
         System.exitToBrowser()
       end;
       LaunchBootElf = function ()
-        local candidates = {
-          "mc0:/BOOT/BOOT.ELF",
-          "mc1:/BOOT/BOOT.ELF"
-        }
-        local boot_path = nil
-        if type(doesFileExist) == "function" then
-          for _, path in ipairs(candidates) do
-            local okcall, exists = pcall(doesFileExist, path)
-            if okcall and exists == true then
-              boot_path = path
-              break
-            end
-          end
-        end
-        if boot_path == nil and type(System) == "table" and type(System.openFile) == "function" then
-          for _, path in ipairs(candidates) do
-            local okfd, fd = pcall(System.openFile, path, FREAD)
-            if okfd and type(fd) == "number" and fd >= 0 then
-              if type(System.closeFile) == "function" then
-                pcall(System.closeFile, fd)
-              end
-              boot_path = path
-              break
-            end
-          end
-        end
-        if boot_path == nil then
-          if UI.Notif_queue ~= nil and type(UI.Notif_queue.add) == "function" then
-            UI.Notif_queue.add("mc?:/BOOT/BOOT.ELF not found")
-          end
-          return
-        end
-        if type(System) == "table" and type(System.loadELF) == "function" then
-          UI.LAUNCHING = true
-          System.loadELF(boot_path, 1, boot_path)
-        end
+        local elf_path = "mc0:/BOOT/BOOT.ELF"
+        System.loadELF(elf_path, 1, elf_path)
+        return
       end;
       HandleInput = function ()
         if not UI.Modal.active then return end
@@ -1624,7 +1605,7 @@ UI = {
             if type(System) == "table" and type(System.ensureCDFS) == "function" then
               System.ensureCDFS()
             end
-            UI.Notif_queue.add("Not Implemented Yet")
+            UI.Modal.OpenDKWDRV()
           end --because we still dont support SMB
         end
       end
