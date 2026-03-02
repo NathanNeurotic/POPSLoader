@@ -1372,11 +1372,6 @@ UI = {
       Play = function ()
         local layout = UI.LAYOUT
         local profcnt = #UI.MainMenu.opts
-        local status_y = layout.TITLE_Y
-        if UI.boot_device ~= nil and UI.boot_device ~= DEVLOCK.NONE then
-          Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Booted from: "..UI.device_lock_name(UI.boot_device), UI.COLORS.TEXT_PRIMARY)
-          status_y = status_y + 12
-        end
 	        -- Pages are no longer presented as "locked" in the UI.
         local icon_map = {
           ["MMCE"] = "MMCE",
@@ -1483,9 +1478,14 @@ UI = {
         local scroll = base_sel + (carousel.animActive and slide or 0)
         local base_scroll = math.floor(scroll)
         local scroll_frac = scroll - base_scroll
-        local center_label_x = center_x
-        local center_label_y = Round(center_y + 90)
         local center_label_idx = carousel.animActive and carousel.targetIndex or base_sel
+        local top_y = layout.TITLE_Y
+        Font.ftPrint(UI.FONT.LABEL, UI.SCR.X_MID, top_y, 8, UI.SCR.X, 16, UI.MainMenu.opts[center_label_idx], UI.COLORS.TEXT_PRIMARY)
+        local status_y = top_y + 12
+        if UI.boot_device ~= nil and UI.boot_device ~= DEVLOCK.NONE then
+          Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Booted from: "..UI.device_lock_name(UI.boot_device), UI.COLORS.TEXT_PRIMARY)
+          status_y = status_y + 12
+        end
         local function Lerp(a, b, t)
           return a + (b - a) * t
         end
@@ -1512,7 +1512,6 @@ UI = {
             DrawIcon(idx, x, y, tint)
           end
         end
-        Font.ftPrint(UI.FONT.LABEL, Round(center_label_x), center_label_y, 8, UI.SCR.X, 16, UI.MainMenu.opts[center_label_idx], UI.COLORS.TEXT_PRIMARY)
         local labels, order = UI.Footer.ResolveLegend({
           order = UI.Footer.order_with_start,
           order_id = "start",
