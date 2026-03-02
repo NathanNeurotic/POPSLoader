@@ -885,7 +885,7 @@ function PLDR.GetMX4SIOMassRootNow()
   if type(System) ~= "table" then
     return nil
   end
-  if type(doesFolderExist) ~= "function" or type(PLDR.GetMassDriverName) ~= "function" then
+  if type(PLDR.GetMassDriverName) ~= "function" then
     return nil
   end
 
@@ -896,11 +896,9 @@ function PLDR.GetMX4SIOMassRootNow()
       if slot ~= 0 then
         root = "mass"..tostring(slot)..":/"
       end
-      if doesFolderExist(root) then
-        local drv = PLDR.GetMassDriverName(slot)
-        if type(drv) == "string" and string.find(drv, "sdc", 1, true) then
-          return root
-        end
+      local drv = PLDR.GetMassDriverName(slot)
+      if type(drv) == "string" and string.find(drv, "sdc", 1, true) then
+        return root
       end
     end
 
