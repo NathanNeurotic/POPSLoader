@@ -1511,16 +1511,21 @@ function PLDR.InitMX4SIOPopsRoot()
   if type(System) == "table" and type(System.initMX4SIO) == "function" then
     pcall(System.initMX4SIO)
   end
-  if type(System) == "table" and type(System.sleep) == "function" then
-    pcall(System.sleep, 0.05)
-  end
 
-  local root = PLDR.GetMX4SIOMassRootNow()
-  if root ~= nil then
-    local pops = root.."POPS/"
-    if doesFolderExist(pops) then
-      PLDR.SetMX4SIORoot(root)
-      return pops
+  for pass = 1, 3 do
+    pcall(PLDR.RefreshMassBackends)
+
+    local root = PLDR.GetMX4SIOMassRootNow()
+    if root ~= nil then
+      local pops = root.."POPS/"
+      if doesFolderExist(pops) then
+        PLDR.SetMX4SIORoot(root)
+        return pops
+      end
+    end
+
+    if pass < 3 and type(System) == "table" and type(System.sleep) == "function" then
+      pcall(System.sleep, 0.05 * pass)
     end
   end
 
