@@ -233,17 +233,20 @@ UI = {
       UI.MX4_RETRY_NOTIFIED = false
     end;
     TryEnterMX4SIO = function ()
-      if type(System) == "table" and type(System.initMX4SIO) == "function" then
-        pcall(System.initMX4SIO)
-      end
-      if type(System) == "table" and type(System.refreshMassBackends) == "function" then
-        pcall(System.refreshMassBackends)
-      end
       PLDR.CleanupGameList()
       PLDR.GAMEPATH = ""
       local mx4sio_root = PLDR.InitMX4SIOPopsRoot()
       if mx4sio_root == nil then
-        return false
+        if type(System) == "table" and type(System.refreshMassBackends) == "function" then
+          pcall(System.refreshMassBackends)
+        end
+        if type(System) == "table" and type(System.sleep) == "function" then
+          pcall(System.sleep, 0.10)
+        end
+        mx4sio_root = PLDR.InitMX4SIOPopsRoot()
+        if mx4sio_root == nil then
+          return false
+        end
       end
       PLDR.CleanupGameList()
       PLDR.GetPS1GameLists(mx4sio_root, true)
