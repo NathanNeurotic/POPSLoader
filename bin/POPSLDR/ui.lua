@@ -273,13 +273,14 @@ UI = {
     };
     LAYOUT = {
       SAFE = {L = 40, R = 40, T = 24, B = 28};
-      BTN_BAR_SAFE_BOTTOM = 72;
+      BTN_BAR_SAFE_BOTTOM = 56;
       ICON_SPACING = 120;
       LIST_ROW_H = 20;
       PREVIEW_W = 240;
       PREVIEW_H = 240;
-	      -- Raised/tighter footer to avoid overscan and allow icon reflections to overlap slightly.
-      CAROUSEL_Y_OFFSET = 28;
+	      -- Match BETA-5 carousel/menu vertical placement.
+      CAROUSEL_Y_OFFSET = 36;
+      FOOTER_ICON_SCALE = 0.70;
       FOOTER_LABEL_W = 140;
       FOOTER_ICON_Y_OFFSET = 24;
       FOOTER_LABEL_Y_OFFSET = 10;
@@ -427,14 +428,16 @@ UI = {
         local safe = UI.LAYOUT.SAFE
         local entries = order or UI.Footer.order
         local count = #entries
+        local icon_scale = UI.LAYOUT.FOOTER_ICON_SCALE or 1.0
         local bar_height = 0
         for i = 1, count do
           local key = entries[i]
           local icon = IMG[key]
           if icon ~= nil then
             local h = Graphics.getImageHeight(icon)
-            if h ~= nil and h > bar_height then
-              bar_height = h
+            local scaled_h = Round((h or 0) * icon_scale)
+            if scaled_h > 0 and h ~= nil and scaled_h > bar_height then
+              bar_height = scaled_h
             end
           end
         end
@@ -450,8 +453,9 @@ UI = {
           local icon = IMG[key]
           if icon ~= nil then
             local w = Graphics.getImageWidth(icon)
-            if w ~= nil and w > max_w then
-              max_w = w
+            local scaled_w = Round((w or 0) * icon_scale)
+            if scaled_w > 0 and w ~= nil and scaled_w > max_w then
+              max_w = scaled_w
             end
           end
         end
@@ -487,7 +491,11 @@ UI = {
           if icon ~= nil then
             local w = Graphics.getImageWidth(icon)
             local h = Graphics.getImageHeight(icon)
-            Graphics.drawImage(icon, x - (w / 2), y - (h / 2), UI.CCOL.GREY)
+            local scaled_w = Round((w or 0) * icon_scale)
+            local scaled_h = Round((h or 0) * icon_scale)
+            if scaled_w > 0 and scaled_h > 0 then
+              Graphics.drawScaleImage(icon, x - (scaled_w / 2), y - (scaled_h / 2), scaled_w, scaled_h, UI.CCOL.GREY)
+            end
           end
           local label = labels and labels[key] or nil
           if label ~= nil then
