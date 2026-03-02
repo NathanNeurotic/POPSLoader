@@ -877,38 +877,27 @@ function PLDR.GetMassDriverName(index)
         return string.lower(driver)
       end
     end
-    if type(System.getMassBackendInfo) == "function" then
-      local ok, info = pcall(System.getMassBackendInfo, index)
-      if ok and type(info) == "table" then
-        local driver = info.driver
-        if type(driver) == "string" and driver ~= "" then
-          return string.lower(driver)
-        end
-      end
-    end
   end
   return nil
 end
 
 function PLDR.GetMX4SIOMassRootNow()
-  if type(System) ~= "table" or type(System.getMassBackendInfo) ~= "function" then
+  if type(System) ~= "table" then
     return nil
   end
 
   for pass = 1, 2 do
     pcall(PLDR.RefreshMassBackends)
-    for dev_index = 0, 15 do
-      local ok, info = pcall(System.getMassBackendInfo, dev_index)
-      if ok and type(info) == "table" then
-        local drv = info.driver
-        local parId = info.parId
-        if type(drv) == "string" and drv ~= "" and string.find(string.lower(drv), "sdc", 1, true) then
-          if type(parId) == "number" and parId >= 0 and parId <= 9 then
-            if parId == 0 then
-              return "mass:/"
-            end
-            return "mass"..tostring(parId)..":/"
-          end
+    for slot = 0, 9 do
+      local root = (slot == 0) and "mass:/" or ("mass"..slot..":/")
+      local mounted = true
+      if type(doesFolderExist) == "function" then
+        mounted = doesFolderExist(root)
+      end
+      if mounted then
+        local drv = PLDR.GetMassDriverName(slot)
+        if type(drv) == "string" and string.find(drv, "sdc", 1, true) then
+          return root
         end
       end
     end
