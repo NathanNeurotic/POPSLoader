@@ -44,6 +44,30 @@ local function SafeDoesFileExist(path)
   end
   return false
 end
+local function ResolveFirstExistingElf(candidates)
+  if type(candidates) ~= "table" then return nil end
+  for i = 1, #candidates do
+    local path = candidates[i]
+    if path ~= nil and path ~= "" then
+      local exists = false
+      if type(doesFileExist) == "function" then
+        local ok_exists, res = pcall(doesFileExist, path)
+        exists = ok_exists and res == true
+      elseif type(System) == "table" and type(System.openFile) == "function" and type(System.closeFile) == "function" then
+        local mode = FREAD or O_RDONLY
+        local ok_open, fd = pcall(System.openFile, path, mode)
+        if ok_open and type(fd) == "number" and fd >= 0 then
+          pcall(System.closeFile, fd)
+          exists = true
+        end
+      end
+      if exists then
+        return path
+      end
+    end
+  end
+  return nil
+end
 local function ExtractGameRelPath(entry)
   if entry == nil then return nil end
   local relpath = string.match(entry, "^[^|]+|(.+)$")
@@ -861,10 +885,25 @@ UI = {
         System.exitToBrowser()
       end;
       LaunchBootElf = function ()
-        local elf_path = "mc0:/BOOT/BOOT.ELF"
+        local elf_path = ResolveFirstExistingElf({
+          "mc0:/BOOT/BOOT2.ELF",
+          "mc0:/BOOT/BOOT.ELF",
+          "mc1:/BOOT/BOOT2.ELF",
+          "mc1:/BOOT/BOOT.ELF"
+        })
+        if elf_path == nil then
+          UI.LAUNCHING = false
+          UI.Notif_queue.add("mc?:/BOOT/BOOT2.ELF or BOOT.ELF not found")
+          return
+        end
         UI.LAUNCHING = true
-        System.loadELF(elf_path, 1, elf_path)
-        return
+        UI.Modal.Close()
+        local ok, rc = pcall(System.loadELF, elf_path, 1, elf_path)
+        if (not ok) or (type(rc) == "number" and rc < 0) then
+          UI.LAUNCHING = false
+          UI.Notif_queue.add("Failed to launch: "..elf_path)
+          return
+        end
       end;
       HandleInput = function ()
         if not UI.Modal.active then return end
