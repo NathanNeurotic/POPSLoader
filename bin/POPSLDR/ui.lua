@@ -372,6 +372,9 @@ UI = {
       end;
       msg = {};
     };
+    Notify = function (msg, _ms)
+      UI.Notif_queue.add(msg)
+    end;
     Footer = {
       order = {"triangle", "circle", "cross", "square"};
       order_with_r2 = {"triangle", "circle", "cross", "square"};
