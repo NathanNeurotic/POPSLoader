@@ -1512,7 +1512,12 @@ function PLDR.InitMX4SIOPopsRoot()
     pcall(System.initMX4SIO)
   end
 
-  for pass = 1, 3 do
+  if type(System) == "table" and type(System.sleep) == "function" then
+    pcall(System.sleep, 0.30)
+  end
+
+  local settle_backoff = {0.20, 0.30, 0.40, 0.50}
+  for pass = 1, 5 do
     pcall(PLDR.RefreshMassBackends)
 
     local root = PLDR.GetMX4SIOMassRootNow()
@@ -1524,8 +1529,8 @@ function PLDR.InitMX4SIOPopsRoot()
       end
     end
 
-    if pass < 3 and type(System) == "table" and type(System.sleep) == "function" then
-      pcall(System.sleep, 0.05 * pass)
+    if pass < 5 and type(System) == "table" and type(System.sleep) == "function" then
+      pcall(System.sleep, settle_backoff[pass])
     end
   end
 
