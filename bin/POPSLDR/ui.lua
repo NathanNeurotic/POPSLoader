@@ -862,28 +862,37 @@ UI = {
       end;
       LaunchBootElf = function ()
         UI.Modal.Close()
-        if type(Sound) == "table" then
-          if type(Sound.stopADPCM) == "function" then
-            pcall(Sound.stopADPCM, 0)
-          end
-          if type(Sound.pauseADPCM) == "function" then
-            pcall(Sound.pauseADPCM, 0)
-          end
-          if type(Sound.stop) == "function" then
-            pcall(Sound.stop)
-          end
-          if type(Sound.setADPCMVolume) == "function" then
-            pcall(Sound.setADPCMVolume, 0, 0)
+        if UI.Notif_queue and UI.Notif_queue.add then
+          UI.Notif_queue.add("Launching BOOT.ELF...")
+        end
+        UI.LAUNCHING = true
+        local candidates = {
+          { newdir = "mc0:/BOOT", elfpath = "mc0:/BOOT/BOOT.ELF" },
+          { newdir = "mc1:/BOOT", elfpath = "mc1:/BOOT/BOOT.ELF" }
+        }
+        local reboots = {0, 1}
+        for i = 1, #candidates do
+          local candidate = candidates[i]
+          for r = 1, #reboots do
+            local reboot = reboots[r]
+            if UI.do_chainload ~= nil then
+              local prev = System.loadELF
+              System.loadELF = function (path, _ignored, ...)
+                return prev(path, reboot, ...)
+              end
+              pcall(UI.do_chainload, candidate.newdir, candidate.elfpath, {candidate.elfpath})
+              System.loadELF = prev
+            else
+              local cwd = os.getcwd()
+              os.chdir(candidate.newdir)
+              System.loadELF(candidate.elfpath, reboot, candidate.elfpath)
+              os.chdir(cwd)
+            end
           end
         end
-        Screen.clear(UI.SCR.BGCOL)
-        Screen.flip()
-        local elf_path = "mc0:/BOOT/BOOT.ELF"
-        UI.LAUNCHING = true
-        System.loadELF(elf_path, 0, elf_path)
         UI.LAUNCHING = false
         if UI.Notif_queue and UI.Notif_queue.add then
-          UI.Notif_queue.add("BOOT.ELF did not chainload (returned)")
+          UI.Notif_queue.add("BOOT.ELF did not chainload (all attempts returned)")
         end
         return
       end;
