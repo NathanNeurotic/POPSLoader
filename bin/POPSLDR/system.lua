@@ -885,7 +885,19 @@ function PLDR.GetMX4SIOMassRootNow()
   if type(System) ~= "table" or type(System.getMassRootByBackendName) ~= "function" then
     return nil
   end
+
+  pcall(PLDR.RefreshMassBackends)
   local ok, root = pcall(System.getMassRootByBackendName, "sdc")
+  if ok and type(root) == "string" and root ~= "" then
+    return root
+  end
+
+  if type(System.sleep) == "function" then
+    pcall(System.sleep, 0.05)
+  end
+  pcall(PLDR.RefreshMassBackends)
+
+  ok, root = pcall(System.getMassRootByBackendName, "sdc")
   if ok and type(root) == "string" and root ~= "" then
     return root
   end
@@ -893,6 +905,12 @@ function PLDR.GetMX4SIOMassRootNow()
 end
 
 function PLDR.RefreshMassBackends()
+  if type(System) == "table" and type(System.refreshMassBackends) == "function" then
+    local ok = pcall(System.refreshMassBackends)
+    if ok then
+      return true
+    end
+  end
   return true
 end
 
