@@ -748,14 +748,17 @@ UI = {
         local FPS = 60
         local SPLASH_HOLD_FRAMES = math.floor(4.0 * FPS + 0.5)
         local CREDITS_HOLD_FRAMES = math.floor(4.0 * FPS + 0.5)
+        local INTRO_FADE_SCALE = 2.0
+        local INTRO_FADE_IN_MS = math.floor(FADE_IN_MS * INTRO_FADE_SCALE + 0.5)
+        local INTRO_FADE_OUT_MS = math.floor(FADE_OUT_MS * INTRO_FADE_SCALE + 0.5)
 
-        StepFade(DrawSplash, 128, 0, FADE_IN_MS)
+        StepFade(DrawSplash, 128, 0, INTRO_FADE_IN_MS)
         StepHoldFrames(DrawSplash, SPLASH_HOLD_FRAMES)
-        StepFade(DrawSplash, 0, 128, FADE_OUT_MS)
+        StepFade(DrawSplash, 0, 128, INTRO_FADE_OUT_MS)
 
-        StepFade(DrawCredits, 128, 0, FADE_IN_MS)
+        StepFade(DrawCredits, 128, 0, INTRO_FADE_IN_MS)
         StepHoldFrames(DrawCredits, CREDITS_HOLD_FRAMES)
-        StepFade(DrawCredits, 0, 128, FADE_OUT_MS)
+        StepFade(DrawCredits, 0, 128, INTRO_FADE_OUT_MS)
 
         StepFade(DrawMenu, 128, 0, FADE_IN_MS)
         DrawMenu()
