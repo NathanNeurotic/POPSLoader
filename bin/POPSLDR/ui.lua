@@ -747,7 +747,7 @@ UI = {
         TryBootSound()
         local FPS = 60
         local SPLASH_HOLD_FRAMES = math.floor(4.0 * FPS + 0.5)
-        local CREDITS_HOLD_FRAMES = math.floor(3.0 * FPS + 0.5)
+        local CREDITS_HOLD_FRAMES = math.floor(4.0 * FPS + 0.5)
 
         StepFade(DrawSplash, 128, 0, FADE_IN_MS)
         StepHoldFrames(DrawSplash, SPLASH_HOLD_FRAMES)
