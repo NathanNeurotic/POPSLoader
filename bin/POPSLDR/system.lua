@@ -885,6 +885,9 @@ function PLDR.GetMX4SIOMassRootNow()
   if type(System) ~= "table" then
     return nil
   end
+  if type(doesFolderExist) ~= "function" or type(PLDR.GetMassDriverName) ~= "function" then
+    return nil
+  end
 
   for pass = 1, 2 do
     pcall(PLDR.RefreshMassBackends)
