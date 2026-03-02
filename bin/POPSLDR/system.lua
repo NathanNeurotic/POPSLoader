@@ -903,7 +903,7 @@ function PLDR.GetMX4SIOMassRootNow()
         local drv = info.driver
         local parId = info.parId
         if type(drv) == "string" and drv ~= "" and string.find(string.lower(drv), "sdc", 1, true) then
-          if type(parId) == "number" then
+          if type(parId) == "number" and parId >= 0 and parId <= 9 then
             if parId == 0 then
               return "mass:/"
             end
