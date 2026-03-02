@@ -891,18 +891,24 @@ function PLDR.GetMassDriverName(index)
 end
 
 function PLDR.GetMX4SIOMassRootNow()
-  if type(System) ~= "table" or type(doesFolderExist) ~= "function" or type(PLDR.GetMassDriverName) ~= "function" then
+  if type(System) ~= "table" or type(System.getMassBackendInfo) ~= "function" then
     return nil
   end
 
   for pass = 1, 2 do
     pcall(PLDR.RefreshMassBackends)
-    for i = 0, 9 do
-      local root = (i == 0) and "mass:/" or ("mass"..i..":/")
-      if doesFolderExist(root) then
-        local drv = PLDR.GetMassDriverName(i)
-        if type(drv) == "string" and string.find(string.lower(drv), "sdc", 1, true) then
-          return root
+    for dev_index = 0, 15 do
+      local ok, info = pcall(System.getMassBackendInfo, dev_index)
+      if ok and type(info) == "table" then
+        local drv = info.driver
+        local parId = info.parId
+        if type(drv) == "string" and drv ~= "" and string.find(string.lower(drv), "sdc", 1, true) then
+          if type(parId) == "number" then
+            if parId == 0 then
+              return "mass:/"
+            end
+            return "mass"..tostring(parId)..":/"
+          end
         end
       end
     end
