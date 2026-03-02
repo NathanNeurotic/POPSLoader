@@ -222,7 +222,32 @@ UI = {
         UI.device_lock = target
       end
     end;
+    MX4_RETRY_ACTIVE = false;
+    MX4_RETRY_COUNT = 0;
+    MX4_RETRY_NEXT_T = 0;
+    MX4_RETRY_NOTIFIED = false;
+    ResetMX4Retry = function ()
+      UI.MX4_RETRY_ACTIVE = false
+      UI.MX4_RETRY_COUNT = 0
+      UI.MX4_RETRY_NEXT_T = 0
+      UI.MX4_RETRY_NOTIFIED = false
+    end;
+    TryEnterMX4SIO = function ()
+      PLDR.CleanupGameList()
+      PLDR.GAMEPATH = ""
+      local mx4sio_root = PLDR.InitMX4SIOPopsRoot()
+      if mx4sio_root == nil then
+        return false
+      end
+      PLDR.CleanupGameList()
+      PLDR.GetPS1GameLists(mx4sio_root, true)
+      UI.setDeviceLock(DEVLOCK.MX4SIO)
+      return true
+    end;
     RequestScene = function (SCENE)
+      if SCENE ~= UI.SCENES.MMAIN then
+        UI.ResetMX4Retry()
+      end
       if UI.Transition ~= nil and UI.Transition.Start ~= nil then
         if UI.Transition.active then
           if UI.Transition.Queue ~= nil then
@@ -1401,6 +1426,20 @@ UI = {
         local dt_ms = now_ms - (carousel.last_ms or now_ms)
         carousel.last_ms = now_ms
         if dt_ms < 0 then dt_ms = 0 end
+        if UI.MX4_RETRY_ACTIVE and now_ms >= UI.MX4_RETRY_NEXT_T then
+          local delays = {250, 500, 750}
+          UI.MX4_RETRY_COUNT = UI.MX4_RETRY_COUNT + 1
+          if UI.TryEnterMX4SIO() then
+            UI.ResetMX4Retry()
+            UI.SceneChange(UI.SCENES.GMX4SIO)
+            return
+          elseif UI.MX4_RETRY_COUNT >= 3 then
+            UI.ResetMX4Retry()
+            UI.Notif_queue.add("No MX4SIO device found")
+          else
+            UI.MX4_RETRY_NEXT_T = now_ms + delays[UI.MX4_RETRY_COUNT]
+          end
+        end
         if not carousel.animActive then
           carousel.currentIndex = UI.MainMenu.OPT
           carousel.scrollPos = carousel.currentIndex
@@ -1540,12 +1579,19 @@ UI = {
             carousel.slide = 0
           end
         end
-        if UI.Pad.Events.EXIT then UI.SceneChange(UI.SCENES.CREDITS) end
+        if UI.Pad.Events.EXIT then
+          UI.ResetMX4Retry()
+          UI.SceneChange(UI.SCENES.CREDITS)
+        end
         if UI.Pad.Events.BACK then
+          UI.ResetMX4Retry()
           UI.Modal.OpenExit()
           return
         end
         if UI.Pad.Events.CONFIRM then
+          if UI.MainMenu.OPT ~= 2 then
+            UI.ResetMX4Retry()
+          end
           if UI.MainMenu.OPT == 1 then
             if type(System) == "table" and type(System.initMMCE) == "function" then
               pcall(System.initMMCE)
@@ -1571,17 +1617,17 @@ UI = {
               UI.SceneChange(UI.SCENES.GSMB)
             end
           elseif UI.MainMenu.OPT == 2 then
-            PLDR.CleanupGameList()
-            PLDR.GAMEPATH = ""
-            local mx4sio_root = PLDR.InitMX4SIOPopsRoot()
-            if mx4sio_root == nil then
-              UI.Notif_queue.add("No MX4SIO device found")
-              return
-            else
-              PLDR.CleanupGameList()
-              PLDR.GetPS1GameLists(mx4sio_root, true)
-              UI.setDeviceLock(DEVLOCK.MX4SIO)
+            UI.ResetMX4Retry()
+            if UI.TryEnterMX4SIO() then
               UI.SceneChange(UI.SCENES.GMX4SIO)
+            else
+              UI.MX4_RETRY_ACTIVE = true
+              UI.MX4_RETRY_COUNT = 0
+              UI.MX4_RETRY_NEXT_T = now_ms + 250
+              if not UI.MX4_RETRY_NOTIFIED then
+                UI.Notif_queue.add("Detecting MX4SIO...")
+                UI.MX4_RETRY_NOTIFIED = true
+              end
             end
           elseif UI.MainMenu.OPT == 3 then
             UI.Notif_queue.add("Not Implemented Yet")
