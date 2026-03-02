@@ -863,7 +863,7 @@ UI = {
       LaunchBootElf = function ()
         local elf_path = "mc0:/BOOT/BOOT.ELF"
         UI.LAUNCHING = true
-        System.loadELF(elf_path, 1, elf_path)
+        System.loadELF(elf_path, 1)
         return
       end;
       HandleInput = function ()
