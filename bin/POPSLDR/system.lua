@@ -914,7 +914,8 @@ function PLDR.GetMX4SIOMassRootNow()
     end
 
     if pass < 3 and type(System.sleep) == "function" then
-      pcall(System.sleep, 0.20)
+      local delay = (pass == 1) and 0.25 or 0.75
+      pcall(System.sleep, delay)
     end
   end
 
