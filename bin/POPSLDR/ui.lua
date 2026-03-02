@@ -279,7 +279,7 @@ UI = {
       PREVIEW_W = 240;
       PREVIEW_H = 240;
 	      -- Raised/tighter footer to avoid overscan and allow icon reflections to overlap slightly.
-	      CAROUSEL_Y_OFFSET = 18;
+      CAROUSEL_Y_OFFSET = 28;
       FOOTER_LABEL_W = 140;
       FOOTER_ICON_Y_OFFSET = 24;
       FOOTER_LABEL_Y_OFFSET = 10;
@@ -1372,8 +1372,7 @@ UI = {
       Play = function ()
         local layout = UI.LAYOUT
         local profcnt = #UI.MainMenu.opts
-        Font.ftPrintMultiLineAligned(UI.FONT.TITLE, UI.SCR.X_MID, layout.TITLE_Y, 16, UI.SCR.X, 32, "POPSLoader\nby Matias Israelson\nGUI for POPStarter and BDMAssault", UI.COLORS.TEXT_PRIMARY)
-        local status_y = layout.STATUS_Y + 16
+        local status_y = layout.TITLE_Y
         if UI.boot_device ~= nil and UI.boot_device ~= DEVLOCK.NONE then
           Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Booted from: "..UI.device_lock_name(UI.boot_device), UI.COLORS.TEXT_PRIMARY)
           status_y = status_y + 12
