@@ -895,7 +895,7 @@ function PLDR.GetMX4SIOMassRootNow()
     return nil
   end
 
-  for pass = 1, 2 do
+  for pass = 1, 3 do
     pcall(PLDR.RefreshMassBackends)
     for dev_index = 0, 15 do
       local ok, info = pcall(System.getMassBackendInfo, dev_index)
@@ -913,8 +913,8 @@ function PLDR.GetMX4SIOMassRootNow()
       end
     end
 
-    if pass == 1 and type(System.sleep) == "function" then
-      pcall(System.sleep, 0.05)
+    if pass < 3 and type(System.sleep) == "function" then
+      pcall(System.sleep, 0.20)
     end
   end
 
