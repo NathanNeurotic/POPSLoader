@@ -759,8 +759,10 @@ UI = {
 
         -- Start boot sound once; explicit holds must not be lengthened by audio duration.
         TryBootSound()
-        local SPLASH_HOLD_MS = 3000
-        local CREDITS_HOLD_MS = 4000
+        local SPLASH_HOLD_SEC = 4.0
+        local CREDITS_HOLD_SEC = 3.0
+        local SPLASH_HOLD_MS = SPLASH_HOLD_SEC * 1000
+        local CREDITS_HOLD_MS = CREDITS_HOLD_SEC * 1000
 
         StepFade(DrawSplash, 128, 0, FADE_IN_MS)
         StepHold(DrawSplash, SPLASH_HOLD_MS)
