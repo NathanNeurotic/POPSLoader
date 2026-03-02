@@ -982,6 +982,9 @@ function PLDR.GetRootsByType(kind, mass_snapshot)
 
   if wanted == "usb" then
     local mx4_root = state.mx4_root
+    if mx4_root == nil then
+      mx4_root = PLDR.GetMX4SIOMassRootNow()
+    end
     local present = PLDR.GetPresentMassRootsBounded()
     for i = 1, #present do
       local root = present[i]

@@ -1436,13 +1436,13 @@ UI = {
         carousel.last_ms = now_ms
         if dt_ms < 0 then dt_ms = 0 end
         if UI.MX4_RETRY_ACTIVE and now_ms >= UI.MX4_RETRY_NEXT_T then
-          local delays = {250, 500, 750}
+          local delays = {250, 500, 750, 1000, 1250}
           UI.MX4_RETRY_COUNT = UI.MX4_RETRY_COUNT + 1
           if UI.TryEnterMX4SIO() then
             UI.ResetMX4Retry()
             UI.SceneChange(UI.SCENES.GMX4SIO)
             return
-          elseif UI.MX4_RETRY_COUNT >= 3 then
+          elseif UI.MX4_RETRY_COUNT >= 5 then
             UI.ResetMX4Retry()
             UI.Notif_queue.add("No MX4SIO device found")
           else
