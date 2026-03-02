@@ -895,54 +895,77 @@ function PLDR.GetMX4SIOMassRootNow()
     return nil
   end
 
+  local function rootFromParId(parId)
+    if type(parId) ~= "number" then
+      return nil
+    end
+    if parId < 0 or parId > 9 then
+      return nil
+    end
+    if parId == 0 then
+      return "mass:/"
+    end
+    return "mass"..tostring(parId)..":/"
+  end
+
   local function resolveFromInfo(info, field)
     if type(info) ~= "table" then
       return nil
     end
 
     local name = info[field]
-    local parId = info.parId
     if type(name) == "string" and name ~= "" and string.find(string.lower(name), "sdc", 1, true) then
-      if type(parId) == "number" and parId >= 0 and parId <= 9 then
-        local root = (parId == 0) and "mass:/" or ("mass"..tostring(parId)..":/")
-        if doesFolderExist(root) then
-          return root
-        end
-      end
+      return rootFromParId(info.parId)
     end
 
     return nil
   end
 
-  local has_bdm_list = type(System.bdmList) == "function"
-
-  for pass = 1, 2 do
+  if type(PLDR.RefreshMassBackends) == "function" then
     pcall(PLDR.RefreshMassBackends)
+  end
 
-    if has_bdm_list then
-      local ok, list = pcall(System.bdmList)
-      if ok and type(list) == "table" then
-        for i = 1, #list do
-          local root = resolveFromInfo(list[i], "name")
-          if root ~= nil then
-            return root
-          end
-        end
-      end
-    elseif type(System.getMassBackendInfo) == "function" then
-      for dev_index = 0, 15 do
-        local ok, info = pcall(System.getMassBackendInfo, dev_index)
-        if ok then
-          local root = resolveFromInfo(info, "driver")
-          if root ~= nil then
-            return root
-          end
+  if type(System.bdmList) == "function" then
+    local ok, list = pcall(System.bdmList)
+    if ok and type(list) == "table" then
+      for i = 1, #list do
+        local root = resolveFromInfo(list[i], "name")
+        if root ~= nil then
+          return root
         end
       end
     end
+    return nil
+  end
 
-    if pass == 1 and type(System.sleep) == "function" then
-      pcall(System.sleep, 0.05)
+  if type(System.getMassBackendInfo) == "function" then
+    for dev_index = 0, 15 do
+      local ok, info = pcall(System.getMassBackendInfo, dev_index)
+      if ok and type(info) == "table" then
+        local root = resolveFromInfo(info, "driver")
+        if root == nil then
+          root = resolveFromInfo(info, "name")
+        end
+        if root == nil then
+          if type(info.driver) == "string" and string.find(string.lower(info.driver), "sdc", 1, true) then
+            root = rootFromParId(info.slot)
+          end
+        end
+        if root == nil then
+          if type(info.name) == "string" and string.find(string.lower(info.name), "sdc", 1, true) then
+            root = rootFromParId(info.slot)
+          end
+        end
+        if root == nil then
+          if (type(info.driver) == "string" and string.find(string.lower(info.driver), "sdc", 1, true))
+            or (type(info.name) == "string" and string.find(string.lower(info.name), "sdc", 1, true)) then
+            root = rootFromParId(dev_index)
+          end
+        end
+        if root ~= nil then
+          return root
+        end
+      end
     end
   end
 
@@ -1511,16 +1534,22 @@ function PLDR.InitMX4SIOPopsRoot()
   if type(System) == "table" and type(System.initMX4SIO) == "function" then
     pcall(System.initMX4SIO)
   end
-  if type(System) == "table" and type(System.sleep) == "function" then
-    pcall(System.sleep, 0.05)
-  end
 
-  local root = PLDR.GetMX4SIOMassRootNow()
-  if root ~= nil then
-    local pops = root.."POPS/"
-    if doesFolderExist(pops) then
-      PLDR.SetMX4SIORoot(root)
-      return pops
+  local backoff = {0.20, 0.30, 0.40, 0.50}
+  for pass = 1, 5 do
+    if type(PLDR.RefreshMassBackends) == "function" then
+      pcall(PLDR.RefreshMassBackends)
+    end
+    local root = PLDR.GetMX4SIOMassRootNow()
+    if root ~= nil then
+      local pops = root.."POPS/"
+      if doesFolderExist(pops) then
+        PLDR.SetMX4SIORoot(root)
+        return pops
+      end
+    end
+    if pass < 5 and type(System) == "table" and type(System.sleep) == "function" then
+      pcall(System.sleep, backoff[pass])
     end
   end
 
