@@ -882,32 +882,34 @@ function PLDR.GetMassDriverName(index)
 end
 
 function PLDR.GetMX4SIOMassRootNow()
-  if type(System) ~= "table" or type(System.getMassRootByBackendName) ~= "function" then
+  if type(System) ~= "table" or type(doesFolderExist) ~= "function" or type(PLDR.GetMassDriverName) ~= "function" then
     return nil
   end
 
-  pcall(PLDR.RefreshMassBackends)
-  local ok, root = pcall(System.getMassRootByBackendName, "sdc")
-  if ok and type(root) == "string" and root ~= "" then
-    return root
+  for pass = 1, 2 do
+    pcall(PLDR.RefreshMassBackends)
+    for i = 0, 9 do
+      local root = (i == 0) and "mass:/" or ("mass"..i..":/")
+      if doesFolderExist(root) then
+        local drv = PLDR.GetMassDriverName(i)
+        if type(drv) == "string" and string.find(string.lower(drv), "sdc", 1, true) then
+          return root
+        end
+      end
+    end
+
+    if pass == 1 and type(System.sleep) == "function" then
+      pcall(System.sleep, 0.05)
+    end
   end
 
-  if type(System.sleep) == "function" then
-    pcall(System.sleep, 0.05)
-  end
-  pcall(PLDR.RefreshMassBackends)
-
-  ok, root = pcall(System.getMassRootByBackendName, "sdc")
-  if ok and type(root) == "string" and root ~= "" then
-    return root
-  end
   return nil
 end
 
 function PLDR.RefreshMassBackends()
   if type(System) == "table" and type(System.refreshMassBackends) == "function" then
     local ok, res = pcall(System.refreshMassBackends)
-    return ok and res == true
+    return ok and (res == nil or res == true)
   end
   return true
 end
