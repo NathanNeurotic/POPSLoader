@@ -717,29 +717,15 @@ UI = {
           end
         end
 
-        local function StepHold(drawFn, durationMs)
-          local timer = Timer.new()
-          local last_ms = Timer.getTime(timer)
-          local elapsed = 0
-          local max_step = (UI.Transition and UI.Transition.max_step) or 33
-          if durationMs <= 0 then
+        local function StepHoldFrames(drawFn, frames)
+          if frames <= 0 then
             drawFn()
             Screen.flip()
             return
           end
-          while true do
-            local now_ms = Timer.getTime(timer)
-            local dt = now_ms - last_ms
-            last_ms = now_ms
-            if dt < 0 then dt = 0 end
-            if dt > max_step then dt = max_step end
-            elapsed = elapsed + dt
-            if elapsed > durationMs then elapsed = durationMs end
+          for _ = 1, frames do
             drawFn()
             Screen.flip()
-            if elapsed >= durationMs then
-              break
-            end
           end
         end
 
@@ -759,15 +745,16 @@ UI = {
 
         -- Start boot sound once; explicit holds must not be lengthened by audio duration.
         TryBootSound()
-        local SPLASH_HOLD_MS = 3000
-        local CREDITS_HOLD_MS = 4000
+        local FPS = 60
+        local SPLASH_HOLD_FRAMES = math.floor(4.0 * FPS + 0.5)
+        local CREDITS_HOLD_FRAMES = math.floor(3.0 * FPS + 0.5)
 
         StepFade(DrawSplash, 128, 0, FADE_IN_MS)
-        StepHold(DrawSplash, SPLASH_HOLD_MS)
+        StepHoldFrames(DrawSplash, SPLASH_HOLD_FRAMES)
         StepFade(DrawSplash, 0, 128, FADE_OUT_MS)
 
         StepFade(DrawCredits, 128, 0, FADE_IN_MS)
-        StepHold(DrawCredits, CREDITS_HOLD_MS)
+        StepHoldFrames(DrawCredits, CREDITS_HOLD_FRAMES)
         StepFade(DrawCredits, 0, 128, FADE_OUT_MS)
 
         StepFade(DrawMenu, 128, 0, FADE_IN_MS)
