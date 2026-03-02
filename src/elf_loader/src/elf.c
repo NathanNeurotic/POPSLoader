@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <kernel.h>
 #include <loadfile.h>
+#include <iopcontrol.h>
 #include <sys/stat.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -231,6 +232,47 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 	if (ret != 0 || elfdata.epc == 0) {
 		return -2;
 	}
+
+	ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc, argv);
+	return -1;
+}
+
+
+int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[])
+{
+	t_ExecData elfdata;
+	char resolved_path[256];
+	int ret;
+
+	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
+		return -1;
+	}
+
+	SifInitRpc(0);
+	SifLoadFileInit();
+	ret = SifLoadElf(resolved_path, &elfdata);
+	SifLoadFileExit();
+
+	if (ret != 0 || elfdata.epc == 0) {
+		return -2;
+	}
+
+	FlushCache(0);
+	while (!SifIopReset(NULL, 0)) {
+	}
+	while (!SifIopSync()) {
+	}
+
+	SifInitRpc(0);
+	SifLoadFileInit();
+	SifLoadModule("rom0:SIO2MAN", 0, NULL);
+	SifLoadModule("rom0:MCMAN", 0, NULL);
+	SifLoadModule("rom0:MCSERV", 0, NULL);
+	SifLoadFileExit();
+	SifExitRpc();
+
+	FlushCache(0);
+	FlushCache(2);
 
 	ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc, argv);
 	return -1;
