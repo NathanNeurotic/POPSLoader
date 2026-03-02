@@ -1117,7 +1117,7 @@ UI = {
               UI.Notif_queue.add("No MX4SIO device found")
             else
               local delays = {250, 500, 750}
-              UI.MX4_RETRY_NEXT_T = now + delays[UI.MX4_RETRY_COUNT + 1]
+              UI.MX4_RETRY_NEXT_T = now + delays[UI.MX4_RETRY_COUNT]
             end
             ammount = #PLDR.GAMES
           end
