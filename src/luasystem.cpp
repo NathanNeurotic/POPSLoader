@@ -943,6 +943,7 @@ static int lua_checkexist(lua_State *L){
 extern "C" {
 int LoadELFFromFile(const char *filename, int argc, char *argv[]);
 int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[]);
+int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]);
 }
 static int lua_loadELF(lua_State *L)
 {
@@ -968,6 +969,26 @@ static int lua_loadELF(lua_State *L)
 	printf("# Loading ELF argv0 default (argc=0)\n");
 	int rc = LoadELFFromFile(elftoload, 0, NULL);
 	lua_pushinteger(L, rc);
+	return 1;
+}
+
+
+static int lua_loadELFRebootIOP(lua_State *L)
+{
+	int argc = lua_gettop(L);
+	if (argc < 1) return luaL_error(L, "%s(path, argv0): not enough args", __FUNCTION__);
+	const char *elftoload = luaL_checkstring(L, 1);
+	if (argc >= 2 && !lua_isnil(L, 2)) {
+		static char argv0_buf[256];
+		static char *argv_static[2];
+		const char *argv0 = luaL_checkstring(L, 2);
+		snprintf(argv0_buf, sizeof(argv0_buf), "%s", argv0 ? argv0 : "");
+		argv_static[0] = argv0_buf;
+		argv_static[1] = NULL;
+		lua_pushinteger(L, LoadELFFromFileExecPS2RebootIOP(elftoload, 1, argv_static));
+		return 1;
+	}
+	lua_pushinteger(L, LoadELFFromFileExecPS2RebootIOP(elftoload, 0, NULL));
 	return 1;
 }
 
@@ -1273,6 +1294,7 @@ static const luaL_Reg System_functions[] = {
 	{"exitToBrowser",                  lua_exit},
 	{"getMCInfo",                 lua_getmcinfo},
 	{"loadELF",                 	lua_loadELF},
+	{"loadELFRebootIOP",        	lua_loadELFRebootIOP},
 	{"checkValidDisc",       lua_checkValidDisc},
 	{"getDiscType",             lua_getDiscType},
 	{"checkDiscTray",         lua_checkDiscTray},

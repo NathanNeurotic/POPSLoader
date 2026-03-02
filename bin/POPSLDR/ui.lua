@@ -44,6 +44,16 @@ local function SafeDoesFileExist(path)
   end
   return false
 end
+local function ResolveFirstExistingElf(candidates)
+  if candidates == nil then return nil end
+  for i = 1, #candidates do
+    local path = candidates[i]
+    if SafeDoesFileExist(path) then
+      return path
+    end
+  end
+  return nil
+end
 local function ExtractGameRelPath(entry)
   if entry == nil then return nil end
   local relpath = string.match(entry, "^[^|]+|(.+)$")
@@ -861,9 +871,19 @@ UI = {
         System.exitToBrowser()
       end;
       LaunchBootElf = function ()
-        local elf_path = "mc0:/BOOT/BOOT.ELF"
+        local elf_path = ResolveFirstExistingElf({
+          "mc0:/BOOT/BOOT2.ELF",
+          "mc0:/BOOT/BOOT.ELF",
+          "mc1:/BOOT/BOOT2.ELF",
+          "mc1:/BOOT/BOOT.ELF"
+        })
+        if elf_path == nil then
+          UI.Notify("BOOT.ELF not found", 120)
+          return
+        end
         UI.LAUNCHING = true
-        System.loadELF(elf_path, 1, elf_path)
+        UI.Modal.Close()
+        System.loadELFRebootIOP(elf_path, elf_path)
         return
       end;
       HandleInput = function ()
