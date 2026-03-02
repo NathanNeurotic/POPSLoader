@@ -1526,17 +1526,35 @@ function PLDR.InitMX4SIOPopsRoot()
     pcall(System.initMX4SIO)
   end
 
-  local function runBoundedReadiness(backoff)
+  if type(PLDR.RefreshMassBackends) == "function" then
+    pcall(PLDR.RefreshMassBackends)
+  end
+  local root = PLDR.GetMX4SIOMassRootNow()
+
+  if root == nil then
+    if type(System) == "table" and type(System.initMX4SIO) == "function" then
+      pcall(System.initMX4SIO)
+    end
+    if type(PLDR.RefreshMassBackends) == "function" then
+      pcall(PLDR.RefreshMassBackends)
+    end
+    root = PLDR.GetMX4SIOMassRootNow()
+  end
+
+  local function runBoundedReadiness(backoff, first_root)
     local passes = #backoff + 1
     for pass = 1, passes do
       if type(PLDR.RefreshMassBackends) == "function" then
         pcall(PLDR.RefreshMassBackends)
       end
-      local root = PLDR.GetMX4SIOMassRootNow()
-      if root ~= nil then
-        local pops = root.."POPS/"
+      local candidate_root = first_root
+      if pass > 1 or candidate_root == nil then
+        candidate_root = PLDR.GetMX4SIOMassRootNow()
+      end
+      if candidate_root ~= nil then
+        local pops = candidate_root.."POPS/"
         if doesFolderExist(pops) then
-          PLDR.SetMX4SIORoot(root)
+          PLDR.SetMX4SIORoot(candidate_root)
           return pops
         end
       end
@@ -1547,7 +1565,7 @@ function PLDR.InitMX4SIOPopsRoot()
     return nil
   end
 
-  local pops = runBoundedReadiness({0.20, 0.30, 0.40, 0.50})
+  local pops = runBoundedReadiness({0.20, 0.30, 0.40, 0.50}, root)
   if pops ~= nil then
     return pops
   end
