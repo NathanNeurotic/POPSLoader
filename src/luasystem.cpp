@@ -419,6 +419,8 @@ static int lua_get_mass_backend_info(lua_State *L)
 			lua_setfield(L, -2, "kind");
 			lua_pushinteger(L, info->devNr);
 			lua_setfield(L, -2, "index");
+			lua_pushinteger(L, info->parId);
+			lua_setfield(L, -2, "parId");
 			return 1;
 		}
 	}
