@@ -187,6 +187,9 @@ UI = {
     device_lock = DEVLOCK.NONE;
     boot_device = DEVLOCK.NONE;
     boot_locks = {};
+    MX4_RETRY_ACTIVE = false;
+    MX4_RETRY_COUNT = 0;
+    MX4_RETRY_NEXT_T = 0;
     BOOT_SOUND = {
       ENABLED = true,
       PATH = "boot.adp",      -- relative to CWD (same folder as ui.lua on HostFS)
@@ -1100,6 +1103,25 @@ UI = {
           return
         end
         local ammount = #PLDR.GAMES
+        if UI.CURSCENE == UI.SCENES.GMX4SIO and UI.MX4_RETRY_ACTIVE then
+          local now = UI.Pad.CLK or 0
+          if now >= (UI.MX4_RETRY_NEXT_T or 0) then
+            UI.MX4_RETRY_COUNT = (UI.MX4_RETRY_COUNT or 0) + 1
+            if UI.MainMenu.TryEnterMX4SIO() then
+              UI.MX4_RETRY_ACTIVE = false
+              UI.MX4_RETRY_COUNT = 0
+              UI.MX4_RETRY_NEXT_T = 0
+            elseif UI.MX4_RETRY_COUNT >= 3 then
+              UI.MX4_RETRY_ACTIVE = false
+              UI.MX4_RETRY_NEXT_T = 0
+              UI.Notif_queue.add("No MX4SIO device found")
+            else
+              local delays = {250, 500, 750}
+              UI.MX4_RETRY_NEXT_T = now + delays[UI.MX4_RETRY_COUNT + 1]
+            end
+            ammount = #PLDR.GAMES
+          end
+        end
         if UI.CURSCENE == UI.SCENES.GSMB then
           local slots = PLDR.GetMMCESlots()
           if #slots > 1 then
@@ -1134,8 +1156,12 @@ UI = {
           end
         end
         if ammount <= 0 then
-          Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, UI.SCR.Y_MID, 20, UI.SCR.X, 32, "No games found", UI.CCOL.YELLOW)
-          Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID+1, UI.SCR.Y_MID+1, 20, UI.SCR.X, 32, "No games found", UI.CCOL.TRANSP_BLACK)
+          local empty_text = "No games found"
+          if UI.CURSCENE == UI.SCENES.GMX4SIO and UI.MX4_RETRY_ACTIVE then
+            empty_text = "Detecting MX4SIO..."
+          end
+          Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, UI.SCR.Y_MID, 20, UI.SCR.X, 32, empty_text, UI.CCOL.YELLOW)
+          Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID+1, UI.SCR.Y_MID+1, 20, UI.SCR.X, 32, empty_text, UI.CCOL.TRANSP_BLACK)
         end
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
@@ -1365,6 +1391,18 @@ UI = {
         timer = nil,
         last_ms = nil
       };
+      TryEnterMX4SIO = function ()
+        PLDR.CleanupGameList()
+        PLDR.GAMEPATH = ""
+        local mx4sio_root = PLDR.InitMX4SIOPopsRoot()
+        if mx4sio_root == nil then
+          return false
+        end
+        PLDR.CleanupGameList()
+        PLDR.GetPS1GameLists(mx4sio_root, true)
+        UI.setDeviceLock(DEVLOCK.MX4SIO)
+        return true
+      end;
       DrawOnly = function ()
         UI.MainMenu._draw_only = true
         UI.MainMenu.Play()
@@ -1571,16 +1609,16 @@ UI = {
               UI.SceneChange(UI.SCENES.GSMB)
             end
           elseif UI.MainMenu.OPT == 2 then
-            PLDR.CleanupGameList()
-            PLDR.GAMEPATH = ""
-            local mx4sio_root = PLDR.InitMX4SIOPopsRoot()
-            if mx4sio_root == nil then
-              UI.Notif_queue.add("No MX4SIO device found")
-              return
+            UI.MX4_RETRY_ACTIVE = false
+            UI.MX4_RETRY_COUNT = 0
+            UI.MX4_RETRY_NEXT_T = 0
+            if UI.MainMenu.TryEnterMX4SIO() then
+              UI.SceneChange(UI.SCENES.GMX4SIO)
             else
-              PLDR.CleanupGameList()
-              PLDR.GetPS1GameLists(mx4sio_root, true)
-              UI.setDeviceLock(DEVLOCK.MX4SIO)
+              local now = UI.Pad.CLK or 0
+              UI.MX4_RETRY_ACTIVE = true
+              UI.MX4_RETRY_COUNT = 0
+              UI.MX4_RETRY_NEXT_T = now + 250
               UI.SceneChange(UI.SCENES.GMX4SIO)
             end
           elseif UI.MainMenu.OPT == 3 then
@@ -1862,6 +1900,11 @@ function UI.IsUsbScene(scene)
   return scene == UI.SCENES.GUSBFAT
 end
 function UI.OnSceneExit(previous_scene, next_scene)
+  if previous_scene == UI.SCENES.GMX4SIO and next_scene ~= UI.SCENES.GMX4SIO then
+    UI.MX4_RETRY_ACTIVE = false
+    UI.MX4_RETRY_COUNT = 0
+    UI.MX4_RETRY_NEXT_T = 0
+  end
   if UI.IsGameScene(previous_scene) and previous_scene ~= next_scene then
     if UI.CoverCache ~= nil and UI.CoverCache.Clear ~= nil then
       UI.CoverCache:Clear()
