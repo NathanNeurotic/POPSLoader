@@ -877,6 +877,15 @@ function PLDR.GetMassDriverName(index)
         return string.lower(driver)
       end
     end
+    if type(System.getMassBackendInfo) == "function" then
+      local ok, info = pcall(System.getMassBackendInfo, index)
+      if ok and type(info) == "table" then
+        local driver = info.driver
+        if type(driver) == "string" and driver ~= "" then
+          return string.lower(driver)
+        end
+      end
+    end
   end
   return nil
 end
