@@ -914,11 +914,19 @@ function PLDR.GetMX4SIOMassRootNow()
     end
 
     local name = info[field]
-    if type(name) == "string" and name ~= "" and string.find(string.lower(name), "sdc", 1, true) then
-      return rootFromParId(info.parId)
+    if type(name) ~= "string" or name == "" then
+      return nil
+    end
+    if not string.find(string.lower(name), "sdc", 1, true) then
+      return nil
     end
 
-    return nil
+    local root = rootFromParId(info.parId)
+    if root ~= nil then
+      return root
+    end
+
+    return rootFromParId(info.slot)
   end
 
   if type(PLDR.RefreshMassBackends) == "function" then
@@ -935,7 +943,6 @@ function PLDR.GetMX4SIOMassRootNow()
         end
       end
     end
-    return nil
   end
 
   if type(System.getMassBackendInfo) == "function" then
@@ -945,22 +952,6 @@ function PLDR.GetMX4SIOMassRootNow()
         local root = resolveFromInfo(info, "driver")
         if root == nil then
           root = resolveFromInfo(info, "name")
-        end
-        if root == nil then
-          if type(info.driver) == "string" and string.find(string.lower(info.driver), "sdc", 1, true) then
-            root = rootFromParId(info.slot)
-          end
-        end
-        if root == nil then
-          if type(info.name) == "string" and string.find(string.lower(info.name), "sdc", 1, true) then
-            root = rootFromParId(info.slot)
-          end
-        end
-        if root == nil then
-          if (type(info.driver) == "string" and string.find(string.lower(info.driver), "sdc", 1, true))
-            or (type(info.name) == "string" and string.find(string.lower(info.name), "sdc", 1, true)) then
-            root = rootFromParId(dev_index)
-          end
         end
         if root ~= nil then
           return root
