@@ -233,6 +233,12 @@ UI = {
       UI.MX4_RETRY_NOTIFIED = false
     end;
     TryEnterMX4SIO = function ()
+      if type(System) == "table" and type(System.initMX4SIO) == "function" then
+        pcall(System.initMX4SIO)
+      end
+      if type(System) == "table" and type(System.refreshMassBackends) == "function" then
+        pcall(System.refreshMassBackends)
+      end
       PLDR.CleanupGameList()
       PLDR.GAMEPATH = ""
       local mx4sio_root = PLDR.InitMX4SIOPopsRoot()
@@ -245,7 +251,7 @@ UI = {
       return true
     end;
     RequestScene = function (SCENE)
-      if SCENE ~= UI.SCENES.MMAIN then
+      if UI.CURSCENE == UI.SCENES.MMAIN and SCENE ~= UI.SCENES.MMAIN then
         UI.ResetMX4Retry()
       end
       if UI.Transition ~= nil and UI.Transition.Start ~= nil then
