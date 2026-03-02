@@ -906,10 +906,8 @@ end
 
 function PLDR.RefreshMassBackends()
   if type(System) == "table" and type(System.refreshMassBackends) == "function" then
-    local ok = pcall(System.refreshMassBackends)
-    if ok then
-      return true
-    end
+    local ok, res = pcall(System.refreshMassBackends)
+    return ok and res == true
   end
   return true
 end
