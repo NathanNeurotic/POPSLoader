@@ -38,6 +38,8 @@ extern unsigned int size_cdfs_irx;
 static bool LoadIrxCheckedBuffer(const char *name, unsigned char *irx, unsigned int size, int *out_id, int *out_ret);
 static void BuildMassRootPath(int index, char *out_root, size_t out_sz);
 
+#define USBMASS_IOCTL_GET_DRIVERNAME 0x0003
+
 #define BDM_QUERY_RPC_ID 0xB0D10B00
 #define BDM_QUERY_RPC_GET_LIST 0
 #define BDM_QUERY_MAX_DEVICES 32
@@ -289,18 +291,69 @@ static bool ParseMassRootSlot(const char *root, int *out_slot)
 
 static const char *GetMassMountDriverNameBySlot(int slot)
 {
+	static char driver[32];
+	char root[16];
+	char path[272];
+	iox_dirent_t dirent;
+
 	if (slot < 0 || slot > 9) {
 		return NULL;
 	}
-	if (!mass_backend_cache_valid) {
-		return NULL;
+
+	BuildMassRootPath(slot, root, sizeof(root));
+
+	for (int attempt = 0; attempt < 3; ++attempt) {
+		const char *candidate = root;
+		if (attempt == 1) {
+			snprintf(path, sizeof(path), "%s.", root);
+			candidate = path;
+		} else if (attempt == 2) {
+			snprintf(path, sizeof(path), "%s..", root);
+			candidate = path;
+		}
+
+		int fd = fileXioOpen(candidate, O_RDONLY, 0);
+		if (fd >= 0) {
+			memset(driver, 0, sizeof(driver));
+			int ret = fileXioIoctl2(fd, USBMASS_IOCTL_GET_DRIVERNAME, NULL, 0, driver, sizeof(driver));
+			fileXioClose(fd);
+			if (ret >= 0 && driver[0] != '\0') {
+				return driver;
+			}
+		}
 	}
 
-	for (u32 i = 0; i < mass_backend_cache.count; ++i) {
-		const bdm_dev_info_t *info = &mass_backend_cache.devs[i];
-		if ((int)info->parId == slot && info->name[0] != '\0') {
-			return info->name;
+	int dfd = fileXioDopen(root);
+	if (dfd >= 0) {
+		int scanned = 0;
+		while (scanned < 16) {
+			int rc = fileXioDread(dfd, &dirent);
+			if (rc <= 0) {
+				break;
+			}
+			++scanned;
+			if (dirent.name[0] == '\0') {
+				continue;
+			}
+			if ((strcmp(dirent.name, ".") == 0) || (strcmp(dirent.name, "..") == 0)) {
+				continue;
+			}
+
+			snprintf(path, sizeof(path), "%s%s", root, dirent.name);
+			int fd = fileXioOpen(path, O_RDONLY, 0);
+			if (fd < 0) {
+				continue;
+			}
+
+			memset(driver, 0, sizeof(driver));
+			int ret = fileXioIoctl2(fd, USBMASS_IOCTL_GET_DRIVERNAME, NULL, 0, driver, sizeof(driver));
+			fileXioClose(fd);
+			if (ret >= 0 && driver[0] != '\0') {
+				fileXioDclose(dfd);
+				return driver;
+			}
 		}
+		fileXioDclose(dfd);
 	}
 
 	return NULL;
