@@ -995,12 +995,13 @@ local function BuildMassRootIdentity(mode)
 
     local present = PLDR.GetPresentMassRootsBounded()
     for i = 1, #present do
-      local normalized = NormalizeMassRoot(present[i])
+      local raw = present[i]
+      local normalized = NormalizeMassRoot(raw)
       if normalized ~= nil and seen_present[normalized] ~= true then
         seen_present[normalized] = true
         table.insert(identity.present_roots, normalized)
 
-        local driver = PLDR.GetMassMountDriver(normalized)
+        local driver = PLDR.GetMassMountDriver(raw)
         if type(driver) == "string" and driver ~= "" then
           if string.find(string.lower(driver), "sdc", 1, true) then
             if seen_mx4[normalized] ~= true then
