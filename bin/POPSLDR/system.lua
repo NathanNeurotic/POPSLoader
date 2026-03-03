@@ -169,9 +169,6 @@ function PLDR.PopstarterProbeWithEnsure(path)
           pcall(PLDR.EnsureMmceReadyOnce)
         end
       end
-      if type(System) == "table" and type(System.sleep) == "function" then
-        pcall(System.sleep, 0.05)
-      end
     end
   end
   return false
@@ -941,9 +938,7 @@ function PLDR.InvalidateMassBackends()
 end
 
 function PLDR.RefreshMassStateSnapshot()
-  return {
-    mx4_root = PLDR.GetMX4SIOMassRootNow()
-  }
+  return {}
 end
 
 function PLDR.GetPresentMassRootsBounded()
@@ -966,13 +961,6 @@ BuildMassRootIdentity = function()
   end
 
   local present = PLDR.GetPresentMassRootsBounded()
-  local present_slots = {}
-  for i = 1, #present do
-    local slot = PLDR.ParseMassIndexFromPath(present[i])
-    if slot ~= nil then
-      present_slots[slot] = true
-    end
-  end
 
   local slot_driver = {}
   if type(System) == "table" and type(System.getMassBackendInfo) == "function" then
@@ -997,7 +985,7 @@ BuildMassRootIdentity = function()
   for i = 1, #present do
     local root = present[i]
     local slot = PLDR.ParseMassIndexFromPath(root)
-    if slot ~= nil and present_slots[slot] then
+    if slot ~= nil then
       local drv = slot_driver[slot]
       if drv ~= nil and string.find(drv, "sdc", 1, true) then
         table.insert(identity.mx4sio, root)
@@ -1504,10 +1492,6 @@ function PLDR.InitMX4SIOPopsRoot()
   if type(System) == "table" and type(System.initMX4SIO) == "function" then
     pcall(System.initMX4SIO)
   end
-  if type(System) == "table" and type(System.sleep) == "function" then
-    pcall(System.sleep, 0.05)
-  end
-
   local root = PLDR.GetMX4SIOMassRootNow()
   if root ~= nil then
     local pops = root.."POPS/"
