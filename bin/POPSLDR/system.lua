@@ -857,33 +857,50 @@ end
 
 function PLDR.GetMassDriverName(index)
   if index == nil then return nil end
-  local cached = PLDR.MASS.CACHE[index]
-  if cached ~= nil and cached.driver ~= nil then
-    return cached.driver
+
+  local function NormalizeDriverName(driver)
+    if type(driver) == "string" and driver ~= "" then
+      return string.lower(driver)
+    end
+    return nil
   end
+
+  local cached = PLDR.MASS.CACHE[index]
+  if cached ~= nil then
+    local normalized = NormalizeDriverName(cached.driver)
+    if normalized ~= nil then
+      return normalized
+    end
+  end
+
   if type(System) == "table" then
-    if type(System.getMassDriverName) == "function" then
+    local has_get_mass_driver_name = type(System.getMassDriverName) == "function"
+    local has_get_mass_driver = type(System.getMassDriver) == "function"
+
+    if has_get_mass_driver_name then
       local ok, driver = pcall(System.getMassDriverName, index)
-      if ok and type(driver) == "string" and driver ~= "" then
-        return string.lower(driver)
+      local normalized = ok and NormalizeDriverName(driver) or nil
+      if normalized ~= nil then
+        return normalized
       end
     end
-    if type(System.getMassDriver) == "function" then
+
+    if has_get_mass_driver then
       local ok, driver = pcall(System.getMassDriver, index)
-      if ok and type(driver) == "string" and driver ~= "" then
-        return string.lower(driver)
+      local normalized = ok and NormalizeDriverName(driver) or nil
+      if normalized ~= nil then
+        return normalized
       end
     end
-    if type(System.getMassBackendInfo) == "function" then
+
+    if not has_get_mass_driver_name and not has_get_mass_driver and type(System.getMassBackendInfo) == "function" then
       local ok, info = pcall(System.getMassBackendInfo, index)
       if ok and type(info) == "table" then
-        local driver = info.driver
-        if type(driver) == "string" and driver ~= "" then
-          return string.lower(driver)
-        end
+        return NormalizeDriverName(info.driver)
       end
     end
   end
+
   return nil
 end
 
