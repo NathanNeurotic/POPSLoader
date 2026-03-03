@@ -894,6 +894,8 @@ function PLDR.GetMassDriverName(index)
 end
 
 local BuildMassRootIdentity
+local BuildMassSlotDriverMap
+
 
 function PLDR.GetMX4SIOMassRootNow()
   local identity = BuildMassRootIdentity()
@@ -938,7 +940,12 @@ function PLDR.InvalidateMassBackends()
 end
 
 function PLDR.RefreshMassStateSnapshot()
-  return {}
+  local identity = BuildMassRootIdentity()
+  return {
+    mx4_roots = identity.mx4sio,
+    usb_roots = identity.usb,
+    mx4_root = identity.mx4sio[1]
+  }
 end
 
 function PLDR.GetPresentMassRootsBounded()
@@ -952,16 +959,7 @@ function PLDR.GetPresentMassRootsBounded()
   return roots
 end
 
-BuildMassRootIdentity = function()
-  if type(PLDR.InvalidateMassBackends) == "function" then
-    pcall(PLDR.InvalidateMassBackends)
-  end
-  if type(PLDR.RefreshMassBackends) == "function" then
-    pcall(PLDR.RefreshMassBackends)
-  end
-
-  local present = PLDR.GetPresentMassRootsBounded()
-
+BuildMassSlotDriverMap = function()
   local slot_driver = {}
   if type(System) == "table" and type(System.getMassBackendInfo) == "function" then
     for backend = 0, 15 do
@@ -980,6 +978,20 @@ BuildMassRootIdentity = function()
       end
     end
   end
+  return slot_driver
+end
+
+BuildMassRootIdentity = function()
+  if type(PLDR.InvalidateMassBackends) == "function" then
+    pcall(PLDR.InvalidateMassBackends)
+  end
+  if type(PLDR.RefreshMassBackends) == "function" then
+    pcall(PLDR.RefreshMassBackends)
+  end
+
+  local present = PLDR.GetPresentMassRootsBounded()
+
+  local slot_driver = BuildMassSlotDriverMap()
 
   local identity = { usb = {}, mx4sio = {} }
   for i = 1, #present do
@@ -1035,12 +1047,31 @@ function PLDR.EnsureBackendForAppDir()
     return true
   end
   if string.match(path, "^mass%d*:/") then
-    local mx4_root_now = PLDR.GetMX4SIOMassRootNow()
-    local is_mx4_mass_path = false
-    if mx4_root_now ~= nil then
-      is_mx4_mass_path = string.sub(path, 1, string.len(mx4_root_now)) == mx4_root_now
+    local present = PLDR.GetPresentMassRootsBounded()
+    local matched_root = nil
+    for i = 1, #present do
+      local root = present[i]
+      if string.sub(path, 1, string.len(root)) == root then
+        matched_root = root
+        break
+      end
     end
-    if is_mx4_mass_path then
+
+    local class = nil
+    if matched_root ~= nil then
+      local slot = PLDR.ParseMassIndexFromPath(matched_root)
+      if slot ~= nil then
+        local slot_driver = BuildMassSlotDriverMap()
+        local drv = slot_driver[slot]
+        if drv ~= nil and string.find(drv, "sdc", 1, true) then
+          class = "mx4sio"
+        elseif drv ~= nil then
+          class = "usb"
+        end
+      end
+    end
+
+    if class == "mx4sio" then
       if type(_G.ensureMx4sioInit) == "function" then
         local ok = pcall(_G.ensureMx4sioInit)
         if ok then return true end
@@ -1049,7 +1080,7 @@ function PLDR.EnsureBackendForAppDir()
         local ok = pcall(System.initMX4SIO)
         if ok then return true end
       end
-    else
+    elseif class == "usb" then
       if type(System) == "table" and type(System.initUSB) == "function" then
         local ok = pcall(System.initUSB)
         if ok then return true end
