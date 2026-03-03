@@ -895,54 +895,71 @@ function PLDR.GetMX4SIOMassRootNow()
     return nil
   end
 
-  local function resolveFromInfo(info, field)
+  local function mapMassRoot(parId)
+    if type(parId) ~= "number" or parId < 0 or parId > 9 then
+      return nil
+    end
+    return (parId == 0) and "mass:/" or ("mass"..tostring(parId)..":/")
+  end
+
+  local function isMx4Identity(value)
+    return type(value) == "string" and value ~= "" and string.find(string.lower(value), "sdc", 1, true) ~= nil
+  end
+
+  local function resolveFromBdmEntry(info)
     if type(info) ~= "table" then
       return nil
     end
-
-    local name = info[field]
-    local parId = info.parId
-    if type(name) == "string" and name ~= "" and string.find(string.lower(name), "sdc", 1, true) then
-      if type(parId) == "number" and parId >= 0 and parId <= 9 then
-        local root = (parId == 0) and "mass:/" or ("mass"..tostring(parId)..":/")
-        if doesFolderExist(root) then
-          return root
-        end
-      end
+    local identity = nil
+    if type(info.driver) == "string" and info.driver ~= "" then
+      identity = info.driver
+    elseif type(info.name) == "string" and info.name ~= "" then
+      identity = info.name
     end
+    if not isMx4Identity(identity) then
+      return nil
+    end
+    return mapMassRoot(info.parId)
+  end
 
-    return nil
+  local function resolveFromBackendInfo(info)
+    if type(info) ~= "table" then
+      return nil
+    end
+    if not (isMx4Identity(info.driver) or isMx4Identity(info.name)) then
+      return nil
+    end
+    local root = mapMassRoot(info.parId)
+    if root ~= nil then
+      return root
+    end
+    return mapMassRoot(info.slot)
   end
 
   local has_bdm_list = type(System.bdmList) == "function"
 
-  for pass = 1, 2 do
+  if has_bdm_list then
     pcall(PLDR.RefreshMassBackends)
-
-    if has_bdm_list then
-      local ok, list = pcall(System.bdmList)
-      if ok and type(list) == "table" then
-        for i = 1, #list do
-          local root = resolveFromInfo(list[i], "name")
-          if root ~= nil then
-            return root
-          end
-        end
-      end
-    elseif type(System.getMassBackendInfo) == "function" then
-      for dev_index = 0, 15 do
-        local ok, info = pcall(System.getMassBackendInfo, dev_index)
-        if ok then
-          local root = resolveFromInfo(info, "driver")
-          if root ~= nil then
-            return root
-          end
+    local ok, list = pcall(System.bdmList)
+    if ok and type(list) == "table" then
+      for i = 1, #list do
+        local root = resolveFromBdmEntry(list[i])
+        if root ~= nil then
+          return root
         end
       end
     end
+  end
 
-    if pass == 1 and type(System.sleep) == "function" then
-      pcall(System.sleep, 0.05)
+  if type(System.getMassBackendInfo) == "function" then
+    for dev_index = 0, 15 do
+      local ok, info = pcall(System.getMassBackendInfo, dev_index)
+      if ok then
+        local root = resolveFromBackendInfo(info)
+        if root ~= nil then
+          return root
+        end
+      end
     end
   end
 
@@ -1511,17 +1528,35 @@ function PLDR.InitMX4SIOPopsRoot()
   if type(System) == "table" and type(System.initMX4SIO) == "function" then
     pcall(System.initMX4SIO)
   end
-  if type(System) == "table" and type(System.sleep) == "function" then
-    pcall(System.sleep, 0.05)
+
+  local function probeMx4PopsReady(pass_delays)
+    local pass_count = #pass_delays + 1
+    for pass = 1, pass_count do
+      pcall(PLDR.RefreshMassBackends)
+      local root = PLDR.GetMX4SIOMassRootNow()
+      if root ~= nil then
+        local pops = root.."POPS/"
+        if doesFolderExist(pops) then
+          return root, pops
+        end
+      end
+      local delay = pass_delays[pass]
+      if delay ~= nil and type(System) == "table" and type(System.sleep) == "function" then
+        pcall(System.sleep, delay)
+      end
+    end
+    return nil, nil
   end
 
-  local root = PLDR.GetMX4SIOMassRootNow()
+  local root, pops = probeMx4PopsReady({0.20, 0.30, 0.40, 0.50})
+  if root == nil then
+    pcall(PLDR.RefreshMassBackends)
+    root, pops = probeMx4PopsReady({0.20, 0.30})
+  end
+
   if root ~= nil then
-    local pops = root.."POPS/"
-    if doesFolderExist(pops) then
-      PLDR.SetMX4SIORoot(root)
-      return pops
-    end
+    PLDR.SetMX4SIORoot(root)
+    return pops
   end
 
   return nil
