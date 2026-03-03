@@ -917,12 +917,7 @@ function PLDR.GetMassMountDriver(root)
     end
   end
 
-  local index = PLDR.ParseMassIndexFromPath(root)
-  if index == nil then
-    return nil
-  end
-
-  return PLDR.GetMassDriverName(index)
+  return nil
 end
 
 local function BuildMassRootIdentity(mode)

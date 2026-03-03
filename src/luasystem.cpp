@@ -7,7 +7,6 @@
 #include <sys/stat.h>
 #include <sifrpc.h>
 #include <string.h>
-#include <ctype.h>
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
 #include <fileio.h>
@@ -447,31 +446,43 @@ static int lua_get_mass_root_by_backend_name(lua_State *L)
 	return 1;
 }
 
-static bool ContainsIgnoreCase(const char *haystack, const char *needle)
+static bool QuerySystemMassDriver(lua_State *L, const char *field_name, int index, char *out_driver, size_t out_sz)
 {
-	if (haystack == NULL || needle == NULL || needle[0] == '\0') {
+	if (L == NULL || field_name == NULL || out_driver == NULL || out_sz == 0) {
 		return false;
 	}
-	size_t hay_len = strlen(haystack);
-	size_t needle_len = strlen(needle);
-	if (needle_len > hay_len) {
+
+	out_driver[0] = '\0';
+
+	lua_getglobal(L, "System");
+	if (!lua_istable(L, -1)) {
+		lua_pop(L, 1);
 		return false;
 	}
-	for (size_t i = 0; i + needle_len <= hay_len; ++i) {
-		size_t j = 0;
-		while (j < needle_len) {
-			char h = (char)tolower((unsigned char)haystack[i + j]);
-			char n = (char)tolower((unsigned char)needle[j]);
-			if (h != n) {
-				break;
-			}
-			++j;
-		}
-		if (j == needle_len) {
-			return true;
+
+	lua_getfield(L, -1, field_name);
+	if (!lua_isfunction(L, -1)) {
+		lua_pop(L, 2);
+		return false;
+	}
+
+	lua_pushinteger(L, index);
+	if (lua_pcall(L, 1, 1, 0) != LUA_OK) {
+		lua_pop(L, 2);
+		return false;
+	}
+
+	bool ok = false;
+	if (lua_isstring(L, -1)) {
+		const char *driver = lua_tostring(L, -1);
+		if (driver != NULL && driver[0] != '\0') {
+			snprintf(out_driver, out_sz, "%s", driver);
+			ok = true;
 		}
 	}
-	return false;
+
+	lua_pop(L, 2);
+	return ok;
 }
 
 static int lua_get_mass_mount_driver(lua_State *L)
@@ -493,35 +504,18 @@ static int lua_get_mass_mount_driver(lua_State *L)
 		return 1;
 	}
 
-	bdm_dev_list_t list;
-	if (!FetchBdmList(&list)) {
+	char driver[64];
+	bool resolved = QuerySystemMassDriver(L, "getMassDriverName", slot, driver, sizeof(driver));
+	if (!resolved) {
+		resolved = QuerySystemMassDriver(L, "getMassDriver", slot, driver, sizeof(driver));
+	}
+
+	if (!resolved || driver[0] == '\0') {
 		lua_pushnil(L);
 		return 1;
 	}
 
-	const char *first_match = NULL;
-	u32 limit = list.count;
-	if (limit > BDM_QUERY_MAX_DEVICES) {
-		limit = BDM_QUERY_MAX_DEVICES;
-	}
-	for (u32 i = 0; i < limit; ++i) {
-		const bdm_dev_info_t *info = &list.devs[i];
-		if ((int)info->parId == slot && info->name[0] != '\0' && first_match == NULL) {
-			first_match = info->name;
-		}
-	}
-
-	if (first_match == NULL) {
-		lua_pushnil(L);
-		return 1;
-	}
-
-	if (ContainsIgnoreCase(first_match, "sdc") || ContainsIgnoreCase(first_match, "mx4sio")) {
-		lua_pushstring(L, "sdc");
-		return 1;
-	}
-
-	lua_pushstring(L, first_match);
+	lua_pushstring(L, driver);
 	return 1;
 }
 
