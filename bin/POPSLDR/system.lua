@@ -1518,11 +1518,10 @@ function PLDR.InitMX4SIOPopsRoot()
   if type(System) == "table" and type(System.initMX4SIO) == "function" then
     pcall(System.initMX4SIO)
   end
-  if type(System) == "table" and type(System.sleep) == "function" then
-    pcall(System.sleep, 0.05)
-  end
 
-  for pass = 1, 2 do
+  for attempt = 1, 2 do
+    pcall(PLDR.RefreshMassBackends)
+
     local _, mx4_roots = PLDR.GetMassRootsByMountDriverIdentity()
     local candidate_root = mx4_roots[1]
     if candidate_root ~= nil then
@@ -1531,9 +1530,6 @@ function PLDR.InitMX4SIOPopsRoot()
         PLDR.SetMX4SIORoot(candidate_root)
         return pops
       end
-    end
-    if pass == 1 and type(System) == "table" and type(System.sleep) == "function" then
-      pcall(System.sleep, 0.05)
     end
   end
 
