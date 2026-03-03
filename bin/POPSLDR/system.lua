@@ -987,14 +987,6 @@ function PLDR.EnsureUsbMassReadyOnce()
     return true
   end
 
-  if type(System) == "table" and type(System.ensureUsbMass) == "function" then
-    pcall(System.ensureUsbMass)
-  elseif type(System) == "table" and type(System.initUSBMass) == "function" then
-    pcall(System.initUSBMass)
-  end
-  if type(System) == "table" and type(System.initUSB) == "function" then
-    pcall(System.initUSB)
-  end
   if type(PLDR.RefreshMassStateSnapshot) == "function" then
     pcall(PLDR.RefreshMassStateSnapshot)
   elseif type(PLDR.RefreshMassBackends) == "function" then
@@ -1069,18 +1061,15 @@ function PLDR.EnsureBackendForAppDir()
     return true
   end
   if string.match(path, "^mass%d*:/") or string.match(path, "^mass:/") then
-    local identity = BuildMassRootIdentity("usb")
-    local matched_root = nil
     local path_norm = NormalizeDirPath(path)
-    for i = 1, #(identity.present_roots or {}) do
-      local root = identity.present_roots[i]
-      if string.sub(path_norm, 1, string.len(root)) == root then
-        matched_root = root
-        break
-      end
-      if root == "mass:/" and string.sub(path_norm, 1, 7) == "mass0:/" then
-        matched_root = root
-        break
+    local matched_root = nil
+
+    if string.sub(path_norm, 1, 7) == "mass0:/" or string.sub(path_norm, 1, 6) == "mass:/" then
+      matched_root = "mass:/"
+    else
+      local slot = string.match(path_norm, "^mass([1-9]):/")
+      if slot ~= nil then
+        matched_root = "mass"..slot..":/"
       end
     end
 
@@ -1092,12 +1081,11 @@ function PLDR.EnsureBackendForAppDir()
     if type(drv) == "string" and drv ~= "" then
       local low = string.lower(drv)
       if string.find(low, "sdc", 1, true) then
-        if type(_G.ensureMx4sioInit) == "function" then pcall(_G.ensureMx4sioInit) end
+        if type(_G) == "table" and type(_G.ensureMx4sioInit) == "function" then pcall(_G.ensureMx4sioInit) end
         if type(System) == "table" and type(System.initMX4SIO) == "function" then pcall(System.initMX4SIO) end
       else
         if type(System) == "table" and type(System.initUSB) == "function" then
-          local ok = pcall(System.initUSB)
-          if ok then return true end
+          pcall(System.initUSB)
         end
       end
     end
