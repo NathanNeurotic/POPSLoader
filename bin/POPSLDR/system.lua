@@ -1020,15 +1020,11 @@ local function BuildMassRootIdentity(mode)
   end
 
   EnsureMassBackendsReady(mode)
-  if type(PLDR.RefreshMassBackends) == "function" then
-    pcall(PLDR.RefreshMassBackends)
-  end
+  pcall(PLDR.RefreshMassBackends)
 
   local identity = ClassifyMassRoots()
   if mode == "mx4sio" and #identity.mx4sio == 0 then
-    if type(PLDR.RefreshMassBackends) == "function" then
-      pcall(PLDR.RefreshMassBackends)
-    end
+    pcall(PLDR.RefreshMassBackends)
     identity = ClassifyMassRoots()
   end
 
