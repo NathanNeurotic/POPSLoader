@@ -300,14 +300,14 @@ static const char *GetMassMountDriverNameBySlot(int slot)
 
 	BuildMassRootPath(slot, root, sizeof(root));
 
-	int fd = fileXioOpen(root, O_RDONLY, 0);
+	int fd = fileXioDopen(root);
 	if (fd < 0) {
 		return NULL;
 	}
 
 	memset(driver, 0, sizeof(driver));
 	int ret = fileXioIoctl2(fd, USBMASS_IOCTL_GET_DRIVERNAME, NULL, 0, driver, sizeof(driver));
-	fileXioClose(fd);
+	fileXioDclose(fd);
 	if (ret >= 0 && driver[0] != '\0') {
 		return driver;
 	}
