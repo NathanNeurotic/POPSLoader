@@ -916,17 +916,45 @@ local function BuildMassRootIdentity()
     usb = {},
     mx4sio = {}
   }
+
   local present = PLDR.GetPresentMassRootsBounded()
+  local order = {}
+  local roots_by_index = {}
+
   for i = 1, #present do
     local root = present[i]
     local idx = PLDR.ParseMassIndexFromPath(root)
-    local driver = PLDR.GetMassDriverName(idx)
-    if driver ~= nil and driver:find("sdc", 1, true) then
-      table.insert(identity.mx4sio, root)
-    elseif driver ~= nil then
-      table.insert(identity.usb, root)
+    if idx ~= nil and idx >= 0 and idx <= 9 then
+      local canonical = (idx == 0) and "mass:/" or ("mass"..tostring(idx)..":/")
+      local current = roots_by_index[idx]
+      if current == nil then
+        roots_by_index[idx] = canonical
+        table.insert(order, idx)
+      elseif idx == 0 and canonical == "mass:/" then
+        roots_by_index[idx] = "mass:/"
+      end
     end
   end
+
+  local seen_usb = {}
+  local seen_mx4 = {}
+  for i = 1, #order do
+    local idx = order[i]
+    local root = roots_by_index[idx]
+    local driver = PLDR.GetMassDriverName(idx)
+    if driver ~= nil and driver:find("sdc", 1, true) then
+      if root ~= nil and not seen_mx4[root] then
+        seen_mx4[root] = true
+        table.insert(identity.mx4sio, root)
+      end
+    elseif driver ~= nil then
+      if root ~= nil and not seen_usb[root] then
+        seen_usb[root] = true
+        table.insert(identity.usb, root)
+      end
+    end
+  end
+
   return identity
 end
 
