@@ -1020,27 +1020,46 @@ function PLDR.GetPresentMassRootsBounded()
   return roots
 end
 
+function PLDR.NormalizeMassRootAliases(root)
+  local aliases = {}
+  if type(root) ~= "string" or root == "" then
+    return aliases
+  end
+  aliases[root] = true
+  if root == "mass:/" then
+    aliases["mass0:/"] = true
+  elseif root == "mass0:/" then
+    aliases["mass:/"] = true
+  end
+  return aliases
+end
+
 function PLDR.GetRootsByType(kind, mass_snapshot)
   local roots = {}
   local wanted = string.lower(tostring(kind or ""))
-  local state = mass_snapshot or {}
+  local current_mx4_root = PLDR.GetMX4SIOMassRootNow()
+  local mx4_aliases = {}
+  if current_mx4_root ~= nil then
+    mx4_aliases = PLDR.NormalizeMassRootAliases(current_mx4_root)
+  end
+
+  local present = PLDR.GetPresentMassRootsBounded()
 
   if wanted == "usb" then
-    local mx4_root = state.mx4_root
-    if mx4_root == nil then
-      mx4_root = PLDR.GetMX4SIOMassRootNow()
-    end
-    local present = PLDR.GetPresentMassRootsBounded()
     for i = 1, #present do
       local root = present[i]
-      if mx4_root == nil or root ~= mx4_root then
+      if not mx4_aliases[root] then
         table.insert(roots, root)
       end
     end
   elseif wanted == "mx4sio" then
-    local mx4_root = state.mx4_root or PLDR.GetMX4SIOMassRootNow()
-    if mx4_root ~= nil then
-      table.insert(roots, mx4_root)
+    if current_mx4_root ~= nil then
+      for i = 1, #present do
+        local root = present[i]
+        if mx4_aliases[root] then
+          table.insert(roots, root)
+        end
+      end
     end
   end
   return roots
@@ -1569,7 +1588,7 @@ function PLDR.InitMX4SIOPopsRoot()
     local root, pops = probeMx4PopsReady({0.20, 0.30, 0.40, 0.50})
     if root == nil then
       pcall(PLDR.RefreshMassBackends)
-      root, pops = probeMx4PopsReady({0.20, 0.30})
+      root, pops = probeMx4PopsReady({0.20, 0.30, 0.40, 0.50})
     end
 
     if root ~= nil then
