@@ -1066,11 +1066,20 @@ function PLDR.EnsureBackendForAppDir()
     return true
   end
   if string.match(path, "^mass%d*:/") then
-    local mx4_root_now = PLDR.GetMX4SIOMassRootNow()
-    local is_mx4_mass_path = false
-    if mx4_root_now ~= nil then
-      is_mx4_mass_path = string.sub(path, 1, string.len(mx4_root_now)) == mx4_root_now
+    local mass_index = PLDR.ParseMassIndexFromPath(path)
+    local mass_root = nil
+    if mass_index == 0 then
+      mass_root = "mass:/"
+    elseif type(mass_index) == "number" and mass_index > 0 and mass_index <= 9 then
+      mass_root = "mass"..tostring(mass_index)..":/"
     end
+
+    local driver = nil
+    if mass_root ~= nil then
+      driver = PLDR.GetMassMountDriver(mass_root)
+    end
+    local is_mx4_mass_path = type(driver) == "string" and driver ~= "" and string.find(driver, "sdc", 1, true) ~= nil
+
     if is_mx4_mass_path then
       if type(_G.ensureMx4sioInit) == "function" then
         local ok = pcall(_G.ensureMx4sioInit)
