@@ -38,7 +38,9 @@ extern unsigned int size_cdfs_irx;
 static bool LoadIrxCheckedBuffer(const char *name, unsigned char *irx, unsigned int size, int *out_id, int *out_ret);
 static void BuildMassRootPath(int index, char *out_root, size_t out_sz);
 
+#ifndef USBMASS_IOCTL_GET_DRIVERNAME
 #define USBMASS_IOCTL_GET_DRIVERNAME 0x0003
+#endif
 
 #define BDM_QUERY_RPC_ID 0xB0D10B00
 #define BDM_QUERY_RPC_GET_LIST 0
