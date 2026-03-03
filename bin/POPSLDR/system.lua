@@ -890,63 +890,68 @@ function PLDR.GetMassDriverName(index)
   return nil
 end
 
-function PLDR.GetMX4SIOMassRootNow()
-  if type(System) ~= "table" then
+local function ParseMassParIdFromRoot(root)
+  if type(root) ~= "string" then
     return nil
   end
-
-  local function resolveFromInfo(info, field)
-    if type(info) ~= "table" then
-      return nil
-    end
-
-    local name = info[field]
-    local parId = info.parId
-    if type(name) == "string" and name ~= "" and string.find(string.lower(name), "sdc", 1, true) then
-      if type(parId) == "number" and parId >= 0 and parId <= 9 then
-        local root = (parId == 0) and "mass:/" or ("mass"..tostring(parId)..":/")
-        if doesFolderExist(root) then
-          return root
-        end
-      end
-    end
-
-    return nil
+  if root == "mass:/" then
+    return 0
   end
-
-  local has_bdm_list = type(System.bdmList) == "function"
-
-  for pass = 1, 2 do
-    pcall(PLDR.RefreshMassBackends)
-
-    if has_bdm_list then
-      local ok, list = pcall(System.bdmList)
-      if ok and type(list) == "table" then
-        for i = 1, #list do
-          local root = resolveFromInfo(list[i], "name")
-          if root ~= nil then
-            return root
-          end
-        end
-      end
-    elseif type(System.getMassBackendInfo) == "function" then
-      for dev_index = 0, 15 do
-        local ok, info = pcall(System.getMassBackendInfo, dev_index)
-        if ok then
-          local root = resolveFromInfo(info, "driver")
-          if root ~= nil then
-            return root
-          end
-        end
-      end
-    end
-
-    if pass == 1 and type(System.sleep) == "function" then
-      pcall(System.sleep, 0.05)
-    end
+  local par_id = string.match(root, "^mass(%d+):/$")
+  if par_id ~= nil then
+    return tonumber(par_id)
   end
-
   return nil
+end
+
+function PLDR.GetMassRootsByMountDriverIdentity()
+  local usb_roots = {}
+  local mx4_roots = {}
+  local usb_seen = {}
+  local mx4_seen = {}
+  local present = PLDR.GetPresentMassRootsBounded()
+
+  for i = 1, #present do
+    local root = present[i]
+    local par_id = ParseMassParIdFromRoot(root)
+    if par_id ~= nil then
+      local normalized_driver = tostring(PLDR.GetMassDriverName(par_id) or "")
+      local target, seen
+      if string.find(normalized_driver, "sdc", 1, true) ~= nil then
+        target = mx4_roots
+        seen = mx4_seen
+      else
+        target = usb_roots
+        seen = usb_seen
+      end
+
+      if not seen[root] then
+        seen[root] = true
+        table.insert(target, { par_id = par_id, root = root })
+      end
+    end
+  end
+
+  local function sortAndFlatten(entries)
+    table.sort(entries, function(a, b)
+      if a.par_id == b.par_id then
+        return a.root < b.root
+      end
+      return a.par_id < b.par_id
+    end)
+    local roots = {}
+    for i = 1, #entries do
+      roots[i] = entries[i].root
+    end
+    return roots
+  end
+
+  return sortAndFlatten(usb_roots), sortAndFlatten(mx4_roots)
+end
+
+function PLDR.GetMX4SIOMassRootNow()
+  local _, mx4_roots = PLDR.GetMassRootsByMountDriverIdentity()
+  return mx4_roots[1]
 end
 
 function PLDR.RefreshMassBackends()
@@ -1004,29 +1009,15 @@ function PLDR.GetPresentMassRootsBounded()
 end
 
 function PLDR.GetRootsByType(kind, mass_snapshot)
-  local roots = {}
   local wanted = string.lower(tostring(kind or ""))
-  local state = mass_snapshot or {}
+  local usb_roots, mx4_roots = PLDR.GetMassRootsByMountDriverIdentity()
 
   if wanted == "usb" then
-    local mx4_root = state.mx4_root
-    if mx4_root == nil then
-      mx4_root = PLDR.GetMX4SIOMassRootNow()
-    end
-    local present = PLDR.GetPresentMassRootsBounded()
-    for i = 1, #present do
-      local root = present[i]
-      if mx4_root == nil or root ~= mx4_root then
-        table.insert(roots, root)
-      end
-    end
+    return usb_roots
   elseif wanted == "mx4sio" then
-    local mx4_root = state.mx4_root or PLDR.GetMX4SIOMassRootNow()
-    if mx4_root ~= nil then
-      table.insert(roots, mx4_root)
-    end
+    return mx4_roots
   end
-  return roots
+  return {}
 end
 
 function PLDR.EnsureBackendForAppDir()
@@ -1515,13 +1506,37 @@ function PLDR.InitMX4SIOPopsRoot()
     pcall(System.sleep, 0.05)
   end
 
-  local root = PLDR.GetMX4SIOMassRootNow()
-  if root ~= nil then
-    local pops = root.."POPS/"
-    if doesFolderExist(pops) then
-      PLDR.SetMX4SIORoot(root)
-      return pops
+  local pass_delays = {0.20, 0.30, 0.40, 0.50}
+  local function probeMx4PopsRootBounded()
+    for pass = 1, 5 do
+      pcall(PLDR.RefreshMassBackends)
+      local _, mx4_roots = PLDR.GetMassRootsByMountDriverIdentity()
+      local candidate_root = mx4_roots[1]
+      if candidate_root ~= nil then
+        local pops = candidate_root.."POPS/"
+        if doesFolderExist(pops) then
+          PLDR.SetMX4SIORoot(candidate_root)
+          return pops
+        end
+      end
+      if pass < 5 and type(System) == "table" and type(System.sleep) == "function" then
+        local delay = pass_delays[pass] or pass_delays[#pass_delays]
+        pcall(System.sleep, delay)
+      end
     end
+    return nil
+  end
+
+  local pops = probeMx4PopsRootBounded()
+  if pops ~= nil then
+    return pops
+  end
+
+  pcall(PLDR.RefreshMassBackends)
+
+  pops = probeMx4PopsRootBounded()
+  if pops ~= nil then
+    return pops
   end
 
   return nil
