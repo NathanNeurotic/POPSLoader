@@ -1020,49 +1020,113 @@ function PLDR.GetPresentMassRootsBounded()
   return roots
 end
 
-function PLDR.NormalizeMassRootAliases(root)
-  local aliases = {}
-  if type(root) ~= "string" or root == "" then
-    return aliases
-  end
-  aliases[root] = true
-  if root == "mass:/" then
-    aliases["mass0:/"] = true
-  elseif root == "mass0:/" then
-    aliases["mass:/"] = true
-  end
-  return aliases
-end
+function PLDR.GetMassRootsByBackendIdentity()
+  local usb_roots = {}
+  local mx4_roots = {}
+  local usb_seen = {}
+  local mx4_seen = {}
 
-function PLDR.GetRootsByType(kind, mass_snapshot)
-  local roots = {}
-  local wanted = string.lower(tostring(kind or ""))
-  local current_mx4_root = PLDR.GetMX4SIOMassRootNow()
-  local mx4_aliases = {}
-  if current_mx4_root ~= nil then
-    mx4_aliases = PLDR.NormalizeMassRootAliases(current_mx4_root)
-  end
-
-  local present = PLDR.GetPresentMassRootsBounded()
-
-  if wanted == "usb" then
-    for i = 1, #present do
-      local root = present[i]
-      if not mx4_aliases[root] then
-        table.insert(roots, root)
-      end
+  local function rootFromParId(parId)
+    if type(parId) ~= "number" or parId < 0 or parId > 9 then
+      return nil
     end
-  elseif wanted == "mx4sio" then
-    if current_mx4_root ~= nil then
-      for i = 1, #present do
-        local root = present[i]
-        if mx4_aliases[root] then
-          table.insert(roots, root)
+    return (parId == 0) and "mass:/" or ("mass"..tostring(parId)..":/")
+  end
+
+  local function hasSdcIdentity(value)
+    return type(value) == "string" and value ~= "" and string.find(string.lower(value), "sdc", 1, true) ~= nil
+  end
+
+  local function pushRoot(list, seen, root)
+    if root == nil or seen[root] then
+      return
+    end
+    seen[root] = true
+    table.insert(list, root)
+  end
+
+  local function sortRoots(list)
+    local function massIndex(root)
+      if root == "mass:/" then
+        return 0
+      end
+      local idx = string.match(root or "", "^mass(%d+):/$")
+      if idx ~= nil then
+        return tonumber(idx)
+      end
+      return 999
+    end
+    table.sort(list, function(a, b)
+      local ai = massIndex(a)
+      local bi = massIndex(b)
+      if ai == bi then
+        return tostring(a) < tostring(b)
+      end
+      return ai < bi
+    end)
+  end
+
+  pcall(PLDR.RefreshMassBackends)
+
+  local has_bdm_list = type(System) == "table" and type(System.bdmList) == "function"
+  if has_bdm_list then
+    local ok, list = pcall(System.bdmList)
+    if ok and type(list) == "table" then
+      for i = 1, #list do
+        local info = list[i]
+        if type(info) == "table" then
+          local root = rootFromParId(info.parId)
+          if root ~= nil then
+            local is_mx4 = hasSdcIdentity(info.name)
+            if is_mx4 then
+              pushRoot(mx4_roots, mx4_seen, root)
+            else
+              pushRoot(usb_roots, usb_seen, root)
+            end
+          end
+        end
+      end
+      sortRoots(usb_roots)
+      sortRoots(mx4_roots)
+      return usb_roots, mx4_roots
+    end
+  end
+
+  if type(System) == "table" and type(System.getMassBackendInfo) == "function" then
+    for dev_index = 0, 15 do
+      local ok, info = pcall(System.getMassBackendInfo, dev_index)
+      if ok and type(info) == "table" then
+        local is_mx4 = hasSdcIdentity(info.driver) or hasSdcIdentity(info.name)
+        local root = rootFromParId(info.parId)
+        if root == nil then
+          root = rootFromParId(info.slot)
+        end
+        if root ~= nil then
+          if is_mx4 then
+            pushRoot(mx4_roots, mx4_seen, root)
+          else
+            pushRoot(usb_roots, usb_seen, root)
+          end
         end
       end
     end
   end
-  return roots
+
+  sortRoots(usb_roots)
+  sortRoots(mx4_roots)
+  return usb_roots, mx4_roots
+end
+
+function PLDR.GetRootsByType(kind, mass_snapshot)
+  local wanted = string.lower(tostring(kind or ""))
+  local usb_roots, mx4_roots = PLDR.GetMassRootsByBackendIdentity()
+
+  if wanted == "usb" then
+    return usb_roots
+  elseif wanted == "mx4sio" then
+    return mx4_roots
+  end
+  return {}
 end
 
 function PLDR.EnsureBackendForAppDir()
@@ -1570,7 +1634,8 @@ function PLDR.InitMX4SIOPopsRoot()
       local pass_count = #pass_delays + 1
       for pass = 1, pass_count do
         pcall(PLDR.RefreshMassBackends)
-        local root = PLDR.GetMX4SIOMassRootNow()
+        local _, mx4_roots = PLDR.GetMassRootsByBackendIdentity()
+        local root = mx4_roots[1]
         if root ~= nil then
           local pops = root.."POPS/"
           if doesFolderExist(pops) then
