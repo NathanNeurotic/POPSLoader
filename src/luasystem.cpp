@@ -67,6 +67,7 @@ static bool bdm_irx_loaded = false;
 static bool bdm_fatfs_irx_loaded = false;
 static bool usbmass_irx_loaded = false;
 static bool cdfs_irx_loaded = false;
+static bool mx4sio_irx_loaded = false;
 
 static bool EnsureBDM()
 {
@@ -291,6 +292,16 @@ static const char *GetMassMountDriverNameBySlot(int slot)
 	if (slot < 0 || slot > 9) {
 		return NULL;
 	}
+	if (!mass_backend_cache_valid) {
+		return NULL;
+	}
+
+	for (u32 i = 0; i < mass_backend_cache.count; ++i) {
+		const bdm_dev_info_t *info = &mass_backend_cache.devs[i];
+		if ((int)info->parId == slot && info->name[0] != '\0') {
+			return info->name;
+		}
+	}
 
 	return NULL;
 }
@@ -318,73 +329,6 @@ static int lua_get_mass_mount_driver(lua_State *L)
 	return 1;
 }
 
-// MX4SIO init notes:
-// - Bundle inventory (iop/embed/PS2SDK_MX4SIO): mx4sio_bd.irx.
-// - IRX load order: mx4sio_bd.irx (PS2SDK).
-// - Success condition: chosen MX4SIO prefix and <prefix>/POPS/ are accessible.
-// - TODO: verify any slot or adapter placement requirements for MX4SIO in hardware docs.
-enum {
-	MX4SIO_INIT_OK = 0,
-	MX4SIO_INIT_IRX_LOAD_FAIL = -1,
-	MX4SIO_INIT_ROOT_NOT_FOUND = -2
-};
-
-int mx4sio_init_and_get_root(const char *hint, char *out_root, size_t out_sz)
-{
-	static bool mx4sio_irx_loaded = false;
-
-	if (out_root == NULL || out_sz == 0) {
-		return MX4SIO_INIT_ROOT_NOT_FOUND;
-	}
-	if (!EnsureBDMFatFs()) {
-		return MX4SIO_INIT_ROOT_NOT_FOUND;
-	}
-	if (!mx4sio_irx_loaded) {
-		if (!LoadIrxCheckedBuffer("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL)) {
-			return MX4SIO_INIT_IRX_LOAD_FAIL;
-		}
-		mx4sio_irx_loaded = true;
-	}
-
-	char root[16];
-	if (GetMassRootByBackendNameInternal("sdc", root, sizeof(root))) {
-		int root_ret = -1;
-		if (ProbeDir(root, &root_ret)) {
-			snprintf(out_root, out_sz, "%s", root);
-			return MX4SIO_INIT_OK;
-		}
-	}
-
-	if (hint != NULL && hint[0] != '\0') {
-		int hint_ret = -1;
-		if (ProbeDir(hint, &hint_ret)) {
-			char pops_path[32];
-			snprintf(pops_path, sizeof(pops_path), "%sPOPS/", hint);
-			int pops_ret = -1;
-			if (ProbeDir(pops_path, &pops_ret)) {
-				snprintf(out_root, out_sz, "%s", hint);
-				return MX4SIO_INIT_OK;
-			}
-		}
-	}
-	const char *candidates[] = {"mx4sio:/", "mx4sio0:/"};
-	for (size_t i = 0; i < sizeof(candidates) / sizeof(candidates[0]); ++i) {
-		const char *prefix = candidates[i];
-		int root_ret = -1;
-		if (!ProbeDir(prefix, &root_ret)) {
-			continue;
-		}
-		char pops_path[32];
-		snprintf(pops_path, sizeof(pops_path), "%sPOPS/", prefix);
-		int pops_ret = -1;
-		if (ProbeDir(pops_path, &pops_ret)) {
-			snprintf(out_root, out_sz, "%s", prefix);
-			return MX4SIO_INIT_OK;
-		}
-	}
-
-	return MX4SIO_INIT_ROOT_NOT_FOUND;
-}
 static void PushBdmInfo(lua_State *L, const bdm_dev_info_t *info)
 {
 	lua_newtable(L);
@@ -1303,27 +1247,28 @@ static int lua_ensure_cdfs(lua_State *L)
 
 static int lua_mx4sio_init(lua_State *L)
 {
-	const char *hint = NULL;
 	int argc = lua_gettop(L);
 	if (argc > 1) {
 		return luaL_error(L, "Argument error: System.initMX4SIO() takes at most one argument.");
 	}
 	if (argc == 1 && !lua_isnil(L, 1)) {
-		hint = luaL_checkstring(L, 1);
+		(void)luaL_checkstring(L, 1);
 	}
-	char root[16] = {0};
-	int rc = mx4sio_init_and_get_root(hint, root, sizeof(root));
-	lua_pushboolean(L, rc == MX4SIO_INIT_OK);
-	if (rc == MX4SIO_INIT_OK) {
-		lua_pushstring(L, root);
+
+	bool ok = EnsureBDMFatFs();
+	if (ok && !mx4sio_irx_loaded) {
+		ok = LoadIrxCheckedBuffer("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL);
+		if (ok) {
+			mx4sio_irx_loaded = true;
+		}
+	}
+
+	lua_pushboolean(L, ok);
+	lua_pushnil(L);
+	if (ok) {
 		lua_pushnil(L);
 	} else {
-		lua_pushnil(L);
-		if (rc == MX4SIO_INIT_IRX_LOAD_FAIL) {
-			lua_pushstring(L, "IRX_LOAD_FAIL");
-		} else {
-			lua_pushstring(L, "ROOT_NOT_FOUND");
-		}
+		lua_pushstring(L, "IRX_LOAD_FAIL");
 	}
 	return 3;
 }
