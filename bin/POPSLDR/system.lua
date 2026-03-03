@@ -900,8 +900,26 @@ local function BuildMassRootIdentity()
     mx4sio = {}
   }
   local present = PLDR.GetPresentMassRootsBounded()
+  local unique = {}
+  local seen = {}
   for i = 1, #present do
     local root = present[i]
+    local key = root
+    if root == "mass0:/" then
+      key = "mass:/"
+    end
+
+    local at = seen[key]
+    if at == nil then
+      table.insert(unique, root)
+      seen[key] = #unique
+    elseif key == "mass:/" and root == "mass:/" and unique[at] == "mass0:/" then
+      unique[at] = "mass:/"
+    end
+  end
+
+  for i = 1, #unique do
+    local root = unique[i]
     local index = PLDR.ParseMassIndexFromPath(root)
     local driver = PLDR.GetMassDriverName(index)
     if type(driver) ~= "string" or driver == "" then
