@@ -169,9 +169,6 @@ function PLDR.PopstarterProbeWithEnsure(path)
           pcall(PLDR.EnsureMmceReadyOnce)
         end
       end
-      if type(System) == "table" and type(System.sleep) == "function" then
-        pcall(System.sleep, 0.05)
-      end
     end
   end
   return false
@@ -890,6 +887,28 @@ function PLDR.GetMassDriverName(index)
   return nil
 end
 
+
+function PLDR.GetMassMountDriver(root)
+  if type(System) == "table" and type(System.getMassMountDriver) == "function" then
+    local ok, driver = pcall(System.getMassMountDriver, root)
+    if ok and type(driver) == "string" and driver ~= "" then
+      return string.lower(driver)
+    end
+  end
+
+  local index = PLDR.ParseMassIndexFromPath(root)
+  if index == nil then
+    return nil
+  end
+
+  local driver = PLDR.GetMassDriverName(index)
+  if type(driver) == "string" and driver ~= "" then
+    return string.lower(driver)
+  end
+
+  return nil
+end
+
 function PLDR.GetMX4SIOMassRootNow()
   if type(System) ~= "table" then
     return nil
@@ -941,9 +960,6 @@ function PLDR.GetMX4SIOMassRootNow()
       end
     end
 
-    if pass == 1 and type(System.sleep) == "function" then
-      pcall(System.sleep, 0.05)
-    end
   end
 
   return nil
@@ -1510,9 +1526,6 @@ function PLDR.InitMX4SIOPopsRoot()
   end
   if type(System) == "table" and type(System.initMX4SIO) == "function" then
     pcall(System.initMX4SIO)
-  end
-  if type(System) == "table" and type(System.sleep) == "function" then
-    pcall(System.sleep, 0.05)
   end
 
   local root = PLDR.GetMX4SIOMassRootNow()

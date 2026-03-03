@@ -262,6 +262,62 @@ static void BuildMassRootPath(int index, char *out_root, size_t out_sz)
 	}
 }
 
+static bool ParseMassRootSlot(const char *root, int *out_slot)
+{
+	if (root == NULL || out_slot == NULL) {
+		return false;
+	}
+
+	if (strcmp(root, "mass:/") == 0 || strcmp(root, "mass0:/") == 0) {
+		*out_slot = 0;
+		return true;
+	}
+
+	if (strncmp(root, "mass", 4) != 0) {
+		return false;
+	}
+
+	const char *suffix = root + 4;
+	if (suffix[0] < '1' || suffix[0] > '9' || suffix[1] != ':' || suffix[2] != '/' || suffix[3] != '\0') {
+		return false;
+	}
+
+	*out_slot = suffix[0] - '0';
+	return true;
+}
+
+static const char *GetMassMountDriverNameBySlot(int slot)
+{
+	if (slot < 0 || slot > 9) {
+		return NULL;
+	}
+
+	return NULL;
+}
+
+static int lua_get_mass_mount_driver(lua_State *L)
+{
+	if (lua_gettop(L) != 1) {
+		return luaL_error(L, "Argument error: System.getMassMountDriver(root) takes one argument.");
+	}
+
+	const char *root = luaL_checkstring(L, 1);
+	int slot = -1;
+	if (!ParseMassRootSlot(root, &slot)) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	const char *driver = GetMassMountDriverNameBySlot(slot);
+	if (driver != NULL && driver[0] != '\0') {
+		lua_pushstring(L, driver);
+	} else {
+		lua_pushnil(L);
+	}
+
+	return 1;
+}
+
 // MX4SIO init notes:
 // - Bundle inventory (iop/embed/PS2SDK_MX4SIO): mx4sio_bd.irx.
 // - IRX load order: mx4sio_bd.irx (PS2SDK).
@@ -1313,6 +1369,7 @@ static const luaL_Reg System_functions[] = {
 	{"bdmList",                lua_bdm_list},
 	{"refreshMassBackends",    lua_refresh_mass_backends},
 	{"getMassBackendInfo",     lua_get_mass_backend_info},
+	{"getMassMountDriver",     lua_get_mass_mount_driver},
 	{"getMassRootByBackendName", lua_get_mass_root_by_backend_name},
 	{"findBDMByDriver",    lua_find_bdm_by_driver},
 	{0, 0}
