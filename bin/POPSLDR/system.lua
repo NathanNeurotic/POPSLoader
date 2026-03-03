@@ -1517,48 +1517,74 @@ function PLDR.RefreshMassBackendsBoundedOnce()
 end
 
 function PLDR.InitMX4SIOPopsRoot()
+  if type(PLDR.MX4SIO) ~= "table" then
+    PLDR.MX4SIO = {}
+  end
+  if PLDR.MX4SIO._INIT_IN_PROGRESS then
+    return nil
+  end
+
+  local previous_root = PLDR.MX4SIO.ROOT
   PLDR.MX4SIO.READY = false
   PLDR.MX4SIO.ROOT = nil
   PLDR.MX4SIO.MASSINDX = nil
   PLDR.MX4SIO.IS_MASS_ALIAS = false
+  PLDR.MX4SIO._INIT_IN_PROGRESS = true
 
-  if type(_G.ensureMx4sioInit) == "function" then
-    pcall(_G.ensureMx4sioInit)
-  end
-  if type(System) == "table" and type(System.initMX4SIO) == "function" then
-    pcall(System.initMX4SIO)
-  end
-
-  local function probeMx4PopsReady(pass_delays)
-    local pass_count = #pass_delays + 1
-    for pass = 1, pass_count do
-      pcall(PLDR.RefreshMassBackends)
-      local root = PLDR.GetMX4SIOMassRootNow()
-      if root ~= nil then
-        local pops = root.."POPS/"
-        if doesFolderExist(pops) then
-          return root, pops
-        end
-      end
-      local delay = pass_delays[pass]
-      if delay ~= nil and type(System) == "table" and type(System.sleep) == "function" then
-        pcall(System.sleep, delay)
+  local function runInit()
+    if type(previous_root) == "string" and previous_root ~= "" then
+      local previous_pops = previous_root.."POPS/"
+      if doesFolderExist(previous_pops) then
+        PLDR.SetMX4SIORoot(previous_root)
+        return previous_pops
       end
     end
-    return nil, nil
+
+    if type(_G.ensureMx4sioInit) == "function" then
+      pcall(_G.ensureMx4sioInit)
+    end
+    if type(System) == "table" and type(System.initMX4SIO) == "function" then
+      pcall(System.initMX4SIO)
+    end
+
+    local function probeMx4PopsReady(pass_delays)
+      local pass_count = #pass_delays + 1
+      for pass = 1, pass_count do
+        pcall(PLDR.RefreshMassBackends)
+        local root = PLDR.GetMX4SIOMassRootNow()
+        if root ~= nil then
+          local pops = root.."POPS/"
+          if doesFolderExist(pops) then
+            return root, pops
+          end
+        end
+        local delay = pass_delays[pass]
+        if delay ~= nil and type(System) == "table" and type(System.sleep) == "function" then
+          pcall(System.sleep, delay)
+        end
+      end
+      return nil, nil
+    end
+
+    local root, pops = probeMx4PopsReady({0.20, 0.30, 0.40, 0.50})
+    if root == nil then
+      pcall(PLDR.RefreshMassBackends)
+      root, pops = probeMx4PopsReady({0.20, 0.30})
+    end
+
+    if root ~= nil then
+      PLDR.SetMX4SIORoot(root)
+      return pops
+    end
+
+    return nil
   end
 
-  local root, pops = probeMx4PopsReady({0.20, 0.30, 0.40, 0.50})
-  if root == nil then
-    pcall(PLDR.RefreshMassBackends)
-    root, pops = probeMx4PopsReady({0.20, 0.30})
+  local ok, result = pcall(runInit)
+  PLDR.MX4SIO._INIT_IN_PROGRESS = false
+  if ok then
+    return result
   end
-
-  if root ~= nil then
-    PLDR.SetMX4SIORoot(root)
-    return pops
-  end
-
   return nil
 end
 
