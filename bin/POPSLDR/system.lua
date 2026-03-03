@@ -953,7 +953,12 @@ function PLDR.InvalidateMassBackends()
 end
 
 function PLDR.RefreshMassStateSnapshot()
-  return BuildMassRootIdentity()
+  local identity = BuildMassRootIdentity()
+  return {
+    mx4_root = identity.mx4sio[1],
+    mx4_roots = identity.mx4sio,
+    usb_roots = identity.usb
+  }
 end
 
 function PLDR.GetPresentMassRootsBounded()
@@ -967,7 +972,7 @@ function PLDR.GetPresentMassRootsBounded()
   return roots
 end
 
-function PLDR.GetRootsByType(kind)
+function PLDR.GetRootsByType(kind, mass_snapshot)
   local identity = BuildMassRootIdentity()
   local wanted = string.lower(tostring(kind or ""))
   if wanted == "usb" then
@@ -1005,10 +1010,15 @@ function PLDR.EnsureBackendForAppDir()
   end
   if string.match(path, "^mass%d*:/") then
     local identity = BuildMassRootIdentity()
+    local match_path = path
+    local mass0_remainder = string.match(path, "^mass0:/(.+)$")
+    if mass0_remainder ~= nil then
+      match_path = "mass:/"..mass0_remainder
+    end
     local matched_root = nil
     for i = 1, #identity.present_roots do
       local root = identity.present_roots[i]
-      if string.sub(path, 1, string.len(root)) == root then
+      if string.sub(match_path, 1, string.len(root)) == root then
         matched_root = root
         break
       end
