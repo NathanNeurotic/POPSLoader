@@ -905,7 +905,25 @@ local function NormalizeMassRoot(root)
   return root
 end
 
+local function EnsureMassBackendsReady()
+  if type(System) == "table" and type(System.initUSBMass) == "function" then
+    pcall(System.initUSBMass)
+  end
+  if type(System) == "table" and type(System.initUSB) == "function" then
+    pcall(System.initUSB)
+  end
+
+  if type(_G) == "table" and type(_G.ensureMx4sioInit) == "function" then
+    pcall(_G.ensureMx4sioInit)
+  end
+  if type(System) == "table" and type(System.initMX4SIO) == "function" then
+    pcall(System.initMX4SIO)
+  end
+end
+
 local function BuildMassRootIdentity()
+  EnsureMassBackendsReady()
+
   if type(PLDR.InvalidateMassBackends) == "function" then
     pcall(PLDR.InvalidateMassBackends)
   end
@@ -940,9 +958,6 @@ local function BuildMassRootIdentity()
 end
 
 function PLDR.GetMX4SIOMassRootNow()
-  if type(System) == "table" and type(System.initMX4SIO) == "function" then
-    pcall(System.initMX4SIO)
-  end
   local identity = BuildMassRootIdentity()
   return identity.mx4sio[1]
 end
@@ -1006,19 +1021,6 @@ end
 
 function PLDR.GetRootsByType(kind, mass_snapshot)
   local wanted = string.lower(tostring(kind or ""))
-
-  if wanted == "mx4sio" then
-    if type(System) == "table" and type(System.initMX4SIO) == "function" then
-      pcall(System.initMX4SIO)
-    end
-    if type(_G.ensureMx4sioInit) == "function" then
-      pcall(_G.ensureMx4sioInit)
-    end
-  elseif wanted == "usb" then
-    if type(System) == "table" and type(System.initUSB) == "function" then
-      pcall(System.initUSB)
-    end
-  end
 
   local identity = BuildMassRootIdentity()
   if wanted == "mx4sio" then
