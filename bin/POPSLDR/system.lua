@@ -1004,6 +1004,10 @@ function PLDR.GetPresentMassRootsBounded()
 end
 
 function PLDR.GetMassRootsByMountDriverIdentity()
+  if type(PLDR.RefreshMassBackends) == "function" then
+    pcall(PLDR.RefreshMassBackends)
+  end
+
   local usb_roots = {}
   local mx4_roots = {}
 
@@ -1530,6 +1534,10 @@ function PLDR.InitMX4SIOPopsRoot()
         PLDR.SetMX4SIORoot(candidate_root)
         return pops
       end
+    end
+
+    if attempt == 1 and type(System.sleep) == "function" then
+      pcall(System.sleep, 0.05)
     end
   end
 
