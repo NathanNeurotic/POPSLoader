@@ -857,8 +857,34 @@ end
 
 function PLDR.GetMassDriverName(index)
   if index == nil then return nil end
-  local root = (tonumber(index) == 0) and "mass:/" or ("mass"..tostring(index)..":/")
-  return PLDR.GetMassMountDriver(root)
+  local has_get_mass_driver_name = type(System.getMassDriverName) == "function"
+  local has_get_mass_driver = type(System.getMassDriver) == "function"
+
+  if has_get_mass_driver_name then
+    local ok, driver = pcall(System.getMassDriverName, index)
+    if ok and type(driver) == "string" and driver ~= "" then
+      return string.lower(driver)
+    end
+  end
+
+  if has_get_mass_driver then
+    local ok, driver = pcall(System.getMassDriver, index)
+    if ok and type(driver) == "string" and driver ~= "" then
+      return string.lower(driver)
+    end
+  end
+
+  if (not has_get_mass_driver_name) and (not has_get_mass_driver) and type(System.getMassBackendInfo) == "function" then
+    local ok, info = pcall(System.getMassBackendInfo, index)
+    if ok and type(info) == "table" then
+      local driver = info.driver
+      if type(driver) == "string" and driver ~= "" then
+        return string.lower(driver)
+      end
+    end
+  end
+
+  return nil
 end
 
 function PLDR.GetMassMountDriver(root)
