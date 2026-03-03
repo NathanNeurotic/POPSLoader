@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <sifrpc.h>
 #include <string.h>
+#include <ctype.h>
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
 #include <fileio.h>
@@ -443,6 +444,84 @@ static int lua_get_mass_root_by_backend_name(lua_State *L)
 	}
 
 	lua_pushnil(L);
+	return 1;
+}
+
+static bool ContainsIgnoreCase(const char *haystack, const char *needle)
+{
+	if (haystack == NULL || needle == NULL || needle[0] == '\0') {
+		return false;
+	}
+	size_t hay_len = strlen(haystack);
+	size_t needle_len = strlen(needle);
+	if (needle_len > hay_len) {
+		return false;
+	}
+	for (size_t i = 0; i + needle_len <= hay_len; ++i) {
+		size_t j = 0;
+		while (j < needle_len) {
+			char h = (char)tolower((unsigned char)haystack[i + j]);
+			char n = (char)tolower((unsigned char)needle[j]);
+			if (h != n) {
+				break;
+			}
+			++j;
+		}
+		if (j == needle_len) {
+			return true;
+		}
+	}
+	return false;
+}
+
+static int lua_get_mass_mount_driver(lua_State *L)
+{
+	int argc = lua_gettop(L);
+	if (argc != 1) {
+		return luaL_error(L, "Argument error: System.getMassMountDriver(root) takes one argument.");
+	}
+
+	const char *root = luaL_checkstring(L, 1);
+	int slot = -1;
+	if (strcmp(root, "mass:/") == 0 || strcmp(root, "mass0:/") == 0) {
+		slot = 0;
+	} else if (strlen(root) == 7 && strncmp(root, "mass", 4) == 0 && root[5] == ':' && root[6] == '/' &&
+	           root[4] >= '1' && root[4] <= '9') {
+		slot = root[4] - '0';
+	} else {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	bdm_dev_list_t list;
+	if (!FetchBdmList(&list)) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	const char *first_match = NULL;
+	u32 limit = list.count;
+	if (limit > BDM_QUERY_MAX_DEVICES) {
+		limit = BDM_QUERY_MAX_DEVICES;
+	}
+	for (u32 i = 0; i < limit; ++i) {
+		const bdm_dev_info_t *info = &list.devs[i];
+		if ((int)info->parId == slot && info->name[0] != '\0' && first_match == NULL) {
+			first_match = info->name;
+		}
+	}
+
+	if (first_match == NULL) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	if (ContainsIgnoreCase(first_match, "sdc") || ContainsIgnoreCase(first_match, "mx4sio")) {
+		lua_pushstring(L, "sdc");
+		return 1;
+	}
+
+	lua_pushstring(L, first_match);
 	return 1;
 }
 
@@ -1313,6 +1392,7 @@ static const luaL_Reg System_functions[] = {
 	{"bdmList",                lua_bdm_list},
 	{"refreshMassBackends",    lua_refresh_mass_backends},
 	{"getMassBackendInfo",     lua_get_mass_backend_info},
+	{"getMassMountDriver",    lua_get_mass_mount_driver},
 	{"getMassRootByBackendName", lua_get_mass_root_by_backend_name},
 	{"findBDMByDriver",    lua_find_bdm_by_driver},
 	{0, 0}
