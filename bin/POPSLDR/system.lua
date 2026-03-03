@@ -983,40 +983,52 @@ local function NormalizeMassRoot(root)
 end
 
 local function BuildMassRootIdentity(mode)
+  local function ClassifyMassRoots()
+    local identity = {
+      usb = {},
+      mx4sio = {},
+      present_roots = {}
+    }
+    local seen_present = {}
+    local seen_usb = {}
+    local seen_mx4 = {}
+
+    local present = PLDR.GetPresentMassRootsBounded()
+    for i = 1, #present do
+      local normalized = NormalizeMassRoot(present[i])
+      if normalized ~= nil and seen_present[normalized] ~= true then
+        seen_present[normalized] = true
+        table.insert(identity.present_roots, normalized)
+
+        local driver = PLDR.GetMassMountDriver(normalized)
+        if type(driver) == "string" and driver ~= "" then
+          if string.find(string.lower(driver), "sdc", 1, true) then
+            if seen_mx4[normalized] ~= true then
+              seen_mx4[normalized] = true
+              table.insert(identity.mx4sio, normalized)
+            end
+          elseif seen_usb[normalized] ~= true then
+            seen_usb[normalized] = true
+            table.insert(identity.usb, normalized)
+          end
+        end
+      end
+    end
+
+    return identity
+  end
+
   EnsureMassBackendsReady(mode)
   if type(PLDR.RefreshMassBackends) == "function" then
     pcall(PLDR.RefreshMassBackends)
   end
 
-  local identity = {
-    usb = {},
-    mx4sio = {},
-    present_roots = {}
-  }
-  local seen_present = {}
-  local seen_usb = {}
-  local seen_mx4 = {}
-
-  local present = PLDR.GetPresentMassRootsBounded()
-  for i = 1, #present do
-    local normalized = NormalizeMassRoot(present[i])
-    if normalized ~= nil and seen_present[normalized] ~= true then
-      seen_present[normalized] = true
-      table.insert(identity.present_roots, normalized)
-
-      local driver = PLDR.GetMassMountDriver(normalized)
-      if type(driver) == "string" and driver ~= "" then
-        if string.find(driver, "sdc", 1, true) then
-          if seen_mx4[normalized] ~= true then
-            seen_mx4[normalized] = true
-            table.insert(identity.mx4sio, normalized)
-          end
-        elseif seen_usb[normalized] ~= true then
-          seen_usb[normalized] = true
-          table.insert(identity.usb, normalized)
-        end
-      end
+  local identity = ClassifyMassRoots()
+  if mode == "mx4sio" and #identity.mx4sio == 0 then
+    if type(PLDR.RefreshMassBackends) == "function" then
+      pcall(PLDR.RefreshMassBackends)
     end
+    identity = ClassifyMassRoots()
   end
 
   return identity
