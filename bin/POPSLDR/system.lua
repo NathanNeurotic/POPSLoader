@@ -975,14 +975,6 @@ function PLDR.EnsureUsbMassReadyOnce()
     return true
   end
 
-  if type(System) == "table" and type(System.ensureUsbMass) == "function" then
-    pcall(System.ensureUsbMass)
-  elseif type(System) == "table" and type(System.initUSBMass) == "function" then
-    pcall(System.initUSBMass)
-  end
-  if type(System) == "table" and type(System.initUSB) == "function" then
-    pcall(System.initUSB)
-  end
   if type(PLDR.RefreshMassStateSnapshot) == "function" then
     pcall(PLDR.RefreshMassStateSnapshot)
   elseif type(PLDR.RefreshMassBackends) == "function" then
@@ -1045,14 +1037,6 @@ function PLDR.EnsureBackendForAppDir()
     return true
   end
   if string.match(path, "^mx4sio%d*:/") then
-    if type(_G.ensureMx4sioInit) == "function" then
-      local ok = pcall(_G.ensureMx4sioInit)
-      if ok then return true end
-    end
-    if type(System) == "table" and type(System.initMX4SIO) == "function" then
-      local ok = pcall(System.initMX4SIO)
-      return ok
-    end
     return true
   end
   if string.match(path, "^mass%d*:/") then
@@ -1073,19 +1057,9 @@ function PLDR.EnsureBackendForAppDir()
     end
 
     if type(drv) == "string" and string.find(drv, "sdc", 1, true) then
-      if type(_G.ensureMx4sioInit) == "function" then
-        local ok = pcall(_G.ensureMx4sioInit)
-        if ok then return true end
-      end
-      if type(System) == "table" and type(System.initMX4SIO) == "function" then
-        local ok = pcall(System.initMX4SIO)
-        if ok then return true end
-      end
+      return true
     elseif drv ~= nil then
-      if type(System) == "table" and type(System.initUSB) == "function" then
-        local ok = pcall(System.initUSB)
-        if ok then return true end
-      end
+      return true
     end
     return true
   end
@@ -1517,13 +1491,6 @@ function PLDR.InitMX4SIOPopsRoot()
   PLDR.MX4SIO.ROOT = nil
   PLDR.MX4SIO.MASSINDX = nil
   PLDR.MX4SIO.IS_MASS_ALIAS = false
-
-  if type(_G.ensureMx4sioInit) == "function" then
-    pcall(_G.ensureMx4sioInit)
-  end
-  if type(System) == "table" and type(System.initMX4SIO) == "function" then
-    pcall(System.initMX4SIO)
-  end
 
   local root = PLDR.GetMX4SIOMassRootNow()
   if root ~= nil then
