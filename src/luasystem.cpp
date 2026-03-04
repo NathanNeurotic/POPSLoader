@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <sifrpc.h>
 #include <string.h>
+#include <ctype.h>
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
 #include <fileio.h>
@@ -1256,6 +1257,52 @@ static int lua_ensure_cdfs(lua_State *L)
 	return 1;
 }
 
+static bool ContainsSdcCaseInsensitive(const char *value)
+{
+	if (value == NULL) {
+		return false;
+	}
+
+	for (const char *p = value; p[0] != '\0'; ++p) {
+		if (p[1] == '\0' || p[2] == '\0') {
+			continue;
+		}
+		if (tolower((unsigned char)p[0]) == 's' &&
+		    tolower((unsigned char)p[1]) == 'd' &&
+		    tolower((unsigned char)p[2]) == 'c') {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+static int lua_ensure_mx4sio_mass(lua_State *L)
+{
+	bool ok = EnsureBDMFatFs();
+	if (ok && !mx4sio_irx_loaded) {
+		ok = LoadIrxCheckedBuffer("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL);
+		if (ok) {
+			mx4sio_irx_loaded = true;
+		}
+	}
+
+	bdm_rpc_bound = false;
+	(void)RefreshMassBackendCache();
+
+	bool found = false;
+	for (int slot = 0; slot <= 9; ++slot) {
+		const char *driver = GetMassMountDriverNameBySlot(slot);
+		if (driver != NULL && ContainsSdcCaseInsensitive(driver)) {
+			found = true;
+			break;
+		}
+	}
+
+	lua_pushboolean(L, found);
+	return 1;
+}
+
 static int lua_mx4sio_init(lua_State *L)
 {
 	int argc = lua_gettop(L);
@@ -1321,6 +1368,7 @@ static const luaL_Reg System_functions[] = {
 	{"ensureBDMFatFs",         lua_ensure_bdm_fatfs},
 	{"ensureUsbMass",          lua_ensure_usb_mass},
 	{"ensureCDFS",             lua_ensure_cdfs},
+	{"ensureMx4sioMass",       lua_ensure_mx4sio_mass},
 	{"initMX4SIO",             lua_mx4sio_init},
 	{"bdmList",                lua_bdm_list},
 	{"refreshMassBackends",    lua_refresh_mass_backends},

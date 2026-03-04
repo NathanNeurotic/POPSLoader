@@ -1668,6 +1668,9 @@ UI = {
             UI.MainMenu.mx4_retry_pending = false
             KickMX4InitBestEffort()
             RefreshMassBestEffort()
+            if type(System) == "table" and type(System.ensureMx4sioMass) == "function" then
+              pcall(System.ensureMx4sioMass)
+            end
             if TryEnterMX4SIO(false) then
               return
             end
