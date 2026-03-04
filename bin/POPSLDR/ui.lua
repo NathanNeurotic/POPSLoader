@@ -1353,6 +1353,7 @@ UI = {
       OPT = 1;
       mx4_autoretry_pending = false;
       mx4_autoretry_index = nil;
+      mx4_autoretry_wait_release = false;
       opts = {"MMCE", "MX4SIO", "HDD (exFAT)", "HDD (PFS)", "USB", "SMB (v1)", "Disc (DKWDRV)"};
       Carousel = {
         currentIndex = 1,
@@ -1546,15 +1547,24 @@ UI = {
           if UI.Pad.Events.NAV_LEFT or UI.Pad.Events.NAV_RIGHT or UI.Pad.Events.BACK or UI.Pad.Events.EXIT then
             UI.MainMenu.mx4_autoretry_pending = false
             UI.MainMenu.mx4_autoretry_index = nil
+            UI.MainMenu.mx4_autoretry_wait_release = false
             return
           end
           if UI.MainMenu.mx4_autoretry_index ~= nil and carousel.currentIndex ~= UI.MainMenu.mx4_autoretry_index then
             UI.MainMenu.mx4_autoretry_pending = false
             UI.MainMenu.mx4_autoretry_index = nil
+            UI.MainMenu.mx4_autoretry_wait_release = false
             return
+          end
+          if UI.MainMenu.mx4_autoretry_wait_release then
+            if UI.Pad.Events.CONFIRM then
+              return
+            end
+            UI.MainMenu.mx4_autoretry_wait_release = false
           end
           UI.MainMenu.mx4_autoretry_pending = false
           UI.MainMenu.mx4_autoretry_index = nil
+          UI.MainMenu.mx4_autoretry_wait_release = false
           if not TryEnterMX4SIO() then
             UI.Notif_queue.add("No MX4SIO device found")
           end
@@ -1611,6 +1621,7 @@ UI = {
               if not TryEnterMX4SIO() then
                 UI.MainMenu.mx4_autoretry_pending = true
                 UI.MainMenu.mx4_autoretry_index = carousel.currentIndex
+                UI.MainMenu.mx4_autoretry_wait_release = true
               end
               return
             end
