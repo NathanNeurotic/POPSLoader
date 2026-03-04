@@ -1351,6 +1351,8 @@ UI = {
     };
     MainMenu = {
       OPT = 1;
+      mx4_autoretry_pending = false;
+      mx4_autoretry_index = nil;
       opts = {"MMCE", "MX4SIO", "HDD (exFAT)", "HDD (PFS)", "USB", "SMB (v1)", "Disc (DKWDRV)"};
       Carousel = {
         currentIndex = 1,
@@ -1371,6 +1373,19 @@ UI = {
         UI.MainMenu._draw_only = false
       end;
       Play = function ()
+        local function TryEnterMX4SIO()
+          PLDR.CleanupGameList()
+          PLDR.GAMEPATH = ""
+          local mx4sio_root = PLDR.InitMX4SIOPopsRoot()
+          if mx4sio_root == nil then
+            return false
+          end
+          PLDR.CleanupGameList()
+          PLDR.GetPS1GameLists(mx4sio_root, true)
+          UI.setDeviceLock(DEVLOCK.MX4SIO)
+          UI.SceneChange(UI.SCENES.GMX4SIO)
+          return true
+        end
         local layout = UI.LAYOUT
         local profcnt = #UI.MainMenu.opts
 	        -- Pages are no longer presented as "locked" in the UI.
@@ -1524,6 +1539,27 @@ UI = {
         if UI.MainMenu._draw_only then return end
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
+        if UI.MainMenu.mx4_autoretry_pending then
+          if carousel.animActive then
+            return
+          end
+          if UI.Pad.Events.NAV_LEFT or UI.Pad.Events.NAV_RIGHT or UI.Pad.Events.BACK or UI.Pad.Events.EXIT then
+            UI.MainMenu.mx4_autoretry_pending = false
+            UI.MainMenu.mx4_autoretry_index = nil
+            return
+          end
+          if UI.MainMenu.mx4_autoretry_index ~= nil and carousel.currentIndex ~= UI.MainMenu.mx4_autoretry_index then
+            UI.MainMenu.mx4_autoretry_pending = false
+            UI.MainMenu.mx4_autoretry_index = nil
+            return
+          end
+          UI.MainMenu.mx4_autoretry_pending = false
+          UI.MainMenu.mx4_autoretry_index = nil
+          if not TryEnterMX4SIO() then
+            UI.Notif_queue.add("No MX4SIO device found")
+          end
+          return
+        end
         if not carousel.animActive then
           if UI.Pad.Events.NAV_RIGHT then
             carousel.targetIndex = WrapIndex(carousel.currentIndex + 1, profcnt)
@@ -1571,17 +1607,12 @@ UI = {
               UI.SceneChange(UI.SCENES.GSMB)
             end
           elseif UI.MainMenu.OPT == 2 then
-            PLDR.CleanupGameList()
-            PLDR.GAMEPATH = ""
-            local mx4sio_root = PLDR.InitMX4SIOPopsRoot()
-            if mx4sio_root == nil then
-              UI.Notif_queue.add("No MX4SIO device found")
+            if not UI.MainMenu.mx4_autoretry_pending then
+              if not TryEnterMX4SIO() then
+                UI.MainMenu.mx4_autoretry_pending = true
+                UI.MainMenu.mx4_autoretry_index = carousel.currentIndex
+              end
               return
-            else
-              PLDR.CleanupGameList()
-              PLDR.GetPS1GameLists(mx4sio_root, true)
-              UI.setDeviceLock(DEVLOCK.MX4SIO)
-              UI.SceneChange(UI.SCENES.GMX4SIO)
             end
           elseif UI.MainMenu.OPT == 3 then
             UI.Notif_queue.add("Not Implemented Yet")
