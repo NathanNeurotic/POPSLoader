@@ -1604,7 +1604,7 @@ UI = {
               return
             end
             UI.MainMenu.mx4_autoretry_pending = true
-            UI.MainMenu.mx4_autoretry_at_ms = Timer.getTime(carousel.timer) + 250
+            UI.MainMenu.mx4_autoretry_at_ms = Timer.getTime(carousel.timer) + 900
             return
           elseif UI.MainMenu.OPT == 3 then
             UI.Notif_queue.add("Not Implemented Yet")
