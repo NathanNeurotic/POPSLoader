@@ -1565,6 +1565,12 @@ UI = {
           UI.MainMenu.mx4_autoretry_pending = false
           UI.MainMenu.mx4_autoretry_index = nil
           UI.MainMenu.mx4_autoretry_wait_release = false
+          if type(UI)=="table" and type(UI.setDeviceLock)=="function" then
+            pcall(UI.setDeviceLock, DEVLOCK.NONE)
+          end
+          if type(_G.Input_GetEvent)=="function" then
+            pcall(_G.Input_GetEvent)
+          end
           if not TryEnterMX4SIO() then
             UI.Notif_queue.add("No MX4SIO device found")
           end
