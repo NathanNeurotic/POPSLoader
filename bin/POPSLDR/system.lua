@@ -1560,28 +1560,41 @@ function PLDR.RefreshMassBackendsBoundedOnce()
 end
 
 function PLDR.InitMX4SIOPopsRoot()
-  PLDR.MX4SIO.READY = false
-  PLDR.MX4SIO.ROOT = nil
-  PLDR.MX4SIO.MASSINDX = nil
-  PLDR.MX4SIO.IS_MASS_ALIAS = false
+  local function AttemptOnce()
+    PLDR.MX4SIO.READY = false
+    PLDR.MX4SIO.ROOT = nil
+    PLDR.MX4SIO.MASSINDX = nil
+    PLDR.MX4SIO.IS_MASS_ALIAS = false
 
-  if type(_G.ensureMx4sioInit) == "function" then
-    pcall(_G.ensureMx4sioInit)
-  end
-  if type(System) == "table" and type(System.initMX4SIO) == "function" then
-    pcall(System.initMX4SIO)
-  end
-
-  local root = PLDR.GetMX4SIOMassRootNow()
-  if root ~= nil then
-    local pops = root.."POPS/"
-    if doesFolderExist(pops) then
-      PLDR.SetMX4SIORoot(root)
-      return pops
+    if type(_G.ensureMx4sioInit) == "function" then
+      pcall(_G.ensureMx4sioInit)
     end
+    if type(System) == "table" and type(System.initMX4SIO) == "function" then
+      pcall(System.initMX4SIO)
+    end
+
+    local root = PLDR.GetMX4SIOMassRootNow()
+    if root ~= nil then
+      local pops = root.."POPS/"
+      if doesFolderExist(pops) then
+        PLDR.SetMX4SIORoot(root)
+        return pops
+      end
+    end
+
+    return nil
   end
 
-  return nil
+  local pops = AttemptOnce()
+  if pops ~= nil then
+    return pops
+  end
+
+  if type(System) == "table" and type(System.sleep) == "function" then
+    pcall(System.sleep, 1)
+  end
+
+  return AttemptOnce()
 end
 
 function PLDR.BuildMassGameListByType(kind, mass_snapshot)
