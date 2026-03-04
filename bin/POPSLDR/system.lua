@@ -1022,13 +1022,24 @@ local function BuildMassRootIdentity(mode)
   return identity
 end
 
-function PLDR.GetMX4SIOMassRootNow()
+local mx4_entry_primed = false
+
+local function PrimeMX4Once()
+  if mx4_entry_primed then
+    return
+  end
+  mx4_entry_primed = true
+
   if type(_G.ensureMx4sioInit) == "function" then
     pcall(_G.ensureMx4sioInit)
   end
   if type(PLDR) == "table" and type(PLDR.RefreshMassBackends) == "function" then
     pcall(PLDR.RefreshMassBackends)
   end
+end
+
+function PLDR.GetMX4SIOMassRootNow()
+  PrimeMX4Once()
 
   local identity = BuildMassRootIdentity("mx4sio")
   if type(identity) ~= "table" or type(identity.mx4sio) ~= "table" or #identity.mx4sio == 0 then
@@ -1046,12 +1057,7 @@ end
 function PLDR.GetRootsByType(kind, mass_snapshot)
   local wanted = string.lower(tostring(kind or ""))
   if wanted == "mx4sio" then
-    if type(_G.ensureMx4sioInit) == "function" then
-      pcall(_G.ensureMx4sioInit)
-    end
-    if type(PLDR) == "table" and type(PLDR.RefreshMassBackends) == "function" then
-      pcall(PLDR.RefreshMassBackends)
-    end
+    PrimeMX4Once()
 
     local identity = BuildMassRootIdentity("mx4sio")
     if type(identity) ~= "table" or type(identity.mx4sio) ~= "table" or #identity.mx4sio == 0 then
