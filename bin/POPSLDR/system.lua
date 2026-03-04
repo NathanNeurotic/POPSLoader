@@ -1582,11 +1582,26 @@ function PLDR.InitMX4SIOPopsRoot()
     return nil
   end
 
+  local function YieldOnce()
+    if type(System) == "table" and type(System.yield) == "function" then
+      pcall(System.yield)
+      return
+    end
+    if type(coroutine) == "table" and type(coroutine.yield) == "function" then
+      pcall(coroutine.yield)
+      return
+    end
+    if type(System) == "table" and type(System.sleep) == "function" then
+      pcall(System.sleep, 1)
+    end
+  end
+
   local pops = AttemptOnce()
   if pops ~= nil then
     return pops
   end
 
+  YieldOnce()
   if type(System) == "table" and type(System.sleep) == "function" then
     pcall(System.sleep, 1)
   end
