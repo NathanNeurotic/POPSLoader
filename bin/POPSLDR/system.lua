@@ -1022,8 +1022,6 @@ local function BuildMassRootIdentity(mode)
   return identity
 end
 
-local mx4_retry_pending = false
-local mx4_retry_used = false
 local mx4_present_sig = nil
 
 local function MassRootsSignature()
@@ -1031,38 +1029,13 @@ local function MassRootsSignature()
   return table.concat(roots, "|")
 end
 
-local function BuildMX4IdentityDeferred()
+function PLDR.GetMX4SIOMassRootNow()
   local sig = MassRootsSignature()
   if sig ~= mx4_present_sig then
     mx4_present_sig = sig
-    mx4_retry_pending = false
-    mx4_retry_used = false
   end
 
   local identity = BuildMassRootIdentity("mx4sio")
-  local empty = (type(identity) ~= "table" or type(identity.mx4sio) ~= "table" or #identity.mx4sio == 0)
-  if not empty then
-    mx4_retry_pending = false
-    mx4_retry_used = false
-    return identity
-  end
-
-  if mx4_retry_used then
-    return identity
-  end
-
-  if not mx4_retry_pending then
-    mx4_retry_pending = true
-    return identity
-  end
-
-  mx4_retry_pending = false
-  mx4_retry_used = true
-  return identity
-end
-
-function PLDR.GetMX4SIOMassRootNow()
-  local identity = BuildMX4IdentityDeferred()
   if type(identity) == "table" and type(identity.mx4sio) == "table" then
     return identity.mx4sio[1] or nil
   end
@@ -1072,7 +1045,7 @@ end
 function PLDR.GetRootsByType(kind, mass_snapshot)
   local wanted = string.lower(tostring(kind or ""))
   if wanted == "mx4sio" then
-    local identity = BuildMX4IdentityDeferred()
+    local identity = BuildMassRootIdentity("mx4sio")
     return identity.mx4sio
   end
 
@@ -1565,20 +1538,54 @@ function PLDR.InitMX4SIOPopsRoot()
   PLDR.MX4SIO.MASSINDX = nil
   PLDR.MX4SIO.IS_MASS_ALIAS = false
 
-  if type(_G.ensureMx4sioInit) == "function" then
-    pcall(_G.ensureMx4sioInit)
-  end
-  if type(System) == "table" and type(System.initMX4SIO) == "function" then
-    pcall(System.initMX4SIO)
+  local function AttemptOnce()
+    PLDR.MX4SIO.READY = false
+    PLDR.MX4SIO.ROOT = nil
+    PLDR.MX4SIO.MASSINDX = nil
+    PLDR.MX4SIO.IS_MASS_ALIAS = false
+
+    if type(_G.ensureMx4sioInit) == "function" then
+      pcall(_G.ensureMx4sioInit)
+    end
+    if type(System) == "table" and type(System.initMX4SIO) == "function" then
+      pcall(System.initMX4SIO)
+    end
+
+    local root = PLDR.GetMX4SIOMassRootNow()
+    if root ~= nil then
+      local pops = root.."POPS/"
+      if doesFolderExist(pops) then
+        PLDR.SetMX4SIORoot(root)
+        return pops
+      end
+    end
+    return nil
   end
 
-  local root = PLDR.GetMX4SIOMassRootNow()
-  if root ~= nil then
-    local pops = root.."POPS/"
-    if doesFolderExist(pops) then
-      PLDR.SetMX4SIORoot(root)
-      return pops
+  local function YieldOnce()
+    if type(System) == "table" and type(System.yield) == "function" then
+      pcall(System.yield)
+      return
     end
+    if type(coroutine) == "table" and type(coroutine.yield) == "function" then
+      pcall(coroutine.yield)
+      return
+    end
+    if type(System) == "table" and type(System.sleep) == "function" then
+      pcall(System.sleep, 1)
+    end
+  end
+
+  local pops = AttemptOnce()
+  if pops ~= nil then
+    return pops
+  end
+
+  YieldOnce()
+
+  pops = AttemptOnce()
+  if pops ~= nil then
+    return pops
   end
 
   return nil
