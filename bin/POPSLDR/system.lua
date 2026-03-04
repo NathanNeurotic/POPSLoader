@@ -1058,7 +1058,6 @@ local function BuildMX4IdentityDeferred()
 
   mx4_retry_pending = false
   mx4_retry_used = true
-  identity = BuildMassRootIdentity("mx4sio")
   return identity
 end
 
