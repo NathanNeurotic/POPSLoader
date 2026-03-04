@@ -1566,6 +1566,10 @@ function PLDR.InitMX4SIOPopsRoot()
     PLDR.MX4SIO.MASSINDX = nil
     PLDR.MX4SIO.IS_MASS_ALIAS = false
 
+    if type(PLDR.RefreshMassBackends) == "function" then
+      pcall(PLDR.RefreshMassBackends)
+    end
+
     local root = PLDR.GetMX4SIOMassRootNow()
     if root ~= nil then
       local pops = root.."POPS/"
