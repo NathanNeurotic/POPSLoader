@@ -115,6 +115,44 @@ static bool EnsureUsbMass()
 	return true;
 }
 
+static bool EnsureMx4sioMass()
+{
+	if (!EnsureBDMFatFs()) {
+		return false;
+	}
+
+	if (!mx4sio_irx_loaded) {
+		if (!LoadIrxCheckedBuffer("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL)) {
+			return false;
+		}
+		mx4sio_irx_loaded = true;
+	}
+
+	for (int pass = 0; pass < 2; ++pass) {
+		(void)RefreshMassBackendCache();
+
+		int probe_ret = -1;
+		(void)ProbeDir("mass:/", &probe_ret);
+
+		for (int slot = 0; slot <= 9; ++slot) {
+			char root[16];
+			BuildMassRootPath(slot, root, sizeof(root));
+			(void)ProbeDir(root, &probe_ret);
+		}
+
+		(void)RefreshMassBackendCache();
+
+		for (int slot = 0; slot <= 9; ++slot) {
+			const char *driver = GetMassMountDriverNameBySlot(slot);
+			if (driver != NULL) {
+				(void)ClassifyMassBackend(driver);
+			}
+		}
+	}
+
+	return true;
+}
+
 static bool EnsureCDFS()
 {
 	if (cdfs_irx_loaded) {
@@ -1266,13 +1304,7 @@ static int lua_mx4sio_init(lua_State *L)
 		(void)luaL_checkstring(L, 1);
 	}
 
-	bool ok = EnsureBDMFatFs();
-	if (ok && !mx4sio_irx_loaded) {
-		ok = LoadIrxCheckedBuffer("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL);
-		if (ok) {
-			mx4sio_irx_loaded = true;
-		}
-	}
+	bool ok = EnsureMx4sioMass();
 
 	lua_pushboolean(L, ok);
 	lua_pushnil(L);
