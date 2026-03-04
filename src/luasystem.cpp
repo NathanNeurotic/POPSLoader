@@ -1277,6 +1277,23 @@ static bool ContainsSdcCaseInsensitive(const char *value)
 	return false;
 }
 
+static bool ProbeMassRootsForSdc(void)
+{
+	char root[16];
+	for (int slot = 0; slot <= 9; ++slot) {
+		BuildMassRootPath(slot, root, sizeof(root));
+		int fd = fileXioDopen(root);
+		if (fd >= 0) {
+			fileXioDclose(fd);
+		}
+		const char *driver = GetMassMountDriverNameBySlot(slot);
+		if (driver != NULL && ContainsSdcCaseInsensitive(driver)) {
+			return true;
+		}
+	}
+	return false;
+}
+
 static int lua_ensure_mx4sio_mass(lua_State *L)
 {
 	bool ok = EnsureBDMFatFs();
@@ -1287,16 +1304,11 @@ static int lua_ensure_mx4sio_mass(lua_State *L)
 		}
 	}
 
-	bdm_rpc_bound = false;
-	(void)RefreshMassBackendCache();
-
 	bool found = false;
-	for (int slot = 0; slot <= 9; ++slot) {
-		const char *driver = GetMassMountDriverNameBySlot(slot);
-		if (driver != NULL && ContainsSdcCaseInsensitive(driver)) {
-			found = true;
-			break;
-		}
+	for (int pass = 0; pass < 2 && !found; ++pass) {
+		bdm_rpc_bound = false;
+		(void)RefreshMassBackendCache();
+		found = ProbeMassRootsForSdc();
 	}
 
 	lua_pushboolean(L, found);
