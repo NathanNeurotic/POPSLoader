@@ -1390,6 +1390,7 @@ UI = {
           PLDR.CleanupGameList()
           PLDR.GetPS1GameLists(mx4sio_root, true)
           UI.setDeviceLock(DEVLOCK.MX4SIO)
+          UI.MainMenu.mx4_autoretry_pending = false
           UI.SceneChange(UI.SCENES.GMX4SIO)
           return true
         end
@@ -1652,10 +1653,12 @@ UI = {
           end --because we still dont support SMB
         end
 
-        if UI.MainMenu.mx4_autoretry_pending and UI.MainMenu.OPT ~= 2 then
+        -- Consider "still on MX4" if carousel.selected index is 2.
+        local on_mx4 = (carousel.currentIndex == 2) or (carousel.targetIndex == 2)
+
+        if UI.MainMenu.mx4_autoretry_pending and not on_mx4 then
           UI.MainMenu.mx4_autoretry_pending = false
-        end
-        if UI.MainMenu.mx4_autoretry_pending and UI.MainMenu.OPT == 2 and Timer.getTime(carousel.timer) >= UI.MainMenu.mx4_autoretry_at_ms then
+        elseif UI.MainMenu.mx4_autoretry_pending and Timer.getTime(carousel.timer) >= UI.MainMenu.mx4_autoretry_at_ms then
           UI.MainMenu.mx4_autoretry_pending = false
           TryEnterMX4SIO(false)
         end
