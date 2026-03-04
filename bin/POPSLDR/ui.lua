@@ -1545,6 +1545,21 @@ UI = {
           UI.Modal.OpenExit()
           return
         end
+        local function TryEnterMX4SIO(show_notif)
+          PLDR.CleanupGameList()
+          PLDR.GAMEPATH = ""
+          local mx4_root = PLDR.InitMX4SIOPopsRoot()
+          if mx4_root == nil then
+            if show_notif then UI.Notif_queue.add("No MX4SIO device found") end
+            return false
+          else
+            PLDR.CleanupGameList()
+            PLDR.GetPS1GameLists(mx4_root, true)
+            UI.setDeviceLock(DEVLOCK.MX4SIO)
+            UI.SceneChange(UI.SCENES.GMX4SIO)
+            return true
+          end
+        end
         if UI.Pad.Events.CONFIRM then
           if UI.MainMenu.OPT == 1 then
             if type(System) == "table" and type(System.initMMCE) == "function" then
@@ -1571,18 +1586,10 @@ UI = {
               UI.SceneChange(UI.SCENES.GSMB)
             end
           elseif UI.MainMenu.OPT == 2 then
-            PLDR.CleanupGameList()
-            PLDR.GAMEPATH = ""
-            local mx4sio_root = PLDR.InitMX4SIOPopsRoot()
-            if mx4sio_root == nil then
-              UI.Notif_queue.add("No MX4SIO device found")
-              return
-            else
-              PLDR.CleanupGameList()
-              PLDR.GetPS1GameLists(mx4sio_root, true)
-              UI.setDeviceLock(DEVLOCK.MX4SIO)
-              UI.SceneChange(UI.SCENES.GMX4SIO)
-            end
+            if TryEnterMX4SIO(false) then return end
+            if TryEnterMX4SIO(false) then return end
+            UI.Notif_queue.add("No MX4SIO device found")
+            return
           elseif UI.MainMenu.OPT == 3 then
             UI.Notif_queue.add("Not Implemented Yet")
           elseif UI.MainMenu.OPT == 4 then
