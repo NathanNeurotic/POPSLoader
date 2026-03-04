@@ -1641,7 +1641,8 @@ UI = {
           end --because we still dont support SMB
         end
         if UI.MainMenu.mx4_retry_pending then
-          if UI.Pad.Events.EXIT or UI.Pad.Events.BACK or UI.Pad.Events.NAV_LEFT or UI.Pad.Events.NAV_RIGHT or UI.MainMenu.OPT ~= 2 then
+          if UI.Pad.Events.CONFIRM then
+          elseif UI.Pad.Events.EXIT or UI.Pad.Events.BACK or UI.Pad.Events.NAV_LEFT or UI.Pad.Events.NAV_RIGHT or UI.MainMenu.OPT ~= 2 then
             UI.MainMenu.mx4_retry_pending = false
           else
             UI.MainMenu.mx4_retry_pending = false
