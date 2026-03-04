@@ -37,6 +37,7 @@ extern unsigned int size_cdfs_irx;
 
 static bool LoadIrxCheckedBuffer(const char *name, unsigned char *irx, unsigned int size, int *out_id, int *out_ret);
 static void BuildMassRootPath(int index, char *out_root, size_t out_sz);
+static bool ProbeDir(const char *path, int *out_ret);
 
 #ifndef USBMASS_IOCTL_GET_DRIVERNAME
 #define USBMASS_IOCTL_GET_DRIVERNAME 0x0003
@@ -124,6 +125,33 @@ static bool EnsureCDFS()
 		return false;
 	}
 	cdfs_irx_loaded = true;
+	return true;
+}
+
+static bool EnsureMx4sioMass()
+{
+	if (!EnsureBDMFatFs()) {
+		return false;
+	}
+
+	if (!mx4sio_irx_loaded) {
+		if (!LoadIrxCheckedBuffer("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL)) {
+			return false;
+		}
+		mx4sio_irx_loaded = true;
+	}
+
+	for (int pass = 0; pass < 2; ++pass) {
+		int probe_ret;
+		ProbeDir("mass:/", &probe_ret);
+
+		for (int slot = 0; slot <= 9; ++slot) {
+			char root[16];
+			BuildMassRootPath(slot, root, sizeof(root));
+			ProbeDir(root, &probe_ret);
+		}
+	}
+
 	return true;
 }
 
@@ -1266,13 +1294,7 @@ static int lua_mx4sio_init(lua_State *L)
 		(void)luaL_checkstring(L, 1);
 	}
 
-	bool ok = EnsureBDMFatFs();
-	if (ok && !mx4sio_irx_loaded) {
-		ok = LoadIrxCheckedBuffer("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL);
-		if (ok) {
-			mx4sio_irx_loaded = true;
-		}
-	}
+	bool ok = EnsureMx4sioMass();
 
 	lua_pushboolean(L, ok);
 	lua_pushnil(L);
