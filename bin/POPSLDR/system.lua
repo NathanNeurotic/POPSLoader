@@ -1024,10 +1024,7 @@ end
 
 function PLDR.GetMX4SIOMassRootNow()
   local identity = BuildMassRootIdentity("mx4sio")
-  if type(identity) == "table" and type(identity.mx4sio) == "table" then
-    return identity.mx4sio[1] or nil
-  end
-  return nil
+  return identity.mx4sio[1] or nil
 end
 
 function PLDR.GetRootsByType(kind, mass_snapshot)

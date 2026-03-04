@@ -1379,8 +1379,8 @@ UI = {
         local function TryEnterMX4SIO(show_notif)
           PLDR.CleanupGameList()
           PLDR.GAMEPATH = ""
-          local mx4sio_root = PLDR.InitMX4SIOPopsRoot()
-          if mx4sio_root == nil then
+          local mx4_root = PLDR.InitMX4SIOPopsRoot()
+          if mx4_root == nil then
             if show_notif then
               UI.Notif_queue.add("No MX4SIO device found")
             end
@@ -1388,7 +1388,7 @@ UI = {
           end
 
           PLDR.CleanupGameList()
-          PLDR.GetPS1GameLists(mx4sio_root, true)
+          PLDR.GetPS1GameLists(mx4_root, true)
           UI.setDeviceLock(DEVLOCK.MX4SIO)
           UI.MainMenu.mx4_autoretry_pending = false
           UI.SceneChange(UI.SCENES.GMX4SIO)
