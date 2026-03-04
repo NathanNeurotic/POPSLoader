@@ -1550,8 +1550,10 @@ UI = {
         if UI.MainMenu.mx4_retry_pending then
           if UI.Pad.Events.NAV_LEFT or UI.Pad.Events.NAV_RIGHT or UI.Pad.Events.BACK or UI.Pad.Events.EXIT then
             ClearMX4RetryState()
+            return
           elseif UI.MainMenu.mx4_retry_index ~= nil and carousel.currentIndex ~= UI.MainMenu.mx4_retry_index then
             ClearMX4RetryState()
+            return
           elseif carousel.animActive then
             return
           elseif UI.MainMenu.mx4_retry_wait_release then
@@ -1559,6 +1561,7 @@ UI = {
               return
             end
             UI.MainMenu.mx4_retry_wait_release = false
+            return
           else
             UI.MainMenu.mx4_retry_frames = UI.MainMenu.mx4_retry_frames - 1
             if UI.MainMenu.mx4_retry_frames <= 0 then
