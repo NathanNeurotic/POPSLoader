@@ -1572,6 +1572,9 @@ function PLDR.InitMX4SIOPopsRoot()
     if type(System) == "table" and type(System.initMX4SIO) == "function" then
       pcall(System.initMX4SIO)
     end
+    if type(PLDR.RefreshMassBackends) == "function" then
+      pcall(PLDR.RefreshMassBackends)
+    end
 
     local root = PLDR.GetMX4SIOMassRootNow()
     if root ~= nil then
