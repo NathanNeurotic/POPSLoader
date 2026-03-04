@@ -1022,10 +1022,49 @@ local function BuildMassRootIdentity(mode)
   return identity
 end
 
-function PLDR.GetMX4SIOMassRootNow()
+local mx4_retry_pending = false
+local mx4_retry_used = false
+local mx4_present_sig = nil
+
+local function MassRootsSignature()
+  local roots = PLDR.GetPresentMassRootsBounded()
+  return table.concat(roots, "|")
+end
+
+local function BuildMX4IdentityDeferred()
+  local sig = MassRootsSignature()
+  if sig ~= mx4_present_sig then
+    mx4_present_sig = sig
+    mx4_retry_pending = false
+    mx4_retry_used = false
+  end
+
   local identity = BuildMassRootIdentity("mx4sio")
+  local empty = (type(identity) ~= "table" or type(identity.mx4sio) ~= "table" or #identity.mx4sio == 0)
+  if not empty then
+    mx4_retry_pending = false
+    mx4_retry_used = false
+    return identity
+  end
+
+  if mx4_retry_used then
+    return identity
+  end
+
+  if not mx4_retry_pending then
+    mx4_retry_pending = true
+    return identity
+  end
+
+  mx4_retry_pending = false
+  mx4_retry_used = true
+  return identity
+end
+
+function PLDR.GetMX4SIOMassRootNow()
+  local identity = BuildMX4IdentityDeferred()
   if type(identity) == "table" and type(identity.mx4sio) == "table" then
-    return identity.mx4sio[1]
+    return identity.mx4sio[1] or nil
   end
   return nil
 end
@@ -1033,7 +1072,7 @@ end
 function PLDR.GetRootsByType(kind, mass_snapshot)
   local wanted = string.lower(tostring(kind or ""))
   if wanted == "mx4sio" then
-    local identity = BuildMassRootIdentity("mx4sio")
+    local identity = BuildMX4IdentityDeferred()
     return identity.mx4sio
   end
 
