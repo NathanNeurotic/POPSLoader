@@ -115,6 +115,21 @@ static bool EnsureUsbMass()
 	return true;
 }
 
+static bool EnsureMx4sioMass()
+{
+	bool ok = true;
+	for (int pass = 0; pass < 2 && ok; ++pass) {
+		ok = EnsureBDMFatFs();
+		if (ok && !mx4sio_irx_loaded) {
+			ok = LoadIrxCheckedBuffer("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL);
+			if (ok) {
+				mx4sio_irx_loaded = true;
+			}
+		}
+	}
+	return ok;
+}
+
 static bool EnsureCDFS()
 {
 	if (cdfs_irx_loaded) {
@@ -1266,13 +1281,7 @@ static int lua_mx4sio_init(lua_State *L)
 		(void)luaL_checkstring(L, 1);
 	}
 
-	bool ok = EnsureBDMFatFs();
-	if (ok && !mx4sio_irx_loaded) {
-		ok = LoadIrxCheckedBuffer("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL);
-		if (ok) {
-			mx4sio_irx_loaded = true;
-		}
-	}
+	bool ok = EnsureMx4sioMass();
 
 	lua_pushboolean(L, ok);
 	lua_pushnil(L);
