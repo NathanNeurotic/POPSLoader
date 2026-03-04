@@ -1577,6 +1577,12 @@ function PLDR.InitMX4SIOPopsRoot()
     end
 
     local root = PLDR.GetMX4SIOMassRootNow()
+    if root == nil then
+      if type(System) == "table" and type(System.sleep) == "function" then
+        pcall(System.sleep, 1)
+      end
+      root = PLDR.GetMX4SIOMassRootNow()
+    end
     if root ~= nil then
       local pops = root.."POPS/"
       if doesFolderExist(pops) then
