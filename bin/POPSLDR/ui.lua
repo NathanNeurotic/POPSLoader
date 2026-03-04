@@ -187,6 +187,7 @@ UI = {
     device_lock = DEVLOCK.NONE;
     boot_device = DEVLOCK.NONE;
     boot_locks = {};
+    mx4_preflight_done = false;
     BOOT_SOUND = {
       ENABLED = true,
       PATH = "boot.adp",      -- relative to CWD (same folder as ui.lua on HostFS)
@@ -1571,6 +1572,10 @@ UI = {
               UI.SceneChange(UI.SCENES.GSMB)
             end
           elseif UI.MainMenu.OPT == 2 then
+            if not UI.mx4_preflight_done and type(System) == "table" and type(System.ensureMx4sioMass) == "function" then
+              pcall(System.ensureMx4sioMass)
+              UI.mx4_preflight_done = true
+            end
             PLDR.CleanupGameList()
             PLDR.GAMEPATH = ""
             local mx4sio_root = PLDR.InitMX4SIOPopsRoot()

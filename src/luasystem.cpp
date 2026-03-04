@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <sifrpc.h>
 #include <string.h>
+#include <ctype.h>
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
 #include <fileio.h>
@@ -36,7 +37,10 @@ extern unsigned int size_cdfs_irx;
 
 
 static bool LoadIrxCheckedBuffer(const char *name, unsigned char *irx, unsigned int size, int *out_id, int *out_ret);
+static bool ProbeDir(const char *path, int *out_ret);
 static void BuildMassRootPath(int index, char *out_root, size_t out_sz);
+static const char *GetMassMountDriverNameBySlot(int slot);
+static bool EnsureMx4sioMass();
 
 #ifndef USBMASS_IOCTL_GET_DRIVERNAME
 #define USBMASS_IOCTL_GET_DRIVERNAME 0x0003
@@ -185,6 +189,26 @@ static const char *ClassifyMassBackend(const char *driver)
 	return "other";
 }
 
+static bool StringContainsCaseInsensitive(const char *haystack, const char *needle)
+{
+	if (haystack == NULL || needle == NULL || needle[0] == '\0') {
+		return false;
+	}
+
+	size_t needle_len = strlen(needle);
+	for (const char *h = haystack; *h != '\0'; ++h) {
+		size_t i = 0;
+		while (i < needle_len && h[i] != '\0' && tolower((unsigned char)h[i]) == tolower((unsigned char)needle[i])) {
+			++i;
+		}
+		if (i == needle_len) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
 static bool RefreshMassBackendCache()
 {
 	mass_backend_cache_valid = false;
@@ -223,6 +247,52 @@ static bool GetMassRootByBackendNameInternal(const char *backend_name, char *out
 			BuildMassRootPath((int)info->parId, out_root, out_sz);
 			return true;
 		}
+	}
+
+	return false;
+}
+
+static bool EnsureMx4sioMass()
+{
+	if (!EnsureBDMFatFs()) {
+		return false;
+	}
+
+	if (!mx4sio_irx_loaded) {
+		if (!LoadIrxCheckedBuffer("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL)) {
+			return false;
+		}
+		mx4sio_irx_loaded = true;
+	}
+
+	mass_backend_cache_valid = false;
+	bdm_rpc_bound = false;
+
+	for (int pass = 0; pass < 2; ++pass) {
+		for (int slot = 0; slot <= 9; ++slot) {
+			char root[16];
+			BuildMassRootPath(slot, root, sizeof(root));
+			ProbeDir(root, NULL);
+		}
+
+		if (RefreshMassBackendCache()) {
+			for (u32 i = 0; i < mass_backend_cache.count; ++i) {
+				const char *driver = mass_backend_cache.devs[i].name;
+				if (StringContainsCaseInsensitive(driver, "sdc")) {
+					return true;
+				}
+			}
+		}
+
+		for (int slot = 0; slot <= 9; ++slot) {
+			const char *driver = GetMassMountDriverNameBySlot(slot);
+			if (StringContainsCaseInsensitive(driver, "sdc")) {
+				return true;
+			}
+		}
+
+		mass_backend_cache_valid = false;
+		bdm_rpc_bound = false;
 	}
 
 	return false;
@@ -1256,6 +1326,12 @@ static int lua_ensure_cdfs(lua_State *L)
 	return 1;
 }
 
+static int lua_ensure_mx4sio_mass(lua_State *L)
+{
+	lua_pushboolean(L, EnsureMx4sioMass());
+	return 1;
+}
+
 static int lua_mx4sio_init(lua_State *L)
 {
 	int argc = lua_gettop(L);
@@ -1321,6 +1397,7 @@ static const luaL_Reg System_functions[] = {
 	{"ensureBDMFatFs",         lua_ensure_bdm_fatfs},
 	{"ensureUsbMass",          lua_ensure_usb_mass},
 	{"ensureCDFS",             lua_ensure_cdfs},
+	{"ensureMx4sioMass",       lua_ensure_mx4sio_mass},
 	{"initMX4SIO",             lua_mx4sio_init},
 	{"bdmList",                lua_bdm_list},
 	{"refreshMassBackends",    lua_refresh_mass_backends},
