@@ -1660,7 +1660,14 @@ UI = {
           UI.MainMenu.mx4_autoretry_pending = false
         elseif UI.MainMenu.mx4_autoretry_pending and Timer.getTime(carousel.timer) >= UI.MainMenu.mx4_autoretry_at_ms then
           UI.MainMenu.mx4_autoretry_pending = false
-          TryEnterMX4SIO(false)
+
+          -- One-shot visibility: confirm the retry actually fired.
+          UI.Notif_queue.add("MX4SIO: retrying...")
+
+          -- If retry succeeds, stop processing this frame so the scene change takes effect cleanly.
+          if TryEnterMX4SIO(false) then
+            return
+          end
         end
       end
     };
