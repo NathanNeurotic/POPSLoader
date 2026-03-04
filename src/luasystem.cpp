@@ -127,6 +127,54 @@ static bool EnsureCDFS()
 	return true;
 }
 
+static bool EnsureMx4sioMass()
+{
+	if (!EnsureBDMFatFs()) {
+		return false;
+	}
+	if (!EnsureBdmQueryRpc()) {
+		return false;
+	}
+	if (!mx4sio_irx_loaded) {
+		if (!LoadIrxCheckedBuffer("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL)) {
+			return false;
+		}
+		mx4sio_irx_loaded = true;
+	}
+
+	for (int pass = 0; pass < 2; ++pass) {
+		if (!EnsureBdmQueryRpc()) {
+			return false;
+		}
+
+		mass_backend_cache_valid = false;
+		mass_backend_cache.count = 0;
+
+		RefreshMassBackendCache();
+
+		ProbeDir("mass:/", NULL);
+		for (int slot = 0; slot <= 9; ++slot) {
+			char root[16];
+			BuildMassRootPath(slot, root, sizeof(root));
+			ProbeDir(root, NULL);
+		}
+
+		if (!EnsureBdmQueryRpc()) {
+			return false;
+		}
+		RefreshMassBackendCache();
+
+		for (int slot = 0; slot <= 9; ++slot) {
+			const char *driver = GetMassMountDriverNameBySlot(slot);
+			if (driver != NULL) {
+				ClassifyMassBackend(driver);
+			}
+		}
+	}
+
+	return true;
+}
+
 static bool EnsureBdmQueryRpc()
 {
 	if (!bdm_rpc_loaded) {
@@ -1266,13 +1314,7 @@ static int lua_mx4sio_init(lua_State *L)
 		(void)luaL_checkstring(L, 1);
 	}
 
-	bool ok = EnsureBDMFatFs();
-	if (ok && !mx4sio_irx_loaded) {
-		ok = LoadIrxCheckedBuffer("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL);
-		if (ok) {
-			mx4sio_irx_loaded = true;
-		}
-	}
+	bool ok = EnsureMx4sioMass();
 
 	lua_pushboolean(L, ok);
 	lua_pushnil(L);
