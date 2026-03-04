@@ -1025,6 +1025,9 @@ end
 function PLDR.GetMX4SIOMassRootNow()
   local identity = BuildMassRootIdentity("mx4sio")
   if type(identity) ~= "table" or type(identity.mx4sio) ~= "table" or #identity.mx4sio == 0 then
+    if type(_G.ensureMx4sioInit) == "function" then
+      pcall(_G.ensureMx4sioInit)
+    end
     identity = BuildMassRootIdentity("mx4sio")
   end
   if type(identity) == "table" and type(identity.mx4sio) == "table" then
@@ -1038,6 +1041,9 @@ function PLDR.GetRootsByType(kind, mass_snapshot)
   if wanted == "mx4sio" then
     local identity = BuildMassRootIdentity("mx4sio")
     if type(identity) ~= "table" or type(identity.mx4sio) ~= "table" or #identity.mx4sio == 0 then
+      if type(_G.ensureMx4sioInit) == "function" then
+        pcall(_G.ensureMx4sioInit)
+      end
       identity = BuildMassRootIdentity("mx4sio")
     end
     return identity.mx4sio
