@@ -1351,6 +1351,8 @@ UI = {
     };
     MainMenu = {
       OPT = 1;
+      mx4_autoretry_pending = false;
+      mx4_autoretry_at_ms = 0;
       opts = {"MMCE", "MX4SIO", "HDD (exFAT)", "HDD (PFS)", "USB", "SMB (v1)", "Disc (DKWDRV)"};
       Carousel = {
         currentIndex = 1,
@@ -1373,6 +1375,21 @@ UI = {
       Play = function ()
         local layout = UI.LAYOUT
         local profcnt = #UI.MainMenu.opts
+	      local function TryEnterMX4SIO(show_notif)
+	        PLDR.CleanupGameList()
+	        PLDR.GAMEPATH = ""
+	        local mx4sio_root = PLDR.InitMX4SIOPopsRoot()
+	        if mx4sio_root == nil then
+	          if show_notif then UI.Notif_queue.add("No MX4SIO device found") end
+	          return false
+	        else
+	          PLDR.CleanupGameList()
+	          PLDR.GetPS1GameLists(mx4sio_root, true)
+	          UI.setDeviceLock(DEVLOCK.MX4SIO)
+	          UI.SceneChange(UI.SCENES.GMX4SIO)
+	          return true
+	        end
+	      end
 	        -- Pages are no longer presented as "locked" in the UI.
         local icon_map = {
           ["MMCE"] = "MMCE",
@@ -1526,6 +1543,7 @@ UI = {
         if UI.HandleGlobalInput(false) then return end
         if not carousel.animActive then
           if UI.Pad.Events.NAV_RIGHT then
+            UI.MainMenu.mx4_autoretry_pending = false
             carousel.targetIndex = WrapIndex(carousel.currentIndex + 1, profcnt)
             carousel.animDir = 1
             carousel.animActive = true
@@ -1533,6 +1551,7 @@ UI = {
             carousel.slide = 0
           end
           if UI.Pad.Events.NAV_LEFT then
+            UI.MainMenu.mx4_autoretry_pending = false
             carousel.targetIndex = WrapIndex(carousel.currentIndex - 1, profcnt)
             carousel.animDir = -1
             carousel.animActive = true
@@ -1540,8 +1559,12 @@ UI = {
             carousel.slide = 0
           end
         end
-        if UI.Pad.Events.EXIT then UI.SceneChange(UI.SCENES.CREDITS) end
+        if UI.Pad.Events.EXIT then
+          UI.MainMenu.mx4_autoretry_pending = false
+          UI.SceneChange(UI.SCENES.CREDITS)
+        end
         if UI.Pad.Events.BACK then
+          UI.MainMenu.mx4_autoretry_pending = false
           UI.Modal.OpenExit()
           return
         end
@@ -1571,18 +1594,11 @@ UI = {
               UI.SceneChange(UI.SCENES.GSMB)
             end
           elseif UI.MainMenu.OPT == 2 then
-            PLDR.CleanupGameList()
-            PLDR.GAMEPATH = ""
-            local mx4sio_root = PLDR.InitMX4SIOPopsRoot()
-            if mx4sio_root == nil then
-              UI.Notif_queue.add("No MX4SIO device found")
-              return
-            else
-              PLDR.CleanupGameList()
-              PLDR.GetPS1GameLists(mx4sio_root, true)
-              UI.setDeviceLock(DEVLOCK.MX4SIO)
-              UI.SceneChange(UI.SCENES.GMX4SIO)
-            end
+            UI.MainMenu.mx4_autoretry_pending = false
+            if TryEnterMX4SIO(true) then return end
+            UI.MainMenu.mx4_autoretry_pending = true
+            UI.MainMenu.mx4_autoretry_at_ms = Timer.getTime(UI.Pad.Timer) + 250
+            return
           elseif UI.MainMenu.OPT == 3 then
             UI.Notif_queue.add("Not Implemented Yet")
           elseif UI.MainMenu.OPT == 4 then
@@ -1628,6 +1644,10 @@ UI = {
             end
             UI.Modal.OpenDKWDRV()
           end --because we still dont support SMB
+        end
+        if UI.MainMenu.mx4_autoretry_pending and UI.MainMenu.OPT == 2 and Timer.getTime(UI.Pad.Timer) >= UI.MainMenu.mx4_autoretry_at_ms then
+          UI.MainMenu.mx4_autoretry_pending = false
+          TryEnterMX4SIO(false)
         end
       end
     };
