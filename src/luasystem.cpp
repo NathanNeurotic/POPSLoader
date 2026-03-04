@@ -1270,6 +1270,8 @@ static bool EnsureMx4sioMass()
 	}
 
 	for (int pass = 0; pass < 2; ++pass) {
+		ProbeDir("mass:/", NULL);
+
 		for (int slot = 0; slot <= 9; ++slot) {
 			char root[16];
 			BuildMassRootPath(slot, root, sizeof(root));
@@ -1281,8 +1283,11 @@ static bool EnsureMx4sioMass()
 		}
 
 		if (RefreshMassBackendCache()) {
-			for (u32 i = 0; i < mass_backend_cache.count; ++i) {
-				(void)ClassifyMassBackend(mass_backend_cache.devs[i].name);
+			for (int slot = 0; slot <= 9; ++slot) {
+				const char *driver = GetMassMountDriverNameBySlot(slot);
+				if (driver != NULL) {
+					(void)ClassifyMassBackend(driver);
+				}
 			}
 		}
 	}
