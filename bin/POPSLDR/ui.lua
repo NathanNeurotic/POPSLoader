@@ -1371,6 +1371,22 @@ UI = {
         UI.MainMenu._draw_only = false
       end;
       Play = function ()
+        local function TryEnterMX4SIO()
+          PLDR.CleanupGameList()
+          PLDR.GAMEPATH = ""
+
+          local mx4sio_root = PLDR.InitMX4SIOPopsRoot()
+          if mx4sio_root == nil then
+            return false
+          end
+
+          PLDR.CleanupGameList()
+          PLDR.GetPS1GameLists(mx4sio_root, true)
+          UI.setDeviceLock(DEVLOCK.MX4SIO)
+          UI.SceneChange(UI.SCENES.GMX4SIO)
+
+          return true
+        end
         local layout = UI.LAYOUT
         local profcnt = #UI.MainMenu.opts
 	        -- Pages are no longer presented as "locked" in the UI.
@@ -1571,18 +1587,19 @@ UI = {
               UI.SceneChange(UI.SCENES.GSMB)
             end
           elseif UI.MainMenu.OPT == 2 then
-            PLDR.CleanupGameList()
-            PLDR.GAMEPATH = ""
-            local mx4sio_root = PLDR.InitMX4SIOPopsRoot()
-            if mx4sio_root == nil then
-              UI.Notif_queue.add("No MX4SIO device found")
+            -- Attempt #1 (same behavior as today)
+            if TryEnterMX4SIO() then
               return
-            else
-              PLDR.CleanupGameList()
-              PLDR.GetPS1GameLists(mx4sio_root, true)
-              UI.setDeviceLock(DEVLOCK.MX4SIO)
-              UI.SceneChange(UI.SCENES.GMX4SIO)
             end
+
+            -- Attempt #2 (simulate the user pressing X a second time)
+            if TryEnterMX4SIO() then
+              return
+            end
+
+            -- Only notify if BOTH attempts fail
+            UI.Notif_queue.add("No MX4SIO device found")
+            return
           elseif UI.MainMenu.OPT == 3 then
             UI.Notif_queue.add("Not Implemented Yet")
           elseif UI.MainMenu.OPT == 4 then
