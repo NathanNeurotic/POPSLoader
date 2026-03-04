@@ -1374,26 +1374,6 @@ UI = {
       Play = function ()
         local layout = UI.LAYOUT
         local profcnt = #UI.MainMenu.opts
-	        local function KickMX4InitBestEffort()
-	          if type(_G.ensureMx4sioInit) == "function" then
-	            pcall(_G.ensureMx4sioInit)
-	          elseif type(System) == "table" and type(System.initMX4SIO) == "function" then
-	            pcall(System.initMX4SIO)
-	          end
-	        end
-	        local function RefreshMassBestEffort()
-	          if type(PLDR) == "table" then
-	            if type(PLDR.RefreshMassBackends) == "function" then
-	              pcall(PLDR.RefreshMassBackends)
-	            end
-	            if type(PLDR.RefreshMassStateSnapshot) == "function" then
-	              pcall(PLDR.RefreshMassStateSnapshot)
-	            end
-	            if type(PLDR.GetPresentMassRootsBounded) == "function" then
-	              pcall(PLDR.GetPresentMassRootsBounded)
-	            end
-	          end
-	        end
 	        local function TryEnterMX4SIO(show_notif)
 	          PLDR.CleanupGameList()
 	          PLDR.GAMEPATH = ""
@@ -1666,11 +1646,6 @@ UI = {
             UI.MainMenu.mx4_retry_pending = false
           else
             UI.MainMenu.mx4_retry_pending = false
-            KickMX4InitBestEffort()
-            RefreshMassBestEffort()
-            if type(System) == "table" and type(System.ensureMx4sioMass) == "function" then
-              pcall(System.ensureMx4sioMass)
-            end
             if TryEnterMX4SIO(false) then
               return
             end
