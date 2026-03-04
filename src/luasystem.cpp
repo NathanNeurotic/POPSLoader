@@ -38,6 +38,13 @@ extern unsigned int size_cdfs_irx;
 static bool LoadIrxCheckedBuffer(const char *name, unsigned char *irx, unsigned int size, int *out_id, int *out_ret);
 static void BuildMassRootPath(int index, char *out_root, size_t out_sz);
 
+// Forward declarations for MX4 probe helpers
+static bool EnsureBdmQueryRpc();
+static bool RefreshMassBackendCache();
+static bool ProbeDir(const char *path, int *out_ret);
+static const char *GetMassMountDriverNameBySlot(int slot);
+static const char *ClassifyMassBackend(const char *driver);
+
 #ifndef USBMASS_IOCTL_GET_DRIVERNAME
 #define USBMASS_IOCTL_GET_DRIVERNAME 0x0003
 #endif
