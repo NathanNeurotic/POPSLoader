@@ -1597,7 +1597,7 @@ UI = {
             UI.MainMenu.mx4_autoretry_pending = false
             if TryEnterMX4SIO(true) then return end
             UI.MainMenu.mx4_autoretry_pending = true
-            UI.MainMenu.mx4_autoretry_at_ms = Timer.getTime(UI.Pad.Timer) + 250
+            UI.MainMenu.mx4_autoretry_at_ms = Timer.getTime(carousel.timer) + 250
             return
           elseif UI.MainMenu.OPT == 3 then
             UI.Notif_queue.add("Not Implemented Yet")
@@ -1645,7 +1645,7 @@ UI = {
             UI.Modal.OpenDKWDRV()
           end --because we still dont support SMB
         end
-        if UI.MainMenu.mx4_autoretry_pending and UI.MainMenu.OPT == 2 and Timer.getTime(UI.Pad.Timer) >= UI.MainMenu.mx4_autoretry_at_ms then
+        if UI.MainMenu.mx4_autoretry_pending and UI.MainMenu.OPT == 2 and Timer.getTime(carousel.timer) >= UI.MainMenu.mx4_autoretry_at_ms then
           UI.MainMenu.mx4_autoretry_pending = false
           TryEnterMX4SIO(false)
         end
