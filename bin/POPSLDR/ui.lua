@@ -280,7 +280,7 @@ UI = {
       PREVIEW_H = 240;
 	      -- Match BETA-5 carousel/menu vertical placement.
       CAROUSEL_Y_OFFSET = 36;
-      FOOTER_ICON_SCALE = 0.70;
+      FOOTER_ICON_SCALE = 0.63;
       FOOTER_LABEL_W = 140;
       FOOTER_ICON_Y_OFFSET = 24;
       FOOTER_LABEL_Y_OFFSET = 10;
