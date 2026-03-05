@@ -1244,21 +1244,18 @@ UI = {
         local right_icon = IMG.right
         local up_icon    = IMG.up
         local down_icon  = IMG.down
-        local X0 = 140
-        local X1 = X0 + 40
-        local X2 = X1 + 30
-        local section_w = UI.SCR.X - X0 - layout.SAFE.R
-        local H_HDR = 34
-        local H_ROW = 36
-        local H_GAP = 44
+        local CX = 320
+        local H_HDR = 40
+        local H_ROW = 38
+        local GAP = 52
         local icon_scale = 0.55
-        local y = 165
+        local y = 110
 
         local function TextWidth(text)
           return string.len(tostring(text or "")) * 8
         end
 
-        local function DrawScaledArrow(icon, x, row_y)
+        local function DrawArrow(icon, x, row_y)
           if icon == nil then return end
           local icon_w = math.floor(Graphics.getImageWidth(icon) * icon_scale + 0.5)
           local icon_h = math.floor(Graphics.getImageHeight(icon) * icon_scale + 0.5)
@@ -1266,28 +1263,32 @@ UI = {
           Graphics.drawScaleImage(icon, x, icon_y, icon_w, icon_h, UI.CCOL.GREY)
         end
 
-        Font.ftPrint(BFONT, X0, y, 0, section_w, 16, "BDMA Mode", UI.CCOL.GREY)
+        Font.ftPrint(BFONT, CX, y, 8, UI.SCR.X, 16, "BDMA Mode", UI.CCOL.GREY)
         y = y + H_HDR
-        DrawScaledArrow(left_icon, X1 - math.floor((left_icon ~= nil and Graphics.getImageWidth(left_icon) or 0) * icon_scale + 0.5) - 10, y)
-        Font.ftPrint(BFONT, X1, y, 0, section_w, 16, mode.label, UI.CCOL.GREY)
-        DrawScaledArrow(right_icon, X1 + TextWidth(mode.label) + 12, y)
+        local bdma_w = TextWidth(mode.label)
+        local left_w = math.floor((left_icon ~= nil and Graphics.getImageWidth(left_icon) or 0) * icon_scale + 0.5)
+        local up_w = math.floor((up_icon ~= nil and Graphics.getImageWidth(up_icon) or 0) * icon_scale + 0.5)
+        Font.ftPrint(BFONT, CX, y, 8, UI.SCR.X, 16, mode.label, UI.CCOL.GREY)
+        DrawArrow(left_icon, math.floor(CX - (bdma_w / 2) - left_w - 10), y)
+        DrawArrow(right_icon, math.floor(CX + (bdma_w / 2) + 10), y)
         y = y + H_ROW
-        y = y + H_GAP
+        y = y + GAP
 
-        Font.ftPrint(BFONT, X0, y, 0, section_w, 16, "POPStarter Profile", UI.CCOL.GREY)
+        Font.ftPrint(BFONT, CX, y, 8, UI.SCR.X, 16, "POPStarter Profile", UI.CCOL.GREY)
         y = y + H_HDR
         local choose_profile_text = "Choose POPStarter Profile"
-        DrawScaledArrow(up_icon, X1 - math.floor((up_icon ~= nil and Graphics.getImageWidth(up_icon) or 0) * icon_scale + 0.5) - 10, y)
-        Font.ftPrint(BFONT, X1, y, 0, section_w, 16, choose_profile_text, UI.CCOL.GREY)
-        DrawScaledArrow(down_icon, X1 + TextWidth(choose_profile_text) + 12, y)
+        local choose_w = TextWidth(choose_profile_text)
+        Font.ftPrint(BFONT, CX, y, 8, UI.SCR.X, 16, choose_profile_text, UI.CCOL.GREY)
+        DrawArrow(up_icon, math.floor(CX - (choose_w / 2) - up_w - 10), y)
+        DrawArrow(down_icon, math.floor(CX + (choose_w / 2) + 10), y)
         y = y + H_ROW
-        Font.ftPrint(BFONT, X2, y, 0, section_w, 16, "Profile "..UI.ProfileQuery.curopt, UI.CCOL.GREY)
+        Font.ftPrint(BFONT, CX, y, 8, UI.SCR.X, 16, "Profile "..UI.ProfileQuery.curopt, UI.CCOL.GREY)
         y = y + H_ROW
-        y = y + H_GAP
+        y = y + GAP
 
-        Font.ftPrint(BFONT, X0, y, 0, section_w, 16, "POPStarter Path", UI.CCOL.GREY)
+        Font.ftPrint(BFONT, CX, y, 8, UI.SCR.X, 16, "POPStarter Path", UI.CCOL.GREY)
         y = y + H_HDR
-        Font.ftPrint(BFONT, X2, y, 0, section_w, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].ELF, Color.new(128,128,128, 110))
+        Font.ftPrint(BFONT, CX, y, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].ELF, Color.new(128,128,128, 110))
 
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
