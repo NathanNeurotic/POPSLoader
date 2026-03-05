@@ -1250,6 +1250,11 @@ UI = {
         local GAP = 52
         local icon_scale = 0.55
         local y = 110
+        local footer_top_y = (layout.FOOTER_ICON_Y or (UI.SCR.Y - (layout.BTN_BAR_SAFE_BOTTOM or 56))) - 24
+        local total_h = (3 * H_HDR) + (4 * H_ROW) + (2 * GAP)
+        if (y + total_h) > footer_top_y then
+          y = footer_top_y - total_h
+        end
 
         local function TextWidth(text)
           return string.len(tostring(text or "")) * 8
@@ -1286,11 +1291,6 @@ UI = {
         y = y + H_ROW
         y = y + GAP
 
-        local footer_top_y = (layout.FOOTER_ICON_Y or (UI.SCR.Y - (layout.BTN_BAR_SAFE_BOTTOM or 56))) - 24
-        local path_block_h = H_HDR + H_ROW
-        if (y + path_block_h) > footer_top_y then
-          y = footer_top_y - path_block_h
-        end
         Font.ftPrint(BFONT, CX, y, 8, UI.SCR.X, 16, "POPStarter Path", UI.CCOL.GREY)
         y = y + H_HDR
         Font.ftPrint(BFONT, CX, y, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].ELF, Color.new(128,128,128, 110))
