@@ -858,7 +858,12 @@ function PLDR.ReconcileBdmaModeWithEffectiveState()
 end
 
 function PLDR.SaveSettingsAtomic()
-  PLDR.EnsurePopstarterDir()
+  if not PLDR.EnsurePopstarterDir() then
+    if UI ~= nil and UI.Notif_queue ~= nil then
+      UI.Notif_queue.add("Cannot access mc0:/POPSTARTER")
+    end
+    return false
+  end
   local data = EncodeSettings()
   local ok = WriteAtomic(PLDR.SETTINGS_PATH, data)
   if not ok and UI ~= nil and UI.Notif_queue ~= nil then
@@ -869,6 +874,7 @@ end
 
 function PLDR.LoadSettingsNonFatal()
   local defaults_profile = tonumber(PLDR.DEFAULT_PROFILE) or 1
+  PLDR.EnsurePopstarterDir()
   PLDR.SELECTED_PROFILE = defaults_profile
   PLDR.BDMA_MODE_KEY = "FAT32"
   if PLDR.PROFILES ~= nil and PLDR.PROFILES[defaults_profile] ~= nil then
