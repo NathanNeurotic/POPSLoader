@@ -1248,7 +1248,11 @@ UI = {
         local X1 = X0 + 40
         local X2 = X1 + 30
         local section_w = UI.SCR.X - X0 - layout.SAFE.R
-        local icon_scale = 0.5
+        local H_HDR = 34
+        local H_ROW = 36
+        local H_GAP = 44
+        local icon_scale = 0.55
+        local y = 165
 
         local function TextWidth(text)
           return string.len(tostring(text or "")) * 8
@@ -1258,31 +1262,32 @@ UI = {
           if icon == nil then return end
           local icon_w = math.floor(Graphics.getImageWidth(icon) * icon_scale + 0.5)
           local icon_h = math.floor(Graphics.getImageHeight(icon) * icon_scale + 0.5)
-          local icon_y = row_y + math.floor((16 - icon_h) / 2)
+          local icon_y = row_y + math.floor((H_ROW - icon_h) / 2)
           Graphics.drawScaleImage(icon, x, icon_y, icon_w, icon_h, UI.CCOL.GREY)
         end
 
-        local bdma_label_y = layout.TITLE_Y + 70
-        local bdma_value_y = bdma_label_y + 34
-        local profile_label_y = bdma_label_y + 70
-        local profile_choose_y = profile_label_y + 34
-        local profile_value_y = profile_choose_y + 30
-        local path_label_y = profile_label_y + 70
-        local path_value_y = path_label_y + 34
+        Font.ftPrint(BFONT, X0, y, 0, section_w, 16, "BDMA Mode", UI.CCOL.GREY)
+        y = y + H_HDR
+        DrawScaledArrow(left_icon, X1 - math.floor((left_icon ~= nil and Graphics.getImageWidth(left_icon) or 0) * icon_scale + 0.5) - 10, y)
+        Font.ftPrint(BFONT, X1, y, 0, section_w, 16, mode.label, UI.CCOL.GREY)
+        DrawScaledArrow(right_icon, X1 + TextWidth(mode.label) + 12, y)
+        y = y + H_ROW
+        y = y + H_GAP
 
-        Font.ftPrint(BFONT, X0, bdma_label_y, 0, section_w, 16, "BDMA Mode", UI.CCOL.GREY)
-        DrawScaledArrow(left_icon, X1 - 10 - math.floor((left_icon ~= nil and Graphics.getImageWidth(left_icon) or 0) * icon_scale + 0.5), bdma_value_y)
-        Font.ftPrint(BFONT, X1, bdma_value_y, 0, section_w, 16, mode.label, UI.CCOL.GREY)
-        DrawScaledArrow(right_icon, X1 + TextWidth(mode.label) + 12, bdma_value_y)
+        Font.ftPrint(BFONT, X0, y, 0, section_w, 16, "POPStarter Profile", UI.CCOL.GREY)
+        y = y + H_HDR
+        local choose_profile_text = "Choose POPStarter Profile"
+        DrawScaledArrow(up_icon, X1 - math.floor((up_icon ~= nil and Graphics.getImageWidth(up_icon) or 0) * icon_scale + 0.5) - 10, y)
+        Font.ftPrint(BFONT, X1, y, 0, section_w, 16, choose_profile_text, UI.CCOL.GREY)
+        DrawScaledArrow(down_icon, X1 + TextWidth(choose_profile_text) + 12, y)
+        y = y + H_ROW
+        Font.ftPrint(BFONT, X2, y, 0, section_w, 16, "Profile "..UI.ProfileQuery.curopt, UI.CCOL.GREY)
+        y = y + H_ROW
+        y = y + H_GAP
 
-        Font.ftPrint(BFONT, X0, profile_label_y, 0, section_w, 16, "POPStarter Profile", UI.CCOL.GREY)
-        DrawScaledArrow(up_icon, X1 - 10 - math.floor((up_icon ~= nil and Graphics.getImageWidth(up_icon) or 0) * icon_scale + 0.5), profile_choose_y)
-        Font.ftPrint(BFONT, X1, profile_choose_y, 0, section_w, 16, "Choose POPStarter Profile", UI.CCOL.GREY)
-        DrawScaledArrow(down_icon, X1 + TextWidth("Choose POPStarter Profile") + 12, profile_choose_y)
-        Font.ftPrint(BFONT, X2, profile_value_y, 0, section_w, 16, "Profile "..UI.ProfileQuery.curopt, UI.CCOL.GREY)
-
-        Font.ftPrint(BFONT, X0, path_label_y, 0, section_w, 16, "POPStarter Path", UI.CCOL.GREY)
-        Font.ftPrint(BFONT, X2, path_value_y, 0, section_w, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].ELF, Color.new(128,128,128, 110))
+        Font.ftPrint(BFONT, X0, y, 0, section_w, 16, "POPStarter Path", UI.CCOL.GREY)
+        y = y + H_HDR
+        Font.ftPrint(BFONT, X2, y, 0, section_w, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].ELF, Color.new(128,128,128, 110))
 
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
