@@ -1245,10 +1245,12 @@ UI = {
         local down_icon  = IMG.down
         local CX = UI.SCR.X_MID
         local H_ROW = 26
-        local GAP_SECTION = 24
-        local GAP_PROFILE_PATH = 12
-        local GAP_SMALL = 12
-        local GAP_DKWDRV = 24
+        local GAP_TITLE_TO_FIRST = 28
+        local GAP_SECTION = 18
+        local GAP_LABEL_TO_ICONS = 8
+        local GAP_ICONS_TO_VALUE = 8
+        local GAP_ROW = 10
+        local GAP_DKWDRV = 22
         local ICON_SPREAD = 120
         local ICON_SPREAD2 = 170
         local icon_scale = 0.55
@@ -1279,22 +1281,24 @@ UI = {
         local dkwdrv_label = "DKWDRV Path:"
         local dkwdrv_value = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
 
-        local y = layout.TITLE_Y + 34
+        local y = layout.TITLE_Y + GAP_TITLE_TO_FIRST
         local footer_top_y = (layout.FOOTER_ICON_Y or (UI.SCR.Y - (layout.BTN_BAR_SAFE_BOTTOM or 56))) - 24
-        local total_h = (7 * H_ROW) + GAP_SECTION + GAP_PROFILE_PATH + GAP_SMALL + GAP_DKWDRV
+        local total_h = (7 * H_ROW) + GAP_LABEL_TO_ICONS + GAP_ICONS_TO_VALUE + GAP_SECTION + GAP_ROW + GAP_ROW + GAP_DKWDRV
         if (y + total_h) > footer_top_y then
           y = footer_top_y - total_h
         end
-        if y < (layout.TITLE_Y + 34) then
-          y = layout.TITLE_Y + 34
+        if y < (layout.TITLE_Y + GAP_TITLE_TO_FIRST) then
+          y = layout.TITLE_Y + GAP_TITLE_TO_FIRST
         end
 
         DrawCentered("BDMA:", y)
         y = y + H_ROW
+        y = y + GAP_LABEL_TO_ICONS
 
         DrawIconOnRow(left_icon, CX - ICON_SPREAD, y)
         DrawIconOnRow(right_icon, CX + ICON_SPREAD, y)
         y = y + H_ROW
+        y = y + GAP_ICONS_TO_VALUE
 
         DrawCentered(mode_text, y)
         y = y + H_ROW
@@ -1302,13 +1306,13 @@ UI = {
 
         DrawCentered(profile_text, y)
         y = y + H_ROW
-        y = y + GAP_PROFILE_PATH
+        y = y + GAP_ROW
 
         DrawCentered(pop_path_label, y)
         DrawIconOnRow(up_icon, CX - ICON_SPREAD2, y)
         DrawIconOnRow(down_icon, CX + ICON_SPREAD2, y)
         y = y + H_ROW
-        y = y + GAP_SMALL
+        y = y + GAP_ROW
 
         DrawCentered(pop_path_value, y, Color.new(128,128,128, 110))
         y = y + H_ROW
