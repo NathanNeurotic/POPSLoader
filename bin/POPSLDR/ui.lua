@@ -1244,10 +1244,11 @@ UI = {
         local up_icon    = IMG.up
         local down_icon  = IMG.down
         local CX = UI.SCR.X_MID
-        local H_ROW = 38
-        local GAP_SECTION = 34
-        local GAP_ROW = 18
-        local GAP_SMALL = 10
+        local H_ROW = 26
+        local GAP_SECTION = 24
+        local GAP_PROFILE_PATH = 12
+        local GAP_SMALL = 12
+        local GAP_DKWDRV = 24
         local ICON_SPREAD = 120
         local ICON_SPREAD2 = 170
         local icon_scale = 0.55
@@ -1280,9 +1281,12 @@ UI = {
 
         local y = layout.TITLE_Y + 34
         local footer_top_y = (layout.FOOTER_ICON_Y or (UI.SCR.Y - (layout.BTN_BAR_SAFE_BOTTOM or 56))) - 24
-        local total_h = (7 * H_ROW) + (2 * GAP_SECTION) + GAP_ROW + GAP_SMALL
+        local total_h = (7 * H_ROW) + GAP_SECTION + GAP_PROFILE_PATH + GAP_SMALL + GAP_DKWDRV
         if (y + total_h) > footer_top_y then
           y = footer_top_y - total_h
+        end
+        if y < (layout.TITLE_Y + 34) then
+          y = layout.TITLE_Y + 34
         end
 
         DrawCentered("BDMA:", y)
@@ -1298,6 +1302,7 @@ UI = {
 
         DrawCentered(profile_text, y)
         y = y + H_ROW
+        y = y + GAP_PROFILE_PATH
 
         DrawCentered(pop_path_label, y)
         DrawIconOnRow(up_icon, CX - ICON_SPREAD2, y)
@@ -1307,7 +1312,7 @@ UI = {
 
         DrawCentered(pop_path_value, y, Color.new(128,128,128, 110))
         y = y + H_ROW
-        y = y + GAP_SECTION
+        y = y + GAP_DKWDRV
 
         DrawCentered(dkwdrv_label, y)
         y = y + H_ROW
