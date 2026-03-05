@@ -2,30 +2,32 @@ Last updated: 2026-03-05
 
 # STATE
 
-## Purpose
-Current operational snapshot for humans and AI agents.
+## What POPSLoader is
+POPSLoader is a PS2 launcher for POPStarter built on the Enceladus runtime, with Lua-driven UI/flow (`bin/POPSLDR/system.lua`, `bin/POPSLDR/ui.lua`) and EE/IOP support in `src/` and `iop/`.
 
-## Current Goal
-- [ ] Finalize AI-oriented repo docs with concrete POPSLoader architecture, invariants, and usage guidance.
+## Current guarantees (repo-verified)
+- Startup loads `boot.lua`, which requires `system.lua`; `PLDR.LoadSettingsNonFatal()` runs before the main UI loop.
+- Settings persistence file is `mc0:/POPSTARTER/.pldrs`.
+- Settings/Profile edits are staged and persisted on Settings/Profile exit path (`queue_exit`) via `PLDR.SaveSettingsAtomic()`.
+- BDMA selectable modes currently implemented in UI/settings: `FAT32`, `USBEXFAT`, `MX4SIO`, `MMCE`.
+- MX4SIO vs USB list separation is based on mass mount driver identity (`System.getMassMountDriver` path, `sdc` detection for MX4SIO).
 
-## Current PR Objective
-- [ ] Replace placeholder docs with repo-grounded content (`README.md`, `ARCHITECTURE.md`, `TRUTHSHEET.md`, `STATE.md`).
-- [ ] Add a technical component map (`COMPONENTS.md`) to complement high-level architecture docs.
+## Known open work (backlog)
+- ART system integration.
+- Editable POPStarter path/profile via OSK.
+- Editable DKWDRV path via OSK.
+- Hide UI text toggle with exclusions (Splash/Credits/Settings/Games list text).
+- MX4SIO first-entry quirk masking target: init + two attempts + ~1s delay.
+- Packaging change target: ship `PATCH5.bin` instead of `POPS/*.tm2` in CI artifact.
+- Add BDMA modes: SMB, iLink, UDPBD.
+- Remove remaining debug/logging and continue size/speed optimization.
+- Settings save progress indicator UX improvements.
+- `mc?:/` alias support (`mc0` then `mc1`).
 
-## Known Regressions / Gaps
-- [ ] SMB path in main menu is currently marked `Not Implemented Yet` in UI.
-- [ ] One menu path (`UI.MainMenu.OPT == 3`) is currently marked `Not Implemented Yet`.
-- [ ] TODO: Add validated reproduction details for any runtime regressions as they are confirmed.
-
-## Current Constraints
-- [ ] Minimal diffs only; no unrelated code or formatting churn.
-- [ ] Avoid touching unrelated Lua/C/C++ files for docs-only tasks.
-- [ ] Bounded loops only.
-- [ ] Avoid adding logging unless explicitly requested.
-- [ ] Preserve boot/launch pipeline and device detection logic unless explicitly in scope.
-
-## How to Update This File
-- [ ] Update `Last updated` every time this file changes.
-- [ ] Keep entries short, factual, and tied to active work.
-- [ ] Move durable architectural decisions to `DECISIONS.md`.
-- [ ] Remove resolved items promptly to keep this snapshot current.
+## Release readiness checklist
+- [ ] POPStarter launch flow validated on target hardware.
+- [ ] Settings load/save verified across reboot.
+- [ ] BDMA mode selection/apply/persist verified for all implemented modes.
+- [ ] USB/MX4SIO separation validated via mount-driver identity.
+- [ ] Manual matrix completed (USB, MX4SIO, MMCE, HDD as applicable).
+- [ ] Packaging contents match release policy (current: tm2 set; target change tracked separately).
