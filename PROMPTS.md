@@ -2,99 +2,93 @@ Last updated: 2026-03-05
 
 # PROMPTS
 
-## Bug Fix (Minimal Diff)
+## Reusable Codex PR prompt template
 ```markdown
 Goal:
-- Fix: <bug summary>
+- <single objective tied to POPSLoader behavior/docs/build>
 
-Non-goals:
-- No refactors, no feature additions, no formatting-only churn.
+Allowed files (allowlist):
+- <explicit paths only>
 
-Allowed files:
-- <explicit file paths or directories>
+Forbidden changes:
+- No edits outside allowlist
+- No behavior changes outside stated goal
+- No unrelated refactors/format churn
+- No debug/logging additions unless requested
 
-Constraints:
-- Minimal diff only.
-- Bounded loops only.
-- Avoid touching unrelated Lua/C/C++ files.
-- Do not add logging unless explicitly requested.
-- Preserve boot/launch and device detection logic unless this bug is in those areas.
+Invariants to preserve:
+- POPStarter launch pipeline remains intact
+- MX4SIO vs USB separation uses mount-driver identity (no guessing)
+- Settings persist only on confirm/leave Settings/Profile
+- Logic remains bounded/deterministic (no unbounded retries)
 
 Deliverables:
-- Summary, diffstat, key diff, test plan/results.
-
-Test plan:
-- Run targeted checks first: <TODO commands>
-- Add manual verification steps for uncovered paths.
+1) Summary of changes
+2) `git diff --stat`
+3) Full `git diff`
+4) Test plan/results (including unrun items)
 ```
 
-## Feature (Guardrails)
+## POPSLoader-tailored examples
+
+### 1) Bounded backend behavior change (MX4SIO quirk masking)
 ```markdown
 Goal:
-- Add: <feature summary>
-
-Non-goals:
-- No broad cleanup/refactor outside feature scope.
+- Implement bounded MX4SIO first-entry masking: initialize backend, attempt detect/list, wait ~1s once, retry once, then stop.
 
 Allowed files:
-- <explicit file paths or directories>
+- bin/POPSLDR/system.lua
+- bin/POPSLDR/ui.lua
 
-Constraints:
-- Keep architecture boundaries intact.
-- Bounded logic only.
-- Backward compatibility unless explicitly approved.
-- No logging additions unless requested.
+Forbidden:
+- No launch-policy rewrites
+- No packaging/CI edits
+- No unrelated UI redesign
 
-Deliverables:
-- Implementation, docs update, risk notes, test plan/results.
-
-Test plan:
-- New/updated targeted tests: <TODO commands>
-- Regression checks for adjacent behavior.
+Required checks:
+- USB list still excludes MX4SIO roots
+- MX4SIO list still depends on mount-driver identity
+- Retry count and delay are deterministic/bounded
 ```
 
-## Refactor (Explicit Approval Required)
+### 2) UI layout-only fix (settings alignment/icon stability)
 ```markdown
 Goal:
-- Refactor: <scope>
-
-Non-goals:
-- No behavior changes.
+- Fix Settings/Profile alignment so BDMA label/arrows stay visually stable regardless of text length.
 
 Allowed files:
-- <explicit file paths or directories>
+- bin/POPSLDR/ui.lua
 
-Constraints:
-- Proceed only with explicit refactor approval.
-- Preserve public interfaces unless approved.
-- Bounded loops only.
-- Keep commit(s) small and reviewable.
+Forbidden:
+- No backend/storage logic edits
+- No profile persistence logic changes
 
-Deliverables:
-- Before/after rationale, migration notes (if any), test plan/results.
-
-Test plan:
-- Baseline + post-refactor parity checks: <TODO commands>
+Required checks:
+- Icon coordinates are deterministic
+- No overlap at 4:3 safe area
+- No additional per-frame allocations/scans
 ```
 
-## Investigate + Propose Plan Only
+### 3) Packaging/CI edit (artifact contents)
 ```markdown
 Goal:
-- Investigate: <question/problem>
-
-Non-goals:
-- No code or config changes.
+- Change release artifact contents from POPS tm2 triplet to PATCH5.bin policy.
 
 Allowed files:
-- Read-only across relevant files.
+- .github/workflows/compilation.yml
+- README.md
 
-Constraints:
-- Gather evidence from repo only.
-- Do not infer unknown project facts; mark TODO where uncertain.
+Forbidden:
+- No runtime Lua/C/C++ changes
+- No gameplay/UI behavior changes
 
-Deliverables:
-- Findings, likely root cause(s), ranked options, recommended plan.
-
-Test plan:
-- If implementation follows, propose targeted validation steps.
+Required checks:
+- Artifact verifier enforces new expected set
+- Forbidden/legacy files are rejected explicitly
 ```
+
+## Prompt hygiene rules
+- Always specify an explicit allowlist of editable files.
+- Explicitly forbid unrelated changes.
+- Require summary + diffstat + full diff + test plan in output.
+- Require bounded/deterministic logic for retries, polling, and classification.

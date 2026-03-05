@@ -2,42 +2,41 @@ Last updated: 2026-03-05
 
 # ARCHITECTURE
 
-## Purpose
-High-level map of POPSLoader structure, flow, and boundaries.
+## Verified module boundaries
+- **Boot/runtime entry**
+  - `src/main.cpp`: initializes runtime/IOP services and executes `boot.lua`.
+  - `etc/boot.lua`: boot-path handling, font init, then `require("system")`.
+- **Lua orchestration and UI**
+  - `bin/POPSLDR/system.lua`: backend init, storage classification, game discovery, launch policy, settings load/save, BDMA apply.
+  - `bin/POPSLDR/ui.lua`: scene management, input handling, settings/profile interactions, labels and icon drawing.
+  - `bin/POPSLDR/images.lua`: image asset loading/registry used by UI.
+  - `bin/POPSLDR/pops_profiles.lua`: POPStarter profile definitions.
+- **Native backend/system bindings**
+  - `src/luasystem.cpp`: Lua `System.*` bindings, mass mount-driver query/classification support, module init wrappers.
+  - `iop/bdm_query/bdm_query.c`: backend driver query RPC support used by mass backend detection.
+- **Embedded assets/build packaging**
+  - `src/embed_assets.cpp` + generated `src/assets/*.c`: embedded Lua/assets used at runtime.
+  - `Makefile` and `.github/workflows/compilation.yml`: build and release artifact packaging.
 
-## Top-Level Components
-- [ ] `src/` EE core runtime (`main.cpp`, rendering/audio/input, Lua host bindings).
-- [ ] `bin/POPSLDR/` Lua orchestration and UI (`system.lua`, `ui.lua`, profiles, assets).
-- [ ] `iop/embed/` embedded IRX modules loaded at runtime.
-- [ ] `iop/bdm_query/` RPC module for querying block-device backend identity.
-- [ ] `modules/` optional controller modules (`ds34bt`, `ds34usb`, `pademu`).
-- [ ] `Makefile` + `.github/workflows/compilation.yml` build/embed/package pipeline.
+## High-level data flows
+1. **Boot -> load settings -> apply runtime defaults -> UI entry**
+   - `main.cpp` runs `boot.lua`.
+   - `boot.lua` requires `system.lua`.
+   - `system.lua` executes `PLDR.LoadSettingsNonFatal()` before entering the UI loop.
+2. **Settings edit -> adjust -> confirm/leave -> save -> reflected labels**
+   - UI profile/settings scene stages changes in memory (`UI.ProfileDirty`, `UI.BdmaDirty`).
+   - On exit/confirm, `queue_exit` writes settings with `PLDR.SaveSettingsAtomic()` and applies BDMA if changed.
+   - Initial UI BDMA selector index is derived from loaded `PLDR.BDMA_MODE_KEY`.
+3. **Device identity pipeline (USB vs MX4SIO)**
+   - Lua asks `System.getMassMountDriver(root)` (or fallback driver query paths).
+   - Classification uses mount-driver identity; `sdc` (`mx4sio` in native classifier) maps to MX4SIO.
+   - USB lists and MX4SIO lists are built from separated root sets.
 
-## Data / Control Flow
-- [ ] ELF startup (`src/main.cpp`) initializes IOP/runtime and executes boot Lua.
-- [ ] Boot script (`etc/boot.lua`) normalizes boot context and requires `system.lua`.
-- [ ] Runtime logic (`bin/POPSLDR/system.lua`) prepares devices, assets, and launch policies.
-- [ ] UI logic (`bin/POPSLDR/ui.lua`) handles scene navigation and user actions.
-- [ ] Device enumeration/classification uses mass roots + mount driver identity (`sdc` => MX4SIO path).
-- [ ] Game discovery scans device `POPS/` folders for `.vcd` files.
-- [ ] Launch path resolves POPStarter selector/device mode and transfers control.
+## Non-goals / guardrails
+- No unbounded loops or retries in backend/device probing.
+- Avoid debug/logging additions in production paths.
+- Do not guess device identity when mount driver is unknown.
 
-## Key Boundaries
-- [ ] Keep boot and launch pipeline behavior stable unless task explicitly targets startup/launch.
-- [ ] Keep device detection/classification logic stable and isolated (Lua + `luasystem.cpp` + `bdm_query`).
-- [ ] Keep UI scene code separate from low-level backend probing details.
-- [ ] Keep embedded assets/IRX packaging changes isolated to build+asset paths.
-
-## Where to Add New Features vs Fixes
-- [ ] UI/UX features: `bin/POPSLDR/ui.lua` and related image/text assets.
-- [ ] Device/backend behavior: `bin/POPSLDR/system.lua` plus `src/luasystem.cpp` if native hooks are required.
-- [ ] Low-level module behavior: `iop/` and `src/` only when Lua-level changes are insufficient.
-- [ ] Build/package changes: `Makefile` and CI workflow.
-- [ ] Bug fixes should land closest to defect source; avoid cross-layer rewrites.
-
-## Dependency Rules
-- [ ] Lua UI/runtime may depend on exposed `System.*` APIs; avoid bypassing through ad hoc globals.
-- [ ] EE core (`src/`) can embed/use Lua/assets and IRX blobs; embedded data must not depend on runtime state.
-- [ ] IOP modules remain isolated and communicate through explicit RPC/IOCTL boundaries.
-- [ ] Optional controller modules must not become hard runtime requirements for core boot/launch.
-- [ ] Runtime behavior must remain deterministic for the same inputs/device state.
+## Unknown (verify)
+- Exact on-device timing behavior for MX4SIO first-entry masking with explicit ~1s delay is not fully codified in `system.lua`; current retry state machine exists but may not match target UX timing.
+- ART pipeline integration boundaries are not implemented yet (verify when feature lands).
