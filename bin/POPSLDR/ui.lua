@@ -1244,14 +1244,14 @@ UI = {
         local up_icon    = IMG.up
         local down_icon  = IMG.down
         local H_ROW = 38
-        local GAP = 30
-        local GROUP_GAP = 22
+        local PROFILE_PATH_GAP = 28
+        local DKWDRV_GAP = 26
         local INDENT = 24
         local PAD_LABEL_VALUE = 14
         local icon_scale = 0.55
-        local X_TEXT = 110
-        local X_ICON_L = 75
-        local X_ICON_R = 520
+        local X_TEXT = 80
+        local X_ICON_L = 45
+        local X_ICON_R = 500
 
         local function TextWidth(text)
           return string.len(tostring(text or "")) * 8
@@ -1281,7 +1281,7 @@ UI = {
 
         local y = 140
         local footer_top_y = (layout.FOOTER_ICON_Y or (UI.SCR.Y - (layout.BTN_BAR_SAFE_BOTTOM or 56))) - 24
-        local total_h = (2 * H_ROW) + GROUP_GAP + H_ROW + H_ROW + GAP + H_ROW + H_ROW
+        local total_h = (2 * H_ROW) + PROFILE_PATH_GAP + H_ROW + H_ROW + DKWDRV_GAP + H_ROW + H_ROW
         if (y + total_h) > footer_top_y then
           y = footer_top_y - total_h
         end
@@ -1296,7 +1296,7 @@ UI = {
         Font.ftPrint(BFONT, X_TEXT, y, 0, UI.SCR.X - X_TEXT, 16, profile_label, UI.CCOL.GREY)
         Font.ftPrint(BFONT, X_TEXT + TextWidth(profile_label) + PAD_LABEL_VALUE, y, 0, UI.SCR.X - X_TEXT, 16, profile_value, UI.CCOL.GREY)
         y = y + H_ROW
-        y = y + GROUP_GAP
+        y = y + PROFILE_PATH_GAP
 
         Font.ftPrint(BFONT, X_TEXT, y, 0, UI.SCR.X - X_TEXT, 16, pop_path_label, UI.CCOL.GREY)
         y = y + H_ROW
@@ -1319,7 +1319,7 @@ UI = {
         end
 
         y = y + H_ROW
-        y = y + GAP
+        y = y + DKWDRV_GAP
 
         Font.ftPrint(BFONT, X_TEXT, y, 0, UI.SCR.X - X_TEXT, 16, dkwdrv_label, UI.CCOL.GREY)
         y = y + H_ROW
