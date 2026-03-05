@@ -1237,8 +1237,6 @@ UI = {
       Play = function ()
         local layout = UI.LAYOUT
         local profcnt = #PLDR.PROFILES
-        Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Settings", UI.CCOL.GREY)
-
         local mode = UI.BdmaModes[UI.BdmaModeIndex]
         local left_icon  = IMG.left
         local right_icon = IMG.right
