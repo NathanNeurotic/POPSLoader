@@ -1245,8 +1245,10 @@ UI = {
         local down_icon  = IMG.down
         local CX = UI.SCR.X_MID
         local H_ROW = 28
-        local GAP_TITLE_TO_FIRST = 44
-        local BLOCK_GAP = 34
+        local TITLE_TO_BLOCK = 36
+        local BLOCK_GAP = 24
+        local ROW_GAP = 10
+        local BUTTON_GAP = 70
         local ICON_SPREAD = 120
         local ICON_SPREAD2 = 170
         local icon_scale = 0.55
@@ -1277,42 +1279,41 @@ UI = {
         local dkwdrv_label = "DKWDRV Path:"
         local dkwdrv_value = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
 
-        local y = layout.TITLE_Y + GAP_TITLE_TO_FIRST
+        local y = layout.TITLE_Y + TITLE_TO_BLOCK
         local footer_top_y = (layout.FOOTER_ICON_Y or (UI.SCR.Y - (layout.BTN_BAR_SAFE_BOTTOM or 56))) - 24
-        local total_h = (7 * H_ROW) + (2 * BLOCK_GAP)
+        local total_h = (7 * H_ROW) + (2 * BLOCK_GAP) + (4 * ROW_GAP) + BUTTON_GAP
         if (y + total_h) > footer_top_y then
           y = footer_top_y - total_h
         end
-        if y < (layout.TITLE_Y + GAP_TITLE_TO_FIRST) then
-          y = layout.TITLE_Y + GAP_TITLE_TO_FIRST
+        if y < (layout.TITLE_Y + TITLE_TO_BLOCK) then
+          y = layout.TITLE_Y + TITLE_TO_BLOCK
         end
 
         DrawCentered("BDMA:", y)
-        y = y + H_ROW
+        y = y + H_ROW + ROW_GAP
 
         DrawIconOnRow(left_icon, CX - ICON_SPREAD, y)
         DrawIconOnRow(right_icon, CX + ICON_SPREAD, y)
-        y = y + H_ROW
-
         DrawCentered(mode_text, y)
         y = y + H_ROW
         y = y + BLOCK_GAP
 
         DrawCentered(profile_text, y)
-        y = y + H_ROW
+        y = y + H_ROW + ROW_GAP
 
         DrawCentered(pop_path_label, y)
         DrawIconOnRow(up_icon, CX - ICON_SPREAD2, y)
         DrawIconOnRow(down_icon, CX + ICON_SPREAD2, y)
-        y = y + H_ROW
+        y = y + H_ROW + ROW_GAP
 
         DrawCentered(pop_path_value, y, Color.new(128,128,128, 110))
         y = y + H_ROW
         y = y + BLOCK_GAP
 
         DrawCentered(dkwdrv_label, y)
-        y = y + H_ROW
+        y = y + H_ROW + ROW_GAP
         DrawCentered(dkwdrv_value, y, Color.new(128,128,128, 110))
+        y = y + H_ROW + BUTTON_GAP
 
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
