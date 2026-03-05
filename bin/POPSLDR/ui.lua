@@ -1247,12 +1247,7 @@ UI = {
         local H_ROW = 38
         local GAP = 52
         local icon_scale = 0.55
-        local y = 110
-        local footer_top_y = (layout.FOOTER_ICON_Y or (UI.SCR.Y - (layout.BTN_BAR_SAFE_BOTTOM or 56))) - 24
-        local total_h = (3 * H_HDR) + (4 * H_ROW) + (2 * GAP)
-        if (y + total_h) > footer_top_y then
-          y = footer_top_y - total_h
-        end
+        local y = 150
 
         local function TextWidth(text)
           return string.len(tostring(text or "")) * 8
