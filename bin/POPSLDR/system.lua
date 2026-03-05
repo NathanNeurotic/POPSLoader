@@ -1265,9 +1265,6 @@ end
 
 function PLDR.ApplyBdmaMode(mode_key)
   local selected = mode_key or "FAT32"
-  if not PLDR.EnsurePopstarterUiAssets() then
-    return false
-  end
   if not PLDR.EnsurePopstarterDir() then
     if UI ~= nil and UI.Notif_queue ~= nil then
       UI.Notif_queue.add("Cannot access mc0:/POPSTARTER")
@@ -1282,9 +1279,8 @@ function PLDR.ApplyBdmaMode(mode_key)
     return true
   end
 
-  local last_applied = ReadBdmaModeMarker()
-  if last_applied == selected then
-    return true
+  if not PLDR.EnsurePopstarterUiAssets() then
+    return false
   end
 
   local suffix = BDMA_SUFFIX[selected]
@@ -1365,39 +1361,35 @@ function PLDR.EnsurePopstarterUiAssets()
 
   for i = 1, #BDMA_UI_FILES do
     local asset = BDMA_UI_FILES[i]
-    local paths = PLDR.BdmaSourceCandidates(asset.src)
-    local fd, source = PLDR.TryOpenFirst(paths)
-    if fd ~= nil and (type(fd) ~= "number" or fd >= 0) then
-      System.closeFile(fd)
-    end
-
     local dest = POPSTARTER_PACK_ROOT.."/"..asset.dst
-    if source == nil then
-      local bytes = nil
-      if type(System) == "table" and type(System.getEmbeddedAsset) == "function" then
-        local ok_embedded, embedded = pcall(System.getEmbeddedAsset, asset.src)
-        if ok_embedded and embedded ~= nil then
-          bytes = embedded
-        end
+
+    if not doesFileExist(dest) then
+      local paths = PLDR.BdmaSourceCandidates(asset.src)
+      local fd, source = PLDR.TryOpenFirst(paths)
+      if fd ~= nil and (type(fd) ~= "number" or fd >= 0) then
+        System.closeFile(fd)
       end
-      if bytes == nil then
-        if UI ~= nil and UI.Notif_queue ~= nil then
-          UI.Notif_queue.add("Missing BDMA UI source (tried):\n"..table.concat(paths, "\n"))
+
+      if source == nil then
+        local bytes = nil
+        if type(System) == "table" and type(System.getEmbeddedAsset) == "function" then
+          local ok_embedded, embedded = pcall(System.getEmbeddedAsset, asset.src)
+          if ok_embedded and embedded ~= nil then
+            bytes = embedded
+          end
         end
-        return false
-      end
-      local expected = string.len(bytes)
-      local current_size = GetFileSizeSafe(dest)
-      if current_size == nil or current_size ~= expected then
+        if bytes == nil then
+          if UI ~= nil and UI.Notif_queue ~= nil then
+            UI.Notif_queue.add("Missing BDMA UI source (tried):\n"..table.concat(paths, "\n"))
+          end
+          return false
+        end
         local ok_write, wrote = pcall(WriteBytesAtomicBounded, bytes, dest)
         if not ok_write or not wrote then
           return false
         end
-      end
-    else
-      local src_size = GetFileSizeSafe(source)
-      local dst_size = GetFileSizeSafe(dest)
-      if src_size == nil or dst_size == nil or src_size ~= dst_size then
+      else
+        local src_size = GetFileSizeSafe(source)
         local ok_copy, copied = pcall(CopyExternalAtomicBounded, source, dest, src_size)
         if not ok_copy or not copied then
           return false
@@ -1408,7 +1400,6 @@ function PLDR.EnsurePopstarterUiAssets()
 
   return true
 end
-
 local function RemoveDirectoryRecursive(path)
   local normalized = NormalizeDirPath(path)
   if not doesFolderExist(normalized) then
