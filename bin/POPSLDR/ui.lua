@@ -1244,8 +1244,8 @@ UI = {
         local up_icon    = IMG.up
         local down_icon  = IMG.down
         local H_ROW = 38
-        local PROFILE_PATH_GAP = 28
-        local DKWDRV_GAP = 26
+        local PROFILE_PATH_GAP = 12
+        local DKWDRV_GAP = 24
         local INDENT = 24
         local PAD_LABEL_VALUE = 14
         local icon_scale = 0.55
@@ -1286,8 +1286,7 @@ UI = {
           y = footer_top_y - total_h
         end
 
-        Font.ftPrint(BFONT, X_TEXT, y, 0, UI.SCR.X - X_TEXT, 16, bdma_label, UI.CCOL.GREY)
-        Font.ftPrint(BFONT, X_TEXT + TextWidth(bdma_label) + PAD_LABEL_VALUE, y, 0, UI.SCR.X - X_TEXT, 16, mode.label, UI.CCOL.GREY)
+        Font.ftPrint(BFONT, X_TEXT, y, 0, UI.SCR.X - X_TEXT, 16, bdma_label.." "..mode.label, UI.CCOL.GREY)
         DrawArrow(left_icon, X_ICON_L, y)
         DrawArrow(right_icon, X_ICON_R, y)
         y = y + H_ROW
