@@ -1240,31 +1240,41 @@ UI = {
         Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Settings", UI.CCOL.GREY)
 
         local mode = UI.BdmaModes[UI.BdmaModeIndex]
-        local mode_y = layout.TITLE_Y + 30
         local left_icon = IMG.left
         local right_icon = IMG.right
-        Font.ftPrint(BFONT, UI.SCR.X_MID - 180, mode_y, 0, 200, 16, "BDMA Mode", UI.CCOL.GREY)
-        if left_icon ~= nil then
-          Graphics.drawImage(left_icon, UI.SCR.X_MID - 36, mode_y - 2, UI.CCOL.GREY)
-        end
-        Font.ftPrint(BFONT, UI.SCR.X_MID, mode_y, 8, UI.SCR.X, 16, mode.label, UI.CCOL.GREY)
-        if right_icon ~= nil then
-          Graphics.drawImage(right_icon, UI.SCR.X_MID + 18, mode_y - 2, UI.CCOL.GREY)
-        end
-
-        local profile_title_y = layout.TITLE_Y + 92
         local up_icon = IMG.up
         local down_icon = IMG.down
-        Font.ftPrint(BFONT, UI.SCR.X_MID, profile_title_y, 8, UI.SCR.X, 16, "Choose POPStarter Profile", UI.CCOL.GREY)
+        local section_x = layout.SAFE.L + 18
+        local section_w = UI.SCR.X - section_x - layout.SAFE.R
+
+        local bdma_label_y = layout.TITLE_Y + 70
+        local bdma_value_y = bdma_label_y + 24
+        Font.ftPrint(BFONT, section_x, bdma_label_y, 0, section_w, 16, "BDMA Mode", UI.CCOL.GREY)
+        if left_icon ~= nil then
+          Graphics.drawImage(left_icon, section_x, bdma_value_y - 2, UI.CCOL.GREY)
+        end
+        Font.ftPrint(BFONT, section_x + 26, bdma_value_y, 0, section_w - 64, 16, mode.label, UI.CCOL.GREY)
+        if right_icon ~= nil then
+          Graphics.drawImage(right_icon, section_x + 210, bdma_value_y - 2, UI.CCOL.GREY)
+        end
+
+        local profile_label_y = bdma_label_y + 80
+        local profile_choose_y = profile_label_y + 24
+        local profile_value_y = profile_choose_y + 24
+        Font.ftPrint(BFONT, section_x, profile_label_y, 0, section_w, 16, "POPStarter Profile", UI.CCOL.GREY)
         if up_icon ~= nil then
-          Graphics.drawImage(up_icon, UI.SCR.X_MID - 150, profile_title_y - 2, UI.CCOL.GREY)
+          Graphics.drawImage(up_icon, section_x, profile_choose_y - 2, UI.CCOL.GREY)
         end
+        Font.ftPrint(BFONT, section_x + 26, profile_choose_y, 0, section_w - 64, 16, "Choose POPStarter Profile", UI.CCOL.GREY)
         if down_icon ~= nil then
-          Graphics.drawImage(down_icon, UI.SCR.X_MID + 128, profile_title_y - 2, UI.CCOL.GREY)
+          Graphics.drawImage(down_icon, section_x + 210, profile_choose_y - 2, UI.CCOL.GREY)
         end
-        Font.ftPrint(BFONT, UI.SCR.X_MID, profile_title_y + 30, 8, UI.SCR.X, 16, "Profile "..UI.ProfileQuery.curopt, UI.CCOL.GREY)
-        Font.ftPrint(BFONT, UI.SCR.X_MID, profile_title_y + 78, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].DESC, UI.CCOL.GREY)
-        Font.ftPrint(BFONT, UI.SCR.X_MID, profile_title_y + 128, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].ELF, Color.new(128,128,128, 110))
+        Font.ftPrint(BFONT, section_x + 26, profile_value_y, 0, section_w, 16, "Profile "..UI.ProfileQuery.curopt, UI.CCOL.GREY)
+
+        local path_label_y = profile_label_y + 80
+        local path_value_y = path_label_y + 24
+        Font.ftPrint(BFONT, section_x, path_label_y, 0, section_w, 16, "POPStarter Path", UI.CCOL.GREY)
+        Font.ftPrint(BFONT, section_x + 26, path_value_y, 0, section_w, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].ELF, Color.new(128,128,128, 110))
 
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
