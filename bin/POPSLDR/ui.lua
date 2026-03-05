@@ -1039,6 +1039,9 @@ UI = {
       end
       if UI.LAUNCHING then return false end
       if UI.Pad.Events.START and UI.CURSCENE ~= UI.SCENES.MPROFILE then
+        UI.SyncSettingsSelectionFromRuntime()
+        UI.ProfileDirty = false
+        UI.BdmaDirty = false
         UI.SceneChange(UI.SCENES.MPROFILE)
         return true
       end
@@ -1319,39 +1322,37 @@ UI = {
         if UI.HandleGlobalInput(false) then return end
 
         local function queue_exit(target_scene)
-          if UI.ProfileDirty or UI.BdmaDirty then
-            UI.ShowSavingOverlay()
-            PLDR.EnsurePopstarterDir()
-            PLDR.SELECTED_PROFILE = UI.ProfileQuery.curopt
-            PLDR.POPSTARTER_PATH = PLDR.PROFILES[UI.ProfileQuery.curopt].ELF
-            PLDR.BDMA_MODE_KEY = UI.BdmaModes[UI.BdmaModeIndex].key
-            UI.SavingActive = true
-            local save_token = nil
-            if type(PLDR.NextBdmaApplyToken) == "function" then
-              save_token = PLDR.NextBdmaApplyToken()
-            else
-              PLDR._bdma_apply_seq = (tonumber(PLDR._bdma_apply_seq) or 0) + 1
-              save_token = "bdma:"..tostring(PLDR._bdma_apply_seq)
-            end
-            local ok_run, result = xpcall(function()
-              local saved = PLDR.SaveSettingsAtomic()
-              local applied = true
-              if UI.BdmaDirty then
-                if type(PLDR.ApplyBdmaModeOnce) == "function" then
-                  applied = PLDR.ApplyBdmaModeOnce(PLDR.BDMA_MODE_KEY, save_token)
-                else
-                  applied = PLDR.ApplyBdmaMode(PLDR.BDMA_MODE_KEY)
-                end
+          UI.ShowSavingOverlay()
+          PLDR.EnsurePopstarterDir()
+          PLDR.SELECTED_PROFILE = UI.ProfileQuery.curopt
+          PLDR.POPSTARTER_PATH = PLDR.PROFILES[UI.ProfileQuery.curopt].ELF
+          PLDR.BDMA_MODE_KEY = UI.BdmaModes[UI.BdmaModeIndex].key
+          UI.SavingActive = true
+          local save_token = nil
+          if type(PLDR.NextBdmaApplyToken) == "function" then
+            save_token = PLDR.NextBdmaApplyToken()
+          else
+            PLDR._bdma_apply_seq = (tonumber(PLDR._bdma_apply_seq) or 0) + 1
+            save_token = "bdma:"..tostring(PLDR._bdma_apply_seq)
+          end
+          local ok_run, result = xpcall(function()
+            local saved = PLDR.SaveSettingsAtomic()
+            local applied = true
+            if UI.BdmaDirty then
+              if type(PLDR.ApplyBdmaModeOnce) == "function" then
+                applied = PLDR.ApplyBdmaModeOnce(PLDR.BDMA_MODE_KEY, save_token)
+              else
+                applied = PLDR.ApplyBdmaMode(PLDR.BDMA_MODE_KEY)
               end
-              return saved and applied
-            end, function(e) return e end)
-            UI.SavingActive = false
-            if ok_run and result then
-              UI.ProfileDirty = false
-              UI.BdmaDirty = false
-            else
-              UI.Notif_queue.add("Failed to save settings")
             end
+            return saved and applied
+          end, function(e) return e end)
+          UI.SavingActive = false
+          if ok_run and result then
+            UI.ProfileDirty = false
+            UI.BdmaDirty = false
+          else
+            UI.Notif_queue.add("Failed to save settings")
           end
           UI.SceneChange(target_scene)
         end
@@ -1928,7 +1929,10 @@ function UI.OnSceneExit(previous_scene, next_scene)
   end
 end
 UI.RecalcLayout()
-do
+function UI.SyncSettingsSelectionFromRuntime()
+  if type(PLDR.ReconcileBdmaModeWithEffectiveState) == "function" then
+    PLDR.ReconcileBdmaModeWithEffectiveState()
+  end
   local mode_key = PLDR.BDMA_MODE_KEY or "FAT32"
   for i = 1, #UI.BdmaModes do
     if UI.BdmaModes[i].key == mode_key then
@@ -1939,6 +1943,7 @@ do
   local selected_profile = tonumber(PLDR.SELECTED_PROFILE) or tonumber(PLDR.DEFAULT_PROFILE) or 1
   UI.ProfileQuery.curopt = CLAMP(selected_profile, 1, #PLDR.PROFILES)
 end
+UI.SyncSettingsSelectionFromRuntime()
 function Input_GetEvent()
   UI.Pad.Listen()
   if UI.Transition ~= nil and UI.Transition.active then

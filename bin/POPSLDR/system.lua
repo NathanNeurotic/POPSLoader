@@ -803,8 +803,67 @@ local function EncodeSettings()
   return table.concat(lines, "\n").."\n"
 end
 
+local function NormalizeBdmaModeKey(mode)
+  if mode == nil then
+    return nil
+  end
+  local value = string.upper(tostring(mode or ""))
+  value = string.gsub(value, "[%s_%-]", "")
+  if value == "FAT32" then
+    return "FAT32"
+  elseif value == "USBEXFAT" or value == "EXFAT" then
+    return "USBEXFAT"
+  elseif value == "MX4SIO" then
+    return "MX4SIO"
+  elseif value == "MMCE" then
+    return "MMCE"
+  end
+  return nil
+end
+
+local function ReadBdmaModeMarkerCompat(path)
+  local marker = ReadWholeFile(path)
+  if marker == nil then
+    return nil
+  end
+  marker = string.gsub(marker, "[\r\n]+", "")
+  if marker == "" then
+    return nil
+  end
+  return marker
+end
+
+local function ResolveEffectiveBdmaMode()
+  local marker_candidates = {
+    ReadBdmaModeMarkerCompat(BDMA_MODE_MARKER_PATH),
+    ReadBdmaModeMarkerCompat(POPSTARTER_PACK_ROOT.."/.pldr_bdma")
+  }
+  for i = 1, #marker_candidates do
+    local normalized = NormalizeBdmaModeKey(marker_candidates[i])
+    if normalized ~= nil then
+      return normalized
+    end
+  end
+  return nil
+end
+
+function PLDR.ReconcileBdmaModeWithEffectiveState()
+  local effective = ResolveEffectiveBdmaMode()
+  if effective ~= nil then
+    PLDR.BDMA_MODE_KEY = effective
+  else
+    PLDR.BDMA_MODE_KEY = NormalizeBdmaModeKey(PLDR.BDMA_MODE_KEY) or "FAT32"
+  end
+  return PLDR.BDMA_MODE_KEY
+end
+
 function PLDR.SaveSettingsAtomic()
-  PLDR.EnsurePopstarterDir()
+  if not PLDR.EnsurePopstarterDir() then
+    if UI ~= nil and UI.Notif_queue ~= nil then
+      UI.Notif_queue.add("Cannot access mc0:/POPSTARTER")
+    end
+    return false
+  end
   local data = EncodeSettings()
   local ok = WriteAtomic(PLDR.SETTINGS_PATH, data)
   if not ok and UI ~= nil and UI.Notif_queue ~= nil then
@@ -815,16 +874,19 @@ end
 
 function PLDR.LoadSettingsNonFatal()
   local defaults_profile = tonumber(PLDR.DEFAULT_PROFILE) or 1
+  PLDR.EnsurePopstarterDir()
   PLDR.SELECTED_PROFILE = defaults_profile
   PLDR.BDMA_MODE_KEY = "FAT32"
   if PLDR.PROFILES ~= nil and PLDR.PROFILES[defaults_profile] ~= nil then
     PLDR.POPSTARTER_PATH = PLDR.PROFILES[defaults_profile].ELF
   end
   if not doesFileExist(PLDR.SETTINGS_PATH) then
+    PLDR.ReconcileBdmaModeWithEffectiveState()
     return false
   end
   local data = ReadWholeFile(PLDR.SETTINGS_PATH)
   if data == nil then
+    PLDR.ReconcileBdmaModeWithEffectiveState()
     return false
   end
   local profile = tonumber(string.match(data, "\nPROFILE=([^\n]+)")) or tonumber(string.match(data, "^PROFILE=([^\n]+)"))
@@ -837,9 +899,8 @@ function PLDR.LoadSettingsNonFatal()
   if popstarter_path ~= nil and popstarter_path ~= "" then
     PLDR.POPSTARTER_PATH = popstarter_path
   end
-  if bdma_mode == "FAT32" or bdma_mode == "USBEXFAT" or bdma_mode == "MX4SIO" or bdma_mode == "MMCE" then
-    PLDR.BDMA_MODE_KEY = bdma_mode
-  end
+  PLDR.BDMA_MODE_KEY = NormalizeBdmaModeKey(bdma_mode) or PLDR.BDMA_MODE_KEY
+  PLDR.ReconcileBdmaModeWithEffectiveState()
   return true
 end
 
@@ -1204,9 +1265,6 @@ end
 
 function PLDR.ApplyBdmaMode(mode_key)
   local selected = mode_key or "FAT32"
-  if not PLDR.EnsurePopstarterUiAssets() then
-    return false
-  end
   if not PLDR.EnsurePopstarterDir() then
     if UI ~= nil and UI.Notif_queue ~= nil then
       UI.Notif_queue.add("Cannot access mc0:/POPSTARTER")
@@ -1221,9 +1279,8 @@ function PLDR.ApplyBdmaMode(mode_key)
     return true
   end
 
-  local last_applied = ReadBdmaModeMarker()
-  if last_applied == selected then
-    return true
+  if not PLDR.EnsurePopstarterUiAssets() then
+    return false
   end
 
   local suffix = BDMA_SUFFIX[selected]
@@ -1304,39 +1361,35 @@ function PLDR.EnsurePopstarterUiAssets()
 
   for i = 1, #BDMA_UI_FILES do
     local asset = BDMA_UI_FILES[i]
-    local paths = PLDR.BdmaSourceCandidates(asset.src)
-    local fd, source = PLDR.TryOpenFirst(paths)
-    if fd ~= nil and (type(fd) ~= "number" or fd >= 0) then
-      System.closeFile(fd)
-    end
-
     local dest = POPSTARTER_PACK_ROOT.."/"..asset.dst
-    if source == nil then
-      local bytes = nil
-      if type(System) == "table" and type(System.getEmbeddedAsset) == "function" then
-        local ok_embedded, embedded = pcall(System.getEmbeddedAsset, asset.src)
-        if ok_embedded and embedded ~= nil then
-          bytes = embedded
-        end
+
+    if not doesFileExist(dest) then
+      local paths = PLDR.BdmaSourceCandidates(asset.src)
+      local fd, source = PLDR.TryOpenFirst(paths)
+      if fd ~= nil and (type(fd) ~= "number" or fd >= 0) then
+        System.closeFile(fd)
       end
-      if bytes == nil then
-        if UI ~= nil and UI.Notif_queue ~= nil then
-          UI.Notif_queue.add("Missing BDMA UI source (tried):\n"..table.concat(paths, "\n"))
+
+      if source == nil then
+        local bytes = nil
+        if type(System) == "table" and type(System.getEmbeddedAsset) == "function" then
+          local ok_embedded, embedded = pcall(System.getEmbeddedAsset, asset.src)
+          if ok_embedded and embedded ~= nil then
+            bytes = embedded
+          end
         end
-        return false
-      end
-      local expected = string.len(bytes)
-      local current_size = GetFileSizeSafe(dest)
-      if current_size == nil or current_size ~= expected then
+        if bytes == nil then
+          if UI ~= nil and UI.Notif_queue ~= nil then
+            UI.Notif_queue.add("Missing BDMA UI source (tried):\n"..table.concat(paths, "\n"))
+          end
+          return false
+        end
         local ok_write, wrote = pcall(WriteBytesAtomicBounded, bytes, dest)
         if not ok_write or not wrote then
           return false
         end
-      end
-    else
-      local src_size = GetFileSizeSafe(source)
-      local dst_size = GetFileSizeSafe(dest)
-      if src_size == nil or dst_size == nil or src_size ~= dst_size then
+      else
+        local src_size = GetFileSizeSafe(source)
         local ok_copy, copied = pcall(CopyExternalAtomicBounded, source, dest, src_size)
         if not ok_copy or not copied then
           return false
@@ -1347,7 +1400,6 @@ function PLDR.EnsurePopstarterUiAssets()
 
   return true
 end
-
 local function RemoveDirectoryRecursive(path)
   local normalized = NormalizeDirPath(path)
   if not doesFolderExist(normalized) then
