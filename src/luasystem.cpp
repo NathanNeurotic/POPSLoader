@@ -37,6 +37,9 @@ extern unsigned int size_cdfs_irx;
 
 static bool LoadIrxCheckedBuffer(const char *name, unsigned char *irx, unsigned int size, int *out_id, int *out_ret);
 static void BuildMassRootPath(int index, char *out_root, size_t out_sz);
+static bool RefreshMassBackendCache();
+static bool GetMassRootByBackendNameInternal(const char *backend_name, char *out_root, size_t out_sz);
+static bool ProbeDir(const char *path, int *out_ret);
 
 #ifndef USBMASS_IOCTL_GET_DRIVERNAME
 #define USBMASS_IOCTL_GET_DRIVERNAME 0x0003
