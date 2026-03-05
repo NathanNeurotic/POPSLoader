@@ -1242,15 +1242,15 @@ UI = {
         local right_icon = IMG.right
         local up_icon    = IMG.up
         local down_icon  = IMG.down
-        local CX = 320
-        local H_HDR = 40
         local H_ROW = 38
-        local GAP = 52
-        local BLOCK_GAP = 26
+        local GAP = 30
+        local GROUP_GAP = 22
         local INDENT = 24
-        local PAD_ICON = 12
         local PAD_LABEL_VALUE = 14
         local icon_scale = 0.55
+        local X_TEXT = 170
+        local X_ICON_L = 130
+        local X_ICON_R = 490
 
         local function TextWidth(text)
           return string.len(tostring(text or "")) * 8
@@ -1270,55 +1270,43 @@ UI = {
           Graphics.drawScaleImage(icon, x, icon_y, icon_w, icon_h, UI.CCOL.GREY)
         end
 
-        local left_w = IconSize(left_icon)
-        local right_w = IconSize(right_icon)
-        local up_w = IconSize(up_icon)
-        local down_w = IconSize(down_icon)
-
         local bdma_label = "BDMA Mode:"
         local profile_label = "POPStarter Profile:"
-        local choose_profile_text = "Profile "..UI.ProfileQuery.curopt
+        local profile_value = "Profile "..UI.ProfileQuery.curopt
         local pop_path_label = "POPStarter Path:"
         local pop_path_value = PLDR.PROFILES[UI.ProfileQuery.curopt].ELF
-        local dkwdrv_label = "DKWDRV Path: (display-only; no function right now)"
+        local dkwdrv_label = "DKWDRV Path:"
         local dkwdrv_value = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
 
-        local bdma_row_w = left_w + PAD_ICON + TextWidth(bdma_label) + PAD_LABEL_VALUE + TextWidth(mode.label) + PAD_ICON + right_w
-        local profile_row_w = up_w + PAD_ICON + TextWidth(profile_label) + PAD_LABEL_VALUE + TextWidth(choose_profile_text) + PAD_ICON + down_w
-        local path_block_w = math.max(TextWidth(pop_path_label), INDENT + TextWidth(pop_path_value), TextWidth(dkwdrv_label), INDENT + TextWidth(dkwdrv_value))
-        local content_block_w = math.max(bdma_row_w, profile_row_w, path_block_w)
-        local block_left_x = math.floor((UI.SCR.X - content_block_w) / 2)
-
-        local total_h = (2 * H_ROW) + GAP + BLOCK_GAP + H_HDR + H_ROW + BLOCK_GAP + H_HDR + H_ROW
-        local y = 118
+        local y = 140
         local footer_top_y = (layout.FOOTER_ICON_Y or (UI.SCR.Y - (layout.BTN_BAR_SAFE_BOTTOM or 56))) - 24
+        local total_h = (2 * H_ROW) + GROUP_GAP + H_ROW + H_ROW + GAP + H_ROW + H_ROW
         if (y + total_h) > footer_top_y then
           y = footer_top_y - total_h
         end
 
-        local x = block_left_x
-        Font.ftPrint(BFONT, x + left_w + PAD_ICON, y, 0, UI.SCR.X - x, 16, bdma_label, UI.CCOL.GREY)
-        Font.ftPrint(BFONT, x + left_w + PAD_ICON + TextWidth(bdma_label) + PAD_LABEL_VALUE, y, 0, UI.SCR.X - x, 16, mode.label, UI.CCOL.GREY)
-        DrawArrow(left_icon, x, y)
-        DrawArrow(right_icon, x + left_w + PAD_ICON + TextWidth(bdma_label) + PAD_LABEL_VALUE + TextWidth(mode.label) + PAD_ICON, y)
+        Font.ftPrint(BFONT, X_TEXT, y, 0, UI.SCR.X - X_TEXT, 16, bdma_label, UI.CCOL.GREY)
+        Font.ftPrint(BFONT, X_TEXT + TextWidth(bdma_label) + PAD_LABEL_VALUE, y, 0, UI.SCR.X - X_TEXT, 16, mode.label, UI.CCOL.GREY)
+        DrawArrow(left_icon, X_ICON_L, y)
+        DrawArrow(right_icon, X_ICON_R, y)
         y = y + H_ROW
 
-        Font.ftPrint(BFONT, x + up_w + PAD_ICON, y, 0, UI.SCR.X - x, 16, profile_label, UI.CCOL.GREY)
-        Font.ftPrint(BFONT, x + up_w + PAD_ICON + TextWidth(profile_label) + PAD_LABEL_VALUE, y, 0, UI.SCR.X - x, 16, choose_profile_text, UI.CCOL.GREY)
-        DrawArrow(up_icon, x, y)
-        DrawArrow(down_icon, x + up_w + PAD_ICON + TextWidth(profile_label) + PAD_LABEL_VALUE + TextWidth(choose_profile_text) + PAD_ICON, y)
+        Font.ftPrint(BFONT, X_TEXT, y, 0, UI.SCR.X - X_TEXT, 16, profile_label, UI.CCOL.GREY)
+        Font.ftPrint(BFONT, X_TEXT + TextWidth(profile_label) + PAD_LABEL_VALUE, y, 0, UI.SCR.X - X_TEXT, 16, profile_value, UI.CCOL.GREY)
+        DrawArrow(up_icon, X_ICON_L, y)
+        DrawArrow(down_icon, X_ICON_R, y)
+        y = y + H_ROW
+        y = y + GROUP_GAP
+
+        Font.ftPrint(BFONT, X_TEXT, y, 0, UI.SCR.X - X_TEXT, 16, pop_path_label, UI.CCOL.GREY)
+        y = y + H_ROW
+        Font.ftPrint(BFONT, X_TEXT + INDENT, y, 0, UI.SCR.X - X_TEXT, 16, pop_path_value, Color.new(128,128,128, 110))
         y = y + H_ROW
         y = y + GAP
 
-        Font.ftPrint(BFONT, x, y, 0, UI.SCR.X - x, 16, pop_path_label, UI.CCOL.GREY)
-        y = y + H_HDR
-        Font.ftPrint(BFONT, x + INDENT, y, 0, UI.SCR.X - x, 16, pop_path_value, Color.new(128,128,128, 110))
+        Font.ftPrint(BFONT, X_TEXT, y, 0, UI.SCR.X - X_TEXT, 16, dkwdrv_label, UI.CCOL.GREY)
         y = y + H_ROW
-        y = y + BLOCK_GAP
-
-        Font.ftPrint(BFONT, x, y, 0, UI.SCR.X - x, 16, dkwdrv_label, UI.CCOL.GREY)
-        y = y + H_HDR
-        Font.ftPrint(BFONT, x + INDENT, y, 0, UI.SCR.X - x, 16, dkwdrv_value, Color.new(128,128,128, 110))
+        Font.ftPrint(BFONT, X_TEXT + INDENT, y, 0, UI.SCR.X - X_TEXT, 16, dkwdrv_value, Color.new(128,128,128, 110))
 
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
