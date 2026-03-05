@@ -803,6 +803,60 @@ local function EncodeSettings()
   return table.concat(lines, "\n").."\n"
 end
 
+local function NormalizeBdmaModeKey(mode)
+  if mode == nil then
+    return nil
+  end
+  local value = string.upper(tostring(mode or ""))
+  value = string.gsub(value, "[%s_%-]", "")
+  if value == "FAT32" then
+    return "FAT32"
+  elseif value == "USBEXFAT" or value == "EXFAT" then
+    return "USBEXFAT"
+  elseif value == "MX4SIO" then
+    return "MX4SIO"
+  elseif value == "MMCE" then
+    return "MMCE"
+  end
+  return nil
+end
+
+local function ReadBdmaModeMarkerCompat(path)
+  local marker = ReadWholeFile(path)
+  if marker == nil then
+    return nil
+  end
+  marker = string.gsub(marker, "[\r\n]+", "")
+  if marker == "" then
+    return nil
+  end
+  return marker
+end
+
+local function ResolveEffectiveBdmaMode()
+  local marker_candidates = {
+    ReadBdmaModeMarkerCompat(BDMA_MODE_MARKER_PATH),
+    ReadBdmaModeMarkerCompat(POPSTARTER_PACK_ROOT.."/.pldr_bdma")
+  }
+  for i = 1, #marker_candidates do
+    local normalized = NormalizeBdmaModeKey(marker_candidates[i])
+    if normalized ~= nil then
+      return normalized
+    end
+  end
+  return nil
+end
+
+function PLDR.ReconcileBdmaModeWithEffectiveState()
+  local effective = ResolveEffectiveBdmaMode()
+  if effective ~= nil then
+    PLDR.BDMA_MODE_KEY = effective
+  else
+    PLDR.BDMA_MODE_KEY = NormalizeBdmaModeKey(PLDR.BDMA_MODE_KEY) or "FAT32"
+  end
+  return PLDR.BDMA_MODE_KEY
+end
+
 function PLDR.SaveSettingsAtomic()
   PLDR.EnsurePopstarterDir()
   local data = EncodeSettings()
@@ -821,10 +875,12 @@ function PLDR.LoadSettingsNonFatal()
     PLDR.POPSTARTER_PATH = PLDR.PROFILES[defaults_profile].ELF
   end
   if not doesFileExist(PLDR.SETTINGS_PATH) then
+    PLDR.ReconcileBdmaModeWithEffectiveState()
     return false
   end
   local data = ReadWholeFile(PLDR.SETTINGS_PATH)
   if data == nil then
+    PLDR.ReconcileBdmaModeWithEffectiveState()
     return false
   end
   local profile = tonumber(string.match(data, "\nPROFILE=([^\n]+)")) or tonumber(string.match(data, "^PROFILE=([^\n]+)"))
@@ -837,9 +893,8 @@ function PLDR.LoadSettingsNonFatal()
   if popstarter_path ~= nil and popstarter_path ~= "" then
     PLDR.POPSTARTER_PATH = popstarter_path
   end
-  if bdma_mode == "FAT32" or bdma_mode == "USBEXFAT" or bdma_mode == "MX4SIO" or bdma_mode == "MMCE" then
-    PLDR.BDMA_MODE_KEY = bdma_mode
-  end
+  PLDR.BDMA_MODE_KEY = NormalizeBdmaModeKey(bdma_mode) or PLDR.BDMA_MODE_KEY
+  PLDR.ReconcileBdmaModeWithEffectiveState()
   return true
 end
 
