@@ -1,31 +1,34 @@
-Last updated: 2026-03-05
-
 # STATE
 
-## Purpose
-Current operational snapshot for humans and AI agents.
+This file is the current snapshot of “where the project stands” and what remains.
 
-## Current Goal
-- [ ] Finalize AI-oriented repo docs with concrete POPSLoader architecture, invariants, and usage guidance.
+## Project
+- Name: POPSLoader
+- Purpose: PS2 homebrew launcher/manager for POPStarter/POPS workflows, including BDMA backends and device handling.
 
-## Current PR Objective
-- [ ] Replace placeholder docs with repo-grounded content (`README.md`, `ARCHITECTURE.md`, `TRUTHSHEET.md`, `STATE.md`).
-- [ ] Add a technical component map (`COMPONENTS.md`) to complement high-level architecture docs.
+## Current guarantees (must remain true)
+- Settings load on boot (when present) and UI labels reflect actual persisted/runtime state.
+- Settings save only when confirming/leaving Settings page.
+- MX4SIO vs USB classification uses mount-driver identity rules (do not guess).
+- Unknown/empty driver identity is excluded from both MX4SIO and USB pages (never default unknown to USB).
+- No debug logging in production builds unless explicitly requested.
 
-## Known Regressions / Gaps
-- [ ] SMB path in main menu is currently marked `Not Implemented Yet` in UI.
-- [ ] One menu path (`UI.MainMenu.OPT == 3`) is currently marked `Not Implemented Yet`.
-- [ ] TODO: Add validated reproduction details for any runtime regressions as they are confirmed.
+## Known open work (high-level)
+- ART system integration (port from other version).
+- Editable POPStarter path/profile via on-screen keyboard.
+- Editable DKWDRV path via on-screen keyboard.
+- Global “Hide UI text” toggle (excluded: Splash/Credits/Settings/Gameslist text).
+- MX4SIO first-entry quirk masking (one init, two mount attempts with ~1s delay).
+- Packaging change: remove POPS/*.tm2 from artifacts and ship POPS/PATCH5.bin instead.
+- Add BDMA modes: SMB, iLink, UDPBD (UDPBD is highest complexity).
+- Strip debug/logging and reduce size; improve performance.
+- Settings-save progress indicator.
+- Add mc?:/ alias support (try mc0 then mc1).
 
-## Current Constraints
-- [ ] Minimal diffs only; no unrelated code or formatting churn.
-- [ ] Avoid touching unrelated Lua/C/C++ files for docs-only tasks.
-- [ ] Bounded loops only.
-- [ ] Avoid adding logging unless explicitly requested.
-- [ ] Preserve boot/launch pipeline and device detection logic unless explicitly in scope.
-
-## How to Update This File
-- [ ] Update `Last updated` every time this file changes.
-- [ ] Keep entries short, factual, and tied to active work.
-- [ ] Move durable architectural decisions to `DECISIONS.md`.
-- [ ] Remove resolved items promptly to keep this snapshot current.
+## Release readiness checklist (rolling)
+- [ ] No overlapping UI text; settings layout stable with long paths
+- [ ] Settings persistence verified (change -> leave settings -> reboot -> labels correct)
+- [ ] MX4SIO entry works with known double-entry quirk masked
+- [ ] Backends validated on real hardware (USB/MX4SIO/MMCE/…)
+- [ ] Artifact packaging matches expected files
+- [ ] No debug logs, acceptable ELF/artifact size

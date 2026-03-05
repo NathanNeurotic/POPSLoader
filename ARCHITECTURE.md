@@ -1,43 +1,49 @@
-Last updated: 2026-03-05
-
 # ARCHITECTURE
 
-## Purpose
-High-level map of POPSLoader structure, flow, and boundaries.
+This document describes the intended high-level architecture. It should not be treated as a perfect description of current code if the implementation differs.
 
-## Top-Level Components
-- [ ] `src/` EE core runtime (`main.cpp`, rendering/audio/input, Lua host bindings).
-- [ ] `bin/POPSLDR/` Lua orchestration and UI (`system.lua`, `ui.lua`, profiles, assets).
-- [ ] `iop/embed/` embedded IRX modules loaded at runtime.
-- [ ] `iop/bdm_query/` RPC module for querying block-device backend identity.
-- [ ] `modules/` optional controller modules (`ds34bt`, `ds34usb`, `pademu`).
-- [ ] `Makefile` + `.github/workflows/compilation.yml` build/embed/package pipeline.
+## High-level components (conceptual)
+- UI layer
+  - Renders menus/pages
+  - Handles input
+  - Shows user-facing labels, icons, and notifications
+- System/Backend layer
+  - Device/backends initialization (USB/MX4SIO/MMCE/HDD/etc.)
+  - BDMA mode selection and initialization
+  - Filesystem probing and mount identity queries
+- Settings layer
+  - Loads settings on boot
+  - Applies settings to runtime
+  - Saves settings only on confirm/leave Settings page
+- Packaging/Assets
+  - Embedded or shipped assets (icons/artwork/binaries)
+  - Release artifacts layout controlled by CI workflow
 
-## Data / Control Flow
-- [ ] ELF startup (`src/main.cpp`) initializes IOP/runtime and executes boot Lua.
-- [ ] Boot script (`etc/boot.lua`) normalizes boot context and requires `system.lua`.
-- [ ] Runtime logic (`bin/POPSLDR/system.lua`) prepares devices, assets, and launch policies.
-- [ ] UI logic (`bin/POPSLDR/ui.lua`) handles scene navigation and user actions.
-- [ ] Device enumeration/classification uses mass roots + mount driver identity (`sdc` => MX4SIO path).
-- [ ] Game discovery scans device `POPS/` folders for `.vcd` files.
-- [ ] Launch path resolves POPStarter selector/device mode and transfers control.
+## Data flows (conceptual)
+### Boot
+1. Initialize core system modules
+2. Load settings (if present)
+3. Apply settings to runtime
+4. Enter UI main flow
 
-## Key Boundaries
-- [ ] Keep boot and launch pipeline behavior stable unless task explicitly targets startup/launch.
-- [ ] Keep device detection/classification logic stable and isolated (Lua + `luasystem.cpp` + `bdm_query`).
-- [ ] Keep UI scene code separate from low-level backend probing details.
-- [ ] Keep embedded assets/IRX packaging changes isolated to build+asset paths.
+### Settings edit
+1. User changes selection (no immediate persistence)
+2. User confirms/leaves Settings page
+3. Save settings atomically
+4. Update UI labels/state
 
-## Where to Add New Features vs Fixes
-- [ ] UI/UX features: `bin/POPSLDR/ui.lua` and related image/text assets.
-- [ ] Device/backend behavior: `bin/POPSLDR/system.lua` plus `src/luasystem.cpp` if native hooks are required.
-- [ ] Low-level module behavior: `iop/` and `src/` only when Lua-level changes are insufficient.
-- [ ] Build/package changes: `Makefile` and CI workflow.
-- [ ] Bug fixes should land closest to defect source; avoid cross-layer rewrites.
+### Device identity (conceptual rule)
+- Classify mounted roots by querying the mount driver name from the mounted root itself (not by guessing slot index).
+- If driver contains “sdc” (case-insensitive) => MX4SIO
+- If driver is known and not “sdc” => USB
+- If driver unknown/nil/empty => exclude from both pages
 
-## Dependency Rules
-- [ ] Lua UI/runtime may depend on exposed `System.*` APIs; avoid bypassing through ad hoc globals.
-- [ ] EE core (`src/`) can embed/use Lua/assets and IRX blobs; embedded data must not depend on runtime state.
-- [ ] IOP modules remain isolated and communicate through explicit RPC/IOCTL boundaries.
-- [ ] Optional controller modules must not become hard runtime requirements for core boot/launch.
-- [ ] Runtime behavior must remain deterministic for the same inputs/device state.
+## Non-goals
+- No unbounded scanning/retry loops.
+- No adding debug logging in production without explicit request.
+- No “smart guessing” for backend identity when driver identity is unknown.
+
+## Unknowns / Verify
+- TODO: Confirm exact module/file boundaries in this repo (e.g., which files own UI vs system vs settings).
+- TODO: Confirm settings storage format and filenames (document here once verified).
+- TODO: Confirm final asset strategy post-ART integration (what stays embedded vs shipped).

@@ -1,40 +1,45 @@
-Last updated: 2026-03-05
-
 # RULES
 
-## Purpose
-Short, enforceable repository rules.
+These rules exist to prevent regressions and keep changes reviewable.
 
-## Do
-- [ ] Keep diffs minimal and task-scoped.
-- [ ] Use bounded loops only.
-- [ ] Preserve determinism in logic and outputs.
-- [ ] Preserve boot/launch pipeline and device detection unless task explicitly targets them.
-- [ ] Document assumptions with `TODO` instead of guessing project facts.
+## Scope discipline
+- Make changes as small and local as possible.
+- One objective per PR whenever feasible.
+- Avoid “drive-by refactors” mixed with feature work.
+- Prefer deterministic, bounded logic (no unbounded scans, no infinite retries).
 
-## Don't
-- [ ] Do not run destructive commands without explicit instruction.
-- [ ] Do not touch unrelated Lua/C/C++ files.
-- [ ] Do not add logging unless explicitly requested.
-- [ ] Do not introduce broad refactors without explicit approval.
-- [ ] Do not mix unrelated changes in one commit.
+## Do-not-break list (non-negotiable)
+- POPStarter launching flow must continue to work.
+- BDMA mode detection/selection/persistence must not regress.
+- MX4SIO vs USB separation rules must remain correct (mount driver identity remains authoritative).
+- Settings must not “half apply” during adjustments; apply/persist only on confirm/leave Settings page.
+- No added debug logging in release builds (unless explicitly requested).
 
-## Bounded Logic Only
-- [ ] Every loop must have a clear bound or termination condition.
-- [ ] Retries must have explicit max attempts and exit behavior.
-- [ ] Polling must use explicit limits and fail paths.
+## Persistence rules
+- Settings load on boot if present.
+- Settings save only when confirming/leaving Settings page (not while adjusting controls).
+- UI labels must reflect persisted/runtime state (no “fat32 label while exFAT is active” situations).
 
-## Logging Policy
-- [ ] Default: no new logs.
-- [ ] If explicitly requested: keep logs minimal, scoped, and removable.
-- [ ] Never log secrets, keys, or sensitive identifiers.
+## UI rules
+- No layout jitter from dynamic string lengths (icons/arrows must not shift based on preceding text length).
+- Keep PS2-safe performance: avoid heavy per-frame allocations and repeated filesystem scans.
+- Any new UI toggle must not affect excluded pages unless specified.
 
-## Error Handling Expectations
-- [ ] Fail fast with actionable error messages.
-- [ ] Avoid silent failures and broad catch-all suppression.
-- [ ] Preserve existing error contracts unless change is intentional and documented.
+## Performance and size
+- Avoid new large embedded assets unless justified.
+- Prefer reusing assets and caching where safe.
+- Remove/avoid verbose logs and debug strings in production.
 
-## Determinism Policy
-- [ ] Avoid nondeterministic ordering where output matters.
-- [ ] If randomness is required, seed and document behavior.
-- [ ] Keep time/external-state dependencies explicit and bounded.
+## Testing expectations (minimum)
+- Verify on at least one real-hardware path for each affected backend:
+  - USB
+  - MX4SIO
+  - MMCE
+  - HDD (if applicable)
+- Validate settings persistence across reboot.
+- Validate “missing file” handling (missing POPSTARTER.ELF / DKWDRV.ELF) is graceful.
+
+## PR hygiene
+- Include: summary, diffstat, and a short test plan.
+- Mention any behavior changes explicitly.
+- If behavior is unchanged, say so explicitly.

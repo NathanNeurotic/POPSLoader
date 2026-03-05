@@ -1,45 +1,36 @@
-Last updated: 2026-03-05
-
 # DECISIONS
 
-## Purpose
-Lightweight ADR log for architectural and process decisions.
+This file tracks project decisions so future changes don’t accidentally reverse them.
 
-## ADR Template
-```markdown
-ID: ADR-XXXX
-Date: YYYY-MM-DD
-Status: Proposed | Accepted | Superseded | Deprecated
+Format:
+- Date: YYYY-MM-DD
+- Decision:
+- Rationale:
+- Implications:
 
-Context:
-- <problem, constraints, and background>
+---
 
-Decision:
-- <what was decided>
+## 2026-03-05 — Settings persistence is commit-on-exit only
+- Decision: Settings are applied/saved only when confirming or leaving the Settings page; not while adjusting controls.
+- Rationale: Prevent partial/accidental persistence and mismatched runtime/UI states.
+- Implications:
+  - Any settings UI work must preserve this behavior.
+  - UI labels must reflect persisted/runtime state on boot and after saving.
 
-Consequences:
-- Positive: <benefits>
-- Negative: <tradeoffs>
+## 2026-03-05 — Mount-driver identity is authoritative for MX4SIO vs USB
+- Decision: Classify mounted roots by querying the mount driver name from the mounted root; do not guess from slot indices.
+- Rationale: Avoid false positives and regression from backend list scanning/heuristics.
+- Implications:
+  - Unknown/nil/empty driver identity excludes the mount from both pages.
+  - “sdc” (case-insensitive) indicates MX4SIO.
 
-Alternatives considered:
-- <option A> - <why rejected>
-- <option B> - <why rejected>
-```
+## 2026-03-05 — Avoid debug/logging in production
+- Decision: Do not add debug logging unless explicitly requested; prefer smaller footprint.
+- Rationale: ELF size and runtime performance.
+- Implications:
+  - Remove legacy debug logs where safe during optimization passes.
 
-## ADR-0000
-- ID: ADR-0000
-- Date: 2026-03-05
-- Status: Proposed
-
-### Context
-- TODO: No confirmed project-specific ADRs captured yet.
-
-### Decision
-- TODO: Add first accepted decision when project facts are confirmed.
-
-### Consequences
-- Positive: Establishes a consistent ADR format.
-- Negative: Contains placeholders until real decisions are recorded.
-
-### Alternatives
-- Keep decisions informal in PR threads only (rejected: poor long-term traceability).
+## TODO decisions (fill once implemented)
+- TODO: ART asset strategy (embedded vs shipped files)
+- TODO: Packaging decision: PATCH5.bin replaces POPS/*.tm2 in release artifacts
+- TODO: Network BDMA decisions (SMB/iLink/UDPBD behaviors and fallbacks)

@@ -1,100 +1,40 @@
-Last updated: 2026-03-05
-
 # PROMPTS
 
-## Bug Fix (Minimal Diff)
-```markdown
-Goal:
-- Fix: <bug summary>
+This file stores “known-good” prompt patterns for AI-assisted contributions (Codex) to minimize regressions.
 
-Non-goals:
-- No refactors, no feature additions, no formatting-only churn.
+## General PR prompt template
+Use this when asking Codex to implement a bounded change.
 
-Allowed files:
-- <explicit file paths or directories>
+### Template
+- Repo/branch: <fill in>
+- Objective: <one sentence>
+- Files allowed to change: <explicit list>
+- Forbidden changes: logging, unrelated refactors, UI layout changes, etc.
+- Behavioral invariants: <do-not-break list>
+- Deliverables: diffstat, diff, test plan
 
-Constraints:
-- Minimal diff only.
-- Bounded loops only.
-- Avoid touching unrelated Lua/C/C++ files.
-- Do not add logging unless explicitly requested.
-- Preserve boot/launch and device detection logic unless this bug is in those areas.
+## Examples (fill/extend over time)
 
-Deliverables:
-- Summary, diffstat, key diff, test plan/results.
+### Example: Bounded backend behavior fix
+- Objective: Mask MX4SIO first-entry quirk by performing exactly two mount attempts after one init, with ~1s delay between attempts.
+- Files allowed: <explicit list>
+- Constraints:
+  - No new retry systems elsewhere
+  - No identity rule changes
+  - No added logging
+  - Deterministic/bounded behavior only
+- Deliverables: diffstat, diff, test plan
 
-Test plan:
-- Run targeted checks first: <TODO commands>
-- Add manual verification steps for uncovered paths.
-```
+### Example: UI layout fix
+- Objective: Fix Settings page alignment and prevent icon shift due to variable string lengths.
+- Constraints:
+  - No behavioral changes to backend logic
+  - No new assets unless required
+  - Keep layout deterministic
+- Deliverables: before/after screenshots if possible + diff
 
-## Feature (Guardrails)
-```markdown
-Goal:
-- Add: <feature summary>
-
-Non-goals:
-- No broad cleanup/refactor outside feature scope.
-
-Allowed files:
-- <explicit file paths or directories>
-
-Constraints:
-- Keep architecture boundaries intact.
-- Bounded logic only.
-- Backward compatibility unless explicitly approved.
-- No logging additions unless requested.
-
-Deliverables:
-- Implementation, docs update, risk notes, test plan/results.
-
-Test plan:
-- New/updated targeted tests: <TODO commands>
-- Regression checks for adjacent behavior.
-```
-
-## Refactor (Explicit Approval Required)
-```markdown
-Goal:
-- Refactor: <scope>
-
-Non-goals:
-- No behavior changes.
-
-Allowed files:
-- <explicit file paths or directories>
-
-Constraints:
-- Proceed only with explicit refactor approval.
-- Preserve public interfaces unless approved.
-- Bounded loops only.
-- Keep commit(s) small and reviewable.
-
-Deliverables:
-- Before/after rationale, migration notes (if any), test plan/results.
-
-Test plan:
-- Baseline + post-refactor parity checks: <TODO commands>
-```
-
-## Investigate + Propose Plan Only
-```markdown
-Goal:
-- Investigate: <question/problem>
-
-Non-goals:
-- No code or config changes.
-
-Allowed files:
-- Read-only across relevant files.
-
-Constraints:
-- Gather evidence from repo only.
-- Do not infer unknown project facts; mark TODO where uncertain.
-
-Deliverables:
-- Findings, likely root cause(s), ranked options, recommended plan.
-
-Test plan:
-- If implementation follows, propose targeted validation steps.
-```
+## Prompt hygiene rules
+- Always specify the file allowlist.
+- Always specify “no unrelated changes.”
+- Require full diffs and minimal commits.
+- Require a test plan appropriate for PS2 hardware constraints.
