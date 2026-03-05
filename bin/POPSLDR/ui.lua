@@ -1246,11 +1246,11 @@ UI = {
         local CX = UI.SCR.X_MID
         local H_ROW = 38
         local GAP_SECTION = 34
-        local GAP_ROW = 18
+        local GAP_ROW = 10
         local GAP_SMALL = 10
-        local ICON_SPREAD = 120
+        local ICON_SPREAD = 170
         local ICON_SPREAD2 = 170
-        local icon_scale = 0.55
+        local icon_scale = 1
 
         local function IconSize(icon)
           if icon == nil then return 0, 0 end
