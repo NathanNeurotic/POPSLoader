@@ -1339,11 +1339,10 @@ UI = {
           queue_exit(UI.SCENES.MMAIN)
         end
         local labels, order = UI.Footer.ResolveLegend({
-          order = UI.Footer.order_with_start_r2,
-          order_id = "start_r2",
+          order = UI.Footer.order_with_start,
+          order_id = "start",
           circle = UI.Footer.labels.circle_other,
           cross = UI.Footer.labels.cross_select,
-          square = "BDMA Mode",
           start = UI.Footer.labels.start_reset
         })
         UI.Footer.Draw(labels, order)
