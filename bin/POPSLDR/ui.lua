@@ -1286,6 +1286,11 @@ UI = {
         y = y + H_ROW
         y = y + GAP
 
+        local footer_top_y = (layout.FOOTER_ICON_Y or (UI.SCR.Y - (layout.BTN_BAR_SAFE_BOTTOM or 56))) - 24
+        local path_block_h = H_HDR + H_ROW
+        if (y + path_block_h) > footer_top_y then
+          y = footer_top_y - path_block_h
+        end
         Font.ftPrint(BFONT, CX, y, 8, UI.SCR.X, 16, "POPStarter Path", UI.CCOL.GREY)
         y = y + H_HDR
         Font.ftPrint(BFONT, CX, y, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].ELF, Color.new(128,128,128, 110))
