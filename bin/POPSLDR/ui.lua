@@ -1237,23 +1237,82 @@ UI = {
       Play = function ()
         local layout = UI.LAYOUT
         local profcnt = #PLDR.PROFILES
-        Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Choose POPStarter Profile", UI.CCOL.GREY)
-        Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 30, 8, UI.SCR.X, 16, "Profile "..UI.ProfileQuery.curopt, UI.CCOL.GREY)
-        Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 140, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].DESC, UI.CCOL.GREY)
-        Font.ftPrint(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 220, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].ELF, Color.new(128,128,128, 110))
-
+        Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Settings", UI.CCOL.GREY)
         local mode = UI.BdmaModes[UI.BdmaModeIndex]
-        local mode_y = layout.TITLE_Y + 92
-        local left_icon = IMG.left
+        local left_icon  = IMG.left
         local right_icon = IMG.right
-        Font.ftPrint(BFONT, UI.SCR.X_MID - 180, mode_y, 0, 200, 16, "BDMA Mode", UI.CCOL.GREY)
-        if left_icon ~= nil then
-          Graphics.drawImage(left_icon, UI.SCR.X_MID - 36, mode_y - 2, UI.CCOL.GREY)
+        local up_icon    = IMG.up
+        local down_icon  = IMG.down
+        local CX = UI.SCR.X_MID
+        local H_ROW = 28
+        local GAP_TITLE_TO_FIRST = 44
+        local BLOCK_GAP = 34
+        local ICON_SPREAD = 120
+        local ICON_SPREAD2 = 170
+        local icon_scale = 0.55
+
+        local function IconSize(icon)
+          if icon == nil then return 0, 0 end
+          local icon_w = math.floor(Graphics.getImageWidth(icon) * icon_scale + 0.5)
+          local icon_h = math.floor(Graphics.getImageHeight(icon) * icon_scale + 0.5)
+          return icon_w, icon_h
         end
-        Font.ftPrint(BFONT, UI.SCR.X_MID, mode_y, 8, UI.SCR.X, 16, mode.label, UI.CCOL.GREY)
-        if right_icon ~= nil then
-          Graphics.drawImage(right_icon, UI.SCR.X_MID + 18, mode_y - 2, UI.CCOL.GREY)
+
+        local function DrawCentered(text, row_y, color)
+          Font.ftPrint(BFONT, CX, row_y, 8, UI.SCR.X, 16, text, color or UI.CCOL.GREY)
         end
+
+        local function DrawIconOnRow(icon, center_x, row_y)
+          if icon == nil then return end
+          local icon_w, icon_h = IconSize(icon)
+          local icon_x = math.floor(center_x - (icon_w / 2))
+          local icon_y = row_y + math.floor((H_ROW - icon_h) / 2)
+          Graphics.drawScaleImage(icon, icon_x, icon_y, icon_w, icon_h, UI.CCOL.GREY)
+        end
+
+        local mode_text = "<"..tostring(mode.label or "")..">"
+        local profile_text = "POPStarter Profile: <Profile "..UI.ProfileQuery.curopt..">"
+        local pop_path_label = "POPStarter Path:"
+        local pop_path_value = "<"..tostring(PLDR.PROFILES[UI.ProfileQuery.curopt].ELF or "")..">"
+        local dkwdrv_label = "DKWDRV Path:"
+        local dkwdrv_value = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
+
+        local y = layout.TITLE_Y + GAP_TITLE_TO_FIRST
+        local footer_top_y = (layout.FOOTER_ICON_Y or (UI.SCR.Y - (layout.BTN_BAR_SAFE_BOTTOM or 56))) - 24
+        local total_h = (7 * H_ROW) + (2 * BLOCK_GAP)
+        if (y + total_h) > footer_top_y then
+          y = footer_top_y - total_h
+        end
+        if y < (layout.TITLE_Y + GAP_TITLE_TO_FIRST) then
+          y = layout.TITLE_Y + GAP_TITLE_TO_FIRST
+        end
+
+        DrawCentered("BDMA:", y)
+        y = y + H_ROW
+
+        DrawIconOnRow(left_icon, CX - ICON_SPREAD, y)
+        DrawIconOnRow(right_icon, CX + ICON_SPREAD, y)
+        y = y + H_ROW
+
+        DrawCentered(mode_text, y)
+        y = y + H_ROW
+        y = y + BLOCK_GAP
+
+        DrawCentered(profile_text, y)
+        y = y + H_ROW
+
+        DrawCentered(pop_path_label, y)
+        DrawIconOnRow(up_icon, CX - ICON_SPREAD2, y)
+        DrawIconOnRow(down_icon, CX + ICON_SPREAD2, y)
+        y = y + H_ROW
+
+        DrawCentered(pop_path_value, y, Color.new(128,128,128, 110))
+        y = y + H_ROW
+        y = y + BLOCK_GAP
+
+        DrawCentered(dkwdrv_label, y)
+        y = y + H_ROW
+        DrawCentered(dkwdrv_value, y, Color.new(128,128,128, 110))
 
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end

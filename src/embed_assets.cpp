@@ -53,6 +53,14 @@ extern unsigned char asset_r2_png[];
 extern unsigned int size_asset_r2_png;
 extern unsigned char asset_square_png[];
 extern unsigned int size_asset_square_png;
+extern unsigned char asset_left_png[];
+extern unsigned int size_asset_left_png;
+extern unsigned char asset_right_png[];
+extern unsigned int size_asset_right_png;
+extern unsigned char asset_up_png[];
+extern unsigned int size_asset_up_png;
+extern unsigned char asset_down_png[];
+extern unsigned int size_asset_down_png;
 extern unsigned char asset_system_lua[];
 extern unsigned int size_asset_system_lua;
 extern unsigned char asset_ui_lua[];
@@ -107,6 +115,10 @@ static const embedded_asset_t g_embedded_assets[] = {
 	ASSET_ENTRY("cross.png", asset_cross_png),
 	ASSET_ENTRY("R2.png", asset_r2_png),
 	ASSET_ENTRY("square.png", asset_square_png),
+	ASSET_ENTRY("left.png", asset_left_png),
+	ASSET_ENTRY("right.png", asset_right_png),
+	ASSET_ENTRY("up.png", asset_up_png),
+	ASSET_ENTRY("down.png", asset_down_png),
 	ASSET_ENTRY("system.lua", asset_system_lua),
 	ASSET_ENTRY("ui.lua", asset_ui_lua),
 	ASSET_ENTRY("images.lua", asset_images_lua),
@@ -145,6 +157,10 @@ static const embedded_asset_t g_embedded_assets[] = {
 	ASSET_ENTRY("POPSLDR/IMG/cross.png", asset_cross_png),
 	ASSET_ENTRY("POPSLDR/IMG/R2.png", asset_r2_png),
 	ASSET_ENTRY("POPSLDR/IMG/square.png", asset_square_png),
+	ASSET_ENTRY("POPSLDR/IMG/left.png", asset_left_png),
+	ASSET_ENTRY("POPSLDR/IMG/right.png", asset_right_png),
+	ASSET_ENTRY("POPSLDR/IMG/up.png", asset_up_png),
+	ASSET_ENTRY("POPSLDR/IMG/down.png", asset_down_png),
 	ASSET_ENTRY("POPSLDR/system.lua", asset_system_lua),
 	ASSET_ENTRY("POPSLDR/ui.lua", asset_ui_lua),
 	ASSET_ENTRY("POPSLDR/images.lua", asset_images_lua),
