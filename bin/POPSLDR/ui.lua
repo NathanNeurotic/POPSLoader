@@ -1240,10 +1240,10 @@ UI = {
         Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Settings", UI.CCOL.GREY)
 
         local mode = UI.BdmaModes[UI.BdmaModeIndex]
-        local left_icon = IMG.left
+        local left_icon  = IMG.left
         local right_icon = IMG.right
-        local up_icon = IMG.up
-        local down_icon = IMG.down
+        local up_icon    = IMG.up
+        local down_icon  = IMG.down
         local section_x = layout.SAFE.L + 18
         local section_w = UI.SCR.X - section_x - layout.SAFE.R
 
