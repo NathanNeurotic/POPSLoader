@@ -1237,6 +1237,7 @@ UI = {
       Play = function ()
         local layout = UI.LAYOUT
         local profcnt = #PLDR.PROFILES
+        Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Settings", UI.CCOL.GREY)
         local mode = UI.BdmaModes[UI.BdmaModeIndex]
         local left_icon  = IMG.left
         local right_icon = IMG.right
@@ -1248,9 +1249,9 @@ UI = {
         local INDENT = 24
         local PAD_LABEL_VALUE = 14
         local icon_scale = 0.55
-        local X_TEXT = 170
-        local X_ICON_L = 130
-        local X_ICON_R = 490
+        local X_TEXT = 110
+        local X_ICON_L = 75
+        local X_ICON_R = 520
 
         local function TextWidth(text)
           return string.len(tostring(text or "")) * 8
@@ -1291,16 +1292,32 @@ UI = {
         DrawArrow(right_icon, X_ICON_R, y)
         y = y + H_ROW
 
+        local profile_block_top = y
         Font.ftPrint(BFONT, X_TEXT, y, 0, UI.SCR.X - X_TEXT, 16, profile_label, UI.CCOL.GREY)
         Font.ftPrint(BFONT, X_TEXT + TextWidth(profile_label) + PAD_LABEL_VALUE, y, 0, UI.SCR.X - X_TEXT, 16, profile_value, UI.CCOL.GREY)
-        DrawArrow(up_icon, X_ICON_L, y)
-        DrawArrow(down_icon, X_ICON_R, y)
         y = y + H_ROW
         y = y + GROUP_GAP
 
         Font.ftPrint(BFONT, X_TEXT, y, 0, UI.SCR.X - X_TEXT, 16, pop_path_label, UI.CCOL.GREY)
         y = y + H_ROW
+        local pop_path_value_y = y
         Font.ftPrint(BFONT, X_TEXT + INDENT, y, 0, UI.SCR.X - X_TEXT, 16, pop_path_value, Color.new(128,128,128, 110))
+
+        local _, up_h = IconSize(up_icon)
+        local _, down_h = IconSize(down_icon)
+        local profile_block_bottom = pop_path_value_y + H_ROW
+        local profile_block_h = profile_block_bottom - profile_block_top
+        if up_icon ~= nil then
+          local up_y = profile_block_top + math.floor((profile_block_h - up_h) / 2)
+          local up_w = math.floor(Graphics.getImageWidth(up_icon) * icon_scale + 0.5)
+          Graphics.drawScaleImage(up_icon, X_ICON_L, up_y, up_w, up_h, UI.CCOL.GREY)
+        end
+        if down_icon ~= nil then
+          local down_y = profile_block_top + math.floor((profile_block_h - down_h) / 2)
+          local down_w = math.floor(Graphics.getImageWidth(down_icon) * icon_scale + 0.5)
+          Graphics.drawScaleImage(down_icon, X_ICON_R, down_y, down_w, down_h, UI.CCOL.GREY)
+        end
+
         y = y + H_ROW
         y = y + GAP
 
