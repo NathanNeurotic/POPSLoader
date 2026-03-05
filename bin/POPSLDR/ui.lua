@@ -1245,12 +1245,9 @@ UI = {
         local down_icon  = IMG.down
         local CX = UI.SCR.X_MID
         local H_ROW = 26
-        local GAP_TITLE_TO_FIRST = 28
-        local GAP_SECTION = 18
-        local GAP_LABEL_TO_ICONS = 8
-        local GAP_ICONS_TO_VALUE = 8
-        local GAP_ROW = 10
-        local GAP_DKWDRV = 22
+        local BLOCK_GAP = 32
+        local ROW_GAP = 12
+        local ICON_GAP = 10
         local ICON_SPREAD = 120
         local ICON_SPREAD2 = 170
         local icon_scale = 0.55
@@ -1281,45 +1278,39 @@ UI = {
         local dkwdrv_label = "DKWDRV Path:"
         local dkwdrv_value = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
 
-        local y = layout.TITLE_Y + GAP_TITLE_TO_FIRST
+        local y = layout.TITLE_Y + BLOCK_GAP
         local footer_top_y = (layout.FOOTER_ICON_Y or (UI.SCR.Y - (layout.BTN_BAR_SAFE_BOTTOM or 56))) - 24
-        local total_h = (7 * H_ROW) + GAP_LABEL_TO_ICONS + GAP_ICONS_TO_VALUE + GAP_SECTION + GAP_ROW + GAP_ROW + GAP_DKWDRV
+        local total_h = (6 * H_ROW) + (3 * BLOCK_GAP) + (2 * ROW_GAP) + (2 * ICON_GAP)
         if (y + total_h) > footer_top_y then
           y = footer_top_y - total_h
         end
-        if y < (layout.TITLE_Y + GAP_TITLE_TO_FIRST) then
-          y = layout.TITLE_Y + GAP_TITLE_TO_FIRST
+        if y < (layout.TITLE_Y + BLOCK_GAP) then
+          y = layout.TITLE_Y + BLOCK_GAP
         end
 
         DrawCentered("BDMA:", y)
-        y = y + H_ROW
-        y = y + GAP_LABEL_TO_ICONS
+        y = y + ROW_GAP
 
         DrawIconOnRow(left_icon, CX - ICON_SPREAD, y)
         DrawIconOnRow(right_icon, CX + ICON_SPREAD, y)
-        y = y + H_ROW
-        y = y + GAP_ICONS_TO_VALUE
+        y = y + ICON_GAP
 
         DrawCentered(mode_text, y)
-        y = y + H_ROW
-        y = y + GAP_SECTION
+        y = y + BLOCK_GAP
 
         DrawCentered(profile_text, y)
-        y = y + H_ROW
-        y = y + GAP_ROW
+        y = y + ROW_GAP
 
         DrawCentered(pop_path_label, y)
         DrawIconOnRow(up_icon, CX - ICON_SPREAD2, y)
         DrawIconOnRow(down_icon, CX + ICON_SPREAD2, y)
-        y = y + H_ROW
-        y = y + GAP_ROW
+        y = y + ICON_GAP
 
         DrawCentered(pop_path_value, y, Color.new(128,128,128, 110))
-        y = y + H_ROW
-        y = y + GAP_DKWDRV
+        y = y + BLOCK_GAP
 
         DrawCentered(dkwdrv_label, y)
-        y = y + H_ROW
+        y = y + ROW_GAP
         DrawCentered(dkwdrv_value, y, Color.new(128,128,128, 110))
 
         Input_GetEvent()
