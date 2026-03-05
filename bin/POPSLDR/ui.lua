@@ -1246,47 +1246,79 @@ UI = {
         local H_HDR = 40
         local H_ROW = 38
         local GAP = 52
+        local BLOCK_GAP = 26
+        local INDENT = 24
+        local PAD_ICON = 12
+        local PAD_LABEL_VALUE = 14
         local icon_scale = 0.55
-        local y = 150
 
         local function TextWidth(text)
           return string.len(tostring(text or "")) * 8
         end
 
-        local function DrawArrow(icon, x, row_y)
-          if icon == nil then return end
+        local function IconSize(icon)
+          if icon == nil then return 0, 0 end
           local icon_w = math.floor(Graphics.getImageWidth(icon) * icon_scale + 0.5)
           local icon_h = math.floor(Graphics.getImageHeight(icon) * icon_scale + 0.5)
+          return icon_w, icon_h
+        end
+
+        local function DrawArrow(icon, x, row_y)
+          if icon == nil then return end
+          local icon_w, icon_h = IconSize(icon)
           local icon_y = row_y + math.floor((H_ROW - icon_h) / 2)
           Graphics.drawScaleImage(icon, x, icon_y, icon_w, icon_h, UI.CCOL.GREY)
         end
 
-        Font.ftPrint(BFONT, CX, y, 8, UI.SCR.X, 16, "BDMA Mode", UI.CCOL.GREY)
-        y = y + H_HDR
-        local bdma_w = TextWidth(mode.label)
-        local left_w = math.floor((left_icon ~= nil and Graphics.getImageWidth(left_icon) or 0) * icon_scale + 0.5)
-        local up_w = math.floor((up_icon ~= nil and Graphics.getImageWidth(up_icon) or 0) * icon_scale + 0.5)
-        Font.ftPrint(BFONT, CX, y, 8, UI.SCR.X, 16, mode.label, UI.CCOL.GREY)
-        DrawArrow(left_icon, math.floor(CX - (bdma_w / 2) - left_w - 10), y)
-        DrawArrow(right_icon, math.floor(CX + (bdma_w / 2) + 10), y)
+        local left_w = IconSize(left_icon)
+        local right_w = IconSize(right_icon)
+        local up_w = IconSize(up_icon)
+        local down_w = IconSize(down_icon)
+
+        local bdma_label = "BDMA Mode:"
+        local profile_label = "POPStarter Profile:"
+        local choose_profile_text = "Profile "..UI.ProfileQuery.curopt
+        local pop_path_label = "POPStarter Path:"
+        local pop_path_value = PLDR.PROFILES[UI.ProfileQuery.curopt].ELF
+        local dkwdrv_label = "DKWDRV Path: (display-only; no function right now)"
+        local dkwdrv_value = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
+
+        local bdma_row_w = left_w + PAD_ICON + TextWidth(bdma_label) + PAD_LABEL_VALUE + TextWidth(mode.label) + PAD_ICON + right_w
+        local profile_row_w = up_w + PAD_ICON + TextWidth(profile_label) + PAD_LABEL_VALUE + TextWidth(choose_profile_text) + PAD_ICON + down_w
+        local path_block_w = math.max(TextWidth(pop_path_label), INDENT + TextWidth(pop_path_value), TextWidth(dkwdrv_label), INDENT + TextWidth(dkwdrv_value))
+        local content_block_w = math.max(bdma_row_w, profile_row_w, path_block_w)
+        local block_left_x = math.floor((UI.SCR.X - content_block_w) / 2)
+
+        local total_h = (2 * H_ROW) + GAP + BLOCK_GAP + H_HDR + H_ROW + BLOCK_GAP + H_HDR + H_ROW
+        local y = 118
+        local footer_top_y = (layout.FOOTER_ICON_Y or (UI.SCR.Y - (layout.BTN_BAR_SAFE_BOTTOM or 56))) - 24
+        if (y + total_h) > footer_top_y then
+          y = footer_top_y - total_h
+        end
+
+        local x = block_left_x
+        Font.ftPrint(BFONT, x + left_w + PAD_ICON, y, 0, UI.SCR.X - x, 16, bdma_label, UI.CCOL.GREY)
+        Font.ftPrint(BFONT, x + left_w + PAD_ICON + TextWidth(bdma_label) + PAD_LABEL_VALUE, y, 0, UI.SCR.X - x, 16, mode.label, UI.CCOL.GREY)
+        DrawArrow(left_icon, x, y)
+        DrawArrow(right_icon, x + left_w + PAD_ICON + TextWidth(bdma_label) + PAD_LABEL_VALUE + TextWidth(mode.label) + PAD_ICON, y)
+        y = y + H_ROW
+
+        Font.ftPrint(BFONT, x + up_w + PAD_ICON, y, 0, UI.SCR.X - x, 16, profile_label, UI.CCOL.GREY)
+        Font.ftPrint(BFONT, x + up_w + PAD_ICON + TextWidth(profile_label) + PAD_LABEL_VALUE, y, 0, UI.SCR.X - x, 16, choose_profile_text, UI.CCOL.GREY)
+        DrawArrow(up_icon, x, y)
+        DrawArrow(down_icon, x + up_w + PAD_ICON + TextWidth(profile_label) + PAD_LABEL_VALUE + TextWidth(choose_profile_text) + PAD_ICON, y)
         y = y + H_ROW
         y = y + GAP
 
-        Font.ftPrint(BFONT, CX, y, 8, UI.SCR.X, 16, "POPStarter Profile", UI.CCOL.GREY)
+        Font.ftPrint(BFONT, x, y, 0, UI.SCR.X - x, 16, pop_path_label, UI.CCOL.GREY)
         y = y + H_HDR
-        local choose_profile_text = "Choose POPStarter Profile"
-        local choose_w = TextWidth(choose_profile_text)
-        Font.ftPrint(BFONT, CX, y, 8, UI.SCR.X, 16, choose_profile_text, UI.CCOL.GREY)
-        DrawArrow(up_icon, math.floor(CX - (choose_w / 2) - up_w - 10), y)
-        DrawArrow(down_icon, math.floor(CX + (choose_w / 2) + 10), y)
+        Font.ftPrint(BFONT, x + INDENT, y, 0, UI.SCR.X - x, 16, pop_path_value, Color.new(128,128,128, 110))
         y = y + H_ROW
-        Font.ftPrint(BFONT, CX, y, 8, UI.SCR.X, 16, "Profile "..UI.ProfileQuery.curopt, UI.CCOL.GREY)
-        y = y + H_ROW
-        y = y + GAP
+        y = y + BLOCK_GAP
 
-        Font.ftPrint(BFONT, CX, y, 8, UI.SCR.X, 16, "POPStarter Path", UI.CCOL.GREY)
+        Font.ftPrint(BFONT, x, y, 0, UI.SCR.X - x, 16, dkwdrv_label, UI.CCOL.GREY)
         y = y + H_HDR
-        Font.ftPrint(BFONT, CX, y, 8, UI.SCR.X, 16, PLDR.PROFILES[UI.ProfileQuery.curopt].ELF, Color.new(128,128,128, 110))
+        Font.ftPrint(BFONT, x + INDENT, y, 0, UI.SCR.X - x, 16, dkwdrv_value, Color.new(128,128,128, 110))
 
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
