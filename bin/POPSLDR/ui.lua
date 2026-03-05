@@ -1243,19 +1243,14 @@ UI = {
         local right_icon = IMG.right
         local up_icon    = IMG.up
         local down_icon  = IMG.down
+        local CX = UI.SCR.X_MID
         local H_ROW = 38
-        local PROFILE_PATH_GAP = 12
-        local DKWDRV_GAP = 24
-        local INDENT = 24
-        local PAD_LABEL_VALUE = 14
+        local GAP_SECTION = 34
+        local GAP_ROW = 18
+        local GAP_SMALL = 10
+        local ICON_SPREAD = 120
+        local ICON_SPREAD2 = 170
         local icon_scale = 0.55
-        local X_TEXT = 80
-        local X_ICON_L = 45
-        local X_ICON_R = 500
-
-        local function TextWidth(text)
-          return string.len(tostring(text or "")) * 8
-        end
 
         local function IconSize(icon)
           if icon == nil then return 0, 0 end
@@ -1264,65 +1259,59 @@ UI = {
           return icon_w, icon_h
         end
 
-        local function DrawArrow(icon, x, row_y)
-          if icon == nil then return end
-          local icon_w, icon_h = IconSize(icon)
-          local icon_y = row_y + math.floor((H_ROW - icon_h) / 2)
-          Graphics.drawScaleImage(icon, x, icon_y, icon_w, icon_h, UI.CCOL.GREY)
+        local function DrawCentered(text, row_y, color)
+          Font.ftPrint(BFONT, CX, row_y, 8, UI.SCR.X, 16, text, color or UI.CCOL.GREY)
         end
 
-        local bdma_label = "BDMA Mode:"
-        local profile_label = "POPStarter Profile:"
-        local profile_value = "Profile "..UI.ProfileQuery.curopt
+        local function DrawIconOnRow(icon, center_x, row_y)
+          if icon == nil then return end
+          local icon_w, icon_h = IconSize(icon)
+          local icon_x = math.floor(center_x - (icon_w / 2))
+          local icon_y = row_y + math.floor((H_ROW - icon_h) / 2)
+          Graphics.drawScaleImage(icon, icon_x, icon_y, icon_w, icon_h, UI.CCOL.GREY)
+        end
+
+        local mode_text = "<"..tostring(mode.label or "")..">"
+        local profile_text = "POPStarter Profile: <Profile "..UI.ProfileQuery.curopt..">"
         local pop_path_label = "POPStarter Path:"
-        local pop_path_value = PLDR.PROFILES[UI.ProfileQuery.curopt].ELF
+        local pop_path_value = "<"..tostring(PLDR.PROFILES[UI.ProfileQuery.curopt].ELF or "")..">"
         local dkwdrv_label = "DKWDRV Path:"
         local dkwdrv_value = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
 
-        local y = 140
+        local y = layout.TITLE_Y + 34
         local footer_top_y = (layout.FOOTER_ICON_Y or (UI.SCR.Y - (layout.BTN_BAR_SAFE_BOTTOM or 56))) - 24
-        local total_h = (2 * H_ROW) + PROFILE_PATH_GAP + H_ROW + H_ROW + DKWDRV_GAP + H_ROW + H_ROW
+        local total_h = (7 * H_ROW) + (2 * GAP_SECTION) + GAP_ROW + GAP_SMALL
         if (y + total_h) > footer_top_y then
           y = footer_top_y - total_h
         end
 
-        Font.ftPrint(BFONT, X_TEXT, y, 0, UI.SCR.X - X_TEXT, 16, bdma_label.." "..mode.label, UI.CCOL.GREY)
-        DrawArrow(left_icon, X_ICON_L, y)
-        DrawArrow(right_icon, X_ICON_R, y)
+        DrawCentered("BDMA:", y)
         y = y + H_ROW
 
-        local profile_block_top = y
-        Font.ftPrint(BFONT, X_TEXT, y, 0, UI.SCR.X - X_TEXT, 16, profile_label, UI.CCOL.GREY)
-        Font.ftPrint(BFONT, X_TEXT + TextWidth(profile_label) + PAD_LABEL_VALUE, y, 0, UI.SCR.X - X_TEXT, 16, profile_value, UI.CCOL.GREY)
+        DrawIconOnRow(left_icon, CX - ICON_SPREAD, y)
+        DrawIconOnRow(right_icon, CX + ICON_SPREAD, y)
         y = y + H_ROW
-        y = y + PROFILE_PATH_GAP
 
-        Font.ftPrint(BFONT, X_TEXT, y, 0, UI.SCR.X - X_TEXT, 16, pop_path_label, UI.CCOL.GREY)
+        DrawCentered(mode_text, y)
         y = y + H_ROW
-        local pop_path_value_y = y
-        Font.ftPrint(BFONT, X_TEXT + INDENT, y, 0, UI.SCR.X - X_TEXT, 16, pop_path_value, Color.new(128,128,128, 110))
+        y = y + GAP_SECTION
 
-        local _, up_h = IconSize(up_icon)
-        local _, down_h = IconSize(down_icon)
-        local profile_block_bottom = pop_path_value_y + H_ROW
-        local profile_block_h = profile_block_bottom - profile_block_top
-        if up_icon ~= nil then
-          local up_y = profile_block_top + math.floor((profile_block_h - up_h) / 2)
-          local up_w = math.floor(Graphics.getImageWidth(up_icon) * icon_scale + 0.5)
-          Graphics.drawScaleImage(up_icon, X_ICON_L, up_y, up_w, up_h, UI.CCOL.GREY)
-        end
-        if down_icon ~= nil then
-          local down_y = profile_block_top + math.floor((profile_block_h - down_h) / 2)
-          local down_w = math.floor(Graphics.getImageWidth(down_icon) * icon_scale + 0.5)
-          Graphics.drawScaleImage(down_icon, X_ICON_R, down_y, down_w, down_h, UI.CCOL.GREY)
-        end
-
+        DrawCentered(profile_text, y)
         y = y + H_ROW
-        y = y + DKWDRV_GAP
 
-        Font.ftPrint(BFONT, X_TEXT, y, 0, UI.SCR.X - X_TEXT, 16, dkwdrv_label, UI.CCOL.GREY)
+        DrawCentered(pop_path_label, y)
+        DrawIconOnRow(up_icon, CX - ICON_SPREAD2, y)
+        DrawIconOnRow(down_icon, CX + ICON_SPREAD2, y)
         y = y + H_ROW
-        Font.ftPrint(BFONT, X_TEXT + INDENT, y, 0, UI.SCR.X - X_TEXT, 16, dkwdrv_value, Color.new(128,128,128, 110))
+        y = y + GAP_SMALL
+
+        DrawCentered(pop_path_value, y, Color.new(128,128,128, 110))
+        y = y + H_ROW
+        y = y + GAP_SECTION
+
+        DrawCentered(dkwdrv_label, y)
+        y = y + H_ROW
+        DrawCentered(dkwdrv_value, y, Color.new(128,128,128, 110))
 
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
