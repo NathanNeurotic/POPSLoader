@@ -1215,8 +1215,8 @@ function PLDR.ApplyBdmaMode(mode_key)
   end
 
   if selected == "FAT32" then
-    DeleteIfExists(POPSTARTER_PACK_ROOT.."/usbd.irx")
-    DeleteIfExists(POPSTARTER_PACK_ROOT.."/usbhdfsd.irx")
+    DeleteIfExists("mc0:/POPSTARTER/usbd.irx")
+    DeleteIfExists("mc0:/POPSTARTER/usbhdfsd.irx")
     WriteBdmaModeMarker(selected)
     return true
   end
