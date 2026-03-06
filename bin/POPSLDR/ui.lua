@@ -1246,14 +1246,16 @@ UI = {
         local right_icon = IMG.right
         local up_icon    = IMG.up
         local down_icon  = IMG.down
-        local CX = UI.SCR.X_MID
+        local safe = layout.SAFE or {L = 24, R = 24}
         local H_ROW = 24
-        local TITLE_TO_BLOCK = 36
-        local BLOCK_GAP = 30
+        local TITLE_TO_BLOCK = 30
+        local BLOCK_GAP = 22
         local ROW_GAP = 6
-        local BUTTON_GAP = 70
-        local ICON_SPREAD = 120
-        local ICON_SPREAD2 = 170
+        local BUTTON_GAP = 64
+        local LABEL_X = safe.L + 24
+        local VALUE_X = LABEL_X + 185
+        local VALUE_W = UI.SCR.X - safe.R - VALUE_X - 12
+        local ICON_MARGIN = 24
         local icon_scale = 0.55
 
         local function IconSize(icon)
@@ -1263,8 +1265,22 @@ UI = {
           return icon_w, icon_h
         end
 
-        local function DrawCentered(text, row_y, color)
-          Font.ftPrint(BFONT, CX, row_y, 8, UI.SCR.X, 16, text, color or UI.CCOL.GREY)
+        local function DrawLabel(text, row_y, color)
+          Font.ftPrint(BFONT, LABEL_X, row_y, 0, UI.SCR.X, 16, text, color or UI.CCOL.GREY)
+        end
+
+        local function DrawValue(text, row_y, color)
+          Font.ftPrint(BFONT, VALUE_X, row_y, 0, VALUE_W, 16, text, color or UI.CCOL.GREY)
+        end
+
+        local function TruncateMiddle(text, max_chars)
+          local raw = tostring(text or "")
+          if string.len(raw) <= max_chars then
+            return raw
+          end
+          local keep_left = math.floor((max_chars - 3) / 2)
+          local keep_right = (max_chars - 3) - keep_left
+          return string.sub(raw, 1, keep_left).."..."..string.sub(raw, -keep_right)
         end
 
         local function DrawIconOnRow(icon, center_x, row_y)
@@ -1276,15 +1292,15 @@ UI = {
         end
 
         local mode_text = "<"..tostring(mode.label or "")..">"
-        local profile_text = "POPStarter Profile: <Profile "..UI.ProfileQuery.curopt..">"
-        local pop_path_label = "POPStarter Path:"
-        local pop_path_value = "<"..tostring(PLDR.PROFILES[UI.ProfileQuery.curopt].ELF or "")..">"
-        local dkwdrv_label = "DKWDRV Path:"
-        local dkwdrv_value = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
+        local profile_text = "<Profile "..UI.ProfileQuery.curopt..">"
+        local pop_path_label = "POPStarter Path"
+        local pop_path_value = "<"..TruncateMiddle(tostring(PLDR.PROFILES[UI.ProfileQuery.curopt].ELF or ""), 46)..">"
+        local dkwdrv_label = "DKWDRV Path"
+        local dkwdrv_value = "<"..TruncateMiddle("mc0:/PS1_DKWDRV/DKWDRV.ELF", 46)..">"
 
         local y = layout.TITLE_Y + TITLE_TO_BLOCK
         local footer_top_y = (layout.FOOTER_ICON_Y or (UI.SCR.Y - (layout.BTN_BAR_SAFE_BOTTOM or 56))) - 24
-        local total_h = (7 * H_ROW) + (2 * BLOCK_GAP) + (4 * ROW_GAP) + BUTTON_GAP
+        local total_h = (7 * H_ROW) + (2 * BLOCK_GAP) + (7 * ROW_GAP) + BUTTON_GAP
         if (y + total_h) > footer_top_y then
           y = footer_top_y - total_h
         end
@@ -1292,30 +1308,34 @@ UI = {
           y = layout.TITLE_Y + TITLE_TO_BLOCK
         end
 
-        DrawCentered("BDMA:", y)
+        DrawLabel("BDMA", y)
         y = y + H_ROW + ROW_GAP
 
-        DrawIconOnRow(left_icon, CX - ICON_SPREAD, y)
-        DrawIconOnRow(right_icon, CX + ICON_SPREAD, y)
-        DrawCentered(mode_text, y)
+        DrawLabel("Mode", y)
+        DrawIconOnRow(left_icon, VALUE_X - ICON_MARGIN, y)
+        DrawIconOnRow(right_icon, VALUE_X + 170, y)
+        DrawValue(mode_text, y)
         y = y + H_ROW
         y = y + BLOCK_GAP
 
-        DrawCentered(profile_text, y)
+        DrawLabel("POPStarter Profile", y)
         y = y + H_ROW + ROW_GAP
 
-        DrawCentered(pop_path_label, y)
-        DrawIconOnRow(up_icon, CX - ICON_SPREAD2, y)
-        DrawIconOnRow(down_icon, CX + ICON_SPREAD2, y)
+        DrawLabel("Selected", y)
+        DrawIconOnRow(up_icon, VALUE_X - ICON_MARGIN, y)
+        DrawIconOnRow(down_icon, VALUE_X + 170, y)
+        DrawValue(profile_text, y)
         y = y + H_ROW + ROW_GAP
 
-        DrawCentered(pop_path_value, y, Color.new(128,128,128, 110))
+        DrawLabel(pop_path_label, y)
         y = y + H_ROW
+        DrawValue(pop_path_value, y, Color.new(128,128,128, 110))
+        y = y + ROW_GAP
         y = y + BLOCK_GAP
 
-        DrawCentered(dkwdrv_label, y)
+        DrawLabel(dkwdrv_label, y)
         y = y + H_ROW + ROW_GAP
-        DrawCentered(dkwdrv_value, y, Color.new(128,128,128, 110))
+        DrawValue(dkwdrv_value, y, Color.new(128,128,128, 110))
         y = y + H_ROW + BUTTON_GAP
 
         Input_GetEvent()
