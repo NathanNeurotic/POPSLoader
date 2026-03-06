@@ -980,6 +980,12 @@ end
 
 function PLDR.CommitSettingsChanges(opts)
   opts = opts or {}
+  local on_stage = opts.on_stage
+  local function EmitStage(stage, message)
+    if type(on_stage) == "function" then
+      pcall(on_stage, stage, message)
+    end
+  end
   local prev = SnapshotSettingsState()
   local next_state = {
     profile = tonumber(opts.profile) or prev.profile,
@@ -990,13 +996,16 @@ function PLDR.CommitSettingsChanges(opts)
   local apply_bdma = opts.apply_bdma == true
   local bdma_token = opts.bdma_token
 
+  EmitStage("prepare", "Preparing settings")
   ApplySettingsState(next_state)
+  EmitStage("save", "Saving settings")
   if not PLDR.SaveSettingsAtomic() then
     ApplySettingsState(prev)
     return false, "save_failed"
   end
 
   if apply_bdma then
+    EmitStage("apply_bdma", "Applying BDMA mode")
     local applied = true
     if type(PLDR.ApplyBdmaModeOnce) == "function" then
       applied = PLDR.ApplyBdmaModeOnce(next_state.bdma_mode, bdma_token)
@@ -1014,6 +1023,7 @@ function PLDR.CommitSettingsChanges(opts)
     end
   end
 
+  EmitStage("finalize", "Finalizing settings")
   PLDR.ReconcileBdmaModeWithEffectiveState()
   return true, nil
 end
@@ -1096,9 +1106,7 @@ function PLDR.EnsureUsbMassReadyOnce()
   if type(System) == "table" and type(System.initUSB) == "function" then
     pcall(System.initUSB)
   end
-  if type(PLDR.RefreshMassStateSnapshot) == "function" then
-    pcall(PLDR.RefreshMassStateSnapshot)
-  elseif type(PLDR.RefreshMassBackends) == "function" then
+  if type(PLDR.RefreshMassBackends) == "function" then
     pcall(PLDR.RefreshMassBackends)
   end
 
@@ -1114,7 +1122,7 @@ end
 
 function PLDR.RefreshMassStateSnapshot()
   return {
-    mx4_root = PLDR.GetMX4SIOMassRootNow()
+    present_roots = PLDR.GetPresentMassRootsBounded()
   }
 end
 
@@ -1157,6 +1165,23 @@ local function NormalizeMassRoot(root)
   return root
 end
 
+local function ClassifyMassRootDriver(driver)
+  local value = string.lower(tostring(driver or ""))
+  if value == "" then
+    return "unknown"
+  end
+  if string.find(value, "mmce", 1, true) ~= nil then
+    return "mmce"
+  end
+  if string.find(value, "mx4", 1, true) ~= nil or string.find(value, "sdc", 1, true) ~= nil then
+    return "mx4sio"
+  end
+  if string.find(value, "usb", 1, true) ~= nil then
+    return "usb"
+  end
+  return "unknown"
+end
+
 local function BuildMassRootIdentity(mode)
   EnsureMassBackendsReady(mode)
   if type(PLDR.RefreshMassBackends) == "function" then
@@ -1180,13 +1205,14 @@ local function BuildMassRootIdentity(mode)
       table.insert(identity.present_roots, normalized)
 
       local driver = PLDR.GetMassMountDriver(normalized)
-      if type(driver) == "string" and driver ~= "" then
-        if string.find(driver, "sdc", 1, true) then
-          if seen_mx4[normalized] ~= true then
-            seen_mx4[normalized] = true
-            table.insert(identity.mx4sio, normalized)
-          end
-        elseif seen_usb[normalized] ~= true then
+      local kind = ClassifyMassRootDriver(driver)
+      if kind == "mx4sio" then
+        if seen_mx4[normalized] ~= true then
+          seen_mx4[normalized] = true
+          table.insert(identity.mx4sio, normalized)
+        end
+      elseif kind == "usb" then
+        if seen_usb[normalized] ~= true then
           seen_usb[normalized] = true
           table.insert(identity.usb, normalized)
         end
@@ -1195,6 +1221,22 @@ local function BuildMassRootIdentity(mode)
   end
 
   return identity
+end
+
+local function BuildUsbIdentityDeferred()
+  local attempts = 0
+  local identity = nil
+  while attempts < 3 do
+    attempts = attempts + 1
+    identity = BuildMassRootIdentity("usb")
+    if type(identity) == "table" and type(identity.usb) == "table" and #identity.usb > 0 then
+      return identity
+    end
+    if type(identity) == "table" and type(identity.present_roots) == "table" and #identity.present_roots == 0 then
+      return identity
+    end
+  end
+  return identity or BuildMassRootIdentity("usb")
 end
 
 local function BuildMX4IdentityDeferred()
@@ -1218,14 +1260,14 @@ function PLDR.GetMX4SIOMassRootNow()
   return nil
 end
 
-function PLDR.GetRootsByType(kind, mass_snapshot)
+function PLDR.GetRootsByType(kind, _mass_snapshot)
   local wanted = string.lower(tostring(kind or ""))
   if wanted == "mx4sio" then
     local identity = BuildMX4IdentityDeferred()
     return identity.mx4sio
   end
 
-  local identity = BuildMassRootIdentity("usb")
+  local identity = BuildUsbIdentityDeferred()
   return identity.usb
 end
 

@@ -227,6 +227,7 @@ UI = {
       ADPCM_VOLUME = 100      -- per-channel ADPCM volume (0-100 typical, scaled to audsrv range)
     };
     CoverCache = CoverCache;
+    CoverPreviewEnabled = true;
     device_lock_name = function (lock)
       if lock == DEVLOCK.USB then return "USB" end
       if lock == DEVLOCK.MMCE then return "MMCE" end
@@ -386,9 +387,11 @@ UI = {
     HideTextMode = false;
     SavingActive = false;
     SavingMessage = "Saving...";
+    SavingAnimTick = 0;
     ShowSavingOverlay = function (msg)
       UI.SavingMessage = tostring(msg or "Saving...")
       UI.SavingActive = true
+      UI.SavingAnimTick = (tonumber(UI.SavingAnimTick) or 0) + 1
       UI.flip()
     end;
     HideSavingOverlay = function ()
@@ -477,8 +480,10 @@ UI = {
         return labels, order
       end;
       Draw = function (labels, order)
+        if UI.ShouldHideAuxText(UI.CURSCENE) then
+          return
+        end
         local safe = UI.LAYOUT.SAFE
-        local hide_labels = UI.ShouldHideAuxText(UI.CURSCENE)
         local entries = order or UI.Footer.order
         local count = #entries
         local icon_scale = UI.LAYOUT.FOOTER_ICON_SCALE or 1.0
@@ -551,7 +556,7 @@ UI = {
             end
           end
           local label = labels and labels[key] or nil
-          if label ~= nil and not hide_labels then
+          if label ~= nil then
             Font.ftPrint(SFONT, x, labelY, 8, UI.LAYOUT.FOOTER_LABEL_W, 16, label, UI.CCOL.GREY)
           end
         end
@@ -562,8 +567,24 @@ UI = {
       UI.Notif_queue.display()
       UI.Modal.Draw()
       if UI.SavingActive then
+        local tick = math.floor((tonumber(UI.SavingAnimTick) or 0))
+        if UI.Pad ~= nil and UI.Pad.Timer ~= nil then
+          tick = math.floor(Timer.getTime(UI.Pad.Timer) / 200)
+        end
+        local dots = {"", ".", "..", "..."}
+        local spinners = {"|", "/", "-", "\\"}
+        local dot_suffix = dots[(tick % #dots) + 1]
+        local spinner = spinners[(tick % #spinners) + 1]
+        local box_w = 320
+        local box_h = 92
+        local box_x = UI.SCR.X_MID - (box_w / 2)
+        local box_y = UI.SCR.Y_MID - (box_h / 2)
         Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, 140))
-        Font.ftPrint(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID - 8, 8, UI.SCR.X, 16, tostring(UI.SavingMessage or "Saving..."), UI.CCOL.YELLOW)
+        Graphics.drawRect(box_x, box_y, box_w, box_h, Color.new(0, 0, 0, 210))
+        Graphics.drawRect(box_x, box_y, box_w, 2, UI.CCOL.GREY)
+        Graphics.drawRect(box_x, box_y + box_h - 2, box_w, 2, UI.CCOL.GREY)
+        Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 20, 8, UI.SCR.X, 16, tostring(UI.SavingMessage or "Saving/Applying...")..dot_suffix, UI.CCOL.YELLOW)
+        Font.ftPrint(SFONT, UI.SCR.X_MID, box_y + 48, 8, UI.SCR.X, 16, "Working "..spinner, UI.CCOL.GREY)
       end
       if UI.Transition ~= nil then
         local alpha = UI.Transition.Update()
@@ -1371,15 +1392,24 @@ UI = {
 	          local c = (i == UI.GameList.CURR) and UI.COLORS.LIST_SELECTED or UI.COLORS.LIST_UNSELECTED
 	          Font.ftPrint(BFONT, layout.LIST_X, Y, 0, layout.LIST_W, 16, string.sub(display_name,1, -5), c)
         end
+        local cover_enabled = UI.CoverPreviewEnabled ~= false
         local cover_img = nil
         if UI.CoverCache ~= nil then
           cover_img = UI.CoverCache.last_img
         end
         if layout.PREVIEW_W > 0 then
           Graphics.drawRect(layout.PREVIEW_X - 2, layout.PREVIEW_Y - 2, layout.PREVIEW_W + 4, layout.PREVIEW_H + 4, UI.CCOL.GREY)
-          local preview_img = cover_img
+          local preview_img = nil
+          if cover_enabled then
+            preview_img = cover_img or IMG.missing
+          else
+            preview_img = IMG.default
+          end
           if preview_img ~= nil then
             Graphics.drawScaleImage(preview_img, layout.PREVIEW_X, layout.PREVIEW_Y, layout.PREVIEW_W, layout.PREVIEW_H)
+          end
+          if IMG.frame ~= nil then
+            Graphics.drawScaleImage(IMG.frame, layout.PREVIEW_X, layout.PREVIEW_Y, layout.PREVIEW_W, layout.PREVIEW_H)
           end
         end
         if ammount <= 0 then
@@ -1396,13 +1426,36 @@ UI = {
         if UI.Pad.Events.NAV_RIGHT then UI.GameList.CURR = CLAMP(UI.GameList.CURR+UI.GameList.MAXDRAW, 1, ammount) end
         if UI.Pad.Events.NAV_UP then UI.GameList.CURR = CLAMP(UI.GameList.CURR-1, 1, ammount) end
         if UI.Pad.Events.NAV_LEFT then UI.GameList.CURR = CLAMP(UI.GameList.CURR-UI.GameList.MAXDRAW, 1, ammount) end
+        if UI.Pad.Events.SQUARE then
+          UI.CoverPreviewEnabled = not UI.CoverPreviewEnabled
+          local now = 0
+          if UI.Pad.Timer ~= nil then
+            now = Timer.getTime(UI.Pad.Timer)
+          end
+          if UI.CoverPreviewEnabled then
+            UI.GameList.CoverLastIndex = nil
+            UI.GameList.CoverPending = true
+            UI.GameList.CoverPendingAt = now - UI.GameList.CoverIdleMs
+            UI.Notif_queue.add("Cover Art enabled")
+          else
+            if UI.CoverCache ~= nil then
+              UI.CoverCache:UpdateSelection(nil)
+            end
+            UI.GameList.CoverPending = false
+            UI.Notif_queue.add("Cover Art disabled")
+          end
+        end
         if UI.CoverCache ~= nil then
           local now = 0
           if UI.Pad.Timer ~= nil then
             now = Timer.getTime(UI.Pad.Timer)
           end
           local nav_event = UI.Pad.Events.NAV_DOWN or UI.Pad.Events.NAV_RIGHT or UI.Pad.Events.NAV_UP or UI.Pad.Events.NAV_LEFT
-          if ammount <= 0 then
+          if UI.CoverPreviewEnabled == false then
+            UI.GameList.CoverPending = false
+            UI.GameList.CoverPendingAt = now
+            UI.CoverCache:UpdateSelection(nil)
+          elseif ammount <= 0 then
             UI.GameList.CoverLastIndex = nil
             UI.GameList.CoverPending = false
             UI.GameList.CoverPendingAt = now
@@ -1598,6 +1651,9 @@ UI = {
 
         local function queue_exit(target_scene)
           UI.ShowSavingOverlay("Saving/Applying...")
+          local function report_stage(_stage, message)
+            UI.ShowSavingOverlay(message or "Saving/Applying...")
+          end
           local save_token = nil
           if type(PLDR.NextBdmaApplyToken) == "function" then
             save_token = PLDR.NextBdmaApplyToken()
@@ -1618,7 +1674,8 @@ UI = {
                 dkwdrv_path = dkwdrv_path,
                 bdma_mode = mode_key,
                 apply_bdma = UI.BdmaDirty,
-                bdma_token = save_token
+                bdma_token = save_token,
+                on_stage = report_stage
               })
             end
 
@@ -1626,9 +1683,11 @@ UI = {
             PLDR.POPSTARTER_PATH = pop_path
             PLDR.DKWDRV_PATH = dkwdrv_path
             PLDR.BDMA_MODE_KEY = mode_key
+            report_stage("save", "Saving settings")
             local saved = PLDR.SaveSettingsAtomic()
             local applied = true
             if saved and UI.BdmaDirty then
+              report_stage("apply", "Applying BDMA mode")
               applied = PLDR.ApplyBdmaMode(mode_key)
             end
             if not saved then
@@ -2014,12 +2073,11 @@ UI = {
             end
             PLDR.CleanupGameList()
             PLDR.GAMEPATH = ""
-            local snapshot = PLDR.RefreshMassStateSnapshot()
-            local usb_roots = PLDR.GetRootsByType("usb", snapshot)
+            local usb_roots = PLDR.GetRootsByType("usb")
             if usb_roots == nil or #usb_roots < 1 then
               UI.Notif_queue.add("No USB backend found")
             end
-            PLDR.BuildMassGameListByType("usb", snapshot)
+            PLDR.BuildMassGameListByType("usb")
             UI.setDeviceLock(DEVLOCK.USB)
             UI.SceneChange(UI.SCENES.GUSBFAT)
           elseif UI.MainMenu.OPT == 6 then
@@ -2047,6 +2105,7 @@ UI = {
         EXIT = false,
         START = false,
         SELECT = false,
+        SQUARE = false,
         L1 = false,
         R1 = false,
         R2 = false,
@@ -2085,6 +2144,7 @@ UI = {
         UI.Pad.Events.EXIT = false
         UI.Pad.Events.START = false
         UI.Pad.Events.SELECT = false
+        UI.Pad.Events.SQUARE = false
         UI.Pad.Events.L1 = false
         UI.Pad.Events.R1 = false
         UI.Pad.Events.R2 = false
@@ -2114,6 +2174,7 @@ UI = {
         if (pressed & PAD_TRIANGLE) ~= 0 then emit_action("EXIT") end
         if (pressed & PAD_START) ~= 0 then emit("START") end
         if (pressed & PAD_SELECT) ~= 0 then emit("SELECT") end
+        if (pressed & PAD_SQUARE) ~= 0 then emit_action("SQUARE") end
         if (pressed & PAD_L1) ~= 0 then emit_action("L1") end
         if (pressed & PAD_R1) ~= 0 then emit_action("R1") end
         if (pressed & PAD_R2) ~= 0 then emit_action("R2") end
