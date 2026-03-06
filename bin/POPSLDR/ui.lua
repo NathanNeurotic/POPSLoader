@@ -1323,10 +1323,6 @@ UI = {
 
         local function queue_exit(target_scene)
           UI.ShowSavingOverlay()
-          PLDR.EnsurePopstarterDir()
-          PLDR.SELECTED_PROFILE = UI.ProfileQuery.curopt
-          PLDR.POPSTARTER_PATH = PLDR.PROFILES[UI.ProfileQuery.curopt].ELF
-          PLDR.BDMA_MODE_KEY = UI.BdmaModes[UI.BdmaModeIndex].key
           UI.SavingActive = true
           local save_token = nil
           if type(PLDR.NextBdmaApplyToken) == "function" then
@@ -1335,26 +1331,51 @@ UI = {
             PLDR._bdma_apply_seq = (tonumber(PLDR._bdma_apply_seq) or 0) + 1
             save_token = "bdma:"..tostring(PLDR._bdma_apply_seq)
           end
-          local ok_run, result = xpcall(function()
+          local profile_index = CLAMP(UI.ProfileQuery.curopt, 1, #PLDR.PROFILES)
+          local profile_entry = PLDR.PROFILES[profile_index]
+          local pop_path = profile_entry and profile_entry.ELF or PLDR.POPSTARTER_PATH
+          local mode_entry = UI.BdmaModes[UI.BdmaModeIndex] or UI.BdmaModes[1]
+          local mode_key = mode_entry and mode_entry.key or "FAT32"
+          local ok_run, result, reason = xpcall(function()
+            if type(PLDR.CommitSettingsChanges) == "function" then
+              return PLDR.CommitSettingsChanges({
+                profile = profile_index,
+                popstarter_path = pop_path,
+                bdma_mode = mode_key,
+                apply_bdma = UI.BdmaDirty,
+                bdma_token = save_token
+              })
+            end
+
+            PLDR.SELECTED_PROFILE = profile_index
+            PLDR.POPSTARTER_PATH = pop_path
+            PLDR.BDMA_MODE_KEY = mode_key
             local saved = PLDR.SaveSettingsAtomic()
             local applied = true
-            if UI.BdmaDirty then
-              if type(PLDR.ApplyBdmaModeOnce) == "function" then
-                applied = PLDR.ApplyBdmaModeOnce(PLDR.BDMA_MODE_KEY, save_token)
-              else
-                applied = PLDR.ApplyBdmaMode(PLDR.BDMA_MODE_KEY)
-              end
+            if saved and UI.BdmaDirty then
+              applied = PLDR.ApplyBdmaMode(mode_key)
             end
-            return saved and applied
+            if not saved then
+              return false, "save_failed"
+            end
+            if not applied then
+              return false, "bdma_apply_failed"
+            end
+            return true, nil
           end, function(e) return e end)
           UI.SavingActive = false
-          if ok_run and result then
+          if ok_run and result == true then
             UI.ProfileDirty = false
             UI.BdmaDirty = false
+            UI.SceneChange(target_scene)
           else
-            UI.Notif_queue.add("Failed to save settings")
+            if reason == "bdma_apply_failed" then
+              UI.Notif_queue.add("Failed to apply BDMA mode")
+            elseif reason ~= "save_failed" then
+              UI.Notif_queue.add("Failed to save settings")
+            end
+            UI.SyncSettingsSelectionFromRuntime()
           end
-          UI.SceneChange(target_scene)
         end
 
         if UI.Pad.Events.EXIT then queue_exit(UI.SCENES.CREDITS) end
@@ -1934,6 +1955,7 @@ function UI.SyncSettingsSelectionFromRuntime()
     PLDR.ReconcileBdmaModeWithEffectiveState()
   end
   local mode_key = PLDR.BDMA_MODE_KEY or "FAT32"
+  UI.BdmaModeIndex = 1
   for i = 1, #UI.BdmaModes do
     if UI.BdmaModes[i].key == mode_key then
       UI.BdmaModeIndex = i

@@ -821,6 +821,31 @@ local function NormalizeBdmaModeKey(mode)
   return nil
 end
 
+local function SnapshotSettingsState()
+  return {
+    profile = tonumber(PLDR.SELECTED_PROFILE) or tonumber(PLDR.DEFAULT_PROFILE) or 1,
+    popstarter_path = tostring(PLDR.POPSTARTER_PATH or ""),
+    bdma_mode = NormalizeBdmaModeKey(PLDR.BDMA_MODE_KEY) or "FAT32"
+  }
+end
+
+local function ApplySettingsState(state)
+  if state == nil then
+    return
+  end
+  local profile = tonumber(state.profile)
+  if profile ~= nil and PLDR.PROFILES ~= nil and PLDR.PROFILES[profile] ~= nil then
+    PLDR.SELECTED_PROFILE = profile
+  end
+  if state.popstarter_path ~= nil then
+    PLDR.POPSTARTER_PATH = tostring(state.popstarter_path)
+  end
+  local bdma = NormalizeBdmaModeKey(state.bdma_mode)
+  if bdma ~= nil then
+    PLDR.BDMA_MODE_KEY = bdma
+  end
+end
+
 local function ReadBdmaModeMarkerCompat(path)
   local marker = ReadWholeFile(path)
   if marker == nil then
@@ -902,6 +927,45 @@ function PLDR.LoadSettingsNonFatal()
   PLDR.BDMA_MODE_KEY = NormalizeBdmaModeKey(bdma_mode) or PLDR.BDMA_MODE_KEY
   PLDR.ReconcileBdmaModeWithEffectiveState()
   return true
+end
+
+function PLDR.CommitSettingsChanges(opts)
+  opts = opts or {}
+  local prev = SnapshotSettingsState()
+  local next_state = {
+    profile = tonumber(opts.profile) or prev.profile,
+    popstarter_path = opts.popstarter_path or prev.popstarter_path,
+    bdma_mode = NormalizeBdmaModeKey(opts.bdma_mode) or prev.bdma_mode
+  }
+  local apply_bdma = opts.apply_bdma == true
+  local bdma_token = opts.bdma_token
+
+  ApplySettingsState(next_state)
+  if not PLDR.SaveSettingsAtomic() then
+    ApplySettingsState(prev)
+    return false, "save_failed"
+  end
+
+  if apply_bdma then
+    local applied = true
+    if type(PLDR.ApplyBdmaModeOnce) == "function" then
+      applied = PLDR.ApplyBdmaModeOnce(next_state.bdma_mode, bdma_token)
+    else
+      applied = PLDR.ApplyBdmaMode(next_state.bdma_mode)
+    end
+    if not applied then
+      ApplySettingsState({
+        profile = next_state.profile,
+        popstarter_path = next_state.popstarter_path,
+        bdma_mode = prev.bdma_mode
+      })
+      PLDR.ReconcileBdmaModeWithEffectiveState()
+      return false, "bdma_apply_failed"
+    end
+  end
+
+  PLDR.ReconcileBdmaModeWithEffectiveState()
+  return true, nil
 end
 
 function PLDR.ParseMassIndexFromPath(path)
