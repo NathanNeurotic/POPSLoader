@@ -316,8 +316,8 @@ UI = {
       BTN_BAR_SAFE_BOTTOM = 56;
       ICON_SPACING = 120;
       LIST_ROW_H = 20;
-      PREVIEW_W = 240;
-      PREVIEW_H = 240;
+      PREVIEW_W = 200;
+      PREVIEW_H = 200;
 	      -- Match BETA-5 carousel/menu vertical placement.
       CAROUSEL_Y_OFFSET = 36;
       FOOTER_ICON_SCALE = 0.63;
@@ -1408,18 +1408,10 @@ UI = {
           else
             preview_img = IMG.default
           end
+          local draw_x = preview_x
+          local draw_y = preview_y
           local draw_w = preview_w
           local draw_h = preview_h
-          if preview_img ~= nil then
-            local img_w = Graphics.getImageWidth(preview_img) or 0
-            local img_h = Graphics.getImageHeight(preview_img) or 0
-            if img_w > 0 and img_h > 0 then
-              draw_w = math.min(preview_w, img_w)
-              draw_h = math.min(preview_h, img_h)
-            end
-          end
-          local draw_x = preview_x + math.floor((preview_w - draw_w) / 2)
-          local draw_y = preview_y + math.floor((preview_h - draw_h) / 2)
           Graphics.drawRect(draw_x - 2, draw_y - 2, draw_w + 4, draw_h + 4, UI.CCOL.GREY)
           if preview_img ~= nil then
             Graphics.drawScaleImage(preview_img, draw_x, draw_y, draw_w, draw_h)
