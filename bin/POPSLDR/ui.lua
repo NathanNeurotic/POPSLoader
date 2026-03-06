@@ -1402,18 +1402,30 @@ UI = {
           local preview_y = layout.PREVIEW_Y
           local preview_w = layout.PREVIEW_W
           local preview_h = layout.PREVIEW_H
-          Graphics.drawRect(preview_x - 2, preview_y - 2, preview_w + 4, preview_h + 4, UI.CCOL.GREY)
           local preview_img = nil
           if cover_enabled then
             preview_img = cover_img or IMG.missing
           else
             preview_img = IMG.default
           end
+          local draw_w = preview_w
+          local draw_h = preview_h
           if preview_img ~= nil then
-            Graphics.drawScaleImage(preview_img, preview_x, preview_y, preview_w, preview_h)
+            local img_w = Graphics.getImageWidth(preview_img) or 0
+            local img_h = Graphics.getImageHeight(preview_img) or 0
+            if img_w > 0 and img_h > 0 then
+              draw_w = math.min(preview_w, img_w)
+              draw_h = math.min(preview_h, img_h)
+            end
+          end
+          local draw_x = preview_x + math.floor((preview_w - draw_w) / 2)
+          local draw_y = preview_y + math.floor((preview_h - draw_h) / 2)
+          Graphics.drawRect(draw_x - 2, draw_y - 2, draw_w + 4, draw_h + 4, UI.CCOL.GREY)
+          if preview_img ~= nil then
+            Graphics.drawScaleImage(preview_img, draw_x, draw_y, draw_w, draw_h)
           end
           if IMG.frame ~= nil then
-            Graphics.drawScaleImage(IMG.frame, preview_x, preview_y, preview_w, preview_h)
+            Graphics.drawScaleImage(IMG.frame, draw_x, draw_y, draw_w, draw_h)
           end
         end
         if ammount <= 0 then
@@ -2015,6 +2027,15 @@ UI = {
               pcall(PLDR.DetectMMCESlot, true)
             end
             local slots = PLDR.GetMMCESlots()
+            if #slots < 1 then
+              if type(System) == "table" and type(System.initMMCE) == "function" then
+                pcall(System.initMMCE)
+              end
+              if type(PLDR.DetectMMCESlot) == "function" then
+                pcall(PLDR.DetectMMCESlot, true)
+              end
+              slots = PLDR.GetMMCESlots()
+            end
             if #slots < 1 then
               UI.Notif_queue.add("No MMCE device found (mmce0/mmce1).")
               PLDR.CleanupGameList()

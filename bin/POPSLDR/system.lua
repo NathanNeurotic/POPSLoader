@@ -1203,6 +1203,32 @@ local function ReadMassBackendFlags()
   return flags
 end
 
+local function BuildMassKindsFromBdmList()
+  local kinds = {}
+  if type(System) ~= "table" or type(System.bdmList) ~= "function" then
+    return kinds
+  end
+  local ok, list = pcall(System.bdmList)
+  if not ok or type(list) ~= "table" then
+    return kinds
+  end
+  for i = 1, #list do
+    local info = list[i]
+    local slot = tonumber(info and info.parId)
+    if slot ~= nil and slot >= 0 and slot <= 9 then
+      local root = (slot == 0) and "mass:/" or ("mass"..tostring(slot)..":/")
+      local kind = ClassifyMassRootDriver(info and info.name)
+      local prev = kinds[root]
+      if prev == nil then
+        kinds[root] = kind
+      elseif prev ~= "mx4sio" and kind == "mx4sio" then
+        kinds[root] = kind
+      end
+    end
+  end
+  return kinds
+end
+
 local function WaitMassProbeRetry(attempt, max_attempts)
   return
 end
@@ -1218,16 +1244,37 @@ local function BuildMassRootIdentity(mode)
   local seen_present = {}
   local seen_usb = {}
   local seen_mx4 = {}
+  local bdm_kinds = BuildMassKindsFromBdmList()
 
   local present = PLDR.GetPresentMassRootsBounded()
+  local roots = {}
+  local roots_seen = {}
   for i = 1, #present do
-    local normalized = NormalizeMassRoot(present[i])
+    local r = NormalizeMassRoot(present[i])
+    if r ~= nil and roots_seen[r] ~= true then
+      roots_seen[r] = true
+      table.insert(roots, r)
+    end
+  end
+  for root, _ in pairs(bdm_kinds) do
+    local r = NormalizeMassRoot(root)
+    if r ~= nil and roots_seen[r] ~= true then
+      roots_seen[r] = true
+      table.insert(roots, r)
+    end
+  end
+
+  for i = 1, #roots do
+    local normalized = roots[i]
     if normalized ~= nil and seen_present[normalized] ~= true then
       seen_present[normalized] = true
       table.insert(identity.present_roots, normalized)
 
-      local driver = PLDR.GetMassMountDriver(normalized)
-      local kind = ClassifyMassRootDriver(driver)
+      local kind = bdm_kinds[normalized]
+      if kind == nil then
+        local driver = PLDR.GetMassMountDriver(normalized)
+        kind = ClassifyMassRootDriver(driver)
+      end
       if kind == "mx4sio" then
         if seen_mx4[normalized] ~= true then
           seen_mx4[normalized] = true
@@ -1773,7 +1820,7 @@ function PLDR.InitMX4SIOPopsRoot()
   PLDR.MX4SIO.MASSINDX = nil
   PLDR.MX4SIO.IS_MASS_ALIAS = false
 
-  for _ = 1, 3 do
+  for attempt = 1, 3 do
     if type(_G.ensureMx4sioInit) == "function" then
       pcall(_G.ensureMx4sioInit)
     end
@@ -1791,6 +1838,9 @@ function PLDR.InitMX4SIOPopsRoot()
         PLDR.SetMX4SIORoot(root)
         return pops
       end
+    end
+    if attempt < 3 and type(System) == "table" and type(System.sleep) == "function" then
+      pcall(System.sleep, 1)
     end
   end
 
@@ -2650,6 +2700,7 @@ function Touch(FILE)
 end
 
 PLDR.LoadSettingsNonFatal()
+PLDR.EnsureUsbMassReadyOnce()
 
 ---MAIN PROGRAM BEHAVIOUR BEGINS
 local initial_scene = UI.SCENES.MMAIN
