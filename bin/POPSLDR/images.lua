@@ -38,7 +38,7 @@ local IMG_REGISTRATIONS = {
   {"default", "default.png"},
   {"disable_art", "disable_art.png"},
   {"frame", "frame.png"},
-  {"MISSING", "missing.png"},
+  {"MISSING", "MISSING.png"},
 }
 
 local IMG_SOURCES = {}
@@ -64,8 +64,14 @@ local function LoadExternalImage(source)
   end
   local candidates = {
     source,
+    string.lower(source),
+    string.upper(source),
     "IMG/"..source,
-    "POPSLDR/IMG/"..source
+    "IMG/"..string.lower(source),
+    "IMG/"..string.upper(source),
+    "POPSLDR/IMG/"..source,
+    "POPSLDR/IMG/"..string.lower(source),
+    "POPSLDR/IMG/"..string.upper(source)
   }
   if type(System) == "table" and type(System.resolveAsset) == "function" then
     local ok, resolved = pcall(System.resolveAsset, source)

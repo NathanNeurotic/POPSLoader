@@ -1133,12 +1133,13 @@ UI = {
           local preview_img = nil
           local default_img = IMG["default"]
           local missing_img = IMG["MISSING"]
+          local legacy_img = IMG["DISC"]
           if not UI.GameList.isArtEnabled then
-            preview_img = default_img or missing_img
+            preview_img = default_img or missing_img or legacy_img
           elseif cover_img ~= nil then
             preview_img = cover_img
           else
-            preview_img = missing_img or default_img
+            preview_img = missing_img or default_img or legacy_img
           end
 
           if preview_img ~= nil then
@@ -1699,6 +1700,13 @@ UI = {
             PLDR.GAMEPATH = ""
             local snapshot = PLDR.RefreshMassStateSnapshot()
             PLDR.BuildMassGameListByType("usb", snapshot)
+            if #PLDR.GAMES < 1 then
+              if type(PLDR.RefreshMassBackendsBoundedOnce) == "function" then
+                pcall(PLDR.RefreshMassBackendsBoundedOnce)
+              end
+              snapshot = PLDR.RefreshMassStateSnapshot()
+              PLDR.BuildMassGameListByType("usb", snapshot)
+            end
             UI.setDeviceLock(DEVLOCK.USB)
             UI.SceneChange(UI.SCENES.GUSBFAT)
           elseif UI.MainMenu.OPT == 6 then
