@@ -67,7 +67,7 @@ jobs:
           set -eu
           make clean elfloader all
 
-      - name: Create release package (PS1_POPSLOADER + POPS) — no PATCH5.bin
+      - name: Create release package (PS1_POPSLOADER + POPS/PATCH_5.BIN)
         shell: sh
         run: |
           set -eu
@@ -94,9 +94,7 @@ jobs:
           req bin/POPSLDR/usbhdfsd.irx.mmce
           req bin/POPSLDR/usbhdfsd.irx.mx4sio
           req bin/POPSLDR/usbhdfsd.irx.usbexfat
-          req bin/POPSLDR/IGR_BG.tm2
-          req bin/POPSLDR/IGR_NO.tm2
-          req bin/POPSLDR/IGR_YES.tm2
+          req bin/POPSLDR/PATCH_5.BIN
 
           cp -f bin/POPSLOADER.ELF dist_root/PS1_POPSLOADER/POPSLOADER.ELF
           cp -f bin/POPSLDR/POPSTARTER.ELF dist_root/PS1_POPSLOADER/POPSTARTER.ELF
@@ -116,9 +114,7 @@ jobs:
           cp -f bin/POPSLDR/usbhdfsd.irx.mx4sio dist_root/PS1_POPSLOADER/usbhdfsd.irx.mx4sio
           cp -f bin/POPSLDR/usbhdfsd.irx.usbexfat dist_root/PS1_POPSLOADER/usbhdfsd.irx.usbexfat
 
-          cp -f bin/POPSLDR/IGR_BG.tm2 dist_root/POPS/IGR_BG.tm2
-          cp -f bin/POPSLDR/IGR_NO.tm2 dist_root/POPS/IGR_NO.tm2
-          cp -f bin/POPSLDR/IGR_YES.tm2 dist_root/POPS/IGR_YES.tm2
+          cp -f bin/POPSLDR/PATCH_5.BIN dist_root/POPS/PATCH_5.BIN
 
           cd dist_root
           find PS1_POPSLOADER POPS -type f | LC_ALL=C sort | zip -X -9 ../POPSLOADER.zip -@ >/dev/null
@@ -136,9 +132,7 @@ jobs:
 
           zpath = "POPSLOADER.zip"
           expected = {
-              "POPS/IGR_BG.tm2",
-              "POPS/IGR_NO.tm2",
-              "POPS/IGR_YES.tm2",
+              "POPS/PATCH_5.BIN",
               "PS1_POPSLOADER/APPINFO.PBT",
               "PS1_POPSLOADER/POPSLOADER.ELF",
               "PS1_POPSLOADER/POPSTARTER.ELF",
@@ -188,10 +182,10 @@ jobs:
                   print("\n".join(extra))
               sys.exit(1)
 
-          # Forbidden patterns / PATCH5.bin
-          forbidden = [n for n in names if n.lower().endswith("patch5.bin") or "patch_5.bin" in n.lower()]
+          # Forbidden old TM2 payload entries
+          forbidden = [n for n in names if n.lower().endswith(".tm2") and n.startswith("POPS/")]
           if forbidden:
-              print("ERROR: forbidden PATCH5.bin found:", forbidden)
+              print("ERROR: forbidden POPS TM2 file(s) found:", forbidden)
               sys.exit(1)
 
           print("OK: POPSLOADER.zip contents verified")

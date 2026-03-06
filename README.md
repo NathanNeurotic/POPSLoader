@@ -26,7 +26,7 @@ POPSLoader was created by [El_isra](https://www.github.com/israpps), and this re
 5. Launch `POPSLOADER.ELF` with your preferred ELF launcher.
 
 ### Notes
-- The CI release package expects `POPS/IGR_*.tm2` assets and `PS1_POPSLOADER/POPSTARTER.ELF` to be present.
+- The CI release package expects `POPS/PATCH_5.BIN` and `PS1_POPSLOADER/POPSTARTER.ELF` to be present.
 - TODO: Document exact per-launcher folder path expectations (OPL / FMCB variants).
 
 ## Supported Devices and Backends
