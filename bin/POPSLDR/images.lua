@@ -50,6 +50,13 @@ end
 
 local IMG_FAILED = {}
 
+local EXTERNAL_ONLY_KEYS = {
+  default = true,
+  disable_art = true,
+  frame = true,
+  MISSING = true
+}
+
 local function LoadExternalImage(source)
   if source == nil or source == "" then return nil end
   if type(Graphics) ~= "table" or type(Graphics.loadImage) ~= "function" then
@@ -68,16 +75,9 @@ local function LoadExternalImage(source)
   end
   for i = 1, #candidates do
     local path = candidates[i]
-    local exists = true
-    if type(doesFileExist) == "function" then
-      local ok_exists, res = pcall(doesFileExist, path)
-      exists = ok_exists and res == true
-    end
-    if exists then
-      local ok_img, img = pcall(Graphics.loadImage, path)
-      if ok_img and img ~= nil then
-        return img
-      end
+    local ok_img, img = pcall(Graphics.loadImage, path)
+    if ok_img and img ~= nil then
+      return img
     end
   end
   return nil
@@ -97,8 +97,7 @@ IMG = setmetatable({}, {
       end
     end
 
-
-    if img == nil then
+    if img == nil and EXTERNAL_ONLY_KEYS[key] == true then
       img = LoadExternalImage(source)
     end
 
