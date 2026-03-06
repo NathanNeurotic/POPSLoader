@@ -410,6 +410,7 @@ PLDR.POPSTARTER_DIR = "mc0:/POPSTARTER"
 PLDR.SETTINGS_PATH = "mc0:/POPSTARTER/.pldrs"
 PLDR.BDMA_MODE_KEY = "FAT32"
 PLDR.SELECTED_PROFILE = tonumber(PLDR.DEFAULT_PROFILE) or 1
+PLDR.ART_ENABLED = true
 
 local POPSTARTER_PACK_ROOT = PLDR.POPSTARTER_DIR
 local BDMA_MODE_MARKER_PATH = POPSTARTER_PACK_ROOT.."/.pldr_bdma_mode"
@@ -798,7 +799,8 @@ local function EncodeSettings()
   local lines = {
     "PROFILE="..tostring(tonumber(PLDR.SELECTED_PROFILE) or 1),
     "POPSTARTER_PATH="..tostring(PLDR.POPSTARTER_PATH or ""),
-    "BDMA="..tostring(PLDR.BDMA_MODE_KEY or "FAT32")
+    "BDMA="..tostring(PLDR.BDMA_MODE_KEY or "FAT32"),
+    "ART_ENABLED="..((PLDR.ART_ENABLED == false) and "0" or "1")
   }
   return table.concat(lines, "\n").."\n"
 end
@@ -877,6 +879,7 @@ function PLDR.LoadSettingsNonFatal()
   PLDR.EnsurePopstarterDir()
   PLDR.SELECTED_PROFILE = defaults_profile
   PLDR.BDMA_MODE_KEY = "FAT32"
+  PLDR.ART_ENABLED = true
   if PLDR.PROFILES ~= nil and PLDR.PROFILES[defaults_profile] ~= nil then
     PLDR.POPSTARTER_PATH = PLDR.PROFILES[defaults_profile].ELF
   end
@@ -892,6 +895,7 @@ function PLDR.LoadSettingsNonFatal()
   local profile = tonumber(string.match(data, "\nPROFILE=([^\n]+)")) or tonumber(string.match(data, "^PROFILE=([^\n]+)"))
   local popstarter_path = string.match(data, "\nPOPSTARTER_PATH=([^\n]*)") or string.match(data, "^POPSTARTER_PATH=([^\n]*)")
   local bdma_mode = string.match(data, "\nBDMA=([^\n]+)") or string.match(data, "^BDMA=([^\n]+)") or string.match(data, "\nBDMA_MODE=([^\n]+)") or string.match(data, "^BDMA_MODE=([^\n]+)")
+  local art_enabled = string.match(data, "\nART_ENABLED=([^\n]+)") or string.match(data, "^ART_ENABLED=([^\n]+)")
   if profile ~= nil and PLDR.PROFILES ~= nil and PLDR.PROFILES[profile] ~= nil then
     PLDR.SELECTED_PROFILE = profile
     PLDR.POPSTARTER_PATH = PLDR.PROFILES[profile].ELF
@@ -900,6 +904,10 @@ function PLDR.LoadSettingsNonFatal()
     PLDR.POPSTARTER_PATH = popstarter_path
   end
   PLDR.BDMA_MODE_KEY = NormalizeBdmaModeKey(bdma_mode) or PLDR.BDMA_MODE_KEY
+  if art_enabled ~= nil then
+    local normalized_art = string.upper(string.gsub(tostring(art_enabled), "%s+", ""))
+    PLDR.ART_ENABLED = not (normalized_art == "0" or normalized_art == "FALSE" or normalized_art == "OFF" or normalized_art == "NO")
+  end
   PLDR.ReconcileBdmaModeWithEffectiveState()
   return true
 end
@@ -2472,6 +2480,9 @@ function Touch(FILE)
 end
 
 PLDR.LoadSettingsNonFatal()
+if UI ~= nil and type(UI.SyncSettingsSelectionFromRuntime) == "function" then
+  UI.SyncSettingsSelectionFromRuntime()
+end
 
 ---MAIN PROGRAM BEHAVIOUR BEGINS
 local initial_scene = UI.SCENES.MMAIN
