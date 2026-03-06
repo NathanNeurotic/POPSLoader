@@ -54,34 +54,26 @@ local function ResolveFirstExistingElf(candidates)
   end
   return nil
 end
-local function ExtractGameRelPath(entry)
-  if entry == nil then return nil end
-  local relpath = string.match(entry, "^[^|]+|(.+)$")
-  return relpath or entry
-end
 local function StripExtension(path)
   if path == nil then return nil end
   local stripped = string.match(path, "(.+)%.[^%.]+$")
   return stripped or path
 end
-local function BuildCoverCandidates(entry, game_path)
-  -- TODO: verify cover art naming/layout. For now, assume sidecar image next to the VCD.
-  local relpath = ExtractGameRelPath(entry)
-  if relpath == nil or relpath == "" then return {} end
-  local fullpath = relpath
-  if type(JoinPath) == "function" then
-    fullpath = JoinPath(game_path or "", relpath)
-  elseif game_path ~= nil and game_path ~= "" then
-    if string.sub(game_path, -1) == "/" then
-      fullpath = game_path..relpath
-    else
-      fullpath = game_path.."/"..relpath
-    end
+local function ResolveSelectedVcdPath(entry)
+  if entry == nil or entry == "" then
+    return nil
   end
-  local base = StripExtension(fullpath)
-  return {
-    base..".png"
-  }
+  local root, rel = string.match(entry, "^([^|]+)|(.+)$")
+  if root ~= nil then
+    return root..rel
+  end
+  return tostring(PLDR.GAMEPATH or "")..entry
+end
+local function BuildCoverPathFromResolvedVcd(resolved_vcd_path)
+  if resolved_vcd_path == nil or resolved_vcd_path == "" then
+    return nil
+  end
+  return StripExtension(resolved_vcd_path)..".png"
 end
 local CoverCache = {
   max = 3,
@@ -114,7 +106,15 @@ function CoverCache:EvictIfNeeded()
       end
       self.entries[evict_key] = nil
     end
+    if self.last_key == evict_key then
+      self.last_key = nil
+      self.last_img = nil
+    end
   end
+end
+function CoverCache:ResetPreview()
+  self.last_key = nil
+  self.last_img = nil
 end
 function CoverCache:GetOrLoad(path)
   if path == nil or path == "" then return nil end
@@ -146,26 +146,21 @@ function CoverCache:GetOrLoad(path)
   self:EvictIfNeeded()
   return img
 end
-function CoverCache:UpdateSelection(entry, game_path)
-  local key = tostring(entry or "")
-  if game_path ~= nil then
-    key = key.."@"..tostring(game_path)
-  end
+function CoverCache:UpdateSelection(resolved_vcd_path)
+  local key = tostring(resolved_vcd_path or "")
   if self.last_key == key then
     return self.last_img
   end
   self.last_key = key
   self.last_img = nil
-  if entry == nil or entry == "" then
+  if resolved_vcd_path == nil or resolved_vcd_path == "" then
     return nil
   end
-  local candidates = BuildCoverCandidates(entry, game_path)
-  for i = 1, #candidates do
-    local img = self:GetOrLoad(candidates[i])
-    if img ~= nil then
-      self.last_img = img
-      return img
-    end
+  local cover_path = BuildCoverPathFromResolvedVcd(resolved_vcd_path)
+  local img = self:GetOrLoad(cover_path)
+  if img ~= nil then
+    self.last_img = img
+    return img
   end
   return nil
 end
@@ -1061,11 +1056,15 @@ UI = {
       CoverPending = false;
       CoverPendingAt = 0;
       CoverIdleMs = 200;
+      isArtEnabled = true;
       Reset = function ()
         UI.GameList.CURR = 1;
         UI.GameList.CoverLastIndex = nil
         UI.GameList.CoverPending = false
         UI.GameList.CoverPendingAt = 0
+        if UI.CoverCache ~= nil and UI.CoverCache.ResetPreview ~= nil then
+          UI.CoverCache:ResetPreview()
+        end
       end;
       Play = function()
         local layout = UI.LAYOUT
@@ -1130,8 +1129,18 @@ UI = {
           cover_img = UI.CoverCache.last_img
         end
         if layout.PREVIEW_W > 0 then
-          Graphics.drawRect(layout.PREVIEW_X - 2, layout.PREVIEW_Y - 2, layout.PREVIEW_W + 4, layout.PREVIEW_H + 4, UI.CCOL.GREY)
-          local preview_img = cover_img
+          local frame_img = IMG["frame"]
+          if frame_img ~= nil then
+            Graphics.drawScaleImage(frame_img, layout.PREVIEW_X - 2, layout.PREVIEW_Y - 2, layout.PREVIEW_W + 4, layout.PREVIEW_H + 4)
+          else
+            Graphics.drawRect(layout.PREVIEW_X - 2, layout.PREVIEW_Y - 2, layout.PREVIEW_W + 4, layout.PREVIEW_H + 4, UI.CCOL.GREY)
+          end
+          local preview_img = nil
+          if UI.GameList.isArtEnabled then
+            preview_img = cover_img or IMG["default"] or IMG["MISSING"]
+          else
+            preview_img = IMG["disable_art"] or IMG["MISSING"]
+          end
           if preview_img ~= nil then
             Graphics.drawScaleImage(preview_img, layout.PREVIEW_X, layout.PREVIEW_Y, layout.PREVIEW_W, layout.PREVIEW_H)
           end
@@ -1148,6 +1157,13 @@ UI = {
         if UI.Pad.Events.NAV_RIGHT then UI.GameList.CURR = CLAMP(UI.GameList.CURR+UI.GameList.MAXDRAW, 1, ammount) end
         if UI.Pad.Events.NAV_UP then UI.GameList.CURR = CLAMP(UI.GameList.CURR-1, 1, ammount) end
         if UI.Pad.Events.NAV_LEFT then UI.GameList.CURR = CLAMP(UI.GameList.CURR-UI.GameList.MAXDRAW, 1, ammount) end
+        if UI.Pad.Events.SQUARE then
+          UI.GameList.isArtEnabled = not UI.GameList.isArtEnabled
+          UI.GameList.CoverPending = false
+          if UI.CoverCache ~= nil and UI.CoverCache.ResetPreview ~= nil then
+            UI.CoverCache:ResetPreview()
+          end
+        end
         if UI.CoverCache ~= nil then
           local now = 0
           if UI.Pad.Timer ~= nil then
@@ -1158,21 +1174,20 @@ UI = {
             UI.GameList.CoverLastIndex = nil
             UI.GameList.CoverPending = false
             UI.GameList.CoverPendingAt = now
-            UI.CoverCache:UpdateSelection(nil, PLDR.GAMEPATH)
+            UI.CoverCache:ResetPreview()
           else
             if UI.GameList.CURR ~= UI.GameList.CoverLastIndex then
               UI.GameList.CoverLastIndex = UI.GameList.CURR
               UI.GameList.CoverPending = true
               UI.GameList.CoverPendingAt = now
+              UI.CoverCache:ResetPreview()
             end
-            if UI.GameList.CoverPending and not nav_event and (now - UI.GameList.CoverPendingAt) >= UI.GameList.CoverIdleMs then
+            if (not UI.GameList.isArtEnabled) then
+              UI.GameList.CoverPending = false
+            elseif UI.GameList.CoverPending and not nav_event and (now - UI.GameList.CoverPendingAt) >= UI.GameList.CoverIdleMs then
               local entry = PLDR.GAMES[UI.GameList.CURR]
-              local cover_path = PLDR.GAMEPATH
-              local root = string.match(entry or "", "^([^|]+)|.+$")
-              if root ~= nil then
-                cover_path = root
-              end
-              UI.CoverCache:UpdateSelection(entry, cover_path)
+              local resolved_vcd_path = ResolveSelectedVcdPath(entry)
+              UI.CoverCache:UpdateSelection(resolved_vcd_path)
               UI.GameList.CoverPending = false
             end
           end
@@ -1327,6 +1342,7 @@ UI = {
           PLDR.SELECTED_PROFILE = UI.ProfileQuery.curopt
           PLDR.POPSTARTER_PATH = PLDR.PROFILES[UI.ProfileQuery.curopt].ELF
           PLDR.BDMA_MODE_KEY = UI.BdmaModes[UI.BdmaModeIndex].key
+          PLDR.ART_ENABLED = UI.GameList.isArtEnabled == true
           UI.SavingActive = true
           local save_token = nil
           if type(PLDR.NextBdmaApplyToken) == "function" then
@@ -1942,6 +1958,14 @@ function UI.SyncSettingsSelectionFromRuntime()
   end
   local selected_profile = tonumber(PLDR.SELECTED_PROFILE) or tonumber(PLDR.DEFAULT_PROFILE) or 1
   UI.ProfileQuery.curopt = CLAMP(selected_profile, 1, #PLDR.PROFILES)
+  UI.SyncArtToggleFromRuntime()
+end
+function UI.SyncArtToggleFromRuntime()
+  local enabled = PLDR.ART_ENABLED
+  if enabled == nil then
+    enabled = true
+  end
+  UI.GameList.isArtEnabled = enabled == true
 end
 UI.SyncSettingsSelectionFromRuntime()
 function Input_GetEvent()
