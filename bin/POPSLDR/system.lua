@@ -1170,11 +1170,11 @@ local function ClassifyMassRootDriver(driver)
   if value == "" then
     return "unknown"
   end
-  if string.find(value, "mmce", 1, true) ~= nil then
-    return "mmce"
-  end
   if string.find(value, "mx4", 1, true) ~= nil or string.find(value, "sdc", 1, true) ~= nil then
     return "mx4sio"
+  end
+  if string.find(value, "mmce", 1, true) ~= nil then
+    return "mmce"
   end
   if string.find(value, "usb", 1, true) ~= nil then
     return "usb"
@@ -1608,6 +1608,24 @@ function PLDR.DetectMMCESlot()
   PLDR.MMCE.PROBED = true
   PLDR.MMCE.SLOTS = {}
   PLDR.MMCE.INDEX = 1
+  local mass_backend = { any = false, mx4sio = false, mmce = false }
+  local present_mass = PLDR.GetPresentMassRootsBounded()
+  for i = 1, #present_mass do
+    local driver = string.lower(tostring(PLDR.GetMassMountDriver(present_mass[i]) or ""))
+    if driver ~= "" then
+      mass_backend.any = true
+      if string.find(driver, "mx4", 1, true) ~= nil or string.find(driver, "sdc", 1, true) ~= nil then
+        mass_backend.mx4sio = true
+      end
+      if string.find(driver, "mmce", 1, true) ~= nil then
+        mass_backend.mmce = true
+      end
+    end
+  end
+  if mass_backend.any and mass_backend.mx4sio and not mass_backend.mmce then
+    PLDR.MMCE.PREFIX = nil
+    return nil
+  end
   local candidates = {"mmce0:/", "mmce1:/"}
   for i = 1, #candidates do
     local candidate = candidates[i]

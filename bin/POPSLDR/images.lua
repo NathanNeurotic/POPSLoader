@@ -62,6 +62,34 @@ IMG = setmetatable({}, {
       end
     end
 
+    if img == nil and type(Graphics) == "table" and type(Graphics.loadImage) == "function" then
+      local tried = {}
+      local candidates = {}
+      local function AddCandidate(path)
+        if type(path) ~= "string" or path == "" then return end
+        if tried[path] then return end
+        tried[path] = true
+        table.insert(candidates, path)
+      end
+      if type(System) == "table" and type(System.resolveAsset) == "function" then
+        local ok_img, resolved_img = pcall(System.resolveAsset, "IMG/"..source)
+        if ok_img then AddCandidate(resolved_img) end
+        local ok_raw, resolved_raw = pcall(System.resolveAsset, source)
+        if ok_raw then AddCandidate(resolved_raw) end
+      end
+      AddCandidate("IMG/"..source)
+      AddCandidate(source)
+      for i = 1, #candidates do
+        local path = candidates[i]
+        if doesFileExist(path) then
+          img = Graphics.loadImage(path)
+          if img ~= nil then
+            break
+          end
+        end
+      end
+    end
+
 
     if img == nil then
       IMG_FAILED[key] = true

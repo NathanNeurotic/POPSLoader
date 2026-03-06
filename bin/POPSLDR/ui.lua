@@ -2075,9 +2075,15 @@ UI = {
             PLDR.GAMEPATH = ""
             local usb_roots = PLDR.GetRootsByType("usb")
             if usb_roots == nil or #usb_roots < 1 then
+              usb_roots = PLDR.GetRootsByType("usb")
+            end
+            if usb_roots == nil or #usb_roots < 1 then
               UI.Notif_queue.add("No USB backend found")
             end
-            PLDR.BuildMassGameListByType("usb")
+            local games = PLDR.BuildMassGameListByType("usb")
+            if (games == nil or #games < 1) and usb_roots ~= nil and #usb_roots > 0 then
+              games = PLDR.BuildMassGameListByType("usb")
+            end
             UI.setDeviceLock(DEVLOCK.USB)
             UI.SceneChange(UI.SCENES.GUSBFAT)
           elseif UI.MainMenu.OPT == 6 then
