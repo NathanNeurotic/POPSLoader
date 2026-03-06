@@ -385,10 +385,15 @@ UI = {
     DkwdrvPathDraft = nil;
     HideTextMode = false;
     SavingActive = false;
-    ShowSavingOverlay = function ()
+    SavingMessage = "Saving...";
+    ShowSavingOverlay = function (msg)
+      UI.SavingMessage = tostring(msg or "Saving...")
       UI.SavingActive = true
       UI.flip()
+    end;
+    HideSavingOverlay = function ()
       UI.SavingActive = false
+      UI.SavingMessage = "Saving..."
     end;
     --- Notifications queue handler
     Notif_queue = {
@@ -558,7 +563,7 @@ UI = {
       UI.Modal.Draw()
       if UI.SavingActive then
         Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, 140))
-        Font.ftPrint(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID - 8, 8, UI.SCR.X, 16, "Saving...", UI.CCOL.YELLOW)
+        Font.ftPrint(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID - 8, 8, UI.SCR.X, 16, tostring(UI.SavingMessage or "Saving..."), UI.CCOL.YELLOW)
       end
       if UI.Transition ~= nil then
         local alpha = UI.Transition.Update()
@@ -1592,8 +1597,7 @@ UI = {
         if UI.HandleGlobalInput(false) then return end
 
         local function queue_exit(target_scene)
-          UI.ShowSavingOverlay()
-          UI.SavingActive = true
+          UI.ShowSavingOverlay("Saving/Applying...")
           local save_token = nil
           if type(PLDR.NextBdmaApplyToken) == "function" then
             save_token = PLDR.NextBdmaApplyToken()
@@ -1635,7 +1639,7 @@ UI = {
             end
             return true, nil
           end, function(e) return e end)
-          UI.SavingActive = false
+          UI.HideSavingOverlay()
           if ok_run and result == true then
             UI.ProfileDirty = false
             UI.BdmaDirty = false
