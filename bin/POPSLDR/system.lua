@@ -1787,34 +1787,22 @@ local function BuildLiteralElfName(value)
   return trimmed..".ELF"
 end
 
-local function BuildDisplayNameFromEntry(entry)
-  if entry == nil or entry == "" then
-    return ""
+local function SelectPopstarterSelectorPrefix(_device_page, source_mode)
+  local mode = string.lower(tostring(source_mode or ""))
+  if mode == "smb" then
+    return "SB."
   end
-  local display_name = entry
-  local hdd_relpath = string.match(display_name, "^[^|]+|(.+)$")
-  if hdd_relpath ~= nil then
-    display_name = string.match(hdd_relpath, "([^/]+)$") or hdd_relpath
-  end
-  return string.gsub(display_name, "%.[Vv][Cc][Dd]$", "")
-end
-
-local function SelectPopstarterSelectorPrefix(device_page)
-  if device_page == "USB" or device_page == "MMCE" or device_page == "SMB/MMCE" or device_page == "MX4SIO" then
-    return "XX."
-  end
-  if device_page == "HDD" then
+  if mode == "pfs" or mode == "hdd" then
     return ""
   end
   return "XX."
 end
 
-local function BuildPopstarterSelectorPath(device_page, game_name)
+local function BuildPopstarterSelectorPath(selector_prefix, game_name)
   if game_name == nil or game_name == "" then
     return ""
   end
-  local prefix = SelectPopstarterSelectorPrefix(device_page)
-  local normalized = NormalizeBootBasename(game_name, prefix)
+  local normalized = NormalizeBootBasename(game_name, selector_prefix or "")
   return BuildLiteralElfName(normalized)
 end
 
@@ -2216,11 +2204,10 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     )
     return
   end
-  local selector_prefix = SelectPopstarterSelectorPrefix(device_page)
-  local argv0_selector = BuildPopstarterSelectorPath(device_page, game_name)
+  local selector_prefix = SelectPopstarterSelectorPrefix(device_page, boot_source_mode)
+  local argv0_selector = BuildPopstarterSelectorPath(selector_prefix, game_name)
   if policy.name == "HDD" then
-    local display_name = BuildDisplayNameFromEntry(game)
-    argv0_selector = BuildLiteralElfName(display_name)
+    argv0_selector = BuildLiteralElfName(game_name)
   end
   if selector_prefix == "" and string.upper(game_name) == "POPSTARTER" then
     BlockLaunchFailure(
