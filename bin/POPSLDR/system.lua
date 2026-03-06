@@ -1161,58 +1161,8 @@ local function ClassifyMassRootDriver(driver)
   return "usb"
 end
 
-local function BuildMassKindsFromBdmList()
-  local kinds = {}
-  if type(System) ~= "table" or type(System.bdmList) ~= "function" then
-    return kinds
-  end
-
-  local ok, list = pcall(System.bdmList)
-  if not ok or type(list) ~= "table" then
-    return kinds
-  end
-
-  for i = 1, #list do
-    local info = list[i]
-    local slot = tonumber(info and info.parId)
-    if slot ~= nil and slot >= 0 and slot <= 9 then
-      local root = (slot == 0) and "mass:/" or ("mass"..tostring(slot)..":/")
-      local kind = ClassifyMassRootDriver(info and info.name)
-      if kind ~= "unknown" then
-        local prev = kinds[root]
-        if prev == nil or prev == "unknown" then
-          kinds[root] = kind
-        elseif prev ~= "mx4sio" and kind == "mx4sio" then
-          -- Keep MX4SIO precedence when backend names include mixed tokens.
-          kinds[root] = kind
-        end
-      end
-    end
-  end
-
-  return kinds
-end
-
 local function ReadMassBackendFlags()
   local flags = { any = false, mmce = false }
-
-  if type(System) == "table" and type(System.bdmList) == "function" then
-    local ok, list = pcall(System.bdmList)
-    if ok and type(list) == "table" then
-      for i = 1, #list do
-        local name = string.lower(tostring(list[i] and list[i].name or ""))
-        if name ~= "" then
-          flags.any = true
-          if string.find(name, "mmce", 1, true) ~= nil then
-            flags.mmce = true
-          end
-        end
-      end
-      if flags.any then
-        return flags
-      end
-    end
-  end
 
   local present_mass = PLDR.GetPresentMassRootsBounded()
   for i = 1, #present_mass do
@@ -1233,9 +1183,6 @@ local function WaitMassProbeRetry(attempt, max_attempts)
   if attempt >= max_attempts then
     return
   end
-  if type(System) == "table" and type(System.sleep) == "function" then
-    pcall(System.sleep, 60)
-  end
   if type(PLDR.RefreshMassBackends) == "function" then
     pcall(PLDR.RefreshMassBackends)
   end
@@ -1255,7 +1202,6 @@ local function BuildMassRootIdentity(mode)
   local seen_present = {}
   local seen_usb = {}
   local seen_mx4 = {}
-  local bdm_kinds = BuildMassKindsFromBdmList()
 
   local present = PLDR.GetPresentMassRootsBounded()
   for i = 1, #present do
@@ -1266,9 +1212,6 @@ local function BuildMassRootIdentity(mode)
 
       local driver = PLDR.GetMassMountDriver(normalized)
       local kind = ClassifyMassRootDriver(driver)
-      if kind == "unknown" then
-        kind = bdm_kinds[normalized] or "unknown"
-      end
       if kind == "mx4sio" then
         if seen_mx4[normalized] ~= true then
           seen_mx4[normalized] = true
@@ -1289,13 +1232,13 @@ end
 local function BuildUsbIdentityDeferred()
   local attempts = 0
   local identity = nil
-  while attempts < 3 do
+  while attempts < 2 do
     attempts = attempts + 1
     identity = BuildMassRootIdentity("usb")
     if type(identity) == "table" and type(identity.usb) == "table" and #identity.usb > 0 then
       return identity
     end
-    WaitMassProbeRetry(attempts, 3)
+    WaitMassProbeRetry(attempts, 2)
   end
   return identity or BuildMassRootIdentity("usb")
 end
@@ -1853,9 +1796,6 @@ function PLDR.BuildMassGameListByType(kind, mass_snapshot)
     end
   end
   if not found_any and #roots > 0 then
-    if type(System) == "table" and type(System.sleep) == "function" then
-      pcall(System.sleep, 60)
-    end
     for i = 1, #roots do
       local pops_root = roots[i].."POPS/"
       if doesFolderExist(pops_root) then

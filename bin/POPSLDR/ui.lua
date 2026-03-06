@@ -1398,7 +1398,29 @@ UI = {
           cover_img = UI.CoverCache.last_img
         end
         if layout.PREVIEW_W > 0 then
-          Graphics.drawRect(layout.PREVIEW_X - 2, layout.PREVIEW_Y - 2, layout.PREVIEW_W + 4, layout.PREVIEW_H + 4, UI.CCOL.GREY)
+          local preview_x = layout.PREVIEW_X
+          local preview_y = layout.PREVIEW_Y
+          local preview_w = layout.PREVIEW_W
+          local preview_h = layout.PREVIEW_H
+          if IMG.frame ~= nil then
+            local frame_w = Graphics.getImageWidth(IMG.frame) or 0
+            local frame_h = Graphics.getImageHeight(IMG.frame) or 0
+            if frame_w > 0 and frame_h > 0 then
+              local sx = preview_w / frame_w
+              local sy = preview_h / frame_h
+              local scale = sx
+              if sy < scale then scale = sy end
+              if scale > 0 then
+                local fitted_w = math.floor((frame_w * scale) + 0.5)
+                local fitted_h = math.floor((frame_h * scale) + 0.5)
+                preview_x = preview_x + math.floor((preview_w - fitted_w) / 2)
+                preview_y = preview_y + math.floor((preview_h - fitted_h) / 2)
+                preview_w = fitted_w
+                preview_h = fitted_h
+              end
+            end
+          end
+          Graphics.drawRect(preview_x - 2, preview_y - 2, preview_w + 4, preview_h + 4, UI.CCOL.GREY)
           local preview_img = nil
           if cover_enabled then
             preview_img = cover_img or IMG.missing
@@ -1406,10 +1428,10 @@ UI = {
             preview_img = IMG.default
           end
           if preview_img ~= nil then
-            Graphics.drawScaleImage(preview_img, layout.PREVIEW_X, layout.PREVIEW_Y, layout.PREVIEW_W, layout.PREVIEW_H)
+            Graphics.drawScaleImage(preview_img, preview_x, preview_y, preview_w, preview_h)
           end
           if IMG.frame ~= nil then
-            Graphics.drawScaleImage(IMG.frame, layout.PREVIEW_X, layout.PREVIEW_Y, layout.PREVIEW_W, layout.PREVIEW_H)
+            Graphics.drawScaleImage(IMG.frame, preview_x, preview_y, preview_w, preview_h)
           end
         end
         if ammount <= 0 then
@@ -2081,15 +2103,9 @@ UI = {
             PLDR.GAMEPATH = ""
             local usb_roots = PLDR.GetRootsByType("usb")
             if usb_roots == nil or #usb_roots < 1 then
-              usb_roots = PLDR.GetRootsByType("usb")
-            end
-            if usb_roots == nil or #usb_roots < 1 then
               UI.Notif_queue.add("No USB backend found")
             end
             local games = PLDR.BuildMassGameListByType("usb")
-            if (games == nil or #games < 1) and usb_roots ~= nil and #usb_roots > 0 then
-              games = PLDR.BuildMassGameListByType("usb")
-            end
             UI.setDeviceLock(DEVLOCK.USB)
             UI.SceneChange(UI.SCENES.GUSBFAT)
           elseif UI.MainMenu.OPT == 6 then
