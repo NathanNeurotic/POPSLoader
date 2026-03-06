@@ -1227,21 +1227,22 @@ local function BuildMassRootIdentity(mode)
   for slot = 0, 9 do
     local root = (slot == 0) and "mass:/" or ("mass"..tostring(slot)..":/")
     local normalized = NormalizeMassRoot(root)
-    if normalized ~= nil then
-      local driver = PLDR.GetMassMountDriver(normalized)
-      local kind = ClassifyMassRootDriver(driver)
-      local present = doesFolderExist(normalized)
-      local detected = (kind ~= "unknown") or present
-      if detected and seen_present[normalized] ~= true then
+    if normalized ~= nil and doesFolderExist(normalized) then
+      if seen_present[normalized] ~= true then
         seen_present[normalized] = true
         table.insert(identity.present_roots, normalized)
       end
+
+      -- Only classify mounted roots. Probing absent slots can be slow and can
+      -- produce unstable driver readings on some hardware.
+      local driver = PLDR.GetMassMountDriver(normalized)
+      local kind = ClassifyMassRootDriver(driver)
       if kind == "mx4sio" then
         if seen_mx4[normalized] ~= true then
           seen_mx4[normalized] = true
           table.insert(identity.mx4sio, normalized)
         end
-      elseif detected then
+      else
         if seen_usb[normalized] ~= true then
           seen_usb[normalized] = true
           table.insert(identity.usb, normalized)
@@ -1634,19 +1635,26 @@ function PLDR.DetectMMCESlot(force_refresh)
   if PLDR.MMCE.PROBED and not force_refresh then
     return PLDR.MMCE.PREFIX
   end
+  if type(PLDR.EnsureMmceReadyOnce) == "function" then
+    pcall(PLDR.EnsureMmceReadyOnce)
+  end
   PLDR.MMCE.PROBED = true
   PLDR.MMCE.SLOTS = {}
   PLDR.MMCE.INDEX = 1
-  local mass_backend = ReadMassBackendFlags()
-  if mass_backend.mx4sio and not mass_backend.mmce then
-    PLDR.MMCE.PREFIX = nil
-    return nil
-  end
+  PLDR.MMCE.PREFIX = nil
   local candidates = {"mmce0:/", "mmce1:/"}
-  for i = 1, #candidates do
-    local candidate = candidates[i]
-    if doesFolderExist(candidate) then
-      table.insert(PLDR.MMCE.SLOTS, candidate)
+  for attempt = 1, 3 do
+    for i = 1, #candidates do
+      local candidate = candidates[i]
+      if doesFolderExist(candidate) or doesFolderExist(candidate.."POPS/") then
+        table.insert(PLDR.MMCE.SLOTS, candidate)
+      end
+    end
+    if #PLDR.MMCE.SLOTS > 0 then
+      break
+    end
+    if attempt < 3 and type(System) == "table" and type(System.sleep) == "function" then
+      pcall(System.sleep, 1)
     end
   end
   if #PLDR.MMCE.SLOTS > 0 then

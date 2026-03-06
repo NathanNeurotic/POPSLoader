@@ -49,6 +49,10 @@ extern unsigned char asset_circle_png[];
 extern unsigned int size_asset_circle_png;
 extern unsigned char asset_cross_png[];
 extern unsigned int size_asset_cross_png;
+extern unsigned char asset_l1_png[];
+extern unsigned int size_asset_l1_png;
+extern unsigned char asset_r1_png[];
+extern unsigned int size_asset_r1_png;
 extern unsigned char asset_r2_png[];
 extern unsigned int size_asset_r2_png;
 extern unsigned char asset_square_png[];
@@ -119,6 +123,8 @@ static const embedded_asset_t g_embedded_assets[] = {
 	ASSET_ENTRY("triangle.png", asset_triangle_png),
 	ASSET_ENTRY("circle.png", asset_circle_png),
 	ASSET_ENTRY("cross.png", asset_cross_png),
+	ASSET_ENTRY("L1.png", asset_l1_png),
+	ASSET_ENTRY("R1.png", asset_r1_png),
 	ASSET_ENTRY("R2.png", asset_r2_png),
 	ASSET_ENTRY("square.png", asset_square_png),
 	ASSET_ENTRY("frame.png", asset_frame_png),
@@ -164,6 +170,8 @@ static const embedded_asset_t g_embedded_assets[] = {
 	ASSET_ENTRY("POPSLDR/IMG/triangle.png", asset_triangle_png),
 	ASSET_ENTRY("POPSLDR/IMG/circle.png", asset_circle_png),
 	ASSET_ENTRY("POPSLDR/IMG/cross.png", asset_cross_png),
+	ASSET_ENTRY("POPSLDR/IMG/L1.png", asset_l1_png),
+	ASSET_ENTRY("POPSLDR/IMG/R1.png", asset_r1_png),
 	ASSET_ENTRY("POPSLDR/IMG/R2.png", asset_r2_png),
 	ASSET_ENTRY("POPSLDR/IMG/square.png", asset_square_png),
 	ASSET_ENTRY("POPSLDR/IMG/frame.png", asset_frame_png),

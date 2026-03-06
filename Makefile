@@ -82,7 +82,7 @@ EMBEDDED_RSC = boot.o builtin_font.o \
 	asset_usb_png.o asset_smb_png.o asset_mmce_png.o asset_mx4sio_png.o asset_hdd_png.o asset_apahdd_png.o \
 	asset_bdhdd_png.o asset_bg_png.o asset_bkg_png.o asset_bgm_png.o asset_disc_png.o asset_splash_bg_png.o \
 	asset_splash_logo_png.o asset_splash_appname_png.o asset_splash_credits_png.o asset_select_png.o \
-	asset_start_png.o asset_triangle_png.o asset_circle_png.o asset_cross_png.o asset_r2_png.o asset_square_png.o \
+	asset_start_png.o asset_triangle_png.o asset_circle_png.o asset_cross_png.o asset_l1_png.o asset_r1_png.o asset_r2_png.o asset_square_png.o \
 	asset_frame_png.o asset_default_png.o asset_missing_png.o \
 	asset_left_png.o asset_right_png.o asset_up_png.o asset_down_png.o \
 	asset_system_lua.o asset_ui_lua.o asset_images_lua.o asset_pops_profiles_lua.o asset_boot_adp.o \
@@ -156,6 +156,10 @@ $(EE_ASM_DIR)asset_circle_png.c: bin/POPSLDR/IMG/circle.png | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_circle_png
 $(EE_ASM_DIR)asset_cross_png.c: bin/POPSLDR/IMG/cross.png | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_cross_png
+$(EE_ASM_DIR)asset_l1_png.c: bin/POPSLDR/IMG/L1.png | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_l1_png
+$(EE_ASM_DIR)asset_r1_png.c: bin/POPSLDR/IMG/R1.png | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_r1_png
 $(EE_ASM_DIR)asset_r2_png.c: bin/POPSLDR/IMG/R2.png | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_r2_png
 $(EE_ASM_DIR)asset_square_png.c: bin/POPSLDR/IMG/square.png | $(EE_ASM_DIR)

@@ -29,6 +29,8 @@ local IMG_REGISTRATIONS = {
   {"triangle", "triangle.png"},
   {"circle", "circle.png"},
   {"cross", "cross.png"},
+  {"L1", "L1.png"},
+  {"R1", "R1.png"},
   {"R2", "R2.png"},
   {"square", "square.png"},
   {"frame", "frame.png"},

@@ -346,14 +346,8 @@ UI = {
       if UI.LAYOUT.LIST_MAX < 1 then
         UI.LAYOUT.LIST_MAX = 1
       end
-      local preview_w = UI.LAYOUT.PREVIEW_W
-      local preview_h = UI.LAYOUT.PREVIEW_H
-      local preview_gap = 24
-      local max_preview_w = safe_w - UI.LAYOUT.LIST_W - preview_gap
-      if max_preview_w < preview_w then
-        preview_w = max_preview_w
-      end
-      if preview_w < 0 then preview_w = 0 end
+      local preview_w = 200
+      local preview_h = 200
       UI.LAYOUT.PREVIEW_W = preview_w
       UI.LAYOUT.PREVIEW_H = preview_h
       UI.LAYOUT.PREVIEW_X = Round(UI.SCR.X - safe.R - preview_w)
@@ -1546,6 +1540,8 @@ UI = {
         local right_icon = IMG.right
         local up_icon    = IMG.up
         local down_icon  = IMG.down
+        local l1_icon    = IMG.L1
+        local r1_icon    = IMG.R1
         local safe = layout.SAFE or {L = 24, R = 24}
         local H_ROW = 24
         local TITLE_TO_BLOCK = 30
@@ -1591,14 +1587,14 @@ UI = {
           Graphics.drawScaleImage(icon, icon_x, icon_y, icon_w, icon_h, UI.CCOL.GREY)
         end
 
-        local mode_text = "<"..tostring(mode.label or "")..">"
-        local profile_text = "<Profile "..UI.ProfileQuery.curopt..">"
+        local mode_text = tostring(mode.label or "")
+        local profile_text = "Profile "..UI.ProfileQuery.curopt
         local draft_pop_path = tostring(UI.PopstarterPathDraft or PLDR.POPSTARTER_PATH or "")
         local draft_dkw_path = tostring(UI.DkwdrvPathDraft or PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
-        local pop_path_label = "POPStarter Path (L1)"
-        local pop_path_value = "<"..TruncateMiddle(draft_pop_path, 46)..">"
-        local dkwdrv_label = "DKWDRV Path (R1)"
-        local dkwdrv_value = "<"..TruncateMiddle(draft_dkw_path, 46)..">"
+        local pop_path_label = "POPStarter Path"
+        local pop_path_value = TruncateMiddle(draft_pop_path, 46)
+        local dkwdrv_label = "DKWDRV Path"
+        local dkwdrv_value = TruncateMiddle(draft_dkw_path, 46)
 
         local y = layout.TITLE_Y + TITLE_TO_BLOCK
         local footer_top_y = (layout.FOOTER_ICON_Y or (UI.SCR.Y - (layout.BTN_BAR_SAFE_BOTTOM or 56))) - 24
@@ -1630,12 +1626,14 @@ UI = {
         y = y + H_ROW + ROW_GAP
 
         DrawLabel(pop_path_label, y)
+        DrawIconOnRow(l1_icon, LABEL_X + 168, y)
         y = y + H_ROW
         DrawValue(pop_path_value, y, Color.new(128,128,128, 110))
         y = y + ROW_GAP
         y = y + BLOCK_GAP
 
         DrawLabel(dkwdrv_label, y)
+        DrawIconOnRow(r1_icon, LABEL_X + 168, y)
         y = y + H_ROW + ROW_GAP
         DrawValue(dkwdrv_value, y, Color.new(128,128,128, 110))
         y = y + H_ROW + BUTTON_GAP
@@ -1657,7 +1655,7 @@ UI = {
         end
         if UI.HandleGlobalInput(false) then return end
 
-        local function queue_exit(target_scene)
+        local function queue_exit(target_scene, allow_fallback_exit)
           UI.ShowSavingOverlay("Saving/Applying...")
           local function report_stage(_stage, message)
             UI.ShowSavingOverlay(message or "Saving/Applying...")
@@ -1718,15 +1716,26 @@ UI = {
               UI.Notif_queue.add("Failed to apply BDMA mode")
               UI.SyncSettingsSelectionFromRuntime()
               UI.SyncSettingsDraftFromRuntime()
-            elseif reason ~= "save_failed" then
+            elseif reason == "save_failed" then
+              UI.Notif_queue.add("Failed to save settings")
+              UI.SyncSettingsSelectionFromRuntime()
+              UI.SyncSettingsDraftFromRuntime()
+            else
               UI.Notif_queue.add("Failed to save settings")
               UI.SyncSettingsSelectionFromRuntime()
               UI.SyncSettingsDraftFromRuntime()
             end
+            if allow_fallback_exit == true then
+              UI.ProfileDirty = false
+              UI.BdmaDirty = false
+              UI.PopPathDirty = false
+              UI.DkwdrvDirty = false
+              UI.SceneChange(target_scene)
+            end
           end
         end
 
-        if UI.Pad.Events.EXIT then queue_exit(UI.SCENES.CREDITS) end
+        if UI.Pad.Events.EXIT then queue_exit(UI.SCENES.CREDITS, true) end
         if UI.Pad.Events.NAV_DOWN then
           local next_opt = CLAMP(UI.ProfileQuery.curopt+1, 1, profcnt)
           if next_opt ~= UI.ProfileQuery.curopt then
@@ -1773,7 +1782,7 @@ UI = {
           if UI.BdmaModeIndex < 1 then UI.BdmaModeIndex = #UI.BdmaModes end
           UI.BdmaDirty = true
         end
-        if UI.Pad.Events.BACK then queue_exit(UI.SCENES.MMAIN) end
+        if UI.Pad.Events.BACK then queue_exit(UI.SCENES.MMAIN, true) end
         if UI.Pad.Events.START then
           local default_profile = tonumber(PLDR.DEFAULT_PROFILE) or 1
           local next_default = CLAMP(default_profile, 1, profcnt)
@@ -1800,7 +1809,7 @@ UI = {
           UI.Notif_queue.add("Profile defaults restored")
         end
         if UI.Pad.Events.CONFIRM then
-          queue_exit(UI.SCENES.MMAIN)
+          queue_exit(UI.SCENES.MMAIN, true)
         end
         local labels, order = UI.Footer.ResolveLegend({
           order = UI.Footer.order_with_start,
@@ -2097,6 +2106,15 @@ UI = {
             PLDR.CleanupGameList()
             PLDR.GAMEPATH = ""
             local usb_roots = PLDR.GetRootsByType("usb")
+            if usb_roots == nil or #usb_roots < 1 then
+              if type(System) == "table" and type(System.ensureUsbMass) == "function" then
+                System.ensureUsbMass()
+              end
+              if type(PLDR.RefreshMassBackends) == "function" then
+                pcall(PLDR.RefreshMassBackends)
+              end
+              usb_roots = PLDR.GetRootsByType("usb")
+            end
             if usb_roots == nil or #usb_roots < 1 then
               UI.Notif_queue.add("No USB backend found")
             end
