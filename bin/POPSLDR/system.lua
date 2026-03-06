@@ -97,10 +97,6 @@ local APP_DIR_LOCAL = EnsureTrailingSlashNormRaw(APP_DIR or System.currentDirect
 APP_DIR_NORM = APP_DIR_LOCAL
 local SELECTOR_MODE = "basename"
 
-local function ResolveAsset(rel)
-  return System.resolveAsset(rel) or JoinPath(APP_DIR_LOCAL, rel)
-end
-
 local function ResolveWritablePath(rel)
   local legacy_root = JoinPath(APP_DIR_LOCAL, "POPSLDR")
   local legacy = JoinPath(legacy_root, rel)
@@ -199,10 +195,6 @@ local function ResolvePathWithEnsure(path)
     end
   end
   return nil
-end
-
-function PLDR.ResolveFirstExistingPathWithEnsure(path)
-  return ResolvePathWithEnsure(path)
 end
 
 function PLDR.PopstarterProbeWithEnsure(path)
@@ -519,61 +511,6 @@ local function WriteAtomic(dest, data)
   return true
 end
 
-local function CopyExternalAtomic(source, dest)
-  local tmp = dest..".tmp"
-  if doesFileExist(tmp) then
-    pcall(System.removeFile, tmp)
-  end
-
-  local ok_src, src_fd = pcall(System.openFile, source, FREAD)
-  if not ok_src or src_fd == nil or (type(src_fd) == "number" and src_fd < 0) then
-    return false, "open source failed"
-  end
-
-  local ok_dst, dst_fd = pcall(System.openFile, tmp, FCREATE)
-  if not ok_dst or dst_fd == nil or (type(dst_fd) == "number" and dst_fd < 0) then
-    pcall(System.closeFile, src_fd)
-    return false, "open destination failed"
-  end
-
-  local copied = true
-  while true do
-    local ok_read, chunk = pcall(System.readFile, src_fd, 32768)
-    if not ok_read then
-      copied = false
-      break
-    end
-    if chunk == nil or chunk == "" then
-      break
-    end
-    local chunk_len = string.len(chunk)
-    local ok_write, wrote = pcall(System.writeFile, dst_fd, chunk, chunk_len)
-    if not ok_write or type(wrote) ~= "number" or wrote ~= chunk_len then
-      copied = false
-      break
-    end
-  end
-
-  pcall(System.closeFile, src_fd)
-  pcall(System.closeFile, dst_fd)
-
-  if not copied then
-    pcall(System.removeFile, tmp)
-    return false, "copy failed"
-  end
-
-  if doesFileExist(dest) then
-    pcall(System.removeFile, dest)
-  end
-  local ok_rename = pcall(System.rename, tmp, dest)
-  if not ok_rename then
-    pcall(System.removeFile, tmp)
-    return false, "rename failed"
-  end
-  return true
-end
-
-
 local function GetFileSizeSafe(path)
   if path == nil or path == "" then
     return nil
@@ -770,10 +707,6 @@ function PLDR.EnsurePopstarterDir()
   return EnsureDirectory(PLDR.POPSTARTER_DIR)
 end
 
-function PLDR.NormalizeFsPath(p)
-  return NormalizeFsPathRaw(p)
-end
-
 function PLDR.EnsureTrailingSlashNorm(p)
   return EnsureTrailingSlashNormRaw(p)
 end
@@ -790,14 +723,6 @@ end
 
 APP_DIR_NORM = PLDR.EnsureTrailingSlashNorm(APP_DIR or System.currentDirectory() or "")
 APP_DIR_LOCAL = APP_DIR_NORM
-
-function PLDR.AppDirPath(rel)
-  local base = APP_DIR_NORM or ""
-  rel = (rel or ""):gsub("\\", "/")
-  if rel:sub(1, 1) == "/" then rel = rel:sub(2) end
-  return base..rel
-end
-
 
 function PLDR.BdmaSourceCandidates(rel)
   local out = {}
@@ -1099,29 +1024,6 @@ function PLDR.EnsureUsbMassReadyOnce()
   return true
 end
 
-function PLDR.InvalidateMassBackends()
-  PLDR.MASS.CACHE = {}
-  PLDR.MASS.ORDER = {}
-  PLDR.MASS.REFRESHED = false
-end
-
-function PLDR.RefreshMassStateSnapshot()
-  return {
-    present_roots = PLDR.GetPresentMassRootsBounded()
-  }
-end
-
-function PLDR.GetPresentMassRootsBounded()
-  local roots = {}
-  for i = 0, 9 do
-    local root = (i == 0) and "mass:/" or ("mass"..i..":/")
-    if doesFolderExist(root) then
-      table.insert(roots, root)
-    end
-  end
-  return roots
-end
-
 local function EnsureMassBackendsReady(mode)
   if mode == "mx4sio" then
     if type(_G) == "table" and type(_G.ensureMx4sioInit) == "function" then
@@ -1165,48 +1067,6 @@ local function ClassifyMassRootDriver(driver)
     return "mx4sio"
   end
   return "usb"
-end
-
-local function ReadMassBackendFlags()
-  local flags = { any = false, mmce = false, mx4sio = false }
-
-  if type(System) == "table" and type(System.bdmList) == "function" then
-    local ok, list = pcall(System.bdmList)
-    if ok and type(list) == "table" then
-      for i = 1, #list do
-        local name = string.lower(tostring(list[i] and list[i].name or ""))
-        if name ~= "" then
-          flags.any = true
-          if string.find(name, "mmce", 1, true) ~= nil then
-            flags.mmce = true
-          end
-          if string.find(name, "mx4", 1, true) ~= nil or string.find(name, "sdc", 1, true) ~= nil then
-            flags.mx4sio = true
-          end
-        end
-      end
-      if flags.any then
-        return flags
-      end
-    end
-  end
-
-  local present_mass = PLDR.GetPresentMassRootsBounded()
-  for i = 1, #present_mass do
-    local normalized = NormalizeMassRoot(present_mass[i])
-    local driver = string.lower(tostring(PLDR.GetMassMountDriver(normalized) or ""))
-    if driver ~= "" then
-      flags.any = true
-      if string.find(driver, "mmce", 1, true) ~= nil then
-        flags.mmce = true
-      end
-      if string.find(driver, "mx4", 1, true) ~= nil or string.find(driver, "sdc", 1, true) ~= nil then
-        flags.mx4sio = true
-      end
-    end
-  end
-
-  return flags
 end
 
 local function WaitMassProbeRetry(attempt, max_attempts)
@@ -1366,18 +1226,6 @@ function PLDR.EnsureBackendForAppDir()
   return true
 end
 
-local function ReadBdmaModeMarker()
-  local marker = ReadWholeFile(BDMA_MODE_MARKER_PATH)
-  if marker == nil then
-    return nil
-  end
-  marker = string.gsub(marker, "[\r\n]+", "")
-  if marker == "" then
-    return nil
-  end
-  return marker
-end
-
 local function WriteBdmaModeMarker(mode_key)
   return WriteAtomic(BDMA_MODE_MARKER_PATH, tostring(mode_key or ""))
 end
@@ -1464,7 +1312,6 @@ function PLDR.ApplyBdmaMode(mode_key)
     return false
   end
 
-  local had_failure = false
   for i = 1, #BDMA_COPY_FILES do
     local name = BDMA_COPY_FILES[i]
     local rel = name..suffix
@@ -1490,7 +1337,6 @@ function PLDR.ApplyBdmaMode(mode_key)
       local dest = POPSTARTER_PACK_ROOT.."/"..name
       local ok_write, wrote = pcall(WriteBytesAtomicBounded, bytes, dest)
       if not ok_write or not wrote then
-        had_failure = true
         return false
       end
     else
@@ -1498,13 +1344,9 @@ function PLDR.ApplyBdmaMode(mode_key)
       local src_size = GetFileSizeSafe(source)
       local ok, copied = pcall(CopyExternalAtomicBounded, source, dest, src_size)
       if not ok or not copied then
-        had_failure = true
         return false
       end
     end
-  end
-  if had_failure then
-    return false
   end
   WriteBdmaModeMarker(selected)
   return true
@@ -1564,76 +1406,6 @@ function PLDR.EnsurePopstarterUiAssets()
     end
   end
 
-  return true
-end
-local function RemoveDirectoryRecursive(path)
-  local normalized = NormalizeDirPath(path)
-  if not doesFolderExist(normalized) then
-    return true
-  end
-  local ok, entries = pcall(System.listDirectory, normalized)
-  if not ok or entries == nil then
-    return false, "list failed"
-  end
-  for i = 1, #entries do
-    local entry = entries[i]
-    if entry ~= nil and entry.name ~= nil then
-      local name = entry.name
-      if name ~= "." and name ~= ".." then
-        local child = JoinPath(normalized, name)
-        if entry.directory then
-          local child_ok, child_err = RemoveDirectoryRecursive(child)
-          if not child_ok then
-            return false, child_err
-          end
-          local rm_ok, rm_err = pcall(System.removeDirectory, child)
-          if not rm_ok then
-            return false, rm_err
-          end
-        else
-          local rm_ok, rm_err = pcall(System.removeFile, child)
-          if not rm_ok then
-            return false, rm_err
-          end
-        end
-      end
-    end
-  end
-  return true
-end
-
-local function ResolvePackUiSource(name)
-  local source = ResolveAsset(name)
-  if source ~= nil and doesFileExist(source) then
-    return source
-  end
-  local legacy = JoinPath(APP_DIR_LOCAL, "POPSLDR/"..name)
-  if doesFileExist(legacy) then
-    return legacy
-  end
-  return JoinPath(APP_DIR_LOCAL, name)
-end
-
-function PLDR.ApplyPopstarterPack(pack_key)
-  return PLDR.ApplyBdmaMode(pack_key)
-end
-
-function PLDR.ResetPopstarterPack()
-  if not doesFolderExist(POPSTARTER_PACK_ROOT) then
-    UI.Notif_queue.add("POPSTARTER reset: folder not found")
-    return true
-  end
-  local ok, err = RemoveDirectoryRecursive(POPSTARTER_PACK_ROOT)
-  if not ok then
-    UI.Notif_queue.add("POPSTARTER reset failed")
-    return false
-  end
-  local rm_ok, rm_err = pcall(System.removeDirectory, POPSTARTER_PACK_ROOT)
-  if not rm_ok then
-    UI.Notif_queue.add("POPSTARTER reset failed")
-    return false
-  end
-  UI.Notif_queue.add("POPSTARTER reset: mc0:/POPSTARTER removed")
   return true
 end
 
@@ -1737,50 +1509,6 @@ function PLDR.GetPS1GameLists(path, updating)
   end
 end
 
-function PLDR.BuildUsbGameListMulti()
-  PLDR.CleanupGameList()
-  local roots = PLDR.GetRootsByType("usb")
-  local found_any = false
-  for i = 1, #roots do
-    local root = roots[i].."POPS/"
-    local DIR = System.listDirectory(root)
-    if DIR ~= nil then
-      for j = 1, #DIR do
-        local entry = DIR[j]
-        if not entry.directory and string.lower(string.sub(entry.name, -4)) == ".vcd" then
-          found_any = true
-          table.insert(PLDR.GAMES, root.."|"..entry.name)
-        end
-      end
-    end
-  end
-  if found_any then
-    table.sort(PLDR.GAMES, function(a, b)
-      local root_a, name_a = string.match(a or "", "^([^|]+)|(.+)$")
-      local root_b, name_b = string.match(b or "", "^([^|]+)|(.+)$")
-      name_a = name_a or (a or "")
-      name_b = name_b or (b or "")
-      if name_a == name_b then
-        return (root_a or "") < (root_b or "")
-      end
-      return name_a < name_b
-    end)
-    return PLDR.GAMES
-  end
-  return nil
-end
-
-function PLDR.RefreshMassBackendsBoundedOnce()
-  if PLDR._mass_refreshed_bounded then
-    return true
-  end
-
-  pcall(PLDR.GetMX4SIOMassRootNow)
-
-  PLDR._mass_refreshed_bounded = true
-  return true
-end
-
 function PLDR.InitMX4SIOPopsRoot()
   PLDR.MX4SIO.READY = false
   PLDR.MX4SIO.ROOT = nil
@@ -1836,23 +1564,6 @@ function PLDR.BuildMassGameListByType(kind, mass_snapshot)
       end
     end
   end
-  if not found_any and #roots > 0 then
-    for i = 1, #roots do
-      local pops_root = roots[i].."POPS/"
-      if doesFolderExist(pops_root) then
-        local DIR = System.listDirectory(pops_root)
-        if DIR ~= nil then
-          for j = 1, #DIR do
-            local entry = DIR[j]
-            if not entry.directory and string.lower(string.sub(entry.name, -4)) == ".vcd" then
-              found_any = true
-              table.insert(PLDR.GAMES, pops_root.."|"..entry.name)
-            end
-          end
-        end
-      end
-    end
-  end
   if found_any then
     table.sort(PLDR.GAMES)
     return PLDR.GAMES
@@ -1890,33 +1601,6 @@ local function AppendHddGameList(partition, list_path, rel_prefix)
       end
     end
   end
-end
-
----DONT TOUCH ME
-function PLDR.GetVCDGameID(path)
-  local RET = "ERR"
-  local fd = System.openFile(path, FREAD)
-  if System.sizeFile(fd) < 0x10d900 then
-  else
-    System.seekFile(fd, 0x10c900, SET)
-    local buffer = System.readFile(fd, 4096)
-    RET = string.match(buffer, "[A-Z][A-Z][A-Z][A-Z][_-][0-9][0-9][0-9].[0-9][0-9]")
-  end
-  System.closeFile(fd)
-  return RET
-end
-
-function PLDR.replace_device(VAL, NEWDEV)
-  local FINAL
-  local niee = string.find(VAL, ":", 1, true)
-  FINAL = NEWDEV..VAL:sub(niee)
-    return FINAL
-end
-
-function PLDR.replace_extension(VAL, NEWEXT)
-  local FINAL = string.sub(VAL,1,-4)
-  FINAL = FINAL..NEWEXT
-  return FINAL 
 end
 
 function PLDR.HDD.CheckAvailableHddPopsParts()
@@ -2115,16 +1799,6 @@ local function BuildDisplayNameFromEntry(entry)
   return string.gsub(display_name, "%.[Vv][Cc][Dd]$", "")
 end
 
-local function BuildPopstarterSelector(prefix, vcd_filename)
-  if vcd_filename == nil or vcd_filename == "" then
-    return ""
-  end
-  if prefix == nil then
-    prefix = ""
-  end
-  return prefix..vcd_filename..".ELF"
-end
-
 local function SelectPopstarterSelectorPrefix(device_page)
   if device_page == "USB" or device_page == "MMCE" or device_page == "SMB/MMCE" or device_page == "MX4SIO" then
     return "XX."
@@ -2242,26 +1916,6 @@ local function NormalizeHddRelpath(relpath)
   return cleaned
 end
 
-local function EnsureHDDReadyForLaunch(game, partition_override)
-  local result = {
-    init_ok = false,
-    status = nil,
-    mount_partition = nil,
-    mount_ok = nil
-  }
-  PLDR.LoadHDDModules()
-  result.status = PLDR.HDD.STATUS
-  result.init_ok = PLDR.HDD.LOADSTATE == 1
-  if not result.init_ok or result.status ~= 0 then
-    return result
-  end
-  local partition = partition_override or PLDR.HDD.GAMEPARTS[game] or "hdd0:__.POPS"
-  result.mount_partition = partition
-  HDD.UMountPartition(0)
-  result.mount_ok = HDD.MountPartition(partition, 0, FIO_MT_RDONLY)
-  return result
-end
-
 local LaunchState = {
   PHASE_VALIDATE = "LAUNCH_VALIDATE",
   PHASE_FADEOUT = "LAUNCH_FADEOUT",
@@ -2333,30 +1987,6 @@ local function BlockLaunchFailure(rc, popstarter, device_page, argv0, game_path,
   while true do
     UI.BottomDraw.Play()
     Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, 120, 20, UI.SCR.X, UI.SCR.Y, "LAUNCH FAILED", UI.CCOL.YELLOW)
-    Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, 170, 18, UI.SCR.X, UI.SCR.Y, body, UI.CCOL.GREY)
-    Input_GetEvent()
-    if UI.Pad.Events.CONFIRM or UI.Pad.Events.BACK or UI.Pad.Events.EXIT then
-      break
-    end
-    UI.flip()
-  end
-  UI.SceneChange(UI.SCENES.MMAIN)
-end
-
-local function BlockHddLaunchMissingVcd(partition, relpath, vcd_path, open_rc, open_api)
-  SetLaunchPhase(LaunchState.PHASE_FAILED)
-  UI.LAUNCHING = false
-  local body = string.format(
-    "HDD VCD missing\nPartition: %s\nRelpath: %s\nPath: %s\nOpen/stat rc: %s\nOpen API: %s\nPress X/O to continue.",
-    tostring(partition),
-    tostring(relpath),
-    tostring(vcd_path),
-    tostring(open_rc),
-    tostring(open_api)
-  )
-  while true do
-    UI.BottomDraw.Play()
-    Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, 120, 20, UI.SCR.X, UI.SCR.Y, "HDD LAUNCH FAILED", UI.CCOL.YELLOW)
     Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, 170, 18, UI.SCR.X, UI.SCR.Y, body, UI.CCOL.GREY)
     Input_GetEvent()
     if UI.Pad.Events.CONFIRM or UI.Pad.Events.BACK or UI.Pad.Events.EXIT then
