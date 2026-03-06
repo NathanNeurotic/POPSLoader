@@ -54,31 +54,62 @@ local function ResolveFirstExistingElf(candidates)
   end
   return nil
 end
-local function ExtractGameRelPath(entry)
-  if entry == nil then return nil end
-  local relpath = string.match(entry, "^[^|]+|(.+)$")
-  return relpath or entry
+local function IsDevicePath(path)
+  return path ~= nil and string.match(path, "^[%a]+%d*:/") ~= nil
 end
 local function StripExtension(path)
   if path == nil then return nil end
   local stripped = string.match(path, "(.+)%.[^%.]+$")
   return stripped or path
 end
-local function BuildCoverCandidates(entry, game_path)
-  -- TODO: verify cover art naming/layout. For now, assume sidecar image next to the VCD.
-  local relpath = ExtractGameRelPath(entry)
-  if relpath == nil or relpath == "" then return {} end
-  local fullpath = relpath
-  if type(JoinPath) == "function" then
-    fullpath = JoinPath(game_path or "", relpath)
-  elseif game_path ~= nil and game_path ~= "" then
-    if string.sub(game_path, -1) == "/" then
-      fullpath = game_path..relpath
-    else
-      fullpath = game_path.."/"..relpath
-    end
+local function ResolveSelectedVcdPath(entry, game_path)
+  if entry == nil or entry == "" then
+    return nil
   end
-  local base = StripExtension(fullpath)
+
+  local root, rel = string.match(entry, "^([^|]+)|(.+)$")
+  if root ~= nil and rel ~= nil then
+    if IsDevicePath(root) then
+      if type(JoinPath) == "function" then
+        return JoinPath(root, rel)
+      end
+      if string.sub(root, -1) == "/" then
+        return root..rel
+      end
+      return root.."/"..rel
+    end
+    if IsDevicePath(rel) then
+      return rel
+    end
+    if IsDevicePath(game_path) then
+      if type(JoinPath) == "function" then
+        return JoinPath(game_path, rel)
+      end
+      if string.sub(game_path, -1) == "/" then
+        return game_path..rel
+      end
+      return game_path.."/"..rel
+    end
+    return rel
+  end
+
+  if IsDevicePath(entry) then
+    return entry
+  end
+  if IsDevicePath(game_path) then
+    if type(JoinPath) == "function" then
+      return JoinPath(game_path, entry)
+    end
+    if string.sub(game_path, -1) == "/" then
+      return game_path..entry
+    end
+    return game_path.."/"..entry
+  end
+  return entry
+end
+local function BuildCoverCandidates(vcd_path)
+  if vcd_path == nil or vcd_path == "" then return {} end
+  local base = StripExtension(vcd_path)
   return {
     base..".png"
   }
@@ -146,20 +177,17 @@ function CoverCache:GetOrLoad(path)
   self:EvictIfNeeded()
   return img
 end
-function CoverCache:UpdateSelection(entry, game_path)
-  local key = tostring(entry or "")
-  if game_path ~= nil then
-    key = key.."@"..tostring(game_path)
-  end
+function CoverCache:UpdateSelection(vcd_path)
+  local key = tostring(vcd_path or "")
   if self.last_key == key then
     return self.last_img
   end
   self.last_key = key
   self.last_img = nil
-  if entry == nil or entry == "" then
+  if vcd_path == nil or vcd_path == "" then
     return nil
   end
-  local candidates = BuildCoverCandidates(entry, game_path)
+  local candidates = BuildCoverCandidates(vcd_path)
   for i = 1, #candidates do
     local img = self:GetOrLoad(candidates[i])
     if img ~= nil then
@@ -1341,7 +1369,7 @@ UI = {
             UI.GameList.CoverLastIndex = nil
             UI.GameList.CoverPending = false
             UI.GameList.CoverPendingAt = now
-            UI.CoverCache:UpdateSelection(nil, PLDR.GAMEPATH)
+            UI.CoverCache:UpdateSelection(nil)
           else
             if UI.GameList.CURR ~= UI.GameList.CoverLastIndex then
               UI.GameList.CoverLastIndex = UI.GameList.CURR
@@ -1350,12 +1378,8 @@ UI = {
             end
             if UI.GameList.CoverPending and not nav_event and (now - UI.GameList.CoverPendingAt) >= UI.GameList.CoverIdleMs then
               local entry = PLDR.GAMES[UI.GameList.CURR]
-              local cover_path = PLDR.GAMEPATH
-              local root = string.match(entry or "", "^([^|]+)|.+$")
-              if root ~= nil then
-                cover_path = root
-              end
-              UI.CoverCache:UpdateSelection(entry, cover_path)
+              local vcd_path = ResolveSelectedVcdPath(entry, PLDR.GAMEPATH)
+              UI.CoverCache:UpdateSelection(vcd_path)
               UI.GameList.CoverPending = false
             end
           end
@@ -1380,12 +1404,7 @@ UI = {
             end
             local entry = PLDR.GAMES[UI.GameList.CURR]
             local root, rel = string.match(entry or "", "^([^|]+)|(.+)$")
-            local vcd_full = nil
-            if root ~= nil then
-              vcd_full = root..rel
-            else
-              vcd_full = PLDR.GAMEPATH..entry
-            end
+            local vcd_full = ResolveSelectedVcdPath(entry, PLDR.GAMEPATH)
             if UI.CURSCENE ~= UI.SCENES.GHDD then -- only check if game can be found on USB and SMB
               if not doesFileExist(vcd_full) then
                 UI.Notif_queue.add("Cant find Game\n"..vcd_full)
