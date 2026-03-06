@@ -1813,18 +1813,9 @@ local function BuildPopstarterSelectorPath(device_page, game_name)
   if game_name == nil or game_name == "" then
     return ""
   end
-  if device_page == "HDD" then
-    return "hdd0:__.POPS/"..game_name..".ELF"
-  end
-  if device_page == "USB" or device_page == "MMCE" or device_page == "SMB/MMCE" then
-    return "mass:/POPS/XX."..game_name..".ELF"
-  end
-  if device_page == "MX4SIO" then
-    local root = PLDR and PLDR.MX4SIO and PLDR.MX4SIO.ROOT or "mass:/"
-    root = EnsureTrailingSlash(root)
-    return root.."POPS/XX."..game_name..".ELF"
-  end
-  return game_name..".ELF"
+  local prefix = SelectPopstarterSelectorPrefix(device_page)
+  local normalized = NormalizeBootBasename(game_name, prefix)
+  return BuildLiteralElfName(normalized)
 end
 
 local function DeriveGameNameFromSelection(raw_selection)

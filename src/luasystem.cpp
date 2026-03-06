@@ -245,19 +245,6 @@ static bool LoadIrxCheckedBuffer(const char *name, unsigned char *irx, unsigned 
 	return true;
 }
 
-static bool ProbeDir(const char *path, int *out_ret)
-{
-	int fd = fileXioDopen(path);
-	if (out_ret) {
-		*out_ret = fd;
-	}
-	if (fd >= 0) {
-		fileXioDclose(fd);
-		return true;
-	}
-	return false;
-}
-
 static void BuildMassRootPath(int index, char *out_root, size_t out_sz)
 {
 	if (index == 0) {

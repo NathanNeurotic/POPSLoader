@@ -16,7 +16,6 @@
 #define DEG2RAD(x) ((x)*0.01745329251)
 
 static const u64 BLACK_RGBAQ   = GS_SETREG_RGBAQ(0x00,0x00,0x00,0x80,0x00);
-static const u64 TEXTURE_RGBAQ = GS_SETREG_RGBAQ(0x80,0x80,0x80,0x80,0x00);
 
 GSGLOBAL *gsGlobal = NULL;
 GSFONTM *gsFontM = NULL;
@@ -35,8 +34,6 @@ typedef struct {
 	size_t cur;
 } data_pointer;
 
-static int error_count = 0;
-static int warning_count = 0;
 
 typedef struct
 {
@@ -1221,4 +1218,3 @@ GSTEXTURE* loadEmbeddedPNG(uint8_t * data, size_t size, bool delayed)
 {
 	return DecodePngFromMemory(data, size, delayed);
 }
-

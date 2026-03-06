@@ -178,7 +178,6 @@ static void DisableLuaFilesystemScriptLoaders(lua_State *L)
 #define LOGDUMP(x...)
 #endif
 #define TPRINTF(arg, x...) \
-    printf(arg, ##x); \
     scr_printf(arg, ##x); \
     LOGDUMP(LOG, arg, ##x)
 

@@ -417,7 +417,6 @@ int main(int argc, char * argv[])
 		    scr_setXY(5, 2);
 		    scr_printf("Enceladus ERROR!\n");
 		    scr_printf("%s", errMsg);
-		    puts(errMsg);
 		    scr_printf("\nPress [start] to restart\n");
         	while (!isButtonPressed(PAD_START)) {
 		    }
