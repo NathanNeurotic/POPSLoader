@@ -2015,6 +2015,10 @@ UI = {
             PLDR.CleanupGameList()
             PLDR.GAMEPATH = ""
             local snapshot = PLDR.RefreshMassStateSnapshot()
+            local usb_roots = PLDR.GetRootsByType("usb", snapshot)
+            if usb_roots == nil or #usb_roots < 1 then
+              UI.Notif_queue.add("No USB backend found")
+            end
             PLDR.BuildMassGameListByType("usb", snapshot)
             UI.setDeviceLock(DEVLOCK.USB)
             UI.SceneChange(UI.SCENES.GUSBFAT)

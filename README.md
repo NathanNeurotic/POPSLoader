@@ -44,6 +44,7 @@ POPSLoader was created by [El_isra](https://www.github.com/israpps), and this re
 - `modules/`: controller-related modules (`ds34bt`, `ds34usb`, `pademu`).
 - `EMBED/`: images/fonts embedded into the ELF at build time.
 - `etc/`: boot script and helper scripts.
+- `QA_REGRESSION_MATRIX.md`: hardware validation checklist and pass/fail matrix.
 - `.github/workflows/compilation.yml`: CI build and packaging pipeline.
 
 ## Build Instructions
