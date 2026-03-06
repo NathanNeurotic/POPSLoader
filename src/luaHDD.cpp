@@ -14,8 +14,8 @@
 
 
 #include "include/luaplayer.h"
+#include "include/dprintf.h"
 
-#define DPRINTF(x...) printf(x)
 int mnt(const char* path, int index, int openmod);
 
 static int MountPart(lua_State *L)

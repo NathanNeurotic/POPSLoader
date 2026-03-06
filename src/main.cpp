@@ -236,7 +236,7 @@ char* GetArgv0(void) {
 
 #define LOAD_IRX(_irx, argc, arglist) \
     ID = SifExecModuleBuffer(&_irx, size_##_irx, argc, arglist, &RET); \
-    printf("%s: id:%d, ret:%d\n", #_irx, ID, RET)
+    DPRINTF("%s: id:%d, ret:%d\n", #_irx, ID, RET)
 #define LOAD_IRX_NARG(_irx) LOAD_IRX(_irx, 0, NULL)
 
 static bool LoadIrxChecked(const char *name, unsigned char *irx, unsigned int size, int *out_id, int *out_ret)

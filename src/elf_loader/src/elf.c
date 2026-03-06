@@ -19,7 +19,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
-#define DPRINTF(x...) printf(x)
+#include "../../include/dprintf.h"
 
 static bool is_host_path(const char *filename) {
 	return (filename != NULL && strncmp(filename, "host:/", 6) == 0);
