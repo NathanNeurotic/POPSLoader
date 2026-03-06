@@ -1123,13 +1123,6 @@ function PLDR.GetPresentMassRootsBounded()
 end
 
 local function EnsureMassBackendsReady(mode)
-  if type(System) == "table" and type(System.initUSBMass) == "function" then
-    pcall(System.initUSBMass)
-  end
-  if type(System) == "table" and type(System.initUSB) == "function" then
-    pcall(System.initUSB)
-  end
-
   if mode == "mx4sio" then
     if type(_G) == "table" and type(_G.ensureMx4sioInit) == "function" then
       pcall(_G.ensureMx4sioInit)
@@ -1137,6 +1130,19 @@ local function EnsureMassBackendsReady(mode)
     if type(System) == "table" and type(System.initMX4SIO) == "function" then
       pcall(System.initMX4SIO)
     end
+    return
+  end
+
+  if type(PLDR) == "table" and type(PLDR.EnsureUsbMassReadyOnce) == "function" then
+    pcall(PLDR.EnsureUsbMassReadyOnce)
+    return
+  end
+
+  if type(System) == "table" and type(System.initUSBMass) == "function" then
+    pcall(System.initUSBMass)
+  end
+  if type(System) == "table" and type(System.initUSB) == "function" then
+    pcall(System.initUSB)
   end
 end
 
@@ -1643,18 +1649,10 @@ function PLDR.DetectMMCESlot(force_refresh)
   PLDR.MMCE.INDEX = 1
   PLDR.MMCE.PREFIX = nil
   local candidates = {"mmce0:/", "mmce1:/"}
-  for attempt = 1, 3 do
-    for i = 1, #candidates do
-      local candidate = candidates[i]
-      if doesFolderExist(candidate) or doesFolderExist(candidate.."POPS/") then
-        table.insert(PLDR.MMCE.SLOTS, candidate)
-      end
-    end
-    if #PLDR.MMCE.SLOTS > 0 then
-      break
-    end
-    if attempt < 3 and type(System) == "table" and type(System.sleep) == "function" then
-      pcall(System.sleep, 1)
+  for i = 1, #candidates do
+    local candidate = candidates[i]
+    if doesFolderExist(candidate) or doesFolderExist(candidate.."POPS/") then
+      table.insert(PLDR.MMCE.SLOTS, candidate)
     end
   end
   if #PLDR.MMCE.SLOTS > 0 then
@@ -1788,8 +1786,14 @@ function PLDR.InitMX4SIOPopsRoot()
   PLDR.MX4SIO.ROOT = nil
   PLDR.MX4SIO.MASSINDX = nil
   PLDR.MX4SIO.IS_MASS_ALIAS = false
+  if type(PLDR.EnsureUsbMassReadyOnce) == "function" then
+    pcall(PLDR.EnsureUsbMassReadyOnce)
+  end
 
   for attempt = 1, 3 do
+    if type(System) == "table" and type(System.ensureUsbMass) == "function" then
+      pcall(System.ensureUsbMass)
+    end
     if type(_G.ensureMx4sioInit) == "function" then
       pcall(_G.ensureMx4sioInit)
     end
@@ -1802,11 +1806,8 @@ function PLDR.InitMX4SIOPopsRoot()
 
     local root = PLDR.GetMX4SIOMassRootNow()
     if root ~= nil then
-      local pops = root.."POPS/"
-      if doesFolderExist(pops) then
-        PLDR.SetMX4SIORoot(root)
-        return pops
-      end
+      PLDR.SetMX4SIORoot(root)
+      return root.."POPS/"
     end
     if attempt < 3 and type(System) == "table" and type(System.sleep) == "function" then
       pcall(System.sleep, 1)

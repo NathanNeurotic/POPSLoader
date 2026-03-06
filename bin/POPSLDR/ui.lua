@@ -2021,22 +2021,10 @@ UI = {
         end
         if UI.Pad.Events.CONFIRM then
           if UI.MainMenu.OPT == 1 then
-            if type(System) == "table" and type(System.initMMCE) == "function" then
-              pcall(System.initMMCE)
-            end
             if type(PLDR.DetectMMCESlot) == "function" then
               pcall(PLDR.DetectMMCESlot, true)
             end
             local slots = PLDR.GetMMCESlots()
-            if #slots < 1 then
-              if type(System) == "table" and type(System.initMMCE) == "function" then
-                pcall(System.initMMCE)
-              end
-              if type(PLDR.DetectMMCESlot) == "function" then
-                pcall(PLDR.DetectMMCESlot, true)
-              end
-              slots = PLDR.GetMMCESlots()
-            end
             if #slots < 1 then
               UI.Notif_queue.add("No MMCE device found (mmce0/mmce1).")
               PLDR.CleanupGameList()
@@ -2052,7 +2040,12 @@ UI = {
                 return
               end
               PLDR.CleanupGameList()
-              PLDR.GetPS1GameLists(mmce_prefix.."POPS/", true)
+              local mmce_pops = mmce_prefix.."POPS/"
+              if doesFolderExist(mmce_pops) then
+                PLDR.GetPS1GameLists(mmce_pops, true)
+              else
+                UI.Notif_queue.add("No MMCE POPS folder found")
+              end
               UI.setDeviceLock(DEVLOCK.MMCE)
               UI.SceneChange(UI.SCENES.GSMB)
             end
