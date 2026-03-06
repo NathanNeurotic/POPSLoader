@@ -53,6 +53,12 @@ extern unsigned char asset_r2_png[];
 extern unsigned int size_asset_r2_png;
 extern unsigned char asset_square_png[];
 extern unsigned int size_asset_square_png;
+extern unsigned char asset_frame_png[];
+extern unsigned int size_asset_frame_png;
+extern unsigned char asset_default_png[];
+extern unsigned int size_asset_default_png;
+extern unsigned char asset_missing_png[];
+extern unsigned int size_asset_missing_png;
 extern unsigned char asset_left_png[];
 extern unsigned int size_asset_left_png;
 extern unsigned char asset_right_png[];
@@ -115,6 +121,9 @@ static const embedded_asset_t g_embedded_assets[] = {
 	ASSET_ENTRY("cross.png", asset_cross_png),
 	ASSET_ENTRY("R2.png", asset_r2_png),
 	ASSET_ENTRY("square.png", asset_square_png),
+	ASSET_ENTRY("frame.png", asset_frame_png),
+	ASSET_ENTRY("default.png", asset_default_png),
+	ASSET_ENTRY("MISSING.png", asset_missing_png),
 	ASSET_ENTRY("left.png", asset_left_png),
 	ASSET_ENTRY("right.png", asset_right_png),
 	ASSET_ENTRY("up.png", asset_up_png),
@@ -157,6 +166,9 @@ static const embedded_asset_t g_embedded_assets[] = {
 	ASSET_ENTRY("POPSLDR/IMG/cross.png", asset_cross_png),
 	ASSET_ENTRY("POPSLDR/IMG/R2.png", asset_r2_png),
 	ASSET_ENTRY("POPSLDR/IMG/square.png", asset_square_png),
+	ASSET_ENTRY("POPSLDR/IMG/frame.png", asset_frame_png),
+	ASSET_ENTRY("POPSLDR/IMG/default.png", asset_default_png),
+	ASSET_ENTRY("POPSLDR/IMG/MISSING.png", asset_missing_png),
 	ASSET_ENTRY("POPSLDR/IMG/left.png", asset_left_png),
 	ASSET_ENTRY("POPSLDR/IMG/right.png", asset_right_png),
 	ASSET_ENTRY("POPSLDR/IMG/up.png", asset_up_png),

@@ -2007,6 +2007,9 @@ UI = {
             if type(System) == "table" and type(System.initMMCE) == "function" then
               pcall(System.initMMCE)
             end
+            if type(PLDR.DetectMMCESlot) == "function" then
+              pcall(PLDR.DetectMMCESlot, true)
+            end
             local slots = PLDR.GetMMCESlots()
             if #slots < 1 then
               UI.Notif_queue.add("No MMCE device found (mmce0/mmce1).")
@@ -2030,6 +2033,9 @@ UI = {
           elseif UI.MainMenu.OPT == 2 then
             PLDR.CleanupGameList()
             PLDR.GAMEPATH = ""
+            if type(PLDR.RefreshMassBackends) == "function" then
+              pcall(PLDR.RefreshMassBackends)
+            end
             local mx4sio_root = PLDR.InitMX4SIOPopsRoot()
             if mx4sio_root == nil then
               UI.Notif_queue.add("No MX4SIO device found")
@@ -2068,8 +2074,8 @@ UI = {
             if type(System) == "table" and type(System.ensureUsbMass) == "function" then
               System.ensureUsbMass()
             end
-            if type(System) == "table" and type(System.sleep) == "function" then
-              pcall(System.sleep, 1)
+            if type(PLDR.RefreshMassBackends) == "function" then
+              pcall(PLDR.RefreshMassBackends)
             end
             PLDR.CleanupGameList()
             PLDR.GAMEPATH = ""

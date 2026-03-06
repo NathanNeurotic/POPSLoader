@@ -83,6 +83,7 @@ EMBEDDED_RSC = boot.o builtin_font.o \
 	asset_bdhdd_png.o asset_bg_png.o asset_bkg_png.o asset_bgm_png.o asset_disc_png.o asset_splash_bg_png.o \
 	asset_splash_logo_png.o asset_splash_appname_png.o asset_splash_credits_png.o asset_select_png.o \
 	asset_start_png.o asset_triangle_png.o asset_circle_png.o asset_cross_png.o asset_r2_png.o asset_square_png.o \
+	asset_frame_png.o asset_default_png.o asset_missing_png.o \
 	asset_left_png.o asset_right_png.o asset_up_png.o asset_down_png.o \
 	asset_system_lua.o asset_ui_lua.o asset_images_lua.o asset_pops_profiles_lua.o asset_boot_adp.o \
 	asset_usbd_irx_usbexfat.o asset_usbhdfsd_irx_usbexfat.o asset_usbd_irx_mx4sio.o asset_usbhdfsd_irx_mx4sio.o \
@@ -159,6 +160,12 @@ $(EE_ASM_DIR)asset_r2_png.c: bin/POPSLDR/IMG/R2.png | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_r2_png
 $(EE_ASM_DIR)asset_square_png.c: bin/POPSLDR/IMG/square.png | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_square_png
+$(EE_ASM_DIR)asset_frame_png.c: bin/POPSLDR/IMG/frame.png | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_frame_png
+$(EE_ASM_DIR)asset_default_png.c: bin/POPSLDR/IMG/default.png | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_default_png
+$(EE_ASM_DIR)asset_missing_png.c: bin/POPSLDR/IMG/MISSING.png | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_missing_png
 $(EE_ASM_DIR)asset_left_png.c: bin/POPSLDR/IMG/left.png | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_left_png
 $(EE_ASM_DIR)asset_right_png.c: bin/POPSLDR/IMG/right.png | $(EE_ASM_DIR)

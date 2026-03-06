@@ -371,26 +371,11 @@ end
 PLDR.MX4SIO.PREFIX_HINT = DetectMX4SIOPrefixHint()
 if PLDR.MX4SIO.PREFIX_HINT ~= nil then
 end
-if BOOTPATH ~= nil then
-  PLDR.HDD.LOADSTATE = 1
-  PLDR.HDD.STATUS = HDD.GetHDDStatus()
-end
-
-if MMCE_SLOT0_READY ~= nil and MMCE_SLOT0_READY >= 0 then
-  PLDR.MMCE.PROBED = true
-  PLDR.MMCE.SLOTS = {}
-  PLDR.MMCE.INDEX = 1
-  if MMCE_SLOT0_READY == 1 then
-    table.insert(PLDR.MMCE.SLOTS, "mmce0:/")
-  end
-  if MMCE_SLOT1_READY == 1 then
-    table.insert(PLDR.MMCE.SLOTS, "mmce1:/")
-  end
-  if #PLDR.MMCE.SLOTS > 0 then
-    PLDR.MMCE.PREFIX = PLDR.MMCE.SLOTS[PLDR.MMCE.INDEX]
-  else
-  end
-end
+-- MMCE/HDD probing is page-driven; do not pre-seed runtime slot/status state at boot.
+PLDR.MMCE.PROBED = false
+PLDR.MMCE.SLOTS = {}
+PLDR.MMCE.PREFIX = nil
+PLDR.MMCE.INDEX = 1
 
 
 function CLAMP(a, MIN, MAX)
@@ -1173,13 +1158,87 @@ local function ClassifyMassRootDriver(driver)
   if string.find(value, "mx4", 1, true) ~= nil or string.find(value, "sdc", 1, true) ~= nil then
     return "mx4sio"
   end
-  if string.find(value, "mmce", 1, true) ~= nil then
-    return "mmce"
+  return "usb"
+end
+
+local function BuildMassKindsFromBdmList()
+  local kinds = {}
+  if type(System) ~= "table" or type(System.bdmList) ~= "function" then
+    return kinds
   end
-  if string.find(value, "usb", 1, true) ~= nil then
-    return "usb"
+
+  local ok, list = pcall(System.bdmList)
+  if not ok or type(list) ~= "table" then
+    return kinds
   end
-  return "unknown"
+
+  for i = 1, #list do
+    local info = list[i]
+    local slot = tonumber(info and info.parId)
+    if slot ~= nil and slot >= 0 and slot <= 9 then
+      local root = (slot == 0) and "mass:/" or ("mass"..tostring(slot)..":/")
+      local kind = ClassifyMassRootDriver(info and info.name)
+      if kind ~= "unknown" then
+        local prev = kinds[root]
+        if prev == nil or prev == "unknown" then
+          kinds[root] = kind
+        elseif prev ~= "mx4sio" and kind == "mx4sio" then
+          -- Keep MX4SIO precedence when backend names include mixed tokens.
+          kinds[root] = kind
+        end
+      end
+    end
+  end
+
+  return kinds
+end
+
+local function ReadMassBackendFlags()
+  local flags = { any = false, mmce = false }
+
+  if type(System) == "table" and type(System.bdmList) == "function" then
+    local ok, list = pcall(System.bdmList)
+    if ok and type(list) == "table" then
+      for i = 1, #list do
+        local name = string.lower(tostring(list[i] and list[i].name or ""))
+        if name ~= "" then
+          flags.any = true
+          if string.find(name, "mmce", 1, true) ~= nil then
+            flags.mmce = true
+          end
+        end
+      end
+      if flags.any then
+        return flags
+      end
+    end
+  end
+
+  local present_mass = PLDR.GetPresentMassRootsBounded()
+  for i = 1, #present_mass do
+    local normalized = NormalizeMassRoot(present_mass[i])
+    local driver = string.lower(tostring(PLDR.GetMassMountDriver(normalized) or ""))
+    if driver ~= "" then
+      flags.any = true
+      if string.find(driver, "mmce", 1, true) ~= nil then
+        flags.mmce = true
+      end
+    end
+  end
+
+  return flags
+end
+
+local function WaitMassProbeRetry(attempt, max_attempts)
+  if attempt >= max_attempts then
+    return
+  end
+  if type(System) == "table" and type(System.sleep) == "function" then
+    pcall(System.sleep, 60)
+  end
+  if type(PLDR.RefreshMassBackends) == "function" then
+    pcall(PLDR.RefreshMassBackends)
+  end
 end
 
 local function BuildMassRootIdentity(mode)
@@ -1196,6 +1255,7 @@ local function BuildMassRootIdentity(mode)
   local seen_present = {}
   local seen_usb = {}
   local seen_mx4 = {}
+  local bdm_kinds = BuildMassKindsFromBdmList()
 
   local present = PLDR.GetPresentMassRootsBounded()
   for i = 1, #present do
@@ -1206,6 +1266,9 @@ local function BuildMassRootIdentity(mode)
 
       local driver = PLDR.GetMassMountDriver(normalized)
       local kind = ClassifyMassRootDriver(driver)
+      if kind == "unknown" then
+        kind = bdm_kinds[normalized] or "unknown"
+      end
       if kind == "mx4sio" then
         if seen_mx4[normalized] ~= true then
           seen_mx4[normalized] = true
@@ -1232,9 +1295,7 @@ local function BuildUsbIdentityDeferred()
     if type(identity) == "table" and type(identity.usb) == "table" and #identity.usb > 0 then
       return identity
     end
-    if type(identity) == "table" and type(identity.present_roots) == "table" and #identity.present_roots == 0 then
-      return identity
-    end
+    WaitMassProbeRetry(attempts, 3)
   end
   return identity or BuildMassRootIdentity("usb")
 end
@@ -1248,6 +1309,7 @@ local function BuildMX4IdentityDeferred()
     if type(identity) == "table" and type(identity.mx4sio) == "table" and #identity.mx4sio > 0 then
       return identity
     end
+    WaitMassProbeRetry(attempts, 2)
   end
   return BuildMassRootIdentity("mx4sio")
 end
@@ -1601,28 +1663,15 @@ function PLDR.ResetPopstarterPack()
   return true
 end
 
-function PLDR.DetectMMCESlot()
-  if PLDR.MMCE.PROBED then
+function PLDR.DetectMMCESlot(force_refresh)
+  if PLDR.MMCE.PROBED and not force_refresh then
     return PLDR.MMCE.PREFIX
   end
   PLDR.MMCE.PROBED = true
   PLDR.MMCE.SLOTS = {}
   PLDR.MMCE.INDEX = 1
-  local mass_backend = { any = false, mx4sio = false, mmce = false }
-  local present_mass = PLDR.GetPresentMassRootsBounded()
-  for i = 1, #present_mass do
-    local driver = string.lower(tostring(PLDR.GetMassMountDriver(present_mass[i]) or ""))
-    if driver ~= "" then
-      mass_backend.any = true
-      if string.find(driver, "mx4", 1, true) ~= nil or string.find(driver, "sdc", 1, true) ~= nil then
-        mass_backend.mx4sio = true
-      end
-      if string.find(driver, "mmce", 1, true) ~= nil then
-        mass_backend.mmce = true
-      end
-    end
-  end
-  if mass_backend.any and mass_backend.mx4sio and not mass_backend.mmce then
+  local mass_backend = ReadMassBackendFlags()
+  if mass_backend.any and not mass_backend.mmce then
     PLDR.MMCE.PREFIX = nil
     return nil
   end
@@ -1798,6 +1847,26 @@ function PLDR.BuildMassGameListByType(kind, mass_snapshot)
           if not entry.directory and string.lower(string.sub(entry.name, -4)) == ".vcd" then
             found_any = true
             table.insert(PLDR.GAMES, pops_root.."|"..entry.name)
+          end
+        end
+      end
+    end
+  end
+  if not found_any and #roots > 0 then
+    if type(System) == "table" and type(System.sleep) == "function" then
+      pcall(System.sleep, 60)
+    end
+    for i = 1, #roots do
+      local pops_root = roots[i].."POPS/"
+      if doesFolderExist(pops_root) then
+        local DIR = System.listDirectory(pops_root)
+        if DIR ~= nil then
+          for j = 1, #DIR do
+            local entry = DIR[j]
+            if not entry.directory and string.lower(string.sub(entry.name, -4)) == ".vcd" then
+              found_any = true
+              table.insert(PLDR.GAMES, pops_root.."|"..entry.name)
+            end
           end
         end
       end
