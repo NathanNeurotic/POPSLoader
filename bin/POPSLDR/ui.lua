@@ -1402,24 +1402,6 @@ UI = {
           local preview_y = layout.PREVIEW_Y
           local preview_w = layout.PREVIEW_W
           local preview_h = layout.PREVIEW_H
-          if IMG.frame ~= nil then
-            local frame_w = Graphics.getImageWidth(IMG.frame) or 0
-            local frame_h = Graphics.getImageHeight(IMG.frame) or 0
-            if frame_w > 0 and frame_h > 0 then
-              local sx = preview_w / frame_w
-              local sy = preview_h / frame_h
-              local scale = sx
-              if sy < scale then scale = sy end
-              if scale > 0 then
-                local fitted_w = math.floor((frame_w * scale) + 0.5)
-                local fitted_h = math.floor((frame_h * scale) + 0.5)
-                preview_x = preview_x + math.floor((preview_w - fitted_w) / 2)
-                preview_y = preview_y + math.floor((preview_h - fitted_h) / 2)
-                preview_w = fitted_w
-                preview_h = fitted_h
-              end
-            end
-          end
           Graphics.drawRect(preview_x - 2, preview_y - 2, preview_w + 4, preview_h + 4, UI.CCOL.GREY)
           local preview_img = nil
           if cover_enabled then
@@ -2106,6 +2088,15 @@ UI = {
               UI.Notif_queue.add("No USB backend found")
             end
             local games = PLDR.BuildMassGameListByType("usb")
+            if (games == nil or #games < 1) and usb_roots ~= nil and #usb_roots > 0 then
+              if type(System) == "table" and type(System.ensureUsbMass) == "function" then
+                System.ensureUsbMass()
+              end
+              if type(PLDR.RefreshMassBackends) == "function" then
+                pcall(PLDR.RefreshMassBackends)
+              end
+              games = PLDR.BuildMassGameListByType("usb")
+            end
             UI.setDeviceLock(DEVLOCK.USB)
             UI.SceneChange(UI.SCENES.GUSBFAT)
           elseif UI.MainMenu.OPT == 6 then

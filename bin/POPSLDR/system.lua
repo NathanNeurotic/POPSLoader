@@ -1162,7 +1162,28 @@ local function ClassifyMassRootDriver(driver)
 end
 
 local function ReadMassBackendFlags()
-  local flags = { any = false, mmce = false }
+  local flags = { any = false, mmce = false, mx4sio = false }
+
+  if type(System) == "table" and type(System.bdmList) == "function" then
+    local ok, list = pcall(System.bdmList)
+    if ok and type(list) == "table" then
+      for i = 1, #list do
+        local name = string.lower(tostring(list[i] and list[i].name or ""))
+        if name ~= "" then
+          flags.any = true
+          if string.find(name, "mmce", 1, true) ~= nil then
+            flags.mmce = true
+          end
+          if string.find(name, "mx4", 1, true) ~= nil or string.find(name, "sdc", 1, true) ~= nil then
+            flags.mx4sio = true
+          end
+        end
+      end
+      if flags.any then
+        return flags
+      end
+    end
+  end
 
   local present_mass = PLDR.GetPresentMassRootsBounded()
   for i = 1, #present_mass do
@@ -1173,6 +1194,9 @@ local function ReadMassBackendFlags()
       if string.find(driver, "mmce", 1, true) ~= nil then
         flags.mmce = true
       end
+      if string.find(driver, "mx4", 1, true) ~= nil or string.find(driver, "sdc", 1, true) ~= nil then
+        flags.mx4sio = true
+      end
     end
   end
 
@@ -1180,19 +1204,11 @@ local function ReadMassBackendFlags()
 end
 
 local function WaitMassProbeRetry(attempt, max_attempts)
-  if attempt >= max_attempts then
-    return
-  end
-  if type(PLDR.RefreshMassBackends) == "function" then
-    pcall(PLDR.RefreshMassBackends)
-  end
+  return
 end
 
 local function BuildMassRootIdentity(mode)
   EnsureMassBackendsReady(mode)
-  if type(PLDR.RefreshMassBackends) == "function" then
-    pcall(PLDR.RefreshMassBackends)
-  end
 
   local identity = {
     usb = {},
@@ -1232,13 +1248,13 @@ end
 local function BuildUsbIdentityDeferred()
   local attempts = 0
   local identity = nil
-  while attempts < 2 do
+  while attempts < 3 do
     attempts = attempts + 1
     identity = BuildMassRootIdentity("usb")
     if type(identity) == "table" and type(identity.usb) == "table" and #identity.usb > 0 then
       return identity
     end
-    WaitMassProbeRetry(attempts, 2)
+    WaitMassProbeRetry(attempts, 3)
   end
   return identity or BuildMassRootIdentity("usb")
 end
@@ -1246,13 +1262,13 @@ end
 local function BuildMX4IdentityDeferred()
   -- Bounded retry masks first-entry quirk without exposing a second manual attempt.
   local attempts = 0
-  while attempts < 2 do
+  while attempts < 3 do
     attempts = attempts + 1
     local identity = BuildMassRootIdentity("mx4sio")
     if type(identity) == "table" and type(identity.mx4sio) == "table" and #identity.mx4sio > 0 then
       return identity
     end
-    WaitMassProbeRetry(attempts, 2)
+    WaitMassProbeRetry(attempts, 3)
   end
   return BuildMassRootIdentity("mx4sio")
 end
@@ -1614,7 +1630,7 @@ function PLDR.DetectMMCESlot(force_refresh)
   PLDR.MMCE.SLOTS = {}
   PLDR.MMCE.INDEX = 1
   local mass_backend = ReadMassBackendFlags()
-  if mass_backend.any and not mass_backend.mmce then
+  if mass_backend.mx4sio and not mass_backend.mmce then
     PLDR.MMCE.PREFIX = nil
     return nil
   end
@@ -1757,19 +1773,24 @@ function PLDR.InitMX4SIOPopsRoot()
   PLDR.MX4SIO.MASSINDX = nil
   PLDR.MX4SIO.IS_MASS_ALIAS = false
 
-  if type(_G.ensureMx4sioInit) == "function" then
-    pcall(_G.ensureMx4sioInit)
-  end
-  if type(System) == "table" and type(System.initMX4SIO) == "function" then
-    pcall(System.initMX4SIO)
-  end
+  for _ = 1, 3 do
+    if type(_G.ensureMx4sioInit) == "function" then
+      pcall(_G.ensureMx4sioInit)
+    end
+    if type(System) == "table" and type(System.initMX4SIO) == "function" then
+      pcall(System.initMX4SIO)
+    end
+    if type(PLDR.RefreshMassBackends) == "function" then
+      pcall(PLDR.RefreshMassBackends)
+    end
 
-  local root = PLDR.GetMX4SIOMassRootNow()
-  if root ~= nil then
-    local pops = root.."POPS/"
-    if doesFolderExist(pops) then
-      PLDR.SetMX4SIORoot(root)
-      return pops
+    local root = PLDR.GetMX4SIOMassRootNow()
+    if root ~= nil then
+      local pops = root.."POPS/"
+      if doesFolderExist(pops) then
+        PLDR.SetMX4SIORoot(root)
+        return pops
+      end
     end
   end
 
