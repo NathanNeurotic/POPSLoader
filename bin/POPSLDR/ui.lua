@@ -250,6 +250,17 @@ UI = {
         UI.device_lock = target
       end
     end;
+    IsHideToggleScene = function (scene)
+      return scene == UI.SCENES.MMAIN
+        or scene == UI.SCENES.GUSBFAT
+        or scene == UI.SCENES.GSMB
+        or scene == UI.SCENES.GMX4SIO
+        or scene == UI.SCENES.GHDD
+        or scene == UI.SCENES.GBDMHDD
+    end;
+    ShouldHideAuxText = function (scene)
+      return UI.HideTextMode and UI.IsHideToggleScene(scene or UI.CURSCENE)
+    end;
     RequestScene = function (SCENE)
       if UI.Transition ~= nil and UI.Transition.Start ~= nil then
         if UI.Transition.active then
@@ -372,6 +383,7 @@ UI = {
     DkwdrvDirty = false;
     PopstarterPathDraft = nil;
     DkwdrvPathDraft = nil;
+    HideTextMode = false;
     SavingActive = false;
     ShowSavingOverlay = function ()
       UI.SavingActive = true
@@ -461,6 +473,7 @@ UI = {
       end;
       Draw = function (labels, order)
         local safe = UI.LAYOUT.SAFE
+        local hide_labels = UI.ShouldHideAuxText(UI.CURSCENE)
         local entries = order or UI.Footer.order
         local count = #entries
         local icon_scale = UI.LAYOUT.FOOTER_ICON_SCALE or 1.0
@@ -533,7 +546,7 @@ UI = {
             end
           end
           local label = labels and labels[key] or nil
-          if label ~= nil then
+          if label ~= nil and not hide_labels then
             Font.ftPrint(SFONT, x, labelY, 8, UI.LAYOUT.FOOTER_LABEL_W, 16, label, UI.CCOL.GREY)
           end
         end
@@ -1246,6 +1259,17 @@ UI = {
         return true
       end
       if UI.LAUNCHING then return false end
+      if UI.Pad.Events.SELECT then
+        if UI.IsHideToggleScene(UI.CURSCENE) then
+          UI.HideTextMode = not UI.HideTextMode
+          if UI.HideTextMode then
+            UI.Notif_queue.add("UI text hidden")
+          else
+            UI.Notif_queue.add("UI text shown")
+          end
+          return true
+        end
+      end
       if UI.Pad.Events.START and UI.CURSCENE ~= UI.SCENES.MPROFILE then
         UI.SyncSettingsSelectionFromRuntime()
         if UI.SyncSettingsDraftFromRuntime ~= nil then
@@ -1285,7 +1309,7 @@ UI = {
           [UI.SCENES.GUSBFAT] = "USB"
         }
         local scene_title = titles[UI.CURSCENE]
-        if scene_title ~= nil then
+        if scene_title ~= nil and not UI.ShouldHideAuxText(UI.CURSCENE) then
           Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, scene_title, UI.CCOL.GREY)
         end
         local placeholders = {
@@ -1293,8 +1317,10 @@ UI = {
         }
         local placeholder_title = placeholders[UI.CURSCENE]
         if placeholder_title ~= nil then
-          Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, placeholder_title, UI.CCOL.GREY)
-          Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID, 20, UI.SCR.X, 32, "Not implemented yet", UI.CCOL.YELLOW)
+          if not UI.ShouldHideAuxText(UI.CURSCENE) then
+            Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, placeholder_title, UI.CCOL.GREY)
+            Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID, 20, UI.SCR.X, 32, "Not implemented yet", UI.CCOL.YELLOW)
+          end
           Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
           if UI.Pad.Events.EXIT then UI.SceneChange(UI.SCENES.CREDITS) end
@@ -1316,7 +1342,7 @@ UI = {
         local ammount = #PLDR.GAMES
         if UI.CURSCENE == UI.SCENES.GSMB then
           local slots = PLDR.GetMMCESlots()
-          if #slots > 1 then
+          if #slots > 1 and not UI.ShouldHideAuxText(UI.CURSCENE) then
             Font.ftPrint(SFONT, layout.LIST_X, layout.LIST_Y - 20, 0, UI.SCR.X, 16, "Slot: "..PLDR.MMCE.PREFIX, UI.CCOL.GREY)
           end
         end
@@ -1348,8 +1374,10 @@ UI = {
           end
         end
         if ammount <= 0 then
-          Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, UI.SCR.Y_MID, 20, UI.SCR.X, 32, "No games found", UI.CCOL.YELLOW)
-          Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID+1, UI.SCR.Y_MID+1, 20, UI.SCR.X, 32, "No games found", UI.CCOL.TRANSP_BLACK)
+          if not UI.ShouldHideAuxText(UI.CURSCENE) then
+            Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, UI.SCR.Y_MID, 20, UI.SCR.X, 32, "No games found", UI.CCOL.YELLOW)
+            Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID+1, UI.SCR.Y_MID+1, 20, UI.SCR.X, 32, "No games found", UI.CCOL.TRANSP_BLACK)
+          end
         end
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
@@ -1841,9 +1869,11 @@ UI = {
         local scroll_frac = scroll - base_scroll
         local center_label_idx = carousel.animActive and carousel.targetIndex or base_sel
         local top_y = layout.TITLE_Y
-        Font.ftPrint(UI.FONT.LABEL, UI.SCR.X_MID, top_y, 8, UI.SCR.X, 16, UI.MainMenu.opts[center_label_idx], UI.COLORS.TEXT_PRIMARY)
+        if not UI.ShouldHideAuxText(UI.CURSCENE) then
+          Font.ftPrint(UI.FONT.LABEL, UI.SCR.X_MID, top_y, 8, UI.SCR.X, 16, UI.MainMenu.opts[center_label_idx], UI.COLORS.TEXT_PRIMARY)
+        end
         local status_y = top_y + 12
-        if UI.boot_device ~= nil and UI.boot_device ~= DEVLOCK.NONE then
+        if UI.boot_device ~= nil and UI.boot_device ~= DEVLOCK.NONE and not UI.ShouldHideAuxText(UI.CURSCENE) then
           Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Booted from: "..UI.device_lock_name(UI.boot_device), UI.COLORS.TEXT_PRIMARY)
           status_y = status_y + 12
         end
