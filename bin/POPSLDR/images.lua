@@ -35,6 +35,9 @@ local IMG_REGISTRATIONS = {
   {"right", "right.png"},
   {"up",    "up.png"},
   {"down",  "down.png"},
+  {"default", "default.png"},
+  {"frame", "frame.png"},
+  {"MISSING", "MISSING.png"},
 }
 
 local IMG_SOURCES = {}
