@@ -1130,20 +1130,26 @@ UI = {
           cover_img = UI.CoverCache.last_img
         end
         if layout.PREVIEW_W > 0 then
+          local preview_img = nil
+          local default_img = IMG["default"]
+          local missing_img = IMG["MISSING"]
+          if not UI.GameList.isArtEnabled then
+            preview_img = default_img or missing_img
+          elseif cover_img ~= nil then
+            preview_img = cover_img
+          else
+            preview_img = missing_img or default_img
+          end
+
+          if preview_img ~= nil then
+            Graphics.drawScaleImage(preview_img, layout.PREVIEW_X, layout.PREVIEW_Y, layout.PREVIEW_W, layout.PREVIEW_H)
+          end
+
           local frame_img = IMG["frame"]
           if frame_img ~= nil then
             Graphics.drawScaleImage(frame_img, layout.PREVIEW_X - 2, layout.PREVIEW_Y - 2, layout.PREVIEW_W + 4, layout.PREVIEW_H + 4)
           else
             Graphics.drawRect(layout.PREVIEW_X - 2, layout.PREVIEW_Y - 2, layout.PREVIEW_W + 4, layout.PREVIEW_H + 4, UI.CCOL.GREY)
-          end
-          local preview_img = cover_img
-          if not UI.GameList.isArtEnabled then
-            preview_img = IMG["disable_art"] or IMG["MISSING"]
-          elseif preview_img == nil then
-            preview_img = IMG["default"] or IMG["MISSING"]
-          end
-          if preview_img ~= nil then
-            Graphics.drawScaleImage(preview_img, layout.PREVIEW_X, layout.PREVIEW_Y, layout.PREVIEW_W, layout.PREVIEW_H)
           end
         end
         if ammount <= 0 then

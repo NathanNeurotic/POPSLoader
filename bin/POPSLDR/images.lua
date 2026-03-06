@@ -38,6 +38,7 @@ local IMG_REGISTRATIONS = {
   {"default", "default.png"},
   {"disable_art", "disable_art.png"},
   {"frame", "frame.png"},
+  {"MISSING", "missing.png"},
 }
 
 local IMG_SOURCES = {}
@@ -49,7 +50,41 @@ end
 
 local IMG_FAILED = {}
 
+local function LoadExternalImage(source)
+  if source == nil or source == "" then return nil end
+  if type(Graphics) ~= "table" or type(Graphics.loadImage) ~= "function" then
+    return nil
+  end
+  local candidates = {
+    source,
+    "IMG/"..source,
+    "POPSLDR/IMG/"..source
+  }
+  if type(System) == "table" and type(System.resolveAsset) == "function" then
+    local ok, resolved = pcall(System.resolveAsset, source)
+    if ok and type(resolved) == "string" and resolved ~= "" then
+      table.insert(candidates, 1, resolved)
+    end
+  end
+  for i = 1, #candidates do
+    local path = candidates[i]
+    local exists = true
+    if type(doesFileExist) == "function" then
+      local ok_exists, res = pcall(doesFileExist, path)
+      exists = ok_exists and res == true
+    end
+    if exists then
+      local ok_img, img = pcall(Graphics.loadImage, path)
+      if ok_img and img ~= nil then
+        return img
+      end
+    end
+  end
+  return nil
+end
+
 IMG = setmetatable({}, {
+
   __index = function (tbl, key)
     if IMG_FAILED[key] then return nil end
     local source = IMG_SOURCES[key]
@@ -64,11 +99,17 @@ IMG = setmetatable({}, {
 
 
     if img == nil then
+      img = LoadExternalImage(source)
+    end
+
+    if img == nil then
       IMG_FAILED[key] = true
       return nil
     end
 
-    Graphics.setImageFilters(img, LINEAR)
+    if type(Graphics.setImageFilters) == "function" then
+      Graphics.setImageFilters(img, LINEAR)
+    end
     rawset(tbl, key, img)
     return img
   end
