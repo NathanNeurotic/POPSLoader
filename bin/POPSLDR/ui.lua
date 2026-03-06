@@ -340,6 +340,10 @@ UI = {
     BdmaModeIndex = 1;
     BdmaDirty = false;
     ProfileDirty = false;
+    PopPathDirty = false;
+    DkwdrvDirty = false;
+    PopstarterPathDraft = nil;
+    DkwdrvPathDraft = nil;
     SavingActive = false;
     ShowSavingOverlay = function ()
       UI.SavingActive = true
@@ -832,8 +836,14 @@ UI = {
         UI.Modal.body = "Launch DKWDRV?"
         UI.Modal.options = {"Yes", "Cancel"}
         UI.Modal.confirm_action = function ()
-          local elf_path = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
+          local elf_path = tostring((PLDR and PLDR.DKWDRV_PATH) or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
+          if not SafeDoesFileExist(elf_path) then
+            UI.Modal.Close()
+            UI.Notif_queue.add("Cant find DKWDRV ELF\n"..elf_path)
+            return
+          end
           UI.LAUNCHING = true
+          UI.Modal.Close()
           System.loadELF(elf_path, 1, elf_path)
           return
         end
@@ -933,6 +943,176 @@ UI = {
           hint = ("%s    Triangle: %s"):format(hint, triangle_label)
         end
         Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 95, 8, UI.SCR.X, 16, hint, UI.CCOL.GREY)
+      end;
+    };
+    PathEditor = {
+      active = false;
+      title = "";
+      value = "";
+      on_confirm = nil;
+      row = 1;
+      col = 1;
+      upper = false;
+      max_len = 120;
+      keys = {
+        {"a","b","c","d","e","f","g","h","i","j"},
+        {"k","l","m","n","o","p","q","r","s","t"},
+        {"u","v","w","x","y","z","0","1","2","3"},
+        {"4","5","6","7","8","9",":","/",".","_"},
+        {"-","?","\\","SPACE","DEL","CLR","OK","CANCEL"}
+      };
+      Open = function (title, initial, on_confirm)
+        UI.PathEditor.active = true
+        UI.PathEditor.title = tostring(title or "Edit Path")
+        UI.PathEditor.value = tostring(initial or "")
+        UI.PathEditor.on_confirm = on_confirm
+        UI.PathEditor.row = 1
+        UI.PathEditor.col = 1
+        UI.PathEditor.upper = false
+      end;
+      Close = function ()
+        UI.PathEditor.active = false
+        UI.PathEditor.title = ""
+        UI.PathEditor.on_confirm = nil
+      end;
+      _RowSize = function (row)
+        local r = UI.PathEditor.keys[row]
+        if r == nil then return 0 end
+        return #r
+      end;
+      _CurrentKey = function ()
+        local row = UI.PathEditor.keys[UI.PathEditor.row]
+        if row == nil then return nil end
+        return row[UI.PathEditor.col]
+      end;
+      _DisplayKey = function (key)
+        if key == nil then return "" end
+        if key == "SPACE" then return "SPC" end
+        if key == "CANCEL" then return "CAN" end
+        return key
+      end;
+      _Truncate = function (text, max_chars)
+        local raw = tostring(text or "")
+        if string.len(raw) <= max_chars then
+          return raw
+        end
+        return "..."..string.sub(raw, -(max_chars - 3))
+      end;
+      _AppendChar = function (ch)
+        local val = UI.PathEditor.value or ""
+        if string.len(val) >= UI.PathEditor.max_len then
+          return
+        end
+        UI.PathEditor.value = val..ch
+      end;
+      HandleInput = function ()
+        if not UI.PathEditor.active then return end
+        if UI.Pad.Events.BACK then
+          UI.PathEditor.Close()
+          return
+        end
+        if UI.Pad.Events.R2 then
+          UI.PathEditor.upper = not UI.PathEditor.upper
+        end
+
+        local max_rows = #UI.PathEditor.keys
+        if UI.Pad.Events.NAV_UP then
+          UI.PathEditor.row = CLAMP(UI.PathEditor.row - 1, 1, max_rows)
+          local row_size = UI.PathEditor._RowSize(UI.PathEditor.row)
+          UI.PathEditor.col = CLAMP(UI.PathEditor.col, 1, row_size)
+        end
+        if UI.Pad.Events.NAV_DOWN then
+          UI.PathEditor.row = CLAMP(UI.PathEditor.row + 1, 1, max_rows)
+          local row_size = UI.PathEditor._RowSize(UI.PathEditor.row)
+          UI.PathEditor.col = CLAMP(UI.PathEditor.col, 1, row_size)
+        end
+        if UI.Pad.Events.NAV_LEFT then
+          UI.PathEditor.col = UI.PathEditor.col - 1
+          if UI.PathEditor.col < 1 then
+            UI.PathEditor.col = UI.PathEditor._RowSize(UI.PathEditor.row)
+          end
+        end
+        if UI.Pad.Events.NAV_RIGHT then
+          UI.PathEditor.col = UI.PathEditor.col + 1
+          local row_size = UI.PathEditor._RowSize(UI.PathEditor.row)
+          if UI.PathEditor.col > row_size then
+            UI.PathEditor.col = 1
+          end
+        end
+
+        local function confirm_value()
+          local cb = UI.PathEditor.on_confirm
+          local val = tostring(UI.PathEditor.value or "")
+          UI.PathEditor.Close()
+          if cb ~= nil then
+            cb(val)
+          end
+        end
+
+        if UI.Pad.Events.START then
+          confirm_value()
+          return
+        end
+
+        if UI.Pad.Events.CONFIRM then
+          local key = UI.PathEditor._CurrentKey()
+          if key == "SPACE" then
+            UI.PathEditor._AppendChar(" ")
+          elseif key == "DEL" then
+            local val = UI.PathEditor.value or ""
+            UI.PathEditor.value = string.sub(val, 1, math.max(0, string.len(val) - 1))
+          elseif key == "CLR" then
+            UI.PathEditor.value = ""
+          elseif key == "OK" then
+            confirm_value()
+            return
+          elseif key == "CANCEL" then
+            UI.PathEditor.Close()
+            return
+          elseif key ~= nil and key ~= "" then
+            local out = key
+            if UI.PathEditor.upper and string.match(out, "^[a-z]$") then
+              out = string.upper(out)
+            end
+            UI.PathEditor._AppendChar(out)
+          end
+        end
+      end;
+      Draw = function ()
+        if not UI.PathEditor.active then return end
+        local box_w = UI.SCR.X - 80
+        local box_h = UI.SCR.Y - 80
+        local box_x = (UI.SCR.X - box_w) / 2
+        local box_y = (UI.SCR.Y - box_h) / 2
+        Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, 110))
+        Graphics.drawRect(box_x, box_y, box_w, box_h, Color.new(0, 0, 0, 220))
+        Graphics.drawRect(box_x, box_y, box_w, 2, UI.CCOL.GREY)
+        Graphics.drawRect(box_x, box_y + box_h - 2, box_w, 2, UI.CCOL.GREY)
+
+        Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 8, 8, UI.SCR.X, 16, UI.PathEditor.title, UI.CCOL.YELLOW)
+        local shown = UI.PathEditor._Truncate(UI.PathEditor.value, 58)
+        Font.ftPrint(SFONT, box_x + 14, box_y + 34, 0, box_w - 28, 16, shown, UI.CCOL.GREY)
+        local mode_label = UI.PathEditor.upper and "Case: UPPER (R2)" or "Case: lower (R2)"
+        Font.ftPrint(SFONT, box_x + 14, box_y + 52, 0, box_w - 28, 16, mode_label, UI.CCOL.GREY)
+
+        local key_w = 46
+        local key_h = 20
+        local key_gap = 6
+        local start_y = box_y + 82
+        for r = 1, #UI.PathEditor.keys do
+          local row = UI.PathEditor.keys[r]
+          local row_w = (#row * key_w) + ((#row - 1) * key_gap)
+          local row_x = UI.SCR.X_MID - (row_w / 2)
+          for c = 1, #row do
+            local key = row[c]
+            local x = row_x + ((c - 1) * (key_w + key_gap))
+            local y = start_y + ((r - 1) * (key_h + key_gap))
+            local selected = (UI.PathEditor.row == r and UI.PathEditor.col == c)
+            local bg = selected and Color.new(0, 100, 255, 120) or Color.new(40, 40, 40, 120)
+            Graphics.drawRect(x, y, key_w, key_h, bg)
+            Font.ftPrint(SFONT, x + 2, y + 3, 0, key_w - 4, 16, UI.PathEditor._DisplayKey(key), UI.CCOL.GREY)
+          end
+        end
       end;
     };
     Transition = {
@@ -1040,6 +1220,9 @@ UI = {
       if UI.LAUNCHING then return false end
       if UI.Pad.Events.START and UI.CURSCENE ~= UI.SCENES.MPROFILE then
         UI.SyncSettingsSelectionFromRuntime()
+        if UI.SyncSettingsDraftFromRuntime ~= nil then
+          UI.SyncSettingsDraftFromRuntime()
+        end
         UI.ProfileDirty = false
         UI.BdmaDirty = false
         UI.SceneChange(UI.SCENES.MPROFILE)
@@ -1293,10 +1476,12 @@ UI = {
 
         local mode_text = "<"..tostring(mode.label or "")..">"
         local profile_text = "<Profile "..UI.ProfileQuery.curopt..">"
-        local pop_path_label = "POPStarter Path"
-        local pop_path_value = "<"..TruncateMiddle(tostring(PLDR.PROFILES[UI.ProfileQuery.curopt].ELF or ""), 46)..">"
-        local dkwdrv_label = "DKWDRV Path"
-        local dkwdrv_value = "<"..TruncateMiddle("mc0:/PS1_DKWDRV/DKWDRV.ELF", 46)..">"
+        local draft_pop_path = tostring(UI.PopstarterPathDraft or PLDR.POPSTARTER_PATH or "")
+        local draft_dkw_path = tostring(UI.DkwdrvPathDraft or PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
+        local pop_path_label = "POPStarter Path (L1)"
+        local pop_path_value = "<"..TruncateMiddle(draft_pop_path, 46)..">"
+        local dkwdrv_label = "DKWDRV Path (R1)"
+        local dkwdrv_value = "<"..TruncateMiddle(draft_dkw_path, 46)..">"
 
         local y = layout.TITLE_Y + TITLE_TO_BLOCK
         local footer_top_y = (layout.FOOTER_ICON_Y or (UI.SCR.Y - (layout.BTN_BAR_SAFE_BOTTOM or 56))) - 24
@@ -1339,6 +1524,20 @@ UI = {
         y = y + H_ROW + BUTTON_GAP
 
         Input_GetEvent()
+        if UI.PathEditor.active then
+          UI.PathEditor.HandleInput()
+          UI.PathEditor.Draw()
+          local labels, order = UI.Footer.ResolveLegend({
+            order = UI.Footer.order_with_start_r2,
+            order_id = "start_r2",
+            circle = UI.Footer.labels.circle_other,
+            cross = UI.Footer.labels.cross_select,
+            start = "Save",
+            square = nil
+          })
+          UI.Footer.Draw(labels, order)
+          return
+        end
         if UI.HandleGlobalInput(false) then return end
 
         local function queue_exit(target_scene)
@@ -1352,8 +1551,8 @@ UI = {
             save_token = "bdma:"..tostring(PLDR._bdma_apply_seq)
           end
           local profile_index = CLAMP(UI.ProfileQuery.curopt, 1, #PLDR.PROFILES)
-          local profile_entry = PLDR.PROFILES[profile_index]
-          local pop_path = profile_entry and profile_entry.ELF or PLDR.POPSTARTER_PATH
+          local pop_path = tostring(UI.PopstarterPathDraft or PLDR.POPSTARTER_PATH or "")
+          local dkwdrv_path = tostring(UI.DkwdrvPathDraft or PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
           local mode_entry = UI.BdmaModes[UI.BdmaModeIndex] or UI.BdmaModes[1]
           local mode_key = mode_entry and mode_entry.key or "FAT32"
           local ok_run, result, reason = xpcall(function()
@@ -1361,6 +1560,7 @@ UI = {
               return PLDR.CommitSettingsChanges({
                 profile = profile_index,
                 popstarter_path = pop_path,
+                dkwdrv_path = dkwdrv_path,
                 bdma_mode = mode_key,
                 apply_bdma = UI.BdmaDirty,
                 bdma_token = save_token
@@ -1369,6 +1569,7 @@ UI = {
 
             PLDR.SELECTED_PROFILE = profile_index
             PLDR.POPSTARTER_PATH = pop_path
+            PLDR.DKWDRV_PATH = dkwdrv_path
             PLDR.BDMA_MODE_KEY = mode_key
             local saved = PLDR.SaveSettingsAtomic()
             local applied = true
@@ -1387,14 +1588,19 @@ UI = {
           if ok_run and result == true then
             UI.ProfileDirty = false
             UI.BdmaDirty = false
+            UI.PopPathDirty = false
+            UI.DkwdrvDirty = false
             UI.SceneChange(target_scene)
           else
             if reason == "bdma_apply_failed" then
               UI.Notif_queue.add("Failed to apply BDMA mode")
+              UI.SyncSettingsSelectionFromRuntime()
+              UI.SyncSettingsDraftFromRuntime()
             elseif reason ~= "save_failed" then
               UI.Notif_queue.add("Failed to save settings")
+              UI.SyncSettingsSelectionFromRuntime()
+              UI.SyncSettingsDraftFromRuntime()
             end
-            UI.SyncSettingsSelectionFromRuntime()
           end
         end
 
@@ -1403,6 +1609,10 @@ UI = {
           local next_opt = CLAMP(UI.ProfileQuery.curopt+1, 1, profcnt)
           if next_opt ~= UI.ProfileQuery.curopt then
             UI.ProfileQuery.curopt = next_opt
+            if not UI.PopPathDirty then
+              local profile = PLDR.PROFILES[UI.ProfileQuery.curopt]
+              UI.PopstarterPathDraft = tostring((profile and profile.ELF) or UI.PopstarterPathDraft or "")
+            end
             UI.ProfileDirty = true
           end
         end
@@ -1410,8 +1620,26 @@ UI = {
           local next_opt = CLAMP(UI.ProfileQuery.curopt-1, 1, profcnt)
           if next_opt ~= UI.ProfileQuery.curopt then
             UI.ProfileQuery.curopt = next_opt
+            if not UI.PopPathDirty then
+              local profile = PLDR.PROFILES[UI.ProfileQuery.curopt]
+              UI.PopstarterPathDraft = tostring((profile and profile.ELF) or UI.PopstarterPathDraft or "")
+            end
             UI.ProfileDirty = true
           end
+        end
+        if UI.Pad.Events.L1 then
+          UI.PathEditor.Open("Edit POPStarter Path", UI.PopstarterPathDraft or "", function(path)
+            UI.PopstarterPathDraft = tostring(path or "")
+            UI.PopPathDirty = true
+            UI.ProfileDirty = true
+          end)
+        end
+        if UI.Pad.Events.R1 then
+          UI.PathEditor.Open("Edit DKWDRV Path", UI.DkwdrvPathDraft or "", function(path)
+            UI.DkwdrvPathDraft = tostring(path or "")
+            UI.DkwdrvDirty = true
+            UI.ProfileDirty = true
+          end)
         end
         if UI.Pad.Events.NAV_RIGHT then
           UI.BdmaModeIndex = UI.BdmaModeIndex + 1
@@ -1429,6 +1657,18 @@ UI = {
           local next_default = CLAMP(default_profile, 1, profcnt)
           if next_default ~= UI.ProfileQuery.curopt then
             UI.ProfileQuery.curopt = next_default
+            UI.ProfileDirty = true
+          end
+          local default_entry = PLDR.PROFILES[next_default]
+          if default_entry ~= nil then
+            UI.PopstarterPathDraft = tostring(default_entry.ELF or UI.PopstarterPathDraft or "")
+            UI.PopPathDirty = false
+            UI.ProfileDirty = true
+          end
+          local default_dkw = tostring(PLDR.DKWDRV_DEFAULT_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
+          if UI.DkwdrvPathDraft ~= default_dkw then
+            UI.DkwdrvPathDraft = default_dkw
+            UI.DkwdrvDirty = true
             UI.ProfileDirty = true
           end
           if UI.BdmaModeIndex ~= 1 then
@@ -1746,6 +1986,8 @@ UI = {
         EXIT = false,
         START = false,
         SELECT = false,
+        L1 = false,
+        R1 = false,
         R2 = false,
         ANY = false,
       };
@@ -1782,6 +2024,8 @@ UI = {
         UI.Pad.Events.EXIT = false
         UI.Pad.Events.START = false
         UI.Pad.Events.SELECT = false
+        UI.Pad.Events.L1 = false
+        UI.Pad.Events.R1 = false
         UI.Pad.Events.R2 = false
         UI.Pad.Events.ANY = false
 
@@ -1809,6 +2053,8 @@ UI = {
         if (pressed & PAD_TRIANGLE) ~= 0 then emit_action("EXIT") end
         if (pressed & PAD_START) ~= 0 then emit("START") end
         if (pressed & PAD_SELECT) ~= 0 then emit("SELECT") end
+        if (pressed & PAD_L1) ~= 0 then emit_action("L1") end
+        if (pressed & PAD_R1) ~= 0 then emit_action("R1") end
         if (pressed & PAD_R2) ~= 0 then emit_action("R2") end
 
         local function resolve_nav(dir, is_down)
@@ -1970,6 +2216,12 @@ function UI.OnSceneExit(previous_scene, next_scene)
   end
 end
 UI.RecalcLayout()
+function UI.SyncSettingsDraftFromRuntime()
+  UI.PopstarterPathDraft = tostring(PLDR.POPSTARTER_PATH or "")
+  UI.DkwdrvPathDraft = tostring(PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
+  UI.PopPathDirty = false
+  UI.DkwdrvDirty = false
+end
 function UI.SyncSettingsSelectionFromRuntime()
   if type(PLDR.ReconcileBdmaModeWithEffectiveState) == "function" then
     PLDR.ReconcileBdmaModeWithEffectiveState()
@@ -1985,6 +2237,7 @@ function UI.SyncSettingsSelectionFromRuntime()
   local selected_profile = tonumber(PLDR.SELECTED_PROFILE) or tonumber(PLDR.DEFAULT_PROFILE) or 1
   UI.ProfileQuery.curopt = CLAMP(selected_profile, 1, #PLDR.PROFILES)
 end
+UI.SyncSettingsDraftFromRuntime()
 UI.SyncSettingsSelectionFromRuntime()
 function Input_GetEvent()
   UI.Pad.Listen()

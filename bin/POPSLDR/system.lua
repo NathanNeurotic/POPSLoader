@@ -410,6 +410,8 @@ PLDR.POPSTARTER_DIR = "mc0:/POPSTARTER"
 PLDR.SETTINGS_PATH = "mc0:/POPSTARTER/.pldrs"
 PLDR.BDMA_MODE_KEY = "FAT32"
 PLDR.SELECTED_PROFILE = tonumber(PLDR.DEFAULT_PROFILE) or 1
+PLDR.DKWDRV_DEFAULT_PATH = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
+PLDR.DKWDRV_PATH = tostring(PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH)
 
 local POPSTARTER_PACK_ROOT = PLDR.POPSTARTER_DIR
 local BDMA_MODE_MARKER_PATH = POPSTARTER_PACK_ROOT.."/.pldr_bdma_mode"
@@ -798,7 +800,8 @@ local function EncodeSettings()
   local lines = {
     "PROFILE="..tostring(tonumber(PLDR.SELECTED_PROFILE) or 1),
     "POPSTARTER_PATH="..tostring(PLDR.POPSTARTER_PATH or ""),
-    "BDMA="..tostring(PLDR.BDMA_MODE_KEY or "FAT32")
+    "BDMA="..tostring(PLDR.BDMA_MODE_KEY or "FAT32"),
+    "DKWDRV_PATH="..tostring(PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH)
   }
   return table.concat(lines, "\n").."\n"
 end
@@ -825,7 +828,8 @@ local function SnapshotSettingsState()
   return {
     profile = tonumber(PLDR.SELECTED_PROFILE) or tonumber(PLDR.DEFAULT_PROFILE) or 1,
     popstarter_path = tostring(PLDR.POPSTARTER_PATH or ""),
-    bdma_mode = NormalizeBdmaModeKey(PLDR.BDMA_MODE_KEY) or "FAT32"
+    bdma_mode = NormalizeBdmaModeKey(PLDR.BDMA_MODE_KEY) or "FAT32",
+    dkwdrv_path = tostring(PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH)
   }
 end
 
@@ -843,6 +847,9 @@ local function ApplySettingsState(state)
   local bdma = NormalizeBdmaModeKey(state.bdma_mode)
   if bdma ~= nil then
     PLDR.BDMA_MODE_KEY = bdma
+  end
+  if state.dkwdrv_path ~= nil then
+    PLDR.DKWDRV_PATH = tostring(state.dkwdrv_path)
   end
 end
 
@@ -902,6 +909,7 @@ function PLDR.LoadSettingsNonFatal()
   PLDR.EnsurePopstarterDir()
   PLDR.SELECTED_PROFILE = defaults_profile
   PLDR.BDMA_MODE_KEY = "FAT32"
+  PLDR.DKWDRV_PATH = tostring(PLDR.DKWDRV_DEFAULT_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
   if PLDR.PROFILES ~= nil and PLDR.PROFILES[defaults_profile] ~= nil then
     PLDR.POPSTARTER_PATH = PLDR.PROFILES[defaults_profile].ELF
   end
@@ -917,12 +925,16 @@ function PLDR.LoadSettingsNonFatal()
   local profile = tonumber(string.match(data, "\nPROFILE=([^\n]+)")) or tonumber(string.match(data, "^PROFILE=([^\n]+)"))
   local popstarter_path = string.match(data, "\nPOPSTARTER_PATH=([^\n]*)") or string.match(data, "^POPSTARTER_PATH=([^\n]*)")
   local bdma_mode = string.match(data, "\nBDMA=([^\n]+)") or string.match(data, "^BDMA=([^\n]+)") or string.match(data, "\nBDMA_MODE=([^\n]+)") or string.match(data, "^BDMA_MODE=([^\n]+)")
+  local dkwdrv_path = string.match(data, "\nDKWDRV_PATH=([^\n]*)") or string.match(data, "^DKWDRV_PATH=([^\n]*)")
   if profile ~= nil and PLDR.PROFILES ~= nil and PLDR.PROFILES[profile] ~= nil then
     PLDR.SELECTED_PROFILE = profile
     PLDR.POPSTARTER_PATH = PLDR.PROFILES[profile].ELF
   end
   if popstarter_path ~= nil and popstarter_path ~= "" then
     PLDR.POPSTARTER_PATH = popstarter_path
+  end
+  if dkwdrv_path ~= nil and dkwdrv_path ~= "" then
+    PLDR.DKWDRV_PATH = dkwdrv_path
   end
   PLDR.BDMA_MODE_KEY = NormalizeBdmaModeKey(bdma_mode) or PLDR.BDMA_MODE_KEY
   PLDR.ReconcileBdmaModeWithEffectiveState()
@@ -935,7 +947,8 @@ function PLDR.CommitSettingsChanges(opts)
   local next_state = {
     profile = tonumber(opts.profile) or prev.profile,
     popstarter_path = opts.popstarter_path or prev.popstarter_path,
-    bdma_mode = NormalizeBdmaModeKey(opts.bdma_mode) or prev.bdma_mode
+    bdma_mode = NormalizeBdmaModeKey(opts.bdma_mode) or prev.bdma_mode,
+    dkwdrv_path = opts.dkwdrv_path or prev.dkwdrv_path
   }
   local apply_bdma = opts.apply_bdma == true
   local bdma_token = opts.bdma_token
