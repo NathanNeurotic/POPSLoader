@@ -1160,43 +1160,17 @@ local function BuildMassRootIdentity(mode)
   return identity
 end
 
-local mx4_retry_pending = false
-local mx4_retry_used = false
-local mx4_present_sig = nil
-
-local function MassRootsSignature()
-  local roots = PLDR.GetPresentMassRootsBounded()
-  return table.concat(roots, "|")
-end
-
 local function BuildMX4IdentityDeferred()
-  local sig = MassRootsSignature()
-  if sig ~= mx4_present_sig then
-    mx4_present_sig = sig
-    mx4_retry_pending = false
-    mx4_retry_used = false
+  -- Bounded retry masks first-entry quirk without exposing a second manual attempt.
+  local attempts = 0
+  while attempts < 2 do
+    attempts = attempts + 1
+    local identity = BuildMassRootIdentity("mx4sio")
+    if type(identity) == "table" and type(identity.mx4sio) == "table" and #identity.mx4sio > 0 then
+      return identity
+    end
   end
-
-  local identity = BuildMassRootIdentity("mx4sio")
-  local empty = (type(identity) ~= "table" or type(identity.mx4sio) ~= "table" or #identity.mx4sio == 0)
-  if not empty then
-    mx4_retry_pending = false
-    mx4_retry_used = false
-    return identity
-  end
-
-  if mx4_retry_used then
-    return identity
-  end
-
-  if not mx4_retry_pending then
-    mx4_retry_pending = true
-    return identity
-  end
-
-  mx4_retry_pending = false
-  mx4_retry_used = true
-  return identity
+  return BuildMassRootIdentity("mx4sio")
 end
 
 function PLDR.GetMX4SIOMassRootNow()
