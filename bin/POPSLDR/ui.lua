@@ -877,10 +877,14 @@ UI = {
         UI.Modal.body = "Launch DKWDRV?"
         UI.Modal.options = {"Yes", "Cancel"}
         UI.Modal.confirm_action = function ()
-          local elf_path = tostring((PLDR and PLDR.DKWDRV_PATH) or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
-          if not SafeDoesFileExist(elf_path) then
+          local configured_path = tostring((PLDR and PLDR.DKWDRV_PATH) or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
+          local elf_path = configured_path
+          if type(PLDR) == "table" and type(PLDR.ResolveFirstExistingPath) == "function" then
+            elf_path = PLDR.ResolveFirstExistingPath(configured_path)
+          end
+          if elf_path == nil or not SafeDoesFileExist(elf_path) then
             UI.Modal.Close()
-            UI.Notif_queue.add("Cant find DKWDRV ELF\n"..elf_path)
+            UI.Notif_queue.add("Cant find DKWDRV ELF\n"..configured_path)
             return
           end
           UI.LAUNCHING = true

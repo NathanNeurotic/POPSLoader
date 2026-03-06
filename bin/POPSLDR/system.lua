@@ -135,43 +135,78 @@ function PLDR.EnsureMmceReadyOnce()
   return true
 end
 
-function PLDR.PopstarterProbeWithEnsure(path)
-  local function probe(p)
-    local candidate = tostring(p or "")
-    if candidate == "" then
-      return false
-    end
-    local ok, fd_or_err = pcall(System.openFile, candidate, FREAD)
-    if ok and type(fd_or_err) == "number" and fd_or_err >= 0 then
-      System.closeFile(fd_or_err)
-      return true
-    end
-    local exists_ok, exists = pcall(doesFileExist, candidate)
-    return exists_ok and exists == true
-  end
-
+function PLDR.ExpandMcAlias(path)
   local candidate = tostring(path or "")
-  local low = string.lower(candidate)
-  local is_mass = low:find("^mass") ~= nil
-  local is_mmce = low:find("^mmce") ~= nil
+  if candidate == "" then
+    return {}
+  end
+  if string.match(candidate, "^mc%?:/") then
+    local suffix = string.sub(candidate, 6)
+    return {
+      "mc0:/"..suffix,
+      "mc1:/"..suffix
+    }
+  end
+  return {candidate}
+end
 
-  for pass = 1, 2 do
-    if probe(candidate) then
-      return true
+local function ProbePathExists(p)
+  local candidate = tostring(p or "")
+  if candidate == "" then
+    return false
+  end
+  local ok, fd_or_err = pcall(System.openFile, candidate, FREAD)
+  if ok and type(fd_or_err) == "number" and fd_or_err >= 0 then
+    System.closeFile(fd_or_err)
+    return true
+  end
+  local exists_ok, exists = pcall(doesFileExist, candidate)
+  return exists_ok and exists == true
+end
+
+function PLDR.ResolveFirstExistingPath(path)
+  local candidates = PLDR.ExpandMcAlias(path)
+  for i = 1, #candidates do
+    if ProbePathExists(candidates[i]) then
+      return candidates[i]
     end
-    if pass == 1 then
-      if is_mass then
-        if type(PLDR) == "table" and type(PLDR.EnsureUsbMassReadyOnce) == "function" then
-          pcall(PLDR.EnsureUsbMassReadyOnce)
-        end
-      elseif is_mmce then
-        if type(PLDR) == "table" and type(PLDR.EnsureMmceReadyOnce) == "function" then
-          pcall(PLDR.EnsureMmceReadyOnce)
+  end
+  return nil
+end
+
+local function ResolvePathWithEnsure(path)
+  local candidates = PLDR.ExpandMcAlias(path)
+  for i = 1, #candidates do
+    local candidate = candidates[i]
+    local low = string.lower(candidate)
+    local is_mass = low:find("^mass") ~= nil
+    local is_mmce = low:find("^mmce") ~= nil
+    for pass = 1, 2 do
+      if ProbePathExists(candidate) then
+        return candidate
+      end
+      if pass == 1 then
+        if is_mass then
+          if type(PLDR) == "table" and type(PLDR.EnsureUsbMassReadyOnce) == "function" then
+            pcall(PLDR.EnsureUsbMassReadyOnce)
+          end
+        elseif is_mmce then
+          if type(PLDR) == "table" and type(PLDR.EnsureMmceReadyOnce) == "function" then
+            pcall(PLDR.EnsureMmceReadyOnce)
+          end
         end
       end
     end
   end
-  return false
+  return nil
+end
+
+function PLDR.ResolveFirstExistingPathWithEnsure(path)
+  return ResolvePathWithEnsure(path)
+end
+
+function PLDR.PopstarterProbeWithEnsure(path)
+  return ResolvePathWithEnsure(path) ~= nil
 end
 
 local function ResolvePopstarterPath(path)
@@ -181,8 +216,9 @@ local function ResolvePopstarterPath(path)
   elseif not IsAbsoluteDevicePath(chosen) then
     chosen = JoinPath(APP_DIR_LOCAL, chosen)
   end
-  if PLDR.PopstarterProbeWithEnsure(chosen) then
-    return chosen
+  local resolved = ResolvePathWithEnsure(chosen)
+  if resolved ~= nil then
+    return resolved
   end
 
   local fallbacks = {
@@ -192,8 +228,9 @@ local function ResolvePopstarterPath(path)
   }
   for i = 1, #fallbacks do
     local candidate = fallbacks[i]
-    if candidate ~= chosen and PLDR.PopstarterProbeWithEnsure(candidate) then
-      return candidate
+    local resolved_fallback = ResolvePathWithEnsure(candidate)
+    if candidate ~= chosen and resolved_fallback ~= nil then
+      return resolved_fallback
     end
   end
 
