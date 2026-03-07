@@ -433,6 +433,10 @@ local BDMA_COPY_FILES = {
   "usbd.irx",
   "usbhdfsd.irx"
 }
+local BDMA_FAT32_REMOVE_FILES = {
+  "mc0:/POPSTARTER/usbd.irx",
+  "mc0:/POPSTARTER/usbhdfsd.irx"
+}
 local BDMA_UI_FILES = {
   { src = "icon.sys.bdma", dst = "icon.sys" },
   { src = "list.icn.bdma", dst = "list.icn" },
@@ -1243,9 +1247,18 @@ local function DeleteIfExists(path)
       pcall(System.closeFile, fd)
     end
   end
-  if exists then
-    pcall(System.removeFile, path)
+  if not exists then
+    return true
   end
+  local ok_remove = pcall(System.removeFile, path)
+  if not ok_remove then
+    return false
+  end
+  local ok_post_exists, post_exists = pcall(doesFileExist, path)
+  if ok_post_exists and post_exists == true then
+    return false
+  end
+  return true
 end
 
 function PLDR.NextBdmaApplyToken()
@@ -1287,8 +1300,14 @@ function PLDR.ApplyBdmaMode(mode_key)
   end
 
   if selected == "FAT32" then
-    DeleteIfExists("mc0:/POPSTARTER/usbd.irx")
-    DeleteIfExists("mc0:/POPSTARTER/usbhdfsd.irx")
+    for i = 1, #BDMA_FAT32_REMOVE_FILES do
+      if not DeleteIfExists(BDMA_FAT32_REMOVE_FILES[i]) then
+        if UI ~= nil and UI.Notif_queue ~= nil then
+          UI.Notif_queue.add("Failed to apply FAT32 BDMA")
+        end
+        return false
+      end
+    end
     WriteBdmaModeMarker(selected)
     return true
   end
@@ -1787,18 +1806,6 @@ local function BuildLiteralElfName(value)
   return trimmed..".ELF"
 end
 
-local function BuildDisplayNameFromEntry(entry)
-  if entry == nil or entry == "" then
-    return ""
-  end
-  local display_name = entry
-  local hdd_relpath = string.match(display_name, "^[^|]+|(.+)$")
-  if hdd_relpath ~= nil then
-    display_name = string.match(hdd_relpath, "([^/]+)$") or hdd_relpath
-  end
-  return string.gsub(display_name, "%.[Vv][Cc][Dd]$", "")
-end
-
 local function SelectPopstarterSelectorPrefix(device_page, source_mode)
   local mode = string.lower(tostring(source_mode or ""))
   if mode == "smb" then
@@ -1814,7 +1821,7 @@ local function BuildPopstarterSelectorPath(selector_prefix, game_name)
   if game_name == nil or game_name == "" then
     return ""
   end
-  local normalized = NormalizeBootBasename(game_name, selector_prefix or "")
+  local normalized = NormalizeBootBasename(game_name, selector_prefix)
   return BuildLiteralElfName(normalized)
 end
 
@@ -2219,8 +2226,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   local selector_prefix = SelectPopstarterSelectorPrefix(device_page, boot_source_mode)
   local argv0_selector = BuildPopstarterSelectorPath(selector_prefix, game_name)
   if policy.name == "HDD" then
-    local display_name = BuildDisplayNameFromEntry(game)
-    argv0_selector = BuildLiteralElfName(display_name)
+    argv0_selector = BuildLiteralElfName(game_name)
   end
   if selector_prefix == "" and string.upper(game_name) == "POPSTARTER" then
     BlockLaunchFailure(
