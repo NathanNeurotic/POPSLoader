@@ -13,7 +13,6 @@ local IMG_REGISTRATIONS = {
   {"SMB", "SMB.png"},
   {"MMCE", "MMCE.png"},
   {"MX4SIO", "MX4SIO.png"},
-  {"HDD", "HDD.png"},
   {"APAHDD", "APAHDD.png"},
   {"BDHDD", "BDHDD.png"},
   {"BKG", "BKG.png"},

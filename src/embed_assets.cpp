@@ -17,8 +17,6 @@ extern unsigned char asset_mmce_png[];
 extern unsigned int size_asset_mmce_png;
 extern unsigned char asset_mx4sio_png[];
 extern unsigned int size_asset_mx4sio_png;
-extern unsigned char asset_hdd_png[];
-extern unsigned int size_asset_hdd_png;
 extern unsigned char asset_apahdd_png[];
 extern unsigned int size_asset_apahdd_png;
 extern unsigned char asset_bdhdd_png[];
@@ -107,7 +105,6 @@ static const embedded_asset_t g_embedded_assets[] = {
 	ASSET_ENTRY("SMB.png", asset_smb_png),
 	ASSET_ENTRY("MMCE.png", asset_mmce_png),
 	ASSET_ENTRY("MX4SIO.png", asset_mx4sio_png),
-	ASSET_ENTRY("HDD.png", asset_hdd_png),
 	ASSET_ENTRY("APAHDD.png", asset_apahdd_png),
 	ASSET_ENTRY("BDHDD.png", asset_bdhdd_png),
 	ASSET_ENTRY("BG.png", asset_bg_png),
@@ -154,7 +151,6 @@ static const embedded_asset_t g_embedded_assets[] = {
 	ASSET_ENTRY("POPSLDR/IMG/SMB.png", asset_smb_png),
 	ASSET_ENTRY("POPSLDR/IMG/MMCE.png", asset_mmce_png),
 	ASSET_ENTRY("POPSLDR/IMG/MX4SIO.png", asset_mx4sio_png),
-	ASSET_ENTRY("POPSLDR/IMG/HDD.png", asset_hdd_png),
 	ASSET_ENTRY("POPSLDR/IMG/APAHDD.png", asset_apahdd_png),
 	ASSET_ENTRY("POPSLDR/IMG/BDHDD.png", asset_bdhdd_png),
 	ASSET_ENTRY("POPSLDR/IMG/BG.png", asset_bg_png),
