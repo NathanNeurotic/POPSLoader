@@ -1405,6 +1405,13 @@ UI = {
           return
         end
         local ammount = #PLDR.GAMES
+        if ammount <= 0 then
+          UI.GameList.CURR = 1
+          UI.GameList.STARTUP = 1
+        else
+          UI.GameList.CURR = CLAMP(UI.GameList.CURR, 1, ammount)
+          UI.GameList.STARTUP = CLAMP(UI.GameList.STARTUP, 1, ammount)
+        end
         if UI.CURSCENE == UI.SCENES.GSMB then
           local slots = PLDR.GetMMCESlots()
           if #slots > 1 and not UI.ShouldHideAuxText(UI.CURSCENE) then
@@ -1478,10 +1485,12 @@ UI = {
         if UI.HandleGlobalInput(false) then return end
         if UI.Pad.Events.EXIT then UI.SceneChange(UI.SCENES.CREDITS) end
         if UI.Pad.Events.BACK then UI.SceneChange(UI.SCENES.MMAIN) end
-        if UI.Pad.Events.NAV_DOWN then UI.GameList.CURR = CLAMP(UI.GameList.CURR+1, 1, ammount) end
-        if UI.Pad.Events.NAV_RIGHT then UI.GameList.CURR = CLAMP(UI.GameList.CURR+UI.GameList.MAXDRAW, 1, ammount) end
-        if UI.Pad.Events.NAV_UP then UI.GameList.CURR = CLAMP(UI.GameList.CURR-1, 1, ammount) end
-        if UI.Pad.Events.NAV_LEFT then UI.GameList.CURR = CLAMP(UI.GameList.CURR-UI.GameList.MAXDRAW, 1, ammount) end
+        if ammount > 0 then
+          if UI.Pad.Events.NAV_DOWN then UI.GameList.CURR = CLAMP(UI.GameList.CURR+1, 1, ammount) end
+          if UI.Pad.Events.NAV_RIGHT then UI.GameList.CURR = CLAMP(UI.GameList.CURR+UI.GameList.MAXDRAW, 1, ammount) end
+          if UI.Pad.Events.NAV_UP then UI.GameList.CURR = CLAMP(UI.GameList.CURR-1, 1, ammount) end
+          if UI.Pad.Events.NAV_LEFT then UI.GameList.CURR = CLAMP(UI.GameList.CURR-UI.GameList.MAXDRAW, 1, ammount) end
+        end
         if UI.Pad.Events.SQUARE then
           UI.CoverPreviewEnabled = not UI.CoverPreviewEnabled
           local now = 0
@@ -1549,6 +1558,10 @@ UI = {
               return
             end
             local entry = PLDR.GAMES[UI.GameList.CURR]
+            if entry == nil then
+              UI.Notif_queue.add("Invalid game selection")
+              return
+            end
             local root, rel = string.match(entry or "", "^([^|]+)|(.+)$")
             local vcd_full = ResolveSelectedVcdPath(entry, PLDR.GAMEPATH)
             if UI.CURSCENE ~= UI.SCENES.GHDD then -- only check if game can be found on USB and SMB
