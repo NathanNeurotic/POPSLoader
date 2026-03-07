@@ -1787,13 +1787,17 @@ local function BuildLiteralElfName(value)
   return trimmed..".ELF"
 end
 
-local function SelectPopstarterSelectorPrefix(_device_page, source_mode)
+local function SelectPopstarterSelectorPrefix(device_page, source_mode, launch_root)
   local mode = string.lower(tostring(source_mode or ""))
-  if mode == "smb" then
+  local root = string.lower(tostring(launch_root or ""))
+  if mode == "smb" or string.match(root, "^smb:/") then
     return "SB."
   end
-  if mode == "pfs" or mode == "hdd" then
+  if device_page == "HDD" or mode == "pfs" or mode == "hdd" or string.match(root, "^pfs%d*:/") then
     return ""
+  end
+  if string.match(root, "^mmce%d*:/") or string.match(root, "^mass%d*:/") or string.match(root, "^mx4sio%d*:/") then
+    return "XX."
   end
   return "XX."
 end
@@ -2204,7 +2208,10 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     )
     return
   end
-  local selector_prefix = SelectPopstarterSelectorPrefix(device_page, boot_source_mode)
+  local selector_prefix = SelectPopstarterSelectorPrefix(device_page, boot_source_mode, normalized_gamelocation)
+  if policy.name ~= "HDD" and selector_prefix == "" then
+    selector_prefix = "XX."
+  end
   local argv0_selector = BuildPopstarterSelectorPath(selector_prefix, game_name)
   if policy.name == "HDD" then
     argv0_selector = BuildLiteralElfName(game_name)
