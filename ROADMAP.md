@@ -1,144 +1,51 @@
 # POPSLoader Roadmap
 
-This document outlines the remaining development milestones for POPSLoader.
+Last updated: 2026-03-06
 
-The project is currently in a stabilization and feature-completion phase.
+## Status Snapshot
+Current branch has substantial stabilization work already landed (settings transaction flow, launch path hardening, backend classification, and packaging policy updates). Remaining roadmap items are mostly feature-completion and hardware validation.
 
----
+## Completed Milestones (Code-Landed)
 
-# Milestone 1 — Core Stability
+### A) Settings and launch reliability
+- Settings load on boot via `PLDR.LoadSettingsNonFatal()`.
+- Settings commit flow is transactional on Settings/Profile exit.
+- POPStarter and DKWDRV paths are editable from Settings.
+- Missing POPStarter/DKWDRV paths block launch with explicit notifications.
+- `mc?:/` alias expansion supports `mc0:/` then `mc1:/` fallback.
 
-Focus: resolve remaining hardware quirks and configuration reliability.
+### B) Device/backend handling
+- USB vs MX4SIO list split is mount-driver based (`sdc`/`mx4` => MX4SIO).
+- MX4SIO initialization/list flow includes bounded retries to mask first-entry timing issues.
+- MMCE slot detection (`mmce0:/`, `mmce1:/`) is implemented.
 
-## Tasks
+### C) UX and presentation
+- Hide auxiliary text toggle (Select) is implemented for supported scenes.
+- Cover sidecar preview (`.png` next to `.VCD`) with small cache is implemented.
+- Settings page supports profile + path + BDMA mode editing with save/apply overlay.
 
-- MX4SIO first-entry fix
-  - init → mount attempt → 1s wait → second mount attempt
+### D) Packaging policy
+- CI release packaging uses `POPS/PATCH_5.BIN`.
+- CI validates exact ZIP manifest and rejects legacy `POPS/*.tm2` entries.
 
-- Settings load correctly on boot
-  - BDMA mode labels reflect actual runtime configuration
+## Active Backlog
 
-- Support `mc?:/` path alias
-  - auto check `mc0:/`
-  - fallback to `mc1:/`
+### 1) Unimplemented menu features
+- Implement `HDD (exFAT)` flow (currently `Not Implemented Yet`).
+- Implement `SMB (v1)` flow (currently `Not Implemented Yet`).
 
-- Graceful failure when required executables missing
-  - POPSTARTER.ELF
-  - DKWDRV.ELF
+### 2) ART system
+- Define and implement artwork source-of-truth, fallback policy, and cache behavior.
 
----
+### 3) Hardware validation depth
+- Expand and record hardware coverage runs in `QA_REGRESSION_MATRIX.md`.
+- Prioritize combined scenarios: large multi-root USB + MX4SIO + MMCE + HDD installations.
 
-# Milestone 2 — Configuration Improvements
+### 4) Release/process hardening
+- Document per-launcher install layout details (OPL/FMCB variants) in README/docs.
+- Keep package contract and docs synchronized when payload policy changes.
 
-Focus: making settings flexible and user editable.
-
-## Tasks
-
-- Editable POPStarter Path/Profile
-  - L1 opens on-screen keyboard
-
-- Editable DKWDRV Path
-  - R1 opens on-screen keyboard
-
-- Settings save progress indicator
-  - Visual progress bar during save
-
----
-
-# Milestone 3 — UI Improvements
-
-Focus: improving usability and presentation.
-
-## Tasks
-
-- Implement ART system
-  - Port from previous version
-  - Ensure fallback when artwork missing
-
-- Global Hide UI toggle
-  - `[select.png] Hide UI`
-  - Icons remain visible
-  - Text hidden except on:
-    - Splash
-    - Credits
-    - Settings
-    - Games list
-
-- Finalize Settings page layout
-  - Correct block grouping
-  - Proper arrow alignment
-  - Prevent text overlap
-
----
-
-# Milestone 4 — Network / Backend Expansion
-
-Focus: expanding supported BDMA backends.
-
-## Tasks
-
-- SMB BDMA mode
-
-- iLink BDMA mode
-
-- UDPBD BDMA mode
-
-UDPBD is expected to be the most complex backend due to network handling requirements.
-
----
-
-# Milestone 5 — Packaging and Distribution
-
-Focus: release optimization and artifact cleanup.
-
-## Tasks
-
-- Replace distributed assets
-  - Remove `POPS/*.tm2`
-  - Package `POPS/PATCH5.bin`
-
-- Update GitHub Actions release workflow
-
----
-
-# Milestone 6 — Performance Optimization
-
-Focus: reducing footprint and improving runtime performance.
-
-## Tasks
-
-- Remove debug/logging output
-- Reduce executable size
-- Optimize settings save routines
-- Reduce redundant filesystem scans
-
----
-
-# Milestone 7 — Testing and Validation
-
-Focus: ensuring stability across supported hardware configurations.
-
-## Test Matrix
-
-- USB
-- MX4SIO
-- MMCE
-- HDD
-
-## Additional coverage
-
-- All BDMA modes
-- mc0 / mc1 detection
-- Settings persistence
-- ART asset loading
-- POPStarter launch reliability
-
----
-
-# Long-Term Ideas
-
-These items are not required for the current release but may be considered later.
-
-- Expanded artwork caching
-- Network asset streaming
-- Additional UI themes
+## Deferred / Future Ideas
+- Additional UI themes/skins.
+- Advanced artwork caching strategy.
+- Extended network backend support after SMB baseline is stable.

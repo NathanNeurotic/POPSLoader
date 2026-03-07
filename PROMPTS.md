@@ -1,94 +1,100 @@
-Last updated: 2026-03-05
+Last updated: 2026-03-06
 
 # PROMPTS
 
-## Reusable Codex PR prompt template
+## Purpose
+Reusable prompt templates for tasking agents against this repository with tight scope and verifiable outcomes.
+
+## Base Task Template
 ```markdown
 Goal:
-- <single objective tied to POPSLoader behavior/docs/build>
+- <single objective>
 
 Allowed files (allowlist):
-- <explicit paths only>
+- <explicit paths>
 
-Forbidden changes:
+Forbidden:
 - No edits outside allowlist
-- No behavior changes outside stated goal
 - No unrelated refactors/format churn
-- No debug/logging additions unless requested
+- No behavior changes outside stated goal
+- No new runtime logging unless requested
 
-Invariants to preserve:
-- POPStarter launch pipeline remains intact
-- MX4SIO vs USB separation uses mount-driver identity (no guessing)
-- Settings persist only on confirm/leave Settings/Profile
-- Logic remains bounded/deterministic (no unbounded retries)
+Repo invariants to preserve:
+- Embedded-Lua boot path remains intact
+- Settings commit on Settings/Profile exit remains transactional
+- USB vs MX4SIO split remains mount-driver based
+- Retry/probe logic remains bounded
+- Release ZIP manifest contract remains valid unless goal is packaging migration
 
 Deliverables:
-1) Summary of changes
-2) `git diff --stat`
-3) Full `git diff`
-4) Test plan/results (including unrun items)
+1) Summary
+2) Diffstat
+3) Key diff hunks (or full diff if requested)
+4) Test plan/results (include unrun items)
 ```
 
-## POPSLoader-tailored examples
+## Task-Specific Templates
 
-### 1) Bounded backend behavior change (MX4SIO quirk masking)
+### 1) Runtime behavior fix (storage, launch, settings)
 ```markdown
 Goal:
-- Implement bounded MX4SIO first-entry masking: initialize backend, attempt detect/list, wait ~1s once, retry once, then stop.
+- Fix <specific runtime bug> without changing unrelated menu/device behavior.
 
 Allowed files:
 - bin/POPSLDR/system.lua
 - bin/POPSLDR/ui.lua
-
-Forbidden:
-- No launch-policy rewrites
-- No packaging/CI edits
-- No unrelated UI redesign
+- src/luasystem.cpp
 
 Required checks:
-- USB list still excludes MX4SIO roots
-- MX4SIO list still depends on mount-driver identity
-- Retry count and delay are deterministic/bounded
+- Settings persistence semantics are unchanged
+- USB/MX4SIO classification still uses mount-driver identity
+- Missing-file failures still produce explicit user notifications
+- No unbounded loops introduced
 ```
 
-### 2) UI layout-only fix (settings alignment/icon stability)
+### 2) Packaging/CI update
 ```markdown
 Goal:
-- Fix Settings/Profile alignment so BDMA label/arrows stay visually stable regardless of text length.
-
-Allowed files:
-- bin/POPSLDR/ui.lua
-
-Forbidden:
-- No backend/storage logic edits
-- No profile persistence logic changes
-
-Required checks:
-- Icon coordinates are deterministic
-- No overlap at 4:3 safe area
-- No additional per-frame allocations/scans
-```
-
-### 3) Packaging/CI edit (artifact contents)
-```markdown
-Goal:
-- Change release artifact contents from POPS tm2 triplet to PATCH5.bin policy.
+- Update release packaging policy and CI verification in lockstep.
 
 Allowed files:
 - .github/workflows/compilation.yml
 - README.md
-
-Forbidden:
-- No runtime Lua/C/C++ changes
-- No gameplay/UI behavior changes
+- ROADMAP.md
 
 Required checks:
-- Artifact verifier enforces new expected set
-- Forbidden/legacy files are rejected explicitly
+- ZIP root directories are still validated
+- Expected file set is exact
+- Forbidden legacy payloads are still rejected (or intentionally migrated)
 ```
 
-## Prompt hygiene rules
-- Always specify an explicit allowlist of editable files.
-- Explicitly forbid unrelated changes.
-- Require summary + diffstat + full diff + test plan in output.
-- Require bounded/deterministic logic for retries, polling, and classification.
+### 3) Documentation audit/update
+```markdown
+Goal:
+- Refresh repository docs to match current code and build behavior.
+
+Allowed files:
+- AGENTS.md
+- ARCHITECTURE.md
+- COMPONENTS.md
+- CONTRIBUTING.md
+- DECISIONS.md
+- PROMPTS.md
+- QA_REGRESSION_MATRIX.md
+- ROADMAP.md
+- RULES.md
+- STATE.md
+- TRUTHSHEET.md
+
+Required checks:
+- Every behavior claim is traceable to current repository files
+- Unverified hardware claims are marked `Unknown (verify on hardware)`
+- Implemented vs not-implemented menu options are accurately documented
+```
+
+## Prompt Hygiene Rules
+- Always provide a strict file allowlist.
+- Explicitly declare non-goals.
+- Ask for bounded/deterministic behavior for probes/retries/loops.
+- Require evidence-backed claims for docs and behavior summaries.
+- Require explicit test reporting, including what was not run.

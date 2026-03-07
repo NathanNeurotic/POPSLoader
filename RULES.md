@@ -1,41 +1,39 @@
-Last updated: 2026-03-05
+Last updated: 2026-03-06
 
 # RULES
 
-## Scope discipline
-- Keep changes small, local, and tied to one objective per PR whenever feasible.
-- Prefer the narrowest file set that can solve the task.
-- Do not mix behavior changes, refactors, and packaging edits in one PR unless explicitly requested.
+## Scope Discipline
+- Keep changes small and tied to one clear objective.
+- Use the narrowest file set that can solve the task.
+- Avoid mixing runtime logic, packaging policy, and broad refactors in one PR unless explicitly requested.
 
-## Do-not-break invariants (POPSLoader)
-- POPStarter launching flow must stay intact (`RunPOPStarterGame` -> launch policy -> `LaunchEngine`).
-- BDMA mode behavior must remain consistent: selectable modes, save/load, and apply path must agree.
-- MX4SIO vs USB separation must use mount-driver identity as authority (`sdc`/`mx4sio` => MX4SIO), never UI guesswork.
-- Settings edits in the Settings/Profile screen are staged while navigating; persistence happens on confirm/leave, not on every adjustment.
-- No new debug/logging output in production unless explicitly requested.
+## Runtime Invariants (Do Not Break)
+- Embedded-Lua boot chain must remain functional:
+  - `main.cpp -> runScript("boot.lua") -> require("system")`.
+- Settings persistence must remain transactional:
+  - edits are staged in UI,
+  - persisted on Settings/Profile confirm/leave.
+- USB vs MX4SIO classification must remain mount-driver based (`mx4`/`sdc` semantics), not path-name guessing.
+- Probe/retry behavior must stay bounded and deterministic.
+- Launch failures for missing required executables must remain explicit to the user.
 
-## Persistence rules
-- Settings are loaded during startup via `PLDR.LoadSettingsNonFatal()` before entering the main UI loop.
-- Settings are saved through `PLDR.SaveSettingsAtomic()` when exiting Settings/Profile with pending changes.
-- Settings file path is currently `mc0:/POPSTARTER/.pldrs`.
-- UI labels and selectors must mirror runtime/persisted values (for example BDMA selector initializes from `PLDR.BDMA_MODE_KEY`).
+## Storage and Launch Rules
+- Keep `mc?:/` alias resolution behavior (`mc0` then `mc1`) for executable path probes.
+- Preserve backend-specific launch policy logic for USB/MMCE/MX4SIO/HDD.
+- Do not silently change POPStarter selector/argv behavior without explicit migration notes.
 
-## UI rules
-- Keep icon placement deterministic; do not anchor icon X positions to variable label length.
-- Preserve PS2 performance constraints: avoid heavy per-frame allocations, repeated full-device rescans, and unbounded retries in render/input loops.
+## Packaging Rules
+- CI packaging contract must stay synchronized with docs.
+- Current release manifest contract includes:
+  - `PS1_POPSLOADER/*` launcher files
+  - `POPS/PATCH_5.BIN`
+- Legacy `POPS/*.tm2` entries are forbidden by CI.
 
-## Testing expectations
-- Minimum manual matrix for behavior-impacting changes:
-  - USB game list path
-  - MX4SIO game list path
-  - MMCE game list path
-  - HDD path (if touched)
-- Always include a settings persistence check: change profile/BDMA, exit Settings, restart, verify loaded state and labels.
-- If hardware paths cannot be tested locally, mark as `Unknown (verify on device)`.
+## Performance/Safety Rules
+- No unbounded loops in per-frame UI/runtime paths.
+- Avoid expensive repeated rescans unless explicitly required.
+- Avoid new runtime logging unless requested.
 
-## PR hygiene
-- Every PR/task report should include:
-  - Summary
-  - Diffstat
-  - Full diff
-  - Test plan (what ran, what passed/failed, what was not run)
+## Validation Rules
+- Behavior-impacting changes should reference matrix IDs from `QA_REGRESSION_MATRIX.md`.
+- If hardware validation is not performed, mark as `Unknown (verify on hardware)`.

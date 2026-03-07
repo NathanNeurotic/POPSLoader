@@ -1,48 +1,89 @@
-Last updated: 2026-03-05
+Last updated: 2026-03-06
 
 # COMPONENTS
 
 ## Purpose
-Technical map of PS2-specific modules and where responsibilities live.
+Current technical map of POPSLoader modules, ownership boundaries, and entry points.
 
-## Component Index
-- [ ] `bin/POPSLDR/`: runtime scripts/assets/profile data used by launcher.
-- [ ] `src/`: EE-side runtime (boot, Lua bridge, rendering, audio, input, launch helpers).
-- [ ] `iop/bdm_query/`: IOP RPC module used to enumerate block-device backends.
-- [ ] `iop/embed/`: embedded IRX payloads (BDM, MMCE, MX4SIO, FATFS/VFAT-related modules).
-- [ ] `modules/ds34bt`, `modules/ds34usb`, `modules/pademu`: controller support modules.
-- [ ] `EMBED/`: assets converted into embedded blobs at build time.
+## Top-Level Components
 
-## Runtime Lua Layer (`bin/POPSLDR`)
-- [ ] `system.lua`: backend detection, game list assembly, launch policy, POPStarter packing helpers.
-- [ ] `ui.lua`: scene model, input handling, page transitions, user-facing flows.
-- [ ] `images.lua`: image asset mapping.
-- [ ] `pops_profiles.lua`: profile metadata and related config.
+### Launcher runtime (`src/`)
+- EE bootstrap and runtime services.
+- Key files:
+  - `src/main.cpp` (startup, IOP/EE init, Lua boot execution)
+  - `src/luaplayer.cpp` (embedded Lua VM and loader policy)
+  - `src/luasystem.cpp` (Lua `System.*` bindings)
+  - `src/luaHDD.cpp` (Lua `HDD.*` bindings)
+  - `src/embed_assets.cpp` (embedded asset lookup table)
 
-## EE Native Layer (`src`)
-- [ ] `main.cpp`: startup sequence, IOP/runtime initialization, boot script execution.
-- [ ] `luasystem.cpp`: Lua `System.*` APIs, BDM integration, mass backend helpers, MX4SIO init hooks.
-- [ ] `system.cpp`, `render.cpp`, `graphics.cpp`, `sound.cpp`, `pad.cpp`: platform services exposed to Lua.
-- [ ] `elf_loader/`: custom ELF loader library used in launch flow.
+### Lua app layer (`bin/POPSLDR/`)
+- User-visible behavior, menu flow, device selection, launch orchestration.
+- Key files:
+  - `bin/POPSLDR/system.lua`
+  - `bin/POPSLDR/ui.lua`
+  - `bin/POPSLDR/images.lua`
+  - `bin/POPSLDR/pops_profiles.lua`
 
-## IOP and Device Layer (`iop`)
-- [ ] `iop/bdm_query`: exposes block-device backend metadata via RPC.
-- [ ] `iop/embed/*.irx`: embedded runtime modules loaded as needed.
-- [ ] MX4SIO path depends on embedded MX4SIO IRX and BDM/FATFS readiness.
+### Boot script (`etc/`)
+- `etc/boot.lua` initializes boot font and transfers control to Lua app layer.
 
-## Build and Packaging Layer
-- [ ] `Makefile`: compiles EE code, builds optional modules, embeds Lua/assets/IRX, packs final ELF.
-- [ ] `.github/workflows/compilation.yml`: CI compile + release zip assembly + package validation.
-- [ ] Release package structure is validated around `PS1_POPSLOADER/` and `POPS/` roots.
+### IOP modules and RPC (`iop/`)
+- Embedded IRX payloads and backend query module source.
+- Key paths:
+  - `iop/embed/` (IRX payloads)
+  - `iop/bdm_query/` (RPC module for BDM backend list)
 
-## Boundary Rules
-- [ ] Keep Lua orchestration changes in Lua unless native API changes are required.
-- [ ] Keep backend classification contract stable across Lua and native (`luasystem.cpp`) layers.
-- [ ] Keep packaging contract stable unless migration steps are documented.
-- [ ] Do not couple UI scene code directly to low-level IRX loading details.
+### Controller modules (`modules/`)
+- DS3/DS4 related support modules and pademu payloads.
+- Key paths:
+  - `modules/ds34bt`
+  - `modules/ds34usb`
+  - `modules/pademu`
 
-## Change Entry Points
-- [ ] UI behavior issues: start in `bin/POPSLDR/ui.lua`.
-- [ ] Device classification/listing issues: start in `bin/POPSLDR/system.lua`, then `src/luasystem.cpp`.
-- [ ] IRX load/order issues: inspect `src/main.cpp`, `src/luasystem.cpp`, and `iop/` modules.
-- [ ] Build/package issues: inspect `Makefile` and `.github/workflows/compilation.yml`.
+### Build/package pipeline
+- `Makefile` embeds assets/IRX and builds `bin/POPSLOADER.ELF`.
+- `.github/workflows/compilation.yml` compiles and verifies release ZIP manifest.
+
+## Runtime Functional Ownership
+
+### Settings and BDMA management
+- Owner: `bin/POPSLDR/system.lua` + settings scene in `bin/POPSLDR/ui.lua`.
+- Persists settings in `mc0:/POPSTARTER/.pldrs`.
+- Applies BDMA mode by copying/removing required files in `mc0:/POPSTARTER/`.
+
+### Device discovery and classification
+- Owner: `bin/POPSLDR/system.lua` using `System.*` APIs from `src/luasystem.cpp`.
+- USB vs MX4SIO split is mount-driver based (`mx4`/`sdc` => MX4SIO).
+
+### Launch handoff
+- Owner: `bin/POPSLDR/system.lua` (`PLDR.RunPOPStarterGame`).
+- Backend-specific launch policy and argv shaping, then `System.loadELF`.
+
+### UI/UX and scene state
+- Owner: `bin/POPSLDR/ui.lua`.
+- Includes transition engine, settings editor, notifications/modals, cover preview cache, hide-text toggle.
+
+## Current Feature Surface by Main Menu Option
+- `MMCE`: implemented.
+- `MX4SIO`: implemented (with bounded retries).
+- `HDD (exFAT)`: not implemented (explicit notification).
+- `HDD (PFS)`: implemented.
+- `USB`: implemented.
+- `SMB (v1)`: not implemented (explicit notification).
+- `Disc (DKWDRV)`: implemented via modal launch path.
+
+## Primary Change Entry Points
+- Settings persistence/apply issues:
+  - `bin/POPSLDR/system.lua`
+  - `bin/POPSLDR/ui.lua`
+- Device detection/classification issues:
+  - `bin/POPSLDR/system.lua`
+  - `src/luasystem.cpp`
+  - `iop/bdm_query/bdm_query.c`
+- Launch handoff/argv issues:
+  - `bin/POPSLDR/system.lua`
+  - `src/elf_loader/src/elf.c`
+  - `src/luasystem.cpp`
+- Packaging/release content issues:
+  - `Makefile`
+  - `.github/workflows/compilation.yml`

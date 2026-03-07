@@ -1,44 +1,53 @@
-Last updated: 2026-03-05
+Last updated: 2026-03-06
 
 # TRUTHSHEET
 
 ## Purpose
-Non-negotiable invariants that changes must preserve.
+Non-negotiable behavioral invariants that changes must preserve unless an explicit migration is planned.
 
-## Must never break
-- [ ] POPSLoader must continue to boot, render UI, and reach device pages without startup regressions.
-- [ ] POPStarter launch path resolution must remain functional for supported device modes.
-- [ ] Device page game scans must remain bounded and deterministic.
-- [ ] Boot/launch and device detection changes must be explicit and task-scoped.
+## Truths
 
-## Identity / detection rules
-- [ ] MX4SIO classification is based on mass mount driver identity containing `sdc` (`system.lua` mass backend classification).
-- [ ] USB lists must exclude roots classified as MX4SIO, and MX4SIO lists must exclude non-MX4 roots.
-- [ ] Device classification is recomputed from current mass-root state before building page lists.
-- [ ] MMCE slot detection is limited to `mmce0:/` and `mmce1:/` probing.
-- [ ] Boot device lock behavior must remain consistent with detected boot source and lock rules.
+### Truth 1: Boot/runtime Lua is embedded-only
+- Scope: `src/luaplayer.cpp`, `etc/boot.lua`, `Makefile`.
+- Rationale: deterministic startup and no dependency on external Lua script files.
+- Verification: confirm embedded searcher install + disabled filesystem loaders + embedded script table includes boot/runtime scripts.
 
-## Performance invariants
-- [ ] Mass root probing remains bounded (`mass:/` through `mass9:/`; no unbounded scans).
-- [ ] Retry/refresh paths must remain bounded (no infinite retry loops for backend detection).
-- [ ] Game list construction should scan only relevant `POPS/` roots for the selected backend.
-- [ ] Avoid adding expensive per-frame backend probing.
+### Truth 2: Settings persistence is transactional
+- Scope: `bin/POPSLDR/ui.lua`, `bin/POPSLDR/system.lua`.
+- Rationale: avoid per-navigation writes and keep save/apply failure handling explicit.
+- Verification: edits stage in drafts; `CommitSettingsChanges` runs on confirm/leave; persisted file is `mc0:/POPSTARTER/.pldrs`.
 
-## Compatibility invariants
-- [ ] Preserve path conventions used by existing launch policies (`mass:/`, `mmce*:/`, `mx4sio*:/`, `pfs:`).
-- [ ] Preserve packaged file expectations used by CI release assembly.
-- [ ] Keep Lua-facing `System.*` API behavior stable unless a documented migration is provided.
-- [ ] Maintain deterministic behavior for identical storage layout and settings.
+### Truth 3: USB vs MX4SIO identity comes from mount driver
+- Scope: `bin/POPSLDR/system.lua`, `src/luasystem.cpp`.
+- Rationale: root-name/path heuristics are insufficient across real device layouts.
+- Verification: classification uses `System.getMassMountDriver`; `mx4`/`sdc` classify as MX4SIO.
 
-## Add New Truth Template
-- [ ] Add entries with this template:
+### Truth 4: Probe/retry loops are bounded
+- Scope: `bin/POPSLDR/system.lua`, `bin/POPSLDR/ui.lua`.
+- Rationale: prevent frame stalls/hangs and unpredictable behavior.
+- Verification: MX4SIO and backend probe loops have finite attempt counts; no unbounded polling introduced.
 
+### Truth 5: Launch failure feedback must be explicit
+- Scope: `bin/POPSLDR/ui.lua`, `bin/POPSLDR/system.lua`.
+- Rationale: launcher must not fail silently on missing executables or launch handoff issues.
+- Verification: missing POPStarter/DKWDRV paths and launch return failures produce user-visible notifications/screens.
+
+### Truth 6: Release package manifest is strict
+- Scope: `.github/workflows/compilation.yml`.
+- Rationale: prevent accidental release payload drift.
+- Verification: CI enforces exact expected ZIP set and rejects legacy `POPS/*.tm2` payload entries.
+
+## Current Not-Implemented Truths
+- `HDD (exFAT)` main-menu path is intentionally not implemented and must continue to report that status until feature work lands.
+- `SMB (v1)` main-menu path is intentionally not implemented and must continue to report that status until feature work lands.
+
+## Add-New-Truth Template
 ```markdown
 Truth: <short invariant>
 Scope: <components/files>
-Rationale: <why this is non-negotiable>
-Verification: <tests/checks/manual steps>
-Owner: TODO
+Rationale: <why this must remain true>
+Verification: <test/check/manual steps>
+Owner: <team/person>
 Date added: YYYY-MM-DD
-Related ADR/Issue: TODO
+Related issue/decision: <id or link>
 ```
