@@ -1416,7 +1416,6 @@ UI = {
           local draw_y = preview_y
           local draw_w = preview_w
           local draw_h = preview_h
-          Graphics.drawRect(draw_x - 2, draw_y - 2, draw_w + 4, draw_h + 4, UI.CCOL.GREY)
           if preview_img ~= nil then
             if preview_is_live_cover then
               local cover_w = math.min(layout.COVER_W or 228, draw_w)
