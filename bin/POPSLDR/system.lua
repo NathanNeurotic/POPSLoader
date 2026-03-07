@@ -178,6 +178,39 @@ local function ParseHddExecMountAndRelpath(path)
   return nil, nil
 end
 
+local function BuildPfsExecCandidates(relpath)
+  local out = {}
+  local seen = {}
+  local function add(candidate)
+    local value = tostring(candidate or "")
+    if value == "" then
+      return
+    end
+    if seen[value] == true then
+      return
+    end
+    seen[value] = true
+    table.insert(out, value)
+  end
+
+  local clean_rel = string.gsub(tostring(relpath or ""), "^/+", "")
+  if clean_rel == "" then
+    return out
+  end
+
+  add("pfs:/"..clean_rel)
+  for slot = 0, 9 do
+    add("pfs"..slot..":/"..clean_rel)
+  end
+
+  local boot_pfs = string.match(string.lower(BOOT_PATH_RAW or ""), "^(pfs%d*):/")
+  if boot_pfs ~= nil then
+    add(boot_pfs..":/"..clean_rel)
+  end
+
+  return out
+end
+
 local function EnsureHddExecPathReady(path)
   local mount_part = ParseHddPartitionMount(path)
   if mount_part == nil then
@@ -193,8 +226,13 @@ local function EnsureHddExecPathReady(path)
   if type(mode) ~= "number" then
     mode = 0
   end
-  local ok, mounted = pcall(HDD.MountPartition, mount_part, 0, mode)
-  return ok and mounted == true
+  for slot = 0, 9 do
+    local ok, mounted = pcall(HDD.MountPartition, mount_part, slot, mode)
+    if ok and mounted == true then
+      return true
+    end
+  end
+  return false
 end
 
 local function ResolveHddExecMountedPath(path)
@@ -215,32 +253,8 @@ local function ResolveHddExecMountedPath(path)
     mode = 0
   end
 
-  local ok_mount, mounted = pcall(HDD.MountPartition, mount_part, 0, mode)
-  if not ok_mount or mounted ~= true then
-    return nil
-  end
-
-  local out = {}
-  local seen = {}
-  local function add_probe_candidate(candidate)
-    local value = tostring(candidate or "")
-    if value == "" then
-      return
-    end
-    if seen[value] == true then
-      return
-    end
-    seen[value] = true
-    table.insert(out, value)
-  end
-
-  add_probe_candidate("pfs0:/"..relpath)
-  add_probe_candidate("pfs:/"..relpath)
-  local boot_pfs = string.match(string.lower(BOOT_PATH_RAW or ""), "^(pfs%d*):/")
-  if boot_pfs ~= nil then
-    add_probe_candidate(boot_pfs..":/"..relpath)
-  end
-
+  -- Try mounted aliases that may already exist from boot flow first.
+  local out = BuildPfsExecCandidates(relpath)
   local function probe_candidate(candidate)
     local ok_open, fd_or_err = pcall(System.openFile, candidate, FREAD)
     if ok_open and type(fd_or_err) == "number" and fd_or_err >= 0 then
@@ -249,6 +263,25 @@ local function ResolveHddExecMountedPath(path)
     end
     local ok_exists, exists = pcall(doesFileExist, candidate)
     return ok_exists and exists == true
+  end
+
+  for i = 1, #out do
+    if probe_candidate(out[i]) then
+      return out[i]
+    end
+  end
+
+  -- If not already mounted where we can read it, mount the partition and probe again.
+  local mounted_any = false
+  for slot = 0, 9 do
+    local ok_mount, mounted = pcall(HDD.MountPartition, mount_part, slot, mode)
+    if ok_mount and mounted == true then
+      mounted_any = true
+      break
+    end
+  end
+  if not mounted_any then
+    return nil
   end
 
   for i = 1, #out do
@@ -285,13 +318,13 @@ local function ExpandHddExecAliases(path)
   if pfs_device ~= nil then
     local normalized_pfs = string.lower(pfs_device)
     if string.match(normalized_pfs, "^pfs%d*$") ~= nil then
-      table.insert(out, "pfs0:/"..suffix)
-      table.insert(out, normalized_pfs..":/"..suffix)
-      table.insert(out, "pfs:/"..suffix)
-      local boot_pfs = string.match(string.lower(BOOT_PATH_RAW or ""), "^(pfs%d*):/")
-      if boot_pfs ~= nil and boot_pfs ~= normalized_pfs then
-        table.insert(out, boot_pfs..":/"..suffix)
+      local pfs_candidates = BuildPfsExecCandidates(suffix)
+      for i = 1, #pfs_candidates do
+        if pfs_candidates[i] ~= normalized_pfs..":/"..suffix then
+          table.insert(out, pfs_candidates[i])
+        end
       end
+      table.insert(out, normalized_pfs..":/"..suffix)
     end
   end
 
@@ -299,11 +332,9 @@ local function ExpandHddExecAliases(path)
   -- If that probe form fails, try the same relative path on the active pfs mount.
   local partition_rel = string.match(candidate, "^[Hh][Dd][Dd]%d:/+[^/]+/(.*)$")
   if partition_rel ~= nil then
-    table.insert(out, "pfs0:/"..partition_rel)
-    table.insert(out, "pfs:/"..partition_rel)
-    local boot_pfs = string.match(string.lower(BOOT_PATH_RAW or ""), "^(pfs%d*):/")
-    if boot_pfs ~= nil and boot_pfs ~= "pfs" then
-      table.insert(out, boot_pfs..":/"..partition_rel)
+    local pfs_candidates = BuildPfsExecCandidates(partition_rel)
+    for i = 1, #pfs_candidates do
+      table.insert(out, pfs_candidates[i])
     end
   end
   return out
@@ -441,6 +472,7 @@ local function ResolvePopstarterPath(path)
 
   local fallbacks = {
     JoinPath(APP_DIR_LOCAL, "POPSTARTER.ELF"),
+    JoinPath(BOOT_PATH_RAW or System.currentDirectory() or "", "POPSTARTER.ELF"),
     "mc0:/POPSTARTER/POPSTARTER.ELF",
     "mc1:/POPSTARTER/POPSTARTER.ELF"
   }
