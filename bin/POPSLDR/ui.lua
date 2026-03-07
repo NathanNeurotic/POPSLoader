@@ -318,8 +318,8 @@ UI = {
       LIST_ROW_H = 20;
       PREVIEW_W = 256;
       PREVIEW_H = 256;
-      COVER_W = 240;
-      COVER_H = 240;
+      COVER_W = 232;
+      COVER_H = 232;
 	      -- Match BETA-5 carousel/menu vertical placement.
       CAROUSEL_Y_OFFSET = 36;
       FOOTER_ICON_SCALE = 0.63;
@@ -352,8 +352,8 @@ UI = {
       local preview_h = 256
       UI.LAYOUT.PREVIEW_W = preview_w
       UI.LAYOUT.PREVIEW_H = preview_h
-      UI.LAYOUT.COVER_W = 240
-      UI.LAYOUT.COVER_H = 240
+      UI.LAYOUT.COVER_W = 232
+      UI.LAYOUT.COVER_H = 232
       UI.LAYOUT.PREVIEW_X = Round(UI.SCR.X - safe.R - preview_w)
       UI.LAYOUT.PREVIEW_Y = Round(UI.SCR.Y_MID - (preview_h / 2))
       UI.LAYOUT.FOOTER_ICON_Y = Round(UI.SCR.Y - UI.LAYOUT.BTN_BAR_SAFE_BOTTOM)
@@ -1418,8 +1418,8 @@ UI = {
           local draw_h = preview_h
           if preview_img ~= nil then
             if preview_is_live_cover then
-              local cover_w = math.min(layout.COVER_W or 240, draw_w)
-              local cover_h = math.min(layout.COVER_H or 240, draw_h)
+              local cover_w = math.min(layout.COVER_W or 232, draw_w)
+              local cover_h = math.min(layout.COVER_H or 232, draw_h)
               local cover_x = draw_x + (draw_w - cover_w)
               local cover_y = draw_y
               Graphics.drawScaleImage(preview_img, cover_x, cover_y, cover_w, cover_h)

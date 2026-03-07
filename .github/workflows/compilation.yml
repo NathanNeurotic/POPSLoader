@@ -85,15 +85,6 @@ jobs:
           req bin/POPSLDR/list.icn
           req bin/POPSLDR/copy.icn
           req bin/POPSLDR/del.icn
-          req bin/POPSLDR/icon.sys.bdma
-          req bin/POPSLDR/list.icn.bdma
-          req bin/POPSLDR/del.icn.bdma
-          req bin/POPSLDR/usbd.irx.mmce
-          req bin/POPSLDR/usbd.irx.mx4sio
-          req bin/POPSLDR/usbd.irx.usbexfat
-          req bin/POPSLDR/usbhdfsd.irx.mmce
-          req bin/POPSLDR/usbhdfsd.irx.mx4sio
-          req bin/POPSLDR/usbhdfsd.irx.usbexfat
           req bin/POPSLDR/PATCH_5.BIN
 
           cp -f bin/POPSLOADER.ELF dist_root/PS1_POPSLOADER/POPSLOADER.ELF
@@ -104,15 +95,6 @@ jobs:
           cp -f bin/POPSLDR/list.icn dist_root/PS1_POPSLOADER/list.icn
           cp -f bin/POPSLDR/copy.icn dist_root/PS1_POPSLOADER/copy.icn
           cp -f bin/POPSLDR/del.icn dist_root/PS1_POPSLOADER/del.icn
-          cp -f bin/POPSLDR/icon.sys.bdma dist_root/PS1_POPSLOADER/icon.sys.bdma
-          cp -f bin/POPSLDR/list.icn.bdma dist_root/PS1_POPSLOADER/list.icn.bdma
-          cp -f bin/POPSLDR/del.icn.bdma dist_root/PS1_POPSLOADER/del.icn.bdma
-          cp -f bin/POPSLDR/usbd.irx.mmce dist_root/PS1_POPSLOADER/usbd.irx.mmce
-          cp -f bin/POPSLDR/usbd.irx.mx4sio dist_root/PS1_POPSLOADER/usbd.irx.mx4sio
-          cp -f bin/POPSLDR/usbd.irx.usbexfat dist_root/PS1_POPSLOADER/usbd.irx.usbexfat
-          cp -f bin/POPSLDR/usbhdfsd.irx.mmce dist_root/PS1_POPSLOADER/usbhdfsd.irx.mmce
-          cp -f bin/POPSLDR/usbhdfsd.irx.mx4sio dist_root/PS1_POPSLOADER/usbhdfsd.irx.mx4sio
-          cp -f bin/POPSLDR/usbhdfsd.irx.usbexfat dist_root/PS1_POPSLOADER/usbhdfsd.irx.usbexfat
 
           cp -f bin/POPSLDR/PATCH_5.BIN dist_root/POPS/PATCH_5.BIN
 
@@ -136,21 +118,12 @@ jobs:
               "PS1_POPSLOADER/APPINFO.PBT",
               "PS1_POPSLOADER/POPSLOADER.ELF",
               "PS1_POPSLOADER/POPSTARTER.ELF",
-              "PS1_POPSLOADER/copy.icn",
-              "PS1_POPSLOADER/del.icn",
-              "PS1_POPSLOADER/del.icn.bdma",
-              "PS1_POPSLOADER/icon.sys",
-              "PS1_POPSLOADER/icon.sys.bdma",
-              "PS1_POPSLOADER/list.icn",
-              "PS1_POPSLOADER/list.icn.bdma",
-              "PS1_POPSLOADER/title.cfg",
-              "PS1_POPSLOADER/usbd.irx.mmce",
-              "PS1_POPSLOADER/usbd.irx.mx4sio",
-              "PS1_POPSLOADER/usbd.irx.usbexfat",
-              "PS1_POPSLOADER/usbhdfsd.irx.mmce",
-              "PS1_POPSLOADER/usbhdfsd.irx.mx4sio",
-              "PS1_POPSLOADER/usbhdfsd.irx.usbexfat",
-          }
+                  "PS1_POPSLOADER/copy.icn",
+                  "PS1_POPSLOADER/del.icn",
+                  "PS1_POPSLOADER/icon.sys",
+                  "PS1_POPSLOADER/list.icn",
+                  "PS1_POPSLOADER/title.cfg",
+              }
 
           with zipfile.ZipFile(zpath, "r") as z:
               names = [n for n in z.namelist() if n and not n.endswith("/")]
