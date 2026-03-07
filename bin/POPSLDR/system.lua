@@ -1806,6 +1806,18 @@ local function BuildLiteralElfName(value)
   return trimmed..".ELF"
 end
 
+local function BuildDisplayNameFromEntry(entry)
+  if entry == nil or entry == "" then
+    return ""
+  end
+  local display_name = entry
+  local hdd_relpath = string.match(display_name, "^[^|]+|(.+)$")
+  if hdd_relpath ~= nil then
+    display_name = string.match(hdd_relpath, "([^/]+)$") or hdd_relpath
+  end
+  return string.gsub(display_name, "%.[Vv][Cc][Dd]$", "")
+end
+
 local function SelectPopstarterSelectorPrefix(device_page)
   if device_page == "USB" or device_page == "MMCE" or device_page == "SMB/MMCE" or device_page == "MX4SIO" then
     return "XX."
@@ -1816,12 +1828,21 @@ local function SelectPopstarterSelectorPrefix(device_page)
   return "XX."
 end
 
-local function BuildPopstarterSelectorPath(selector_prefix, game_name)
+local function BuildPopstarterSelectorPath(device_page, game_name)
   if game_name == nil or game_name == "" then
     return ""
   end
-  local normalized = NormalizeBootBasename(game_name, selector_prefix)
-  return BuildLiteralElfName(normalized)
+  if device_page == "HDD" then
+    return "hdd0:__.POPS/"..game_name..".ELF"
+  end
+  if device_page == "USB" or device_page == "MMCE" or device_page == "SMB/MMCE" then
+    return "mass:/POPS/XX."..game_name..".ELF"
+  end
+  if device_page == "MX4SIO" then
+    local root = PLDR and PLDR.MX4SIO and PLDR.MX4SIO.ROOT or "mx4sio:/"
+    return root.."POPS/XX."..game_name..".ELF"
+  end
+  return game_name..".ELF"
 end
 
 local function DeriveGameNameFromSelection(raw_selection)
@@ -2223,12 +2244,10 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     return
   end
   local selector_prefix = SelectPopstarterSelectorPrefix(device_page)
-  if policy.name ~= "HDD" and selector_prefix == "" then
-    selector_prefix = "XX."
-  end
-  local argv0_selector = BuildPopstarterSelectorPath(selector_prefix, game_name)
+  local argv0_selector = BuildPopstarterSelectorPath(device_page, game_name)
   if policy.name == "HDD" then
-    argv0_selector = BuildLiteralElfName(game_name)
+    local display_name = BuildDisplayNameFromEntry(game)
+    argv0_selector = BuildLiteralElfName(display_name)
   end
   if selector_prefix == "" and string.upper(game_name) == "POPSTARTER" then
     BlockLaunchFailure(
