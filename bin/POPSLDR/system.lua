@@ -2464,13 +2464,28 @@ end
 
 function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   local policy, device_page = ResolveLaunchPolicy(gamelocation, ui_scene)
+  local selected_entry = tostring(game or "")
+  local popstarter = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
+  if selected_entry == "" then
+    BlockLaunchFailure(
+      "Invalid game selection",
+      popstarter,
+      device_page,
+      gamelocation,
+      nil,
+      APP_DIR_LOCAL,
+      nil,
+      nil
+    )
+    return
+  end
   local hdd_init = nil
   local hdd_partition_label = nil
   local hdd_relpath = nil
   local hdd_partition = nil
   if policy.name == "HDD" then
-    hdd_partition_label, hdd_relpath = ParseHddGameEntry(game)
-    hdd_relpath = NormalizeHddRelpath(hdd_relpath or game)
+    hdd_partition_label, hdd_relpath = ParseHddGameEntry(selected_entry)
+    hdd_relpath = NormalizeHddRelpath(hdd_relpath or selected_entry)
     if hdd_partition_label ~= nil then
       hdd_partition = "hdd0:"..hdd_partition_label
     end
@@ -2479,8 +2494,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   local handoff_gamelocation = policy.handoff(normalized_gamelocation)
   local source_mode = policy.mode
   local raw_source_mode = source_mode
-  local vcd_path = normalized_gamelocation..game
-  local popstarter = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
+  local vcd_path = normalized_gamelocation..selected_entry
   local pops_root = normalized_gamelocation
   local boot_source_mode = source_mode
   local device_mode = "unknown"
@@ -2534,20 +2548,20 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     bootparam, prefix, normalized_basename, prefix_added = BuildPopstarterBootString(
       boot_source_mode,
       pops_root,
-      game
+      selected_entry
     )
     bootparam_exists = doesFileExist(bootparam)
     bootparam_basename_used = normalized_basename
     prefix_used = HasBootPrefix(normalized_basename, prefix) and prefix or ""
   end
-  local selection_for_name = game
+  local selection_for_name = selected_entry
   if policy.name == "HDD" then
-    selection_for_name = NormalizeHddRelpath(hdd_relpath or game)
+    selection_for_name = NormalizeHddRelpath(hdd_relpath or selected_entry)
   end
   local game_name = DeriveGameNameFromSelection(selection_for_name)
-  local vcd_basename_raw = game
+  local vcd_basename_raw = selected_entry
   if policy.name == "HDD" then
-    vcd_basename_raw = NormalizeHddRelpath(hdd_relpath or game)
+    vcd_basename_raw = NormalizeHddRelpath(hdd_relpath or selected_entry)
   end
   if policy.name == "HDD" then
     normalized_basename = game_name
@@ -2569,7 +2583,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   local selector_prefix = SelectPopstarterSelectorPrefix(device_page)
   local argv0_selector = BuildPopstarterSelectorPath(device_page, game_name)
   if policy.name == "HDD" then
-    local display_name = BuildDisplayNameFromEntry(game)
+    local display_name = BuildDisplayNameFromEntry(selected_entry)
     argv0_selector = BuildLiteralElfName(display_name)
   end
   if selector_prefix == "" and string.upper(game_name) == "POPSTARTER" then
@@ -2586,11 +2600,11 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     return
   end
   if boot_source_mode == "mass" and prefix_added and not bootparam_exists then
-    fallback_bootparam = EnsureTrailingSlash(pops_root)..game
+    fallback_bootparam = EnsureTrailingSlash(pops_root)..selected_entry
     fallback_exists = doesFileExist(fallback_bootparam)
     if fallback_exists then
       bootparam = fallback_bootparam
-      bootparam_basename_used = game
+      bootparam_basename_used = selected_entry
       bootparam_exists = true
       prefix_used = ""
     end
