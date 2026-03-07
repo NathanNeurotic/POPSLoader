@@ -197,6 +197,21 @@ function CoverCache:UpdateSelection(vcd_path)
   end
   return nil
 end
+
+local VIDEO_STANDARD_NTSC = (type(PLDR) == "table" and PLDR.VIDEO_STANDARD_NTSC) or "NTSC"
+local VIDEO_STANDARD_PAL = (type(PLDR) == "table" and PLDR.VIDEO_STANDARD_PAL) or "PAL"
+
+local function ResolveVideoSpecForKey(key)
+  if type(PLDR) == "table" and type(PLDR.GetVideoStandardSpec) == "function" then
+    return PLDR.GetVideoStandardSpec(key)
+  end
+  if tostring(key or "") == VIDEO_STANDARD_PAL then
+    return { key = VIDEO_STANDARD_PAL, mode = PAL, width = 640, height = 512, fps = 50 }
+  end
+  return { key = VIDEO_STANDARD_NTSC, mode = NTSC, width = 640, height = 448, fps = 60 }
+end
+
+local INITIAL_VIDEO_SPEC = ResolveVideoSpecForKey((type(PLDR) == "table" and PLDR.VIDEO_STANDARD) or VIDEO_STANDARD_NTSC)
 UI = {
     LASTSCENE = 5;
     SCENES = {
@@ -302,15 +317,14 @@ UI = {
       LABEL_SIZE = 880;
     };
     --- UI Constants
-    SCR = {
-	      -- Match GS mode (NTSC 640x448 interlaced field) to prevent right-edge clipping.
-	      X = 640;
-	      X_MID = 640/2;
-	      Y = 448;
-	      Y_MID = 448/2;
-      VMODE = _480p;
-      BGCOL = Color.new(20, 30, 80);
-    };
+	    SCR = {
+	      X = tonumber(INITIAL_VIDEO_SPEC.width) or 640;
+	      X_MID = (tonumber(INITIAL_VIDEO_SPEC.width) or 640) / 2;
+	      Y = tonumber(INITIAL_VIDEO_SPEC.height) or 448;
+	      Y_MID = (tonumber(INITIAL_VIDEO_SPEC.height) or 448) / 2;
+	      VMODE = INITIAL_VIDEO_SPEC.mode or NTSC;
+	      BGCOL = Color.new(20, 30, 80);
+	    };
     LAYOUT = {
       SAFE = {L = 40, R = 40, T = 24, B = 28};
       BTN_BAR_SAFE_BOTTOM = 56;
@@ -369,17 +383,37 @@ UI = {
       MIN_ACTION_MS = 220;
       DEBUG_INPUT_LOG = false;
     };
-    BdmaModes = {
-      { key = "FAT32", label = "FAT32-USB (None)" },
-      { key = "USBEXFAT", label = "exFAT-USB" },
-      { key = "MX4SIO", label = "MX4SIO" },
-      { key = "MMCE", label = "MMCE" }
-    };
-    BdmaModeIndex = 1;
-    BdmaDirty = false;
-    ProfileDirty = false;
-    PopPathDirty = false;
-    DkwdrvDirty = false;
+	    BdmaModes = {
+	      { key = "FAT32", label = "FAT32-USB (None)" },
+	      { key = "USBEXFAT", label = "exFAT-USB" },
+	      { key = "MX4SIO", label = "MX4SIO" },
+	      { key = "MMCE", label = "MMCE" }
+	    };
+	    VideoStandardModes = {
+	      {
+	        key = VIDEO_STANDARD_NTSC,
+	        label = "NTSC (60Hz, 480i/240p)",
+	        fps = 60,
+	        mode = NTSC,
+	        width = 640,
+	        height = 448
+	      },
+	      {
+	        key = VIDEO_STANDARD_PAL,
+	        label = "PAL (50Hz, 576i/288p)",
+	        fps = 50,
+	        mode = PAL,
+	        width = 640,
+	        height = 512
+	      }
+	    };
+	    BdmaModeIndex = 1;
+	    VideoStandardIndex = 1;
+	    BdmaDirty = false;
+	    VideoStandardDirty = false;
+	    ProfileDirty = false;
+	    PopPathDirty = false;
+	    DkwdrvDirty = false;
     PopstarterPathDraft = nil;
     DkwdrvPathDraft = nil;
     HideTextMode = false;
@@ -825,7 +859,7 @@ UI = {
 
         -- Start boot sound once; explicit holds must not be lengthened by audio duration.
         TryBootSound()
-        local FPS = 60
+        local FPS = UI.GetDisplayRefreshHz()
         local SPLASH_HOLD_FRAMES = math.floor(4.0 * FPS + 0.5)
         local CREDITS_HOLD_FRAMES = math.floor(4.0 * FPS + 0.5)
         local INTRO_FADE_SCALE = 2.0
@@ -963,7 +997,9 @@ UI = {
         end
         UI.LAUNCHING = true
         UI.Modal.Close()
-        System.loadELFRebootIOP(elf_path, elf_path)
+        local rc = System.loadELF(elf_path, 0, elf_path)
+        UI.LAUNCHING = false
+        UI.Notify("BOOT.ELF launch failed\nrc="..tostring(rc), 150)
         return
       end;
       HandleInput = function ()
@@ -1305,6 +1341,7 @@ UI = {
         end
         UI.ProfileDirty = false
         UI.BdmaDirty = false
+        UI.VideoStandardDirty = false
         UI.SceneChange(UI.SCENES.MPROFILE)
         return true
       end
@@ -1559,6 +1596,7 @@ UI = {
         local down_icon  = IMG.down
         local l1_icon    = IMG.L1
         local r1_icon    = IMG.R1
+        local square_icon = IMG.square
         local safe = layout.SAFE or {L = 24, R = 24}
         local H_ROW = 24
         local TITLE_TO_BLOCK = 30
@@ -1605,6 +1643,8 @@ UI = {
         end
 
         local mode_text = tostring(mode.label or "")
+        local video_mode = UI.VideoStandardModes[UI.VideoStandardIndex] or UI.VideoStandardModes[1]
+        local video_mode_text = tostring((video_mode and video_mode.label) or "")
         local profile_text = "Profile "..UI.ProfileQuery.curopt
         local draft_pop_path = tostring(UI.PopstarterPathDraft or PLDR.POPSTARTER_PATH or "")
         local draft_dkw_path = tostring(UI.DkwdrvPathDraft or PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
@@ -1615,7 +1655,7 @@ UI = {
 
         local y = layout.TITLE_Y + TITLE_TO_BLOCK
         local footer_top_y = (layout.FOOTER_ICON_Y or (UI.SCR.Y - (layout.BTN_BAR_SAFE_BOTTOM or 56))) - 24
-        local total_h = (7 * H_ROW) + (2 * BLOCK_GAP) + (7 * ROW_GAP) + BUTTON_GAP
+        local total_h = (9 * H_ROW) + (3 * BLOCK_GAP) + (8 * ROW_GAP) + BUTTON_GAP
         if (y + total_h) > footer_top_y then
           y = footer_top_y - total_h
         end
@@ -1630,6 +1670,13 @@ UI = {
         DrawIconOnRow(left_icon, VALUE_X - ICON_MARGIN, y)
         DrawIconOnRow(right_icon, VALUE_X + 170, y)
         DrawValue(mode_text, y)
+        y = y + H_ROW
+        y = y + BLOCK_GAP
+
+        DrawLabel("Video Standard", y)
+        DrawIconOnRow(square_icon, LABEL_X + 168, y)
+        y = y + H_ROW + ROW_GAP
+        DrawValue(video_mode_text, y)
         y = y + H_ROW
         y = y + BLOCK_GAP
 
@@ -1689,6 +1736,8 @@ UI = {
           local dkwdrv_path = tostring(UI.DkwdrvPathDraft or PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
           local mode_entry = UI.BdmaModes[UI.BdmaModeIndex] or UI.BdmaModes[1]
           local mode_key = mode_entry and mode_entry.key or "FAT32"
+          local video_entry = UI.VideoStandardModes[UI.VideoStandardIndex] or UI.VideoStandardModes[1]
+          local video_key = video_entry and video_entry.key or VIDEO_STANDARD_NTSC
           local ok_run, result, reason = xpcall(function()
             if type(PLDR.CommitSettingsChanges) == "function" then
               return PLDR.CommitSettingsChanges({
@@ -1696,6 +1745,7 @@ UI = {
                 popstarter_path = pop_path,
                 dkwdrv_path = dkwdrv_path,
                 bdma_mode = mode_key,
+                video_standard = video_key,
                 apply_bdma = UI.BdmaDirty,
                 bdma_token = save_token,
                 on_stage = report_stage
@@ -1706,6 +1756,10 @@ UI = {
             PLDR.POPSTARTER_PATH = pop_path
             PLDR.DKWDRV_PATH = dkwdrv_path
             PLDR.BDMA_MODE_KEY = mode_key
+            PLDR.VIDEO_STANDARD = video_key
+            if type(PLDR.ApplyVideoStandardRuntime) == "function" then
+              PLDR.ApplyVideoStandardRuntime(video_key)
+            end
             report_stage("save", "Saving settings")
             local saved = PLDR.SaveSettingsAtomic()
             local applied = true
@@ -1727,6 +1781,7 @@ UI = {
             UI.BdmaDirty = false
             UI.PopPathDirty = false
             UI.DkwdrvDirty = false
+            UI.VideoStandardDirty = false
             UI.SceneChange(target_scene)
           else
             if reason == "bdma_apply_failed" then
@@ -1747,6 +1802,7 @@ UI = {
               UI.BdmaDirty = false
               UI.PopPathDirty = false
               UI.DkwdrvDirty = false
+              UI.VideoStandardDirty = false
               UI.SceneChange(target_scene)
             end
           end
@@ -1799,6 +1855,14 @@ UI = {
           if UI.BdmaModeIndex < 1 then UI.BdmaModeIndex = #UI.BdmaModes end
           UI.BdmaDirty = true
         end
+        if UI.Pad.Events.SQUARE then
+          UI.VideoStandardIndex = UI.VideoStandardIndex + 1
+          if UI.VideoStandardIndex > #UI.VideoStandardModes then
+            UI.VideoStandardIndex = 1
+          end
+          UI.VideoStandardDirty = true
+          UI.ProfileDirty = true
+        end
         if UI.Pad.Events.BACK then queue_exit(UI.SCENES.MMAIN, true) end
         if UI.Pad.Events.START then
           local default_profile = tonumber(PLDR.DEFAULT_PROFILE) or 1
@@ -1823,16 +1887,29 @@ UI = {
             UI.BdmaModeIndex = 1
             UI.BdmaDirty = true
           end
+          local default_video_key = VIDEO_STANDARD_NTSC
+          local default_video_index = 1
+          for i = 1, #UI.VideoStandardModes do
+            if UI.VideoStandardModes[i].key == default_video_key then
+              default_video_index = i
+              break
+            end
+          end
+          if UI.VideoStandardIndex ~= default_video_index then
+            UI.VideoStandardIndex = default_video_index
+            UI.VideoStandardDirty = true
+          end
           UI.Notif_queue.add("Profile defaults restored")
         end
         if UI.Pad.Events.CONFIRM then
           queue_exit(UI.SCENES.MMAIN, true)
         end
         local labels, order = UI.Footer.ResolveLegend({
-          order = UI.Footer.order_with_start,
-          order_id = "start",
+          order = UI.Footer.order_with_start_r2,
+          order_id = "start_r2",
           circle = UI.Footer.labels.circle_other,
           cross = UI.Footer.labels.cross_select,
+          square = "Video Std",
           start = UI.Footer.labels.start_reset
         })
         UI.Footer.Draw(labels, order)
@@ -2398,11 +2475,40 @@ function UI.OnSceneExit(previous_scene, next_scene)
   end
 end
 UI.RecalcLayout()
+function UI.GetDisplayRefreshHz()
+  local mode = UI.VideoStandardModes[UI.VideoStandardIndex] or UI.VideoStandardModes[1]
+  if mode ~= nil and type(mode.fps) == "number" and mode.fps > 0 then
+    return mode.fps
+  end
+  return 60
+end
+function UI.ApplyVideoStandardFromRuntime(video_standard)
+  local requested = tostring(video_standard or (PLDR and PLDR.VIDEO_STANDARD) or VIDEO_STANDARD_NTSC)
+  local selected = UI.VideoStandardModes[1]
+  local selected_index = 1
+  for i = 1, #UI.VideoStandardModes do
+    if tostring(UI.VideoStandardModes[i].key or "") == requested then
+      selected = UI.VideoStandardModes[i]
+      selected_index = i
+      break
+    end
+  end
+  UI.VideoStandardIndex = selected_index
+  UI.VideoStandardDirty = false
+  UI.SCR.VMODE = selected.mode or NTSC
+  UI.SCR.X = tonumber(selected.width) or 640
+  UI.SCR.Y = tonumber(selected.height) or 448
+  UI.RecalcLayout()
+  if type(Screen) == "table" and type(Screen.setMode) == "function" then
+    pcall(Screen.setMode, UI.SCR.VMODE, UI.SCR.X, UI.SCR.Y, CT24, INTERLACED, FIELD)
+  end
+end
 function UI.SyncSettingsDraftFromRuntime()
   UI.PopstarterPathDraft = tostring(PLDR.POPSTARTER_PATH or "")
   UI.DkwdrvPathDraft = tostring(PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
   UI.PopPathDirty = false
   UI.DkwdrvDirty = false
+  UI.VideoStandardDirty = false
 end
 function UI.SyncSettingsSelectionFromRuntime()
   if type(PLDR.ReconcileBdmaModeWithEffectiveState) == "function" then
@@ -2415,6 +2521,9 @@ function UI.SyncSettingsSelectionFromRuntime()
       UI.BdmaModeIndex = i
       break
     end
+  end
+  if type(UI.ApplyVideoStandardFromRuntime) == "function" then
+    UI.ApplyVideoStandardFromRuntime(PLDR.VIDEO_STANDARD)
   end
   local selected_profile = tonumber(PLDR.SELECTED_PROFILE) or tonumber(PLDR.DEFAULT_PROFILE) or 1
   UI.ProfileQuery.curopt = CLAMP(selected_profile, 1, #PLDR.PROFILES)
