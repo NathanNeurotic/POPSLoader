@@ -108,11 +108,220 @@ local function ResolveWritablePath(rel)
 end
 
 local function IsAbsoluteDevicePath(path)
-  return path ~= nil and string.match(path, "^[%a]+%d*:/") ~= nil
+  if path == nil then
+    return false
+  end
+  if string.match(path, "^[%a]+%d*:/") ~= nil then
+    return true
+  end
+  return string.match(path, "^hdd%d:[^:]+:[%a]+%d*:/") ~= nil
 end
 
 local function IsMassPath(path)
   return path ~= nil and string.match(path, "^mass%d*:/") ~= nil
+end
+
+local HDD_EXEC_INIT_DONE = false
+local function EnsureHddRuntimeReadyForExec()
+  if HDD_EXEC_INIT_DONE then
+    return true
+  end
+  if type(HDD) ~= "table" then
+    return false
+  end
+  if type(HDD.Initialize) ~= "function" then
+    return false
+  end
+  local ok, initialized = pcall(HDD.Initialize)
+  if ok and initialized then
+    HDD_EXEC_INIT_DONE = true
+    return true
+  end
+  return false
+end
+
+local function ParseHddPartitionMount(path)
+  local candidate = tostring(path or "")
+  local device, part = string.match(candidate, "^([Hh][Dd][Dd]%d):([^:]+):[%a]+%d*:?/?")
+  if device ~= nil and part ~= nil and part ~= "" then
+    return string.lower(device)..":"..part
+  end
+  device, part = string.match(candidate, "^([Hh][Dd][Dd]%d):/+([^/]+)/")
+  if device ~= nil and part ~= nil and part ~= "" then
+    return string.lower(device)..":"..part
+  end
+  return nil
+end
+
+local function ParseHddExecMountAndRelpath(path)
+  local candidate = tostring(path or "")
+  local device, part, relpath = string.match(candidate, "^([Hh][Dd][Dd]%d):([^:]+):[%a]+%d*:/(.+)$")
+  if device ~= nil and part ~= nil and relpath ~= nil and relpath ~= "" then
+    return string.lower(device)..":"..part, relpath
+  end
+  device, part, relpath = string.match(candidate, "^([Hh][Dd][Dd]%d):([^:]+):[%a]+%d*:(.+)$")
+  if device ~= nil and part ~= nil and relpath ~= nil and relpath ~= "" then
+    relpath = string.gsub(relpath, "^/+", "")
+    return string.lower(device)..":"..part, relpath
+  end
+  local mount_part
+  mount_part, relpath = string.match(candidate, "^([Hh][Dd][Dd]%d:[^:]+):[%a]+%d*:/(.+)$")
+  if mount_part ~= nil and relpath ~= nil and relpath ~= "" then
+    local normalized_mount = string.lower(string.match(mount_part, "^([Hh][Dd][Dd]%d):"))..":"..string.match(mount_part, "^[Hh][Dd][Dd]%d:(.+)$")
+    return normalized_mount, relpath
+  end
+  local rel
+  device, part, rel = string.match(candidate, "^([Hh][Dd][Dd]%d):/+([^/]+)/(.+)$")
+  if device ~= nil and part ~= nil and rel ~= nil and rel ~= "" then
+    return string.lower(device)..":"..part, rel
+  end
+  return nil, nil
+end
+
+local function EnsureHddExecPathReady(path)
+  local mount_part = ParseHddPartitionMount(path)
+  if mount_part == nil then
+    return false
+  end
+  if not EnsureHddRuntimeReadyForExec() then
+    return false
+  end
+  if type(HDD.MountPartition) ~= "function" then
+    return false
+  end
+  local mode = FIO_MT_RDONLY
+  if type(mode) ~= "number" then
+    mode = 0
+  end
+  local ok, mounted = pcall(HDD.MountPartition, mount_part, 0, mode)
+  return ok and mounted == true
+end
+
+local function ResolveHddExecMountedPath(path)
+  local mount_part, relpath = ParseHddExecMountAndRelpath(path)
+  if mount_part == nil or relpath == nil then
+    return nil
+  end
+
+  if not EnsureHddRuntimeReadyForExec() then
+    return nil
+  end
+  if type(HDD.MountPartition) ~= "function" then
+    return nil
+  end
+
+  local mode = FIO_MT_RDONLY
+  if type(mode) ~= "number" then
+    mode = 0
+  end
+
+  local ok_mount, mounted = pcall(HDD.MountPartition, mount_part, 0, mode)
+  if not ok_mount or mounted ~= true then
+    return nil
+  end
+
+  local out = {}
+  local seen = {}
+  local function add_probe_candidate(candidate)
+    local value = tostring(candidate or "")
+    if value == "" then
+      return
+    end
+    if seen[value] == true then
+      return
+    end
+    seen[value] = true
+    table.insert(out, value)
+  end
+
+  add_probe_candidate("pfs0:/"..relpath)
+  add_probe_candidate("pfs:/"..relpath)
+  local boot_pfs = string.match(string.lower(BOOT_PATH_RAW or ""), "^(pfs%d*):/")
+  if boot_pfs ~= nil then
+    add_probe_candidate(boot_pfs..":/"..relpath)
+  end
+
+  local function probe_candidate(candidate)
+    local ok_open, fd_or_err = pcall(System.openFile, candidate, FREAD)
+    if ok_open and type(fd_or_err) == "number" and fd_or_err >= 0 then
+      System.closeFile(fd_or_err)
+      return true
+    end
+    local ok_exists, exists = pcall(doesFileExist, candidate)
+    return ok_exists and exists == true
+  end
+
+  for i = 1, #out do
+    if probe_candidate(out[i]) then
+      return out[i]
+    end
+  end
+  return nil
+end
+
+local function AppendUniquePath(out, seen, path)
+  local candidate = tostring(path or "")
+  if candidate == "" then
+    return
+  end
+  if seen[candidate] == true then
+    return
+  end
+  seen[candidate] = true
+  table.insert(out, candidate)
+end
+
+local function ExpandHddExecAliases(path)
+  local candidate = tostring(path or "")
+  local out = {}
+
+  local pfs_device, suffix = string.match(candidate, "^[Hh][Dd][Dd]%d:[^:]+:([%a]+%d*):/(.*)$")
+  if pfs_device == nil then
+    pfs_device, suffix = string.match(candidate, "^[Hh][Dd][Dd]%d:[^:]+:([%a]+%d*):(.*)$")
+    if suffix ~= nil then
+      suffix = string.gsub(suffix, "^/+", "")
+    end
+  end
+  if pfs_device ~= nil then
+    local normalized_pfs = string.lower(pfs_device)
+    if string.match(normalized_pfs, "^pfs%d*$") ~= nil then
+      table.insert(out, "pfs0:/"..suffix)
+      table.insert(out, normalized_pfs..":/"..suffix)
+      table.insert(out, "pfs:/"..suffix)
+      local boot_pfs = string.match(string.lower(BOOT_PATH_RAW or ""), "^(pfs%d*):/")
+      if boot_pfs ~= nil and boot_pfs ~= normalized_pfs then
+        table.insert(out, boot_pfs..":/"..suffix)
+      end
+    end
+  end
+
+  -- Some launchers surface HDD app paths as hdd0:/<partition>/<path>.
+  -- If that probe form fails, try the same relative path on the active pfs mount.
+  local partition_rel = string.match(candidate, "^[Hh][Dd][Dd]%d:/+[^/]+/(.*)$")
+  if partition_rel ~= nil then
+    table.insert(out, "pfs0:/"..partition_rel)
+    table.insert(out, "pfs:/"..partition_rel)
+    local boot_pfs = string.match(string.lower(BOOT_PATH_RAW or ""), "^(pfs%d*):/")
+    if boot_pfs ~= nil and boot_pfs ~= "pfs" then
+      table.insert(out, boot_pfs..":/"..partition_rel)
+    end
+  end
+  return out
+end
+
+local function ExpandPathCandidates(path)
+  local expanded = {}
+  local seen = {}
+  local base = PLDR.ExpandMcAlias(path)
+  for i = 1, #base do
+    local candidate = base[i]
+    AppendUniquePath(expanded, seen, candidate)
+    local hdd_aliases = ExpandHddExecAliases(candidate)
+    for j = 1, #hdd_aliases do
+      AppendUniquePath(expanded, seen, hdd_aliases[j])
+    end
+  end
+  return expanded
 end
 
 function PLDR.EnsureMmceReadyOnce()
@@ -161,28 +370,38 @@ local function ProbePathExists(p)
 end
 
 function PLDR.ResolveFirstExistingPath(path)
-  local candidates = PLDR.ExpandMcAlias(path)
+  local candidates = ExpandPathCandidates(path)
   for i = 1, #candidates do
-    if ProbePathExists(candidates[i]) then
-      return candidates[i]
+    local candidate = candidates[i]
+    if ProbePathExists(candidate) then
+      return candidate
+    end
+    if string.match(string.lower(candidate), "^hdd%d:") ~= nil then
+      pcall(EnsureHddExecPathReady, candidate)
+      if ProbePathExists(candidate) then
+        return candidate
+      end
     end
   end
   return nil
 end
 
 local function ResolvePathWithEnsure(path)
-  local candidates = PLDR.ExpandMcAlias(path)
+  local candidates = ExpandPathCandidates(path)
   for i = 1, #candidates do
     local candidate = candidates[i]
     local low = string.lower(candidate)
     local is_mass = low:find("^mass") ~= nil
     local is_mmce = low:find("^mmce") ~= nil
+    local is_hdd = low:find("^hdd%d:") ~= nil
     for pass = 1, 2 do
       if ProbePathExists(candidate) then
         return candidate
       end
       if pass == 1 then
-        if is_mass then
+        if is_hdd then
+          pcall(EnsureHddExecPathReady, candidate)
+        elseif is_mass then
           if type(PLDR) == "table" and type(PLDR.EnsureUsbMassReadyOnce) == "function" then
             pcall(PLDR.EnsureUsbMassReadyOnce)
           end
@@ -207,6 +426,13 @@ local function ResolvePopstarterPath(path)
     chosen = JoinPath(APP_DIR_LOCAL, "POPSTARTER.ELF")
   elseif not IsAbsoluteDevicePath(chosen) then
     chosen = JoinPath(APP_DIR_LOCAL, chosen)
+  end
+
+  if string.match(string.lower(chosen), "^hdd%d:") ~= nil then
+    local resolved_hdd = ResolveHddExecMountedPath(chosen)
+    if resolved_hdd ~= nil then
+      return resolved_hdd
+    end
   end
   local resolved = ResolvePathWithEnsure(chosen)
   if resolved ~= nil then
