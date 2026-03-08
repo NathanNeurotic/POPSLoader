@@ -161,6 +161,10 @@ local function ParseHddPartitionMount(path)
   if device ~= nil and part ~= nil and part ~= "" then
     return string.lower(device)..":"..part
   end
+  device, part = string.match(candidate, "^([Hh][Dd][Dd]%d):([^:/]+)$")
+  if device ~= nil and part ~= nil and part ~= "" then
+    return string.lower(device)..":"..part
+  end
   return nil
 end
 
@@ -476,12 +480,7 @@ function PLDR.ResolveFirstExistingPath(path)
   local candidates = ExpandPathCandidates(path)
   for i = 1, #candidates do
     local candidate = candidates[i]
-    if string.match(string.lower(candidate), "^hdd%d:") ~= nil then
-      local resolved_hdd = ResolveHddReadablePath(candidate)
-      if resolved_hdd ~= nil then
-        return resolved_hdd
-      end
-    elseif ProbePathExists(candidate) then
+    if ProbePathExists(candidate) then
       return candidate
     end
   end
@@ -495,14 +494,8 @@ local function ResolvePathWithEnsure(path)
     local low = string.lower(candidate)
     local is_mass = low:find("^mass") ~= nil
     local is_mmce = low:find("^mmce") ~= nil
-    local is_hdd = low:find("^hdd%d:") ~= nil
     for pass = 1, 2 do
-      if is_hdd then
-        local resolved_hdd = ResolveHddReadablePath(candidate)
-        if resolved_hdd ~= nil then
-          return resolved_hdd
-        end
-      elseif ProbePathExists(candidate) then
+      if ProbePathExists(candidate) then
         return candidate
       end
       if pass == 1 then
@@ -648,7 +641,13 @@ local function ResolvePopstarterPath(path)
   }
   for i = 1, #fallbacks do
     local candidate = fallbacks[i]
-    local resolved_fallback = ResolvePathWithEnsure(candidate)
+    local resolved_fallback = nil
+    if string.match(string.lower(candidate), "^hdd%d:") ~= nil then
+      resolved_fallback = ResolveHddReadablePath(candidate)
+    end
+    if resolved_fallback == nil then
+      resolved_fallback = ResolvePathWithEnsure(candidate)
+    end
     if candidate ~= chosen and resolved_fallback ~= nil then
       return resolved_fallback
     end
@@ -1985,9 +1984,9 @@ function PLDR.CheckPOPStarterDEPS(device)
   if UI.IsUsbScene(device) then
     return doesFileExist("mass:/POPS/POPS_IOX.PAK")
   elseif device == UI.SCENES.GHDD then
-    local a, prefix = MountHddPartitionTracked("hdd0:__common", 0, FIO_MT_RDONLY)
-    if a and prefix ~= nil then
-      return a, doesFileExist(prefix.."POPS/POPS.ELF"), doesFileExist(prefix.."POPS/IOPRP252.IMG")
+    local a = HDD.MountPartition("hdd0:__common", 0, FIO_MT_RDONLY)
+    if a then
+      return a, doesFileExist("pfs0:/POPS/POPS.ELF"), doesFileExist("pfs0:/POPS/IOPRP252.IMG")
     else
       return a, false, false
     end
@@ -2121,18 +2120,16 @@ end
 
 function PLDR.HDD.CheckAvailableHddPopsParts()
   if not PLDR.HDD.HAS_CHECKED then --HDD is checked only once since it cannot be removed/replaced without damaging the console
-    local mounted_main = MountHddPartitionTracked("hdd0:__.POPS", 0, FIO_MT_RDONLY)
-    if mounted_main then
+    if HDD.MountPartition("hdd0:__.POPS", 0, FIO_MT_RDONLY) then
       PLDR.HDD.MAINPART = true
-      UMountHddPartitionTracked(0)
+      HDD.UMountPartition(0)
     end
     PLDR.HDD.FOUNDANY = PLDR.HDD.MAINPART
     for i=1, 9 do
-      local mounted_extra = MountHddPartitionTracked(("hdd0:__.POPS%d"):format(i), 0, FIO_MT_RDONLY)
-      if mounted_extra then
+      if HDD.MountPartition(("hdd0:__.POPS%d"):format(i), 0, FIO_MT_RDONLY) then
         PLDR.HDD.EXTRAPARTS[i] = true
         PLDR.HDD.FOUNDANY = true
-        UMountHddPartitionTracked(0)
+        HDD.UMountPartition(0)
       end
     end
     PLDR.HDD.HAS_CHECKED = true
@@ -2146,21 +2143,19 @@ function PLDR.HDD.BuildGameList()
   PLDR.GAMEPATH = "pfs0:/"
   if not PLDR.HDD.FOUNDANY then return end
   if PLDR.HDD.MAINPART then
-    local mounted_main, prefix = MountHddPartitionTracked("hdd0:__.POPS", 0, FIO_MT_RDONLY)
-    if mounted_main and prefix ~= nil then
+    if HDD.MountPartition("hdd0:__.POPS", 0, FIO_MT_RDONLY) then
       AppendHddGameList("__.POPS", "pfs0:/", "")
       AppendHddGameList("__.POPS", "pfs0:/POPS/", "POPS/")
-      UMountHddPartitionTracked(0)
+      HDD.UMountPartition(0)
     end
   end
   for i=1, 9 do
     if PLDR.HDD.EXTRAPARTS[i] then
-      local mounted_extra = MountHddPartitionTracked("hdd0:__.POPS"..i, 0, FIO_MT_RDONLY)
-      if mounted_extra then
+      if HDD.MountPartition("hdd0:__.POPS"..i, 0, FIO_MT_RDONLY) then
         local partition = "__.POPS"..i
         AppendHddGameList(partition, "pfs0:/", "")
         AppendHddGameList(partition, "pfs0:/POPS/", "POPS/")
-        UMountHddPartitionTracked(0)
+        HDD.UMountPartition(0)
       end
     end
   end
