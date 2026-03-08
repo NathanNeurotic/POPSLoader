@@ -116,16 +116,38 @@ local function ResolveSelectedVcdPath(entry, game_path)
   end
   return entry
 end
-local function BuildCoverCandidates(vcd_path, use_hdd_common_art)
-  if vcd_path == nil or vcd_path == "" then return {} end
+local function ExtractHddArtBasename(entry)
+  local candidate = tostring(entry or "")
+  if candidate == "" then
+    return ""
+  end
+  local relpath = string.match(candidate, "^[^|]+|(.+)$")
+  if relpath ~= nil and relpath ~= "" then
+    candidate = relpath
+  end
+  return BasenameWithoutExtension(candidate)
+end
+local function BuildCoverCandidates(vcd_path, use_hdd_common_art, entry)
   if use_hdd_common_art then
-    local basename = BasenameWithoutExtension(vcd_path)
+    local basename = ExtractHddArtBasename(entry)
+    if basename == "" then
+      basename = BasenameWithoutExtension(vcd_path)
+    end
     if basename == "" then
       return {}
     end
-    return {
-      "hdd0:/__common/POPS/ART/"..basename..".png"
-    }
+    local candidate = "hdd0:/__common/POPS/ART/"..basename..".png"
+    if type(PLDR) == "table" and type(PLDR.ResolveHddReadablePath) == "function" then
+      local resolved = PLDR.ResolveHddReadablePath(candidate)
+      if resolved ~= nil then
+        return { resolved }
+      end
+      return {}
+    end
+    return { candidate }
+  end
+  if vcd_path == nil or vcd_path == "" then
+    return {}
   end
   local base = StripExtension(vcd_path)
   return {
@@ -195,17 +217,21 @@ function CoverCache:GetOrLoad(path)
   self:EvictIfNeeded()
   return img
 end
-function CoverCache:UpdateSelection(vcd_path, use_hdd_common_art)
-  local key = tostring(use_hdd_common_art == true).."|"..tostring(vcd_path or "")
+function CoverCache:UpdateSelection(vcd_path, use_hdd_common_art, entry)
+  local key_source = vcd_path
+  if use_hdd_common_art == true then
+    key_source = entry or vcd_path
+  end
+  local key = tostring(use_hdd_common_art == true).."|"..tostring(key_source or "")
   if self.last_key == key then
     return self.last_img
   end
   self.last_key = key
   self.last_img = nil
-  if vcd_path == nil or vcd_path == "" then
+  if (use_hdd_common_art ~= true) and (vcd_path == nil or vcd_path == "") then
     return nil
   end
-  local candidates = BuildCoverCandidates(vcd_path, use_hdd_common_art == true)
+  local candidates = BuildCoverCandidates(vcd_path, use_hdd_common_art == true, entry)
   for i = 1, #candidates do
     local img = self:GetOrLoad(candidates[i])
     if img ~= nil then
@@ -1552,7 +1578,7 @@ UI = {
             if UI.GameList.CoverPending and not nav_event and (now - UI.GameList.CoverPendingAt) >= UI.GameList.CoverIdleMs then
               local entry = PLDR.GAMES[UI.GameList.CURR]
               local vcd_path = ResolveSelectedVcdPath(entry, PLDR.GAMEPATH)
-              UI.CoverCache:UpdateSelection(vcd_path, UI.CURSCENE == UI.SCENES.GHDD)
+              UI.CoverCache:UpdateSelection(vcd_path, UI.CURSCENE == UI.SCENES.GHDD, entry)
               UI.GameList.CoverPending = false
             end
           end
