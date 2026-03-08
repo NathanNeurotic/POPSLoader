@@ -136,15 +136,14 @@ local function BuildCoverCandidates(vcd_path, use_hdd_common_art, entry)
     if basename == "" then
       return {}
     end
-    local candidate = "hdd0:/__common/POPS/ART/"..basename..".png"
-    if type(PLDR) == "table" and type(PLDR.ResolveHddReadablePath) == "function" then
-      local resolved = PLDR.ResolveHddReadablePath(candidate)
+    if type(PLDR) == "table" and type(PLDR.ResolveHddPartitionReadablePath) == "function" then
+      local resolved = PLDR.ResolveHddPartitionReadablePath("hdd0:__common", "POPS/ART/"..basename..".png")
       if resolved ~= nil then
         return { resolved }
       end
       return {}
     end
-    return { candidate }
+    return {}
   end
   if vcd_path == nil or vcd_path == "" then
     return {}

@@ -326,25 +326,16 @@ end
 
 local ProbePathExists
 
-local function ResolveHddReadablePath(path)
-  local candidate = tostring(path or "")
-  if candidate == "" then
+local function ResolveHddPartitionReadablePath(partition, relpath, mounted_prefix_hint)
+  local mount_part = ParseHddPartitionMount(partition)
+  local clean_relpath = string.gsub(tostring(relpath or ""), "^/+", "")
+  if mount_part == nil or clean_relpath == "" then
     return nil
   end
 
-  local mounted_direct = NormalizePfsPrefix(candidate)
-  if mounted_direct ~= nil and ProbePathExists(candidate) then
-    return candidate
-  end
-
-  local mount_part, relpath = ParseHddExecMountAndRelpath(candidate)
-  if mount_part == nil or relpath == nil then
-    return nil
-  end
-
-  local embedded_prefix = ExtractEmbeddedHddMountPrefix(candidate)
+  local embedded_prefix = NormalizePfsPrefix(mounted_prefix_hint)
   if embedded_prefix ~= nil then
-    local embedded_target = BuildMountedReadablePath(embedded_prefix, relpath)
+    local embedded_target = BuildMountedReadablePath(embedded_prefix, clean_relpath)
     if embedded_target ~= nil and ProbePathExists(embedded_target) then
       RememberRecordedHddMount(mount_part, embedded_prefix)
       return embedded_target
@@ -353,7 +344,7 @@ local function ResolveHddReadablePath(path)
 
   local recorded_prefix = GetRecordedHddMountPrefix(mount_part)
   if recorded_prefix ~= nil then
-    local recorded_target = BuildMountedReadablePath(recorded_prefix, relpath)
+    local recorded_target = BuildMountedReadablePath(recorded_prefix, clean_relpath)
     if recorded_target ~= nil and ProbePathExists(recorded_target) then
       return recorded_target
     end
@@ -372,11 +363,30 @@ local function ResolveHddReadablePath(path)
     return nil
   end
 
-  local mounted_target = BuildMountedReadablePath(mounted_prefix, relpath)
+  local mounted_target = BuildMountedReadablePath(mounted_prefix, clean_relpath)
   if mounted_target ~= nil and ProbePathExists(mounted_target) then
     return mounted_target
   end
   return nil
+end
+
+local function ResolveHddReadablePath(path)
+  local candidate = tostring(path or "")
+  if candidate == "" then
+    return nil
+  end
+
+  local mounted_direct = NormalizePfsPrefix(candidate)
+  if mounted_direct ~= nil and ProbePathExists(candidate) then
+    return candidate
+  end
+
+  local mount_part, relpath = ParseHddExecMountAndRelpath(candidate)
+  if mount_part == nil or relpath == nil then
+    return nil
+  end
+
+  return ResolveHddPartitionReadablePath(mount_part, relpath, ExtractEmbeddedHddMountPrefix(candidate))
 end
 
 local function EnsureHddExecPathReady(path)
@@ -690,6 +700,10 @@ end
 
 function PLDR.ResolveHddReadablePath(path)
   return ResolveHddReadablePath(path)
+end
+
+function PLDR.ResolveHddPartitionReadablePath(partition, relpath, mounted_prefix_hint)
+  return ResolveHddPartitionReadablePath(partition, relpath, mounted_prefix_hint)
 end
 
 function PLDR.PrepareForExternalELFLaunch(path)
