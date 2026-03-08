@@ -153,6 +153,10 @@ local function ParseHddPartitionMount(path)
   if device ~= nil and part ~= nil and part ~= "" then
     return string.lower(device)..":"..part
   end
+  device, part = string.match(candidate, "^([Hh][Dd][Dd]%d):([^:/]+)/")
+  if device ~= nil and part ~= nil and part ~= "" then
+    return string.lower(device)..":"..part
+  end
   device, part = string.match(candidate, "^([Hh][Dd][Dd]%d):/+([^/]+)/")
   if device ~= nil and part ~= nil and part ~= "" then
     return string.lower(device)..":"..part
@@ -179,6 +183,10 @@ local function ParseHddExecMountAndRelpath(path)
   end
   local rel
   device, part, rel = string.match(candidate, "^([Hh][Dd][Dd]%d):/+([^/]+)/(.+)$")
+  if device ~= nil and part ~= nil and rel ~= nil and rel ~= "" then
+    return string.lower(device)..":"..part, rel
+  end
+  device, part, rel = string.match(candidate, "^([Hh][Dd][Dd]%d):([^:/]+)/(.+)$")
   if device ~= nil and part ~= nil and rel ~= nil and rel ~= "" then
     return string.lower(device)..":"..part, rel
   end
@@ -338,6 +346,9 @@ local function ExpandHddExecAliases(path)
   -- Some launchers surface HDD app paths as hdd0:/<partition>/<path>.
   -- If that probe form fails, try the same relative path on the active pfs mount.
   local partition_rel = string.match(candidate, "^[Hh][Dd][Dd]%d:/+[^/]+/(.*)$")
+  if partition_rel == nil then
+    partition_rel = string.match(candidate, "^[Hh][Dd][Dd]%d:[^:/]+/(.*)$")
+  end
   if partition_rel ~= nil then
     local pfs_candidates = BuildPfsExecCandidates(partition_rel)
     for i = 1, #pfs_candidates do
@@ -517,7 +528,10 @@ local function ResolveHddBootSidecarPopstarter()
         return resolved_hdd
       end
     end
-    local resolved = ResolvePathWithEnsure(candidate)
+  end
+
+  for i = 1, #candidates do
+    local resolved = ResolvePathWithEnsure(candidates[i])
     if resolved ~= nil then
       return resolved
     end
