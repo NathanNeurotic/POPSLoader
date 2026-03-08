@@ -387,6 +387,30 @@ local function ResolveHddExecMountedPath(path)
   return ResolveHddReadablePath(path)
 end
 
+local function ExtractLaunchPfsSlot(path)
+  local mounted_prefix = NormalizePfsPrefix(path)
+  if mounted_prefix ~= nil then
+    return ParsePfsSlot(mounted_prefix)
+  end
+  local embedded_prefix = ExtractEmbeddedHddMountPrefix(path)
+  if embedded_prefix ~= nil then
+    return ParsePfsSlot(embedded_prefix)
+  end
+  return nil
+end
+
+local function PrepareForExternalELFLaunch(path)
+  if type(HDD) ~= "table" or type(HDD.UMountPartition) ~= "function" then
+    return
+  end
+  local keep_slot = ExtractLaunchPfsSlot(path)
+  for slot = 0, 3 do
+    if slot ~= keep_slot then
+      UMountHddPartitionTracked(slot)
+    end
+  end
+end
+
 local function AppendUniquePath(out, seen, path)
   local candidate = tostring(path or "")
   if candidate == "" then
@@ -666,6 +690,10 @@ end
 
 function PLDR.ResolveHddReadablePath(path)
   return ResolveHddReadablePath(path)
+end
+
+function PLDR.PrepareForExternalELFLaunch(path)
+  return PrepareForExternalELFLaunch(path)
 end
 
 local function DetectBootDevice()
@@ -2568,6 +2596,7 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     return
   end
   SetLaunchPhase(LaunchState.PHASE_EXEC)
+  PrepareForExternalELFLaunch(popstarter)
   local rc
   if exec_args ~= nil and #exec_args > 0 and unpack_fn ~= nil then
     rc = System.loadELF(popstarter, reboot_iop, unpack_fn(exec_args))

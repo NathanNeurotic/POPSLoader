@@ -991,6 +991,9 @@ UI = {
           end
           UI.LAUNCHING = true
           UI.Modal.Close()
+          if type(PLDR) == "table" and type(PLDR.PrepareForExternalELFLaunch) == "function" then
+            pcall(PLDR.PrepareForExternalELFLaunch, elf_path)
+          end
           System.loadELF(elf_path, 1, elf_path)
           return
         end
@@ -1041,6 +1044,9 @@ UI = {
         end
         UI.LAUNCHING = true
         UI.Modal.Close()
+        if type(PLDR) == "table" and type(PLDR.PrepareForExternalELFLaunch) == "function" then
+          pcall(PLDR.PrepareForExternalELFLaunch, elf_path)
+        end
         local rc = System.loadELF(elf_path, 0, elf_path)
         UI.LAUNCHING = false
         UI.Notify("BOOT.ELF launch failed\nrc="..tostring(rc), 150)

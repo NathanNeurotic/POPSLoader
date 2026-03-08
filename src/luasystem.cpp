@@ -962,12 +962,22 @@ static int lua_loadELF(lua_State *L)
 		argv_static[0] = selector_buf;
 		argv_static[1] = NULL;
 		DPRINTF("# Loading ELF argv0='%s' argc=1\n", argv_static[0]);
-		int rc = LoadELFFromFileExecPS2(elftoload, 1, argv_static);
+		int rc;
+		if (rebootIOP != 0) {
+			rc = LoadELFFromFileExecPS2RebootIOP(elftoload, 1, argv_static);
+		} else {
+			rc = LoadELFFromFileExecPS2(elftoload, 1, argv_static);
+		}
 		lua_pushinteger(L, rc);
 		return 1;
 	}
 	DPRINTF("# Loading ELF argv0 default (argc=0)\n");
-	int rc = LoadELFFromFile(elftoload, 0, NULL);
+	int rc;
+	if (rebootIOP != 0) {
+		rc = LoadELFFromFileExecPS2RebootIOP(elftoload, 0, NULL);
+	} else {
+		rc = LoadELFFromFile(elftoload, 0, NULL);
+	}
 	lua_pushinteger(L, rc);
 	return 1;
 }
