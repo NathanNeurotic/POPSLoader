@@ -14,6 +14,13 @@
 _G.PLDR = _G.PLDR or {}
 PLDR = _G.PLDR
 local BOOT_PATH_RAW = System.currentDirectory()
+local BOOT_ARGV0_RAW = nil
+if type(System) == "table" and type(System.GetArgv0) == "function" then
+  local ok_argv0, argv0 = pcall(System.GetArgv0)
+  if ok_argv0 and type(argv0) == "string" and argv0 ~= "" then
+    BOOT_ARGV0_RAW = argv0
+  end
+end
 local function EnsureTrailingSlash(path)
   if path == nil then
     return nil
@@ -451,7 +458,83 @@ function PLDR.PopstarterProbeWithEnsure(path)
   return ResolvePathWithEnsure(path) ~= nil
 end
 
+local function IsHddExecContextPath(path)
+  local candidate = string.lower(tostring(path or ""))
+  if candidate == "" then
+    return false
+  end
+  if string.match(candidate, "^hdd%d:") ~= nil then
+    return true
+  end
+  return string.match(candidate, "^pfs%d*:/") ~= nil
+end
+
+local function DirectoryFromExecPath(path)
+  local candidate = tostring(path or "")
+  if candidate == "" then
+    return nil
+  end
+  candidate = NormalizeFsPathRaw(candidate)
+  if string.sub(candidate, -1) == "/" then
+    return EnsureTrailingSlashNormRaw(candidate)
+  end
+  local dirname = string.match(candidate, "^(.*)/[^/]+$")
+  if dirname ~= nil and dirname ~= "" then
+    return EnsureTrailingSlashNormRaw(dirname)
+  end
+  local device = string.match(candidate, "^([%a]+%d*):")
+  if device ~= nil then
+    return device..":/"
+  end
+  return nil
+end
+
+local function ResolveHddBootSidecarPopstarter()
+  local candidates = {}
+  local seen = {}
+  local function add_candidate(base_path)
+    local basedir = DirectoryFromExecPath(base_path)
+    if basedir == nil or basedir == "" then
+      return
+    end
+    local sidecar = JoinPath(basedir, "POPSTARTER.ELF")
+    if seen[sidecar] == true then
+      return
+    end
+    seen[sidecar] = true
+    table.insert(candidates, sidecar)
+  end
+
+  add_candidate(BOOT_ARGV0_RAW)
+  add_candidate(BOOT_PATH_RAW)
+  add_candidate(APP_DIR_LOCAL)
+
+  for i = 1, #candidates do
+    local candidate = candidates[i]
+    if string.match(string.lower(candidate), "^hdd%d:") ~= nil then
+      local resolved_hdd = ResolveHddExecMountedPath(candidate)
+      if resolved_hdd ~= nil then
+        return resolved_hdd
+      end
+    end
+    local resolved = ResolvePathWithEnsure(candidate)
+    if resolved ~= nil then
+      return resolved
+    end
+  end
+  return nil
+end
+
 local function ResolvePopstarterPath(path)
+  local raw_path = tostring(path or "")
+  local blank_or_relative = raw_path == "" or not IsAbsoluteDevicePath(raw_path)
+  if blank_or_relative and (IsHddExecContextPath(BOOT_ARGV0_RAW) or IsHddExecContextPath(BOOT_PATH_RAW) or IsHddExecContextPath(APP_DIR_LOCAL)) then
+    local sidecar = ResolveHddBootSidecarPopstarter()
+    if sidecar ~= nil then
+      return sidecar
+    end
+  end
+
   local chosen = path
   if chosen == nil or chosen == "" then
     chosen = JoinPath(APP_DIR_LOCAL, "POPSTARTER.ELF")

@@ -62,6 +62,15 @@ local function StripExtension(path)
   local stripped = string.match(path, "(.+)%.[^%.]+$")
   return stripped or path
 end
+local function BasenameWithoutExtension(path)
+  if path == nil or path == "" then return "" end
+  local basename = string.match(path, "([^/]+)$") or path
+  local without_device = string.match(basename, "^[%a]+%d*:(.+)$")
+  if without_device ~= nil and without_device ~= "" then
+    basename = without_device
+  end
+  return StripExtension(basename) or basename
+end
 local function ResolveSelectedVcdPath(entry, game_path)
   if entry == nil or entry == "" then
     return nil
@@ -107,8 +116,17 @@ local function ResolveSelectedVcdPath(entry, game_path)
   end
   return entry
 end
-local function BuildCoverCandidates(vcd_path)
+local function BuildCoverCandidates(vcd_path, use_hdd_common_art)
   if vcd_path == nil or vcd_path == "" then return {} end
+  if use_hdd_common_art then
+    local basename = BasenameWithoutExtension(vcd_path)
+    if basename == "" then
+      return {}
+    end
+    return {
+      "hdd0:/__common/POPS/ART/"..basename..".png"
+    }
+  end
   local base = StripExtension(vcd_path)
   return {
     base..".png"
@@ -177,8 +195,8 @@ function CoverCache:GetOrLoad(path)
   self:EvictIfNeeded()
   return img
 end
-function CoverCache:UpdateSelection(vcd_path)
-  local key = tostring(vcd_path or "")
+function CoverCache:UpdateSelection(vcd_path, use_hdd_common_art)
+  local key = tostring(use_hdd_common_art == true).."|"..tostring(vcd_path or "")
   if self.last_key == key then
     return self.last_img
   end
@@ -187,7 +205,7 @@ function CoverCache:UpdateSelection(vcd_path)
   if vcd_path == nil or vcd_path == "" then
     return nil
   end
-  local candidates = BuildCoverCandidates(vcd_path)
+  local candidates = BuildCoverCandidates(vcd_path, use_hdd_common_art == true)
   for i = 1, #candidates do
     local img = self:GetOrLoad(candidates[i])
     if img ~= nil then
@@ -1534,7 +1552,7 @@ UI = {
             if UI.GameList.CoverPending and not nav_event and (now - UI.GameList.CoverPendingAt) >= UI.GameList.CoverIdleMs then
               local entry = PLDR.GAMES[UI.GameList.CURR]
               local vcd_path = ResolveSelectedVcdPath(entry, PLDR.GAMEPATH)
-              UI.CoverCache:UpdateSelection(vcd_path)
+              UI.CoverCache:UpdateSelection(vcd_path, UI.CURSCENE == UI.SCENES.GHDD)
               UI.GameList.CoverPending = false
             end
           end
