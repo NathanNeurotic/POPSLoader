@@ -169,8 +169,8 @@ local function ParseHddPartitionMount(path)
 end
 
 local HDD_SLOT_BOOT = 0
-local HDD_SLOT_COMMON = 1
-local HDD_SLOT_GAME = 2
+local HDD_SLOT_GAME = 1
+local HDD_SLOT_COMMON = 2
 
 local HDD_MOUNT_STATE = {
   slots = {},
