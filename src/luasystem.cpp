@@ -978,7 +978,7 @@ static int lua_loadELF(lua_State *L)
 		if (rebootIOP != 0) {
 			rc = LoadELFFromFileExecPS2RebootIOP(elftoload, extra_args, argv_static);
 		} else {
-			rc = LoadELFFromFileExecPS2(elftoload, extra_args, argv_static);
+			rc = LoadELFFromFile(elftoload, extra_args, argv_static);
 		}
 		lua_pushinteger(L, rc);
 		return 1;
