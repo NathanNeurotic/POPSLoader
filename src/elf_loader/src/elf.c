@@ -88,7 +88,6 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	static char launch_arg_storage[2048];
 	char resolved_path[256];
 	size_t storage_offset = 0;
-	bool use_default_argv0 = false;
 	
 	// We need to check that the ELF file before continue
 	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
@@ -111,37 +110,31 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 		return fd;
 	}
 	DPRINTF("LAUNCH: argc_in=%d argv_ptr=%s\n", argc, argv ? "set" : "null");
-	use_default_argv0 = (argc <= 0 || argv == NULL || argv[0] == NULL);
-	new_argc = use_default_argv0 ? 1 : argc;
-	DPRINTF("LAUNCH: argv0 source: %s\n", use_default_argv0 ? "resolved path" : "caller");
-	// Preparing filename and partition to be sent in the argv
-	if (new_argc + 1 > kMaxArgc) {
+	if (new_argc > kMaxArgc) {
 		return -2;
 	}
 	char *stored_filename = store_arg(resolved_path, launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
 	if (!stored_filename) {
 		return -3;
 	}
-	if (use_default_argv0) {
-		launch_argv[0] = stored_filename;
-	} else {
-		for (i = 0; i < new_argc; i++) {
-			char *stored_arg = store_arg(argv[i], launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
-			if (!stored_arg) {
-				return -3;
-			}
-			launch_argv[i] = stored_arg;
+	launch_argv[0] = stored_filename;
+	for (i = 0; i < argc; i++) {
+		const char *arg = (argv != NULL) ? argv[i] : NULL;
+		if (arg == NULL) {
+			continue;
 		}
+		char *stored_arg = store_arg(arg, launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
+		if (!stored_arg) {
+			return -3;
+		}
+		launch_argv[i + 1] = stored_arg;
 	}
 	launch_argv[new_argc] = NULL;
 
 	DPRINTF("LAUNCH: Using LoadExecPS2\n");
 	DPRINTF("LAUNCH: exec path=%s\n", resolved_path);
 	DPRINTF("LAUNCH: argc=%d\n", new_argc);
-	DPRINTF("LAUNCH: use_default_argv0=%s argv0=%s\n",
-		use_default_argv0 ? "true" : "false",
-		launch_argv[0] ? launch_argv[0] : "(null)");
-	DPRINTF("LAUNCH: argv0_final=%s\n", use_default_argv0 ? resolved_path : (launch_argv[0] ? launch_argv[0] : "(null)"));
+	DPRINTF("LAUNCH: argv0_final=%s\n", launch_argv[0] ? launch_argv[0] : "(null)");
 	DPRINTF("LAUNCH: argv1=%s\n", launch_argv[1] ? launch_argv[1] : "(null)");
 	DPRINTF("LAUNCH: argv2_is_null=%s\n", launch_argv[2] == NULL ? "yes" : "no");
 	/* LoadExecPS2 should not return on success. */
