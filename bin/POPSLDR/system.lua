@@ -731,10 +731,20 @@ local function ResolveHddBootSidecarPopstarter()
   return nil
 end
 
+local function IsDefaultRelativePopstarterPath(path)
+  local candidate = string.lower(string.gsub(tostring(path or ""), "\\", "/"))
+  candidate = string.gsub(candidate, "^%./", "")
+  return candidate == "" or candidate == "popstarter.elf"
+end
+
+local function IsLegacyDefaultPopstarterPath(path)
+  local candidate = string.lower(NormalizeFsPathRaw(tostring(path or "")))
+  return string.match(candidate, "^mass%d*:/pops/popstarter%.elf$") ~= nil
+end
+
 local function ResolvePopstarterPath(path)
   local raw_path = tostring(path or "")
-  local blank_or_relative = raw_path == "" or not IsAbsoluteDevicePath(raw_path)
-  if blank_or_relative and (IsHddExecContextPath(BOOT_ARGV0_RAW) or IsHddExecContextPath(BOOT_PATH_RAW) or IsHddExecContextPath(APP_DIR_LOCAL)) then
+  if IsDefaultRelativePopstarterPath(raw_path) or IsLegacyDefaultPopstarterPath(raw_path) then
     local sidecar = ResolveHddBootSidecarPopstarter()
     if sidecar ~= nil then
       return sidecar
@@ -857,7 +867,7 @@ end
 HDD_DIAG_BYPASS = 0
 local pldr_defaults = {
   REBOOT_IOP_WHILE_LOADING_POPSTARTER = 0;
-  POPSTARTER_PATH = "mass:/POPS/POPSTARTER.ELF";--"mass:/POPS/POPSTARTER.ELF";
+  POPSTARTER_PATH = "POPSTARTER.ELF";
   CHECK_POPSTARTER_FILES = false;
   GAMEPATH = ".";
   GAMES = {};
@@ -2908,7 +2918,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
       )
       return
     end
-    local boot_name = PLDR.replace_extension(hdd_relpath, "ELF")
+    local boot_name = BuildLiteralElfName(StripVcdExtension(hdd_relpath))
     if boot_name == nil or boot_name == "" then
       BlockLaunchFailure(
         "HDD boot arg derivation failed",
