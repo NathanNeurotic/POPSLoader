@@ -953,20 +953,32 @@ static int lua_loadELF(lua_State *L)
 	const char *elftoload = luaL_checklstring(L, 1, &size);
 	int rebootIOP = luaL_checkinteger(L, 2);
 	int extra_args = argc - 2;
-	static char selector_buf[256];
-	static char *argv_static[2];
+	static const int kMaxExtraArgs = 16;
+	static char arg_storage[1024];
+	static char *argv_static[kMaxExtraArgs + 1];
 	DPRINTF("# Loading ELF '%s' iop_reboot=%d, extra_args=%d\n", elftoload, rebootIOP, extra_args);
 	if (extra_args > 0) {
-		const char *selector = luaL_checkstring(L, 3);
-		snprintf(selector_buf, sizeof(selector_buf), "%s", selector ? selector : "");
-		argv_static[0] = selector_buf;
-		argv_static[1] = NULL;
-		DPRINTF("# Loading ELF argv0='%s' argc=1\n", argv_static[0]);
+		size_t storage_offset = 0;
+		if (extra_args > kMaxExtraArgs) {
+			return luaL_error(L, "%s: too many args (%d > %d)", __FUNCTION__, extra_args, kMaxExtraArgs);
+		}
+		for (int i = 0; i < extra_args; i++) {
+			const char *arg = luaL_checkstring(L, 3 + i);
+			size_t arg_len = strlen(arg ? arg : "") + 1;
+			if ((storage_offset + arg_len) > sizeof(arg_storage)) {
+				return luaL_error(L, "%s: arg storage overflow", __FUNCTION__);
+			}
+			memcpy(&arg_storage[storage_offset], arg ? arg : "", arg_len);
+			argv_static[i] = &arg_storage[storage_offset];
+			storage_offset += arg_len;
+			DPRINTF("# Loading ELF argv[%d]='%s'\n", i, argv_static[i]);
+		}
+		argv_static[extra_args] = NULL;
 		int rc;
 		if (rebootIOP != 0) {
-			rc = LoadELFFromFileExecPS2RebootIOP(elftoload, 1, argv_static);
+			rc = LoadELFFromFileExecPS2RebootIOP(elftoload, extra_args, argv_static);
 		} else {
-			rc = LoadELFFromFileExecPS2(elftoload, 1, argv_static);
+			rc = LoadELFFromFileExecPS2(elftoload, extra_args, argv_static);
 		}
 		lua_pushinteger(L, rc);
 		return 1;
