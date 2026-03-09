@@ -168,6 +168,10 @@ local function ParseHddPartitionMount(path)
   return nil
 end
 
+local HDD_SLOT_BOOT = 0
+local HDD_SLOT_COMMON = 1
+local HDD_SLOT_GAME = 2
+
 local HDD_MOUNT_STATE = {
   slots = {},
   partitions = {}
@@ -237,6 +241,14 @@ local function GetRecordedHddMountPrefix(partition)
     return nil
   end
   return HDD_MOUNT_STATE.partitions[normalized_partition]
+end
+
+local function NormalizeHddHelperSlot(slot)
+  local normalized = tonumber(slot)
+  if normalized == nil or normalized < HDD_SLOT_COMMON then
+    return HDD_SLOT_COMMON
+  end
+  return normalized
 end
 
 local function MountHddPartitionTracked(partition, slot, mode)
@@ -326,13 +338,14 @@ end
 
 local ProbePathExists
 
-local function ResolveHddPartitionReadablePath(partition, relpath, mounted_prefix_hint)
+local function ResolveHddPartitionReadablePath(partition, relpath, mounted_prefix_hint, slot)
   local mount_part = ParseHddPartitionMount(partition)
   local clean_relpath = string.gsub(tostring(relpath or ""), "^/+", "")
   if mount_part == nil or clean_relpath == "" then
     return nil
   end
 
+  local mount_slot = NormalizeHddHelperSlot(slot)
   local embedded_prefix = NormalizePfsPrefix(mounted_prefix_hint)
   if embedded_prefix ~= nil then
     local embedded_target = BuildMountedReadablePath(embedded_prefix, clean_relpath)
@@ -348,14 +361,6 @@ local function ResolveHddPartitionReadablePath(partition, relpath, mounted_prefi
     if recorded_target ~= nil and ProbePathExists(recorded_target) then
       return recorded_target
     end
-  end
-
-  local mount_slot = ParsePfsSlot(embedded_prefix)
-  if mount_slot == nil then
-    mount_slot = ParsePfsSlot(recorded_prefix)
-  end
-  if mount_slot == nil then
-    mount_slot = 0
   end
 
   local mounted, mounted_prefix = MountHddPartitionTracked(mount_part, mount_slot, FIO_MT_RDONLY)
@@ -386,7 +391,7 @@ local function ResolveHddReadablePath(path)
     return nil
   end
 
-  return ResolveHddPartitionReadablePath(mount_part, relpath, ExtractEmbeddedHddMountPrefix(candidate))
+  return ResolveHddPartitionReadablePath(mount_part, relpath, ExtractEmbeddedHddMountPrefix(candidate), HDD_SLOT_COMMON)
 end
 
 local function EnsureHddExecPathReady(path)
@@ -409,13 +414,35 @@ local function ExtractLaunchPfsSlot(path)
   return nil
 end
 
-local function PrepareForExternalELFLaunch(path)
+local function CollectHddKeepSlots(path, extra_keep_slots)
+  local keep = {}
+  local slot = ExtractLaunchPfsSlot(path)
+  if slot ~= nil then
+    keep[slot] = true
+  end
+  if type(extra_keep_slots) == "table" then
+    for i = 1, #extra_keep_slots do
+      local extra_slot = tonumber(extra_keep_slots[i])
+      if extra_slot ~= nil then
+        keep[extra_slot] = true
+      end
+    end
+  else
+    local extra_slot = tonumber(extra_keep_slots)
+    if extra_slot ~= nil then
+      keep[extra_slot] = true
+    end
+  end
+  return keep
+end
+
+local function PrepareForExternalELFLaunch(path, extra_keep_slots)
   if type(HDD) ~= "table" or type(HDD.UMountPartition) ~= "function" then
     return
   end
-  local keep_slot = ExtractLaunchPfsSlot(path)
-  for slot = 0, 3 do
-    if slot ~= keep_slot then
+  local keep_slots = CollectHddKeepSlots(path, extra_keep_slots)
+  for slot = HDD_SLOT_COMMON, 3 do
+    if keep_slots[slot] ~= true then
       UMountHddPartitionTracked(slot)
     end
   end
@@ -702,12 +729,12 @@ function PLDR.ResolveHddReadablePath(path)
   return ResolveHddReadablePath(path)
 end
 
-function PLDR.ResolveHddPartitionReadablePath(partition, relpath, mounted_prefix_hint)
-  return ResolveHddPartitionReadablePath(partition, relpath, mounted_prefix_hint)
+function PLDR.ResolveHddPartitionReadablePath(partition, relpath, mounted_prefix_hint, slot)
+  return ResolveHddPartitionReadablePath(partition, relpath, mounted_prefix_hint, slot)
 end
 
-function PLDR.PrepareForExternalELFLaunch(path)
-  return PrepareForExternalELFLaunch(path)
+function PLDR.PrepareForExternalELFLaunch(path, extra_keep_slots)
+  return PrepareForExternalELFLaunch(path, extra_keep_slots)
 end
 
 local function DetectBootDevice()
@@ -774,12 +801,12 @@ local pldr_defaults = {
   HDD = {
     USECACHE = false;
     LOADSTATE = 0; -- 0:NOT_LOADED, 1:LOADED, -1:LOADED_BUT_FAILED
-    EXTRAPARTS = {false, false, false, false, false, false, false, false, false};
-    MAINPART = false;
     FOUNDANY = false;
     HAS_CHECKED = false;
     HAS_CHECKED_DEPS = false;
     STATUS = 3,
+    AVAILABLE = {},
+    POPS_PARTITIONS = {},
     GAMEPARTS = {}
   };
   USB = {
@@ -804,6 +831,23 @@ for k, v in pairs(pldr_defaults) do
     PLDR[k] = v
   end
 end
+
+PLDR.HDD = PLDR.HDD or {}
+PLDR.HDD.AVAILABLE = PLDR.HDD.AVAILABLE or {}
+PLDR.HDD.POPS_PARTITIONS = PLDR.HDD.POPS_PARTITIONS or {
+  "__.POPS",
+  "__.POPS0",
+  "__.POPS1",
+  "__.POPS2",
+  "__.POPS3",
+  "__.POPS4",
+  "__.POPS5",
+  "__.POPS6",
+  "__.POPS7",
+  "__.POPS8",
+  "__.POPS9"
+}
+PLDR.HDD.GAMEPARTS = PLDR.HDD.GAMEPARTS or {}
 
 PLDR.VIDEO_STANDARD_NTSC = "NTSC"
 PLDR.VIDEO_STANDARD_PAL = "PAL"
@@ -2026,9 +2070,11 @@ function PLDR.CheckPOPStarterDEPS(device)
   if UI.IsUsbScene(device) then
     return doesFileExist("mass:/POPS/POPS_IOX.PAK")
   elseif device == UI.SCENES.GHDD then
-    local a = HDD.MountPartition("hdd0:__common", 0, FIO_MT_RDONLY)
-    if a then
-      return a, doesFileExist("pfs0:/POPS/POPS.ELF"), doesFileExist("pfs0:/POPS/IOPRP252.IMG")
+    local a, prefix = MountHddPartitionTracked("hdd0:__common", HDD_SLOT_COMMON, FIO_MT_RDONLY)
+    if a and prefix ~= nil then
+      return a,
+        doesFileExist(BuildMountedReadablePath(prefix, "POPS/POPS.ELF")),
+        doesFileExist(BuildMountedReadablePath(prefix, "POPS/IOPRP252.IMG"))
     else
       return a, false, false
     end
@@ -2135,7 +2181,11 @@ local function EncodeHddGameEntry(partition, relpath)
   return partition.."|"..relpath
 end
 
-local function AppendHddGameList(partition, list_path, rel_prefix)
+local function GetOrderedHddPopsPartitions()
+  return PLDR.HDD.POPS_PARTITIONS or {}
+end
+
+local function AppendHddGameList(partition, list_path)
   if list_path == nil then
     return
   end
@@ -2146,11 +2196,7 @@ local function AppendHddGameList(partition, list_path, rel_prefix)
   for i = 1, #DIR do
     if not DIR[i].directory then
       if string.lower(string.sub(DIR[i].name, -4)) == ".vcd" then
-        local relpath = DIR[i].name
-        if rel_prefix ~= nil and rel_prefix ~= "" then
-          relpath = rel_prefix..relpath
-        end
-        local encoded = EncodeHddGameEntry(partition, relpath)
+        local encoded = EncodeHddGameEntry(partition, DIR[i].name)
         if encoded ~= nil then
           table.insert(PLDR.GAMES, encoded)
           PLDR.HDD.GAMEPARTS[encoded] = "hdd0:"..partition
@@ -2162,16 +2208,14 @@ end
 
 function PLDR.HDD.CheckAvailableHddPopsParts()
   if not PLDR.HDD.HAS_CHECKED then --HDD is checked only once since it cannot be removed/replaced without damaging the console
-    if HDD.MountPartition("hdd0:__.POPS", 0, FIO_MT_RDONLY) then
-      PLDR.HDD.MAINPART = true
-      HDD.UMountPartition(0)
-    end
-    PLDR.HDD.FOUNDANY = PLDR.HDD.MAINPART
-    for i=1, 9 do
-      if HDD.MountPartition(("hdd0:__.POPS%d"):format(i), 0, FIO_MT_RDONLY) then
-        PLDR.HDD.EXTRAPARTS[i] = true
+    PLDR.HDD.FOUNDANY = false
+    for i = 1, #GetOrderedHddPopsPartitions() do
+      local partition = GetOrderedHddPopsPartitions()[i]
+      local mounted = MountHddPartitionTracked("hdd0:"..partition, HDD_SLOT_GAME, FIO_MT_RDONLY)
+      PLDR.HDD.AVAILABLE[partition] = mounted == true
+      if mounted == true then
         PLDR.HDD.FOUNDANY = true
-        HDD.UMountPartition(0)
+        UMountHddPartitionTracked(HDD_SLOT_GAME)
       end
     end
     PLDR.HDD.HAS_CHECKED = true
@@ -2182,25 +2226,18 @@ function PLDR.HDD.BuildGameList()
   PLDR.GAMES = {}
   if type(PLDR.HDDCACHE) == "table" and PLDR.HDD.USECACHE then PLDR.GAMES = PLDR.HDDCACHE end
   PLDR.HDD.GAMEPARTS = {}
-  PLDR.GAMEPATH = "pfs0:/"
+  PLDR.GAMEPATH = BuildMountedPfsPrefix(HDD_SLOT_GAME)
   if not PLDR.HDD.FOUNDANY then return end
-  if PLDR.HDD.MAINPART then
-    if HDD.MountPartition("hdd0:__.POPS", 0, FIO_MT_RDONLY) then
-      AppendHddGameList("__.POPS", "pfs0:/", "")
-      AppendHddGameList("__.POPS", "pfs0:/POPS/", "POPS/")
-      HDD.UMountPartition(0)
-    end
-  end
-  for i=1, 9 do
-    if PLDR.HDD.EXTRAPARTS[i] then
-      if HDD.MountPartition("hdd0:__.POPS"..i, 0, FIO_MT_RDONLY) then
-        local partition = "__.POPS"..i
-        AppendHddGameList(partition, "pfs0:/", "")
-        AppendHddGameList(partition, "pfs0:/POPS/", "POPS/")
-        HDD.UMountPartition(0)
+  for i = 1, #GetOrderedHddPopsPartitions() do
+    local partition = GetOrderedHddPopsPartitions()[i]
+    if PLDR.HDD.AVAILABLE[partition] == true then
+      if MountHddPartitionTracked("hdd0:"..partition, HDD_SLOT_GAME, FIO_MT_RDONLY) then
+        AppendHddGameList(partition, PLDR.GAMEPATH)
+        UMountHddPartitionTracked(HDD_SLOT_GAME)
       end
     end
   end
+  table.sort(PLDR.GAMES)
 end
 
 function PLDR.LoadHDDModules()
@@ -2610,7 +2647,7 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     return
   end
   SetLaunchPhase(LaunchState.PHASE_EXEC)
-  PrepareForExternalELFLaunch(popstarter)
+  PrepareForExternalELFLaunch(popstarter, context and context.keep_hdd_slots or nil)
   local rc
   if exec_args ~= nil and #exec_args > 0 and unpack_fn ~= nil then
     rc = System.loadELF(popstarter, reboot_iop, unpack_fn(exec_args))
@@ -2699,6 +2736,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   local hdd_partition_label = nil
   local hdd_relpath = nil
   local hdd_partition = nil
+  local hdd_vcd_path = nil
   if policy.name == "HDD" then
     hdd_partition_label, hdd_relpath = ParseHddGameEntry(selected_entry)
     hdd_relpath = NormalizeHddRelpath(hdd_relpath or selected_entry)
@@ -2760,6 +2798,50 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     normalized_basename = ""
     bootparam = ""
     bootparam_basename_used = ""
+    if hdd_partition == nil or hdd_relpath == "" then
+      BlockLaunchFailure(
+        "Invalid HDD game entry",
+        popstarter,
+        device_page,
+        nil,
+        selected_entry,
+        APP_DIR_LOCAL,
+        nil,
+        nil
+      )
+      return
+    end
+    hdd_vcd_path = ResolveHddPartitionReadablePath(hdd_partition, hdd_relpath, nil, HDD_SLOT_GAME)
+    if hdd_vcd_path == nil then
+      BlockLaunchFailure(
+        "HDD game mount failed",
+        popstarter,
+        device_page,
+        nil,
+        selected_entry,
+        APP_DIR_LOCAL,
+        nil,
+        nil
+      )
+      return
+    end
+    local boot_name = PLDR.replace_extension(hdd_relpath, "ELF")
+    if boot_name == nil or boot_name == "" then
+      BlockLaunchFailure(
+        "HDD boot arg derivation failed",
+        popstarter,
+        device_page,
+        nil,
+        selected_entry,
+        APP_DIR_LOCAL,
+        nil,
+        nil
+      )
+      return
+    end
+    bootparam = "isra:/"..boot_name
+    bootparam_exists = true
+    vcd_path = hdd_vcd_path
   else
     bootparam, prefix, normalized_basename, prefix_added = BuildPopstarterBootString(
       boot_source_mode,
@@ -2826,6 +2908,12 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     end
   end
   local argv = {argv0_selector}
+  local keep_hdd_slots = nil
+  if policy.name == "HDD" then
+    argv0_selector = bootparam
+    argv = {bootparam, "--nr"}
+    keep_hdd_slots = {HDD_SLOT_GAME}
+  end
 
   local context = {
     device_page = device_page,
@@ -2848,7 +2936,8 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     argv0_selector = argv0_selector,
     game_name = game_name,
     bootparam_source = boot_source_mode,
-    hdd_init = hdd_init
+    hdd_init = hdd_init,
+    keep_hdd_slots = keep_hdd_slots
   }
   local reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
   if policy.name == "HDD" then

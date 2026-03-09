@@ -1603,7 +1603,12 @@ UI = {
               popstarter_ok = doesFileExist(popstarter_path)
             end
             if not popstarter_ok then
-              UI.Notif_queue.add("Cant find POPSTARTER ELF\n"..tostring(popstarter_path))
+              local configured_popstarter_path = tostring(PLDR.POPSTARTER_PATH or "")
+              local message = "Cant find POPSTARTER ELF\n"..configured_popstarter_path
+              if configured_popstarter_path ~= tostring(popstarter_path) then
+                message = message.."\nResolved: "..tostring(popstarter_path)
+              end
+              UI.Notif_queue.add(message)
               return
             end
             local entry = PLDR.GAMES[UI.GameList.CURR]
@@ -1622,7 +1627,9 @@ UI = {
             if UI.CURSCENE == UI.SCENES.GHDD then
               launch_path = ""
             end
-            if root ~= nil then
+            if UI.CURSCENE == UI.SCENES.GHDD then
+              PLDR.RunPOPStarterGame(launch_path, entry, UI.CURSCENE)
+            elseif root ~= nil then
               PLDR.RunPOPStarterGame(root, rel, UI.CURSCENE)
             else
               PLDR.RunPOPStarterGame(launch_path, entry, UI.CURSCENE)
