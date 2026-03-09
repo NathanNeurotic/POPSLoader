@@ -2598,23 +2598,6 @@ local function NormalizeHddRelpath(relpath)
   return cleaned
 end
 
-local function BuildIsraBootPathFromMountedVcd(path)
-  local mounted_path = tostring(path or "")
-  if mounted_path == "" then
-    return ""
-  end
-  local relpath = string.gsub(mounted_path, "^[%a]+%d*:/", "")
-  relpath = string.gsub(relpath, "%.[Vv][Cc][Dd]$", ".ELF")
-  if not string.match(relpath, "%.[Ee][Ll][Ff]$") then
-    relpath = relpath..".ELF"
-  end
-  relpath = string.gsub(relpath, "^/+", "")
-  if relpath == "" then
-    return ""
-  end
-  return "isra:/"..relpath
-end
-
 local function GetBootOccupiedPfsSlot()
   local candidates = {
     BOOT_ARGV0_RAW,
@@ -3008,7 +2991,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     if mount_prefix ~= nil then
       hdd_vcd_path = BuildMountedReadablePath(mount_prefix, hdd_relpath)
     end
-    bootparam = BuildIsraBootPathFromMountedVcd(hdd_vcd_path)
+    bootparam = hdd_vcd_path
     if bootparam == nil or bootparam == "" then
       BlockLaunchFailure(
         "Invalid HDD boot argument",
