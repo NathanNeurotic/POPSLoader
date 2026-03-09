@@ -251,6 +251,25 @@ local function NormalizeHddHelperSlot(slot)
   return normalized
 end
 
+local function GetActiveHddGameSlot()
+  local active = tonumber(PLDR and PLDR.HDD and PLDR.HDD.GAME_SLOT or nil)
+  if active == HDD_SLOT_BOOT or active == HDD_SLOT_GAME then
+    return active
+  end
+  return HDD_SLOT_GAME
+end
+
+local function GetHddGameSlotCandidates()
+  local active = tonumber(PLDR and PLDR.HDD and PLDR.HDD.GAME_SLOT or nil)
+  if active == HDD_SLOT_BOOT or active == HDD_SLOT_GAME then
+    if active == HDD_SLOT_BOOT then
+      return { HDD_SLOT_BOOT, HDD_SLOT_GAME }
+    end
+    return { HDD_SLOT_GAME, HDD_SLOT_BOOT }
+  end
+  return { HDD_SLOT_GAME, HDD_SLOT_BOOT }
+end
+
 local function MountHddPartitionTracked(partition, slot, mode)
   local normalized_partition = ParseHddPartitionMount(partition)
   if normalized_partition == nil then
@@ -375,6 +394,52 @@ local function ResolveHddPartitionReadablePath(partition, relpath, mounted_prefi
   return nil
 end
 
+local function MountHddGamePartitionTracked(partition, mode)
+  local normalized_partition = ParseHddPartitionMount(partition)
+  if normalized_partition == nil then
+    return false, nil, nil
+  end
+  local candidates = GetHddGameSlotCandidates()
+  for i = 1, #candidates do
+    local slot = candidates[i]
+    local mounted, prefix = MountHddPartitionTracked(normalized_partition, slot, mode)
+    if mounted and prefix ~= nil then
+      if type(PLDR) == "table" and type(PLDR.HDD) == "table" then
+        PLDR.HDD.GAME_SLOT = slot
+      end
+      return true, prefix, slot
+    end
+  end
+  return false, nil, nil
+end
+
+local function ResolveHddGamePartitionReadablePath(partition, relpath)
+  local mount_part = ParseHddPartitionMount(partition)
+  local clean_relpath = string.gsub(tostring(relpath or ""), "^/+", "")
+  if mount_part == nil or clean_relpath == "" then
+    return nil
+  end
+
+  local recorded_prefix = GetRecordedHddMountPrefix(mount_part)
+  if recorded_prefix ~= nil then
+    local recorded_target = BuildMountedReadablePath(recorded_prefix, clean_relpath)
+    if recorded_target ~= nil and ProbePathExists(recorded_target) then
+      return recorded_target
+    end
+  end
+
+  local mounted, mounted_prefix = MountHddGamePartitionTracked(mount_part, FIO_MT_RDONLY)
+  if not mounted or mounted_prefix == nil then
+    return nil
+  end
+
+  local mounted_target = BuildMountedReadablePath(mounted_prefix, clean_relpath)
+  if mounted_target ~= nil and ProbePathExists(mounted_target) then
+    return mounted_target
+  end
+  return nil
+end
+
 local function ResolveHddReadablePath(path)
   local candidate = tostring(path or "")
   if candidate == "" then
@@ -441,7 +506,7 @@ local function PrepareForExternalELFLaunch(path, extra_keep_slots)
     return
   end
   local keep_slots = CollectHddKeepSlots(path, extra_keep_slots)
-  for slot = HDD_SLOT_COMMON, 3 do
+  for slot = 1, 3 do
     if keep_slots[slot] ~= true then
       UMountHddPartitionTracked(slot)
     end
@@ -2209,13 +2274,17 @@ end
 function PLDR.HDD.CheckAvailableHddPopsParts()
   if not PLDR.HDD.HAS_CHECKED then --HDD is checked only once since it cannot be removed/replaced without damaging the console
     PLDR.HDD.FOUNDANY = false
+    PLDR.HDD.AVAILABLE = {}
+    PLDR.HDD.GAME_SLOT = nil
     for i = 1, #GetOrderedHddPopsPartitions() do
       local partition = GetOrderedHddPopsPartitions()[i]
-      local mounted = MountHddPartitionTracked("hdd0:"..partition, HDD_SLOT_GAME, FIO_MT_RDONLY)
+      local mounted, _, slot = MountHddGamePartitionTracked("hdd0:"..partition, FIO_MT_RDONLY)
       PLDR.HDD.AVAILABLE[partition] = mounted == true
       if mounted == true then
         PLDR.HDD.FOUNDANY = true
-        UMountHddPartitionTracked(HDD_SLOT_GAME)
+        if slot ~= nil then
+          UMountHddPartitionTracked(slot)
+        end
       end
     end
     PLDR.HDD.HAS_CHECKED = true
@@ -2226,14 +2295,18 @@ function PLDR.HDD.BuildGameList()
   PLDR.GAMES = {}
   if type(PLDR.HDDCACHE) == "table" and PLDR.HDD.USECACHE then PLDR.GAMES = PLDR.HDDCACHE end
   PLDR.HDD.GAMEPARTS = {}
-  PLDR.GAMEPATH = BuildMountedPfsPrefix(HDD_SLOT_GAME)
+  PLDR.GAMEPATH = BuildMountedPfsPrefix(GetActiveHddGameSlot())
   if not PLDR.HDD.FOUNDANY then return end
   for i = 1, #GetOrderedHddPopsPartitions() do
     local partition = GetOrderedHddPopsPartitions()[i]
     if PLDR.HDD.AVAILABLE[partition] == true then
-      if MountHddPartitionTracked("hdd0:"..partition, HDD_SLOT_GAME, FIO_MT_RDONLY) then
-        AppendHddGameList(partition, PLDR.GAMEPATH)
-        UMountHddPartitionTracked(HDD_SLOT_GAME)
+      local mounted, prefix, slot = MountHddGamePartitionTracked("hdd0:"..partition, FIO_MT_RDONLY)
+      if mounted and prefix ~= nil then
+        PLDR.GAMEPATH = prefix
+        AppendHddGameList(partition, prefix)
+        if slot ~= nil then
+          UMountHddPartitionTracked(slot)
+        end
       end
     end
   end
@@ -2719,6 +2792,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   local policy, device_page = ResolveLaunchPolicy(gamelocation, ui_scene)
   local selected_entry = tostring(game or "")
   local popstarter = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
+  local popstarter_slot = ExtractLaunchPfsSlot(popstarter)
   if selected_entry == "" then
     BlockLaunchFailure(
       "Invalid game selection",
@@ -2811,7 +2885,10 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
       )
       return
     end
-    hdd_vcd_path = ResolveHddPartitionReadablePath(hdd_partition, hdd_relpath, nil, HDD_SLOT_GAME)
+    if popstarter_slot == HDD_SLOT_BOOT and type(PLDR) == "table" and type(PLDR.HDD) == "table" then
+      PLDR.HDD.GAME_SLOT = HDD_SLOT_GAME
+    end
+    hdd_vcd_path = ResolveHddGamePartitionReadablePath(hdd_partition, hdd_relpath)
     if hdd_vcd_path == nil then
       BlockLaunchFailure(
         "HDD game mount failed",
@@ -2912,7 +2989,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   if policy.name == "HDD" then
     argv0_selector = bootparam
     argv = {bootparam, "--nr"}
-    keep_hdd_slots = {HDD_SLOT_GAME}
+    keep_hdd_slots = {GetActiveHddGameSlot()}
   end
 
   local context = {
