@@ -1,26 +1,32 @@
 POPSLDR_VER = "v1.0.0 - rev3"
 
---- Processes a HDD full path into its components. (eg: `hdd0:__system:pfs:/osd110/hosdsys.elf`)
+--- Processes a HDD full path into its components.
+--- Supports both explicit PFS paths (`hdd0:__system:pfs:/osd110/hosdsys.elf`)
+--- and raw OPL-style paths (`hdd0:+OPL/APPS/PS1_POPSLOADER/POPSLOADER.ELF`).
 ---@param PATH string
 ---@return string mountpart: will return partition path for mounting (`hdd0:__system`)
 ---@return string pfsindx: will return pfs index (`pfs:`)
 ---@return string filepath: will return path to file when partition gets mounted (`pfs:/osd110/hosdsys.elf`)
 function GetMountData(PATH)
-  local CNT = 0
-  local TBL = {}
-  for i in string.gmatch(PATH, "[^:]*") do
-    table.insert(TBL, i)
-    CNT = CNT+1
+  local candidate = tostring(PATH or "")
+  local device, partition, pfsdev, suffix = string.match(candidate, "^([Hh][Dd][Dd]%d):([^:]+):([Pp][Ff][Ss]%d*):(.+)$")
+  if device ~= nil and partition ~= nil and pfsdev ~= nil and suffix ~= nil then
+    if string.sub(suffix, 1, 1) ~= "/" then
+      suffix = "/"..suffix
+    end
+    return string.format("%s:%s", device, partition), string.lower(pfsdev)..":", string.lower(pfsdev)..":"..suffix
   end
-  local mountpart = ""
-  local pfsindx   = ""
-  local filepath  = ""
-  if CNT == 4 then
-    mountpart = string.format("%s:%s", TBL[1], TBL[2])
-    pfsindx   = string.format("%s:", TBL[3])
-    filepath  = string.format("%s:%s", TBL[3], TBL[4])
+
+  device, partition, suffix = string.match(candidate, "^([Hh][Dd][Dd]%d):/+([^/]+)/(.+)$")
+  if device == nil or partition == nil then
+    device, partition, suffix = string.match(candidate, "^([Hh][Dd][Dd]%d):([^:/]+)/(.+)$")
   end
-  return mountpart, pfsindx, filepath
+  if device ~= nil and partition ~= nil and suffix ~= nil then
+    suffix = string.gsub(suffix, "^/+", "")
+    return string.format("%s:%s", device, partition), "pfs1:", "pfs1:/"..suffix
+  end
+
+  return "", "", ""
 end
 
 

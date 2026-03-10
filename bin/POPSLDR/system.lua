@@ -80,6 +80,31 @@ local function EnsureTrailingSlashNormRaw(path)
   return normalized.."/"
 end
 
+local function IsPfsMountedPath(path)
+  return string.match(string.lower(tostring(path or "")), "^pfs%d*:/") ~= nil
+end
+
+local function IsRawHddPartitionPath(path)
+  local candidate = NormalizeFsPathRaw(tostring(path or ""))
+  candidate = string.lower(candidate)
+  if string.match(candidate, "^hdd%d:[^:]+:[%a]+%d*:/") ~= nil then
+    return false
+  end
+  if string.match(candidate, "^hdd%d:/+[^/]+/.+") ~= nil then
+    return true
+  end
+  return string.match(candidate, "^hdd%d:[^:/]+/.+") ~= nil
+end
+
+local function ResolveAppDirLocal()
+  local current_dir = EnsureTrailingSlashNormRaw(System.currentDirectory() or "")
+  local app_dir = APP_DIR or System.currentDirectory() or ""
+  if IsPfsMountedPath(current_dir) and IsRawHddPartitionPath(app_dir) then
+    return current_dir
+  end
+  return EnsureTrailingSlashNormRaw(app_dir)
+end
+
 function NormalizeDirPath(path)
   if path == nil or path == "" then return "" end
   local normalized = NormalizeFsPathRaw(path)
@@ -100,7 +125,7 @@ function JoinPath(base, rel)
   return normalized..cleaned
 end
 
-local APP_DIR_LOCAL = EnsureTrailingSlashNormRaw(APP_DIR or System.currentDirectory() or "")
+local APP_DIR_LOCAL = ResolveAppDirLocal()
 APP_DIR_NORM = APP_DIR_LOCAL
 local SELECTOR_MODE = "basename"
 
@@ -696,6 +721,7 @@ local function DirectoryFromExecPath(path)
 end
 
 local function ResolveHddBootSidecarPopstarter()
+  local mounted_candidates = {}
   local hdd_candidates = {}
   local other_candidates = {}
   local seen = {}
@@ -709,7 +735,10 @@ local function ResolveHddBootSidecarPopstarter()
       return
     end
     seen[sidecar] = true
-    if string.match(string.lower(sidecar), "^hdd%d:") ~= nil then
+    local lowered = string.lower(sidecar)
+    if string.match(lowered, "^pfs%d*:/") ~= nil then
+      table.insert(mounted_candidates, sidecar)
+    elseif string.match(lowered, "^hdd%d:") ~= nil then
       table.insert(hdd_candidates, sidecar)
     else
       table.insert(other_candidates, sidecar)
@@ -719,6 +748,12 @@ local function ResolveHddBootSidecarPopstarter()
   add_candidate(BOOT_ARGV0_RAW)
   add_candidate(BOOT_PATH_RAW)
   add_candidate(APP_DIR_LOCAL)
+
+  for i = 1, #mounted_candidates do
+    if ProbePathExists(mounted_candidates[i]) then
+      return mounted_candidates[i]
+    end
+  end
 
   for i = 1, #hdd_candidates do
     local resolved_hdd = ResolveHddReadablePath(hdd_candidates[i])
@@ -1392,7 +1427,7 @@ function PLDR.TryOpenFirst(paths)
   return -1, nil
 end
 
-APP_DIR_NORM = PLDR.EnsureTrailingSlashNorm(APP_DIR or System.currentDirectory() or "")
+APP_DIR_NORM = ResolveAppDirLocal()
 APP_DIR_LOCAL = APP_DIR_NORM
 
 function PLDR.BdmaSourceCandidates(rel)
