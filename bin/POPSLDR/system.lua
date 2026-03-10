@@ -171,6 +171,7 @@ end
 local HDD_SLOT_BOOT = 0
 local HDD_SLOT_GAME = 1
 local HDD_SLOT_COMMON = 2
+local HDD_SLOT_POPSTARTER = 3
 
 local HDD_MOUNT_STATE = {
   slots = {},
@@ -456,7 +457,7 @@ local function ResolveHddReadablePath(path)
     return nil
   end
 
-  return ResolveHddPartitionReadablePath(mount_part, relpath, ExtractEmbeddedHddMountPrefix(candidate), HDD_SLOT_COMMON)
+  return ResolveHddPartitionReadablePath(mount_part, relpath, ExtractEmbeddedHddMountPrefix(candidate), HDD_SLOT_POPSTARTER)
 end
 
 local function EnsureHddExecPathReady(path)
@@ -700,6 +701,13 @@ local function ResolveHddBootSidecarPopstarter()
   add_candidate(BOOT_PATH_RAW)
   add_candidate(APP_DIR_LOCAL)
 
+  for i = 1, #hdd_candidates do
+    local resolved_hdd = ResolveHddReadablePath(hdd_candidates[i])
+    if resolved_hdd ~= nil then
+      return resolved_hdd
+    end
+  end
+
   for i = 1, #other_candidates do
     local mounted_candidate = ResolveHddReadablePath(other_candidates[i])
     if mounted_candidate ~= nil then
@@ -707,13 +715,6 @@ local function ResolveHddBootSidecarPopstarter()
     end
     if ProbePathExists(other_candidates[i]) then
       return other_candidates[i]
-    end
-  end
-
-  for i = 1, #hdd_candidates do
-    local resolved_hdd = ResolveHddReadablePath(hdd_candidates[i])
-    if resolved_hdd ~= nil then
-      return resolved_hdd
     end
   end
 
