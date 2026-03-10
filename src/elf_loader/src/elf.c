@@ -14,6 +14,7 @@
 #include <kernel.h>
 #include <loadfile.h>
 #include <iopcontrol.h>
+#define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
 #include <sys/stat.h>
 #include <stdbool.h>
