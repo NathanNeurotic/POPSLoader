@@ -43,13 +43,25 @@ static bool build_host_alt_path(const char *filename, char *out, size_t out_size
 	return true;
 }
 
+static bool can_open_exec_path(const char *filename) {
+	int fd;
+	if (filename == NULL || filename[0] == '\0') {
+		return false;
+	}
+	fd = open(filename, O_RDONLY);
+	if (fd < 0) {
+		return false;
+	}
+	close(fd);
+	return true;
+}
+
 static int resolve_exec_path(const char *filename, char *out, size_t out_size) {
-	struct stat buffer;
-	if (stat(filename, &buffer) == 0) {
+	if (can_open_exec_path(filename)) {
 		snprintf(out, out_size, "%s", filename);
 		return 0;
 	}
-	if (build_host_alt_path(filename, out, out_size) && stat(out, &buffer) == 0) {
+	if (build_host_alt_path(filename, out, out_size) && can_open_exec_path(out)) {
 		return 0;
 	}
 	return -1;
