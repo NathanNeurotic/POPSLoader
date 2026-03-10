@@ -1479,9 +1479,19 @@ function PLDR.BdmaSourceCandidates(rel)
 end
 
 local function EncodeSettings()
+  local selected_profile = tonumber(PLDR.SELECTED_PROFILE) or 1
+  local configured_popstarter = tostring(PLDR.POPSTARTER_PATH or "")
+  local profile_popstarter = ""
+  if PLDR.PROFILES ~= nil and PLDR.PROFILES[selected_profile] ~= nil then
+    profile_popstarter = tostring(PLDR.PROFILES[selected_profile].ELF or "")
+  end
+  local persisted_popstarter = configured_popstarter
+  if configured_popstarter ~= "" and NormalizeFsPathRaw(configured_popstarter) == NormalizeFsPathRaw(profile_popstarter) then
+    persisted_popstarter = ""
+  end
   local lines = {
-    "PROFILE="..tostring(tonumber(PLDR.SELECTED_PROFILE) or 1),
-    "POPSTARTER_PATH="..tostring(PLDR.POPSTARTER_PATH or ""),
+    "PROFILE="..tostring(selected_profile),
+    "POPSTARTER_PATH="..persisted_popstarter,
     "BDMA="..tostring(PLDR.BDMA_MODE_KEY or "FAT32"),
     "DKWDRV_PATH="..tostring(PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH),
     "VIDEO_STANDARD="..tostring(NormalizeVideoStandard(PLDR.VIDEO_STANDARD))
