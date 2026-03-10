@@ -1439,7 +1439,30 @@ local function EnsureDirectory(path)
 end
 
 function PLDR.EnsurePopstarterDir()
-  return EnsureDirectory(PLDR.POPSTARTER_DIR)
+  if not EnsureDirectory(PLDR.POPSTARTER_DIR) then
+    return false
+  end
+  for i = 1, #BDMA_UI_FILES do
+    local asset = BDMA_UI_FILES[i]
+    local dest = POPSTARTER_PACK_ROOT.."/"..asset.dst
+    if not doesFileExist(dest) then
+      local bytes = nil
+      if type(System) == "table" and type(System.getEmbeddedAsset) == "function" then
+        local ok_embedded, embedded = pcall(System.getEmbeddedAsset, asset.src)
+        if ok_embedded and embedded ~= nil then
+          bytes = embedded
+        end
+      end
+      if bytes == nil then
+        return false
+      end
+      local ok_write, wrote = pcall(WriteBytesAtomicBounded, bytes, dest)
+      if not ok_write or not wrote then
+        return false
+      end
+    end
+  end
+  return true
 end
 
 function PLDR.EnsureTrailingSlashNorm(p)
