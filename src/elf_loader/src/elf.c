@@ -92,13 +92,14 @@ static void wipe_bramMem(void) {
 
 int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	int i;
-	int new_argc = argc + 1;
+	int new_argc = 1;
 	int fd = -1;
 	static const int kMaxArgc = 32;
 	static char *launch_argv[33];
 	static char launch_arg_storage[2048];
 	char resolved_path[256];
 	size_t storage_offset = 0;
+	bool use_default_argv0 = false;
 	
 	// We need to check that the ELF file before continue
 	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
@@ -121,6 +122,8 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 		return fd;
 	}
 	DPRINTF("LAUNCH: argc_in=%d argv_ptr=%s\n", argc, argv ? "set" : "null");
+	use_default_argv0 = (argc <= 0 || argv == NULL || argv[0] == NULL);
+	new_argc = use_default_argv0 ? 1 : argc;
 	if (new_argc > kMaxArgc) {
 		return -2;
 	}
@@ -128,17 +131,20 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	if (!stored_filename) {
 		return -3;
 	}
-	launch_argv[0] = stored_filename;
-	for (i = 0; i < argc; i++) {
-		const char *arg = (argv != NULL) ? argv[i] : NULL;
-		if (arg == NULL) {
-			continue;
+	if (use_default_argv0) {
+		launch_argv[0] = stored_filename;
+	} else {
+		for (i = 0; i < new_argc; i++) {
+			const char *arg = argv[i];
+			if (arg == NULL) {
+				continue;
+			}
+			char *stored_arg = store_arg(arg, launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
+			if (!stored_arg) {
+				return -3;
+			}
+			launch_argv[i] = stored_arg;
 		}
-		char *stored_arg = store_arg(arg, launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
-		if (!stored_arg) {
-			return -3;
-		}
-		launch_argv[i + 1] = stored_arg;
 	}
 	launch_argv[new_argc] = NULL;
 
