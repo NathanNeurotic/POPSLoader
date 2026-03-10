@@ -502,11 +502,30 @@ local function CollectHddKeepSlots(path, extra_keep_slots)
   return keep
 end
 
+local function PreserveBootPfsSlotsDuringElfLoad(path, keep_slots)
+  if ExtractLaunchPfsSlot(path) == nil then
+    return keep_slots
+  end
+  local boot_candidates = {
+    BOOT_ARGV0_RAW,
+    BOOT_PATH_RAW,
+    APP_DIR_LOCAL
+  }
+  for i = 1, #boot_candidates do
+    local boot_slot = ExtractLaunchPfsSlot(boot_candidates[i])
+    if boot_slot ~= nil then
+      keep_slots[boot_slot] = true
+    end
+  end
+  return keep_slots
+end
+
 local function PrepareForExternalELFLaunch(path, extra_keep_slots)
   if type(HDD) ~= "table" or type(HDD.UMountPartition) ~= "function" then
     return
   end
   local keep_slots = CollectHddKeepSlots(path, extra_keep_slots)
+  keep_slots = PreserveBootPfsSlotsDuringElfLoad(path, keep_slots)
   for slot = 0, 3 do
     if keep_slots[slot] ~= true then
       UMountHddPartitionTracked(slot)
