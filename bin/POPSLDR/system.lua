@@ -767,12 +767,6 @@ local function ResolveHddBootSidecarPopstarter()
   add_candidate(BOOT_PATH_RAW)
   add_candidate(APP_DIR_LOCAL)
 
-  for i = 1, #mounted_candidates do
-    if ProbePathExists(mounted_candidates[i]) then
-      return mounted_candidates[i]
-    end
-  end
-
   for i = 1, #hdd_candidates do
     local direct_hdd = ResolveDirectHddExecPath(hdd_candidates[i])
     if direct_hdd ~= nil then
@@ -781,6 +775,12 @@ local function ResolveHddBootSidecarPopstarter()
     local resolved_hdd = ResolveHddReadablePath(hdd_candidates[i])
     if resolved_hdd ~= nil then
       return resolved_hdd
+    end
+  end
+
+  for i = 1, #mounted_candidates do
+    if ProbePathExists(mounted_candidates[i]) then
+      return mounted_candidates[i]
     end
   end
 

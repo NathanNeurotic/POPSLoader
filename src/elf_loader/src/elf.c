@@ -10,9 +10,11 @@
 
 #include <string.h>
 #include <sifrpc.h>
+#include <sifcmd.h>
 #include <stdio.h>
 #include <kernel.h>
 #include <loadfile.h>
+#include <iopheap.h>
 #include <iopcontrol.h>
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
@@ -22,6 +24,12 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include "../../include/dprintf.h"
+#include "elf.h"
+
+#define ELF_MAGIC 0x464c457f
+#define ELF_PT_LOAD 1
+
+extern unsigned char loader_elf[];
 
 static bool is_host_path(const char *filename) {
 	return (filename != NULL && strncmp(filename, "host:/", 6) == 0);
@@ -90,6 +98,69 @@ static void wipe_bramMem(void) {
 	}
 }
 
+static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *argv[]) {
+	int i;
+	int final_argc = argc + 1;
+	static const int kMaxArgc = 32;
+	static char *launch_argv[33];
+	static char launch_arg_storage[2048];
+	size_t storage_offset = 0;
+	u8 *boot_elf = (u8 *)&loader_elf;
+	elf_header_t *boot_header = (elf_header_t *)boot_elf;
+	elf_pheader_t *boot_pheader;
+
+	if (argc <= 0 || argv == NULL || argv[0] == NULL) {
+		return -4;
+	}
+	if (final_argc > kMaxArgc) {
+		return -2;
+	}
+	if ((*(u32*)boot_header->ident) != ELF_MAGIC) {
+		return -5;
+	}
+
+	launch_argv[0] = store_arg(resolved_path, launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
+	if (!launch_argv[0]) {
+		return -3;
+	}
+	for (i = 0; i < argc; i++) {
+		char *stored_arg = store_arg(argv[i], launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
+		if (!stored_arg) {
+			return -3;
+		}
+		launch_argv[i + 1] = stored_arg;
+	}
+	launch_argv[final_argc] = NULL;
+
+	SifInitRpc(0);
+	SifLoadFileInit();
+	SifLoadFileExit();
+
+	boot_pheader = (elf_pheader_t *)(boot_elf + boot_header->phoff);
+	for (i = 0; i < boot_header->phnum; i++) {
+		if (boot_pheader[i].type != ELF_PT_LOAD) {
+			continue;
+		}
+		memcpy(boot_pheader[i].vaddr, boot_elf + boot_pheader[i].offset, boot_pheader[i].filesz);
+		if (boot_pheader[i].memsz > boot_pheader[i].filesz) {
+			memset((void *)((int)boot_pheader[i].vaddr + boot_pheader[i].filesz), 0, boot_pheader[i].memsz - boot_pheader[i].filesz);
+		}
+	}
+
+	if (strncmp(resolved_path, "hdd", 3) == 0) {
+		unmount_pfs_slots_for_exec();
+	}
+
+	SifExitIopHeap();
+	SifExitRpc();
+	SifExitCmd();
+	FlushCache(0);
+	FlushCache(2);
+
+	ExecPS2((void *)boot_header->entry, 0, final_argc, launch_argv);
+	return -1;
+}
+
 int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	int i;
 	int new_argc = 1;
@@ -113,6 +184,10 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 		DPRINTF("LAUNCH: popstarter path: %s (resolved to %s)\n", filename, resolved_path);
 	} else {
 		DPRINTF("LAUNCH: popstarter path: %s\n", resolved_path);
+	}
+	if ((strncmp(resolved_path, "hdd", 3) == 0 || strncmp(resolved_path, "pfs", 3) == 0) &&
+	    argc > 0 && argv != NULL && argv[0] != NULL) {
+		return ExecuteViaEmbeddedLoader(resolved_path, argc, argv);
 	}
 	fd = open(resolved_path, O_RDONLY);
 	DPRINTF("LAUNCH: popstarter open rc=%d (open)\n", fd);
