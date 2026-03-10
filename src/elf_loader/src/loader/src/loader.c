@@ -80,6 +80,8 @@ int main(int argc, char *argv[])
 {
 	SET_GS_BGCOLOUR(WHITE_BG);
 	static t_ExecData elfdata;
+	char **target_argv = argv;
+	int target_argc = argc;
 	int ret, i;
 
 	elfdata.epc = 0;
@@ -136,11 +138,16 @@ int main(int argc, char *argv[])
 
 		SET_GS_BGCOLOUR(PURPBLE_BG);
 		
-		DPRINTF("POPS EXEC: argc=%d\n", argc);
-		for (i = 0; i < argc; i++) {
-			DPRINTF("POPS EXEC: argv[%d] = %s\n", i, argv[i]);
+		if (argc > 1 && argv[1] != NULL) {
+			target_argv = &argv[1];
+			target_argc = argc - 1;
 		}
-		return ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc, argv);
+
+		DPRINTF("POPS EXEC: argc=%d\n", target_argc);
+		for (i = 0; i < target_argc; i++) {
+			DPRINTF("POPS EXEC: argv[%d] = %s\n", i, target_argv[i]);
+		}
+		return ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, target_argc, target_argv);
 	} else {
 		SET_GS_BGCOLOUR(MAGENTA_BG);
 		SifExitRpc();
