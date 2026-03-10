@@ -700,6 +700,10 @@ local function IsHddExecContextPath(path)
   return string.match(candidate, "^pfs%d*:/") ~= nil
 end
 
+local function IsPfsExecPath(path)
+  return string.match(string.lower(tostring(path or "")), "^pfs%d*:/") ~= nil
+end
+
 local function DirectoryFromExecPath(path)
   local candidate = tostring(path or "")
   if candidate == "" then
@@ -3115,7 +3119,9 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     keep_hdd_slots = nil
   }
   local reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
-  if policy.name == "HDD" then
+  if IsPfsExecPath(popstarter) then
+    reboot_iop = 1
+  elseif policy.name == "HDD" then
     reboot_iop = 0
   end
   if UI ~= nil and UI.CoverCache ~= nil and UI.CoverCache.Clear ~= nil then
