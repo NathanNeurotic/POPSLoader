@@ -493,6 +493,20 @@ local function ResolveHddExecMountedPath(path)
   return ResolveHddReadablePath(path)
 end
 
+local function ResolveDirectHddExecPath(path)
+  local candidate = tostring(path or "")
+  if candidate == "" or string.match(string.lower(candidate), "^hdd%d:") == nil then
+    return nil
+  end
+  if not EnsureHddRuntimeReadyForExec() then
+    return nil
+  end
+  if ProbePathExists(candidate) then
+    return candidate
+  end
+  return nil
+end
+
 local function ExtractLaunchPfsSlot(path)
   local mounted_prefix = NormalizePfsPrefix(path)
   if mounted_prefix ~= nil then
@@ -760,6 +774,10 @@ local function ResolveHddBootSidecarPopstarter()
   end
 
   for i = 1, #hdd_candidates do
+    local direct_hdd = ResolveDirectHddExecPath(hdd_candidates[i])
+    if direct_hdd ~= nil then
+      return direct_hdd
+    end
     local resolved_hdd = ResolveHddReadablePath(hdd_candidates[i])
     if resolved_hdd ~= nil then
       return resolved_hdd
@@ -821,6 +839,10 @@ local function ResolvePopstarterPath(path)
   end
 
   if string.match(string.lower(chosen), "^hdd%d:") ~= nil then
+    local direct_hdd = ResolveDirectHddExecPath(chosen)
+    if direct_hdd ~= nil then
+      return direct_hdd
+    end
     local resolved_hdd = ResolveHddExecMountedPath(chosen)
     if resolved_hdd ~= nil then
       return resolved_hdd
@@ -841,7 +863,10 @@ local function ResolvePopstarterPath(path)
     local candidate = fallbacks[i]
     local resolved_fallback = nil
     if string.match(string.lower(candidate), "^hdd%d:") ~= nil then
-      resolved_fallback = ResolveHddReadablePath(candidate)
+      resolved_fallback = ResolveDirectHddExecPath(candidate)
+      if resolved_fallback == nil then
+        resolved_fallback = ResolveHddReadablePath(candidate)
+      end
     end
     if resolved_fallback == nil then
       resolved_fallback = ResolvePathWithEnsure(candidate)
