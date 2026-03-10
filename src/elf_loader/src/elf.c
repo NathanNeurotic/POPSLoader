@@ -14,6 +14,7 @@
 #include <kernel.h>
 #include <loadfile.h>
 #include <iopcontrol.h>
+#include <fileXio_rpc.h>
 #include <sys/stat.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -57,6 +58,15 @@ static char *store_arg(const char *src, char *storage, size_t storage_size, size
 	memcpy(dest, src, len);
 	*offset += len;
 	return dest;
+}
+
+static void unmount_pfs_slots_for_exec(void) {
+	char mount_name[6] = "pfs0:";
+	int slot;
+	for (slot = 0; slot <= 3; slot++) {
+		mount_name[3] = '0' + slot;
+		fileXioUmount(mount_name);
+	}
 }
 
 /* IMPORTANT: This method wipe memory where the loader is going to be allocated 
@@ -170,6 +180,10 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 
 	if (ret != 0 || elfdata.epc == 0) {
 		return -2;
+	}
+
+	if (strncmp(resolved_path, "pfs", 3) == 0) {
+		unmount_pfs_slots_for_exec();
 	}
 
 	ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc, argv);
