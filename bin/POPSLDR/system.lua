@@ -700,15 +700,18 @@ local function ResolveHddBootSidecarPopstarter()
   add_candidate(BOOT_PATH_RAW)
   add_candidate(APP_DIR_LOCAL)
 
-  for i = 1, #hdd_candidates do
-    local resolved_hdd = ResolveHddReadablePath(hdd_candidates[i])
-    if resolved_hdd ~= nil then
-      return resolved_hdd
+  for i = 1, #other_candidates do
+    local mounted_candidate = ResolveHddReadablePath(other_candidates[i])
+    if mounted_candidate ~= nil then
+      return mounted_candidate
+    end
+    if ProbePathExists(other_candidates[i]) then
+      return other_candidates[i]
     end
   end
 
-  for i = 1, #other_candidates do
-    local resolved_hdd = ResolveHddReadablePath(other_candidates[i])
+  for i = 1, #hdd_candidates do
+    local resolved_hdd = ResolveHddReadablePath(hdd_candidates[i])
     if resolved_hdd ~= nil then
       return resolved_hdd
     end
