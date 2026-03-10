@@ -767,20 +767,20 @@ local function ResolveHddBootSidecarPopstarter()
   add_candidate(BOOT_PATH_RAW)
   add_candidate(APP_DIR_LOCAL)
 
-  for i = 1, #hdd_candidates do
-    local direct_hdd = ResolveDirectHddExecPath(hdd_candidates[i])
-    if direct_hdd ~= nil then
-      return direct_hdd
+  for i = 1, #mounted_candidates do
+    if ProbePathExists(mounted_candidates[i]) then
+      return mounted_candidates[i]
     end
+  end
+
+  for i = 1, #hdd_candidates do
     local resolved_hdd = ResolveHddReadablePath(hdd_candidates[i])
     if resolved_hdd ~= nil then
       return resolved_hdd
     end
-  end
-
-  for i = 1, #mounted_candidates do
-    if ProbePathExists(mounted_candidates[i]) then
-      return mounted_candidates[i]
+    local direct_hdd = ResolveDirectHddExecPath(hdd_candidates[i])
+    if direct_hdd ~= nil then
+      return direct_hdd
     end
   end
 
@@ -839,13 +839,13 @@ local function ResolvePopstarterPath(path)
   end
 
   if string.match(string.lower(chosen), "^hdd%d:") ~= nil then
-    local direct_hdd = ResolveDirectHddExecPath(chosen)
-    if direct_hdd ~= nil then
-      return direct_hdd
-    end
     local resolved_hdd = ResolveHddExecMountedPath(chosen)
     if resolved_hdd ~= nil then
       return resolved_hdd
+    end
+    local direct_hdd = ResolveDirectHddExecPath(chosen)
+    if direct_hdd ~= nil then
+      return direct_hdd
     end
   end
   local resolved = ResolvePathWithEnsure(chosen)
@@ -863,9 +863,9 @@ local function ResolvePopstarterPath(path)
     local candidate = fallbacks[i]
     local resolved_fallback = nil
     if string.match(string.lower(candidate), "^hdd%d:") ~= nil then
-      resolved_fallback = ResolveDirectHddExecPath(candidate)
+      resolved_fallback = ResolveHddReadablePath(candidate)
       if resolved_fallback == nil then
-        resolved_fallback = ResolveHddReadablePath(candidate)
+        resolved_fallback = ResolveDirectHddExecPath(candidate)
       end
     end
     if resolved_fallback == nil then
@@ -3144,10 +3144,10 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     keep_hdd_slots = nil
   }
   local reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
-  if IsPfsExecPath(popstarter) then
-    reboot_iop = 1
-  elseif policy.name == "HDD" then
+  if policy.name == "HDD" then
     reboot_iop = 0
+  elseif IsPfsExecPath(popstarter) then
+    reboot_iop = 1
   end
   if UI ~= nil and UI.CoverCache ~= nil and UI.CoverCache.Clear ~= nil then
     UI.CoverCache:Clear()
