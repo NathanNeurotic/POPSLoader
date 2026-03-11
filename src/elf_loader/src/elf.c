@@ -272,10 +272,6 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 		return -2;
 	}
 
-	if (strncmp(resolved_path, "pfs", 3) == 0 || strncmp(resolved_path, "hdd", 3) == 0) {
-		unmount_pfs_slots_for_exec();
-	}
-
 	ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc, argv);
 	return -1;
 }
