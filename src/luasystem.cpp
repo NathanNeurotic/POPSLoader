@@ -965,8 +965,6 @@ static int lua_loadELF(lua_State *L)
 		int rc;
 		if (rebootIOP != 0) {
 			rc = LoadELFFromFileExecPS2RebootIOP(elftoload, 1, argv_static);
-		} else if (strncasecmp(elftoload, "pfs", 3) == 0 || strncasecmp(elftoload, "hdd", 3) == 0) {
-			rc = LoadELFFromFile(elftoload, 1, argv_static);
 		} else {
 			rc = LoadELFFromFileExecPS2(elftoload, 1, argv_static);
 		}
