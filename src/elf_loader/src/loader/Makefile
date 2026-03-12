@@ -9,8 +9,9 @@ BINDIR = bin/
 EE_BIN = $(BINDIR)loader.elf
 EE_OBJS = src/loader.o
 
-# Enable debug colors?
-LOADER_ENABLE_DEBUG_COLORS ?= 0
+# Enable stage colors in the embedded loader so HDD/PFS handoff failures
+# can be localized without adding text logging to the main launcher flow.
+LOADER_ENABLE_DEBUG_COLORS ?= 1
 
 # Use nano newlib for saving space
 EE_NEWLIB_NANO ?= 1
