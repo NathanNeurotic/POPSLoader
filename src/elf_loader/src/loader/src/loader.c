@@ -27,7 +27,8 @@
 
 // Color status helper in BGR format
 #define WHITE_BG 0xFFFFFF // start main
-#define CYAN_BG 0xFFFF00 // proper argc count
+#define CYAN_BG 0xFFFF00 // argc accepted
+#define TEAL_BG 0x808000 // target path/args copied
 #define RED_BG  0x0000FF // wrong argc count
 #define GREEN_BG 0x00FF00 // before SifLoadELF
 #define BLUE_BG 0xFF0000 // after SifLoadELF
@@ -94,6 +95,7 @@ int main(int argc, char *argv[])
 		SET_GS_BGCOLOUR(RED_BG);
 		return -EINVAL;
 	}
+	SET_GS_BGCOLOUR(CYAN_BG);
 	snprintf(target_path, sizeof(target_path), "%s", argv[0] ? argv[0] : "");
 	target_argc = argc - 1;
 	if (target_argc > 32) {
@@ -109,17 +111,7 @@ int main(int argc, char *argv[])
 		target_arg_offset += arg_len;
 	}
 	target_argv[target_argc] = NULL;
-
-	DPRINTF("> argv[0] = %s\n", argv[0]);
-	for (i = 1; i < argc; i++) {
-		DPRINTF("> argv[%d] = %s\n", i, argv[i]);
-	}
-	
-	// new_argv[0] = argv[0];
-	// new_argv[1] = argv[1];
-	//new_argv[3] = argv[3];
-
-	SET_GS_BGCOLOUR(CYAN_BG);
+	SET_GS_BGCOLOUR(TEAL_BG);
 
 	// Initialize
 	SifInitRpc(0);
