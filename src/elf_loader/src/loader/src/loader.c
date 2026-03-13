@@ -96,6 +96,7 @@ int main(int argc, char *argv[])
 	static char *target_argv[33];
 	size_t target_arg_offset = 0;
 	int target_argc = 0;
+	int skip_iop_reset = 0;
 	int ret, i;
 
 	elfdata.epc = 0;
@@ -118,6 +119,9 @@ int main(int argc, char *argv[])
 		}
 		memcpy(&target_arg_storage[target_arg_offset], argv[i], arg_len);
 		target_argv[i - 1] = &target_arg_storage[target_arg_offset];
+		if (strcmp(argv[i], "--nr") == 0) {
+			skip_iop_reset = 1;
+		}
 		target_arg_offset += arg_len;
 	}
 	target_argv[target_argc] = NULL;
@@ -136,6 +140,17 @@ int main(int argc, char *argv[])
 	SET_GS_BGCOLOUR(BLUE_BG);
 	if (ret == 0 && elfdata.epc != 0) {
 		SET_GS_BGCOLOUR(YELLOW_BG);
+		if (skip_iop_reset) {
+			SET_GS_BGCOLOUR(BROWN_BG);
+			FlushCache(0);
+			FlushCache(2);
+			SET_GS_BGCOLOUR(PURPBLE_BG);
+			DPRINTF("POPS EXEC: argc=%d\n", target_argc);
+			for (i = 0; i < target_argc; i++) {
+				DPRINTF("POPS EXEC: argv[%d] = %s\n", i, target_argv[i]);
+			}
+			return ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, target_argc, target_argv);
+		}
 
 		// Let's reset IOP because ELF was already loaded in memory
 		while(!SifIopReset("rom0:UDNL rom0:EELOADCNF", 0)){};
