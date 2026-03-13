@@ -133,6 +133,11 @@ int main(int argc, char *argv[])
 
 		SET_GS_BGCOLOUR(ORANGE_BG);
 
+		SifExitIopHeap();
+		SifLoadFileExit();
+		SifExitRpc();
+		SifExitCmd();
+
         SifInitRpc(0);
         // Load modules.
         SifLoadFileInit();
