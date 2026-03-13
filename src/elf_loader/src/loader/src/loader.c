@@ -35,7 +35,16 @@
 #define BLUE_BG 0xFF0000 // after SifLoadELF
 #define YELLOW_BG 0x00FFFF // good SifLoadELF return
 #define MAGENTA_BG 0xFF00FF // wrong SifLoadELF return
-#define ORANGE_BG 0x00A5FF  // after reset IOP
+#define ORANGE_BG 0x00A5FF  // before SifExitIopHeap
+#define CORAL_BG 0x507FFF   // before SifLoadFileExit
+#define OLIVE_BG 0x008080   // before SifExitRpc
+#define NAVY_BG 0x800000    // before SifExitCmd
+#define GRAY_BG 0x808080    // before SifInitRpc
+#define LIME_BG 0x00FF80    // before SifLoadFileInit
+#define PINK_BG 0xCBC0FF    // before SifLoadModule(SIO2MAN)
+#define AQUA_BG 0xFFFF80    // before SifLoadModule(MCMAN)
+#define GOLD_BG 0x00D7FF    // before SifLoadModule(MCSERV)
+#define TAN_BG 0x8CB4D2     // before SifLoadFileExit
 #define BROWN_BG 0x2A2AA5  // before FlushCache
 #define PURPBLE_BG 0x800080  // before ExecPS2
 
@@ -133,22 +142,29 @@ int main(int argc, char *argv[])
 		while (!SifIopSync()) {};
 
 		SET_GS_BGCOLOUR(ORANGE_BG);
-
 		SifExitIopHeap();
+		SET_GS_BGCOLOUR(CORAL_BG);
 		SifLoadFileExit();
+		SET_GS_BGCOLOUR(OLIVE_BG);
 		SifExitRpc();
+		SET_GS_BGCOLOUR(NAVY_BG);
 		SifExitCmd();
 
+		SET_GS_BGCOLOUR(GRAY_BG);
         SifInitRpc(0);
         // Load modules.
+		SET_GS_BGCOLOUR(LIME_BG);
         SifLoadFileInit();
+		SET_GS_BGCOLOUR(PINK_BG);
         SifLoadModule("rom0:SIO2MAN", 0, NULL);
+		SET_GS_BGCOLOUR(AQUA_BG);
         SifLoadModule("rom0:MCMAN", 0, NULL);
+		SET_GS_BGCOLOUR(GOLD_BG);
         SifLoadModule("rom0:MCSERV", 0, NULL);
+		SET_GS_BGCOLOUR(TAN_BG);
         SifLoadFileExit();
-        SifExitRpc();
-
 		SET_GS_BGCOLOUR(BROWN_BG);
+        SifExitRpc();
 
 		FlushCache(0);
 		FlushCache(2);
