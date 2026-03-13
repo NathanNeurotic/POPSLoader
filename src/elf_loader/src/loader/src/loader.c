@@ -14,6 +14,7 @@
 #include <kernel.h>
 #include <loadfile.h>
 #include <iopcontrol.h>
+#include <iopheap.h>
 #include <sifrpc.h>
 #include <errno.h>
 #include <ps2sdkapi.h>
