@@ -81,15 +81,6 @@ static char *store_arg(const char *src, char *storage, size_t storage_size, size
 	return dest;
 }
 
-static void unmount_pfs_slots_for_exec(void) {
-	char mount_name[6] = "pfs0:";
-	int slot;
-	for (slot = 0; slot <= 3; slot++) {
-		mount_name[3] = '0' + slot;
-		fileXioUmount(mount_name);
-	}
-}
-
 /* IMPORTANT: This method wipe memory where the loader is going to be allocated 
 * This values come from the linkfile used by the loader.c
 MEMORY {
@@ -157,10 +148,6 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *a
 		if (boot_pheader[i].memsz > boot_pheader[i].filesz) {
 			memset((void *)((int)boot_pheader[i].vaddr + boot_pheader[i].filesz), 0, boot_pheader[i].memsz - boot_pheader[i].filesz);
 		}
-	}
-
-	if (strncmp(resolved_path, "hdd", 3) == 0) {
-		unmount_pfs_slots_for_exec();
 	}
 
 	SifExitIopHeap();
