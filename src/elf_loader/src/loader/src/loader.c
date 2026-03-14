@@ -92,10 +92,10 @@ int main(int argc, char *argv[])
 	SET_GS_BGCOLOUR(WHITE_BG);
 	static t_ExecData elfdata;
 	static char target_path[1024];
-	static char target_arg_storage[1024];
+	static char target_arg_storage[2048];
 	static char *target_argv[33];
 	size_t target_arg_offset = 0;
-	int target_argc = 0;
+	int target_argc = argc;
 	int ret, i;
 
 	elfdata.epc = 0;
@@ -107,17 +107,16 @@ int main(int argc, char *argv[])
 	}
 	SET_GS_BGCOLOUR(CYAN_BG);
 	snprintf(target_path, sizeof(target_path), "%s", argv[0] ? argv[0] : "");
-	target_argc = argc - 1;
 	if (target_argc > 32) {
 		return -E2BIG;
 	}
-	for (i = 1; i < argc; i++) {
+	for (i = 0; i < argc; i++) {
 		size_t arg_len = strlen(argv[i]) + 1;
 		if ((target_arg_offset + arg_len) > sizeof(target_arg_storage)) {
 			return -E2BIG;
 		}
 		memcpy(&target_arg_storage[target_arg_offset], argv[i], arg_len);
-		target_argv[i - 1] = &target_arg_storage[target_arg_offset];
+		target_argv[i] = &target_arg_storage[target_arg_offset];
 		target_arg_offset += arg_len;
 	}
 	target_argv[target_argc] = NULL;
