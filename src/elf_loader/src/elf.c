@@ -28,6 +28,12 @@
 
 #define ELF_MAGIC 0x464c457f
 #define ELF_PT_LOAD 1
+#define SET_GS_BGCOLOUR(colour) {*((volatile unsigned long int *)0x120000E0) = colour;}
+#define EXECDBG_WHITE 0xFFFFFF
+#define EXECDBG_GREEN 0x00FF00
+#define EXECDBG_BLUE 0xFF0000
+#define EXECDBG_YELLOW 0x00FFFF
+#define EXECDBG_MAGENTA 0xFF00FF
 
 extern unsigned char loader_elf[];
 
@@ -245,6 +251,7 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 	char resolved_path[256];
 	int ret;
 
+	SET_GS_BGCOLOUR(EXECDBG_WHITE);
 	if (argc <= 0 || argv == NULL || argv[0] == NULL) {
 		return -4;
 	}
@@ -256,13 +263,17 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 
 	SifInitRpc(0);
 	SifLoadFileInit();
+	SET_GS_BGCOLOUR(EXECDBG_GREEN);
 	ret = SifLoadElf(resolved_path, &elfdata);
 	SifLoadFileExit();
+	SET_GS_BGCOLOUR(EXECDBG_BLUE);
 
 	if (ret != 0 || elfdata.epc == 0) {
+		SET_GS_BGCOLOUR(EXECDBG_MAGENTA);
 		return -2;
 	}
 
+	SET_GS_BGCOLOUR(EXECDBG_YELLOW);
 	ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc, argv);
 	return -1;
 }
