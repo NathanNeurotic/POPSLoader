@@ -9,11 +9,6 @@
 #include <gsToolkit.h>
 #include <gsInline.h>
 
-#include <math3d.h>
-
-#include <packet2.h>
-#include <packet2_utils.h>
-
 /// GSKit CLUT base struct. This should've been in gsKit from the start :)
 typedef struct
 {
@@ -36,26 +31,6 @@ typedef struct
     u64 color;
     GSTEXTURE *txt;
 } rm_quad_t;
-
-
-typedef struct 
-{
-	texel_t* 	stqr;
-	color_t* 	rgba;
-    vertex_f_t* xyzw;
-    VECTOR*     test;
-} vData;
-
-struct model{
-	uint32_t facesCount;
-    uint16_t* idxList;
-    VECTOR* positions;
-	VECTOR* texcoords;
-	VECTOR* normals;
-    VECTOR* colours;
-    VECTOR* bounding_box;
-    GSTEXTURE* texture;
-};
 
 typedef u32 Color;
 #define A(color) ((u8)(color >> 24 & 0xFF))
@@ -118,21 +93,5 @@ extern void loadFontM();
 extern void printFontMText(const char* text, float x, float y, float scale, Color color);
 
 extern void unloadFontM();
-
-extern void init3D(float aspect);
-
-extern void setCameraPosition(float x, float y, float z);
-
-extern void setCameraRotation(float x, float y, float z);
-
-extern void setLightQuantity(int quantity);
-
-extern void createLight(int lightid, float dir_x, float dir_y, float dir_z, int type, float r, float g, float b);
-
-extern model* loadOBJ(const char* path, GSTEXTURE* text);
-
-extern void drawOBJ(model* m, float pos_x, float pos_y, float pos_z, float rot_x, float rot_y, float rot_z);
-
-extern void draw_bbox(model* m, float pos_x, float pos_y, float pos_z, float rot_x, float rot_y, float rot_z, Color color);
 
 #endif

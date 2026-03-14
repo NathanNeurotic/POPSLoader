@@ -6,7 +6,7 @@
 
 Last updated: 2026-03-07
 
-POPSLoader is an open-source PlayStation 2 launcher for POPStarter, scripted in Lua and built on top of Enceladus runtime components.
+POPSLoader is an open-source PlayStation 2 launcher for POPStarter, scripted in Lua and built around embedded runtime components.
 
 This repository contains:
 - the launcher (`POPSLOADER.ELF`),
@@ -140,7 +140,7 @@ make clean elfloader all
 - `ps2-packer`, `make`, and standard build tools.
 
 ### Build outputs
-- `bin/enceladus.elf` (intermediate)
+- `bin/POPSLOADER.unpacked.elf` (intermediate)
 - `bin/POPSLOADER.ELF` (packed launcher)
 
 ## Known Limitations

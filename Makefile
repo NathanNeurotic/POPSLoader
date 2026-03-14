@@ -22,7 +22,7 @@ define HEADER
                                                         &@@@@ @@@@@@@.
 
                                             
-                            Enceladus project                                                               
+                            POPSLoader project                                                               
                                                                                 
 endef
 export HEADER
@@ -39,10 +39,10 @@ PS2LINK_IP = 192.168.1.10
 #------------------------------------------------------------------#
 
 BINDIR = bin/
-EE_BIN = $(BINDIR)enceladus.elf
+EE_BIN = $(BINDIR)POPSLOADER.unpacked.elf
 EE_BIN_PKD = $(BINDIR)POPSLOADER.ELF
 
-EE_LIBS = -L$(PS2SDK)/ports/lib -L$(PS2DEV)/gsKit/lib/ -Lmodules/ds34bt/ee/ -Lmodules/ds34usb/ee/ -lpatches -lfileXio -lpad -ldebug -llua -lmath3d -ljpeg -lfreetype -lgskit_toolkit -lgskit -ldmakit -lpng -lz -lmc -laudsrv  -lds34bt -lds34usb
+EE_LIBS = -L$(PS2SDK)/ports/lib -L$(PS2DEV)/gsKit/lib/ -Lmodules/ds34bt/ee/ -Lmodules/ds34usb/ee/ -lpatches -lfileXio -lpad -ldebug -llua -ljpeg -lfreetype -lgskit_toolkit -lgskit -ldmakit -lpng -lz -lmc -laudsrv  -lds34bt -lds34usb
 EE_LIBS += src/elf_loader/libcustom-elf-loader.a
 EE_INCS += -I$(PS2DEV)/gsKit/include -I$(PS2SDK)/ports/include -I$(PS2SDK)/ports/include/freetype2 -I$(PS2SDK)/ports/include/zlib
 EE_INCS += -Imodules/ds34bt/ee -Imodules/ds34usb/ee
@@ -61,15 +61,15 @@ endif
 BIN2S = $(PS2SDK)/bin/bin2c
 
 #-------------------------- App Content ---------------------------#
-EXT_LIBS = modules/ds34usb/ee/libds34usb.a modules/ds34bt/ee/libds34bt.a
+EXT_LIBS = modules/ds34usb/ee/libds34usb.a modules/ds34bt/ee/libds34bt.a src/elf_loader/libcustom-elf-loader.a
 
-APP_CORE = main.o system.o pad.o graphics.o render.o \
-		   calc_3d.o gsKit3d_sup.o atlas.o fntsys.o md5.o embed_assets.o \
-		   sound.o #strUtils.o
+APP_CORE = main.o system.o pad.o graphics.o \
+		   atlas.o fntsys.o md5.o embed_assets.o \
+		   sound.o
 
 LUA_LIBS =	luaplayer.o luasound.o luacontrols.o \
 			luatimer.o luaScreen.o luagraphics.o \
-			luasystem.o luaRender.o luaHDD.o
+			luasystem.o luaHDD.o
 
 IOP_MODULES = iomanX.o fileXio.o \
 			  sio2man.o mcman.o mcserv.o padman.o libsd.o \
@@ -286,16 +286,21 @@ reset:
 
 POPSLDR_PKG = POPSLoader.7z
 PKG_DIR = bin/package
+PKG_APP_DIR = $(PKG_DIR)/PS1_POPSLOADER
+PKG_POPS_DIR = $(PKG_DIR)/POPS
 package: $(EE_BIN_PKD)
 	rm -f $(POPSLDR_PKG)
 	rm -rf $(PKG_DIR)
-	mkdir -p $(PKG_DIR)
-	cp $(EE_BIN_PKD) $(PKG_DIR)/
-	cp bin/changelog LICENSE README.md $(PKG_DIR)/
-	find bin/POPSLDR -maxdepth 1 -type f -exec cp {} $(PKG_DIR)/ \;
-	@if [ -d bin/POPSTARTER ]; then cp -r bin/POPSTARTER $(PKG_DIR)/; fi
-	@if ls bin/POPSLDR/IMG/*.png >/dev/null 2>&1; then cp bin/POPSLDR/IMG/*.png $(PKG_DIR)/; fi
-	@if ls bin/POPSLDR/IRX/*.irx >/dev/null 2>&1; then cp bin/POPSLDR/IRX/*.irx $(PKG_DIR)/; fi
+	mkdir -p $(PKG_APP_DIR) $(PKG_POPS_DIR)
+	cp $(EE_BIN_PKD) $(PKG_APP_DIR)/
+	cp bin/POPSLDR/POPSTARTER.ELF $(PKG_APP_DIR)/
+	cp bin/POPSLDR/APPINFO.PBT $(PKG_APP_DIR)/
+	cp bin/POPSLDR/title.cfg $(PKG_APP_DIR)/
+	cp bin/POPSLDR/icon.sys $(PKG_APP_DIR)/
+	cp bin/POPSLDR/list.icn $(PKG_APP_DIR)/
+	cp bin/POPSLDR/copy.icn $(PKG_APP_DIR)/
+	cp bin/POPSLDR/del.icn $(PKG_APP_DIR)/
+	cp bin/POPSLDR/PATCH_5.BIN $(PKG_POPS_DIR)/
 	cd $(PKG_DIR); 7z a ../$(POPSLDR_PKG) .
 
 dummys:

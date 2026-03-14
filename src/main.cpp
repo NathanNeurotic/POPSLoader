@@ -415,7 +415,7 @@ int main(int argc, char * argv[])
             scr_setfontcolor(0x0000ff);
 		    scr_clear();
 		    scr_setXY(5, 2);
-		    scr_printf("Enceladus ERROR!\n");
+		    scr_printf("POPSLoader ERROR!\n");
 		    scr_printf("%s", errMsg);
 		    scr_printf("\nPress [start] to restart\n");
         	while (!isButtonPressed(PAD_START)) {

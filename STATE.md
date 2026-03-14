@@ -3,7 +3,7 @@ Last updated: 2026-03-06
 # STATE
 
 ## Project Identity
-POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, with behavior primarily orchestrated by embedded Lua modules (`system.lua`, `ui.lua`, `images.lua`, `pops_profiles.lua`).
+POPSLoader is a PS2 launcher for POPStarter, with behavior primarily orchestrated by embedded Lua modules (`system.lua`, `ui.lua`, `images.lua`, `pops_profiles.lua`).
 
 ## Current Runtime State (Repo-Verified)
 - Boot/runtime uses embedded Lua scripts (filesystem Lua loaders are disabled in runtime).
