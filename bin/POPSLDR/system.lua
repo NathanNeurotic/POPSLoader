@@ -541,6 +541,8 @@ local function CollectHddKeepSlots(path, extra_keep_slots)
   return keep
 end
 
+local IsHddExecContextPath
+
 local function PreserveBootPfsSlotsDuringElfLoad(path, keep_slots)
   if ExtractLaunchPfsSlot(path) == nil and not IsHddExecContextPath(path) then
     return keep_slots
@@ -706,7 +708,7 @@ function PLDR.PopstarterProbeWithEnsure(path)
   return ResolvePathWithEnsure(path) ~= nil
 end
 
-local function IsHddExecContextPath(path)
+IsHddExecContextPath = function(path)
   local candidate = string.lower(tostring(path or ""))
   if candidate == "" then
     return false

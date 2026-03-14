@@ -107,6 +107,15 @@ static void wipe_bramMem(void) {
 	}
 }
 
+static void unmount_pfs_slots_for_exec(void) {
+	char mount_name[6] = "pfs0:";
+	int slot;
+	for (slot = 0; slot <= 3; slot++) {
+		mount_name[3] = '0' + slot;
+		fileXioUmount(mount_name);
+	}
+}
+
 static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *argv[]) {
 	int i;
 	int final_argc = argc + 1;
@@ -154,6 +163,10 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *a
 		if (boot_pheader[i].memsz > boot_pheader[i].filesz) {
 			memset((void *)((int)boot_pheader[i].vaddr + boot_pheader[i].filesz), 0, boot_pheader[i].memsz - boot_pheader[i].filesz);
 		}
+	}
+
+	if (strncmp(resolved_path, "hdd", 3) == 0) {
+		unmount_pfs_slots_for_exec();
 	}
 
 	SifExitIopHeap();
