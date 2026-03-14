@@ -141,15 +141,6 @@ int main(int argc, char *argv[])
 		while (!SifIopSync()) {};
 
 		SET_GS_BGCOLOUR(ORANGE_BG);
-		SifExitIopHeap();
-		SET_GS_BGCOLOUR(CORAL_BG);
-		SifLoadFileExit();
-		SET_GS_BGCOLOUR(OLIVE_BG);
-		SifExitRpc();
-		SET_GS_BGCOLOUR(NAVY_BG);
-		SifExitCmd();
-
-		SET_GS_BGCOLOUR(GRAY_BG);
 		SifInitRpc(0);
 		SET_GS_BGCOLOUR(LIME_BG);
 		SifLoadFileInit();
@@ -160,7 +151,7 @@ int main(int argc, char *argv[])
 		SET_GS_BGCOLOUR(GOLD_BG);
 		SifLoadModule("rom0:MCSERV", 0, NULL);
 		SET_GS_BGCOLOUR(TAN_BG);
-		SifLoadFileExit();
+        SifLoadFileExit();
 		SET_GS_BGCOLOUR(BROWN_BG);
 		SifExitRpc();
 		FlushCache(0);
