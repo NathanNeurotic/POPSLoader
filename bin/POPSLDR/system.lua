@@ -545,6 +545,9 @@ local function PreserveBootPfsSlotsDuringElfLoad(path, keep_slots)
   if ExtractLaunchPfsSlot(path) == nil and not IsHddExecContextPath(path) then
     return keep_slots
   end
+  if string.match(string.lower(tostring(path or "")), "^hdd%d:") ~= nil then
+    return keep_slots
+  end
   local boot_candidates = {
     BOOT_ARGV0_RAW,
     BOOT_PATH_RAW,
@@ -765,7 +768,29 @@ local function ResolveHddBootSidecarPopstarter()
 
   add_candidate(BOOT_ARGV0_RAW)
   add_candidate(BOOT_PATH_RAW)
+  add_candidate(APP_DIR)
   add_candidate(APP_DIR_LOCAL)
+
+  local prefer_raw_hdd = false
+  local raw_boot_sources = {
+    BOOT_ARGV0_RAW,
+    APP_DIR
+  }
+  for i = 1, #raw_boot_sources do
+    if IsRawHddPartitionPath(raw_boot_sources[i]) then
+      prefer_raw_hdd = true
+      break
+    end
+  end
+
+  if prefer_raw_hdd then
+    for i = 1, #hdd_candidates do
+      local direct_hdd = ResolveDirectHddExecPath(hdd_candidates[i])
+      if direct_hdd ~= nil then
+        return direct_hdd
+      end
+    end
+  end
 
   for i = 1, #mounted_candidates do
     if ProbePathExists(mounted_candidates[i]) then
