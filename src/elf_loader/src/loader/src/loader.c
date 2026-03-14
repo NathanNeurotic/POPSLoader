@@ -95,12 +95,12 @@ int main(int argc, char *argv[])
 	static char target_arg_storage[2048];
 	static char *target_argv[33];
 	size_t target_arg_offset = 0;
-	int target_argc = argc;
+	int target_argc = argc - 1;
 	int ret, i;
 
 	elfdata.epc = 0;
 
-	// argv[0]=path to ELF, argv[1..]=arguments
+	// argv[0]=path to ELF, argv[1..]=arguments for the target executable
 	if (argc < 2) {  
 		SET_GS_BGCOLOUR(RED_BG);
 		return -EINVAL;
@@ -110,12 +110,12 @@ int main(int argc, char *argv[])
 	if (target_argc > 32) {
 		return -E2BIG;
 	}
-	for (i = 0; i < argc; i++) {
-		size_t arg_len = strlen(argv[i]) + 1;
+	for (i = 0; i < target_argc; i++) {
+		size_t arg_len = strlen(argv[i + 1]) + 1;
 		if ((target_arg_offset + arg_len) > sizeof(target_arg_storage)) {
 			return -E2BIG;
 		}
-		memcpy(&target_arg_storage[target_arg_offset], argv[i], arg_len);
+		memcpy(&target_arg_storage[target_arg_offset], argv[i + 1], arg_len);
 		target_argv[i] = &target_arg_storage[target_arg_offset];
 		target_arg_offset += arg_len;
 	}
