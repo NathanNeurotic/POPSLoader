@@ -2733,20 +2733,6 @@ local function GetBootOccupiedPfsSlot()
   return nil
 end
 
-local function IsBootedFromHddExecContext()
-  local candidates = {
-    BOOT_ARGV0_RAW,
-    BOOT_PATH_RAW,
-    APP_DIR_LOCAL
-  }
-  for i = 1, #candidates do
-    if IsHddExecContextPath(candidates[i]) then
-      return true
-    end
-  end
-  return false
-end
-
 local function SelectHddLaunchGameSlot(popstarter)
   local reserved = {}
   local boot_slot = GetBootOccupiedPfsSlot()
@@ -3013,7 +2999,6 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   local policy, device_page = ResolveLaunchPolicy(gamelocation, ui_scene)
   local selected_entry = tostring(game or "")
   local popstarter = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
-  local hdd_boot_handoff = (policy.name == "HDD") and IsBootedFromHddExecContext()
   if selected_entry == "" then
     BlockLaunchFailure(
       "Invalid game selection",
@@ -3030,14 +3015,9 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   local hdd_init = nil
   local hdd_partition_label = nil
   local hdd_relpath = nil
-  local hdd_partition = nil
-  local hdd_vcd_path = nil
   if policy.name == "HDD" then
     hdd_partition_label, hdd_relpath = ParseHddGameEntry(selected_entry)
     hdd_relpath = NormalizeHddRelpath(hdd_relpath or selected_entry)
-    if hdd_boot_handoff and hdd_partition_label ~= nil then
-      hdd_partition = "hdd0:"..hdd_partition_label
-    end
   end
   local normalized_gamelocation = policy.normalize(gamelocation)
   local handoff_gamelocation = policy.handoff(normalized_gamelocation)
@@ -3089,58 +3069,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   local fallback_exists = false
   local bootparam_basename_used = ""
   local prefix_used = ""
-  if policy.name == "HDD" and hdd_boot_handoff then
-    normalized_basename = ""
-    bootparam = ""
-    bootparam_basename_used = ""
-    if hdd_partition == nil or hdd_relpath == "" then
-      BlockLaunchFailure(
-        "Invalid HDD game entry",
-        popstarter,
-        device_page,
-        nil,
-        selected_entry,
-        APP_DIR_LOCAL,
-        nil,
-        nil
-      )
-      return
-    end
-    hdd_vcd_path = ResolveHddPartitionReadablePath(hdd_partition, hdd_relpath, nil, HDD_SLOT_GAME)
-    if hdd_vcd_path == nil then
-      BlockLaunchFailure(
-        "HDD game mount failed",
-        popstarter,
-        device_page,
-        nil,
-        selected_entry,
-        APP_DIR_LOCAL,
-        nil,
-        nil
-      )
-      return
-    end
-    local boot_name = string.gsub(hdd_relpath, "%.[Vv][Cc][Dd]$", ".ELF")
-    if boot_name == hdd_relpath then
-      boot_name = BuildLiteralElfName(hdd_relpath)
-    end
-    if boot_name == nil or boot_name == "" then
-      BlockLaunchFailure(
-        "HDD boot arg derivation failed",
-        popstarter,
-        device_page,
-        nil,
-        selected_entry,
-        APP_DIR_LOCAL,
-        nil,
-        nil
-      )
-      return
-    end
-    bootparam = "isra:/"..boot_name
-    bootparam_exists = true
-    vcd_path = hdd_vcd_path
-  elseif policy.name == "HDD" then
+  if policy.name == "HDD" then
     normalized_basename = ""
     bootparam = ""
     bootparam_basename_used = ""
@@ -3177,10 +3106,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   if policy.name == "HDD" then
     vcd_basename_raw = NormalizeHddRelpath(hdd_relpath or selected_entry)
   end
-  if policy.name == "HDD" and hdd_boot_handoff then
-    normalized_basename = game_name
-    bootparam_basename_used = game_name
-  elseif policy.name == "HDD" then
+  if policy.name == "HDD" then
     normalized_basename = game_name
     bootparam = BuildLiteralElfName(game_name)
     bootparam_exists = bootparam ~= ""
@@ -3201,10 +3127,6 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   end
   local selector_prefix = SelectPopstarterSelectorPrefix(device_page)
   local argv0_selector = BuildPopstarterSelectorPath(device_page, game_name)
-  if policy.name == "HDD" and hdd_boot_handoff then
-    local display_name = BuildDisplayNameFromEntry(selected_entry)
-    argv0_selector = BuildLiteralElfName(display_name)
-  end
   if selector_prefix == "" and string.upper(game_name) == "POPSTARTER" then
     BlockLaunchFailure(
       "Internal error: game_base derived as POPSTARTER; refusing to launch.",
@@ -3230,11 +3152,6 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   end
   local argv = {argv0_selector}
   local keep_hdd_slots = nil
-  if policy.name == "HDD" and hdd_boot_handoff then
-    argv0_selector = bootparam
-    argv = {bootparam, "--nr"}
-    keep_hdd_slots = {HDD_SLOT_GAME}
-  end
 
   local context = {
     device_page = device_page,
