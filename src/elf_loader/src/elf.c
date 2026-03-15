@@ -34,6 +34,14 @@
 #define EXECDBG_BLUE 0xFF0000
 #define EXECDBG_YELLOW 0x00FFFF
 #define EXECDBG_MAGENTA 0xFF00FF
+#define EXECDBG_ORANGE 0x00A5FF
+#define EXECDBG_GRAY 0x808080
+#define EXECDBG_LIME 0x00FF80
+#define EXECDBG_PINK 0xCBC0FF
+#define EXECDBG_AQUA 0xFFFF80
+#define EXECDBG_GOLD 0x00D7FF
+#define EXECDBG_TAN 0x8CB4D2
+#define EXECDBG_BROWN 0x2A2AA5
 
 extern unsigned char loader_elf[];
 
@@ -287,31 +295,45 @@ int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]
 	char resolved_path[256];
 	int ret;
 
+	SET_GS_BGCOLOUR(EXECDBG_WHITE);
 	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
+		SET_GS_BGCOLOUR(EXECDBG_MAGENTA);
 		return -1;
 	}
 
 	SifInitRpc(0);
 	SifLoadFileInit();
+	SET_GS_BGCOLOUR(EXECDBG_GREEN);
 	ret = SifLoadElf(resolved_path, &elfdata);
 	SifLoadFileExit();
+	SET_GS_BGCOLOUR(EXECDBG_BLUE);
 
 	if (ret != 0 || elfdata.epc == 0) {
+		SET_GS_BGCOLOUR(EXECDBG_MAGENTA);
 		return -2;
 	}
 
+	SET_GS_BGCOLOUR(EXECDBG_YELLOW);
 	FlushCache(0);
+	SET_GS_BGCOLOUR(EXECDBG_ORANGE);
 	while (!SifIopReset(NULL, 0)) {
 	}
 	while (!SifIopSync()) {
 	}
 
+	SET_GS_BGCOLOUR(EXECDBG_GRAY);
 	SifInitRpc(0);
+	SET_GS_BGCOLOUR(EXECDBG_LIME);
 	SifLoadFileInit();
+	SET_GS_BGCOLOUR(EXECDBG_PINK);
 	SifLoadModule("rom0:SIO2MAN", 0, NULL);
+	SET_GS_BGCOLOUR(EXECDBG_AQUA);
 	SifLoadModule("rom0:MCMAN", 0, NULL);
+	SET_GS_BGCOLOUR(EXECDBG_GOLD);
 	SifLoadModule("rom0:MCSERV", 0, NULL);
+	SET_GS_BGCOLOUR(EXECDBG_TAN);
 	SifLoadFileExit();
+	SET_GS_BGCOLOUR(EXECDBG_BROWN);
 	SifExitRpc();
 
 	FlushCache(0);
