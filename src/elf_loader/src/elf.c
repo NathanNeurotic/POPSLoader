@@ -37,6 +37,8 @@
 
 extern unsigned char loader_elf[];
 
+int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]);
+
 static bool is_host_path(const char *filename) {
 	return (filename != NULL && strncmp(filename, "host:/", 6) == 0);
 }
@@ -192,7 +194,7 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	}
 	if ((strncmp(resolved_path, "hdd", 3) == 0 || strncmp(resolved_path, "pfs", 3) == 0) &&
 	    argc > 0 && argv != NULL && argv[0] != NULL) {
-		return ExecuteViaEmbeddedLoader(resolved_path, argc, argv);
+		return LoadELFFromFileExecPS2RebootIOP(resolved_path, argc, argv);
 	}
 	fd = open(resolved_path, O_RDONLY);
 	DPRINTF("LAUNCH: popstarter open rc=%d (open)\n", fd);
