@@ -135,7 +135,24 @@ int main(int argc, char *argv[])
 	SET_GS_BGCOLOUR(BLUE_BG);
 	if (ret == 0 && elfdata.epc != 0) {
 		SET_GS_BGCOLOUR(YELLOW_BG);
+
+		while(!SifIopReset("rom0:UDNL rom0:EELOADCNF", 0)){};
+		while (!SifIopSync()) {};
+
+		SET_GS_BGCOLOUR(ORANGE_BG);
+		SifInitRpc(0);
+		SET_GS_BGCOLOUR(LIME_BG);
+		SifLoadFileInit();
+		SET_GS_BGCOLOUR(PINK_BG);
+		SifLoadModule("rom0:SIO2MAN", 0, NULL);
+		SET_GS_BGCOLOUR(AQUA_BG);
+		SifLoadModule("rom0:MCMAN", 0, NULL);
+		SET_GS_BGCOLOUR(GOLD_BG);
+		SifLoadModule("rom0:MCSERV", 0, NULL);
+		SET_GS_BGCOLOUR(TAN_BG);
+		SifLoadFileExit();
 		SET_GS_BGCOLOUR(BROWN_BG);
+		SifExitRpc();
 		FlushCache(0);
 		FlushCache(2);
 
