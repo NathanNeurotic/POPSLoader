@@ -2902,7 +2902,8 @@ local function PreparePopstarterExec(path)
   end
 
   local boot_context = PLDR.HDD and PLDR.HDD.BOOT_CONTEXT or {}
-  if boot_context.boot_partition == partition and boot_context.mounted_boot_prefix ~= nil then
+  local prefer_dedicated_mount = boot_context.is_hdd_boot == true
+  if not prefer_dedicated_mount and boot_context.boot_partition == partition and boot_context.mounted_boot_prefix ~= nil then
     local boot_exec_path = BuildMountedReadablePath(boot_context.mounted_boot_prefix, relpath)
     if boot_exec_path ~= nil and ProbePathExists(boot_exec_path) then
       RememberRecordedHddMount(partition, boot_context.mounted_boot_prefix)
@@ -2926,6 +2927,20 @@ local function PreparePopstarterExec(path)
         exec_dir = DirectoryFromExecPath(mounted_exec_path),
         exec_slot = HDD_SLOT_POPSTARTER,
         reused_boot_mount = false,
+        canonical_hdd = true
+      }
+    end
+  end
+
+  if boot_context.boot_partition == partition and boot_context.mounted_boot_prefix ~= nil then
+    local boot_exec_path = BuildMountedReadablePath(boot_context.mounted_boot_prefix, relpath)
+    if boot_exec_path ~= nil and ProbePathExists(boot_exec_path) then
+      RememberRecordedHddMount(partition, boot_context.mounted_boot_prefix)
+      return {
+        exec_path = boot_exec_path,
+        exec_dir = DirectoryFromExecPath(boot_exec_path),
+        exec_slot = boot_context.mounted_boot_slot,
+        reused_boot_mount = true,
         canonical_hdd = true
       }
     end
