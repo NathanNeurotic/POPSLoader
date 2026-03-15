@@ -140,6 +140,15 @@ int main(int argc, char *argv[])
 		while (!SifIopSync()) {};
 
 		SET_GS_BGCOLOUR(ORANGE_BG);
+		SifExitIopHeap();
+		SET_GS_BGCOLOUR(CORAL_BG);
+		SifLoadFileExit();
+		SET_GS_BGCOLOUR(OLIVE_BG);
+		SifExitRpc();
+		SET_GS_BGCOLOUR(NAVY_BG);
+		SifExitCmd();
+
+		SET_GS_BGCOLOUR(GRAY_BG);
 		SifInitRpc(0);
 		SET_GS_BGCOLOUR(LIME_BG);
 		SifLoadFileInit();

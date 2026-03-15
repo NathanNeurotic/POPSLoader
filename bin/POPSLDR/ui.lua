@@ -128,6 +128,36 @@ local function ExtractHddArtBasename(entry)
   return BasenameWithoutExtension(candidate)
 end
 local function BuildCoverCandidates(vcd_path, use_hdd_common_art, entry)
+  local function AppendCoverCandidate(out, seen, path)
+    local candidate = tostring(path or "")
+    if candidate == "" or seen[candidate] == true then
+      return
+    end
+    seen[candidate] = true
+    table.insert(out, candidate)
+  end
+
+  local function ExpandCoverCandidates(path)
+    local out = {}
+    local seen = {}
+    local base = tostring(path or "")
+    AppendCoverCandidate(out, seen, base)
+
+    if string.match(base, "^mmce%d:/") then
+      AppendCoverCandidate(out, seen, string.gsub(base, "^mmce%d:/", "mass:/"))
+    elseif string.match(base, "^mx4sio%d*:/") then
+      local suffix = string.gsub(base, "^mx4sio%d*:/", "")
+      local idx = tonumber(PLDR and PLDR.MX4SIO and PLDR.MX4SIO.MASSINDX or nil)
+      if idx == 0 then
+        AppendCoverCandidate(out, seen, "mass:/"..suffix)
+      elseif type(idx) == "number" and idx > 0 then
+        AppendCoverCandidate(out, seen, "mass"..tostring(idx)..":/"..suffix)
+      end
+    end
+
+    return out
+  end
+
   if use_hdd_common_art then
     local basename = ExtractHddArtBasename(entry)
     if basename == "" then
@@ -149,9 +179,7 @@ local function BuildCoverCandidates(vcd_path, use_hdd_common_art, entry)
     return {}
   end
   local base = StripExtension(vcd_path)
-  return {
-    base..".png"
-  }
+  return ExpandCoverCandidates(base..".png")
 end
 local CoverCache = {
   max = 3,
@@ -2184,10 +2212,22 @@ UI = {
         end
         if UI.Pad.Events.CONFIRM then
           if UI.MainMenu.OPT == 1 then
+            if type(System) == "table" and type(System.initMMCE) == "function" then
+              pcall(System.initMMCE)
+            end
             if type(PLDR.DetectMMCESlot) == "function" then
               pcall(PLDR.DetectMMCESlot, true)
             end
             local slots = PLDR.GetMMCESlots()
+            if #slots < 1 then
+              if type(System) == "table" and type(System.initMMCE) == "function" then
+                pcall(System.initMMCE)
+              end
+              if type(PLDR.DetectMMCESlot) == "function" then
+                pcall(PLDR.DetectMMCESlot, true)
+              end
+              slots = PLDR.GetMMCESlots()
+            end
             if #slots < 1 then
               UI.Notif_queue.add("No MMCE device found (mmce0/mmce1).")
               PLDR.CleanupGameList()
