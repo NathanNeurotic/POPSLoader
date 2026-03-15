@@ -118,6 +118,15 @@ static void wipe_bramMem(void) {
 	}
 }
 
+static void unmount_pfs_slots_for_exec(void) {
+	char mount_name[6] = "pfs0:";
+	int slot;
+	for (slot = 0; slot <= 3; slot++) {
+		mount_name[3] = '0' + slot;
+		fileXioUmount(mount_name);
+	}
+}
+
 static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *argv[]) {
 	int i;
 	int final_argc = argc + 1;
@@ -317,6 +326,7 @@ int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]
 	SET_GS_BGCOLOUR(EXECDBG_YELLOW);
 	FlushCache(0);
 	SET_GS_BGCOLOUR(EXECDBG_ORANGE);
+	unmount_pfs_slots_for_exec();
 	fileXioExit();
 	SifExitIopHeap();
 	SifLoadFileExit();
