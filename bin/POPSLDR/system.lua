@@ -3585,8 +3585,8 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     bootparam_source = boot_source_mode,
     hdd_init = hdd_init,
     keep_hdd_slots = keep_hdd_slots,
-    exec_cwd = canonical_hdd_handoff and canonical_popstarter_exec.exec_dir or nil,
-    exact_hdd_pfs_keep_slots = canonical_hdd_handoff and {canonical_popstarter_exec.exec_slot} or nil,
+    exec_cwd = (canonical_hdd_handoff and not canonical_hdd_reboot_iop) and canonical_popstarter_exec.exec_dir or nil,
+    exact_hdd_pfs_keep_slots = (canonical_hdd_handoff and not canonical_hdd_reboot_iop) and {canonical_popstarter_exec.exec_slot} or nil,
     raw_hdd_exec_teardown = raw_hdd_handoff,
     restore_boot_mount_on_return = restore_boot_mount_on_return,
     skip_prepare_external_elf_launch = canonical_hdd_handoff or raw_hdd_handoff
