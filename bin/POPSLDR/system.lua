@@ -606,6 +606,15 @@ local function PrepareForExactHddPfsExecLaunch(keep_slots)
   end
 end
 
+local function PrepareForRawHddExecLaunch()
+  if type(HDD) ~= "table" or type(HDD.UMountPartition) ~= "function" then
+    return
+  end
+  for slot = 0, 3 do
+    UMountHddPartitionTracked(slot)
+  end
+end
+
 local function AppendUniquePath(out, seen, path)
   local candidate = tostring(path or "")
   if candidate == "" then
@@ -2958,6 +2967,55 @@ local function PreparePopstarterExec(path)
   }
 end
 
+local function BuildRawHddExecPath(partition, relpath)
+  local normalized_partition = ParseHddPartitionMount(partition)
+  local clean_relpath = NormalizeHddExecRelpath(relpath)
+  if normalized_partition == nil or clean_relpath == "" then
+    return nil
+  end
+  return normalized_partition.."/"..clean_relpath
+end
+
+local function PrepareRawHddPopstarterExec(path)
+  local candidate = tostring(path or "")
+  if candidate == "" then
+    candidate = JoinPath(APP_DIR_RAW, "POPSTARTER.ELF")
+  elseif not IsAbsoluteDevicePath(candidate) then
+    candidate = JoinPath(APP_DIR_RAW, candidate)
+  end
+
+  local partition, relpath = GetHddPartitionAndRelpathFromExecPath(candidate)
+  local raw_candidate = nil
+  if partition ~= nil and relpath ~= nil and relpath ~= "" then
+    raw_candidate = BuildRawHddExecPath(partition, relpath)
+  elseif string.match(string.lower(candidate), "^hdd%d:") ~= nil then
+    raw_candidate = candidate
+  end
+
+  if raw_candidate == nil then
+    return {
+      exec_path = nil,
+      is_raw_hdd = false,
+      requested_path = candidate
+    }
+  end
+
+  local resolved = ResolveDirectHddExecPath(raw_candidate)
+  if resolved == nil then
+    return {
+      exec_path = nil,
+      is_raw_hdd = true,
+      requested_path = raw_candidate
+    }
+  end
+
+  return {
+    exec_path = resolved,
+    is_raw_hdd = true,
+    requested_path = raw_candidate
+  }
+end
+
 function PLDR.HDD.PreparePopstarterExec(path)
   return PreparePopstarterExec(path)
 end
@@ -3185,6 +3243,9 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   if open_path ~= nil and open_path ~= popstarter then
     popstarter = open_path
   end
+  if context and context.raw_hdd_exec_teardown then
+    PrepareForRawHddExecLaunch()
+  end
   local exec_args = argv or {}
   SetLaunchPhase(LaunchState.PHASE_FADEOUT)
   UI.LAUNCHING = true
@@ -3283,7 +3344,9 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   local policy, device_page = ResolveLaunchPolicy(gamelocation, ui_scene)
   local selected_entry = tostring(game or "")
   local popstarter = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
+  local boot_context = PLDR.HDD and PLDR.HDD.BOOT_CONTEXT or nil
   local canonical_popstarter_exec = nil
+  local raw_hdd_popstarter_exec = nil
   if selected_entry == "" then
     BlockLaunchFailure(
       "Invalid game selection",
@@ -3437,10 +3500,28 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   end
   local argv = {argv0_selector}
   local keep_hdd_slots = nil
+  local raw_hdd_handoff = false
   local canonical_hdd_handoff = false
   if policy.name == "HDD" then
-    local boot_context = PLDR.HDD and PLDR.HDD.BOOT_CONTEXT or nil
-    if (boot_context and boot_context.is_hdd_boot) or GetHddPartitionAndRelpathFromExecPath(popstarter) ~= nil then
+    local popstarter_is_hdd_source = GetHddPartitionAndRelpathFromExecPath(popstarter) ~= nil
+    if (boot_context and boot_context.is_hdd_boot) and popstarter_is_hdd_source then
+      raw_hdd_popstarter_exec = PrepareRawHddPopstarterExec(popstarter)
+      if raw_hdd_popstarter_exec.exec_path == nil then
+        BlockLaunchFailure(
+          "Failed to prepare raw HDD POPSTARTER path",
+          popstarter,
+          device_page,
+          argv0_selector,
+          vcd_path,
+          APP_DIR_LOCAL,
+          nil,
+          nil
+        )
+        return
+      end
+      popstarter = raw_hdd_popstarter_exec.exec_path
+      raw_hdd_handoff = raw_hdd_popstarter_exec.is_raw_hdd == true
+    elseif (boot_context and boot_context.is_hdd_boot) or popstarter_is_hdd_source then
       canonical_popstarter_exec = PreparePopstarterExec(popstarter)
       if canonical_popstarter_exec.canonical_hdd then
         if canonical_popstarter_exec.exec_path == nil or canonical_popstarter_exec.exec_dir == nil then
@@ -3462,6 +3543,13 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
         popstarter = canonical_popstarter_exec.exec_path
       end
     end
+  end
+
+  local restore_boot_mount_on_return = false
+  if raw_hdd_handoff then
+    restore_boot_mount_on_return = boot_context ~= nil and boot_context.boot_partition ~= nil and boot_context.mounted_boot_slot ~= nil
+  elseif canonical_hdd_handoff then
+    restore_boot_mount_on_return = canonical_popstarter_exec.exec_slot ~= (boot_context and boot_context.mounted_boot_slot)
   end
 
   local context = {
@@ -3489,11 +3577,14 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     keep_hdd_slots = keep_hdd_slots,
     exec_cwd = canonical_hdd_handoff and canonical_popstarter_exec.exec_dir or nil,
     exact_hdd_pfs_keep_slots = canonical_hdd_handoff and {canonical_popstarter_exec.exec_slot} or nil,
-    restore_boot_mount_on_return = canonical_hdd_handoff and (canonical_popstarter_exec.exec_slot ~= (PLDR.HDD and PLDR.HDD.BOOT_CONTEXT and PLDR.HDD.BOOT_CONTEXT.mounted_boot_slot)) or false,
-    skip_prepare_external_elf_launch = canonical_hdd_handoff
+    raw_hdd_exec_teardown = raw_hdd_handoff,
+    restore_boot_mount_on_return = restore_boot_mount_on_return,
+    skip_prepare_external_elf_launch = canonical_hdd_handoff or raw_hdd_handoff
   }
   local reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
-  if canonical_hdd_handoff then
+  if raw_hdd_handoff then
+    reboot_iop = 1
+  elseif canonical_hdd_handoff then
     reboot_iop = 0
   elseif policy.name == "HDD" then
     reboot_iop = 1
