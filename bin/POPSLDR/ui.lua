@@ -44,6 +44,58 @@ local function SafeDoesFileExist(path)
   end
   return false
 end
+local function EnsureCoverBackendForPath(path)
+  local candidate = string.lower(tostring(path or ""))
+  if candidate == "" then
+    return
+  end
+
+  if string.match(candidate, "^mmce%d*:/") then
+    if type(System) == "table" and type(System.initMMCE) == "function" then
+      pcall(System.initMMCE)
+    end
+    return
+  end
+
+  if string.match(candidate, "^mx4sio%d*:/") then
+    if type(_G.ensureMx4sioInit) == "function" then
+      pcall(_G.ensureMx4sioInit)
+    end
+    if type(System) == "table" and type(System.initMX4SIO) == "function" then
+      pcall(System.initMX4SIO)
+    end
+    return
+  end
+
+  if string.match(candidate, "^mass%d*:/") then
+    local mass_root = string.match(candidate, "^(mass%d*:/)")
+    local driver = nil
+    if mass_root ~= nil and type(PLDR) == "table" and type(PLDR.GetMassMountDriver) == "function" then
+      local ok_driver, mounted_driver = pcall(PLDR.GetMassMountDriver, mass_root)
+      if ok_driver and type(mounted_driver) == "string" then
+        driver = string.lower(mounted_driver)
+      end
+    end
+
+    if driver ~= nil and (string.find(driver, "mx4", 1, true) ~= nil or string.find(driver, "sdc", 1, true) ~= nil) then
+      if type(_G.ensureMx4sioInit) == "function" then
+        pcall(_G.ensureMx4sioInit)
+      end
+      if type(System) == "table" and type(System.initMX4SIO) == "function" then
+        pcall(System.initMX4SIO)
+      end
+      return
+    end
+
+    if type(PLDR) == "table" and type(PLDR.EnsureUsbMassReadyOnce) == "function" then
+      pcall(PLDR.EnsureUsbMassReadyOnce)
+      return
+    end
+    if type(System) == "table" and type(System.ensureUsbMass) == "function" then
+      pcall(System.ensureUsbMass)
+    end
+  end
+end
 local function ResolveFirstExistingElf(candidates)
   if candidates == nil then return nil end
   for i = 1, #candidates do
@@ -195,6 +247,10 @@ function CoverCache:GetOrLoad(path)
   if self.failed[path] then
     return nil
   end
+  EnsureCoverBackendForPath(path)
+  if not SafeDoesFileExist(path) then
+    EnsureCoverBackendForPath(path)
+  end
   if not SafeDoesFileExist(path) then
     self.failed[path] = true
     return nil
@@ -203,6 +259,7 @@ function CoverCache:GetOrLoad(path)
     self.failed[path] = true
     return nil
   end
+  EnsureCoverBackendForPath(path)
   local img = Graphics.loadImage(path)
   if img == nil then
     self.failed[path] = true
