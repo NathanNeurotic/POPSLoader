@@ -2039,54 +2039,9 @@ local function ClassifyMassRootDriver(driver)
   return "usb"
 end
 
-local function GetPresentMassRootsBounded()
-  local roots = {}
-  for slot = 0, 9 do
-    local root = (slot == 0) and "mass:/" or ("mass"..tostring(slot)..":/")
-    if doesFolderExist(root) then
-      table.insert(roots, root)
-    end
-  end
-  return roots
-end
-
-local function BuildMassKindsFromBdmList()
-  local kinds = {}
-  if type(System) ~= "table" or type(System.bdmList) ~= "function" then
-    return kinds
-  end
-
-  local ok, list = pcall(System.bdmList)
-  if not ok or type(list) ~= "table" then
-    return kinds
-  end
-
-  for i = 1, #list do
-    local info = list[i]
-    local slot = tonumber(info and info.parId)
-    if slot ~= nil and slot >= 0 and slot <= 9 then
-      local root = (slot == 0) and "mass:/" or ("mass"..tostring(slot)..":/")
-      local kind = ClassifyMassRootDriver(info and info.name)
-      if kind ~= "unknown" then
-        local prev = kinds[root]
-        if prev == nil or prev == "unknown" then
-          kinds[root] = kind
-        elseif prev ~= "mx4sio" and kind == "mx4sio" then
-          kinds[root] = kind
-        end
-      end
-    end
-  end
-
-  return kinds
-end
-
 local function WaitMassProbeRetry(attempt, max_attempts)
   if attempt >= max_attempts then
     return
-  end
-  if type(System) == "table" and type(System.sleep) == "function" then
-    pcall(System.sleep, 60)
   end
   if type(PLDR.RefreshMassBackends) == "function" then
     pcall(PLDR.RefreshMassBackends)
@@ -2104,43 +2059,25 @@ local function BuildMassRootIdentity(mode)
   local seen_present = {}
   local seen_usb = {}
   local seen_mx4 = {}
-  local bdm_kinds = BuildMassKindsFromBdmList()
-  local roots = {}
-  local roots_seen = {}
-  local present = GetPresentMassRootsBounded()
 
-  for i = 1, #present do
-    local normalized = NormalizeMassRoot(present[i])
-    if normalized ~= nil and roots_seen[normalized] ~= true then
-      roots_seen[normalized] = true
-      table.insert(roots, normalized)
-    end
-  end
-  for root, _ in pairs(bdm_kinds) do
+  for slot = 0, 9 do
+    local root = (slot == 0) and "mass:/" or ("mass"..tostring(slot)..":/")
     local normalized = NormalizeMassRoot(root)
-    if normalized ~= nil and roots_seen[normalized] ~= true then
-      roots_seen[normalized] = true
-      table.insert(roots, normalized)
-    end
-  end
-
-  for i = 1, #roots do
-    local normalized = roots[i]
-    if normalized ~= nil and seen_present[normalized] ~= true then
-      seen_present[normalized] = true
-      table.insert(identity.present_roots, normalized)
-
-      local kind = bdm_kinds[normalized]
-      if kind == nil then
-        local driver = PLDR.GetMassMountDriver(normalized)
-        kind = ClassifyMassRootDriver(driver)
+    if normalized ~= nil then
+      local driver = PLDR.GetMassMountDriver(normalized)
+      local kind = ClassifyMassRootDriver(driver)
+      local present = doesFolderExist(normalized)
+      local detected = (kind ~= "unknown") or present
+      if detected and seen_present[normalized] ~= true then
+        seen_present[normalized] = true
+        table.insert(identity.present_roots, normalized)
       end
       if kind == "mx4sio" then
         if seen_mx4[normalized] ~= true then
           seen_mx4[normalized] = true
           table.insert(identity.mx4sio, normalized)
         end
-      elseif kind == "usb" then
+      elseif detected then
         if seen_usb[normalized] ~= true then
           seen_usb[normalized] = true
           table.insert(identity.usb, normalized)
