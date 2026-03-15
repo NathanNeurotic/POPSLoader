@@ -210,10 +210,6 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	} else {
 		DPRINTF("LAUNCH: popstarter path: %s\n", resolved_path);
 	}
-	if ((strncmp(resolved_path, "hdd", 3) == 0 || strncmp(resolved_path, "pfs", 3) == 0) &&
-	    argc > 0 && argv != NULL && argv[0] != NULL) {
-		return LoadELFFromFileExecPS2RebootIOP(resolved_path, argc, argv);
-	}
 	fd = open(resolved_path, O_RDONLY);
 	DPRINTF("LAUNCH: popstarter open rc=%d (open)\n", fd);
 	if (fd >= 0) {

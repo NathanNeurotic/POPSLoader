@@ -3486,10 +3486,8 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     keep_hdd_slots = keep_hdd_slots
   }
   local reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
-  if policy.name == "HDD" then
+  if policy.name == "HDD" or IsHddExecContextPath(popstarter) then
     reboot_iop = 0
-  elseif IsPfsExecPath(popstarter) then
-    reboot_iop = 1
   end
   if UI ~= nil and UI.CoverCache ~= nil and UI.CoverCache.Clear ~= nil then
     UI.CoverCache:Clear()
