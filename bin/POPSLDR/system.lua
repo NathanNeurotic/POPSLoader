@@ -96,10 +96,16 @@ local function IsRawHddPartitionPath(path)
   return string.match(candidate, "^hdd%d:[^:/]+/.+") ~= nil
 end
 
+local function IsEmbeddedHddMountPath(path)
+  local candidate = NormalizeFsPathRaw(tostring(path or ""))
+  candidate = string.lower(candidate)
+  return string.match(candidate, "^hdd%d:[^:]+:[%a]+%d*:/") ~= nil
+end
+
 local function ResolveAppDirLocal()
   local current_dir = EnsureTrailingSlashNormRaw(System.currentDirectory() or "")
   local app_dir = APP_DIR or System.currentDirectory() or ""
-  if IsPfsMountedPath(current_dir) and IsRawHddPartitionPath(app_dir) then
+  if IsPfsMountedPath(current_dir) and (IsRawHddPartitionPath(app_dir) or IsEmbeddedHddMountPath(app_dir)) then
     return current_dir
   end
   return EnsureTrailingSlashNormRaw(app_dir)
@@ -129,6 +135,25 @@ local APP_DIR_RAW = EnsureTrailingSlashNormRaw(APP_DIR or System.currentDirector
 local APP_DIR_LOCAL = ResolveAppDirLocal()
 APP_DIR_NORM = APP_DIR_LOCAL
 local SELECTOR_MODE = "basename"
+
+local function GetPreferredPopstarterBaseDir()
+  local boot_dir = EnsureTrailingSlashNormRaw(BOOT_PATH_RAW or System.currentDirectory() or "")
+  if IsPfsMountedPath(boot_dir) then
+    return boot_dir
+  end
+
+  local local_dir = EnsureTrailingSlashNormRaw(APP_DIR_LOCAL or "")
+  if local_dir ~= "/" and local_dir ~= "" then
+    return local_dir
+  end
+
+  local raw_dir = EnsureTrailingSlashNormRaw(APP_DIR_RAW or "")
+  if raw_dir ~= "/" and raw_dir ~= "" then
+    return raw_dir
+  end
+
+  return boot_dir
+end
 
 local function ResolveWritablePath(rel)
   local legacy_root = JoinPath(APP_DIR_LOCAL, "POPSLDR")
@@ -916,31 +941,10 @@ local function ResolveHddBootSidecarPopstarter()
     end
   end
 
-  add_candidate(BOOT_ARGV0_RAW)
   add_candidate(BOOT_PATH_RAW)
-  add_candidate(APP_DIR)
   add_candidate(APP_DIR_LOCAL)
-
-  local prefer_raw_hdd = false
-  local raw_boot_sources = {
-    BOOT_ARGV0_RAW,
-    APP_DIR
-  }
-  for i = 1, #raw_boot_sources do
-    if IsRawHddPartitionPath(raw_boot_sources[i]) then
-      prefer_raw_hdd = true
-      break
-    end
-  end
-
-  if prefer_raw_hdd then
-    for i = 1, #hdd_candidates do
-      local direct_hdd = ResolveDirectHddExecPath(hdd_candidates[i])
-      if direct_hdd ~= nil then
-        return direct_hdd
-      end
-    end
-  end
+  add_candidate(BOOT_ARGV0_RAW)
+  add_candidate(APP_DIR)
 
   for i = 1, #mounted_candidates do
     if ProbePathExists(mounted_candidates[i]) then
@@ -1006,11 +1010,12 @@ local function ResolvePopstarterPath(path)
     end
   end
 
+  local preferred_base = GetPreferredPopstarterBaseDir()
   local chosen = path
   if chosen == nil or chosen == "" then
-    chosen = JoinPath(APP_DIR_RAW, "POPSTARTER.ELF")
+    chosen = JoinPath(preferred_base, "POPSTARTER.ELF")
   elseif not IsAbsoluteDevicePath(chosen) then
-    chosen = JoinPath(APP_DIR_RAW, chosen)
+    chosen = JoinPath(preferred_base, chosen)
   end
 
   if string.match(string.lower(chosen), "^hdd%d:") ~= nil then
@@ -1029,8 +1034,9 @@ local function ResolvePopstarterPath(path)
   end
 
   local fallbacks = {
-    JoinPath(APP_DIR_RAW, "POPSTARTER.ELF"),
+    JoinPath(preferred_base, "POPSTARTER.ELF"),
     JoinPath(APP_DIR_LOCAL, "POPSTARTER.ELF"),
+    JoinPath(APP_DIR_RAW, "POPSTARTER.ELF"),
     JoinPath(BOOT_PATH_RAW or System.currentDirectory() or "", "POPSTARTER.ELF"),
     "mc0:/POPSTARTER/POPSTARTER.ELF",
     "mc1:/POPSTARTER/POPSTARTER.ELF"
@@ -2891,11 +2897,12 @@ local function NormalizeHddRelpath(relpath)
 end
 
 local function PreparePopstarterExec(path)
+  local preferred_base = GetPreferredPopstarterBaseDir()
   local candidate = tostring(path or "")
   if candidate == "" then
-    candidate = JoinPath(APP_DIR_RAW, "POPSTARTER.ELF")
+    candidate = JoinPath(preferred_base, "POPSTARTER.ELF")
   elseif not IsAbsoluteDevicePath(candidate) then
-    candidate = JoinPath(APP_DIR_RAW, candidate)
+    candidate = JoinPath(preferred_base, candidate)
   end
 
   local partition, relpath = GetHddPartitionAndRelpathFromExecPath(candidate)
@@ -2977,11 +2984,12 @@ local function BuildRawHddExecPath(partition, relpath)
 end
 
 local function PrepareRawHddPopstarterExec(path)
+  local preferred_base = GetPreferredPopstarterBaseDir()
   local candidate = tostring(path or "")
   if candidate == "" then
-    candidate = JoinPath(APP_DIR_RAW, "POPSTARTER.ELF")
+    candidate = JoinPath(preferred_base, "POPSTARTER.ELF")
   elseif not IsAbsoluteDevicePath(candidate) then
-    candidate = JoinPath(APP_DIR_RAW, candidate)
+    candidate = JoinPath(preferred_base, candidate)
   end
 
   local partition, relpath = GetHddPartitionAndRelpathFromExecPath(candidate)
