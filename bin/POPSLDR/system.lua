@@ -3235,7 +3235,11 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     return
   end
   SetLaunchPhase(LaunchState.PHASE_EXEC)
-  PrepareForExternalELFLaunch(popstarter, context and context.keep_hdd_slots or nil)
+  if context ~= nil and context.exact_hdd_pfs_keep_slots ~= nil then
+    PrepareForExactHddPfsExecLaunch(context.exact_hdd_pfs_keep_slots)
+  else
+    PrepareForExternalELFLaunch(popstarter, context and context.keep_hdd_slots or nil)
+  end
   local rc
   if exec_args ~= nil and #exec_args > 0 and unpack_fn ~= nil then
     rc = System.loadELF(popstarter, reboot_iop, unpack_fn(exec_args))
@@ -3485,6 +3489,12 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     hdd_init = hdd_init,
     keep_hdd_slots = keep_hdd_slots
   }
+  if policy.name == "HDD" and IsPfsExecPath(popstarter) then
+    local exec_slot = ExtractLaunchPfsSlot(popstarter)
+    if exec_slot ~= nil then
+      context.exact_hdd_pfs_keep_slots = {exec_slot}
+    end
+  end
   local reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
   if policy.name == "HDD" then
     reboot_iop = 0
