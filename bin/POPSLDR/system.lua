@@ -581,6 +581,31 @@ local function PrepareForExternalELFLaunch(path, extra_keep_slots)
   end
 end
 
+local function PrepareForExactHddPfsExecLaunch(keep_slots)
+  if type(HDD) ~= "table" or type(HDD.UMountPartition) ~= "function" then
+    return
+  end
+  local keep = {}
+  if type(keep_slots) == "table" then
+    for i = 1, #keep_slots do
+      local slot = tonumber(keep_slots[i])
+      if slot ~= nil then
+        keep[slot] = true
+      end
+    end
+  else
+    local slot = tonumber(keep_slots)
+    if slot ~= nil then
+      keep[slot] = true
+    end
+  end
+  for slot = 0, 3 do
+    if keep[slot] ~= true then
+      UMountHddPartitionTracked(slot)
+    end
+  end
+end
+
 local function AppendUniquePath(out, seen, path)
   local candidate = tostring(path or "")
   if candidate == "" then
@@ -3080,8 +3105,41 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   local boot_path = prior_cwd
   local argv0 = argv and argv[1] or nil
   local unpack_fn = table.unpack or unpack
+  local function restore_launch_runtime()
+    if context and context.restore_boot_mount_on_return then
+      local boot_context = PLDR.HDD and PLDR.HDD.BOOT_CONTEXT or nil
+      if boot_context and boot_context.boot_partition ~= nil and boot_context.mounted_boot_slot ~= nil then
+        MountHddPartitionTracked(boot_context.boot_partition, boot_context.mounted_boot_slot, FIO_MT_RDONLY)
+      end
+    end
+    if prior_cwd ~= nil and prior_cwd ~= "" and boot_path ~= prior_cwd then
+      pcall(System.currentDirectory, prior_cwd)
+    end
+  end
   SetLaunchPhase(LaunchState.PHASE_VALIDATE)
+  if context and context.exact_hdd_pfs_keep_slots ~= nil then
+    PrepareForExactHddPfsExecLaunch(context.exact_hdd_pfs_keep_slots)
+  end
+  if context ~= nil and type(context.exec_cwd) == "string" and context.exec_cwd ~= "" then
+    local cwd_ok = pcall(System.currentDirectory, context.exec_cwd)
+    if not cwd_ok then
+      restore_launch_runtime()
+      BlockLaunchFailure(
+        "failed to set exec cwd",
+        popstarter,
+        context and context.device_page or "unknown",
+        argv and argv[1] or nil,
+        context and context.vcd_path or nil,
+        app_dir,
+        nil,
+        "currentDirectory"
+      )
+      return
+    end
+    boot_path = EnsureTrailingSlash(System.currentDirectory())
+  end
   if not PLDR.PopstarterProbeWithEnsure(popstarter) then
+    restore_launch_runtime()
     BlockLaunchFailure(
       "popstarter missing",
       popstarter,
@@ -3096,6 +3154,7 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   end
   local open_ok, open_rc, open_stage, open_api, open_path = TryOpenForLaunch(popstarter)
   if not open_ok then
+    restore_launch_runtime()
     BlockLaunchFailure(
       "popstarter "..tostring(open_stage).." failed: "..tostring(open_rc),
       popstarter,
@@ -3111,23 +3170,6 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   if open_path ~= nil and open_path ~= popstarter then
     popstarter = open_path
   end
-  if context ~= nil and type(context.exec_cwd) == "string" and context.exec_cwd ~= "" then
-    local cwd_ok = pcall(System.currentDirectory, context.exec_cwd)
-    if not cwd_ok then
-      BlockLaunchFailure(
-        "failed to set exec cwd",
-        popstarter,
-        context and context.device_page or "unknown",
-        argv and argv[1] or nil,
-        context and context.vcd_path or nil,
-        app_dir,
-        nil,
-        "currentDirectory"
-      )
-      return
-    end
-    boot_path = EnsureTrailingSlash(System.currentDirectory())
-  end
   local exec_args = argv or {}
   SetLaunchPhase(LaunchState.PHASE_FADEOUT)
   UI.LAUNCHING = true
@@ -3136,6 +3178,7 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   Screen.clear(Color.new(0, 0, 0))
   Screen.flip()
   if (Timer.getTime(LaunchState.fade_timer) - LaunchState.fade_start) >= LaunchState.watchdog_ms then
+    restore_launch_runtime()
     BlockLaunchFailure(
       "Launch timeout: exec did not transfer control",
       popstarter,
@@ -3161,9 +3204,7 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     rc = System.loadELF(popstarter, reboot_iop)
   end
   if (Timer.getTime(LaunchState.fade_timer) - LaunchState.fade_start) >= LaunchState.watchdog_ms then
-    if prior_cwd ~= nil and prior_cwd ~= "" and boot_path ~= prior_cwd then
-      pcall(System.currentDirectory, prior_cwd)
-    end
+    restore_launch_runtime()
     BlockLaunchFailure(
       "Launch timeout: exec did not transfer control",
       popstarter,
@@ -3176,9 +3217,7 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     )
     return
   end
-  if prior_cwd ~= nil and prior_cwd ~= "" and boot_path ~= prior_cwd then
-    pcall(System.currentDirectory, prior_cwd)
-  end
+  restore_launch_runtime()
   BlockLaunchFailure(
     rc,
     popstarter,
@@ -3434,10 +3473,14 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     hdd_init = hdd_init,
     keep_hdd_slots = keep_hdd_slots,
     exec_cwd = canonical_hdd_handoff and canonical_popstarter_exec.exec_dir or nil,
+    exact_hdd_pfs_keep_slots = canonical_hdd_handoff and {canonical_popstarter_exec.exec_slot} or nil,
+    restore_boot_mount_on_return = canonical_hdd_handoff and (canonical_popstarter_exec.exec_slot ~= (PLDR.HDD and PLDR.HDD.BOOT_CONTEXT and PLDR.HDD.BOOT_CONTEXT.mounted_boot_slot)) or false,
     skip_prepare_external_elf_launch = canonical_hdd_handoff
   }
   local reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
-  if policy.name == "HDD" then
+  if canonical_hdd_handoff then
+    reboot_iop = 0
+  elseif policy.name == "HDD" then
     reboot_iop = 1
   elseif IsPfsExecPath(popstarter) then
     reboot_iop = 1
