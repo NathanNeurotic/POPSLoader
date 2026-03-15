@@ -301,7 +301,7 @@ int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]
 	}
 
 	FlushCache(0);
-	while (!SifIopReset("rom0:UDNL rom0:EELOADCNF", 0)) {
+	while (!SifIopReset(NULL, 0)) {
 	}
 	while (!SifIopSync()) {
 	}
