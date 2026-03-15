@@ -290,6 +290,12 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 	}
 
 	SET_GS_BGCOLOUR(EXECDBG_YELLOW);
+	if (strncmp(resolved_path, "pfs", 3) == 0 || strncmp(resolved_path, "hdd", 3) == 0) {
+		unmount_pfs_slots_for_exec();
+	}
+	SifExitRpc();
+	FlushCache(0);
+	FlushCache(2);
 	ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc, argv);
 	return -1;
 }
