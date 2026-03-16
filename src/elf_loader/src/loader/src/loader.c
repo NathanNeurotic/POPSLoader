@@ -17,6 +17,7 @@
 #include <iopcontrol.h>
 #include <iopheap.h>
 #include <sifrpc.h>
+#include <sifcmd.h>
 #include <errno.h>
 #include <ps2sdkapi.h>
 #include <sbv_patches.h>
@@ -212,6 +213,17 @@ int main(int argc, char *argv[])
 	SET_GS_BGCOLOUR(BLUE_BG);
 	if (ret == 0 && elfdata.epc != 0) {
 		SET_GS_BGCOLOUR(YELLOW_BG);
+		if (use_partition_mount) {
+			SET_GS_BGCOLOUR(ORANGE_BG);
+			fileXioUmount("pfs:");
+			fileXioExit();
+		}
+		SET_GS_BGCOLOUR(CORAL_BG);
+		SifExitIopHeap();
+		SET_GS_BGCOLOUR(OLIVE_BG);
+		SifExitRpc();
+		SET_GS_BGCOLOUR(NAVY_BG);
+		SifExitCmd();
 		SET_GS_BGCOLOUR(BROWN_BG);
 		FlushCache(0);
 		FlushCache(2);
@@ -222,12 +234,7 @@ int main(int argc, char *argv[])
 		for (i = 0; i < target_argc; i++) {
 			DPRINTF("POPS EXEC: argv[%d] = %s\n", i, target_argv[i]);
 		}
-		ret = ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, target_argc, target_argv);
-		if (use_partition_mount) {
-			fileXioUmount("pfs:");
-			fileXioExit();
-		}
-		return ret;
+		return ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, target_argc, target_argv);
 	} else {
 		SET_GS_BGCOLOUR(MAGENTA_BG);
 		SifExitRpc();
