@@ -3325,6 +3325,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   local policy, device_page = ResolveLaunchPolicy(gamelocation, ui_scene)
   local selected_entry = tostring(game or "")
   local popstarter = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
+  local boot_context = PLDR.HDD and PLDR.HDD.BOOT_CONTEXT or nil
   if selected_entry == "" then
     BlockLaunchFailure(
       "Invalid game selection",
@@ -3479,6 +3480,29 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   local argv = {argv0_selector}
   local keep_hdd_slots = nil
   local exec_popstarter = popstarter
+  local canonical_hdd_boot_game_handoff = false
+  if policy.name == "HDD" and boot_context ~= nil and boot_context.is_hdd_boot then
+    local popstarter_is_hdd_source = GetHddPartitionAndRelpathFromExecPath(popstarter) ~= nil
+    if popstarter_is_hdd_source then
+      local canonical_popstarter_exec = PreparePopstarterExec(popstarter)
+      if canonical_popstarter_exec.exec_path == nil then
+        BlockLaunchFailure(
+          "Failed to prepare mounted HDD POPSTARTER path",
+          popstarter,
+          device_page,
+          argv0_selector,
+          vcd_path,
+          APP_DIR_LOCAL,
+          nil,
+          nil
+        )
+        return
+      end
+      popstarter = canonical_popstarter_exec.exec_path
+      exec_popstarter = popstarter
+      canonical_hdd_boot_game_handoff = true
+    end
+  end
 
   local context = {
     device_page = device_page,
@@ -3506,7 +3530,9 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     exec_popstarter = exec_popstarter
   }
   local reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
-  if policy.name == "HDD" or IsHddExecContextPath(popstarter) then
+  if canonical_hdd_boot_game_handoff then
+    reboot_iop = 1
+  elseif policy.name == "HDD" or IsHddExecContextPath(popstarter) then
     reboot_iop = 0
     if string.match(string.lower(tostring(popstarter or "")), "^hdd%d:") ~= nil then
       local embedded_hdd_exec = ResolveEmbeddedHddExecPath(popstarter)
