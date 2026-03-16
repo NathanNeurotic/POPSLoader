@@ -16,7 +16,6 @@
 #include <loadfile.h>
 #include <iopheap.h>
 #include <iopcontrol.h>
-#include <hdd-ioctl.h>
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
 #include <sys/stat.h>
@@ -128,10 +127,6 @@ static void unmount_pfs_slots_for_exec(void) {
 	}
 }
 
-static void close_pfs_handles_for_exec(void) {
-	fileXioDevctl("pfs:", PDIOC_CLOSEALL, NULL, 0, NULL, 0);
-}
-
 static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *argv[]) {
 	int i;
 	int final_argc = argc + 1;
@@ -215,6 +210,10 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	} else {
 		DPRINTF("LAUNCH: popstarter path: %s\n", resolved_path);
 	}
+	if ((strncmp(resolved_path, "hdd", 3) == 0 || strncmp(resolved_path, "pfs", 3) == 0) &&
+	    argc > 0 && argv != NULL && argv[0] != NULL) {
+		return ExecuteViaEmbeddedLoader(resolved_path, argc, argv);
+	}
 	fd = open(resolved_path, O_RDONLY);
 	DPRINTF("LAUNCH: popstarter open rc=%d (open)\n", fd);
 	if (fd >= 0) {
@@ -295,13 +294,6 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 	}
 
 	SET_GS_BGCOLOUR(EXECDBG_YELLOW);
-	if (strncmp(resolved_path, "pfs", 3) == 0 || strncmp(resolved_path, "hdd", 3) == 0) {
-		close_pfs_handles_for_exec();
-		fileXioExit();
-	}
-	SifExitRpc();
-	FlushCache(0);
-	FlushCache(2);
 	ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc, argv);
 	return -1;
 }
