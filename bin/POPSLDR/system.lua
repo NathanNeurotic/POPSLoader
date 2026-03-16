@@ -3381,17 +3381,9 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   local hdd_init = nil
   local hdd_partition_label = nil
   local hdd_relpath = nil
-  local hdd_partition = nil
-  local hdd_vcd_path = nil
-  local hdd_launch_slot = nil
-  local hdd_boot_sidecar_handoff = false
   if policy.name == "HDD" then
     hdd_partition_label, hdd_relpath = ParseHddGameEntry(selected_entry)
     hdd_relpath = NormalizeHddRelpath(hdd_relpath or selected_entry)
-    hdd_boot_sidecar_handoff = boot_context ~= nil and boot_context.is_hdd_boot == true and GetHddPartitionAndRelpathFromExecPath(popstarter) ~= nil
-    if hdd_boot_sidecar_handoff and hdd_partition_label ~= nil then
-      hdd_partition = "hdd0:"..hdd_partition_label
-    end
   end
   local normalized_gamelocation = policy.normalize(gamelocation)
   local handoff_gamelocation = policy.handoff(normalized_gamelocation)
@@ -3443,59 +3435,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   local fallback_exists = false
   local bootparam_basename_used = ""
   local prefix_used = ""
-  if policy.name == "HDD" and hdd_boot_sidecar_handoff then
-    normalized_basename = ""
-    bootparam = ""
-    bootparam_basename_used = ""
-    if hdd_partition == nil or hdd_relpath == "" then
-      BlockLaunchFailure(
-        "Invalid HDD game entry",
-        popstarter,
-        device_page,
-        nil,
-        selected_entry,
-        APP_DIR_LOCAL,
-        nil,
-        nil
-      )
-      return
-    end
-    hdd_launch_slot = SelectHddLaunchGameSlot(popstarter)
-    hdd_init = EnsureHDDReadyForLaunch(selected_entry, hdd_partition, hdd_launch_slot)
-    if hdd_init == nil or hdd_init.mount_ok ~= true then
-      BlockLaunchFailure(
-        "HDD game mount failed",
-        popstarter,
-        device_page,
-        nil,
-        selected_entry,
-        APP_DIR_LOCAL,
-        nil,
-        nil
-      )
-      return
-    end
-    local mount_prefix = hdd_init.mount_prefix or BuildMountedPfsPrefix(hdd_init.mount_slot or hdd_launch_slot or HDD_SLOT_GAME)
-    if mount_prefix ~= nil then
-      hdd_vcd_path = BuildMountedReadablePath(mount_prefix, hdd_relpath)
-    end
-    bootparam = BuildIsraBootPathFromMountedVcd(hdd_vcd_path)
-    if bootparam == nil or bootparam == "" then
-      BlockLaunchFailure(
-        "Invalid HDD boot argument",
-        popstarter,
-        device_page,
-        nil,
-        selected_entry,
-        APP_DIR_LOCAL,
-        nil,
-        nil
-      )
-      return
-    end
-    bootparam_exists = hdd_vcd_path ~= nil and doesFileExist(hdd_vcd_path)
-    vcd_path = hdd_vcd_path
-  elseif policy.name == "HDD" then
+  if policy.name == "HDD" then
     normalized_basename = ""
     bootparam = ""
     bootparam_basename_used = ""
@@ -3532,10 +3472,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   if policy.name == "HDD" then
     vcd_basename_raw = NormalizeHddRelpath(hdd_relpath or selected_entry)
   end
-  if policy.name == "HDD" and hdd_boot_sidecar_handoff then
-    normalized_basename = game_name
-    bootparam_basename_used = game_name
-  elseif policy.name == "HDD" then
+  if policy.name == "HDD" then
     normalized_basename = game_name
     bootparam = BuildLiteralElfName(game_name)
     bootparam_exists = bootparam ~= ""
@@ -3556,9 +3493,6 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   end
   local selector_prefix = SelectPopstarterSelectorPrefix(device_page)
   local argv0_selector = BuildPopstarterSelectorPath(device_page, game_name)
-  if hdd_boot_sidecar_handoff then
-    argv0_selector = bootparam
-  end
   if selector_prefix == "" and string.upper(game_name) == "POPSTARTER" then
     BlockLaunchFailure(
       "Internal error: game_base derived as POPSTARTER; refusing to launch.",
@@ -3585,10 +3519,6 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   local argv = {argv0_selector}
   local keep_hdd_slots = nil
   local exec_popstarter = popstarter
-  if hdd_boot_sidecar_handoff then
-    argv = {bootparam, "--nr"}
-    keep_hdd_slots = {hdd_init and hdd_init.mount_slot or hdd_launch_slot or HDD_SLOT_GAME}
-  end
 
   local context = {
     device_page = device_page,
