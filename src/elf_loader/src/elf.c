@@ -390,6 +390,13 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 	}
 
 	SET_GS_BGCOLOUR(EXECDBG_YELLOW);
+	SifExitIopHeap();
+	SifExitRpc();
+	SifExitCmd();
+	audsrv_quit();
+	gsKit_finish();
+	FlushCache(0);
+	FlushCache(2);
 	ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc, argv);
 	return -1;
 }
