@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <ctype.h>
 #include <kernel.h>
 #include <loadfile.h>
 #include <iopcontrol.h>
@@ -18,6 +19,9 @@
 #include <sifrpc.h>
 #include <errno.h>
 #include <ps2sdkapi.h>
+#define NEWLIB_PORT_AWARE
+#include <fileXio_rpc.h>
+#include <fileio.h>
 #define DPRINTF(x...) printf(x)
 
 #ifdef LOADER_ENABLE_DEBUG_COLORS
@@ -81,6 +85,53 @@ static void wipeUserMem(void)
 	}
 }
 
+static int starts_with_casefold(const char *value, const char *prefix)
+{
+	if (value == NULL || prefix == NULL) {
+		return 0;
+	}
+	while (*prefix != '\0') {
+		if (*value == '\0') {
+			return 0;
+		}
+		if (tolower((unsigned char)*value) != tolower((unsigned char)*prefix)) {
+			return 0;
+		}
+		value++;
+		prefix++;
+	}
+	return 1;
+}
+
+static int looks_like_hdd_partition(const char *value)
+{
+	return starts_with_casefold(value, "hdd") || starts_with_casefold(value, "dvr_hdd");
+}
+
+static int mount_target_partition(const char *partition)
+{
+	int ret;
+
+	if (partition == NULL || partition[0] == '\0') {
+		return 0;
+	}
+
+	ret = fileXioInit();
+	if (ret < 0) {
+		return ret;
+	}
+
+	if (fileXioMount("pfs:", partition, FIO_MT_RDONLY) < 0) {
+		fileXioUmount("pfs:");
+		if (fileXioMount("pfs:", partition, FIO_MT_RDONLY) < 0) {
+			fileXioExit();
+			return -ENOENT;
+		}
+	}
+
+	return 0;
+}
+
 //--------------------------------------------------------------
 //End of func:  void wipeUserMem(void)
 //--------------------------------------------------------------
@@ -92,10 +143,13 @@ int main(int argc, char *argv[])
 	SET_GS_BGCOLOUR(WHITE_BG);
 	static t_ExecData elfdata;
 	static char target_path[1024];
+	static char target_partition[256];
 	static char target_arg_storage[2048];
 	static char *target_argv[33];
 	size_t target_arg_offset = 0;
 	int target_argc = argc - 1;
+	int target_arg_start = 1;
+	int use_partition_mount = 0;
 	int ret, i;
 
 	elfdata.epc = 0;
@@ -105,17 +159,25 @@ int main(int argc, char *argv[])
 		SET_GS_BGCOLOUR(RED_BG);
 		return -EINVAL;
 	}
+	if (argc >= 3 && looks_like_hdd_partition(argv[1])) {
+		use_partition_mount = 1;
+		target_arg_start = 2;
+		target_argc = argc - 2;
+		snprintf(target_partition, sizeof(target_partition), "%s", argv[1] ? argv[1] : "");
+	} else {
+		target_partition[0] = '\0';
+	}
 	SET_GS_BGCOLOUR(CYAN_BG);
 	snprintf(target_path, sizeof(target_path), "%s", argv[0] ? argv[0] : "");
 	if (target_argc > 32) {
 		return -E2BIG;
 	}
 	for (i = 0; i < target_argc; i++) {
-		size_t arg_len = strlen(argv[i + 1]) + 1;
+		size_t arg_len = strlen(argv[i + target_arg_start]) + 1;
 		if ((target_arg_offset + arg_len) > sizeof(target_arg_storage)) {
 			return -E2BIG;
 		}
-		memcpy(&target_arg_storage[target_arg_offset], argv[i + 1], arg_len);
+		memcpy(&target_arg_storage[target_arg_offset], argv[i + target_arg_start], arg_len);
 		target_argv[i] = &target_arg_storage[target_arg_offset];
 		target_arg_offset += arg_len;
 	}
@@ -128,10 +190,21 @@ int main(int argc, char *argv[])
 
 	//Writeback data cache before loading ELF.
 	FlushCache(0);
+	if (use_partition_mount) {
+		ret = mount_target_partition(target_partition);
+		if (ret < 0) {
+			SET_GS_BGCOLOUR(MAGENTA_BG);
+			return ret;
+		}
+	}
 	SET_GS_BGCOLOUR(GREEN_BG);
 	SifLoadFileInit();
 	ret = SifLoadElf(target_path, &elfdata);
 	SifLoadFileExit();
+	if (use_partition_mount) {
+		fileXioUmount("pfs:");
+		fileXioExit();
+	}
 	SET_GS_BGCOLOUR(BLUE_BG);
 	if (ret == 0 && elfdata.epc != 0) {
 		SET_GS_BGCOLOUR(YELLOW_BG);

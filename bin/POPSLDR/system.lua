@@ -916,6 +916,23 @@ local function GetHddPartitionAndRelpathFromExecPath(path)
   return mounted_partition, mounted_relpath
 end
 
+local function BuildEmbeddedHddExecPath(partition, relpath)
+  local normalized_partition = ParseHddPartitionMount(partition)
+  local clean_relpath = NormalizeHddExecRelpath(relpath or "")
+  if normalized_partition == nil or clean_relpath == "" then
+    return nil
+  end
+  return normalized_partition..":pfs:/"..clean_relpath
+end
+
+local function ResolveEmbeddedHddExecPath(path)
+  local partition, relpath = GetHddPartitionAndRelpathFromExecPath(path)
+  if partition == nil or relpath == nil or relpath == "" then
+    return nil
+  end
+  return BuildEmbeddedHddExecPath(partition, relpath)
+end
+
 local function ResolveHddBootSidecarPopstarter()
   local mounted_candidates = {}
   local hdd_candidates = {}
@@ -3183,6 +3200,7 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   local app_dir = EnsureTrailingSlash(APP_DIR_LOCAL)
   local argv0 = argv and argv[1] or nil
   local unpack_fn = table.unpack or unpack
+  local exec_popstarter = context and context.exec_popstarter or popstarter
   SetLaunchPhase(LaunchState.PHASE_VALIDATE)
   if not PLDR.PopstarterProbeWithEnsure(popstarter) then
     BlockLaunchFailure(
@@ -3238,11 +3256,11 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   PrepareForExternalELFLaunch(popstarter, context and context.keep_hdd_slots or nil)
   local rc
   if exec_args ~= nil and #exec_args > 0 and unpack_fn ~= nil then
-    rc = System.loadELF(popstarter, reboot_iop, unpack_fn(exec_args))
+    rc = System.loadELF(exec_popstarter, reboot_iop, unpack_fn(exec_args))
   elseif exec_args ~= nil and #exec_args == 1 then
-    rc = System.loadELF(popstarter, reboot_iop, exec_args[1])
+    rc = System.loadELF(exec_popstarter, reboot_iop, exec_args[1])
   else
-    rc = System.loadELF(popstarter, reboot_iop)
+    rc = System.loadELF(exec_popstarter, reboot_iop)
   end
   if (Timer.getTime(LaunchState.fade_timer) - LaunchState.fade_start) >= LaunchState.watchdog_ms then
     BlockLaunchFailure(
@@ -3460,6 +3478,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   end
   local argv = {argv0_selector}
   local keep_hdd_slots = nil
+  local exec_popstarter = popstarter
 
   local context = {
     device_page = device_page,
@@ -3483,11 +3502,17 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     game_name = game_name,
     bootparam_source = boot_source_mode,
     hdd_init = hdd_init,
-    keep_hdd_slots = keep_hdd_slots
+    keep_hdd_slots = keep_hdd_slots,
+    exec_popstarter = exec_popstarter
   }
   local reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
   if policy.name == "HDD" or IsHddExecContextPath(popstarter) then
     reboot_iop = 0
+    local embedded_hdd_exec = ResolveEmbeddedHddExecPath(popstarter)
+    if embedded_hdd_exec ~= nil then
+      exec_popstarter = embedded_hdd_exec
+      context.exec_popstarter = exec_popstarter
+    end
   end
   if UI ~= nil and UI.CoverCache ~= nil and UI.CoverCache.Clear ~= nil then
     UI.CoverCache:Clear()

@@ -12,6 +12,7 @@
 #include <sifrpc.h>
 #include <sifcmd.h>
 #include <stdio.h>
+#include <ctype.h>
 #include <kernel.h>
 #include <loadfile.h>
 #include <iopheap.h>
@@ -100,6 +101,78 @@ static char *store_arg(const char *src, char *storage, size_t storage_size, size
 	return dest;
 }
 
+static bool starts_with_casefold(const char *value, const char *prefix) {
+	if (value == NULL || prefix == NULL) {
+		return false;
+	}
+	while (*prefix != '\0') {
+		if (*value == '\0') {
+			return false;
+		}
+		if (tolower((unsigned char)*value) != tolower((unsigned char)*prefix)) {
+			return false;
+		}
+		value++;
+		prefix++;
+	}
+	return true;
+}
+
+static bool parse_embedded_hdd_exec_path(const char *path, char *out_partition, size_t out_partition_size, char *out_target_path, size_t out_target_size) {
+	const char *first_colon;
+	const char *second_colon;
+	const char *relpath;
+	size_t device_len;
+	size_t part_len;
+
+	if (path == NULL || out_partition == NULL || out_target_path == NULL || out_partition_size == 0 || out_target_size == 0) {
+		return false;
+	}
+	if (!starts_with_casefold(path, "hdd")) {
+		return false;
+	}
+
+	first_colon = strchr(path, ':');
+	if (first_colon == NULL) {
+		return false;
+	}
+
+	second_colon = strchr(first_colon + 1, ':');
+	if (second_colon != NULL) {
+		const char *suffix = second_colon + 1;
+		if (starts_with_casefold(suffix, "pfs")) {
+			const char *pfs_colon = strchr(suffix, ':');
+			if (pfs_colon == NULL) {
+				return false;
+			}
+			relpath = pfs_colon + 1;
+		} else {
+			relpath = suffix;
+		}
+		device_len = (size_t)(first_colon - path);
+		part_len = (size_t)(second_colon - (first_colon + 1));
+	} else {
+		const char *slash = strchr(first_colon + 1, '/');
+		if (slash == NULL) {
+			return false;
+		}
+		relpath = slash + 1;
+		device_len = (size_t)(first_colon - path);
+		part_len = (size_t)(slash - (first_colon + 1));
+	}
+
+	while (*relpath == '/') {
+		relpath++;
+	}
+	if (*relpath == '\0' || device_len == 0 || part_len == 0) {
+		return false;
+	}
+
+	snprintf(out_partition, out_partition_size, "%.*s:%.*s", (int)device_len, path, (int)part_len, first_colon + 1);
+	snprintf(out_target_path, out_target_size, "pfs:/%s", relpath);
+	return true;
+}
+
 /* IMPORTANT: This method wipe memory where the loader is going to be allocated 
 * This values come from the linkfile used by the loader.c
 MEMORY {
@@ -129,8 +202,9 @@ static void unmount_pfs_slots_for_exec(void) {
 	}
 }
 
-static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *argv[]) {
+static int ExecuteViaEmbeddedLoader(const char *resolved_path, const char *partition, int argc, char *argv[]) {
 	int i;
+	int arg_base = 1;
 	int final_argc = argc + 1;
 	static const int kMaxArgc = 32;
 	static char *launch_argv[33];
@@ -143,6 +217,10 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *a
 	if (argc <= 0 || argv == NULL || argv[0] == NULL) {
 		return -4;
 	}
+	if (partition != NULL && partition[0] != '\0') {
+		final_argc += 1;
+		arg_base = 2;
+	}
 	if (final_argc > kMaxArgc) {
 		return -2;
 	}
@@ -154,12 +232,18 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *a
 	if (!launch_argv[0]) {
 		return -3;
 	}
+	if (arg_base == 2) {
+		launch_argv[1] = store_arg(partition, launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
+		if (!launch_argv[1]) {
+			return -3;
+		}
+	}
 	for (i = 0; i < argc; i++) {
 		char *stored_arg = store_arg(argv[i], launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
 		if (!stored_arg) {
 			return -3;
 		}
-		launch_argv[i + 1] = stored_arg;
+		launch_argv[i + arg_base] = stored_arg;
 	}
 	launch_argv[final_argc] = NULL;
 
@@ -195,9 +279,17 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	static const int kMaxArgc = 32;
 	static char *launch_argv[33];
 	static char launch_arg_storage[2048];
+	char embedded_partition[256];
+	char embedded_target_path[1024];
 	char resolved_path[256];
 	size_t storage_offset = 0;
 	bool use_default_argv0 = false;
+
+	if (parse_embedded_hdd_exec_path(filename, embedded_partition, sizeof(embedded_partition), embedded_target_path, sizeof(embedded_target_path))) {
+		wipe_bramMem();
+		DPRINTF("LAUNCH: Using embedded HDD loader path=%s partition=%s\n", embedded_target_path, embedded_partition);
+		return ExecuteViaEmbeddedLoader(embedded_target_path, embedded_partition, argc, argv);
+	}
 	
 	// We need to check that the ELF file before continue
 	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
