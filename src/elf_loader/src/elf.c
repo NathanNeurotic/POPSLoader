@@ -16,6 +16,7 @@
 #include <loadfile.h>
 #include <iopheap.h>
 #include <iopcontrol.h>
+#include <audsrv.h>
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
 #include <sys/stat.h>
@@ -45,6 +46,7 @@
 #define EXECDBG_BROWN 0x2A2AA5
 
 extern unsigned char loader_elf[];
+extern void gsKit_finish(void);
 
 int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]);
 
@@ -210,10 +212,6 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	} else {
 		DPRINTF("LAUNCH: popstarter path: %s\n", resolved_path);
 	}
-	if ((strncmp(resolved_path, "hdd", 3) == 0 || strncmp(resolved_path, "pfs", 3) == 0) &&
-	    argc > 0 && argv != NULL && argv[0] != NULL) {
-		return ExecuteViaEmbeddedLoader(resolved_path, argc, argv);
-	}
 	fd = open(resolved_path, O_RDONLY);
 	DPRINTF("LAUNCH: popstarter open rc=%d (open)\n", fd);
 	if (fd >= 0) {
@@ -254,6 +252,10 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	DPRINTF("LAUNCH: argv0_final=%s\n", launch_argv[0] ? launch_argv[0] : "(null)");
 	DPRINTF("LAUNCH: argv1=%s\n", launch_argv[1] ? launch_argv[1] : "(null)");
 	DPRINTF("LAUNCH: argv2_is_null=%s\n", launch_argv[2] == NULL ? "yes" : "no");
+	audsrv_quit();
+	gsKit_finish();
+	FlushCache(0);
+	FlushCache(2);
 	/* LoadExecPS2 should not return on success. */
 	LoadExecPS2(resolved_path, new_argc, launch_argv);
 	DPRINTF("LAUNCH: RETURNED rc=%d\n", -1);
