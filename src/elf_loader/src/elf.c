@@ -16,6 +16,7 @@
 #include <loadfile.h>
 #include <iopheap.h>
 #include <iopcontrol.h>
+#include <hdd-ioctl.h>
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
 #include <sys/stat.h>
@@ -125,6 +126,10 @@ static void unmount_pfs_slots_for_exec(void) {
 		mount_name[3] = '0' + slot;
 		fileXioUmount(mount_name);
 	}
+}
+
+static void close_pfs_handles_for_exec(void) {
+	fileXioDevctl("pfs:", PDIOC_CLOSEALL, NULL, 0, NULL, 0);
 }
 
 static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *argv[]) {
@@ -290,18 +295,13 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 	}
 
 	SET_GS_BGCOLOUR(EXECDBG_YELLOW);
-	SET_GS_BGCOLOUR(EXECDBG_ORANGE);
-	SifExitIopHeap();
-	SET_GS_BGCOLOUR(EXECDBG_CORAL);
-	SifLoadFileExit();
-	SET_GS_BGCOLOUR(EXECDBG_GRAY);
+	if (strncmp(resolved_path, "pfs", 3) == 0 || strncmp(resolved_path, "hdd", 3) == 0) {
+		close_pfs_handles_for_exec();
+		fileXioExit();
+	}
 	SifExitRpc();
-	SET_GS_BGCOLOUR(EXECDBG_LIME);
-	SET_GS_BGCOLOUR(EXECDBG_PINK);
 	FlushCache(0);
-	SET_GS_BGCOLOUR(EXECDBG_AQUA);
 	FlushCache(2);
-	SET_GS_BGCOLOUR(EXECDBG_GOLD);
 	ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc, argv);
 	return -1;
 }
