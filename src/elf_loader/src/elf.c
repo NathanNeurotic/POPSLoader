@@ -168,7 +168,7 @@ static bool parse_embedded_hdd_exec_path(const char *path, char *out_partition, 
 		return false;
 	}
 
-	snprintf(out_partition, out_partition_size, "%.*s:%.*s", (int)device_len, path, (int)part_len, first_colon + 1);
+	snprintf(out_partition, out_partition_size, "%.*s:%.*s:", (int)device_len, path, (int)part_len, first_colon + 1);
 	snprintf(out_target_path, out_target_size, "pfs:/%s", relpath);
 	return true;
 }
