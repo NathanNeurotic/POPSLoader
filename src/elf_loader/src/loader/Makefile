@@ -23,7 +23,7 @@ ifneq (x$(LOADER_ENABLE_DEBUG_COLORS), x0)
 EE_CFLAGS += -DLOADER_ENABLE_DEBUG_COLORS
 endif
 
-EE_LIBS += -lfileXio
+EE_LIBS += -lfileXio -lpatches
 
 all: $(EE_BIN) $(BINDIR)
 $(BINDIR):

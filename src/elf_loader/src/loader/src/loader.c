@@ -19,6 +19,7 @@
 #include <sifrpc.h>
 #include <errno.h>
 #include <ps2sdkapi.h>
+#include <sbv_patches.h>
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
 #include <fileio.h>
@@ -186,6 +187,9 @@ int main(int argc, char *argv[])
 
 	// Initialize
 	SifInitRpc(0);
+	sbv_patch_enable_lmb();
+	sbv_patch_disable_prefix_check();
+	sbv_patch_fileio();
 	wipeUserMem();
 
 	//Writeback data cache before loading ELF.
