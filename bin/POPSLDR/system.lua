@@ -3566,22 +3566,6 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   if hdd_boot_sidecar_handoff then
     argv = {bootparam, "--nr"}
     keep_hdd_slots = {hdd_init and hdd_init.mount_slot or hdd_launch_slot or HDD_SLOT_GAME}
-    local canonical_popstarter_exec = PreparePopstarterExec(popstarter)
-    if canonical_popstarter_exec.exec_path == nil then
-      BlockLaunchFailure(
-        "Failed to prepare mounted HDD POPSTARTER path",
-        popstarter,
-        device_page,
-        argv0_selector,
-        vcd_path,
-        APP_DIR_LOCAL,
-        nil,
-        nil
-      )
-      return
-    end
-    popstarter = canonical_popstarter_exec.exec_path
-    exec_popstarter = popstarter
   end
 
   local context = {
