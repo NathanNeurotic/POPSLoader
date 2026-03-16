@@ -293,12 +293,19 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 	if (strncmp(resolved_path, "pfs", 3) == 0 || strncmp(resolved_path, "hdd", 3) == 0) {
 		unmount_pfs_slots_for_exec();
 	}
+	SET_GS_BGCOLOUR(EXECDBG_ORANGE);
 	SifExitIopHeap();
+	SET_GS_BGCOLOUR(EXECDBG_CORAL);
 	SifLoadFileExit();
+	SET_GS_BGCOLOUR(EXECDBG_GRAY);
 	SifExitRpc();
+	SET_GS_BGCOLOUR(EXECDBG_LIME);
 	SifExitCmd();
+	SET_GS_BGCOLOUR(EXECDBG_PINK);
 	FlushCache(0);
+	SET_GS_BGCOLOUR(EXECDBG_AQUA);
 	FlushCache(2);
+	SET_GS_BGCOLOUR(EXECDBG_GOLD);
 	ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc, argv);
 	return -1;
 }
