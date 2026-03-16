@@ -434,7 +434,7 @@ int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]
 	SifExitCmd();
 	SifInitRpc(0);
 	SET_GS_BGCOLOUR(EXECDBG_CORAL);
-	while (!SifIopReset(NULL, 0)) {
+	while (!SifIopReset("rom0:UDNL rom0:EELOADCNF", 0)) {
 	}
 	SET_GS_BGCOLOUR(EXECDBG_GRAY);
 	while (!SifIopSync()) {
