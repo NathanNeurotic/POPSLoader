@@ -306,23 +306,65 @@ local function NormalizeHddHelperSlot(slot)
   return normalized
 end
 
+local function GetReservedHddBootSlot()
+  local boot_context = type(PLDR) == "table" and type(PLDR.HDD) == "table" and PLDR.HDD.BOOT_CONTEXT or nil
+  if boot_context == nil or boot_context.is_hdd_boot ~= true then
+    return nil
+  end
+  return tonumber(boot_context.mounted_boot_slot)
+end
+
+local function BuildHddGameSlotCandidates()
+  local reserved_boot_slot = GetReservedHddBootSlot()
+  local preferred = { HDD_SLOT_GAME, HDD_SLOT_BOOT }
+  local seen = {}
+  local candidates = {}
+  for i = 1, #preferred do
+    local slot = preferred[i]
+    if slot ~= reserved_boot_slot and seen[slot] ~= true then
+      seen[slot] = true
+      table.insert(candidates, slot)
+    end
+  end
+  if #candidates < 1 then
+    table.insert(candidates, HDD_SLOT_GAME)
+  end
+  return candidates
+end
+
 local function GetActiveHddGameSlot()
   local active = tonumber(PLDR and PLDR.HDD and PLDR.HDD.GAME_SLOT or nil)
-  if active == HDD_SLOT_BOOT or active == HDD_SLOT_GAME then
-    return active
+  local candidates = BuildHddGameSlotCandidates()
+  for i = 1, #candidates do
+    if active == candidates[i] then
+      return active
+    end
   end
-  return HDD_SLOT_GAME
+  return candidates[1]
 end
 
 local function GetHddGameSlotCandidates()
   local active = tonumber(PLDR and PLDR.HDD and PLDR.HDD.GAME_SLOT or nil)
-  if active == HDD_SLOT_BOOT or active == HDD_SLOT_GAME then
-    if active == HDD_SLOT_BOOT then
-      return { HDD_SLOT_BOOT, HDD_SLOT_GAME }
+  local base_candidates = BuildHddGameSlotCandidates()
+  if active ~= nil then
+    local ordered = {}
+    local seen = {}
+    for i = 1, #base_candidates do
+      if active == base_candidates[i] then
+        table.insert(ordered, active)
+        seen[active] = true
+        break
+      end
     end
-    return { HDD_SLOT_GAME, HDD_SLOT_BOOT }
+    for i = 1, #base_candidates do
+      local slot = base_candidates[i]
+      if seen[slot] ~= true then
+        table.insert(ordered, slot)
+      end
+    end
+    return ordered
   end
-  return { HDD_SLOT_GAME, HDD_SLOT_BOOT }
+  return base_candidates
 end
 
 local function MountHddPartitionTracked(partition, slot, mode)
@@ -434,6 +476,15 @@ local function ResolveHddPartitionReadablePath(partition, relpath, mounted_prefi
     local recorded_target = BuildMountedReadablePath(recorded_prefix, clean_relpath)
     if recorded_target ~= nil and ProbePathExists(recorded_target) then
       return recorded_target
+    end
+  end
+
+  local boot_context = type(PLDR) == "table" and type(PLDR.HDD) == "table" and PLDR.HDD.BOOT_CONTEXT or nil
+  if boot_context ~= nil and boot_context.boot_partition == mount_part and boot_context.mounted_boot_prefix ~= nil then
+    local boot_target = BuildMountedReadablePath(boot_context.mounted_boot_prefix, clean_relpath)
+    if boot_target ~= nil and ProbePathExists(boot_target) then
+      RememberRecordedHddMount(mount_part, boot_context.mounted_boot_prefix)
+      return boot_target
     end
   end
 
@@ -1209,6 +1260,9 @@ local DEFAULT_HDD_POPS_PARTITIONS = {
 PLDR.HDD = PLDR.HDD or {}
 PLDR.HDD.AVAILABLE = PLDR.HDD.AVAILABLE or {}
 PLDR.HDD.BOOT_CONTEXT = BuildHddBootContext()
+if PLDR.HDD.BOOT_CONTEXT.is_hdd_boot == true and PLDR.HDD.BOOT_CONTEXT.boot_partition ~= nil and PLDR.HDD.BOOT_CONTEXT.mounted_boot_prefix ~= nil then
+  RememberRecordedHddMount(PLDR.HDD.BOOT_CONTEXT.boot_partition, PLDR.HDD.BOOT_CONTEXT.mounted_boot_prefix)
+end
 if type(PLDR.HDD.POPS_PARTITIONS) ~= "table" or #PLDR.HDD.POPS_PARTITIONS < 1 then
   PLDR.HDD.POPS_PARTITIONS = {}
   for i = 1, #DEFAULT_HDD_POPS_PARTITIONS do
@@ -3086,11 +3140,8 @@ local function SelectHddLaunchGameSlot(popstarter)
   if popstarter_slot ~= nil then
     reserved[popstarter_slot] = true
   end
-  local preferred_slots = {
-    HDD_SLOT_BOOT,
-    HDD_SLOT_GAME,
-    HDD_SLOT_COMMON
-  }
+  local preferred_slots = GetHddGameSlotCandidates()
+  table.insert(preferred_slots, HDD_SLOT_COMMON)
   for i = 1, #preferred_slots do
     local slot = preferred_slots[i]
     if reserved[slot] ~= true then
@@ -3118,7 +3169,8 @@ local function EnsureHDDReadyForLaunch(game, partition_override, slot_override)
   local partition = partition_override or PLDR.HDD.GAMEPARTS[game] or "hdd0:__.POPS"
   local mount_slot = tonumber(slot_override)
   if mount_slot == nil then
-    mount_slot = HDD_SLOT_GAME
+    local candidates = GetHddGameSlotCandidates()
+    mount_slot = candidates[1] or HDD_SLOT_GAME
   end
   result.mount_partition = partition
   result.mount_slot = mount_slot
@@ -3548,7 +3600,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   local reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
   if policy.name == "HDD" then
     reboot_iop = 0
-    if GetHddPartitionAndRelpathFromExecPath(popstarter) ~= nil then
+    if string.match(string.lower(tostring(popstarter or "")), "^hdd%d:") ~= nil then
       local embedded_hdd_exec = ResolveEmbeddedHddExecPath(popstarter)
       if embedded_hdd_exec ~= nil then
         exec_popstarter = embedded_hdd_exec

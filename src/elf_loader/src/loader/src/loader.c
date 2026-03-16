@@ -205,7 +205,7 @@ int main(int argc, char *argv[])
 	SifLoadFileInit();
 	ret = SifLoadElf(target_path, &elfdata);
 	SifLoadFileExit();
-	if (use_partition_mount) {
+	if (use_partition_mount && (ret != 0 || elfdata.epc == 0)) {
 		fileXioUmount("pfs:");
 		fileXioExit();
 	}
@@ -222,7 +222,12 @@ int main(int argc, char *argv[])
 		for (i = 0; i < target_argc; i++) {
 			DPRINTF("POPS EXEC: argv[%d] = %s\n", i, target_argv[i]);
 		}
-		return ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, target_argc, target_argv);
+		ret = ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, target_argc, target_argv);
+		if (use_partition_mount) {
+			fileXioUmount("pfs:");
+			fileXioExit();
+		}
+		return ret;
 	} else {
 		SET_GS_BGCOLOUR(MAGENTA_BG);
 		SifExitRpc();
