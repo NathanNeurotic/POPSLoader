@@ -3356,6 +3356,28 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     )
     return
   end
+  if policy.name == "HDD" then
+    local popstarter_partition = GetHddPartitionAndRelpathFromExecPath(popstarter)
+    if popstarter_partition ~= nil then
+      if not IsPfsExecPath(popstarter) then
+        local mounted_popstarter = ResolveHddExecMountedPath(popstarter)
+        if mounted_popstarter == nil or not IsPfsExecPath(mounted_popstarter) then
+          BlockLaunchFailure(
+            "HDD POPSTARTER mount failed",
+            popstarter,
+            device_page,
+            nil,
+            selected_entry,
+            APP_DIR_LOCAL,
+            nil,
+            nil
+          )
+          return
+        end
+        popstarter = mounted_popstarter
+      end
+    end
+  end
   local hdd_init = nil
   local hdd_partition_label = nil
   local hdd_relpath = nil
@@ -3594,7 +3616,9 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     exec_popstarter = exec_popstarter
   }
   local reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
-  if policy.name == "HDD" or IsHddExecContextPath(popstarter) then
+  if policy.name == "HDD" then
+    reboot_iop = 0
+  elseif IsHddExecContextPath(popstarter) then
     reboot_iop = 0
     if string.match(string.lower(tostring(popstarter or "")), "^hdd%d:") ~= nil then
       local embedded_hdd_exec = ResolveEmbeddedHddExecPath(popstarter)
