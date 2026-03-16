@@ -297,7 +297,6 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 	SET_GS_BGCOLOUR(EXECDBG_GRAY);
 	SifExitRpc();
 	SET_GS_BGCOLOUR(EXECDBG_LIME);
-	SifExitCmd();
 	SET_GS_BGCOLOUR(EXECDBG_PINK);
 	FlushCache(0);
 	SET_GS_BGCOLOUR(EXECDBG_AQUA);
