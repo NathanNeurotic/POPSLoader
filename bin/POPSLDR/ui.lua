@@ -829,7 +829,6 @@ UI = {
         local function DrawSplashText(alpha)
           -- Requested: black text because splash image is white.
           local y0 = UI.SCR.Y_MID + 120
-          Font.ftPrint(BFONT, UI.SCR.X_MID, y0 + 36,  8, UI.SCR.X, 16, "israpps.github.io",    Color.new(0, 0, 0, alpha))
         end
         local function DrawSplashLayered(alpha)
           local splash_alpha = alpha or 128
