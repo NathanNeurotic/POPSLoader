@@ -154,7 +154,9 @@ static int mount_target_partition(const char *partition)
 	while (mount_attempts < MAX_MOUNT_ATTEMPTS) {
 		ret = fileXioMount("pfs0:", partition, FIO_MT_RDONLY);
 		if (ret >= 0) {
-			// Mount succeeded
+			// Mount succeeded - exit fileXio to avoid conflict with SifLoadElf
+			// The mount persists after fileXioExit (PS2SDK behavior)
+			fileXioExit();
 			return 0;
 		}
 
@@ -280,6 +282,8 @@ int main(int argc, char *argv[])
 	ret = SifLoadElf(target_path, &elfdata);
 	SifLoadFileExit();
 	if (use_partition_mount && (ret != 0 || elfdata.epc == 0)) {
+		// Reinitialize fileXio for unmount operations
+		fileXioInit();
 		fileXioUmount("pfs0:");
 		fileXioExit();
 	}
@@ -288,6 +292,8 @@ int main(int argc, char *argv[])
 		SET_GS_BGCOLOUR(YELLOW_BG);
 		if (use_partition_mount) {
 			SET_GS_BGCOLOUR(ORANGE_BG);
+			// Reinitialize fileXio for unmount operations
+			fileXioInit();
 			fileXioUmount("pfs0:");
 			fileXioExit();
 		}
