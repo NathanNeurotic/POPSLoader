@@ -159,7 +159,7 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *a
 		}
 	}
 
-	if (strncmp(resolved_path, "hdd", 3) == 0) {
+	if (strncmp(resolved_path, "hdd", 3) == 0 || strncmp(resolved_path, "pfs", 3) == 0) {
 		unmount_pfs_slots_for_exec();
 	}
 
@@ -231,6 +231,11 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	}
 	launch_argv[new_argc] = NULL;
 
+	if (strncmp(resolved_path, "hdd", 3) == 0 || strncmp(resolved_path, "pfs", 3) == 0) {
+		DPRINTF("LAUNCH: Using ExecuteViaEmbeddedLoader\n");
+		return ExecuteViaEmbeddedLoader(resolved_path, new_argc, launch_argv);
+	}
+
 	DPRINTF("LAUNCH: Using LoadExecPS2\n");
 	DPRINTF("LAUNCH: exec path=%s\n", resolved_path);
 	DPRINTF("LAUNCH: argc=%d\n", new_argc);
@@ -260,6 +265,12 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
 		return -1;
 	}
+
+	if (strncmp(resolved_path, "hdd", 3) == 0 || strncmp(resolved_path, "pfs", 3) == 0) {
+		DPRINTF("LAUNCH: Using ExecuteViaEmbeddedLoader\n");
+		return ExecuteViaEmbeddedLoader(resolved_path, argc, argv);
+	}
+
 	DPRINTF("LAUNCH: Using ExecPS2\n");
 	DPRINTF("POPSTARTER ExecPS2 argv0=%s\n", argv[0]);
 
