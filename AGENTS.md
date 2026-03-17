@@ -1,5 +1,5 @@
 ## AI Docs
-Last updated: 2026-03-06
+Last updated: 2026-03-17
 
 ### Purpose
 Operational guidance for AI agents working in this repository.

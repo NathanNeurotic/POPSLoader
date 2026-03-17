@@ -1,4 +1,4 @@
-Last updated: 2026-03-06
+Last updated: 2026-03-17
 
 # COMPONENTS
 
@@ -25,12 +25,13 @@ Current technical map of POPSLoader modules, ownership boundaries, and entry poi
   - `bin/POPSLDR/pops_profiles.lua`
 
 ### Boot script (`etc/`)
-- `etc/boot.lua` initializes boot font and transfers control to Lua app layer.
+- `etc/boot.lua` handles HDD PFS boot path resolution (mounts `pfs1:` when launched from an HDD PFS path), initializes boot fonts, and transfers control to Lua app layer.
+- `etc/update_lua_globals.sh` is a development helper script for updating Lua global references.
 
 ### IOP modules and RPC (`iop/`)
 - Embedded IRX payloads and backend query module source.
 - Key paths:
-  - `iop/embed/` (IRX payloads)
+  - `iop/embed/` (IRX payloads; includes `PS2SDK_MX4SIO/` and `BDMASSAULT_MX4SIO/` subdirs for MX4SIO variants)
   - `iop/bdm_query/` (RPC module for BDM backend list)
 
 ### Controller modules (`modules/`)
