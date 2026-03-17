@@ -266,7 +266,8 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, const char *parti
 	gsKit_finish();
 	FlushCache(0);
 	FlushCache(2);
-	SifExitIopHeap();
+	// Don't call SifExitIopHeap() - the embedded loader needs IOP modules
+	// (fileXio, iomanX, etc.) to remain loaded and accessible
 	SifExitRpc();
 	SifExitCmd();
 
