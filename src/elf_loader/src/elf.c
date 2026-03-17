@@ -262,13 +262,13 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, const char *parti
 		}
 	}
 
-	SifExitIopHeap();
-	SifExitRpc();
-	SifExitCmd();
 	audsrv_quit();
 	gsKit_finish();
 	FlushCache(0);
 	FlushCache(2);
+	SifExitIopHeap();
+	SifExitRpc();
+	SifExitCmd();
 
 	ExecPS2((void *)boot_header->entry, 0, final_argc, launch_argv);
 	return -1;
@@ -389,14 +389,14 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 		return -2;
 	}
 
-	SET_GS_BGCOLOUR(EXECDBG_YELLOW);
-	SifExitIopHeap();
-	SifExitRpc();
-	SifExitCmd();
 	audsrv_quit();
 	gsKit_finish();
 	FlushCache(0);
 	FlushCache(2);
+	SET_GS_BGCOLOUR(EXECDBG_YELLOW);
+	SifExitIopHeap();
+	SifExitRpc();
+	SifExitCmd();
 	ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc, argv);
 	return -1;
 }
