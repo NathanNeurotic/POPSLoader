@@ -17,7 +17,6 @@
 #include <iopcontrol.h>
 #include <iopheap.h>
 #include <sifrpc.h>
-#include <sifcmd.h>
 #include <errno.h>
 #include <ps2sdkapi.h>
 #include <sbv_patches.h>
@@ -206,24 +205,13 @@ int main(int argc, char *argv[])
 	SifLoadFileInit();
 	ret = SifLoadElf(target_path, &elfdata);
 	SifLoadFileExit();
-	if (use_partition_mount && (ret != 0 || elfdata.epc == 0)) {
+	if (use_partition_mount) {
 		fileXioUmount("pfs0:");
 		fileXioExit();
 	}
 	SET_GS_BGCOLOUR(BLUE_BG);
 	if (ret == 0 && elfdata.epc != 0) {
 		SET_GS_BGCOLOUR(YELLOW_BG);
-		if (use_partition_mount) {
-			SET_GS_BGCOLOUR(ORANGE_BG);
-			fileXioUmount("pfs0:");
-			fileXioExit();
-		}
-		SET_GS_BGCOLOUR(CORAL_BG);
-		SifExitIopHeap();
-		SET_GS_BGCOLOUR(OLIVE_BG);
-		SifExitRpc();
-		SET_GS_BGCOLOUR(NAVY_BG);
-		SifExitCmd();
 		SET_GS_BGCOLOUR(BROWN_BG);
 		FlushCache(0);
 		FlushCache(2);

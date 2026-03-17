@@ -262,7 +262,6 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, const char *parti
 		}
 	}
 
-	SifExitIopHeap();
 	SifExitRpc();
 	SifExitCmd();
 	audsrv_quit();
