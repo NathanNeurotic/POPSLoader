@@ -262,6 +262,8 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, const char *parti
 		}
 	}
 
+	unmount_pfs_slots_for_exec();
+	fileXioExit();
 	SifExitIopHeap();
 	SifExitRpc();
 	SifExitCmd();
