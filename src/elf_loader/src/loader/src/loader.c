@@ -137,6 +137,8 @@ static const char *extract_basename(const char *path)
 static int mount_target_partition(const char *partition)
 {
 	int ret;
+	int mount_attempts = 0;
+	const int MAX_MOUNT_ATTEMPTS = 3;
 
 	if (partition == NULL || partition[0] == '\0') {
 		return 0;
@@ -147,15 +149,28 @@ static int mount_target_partition(const char *partition)
 		return ret;
 	}
 
-	if (fileXioMount("pfs:", partition, FIO_MT_RDONLY) < 0) {
-		fileXioUmount("pfs:");
-		if (fileXioMount("pfs:", partition, FIO_MT_RDONLY) < 0) {
-			fileXioExit();
-			return -ENOENT;
+	// Try mounting with retries and delay between attempts
+	while (mount_attempts < MAX_MOUNT_ATTEMPTS) {
+		ret = fileXioMount("pfs:", partition, FIO_MT_RDONLY);
+		if (ret >= 0) {
+			// Mount succeeded
+			return 0;
+		}
+
+		// Mount failed, unmount any partial mount and retry
+		mount_attempts++;
+		if (mount_attempts < MAX_MOUNT_ATTEMPTS) {
+			fileXioUmount("pfs:");
+			// Small delay before retry (approximately 50ms)
+			for (volatile int i = 0; i < 100000; i++) {
+				asm volatile("nop");
+			}
 		}
 	}
 
-	return 0;
+	// All mount attempts failed
+	fileXioExit();
+	return -ENOENT;
 }
 
 //--------------------------------------------------------------
