@@ -250,6 +250,13 @@ int main(int argc, char *argv[])
 
 	// Initialize
 	SifInitRpc(0);
+
+	// Small delay to allow RPC system to stabilize after SifInitRpc
+	// This ensures IOP is ready before we attempt fileXio operations
+	for (volatile int i = 0; i < 200000; i++) {
+		asm volatile("nop");
+	}
+
 	sbv_patch_enable_lmb();
 	sbv_patch_disable_prefix_check();
 	sbv_patch_fileio();
@@ -257,15 +264,19 @@ int main(int argc, char *argv[])
 
 	//Writeback data cache before loading ELF.
 	FlushCache(0);
+
+	// Initialize loadfile subsystem - needed for both fileXio and SifLoadElf
+	SifLoadFileInit();
+
 	if (use_partition_mount) {
 		ret = mount_target_partition(target_partition);
 		if (ret < 0) {
 			SET_GS_BGCOLOUR(MAGENTA_BG);
+			SifLoadFileExit();
 			return ret;
 		}
 	}
 	SET_GS_BGCOLOUR(GREEN_BG);
-	SifLoadFileInit();
 	ret = SifLoadElf(target_path, &elfdata);
 	SifLoadFileExit();
 	if (use_partition_mount && (ret != 0 || elfdata.epc == 0)) {
