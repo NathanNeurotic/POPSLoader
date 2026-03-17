@@ -150,8 +150,9 @@ static int mount_target_partition(const char *partition)
 	}
 
 	// Try mounting with retries and delay between attempts
+	// Mount to pfs0: to match working HDD mount implementation
 	while (mount_attempts < MAX_MOUNT_ATTEMPTS) {
-		ret = fileXioMount("pfs:", partition, FIO_MT_RDONLY);
+		ret = fileXioMount("pfs0:", partition, FIO_MT_RDONLY);
 		if (ret >= 0) {
 			// Mount succeeded
 			return 0;
@@ -160,7 +161,7 @@ static int mount_target_partition(const char *partition)
 		// Mount failed, unmount any partial mount and retry
 		mount_attempts++;
 		if (mount_attempts < MAX_MOUNT_ATTEMPTS) {
-			fileXioUmount("pfs:");
+			fileXioUmount("pfs0:");
 			// Small delay before retry (approximately 50ms)
 			for (volatile int i = 0; i < 100000; i++) {
 				asm volatile("nop");
@@ -210,6 +211,14 @@ int main(int argc, char *argv[])
 	}
 	SET_GS_BGCOLOUR(CYAN_BG);
 	snprintf(target_path, sizeof(target_path), "%s", argv[0] ? argv[0] : "");
+
+	// If mounting to pfs0: and target_path starts with "pfs:", change it to "pfs0:"
+	if (use_partition_mount && strncmp(target_path, "pfs:", 4) == 0) {
+		char temp_path[1024];
+		snprintf(temp_path, sizeof(temp_path), "pfs0:%s", target_path + 4);
+		snprintf(target_path, sizeof(target_path), "%s", temp_path);
+	}
+
 	if (target_argc > 32) {
 		return -E2BIG;
 	}
@@ -260,7 +269,7 @@ int main(int argc, char *argv[])
 	ret = SifLoadElf(target_path, &elfdata);
 	SifLoadFileExit();
 	if (use_partition_mount && (ret != 0 || elfdata.epc == 0)) {
-		fileXioUmount("pfs:");
+		fileXioUmount("pfs0:");
 		fileXioExit();
 	}
 	SET_GS_BGCOLOUR(BLUE_BG);
@@ -268,7 +277,7 @@ int main(int argc, char *argv[])
 		SET_GS_BGCOLOUR(YELLOW_BG);
 		if (use_partition_mount) {
 			SET_GS_BGCOLOUR(ORANGE_BG);
-			fileXioUmount("pfs:");
+			fileXioUmount("pfs0:");
 			fileXioExit();
 		}
 		SET_GS_BGCOLOUR(CORAL_BG);
