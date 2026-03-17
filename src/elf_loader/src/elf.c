@@ -247,9 +247,10 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, const char *parti
 	}
 	launch_argv[final_argc] = NULL;
 
-	SifInitRpc(0);
-	SifLoadFileInit();
-	SifLoadFileExit();
+	DPRINTF("LAUNCH: EmbeddedLoader path=%s partition=%s final_argc=%d\n",
+		resolved_path ? resolved_path : "(null)",
+		partition ? partition : "(none)",
+		final_argc);
 
 	boot_pheader = (elf_pheader_t *)(boot_elf + boot_header->phoff);
 	for (i = 0; i < boot_header->phnum; i++) {

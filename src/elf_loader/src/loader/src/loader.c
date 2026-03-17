@@ -201,23 +201,21 @@ int main(int argc, char *argv[])
 			SET_GS_BGCOLOUR(MAGENTA_BG);
 			return ret;
 		}
+		/* Release the EE-side fileXio RPC before SifLoadFileInit.
+		 * The pfs0: mount remains active on the IOP; LOADFILE can still
+		 * access it through iomanX.  Holding fileXio open while LOADFILE
+		 * also calls into iomanX causes an IOP resource conflict that
+		 * prevents SifLoadElf from succeeding. */
+		fileXioExit();
 	}
 	SET_GS_BGCOLOUR(GREEN_BG);
 	SifLoadFileInit();
 	ret = SifLoadElf(target_path, &elfdata);
 	SifLoadFileExit();
-	if (use_partition_mount && (ret != 0 || elfdata.epc == 0)) {
-		fileXioUmount("pfs0:");
-		fileXioExit();
-	}
+	DPRINTF("LOADER: SifLoadElf(\"%s\") ret=%d epc=0x%08x\n", target_path, ret, (unsigned)elfdata.epc);
 	SET_GS_BGCOLOUR(BLUE_BG);
 	if (ret == 0 && elfdata.epc != 0) {
 		SET_GS_BGCOLOUR(YELLOW_BG);
-		if (use_partition_mount) {
-			SET_GS_BGCOLOUR(ORANGE_BG);
-			fileXioUmount("pfs0:");
-			fileXioExit();
-		}
 		SET_GS_BGCOLOUR(CORAL_BG);
 		SifExitIopHeap();
 		SET_GS_BGCOLOUR(OLIVE_BG);
