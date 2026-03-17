@@ -3600,10 +3600,12 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   local reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
   if policy.name == "HDD" then
     reboot_iop = 0
-    local embedded_hdd_exec = ResolveEmbeddedHddExecPath(popstarter)
-    if embedded_hdd_exec ~= nil then
-      exec_popstarter = embedded_hdd_exec
-      context.exec_popstarter = exec_popstarter
+    if not IsPfsExecPath(popstarter) then
+      local embedded_hdd_exec = ResolveEmbeddedHddExecPath(popstarter)
+      if embedded_hdd_exec ~= nil then
+        exec_popstarter = embedded_hdd_exec
+        context.exec_popstarter = exec_popstarter
+      end
     end
   elseif IsHddExecContextPath(popstarter) then
     reboot_iop = 0
