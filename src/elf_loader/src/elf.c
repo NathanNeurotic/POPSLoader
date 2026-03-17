@@ -168,8 +168,8 @@ static bool parse_embedded_hdd_exec_path(const char *path, char *out_partition, 
 		return false;
 	}
 
-	snprintf(out_partition, out_partition_size, "%.*s:%.*s:", (int)device_len, path, (int)part_len, first_colon + 1);
-	snprintf(out_target_path, out_target_size, "pfs:/%s", relpath);
+	snprintf(out_partition, out_partition_size, "%.*s:%.*s", (int)device_len, path, (int)part_len, first_colon + 1);
+	snprintf(out_target_path, out_target_size, "pfs0:/%s", relpath);
 	return true;
 }
 
@@ -262,7 +262,6 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, const char *parti
 		}
 	}
 
-	SifExitIopHeap();
 	SifExitRpc();
 	SifExitCmd();
 	audsrv_quit();
@@ -390,6 +389,9 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 	}
 
 	SET_GS_BGCOLOUR(EXECDBG_YELLOW);
+	/* Unmount all pfs slots and exit fileXio before freeing the IOP heap.
+	 * Freeing the heap while a partition is mounted can corrupt IOP-side
+	 * pfs/hdd module state, which would prevent ExecPS2 from succeeding. */
 	unmount_pfs_slots_for_exec();
 	fileXioExit();
 	SifExitIopHeap();

@@ -110,6 +110,13 @@ static int looks_like_hdd_partition(const char *value)
 	return starts_with_casefold(value, "hdd") || starts_with_casefold(value, "dvr_hdd");
 }
 
+static void unmount_pfs0(void)
+{
+	fileXioInit();
+	fileXioUmount("pfs0:");
+	fileXioExit();
+}
+
 static int mount_target_partition(const char *partition)
 {
 	int ret;
@@ -123,14 +130,15 @@ static int mount_target_partition(const char *partition)
 		return ret;
 	}
 
-	if (fileXioMount("pfs:", partition, FIO_MT_RDONLY) < 0) {
-		fileXioUmount("pfs:");
-		if (fileXioMount("pfs:", partition, FIO_MT_RDONLY) < 0) {
+	if (fileXioMount("pfs0:", partition, FIO_MT_RDONLY) < 0) {
+		fileXioUmount("pfs0:");
+		if (fileXioMount("pfs0:", partition, FIO_MT_RDONLY) < 0) {
 			fileXioExit();
 			return -ENOENT;
 		}
 	}
-
+	/* Exit fileXio RPC before using SifLoadFile to avoid IOP resource conflict. */
+	fileXioExit();
 	return 0;
 }
 
@@ -207,16 +215,14 @@ int main(int argc, char *argv[])
 	ret = SifLoadElf(target_path, &elfdata);
 	SifLoadFileExit();
 	if (use_partition_mount && (ret != 0 || elfdata.epc == 0)) {
-		fileXioUmount("pfs:");
-		fileXioExit();
+		unmount_pfs0();
 	}
 	SET_GS_BGCOLOUR(BLUE_BG);
 	if (ret == 0 && elfdata.epc != 0) {
 		SET_GS_BGCOLOUR(YELLOW_BG);
 		if (use_partition_mount) {
 			SET_GS_BGCOLOUR(ORANGE_BG);
-			fileXioUmount("pfs:");
-			fileXioExit();
+			unmount_pfs0();
 		}
 		SET_GS_BGCOLOUR(CORAL_BG);
 		SifExitIopHeap();
