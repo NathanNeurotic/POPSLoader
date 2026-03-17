@@ -110,6 +110,30 @@ static int looks_like_hdd_partition(const char *value)
 	return starts_with_casefold(value, "hdd") || starts_with_casefold(value, "dvr_hdd");
 }
 
+static const char *extract_basename(const char *path)
+{
+	const char *last_slash;
+	const char *last_colon;
+	const char *result;
+
+	if (path == NULL || path[0] == '\0') {
+		return path;
+	}
+
+	result = path;
+	last_slash = strrchr(path, '/');
+	if (last_slash != NULL) {
+		result = last_slash + 1;
+	}
+
+	last_colon = strrchr(result, ':');
+	if (last_colon != NULL) {
+		result = last_colon + 1;
+	}
+
+	return result;
+}
+
 static int mount_target_partition(const char *partition)
 {
 	int ret;
@@ -175,11 +199,25 @@ int main(int argc, char *argv[])
 		return -E2BIG;
 	}
 	for (i = 0; i < target_argc; i++) {
-		size_t arg_len = strlen(argv[i + target_arg_start]) + 1;
+		const char *arg_to_copy = argv[i + target_arg_start];
+		const char *basename_arg;
+		size_t arg_len;
+
+		// For argv[0], extract just the basename without any path prefix
+		// POPSTARTER expects argv[0] to be just the filename (e.g., "HELLOGAME.ELF")
+		if (i == 0) {
+			basename_arg = extract_basename(arg_to_copy);
+			if (basename_arg == NULL || basename_arg[0] == '\0') {
+				basename_arg = arg_to_copy;  // Fallback to original if extraction fails
+			}
+			arg_to_copy = basename_arg;
+		}
+
+		arg_len = strlen(arg_to_copy) + 1;
 		if ((target_arg_offset + arg_len) > sizeof(target_arg_storage)) {
 			return -E2BIG;
 		}
-		memcpy(&target_arg_storage[target_arg_offset], argv[i + target_arg_start], arg_len);
+		memcpy(&target_arg_storage[target_arg_offset], arg_to_copy, arg_len);
 		target_argv[i] = &target_arg_storage[target_arg_offset];
 		target_arg_offset += arg_len;
 	}
