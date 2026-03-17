@@ -4,7 +4,7 @@
 
 # POPSLoader
 
-Last updated: 2026-03-07
+Last updated: 2026-03-17
 
 POPSLoader is an open-source PlayStation 2 launcher for POPStarter, scripted in Lua and built on top of Enceladus runtime components.
 
@@ -93,28 +93,16 @@ Notes:
 - Recommended format: PNG, non-interlaced, truecolor/RGBA.
 
 ### HDD (PFS) path notes
-- HDD title scan uses `__.POPS` and `__.POPS1..__.POPS9` partitions.
+- HDD title scan checks `__.POPS`, `__.POPS0` through `__.POPS9` partitions (11 total).
 - HDD dependency checks in launcher currently reference `hdd0:__common/POPS/` files.
 
 ## Supported Devices and Backends
 - MMCE (`mmce0:/`, `mmce1:/`): supported.
 - MX4SIO: supported (detected via mass mount driver classification).
 - USB mass (`mass:/`, `mass1:/...`): supported.
-- Internal HDD (`hdd0:`, `pfs:`): supported (PFS flow implemented).
+- Internal HDD (`hdd0:`, PFS via numbered `pfsN:` slots): supported (PFS flow implemented).
 - SMB menu entry: currently marked `Not Implemented Yet` in UI.
 - Disc (DKWDRV): implemented via menu modal and launch-path check.
-
-## Recent Hardening Highlights (Last 72 Hours)
-- Settings commit/apply flow hardening.
-- POPStarter launch arg/prefix/path corrections.
-- USB/MMCE/MX4SIO detection and first-entry behavior fixes.
-- Cover derivation/preview behavior cleanup.
-- Asset cleanup and embed pipeline cleanup (including removal of unused `HDD.png` embedding).
-- Packaging policy finalized on `POPS/PATCH_5.BIN` with stricter CI manifest checks.
-- Documentation and regression-matrix audit refresh.
-
-Full changelog range:
-- [BETA-3...BETA-8.5](https://github.com/NathanNeurotic/POPSLoader/compare/BETA-3...BETA-8.5)
 
 ## Project Structure
 - `src/`: EE runtime, Lua bindings, rendering/audio/input, launch plumbing.

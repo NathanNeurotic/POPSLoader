@@ -1,4 +1,4 @@
-Last updated: 2026-03-06
+Last updated: 2026-03-17
 
 # ARCHITECTURE
 
@@ -17,7 +17,7 @@ Last updated: 2026-03-06
 - This makes startup deterministic and independent of external Lua files.
 
 ### 3) Lua app orchestration
-- `etc/boot.lua` initializes fonts and requires `system`.
+- `etc/boot.lua` initializes fonts, handles HDD PFS boot path resolution (mounts `pfs1:` when launched from an HDD PFS path), and requires `system.lua`.
 - `bin/POPSLDR/system.lua` owns:
   - settings load/save,
   - backend detection/classification,
@@ -50,7 +50,7 @@ Last updated: 2026-03-06
 
 ### Boot flow
 1. `main.cpp` initializes EE/IOP and calls `runScript("boot.lua")`.
-2. `boot.lua` initializes fonts and requires `system.lua`.
+2. `boot.lua` handles HDD PFS launch path resolution (if applicable), initializes fonts, and requires `system.lua`.
 3. `system.lua` loads settings (`PLDR.LoadSettingsNonFatal()`), initializes backend readiness, and enters UI loop.
 
 ### Settings transaction flow

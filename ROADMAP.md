@@ -1,6 +1,6 @@
 # POPSLoader Roadmap
 
-Last updated: 2026-03-06
+Last updated: 2026-03-17
 
 ## Status Snapshot
 Current branch has substantial stabilization work already landed (settings transaction flow, launch path hardening, backend classification, and packaging policy updates). Remaining roadmap items are mostly feature-completion and hardware validation.
