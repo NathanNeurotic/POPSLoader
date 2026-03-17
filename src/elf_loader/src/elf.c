@@ -390,6 +390,8 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 	}
 
 	SET_GS_BGCOLOUR(EXECDBG_YELLOW);
+	unmount_pfs_slots_for_exec();
+	fileXioExit();
 	SifExitIopHeap();
 	SifExitRpc();
 	SifExitCmd();
