@@ -14,7 +14,6 @@
 #include <stdio.h>
 #include <kernel.h>
 #include <loadfile.h>
-#include <iopheap.h>
 #include <iopcontrol.h>
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
@@ -163,7 +162,6 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *a
 		unmount_pfs_slots_for_exec();
 	}
 
-	SifExitIopHeap();
 	SifExitRpc();
 	SifExitCmd();
 	FlushCache(0);
@@ -263,6 +261,10 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 	DPRINTF("LAUNCH: Using ExecPS2\n");
 	DPRINTF("POPSTARTER ExecPS2 argv0=%s\n", argv[0]);
 
+	if (strncmp(resolved_path, "pfs", 3) == 0) {
+		return ExecuteViaEmbeddedLoader(resolved_path, argc, argv);
+	}
+
 	SifInitRpc(0);
 	SifLoadFileInit();
 	ret = SifLoadElf(resolved_path, &elfdata);
@@ -285,6 +287,10 @@ int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]
 
 	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
 		return -1;
+	}
+
+	if (strncmp(resolved_path, "pfs", 3) == 0) {
+		return ExecuteViaEmbeddedLoader(resolved_path, argc, argv);
 	}
 
 	SifInitRpc(0);
