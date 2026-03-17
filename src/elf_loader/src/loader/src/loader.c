@@ -123,9 +123,9 @@ static int mount_target_partition(const char *partition)
 		return ret;
 	}
 
-	if (fileXioMount("pfs:", partition, FIO_MT_RDONLY) < 0) {
-		fileXioUmount("pfs:");
-		if (fileXioMount("pfs:", partition, FIO_MT_RDONLY) < 0) {
+	if (fileXioMount("pfs0:", partition, FIO_MT_RDONLY) < 0) {
+		fileXioUmount("pfs0:");
+		if (fileXioMount("pfs0:", partition, FIO_MT_RDONLY) < 0) {
 			fileXioExit();
 			return -ENOENT;
 		}
@@ -207,7 +207,7 @@ int main(int argc, char *argv[])
 	ret = SifLoadElf(target_path, &elfdata);
 	SifLoadFileExit();
 	if (use_partition_mount && (ret != 0 || elfdata.epc == 0)) {
-		fileXioUmount("pfs:");
+		fileXioUmount("pfs0:");
 		fileXioExit();
 	}
 	SET_GS_BGCOLOUR(BLUE_BG);
@@ -215,7 +215,7 @@ int main(int argc, char *argv[])
 		SET_GS_BGCOLOUR(YELLOW_BG);
 		if (use_partition_mount) {
 			SET_GS_BGCOLOUR(ORANGE_BG);
-			fileXioUmount("pfs:");
+			fileXioUmount("pfs0:");
 			fileXioExit();
 		}
 		SET_GS_BGCOLOUR(CORAL_BG);
