@@ -1,6 +1,6 @@
 # POPSLoader Regression Matrix
 
-Last updated: 2026-03-17
+Last updated: 2026-03-18
 
 ## Scope
 This matrix tracks current behavior across:
@@ -55,6 +55,7 @@ This matrix tracks current behavior across:
 | D-09 | HDD duplicate title names | Same VCD filename exists in two POPS partitions | Launch each entry from HDD (PFS) | each entry launches from its own source partition |
 | D-10 | HDD POPSTARTER on HDD | POPSLoader and/or configured `POPSTARTER_PATH` points to HDD | Launch HDD title | POPSTARTER resolves from sidecar or configured HDD path without blocking launch |
 | D-11 | HDD common art path | `hdd0:__common/POPS/ART/<title>.png` present | Browse HDD title list | cover art appears and launch still succeeds |
+| D-12 | HDD cwd + non-HDD game launch | POPSLoader launched from HDD (sidecar), `POPSTARTER.ELF` beside it on HDD | Launch USB/MMCE/MX4SIO game | POPSTARTER.ELF found on HDD; launch succeeds without "POPSTARTER.ELF missing" error |
 
 ### UI behavior
 | ID | Area | Setup | Action | Pass Criteria |
