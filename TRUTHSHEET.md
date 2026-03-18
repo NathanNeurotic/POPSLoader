@@ -37,6 +37,11 @@ Non-negotiable behavioral invariants that changes must preserve unless an explic
 - Rationale: prevent accidental release payload drift.
 - Verification: CI enforces exact expected ZIP set and rejects legacy `POPS/*.tm2` payload entries.
 
+### Truth 7: Cover art is path-source-dependent
+- Scope: `bin/POPSLDR/ui.lua` (`BuildCoverCandidates`, `CoverCache`).
+- Rationale: art source differs by backend; sidecar `.png` works for all mass/MMCE/MX4SIO paths, while HDD PFS requires looking up `hdd0:__common/POPS/ART/<title>.png`.
+- Verification: non-HDD scenes use sidecar path (`<vcd-path>.png`); HDD (PFS) game-list scene (internal constant `UI.SCENES.GHDD`) uses `PLDR.ResolveHddPartitionReadablePath("hdd0:__common", "POPS/ART/...")`.
+
 ## Current Not-Implemented Truths
 - `HDD (exFAT)` main-menu path is intentionally not implemented and must continue to report that status until feature work lands.
 - `SMB (v1)` main-menu path is intentionally not implemented and must continue to report that status until feature work lands.

@@ -21,7 +21,7 @@ Current branch has substantial stabilization work already landed (settings trans
 
 ### C) UX and presentation
 - Hide auxiliary text toggle (Select) is implemented for supported scenes.
-- Cover sidecar preview (`.png` next to `.VCD`) with small cache is implemented.
+- Cover preview is implemented: sidecar `.png` next to `.VCD` for non-HDD backends; `hdd0:__common/POPS/ART/<title>.png` for HDD PFS; in-memory cache (max 3 entries).
 - Settings page supports profile + path + BDMA mode editing with save/apply overlay.
 
 ### D) Packaging policy
@@ -35,7 +35,8 @@ Current branch has substantial stabilization work already landed (settings trans
 - Implement `SMB (v1)` flow (currently `Not Implemented Yet`).
 
 ### 2) ART system
-- Define and implement artwork source-of-truth, fallback policy, and cache behavior.
+- Basic cover art is implemented (sidecar `.png` and HDD `hdd0:__common/POPS/ART/` paths with small cache).
+- Remaining: formal source-of-truth definition, extended fallback policy, and configurable/persistent cache strategy.
 
 ### 3) Hardware validation depth
 - Expand and record hardware coverage runs in `QA_REGRESSION_MATRIX.md`.
@@ -47,5 +48,5 @@ Current branch has substantial stabilization work already landed (settings trans
 
 ## Deferred / Future Ideas
 - Additional UI themes/skins.
-- Advanced artwork caching strategy.
+- Advanced/configurable artwork caching strategy and fallback policy.
 - Extended network backend support after SMB baseline is stable.

@@ -49,6 +49,6 @@ Each entry records:
 - Evidence: `bin/POPSLDR/ui.lua` (`DEVLOCK`, `canEnterDevice`, lock modal), `bin/POPSLDR/system.lua` (`DetectBootDevice` lock setup).
 
 ## Pending Decisions
-- ART system design (source of truth, cache policy, fallback policy).
+- Advanced ART system design (formal source-of-truth policy, extended fallback chain, configurable/persistent cache strategy); basic cover art paths are already implemented.
 - SMB feature implementation contract (launcher handoff, error UX, storage assumptions).
 - HDD exFAT feature model and relationship to existing BDMA settings.

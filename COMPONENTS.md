@@ -63,6 +63,7 @@ Current technical map of POPSLoader modules, ownership boundaries, and entry poi
 ### UI/UX and scene state
 - Owner: `bin/POPSLDR/ui.lua`.
 - Includes transition engine, settings editor, notifications/modals, cover preview cache, hide-text toggle.
+- Cover preview cache holds up to 3 entries in memory. Art sources: sidecar `.png` next to the `.VCD` (non-HDD), or `hdd0:__common/POPS/ART/<title>.png` (HDD PFS).
 
 ## Current Feature Surface by Main Menu Option
 - `MMCE`: implemented.

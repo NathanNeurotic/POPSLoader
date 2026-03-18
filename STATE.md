@@ -26,7 +26,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 ## Known Open Work
 - Implement HDD exFAT menu flow.
 - Implement SMB menu flow.
-- Implement ART system.
+- Basic cover art is implemented (sidecar `.png` for non-HDD; `hdd0:__common/POPS/ART/<title>.png` for HDD PFS; in-memory CoverCache with max 3 entries). Advanced ART system design (formal source-of-truth policy, extended fallback chain, configurable cache strategy) is still open.
 - Expand documented hardware validation runs.
 - Add clearer end-user installation layout guidance for launcher variants.
 

@@ -17,15 +17,16 @@ Last updated: 2026-03-17
 - This makes startup deterministic and independent of external Lua files.
 
 ### 3) Lua app orchestration
-- `etc/boot.lua` initializes fonts, handles HDD PFS boot path resolution (mounts `pfs1:` when launched from an HDD PFS path), and requires `system.lua`.
+- `etc/boot.lua` handles HDD PFS boot path resolution first (mounts `pfs1:` when launched from an HDD PFS path), then initializes boot fonts, and requires `system.lua`.
 - `bin/POPSLDR/system.lua` owns:
   - settings load/save,
   - backend detection/classification,
   - game list construction,
   - launch policy and POPStarter handoff,
   - BDMA apply/copy logic.
-- `bin/POPSLDR/ui.lua` owns scenes, input, notifications, settings UI, overlays, and modals.
+- `bin/POPSLDR/ui.lua` owns scenes, input, notifications, settings UI, overlays, modals, and cover preview cache (sidecar `.png` and HDD `hdd0:__common/POPS/ART/` paths; max 3 in-memory entries).
 - `bin/POPSLDR/images.lua` lazy-loads embedded PNG assets.
+- `bin/POPSLDR/pops_profiles.lua` defines named POPStarter configuration profiles.
 
 ### 4) Native Lua bindings and storage APIs
 - `src/luasystem.cpp` provides `System.*` bindings:
@@ -50,13 +51,13 @@ Last updated: 2026-03-17
 
 ### Boot flow
 1. `main.cpp` initializes EE/IOP and calls `runScript("boot.lua")`.
-2. `boot.lua` handles HDD PFS launch path resolution (if applicable), initializes fonts, and requires `system.lua`.
+2. `boot.lua` handles HDD PFS launch path resolution first (if applicable), then initializes boot fonts, and requires `system.lua`.
 3. `system.lua` loads settings (`PLDR.LoadSettingsNonFatal()`), initializes backend readiness, and enters UI loop.
 
 ### Settings transaction flow
 1. Settings/Profile edits are staged in UI draft state.
 2. On confirm/leave, UI calls `PLDR.CommitSettingsChanges(...)`.
-3. Commit path persists `.pldrs` and (if needed) applies BDMA assets.
+3. Commit path persists `mc0:/POPSTARTER/.pldrs` and (if needed) applies BDMA assets to `mc0:/POPSTARTER/`.
 4. Failure path re-syncs runtime/UI state and shows notification.
 
 ### Storage classification flow (USB vs MX4SIO)
@@ -79,4 +80,4 @@ Last updated: 2026-03-17
 ## Known Gaps (Code-Visible)
 - Main menu option `HDD (exFAT)` is present but returns `Not Implemented Yet` (`ui.lua`).
 - Main menu option `SMB (v1)` is present but returns `Not Implemented Yet` (`ui.lua`).
-- ART system is not implemented in current runtime Lua paths.
+- Basic cover art is implemented (sidecar `.png` for non-HDD, `hdd0:__common/POPS/ART/<title>.png` for HDD PFS). Advanced ART system design (formal source-of-truth, extended fallback, configurable cache) is not yet defined or implemented.
