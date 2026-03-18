@@ -212,6 +212,12 @@ int main(int argc, char *argv[])
 		 * with iomanX, not the old IOP IOMAN.  SifLoadElf (IOP LOADFILE
 		 * service) uses IOMAN and cannot access pfs devices.  Use fileXio
 		 * RPC directly instead.
+		 *
+		 * IMPORTANT: Do NOT reset the IOP here.  POPSLoader has already
+		 * loaded the required IOP modules (HDD, USB, etc.).  Resetting the
+		 * IOP strips those modules so POPSTARTER cannot access the game
+		 * storage, resulting in a black screen.  POPSTARTER re-initialises
+		 * any modules it needs itself.
 		 */
 		unsigned int elf_entry = 0;
 		fileXioInit();
@@ -223,20 +229,28 @@ int main(int argc, char *argv[])
 			SifExitRpc();
 			return -ENOENT;
 		}
-		elfdata.epc = elf_entry;
+		SET_GS_BGCOLOUR(YELLOW_BG);
+		SET_GS_BGCOLOUR(BROWN_BG);
+		FlushCache(0);
+		FlushCache(2);
+		SET_GS_BGCOLOUR(PURPBLE_BG);
+		DPRINTF("POPS EXEC (pfs, no IOP reset): argc=%d\n", target_argc);
+		for (i = 0; i < target_argc; i++) {
+			DPRINTF("POPS EXEC: argv[%d] = %s\n", i, target_argv[i]);
+		}
 		/* GP is zeroed: POPSTARTER.ELF's crt0 initializes $gp itself
 		 * (via lui/addiu from the _gp symbol) before calling main. */
-		elfdata.gp = 0;
-	} else {
-		SifLoadFileInit();
-		ret = SifLoadElf(target_path, &elfdata);
-		SifLoadFileExit();
-		SET_GS_BGCOLOUR(BLUE_BG);
-		if (ret != 0 || elfdata.epc == 0) {
-			SET_GS_BGCOLOUR(MAGENTA_BG);
-			SifExitRpc();
-			return -ENOENT;
-		}
+		return ExecPS2((void *)elf_entry, 0, target_argc, target_argv);
+	}
+
+	SifLoadFileInit();
+	ret = SifLoadElf(target_path, &elfdata);
+	SifLoadFileExit();
+	SET_GS_BGCOLOUR(BLUE_BG);
+	if (ret != 0 || elfdata.epc == 0) {
+		SET_GS_BGCOLOUR(MAGENTA_BG);
+		SifExitRpc();
+		return -ENOENT;
 	}
 
 	SET_GS_BGCOLOUR(YELLOW_BG);
