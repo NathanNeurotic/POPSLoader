@@ -17,6 +17,7 @@
 #include <sifrpc.h>
 #include <errno.h>
 #include <ps2sdkapi.h>
+#include <fileXio_rpc.h>
 #define DPRINTF(x...) printf(x)
 
 #ifdef LOADER_ENABLE_DEBUG_COLORS
@@ -51,13 +52,86 @@
    DISABLE_EXTRA_TIMERS_FUNCTIONS();
    PS2_DISABLE_AUTOSTART_PTHREAD();
 
-//--------------------------------------------------------------
-//Start of function code:
-//--------------------------------------------------------------
-// Clear user memory
-// PS2Link (C) 2003 Tord Lindstrom (pukko@home.se)
-//         (C) 2003 adresd (adresd_ps2dev@yahoo.com)
-//--------------------------------------------------------------
+/*
+ * Minimal ELF struct definitions for loading a 32-bit PS2 ELF.
+ * Only the fields needed for segment loading are included.
+ */
+#define LDR_ELF_MAGIC   0x464c457fu  /* "\x7fELF" */
+#define LDR_ELF_PT_LOAD 1u
+#define LDR_MAX_PHDRS   32
+
+typedef struct {
+	unsigned char e_ident[16];
+	unsigned short e_type, e_machine;
+	unsigned int e_version, e_entry, e_phoff, e_shoff, e_flags;
+	unsigned short e_ehsize, e_phentsize, e_phnum;
+	unsigned short e_shentsize, e_shnum, e_shstrndx;
+} ldr_elf_hdr_t;
+
+typedef struct {
+	unsigned int p_type, p_offset;
+	void *p_vaddr;
+	unsigned int p_paddr, p_filesz, p_memsz, p_flags, p_align;
+} ldr_elf_phdr_t;
+
+/*
+ * Load a PS2 ELF from a pfs: path using fileXio RPC calls directly.
+ * SifLoadElf uses the old IOP IOMAN which cannot access iomanX-registered
+ * pfs: devices.  fileXio (already running on the IOP) uses iomanX and CAN.
+ * This function must be called after fileXioInit() and SifInitRpc(0).
+ * Single-threaded by design — the embedded loader has no other threads.
+ * PS2 ELFs are always well under 2GB so int casts on offsets are safe.
+ * Returns 0 on success (sets *out_entry to the ELF entry point), -1 on error.
+ */
+static int load_elf_via_filexio(const char *path, unsigned int *out_entry)
+{
+	static ldr_elf_hdr_t hdr;
+	static ldr_elf_phdr_t phdrs[LDR_MAX_PHDRS];
+	static const unsigned char elf_magic[4] = { 0x7f, 'E', 'L', 'F' };
+	int fd, i;
+
+	fd = fileXioOpen(path, FIO_O_RDONLY, 0);
+	if (fd < 0)
+		return -1;
+
+	if (fileXioRead(fd, &hdr, sizeof(hdr)) != (int)sizeof(hdr))
+		goto fail;
+	if (memcmp(hdr.e_ident, elf_magic, 4) != 0)
+		goto fail;
+	if (hdr.e_phnum == 0 || hdr.e_phnum > LDR_MAX_PHDRS)
+		goto fail;
+
+	if (fileXioLseek(fd, (int)hdr.e_phoff, SEEK_SET) < 0)
+		goto fail;
+	if (fileXioRead(fd, phdrs, hdr.e_phnum * sizeof(ldr_elf_phdr_t)) !=
+	    (int)(hdr.e_phnum * sizeof(ldr_elf_phdr_t)))
+		goto fail;
+
+	for (i = 0; i < hdr.e_phnum; i++) {
+		if (phdrs[i].p_type != LDR_ELF_PT_LOAD)
+			continue;
+		if (phdrs[i].p_filesz > 0) {
+			if (fileXioLseek(fd, (int)phdrs[i].p_offset, SEEK_SET) < 0)
+				goto fail;
+			if (fileXioRead(fd, phdrs[i].p_vaddr,
+			                (int)phdrs[i].p_filesz) !=
+			    (int)phdrs[i].p_filesz)
+				goto fail;
+		}
+		if (phdrs[i].p_memsz > phdrs[i].p_filesz) {
+			memset((char *)phdrs[i].p_vaddr + phdrs[i].p_filesz, 0,
+			       phdrs[i].p_memsz - phdrs[i].p_filesz);
+		}
+	}
+
+	fileXioClose(fd);
+	*out_entry = hdr.e_entry;
+	return 0;
+fail:
+	fileXioClose(fd);
+	return -1;
+}
+
 static void wipeUserMem(void)
 {
 	int i;
@@ -128,18 +202,46 @@ int main(int argc, char *argv[])
 	//Writeback data cache before loading ELF.
 	FlushCache(0);
 	SET_GS_BGCOLOUR(GREEN_BG);
-	SifLoadFileInit();
-	ret = SifLoadElf(target_path, &elfdata);
-	SifLoadFileExit();
-	SET_GS_BGCOLOUR(BLUE_BG);
-	if (ret == 0 && elfdata.epc != 0) {
-		SET_GS_BGCOLOUR(YELLOW_BG);
 
-		// Let's reset IOP because ELF was already loaded in memory
-		while(!SifIopReset(NULL, 0)){};
-		while (!SifIopSync()) {};
+	if (strncmp(target_path, "pfs", 3) == 0) {
+		/*
+		 * pfs: paths are registered with iomanX, not the old IOP IOMAN.
+		 * SifLoadElf (IOP LOADFILE service) uses IOMAN and cannot access
+		 * pfs: devices.  Use fileXio RPC directly instead.
+		 */
+		unsigned int elf_entry = 0;
+		fileXioInit();
+		ret = load_elf_via_filexio(target_path, &elf_entry);
+		fileXioExit();
+		SET_GS_BGCOLOUR(BLUE_BG);
+		if (ret != 0 || elf_entry == 0) {
+			SET_GS_BGCOLOUR(MAGENTA_BG);
+			SifExitRpc();
+			return -ENOENT;
+		}
+		elfdata.epc = elf_entry;
+		/* GP is zeroed: POPSTARTER.ELF's crt0 initializes $gp itself
+		 * (via lui/addiu from the _gp symbol) before calling main. */
+		elfdata.gp = 0;
+	} else {
+		SifLoadFileInit();
+		ret = SifLoadElf(target_path, &elfdata);
+		SifLoadFileExit();
+		SET_GS_BGCOLOUR(BLUE_BG);
+		if (ret != 0 || elfdata.epc == 0) {
+			SET_GS_BGCOLOUR(MAGENTA_BG);
+			SifExitRpc();
+			return -ENOENT;
+		}
+	}
 
-		SET_GS_BGCOLOUR(ORANGE_BG);
+	SET_GS_BGCOLOUR(YELLOW_BG);
+
+	// Let's reset IOP because ELF was already loaded in memory
+	while(!SifIopReset(NULL, 0)){};
+	while (!SifIopSync()) {};
+
+	SET_GS_BGCOLOUR(ORANGE_BG);
 
         SifInitRpc(0);
         // Load modules.
@@ -150,23 +252,18 @@ int main(int argc, char *argv[])
         SifLoadFileExit();
         SifExitRpc();
 
-		SET_GS_BGCOLOUR(BROWN_BG);
+	SET_GS_BGCOLOUR(BROWN_BG);
 
-		FlushCache(0);
-		FlushCache(2);
+	FlushCache(0);
+	FlushCache(2);
 
-		SET_GS_BGCOLOUR(PURPBLE_BG);
-		
-		DPRINTF("POPS EXEC: argc=%d\n", target_argc);
-		for (i = 0; i < target_argc; i++) {
-			DPRINTF("POPS EXEC: argv[%d] = %s\n", i, target_argv[i]);
-		}
-		return ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, target_argc, target_argv);
-	} else {
-		SET_GS_BGCOLOUR(MAGENTA_BG);
-		SifExitRpc();
-		return -ENOENT;
+	SET_GS_BGCOLOUR(PURPBLE_BG);
+	
+	DPRINTF("POPS EXEC: argc=%d\n", target_argc);
+	for (i = 0; i < target_argc; i++) {
+		DPRINTF("POPS EXEC: argv[%d] = %s\n", i, target_argv[i]);
 	}
+	return ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, target_argc, target_argv);
 }
 
 //--------------------------------------------------------------
