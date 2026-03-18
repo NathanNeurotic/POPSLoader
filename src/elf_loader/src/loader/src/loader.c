@@ -205,11 +205,13 @@ int main(int argc, char *argv[])
 	FlushCache(0);
 	SET_GS_BGCOLOUR(GREEN_BG);
 
-	if (strncmp(target_path, "pfs:", 4) == 0) {
+	/* Match all pfs paths: pfs:, pfs0:, pfs1:, pfs3:, etc. */
+	if (strncmp(target_path, "pfs", 3) == 0) {
 		/*
-		 * pfs: paths are registered with iomanX, not the old IOP IOMAN.
-		 * SifLoadElf (IOP LOADFILE service) uses IOMAN and cannot access
-		 * pfs: devices.  Use fileXio RPC directly instead.
+		 * pfs paths (pfs:/..., pfs0:/..., pfs1:/..., etc.) are registered
+		 * with iomanX, not the old IOP IOMAN.  SifLoadElf (IOP LOADFILE
+		 * service) uses IOMAN and cannot access pfs devices.  Use fileXio
+		 * RPC directly instead.
 		 */
 		unsigned int elf_entry = 0;
 		fileXioInit();
