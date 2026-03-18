@@ -589,9 +589,6 @@ local function CollectHddKeepSlots(path, extra_keep_slots)
 end
 
 local function PreserveBootPfsSlotsDuringElfLoad(path, keep_slots)
-  if ExtractLaunchPfsSlot(path) == nil then
-    return keep_slots
-  end
   local boot_candidates = {
     BOOT_ARGV0_RAW,
     BOOT_PATH_RAW,
