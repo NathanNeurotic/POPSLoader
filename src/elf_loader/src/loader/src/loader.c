@@ -18,6 +18,7 @@
 #include <errno.h>
 #include <ps2sdkapi.h>
 #define NEWLIB_PORT_AWARE
+#include <fileio.h>
 #include <fileXio_rpc.h>
 #define DPRINTF(x...) printf(x)
 
@@ -204,7 +205,7 @@ int main(int argc, char *argv[])
 	FlushCache(0);
 	SET_GS_BGCOLOUR(GREEN_BG);
 
-	if (strncmp(target_path, "pfs", 3) == 0) {
+	if (strncmp(target_path, "pfs:", 4) == 0) {
 		/*
 		 * pfs: paths are registered with iomanX, not the old IOP IOMAN.
 		 * SifLoadElf (IOP LOADFILE service) uses IOMAN and cannot access
