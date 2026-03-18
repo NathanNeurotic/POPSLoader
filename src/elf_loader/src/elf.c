@@ -143,10 +143,6 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *a
 	}
 	launch_argv[final_argc] = NULL;
 
-	SifInitRpc(0);
-	SifLoadFileInit();
-	SifLoadFileExit();
-
 	boot_pheader = (elf_pheader_t *)(boot_elf + boot_header->phoff);
 	for (i = 0; i < boot_header->phnum; i++) {
 		if (boot_pheader[i].type != ELF_PT_LOAD) {
