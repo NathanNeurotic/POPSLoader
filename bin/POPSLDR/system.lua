@@ -323,7 +323,7 @@ local function GetHddGameSlotCandidates()
       candidates = { HDD_SLOT_GAME, HDD_SLOT_BOOT }
     end
   else
-    candidates = { HDD_SLOT_GAME, HDD_SLOT_BOOT }
+    candidates = { HDD_SLOT_BOOT, HDD_SLOT_GAME }
   end
 
   local blocked_slot = GetBootOccupiedPfsSlotForMounting()
@@ -810,6 +810,7 @@ local function ResolveHddBootSidecarPopstarter()
   add_candidate(BOOT_ARGV0_RAW)
   add_candidate(BOOT_PATH_RAW)
   add_candidate(APP_DIR_LOCAL)
+  add_candidate(APP_DIR)
 
   for i = 1, #mounted_candidates do
     if ProbePathExists(mounted_candidates[i]) then
