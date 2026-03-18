@@ -10,7 +10,6 @@
 
 #include <string.h>
 #include <sifrpc.h>
-#include <sifcmd.h>
 #include <stdio.h>
 #include <kernel.h>
 #include <loadfile.h>
@@ -158,8 +157,6 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *a
 		unmount_pfs_slots_for_exec();
 	}
 
-	SifExitRpc();
-	SifExitCmd();
 	FlushCache(0);
 	FlushCache(2);
 
