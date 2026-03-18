@@ -285,15 +285,62 @@ local function GetActiveHddGameSlot()
   return HDD_SLOT_GAME
 end
 
+local function ParseBootPfsSlotFromPath(path)
+  local candidate = string.lower(tostring(path or ""))
+  local mounted_prefix = NormalizePfsPrefix(candidate)
+  if mounted_prefix ~= nil then
+    return ParsePfsSlot(mounted_prefix)
+  end
+  local embedded = string.match(candidate, "^hdd%d:[^:]+:(pfs%d*):")
+  if embedded ~= nil then
+    return ParsePfsSlot(embedded..":/")
+  end
+  return nil
+end
+
+local function GetBootOccupiedPfsSlotForMounting()
+  local candidates = {
+    BOOT_ARGV0_RAW,
+    BOOT_PATH_RAW,
+    APP_DIR_LOCAL
+  }
+  for i = 1, #candidates do
+    local slot = ParseBootPfsSlotFromPath(candidates[i])
+    if slot ~= nil then
+      return slot
+    end
+  end
+  return nil
+end
+
 local function GetHddGameSlotCandidates()
   local active = tonumber(PLDR and PLDR.HDD and PLDR.HDD.GAME_SLOT or nil)
+  local candidates
   if active == HDD_SLOT_BOOT or active == HDD_SLOT_GAME then
     if active == HDD_SLOT_BOOT then
-      return { HDD_SLOT_BOOT, HDD_SLOT_GAME }
+      candidates = { HDD_SLOT_BOOT, HDD_SLOT_GAME }
+    else
+      candidates = { HDD_SLOT_GAME, HDD_SLOT_BOOT }
     end
-    return { HDD_SLOT_GAME, HDD_SLOT_BOOT }
+  else
+    candidates = { HDD_SLOT_GAME, HDD_SLOT_BOOT }
   end
-  return { HDD_SLOT_GAME, HDD_SLOT_BOOT }
+
+  local blocked_slot = GetBootOccupiedPfsSlotForMounting()
+  if blocked_slot ~= HDD_SLOT_BOOT and blocked_slot ~= HDD_SLOT_GAME then
+    return candidates
+  end
+
+  local filtered = {}
+  for i = 1, #candidates do
+    if candidates[i] ~= blocked_slot then
+      table.insert(filtered, candidates[i])
+    end
+  end
+  if #filtered > 0 then
+    return filtered
+  end
+  return candidates
 end
 
 local function MountHddPartitionTracked(partition, slot, mode)
