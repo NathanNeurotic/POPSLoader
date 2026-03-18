@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <sifrpc.h>
 #include <string.h>
+#include <ctype.h>
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
 #include <fileio.h>
@@ -963,7 +964,16 @@ static int lua_loadELF(lua_State *L)
 		argv_static[1] = NULL;
 		DPRINTF("# Loading ELF argv0='%s' argc=1\n", argv_static[0]);
 		int rc;
-		if (rebootIOP != 0) {
+		bool hdd_or_pfs = false;
+		if (elftoload != NULL && strlen(elftoload) >= 3) {
+			const char a = (char)tolower((unsigned char)elftoload[0]);
+			const char b = (char)tolower((unsigned char)elftoload[1]);
+			const char c = (char)tolower((unsigned char)elftoload[2]);
+			hdd_or_pfs = (a == 'p' && b == 'f' && c == 's') || (a == 'h' && b == 'd' && c == 'd');
+		}
+		if (hdd_or_pfs) {
+			rc = LoadELFFromFile(elftoload, 1, argv_static);
+		} else if (rebootIOP != 0) {
 			rc = LoadELFFromFileExecPS2RebootIOP(elftoload, 1, argv_static);
 		} else {
 			rc = LoadELFFromFileExecPS2(elftoload, 1, argv_static);
