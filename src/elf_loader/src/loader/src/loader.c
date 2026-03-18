@@ -92,7 +92,7 @@ static int load_elf_via_filexio(const char *path, unsigned int *out_entry)
 	static const unsigned char elf_magic[4] = { 0x7f, 'E', 'L', 'F' };
 	int fd, i;
 
-	fd = fileXioOpen(path, FIO_O_RDONLY, 0);
+	fd = fileXioOpen(path, O_RDONLY, 0);
 	if (fd < 0)
 		return -1;
 
