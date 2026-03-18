@@ -166,6 +166,22 @@ local function EnsureHddRuntimeReadyForExec()
   end
   local ok, initialized = pcall(HDD.Initialize)
   if ok and initialized then
+    if type(HDD.GetHDDStatus) == "function" then
+      local status_ready = false
+      for attempt = 1, 3 do
+        local ok_status, status = pcall(HDD.GetHDDStatus)
+        if ok_status and status == 0 then
+          status_ready = true
+          break
+        end
+        if attempt < 3 and type(System) == "table" and type(System.sleep) == "function" then
+          pcall(System.sleep, 1)
+        end
+      end
+      if not status_ready then
+        return false
+      end
+    end
     HDD_EXEC_INIT_DONE = true
     return true
   end
@@ -3222,7 +3238,9 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     keep_hdd_slots = nil
   }
   local reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
-  if policy.name == "HDD" then
+  if IsHddExecContextPath(popstarter) then
+    reboot_iop = 1
+  elseif policy.name == "HDD" then
     reboot_iop = 0
   elseif IsPfsExecPath(popstarter) then
     reboot_iop = 1
