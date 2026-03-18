@@ -21,15 +21,17 @@ This repository contains:
 
 ## Current Feature Status
 
+Menu options are listed in the order they appear in the main menu:
+
 | Main menu option | Status |
 |---|---|
 | MMCE | Implemented |
 | MX4SIO | Implemented |
+| HDD (exFAT) | Not implemented |
 | HDD (PFS) | Implemented |
 | USB | Implemented |
-| Disc (DKWDRV) | Implemented |
-| HDD (exFAT) | Not implemented |
 | SMB (v1) | Not implemented |
+| Disc (DKWDRV) | Implemented |
 
 ## Installation (Prebuilt)
 
@@ -64,12 +66,16 @@ Notes:
 - Boot/runtime Lua is loaded from embedded assets.
 - Settings are staged in UI and committed on Settings/Profile confirm/leave.
 - Settings file path: `mc0:/POPSTARTER/.pldrs`.
+- BDMA module directory: `mc0:/POPSTARTER/`.
 - Configurable executable paths:
-  - POPStarter path
-  - DKWDRV path
+  - POPStarter path (default: sidecar `POPSTARTER.ELF` next to launcher)
+  - DKWDRV path (default: `mc0:/PS1_DKWDRV/DKWDRV.ELF`)
 - `mc?:/` alias is supported for executable path resolution (`mc0:/` then `mc1:/`).
 - USB vs MX4SIO list split is based on mount-driver identity (`System.getMassMountDriver`), not path-name guessing.
-- Cover sidecar lookup uses selected `.VCD` path with `.png` suffix.
+- Cover art lookup:
+  - For non-HDD game lists: sidecar `.png` next to the selected `.VCD` file.
+  - For HDD (PFS) game lists: `hdd0:__common/POPS/ART/<title>.png`.
+  - A small in-memory cover cache (max 3 entries) is maintained per session.
 
 ## Requirements
 
@@ -89,7 +95,8 @@ Notes:
   - [Archived POPS-VCD-Manager](https://web.archive.org/web/20250208180431/https://cdn.discordapp.com/attachments/1190221790925033542/1337432406419968101/POPS-VCD-Manager.7z?ex=67a8153d&is=67a6c3bd&hm=d72ab93151232edc0a6756989735a97bacd71bf16b8119bc1e8a96fe9880430b&)
 
 ### Optional cover art
-- Sidecar cover image path: same folder/name as selected VCD, with `.png` extension.
+- For non-HDD backends: sidecar cover image path is the same folder/name as the selected VCD, with `.png` extension.
+- For HDD (PFS) backend: cover art is looked up from `hdd0:__common/POPS/ART/<title>.png`.
 - Recommended format: PNG, non-interlaced, truecolor/RGBA.
 
 ### HDD (PFS) path notes
