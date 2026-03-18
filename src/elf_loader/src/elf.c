@@ -89,6 +89,70 @@ static void unmount_pfs_slots_for_exec(void) {
 	}
 }
 
+/*
+ * Load an ELF from a pfs: path using C file I/O (fileXio-backed).
+ * SifLoadElf cannot reliably access pfsN: devices via the ROM LOADFILE
+ * service after the SIF state is disrupted by SifExitRpc/SifExitCmd, so we
+ * load segments directly.  FlushCache(0) is called inside before IOP DMA
+ * segment writes; the caller must call FlushCache(0)+FlushCache(2) after
+ * return to write BSS zeros to DRAM and invalidate icache before ExecPS2.
+ */
+static int load_pfs_elf(const char *path, void **out_entry) {
+	int fd, i, ret = -1;
+	elf_header_t hdr;
+	static elf_pheader_t phdr_buf[64];
+
+	fd = open(path, O_RDONLY);
+	if (fd < 0)
+		return -1;
+
+	if (read(fd, &hdr, sizeof(hdr)) != (int)sizeof(hdr))
+		goto done;
+	if ((*(u32*)hdr.ident) != ELF_MAGIC)
+		goto done;
+	if (hdr.phnum == 0 || hdr.phnum > 64)
+		goto done;
+
+	lseek(fd, hdr.phoff, SEEK_SET);
+	if (read(fd, phdr_buf, hdr.phnum * sizeof(elf_pheader_t)) !=
+	    (int)(hdr.phnum * sizeof(elf_pheader_t)))
+		goto done;
+
+	/* Flush dirty dcache before IOP DMA writes to gram. */
+	FlushCache(0);
+
+	for (i = 0; i < hdr.phnum; i++) {
+		u32 vaddr, vend;
+		if (phdr_buf[i].type != ELF_PT_LOAD)
+			continue;
+		vaddr = (u32)phdr_buf[i].vaddr;
+		/* Only allow writes to gram (0x100000 - 0x02000000). */
+		if (vaddr < 0x100000 || vaddr >= 0x02000000)
+			goto done;
+		if (phdr_buf[i].filesz > phdr_buf[i].memsz)
+			goto done;
+		vend = vaddr + phdr_buf[i].memsz;
+		if (vend < vaddr || vend > 0x02000000)
+			goto done;
+		if (phdr_buf[i].filesz > 0) {
+			lseek(fd, phdr_buf[i].offset, SEEK_SET);
+			if (read(fd, phdr_buf[i].vaddr, phdr_buf[i].filesz) !=
+			    (int)phdr_buf[i].filesz)
+				goto done;
+		}
+		if (phdr_buf[i].memsz > phdr_buf[i].filesz) {
+			memset((void *)(vaddr + phdr_buf[i].filesz), 0,
+			       phdr_buf[i].memsz - phdr_buf[i].filesz);
+		}
+	}
+
+	*out_entry = (void *)hdr.entry;
+	ret = 0;
+done:
+	close(fd);
+	return ret;
+}
+
 /* IMPORTANT: This method wipe memory where the loader is going to be allocated 
 * This values come from the linkfile used by the loader.c
 MEMORY {
@@ -258,7 +322,14 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 	DPRINTF("POPSTARTER ExecPS2 argv0=%s\n", argv[0]);
 
 	if (strncmp(resolved_path, "pfs", 3) == 0) {
-		return ExecuteViaEmbeddedLoader(resolved_path, argc, argv);
+		void *elf_entry;
+		DPRINTF("LAUNCH: pfs path - direct file I/O load (no IOP reset)\n");
+		if (load_pfs_elf(resolved_path, &elf_entry) != 0)
+			return -2;
+		FlushCache(0);
+		FlushCache(2);
+		ExecPS2(elf_entry, 0, argc, argv);
+		return -1;
 	}
 
 	SifInitRpc(0);
@@ -286,7 +357,26 @@ int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]
 	}
 
 	if (strncmp(resolved_path, "pfs", 3) == 0) {
-		return ExecuteViaEmbeddedLoader(resolved_path, argc, argv);
+		void *elf_entry;
+		DPRINTF("LAUNCH: pfs path - direct file I/O load (with IOP reset)\n");
+		if (load_pfs_elf(resolved_path, &elf_entry) != 0)
+			return -2;
+		FlushCache(0);
+		while (!SifIopReset(NULL, 0)) {
+		}
+		while (!SifIopSync()) {
+		}
+		SifInitRpc(0);
+		SifLoadFileInit();
+		SifLoadModule("rom0:SIO2MAN", 0, NULL);
+		SifLoadModule("rom0:MCMAN", 0, NULL);
+		SifLoadModule("rom0:MCSERV", 0, NULL);
+		SifLoadFileExit();
+		SifExitRpc();
+		FlushCache(0);
+		FlushCache(2);
+		ExecPS2(elf_entry, 0, argc, argv);
+		return -1;
 	}
 
 	SifInitRpc(0);
