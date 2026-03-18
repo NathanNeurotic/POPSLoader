@@ -261,10 +261,6 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 	DPRINTF("LAUNCH: Using ExecPS2\n");
 	DPRINTF("POPSTARTER ExecPS2 argv0=%s\n", argv[0]);
 
-	if (strncmp(resolved_path, "pfs", 3) == 0) {
-		return ExecuteViaEmbeddedLoader(resolved_path, argc, argv);
-	}
-
 	SifInitRpc(0);
 	SifLoadFileInit();
 	ret = SifLoadElf(resolved_path, &elfdata);
