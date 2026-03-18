@@ -834,6 +834,14 @@ local function ResolveHddBootSidecarPopstarter()
     end
   end
 
+  if #mounted_candidates > 0 and EnsureHddRuntimeReadyForExec() then
+    for i = 1, #mounted_candidates do
+      if ProbePathExists(mounted_candidates[i]) then
+        return mounted_candidates[i]
+      end
+    end
+  end
+
   for i = 1, #hdd_candidates do
     local resolved_hdd = ResolveHddReadablePath(hdd_candidates[i])
     if resolved_hdd ~= nil then
