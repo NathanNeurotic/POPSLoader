@@ -98,6 +98,16 @@ int HDDLOADSTATE = HDDLOADSTATES::NOT_LOADED;
 
 static int Load_HDD_IRX(lua_State *L) {
     if (HDDLOADSTATE != HDDLOADSTATES::NOT_LOADED) goto OK;
+    /* If the HDD device is already accessible (modules loaded by the boot launcher),
+     * skip loading our own copies to avoid double-load errors. This is the normal
+     * state when POPSLoader itself is launched from HDD. */
+    {
+        int devctl_ret = fileXioDevctl("hdd0:", HDIOC_STATUS, NULL, 0, NULL, 0);
+        if (devctl_ret >= 0) {
+            DPRINTF("Load_HDD_IRX: hdd0: already accessible (status=%d), skipping IRX load\n", devctl_ret);
+            goto OK;
+        }
+    }
     int ID, RET;
 #define _N "\0"
     static const char hddarg[] = "-o" _N "4" _N "-n" _N "20";
