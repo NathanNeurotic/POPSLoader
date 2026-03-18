@@ -17,6 +17,7 @@
 #include <sifrpc.h>
 #include <errno.h>
 #include <ps2sdkapi.h>
+#define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
 #define DPRINTF(x...) printf(x)
 
