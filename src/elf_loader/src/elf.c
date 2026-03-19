@@ -224,7 +224,6 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	int i;
 	int new_argc = 1;
 	int fd = -1;
-	int rc = -1;
 	const char *launch_path = NULL;
 	static const int kMaxArgc = 32;
 	static char *launch_argv[33];
@@ -294,15 +293,15 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	DPRINTF("LAUNCH: argv1=%s\n", launch_argv[1] ? launch_argv[1] : "(null)");
 	DPRINTF("LAUNCH: argv2_is_null=%s\n", launch_argv[2] == NULL ? "yes" : "no");
 	/* LoadExecPS2 should not return on success. */
-	rc = LoadExecPS2(launch_path, new_argc, launch_argv);
-	if (rc < 0 && strcmp(launch_path, exec_path) != 0) {
+	LoadExecPS2(launch_path, new_argc, launch_argv);
+	if (strcmp(launch_path, exec_path) != 0) {
 		if (use_default_argv0) {
 			launch_argv[0] = exec_path;
 		}
-		rc = LoadExecPS2(exec_path, new_argc, launch_argv);
+		LoadExecPS2(exec_path, new_argc, launch_argv);
 	}
-	DPRINTF("LAUNCH: RETURNED rc=%d\n", rc);
-	return rc;
+	DPRINTF("LAUNCH: RETURNED rc=%d\n", -1);
+	return -1;
 }
 
 int LoadELFFromFile(const char *filename, int argc, char *argv[])
