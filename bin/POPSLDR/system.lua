@@ -545,7 +545,8 @@ local function ResolveHddReadablePath(path)
     return nil
   end
 
-  return ResolveHddPartitionReadablePath(mount_part, relpath, ExtractEmbeddedHddMountPrefix(candidate), HDD_SLOT_POPSTARTER)
+  local preferred_slot = GetBootOccupiedPfsSlotForMounting() or HDD_SLOT_POPSTARTER
+  return ResolveHddPartitionReadablePath(mount_part, relpath, ExtractEmbeddedHddMountPrefix(candidate), preferred_slot)
 end
 
 local function EnsureHddExecPathReady(path)
