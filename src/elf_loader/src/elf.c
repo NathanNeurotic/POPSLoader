@@ -224,6 +224,8 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	int i;
 	int new_argc = 1;
 	int fd = -1;
+	int rc = -1;
+	const char *launch_path = NULL;
 	static const int kMaxArgc = 32;
 	static char *launch_argv[33];
 	static char launch_arg_storage[2048];
@@ -239,6 +241,7 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	// ELF Exists
 	wipe_bramMem();
 	normalize_pfs_slot_exec_path(resolved_path, exec_path, sizeof(exec_path));
+	launch_path = resolved_path;
 
 	DPRINTF("LAUNCH: BEGIN\n");
 	if (strcmp(resolved_path, filename) != 0) {
@@ -246,7 +249,11 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	} else {
 		DPRINTF("LAUNCH: popstarter path: %s\n", resolved_path);
 	}
-	fd = open(exec_path, O_RDONLY);
+	fd = open(launch_path, O_RDONLY);
+	if (fd < 0 && strcmp(launch_path, exec_path) != 0) {
+		launch_path = exec_path;
+		fd = open(launch_path, O_RDONLY);
+	}
 	DPRINTF("LAUNCH: popstarter open rc=%d (open)\n", fd);
 	if (fd >= 0) {
 		close(fd);
@@ -259,7 +266,7 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	if (new_argc > kMaxArgc) {
 		return -2;
 	}
-	char *stored_filename = store_arg(exec_path, launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
+	char *stored_filename = store_arg(launch_path, launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
 	if (!stored_filename) {
 		return -3;
 	}
@@ -281,15 +288,21 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	launch_argv[new_argc] = NULL;
 
 	DPRINTF("LAUNCH: Using LoadExecPS2\n");
-	DPRINTF("LAUNCH: exec path=%s\n", exec_path);
+	DPRINTF("LAUNCH: exec path=%s\n", launch_path);
 	DPRINTF("LAUNCH: argc=%d\n", new_argc);
 	DPRINTF("LAUNCH: argv0_final=%s\n", launch_argv[0] ? launch_argv[0] : "(null)");
 	DPRINTF("LAUNCH: argv1=%s\n", launch_argv[1] ? launch_argv[1] : "(null)");
 	DPRINTF("LAUNCH: argv2_is_null=%s\n", launch_argv[2] == NULL ? "yes" : "no");
 	/* LoadExecPS2 should not return on success. */
-	LoadExecPS2(exec_path, new_argc, launch_argv);
-	DPRINTF("LAUNCH: RETURNED rc=%d\n", -1);
-	return -1;
+	rc = LoadExecPS2(launch_path, new_argc, launch_argv);
+	if (rc < 0 && strcmp(launch_path, exec_path) != 0) {
+		if (use_default_argv0) {
+			launch_argv[0] = exec_path;
+		}
+		rc = LoadExecPS2(exec_path, new_argc, launch_argv);
+	}
+	DPRINTF("LAUNCH: RETURNED rc=%d\n", rc);
+	return rc;
 }
 
 int LoadELFFromFile(const char *filename, int argc, char *argv[])
