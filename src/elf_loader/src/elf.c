@@ -55,12 +55,36 @@ static bool can_open_exec_path(const char *filename) {
 	return true;
 }
 
+static bool can_stat_exec_path(const char *filename) {
+	struct stat buffer;
+	if (filename == NULL || filename[0] == '\0') {
+		return false;
+	}
+	return (stat(filename, &buffer) == 0);
+}
+
+static bool is_hdd_or_pfs_path(const char *filename) {
+	if (filename == NULL || filename[0] == '\0') {
+		return false;
+	}
+	return (strncmp(filename, "pfs", 3) == 0 || strncmp(filename, "PFS", 3) == 0 ||
+		strncmp(filename, "hdd", 3) == 0 || strncmp(filename, "HDD", 3) == 0);
+}
+
+static bool can_resolve_exec_path(const char *filename) {
+	if (is_hdd_or_pfs_path(filename)) {
+		/* Avoid open() probes on HDD/PFS paths: these can block in launch context. */
+		return can_stat_exec_path(filename);
+	}
+	return can_open_exec_path(filename);
+}
+
 static int resolve_exec_path(const char *filename, char *out, size_t out_size) {
-	if (can_open_exec_path(filename)) {
+	if (can_resolve_exec_path(filename)) {
 		snprintf(out, out_size, "%s", filename);
 		return 0;
 	}
-	if (build_host_alt_path(filename, out, out_size) && can_open_exec_path(out)) {
+	if (build_host_alt_path(filename, out, out_size) && can_resolve_exec_path(out)) {
 		return 0;
 	}
 	return -1;
