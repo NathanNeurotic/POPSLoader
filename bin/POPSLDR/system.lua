@@ -2996,7 +2996,9 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     return
   end
   SetLaunchPhase(LaunchState.PHASE_EXEC)
-  PrepareForExternalELFLaunch(popstarter, context and context.keep_hdd_slots or nil)
+  if not IsHddExecContextPath(popstarter) then
+    PrepareForExternalELFLaunch(popstarter, context and context.keep_hdd_slots or nil)
+  end
   local rc
   if exec_args ~= nil and #exec_args > 0 and unpack_fn ~= nil then
     rc = System.loadELF(popstarter, reboot_iop, unpack_fn(exec_args))
