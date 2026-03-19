@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <ctype.h>
 #include "../../include/dprintf.h"
 #include "elf.h"
 
@@ -88,6 +89,30 @@ static int resolve_exec_path(const char *filename, char *out, size_t out_size) {
 		return 0;
 	}
 	return -1;
+}
+
+static void normalize_pfs_slot_exec_path(const char *in_path, char *out_path, size_t out_size) {
+	const char *scan;
+	if (out_path == NULL || out_size == 0) {
+		return;
+	}
+	if (in_path == NULL || in_path[0] == '\0') {
+		out_path[0] = '\0';
+		return;
+	}
+	snprintf(out_path, out_size, "%s", in_path);
+	if (tolower((unsigned char)in_path[0]) != 'p' ||
+	    tolower((unsigned char)in_path[1]) != 'f' ||
+	    tolower((unsigned char)in_path[2]) != 's') {
+		return;
+	}
+	scan = in_path + 3;
+	while (*scan != '\0' && isdigit((unsigned char)*scan)) {
+		scan++;
+	}
+	if (*scan == ':' && scan[1] == '/') {
+		snprintf(out_path, out_size, "pfs:/%s", scan + 2);
+	}
 }
 
 static char *store_arg(const char *src, char *storage, size_t storage_size, size_t *offset) {
@@ -203,6 +228,7 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	static char *launch_argv[33];
 	static char launch_arg_storage[2048];
 	char resolved_path[256];
+	char exec_path[256];
 	size_t storage_offset = 0;
 	bool use_default_argv0 = false;
 	
@@ -212,6 +238,7 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	}
 	// ELF Exists
 	wipe_bramMem();
+	normalize_pfs_slot_exec_path(resolved_path, exec_path, sizeof(exec_path));
 
 	DPRINTF("LAUNCH: BEGIN\n");
 	if (strcmp(resolved_path, filename) != 0) {
@@ -219,7 +246,7 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	} else {
 		DPRINTF("LAUNCH: popstarter path: %s\n", resolved_path);
 	}
-	fd = open(resolved_path, O_RDONLY);
+	fd = open(exec_path, O_RDONLY);
 	DPRINTF("LAUNCH: popstarter open rc=%d (open)\n", fd);
 	if (fd >= 0) {
 		close(fd);
@@ -232,7 +259,7 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	if (new_argc > kMaxArgc) {
 		return -2;
 	}
-	char *stored_filename = store_arg(resolved_path, launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
+	char *stored_filename = store_arg(exec_path, launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
 	if (!stored_filename) {
 		return -3;
 	}
@@ -254,13 +281,13 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	launch_argv[new_argc] = NULL;
 
 	DPRINTF("LAUNCH: Using LoadExecPS2\n");
-	DPRINTF("LAUNCH: exec path=%s\n", resolved_path);
+	DPRINTF("LAUNCH: exec path=%s\n", exec_path);
 	DPRINTF("LAUNCH: argc=%d\n", new_argc);
 	DPRINTF("LAUNCH: argv0_final=%s\n", launch_argv[0] ? launch_argv[0] : "(null)");
 	DPRINTF("LAUNCH: argv1=%s\n", launch_argv[1] ? launch_argv[1] : "(null)");
 	DPRINTF("LAUNCH: argv2_is_null=%s\n", launch_argv[2] == NULL ? "yes" : "no");
 	/* LoadExecPS2 should not return on success. */
-	LoadExecPS2(resolved_path, new_argc, launch_argv);
+	LoadExecPS2(exec_path, new_argc, launch_argv);
 	DPRINTF("LAUNCH: RETURNED rc=%d\n", -1);
 	return -1;
 }
@@ -274,6 +301,7 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 {
 	t_ExecData elfdata;
 	char resolved_path[256];
+	char exec_path[256];
 	int ret;
 
 	if (argc <= 0 || argv == NULL || argv[0] == NULL) {
@@ -282,12 +310,13 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
 		return -1;
 	}
+	normalize_pfs_slot_exec_path(resolved_path, exec_path, sizeof(exec_path));
 	DPRINTF("LAUNCH: Using ExecPS2\n");
 	DPRINTF("POPSTARTER ExecPS2 argv0=%s\n", argv[0]);
 
 	SifInitRpc(0);
 	SifLoadFileInit();
-	ret = SifLoadElf(resolved_path, &elfdata);
+	ret = SifLoadElf(exec_path, &elfdata);
 	SifLoadFileExit();
 
 	if (ret != 0 || elfdata.epc == 0) {
@@ -303,19 +332,21 @@ int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]
 {
 	t_ExecData elfdata;
 	char resolved_path[256];
+	char exec_path[256];
 	int ret;
 
 	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
 		return -1;
 	}
+	normalize_pfs_slot_exec_path(resolved_path, exec_path, sizeof(exec_path));
 
-	if (strncmp(resolved_path, "pfs", 3) == 0) {
-		return ExecuteViaEmbeddedLoader(resolved_path, argc, argv);
+	if (strncmp(exec_path, "pfs", 3) == 0) {
+		return ExecuteViaEmbeddedLoader(exec_path, argc, argv);
 	}
 
 	SifInitRpc(0);
 	SifLoadFileInit();
-	ret = SifLoadElf(resolved_path, &elfdata);
+	ret = SifLoadElf(exec_path, &elfdata);
 	SifLoadFileExit();
 
 	if (ret != 0 || elfdata.epc == 0) {
