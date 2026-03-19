@@ -3184,9 +3184,11 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
         end
       end
     end
-    local mounted_slot_popstarter = ResolveExecPathToMountedPfsSlot(popstarter)
-    if mounted_slot_popstarter ~= nil then
-      popstarter = mounted_slot_popstarter
+    if IsPfsExecPath(popstarter) then
+      local mounted_slot_popstarter = ResolveExecPathToMountedPfsSlot(popstarter)
+      if mounted_slot_popstarter ~= nil then
+        popstarter = mounted_slot_popstarter
+      end
     end
   end
   if selected_entry == "" then
