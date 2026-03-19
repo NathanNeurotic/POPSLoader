@@ -841,14 +841,39 @@ local function ResolveMountedPfsExecPathToRawHdd(path)
   return partition.."/"..relpath
 end
 
-local function CanonicalizePfsExecPath(path)
-  local slot, relpath = string.match(tostring(path or ""), "^[Pp][Ff][Ss](%d+):/(.+)$")
-  if slot == nil or relpath == nil or relpath == "" then
+local function ResolveExecPathToMountedPfsSlot(path)
+  local candidate = tostring(path or "")
+  local relpath = string.match(candidate, "^[Pp][Ff][Ss]%d*:/(.+)$")
+  local slot = nil
+
+  if relpath ~= nil and relpath ~= "" then
+    slot = ParsePfsSlot(NormalizePfsPrefix(candidate))
+  else
+    local _, hdd_relpath = ParseHddExecMountAndRelpath(candidate)
+    local embedded_prefix = ExtractEmbeddedHddMountPrefix(candidate)
+    if hdd_relpath ~= nil and hdd_relpath ~= "" and embedded_prefix ~= nil then
+      relpath = hdd_relpath
+      slot = ParsePfsSlot(embedded_prefix)
+    end
+  end
+
+  if relpath == nil or relpath == "" then
     return nil
   end
-  local canonical = "pfs:/"..relpath
-  if ProbePathExists(canonical) then
-    return canonical
+  if slot == nil then
+    slot = GetBootOccupiedPfsSlotForMounting()
+    if slot == nil then
+      slot = HDD_SLOT_BOOT
+    end
+  end
+
+  local mounted_prefix = BuildMountedPfsPrefix(slot)
+  if mounted_prefix == nil then
+    return nil
+  end
+  local mounted_path = mounted_prefix..string.gsub(relpath, "^/+", "")
+  if ProbePathExists(mounted_path) then
+    return mounted_path
   end
   return nil
 end
@@ -3158,9 +3183,9 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
         end
       end
     end
-    local canonical_pfs_popstarter = CanonicalizePfsExecPath(popstarter)
-    if canonical_pfs_popstarter ~= nil then
-      popstarter = canonical_pfs_popstarter
+    local mounted_slot_popstarter = ResolveExecPathToMountedPfsSlot(popstarter)
+    if mounted_slot_popstarter ~= nil then
+      popstarter = mounted_slot_popstarter
     end
   end
   if selected_entry == "" then
