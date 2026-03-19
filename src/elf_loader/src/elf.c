@@ -10,7 +10,6 @@
 
 #include <string.h>
 #include <sifrpc.h>
-#include <sifcmd.h>
 #include <stdio.h>
 #include <kernel.h>
 #include <loadfile.h>
@@ -104,14 +103,6 @@ static char *store_arg(const char *src, char *storage, size_t storage_size, size
 	return dest;
 }
 
-static void unmount_pfs_slots_for_exec(void) {
-	char mount_name[6] = "pfs0:";
-	int slot;
-	for (slot = 0; slot <= 3; slot++) {
-		mount_name[3] = '0' + slot;
-		fileXioUmount(mount_name);
-	}
-}
 
 /* IMPORTANT: This method wipe memory where the loader is going to be allocated 
 * This values come from the linkfile used by the loader.c
@@ -167,10 +158,6 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *a
 	}
 	launch_argv[final_argc] = NULL;
 
-	SifInitRpc(0);
-	SifLoadFileInit();
-	SifLoadFileExit();
-
 	boot_pheader = (elf_pheader_t *)(boot_elf + boot_header->phoff);
 	for (i = 0; i < boot_header->phnum; i++) {
 		if (boot_pheader[i].type != ELF_PT_LOAD) {
@@ -182,12 +169,7 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *a
 		}
 	}
 
-	if (strncmp(resolved_path, "hdd", 3) == 0) {
-		unmount_pfs_slots_for_exec();
-	}
-
-	SifExitRpc();
-	SifExitCmd();
+	DPRINTF("ExecuteViaEmbeddedLoader: launching %s\n", resolved_path);
 	FlushCache(0);
 	FlushCache(2);
 
@@ -284,6 +266,11 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 	}
 	DPRINTF("LAUNCH: Using ExecPS2\n");
 	DPRINTF("POPSTARTER ExecPS2 argv0=%s\n", argv[0]);
+
+	if (strncmp(resolved_path, "pfs", 3) == 0) {
+		DPRINTF("LAUNCH: pfs path detected, routing through embedded loader\n");
+		return ExecuteViaEmbeddedLoader(resolved_path, argc, argv);
+	}
 
 	SifInitRpc(0);
 	SifLoadFileInit();

@@ -17,6 +17,8 @@
 #include <sifrpc.h>
 #include <errno.h>
 #include <ps2sdkapi.h>
+#include <fileio.h>
+#include <fileXio_rpc.h>
 #define DPRINTF(x...) printf(x)
 
 #ifdef LOADER_ENABLE_DEBUG_COLORS
@@ -73,6 +75,97 @@ static void wipeUserMem(void)
 //--------------------------------------------------------------
 //End of func:  void wipeUserMem(void)
 //--------------------------------------------------------------
+// ELF types for manual PFS ELF loading via fileXio
+//--------------------------------------------------------------
+#define ELF_MAGIC        0x464c457f
+#define ELF_PT_LOAD      1
+#define MAX_ELF_PHEADERS 8
+
+typedef struct {
+	unsigned char  ident[16];
+	unsigned short type;
+	unsigned short machine;
+	unsigned int   version;
+	unsigned int   entry;
+	unsigned int   phoff;
+	unsigned int   shoff;
+	unsigned int   flags;
+	unsigned short ehsize;
+	unsigned short phentsize;
+	unsigned short phnum;
+	unsigned short shentsize;
+	unsigned short shnum;
+	unsigned short shstrndx;
+} loader_elf_header_t;
+
+typedef struct {
+	unsigned int type;
+	unsigned int offset;
+	void        *vaddr;
+	unsigned int paddr;
+	unsigned int filesz;
+	unsigned int memsz;
+	unsigned int flags;
+	unsigned int align;
+} loader_elf_pheader_t;
+
+static int load_elf_via_filexio(const char *path, t_ExecData *out)
+{
+	static loader_elf_header_t  hdr;
+	static loader_elf_pheader_t phdrs[MAX_ELF_PHEADERS];
+	int fd, i, n;
+
+	out->epc = 0;
+	out->gp  = 0;
+
+	fd = fileXioOpen(path, FIO_O_RDONLY, 0);
+	if (fd < 0) {
+		DPRINTF("load_elf_via_filexio: open failed %d\n", fd);
+		return -1;
+	}
+
+	n = fileXioRead(fd, &hdr, sizeof(hdr));
+	if (n != (int)sizeof(hdr) || *((unsigned int *)hdr.ident) != ELF_MAGIC) {
+		DPRINTF("load_elf_via_filexio: bad header n=%d\n", n);
+		fileXioClose(fd);
+		return -2;
+	}
+
+	if (hdr.phnum == 0 || hdr.phnum > MAX_ELF_PHEADERS) {
+		DPRINTF("load_elf_via_filexio: bad phnum %d\n", hdr.phnum);
+		fileXioClose(fd);
+		return -3;
+	}
+
+	fileXioLseek(fd, (int)hdr.phoff, SEEK_SET);
+	n = fileXioRead(fd, phdrs, hdr.phnum * sizeof(loader_elf_pheader_t));
+	if (n != (int)(hdr.phnum * sizeof(loader_elf_pheader_t))) {
+		DPRINTF("load_elf_via_filexio: bad pheader read n=%d\n", n);
+		fileXioClose(fd);
+		return -4;
+	}
+
+	for (i = 0; i < hdr.phnum; i++) {
+		if (phdrs[i].type != ELF_PT_LOAD || phdrs[i].filesz == 0)
+			continue;
+		fileXioLseek(fd, (int)phdrs[i].offset, SEEK_SET);
+		n = fileXioRead(fd, phdrs[i].vaddr, (int)phdrs[i].filesz);
+		if (n != (int)phdrs[i].filesz) {
+			DPRINTF("load_elf_via_filexio: segment %d read failed n=%d\n", i, n);
+			fileXioClose(fd);
+			return -5;
+		}
+		if (phdrs[i].memsz > phdrs[i].filesz)
+			memset((char *)phdrs[i].vaddr + phdrs[i].filesz, 0,
+			       phdrs[i].memsz - phdrs[i].filesz);
+	}
+
+	fileXioClose(fd);
+	out->epc = hdr.entry;
+	return 0;
+}
+
+//--------------------------------------------------------------
 // *** MAIN ***
 // 
 //--------------------------------------------------------------
@@ -127,6 +220,34 @@ int main(int argc, char *argv[])
 
 	//Writeback data cache before loading ELF.
 	FlushCache(0);
+
+	/* For pfs: paths, use fileXio to load the ELF and skip IOP reset.
+	 * SifLoadElf uses IOMAN (old) which cannot access iomanX/PFS paths.
+	 * IOP reset would destroy the HDD modules POPSLoader already loaded. */
+	if (strncmp(target_path, "pfs", 3) == 0) {
+		SET_GS_BGCOLOUR(GREEN_BG);
+		/* fileXio has not been initialized in this fresh ExecPS2 context;
+		 * the IOP fileXio service is still running from POPSLoader. */
+		fileXioInit();
+		ret = load_elf_via_filexio(target_path, &elfdata);
+		SET_GS_BGCOLOUR(BLUE_BG);
+		if (ret == 0 && elfdata.epc != 0) {
+			SET_GS_BGCOLOUR(YELLOW_BG);
+			/* Do NOT reset IOP: HDD modules must remain loaded for POPSTARTER. */
+			SET_GS_BGCOLOUR(PURPBLE_BG);
+			FlushCache(0);
+			FlushCache(2);
+			DPRINTF("POPS EXEC (pfs): argc=%d\n", target_argc);
+			for (i = 0; i < target_argc; i++) {
+				DPRINTF("POPS EXEC: argv[%d] = %s\n", i, target_argv[i]);
+			}
+			return ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, target_argc, target_argv);
+		} else {
+			SET_GS_BGCOLOUR(MAGENTA_BG);
+			return -ENOENT;
+		}
+	}
+
 	SET_GS_BGCOLOUR(GREEN_BG);
 	SifLoadFileInit();
 	ret = SifLoadElf(target_path, &elfdata);
