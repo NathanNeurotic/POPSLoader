@@ -556,6 +556,15 @@ local function ResolveHddExecMountedPath(path)
   return ResolveHddReadablePath(path)
 end
 
+local function BuildCanonicalRawHddExecPath(path)
+  local mount_part, relpath = ParseHddExecMountAndRelpath(path)
+  local clean_relpath = string.gsub(tostring(relpath or ""), "^/+", "")
+  if mount_part == nil or clean_relpath == "" then
+    return nil
+  end
+  return mount_part.."/"..clean_relpath
+end
+
 local function ResolveDirectHddExecPath(path)
   local candidate = tostring(path or "")
   if candidate == "" or string.match(string.lower(candidate), "^hdd%d:") == nil then
@@ -563,6 +572,10 @@ local function ResolveDirectHddExecPath(path)
   end
   if not EnsureHddRuntimeReadyForExec() then
     return nil
+  end
+  local canonical_raw = BuildCanonicalRawHddExecPath(candidate)
+  if canonical_raw ~= nil and ProbePathExists(canonical_raw) then
+    return canonical_raw
   end
   if ProbePathExists(candidate) then
     return candidate
@@ -828,6 +841,17 @@ local function ResolveHddBootSidecarPopstarter()
   add_candidate(APP_DIR_LOCAL)
   add_candidate(APP_DIR)
 
+  for i = 1, #hdd_candidates do
+    local direct_hdd = ResolveDirectHddExecPath(hdd_candidates[i])
+    if direct_hdd ~= nil then
+      return direct_hdd
+    end
+    local resolved_hdd = ResolveHddReadablePath(hdd_candidates[i])
+    if resolved_hdd ~= nil then
+      return resolved_hdd
+    end
+  end
+
   for i = 1, #mounted_candidates do
     if ProbePathExists(mounted_candidates[i]) then
       return mounted_candidates[i]
@@ -839,17 +863,6 @@ local function ResolveHddBootSidecarPopstarter()
       if ProbePathExists(mounted_candidates[i]) then
         return mounted_candidates[i]
       end
-    end
-  end
-
-  for i = 1, #hdd_candidates do
-    local resolved_hdd = ResolveHddReadablePath(hdd_candidates[i])
-    if resolved_hdd ~= nil then
-      return resolved_hdd
-    end
-    local direct_hdd = ResolveDirectHddExecPath(hdd_candidates[i])
-    if direct_hdd ~= nil then
-      return direct_hdd
     end
   end
 
@@ -908,13 +921,13 @@ local function ResolvePopstarterPath(path)
   end
 
   if string.match(string.lower(chosen), "^hdd%d:") ~= nil then
-    local resolved_hdd = ResolveHddExecMountedPath(chosen)
-    if resolved_hdd ~= nil then
-      return resolved_hdd
-    end
     local direct_hdd = ResolveDirectHddExecPath(chosen)
     if direct_hdd ~= nil then
       return direct_hdd
+    end
+    local resolved_hdd = ResolveHddExecMountedPath(chosen)
+    if resolved_hdd ~= nil then
+      return resolved_hdd
     end
   end
   local resolved = ResolvePathWithEnsure(chosen)
@@ -932,9 +945,9 @@ local function ResolvePopstarterPath(path)
     local candidate = fallbacks[i]
     local resolved_fallback = nil
     if string.match(string.lower(candidate), "^hdd%d:") ~= nil then
-      resolved_fallback = ResolveHddReadablePath(candidate)
+      resolved_fallback = ResolveDirectHddExecPath(candidate)
       if resolved_fallback == nil then
-        resolved_fallback = ResolveDirectHddExecPath(candidate)
+        resolved_fallback = ResolveHddReadablePath(candidate)
       end
     end
     if resolved_fallback == nil then
