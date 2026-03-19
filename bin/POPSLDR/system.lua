@@ -841,6 +841,18 @@ local function ResolveMountedPfsExecPathToRawHdd(path)
   return partition.."/"..relpath
 end
 
+local function CanonicalizePfsExecPath(path)
+  local slot, relpath = string.match(tostring(path or ""), "^[Pp][Ff][Ss](%d+):/(.+)$")
+  if slot == nil or relpath == nil or relpath == "" then
+    return nil
+  end
+  local canonical = "pfs:/"..relpath
+  if ProbePathExists(canonical) then
+    return canonical
+  end
+  return nil
+end
+
 local function DirectoryFromExecPath(path)
   local candidate = tostring(path or "")
   if candidate == "" then
@@ -3145,6 +3157,10 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
           popstarter = mounted_hdd_popstarter
         end
       end
+    end
+    local canonical_pfs_popstarter = CanonicalizePfsExecPath(popstarter)
+    if canonical_pfs_popstarter ~= nil then
+      popstarter = canonical_pfs_popstarter
     end
   end
   if selected_entry == "" then
