@@ -962,9 +962,16 @@ static int lua_loadELF(lua_State *L)
 		argv_static[0] = selector_buf;
 		argv_static[1] = NULL;
 		DPRINTF("# Loading ELF argv0='%s' argc=1\n", argv_static[0]);
+		bool is_hdd_or_pfs = false;
+		if (elftoload != NULL) {
+			is_hdd_or_pfs = (strncmp(elftoload, "pfs", 3) == 0 || strncmp(elftoload, "PFS", 3) == 0 ||
+			                 strncmp(elftoload, "hdd", 3) == 0 || strncmp(elftoload, "HDD", 3) == 0);
+		}
 		int rc;
 		if (rebootIOP != 0) {
 			rc = LoadELFFromFileExecPS2RebootIOP(elftoload, 1, argv_static);
+		} else if (is_hdd_or_pfs) {
+			rc = LoadELFFromFile(elftoload, 1, argv_static);
 		} else {
 			rc = LoadELFFromFileExecPS2(elftoload, 1, argv_static);
 		}
