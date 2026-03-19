@@ -3137,7 +3137,14 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     local raw_hdd_popstarter = ResolveMountedPfsExecPathToRawHdd(popstarter)
     if raw_hdd_popstarter ~= nil then
       local direct_hdd_popstarter = ResolveDirectHddExecPath(raw_hdd_popstarter)
-      popstarter = direct_hdd_popstarter or raw_hdd_popstarter
+      if direct_hdd_popstarter ~= nil then
+        popstarter = direct_hdd_popstarter
+      else
+        local mounted_hdd_popstarter = ResolveHddReadablePath(raw_hdd_popstarter)
+        if mounted_hdd_popstarter ~= nil then
+          popstarter = mounted_hdd_popstarter
+        end
+      end
     end
   end
   if selected_entry == "" then
