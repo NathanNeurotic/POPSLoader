@@ -791,6 +791,56 @@ local function IsPfsExecPath(path)
   return string.match(string.lower(tostring(path or "")), "^pfs%d*:/") ~= nil
 end
 
+local function InferHddPartitionForPfsSlot(slot)
+  if type(slot) ~= "number" then
+    return nil
+  end
+  local candidates = {
+    BOOT_ARGV0_RAW,
+    BOOT_PATH_RAW,
+    APP_DIR,
+    APP_DIR_LOCAL
+  }
+  for i = 1, #candidates do
+    local candidate = tostring(candidates[i] or "")
+    local partition = ParseHddPartitionMount(candidate)
+    local embedded_prefix = ExtractEmbeddedHddMountPrefix(candidate)
+    local embedded_slot = ParsePfsSlot(embedded_prefix)
+    if partition ~= nil and embedded_slot == slot then
+      return partition
+    end
+  end
+  return nil
+end
+
+local function ResolveMountedPfsExecPathToRawHdd(path)
+  local normalized_prefix = NormalizePfsPrefix(path)
+  if normalized_prefix == nil then
+    return nil
+  end
+  local slot = ParsePfsSlot(normalized_prefix)
+  if slot == nil then
+    return nil
+  end
+  local relpath = string.match(tostring(path or ""), "^[Pp][Ff][Ss]%d*:/(.+)$")
+  if relpath == nil or relpath == "" then
+    return nil
+  end
+
+  local entry = HDD_MOUNT_STATE.slots[slot]
+  local partition = entry and entry.partition or nil
+  if partition == nil then
+    partition = InferHddPartitionForPfsSlot(slot)
+    if partition ~= nil then
+      RememberRecordedHddMount(partition, BuildMountedPfsPrefix(slot))
+    end
+  end
+  if partition == nil then
+    return nil
+  end
+  return partition.."/"..relpath
+end
+
 local function DirectoryFromExecPath(path)
   local candidate = tostring(path or "")
   if candidate == "" then
@@ -3083,6 +3133,13 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   local policy, device_page = ResolveLaunchPolicy(gamelocation, ui_scene)
   local selected_entry = tostring(game or "")
   local popstarter = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
+  if IsPfsExecPath(popstarter) then
+    local raw_hdd_popstarter = ResolveMountedPfsExecPathToRawHdd(popstarter)
+    if raw_hdd_popstarter ~= nil then
+      local direct_hdd_popstarter = ResolveDirectHddExecPath(raw_hdd_popstarter)
+      popstarter = direct_hdd_popstarter or raw_hdd_popstarter
+    end
+  end
   if selected_entry == "" then
     BlockLaunchFailure(
       "Invalid game selection",
