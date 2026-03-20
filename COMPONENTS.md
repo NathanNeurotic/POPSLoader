@@ -1,4 +1,4 @@
-Last updated: 2026-03-06
+Last updated: 2026-03-20
 
 # COMPONENTS
 
@@ -10,80 +10,90 @@ Current technical map of POPSLoader modules, ownership boundaries, and entry poi
 ### Launcher runtime (`src/`)
 - EE bootstrap and runtime services.
 - Key files:
-  - `src/main.cpp` (startup, IOP/EE init, Lua boot execution)
-  - `src/luaplayer.cpp` (embedded Lua VM and loader policy)
-  - `src/luasystem.cpp` (Lua `System.*` bindings)
-  - `src/luaHDD.cpp` (Lua `HDD.*` bindings)
-  - `src/embed_assets.cpp` (embedded asset lookup table)
+  - `src/main.cpp` for startup, IOP/EE init, and Lua boot execution,
+  - `src/luaplayer.cpp` for embedded Lua VM and loader policy,
+  - `src/luasystem.cpp` for Lua `System.*` bindings,
+  - `src/luaHDD.cpp` for Lua `HDD.*` bindings,
+  - `src/embed_assets.cpp` for embedded asset lookup.
 
 ### Lua app layer (`bin/POPSLDR/`)
-- User-visible behavior, menu flow, device selection, launch orchestration.
+- User-visible behavior, menu flow, device selection, settings, cover preview, and launch orchestration.
 - Key files:
-  - `bin/POPSLDR/system.lua`
-  - `bin/POPSLDR/ui.lua`
-  - `bin/POPSLDR/images.lua`
-  - `bin/POPSLDR/pops_profiles.lua`
+  - `bin/POPSLDR/system.lua`,
+  - `bin/POPSLDR/ui.lua`,
+  - `bin/POPSLDR/images.lua`,
+  - `bin/POPSLDR/pops_profiles.lua`.
 
 ### Boot script (`etc/`)
-- `etc/boot.lua` initializes boot font and transfers control to Lua app layer.
+- `etc/boot.lua` handles boot-path normalization for HDD launches, loads fonts, and transfers control to the Lua app layer.
 
 ### IOP modules and RPC (`iop/`)
 - Embedded IRX payloads and backend query module source.
 - Key paths:
-  - `iop/embed/` (IRX payloads)
-  - `iop/bdm_query/` (RPC module for BDM backend list)
+  - `iop/embed/`,
+  - `iop/bdm_query/`.
 
 ### Controller modules (`modules/`)
-- DS3/DS4 related support modules and pademu payloads.
+- DS3/DS4 support modules and pademu payloads.
 - Key paths:
-  - `modules/ds34bt`
-  - `modules/ds34usb`
-  - `modules/pademu`
+  - `modules/ds34bt`,
+  - `modules/ds34usb`,
+  - `modules/pademu`.
 
-### Build/package pipeline
-- `Makefile` embeds assets/IRX and builds `bin/POPSLOADER.ELF`.
-- `.github/workflows/compilation.yml` compiles and verifies release ZIP manifest.
+### Build and package pipeline
+- `Makefile` embeds assets and IRX files, builds `bin/enceladus.elf`, then packs `bin/POPSLOADER.ELF`.
+- `.github/workflows/compilation.yml` is the authoritative CI build/package workflow.
 
 ## Runtime Functional Ownership
 
-### Settings and BDMA management
-- Owner: `bin/POPSLDR/system.lua` + settings scene in `bin/POPSLDR/ui.lua`.
+### Settings, BDMA, and video standard
+- Owner: `bin/POPSLDR/system.lua` plus the settings scene in `bin/POPSLDR/ui.lua`.
 - Persists settings in `mc0:/POPSTARTER/.pldrs`.
-- Applies BDMA mode by copying/removing required files in `mc0:/POPSTARTER/`.
+- Applies BDMA mode by copying or removing required files in `mc0:/POPSTARTER/`.
+- Persists and applies video standard (`NTSC` or `PAL`).
 
 ### Device discovery and classification
 - Owner: `bin/POPSLDR/system.lua` using `System.*` APIs from `src/luasystem.cpp`.
-- USB vs MX4SIO split is mount-driver based (`mx4`/`sdc` => MX4SIO).
+- USB vs MX4SIO split is mount-driver based (`mx4` or `sdc` means MX4SIO).
+- MMCE list flow currently uses the internal `GSMB` scene identifier.
 
-### Launch handoff
-- Owner: `bin/POPSLDR/system.lua` (`PLDR.RunPOPStarterGame`).
-- Backend-specific launch policy and argv shaping, then `System.loadELF`.
+### Launch handoff and path resolution
+- Owner: `bin/POPSLDR/system.lua` via `PLDR.RunPOPStarterGame`.
+- Handles backend-specific launch policy, POPStarter path resolution, selector and `argv` shaping, then `System.loadELF`.
 
-### UI/UX and scene state
+### UI, scene state, and presentation
 - Owner: `bin/POPSLDR/ui.lua`.
-- Includes transition engine, settings editor, notifications/modals, cover preview cache, hide-text toggle.
+- Includes transitions, settings editor, notifications and modals, optional build-info stamp loading, cover preview cache, hide-text toggle, and the Disc launch modal.
+
+### Optional runtime metadata
+- Owner: `bin/POPSLDR/ui.lua` plus workflow-generated file output.
+- `BUILD_INFO.txt` is read at runtime if present.
+- CI generates the file before compile, but current release packaging does not copy it into `POPSLOADER.zip`.
 
 ## Current Feature Surface by Main Menu Option
 - `MMCE`: implemented.
-- `MX4SIO`: implemented (with bounded retries).
-- `HDD (exFAT)`: not implemented (explicit notification).
+- `MX4SIO`: implemented with bounded retries.
+- `HDD (exFAT)`: not implemented and reports `Not Implemented Yet`.
 - `HDD (PFS)`: implemented.
 - `USB`: implemented.
-- `SMB (v1)`: not implemented (explicit notification).
+- `SMB (v1)`: not implemented and reports `Not Implemented Yet`.
 - `Disc (DKWDRV)`: implemented via modal launch path.
 
 ## Primary Change Entry Points
-- Settings persistence/apply issues:
+- Settings, BDMA, or video standard issues:
   - `bin/POPSLDR/system.lua`
   - `bin/POPSLDR/ui.lua`
-- Device detection/classification issues:
+- Device detection and classification issues:
   - `bin/POPSLDR/system.lua`
   - `src/luasystem.cpp`
   - `iop/bdm_query/bdm_query.c`
-- Launch handoff/argv issues:
+- Launch handoff, path resolution, or selector issues:
   - `bin/POPSLDR/system.lua`
   - `src/elf_loader/src/elf.c`
   - `src/luasystem.cpp`
-- Packaging/release content issues:
+- Cover art or Credits UI issues:
+  - `bin/POPSLDR/ui.lua`
+  - `bin/POPSLDR/system.lua`
+- Packaging or release-content issues:
   - `Makefile`
   - `.github/workflows/compilation.yml`
