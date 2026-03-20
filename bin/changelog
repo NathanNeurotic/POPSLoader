@@ -1,0 +1,21 @@
+[v1.0.0]
+- Feature: Initial release
+- Feature: USB support
+- Feature: HDD support
+- Feature: POPStarter profiles system
+- Feature: Custom IGR textures
+
+[v1.0.0 - rev1]
+- change: Remotion of enceladus stock code that changes program behaviour if parameters are passed (fixes booting from OPL apps tab and similar launchers)
+- Fixe: fixed issue with case mismatch on certain filepaths (fixes booting from HDD)
+- change: disabled debug colors on ELF Loader (forgot to remove them before release ^^)
+
+[v1.0.0 - rev2]
+- Fix: gamelist render when there are more than 36 games listed
+
+[v1.0.0 - rev3]
+- Fix: HDD IRX modules loading
+- gamelist: move on list faster via right and left dpads
+
+[v1.0.0 - rev4]
+- Fix: Fix detection of `__POPS#` Partitions on internal HDD

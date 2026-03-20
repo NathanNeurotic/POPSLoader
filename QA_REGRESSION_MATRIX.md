@@ -1,0 +1,75 @@
+# POPSLoader Regression Matrix
+
+Last updated: 2026-03-06
+Target branch: `BETA-8-5`
+
+## Scope
+This matrix tracks current behavior across:
+- settings load/save/apply transaction flow,
+- launch path validation and error feedback,
+- USB/MMCE/MX4SIO/HDD page behavior,
+- `mc?:/` alias path resolution,
+- currently unimplemented menu options (`HDD (exFAT)`, `SMB (v1)`),
+- release package validation gates.
+
+## Automated CI Gates
+| ID | Area | Source | Pass Criteria |
+|---|---|---|---|
+| CI-01 | Build | `.github/workflows/compilation.yml` | `make clean elfloader all` succeeds |
+| CI-02 | Boot script syntax/newline | workflow step `Validate etc/boot.lua` | `etc/boot.lua` exists, ends with newline, parses with `luac`/`lua` when available |
+| CI-03 | Release package assembly | workflow packaging step | ZIP includes expected tree rooted at `PS1_POPSLOADER/` + `POPS/` |
+| CI-04 | Release manifest exactness | workflow python verifier | exact expected file set; no extra/missing files |
+| CI-05 | Legacy payload rejection | workflow python verifier | no `POPS/*.tm2` entries present |
+
+## Manual Runtime Matrix
+
+### Settings and persistence
+| ID | Area | Setup | Action | Pass Criteria |
+|---|---|---|---|---|
+| S-01 | Defaults with missing settings file | Remove `mc0:/POPSTARTER/.pldrs` | Start app and open Settings | Defaults load without crash |
+| S-02 | Staged edits are not immediate writes | Change settings rows but do not leave Settings | Hard-exit app | Prior persisted values remain |
+| S-03 | Commit on exit | Change profile/paths/BDMA and confirm or leave | Reopen Settings | Values persist and reload |
+| S-04 | Save failure feedback | Make `mc0:/POPSTARTER` unavailable | Leave Settings with changes | User sees explicit save/apply error notification |
+| S-05 | BDMA mode restore from marker | Prepare `.pldr_bdma_mode` marker | Boot and open Settings | selected BDMA mode reflects effective marker state |
+
+### Launch and path handling
+| ID | Area | Setup | Action | Pass Criteria |
+|---|---|---|---|---|
+| L-01 | Missing POPStarter path | Configure nonexistent POPStarter path | Launch game | UI shows `Cant find POPSTARTER ELF` message |
+| L-02 | Missing DKWDRV path | Configure nonexistent DKWDRV path | Launch Disc option | UI shows `Cant find DKWDRV ELF` message |
+| L-03 | `mc?:/` POPStarter alias (`mc0`) | Place POPStarter only on `mc0:/` and configure `mc?:/` | Launch game | Path resolves to `mc0:/` and launch proceeds |
+| L-04 | `mc?:/` POPStarter alias (`mc1`) | Place POPStarter only on `mc1:/` and configure `mc?:/` | Launch game | Path resolves to `mc1:/` and launch proceeds |
+| L-05 | `mc?:/` DKWDRV alias | Place DKWDRV only on `mc1:/` and configure `mc?:/` | Launch Disc option | Path resolves to `mc1:/` and launch proceeds |
+| L-06 | Invalid alias targets | Configure `mc?:/` path with file on neither card | Launch game/Disc option | Launch is blocked with explicit missing-file notification |
+
+### Device pages and backend behavior
+| ID | Area | Setup | Action | Pass Criteria |
+|---|---|---|---|---|
+| D-01 | USB backend unavailable | No USB mass backend mounted | Open USB page | UI shows `No USB backend found` |
+| D-02 | MX4SIO present | Insert MX4SIO media | Open MX4SIO page | Device is detected with bounded retry behavior; list loads or clear no-game state |
+| D-03 | MX4SIO absent | No MX4SIO media | Open MX4SIO page | UI shows `No MX4SIO device found` |
+| D-04 | MMCE absent | No MMCE card | Open MMCE page | UI shows MMCE-not-found notification |
+| D-05 | HDD PFS unavailable | No usable HDD | Open HDD (PFS) | explicit HDD status/partition error notification |
+| D-06 | HDD exFAT option status | any setup | Select `HDD (exFAT)` | UI shows `Not Implemented Yet` |
+| D-07 | SMB option status | any setup | Select `SMB (v1)` | UI shows `Not Implemented Yet` |
+| D-08 | HDD POPS partition scan | `__.POPS`, `__.POPS0`, and one higher `__.POPSN` present | Open HDD (PFS) | titles from all present POPS partitions list in stable partition order |
+| D-09 | HDD duplicate title names | Same VCD filename exists in two POPS partitions | Launch each entry from HDD (PFS) | each entry launches from its own source partition |
+| D-10 | HDD POPSTARTER on HDD | POPSLoader and/or configured `POPSTARTER_PATH` points to HDD | Launch HDD title | POPSTARTER resolves from sidecar or configured HDD path without blocking launch |
+| D-11 | HDD common art path | `hdd0:__common/POPS/ART/<title>.png` present | Browse HDD title list | cover art appears and launch still succeeds |
+
+### UI behavior
+| ID | Area | Setup | Action | Pass Criteria |
+|---|---|---|---|---|
+| U-01 | Hide auxiliary text toggle | Main menu or game list scene | Press Select twice | Toggle shows/hides supported auxiliary text and reports state notification |
+| U-02 | Hide toggle exclusions | Settings/Credits scenes | Press Select | No unintended text hiding in excluded scenes |
+| U-03 | Cover sidecar load | Put `<game>.png` beside selected `.VCD` | Highlight game | Cover preview appears |
+| U-04 | Cover sidecar missing | Remove sidecar PNG | Move selection repeatedly | No notification spam; UI remains responsive |
+
+## Run Log Template
+| Date | Console | Storage Setup | IDs Run | Result |
+|---|---|---|---|---|
+| YYYY-MM-DD | SCPH-xxxxx | USB/MMCE/MX4SIO/HDD details | e.g. S-01,S-02,D-02 | PASS/FAIL + notes |
+
+## Current Verification Status
+- CI gates: verified by workflow definition (execution status depends on CI runs).
+- Manual hardware matrix: `Unknown (verify on hardware)` unless run logs are added above.
