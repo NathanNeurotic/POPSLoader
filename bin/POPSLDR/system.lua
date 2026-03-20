@@ -934,13 +934,13 @@ local function ResolveHddBootSidecarPopstarter()
   add_candidate(APP_DIR)
 
   for i = 1, #hdd_candidates do
-    local direct_hdd = ResolveDirectHddExecPath(hdd_candidates[i])
-    if direct_hdd ~= nil then
-      return direct_hdd
-    end
     local resolved_hdd = ResolveHddReadablePath(hdd_candidates[i])
     if resolved_hdd ~= nil then
       return resolved_hdd
+    end
+    local direct_hdd = ResolveDirectHddExecPath(hdd_candidates[i])
+    if direct_hdd ~= nil then
+      return direct_hdd
     end
   end
 
@@ -1013,13 +1013,13 @@ local function ResolvePopstarterPath(path)
   end
 
   if string.match(string.lower(chosen), "^hdd%d:") ~= nil then
-    local direct_hdd = ResolveDirectHddExecPath(chosen)
-    if direct_hdd ~= nil then
-      return direct_hdd
-    end
     local resolved_hdd = ResolveHddExecMountedPath(chosen)
     if resolved_hdd ~= nil then
       return resolved_hdd
+    end
+    local direct_hdd = ResolveDirectHddExecPath(chosen)
+    if direct_hdd ~= nil then
+      return direct_hdd
     end
   end
   local resolved = ResolvePathWithEnsure(chosen)
@@ -3175,24 +3175,23 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   local policy, device_page = ResolveLaunchPolicy(gamelocation, ui_scene)
   local selected_entry = tostring(game or "")
   local popstarter = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
+  if string.match(string.lower(tostring(popstarter or "")), "^hdd%d:") ~= nil then
+    local mounted_hdd_popstarter = ResolveHddReadablePath(popstarter)
+    if mounted_hdd_popstarter ~= nil then
+      popstarter = mounted_hdd_popstarter
+    end
+  end
   if IsPfsExecPath(popstarter) then
     local raw_hdd_popstarter = ResolveMountedPfsExecPathToRawHdd(popstarter)
     if raw_hdd_popstarter ~= nil then
-      local direct_hdd_popstarter = ResolveDirectHddExecPath(raw_hdd_popstarter)
-      if direct_hdd_popstarter ~= nil then
-        popstarter = direct_hdd_popstarter
-      else
-        local mounted_hdd_popstarter = ResolveHddReadablePath(raw_hdd_popstarter)
-        if mounted_hdd_popstarter ~= nil then
-          popstarter = mounted_hdd_popstarter
-        end
+      local mounted_hdd_popstarter = ResolveHddReadablePath(raw_hdd_popstarter)
+      if mounted_hdd_popstarter ~= nil then
+        popstarter = mounted_hdd_popstarter
       end
     end
-    if IsPfsExecPath(popstarter) then
-      local mounted_slot_popstarter = ResolveExecPathToMountedPfsSlot(popstarter)
-      if mounted_slot_popstarter ~= nil then
-        popstarter = mounted_slot_popstarter
-      end
+    local mounted_slot_popstarter = ResolveExecPathToMountedPfsSlot(popstarter)
+    if mounted_slot_popstarter ~= nil then
+      popstarter = mounted_slot_popstarter
     end
   end
   if selected_entry == "" then
