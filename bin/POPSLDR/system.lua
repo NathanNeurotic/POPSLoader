@@ -753,6 +753,8 @@ local function ResolvePathWithEnsure(path)
     local low = string.lower(candidate)
     local is_mass = low:find("^mass") ~= nil
     local is_mmce = low:find("^mmce") ~= nil
+    local is_hdd = low:find("^hdd") ~= nil
+    local is_pfs = low:find("^pfs") ~= nil
     for pass = 1, 2 do
       if ProbePathExists(candidate) then
         return candidate
@@ -766,6 +768,8 @@ local function ResolvePathWithEnsure(path)
           if type(PLDR) == "table" and type(PLDR.EnsureMmceReadyOnce) == "function" then
             pcall(PLDR.EnsureMmceReadyOnce)
           end
+        elseif is_hdd or is_pfs then
+          pcall(EnsureHddRuntimeReadyForExec)
         end
       end
     end
