@@ -942,13 +942,6 @@ local function ResolveHddBootSidecarPopstarter()
 
   for i = 1, #mounted_candidates do
     if ProbePathExists(mounted_candidates[i]) then
-      local raw_hdd_candidate = ResolveMountedPfsExecPathToRawHdd(mounted_candidates[i])
-      if raw_hdd_candidate ~= nil then
-        local direct_hdd_candidate = ResolveDirectHddExecPath(raw_hdd_candidate)
-        if direct_hdd_candidate ~= nil then
-          return direct_hdd_candidate
-        end
-      end
       return mounted_candidates[i]
     end
   end
@@ -956,13 +949,6 @@ local function ResolveHddBootSidecarPopstarter()
   if #mounted_candidates > 0 and EnsureHddRuntimeReadyForExec() then
     for i = 1, #mounted_candidates do
       if ProbePathExists(mounted_candidates[i]) then
-        local raw_hdd_candidate = ResolveMountedPfsExecPathToRawHdd(mounted_candidates[i])
-        if raw_hdd_candidate ~= nil then
-          local direct_hdd_candidate = ResolveDirectHddExecPath(raw_hdd_candidate)
-          if direct_hdd_candidate ~= nil then
-            return direct_hdd_candidate
-          end
-        end
         return mounted_candidates[i]
       end
     end
