@@ -110,6 +110,14 @@ static void cleanup_hdd_exec_handoff(void) {
 	FlushCache(2);
 }
 
+static void cleanup_for_embedded_loader(void) {
+	SifExitIopHeap();
+	SifExitRpc();
+	SifExitCmd();
+	FlushCache(0);
+	FlushCache(2);
+}
+
 /* IMPORTANT: This method wipe memory where the loader is going to be allocated 
 * This values come from the linkfile used by the loader.c
 MEMORY {
@@ -179,15 +187,7 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *a
 		}
 	}
 
-	if (is_hdd_or_pfs_exec_path(resolved_path)) {
-		cleanup_hdd_exec_handoff();
-	} else {
-		SifExitIopHeap();
-		SifExitRpc();
-		SifExitCmd();
-		FlushCache(0);
-		FlushCache(2);
-	}
+	cleanup_for_embedded_loader();
 
 	ExecPS2((void *)boot_header->entry, 0, final_argc, launch_argv);
 	return -1;
@@ -257,6 +257,10 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	DPRINTF("LAUNCH: argv0_final=%s\n", launch_argv[0] ? launch_argv[0] : "(null)");
 	DPRINTF("LAUNCH: argv1=%s\n", launch_argv[1] ? launch_argv[1] : "(null)");
 	DPRINTF("LAUNCH: argv2_is_null=%s\n", launch_argv[2] == NULL ? "yes" : "no");
+	if (!use_default_argv0 && is_hdd_or_pfs_exec_path(resolved_path)) {
+		DPRINTF("LAUNCH: Using embedded loader\n");
+		return ExecuteViaEmbeddedLoader(resolved_path, new_argc, launch_argv);
+	}
 	/* LoadExecPS2 should not return on success. */
 	LoadExecPS2(resolved_path, new_argc, launch_argv);
 	DPRINTF("LAUNCH: RETURNED rc=%d\n", -1);
