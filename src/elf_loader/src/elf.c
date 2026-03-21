@@ -193,7 +193,66 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *a
 	return -1;
 }
 
-int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
+static int ExecuteViaEmbeddedLoaderWithPartition(const char *partition, const char *resolved_path, int argc, char *argv[]) {
+	int i;
+	int final_argc = argc + 2;
+	static const int kMaxArgc = 32;
+	static char *launch_argv[33];
+	static char launch_arg_storage[2048];
+	size_t storage_offset = 0;
+	u8 *boot_elf = (u8 *)&loader_elf;
+	elf_header_t *boot_header = (elf_header_t *)boot_elf;
+	elf_pheader_t *boot_pheader;
+
+	if (argc <= 0 || argv == NULL || argv[0] == NULL) {
+		return -4;
+	}
+	if (final_argc > kMaxArgc) {
+		return -2;
+	}
+	if ((*(u32*)boot_header->ident) != ELF_MAGIC) {
+		return -5;
+	}
+
+	launch_argv[0] = store_arg(partition != NULL ? partition : "", launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
+	if (!launch_argv[0]) {
+		return -3;
+	}
+	launch_argv[1] = store_arg(resolved_path, launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
+	if (!launch_argv[1]) {
+		return -3;
+	}
+	for (i = 0; i < argc; i++) {
+		char *stored_arg = store_arg(argv[i], launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
+		if (!stored_arg) {
+			return -3;
+		}
+		launch_argv[i + 2] = stored_arg;
+	}
+	launch_argv[final_argc] = NULL;
+
+	SifInitRpc(0);
+	SifLoadFileInit();
+	SifLoadFileExit();
+
+	boot_pheader = (elf_pheader_t *)(boot_elf + boot_header->phoff);
+	for (i = 0; i < boot_header->phnum; i++) {
+		if (boot_pheader[i].type != ELF_PT_LOAD) {
+			continue;
+		}
+		memcpy(boot_pheader[i].vaddr, boot_elf + boot_pheader[i].offset, boot_pheader[i].filesz);
+		if (boot_pheader[i].memsz > boot_pheader[i].filesz) {
+			memset((void *)((int)boot_pheader[i].vaddr + boot_pheader[i].filesz), 0, boot_pheader[i].memsz - boot_pheader[i].filesz);
+		}
+	}
+
+	cleanup_for_embedded_loader();
+
+	ExecPS2((void *)boot_header->entry, 0, final_argc, launch_argv);
+	return -1;
+}
+
+static int LoadELFFromFileInternal(const char *filename, const char *partition, int argc, char *argv[], bool keep_partition_in_argv0) {
 	int i;
 	int new_argc = 1;
 	int fd = -1;
@@ -258,7 +317,10 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	DPRINTF("LAUNCH: argv1=%s\n", launch_argv[1] ? launch_argv[1] : "(null)");
 	DPRINTF("LAUNCH: argv2_is_null=%s\n", launch_argv[2] == NULL ? "yes" : "no");
 	if (!use_default_argv0 && is_hdd_or_pfs_exec_path(resolved_path)) {
-		DPRINTF("LAUNCH: Using embedded loader\n");
+		DPRINTF("LAUNCH: Using embedded loader%s\n", keep_partition_in_argv0 ? " (partition-aware)" : "");
+		if (keep_partition_in_argv0) {
+			return ExecuteViaEmbeddedLoaderWithPartition(partition, resolved_path, new_argc, launch_argv);
+		}
 		return ExecuteViaEmbeddedLoader(resolved_path, new_argc, launch_argv);
 	}
 	/* LoadExecPS2 should not return on success. */
@@ -267,9 +329,14 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	return -1;
 }
 
+int LoadELFFromFileWithPartition(const char *filename, const char *partition, int argc, char *argv[])
+{
+	return LoadELFFromFileInternal(filename, partition, argc, argv, true);
+}
+
 int LoadELFFromFile(const char *filename, int argc, char *argv[])
 {
-	return LoadELFFromFileWithPartition(filename, argc, argv);
+	return LoadELFFromFileInternal(filename, NULL, argc, argv, false);
 }
 
 int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])

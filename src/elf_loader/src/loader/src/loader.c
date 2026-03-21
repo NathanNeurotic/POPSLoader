@@ -80,7 +80,9 @@ int main(int argc, char *argv[])
 {
 	SET_GS_BGCOLOUR(WHITE_BG);
 	static t_ExecData elfdata;
+	static char partition_prefix[1024];
 	static char target_path[1024];
+	static char full_path[1024];
 	static char target_arg_storage[1024];
 	static char *target_argv[33];
 	size_t target_arg_offset = 0;
@@ -89,17 +91,20 @@ int main(int argc, char *argv[])
 
 	elfdata.epc = 0;
 
-	// argv[0]=path to ELF, argv[1..]=arguments
+	// argv[0]=partition prefix, argv[1]=path to ELF, argv[2..]=arguments
 	if (argc < 2) {  
 		SET_GS_BGCOLOUR(RED_BG);
 		return -EINVAL;
 	}
-	snprintf(target_path, sizeof(target_path), "%s", argv[0] ? argv[0] : "");
+	snprintf(partition_prefix, sizeof(partition_prefix), "%s", argv[0] ? argv[0] : "");
+	snprintf(target_path, sizeof(target_path), "%s", argv[1] ? argv[1] : "");
+	snprintf(full_path, sizeof(full_path), "%s%s", partition_prefix, target_path);
 	target_argc = argc - 1;
 	if (target_argc > 32) {
 		return -E2BIG;
 	}
-	for (i = 1; i < argc; i++) {
+	target_argv[0] = full_path;
+	for (i = 2; i < argc; i++) {
 		size_t arg_len = strlen(argv[i]) + 1;
 		if ((target_arg_offset + arg_len) > sizeof(target_arg_storage)) {
 			return -E2BIG;

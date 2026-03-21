@@ -942,6 +942,7 @@ static int lua_checkexist(lua_State *L){
 }
 extern "C" {
 int LoadELFFromFile(const char *filename, int argc, char *argv[]);
+int LoadELFFromFileWithPartition(const char *filename, const char *partition, int argc, char *argv[]);
 int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[]);
 int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]);
 }
@@ -974,7 +975,11 @@ static int lua_loadELF(lua_State *L)
 		DPRINTF("# Loading ELF argv0='%s' argc=1\n", argv_static[0]);
 		int rc;
 		if (IsHddOrPfsElfPath(elftoload)) {
-			rc = LoadELFFromFile(elftoload, 1, argv_static);
+			if (strcmp(selector_buf, elftoload) != 0) {
+				rc = LoadELFFromFileWithPartition(elftoload, NULL, 1, argv_static);
+			} else {
+				rc = LoadELFFromFile(elftoload, 1, argv_static);
+			}
 		} else if (rebootIOP != 0) {
 			rc = LoadELFFromFileExecPS2RebootIOP(elftoload, 1, argv_static);
 		} else {
