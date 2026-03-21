@@ -8,6 +8,7 @@
 BINDIR = bin/
 EE_BIN = $(BINDIR)loader.elf
 EE_OBJS = src/loader.o
+EE_LIBS = -lfileXio
 
 # Enable debug colors?
 LOADER_ENABLE_DEBUG_COLORS ?= 0

@@ -144,10 +144,6 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *a
 	}
 	launch_argv[final_argc] = NULL;
 
-	SifInitRpc(0);
-	SifLoadFileInit();
-	SifLoadFileExit();
-
 	boot_pheader = (elf_pheader_t *)(boot_elf + boot_header->phoff);
 	for (i = 0; i < boot_header->phnum; i++) {
 		if (boot_pheader[i].type != ELF_PT_LOAD) {
@@ -159,13 +155,6 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *a
 		}
 	}
 
-	if (strncmp(resolved_path, "hdd", 3) == 0) {
-		unmount_pfs_slots_for_exec();
-	}
-
-	SifExitIopHeap();
-	SifExitRpc();
-	SifExitCmd();
 	FlushCache(0);
 	FlushCache(2);
 
@@ -260,6 +249,12 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
 		return -1;
 	}
+
+	if (strncmp(resolved_path, "pfs", 3) == 0) {
+		DPRINTF("LAUNCH: pfs path, routing through embedded loader\n");
+		return ExecuteViaEmbeddedLoader(resolved_path, argc, argv);
+	}
+
 	DPRINTF("LAUNCH: Using ExecPS2\n");
 	DPRINTF("POPSTARTER ExecPS2 argv0=%s\n", argv[0]);
 
@@ -285,6 +280,15 @@ int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]
 
 	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
 		return -1;
+	}
+
+	if (strncmp(resolved_path, "pfs", 3) == 0) {
+		DPRINTF("LAUNCH: pfs path (RebootIOP), routing through embedded loader\n");
+		if (argc > 0 && argv != NULL && argv[0] != NULL) {
+			return ExecuteViaEmbeddedLoader(resolved_path, argc, argv);
+		}
+		DPRINTF("LAUNCH: pfs path (RebootIOP), invalid argc/argv, cannot launch\n");
+		return -4;
 	}
 
 	SifInitRpc(0);

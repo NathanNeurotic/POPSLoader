@@ -17,6 +17,9 @@
 #include <sifrpc.h>
 #include <errno.h>
 #include <ps2sdkapi.h>
+#define NEWLIB_PORT_AWARE
+#include <fileXio_rpc.h>
+#include <fcntl.h>
 #define DPRINTF(x...) printf(x)
 
 #ifdef LOADER_ENABLE_DEBUG_COLORS
@@ -68,6 +71,88 @@ static void wipeUserMem(void)
 			"\tsq $0, 32(%0) \n"
 			"\tsq $0, 48(%0) \n" ::"r"(i));
 	}
+}
+
+#define ELF_MAGIC         0x464c457f
+#define ELF_PT_LOAD       1
+#define PT_MIPS_REGINFO   0x70000000
+
+typedef struct {
+	unsigned char ident[16];
+	unsigned short type;
+	unsigned short machine;
+	unsigned int   version;
+	unsigned int   entry;
+	unsigned int   phoff;
+	unsigned int   shoff;
+	unsigned int   flags;
+	unsigned short ehsize;
+	unsigned short phentsize;
+	unsigned short phnum;
+	unsigned short shentsize;
+	unsigned short shnum;
+	unsigned short shstrndx;
+} ldr_elf_ehdr;
+
+typedef struct {
+	unsigned int type;
+	unsigned int offset;
+	unsigned int vaddr;
+	unsigned int paddr;
+	unsigned int filesz;
+	unsigned int memsz;
+	unsigned int flags;
+	unsigned int align;
+} ldr_elf_phdr;
+
+static int load_elf_via_filexio(const char *path, unsigned int *out_entry, unsigned int *out_gp)
+{
+	int fd, i;
+	ldr_elf_ehdr ehdr;
+	ldr_elf_phdr phdr;
+	unsigned char reginfo[24];
+
+	fd = fileXioOpen(path, O_RDONLY);
+	if (fd < 0)
+		return -1;
+
+	if (fileXioRead(fd, &ehdr, sizeof(ehdr)) != (int)sizeof(ehdr)) {
+		fileXioClose(fd);
+		return -2;
+	}
+	if (*(unsigned int *)ehdr.ident != ELF_MAGIC) {
+		fileXioClose(fd);
+		return -3;
+	}
+
+	*out_entry = ehdr.entry;
+	*out_gp = 0;
+
+	for (i = 0; i < ehdr.phnum; i++) {
+		fileXioLseek(fd, ehdr.phoff + i * sizeof(ldr_elf_phdr), SEEK_SET);
+		if (fileXioRead(fd, &phdr, sizeof(phdr)) != (int)sizeof(phdr))
+			continue;
+
+		if (phdr.type == PT_MIPS_REGINFO && phdr.filesz >= 24) {
+			fileXioLseek(fd, phdr.offset, SEEK_SET);
+			if (fileXioRead(fd, reginfo, 24) == 24)
+				*out_gp = *(unsigned int *)(reginfo + 20);
+		}
+
+		if (phdr.type != ELF_PT_LOAD || phdr.filesz == 0)
+			continue;
+
+		fileXioLseek(fd, phdr.offset, SEEK_SET);
+		if (fileXioRead(fd, (void *)phdr.vaddr, phdr.filesz) != (int)phdr.filesz) {
+			fileXioClose(fd);
+			return -4;
+		}
+		if (phdr.memsz > phdr.filesz)
+			memset((void *)(phdr.vaddr + phdr.filesz), 0, phdr.memsz - phdr.filesz);
+	}
+
+	fileXioClose(fd);
+	return 0;
 }
 
 //--------------------------------------------------------------
@@ -127,6 +212,31 @@ int main(int argc, char *argv[])
 
 	//Writeback data cache before loading ELF.
 	FlushCache(0);
+
+	// pfs: paths require fileXio (iomanX) - SifLoadElf (IOMAN) cannot access them.
+	// Also skip IOP reset to preserve HDD modules already loaded by POPSLoader.
+	if (strncmp(target_path, "pfs", 3) == 0) {
+		unsigned int entry = 0, gp = 0;
+		SET_GS_BGCOLOUR(GREEN_BG);
+		fileXioInit();
+		ret = load_elf_via_filexio(target_path, &entry, &gp);
+		fileXioExit();
+		SET_GS_BGCOLOUR(BLUE_BG);
+		if (ret < 0 || entry == 0) {
+			SET_GS_BGCOLOUR(MAGENTA_BG);
+			SifExitRpc();
+			return -ENOENT;
+		}
+		SET_GS_BGCOLOUR(PURPBLE_BG);
+		DPRINTF("POPS EXEC (pfs): argc=%d\n", target_argc);
+		for (i = 0; i < target_argc; i++) {
+			DPRINTF("POPS EXEC (pfs): argv[%d] = %s\n", i, target_argv[i]);
+		}
+		FlushCache(0);
+		FlushCache(2);
+		return ExecPS2((void *)entry, (void *)gp, target_argc, target_argv);
+	}
+
 	SET_GS_BGCOLOUR(GREEN_BG);
 	SifLoadFileInit();
 	ret = SifLoadElf(target_path, &elfdata);
