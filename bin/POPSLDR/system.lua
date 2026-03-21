@@ -790,13 +790,13 @@ local function ResolveAssetSidecarPopstarter()
   end
   local lowered = string.lower(asset_path)
   if string.match(lowered, "^hdd%d:") ~= nil then
-    local resolved_hdd = ResolveHddReadablePath(asset_path)
-    if resolved_hdd ~= nil then
-      return resolved_hdd
-    end
     local direct_hdd = ResolveDirectHddExecPath(asset_path)
     if direct_hdd ~= nil then
       return direct_hdd
+    end
+    local resolved_hdd = ResolveHddReadablePath(asset_path)
+    if resolved_hdd ~= nil then
+      return resolved_hdd
     end
   end
   local resolved = ResolvePathWithEnsure(asset_path)
@@ -858,20 +858,20 @@ local function ResolveHddBootSidecarPopstarter()
     end
   end
 
-  for i = 1, #mounted_candidates do
-    if ProbePathExists(mounted_candidates[i]) then
-      return mounted_candidates[i]
-    end
-  end
-
   for i = 1, #hdd_candidates do
+    local direct_hdd = ResolveDirectHddExecPath(hdd_candidates[i])
+    if direct_hdd ~= nil then
+      return direct_hdd
+    end
     local resolved_hdd = ResolveHddReadablePath(hdd_candidates[i])
     if resolved_hdd ~= nil then
       return resolved_hdd
     end
-    local direct_hdd = ResolveDirectHddExecPath(hdd_candidates[i])
-    if direct_hdd ~= nil then
-      return direct_hdd
+  end
+
+  for i = 1, #mounted_candidates do
+    if ProbePathExists(mounted_candidates[i]) then
+      return mounted_candidates[i]
     end
   end
 
@@ -930,13 +930,13 @@ local function ResolvePopstarterPath(path)
   end
 
   if string.match(string.lower(chosen), "^hdd%d:") ~= nil then
-    local resolved_hdd = ResolveHddExecMountedPath(chosen)
-    if resolved_hdd ~= nil then
-      return resolved_hdd
-    end
     local direct_hdd = ResolveDirectHddExecPath(chosen)
     if direct_hdd ~= nil then
       return direct_hdd
+    end
+    local resolved_hdd = ResolveHddExecMountedPath(chosen)
+    if resolved_hdd ~= nil then
+      return resolved_hdd
     end
   end
   local resolved = ResolvePathWithEnsure(chosen)
@@ -954,9 +954,9 @@ local function ResolvePopstarterPath(path)
     local candidate = fallbacks[i]
     local resolved_fallback = nil
     if string.match(string.lower(candidate), "^hdd%d:") ~= nil then
-      resolved_fallback = ResolveHddReadablePath(candidate)
+      resolved_fallback = ResolveDirectHddExecPath(candidate)
       if resolved_fallback == nil then
-        resolved_fallback = ResolveDirectHddExecPath(candidate)
+        resolved_fallback = ResolveHddReadablePath(candidate)
       end
     end
     if resolved_fallback == nil then
