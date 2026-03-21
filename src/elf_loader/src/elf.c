@@ -28,6 +28,7 @@
 
 #define ELF_MAGIC 0x464c457f
 #define ELF_PT_LOAD 1
+#define ELF_PT_MIPS_REGINFO 0x70000000
 
 extern unsigned char loader_elf[];
 
@@ -101,13 +102,15 @@ MEMORY {
 
 /* Load ELF segments from any path using POSIX I/O (works with pfs: via fileXio/iomanX).
  * SifLoadElf uses IOMAN and cannot access iomanX paths such as pfs:.
- * Returns 0 on success; *entry_out is set to the ELF entry point. */
-static int load_elf_into_memory(const char *path, u32 *entry_out) {
+ * Returns 0 on success; *entry_out is set to the ELF entry point and
+ * *gp_out is set to the GP register value from PT_MIPS_REGINFO (0 if absent). */
+static int load_elf_into_memory(const char *path, u32 *entry_out, u32 *gp_out) {
 	int fd, i, ret = 0;
 	elf_header_t header;
 	elf_pheader_t pheader;
+	u32 gp = 0;
 
-	if (path == NULL || entry_out == NULL) return -1;
+	if (path == NULL || entry_out == NULL || gp_out == NULL) return -1;
 	fd = open(path, O_RDONLY);
 	if (fd < 0) return -1;
 
@@ -130,6 +133,16 @@ static int load_elf_into_memory(const char *path, u32 *entry_out) {
 		if (read(fd, &pheader, sizeof(pheader)) != (int)sizeof(pheader)) {
 			ret = -4;
 			break;
+		}
+		if (pheader.type == ELF_PT_MIPS_REGINFO) {
+			/* MIPS reginfo layout: { gprmask(4), cprmask[4](16), gp_value(4) }.
+			 * GP value is at offset 20 within the reginfo data. */
+			if (pheader.filesz >= 24 &&
+			    lseek(fd, (off_t)pheader.offset + 20, SEEK_SET) >= 0 &&
+			    read(fd, &gp, sizeof(gp)) == (int)sizeof(gp)) {
+				/* gp extracted successfully */
+			}
+			continue;
 		}
 		if (pheader.type != ELF_PT_LOAD) continue;
 		/* Reject load segments that target addresses outside EE user RAM
@@ -158,6 +171,7 @@ static int load_elf_into_memory(const char *path, u32 *entry_out) {
 	close(fd);
 	if (ret != 0) return ret;
 	*entry_out = header.entry;
+	*gp_out = gp;
 	return 0;
 }
 
@@ -328,13 +342,13 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 	/* pfs: paths are iomanX-only; SifLoadElf (IOMAN) cannot access them.
 	 * Load ELF segments directly via POSIX I/O (fileXio) instead. */
 	if (strncmp(resolved_path, "pfs", 3) == 0) {
-		u32 entry = 0;
-		if (load_elf_into_memory(resolved_path, &entry) < 0 || entry == 0) {
+		u32 entry = 0, gp = 0;
+		if (load_elf_into_memory(resolved_path, &entry, &gp) < 0 || entry == 0) {
 			return -2;
 		}
 		FlushCache(0);
 		FlushCache(2);
-		ExecPS2((void *)entry, 0, argc, argv);
+		ExecPS2((void *)entry, (void *)gp, argc, argv);
 		return -1;
 	}
 
@@ -366,8 +380,8 @@ int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]
 	 * Load ELF into memory via POSIX I/O before the IOP reset so the data
 	 * is safe in EE RAM when we later call ExecPS2. */
 	if (strncmp(resolved_path, "pfs", 3) == 0) {
-		u32 entry = 0;
-		if (load_elf_into_memory(resolved_path, &entry) < 0 || entry == 0) {
+		u32 entry = 0, gp = 0;
+		if (load_elf_into_memory(resolved_path, &entry, &gp) < 0 || entry == 0) {
 			return -2;
 		}
 		FlushCache(0);
@@ -384,7 +398,7 @@ int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]
 		SifExitRpc();
 		FlushCache(0);
 		FlushCache(2);
-		ExecPS2((void *)entry, 0, argc, argv);
+		ExecPS2((void *)entry, (void *)gp, argc, argv);
 		return -1;
 	}
 
