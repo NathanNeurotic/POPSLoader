@@ -976,10 +976,6 @@ static int lua_loadELF(lua_State *L)
 		int rc;
 		if (rebootIOP != 0) {
 			rc = LoadELFFromFileExecPS2RebootIOP(elftoload, 1, argv_static);
-		} else if (IsHddOrPfsElfPath(elftoload) && strcmp(selector_buf, elftoload) != 0) {
-			rc = LoadELFFromFileWithPartition(elftoload, NULL, 1, argv_static);
-		} else if (IsHddOrPfsElfPath(elftoload)) {
-			rc = LoadELFFromFile(elftoload, 1, argv_static);
 		} else {
 			rc = LoadELFFromFileExecPS2(elftoload, 1, argv_static);
 		}
