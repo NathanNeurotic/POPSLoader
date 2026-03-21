@@ -561,9 +561,17 @@ ExtractLaunchPfsSlot = function(path)
   return nil
 end
 
+local function ExtractKeepMountedPfsSlot(path)
+  local mounted_prefix = NormalizePfsPrefix(path)
+  if mounted_prefix ~= nil then
+    return ParsePfsSlot(mounted_prefix)
+  end
+  return nil
+end
+
 local function CollectHddKeepSlots(path, extra_keep_slots)
   local keep = {}
-  local slot = ExtractLaunchPfsSlot(path)
+  local slot = ExtractKeepMountedPfsSlot(path)
   if slot ~= nil then
     keep[slot] = true
   end
@@ -584,7 +592,7 @@ local function CollectHddKeepSlots(path, extra_keep_slots)
 end
 
 local function PreserveBootPfsSlotsDuringElfLoad(path, keep_slots)
-  if ExtractLaunchPfsSlot(path) == nil then
+  if ExtractKeepMountedPfsSlot(path) == nil then
     return keep_slots
   end
   local boot_candidates = {
