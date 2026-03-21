@@ -3151,6 +3151,13 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     end
   end
   local argv = {argv0_selector}
+  local keep_hdd_slots = nil
+  if policy.name == "HDD" and IsHddExecContextPath(popstarter) then
+    local common_ok, common_prefix = MountHddPartitionTracked("hdd0:__common", HDD_SLOT_COMMON, FIO_MT_RDONLY)
+    if common_ok and common_prefix ~= nil then
+      keep_hdd_slots = { HDD_SLOT_COMMON }
+    end
+  end
 
   local context = {
     device_page = device_page,
@@ -3174,7 +3181,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     game_name = game_name,
     bootparam_source = boot_source_mode,
     hdd_init = hdd_init,
-    keep_hdd_slots = nil
+    keep_hdd_slots = keep_hdd_slots
   }
   local reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
   if policy.name == "HDD" then

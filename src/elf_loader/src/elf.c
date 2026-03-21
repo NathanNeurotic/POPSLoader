@@ -67,23 +67,6 @@ static int resolve_exec_path(const char *filename, char *out, size_t out_size) {
 	return -1;
 }
 
-static bool is_hdd_exec_context_path(const char *filename) {
-	if (filename == NULL) {
-		return false;
-	}
-	return (strncmp(filename, "hdd", 3) == 0 || strncmp(filename, "pfs", 3) == 0);
-}
-
-static bool should_preserve_exec_path_argv0(const char *resolved_path, int argc, char *argv[]) {
-	if (!is_hdd_exec_context_path(resolved_path)) {
-		return false;
-	}
-	if (argc <= 0 || argv == NULL || argv[0] == NULL || argv[0][0] == '\0') {
-		return false;
-	}
-	return (strchr(argv[0], ':') == NULL);
-}
-
 static char *store_arg(const char *src, char *storage, size_t storage_size, size_t *offset) {
 	size_t len;
 	char *dest;
@@ -96,40 +79,6 @@ static char *store_arg(const char *src, char *storage, size_t storage_size, size
 	memcpy(dest, src, len);
 	*offset += len;
 	return dest;
-}
-
-static int build_exec_launch_argv(const char *resolved_path, int argc, char *argv[], char *storage, size_t storage_size, char *launch_argv[], int *final_argc) {
-	size_t storage_offset = 0;
-	int i;
-
-	if (resolved_path == NULL || final_argc == NULL) {
-		return -4;
-	}
-
-	*final_argc = argc;
-	if (!should_preserve_exec_path_argv0(resolved_path, argc, argv)) {
-		return 0;
-	}
-
-	*final_argc = argc + 1;
-	if (*final_argc > 32) {
-		return -2;
-	}
-
-	launch_argv[0] = store_arg(resolved_path, storage, storage_size, &storage_offset);
-	if (!launch_argv[0]) {
-		return -3;
-	}
-
-	for (i = 0; i < argc; i++) {
-		char *stored_arg = store_arg(argv[i], storage, storage_size, &storage_offset);
-		if (!stored_arg) {
-			return -3;
-		}
-		launch_argv[i + 1] = stored_arg;
-	}
-	launch_argv[*final_argc] = NULL;
-	return 0;
 }
 
 static void unmount_pfs_slots_for_exec(void) {
@@ -303,10 +252,6 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 {
 	t_ExecData elfdata;
 	char resolved_path[256];
-	static char *launch_argv[33];
-	static char launch_arg_storage[2048];
-	char **final_argv = argv;
-	int final_argc = argc;
 	int ret;
 
 	if (argc <= 0 || argv == NULL || argv[0] == NULL) {
@@ -327,17 +272,7 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 		return -2;
 	}
 
-	ret = build_exec_launch_argv(resolved_path, argc, argv, launch_arg_storage, sizeof(launch_arg_storage), launch_argv, &final_argc);
-	if (ret < 0) {
-		return ret;
-	}
-	if (final_argc != argc) {
-		final_argv = launch_argv;
-		DPRINTF("LAUNCH: preserved exec path in argv[0]=%s\n", final_argv[0]);
-		DPRINTF("LAUNCH: shifted selector to argv[1]=%s\n", final_argv[1] ? final_argv[1] : "(null)");
-	}
-
-	ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, final_argc, final_argv);
+	ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc, argv);
 	return -1;
 }
 
@@ -346,10 +281,6 @@ int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]
 {
 	t_ExecData elfdata;
 	char resolved_path[256];
-	static char *launch_argv[33];
-	static char launch_arg_storage[2048];
-	char **final_argv = argv;
-	int final_argc = argc;
 	int ret;
 
 	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
@@ -363,16 +294,6 @@ int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]
 
 	if (ret != 0 || elfdata.epc == 0) {
 		return -2;
-	}
-
-	ret = build_exec_launch_argv(resolved_path, argc, argv, launch_arg_storage, sizeof(launch_arg_storage), launch_argv, &final_argc);
-	if (ret < 0) {
-		return ret;
-	}
-	if (final_argc != argc) {
-		final_argv = launch_argv;
-		DPRINTF("LAUNCH: preserved exec path in argv[0]=%s\n", final_argv[0]);
-		DPRINTF("LAUNCH: shifted selector to argv[1]=%s\n", final_argv[1] ? final_argv[1] : "(null)");
 	}
 
 	FlushCache(0);
@@ -392,6 +313,6 @@ int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]
 	FlushCache(0);
 	FlushCache(2);
 
-	ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, final_argc, final_argv);
+	ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc, argv);
 	return -1;
 }
