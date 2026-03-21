@@ -277,23 +277,63 @@ local function NormalizeHddHelperSlot(slot)
   return normalized
 end
 
-local function GetActiveHddGameSlot()
-  local active = tonumber(PLDR and PLDR.HDD and PLDR.HDD.GAME_SLOT or nil)
-  if active == HDD_SLOT_BOOT or active == HDD_SLOT_GAME then
-    return active
+local function GetBootReservedHddSlot()
+  local candidates = {
+    BOOT_ARGV0_RAW,
+    BOOT_PATH_RAW,
+    APP_DIR_LOCAL
+  }
+  for i = 1, #candidates do
+    local slot = ExtractLaunchPfsSlot(candidates[i])
+    if slot ~= nil then
+      return slot
+    end
   end
-  return HDD_SLOT_GAME
+  return nil
+end
+
+local function BuildHddGameSlotCandidates(active_slot)
+  local boot_slot = GetBootReservedHddSlot()
+  local preferred = {}
+  local seen = {}
+
+  local function add_slot(slot)
+    if slot == nil then
+      return
+    end
+    if slot == boot_slot then
+      return
+    end
+    if seen[slot] == true then
+      return
+    end
+    seen[slot] = true
+    table.insert(preferred, slot)
+  end
+
+  local active = tonumber(active_slot)
+  if active == HDD_SLOT_BOOT or active == HDD_SLOT_GAME then
+    add_slot(active)
+  end
+  add_slot(HDD_SLOT_GAME)
+  add_slot(HDD_SLOT_BOOT)
+
+  if #preferred < 1 then
+    if boot_slot == HDD_SLOT_GAME then
+      return { HDD_SLOT_BOOT }
+    end
+    return { HDD_SLOT_GAME }
+  end
+  return preferred
+end
+
+local function GetActiveHddGameSlot()
+  local candidates = BuildHddGameSlotCandidates(PLDR and PLDR.HDD and PLDR.HDD.GAME_SLOT or nil)
+  return candidates[1] or HDD_SLOT_GAME
 end
 
 local function GetHddGameSlotCandidates()
-  local active = tonumber(PLDR and PLDR.HDD and PLDR.HDD.GAME_SLOT or nil)
-  if active == HDD_SLOT_BOOT or active == HDD_SLOT_GAME then
-    if active == HDD_SLOT_BOOT then
-      return { HDD_SLOT_BOOT, HDD_SLOT_GAME }
-    end
-    return { HDD_SLOT_GAME, HDD_SLOT_BOOT }
-  end
-  return { HDD_SLOT_GAME, HDD_SLOT_BOOT }
+  return BuildHddGameSlotCandidates(PLDR and PLDR.HDD and PLDR.HDD.GAME_SLOT or nil)
 end
 
 local function MountHddPartitionTracked(partition, slot, mode)
