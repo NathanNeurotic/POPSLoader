@@ -738,6 +738,35 @@ local function DirectoryFromExecPath(path)
   return nil
 end
 
+local function ResolveAssetSidecarPopstarter()
+  if type(System) ~= "table" or type(System.resolveAsset) ~= "function" then
+    return nil
+  end
+  local ok, asset_path = pcall(System.resolveAsset, "POPSTARTER.ELF")
+  if not ok or type(asset_path) ~= "string" or asset_path == "" then
+    return nil
+  end
+  local lowered = string.lower(asset_path)
+  if string.match(lowered, "^hdd%d:") ~= nil then
+    local resolved_hdd = ResolveHddReadablePath(asset_path)
+    if resolved_hdd ~= nil then
+      return resolved_hdd
+    end
+    local direct_hdd = ResolveDirectHddExecPath(asset_path)
+    if direct_hdd ~= nil then
+      return direct_hdd
+    end
+  end
+  local resolved = ResolvePathWithEnsure(asset_path)
+  if resolved ~= nil then
+    return resolved
+  end
+  if ProbePathExists(asset_path) then
+    return asset_path
+  end
+  return nil
+end
+
 local function ResolveHddBootSidecarPopstarter()
   local mounted_candidates = {}
   local hdd_candidates = {}
@@ -763,9 +792,29 @@ local function ResolveHddBootSidecarPopstarter()
     end
   end
 
+  local asset_sidecar = ResolveAssetSidecarPopstarter()
+  if asset_sidecar ~= nil then
+    return asset_sidecar
+  end
+
   add_candidate(BOOT_ARGV0_RAW)
   add_candidate(BOOT_PATH_RAW)
   add_candidate(APP_DIR_LOCAL)
+  add_candidate(APP_DIR)
+
+  if type(System) == "table" and type(System.getAppDir) == "function" then
+    local ok_app_dir, app_dir = pcall(System.getAppDir)
+    if ok_app_dir then
+      add_candidate(app_dir)
+    end
+  end
+
+  if type(System) == "table" and type(System.currentDirectory) == "function" then
+    local ok_cwd, cwd = pcall(System.currentDirectory)
+    if ok_cwd then
+      add_candidate(cwd)
+    end
+  end
 
   for i = 1, #mounted_candidates do
     if ProbePathExists(mounted_candidates[i]) then
