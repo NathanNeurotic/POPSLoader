@@ -945,6 +945,16 @@ int LoadELFFromFile(const char *filename, int argc, char *argv[]);
 int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[]);
 int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]);
 }
+
+static bool IsHddOrPfsElfPath(const char *path)
+{
+	return path != NULL &&
+		(strncmp(path, "hdd", 3) == 0 ||
+		 strncmp(path, "HDD", 3) == 0 ||
+		 strncmp(path, "pfs", 3) == 0 ||
+		 strncmp(path, "PFS", 3) == 0);
+}
+
 static int lua_loadELF(lua_State *L)
 {
 	int argc = lua_gettop(L);
@@ -965,6 +975,8 @@ static int lua_loadELF(lua_State *L)
 		int rc;
 		if (rebootIOP != 0) {
 			rc = LoadELFFromFileExecPS2RebootIOP(elftoload, 1, argv_static);
+		} else if (IsHddOrPfsElfPath(elftoload)) {
+			rc = LoadELFFromFile(elftoload, 1, argv_static);
 		} else {
 			rc = LoadELFFromFileExecPS2(elftoload, 1, argv_static);
 		}
