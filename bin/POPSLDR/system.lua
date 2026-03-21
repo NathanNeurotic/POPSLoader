@@ -203,6 +203,8 @@ local HDD_MOUNT_STATE = {
   partitions = {}
 }
 
+local ExtractLaunchPfsSlot
+
 local function NormalizePfsPrefix(prefix)
   local device = string.match(string.lower(tostring(prefix or "")), "^(pfs%d*):/")
   if device ~= nil then
@@ -547,7 +549,7 @@ local function ResolveDirectHddExecPath(path)
   return nil
 end
 
-local function ExtractLaunchPfsSlot(path)
+ExtractLaunchPfsSlot = function(path)
   local mounted_prefix = NormalizePfsPrefix(path)
   if mounted_prefix ~= nil then
     return ParsePfsSlot(mounted_prefix)
