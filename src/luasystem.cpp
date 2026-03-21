@@ -956,6 +956,53 @@ static bool IsHddOrPfsElfPath(const char *path)
 		 strncmp(path, "PFS", 3) == 0);
 }
 
+static bool TryExtractHddPartitionPrefix(const char *path, char *out_partition, size_t out_size)
+{
+	const char *first_colon;
+	const char *second_colon;
+	const char *third_colon;
+	const char *fs_token;
+	size_t prefix_len;
+
+	if (path == NULL || out_partition == NULL || out_size < 2) {
+		return false;
+	}
+	if (!(strncmp(path, "hdd", 3) == 0 || strncmp(path, "HDD", 3) == 0)) {
+		return false;
+	}
+
+	first_colon = strchr(path, ':');
+	if (first_colon == NULL) {
+		return false;
+	}
+	second_colon = strchr(first_colon + 1, ':');
+	if (second_colon == NULL) {
+		return false;
+	}
+	third_colon = strchr(second_colon + 1, ':');
+	if (third_colon == NULL) {
+		return false;
+	}
+
+	fs_token = second_colon + 1;
+	if (third_colon <= fs_token + 2) {
+		return false;
+	}
+	if (!((fs_token[0] == 'p' || fs_token[0] == 'P') &&
+	      (fs_token[1] == 'f' || fs_token[1] == 'F') &&
+	      (fs_token[2] == 's' || fs_token[2] == 'S'))) {
+		return false;
+	}
+
+	prefix_len = (size_t)(second_colon - path) + 1;
+	if (prefix_len >= out_size) {
+		return false;
+	}
+
+	snprintf(out_partition, out_size, "%.*s", (int)prefix_len, path);
+	return true;
+}
+
 static int lua_loadELF(lua_State *L)
 {
 	int argc = lua_gettop(L);
@@ -965,6 +1012,7 @@ static int lua_loadELF(lua_State *L)
 	int rebootIOP = luaL_checkinteger(L, 2);
 	int extra_args = argc - 2;
 	static char selector_buf[256];
+	static char partition_buf[256];
 	static char *argv_static[2];
 	DPRINTF("# Loading ELF '%s' iop_reboot=%d, extra_args=%d\n", elftoload, rebootIOP, extra_args);
 	if (extra_args > 0) {
@@ -974,7 +1022,10 @@ static int lua_loadELF(lua_State *L)
 		argv_static[1] = NULL;
 		DPRINTF("# Loading ELF argv0='%s' argc=1\n", argv_static[0]);
 		int rc;
-		if (rebootIOP != 0) {
+		if (strcmp(selector_buf, elftoload) != 0 &&
+		    TryExtractHddPartitionPrefix(elftoload, partition_buf, sizeof(partition_buf))) {
+			rc = LoadELFFromFileWithPartition(elftoload, partition_buf, 1, argv_static);
+		} else if (rebootIOP != 0) {
 			rc = LoadELFFromFileExecPS2RebootIOP(elftoload, 1, argv_static);
 		} else {
 			rc = LoadELFFromFileExecPS2(elftoload, 1, argv_static);

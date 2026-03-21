@@ -91,6 +91,35 @@ static char *store_arg(const char *src, char *storage, size_t storage_size, size
 	return dest;
 }
 
+static bool build_partition_loader_target(const char *filename, const char *partition, char *out, size_t out_size) {
+	size_t partition_len;
+	const char *suffix;
+	const char *suffix_colon;
+
+	if (filename == NULL || partition == NULL || partition[0] == '\0' || out == NULL || out_size < 2) {
+		return false;
+	}
+
+	partition_len = strlen(partition);
+	if (partition_len == 0 || strncmp(filename, partition, partition_len) != 0) {
+		return false;
+	}
+
+	suffix = filename + partition_len;
+	suffix_colon = strchr(suffix, ':');
+	if (suffix_colon == NULL || suffix_colon <= suffix + 2) {
+		return false;
+	}
+	if (!((suffix[0] == 'p' || suffix[0] == 'P') &&
+	      (suffix[1] == 'f' || suffix[1] == 'F') &&
+	      (suffix[2] == 's' || suffix[2] == 'S'))) {
+		return false;
+	}
+
+	snprintf(out, out_size, "%s", suffix);
+	return true;
+}
+
 static void unmount_pfs_slots_for_exec(void) {
 	char mount_name[6] = "pfs0:";
 	int slot;
@@ -260,8 +289,10 @@ static int LoadELFFromFileInternal(const char *filename, const char *partition, 
 	static char *launch_argv[33];
 	static char launch_arg_storage[2048];
 	char resolved_path[256];
+	char loader_target[256];
 	size_t storage_offset = 0;
 	bool use_default_argv0 = false;
+	const char *embedded_loader_path = resolved_path;
 	
 	// We need to check that the ELF file before continue
 	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
@@ -319,7 +350,10 @@ static int LoadELFFromFileInternal(const char *filename, const char *partition, 
 	if (!use_default_argv0 && is_hdd_or_pfs_exec_path(resolved_path)) {
 		DPRINTF("LAUNCH: Using embedded loader%s\n", keep_partition_in_argv0 ? " (partition-aware)" : "");
 		if (keep_partition_in_argv0) {
-			return ExecuteViaEmbeddedLoaderWithPartition(partition, resolved_path, new_argc, launch_argv);
+			if (build_partition_loader_target(resolved_path, partition, loader_target, sizeof(loader_target))) {
+				embedded_loader_path = loader_target;
+			}
+			return ExecuteViaEmbeddedLoaderWithPartition(partition, embedded_loader_path, new_argc, launch_argv);
 		}
 		return ExecuteViaEmbeddedLoader(resolved_path, new_argc, launch_argv);
 	}
