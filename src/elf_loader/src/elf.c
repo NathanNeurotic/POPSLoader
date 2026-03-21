@@ -67,6 +67,16 @@ static int resolve_exec_path(const char *filename, char *out, size_t out_size) {
 	return -1;
 }
 
+static bool is_hdd_or_pfs_exec_path(const char *filename) {
+	if (filename == NULL) {
+		return false;
+	}
+	return strncmp(filename, "hdd", 3) == 0 ||
+		strncmp(filename, "HDD", 3) == 0 ||
+		strncmp(filename, "pfs", 3) == 0 ||
+		strncmp(filename, "PFS", 3) == 0;
+}
+
 static char *store_arg(const char *src, char *storage, size_t storage_size, size_t *offset) {
 	size_t len;
 	char *dest;
@@ -88,6 +98,16 @@ static void unmount_pfs_slots_for_exec(void) {
 		mount_name[3] = '0' + slot;
 		fileXioUmount(mount_name);
 	}
+}
+
+static void cleanup_hdd_exec_handoff(void) {
+	unmount_pfs_slots_for_exec();
+	fileXioExit();
+	SifExitIopHeap();
+	SifExitRpc();
+	SifExitCmd();
+	FlushCache(0);
+	FlushCache(2);
 }
 
 /* IMPORTANT: This method wipe memory where the loader is going to be allocated 
@@ -159,15 +179,15 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *a
 		}
 	}
 
-	if (strncmp(resolved_path, "hdd", 3) == 0) {
-		unmount_pfs_slots_for_exec();
+	if (is_hdd_or_pfs_exec_path(resolved_path)) {
+		cleanup_hdd_exec_handoff();
+	} else {
+		SifExitIopHeap();
+		SifExitRpc();
+		SifExitCmd();
+		FlushCache(0);
+		FlushCache(2);
 	}
-
-	SifExitIopHeap();
-	SifExitRpc();
-	SifExitCmd();
-	FlushCache(0);
-	FlushCache(2);
 
 	ExecPS2((void *)boot_header->entry, 0, final_argc, launch_argv);
 	return -1;
@@ -270,6 +290,16 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 
 	if (ret != 0 || elfdata.epc == 0) {
 		return -2;
+	}
+
+	if (is_hdd_or_pfs_exec_path(resolved_path)) {
+		cleanup_hdd_exec_handoff();
+	} else {
+		SifExitIopHeap();
+		SifExitRpc();
+		SifExitCmd();
+		FlushCache(0);
+		FlushCache(2);
 	}
 
 	ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc, argv);
