@@ -974,10 +974,10 @@ static int lua_loadELF(lua_State *L)
 		argv_static[1] = NULL;
 		DPRINTF("# Loading ELF argv0='%s' argc=1\n", argv_static[0]);
 		int rc;
-		if (IsHddOrPfsElfPath(elftoload) && strcmp(selector_buf, elftoload) != 0) {
-			rc = LoadELFFromFileWithPartition(elftoload, NULL, 1, argv_static);
-		} else if (rebootIOP != 0) {
+		if (rebootIOP != 0) {
 			rc = LoadELFFromFileExecPS2RebootIOP(elftoload, 1, argv_static);
+		} else if (IsHddOrPfsElfPath(elftoload) && strcmp(selector_buf, elftoload) != 0) {
+			rc = LoadELFFromFileWithPartition(elftoload, NULL, 1, argv_static);
 		} else if (IsHddOrPfsElfPath(elftoload)) {
 			rc = LoadELFFromFile(elftoload, 1, argv_static);
 		} else {
