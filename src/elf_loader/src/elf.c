@@ -99,6 +99,68 @@ MEMORY {
 }
 */
 
+/* Load ELF segments from any path using POSIX I/O (works with pfs: via fileXio/iomanX).
+ * SifLoadElf uses IOMAN and cannot access iomanX paths such as pfs:.
+ * Returns 0 on success; *entry_out is set to the ELF entry point. */
+static int load_elf_into_memory(const char *path, u32 *entry_out) {
+	int fd, i, ret = 0;
+	elf_header_t header;
+	elf_pheader_t pheader;
+
+	if (path == NULL || entry_out == NULL) return -1;
+	fd = open(path, O_RDONLY);
+	if (fd < 0) return -1;
+
+	if (read(fd, &header, sizeof(header)) != (int)sizeof(header)) {
+		close(fd);
+		return -2;
+	}
+	/* Validate ELF magic, executable type, MIPS machine, and program-header entry size. */
+	if ((*(u32 *)header.ident) != ELF_MAGIC || header.type != 2 || header.machine != 8 ||
+	    header.phentsize != sizeof(elf_pheader_t)) {
+		close(fd);
+		return -3;
+	}
+
+	for (i = 0; i < (int)header.phnum; i++) {
+		if (lseek(fd, (off_t)(header.phoff + (u32)i * (u32)sizeof(elf_pheader_t)), SEEK_SET) < 0) {
+			ret = -4;
+			break;
+		}
+		if (read(fd, &pheader, sizeof(pheader)) != (int)sizeof(pheader)) {
+			ret = -4;
+			break;
+		}
+		if (pheader.type != ELF_PT_LOAD) continue;
+		/* Reject load segments that target addresses outside EE user RAM
+		 * (0x00100000 – 0x01FFFFFF) to avoid clobbering BIOS or unmapped memory. */
+		if ((u32)pheader.vaddr < 0x00100000U ||
+		    (u32)pheader.vaddr + pheader.memsz > 0x02000000U) {
+			ret = -6;
+			break;
+		}
+		if (pheader.filesz > 0) {
+			if (lseek(fd, (off_t)pheader.offset, SEEK_SET) < 0) {
+				ret = -5;
+				break;
+			}
+			if (read(fd, pheader.vaddr, pheader.filesz) != (int)pheader.filesz) {
+				ret = -5;
+				break;
+			}
+		}
+		if (pheader.memsz > pheader.filesz) {
+			memset((u8 *)pheader.vaddr + pheader.filesz, 0,
+			       pheader.memsz - pheader.filesz);
+		}
+	}
+
+	close(fd);
+	if (ret != 0) return ret;
+	*entry_out = header.entry;
+	return 0;
+}
+
 static void wipe_bramMem(void) {
 	int i;
 	for (i = 0x00084000; i < 0x100000; i += 64) {
@@ -263,6 +325,19 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 	DPRINTF("LAUNCH: Using ExecPS2\n");
 	DPRINTF("POPSTARTER ExecPS2 argv0=%s\n", argv[0]);
 
+	/* pfs: paths are iomanX-only; SifLoadElf (IOMAN) cannot access them.
+	 * Load ELF segments directly via POSIX I/O (fileXio) instead. */
+	if (strncmp(resolved_path, "pfs", 3) == 0) {
+		u32 entry = 0;
+		if (load_elf_into_memory(resolved_path, &entry) < 0 || entry == 0) {
+			return -2;
+		}
+		FlushCache(0);
+		FlushCache(2);
+		ExecPS2((void *)entry, 0, argc, argv);
+		return -1;
+	}
+
 	SifInitRpc(0);
 	SifLoadFileInit();
 	ret = SifLoadElf(resolved_path, &elfdata);
@@ -284,6 +359,32 @@ int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]
 	int ret;
 
 	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
+		return -1;
+	}
+
+	/* pfs: paths are iomanX-only; SifLoadElf (IOMAN) cannot access them.
+	 * Load ELF into memory via POSIX I/O before the IOP reset so the data
+	 * is safe in EE RAM when we later call ExecPS2. */
+	if (strncmp(resolved_path, "pfs", 3) == 0) {
+		u32 entry = 0;
+		if (load_elf_into_memory(resolved_path, &entry) < 0 || entry == 0) {
+			return -2;
+		}
+		FlushCache(0);
+		while (!SifIopReset(NULL, 0)) {
+		}
+		while (!SifIopSync()) {
+		}
+		SifInitRpc(0);
+		SifLoadFileInit();
+		SifLoadModule("rom0:SIO2MAN", 0, NULL);
+		SifLoadModule("rom0:MCMAN", 0, NULL);
+		SifLoadModule("rom0:MCSERV", 0, NULL);
+		SifLoadFileExit();
+		SifExitRpc();
+		FlushCache(0);
+		FlushCache(2);
+		ExecPS2((void *)entry, 0, argc, argv);
 		return -1;
 	}
 
