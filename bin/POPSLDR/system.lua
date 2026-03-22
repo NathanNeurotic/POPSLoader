@@ -3302,7 +3302,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     game_name = game_name,
     bootparam_source = boot_source_mode,
     hdd_init = hdd_init,
-    keep_hdd_slots = hdd_init and hdd_init.mount_ok and hdd_init.mount_slot or nil
+    keep_hdd_slots = nil
   }
   local reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
   if policy.name == "HDD" and popstarter_on_hdd then
