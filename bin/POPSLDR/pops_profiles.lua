@@ -44,7 +44,7 @@ end
 PLDR.PROFILES = {
   {
     ELF="POPSTARTER.ELF";
-    DESC="PopStarter located in the same folder as POPSLOADER.ELF";
+    DESC="POPSTARTER ELF located in the same folder as POPSLOADER.ELF";
   },
   {
     ELF="hdd0:__common:pfs:/POPS/POPSTARTER.ELF";
@@ -100,11 +100,11 @@ PLDR.PROFILES = {
   },
  {
     ELF="mc1:/POPSTARTER/POPSTARTER.ELF";
-    DESC="the POPSTARTER ELF located on MemoryCard in the POPS folder";
+    DESC="the POPSTARTER ELF located on MemoryCard in the POPSTARTER folder";
   },
  {
     ELF="mc0:/POPSTARTER/POPSTARTER.ELF";
-    DESC="the POPSTARTER ELF located on MemoryCard in the POPS folder";
+    DESC="the POPSTARTER ELF located on MemoryCard in the POPSTARTER folder";
   },
 }
 
