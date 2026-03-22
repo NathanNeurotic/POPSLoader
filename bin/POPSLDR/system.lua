@@ -3295,8 +3295,13 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   end
   local selector_prefix = SelectPopstarterSelectorPrefix(device_page)
   local argv0_selector = BuildPopstarterSelectorPath(device_page, game_name)
+  local popstarter_argv0 = popstarter
   if popstarter_on_hdd then
-    local popstarter_dir = DirectoryFromExecPath(popstarter)
+    local mounted_popstarter = ResolveHddExecMountedPath(popstarter)
+    if mounted_popstarter ~= nil then
+      popstarter_argv0 = mounted_popstarter
+    end
+    local popstarter_dir = DirectoryFromExecPath(popstarter_argv0)
     local selector_leaf = string.match(tostring(argv0_selector or ""), "([^/]+)$") or tostring(argv0_selector or "")
     if popstarter_dir ~= nil and popstarter_dir ~= "" and selector_leaf ~= "" then
       argv0_selector = JoinPath(popstarter_dir, selector_leaf)
@@ -3327,7 +3332,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   end
   local argv = {argv0_selector}
   if popstarter_on_hdd then
-    argv = {popstarter, argv0_selector}
+    argv = {popstarter_argv0, argv0_selector}
   end
 
   local context = {
