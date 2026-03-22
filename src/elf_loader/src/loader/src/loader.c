@@ -83,6 +83,7 @@ int main(int argc, char *argv[])
 	static char partition_prefix[1024];
 	static char target_path[1024];
 	static char full_path[1024];
+	const char *load_path;
 	static char target_arg_storage[1024];
 	static char *target_argv[33];
 	size_t target_arg_offset = 0;
@@ -98,7 +99,13 @@ int main(int argc, char *argv[])
 	}
 	snprintf(partition_prefix, sizeof(partition_prefix), "%s", argv[0] ? argv[0] : "");
 	snprintf(target_path, sizeof(target_path), "%s", argv[1] ? argv[1] : "");
-	snprintf(full_path, sizeof(full_path), "%s%s", partition_prefix, target_path);
+	if (target_path[0] != '\0' &&
+	    (strncmp(target_path, "hdd", 3) == 0 || strncmp(target_path, "HDD", 3) == 0)) {
+		snprintf(full_path, sizeof(full_path), "%s", target_path);
+	} else {
+		snprintf(full_path, sizeof(full_path), "%s%s", partition_prefix, target_path);
+	}
+	load_path = full_path;
 	target_argc = argc - 1;
 	if (target_argc > 32) {
 		return -E2BIG;
@@ -134,7 +141,7 @@ int main(int argc, char *argv[])
 	FlushCache(0);
 	SET_GS_BGCOLOUR(GREEN_BG);
 	SifLoadFileInit();
-	ret = SifLoadElf(target_path, &elfdata);
+	ret = SifLoadElf(load_path, &elfdata);
 	SifLoadFileExit();
 	SET_GS_BGCOLOUR(BLUE_BG);
 	if (ret == 0 && elfdata.epc != 0) {
