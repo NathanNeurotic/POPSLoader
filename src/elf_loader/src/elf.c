@@ -167,6 +167,15 @@ static void cleanup_for_embedded_loader(void) {
 	FlushCache(2);
 }
 
+static void prepare_iop_reset_handoff(bool teardown_filexio) {
+	if (teardown_filexio) {
+		fileXioExit();
+	}
+	SifExitIopHeap();
+	SifExitRpc();
+	SifInitRpc(0);
+}
+
 /* IMPORTANT: This method wipe memory where the loader is going to be allocated 
 * This values come from the linkfile used by the loader.c
 MEMORY {
@@ -461,6 +470,7 @@ int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]
 	}
 	set_hdd_exec_stage_colour(resolved_path, LOAD_STAGE_SIFLOAD_OK);
 
+	prepare_iop_reset_handoff(is_hdd_or_pfs_exec_path(resolved_path));
 	FlushCache(0);
 	while (!SifIopReset(IOP_RESET_ARGS, 0)) {
 	}

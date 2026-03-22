@@ -13,10 +13,13 @@
 #include <stdlib.h>
 #include <kernel.h>
 #include <loadfile.h>
+#include <iopheap.h>
 #include <iopcontrol.h>
 #include <sifrpc.h>
 #include <errno.h>
 #include <ps2sdkapi.h>
+#define NEWLIB_PORT_AWARE
+#include <fileXio_rpc.h>
 #define DPRINTF(x...) printf(x)
 
 #ifdef LOADER_ENABLE_DEBUG_COLORS
@@ -69,6 +72,14 @@ static void wipeUserMem(void)
 			"\tsq $0, 32(%0) \n"
 			"\tsq $0, 48(%0) \n" ::"r"(i));
 	}
+}
+
+static void prepare_iop_reset_handoff(void)
+{
+	fileXioExit();
+	SifExitIopHeap();
+	SifExitRpc();
+	SifInitRpc(0);
 }
 
 //--------------------------------------------------------------
@@ -148,12 +159,13 @@ int main(int argc, char *argv[])
 	if (ret == 0 && elfdata.epc != 0) {
 		SET_GS_BGCOLOUR(YELLOW_BG);
 
-			// Let's reset IOP because ELF was already loaded in memory
-				while(!SifIopReset(IOP_RESET_ARGS, 0)){};
-				SET_GS_BGCOLOUR(ORANGE_BG);
-			while (!SifIopSync()) {};
+		// Let's reset IOP because ELF was already loaded in memory
+		prepare_iop_reset_handoff();
+		while(!SifIopReset(IOP_RESET_ARGS, 0)){};
+		SET_GS_BGCOLOUR(ORANGE_BG);
+		while (!SifIopSync()) {};
 
-			SET_GS_BGCOLOUR(BROWN_BG);
+		SET_GS_BGCOLOUR(BROWN_BG);
 
 	        SifInitRpc(0);
 	        // Load modules.
@@ -164,11 +176,11 @@ int main(int argc, char *argv[])
 	        SifLoadFileExit();
 	        SifExitRpc();
 
-			FlushCache(0);
-			FlushCache(2);
+		FlushCache(0);
+		FlushCache(2);
 
 		SET_GS_BGCOLOUR(PURPBLE_BG);
-		
+			
 		DPRINTF("POPS EXEC: argc=%d\n", target_argc);
 		for (i = 0; i < target_argc; i++) {
 			DPRINTF("POPS EXEC: argv[%d] = %s\n", i, target_argv[i]);
