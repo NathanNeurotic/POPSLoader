@@ -46,6 +46,8 @@ extern unsigned char loader_elf[];
 #define LOAD_STAGE_BEFORE_EXECPS2   0x800080
 #define IOP_RESET_ARGS             "rom0:UDNL rom0:EELOADCNF"
 
+extern int _iop_reboot_count;
+
 static bool is_host_path(const char *filename) {
 	return (filename != NULL && strncmp(filename, "host:/", 6) == 0);
 }
@@ -186,6 +188,46 @@ static void wipe_bramMem(void) {
 			"\tsq $0, 32(%0) \n"
 			"\tsq $0, 48(%0) \n" ::"r"(i));
 	}
+}
+
+static int SifIopResetNoDmaStop(const char *arg, int mode) {
+	static SifCmdResetData_t reset_pkt __attribute__((aligned(64)));
+	struct t_SifDmaTransfer dmat;
+	int arglen;
+
+	_iop_reboot_count++;
+
+	if (arg != NULL) {
+		for (arglen = 0; arg[arglen] != '\0'; arglen++) {
+			reset_pkt.arg[arglen] = arg[arglen];
+		}
+	} else {
+		arglen = 0;
+	}
+
+	reset_pkt.header.psize = sizeof reset_pkt;
+	reset_pkt.header.cid   = SIF_CMD_RESET_CMD;
+	reset_pkt.arglen       = arglen;
+	reset_pkt.mode         = mode;
+
+	dmat.src  = &reset_pkt;
+	dmat.dest = (void *)sceSifGetReg(SIF_SYSREG_SUBADDR);
+	dmat.size = sizeof(reset_pkt);
+	dmat.attr = SIF_DMA_ERT | SIF_DMA_INT_O;
+	sceSifWriteBackDCache(&reset_pkt, sizeof(reset_pkt));
+
+	sceSifSetReg(SIF_REG_SMFLAG, SIF_STAT_BOOTEND);
+
+	if (!sceSifSetDma(&dmat, 1)) {
+		return 0;
+	}
+
+	sceSifSetReg(SIF_REG_SMFLAG, SIF_STAT_SIFINIT);
+	sceSifSetReg(SIF_REG_SMFLAG, SIF_STAT_CMDINIT);
+	sceSifSetReg(SIF_SYSREG_RPCINIT, 0);
+	sceSifSetReg(SIF_SYSREG_SUBADDR, (int)NULL);
+
+	return 1;
 }
 
 static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *argv[]) {
@@ -464,7 +506,7 @@ int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]
 
 	set_hdd_exec_stage_colour(resolved_path, LOAD_STAGE_BEFORE_IOP_RESET);
 	FlushCache(0);
-	while (!SifIopReset(IOP_RESET_ARGS, 0)) {
+	while (!SifIopResetNoDmaStop(IOP_RESET_ARGS, 0)) {
 	}
 	set_hdd_exec_stage_colour(resolved_path, LOAD_STAGE_AFTER_IOP_RESET);
 	while (!SifIopSync()) {
