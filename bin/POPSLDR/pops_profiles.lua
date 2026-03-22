@@ -47,19 +47,19 @@ PLDR.PROFILES = {
     DESC="PopStarter located in the same folder as POPSLOADER.ELF";
   },
   {
-    ELF="hdd0:__common:pfs:POPS/POPSTARTER.ELF";
+    ELF="hdd0:__common:pfs:/POPS/POPSTARTER.ELF";
     DESC="the POPSTARTER ELF located on Hdd in the POPS folder";
   },
   {
-    ELF="hdd0:__common:pfs0:POPS/POPSTARTER.ELF";
+    ELF="hdd0:__common:pfs0:/POPS/POPSTARTER.ELF";
     DESC="the POPSTARTER ELF located on Hdd in the POPS folder";
   },
   {
-    ELF="hdd0:__common:pfs1:POPS/POPSTARTER.ELF";
+    ELF="hdd0:__common:pfs1:/POPS/POPSTARTER.ELF";
     DESC="the POPSTARTER ELF located on Hdd in the POPS folder";
   },
   {
-    ELF="hdd0:__common:pfs2:POPS/POPSTARTER.ELF";
+    ELF="hdd0:__common:pfs2:/POPS/POPSTARTER.ELF";
     DESC="the POPSTARTER ELF located on Hdd in the POPS folder";
   },
   {
