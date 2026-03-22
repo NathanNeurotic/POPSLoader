@@ -425,6 +425,42 @@ end
 
 local ProbePathExists
 
+local function ResolveEmbeddedPfsSlot(path)
+  local candidate = tostring(path or "")
+  local embedded_device = string.match(candidate, "^[Hh][Dd][Dd]%d:[^:]+:([Pp][Ff][Ss]%d*):")
+  if embedded_device == nil then
+    return nil
+  end
+  if string.lower(embedded_device) ~= "pfs" then
+    return ParsePfsSlot(embedded_device)
+  end
+
+  local mount_part, relpath = ParseHddExecMountAndRelpath(candidate)
+  local clean_relpath = string.gsub(tostring(relpath or ""), "^/+", "")
+  if mount_part == nil or clean_relpath == "" then
+    return nil
+  end
+
+  local recorded_prefix = GetRecordedHddMountPrefix(mount_part)
+  if recorded_prefix ~= nil then
+    local recorded_target = BuildMountedReadablePath(recorded_prefix, clean_relpath)
+    if recorded_target ~= nil and ProbePathExists(recorded_target) then
+      return ParsePfsSlot(recorded_prefix)
+    end
+  end
+
+  for slot = 0, 3 do
+    local prefix = BuildMountedPfsPrefix(slot)
+    local mounted_target = BuildMountedReadablePath(prefix, clean_relpath)
+    if mounted_target ~= nil and ProbePathExists(mounted_target) then
+      RememberRecordedHddMount(mount_part, prefix)
+      return slot
+    end
+  end
+
+  return nil
+end
+
 local function ResolveHddPartitionReadablePath(partition, relpath, mounted_prefix_hint, slot)
   local mount_part = ParseHddPartitionMount(partition)
   local clean_relpath = string.gsub(tostring(relpath or ""), "^/+", "")
@@ -572,6 +608,10 @@ ExtractLaunchPfsSlot = function(path)
   local mounted_prefix = NormalizePfsPrefix(path)
   if mounted_prefix ~= nil then
     return ParsePfsSlot(mounted_prefix)
+  end
+  local embedded_slot = ResolveEmbeddedPfsSlot(path)
+  if embedded_slot ~= nil then
+    return embedded_slot
   end
   local embedded_prefix = ExtractEmbeddedHddMountPrefix(path)
   if embedded_prefix ~= nil then

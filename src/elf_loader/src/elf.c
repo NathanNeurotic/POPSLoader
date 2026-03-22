@@ -462,9 +462,6 @@ int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]
 	}
 	set_hdd_exec_stage_colour(resolved_path, LOAD_STAGE_SIFLOAD_OK);
 
-	if (is_hdd_or_pfs_exec_path(resolved_path)) {
-		fileXioExit();
-	}
 	set_hdd_exec_stage_colour(resolved_path, LOAD_STAGE_BEFORE_IOP_RESET);
 	FlushCache(0);
 	while (!SifIopReset(IOP_RESET_ARGS, 0)) {
