@@ -18,8 +18,6 @@
 #include <sifrpc.h>
 #include <errno.h>
 #include <ps2sdkapi.h>
-#define NEWLIB_PORT_AWARE
-#include <fileXio_rpc.h>
 #define DPRINTF(x...) printf(x)
 
 #ifdef LOADER_ENABLE_DEBUG_COLORS
@@ -76,7 +74,6 @@ static void wipeUserMem(void)
 
 static void prepare_iop_reset_handoff(void)
 {
-	fileXioExit();
 	SifExitIopHeap();
 	SifExitRpc();
 	SifInitRpc(0);
@@ -115,7 +112,13 @@ int main(int argc, char *argv[])
 	    (strncmp(target_path, "hdd", 3) == 0 || strncmp(target_path, "HDD", 3) == 0)) {
 		snprintf(full_path, sizeof(full_path), "%s", target_path);
 	} else {
-		snprintf(full_path, sizeof(full_path), "%s%s", partition_prefix, target_path);
+		size_t partition_len = strlen(partition_prefix);
+		size_t target_len = strlen(target_path);
+		if (partition_len + target_len >= sizeof(full_path)) {
+			return -ENAMETOOLONG;
+		}
+		memcpy(full_path, partition_prefix, partition_len);
+		memcpy(full_path + partition_len, target_path, target_len + 1);
 	}
 	load_path = full_path;
 	target_argc = argc - 1;
