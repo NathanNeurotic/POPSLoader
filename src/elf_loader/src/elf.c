@@ -40,6 +40,7 @@ extern unsigned char loader_elf[];
 #define LOAD_STAGE_AFTER_SIFLOAD    0xFF0000
 #define LOAD_STAGE_SIFLOAD_OK       0x00FFFF
 #define LOAD_STAGE_SIFLOAD_FAILED   0xFF00FF
+#define LOAD_STAGE_BEFORE_IOP_RESET 0x80FF00
 #define LOAD_STAGE_AFTER_IOP_RESET  0x00A5FF
 #define LOAD_STAGE_AFTER_IOP_SYNC   0x2A2AA5
 #define LOAD_STAGE_BEFORE_EXECPS2   0x800080
@@ -471,6 +472,7 @@ int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]
 	set_hdd_exec_stage_colour(resolved_path, LOAD_STAGE_SIFLOAD_OK);
 
 	prepare_iop_reset_handoff(is_hdd_or_pfs_exec_path(resolved_path));
+	set_hdd_exec_stage_colour(resolved_path, LOAD_STAGE_BEFORE_IOP_RESET);
 	FlushCache(0);
 	while (!SifIopReset(IOP_RESET_ARGS, 0)) {
 	}
