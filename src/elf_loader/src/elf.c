@@ -28,6 +28,8 @@
 
 #define ELF_MAGIC 0x464c457f
 #define ELF_PT_LOAD 1
+#define ELF_PT_MIPS_REGINFO 0x70000000
+#define ELF_PFS_MAX_PHDRS 16
 
 extern unsigned char loader_elf[];
 
@@ -373,6 +375,102 @@ int LoadELFFromFile(const char *filename, int argc, char *argv[])
 	return LoadELFFromFileInternal(filename, NULL, argc, argv, false);
 }
 
+/*
+ * Load an ELF file into EE RAM from a pfs: (iomanX) path using POSIX I/O,
+ * which is routed through fileXio when NEWLIB_PORT_AWARE is defined.
+ * SifLoadElf (IOMAN) cannot access iomanX pfs: mounts, so this is required.
+ *
+ * Returns 0 on success, negative on error.
+ * On success, out->entry and out->gp are set from the ELF headers.
+ */
+typedef struct {
+	u32 entry;
+	u32 gp;
+} elf_pfs_exec_t;
+
+static int load_elf_from_pfs(const char *path, elf_pfs_exec_t *out)
+{
+	int fd;
+	elf_header_t header;
+	static elf_pheader_t pheaders[ELF_PFS_MAX_PHDRS];
+	int i;
+	u32 gp = 0;
+	ssize_t nread;
+	off_t sret;
+
+	fd = open(path, O_RDONLY);
+	if (fd < 0) {
+		DPRINTF("LAUNCH: pfs open failed: %s\n", path);
+		return -1;
+	}
+	nread = read(fd, &header, sizeof(header));
+	if (nread != (ssize_t)sizeof(header) || (*(u32 *)header.ident) != ELF_MAGIC) {
+		DPRINTF("LAUNCH: pfs ELF header invalid\n");
+		close(fd);
+		return -2;
+	}
+	if (header.phnum == 0 || header.phnum > ELF_PFS_MAX_PHDRS) {
+		DPRINTF("LAUNCH: pfs ELF phnum=%d out of range\n", (int)header.phnum);
+		close(fd);
+		return -3;
+	}
+	sret = lseek(fd, header.phoff, SEEK_SET);
+	if (sret < 0) {
+		DPRINTF("LAUNCH: pfs phdrs seek failed\n");
+		close(fd);
+		return -4;
+	}
+	nread = read(fd, pheaders, sizeof(elf_pheader_t) * header.phnum);
+	if (nread != (ssize_t)(sizeof(elf_pheader_t) * header.phnum)) {
+		DPRINTF("LAUNCH: pfs phdrs read failed\n");
+		close(fd);
+		return -5;
+	}
+	for (i = 0; i < header.phnum; i++) {
+		if (pheaders[i].type == ELF_PT_MIPS_REGINFO) {
+			u32 tmp_gp = 0;
+			sret = lseek(fd, pheaders[i].offset + 20, SEEK_SET);
+			if (sret >= 0) {
+				nread = read(fd, &tmp_gp, sizeof(tmp_gp));
+				if (nread == (ssize_t)sizeof(tmp_gp))
+					gp = tmp_gp;
+			}
+		}
+		if (pheaders[i].type != ELF_PT_LOAD || pheaders[i].filesz == 0)
+			continue;
+		/* Validate load address is within safe EE user memory range */
+		if ((u32)pheaders[i].vaddr < 0x100000u ||
+		    ((u32)pheaders[i].vaddr + pheaders[i].memsz) > 0x2000000u) {
+			DPRINTF("LAUNCH: pfs segment vaddr=0x%08x out of range\n",
+			        (unsigned int)(u32)pheaders[i].vaddr);
+			close(fd);
+			return -6;
+		}
+		sret = lseek(fd, pheaders[i].offset, SEEK_SET);
+		if (sret < 0) {
+			DPRINTF("LAUNCH: pfs segment seek failed seg=%d\n", i);
+			close(fd);
+			return -7;
+		}
+		nread = read(fd, pheaders[i].vaddr, pheaders[i].filesz);
+		if (nread != (ssize_t)pheaders[i].filesz) {
+			DPRINTF("LAUNCH: pfs segment read failed seg=%d\n", i);
+			close(fd);
+			return -8;
+		}
+		if (pheaders[i].memsz > pheaders[i].filesz) {
+			memset((void *)((u32)pheaders[i].vaddr + pheaders[i].filesz), 0,
+			       pheaders[i].memsz - pheaders[i].filesz);
+		}
+	}
+	close(fd);
+	if (out) {
+		out->entry = header.entry;
+		out->gp = gp;
+	}
+	return 0;
+}
+
 int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 {
 	t_ExecData elfdata;
@@ -385,6 +483,23 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
 		return -1;
 	}
+
+	/* pfs: paths cannot be loaded by SifLoadElf (IOMAN). Use fileXio I/O. */
+	if (is_hdd_or_pfs_exec_path(resolved_path)) {
+		elf_pfs_exec_t pfsres;
+		DPRINTF("LAUNCH: pfs ExecPS2 path=%s argv0=%s\n", resolved_path, argv[0]);
+		ret = load_elf_from_pfs(resolved_path, &pfsres);
+		if (ret != 0 || pfsres.entry == 0) {
+			DPRINTF("LAUNCH: pfs ELF load failed rc=%d\n", ret);
+			return -2;
+		}
+		DPRINTF("LAUNCH: pfs ELF loaded entry=0x%08x gp=0x%08x\n",
+		        (unsigned int)pfsres.entry, (unsigned int)pfsres.gp);
+		cleanup_hdd_exec_handoff();
+		ExecPS2((void *)pfsres.entry, (void *)pfsres.gp, argc, argv);
+		return -1;
+	}
+
 	DPRINTF("LAUNCH: Using ExecPS2\n");
 	DPRINTF("POPSTARTER ExecPS2 argv0=%s\n", argv[0]);
 
@@ -419,6 +534,26 @@ int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]
 	int ret;
 
 	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
+		return -1;
+	}
+
+	/* pfs: paths cannot be loaded by SifLoadElf (IOMAN). Use fileXio I/O.
+	 * POPSTARTER handles its own IOP reset on startup, so we skip the
+	 * IOP reset here — resetting IOP would kill the HDD modules that
+	 * were needed to load the ELF via pfs: in the first place. */
+	if (is_hdd_or_pfs_exec_path(resolved_path)) {
+		elf_pfs_exec_t pfsres;
+		DPRINTF("LAUNCH: pfs RebootIOP path=%s argc=%d argv0=%s\n",
+		        resolved_path, argc, (argc > 0 && argv && argv[0]) ? argv[0] : "(null)");
+		ret = load_elf_from_pfs(resolved_path, &pfsres);
+		if (ret != 0 || pfsres.entry == 0) {
+			DPRINTF("LAUNCH: pfs ELF load (rbiop) failed rc=%d\n", ret);
+			return -2;
+		}
+		DPRINTF("LAUNCH: pfs ELF loaded (no IOP reset) entry=0x%08x gp=0x%08x\n",
+		        (unsigned int)pfsres.entry, (unsigned int)pfsres.gp);
+		cleanup_hdd_exec_handoff();
+		ExecPS2((void *)pfsres.entry, (void *)pfsres.gp, argc, argv);
 		return -1;
 	}
 
