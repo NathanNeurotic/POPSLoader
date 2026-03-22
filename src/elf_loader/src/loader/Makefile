@@ -10,7 +10,7 @@ EE_BIN = $(BINDIR)loader.elf
 EE_OBJS = src/loader.o
 
 # Enable debug colors?
-LOADER_ENABLE_DEBUG_COLORS ?= 0
+LOADER_ENABLE_DEBUG_COLORS ?= 1
 
 # Use nano newlib for saving space
 EE_NEWLIB_NANO ?= 1

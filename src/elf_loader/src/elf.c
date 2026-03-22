@@ -31,6 +31,18 @@
 
 extern unsigned char loader_elf[];
 
+#define SET_GS_BGCOLOUR(colour) {*((volatile unsigned long int *)0x120000E0) = colour;}
+
+/* Hardware-visible handoff stages in BGR format. Keep these aligned with
+ * src/elf_loader/src/loader/src/loader.c so both direct and embedded HDD
+ * launch paths report the same colours on hardware. */
+#define LOAD_STAGE_BEFORE_SIFLOAD   0x00FF00
+#define LOAD_STAGE_AFTER_SIFLOAD    0xFF0000
+#define LOAD_STAGE_SIFLOAD_OK       0x00FFFF
+#define LOAD_STAGE_SIFLOAD_FAILED   0xFF00FF
+#define LOAD_STAGE_AFTER_IOP_SYNC   0x00A5FF
+#define LOAD_STAGE_BEFORE_EXECPS2   0x800080
+
 static bool is_host_path(const char *filename) {
 	return (filename != NULL && strncmp(filename, "host:/", 6) == 0);
 }
@@ -75,6 +87,12 @@ static bool is_hdd_or_pfs_exec_path(const char *filename) {
 		strncmp(filename, "HDD", 3) == 0 ||
 		strncmp(filename, "pfs", 3) == 0 ||
 		strncmp(filename, "PFS", 3) == 0;
+}
+
+static void set_hdd_exec_stage_colour(const char *filename, unsigned long colour) {
+	if (is_hdd_or_pfs_exec_path(filename)) {
+		SET_GS_BGCOLOUR(colour);
+	}
 }
 
 static char *store_arg(const char *src, char *storage, size_t storage_size, size_t *offset) {
@@ -422,20 +440,31 @@ int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]
 		return -1;
 	}
 
+	DPRINTF("LAUNCH: Using ExecPS2RebootIOP\n");
+	DPRINTF("LAUNCH: exec path=%s\n", resolved_path);
+	DPRINTF("LAUNCH: argc=%d\n", argc);
+	DPRINTF("LAUNCH: argv0=%s\n", (argc > 0 && argv != NULL && argv[0] != NULL) ? argv[0] : "(null)");
+
+	set_hdd_exec_stage_colour(resolved_path, LOAD_STAGE_BEFORE_SIFLOAD);
 	SifInitRpc(0);
 	SifLoadFileInit();
 	ret = SifLoadElf(resolved_path, &elfdata);
 	SifLoadFileExit();
+	set_hdd_exec_stage_colour(resolved_path, LOAD_STAGE_AFTER_SIFLOAD);
+	DPRINTF("LAUNCH: SifLoadElf ret=%d epc=%p gp=%p\n", ret, (void *)elfdata.epc, (void *)elfdata.gp);
 
 	if (ret != 0 || elfdata.epc == 0) {
+		set_hdd_exec_stage_colour(resolved_path, LOAD_STAGE_SIFLOAD_FAILED);
 		return -2;
 	}
+	set_hdd_exec_stage_colour(resolved_path, LOAD_STAGE_SIFLOAD_OK);
 
 	FlushCache(0);
 	while (!SifIopReset(NULL, 0)) {
 	}
 	while (!SifIopSync()) {
 	}
+	set_hdd_exec_stage_colour(resolved_path, LOAD_STAGE_AFTER_IOP_SYNC);
 
 	SifInitRpc(0);
 	SifLoadFileInit();
@@ -448,6 +477,8 @@ int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]
 	FlushCache(0);
 	FlushCache(2);
 
+	set_hdd_exec_stage_colour(resolved_path, LOAD_STAGE_BEFORE_EXECPS2);
+	DPRINTF("LAUNCH: ExecPS2 argc=%d argv0=%s\n", argc, (argc > 0 && argv != NULL && argv[0] != NULL) ? argv[0] : "(null)");
 	ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc, argv);
 	return -1;
 }
