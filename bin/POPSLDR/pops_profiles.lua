@@ -44,27 +44,67 @@ end
 PLDR.PROFILES = {
   {
     ELF="POPSTARTER.ELF";
-    DESC="PopStarter located next to POPSLOADER.ELF";
+    DESC="PopStarter located in the same folder as POPSLOADER.ELF";
   },
   {
-    ELF=ResolveProfilePath("PROFILES/MAIN/POPSTARTER.ELF");
-    DESC="Latest popstarter without any modifications";
+    ELF="hdd0:__common:pfs:POPS/POPSTARTER.ELF";
+    DESC="the POPSTARTER ELF located on Hdd in the POPS folder";
   },
   {
-    ELF=ResolveProfilePath("PROFILES/DEBUG/POPSTARTER.ELF");
-    DESC="Latest popstarter with debug menus enabled";
+    ELF="hdd0:__common:pfs0:POPS/POPSTARTER.ELF";
+    DESC="the POPSTARTER ELF located on Hdd in the POPS folder";
   },
   {
-    ELF=ResolveProfilePath("PROFILES/USBDELAY/POPSTARTER.ELF");
-    DESC="Latest popstarter with increased USB delay";
+    ELF="hdd0:__common:pfs1:POPS/POPSTARTER.ELF";
+    DESC="the POPSTARTER ELF located on Hdd in the POPS folder";
   },
   {
-    ELF=ResolveProfilePath("PROFILES/USBDELAY_DEBUG/POPSTARTER.ELF");
-    DESC="Latest popstarter with increased USB delay & debug menus enabled";
+    ELF="hdd0:__common:pfs2:POPS/POPSTARTER.ELF";
+    DESC="the POPSTARTER ELF located on Hdd in the POPS folder";
   },
   {
     ELF="mass:/POPS/POPSTARTER.ELF";
-    DESC="the POPSTARTER ELF located on the POPS folder";
+    DESC="the POPSTARTER ELF located on USB in the POPS folder";
+  },
+  {
+    ELF="mass0:/POPS/POPSTARTER.ELF";
+    DESC="the POPSTARTER ELF located on USB in the POPS folder";
+  },
+  {
+    ELF="mass1:/POPS/POPSTARTER.ELF";
+    DESC="the POPSTARTER ELF located on USB in the POPS folder";
+  },
+  {
+    ELF="mass2:/POPS/POPSTARTER.ELF";
+    DESC="the POPSTARTER ELF located on USB in the POPS folder";
+  },
+  {
+    ELF="mx4sio:/POPS/POPSTARTER.ELF";
+    DESC="the POPSTARTER ELF located on MX4SIO in the POPS folder";
+  },
+  {
+    ELF="mmce0:/POPS/POPSTARTER.ELF";
+    DESC="the POPSTARTER ELF located on MMCE in the POPS folder";
+  },
+  {
+    ELF="mmce1:/POPS/POPSTARTER.ELF";
+    DESC="the POPSTARTER ELF located on MMCE in the POPS folder";
+  },
+  {
+    ELF="mc0:/POPS/POPSTARTER.ELF";
+    DESC="the POPSTARTER ELF located on MemoryCard in the POPS folder";
+  },
+  {
+    ELF="mc1:/POPS/POPSTARTER.ELF";
+    DESC="the POPSTARTER ELF located on MemoryCard in the POPS folder";
+  },
+ {
+    ELF="mc1:/POPSTARTER/POPSTARTER.ELF";
+    DESC="the POPSTARTER ELF located on MemoryCard in the POPS folder";
+  },
+ {
+    ELF="mc0:/POPSTARTER/POPSTARTER.ELF";
+    DESC="the POPSTARTER ELF located on MemoryCard in the POPS folder";
   },
 }
 
