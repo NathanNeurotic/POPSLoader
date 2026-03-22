@@ -549,6 +549,25 @@ local function ResolveDirectHddExecPath(path)
   return nil
 end
 
+local function ResolveHddExecPathOnSlot(path, slot)
+  local candidate = tostring(path or "")
+  local mount_part, relpath = ParseHddExecMountAndRelpath(candidate)
+  local clean_relpath = string.gsub(tostring(relpath or ""), "^/+", "")
+  local mount_slot = tonumber(slot)
+  if mount_part == nil or clean_relpath == "" or mount_slot == nil then
+    return nil
+  end
+  local mounted, prefix = MountHddPartitionTracked(mount_part, mount_slot, FIO_MT_RDONLY)
+  if not mounted or prefix == nil then
+    return nil
+  end
+  local mounted_target = BuildMountedReadablePath(prefix, clean_relpath)
+  if mounted_target ~= nil and ProbePathExists(mounted_target) then
+    return mounted_target
+  end
+  return nil
+end
+
 ExtractLaunchPfsSlot = function(path)
   local mounted_prefix = NormalizePfsPrefix(path)
   if mounted_prefix ~= nil then
@@ -3091,6 +3110,13 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   local selected_entry = tostring(game or "")
   local popstarter = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
   local popstarter_on_hdd = IsHddExecContextPath(popstarter)
+  if popstarter_on_hdd then
+    local dedicated_popstarter = ResolveHddExecPathOnSlot(popstarter, HDD_SLOT_POPSTARTER)
+    if dedicated_popstarter ~= nil then
+      popstarter = dedicated_popstarter
+    end
+    popstarter_on_hdd = IsHddExecContextPath(popstarter)
+  end
   if selected_entry == "" then
     BlockLaunchFailure(
       "Invalid game selection",
