@@ -3295,6 +3295,13 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   end
   local selector_prefix = SelectPopstarterSelectorPrefix(device_page)
   local argv0_selector = BuildPopstarterSelectorPath(device_page, game_name)
+  if popstarter_on_hdd then
+    local popstarter_dir = DirectoryFromExecPath(popstarter)
+    local selector_leaf = string.match(tostring(argv0_selector or ""), "([^/]+)$") or tostring(argv0_selector or "")
+    if popstarter_dir ~= nil and popstarter_dir ~= "" and selector_leaf ~= "" then
+      argv0_selector = JoinPath(popstarter_dir, selector_leaf)
+    end
+  end
   if selector_prefix == "" and string.upper(game_name) == "POPSTARTER" then
     BlockLaunchFailure(
       "Internal error: game_base derived as POPSTARTER; refusing to launch.",
