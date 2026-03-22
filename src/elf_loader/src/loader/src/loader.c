@@ -119,6 +119,23 @@ static int load_elf_via_filexio(const char *path,
 	*gp_out    = 0;
 
 	fd = fileXioOpen(path, O_RDONLY, 0);
+	if (fd < 0 && (strncmp(path, "hdd", 3) == 0 || strncmp(path, "HDD", 3) == 0)) {
+		/*
+		 * hdd0:partition:pfsN:/relpath — direct open may fail if the
+		 * iomanX HDD driver doesn't support this composite format.
+		 * Extract the embedded pfsN:/relpath after the second colon
+		 * (which is already mounted) and retry.
+		 */
+		const char *first_colon  = strchr(path, ':');
+		const char *second_colon = first_colon ? strchr(first_colon + 1, ':') : NULL;
+		if (second_colon != NULL &&
+		    (strncmp(second_colon + 1, "pfs", 3) == 0 ||
+		     strncmp(second_colon + 1, "PFS", 3) == 0)) {
+			DPRINTF("loader: hdd: direct open failed (rc=%d), retrying with %s\n",
+			        fd, second_colon + 1);
+			fd = fileXioOpen(second_colon + 1, O_RDONLY, 0);
+		}
+	}
 	if (fd < 0) {
 		DPRINTF("loader: fileXioOpen(%s) failed rc=%d\n", path, fd);
 		return -1;
@@ -241,13 +258,19 @@ int main(int argc, char *argv[])
 	wipeUserMem();
 	FlushCache(0);
 
-	if (strncmp(elf_path, "pfs", 3) == 0) {
+	if (strncmp(elf_path, "pfs", 3) == 0 ||
+	    strncmp(elf_path, "PFS", 3) == 0 ||
+	    strncmp(elf_path, "hdd", 3) == 0 ||
+	    strncmp(elf_path, "HDD", 3) == 0) {
 		/*
-		 * pfs: paths: load via fileXio (iomanX-aware).
-		 * SifLoadElf uses IOMAN and cannot open iomanX pfs: mounts.
+		 * pfs:/hdd: paths: load via fileXio (iomanX-aware).
+		 * SifLoadElf uses IOMAN and cannot open iomanX pfs:/hdd: mounts.
 		 * Do NOT reset the IOP — the HDD modules loaded by POPSLoader
 		 * must remain alive for fileXio to work; POPSTARTER will
 		 * perform its own IOP reset when it starts.
+		 * For hdd0:partition:pfsN:/relpath format, load_elf_via_filexio
+		 * tries the path directly first, then falls back to extracting
+		 * the embedded pfsN:/relpath (partition already mounted).
 		 */
 		unsigned int entry = 0, gp = 0;
 		SET_GS_BGCOLOUR(GREEN_BG);
