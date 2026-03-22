@@ -441,6 +441,7 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 	t_ExecData elfdata;
 	char resolved_path[256];
 	int ret;
+	bool selector_overrides_exec_path;
 
 	if (argc <= 0 || argv == NULL || argv[0] == NULL) {
 		return -4;
@@ -460,7 +461,8 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 		return -2;
 	}
 
-	if (is_hdd_or_pfs_exec_path(resolved_path)) {
+	selector_overrides_exec_path = (strcmp(argv[0], resolved_path) != 0);
+	if (is_hdd_or_pfs_exec_path(resolved_path) && !selector_overrides_exec_path) {
 		cleanup_hdd_exec_handoff();
 	} else {
 		SifExitIopHeap();
