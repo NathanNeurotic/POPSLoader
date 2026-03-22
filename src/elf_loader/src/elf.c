@@ -40,7 +40,8 @@ extern unsigned char loader_elf[];
 #define LOAD_STAGE_AFTER_SIFLOAD    0xFF0000
 #define LOAD_STAGE_SIFLOAD_OK       0x00FFFF
 #define LOAD_STAGE_SIFLOAD_FAILED   0xFF00FF
-#define LOAD_STAGE_AFTER_IOP_SYNC   0x00A5FF
+#define LOAD_STAGE_AFTER_IOP_RESET  0x00A5FF
+#define LOAD_STAGE_AFTER_IOP_SYNC   0x2A2AA5
 #define LOAD_STAGE_BEFORE_EXECPS2   0x800080
 
 static bool is_host_path(const char *filename) {
@@ -462,6 +463,7 @@ int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]
 	FlushCache(0);
 	while (!SifIopReset(NULL, 0)) {
 	}
+	set_hdd_exec_stage_colour(resolved_path, LOAD_STAGE_AFTER_IOP_RESET);
 	while (!SifIopSync()) {
 	}
 	set_hdd_exec_stage_colour(resolved_path, LOAD_STAGE_AFTER_IOP_SYNC);

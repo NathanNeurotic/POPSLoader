@@ -33,8 +33,8 @@
 #define BLUE_BG 0xFF0000 // after SifLoadELF
 #define YELLOW_BG 0x00FFFF // good SifLoadELF return
 #define MAGENTA_BG 0xFF00FF // wrong SifLoadELF return
-#define ORANGE_BG 0x00A5FF  // after reset IOP
-#define BROWN_BG 0x2A2AA5  // before FlushCache
+#define ORANGE_BG 0x00A5FF  // after SifIopReset
+#define BROWN_BG 0x2A2AA5  // after SifIopSync
 #define PURPBLE_BG 0x800080  // before ExecPS2
 
 
@@ -140,25 +140,24 @@ int main(int argc, char *argv[])
 	if (ret == 0 && elfdata.epc != 0) {
 		SET_GS_BGCOLOUR(YELLOW_BG);
 
-		// Let's reset IOP because ELF was already loaded in memory
-		while(!SifIopReset(NULL, 0)){};
-		while (!SifIopSync()) {};
+			// Let's reset IOP because ELF was already loaded in memory
+			while(!SifIopReset(NULL, 0)){};
+			SET_GS_BGCOLOUR(ORANGE_BG);
+			while (!SifIopSync()) {};
 
-		SET_GS_BGCOLOUR(ORANGE_BG);
+			SET_GS_BGCOLOUR(BROWN_BG);
 
-        SifInitRpc(0);
-        // Load modules.
-        SifLoadFileInit();
-        SifLoadModule("rom0:SIO2MAN", 0, NULL);
-        SifLoadModule("rom0:MCMAN", 0, NULL);
-        SifLoadModule("rom0:MCSERV", 0, NULL);
-        SifLoadFileExit();
-        SifExitRpc();
+	        SifInitRpc(0);
+	        // Load modules.
+	        SifLoadFileInit();
+	        SifLoadModule("rom0:SIO2MAN", 0, NULL);
+	        SifLoadModule("rom0:MCMAN", 0, NULL);
+	        SifLoadModule("rom0:MCSERV", 0, NULL);
+	        SifLoadFileExit();
+	        SifExitRpc();
 
-		SET_GS_BGCOLOUR(BROWN_BG);
-
-		FlushCache(0);
-		FlushCache(2);
+			FlushCache(0);
+			FlushCache(2);
 
 		SET_GS_BGCOLOUR(PURPBLE_BG);
 		
