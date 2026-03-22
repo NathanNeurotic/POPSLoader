@@ -36,6 +36,7 @@
 #define ORANGE_BG 0x00A5FF  // after SifIopReset
 #define BROWN_BG 0x2A2AA5  // after SifIopSync
 #define PURPBLE_BG 0x800080  // before ExecPS2
+#define IOP_RESET_ARGS "rom0:UDNL rom0:EELOADCNF"
 
 
 //--------------------------------------------------------------
@@ -148,8 +149,8 @@ int main(int argc, char *argv[])
 		SET_GS_BGCOLOUR(YELLOW_BG);
 
 			// Let's reset IOP because ELF was already loaded in memory
-			while(!SifIopReset(NULL, 0)){};
-			SET_GS_BGCOLOUR(ORANGE_BG);
+				while(!SifIopReset(IOP_RESET_ARGS, 0)){};
+				SET_GS_BGCOLOUR(ORANGE_BG);
 			while (!SifIopSync()) {};
 
 			SET_GS_BGCOLOUR(BROWN_BG);
