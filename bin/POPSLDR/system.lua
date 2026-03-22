@@ -809,13 +809,13 @@ local function ResolveAssetSidecarPopstarter()
   end
   local lowered = string.lower(asset_path)
   if string.match(lowered, "^hdd%d:") ~= nil then
-    local direct_hdd = ResolveDirectHddExecPath(asset_path)
-    if direct_hdd ~= nil then
-      return direct_hdd
-    end
     local resolved_hdd = ResolveHddReadablePath(asset_path)
     if resolved_hdd ~= nil then
       return resolved_hdd
+    end
+    local direct_hdd = ResolveDirectHddExecPath(asset_path)
+    if direct_hdd ~= nil then
+      return direct_hdd
     end
   end
   local resolved = ResolvePathWithEnsure(asset_path)
@@ -878,13 +878,13 @@ local function ResolveHddBootSidecarPopstarter()
   end
 
   for i = 1, #hdd_candidates do
-    local direct_hdd = ResolveDirectHddExecPath(hdd_candidates[i])
-    if direct_hdd ~= nil then
-      return direct_hdd
-    end
     local resolved_hdd = ResolveHddReadablePath(hdd_candidates[i])
     if resolved_hdd ~= nil then
       return resolved_hdd
+    end
+    local direct_hdd = ResolveDirectHddExecPath(hdd_candidates[i])
+    if direct_hdd ~= nil then
+      return direct_hdd
     end
   end
 
