@@ -174,7 +174,6 @@ static void prepare_iop_reset_handoff(bool teardown_filexio) {
 	}
 	SifExitIopHeap();
 	SifExitRpc();
-	SifInitRpc(0);
 }
 
 /* IMPORTANT: This method wipe memory where the loader is going to be allocated 
