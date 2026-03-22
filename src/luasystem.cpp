@@ -1017,15 +1017,24 @@ static int lua_loadELF(lua_State *L)
 	DPRINTF("# Loading ELF '%s' iop_reboot=%d, extra_args=%d\n", elftoload, rebootIOP, extra_args);
 	if (extra_args > 0) {
 		const char *selector = luaL_checkstring(L, 3);
+		bool selector_overrides_path;
+		bool has_hdd_partition_prefix;
+		bool is_pfs_exec_path;
+		bool is_hdd_or_pfs_selector_exec;
 		snprintf(selector_buf, sizeof(selector_buf), "%s", selector ? selector : "");
 		argv_static[0] = selector_buf;
 		argv_static[1] = NULL;
+		selector_overrides_path = (strcmp(selector_buf, elftoload) != 0);
+		has_hdd_partition_prefix = TryExtractHddPartitionPrefix(elftoload, partition_buf, sizeof(partition_buf));
+		is_pfs_exec_path = (strncmp(elftoload, "pfs", 3) == 0 || strncmp(elftoload, "PFS", 3) == 0);
+		is_hdd_or_pfs_selector_exec = selector_overrides_path && (has_hdd_partition_prefix || is_pfs_exec_path);
 		DPRINTF("# Loading ELF argv0='%s' argc=1\n", argv_static[0]);
 		int rc;
-		if (rebootIOP != 0) {
+		if (rebootIOP != 0 && is_hdd_or_pfs_selector_exec) {
+			rc = LoadELFFromFileExecPS2(elftoload, 1, argv_static);
+		} else if (rebootIOP != 0) {
 			rc = LoadELFFromFileExecPS2RebootIOP(elftoload, 1, argv_static);
-		} else if (strcmp(selector_buf, elftoload) != 0 &&
-		           TryExtractHddPartitionPrefix(elftoload, partition_buf, sizeof(partition_buf))) {
+		} else if (selector_overrides_path && has_hdd_partition_prefix) {
 			rc = LoadELFFromFileWithPartition(elftoload, partition_buf, 1, argv_static);
 		} else {
 			rc = LoadELFFromFileExecPS2(elftoload, 1, argv_static);
