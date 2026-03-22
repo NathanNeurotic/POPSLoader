@@ -527,36 +527,6 @@ local function ResolveHddReadablePath(path)
   return ResolveHddPartitionReadablePath(mount_part, relpath, ExtractEmbeddedHddMountPrefix(candidate), HDD_SLOT_POPSTARTER)
 end
 
-local function ResolvePopstarterHddReadablePath(path)
-  local candidate = tostring(path or "")
-  if candidate == "" then
-    return nil
-  end
-
-  local mounted_direct = NormalizePfsPrefix(candidate)
-  if mounted_direct ~= nil and ProbePathExists(candidate) then
-    return candidate
-  end
-
-  local mount_part, relpath = ParseHddExecMountAndRelpath(candidate)
-  local clean_relpath = string.gsub(tostring(relpath or ""), "^/+", "")
-  if mount_part == nil or clean_relpath == "" then
-    return nil
-  end
-
-  UMountHddPartitionTracked(HDD_SLOT_POPSTARTER)
-  local mounted, mounted_prefix = MountHddPartitionTracked(mount_part, HDD_SLOT_POPSTARTER, FIO_MT_RDONLY)
-  if not mounted or mounted_prefix == nil then
-    return nil
-  end
-
-  local mounted_target = BuildMountedReadablePath(mounted_prefix, clean_relpath)
-  if mounted_target ~= nil and ProbePathExists(mounted_target) then
-    return mounted_target
-  end
-  return nil
-end
-
 local function EnsureHddExecPathReady(path)
   return ResolveHddReadablePath(path) ~= nil
 end
@@ -839,7 +809,7 @@ local function ResolveAssetSidecarPopstarter()
   end
   local lowered = string.lower(asset_path)
   if string.match(lowered, "^hdd%d:") ~= nil then
-    local resolved_hdd = ResolvePopstarterHddReadablePath(asset_path)
+    local resolved_hdd = ResolveHddReadablePath(asset_path)
     if resolved_hdd ~= nil then
       return resolved_hdd
     end
@@ -908,7 +878,7 @@ local function ResolveHddBootSidecarPopstarter()
   end
 
   for i = 1, #hdd_candidates do
-    local resolved_hdd = ResolvePopstarterHddReadablePath(hdd_candidates[i])
+    local resolved_hdd = ResolveHddReadablePath(hdd_candidates[i])
     if resolved_hdd ~= nil then
       return resolved_hdd
     end
@@ -979,15 +949,11 @@ local function ResolvePopstarterPath(path)
   end
 
   if string.match(string.lower(chosen), "^hdd%d:") ~= nil then
-    local resolved_hdd = ResolvePopstarterHddReadablePath(chosen)
-    if resolved_hdd ~= nil then
-      return resolved_hdd
-    end
     local direct_hdd = ResolveDirectHddExecPath(chosen)
     if direct_hdd ~= nil then
       return direct_hdd
     end
-    resolved_hdd = ResolveHddExecMountedPath(chosen)
+    local resolved_hdd = ResolveHddExecMountedPath(chosen)
     if resolved_hdd ~= nil then
       return resolved_hdd
     end
