@@ -3025,6 +3025,7 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   local boot_path = EnsureTrailingSlash(System.currentDirectory())
   local argv0 = argv and argv[1] or nil
   local unpack_fn = table.unpack or unpack
+  local skip_reopen_probe = reboot_iop ~= 0 and IsHddExecContextPath(popstarter)
   SetLaunchPhase(LaunchState.PHASE_VALIDATE)
   if not PLDR.PopstarterProbeWithEnsure(popstarter) then
     BlockLaunchFailure(
@@ -3039,22 +3040,24 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     )
     return
   end
-  local open_ok, open_rc, open_stage, open_api, open_path = TryOpenForLaunch(popstarter)
-  if not open_ok then
-    BlockLaunchFailure(
-      "popstarter "..tostring(open_stage).." failed: "..tostring(open_rc),
-      popstarter,
-      context and context.device_page or "unknown",
-      argv and argv[1] or nil,
-      context and context.vcd_path or nil,
-      app_dir,
-      open_rc,
-      open_api
-    )
-    return
-  end
-  if open_path ~= nil and open_path ~= popstarter then
-    popstarter = open_path
+  if not skip_reopen_probe then
+    local open_ok, open_rc, open_stage, open_api, open_path = TryOpenForLaunch(popstarter)
+    if not open_ok then
+      BlockLaunchFailure(
+        "popstarter "..tostring(open_stage).." failed: "..tostring(open_rc),
+        popstarter,
+        context and context.device_page or "unknown",
+        argv and argv[1] or nil,
+        context and context.vcd_path or nil,
+        app_dir,
+        open_rc,
+        open_api
+      )
+      return
+    end
+    if open_path ~= nil and open_path ~= popstarter then
+      popstarter = open_path
+    end
   end
   local exec_args = argv or {}
   SetLaunchPhase(LaunchState.PHASE_FADEOUT)
@@ -3295,18 +3298,6 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   end
   local selector_prefix = SelectPopstarterSelectorPrefix(device_page)
   local argv0_selector = BuildPopstarterSelectorPath(device_page, game_name)
-  local popstarter_argv0 = popstarter
-  if popstarter_on_hdd then
-    local mounted_popstarter = ResolveHddExecMountedPath(popstarter)
-    if mounted_popstarter ~= nil then
-      popstarter_argv0 = mounted_popstarter
-    end
-    local popstarter_dir = DirectoryFromExecPath(popstarter_argv0)
-    local selector_leaf = string.match(tostring(argv0_selector or ""), "([^/]+)$") or tostring(argv0_selector or "")
-    if popstarter_dir ~= nil and popstarter_dir ~= "" and selector_leaf ~= "" then
-      argv0_selector = JoinPath(popstarter_dir, selector_leaf)
-    end
-  end
   if selector_prefix == "" and string.upper(game_name) == "POPSTARTER" then
     BlockLaunchFailure(
       "Internal error: game_base derived as POPSTARTER; refusing to launch.",
@@ -3331,9 +3322,6 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     end
   end
   local argv = {argv0_selector}
-  if popstarter_on_hdd then
-    argv = {popstarter_argv0, argv0_selector}
-  end
 
   local context = {
     device_page = device_page,
