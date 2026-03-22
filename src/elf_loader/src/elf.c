@@ -443,6 +443,7 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 	char resolved_path[256];
 	int ret;
 	bool selector_overrides_exec_path;
+	bool preserve_hdd_exec_runtime;
 
 	if (argc <= 0 || argv == NULL || argv[0] == NULL) {
 		return -4;
@@ -467,7 +468,8 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 	set_hdd_exec_stage_colour(resolved_path, LOAD_STAGE_SIFLOAD_OK);
 
 	selector_overrides_exec_path = (strcmp(argv[0], resolved_path) != 0);
-	if (is_hdd_or_pfs_exec_path(resolved_path) && !selector_overrides_exec_path) {
+	preserve_hdd_exec_runtime = selector_overrides_exec_path || argc > 1;
+	if (is_hdd_or_pfs_exec_path(resolved_path) && !preserve_hdd_exec_runtime) {
 		cleanup_hdd_exec_handoff();
 	} else {
 		SifExitIopHeap();
