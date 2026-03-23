@@ -3350,9 +3350,18 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   if popstarter_on_hdd then
     local mounted_popstarter = ResolveHddExecMountedPath(popstarter) or popstarter
     local selector_leaf = string.match(tostring(argv0_selector or ""), "([^/]+)$") or tostring(argv0_selector or "")
-    local selector_alias = EnsureSelectorElfAlias(mounted_popstarter, selector_leaf)
-    if selector_alias ~= nil then
-      argv0_selector = selector_alias
+    if policy.name == "HDD" and hdd_init and hdd_init.mount_ok and hdd_init.mount_prefix ~= nil and hdd_init.mount_prefix ~= "" then
+      -- POPSTARTER derives the VCD path by stripping the ELF extension from argv[0]
+      -- and looking in the same directory.  The VCD lives on the POPS game partition
+      -- (hdd_init.mount_prefix), NOT on the POPSTARTER partition.  Point argv[0] at
+      -- the game partition so POPSTARTER finds the VCD.  POPSTARTER only reads the
+      -- path string — it does not open the ELF at argv[0] — so the file need not exist.
+      argv0_selector = JoinPath(hdd_init.mount_prefix, selector_leaf)
+    else
+      local selector_alias = EnsureSelectorElfAlias(mounted_popstarter, selector_leaf)
+      if selector_alias ~= nil then
+        argv0_selector = selector_alias
+      end
     end
   end
   if selector_prefix == "" and string.upper(game_name) == "POPSTARTER" then
@@ -3402,7 +3411,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     game_name = game_name,
     bootparam_source = boot_source_mode,
     hdd_init = hdd_init,
-    keep_hdd_slots = nil
+    keep_hdd_slots = (policy.name == "HDD" and popstarter_on_hdd and hdd_init and hdd_init.mount_ok) and hdd_init.mount_slot or nil
   }
   local reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
   if popstarter_on_hdd then
