@@ -3388,6 +3388,18 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     end
   end
   local argv = {argv0_selector}
+  if popstarter_on_hdd then
+    if popstarter ~= nil and popstarter ~= "" and popstarter ~= argv0_selector then
+      table.insert(argv, popstarter)
+    end
+    -- For non-HDD games, pass the bootparam (VCD path) so POPSTARTER can find the disc image.
+    -- For HDD games, bootparam is a bare filename ("GAMENAME.ELF") that was only equal to the
+    -- old bare argv0_selector; now that argv0_selector carries a full pfs: path we must skip it
+    -- to avoid passing a useless extra argument.
+    if policy.name ~= "HDD" and bootparam ~= nil and bootparam ~= "" and bootparam ~= argv0_selector and bootparam ~= popstarter then
+      table.insert(argv, bootparam)
+    end
+  end
 
   local context = {
     device_page = device_page,
