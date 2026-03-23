@@ -3192,12 +3192,6 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   local selected_entry = tostring(game or "")
   local popstarter = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
   local popstarter_on_hdd = IsHddExecContextPath(popstarter)
-  if popstarter_on_hdd then
-    local mounted_popstarter = ResolveHddExecMountedPath(popstarter)
-    if mounted_popstarter ~= nil then
-      popstarter = mounted_popstarter
-    end
-  end
   if selected_entry == "" then
     BlockLaunchFailure(
       "Invalid game selection",
