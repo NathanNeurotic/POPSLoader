@@ -1520,6 +1520,41 @@ local function CopyExternalAtomicBounded(source, dest, expected_size)
   return true
 end
 
+local function EnsureSelectorElfAlias(source, selector_leaf)
+  local source_path = tostring(source or "")
+  local leaf = tostring(selector_leaf or "")
+  if source_path == "" or leaf == "" then
+    return nil
+  end
+
+  local parent = DirectoryFromExecPath(source_path)
+  if parent == nil or parent == "" then
+    return nil
+  end
+
+  local alias_path = JoinPath(parent, leaf)
+  if alias_path == source_path then
+    return alias_path
+  end
+
+  local src_size = GetFileSizeSafe(source_path)
+  if src_size == nil or src_size <= 0 then
+    return nil
+  end
+
+  local alias_size = GetFileSizeSafe(alias_path)
+  if alias_size ~= nil and alias_size == src_size then
+    return alias_path
+  end
+
+  local ok_copy, copied = pcall(CopyExternalAtomicBounded, source_path, alias_path, src_size)
+  if ok_copy and copied == true then
+    return alias_path
+  end
+
+  return nil
+end
+
 
 local function WriteBytesAtomicBounded(data, dest)
   if type(data) ~= "string" then
@@ -3312,6 +3347,14 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   end
   local selector_prefix = SelectPopstarterSelectorPrefix(device_page)
   local argv0_selector = BuildPopstarterSelectorPath(device_page, game_name)
+  if popstarter_on_hdd then
+    local mounted_popstarter = ResolveHddExecMountedPath(popstarter) or popstarter
+    local selector_leaf = string.match(tostring(argv0_selector or ""), "([^/]+)$") or tostring(argv0_selector or "")
+    local selector_alias = EnsureSelectorElfAlias(mounted_popstarter, selector_leaf)
+    if selector_alias ~= nil then
+      argv0_selector = selector_alias
+    end
+  end
   if selector_prefix == "" and string.upper(game_name) == "POPSTARTER" then
     BlockLaunchFailure(
       "Internal error: game_base derived as POPSTARTER; refusing to launch.",
