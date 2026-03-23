@@ -3356,16 +3356,15 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     if policy.name == "HDD" and hdd_init and hdd_init.mount_ok and hdd_init.mount_prefix ~= nil and hdd_init.mount_prefix ~= "" then
       -- POPSTARTER derives the VCD path by stripping the ELF extension from argv[0]
       -- and looking in the same directory.  Build a full HDD sidecar path of the
-      -- form "hdd0:PARTITION:pfsN:/GAMENAME.ELF" so that POPSTARTER can extract the
-      -- partition name and remount it as pfs0:/ after its own IOP reset.
-      -- A bare "pfsN:/GAMENAME.ELF" becomes unusable once the IOP is reset because
-      -- all pfs mounts are cleared; POPSTARTER has no way to determine which HDD
-      -- partition to remount without the explicit "hdd0:PARTITION:" prefix.
+      -- form "hdd0:PARTITION:pfs0:/GAMENAME.ELF".  POPSTARTER always remounts the
+      -- game partition at pfs0:/ (slot 0) after its own IOP reset, so the slot in
+      -- argv[0] must be "pfs0:/" — using hdd_init.mount_prefix (pfs1:/) would
+      -- produce "pfs1:/GAMENAME.VCD" which does not exist after the remount.
       local partition = hdd_init.mount_partition
       if partition ~= nil and partition ~= "" then
-        argv0_selector = partition .. ":" .. hdd_init.mount_prefix .. selector_leaf
+        argv0_selector = partition .. ":pfs0:/" .. selector_leaf
       else
-        argv0_selector = JoinPath(hdd_init.mount_prefix, selector_leaf)
+        argv0_selector = "pfs0:/" .. selector_leaf
       end
     else
       local selector_alias = EnsureSelectorElfAlias(mounted_popstarter, selector_leaf)
