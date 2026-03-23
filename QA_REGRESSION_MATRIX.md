@@ -55,6 +55,7 @@ This matrix tracks current behavior across:
 | D-08 | HDD POPS partition scan | `__.POPS`, `__.POPS0`, and one higher `__.POPSN` present | Open HDD (PFS) | titles from all present POPS partitions list in stable partition order |
 | D-09 | HDD duplicate title names | Same VCD filename exists in two POPS partitions | Launch each entry from HDD (PFS) | each entry launches from its own source partition |
 | D-10 | HDD POPSTARTER on HDD | POPSLoader and/or configured `POPSTARTER_PATH` points to HDD | Launch HDD title | POPSTARTER resolves from sidecar or configured HDD path without blocking launch |
+| D-12 | HDD POPSTARTER + HDD game | POPSTARTER on HDD, game on HDD (PFS) | Launch HDD title | Game launches without white screen; argv0 points to game partition, game pfs slot stays mounted |
 | D-11 | HDD common art path | `hdd0:__common/POPS/ART/<title>.png` present | Browse HDD title list | cover art appears and launch still succeeds |
 
 ### UI behavior
