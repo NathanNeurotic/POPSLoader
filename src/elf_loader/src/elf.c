@@ -502,6 +502,7 @@ int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]
 	SifLoadFileInit();
 	ret = SifLoadElf(resolved_path, &elfdata);
 	SifLoadFileExit();
+	SifExitRpc();
 	set_hdd_exec_stage_colour(resolved_path, LOAD_STAGE_AFTER_SIFLOAD);
 	DPRINTF("LAUNCH: SifLoadElf ret=%d epc=%p gp=%p\n", ret, (void *)elfdata.epc, (void *)elfdata.gp);
 
