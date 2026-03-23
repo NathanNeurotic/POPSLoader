@@ -3,10 +3,11 @@ name: CI
 on:
   push:
     branches:
-      - "*"
+      - "**"
     tags:
       - "v*"
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
   repository_dispatch:
     types:
