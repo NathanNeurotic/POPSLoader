@@ -2920,17 +2920,20 @@ end
 
 local function SelectHddLaunchGameSlot(popstarter)
   local reserved = {}
-  local boot_slot = GetBootOccupiedPfsSlot()
-  if boot_slot ~= nil then
-    reserved[boot_slot] = true
-  end
+  -- Do NOT reserve the boot slot: POPSLoader's ELF is already in RAM at launch
+  -- time, so the boot partition does not need to remain mounted.  Reserving it
+  -- could push the game to slot 2+ (pfs2:/), but POPSTARTER conventionally
+  -- mounts the game at pfs1:/ (HDD_SLOT_GAME) after its own IOP reset, so
+  -- argv[0] must carry a pfs1:/ prefix to match.
   local popstarter_slot = ExtractLaunchPfsSlot(popstarter)
   if popstarter_slot ~= nil then
     reserved[popstarter_slot] = true
   end
+  -- Prefer HDD_SLOT_GAME (pfs1:/) first so the game lands there whenever
+  -- POPSTARTER is not already loaded from that slot.
   local preferred_slots = {
-    HDD_SLOT_BOOT,
     HDD_SLOT_GAME,
+    HDD_SLOT_BOOT,
     HDD_SLOT_COMMON
   }
   for i = 1, #preferred_slots do
