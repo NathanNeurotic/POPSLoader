@@ -868,6 +868,20 @@ local function ResolveAssetSidecarPopstarter()
   return nil
 end
 
+local HDD_PAGE_POPSTARTER_PATH = "hdd0:__common/POPS/POPSTARTER.ELF"
+
+local function ResolveHddPagePopstarterPath()
+  local direct_hdd = ResolveDirectHddExecPath(HDD_PAGE_POPSTARTER_PATH)
+  if direct_hdd ~= nil then
+    return direct_hdd
+  end
+  local resolved_hdd = ResolveHddExecMountedPath(HDD_PAGE_POPSTARTER_PATH)
+  if resolved_hdd ~= nil then
+    return resolved_hdd
+  end
+  return HDD_PAGE_POPSTARTER_PATH
+end
+
 local function ResolveHddBootSidecarPopstarter()
   local mounted_candidates = {}
   local hdd_candidates = {}
@@ -1034,12 +1048,23 @@ local function ResolvePopstarterPath(path)
   return chosen
 end
 
+local function ResolveLaunchPopstarterPath(path, device_page)
+  if tostring(device_page or "") == "HDD" then
+    return ResolveHddPagePopstarterPath()
+  end
+  return ResolvePopstarterPath(path)
+end
+
 local function ResolveIrx(name)
   return System.resolveAssetType(name, ASSET_IRX) or JoinPath(APP_DIR_LOCAL, name)
 end
 
 function PLDR.ResolvePopstarterPath(path)
   return ResolvePopstarterPath(path)
+end
+
+function PLDR.ResolveLaunchPopstarterPath(path, device_page)
+  return ResolveLaunchPopstarterPath(path, device_page)
 end
 
 function PLDR.ResolveHddReadablePath(path)
@@ -3195,7 +3220,7 @@ end
 function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   local policy, device_page = ResolveLaunchPolicy(gamelocation, ui_scene)
   local selected_entry = tostring(game or "")
-  local popstarter = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
+  local popstarter = ResolveLaunchPopstarterPath(PLDR.POPSTARTER_PATH, device_page)
   local popstarter_on_hdd = IsHddExecContextPath(popstarter)
   if selected_entry == "" then
     BlockLaunchFailure(

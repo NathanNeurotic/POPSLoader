@@ -1593,7 +1593,10 @@ UI = {
             UI.Notif_queue.add("No games found")
           else
             local popstarter_path = PLDR.POPSTARTER_PATH
-            if type(PLDR.ResolvePopstarterPath) == "function" then
+            local popstarter_device_page = UI.CURSCENE == UI.SCENES.GHDD and "HDD" or nil
+            if type(PLDR.ResolveLaunchPopstarterPath) == "function" then
+              popstarter_path = PLDR.ResolveLaunchPopstarterPath(PLDR.POPSTARTER_PATH, popstarter_device_page)
+            elseif type(PLDR.ResolvePopstarterPath) == "function" then
               popstarter_path = PLDR.ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
             end
             local popstarter_ok = false
@@ -1604,9 +1607,13 @@ UI = {
             end
             if not popstarter_ok then
               local configured_popstarter_path = tostring(PLDR.POPSTARTER_PATH or "")
-              local message = "Cant find POPSTARTER ELF\n"..configured_popstarter_path
+              local message_path = configured_popstarter_path
+              if popstarter_device_page == "HDD" then
+                message_path = tostring(popstarter_path)
+              end
+              local message = "Cant find POPSTARTER ELF\n"..message_path
               if configured_popstarter_path ~= tostring(popstarter_path) then
-                message = message.."\nResolved: "..tostring(popstarter_path)
+                message = message.."\nConfigured: "..configured_popstarter_path
               end
               UI.Notif_queue.add(message)
               return
