@@ -3377,6 +3377,14 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     end
   end
   local argv = {argv0_selector}
+  if popstarter_on_hdd then
+    if popstarter ~= nil and popstarter ~= "" and popstarter ~= argv0_selector then
+      table.insert(argv, popstarter)
+    end
+    if bootparam ~= nil and bootparam ~= "" and bootparam ~= argv0_selector and bootparam ~= popstarter then
+      table.insert(argv, bootparam)
+    end
+  end
 
   local context = {
     device_page = device_page,
