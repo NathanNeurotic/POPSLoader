@@ -3352,6 +3352,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     local selector_leaf = string.match(tostring(argv0_selector or ""), "([^/]+)$") or tostring(argv0_selector or "")
     local selector_alias = EnsureSelectorElfAlias(mounted_popstarter, selector_leaf)
     if selector_alias ~= nil then
+      popstarter = selector_alias
       argv0_selector = selector_alias
     end
   end
