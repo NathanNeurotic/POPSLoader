@@ -111,7 +111,7 @@ static int load_elf_via_filexio(const char *path, t_ExecData *elfdata)
 		return -1;
 	}
 
-	fd = fileXioOpen(path, O_RDONLY, 0);
+	fd = fileXioOpen(path, FIO_O_RDONLY, 0);
 	if (fd < 0) {
 		fileXioExit();
 		return -2;
@@ -163,14 +163,14 @@ static int load_elf_via_filexio(const char *path, t_ExecData *elfdata)
 			unsigned int gp_val = 0;
 			if (fileXioLseek(fd, (int)phdrs[i].offset + 20, SEEK_SET) >= 0)
 				if (fileXioRead(fd, &gp_val, 4) == 4)
-					elfdata->gp = (void *)(unsigned int)gp_val;
+					elfdata->gp = gp_val;
 		}
 	}
 
 	fileXioClose(fd);
 	fileXioExit();
 
-	elfdata->epc = (void *)(unsigned int)ehdr.entry;
+	elfdata->epc = (u32)ehdr.entry;
 	return 0;
 }
 
