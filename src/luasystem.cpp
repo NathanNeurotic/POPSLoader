@@ -1031,7 +1031,7 @@ static int lua_loadELF(lua_State *L)
 		DPRINTF("# Loading ELF argv0='%s' argc=1\n", argv_static[0]);
 		int rc;
 		if (rebootIOP != 0 && is_hdd_or_pfs_selector_exec) {
-			rc = LoadELFFromFileExecPS2RebootIOP(elftoload, 1, argv_static);
+			rc = LoadELFFromFileExecPS2(elftoload, 1, argv_static);
 		} else if (rebootIOP != 0) {
 			rc = LoadELFFromFileExecPS2RebootIOP(elftoload, 1, argv_static);
 		} else if (selector_overrides_path && has_hdd_partition_prefix) {
