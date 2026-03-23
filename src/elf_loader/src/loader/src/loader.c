@@ -20,8 +20,11 @@
 #include <ps2sdkapi.h>
 /* NEWLIB_PORT_AWARE must precede fileXio_rpc.h so the fileXio function
  * prototypes are exposed for direct use (DISABLE_PATCHED_FUNCTIONS is
- * active here so POSIX open/read are not available). */
+ * active here so POSIX open/read are not available).
+ * io_common.h is included explicitly for FIO_O_RDONLY and related flags
+ * which may not be transitively exposed in all ps2sdk versions. */
 #define NEWLIB_PORT_AWARE
+#include <io_common.h>
 #include <fileXio_rpc.h>
 #define DPRINTF(x...) printf(x)
 
