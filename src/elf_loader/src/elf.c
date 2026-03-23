@@ -448,8 +448,15 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 {
 	t_ExecData elfdata;
 	char resolved_path[256];
+	static const int kMaxArgc = 32;
+	static char *launch_argv[33];
+	static char launch_arg_storage[2048];
+	size_t storage_offset = 0;
 	int ret;
 	int preserve_hdd_runtime = 0;
+	int final_argc = argc;
+	int i;
+	bool use_exec_path_argv0 = false;
 
 	if (argc <= 0 || argv == NULL || argv[0] == NULL) {
 		return -4;
@@ -476,6 +483,26 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 	if (argc > 0 && argv != NULL && argv[0] != NULL && strcmp(argv[0], resolved_path) != 0) {
 		preserve_hdd_runtime = 1;
 	}
+	if (argc >= 2 && argv[1] != NULL && strcmp(argv[0], resolved_path) != 0 && strcmp(argv[1], resolved_path) == 0) {
+		use_exec_path_argv0 = true;
+	}
+	if (use_exec_path_argv0) {
+		if (final_argc > kMaxArgc) {
+			return -2;
+		}
+		launch_argv[0] = store_arg(resolved_path, launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
+		launch_argv[1] = store_arg(argv[0], launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
+		if (!launch_argv[0] || !launch_argv[1]) {
+			return -3;
+		}
+		for (i = 2; i < final_argc; i++) {
+			launch_argv[i] = store_arg(argv[i], launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
+			if (!launch_argv[i]) {
+				return -3;
+			}
+		}
+		launch_argv[final_argc] = NULL;
+	}
 
 	if (is_hdd_or_pfs_exec_path(resolved_path) && !preserve_hdd_runtime) {
 		cleanup_hdd_exec_handoff();
@@ -489,7 +516,7 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 
 	set_hdd_exec_stage_colour(resolved_path, LOAD_STAGE_AFTER_CLEANUP);
 	set_hdd_exec_stage_colour(resolved_path, LOAD_STAGE_BEFORE_EXECPS2);
-	ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc, argv);
+	ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, final_argc, use_exec_path_argv0 ? launch_argv : argv);
 	return -1;
 }
 
