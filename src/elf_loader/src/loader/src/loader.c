@@ -98,6 +98,7 @@ static int load_elf_via_filexio(const char *path, t_ExecData *elfdata)
 {
 	int fd;
 	int i;
+	int rc;
 	static _loader_elf_hdr_t  ehdr;
 	static _loader_elf_phdr_t phdrs[_LOADER_PFS_MAX_PHDRS];
 	int num_phdrs;
@@ -105,41 +106,52 @@ static int load_elf_via_filexio(const char *path, t_ExecData *elfdata)
 	elfdata->epc = 0;
 	elfdata->gp  = 0;
 
-	fileXioInit();
+	rc = fileXioInit();
+	if (rc < 0) {
+		return -1;
+	}
 
 	fd = fileXioOpen(path, O_RDONLY, 0);
 	if (fd < 0) {
 		fileXioExit();
-		return -1;
+		return -2;
 	}
 
 	if (fileXioRead(fd, &ehdr, sizeof(ehdr)) != (int)sizeof(ehdr)) {
 		fileXioClose(fd);
 		fileXioExit();
-		return -2;
+		return -3;
 	}
 	if (*((unsigned int *)ehdr.ident) != _LOADER_ELF_MAGIC) {
 		fileXioClose(fd);
 		fileXioExit();
-		return -3;
+		return -4;
 	}
 
 	num_phdrs = (int)ehdr.phnum;
 	if (num_phdrs > _LOADER_PFS_MAX_PHDRS)
 		num_phdrs = _LOADER_PFS_MAX_PHDRS;
 
-	fileXioLseek(fd, (int)ehdr.phoff, SEEK_SET);
+	if (fileXioLseek(fd, (int)ehdr.phoff, SEEK_SET) < 0) {
+		fileXioClose(fd);
+		fileXioExit();
+		return -5;
+	}
 	if (fileXioRead(fd, phdrs, (int)sizeof(_loader_elf_phdr_t) * num_phdrs) <= 0) {
 		fileXioClose(fd);
 		fileXioExit();
-		return -4;
+		return -6;
 	}
 
 	for (i = 0; i < num_phdrs; i++) {
 		if (phdrs[i].type == _LOADER_ELF_PT_LOAD) {
 			if (phdrs[i].filesz > 0) {
-				fileXioLseek(fd, (int)phdrs[i].offset, SEEK_SET);
-				fileXioRead(fd, phdrs[i].vaddr, (int)phdrs[i].filesz);
+				if (fileXioLseek(fd, (int)phdrs[i].offset, SEEK_SET) < 0 ||
+				    fileXioRead(fd, phdrs[i].vaddr, (int)phdrs[i].filesz) != (int)phdrs[i].filesz) {
+					fileXioClose(fd);
+					fileXioExit();
+					return -7;
+				}
 			}
 			if (phdrs[i].memsz > phdrs[i].filesz) {
 				memset((char *)phdrs[i].vaddr + phdrs[i].filesz, 0,
@@ -149,9 +161,9 @@ static int load_elf_via_filexio(const char *path, t_ExecData *elfdata)
 			/* PT_MIPS_REGINFO: GP value is at offset +20 within the
 			 * 24-byte Elf32_RegInfo structure. */
 			unsigned int gp_val = 0;
-			fileXioLseek(fd, (int)phdrs[i].offset + 20, SEEK_SET);
-			if (fileXioRead(fd, &gp_val, 4) == 4)
-				elfdata->gp = (void *)(unsigned int)gp_val;
+			if (fileXioLseek(fd, (int)phdrs[i].offset + 20, SEEK_SET) >= 0)
+				if (fileXioRead(fd, &gp_val, 4) == 4)
+					elfdata->gp = (void *)(unsigned int)gp_val;
 		}
 	}
 
