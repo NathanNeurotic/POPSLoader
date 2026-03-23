@@ -43,6 +43,7 @@ extern unsigned char loader_elf[];
 #define LOAD_STAGE_BEFORE_IOP_RESET 0x80FF00
 #define LOAD_STAGE_AFTER_IOP_RESET  0x00A5FF
 #define LOAD_STAGE_AFTER_IOP_SYNC   0x2A2AA5
+#define LOAD_STAGE_AFTER_CLEANUP    0x0080FF
 #define LOAD_STAGE_BEFORE_EXECPS2   0x800080
 #define IOP_RESET_ARGS             "rom0:UDNL rom0:EELOADCNF"
 
@@ -459,14 +460,18 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 	DPRINTF("LAUNCH: Using ExecPS2\n");
 	DPRINTF("POPSTARTER ExecPS2 argv0=%s\n", argv[0]);
 
+	set_hdd_exec_stage_colour(resolved_path, LOAD_STAGE_BEFORE_SIFLOAD);
 	SifInitRpc(0);
 	SifLoadFileInit();
 	ret = SifLoadElf(resolved_path, &elfdata);
 	SifLoadFileExit();
+	set_hdd_exec_stage_colour(resolved_path, LOAD_STAGE_AFTER_SIFLOAD);
 
 	if (ret != 0 || elfdata.epc == 0) {
+		set_hdd_exec_stage_colour(resolved_path, LOAD_STAGE_SIFLOAD_FAILED);
 		return -2;
 	}
+	set_hdd_exec_stage_colour(resolved_path, LOAD_STAGE_SIFLOAD_OK);
 
 	if (argc > 0 && argv != NULL && argv[0] != NULL && strcmp(argv[0], resolved_path) != 0) {
 		preserve_hdd_runtime = 1;
@@ -482,6 +487,8 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 		FlushCache(2);
 	}
 
+	set_hdd_exec_stage_colour(resolved_path, LOAD_STAGE_AFTER_CLEANUP);
+	set_hdd_exec_stage_colour(resolved_path, LOAD_STAGE_BEFORE_EXECPS2);
 	ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc, argv);
 	return -1;
 }
