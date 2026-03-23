@@ -15,6 +15,7 @@
 #include <loadfile.h>
 #include <iopheap.h>
 #include <iopcontrol.h>
+#include <sifcmd.h>
 #include <sifrpc.h>
 #include <errno.h>
 #include <ps2sdkapi.h>
@@ -77,6 +78,51 @@ static void prepare_iop_reset_handoff(void)
 	SifExitIopHeap();
 	SifExitRpc();
 	SifInitRpc(0);
+}
+
+static int SifIopResetCompatNoDmaStop(const char *arg, int mode)
+{
+	static SifCmdResetData_t reset_pkt __attribute__((aligned(64)));
+	struct t_SifDmaTransfer dmat;
+	int arglen;
+
+	if (arg != NULL) {
+		for (arglen = 0; arg[arglen] != '\0'; arglen++) {
+			reset_pkt.arg[arglen] = arg[arglen];
+		}
+	} else {
+		arglen = 0;
+	}
+
+	reset_pkt.header.psize = sizeof reset_pkt;
+	reset_pkt.header.cid   = SIF_CMD_RESET_CMD;
+	reset_pkt.arglen       = arglen;
+	reset_pkt.mode         = mode;
+
+	dmat.src  = &reset_pkt;
+	dmat.dest = (void *)sceSifGetReg(SIF_SYSREG_SUBADDR);
+	dmat.size = sizeof(reset_pkt);
+	dmat.attr = SIF_DMA_ERT | SIF_DMA_INT_O;
+	sceSifWriteBackDCache(&reset_pkt, sizeof(reset_pkt));
+
+	DIntr();
+	ee_kmode_enter();
+	sceSifSetReg(SIF_REG_SMFLAG, SIF_STAT_BOOTEND);
+
+	if (!sceSifSetDma(&dmat, 1)) {
+		ee_kmode_exit();
+		EIntr();
+		return 0;
+	}
+
+	sceSifSetReg(SIF_REG_SMFLAG, SIF_STAT_SIFINIT);
+	sceSifSetReg(SIF_REG_SMFLAG, SIF_STAT_CMDINIT);
+	sceSifSetReg(SIF_SYSREG_RPCINIT, 0);
+	sceSifSetReg(SIF_SYSREG_SUBADDR, (int)NULL);
+	ee_kmode_exit();
+	EIntr();
+
+	return 1;
 }
 
 //--------------------------------------------------------------
@@ -164,7 +210,7 @@ int main(int argc, char *argv[])
 
 		// Let's reset IOP because ELF was already loaded in memory
 		prepare_iop_reset_handoff();
-		while(!SifIopReset(IOP_RESET_ARGS, 0)){};
+		while(!SifIopResetCompatNoDmaStop(IOP_RESET_ARGS, 0)){};
 		SET_GS_BGCOLOUR(ORANGE_BG);
 		while (!SifIopSync()) {};
 
