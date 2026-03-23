@@ -3083,7 +3083,8 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   SetLaunchPhase(LaunchState.PHASE_EXEC)
   PrepareForExternalELFLaunch(popstarter, context and context.keep_hdd_slots or nil)
   if reboot_iop == 0 and IsHddExecContextPath(popstarter) and type(System) == "table" and type(System.currentDirectory) == "function" then
-    local popstarter_dir = DirectoryFromExecPath(popstarter)
+    local cwd_target = ResolveHddExecMountedPath(popstarter) or popstarter
+    local popstarter_dir = DirectoryFromExecPath(cwd_target)
     if popstarter_dir ~= nil and popstarter_dir ~= "" and popstarter_dir ~= boot_path then
       local ok_set_cwd = pcall(System.currentDirectory, popstarter_dir)
       if ok_set_cwd then
