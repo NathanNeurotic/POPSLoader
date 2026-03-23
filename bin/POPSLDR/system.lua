@@ -3025,9 +3025,9 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   local boot_path = EnsureTrailingSlash(System.currentDirectory())
   local argv0 = argv and argv[1] or nil
   local unpack_fn = table.unpack or unpack
-  local skip_reopen_probe = reboot_iop ~= 0 and IsHddExecContextPath(popstarter)
+  local skip_hdd_preflight = reboot_iop ~= 0 and IsHddExecContextPath(popstarter)
   SetLaunchPhase(LaunchState.PHASE_VALIDATE)
-  if not PLDR.PopstarterProbeWithEnsure(popstarter) then
+  if not skip_hdd_preflight and not PLDR.PopstarterProbeWithEnsure(popstarter) then
     BlockLaunchFailure(
       "popstarter missing",
       popstarter,
@@ -3040,7 +3040,7 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     )
     return
   end
-  if not skip_reopen_probe then
+  if not skip_hdd_preflight then
     local open_ok, open_rc, open_stage, open_api, open_path = TryOpenForLaunch(popstarter)
     if not open_ok then
       BlockLaunchFailure(
