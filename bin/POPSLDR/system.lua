@@ -3025,6 +3025,7 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   local boot_path = EnsureTrailingSlash(System.currentDirectory())
   local argv0 = argv and argv[1] or nil
   local unpack_fn = table.unpack or unpack
+  local restore_cwd = nil
   local skip_hdd_preflight = reboot_iop ~= 0 and IsHddExecContextPath(popstarter)
   SetLaunchPhase(LaunchState.PHASE_VALIDATE)
   if not skip_hdd_preflight and not PLDR.PopstarterProbeWithEnsure(popstarter) then
@@ -3081,6 +3082,15 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   end
   SetLaunchPhase(LaunchState.PHASE_EXEC)
   PrepareForExternalELFLaunch(popstarter, context and context.keep_hdd_slots or nil)
+  if reboot_iop == 0 and IsHddExecContextPath(popstarter) and type(System) == "table" and type(System.currentDirectory) == "function" then
+    local popstarter_dir = DirectoryFromExecPath(popstarter)
+    if popstarter_dir ~= nil and popstarter_dir ~= "" and popstarter_dir ~= boot_path then
+      local ok_set_cwd = pcall(System.currentDirectory, popstarter_dir)
+      if ok_set_cwd then
+        restore_cwd = boot_path
+      end
+    end
+  end
   local rc
   if exec_args ~= nil and #exec_args > 0 and unpack_fn ~= nil then
     rc = System.loadELF(popstarter, reboot_iop, unpack_fn(exec_args))
@@ -3088,6 +3098,9 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     rc = System.loadELF(popstarter, reboot_iop, exec_args[1])
   else
     rc = System.loadELF(popstarter, reboot_iop)
+  end
+  if restore_cwd ~= nil and type(System) == "table" and type(System.currentDirectory) == "function" then
+    pcall(System.currentDirectory, restore_cwd)
   end
   if (Timer.getTime(LaunchState.fade_timer) - LaunchState.fade_start) >= LaunchState.watchdog_ms then
     BlockLaunchFailure(
