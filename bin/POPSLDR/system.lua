@@ -1003,6 +1003,11 @@ local function ResolvePopstarterPath(path)
     return resolved
   end
 
+  local sidecar = ResolveHddBootSidecarPopstarter()
+  if sidecar ~= nil then
+    return sidecar
+  end
+
   local fallbacks = {
     JoinPath(APP_DIR_LOCAL, "POPSTARTER.ELF"),
     JoinPath(BOOT_PATH_RAW or System.currentDirectory() or "", "POPSTARTER.ELF"),
