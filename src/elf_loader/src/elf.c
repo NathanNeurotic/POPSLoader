@@ -164,9 +164,10 @@ static void cleanup_hdd_exec_handoff(void) {
 }
 
 static void cleanup_for_embedded_loader(void) {
-	SifExitIopHeap();
-	SifExitRpc();
-	SifExitCmd();
+	/* Do NOT call SifExitIopHeap/SifExitRpc/SifExitCmd here.
+	 * Those calls kill the fileXio IOP service and SIF state that the
+	 * embedded loader (loader.c) needs to load pfs: ELF files.
+	 * loader.c reinitialises SIF itself via SifInitRpc(0) at startup. */
 	FlushCache(0);
 	FlushCache(2);
 }
@@ -272,10 +273,9 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *a
 	}
 	launch_argv[final_argc] = NULL;
 
-	SifInitRpc(0);
-	SifLoadFileInit();
-	SifLoadFileExit();
-
+	/* Do NOT call SifInitRpc/SifLoadFileInit/SifLoadFileExit here before
+	 * copying the loader ELF. Those calls disturb the live SIF/fileXio
+	 * state that the embedded loader needs to access pfs: paths. */
 	boot_pheader = (elf_pheader_t *)(boot_elf + boot_header->phoff);
 	for (i = 0; i < boot_header->phnum; i++) {
 		if (boot_pheader[i].type != ELF_PT_LOAD) {
@@ -331,10 +331,9 @@ static int ExecuteViaEmbeddedLoaderWithPartition(const char *partition, const ch
 	}
 	launch_argv[final_argc] = NULL;
 
-	SifInitRpc(0);
-	SifLoadFileInit();
-	SifLoadFileExit();
-
+	/* Do NOT call SifInitRpc/SifLoadFileInit/SifLoadFileExit here before
+	 * copying the loader ELF. Those calls disturb the live SIF/fileXio
+	 * state that the embedded loader needs to access pfs: paths. */
 	boot_pheader = (elf_pheader_t *)(boot_elf + boot_header->phoff);
 	for (i = 0; i < boot_header->phnum; i++) {
 		if (boot_pheader[i].type != ELF_PT_LOAD) {
@@ -457,6 +456,16 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
 		return -1;
 	}
+
+	/* pfs: and hdd: paths are iomanX-only; SifLoadElf (IOMAN) cannot access
+	 * them and will hang.  Route through the embedded loader which uses
+	 * fileXio to load the target ELF from a mounted pfs: volume.
+	 * Protocol: argv[0]=partition_prefix(""), argv[1]=ELF_path, argv[2..]=target_args.
+	 * The embedded loader (loader.c) reconstructs the correct target argv. */
+	if (is_hdd_or_pfs_exec_path(resolved_path)) {
+		return ExecuteViaEmbeddedLoaderWithPartition("", resolved_path, argc, argv);
+	}
+
 	DPRINTF("LAUNCH: Using ExecPS2\n");
 	DPRINTF("POPSTARTER ExecPS2 argv0=%s\n", argv[0]);
 
@@ -502,6 +511,14 @@ int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]
 
 	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
 		return -1;
+	}
+
+	/* pfs: and hdd: paths are iomanX-only; SifLoadElf (IOMAN) cannot access
+	 * them.  Route through the embedded loader (no IOP reset) so that
+	 * fileXio can load the target ELF from the mounted pfs: volume.
+	 * Protocol: argv[0]="" (partition prefix), argv[1]=ELF_path, argv[2..]=target_args. */
+	if (is_hdd_or_pfs_exec_path(resolved_path)) {
+		return ExecuteViaEmbeddedLoaderWithPartition("", resolved_path, argc, argv);
 	}
 
 	DPRINTF("LAUNCH: Using ExecPS2RebootIOP\n");

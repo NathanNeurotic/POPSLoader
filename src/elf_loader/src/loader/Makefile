@@ -9,6 +9,9 @@ BINDIR = bin/
 EE_BIN = $(BINDIR)loader.elf
 EE_OBJS = src/loader.o
 
+# fileXio is needed by load_elf_via_filexio() for pfs: ELF loading.
+EE_LIBS = -lfileXio
+
 # Enable debug colors?
 LOADER_ENABLE_DEBUG_COLORS ?= 1
 
