@@ -942,6 +942,7 @@ static int lua_checkexist(lua_State *L){
 }
 extern "C" {
 int LoadELFFromFile(const char *filename, int argc, char *argv[]);
+int LoadELFFromFileWithPartition(const char *filename, const char *partition, int argc, char *argv[]);
 int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[]);
 int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]);
 }
@@ -954,16 +955,24 @@ static int lua_loadELF(lua_State *L)
 	int rebootIOP = luaL_checkinteger(L, 2);
 	int extra_args = argc - 2;
 	static char selector_buf[256];
+	static char partition_buf[256];
 	static char *argv_static[2];
 	DPRINTF("# Loading ELF '%s' iop_reboot=%d, extra_args=%d\n", elftoload, rebootIOP, extra_args);
 	if (extra_args > 0) {
 		const char *selector = luaL_checkstring(L, 3);
+		const char *partition = NULL;
+		if (extra_args > 1 && !lua_isnil(L, 4)) {
+			partition = luaL_checkstring(L, 4);
+		}
 		snprintf(selector_buf, sizeof(selector_buf), "%s", selector ? selector : "");
 		argv_static[0] = selector_buf;
 		argv_static[1] = NULL;
-		DPRINTF("# Loading ELF argv0='%s' argc=1\n", argv_static[0]);
+		DPRINTF("# Loading ELF argv0='%s' argc=1 partition='%s'\n", argv_static[0], partition ? partition : "");
 		int rc;
-		if (rebootIOP != 0) {
+		if (rebootIOP == 0 && partition != NULL && partition[0] != '\0') {
+			snprintf(partition_buf, sizeof(partition_buf), "%s", partition);
+			rc = LoadELFFromFileWithPartition(elftoload, partition_buf, 1, argv_static);
+		} else if (rebootIOP != 0) {
 			rc = LoadELFFromFileExecPS2RebootIOP(elftoload, 1, argv_static);
 		} else {
 			rc = LoadELFFromFileExecPS2(elftoload, 1, argv_static);

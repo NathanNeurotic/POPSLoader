@@ -269,6 +269,18 @@ local function GetRecordedHddMountPrefix(partition)
   return HDD_MOUNT_STATE.partitions[normalized_partition]
 end
 
+local function GetRecordedHddMountPartitionBySlot(slot)
+  local normalized_slot = tonumber(slot)
+  if normalized_slot == nil then
+    return nil
+  end
+  local entry = HDD_MOUNT_STATE.slots[normalized_slot]
+  if entry == nil then
+    return nil
+  end
+  return ParseHddPartitionMount(entry.partition)
+end
+
 local function NormalizeHddHelperSlot(slot)
   local normalized = tonumber(slot)
   if normalized == nil or normalized < HDD_SLOT_COMMON then
@@ -515,6 +527,40 @@ local function ExtractLaunchPfsSlot(path)
   local embedded_prefix = ExtractEmbeddedHddMountPrefix(path)
   if embedded_prefix ~= nil then
     return ParsePfsSlot(embedded_prefix)
+  end
+  return nil
+end
+
+local function ResolveHddExecPartitionHint(path)
+  local mount_part = ParseHddPartitionMount(path)
+  if mount_part ~= nil then
+    return mount_part
+  end
+  local parsed_partition = ParseHddExecMountAndRelpath(path)
+  if parsed_partition ~= nil then
+    return ParseHddPartitionMount(parsed_partition)
+  end
+  local slot = ExtractLaunchPfsSlot(path)
+  if slot ~= nil then
+    local recorded_partition = GetRecordedHddMountPartitionBySlot(slot)
+    if recorded_partition ~= nil then
+      return recorded_partition
+    end
+  end
+  local fallbacks = {
+    APP_DIR,
+    BOOT_ARGV0_RAW,
+    BOOT_PATH_RAW
+  }
+  for i = 1, #fallbacks do
+    local fallback_partition = ParseHddPartitionMount(fallbacks[i])
+    if fallback_partition ~= nil then
+      return fallback_partition
+    end
+    local raw_partition = ParseHddExecMountAndRelpath(fallbacks[i])
+    if raw_partition ~= nil then
+      return ParseHddPartitionMount(raw_partition)
+    end
   end
   return nil
 end
@@ -2875,6 +2921,7 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   local boot_path = EnsureTrailingSlash(System.currentDirectory())
   local argv0 = argv and argv[1] or nil
   local unpack_fn = table.unpack or unpack
+  local partition_hint = nil
   SetLaunchPhase(LaunchState.PHASE_VALIDATE)
   if not PLDR.PopstarterProbeWithEnsure(popstarter) then
     BlockLaunchFailure(
@@ -2906,6 +2953,9 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   if open_path ~= nil and open_path ~= popstarter then
     popstarter = open_path
   end
+  if IsHddExecContextPath(popstarter) then
+    partition_hint = ResolveHddExecPartitionHint(popstarter)
+  end
   local exec_args = argv or {}
   SetLaunchPhase(LaunchState.PHASE_FADEOUT)
   UI.LAUNCHING = true
@@ -2929,7 +2979,9 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   SetLaunchPhase(LaunchState.PHASE_EXEC)
   PrepareForExternalELFLaunch(popstarter, context and context.keep_hdd_slots or nil)
   local rc
-  if exec_args ~= nil and #exec_args > 0 and unpack_fn ~= nil then
+  if partition_hint ~= nil and exec_args ~= nil and #exec_args > 0 then
+    rc = System.loadELF(popstarter, reboot_iop, exec_args[1], partition_hint)
+  elseif exec_args ~= nil and #exec_args > 0 and unpack_fn ~= nil then
     rc = System.loadELF(popstarter, reboot_iop, unpack_fn(exec_args))
   elseif exec_args ~= nil and #exec_args == 1 then
     rc = System.loadELF(popstarter, reboot_iop, exec_args[1])

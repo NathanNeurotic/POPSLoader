@@ -70,6 +70,28 @@ static void wipeUserMem(void)
 	}
 }
 
+static int ascii_tolower(int ch)
+{
+	if (ch >= 'A' && ch <= 'Z') {
+		return ch - 'A' + 'a';
+	}
+	return ch;
+}
+
+static int starts_with_case_insensitive(const char *text, const char *prefix)
+{
+	int i;
+	if (text == NULL || prefix == NULL) {
+		return 0;
+	}
+	for (i = 0; prefix[i] != '\0'; i++) {
+		if (text[i] == '\0' || ascii_tolower((unsigned char)text[i]) != ascii_tolower((unsigned char)prefix[i])) {
+			return 0;
+		}
+	}
+	return 1;
+}
+
 //--------------------------------------------------------------
 //End of func:  void wipeUserMem(void)
 //--------------------------------------------------------------
@@ -81,6 +103,7 @@ int main(int argc, char *argv[])
 	SET_GS_BGCOLOUR(WHITE_BG);
 	static t_ExecData elfdata;
 	static char target_path[1024];
+	static char target_argv0[1024];
 	static char target_arg_storage[1024];
 	static char *target_argv[33];
 	size_t target_arg_offset = 0;
@@ -89,24 +112,39 @@ int main(int argc, char *argv[])
 
 	elfdata.epc = 0;
 
-	// argv[0]=target argv0, argv[1]=path to ELF, argv[2..]=arguments
+	// argv[0]=partition, argv[1]=path to ELF, argv[2..]=arguments
 	if (argc < 2) {  
 		SET_GS_BGCOLOUR(RED_BG);
 		return -EINVAL;
 	}
 	snprintf(target_path, sizeof(target_path), "%s", argv[1] ? argv[1] : "");
+	/* Preserve direct HDD exec paths; mounted PFS paths need the partition prefix restored. */
+	if (starts_with_case_insensitive(argv[1], "hdd")) {
+		snprintf(target_argv0, sizeof(target_argv0), "%s", argv[1] ? argv[1] : "");
+	} else {
+		snprintf(target_argv0, sizeof(target_argv0), "%s%s", argv[0] ? argv[0] : "", argv[1] ? argv[1] : "");
+	}
 	target_argc = argc - 1;
 	if (target_argc > 32) {
 		return -E2BIG;
 	}
-	for (i = 0; i < target_argc; i++) {
-		const char *arg = argv[i];
+	{
+		size_t arg_len = strlen(target_argv0) + 1;
+		if (arg_len > sizeof(target_arg_storage)) {
+			return -E2BIG;
+		}
+		memcpy(&target_arg_storage[target_arg_offset], target_argv0, arg_len);
+		target_argv[0] = &target_arg_storage[target_arg_offset];
+		target_arg_offset += arg_len;
+	}
+	for (i = 2; i < argc; i++) {
+		const char *arg = argv[i] ? argv[i] : "";
 		size_t arg_len = strlen(arg) + 1;
 		if ((target_arg_offset + arg_len) > sizeof(target_arg_storage)) {
 			return -E2BIG;
 		}
 		memcpy(&target_arg_storage[target_arg_offset], arg, arg_len);
-		target_argv[i] = &target_arg_storage[target_arg_offset];
+		target_argv[i - 1] = &target_arg_storage[target_arg_offset];
 		target_arg_offset += arg_len;
 	}
 	target_argv[target_argc] = NULL;
@@ -116,10 +154,6 @@ int main(int argc, char *argv[])
 		DPRINTF("> argv[%d] = %s\n", i, argv[i]);
 	}
 	
-	// new_argv[0] = argv[0];
-	// new_argv[1] = argv[1];
-	//new_argv[3] = argv[3];
-
 	SET_GS_BGCOLOUR(CYAN_BG);
 
 	// Initialize

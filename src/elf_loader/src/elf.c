@@ -21,7 +21,6 @@
 #include <sys/stat.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#include <ctype.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include "../../include/dprintf.h"
@@ -82,28 +81,21 @@ static char *store_arg(const char *src, char *storage, size_t storage_size, size
 	return dest;
 }
 
-static int ascii_tolower(int ch) {
-	if (ch >= 'A' && ch <= 'Z') {
-		return ch - 'A' + 'a';
+static int build_partition_arg(const char *partition, char *out, size_t out_size) {
+	size_t partition_len;
+	if (partition == NULL || partition[0] == '\0' || out == NULL || out_size == 0) {
+		return -1;
 	}
-	return ch;
-}
-
-static bool starts_with_case_insensitive(const char *text, const char *prefix) {
-	size_t i;
-	if (text == NULL || prefix == NULL) {
-		return false;
+	partition_len = strlen(partition);
+	if (partition_len == 0) {
+		return -1;
 	}
-	for (i = 0; prefix[i] != '\0'; i++) {
-		if (text[i] == '\0' || ascii_tolower((unsigned char)text[i]) != ascii_tolower((unsigned char)prefix[i])) {
-			return false;
-		}
+	if (partition[partition_len - 1] == ':') {
+		snprintf(out, out_size, "%s", partition);
+	} else {
+		snprintf(out, out_size, "%s:", partition);
 	}
-	return true;
-}
-
-static bool is_hdd_resident_exec_path(const char *filename) {
-	return starts_with_case_insensitive(filename, "hdd") || starts_with_case_insensitive(filename, "pfs");
+	return 0;
 }
 
 /* IMPORTANT: This method wipe memory where the loader is going to be allocated 
@@ -126,7 +118,7 @@ static void wipe_bramMem(void) {
 	}
 }
 
-static int ExecuteViaEmbeddedLoader(const char *resolved_path, const char *target_argv0, int argc, char *argv[]) {
+static int ExecuteViaEmbeddedLoader(const char *loader_path, const char *partition, int argc, char *argv[]) {
 	int i;
 	int final_argc = argc + 2;
 	static const int kMaxArgc = 32;
@@ -137,7 +129,7 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, const char *targe
 	elf_header_t *boot_header = (elf_header_t *)boot_elf;
 	elf_pheader_t *boot_pheader;
 
-	if (argc < 0 || resolved_path == NULL || resolved_path[0] == '\0' || target_argv0 == NULL || target_argv0[0] == '\0') {
+	if (argc < 0 || loader_path == NULL || loader_path[0] == '\0' || partition == NULL) {
 		return -4;
 	}
 	if (argc > 0 && (argv == NULL || argv[0] == NULL)) {
@@ -150,11 +142,11 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, const char *targe
 		return -5;
 	}
 
-	launch_argv[0] = store_arg(target_argv0, launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
+	launch_argv[0] = store_arg(partition, launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
 	if (!launch_argv[0]) {
 		return -3;
 	}
-	launch_argv[1] = store_arg(resolved_path, launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
+	launch_argv[1] = store_arg(loader_path, launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
 	if (!launch_argv[1]) {
 		return -3;
 	}
@@ -192,7 +184,7 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, const char *targe
 	return -1;
 }
 
-int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
+int LoadELFFromFile(const char *filename, int argc, char *argv[]) {
 	int i;
 	int new_argc = 1;
 	int fd = -1;
@@ -262,16 +254,40 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	return -1;
 }
 
-int LoadELFFromFile(const char *filename, int argc, char *argv[])
+int LoadELFFromFileWithPartition(const char *filename, const char *partition, int argc, char *argv[])
 {
-	return LoadELFFromFileWithPartition(filename, argc, argv);
+	int fd = -1;
+	char resolved_path[256];
+	char partition_arg[256];
+
+	if (partition == NULL || partition[0] == '\0') {
+		return LoadELFFromFile(filename, argc, argv);
+	}
+	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
+		return -1;
+	}
+	if (build_partition_arg(partition, partition_arg, sizeof(partition_arg)) < 0) {
+		return -4;
+	}
+	wipe_bramMem();
+
+	DPRINTF("LAUNCH: BEGIN PARTITIONED\n");
+	DPRINTF("LAUNCH: popstarter path: %s (resolved to %s)\n", filename, resolved_path);
+	DPRINTF("LAUNCH: partition hint: %s\n", partition_arg);
+	fd = open(resolved_path, O_RDONLY);
+	DPRINTF("LAUNCH: popstarter open rc=%d (open)\n", fd);
+	if (fd >= 0) {
+		close(fd);
+	} else {
+		return fd;
+	}
+	return ExecuteViaEmbeddedLoader(resolved_path, partition_arg, argc, argv);
 }
 
 int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 {
 	t_ExecData elfdata;
 	char resolved_path[256];
-	const char *target_argv0;
 	int ret;
 
 	if (argc <= 0 || argv == NULL || argv[0] == NULL) {
@@ -279,11 +295,6 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 	}
 	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
 		return -1;
-	}
-	if (is_hdd_resident_exec_path(filename) || is_hdd_resident_exec_path(resolved_path)) {
-		target_argv0 = is_hdd_resident_exec_path(filename) ? filename : resolved_path;
-		wipe_bramMem();
-		return ExecuteViaEmbeddedLoader(resolved_path, target_argv0, argc, argv);
 	}
 	DPRINTF("LAUNCH: Using ExecPS2\n");
 	DPRINTF("POPSTARTER ExecPS2 argv0=%s\n", argv[0]);
