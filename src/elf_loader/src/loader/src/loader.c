@@ -144,6 +144,9 @@ int main(int argc, char *argv[])
 	size_t target_arg_offset = 0;
 	int target_argc = 0;
 	int ret, i;
+	int target_arg_index = 0;
+	int target_arg_start = 2;
+	int preserve_selector_argv0 = 0;
 
 	elfdata.epc = 0;
 
@@ -167,18 +170,23 @@ int main(int argc, char *argv[])
 		memcpy(full_path + partition_len, target_path, target_len + 1);
 	}
 	load_path = full_path;
-	target_argc = argc - 1;
+	preserve_selector_argv0 = (argc >= 3 && argv[2] != NULL && argv[2][0] != '\0');
+	target_argc = preserve_selector_argv0 ? (argc - 2) : (argc - 1);
 	if (target_argc > 32) {
 		return -E2BIG;
 	}
-	target_argv[0] = full_path;
-	for (i = 2; i < argc; i++) {
+	if (!preserve_selector_argv0) {
+		target_argv[0] = full_path;
+		target_arg_start = 2;
+		target_arg_index = 1;
+	}
+	for (i = target_arg_start; i < argc; i++) {
 		size_t arg_len = strlen(argv[i]) + 1;
 		if ((target_arg_offset + arg_len) > sizeof(target_arg_storage)) {
 			return -E2BIG;
 		}
 		memcpy(&target_arg_storage[target_arg_offset], argv[i], arg_len);
-		target_argv[i - 1] = &target_arg_storage[target_arg_offset];
+		target_argv[target_arg_index++] = &target_arg_storage[target_arg_offset];
 		target_arg_offset += arg_len;
 	}
 	target_argv[target_argc] = NULL;
