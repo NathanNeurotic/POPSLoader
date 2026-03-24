@@ -101,12 +101,13 @@ static void wipe_bramMem(void) {
 	}
 }
 
-static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *argv[]) {
+static int ExecuteViaEmbeddedLoaderWithPartition(const char *partition, const char *resolved_path, int argc, char *argv[]) {
 	int i;
-	int final_argc = argc + 1;
+	int final_argc = argc + 2;
 	static const int kMaxArgc = 32;
 	static char *launch_argv[33];
 	static char launch_arg_storage[2048];
+	static char partition_prefix[256];
 	size_t storage_offset = 0;
 	u8 *boot_elf = (u8 *)&loader_elf;
 	elf_header_t *boot_header = (elf_header_t *)boot_elf;
@@ -122,8 +123,15 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *a
 		return -5;
 	}
 
-	launch_argv[0] = store_arg(resolved_path, launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
+	snprintf(partition_prefix, sizeof(partition_prefix), "%s%s",
+	         partition ? partition : "",
+	         (partition != NULL && partition[0] != '\0') ? ":" : "");
+	launch_argv[0] = store_arg(partition_prefix, launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
 	if (!launch_argv[0]) {
+		return -3;
+	}
+	launch_argv[1] = store_arg(resolved_path, launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
+	if (!launch_argv[1]) {
 		return -3;
 	}
 	for (i = 0; i < argc; i++) {
@@ -131,7 +139,7 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *a
 		if (!stored_arg) {
 			return -3;
 		}
-		launch_argv[i + 1] = stored_arg;
+		launch_argv[i + 2] = stored_arg;
 	}
 	launch_argv[final_argc] = NULL;
 
@@ -246,7 +254,7 @@ int LoadELFFromFileWithPartition(const char *filename, const char *partition, in
 	} else {
 		return fd;
 	}
-	return ExecuteViaEmbeddedLoader(resolved_path, argc, argv);
+	return ExecuteViaEmbeddedLoaderWithPartition(partition, resolved_path, argc, argv);
 }
 
 int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
