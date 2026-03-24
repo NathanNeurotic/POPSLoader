@@ -48,6 +48,7 @@ extern unsigned char loader_elf[];
 #define LOAD_STAGE_AFTER_IOP_SYNC   0x2A2AA5
 #define LOAD_STAGE_AFTER_CLEANUP    0x0080FF
 #define LOAD_STAGE_BEFORE_EXECPS2   0x800080
+#define EMBEDDED_LOADER_EXECPS2_RETURN_BIAS 2000
 #define IOP_RESET_ARGS             "rom0:UDNL rom0:EELOADCNF"
 
 extern int _iop_reboot_count;
@@ -283,6 +284,9 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *a
 	cleanup_for_embedded_loader();
 
 	rc = ExecPS2((void *)boot_header->entry, 0, final_argc, launch_argv);
+	if (rc <= 0) {
+		return rc - EMBEDDED_LOADER_EXECPS2_RETURN_BIAS;
+	}
 	return rc;
 }
 
@@ -343,6 +347,9 @@ static int ExecuteViaEmbeddedLoaderWithPartition(const char *partition, const ch
 	cleanup_for_embedded_loader();
 
 	rc = ExecPS2((void *)boot_header->entry, 0, final_argc, launch_argv);
+	if (rc <= 0) {
+		return rc - EMBEDDED_LOADER_EXECPS2_RETURN_BIAS;
+	}
 	return rc;
 }
 
