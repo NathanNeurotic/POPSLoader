@@ -118,6 +118,11 @@ Last updated: 2026-03-24
 - Hardware conclusion from that run:
   - the added `SifInitRpc(0)` after `wipeUserMem()` did not produce a stable visible outcome
   - `Unknown (verify on hardware)` whether the flash was before or after the embedded loader's `SifLoadElf()` call
+- Hardware result from commit `3d52065`:
+  - flashed text and then black screen again, even though the diagnostic build now loops forever after recording the embedded loader `SifLoadElf()` outcome
+- Hardware conclusion from that run:
+  - the diagnostic build did not present a stable post-`SifLoadElf()` halt on hardware
+  - inference from repo behavior: the failure is before that post-`SifLoadElf()` halt point, or the visible flash was from an earlier stage such as the pre-embedded-loader marker in `src/elf_loader/src/elf.c`
 - Repo-verified implementation:
   - `.github/workflows/compilation.yml` now builds and uploads `POPSLOADER-HDD-DIAGNOSTIC` with `LOADER_ENABLE_DEBUG_COLORS=1`, without the older `src/elf_loader/src/elf.c` early-return probe defines.
   - The first diagnostic loader only wrote `GS_BGCOLOR` in `src/elf_loader/src/loader/src/loader.c`; it did not initialize a visible debug screen in that loader.
@@ -133,10 +138,10 @@ Last updated: 2026-03-24
   - Inference from repo code: if `SifInitRpc(0)` establishes EE-side RPC state in wiped user memory, the embedded loader can corrupt its own later `SifLoadElf()` path even though the direct working launchers in `src/elf_loader/src/elf.c` initialize RPC immediately before `SifLoadFileInit()` and do not wipe memory between those calls.
   - Commit `4d350a4` now reinitializes SIF RPC after `wipeUserMem()` and before the embedded loader's `SifLoadFileInit()` / `SifLoadElf()` sequence.
   - The remaining issue is observability: the embedded loader's stage text still flashes too quickly to tell whether `SifLoadElf(target_path)` succeeded, failed, or hung.
-  - The next diagnostic artifact now adds a diagnostic-only halt immediately after the embedded loader records the `SifLoadElf()` outcome, so hardware can distinguish:
-    - stable yellow `SifLoadElf ok`
-    - stable magenta `SifLoadElf failed`
-    - or a black screen before that halt point
+  - Commit `3d52065` now adds a diagnostic-only halt immediately after the embedded loader records the `SifLoadElf()` outcome.
+  - Because that post-`SifLoadElf()` halt still did not remain visible, the next diagnostic artifact now halts earlier, immediately before the embedded loader calls `SifLoadFileInit()` / `SifLoadElf()`, so hardware can distinguish:
+    - stable green `before SifLoadElf`
+    - or a black screen before that earlier halt point
 - Hardware goal:
   - distinguish failure before embedded loader,
   - during embedded-loader image staging in `src/elf_loader/src/elf.c`,
@@ -148,7 +153,6 @@ Last updated: 2026-03-24
   - after reset/sync but before final `ExecPS2`,
   - or after final `ExecPS2`.
 - Expected result for this artifact:
-  - if the diagnostic build shows stable `SifLoadElf ok`, the remaining black screen is later than the target ELF load and later than the embedded loader's pre-load RPC setup
-  - if the diagnostic build shows stable `SifLoadElf failed`, the failure is inside the target ELF load path itself
-  - if it still black-screens before the halt point, the failure is earlier than the post-`SifLoadElf()` diagnostic halt
+  - if the diagnostic build shows stable green `before SifLoadElf`, the failure is inside or after the target ELF load call itself
+  - if it still flashes and black-screens, the failure is earlier than the embedded loader's `SifLoadElf()` call
 - Without that hardware observation, further launch-path edits are likely to repeat already-failed theories.

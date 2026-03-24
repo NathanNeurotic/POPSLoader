@@ -74,7 +74,7 @@ static void loader_diag_stage(unsigned long colour, const char *label)
 }
 #endif
 
-#ifdef LOADER_DIAG_HALT_AFTER_SIFLOAD
+#if defined(LOADER_DIAG_HALT_AFTER_SIFLOAD) || defined(LOADER_DIAG_HALT_BEFORE_SIFLOAD)
 static void loader_diag_halt(const char *reason)
 {
 #ifdef LOADER_ENABLE_DEBUG_COLORS
@@ -291,6 +291,10 @@ int main(int argc, char *argv[])
 	//Writeback data cache before loading ELF.
 	FlushCache(0);
 	loader_diag_stage(GREEN_BG, "before SifLoadElf");
+#ifdef LOADER_DIAG_HALT_BEFORE_SIFLOAD
+	LOADER_DIAG_PRINTF("target=%s\n", target_path);
+	loader_diag_halt("before SifLoadElf");
+#endif
 	SifLoadFileInit();
 	ret = SifLoadElf(target_path, &elfdata);
 	SifLoadFileExit();
