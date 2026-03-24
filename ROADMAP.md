@@ -39,7 +39,7 @@ Current branch has substantial stabilization work already landed (settings trans
 
 ### 3) Hardware validation depth
 - Resolve the still-unverified/failed `POPSTARTER.ELF on HDD` launch path before expanding broader HDD coverage. See `FAILURES.md`.
-- Produce a diagnostic HDD POPSTARTER artifact that makes the embedded-loader handoff stage visible on hardware before more handoff refactors.
+- Use the CI-built HDD POPSTARTER diagnostic artifact to record the last observed embedded-loader stage on hardware before more handoff refactors.
 - Expand and record hardware coverage runs in `QA_REGRESSION_MATRIX.md`.
 - Prioritize combined scenarios: large multi-root USB + MX4SIO + MMCE + HDD installations.
 

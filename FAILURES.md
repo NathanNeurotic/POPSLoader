@@ -86,11 +86,18 @@ Last updated: 2026-03-24
 - Do not treat repo history as proof of a solved path; many of those commits document failed or partial experiments.
 
 ## Next useful step
-- Produce a diagnostic build that makes embedded-loader handoff stage visible on hardware.
-- Goal:
+- Use the CI-built `POPSLOADER-HDD-DIAGNOSTIC` artifact for the next hardware run.
+- Repo-verified implementation:
+  - `.github/workflows/compilation.yml` now builds and uploads a second artifact with `LOADER_ENABLE_DEBUG_COLORS=1`.
+  - `src/elf_loader/src/loader/src/loader.c` now emits GS color stages for:
+    - embedded loader entry / argc validation / `SifLoadElf` progress,
+    - successful completion of `SifIopReset` + `SifIopSync`,
+    - post-ROM-module reload cleanup,
+    - and final `ExecPS2` handoff.
+- Hardware goal:
   - distinguish failure before embedded loader,
   - during target ELF load,
   - during IOP reset/sync,
+  - after reset/sync but before final `ExecPS2`,
   - or after final `ExecPS2`.
-- Existing code already has GS color stage markers in `src/elf_loader/src/loader/src/loader.c`; the next artifact should make those observable in CI-built hardware tests.
-- Without that, further launch-path edits are likely to repeat already-failed theories.
+- Without that hardware observation, further launch-path edits are likely to repeat already-failed theories.

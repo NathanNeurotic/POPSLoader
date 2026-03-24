@@ -240,6 +240,7 @@ int main(int argc, char *argv[])
 		}
 		while (!SifIopSync()) {
 		}
+		SET_GS_BGCOLOUR(ORANGE_BG);
 
 		SifInitRpc(0);
 		SifLoadFileInit();
@@ -249,6 +250,7 @@ int main(int argc, char *argv[])
 		SifLoadFileExit();
 		SifExitRpc();
 
+		SET_GS_BGCOLOUR(BROWN_BG);
 		FlushCache(0);
 		FlushCache(2);
 
