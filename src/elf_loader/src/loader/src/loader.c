@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <kernel.h>
 #include <loadfile.h>
+#include <iopheap.h>
 #include <iopcontrol.h>
 #include <sifrpc.h>
 #include <errno.h>
