@@ -74,7 +74,7 @@ static void loader_diag_stage(unsigned long colour, const char *label)
 }
 #endif
 
-#if defined(LOADER_DIAG_HALT_AFTER_SIFLOAD) || defined(LOADER_DIAG_HALT_BEFORE_SIFLOAD)
+#if defined(LOADER_DIAG_HALT_AFTER_SIFLOAD) || defined(LOADER_DIAG_HALT_BEFORE_SIFLOAD) || defined(LOADER_DIAG_HALT_AFTER_ARG_COPY)
 static void loader_diag_halt(const char *reason)
 {
 #ifdef LOADER_ENABLE_DEBUG_COLORS
@@ -245,6 +245,9 @@ int main(int argc, char *argv[])
 	if (argc > 1) {
 		LOADER_DIAG_PRINTF("argv1_ptr=%p\n", argv[1]);
 	}
+	if (argc > 2) {
+		LOADER_DIAG_PRINTF("argv2_ptr=%p\n", argv[2]);
+	}
 
 	// argv[0]=partition prefix, argv[1]=path to ELF, argv[2..]=arguments
 	if (argc < 2) {  
@@ -273,6 +276,16 @@ int main(int argc, char *argv[])
 		target_arg_offset += arg_len;
 	}
 	target_argv[target_argc] = NULL;
+
+#ifdef LOADER_DIAG_HALT_AFTER_ARG_COPY
+	loader_diag_stage(CYAN_BG, "embedded loader argv copied");
+	LOADER_DIAG_PRINTF("target=%s\n", target_path);
+	LOADER_DIAG_PRINTF("exec0=%s\n", target_argv[0]);
+	if (target_argc > 1) {
+		LOADER_DIAG_PRINTF("exec1=%s\n", target_argv[1]);
+	}
+	loader_diag_halt("after argv copy");
+#endif
 
 	DPRINTF("> argv[0] = %s\n", argv[0]);
 	for (i = 1; i < argc; i++) {
