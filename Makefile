@@ -254,6 +254,8 @@ $(EE_ASM_DIR)mx4sio_bd.c: $(PS2SDK_MX4SIO_DIR)/mx4sio_bd.irx | $(EE_ASM_DIR)
 #------------------------------------------------------------------#
 elfloader: src/elf_loader/libcustom-elf-loader.a
 
+$(EE_BIN): src/elf_loader/libcustom-elf-loader.a
+
 ELF_LOADER_DEPS = \
 	src/elf_loader/Makefile \
 	src/elf_loader/include/elf-loader.h \
