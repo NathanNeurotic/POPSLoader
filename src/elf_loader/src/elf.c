@@ -43,6 +43,7 @@ extern unsigned char loader_elf[];
 #define LOAD_STAGE_BEFORE_IOP_RESET 0x80FF00
 #define LOAD_STAGE_AFTER_IOP_RESET  0x00A5FF
 #define LOAD_STAGE_AFTER_IOP_SYNC   0x2A2AA5
+#define LOAD_STAGE_BEFORE_DIRECT_CLEANUP 0xFFFFFF
 #define LOAD_STAGE_AFTER_CLEANUP    0x0080FF
 #define LOAD_STAGE_BEFORE_EXECPS2   0x800080
 #define IOP_RESET_ARGS             "rom0:UDNL rom0:EELOADCNF"
@@ -477,7 +478,7 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 		set_hdd_exec_stage_colour(resolved_path, LOAD_STAGE_SIFLOAD_FAILED);
 		return -2;
 	}
-	set_hdd_exec_stage_colour(resolved_path, LOAD_STAGE_SIFLOAD_OK);
+	set_hdd_exec_stage_colour(resolved_path, LOAD_STAGE_BEFORE_DIRECT_CLEANUP);
 
 	if (argc >= 2 && argv[1] != NULL && strcmp(argv[0], resolved_path) != 0 && strcmp(argv[1], resolved_path) == 0) {
 		use_exec_path_argv0 = true;
