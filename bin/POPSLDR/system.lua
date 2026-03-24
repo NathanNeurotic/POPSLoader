@@ -3126,8 +3126,14 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   Screen.clear(Color.new(0, 0, 0))
   Screen.flip()
   if (Timer.getTime(LaunchState.fade_timer) - LaunchState.fade_start) >= LaunchState.watchdog_ms then
+    local rc_detail = tostring(rc)
+    if rc_detail == "nil" then
+      rc_detail = "nil (exec did not transfer control)"
+    else
+      rc_detail = rc_detail.." (exec did not transfer control)"
+    end
     BlockLaunchFailure(
-      "Launch timeout: exec did not transfer control",
+      rc_detail,
       popstarter,
       context and context.device_page or "unknown",
       argv0,
