@@ -254,7 +254,16 @@ $(EE_ASM_DIR)mx4sio_bd.c: $(PS2SDK_MX4SIO_DIR)/mx4sio_bd.irx | $(EE_ASM_DIR)
 #------------------------------------------------------------------#
 elfloader: src/elf_loader/libcustom-elf-loader.a
 
-src/elf_loader/libcustom-elf-loader.a: src/elf_loader
+ELF_LOADER_DEPS = \
+	src/elf_loader/Makefile \
+	src/elf_loader/include/elf-loader.h \
+	src/elf_loader/src/elf.c \
+	src/elf_loader/src/elf.h \
+	src/elf_loader/src/loader/Makefile \
+	src/elf_loader/src/loader/linkfile \
+	src/elf_loader/src/loader/src/loader.c
+
+src/elf_loader/libcustom-elf-loader.a: $(ELF_LOADER_DEPS)
 	@$(MAKE) cleanbin
 	@$(MAKE) -C src/elf_loader/src/loader/ clean all
 	@$(MAKE) -C src/elf_loader clean all
