@@ -232,39 +232,51 @@ int main(int argc, char *argv[])
 	ret = SifLoadElf(target_path, &elfdata);
 	SifLoadFileExit();
 	SET_GS_BGCOLOUR(BLUE_BG);
-	if (ret == 0 && elfdata.epc != 0) {
-		SET_GS_BGCOLOUR(YELLOW_BG);
-
-		FlushCache(0);
-		while (!SifIopReset(NULL, 0)) {
+	if (ret != 0 || elfdata.epc == 0) {
+		/* SifLoadElf failed — expected for pfs: paths since rom0:LOADFILE
+		   uses ioman which cannot access PFS (registered with iomanX only).
+		   Fall back to loading the ELF directly via fileXio. */
+		unsigned int fio_entry = 0, fio_gp = 0;
+		DPRINTF("SifLoadElf failed (ret=%d epc=%u), trying fileXio\n", ret, elfdata.epc);
+		fileXioInit();
+		if (load_elf_via_filexio(target_path, &fio_entry, &fio_gp) == 0 && fio_entry != 0) {
+			elfdata.epc = fio_entry;
+			elfdata.gp = fio_gp;
+			DPRINTF("fileXio load OK: epc=0x%08x gp=0x%08x\n", fio_entry, fio_gp);
+		} else {
+			DPRINTF("fileXio load also failed\n");
+			SET_GS_BGCOLOUR(MAGENTA_BG);
+			SifExitRpc();
+			return -ENOENT;
 		}
-		while (!SifIopSync()) {
-		}
-		SET_GS_BGCOLOUR(ORANGE_BG);
-
-		SifInitRpc(0);
-		SifLoadFileInit();
-		SifLoadModule("rom0:SIO2MAN", 0, NULL);
-		SifLoadModule("rom0:MCMAN", 0, NULL);
-		SifLoadModule("rom0:MCSERV", 0, NULL);
-		SifLoadFileExit();
-		SifExitRpc();
-
-		SET_GS_BGCOLOUR(BROWN_BG);
-		FlushCache(0);
-		FlushCache(2);
-
-		SET_GS_BGCOLOUR(PURPBLE_BG);
-		DPRINTF("POPS EXEC: argc=%d\n", target_argc);
-		for (i = 0; i < target_argc; i++) {
-			DPRINTF("POPS EXEC: argv[%d] = %s\n", i, target_argv[i]);
-		}
-		return ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, target_argc, target_argv);
-	} else {
-		SET_GS_BGCOLOUR(MAGENTA_BG);
-		SifExitRpc();
-		return -ENOENT;
 	}
+	SET_GS_BGCOLOUR(YELLOW_BG);
+
+	FlushCache(0);
+	while (!SifIopReset(NULL, 0)) {
+	}
+	while (!SifIopSync()) {
+	}
+	SET_GS_BGCOLOUR(ORANGE_BG);
+
+	SifInitRpc(0);
+	SifLoadFileInit();
+	SifLoadModule("rom0:SIO2MAN", 0, NULL);
+	SifLoadModule("rom0:MCMAN", 0, NULL);
+	SifLoadModule("rom0:MCSERV", 0, NULL);
+	SifLoadFileExit();
+	SifExitRpc();
+
+	SET_GS_BGCOLOUR(BROWN_BG);
+	FlushCache(0);
+	FlushCache(2);
+
+	SET_GS_BGCOLOUR(PURPBLE_BG);
+	DPRINTF("POPS EXEC: argc=%d\n", target_argc);
+	for (i = 0; i < target_argc; i++) {
+		DPRINTF("POPS EXEC: argv[%d] = %s\n", i, target_argv[i]);
+	}
+	return ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, target_argc, target_argv);
 }
 
 //--------------------------------------------------------------

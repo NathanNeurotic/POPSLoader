@@ -5,7 +5,7 @@ Last updated: 2026-03-24
 ## Active Unresolved Failure
 
 ### HDD-resident POPSTARTER black screen
-- Status: embedded-loader bypass applied (`reboot_iop = 1` for HDD), `Unknown (verify on hardware)`.
+- Status: fileXio fallback applied in embedded loader (bypasses SifLoadElf for PFS), `Unknown (verify on hardware)`.
 - Scope:
   - USB/MMCE/SMB launches work.
   - HDD games list/browse behavior works.
@@ -91,13 +91,27 @@ Last updated: 2026-03-24
 - Result: hardware still black-screened.
 - Conclusion: the slot-mismatch was a real code bug, but fixing it alone is not sufficient. The embedded loader's execution environment is fundamentally unable to load POPSTARTER from PFS.
 
-### Embedded-loader bypass (current attempt)
-- Approach: set `reboot_iop = 1` for HDD policy in `system.lua`, routing through `LoadELFFromFileExecPS2RebootIOP` instead of the embedded loader.
-- Rationale: ALL 14+ previous failures went through the embedded loader. This bypasses it entirely, loading POPSTARTER via `SifLoadElf` in the main process context where fileXio/iomanX/PFS are fully active.
+### Embedded-loader bypass (hardware-verified failure)
+- Commit: `c60ce3e` `Bypass embedded loader for HDD POPSTARTER`
+- What it tried: set `reboot_iop = 1` for HDD, routing through `LoadELFFromFileExecPS2RebootIOP` which uses `SifLoadElf` in the main process context.
+- Result: hardware still black-screened.
+- Conclusion: `SifLoadElf` cannot open PFS paths **regardless of execution context**. This is because `rom0:LOADFILE` on the IOP uses `ioman`, and PFS (`ps2fs.irx`) registers only with `iomanX`. `mass:` works because BDM/FAT32 drivers register with both `ioman` and `iomanX`.
+
+## Confirmed root cause: SifLoadElf cannot access PFS
+- `SifLoadElf` → `rom0:LOADFILE` → `ioman` file I/O → no PFS support
+- `fileXioOpen` → `iomanX` file I/O → PFS IS supported
+- This explains why ALL prior HDD attempts failed: they all used SifLoadElf for PFS paths
+
+### fileXio fallback in embedded loader (current attempt)
+- Approach: when `SifLoadElf` fails in the embedded loader, fall back to `load_elf_via_filexio()` (existing dead code in `loader.c` lines 95-167, now activated)
+- This uses `fileXioOpen/Read` through `iomanX`, which knows about PFS mounts
+- Combined with the slot fix (`pfs3:/` instead of `pfs:/`), the correct mount point is used
+- `reboot_iop` reverted to 0 for HDD to restore the embedded loader path
 - Status: `Unknown (verify on hardware)`.
 
 ## Do not re-assume without new evidence (updated)
-- Do not assume any variant of the embedded loader path works for HDD POPSTARTER.
+- Do not assume `SifLoadElf` can open PFS paths (it cannot).
+- Do not assume any variant of the embedded loader path works without fileXio fallback.
 - Previous assumptions still apply (see above).
 
 ## Diagnostic artifact (still available)

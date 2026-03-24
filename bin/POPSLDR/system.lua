@@ -3273,7 +3273,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   }
   local reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
   if policy.name == "HDD" then
-    reboot_iop = 1
+    reboot_iop = 0
   elseif IsPfsExecPath(popstarter) then
     reboot_iop = 1
   end
