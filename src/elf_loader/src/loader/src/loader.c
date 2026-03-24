@@ -38,6 +38,7 @@
 #define ORANGE_BG 0x00A5FF  // after SifIopReset
 #define BROWN_BG 0x2A2AA5  // after SifIopSync
 #define PURPBLE_BG 0x800080  // before ExecPS2
+#define OLIVE_BG 0x0080A0  // ExecPS2 returned to embedded loader
 #define IOP_RESET_ARGS "rom0:UDNL rom0:EELOADCNF"
 
 
@@ -242,7 +243,9 @@ int main(int argc, char *argv[])
 		for (i = 0; i < target_argc; i++) {
 			DPRINTF("POPS EXEC: argv[%d] = %s\n", i, target_argv[i]);
 		}
-		return ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, target_argc, target_argv);
+		ret = ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, target_argc, target_argv);
+		SET_GS_BGCOLOUR(OLIVE_BG);
+		return ret;
 	} else {
 		SET_GS_BGCOLOUR(MAGENTA_BG);
 		SifExitRpc();
