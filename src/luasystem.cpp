@@ -19,6 +19,25 @@
 #include "include/dprintf.h"
 
 #define MAX_DIR_FILES 512
+#define SET_GS_BGCOLOUR(colour) {*((volatile unsigned long int *)0x120000E0) = colour;}
+
+static bool IsHddOrPfsLaunchPath(const char *path)
+{
+    if (path == NULL) {
+        return false;
+    }
+    return strncmp(path, "hdd", 3) == 0 ||
+        strncmp(path, "HDD", 3) == 0 ||
+        strncmp(path, "pfs", 3) == 0 ||
+        strncmp(path, "PFS", 3) == 0;
+}
+
+static void SetLoadElfStageColour(const char *path, unsigned long colour)
+{
+    if (IsHddOrPfsLaunchPath(path)) {
+        SET_GS_BGCOLOUR(colour);
+    }
+}
 
 extern unsigned char mx4sio_bd_irx[];
 extern unsigned int size_mx4sio_bd_irx;
@@ -1015,6 +1034,7 @@ static int lua_loadELF(lua_State *L)
 	static char arg_bufs[32][256];
 	static char partition_buf[256];
 	static char *argv_static[33];
+	SetLoadElfStageColour(elftoload, 0xFF00FF);
 	DPRINTF("# Loading ELF '%s' iop_reboot=%d, extra_args=%d\n", elftoload, rebootIOP, extra_args);
 	if (extra_args > 0) {
 		bool selector_overrides_path;
@@ -1039,12 +1059,16 @@ static int lua_loadELF(lua_State *L)
 		DPRINTF("# Loading ELF argv0='%s' argc=%d\n", argv_static[0], extra_args);
 		int rc;
 		if (rebootIOP != 0 && is_hdd_or_pfs_selector_exec) {
+			SetLoadElfStageColour(elftoload, 0xFFFFFF);
 			rc = LoadELFFromFileExecPS2(elftoload, extra_args, argv_static);
 		} else if (rebootIOP != 0) {
+			SetLoadElfStageColour(elftoload, 0x800080);
 			rc = LoadELFFromFileExecPS2RebootIOP(elftoload, extra_args, argv_static);
 		} else if (selector_overrides_path && has_hdd_partition_prefix) {
+			SetLoadElfStageColour(elftoload, 0x00A5FF);
 			rc = LoadELFFromFileWithPartition(elftoload, partition_buf, extra_args, argv_static);
 		} else {
+			SetLoadElfStageColour(elftoload, 0xFFFFFF);
 			rc = LoadELFFromFileExecPS2(elftoload, extra_args, argv_static);
 		}
 		lua_pushinteger(L, rc);
@@ -1053,8 +1077,10 @@ static int lua_loadELF(lua_State *L)
 	DPRINTF("# Loading ELF argv0 default (argc=0)\n");
 	int rc;
 	if (rebootIOP != 0) {
+		SetLoadElfStageColour(elftoload, 0x800080);
 		rc = LoadELFFromFileExecPS2RebootIOP(elftoload, 0, NULL);
 	} else {
+		SetLoadElfStageColour(elftoload, 0x00A5FF);
 		rc = LoadELFFromFile(elftoload, 0, NULL);
 	}
 	lua_pushinteger(L, rc);
