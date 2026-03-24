@@ -36,7 +36,10 @@ extern unsigned char loader_elf[];
 /* Hardware-visible handoff stages in BGR format. Keep these aligned with
  * src/elf_loader/src/loader/src/loader.c so both direct and embedded HDD
  * launch paths report the same colours on hardware. */
+#define LOAD_STAGE_BEFORE_DIRECT_RESOLVE 0x808080
+#define LOAD_STAGE_BEFORE_PARTITION_RESOLVE 0x804000
 #define LOAD_STAGE_BEFORE_SIFLOAD   0x00FF00
+#define LOAD_STAGE_BEFORE_SIFLOAD_PFS 0xFFFFFF
 #define LOAD_STAGE_AFTER_SIFLOAD    0xFF0000
 #define LOAD_STAGE_SIFLOAD_OK       0x00FFFF
 #define LOAD_STAGE_SIFLOAD_FAILED   0xFF00FF
@@ -425,6 +428,7 @@ static int LoadELFFromFileInternal(const char *filename, const char *partition, 
 
 int LoadELFFromFileWithPartition(const char *filename, const char *partition, int argc, char *argv[])
 {
+	set_hdd_exec_stage_colour(filename, LOAD_STAGE_BEFORE_PARTITION_RESOLVE);
 	return LoadELFFromFileInternal(filename, partition, argc, argv, true);
 }
 
@@ -449,13 +453,18 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 	if (argc <= 0 || argv == NULL || argv[0] == NULL) {
 		return -4;
 	}
+	set_hdd_exec_stage_colour(filename, LOAD_STAGE_BEFORE_DIRECT_RESOLVE);
 	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
 		return -1;
 	}
 	DPRINTF("LAUNCH: Using ExecPS2\n");
 	DPRINTF("POPSTARTER ExecPS2 argv0=%s\n", argv[0]);
 
-	set_hdd_exec_stage_colour(resolved_path, LOAD_STAGE_BEFORE_SIFLOAD);
+	if (strncmp(resolved_path, "pfs", 3) == 0 || strncmp(resolved_path, "PFS", 3) == 0) {
+		set_hdd_exec_stage_colour(resolved_path, LOAD_STAGE_BEFORE_SIFLOAD_PFS);
+	} else {
+		set_hdd_exec_stage_colour(resolved_path, LOAD_STAGE_BEFORE_SIFLOAD);
+	}
 	SifInitRpc(0);
 	SifLoadFileInit();
 	ret = SifLoadElf(resolved_path, &elfdata);
