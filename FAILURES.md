@@ -143,6 +143,11 @@ Last updated: 2026-03-24
 - Hardware conclusion from that run:
   - the embedded loader still did not present a stable post-argument-copy halt on hardware
   - inference from repo behavior: that artifact still grouped together primary path copy, forwarded selector dereference, and copied-string debug printing, so it did not isolate the first failing read tightly enough
+- Hardware result from commit `11f1dc6`:
+  - same flash-then-black result again, even though the diagnostic artifact now halted immediately after copying the partition/path strings and building `exec0`
+- Hardware conclusion from that run:
+  - the embedded loader still did not present a stable post-path-copy halt on hardware
+  - inference from repo behavior: the remaining unresolved gap is now tighter, between the first `argv[0]` string read and the second `argv[1]` string read in `src/elf_loader/src/loader/src/loader.c`
 - Repo-verified implementation:
   - `.github/workflows/compilation.yml` now builds and uploads `POPSLOADER-HDD-DIAGNOSTIC` with `LOADER_ENABLE_DEBUG_COLORS=1`, without the older `src/elf_loader/src/elf.c` early-return probe defines.
   - The first diagnostic loader only wrote `GS_BGCOLOR` in `src/elf_loader/src/loader/src/loader.c`; it did not initialize a visible debug screen in that loader.
@@ -167,8 +172,9 @@ Last updated: 2026-03-24
     - inference: the partitioned path still has an `ExecPS2` cleanup asymmetry that has not been isolated by the documented failed selector/path/reset theories
   - Commit `9eaa040` now keeps SIF RPC alive across that partitioned embedded-loader `ExecPS2` boundary, and hardware now reaches a stable `embedded loader entry` stage.
   - Commit `6bddf69` moved the diagnostic halt to after the embedded loader copied `argv[0]`, `argv[1]`, and the forwarded selector into local buffers, and also printed the copied strings for visibility.
-  - Because that artifact still only flashed and black-screened, the next diagnostic artifact now halts earlier: after the embedded loader has copied the partition/path strings and built `exec0`, but before it dereferences the forwarded selector `argv[2]`.
-  - That target is not the already-failed selector-shape family: it does not change the selector value or contract, only tests whether the remaining crash begins when the existing forwarded selector is first dereferenced.
+  - Commit `11f1dc6` then moved the diagnostic halt earlier again, to after the embedded loader copied the partition/path strings and built `exec0`, but before it dereferenced the forwarded selector `argv[2]`.
+  - Because that artifact still only flashed and black-screened, the next diagnostic artifact now halts earlier still: after the embedded loader copies `argv[0]` into `partition_prefix`, but before it dereferences `argv[1]` for the target path.
+  - That target is not the already-failed selector-shape family: it does not change the selector value or contract, only tests whether the remaining crash begins on the first or second string read after stable embedded-loader entry.
 - Hardware goal:
   - distinguish failure before embedded loader,
   - during embedded-loader image staging in `src/elf_loader/src/elf.c`,
@@ -180,6 +186,6 @@ Last updated: 2026-03-24
   - after reset/sync but before final `ExecPS2`,
   - or after final `ExecPS2`.
 - Expected result for this artifact:
-  - if the diagnostic build now shows stable `embedded loader path copied`, the remaining failure is later than the `argv[0]`/`argv[1]` path copies and likely begins when the forwarded selector `argv[2]` is dereferenced
-  - if it still only flashes or black-screens before the new halt, the remaining failure is earlier than that primary path-copy boundary
+  - if the diagnostic build now shows stable `embedded loader partition copied`, the remaining failure is later than the `argv[0]` read and likely begins when `argv[1]` is first dereferenced for the target path
+  - if it still only flashes or black-screens before the new halt, the remaining failure is at or before the first `argv[0]` string read after stable embedded-loader entry
 - Without that hardware observation, further launch-path edits are likely to repeat already-failed theories.
