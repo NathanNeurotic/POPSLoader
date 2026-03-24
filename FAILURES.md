@@ -89,17 +89,23 @@ Last updated: 2026-03-24
 - The first CI-built `POPSLOADER-HDD-DIAGNOSTIC` artifact from commit `0327006` was still reported as a black screen on HDD boot + HDD game hardware.
 - The follow-up screen-backed diagnostic artifact from commit `03c1a2b` was also still reported as a black screen on HDD boot + HDD game hardware.
 - Repo-verified implementation:
-  - `.github/workflows/compilation.yml` builds and uploads `POPSLOADER-HDD-DIAGNOSTIC` with `LOADER_ENABLE_DEBUG_COLORS=1`.
+  - `.github/workflows/compilation.yml` now builds and uploads `POPSLOADER-HDD-DIAGNOSTIC` with `LOADER_ENABLE_DEBUG_COLORS=1` and `HDD_DIAG_RETURN_AFTER_EMBEDDED_LOADER_COPY=1`.
   - The first diagnostic loader only wrote `GS_BGCOLOR` in `src/elf_loader/src/loader/src/loader.c`; it did not initialize a visible debug screen in that loader.
   - This follow-up diagnostic loader revision uses `debug.h` screen output in addition to GS color writes so the current stage remains visible if the handoff stalls inside the embedded loader.
   - Even that follow-up loader revision still dereferenced `argv[0]` and `argv[1]` before its first visible stage, and `src/elf_loader/src/elf.c` still had no screen-backed marker immediately before `ExecPS2` into the embedded loader.
   - This next diagnostic revision now places a visible marker before the embedded-loader `ExecPS2` in `src/elf_loader/src/elf.c`, and moves the first visible loader marker in `src/elf_loader/src/loader/src/loader.c` ahead of any `argv` string dereference.
+  - This diagnostic artifact now returns `-803` from `src/elf_loader/src/elf.c` immediately after the embedded-loader image is copied into RAM and before `SifExitRpc` / final `ExecPS2`.
 - Hardware goal:
   - distinguish failure before embedded loader,
+  - during embedded-loader image staging in `src/elf_loader/src/elf.c`,
+  - after embedded-loader image staging but before `SifExitRpc` / final `ExecPS2`,
   - at the embedded-loader `ExecPS2` boundary,
   - at embedded-loader entry before `argv` string dereference,
   - during target ELF load,
   - during IOP reset/sync,
   - after reset/sync but before final `ExecPS2`,
   - or after final `ExecPS2`.
+- Expected result for this artifact:
+  - if launch returns with `rc=-803`, embedded-loader image copy completed and the original black screen happens later than that point
+  - if it still black-screens, the failure is earlier than or during that image-staging step
 - Without that hardware observation, further launch-path edits are likely to repeat already-failed theories.

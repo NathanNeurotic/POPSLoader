@@ -31,6 +31,7 @@
 
 #define ELF_MAGIC 0x464c457f
 #define ELF_PT_LOAD 1
+#define HDD_DIAG_RC_AFTER_EMBEDDED_LOADER_COPY (-803)
 
 #ifdef LOADER_ENABLE_DEBUG_COLORS
 static void partition_loader_diag_stage(const char *label, int argc, const char *partition, const char *path)
@@ -206,6 +207,11 @@ static int ExecuteViaEmbeddedLoaderWithPartition(const char *partition, const ch
 			memset((void *)((int)boot_pheader[i].vaddr + boot_pheader[i].filesz), 0, boot_pheader[i].memsz - boot_pheader[i].filesz);
 		}
 	}
+
+#ifdef HDD_DIAG_RETURN_AFTER_EMBEDDED_LOADER_COPY
+	partition_loader_diag_stage("diag return after loader copy", final_argc, partition_prefix, resolved_path);
+	return HDD_DIAG_RC_AFTER_EMBEDDED_LOADER_COPY;
+#endif
 
 	SifExitRpc();
 	FlushCache(0);
