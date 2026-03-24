@@ -2612,12 +2612,17 @@ local function SelectPopstarterSelectorPrefix(device_page)
   return "XX."
 end
 
-local function BuildPopstarterSelectorPath(device_page, game_name)
+local function BuildPopstarterSelectorPath(device_page, game_name, root)
   if game_name == nil or game_name == "" then
     return ""
   end
   if device_page == "HDD" then
-    return BuildLiteralElfName(game_name)
+    local selector_name = BuildLiteralElfName(game_name)
+    local selector_path = BuildMountedReadablePath(root, selector_name)
+    if selector_path ~= nil then
+      return selector_path
+    end
+    return selector_name
   end
   if device_page == "USB" or device_page == "MMCE" or device_page == "SMB/MMCE" then
     return "mass:/POPS/XX."..game_name..".ELF"
@@ -3089,14 +3094,15 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     local hdd_launch_slot = SelectHddLaunchGameSlot(popstarter)
     local hdd_partition_path = "hdd0:"..hdd_partition_label
     hdd_init = EnsureHDDReadyForLaunch(selected_entry, hdd_partition_path, hdd_launch_slot)
-    if not hdd_init.init_ok or hdd_init.status ~= 0 or not hdd_init.mount_ok then
+    if not hdd_init.init_ok or hdd_init.status ~= 0 or not hdd_init.mount_ok or hdd_init.mount_prefix == nil then
       BlockLaunchFailure(
         string.format(
-          "HDD launch prep failed: init=%s status=%s mount=%s slot=%s",
+          "HDD launch prep failed: init=%s status=%s mount=%s slot=%s prefix=%s",
           tostring(hdd_init.init_ok),
           tostring(hdd_init.status),
           tostring(hdd_init.mount_ok),
-          tostring(hdd_init.mount_slot)
+          tostring(hdd_init.mount_slot),
+          tostring(hdd_init.mount_prefix)
         ),
         popstarter,
         device_page,
@@ -3148,7 +3154,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     return
   end
   local selector_prefix = SelectPopstarterSelectorPrefix(device_page)
-  local argv0_selector = BuildPopstarterSelectorPath(device_page, game_name)
+  local argv0_selector = BuildPopstarterSelectorPath(device_page, game_name, hdd_init and hdd_init.mount_prefix or nil)
   if selector_prefix == "" and string.upper(game_name) == "POPSTARTER" then
     BlockLaunchFailure(
       "Internal error: game_base derived as POPSTARTER; refusing to launch.",
