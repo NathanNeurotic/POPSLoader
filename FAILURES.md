@@ -112,8 +112,14 @@ Last updated: 2026-03-24
 - Hardware conclusion from that run:
   - `Unknown (verify on hardware)` whether the flash came from `src/elf_loader/src/elf.c` or from a later embedded-loader stage
   - the new embedded-loader `gp` handoff did not produce a stable visible success/failure marker on hardware
+- Hardware result from commit `4d350a4`:
+  - same outcome as commit `c3cf306`
+  - text flashed briefly and then the console returned to a solid black screen
+- Hardware conclusion from that run:
+  - the added `SifInitRpc(0)` after `wipeUserMem()` did not produce a stable visible outcome
+  - `Unknown (verify on hardware)` whether the flash was before or after the embedded loader's `SifLoadElf()` call
 - Repo-verified implementation:
-  - `.github/workflows/compilation.yml` now builds and uploads `POPSLOADER-HDD-DIAGNOSTIC` with `LOADER_ENABLE_DEBUG_COLORS=1`, without the older early-return probe defines.
+  - `.github/workflows/compilation.yml` now builds and uploads `POPSLOADER-HDD-DIAGNOSTIC` with `LOADER_ENABLE_DEBUG_COLORS=1`, without the older `src/elf_loader/src/elf.c` early-return probe defines.
   - The first diagnostic loader only wrote `GS_BGCOLOR` in `src/elf_loader/src/loader/src/loader.c`; it did not initialize a visible debug screen in that loader.
   - This follow-up diagnostic loader revision uses `debug.h` screen output in addition to GS color writes so the current stage remains visible if the handoff stalls inside the embedded loader.
   - Even that follow-up loader revision still dereferenced `argv[0]` and `argv[1]` before its first visible stage, and `src/elf_loader/src/elf.c` still had no screen-backed marker immediately before `ExecPS2` into the embedded loader.
@@ -125,7 +131,12 @@ Last updated: 2026-03-24
   - Commit `c3cf306` now derives the embedded loader's `gp` from that `.reginfo` metadata and passes it to `ExecPS2` instead of forcing zero.
   - `src/elf_loader/src/loader/src/loader.c` still called `SifInitRpc(0)` and then immediately wiped all EE user memory with `wipeUserMem()` before using `SifLoadFileInit()` / `SifLoadElf()`.
   - Inference from repo code: if `SifInitRpc(0)` establishes EE-side RPC state in wiped user memory, the embedded loader can corrupt its own later `SifLoadElf()` path even though the direct working launchers in `src/elf_loader/src/elf.c` initialize RPC immediately before `SifLoadFileInit()` and do not wipe memory between those calls.
-  - The next artifact now tests the smallest fix for that asymmetry: reinitialize SIF RPC after `wipeUserMem()` and before the embedded loader's `SifLoadFileInit()` / `SifLoadElf()` sequence.
+  - Commit `4d350a4` now reinitializes SIF RPC after `wipeUserMem()` and before the embedded loader's `SifLoadFileInit()` / `SifLoadElf()` sequence.
+  - The remaining issue is observability: the embedded loader's stage text still flashes too quickly to tell whether `SifLoadElf(target_path)` succeeded, failed, or hung.
+  - The next diagnostic artifact now adds a diagnostic-only halt immediately after the embedded loader records the `SifLoadElf()` outcome, so hardware can distinguish:
+    - stable yellow `SifLoadElf ok`
+    - stable magenta `SifLoadElf failed`
+    - or a black screen before that halt point
 - Hardware goal:
   - distinguish failure before embedded loader,
   - during embedded-loader image staging in `src/elf_loader/src/elf.c`,
@@ -137,6 +148,7 @@ Last updated: 2026-03-24
   - after reset/sync but before final `ExecPS2`,
   - or after final `ExecPS2`.
 - Expected result for this artifact:
-  - if HDD launch now reaches POPSTARTER output or later diagnostic stages, the embedded loader's pre-load RPC state was being invalidated by the user-memory wipe
-  - if it still black-screens, the remaining failure is not explained by the embedded loader `gp` handoff or this RPC reinit ordering fix
+  - if the diagnostic build shows stable `SifLoadElf ok`, the remaining black screen is later than the target ELF load and later than the embedded loader's pre-load RPC setup
+  - if the diagnostic build shows stable `SifLoadElf failed`, the failure is inside the target ELF load path itself
+  - if it still black-screens before the halt point, the failure is earlier than the post-`SifLoadElf()` diagnostic halt
 - Without that hardware observation, further launch-path edits are likely to repeat already-failed theories.

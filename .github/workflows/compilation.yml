@@ -177,7 +177,7 @@ jobs:
         shell: sh
         run: |
           set -eu
-          make clean LOADER_ENABLE_DEBUG_COLORS=1 elfloader all
+          make clean LOADER_ENABLE_DEBUG_COLORS=1 LOADER_DIAG_HALT_AFTER_SIFLOAD=1 elfloader all
 
       - name: Create HDD stage diagnostic package
         shell: sh

@@ -74,6 +74,24 @@ static void loader_diag_stage(unsigned long colour, const char *label)
 }
 #endif
 
+#ifdef LOADER_DIAG_HALT_AFTER_SIFLOAD
+static void loader_diag_halt(const char *reason)
+{
+#ifdef LOADER_ENABLE_DEBUG_COLORS
+	if (reason != NULL) {
+		scr_printf("halt=%s\n", reason);
+	}
+#endif
+	for (;;) {
+	}
+}
+#else
+static void loader_diag_halt(const char *reason)
+{
+	(void)reason;
+}
+#endif
+
 
 //--------------------------------------------------------------
 // Redefinition of init/deinit libc:
@@ -280,6 +298,8 @@ int main(int argc, char *argv[])
 	LOADER_DIAG_PRINTF("ret=%d epc=0x%08x gp=0x%08x\n", ret, elfdata.epc, elfdata.gp);
 	if (ret == 0 && elfdata.epc != 0) {
 		loader_diag_stage(YELLOW_BG, "SifLoadElf ok");
+		LOADER_DIAG_PRINTF("ret=%d epc=0x%08x gp=0x%08x\n", ret, elfdata.epc, elfdata.gp);
+		loader_diag_halt("after SifLoadElf ok");
 
 		FlushCache(0);
 		while (!SifIopReset(NULL, 0)) {
@@ -309,6 +329,7 @@ int main(int argc, char *argv[])
 	} else {
 		loader_diag_stage(MAGENTA_BG, "SifLoadElf failed");
 		LOADER_DIAG_PRINTF("ret=%d epc=0x%08x\n", ret, elfdata.epc);
+		loader_diag_halt("after SifLoadElf failed");
 		SifExitRpc();
 		return -ENOENT;
 	}
