@@ -81,6 +81,25 @@ static char *store_arg(const char *src, char *storage, size_t storage_size, size
 	return dest;
 }
 
+static void canonicalize_partition_loader_path(const char *path, char *out, size_t out_size)
+{
+	const char *suffix;
+	if (out_size == 0) {
+		return;
+	}
+	if (path == NULL) {
+		out[0] = '\0';
+		return;
+	}
+	if ((strncmp(path, "pfs", 3) == 0 || strncmp(path, "PFS", 3) == 0) &&
+	    strchr(path, ':') != NULL) {
+		suffix = strchr(path, ':');
+		snprintf(out, out_size, "pfs:%s", suffix + 1);
+		return;
+	}
+	snprintf(out, out_size, "%s", path);
+}
+
 /* IMPORTANT: This method wipe memory where the loader is going to be allocated 
 * This values come from the linkfile used by the loader.c
 MEMORY {
@@ -235,7 +254,7 @@ int LoadELFFromFileWithPartition(const char *filename, const char *partition, in
 {
 	int fd = -1;
 	char resolved_path[256];
-	(void)partition;
+	char loader_path[256];
 
 	if (partition == NULL || partition[0] == '\0') {
 		return LoadELFFromFile(filename, argc, argv);
@@ -254,7 +273,8 @@ int LoadELFFromFileWithPartition(const char *filename, const char *partition, in
 	} else {
 		return fd;
 	}
-	return ExecuteViaEmbeddedLoaderWithPartition(partition, resolved_path, argc, argv);
+	canonicalize_partition_loader_path(resolved_path, loader_path, sizeof(loader_path));
+	return ExecuteViaEmbeddedLoaderWithPartition(partition, loader_path, argc, argv);
 }
 
 int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
