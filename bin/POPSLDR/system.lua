@@ -778,9 +778,13 @@ local function ResolvePathWithEnsure(path)
   for i = 1, #candidates do
     local candidate = candidates[i]
     local low = string.lower(candidate)
+    local is_hdd = low:find("^hdd%d:") ~= nil
     local is_mass = low:find("^mass") ~= nil
     local is_mmce = low:find("^mmce") ~= nil
     for pass = 1, 2 do
+      if is_hdd and ResolveHddReadablePath(candidate) ~= nil then
+        return candidate
+      end
       if ProbePathExists(candidate) then
         return candidate
       end
