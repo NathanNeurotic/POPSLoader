@@ -87,12 +87,17 @@ Last updated: 2026-03-24
 
 ## Next useful step
 - The first CI-built `POPSLOADER-HDD-DIAGNOSTIC` artifact from commit `0327006` was still reported as a black screen on HDD boot + HDD game hardware.
+- The follow-up screen-backed diagnostic artifact from commit `03c1a2b` was also still reported as a black screen on HDD boot + HDD game hardware.
 - Repo-verified implementation:
   - `.github/workflows/compilation.yml` builds and uploads `POPSLOADER-HDD-DIAGNOSTIC` with `LOADER_ENABLE_DEBUG_COLORS=1`.
   - The first diagnostic loader only wrote `GS_BGCOLOR` in `src/elf_loader/src/loader/src/loader.c`; it did not initialize a visible debug screen in that loader.
   - This follow-up diagnostic loader revision uses `debug.h` screen output in addition to GS color writes so the current stage remains visible if the handoff stalls inside the embedded loader.
+  - Even that follow-up loader revision still dereferenced `argv[0]` and `argv[1]` before its first visible stage, and `src/elf_loader/src/elf.c` still had no screen-backed marker immediately before `ExecPS2` into the embedded loader.
+  - This next diagnostic revision now places a visible marker before the embedded-loader `ExecPS2` in `src/elf_loader/src/elf.c`, and moves the first visible loader marker in `src/elf_loader/src/loader/src/loader.c` ahead of any `argv` string dereference.
 - Hardware goal:
   - distinguish failure before embedded loader,
+  - at the embedded-loader `ExecPS2` boundary,
+  - at embedded-loader entry before `argv` string dereference,
   - during target ELF load,
   - during IOP reset/sync,
   - after reset/sync but before final `ExecPS2`,

@@ -23,11 +23,36 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
+#ifdef LOADER_ENABLE_DEBUG_COLORS
+#include <debug.h>
+#endif
 #include "../../include/dprintf.h"
 #include "elf.h"
 
 #define ELF_MAGIC 0x464c457f
 #define ELF_PT_LOAD 1
+
+#ifdef LOADER_ENABLE_DEBUG_COLORS
+static void partition_loader_diag_stage(const char *label, int argc, const char *partition, const char *path)
+{
+	init_scr();
+	scr_clear();
+	scr_setCursor(0);
+	scr_printf("POPSLoader HDD diagnostic\n");
+	scr_printf("%s\n", label);
+	scr_printf("argc=%d\n", argc);
+	scr_printf("partition=%s\n", partition ? partition : "(null)");
+	scr_printf("path=%s\n", path ? path : "(null)");
+}
+#else
+static void partition_loader_diag_stage(const char *label, int argc, const char *partition, const char *path)
+{
+	(void)label;
+	(void)argc;
+	(void)partition;
+	(void)path;
+}
+#endif
 
 extern unsigned char loader_elf[];
 
@@ -185,6 +210,7 @@ static int ExecuteViaEmbeddedLoaderWithPartition(const char *partition, const ch
 	SifExitRpc();
 	FlushCache(0);
 	FlushCache(2);
+	partition_loader_diag_stage("before embedded loader ExecPS2", final_argc, partition_prefix, resolved_path);
 
 	ExecPS2((void *)boot_header->entry, 0, final_argc, launch_argv);
 	return -1;

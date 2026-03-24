@@ -218,10 +218,18 @@ int main(int argc, char *argv[])
 	int ret, i;
 
 	elfdata.epc = 0;
+	loader_diag_init();
+	loader_diag_stage(WHITE_BG, "embedded loader entry");
+	LOADER_DIAG_PRINTF("argc=%d argv=%p\n", argc, argv);
+	if (argc > 0) {
+		LOADER_DIAG_PRINTF("argv0_ptr=%p\n", argv[0]);
+	}
+	if (argc > 1) {
+		LOADER_DIAG_PRINTF("argv1_ptr=%p\n", argv[1]);
+	}
 
 	// argv[0]=partition prefix, argv[1]=path to ELF, argv[2..]=arguments
 	if (argc < 2) {  
-		loader_diag_init();
 		loader_diag_stage(RED_BG, "argc check failed");
 		LOADER_DIAG_PRINTF("argc=%d\n", argc);
 		return -EINVAL;
@@ -257,9 +265,8 @@ int main(int argc, char *argv[])
 	SifInitRpc(0);
 	wipeUserMem();
 	loader_diag_init();
-	loader_diag_stage(WHITE_BG, "embedded loader started");
+	loader_diag_stage(CYAN_BG, "embedded loader arguments copied");
 	LOADER_DIAG_PRINTF("target=%s\n", target_path);
-	loader_diag_stage(CYAN_BG, "argv accepted");
 
 	//Writeback data cache before loading ELF.
 	FlushCache(0);

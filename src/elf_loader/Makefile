@@ -10,6 +10,10 @@ BIN2C = $(PS2SDK)/bin/bin2c
 EE_OBJS = src/elf.o loader.o
 EE_LIB = libcustom-elf-loader.a
 
+ifneq (x$(LOADER_ENABLE_DEBUG_COLORS), x0)
+EE_CFLAGS += -DLOADER_ENABLE_DEBUG_COLORS
+endif
+
 src/loader/bin/loader.elf:
 	$(MAKE) src/loader
 
