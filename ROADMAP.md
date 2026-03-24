@@ -1,6 +1,6 @@
 # POPSLoader Roadmap
 
-Last updated: 2026-03-06
+Last updated: 2026-03-24
 
 ## Status Snapshot
 Current branch has substantial stabilization work already landed (settings transaction flow, launch path hardening, backend classification, and packaging policy updates). Remaining roadmap items are mostly feature-completion and hardware validation.
@@ -38,6 +38,7 @@ Current branch has substantial stabilization work already landed (settings trans
 - Define and implement artwork source-of-truth, fallback policy, and cache behavior.
 
 ### 3) Hardware validation depth
+- Resolve the still-unverified/failed `POPSTARTER.ELF on HDD` launch path before expanding broader HDD coverage. See `FAILURES.md`.
 - Expand and record hardware coverage runs in `QA_REGRESSION_MATRIX.md`.
 - Prioritize combined scenarios: large multi-root USB + MX4SIO + MMCE + HDD installations.
 
