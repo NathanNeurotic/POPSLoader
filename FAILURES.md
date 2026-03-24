@@ -138,6 +138,11 @@ Last updated: 2026-03-24
 - Hardware conclusion from that run:
   - keeping SIF RPC alive across the partitioned embedded-loader `ExecPS2` boundary allowed stable entry into the embedded loader
   - the remaining failure is later than loader entry and earlier than the old pre-`SifLoadElf()` halt point
+- Hardware result from commit `6bddf69`:
+  - black screen again, with text flashing too quickly to read after the diagnostic artifact moved the halt to post-argument-copy
+- Hardware conclusion from that run:
+  - the embedded loader still did not present a stable post-argument-copy halt on hardware
+  - inference from repo behavior: that artifact still grouped together primary path copy, forwarded selector dereference, and copied-string debug printing, so it did not isolate the first failing read tightly enough
 - Repo-verified implementation:
   - `.github/workflows/compilation.yml` now builds and uploads `POPSLOADER-HDD-DIAGNOSTIC` with `LOADER_ENABLE_DEBUG_COLORS=1`, without the older `src/elf_loader/src/elf.c` early-return probe defines.
   - The first diagnostic loader only wrote `GS_BGCOLOR` in `src/elf_loader/src/loader/src/loader.c`; it did not initialize a visible debug screen in that loader.
@@ -161,8 +166,9 @@ Last updated: 2026-03-24
     - older repo history contains commit `39ba2d2` (`Fix HDD black screen: remove SifExitRpc/SifExitCmd timing race before embedded loader ExecPS2`) for the non-partition embedded-loader path
     - inference: the partitioned path still has an `ExecPS2` cleanup asymmetry that has not been isolated by the documented failed selector/path/reset theories
   - Commit `9eaa040` now keeps SIF RPC alive across that partitioned embedded-loader `ExecPS2` boundary, and hardware now reaches a stable `embedded loader entry` stage.
-  - The next diagnostic artifact now halts after the embedded loader has copied `argv[0]`, `argv[1]`, and the forwarded selector into local buffers, before any later `printf`, RPC init, or `SifLoadElf()` work.
-  - That target is not the already-failed selector-shape family: it does not change the selector value or contract, only tests whether the existing argument strings survive dereference and copy after the embedded-loader entry boundary.
+  - Commit `6bddf69` moved the diagnostic halt to after the embedded loader copied `argv[0]`, `argv[1]`, and the forwarded selector into local buffers, and also printed the copied strings for visibility.
+  - Because that artifact still only flashed and black-screened, the next diagnostic artifact now halts earlier: after the embedded loader has copied the partition/path strings and built `exec0`, but before it dereferences the forwarded selector `argv[2]`.
+  - That target is not the already-failed selector-shape family: it does not change the selector value or contract, only tests whether the remaining crash begins when the existing forwarded selector is first dereferenced.
 - Hardware goal:
   - distinguish failure before embedded loader,
   - during embedded-loader image staging in `src/elf_loader/src/elf.c`,
@@ -174,6 +180,6 @@ Last updated: 2026-03-24
   - after reset/sync but before final `ExecPS2`,
   - or after final `ExecPS2`.
 - Expected result for this artifact:
-  - if the diagnostic build now shows stable `embedded loader argv copied`, the remaining failure is later than argument dereference/copy and later than loader entry
-  - if it still stops at the white `embedded loader entry` stage or black-screens before the new halt, the remaining failure is during argument dereference/copy between loader entry and the old pre-`SifLoadElf()` stage
+  - if the diagnostic build now shows stable `embedded loader path copied`, the remaining failure is later than the `argv[0]`/`argv[1]` path copies and likely begins when the forwarded selector `argv[2]` is dereferenced
+  - if it still only flashes or black-screens before the new halt, the remaining failure is earlier than that primary path-copy boundary
 - Without that hardware observation, further launch-path edits are likely to repeat already-failed theories.

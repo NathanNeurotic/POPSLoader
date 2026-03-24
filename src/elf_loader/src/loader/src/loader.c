@@ -74,7 +74,7 @@ static void loader_diag_stage(unsigned long colour, const char *label)
 }
 #endif
 
-#if defined(LOADER_DIAG_HALT_AFTER_SIFLOAD) || defined(LOADER_DIAG_HALT_BEFORE_SIFLOAD) || defined(LOADER_DIAG_HALT_AFTER_ARG_COPY)
+#if defined(LOADER_DIAG_HALT_AFTER_SIFLOAD) || defined(LOADER_DIAG_HALT_BEFORE_SIFLOAD) || defined(LOADER_DIAG_HALT_AFTER_PATH_COPY) || defined(LOADER_DIAG_HALT_AFTER_ARG_COPY)
 static void loader_diag_halt(const char *reason)
 {
 #ifdef LOADER_ENABLE_DEBUG_COLORS
@@ -265,6 +265,18 @@ int main(int argc, char *argv[])
 	target_argv[0] = &target_arg_storage[0];
 	snprintf(target_argv[0], sizeof(target_arg_storage), "%s", full_path);
 	target_arg_offset = strlen(target_argv[0]) + 1;
+
+#ifdef LOADER_DIAG_HALT_AFTER_PATH_COPY
+	loader_diag_stage(CYAN_BG, "embedded loader path copied");
+	LOADER_DIAG_PRINTF("partition=%s\n", partition_prefix);
+	LOADER_DIAG_PRINTF("target=%s\n", target_path);
+	LOADER_DIAG_PRINTF("exec0=%s\n", target_argv[0]);
+	if (argc > 2) {
+		LOADER_DIAG_PRINTF("next_arg_ptr=%p\n", argv[2]);
+	}
+	loader_diag_halt("after path copy");
+#endif
+
 	for (i = 2; i < argc; i++) {
 		const char *arg = argv[i] ? argv[i] : "";
 		size_t arg_len = strlen(arg) + 1;
