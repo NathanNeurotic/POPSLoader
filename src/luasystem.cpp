@@ -1034,7 +1034,7 @@ static int lua_loadELF(lua_State *L)
 	static char arg_bufs[32][256];
 	static char partition_buf[256];
 	static char *argv_static[33];
-	SetLoadElfStageColour(elftoload, 0xFF00FF);
+	SetLoadElfStageColour(elftoload, 0xC0C0C0);
 	DPRINTF("# Loading ELF '%s' iop_reboot=%d, extra_args=%d\n", elftoload, rebootIOP, extra_args);
 	if (extra_args > 0) {
 		bool selector_overrides_path;
@@ -1059,16 +1059,16 @@ static int lua_loadELF(lua_State *L)
 		DPRINTF("# Loading ELF argv0='%s' argc=%d\n", argv_static[0], extra_args);
 		int rc;
 		if (rebootIOP != 0 && is_hdd_or_pfs_selector_exec) {
-			SetLoadElfStageColour(elftoload, 0xFFFFFF);
+			SetLoadElfStageColour(elftoload, 0xC080FF);
 			rc = LoadELFFromFileExecPS2(elftoload, extra_args, argv_static);
 		} else if (rebootIOP != 0) {
-			SetLoadElfStageColour(elftoload, 0x800080);
+			SetLoadElfStageColour(elftoload, 0x8040C0);
 			rc = LoadELFFromFileExecPS2RebootIOP(elftoload, extra_args, argv_static);
 		} else if (selector_overrides_path && has_hdd_partition_prefix) {
-			SetLoadElfStageColour(elftoload, 0x00A5FF);
+			SetLoadElfStageColour(elftoload, 0x00D7FF);
 			rc = LoadELFFromFileWithPartition(elftoload, partition_buf, extra_args, argv_static);
 		} else {
-			SetLoadElfStageColour(elftoload, 0xFFFFFF);
+			SetLoadElfStageColour(elftoload, 0xC080FF);
 			rc = LoadELFFromFileExecPS2(elftoload, extra_args, argv_static);
 		}
 		lua_pushinteger(L, rc);
@@ -1077,10 +1077,10 @@ static int lua_loadELF(lua_State *L)
 	DPRINTF("# Loading ELF argv0 default (argc=0)\n");
 	int rc;
 	if (rebootIOP != 0) {
-		SetLoadElfStageColour(elftoload, 0x800080);
+		SetLoadElfStageColour(elftoload, 0x8040C0);
 		rc = LoadELFFromFileExecPS2RebootIOP(elftoload, 0, NULL);
 	} else {
-		SetLoadElfStageColour(elftoload, 0x00A5FF);
+		SetLoadElfStageColour(elftoload, 0x00D7FF);
 		rc = LoadELFFromFile(elftoload, 0, NULL);
 	}
 	lua_pushinteger(L, rc);

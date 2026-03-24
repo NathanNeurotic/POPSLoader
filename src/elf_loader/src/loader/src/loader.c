@@ -28,7 +28,7 @@
 #endif
 
 // Color status helper in BGR format
-#define WHITE_BG 0xFFFFFF // start main
+#define WHITE_BG 0x008080 // start main (teal)
 #define CYAN_BG 0xFFFF00 // proper argc count
 #define RED_BG  0x0000FF // wrong argc count
 #define GREEN_BG 0x00FF00 // before SifLoadELF
