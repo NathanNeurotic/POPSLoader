@@ -13,8 +13,10 @@
 #include <stdlib.h>
 #include <kernel.h>
 #include <loadfile.h>
+#include <iopheap.h>
 #include <iopcontrol.h>
 #include <sifrpc.h>
+#include <sifcmd.h>
 #include <errno.h>
 #include <ps2sdkapi.h>
 #define DPRINTF(x...) printf(x)
@@ -70,28 +72,6 @@ static void wipeUserMem(void)
 	}
 }
 
-static int ascii_tolower(int ch)
-{
-	if (ch >= 'A' && ch <= 'Z') {
-		return ch - 'A' + 'a';
-	}
-	return ch;
-}
-
-static int starts_with_case_insensitive(const char *text, const char *prefix)
-{
-	int i;
-	if (text == NULL || prefix == NULL) {
-		return 0;
-	}
-	for (i = 0; prefix[i] != '\0'; i++) {
-		if (text[i] == '\0' || ascii_tolower((unsigned char)text[i]) != ascii_tolower((unsigned char)prefix[i])) {
-			return 0;
-		}
-	}
-	return 1;
-}
-
 //--------------------------------------------------------------
 //End of func:  void wipeUserMem(void)
 //--------------------------------------------------------------
@@ -103,7 +83,6 @@ int main(int argc, char *argv[])
 	SET_GS_BGCOLOUR(WHITE_BG);
 	static t_ExecData elfdata;
 	static char target_path[1024];
-	static char target_argv0[1024];
 	static char target_arg_storage[1024];
 	static char *target_argv[33];
 	size_t target_arg_offset = 0;
@@ -112,32 +91,17 @@ int main(int argc, char *argv[])
 
 	elfdata.epc = 0;
 
-	// argv[0]=partition, argv[1]=path to ELF, argv[2..]=arguments
+	// argv[0]=path to ELF, argv[1..]=arguments
 	if (argc < 2) {  
 		SET_GS_BGCOLOUR(RED_BG);
 		return -EINVAL;
 	}
-	snprintf(target_path, sizeof(target_path), "%s", argv[1] ? argv[1] : "");
-	/* Preserve direct HDD exec paths; mounted PFS paths need the partition prefix restored. */
-	if (starts_with_case_insensitive(argv[1], "hdd")) {
-		snprintf(target_argv0, sizeof(target_argv0), "%s", argv[1] ? argv[1] : "");
-	} else {
-		snprintf(target_argv0, sizeof(target_argv0), "%s%s", argv[0] ? argv[0] : "", argv[1] ? argv[1] : "");
-	}
+	snprintf(target_path, sizeof(target_path), "%s", argv[0] ? argv[0] : "");
 	target_argc = argc - 1;
 	if (target_argc > 32) {
 		return -E2BIG;
 	}
-	{
-		size_t arg_len = strlen(target_argv0) + 1;
-		if (arg_len > sizeof(target_arg_storage)) {
-			return -E2BIG;
-		}
-		memcpy(&target_arg_storage[target_arg_offset], target_argv0, arg_len);
-		target_argv[0] = &target_arg_storage[target_arg_offset];
-		target_arg_offset += arg_len;
-	}
-	for (i = 2; i < argc; i++) {
+	for (i = 1; i < argc; i++) {
 		const char *arg = argv[i] ? argv[i] : "";
 		size_t arg_len = strlen(arg) + 1;
 		if ((target_arg_offset + arg_len) > sizeof(target_arg_storage)) {
@@ -169,23 +133,9 @@ int main(int argc, char *argv[])
 	SET_GS_BGCOLOUR(BLUE_BG);
 	if (ret == 0 && elfdata.epc != 0) {
 		SET_GS_BGCOLOUR(YELLOW_BG);
-
-		// Let's reset IOP because ELF was already loaded in memory
-		while(!SifIopReset(NULL, 0)){};
-		while (!SifIopSync()) {};
-
-		SET_GS_BGCOLOUR(ORANGE_BG);
-
-        SifInitRpc(0);
-        // Load modules.
-        SifLoadFileInit();
-        SifLoadModule("rom0:SIO2MAN", 0, NULL);
-        SifLoadModule("rom0:MCMAN", 0, NULL);
-        SifLoadModule("rom0:MCSERV", 0, NULL);
-        SifLoadFileExit();
-        SifExitRpc();
-
-		SET_GS_BGCOLOUR(BROWN_BG);
+		SifExitIopHeap();
+		SifExitRpc();
+		SifExitCmd();
 
 		FlushCache(0);
 		FlushCache(2);
