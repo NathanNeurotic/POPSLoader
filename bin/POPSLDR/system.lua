@@ -922,9 +922,8 @@ local function ResolveHddBootSidecarPopstarter()
     if direct_hdd ~= nil then
       return direct_hdd
     end
-    local resolved_hdd = ResolveHddReadablePath(hdd_candidates[i])
-    if resolved_hdd ~= nil then
-      return resolved_hdd
+    if ResolveHddReadablePath(hdd_candidates[i]) ~= nil then
+      return hdd_candidates[i]
     end
   end
 
@@ -993,9 +992,8 @@ local function ResolvePopstarterPath(path)
     if direct_hdd ~= nil then
       return direct_hdd
     end
-    local resolved_hdd = ResolveHddExecMountedPath(chosen)
-    if resolved_hdd ~= nil then
-      return resolved_hdd
+    if ResolveHddExecMountedPath(chosen) ~= nil then
+      return chosen
     end
   end
   local resolved = ResolvePathWithEnsure(chosen)
@@ -1019,8 +1017,8 @@ local function ResolvePopstarterPath(path)
     local resolved_fallback = nil
     if string.match(string.lower(candidate), "^hdd%d:") ~= nil then
       resolved_fallback = ResolveDirectHddExecPath(candidate)
-      if resolved_fallback == nil then
-        resolved_fallback = ResolveHddReadablePath(candidate)
+      if resolved_fallback == nil and ResolveHddReadablePath(candidate) ~= nil then
+        resolved_fallback = candidate
       end
     end
     if resolved_fallback == nil then
@@ -3042,6 +3040,20 @@ local function TryOpenForLaunch(path)
           return false, size, "stat", "sizeFile", alt
         end
         return true, size, "stat", "open(host_alt)", alt
+      end
+    end
+    if string.match(string.lower(tostring(path or "")), "^hdd%d:") ~= nil then
+      local mounted_hdd = ResolveHddReadablePath(path)
+      if mounted_hdd ~= nil then
+        local mounted_ok, mounted_fd = pcall(System.openFile, mounted_hdd, FREAD)
+        if mounted_ok and type(mounted_fd) == "number" and mounted_fd >= 0 then
+          local size = System.sizeFile(mounted_fd)
+          System.closeFile(mounted_fd)
+          if type(size) ~= "number" or size < 0 then
+            return false, size, "stat", "sizeFile", mounted_hdd
+          end
+          return true, size, "stat", "open(hdd_alias)", path
+        end
       end
     end
     return false, fd_or_err, "open", "open", path
