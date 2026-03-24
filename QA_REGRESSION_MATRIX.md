@@ -1,7 +1,7 @@
 # POPSLoader Regression Matrix
 
-Last updated: 2026-03-06
-Target branch: `BETA-8-5`
+Last updated: 2026-03-24
+Target branch: `BETA-9-RECOVERY-BACKUP-CHECKPOINT-PROFILES-PLAY`
 
 ## Scope
 This matrix tracks current behavior across:
@@ -54,7 +54,7 @@ This matrix tracks current behavior across:
 | D-07 | SMB option status | any setup | Select `SMB (v1)` | UI shows `Not Implemented Yet` |
 | D-08 | HDD POPS partition scan | `__.POPS`, `__.POPS0`, and one higher `__.POPSN` present | Open HDD (PFS) | titles from all present POPS partitions list in stable partition order |
 | D-09 | HDD duplicate title names | Same VCD filename exists in two POPS partitions | Launch each entry from HDD (PFS) | each entry launches from its own source partition |
-| D-10 | HDD POPSTARTER on HDD | POPSLoader and/or configured `POPSTARTER_PATH` points to HDD | Launch HDD title | POPSTARTER resolves from sidecar or configured HDD path without blocking launch |
+| D-10 | HDD POPSTARTER on HDD | POPSLoader and/or configured `POPSTARTER_PATH` points to HDD | Launch HDD title | Launch reaches POPSTARTER output without black screen and without returning to POPSLoader |
 | D-11 | HDD common art path | `hdd0:__common/POPS/ART/<title>.png` present | Browse HDD title list | cover art appears and launch still succeeds |
 
 ### UI behavior
@@ -69,7 +69,9 @@ This matrix tracks current behavior across:
 | Date | Console | Storage Setup | IDs Run | Result |
 |---|---|---|---|---|
 | YYYY-MM-DD | SCPH-xxxxx | USB/MMCE/MX4SIO/HDD details | e.g. S-01,S-02,D-02 | PASS/FAIL + notes |
+| 2026-03-24 | Unknown | HDD boot + HDD POPSTARTER sidecar + HDD game | D-10 | FAIL: black screen still present across commits `7a32ad2`, `120fc72`, and `ea03ba2`; see `FAILURES.md` |
 
 ## Current Verification Status
 - CI gates: verified by workflow definition (execution status depends on CI runs).
 - Manual hardware matrix: `Unknown (verify on hardware)` unless run logs are added above.
+- Current known hardware failure: `D-10` is failing on this branch; see `FAILURES.md`.

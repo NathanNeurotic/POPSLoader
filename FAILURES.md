@@ -53,8 +53,15 @@ Last updated: 2026-03-24
 - Commits:
   - `38f7a9d` `Fix HDD POPSTARTER partition-aware embedded handoff`
   - `a81d8a2` `Use SifLoadElf for partitioned HDD POPSTARTER handoff`
+  - `7a32ad2` `Normalize pfs path for partitioned HDD POPSTARTER handoff`
+  - `120fc72` `Restore upstream partitioned loader handoff contract`
+  - `ea03ba2` `Keep raw HDD POPSTARTER path through partition handoff`
 - Result: hardware still black-screened.
-- Conclusion: passing/reconstructing HDD partition context alone has not solved the failure.
+- Conclusion:
+  - passing/reconstructing HDD partition context alone has not solved the failure
+  - normalizing `pfsN:/...` to `pfs:/...` did not solve it
+  - matching the upstream partitioned embedded-loader argv/load contract did not solve it
+  - keeping raw `hdd0:...` POPSTARTER paths through Lua handoff did not solve it
 
 ### Custom `fileXio` ELF loading path
 - Commits:
@@ -73,13 +80,17 @@ Last updated: 2026-03-24
 - Do not assume preserving only the game slot fixes the handoff.
 - Do not assume preserving the sidecar slot fixes the handoff.
 - Do not assume “reset IOP” or “do not reset IOP” is enough on its own.
+- Do not assume normalizing mounted `pfsN:/...` to `pfs:/...` fixes the failure.
+- Do not assume matching the upstream partitioned embedded-loader contract fixes the failure.
+- Do not assume keeping raw `hdd0:...` POPSTARTER paths through Lua fixes the failure.
 - Do not treat repo history as proof of a solved path; many of those commits document failed or partial experiments.
 
 ## Next useful step
-- Produce a diagnostic build that makes handoff stage visible on hardware.
+- Produce a diagnostic build that makes embedded-loader handoff stage visible on hardware.
 - Goal:
   - distinguish failure before embedded loader,
   - during target ELF load,
   - during IOP reset/sync,
   - or after final `ExecPS2`.
+- Existing code already has GS color stage markers in `src/elf_loader/src/loader/src/loader.c`; the next artifact should make those observable in CI-built hardware tests.
 - Without that, further launch-path edits are likely to repeat already-failed theories.

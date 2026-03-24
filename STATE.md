@@ -25,6 +25,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 
 ## Known Open Work
 - Resolve the hardware-verified black screen when `POPSTARTER.ELF` is launched from HDD/PFS. See `FAILURES.md`.
+- Produce a diagnostic HDD POPSTARTER artifact that exposes embedded-loader handoff stage on hardware before making more launch-path changes.
 - Implement HDD exFAT menu flow.
 - Implement SMB menu flow.
 - Implement ART system.
