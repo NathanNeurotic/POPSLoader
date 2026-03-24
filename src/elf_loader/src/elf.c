@@ -43,7 +43,6 @@ extern unsigned char loader_elf[];
 #define LOAD_STAGE_BEFORE_IOP_RESET 0x80FF00
 #define LOAD_STAGE_AFTER_IOP_RESET  0x00A5FF
 #define LOAD_STAGE_AFTER_IOP_SYNC   0x2A2AA5
-#define LOAD_STAGE_BEFORE_DIRECT_CLEANUP 0xFFFFFF
 #define LOAD_STAGE_AFTER_CLEANUP    0x0080FF
 #define LOAD_STAGE_BEFORE_EXECPS2   0x800080
 #define IOP_RESET_ARGS             "rom0:UDNL rom0:EELOADCNF"
@@ -145,18 +144,7 @@ static bool build_partition_loader_target(const char *filename, const char *part
 	return true;
 }
 
-static void unmount_pfs_slots_for_exec(void) {
-	char mount_name[6] = "pfs0:";
-	int slot;
-	for (slot = 0; slot <= 3; slot++) {
-		mount_name[3] = '0' + slot;
-		fileXioUmount(mount_name);
-	}
-}
-
 static void cleanup_hdd_exec_handoff(void) {
-	unmount_pfs_slots_for_exec();
-	fileXioExit();
 	SifExitIopHeap();
 	SifExitRpc();
 	SifExitCmd();
@@ -478,7 +466,7 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 		set_hdd_exec_stage_colour(resolved_path, LOAD_STAGE_SIFLOAD_FAILED);
 		return -2;
 	}
-	set_hdd_exec_stage_colour(resolved_path, LOAD_STAGE_BEFORE_DIRECT_CLEANUP);
+	set_hdd_exec_stage_colour(resolved_path, LOAD_STAGE_SIFLOAD_OK);
 
 	if (argc >= 2 && argv[1] != NULL && strcmp(argv[0], resolved_path) != 0 && strcmp(argv[1], resolved_path) == 0) {
 		use_exec_path_argv0 = true;
