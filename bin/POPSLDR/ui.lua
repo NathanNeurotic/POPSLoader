@@ -1028,6 +1028,9 @@ UI = {
       end;
       ConfirmExit = function ()
         UI.LAUNCHING = true
+        if type(PLDR) == "table" and type(PLDR.PrepareForBrowserExit) == "function" then
+          pcall(PLDR.PrepareForBrowserExit)
+        end
         System.exitToBrowser()
       end;
       LaunchBootElf = function ()
@@ -1600,9 +1603,7 @@ UI = {
               popstarter_path = PLDR.ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
             end
             local popstarter_ok = false
-            if popstarter_device_page == "HDD" then
-              popstarter_ok = true
-            elseif type(PLDR.PopstarterProbeWithEnsure) == "function" then
+            if type(PLDR.PopstarterProbeWithEnsure) == "function" then
               popstarter_ok = PLDR.PopstarterProbeWithEnsure(popstarter_path)
             else
               popstarter_ok = doesFileExist(popstarter_path)
@@ -1610,9 +1611,6 @@ UI = {
             if not popstarter_ok then
               local configured_popstarter_path = tostring(PLDR.POPSTARTER_PATH or "")
               local message_path = configured_popstarter_path
-              if popstarter_device_page == "HDD" then
-                message_path = tostring(popstarter_path)
-              end
               local message = "Cant find POPSTARTER ELF\n"..message_path
               if configured_popstarter_path ~= tostring(popstarter_path) then
                 message = message.."\nConfigured: "..configured_popstarter_path

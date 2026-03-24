@@ -868,12 +868,6 @@ local function ResolveAssetSidecarPopstarter()
   return nil
 end
 
-local HDD_PAGE_POPSTARTER_PATH = "hdd0:__common:pfs:/POPS/POPSTARTER.ELF"
-
-local function ResolveHddPagePopstarterPath()
-  return HDD_PAGE_POPSTARTER_PATH
-end
-
 local function ResolveHddBootSidecarPopstarter()
   local mounted_candidates = {}
   local hdd_candidates = {}
@@ -1041,9 +1035,6 @@ local function ResolvePopstarterPath(path)
 end
 
 local function ResolveLaunchPopstarterPath(path, device_page)
-  if tostring(device_page or "") == "HDD" then
-    return ResolveHddPagePopstarterPath()
-  end
   return ResolvePopstarterPath(path)
 end
 
@@ -1069,6 +1060,19 @@ end
 
 function PLDR.PrepareForExternalELFLaunch(path, extra_keep_slots)
   return PrepareForExternalELFLaunch(path, extra_keep_slots)
+end
+
+local function PrepareForBrowserExit()
+  if type(HDD) ~= "table" or type(HDD.UMountPartition) ~= "function" then
+    return
+  end
+  for slot = 0, 3 do
+    UMountHddPartitionTracked(slot)
+  end
+end
+
+function PLDR.PrepareForBrowserExit()
+  return PrepareForBrowserExit()
 end
 
 local function DetectBootDevice()
@@ -3083,8 +3087,7 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   local argv0 = argv and argv[1] or nil
   local unpack_fn = table.unpack or unpack
   local restore_cwd = nil
-  local forced_hdd_common_popstarter = context ~= nil and context.device_page == "HDD" and tostring(popstarter or "") == HDD_PAGE_POPSTARTER_PATH
-  local skip_hdd_preflight = (reboot_iop ~= 0 and IsHddExecContextPath(popstarter)) or forced_hdd_common_popstarter
+  local skip_hdd_preflight = (reboot_iop ~= 0 and IsHddExecContextPath(popstarter))
   SetLaunchPhase(LaunchState.PHASE_VALIDATE)
   if not skip_hdd_preflight and not PLDR.PopstarterProbeWithEnsure(popstarter) then
     BlockLaunchFailure(
