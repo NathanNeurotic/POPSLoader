@@ -264,7 +264,6 @@ int LoadELFFromFileWithPartition(const char *filename, const char *partition, in
 {
 	int fd = -1;
 	char resolved_path[256];
-	char loader_path[256];
 
 	if (partition == NULL || partition[0] == '\0') {
 		return LoadELFFromFile(filename, argc, argv);
@@ -283,8 +282,11 @@ int LoadELFFromFileWithPartition(const char *filename, const char *partition, in
 	} else {
 		return fd;
 	}
-	canonicalize_partition_loader_path(resolved_path, loader_path, sizeof(loader_path));
-	return ExecuteViaEmbeddedLoaderWithPartition(partition, loader_path, argc, argv);
+	/* Pass resolved_path directly: it preserves the actual PFS mount-point
+	   slot (e.g. pfs3:/) so the embedded loader's SifLoadElf targets the
+	   correct mount where the partition is active, instead of always
+	   falling back to pfs: (slot 0). */
+	return ExecuteViaEmbeddedLoaderWithPartition(partition, resolved_path, argc, argv);
 }
 
 int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
