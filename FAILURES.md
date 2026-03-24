@@ -97,26 +97,37 @@ Last updated: 2026-03-24
 - Hardware conclusion from that run:
   - embedded-loader image copy in `src/elf_loader/src/elf.c` completed
   - the unresolved failure is later than that point
+- The return-code probe from commit `6c81233` displayed:
+  - `POPSLoader HDD diagnostic`
+  - `diag return after loader cleanup`
+  - `argc=3`
+  - `partition=hdd0:+OPL:`
+  - `path=pfs:/APPS/PS1_POPSLOADER/POPSTARTER.ELF`
+- Hardware conclusion from that run:
+  - `SifExitRpc` and both `FlushCache` calls in `src/elf_loader/src/elf.c` completed
+  - the unresolved failure is later than that cleanup point
 - Repo-verified implementation:
-  - `.github/workflows/compilation.yml` now builds and uploads `POPSLOADER-HDD-DIAGNOSTIC` with `LOADER_ENABLE_DEBUG_COLORS=1` and `HDD_DIAG_RETURN_AFTER_EMBEDDED_LOADER_CLEANUP=1`.
+  - `.github/workflows/compilation.yml` now builds and uploads `POPSLOADER-HDD-DIAGNOSTIC` with `LOADER_ENABLE_DEBUG_COLORS=1`, without the older early-return probe defines.
   - The first diagnostic loader only wrote `GS_BGCOLOR` in `src/elf_loader/src/loader/src/loader.c`; it did not initialize a visible debug screen in that loader.
   - This follow-up diagnostic loader revision uses `debug.h` screen output in addition to GS color writes so the current stage remains visible if the handoff stalls inside the embedded loader.
   - Even that follow-up loader revision still dereferenced `argv[0]` and `argv[1]` before its first visible stage, and `src/elf_loader/src/elf.c` still had no screen-backed marker immediately before `ExecPS2` into the embedded loader.
   - This next diagnostic revision now places a visible marker before the embedded-loader `ExecPS2` in `src/elf_loader/src/elf.c`, and moves the first visible loader marker in `src/elf_loader/src/loader/src/loader.c` ahead of any `argv` string dereference.
   - The prior return-code probe returned `-803` from `src/elf_loader/src/elf.c` immediately after the embedded-loader image was copied into RAM and before `SifExitRpc` / final `ExecPS2`.
-  - This diagnostic artifact now returns `-804` from `src/elf_loader/src/elf.c` after `SifExitRpc` and both `FlushCache` calls, and before the final `ExecPS2`.
+  - The later return-code probe returned `-804` from `src/elf_loader/src/elf.c` after `SifExitRpc` and both `FlushCache` calls, and before the final `ExecPS2`.
+  - Those return probes are now retired; they remain documented only as hardware evidence that the failure is later than embedded-loader staging and later than the cleanup boundary.
+  - `src/elf_loader/src/elf.c` still jumped into the embedded loader with `gp=0`, even though `src/elf_loader/src/loader/linkfile` defines `_gp` and the repo-generated `src/elf_loader/loader.c` blob carries a `.reginfo` section (`SHT_MIPS_REGINFO`) whose `ri_gp_value` is `0x0009d6f0`.
+  - The next artifact now tests the smallest fix for that asymmetry: derive the embedded loader's `gp` from its own ELF metadata and pass it to `ExecPS2` instead of forcing zero.
 - Hardware goal:
   - distinguish failure before embedded loader,
   - during embedded-loader image staging in `src/elf_loader/src/elf.c`,
   - during `SifExitRpc` / cache cleanup after embedded-loader image staging,
-  - after `SifExitRpc` / cache cleanup but before final `ExecPS2`,
-  - at the embedded-loader `ExecPS2` boundary,
+  - at the final embedded-loader `ExecPS2` boundary itself,
   - at embedded-loader entry before `argv` string dereference,
   - during target ELF load,
   - during IOP reset/sync,
   - after reset/sync but before final `ExecPS2`,
   - or after final `ExecPS2`.
 - Expected result for this artifact:
-  - if launch returns with `rc=-804`, `SifExitRpc` and both cache flushes completed and the original black screen happens later than that point
-  - if it still black-screens, the failure is during or before that cleanup step
+  - if HDD launch now reaches POPSTARTER output or later diagnostic stages, the `gp=0` embedded-loader handoff was the missing piece
+  - if it still black-screens, the remaining failure is later than cleanup and not explained by the embedded loader's `gp`
 - Without that hardware observation, further launch-path edits are likely to repeat already-failed theories.
