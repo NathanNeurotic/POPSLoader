@@ -240,6 +240,7 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *a
 	u8 *boot_elf = (u8 *)&loader_elf;
 	elf_header_t *boot_header = (elf_header_t *)boot_elf;
 	elf_pheader_t *boot_pheader;
+	int rc;
 
 	if (argc <= 0 || argv == NULL || argv[0] == NULL) {
 		return -4;
@@ -281,8 +282,8 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *a
 
 	cleanup_for_embedded_loader();
 
-	ExecPS2((void *)boot_header->entry, 0, final_argc, launch_argv);
-	return -1;
+	rc = ExecPS2((void *)boot_header->entry, 0, final_argc, launch_argv);
+	return rc;
 }
 
 static int ExecuteViaEmbeddedLoaderWithPartition(const char *partition, const char *resolved_path, int argc, char *argv[]) {
@@ -295,6 +296,7 @@ static int ExecuteViaEmbeddedLoaderWithPartition(const char *partition, const ch
 	u8 *boot_elf = (u8 *)&loader_elf;
 	elf_header_t *boot_header = (elf_header_t *)boot_elf;
 	elf_pheader_t *boot_pheader;
+	int rc;
 
 	if (argc <= 0 || argv == NULL || argv[0] == NULL) {
 		return -4;
@@ -340,8 +342,8 @@ static int ExecuteViaEmbeddedLoaderWithPartition(const char *partition, const ch
 
 	cleanup_for_embedded_loader();
 
-	ExecPS2((void *)boot_header->entry, 0, final_argc, launch_argv);
-	return -1;
+	rc = ExecPS2((void *)boot_header->entry, 0, final_argc, launch_argv);
+	return rc;
 }
 
 static int LoadELFFromFileInternal(const char *filename, const char *partition, int argc, char *argv[], bool keep_partition_in_argv0) {
