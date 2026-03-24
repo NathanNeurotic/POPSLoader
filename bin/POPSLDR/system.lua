@@ -3051,6 +3051,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   local policy, device_page = ResolveLaunchPolicy(gamelocation, ui_scene)
   local selected_entry = tostring(game or "")
   local popstarter = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
+  local keep_hdd_slots = nil
   if selected_entry == "" then
     BlockLaunchFailure(
       "Invalid game selection",
@@ -3063,6 +3064,16 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
       nil
     )
     return
+  end
+  if IsHddExecContextPath(popstarter) then
+    local mounted_popstarter = ResolveHddReadablePath(popstarter)
+    if mounted_popstarter ~= nil and string.match(string.lower(tostring(popstarter or "")), "^hdd%d:") ~= nil then
+      popstarter = mounted_popstarter
+    end
+    local popstarter_slot = ExtractLaunchPfsSlot(mounted_popstarter or popstarter)
+    if popstarter_slot ~= nil then
+      keep_hdd_slots = { popstarter_slot }
+    end
   end
   local hdd_init = nil
   local hdd_partition_label = nil
@@ -3226,6 +3237,13 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     end
   end
   local argv = {argv0_selector}
+  if hdd_init ~= nil and hdd_init.mount_slot ~= nil then
+    if keep_hdd_slots == nil then
+      keep_hdd_slots = { hdd_init.mount_slot }
+    else
+      table.insert(keep_hdd_slots, hdd_init.mount_slot)
+    end
+  end
 
   local context = {
     device_page = device_page,
@@ -3249,7 +3267,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     game_name = game_name,
     bootparam_source = boot_source_mode,
     hdd_init = hdd_init,
-    keep_hdd_slots = hdd_init and hdd_init.mount_slot or nil
+    keep_hdd_slots = keep_hdd_slots
   }
   local reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
   if policy.name == "HDD" then
