@@ -21,12 +21,17 @@
 #include <fcntl.h>
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
+#ifdef LOADER_ENABLE_DEBUG_COLORS
+#include <debug.h>
+#endif
 #define DPRINTF(x...) printf(x)
 
 #ifdef LOADER_ENABLE_DEBUG_COLORS
 #define SET_GS_BGCOLOUR(colour) {*((volatile unsigned long int *)0x120000E0) = colour;}
+#define LOADER_DIAG_PRINTF(args...) scr_printf(args)
 #else
 #define SET_GS_BGCOLOUR(colour)
+#define LOADER_DIAG_PRINTF(args...)
 #endif
 
 // Color status helper in BGR format
@@ -40,6 +45,34 @@
 #define ORANGE_BG 0x00A5FF  // after reset IOP
 #define BROWN_BG 0x2A2AA5  // before FlushCache
 #define PURPBLE_BG 0x800080  // before ExecPS2
+
+#ifdef LOADER_ENABLE_DEBUG_COLORS
+static void loader_diag_init(void)
+{
+	init_scr();
+	scr_clear();
+	scr_setCursor(0);
+}
+
+static void loader_diag_stage(unsigned long colour, const char *label)
+{
+	SET_GS_BGCOLOUR(colour);
+	scr_clear();
+	scr_setCursor(0);
+	scr_printf("POPSLoader HDD diagnostic\n");
+	scr_printf("%s\n", label);
+}
+#else
+static void loader_diag_init(void)
+{
+}
+
+static void loader_diag_stage(unsigned long colour, const char *label)
+{
+	(void)label;
+	SET_GS_BGCOLOUR(colour);
+}
+#endif
 
 
 //--------------------------------------------------------------
@@ -174,7 +207,6 @@ static int load_elf_via_filexio(const char *path,
 //--------------------------------------------------------------
 int main(int argc, char *argv[])
 {
-	SET_GS_BGCOLOUR(WHITE_BG);
 	static t_ExecData elfdata;
 	static char partition_prefix[1024];
 	static char target_path[1024];
@@ -189,7 +221,9 @@ int main(int argc, char *argv[])
 
 	// argv[0]=partition prefix, argv[1]=path to ELF, argv[2..]=arguments
 	if (argc < 2) {  
-		SET_GS_BGCOLOUR(RED_BG);
+		loader_diag_init();
+		loader_diag_stage(RED_BG, "argc check failed");
+		LOADER_DIAG_PRINTF("argc=%d\n", argc);
 		return -EINVAL;
 	}
 	snprintf(partition_prefix, sizeof(partition_prefix), "%s", argv[0] ? argv[0] : "");
@@ -219,28 +253,31 @@ int main(int argc, char *argv[])
 		DPRINTF("> argv[%d] = %s\n", i, argv[i]);
 	}
 	
-	SET_GS_BGCOLOUR(CYAN_BG);
-
 	// Initialize
 	SifInitRpc(0);
 	wipeUserMem();
+	loader_diag_init();
+	loader_diag_stage(WHITE_BG, "embedded loader started");
+	LOADER_DIAG_PRINTF("target=%s\n", target_path);
+	loader_diag_stage(CYAN_BG, "argv accepted");
 
 	//Writeback data cache before loading ELF.
 	FlushCache(0);
-	SET_GS_BGCOLOUR(GREEN_BG);
+	loader_diag_stage(GREEN_BG, "before SifLoadElf");
 	SifLoadFileInit();
 	ret = SifLoadElf(target_path, &elfdata);
 	SifLoadFileExit();
-	SET_GS_BGCOLOUR(BLUE_BG);
+	loader_diag_stage(BLUE_BG, "after SifLoadElf");
+	LOADER_DIAG_PRINTF("ret=%d epc=0x%08x gp=0x%08x\n", ret, elfdata.epc, elfdata.gp);
 	if (ret == 0 && elfdata.epc != 0) {
-		SET_GS_BGCOLOUR(YELLOW_BG);
+		loader_diag_stage(YELLOW_BG, "SifLoadElf ok");
 
 		FlushCache(0);
 		while (!SifIopReset(NULL, 0)) {
 		}
 		while (!SifIopSync()) {
 		}
-		SET_GS_BGCOLOUR(ORANGE_BG);
+		loader_diag_stage(ORANGE_BG, "IOP reset and sync complete");
 
 		SifInitRpc(0);
 		SifLoadFileInit();
@@ -250,18 +287,19 @@ int main(int argc, char *argv[])
 		SifLoadFileExit();
 		SifExitRpc();
 
-		SET_GS_BGCOLOUR(BROWN_BG);
+		loader_diag_stage(BROWN_BG, "ROM modules reloaded");
 		FlushCache(0);
 		FlushCache(2);
 
-		SET_GS_BGCOLOUR(PURPBLE_BG);
+		loader_diag_stage(PURPBLE_BG, "before ExecPS2");
 		DPRINTF("POPS EXEC: argc=%d\n", target_argc);
 		for (i = 0; i < target_argc; i++) {
 			DPRINTF("POPS EXEC: argv[%d] = %s\n", i, target_argv[i]);
 		}
 		return ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, target_argc, target_argv);
 	} else {
-		SET_GS_BGCOLOUR(MAGENTA_BG);
+		loader_diag_stage(MAGENTA_BG, "SifLoadElf failed");
+		LOADER_DIAG_PRINTF("ret=%d epc=0x%08x\n", ret, elfdata.epc);
 		SifExitRpc();
 		return -ENOENT;
 	}

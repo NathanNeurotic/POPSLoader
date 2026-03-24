@@ -86,14 +86,11 @@ Last updated: 2026-03-24
 - Do not treat repo history as proof of a solved path; many of those commits document failed or partial experiments.
 
 ## Next useful step
-- Use the CI-built `POPSLOADER-HDD-DIAGNOSTIC` artifact for the next hardware run.
+- The first CI-built `POPSLOADER-HDD-DIAGNOSTIC` artifact from commit `0327006` was still reported as a black screen on HDD boot + HDD game hardware.
 - Repo-verified implementation:
-  - `.github/workflows/compilation.yml` now builds and uploads a second artifact with `LOADER_ENABLE_DEBUG_COLORS=1`.
-  - `src/elf_loader/src/loader/src/loader.c` now emits GS color stages for:
-    - embedded loader entry / argc validation / `SifLoadElf` progress,
-    - successful completion of `SifIopReset` + `SifIopSync`,
-    - post-ROM-module reload cleanup,
-    - and final `ExecPS2` handoff.
+  - `.github/workflows/compilation.yml` builds and uploads `POPSLOADER-HDD-DIAGNOSTIC` with `LOADER_ENABLE_DEBUG_COLORS=1`.
+  - The first diagnostic loader only wrote `GS_BGCOLOR` in `src/elf_loader/src/loader/src/loader.c`; it did not initialize a visible debug screen in that loader.
+  - This follow-up diagnostic loader revision uses `debug.h` screen output in addition to GS color writes so the current stage remains visible if the handoff stalls inside the embedded loader.
 - Hardware goal:
   - distinguish failure before embedded loader,
   - during target ELF load,

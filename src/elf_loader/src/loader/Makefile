@@ -22,6 +22,7 @@ EE_LINKFILE ?= linkfile
 
 ifneq (x$(LOADER_ENABLE_DEBUG_COLORS), x0)
 EE_CFLAGS += -DLOADER_ENABLE_DEBUG_COLORS
+EE_LIBS += -ldebug
 endif
 
 all: $(EE_BIN) $(BINDIR)
