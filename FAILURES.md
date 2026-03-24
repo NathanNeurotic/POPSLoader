@@ -85,7 +85,7 @@ Last updated: 2026-03-24
 - Do not assume keeping raw `hdd0:...` POPSTARTER paths through Lua fixes the failure.
 - Do not treat repo history as proof of a solved path; many of those commits document failed or partial experiments.
 
-## Next useful step
+## Current stop point
 - The first CI-built `POPSLOADER-HDD-DIAGNOSTIC` artifact from commit `0327006` was still reported as a black screen on HDD boot + HDD game hardware.
 - The follow-up screen-backed diagnostic artifact from commit `03c1a2b` was also still reported as a black screen on HDD boot + HDD game hardware.
 - The return-code probe from commit `2172a2f` displayed:
@@ -148,6 +148,11 @@ Last updated: 2026-03-24
 - Hardware conclusion from that run:
   - the embedded loader still did not present a stable post-path-copy halt on hardware
   - inference from repo behavior: the remaining unresolved gap is now tighter, between the first `argv[0]` string read and the second `argv[1]` string read in `src/elf_loader/src/loader/src/loader.c`
+- Hardware result from commit `78e0ee6`:
+  - same flash-then-black result again, even though the diagnostic artifact now halted immediately after copying only `argv[0]` into `partition_prefix` and before dereferencing `argv[1]`
+- Hardware conclusion from that run:
+  - the embedded loader still did not present a stable post-`argv[0]` halt on hardware
+  - inference from repo behavior: the current screen-backed diagnostic approach has reached a plateau after stable loader entry; narrower post-entry string-copy halts are no longer yielding durable new stage evidence
 - Repo-verified implementation:
   - `.github/workflows/compilation.yml` now builds and uploads `POPSLOADER-HDD-DIAGNOSTIC` with `LOADER_ENABLE_DEBUG_COLORS=1`, without the older `src/elf_loader/src/elf.c` early-return probe defines.
   - The first diagnostic loader only wrote `GS_BGCOLOR` in `src/elf_loader/src/loader/src/loader.c`; it did not initialize a visible debug screen in that loader.
@@ -173,19 +178,23 @@ Last updated: 2026-03-24
   - Commit `9eaa040` now keeps SIF RPC alive across that partitioned embedded-loader `ExecPS2` boundary, and hardware now reaches a stable `embedded loader entry` stage.
   - Commit `6bddf69` moved the diagnostic halt to after the embedded loader copied `argv[0]`, `argv[1]`, and the forwarded selector into local buffers, and also printed the copied strings for visibility.
   - Commit `11f1dc6` then moved the diagnostic halt earlier again, to after the embedded loader copied the partition/path strings and built `exec0`, but before it dereferenced the forwarded selector `argv[2]`.
-  - Because that artifact still only flashed and black-screened, the next diagnostic artifact now halts earlier still: after the embedded loader copies `argv[0]` into `partition_prefix`, but before it dereferences `argv[1]` for the target path.
-  - That target is not the already-failed selector-shape family: it does not change the selector value or contract, only tests whether the remaining crash begins on the first or second string read after stable embedded-loader entry.
-- Hardware goal:
-  - distinguish failure before embedded loader,
-  - during embedded-loader image staging in `src/elf_loader/src/elf.c`,
-  - during `SifExitRpc` / cache cleanup after embedded-loader image staging,
-  - at the final embedded-loader `ExecPS2` boundary itself,
-  - at embedded-loader entry before `argv` string dereference,
-  - during target ELF load,
-  - during IOP reset/sync,
-  - after reset/sync but before final `ExecPS2`,
-  - or after final `ExecPS2`.
-- Expected result for this artifact:
-  - if the diagnostic build now shows stable `embedded loader partition copied`, the remaining failure is later than the `argv[0]` read and likely begins when `argv[1]` is first dereferenced for the target path
-  - if it still only flashes or black-screens before the new halt, the remaining failure is at or before the first `argv[0]` string read after stable embedded-loader entry
-- Without that hardware observation, further launch-path edits are likely to repeat already-failed theories.
+  - Commit `78e0ee6` moved the diagnostic halt earlier still, to after the embedded loader copied `argv[0]` into `partition_prefix`, but before it dereferenced `argv[1]` for the target path.
+  - Commits `6bddf69`, `11f1dc6`, and `78e0ee6` all produced the same practical hardware result: a brief flash followed by black screen, without a new durable post-entry stage.
+
+## Guardrail For Future Work
+- Do not continue making narrower screen-backed embedded-loader halt variants in `src/elf_loader/src/loader/src/loader.c` unless there is a materially different evidence source.
+- Repo evidence now supports only these durable HDD findings:
+  - embedded-loader image copy completed (`2172a2f`)
+  - embedded-loader cleanup completed (`6c81233`)
+  - keeping SIF RPC alive before the partitioned embedded-loader `ExecPS2` boundary allowed stable `embedded loader entry` (`9eaa040`)
+  - later post-entry screen-backed halts at `6bddf69`, `11f1dc6`, and `78e0ee6` did not yield stable new observations
+- Do not repeat:
+  - selector-shape / `argv[0]` contract rewrites
+  - slot-preservation rewrites
+  - reset-policy toggles
+  - partition/path normalization rewrites
+  - custom `fileXio` target-loading path
+  - finer-grained post-entry `argv` copy halts that only move the screen-backed stop a few lines earlier
+- If HDD work resumes, require one of:
+  - a genuinely new code asymmetry not already covered above, with file-level evidence
+  - or a materially different observability method than the current `debug.h`/GS-color screen-backed diagnostic path

@@ -13,6 +13,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 - Implemented selectable BDMA modes: `FAT32`, `USBEXFAT`, `MX4SIO`, `MMCE`.
 - USB/MX4SIO split is based on mount-driver identity, not path-prefix heuristics alone.
 - Release packaging policy in CI is `PS1_POPSLOADER/*` + `POPS/PATCH_5.BIN` with strict manifest validation.
+- HDD list/browse flow is implemented, but HDD-resident `POPSTARTER.ELF` launch remains hardware-failing on this branch. See `FAILURES.md` and `QA_REGRESSION_MATRIX.md`.
 
 ## Main Menu Feature Status
 - `MMCE`: implemented.
@@ -25,7 +26,8 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 
 ## Known Open Work
 - Resolve the hardware-verified black screen when `POPSTARTER.ELF` is launched from HDD/PFS. See `FAILURES.md`.
-- Run hardware validation with the CI-built HDD POPSTARTER diagnostic artifact to identify the failing embedded-loader stage. See `FAILURES.md`.
+- Treat HDD D-10 as a diagnostic plateau, not an open invitation for more micro-probes: the last durable hardware stage is `embedded loader entry`, while later screen-backed halts still collapse to flash-then-black. See `FAILURES.md`.
+- Do not continue the same post-entry embedded-loader halt family without a new code asymmetry or a materially different observability source. See `FAILURES.md`.
 - Implement HDD exFAT menu flow.
 - Implement SMB menu flow.
 - Implement ART system.

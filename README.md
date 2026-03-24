@@ -25,7 +25,7 @@ This repository contains:
 |---|---|
 | MMCE | Implemented |
 | MX4SIO | Implemented |
-| HDD (PFS) | Implemented |
+| HDD (PFS) | Implemented for list/browse; HDD-resident `POPSTARTER.ELF` launch remains unresolved |
 | USB | Implemented |
 | Disc (DKWDRV) | Implemented |
 | HDD (exFAT) | Not implemented |
@@ -95,6 +95,7 @@ Notes:
 ### HDD (PFS) path notes
 - HDD title scan uses `__.POPS` and `__.POPS1..__.POPS9` partitions.
 - HDD dependency checks in launcher currently reference `hdd0:__common/POPS/` files.
+- Known limitation on this branch: when `POPSTARTER.ELF` itself is HDD-resident, HDD title launch is still hardware-failing (`D-10`). See `FAILURES.md` and `QA_REGRESSION_MATRIX.md`.
 
 ## Supported Devices and Backends
 - MMCE (`mmce0:/`, `mmce1:/`): supported.

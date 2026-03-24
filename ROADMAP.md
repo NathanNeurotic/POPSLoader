@@ -39,7 +39,10 @@ Current branch has substantial stabilization work already landed (settings trans
 
 ### 3) Hardware validation depth
 - Resolve the still-unverified/failed `POPSTARTER.ELF on HDD` launch path before expanding broader HDD coverage. See `FAILURES.md`.
-- Use the CI-built HDD POPSTARTER diagnostic artifact to record the last observed embedded-loader stage on hardware before more handoff refactors.
+- Treat the current HDD diagnostic line as exhausted for now:
+  - commit `9eaa040` established stable `embedded loader entry`
+  - commits `6bddf69`, `11f1dc6`, and `78e0ee6` all collapsed to the same flash-then-black result when the halt moved deeper into post-entry string-copy code
+- Do not spend more cycles on narrower screen-backed embedded-loader halt variants unless future work brings a materially different evidence source or a new code asymmetry that is not already covered in `FAILURES.md`.
 - Expand and record hardware coverage runs in `QA_REGRESSION_MATRIX.md`.
 - Prioritize combined scenarios: large multi-root USB + MX4SIO + MMCE + HDD installations.
 
