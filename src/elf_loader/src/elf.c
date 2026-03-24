@@ -264,7 +264,9 @@ static int ExecuteViaEmbeddedLoaderWithPartition(const char *partition, const ch
 		}
 	}
 
+#ifndef HDD_DIAG_KEEP_SIF_RPC_BEFORE_EMBEDDED_EXEC
 	SifExitRpc();
+#endif
 	FlushCache(0);
 	FlushCache(2);
 	partition_loader_diag_stage("before embedded loader ExecPS2", final_argc, partition_prefix, resolved_path);
