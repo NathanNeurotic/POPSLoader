@@ -5,7 +5,7 @@ Last updated: 2026-03-24
 ## Active Unresolved Failure
 
 ### HDD-resident POPSTARTER black screen
-- Status: code fix applied (PFS mount-slot mismatch), `Unknown (verify on hardware)`.
+- Status: embedded-loader bypass applied (`reboot_iop = 1` for HDD), `Unknown (verify on hardware)`.
 - Scope:
   - USB/MMCE/SMB launches work.
   - HDD games list/browse behavior works.
@@ -85,21 +85,21 @@ Last updated: 2026-03-24
 - Do not assume keeping raw `hdd0:...` POPSTARTER paths through Lua fixes the failure.
 - Do not treat repo history as proof of a solved path; many of those commits document failed or partial experiments.
 
-## New finding: PFS mount-slot mismatch (code fix applied)
-- Root cause identified from repository code:
-  - POPSTARTER partition is mounted on `pfs3:` (slot 3, via `HDD_SLOT_POPSTARTER` in `system.lua:199`).
-  - `canonicalize_partition_loader_path` in `elf.c` stripped the slot number: `pfs3:/POPSTARTER.ELF` → `pfs:/POPSTARTER.ELF`.
-  - The embedded loader called `SifLoadElf("pfs:/POPSTARTER.ELF")` targeting `pfs0:` (slot 0), which does NOT have the POPSTARTER partition mounted.
-  - Therefore `SifLoadElf` failed → black screen.
-- Why previous attempts did not address this:
-  - `7a32ad2` and `120fc72` both used `pfs:/` (same slot-0 bug).
-  - `ea03ba2` used raw `hdd0:` path (can't be opened by `SifLoadElf` without PFS mount).
-  - `08fffab` used `fileXio` custom loader (failed due to missing `PT_MIPS_REGINFO`/gp=0).
-  - None of them preserved the actual `pfs3:/` mount-point path for the embedded loader's `SifLoadElf` call.
-- Fix: removed `canonicalize_partition_loader_path` call in `LoadELFFromFileWithPartition` so `resolved_path` (with correct `pfs3:/` prefix) is passed directly to the embedded loader.
+### PFS mount-slot mismatch fix (necessary but insufficient)
+- Commit: `87f4197` `Fix PFS mount-slot mismatch in HDD POPSTARTER embedded loader handoff`
+- What it fixed: `canonicalize_partition_loader_path` in `elf.c` stripped `pfs3:` → `pfs:`, causing SifLoadElf to target the wrong mount point.
+- Result: hardware still black-screened.
+- Conclusion: the slot-mismatch was a real code bug, but fixing it alone is not sufficient. The embedded loader's execution environment is fundamentally unable to load POPSTARTER from PFS.
+
+### Embedded-loader bypass (current attempt)
+- Approach: set `reboot_iop = 1` for HDD policy in `system.lua`, routing through `LoadELFFromFileExecPS2RebootIOP` instead of the embedded loader.
+- Rationale: ALL 14+ previous failures went through the embedded loader. This bypasses it entirely, loading POPSTARTER via `SifLoadElf` in the main process context where fileXio/iomanX/PFS are fully active.
 - Status: `Unknown (verify on hardware)`.
+
+## Do not re-assume without new evidence (updated)
+- Do not assume any variant of the embedded loader path works for HDD POPSTARTER.
+- Previous assumptions still apply (see above).
 
 ## Diagnostic artifact (still available)
 - The CI-built `POPSLOADER-HDD-DIAGNOSTIC` artifact with `LOADER_ENABLE_DEBUG_COLORS=1` remains available.
-- If the above fix still black-screens, the diagnostic build should show MAGENTA (SifLoadElf failure) vs other colors.
 - `src/elf_loader/src/loader/src/loader.c` GS color stages are still in place.
