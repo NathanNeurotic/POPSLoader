@@ -3067,10 +3067,12 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   end
   if IsHddExecContextPath(popstarter) then
     local mounted_popstarter = ResolveHddReadablePath(popstarter)
-    if mounted_popstarter ~= nil and string.match(string.lower(tostring(popstarter or "")), "^hdd%d:") ~= nil then
-      popstarter = mounted_popstarter
+    local popstarter_slot = nil
+    if string.match(string.lower(tostring(popstarter or "")), "^pfs%d*:/") ~= nil then
+      popstarter_slot = ExtractLaunchPfsSlot(popstarter)
+    elseif mounted_popstarter ~= nil and string.match(string.lower(tostring(popstarter or "")), "^hdd%d:") == nil then
+      popstarter_slot = ExtractLaunchPfsSlot(mounted_popstarter)
     end
-    local popstarter_slot = ExtractLaunchPfsSlot(mounted_popstarter or popstarter)
     if popstarter_slot ~= nil then
       keep_hdd_slots = { popstarter_slot }
     end

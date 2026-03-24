@@ -84,6 +84,7 @@ static char *store_arg(const char *src, char *storage, size_t storage_size, size
 static void canonicalize_partition_loader_path(const char *path, char *out, size_t out_size)
 {
 	const char *suffix;
+	const char *slash;
 	if (out_size == 0) {
 		return;
 	}
@@ -96,6 +97,14 @@ static void canonicalize_partition_loader_path(const char *path, char *out, size
 		suffix = strchr(path, ':');
 		snprintf(out, out_size, "pfs:%s", suffix + 1);
 		return;
+	}
+	if ((strncmp(path, "hdd", 3) == 0 || strncmp(path, "HDD", 3) == 0) &&
+	    strchr(path, ':') != NULL) {
+		slash = strchr(strchr(path, ':') + 1, '/');
+		if (slash != NULL) {
+			snprintf(out, out_size, "pfs:%s", slash);
+			return;
+		}
 	}
 	snprintf(out, out_size, "%s", path);
 }
