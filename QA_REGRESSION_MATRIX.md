@@ -72,7 +72,7 @@ This matrix tracks current behavior across:
 | 2026-03-24 | Unknown | HDD boot + HDD POPSTARTER sidecar + HDD game | D-10 | FAIL: black screen still present across commits `7a32ad2`, `120fc72`, and `ea03ba2`; see `FAILURES.md` |
 | 2026-03-24 | Unknown | HDD diagnostic build + HDD boot + HDD POPSTARTER sidecar + HDD game | D-10 | FAIL: commit `0327006` diagnostic artifact was still reported as a black screen; stage remained unobserved, which motivated the follow-up diagnostic loader revision that adds visible debug-screen stage text; see `FAILURES.md` |
 | 2026-03-24 | Unknown | HDD diagnostic build + HDD boot + HDD POPSTARTER sidecar + HDD game | D-10 | FAIL: commit `03c1a2b` screen-backed diagnostic artifact was still reported as a black screen; this narrows the next diagnostic change to the embedded-loader `ExecPS2` boundary and loader entry before `argv` string dereference; see `FAILURES.md` |
-| 2026-03-24 | Unknown | HDD diagnostic build + HDD boot + HDD POPSTARTER sidecar + HDD game | D-10 | Pending next probe: current diagnostic artifact is expected to return `rc=-803` after embedded-loader image staging in `src/elf_loader/src/elf.c`; if it still black-screens, the failure is earlier than or during that staging step; see `FAILURES.md` |
+| 2026-03-24 | Unknown | HDD diagnostic build + HDD boot + HDD POPSTARTER sidecar + HDD game | D-10 | FAIL: commit `2172a2f` displayed `diag return after loader copy`, `argc=3`, `partition=hdd0:+OPL:`, `path=pfs:/APPS/PS1_POPSLOADER/POPSTARTER.ELF`; embedded-loader image copy completed, so the next probe targets `SifExitRpc` / cache cleanup; see `FAILURES.md` |
 
 ## Current Verification Status
 - CI gates: verified by workflow definition (execution status depends on CI runs).

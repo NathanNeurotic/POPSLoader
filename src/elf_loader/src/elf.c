@@ -32,6 +32,7 @@
 #define ELF_MAGIC 0x464c457f
 #define ELF_PT_LOAD 1
 #define HDD_DIAG_RC_AFTER_EMBEDDED_LOADER_COPY (-803)
+#define HDD_DIAG_RC_AFTER_EMBEDDED_LOADER_CLEANUP (-804)
 
 #ifdef LOADER_ENABLE_DEBUG_COLORS
 static void partition_loader_diag_stage(const char *label, int argc, const char *partition, const char *path)
@@ -208,7 +209,7 @@ static int ExecuteViaEmbeddedLoaderWithPartition(const char *partition, const ch
 		}
 	}
 
-#ifdef HDD_DIAG_RETURN_AFTER_EMBEDDED_LOADER_COPY
+#if defined(HDD_DIAG_RETURN_AFTER_EMBEDDED_LOADER_COPY) && !defined(HDD_DIAG_RETURN_AFTER_EMBEDDED_LOADER_CLEANUP)
 	partition_loader_diag_stage("diag return after loader copy", final_argc, partition_prefix, resolved_path);
 	return HDD_DIAG_RC_AFTER_EMBEDDED_LOADER_COPY;
 #endif
@@ -216,6 +217,11 @@ static int ExecuteViaEmbeddedLoaderWithPartition(const char *partition, const ch
 	SifExitRpc();
 	FlushCache(0);
 	FlushCache(2);
+
+#ifdef HDD_DIAG_RETURN_AFTER_EMBEDDED_LOADER_CLEANUP
+	partition_loader_diag_stage("diag return after loader cleanup", final_argc, partition_prefix, resolved_path);
+	return HDD_DIAG_RC_AFTER_EMBEDDED_LOADER_CLEANUP;
+#endif
 	partition_loader_diag_stage("before embedded loader ExecPS2", final_argc, partition_prefix, resolved_path);
 
 	ExecPS2((void *)boot_header->entry, 0, final_argc, launch_argv);
