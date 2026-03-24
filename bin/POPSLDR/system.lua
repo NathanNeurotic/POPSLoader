@@ -871,10 +871,6 @@ end
 local HDD_PAGE_POPSTARTER_PATH = "hdd0:__common:pfs:/POPS/POPSTARTER.ELF"
 
 local function ResolveHddPagePopstarterPath()
-  local resolved = ResolveHddPartitionReadablePath("hdd0:__common", "POPS/POPSTARTER.ELF", nil, HDD_SLOT_COMMON)
-  if resolved ~= nil then
-    return resolved
-  end
   return HDD_PAGE_POPSTARTER_PATH
 end
 
