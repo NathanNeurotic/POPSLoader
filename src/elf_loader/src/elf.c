@@ -35,6 +35,10 @@ static bool is_host_path(const char *filename) {
 	return (filename != NULL && strncmp(filename, "host:/", 6) == 0);
 }
 
+static bool is_pfs_exec_path(const char *filename) {
+	return (filename != NULL && strncmp(filename, "pfs", 3) == 0);
+}
+
 static bool build_host_alt_path(const char *filename, char *out, size_t out_size) {
 	if (!is_host_path(filename)) {
 		return false;
@@ -259,6 +263,11 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 	}
 	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
 		return -1;
+	}
+	if (is_pfs_exec_path(resolved_path)) {
+		DPRINTF("LAUNCH: Using embedded loader for PFS exec\n");
+		wipe_bramMem();
+		return ExecuteViaEmbeddedLoader(resolved_path, argc, argv);
 	}
 	DPRINTF("LAUNCH: Using ExecPS2\n");
 	DPRINTF("POPSTARTER ExecPS2 argv0=%s\n", argv[0]);
