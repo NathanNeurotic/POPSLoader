@@ -871,14 +871,6 @@ end
 local HDD_PAGE_POPSTARTER_PATH = "hdd0:__common/POPS/POPSTARTER.ELF"
 
 local function ResolveHddPagePopstarterPath()
-  local direct_hdd = ResolveDirectHddExecPath(HDD_PAGE_POPSTARTER_PATH)
-  if direct_hdd ~= nil then
-    return direct_hdd
-  end
-  local resolved_hdd = ResolveHddExecMountedPath(HDD_PAGE_POPSTARTER_PATH)
-  if resolved_hdd ~= nil then
-    return resolved_hdd
-  end
   return HDD_PAGE_POPSTARTER_PATH
 end
 
@@ -3091,7 +3083,8 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   local argv0 = argv and argv[1] or nil
   local unpack_fn = table.unpack or unpack
   local restore_cwd = nil
-  local skip_hdd_preflight = reboot_iop ~= 0 and IsHddExecContextPath(popstarter)
+  local forced_hdd_common_popstarter = context ~= nil and context.device_page == "HDD" and tostring(popstarter or "") == HDD_PAGE_POPSTARTER_PATH
+  local skip_hdd_preflight = (reboot_iop ~= 0 and IsHddExecContextPath(popstarter)) or forced_hdd_common_popstarter
   SetLaunchPhase(LaunchState.PHASE_VALIDATE)
   if not skip_hdd_preflight and not PLDR.PopstarterProbeWithEnsure(popstarter) then
     BlockLaunchFailure(
@@ -3391,14 +3384,6 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     end
   end
   local argv = {argv0_selector}
-  if popstarter_on_hdd then
-    if popstarter ~= nil and popstarter ~= "" and popstarter ~= argv0_selector then
-      table.insert(argv, popstarter)
-    end
-    if bootparam ~= nil and bootparam ~= "" and bootparam ~= argv0_selector and bootparam ~= popstarter then
-      table.insert(argv, bootparam)
-    end
-  end
 
   local context = {
     device_page = device_page,
