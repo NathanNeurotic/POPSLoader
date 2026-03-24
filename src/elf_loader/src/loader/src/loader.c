@@ -233,6 +233,24 @@ int main(int argc, char *argv[])
 		SET_GS_BGCOLOUR(BLUE_BG);
 		if (ret == 0 && entry != 0) {
 			SET_GS_BGCOLOUR(YELLOW_BG);
+			SifExitIopHeap();
+			SifExitRpc();
+			SifExitCmd();
+
+			FlushCache(0);
+			while (!SifIopReset(NULL, 0)) {
+			}
+			while (!SifIopSync()) {
+			}
+
+			SifInitRpc(0);
+			SifLoadFileInit();
+			SifLoadModule("rom0:SIO2MAN", 0, NULL);
+			SifLoadModule("rom0:MCMAN", 0, NULL);
+			SifLoadModule("rom0:MCSERV", 0, NULL);
+			SifLoadFileExit();
+			SifExitRpc();
+
 			FlushCache(0);
 			FlushCache(2);
 			SET_GS_BGCOLOUR(PURPBLE_BG);
