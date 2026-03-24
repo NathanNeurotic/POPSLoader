@@ -21,6 +21,7 @@
 #include <sys/stat.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <ctype.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include "../../include/dprintf.h"
@@ -81,13 +82,28 @@ static char *store_arg(const char *src, char *storage, size_t storage_size, size
 	return dest;
 }
 
-static void unmount_pfs_slots_for_exec(void) {
-	char mount_name[6] = "pfs0:";
-	int slot;
-	for (slot = 0; slot <= 3; slot++) {
-		mount_name[3] = '0' + slot;
-		fileXioUmount(mount_name);
+static int ascii_tolower(int ch) {
+	if (ch >= 'A' && ch <= 'Z') {
+		return ch - 'A' + 'a';
 	}
+	return ch;
+}
+
+static bool starts_with_case_insensitive(const char *text, const char *prefix) {
+	size_t i;
+	if (text == NULL || prefix == NULL) {
+		return false;
+	}
+	for (i = 0; prefix[i] != '\0'; i++) {
+		if (text[i] == '\0' || ascii_tolower((unsigned char)text[i]) != ascii_tolower((unsigned char)prefix[i])) {
+			return false;
+		}
+	}
+	return true;
+}
+
+static bool is_hdd_resident_exec_path(const char *filename) {
+	return starts_with_case_insensitive(filename, "hdd") || starts_with_case_insensitive(filename, "pfs");
 }
 
 /* IMPORTANT: This method wipe memory where the loader is going to be allocated 
@@ -110,9 +126,9 @@ static void wipe_bramMem(void) {
 	}
 }
 
-static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *argv[]) {
+static int ExecuteViaEmbeddedLoader(const char *resolved_path, const char *target_argv0, int argc, char *argv[]) {
 	int i;
-	int final_argc = argc + 1;
+	int final_argc = argc + 2;
 	static const int kMaxArgc = 32;
 	static char *launch_argv[33];
 	static char launch_arg_storage[2048];
@@ -121,7 +137,10 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *a
 	elf_header_t *boot_header = (elf_header_t *)boot_elf;
 	elf_pheader_t *boot_pheader;
 
-	if (argc <= 0 || argv == NULL || argv[0] == NULL) {
+	if (argc < 0 || resolved_path == NULL || resolved_path[0] == '\0' || target_argv0 == NULL || target_argv0[0] == '\0') {
+		return -4;
+	}
+	if (argc > 0 && (argv == NULL || argv[0] == NULL)) {
 		return -4;
 	}
 	if (final_argc > kMaxArgc) {
@@ -131,8 +150,12 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *a
 		return -5;
 	}
 
-	launch_argv[0] = store_arg(resolved_path, launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
+	launch_argv[0] = store_arg(target_argv0, launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
 	if (!launch_argv[0]) {
+		return -3;
+	}
+	launch_argv[1] = store_arg(resolved_path, launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
+	if (!launch_argv[1]) {
 		return -3;
 	}
 	for (i = 0; i < argc; i++) {
@@ -140,7 +163,7 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *a
 		if (!stored_arg) {
 			return -3;
 		}
-		launch_argv[i + 1] = stored_arg;
+		launch_argv[i + 2] = stored_arg;
 	}
 	launch_argv[final_argc] = NULL;
 
@@ -157,10 +180,6 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *a
 		if (boot_pheader[i].memsz > boot_pheader[i].filesz) {
 			memset((void *)((int)boot_pheader[i].vaddr + boot_pheader[i].filesz), 0, boot_pheader[i].memsz - boot_pheader[i].filesz);
 		}
-	}
-
-	if (strncmp(resolved_path, "hdd", 3) == 0) {
-		unmount_pfs_slots_for_exec();
 	}
 
 	SifExitIopHeap();
@@ -252,6 +271,7 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 {
 	t_ExecData elfdata;
 	char resolved_path[256];
+	const char *target_argv0;
 	int ret;
 
 	if (argc <= 0 || argv == NULL || argv[0] == NULL) {
@@ -259,6 +279,11 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 	}
 	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
 		return -1;
+	}
+	if (is_hdd_resident_exec_path(filename) || is_hdd_resident_exec_path(resolved_path)) {
+		target_argv0 = is_hdd_resident_exec_path(filename) ? filename : resolved_path;
+		wipe_bramMem();
+		return ExecuteViaEmbeddedLoader(resolved_path, target_argv0, argc, argv);
 	}
 	DPRINTF("LAUNCH: Using ExecPS2\n");
 	DPRINTF("POPSTARTER ExecPS2 argv0=%s\n", argv[0]);

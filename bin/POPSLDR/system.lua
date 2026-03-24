@@ -2612,17 +2612,12 @@ local function SelectPopstarterSelectorPrefix(device_page)
   return "XX."
 end
 
-local function BuildPopstarterSelectorPath(device_page, game_name, popstarter_path)
+local function BuildPopstarterSelectorPath(device_page, game_name)
   if game_name == nil or game_name == "" then
     return ""
   end
   if device_page == "HDD" then
-    local selector_name = BuildLiteralElfName(game_name)
-    local selector_dir = DirectoryFromExecPath(popstarter_path)
-    if selector_dir ~= nil then
-      return JoinPath(selector_dir, selector_name)
-    end
-    return selector_name
+    return BuildLiteralElfName(game_name)
   end
   if device_page == "USB" or device_page == "MMCE" or device_page == "SMB/MMCE" then
     return "mass:/POPS/XX."..game_name..".ELF"
@@ -3154,7 +3149,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     return
   end
   local selector_prefix = SelectPopstarterSelectorPrefix(device_page)
-  local argv0_selector = BuildPopstarterSelectorPath(device_page, game_name, popstarter)
+  local argv0_selector = BuildPopstarterSelectorPath(device_page, game_name)
   if selector_prefix == "" and string.upper(game_name) == "POPSTARTER" then
     BlockLaunchFailure(
       "Internal error: game_base derived as POPSTARTER; refusing to launch.",

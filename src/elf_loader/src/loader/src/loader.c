@@ -89,23 +89,24 @@ int main(int argc, char *argv[])
 
 	elfdata.epc = 0;
 
-	// argv[0]=path to ELF, argv[1..]=arguments
+	// argv[0]=target argv0, argv[1]=path to ELF, argv[2..]=arguments
 	if (argc < 2) {  
 		SET_GS_BGCOLOUR(RED_BG);
 		return -EINVAL;
 	}
-	snprintf(target_path, sizeof(target_path), "%s", argv[0] ? argv[0] : "");
+	snprintf(target_path, sizeof(target_path), "%s", argv[1] ? argv[1] : "");
 	target_argc = argc - 1;
 	if (target_argc > 32) {
 		return -E2BIG;
 	}
-	for (i = 1; i < argc; i++) {
-		size_t arg_len = strlen(argv[i]) + 1;
+	for (i = 0; i < target_argc; i++) {
+		const char *arg = argv[i];
+		size_t arg_len = strlen(arg) + 1;
 		if ((target_arg_offset + arg_len) > sizeof(target_arg_storage)) {
 			return -E2BIG;
 		}
-		memcpy(&target_arg_storage[target_arg_offset], argv[i], arg_len);
-		target_argv[i - 1] = &target_arg_storage[target_arg_offset];
+		memcpy(&target_arg_storage[target_arg_offset], arg, arg_len);
+		target_argv[i] = &target_arg_storage[target_arg_offset];
 		target_arg_offset += arg_len;
 	}
 	target_argv[target_argc] = NULL;
