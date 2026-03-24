@@ -264,6 +264,8 @@ int main(int argc, char *argv[])
 	// Initialize
 	SifInitRpc(0);
 	wipeUserMem();
+	// Rebuild EE-side RPC state after wiping user memory.
+	SifInitRpc(0);
 	loader_diag_init();
 	loader_diag_stage(CYAN_BG, "embedded loader arguments copied");
 	LOADER_DIAG_PRINTF("target=%s\n", target_path);

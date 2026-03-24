@@ -106,6 +106,12 @@ Last updated: 2026-03-24
 - Hardware conclusion from that run:
   - `SifExitRpc` and both `FlushCache` calls in `src/elf_loader/src/elf.c` completed
   - the unresolved failure is later than that cleanup point
+- Hardware result from commit `c3cf306`:
+  - still solid black screen on HDD boot + HDD game
+  - user reported a very fast flash before the final black screen, but the stage text was not readable
+- Hardware conclusion from that run:
+  - `Unknown (verify on hardware)` whether the flash came from `src/elf_loader/src/elf.c` or from a later embedded-loader stage
+  - the new embedded-loader `gp` handoff did not produce a stable visible success/failure marker on hardware
 - Repo-verified implementation:
   - `.github/workflows/compilation.yml` now builds and uploads `POPSLOADER-HDD-DIAGNOSTIC` with `LOADER_ENABLE_DEBUG_COLORS=1`, without the older early-return probe defines.
   - The first diagnostic loader only wrote `GS_BGCOLOR` in `src/elf_loader/src/loader/src/loader.c`; it did not initialize a visible debug screen in that loader.
@@ -116,7 +122,10 @@ Last updated: 2026-03-24
   - The later return-code probe returned `-804` from `src/elf_loader/src/elf.c` after `SifExitRpc` and both `FlushCache` calls, and before the final `ExecPS2`.
   - Those return probes are now retired; they remain documented only as hardware evidence that the failure is later than embedded-loader staging and later than the cleanup boundary.
   - `src/elf_loader/src/elf.c` still jumped into the embedded loader with `gp=0`, even though `src/elf_loader/src/loader/linkfile` defines `_gp` and the repo-generated `src/elf_loader/loader.c` blob carries a `.reginfo` section (`SHT_MIPS_REGINFO`) whose `ri_gp_value` is `0x0009d6f0`.
-  - The next artifact now tests the smallest fix for that asymmetry: derive the embedded loader's `gp` from its own ELF metadata and pass it to `ExecPS2` instead of forcing zero.
+  - Commit `c3cf306` now derives the embedded loader's `gp` from that `.reginfo` metadata and passes it to `ExecPS2` instead of forcing zero.
+  - `src/elf_loader/src/loader/src/loader.c` still called `SifInitRpc(0)` and then immediately wiped all EE user memory with `wipeUserMem()` before using `SifLoadFileInit()` / `SifLoadElf()`.
+  - Inference from repo code: if `SifInitRpc(0)` establishes EE-side RPC state in wiped user memory, the embedded loader can corrupt its own later `SifLoadElf()` path even though the direct working launchers in `src/elf_loader/src/elf.c` initialize RPC immediately before `SifLoadFileInit()` and do not wipe memory between those calls.
+  - The next artifact now tests the smallest fix for that asymmetry: reinitialize SIF RPC after `wipeUserMem()` and before the embedded loader's `SifLoadFileInit()` / `SifLoadElf()` sequence.
 - Hardware goal:
   - distinguish failure before embedded loader,
   - during embedded-loader image staging in `src/elf_loader/src/elf.c`,
@@ -128,6 +137,6 @@ Last updated: 2026-03-24
   - after reset/sync but before final `ExecPS2`,
   - or after final `ExecPS2`.
 - Expected result for this artifact:
-  - if HDD launch now reaches POPSTARTER output or later diagnostic stages, the `gp=0` embedded-loader handoff was the missing piece
-  - if it still black-screens, the remaining failure is later than cleanup and not explained by the embedded loader's `gp`
+  - if HDD launch now reaches POPSTARTER output or later diagnostic stages, the embedded loader's pre-load RPC state was being invalidated by the user-memory wipe
+  - if it still black-screens, the remaining failure is not explained by the embedded loader `gp` handoff or this RPC reinit ordering fix
 - Without that hardware observation, further launch-path edits are likely to repeat already-failed theories.
