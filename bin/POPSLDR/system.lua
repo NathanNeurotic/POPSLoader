@@ -868,7 +868,7 @@ local function ResolveAssetSidecarPopstarter()
   return nil
 end
 
-local HDD_PAGE_POPSTARTER_PATH = "hdd0:__common/POPS/POPSTARTER.ELF"
+local HDD_PAGE_POPSTARTER_PATH = "hdd0:__common:pfs:/POPS/POPSTARTER.ELF"
 
 local function ResolveHddPagePopstarterPath()
   return HDD_PAGE_POPSTARTER_PATH

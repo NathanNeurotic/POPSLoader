@@ -1600,7 +1600,9 @@ UI = {
               popstarter_path = PLDR.ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
             end
             local popstarter_ok = false
-            if type(PLDR.PopstarterProbeWithEnsure) == "function" then
+            if popstarter_device_page == "HDD" then
+              popstarter_ok = true
+            elseif type(PLDR.PopstarterProbeWithEnsure) == "function" then
               popstarter_ok = PLDR.PopstarterProbeWithEnsure(popstarter_path)
             else
               popstarter_ok = doesFileExist(popstarter_path)
