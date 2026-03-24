@@ -39,6 +39,7 @@
 #define BROWN_BG 0x2A2AA5  // after SifIopSync
 #define PURPBLE_BG 0x800080  // before ExecPS2
 #define OLIVE_BG 0x0080A0  // ExecPS2 returned to embedded loader
+#define EMBEDDED_EXECPS2_RETURN_BIAS 1000
 #define IOP_RESET_ARGS "rom0:UDNL rom0:EELOADCNF"
 
 
@@ -245,6 +246,9 @@ int main(int argc, char *argv[])
 		}
 		ret = ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, target_argc, target_argv);
 		SET_GS_BGCOLOUR(OLIVE_BG);
+		if (ret <= 0) {
+			return ret - EMBEDDED_EXECPS2_RETURN_BIAS;
+		}
 		return ret;
 	} else {
 		SET_GS_BGCOLOUR(MAGENTA_BG);
