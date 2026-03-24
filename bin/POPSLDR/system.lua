@@ -3086,6 +3086,28 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
       )
       return
     end
+    local hdd_launch_slot = SelectHddLaunchGameSlot(popstarter)
+    local hdd_partition_path = "hdd0:"..hdd_partition_label
+    hdd_init = EnsureHDDReadyForLaunch(selected_entry, hdd_partition_path, hdd_launch_slot)
+    if not hdd_init.init_ok or hdd_init.status ~= 0 or not hdd_init.mount_ok then
+      BlockLaunchFailure(
+        string.format(
+          "HDD launch prep failed: init=%s status=%s mount=%s slot=%s",
+          tostring(hdd_init.init_ok),
+          tostring(hdd_init.status),
+          tostring(hdd_init.mount_ok),
+          tostring(hdd_init.mount_slot)
+        ),
+        popstarter,
+        device_page,
+        nil,
+        selected_entry,
+        APP_DIR_LOCAL,
+        nil,
+        nil
+      )
+      return
+    end
     vcd_path = hdd_relpath
   else
     bootparam, prefix, normalized_basename, prefix_added = BuildPopstarterBootString(
@@ -3174,7 +3196,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     game_name = game_name,
     bootparam_source = boot_source_mode,
     hdd_init = hdd_init,
-    keep_hdd_slots = nil
+    keep_hdd_slots = hdd_init and hdd_init.mount_slot or nil
   }
   local reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
   if policy.name == "HDD" then
