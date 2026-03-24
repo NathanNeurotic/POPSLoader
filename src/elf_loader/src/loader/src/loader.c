@@ -179,7 +179,6 @@ int main(int argc, char *argv[])
 	static char partition_prefix[1024];
 	static char target_path[1024];
 	static char full_path[1024];
-	const char *load_path;
 	static char target_arg_storage[1024];
 	static char *target_argv[33];
 	size_t target_arg_offset = 0;
@@ -195,24 +194,14 @@ int main(int argc, char *argv[])
 	}
 	snprintf(partition_prefix, sizeof(partition_prefix), "%s", argv[0] ? argv[0] : "");
 	snprintf(target_path, sizeof(target_path), "%s", argv[1] ? argv[1] : "");
-	if (target_path[0] != '\0' &&
-	    (strncmp(target_path, "hdd", 3) == 0 || strncmp(target_path, "HDD", 3) == 0)) {
-		snprintf(full_path, sizeof(full_path), "%s", target_path);
-	} else if (partition_prefix[0] != '\0') {
-		snprintf(full_path, sizeof(full_path), "%s%s", partition_prefix, target_path);
-	} else {
-		snprintf(full_path, sizeof(full_path), "%s", target_path);
-	}
-	load_path = full_path;
-	target_argc = argc - 2;
-	if (target_argc <= 0) {
-		target_argc = 1;
-		target_argv[0] = full_path;
-		target_argv[1] = NULL;
-	}
+	snprintf(full_path, sizeof(full_path), "%s%s", partition_prefix, target_path);
+	target_argc = argc - 1;
 	if (target_argc > 32) {
 		return -E2BIG;
 	}
+	target_argv[0] = &target_arg_storage[0];
+	snprintf(target_argv[0], sizeof(target_arg_storage), "%s", full_path);
+	target_arg_offset = strlen(target_argv[0]) + 1;
 	for (i = 2; i < argc; i++) {
 		const char *arg = argv[i] ? argv[i] : "";
 		size_t arg_len = strlen(arg) + 1;
@@ -220,12 +209,10 @@ int main(int argc, char *argv[])
 			return -E2BIG;
 		}
 		memcpy(&target_arg_storage[target_arg_offset], arg, arg_len);
-		target_argv[i - 2] = &target_arg_storage[target_arg_offset];
+		target_argv[i - 1] = &target_arg_storage[target_arg_offset];
 		target_arg_offset += arg_len;
 	}
-	if (argc > 2) {
-		target_argv[target_argc] = NULL;
-	}
+	target_argv[target_argc] = NULL;
 
 	DPRINTF("> argv[0] = %s\n", argv[0]);
 	for (i = 1; i < argc; i++) {
@@ -242,14 +229,11 @@ int main(int argc, char *argv[])
 	FlushCache(0);
 	SET_GS_BGCOLOUR(GREEN_BG);
 	SifLoadFileInit();
-	ret = SifLoadElf(load_path, &elfdata);
+	ret = SifLoadElf(target_path, &elfdata);
 	SifLoadFileExit();
 	SET_GS_BGCOLOUR(BLUE_BG);
 	if (ret == 0 && elfdata.epc != 0) {
 		SET_GS_BGCOLOUR(YELLOW_BG);
-		SifExitIopHeap();
-		SifExitRpc();
-		SifExitCmd();
 
 		FlushCache(0);
 		while (!SifIopReset(NULL, 0)) {
@@ -269,7 +253,6 @@ int main(int argc, char *argv[])
 		FlushCache(2);
 
 		SET_GS_BGCOLOUR(PURPBLE_BG);
-		
 		DPRINTF("POPS EXEC: argc=%d\n", target_argc);
 		for (i = 0; i < target_argc; i++) {
 			DPRINTF("POPS EXEC: argv[%d] = %s\n", i, target_argv[i]);

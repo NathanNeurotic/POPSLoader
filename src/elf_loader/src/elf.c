@@ -173,6 +173,7 @@ static int ExecuteViaEmbeddedLoaderWithPartition(const char *partition, const ch
 		}
 	}
 
+	SifExitRpc();
 	FlushCache(0);
 	FlushCache(2);
 
