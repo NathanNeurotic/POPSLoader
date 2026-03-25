@@ -784,6 +784,36 @@ local function DirectoryFromExecPath(path)
   return nil
 end
 
+local function ResolveLaunchExecDirectory(path)
+  local candidate = tostring(path or "")
+  if candidate == "" then
+    return nil
+  end
+  if string.match(string.lower(candidate), "^hdd%d:") ~= nil then
+    local mounted = ResolveHddExecMountedPath(candidate)
+    if mounted ~= nil then
+      candidate = mounted
+    end
+  end
+  return DirectoryFromExecPath(candidate)
+end
+
+local function SetLaunchCurrentDirectory(path)
+  local launch_dir = ResolveLaunchExecDirectory(path)
+  if launch_dir == nil or launch_dir == "" then
+    return nil
+  end
+  local previous_dir = System.currentDirectory()
+  if NormalizeDirPath(previous_dir or "") == NormalizeDirPath(launch_dir) then
+    return nil
+  end
+  local ok = pcall(System.currentDirectory, launch_dir)
+  if ok and NormalizeDirPath(System.currentDirectory() or "") == NormalizeDirPath(launch_dir) then
+    return previous_dir
+  end
+  return nil
+end
+
 local function ResolveHddBootSidecarPopstarter()
   local mounted_candidates = {}
   local hdd_candidates = {}
@@ -2987,6 +3017,10 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   end
   SetLaunchPhase(LaunchState.PHASE_EXEC)
   PrepareForExternalELFLaunch(popstarter, context and context.keep_hdd_slots or nil)
+  local restore_cwd = nil
+  if context ~= nil and context.device_page == "HDD" and IsHddExecContextPath(popstarter) then
+    restore_cwd = SetLaunchCurrentDirectory(popstarter)
+  end
   local rc
   if partition_hint ~= nil and exec_args ~= nil and #exec_args > 0 then
     rc = System.loadELF(popstarter, effective_reboot_iop, exec_args[1], partition_hint)
@@ -2996,6 +3030,9 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     rc = System.loadELF(popstarter, effective_reboot_iop, exec_args[1])
   else
     rc = System.loadELF(popstarter, effective_reboot_iop)
+  end
+  if restore_cwd ~= nil then
+    pcall(System.currentDirectory, restore_cwd)
   end
   if (Timer.getTime(LaunchState.fade_timer) - LaunchState.fade_start) >= LaunchState.watchdog_ms then
     BlockLaunchFailure(
