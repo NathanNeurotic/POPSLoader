@@ -2964,6 +2964,8 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   end
   if string.match(string.lower(tostring(popstarter or "")), "^hdd%d:") ~= nil then
     partition_hint = ResolveHddExecPartitionHint(popstarter)
+  elseif string.match(string.lower(tostring(popstarter or "")), "^pfs%d*:/") ~= nil then
+    partition_hint = ResolveHddExecPartitionHint(popstarter)
   end
   local exec_args = argv or {}
   SetLaunchPhase(LaunchState.PHASE_FADEOUT)

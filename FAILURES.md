@@ -1,4 +1,4 @@
-Last updated: 2026-03-25
+Last updated: 2026-03-25 (pfs-slot fix attempt)
 
 # FAILURES
 
@@ -249,6 +249,37 @@ Last updated: 2026-03-25
   - `src/luasystem.cpp` now routes non-partitioned argumented `pfs:/...` launches to `LoadELFFromFile()` / `LoadExecPS2`.
   - Commit `d4a604e` tested that direct-loader mechanism swap for mounted HDD `pfs` launches, and hardware still black-screened.
 
+## New Evidence (current branch)
+
+### pfs slot stripping in `canonicalize_partition_loader_path`
+
+New code-backed asymmetry identified in `src/elf_loader/src/elf.c`:
+
+- `canonicalize_partition_loader_path` previously stripped the pfs slot number from paths like `pfs3:/APPS/PS1_POPSLOADER/POPSTARTER.ELF`, converting them to `pfs:/APPS/PS1_POPSLOADER/POPSTARTER.ELF`.
+- In iomanX, device names include the unit number: `pfs0`, `pfs1`, `pfs2`, `pfs3`, etc.  A bare `pfs:` device (without a unit number) targets unit 0, NOT the actual mounted slot.
+- The POPSLOADER partition is mounted at `HDD_SLOT_POPSTARTER = 3` (i.e., `pfs3:`).
+- Stripping the slot caused every `fileXio`-based ELF open attempt in the embedded loader to target the wrong pfs device instance, explaining why the fileXio approach previously failed on hardware (commits `08fffab`/`cdbdbe7`).
+- This asymmetry was not identified in the earlier fileXio family analysis (which only cited the `gp` derivation concern).
+
+### fileXio timing and SIF RPC keepalive
+
+Second new evidence point:
+
+- The previous fileXio commits (`08fffab`/`cdbdbe7`) were tested BEFORE the SIF RPC keepalive fix (`9eaa040`).
+- Without the keepalive, the embedded loader entry itself was unstable (all earlier post-entry stage halts collapsed to flash-then-black).
+- Therefore the `hardware still black-screened` result from `cdbdbe7` cannot be attributed solely to fileXio failure — embedded loader entry was also unstable at that time.
+- The fileXio path has never been tested with stable entry guaranteed.
+
+### Proposed fix (current attempt)
+
+Based on the above evidence, the following bounded changes have been made:
+
+1. **`src/elf_loader/src/elf.c`** — `canonicalize_partition_loader_path`: pfs: paths are now passed through unchanged, preserving the slot number (e.g. `pfs3:/...` stays `pfs3:/...`).
+2. **`bin/POPSLDR/system.lua`** — `LaunchEngine`: added `elseif` to derive `partition_hint` from `pfs%d*:/` POPSTARTER paths via `ResolveHddExecPartitionHint`, routing them through `LoadELFFromFileWithPartition` (and therefore the partition-aware embedded loader) instead of `LoadELFFromFile` / `LoadExecPS2`.
+3. **`src/elf_loader/src/loader/src/loader.c`** — `main()`: added fileXio dispatch after `SifInitRpc(0)` for `pfs:` and `hdd:` target paths; calls `fileXioInit()` + `load_elf_via_filexio()` and on success does `FlushCache(0)+FlushCache(2)+ExecPS2`; falls through to `SifLoadElf` path only for other path prefixes.
+
+Hardware validation is pending. Result must be recorded here once available.
+
 ## Guardrail For Future Work
 - Do not continue making narrower screen-backed embedded-loader halt variants in `src/elf_loader/src/loader/src/loader.c` unless there is a materially different evidence source.
 - Repo evidence now supports only these durable HDD findings:
@@ -257,18 +288,17 @@ Last updated: 2026-03-25
   - keeping SIF RPC alive before the partitioned embedded-loader `ExecPS2` boundary allowed stable `embedded loader entry` (`9eaa040`)
   - later post-entry screen-backed halts at `6bddf69`, `11f1dc6`, and `78e0ee6` did not yield stable new observations
   - later standard artifacts `0a0b6e9`, `e55e119`, `26fc65d`, `59be355`, and `d4a604e` all still black-screened
-- Do not repeat:
+- Do not repeat without new evidence:
   - selector-shape / `argv[0]` contract rewrites
   - slot-preservation rewrites
   - reset-policy toggles
   - embedded-loader `wipeUserMem()` toggles
-  - partition/path normalization rewrites
-  - custom `fileXio` target-loading path
+  - custom `fileXio` target-loading path (see new evidence section above for the resolved asymmetry)
   - assuming the standard build was failing only because diagnostic halt macros defaulted on or partitioned keepalive was missing
   - mounted `pfs:/...` direct-launch bypass variants
   - mounted `pfs` reboot vs non-reboot direct-loader toggles
   - swapping the mounted `pfs` argumented launch mechanism to `LoadExecPS2`
   - finer-grained post-entry `argv` copy halts that only move the screen-backed stop a few lines earlier
-- If HDD work resumes, require one of:
+- If HDD work resumes after this attempt, require one of:
   - a genuinely new code asymmetry not already covered above, with file-level evidence
   - or a materially different observability method than the current `debug.h`/GS-color screen-backed diagnostic path

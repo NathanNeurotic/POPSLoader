@@ -44,7 +44,7 @@
 #define MAGENTA_BG 0xFF00FF // wrong SifLoadELF return
 #define ORANGE_BG 0x00A5FF  // after reset IOP
 #define BROWN_BG 0x2A2AA5  // before FlushCache
-#define PURPBLE_BG 0x800080  // before ExecPS2
+#define PURPLE_BG 0x800080  // before ExecPS2
 
 #ifdef LOADER_ENABLE_DEBUG_COLORS
 static void loader_diag_init(void)
@@ -295,6 +295,45 @@ int main(int argc, char *argv[])
 	loader_diag_stage(CYAN_BG, "embedded loader arguments copied");
 	LOADER_DIAG_PRINTF("target=%s\n", target_path);
 
+	/* SifLoadElf (IOMAN) cannot access iomanX pfs: device paths.
+	 * For pfs: and hdd: paths use fileXio (iomanX-aware) to load the
+	 * target ELF directly into EE memory.  fileXioInit() is required here
+	 * because ExecPS2 into this loader reset the EE-side RPC state;
+	 * SifInitRpc(0) above re-establishes SIF so fileXioInit() can now
+	 * bind to the still-running IOP fileXio server.  The IOP pfs: mount
+	 * survives the ExecPS2 boundary because IOP was not reset.
+	 */
+	if (strncmp(target_path, "pfs", 3) == 0 || strncmp(target_path, "PFS", 3) == 0 ||
+	    strncmp(target_path, "hdd", 3) == 0 || strncmp(target_path, "HDD", 3) == 0) {
+		unsigned int elf_entry = 0;
+		unsigned int elf_gp = 0;
+		int load_rc;
+		loader_diag_stage(GREEN_BG, "fileXio ELF load");
+		LOADER_DIAG_PRINTF("target=%s\n", target_path);
+#ifdef LOADER_DIAG_HALT_BEFORE_SIFLOAD
+		loader_diag_halt("before fileXio load");
+#endif
+		fileXioInit();
+		load_rc = load_elf_via_filexio(target_path, &elf_entry, &elf_gp);
+		LOADER_DIAG_PRINTF("filexio rc=%d entry=0x%x gp=0x%x\n", load_rc, elf_entry, elf_gp);
+		if (load_rc == 0 && elf_entry != 0) {
+			loader_diag_stage(PURPLE_BG, "before ExecPS2 (fileXio)");
+			DPRINTF("POPS EXEC via fileXio: argc=%d entry=0x%x gp=0x%x\n",
+			        target_argc, elf_entry, elf_gp);
+			FlushCache(0);
+			FlushCache(2);
+			return ExecPS2((void *)elf_entry, (void *)elf_gp,
+			               target_argc, target_argv);
+		}
+		loader_diag_stage(MAGENTA_BG, "fileXio ELF load failed");
+		LOADER_DIAG_PRINTF("load_rc=%d\n", load_rc);
+#ifdef LOADER_DIAG_HALT_AFTER_SIFLOAD
+		loader_diag_halt("after fileXio failed");
+#endif
+		SifExitRpc();
+		return -ENOENT;
+	}
+
 	//Writeback data cache before loading ELF.
 	FlushCache(0);
 	loader_diag_stage(GREEN_BG, "before SifLoadElf");
@@ -331,7 +370,7 @@ int main(int argc, char *argv[])
 		FlushCache(0);
 		FlushCache(2);
 
-		loader_diag_stage(PURPBLE_BG, "before ExecPS2");
+		loader_diag_stage(PURPLE_BG, "before ExecPS2");
 		DPRINTF("POPS EXEC: argc=%d\n", target_argc);
 		for (i = 0; i < target_argc; i++) {
 			DPRINTF("POPS EXEC: argv[%d] = %s\n", i, target_argv[i]);

@@ -125,7 +125,6 @@ static char *store_arg(const char *src, char *storage, size_t storage_size, size
 
 static void canonicalize_partition_loader_path(const char *path, char *out, size_t out_size)
 {
-	const char *suffix;
 	const char *slash;
 	if (out_size == 0) {
 		return;
@@ -136,8 +135,12 @@ static void canonicalize_partition_loader_path(const char *path, char *out, size
 	}
 	if ((strncmp(path, "pfs", 3) == 0 || strncmp(path, "PFS", 3) == 0) &&
 	    strchr(path, ':') != NULL) {
-		suffix = strchr(path, ':');
-		snprintf(out, out_size, "pfs:%s", suffix + 1);
+		/* Preserve the full pfs path including the iomanX slot number
+		 * (e.g. pfs3:/...).  Stripping it to bare pfs:/ targets device
+		 * "pfs" unit 0 rather than the actual mounted slot, which causes
+		 * fileXio to access the wrong partition or fail entirely.
+		 */
+		snprintf(out, out_size, "%s", path);
 		return;
 	}
 	if ((strncmp(path, "hdd", 3) == 0 || strncmp(path, "HDD", 3) == 0) &&
