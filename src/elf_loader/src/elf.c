@@ -29,6 +29,17 @@
 #define ELF_MAGIC 0x464c457f
 #define ELF_PT_LOAD 1
 
+/* Pre-read buffer in bram: main process reads the target ELF here before
+   launching the embedded loader, so the loader can parse from memory instead
+   of doing file I/O (which fails for PFS paths in the loader context).
+   Address 0xC0000 is safely above the embedded loader's code/data/BSS
+   (which starts at 0x84000 and is typically <64KB) and below the loader's
+   stack (which starts at 0x100000 and grows downward). */
+#define PREREAD_BRAM_ADDR   0x000C0000
+#define PREREAD_BRAM_MAX    (0x00100000 - PREREAD_BRAM_ADDR)
+#define PREREAD_MAGIC       0x50524544U  /* "PRED" */
+#define PREREAD_DATA_OFFSET 16
+
 extern unsigned char loader_elf[];
 
 static bool is_host_path(const char *filename) {
@@ -107,6 +118,42 @@ static void canonicalize_partition_loader_path(const char *path, char *out, size
 		}
 	}
 	snprintf(out, out_size, "%s", path);
+}
+
+static int preread_target_elf_to_bram(const char *path) {
+	volatile unsigned int *hdr = (volatile unsigned int *)PREREAD_BRAM_ADDR;
+	char *data = (char *)(PREREAD_BRAM_ADDR + PREREAD_DATA_OFFSET);
+	int max_data = PREREAD_BRAM_MAX - PREREAD_DATA_OFFSET;
+	int fd, total, n;
+
+	hdr[0] = 0; /* Clear magic until successful */
+
+	fd = open(path, O_RDONLY);
+	if (fd < 0) {
+		DPRINTF("PREREAD: open failed rc=%d\n", fd);
+		return -1;
+	}
+
+	total = lseek(fd, 0, SEEK_END);
+	if (total <= 0 || total > max_data) {
+		DPRINTF("PREREAD: bad size %d (max %d)\n", total, max_data);
+		close(fd);
+		return -2;
+	}
+	lseek(fd, 0, SEEK_SET);
+
+	n = read(fd, data, total);
+	close(fd);
+
+	if (n != total) {
+		DPRINTF("PREREAD: short read %d/%d\n", n, total);
+		return -3;
+	}
+
+	hdr[0] = PREREAD_MAGIC;
+	hdr[1] = (unsigned int)total;
+	DPRINTF("PREREAD: OK %d bytes at 0x%08x\n", total, (unsigned int)(PREREAD_BRAM_ADDR + PREREAD_DATA_OFFSET));
+	return 0;
 }
 
 /* IMPORTANT: This method wipe memory where the loader is going to be allocated 
@@ -271,8 +318,6 @@ int LoadELFFromFileWithPartition(const char *filename, const char *partition, in
 	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
 		return -1;
 	}
-	wipe_bramMem();
-
 	DPRINTF("LAUNCH: BEGIN PARTITIONED\n");
 	DPRINTF("LAUNCH: popstarter path: %s (resolved to %s)\n", filename, resolved_path);
 	fd = open(resolved_path, O_RDONLY);
@@ -282,10 +327,17 @@ int LoadELFFromFileWithPartition(const char *filename, const char *partition, in
 	} else {
 		return fd;
 	}
-	/* Pass resolved_path directly: it preserves the actual PFS mount-point
-	   slot (e.g. pfs3:/) so the embedded loader's SifLoadElf targets the
-	   correct mount where the partition is active, instead of always
-	   falling back to pfs: (slot 0). */
+
+	wipe_bramMem();
+
+	/* Pre-read the target ELF into bram so the embedded loader can parse
+	   from memory.  This avoids the SifLoadElf/fileXio issue: SifLoadElf
+	   cannot access PFS paths (ioman vs iomanX), and fileXio may not
+	   initialize correctly inside the embedded loader context. */
+	if (preread_target_elf_to_bram(resolved_path) < 0) {
+		DPRINTF("LAUNCH: preread failed, proceeding without buffer\n");
+	}
+
 	return ExecuteViaEmbeddedLoaderWithPartition(partition, resolved_path, argc, argv);
 }
 

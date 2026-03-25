@@ -79,6 +79,13 @@ static void wipeUserMem(void)
 #define LOADER_PT_MIPS_REGINFO  0x70000000U
 #define LOADER_ELF_MAX_PHDRS    16
 
+/* Pre-read buffer contract: main process reads target ELF into bram at this
+   address before ExecPS2 to the embedded loader.  The loader checks for the
+   magic and parses the ELF from the in-memory buffer, avoiding file I/O. */
+#define PREREAD_BRAM_ADDR   0x000C0000
+#define PREREAD_MAGIC       0x50524544U  /* "PRED" */
+#define PREREAD_DATA_OFFSET 16
+
 typedef struct {
 	unsigned char  ident[16];
 	unsigned short type, machine;
@@ -166,6 +173,55 @@ static int load_elf_via_filexio(const char *path,
 	return 0;
 }
 
+static int load_elf_from_preread_buffer(unsigned int *entry_out,
+                                        unsigned int *gp_out)
+{
+	volatile unsigned int *hdr_words = (volatile unsigned int *)PREREAD_BRAM_ADDR;
+	unsigned char *data;
+	loader_elf_hdr_t *ehdr;
+	loader_elf_phdr_t *phdrs;
+	unsigned int gp = 0;
+	int i;
+
+	*entry_out = 0;
+	*gp_out = 0;
+
+	if (hdr_words[0] != PREREAD_MAGIC || hdr_words[1] == 0) {
+		return -1;
+	}
+
+	data = (unsigned char *)(PREREAD_BRAM_ADDR + PREREAD_DATA_OFFSET);
+	ehdr = (loader_elf_hdr_t *)data;
+
+	if (*(unsigned int *)ehdr->ident != LOADER_ELF_MAGIC) {
+		return -2;
+	}
+	if (ehdr->phnum == 0 || ehdr->phnum > LOADER_ELF_MAX_PHDRS) {
+		return -3;
+	}
+
+	phdrs = (loader_elf_phdr_t *)(data + ehdr->phoff);
+
+	for (i = 0; i < ehdr->phnum; i++) {
+		if (phdrs[i].type == LOADER_PT_MIPS_REGINFO && phdrs[i].filesz >= 24) {
+			unsigned int *reginfo = (unsigned int *)(data + phdrs[i].offset);
+			gp = reginfo[5]; /* gp_value at offset 20 */
+		}
+		if (phdrs[i].type != LOADER_PT_LOAD || phdrs[i].filesz == 0) {
+			continue;
+		}
+		memcpy(phdrs[i].vaddr, data + phdrs[i].offset, phdrs[i].filesz);
+		if (phdrs[i].memsz > phdrs[i].filesz) {
+			memset((void *)((unsigned int)phdrs[i].vaddr + phdrs[i].filesz),
+			       0, phdrs[i].memsz - phdrs[i].filesz);
+		}
+	}
+
+	*entry_out = ehdr->entry;
+	*gp_out = gp;
+	return 0;
+}
+
 //--------------------------------------------------------------
 //End of func:  void wipeUserMem(void)
 //--------------------------------------------------------------
@@ -235,19 +291,28 @@ int main(int argc, char *argv[])
 	if (ret != 0 || elfdata.epc == 0) {
 		/* SifLoadElf failed — expected for pfs: paths since rom0:LOADFILE
 		   uses ioman which cannot access PFS (registered with iomanX only).
-		   Fall back to loading the ELF directly via fileXio. */
-		unsigned int fio_entry = 0, fio_gp = 0;
-		DPRINTF("SifLoadElf failed (ret=%d epc=%u), trying fileXio\n", ret, elfdata.epc);
-		fileXioInit();
-		if (load_elf_via_filexio(target_path, &fio_entry, &fio_gp) == 0 && fio_entry != 0) {
-			elfdata.epc = fio_entry;
-			elfdata.gp = fio_gp;
-			DPRINTF("fileXio load OK: epc=0x%08x gp=0x%08x\n", fio_entry, fio_gp);
+		   Try loading from the pre-read bram buffer first (main process
+		   reads the file before launching us), then fall back to fileXio. */
+		unsigned int buf_entry = 0, buf_gp = 0;
+		DPRINTF("SifLoadElf failed (ret=%d epc=%u), trying preread buffer\n", ret, elfdata.epc);
+		if (load_elf_from_preread_buffer(&buf_entry, &buf_gp) == 0 && buf_entry != 0) {
+			elfdata.epc = buf_entry;
+			elfdata.gp = buf_gp;
+			DPRINTF("preread buffer load OK: epc=0x%08x gp=0x%08x\n", buf_entry, buf_gp);
 		} else {
-			DPRINTF("fileXio load also failed\n");
-			SET_GS_BGCOLOUR(MAGENTA_BG);
-			SifExitRpc();
-			return -ENOENT;
+			unsigned int fio_entry = 0, fio_gp = 0;
+			DPRINTF("preread buffer failed, trying fileXio\n");
+			fileXioInit();
+			if (load_elf_via_filexio(target_path, &fio_entry, &fio_gp) == 0 && fio_entry != 0) {
+				elfdata.epc = fio_entry;
+				elfdata.gp = fio_gp;
+				DPRINTF("fileXio load OK: epc=0x%08x gp=0x%08x\n", fio_entry, fio_gp);
+			} else {
+				DPRINTF("all load methods failed\n");
+				SET_GS_BGCOLOUR(MAGENTA_BG);
+				SifExitRpc();
+				return -ENOENT;
+			}
 		}
 	}
 	SET_GS_BGCOLOUR(YELLOW_BG);

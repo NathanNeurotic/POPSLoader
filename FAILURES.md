@@ -102,16 +102,30 @@ Last updated: 2026-03-24
 - `fileXioOpen` → `iomanX` file I/O → PFS IS supported
 - This explains why ALL prior HDD attempts failed: they all used SifLoadElf for PFS paths
 
-### fileXio fallback in embedded loader (current attempt)
+### fileXio fallback in embedded loader (hardware-verified failure)
+- Commit: `6a01b96` `Add fileXio fallback in embedded loader for HDD POPSTARTER`
 - Approach: when `SifLoadElf` fails in the embedded loader, fall back to `load_elf_via_filexio()` (existing dead code in `loader.c` lines 95-167, now activated)
 - This uses `fileXioOpen/Read` through `iomanX`, which knows about PFS mounts
 - Combined with the slot fix (`pfs3:/` instead of `pfs:/`), the correct mount point is used
 - `reboot_iop` reverted to 0 for HDD to restore the embedded loader path
+- Result: hardware still black-screened.
+- Conclusion: `fileXioInit()` and/or `fileXioOpen()` may not work inside the embedded loader context after `SifExitRpc()`→`ExecPS2`→`SifInitRpc(0)`→`wipeUserMem()`. Alternatively, the embedded loader itself may never start executing (ExecPS2 to bram with gp=0 may fail silently). Without diagnostic color feedback, the exact failure point is unknown.
+
+### Pre-read bram buffer bypass (current attempt)
+- Approach: read POPSTARTER ELF file in the **main process** (where `open/read` via fileXio is proven to work on PFS paths), store the raw file data in bram at `0x000C0000`, then launch the embedded loader which parses the ELF from the in-memory buffer instead of doing any file I/O.
+- Why this is different from all previous attempts:
+  - Previous attempts all relied on file I/O **inside the embedded loader** (SifLoadElf or fileXio). Both fail.
+  - This approach does file I/O in the **main process** where it's proven to work, then passes raw data through bram.
+  - The bram buffer at `0xC0000` survives `wipeUserMem()` (which only zeros `0x100000`+).
+  - If the buffer is present, the loader skips SifLoadElf and fileXio entirely — just `memcpy` from bram to target addresses.
+- Fallback chain in embedded loader: pre-read buffer → SifLoadElf → fileXio
 - Status: `Unknown (verify on hardware)`.
 
 ## Do not re-assume without new evidence (updated)
 - Do not assume `SifLoadElf` can open PFS paths (it cannot).
-- Do not assume any variant of the embedded loader path works without fileXio fallback.
+- Do not assume `fileXioInit()`/`fileXioOpen()` works inside the embedded loader context.
+- Do not assume any variant of the embedded loader path works without pre-read buffer.
+- If this attempt also fails, the next diagnostic step is testing the `POPSLOADER-HDD-DIAGNOSTIC` artifact with `LOADER_ENABLE_DEBUG_COLORS=1` to determine whether the embedded loader even starts executing.
 - Previous assumptions still apply (see above).
 
 ## Diagnostic artifact (still available)
