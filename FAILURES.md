@@ -1,11 +1,11 @@
-Last updated: 2026-03-24
+Last updated: 2026-03-25
 
 # FAILURES
 
 ## Active Unresolved Failure
 
 ### HDD-resident POPSTARTER black screen
-- Status: fileXio fallback applied in embedded loader (bypasses SifLoadElf for PFS), `Unknown (verify on hardware)`.
+- Status: **BLOCKED — embedded loader never executes**. Hardware-verified via diagnostic build (no GS color output).
 - Scope:
   - USB/MMCE/SMB launches work.
   - HDD games list/browse behavior works.
@@ -13,6 +13,33 @@ Last updated: 2026-03-24
 - Symptom:
   - black screen before any POPSTARTER output, or
   - launch returns with `exec did not transfer control`.
+
+## Confirmed Root Causes (Two-Layer)
+
+### Layer 1 (PRIMARY): Embedded loader never starts
+- **Hardware-verified**: the diagnostic build with `LOADER_ENABLE_DEBUG_COLORS=1` produces a **black screen** — no GS background color is visible.
+- `SET_GS_BGCOLOUR(WHITE_BG)` is the very first statement in the embedded loader's `main()` (`loader.c` line 177). A black screen means `main()` is never reached.
+- `ExecPS2((void *)boot_header->entry, 0, final_argc, launch_argv)` in `ExecuteViaEmbeddedLoaderWithPartition` (`elf.c` line 189) fails silently — control never transfers to the embedded loader in bram (0x84000).
+- This invalidates ALL prior attempts that modified code INSIDE the embedded loader (fileXio fallback, pre-read buffer, etc.) — that code never ran.
+
+### Layer 2 (SECONDARY): SifLoadElf cannot access PFS paths
+- `SifLoadElf` → `rom0:LOADFILE` → `ioman` file I/O → no PFS support.
+- `fileXioOpen` → `iomanX` file I/O → PFS IS supported.
+- This is a real issue that must be addressed AFTER Layer 1 is resolved.
+- Note: this also means `LoadELFFromFileExecPS2RebootIOP` (the bypass attempt) fails for PFS paths even from the main process.
+
+## Candidate causes for ExecPS2-to-bram failure
+These are hypotheses to investigate — none are confirmed yet.
+
+1. **gp=0 passed to ExecPS2**: The second argument is `0` (no GP register value). If the embedded loader's CRT startup relies on a valid `$gp` before it can set its own, the program crashes immediately. The ps2sdk CRT (`crt0.s`) sets `$gp` from the `_gp` linker symbol, but ExecPS2's kernel code may overwrite `$gp` with the passed value (0) before CRT runs.
+
+2. **bram (0x84000) is not a valid ExecPS2 target**: ExecPS2 may only support entry points in game memory (0x100000+). The PS2 kernel may reject or mishandle addresses below 0x100000. The embedded loader's linker script targets bram at 0x84000.
+
+3. **Stale/corrupt embedded loader data**: The `loader_elf[]` array is generated at build time. If it's out of date or corrupt, the entry point or segment data may be wrong.
+
+4. **FlushCache insufficient for bram execution**: After memcpy of loader segments to bram, `FlushCache(0)` + `FlushCache(2)` is called. If this doesn't properly make the code visible at 0x84000, the CPU fetches garbage instructions.
+
+5. **SifExitRpc before ExecPS2 corrupts state**: `SifExitRpc()` is called right before `FlushCache` + `ExecPS2`. This may leave the system in a state where ExecPS2 cannot function.
 
 ## Repo-verified evidence
 - HDD launch routing is handled by [bin/POPSLDR/system.lua](bin/POPSLDR/system.lua), [src/luasystem.cpp](src/luasystem.cpp), [src/elf_loader/src/elf.c](src/elf_loader/src/elf.c), and [src/elf_loader/src/loader/src/loader.c](src/elf_loader/src/loader/src/loader.c).
@@ -25,7 +52,7 @@ Last updated: 2026-03-24
   - embedded handoff in [src/elf_loader/src/elf.c](src/elf_loader/src/elf.c)
   - embedded loader execution in [src/elf_loader/src/loader/src/loader.c](src/elf_loader/src/loader/src/loader.c)
 
-## Failed attempts from this investigation
+## Failed attempts from this investigation (17 total, 4 in current session)
 
 ### `argv[0]` / selector-shape changes
 - Commits:
@@ -74,67 +101,44 @@ Last updated: 2026-03-24
   - the custom `fileXio` loader path is not proven safe
   - because [bin/POPSLDR/POPSTARTER.ELF](bin/POPSLDR/POPSTARTER.ELF) has no `PT_MIPS_REGINFO`, that loader's `gp` derivation was specifically suspect
 
-## Do not re-assume without new evidence
-- Do not assume bare HDD `argv[0]` is the sole cause.
-- Do not assume mounted-path HDD `argv[0]` is the sole cause.
-- Do not assume preserving only the game slot fixes the handoff.
-- Do not assume preserving the sidecar slot fixes the handoff.
-- Do not assume “reset IOP” or “do not reset IOP” is enough on its own.
-- Do not assume normalizing mounted `pfsN:/...` to `pfs:/...` fixes the failure.
-- Do not assume matching the upstream partitioned embedded-loader contract fixes the failure.
-- Do not assume keeping raw `hdd0:...` POPSTARTER paths through Lua fixes the failure.
-- Do not treat repo history as proof of a solved path; many of those commits document failed or partial experiments.
-
 ### PFS mount-slot mismatch fix (necessary but insufficient)
 - Commit: `87f4197` `Fix PFS mount-slot mismatch in HDD POPSTARTER embedded loader handoff`
 - What it fixed: `canonicalize_partition_loader_path` in `elf.c` stripped `pfs3:` → `pfs:`, causing SifLoadElf to target the wrong mount point.
 - Result: hardware still black-screened.
-- Conclusion: the slot-mismatch was a real code bug, but fixing it alone is not sufficient. The embedded loader's execution environment is fundamentally unable to load POPSTARTER from PFS.
+- Conclusion: the slot-mismatch was a real code bug, but fixing it alone is not sufficient. **Now known**: the embedded loader never started, so this fix had no observable effect.
 
-### Embedded-loader bypass (hardware-verified failure)
+### Embedded-loader bypass via reboot_iop (hardware-verified failure)
 - Commit: `c60ce3e` `Bypass embedded loader for HDD POPSTARTER`
 - What it tried: set `reboot_iop = 1` for HDD, routing through `LoadELFFromFileExecPS2RebootIOP` which uses `SifLoadElf` in the main process context.
 - Result: hardware still black-screened.
 - Conclusion: `SifLoadElf` cannot open PFS paths **regardless of execution context**. This is because `rom0:LOADFILE` on the IOP uses `ioman`, and PFS (`ps2fs.irx`) registers only with `iomanX`. `mass:` works because BDM/FAT32 drivers register with both `ioman` and `iomanX`.
 
-## Confirmed root cause: SifLoadElf cannot access PFS
-- `SifLoadElf` → `rom0:LOADFILE` → `ioman` file I/O → no PFS support
-- `fileXioOpen` → `iomanX` file I/O → PFS IS supported
-- This explains why ALL prior HDD attempts failed: they all used SifLoadElf for PFS paths
-
 ### fileXio fallback in embedded loader (hardware-verified failure)
 - Commit: `6a01b96` `Add fileXio fallback in embedded loader for HDD POPSTARTER`
-- Approach: when `SifLoadElf` fails in the embedded loader, fall back to `load_elf_via_filexio()` (existing dead code in `loader.c` lines 95-167, now activated)
-- This uses `fileXioOpen/Read` through `iomanX`, which knows about PFS mounts
-- Combined with the slot fix (`pfs3:/` instead of `pfs:/`), the correct mount point is used
-- `reboot_iop` reverted to 0 for HDD to restore the embedded loader path
+- Approach: when `SifLoadElf` fails in the embedded loader, fall back to `load_elf_via_filexio()`.
 - Result: hardware still black-screened.
-- Conclusion: `fileXioInit()` and/or `fileXioOpen()` may not work inside the embedded loader context after `SifExitRpc()`→`ExecPS2`→`SifInitRpc(0)`→`wipeUserMem()`. Alternatively, the embedded loader itself may never start executing (ExecPS2 to bram with gp=0 may fail silently). Without diagnostic color feedback, the exact failure point is unknown.
+- Conclusion: **now known** — the embedded loader never started, so this fallback code never executed.
 
-### Pre-read bram buffer bypass (current attempt)
-- Approach: read POPSTARTER ELF file in the **main process** (where `open/read` via fileXio is proven to work on PFS paths), store the raw file data in bram at `0x000C0000`, then launch the embedded loader which parses the ELF from the in-memory buffer instead of doing any file I/O.
-- Why this is different from all previous attempts:
-  - Previous attempts all relied on file I/O **inside the embedded loader** (SifLoadElf or fileXio). Both fail.
-  - This approach does file I/O in the **main process** where it's proven to work, then passes raw data through bram.
-  - The bram buffer at `0xC0000` survives `wipeUserMem()` (which only zeros `0x100000`+).
-  - If the buffer is present, the loader skips SifLoadElf and fileXio entirely — just `memcpy` from bram to target addresses.
-- Fallback chain in embedded loader: pre-read buffer → SifLoadElf → fileXio
+### Pre-read bram buffer (hardware-verified failure)
+- Commit: `12e942e` `Pre-read HDD POPSTARTER ELF to bram buffer before embedded loader launch`
+- Approach: read POPSTARTER ELF in main process, store in bram at `0xC0000`, have embedded loader parse from buffer.
 - Result: hardware still black-screened.
-- Conclusion: the pre-read buffer approach did not help. Since file I/O in the main process works (the `open()` check passes), the buffer data should be correct. This suggests either: (a) the embedded loader itself never starts executing (ExecPS2 to bram with gp=0 fails silently), or (b) the loader starts but crashes before reaching the buffer-loading code. **Without diagnostic color feedback, we cannot distinguish these cases.**
+- Conclusion: **now known** — the embedded loader never started, so the buffer parsing code never executed. The pre-read itself likely worked (main process `open/read` on PFS paths is proven), but the data was never used.
 
 ## Do not re-assume without new evidence (updated)
-- Do not assume `SifLoadElf` can open PFS paths (it cannot).
-- Do not assume `fileXioInit()`/`fileXioOpen()` works inside the embedded loader context.
-- Do not assume the embedded loader even starts executing — 4 attempts have failed with zero diagnostic feedback.
-- **MANDATORY NEXT STEP**: Test the `POPSLOADER-HDD-DIAGNOSTIC` artifact with `LOADER_ENABLE_DEBUG_COLORS=1`. No further code changes should be made without this data.
+- Do not assume `SifLoadElf` can open PFS paths (it cannot — Layer 2 confirmed).
+- Do not assume `fileXioInit()`/`fileXioOpen()` works inside the embedded loader context (untested — loader never started).
+- Do not assume the embedded loader starts executing — **hardware-disproven** via diagnostic build.
+- Do not assume code changes inside the embedded loader have any effect — the loader never runs.
+- Do not assume `ExecPS2` to bram (0x84000) works — this is the primary failure point.
 - Previous assumptions still apply (see above).
+- **Next steps must address Layer 1 (ExecPS2 to bram failure) before any Layer 2 work matters.**
 
-## Diagnostic artifact (MUST TEST NEXT)
-- The CI-built `POPSLOADER-HDD-DIAGNOSTIC` artifact with `LOADER_ENABLE_DEBUG_COLORS=1` must be tested on hardware before any further code changes.
-- `src/elf_loader/src/loader/src/loader.c` GS color stages are still in place.
-- Expected behavior: the screen background color changes at each stage of the embedded loader. The LAST color visible before freeze/black tells us exactly where the failure is.
-- Color key:
-  - BLACK (no color) = embedded loader never started — ExecPS2 to bram is broken
+## Diagnostic results
+- **Standard build**: black screen (no improvement across all 4 current-session attempts).
+- **Diagnostic build** (`LOADER_ENABLE_DEBUG_COLORS=1`): **black screen** — no GS background color visible. Confirms embedded loader `main()` never reached.
+- Color key reference:
+  - BLACK (no color) = embedded loader never started — ExecPS2 to bram is broken **← OBSERVED**
   - WHITE = loader main() entered
   - CYAN = argc OK, about to SifInitRpc + wipeUserMem
   - GREEN = about to SifLoadElf

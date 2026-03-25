@@ -1,9 +1,9 @@
 # POPSLoader Roadmap
 
-Last updated: 2026-03-24
+Last updated: 2026-03-25
 
 ## Status Snapshot
-Current branch has substantial stabilization work already landed (settings transaction flow, launch path hardening, backend classification, and packaging policy updates). Remaining roadmap items are mostly feature-completion and hardware validation.
+Current branch has substantial stabilization work already landed (settings transaction flow, launch path hardening, backend classification, and packaging policy updates). The HDD POPSTARTER launch path is blocked by a confirmed ExecPS2-to-bram failure (embedded loader never starts). Remaining roadmap items are mostly feature-completion and hardware validation.
 
 ## Completed Milestones (Code-Landed)
 
@@ -30,20 +30,25 @@ Current branch has substantial stabilization work already landed (settings trans
 
 ## Active Backlog
 
-### 1) Unimplemented menu features
+### 1) HDD POPSTARTER launch — ExecPS2-to-bram failure (BLOCKING)
+- The embedded loader at bram (0x84000) never starts executing. Diagnostic build confirms no GS colors appear.
+- Root cause: `ExecPS2((void *)entry, 0, argc, argv)` targeting bram fails silently.
+- Must investigate: gp=0 CRT crash, bram address validity, loader ELF integrity, FlushCache sufficiency, SifExitRpc side effects.
+- Secondary issue (PFS file I/O via iomanX) already has code in place but is untestable until the loader starts.
+- See `FAILURES.md` for full details and 17 failed attempts.
+
+### 2) Unimplemented menu features
 - Implement `HDD (exFAT)` flow (currently `Not Implemented Yet`).
 - Implement `SMB (v1)` flow (currently `Not Implemented Yet`).
 
-### 2) ART system
+### 3) ART system
 - Define and implement artwork source-of-truth, fallback policy, and cache behavior.
 
-### 3) Hardware validation depth
-- Resolve the still-unverified/failed `POPSTARTER.ELF on HDD` launch path before expanding broader HDD coverage. See `FAILURES.md`.
-- Use the CI-built HDD POPSTARTER diagnostic artifact to record the last observed embedded-loader stage on hardware before more handoff refactors.
+### 4) Hardware validation depth
 - Expand and record hardware coverage runs in `QA_REGRESSION_MATRIX.md`.
 - Prioritize combined scenarios: large multi-root USB + MX4SIO + MMCE + HDD installations.
 
-### 4) Release/process hardening
+### 5) Release/process hardening
 - Document per-launcher install layout details (OPL/FMCB variants) in README/docs.
 - Keep package contract and docs synchronized when payload policy changes.
 

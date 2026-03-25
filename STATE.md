@@ -1,4 +1,4 @@
-Last updated: 2026-03-24
+Last updated: 2026-03-25
 
 # STATE
 
@@ -24,8 +24,8 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 - `SMB (v1)`: not implemented.
 
 ## Known Open Work
-- Resolve the hardware-verified black screen when `POPSTARTER.ELF` is launched from HDD/PFS. See `FAILURES.md`.
-- Run hardware validation with the CI-built HDD POPSTARTER diagnostic artifact to identify the failing embedded-loader stage. See `FAILURES.md`.
+- **CRITICAL**: Resolve the ExecPS2-to-bram failure that prevents the embedded loader from starting. Diagnostic build confirms the embedded loader's `main()` is never reached. See `FAILURES.md` for confirmed root causes and candidate hypotheses.
+- Once the embedded loader starts, address the secondary issue: SifLoadElf cannot access PFS paths (ioman vs iomanX). Pre-read buffer and fileXio fallback code is already in place but untested (loader never ran).
 - Implement HDD exFAT menu flow.
 - Implement SMB menu flow.
 - Implement ART system.
@@ -35,3 +35,4 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 ## Verification Status
 - Code/build/package statements above are repository-verified.
 - Hardware behavior is `Unknown (verify on hardware)` unless recorded in `QA_REGRESSION_MATRIX.md` run logs.
+- HDD POPSTARTER diagnostic build tested 2026-03-25: black screen (no GS colors), confirming embedded loader never executes.

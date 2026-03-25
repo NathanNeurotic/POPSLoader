@@ -1,6 +1,6 @@
 # POPSLoader Regression Matrix
 
-Last updated: 2026-03-24
+Last updated: 2026-03-25
 Target branch: `BETA-9-RECOVERY-BACKUP-CHECKPOINT-PROFILES-PLAY`
 
 ## Scope
@@ -70,8 +70,11 @@ This matrix tracks current behavior across:
 |---|---|---|---|---|
 | YYYY-MM-DD | SCPH-xxxxx | USB/MMCE/MX4SIO/HDD details | e.g. S-01,S-02,D-02 | PASS/FAIL + notes |
 | 2026-03-24 | Unknown | HDD boot + HDD POPSTARTER sidecar + HDD game | D-10 | FAIL: black screen still present across commits `7a32ad2`, `120fc72`, and `ea03ba2`; see `FAILURES.md` |
+| 2026-03-25 | Unknown | HDD boot + HDD POPSTARTER sidecar + HDD game (standard) | D-10 | FAIL: black screen. Commits `87f4197`, `c60ce3e`→reverted, `6a01b96`, `12e942e` all fail. |
+| 2026-03-25 | Unknown | HDD boot + HDD POPSTARTER sidecar + HDD game (diagnostic) | D-10 | FAIL: black screen — **no GS colors visible**. Confirms embedded loader `main()` never reached. ExecPS2 to bram (0x84000) fails silently. |
 
 ## Current Verification Status
 - CI gates: verified by workflow definition (execution status depends on CI runs).
 - Manual hardware matrix: `Unknown (verify on hardware)` unless run logs are added above.
 - Current known hardware failure: `D-10` is failing on this branch; see `FAILURES.md`.
+- Diagnostic build confirms: embedded loader never starts (no GS colors). Root cause is ExecPS2 to bram, not file I/O.
