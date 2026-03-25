@@ -4,7 +4,7 @@
 
 # POPSLoader
 
-Last updated: 2026-03-07
+Last updated: 2026-03-25
 
 POPSLoader is an open-source PlayStation 2 launcher for POPStarter, scripted in Lua and built on top of Enceladus runtime components.
 
@@ -25,7 +25,7 @@ This repository contains:
 |---|---|
 | MMCE | Implemented |
 | MX4SIO | Implemented |
-| HDD (PFS) | Implemented for list/browse; HDD-resident `POPSTARTER.ELF` launch remains unresolved |
+| HDD (PFS) | Implemented for list/browse; HDD-resident `POPSTARTER.ELF` launch remains unresolved after both embedded-loader and current mounted-`pfs` direct-launch variants |
 | USB | Implemented |
 | Disc (DKWDRV) | Implemented |
 | HDD (exFAT) | Not implemented |
@@ -95,7 +95,8 @@ Notes:
 ### HDD (PFS) path notes
 - HDD title scan uses `__.POPS` and `__.POPS1..__.POPS9` partitions.
 - HDD dependency checks in launcher currently reference `hdd0:__common/POPS/` files.
-- Known limitation on this branch: when `POPSTARTER.ELF` itself is HDD-resident, HDD title launch is still hardware-failing (`D-10`). See `FAILURES.md` and `QA_REGRESSION_MATRIX.md`.
+- Known limitation on this branch: when `POPSTARTER.ELF` itself is HDD-resident, HDD title launch is still hardware-failing (`D-10`) after both the partition-aware embedded-loader path and the current mounted-`pfs` direct-launch variants were tested. See `FAILURES.md` and `QA_REGRESSION_MATRIX.md`.
+- Practical validation for this issue is currently through GitHub Actions workflow artifacts plus hardware runs; local non-PS2 environments are not sufficient to prove runtime behavior.
 
 ## Supported Devices and Backends
 - MMCE (`mmce0:/`, `mmce1:/`): supported.

@@ -1,6 +1,6 @@
 # POPSLoader Roadmap
 
-Last updated: 2026-03-24
+Last updated: 2026-03-25
 
 ## Status Snapshot
 Current branch has substantial stabilization work already landed (settings transaction flow, launch path hardening, backend classification, and packaging policy updates). Remaining roadmap items are mostly feature-completion and hardware validation.
@@ -42,7 +42,8 @@ Current branch has substantial stabilization work already landed (settings trans
 - Treat the current HDD diagnostic line as exhausted for now:
   - commit `9eaa040` established stable `embedded loader entry`
   - commits `6bddf69`, `11f1dc6`, and `78e0ee6` all collapsed to the same flash-then-black result when the halt moved deeper into post-entry string-copy code
-- Do not spend more cycles on narrower screen-backed embedded-loader halt variants unless future work brings a materially different evidence source or a new code asymmetry that is not already covered in `FAILURES.md`.
+  - later standard artifacts `0a0b6e9`, `e55e119`, `26fc65d`, `59be355`, and `d4a604e` also still black-screened, including the mounted-`pfs` direct-launch and `LoadExecPS2` variants
+- Do not spend more cycles on narrower screen-backed embedded-loader halt variants, mounted-`pfs` bypass reshuffles, or direct-loader mechanism swaps unless future work brings a materially different evidence source or a new code asymmetry that is not already covered in `FAILURES.md`.
 - Expand and record hardware coverage runs in `QA_REGRESSION_MATRIX.md`.
 - Prioritize combined scenarios: large multi-root USB + MX4SIO + MMCE + HDD installations.
 

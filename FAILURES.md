@@ -1,4 +1,4 @@
-Last updated: 2026-03-24
+Last updated: 2026-03-25
 
 # FAILURES
 
@@ -15,6 +15,11 @@ Last updated: 2026-03-24
   - launch returns with `exec did not transfer control`.
 
 ## Repo-verified evidence
+- Current repo-verified HDD launch chain in the present branch:
+  - [bin/POPSLDR/system.lua](bin/POPSLDR/system.lua) resolves the HDD launch, prefers a mounted `pfs:/...` exec path when available, and calls `System.loadELF(...)`.
+  - [src/luasystem.cpp](src/luasystem.cpp) routes raw partition-aware HDD launches to `LoadELFFromFileWithPartition(...)`, and routes non-partitioned argumented `pfs:/...` launches to `LoadELFFromFile(...)`.
+  - [src/elf_loader/src/elf.c](src/elf_loader/src/elf.c) either stages the embedded loader for partition-aware handoff or uses the direct loader paths (`SifLoadElf()+ExecPS2` or `LoadExecPS2`).
+  - [src/elf_loader/src/loader/src/loader.c](src/elf_loader/src/loader/src/loader.c) remains the embedded loader used by the partition-aware HDD handoff path.
 - HDD launch routing is handled by [bin/POPSLDR/system.lua](bin/POPSLDR/system.lua), [src/luasystem.cpp](src/luasystem.cpp), [src/elf_loader/src/elf.c](src/elf_loader/src/elf.c), and [src/elf_loader/src/loader/src/loader.c](src/elf_loader/src/loader/src/loader.c).
 - The current in-repo [bin/POPSLDR/POPSTARTER.ELF](bin/POPSLDR/POPSTARTER.ELF) has one `LOAD` program header and no `PT_MIPS_REGINFO`:
   - `readelf -h -l bin/POPSLDR/POPSTARTER.ELF`
@@ -42,12 +47,21 @@ Last updated: 2026-03-24
 - Result: hardware still black-screened.
 - Conclusion: keeping game/sidecar PFS slots mounted is not sufficient by itself.
 
-### Embedded-loader cleanup / reset variants
+### Embedded-loader cleanup / reset / wipe variants
 - Commits:
   - `35291c1` `Stop resetting IOP in HDD embedded POPSTARTER handoff`
   - `70895e4` `Reset IOP before ExecPS2 in HDD embedded loader path`
-- Result: hardware still black-screened in both directions.
+  - `e55e119` `Stop wiping EE user memory in HDD embedded loader`
+- Result: hardware still black-screened across these embedded-loader cleanup/reset/wipe variants.
 - Conclusion: this is not resolved simply by toggling IOP reset policy inside the current embedded-loader path.
+
+### Standard non-diagnostic keepalive / build-normalization path
+- Commits:
+  - `0a0b6e9` `Normalize HDD embedded-loader default build path`
+- Result: the standard `POPSLOADER` artifact still flashed briefly and then black-screened.
+- Conclusion:
+  - removing accidental default diagnostic halts from plain builds was not sufficient
+  - promoting the partitioned `ExecPS2` SIF-RPC keepalive into the normal path was not sufficient
 
 ### Partition-aware HDD handoff variants
 - Commits:
@@ -74,15 +88,30 @@ Last updated: 2026-03-24
   - the custom `fileXio` loader path is not proven safe
   - because [bin/POPSLDR/POPSTARTER.ELF](bin/POPSLDR/POPSTARTER.ELF) has no `PT_MIPS_REGINFO`, that loader's `gp` derivation was specifically suspect
 
+### Mounted HDD direct `pfs` launch / direct-loader variants
+- Commits:
+  - `26fc65d` `Prefer mounted HDD POPSTARTER path for direct launch`
+  - `59be355` `Use non-reboot direct loader for mounted HDD POPSTARTER`
+  - `d4a604e` `Use LoadExecPS2 for mounted HDD pfs launches`
+- Result: standard artifacts still black-screened.
+- Conclusion:
+  - bypassing the partition-aware embedded loader in favor of a mounted `pfs:/...` direct launch was not sufficient
+  - keeping that mounted `pfs` direct launch on the non-reboot path was not sufficient
+  - swapping the mounted `pfs` argumented launch mechanism from `SifLoadElf()+ExecPS2` to `LoadExecPS2` was not sufficient
+
 ## Do not re-assume without new evidence
 - Do not assume bare HDD `argv[0]` is the sole cause.
 - Do not assume mounted-path HDD `argv[0]` is the sole cause.
 - Do not assume preserving only the game slot fixes the handoff.
 - Do not assume preserving the sidecar slot fixes the handoff.
 - Do not assume “reset IOP” or “do not reset IOP” is enough on its own.
+- Do not assume removing the embedded loader's `wipeUserMem()` fixes the handoff.
 - Do not assume normalizing mounted `pfsN:/...` to `pfs:/...` fixes the failure.
 - Do not assume matching the upstream partitioned embedded-loader contract fixes the failure.
 - Do not assume keeping raw `hdd0:...` POPSTARTER paths through Lua fixes the failure.
+- Do not assume bypassing the partition-aware embedded loader for a mounted `pfs:/...` path fixes the failure.
+- Do not assume the mounted `pfs` direct path works if it only changes reboot vs non-reboot direct-loader policy.
+- Do not assume the mounted `pfs` direct path works if it only swaps `SifLoadElf()+ExecPS2` for `LoadExecPS2`.
 - Do not treat repo history as proof of a solved path; many of those commits document failed or partial experiments.
 
 ## Current stop point
@@ -159,7 +188,28 @@ Last updated: 2026-03-24
 - Hardware conclusion from that run:
   - this did not test the normal-path changes from `0a0b6e9` in isolation
   - it only reconfirmed that the current diagnostic halt family still does not yield a new durable post-entry stage
-  - the standard `POPSLOADER` artifact from `0a0b6e9` remains `Unknown (verify on hardware)`
+  - the standard `POPSLOADER` artifact from `0a0b6e9` was still pending at that point
+- Hardware result from commit `0a0b6e9` standard `POPSLOADER` artifact:
+  - text flashed very quickly and then the screen went black
+- Hardware conclusion from that run:
+  - the normal-path keepalive/no-halt build still failed before visible POPSTARTER output
+  - the branch was no longer blocked on “diagnostic artifact vs standard artifact” ambiguity
+- Hardware result from commit `e55e119` standard `POPSLOADER` artifact:
+  - black screen
+- Hardware conclusion from that run:
+  - removing `wipeUserMem()` from the embedded loader was not sufficient
+- Hardware result from commit `26fc65d` standard `POPSLOADER` artifact:
+  - black screen
+- Hardware conclusion from that run:
+  - preferring the mounted HDD `pfs:/...` POPSTARTER path and bypassing the partition-aware embedded loader was not sufficient
+- Hardware result from commit `59be355` standard `POPSLOADER` artifact:
+  - black screen
+- Hardware conclusion from that run:
+  - keeping the mounted HDD `pfs:/...` direct launch on the non-reboot direct-loader path was not sufficient
+- Hardware result from commit `d4a604e` standard `POPSLOADER` artifact:
+  - black screen
+- Hardware conclusion from that run:
+  - routing mounted HDD `pfs:/...` argumented launches through `LoadExecPS2` was not sufficient
 - Repo-verified implementation:
   - `.github/workflows/compilation.yml` now builds and uploads `POPSLOADER-HDD-DIAGNOSTIC` with `LOADER_ENABLE_DEBUG_COLORS=1`, without the older `src/elf_loader/src/elf.c` early-return probe defines.
   - `src/elf_loader/src/loader/Makefile` previously default-enabled every `LOADER_DIAG_HALT_*` define during plain builds because those flags were unset, but the make logic still treated any value other than literal `0` as enabled.
@@ -187,11 +237,17 @@ Last updated: 2026-03-24
     - inference: the partitioned path still has an `ExecPS2` cleanup asymmetry that has not been isolated by the documented failed selector/path/reset theories
   - Commit `9eaa040` now keeps SIF RPC alive across that partitioned embedded-loader `ExecPS2` boundary, and hardware now reaches a stable `embedded loader entry` stage.
   - `src/elf_loader/src/elf.c` now keeps SIF RPC alive unconditionally for the partition-aware embedded-loader handoff, so the standard `POPSLOADER` artifact no longer drops the only durable positive movement that was previously confined to the diagnostic build.
-  - Hardware result for that non-diagnostic keepalive/no-halt build is still `Unknown (verify on hardware)`.
+  - Hardware result for that non-diagnostic keepalive/no-halt build (`0a0b6e9` standard artifact) was still a fast flash followed by black screen.
+  - Commit `e55e119` removed the embedded loader's `wipeUserMem()` call, but the standard artifact still black-screened.
   - Commit `6bddf69` moved the diagnostic halt to after the embedded loader copied `argv[0]`, `argv[1]`, and the forwarded selector into local buffers, and also printed the copied strings for visibility.
   - Commit `11f1dc6` then moved the diagnostic halt earlier again, to after the embedded loader copied the partition/path strings and built `exec0`, but before it dereferenced the forwarded selector `argv[2]`.
   - Commit `78e0ee6` moved the diagnostic halt earlier still, to after the embedded loader copied `argv[0]` into `partition_prefix`, but before it dereferenced `argv[1]` for the target path.
   - Commits `6bddf69`, `11f1dc6`, `78e0ee6`, and the later diagnostic rerun at `0a0b6e9` all produced the same practical hardware result: a brief flash followed by black screen, without a new durable post-entry stage.
+  - `bin/POPSLDR/system.lua` now prefers a mounted HDD `pfs:/...` POPSTARTER path when it can resolve one from a raw `hdd0:` path, and only keeps `partition_hint` for raw `hdd0:` launches.
+  - Commit `26fc65d` tested that mounted `pfs` direct-launch bypass and still black-screened on hardware.
+  - Commit `59be355` then kept that mounted `pfs` launch on the non-reboot direct-loader path, and hardware still black-screened.
+  - `src/luasystem.cpp` now routes non-partitioned argumented `pfs:/...` launches to `LoadELFFromFile()` / `LoadExecPS2`.
+  - Commit `d4a604e` tested that direct-loader mechanism swap for mounted HDD `pfs` launches, and hardware still black-screened.
 
 ## Guardrail For Future Work
 - Do not continue making narrower screen-backed embedded-loader halt variants in `src/elf_loader/src/loader/src/loader.c` unless there is a materially different evidence source.
@@ -200,14 +256,18 @@ Last updated: 2026-03-24
   - embedded-loader cleanup completed (`6c81233`)
   - keeping SIF RPC alive before the partitioned embedded-loader `ExecPS2` boundary allowed stable `embedded loader entry` (`9eaa040`)
   - later post-entry screen-backed halts at `6bddf69`, `11f1dc6`, and `78e0ee6` did not yield stable new observations
+  - later standard artifacts `0a0b6e9`, `e55e119`, `26fc65d`, `59be355`, and `d4a604e` all still black-screened
 - Do not repeat:
   - selector-shape / `argv[0]` contract rewrites
   - slot-preservation rewrites
   - reset-policy toggles
+  - embedded-loader `wipeUserMem()` toggles
   - partition/path normalization rewrites
   - custom `fileXio` target-loading path
-  - assuming the standard build was failing only because diagnostic halt macros defaulted on
-  - assuming the diagnostic-only partitioned `ExecPS2` SIF-RPC keepalive fixes the normal build by itself
+  - assuming the standard build was failing only because diagnostic halt macros defaulted on or partitioned keepalive was missing
+  - mounted `pfs:/...` direct-launch bypass variants
+  - mounted `pfs` reboot vs non-reboot direct-loader toggles
+  - swapping the mounted `pfs` argumented launch mechanism to `LoadExecPS2`
   - finer-grained post-entry `argv` copy halts that only move the screen-backed stop a few lines earlier
 - If HDD work resumes, require one of:
   - a genuinely new code asymmetry not already covered above, with file-level evidence

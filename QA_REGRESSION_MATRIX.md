@@ -1,6 +1,6 @@
 # POPSLoader Regression Matrix
 
-Last updated: 2026-03-24
+Last updated: 2026-03-25
 Target branch: `BETA-9-RECOVERY-BACKUP-CHECKPOINT-PROFILES-PLAY`
 
 ## Scope
@@ -83,10 +83,16 @@ This matrix tracks current behavior across:
 | 2026-03-24 | Unknown | HDD diagnostic build + HDD boot + HDD POPSTARTER sidecar + HDD game | D-10 | FAIL: commit `11f1dc6` still only flashed text and then black-screened even though the diagnostic loader now halted after copying the partition/path strings and building `exec0`; the next artifact halts after copying only `argv[0]` into `partition_prefix`, before dereferencing `argv[1]`; see `FAILURES.md` |
 | 2026-03-24 | Unknown | HDD diagnostic build + HDD boot + HDD POPSTARTER sidecar + HDD game | D-10 | FAIL: commit `78e0ee6` still only flashed text and then black-screened even though the diagnostic loader now halted after copying only `argv[0]` into `partition_prefix`, before dereferencing `argv[1]`; this marks the current screen-backed post-entry diagnostic line as exhausted without a new durable stage beyond `embedded loader entry`; see `FAILURES.md` |
 | 2026-03-24 | Unknown | HDD diagnostic build + HDD cwd + HDD-resident `POPSTARTER.ELF` + HDD game | D-10 | FAIL: commit `0a0b6e9` was later confirmed to be another `POPSLOADER-HDD-DIAGNOSTIC` run, and it still only flashed briefly then black-screened; this reconfirmed the existing diagnostic plateau but did not test the standard `POPSLOADER` artifact; see `FAILURES.md` |
+| 2026-03-25 | Unknown | HDD boot + standard `POPSLOADER` artifact + HDD cwd + HDD-resident `POPSTARTER.ELF` + HDD game | D-10 | FAIL: commit `0a0b6e9` standard artifact also flashed very quickly and then black-screened; build-normalization plus normal-path partition keepalive did not resolve HDD launch; see `FAILURES.md` |
+| 2026-03-25 | Unknown | HDD boot + standard `POPSLOADER` artifact + HDD cwd + HDD-resident `POPSTARTER.ELF` + HDD game | D-10 | FAIL: commit `e55e119` standard artifact still black-screened; removing the embedded loader `wipeUserMem()` call was not sufficient; see `FAILURES.md` |
+| 2026-03-25 | Unknown | HDD boot + standard `POPSLOADER` artifact + HDD cwd + HDD-resident `POPSTARTER.ELF` + HDD game | D-10 | FAIL: commit `26fc65d` standard artifact still black-screened; preferring the mounted HDD `pfs:/...` path and bypassing the partition-aware embedded loader was not sufficient; see `FAILURES.md` |
+| 2026-03-25 | Unknown | HDD boot + standard `POPSLOADER` artifact + HDD cwd + HDD-resident `POPSTARTER.ELF` + HDD game | D-10 | FAIL: commit `59be355` standard artifact still black-screened; keeping the mounted HDD `pfs:/...` launch on the non-reboot direct-loader path was not sufficient; see `FAILURES.md` |
+| 2026-03-25 | Unknown | HDD boot + standard `POPSLOADER` artifact + HDD cwd + HDD-resident `POPSTARTER.ELF` + HDD game | D-10 | FAIL: commit `d4a604e` standard artifact still black-screened; routing mounted HDD `pfs:/...` argumented launches through `LoadExecPS2` was not sufficient; see `FAILURES.md` |
 
 ## Current Verification Status
 - CI gates: verified by workflow definition (execution status depends on CI runs).
 - Manual hardware matrix: `Unknown (verify on hardware)` unless run logs are added above.
 - Current known hardware failure: `D-10` is failing on this branch; see `FAILURES.md`.
 - Current HDD diagnostic plateau: stable `embedded loader entry` was observed at commit `9eaa040`, but later post-entry halts (`6bddf69`, `11f1dc6`, `78e0ee6`) all collapsed to flash-then-black and did not produce a new durable hardware stage.
-- Current standard-build status: commit `0a0b6e9` has not yet been hardware-verified via the standard `POPSLOADER` artifact, so the non-diagnostic keepalive/no-halt path remains `Unknown (verify on hardware)`.
+- Current standard-build status: commits `0a0b6e9`, `e55e119`, `26fc65d`, `59be355`, and `d4a604e` have now all been hardware-tested via the standard `POPSLOADER` artifact and still fail `D-10`.
+- Current direct-launch plateau: the mounted HDD `pfs:/...` bypass and its direct-loader variants (`26fc65d`, `59be355`, `d4a604e`) also still black-screened, so the branch is no longer blocked on the older partition-aware embedded-loader path alone.
