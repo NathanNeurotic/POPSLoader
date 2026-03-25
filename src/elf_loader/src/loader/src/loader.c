@@ -23,8 +23,10 @@
 #include <fileXio_rpc.h>
 #ifdef LOADER_ENABLE_DEBUG_COLORS
 #include <debug.h>
+#define DPRINTF(x...) scr_printf(x)
+#else
+#define DPRINTF(x...) do {} while (0)
 #endif
-#define DPRINTF(x...) printf(x)
 
 #ifdef LOADER_ENABLE_DEBUG_COLORS
 #define SET_GS_BGCOLOUR(colour) {*((volatile unsigned long int *)0x120000E0) = colour;}
@@ -230,7 +232,9 @@ int main(int argc, char *argv[])
 		LOADER_DIAG_PRINTF("argc=%d\n", argc);
 		return -EINVAL;
 	}
-	snprintf(partition_prefix, sizeof(partition_prefix), "%s", argv[0] ? argv[0] : "");
+
+	strncpy(partition_prefix, argv[0] ? argv[0] : "", sizeof(partition_prefix) - 1);
+	partition_prefix[sizeof(partition_prefix) - 1] = '\0';
 
 #ifdef LOADER_DIAG_HALT_AFTER_PARTITION_COPY
 	loader_diag_stage(CYAN_BG, "embedded loader partition copied");
@@ -241,14 +245,21 @@ int main(int argc, char *argv[])
 	loader_diag_halt("after partition copy");
 #endif
 
-	snprintf(target_path, sizeof(target_path), "%s", argv[1] ? argv[1] : "");
-	snprintf(full_path, sizeof(full_path), "%s%s", partition_prefix, target_path);
+	strncpy(target_path, argv[1] ? argv[1] : "", sizeof(target_path) - 1);
+	target_path[sizeof(target_path) - 1] = '\0';
+
+	strncpy(full_path, partition_prefix, sizeof(full_path) - 1);
+	full_path[sizeof(full_path) - 1] = '\0';
+	strncat(full_path, target_path, sizeof(full_path) - strlen(full_path) - 1);
+
 	target_argc = argc - 1;
 	if (target_argc > 32) {
 		return -E2BIG;
 	}
+
 	target_argv[0] = &target_arg_storage[0];
-	snprintf(target_argv[0], sizeof(target_arg_storage), "%s", full_path);
+	strncpy(target_argv[0], full_path, sizeof(target_arg_storage) - 1);
+	target_argv[0][sizeof(target_arg_storage) - 1] = '\0';
 	target_arg_offset = strlen(target_argv[0]) + 1;
 
 #ifdef LOADER_DIAG_HALT_AFTER_PATH_COPY
