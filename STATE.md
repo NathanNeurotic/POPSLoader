@@ -13,7 +13,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 - Implemented selectable BDMA modes: `FAT32`, `USBEXFAT`, `MX4SIO`, `MMCE`.
 - USB/MX4SIO split is based on mount-driver identity, not path-prefix heuristics alone.
 - Release packaging policy in CI is `PS1_POPSLOADER/*` + `POPS/PATCH_5.BIN` with strict manifest validation.
-- HDD list/browse flow is implemented, but HDD-resident `POPSTARTER.ELF` launch remains hardware-failing on this branch across both the partition-aware embedded-loader path and the current mounted-`pfs` direct-launch variants. A new code asymmetry was identified (pfs slot stripping in `canonicalize_partition_loader_path` + fileXio path never tested with stable entry) and a bounded fix is now staged for hardware validation. See `FAILURES.md` and `QA_REGRESSION_MATRIX.md`.
+- HDD list/browse flow is implemented, but HDD-resident `POPSTARTER.ELF` launch remains hardware-failing on this branch across both the partition-aware embedded-loader path and the current mounted-`pfs` direct-launch variants. A new code asymmetry was identified (pfs slot stripping in `canonicalize_partition_loader_path` + fileXio path never tested with stable entry) and a bounded fix is now staged for hardware validation. The diagnostic build now halts at the fileXio load result (`LOADER_DIAG_HALT_AFTER_FILEXIO_LOAD`) instead of the obsolete partition-copy stage, giving first-ever data on whether fileXio opens POPSTARTER.ELF from the correct pfs slot. See `FAILURES.md` and `QA_REGRESSION_MATRIX.md`.
 
 ## Main Menu Feature Status
 - `MMCE`: implemented.

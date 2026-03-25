@@ -1,4 +1,4 @@
-Last updated: 2026-03-25 (pfs-slot fix attempt)
+Last updated: 2026-03-25 (fileXio load diagnostic halt added)
 
 # FAILURES
 
@@ -277,6 +277,8 @@ Based on the above evidence, the following bounded changes have been made:
 1. **`src/elf_loader/src/elf.c`** — `canonicalize_partition_loader_path`: pfs: paths are now passed through unchanged, preserving the slot number (e.g. `pfs3:/...` stays `pfs3:/...`).
 2. **`bin/POPSLDR/system.lua`** — `LaunchEngine`: added `elseif` to derive `partition_hint` from `pfs%d*:/` POPSTARTER paths via `ResolveHddExecPartitionHint`, routing them through `LoadELFFromFileWithPartition` (and therefore the partition-aware embedded loader) instead of `LoadELFFromFile` / `LoadExecPS2`.
 3. **`src/elf_loader/src/loader/src/loader.c`** — `main()`: added fileXio dispatch after `SifInitRpc(0)` for `pfs:` and `hdd:` target paths; calls `fileXioInit()` + `load_elf_via_filexio()` and on success does `FlushCache(0)+FlushCache(2)+ExecPS2`; falls through to `SifLoadElf` path only for other path prefixes.
+4. **`src/elf_loader/src/loader/src/loader.c`** — diagnostic: added `LOADER_DIAG_HALT_AFTER_FILEXIO_LOAD` halt immediately after `load_elf_via_filexio()` returns; the diagnostic artifact now halts at the fileXio load result (`rc`, `entry`, `gp`) rather than at the earlier partition-copy stage, giving first-ever hardware data on whether fileXio successfully opens and reads `POPSTARTER.ELF` from the pfs3 mount.
+5. **`.github/workflows/compilation.yml`** — HDD diagnostic build now uses `LOADER_DIAG_HALT_AFTER_FILEXIO_LOAD=1` and `LOADER_DIAG_HALT_AFTER_PARTITION_COPY=0`.
 
 Hardware validation is pending. Result must be recorded here once available.
 

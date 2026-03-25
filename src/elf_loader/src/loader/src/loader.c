@@ -74,7 +74,7 @@ static void loader_diag_stage(unsigned long colour, const char *label)
 }
 #endif
 
-#if defined(LOADER_DIAG_HALT_AFTER_SIFLOAD) || defined(LOADER_DIAG_HALT_BEFORE_SIFLOAD) || defined(LOADER_DIAG_HALT_AFTER_PARTITION_COPY) || defined(LOADER_DIAG_HALT_AFTER_PATH_COPY) || defined(LOADER_DIAG_HALT_AFTER_ARG_COPY)
+#if defined(LOADER_DIAG_HALT_AFTER_SIFLOAD) || defined(LOADER_DIAG_HALT_BEFORE_SIFLOAD) || defined(LOADER_DIAG_HALT_AFTER_PARTITION_COPY) || defined(LOADER_DIAG_HALT_AFTER_PATH_COPY) || defined(LOADER_DIAG_HALT_AFTER_ARG_COPY) || defined(LOADER_DIAG_HALT_AFTER_FILEXIO_LOAD)
 static void loader_diag_halt(const char *reason)
 {
 #ifdef LOADER_ENABLE_DEBUG_COLORS
@@ -316,6 +316,9 @@ int main(int argc, char *argv[])
 		fileXioInit();
 		load_rc = load_elf_via_filexio(target_path, &elf_entry, &elf_gp);
 		LOADER_DIAG_PRINTF("filexio rc=%d entry=0x%x gp=0x%x\n", load_rc, elf_entry, elf_gp);
+#ifdef LOADER_DIAG_HALT_AFTER_FILEXIO_LOAD
+		loader_diag_halt("after fileXio load");
+#endif
 		if (load_rc == 0 && elf_entry != 0) {
 			loader_diag_stage(PURPLE_BG, "before ExecPS2 (fileXio)");
 			DPRINTF("POPS EXEC via fileXio: argc=%d entry=0x%x gp=0x%x\n",
