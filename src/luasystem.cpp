@@ -946,6 +946,24 @@ int LoadELFFromFileWithPartition(const char *filename, const char *partition, in
 int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[]);
 int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]);
 }
+
+static bool IsPfsExecPathForLoadELF(const char *path)
+{
+	const char *cursor = path;
+
+	if (cursor == NULL) {
+		return false;
+	}
+	if (((cursor[0] | 0x20) != 'p') || ((cursor[1] | 0x20) != 'f') || ((cursor[2] | 0x20) != 's')) {
+		return false;
+	}
+	cursor += 3;
+	while (*cursor >= '0' && *cursor <= '9') {
+		cursor++;
+	}
+	return cursor[0] == ':' && cursor[1] == '/';
+}
+
 static int lua_loadELF(lua_State *L)
 {
 	int argc = lua_gettop(L);
@@ -972,6 +990,8 @@ static int lua_loadELF(lua_State *L)
 		if (rebootIOP == 0 && partition != NULL && partition[0] != '\0') {
 			snprintf(partition_buf, sizeof(partition_buf), "%s", partition);
 			rc = LoadELFFromFileWithPartition(elftoload, partition_buf, 1, argv_static);
+		} else if (rebootIOP == 0 && IsPfsExecPathForLoadELF(elftoload)) {
+			rc = LoadELFFromFile(elftoload, 1, argv_static);
 		} else if (rebootIOP != 0) {
 			rc = LoadELFFromFileExecPS2RebootIOP(elftoload, 1, argv_static);
 		} else {
