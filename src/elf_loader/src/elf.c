@@ -264,9 +264,10 @@ static int ExecuteViaEmbeddedLoaderWithPartition(const char *partition, const ch
 		}
 	}
 
-#ifndef HDD_DIAG_KEEP_SIF_RPC_BEFORE_EMBEDDED_EXEC
-	SifExitRpc();
-#endif
+	/* Hardware only reached stable embedded-loader entry once this boundary
+	 * stopped tearing down EE-side SIF RPC state before the partitioned ExecPS2.
+	 * Keep that behavior in the normal path instead of only in diagnostic builds.
+	 */
 	FlushCache(0);
 	FlushCache(2);
 	partition_loader_diag_stage("before embedded loader ExecPS2", final_argc, partition_prefix, resolved_path);

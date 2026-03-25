@@ -155,6 +155,9 @@ Last updated: 2026-03-24
   - inference from repo behavior: the current screen-backed diagnostic approach has reached a plateau after stable loader entry; narrower post-entry string-copy halts are no longer yielding durable new stage evidence
 - Repo-verified implementation:
   - `.github/workflows/compilation.yml` now builds and uploads `POPSLOADER-HDD-DIAGNOSTIC` with `LOADER_ENABLE_DEBUG_COLORS=1`, without the older `src/elf_loader/src/elf.c` early-return probe defines.
+  - `src/elf_loader/src/loader/Makefile` previously default-enabled every `LOADER_DIAG_HALT_*` define during plain builds because those flags were unset, but the make logic still treated any value other than literal `0` as enabled.
+  - That meant the standard `make clean elfloader all` path still compiled the embedded loader with diagnostic halt sites active unless the workflow explicitly overrode them to `0`.
+  - `src/elf_loader/src/loader/Makefile` now defaults those halt flags to `0`, so only the explicit diagnostic build keeps the halt variants active.
   - The first diagnostic loader only wrote `GS_BGCOLOR` in `src/elf_loader/src/loader/src/loader.c`; it did not initialize a visible debug screen in that loader.
   - This follow-up diagnostic loader revision uses `debug.h` screen output in addition to GS color writes so the current stage remains visible if the handoff stalls inside the embedded loader.
   - Even that follow-up loader revision still dereferenced `argv[0]` and `argv[1]` before its first visible stage, and `src/elf_loader/src/elf.c` still had no screen-backed marker immediately before `ExecPS2` into the embedded loader.
@@ -170,12 +173,14 @@ Last updated: 2026-03-24
   - The remaining issue is observability: the embedded loader's stage text still flashes too quickly to tell whether `SifLoadElf(target_path)` succeeded, failed, or hung.
   - Commit `3d52065` now adds a diagnostic-only halt immediately after the embedded loader records the `SifLoadElf()` outcome.
   - Commit `5699aa8` now halts earlier, immediately before the embedded loader calls `SifLoadFileInit()` / `SifLoadElf()`.
-  - Because that pre-`SifLoadElf()` halt still did not remain visible, the next diagnostic artifact now keeps SIF RPC alive across the partitioned embedded-loader `ExecPS2` boundary in `src/elf_loader/src/elf.c` while reusing the same pre-`SifLoadElf()` halt.
+  - Because that pre-`SifLoadElf()` halt still did not remain visible, the next diagnostic artifact kept SIF RPC alive across the partitioned embedded-loader `ExecPS2` boundary in `src/elf_loader/src/elf.c` while reusing the same pre-`SifLoadElf()` halt.
   - New repo-local evidence for that target:
-    - current partitioned handoff still calls `SifExitRpc()` immediately before `ExecPS2` into the embedded loader in `src/elf_loader/src/elf.c`
+    - the partition-aware handoff originally still called `SifExitRpc()` immediately before `ExecPS2` into the embedded loader in `src/elf_loader/src/elf.c`
     - older repo history contains commit `39ba2d2` (`Fix HDD black screen: remove SifExitRpc/SifExitCmd timing race before embedded loader ExecPS2`) for the non-partition embedded-loader path
     - inference: the partitioned path still has an `ExecPS2` cleanup asymmetry that has not been isolated by the documented failed selector/path/reset theories
   - Commit `9eaa040` now keeps SIF RPC alive across that partitioned embedded-loader `ExecPS2` boundary, and hardware now reaches a stable `embedded loader entry` stage.
+  - `src/elf_loader/src/elf.c` now keeps SIF RPC alive unconditionally for the partition-aware embedded-loader handoff, so the standard `POPSLOADER` artifact no longer drops the only durable positive movement that was previously confined to the diagnostic build.
+  - Hardware effect of that non-diagnostic keepalive/no-halt build is `Unknown (verify on hardware)`.
   - Commit `6bddf69` moved the diagnostic halt to after the embedded loader copied `argv[0]`, `argv[1]`, and the forwarded selector into local buffers, and also printed the copied strings for visibility.
   - Commit `11f1dc6` then moved the diagnostic halt earlier again, to after the embedded loader copied the partition/path strings and built `exec0`, but before it dereferenced the forwarded selector `argv[2]`.
   - Commit `78e0ee6` moved the diagnostic halt earlier still, to after the embedded loader copied `argv[0]` into `partition_prefix`, but before it dereferenced `argv[1]` for the target path.
