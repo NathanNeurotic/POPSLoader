@@ -1,4 +1,4 @@
-Last updated: 2026-03-25
+Last updated: 2026-03-25 (attempt 5b: remove post-memcpy SIF corruption)
 
 # FAILURES
 
@@ -125,13 +125,19 @@ These are hypotheses to investigate — none are confirmed yet.
 - Result: hardware still black-screened.
 - Conclusion: **now known** — the embedded loader never started, so the buffer parsing code never executed. The pre-read itself likely worked (main process `open/read` on PFS paths is proven), but the data was never used.
 
-### Direct ELF load from main process (current attempt)
+### Direct ELF load from main process (attempt 5a — with IOP reset, LIKELY BROKEN)
 - Approach: **completely bypass the embedded loader**. Read POPSTARTER ELF into bram buffer using `open/read` (fileXio-backed, works with PFS) from the main process, parse the ELF, `memcpy` LOAD segments to target addresses (0x100000+), then follow the exact same IOP reset + `ExecPS2` pattern as the working USB path (`LoadELFFromFileExecPS2RebootIOP`).
 - Why this is different: eliminates BOTH broken layers at once:
   - No `ExecPS2` to bram (Layer 1) — we never launch the embedded loader.
   - No `SifLoadElf` for PFS (Layer 2) — we use `open/read` via fileXio instead.
 - The file I/O happens entirely in the main process where it's proven to work.
-- After `memcpy`, the IOP reset sequence runs from instruction cache + kernel syscalls (same as USB path after `SifLoadElf` overwrites 0x100000+).
+- **Identified bug**: After `memcpy` writes POPSTARTER data to 0x100000-0x128C80 through the D-cache, SIF library globals (sifrpc, sifcmd, loadfile state) at 0x100000+ are corrupted in the D-cache. The subsequent `SifInitRpc`, `SifLoadFileInit`, `SifLoadModule` calls read POPSTARTER bytes as RPC state (undefined behavior) and write RPC data over POPSTARTER code, corrupting the loaded image. The final `FlushCache(0)` writes this corruption to physical RAM. This does NOT happen in the USB path because `SifLoadElf` loads via IOP DMA which bypasses the D-cache — SIF library state in D-cache remains valid.
+- Status: `Superseded by attempt 5b`.
+
+### Direct ELF load — minimal post-memcpy (attempt 5b — current)
+- Approach: Same file read + ELF parse + memcpy as 5a, but after memcpy, execute ONLY kernel syscalls: `FlushCache(0)` (write D-cache to physical RAM), `FlushCache(2)` (invalidate I-cache), `ExecPS2` (jump to entry). No SIF library calls whatsoever.
+- Rationale: After memcpy overwrites 0x100000+ through D-cache, ALL user-space library state in that range is corrupt. Only kernel syscalls (which trap to KSEG0/KSEG1) are safe. POPSTARTER handles its own IOP initialization — the working USB path (`LoadELFFromFileExecPS2`) also does NOT reset the IOP.
+- Optional diagnostic build with `HDD_LAUNCH_DEBUG_COLORS` shows GREEN (file read OK), BLUE (segments copied), PURPLE (about to ExecPS2).
 - Status: `Unknown (verify on hardware)`.
 
 ## Do not re-assume without new evidence (updated)

@@ -40,6 +40,12 @@
 #define PREREAD_MAGIC       0x50524544U  /* "PRED" */
 #define PREREAD_DATA_OFFSET 16
 
+#ifdef HDD_LAUNCH_DEBUG_COLORS
+#define HDD_DBG_COLOR(c) *((volatile unsigned long long *)0x120000E0) = (unsigned long long)(c)
+#else
+#define HDD_DBG_COLOR(c)
+#endif
+
 extern unsigned char loader_elf[];
 
 static bool is_host_path(const char *filename) {
@@ -356,6 +362,7 @@ int LoadELFFromFileWithPartition(const char *filename, const char *partition, in
 		return -3;
 	}
 	DPRINTF("LAUNCH: read %d bytes to bram 0x%08x\n", file_size, (unsigned int)buf);
+	HDD_DBG_COLOR(0x00FF00);
 
 	/* Parse ELF from bram buffer */
 	ehdr = (elf_header_t *)buf;
@@ -394,30 +401,18 @@ int LoadELFFromFileWithPartition(const char *filename, const char *partition, in
 		}
 	}
 
+	HDD_DBG_COLOR(0x0000FF);
 	DPRINTF("LAUNCH: entry=0x%08x gp=0x%08x argc=%d argv0=%s\n",
 	        entry, gp, argc, (argv && argv[0]) ? argv[0] : "(null)");
 
-	/* Follow the same IOP-reset pattern as LoadELFFromFileExecPS2RebootIOP
-	   (the working USB path). After memcpy, POPSTARTER code is at 0x100000+
-	   in both data cache and physical memory. Our code continues from
-	   instruction cache. FlushCache(0) writes back data cache (harmless—same
-	   data). IOP reset + ROM modules run from cached instructions + kernel
-	   syscalls. FlushCache(2) invalidates instruction cache so ExecPS2
-	   fetches POPSTARTER code. */
-	FlushCache(0);
-	while (!SifIopReset(NULL, 0)) {
-	}
-	while (!SifIopSync()) {
-	}
-
-	SifInitRpc(0);
-	SifLoadFileInit();
-	SifLoadModule("rom0:SIO2MAN", 0, NULL);
-	SifLoadModule("rom0:MCMAN", 0, NULL);
-	SifLoadModule("rom0:MCSERV", 0, NULL);
-	SifLoadFileExit();
-	SifExitRpc();
-
+	/* After memcpy, POPSTARTER occupies 0x100000+ in D-cache, overlapping
+	   SIF library globals (sifrpc, sifcmd, loadfile state). Calling ANY SIF
+	   function would read POPSTARTER bytes as RPC state and write RPC data
+	   over POPSTARTER code, corrupting the loaded image. Only kernel syscalls
+	   are safe here.
+	   POPSTARTER initializes the IOP itself -- no reset needed. The working
+	   USB path (LoadELFFromFileExecPS2) also skips IOP reset. */
+	HDD_DBG_COLOR(0xFF00FF);
 	FlushCache(0);
 	FlushCache(2);
 
