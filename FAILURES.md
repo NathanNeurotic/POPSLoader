@@ -153,6 +153,12 @@ Last updated: 2026-03-24
 - Hardware conclusion from that run:
   - the embedded loader still did not present a stable post-`argv[0]` halt on hardware
   - inference from repo behavior: the current screen-backed diagnostic approach has reached a plateau after stable loader entry; narrower post-entry string-copy halts are no longer yielding durable new stage evidence
+- Hardware result from commit `0a0b6e9`:
+  - standard `POPSLOADER` artifact for the HDD `cwd` / HDD-resident `POPSTARTER.ELF` test still flashed text very quickly and then black-screened
+- Hardware conclusion from that run:
+  - moving the partition-aware embedded-loader `SifExitRpc` keepalive into the normal path did not produce a visible improvement by itself
+  - correcting the plain embedded-loader build so it no longer default-enabled every `LOADER_DIAG_HALT_*` macro did not resolve the black screen by itself
+  - the branch remains on the same diagnostic plateau: no new durable post-entry stage was observed, and no new code target is justified from this hardware result alone
 - Repo-verified implementation:
   - `.github/workflows/compilation.yml` now builds and uploads `POPSLOADER-HDD-DIAGNOSTIC` with `LOADER_ENABLE_DEBUG_COLORS=1`, without the older `src/elf_loader/src/elf.c` early-return probe defines.
   - `src/elf_loader/src/loader/Makefile` previously default-enabled every `LOADER_DIAG_HALT_*` define during plain builds because those flags were unset, but the make logic still treated any value other than literal `0` as enabled.
@@ -180,11 +186,11 @@ Last updated: 2026-03-24
     - inference: the partitioned path still has an `ExecPS2` cleanup asymmetry that has not been isolated by the documented failed selector/path/reset theories
   - Commit `9eaa040` now keeps SIF RPC alive across that partitioned embedded-loader `ExecPS2` boundary, and hardware now reaches a stable `embedded loader entry` stage.
   - `src/elf_loader/src/elf.c` now keeps SIF RPC alive unconditionally for the partition-aware embedded-loader handoff, so the standard `POPSLOADER` artifact no longer drops the only durable positive movement that was previously confined to the diagnostic build.
-  - Hardware effect of that non-diagnostic keepalive/no-halt build is `Unknown (verify on hardware)`.
+  - Hardware result for that non-diagnostic keepalive/no-halt build is now recorded at commit `0a0b6e9`: flash-then-black still occurred.
   - Commit `6bddf69` moved the diagnostic halt to after the embedded loader copied `argv[0]`, `argv[1]`, and the forwarded selector into local buffers, and also printed the copied strings for visibility.
   - Commit `11f1dc6` then moved the diagnostic halt earlier again, to after the embedded loader copied the partition/path strings and built `exec0`, but before it dereferenced the forwarded selector `argv[2]`.
   - Commit `78e0ee6` moved the diagnostic halt earlier still, to after the embedded loader copied `argv[0]` into `partition_prefix`, but before it dereferenced `argv[1]` for the target path.
-  - Commits `6bddf69`, `11f1dc6`, and `78e0ee6` all produced the same practical hardware result: a brief flash followed by black screen, without a new durable post-entry stage.
+  - Commits `6bddf69`, `11f1dc6`, `78e0ee6`, and `0a0b6e9` all produced the same practical hardware result: a brief flash followed by black screen, without a new durable post-entry stage.
 
 ## Guardrail For Future Work
 - Do not continue making narrower screen-backed embedded-loader halt variants in `src/elf_loader/src/loader/src/loader.c` unless there is a materially different evidence source.
@@ -193,12 +199,15 @@ Last updated: 2026-03-24
   - embedded-loader cleanup completed (`6c81233`)
   - keeping SIF RPC alive before the partitioned embedded-loader `ExecPS2` boundary allowed stable `embedded loader entry` (`9eaa040`)
   - later post-entry screen-backed halts at `6bddf69`, `11f1dc6`, and `78e0ee6` did not yield stable new observations
+  - promoting the keepalive/no-halt loader path into the standard build at `0a0b6e9` still produced only flash-then-black
 - Do not repeat:
   - selector-shape / `argv[0]` contract rewrites
   - slot-preservation rewrites
   - reset-policy toggles
   - partition/path normalization rewrites
   - custom `fileXio` target-loading path
+  - assuming the standard build was failing only because diagnostic halt macros defaulted on
+  - assuming the diagnostic-only partitioned `ExecPS2` SIF-RPC keepalive fixes the normal build by itself
   - finer-grained post-entry `argv` copy halts that only move the screen-backed stop a few lines earlier
 - If HDD work resumes, require one of:
   - a genuinely new code asymmetry not already covered above, with file-level evidence
