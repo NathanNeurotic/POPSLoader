@@ -309,8 +309,13 @@ int LoadELFFromFile(const char *filename, int argc, char *argv[]) {
 
 int LoadELFFromFileWithPartition(const char *filename, const char *partition, int argc, char *argv[])
 {
-	int fd = -1;
 	char resolved_path[256];
+	unsigned char *buf;
+	int fd, file_size, n, i;
+	int buf_max;
+	elf_header_t *ehdr;
+	elf_pheader_t *phdrs;
+	u32 entry, gp;
 
 	if (partition == NULL || partition[0] == '\0') {
 		return LoadELFFromFile(filename, argc, argv);
@@ -318,27 +323,106 @@ int LoadELFFromFileWithPartition(const char *filename, const char *partition, in
 	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
 		return -1;
 	}
-	DPRINTF("LAUNCH: BEGIN PARTITIONED\n");
+
+	DPRINTF("LAUNCH: BEGIN PARTITIONED (direct load, no embedded loader)\n");
 	DPRINTF("LAUNCH: popstarter path: %s (resolved to %s)\n", filename, resolved_path);
+
+	/* Read entire ELF file into bram buffer.
+	   open/read uses fileXio (iomanX) which supports PFS paths.
+	   SifLoadElf cannot be used because rom0:LOADFILE uses ioman.
+	   The embedded loader is not used because ExecPS2 to bram (0x84000)
+	   fails silently on hardware (diagnostic build confirmed). */
+	buf = (unsigned char *)PREREAD_BRAM_ADDR;
+	buf_max = PREREAD_BRAM_MAX;
+
 	fd = open(resolved_path, O_RDONLY);
-	DPRINTF("LAUNCH: popstarter open rc=%d (open)\n", fd);
-	if (fd >= 0) {
+	if (fd < 0) {
+		DPRINTF("LAUNCH: open failed rc=%d\n", fd);
+		return -1;
+	}
+
+	file_size = lseek(fd, 0, SEEK_END);
+	lseek(fd, 0, SEEK_SET);
+	if (file_size <= 0 || file_size > buf_max) {
+		DPRINTF("LAUNCH: bad file size %d (max %d)\n", file_size, buf_max);
 		close(fd);
-	} else {
-		return fd;
+		return -2;
 	}
 
-	wipe_bramMem();
+	n = read(fd, buf, file_size);
+	close(fd);
+	if (n != file_size) {
+		DPRINTF("LAUNCH: short read %d/%d\n", n, file_size);
+		return -3;
+	}
+	DPRINTF("LAUNCH: read %d bytes to bram 0x%08x\n", file_size, (unsigned int)buf);
 
-	/* Pre-read the target ELF into bram so the embedded loader can parse
-	   from memory.  This avoids the SifLoadElf/fileXio issue: SifLoadElf
-	   cannot access PFS paths (ioman vs iomanX), and fileXio may not
-	   initialize correctly inside the embedded loader context. */
-	if (preread_target_elf_to_bram(resolved_path) < 0) {
-		DPRINTF("LAUNCH: preread failed, proceeding without buffer\n");
+	/* Parse ELF from bram buffer */
+	ehdr = (elf_header_t *)buf;
+	if ((*(u32 *)ehdr->ident) != ELF_MAGIC) {
+		DPRINTF("LAUNCH: bad ELF magic\n");
+		return -4;
+	}
+	if (ehdr->phnum == 0) {
+		DPRINTF("LAUNCH: no program headers\n");
+		return -5;
 	}
 
-	return ExecuteViaEmbeddedLoaderWithPartition(partition, resolved_path, argc, argv);
+	phdrs = (elf_pheader_t *)(buf + ehdr->phoff);
+	entry = ehdr->entry;
+	gp = 0;
+
+	/* Extract gp from PT_MIPS_REGINFO if present */
+	for (i = 0; i < ehdr->phnum; i++) {
+		if (phdrs[i].type == 0x70000000U && phdrs[i].filesz >= 24) {
+			u32 *reginfo = (u32 *)(buf + phdrs[i].offset);
+			gp = reginfo[5]; /* gp_value at offset 20 */
+		}
+	}
+
+	/* Copy LOAD segments from bram buffer to target addresses */
+	for (i = 0; i < ehdr->phnum; i++) {
+		if (phdrs[i].type != ELF_PT_LOAD || phdrs[i].filesz == 0) {
+			continue;
+		}
+		DPRINTF("LAUNCH: LOAD seg %d: vaddr=%p filesz=0x%x memsz=0x%x\n",
+		        i, phdrs[i].vaddr, phdrs[i].filesz, phdrs[i].memsz);
+		memcpy(phdrs[i].vaddr, buf + phdrs[i].offset, phdrs[i].filesz);
+		if (phdrs[i].memsz > phdrs[i].filesz) {
+			memset((void *)((u32)phdrs[i].vaddr + phdrs[i].filesz),
+			       0, phdrs[i].memsz - phdrs[i].filesz);
+		}
+	}
+
+	DPRINTF("LAUNCH: entry=0x%08x gp=0x%08x argc=%d argv0=%s\n",
+	        entry, gp, argc, (argv && argv[0]) ? argv[0] : "(null)");
+
+	/* Follow the same IOP-reset pattern as LoadELFFromFileExecPS2RebootIOP
+	   (the working USB path). After memcpy, POPSTARTER code is at 0x100000+
+	   in both data cache and physical memory. Our code continues from
+	   instruction cache. FlushCache(0) writes back data cache (harmless—same
+	   data). IOP reset + ROM modules run from cached instructions + kernel
+	   syscalls. FlushCache(2) invalidates instruction cache so ExecPS2
+	   fetches POPSTARTER code. */
+	FlushCache(0);
+	while (!SifIopReset(NULL, 0)) {
+	}
+	while (!SifIopSync()) {
+	}
+
+	SifInitRpc(0);
+	SifLoadFileInit();
+	SifLoadModule("rom0:SIO2MAN", 0, NULL);
+	SifLoadModule("rom0:MCMAN", 0, NULL);
+	SifLoadModule("rom0:MCSERV", 0, NULL);
+	SifLoadFileExit();
+	SifExitRpc();
+
+	FlushCache(0);
+	FlushCache(2);
+
+	ExecPS2((void *)entry, (void *)gp, argc, argv);
+	return -1;
 }
 
 int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])

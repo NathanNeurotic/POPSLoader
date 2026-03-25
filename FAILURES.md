@@ -125,6 +125,15 @@ These are hypotheses to investigate — none are confirmed yet.
 - Result: hardware still black-screened.
 - Conclusion: **now known** — the embedded loader never started, so the buffer parsing code never executed. The pre-read itself likely worked (main process `open/read` on PFS paths is proven), but the data was never used.
 
+### Direct ELF load from main process (current attempt)
+- Approach: **completely bypass the embedded loader**. Read POPSTARTER ELF into bram buffer using `open/read` (fileXio-backed, works with PFS) from the main process, parse the ELF, `memcpy` LOAD segments to target addresses (0x100000+), then follow the exact same IOP reset + `ExecPS2` pattern as the working USB path (`LoadELFFromFileExecPS2RebootIOP`).
+- Why this is different: eliminates BOTH broken layers at once:
+  - No `ExecPS2` to bram (Layer 1) — we never launch the embedded loader.
+  - No `SifLoadElf` for PFS (Layer 2) — we use `open/read` via fileXio instead.
+- The file I/O happens entirely in the main process where it's proven to work.
+- After `memcpy`, the IOP reset sequence runs from instruction cache + kernel syscalls (same as USB path after `SifLoadElf` overwrites 0x100000+).
+- Status: `Unknown (verify on hardware)`.
+
 ## Do not re-assume without new evidence (updated)
 - Do not assume `SifLoadElf` can open PFS paths (it cannot — Layer 2 confirmed).
 - Do not assume `fileXioInit()`/`fileXioOpen()` works inside the embedded loader context (untested — loader never started).
@@ -132,7 +141,6 @@ These are hypotheses to investigate — none are confirmed yet.
 - Do not assume code changes inside the embedded loader have any effect — the loader never runs.
 - Do not assume `ExecPS2` to bram (0x84000) works — this is the primary failure point.
 - Previous assumptions still apply (see above).
-- **Next steps must address Layer 1 (ExecPS2 to bram failure) before any Layer 2 work matters.**
 
 ## Diagnostic results
 - **Standard build**: black screen (no improvement across all 4 current-session attempts).
