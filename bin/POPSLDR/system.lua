@@ -2922,6 +2922,19 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   local argv0 = argv and argv[1] or nil
   local unpack_fn = table.unpack or unpack
   local partition_hint = nil
+  local effective_reboot_iop = reboot_iop
+
+  if string.match(string.lower(tostring(popstarter or "")), "^hdd%d:") ~= nil then
+    local mounted_popstarter = ResolveHddExecMountedPath(popstarter)
+    if mounted_popstarter ~= nil then
+      popstarter = mounted_popstarter
+    end
+  end
+
+  if context ~= nil and context.device_page == "HDD" and IsPfsExecPath(popstarter) then
+    effective_reboot_iop = 1
+  end
+
   SetLaunchPhase(LaunchState.PHASE_VALIDATE)
   if not PLDR.PopstarterProbeWithEnsure(popstarter) then
     BlockLaunchFailure(
@@ -2953,7 +2966,7 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   if open_path ~= nil and open_path ~= popstarter then
     popstarter = open_path
   end
-  if IsHddExecContextPath(popstarter) then
+  if string.match(string.lower(tostring(popstarter or "")), "^hdd%d:") ~= nil then
     partition_hint = ResolveHddExecPartitionHint(popstarter)
   end
   local exec_args = argv or {}
@@ -2980,13 +2993,13 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   PrepareForExternalELFLaunch(popstarter, context and context.keep_hdd_slots or nil)
   local rc
   if partition_hint ~= nil and exec_args ~= nil and #exec_args > 0 then
-    rc = System.loadELF(popstarter, reboot_iop, exec_args[1], partition_hint)
+    rc = System.loadELF(popstarter, effective_reboot_iop, exec_args[1], partition_hint)
   elseif exec_args ~= nil and #exec_args > 0 and unpack_fn ~= nil then
-    rc = System.loadELF(popstarter, reboot_iop, unpack_fn(exec_args))
+    rc = System.loadELF(popstarter, effective_reboot_iop, unpack_fn(exec_args))
   elseif exec_args ~= nil and #exec_args == 1 then
-    rc = System.loadELF(popstarter, reboot_iop, exec_args[1])
+    rc = System.loadELF(popstarter, effective_reboot_iop, exec_args[1])
   else
-    rc = System.loadELF(popstarter, reboot_iop)
+    rc = System.loadELF(popstarter, effective_reboot_iop)
   end
   if (Timer.getTime(LaunchState.fade_timer) - LaunchState.fade_start) >= LaunchState.watchdog_ms then
     BlockLaunchFailure(
