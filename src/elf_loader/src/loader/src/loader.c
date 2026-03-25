@@ -18,6 +18,7 @@
 #include <sifrpc.h>
 #include <errno.h>
 #include <ps2sdkapi.h>
+#include <stdarg.h>
 #include <fcntl.h>
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
@@ -45,6 +46,40 @@
 #define ORANGE_BG 0x00A5FF  // after reset IOP
 #define BROWN_BG 0x2A2AA5  // before FlushCache
 #define PURPBLE_BG 0x800080  // before ExecPS2
+
+#ifdef LOADER_ENABLE_TRACE_FILE
+#define HDD_TRACE_FILE "mc0:/POPSTARTER/PLDR_HDD_TRACE.TXT"
+
+static void append_hdd_trace_line(const char *fmt, ...)
+{
+	char line[512];
+	int fd;
+	int len;
+	va_list args;
+
+	va_start(args, fmt);
+	len = vsnprintf(line, sizeof(line), fmt, args);
+	va_end(args);
+	if (len <= 0) {
+		return;
+	}
+	if (len >= (int)sizeof(line)) {
+		len = sizeof(line) - 1;
+	}
+	fd = fileXioOpen(HDD_TRACE_FILE, O_WRONLY | O_CREAT, 0666);
+	if (fd < 0) {
+		return;
+	}
+	fileXioLseek(fd, 0, SEEK_END);
+	fileXioWrite(fd, line, len);
+	fileXioClose(fd);
+}
+#else
+static void append_hdd_trace_line(const char *fmt, ...)
+{
+	(void)fmt;
+}
+#endif
 
 #ifdef LOADER_ENABLE_DEBUG_COLORS
 static void loader_diag_init(void)
@@ -213,6 +248,12 @@ int main(int argc, char *argv[])
 	elfdata.epc = 0;
 	loader_diag_init();
 	loader_diag_stage(WHITE_BG, "embedded loader entry");
+	append_hdd_trace_line("loader: entry argc=%d argv=%p argv0=%p argv1=%p argv2=%p\n",
+	                      argc,
+	                      argv,
+	                      (argc > 0) ? argv[0] : NULL,
+	                      (argc > 1) ? argv[1] : NULL,
+	                      (argc > 2) ? argv[2] : NULL);
 	LOADER_DIAG_PRINTF("argc=%d argv=%p\n", argc, argv);
 	if (argc > 0) {
 		LOADER_DIAG_PRINTF("argv0_ptr=%p\n", argv[0]);
@@ -298,6 +339,10 @@ int main(int argc, char *argv[])
 	//Writeback data cache before loading ELF.
 	FlushCache(0);
 	loader_diag_stage(GREEN_BG, "before SifLoadElf");
+	append_hdd_trace_line("loader: before SifLoadElf target=%s exec0=%s argc=%d\n",
+	                      target_path,
+	                      target_argv[0] ? target_argv[0] : "(null)",
+	                      target_argc);
 #ifdef LOADER_DIAG_HALT_BEFORE_SIFLOAD
 	LOADER_DIAG_PRINTF("target=%s\n", target_path);
 	loader_diag_halt("before SifLoadElf");
@@ -306,6 +351,11 @@ int main(int argc, char *argv[])
 	ret = SifLoadElf(target_path, &elfdata);
 	SifLoadFileExit();
 	loader_diag_stage(BLUE_BG, "after SifLoadElf");
+	append_hdd_trace_line("loader: after SifLoadElf target=%s ret=%d epc=0x%08x gp=0x%08x\n",
+	                      target_path,
+	                      ret,
+	                      elfdata.epc,
+	                      elfdata.gp);
 	LOADER_DIAG_PRINTF("ret=%d epc=0x%08x gp=0x%08x\n", ret, elfdata.epc, elfdata.gp);
 	if (ret == 0 && elfdata.epc != 0) {
 		loader_diag_stage(YELLOW_BG, "SifLoadElf ok");
@@ -332,6 +382,12 @@ int main(int argc, char *argv[])
 		FlushCache(2);
 
 		loader_diag_stage(PURPBLE_BG, "before ExecPS2");
+		append_hdd_trace_line("loader: before ExecPS2 target=%s argc=%d argv0=%s epc=0x%08x gp=0x%08x\n",
+		                      target_path,
+		                      target_argc,
+		                      target_argv[0] ? target_argv[0] : "(null)",
+		                      elfdata.epc,
+		                      elfdata.gp);
 		DPRINTF("POPS EXEC: argc=%d\n", target_argc);
 		for (i = 0; i < target_argc; i++) {
 			DPRINTF("POPS EXEC: argv[%d] = %s\n", i, target_argv[i]);
@@ -340,6 +396,10 @@ int main(int argc, char *argv[])
 	} else {
 		loader_diag_stage(MAGENTA_BG, "SifLoadElf failed");
 		LOADER_DIAG_PRINTF("ret=%d epc=0x%08x\n", ret, elfdata.epc);
+		append_hdd_trace_line("loader: SifLoadElf failed target=%s ret=%d epc=0x%08x\n",
+		                      target_path,
+		                      ret,
+		                      elfdata.epc);
 		loader_diag_halt("after SifLoadElf failed");
 		SifExitRpc();
 		return -ENOENT;

@@ -88,6 +88,7 @@ This matrix tracks current behavior across:
 | 2026-03-25 | Unknown | HDD boot + standard `POPSLOADER` artifact + HDD cwd + HDD-resident `POPSTARTER.ELF` + HDD game | D-10 | FAIL: commit `26fc65d` standard artifact still black-screened; preferring the mounted HDD `pfs:/...` path and bypassing the partition-aware embedded loader was not sufficient; see `FAILURES.md` |
 | 2026-03-25 | Unknown | HDD boot + standard `POPSLOADER` artifact + HDD cwd + HDD-resident `POPSTARTER.ELF` + HDD game | D-10 | FAIL: commit `59be355` standard artifact still black-screened; keeping the mounted HDD `pfs:/...` launch on the non-reboot direct-loader path was not sufficient; see `FAILURES.md` |
 | 2026-03-25 | Unknown | HDD boot + standard `POPSLOADER` artifact + HDD cwd + HDD-resident `POPSTARTER.ELF` + HDD game | D-10 | FAIL: commit `d4a604e` standard artifact still black-screened; routing mounted HDD `pfs:/...` argumented launches through `LoadExecPS2` was not sufficient; see `FAILURES.md` |
+| 2026-03-25 | Unknown | HDD boot + standard `POPSLOADER` artifact + HDD cwd + HDD-resident `POPSTARTER.ELF` + HDD game | D-10 | FAIL: commit `92d4d20` standard artifact still black-screened; setting cwd to the resolved HDD/PFS `POPSTARTER.ELF` directory before the exec handoff was not sufficient; see `FAILURES.md` |
 
 ## Current Verification Status
 - CI gates: verified by workflow definition (execution status depends on CI runs).

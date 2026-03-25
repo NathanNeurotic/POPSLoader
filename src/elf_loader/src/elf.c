@@ -21,6 +21,7 @@
 #include <sys/stat.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <fcntl.h>
 #include <unistd.h>
 #ifdef LOADER_ENABLE_DEBUG_COLORS
@@ -33,6 +34,52 @@
 #define ELF_PT_LOAD 1
 #define ELF_SHT_MIPS_REGINFO 0x70000006U
 #define ELF_MIPS_REGINFO_GPVALUE_OFFSET 20
+
+#ifdef LOADER_ENABLE_TRACE_FILE
+#define HDD_TRACE_FILE "mc0:/POPSTARTER/PLDR_HDD_TRACE.TXT"
+
+static void reset_hdd_trace_file(void)
+{
+	int fd = fileXioOpen(HDD_TRACE_FILE, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+	if (fd >= 0) {
+		fileXioClose(fd);
+	}
+}
+
+static void append_hdd_trace_line(const char *fmt, ...)
+{
+	char line[512];
+	int fd;
+	int len;
+	va_list args;
+
+	va_start(args, fmt);
+	len = vsnprintf(line, sizeof(line), fmt, args);
+	va_end(args);
+	if (len <= 0) {
+		return;
+	}
+	if (len >= (int)sizeof(line)) {
+		len = sizeof(line) - 1;
+	}
+	fd = fileXioOpen(HDD_TRACE_FILE, O_WRONLY | O_CREAT, 0666);
+	if (fd < 0) {
+		return;
+	}
+	fileXioLseek(fd, 0, SEEK_END);
+	fileXioWrite(fd, line, len);
+	fileXioClose(fd);
+}
+#else
+static void reset_hdd_trace_file(void)
+{
+}
+
+static void append_hdd_trace_line(const char *fmt, ...)
+{
+	(void)fmt;
+}
+#endif
 
 #ifdef LOADER_ENABLE_DEBUG_COLORS
 static void partition_loader_diag_stage(const char *label, int argc, const char *partition, const char *path)
@@ -271,6 +318,8 @@ static int ExecuteViaEmbeddedLoaderWithPartition(const char *partition, const ch
 	FlushCache(0);
 	FlushCache(2);
 	partition_loader_diag_stage("before embedded loader ExecPS2", final_argc, partition_prefix, resolved_path);
+	append_hdd_trace_line("elf: embedded exec partition=%s path=%s argc=%d gp=0x%08x\n",
+	                      partition_prefix, resolved_path, final_argc, loader_gp);
 #ifdef LOADER_ENABLE_DEBUG_COLORS
 	scr_printf("gp=0x%08x\n", loader_gp);
 #endif
@@ -296,6 +345,7 @@ int LoadELFFromFile(const char *filename, int argc, char *argv[]) {
 	}
 	// ELF Exists
 	wipe_bramMem();
+	reset_hdd_trace_file();
 
 	DPRINTF("LAUNCH: BEGIN\n");
 	if (strcmp(resolved_path, filename) != 0) {
@@ -343,9 +393,14 @@ int LoadELFFromFile(const char *filename, int argc, char *argv[]) {
 	DPRINTF("LAUNCH: argv0_final=%s\n", launch_argv[0] ? launch_argv[0] : "(null)");
 	DPRINTF("LAUNCH: argv1=%s\n", launch_argv[1] ? launch_argv[1] : "(null)");
 	DPRINTF("LAUNCH: argv2_is_null=%s\n", launch_argv[2] == NULL ? "yes" : "no");
+	append_hdd_trace_line("elf: direct LoadExecPS2 path=%s argc=%d argv0=%s\n",
+	                      resolved_path,
+	                      new_argc,
+	                      launch_argv[0] ? launch_argv[0] : "(null)");
 	/* LoadExecPS2 should not return on success. */
 	LoadExecPS2(resolved_path, new_argc, launch_argv);
 	DPRINTF("LAUNCH: RETURNED rc=%d\n", -1);
+	append_hdd_trace_line("elf: direct LoadExecPS2 returned rc=-1 path=%s\n", resolved_path);
 	return -1;
 }
 
@@ -362,6 +417,7 @@ int LoadELFFromFileWithPartition(const char *filename, const char *partition, in
 		return -1;
 	}
 	wipe_bramMem();
+	reset_hdd_trace_file();
 
 	DPRINTF("LAUNCH: BEGIN PARTITIONED\n");
 	DPRINTF("LAUNCH: popstarter path: %s (resolved to %s)\n", filename, resolved_path);
@@ -373,6 +429,12 @@ int LoadELFFromFileWithPartition(const char *filename, const char *partition, in
 		return fd;
 	}
 	canonicalize_partition_loader_path(resolved_path, loader_path, sizeof(loader_path));
+	append_hdd_trace_line("elf: partitioned handoff partition=%s resolved=%s loader=%s argc=%d argv0=%s\n",
+	                      partition,
+	                      resolved_path,
+	                      loader_path,
+	                      argc,
+	                      (argc > 0 && argv != NULL && argv[0] != NULL) ? argv[0] : "(null)");
 	return ExecuteViaEmbeddedLoaderWithPartition(partition, loader_path, argc, argv);
 }
 

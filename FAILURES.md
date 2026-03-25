@@ -99,6 +99,12 @@ Last updated: 2026-03-25
   - keeping that mounted `pfs` direct launch on the non-reboot path was not sufficient
   - swapping the mounted `pfs` argumented launch mechanism from `SifLoadElf()+ExecPS2` to `LoadExecPS2` was not sufficient
 
+### HDD POPSTARTER cwd handoff
+- Commits:
+  - `92d4d20` `Set HDD POPSTARTER cwd before exec handoff`
+- Result: hardware still black-screened.
+- Conclusion: switching cwd to the resolved HDD/PFS `POPSTARTER.ELF` directory before `System.loadELF(...)` was not sufficient on its own.
+
 ## Do not re-assume without new evidence
 - Do not assume bare HDD `argv[0]` is the sole cause.
 - Do not assume mounted-path HDD `argv[0]` is the sole cause.
@@ -112,6 +118,7 @@ Last updated: 2026-03-25
 - Do not assume bypassing the partition-aware embedded loader for a mounted `pfs:/...` path fixes the failure.
 - Do not assume the mounted `pfs` direct path works if it only changes reboot vs non-reboot direct-loader policy.
 - Do not assume the mounted `pfs` direct path works if it only swaps `SifLoadElf()+ExecPS2` for `LoadExecPS2`.
+- Do not assume cwd handoff to the resolved HDD/PFS `POPSTARTER.ELF` directory fixes the failure on its own.
 - Do not treat repo history as proof of a solved path; many of those commits document failed or partial experiments.
 
 ## Current stop point
@@ -248,6 +255,9 @@ Last updated: 2026-03-25
   - Commit `59be355` then kept that mounted `pfs` launch on the non-reboot direct-loader path, and hardware still black-screened.
   - `src/luasystem.cpp` now routes non-partitioned argumented `pfs:/...` launches to `LoadELFFromFile()` / `LoadExecPS2`.
   - Commit `d4a604e` tested that direct-loader mechanism swap for mounted HDD `pfs` launches, and hardware still black-screened.
+  - Commit `92d4d20` then set cwd to the resolved HDD/PFS `POPSTARTER.ELF` directory immediately before the HDD exec handoff in `bin/POPSLDR/system.lua`, and hardware still black-screened.
+  - `.github/workflows/compilation.yml` now also defines a `POPSLOADER-HDD-TRACE` artifact that compiles `src/elf_loader/src/elf.c` and `src/elf_loader/src/loader/src/loader.c` with `LOADER_ENABLE_TRACE_FILE=1`.
+  - In that trace build, both loader stages append breadcrumbs to `mc0:/POPSTARTER/PLDR_HDD_TRACE.TXT` instead of relying on transient screen-backed halts.
 
 ## Guardrail For Future Work
 - Do not continue making narrower screen-backed embedded-loader halt variants in `src/elf_loader/src/loader/src/loader.c` unless there is a materially different evidence source.
@@ -256,7 +266,7 @@ Last updated: 2026-03-25
   - embedded-loader cleanup completed (`6c81233`)
   - keeping SIF RPC alive before the partitioned embedded-loader `ExecPS2` boundary allowed stable `embedded loader entry` (`9eaa040`)
   - later post-entry screen-backed halts at `6bddf69`, `11f1dc6`, and `78e0ee6` did not yield stable new observations
-  - later standard artifacts `0a0b6e9`, `e55e119`, `26fc65d`, `59be355`, and `d4a604e` all still black-screened
+  - later standard artifacts `0a0b6e9`, `e55e119`, `26fc65d`, `59be355`, `d4a604e`, and `92d4d20` all still black-screened
 - Do not repeat:
   - selector-shape / `argv[0]` contract rewrites
   - slot-preservation rewrites
