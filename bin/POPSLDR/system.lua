@@ -2931,10 +2931,6 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     end
   end
 
-  if context ~= nil and context.device_page == "HDD" and IsPfsExecPath(popstarter) then
-    effective_reboot_iop = 1
-  end
-
   SetLaunchPhase(LaunchState.PHASE_VALIDATE)
   if not PLDR.PopstarterProbeWithEnsure(popstarter) then
     BlockLaunchFailure(
