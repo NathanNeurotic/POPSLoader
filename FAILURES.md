@@ -119,15 +119,28 @@ Last updated: 2026-03-24
   - The bram buffer at `0xC0000` survives `wipeUserMem()` (which only zeros `0x100000`+).
   - If the buffer is present, the loader skips SifLoadElf and fileXio entirely — just `memcpy` from bram to target addresses.
 - Fallback chain in embedded loader: pre-read buffer → SifLoadElf → fileXio
-- Status: `Unknown (verify on hardware)`.
+- Result: hardware still black-screened.
+- Conclusion: the pre-read buffer approach did not help. Since file I/O in the main process works (the `open()` check passes), the buffer data should be correct. This suggests either: (a) the embedded loader itself never starts executing (ExecPS2 to bram with gp=0 fails silently), or (b) the loader starts but crashes before reaching the buffer-loading code. **Without diagnostic color feedback, we cannot distinguish these cases.**
 
 ## Do not re-assume without new evidence (updated)
 - Do not assume `SifLoadElf` can open PFS paths (it cannot).
 - Do not assume `fileXioInit()`/`fileXioOpen()` works inside the embedded loader context.
-- Do not assume any variant of the embedded loader path works without pre-read buffer.
-- If this attempt also fails, the next diagnostic step is testing the `POPSLOADER-HDD-DIAGNOSTIC` artifact with `LOADER_ENABLE_DEBUG_COLORS=1` to determine whether the embedded loader even starts executing.
+- Do not assume the embedded loader even starts executing — 4 attempts have failed with zero diagnostic feedback.
+- **MANDATORY NEXT STEP**: Test the `POPSLOADER-HDD-DIAGNOSTIC` artifact with `LOADER_ENABLE_DEBUG_COLORS=1`. No further code changes should be made without this data.
 - Previous assumptions still apply (see above).
 
-## Diagnostic artifact (still available)
-- The CI-built `POPSLOADER-HDD-DIAGNOSTIC` artifact with `LOADER_ENABLE_DEBUG_COLORS=1` remains available.
+## Diagnostic artifact (MUST TEST NEXT)
+- The CI-built `POPSLOADER-HDD-DIAGNOSTIC` artifact with `LOADER_ENABLE_DEBUG_COLORS=1` must be tested on hardware before any further code changes.
 - `src/elf_loader/src/loader/src/loader.c` GS color stages are still in place.
+- Expected behavior: the screen background color changes at each stage of the embedded loader. The LAST color visible before freeze/black tells us exactly where the failure is.
+- Color key:
+  - BLACK (no color) = embedded loader never started — ExecPS2 to bram is broken
+  - WHITE = loader main() entered
+  - CYAN = argc OK, about to SifInitRpc + wipeUserMem
+  - GREEN = about to SifLoadElf
+  - BLUE = SifLoadElf done, entering fallback chain
+  - YELLOW = ELF loaded successfully via any method
+  - MAGENTA = all load methods failed
+  - ORANGE = IOP reset complete
+  - BROWN = about to final FlushCache
+  - PURPLE = about to ExecPS2 to POPSTARTER
