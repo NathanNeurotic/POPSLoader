@@ -23,12 +23,13 @@
 #include <fileXio_rpc.h>
 #ifdef LOADER_ENABLE_DEBUG_COLORS
 #include <debug.h>
+#include <sio.h>
 #endif
 #define DPRINTF(x...) printf(x)
 
 #ifdef LOADER_ENABLE_DEBUG_COLORS
 #define SET_GS_BGCOLOUR(colour) {*((volatile unsigned long int *)0x120000E0) = colour;}
-#define LOADER_DIAG_PRINTF(args...) scr_printf(args)
+#define LOADER_DIAG_PRINTF(args...) do { scr_printf(args); sio_printf(args); } while(0)
 #else
 #define SET_GS_BGCOLOUR(colour)
 #define LOADER_DIAG_PRINTF(args...)
@@ -52,6 +53,8 @@ static void loader_diag_init(void)
 	init_scr();
 	scr_clear();
 	scr_setCursor(0);
+	sio_init(38400, 0, 0, 0, 0);
+	sio_puts("POPSLoader HDD diagnostic UART initialized\n");
 }
 
 static void loader_diag_stage(unsigned long colour, const char *label)
@@ -61,6 +64,7 @@ static void loader_diag_stage(unsigned long colour, const char *label)
 	scr_setCursor(0);
 	scr_printf("POPSLoader HDD diagnostic\n");
 	scr_printf("%s\n", label);
+	sio_printf("POPSLoader HDD diagnostic stage: %s\n", label);
 }
 #else
 static void loader_diag_init(void)
@@ -80,6 +84,7 @@ static void loader_diag_halt(const char *reason)
 #ifdef LOADER_ENABLE_DEBUG_COLORS
 	if (reason != NULL) {
 		scr_printf("halt=%s\n", reason);
+		sio_printf("halt=%s\n", reason);
 	}
 #endif
 	for (;;) {
