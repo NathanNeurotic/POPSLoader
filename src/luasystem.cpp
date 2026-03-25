@@ -991,7 +991,7 @@ static int lua_loadELF(lua_State *L)
 			snprintf(partition_buf, sizeof(partition_buf), "%s", partition);
 			rc = LoadELFFromFileWithPartition(elftoload, partition_buf, 1, argv_static);
 		} else if (rebootIOP == 0 && IsPfsExecPathForLoadELF(elftoload)) {
-			rc = LoadELFFromFile(elftoload, 1, argv_static);
+			rc = LoadELFFromFileExecPS2(elftoload, 1, argv_static);
 		} else if (rebootIOP != 0) {
 			rc = LoadELFFromFileExecPS2RebootIOP(elftoload, 1, argv_static);
 		} else {
