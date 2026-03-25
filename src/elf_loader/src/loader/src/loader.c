@@ -106,25 +106,6 @@ static void loader_diag_halt(const char *reason)
    DISABLE_EXTRA_TIMERS_FUNCTIONS();
    PS2_DISABLE_AUTOSTART_PTHREAD();
 
-//--------------------------------------------------------------
-//Start of function code:
-//--------------------------------------------------------------
-// Clear user memory
-// PS2Link (C) 2003 Tord Lindstrom (pukko@home.se)
-//         (C) 2003 adresd (adresd_ps2dev@yahoo.com)
-//--------------------------------------------------------------
-static void wipeUserMem(void)
-{
-	int i;
-	for (i = 0x100000; i < GetMemorySize(); i += 64) {
-		asm volatile(
-			"\tsq $0, 0(%0) \n"
-			"\tsq $0, 16(%0) \n"
-			"\tsq $0, 32(%0) \n"
-			"\tsq $0, 48(%0) \n" ::"r"(i));
-	}
-}
-
 #define LOADER_ELF_MAGIC        0x464c457fU
 #define LOADER_PT_LOAD          1
 #define LOADER_PT_MIPS_REGINFO  0x70000000U
@@ -217,12 +198,6 @@ static int load_elf_via_filexio(const char *path,
 	return 0;
 }
 
-//--------------------------------------------------------------
-//End of func:  void wipeUserMem(void)
-//--------------------------------------------------------------
-// *** MAIN ***
-// 
-//--------------------------------------------------------------
 int main(int argc, char *argv[])
 {
 	static t_ExecData elfdata;
@@ -315,9 +290,6 @@ int main(int argc, char *argv[])
 	}
 	
 	// Initialize
-	SifInitRpc(0);
-	wipeUserMem();
-	// Rebuild EE-side RPC state after wiping user memory.
 	SifInitRpc(0);
 	loader_diag_init();
 	loader_diag_stage(CYAN_BG, "embedded loader arguments copied");
