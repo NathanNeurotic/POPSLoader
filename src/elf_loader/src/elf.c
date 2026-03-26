@@ -90,6 +90,11 @@ static void unmount_pfs_slots_for_exec(void) {
 	}
 }
 
+static bool is_hdd_backed_exec_path(const char *path) {
+	return (path != NULL &&
+	        (strncmp(path, "hdd", 3) == 0 || strncmp(path, "pfs", 3) == 0));
+}
+
 /* IMPORTANT: This method wipe memory where the loader is going to be allocated 
 * This values come from the linkfile used by the loader.c
 MEMORY {
@@ -159,7 +164,7 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *a
 		}
 	}
 
-	if (strncmp(resolved_path, "hdd", 3) == 0) {
+	if (is_hdd_backed_exec_path(resolved_path)) {
 		unmount_pfs_slots_for_exec();
 	}
 
@@ -272,6 +277,10 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 		return -2;
 	}
 
+	if (is_hdd_backed_exec_path(resolved_path)) {
+		unmount_pfs_slots_for_exec();
+	}
+
 	ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc, argv);
 	return -1;
 }
@@ -294,6 +303,10 @@ int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]
 
 	if (ret != 0 || elfdata.epc == 0) {
 		return -2;
+	}
+
+	if (is_hdd_backed_exec_path(resolved_path)) {
+		unmount_pfs_slots_for_exec();
 	}
 
 	FlushCache(0);
