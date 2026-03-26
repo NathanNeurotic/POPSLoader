@@ -1035,7 +1035,8 @@ local function BuildVideoStandardSpec(standard)
       key = PLDR.VIDEO_STANDARD_PAL,
       mode = PAL,
       width = 640,
-      height = 512,
+      -- Keep the PAL UI raster aligned with the NTSC-authored artwork.
+      height = 448,
       fps = 50
     }
   end
@@ -1517,7 +1518,8 @@ local function EncodeSettings()
     "POPSTARTER_PATH="..persisted_popstarter,
     "BDMA="..tostring(PLDR.BDMA_MODE_KEY or "FAT32"),
     "DKWDRV_PATH="..tostring(PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH),
-    "VIDEO_STANDARD="..tostring(NormalizeVideoStandard(PLDR.VIDEO_STANDARD))
+    "VIDEO_STANDARD="..tostring(NormalizeVideoStandard(PLDR.VIDEO_STANDARD)),
+    "HIDE_TEXT="..(((type(UI) == "table" and UI.HideTextMode == true) and "1") or "0")
   }
   return table.concat(lines, "\n").."\n"
 end
@@ -1546,7 +1548,8 @@ local function SnapshotSettingsState()
     popstarter_path = tostring(PLDR.POPSTARTER_PATH or ""),
     bdma_mode = NormalizeBdmaModeKey(PLDR.BDMA_MODE_KEY) or "FAT32",
     dkwdrv_path = tostring(PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH),
-    video_standard = NormalizeVideoStandard(PLDR.VIDEO_STANDARD)
+    video_standard = NormalizeVideoStandard(PLDR.VIDEO_STANDARD),
+    hide_text = (type(UI) == "table" and UI.HideTextMode == true) or false
   }
 end
 
@@ -1572,6 +1575,27 @@ local function ApplySettingsState(state)
     PLDR.VIDEO_STANDARD = NormalizeVideoStandard(state.video_standard)
   end
   PLDR.ApplyVideoStandardRuntime(PLDR.VIDEO_STANDARD)
+  if type(state.hide_text) == "boolean" and type(UI) == "table" then
+    if type(UI.SetHideTextMode) == "function" then
+      UI.SetHideTextMode(state.hide_text, false)
+    else
+      UI.HideTextMode = state.hide_text
+    end
+  end
+end
+
+local function ParseBooleanSetting(value)
+  if value == nil then
+    return nil
+  end
+  local raw = string.lower(tostring(value or ""))
+  if raw == "1" or raw == "true" or raw == "yes" or raw == "on" then
+    return true
+  end
+  if raw == "0" or raw == "false" or raw == "no" or raw == "off" then
+    return false
+  end
+  return nil
 end
 
 local function ReadBdmaModeMarkerCompat(path)
@@ -1632,6 +1656,13 @@ function PLDR.LoadSettingsNonFatal()
   PLDR.BDMA_MODE_KEY = "FAT32"
   PLDR.VIDEO_STANDARD = PLDR.VIDEO_STANDARD_NTSC
   PLDR.DKWDRV_PATH = tostring(PLDR.DKWDRV_DEFAULT_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
+  if type(UI) == "table" then
+    if type(UI.SetHideTextMode) == "function" then
+      UI.SetHideTextMode(false, false)
+    else
+      UI.HideTextMode = false
+    end
+  end
   if PLDR.PROFILES ~= nil and PLDR.PROFILES[defaults_profile] ~= nil then
     PLDR.POPSTARTER_PATH = PLDR.PROFILES[defaults_profile].ELF
   end
@@ -1651,6 +1682,7 @@ function PLDR.LoadSettingsNonFatal()
   local bdma_mode = string.match(data, "\nBDMA=([^\n]+)") or string.match(data, "^BDMA=([^\n]+)") or string.match(data, "\nBDMA_MODE=([^\n]+)") or string.match(data, "^BDMA_MODE=([^\n]+)")
   local dkwdrv_path = string.match(data, "\nDKWDRV_PATH=([^\n]*)") or string.match(data, "^DKWDRV_PATH=([^\n]*)")
   local video_standard = string.match(data, "\nVIDEO_STANDARD=([^\n]+)") or string.match(data, "^VIDEO_STANDARD=([^\n]+)")
+  local hide_text = string.match(data, "\nHIDE_TEXT=([^\n]+)") or string.match(data, "^HIDE_TEXT=([^\n]+)")
   if profile ~= nil and PLDR.PROFILES ~= nil and PLDR.PROFILES[profile] ~= nil then
     PLDR.SELECTED_PROFILE = profile
     PLDR.POPSTARTER_PATH = PLDR.PROFILES[profile].ELF
@@ -1669,6 +1701,14 @@ function PLDR.LoadSettingsNonFatal()
   PLDR.BDMA_MODE_KEY = NormalizeBdmaModeKey(bdma_mode) or PLDR.BDMA_MODE_KEY
   PLDR.ReconcileBdmaModeWithEffectiveState()
   PLDR.ApplyVideoStandardRuntime(PLDR.VIDEO_STANDARD)
+  if type(UI) == "table" then
+    local hide_text_enabled = ParseBooleanSetting(hide_text)
+    if type(UI.SetHideTextMode) == "function" then
+      UI.SetHideTextMode(hide_text_enabled == true, false)
+    else
+      UI.HideTextMode = (hide_text_enabled == true)
+    end
+  end
   return true
 end
 
@@ -1681,12 +1721,16 @@ function PLDR.CommitSettingsChanges(opts)
     end
   end
   local prev = SnapshotSettingsState()
+  if type(opts.prev_hide_text) == "boolean" then
+    prev.hide_text = opts.prev_hide_text
+  end
   local next_state = {
     profile = tonumber(opts.profile) or prev.profile,
     popstarter_path = opts.popstarter_path or prev.popstarter_path,
     bdma_mode = NormalizeBdmaModeKey(opts.bdma_mode) or prev.bdma_mode,
     dkwdrv_path = opts.dkwdrv_path or prev.dkwdrv_path,
-    video_standard = NormalizeVideoStandard(opts.video_standard or prev.video_standard)
+    video_standard = NormalizeVideoStandard(opts.video_standard or prev.video_standard),
+    hide_text = (type(opts.hide_text) == "boolean") and opts.hide_text or prev.hide_text
   }
   local apply_bdma = opts.apply_bdma == true
   local bdma_token = opts.bdma_token

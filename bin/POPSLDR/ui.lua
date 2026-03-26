@@ -249,7 +249,8 @@ local function ResolveVideoSpecForKey(key)
     return PLDR.GetVideoStandardSpec(key)
   end
   if tostring(key or "") == VIDEO_STANDARD_PAL then
-    return { key = VIDEO_STANDARD_PAL, mode = PAL, width = 640, height = 512, fps = 50 }
+    -- Keep the PAL UI raster aligned with the NTSC-authored artwork.
+    return { key = VIDEO_STANDARD_PAL, mode = PAL, width = 640, height = 448, fps = 50 }
   end
   return { key = VIDEO_STANDARD_NTSC, mode = NTSC, width = 640, height = 448, fps = 60 }
 end
@@ -447,7 +448,7 @@ UI = {
 	        fps = 50,
 	        mode = PAL,
 	        width = 640,
-	        height = 512
+	        height = 448
 	      }
 	    };
 	    BdmaModeIndex = 1;
@@ -460,18 +461,62 @@ UI = {
     PopstarterPathDraft = nil;
     DkwdrvPathDraft = nil;
     HideTextMode = false;
+    SettingsReturnScene = nil;
+    SettingsEntryHideTextMode = false;
     SavingActive = false;
     SavingMessage = "Saving...";
     SavingAnimTick = 0;
-    ShowSavingOverlay = function (msg)
+    SavingProgress = nil;
+    SetHideTextMode = function (enabled, notify)
+      local next_state = (enabled == true)
+      UI.HideTextMode = next_state
+      if notify == true then
+        if next_state then
+          UI.Notif_queue.add("UI text hidden")
+        else
+          UI.Notif_queue.add("UI text shown")
+        end
+      end
+      return next_state
+    end;
+    ToggleHideTextMode = function (notify)
+      return UI.SetHideTextMode(not UI.HideTextMode, notify)
+    end;
+    GetSettingsReturnScene = function ()
+      local scene = UI.SettingsReturnScene or UI.LASTSCENE or UI.SCENES.MMAIN
+      if scene == nil or scene == UI.SCENES.MPROFILE then
+        scene = UI.SCENES.MMAIN
+      end
+      return scene
+    end;
+    ShowSavingOverlay = function (msg, progress)
       UI.SavingMessage = tostring(msg or "Saving...")
       UI.SavingActive = true
       UI.SavingAnimTick = (tonumber(UI.SavingAnimTick) or 0) + 1
+      if type(progress) == "number" then
+        UI.SavingProgress = Clamp(progress, 0, 1)
+      else
+        UI.SavingProgress = nil
+      end
       UI.flip()
     end;
     HideSavingOverlay = function ()
       UI.SavingActive = false
       UI.SavingMessage = "Saving..."
+      UI.SavingProgress = nil
+    end;
+    RunBusyTask = function (initial_message, worker, failure_message)
+      UI.ShowSavingOverlay(initial_message or "Working...", 0.05)
+      local function report(message, progress)
+        UI.ShowSavingOverlay(message or initial_message or "Working...", progress)
+      end
+      local ok, a, b, c, d = pcall(worker, report)
+      UI.HideSavingOverlay()
+      if not ok then
+        UI.Notif_queue.add(tostring(failure_message or "Operation failed"))
+        return false, a
+      end
+      return true, a, b, c, d
     end;
     --- Notifications queue handler
     Notif_queue = {
@@ -507,25 +552,29 @@ UI = {
       order_with_r2 = {"triangle", "circle", "cross", "square"};
       order_with_start = {"triangle", "circle", "cross", "start"};
       order_with_start_r2 = {"triangle", "circle", "cross", "square", "start"};
+      order_settings = {"circle", "cross", "square", "start", "select"};
+      order_settings_save = {"circle", "cross", "start", "select"};
       labels = {
         triangle = "Credits",
         circle_main = "Exit",
         circle_other = "Back",
         start_profiles = "Settings",
         start_reset = "Reset Defaults",
+        select_toggle = "Toggle UI",
         cross_confirm = "Confirm",
         cross_enter = "Enter",
         cross_select = "Select",
         cross_launch = "Launch"
       };
       legend_cache = {};
-      LegendKey = function (order_id, circle_label, cross_label, start_label, square_label, r2_label)
+      LegendKey = function (order_id, circle_label, cross_label, start_label, square_label, select_label, r2_label)
         return table.concat({
           tostring(order_id or ""),
           tostring(circle_label or ""),
           tostring(cross_label or ""),
           tostring(start_label or ""),
           tostring(square_label or ""),
+          tostring(select_label or ""),
           tostring(r2_label or "")
         }, "|")
       end;
@@ -536,8 +585,9 @@ UI = {
         local cross_label = opts.cross or UI.Footer.labels.cross_confirm
         local start_label = opts.start or UI.Footer.labels.start_profiles
         local square_label = opts.square
+        local select_label = opts.select
         local r2_label = opts.R2
-        local key = UI.Footer.LegendKey(order_id, circle_label, cross_label, start_label, square_label, r2_label)
+        local key = UI.Footer.LegendKey(order_id, circle_label, cross_label, start_label, square_label, select_label, r2_label)
         local cached = UI.Footer.legend_cache[key]
         if cached ~= nil then
           return cached.labels, cached.order
@@ -546,7 +596,8 @@ UI = {
           triangle = UI.Footer.labels.triangle,
           circle = circle_label,
           cross = cross_label,
-          start = start_label
+          start = start_label,
+          select = select_label
         }
         if square_label ~= nil then
           labels.square = square_label
@@ -643,23 +694,49 @@ UI = {
       UI.Modal.Draw()
       if UI.SavingActive then
         local tick = math.floor((tonumber(UI.SavingAnimTick) or 0))
+        local tick_ms = tick * 200
         if UI.Pad ~= nil and UI.Pad.Timer ~= nil then
-          tick = math.floor(Timer.getTime(UI.Pad.Timer) / 200)
+          tick_ms = math.floor(Timer.getTime(UI.Pad.Timer))
+          tick = math.floor(tick_ms / 200)
         end
         local dots = {"", ".", "..", "..."}
         local spinners = {"|", "/", "-", "\\"}
         local dot_suffix = dots[(tick % #dots) + 1]
         local spinner = spinners[(tick % #spinners) + 1]
         local box_w = 320
-        local box_h = 92
+        local box_h = 110
         local box_x = UI.SCR.X_MID - (box_w / 2)
         local box_y = UI.SCR.Y_MID - (box_h / 2)
+        local bar_x = box_x + 20
+        local bar_y = box_y + 64
+        local bar_w = box_w - 40
+        local bar_h = 14
         Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, 140))
         Graphics.drawRect(box_x, box_y, box_w, box_h, Color.new(0, 0, 0, 210))
         Graphics.drawRect(box_x, box_y, box_w, 2, UI.CCOL.GREY)
         Graphics.drawRect(box_x, box_y + box_h - 2, box_w, 2, UI.CCOL.GREY)
+        Graphics.drawRect(bar_x, bar_y, bar_w, bar_h, Color.new(24, 34, 68, 128))
+        Graphics.drawRect(bar_x + 1, bar_y + 1, bar_w - 2, bar_h - 2, Color.new(10, 14, 26, 128))
+        if type(UI.SavingProgress) == "number" then
+          local fill_w = math.floor((bar_w - 4) * UI.SavingProgress + 0.5)
+          if fill_w > 0 then
+            Graphics.drawRect(bar_x + 2, bar_y + 2, fill_w, bar_h - 4, Color.new(110, 190, 255, 120))
+          end
+        else
+          local marquee_w = math.max(42, math.floor((bar_w - 4) * 0.26))
+          local travel = math.max(0, (bar_w - 4) - marquee_w)
+          local offset = 0
+          if travel > 0 then
+            offset = math.floor((tick_ms / 80) % (travel + 1))
+          end
+          Graphics.drawRect(bar_x + 2 + offset, bar_y + 2, marquee_w, bar_h - 4, Color.new(110, 190, 255, 96))
+        end
         Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 20, 8, UI.SCR.X, 16, tostring(UI.SavingMessage or "Saving/Applying...")..dot_suffix, UI.CCOL.YELLOW)
-        Font.ftPrint(SFONT, UI.SCR.X_MID, box_y + 48, 8, UI.SCR.X, 16, "Working "..spinner, UI.CCOL.GREY)
+        if type(UI.SavingProgress) == "number" then
+          Font.ftPrint(SFONT, UI.SCR.X_MID, box_y + 84, 8, UI.SCR.X, 16, tostring(math.floor(UI.SavingProgress * 100 + 0.5)).."%  "..spinner, UI.CCOL.GREY)
+        else
+          Font.ftPrint(SFONT, UI.SCR.X_MID, box_y + 84, 8, UI.SCR.X, 16, "Working "..spinner, UI.CCOL.GREY)
+        end
       end
       if UI.Transition ~= nil then
         local alpha = UI.Transition.Update()
@@ -1032,9 +1109,7 @@ UI = {
       end;
       LaunchBootElf = function ()
         local elf_path = ResolveFirstExistingElf({
-          "mc0:/BOOT/BOOT2.ELF",
           "mc0:/BOOT/BOOT.ELF",
-          "mc1:/BOOT/BOOT2.ELF",
           "mc1:/BOOT/BOOT.ELF"
         })
         if elf_path == nil then
@@ -1107,7 +1182,11 @@ UI = {
       row = 1;
       col = 1;
       upper = false;
+      cursor = 0;
       max_len = 120;
+      pressed_row = 0;
+      pressed_col = 0;
+      pressed_until = 0;
       keys = {
         {"a","b","c","d","e","f","g","h","i","j"},
         {"k","l","m","n","o","p","q","r","s","t"},
@@ -1123,47 +1202,145 @@ UI = {
         UI.PathEditor.row = 1
         UI.PathEditor.col = 1
         UI.PathEditor.upper = false
+        UI.PathEditor.cursor = string.len(UI.PathEditor.value or "")
+        UI.PathEditor.pressed_row = 0
+        UI.PathEditor.pressed_col = 0
+        UI.PathEditor.pressed_until = 0
       end;
       Close = function ()
         UI.PathEditor.active = false
         UI.PathEditor.title = ""
         UI.PathEditor.on_confirm = nil
+        UI.PathEditor.cursor = 0
+        UI.PathEditor.pressed_row = 0
+        UI.PathEditor.pressed_col = 0
+        UI.PathEditor.pressed_until = 0
+      end;
+      _NowMs = function ()
+        if UI.Pad ~= nil and UI.Pad.Timer ~= nil then
+          return tonumber(Timer.getTime(UI.Pad.Timer)) or 0
+        end
+        return 0
       end;
       _RowSize = function (row)
         local r = UI.PathEditor.keys[row]
         if r == nil then return 0 end
         return #r
       end;
+      _ValueLength = function ()
+        return string.len(tostring(UI.PathEditor.value or ""))
+      end;
+      _ClampCursor = function ()
+        local length = UI.PathEditor._ValueLength()
+        if UI.PathEditor.cursor < 0 then
+          UI.PathEditor.cursor = 0
+        elseif UI.PathEditor.cursor > length then
+          UI.PathEditor.cursor = length
+        end
+      end;
+      _MoveCursor = function (delta)
+        UI.PathEditor.cursor = (tonumber(UI.PathEditor.cursor) or 0) + (tonumber(delta) or 0)
+        UI.PathEditor._ClampCursor()
+      end;
       _CurrentKey = function ()
         local row = UI.PathEditor.keys[UI.PathEditor.row]
         if row == nil then return nil end
         return row[UI.PathEditor.col]
       end;
+      _KeyWidth = function (key)
+        if key == "SPACE" then return 92 end
+        if key == "CANCEL" then return 84 end
+        if key == "DEL" or key == "CLR" then return 54 end
+        if key == "OK" then return 60 end
+        return 38
+      end;
       _DisplayKey = function (key)
         if key == nil then return "" end
-        if key == "SPACE" then return "SPC" end
-        if key == "CANCEL" then return "CAN" end
+        if key == "SPACE" then return "SPACE" end
         return key
       end;
-      _Truncate = function (text, max_chars)
-        local raw = tostring(text or "")
-        if string.len(raw) <= max_chars then
-          return raw
+      _BuildVisibleValue = function (max_chars)
+        local raw = tostring(UI.PathEditor.value or "")
+        local limit = math.max(8, tonumber(max_chars) or 48)
+        UI.PathEditor._ClampCursor()
+        local cursor = tonumber(UI.PathEditor.cursor) or 0
+        local length = string.len(raw)
+        local start_idx = 1
+        if length > limit then
+          start_idx = cursor - math.floor(limit / 2) + 1
+          if start_idx < 1 then
+            start_idx = 1
+          end
+          local max_start = math.max(1, length - limit + 1)
+          if start_idx > max_start then
+            start_idx = max_start
+          end
         end
-        return "..."..string.sub(raw, -(max_chars - 3))
+        local end_idx = math.min(length, start_idx + limit - 1)
+        local shown = string.sub(raw, start_idx, end_idx)
+        local rel_cursor = cursor - (start_idx - 1)
+        if rel_cursor < 0 then rel_cursor = 0 end
+        if rel_cursor > string.len(shown) then
+          rel_cursor = string.len(shown)
+        end
+        local blink_on = (math.floor(UI.PathEditor._NowMs() / 300) % 2) == 0
+        local cursor_marker = blink_on and "|" or " "
+        shown = string.sub(shown, 1, rel_cursor)..cursor_marker..string.sub(shown, rel_cursor + 1)
+        if start_idx > 1 then
+          shown = "..."..shown
+        end
+        if end_idx < length then
+          shown = shown.."..."
+        end
+        return shown
       end;
-      _AppendChar = function (ch)
+      _InsertText = function (ch)
         local val = UI.PathEditor.value or ""
-        if string.len(val) >= UI.PathEditor.max_len then
+        local insert = tostring(ch or "")
+        if insert == "" then
           return
         end
-        UI.PathEditor.value = val..ch
+        if (string.len(val) + string.len(insert)) > UI.PathEditor.max_len then
+          return
+        end
+        UI.PathEditor._ClampCursor()
+        local cursor = tonumber(UI.PathEditor.cursor) or 0
+        local left = string.sub(val, 1, cursor)
+        local right = string.sub(val, cursor + 1)
+        UI.PathEditor.value = left..insert..right
+        UI.PathEditor.cursor = cursor + string.len(insert)
+      end;
+      _DeleteChar = function ()
+        local val = UI.PathEditor.value or ""
+        UI.PathEditor._ClampCursor()
+        local cursor = tonumber(UI.PathEditor.cursor) or 0
+        if cursor <= 0 or val == "" then
+          return
+        end
+        UI.PathEditor.value = string.sub(val, 1, cursor - 1)..string.sub(val, cursor + 1)
+        UI.PathEditor.cursor = cursor - 1
+      end;
+      _FlashCurrentKey = function ()
+        UI.PathEditor.pressed_row = UI.PathEditor.row
+        UI.PathEditor.pressed_col = UI.PathEditor.col
+        UI.PathEditor.pressed_until = UI.PathEditor._NowMs() + 160
+      end;
+      _IsPressed = function (row, col)
+        return UI.PathEditor.pressed_row == row
+          and UI.PathEditor.pressed_col == col
+          and UI.PathEditor._NowMs() <= (tonumber(UI.PathEditor.pressed_until) or 0)
       end;
       HandleInput = function ()
         if not UI.PathEditor.active then return end
         if UI.Pad.Events.BACK then
           UI.PathEditor.Close()
           return
+        end
+        if UI.Pad.Events.L1 then
+          UI.PathEditor._MoveCursor(-1)
+        end
+        if UI.Pad.Events.R1 then
+          UI.PathEditor._MoveCursor(1)
         end
         if UI.Pad.Events.R2 then
           UI.PathEditor.upper = not UI.PathEditor.upper
@@ -1209,14 +1386,15 @@ UI = {
         end
 
         if UI.Pad.Events.CONFIRM then
+          UI.PathEditor._FlashCurrentKey()
           local key = UI.PathEditor._CurrentKey()
           if key == "SPACE" then
-            UI.PathEditor._AppendChar(" ")
+            UI.PathEditor._InsertText(" ")
           elseif key == "DEL" then
-            local val = UI.PathEditor.value or ""
-            UI.PathEditor.value = string.sub(val, 1, math.max(0, string.len(val) - 1))
+            UI.PathEditor._DeleteChar()
           elseif key == "CLR" then
             UI.PathEditor.value = ""
+            UI.PathEditor.cursor = 0
           elseif key == "OK" then
             confirm_value()
             return
@@ -1228,43 +1406,72 @@ UI = {
             if UI.PathEditor.upper and string.match(out, "^[a-z]$") then
               out = string.upper(out)
             end
-            UI.PathEditor._AppendChar(out)
+            UI.PathEditor._InsertText(out)
           end
         end
       end;
       Draw = function ()
         if not UI.PathEditor.active then return end
-        local box_w = UI.SCR.X - 80
-        local box_h = UI.SCR.Y - 80
-        local box_x = (UI.SCR.X - box_w) / 2
-        local box_y = (UI.SCR.Y - box_h) / 2
-        Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, 110))
-        Graphics.drawRect(box_x, box_y, box_w, box_h, Color.new(0, 0, 0, 220))
-        Graphics.drawRect(box_x, box_y, box_w, 2, UI.CCOL.GREY)
-        Graphics.drawRect(box_x, box_y + box_h - 2, box_w, 2, UI.CCOL.GREY)
+        local box_w = math.min(UI.SCR.X - 48, 560)
+        local box_h = math.min(UI.SCR.Y - 44, 320)
+        local box_x = math.floor((UI.SCR.X - box_w) / 2)
+        local box_y = math.floor((UI.SCR.Y - box_h) / 2)
+        local input_x = box_x + 18
+        local input_y = box_y + 30
+        local input_w = box_w - 36
+        local input_h = 34
+        Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, 112))
+        Graphics.drawRect(box_x, box_y, box_w, box_h, Color.new(6, 10, 20, 224))
+        Graphics.drawRect(box_x, box_y, box_w, 2, Color.new(90, 170, 255, 128))
+        Graphics.drawRect(box_x, box_y + 2, box_w, 12, Color.new(16, 30, 68, 128))
+        Graphics.drawRect(box_x, box_y + box_h - 2, box_w, 2, Color.new(40, 68, 110, 128))
+        Graphics.drawRect(input_x, input_y, input_w, input_h, Color.new(18, 28, 56, 128))
+        Graphics.drawRect(input_x + 1, input_y + 1, input_w - 2, input_h - 2, Color.new(4, 6, 14, 128))
 
         Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 8, 8, UI.SCR.X, 16, UI.PathEditor.title, UI.CCOL.YELLOW)
-        local shown = UI.PathEditor._Truncate(UI.PathEditor.value, 58)
-        Font.ftPrint(SFONT, box_x + 14, box_y + 34, 0, box_w - 28, 16, shown, UI.CCOL.GREY)
-        local mode_label = UI.PathEditor.upper and "Case: UPPER (R2)" or "Case: lower (R2)"
-        Font.ftPrint(SFONT, box_x + 14, box_y + 52, 0, box_w - 28, 16, mode_label, UI.CCOL.GREY)
+        Font.ftPrint(SFONT, input_x + 10, input_y + 10, 0, input_w - 20, 16, UI.PathEditor._BuildVisibleValue(46), Color.new(150, 205, 255, 128))
+        local mode_label = UI.PathEditor.upper and "Case: UPPER  (R2)" or "Case: lower  (R2)"
+        local info_label = mode_label.."   Cursor: L1 / R1"
+        Font.ftPrint(SFONT, input_x + 2, input_y + input_h + 10, 0, input_w - 4, 16, info_label, UI.CCOL.GREY)
 
-        local key_w = 46
-        local key_h = 20
+        local key_h = 24
         local key_gap = 6
-        local start_y = box_y + 82
+        local start_y = box_y + 96
         for r = 1, #UI.PathEditor.keys do
           local row = UI.PathEditor.keys[r]
-          local row_w = (#row * key_w) + ((#row - 1) * key_gap)
+          local row_w = 0
+          for c = 1, #row do
+            row_w = row_w + UI.PathEditor._KeyWidth(row[c])
+            if c < #row then
+              row_w = row_w + key_gap
+            end
+          end
           local row_x = UI.SCR.X_MID - (row_w / 2)
+          local cursor_x = row_x
           for c = 1, #row do
             local key = row[c]
-            local x = row_x + ((c - 1) * (key_w + key_gap))
+            local key_w = UI.PathEditor._KeyWidth(key)
+            local x = cursor_x
             local y = start_y + ((r - 1) * (key_h + key_gap))
             local selected = (UI.PathEditor.row == r and UI.PathEditor.col == c)
-            local bg = selected and Color.new(0, 100, 255, 120) or Color.new(40, 40, 40, 120)
-            Graphics.drawRect(x, y, key_w, key_h, bg)
-            Font.ftPrint(SFONT, x + 2, y + 3, 0, key_w - 4, 16, UI.PathEditor._DisplayKey(key), UI.CCOL.GREY)
+            local pressed = UI.PathEditor._IsPressed(r, c)
+            local border = Color.new(32, 54, 90, 128)
+            local fill = Color.new(14, 20, 38, 128)
+            local text_color = UI.CCOL.GREY
+            if pressed then
+              border = Color.new(120, 210, 255, 128)
+              fill = Color.new(54, 118, 180, 128)
+              text_color = Color.new(200, 230, 255, 128)
+            elseif selected then
+              border = Color.new(90, 170, 255, 128)
+              fill = Color.new(30, 64, 118, 128)
+              text_color = Color.new(180, 220, 255, 128)
+            end
+            Graphics.drawRect(x, y, key_w, key_h, border)
+            Graphics.drawRect(x + 1, y + 1, key_w - 2, key_h - 2, fill)
+            Graphics.drawRect(x + 1, y + 1, key_w - 2, 1, Color.new(70, 100, 150, 96))
+            Font.ftPrint(SFONT, x, y + 5, 8, key_w, 16, UI.PathEditor._DisplayKey(key), text_color)
+            cursor_x = cursor_x + key_w + key_gap
           end
         end
       end;
@@ -1373,17 +1580,14 @@ UI = {
       end
       if UI.LAUNCHING then return false end
       if UI.Pad.Events.SELECT then
-        if UI.IsHideToggleScene(UI.CURSCENE) then
-          UI.HideTextMode = not UI.HideTextMode
-          if UI.HideTextMode then
-            UI.Notif_queue.add("UI text hidden")
-          else
-            UI.Notif_queue.add("UI text shown")
-          end
+        if UI.IsHideToggleScene(UI.CURSCENE) or UI.CURSCENE == UI.SCENES.MPROFILE then
+          UI.ToggleHideTextMode(true)
           return true
         end
       end
       if UI.Pad.Events.START and UI.CURSCENE ~= UI.SCENES.MPROFILE then
+        UI.SettingsReturnScene = UI.CURSCENE
+        UI.SettingsEntryHideTextMode = (UI.HideTextMode == true)
         UI.SyncSettingsSelectionFromRuntime()
         if UI.SyncSettingsDraftFromRuntime ~= nil then
           UI.SyncSettingsDraftFromRuntime()
@@ -1776,22 +1980,51 @@ UI = {
           UI.PathEditor.HandleInput()
           UI.PathEditor.Draw()
           local labels, order = UI.Footer.ResolveLegend({
-            order = UI.Footer.order_with_start_r2,
-            order_id = "start_r2",
+            order = UI.Footer.order_settings_save,
+            order_id = "settings_save",
             circle = UI.Footer.labels.circle_other,
             cross = UI.Footer.labels.cross_select,
             start = "Save",
-            square = nil
+            select = UI.Footer.labels.select_toggle
           })
           UI.Footer.Draw(labels, order)
           return
         end
         if UI.HandleGlobalInput(false) then return end
 
+        local function clear_settings_session()
+          UI.SettingsReturnScene = nil
+          UI.SettingsEntryHideTextMode = false
+        end
+
+        local function restore_settings_session()
+          UI.SyncSettingsSelectionFromRuntime()
+          UI.SyncSettingsDraftFromRuntime()
+          UI.SetHideTextMode(UI.SettingsEntryHideTextMode == true, false)
+          UI.ProfileDirty = false
+          UI.BdmaDirty = false
+          UI.PopPathDirty = false
+          UI.DkwdrvDirty = false
+          UI.VideoStandardDirty = false
+        end
+
+        local function discard_settings_and_return()
+          restore_settings_session()
+          local return_scene = UI.GetSettingsReturnScene()
+          clear_settings_session()
+          UI.SceneChange(return_scene)
+        end
+
         local function queue_exit(target_scene, allow_fallback_exit)
-          UI.ShowSavingOverlay("Saving/Applying...")
-          local function report_stage(_stage, message)
-            UI.ShowSavingOverlay(message or "Saving/Applying...")
+          UI.ShowSavingOverlay("Saving/Applying...", 0.08)
+          local stage_progress = {
+            prepare = 0.18,
+            save = 0.42,
+            apply_bdma = 0.76,
+            finalize = 0.96
+          }
+          local function report_stage(stage, message)
+            UI.ShowSavingOverlay(message or "Saving/Applying...", stage_progress[stage])
           end
           local save_token = nil
           if type(PLDR.NextBdmaApplyToken) == "function" then
@@ -1815,6 +2048,8 @@ UI = {
                 dkwdrv_path = dkwdrv_path,
                 bdma_mode = mode_key,
                 video_standard = video_key,
+                hide_text = UI.HideTextMode == true,
+                prev_hide_text = UI.SettingsEntryHideTextMode == true,
                 apply_bdma = UI.BdmaDirty,
                 bdma_token = save_token,
                 on_stage = report_stage
@@ -1851,6 +2086,7 @@ UI = {
             UI.PopPathDirty = false
             UI.DkwdrvDirty = false
             UI.VideoStandardDirty = false
+            clear_settings_session()
             UI.SceneChange(target_scene)
           else
             if reason == "bdma_apply_failed" then
@@ -1872,6 +2108,7 @@ UI = {
               UI.PopPathDirty = false
               UI.DkwdrvDirty = false
               UI.VideoStandardDirty = false
+              clear_settings_session()
               UI.SceneChange(target_scene)
             end
           end
@@ -1932,7 +2169,10 @@ UI = {
           UI.VideoStandardDirty = true
           UI.ProfileDirty = true
         end
-        if UI.Pad.Events.BACK then queue_exit(UI.SCENES.MMAIN, true) end
+        if UI.Pad.Events.BACK then
+          discard_settings_and_return()
+          return
+        end
         if UI.Pad.Events.START then
           local default_profile = tonumber(PLDR.DEFAULT_PROFILE) or 1
           local next_default = CLAMP(default_profile, 1, profcnt)
@@ -1968,18 +2208,23 @@ UI = {
             UI.VideoStandardIndex = default_video_index
             UI.VideoStandardDirty = true
           end
+          if UI.HideTextMode then
+            UI.SetHideTextMode(false, false)
+            UI.ProfileDirty = true
+          end
           UI.Notif_queue.add("Profile defaults restored")
         end
         if UI.Pad.Events.CONFIRM then
           queue_exit(UI.SCENES.MMAIN, true)
         end
         local labels, order = UI.Footer.ResolveLegend({
-          order = UI.Footer.order_with_start_r2,
-          order_id = "start_r2",
+          order = UI.Footer.order_settings,
+          order_id = "settings",
           circle = UI.Footer.labels.circle_other,
           cross = UI.Footer.labels.cross_select,
           square = "Video Std",
-          start = UI.Footer.labels.start_reset
+          start = UI.Footer.labels.start_reset,
+          select = UI.Footer.labels.select_toggle
         })
         UI.Footer.Draw(labels, order)
       end;
@@ -2184,16 +2429,20 @@ UI = {
         end
         if UI.Pad.Events.CONFIRM then
           if UI.MainMenu.OPT == 1 then
-            if type(PLDR.DetectMMCESlot) == "function" then
-              pcall(PLDR.DetectMMCESlot, true)
-            end
-            local slots = PLDR.GetMMCESlots()
-            if #slots < 1 then
-              UI.Notif_queue.add("No MMCE device found (mmce0/mmce1).")
-              PLDR.CleanupGameList()
-              PLDR.GAMEPATH = ""
-              UI.SceneChange(UI.SCENES.GSMB)
-            else
+            local ok = UI.RunBusyTask("Loading MMCE...", function (report)
+              report("Detecting MMCE device...", 0.18)
+              if type(PLDR.DetectMMCESlot) == "function" then
+                pcall(PLDR.DetectMMCESlot, true)
+              end
+              local slots = PLDR.GetMMCESlots()
+              if #slots < 1 then
+                UI.Notif_queue.add("No MMCE device found (mmce0/mmce1).")
+                PLDR.CleanupGameList()
+                PLDR.GAMEPATH = ""
+                UI.SceneChange(UI.SCENES.GSMB)
+                return
+              end
+              report("Preparing MMCE list...", 0.42)
               if PLDR.MMCE.PREFIX == nil then
                 PLDR.SetMMCESlot(1)
               end
@@ -2205,87 +2454,111 @@ UI = {
               PLDR.CleanupGameList()
               local mmce_pops = mmce_prefix.."POPS/"
               if doesFolderExist(mmce_pops) then
+                report("Scanning MMCE games...", 0.78)
                 PLDR.GetPS1GameLists(mmce_pops, true)
               else
                 UI.Notif_queue.add("No MMCE POPS folder found")
               end
+              report("Opening MMCE list...", 1.0)
               UI.setDeviceLock(DEVLOCK.MMCE)
               UI.SceneChange(UI.SCENES.GSMB)
-            end
+            end, "Failed to load MMCE")
+            if not ok then return end
           elseif UI.MainMenu.OPT == 2 then
-            PLDR.CleanupGameList()
-            PLDR.GAMEPATH = ""
-            if type(PLDR.RefreshMassBackends) == "function" then
-              pcall(PLDR.RefreshMassBackends)
-            end
-            local mx4sio_root = PLDR.InitMX4SIOPopsRoot()
-            if mx4sio_root == nil then
-              UI.Notif_queue.add("No MX4SIO device found")
-              return
-            else
+            local ok = UI.RunBusyTask("Loading MX4SIO...", function (report)
+              report("Refreshing mass backends...", 0.18)
+              PLDR.CleanupGameList()
+              PLDR.GAMEPATH = ""
+              if type(PLDR.RefreshMassBackends) == "function" then
+                pcall(PLDR.RefreshMassBackends)
+              end
+              report("Locating MX4SIO POPS folder...", 0.42)
+              local mx4sio_root = PLDR.InitMX4SIOPopsRoot()
+              if mx4sio_root == nil then
+                UI.Notif_queue.add("No MX4SIO device found")
+                return
+              end
+              report("Scanning MX4SIO games...", 0.8)
               PLDR.CleanupGameList()
               PLDR.GetPS1GameLists(mx4sio_root, true)
+              report("Opening MX4SIO list...", 1.0)
               UI.setDeviceLock(DEVLOCK.MX4SIO)
               UI.SceneChange(UI.SCENES.GMX4SIO)
-            end
+            end, "Failed to load MX4SIO")
+            if not ok then return end
           elseif UI.MainMenu.OPT == 3 then
             UI.Notif_queue.add("Not Implemented Yet")
           elseif UI.MainMenu.OPT == 4 then
-            PLDR.LoadHDDModules()
-            if UI.LASTSCENE == UI.SCENES.GHDD then
-            else
-              PLDR.CleanupGameList()
-            end
-            local a, b, c = PLDR.CheckPOPStarterDEPS(UI.SCENES.GHDD)
-            if PLDR.HDD.STATUS == 0 then
-              if not a then UI.Notif_queue.add("ERROR: cannot access 'hdd0:__common' partition") end
-              if not b then UI.Notif_queue.add("missing POPS file\nhdd0:__common/POPS/POPS.ELF") end
-              if not c then UI.Notif_queue.add("missing POPS file\nhdd0:__common/POPS/IOPRP252.IMG") end
-              PLDR.HDD.CheckAvailableHddPopsParts()
-              PLDR.HDD.BuildGameList()
-              if not PLDR.HDD.FOUNDANY then
-                UI.Notif_queue.add("Could not find any '__.POPS' partitions")
-              elseif #PLDR.GAMES < 1 then
-                UI.Notif_queue.add("Could not find any games on 'hdd0:'")
+            local ok = UI.RunBusyTask("Loading HDD...", function (report)
+              report("Loading HDD modules...", 0.14)
+              PLDR.LoadHDDModules()
+              if UI.LASTSCENE ~= UI.SCENES.GHDD then
+                PLDR.CleanupGameList()
               end
-            else
-              UI.Notif_queue.add("ERROR: Cant detect usable HDD ("..PLDR.HDD.STATUS..")")
-            end
-            UI.SceneChange(UI.SCENES.GHDD)
+              report("Checking POPStarter dependencies...", 0.36)
+              local a, b, c = PLDR.CheckPOPStarterDEPS(UI.SCENES.GHDD)
+              if PLDR.HDD.STATUS == 0 then
+                if not a then UI.Notif_queue.add("ERROR: cannot access 'hdd0:__common' partition") end
+                if not b then UI.Notif_queue.add("missing POPS file\nhdd0:__common/POPS/POPS.ELF") end
+                if not c then UI.Notif_queue.add("missing POPS file\nhdd0:__common/POPS/IOPRP252.IMG") end
+                report("Scanning HDD partitions...", 0.64)
+                PLDR.HDD.CheckAvailableHddPopsParts()
+                report("Building HDD game list...", 0.84)
+                PLDR.HDD.BuildGameList()
+                if not PLDR.HDD.FOUNDANY then
+                  UI.Notif_queue.add("Could not find any '__.POPS' partitions")
+                elseif #PLDR.GAMES < 1 then
+                  UI.Notif_queue.add("Could not find any games on 'hdd0:'")
+                end
+              else
+                UI.Notif_queue.add("ERROR: Cant detect usable HDD ("..PLDR.HDD.STATUS..")")
+              end
+              report("Opening HDD list...", 1.0)
+              UI.SceneChange(UI.SCENES.GHDD)
+            end, "Failed to load HDD")
+            if not ok then return end
           elseif UI.MainMenu.OPT == 5 then
-            if type(System) == "table" and type(System.ensureUsbMass) == "function" then
-              System.ensureUsbMass()
-            end
-            if type(PLDR.RefreshMassBackends) == "function" then
-              pcall(PLDR.RefreshMassBackends)
-            end
-            PLDR.CleanupGameList()
-            PLDR.GAMEPATH = ""
-            local usb_roots = PLDR.GetRootsByType("usb")
-            if usb_roots == nil or #usb_roots < 1 then
+            local ok = UI.RunBusyTask("Loading USB...", function (report)
+              report("Initializing USB backend...", 0.16)
               if type(System) == "table" and type(System.ensureUsbMass) == "function" then
                 System.ensureUsbMass()
               end
               if type(PLDR.RefreshMassBackends) == "function" then
                 pcall(PLDR.RefreshMassBackends)
               end
-              usb_roots = PLDR.GetRootsByType("usb")
-            end
-            if usb_roots == nil or #usb_roots < 1 then
-              UI.Notif_queue.add("No USB backend found")
-            end
-            local games = PLDR.BuildMassGameListByType("usb")
-            if (games == nil or #games < 1) and usb_roots ~= nil and #usb_roots > 0 then
-              if type(System) == "table" and type(System.ensureUsbMass) == "function" then
-                System.ensureUsbMass()
+              report("Checking USB roots...", 0.38)
+              PLDR.CleanupGameList()
+              PLDR.GAMEPATH = ""
+              local usb_roots = PLDR.GetRootsByType("usb")
+              if usb_roots == nil or #usb_roots < 1 then
+                if type(System) == "table" and type(System.ensureUsbMass) == "function" then
+                  System.ensureUsbMass()
+                end
+                if type(PLDR.RefreshMassBackends) == "function" then
+                  pcall(PLDR.RefreshMassBackends)
+                end
+                usb_roots = PLDR.GetRootsByType("usb")
               end
-              if type(PLDR.RefreshMassBackends) == "function" then
-                pcall(PLDR.RefreshMassBackends)
+              if usb_roots == nil or #usb_roots < 1 then
+                UI.Notif_queue.add("No USB backend found")
               end
-              games = PLDR.BuildMassGameListByType("usb")
-            end
-            UI.setDeviceLock(DEVLOCK.USB)
-            UI.SceneChange(UI.SCENES.GUSBFAT)
+              report("Building USB game list...", 0.8)
+              local games = PLDR.BuildMassGameListByType("usb")
+              if (games == nil or #games < 1) and usb_roots ~= nil and #usb_roots > 0 then
+                report("Retrying USB scan...", 0.9)
+                if type(System) == "table" and type(System.ensureUsbMass) == "function" then
+                  System.ensureUsbMass()
+                end
+                if type(PLDR.RefreshMassBackends) == "function" then
+                  pcall(PLDR.RefreshMassBackends)
+                end
+                games = PLDR.BuildMassGameListByType("usb")
+              end
+              report("Opening USB list...", 1.0)
+              UI.setDeviceLock(DEVLOCK.USB)
+              UI.SceneChange(UI.SCENES.GUSBFAT)
+            end, "Failed to load USB")
+            if not ok then return end
           elseif UI.MainMenu.OPT == 6 then
             UI.Notif_queue.add("Not Implemented Yet")
           elseif UI.MainMenu.OPT == 7 then
