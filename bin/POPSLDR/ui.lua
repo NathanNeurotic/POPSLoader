@@ -1243,7 +1243,9 @@ UI = {
         {"k","l","m","n","o","p","q","r","s","t"},
         {"u","v","w","x","y","z","0","1","2","3"},
         {"4","5","6","7","8","9",":","/",".","_"},
-        {"-","?","\\","SPACE","DEL","CLR","OK","CANCEL"}
+        {"-","?","!","\\","'","(",")",",",";","+"},
+        {"=","[","]","SPACE","DEL","CLR"},
+        {"BACK","DONE"}
       };
       Open = function (title, initial, on_confirm)
         UI.PathEditor.active = true
@@ -1300,9 +1302,8 @@ UI = {
       end;
       _KeyWidth = function (key)
         if key == "SPACE" then return 92 end
-        if key == "CANCEL" then return 84 end
+        if key == "BACK" or key == "DONE" then return 84 end
         if key == "DEL" or key == "CLR" then return 54 end
-        if key == "OK" then return 60 end
         return 38
       end;
       _DisplayKey = function (key)
@@ -1466,10 +1467,10 @@ UI = {
           elseif key == "CLR" then
             UI.PathEditor.value = ""
             UI.PathEditor.cursor = 0
-          elseif key == "OK" then
+          elseif key == "DONE" then
             confirm_value()
             return
-          elseif key == "CANCEL" then
+          elseif key == "BACK" then
             UI.PathEditor.Close()
             return
           elseif key ~= nil and key ~= "" then
@@ -1505,10 +1506,10 @@ UI = {
         local info_label = mode_label.."   Cursor: L1 / R1"
         Font.ftPrint(SFONT, input_x + 2, input_y + input_h + 10, 0, input_w - 4, 16, info_label, UI.CCOL.GREY)
 
-	        local key_h = 24
-	        local key_gap = 6
-	        local start_y = box_y + 96
-	        for r = 1, #UI.PathEditor.keys do
+        local key_h = 24
+        local key_gap = 6
+        local start_y = box_y + 96
+        for r = 1, #UI.PathEditor.keys do
           local row = UI.PathEditor.keys[r]
           local row_w = 0
           for c = 1, #row do
@@ -1517,16 +1518,18 @@ UI = {
               row_w = row_w + key_gap
             end
           end
-	          local row_x = math.floor((UI.SCR.X_MID - (row_w / 2)) + 0.5)
-	          local cursor_x = row_x
-	          for c = 1, #row do
-	            local key = row[c]
-	            local key_w = UI.PathEditor._KeyWidth(key)
-	            local x = math.floor(cursor_x + 0.5)
-	            local y = math.floor(start_y + ((r - 1) * (key_h + key_gap)) + 0.5)
-	            local text_y = y + math.floor((key_h - 16) / 2) - 1
-	            local selected = (UI.PathEditor.row == r and UI.PathEditor.col == c)
-	            local pressed = UI.PathEditor._IsPressed(r, c)
+          local row_x = math.floor(box_x + ((box_w - row_w) / 2))
+          local cursor_x = row_x
+          for c = 1, #row do
+            local key = row[c]
+            local key_w = UI.PathEditor._KeyWidth(key)
+            local x = cursor_x
+            local y = start_y + ((r - 1) * (key_h + key_gap))
+            local text_y = y + 4
+            local text_x = x + 1
+            local text_w = key_w - 2
+            local selected = (UI.PathEditor.row == r and UI.PathEditor.col == c)
+            local pressed = UI.PathEditor._IsPressed(r, c)
             local border = Color.new(32, 54, 90, 128)
             local fill = Color.new(14, 20, 38, 128)
             local text_color = UI.CCOL.GREY
@@ -1538,15 +1541,15 @@ UI = {
               border = Color.new(90, 170, 255, 128)
               fill = Color.new(30, 64, 118, 128)
               text_color = Color.new(180, 220, 255, 128)
-	            end
-	            Graphics.drawRect(x, y, key_w, key_h, border)
-	            Graphics.drawRect(x + 1, y + 1, key_w - 2, key_h - 2, fill)
-	            Graphics.drawRect(x + 1, y + 1, key_w - 2, 1, Color.new(70, 100, 150, 96))
-	            Font.ftPrint(SFONT, x, text_y, 8, key_w, 16, UI.PathEditor._DisplayKey(key), text_color)
-	            cursor_x = x + key_w + key_gap
-	          end
-	        end
-	      end;
+            end
+            Graphics.drawRect(x, y, key_w, key_h, border)
+            Graphics.drawRect(x + 1, y + 1, key_w - 2, key_h - 2, fill)
+            Graphics.drawRect(x + 1, y + 1, key_w - 2, 1, Color.new(70, 100, 150, 96))
+            Font.ftPrint(SFONT, text_x, text_y, 8, text_w, 16, UI.PathEditor._DisplayKey(key), text_color)
+            cursor_x = x + key_w + key_gap
+          end
+        end
+      end;
     };
     Transition = {
       active = false,
