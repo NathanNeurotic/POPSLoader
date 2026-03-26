@@ -10,6 +10,13 @@ BIN2C = $(PS2SDK)/bin/bin2c
 EE_OBJS = src/elf.o loader.o
 EE_LIB = libcustom-elf-loader.a
 
+# Enable HDD launch debug colors (GS background color stages)?
+HDD_LAUNCH_DEBUG_COLORS ?= 0
+
+ifneq (x$(HDD_LAUNCH_DEBUG_COLORS), x0)
+EE_CFLAGS += -DHDD_LAUNCH_DEBUG_COLORS
+endif
+
 src/loader/bin/loader.elf:
 	$(MAKE) src/loader
 

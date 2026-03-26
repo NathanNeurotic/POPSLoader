@@ -1,4 +1,4 @@
-Last updated: 2026-03-25 (attempt 5b: remove post-memcpy SIF corruption)
+Last updated: 2026-03-26 (attempt 5c: pre-memcpy IOP reset)
 
 # FAILURES
 
@@ -134,10 +134,23 @@ These are hypotheses to investigate — none are confirmed yet.
 - **Identified bug**: After `memcpy` writes POPSTARTER data to 0x100000-0x128C80 through the D-cache, SIF library globals (sifrpc, sifcmd, loadfile state) at 0x100000+ are corrupted in the D-cache. The subsequent `SifInitRpc`, `SifLoadFileInit`, `SifLoadModule` calls read POPSTARTER bytes as RPC state (undefined behavior) and write RPC data over POPSTARTER code, corrupting the loaded image. The final `FlushCache(0)` writes this corruption to physical RAM. This does NOT happen in the USB path because `SifLoadElf` loads via IOP DMA which bypasses the D-cache — SIF library state in D-cache remains valid.
 - Status: `Superseded by attempt 5b`.
 
-### Direct ELF load — minimal post-memcpy (attempt 5b — current)
+### Direct ELF load — minimal post-memcpy (attempt 5b — hardware-verified FAILURE)
 - Approach: Same file read + ELF parse + memcpy as 5a, but after memcpy, execute ONLY kernel syscalls: `FlushCache(0)` (write D-cache to physical RAM), `FlushCache(2)` (invalidate I-cache), `ExecPS2` (jump to entry). No SIF library calls whatsoever.
-- Rationale: After memcpy overwrites 0x100000+ through D-cache, ALL user-space library state in that range is corrupt. Only kernel syscalls (which trap to KSEG0/KSEG1) are safe. POPSTARTER handles its own IOP initialization — the working USB path (`LoadELFFromFileExecPS2`) also does NOT reset the IOP.
-- Optional diagnostic build with `HDD_LAUNCH_DEBUG_COLORS` shows GREEN (file read OK), BLUE (segments copied), PURPLE (about to ExecPS2).
+- Rationale: After memcpy overwrites 0x100000+ through D-cache, ALL user-space library state in that range is corrupt. Only kernel syscalls (which trap to KSEG0/KSEG1) are safe.
+- Result: **black screen** on hardware. Note: the "HDD Diag" build also showed black, but it only had `LOADER_ENABLE_DEBUG_COLORS` (embedded loader) — NOT `HDD_LAUNCH_DEBUG_COLORS` (main process). The diag result was irrelevant to this code path.
+- **Why it failed**: Removing IOP reset entirely left the IOP with all HDD/PFS/APA modules from POPSLoader's session. POPSTARTER likely expects a clean IOP. The working USB-with-IOP-reset path (`LoadELFFromFileExecPS2RebootIOP`) does a full IOP reset + ROM module reload before ExecPS2.
+- Status: `Failed — superseded by attempt 5c`.
+
+### Direct ELF load — pre-memcpy IOP reset (attempt 5c — current)
+- Approach: Same file read + ELF parse as 5a/5b, but reorder operations:
+  1. `open/read` ELF to bram (0xC0000) — PFS modules still on IOP, file access works.
+  2. Parse ELF headers from bram buffer.
+  3. IOP reset + ROM module reload — SIF state at 0x100000+ still valid (not yet overwritten).
+  4. `memcpy` LOAD segments from bram to 0x100000+ — all SIF calls done.
+  5. `FlushCache(0)` + `FlushCache(2)` — kernel syscalls only.
+  6. `ExecPS2` to entry point.
+- Rationale: The IOP reset must happen AFTER reading (needs PFS) but BEFORE memcpy (needs valid SIF state). This satisfies all constraints simultaneously.
+- Diagnostic build now has `HDD_LAUNCH_DEBUG_COLORS` in CI. Color stages: GREEN=file read, CYAN=pre-IOP-reset, YELLOW=IOP reset done, BLUE=segments copied, PURPLE=about to ExecPS2.
 - Status: `Unknown (verify on hardware)`.
 
 ## Do not re-assume without new evidence (updated)

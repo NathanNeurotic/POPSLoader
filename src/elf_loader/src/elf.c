@@ -387,7 +387,34 @@ int LoadELFFromFileWithPartition(const char *filename, const char *partition, in
 		}
 	}
 
-	/* Copy LOAD segments from bram buffer to target addresses */
+	DPRINTF("LAUNCH: entry=0x%08x gp=0x%08x argc=%d argv0=%s\n",
+	        entry, gp, argc, (argv && argv[0]) ? argv[0] : "(null)");
+
+	/* IOP reset BEFORE memcpy: SIF library state at 0x100000+ is still
+	   POPSLoader's valid data, so all SIF functions work correctly.
+	   File read is done, PFS modules on IOP are no longer needed.
+	   Reset IOP to clean state + reload ROM modules, matching the
+	   working USB-with-IOP-reset path (LoadELFFromFileExecPS2RebootIOP).
+	   This MUST happen before memcpy because memcpy overwrites 0x100000+
+	   through D-cache, corrupting SIF library globals. */
+	HDD_DBG_COLOR(0x00FFFF);
+	FlushCache(0);
+	while (!SifIopReset(NULL, 0)) {
+	}
+	while (!SifIopSync()) {
+	}
+
+	SifInitRpc(0);
+	SifLoadFileInit();
+	SifLoadModule("rom0:SIO2MAN", 0, NULL);
+	SifLoadModule("rom0:MCMAN", 0, NULL);
+	SifLoadModule("rom0:MCSERV", 0, NULL);
+	SifLoadFileExit();
+	SifExitRpc();
+	HDD_DBG_COLOR(0xFFFF00);
+
+	/* Copy LOAD segments from bram buffer to target addresses.
+	   All SIF calls are done — only kernel syscalls after this point. */
 	for (i = 0; i < ehdr->phnum; i++) {
 		if (phdrs[i].type != ELF_PT_LOAD || phdrs[i].filesz == 0) {
 			continue;
@@ -402,16 +429,6 @@ int LoadELFFromFileWithPartition(const char *filename, const char *partition, in
 	}
 
 	HDD_DBG_COLOR(0x0000FF);
-	DPRINTF("LAUNCH: entry=0x%08x gp=0x%08x argc=%d argv0=%s\n",
-	        entry, gp, argc, (argv && argv[0]) ? argv[0] : "(null)");
-
-	/* After memcpy, POPSTARTER occupies 0x100000+ in D-cache, overlapping
-	   SIF library globals (sifrpc, sifcmd, loadfile state). Calling ANY SIF
-	   function would read POPSTARTER bytes as RPC state and write RPC data
-	   over POPSTARTER code, corrupting the loaded image. Only kernel syscalls
-	   are safe here.
-	   POPSTARTER initializes the IOP itself -- no reset needed. The working
-	   USB path (LoadELFFromFileExecPS2) also skips IOP reset. */
 	HDD_DBG_COLOR(0xFF00FF);
 	FlushCache(0);
 	FlushCache(2);
