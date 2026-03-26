@@ -171,44 +171,6 @@ static void wipe_bramMem(void) {
 	}
 }
 
-static u32 embedded_loader_gp(const u8 *boot_elf, const elf_header_t *boot_header)
-{
-	int i;
-	elf_sheader_t boot_sheader;
-	u32 gp = 0;
-	u32 shdr_offset;
-
-	if (boot_elf == NULL || boot_header == NULL) {
-		return 0;
-	}
-	if (boot_header->shnum == 0 || boot_header->shentsize < sizeof(elf_sheader_t)) {
-		return 0;
-	}
-	if ((boot_header->shoff + (boot_header->shnum * boot_header->shentsize)) > size_loader_elf) {
-		return 0;
-	}
-
-	for (i = 0; i < boot_header->shnum; i++) {
-		shdr_offset = boot_header->shoff + (i * boot_header->shentsize);
-		memcpy(&boot_sheader, boot_elf + shdr_offset, sizeof(boot_sheader));
-		if (boot_sheader.type != ELF_SHT_MIPS_REGINFO) {
-			continue;
-		}
-		if (boot_sheader.size < (ELF_MIPS_REGINFO_GPVALUE_OFFSET + sizeof(gp))) {
-			continue;
-		}
-		if ((boot_sheader.offset + ELF_MIPS_REGINFO_GPVALUE_OFFSET + sizeof(gp)) > size_loader_elf) {
-			continue;
-		}
-		memcpy(&gp, boot_elf + boot_sheader.offset + ELF_MIPS_REGINFO_GPVALUE_OFFSET, sizeof(gp));
-		if (gp != 0) {
-			return gp;
-		}
-	}
-
-	return 0;
-}
-
 static int ExecuteViaEmbeddedLoaderWithPartition(const char *partition, const char *resolved_path, int argc, char *argv[]) {
 	int i;
 	int final_argc = argc + 2;
@@ -220,7 +182,6 @@ static int ExecuteViaEmbeddedLoaderWithPartition(const char *partition, const ch
 	u8 *boot_elf = (u8 *)&loader_elf;
 	elf_header_t *boot_header = (elf_header_t *)boot_elf;
 	elf_pheader_t *boot_pheader;
-	u32 loader_gp = 0;
 
 	if (argc <= 0 || argv == NULL || argv[0] == NULL) {
 		return -4;
@@ -231,7 +192,6 @@ static int ExecuteViaEmbeddedLoaderWithPartition(const char *partition, const ch
 	if ((*(u32*)boot_header->ident) != ELF_MAGIC) {
 		return -5;
 	}
-	loader_gp = embedded_loader_gp(boot_elf, boot_header);
 
 	snprintf(partition_prefix, sizeof(partition_prefix), "%s%s",
 	         partition ? partition : "",
@@ -272,10 +232,10 @@ static int ExecuteViaEmbeddedLoaderWithPartition(const char *partition, const ch
 	FlushCache(2);
 	partition_loader_diag_stage("before embedded loader ExecPS2", final_argc, partition_prefix, resolved_path);
 #ifdef LOADER_ENABLE_DEBUG_COLORS
-	scr_printf("gp=0x%08x\n", loader_gp);
+	scr_printf("gp=0x%08x\n", 0);
 #endif
 
-	ExecPS2((void *)boot_header->entry, (void *)loader_gp, final_argc, launch_argv);
+	ExecPS2((void *)boot_header->entry, (void *)0, final_argc, launch_argv);
 	return -1;
 }
 
