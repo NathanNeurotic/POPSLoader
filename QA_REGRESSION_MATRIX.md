@@ -1,13 +1,15 @@
 # POPSLoader Regression Matrix
 
-Last updated: 2026-03-06
+Last updated: 2026-03-26
 Target branch: `BETA-8-5`
 
 ## Scope
 This matrix tracks current behavior across:
 - settings load/save/apply transaction flow,
+- settings return/discard behavior and persisted UI preferences,
 - launch path validation and error feedback,
 - USB/MMCE/MX4SIO/HDD page behavior,
+- on-screen keyboard/path editor behavior and long-running busy overlays,
 - `mc?:/` alias path resolution,
 - currently unimplemented menu options (`HDD (exFAT)`, `SMB (v1)`),
 - release package validation gates.
@@ -31,6 +33,9 @@ This matrix tracks current behavior across:
 | S-03 | Commit on exit | Change profile/paths/BDMA and confirm or leave | Reopen Settings | Values persist and reload |
 | S-04 | Save failure feedback | Make `mc0:/POPSTARTER` unavailable | Leave Settings with changes | User sees explicit save/apply error notification |
 | S-05 | BDMA mode restore from marker | Prepare `.pldr_bdma_mode` marker | Boot and open Settings | selected BDMA mode reflects effective marker state |
+| S-06 | Back discards staged settings | Open Settings from a non-main scene and change profile/path/video/hide-text state | Press `O Back` | Returns to the originating scene without saving; reopening Settings shows prior runtime/persisted values |
+| S-07 | Video standard persistence | Set Video Standard to `PAL` or `NTSC` and save | Reboot/relaunch and reopen Settings | Selected video standard reloads from settings and runtime video mode matches the saved value |
+| S-08 | Hide-text persistence | Open Settings, press `Select`, then save | Reboot/relaunch and reopen Settings | Hidden/shown UI state reloads from settings and matches the last saved toggle state |
 
 ### Launch and path handling
 | ID | Area | Setup | Action | Pass Criteria |
@@ -41,6 +46,7 @@ This matrix tracks current behavior across:
 | L-04 | `mc?:/` POPStarter alias (`mc1`) | Place POPStarter only on `mc1:/` and configure `mc?:/` | Launch game | Path resolves to `mc1:/` and launch proceeds |
 | L-05 | `mc?:/` DKWDRV alias | Place DKWDRV only on `mc1:/` and configure `mc?:/` | Launch Disc option | Path resolves to `mc1:/` and launch proceeds |
 | L-06 | Invalid alias targets | Configure `mc?:/` path with file on neither card | Launch game/Disc option | Launch is blocked with explicit missing-file notification |
+| L-07 | BOOT.ELF exit fallback | Put `BOOT.ELF` on `mc0:/BOOT/` only, then `mc1:/BOOT/` only | Open Exit modal and choose `BOOT.ELF` | `mc0:/BOOT/BOOT.ELF` is preferred and `mc1:/BOOT/BOOT.ELF` is used as fallback |
 
 ### Device pages and backend behavior
 | ID | Area | Setup | Action | Pass Criteria |
@@ -61,9 +67,14 @@ This matrix tracks current behavior across:
 | ID | Area | Setup | Action | Pass Criteria |
 |---|---|---|---|---|
 | U-01 | Hide auxiliary text toggle | Main menu or game list scene | Press Select twice | Toggle shows/hides supported auxiliary text and reports state notification |
-| U-02 | Hide toggle exclusions | Settings/Credits scenes | Press Select | No unintended text hiding in excluded scenes |
+| U-02 | Hide toggle on non-hide scenes | Settings or Credits scene | Press Select | Settings updates the saved hide-text toggle without hiding the settings UI; Credits does not apply hide mode unexpectedly |
 | U-03 | Cover sidecar load | Put `<game>.png` beside selected `.VCD` | Highlight game | Cover preview appears |
 | U-04 | Cover sidecar missing | Remove sidecar PNG | Move selection repeatedly | No notification spam; UI remains responsive |
+| U-05 | Exit to OSDSYS | Boot POPSLoader on target hardware, including a run where `HDD (PFS)` was opened first | Open Exit modal and choose `OSDSYS` | Returns to the PS2 browser without black screen, including after the HDD page initialized tracked mounts |
+| U-06 | PAL video asset aspect | Set Video Standard to `PAL` in Settings | Browse main menu, settings, and splash/UI assets | Bundled UI assets retain expected proportions without PAL squish |
+| U-07 | Path editor cursor and press feedback | Open POPStarter or DKWDRV path editor | Move cursor with `L1`/`R1`, toggle case, insert/delete characters, confirm/cancel | Cursor moves within the string, lowercase letter keys render uppercase when case is enabled, and the selected key flashes when pressed |
+| U-08 | Save progress overlay | Change any setting and save | Observe the save/apply sequence | A visible progress popup/overlay stays on-screen until the save/apply flow completes or fails, without looking stalled at a single coarse stage for the whole operation |
+| U-09 | Device-load progress overlay | Use a slow or large MMCE/MX4SIO/HDD/USB library | Open the device page and wait for list generation | A visible progress popup/overlay stays on-screen during scanning/list generation and advances through the scan instead of only jumping between coarse stage markers |
 
 ## Run Log Template
 | Date | Console | Storage Setup | IDs Run | Result |
