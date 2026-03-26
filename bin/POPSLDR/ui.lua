@@ -518,11 +518,11 @@ UI = {
       end
       return true, a, b, c, d
     end;
-    MakeBusyProgressReporter = function (report, message, start_progress, end_progress)
-      local label = tostring(message or "Working...")
-      local progress_a = tonumber(start_progress) or 0
-      local progress_b = tonumber(end_progress) or progress_a
-      local last_ratio = -1
+	    MakeBusyProgressReporter = function (report, message, start_progress, end_progress)
+	      local label = tostring(message or "Working...")
+	      local progress_a = tonumber(start_progress) or 0
+	      local progress_b = tonumber(end_progress) or progress_a
+	      local last_ratio = -1
       local last_ms = -1000
       local function now_ms()
         if UI.Pad ~= nil and UI.Pad.Timer ~= nil then
@@ -530,16 +530,21 @@ UI = {
         end
         return 0
       end
-      return function (ratio)
-        local next_ratio = Clamp(tonumber(ratio) or 0, 0, 1)
-        local next_progress = progress_a + ((progress_b - progress_a) * next_ratio)
-        local current_ms = now_ms()
-        if next_ratio < 1 then
-          if last_ratio >= 0 and (next_ratio - last_ratio) < 0.01 and (current_ms - last_ms) < 60 then
-            return
-          end
-        end
-        last_ratio = next_ratio
+	      return function (ratio)
+	        local next_ratio = Clamp(tonumber(ratio) or 0, 0, 1)
+	        local next_progress = progress_a + ((progress_b - progress_a) * next_ratio)
+	        local current_ms = now_ms()
+	        if next_ratio < 1 then
+	          local ratio_delta = next_ratio - last_ratio
+	          if current_ms > 0 and last_ms >= 0 then
+	            if ratio_delta < 0.0025 and (current_ms - last_ms) < 20 then
+	              return
+	            end
+	          elseif last_ratio >= 0 and ratio_delta < 0.0025 then
+	            return
+	          end
+	        end
+	        last_ratio = next_ratio
         last_ms = current_ms
         report(label.." "..tostring(math.floor(next_ratio * 100 + 0.5)).."%", next_progress)
       end
@@ -576,21 +581,23 @@ UI = {
     Footer = {
       order = {"triangle", "circle", "cross", "square"};
       order_with_r2 = {"triangle", "circle", "cross", "square"};
-      order_with_start = {"triangle", "circle", "cross", "start"};
-      order_with_start_r2 = {"triangle", "circle", "cross", "square", "start"};
-      order_settings = {"circle", "cross", "square", "start", "select"};
-      order_settings_save = {"circle", "cross", "start", "select"};
-      labels = {
-        triangle = "Credits",
-        circle_main = "Exit",
-        circle_other = "Back",
-        start_profiles = "Settings",
-        start_reset = "Reset Defaults",
-        select_toggle = "Toggle UI",
-        cross_confirm = "Confirm",
-        cross_enter = "Enter",
-        cross_select = "Select",
-        cross_launch = "Launch"
+	      order_with_start = {"triangle", "circle", "cross", "start"};
+	      order_with_start_r2 = {"triangle", "circle", "cross", "square", "start"};
+	      order_settings = {"circle", "cross", "square", "start", "select"};
+	      order_settings_save = {"circle", "cross", "start", "select"};
+	      order_keyboard = {"circle", "cross", "square", "start"};
+	      labels = {
+	        triangle = "Credits",
+	        circle_main = "Exit",
+	        circle_other = "Back",
+	        start_profiles = "Settings",
+	        start_reset = "Reset Defaults",
+	        select_toggle = "Toggle UI",
+	        square_backspace = "Backspace",
+	        cross_confirm = "Confirm",
+	        cross_enter = "Enter",
+	        cross_select = "Select",
+	        cross_launch = "Launch"
       };
       legend_cache = {};
       LegendKey = function (order_id, circle_label, cross_label, start_label, square_label, select_label, r2_label)
@@ -739,16 +746,30 @@ UI = {
         local bar_h = 14
         Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, 140))
         Graphics.drawRect(box_x, box_y, box_w, box_h, Color.new(0, 0, 0, 210))
-        Graphics.drawRect(box_x, box_y, box_w, 2, UI.CCOL.GREY)
-        Graphics.drawRect(box_x, box_y + box_h - 2, box_w, 2, UI.CCOL.GREY)
-        Graphics.drawRect(bar_x, bar_y, bar_w, bar_h, Color.new(24, 34, 68, 128))
-        Graphics.drawRect(bar_x + 1, bar_y + 1, bar_w - 2, bar_h - 2, Color.new(10, 14, 26, 128))
-        if type(UI.SavingProgress) == "number" then
-          local fill_w = math.floor((bar_w - 4) * UI.SavingProgress + 0.5)
-          if fill_w > 0 then
-            Graphics.drawRect(bar_x + 2, bar_y + 2, fill_w, bar_h - 4, Color.new(110, 190, 255, 120))
-          end
-        else
+	        Graphics.drawRect(box_x, box_y, box_w, 2, UI.CCOL.GREY)
+	        Graphics.drawRect(box_x, box_y + box_h - 2, box_w, 2, UI.CCOL.GREY)
+	        Graphics.drawRect(bar_x, bar_y, bar_w, bar_h, Color.new(24, 34, 68, 128))
+	        Graphics.drawRect(bar_x + 1, bar_y + 1, bar_w - 2, bar_h - 2, Color.new(10, 14, 26, 128))
+	        local pulse_w = math.max(12, math.floor((bar_w - 4) * 0.08))
+	        local pulse_travel = math.max(0, (bar_w - 4) - pulse_w)
+	        local pulse_offset = 0
+	        if pulse_travel > 0 then
+	          pulse_offset = math.floor((tick_ms / 60) % (pulse_travel + 1))
+	        end
+	        Graphics.drawRect(bar_x + 2 + pulse_offset, bar_y + 3, pulse_w, bar_h - 6, Color.new(120, 190, 255, 36))
+	        if type(UI.SavingProgress) == "number" then
+	          local fill_w = math.floor((bar_w - 4) * UI.SavingProgress + 0.5)
+	          if fill_w > 0 then
+	            Graphics.drawRect(bar_x + 2, bar_y + 2, fill_w, bar_h - 4, Color.new(110, 190, 255, 120))
+	            local shimmer_w = math.max(14, math.floor((bar_w - 4) * 0.12))
+	            local shimmer_travel = math.max(0, fill_w - shimmer_w)
+	            local shimmer_offset = 0
+	            if shimmer_travel > 0 then
+	              shimmer_offset = math.floor((tick_ms / 45) % (shimmer_travel + 1))
+	            end
+	            Graphics.drawRect(bar_x + 2 + shimmer_offset, bar_y + 2, math.min(shimmer_w, fill_w), bar_h - 4, Color.new(210, 235, 255, 48))
+	          end
+	        else
           local marquee_w = math.max(42, math.floor((bar_w - 4) * 0.26))
           local travel = math.max(0, (bar_w - 4) - marquee_w)
           local offset = 0
@@ -1353,16 +1374,29 @@ UI = {
         UI.PathEditor.value = string.sub(val, 1, cursor - 1)..string.sub(val, cursor + 1)
         UI.PathEditor.cursor = cursor - 1
       end;
-      _FlashCurrentKey = function ()
-        UI.PathEditor.pressed_row = UI.PathEditor.row
-        UI.PathEditor.pressed_col = UI.PathEditor.col
-        UI.PathEditor.pressed_until = UI.PathEditor._NowMs() + 160
-      end;
-      _IsPressed = function (row, col)
-        return UI.PathEditor.pressed_row == row
-          and UI.PathEditor.pressed_col == col
-          and UI.PathEditor._NowMs() <= (tonumber(UI.PathEditor.pressed_until) or 0)
-      end;
+	      _FlashCurrentKey = function ()
+	        UI.PathEditor.pressed_row = UI.PathEditor.row
+	        UI.PathEditor.pressed_col = UI.PathEditor.col
+	        UI.PathEditor.pressed_until = UI.PathEditor._NowMs() + 160
+	      end;
+	      _FlashKey = function (target_key)
+	        for r = 1, #UI.PathEditor.keys do
+	          local row = UI.PathEditor.keys[r]
+	          for c = 1, #row do
+	            if row[c] == target_key then
+	              UI.PathEditor.pressed_row = r
+	              UI.PathEditor.pressed_col = c
+	              UI.PathEditor.pressed_until = UI.PathEditor._NowMs() + 160
+	              return
+	            end
+	          end
+	        end
+	      end;
+	      _IsPressed = function (row, col)
+	        return UI.PathEditor.pressed_row == row
+	          and UI.PathEditor.pressed_col == col
+	          and UI.PathEditor._NowMs() <= (tonumber(UI.PathEditor.pressed_until) or 0)
+	      end;
       HandleInput = function ()
         if not UI.PathEditor.active then return end
         if UI.Pad.Events.BACK then
@@ -1375,11 +1409,15 @@ UI = {
         if UI.Pad.Events.R1 then
           UI.PathEditor._MoveCursor(1)
         end
-        if UI.Pad.Events.R2 then
-          UI.PathEditor.upper = not UI.PathEditor.upper
-        end
+	        if UI.Pad.Events.R2 then
+	          UI.PathEditor.upper = not UI.PathEditor.upper
+	        end
+	        if UI.Pad.Events.SQUARE then
+	          UI.PathEditor._DeleteChar()
+	          UI.PathEditor._FlashKey("DEL")
+	        end
 
-        local max_rows = #UI.PathEditor.keys
+	        local max_rows = #UI.PathEditor.keys
         if UI.Pad.Events.NAV_UP then
           UI.PathEditor.row = CLAMP(UI.PathEditor.row - 1, 1, max_rows)
           local row_size = UI.PathEditor._RowSize(UI.PathEditor.row)
@@ -1467,10 +1505,10 @@ UI = {
         local info_label = mode_label.."   Cursor: L1 / R1"
         Font.ftPrint(SFONT, input_x + 2, input_y + input_h + 10, 0, input_w - 4, 16, info_label, UI.CCOL.GREY)
 
-        local key_h = 24
-        local key_gap = 6
-        local start_y = box_y + 96
-        for r = 1, #UI.PathEditor.keys do
+	        local key_h = 24
+	        local key_gap = 6
+	        local start_y = box_y + 96
+	        for r = 1, #UI.PathEditor.keys do
           local row = UI.PathEditor.keys[r]
           local row_w = 0
           for c = 1, #row do
@@ -1479,15 +1517,16 @@ UI = {
               row_w = row_w + key_gap
             end
           end
-          local row_x = UI.SCR.X_MID - (row_w / 2)
-          local cursor_x = row_x
-          for c = 1, #row do
-            local key = row[c]
-            local key_w = UI.PathEditor._KeyWidth(key)
-            local x = cursor_x
-            local y = start_y + ((r - 1) * (key_h + key_gap))
-            local selected = (UI.PathEditor.row == r and UI.PathEditor.col == c)
-            local pressed = UI.PathEditor._IsPressed(r, c)
+	          local row_x = math.floor((UI.SCR.X_MID - (row_w / 2)) + 0.5)
+	          local cursor_x = row_x
+	          for c = 1, #row do
+	            local key = row[c]
+	            local key_w = UI.PathEditor._KeyWidth(key)
+	            local x = math.floor(cursor_x + 0.5)
+	            local y = math.floor(start_y + ((r - 1) * (key_h + key_gap)) + 0.5)
+	            local text_y = y + math.floor((key_h - 16) / 2) - 1
+	            local selected = (UI.PathEditor.row == r and UI.PathEditor.col == c)
+	            local pressed = UI.PathEditor._IsPressed(r, c)
             local border = Color.new(32, 54, 90, 128)
             local fill = Color.new(14, 20, 38, 128)
             local text_color = UI.CCOL.GREY
@@ -1499,15 +1538,15 @@ UI = {
               border = Color.new(90, 170, 255, 128)
               fill = Color.new(30, 64, 118, 128)
               text_color = Color.new(180, 220, 255, 128)
-            end
-            Graphics.drawRect(x, y, key_w, key_h, border)
-            Graphics.drawRect(x + 1, y + 1, key_w - 2, key_h - 2, fill)
-            Graphics.drawRect(x + 1, y + 1, key_w - 2, 1, Color.new(70, 100, 150, 96))
-            Font.ftPrint(SFONT, x, y + 5, 8, key_w, 16, UI.PathEditor._DisplayKey(key), text_color)
-            cursor_x = cursor_x + key_w + key_gap
-          end
-        end
-      end;
+	            end
+	            Graphics.drawRect(x, y, key_w, key_h, border)
+	            Graphics.drawRect(x + 1, y + 1, key_w - 2, key_h - 2, fill)
+	            Graphics.drawRect(x + 1, y + 1, key_w - 2, 1, Color.new(70, 100, 150, 96))
+	            Font.ftPrint(SFONT, x, text_y, 8, key_w, 16, UI.PathEditor._DisplayKey(key), text_color)
+	            cursor_x = x + key_w + key_gap
+	          end
+	        end
+	      end;
     };
     Transition = {
       active = false,
@@ -2009,19 +2048,19 @@ UI = {
         y = y + H_ROW + BUTTON_GAP
 
         Input_GetEvent()
-        if UI.PathEditor.active then
-          UI.PathEditor.HandleInput()
-          UI.PathEditor.Draw()
-          local labels, order = UI.Footer.ResolveLegend({
-            order = UI.Footer.order_settings_save,
-            order_id = "settings_save",
-            circle = UI.Footer.labels.circle_other,
-            cross = UI.Footer.labels.cross_select,
-            start = "Save",
-            select = UI.Footer.labels.select_toggle
-          })
-          UI.Footer.Draw(labels, order)
-          return
+	        if UI.PathEditor.active then
+	          UI.PathEditor.HandleInput()
+	          UI.PathEditor.Draw()
+	          local labels, order = UI.Footer.ResolveLegend({
+	            order = UI.Footer.order_keyboard,
+	            order_id = "keyboard",
+	            circle = UI.Footer.labels.circle_other,
+	            cross = UI.Footer.labels.cross_confirm,
+	            square = UI.Footer.labels.square_backspace,
+	            start = "Save",
+	          })
+	          UI.Footer.Draw(labels, order)
+	          return
         end
         if UI.HandleGlobalInput(false) then return end
 
