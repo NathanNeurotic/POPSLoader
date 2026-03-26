@@ -2326,7 +2326,7 @@ function PLDR.CheckPOPStarterDEPS(device)
   end
 end
 
-function PLDR.GetPS1GameLists(path, updating)
+function PLDR.GetPS1GameLists(path, updating, on_progress)
   local RET = {}
   local found_smth = false
   if path ~= nil then PLDR.GAMEPATH = path end
@@ -2343,8 +2343,14 @@ function PLDR.GetPS1GameLists(path, updating)
           end
         end
       end
+      if type(on_progress) == "function" and #DIR > 0 then
+        pcall(on_progress, i / #DIR)
+      end
     end
   else
+  end
+  if type(on_progress) == "function" then
+    pcall(on_progress, 1.0)
   end
   if found_smth then
     if not updating then
@@ -2393,24 +2399,40 @@ function PLDR.InitMX4SIOPopsRoot()
   return nil
 end
 
-function PLDR.BuildMassGameListByType(kind, mass_snapshot)
+function PLDR.BuildMassGameListByType(kind, mass_snapshot, on_progress)
   PLDR.CleanupGameList()
   local roots = PLDR.GetRootsByType(kind, mass_snapshot)
   local found_any = false
-  for i = 1, #roots do
+  local total_roots = #roots
+  for i = 1, total_roots do
     local pops_root = roots[i].."POPS/"
     if doesFolderExist(pops_root) then
       local DIR = System.listDirectory(pops_root)
       if DIR ~= nil then
-        for j = 1, #DIR do
+        local dir_total = #DIR
+        for j = 1, dir_total do
           local entry = DIR[j]
           if not entry.directory and string.lower(string.sub(entry.name, -4)) == ".vcd" then
             found_any = true
             table.insert(PLDR.GAMES, pops_root.."|"..entry.name)
           end
+          if type(on_progress) == "function" then
+            local ratio = i / math.max(total_roots, 1)
+            if dir_total > 0 then
+              ratio = ((i - 1) + (j / dir_total)) / math.max(total_roots, 1)
+            end
+            pcall(on_progress, ratio)
+          end
         end
+      elseif type(on_progress) == "function" then
+        pcall(on_progress, i / math.max(total_roots, 1))
       end
+    elseif type(on_progress) == "function" then
+      pcall(on_progress, i / math.max(total_roots, 1))
     end
+  end
+  if type(on_progress) == "function" then
+    pcall(on_progress, 1.0)
   end
   if found_any then
     table.sort(PLDR.GAMES)
@@ -2430,14 +2452,18 @@ local function GetOrderedHddPopsPartitions()
   return PLDR.HDD.POPS_PARTITIONS or {}
 end
 
-local function AppendHddGameList(partition, list_path)
+local function AppendHddGameList(partition, list_path, on_progress, partition_index, partition_total)
   if list_path == nil then
     return
   end
   local DIR = System.listDirectory(list_path)
   if DIR == nil then
+    if type(on_progress) == "function" then
+      pcall(on_progress, (tonumber(partition_index) or 1) / math.max(tonumber(partition_total) or 1, 1))
+    end
     return
   end
+  local total_entries = #DIR
   for i = 1, #DIR do
     if not DIR[i].directory then
       if string.lower(string.sub(DIR[i].name, -4)) == ".vcd" then
@@ -2448,16 +2474,25 @@ local function AppendHddGameList(partition, list_path)
         end
       end
     end
+    if type(on_progress) == "function" then
+      local ratio = (tonumber(partition_index) or 1) / math.max(tonumber(partition_total) or 1, 1)
+      if total_entries > 0 then
+        ratio = (((tonumber(partition_index) or 1) - 1) + (i / total_entries)) / math.max(tonumber(partition_total) or 1, 1)
+      end
+      pcall(on_progress, ratio)
+    end
   end
 end
 
-function PLDR.HDD.CheckAvailableHddPopsParts()
+function PLDR.HDD.CheckAvailableHddPopsParts(on_progress)
   if not PLDR.HDD.HAS_CHECKED then --HDD is checked only once since it cannot be removed/replaced without damaging the console
     PLDR.HDD.FOUNDANY = false
     PLDR.HDD.AVAILABLE = {}
     PLDR.HDD.GAME_SLOT = nil
-    for i = 1, #GetOrderedHddPopsPartitions() do
-      local partition = GetOrderedHddPopsPartitions()[i]
+    local ordered_partitions = GetOrderedHddPopsPartitions()
+    local total_partitions = #ordered_partitions
+    for i = 1, total_partitions do
+      local partition = ordered_partitions[i]
       local mounted, _, slot = MountHddGamePartitionTracked("hdd0:"..partition, FIO_MT_RDONLY)
       PLDR.HDD.AVAILABLE[partition] = mounted == true
       if mounted == true then
@@ -2466,29 +2501,42 @@ function PLDR.HDD.CheckAvailableHddPopsParts()
           UMountHddPartitionTracked(slot)
         end
       end
+      if type(on_progress) == "function" then
+        pcall(on_progress, i / math.max(total_partitions, 1))
+      end
     end
     PLDR.HDD.HAS_CHECKED = true
   end
+  if type(on_progress) == "function" then
+    pcall(on_progress, 1.0)
+  end
 end
 
-function PLDR.HDD.BuildGameList()
+function PLDR.HDD.BuildGameList(on_progress)
   PLDR.GAMES = {}
   if type(PLDR.HDDCACHE) == "table" and PLDR.HDD.USECACHE then PLDR.GAMES = PLDR.HDDCACHE end
   PLDR.HDD.GAMEPARTS = {}
   PLDR.GAMEPATH = BuildMountedPfsPrefix(GetActiveHddGameSlot())
   if not PLDR.HDD.FOUNDANY then return end
-  for i = 1, #GetOrderedHddPopsPartitions() do
-    local partition = GetOrderedHddPopsPartitions()[i]
+  local ordered_partitions = GetOrderedHddPopsPartitions()
+  local total_partitions = #ordered_partitions
+  for i = 1, total_partitions do
+    local partition = ordered_partitions[i]
     if PLDR.HDD.AVAILABLE[partition] == true then
       local mounted, prefix, slot = MountHddGamePartitionTracked("hdd0:"..partition, FIO_MT_RDONLY)
       if mounted and prefix ~= nil then
         PLDR.GAMEPATH = prefix
-        AppendHddGameList(partition, prefix)
+        AppendHddGameList(partition, prefix, on_progress, i, total_partitions)
         if slot ~= nil then
           UMountHddPartitionTracked(slot)
         end
       end
+    elseif type(on_progress) == "function" then
+      pcall(on_progress, i / math.max(total_partitions, 1))
     end
+  end
+  if type(on_progress) == "function" then
+    pcall(on_progress, 1.0)
   end
   table.sort(PLDR.GAMES)
 end

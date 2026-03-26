@@ -518,6 +518,32 @@ UI = {
       end
       return true, a, b, c, d
     end;
+    MakeBusyProgressReporter = function (report, message, start_progress, end_progress)
+      local label = tostring(message or "Working...")
+      local progress_a = tonumber(start_progress) or 0
+      local progress_b = tonumber(end_progress) or progress_a
+      local last_ratio = -1
+      local last_ms = -1000
+      local function now_ms()
+        if UI.Pad ~= nil and UI.Pad.Timer ~= nil then
+          return tonumber(Timer.getTime(UI.Pad.Timer)) or 0
+        end
+        return 0
+      end
+      return function (ratio)
+        local next_ratio = Clamp(tonumber(ratio) or 0, 0, 1)
+        local next_progress = progress_a + ((progress_b - progress_a) * next_ratio)
+        local current_ms = now_ms()
+        if next_ratio < 1 then
+          if last_ratio >= 0 and (next_ratio - last_ratio) < 0.01 and (current_ms - last_ms) < 60 then
+            return
+          end
+        end
+        last_ratio = next_ratio
+        last_ms = current_ms
+        report(label.." "..tostring(math.floor(next_ratio * 100 + 0.5)).."%", next_progress)
+      end
+    end;
     --- Notifications queue handler
     Notif_queue = {
       display = function ()
@@ -1105,6 +1131,10 @@ UI = {
       end;
       ConfirmExit = function ()
         UI.LAUNCHING = true
+        UI.Modal.Close()
+        if type(PLDR) == "table" and type(PLDR.PrepareForExternalELFLaunch) == "function" then
+          pcall(PLDR.PrepareForExternalELFLaunch, nil)
+        end
         System.exitToBrowser()
       end;
       LaunchBootElf = function ()
@@ -1257,6 +1287,9 @@ UI = {
       _DisplayKey = function (key)
         if key == nil then return "" end
         if key == "SPACE" then return "SPACE" end
+        if UI.PathEditor.upper and string.match(key, "^[a-z]$") then
+          return string.upper(key)
+        end
         return key
       end;
       _BuildVisibleValue = function (max_chars)
@@ -2427,13 +2460,14 @@ UI = {
           UI.Modal.OpenExit()
           return
         end
-        if UI.Pad.Events.CONFIRM then
-          if UI.MainMenu.OPT == 1 then
-            local ok = UI.RunBusyTask("Loading MMCE...", function (report)
-              report("Detecting MMCE device...", 0.18)
-              if type(PLDR.DetectMMCESlot) == "function" then
-                pcall(PLDR.DetectMMCESlot, true)
-              end
+	          if UI.Pad.Events.CONFIRM then
+	          if UI.MainMenu.OPT == 1 then
+	            local ok = UI.RunBusyTask("Loading MMCE...", function (report)
+              local scan_progress = UI.MakeBusyProgressReporter(report, "Scanning MMCE games...", 0.48, 0.88)
+	              report("Detecting MMCE device...", 0.18)
+	              if type(PLDR.DetectMMCESlot) == "function" then
+	                pcall(PLDR.DetectMMCESlot, true)
+	              end
               local slots = PLDR.GetMMCESlots()
               if #slots < 1 then
                 UI.Notif_queue.add("No MMCE device found (mmce0/mmce1).")
@@ -2451,24 +2485,25 @@ UI = {
                 UI.Notif_queue.add("No MMCE device found (mmce0/mmce1).")
                 return
               end
-              PLDR.CleanupGameList()
-              local mmce_pops = mmce_prefix.."POPS/"
-              if doesFolderExist(mmce_pops) then
-                report("Scanning MMCE games...", 0.78)
-                PLDR.GetPS1GameLists(mmce_pops, true)
-              else
-                UI.Notif_queue.add("No MMCE POPS folder found")
-              end
+	              PLDR.CleanupGameList()
+	              local mmce_pops = mmce_prefix.."POPS/"
+	              if doesFolderExist(mmce_pops) then
+	                report("Scanning MMCE games...", 0.48)
+	                PLDR.GetPS1GameLists(mmce_pops, true, scan_progress)
+	              else
+	                UI.Notif_queue.add("No MMCE POPS folder found")
+	              end
               report("Opening MMCE list...", 1.0)
               UI.setDeviceLock(DEVLOCK.MMCE)
               UI.SceneChange(UI.SCENES.GSMB)
             end, "Failed to load MMCE")
             if not ok then return end
-          elseif UI.MainMenu.OPT == 2 then
-            local ok = UI.RunBusyTask("Loading MX4SIO...", function (report)
-              report("Refreshing mass backends...", 0.18)
-              PLDR.CleanupGameList()
-              PLDR.GAMEPATH = ""
+	          elseif UI.MainMenu.OPT == 2 then
+	            local ok = UI.RunBusyTask("Loading MX4SIO...", function (report)
+              local scan_progress = UI.MakeBusyProgressReporter(report, "Scanning MX4SIO games...", 0.48, 0.9)
+	              report("Refreshing mass backends...", 0.18)
+	              PLDR.CleanupGameList()
+	              PLDR.GAMEPATH = ""
               if type(PLDR.RefreshMassBackends) == "function" then
                 pcall(PLDR.RefreshMassBackends)
               end
@@ -2477,37 +2512,39 @@ UI = {
               if mx4sio_root == nil then
                 UI.Notif_queue.add("No MX4SIO device found")
                 return
-              end
-              report("Scanning MX4SIO games...", 0.8)
-              PLDR.CleanupGameList()
-              PLDR.GetPS1GameLists(mx4sio_root, true)
-              report("Opening MX4SIO list...", 1.0)
-              UI.setDeviceLock(DEVLOCK.MX4SIO)
-              UI.SceneChange(UI.SCENES.GMX4SIO)
+	              end
+	              report("Scanning MX4SIO games...", 0.48)
+	              PLDR.CleanupGameList()
+	              PLDR.GetPS1GameLists(mx4sio_root, true, scan_progress)
+	              report("Opening MX4SIO list...", 1.0)
+	              UI.setDeviceLock(DEVLOCK.MX4SIO)
+	              UI.SceneChange(UI.SCENES.GMX4SIO)
             end, "Failed to load MX4SIO")
             if not ok then return end
           elseif UI.MainMenu.OPT == 3 then
             UI.Notif_queue.add("Not Implemented Yet")
-          elseif UI.MainMenu.OPT == 4 then
-            local ok = UI.RunBusyTask("Loading HDD...", function (report)
-              report("Loading HDD modules...", 0.14)
-              PLDR.LoadHDDModules()
-              if UI.LASTSCENE ~= UI.SCENES.GHDD then
+	          elseif UI.MainMenu.OPT == 4 then
+	            local ok = UI.RunBusyTask("Loading HDD...", function (report)
+              local partition_progress = UI.MakeBusyProgressReporter(report, "Scanning HDD partitions...", 0.42, 0.66)
+              local game_progress = UI.MakeBusyProgressReporter(report, "Building HDD game list...", 0.68, 0.92)
+	              report("Loading HDD modules...", 0.14)
+	              PLDR.LoadHDDModules()
+	              if UI.LASTSCENE ~= UI.SCENES.GHDD then
                 PLDR.CleanupGameList()
               end
               report("Checking POPStarter dependencies...", 0.36)
               local a, b, c = PLDR.CheckPOPStarterDEPS(UI.SCENES.GHDD)
               if PLDR.HDD.STATUS == 0 then
-                if not a then UI.Notif_queue.add("ERROR: cannot access 'hdd0:__common' partition") end
-                if not b then UI.Notif_queue.add("missing POPS file\nhdd0:__common/POPS/POPS.ELF") end
-                if not c then UI.Notif_queue.add("missing POPS file\nhdd0:__common/POPS/IOPRP252.IMG") end
-                report("Scanning HDD partitions...", 0.64)
-                PLDR.HDD.CheckAvailableHddPopsParts()
-                report("Building HDD game list...", 0.84)
-                PLDR.HDD.BuildGameList()
-                if not PLDR.HDD.FOUNDANY then
-                  UI.Notif_queue.add("Could not find any '__.POPS' partitions")
-                elseif #PLDR.GAMES < 1 then
+	                if not a then UI.Notif_queue.add("ERROR: cannot access 'hdd0:__common' partition") end
+	                if not b then UI.Notif_queue.add("missing POPS file\nhdd0:__common/POPS/POPS.ELF") end
+	                if not c then UI.Notif_queue.add("missing POPS file\nhdd0:__common/POPS/IOPRP252.IMG") end
+	                report("Scanning HDD partitions...", 0.42)
+	                PLDR.HDD.CheckAvailableHddPopsParts(partition_progress)
+	                report("Building HDD game list...", 0.68)
+	                PLDR.HDD.BuildGameList(game_progress)
+	                if not PLDR.HDD.FOUNDANY then
+	                  UI.Notif_queue.add("Could not find any '__.POPS' partitions")
+	                elseif #PLDR.GAMES < 1 then
                   UI.Notif_queue.add("Could not find any games on 'hdd0:'")
                 end
               else
@@ -2517,11 +2554,13 @@ UI = {
               UI.SceneChange(UI.SCENES.GHDD)
             end, "Failed to load HDD")
             if not ok then return end
-          elseif UI.MainMenu.OPT == 5 then
-            local ok = UI.RunBusyTask("Loading USB...", function (report)
-              report("Initializing USB backend...", 0.16)
-              if type(System) == "table" and type(System.ensureUsbMass) == "function" then
-                System.ensureUsbMass()
+	          elseif UI.MainMenu.OPT == 5 then
+	            local ok = UI.RunBusyTask("Loading USB...", function (report)
+              local build_progress = UI.MakeBusyProgressReporter(report, "Building USB game list...", 0.44, 0.88)
+              local retry_progress = UI.MakeBusyProgressReporter(report, "Retrying USB scan...", 0.9, 0.97)
+	              report("Initializing USB backend...", 0.16)
+	              if type(System) == "table" and type(System.ensureUsbMass) == "function" then
+	                System.ensureUsbMass()
               end
               if type(PLDR.RefreshMassBackends) == "function" then
                 pcall(PLDR.RefreshMassBackends)
@@ -2539,23 +2578,23 @@ UI = {
                 end
                 usb_roots = PLDR.GetRootsByType("usb")
               end
-              if usb_roots == nil or #usb_roots < 1 then
-                UI.Notif_queue.add("No USB backend found")
-              end
-              report("Building USB game list...", 0.8)
-              local games = PLDR.BuildMassGameListByType("usb")
-              if (games == nil or #games < 1) and usb_roots ~= nil and #usb_roots > 0 then
-                report("Retrying USB scan...", 0.9)
-                if type(System) == "table" and type(System.ensureUsbMass) == "function" then
-                  System.ensureUsbMass()
+	              if usb_roots == nil or #usb_roots < 1 then
+	                UI.Notif_queue.add("No USB backend found")
+	              end
+	              report("Building USB game list...", 0.44)
+	              local games = PLDR.BuildMassGameListByType("usb", nil, build_progress)
+	              if (games == nil or #games < 1) and usb_roots ~= nil and #usb_roots > 0 then
+	                report("Retrying USB scan...", 0.9)
+	                if type(System) == "table" and type(System.ensureUsbMass) == "function" then
+	                  System.ensureUsbMass()
                 end
-                if type(PLDR.RefreshMassBackends) == "function" then
-                  pcall(PLDR.RefreshMassBackends)
-                end
-                games = PLDR.BuildMassGameListByType("usb")
-              end
-              report("Opening USB list...", 1.0)
-              UI.setDeviceLock(DEVLOCK.USB)
+	                if type(PLDR.RefreshMassBackends) == "function" then
+	                  pcall(PLDR.RefreshMassBackends)
+	                end
+	                games = PLDR.BuildMassGameListByType("usb", nil, retry_progress)
+	              end
+	              report("Opening USB list...", 1.0)
+	              UI.setDeviceLock(DEVLOCK.USB)
               UI.SceneChange(UI.SCENES.GUSBFAT)
             end, "Failed to load USB")
             if not ok then return end
