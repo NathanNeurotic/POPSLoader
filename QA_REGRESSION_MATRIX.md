@@ -1,6 +1,6 @@
 # POPSLoader Regression Matrix
 
-Last updated: 2026-03-25
+Last updated: 2026-03-26
 Target branch: `BETA-9-RECOVERY-BACKUP-CHECKPOINT-PROFILES-PLAY`
 
 ## Scope
@@ -89,10 +89,64 @@ This matrix tracks current behavior across:
 | 2026-03-25 | Unknown | HDD boot + standard `POPSLOADER` artifact + HDD cwd + HDD-resident `POPSTARTER.ELF` + HDD game | D-10 | FAIL: commit `59be355` standard artifact still black-screened; keeping the mounted HDD `pfs:/...` launch on the non-reboot direct-loader path was not sufficient; see `FAILURES.md` |
 | 2026-03-25 | Unknown | HDD boot + standard `POPSLOADER` artifact + HDD cwd + HDD-resident `POPSTARTER.ELF` + HDD game | D-10 | FAIL: commit `d4a604e` standard artifact still black-screened; routing mounted HDD `pfs:/...` argumented launches through `LoadExecPS2` was not sufficient; see `FAILURES.md` |
 
+## HDD D-10 Artifact Testing Guide (Current Branch)
+
+Two CI artifacts are produced per build. This guide tells you which to test and in what order.
+
+### Step 1 — Test `POPSLOADER-HDD-DIAGNOSTIC` first
+
+The diagnostic artifact is built with `LOADER_ENABLE_DEBUG_COLORS=1` and `LOADER_DIAG_HALT_AFTER_FILEXIO_LOAD=1`. Install it the same way as the standard artifact (same folder layout). Launch an HDD title from the HDD (PFS) menu while `POPSTARTER.ELF` is HDD-resident.
+
+**Expected screen output (diagnostic halt):**
+
+```
+POPSLoader HDD diagnostic
+fileXio ELF load
+target=pfs3:/APPS/PS1_POPSLOADER/POPSTARTER.ELF
+filexio rc=<N> entry=0x<addr> gp=0x<addr>
+halt=after fileXio load
+```
+
+The screen will remain static (the halt loops forever) so you can read all values.
+
+**Interpret the result:**
+
+| Observed screen output | Meaning | Next action |
+|---|---|---|
+| `filexio rc=0` and `entry=0x<non-zero>` | fileXio successfully loaded POPSTARTER.ELF from the correct pfs slot. | Proceed to Step 2 — test the Standard artifact. |
+| `filexio rc=<negative>` and `entry=0x00000000` | fileXio failed to open or read POPSTARTER.ELF. Report the exact `rc` value. | Do NOT test the Standard artifact yet. Report the rc value so the failure can be diagnosed. |
+| Black screen or flash-then-black (no halt visible) | The embedded loader did not reach the fileXio load stage. | Report as "diagnostic halt not reached". |
+| Screen shows `argc check failed` (red background) | Embedded loader received fewer than 2 arguments. | Report as "bad argc". |
+
+**Record the exact `rc`, `entry`, and `gp` values** shown on screen when reporting results.
+
+### Step 2 — Test `POPSLOADER` (standard artifact) only after Step 1 shows `rc=0`
+
+The standard artifact has no diagnostic halts. If Step 1 showed `rc=0` and a valid entry point, install the standard artifact and test the same HDD title launch.
+
+**Expected outcomes:**
+
+| Observed behavior | Meaning |
+|---|---|
+| POPSTARTER output visible (no black screen) | **D-10 PASS** — HDD launch is working. |
+| Black screen | D-10 still failing in standard build despite fileXio load succeeding at diagnostic stage. Report. |
+| Flash then black screen | Same failure mode as previous standard artifacts. Report commit SHA. |
+
+### What to report
+
+For each test run, record in the Run Log below:
+- Date, console model, storage setup (HDD boot + HDD-resident POPSTARTER + HDD game)
+- Which artifact: `POPSLOADER-HDD-DIAGNOSTIC` or `POPSLOADER`
+- Commit SHA (first 7 chars, from `bin/POPSLDR/BUILD_INFO.txt` inside the ZIP)
+- Exact screen text or behavior observed
+- D-10 result: PASS / FAIL + one-line description
+
 ## Current Verification Status
 - CI gates: verified by workflow definition (execution status depends on CI runs).
 - Manual hardware matrix: `Unknown (verify on hardware)` unless run logs are added above.
 - Current known hardware failure: `D-10` is failing on this branch; see `FAILURES.md`.
+- **Current diagnostic halt**: `LOADER_DIAG_HALT_AFTER_FILEXIO_LOAD=1` — halts after `load_elf_via_filexio()` returns; shows `filexio rc=N entry=0x... gp=0x...` on screen. See HDD D-10 Artifact Testing Guide above.
+- **Which artifact to test first**: `POPSLOADER-HDD-DIAGNOSTIC`. See the HDD D-10 Artifact Testing Guide above.
 - Current HDD diagnostic plateau: stable `embedded loader entry` was observed at commit `9eaa040`, but later post-entry halts (`6bddf69`, `11f1dc6`, `78e0ee6`) all collapsed to flash-then-black and did not produce a new durable hardware stage.
 - Current standard-build status: commits `0a0b6e9`, `e55e119`, `26fc65d`, `59be355`, and `d4a604e` have now all been hardware-tested via the standard `POPSLOADER` artifact and still fail `D-10`.
 - Current direct-launch plateau: the mounted HDD `pfs:/...` bypass and its direct-loader variants (`26fc65d`, `59be355`, `d4a604e`) also still black-screened, so the branch is no longer blocked on the older partition-aware embedded-loader path alone.
