@@ -1526,8 +1526,8 @@ UI = {
             local x = cursor_x
             local y = start_y + ((r - 1) * (key_h + key_gap))
             local text_y = y + 4
-            local text_x = x + 1
-            local text_w = key_w - 2
+            local text_x = Round(x + (key_w / 2))
+            local text_w = key_w
             local selected = (UI.PathEditor.row == r and UI.PathEditor.col == c)
             local pressed = UI.PathEditor._IsPressed(r, c)
             local border = Color.new(32, 54, 90, 128)
