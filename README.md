@@ -178,7 +178,9 @@ The workflow uses the `ps2dev/ps2dev` container and validates packaging after bu
 - `U-05` OSDSYS exit:
   - reported fixed.
 - `D-10` HDD POPSTARTER on HDD:
-  - reported failing.
+  - previously reported failing.
+  - C-side unmount conflict has been resolved in source (see `DECISIONS.md`).
+  - hardware re-test is still required.
 - `U-10` BOOT.ELF after HDD page init:
   - one prior artifact was reported good,
   - a later failed experiment regressed it,

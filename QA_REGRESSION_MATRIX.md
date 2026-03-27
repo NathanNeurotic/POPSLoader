@@ -94,6 +94,6 @@ This matrix tracks current behavior across:
 - CI gates: repository-verified by workflow definition.
 - Reported hardware outcomes:
   - `U-05`: reported PASS.
-  - `D-10`: reported FAIL when booted from HDD and launching an HDD title with HDD `POPSTARTER.ELF` sidecar/CWD.
+  - `D-10`: previously reported FAIL when booted from HDD and launching an HDD title with HDD `POPSTARTER.ELF` sidecar/CWD; latest source includes C-side unmount no-op and requires re-test.
   - `U-10`: one artifact was reported good before a later regression experiment; current source has been restored away from that experiment and must be re-tested.
 - All other manual hardware items remain `Unknown (verify on hardware)` unless run logs are added above.

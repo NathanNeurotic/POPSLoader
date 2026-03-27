@@ -10,12 +10,11 @@ Last updated: 2026-03-26
 ## Immediate Priorities
 
 ### 1) HDD POPSTARTER on HDD
-- Reproduce and resolve `D-10`:
+- Re-test `D-10` on hardware after C-side unmount no-op change:
   - POPSLoader booted from HDD,
   - HDD game launched from HDD (PFS),
-  - `POPSTARTER.ELF` resolved from HDD sidecar/CWD or configured HDD path,
-  - current reported result: black-screen hang.
-- Keep `BOOT.ELF` and OSDSYS behavior stable while iterating on this.
+  - `POPSTARTER.ELF` resolved from HDD sidecar/CWD or configured HDD path.
+- Confirm no black-screen and keep `BOOT.ELF`/OSDSYS behavior stable.
 
 ### 2) External exit/launch re-validation
 - Re-run `U-05` (`OSDSYS`) and `U-10` (`BOOT.ELF after HDD page init`) on current source after the last reverted launch-backend experiment.

@@ -54,10 +54,17 @@ Each entry records:
 - Implications: docs and workflow validation must stay synchronized.
 - Evidence: `.github/workflows/compilation.yml`.
 
+### 2026-03-27 — C-side PFS unmount is superseded by Lua multi-slot keep policy
+- Decision: `unmount_pfs_slots_for_exec()` in `src/elf_loader/src/elf.c` is intentionally a no-op.
+- Rationale: Lua launch preparation owns selective keep/unmount behavior and can preserve multiple required slots for HDD-backed POPSTARTER launches.
+- Implications: avoid C-side post-processing that can conflict with Lua-managed HDD slot preservation during external ELF handoff.
+- Evidence: `src/elf_loader/src/elf.c`, `bin/POPSLDR/system.lua`.
+
 ## Open Investigations
 - HDD `POPSTARTER.ELF` when launcher/sidecar/CWD is on HDD:
-  - current reported hardware result is still a black-screen hang.
-  - current code contains path/mount/CWD mitigations, but no final verified fix.
+  - previously reported hardware result was a black-screen hang.
+  - source now includes a C-side unmount no-op to avoid conflict with Lua multi-slot keep behavior.
+  - current status is `Unknown (verify on hardware)` on latest source.
 - `BOOT.ELF` after HDD page init:
   - the last failed backend experiment was reverted in source,
   - current hardware status on that restored source is still `Unknown (verify on hardware)`.
