@@ -522,6 +522,14 @@ end
 local function CollectHddKeepSlots(path, extra_keep_slots)
   local keep = {}
   local slot = ExtractLaunchPfsSlot(path)
+
+  if slot == nil then
+    local resolved = ResolveHddReadablePath(path)
+    if resolved ~= nil then
+      slot = ExtractLaunchPfsSlot(resolved)
+    end
+  end
+
   if slot ~= nil then
     keep[slot] = true
   end
@@ -532,7 +540,7 @@ local function CollectHddKeepSlots(path, extra_keep_slots)
         keep[extra_slot] = true
       end
     end
-  else
+  elseif extra_keep_slots ~= nil then
     local extra_slot = tonumber(extra_keep_slots)
     if extra_slot ~= nil then
       keep[extra_slot] = true
