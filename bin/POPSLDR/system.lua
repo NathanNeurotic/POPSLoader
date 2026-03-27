@@ -822,6 +822,27 @@ local function IsLegacyDefaultPopstarterPath(path)
   return string.match(candidate, "^mass%d*:/pops/popstarter%.elf$") ~= nil
 end
 
+local function ResolveMx4sioMassAliasPath(path)
+  local candidate = tostring(path or "")
+  local relpath = string.match(candidate, "^[Mm][Xx]4[Ss][Ii][Oo]%d*:/(.+)$")
+  if relpath == nil or relpath == "" then
+    return path
+  end
+
+  local root = nil
+  if type(PLDR) == "table" and type(PLDR.GetMX4SIOMassRootNow) == "function" then
+    root = PLDR.GetMX4SIOMassRootNow()
+  end
+  if (type(root) ~= "string" or root == "") and type(PLDR) == "table" and type(PLDR.MX4SIO) == "table" then
+    root = tostring(PLDR.MX4SIO.ROOT or "")
+  end
+  if type(root) ~= "string" or root == "" then
+    return path
+  end
+
+  return EnsureTrailingSlash(root)..relpath
+end
+
 local function ResolvePopstarterPath(path)
   local raw_path = tostring(path or "")
   if IsDefaultRelativePopstarterPath(raw_path) or IsLegacyDefaultPopstarterPath(raw_path) then
@@ -837,6 +858,7 @@ local function ResolvePopstarterPath(path)
   elseif not IsAbsoluteDevicePath(chosen) then
     chosen = JoinPath(APP_DIR_LOCAL, chosen)
   end
+  chosen = ResolveMx4sioMassAliasPath(chosen)
 
   if string.match(string.lower(chosen), "^hdd%d:") ~= nil then
     local resolved_hdd = ResolveHddExecMountedPath(chosen)
