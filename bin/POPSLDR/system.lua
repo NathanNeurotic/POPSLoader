@@ -2000,6 +2000,16 @@ local function AddUniqueStartupPath(out, seen, path)
   table.insert(out, candidate)
 end
 
+local function NormalizeMassRoot(root)
+  if type(root) ~= "string" or root == "" then
+    return nil
+  end
+  if root == "mass0:/" then
+    return "mass:/"
+  end
+  return root
+end
+
 local function AddUniqueMassRoot(out, seen, root)
   local normalized = NormalizeMassRoot(root)
   if normalized == nil or normalized == "" then
@@ -2171,16 +2181,6 @@ local function EnsureMassBackendsReady(mode)
   if type(System) == "table" and type(System.initUSB) == "function" then
     pcall(System.initUSB)
   end
-end
-
-local function NormalizeMassRoot(root)
-  if type(root) ~= "string" or root == "" then
-    return nil
-  end
-  if root == "mass0:/" then
-    return "mass:/"
-  end
-  return root
 end
 
 local function ClassifyMassRootDriver(driver)
