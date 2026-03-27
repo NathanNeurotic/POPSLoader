@@ -95,5 +95,6 @@ This matrix tracks current behavior across:
 - Reported hardware outcomes:
   - `U-05`: reported PASS.
   - `D-10`: reported FAIL when booted from HDD and launching an HDD title with HDD `POPSTARTER.ELF` sidecar/CWD.
+    - current source now adds HDD-backed non-reboot `ExecPS2` cleanup before control transfer; re-run required.
   - `U-10`: one artifact was reported good before a later regression experiment; current source has been restored away from that experiment and must be re-tested.
 - All other manual hardware items remain `Unknown (verify on hardware)` unless run logs are added above.

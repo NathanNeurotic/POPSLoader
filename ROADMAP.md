@@ -15,6 +15,7 @@ Last updated: 2026-03-26
   - HDD game launched from HDD (PFS),
   - `POPSTARTER.ELF` resolved from HDD sidecar/CWD or configured HDD path,
   - current reported result: black-screen hang.
+- Current source now adds HDD-backed non-reboot `ExecPS2` cleanup before transfer; re-run `D-10` on hardware to see whether the remaining hang was stale PFS/SIF state rather than path resolution.
 - Keep `BOOT.ELF` and OSDSYS behavior stable while iterating on this.
 
 ### 2) External exit/launch re-validation

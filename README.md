@@ -56,6 +56,7 @@ The main unresolved hardware issue is:
     - launch an HDD title,
     - POPSTARTER also resolves from HDD sidecar/CWD or configured HDD path,
     - result: black-screen hang.
+  - current source now also tears down stale PFS/SIF state before the HDD-backed non-reboot `ExecPS2` handoff, but hardware re-test is still required.
 
 ## Runtime Behavior (Current Code)
 
@@ -179,6 +180,7 @@ The workflow uses the `ps2dev/ps2dev` container and validates packaging after bu
   - reported fixed.
 - `D-10` HDD POPSTARTER on HDD:
   - reported failing.
+  - current source adds HDD-backed non-reboot `ExecPS2` cleanup before transfer of control.
 - `U-10` BOOT.ELF after HDD page init:
   - one prior artifact was reported good,
   - a later failed experiment regressed it,
