@@ -56,8 +56,8 @@ Each entry records:
 
 ## Open Investigations
 - HDD `POPSTARTER.ELF` when launcher/sidecar/CWD is on HDD:
-  - current reported hardware result is still a black-screen hang.
-  - current code contains path/mount/CWD mitigations, but no final verified fix.
+  - current status: A fix has been implemented to resolve libc-related exceptions within the embedded loader (`loader.c`).
+  - previous reported hardware result was a black-screen hang. Hardware verification of the fix is required.
 - `BOOT.ELF` after HDD page init:
   - the last failed backend experiment was reverted in source,
   - current hardware status on that restored source is still `Unknown (verify on hardware)`.

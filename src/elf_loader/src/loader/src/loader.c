@@ -17,7 +17,12 @@
 #include <sifrpc.h>
 #include <errno.h>
 #include <ps2sdkapi.h>
-#define DPRINTF(x...) printf(x)
+#include <sio.h>
+
+#define DPRINTF(fmt, args...) \
+	do { \
+		sio_printf(fmt, ##args); \
+	} while (0)
 
 #ifdef LOADER_ENABLE_DEBUG_COLORS
 #define SET_GS_BGCOLOUR(colour) {*((volatile unsigned long int *)0x120000E0) = colour;}
@@ -61,7 +66,7 @@
 static void wipeUserMem(void)
 {
 	int i;
-	for (i = 0x100000; i < GetMemorySize(); i += 64) {
+	for (i = 0x100000; i < GetMemorySize() - 0x100000; i += 64) {
 		asm volatile(
 			"\tsq $0, 0(%0) \n"
 			"\tsq $0, 16(%0) \n"
@@ -94,7 +99,12 @@ int main(int argc, char *argv[])
 		SET_GS_BGCOLOUR(RED_BG);
 		return -EINVAL;
 	}
-	snprintf(target_path, sizeof(target_path), "%s", argv[0] ? argv[0] : "");
+	if (argv[0]) {
+		strncpy(target_path, argv[0], sizeof(target_path) - 1);
+		target_path[sizeof(target_path) - 1] = '\0';
+	} else {
+		target_path[0] = '\0';
+	}
 	target_argc = argc - 1;
 	if (target_argc > 32) {
 		return -E2BIG;
@@ -109,6 +119,8 @@ int main(int argc, char *argv[])
 		target_arg_offset += arg_len;
 	}
 	target_argv[target_argc] = NULL;
+
+	sio_init(38400, 0, 0, 0, 0);
 
 	DPRINTF("> argv[0] = %s\n", argv[0]);
 	for (i = 1; i < argc; i++) {

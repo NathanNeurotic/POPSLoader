@@ -40,7 +40,7 @@ That package contract is enforced by `.github/workflows/compilation.yml`.
 | MMCE menu path | Implemented in code | Unknown (verify on hardware) |
 | MX4SIO menu path | Implemented in code | Unknown (verify on hardware) |
 | USB menu path | Implemented in code | Unknown (verify on hardware) |
-| HDD (PFS) menu path | Implemented in code | Mixed; HDD POPSTARTER-on-HDD handoff still failing |
+| HDD (PFS) menu path | Implemented in code | Fix implemented for D-10; pending hardware verification |
 | Disc (`DKWDRV`) menu path | Implemented in code | Unknown (verify on hardware) |
 | Exit to OSDSYS | Implemented in code | Reported PASS |
 | Exit to `BOOT.ELF` | Implemented in code | Current source needs re-test after last reverted regression |
@@ -49,13 +49,14 @@ That package contract is enforced by `.github/workflows/compilation.yml`.
 
 ### Current known unresolved issue
 
-The main unresolved hardware issue is:
+The main unresolved hardware issue was:
 - HDD `POPSTARTER.ELF` on HDD sidecar/CWD (`D-10`)
   - repro reported so far:
     - boot POPSLoader from HDD,
     - launch an HDD title,
     - POPSTARTER also resolves from HDD sidecar/CWD or configured HDD path,
     - result: black-screen hang.
+  - Investigation identified hardware exceptions occurring in the embedded loader (`loader.c`) due to the usage of `snprintf` and `printf` on uninitialized libc/newlib structures. A fix has been implemented to replace these with safe string primitives (`strncpy`) and `sio_printf` for bare-metal debugging. This is pending hardware verification.
 
 ## Runtime Behavior (Current Code)
 
@@ -178,7 +179,8 @@ The workflow uses the `ps2dev/ps2dev` container and validates packaging after bu
 - `U-05` OSDSYS exit:
   - reported fixed.
 - `D-10` HDD POPSTARTER on HDD:
-  - reported failing.
+  - Fix implemented (removed uninitialized libc dependencies in embedded loader). Pending hardware verification.
+  - previous status: reported failing.
 - `U-10` BOOT.ELF after HDD page init:
   - one prior artifact was reported good,
   - a later failed experiment regressed it,

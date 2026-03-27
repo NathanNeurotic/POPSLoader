@@ -14,7 +14,7 @@ Last updated: 2026-03-26
   - POPSLoader booted from HDD,
   - HDD game launched from HDD (PFS),
   - `POPSTARTER.ELF` resolved from HDD sidecar/CWD or configured HDD path,
-  - current reported result: black-screen hang.
+  - current status: A fix has been implemented to resolve libc-related exceptions within the embedded loader (`loader.c`). Hardware verification is required.
 - Keep `BOOT.ELF` and OSDSYS behavior stable while iterating on this.
 
 ### 2) External exit/launch re-validation
