@@ -95,8 +95,10 @@ This matrix tracks current behavior across:
 - Reported hardware outcomes:
   - `U-05`: reported PASS.
   - `D-10`: reported FAIL when booted from HDD and launching an HDD title with HDD `POPSTARTER.ELF` sidecar/CWD.
-  - `U-10`: one artifact was reported good before a later regression experiment; current source has been restored away from that experiment, includes an HDD selector/CWD mitigation under test, and must be re-tested.
-- Repo-verified `D-10` mitigation now in source (hardware unverified):
+  - `D-10` follow-up: selector/CWD mitigation attempt still black-screened when booted from HDD and launching HDD with POPSTARTER on HDD.
+  - `U-10`: one artifact was reported good before a later regression experiment; current source has been restored away from that experiment, now includes selector/CWD + exec-slot preservation mitigations under test, and must be re-tested.
+- Repo-verified `D-10` mitigations now in source (hardware unverified):
   - HDD launch rewrites selector/bootparam to absolute mounted `pfsN:/<title>.ELF` when mount prep succeeds.
   - HDD launch context no longer forces launch CWD to HDD game mount root (launch CWD now falls back to POPSTARTER path directory behavior).
+  - HDD launch now resolves/preserves POPSTARTER executable PFS slot and preserves the union of game-slot + exec-slot during launch keep-mask/unmount prep.
 - All other manual hardware items remain `Unknown (verify on hardware)` unless run logs are added above.

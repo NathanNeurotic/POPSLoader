@@ -57,13 +57,20 @@ Each entry records:
 ### 2026-03-27 — HDD selector/CWD mitigation staged for `D-10` investigation
 - Decision: for HDD game launches, when HDD mount prep succeeds, pass selector/bootparam as absolute mounted `pfsN:/<title>.ELF` and stop forcing launch CWD to the mounted game partition root.
 - Rationale: current remaining failure (`D-10`) is a black-screen when POPSTARTER itself is on HDD, and repo flow still mixed a relative selector with HDD-root CWD forcing.
-- Implications: this is a narrow mitigation under test, not a validated hardware fix; `U-05` and `U-10` must be re-checked alongside `D-10`.
+- Implications: this was a narrow mitigation under test and is now known insufficient by follow-up hardware report; `U-05` and `U-10` still must be re-checked alongside `D-10`.
 - Evidence: `bin/POPSLDR/system.lua` (`PLDR.RunPOPStarterGame`, HDD branch and launch context assembly).
+
+### 2026-03-27 — Preserve POPSTARTER executable PFS slot during HDD exec handoff
+- Decision: resolve the POPSTARTER exec path to a mounted PFS path when possible and explicitly preserve its PFS slot alongside the HDD game slot during launch prep.
+- Rationale: follow-up hardware result kept black-screening after selector/CWD adjustment, pointing to slot-loss risk across launch unmount/keep-mask prep.
+- Implications: this is another mitigation under test, not a validated fix; preserve only required slot union (game slot + exec slot + existing boot-preservation behavior), not all slots.
+- Evidence: `bin/POPSLDR/system.lua` (`ResolveExecPathAndKeepSlot`, `RunPOPStarterGame`, `PrepareForExternalELFLaunch`), `src/elf_loader/src/elf.c` (`build_exec_keep_mask`).
 
 ## Open Investigations
 - HDD `POPSTARTER.ELF` when launcher/sidecar/CWD is on HDD:
   - current reported hardware result is still a black-screen hang.
-  - source now includes absolute-selector plus CWD fallback mitigation, but no final verified hardware fix yet.
+  - selector/CWD mitigation alone was insufficient on hardware.
+  - source now includes absolute-selector + CWD fallback + exec-slot preservation mitigations, but no final verified hardware fix yet.
 - `BOOT.ELF` after HDD page init:
   - the last failed backend experiment was reverted in source,
   - current hardware status on that restored source is still `Unknown (verify on hardware)`.
