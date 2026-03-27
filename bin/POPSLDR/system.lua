@@ -768,6 +768,43 @@ local function DirectoryFromExecPath(path)
   return nil
 end
 
+local function CaptureCurrentDirectory()
+  if type(System) ~= "table" or type(System.currentDirectory) ~= "function" then
+    return nil
+  end
+  local ok, cwd = pcall(System.currentDirectory)
+  if ok and type(cwd) == "string" and cwd ~= "" then
+    return EnsureTrailingSlashNormRaw(cwd)
+  end
+  return nil
+end
+
+local function SetLaunchWorkingDirectory(path)
+  local previous_cwd = CaptureCurrentDirectory()
+  local launch_dir = DirectoryFromExecPath(path)
+  if launch_dir == nil or launch_dir == "" then
+    return previous_cwd
+  end
+  local normalized_launch_dir = EnsureTrailingSlashNormRaw(launch_dir)
+  if previous_cwd == normalized_launch_dir then
+    return previous_cwd
+  end
+  if type(System) == "table" and type(System.currentDirectory) == "function" then
+    pcall(System.currentDirectory, normalized_launch_dir)
+  end
+  return previous_cwd
+end
+
+local function RestoreWorkingDirectory(path)
+  local previous_cwd = tostring(path or "")
+  if previous_cwd == "" then
+    return
+  end
+  if type(System) == "table" and type(System.currentDirectory) == "function" then
+    pcall(System.currentDirectory, previous_cwd)
+  end
+end
+
 local function ResolveHddBootSidecarPopstarter()
   local mounted_candidates = {}
   local hdd_candidates = {}
@@ -949,6 +986,14 @@ end
 
 function PLDR.PrepareForExternalELFLaunch(path, extra_keep_slots)
   return PrepareForExternalELFLaunch(path, extra_keep_slots)
+end
+
+function PLDR.SetLaunchWorkingDirectory(path)
+  return SetLaunchWorkingDirectory(path)
+end
+
+function PLDR.RestoreWorkingDirectory(path)
+  return RestoreWorkingDirectory(path)
 end
 
 local function DetectBootDevice()
@@ -3248,6 +3293,7 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   if open_path ~= nil and open_path ~= popstarter then
     popstarter = open_path
   end
+  local previous_cwd = SetLaunchWorkingDirectory(popstarter)
   local exec_args = argv or {}
   SetLaunchPhase(LaunchState.PHASE_FADEOUT)
   UI.LAUNCHING = true
@@ -3266,6 +3312,7 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
       nil,
       nil
     )
+    RestoreWorkingDirectory(previous_cwd)
     return
   end
   SetLaunchPhase(LaunchState.PHASE_EXEC)
@@ -3289,8 +3336,10 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
       nil,
       nil
     )
+    RestoreWorkingDirectory(previous_cwd)
     return
   end
+  RestoreWorkingDirectory(previous_cwd)
   BlockLaunchFailure(
     rc,
     popstarter,
