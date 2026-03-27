@@ -1,4 +1,4 @@
-Last updated: 2026-03-06
+Last updated: 2026-03-26
 
 # COMPONENTS
 
@@ -10,14 +10,15 @@ Current technical map of POPSLoader modules, ownership boundaries, and entry poi
 ### Launcher runtime (`src/`)
 - EE bootstrap and runtime services.
 - Key files:
-  - `src/main.cpp` (startup, IOP/EE init, Lua boot execution)
-  - `src/luaplayer.cpp` (embedded Lua VM and loader policy)
-  - `src/luasystem.cpp` (Lua `System.*` bindings)
-  - `src/luaHDD.cpp` (Lua `HDD.*` bindings)
-  - `src/embed_assets.cpp` (embedded asset lookup table)
+  - `src/main.cpp`
+  - `src/luaplayer.cpp`
+  - `src/luasystem.cpp`
+  - `src/luaHDD.cpp`
+  - `src/elf_loader/src/elf.c`
+  - `src/embed_assets.cpp`
 
 ### Lua app layer (`bin/POPSLDR/`)
-- User-visible behavior, menu flow, device selection, launch orchestration.
+- User-visible launcher behavior.
 - Key files:
   - `bin/POPSLDR/system.lua`
   - `bin/POPSLDR/ui.lua`
@@ -25,52 +26,85 @@ Current technical map of POPSLoader modules, ownership boundaries, and entry poi
   - `bin/POPSLDR/pops_profiles.lua`
 
 ### Boot script (`etc/`)
-- `etc/boot.lua` initializes boot font and transfers control to Lua app layer.
+- `etc/boot.lua` initializes the runtime font and transfers control to `system.lua`.
 
 ### IOP modules and RPC (`iop/`)
-- Embedded IRX payloads and backend query module source.
+- Embedded IRX payloads and backend query helpers.
 - Key paths:
-  - `iop/embed/` (IRX payloads)
-  - `iop/bdm_query/` (RPC module for BDM backend list)
+  - `iop/embed/`
+  - `iop/bdm_query/`
 
 ### Controller modules (`modules/`)
-- DS3/DS4 related support modules and pademu payloads.
-- Key paths:
-  - `modules/ds34bt`
-  - `modules/ds34usb`
-  - `modules/pademu`
+- DS3/DS4 support and pad-emulation payloads.
 
 ### Build/package pipeline
-- `Makefile` embeds assets/IRX and builds `bin/POPSLOADER.ELF`.
-- `.github/workflows/compilation.yml` compiles and verifies release ZIP manifest.
+- `Makefile` builds and embeds the runtime.
+- `.github/workflows/compilation.yml` packages the release ZIP and verifies its exact contents.
 
 ## Runtime Functional Ownership
 
 ### Settings and BDMA management
-- Owner: `bin/POPSLDR/system.lua` + settings scene in `bin/POPSLDR/ui.lua`.
-- Persists settings in `mc0:/POPSTARTER/.pldrs`.
-- Applies BDMA mode by copying/removing required files in `mc0:/POPSTARTER/`.
+- Primary owner: `bin/POPSLDR/system.lua`
+- UI owner: `bin/POPSLDR/ui.lua`
+- Current persisted settings include:
+  - selected profile,
+  - POPSTARTER path,
+  - DKWDRV path,
+  - video standard,
+  - hide-text mode,
+  - keyboard layout,
+  - BDMA mode.
 
-### Device discovery and classification
-- Owner: `bin/POPSLDR/system.lua` using `System.*` APIs from `src/luasystem.cpp`.
-- USB vs MX4SIO split is mount-driver based (`mx4`/`sdc` => MX4SIO).
+### Device discovery and startup readiness
+- Primary owner: `bin/POPSLDR/system.lua`
+- Native support: `src/luasystem.cpp`, `src/luaHDD.cpp`
+- Responsibilities:
+  - USB vs MX4SIO classification,
+  - MMCE slot detection,
+  - HDD status/module load,
+  - startup backend auto-init based on boot/configured paths.
 
-### Launch handoff
-- Owner: `bin/POPSLDR/system.lua` (`PLDR.RunPOPStarterGame`).
-- Backend-specific launch policy and argv shaping, then `System.loadELF`.
+### Launch and exit handoff
+- Primary owner: `bin/POPSLDR/system.lua`
+- UI entry points: `bin/POPSLDR/ui.lua`
+- Native handoff: `src/luasystem.cpp`, `src/elf_loader/src/elf.c`
+- Responsibilities:
+  - POPSTARTER path resolution,
+  - selector/argv shaping,
+  - HDD mount-slot preservation,
+  - `BOOT.ELF` and `DKWDRV.ELF` launch,
+  - OSDSYS/browser exit.
 
 ### UI/UX and scene state
-- Owner: `bin/POPSLDR/ui.lua`.
-- Includes transition engine, settings editor, notifications/modals, cover preview cache, hide-text toggle.
+- Owner: `bin/POPSLDR/ui.lua`
+- Includes:
+  - main menu and device scenes,
+  - settings page,
+  - on-screen keyboard/path editor,
+  - cover preview cache,
+  - busy/progress overlays,
+  - exit modal.
+
+### Cover/art behavior
+- Owner: `bin/POPSLDR/ui.lua`
+- Current supported cover sources:
+  - `<game>.png` beside the selected `.VCD`,
+  - `hdd0:__common/POPS/ART/<title>.png` for HDD entries.
 
 ## Current Feature Surface by Main Menu Option
-- `MMCE`: implemented.
-- `MX4SIO`: implemented (with bounded retries).
-- `HDD (exFAT)`: not implemented (explicit notification).
-- `HDD (PFS)`: implemented.
-- `USB`: implemented.
-- `SMB (v1)`: not implemented (explicit notification).
-- `Disc (DKWDRV)`: implemented via modal launch path.
+- `MMCE`: implemented in code.
+- `MX4SIO`: implemented in code.
+- `HDD (PFS)`: implemented in code.
+- `USB`: implemented in code.
+- `Disc (DKWDRV)`: implemented in code.
+- `HDD (exFAT)`: not implemented.
+- `SMB (v1)`: not implemented.
+
+## Current Validation Hotspots
+- HDD POPSTARTER when POPSTARTER itself resolves from HDD (`D-10`).
+- BOOT.ELF after HDD page initialization (`U-10`).
+- OSDSYS after HDD page initialization (`U-05`).
+- PAL UI aspect verification (`U-06`).
 
 ## Primary Change Entry Points
 - Settings persistence/apply issues:
@@ -80,10 +114,10 @@ Current technical map of POPSLoader modules, ownership boundaries, and entry poi
   - `bin/POPSLDR/system.lua`
   - `src/luasystem.cpp`
   - `iop/bdm_query/bdm_query.c`
-- Launch handoff/argv issues:
+- Launch handoff/argv/path issues:
   - `bin/POPSLDR/system.lua`
-  - `src/elf_loader/src/elf.c`
   - `src/luasystem.cpp`
-- Packaging/release content issues:
+  - `src/elf_loader/src/elf.c`
+- Packaging/release issues:
   - `Makefile`
   - `.github/workflows/compilation.yml`

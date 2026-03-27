@@ -1,13 +1,13 @@
 ## AI Docs
-Last updated: 2026-03-06
+Last updated: 2026-03-26
 
 ### Purpose
 Operational guidance for AI agents working in this repository.
 
 ### Source-of-Truth Rule
-- Prefer verified claims tied to repository code, build scripts, and workflow files.
-- If a claim cannot be proven from repository sources, mark it as `Unknown (verify on hardware)`.
-- For behavior claims, cite at least one concrete file path in task output.
+- Prefer claims tied to current repository files, workflow definitions, and recorded hardware outcomes in `QA_REGRESSION_MATRIX.md`.
+- If a hardware/runtime claim cannot be proven from code or a recorded run result, mark it as `Unknown (verify on hardware)`.
+- Separate repo-verified facts from hardware-reported results in task output.
 
 ### Scope
 - Allowed: task-focused edits to requested files.
@@ -22,6 +22,7 @@ Changes in these files can break core behavior and require extra care:
 - `src/main.cpp`
 - `src/luasystem.cpp`
 - `src/luaplayer.cpp`
+- `src/elf_loader/src/elf.c`
 - `Makefile`
 - `.github/workflows/compilation.yml`
 
@@ -46,9 +47,10 @@ Changes in these files can break core behavior and require extra care:
 
 ### Documentation Expectations
 When updating docs:
-- Remove stale claims that are not backed by current code.
-- Keep status pages (`STATE.md`, `ROADMAP.md`, `DECISIONS.md`) consistent with each other.
-- Keep invariant pages (`RULES.md`, `TRUTHSHEET.md`) aligned with actual runtime behavior.
+- Keep `README.md`, `STATE.md`, `ROADMAP.md`, `DECISIONS.md`, and `QA_REGRESSION_MATRIX.md` synchronized.
+- Remove stale branch names, stale feature claims, and outdated decisions.
+- Do not silently carry forward old “fixed” claims when the only evidence is a prior chat report.
+- If a regression was reported on hardware, record that result explicitly.
 
 ### Communication Format
 Use this report structure in task responses:

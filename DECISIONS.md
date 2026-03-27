@@ -1,4 +1,4 @@
-Last updated: 2026-03-06
+Last updated: 2026-03-26
 
 # DECISIONS
 
@@ -13,42 +13,54 @@ Each entry records:
 ## Decision Log
 
 ### 2026-03-06 — Lua runtime is embedded-only at boot
-- Decision: boot and required Lua modules are loaded from embedded blobs, not filesystem Lua files.
-- Rationale: deterministic startup and reduced dependency on external script layout.
-- Implications: changing boot/runtime Lua behavior requires updating embedded sources and rebuild.
+- Decision: boot and required runtime Lua modules are loaded from embedded blobs, not loose filesystem Lua files.
+- Rationale: deterministic startup and fewer layout-dependent failures.
+- Implications: editing runtime Lua requires rebuilding the ELF.
 - Evidence: `src/luaplayer.cpp`, `etc/boot.lua`, `Makefile`.
 
 ### 2026-03-06 — Settings persist as a transaction on Settings/Profile exit
-- Decision: settings edits are staged in UI draft state and committed on confirm/leave through commit flow.
-- Rationale: avoids repeated writes while navigating options; preserves atomic save/apply semantics.
-- Implications: per-button changes inside Settings should not write immediately to `.pldrs`.
-- Evidence: `bin/POPSLDR/ui.lua` (`queue_exit`), `bin/POPSLDR/system.lua` (`CommitSettingsChanges`, `SaveSettingsAtomic`).
+- Decision: settings edits are staged in UI draft state and committed on confirm/leave.
+- Rationale: avoid repeated writes while navigating and keep save/apply failure handling explicit.
+- Implications: runtime/UI state sync must still happen if save/apply fails.
+- Evidence: `bin/POPSLDR/ui.lua`, `bin/POPSLDR/system.lua`.
 
-### 2026-03-06 — Mount-driver identity is authoritative for USB vs MX4SIO split
-- Decision: classify mounted mass roots by mount-driver (`getMassMountDriver`) where `mx4`/`sdc` means MX4SIO.
-- Rationale: path-prefix heuristics alone are not reliable when devices expose `mass*:/` roots.
-- Implications: list building and scene behavior must continue to consume classified roots, not guessed roots.
-- Evidence: `bin/POPSLDR/system.lua` (`ClassifyMassRootDriver`, `BuildMassRootIdentity`), `src/luasystem.cpp` (`lua_get_mass_mount_driver`).
+### 2026-03-26 — USB vs MX4SIO identity is authoritative by mount driver
+- Decision: mounted mass roots are classified by driver identity, not by path spelling.
+- Rationale: real hardware can expose both USB and MX4SIO through `mass*:/`.
+- Implications: startup auto-init, boot-device labeling, and page list building must continue to use mount-driver queries.
+- Evidence: `bin/POPSLDR/system.lua`, `src/luasystem.cpp`.
 
-### 2026-03-06 — `mc?:/` path alias is supported for executable resolution
-- Decision: configured paths using `mc?:/` are expanded to `mc0:/` then `mc1:/` during probe/launch checks.
-- Rationale: improves compatibility across consoles/cards without requiring manual path rewrites.
-- Implications: POPStarter and DKWDRV path validation must continue using alias-expansion helpers.
-- Evidence: `bin/POPSLDR/system.lua` (`ExpandMcAlias`, `ResolveFirstExistingPath`, `ResolvePathWithEnsure`), `bin/POPSLDR/ui.lua` (DKWDRV launch modal).
+### 2026-03-26 — Runtime device locks are no longer enforced
+- Decision: the old per-session device lock system is no longer an active runtime constraint.
+- Rationale: device access should not be blocked by stale lock state.
+- Implications: docs must not claim that switching devices requires restart; future changes must not silently reintroduce that gate.
+- Evidence: `bin/POPSLDR/ui.lua` (`canEnterDevice`, `setDeviceLock`).
 
-### 2026-03-06 — Release ZIP contract is strict and PATCH_5-based
-- Decision: CI package includes exact `PS1_POPSLOADER/*` launcher files plus `POPS/PATCH_5.BIN` and rejects legacy `POPS/*.tm2` entries.
-- Rationale: avoid packaging drift and guarantee predictable release payload.
-- Implications: packaging changes require synchronized updates to workflow validation logic.
+### 2026-03-26 — Startup backend initialization is path-driven
+- Decision: startup backend auto-init considers boot paths and configured executable/profile paths, not just the page the user opens first.
+- Rationale: a configured POPSTARTER/DKWDRV/profile path can require backend drivers before any device page is visited.
+- Implications: startup docs and validation must cover boot source plus configured paths.
+- Evidence: `bin/POPSLDR/system.lua` (`CollectStartupBackendTargets`, `AutoInitStartupBackends`).
+
+### 2026-03-26 — PAL UI uses the same 640x448 raster layout as NTSC-authored UI assets
+- Decision: PAL mode keeps the UI raster at `640x448` instead of stretching the authored layout vertically.
+- Rationale: reduce PAL squish on menus and authored UI assets.
+- Implications: final on-TV proportions still require hardware confirmation.
+- Evidence: `bin/POPSLDR/system.lua`, `bin/POPSLDR/ui.lua`.
+
+### 2026-03-26 — Release ZIP contract is strict and PATCH_5-based
+- Decision: CI package includes exact `PS1_POPSLOADER/*` launcher files plus `POPS/PATCH_5.BIN`, and rejects legacy `POPS/*.tm2` payloads.
+- Rationale: prevent release drift and ambiguous installation instructions.
+- Implications: docs and workflow validation must stay synchronized.
 - Evidence: `.github/workflows/compilation.yml`.
 
-### 2026-03-06 — Device-family lock is enforced per session
-- Decision: once a device family is selected/locked in session (or constrained by boot source), incompatible family transitions are blocked with UI feedback.
-- Rationale: prevents unstable runtime state from mixing already-loaded driver paths in one session.
-- Implications: cross-family switching requires restart.
-- Evidence: `bin/POPSLDR/ui.lua` (`DEVLOCK`, `canEnterDevice`, lock modal), `bin/POPSLDR/system.lua` (`DetectBootDevice` lock setup).
-
-## Pending Decisions
-- ART system design (source of truth, cache policy, fallback policy).
-- SMB feature implementation contract (launcher handoff, error UX, storage assumptions).
-- HDD exFAT feature model and relationship to existing BDMA settings.
+## Open Investigations
+- HDD `POPSTARTER.ELF` when launcher/sidecar/CWD is on HDD:
+  - current reported hardware result is still a black-screen hang.
+  - current code contains path/mount/CWD mitigations, but no final verified fix.
+- `BOOT.ELF` after HDD page init:
+  - the last failed backend experiment was reverted in source,
+  - current hardware status on that restored source is still `Unknown (verify on hardware)`.
+- PAL asset proportions:
+  - code compensates for PAL layout,
+  - final display result still needs hardware confirmation.

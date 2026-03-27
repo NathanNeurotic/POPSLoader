@@ -995,30 +995,6 @@ static int lua_loadELF(lua_State *L)
 	return 1;
 }
 
-static int lua_loadELFLoadExec(lua_State *L)
-{
-	int argc = lua_gettop(L);
-	if (argc < 1) return luaL_error(L, "%s(path, argv0): not enough args", __FUNCTION__);
-	const char *elftoload = luaL_checkstring(L, 1);
-	if (argc >= 2 && !lua_isnil(L, 2)) {
-		static char argv0_buf[256];
-		static char *argv_static[2];
-		const char *argv0 = luaL_checkstring(L, 2);
-		snprintf(argv0_buf, sizeof(argv0_buf), "%s", argv0 ? argv0 : "");
-		argv_static[0] = argv0_buf;
-		argv_static[1] = NULL;
-		int rc = LoadELFFromFile(elftoload, 1, argv_static);
-		ClearExecKeepPfsMask();
-		lua_pushinteger(L, rc);
-		return 1;
-	}
-	int rc = LoadELFFromFile(elftoload, 0, NULL);
-	ClearExecKeepPfsMask();
-	lua_pushinteger(L, rc);
-	return 1;
-}
-
-
 static int lua_loadELFRebootIOP(lua_State *L)
 {
 	int argc = lua_gettop(L);
@@ -1345,7 +1321,6 @@ static const luaL_Reg System_functions[] = {
 	{"exitToBrowser",                  lua_exit},
 	{"getMCInfo",                 lua_getmcinfo},
 	{"loadELF",                 	lua_loadELF},
-	{"loadELFLoadExec",         	lua_loadELFLoadExec},
 	{"loadELFRebootIOP",        	lua_loadELFRebootIOP},
 	{"setExecKeepPfsMask",      lua_set_exec_keep_pfs_mask},
 	{"checkValidDisc",       lua_checkValidDisc},

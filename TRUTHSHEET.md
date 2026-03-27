@@ -1,4 +1,4 @@
-Last updated: 2026-03-06
+Last updated: 2026-03-26
 
 # TRUTHSHEET
 
@@ -10,11 +10,11 @@ Non-negotiable behavioral invariants that changes must preserve unless an explic
 ### Truth 1: Boot/runtime Lua is embedded-only
 - Scope: `src/luaplayer.cpp`, `etc/boot.lua`, `Makefile`.
 - Rationale: deterministic startup and no dependency on external Lua script files.
-- Verification: confirm embedded searcher install + disabled filesystem loaders + embedded script table includes boot/runtime scripts.
+- Verification: embedded searcher is installed, filesystem Lua loaders are disabled, and required runtime Lua blobs are embedded.
 
 ### Truth 2: Settings persistence is transactional
 - Scope: `bin/POPSLDR/ui.lua`, `bin/POPSLDR/system.lua`.
-- Rationale: avoid per-navigation writes and keep save/apply failure handling explicit.
+- Rationale: avoid immediate writes while navigating and keep save/apply failure handling explicit.
 - Verification: edits stage in drafts; `CommitSettingsChanges` runs on confirm/leave; persisted file is `mc0:/POPSTARTER/.pldrs`.
 
 ### Truth 3: USB vs MX4SIO identity comes from mount driver
@@ -22,24 +22,39 @@ Non-negotiable behavioral invariants that changes must preserve unless an explic
 - Rationale: root-name/path heuristics are insufficient across real device layouts.
 - Verification: classification uses `System.getMassMountDriver`; `mx4`/`sdc` classify as MX4SIO.
 
-### Truth 4: Probe/retry loops are bounded
+### Truth 4: Startup backend auto-init is path-driven
+- Scope: `bin/POPSLDR/system.lua`.
+- Rationale: boot source alone is not enough; configured POPSTARTER/DKWDRV/profile paths can also require backend init before the first page visit.
+- Verification: startup target collection uses boot paths plus configured executable/profile paths, then initializes USB/MMCE/MX4SIO/HDD as needed.
+
+### Truth 5: Runtime device selection is not hard-locked
+- Scope: `bin/POPSLDR/ui.lua`.
+- Rationale: the old per-session device lock system was intentionally removed.
+- Verification: `canEnterDevice()` always returns `true`, and `setDeviceLock()` is a no-op.
+
+### Truth 6: Probe/retry loops are bounded
 - Scope: `bin/POPSLDR/system.lua`, `bin/POPSLDR/ui.lua`.
 - Rationale: prevent frame stalls/hangs and unpredictable behavior.
-- Verification: MX4SIO and backend probe loops have finite attempt counts; no unbounded polling introduced.
+- Verification: backend probe loops and progress/report loops have finite attempt counts and fixed phases.
 
-### Truth 5: Launch failure feedback must be explicit
+### Truth 7: Launch failure feedback must be explicit
 - Scope: `bin/POPSLDR/ui.lua`, `bin/POPSLDR/system.lua`.
-- Rationale: launcher must not fail silently on missing executables or launch handoff issues.
+- Rationale: launcher must not fail silently on missing executables or returned launch handoffs.
 - Verification: missing POPStarter/DKWDRV paths and launch return failures produce user-visible notifications/screens.
 
-### Truth 6: Release package manifest is strict
+### Truth 8: Release package manifest is strict
 - Scope: `.github/workflows/compilation.yml`.
 - Rationale: prevent accidental release payload drift.
-- Verification: CI enforces exact expected ZIP set and rejects legacy `POPS/*.tm2` payload entries.
+- Verification: CI enforces the exact expected ZIP set and rejects legacy `POPS/*.tm2` payload entries.
 
 ## Current Not-Implemented Truths
 - `HDD (exFAT)` main-menu path is intentionally not implemented and must continue to report that status until feature work lands.
 - `SMB (v1)` main-menu path is intentionally not implemented and must continue to report that status until feature work lands.
+
+## Current Unresolved Hardware Markers
+- `D-10`: HDD `POPSTARTER.ELF` on HDD sidecar/CWD is still reported to black-screen on hardware.
+- `U-10`: `BOOT.ELF` after HDD page init must be re-verified on current source after the last reverted regression experiment.
+- `U-06`: PAL/NTSC menu asset proportions still need hardware confirmation.
 
 ## Add-New-Truth Template
 ```markdown

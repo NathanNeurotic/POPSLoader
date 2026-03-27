@@ -1,16 +1,20 @@
 # POPSLoader Regression Matrix
 
 Last updated: 2026-03-26
-Target branch: `BETA-8-5`
+Target branch: `BETA-10-play`
 
 ## Scope
 This matrix tracks current behavior across:
 - settings load/save/apply transaction flow,
-- settings return/discard behavior and persisted UI preferences,
+- persisted UI preferences (`video`, `hide-text`, `keyboard layout`),
 - launch path validation and error feedback,
+- startup backend auto-init,
 - USB/MMCE/MX4SIO/HDD page behavior,
-- on-screen keyboard/path editor behavior and long-running busy overlays,
-- `mc?:/` alias path resolution,
+- removed runtime device-lock behavior,
+- on-screen keyboard behavior,
+- busy/progress overlays,
+- cover art behavior,
+- exit handoff behavior,
 - currently unimplemented menu options (`HDD (exFAT)`, `SMB (v1)`),
 - release package validation gates.
 
@@ -32,10 +36,11 @@ This matrix tracks current behavior across:
 | S-02 | Staged edits are not immediate writes | Change settings rows but do not leave Settings | Hard-exit app | Prior persisted values remain |
 | S-03 | Commit on exit | Change profile/paths/BDMA and confirm or leave | Reopen Settings | Values persist and reload |
 | S-04 | Save failure feedback | Make `mc0:/POPSTARTER` unavailable | Leave Settings with changes | User sees explicit save/apply error notification |
-| S-05 | BDMA mode restore from marker | Prepare `.pldr_bdma_mode` marker | Boot and open Settings | selected BDMA mode reflects effective marker state |
+| S-05 | BDMA mode restore from marker | Prepare `.pldr_bdma_mode` marker | Boot and open Settings | Selected BDMA mode reflects effective marker state |
 | S-06 | Back discards staged settings | Open Settings from a non-main scene and change profile/path/video/hide-text state | Press `O Back` | Returns to the originating scene without saving; reopening Settings shows prior runtime/persisted values |
 | S-07 | Video standard persistence | Set Video Standard to `PAL` or `NTSC` and save | Reboot/relaunch and reopen Settings | Selected video standard reloads from settings and runtime video mode matches the saved value |
 | S-08 | Hide-text persistence | Open Settings, press `Select`, then save | Reboot/relaunch and reopen Settings | Hidden/shown UI state reloads from settings and matches the last saved toggle state |
+| S-09 | Keyboard layout persistence | Set keyboard layout to `ABC`, `QWERTY`, or `DVORAK` and save | Reboot/relaunch and reopen the path editor | Selected keyboard layout reloads from settings and the keyboard opens in that layout |
 
 ### Launch and path handling
 | ID | Area | Setup | Action | Pass Criteria |
@@ -60,9 +65,10 @@ This matrix tracks current behavior across:
 | D-07 | SMB option status | any setup | Select `SMB (v1)` | UI shows `Not Implemented Yet` |
 | D-08 | HDD POPS partition scan | `__.POPS`, `__.POPS0`, and one higher `__.POPSN` present | Open HDD (PFS) | titles from all present POPS partitions list in stable partition order |
 | D-09 | HDD duplicate title names | Same VCD filename exists in two POPS partitions | Launch each entry from HDD (PFS) | each entry launches from its own source partition |
-| D-10 | HDD POPSTARTER on HDD | POPSLoader and/or configured `POPSTARTER_PATH` points to HDD, including HDD sidecar/cwd resolution | Launch HDD title | POPSTARTER resolves from sidecar or configured HDD path without blocking launch or hanging on a black screen |
+| D-10 | HDD POPSTARTER on HDD | POPSLoader and/or configured `POPSTARTER_PATH` points to HDD, including HDD sidecar/CWD resolution | Launch HDD title | POPSTARTER resolves from sidecar or configured HDD path without blocking launch or hanging on a black screen |
 | D-11 | HDD common art path | `hdd0:__common/POPS/ART/<title>.png` present | Browse HDD title list | cover art appears and launch still succeeds |
 | D-12 | Startup backend auto-init | Boot from USB/MX4SIO/MMCE/HDD, or save a `POPSTARTER_PATH` / `DKWDRV_PATH` / profile on one of those devices | Cold boot app and launch without first opening that device page | Required backend drivers initialize automatically from boot/configured paths |
+| D-13 | No runtime device lock gating | Enter one backend page first, then move to another backend page in the same session | Open the second backend page | UI does not block the scene transition with a restart-required device-lock gate |
 
 ### UI behavior
 | ID | Area | Setup | Action | Pass Criteria |
@@ -74,9 +80,10 @@ This matrix tracks current behavior across:
 | U-05 | Exit to OSDSYS | Boot POPSLoader on target hardware, including a run where `HDD (PFS)` was opened first | Open Exit modal and choose `OSDSYS` | Returns to the PS2 browser without black screen, including after the HDD page initialized tracked mounts |
 | U-06 | PAL video asset aspect | Set Video Standard to `PAL` in Settings | Browse main menu, settings, and splash/UI assets | Bundled UI assets retain expected proportions without PAL squish |
 | U-07 | Path editor cursor and press feedback | Open POPStarter or DKWDRV path editor | Move cursor with `L1`/`R1`, toggle case, insert/delete characters, confirm/cancel | Cursor moves within the string, lowercase letter keys render uppercase when case is enabled, and the selected key flashes when pressed |
-| U-08 | Save progress overlay | Change any setting and save | Observe the save/apply sequence | A visible progress popup/overlay stays on-screen until the save/apply flow completes or fails, without looking stalled at a single coarse stage for the whole operation |
+| U-08 | Save progress overlay | Change any setting and save | Observe the save/apply sequence | A visible progress popup/overlay stays on-screen until the save/apply flow completes or fails |
 | U-09 | Device-load progress overlay | Use a slow or large MMCE/MX4SIO/HDD/USB library | Open the device page and wait for list generation | A visible progress popup/overlay stays on-screen during scanning/list generation and advances through the scan instead of only jumping between coarse stage markers |
 | U-10 | BOOT.ELF after HDD page init | Open `HDD (PFS)` first so dependency checks and partition scans run | Return to main menu and launch `BOOT.ELF` from Exit | `BOOT.ELF` handoff succeeds without freezing or black-screening after HDD page access |
+| U-11 | Boot-device label | Boot from USB, MX4SIO, MMCE, and HDD | Reach the main menu | Main menu boot label reflects the detected boot device/backend family |
 
 ## Run Log Template
 | Date | Console | Storage Setup | IDs Run | Result |
@@ -84,5 +91,9 @@ This matrix tracks current behavior across:
 | YYYY-MM-DD | SCPH-xxxxx | USB/MMCE/MX4SIO/HDD details | e.g. S-01,S-02,D-02 | PASS/FAIL + notes |
 
 ## Current Verification Status
-- CI gates: verified by workflow definition (execution status depends on CI runs).
-- Manual hardware matrix: `Unknown (verify on hardware)` unless run logs are added above.
+- CI gates: repository-verified by workflow definition.
+- Reported hardware outcomes:
+  - `U-05`: reported PASS.
+  - `D-10`: reported FAIL when booted from HDD and launching an HDD title with HDD `POPSTARTER.ELF` sidecar/CWD.
+  - `U-10`: one artifact was reported good before a later regression experiment; current source has been restored away from that experiment and must be re-tested.
+- All other manual hardware items remain `Unknown (verify on hardware)` unless run logs are added above.

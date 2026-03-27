@@ -1,35 +1,73 @@
-Last updated: 2026-03-06
+Last updated: 2026-03-26
 
 # STATE
 
 ## Project Identity
 POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, with behavior primarily orchestrated by embedded Lua modules (`system.lua`, `ui.lua`, `images.lua`, `pops_profiles.lua`).
 
-## Current Runtime State (Repo-Verified)
-- Boot/runtime uses embedded Lua scripts (filesystem Lua loaders are disabled in runtime).
+## Repo-Verified Runtime State
+- Boot/runtime uses embedded Lua scripts.
 - Settings are persisted at `mc0:/POPSTARTER/.pldrs`.
-- Settings edits are staged and committed on Settings/Profile exit.
-- Configurable paths include POPStarter and DKWDRV, with `mc?:/` alias resolution support.
-- Implemented selectable BDMA modes: `FAT32`, `USBEXFAT`, `MX4SIO`, `MMCE`.
-- USB/MX4SIO split is based on mount-driver identity, not path-prefix heuristics alone.
+- Settings edits are staged and committed on Settings/Profile confirm/leave.
+- Persisted settings include:
+  - POPSTARTER path,
+  - DKWDRV path,
+  - video standard,
+  - hide-text mode,
+  - keyboard layout,
+  - BDMA mode.
+- Startup backend auto-init exists and uses:
+  - boot path information,
+  - configured executable paths,
+  - selected profile path.
+- USB vs MX4SIO split is based on mount-driver identity, not path-prefix guessing.
+- Runtime device access is not gated by the old device-lock system.
+- Main menu can show a boot-device label.
+- Exit modal exposes:
+  - `OSDSYS`
+  - `Cancel`
+  - `BOOT.ELF`
+- `BOOT.ELF` lookup order is:
+  - `mc0:/BOOT/BOOT.ELF`
+  - `mc1:/BOOT/BOOT.ELF`
+- Current cover sources are:
+  - sidecar PNG next to the selected `.VCD`,
+  - `hdd0:__common/POPS/ART/<title>.png` for HDD titles.
 - Release packaging policy in CI is `PS1_POPSLOADER/*` + `POPS/PATCH_5.BIN` with strict manifest validation.
 
 ## Main Menu Feature Status
-- `MMCE`: implemented.
-- `MX4SIO`: implemented.
-- `HDD (PFS)`: implemented.
-- `USB`: implemented.
-- `Disc (DKWDRV)`: implemented.
+- `MMCE`: implemented in code.
+- `MX4SIO`: implemented in code.
+- `HDD (PFS)`: implemented in code.
+- `USB`: implemented in code.
+- `Disc (DKWDRV)`: implemented in code.
 - `HDD (exFAT)`: not implemented.
 - `SMB (v1)`: not implemented.
 
+## Reported Hardware Status
+- `U-05` OSDSYS exit:
+  - reported fixed on hardware.
+- `D-10` HDD POPSTARTER on HDD:
+  - reported failing on hardware.
+  - repro: boot from HDD, launch HDD title with HDD `POPSTARTER.ELF` sidecar/CWD.
+  - result: black-screen hang.
+- `U-10` BOOT.ELF after HDD page init:
+  - one prior artifact was reported good,
+  - a later launch-backend experiment regressed it,
+  - source has now been restored away from that experiment,
+  - current hardware status on restored source is `Unknown (verify on hardware)`.
+- `U-06` PAL asset aspect:
+  - current code compensates for PAL UI layout,
+  - hardware result is still `Unknown (verify on hardware)`.
+
 ## Known Open Work
+- Resolve HDD `POPSTARTER.ELF` handoff when POPSTARTER itself is on HDD.
+- Re-verify `BOOT.ELF` after HDD page init on current source.
+- Record concrete run logs in `QA_REGRESSION_MATRIX.md`.
 - Implement HDD exFAT menu flow.
 - Implement SMB menu flow.
-- Implement ART system.
-- Expand documented hardware validation runs.
-- Add clearer end-user installation layout guidance for launcher variants.
+- Decide whether a broader ART system is still needed beyond current sidecar/HDD-common cover support.
 
 ## Verification Status
 - Code/build/package statements above are repository-verified.
-- Hardware behavior is `Unknown (verify on hardware)` unless recorded in `QA_REGRESSION_MATRIX.md` run logs.
+- Hardware behavior is `Unknown (verify on hardware)` unless explicitly recorded as a reported result.

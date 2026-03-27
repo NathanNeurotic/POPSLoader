@@ -1,45 +1,19 @@
-<a href=""><img width="1536" height="1024" alt="POPSLoader" src="https://github.com/user-attachments/assets/d7b54ca5-f088-4f82-8819-d8621a6b2fda" />
-</a><br>
-<a href="https://www.github.com/NathanNeurotic/Enceladus/releases">![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/nathanneurotic/enceladus/total?style=plastic&logo=playstation%202&logoColor=red&logoSize=auto&label=Downloads&labelColor=gold&color=turquoise%20&link=https%3A%2F%2Fgithub.com%2FNathanNeurotic%2FEnceladus%2Freleases%2Ftag%2FMMCE)</a>
-
 # POPSLoader
 
-Last updated: 2026-03-07
+Last updated: 2026-03-26
 
-POPSLoader is an open-source PlayStation 2 launcher for POPStarter, scripted in Lua and built on top of Enceladus runtime components.
+POPSLoader is a PlayStation 2 launcher for POPStarter, built on Enceladus runtime components and driven primarily by embedded Lua scripts.
 
 This repository contains:
 - the launcher (`POPSLOADER.ELF`),
-- embedded runtime Lua scripts/assets,
+- embedded runtime Lua and asset data,
 - embedded IOP modules,
-- and packaging/build logic for release artifacts.
+- the POPStarter packaging payload used by CI,
+- documentation for current code state and validation status.
 
-## Project Lineage
-- [POPSLoader](https://github.com/israpps/Enceladus/tree/popstarter) was created by [El_isra](https://github.com/israpps), and this repository is a forked continuation of that work.
-- Derived from [Enceladus](https://github.com/DanielSant0s/Enceladus) by [DanielSant0s](https://github.com/DanielSant0s/).
-- Maintains GPLv3 licensing lineage.
+## What This Repository Builds
 
-## Current Feature Status
-
-| Main menu option | Status |
-|---|---|
-| MMCE | Implemented |
-| MX4SIO | Implemented |
-| HDD (PFS) | Implemented |
-| USB | Implemented |
-| Disc (DKWDRV) | Implemented |
-| HDD (exFAT) | Not implemented |
-| SMB (v1) | Not implemented |
-
-## Installation (Prebuilt)
-
-1. Download the latest `POPSLOADER.zip` release.
-2. Extract and keep the packaged layout intact.
-3. Copy `PS1_POPSLOADER/` and `POPS/` to your target storage.
-4. Add PS1 `.VCD` files to the selected backend `POPS/` location.
-5. Launch `POPSLOADER.ELF` using your preferred ELF launcher.
-
-Package layout:
+The CI workflow packages an exact ZIP layout:
 
 ```text
 PS1_POPSLOADER/
@@ -55,124 +29,185 @@ POPS/
   PATCH_5.BIN
 ```
 
-Notes:
-- `PS1_POPSLOADER/` can be installed/launched from any device path supported by your loader setup.
-- `POPS/` content location is backend-dependent and must match the active launch backend expectations.
-- CI validates the package manifest above and excludes legacy `POPS/*.tm2` payload entries.
+That package contract is enforced by `.github/workflows/compilation.yml`.
 
-## Runtime Behavior (Current)
-- Boot/runtime Lua is loaded from embedded assets.
-- Settings are staged in UI and committed on Settings/Profile confirm/leave.
-- Settings file path: `mc0:/POPSTARTER/.pldrs`.
-- Configurable executable paths:
-  - POPStarter path
-  - DKWDRV path
-- `mc?:/` alias is supported for executable path resolution (`mc0:/` then `mc1:/`).
-- USB vs MX4SIO list split is based on mount-driver identity (`System.getMassMountDriver`), not path-name guessing.
-- Cover sidecar lookup uses selected `.VCD` path with `.png` suffix.
+## Current Status At A Glance
 
-## Requirements
+### Repo status vs reported hardware status
 
-### POPStarter runtime assets
-- For POPStarter runtime binaries/packages, see:
-  - [AnimMouse POPS binaries](https://github.com/AnimMouse/POPS-binaries/releases/)
-- Typical required files include (depending on setup):
-  - `IOPRP252.IMG`
-  - `POPS.ELF`
-  - `POPS.PAK`
-  - `POPS_IOX.PAK`
+| Area | Repository status | Reported hardware status |
+|---|---|---|
+| MMCE menu path | Implemented in code | Unknown (verify on hardware) |
+| MX4SIO menu path | Implemented in code | Unknown (verify on hardware) |
+| USB menu path | Implemented in code | Unknown (verify on hardware) |
+| HDD (PFS) menu path | Implemented in code | Mixed; HDD POPSTARTER-on-HDD handoff still failing |
+| Disc (`DKWDRV`) menu path | Implemented in code | Unknown (verify on hardware) |
+| Exit to OSDSYS | Implemented in code | Reported PASS |
+| Exit to `BOOT.ELF` | Implemented in code | Current source needs re-test after last reverted regression |
+| `HDD (exFAT)` | Not implemented | Not implemented |
+| `SMB (v1)` | Not implemented | Not implemented |
 
-### Game images
-- Place PS1 games as `.VCD` files in backend `POPS/` paths.
-- If needed, convert BIN/CUE to POPStarter-compatible VCD:
-  - [PS1 Preservation link](https://tinyurl.com/PS1PRESERVATION)
-  - [Archived POPS-VCD-Manager](https://web.archive.org/web/20250208180431/https://cdn.discordapp.com/attachments/1190221790925033542/1337432406419968101/POPS-VCD-Manager.7z?ex=67a8153d&is=67a6c3bd&hm=d72ab93151232edc0a6756989735a97bacd71bf16b8119bc1e8a96fe9880430b&)
+### Current known unresolved issue
 
-### Optional cover art
-- Sidecar cover image path: same folder/name as selected VCD, with `.png` extension.
-- Recommended format: PNG, non-interlaced, truecolor/RGBA.
+The main unresolved hardware issue is:
+- HDD `POPSTARTER.ELF` on HDD sidecar/CWD (`D-10`)
+  - repro reported so far:
+    - boot POPSLoader from HDD,
+    - launch an HDD title,
+    - POPSTARTER also resolves from HDD sidecar/CWD or configured HDD path,
+    - result: black-screen hang.
 
-### HDD (PFS) path notes
-- HDD title scan uses `__.POPS` and `__.POPS1..__.POPS9` partitions.
-- HDD dependency checks in launcher currently reference `hdd0:__common/POPS/` files.
+## Runtime Behavior (Current Code)
 
-## Supported Devices and Backends
-- MMCE (`mmce0:/`, `mmce1:/`): supported.
-- MX4SIO: supported (detected via mass mount driver classification).
-- USB mass (`mass:/`, `mass1:/...`): supported.
-- Internal HDD (`hdd0:`, `pfs:`): supported (PFS flow implemented).
-- SMB menu entry: currently marked `Not Implemented Yet` in UI.
-- Disc (DKWDRV): implemented via menu modal and launch-path check.
+### Boot/runtime model
+- Boot/runtime Lua is embedded into the ELF.
+- Required runtime modules are:
+  - `boot.lua`
+  - `system.lua`
+  - `ui.lua`
+  - `images.lua`
+  - `pops_profiles.lua`
+- Filesystem Lua loaders are disabled at runtime.
 
-## Recent Hardening Highlights (Last 72 Hours)
-- Settings commit/apply flow hardening.
-- POPStarter launch arg/prefix/path corrections.
-- USB/MMCE/MX4SIO detection and first-entry behavior fixes.
-- Cover derivation/preview behavior cleanup.
-- Asset cleanup and embed pipeline cleanup (including removal of unused `HDD.png` embedding).
-- Packaging policy finalized on `POPS/PATCH_5.BIN` with stricter CI manifest checks.
-- Documentation and regression-matrix audit refresh.
+### Settings behavior
+- Settings are persisted at `mc0:/POPSTARTER/.pldrs`.
+- Settings edits are staged in UI first, then committed on confirm/leave.
+- Current persisted settings include:
+  - POPSTARTER path,
+  - DKWDRV path,
+  - video standard,
+  - hide-text mode,
+  - keyboard layout,
+  - BDMA mode.
 
-Full changelog range:
-- [BETA-3...BETA-8.5](https://github.com/NathanNeurotic/POPSLoader/compare/BETA-3...BETA-8.5)
+### Startup backend behavior
+- Startup backend auto-init is implemented.
+- The launcher now decides which backends to initialize from:
+  - boot path / argv0,
+  - current app directory,
+  - configured POPSTARTER path,
+  - configured DKWDRV path,
+  - selected profile path.
+- USB vs MX4SIO identity is determined from the mount-driver name, not from the path text.
 
-## Project Structure
-- `src/`: EE runtime, Lua bindings, rendering/audio/input, launch plumbing.
-- `bin/POPSLDR/`: runtime Lua scripts, bundled assets, POPStarter payload files.
-- `iop/`: embedded IOP modules and `bdm_query` RPC module source.
-- `modules/`: controller-related modules (`ds34bt`, `ds34usb`, `pademu`).
-- `EMBED/`: resources embedded into the ELF at build time.
-- `etc/`: boot script and helper scripts.
-- `QA_REGRESSION_MATRIX.md`: hardware validation checklist and pass/fail matrix.
-- `.github/workflows/compilation.yml`: CI build and packaging pipeline.
+### Device access behavior
+- The old runtime device-lock gate is no longer active.
+- Opening one backend page does not intentionally block opening another backend page through a session lock.
+
+### Cover art behavior
+- Standard cover lookup uses a sidecar PNG next to the selected `.VCD`.
+- HDD entries can also load cover art from:
+  - `hdd0:__common/POPS/ART/<title>.png`
+
+### Path editor / keyboard behavior
+- The on-screen keyboard supports:
+  - `ABC`
+  - `QWERTY`
+  - `DVORAK`
+- Keyboard layout is persisted in settings.
+- The editor includes:
+  - visible cursor movement,
+  - backspace/delete support,
+  - save/done behavior,
+  - button-bar help specific to keyboard mode.
+
+### Exit / external launch behavior
+- Exit modal offers:
+  - `OSDSYS`
+  - `Cancel`
+  - `BOOT.ELF`
+- `BOOT.ELF` resolution order is:
+  - `mc0:/BOOT/BOOT.ELF`
+  - `mc1:/BOOT/BOOT.ELF`
+- External launch prep uses tracked HDD/PFS unmount logic before handoff.
+
+## Installation Notes
+
+### Basic installation
+1. Obtain a current `POPSLOADER.zip` build.
+2. Extract it without changing the directory structure.
+3. Copy:
+   - `PS1_POPSLOADER/` to the device/location you want to boot from,
+   - `POPS/` to the backend location expected by your chosen setup.
+4. Place PS1 `.VCD` files in the backend `POPS/` location you actually intend to browse from.
+
+### Cover art
+- Sidecar cover rule:
+  - `GAME.VCD` -> `GAME.png`
+- HDD common art rule:
+  - `hdd0:__common/POPS/ART/GAME.png`
+
+### HDD (PFS) notes
+- HDD scan code currently looks for POPS game partitions in the configured POPS partition set (`__.POPS`, `__.POPS1` ...).
+- HDD dependency checks look for runtime files under `hdd0:__common/POPS/`.
 
 ## Build From Source
 
-### Recommended (same environment as CI)
-Use `ps2dev/ps2dev` and run:
+### Recommended environment
+Use the same environment as CI:
 
 ```sh
 make clean elfloader all
 ```
 
+The workflow uses the `ps2dev/ps2dev` container and validates packaging after build.
+
 ### Local build prerequisites
-- PS2 toolchain environment (`PS2DEV`, `PS2SDK`, gsKit/ports libs).
-- `ps2-packer`, `make`, and standard build tools.
+- PS2 toolchain environment (`PS2DEV`, `PS2SDK`, gsKit/ports libs)
+- `ps2-packer`
+- `make`
+- standard build tools
 
 ### Build outputs
-- `bin/enceladus.elf` (intermediate)
-- `bin/POPSLOADER.ELF` (packed launcher)
+- `bin/enceladus.elf`
+- `bin/POPSLOADER.ELF`
+- `POPSLOADER.zip` in CI packaging flow
 
-## Known Limitations
-- `HDD (exFAT)` menu path is not implemented yet.
-- `SMB (v1)` menu path is not implemented yet.
-- Current release focus is stability/correctness/hardening, not new backend expansion.
+## Known Limitations And Open Validation
+
+### Not implemented
+- `HDD (exFAT)` menu flow
+- `SMB (v1)` menu flow
+
+### Implemented but still needing hardware proof
+- PAL/NTSC menu asset proportions (`U-06`)
+- startup backend auto-init across all boot/configured path combinations (`D-12`)
+- boot-device label across all boot sources (`U-11`)
+
+### Reported hardware outcomes that matter right now
+- `U-05` OSDSYS exit:
+  - reported fixed.
+- `D-10` HDD POPSTARTER on HDD:
+  - reported failing.
+- `U-10` BOOT.ELF after HDD page init:
+  - one prior artifact was reported good,
+  - a later failed experiment regressed it,
+  - current source has been restored away from that experiment,
+  - current hardware status still needs re-test.
+
+## Documentation Map
+
+If you need details instead of a summary:
+- `STATE.md`: current repo and hardware status in plain language
+- `QA_REGRESSION_MATRIX.md`: test matrix and current reported validation status
+- `ARCHITECTURE.md`: runtime/data-flow overview
+- `COMPONENTS.md`: ownership map by file/component
+- `DECISIONS.md`: explicit project decisions and open investigations
+- `ROADMAP.md`: active priorities and deferred work
+- `RULES.md`: hard constraints for changes
+- `TRUTHSHEET.md`: invariants that should not drift silently
+
+## Project Lineage
+- Original POPSLoader lineage by [El_isra / israpps](https://github.com/israpps).
+- Derived from [Enceladus](https://github.com/DanielSant0s/Enceladus) by [DanielSant0s](https://github.com/DanielSant0s/).
 
 ## Credits
 - [israpps (El_isra)](https://israpps.github.io/) for POPSLoader.
 - [Daniel Santos](https://github.com/DanielSant0s/Enceladus) for Enceladus.
-- [Berion](https://www.psx-place.com/members/berion.1431/) for graphics and design.
-- [nuno6573](https://github.com/nuno6573/) for Cover Art System and supporting scripts.
-- [Ripto / NathanNeurotic](https://github.com/NathanNeurotic) for project continuation, release work, and AI-assisted development persistence.
+- [Berion](https://www.psx-place.com/members/berion.1431/) for graphics/design work.
+- [nuno6573](https://github.com/nuno6573/) for cover-art related work.
 - [Hugopocked](https://ko-fi.com/hugopocked) for POPStarter fixes.
-- [R3Z3N](https://github.com/saildot4k/) for [ps2store.com](https://www.ps2store.com/).
-- [Codex](https://chatgpt.com/codex) for enabling high-velocity development iteration.
-
-## Extra Thanks To Testers
-- `@VizoR`
-- `@bigol`
-- `@nuno6573`
-- `@P4NCHOL1NO`
-- `@rorcarrot`
-- `@UNDEAD`
-- `@Berion`
-- `@R3Z3N` (`ps2store.com`)
-- `@Kamo`
-- If I missed you, please contact me: [https://tinyurl.com/PS2SPACE](https://tinyurl.com/PS2SPACE)
-
-<a href=""><img width="640" height="480" alt="Splash Screen" src="https://github.com/user-attachments/assets/da476654-0f17-46fb-b309-4b37116ff21c" /></a>
-
-[Video Preview](https://youtu.be/CPQia4Nd88Y)
+- [Ripto / NathanNeurotic](https://github.com/NathanNeurotic) for continuation and release work.
 
 ## License
-This project retains the **GNU General Public License v3.0**.
+This project retains the GNU General Public License v3.0.

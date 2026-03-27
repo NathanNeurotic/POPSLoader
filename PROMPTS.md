@@ -1,4 +1,4 @@
-Last updated: 2026-03-06
+Last updated: 2026-03-26
 
 # PROMPTS
 
@@ -23,6 +23,7 @@ Repo invariants to preserve:
 - Embedded-Lua boot path remains intact
 - Settings commit on Settings/Profile exit remains transactional
 - USB vs MX4SIO split remains mount-driver based
+- Runtime device access is not hard-locked by old driver-lock logic
 - Retry/probe logic remains bounded
 - Release ZIP manifest contract remains valid unless goal is packaging migration
 
@@ -31,6 +32,7 @@ Deliverables:
 2) Diffstat
 3) Key diff hunks (or full diff if requested)
 4) Test plan/results (include unrun items)
+5) Separate repo-verified facts from hardware-reported outcomes
 ```
 
 ## Task-Specific Templates
@@ -44,12 +46,15 @@ Allowed files:
 - bin/POPSLDR/system.lua
 - bin/POPSLDR/ui.lua
 - src/luasystem.cpp
+- src/elf_loader/src/elf.c
 
 Required checks:
 - Settings persistence semantics are unchanged
 - USB/MX4SIO classification still uses mount-driver identity
 - Missing-file failures still produce explicit user notifications
+- No runtime device lock is reintroduced
 - No unbounded loops introduced
+- If the change touches HDD/exit handoff, mention D-10 / U-05 / U-10 explicitly
 ```
 
 ### 2) Packaging/CI update
@@ -60,6 +65,7 @@ Goal:
 Allowed files:
 - .github/workflows/compilation.yml
 - README.md
+- STATE.md
 - ROADMAP.md
 
 Required checks:
@@ -71,7 +77,7 @@ Required checks:
 ### 3) Documentation audit/update
 ```markdown
 Goal:
-- Refresh repository docs to match current code and build behavior.
+- Refresh repository docs to match current code and recorded hardware status.
 
 Allowed files:
 - AGENTS.md
@@ -81,15 +87,18 @@ Allowed files:
 - DECISIONS.md
 - PROMPTS.md
 - QA_REGRESSION_MATRIX.md
+- README.md
 - ROADMAP.md
 - RULES.md
 - STATE.md
 - TRUTHSHEET.md
 
 Required checks:
-- Every behavior claim is traceable to current repository files
+- Every behavior claim is traceable to current repository files or recorded run results
+- Repo-verified behavior and hardware-reported behavior are clearly separated
 - Unverified hardware claims are marked `Unknown (verify on hardware)`
-- Implemented vs not-implemented menu options are accurately documented
+- Stale lock-system references are removed
+- Implemented vs not-implemented menu options are accurate
 ```
 
 ## Prompt Hygiene Rules
