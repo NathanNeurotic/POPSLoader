@@ -97,7 +97,7 @@ This matrix tracks current behavior across:
 - CI gates: repository-verified by workflow definition.
 - Reported hardware outcomes:
   - `L-08`: reported FAIL on 2026-03-27 when booted from USB with USB sidecar/cwd/Profile 1; launch stopped at `Cant find POPSTARTER ELF`.
-    - current source now includes a settings/profile equivalence correction intended to restore the common baseline; corrected-source hardware result is still `Unknown (verify on hardware)`.
+    - current source now includes settings/profile equivalence plus local ELF-directory sidecar precedence corrections intended to restore the common baseline; corrected-source hardware result is still `Unknown (verify on hardware)`.
   - `U-05`: reported PASS.
   - `D-10`: reported FAIL when booted from HDD and launching an HDD title with HDD `POPSTARTER.ELF` sidecar/CWD.
     - 2026-03-27 re-test of the current source still failed with boot source HDD, POPSTARTER on HDD via default/Profile 1/cwd/sidecar, and game device HDD.

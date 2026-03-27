@@ -5,7 +5,7 @@ Last updated: 2026-03-27
 ## Status Snapshot
 - Core launcher functionality is present in code for MMCE, MX4SIO, HDD (PFS), USB, Disc (`DKWDRV`), settings persistence, cover preview, path editing, startup backend auto-init, and exit flows.
 - A broader shared POPSTARTER launch regression is now suspected from a 2026-03-27 USB sidecar/cwd/Profile 1 `Cant find POPSTARTER ELF` report.
-- Current source contains a targeted settings/profile equivalence correction intended to restore the common default/Profile 1 sidecar baseline, but hardware re-validation is still pending.
+- Current source contains targeted settings/profile equivalence plus local ELF-directory sidecar precedence corrections intended to restore the common default/Profile 1 sidecar baseline, but hardware re-validation is still pending.
 - The main stabilization blocker is still HDD `POPSTARTER.ELF` when the launcher and/or sidecar/CWD are on HDD. Reported hardware result is still a black-screen hang.
 - `HDD (exFAT)` and `SMB (v1)` remain intentionally unimplemented menu entries.
 

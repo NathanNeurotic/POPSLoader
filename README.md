@@ -53,7 +53,9 @@ Reported hardware issues currently being tracked are:
 - Shared default/Profile 1 local POPSTARTER baseline
   - reported 2026-03-27 on USB boot with USB `POPSTARTER.ELF` sidecar/cwd/Profile 1.
   - reported result: `Cant find POPSTARTER ELF`.
-  - current source now includes a surgical settings/profile equivalence fix so stale absolute local POPSTARTER paths no longer override the current default/Profile 1 sidecar path when both resolve to the same executable.
+  - current source now includes two surgical common-path corrections:
+    - stale absolute local POPSTARTER overrides are suppressed when they resolve to the same executable as the current default/Profile 1 sidecar path,
+    - default/Profile 1 local sidecar resolution now prefers the ELF-directory/local boot path before the HDD-oriented sidecar fallback.
   - hardware re-test is still required before treating the shared baseline as restored.
 - HDD `POPSTARTER.ELF` on HDD sidecar/CWD (`D-10`)
   - repro reported so far:
@@ -83,6 +85,7 @@ Reported hardware issues currently being tracked are:
 - Settings are persisted at `mc0:/POPSTARTER/.pldrs`.
 - Settings edits are staged in UI first, then committed on confirm/leave.
 - Default/Profile 1 saves now suppress stale absolute local POPSTARTER overrides when they resolve to the same executable as the current local sidecar/cwd path.
+- Default/Profile 1 resolution now checks the ELF-directory/local boot sidecar path before falling back to the HDD-oriented sidecar helper.
 - Current persisted settings include:
   - POPSTARTER path,
   - DKWDRV path,
@@ -194,7 +197,7 @@ The workflow uses the `ps2dev/ps2dev` container and validates packaging after bu
   - current source also offers `R2` as an alternate HDD launch experiment for HDD-resident `POPSTARTER.ELF`, using an explicit `hdd0:PART:pfs0:/GAME.ELF` selector path.
 - Shared default/Profile 1 local POPSTARTER baseline:
   - reported failing with `Cant find POPSTARTER ELF` on 2026-03-27 when booted from USB with USB sidecar/cwd/Profile 1.
-  - current source now contains a settings/profile equivalence correction intended to restore that common path-resolution baseline.
+  - current source now contains settings/profile equivalence plus ELF-directory/local-sidecar precedence corrections intended to restore that common path-resolution baseline.
   - hardware result on the corrected source is still `Unknown (verify on hardware)`.
 - `U-10` BOOT.ELF after HDD page init:
   - one prior artifact was reported good,
