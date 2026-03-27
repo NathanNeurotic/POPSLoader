@@ -69,6 +69,8 @@ This matrix tracks current behavior across:
 | D-11 | HDD common art path | `hdd0:__common/POPS/ART/<title>.png` present | Browse HDD title list | cover art appears and launch still succeeds |
 | D-12 | Startup backend auto-init | Boot from USB/MX4SIO/MMCE/HDD, or save a `POPSTARTER_PATH` / `DKWDRV_PATH` / profile on one of those devices | Cold boot app and launch without first opening that device page | Required backend drivers initialize automatically from boot/configured paths |
 | D-13 | No runtime device lock gating | Enter one backend page first, then move to another backend page in the same session | Open the second backend page | UI does not block the scene transition with a restart-required device-lock gate |
+| D-14 | USB POPSTARTER sidecar baseline | USB boot; POPSTARTER.ELF in same folder as POPSLOADER.ELF on USB; default/profile1 path | Open USB game list and attempt to launch any game | No `Cant find POPSTARTER ELF`; game launches via USB POPSTARTER |
+| D-15 | USB POPSTARTER after HDD attempt | USB boot; attempt an HDD-backed launch that fails; then switch to USB game list | Select a USB game | No residual state from HDD attempt causes USB POPSTARTER probe to fail; launch proceeds |
 
 ### UI behavior
 | ID | Area | Setup | Action | Pass Criteria |
@@ -94,6 +96,20 @@ This matrix tracks current behavior across:
 - CI gates: repository-verified by workflow definition.
 - Reported hardware outcomes:
   - `U-05`: reported PASS.
-  - `D-10`: previously FAIL (black-screen hang); additional fixes applied — embedded loader DPRINTF macro changed to no-op (printf crashed with uninitialized libc), wipeUserMem upper bound reduced by 1MB to protect SIF DMA buffers, snprintf replaced with strncpy. Awaits hardware re-test.
+  - `D-10`: previously FAIL (black-screen hang); fixes applied:
+    - DPRINTF macro changed to no-op (printf crashed with uninitialized libc)
+    - wipeUserMem upper bound reduced by 1 MB to protect SIF DMA buffers
+    - snprintf replaced with strncpy
+    - POPSTARTER pfs slot now explicitly preserved in `keep_hdd_slots` via `ResolveExecPathAndKeepSlot`
+    - argv0_selector uses dynamic mounted pfs prefix instead of hardcoded `pfs0:/`
+    - `launch_cwd` set to `nil`
+    - Awaits hardware re-test.
+  - USB POPSTARTER baseline (USB boot + USB POPSTARTER sidecar/cwd/profile1 — `Cant find POPSTARTER ELF`):
+    - Suspected cause: BETA-10-play HDD mitigation introduced `launch_cwd = hdd_init.mount_prefix` and excluded POPSTARTER pfs slot from `keep_hdd_slots`.
+    - Fix applied:
+      - `launch_cwd = nil`
+      - `ResolveExecPathAndKeepSlot` resolves and tracks POPSTARTER pfs slot
+      - `keep_hdd_slots` now includes both game and POPSTARTER slots
+    - Awaits hardware re-test.
   - `U-10`: BOOT.ELF path is unaffected by D-10 changes; current hardware status is `Unknown (verify on hardware)`.
 - All other manual hardware items remain `Unknown (verify on hardware)` unless run logs are added above.

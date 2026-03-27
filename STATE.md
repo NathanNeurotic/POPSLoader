@@ -1,4 +1,4 @@
-Last updated: 2026-03-26
+Last updated: 2026-03-27
 
 # STATE
 
@@ -48,8 +48,14 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 - `U-05` OSDSYS exit:
   - reported fixed on hardware.
 - `D-10` HDD POPSTARTER on HDD:
-  - fix applied: embedded loader now uses fileXio for pfs:/hdd: POPSTARTER paths; IOP is preserved for the load; argv0_selector includes partition info.
+  - fix applied: embedded loader now uses fileXio for pfs:/hdd: POPSTARTER paths; IOP is preserved for the load; argv0_selector uses the dynamically-mounted pfs prefix so POPSTARTER can remount after its own IOP reset.
+  - POPSTARTER pfs slot is now explicitly preserved in `keep_hdd_slots` via `ResolveExecPathAndKeepSlot`.
+  - `launch_cwd` no longer passes the game partition as CWD; it is nil, letting LaunchEngine use the POPSTARTER path directory.
   - awaits hardware re-test to confirm fix.
+- Broader regression (USB boot + USB POPSTARTER sidecar/cwd/profile1 — `Cant find POPSTARTER ELF`):
+  - Suspected cause: `launch_cwd = hdd_init.mount_prefix` (introduced in BETA-10-play HDD mitigation) set the pre-launch CWD to the game partition instead of nil, and `keep_hdd_slots` did not include the POPSTARTER's pfs slot.
+  - Fix applied: `launch_cwd = nil`; `keep_hdd_slots` now includes both game and POPSTARTER pfs slots; `ResolveExecPathAndKeepSlot` resolves the POPSTARTER path and tracks its slot before any HDD-specific logic runs.
+  - Awaits hardware re-test to confirm baseline restoration.
 - `U-10` BOOT.ELF after HDD page init:
   - BOOT.ELF path is unaffected by D-10 changes (uses a separate code path).
   - current hardware status is `Unknown (verify on hardware)`.
@@ -59,6 +65,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 
 ## Known Open Work
 - Re-verify `D-10` HDD `POPSTARTER.ELF` handoff on hardware after this fix.
+- Re-verify USB POPSTARTER baseline (USB boot + USB POPSTARTER sidecar/cwd/profile1) after `launch_cwd` and `keep_hdd_slots` fix.
 - Re-verify `BOOT.ELF` after HDD page init on current source.
 - Record concrete run logs in `QA_REGRESSION_MATRIX.md`.
 - Implement HDD exFAT menu flow.
@@ -68,3 +75,4 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 ## Verification Status
 - Code/build/package statements above are repository-verified.
 - Hardware behavior is `Unknown (verify on hardware)` unless explicitly recorded as a reported result.
+

@@ -1,4 +1,4 @@
-Last updated: 2026-03-26
+Last updated: 2026-03-27
 
 # DECISIONS
 
@@ -63,13 +63,21 @@ Each entry records:
 ### 2026-03-27 — HDD POPSTARTER load routes through embedded loader with fileXio
 - Decision: `LoadELFFromFileExecPS2` detects pfs:/hdd: paths and routes them through `ExecuteViaEmbeddedLoader` instead of `SifLoadElf`. `ExecuteViaEmbeddedLoader` no longer tears down IOP state before ExecPS2. The embedded loader uses `fileXioInit` + `fileXioOpen/Read/Lseek/Close` to load the ELF, and does not reset IOP for pfs:/hdd: targets (POPSTARTER manages its own IOP reset).
 - Rationale: `SifLoadElf` (IOMAN/rom0:LOADFILE) cannot access iomanX-only pfs: paths and hangs indefinitely. The embedded loader in BRAM is the only safe load path: it avoids clobbering the still-running POPSLoader at 0x100000 and keeps HDD drivers active for the fileXio load.
-- Implications: loader binary grows slightly due to `-lfileXio`; BOOT.ELF and OSDSYS paths are unaffected (they do not use `LoadELFFromFileExecPS2` with pfs: paths). HDD `argv0_selector` must include the game partition so POPSTARTER can remount after its own IOP reset.
+- Implications: loader binary grows slightly due to `-lfileXio`; BOOT.ELF and OSDSYS paths are unaffected (they do not use `LoadELFFromFileExecPS2` with pfs: paths).
 - Evidence: `src/elf_loader/src/elf.c` (routing), `src/elf_loader/src/loader/src/loader.c` (fileXio branch), `bin/POPSLDR/system.lua` (argv0_selector construction).
 
+### 2026-03-27 — Restore POPSTARTER launch baseline: fix keep_hdd_slots and launch_cwd
+- Decision: `RunPOPStarterGame` now uses `ResolveExecPathAndKeepSlot` to resolve the POPSTARTER path and track its pfs slot before any HDD-specific logic. `keep_hdd_slots` includes both the game pfs slot and the POPSTARTER pfs slot. `launch_cwd` is set to `nil` (was `hdd_init.mount_prefix`). HDD `argv0_selector` uses `BuildMountedReadablePath(hdd_init.mount_prefix, game_elf)` instead of a hardcoded `pfs0:/` slot.
+- Rationale: the prior `launch_cwd = hdd_init.mount_prefix` change (from BETA-10-play HDD mitigation) set the pre-launch CWD to the game partition, not the POPSTARTER directory. `keep_hdd_slots` excluded the POPSTARTER pfs slot, allowing it to be unmounted by `PrepareForExternalELFLaunch` before ExecPS2. These two issues together constitute the shared regression causing `Cant find POPSTARTER ELF` across device types including USB. Using `launch_cwd = nil` restores the pre-HDD-mitigation CWD behavior (LaunchEngine sets CWD from the POPSTARTER path). Using a dynamic mount prefix for argv0_selector avoids hardcoding pfs0:/ which may not be the actual game mount slot.
+- Implications: HDD and USB POPSTARTER launches now both use the same CWD derivation path (from the POPSTARTER ELF path). The POPSTARTER pfs slot is never prematurely unmounted.
+- Evidence: `bin/POPSLDR/system.lua` (`ResolveExecPathAndKeepSlot`, `keep_hdd_slots` construction, `launch_cwd = nil`, argv0_selector).
+
 ## Open Investigations
-- HDD `POPSTARTER.ELF` fix updated with libc/wipeUserMem safety fixes; awaits hardware re-test (D-10).
+- HDD `POPSTARTER.ELF` fix updated with libc/wipeUserMem safety fixes and POPSTARTER slot preservation; awaits hardware re-test (D-10).
+- USB POPSTARTER baseline fix applied; awaits hardware re-test to confirm `Cant find POPSTARTER ELF` is resolved.
 - `BOOT.ELF` after HDD page init:
   - current hardware status is `Unknown (verify on hardware)`.
 - PAL asset proportions:
   - code compensates for PAL layout,
   - final display result still needs hardware confirmation.
+
