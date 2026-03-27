@@ -3322,7 +3322,9 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   SetLaunchPhase(LaunchState.PHASE_EXEC)
   PrepareForExternalELFLaunch(popstarter, context and context.keep_hdd_slots or nil)
   local rc
-  if exec_args ~= nil and #exec_args > 0 and unpack_fn ~= nil then
+  if context ~= nil and context.force_loadexec == true and exec_args ~= nil and #exec_args > 0 and type(System) == "table" and type(System.loadELFLoadExec) == "function" then
+    rc = System.loadELFLoadExec(popstarter, exec_args[1])
+  elseif exec_args ~= nil and #exec_args > 0 and unpack_fn ~= nil then
     rc = System.loadELF(popstarter, reboot_iop, unpack_fn(exec_args))
   elseif exec_args ~= nil and #exec_args == 1 then
     rc = System.loadELF(popstarter, reboot_iop, exec_args[1])
@@ -3589,7 +3591,8 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     bootparam_source = boot_source_mode,
     hdd_init = hdd_init,
     keep_hdd_slots = (hdd_init ~= nil and hdd_init.mount_ok == true and hdd_init.mount_slot ~= nil) and {hdd_init.mount_slot} or nil,
-    launch_cwd = (hdd_init ~= nil and hdd_init.mount_ok == true) and hdd_init.mount_prefix or nil
+    launch_cwd = (hdd_init ~= nil and hdd_init.mount_ok == true) and hdd_init.mount_prefix or nil,
+    force_loadexec = (policy.name == "HDD" and IsHddExecContextPath(popstarter) == true)
   }
   local reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
   if policy.name == "HDD" then
