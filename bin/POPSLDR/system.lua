@@ -127,26 +127,6 @@ end
 
 local APP_DIR_LOCAL = ResolveAppDirLocal()
 APP_DIR_NORM = APP_DIR_LOCAL
-local function DeriveElfDirectory()
-  local source = BOOT_ARGV0_RAW or BOOT_PATH_RAW
-  if type(source) ~= "string" or source == "" then
-    return APP_DIR_LOCAL
-  end
-  source = NormalizeFsPathRaw(source)
-  if string.sub(source, -1) ~= "/" then
-    local parent = string.match(source, "^(.*)/[^/]+$")
-    if parent ~= nil and parent ~= "" then
-      source = parent.."/"
-    else
-      local device = string.match(source, "^([%a]+%d*):$")
-      if device ~= nil then
-        source = device..":/"
-      end
-    end
-  end
-  return EnsureTrailingSlashNormRaw(source)
-end
-local ELF_DIR_LOCAL = DeriveElfDirectory()
 local SELECTOR_MODE = "basename"
 
 local function ResolveWritablePath(rel)
@@ -799,36 +779,6 @@ local function CaptureCurrentDirectory()
   return nil
 end
 
-local function ResolveLocalBootSidecarPopstarter()
-  local candidates = {}
-  local seen = {}
-  local function add_candidate(base_path)
-    local basedir = DirectoryFromExecPath(base_path)
-    if basedir == nil or basedir == "" then
-      return
-    end
-    local sidecar = JoinPath(basedir, "POPSTARTER.ELF")
-    if seen[sidecar] == true then
-      return
-    end
-    seen[sidecar] = true
-    table.insert(candidates, sidecar)
-  end
-
-  add_candidate(ELF_DIR_LOCAL)
-  add_candidate(BOOT_ARGV0_RAW)
-  add_candidate(APP_DIR_LOCAL)
-  add_candidate(BOOT_PATH_RAW)
-
-  for i = 1, #candidates do
-    local resolved = ResolvePathWithEnsure(candidates[i])
-    if resolved ~= nil then
-      return resolved
-    end
-  end
-  return nil
-end
-
 local function SetLaunchWorkingDirectory(path)
   local previous_cwd = CaptureCurrentDirectory()
   local launch_dir = DirectoryFromExecPath(path)
@@ -962,12 +912,6 @@ end
 
 local function ResolvePopstarterPath(path)
   local raw_path = tostring(path or "")
-  if IsDefaultRelativePopstarterPath(raw_path) then
-    local local_sidecar = ResolveLocalBootSidecarPopstarter()
-    if local_sidecar ~= nil then
-      return local_sidecar
-    end
-  end
   if IsDefaultRelativePopstarterPath(raw_path) or IsLegacyDefaultPopstarterPath(raw_path) then
     local sidecar = ResolveHddBootSidecarPopstarter()
     if sidecar ~= nil then
@@ -999,7 +943,6 @@ local function ResolvePopstarterPath(path)
   end
 
   local fallbacks = {
-    JoinPath(ELF_DIR_LOCAL, "POPSTARTER.ELF"),
     JoinPath(APP_DIR_LOCAL, "POPSTARTER.ELF"),
     JoinPath(BOOT_PATH_RAW or System.currentDirectory() or "", "POPSTARTER.ELF"),
     "mc0:/POPSTARTER/POPSTARTER.ELF",
@@ -1031,21 +974,6 @@ end
 
 function PLDR.ResolvePopstarterPath(path)
   return ResolvePopstarterPath(path)
-end
-
-local function AreEquivalentPopstarterPaths(left, right)
-  local normalized_left = NormalizeFsPathRaw(tostring(left or ""))
-  local normalized_right = NormalizeFsPathRaw(tostring(right or ""))
-  if normalized_left == "" or normalized_right == "" then
-    return false
-  end
-  if normalized_left == normalized_right then
-    return true
-  end
-
-  local resolved_left = NormalizeFsPathRaw(ResolvePopstarterPath(left))
-  local resolved_right = NormalizeFsPathRaw(ResolvePopstarterPath(right))
-  return resolved_left ~= "" and resolved_left == resolved_right
 end
 
 function PLDR.ResolveHddReadablePath(path)
@@ -1714,7 +1642,6 @@ end
 
 local function EncodeSettings()
   local selected_profile = tonumber(PLDR.SELECTED_PROFILE) or 1
-  local defaults_profile = tonumber(PLDR.DEFAULT_PROFILE) or 1
   local configured_popstarter = tostring(PLDR.POPSTARTER_PATH or "")
   local profile_popstarter = ""
   if PLDR.PROFILES ~= nil and PLDR.PROFILES[selected_profile] ~= nil then
@@ -1722,8 +1649,6 @@ local function EncodeSettings()
   end
   local persisted_popstarter = configured_popstarter
   if configured_popstarter ~= "" and NormalizeFsPathRaw(configured_popstarter) == NormalizeFsPathRaw(profile_popstarter) then
-    persisted_popstarter = ""
-  elseif selected_profile == defaults_profile and AreEquivalentPopstarterPaths(configured_popstarter, profile_popstarter) then
     persisted_popstarter = ""
   end
   local lines = {
@@ -1908,13 +1833,7 @@ function PLDR.LoadSettingsNonFatal()
     PLDR.POPSTARTER_PATH = PLDR.PROFILES[profile].ELF
   end
   if popstarter_path ~= nil and popstarter_path ~= "" then
-    local keep_popstarter_override = true
-    if PLDR.SELECTED_PROFILE == defaults_profile and AreEquivalentPopstarterPaths(popstarter_path, PLDR.POPSTARTER_PATH) then
-      keep_popstarter_override = false
-    end
-    if keep_popstarter_override then
-      PLDR.POPSTARTER_PATH = popstarter_path
-    end
+    PLDR.POPSTARTER_PATH = popstarter_path
   end
   if dkwdrv_path ~= nil and dkwdrv_path ~= "" then
     PLDR.DKWDRV_PATH = dkwdrv_path
