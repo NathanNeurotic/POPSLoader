@@ -1,24 +1,24 @@
-Last updated: 2026-03-26
+Last updated: 2026-03-27
 
 # ROADMAP
 
 ## Status Snapshot
 - Core launcher functionality is present in code for MMCE, MX4SIO, HDD (PFS), USB, Disc (`DKWDRV`), settings persistence, cover preview, path editing, startup backend auto-init, and exit flows.
-- The main stabilization blocker is still HDD `POPSTARTER.ELF` when the launcher and/or sidecar/CWD are on HDD. Reported hardware result is still a black-screen hang.
+- HDD `POPSTARTER.ELF` fix for `D-10` has been implemented: `LoadELFFromFileExecPS2` now routes pfs:/hdd: paths through the embedded loader, and the embedded loader uses fileXio to load the ELF without resetting IOP. Awaits hardware verification.
 - `HDD (exFAT)` and `SMB (v1)` remain intentionally unimplemented menu entries.
 
 ## Immediate Priorities
 
-### 1) HDD POPSTARTER on HDD
-- Reproduce and resolve `D-10`:
-  - POPSLoader booted from HDD,
-  - HDD game launched from HDD (PFS),
-  - `POPSTARTER.ELF` resolved from HDD sidecar/CWD or configured HDD path,
-  - current reported result: black-screen hang.
-- Keep `BOOT.ELF` and OSDSYS behavior stable while iterating on this.
+### 1) HDD POPSTARTER on HDD — awaits hardware re-test
+- `D-10` fix applied in this branch:
+  - `LoadELFFromFileExecPS2` detects pfs:/hdd: paths and routes through `ExecuteViaEmbeddedLoader`.
+  - `ExecuteViaEmbeddedLoader` no longer calls `SifExitIopHeap/SifExitRpc/SifExitCmd` (preserves HDD modules for the embedded loader).
+  - Embedded loader uses `fileXio` to open and load the ELF for pfs:/hdd: target paths, without resetting IOP.
+  - `argv0_selector` for HDD games now includes the full partition path (`hdd0:PARTITION:pfs0:/GAMENAME.ELF`) so POPSTARTER can remount the game partition after its own IOP reset.
+- Hardware re-test needed: run D-10 repro and record result in `QA_REGRESSION_MATRIX.md`.
 
 ### 2) External exit/launch re-validation
-- Re-run `U-05` (`OSDSYS`) and `U-10` (`BOOT.ELF after HDD page init`) on current source after the last reverted launch-backend experiment.
+- Re-run `U-05` (`OSDSYS`) and `U-10` (`BOOT.ELF after HDD page init`) on current source.
 - Record exact run results in `QA_REGRESSION_MATRIX.md` instead of carrying them only in chat history.
 
 ### 3) Display and UX verification

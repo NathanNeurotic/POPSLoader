@@ -48,20 +48,17 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 - `U-05` OSDSYS exit:
   - reported fixed on hardware.
 - `D-10` HDD POPSTARTER on HDD:
-  - reported failing on hardware.
-  - repro: boot from HDD, launch HDD title with HDD `POPSTARTER.ELF` sidecar/CWD.
-  - result: black-screen hang.
+  - fix applied: embedded loader now uses fileXio for pfs:/hdd: POPSTARTER paths; IOP is preserved for the load; argv0_selector includes partition info.
+  - awaits hardware re-test to confirm fix.
 - `U-10` BOOT.ELF after HDD page init:
-  - one prior artifact was reported good,
-  - a later launch-backend experiment regressed it,
-  - source has now been restored away from that experiment,
-  - current hardware status on restored source is `Unknown (verify on hardware)`.
+  - BOOT.ELF path is unaffected by D-10 changes (uses a separate code path).
+  - current hardware status is `Unknown (verify on hardware)`.
 - `U-06` PAL asset aspect:
   - current code compensates for PAL UI layout,
   - hardware result is still `Unknown (verify on hardware)`.
 
 ## Known Open Work
-- Resolve HDD `POPSTARTER.ELF` handoff when POPSTARTER itself is on HDD.
+- Re-verify `D-10` HDD `POPSTARTER.ELF` handoff on hardware after this fix.
 - Re-verify `BOOT.ELF` after HDD page init on current source.
 - Record concrete run logs in `QA_REGRESSION_MATRIX.md`.
 - Implement HDD exFAT menu flow.

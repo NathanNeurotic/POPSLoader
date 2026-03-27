@@ -17,6 +17,8 @@
 #include <sifrpc.h>
 #include <errno.h>
 #include <ps2sdkapi.h>
+#define NEWLIB_PORT_AWARE
+#include <fileXio_rpc.h>
 #define DPRINTF(x...) printf(x)
 
 #ifdef LOADER_ENABLE_DEBUG_COLORS
@@ -50,6 +52,95 @@
    DISABLE_PATCHED_FUNCTIONS();
    DISABLE_EXTRA_TIMERS_FUNCTIONS();
    PS2_DISABLE_AUTOSTART_PTHREAD();
+
+//--------------------------------------------------------------
+// Minimal ELF types for fileXio-based ELF loading
+//--------------------------------------------------------------
+#define ELF_MAGIC       0x464c457f
+#define ELF_PT_LOAD     1
+#define ELF_PT_MIPS_REGINFO 0x70000000
+
+typedef struct {
+	unsigned char ident[16];
+	unsigned short type;
+	unsigned short machine;
+	unsigned int version;
+	unsigned int entry;
+	unsigned int phoff;
+	unsigned int shoff;
+	unsigned int flags;
+	unsigned short ehsize;
+	unsigned short phentsize;
+	unsigned short phnum;
+	unsigned short shentsize;
+	unsigned short shnum;
+	unsigned short shstrndx;
+} elf_hdr_t;
+
+typedef struct {
+	unsigned int type;
+	unsigned int offset;
+	unsigned int vaddr;
+	unsigned int paddr;
+	unsigned int filesz;
+	unsigned int memsz;
+	unsigned int flags;
+	unsigned int align;
+} elf_phdr_t;
+
+/* Load an ELF from a fileXio-accessible path (pfs:, hdd:) into user memory.
+ * Must be called after SifInitRpc(0) and fileXioInit().
+ * Does NOT reset the IOP — the launched ELF is expected to manage that itself. */
+static int load_elf_via_filexio(const char *path, t_ExecData *elfdata)
+{
+	int fd;
+	int i;
+	elf_hdr_t hdr;
+	elf_phdr_t phdr;
+
+	elfdata->epc = 0;
+	elfdata->gp  = 0;
+
+	fd = fileXioOpen(path, FIO_O_RDONLY, 0);
+	if (fd < 0) {
+		DPRINTF("load_elf_via_filexio: open failed %d\n", fd);
+		return fd;
+	}
+
+	if (fileXioRead(fd, &hdr, sizeof(hdr)) != (int)sizeof(hdr)) {
+		fileXioClose(fd);
+		return -1;
+	}
+	if (*((unsigned int *)hdr.ident) != ELF_MAGIC) {
+		fileXioClose(fd);
+		return -2;
+	}
+
+	elfdata->epc = (void *)hdr.entry;
+
+	for (i = 0; i < hdr.phnum; i++) {
+		fileXioLseek(fd, (int)(hdr.phoff + (unsigned int)i * hdr.phentsize), FIO_SEEK_SET);
+		if (fileXioRead(fd, &phdr, sizeof(phdr)) != (int)sizeof(phdr)) {
+			DPRINTF("load_elf_via_filexio: short pheader read at index %d\n", i);
+			continue;
+		}
+		if (phdr.type == ELF_PT_LOAD) {
+			fileXioLseek(fd, (int)phdr.offset, FIO_SEEK_SET);
+			fileXioRead(fd, (void *)phdr.vaddr, (int)phdr.filesz);
+			if (phdr.memsz > phdr.filesz) {
+				memset((void *)(phdr.vaddr + phdr.filesz), 0,
+				       (int)(phdr.memsz - phdr.filesz));
+			}
+		} else if (phdr.type == ELF_PT_MIPS_REGINFO) {
+			/* GP is at offset 20 in the Elf32_RegInfo payload */
+			fileXioLseek(fd, (int)(phdr.offset + 20), FIO_SEEK_SET);
+			fileXioRead(fd, &elfdata->gp, 4);
+		}
+	}
+
+	fileXioClose(fd);
+	return (elfdata->epc != 0) ? 0 : -3;
+}
 
 //--------------------------------------------------------------
 //Start of function code:
@@ -127,6 +218,33 @@ int main(int argc, char *argv[])
 
 	//Writeback data cache before loading ELF.
 	FlushCache(0);
+
+	/* For pfs: or hdd: paths use fileXio (iomanX-only paths that SifLoadElf
+	 * cannot access).  The IOP is still running with HDD modules loaded, so
+	 * we rebind fileXio and load the ELF directly.  POPSTARTER handles its
+	 * own IOP reset after it starts, so we must NOT reset IOP here. */
+	if (strncmp(target_path, "pfs", 3) == 0 || strncmp(target_path, "hdd", 3) == 0) {
+		SET_GS_BGCOLOUR(GREEN_BG);
+		fileXioInit();
+		ret = load_elf_via_filexio(target_path, &elfdata);
+		fileXioExit();
+		SET_GS_BGCOLOUR(BLUE_BG);
+		if (ret == 0 && elfdata.epc != 0) {
+			SET_GS_BGCOLOUR(YELLOW_BG);
+			FlushCache(0);
+			FlushCache(2);
+			SET_GS_BGCOLOUR(PURPBLE_BG);
+			DPRINTF("POPS EXEC (fileXio): argc=%d\n", target_argc);
+			for (i = 0; i < target_argc; i++) {
+				DPRINTF("POPS EXEC (fileXio): argv[%d] = %s\n", i, target_argv[i]);
+			}
+			return ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, target_argc, target_argv);
+		} else {
+			SET_GS_BGCOLOUR(MAGENTA_BG);
+			return -ENOENT;
+		}
+	}
+
 	SET_GS_BGCOLOUR(GREEN_BG);
 	SifLoadFileInit();
 	ret = SifLoadElf(target_path, &elfdata);

@@ -3541,6 +3541,12 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   end
   local selector_prefix = SelectPopstarterSelectorPrefix(device_page)
   local argv0_selector = BuildPopstarterSelectorPath(device_page, game_name)
+  -- For HDD games POPSTARTER needs the full partition path in argv[0] so it
+  -- can remount the game partition after its own IOP reset.  POPSTARTER always
+  -- remounts at pfs0:/ (slot 0), so use that slot in the selector.
+  if policy.name == "HDD" and hdd_partition_label ~= nil and hdd_partition_label ~= "" then
+    argv0_selector = "hdd0:"..hdd_partition_label..":pfs0:/"..BuildLiteralElfName(game_name)
+  end
   if selector_prefix == "" and string.upper(game_name) == "POPSTARTER" then
     BlockLaunchFailure(
       "Internal error: game_base derived as POPSTARTER; refusing to launch.",

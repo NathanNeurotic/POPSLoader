@@ -198,10 +198,6 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *a
 	}
 	launch_argv[final_argc] = NULL;
 
-	SifInitRpc(0);
-	SifLoadFileInit();
-	SifLoadFileExit();
-
 	boot_pheader = (elf_pheader_t *)(boot_elf + boot_header->phoff);
 	for (i = 0; i < boot_header->phnum; i++) {
 		if (boot_pheader[i].type != ELF_PT_LOAD) {
@@ -217,9 +213,10 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *a
 		unmount_pfs_slots_for_exec(build_exec_keep_mask(resolved_path));
 	}
 
-	SifExitIopHeap();
-	SifExitRpc();
-	SifExitCmd();
+	/* Do NOT call SifExitIopHeap/SifExitRpc/SifExitCmd here: the embedded
+	 * loader uses fileXio (an IOP-side service) to load the target ELF from
+	 * pfs: paths.  Tearing down SIF/IOP state before ExecPS2 would kill the
+	 * fileXio server and leave the loader unable to open the ELF. */
 	FlushCache(0);
 	FlushCache(2);
 
@@ -317,6 +314,13 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 	DPRINTF("LAUNCH: Using ExecPS2\n");
 	DPRINTF("POPSTARTER ExecPS2 argv0=%s\n", argv[0]);
 
+	/* SifLoadElf (IOMAN/rom0:LOADFILE) cannot open iomanX-only paths such as
+	 * pfs: or hdd:.  Route these through the embedded loader which uses
+	 * fileXio to load the ELF while keeping HDD/IOP state intact. */
+	if (is_hdd_backed_exec_path(resolved_path)) {
+		return ExecuteViaEmbeddedLoader(resolved_path, argc, argv);
+	}
+
 	SifInitRpc(0);
 	SifLoadFileInit();
 	ret = SifLoadElf(resolved_path, &elfdata);
@@ -324,10 +328,6 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 
 	if (ret != 0 || elfdata.epc == 0) {
 		return -2;
-	}
-
-	if (is_hdd_backed_exec_path(resolved_path)) {
-		unmount_pfs_slots_for_exec(build_exec_keep_mask(resolved_path));
 	}
 
 	ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc, argv);

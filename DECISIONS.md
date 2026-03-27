@@ -54,13 +54,16 @@ Each entry records:
 - Implications: docs and workflow validation must stay synchronized.
 - Evidence: `.github/workflows/compilation.yml`.
 
+### 2026-03-27 — HDD POPSTARTER load routes through embedded loader with fileXio
+- Decision: `LoadELFFromFileExecPS2` detects pfs:/hdd: paths and routes them through `ExecuteViaEmbeddedLoader` instead of `SifLoadElf`. `ExecuteViaEmbeddedLoader` no longer tears down IOP state before ExecPS2. The embedded loader uses `fileXioInit` + `fileXioOpen/Read/Lseek/Close` to load the ELF, and does not reset IOP for pfs:/hdd: targets (POPSTARTER manages its own IOP reset).
+- Rationale: `SifLoadElf` (IOMAN/rom0:LOADFILE) cannot access iomanX-only pfs: paths and hangs indefinitely. The embedded loader in BRAM is the only safe load path: it avoids clobbering the still-running POPSLoader at 0x100000 and keeps HDD drivers active for the fileXio load.
+- Implications: loader binary grows slightly due to `-lfileXio`; BOOT.ELF and OSDSYS paths are unaffected (they do not use `LoadELFFromFileExecPS2` with pfs: paths). HDD `argv0_selector` must include the game partition so POPSTARTER can remount after its own IOP reset.
+- Evidence: `src/elf_loader/src/elf.c` (routing), `src/elf_loader/src/loader/src/loader.c` (fileXio branch), `bin/POPSLDR/system.lua` (argv0_selector construction).
+
 ## Open Investigations
-- HDD `POPSTARTER.ELF` when launcher/sidecar/CWD is on HDD:
-  - current reported hardware result is still a black-screen hang.
-  - current code contains path/mount/CWD mitigations, but no final verified fix.
+- HDD `POPSTARTER.ELF` fix applied; awaits hardware re-test (D-10).
 - `BOOT.ELF` after HDD page init:
-  - the last failed backend experiment was reverted in source,
-  - current hardware status on that restored source is still `Unknown (verify on hardware)`.
+  - current hardware status is `Unknown (verify on hardware)`.
 - PAL asset proportions:
   - code compensates for PAL layout,
   - final display result still needs hardware confirmation.

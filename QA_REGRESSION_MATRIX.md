@@ -1,6 +1,6 @@
 # POPSLoader Regression Matrix
 
-Last updated: 2026-03-26
+Last updated: 2026-03-27
 Target branch: `BETA-10-play`
 
 ## Scope
@@ -94,6 +94,6 @@ This matrix tracks current behavior across:
 - CI gates: repository-verified by workflow definition.
 - Reported hardware outcomes:
   - `U-05`: reported PASS.
-  - `D-10`: reported FAIL when booted from HDD and launching an HDD title with HDD `POPSTARTER.ELF` sidecar/CWD.
-  - `U-10`: one artifact was reported good before a later regression experiment; current source has been restored away from that experiment and must be re-tested.
+  - `D-10`: previously FAIL (black-screen hang); fix applied — embedded loader now routes pfs:/hdd: POPSTARTER paths through fileXio without IOP reset; argv0_selector now includes full partition path. Awaits hardware re-test.
+  - `U-10`: BOOT.ELF path is unaffected by D-10 changes; current hardware status is `Unknown (verify on hardware)`.
 - All other manual hardware items remain `Unknown (verify on hardware)` unless run logs are added above.
