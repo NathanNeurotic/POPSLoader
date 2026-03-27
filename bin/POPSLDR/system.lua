@@ -924,6 +924,27 @@ end
 local function DetectBootDevice()
   local boot_path = NormalizeDirPath(BOOT_PATH_RAW or "")
   local prefix = string.match(boot_path, "^([%a]+%d*):")
+  local function classify_mass_boot(root)
+    if type(System) == "table" and type(System.getMassMountDriver) == "function" then
+      local ok, driver = pcall(System.getMassMountDriver, root)
+      if ok and type(driver) == "string" and driver ~= "" then
+        local lowered = string.lower(driver)
+        if string.find(lowered, "mx4", 1, true) ~= nil or string.find(lowered, "sdc", 1, true) ~= nil then
+          return "MX4SIO"
+        end
+        return "USB"
+      end
+    end
+    local mx_marker = JoinPath(APP_DIR_LOCAL, ".boot_mx4sio")
+    local usb_marker = JoinPath(APP_DIR_LOCAL, ".boot_usb")
+    if doesFileExist(mx_marker) then
+      return "MX4SIO"
+    end
+    if doesFileExist(usb_marker) then
+      return "USB"
+    end
+    return "USB"
+  end
   if prefix == nil then
     return nil, boot_path, prefix
   end
@@ -934,14 +955,16 @@ local function DetectBootDevice()
     return "MX4SIO", boot_path, prefix
   end
   if string.match(prefix, "^mass%d*$") then
-    local mx_marker = JoinPath(APP_DIR_LOCAL, ".boot_mx4sio")
-    local usb_marker = JoinPath(APP_DIR_LOCAL, ".boot_usb")
-    if doesFileExist(mx_marker) then
-      return "MX4SIO", boot_path, prefix
-    end
-    if doesFileExist(usb_marker) then
-      return "USB", boot_path, prefix
-    end
+    return classify_mass_boot(prefix..":/"), boot_path, prefix
+  end
+  if string.match(prefix, "^pfs%d*$") or string.match(prefix, "^hdd%d*$") then
+    return "HDD", boot_path, prefix
+  end
+  if prefix == "smb" then
+    return "SMB", boot_path, prefix
+  end
+  if prefix == "host" then
+    return "HOST", boot_path, prefix
   end
   return nil, boot_path, prefix
 end
@@ -1041,6 +1064,9 @@ PLDR.HDD.GAMEPARTS = PLDR.HDD.GAMEPARTS or {}
 
 PLDR.VIDEO_STANDARD_NTSC = "NTSC"
 PLDR.VIDEO_STANDARD_PAL = "PAL"
+PLDR.KEYBOARD_LAYOUT_ABC = "ABC"
+PLDR.KEYBOARD_LAYOUT_QWERTY = "QWERTY"
+PLDR.KEYBOARD_LAYOUT_DVORAK = "DVORAK"
 
 local function NormalizeVideoStandard(value)
   local key = string.upper(tostring(value or ""))
@@ -1048,6 +1074,17 @@ local function NormalizeVideoStandard(value)
     return PLDR.VIDEO_STANDARD_PAL
   end
   return PLDR.VIDEO_STANDARD_NTSC
+end
+
+local function NormalizeKeyboardLayout(value)
+  local key = string.upper(tostring(value or ""))
+  if key == PLDR.KEYBOARD_LAYOUT_QWERTY then
+    return PLDR.KEYBOARD_LAYOUT_QWERTY
+  end
+  if key == PLDR.KEYBOARD_LAYOUT_DVORAK then
+    return PLDR.KEYBOARD_LAYOUT_DVORAK
+  end
+  return PLDR.KEYBOARD_LAYOUT_ABC
 end
 
 local function BuildVideoStandardSpec(standard)
@@ -1072,9 +1109,14 @@ local function BuildVideoStandardSpec(standard)
 end
 
 PLDR.VIDEO_STANDARD = NormalizeVideoStandard(PLDR.VIDEO_STANDARD)
+PLDR.KEYBOARD_LAYOUT = NormalizeKeyboardLayout(PLDR.KEYBOARD_LAYOUT)
 
 function PLDR.GetVideoStandardSpec(standard)
   return BuildVideoStandardSpec(standard)
+end
+
+function PLDR.NormalizeKeyboardLayout(value)
+  return NormalizeKeyboardLayout(value)
 end
 
 function PLDR.ApplyVideoStandardRuntime(standard)
@@ -1156,17 +1198,14 @@ UI.LASTSCENE = UI.SCENES.MMAIN
 if UI.DEVLOCK ~= nil then
   local boot_name, boot_path, boot_prefix = DetectBootDevice()
   UI.boot_device = UI.DEVLOCK.NONE
+  UI.boot_device_label = boot_name
   UI.boot_locks = {}
   if boot_name == "MX4SIO" then
     UI.boot_device = UI.DEVLOCK.MX4SIO
-    UI.boot_locks[UI.DEVLOCK.USB] = true
-    UI.boot_locks[UI.DEVLOCK.MMCE] = true
   elseif boot_name == "USB" then
     UI.boot_device = UI.DEVLOCK.USB
-    UI.boot_locks[UI.DEVLOCK.MX4SIO] = true
   elseif boot_name == "MMCE" then
     UI.boot_device = UI.DEVLOCK.MMCE
-    UI.boot_locks[UI.DEVLOCK.MX4SIO] = true
   end
   if boot_name ~= nil then
   else
@@ -1180,6 +1219,7 @@ PLDR.BDMA_MODE_KEY = "FAT32"
 PLDR.SELECTED_PROFILE = tonumber(PLDR.DEFAULT_PROFILE) or 1
 PLDR.DKWDRV_DEFAULT_PATH = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
 PLDR.DKWDRV_PATH = tostring(PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH)
+PLDR.KEYBOARD_LAYOUT = NormalizeKeyboardLayout(PLDR.KEYBOARD_LAYOUT)
 
 local POPSTARTER_PACK_ROOT = PLDR.POPSTARTER_DIR
 local BDMA_MODE_MARKER_PATH = POPSTARTER_PACK_ROOT.."/.pldr_bdma_mode"
@@ -1541,7 +1581,8 @@ local function EncodeSettings()
     "BDMA="..tostring(PLDR.BDMA_MODE_KEY or "FAT32"),
     "DKWDRV_PATH="..tostring(PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH),
     "VIDEO_STANDARD="..tostring(NormalizeVideoStandard(PLDR.VIDEO_STANDARD)),
-    "HIDE_TEXT="..(((type(UI) == "table" and UI.HideTextMode == true) and "1") or "0")
+    "HIDE_TEXT="..(((type(UI) == "table" and UI.HideTextMode == true) and "1") or "0"),
+    "KEYBOARD_LAYOUT="..tostring(NormalizeKeyboardLayout(PLDR.KEYBOARD_LAYOUT))
   }
   return table.concat(lines, "\n").."\n"
 end
@@ -1571,7 +1612,8 @@ local function SnapshotSettingsState()
     bdma_mode = NormalizeBdmaModeKey(PLDR.BDMA_MODE_KEY) or "FAT32",
     dkwdrv_path = tostring(PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH),
     video_standard = NormalizeVideoStandard(PLDR.VIDEO_STANDARD),
-    hide_text = (type(UI) == "table" and UI.HideTextMode == true) or false
+    hide_text = (type(UI) == "table" and UI.HideTextMode == true) or false,
+    keyboard_layout = NormalizeKeyboardLayout(PLDR.KEYBOARD_LAYOUT)
   }
 end
 
@@ -1595,6 +1637,9 @@ local function ApplySettingsState(state)
   end
   if state.video_standard ~= nil then
     PLDR.VIDEO_STANDARD = NormalizeVideoStandard(state.video_standard)
+  end
+  if state.keyboard_layout ~= nil then
+    PLDR.KEYBOARD_LAYOUT = NormalizeKeyboardLayout(state.keyboard_layout)
   end
   PLDR.ApplyVideoStandardRuntime(PLDR.VIDEO_STANDARD)
   if type(state.hide_text) == "boolean" and type(UI) == "table" then
@@ -1678,6 +1723,7 @@ function PLDR.LoadSettingsNonFatal()
   PLDR.BDMA_MODE_KEY = "FAT32"
   PLDR.VIDEO_STANDARD = PLDR.VIDEO_STANDARD_NTSC
   PLDR.DKWDRV_PATH = tostring(PLDR.DKWDRV_DEFAULT_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
+  PLDR.KEYBOARD_LAYOUT = PLDR.KEYBOARD_LAYOUT_ABC
   if type(UI) == "table" then
     if type(UI.SetHideTextMode) == "function" then
       UI.SetHideTextMode(false, false)
@@ -1705,6 +1751,7 @@ function PLDR.LoadSettingsNonFatal()
   local dkwdrv_path = string.match(data, "\nDKWDRV_PATH=([^\n]*)") or string.match(data, "^DKWDRV_PATH=([^\n]*)")
   local video_standard = string.match(data, "\nVIDEO_STANDARD=([^\n]+)") or string.match(data, "^VIDEO_STANDARD=([^\n]+)")
   local hide_text = string.match(data, "\nHIDE_TEXT=([^\n]+)") or string.match(data, "^HIDE_TEXT=([^\n]+)")
+  local keyboard_layout = string.match(data, "\nKEYBOARD_LAYOUT=([^\n]+)") or string.match(data, "^KEYBOARD_LAYOUT=([^\n]+)")
   if profile ~= nil and PLDR.PROFILES ~= nil and PLDR.PROFILES[profile] ~= nil then
     PLDR.SELECTED_PROFILE = profile
     PLDR.POPSTARTER_PATH = PLDR.PROFILES[profile].ELF
@@ -1719,6 +1766,11 @@ function PLDR.LoadSettingsNonFatal()
     PLDR.VIDEO_STANDARD = NormalizeVideoStandard(video_standard)
   else
     PLDR.VIDEO_STANDARD = NormalizeVideoStandard(PLDR.VIDEO_STANDARD)
+  end
+  if keyboard_layout ~= nil and keyboard_layout ~= "" then
+    PLDR.KEYBOARD_LAYOUT = NormalizeKeyboardLayout(keyboard_layout)
+  else
+    PLDR.KEYBOARD_LAYOUT = NormalizeKeyboardLayout(PLDR.KEYBOARD_LAYOUT)
   end
   PLDR.BDMA_MODE_KEY = NormalizeBdmaModeKey(bdma_mode) or PLDR.BDMA_MODE_KEY
   PLDR.ReconcileBdmaModeWithEffectiveState()
@@ -1752,7 +1804,8 @@ function PLDR.CommitSettingsChanges(opts)
     bdma_mode = NormalizeBdmaModeKey(opts.bdma_mode) or prev.bdma_mode,
     dkwdrv_path = opts.dkwdrv_path or prev.dkwdrv_path,
     video_standard = NormalizeVideoStandard(opts.video_standard or prev.video_standard),
-    hide_text = (type(opts.hide_text) == "boolean") and opts.hide_text or prev.hide_text
+    hide_text = (type(opts.hide_text) == "boolean") and opts.hide_text or prev.hide_text,
+    keyboard_layout = NormalizeKeyboardLayout(opts.keyboard_layout or prev.keyboard_layout)
   }
   local apply_bdma = opts.apply_bdma == true
   local bdma_token = opts.bdma_token

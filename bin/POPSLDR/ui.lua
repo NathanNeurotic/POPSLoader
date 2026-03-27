@@ -273,6 +273,7 @@ UI = {
     DEVLOCK = DEVLOCK;
     device_lock = DEVLOCK.NONE;
     boot_device = DEVLOCK.NONE;
+    boot_device_label = nil;
     boot_locks = {};
     BOOT_SOUND = {
       ENABLED = true,
@@ -294,21 +295,10 @@ UI = {
       return "None"
     end;
     canEnterDevice = function (target)
-      if UI.boot_locks ~= nil and UI.boot_locks[target] == true then
-        return false, "boot", UI.boot_device
-      end
-      if UI.device_lock == DEVLOCK.NONE then
-        return true
-      end
-      if UI.device_lock == target then
-        return true
-      end
-      return false, "session", UI.device_lock
+      return true
     end;
     setDeviceLock = function (target)
-      if UI.device_lock == DEVLOCK.NONE then
-        UI.device_lock = target
-      end
+      return target
     end;
     IsHideToggleScene = function (scene)
       return scene == UI.SCENES.MMAIN
@@ -460,6 +450,7 @@ UI = {
 	    DkwdrvDirty = false;
     PopstarterPathDraft = nil;
     DkwdrvPathDraft = nil;
+    KeyboardLayoutDraft = nil;
     HideTextMode = false;
     SettingsReturnScene = nil;
     SettingsEntryHideTextMode = false;
@@ -1238,15 +1229,55 @@ UI = {
       pressed_row = 0;
       pressed_col = 0;
       pressed_until = 0;
-      keys = {
-        {"a","b","c","d","e","f","g","h","i","j"},
-        {"k","l","m","n","o","p","q","r","s","t"},
-        {"u","v","w","x","y","z","0","1","2","3"},
-        {"4","5","6","7","8","9",":","/",".","_"},
-        {"-","?","!","&","\\","'","(",")",",",";","+"},
-        {"=","[","]","SPACE","DEL","CLR"},
-        {"BACK","DONE"}
+      layout_key = "ABC";
+      layout_order = {"ABC", "QWERTY", "DVORAK"};
+      layouts = {
+        ABC = {
+          {"a","b","c","d","e","f","g","h","i","j"},
+          {"k","l","m","n","o","p","q","r","s","t"},
+          {"u","v","w","x","y","z","0","1","2","3"},
+          {"4","5","6","7","8","9",":","/",".","_"},
+          {"-","?","!","&","\\","'","(",")",",",";","+"},
+          {"=","[","]","SPACE","DEL","CLR"},
+          {"BACK","DONE"}
+        },
+        QWERTY = {
+          {"q","w","e","r","t","y","u","i","o","p"},
+          {"a","s","d","f","g","h","j","k","l",";"},
+          {"z","x","c","v","b","n","m",",",".","/"},
+          {"0","1","2","3","4","5","6","7","8","9",":","_"},
+          {"-","?","!","&","\\","'","(",")","+","=","[","]"},
+          {"SPACE","DEL","CLR"},
+          {"BACK","DONE"}
+        },
+        DVORAK = {
+          {"'",";",",",".","p","y","f","g","c","r","l"},
+          {"a","o","e","u","i","d","h","t","n","s"},
+          {"q","j","k","x","b","m","w","v","z","/"},
+          {"0","1","2","3","4","5","6","7","8","9",":","_"},
+          {"-","?","!","&","\\","(",")","+","=","[","]"},
+          {"SPACE","DEL","CLR"},
+          {"BACK","DONE"}
+        }
       };
+      _NormalizeLayout = function (layout)
+        if type(PLDR) == "table" and type(PLDR.NormalizeKeyboardLayout) == "function" then
+          return PLDR.NormalizeKeyboardLayout(layout)
+        end
+        local key = string.upper(tostring(layout or ""))
+        if key == "QWERTY" or key == "DVORAK" then
+          return key
+        end
+        return "ABC"
+      end;
+      _CurrentRows = function ()
+        local layout_key = UI.PathEditor._NormalizeLayout(UI.PathEditor.layout_key)
+        local rows = UI.PathEditor.layouts[layout_key]
+        if rows == nil then
+          rows = UI.PathEditor.layouts.ABC
+        end
+        return rows
+      end;
       Open = function (title, initial, on_confirm)
         UI.PathEditor.active = true
         UI.PathEditor.title = tostring(title or "Edit Path")
@@ -1259,6 +1290,7 @@ UI = {
         UI.PathEditor.pressed_row = 0
         UI.PathEditor.pressed_col = 0
         UI.PathEditor.pressed_until = 0
+        UI.PathEditor.layout_key = UI.PathEditor._NormalizeLayout(UI.KeyboardLayoutDraft or (type(PLDR) == "table" and PLDR.KEYBOARD_LAYOUT) or "ABC")
       end;
       Close = function ()
         UI.PathEditor.active = false
@@ -1276,7 +1308,11 @@ UI = {
         return 0
       end;
       _RowSize = function (row)
-        local r = UI.PathEditor.keys[row]
+        if row == 0 then
+          return #UI.PathEditor.layout_order
+        end
+        local rows = UI.PathEditor._CurrentRows()
+        local r = rows[row]
         if r == nil then return 0 end
         return #r
       end;
@@ -1296,7 +1332,11 @@ UI = {
         UI.PathEditor._ClampCursor()
       end;
       _CurrentKey = function ()
-        local row = UI.PathEditor.keys[UI.PathEditor.row]
+        if UI.PathEditor.row == 0 then
+          return UI.PathEditor.layout_order[UI.PathEditor.col]
+        end
+        local rows = UI.PathEditor._CurrentRows()
+        local row = rows[UI.PathEditor.row]
         if row == nil then return nil end
         return row[UI.PathEditor.col]
       end;
@@ -1306,6 +1346,11 @@ UI = {
         if key == "DEL" or key == "CLR" then return 54 end
         return 38
       end;
+      _LayoutButtonWidth = function (layout_key)
+        if layout_key == "QWERTY" then return 94 end
+        if layout_key == "DVORAK" then return 88 end
+        return 62
+      end;
       _DisplayKey = function (key)
         if key == nil then return "" end
         if key == "SPACE" then return "SPACE" end
@@ -1313,6 +1358,20 @@ UI = {
           return string.upper(key)
         end
         return key
+      end;
+      _SetLayout = function (layout_key)
+        local normalized = UI.PathEditor._NormalizeLayout(layout_key)
+        UI.PathEditor.layout_key = normalized
+        UI.KeyboardLayoutDraft = normalized
+        UI.ProfileDirty = true
+        local row_size = UI.PathEditor._RowSize(UI.PathEditor.row)
+        if row_size > 0 then
+          UI.PathEditor.col = CLAMP(UI.PathEditor.col, 1, row_size)
+        else
+          UI.PathEditor.row = 1
+          UI.PathEditor.col = 1
+        end
+        return normalized
       end;
       _BuildVisibleValue = function (max_chars)
         local raw = tostring(UI.PathEditor.value or "")
@@ -1375,29 +1434,38 @@ UI = {
         UI.PathEditor.value = string.sub(val, 1, cursor - 1)..string.sub(val, cursor + 1)
         UI.PathEditor.cursor = cursor - 1
       end;
-	      _FlashCurrentKey = function ()
-	        UI.PathEditor.pressed_row = UI.PathEditor.row
-	        UI.PathEditor.pressed_col = UI.PathEditor.col
-	        UI.PathEditor.pressed_until = UI.PathEditor._NowMs() + 160
-	      end;
-	      _FlashKey = function (target_key)
-	        for r = 1, #UI.PathEditor.keys do
-	          local row = UI.PathEditor.keys[r]
-	          for c = 1, #row do
-	            if row[c] == target_key then
-	              UI.PathEditor.pressed_row = r
-	              UI.PathEditor.pressed_col = c
-	              UI.PathEditor.pressed_until = UI.PathEditor._NowMs() + 160
-	              return
-	            end
-	          end
-	        end
-	      end;
-	      _IsPressed = function (row, col)
-	        return UI.PathEditor.pressed_row == row
-	          and UI.PathEditor.pressed_col == col
-	          and UI.PathEditor._NowMs() <= (tonumber(UI.PathEditor.pressed_until) or 0)
-	      end;
+      _FlashCurrentKey = function ()
+        UI.PathEditor.pressed_row = UI.PathEditor.row
+        UI.PathEditor.pressed_col = UI.PathEditor.col
+        UI.PathEditor.pressed_until = UI.PathEditor._NowMs() + 160
+      end;
+      _FlashKey = function (target_key)
+        for c = 1, #UI.PathEditor.layout_order do
+          if UI.PathEditor.layout_order[c] == target_key then
+            UI.PathEditor.pressed_row = 0
+            UI.PathEditor.pressed_col = c
+            UI.PathEditor.pressed_until = UI.PathEditor._NowMs() + 160
+            return
+          end
+        end
+        local rows = UI.PathEditor._CurrentRows()
+        for r = 1, #rows do
+          local row = rows[r]
+          for c = 1, #row do
+            if row[c] == target_key then
+              UI.PathEditor.pressed_row = r
+              UI.PathEditor.pressed_col = c
+              UI.PathEditor.pressed_until = UI.PathEditor._NowMs() + 160
+              return
+            end
+          end
+        end
+      end;
+      _IsPressed = function (row, col)
+        return UI.PathEditor.pressed_row == row
+          and UI.PathEditor.pressed_col == col
+          and UI.PathEditor._NowMs() <= (tonumber(UI.PathEditor.pressed_until) or 0)
+      end;
       HandleInput = function ()
         if not UI.PathEditor.active then return end
         if UI.Pad.Events.BACK then
@@ -1410,22 +1478,23 @@ UI = {
         if UI.Pad.Events.R1 then
           UI.PathEditor._MoveCursor(1)
         end
-	        if UI.Pad.Events.R2 then
-	          UI.PathEditor.upper = not UI.PathEditor.upper
-	        end
-	        if UI.Pad.Events.SQUARE then
-	          UI.PathEditor._DeleteChar()
-	          UI.PathEditor._FlashKey("DEL")
-	        end
+        if UI.Pad.Events.R2 then
+          UI.PathEditor.upper = not UI.PathEditor.upper
+        end
+        if UI.Pad.Events.SQUARE then
+          UI.PathEditor._DeleteChar()
+          UI.PathEditor._FlashKey("DEL")
+        end
 
-	        local max_rows = #UI.PathEditor.keys
+        local rows = UI.PathEditor._CurrentRows()
+        local max_rows = #rows
         if UI.Pad.Events.NAV_UP then
-          UI.PathEditor.row = CLAMP(UI.PathEditor.row - 1, 1, max_rows)
+          UI.PathEditor.row = CLAMP(UI.PathEditor.row - 1, 0, max_rows)
           local row_size = UI.PathEditor._RowSize(UI.PathEditor.row)
           UI.PathEditor.col = CLAMP(UI.PathEditor.col, 1, row_size)
         end
         if UI.Pad.Events.NAV_DOWN then
-          UI.PathEditor.row = CLAMP(UI.PathEditor.row + 1, 1, max_rows)
+          UI.PathEditor.row = CLAMP(UI.PathEditor.row + 1, 0, max_rows)
           local row_size = UI.PathEditor._RowSize(UI.PathEditor.row)
           UI.PathEditor.col = CLAMP(UI.PathEditor.col, 1, row_size)
         end
@@ -1460,7 +1529,10 @@ UI = {
         if UI.Pad.Events.CONFIRM then
           UI.PathEditor._FlashCurrentKey()
           local key = UI.PathEditor._CurrentKey()
-          if key == "SPACE" then
+          if UI.PathEditor.row == 0 then
+            UI.PathEditor._SetLayout(key)
+            return
+          elseif key == "SPACE" then
             UI.PathEditor._InsertText(" ")
           elseif key == "DEL" then
             UI.PathEditor._DeleteChar()
@@ -1485,7 +1557,7 @@ UI = {
       Draw = function ()
         if not UI.PathEditor.active then return end
         local box_w = math.min(UI.SCR.X - 48, 560)
-        local box_h = math.min(UI.SCR.Y - 44, 320)
+        local box_h = math.min(UI.SCR.Y - 32, 352)
         local box_x = math.floor((UI.SCR.X - box_w) / 2)
         local box_y = math.floor((UI.SCR.Y - box_h) / 2)
         local input_x = box_x + 18
@@ -1508,9 +1580,52 @@ UI = {
 
         local key_h = 24
         local key_gap = 6
-        local start_y = box_y + 96
-        for r = 1, #UI.PathEditor.keys do
-          local row = UI.PathEditor.keys[r]
+        local layout_h = 22
+        local layout_gap = 8
+        local layout_y = input_y + input_h + 30
+        local layout_w = 0
+        for i = 1, #UI.PathEditor.layout_order do
+          layout_w = layout_w + UI.PathEditor._LayoutButtonWidth(UI.PathEditor.layout_order[i])
+          if i < #UI.PathEditor.layout_order then
+            layout_w = layout_w + layout_gap
+          end
+        end
+        local layout_x = math.floor(box_x + ((box_w - layout_w) / 2))
+        local layout_cursor_x = layout_x
+        for i = 1, #UI.PathEditor.layout_order do
+          local layout_key = UI.PathEditor.layout_order[i]
+          local button_w = UI.PathEditor._LayoutButtonWidth(layout_key)
+          local selected = (UI.PathEditor.row == 0 and UI.PathEditor.col == i)
+          local active = (UI.PathEditor.layout_key == layout_key)
+          local pressed = UI.PathEditor._IsPressed(0, i)
+          local border = Color.new(40, 68, 110, 128)
+          local fill = Color.new(10, 16, 30, 128)
+          local text_color = UI.CCOL.GREY
+          if active then
+            border = Color.new(70, 126, 190, 128)
+            fill = Color.new(22, 44, 74, 128)
+            text_color = Color.new(168, 212, 255, 128)
+          end
+          if selected then
+            border = Color.new(90, 170, 255, 128)
+            fill = Color.new(30, 64, 118, 128)
+            text_color = Color.new(180, 220, 255, 128)
+          end
+          if pressed then
+            border = Color.new(120, 210, 255, 128)
+            fill = Color.new(54, 118, 180, 128)
+            text_color = Color.new(200, 230, 255, 128)
+          end
+          Graphics.drawRect(layout_cursor_x, layout_y, button_w, layout_h, border)
+          Graphics.drawRect(layout_cursor_x + 1, layout_y + 1, button_w - 2, layout_h - 2, fill)
+          Font.ftPrint(SFONT, Round(layout_cursor_x + (button_w / 2)), layout_y + 3, 8, button_w, 16, layout_key, text_color)
+          layout_cursor_x = layout_cursor_x + button_w + layout_gap
+        end
+
+        local start_y = layout_y + layout_h + 8
+        local rows = UI.PathEditor._CurrentRows()
+        for r = 1, #rows do
+          local row = rows[r]
           local row_w = 0
           for c = 1, #row do
             row_w = row_w + UI.PathEditor._KeyWidth(row[c])
@@ -2123,6 +2238,7 @@ UI = {
                 dkwdrv_path = dkwdrv_path,
                 bdma_mode = mode_key,
                 video_standard = video_key,
+                keyboard_layout = UI.KeyboardLayoutDraft or (type(PLDR) == "table" and PLDR.KEYBOARD_LAYOUT) or "ABC",
                 hide_text = UI.HideTextMode == true,
                 prev_hide_text = UI.SettingsEntryHideTextMode == true,
                 apply_bdma = UI.BdmaDirty,
@@ -2136,6 +2252,11 @@ UI = {
             PLDR.DKWDRV_PATH = dkwdrv_path
             PLDR.BDMA_MODE_KEY = mode_key
             PLDR.VIDEO_STANDARD = video_key
+            if type(PLDR) == "table" and type(PLDR.NormalizeKeyboardLayout) == "function" then
+              PLDR.KEYBOARD_LAYOUT = PLDR.NormalizeKeyboardLayout(UI.KeyboardLayoutDraft or PLDR.KEYBOARD_LAYOUT or "ABC")
+            else
+              PLDR.KEYBOARD_LAYOUT = UI.KeyboardLayoutDraft or PLDR.KEYBOARD_LAYOUT or "ABC"
+            end
             if type(PLDR.ApplyVideoStandardRuntime) == "function" then
               PLDR.ApplyVideoStandardRuntime(video_key)
             end
@@ -2285,6 +2406,14 @@ UI = {
           end
           if UI.HideTextMode then
             UI.SetHideTextMode(false, false)
+            UI.ProfileDirty = true
+          end
+          local default_keyboard_layout = "ABC"
+          if type(PLDR) == "table" and type(PLDR.NormalizeKeyboardLayout) == "function" then
+            default_keyboard_layout = PLDR.NormalizeKeyboardLayout(default_keyboard_layout)
+          end
+          if tostring(UI.KeyboardLayoutDraft or "") ~= tostring(default_keyboard_layout) then
+            UI.KeyboardLayoutDraft = default_keyboard_layout
             UI.ProfileDirty = true
           end
           UI.Notif_queue.add("Profile defaults restored")
@@ -2440,8 +2569,12 @@ UI = {
           Font.ftPrint(UI.FONT.LABEL, UI.SCR.X_MID, top_y, 8, UI.SCR.X, 16, UI.MainMenu.opts[center_label_idx], UI.COLORS.TEXT_PRIMARY)
         end
         local status_y = top_y + 12
-        if UI.boot_device ~= nil and UI.boot_device ~= DEVLOCK.NONE and not UI.ShouldHideAuxText(UI.CURSCENE) then
-          Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Booted from: "..UI.device_lock_name(UI.boot_device), UI.COLORS.TEXT_PRIMARY)
+        local boot_label = UI.boot_device_label
+        if (boot_label == nil or boot_label == "") and UI.boot_device ~= nil and UI.boot_device ~= DEVLOCK.NONE then
+          boot_label = UI.device_lock_name(UI.boot_device)
+        end
+        if boot_label ~= nil and boot_label ~= "" and not UI.ShouldHideAuxText(UI.CURSCENE) then
+          Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Booted from: "..tostring(boot_label), UI.COLORS.TEXT_PRIMARY)
           status_y = status_y + 12
         end
         local function Lerp(a, b, t)
@@ -2929,6 +3062,11 @@ end
 function UI.SyncSettingsDraftFromRuntime()
   UI.PopstarterPathDraft = tostring(PLDR.POPSTARTER_PATH or "")
   UI.DkwdrvPathDraft = tostring(PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
+  if type(PLDR) == "table" and type(PLDR.NormalizeKeyboardLayout) == "function" then
+    UI.KeyboardLayoutDraft = PLDR.NormalizeKeyboardLayout(PLDR.KEYBOARD_LAYOUT)
+  else
+    UI.KeyboardLayoutDraft = tostring(PLDR.KEYBOARD_LAYOUT or "ABC")
+  end
   UI.PopPathDirty = false
   UI.DkwdrvDirty = false
   UI.VideoStandardDirty = false
