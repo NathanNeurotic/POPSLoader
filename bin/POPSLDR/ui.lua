@@ -1653,7 +1653,7 @@ UI = {
             local key_w = UI.PathEditor._KeyWidth(key)
             local x = cursor_x
             local y = start_y + ((r - 1) * (key_h + key_gap))
-            local text_y = y + 4
+            local text_y = y + 3
             local text_x = Round(x + (key_w / 2))
             local text_w = key_w
             local selected = (UI.PathEditor.row == r and UI.PathEditor.col == c)
