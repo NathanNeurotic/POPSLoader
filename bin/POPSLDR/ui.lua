@@ -1580,7 +1580,7 @@ UI = {
         local input_y = box_y + 30
         local input_w = box_w - 36
         local input_h = 34
-        Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, 112))
+        Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(6, 10, 20, 224))
         Graphics.drawRect(box_x, box_y, box_w, box_h, Color.new(6, 10, 20, 224))
         Graphics.drawRect(box_x, box_y, box_w, 2, Color.new(90, 170, 255, 128))
         Graphics.drawRect(box_x, box_y + 2, box_w, 12, Color.new(16, 30, 68, 128))
