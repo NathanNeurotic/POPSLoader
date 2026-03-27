@@ -17,12 +17,8 @@
 #include <sifrpc.h>
 #include <errno.h>
 #include <ps2sdkapi.h>
-#include <sio.h>
 
-#define DPRINTF(fmt, args...) \
-	do { \
-		sio_printf(fmt, ##args); \
-	} while (0)
+#define DPRINTF(fmt, args...) do {} while (0)
 
 #ifdef LOADER_ENABLE_DEBUG_COLORS
 #define SET_GS_BGCOLOUR(colour) {*((volatile unsigned long int *)0x120000E0) = colour;}
@@ -119,8 +115,6 @@ int main(int argc, char *argv[])
 		target_arg_offset += arg_len;
 	}
 	target_argv[target_argc] = NULL;
-
-	sio_init(38400, 0, 0, 0, 0);
 
 	DPRINTF("> argv[0] = %s\n", argv[0]);
 	for (i = 1; i < argc; i++) {

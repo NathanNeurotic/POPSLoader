@@ -56,7 +56,7 @@ The main unresolved hardware issue was:
     - launch an HDD title,
     - POPSTARTER also resolves from HDD sidecar/CWD or configured HDD path,
     - result: black-screen hang.
-  - Investigation identified hardware exceptions occurring in the embedded loader (`loader.c`) due to the usage of `snprintf` and `printf` on uninitialized libc/newlib structures. A fix has been implemented to replace these with safe string primitives (`strncpy`) and `sio_printf` for bare-metal debugging. This is pending hardware verification.
+  - Investigation identified hardware exceptions occurring in the embedded loader (`loader.c`) due to the usage of `snprintf` and `printf` on uninitialized libc/newlib structures. A fix has been implemented to replace `snprintf` with safe string primitives (`strncpy`) and stub out `printf` to prevent crashes. This is pending hardware verification.
 
 ## Runtime Behavior (Current Code)
 
