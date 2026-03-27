@@ -17,7 +17,17 @@
 #include <sifrpc.h>
 #include <errno.h>
 #include <ps2sdkapi.h>
+#define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
+/* FIO_O_RDONLY / FIO_SEEK_SET are not exposed when NEWLIB_PORT_AWARE suppresses
+ * the raw constant block in io_common.h, so define them explicitly here.
+ * Values match PS2SDK io_common.h: O_RDONLY=0x0001, SEEK_SET=0. */
+#ifndef FIO_O_RDONLY
+#define FIO_O_RDONLY 0x0001
+#endif
+#ifndef FIO_SEEK_SET
+#define FIO_SEEK_SET 0
+#endif
 #define DPRINTF(x...) printf(x)
 
 #ifdef LOADER_ENABLE_DEBUG_COLORS
