@@ -292,6 +292,9 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	DPRINTF("LAUNCH: argv1=%s\n", launch_argv[1] ? launch_argv[1] : "(null)");
 	DPRINTF("LAUNCH: argv2_is_null=%s\n", launch_argv[2] == NULL ? "yes" : "no");
 	/* LoadExecPS2 should not return on success. */
+	if (is_hdd_backed_exec_path(resolved_path)) {
+		return ExecuteViaEmbeddedLoader(resolved_path, new_argc, launch_argv);
+	}
 	LoadExecPS2(resolved_path, new_argc, launch_argv);
 	DPRINTF("LAUNCH: RETURNED rc=%d\n", -1);
 	return -1;
@@ -327,7 +330,7 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 	}
 
 	if (is_hdd_backed_exec_path(resolved_path)) {
-		unmount_pfs_slots_for_exec(build_exec_keep_mask(resolved_path));
+		return ExecuteViaEmbeddedLoader(resolved_path, argc, argv);
 	}
 
 	ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc, argv);
@@ -355,7 +358,7 @@ int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]
 	}
 
 	if (is_hdd_backed_exec_path(resolved_path)) {
-		unmount_pfs_slots_for_exec(build_exec_keep_mask(resolved_path));
+		return ExecuteViaEmbeddedLoader(resolved_path, argc, argv);
 	}
 
 	FlushCache(0);
