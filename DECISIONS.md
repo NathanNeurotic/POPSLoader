@@ -54,6 +54,12 @@ Each entry records:
 - Implications: docs and workflow validation must stay synchronized.
 - Evidence: `.github/workflows/compilation.yml`.
 
+### 2026-03-27 — Embedded loader libc safety: no printf, bounded wipeUserMem, strncpy
+- Decision: `DPRINTF` macro in `loader.c` is a no-op (not `printf`). `wipeUserMem` stops at `GetMemorySize() - 0x100000` (avoids the top 1MB of EE RAM). `snprintf` is replaced with `strncpy`.
+- Rationale: `_libcglue_init()` is stubbed in the embedded loader, so the libc stdio layer is not initialized; calling `printf`/`snprintf` can trigger a hardware exception → black screen. Wiping to `GetMemorySize()` risks corrupting SIF DMA receive buffers resident near the top of EE RAM.
+- Implications: debug output from the embedded loader is permanently silent; top 1MB of EE RAM is not wiped before user ELF load (acceptable for PS2 programs).
+- Evidence: `src/elf_loader/src/loader/src/loader.c` (`DPRINTF`, `wipeUserMem`, `strncpy` changes).
+
 ### 2026-03-27 — HDD POPSTARTER load routes through embedded loader with fileXio
 - Decision: `LoadELFFromFileExecPS2` detects pfs:/hdd: paths and routes them through `ExecuteViaEmbeddedLoader` instead of `SifLoadElf`. `ExecuteViaEmbeddedLoader` no longer tears down IOP state before ExecPS2. The embedded loader uses `fileXioInit` + `fileXioOpen/Read/Lseek/Close` to load the ELF, and does not reset IOP for pfs:/hdd: targets (POPSTARTER manages its own IOP reset).
 - Rationale: `SifLoadElf` (IOMAN/rom0:LOADFILE) cannot access iomanX-only pfs: paths and hangs indefinitely. The embedded loader in BRAM is the only safe load path: it avoids clobbering the still-running POPSLoader at 0x100000 and keeps HDD drivers active for the fileXio load.
@@ -61,7 +67,7 @@ Each entry records:
 - Evidence: `src/elf_loader/src/elf.c` (routing), `src/elf_loader/src/loader/src/loader.c` (fileXio branch), `bin/POPSLDR/system.lua` (argv0_selector construction).
 
 ## Open Investigations
-- HDD `POPSTARTER.ELF` fix applied; awaits hardware re-test (D-10).
+- HDD `POPSTARTER.ELF` fix updated with libc/wipeUserMem safety fixes; awaits hardware re-test (D-10).
 - `BOOT.ELF` after HDD page init:
   - current hardware status is `Unknown (verify on hardware)`.
 - PAL asset proportions:

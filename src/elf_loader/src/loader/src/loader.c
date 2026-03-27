@@ -8,7 +8,6 @@
 # Review ps2sdk README & LICENSE files for further details.
 */
 
-#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <kernel.h>
@@ -28,7 +27,7 @@
 #ifndef FIO_SEEK_SET
 #define FIO_SEEK_SET 0
 #endif
-#define DPRINTF(x...) printf(x)
+#define DPRINTF(x...) do {} while (0)
 
 #ifdef LOADER_ENABLE_DEBUG_COLORS
 #define SET_GS_BGCOLOUR(colour) {*((volatile unsigned long int *)0x120000E0) = colour;}
@@ -161,7 +160,7 @@ static int load_elf_via_filexio(const char *path, t_ExecData *elfdata)
 static void wipeUserMem(void)
 {
 	int i;
-	for (i = 0x100000; i < GetMemorySize(); i += 64) {
+	for (i = 0x100000; i < GetMemorySize() - 0x100000; i += 64) {
 		asm volatile(
 			"\tsq $0, 0(%0) \n"
 			"\tsq $0, 16(%0) \n"
@@ -194,7 +193,12 @@ int main(int argc, char *argv[])
 		SET_GS_BGCOLOUR(RED_BG);
 		return -EINVAL;
 	}
-	snprintf(target_path, sizeof(target_path), "%s", argv[0] ? argv[0] : "");
+	if (argv[0]) {
+		strncpy(target_path, argv[0], sizeof(target_path) - 1);
+		target_path[sizeof(target_path) - 1] = '\0';
+	} else {
+		target_path[0] = '\0';
+	}
 	target_argc = argc - 1;
 	if (target_argc > 32) {
 		return -E2BIG;

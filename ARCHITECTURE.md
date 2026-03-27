@@ -111,5 +111,5 @@ Last updated: 2026-03-26
 ## Current Known Gaps
 - `HDD (exFAT)` is still a stub menu entry.
 - `SMB (v1)` is still a stub menu entry.
-- HDD `POPSTARTER.ELF` when launcher/sidecar/CWD is on HDD is still unresolved on reported hardware.
+- HDD `POPSTARTER.ELF` when launcher/sidecar/CWD is on HDD: additional loader libc/wipeUserMem fixes applied; awaits hardware re-test.
 - PAL UI aspect compensation exists in code, but final display correctness still needs hardware confirmation.

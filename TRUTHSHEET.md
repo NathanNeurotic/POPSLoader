@@ -52,7 +52,7 @@ Non-negotiable behavioral invariants that changes must preserve unless an explic
 - `SMB (v1)` main-menu path is intentionally not implemented and must continue to report that status until feature work lands.
 
 ## Current Unresolved Hardware Markers
-- `D-10`: HDD `POPSTARTER.ELF` on HDD sidecar/CWD is still reported to black-screen on hardware.
+- `D-10`: HDD `POPSTARTER.ELF` on HDD sidecar/CWD — additional loader fixes applied (DPRINTF→no-op, wipeUserMem bounds, snprintf→strncpy); awaits hardware re-test.
 - `U-10`: `BOOT.ELF` after HDD page init must be re-verified on current source after the last reverted regression experiment.
 - `U-06`: PAL/NTSC menu asset proportions still need hardware confirmation.
 

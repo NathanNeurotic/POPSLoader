@@ -94,6 +94,6 @@ This matrix tracks current behavior across:
 - CI gates: repository-verified by workflow definition.
 - Reported hardware outcomes:
   - `U-05`: reported PASS.
-  - `D-10`: previously FAIL (black-screen hang); fix applied — embedded loader now routes pfs:/hdd: POPSTARTER paths through fileXio without IOP reset; argv0_selector now includes full partition path. Awaits hardware re-test.
+  - `D-10`: previously FAIL (black-screen hang); additional fixes applied — embedded loader DPRINTF macro changed to no-op (printf crashed with uninitialized libc), wipeUserMem upper bound reduced by 1MB to protect SIF DMA buffers, snprintf replaced with strncpy. Awaits hardware re-test.
   - `U-10`: BOOT.ELF path is unaffected by D-10 changes; current hardware status is `Unknown (verify on hardware)`.
 - All other manual hardware items remain `Unknown (verify on hardware)` unless run logs are added above.
