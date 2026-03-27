@@ -1,4 +1,4 @@
-Last updated: 2026-03-26
+Last updated: 2026-03-27
 
 # ROADMAP
 
@@ -15,7 +15,9 @@ Last updated: 2026-03-26
   - HDD game launched from HDD (PFS),
   - `POPSTARTER.ELF` resolved from HDD sidecar/CWD or configured HDD path,
   - current reported result: black-screen hang.
-- Current source now adds HDD-backed non-reboot `ExecPS2` cleanup before transfer; re-run `D-10` on hardware to see whether the remaining hang was stale PFS/SIF state rather than path resolution.
+- 2026-03-27 re-test of the current source still black-screened with boot source HDD, `POPSTARTER.ELF` on HDD via default/Profile 1/cwd/sidecar, and game device HDD.
+- Current source now exposes `R2` from the HDD list as an A/B experiment for HDD-resident `POPSTARTER.ELF`, swapping only the selector contract to `hdd0:PART:pfs0:/GAME.ELF`.
+- Next hardware step: run the same repro twice on current source, once with `X` and once with `R2`, to separate current-branch handoff failure from POPSTARTER selector-path failure.
 - Keep `BOOT.ELF` and OSDSYS behavior stable while iterating on this.
 
 ### 2) External exit/launch re-validation

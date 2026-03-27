@@ -1,6 +1,6 @@
 # POPSLoader Regression Matrix
 
-Last updated: 2026-03-26
+Last updated: 2026-03-27
 Target branch: `BETA-10-play`
 
 ## Scope
@@ -88,6 +88,7 @@ This matrix tracks current behavior across:
 ## Run Log Template
 | Date | Console | Storage Setup | IDs Run | Result |
 |---|---|---|---|---|
+| 2026-03-27 | Unknown (not reported) | Booted from HDD; POPSTARTER via default/Profile 1/cwd/sidecar on HDD; game device HDD | D-10 | FAIL: black screen |
 | YYYY-MM-DD | SCPH-xxxxx | USB/MMCE/MX4SIO/HDD details | e.g. S-01,S-02,D-02 | PASS/FAIL + notes |
 
 ## Current Verification Status
@@ -95,6 +96,7 @@ This matrix tracks current behavior across:
 - Reported hardware outcomes:
   - `U-05`: reported PASS.
   - `D-10`: reported FAIL when booted from HDD and launching an HDD title with HDD `POPSTARTER.ELF` sidecar/CWD.
-    - current source now adds HDD-backed non-reboot `ExecPS2` cleanup before control transfer; re-run required.
+    - 2026-03-27 re-test of the current source still failed with boot source HDD, POPSTARTER on HDD via default/Profile 1/cwd/sidecar, and game device HDD.
+    - current source now also exposes an `R2` alternate HDD launch for HDD-resident `POPSTARTER.ELF` that changes only the selector path to `hdd0:PART:pfs0:/GAME.ELF`; hardware result is still `Unknown (verify on hardware)`.
   - `U-10`: one artifact was reported good before a later regression experiment; current source has been restored away from that experiment and must be re-tested.
 - All other manual hardware items remain `Unknown (verify on hardware)` unless run logs are added above.

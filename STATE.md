@@ -1,4 +1,4 @@
-Last updated: 2026-03-26
+Last updated: 2026-03-27
 
 # STATE
 
@@ -51,7 +51,8 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - reported failing on hardware.
   - repro: boot from HDD, launch HDD title with HDD `POPSTARTER.ELF` sidecar/CWD.
   - result: black-screen hang.
-  - current source now adds HDD-backed non-reboot `ExecPS2` teardown/flush before control transfer; hardware result remains `Unknown (verify on hardware)` until re-run.
+  - 2026-03-27 re-test of the current source still failed when booted from HDD with default/Profile 1/cwd/sidecar `POPSTARTER.ELF` on HDD and game device HDD.
+  - current source also exposes an `R2` alternate HDD launch path for HDD-resident `POPSTARTER.ELF` that swaps only the selector contract to `hdd0:PART:pfs0:/GAME.ELF`.
 - `U-10` BOOT.ELF after HDD page init:
   - one prior artifact was reported good,
   - a later launch-backend experiment regressed it,

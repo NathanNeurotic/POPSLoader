@@ -1998,53 +1998,65 @@ UI = {
             end
           end
         end
-        if UI.Pad.Events.CONFIRM then
+        local function LaunchSelectedGame(launch_options)
           if ammount <= 0 then
             UI.Notif_queue.add("No games found")
+            return
+          end
+          local popstarter_path = PLDR.POPSTARTER_PATH
+          if type(PLDR.ResolvePopstarterPath) == "function" then
+            popstarter_path = PLDR.ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
+          end
+          local popstarter_ok = false
+          if type(PLDR.PopstarterProbeWithEnsure) == "function" then
+            popstarter_ok = PLDR.PopstarterProbeWithEnsure(popstarter_path)
           else
-            local popstarter_path = PLDR.POPSTARTER_PATH
-            if type(PLDR.ResolvePopstarterPath) == "function" then
-              popstarter_path = PLDR.ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
+            popstarter_ok = doesFileExist(popstarter_path)
+          end
+          if not popstarter_ok then
+            local configured_popstarter_path = tostring(PLDR.POPSTARTER_PATH or "")
+            local message = "Cant find POPSTARTER ELF\n"..configured_popstarter_path
+            if configured_popstarter_path ~= tostring(popstarter_path) then
+              message = message.."\nResolved: "..tostring(popstarter_path)
             end
-            local popstarter_ok = false
-            if type(PLDR.PopstarterProbeWithEnsure) == "function" then
-              popstarter_ok = PLDR.PopstarterProbeWithEnsure(popstarter_path)
-            else
-              popstarter_ok = doesFileExist(popstarter_path)
-            end
-            if not popstarter_ok then
-              local configured_popstarter_path = tostring(PLDR.POPSTARTER_PATH or "")
-              local message = "Cant find POPSTARTER ELF\n"..configured_popstarter_path
-              if configured_popstarter_path ~= tostring(popstarter_path) then
-                message = message.."\nResolved: "..tostring(popstarter_path)
-              end
-              UI.Notif_queue.add(message)
+            UI.Notif_queue.add(message)
+            return
+          end
+          if type(launch_options) == "table" and launch_options.hdd_selector_mode == "full_hdd_pfs0" then
+            local lowered_popstarter = string.lower(tostring(popstarter_path or ""))
+            if string.match(lowered_popstarter, "^hdd%d:") == nil and string.match(lowered_popstarter, "^pfs%d*:/") == nil then
+              UI.Notif_queue.add("HDD Alt requires HDD POPSTARTER")
               return
-            end
-            local entry = PLDR.GAMES[UI.GameList.CURR]
-            if entry == nil then
-              UI.Notif_queue.add("Invalid game selection")
-              return
-            end
-            local root, rel = string.match(entry or "", "^([^|]+)|(.+)$")
-            local vcd_full = ResolveSelectedVcdPath(entry, PLDR.GAMEPATH)
-            if UI.CURSCENE ~= UI.SCENES.GHDD then -- only check if game can be found on USB and SMB
-              if not doesFileExist(vcd_full) then
-                UI.Notif_queue.add("Cant find Game\n"..vcd_full)
-              end
-            end
-            local launch_path = PLDR.GAMEPATH
-            if UI.CURSCENE == UI.SCENES.GHDD then
-              launch_path = ""
-            end
-            if UI.CURSCENE == UI.SCENES.GHDD then
-              PLDR.RunPOPStarterGame(launch_path, entry, UI.CURSCENE)
-            elseif root ~= nil then
-              PLDR.RunPOPStarterGame(root, rel, UI.CURSCENE)
-            else
-              PLDR.RunPOPStarterGame(launch_path, entry, UI.CURSCENE)
             end
           end
+          local entry = PLDR.GAMES[UI.GameList.CURR]
+          if entry == nil then
+            UI.Notif_queue.add("Invalid game selection")
+            return
+          end
+          local root, rel = string.match(entry or "", "^([^|]+)|(.+)$")
+          local vcd_full = ResolveSelectedVcdPath(entry, PLDR.GAMEPATH)
+          if UI.CURSCENE ~= UI.SCENES.GHDD then -- only check if game can be found on USB and SMB
+            if not doesFileExist(vcd_full) then
+              UI.Notif_queue.add("Cant find Game\n"..vcd_full)
+            end
+          end
+          local launch_path = PLDR.GAMEPATH
+          if UI.CURSCENE == UI.SCENES.GHDD then
+            launch_path = ""
+          end
+          if UI.CURSCENE == UI.SCENES.GHDD then
+            PLDR.RunPOPStarterGame(launch_path, entry, UI.CURSCENE, launch_options)
+          elseif root ~= nil then
+            PLDR.RunPOPStarterGame(root, rel, UI.CURSCENE, launch_options)
+          else
+            PLDR.RunPOPStarterGame(launch_path, entry, UI.CURSCENE, launch_options)
+          end
+        end
+        if UI.Pad.Events.CONFIRM then
+          LaunchSelectedGame(nil)
+        elseif UI.Pad.Events.R2 and UI.CURSCENE == UI.SCENES.GHDD then
+          LaunchSelectedGame({ hdd_selector_mode = "full_hdd_pfs0" })
         end
         local cross_label = UI.Footer.labels.cross_launch
         if ammount <= 0 then
@@ -2056,7 +2068,8 @@ UI = {
           circle = UI.Footer.labels.circle_other,
           cross = cross_label,
           square = "Cover Art",
-          start = UI.Footer.labels.start_profiles
+          start = UI.Footer.labels.start_profiles,
+          R2 = UI.CURSCENE == UI.SCENES.GHDD and ammount > 0 and "HDD Alt" or nil
         })
         UI.Footer.Draw(labels, order)
       end;

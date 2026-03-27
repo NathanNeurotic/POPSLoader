@@ -3390,10 +3390,34 @@ local function ResolveLaunchPolicy(gamelocation, ui_scene)
   return BuildLaunchPolicy("unknown", "mass", "mass", nil), "unknown"
 end
 
-function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
+local function BuildHddPopstarterSelectorPath(game_name, hdd_selector_mode, hdd_init)
+  local selector_name = BuildLiteralElfName(game_name)
+  if selector_name == "" then
+    return ""
+  end
+  if hdd_selector_mode == "full_hdd_pfs0" and hdd_init ~= nil and hdd_init.mount_ok == true then
+    local partition = tostring(hdd_init.mount_partition or "")
+    if partition ~= "" then
+      return partition..":pfs0:/"..selector_name
+    end
+    return "pfs0:/"..selector_name
+  end
+  return selector_name
+end
+
+function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
   local policy, device_page = ResolveLaunchPolicy(gamelocation, ui_scene)
   local selected_entry = tostring(game or "")
   local popstarter = ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
+  local hdd_selector_mode = nil
+  if type(launch_options) == "table" then
+    hdd_selector_mode = tostring(launch_options.hdd_selector_mode or "")
+    if hdd_selector_mode == "" then
+      hdd_selector_mode = nil
+    end
+  elseif type(launch_options) == "string" and launch_options ~= "" then
+    hdd_selector_mode = launch_options
+  end
   if selected_entry == "" then
     BlockLaunchFailure(
       "Invalid game selection",
@@ -3541,6 +3565,9 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   end
   local selector_prefix = SelectPopstarterSelectorPrefix(device_page)
   local argv0_selector = BuildPopstarterSelectorPath(device_page, game_name)
+  if policy.name == "HDD" then
+    argv0_selector = BuildHddPopstarterSelectorPath(game_name, hdd_selector_mode, hdd_init)
+  end
   if selector_prefix == "" and string.upper(game_name) == "POPSTARTER" then
     BlockLaunchFailure(
       "Internal error: game_base derived as POPSTARTER; refusing to launch.",

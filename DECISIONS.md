@@ -1,4 +1,4 @@
-Last updated: 2026-03-26
+Last updated: 2026-03-27
 
 # DECISIONS
 
@@ -57,7 +57,10 @@ Each entry records:
 ## Open Investigations
 - HDD `POPSTARTER.ELF` when launcher/sidecar/CWD is on HDD:
   - current reported hardware result is still a black-screen hang.
-  - current code contains path/mount/CWD mitigations plus HDD-backed non-reboot `ExecPS2` cleanup, but no final verified fix.
+  - path/mount/CWD mitigations plus the HDD-backed non-reboot `ExecPS2` cleanup are present in current code.
+  - a 2026-03-27 hardware re-test of the current source still black-screened with boot source HDD, default/Profile 1/cwd/sidecar `POPSTARTER.ELF` on HDD, and game device HDD.
+  - current source now includes an A/B selector-path experiment on `R2` from the HDD list for HDD-resident `POPSTARTER.ELF`, switching only to `hdd0:PART:pfs0:/GAME.ELF`.
+  - next high-value check is whether `R2` differs from the standard `X` launch on the same hardware repro.
 - `BOOT.ELF` after HDD page init:
   - the last failed backend experiment was reverted in source,
   - current hardware status on that restored source is still `Unknown (verify on hardware)`.
