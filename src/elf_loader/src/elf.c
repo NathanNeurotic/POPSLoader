@@ -30,6 +30,19 @@
 #define ELF_PT_LOAD 1
 
 extern unsigned char loader_elf[];
+static unsigned int s_exec_keep_pfs_mask = 0;
+
+void SetExecKeepPfsMask(unsigned int mask) {
+	s_exec_keep_pfs_mask = mask & 0x0F;
+}
+
+void ClearExecKeepPfsMask(void) {
+	s_exec_keep_pfs_mask = 0;
+}
+
+static unsigned int GetExecKeepPfsMask(void) {
+	return s_exec_keep_pfs_mask & 0x0F;
+}
 
 static bool is_host_path(const char *filename) {
 	return (filename != NULL && strncmp(filename, "host:/", 6) == 0);
@@ -105,16 +118,25 @@ static int extract_exec_pfs_slot(const char *path) {
 	return -1;
 }
 
-static void unmount_pfs_slots_for_exec(int keep_slot) {
+static void unmount_pfs_slots_for_exec(unsigned int keep_mask) {
 	char mount_name[6] = "pfs0:";
 	int slot;
 	for (slot = 0; slot <= 3; slot++) {
-		if (slot == keep_slot) {
+		if ((keep_mask & (1U << slot)) != 0) {
 			continue;
 		}
 		mount_name[3] = '0' + slot;
 		fileXioUmount(mount_name);
 	}
+}
+
+static unsigned int build_exec_keep_mask(const char *resolved_path) {
+	unsigned int keep_mask = GetExecKeepPfsMask();
+	int exec_slot = extract_exec_pfs_slot(resolved_path);
+	if (exec_slot >= 0 && exec_slot <= 3) {
+		keep_mask |= (1U << exec_slot);
+	}
+	return keep_mask & 0x0F;
 }
 
 static bool is_hdd_backed_exec_path(const char *path) {
@@ -192,7 +214,7 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *a
 	}
 
 	if (is_hdd_backed_exec_path(resolved_path)) {
-		unmount_pfs_slots_for_exec(extract_exec_pfs_slot(resolved_path));
+		unmount_pfs_slots_for_exec(build_exec_keep_mask(resolved_path));
 	}
 
 	SifExitIopHeap();
@@ -305,7 +327,7 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 	}
 
 	if (is_hdd_backed_exec_path(resolved_path)) {
-		unmount_pfs_slots_for_exec(extract_exec_pfs_slot(resolved_path));
+		unmount_pfs_slots_for_exec(build_exec_keep_mask(resolved_path));
 	}
 
 	ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc, argv);
@@ -333,7 +355,7 @@ int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]
 	}
 
 	if (is_hdd_backed_exec_path(resolved_path)) {
-		unmount_pfs_slots_for_exec(extract_exec_pfs_slot(resolved_path));
+		unmount_pfs_slots_for_exec(build_exec_keep_mask(resolved_path));
 	}
 
 	FlushCache(0);

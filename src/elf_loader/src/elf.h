@@ -47,6 +47,9 @@ typedef struct
 	u32 align;
 } elf_pheader_t;
 
+void SetExecKeepPfsMask(unsigned int mask);
+void ClearExecKeepPfsMask(void);
+
 #ifdef __cplusplus
 }
 #endif

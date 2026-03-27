@@ -75,6 +75,7 @@ This matrix tracks current behavior across:
 | U-07 | Path editor cursor and press feedback | Open POPStarter or DKWDRV path editor | Move cursor with `L1`/`R1`, toggle case, insert/delete characters, confirm/cancel | Cursor moves within the string, lowercase letter keys render uppercase when case is enabled, and the selected key flashes when pressed |
 | U-08 | Save progress overlay | Change any setting and save | Observe the save/apply sequence | A visible progress popup/overlay stays on-screen until the save/apply flow completes or fails, without looking stalled at a single coarse stage for the whole operation |
 | U-09 | Device-load progress overlay | Use a slow or large MMCE/MX4SIO/HDD/USB library | Open the device page and wait for list generation | A visible progress popup/overlay stays on-screen during scanning/list generation and advances through the scan instead of only jumping between coarse stage markers |
+| U-10 | BOOT.ELF after HDD page init | Open `HDD (PFS)` first so dependency checks and partition scans run | Return to main menu and launch `BOOT.ELF` from Exit | `BOOT.ELF` handoff succeeds without freezing or black-screening after HDD page access |
 
 ## Run Log Template
 | Date | Console | Storage Setup | IDs Run | Result |

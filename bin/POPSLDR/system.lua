@@ -573,12 +573,28 @@ local function PreserveBootPfsSlotsDuringElfLoad(path, keep_slots)
   return keep_slots
 end
 
+local function BuildPfsKeepMask(keep_slots)
+  local mask = 0
+  if type(keep_slots) ~= "table" then
+    return mask
+  end
+  for slot = 0, 3 do
+    if keep_slots[slot] == true then
+      mask = mask + (2 ^ slot)
+    end
+  end
+  return mask
+end
+
 local function PrepareForExternalELFLaunch(path, extra_keep_slots)
+  local keep_slots = CollectHddKeepSlots(path, extra_keep_slots)
+  keep_slots = PreserveBootPfsSlotsDuringElfLoad(path, keep_slots)
+  if type(System) == "table" and type(System.setExecKeepPfsMask) == "function" then
+    pcall(System.setExecKeepPfsMask, BuildPfsKeepMask(keep_slots))
+  end
   if type(HDD) ~= "table" or type(HDD.UMountPartition) ~= "function" then
     return
   end
-  local keep_slots = CollectHddKeepSlots(path, extra_keep_slots)
-  keep_slots = PreserveBootPfsSlotsDuringElfLoad(path, keep_slots)
   for slot = 0, 3 do
     if keep_slots[slot] ~= true then
       UMountHddPartitionTracked(slot)
@@ -2406,9 +2422,10 @@ function PLDR.CheckPOPStarterDEPS(device)
   elseif device == UI.SCENES.GHDD then
     local a, prefix = MountHddPartitionTracked("hdd0:__common", HDD_SLOT_COMMON, FIO_MT_RDONLY)
     if a and prefix ~= nil then
-      return a,
-        doesFileExist(BuildMountedReadablePath(prefix, "POPS/POPS.ELF")),
-        doesFileExist(BuildMountedReadablePath(prefix, "POPS/IOPRP252.IMG"))
+      local has_pops = doesFileExist(BuildMountedReadablePath(prefix, "POPS/POPS.ELF"))
+      local has_ioprp = doesFileExist(BuildMountedReadablePath(prefix, "POPS/IOPRP252.IMG"))
+      UMountHddPartitionTracked(HDD_SLOT_COMMON)
+      return a, has_pops, has_ioprp
     else
       return a, false, false
     end
@@ -3199,6 +3216,25 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   if policy.name == "HDD" then
     hdd_partition_label, hdd_relpath = ParseHddGameEntry(selected_entry)
     hdd_relpath = NormalizeHddRelpath(hdd_relpath or selected_entry)
+    local launch_partition = nil
+    if hdd_partition_label ~= nil and hdd_partition_label ~= "" then
+      launch_partition = "hdd0:"..hdd_partition_label
+    end
+    local launch_slot = SelectHddLaunchGameSlot(popstarter)
+    hdd_init = EnsureHDDReadyForLaunch(selected_entry, launch_partition, launch_slot)
+    if not hdd_init.init_ok or hdd_init.status ~= 0 or hdd_init.mount_ok ~= true or hdd_init.mount_slot == nil then
+      BlockLaunchFailure(
+        "HDD launch prep failed: init="..tostring(hdd_init.init_ok)..", status="..tostring(hdd_init.status)..", mount="..tostring(hdd_init.mount_ok),
+        popstarter,
+        device_page,
+        nil,
+        selected_entry,
+        APP_DIR_LOCAL,
+        hdd_init.status,
+        "EnsureHDDReadyForLaunch"
+      )
+      return
+    end
   end
   local normalized_gamelocation = policy.normalize(gamelocation)
   local handoff_gamelocation = policy.handoff(normalized_gamelocation)
@@ -3355,7 +3391,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     game_name = game_name,
     bootparam_source = boot_source_mode,
     hdd_init = hdd_init,
-    keep_hdd_slots = nil
+    keep_hdd_slots = (hdd_init ~= nil and hdd_init.mount_ok == true and hdd_init.mount_slot ~= nil) and {hdd_init.mount_slot} or nil
   }
   local reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
   if policy.name == "HDD" then

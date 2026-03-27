@@ -940,7 +940,22 @@ extern "C" {
 int LoadELFFromFile(const char *filename, int argc, char *argv[]);
 int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[]);
 int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]);
+void SetExecKeepPfsMask(unsigned int mask);
+void ClearExecKeepPfsMask(void);
 }
+
+static int lua_set_exec_keep_pfs_mask(lua_State *L)
+{
+	int argc = lua_gettop(L);
+	if (argc > 1) return luaL_error(L, "Argument error: System.setExecKeepPfsMask(mask) takes zero or one argument.");
+	unsigned int mask = 0;
+	if (argc >= 1 && !lua_isnil(L, 1)) {
+		mask = (unsigned int)luaL_checkinteger(L, 1);
+	}
+	SetExecKeepPfsMask(mask);
+	return 0;
+}
+
 static int lua_loadELF(lua_State *L)
 {
 	int argc = lua_gettop(L);
@@ -964,6 +979,7 @@ static int lua_loadELF(lua_State *L)
 		} else {
 			rc = LoadELFFromFileExecPS2(elftoload, 1, argv_static);
 		}
+		ClearExecKeepPfsMask();
 		lua_pushinteger(L, rc);
 		return 1;
 	}
@@ -974,6 +990,7 @@ static int lua_loadELF(lua_State *L)
 	} else {
 		rc = LoadELFFromFile(elftoload, 0, NULL);
 	}
+	ClearExecKeepPfsMask();
 	lua_pushinteger(L, rc);
 	return 1;
 }
@@ -991,10 +1008,14 @@ static int lua_loadELFRebootIOP(lua_State *L)
 		snprintf(argv0_buf, sizeof(argv0_buf), "%s", argv0 ? argv0 : "");
 		argv_static[0] = argv0_buf;
 		argv_static[1] = NULL;
-		lua_pushinteger(L, LoadELFFromFileExecPS2RebootIOP(elftoload, 1, argv_static));
+		int rc = LoadELFFromFileExecPS2RebootIOP(elftoload, 1, argv_static);
+		ClearExecKeepPfsMask();
+		lua_pushinteger(L, rc);
 		return 1;
 	}
-	lua_pushinteger(L, LoadELFFromFileExecPS2RebootIOP(elftoload, 0, NULL));
+	int rc = LoadELFFromFileExecPS2RebootIOP(elftoload, 0, NULL);
+	ClearExecKeepPfsMask();
+	lua_pushinteger(L, rc);
 	return 1;
 }
 
@@ -1302,6 +1323,7 @@ static const luaL_Reg System_functions[] = {
 	{"getMCInfo",                 lua_getmcinfo},
 	{"loadELF",                 	lua_loadELF},
 	{"loadELFRebootIOP",        	lua_loadELFRebootIOP},
+	{"setExecKeepPfsMask",      lua_set_exec_keep_pfs_mask},
 	{"checkValidDisc",       lua_checkValidDisc},
 	{"getDiscType",             lua_getDiscType},
 	{"checkDiscTray",         lua_checkDiscTray},
