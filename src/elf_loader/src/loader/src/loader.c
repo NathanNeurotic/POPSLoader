@@ -17,7 +17,6 @@
 #include <sifrpc.h>
 #include <errno.h>
 #include <ps2sdkapi.h>
-#define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
 #define DPRINTF(x...) printf(x)
 
@@ -116,7 +115,7 @@ static int load_elf_via_filexio(const char *path, t_ExecData *elfdata)
 		return -2;
 	}
 
-	elfdata->epc = (void *)hdr.entry;
+	elfdata->epc = hdr.entry;
 
 	for (i = 0; i < hdr.phnum; i++) {
 		fileXioLseek(fd, (int)(hdr.phoff + (unsigned int)i * hdr.phentsize), FIO_SEEK_SET);
