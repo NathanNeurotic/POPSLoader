@@ -976,6 +976,21 @@ function PLDR.ResolvePopstarterPath(path)
   return ResolvePopstarterPath(path)
 end
 
+local function AreEquivalentPopstarterPaths(left, right)
+  local normalized_left = NormalizeFsPathRaw(tostring(left or ""))
+  local normalized_right = NormalizeFsPathRaw(tostring(right or ""))
+  if normalized_left == "" or normalized_right == "" then
+    return false
+  end
+  if normalized_left == normalized_right then
+    return true
+  end
+
+  local resolved_left = NormalizeFsPathRaw(ResolvePopstarterPath(left))
+  local resolved_right = NormalizeFsPathRaw(ResolvePopstarterPath(right))
+  return resolved_left ~= "" and resolved_left == resolved_right
+end
+
 function PLDR.ResolveHddReadablePath(path)
   return ResolveHddReadablePath(path)
 end
@@ -1642,6 +1657,7 @@ end
 
 local function EncodeSettings()
   local selected_profile = tonumber(PLDR.SELECTED_PROFILE) or 1
+  local defaults_profile = tonumber(PLDR.DEFAULT_PROFILE) or 1
   local configured_popstarter = tostring(PLDR.POPSTARTER_PATH or "")
   local profile_popstarter = ""
   if PLDR.PROFILES ~= nil and PLDR.PROFILES[selected_profile] ~= nil then
@@ -1649,6 +1665,8 @@ local function EncodeSettings()
   end
   local persisted_popstarter = configured_popstarter
   if configured_popstarter ~= "" and NormalizeFsPathRaw(configured_popstarter) == NormalizeFsPathRaw(profile_popstarter) then
+    persisted_popstarter = ""
+  elseif selected_profile == defaults_profile and AreEquivalentPopstarterPaths(configured_popstarter, profile_popstarter) then
     persisted_popstarter = ""
   end
   local lines = {
@@ -1833,7 +1851,13 @@ function PLDR.LoadSettingsNonFatal()
     PLDR.POPSTARTER_PATH = PLDR.PROFILES[profile].ELF
   end
   if popstarter_path ~= nil and popstarter_path ~= "" then
-    PLDR.POPSTARTER_PATH = popstarter_path
+    local keep_popstarter_override = true
+    if PLDR.SELECTED_PROFILE == defaults_profile and AreEquivalentPopstarterPaths(popstarter_path, PLDR.POPSTARTER_PATH) then
+      keep_popstarter_override = false
+    end
+    if keep_popstarter_override then
+      PLDR.POPSTARTER_PATH = popstarter_path
+    end
   end
   if dkwdrv_path ~= nil and dkwdrv_path ~= "" then
     PLDR.DKWDRV_PATH = dkwdrv_path

@@ -104,12 +104,22 @@ This matrix tracks current behavior across:
     - argv0_selector uses dynamic mounted pfs prefix instead of hardcoded `pfs0:/`
     - `launch_cwd` set to `nil`
     - Awaits hardware re-test.
-  - USB POPSTARTER baseline (USB boot + USB POPSTARTER sidecar/cwd/profile1 — `Cant find POPSTARTER ELF`):
-    - Suspected cause: BETA-10-play HDD mitigation introduced `launch_cwd = hdd_init.mount_prefix` and excluded POPSTARTER pfs slot from `keep_hdd_slots`.
-    - Fix applied:
-      - `launch_cwd = nil`
-      - `ResolveExecPathAndKeepSlot` resolves and tracks POPSTARTER pfs slot
-      - `keep_hdd_slots` now includes both game and POPSTARTER slots
+  - USB POPSTARTER probe (`D-14`/`D-15` — USB boot + USB POPSTARTER sidecar/cwd/profile1 — `Cant find POPSTARTER ELF`):
+    - Root cause: when a previous session saved `POPSTARTER_PATH` as the resolved absolute path
+      (e.g. `mass:/PS1_POPSLOADER/POPSTARTER.ELF`), `LoadSettingsNonFatal` overrode the profile
+      default with that absolute path on the next boot. `ResolvePopstarterPath` then skips the
+      default-relative sidecar lookup, uses the absolute path as `chosen`, and because the first
+      fallback (`JoinPath(APP_DIR_LOCAL, "POPSTARTER.ELF")`) equals `chosen`, the fallback is
+      skipped via `candidate ~= chosen` guard. If `ResolvePathWithEnsure` fails (e.g. USB not
+      yet stable), the probe returns the unverified `chosen` which `PopstarterProbeWithEnsure`
+      subsequently rejects as not found.
+    - Fix applied (`AreEquivalentPopstarterPaths`):
+      - `EncodeSettings` clears `persisted_popstarter` when the configured path resolves to the
+        same target as the profile default, preventing the absolute form from being written back.
+      - `LoadSettingsNonFatal` skips the saved-path override when on the defaults profile and
+        the saved path is equivalent to the current profile default, keeping `PLDR.POPSTARTER_PATH`
+        as the relative default so the sidecar lookup path is used at probe time.
     - Awaits hardware re-test.
   - `U-10`: BOOT.ELF path is unaffected by D-10 changes; current hardware status is `Unknown (verify on hardware)`.
 - All other manual hardware items remain `Unknown (verify on hardware)` unless run logs are added above.
+
