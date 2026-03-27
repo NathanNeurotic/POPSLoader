@@ -1189,7 +1189,8 @@ end
 PLDR.MX4SIO.PREFIX_HINT = DetectMX4SIOPrefixHint()
 if PLDR.MX4SIO.PREFIX_HINT ~= nil then
 end
--- MMCE/HDD probing is page-driven; do not pre-seed runtime slot/status state at boot.
+-- Keep runtime slot/status discovery page-driven; startup may still initialize
+-- backend drivers when boot/configured paths require them.
 PLDR.MMCE.PROBED = false
 PLDR.MMCE.SLOTS = {}
 PLDR.MMCE.PREFIX = nil
@@ -1929,6 +1930,149 @@ function PLDR.GetMassMountDriver(root)
   end
 
   return nil
+end
+
+local function ExtractMassRootFromPath(path)
+  local index = PLDR.ParseMassIndexFromPath(path)
+  if index == nil then
+    return nil
+  end
+  if index == 0 then
+    return "mass:/"
+  end
+  return "mass"..tostring(index)..":/"
+end
+
+local function AddUniqueStartupPath(out, seen, path)
+  local candidate = tostring(path or "")
+  if candidate == "" then
+    return
+  end
+  if seen[candidate] == true then
+    return
+  end
+  seen[candidate] = true
+  table.insert(out, candidate)
+end
+
+local function AddUniqueMassRoot(out, seen, root)
+  local normalized = NormalizeMassRoot(root)
+  if normalized == nil or normalized == "" then
+    return
+  end
+  if seen[normalized] == true then
+    return
+  end
+  seen[normalized] = true
+  table.insert(out, normalized)
+end
+
+local function CollectStartupBackendTargets()
+  local targets = {
+    usb = false,
+    mmce = false,
+    mx4sio = false,
+    hdd = false,
+    mass_probe_needed = false,
+    mass_roots = {},
+    boot_name = nil
+  }
+
+  local paths = {}
+  local seen_paths = {}
+  local seen_roots = {}
+  local boot_name = select(1, DetectBootDevice())
+  targets.boot_name = boot_name
+
+  if boot_name == "USB" then
+    targets.usb = true
+  elseif boot_name == "MMCE" then
+    targets.mmce = true
+  elseif boot_name == "MX4SIO" then
+    targets.mx4sio = true
+  elseif boot_name == "HDD" then
+    targets.hdd = true
+  end
+
+  AddUniqueStartupPath(paths, seen_paths, BOOT_ARGV0_RAW)
+  AddUniqueStartupPath(paths, seen_paths, BOOT_PATH_RAW)
+  AddUniqueStartupPath(paths, seen_paths, APP_DIR_LOCAL)
+  AddUniqueStartupPath(paths, seen_paths, PLDR.POPSTARTER_PATH)
+  AddUniqueStartupPath(paths, seen_paths, PLDR.DKWDRV_PATH)
+  if type(PLDR.PROFILES) == "table" then
+    local selected = tonumber(PLDR.SELECTED_PROFILE)
+    if selected ~= nil and PLDR.PROFILES[selected] ~= nil then
+      AddUniqueStartupPath(paths, seen_paths, PLDR.PROFILES[selected].ELF)
+    end
+  end
+
+  for i = 1, #paths do
+    local normalized = string.lower(NormalizeFsPathRaw(paths[i]))
+    if string.match(normalized, "^mx4sio%d*:/") ~= nil then
+      targets.mx4sio = true
+    elseif string.match(normalized, "^mmce%d*:/") ~= nil then
+      targets.mmce = true
+    elseif string.match(normalized, "^pfs%d*:/") ~= nil or string.match(normalized, "^hdd%d:") ~= nil then
+      targets.hdd = true
+    else
+      AddUniqueMassRoot(targets.mass_roots, seen_roots, ExtractMassRootFromPath(normalized))
+    end
+  end
+
+  return targets
+end
+
+local function ClassifyStartupMassTargets(targets)
+  if type(targets) ~= "table" or type(targets.mass_roots) ~= "table" then
+    return
+  end
+
+  for i = 1, #targets.mass_roots do
+    local root = targets.mass_roots[i]
+    local driver = PLDR.GetMassMountDriver(root)
+    if type(driver) == "string" and driver ~= "" then
+      local kind = ClassifyMassRootDriver(driver)
+      if kind == "mx4sio" then
+        targets.mx4sio = true
+      else
+        targets.usb = true
+      end
+    else
+      targets.mass_probe_needed = true
+    end
+  end
+end
+
+function PLDR.AutoInitStartupBackends()
+  local targets = CollectStartupBackendTargets()
+  ClassifyStartupMassTargets(targets)
+
+  if targets.usb or targets.mass_probe_needed then
+    if type(PLDR.EnsureUsbMassReadyOnce) == "function" then
+      pcall(PLDR.EnsureUsbMassReadyOnce)
+    end
+    targets.mass_probe_needed = false
+    ClassifyStartupMassTargets(targets)
+  end
+
+  if targets.mx4sio and type(PLDR.InitMX4SIOPopsRoot) == "function" then
+    pcall(PLDR.InitMX4SIOPopsRoot)
+  end
+  if targets.mmce and type(PLDR.DetectMMCESlot) == "function" then
+    pcall(PLDR.DetectMMCESlot, true)
+  end
+  if targets.hdd then
+    pcall(EnsureHddRuntimeReadyForExec)
+  end
+
+  if type(UI) == "table" then
+    local refreshed_boot = select(1, DetectBootDevice())
+    if refreshed_boot ~= nil then
+      UI.boot_device_label = refreshed_boot
+    end
+  end
+
+  return targets
 end
 
 function PLDR.RefreshMassBackends()
@@ -3416,7 +3560,7 @@ function Touch(FILE)
 end
 
 PLDR.LoadSettingsNonFatal()
-PLDR.EnsureUsbMassReadyOnce()
+PLDR.AutoInitStartupBackends()
 
 ---MAIN PROGRAM BEHAVIOUR BEGINS
 local initial_scene = UI.SCENES.MMAIN

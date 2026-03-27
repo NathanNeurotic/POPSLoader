@@ -62,6 +62,7 @@ This matrix tracks current behavior across:
 | D-09 | HDD duplicate title names | Same VCD filename exists in two POPS partitions | Launch each entry from HDD (PFS) | each entry launches from its own source partition |
 | D-10 | HDD POPSTARTER on HDD | POPSLoader and/or configured `POPSTARTER_PATH` points to HDD, including HDD sidecar/cwd resolution | Launch HDD title | POPSTARTER resolves from sidecar or configured HDD path without blocking launch or hanging on a black screen |
 | D-11 | HDD common art path | `hdd0:__common/POPS/ART/<title>.png` present | Browse HDD title list | cover art appears and launch still succeeds |
+| D-12 | Startup backend auto-init | Boot from USB/MX4SIO/MMCE/HDD, or save a `POPSTARTER_PATH` / `DKWDRV_PATH` / profile on one of those devices | Cold boot app and launch without first opening that device page | Required backend drivers initialize automatically from boot/configured paths |
 
 ### UI behavior
 | ID | Area | Setup | Action | Pass Criteria |
