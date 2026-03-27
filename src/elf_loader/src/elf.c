@@ -81,10 +81,37 @@ static char *store_arg(const char *src, char *storage, size_t storage_size, size
 	return dest;
 }
 
-static void unmount_pfs_slots_for_exec(void) {
+static int extract_exec_pfs_slot(const char *path) {
+	const char *prefix;
+	if (path == NULL) {
+		return -1;
+	}
+
+	prefix = path;
+	if (strncmp(prefix, "pfs", 3) != 0) {
+		const char *embedded = strstr(path, ":pfs");
+		if (embedded == NULL) {
+			return -1;
+		}
+		prefix = embedded + 1;
+	}
+
+	if (prefix[3] == ':') {
+		return 0;
+	}
+	if (prefix[3] >= '0' && prefix[3] <= '3' && prefix[4] == ':') {
+		return prefix[3] - '0';
+	}
+	return -1;
+}
+
+static void unmount_pfs_slots_for_exec(int keep_slot) {
 	char mount_name[6] = "pfs0:";
 	int slot;
 	for (slot = 0; slot <= 3; slot++) {
+		if (slot == keep_slot) {
+			continue;
+		}
 		mount_name[3] = '0' + slot;
 		fileXioUmount(mount_name);
 	}
@@ -165,7 +192,7 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *a
 	}
 
 	if (is_hdd_backed_exec_path(resolved_path)) {
-		unmount_pfs_slots_for_exec();
+		unmount_pfs_slots_for_exec(extract_exec_pfs_slot(resolved_path));
 	}
 
 	SifExitIopHeap();
@@ -278,7 +305,7 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 	}
 
 	if (is_hdd_backed_exec_path(resolved_path)) {
-		unmount_pfs_slots_for_exec();
+		unmount_pfs_slots_for_exec(extract_exec_pfs_slot(resolved_path));
 	}
 
 	ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc, argv);
@@ -306,7 +333,7 @@ int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]
 	}
 
 	if (is_hdd_backed_exec_path(resolved_path)) {
-		unmount_pfs_slots_for_exec();
+		unmount_pfs_slots_for_exec(extract_exec_pfs_slot(resolved_path));
 	}
 
 	FlushCache(0);
