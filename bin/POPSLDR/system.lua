@@ -556,9 +556,18 @@ local function PreserveBootPfsSlotsDuringElfLoad(path, keep_slots)
     APP_DIR_LOCAL
   }
   for i = 1, #boot_candidates do
-    local boot_slot = ExtractLaunchPfsSlot(boot_candidates[i])
-    if boot_slot ~= nil then
-      keep_slots[boot_slot] = true
+    local candidate = boot_candidates[i]
+    if candidate ~= nil and candidate ~= "" then
+      local boot_slot = ExtractLaunchPfsSlot(candidate)
+      if boot_slot == nil then
+        local resolved = ResolveHddReadablePath(candidate)
+        if resolved ~= nil then
+          boot_slot = ExtractLaunchPfsSlot(resolved)
+        end
+      end
+      if boot_slot ~= nil then
+        keep_slots[boot_slot] = true
+      end
     end
   end
   return keep_slots
