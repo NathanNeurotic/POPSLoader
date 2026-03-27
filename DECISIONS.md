@@ -55,6 +55,11 @@ Each entry records:
 - Evidence: `.github/workflows/compilation.yml`.
 
 ## Open Investigations
+- Shared default/Profile 1 local POPSTARTER launch regression:
+  - a 2026-03-27 hardware report said USB boot with USB sidecar/cwd/Profile 1 now stopped at `Cant find POPSTARTER ELF`.
+  - current code showed that Profile 1 is stored as bare `POPSTARTER.ELF` while settings persistence still re-applied previously saved absolute POPSTARTER paths as overrides.
+  - current source now treats default/Profile 1 stale absolute local paths as equivalent to the current sidecar/cwd path when both resolve to the same executable, so that override no longer displaces the shared baseline.
+  - hardware re-test is still required before claiming the common launch baseline restored.
 - HDD `POPSTARTER.ELF` when launcher/sidecar/CWD is on HDD:
   - current reported hardware result is still a black-screen hang.
   - path/mount/CWD mitigations plus the HDD-backed non-reboot `ExecPS2` cleanup are present in current code.

@@ -52,6 +52,7 @@ This matrix tracks current behavior across:
 | L-05 | `mc?:/` DKWDRV alias | Place DKWDRV only on `mc1:/` and configure `mc?:/` | Launch Disc option | Path resolves to `mc1:/` and launch proceeds |
 | L-06 | Invalid alias targets | Configure `mc?:/` path with file on neither card | Launch game/Disc option | Launch is blocked with explicit missing-file notification |
 | L-07 | BOOT.ELF exit fallback | Put `BOOT.ELF` on `mc0:/BOOT/` only, then `mc1:/BOOT/` only | Open Exit modal and choose `BOOT.ELF` | `mc0:/BOOT/BOOT.ELF` is preferred and `mc1:/BOOT/BOOT.ELF` is used as fallback |
+| L-08 | Default/Profile 1 local POPSTARTER path | Start from a settings file that may contain an older absolute local POPSTARTER path, then select default/Profile 1 with local sidecar/cwd `POPSTARTER.ELF` present | Cold boot and launch a game | Launch does not stop at `Cant find POPSTARTER ELF`; the current local sidecar/cwd POPSTARTER path wins over the stale equivalent override |
 
 ### Device pages and backend behavior
 | ID | Area | Setup | Action | Pass Criteria |
@@ -88,12 +89,15 @@ This matrix tracks current behavior across:
 ## Run Log Template
 | Date | Console | Storage Setup | IDs Run | Result |
 |---|---|---|---|---|
+| 2026-03-27 | Unknown (not reported) | Booted from USB; USB `POPSTARTER.ELF` via default/Profile 1/cwd/sidecar; launch stopped before handoff | L-08 | FAIL: `Cant find POPSTARTER ELF` |
 | 2026-03-27 | Unknown (not reported) | Booted from HDD; POPSTARTER via default/Profile 1/cwd/sidecar on HDD; game device HDD | D-10 | FAIL: black screen |
 | YYYY-MM-DD | SCPH-xxxxx | USB/MMCE/MX4SIO/HDD details | e.g. S-01,S-02,D-02 | PASS/FAIL + notes |
 
 ## Current Verification Status
 - CI gates: repository-verified by workflow definition.
 - Reported hardware outcomes:
+  - `L-08`: reported FAIL on 2026-03-27 when booted from USB with USB sidecar/cwd/Profile 1; launch stopped at `Cant find POPSTARTER ELF`.
+    - current source now includes a settings/profile equivalence correction intended to restore the common baseline; corrected-source hardware result is still `Unknown (verify on hardware)`.
   - `U-05`: reported PASS.
   - `D-10`: reported FAIL when booted from HDD and launching an HDD title with HDD `POPSTARTER.ELF` sidecar/CWD.
     - 2026-03-27 re-test of the current source still failed with boot source HDD, POPSTARTER on HDD via default/Profile 1/cwd/sidecar, and game device HDD.

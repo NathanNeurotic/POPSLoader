@@ -47,9 +47,14 @@ That package contract is enforced by `.github/workflows/compilation.yml`.
 | `HDD (exFAT)` | Not implemented | Not implemented |
 | `SMB (v1)` | Not implemented | Not implemented |
 
-### Current known unresolved issue
+### Current known unresolved issues
 
-The main unresolved hardware issue is:
+Reported hardware issues currently being tracked are:
+- Shared default/Profile 1 local POPSTARTER baseline
+  - reported 2026-03-27 on USB boot with USB `POPSTARTER.ELF` sidecar/cwd/Profile 1.
+  - reported result: `Cant find POPSTARTER ELF`.
+  - current source now includes a surgical settings/profile equivalence fix so stale absolute local POPSTARTER paths no longer override the current default/Profile 1 sidecar path when both resolve to the same executable.
+  - hardware re-test is still required before treating the shared baseline as restored.
 - HDD `POPSTARTER.ELF` on HDD sidecar/CWD (`D-10`)
   - repro reported so far:
     - boot POPSLoader from HDD,
@@ -77,6 +82,7 @@ The main unresolved hardware issue is:
 ### Settings behavior
 - Settings are persisted at `mc0:/POPSTARTER/.pldrs`.
 - Settings edits are staged in UI first, then committed on confirm/leave.
+- Default/Profile 1 saves now suppress stale absolute local POPSTARTER overrides when they resolve to the same executable as the current local sidecar/cwd path.
 - Current persisted settings include:
   - POPSTARTER path,
   - DKWDRV path,
@@ -186,6 +192,10 @@ The workflow uses the `ps2dev/ps2dev` container and validates packaging after bu
   - reported failing.
   - 2026-03-27 re-test of the current source still failed with boot source HDD, POPSTARTER on HDD via default/Profile 1/cwd/sidecar, and game device HDD.
   - current source also offers `R2` as an alternate HDD launch experiment for HDD-resident `POPSTARTER.ELF`, using an explicit `hdd0:PART:pfs0:/GAME.ELF` selector path.
+- Shared default/Profile 1 local POPSTARTER baseline:
+  - reported failing with `Cant find POPSTARTER ELF` on 2026-03-27 when booted from USB with USB sidecar/cwd/Profile 1.
+  - current source now contains a settings/profile equivalence correction intended to restore that common path-resolution baseline.
+  - hardware result on the corrected source is still `Unknown (verify on hardware)`.
 - `U-10` BOOT.ELF after HDD page init:
   - one prior artifact was reported good,
   - a later failed experiment regressed it,

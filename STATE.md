@@ -45,6 +45,11 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 - `SMB (v1)`: not implemented.
 
 ## Reported Hardware Status
+- Shared default/Profile 1 local POPSTARTER baseline:
+  - reported failing on hardware with `Cant find POPSTARTER ELF`.
+  - reported repro: boot from USB with USB `POPSTARTER.ELF` sidecar/cwd/Profile 1.
+  - current source now includes a settings/profile equivalence correction so stale absolute local POPSTARTER overrides no longer win over the current default/Profile 1 sidecar path when both resolve to the same executable.
+  - corrected-source hardware status is still `Unknown (verify on hardware)`.
 - `U-05` OSDSYS exit:
   - reported fixed on hardware.
 - `D-10` HDD POPSTARTER on HDD:
@@ -63,6 +68,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - hardware result is still `Unknown (verify on hardware)`.
 
 ## Known Open Work
+- Re-verify shared POPSTARTER default/Profile 1 sidecar/cwd launching across USB, HDD, and MX4SIO/MMCE on current source.
 - Resolve HDD `POPSTARTER.ELF` handoff when POPSTARTER itself is on HDD.
 - Re-verify `BOOT.ELF` after HDD page init on current source.
 - Record concrete run logs in `QA_REGRESSION_MATRIX.md`.
