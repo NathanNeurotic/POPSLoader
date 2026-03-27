@@ -3541,6 +3541,14 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
   end
   local selector_prefix = SelectPopstarterSelectorPrefix(device_page)
   local argv0_selector = BuildPopstarterSelectorPath(device_page, game_name)
+  if policy.name == "HDD" and hdd_init ~= nil and hdd_init.mount_ok == true and hdd_init.mount_prefix ~= nil then
+    local absolute_selector = BuildMountedReadablePath(hdd_init.mount_prefix, BuildLiteralElfName(game_name))
+    if absolute_selector ~= nil then
+      argv0_selector = absolute_selector
+      bootparam = absolute_selector
+      bootparam_exists = doesFileExist(absolute_selector)
+    end
+  end
   if selector_prefix == "" and string.upper(game_name) == "POPSTARTER" then
     BlockLaunchFailure(
       "Internal error: game_base derived as POPSTARTER; refusing to launch.",
@@ -3589,7 +3597,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene)
     bootparam_source = boot_source_mode,
     hdd_init = hdd_init,
     keep_hdd_slots = (hdd_init ~= nil and hdd_init.mount_ok == true and hdd_init.mount_slot ~= nil) and {hdd_init.mount_slot} or nil,
-    launch_cwd = (hdd_init ~= nil and hdd_init.mount_ok == true) and hdd_init.mount_prefix or nil
+    launch_cwd = nil
   }
   local reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
   if policy.name == "HDD" then

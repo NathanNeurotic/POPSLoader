@@ -1,4 +1,4 @@
-Last updated: 2026-03-26
+Last updated: 2026-03-27
 
 # STATE
 
@@ -30,6 +30,9 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 - `BOOT.ELF` lookup order is:
   - `mc0:/BOOT/BOOT.ELF`
   - `mc1:/BOOT/BOOT.ELF`
+- HDD launch path currently applies a mitigation under test for `D-10`:
+  - when HDD mount prep succeeds, selector/bootparam are rewritten to absolute mounted `pfsN:/<title>.ELF`,
+  - HDD launch context no longer forces `launch_cwd` to the mounted HDD game partition root (launch CWD falls back to POPSTARTER path directory).
 - Current cover sources are:
   - sidecar PNG next to the selected `.VCD`,
   - `hdd0:__common/POPS/ART/<title>.png` for HDD titles.
@@ -51,6 +54,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - reported failing on hardware.
   - repro: boot from HDD, launch HDD title with HDD `POPSTARTER.ELF` sidecar/CWD.
   - result: black-screen hang.
+  - source now includes selector/CWD mitigation, but hardware result is still `Unknown (verify on hardware)` until re-tested.
 - `U-10` BOOT.ELF after HDD page init:
   - one prior artifact was reported good,
   - a later launch-backend experiment regressed it,

@@ -1,7 +1,7 @@
 # POPSLoader Regression Matrix
 
-Last updated: 2026-03-26
-Target branch: `BETA-10-play`
+Last updated: 2026-03-27
+Target branch: `work`
 
 ## Scope
 This matrix tracks current behavior across:
@@ -95,5 +95,8 @@ This matrix tracks current behavior across:
 - Reported hardware outcomes:
   - `U-05`: reported PASS.
   - `D-10`: reported FAIL when booted from HDD and launching an HDD title with HDD `POPSTARTER.ELF` sidecar/CWD.
-  - `U-10`: one artifact was reported good before a later regression experiment; current source has been restored away from that experiment and must be re-tested.
+  - `U-10`: one artifact was reported good before a later regression experiment; current source has been restored away from that experiment, includes an HDD selector/CWD mitigation under test, and must be re-tested.
+- Repo-verified `D-10` mitigation now in source (hardware unverified):
+  - HDD launch rewrites selector/bootparam to absolute mounted `pfsN:/<title>.ELF` when mount prep succeeds.
+  - HDD launch context no longer forces launch CWD to HDD game mount root (launch CWD now falls back to POPSTARTER path directory behavior).
 - All other manual hardware items remain `Unknown (verify on hardware)` unless run logs are added above.

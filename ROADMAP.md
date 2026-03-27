@@ -1,20 +1,20 @@
-Last updated: 2026-03-26
+Last updated: 2026-03-27
 
 # ROADMAP
 
 ## Status Snapshot
 - Core launcher functionality is present in code for MMCE, MX4SIO, HDD (PFS), USB, Disc (`DKWDRV`), settings persistence, cover preview, path editing, startup backend auto-init, and exit flows.
-- The main stabilization blocker is still HDD `POPSTARTER.ELF` when the launcher and/or sidecar/CWD are on HDD. Reported hardware result is still a black-screen hang.
+- The main stabilization blocker is still HDD `POPSTARTER.ELF` when the launcher and/or sidecar/CWD are on HDD. Current source now has an HDD selector/CWD mitigation under test, but reported hardware result is still a black-screen hang pending re-test.
 - `HDD (exFAT)` and `SMB (v1)` remain intentionally unimplemented menu entries.
 
 ## Immediate Priorities
 
 ### 1) HDD POPSTARTER on HDD
-- Reproduce and resolve `D-10`:
+- Re-test `D-10` on current source with the new mitigation:
   - POPSLoader booted from HDD,
   - HDD game launched from HDD (PFS),
   - `POPSTARTER.ELF` resolved from HDD sidecar/CWD or configured HDD path,
-  - current reported result: black-screen hang.
+  - current source behavior to validate: absolute mounted selector (`pfsN:/<title>.ELF`) plus POPSTARTER-directory CWD fallback.
 - Keep `BOOT.ELF` and OSDSYS behavior stable while iterating on this.
 
 ### 2) External exit/launch re-validation

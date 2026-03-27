@@ -1,4 +1,4 @@
-Last updated: 2026-03-26
+Last updated: 2026-03-27
 
 # DECISIONS
 
@@ -54,10 +54,16 @@ Each entry records:
 - Implications: docs and workflow validation must stay synchronized.
 - Evidence: `.github/workflows/compilation.yml`.
 
+### 2026-03-27 — HDD selector/CWD mitigation staged for `D-10` investigation
+- Decision: for HDD game launches, when HDD mount prep succeeds, pass selector/bootparam as absolute mounted `pfsN:/<title>.ELF` and stop forcing launch CWD to the mounted game partition root.
+- Rationale: current remaining failure (`D-10`) is a black-screen when POPSTARTER itself is on HDD, and repo flow still mixed a relative selector with HDD-root CWD forcing.
+- Implications: this is a narrow mitigation under test, not a validated hardware fix; `U-05` and `U-10` must be re-checked alongside `D-10`.
+- Evidence: `bin/POPSLDR/system.lua` (`PLDR.RunPOPStarterGame`, HDD branch and launch context assembly).
+
 ## Open Investigations
 - HDD `POPSTARTER.ELF` when launcher/sidecar/CWD is on HDD:
   - current reported hardware result is still a black-screen hang.
-  - current code contains path/mount/CWD mitigations, but no final verified fix.
+  - source now includes absolute-selector plus CWD fallback mitigation, but no final verified hardware fix yet.
 - `BOOT.ELF` after HDD page init:
   - the last failed backend experiment was reverted in source,
   - current hardware status on that restored source is still `Unknown (verify on hardware)`.

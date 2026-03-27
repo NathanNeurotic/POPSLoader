@@ -1,6 +1,6 @@
 # POPSLoader
 
-Last updated: 2026-03-26
+Last updated: 2026-03-27
 
 POPSLoader is a PlayStation 2 launcher for POPStarter, built on Enceladus runtime components and driven primarily by embedded Lua scripts.
 
@@ -40,7 +40,7 @@ That package contract is enforced by `.github/workflows/compilation.yml`.
 | MMCE menu path | Implemented in code | Unknown (verify on hardware) |
 | MX4SIO menu path | Implemented in code | Unknown (verify on hardware) |
 | USB menu path | Implemented in code | Unknown (verify on hardware) |
-| HDD (PFS) menu path | Implemented in code | Mixed; HDD POPSTARTER-on-HDD handoff still failing |
+| HDD (PFS) menu path | Implemented in code; HDD selector/CWD mitigation now staged in source | Mixed; `D-10` still reported FAIL pending re-test of current source |
 | Disc (`DKWDRV`) menu path | Implemented in code | Unknown (verify on hardware) |
 | Exit to OSDSYS | Implemented in code | Reported PASS |
 | Exit to `BOOT.ELF` | Implemented in code | Current source needs re-test after last reverted regression |
@@ -56,6 +56,10 @@ The main unresolved hardware issue is:
     - launch an HDD title,
     - POPSTARTER also resolves from HDD sidecar/CWD or configured HDD path,
     - result: black-screen hang.
+  - current source mitigation under test:
+    - HDD launch now passes an absolute mounted selector (`pfsN:/<title>.ELF`) when HDD mount prep succeeds,
+    - HDD launch no longer forces launch CWD to the game partition mount prefix,
+    - launch CWD falls back to the resolved `POPSTARTER.ELF` directory.
 
 ## Runtime Behavior (Current Code)
 
@@ -182,7 +186,7 @@ The workflow uses the `ps2dev/ps2dev` container and validates packaging after bu
 - `U-10` BOOT.ELF after HDD page init:
   - one prior artifact was reported good,
   - a later failed experiment regressed it,
-  - current source has been restored away from that experiment,
+  - current source has been restored away from that experiment and now includes the HDD selector/CWD mitigation under test,
   - current hardware status still needs re-test.
 
 ## Documentation Map
