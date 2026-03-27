@@ -119,15 +119,15 @@ static int extract_exec_pfs_slot(const char *path) {
 }
 
 static void unmount_pfs_slots_for_exec(unsigned int keep_mask) {
-	(void)keep_mask;
-	/* NO-OP: superseded by Lua-side PrepareForExternalELFLaunch +
-	 * CollectHddKeepSlots/PreserveBootPfsSlotsDuringElfLoad.
-	 *
-	 * Lua now owns context-aware selective unmount behavior, including
-	 * preserving both HDD_SLOT_POPSTARTER and HDD_SLOT_GAME when required.
-	 * Running an additional C-side unmount pass here can invalidate that
-	 * multi-slot state for HDD POPSTARTER launches.
-	 */
+	char mount_name[6] = "pfs0:";
+	int slot;
+	for (slot = 0; slot <= 3; slot++) {
+		if ((keep_mask & (1U << slot)) != 0) {
+			continue;
+		}
+		mount_name[3] = '0' + slot;
+		fileXioUmount(mount_name);
+	}
 }
 
 static unsigned int build_exec_keep_mask(const char *resolved_path) {
@@ -291,6 +291,9 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	DPRINTF("LAUNCH: argv0_final=%s\n", launch_argv[0] ? launch_argv[0] : "(null)");
 	DPRINTF("LAUNCH: argv1=%s\n", launch_argv[1] ? launch_argv[1] : "(null)");
 	DPRINTF("LAUNCH: argv2_is_null=%s\n", launch_argv[2] == NULL ? "yes" : "no");
+	if (is_hdd_backed_exec_path(resolved_path)) {
+		unmount_pfs_slots_for_exec(build_exec_keep_mask(resolved_path));
+	}
 	/* LoadExecPS2 should not return on success. */
 	LoadExecPS2(resolved_path, new_argc, launch_argv);
 	DPRINTF("LAUNCH: RETURNED rc=%d\n", -1);
