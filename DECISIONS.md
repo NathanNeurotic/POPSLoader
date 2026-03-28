@@ -74,7 +74,7 @@ Each entry records:
   - the EE-side HDD direct-load workaround in `src/elf_loader/src/elf.c` has therefore been reverted; it did not fix `D-10` and is no longer supported by hardware evidence.
   - later 2026-03-27 Memory Card staging, stripped-handoff, CWD/selector, and HDD-init-state experiments in `bin/POPSLDR/system.lua` did not fix `D-10` / `D-14` and coincided with repeated `D-15` failures.
   - user later confirmed on 2026-03-28 that USB boot + USB sidecar/cwd `POPSTARTER.ELF` + HDD game passes on the narrowed source, so the remaining blocker is again isolated to HDD-backed `POPSTARTER.ELF`.
-  - current source now strips the remaining Lua-side HDD game prep from HDD-backed `POPSTARTER.ELF` launches as well: no `EnsureHDDReadyForLaunch()`, no extra HDD slot keep request, and no forced launch CWD. Non-HDD POPSTARTER HDD-game launches still keep the restored selector-only handoff, while `R2` can still request the explicit `hdd0:PART:pfs0:/GAME.ELF` selector.
+  - current source now strips the remaining Lua-side HDD game prep from HDD-backed `POPSTARTER.ELF` launches as well and clears the post-load PFS keep mask for that path so the loader can unmount everything after `SifLoadElf`: no `EnsureHDDReadyForLaunch()`, no extra HDD slot keep request, and no forced launch CWD. Non-HDD POPSTARTER HDD-game launches still keep the restored selector-only handoff, while `R2` can still request the explicit `hdd0:PART:pfs0:/GAME.ELF` selector.
   - current source still keeps the `R2` selector-path experiment for HDD game launches, but that remains secondary to restoring and preserving the non-HDD POPSTARTER baseline for HDD titles.
 - `BOOT.ELF` after HDD page init:
   - the last failed backend experiment was reverted in source,

@@ -70,13 +70,13 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - current source also exposes an `R2` alternate HDD launch path for HDD-resident `POPSTARTER.ELF` that swaps only the selector contract to `hdd0:PART:pfs0:/GAME.ELF`.
   - later 2026-03-27 experimental sources also black-screened after direct-load, Memory Card staging, and stripped-handoff changes.
   - user later confirmed on 2026-03-28 that the narrowed source restored `D-15`, so this remaining blocker is again isolated to HDD-backed `POPSTARTER.ELF`.
-  - current source now strips the remaining Lua-side HDD game prep from HDD-backed `POPSTARTER.ELF` launches as well: no `EnsureHDDReadyForLaunch()`, no extra HDD slot keep request, and no forced launch CWD.
+  - current source now strips the remaining Lua-side HDD game prep from HDD-backed `POPSTARTER.ELF` launches and clears the post-load PFS keep mask for that path so the loader can unmount everything after `SifLoadElf`.
   - corrected-source hardware status is still `Unknown (verify on hardware)`.
 - `D-14` HDD-backed POPSTARTER with non-HDD game:
   - reported failing on hardware.
   - repro: launch a non-HDD title while `POPSTARTER.ELF` itself is configured on HDD.
   - 2026-03-27 user hardware also black-screened when launching a USB game with Profile 2 pointing `POPSTARTER.ELF` to HDD.
-  - current source now uses the same stripped HDD-backed handoff as `D-10`: no `EnsureHDDReadyForLaunch()`, no extra HDD slot keep request, and no forced launch CWD.
+  - current source now uses the same stripped HDD-backed handoff as `D-10`, including a cleared post-load PFS keep mask so the loader can unmount everything after `SifLoadElf`.
   - corrected-source hardware status is still `Unknown (verify on hardware)`.
 - `D-15` HDD game with non-HDD sidecar POPSTARTER:
   - reported as a regression on hardware.

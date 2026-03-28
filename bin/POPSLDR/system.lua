@@ -586,11 +586,15 @@ local function BuildPfsKeepMask(keep_slots)
   return mask
 end
 
-local function PrepareForExternalELFLaunch(path, extra_keep_slots)
+local function PrepareForExternalELFLaunch(path, extra_keep_slots, keep_slots_after_load)
   local keep_slots = CollectHddKeepSlots(path, extra_keep_slots)
   keep_slots = PreserveBootPfsSlotsDuringElfLoad(path, keep_slots)
+  local postload_keep_slots = keep_slots_after_load
+  if type(postload_keep_slots) ~= "table" then
+    postload_keep_slots = keep_slots
+  end
   if type(System) == "table" and type(System.setExecKeepPfsMask) == "function" then
-    pcall(System.setExecKeepPfsMask, BuildPfsKeepMask(keep_slots))
+    pcall(System.setExecKeepPfsMask, BuildPfsKeepMask(postload_keep_slots))
   end
   if type(HDD) ~= "table" or type(HDD.UMountPartition) ~= "function" then
     return
@@ -984,8 +988,8 @@ function PLDR.ResolveHddPartitionReadablePath(partition, relpath, mounted_prefix
   return ResolveHddPartitionReadablePath(partition, relpath, mounted_prefix_hint, slot)
 end
 
-function PLDR.PrepareForExternalELFLaunch(path, extra_keep_slots)
-  return PrepareForExternalELFLaunch(path, extra_keep_slots)
+function PLDR.PrepareForExternalELFLaunch(path, extra_keep_slots, keep_slots_after_load)
+  return PrepareForExternalELFLaunch(path, extra_keep_slots, keep_slots_after_load)
 end
 
 function PLDR.SetLaunchWorkingDirectory(path)
@@ -3507,7 +3511,11 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     return
   end
   SetLaunchPhase(LaunchState.PHASE_EXEC)
-  PrepareForExternalELFLaunch(popstarter, context and context.keep_hdd_slots or nil)
+  PrepareForExternalELFLaunch(
+    popstarter,
+    context and context.keep_hdd_slots or nil,
+    context and context.keep_hdd_slots_after_load or nil
+  )
   local rc
   if exec_args ~= nil and #exec_args > 0 and unpack_fn ~= nil then
     rc = System.loadELF(popstarter, reboot_iop, unpack_fn(exec_args))
@@ -3804,6 +3812,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     bootparam_source = boot_source_mode,
     hdd_init = hdd_init,
     keep_hdd_slots = nil,
+    keep_hdd_slots_after_load = popstarter_on_hdd and {} or nil,
     launch_cwd = popstarter_on_hdd and false or nil
   }
   local reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER

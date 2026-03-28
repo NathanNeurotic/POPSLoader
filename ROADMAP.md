@@ -8,7 +8,7 @@ Last updated: 2026-03-27
 - Current source includes a 2026-03-27 HDD startup auto-init correction, and user hardware later confirmed that fix.
 - Current source also includes a 2026-03-27 USB first-entry backend discovery correction, and user hardware later confirmed that fix; MX4SIO discovery code is unchanged.
 - A later 2026-03-28 hardware re-test confirmed `D-15` now passes on the narrowed source, so the restored non-HDD POPSTARTER HDD-game path is back.
-- Current source now strips the remaining Lua-side HDD game prep from HDD-backed `POPSTARTER.ELF` launches as well, leaving the handoff at target ELF plus selector unless `R2` explicitly requests the full `hdd0:PART:pfs0:/GAME.ELF` selector.
+- Current source now strips the remaining Lua-side HDD game prep from HDD-backed `POPSTARTER.ELF` launches as well, and clears the post-load PFS keep mask for that path so the loader can unmount everything after `SifLoadElf`; `R2` can still request the full `hdd0:PART:pfs0:/GAME.ELF` selector.
 - The main stabilization blocker is still HDD-backed `POPSTARTER.ELF` handoff when the launcher, sidecar/CWD, or configured POPSTARTER path lives on HDD. Reported hardware results still black-screen both HDD-game and USB-game repros.
 - The latest EE-side HDD direct-load workaround was reverted after it did not fix `D-10` and coincided with a reported HDD-game regression when POPSTARTER stayed on the non-HDD boot device.
 - `HDD (exFAT)` and `SMB (v1)` remain intentionally unimplemented menu entries.
@@ -26,7 +26,7 @@ Last updated: 2026-03-27
 - The latest EE-side `open/read` HDD direct-load attempt has been reverted after it still failed `D-10` and coincided with a reported `D-15` regression on HDD-game launch with non-HDD sidecar POPSTARTER.
 - A later hardware run showed that Memory Card staging alone was not sufficient; the launch still black-screened on an HDD title.
 - A later 2026-03-28 hardware re-test confirmed that the narrowed source restored `D-15`, so the remaining blocker is again isolated to HDD-backed `POPSTARTER.ELF`.
-- Current source now strips the remaining Lua-side HDD game prep from HDD-backed `POPSTARTER.ELF` launches as well, while non-HDD POPSTARTER HDD-game launches keep the restored selector-only handoff.
+- Current source now strips the remaining Lua-side HDD game prep from HDD-backed `POPSTARTER.ELF` launches as well, clears the post-load PFS keep mask for that path so the loader can unmount everything after `SifLoadElf`, and keeps the restored selector-only handoff for non-HDD POPSTARTER HDD-game launches.
 - Next hardware step:
   - first re-run `D-14` with a USB game and HDD `POPSTARTER.ELF`,
   - then re-run `D-10` with boot source HDD and HDD `POPSTARTER.ELF`,
