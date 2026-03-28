@@ -198,6 +198,16 @@ local function ParseHddPartitionMount(path)
   return nil
 end
 
+local function EnsureHddRuntimeReadyForPathAccess()
+  if type(PLDR) == "table" and type(PLDR.LoadHDDModules) == "function" then
+    pcall(PLDR.LoadHDDModules)
+    if type(PLDR.HDD) == "table" and PLDR.HDD.LOADSTATE == 1 and PLDR.HDD.STATUS == 0 then
+      return true
+    end
+  end
+  return EnsureHddRuntimeReadyForExec()
+end
+
 local HDD_SLOT_BOOT = 0
 local HDD_SLOT_GAME = 1
 local HDD_SLOT_COMMON = 2
@@ -306,7 +316,7 @@ local function MountHddPartitionTracked(partition, slot, mode)
   if normalized_partition == nil then
     return false, nil
   end
-  if not EnsureHddRuntimeReadyForExec() then
+  if not EnsureHddRuntimeReadyForPathAccess() then
     return false, nil
   end
   if type(HDD) ~= "table" or type(HDD.MountPartition) ~= "function" then

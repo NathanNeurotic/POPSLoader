@@ -132,6 +132,7 @@ This matrix tracks current behavior across:
     - later 2026-03-28 reports on that narrowed boot-time split source still said HDD-backed startup/Profile POPSTARTER could not be found after entering the USB page before the HDD page.
     - the raw boot `APP_DIR` fallback alone did not restore that case.
     - current source now also pre-resolves any HDD-backed startup/configured exec paths immediately after `PLDR.LoadHDDModules()` so HDD POPSTARTER/Profile paths are mounted and recorded without reintroducing HDD page work at boot.
+    - current source also routes on-demand HDD path mounts through `PLDR.LoadHDDModules()` instead of only the lower-level `EnsureHddRuntimeReadyForExec()` gate, so later POPSTARTER/Profile resolution from USB or other pages uses the same runtime init path as HDD page entry.
     - updated-source hardware result is still `Unknown (verify on hardware)`.
   - `D-16`: a 2026-03-27 hardware report said the first USB page entry reported no backend, but backing out and re-entering then worked.
     - current source now adds a bounded wait between failed USB root probes in `BuildUsbIdentityDeferred()`.
