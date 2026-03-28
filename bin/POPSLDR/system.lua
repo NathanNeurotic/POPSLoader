@@ -603,7 +603,9 @@ end
 
 local function PrepareForExternalELFLaunch(path, extra_keep_slots, keep_slots_after_load)
   local keep_slots = CollectHddKeepSlots(path, extra_keep_slots)
-  keep_slots = PreserveBootPfsSlotsDuringElfLoad(path, keep_slots)
+  if not IsHddExecContextPath(path) then
+    keep_slots = PreserveBootPfsSlotsDuringElfLoad(path, keep_slots)
+  end
   local postload_keep_slots = keep_slots_after_load
   if type(postload_keep_slots) ~= "table" then
     postload_keep_slots = keep_slots
