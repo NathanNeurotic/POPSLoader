@@ -73,7 +73,8 @@ Each entry records:
   - a later 2026-03-27 hardware report also said booting from another device and launching an HDD title with sidecar `POPSTARTER.ELF` on that boot device black-screened, and the user identified it as a regression.
   - the EE-side HDD direct-load workaround in `src/elf_loader/src/elf.c` has therefore been reverted; it did not fix `D-10` and is no longer supported by hardware evidence.
   - later 2026-03-27 Memory Card staging, stripped-handoff, CWD/selector, and HDD-init-state experiments in `bin/POPSLDR/system.lua` did not fix `D-10` / `D-14` and coincided with repeated `D-15` failures.
-  - current source now rolls those post-`0d2c042` HDD launch-path experiments back toward the earlier baseline while preserving the confirmed HDD startup auto-init and USB first-entry fixes.
+  - a 2026-03-28 hardware re-test also still failed on the rolled-back current source when booted from USB with USB sidecar/cwd `POPSTARTER.ELF` and an HDD title, so `D-15` is not explained by those later experiments alone.
+  - current source now narrows HDD game prep in `bin/POPSLDR/system.lua` so `EnsureHDDReadyForLaunch()` plus Lua-side HDD mount/CWD preservation run only when `POPSTARTER.ELF` itself is HDD/PFS-backed; non-HDD POPSTARTER HDD-game launches now pass only the normal selector handoff again while preserving the confirmed HDD startup auto-init and USB first-entry fixes.
   - current source still keeps the `R2` selector-path experiment for HDD game launches, but that remains secondary to restoring and preserving the non-HDD POPSTARTER baseline for HDD titles.
 - `BOOT.ELF` after HDD page init:
   - the last failed backend experiment was reverted in source,

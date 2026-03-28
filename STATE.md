@@ -69,21 +69,22 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - 2026-03-27 re-test of the current source still failed when booted from HDD with default/Profile 1/cwd/sidecar `POPSTARTER.ELF` on HDD and game device HDD.
   - current source also exposes an `R2` alternate HDD launch path for HDD-resident `POPSTARTER.ELF` that swaps only the selector contract to `hdd0:PART:pfs0:/GAME.ELF`.
   - later 2026-03-27 experimental sources also black-screened after direct-load, Memory Card staging, and stripped-handoff changes.
-  - current source now rolls those later `system.lua` launch-path experiments back toward the earlier `0d2c042` behavior while preserving the confirmed `D-12` and `D-16` fixes.
-  - rolled-back-source hardware status is still `Unknown (verify on hardware)`.
+  - current source now keeps HDD game prep scoped to HDD/PFS-backed `POPSTARTER.ELF` so non-HDD POPSTARTER launches no longer pre-mount or preserve the HDD game partition from Lua.
+  - corrected-source hardware status is still `Unknown (verify on hardware)`.
 - `D-14` HDD-backed POPSTARTER with non-HDD game:
   - reported failing on hardware.
   - repro: launch a non-HDD title while `POPSTARTER.ELF` itself is configured on HDD.
   - 2026-03-27 user hardware also black-screened when launching a USB game with Profile 2 pointing `POPSTARTER.ELF` to HDD.
-  - current source now rolls later `system.lua` launch-path experiments back toward the earlier `0d2c042` behavior.
-  - rolled-back-source hardware status is still `Unknown (verify on hardware)`.
+  - current source still uses `EnsureHDDReadyForLaunch()` for this path because the executable itself is HDD/PFS-backed.
+  - corrected-source hardware status is still `Unknown (verify on hardware)`.
 - `D-15` HDD game with non-HDD sidecar POPSTARTER:
   - reported as a regression on hardware.
   - repro: boot from a non-HDD device with sidecar `POPSTARTER.ELF` on that same device, then launch an HDD title.
   - 2026-03-27 user hardware reported a black screen on the EE-side HDD direct-load attempt.
   - a later 2026-03-27 hardware report also black-screened on the broader stripped-handoff HDD-game path.
-  - current source now rolls those later `system.lua` launch-path experiments back toward the earlier `0d2c042` behavior while preserving the confirmed `D-12` and `D-16` fixes.
-  - rolled-back-source hardware status is still `Unknown (verify on hardware)`.
+  - a 2026-03-28 hardware re-test also still black-screened on the rolled-back current source with USB boot, USB sidecar/cwd `POPSTARTER.ELF`, and an HDD title.
+  - current source now removes Lua-side HDD game pre-mount/CWD preservation from this path and passes only the normal selector handoff unless `POPSTARTER.ELF` itself is HDD/PFS-backed.
+  - corrected-source hardware status is still `Unknown (verify on hardware)`.
 - `U-10` BOOT.ELF after HDD page init:
   - one prior artifact was reported good,
   - a later launch-backend experiment regressed it,
