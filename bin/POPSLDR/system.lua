@@ -2117,7 +2117,11 @@ function PLDR.AutoInitStartupBackends()
     pcall(PLDR.DetectMMCESlot, true)
   end
   if targets.hdd then
-    pcall(EnsureHddRuntimeReadyForExec)
+    if type(PLDR.LoadHDDModules) == "function" then
+      pcall(PLDR.LoadHDDModules)
+    else
+      pcall(EnsureHddRuntimeReadyForExec)
+    end
   end
 
   if type(UI) == "table" then
@@ -2845,6 +2849,7 @@ function PLDR.LoadHDDModules()
       UI.Notif_queue.add(string.format("failed to load %s.IRX\nid:%d, ret:%d", MODULE, ID, RET))
       return
     end
+    HDD_EXEC_INIT_DONE = true
     SUCCESS = HDD.GetHDDStatus()
     PLDR.HDD.STATUS = SUCCESS
     if SUCCESS ~= 0 then

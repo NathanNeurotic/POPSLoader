@@ -96,6 +96,7 @@ Reported hardware issues currently being tracked are:
   - configured POPSTARTER path,
   - configured DKWDRV path,
   - selected profile path.
+- When HDD is a startup target, auto-init now runs the same `PLDR.LoadHDDModules()` path used by the HDD page instead of only the lower-level exec helper.
 - USB vs MX4SIO identity is determined from the mount-driver name, not from the path text.
 
 ### Device access behavior
@@ -180,11 +181,16 @@ The workflow uses the `ps2dev/ps2dev` container and validates packaging after bu
 ### Implemented but still needing hardware proof
 - PAL/NTSC menu asset proportions (`U-06`)
 - startup backend auto-init across all boot/configured path combinations (`D-12`)
+  - current source includes a 2026-03-27 HDD-target correction so HDD boot/configured paths initialize the full HDD stack at startup.
 - boot-device label across all boot sources (`U-11`)
 
 ### Reported hardware outcomes that matter right now
 - `U-05` OSDSYS exit:
   - reported fixed.
+- `D-12` startup backend auto-init:
+  - a 2026-03-27 hardware report said booting from HDD did not auto-init the HDD driver stack.
+  - current source now routes HDD startup targets through `PLDR.LoadHDDModules()` instead of only `EnsureHddRuntimeReadyForExec()`.
+  - corrected-source hardware status is still `Unknown (verify on hardware)`.
 - `D-10` HDD POPSTARTER on HDD:
   - reported failing.
   - 2026-03-27 re-test of the current source still failed with boot source HDD, POPSTARTER on HDD via default/Profile 1/cwd/sidecar, and game device HDD.

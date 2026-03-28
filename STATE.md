@@ -20,6 +20,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - boot path information,
   - configured executable paths,
   - selected profile path.
+- HDD startup targets now run the same `PLDR.LoadHDDModules()` path used by the HDD page instead of only the lower-level exec helper.
 - USB vs MX4SIO split is based on mount-driver identity, not path-prefix guessing.
 - Runtime device access is not gated by the old device-lock system.
 - Main menu can show a boot-device label.
@@ -52,6 +53,10 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - user confirmed that rolled-back source restored the shared baseline on hardware.
 - `U-05` OSDSYS exit:
   - reported fixed on hardware.
+- `D-12` startup backend auto-init:
+  - a 2026-03-27 hardware report said booting from HDD did not auto-init the HDD driver stack.
+  - current source now routes HDD startup targets through `PLDR.LoadHDDModules()` instead of only `EnsureHddRuntimeReadyForExec()`.
+  - corrected-source hardware status is still `Unknown (verify on hardware)`.
 - `D-10` HDD POPSTARTER on HDD:
   - reported failing on hardware.
   - repro: boot from HDD, launch HDD title with HDD `POPSTARTER.ELF` sidecar/CWD.
@@ -77,6 +82,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - hardware result is still `Unknown (verify on hardware)`.
 
 ## Known Open Work
+- Re-verify `D-12` on current source, especially HDD boot/configured HDD-path startup cases.
 - Resolve HDD-backed `POPSTARTER.ELF` handoff when POPSTARTER itself is on HDD, including non-HDD game launches.
 - Re-confirm that HDD titles still launch correctly when POPSTARTER stays on the non-HDD boot device after reverting the failed HDD direct-load attempt.
 - Re-verify `BOOT.ELF` after HDD page init on current source.

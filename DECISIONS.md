@@ -39,7 +39,7 @@ Each entry records:
 ### 2026-03-26 — Startup backend initialization is path-driven
 - Decision: startup backend auto-init considers boot paths and configured executable/profile paths, not just the page the user opens first.
 - Rationale: a configured POPSTARTER/DKWDRV/profile path can require backend drivers before any device page is visited.
-- Implications: startup docs and validation must cover boot source plus configured paths.
+- Implications: startup docs and validation must cover boot source plus configured paths, and HDD startup targets must run the full HDD module-load path rather than only low-level exec initialization.
 - Evidence: `bin/POPSLDR/system.lua` (`CollectStartupBackendTargets`, `AutoInitStartupBackends`).
 
 ### 2026-03-26 — PAL UI uses the same 640x448 raster layout as NTSC-authored UI assets
@@ -55,6 +55,11 @@ Each entry records:
 - Evidence: `.github/workflows/compilation.yml`.
 
 ## Open Investigations
+- HDD startup auto-init on HDD boot/configured paths:
+  - a 2026-03-27 hardware report said booting from HDD did not auto-init the HDD driver stack.
+  - current code had detected HDD startup targets correctly but only called `EnsureHddRuntimeReadyForExec()`, which stops at low-level `HDD.Initialize()`.
+  - current source now routes HDD startup targets through `PLDR.LoadHDDModules()` so startup uses the same HDD status/partition/cache initialization path as the HDD page.
+  - corrected-source hardware verification is still required.
 - HDD `POPSTARTER.ELF` when launcher/sidecar/CWD is on HDD:
   - current reported hardware result is still a black-screen hang.
   - path/mount/CWD mitigations plus the HDD-backed non-reboot `ExecPS2` cleanup are present in current code.

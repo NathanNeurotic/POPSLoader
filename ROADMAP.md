@@ -5,13 +5,21 @@ Last updated: 2026-03-27
 ## Status Snapshot
 - Core launcher functionality is present in code for MMCE, MX4SIO, HDD (PFS), USB, Disc (`DKWDRV`), settings persistence, cover preview, path editing, startup backend auto-init, and exit flows.
 - The shared default/Profile 1 local POPSTARTER baseline was restored by rolling back to the `BETA-10-play-CHECKPOINT2` resolver behavior; user hardware confirmed that fix.
+- Current source includes a 2026-03-27 HDD startup auto-init correction so HDD boot/configured paths run the full HDD module-load path at startup.
 - The main stabilization blocker is still HDD-backed `POPSTARTER.ELF` handoff when the launcher, sidecar/CWD, or configured POPSTARTER path lives on HDD. Reported hardware results still black-screen both HDD-game and USB-game repros.
 - The latest EE-side HDD direct-load workaround was reverted after it did not fix `D-10` and coincided with a reported HDD-game regression when POPSTARTER stayed on the non-HDD boot device.
 - `HDD (exFAT)` and `SMB (v1)` remain intentionally unimplemented menu entries.
 
 ## Immediate Priorities
 
-### 1) HDD-backed POPSTARTER exec
+### 1) HDD startup auto-init re-validation
+- Re-run `D-12` on current source, especially:
+  - booting from HDD,
+  - cold boot with a configured HDD `POPSTARTER_PATH` or profile path,
+  - launching without first opening the HDD page.
+- Expected on current source: HDD startup targets auto-init through `PLDR.LoadHDDModules()` and the HDD driver stack is ready before manual HDD page entry.
+
+### 2) HDD-backed POPSTARTER exec
 - Reproduce and resolve `D-10`:
   - POPSLoader booted from HDD,
   - HDD game launched from HDD (PFS),
@@ -27,15 +35,15 @@ Last updated: 2026-03-27
   - use `R2` only if the reverted-source HDD-game repro still differs from the USB-game repro.
 - Keep `BOOT.ELF` and OSDSYS behavior stable while iterating on this.
 
-### 2) External exit/launch re-validation
+### 3) External exit/launch re-validation
 - Re-run `U-05` (`OSDSYS`) and `U-10` (`BOOT.ELF after HDD page init`) on current source after the last reverted launch-backend experiment.
 - Record exact run results in `QA_REGRESSION_MATRIX.md` instead of carrying them only in chat history.
 
-### 3) Display and UX verification
+### 4) Display and UX verification
 - Re-run `U-06` to confirm PAL/NTSC menu asset proportions on hardware.
 - Re-run `U-08` and `U-09` on slower/large libraries to judge whether busy overlays communicate activity clearly enough.
 
-### 4) Coverage and documentation
+### 5) Coverage and documentation
 - Add concrete run logs for:
   - startup backend auto-init (`D-12`),
   - device switching without runtime locks (`D-13`),
