@@ -126,11 +126,12 @@ This matrix tracks current behavior across:
     - 2026-03-27 re-test of the current source still failed with boot source HDD, POPSTARTER on HDD via default/Profile 1/cwd/sidecar, and game device HDD.
     - the later EE-side direct-load workaround was reverted after it did not fix this and coincided with a broader regression report.
     - later 2026-03-27 Memory Card staging, stripped-handoff, CWD/selector, and HDD-init-state experiments did not fix this.
-    - current source now scopes `EnsureHDDReadyForLaunch()` plus Lua-side HDD mount/CWD preservation to HDD/PFS-backed `POPSTARTER.ELF` only.
+    - user later confirmed on 2026-03-28 that the narrowed source restored `D-15`, so the remaining blocker is again isolated to HDD-backed `POPSTARTER.ELF`.
+    - current source now strips the remaining Lua-side HDD game prep from HDD-backed `POPSTARTER.ELF` launches as well: no `EnsureHDDReadyForLaunch()`, no extra HDD slot keep request, and no forced launch CWD.
     - current source still exposes an `R2` alternate HDD launch for HDD-resident `POPSTARTER.ELF` that changes only the selector path to `hdd0:PART:pfs0:/GAME.ELF`; hardware result is still `Unknown (verify on hardware)`.
   - `D-14`: reported FAIL on 2026-03-27 when launching a USB game with Profile 2 pointing `POPSTARTER.ELF` to HDD.
     - this broadened the remaining issue from “HDD game launch” to “HDD-backed POPSTARTER exec path”.
-    - current source still uses `EnsureHDDReadyForLaunch()` for this path because the executable itself is HDD/PFS-backed; hardware result is still `Unknown (verify on hardware)`.
+    - current source now uses the same stripped HDD-backed handoff as `D-10`: no `EnsureHDDReadyForLaunch()`, no extra HDD slot keep request, and no forced launch CWD; hardware result is still `Unknown (verify on hardware)`.
   - `D-15`: reported FAIL on 2026-03-27 when booting from a non-HDD device and launching an HDD title with sidecar/cwd `POPSTARTER.ELF` on that boot device.
     - the user identified this as a regression on the EE-side HDD direct-load attempt.
     - a later 2026-03-27 broader stripped-handoff source also failed, a 2026-03-28 experimental source still black-screened, and the 2026-03-28 rolled-back current source still black-screened with USB boot plus USB sidecar/cwd `POPSTARTER.ELF`.

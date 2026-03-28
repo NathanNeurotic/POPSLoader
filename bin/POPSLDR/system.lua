@@ -3476,10 +3476,15 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     popstarter = open_path
   end
   local launch_cwd = popstarter
-  if context ~= nil and type(context.launch_cwd) == "string" and context.launch_cwd ~= "" then
+  if context ~= nil and context.launch_cwd == false then
+    launch_cwd = nil
+  elseif context ~= nil and type(context.launch_cwd) == "string" and context.launch_cwd ~= "" then
     launch_cwd = context.launch_cwd
   end
-  local previous_cwd = SetLaunchWorkingDirectory(launch_cwd)
+  local previous_cwd = nil
+  if type(launch_cwd) == "string" and launch_cwd ~= "" then
+    previous_cwd = SetLaunchWorkingDirectory(launch_cwd)
+  end
   local exec_args = argv or {}
   SetLaunchPhase(LaunchState.PHASE_FADEOUT)
   UI.LAUNCHING = true
@@ -3587,6 +3592,21 @@ local function BuildHddPopstarterSelectorPath(game_name, hdd_selector_mode, hdd_
   return selector_name
 end
 
+local function BuildHddPopstarterSelectorPathForPartition(game_name, hdd_selector_mode, hdd_partition_label)
+  local selector_name = BuildLiteralElfName(game_name)
+  if selector_name == "" then
+    return ""
+  end
+  if hdd_selector_mode == "full_hdd_pfs0" then
+    local partition = tostring(hdd_partition_label or "")
+    if partition ~= "" then
+      return "hdd0:"..partition..":pfs0:/"..selector_name
+    end
+    return "pfs0:/"..selector_name
+  end
+  return selector_name
+end
+
 function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
   local policy, device_page = ResolveLaunchPolicy(gamelocation, ui_scene)
   local selected_entry = tostring(game or "")
@@ -3620,30 +3640,6 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
   if policy.name == "HDD" then
     hdd_partition_label, hdd_relpath = ParseHddGameEntry(selected_entry)
     hdd_relpath = NormalizeHddRelpath(hdd_relpath or selected_entry)
-    -- Non-HDD POPSTARTER launches should hand POPSTARTER only the selector and
-    -- let it own the HDD mount lifecycle. Pre-mounting the game partition here
-    -- is only needed when POPSTARTER itself is resolved from HDD/PFS.
-    if popstarter_on_hdd then
-      local launch_partition = nil
-      if hdd_partition_label ~= nil and hdd_partition_label ~= "" then
-        launch_partition = "hdd0:"..hdd_partition_label
-      end
-      local launch_slot = SelectHddLaunchGameSlot(popstarter)
-      hdd_init = EnsureHDDReadyForLaunch(selected_entry, launch_partition, launch_slot)
-      if not hdd_init.init_ok or hdd_init.status ~= 0 or hdd_init.mount_ok ~= true or hdd_init.mount_slot == nil then
-        BlockLaunchFailure(
-          "HDD launch prep failed: init="..tostring(hdd_init.init_ok)..", status="..tostring(hdd_init.status)..", mount="..tostring(hdd_init.mount_ok),
-          popstarter,
-          device_page,
-          nil,
-          selected_entry,
-          APP_DIR_LOCAL,
-          hdd_init.status,
-          "EnsureHDDReadyForLaunch"
-        )
-        return
-      end
-    end
   end
   local normalized_gamelocation = policy.normalize(gamelocation)
   local handoff_gamelocation = policy.handoff(normalized_gamelocation)
@@ -3754,7 +3750,11 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
   local selector_prefix = SelectPopstarterSelectorPrefix(device_page)
   local argv0_selector = BuildPopstarterSelectorPath(device_page, game_name)
   if policy.name == "HDD" then
-    argv0_selector = BuildHddPopstarterSelectorPath(game_name, hdd_selector_mode, hdd_init)
+    if popstarter_on_hdd then
+      argv0_selector = BuildHddPopstarterSelectorPathForPartition(game_name, hdd_selector_mode, hdd_partition_label)
+    else
+      argv0_selector = BuildHddPopstarterSelectorPath(game_name, hdd_selector_mode, hdd_init)
+    end
   end
   if selector_prefix == "" and string.upper(game_name) == "POPSTARTER" then
     BlockLaunchFailure(
@@ -3803,8 +3803,8 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     game_name = game_name,
     bootparam_source = boot_source_mode,
     hdd_init = hdd_init,
-    keep_hdd_slots = (popstarter_on_hdd and hdd_init ~= nil and hdd_init.mount_ok == true and hdd_init.mount_slot ~= nil) and {hdd_init.mount_slot} or nil,
-    launch_cwd = (popstarter_on_hdd and hdd_init ~= nil and hdd_init.mount_ok == true) and hdd_init.mount_prefix or nil
+    keep_hdd_slots = nil,
+    launch_cwd = popstarter_on_hdd and false or nil
   }
   local reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
   if policy.name == "HDD" then
