@@ -393,7 +393,7 @@ local function BuildDirectHddExecPathFromMounted(path)
   if mount == nil or type(mount.partition) ~= "string" or mount.partition == "" or relpath == "" then
     return nil
   end
-  return mount.partition..":"..string.sub(prefix, 1, -2).."/"..relpath
+  return mount.partition..":"..string.sub(prefix, 1, -2)..":/"..relpath
 end
 
 local ProbePathExists
