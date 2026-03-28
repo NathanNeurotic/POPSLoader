@@ -71,13 +71,15 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - later 2026-03-27 experimental sources also black-screened after direct-load, Memory Card staging, and stripped-handoff changes.
   - user later confirmed on 2026-03-28 that the narrowed source restored `D-15`, so this remaining blocker is again isolated to HDD-backed `POPSTARTER.ELF`.
   - a later 2026-03-28 re-test still black-screened on the narrowed Lua-side HDD-backed source with no visible positive change.
-  - current source now keeps that narrowed Lua-side HDD-backed handoff and removes the loader's automatic post-load exec-slot preservation in `src/elf_loader/src/elf.c` so only the Lua-supplied keep mask survives after `SifLoadElf`.
+  - a later 2026-03-28 re-test on the loader-side no-auto-exec-slot-preserve source still black-screened on both `X` and `R2`.
+  - current source now keeps that narrowed Lua-side HDD-backed handoff plus the loader-side no-auto-exec-slot-preserve change, and additionally forces `reboot_iop = 1` whenever `POPSTARTER.ELF` itself is HDD/PFS-backed, even for HDD games.
   - corrected-source hardware status is still `Unknown (verify on hardware)`.
 - `D-14` HDD-backed POPSTARTER with non-HDD game:
   - reported failing on hardware.
   - repro: launch a non-HDD title while `POPSTARTER.ELF` itself is configured on HDD.
   - 2026-03-27 user hardware also black-screened when launching a USB game with Profile 2 pointing `POPSTARTER.ELF` to HDD.
-  - current source now uses the same narrowed HDD-backed handoff as `D-10` and removes the loader's automatic post-load exec-slot preservation in `src/elf_loader/src/elf.c`.
+  - the user later clarified that the other same-day 2026-03-28 success report referred to `D-15`, not this case.
+  - current source now uses the same narrowed HDD-backed handoff as `D-10`, removes the loader's automatic post-load exec-slot preservation in `src/elf_loader/src/elf.c`, and forces `reboot_iop = 1` whenever `POPSTARTER.ELF` itself is HDD/PFS-backed.
   - corrected-source hardware status is still `Unknown (verify on hardware)`.
 - `D-15` HDD game with non-HDD sidecar POPSTARTER:
   - reported as a regression on hardware.

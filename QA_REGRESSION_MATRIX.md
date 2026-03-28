@@ -106,6 +106,7 @@ This matrix tracks current behavior across:
 | 2026-03-28 | Unknown (not reported) | USB boot; USB sidecar/cwd `POPSTARTER.ELF`; HDD game on the rolled-back current source | D-15 | FAIL: black screen |
 | 2026-03-28 | Unknown (not reported) | USB boot; USB Profile 1 sidecar/cwd `POPSTARTER.ELF`; HDD game on the narrowed current source | D-15 | PASS |
 | 2026-03-28 | Unknown (not reported) | HDD boot; HDD sidecar/cwd `POPSTARTER.ELF`; HDD game on narrowed Lua-side source with cleared post-load PFS keep mask | D-10 | FAIL: black screen (no visible change) |
+| 2026-03-28 | Unknown (not reported) | HDD boot; HDD sidecar/cwd `POPSTARTER.ELF`; HDD game on loader-side no-auto-exec-slot-preserve source | D-10 | FAIL: black screen on both `X` and `R2` |
 | YYYY-MM-DD | SCPH-xxxxx | USB/MMCE/MX4SIO/HDD details | e.g. S-01,S-02,D-02 | PASS/FAIL + notes |
 
 ## Current Verification Status
@@ -129,11 +130,13 @@ This matrix tracks current behavior across:
     - later 2026-03-27 Memory Card staging, stripped-handoff, CWD/selector, and HDD-init-state experiments did not fix this.
     - user later confirmed on 2026-03-28 that the narrowed source restored `D-15`, so the remaining blocker is again isolated to HDD-backed `POPSTARTER.ELF`.
     - a later 2026-03-28 re-test still black-screened on that narrowed Lua-side source with no visible positive change.
-    - current source now keeps the narrowed Lua-side HDD-backed handoff but removes the loader's automatic post-load exec-slot preservation in `src/elf_loader/src/elf.c`, so only the Lua-supplied keep mask survives after `SifLoadElf`.
+    - a later 2026-03-28 re-test on the loader-side no-auto-exec-slot-preserve source still black-screened on both `X` and `R2`.
+    - current source now keeps the narrowed Lua-side HDD-backed handoff plus the loader-side no-auto-exec-slot-preserve change, and additionally forces `reboot_iop = 1` whenever `POPSTARTER.ELF` itself is HDD/PFS-backed, even for HDD games.
     - current source still exposes an `R2` alternate HDD launch for HDD-resident `POPSTARTER.ELF` that changes only the selector path to `hdd0:PART:pfs0:/GAME.ELF`; hardware result is still `Unknown (verify on hardware)`.
   - `D-14`: reported FAIL on 2026-03-27 when launching a USB game with Profile 2 pointing `POPSTARTER.ELF` to HDD.
     - this broadened the remaining issue from “HDD game launch” to “HDD-backed POPSTARTER exec path”.
-    - current source now uses the same narrowed HDD-backed handoff as `D-10` and removes the loader's automatic post-load exec-slot preservation in `src/elf_loader/src/elf.c`; hardware result is still `Unknown (verify on hardware)`.
+    - the user later clarified that the other same-day 2026-03-28 success result referred to `D-15`, not this case.
+    - current source now uses the same narrowed HDD-backed handoff as `D-10`, removes the loader's automatic post-load exec-slot preservation in `src/elf_loader/src/elf.c`, and forces `reboot_iop = 1` whenever `POPSTARTER.ELF` itself is HDD/PFS-backed; hardware result is still `Unknown (verify on hardware)`.
   - `D-15`: reported FAIL on 2026-03-27 when booting from a non-HDD device and launching an HDD title with sidecar/cwd `POPSTARTER.ELF` on that boot device.
     - the user identified this as a regression on the EE-side HDD direct-load attempt.
     - a later 2026-03-27 broader stripped-handoff source also failed, a 2026-03-28 experimental source still black-screened, and the 2026-03-28 rolled-back current source still black-screened with USB boot plus USB sidecar/cwd `POPSTARTER.ELF`.
