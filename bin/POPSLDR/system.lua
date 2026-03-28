@@ -381,6 +381,21 @@ local function ExtractEmbeddedHddMountPrefix(path)
   return NormalizePfsPrefix(pfs_device)
 end
 
+local function BuildDirectHddExecPathFromMounted(path)
+  local candidate = tostring(path or "")
+  local prefix = NormalizePfsPrefix(candidate)
+  if prefix == nil then
+    return nil
+  end
+  local slot = ParsePfsSlot(prefix)
+  local mount = HDD_MOUNT_STATE.slots[slot]
+  local relpath = string.gsub(candidate, "^pfs%d*:/", "")
+  if mount == nil or type(mount.partition) ~= "string" or mount.partition == "" or relpath == "" then
+    return nil
+  end
+  return mount.partition..":"..string.sub(prefix, 1, -2).."/"..relpath
+end
+
 local ProbePathExists
 
 local function ResolveHddPartitionReadablePath(partition, relpath, mounted_prefix_hint, slot)
@@ -839,6 +854,13 @@ local function ResolveHddBootSidecarPopstarter()
   add_candidate(APP_DIR_LOCAL)
 
   for i = 1, #mounted_candidates do
+    local direct_hdd = BuildDirectHddExecPathFromMounted(mounted_candidates[i])
+    if direct_hdd ~= nil then
+      local resolved_direct = ResolveDirectHddExecPath(direct_hdd)
+      if resolved_direct ~= nil then
+        return resolved_direct
+      end
+    end
     if ProbePathExists(mounted_candidates[i]) then
       return mounted_candidates[i]
     end
@@ -932,13 +954,21 @@ local function ResolvePopstarterPath(path)
   chosen = ResolveMx4sioMassAliasPath(chosen)
 
   if string.match(string.lower(chosen), "^hdd%d:") ~= nil then
+    local direct_hdd = ResolveDirectHddExecPath(chosen)
+    if direct_hdd ~= nil then
+      return direct_hdd
+    end
     local resolved_hdd = ResolveHddExecMountedPath(chosen)
     if resolved_hdd ~= nil then
       return resolved_hdd
     end
-    local direct_hdd = ResolveDirectHddExecPath(chosen)
-    if direct_hdd ~= nil then
-      return direct_hdd
+  elseif string.match(string.lower(chosen), "^pfs%d*:/") ~= nil then
+    local direct_from_mounted = BuildDirectHddExecPathFromMounted(chosen)
+    if direct_from_mounted ~= nil then
+      local resolved_direct = ResolveDirectHddExecPath(direct_from_mounted)
+      if resolved_direct ~= nil then
+        return resolved_direct
+      end
     end
   end
   local resolved = ResolvePathWithEnsure(chosen)
@@ -956,9 +986,14 @@ local function ResolvePopstarterPath(path)
     local candidate = fallbacks[i]
     local resolved_fallback = nil
     if string.match(string.lower(candidate), "^hdd%d:") ~= nil then
-      resolved_fallback = ResolveHddReadablePath(candidate)
+      resolved_fallback = ResolveDirectHddExecPath(candidate)
       if resolved_fallback == nil then
-        resolved_fallback = ResolveDirectHddExecPath(candidate)
+        resolved_fallback = ResolveHddReadablePath(candidate)
+      end
+    elseif string.match(string.lower(candidate), "^pfs%d*:/") ~= nil then
+      local direct_from_mounted = BuildDirectHddExecPathFromMounted(candidate)
+      if direct_from_mounted ~= nil then
+        resolved_fallback = ResolveDirectHddExecPath(direct_from_mounted)
       end
     end
     if resolved_fallback == nil then

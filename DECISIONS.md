@@ -77,7 +77,8 @@ Each entry records:
   - a later 2026-03-28 re-test still black-screened on that narrowed Lua-side source with no visible positive change, so the remaining shared preservation step was the loader's automatic post-load exec-slot keep in `src/elf_loader/src/elf.c`.
   - current source therefore keeps the narrowed Lua-side HDD-backed handoff, but now removes the loader's automatic post-load exec-slot preservation so only the Lua-supplied keep mask survives after `SifLoadElf`. Non-HDD POPSTARTER HDD-game launches still keep the restored selector-only handoff, while `R2` can still request the explicit `hdd0:PART:pfs0:/GAME.ELF` selector.
   - a later 2026-03-28 re-test on that loader-side source still black-screened for `D-10` on both `X` and `R2`, and the user clarified the other same-day success result was another `D-15` run rather than `D-14`.
-  - current source now isolates one remaining `D-10`-specific difference in `bin/POPSLDR/system.lua`: `reboot_iop` is forced to `1` whenever `POPSTARTER.ELF` itself is HDD/PFS-backed, even if the game device is HDD.
+  - a later 2026-03-28 re-test on that forced-`reboot_iop = 1` source still black-screened for `D-10` and `D-14`, so reboot mode alone did not separate the remaining failure.
+  - current source now isolates another HDD-backed-only difference in `bin/POPSLDR/system.lua`: when the recorded HDD mount mapping is known, POPSTARTER exec now prefers a direct `hdd0:PART:pfsN:/POPSTARTER.ELF` path over a mounted `pfsN:/POPSTARTER.ELF` path.
   - current source still keeps the `R2` selector-path experiment for HDD game launches, but that remains secondary to restoring and preserving the non-HDD POPSTARTER baseline for HDD titles.
 - `BOOT.ELF` after HDD page init:
   - the last failed backend experiment was reverted in source,
