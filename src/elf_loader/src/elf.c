@@ -93,30 +93,6 @@ static char *store_arg(const char *src, char *storage, size_t storage_size, size
 	return dest;
 }
 
-static int extract_exec_pfs_slot(const char *path) {
-	const char *prefix;
-	if (path == NULL) {
-		return -1;
-	}
-
-	prefix = path;
-	if (strncmp(prefix, "pfs", 3) != 0) {
-		const char *embedded = strstr(path, ":pfs");
-		if (embedded == NULL) {
-			return -1;
-		}
-		prefix = embedded + 1;
-	}
-
-	if (prefix[3] == ':') {
-		return 0;
-	}
-	if (prefix[3] >= '0' && prefix[3] <= '3' && prefix[4] == ':') {
-		return prefix[3] - '0';
-	}
-	return -1;
-}
-
 static void unmount_pfs_slots_for_exec(unsigned int keep_mask) {
 	char mount_name[6] = "pfs0:";
 	int slot;
@@ -130,12 +106,8 @@ static void unmount_pfs_slots_for_exec(unsigned int keep_mask) {
 }
 
 static unsigned int build_exec_keep_mask(const char *resolved_path) {
-	unsigned int keep_mask = GetExecKeepPfsMask();
-	int exec_slot = extract_exec_pfs_slot(resolved_path);
-	if (exec_slot >= 0 && exec_slot <= 3) {
-		keep_mask |= (1U << exec_slot);
-	}
-	return keep_mask & 0x0F;
+	(void)resolved_path;
+	return GetExecKeepPfsMask() & 0x0F;
 }
 
 static bool is_hdd_backed_exec_path(const char *path) {

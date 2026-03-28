@@ -56,7 +56,8 @@ Reported hardware issues currently being tracked are:
   - current source still exposes an HDD-list alternate launch on `R2` for HDD-resident `POPSTARTER.ELF`, changing only the selector contract to `hdd0:PART:pfs0:/GAME.ELF` for A/B testing.
   - several later HDD launch-path experiments in `bin/POPSLDR/system.lua` did not fix these failures and coincided with a `D-15` regression.
   - user later confirmed on 2026-03-28 that the narrowed source restored `D-15`, so the remaining blocker is again isolated to HDD-backed `POPSTARTER.ELF`.
-  - current source now keeps the confirmed HDD startup auto-init and USB first-entry fixes, strips the remaining Lua-side HDD game prep from HDD-backed `POPSTARTER.ELF` launches, and clears the post-load PFS keep mask for that path so the loader can unmount everything after `SifLoadElf`: no `EnsureHDDReadyForLaunch()`, no extra HDD slot keep request, and no forced launch CWD.
+  - a later 2026-03-28 re-test still black-screened on the source that stripped the remaining Lua-side HDD game prep and cleared the post-load PFS keep mask, with no visible positive change.
+  - current source now keeps the confirmed HDD startup auto-init and USB first-entry fixes, leaves the narrowed Lua-side HDD-backed handoff in place, and removes the loader's automatic post-load exec-slot preservation in `src/elf_loader/src/elf.c` so only the Lua-supplied keep mask survives after `SifLoadElf`.
   - hardware result on this corrected current source is still `Unknown (verify on hardware)`.
 - HDD game with non-HDD POPSTARTER (`D-15`)
   - this path had regressed on several 2026-03-27 and early 2026-03-28 experimental sources.
@@ -201,12 +202,13 @@ The workflow uses the `ps2dev/ps2dev` container and validates packaging after bu
   - 2026-03-27 re-test of the current source still failed with boot source HDD, POPSTARTER on HDD via default/Profile 1/cwd/sidecar, and game device HDD.
   - later 2026-03-27 experimental sources also black-screened after direct-load, Memory Card staging, and stripped-handoff changes.
   - user later confirmed on 2026-03-28 that the narrowed source restored `D-15`, so this remaining blocker is again isolated to HDD-backed `POPSTARTER.ELF`.
-  - current source now strips the remaining Lua-side HDD game prep from HDD-backed `POPSTARTER.ELF` launches and clears the post-load PFS keep mask for that path so the loader can unmount everything after `SifLoadElf`.
+  - a later 2026-03-28 re-test still black-screened on the source that stripped the remaining Lua-side HDD game prep and cleared the post-load PFS keep mask, with no visible positive change.
+  - current source now keeps that narrowed Lua-side HDD-backed handoff and additionally removes the loader's automatic post-load exec-slot preservation in `src/elf_loader/src/elf.c` so only the Lua-supplied keep mask survives after `SifLoadElf`.
   - hardware result on this corrected current source is still `Unknown (verify on hardware)`.
 - `D-14` HDD-backed POPSTARTER with non-HDD game:
   - reported failing.
   - 2026-03-27 user hardware also black-screened when launching a USB game with Profile 2 pointing `POPSTARTER.ELF` to HDD.
-  - current source now uses the same stripped HDD-backed handoff as `D-10`, including a cleared post-load PFS keep mask so the loader can unmount everything after `SifLoadElf`.
+  - current source now uses the same narrowed HDD-backed handoff as `D-10` and removes the loader's automatic post-load exec-slot preservation in `src/elf_loader/src/elf.c`.
   - hardware result on this corrected current source is still `Unknown (verify on hardware)`.
 - `D-15` HDD game with non-HDD sidecar POPSTARTER:
   - a later 2026-03-27 hardware report said booting from another device and launching an HDD game with sidecar `POPSTARTER.ELF` on that boot device also black-screened.
