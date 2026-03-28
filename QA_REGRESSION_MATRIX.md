@@ -123,11 +123,12 @@ This matrix tracks current behavior across:
     - 2026-03-27 re-test of the current source still failed with boot source HDD, POPSTARTER on HDD via default/Profile 1/cwd/sidecar, and game device HDD.
     - the later EE-side direct-load workaround was reverted after it did not fix this and coincided with a broader regression report.
     - a later 2026-03-27 hardware run showed that staging POPSTARTER to Memory Card alone was not sufficient; the HDD-game launch still black-screened.
-    - current source now first tries a Memory Card staging workaround for HDD-backed `POPSTARTER.ELF`, reusing `mc?:/POPSTARTER/POPSTARTER.ELF` when it already matches and otherwise preflighting the whole pack write before any directory creation or temp write, then for non-HDD/staged HDD-game launches uses the explicit HDD selector contract with POPSTARTER-dir CWD, and finally falls back to corrected direct-launch `reboot_iop` handling if staging is unavailable.
+    - current source now first tries a Memory Card staging workaround for HDD-backed `POPSTARTER.ELF`, reusing `mc?:/POPSTARTER/POPSTARTER.ELF` when it already matches and otherwise preflighting the whole pack write before any directory creation or temp write.
+    - current source now uses the explicit HDD selector contract for HDD launches by default and strips the Lua-side keep-slot/forced-CWD handoff state for HDD-backed POPSTARTER launches before falling back to corrected direct-launch `reboot_iop` handling if staging is unavailable.
     - current source still exposes an `R2` alternate HDD launch for HDD-resident `POPSTARTER.ELF` that changes only the selector path to `hdd0:PART:pfs0:/GAME.ELF`; hardware result is still `Unknown (verify on hardware)`.
   - `D-14`: reported FAIL on 2026-03-27 when launching a USB game with Profile 2 pointing `POPSTARTER.ELF` to HDD.
     - this broadened the remaining issue from “HDD game launch” to “HDD-backed POPSTARTER exec path”.
-    - current source uses the same Memory Card staging plus explicit-selector/non-HDD-CWD path; hardware result is still `Unknown (verify on hardware)`.
+    - current source uses the same Memory Card staging plus stripped Lua-side handoff state; hardware result is still `Unknown (verify on hardware)`.
   - `D-15`: reported FAIL on 2026-03-27 when booting from a non-HDD device and launching an HDD title with sidecar/cwd `POPSTARTER.ELF` on that boot device.
     - the user identified this as a regression on the EE-side HDD direct-load attempt.
     - that direct-load workaround has now been reverted; reverted-source hardware result is still `Unknown (verify on hardware)`.

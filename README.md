@@ -66,7 +66,8 @@ Reported hardware issues currently being tracked are:
   - if that Memory Card `POPSTARTER.ELF` already exists with the matching size, current source reuses it without writing again.
   - if `mc?:/POPSTARTER` must be created for staging, current source also writes the same `icon.sys`, `list.icn`, and `del.icn` assets used for the settings pack.
   - Memory Card staging now pre-checks free space for the whole pack write before creating `mc?:/POPSTARTER` or writing the temporary staged ELF, and falls back to direct HDD launch if no card has enough confirmed space.
-  - current source now also auto-switches non-HDD/staged HDD-game launches to the explicit `hdd0:PART:pfs0:/GAME.ELF` selector contract and leaves CWD at the POPSTARTER location instead of forcing HDD CWD.
+  - current source now uses the explicit `hdd0:PART:pfs0:/GAME.ELF` selector contract for HDD launches by default.
+  - for HDD-backed POPSTARTER launches, current source now strips the Lua-side keep-slot and forced-CWD handoff state so POPSTARTER receives only the ELF path plus `argv0`.
   - the direct HDD fallback also restores HDD-backed POPSTARTER priority in the `reboot_iop` decision instead of letting the game device override it.
   - the latest EE-side HDD direct-load workaround was reverted after it still failed `D-10` and coincided with a reported HDD-game regression elsewhere.
   - current source therefore remains on the earlier handoff path while this failure is investigated.
@@ -212,12 +213,13 @@ The workflow uses the `ps2dev/ps2dev` container and validates packaging after bu
   - a later 2026-03-27 hardware test reported that POPSTARTER was visibly staged to Memory Card but the HDD-game launch still black-screened.
   - current source now first tries a Memory Card staging workaround for HDD-backed `POPSTARTER.ELF`, reusing `mc?:/POPSTARTER/POPSTARTER.ELF` when it already matches.
   - if a Memory Card `POPSTARTER` pack must be created for staging, current source pre-checks free space for the directory assets plus staged ELF before any directory creation or temp write.
-  - for non-HDD/staged HDD-game launches, current source uses the explicit `hdd0:PART:pfs0:/GAME.ELF` selector contract with POPSTARTER-dir CWD, and finally falls back to corrected direct-launch `reboot_iop` handling if staging is unavailable.
+  - current source now uses the explicit `hdd0:PART:pfs0:/GAME.ELF` selector contract for HDD launches by default.
+  - for HDD-backed POPSTARTER launches, current source now strips the Lua-side keep-slot and forced-CWD handoff state so POPSTARTER receives only the ELF path plus `argv0`, and finally falls back to corrected direct-launch `reboot_iop` handling if staging is unavailable.
   - hardware result on that source is still `Unknown (verify on hardware)`.
 - `D-14` HDD-backed POPSTARTER with non-HDD game:
   - reported failing.
   - 2026-03-27 user hardware also black-screened when launching a USB game with Profile 2 pointing `POPSTARTER.ELF` to HDD.
-  - current source uses the same Memory Card staging plus explicit-selector/non-HDD-CWD path for this case.
+  - current source uses the same Memory Card staging plus stripped Lua-side handoff state for this case.
   - hardware result on that source is still `Unknown (verify on hardware)`.
 - `D-15` HDD game with non-HDD sidecar POPSTARTER:
   - a later 2026-03-27 hardware report said booting from another device and launching an HDD game with sidecar `POPSTARTER.ELF` on that boot device also black-screened.

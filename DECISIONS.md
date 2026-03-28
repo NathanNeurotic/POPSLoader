@@ -75,7 +75,8 @@ Each entry records:
   - a later 2026-03-27 hardware run showed that staging POPSTARTER to Memory Card alone was not sufficient; the HDD-game launch still black-screened.
   - current source now limits that workaround in `bin/POPSLDR/system.lua` to `mc?:/POPSTARTER/POPSTARTER.ELF`, reusing a matching file when present and otherwise preflighting the whole pack write before any directory creation or temp write.
   - when staging has to create `mc?:/POPSTARTER`, it also writes the same `icon.sys`, `list.icn`, and `del.icn` assets used by the settings pack.
-  - for non-HDD/staged HDD-game launches, current source uses the explicit HDD selector contract plus POPSTARTER-dir CWD, and the direct fallback restores HDD-backed POPSTARTER priority in the `reboot_iop` decision.
+  - current source now uses the explicit HDD selector contract for HDD launches by default.
+  - for HDD-backed POPSTARTER launches, current source strips the Lua-side keep-slot and forced-CWD handoff state, and the direct fallback restores HDD-backed POPSTARTER priority in the `reboot_iop` decision.
   - current source still keeps the `R2` selector-path experiment for HDD game launches, but that remains secondary to restoring and preserving the non-HDD POPSTARTER baseline for HDD titles.
 - `BOOT.ELF` after HDD page init:
   - the last failed backend experiment was reverted in source,

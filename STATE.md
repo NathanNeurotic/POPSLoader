@@ -73,7 +73,8 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - if that Memory Card `POPSTARTER.ELF` already exists with the matching size, current source reuses it without writing again.
   - if `mc?:/POPSTARTER` must be created for staging, current source also writes the same `icon.sys`, `list.icn`, and `del.icn` assets used for the settings pack.
   - current source pre-checks Memory Card free space for the whole pack write before any directory creation or temp write.
-  - for non-HDD/staged HDD-game launches, current source uses explicit HDD selector plus POPSTARTER-dir CWD, with corrected direct-launch `reboot_iop` fallback if staging is unavailable.
+  - current source now uses the explicit HDD selector path by default for HDD launches.
+  - for HDD-backed POPSTARTER launches, current source now strips the Lua-side keep-slot and forced-CWD handoff state, with corrected direct-launch `reboot_iop` fallback if staging is unavailable.
 - `D-14` HDD-backed POPSTARTER with non-HDD game:
   - reported failing on hardware.
   - repro: launch a non-HDD title while `POPSTARTER.ELF` itself is configured on HDD.
