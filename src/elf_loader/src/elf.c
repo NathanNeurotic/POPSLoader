@@ -28,6 +28,10 @@
 
 #define ELF_MAGIC 0x464c457f
 #define ELF_PT_LOAD 1
+#define ELF_PT_MIPS_REGINFO 0x70000000U
+#define ELF_MIPS_REGINFO_GPVALUE_OFFSET 20
+#define HDD_EXEC_BUFFER_ADDR 0x000C0000
+#define HDD_EXEC_BUFFER_MAX  (0x00100000 - HDD_EXEC_BUFFER_ADDR)
 
 extern unsigned char loader_elf[];
 static unsigned int s_exec_keep_pfs_mask = 0;
@@ -142,6 +146,135 @@ static unsigned int build_exec_keep_mask(const char *resolved_path) {
 static bool is_hdd_backed_exec_path(const char *path) {
 	return (path != NULL &&
 	        (strncmp(path, "hdd", 3) == 0 || strncmp(path, "pfs", 3) == 0));
+}
+
+static int load_hdd_backed_elf_image(const char *resolved_path, u32 *entry_out, u32 *gp_out) {
+	unsigned char *buf = (unsigned char *)HDD_EXEC_BUFFER_ADDR;
+	elf_header_t *ehdr;
+	elf_pheader_t *phdrs;
+	int fd;
+	int file_size;
+	int bytes_read;
+	int i;
+	u32 gp = 0;
+
+	if (resolved_path == NULL || entry_out == NULL || gp_out == NULL) {
+		return -1;
+	}
+
+	fd = open(resolved_path, O_RDONLY);
+	if (fd < 0) {
+		return -1;
+	}
+
+	file_size = lseek(fd, 0, SEEK_END);
+	if (file_size <= 0 || file_size > HDD_EXEC_BUFFER_MAX) {
+		close(fd);
+		return -2;
+	}
+	if (lseek(fd, 0, SEEK_SET) < 0) {
+		close(fd);
+		return -3;
+	}
+
+	bytes_read = read(fd, buf, file_size);
+	close(fd);
+	if (bytes_read != file_size) {
+		return -4;
+	}
+
+	ehdr = (elf_header_t *)buf;
+	if ((*(u32 *)ehdr->ident) != ELF_MAGIC) {
+		return -5;
+	}
+	if (ehdr->phnum == 0) {
+		return -6;
+	}
+	if (ehdr->phoff > (u32)file_size ||
+	    ((u32)ehdr->phnum * sizeof(elf_pheader_t)) > ((u32)file_size - ehdr->phoff)) {
+		return -7;
+	}
+
+	phdrs = (elf_pheader_t *)(buf + ehdr->phoff);
+	for (i = 0; i < ehdr->phnum; i++) {
+		if (phdrs[i].offset > (u32)file_size ||
+		    phdrs[i].filesz > ((u32)file_size - phdrs[i].offset)) {
+			return -8;
+		}
+		if (phdrs[i].type == ELF_PT_MIPS_REGINFO &&
+		    phdrs[i].filesz >= (ELF_MIPS_REGINFO_GPVALUE_OFFSET + sizeof(gp))) {
+			u32 *reginfo = (u32 *)(buf + phdrs[i].offset);
+			gp = reginfo[ELF_MIPS_REGINFO_GPVALUE_OFFSET / sizeof(u32)];
+		}
+		if (phdrs[i].type != ELF_PT_LOAD || phdrs[i].filesz == 0) {
+			continue;
+		}
+		memcpy(phdrs[i].vaddr, buf + phdrs[i].offset, phdrs[i].filesz);
+		if (phdrs[i].memsz > phdrs[i].filesz) {
+			memset((void *)((u32)phdrs[i].vaddr + phdrs[i].filesz), 0, phdrs[i].memsz - phdrs[i].filesz);
+		}
+	}
+
+	*entry_out = ehdr->entry;
+	*gp_out = gp;
+	return 0;
+}
+
+static int exec_hdd_backed_elf_nonreboot(const char *resolved_path, int argc, char *argv[]) {
+	u32 entry;
+	u32 gp;
+	int ret;
+
+	ret = load_hdd_backed_elf_image(resolved_path, &entry, &gp);
+	if (ret != 0) {
+		return ret;
+	}
+
+	unmount_pfs_slots_for_exec(build_exec_keep_mask(resolved_path));
+	SifInitRpc(0);
+	SifLoadFileInit();
+	SifLoadFileExit();
+	SifExitIopHeap();
+	SifExitRpc();
+	SifExitCmd();
+	FlushCache(0);
+	FlushCache(2);
+
+	ExecPS2((void *)entry, (void *)gp, argc, argv);
+	return -1;
+}
+
+static int exec_hdd_backed_elf_reboot_iop(const char *resolved_path, int argc, char *argv[]) {
+	u32 entry;
+	u32 gp;
+	int ret;
+
+	ret = load_hdd_backed_elf_image(resolved_path, &entry, &gp);
+	if (ret != 0) {
+		return ret;
+	}
+
+	unmount_pfs_slots_for_exec(build_exec_keep_mask(resolved_path));
+	SifInitRpc(0);
+	FlushCache(0);
+	while (!SifIopReset(NULL, 0)) {
+	}
+	while (!SifIopSync()) {
+	}
+
+	SifInitRpc(0);
+	SifLoadFileInit();
+	SifLoadModule("rom0:SIO2MAN", 0, NULL);
+	SifLoadModule("rom0:MCMAN", 0, NULL);
+	SifLoadModule("rom0:MCSERV", 0, NULL);
+	SifLoadFileExit();
+	SifExitRpc();
+
+	FlushCache(0);
+	FlushCache(2);
+
+	ExecPS2((void *)entry, (void *)gp, argc, argv);
+	return -1;
 }
 
 /* IMPORTANT: This method wipe memory where the loader is going to be allocated 
@@ -314,6 +447,9 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
 		return -1;
 	}
+	if (is_hdd_backed_exec_path(resolved_path)) {
+		return exec_hdd_backed_elf_nonreboot(resolved_path, argc, argv);
+	}
 	DPRINTF("LAUNCH: Using ExecPS2\n");
 	DPRINTF("POPSTARTER ExecPS2 argv0=%s\n", argv[0]);
 
@@ -353,6 +489,9 @@ int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]
 
 	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
 		return -1;
+	}
+	if (is_hdd_backed_exec_path(resolved_path)) {
+		return exec_hdd_backed_elf_reboot_iop(resolved_path, argc, argv);
 	}
 
 	SifInitRpc(0);

@@ -4,40 +4,36 @@ Last updated: 2026-03-27
 
 ## Status Snapshot
 - Core launcher functionality is present in code for MMCE, MX4SIO, HDD (PFS), USB, Disc (`DKWDRV`), settings persistence, cover preview, path editing, startup backend auto-init, and exit flows.
-- A broader shared POPSTARTER launch regression is now suspected from a 2026-03-27 USB sidecar/cwd/Profile 1 `Cant find POPSTARTER ELF` report.
-- Comparison against `BETA-10-play-CHECKPOINT2` showed that the checkpoint branch's shared POPSTARTER resolver worked without the later unverified common-path changes, so current source has been rolled back to that shared behavior and now needs hardware re-validation.
-- The main stabilization blocker is still HDD `POPSTARTER.ELF` when the launcher and/or sidecar/CWD are on HDD. Reported hardware result is still a black-screen hang.
+- The shared default/Profile 1 local POPSTARTER baseline was restored by rolling back to the `BETA-10-play-CHECKPOINT2` resolver behavior; user hardware confirmed that fix.
+- The main stabilization blocker is still HDD-backed `POPSTARTER.ELF` handoff when the launcher, sidecar/CWD, or configured POPSTARTER path lives on HDD. Reported hardware results still black-screen both HDD-game and USB-game repros.
 - `HDD (exFAT)` and `SMB (v1)` remain intentionally unimplemented menu entries.
 
 ## Immediate Priorities
 
-### 1) Shared POPSTARTER baseline re-validation
-- Re-test default/Profile 1 local POPSTARTER launching after the current settings/profile correction:
-  - boot from USB with USB sidecar/cwd/Profile 1,
-  - confirm launch no longer stops at `Cant find POPSTARTER ELF`,
-  - cross-check at least one launch each from USB, HDD, and MX4SIO/MMCE if available.
-- Keep `OSDSYS` and `BOOT.ELF` behavior stable while verifying the shared baseline.
-
-### 2) HDD POPSTARTER on HDD
+### 1) HDD-backed POPSTARTER exec
 - Reproduce and resolve `D-10`:
   - POPSLoader booted from HDD,
   - HDD game launched from HDD (PFS),
   - `POPSTARTER.ELF` resolved from HDD sidecar/CWD or configured HDD path,
   - current reported result: black-screen hang.
 - 2026-03-27 re-test of the current source still black-screened with boot source HDD, `POPSTARTER.ELF` on HDD via default/Profile 1/cwd/sidecar, and game device HDD.
-- Current source now exposes `R2` from the HDD list as an A/B experiment for HDD-resident `POPSTARTER.ELF`, swapping only the selector contract to `hdd0:PART:pfs0:/GAME.ELF`.
-- Next hardware step: run the same repro twice on current source, once with `X` and once with `R2`, to separate current-branch handoff failure from POPSTARTER selector-path failure.
+- 2026-03-27 user hardware also black-screened when launching a USB game with Profile 2 pointing `POPSTARTER.ELF` to HDD, so `D-14` now shows the remaining bug is the HDD-backed POPSTARTER exec path itself, not only HDD game routing.
+- Current source now routes HDD/PFS-backed exec paths through an EE-side `open/read` ELF copy in `src/elf_loader/src/elf.c` before the existing reboot/non-reboot `ExecPS2` handoff.
+- Next hardware step:
+  - re-run `D-14` first with a USB game and HDD `POPSTARTER.ELF`,
+  - re-run `D-10` with boot source HDD and HDD `POPSTARTER.ELF`,
+  - use `R2` only if the HDD-game repro still differs from the USB-game repro after the new HDD-only handoff change.
 - Keep `BOOT.ELF` and OSDSYS behavior stable while iterating on this.
 
-### 3) External exit/launch re-validation
+### 2) External exit/launch re-validation
 - Re-run `U-05` (`OSDSYS`) and `U-10` (`BOOT.ELF after HDD page init`) on current source after the last reverted launch-backend experiment.
 - Record exact run results in `QA_REGRESSION_MATRIX.md` instead of carrying them only in chat history.
 
-### 4) Display and UX verification
+### 3) Display and UX verification
 - Re-run `U-06` to confirm PAL/NTSC menu asset proportions on hardware.
 - Re-run `U-08` and `U-09` on slower/large libraries to judge whether busy overlays communicate activity clearly enough.
 
-### 5) Coverage and documentation
+### 4) Coverage and documentation
 - Add concrete run logs for:
   - startup backend auto-init (`D-12`),
   - device switching without runtime locks (`D-13`),

@@ -46,11 +46,10 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 
 ## Reported Hardware Status
 - Shared default/Profile 1 local POPSTARTER baseline:
-  - reported failing on hardware with `Cant find POPSTARTER ELF`.
-  - reported repro: boot from USB with USB `POPSTARTER.ELF` sidecar/cwd/Profile 1.
+  - 2026-03-27 hardware report initially failed with `Cant find POPSTARTER ELF` when booted from USB with USB `POPSTARTER.ELF` sidecar/cwd/Profile 1.
   - comparison against `BETA-10-play-CHECKPOINT2` showed that branch's shared POPSTARTER resolution path worked without the later unverified common-path resolver/settings changes.
-  - current source has been rolled back to the checkpoint branch's shared resolver behavior for this path.
-  - rolled-back-source hardware status is still `Unknown (verify on hardware)`.
+  - current source was rolled back to the checkpoint branch's shared resolver behavior for this path.
+  - user confirmed that rolled-back source restored the shared baseline on hardware.
 - `U-05` OSDSYS exit:
   - reported fixed on hardware.
 - `D-10` HDD POPSTARTER on HDD:
@@ -59,6 +58,11 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - result: black-screen hang.
   - 2026-03-27 re-test of the current source still failed when booted from HDD with default/Profile 1/cwd/sidecar `POPSTARTER.ELF` on HDD and game device HDD.
   - current source also exposes an `R2` alternate HDD launch path for HDD-resident `POPSTARTER.ELF` that swaps only the selector contract to `hdd0:PART:pfs0:/GAME.ELF`.
+- `D-14` HDD-backed POPSTARTER with non-HDD game:
+  - reported failing on hardware.
+  - repro: launch a non-HDD title while `POPSTARTER.ELF` itself is configured on HDD.
+  - 2026-03-27 user hardware also black-screened when launching a USB game with Profile 2 pointing `POPSTARTER.ELF` to HDD.
+  - current source now routes HDD/PFS-backed exec paths through an EE-side direct ELF copy in `src/elf_loader/src/elf.c`; corrected-source hardware status is still `Unknown (verify on hardware)`.
 - `U-10` BOOT.ELF after HDD page init:
   - one prior artifact was reported good,
   - a later launch-backend experiment regressed it,
@@ -69,8 +73,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - hardware result is still `Unknown (verify on hardware)`.
 
 ## Known Open Work
-- Re-verify shared POPSTARTER default/Profile 1 sidecar/cwd launching across USB, HDD, and MX4SIO/MMCE on current source.
-- Resolve HDD `POPSTARTER.ELF` handoff when POPSTARTER itself is on HDD.
+- Resolve HDD-backed `POPSTARTER.ELF` handoff when POPSTARTER itself is on HDD, including non-HDD game launches.
 - Re-verify `BOOT.ELF` after HDD page init on current source.
 - Record concrete run logs in `QA_REGRESSION_MATRIX.md`.
 - Implement HDD exFAT menu flow.

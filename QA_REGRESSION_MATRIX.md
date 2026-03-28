@@ -70,6 +70,7 @@ This matrix tracks current behavior across:
 | D-11 | HDD common art path | `hdd0:__common/POPS/ART/<title>.png` present | Browse HDD title list | cover art appears and launch still succeeds |
 | D-12 | Startup backend auto-init | Boot from USB/MX4SIO/MMCE/HDD, or save a `POPSTARTER_PATH` / `DKWDRV_PATH` / profile on one of those devices | Cold boot app and launch without first opening that device page | Required backend drivers initialize automatically from boot/configured paths |
 | D-13 | No runtime device lock gating | Enter one backend page first, then move to another backend page in the same session | Open the second backend page | UI does not block the scene transition with a restart-required device-lock gate |
+| D-14 | HDD-backed POPSTARTER with non-HDD game | Configure `POPSTARTER_PATH` or Profile 2 to an HDD-resident `POPSTARTER.ELF` | Launch a USB, MMCE, or MX4SIO title | POPSTARTER launches without hanging on a black screen even though the executable itself is on HDD |
 
 ### UI behavior
 | ID | Area | Setup | Action | Pass Criteria |
@@ -90,7 +91,9 @@ This matrix tracks current behavior across:
 | Date | Console | Storage Setup | IDs Run | Result |
 |---|---|---|---|---|
 | 2026-03-27 | Unknown (not reported) | Booted from USB; USB `POPSTARTER.ELF` via default/Profile 1/cwd/sidecar; launch stopped before handoff | L-08 | FAIL: `Cant find POPSTARTER ELF` |
+| 2026-03-27 | Unknown (not reported) | Same USB sidecar/cwd/Profile 1 repro after rollback to checkpoint resolver behavior | L-08 | PASS |
 | 2026-03-27 | Unknown (not reported) | Booted from HDD; POPSTARTER via default/Profile 1/cwd/sidecar on HDD; game device HDD | D-10 | FAIL: black screen |
+| 2026-03-27 | Unknown (not reported) | Boot source not reported; Profile 2 `POPSTARTER.ELF` on HDD; game device USB | D-14 | FAIL: black screen |
 | YYYY-MM-DD | SCPH-xxxxx | USB/MMCE/MX4SIO/HDD details | e.g. S-01,S-02,D-02 | PASS/FAIL + notes |
 
 ## Current Verification Status
@@ -98,10 +101,15 @@ This matrix tracks current behavior across:
 - Reported hardware outcomes:
   - `L-08`: reported FAIL on 2026-03-27 when booted from USB with USB sidecar/cwd/Profile 1; launch stopped at `Cant find POPSTARTER ELF`.
     - comparison against `BETA-10-play-CHECKPOINT2` showed the checkpoint branch worked without the later unverified common-path resolver/settings changes.
-    - current source has been rolled back to the checkpoint branch's shared resolver behavior for this path; rolled-back-source hardware result is still `Unknown (verify on hardware)`.
+    - current source was rolled back to the checkpoint branch's shared resolver behavior for this path.
+    - user later confirmed the rolled-back source passed the same hardware repro.
   - `U-05`: reported PASS.
   - `D-10`: reported FAIL when booted from HDD and launching an HDD title with HDD `POPSTARTER.ELF` sidecar/CWD.
     - 2026-03-27 re-test of the current source still failed with boot source HDD, POPSTARTER on HDD via default/Profile 1/cwd/sidecar, and game device HDD.
-    - current source now also exposes an `R2` alternate HDD launch for HDD-resident `POPSTARTER.ELF` that changes only the selector path to `hdd0:PART:pfs0:/GAME.ELF`; hardware result is still `Unknown (verify on hardware)`.
+    - current source now routes HDD/PFS-backed exec paths through an EE-side direct ELF copy in `src/elf_loader/src/elf.c`; hardware result on that source is still `Unknown (verify on hardware)`.
+    - current source also still exposes an `R2` alternate HDD launch for HDD-resident `POPSTARTER.ELF` that changes only the selector path to `hdd0:PART:pfs0:/GAME.ELF`; hardware result is still `Unknown (verify on hardware)`.
+  - `D-14`: reported FAIL on 2026-03-27 when launching a USB game with Profile 2 pointing `POPSTARTER.ELF` to HDD.
+    - this broadened the remaining issue from “HDD game launch” to “HDD-backed POPSTARTER exec path”.
+    - current source now uses the same EE-side direct ELF copy workaround for this path; hardware result is still `Unknown (verify on hardware)`.
   - `U-10`: one artifact was reported good before a later regression experiment; current source has been restored away from that experiment and must be re-tested.
 - All other manual hardware items remain `Unknown (verify on hardware)` unless run logs are added above.
