@@ -2030,6 +2030,7 @@ local function CollectStartupBackendTargets()
     mmce = false,
     mx4sio = false,
     hdd = false,
+    hdd_paths = {},
     mass_probe_needed = false,
     mass_roots = {},
     boot_name = nil
@@ -2037,6 +2038,7 @@ local function CollectStartupBackendTargets()
 
   local paths = {}
   local seen_paths = {}
+  local seen_hdd_paths = {}
   local seen_roots = {}
   local boot_name = select(1, DetectBootDevice())
   targets.boot_name = boot_name
@@ -2072,6 +2074,7 @@ local function CollectStartupBackendTargets()
       targets.mmce = true
     elseif string.match(normalized, "^pfs%d*:/") ~= nil or string.match(normalized, "^hdd%d:") ~= nil then
       targets.hdd = true
+      AddUniqueStartupPath(targets.hdd_paths, seen_hdd_paths, paths[i])
     else
       AddUniqueMassRoot(targets.mass_roots, seen_roots, ExtractMassRootFromPath(normalized))
     end
@@ -2101,6 +2104,24 @@ local function ClassifyStartupMassTargets(targets)
   end
 end
 
+local function WarmStartupHddTargetPaths(paths)
+  if type(paths) ~= "table" then
+    return
+  end
+
+  for i = 1, #paths do
+    local candidate = tostring(paths[i] or "")
+    local normalized = string.lower(NormalizeFsPathRaw(candidate))
+    if candidate ~= "" then
+      if IsDefaultRelativePopstarterPath(candidate) or IsLegacyDefaultPopstarterPath(candidate) then
+        ResolveHddBootSidecarPopstarter()
+      elseif string.match(normalized, "^pfs%d*:/") ~= nil or string.match(normalized, "^hdd%d:") ~= nil then
+        ResolveHddReadablePath(candidate)
+      end
+    end
+  end
+end
+
 function PLDR.AutoInitStartupBackends()
   local targets = CollectStartupBackendTargets()
   ClassifyStartupMassTargets(targets)
@@ -2125,6 +2146,7 @@ function PLDR.AutoInitStartupBackends()
     else
       pcall(EnsureHddRuntimeReadyForExec)
     end
+    WarmStartupHddTargetPaths(targets.hdd_paths)
   end
 
   if type(UI) == "table" then

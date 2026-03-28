@@ -7,8 +7,9 @@ Last updated: 2026-03-28
 - The shared default/Profile 1 local POPSTARTER baseline was restored by rolling back to the `BETA-10-play-CHECKPOINT2` resolver behavior; user hardware confirmed that fix.
 - Current source includes a 2026-03-27 HDD startup auto-init correction, and user hardware later confirmed that fix.
 - Current source now narrows HDD startup auto-init further so boot only brings the HDD runtime up; HDD partition scanning and game-list building stay deferred to HDD page entry.
-- A later 2026-03-28 hardware report on that boot-time split source said HDD default/Profile 1 sidecar POPSTARTER could still disappear after entering the USB page before the HDD page.
-- Current source now adds the raw boot `APP_DIR` as a startup/sidecar fallback so same-folder/Profile 1 HDD POPSTARTER resolution can remount from `hdd0:` without reintroducing HDD page work at boot.
+- Later 2026-03-28 hardware reports on that boot-time split source still said HDD-backed startup/Profile POPSTARTER could disappear after entering the USB page before the HDD page.
+- The raw boot `APP_DIR` fallback alone did not restore that case.
+- Current source now also pre-resolves HDD-backed startup/configured exec paths immediately after `PLDR.LoadHDDModules()` so HDD POPSTARTER/Profile paths are mounted and recorded without reintroducing HDD page work at boot.
 - Current source also includes a 2026-03-27 USB first-entry backend discovery correction, and user hardware later confirmed that fix; MX4SIO discovery code is unchanged.
 - A later 2026-03-28 hardware re-test confirmed `D-15` now passes on the narrowed source, so the restored non-HDD POPSTARTER HDD-game path is back.
 - A later 2026-03-28 re-test still black-screened on that narrowed Lua-side HDD-backed source with no visible positive change.
@@ -26,7 +27,7 @@ Last updated: 2026-03-28
 ### 1) HDD startup/profile resolution re-validation
 - Re-run `D-12` on current source with the March 28, 2026 repro:
   - boot from HDD,
-  - keep default/Profile 1 sidecar `POPSTARTER.ELF` on HDD,
+  - keep the failing HDD-backed startup/Profile POPSTARTER configuration,
   - enter the USB page before the HDD page,
   - confirm HDD POPSTARTER still resolves without needing HDD page entry.
 

@@ -97,6 +97,7 @@ This matrix tracks current behavior across:
 | 2026-03-27 | Unknown (not reported) | Booted from HDD; startup auto-init did not bring up the HDD driver stack before manual HDD page entry | D-12 | FAIL |
 | 2026-03-28 | Unknown (not reported) | Same HDD-boot auto-init repro on corrected source | D-12 | PASS |
 | 2026-03-28 | Unknown (not reported) | Booted from HDD; default/Profile 1 sidecar POPSTARTER on HDD; entered USB page before HDD page on the boot-time split source | D-12 | FAIL: HDD POPSTARTER could not be found until HDD page entry |
+| 2026-03-28 | Unknown (not reported) | Same HDD-backed startup/Profile POPSTARTER repro on raw-`APP_DIR` fallback source | D-12 | FAIL: still required HDD page entry |
 | 2026-03-27 | Unknown (not reported) | Cold boot; first USB page entry said no backend; backing out and re-entering then worked | D-16 | FAIL |
 | 2026-03-28 | Unknown (not reported) | Cold boot; first USB page entry on corrected source | D-16 | PASS |
 | 2026-03-27 | Unknown (not reported) | Booted from HDD; POPSTARTER via default/Profile 1/cwd/sidecar on HDD; game device HDD | D-10 | FAIL: black screen |
@@ -128,8 +129,9 @@ This matrix tracks current behavior across:
     - user later confirmed the earlier corrected source passed on hardware.
     - a later boot-time report showed startup HDD init was also scanning partitions and building the HDD games list, which can make HDD boot appear hung on large libraries.
     - current source now keeps startup HDD init limited to runtime readiness only; the HDD page still scans partitions and builds the games list on page entry.
-    - a later 2026-03-28 report on that narrowed boot-time split source said HDD default/Profile 1 sidecar POPSTARTER still could not be found after entering the USB page before the HDD page.
-    - current source now also adds the raw boot `APP_DIR` as a startup/sidecar candidate so same-folder/Profile 1 HDD POPSTARTER resolution can remount from raw `hdd0:` paths instead of depending only on the boot `pfs:/` context.
+    - later 2026-03-28 reports on that narrowed boot-time split source still said HDD-backed startup/Profile POPSTARTER could not be found after entering the USB page before the HDD page.
+    - the raw boot `APP_DIR` fallback alone did not restore that case.
+    - current source now also pre-resolves any HDD-backed startup/configured exec paths immediately after `PLDR.LoadHDDModules()` so HDD POPSTARTER/Profile paths are mounted and recorded without reintroducing HDD page work at boot.
     - updated-source hardware result is still `Unknown (verify on hardware)`.
   - `D-16`: a 2026-03-27 hardware report said the first USB page entry reported no backend, but backing out and re-entering then worked.
     - current source now adds a bounded wait between failed USB root probes in `BuildUsbIdentityDeferred()`.

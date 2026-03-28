@@ -62,9 +62,9 @@ Each entry records:
   - a later boot-time report showed that using the full HDD page path at startup also caused large HDD libraries to spend boot time scanning partitions and building the games list.
   - current source therefore keeps startup HDD auto-init limited to runtime readiness only; partition scanning and game-list building remain page-entry work.
   - optional HDD cache writing now reuses the page-built game list instead of rebuilding one during startup.
-  - a later 2026-03-28 hardware report on that narrowed boot-time split source said HDD default/Profile 1 sidecar POPSTARTER could still disappear after entering the USB page before the HDD page.
-  - repo inspection showed HDD boot-sidecar resolution was only probing the mounted boot `pfs:/` paths (`BOOT_PATH_RAW` / `APP_DIR_LOCAL`) and had no raw `hdd0:` fallback once that mounted context was gone.
-  - current source therefore also adds the raw boot `APP_DIR` as a startup/sidecar candidate so same-folder/Profile 1 HDD POPSTARTER resolution can remount from `hdd0:` without reintroducing HDD page work at boot.
+  - later 2026-03-28 hardware reports on that narrowed boot-time split source still said HDD-backed startup/Profile POPSTARTER could disappear after entering the USB page before the HDD page.
+  - the raw boot `APP_DIR` fallback alone did not restore that case.
+  - current source therefore also pre-resolves any HDD-backed startup/configured exec paths immediately after `PLDR.LoadHDDModules()` so HDD POPSTARTER/Profile paths are mounted and recorded without reintroducing HDD page work at boot.
 - USB first-entry backend discovery:
   - a 2026-03-27 hardware report said the first USB page entry reported no backend, but backing out and re-entering then worked.
   - current code already had bounded retry loops for USB root discovery, but all retries happened back-to-back with no yield for the backend to become visible.

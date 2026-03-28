@@ -197,8 +197,9 @@ The workflow uses the `ps2dev/ps2dev` container and validates packaging after bu
   - current source now routes HDD startup targets through `PLDR.LoadHDDModules()` instead of only `EnsureHddRuntimeReadyForExec()`.
   - current source also keeps startup HDD init limited to runtime readiness; it no longer scans HDD POPS partitions or builds the HDD game list during boot.
   - the HDD page still scans partitions and builds the games list on page entry, and if HDD cache is enabled it now writes that cache from the page-built list instead of rebuilding during startup.
-  - user previously confirmed the earlier HDD startup auto-init correction on hardware, but a later 2026-03-28 report on the narrowed boot-time split source said HDD default/Profile 1 sidecar POPSTARTER still could not be found after entering the USB page before the HDD page.
-  - current source now also adds the raw boot `APP_DIR` as a fallback startup/sidecar candidate so HDD same-folder/Profile 1 POPSTARTER resolution can remount from raw `hdd0:` paths instead of depending only on the boot `pfs:/` context.
+  - user previously confirmed the earlier HDD startup auto-init correction on hardware, but later 2026-03-28 reports on the narrowed boot-time split sources said HDD-backed startup/Profile POPSTARTER could still not be found after entering the USB page before the HDD page.
+  - the raw boot `APP_DIR` fallback alone did not restore that case.
+  - current source now also pre-resolves any HDD-backed startup/configured exec paths immediately after `PLDR.LoadHDDModules()` so HDD POPSTARTER/Profile paths are mounted and recorded without reintroducing HDD page work at boot.
   - corrected-source hardware result is still `Unknown (verify on hardware)`.
 - `D-16` first-entry USB backend discovery:
   - a 2026-03-27 hardware report said the first USB page entry reported no backend, but backing out and re-entering then worked.
