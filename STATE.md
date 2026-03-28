@@ -73,9 +73,9 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - if that Memory Card `POPSTARTER.ELF` already exists with the matching size, current source reuses it without writing again.
   - if `mc?:/POPSTARTER` must be created for staging, current source also writes the same `icon.sys`, `list.icn`, and `del.icn` assets used for the settings pack.
   - current source pre-checks Memory Card free space for the whole pack write before any directory creation or temp write.
-  - current source now uses the explicit HDD selector path by default for HDD launches.
+  - current source now keeps the explicit HDD selector path scoped to HDD-backed POPSTARTER launches by default.
   - for HDD-backed POPSTARTER launches, current source now strips the Lua-side forced-CWD handoff state and no longer passes the extra HDD game-slot keep request from Lua.
-  - boot-slot preservation is still restored when a HDD game slot is explicitly being carried through, to avoid regressing the working non-HDD POPSTARTER + HDD game path.
+  - non-HDD POPSTARTER launches for HDD games now restore the older default HDD selector behavior and HDD launch CWD, while boot-slot preservation is still restored when a HDD game slot is explicitly being carried through.
   - corrected direct-launch `reboot_iop` fallback still applies if staging is unavailable.
 - `D-14` HDD-backed POPSTARTER with non-HDD game:
   - reported failing on hardware.
@@ -86,7 +86,9 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - reported as a regression on hardware.
   - repro: boot from a non-HDD device with sidecar `POPSTARTER.ELF` on that same device, then launch an HDD title.
   - 2026-03-27 user hardware reported a black screen on the EE-side HDD direct-load attempt.
-  - that direct-load workaround has now been reverted; reverted-source hardware status is still `Unknown (verify on hardware)`.
+  - a later 2026-03-27 hardware report also black-screened on the broader stripped-handoff HDD-game path.
+  - current source now restores the older default HDD selector behavior and HDD launch CWD for this path while keeping the stripped handoff scoped to HDD-backed POPSTARTER.
+  - corrected-source hardware status is still `Unknown (verify on hardware)`.
 - `U-10` BOOT.ELF after HDD page init:
   - one prior artifact was reported good,
   - a later launch-backend experiment regressed it,

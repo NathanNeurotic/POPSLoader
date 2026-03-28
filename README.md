@@ -66,8 +66,9 @@ Reported hardware issues currently being tracked are:
   - if that Memory Card `POPSTARTER.ELF` already exists with the matching size, current source reuses it without writing again.
   - if `mc?:/POPSTARTER` must be created for staging, current source also writes the same `icon.sys`, `list.icn`, and `del.icn` assets used for the settings pack.
   - Memory Card staging now pre-checks free space for the whole pack write before creating `mc?:/POPSTARTER` or writing the temporary staged ELF, and falls back to direct HDD launch if no card has enough confirmed space.
-  - current source now uses the explicit `hdd0:PART:pfs0:/GAME.ELF` selector contract for HDD launches by default.
+  - current source now keeps the explicit `hdd0:PART:pfs0:/GAME.ELF` selector contract scoped to HDD-backed POPSTARTER launches by default.
   - for HDD-backed POPSTARTER launches, current source now strips the Lua-side forced-CWD handoff state and no longer passes the extra HDD game-slot keep request from Lua.
+  - non-HDD POPSTARTER launches for HDD games have been moved back toward the older baseline by restoring the default HDD selector behavior and HDD launch CWD, because the broader stripped-handoff change regressed that previously working path.
   - the direct HDD fallback also restores HDD-backed POPSTARTER priority in the `reboot_iop` decision instead of letting the game device override it.
   - the latest EE-side HDD direct-load workaround was reverted after it still failed `D-10` and coincided with a reported HDD-game regression elsewhere.
   - current source therefore remains on the earlier handoff path while this failure is investigated.
@@ -213,8 +214,8 @@ The workflow uses the `ps2dev/ps2dev` container and validates packaging after bu
   - a later 2026-03-27 hardware test reported that POPSTARTER was visibly staged to Memory Card but the HDD-game launch still black-screened.
   - current source now first tries a Memory Card staging workaround for HDD-backed `POPSTARTER.ELF`, reusing `mc?:/POPSTARTER/POPSTARTER.ELF` when it already matches.
   - if a Memory Card `POPSTARTER` pack must be created for staging, current source pre-checks free space for the directory assets plus staged ELF before any directory creation or temp write.
-  - current source now uses the explicit `hdd0:PART:pfs0:/GAME.ELF` selector contract for HDD launches by default.
-  - for HDD-backed POPSTARTER launches, current source now strips the Lua-side forced-CWD handoff state and no longer passes the extra HDD game-slot keep request from Lua, while still restoring boot-slot preservation when a HDD game slot is explicitly being carried through.
+  - current source now keeps the explicit `hdd0:PART:pfs0:/GAME.ELF` selector contract scoped to HDD-backed POPSTARTER launches by default.
+  - for HDD-backed POPSTARTER launches, current source now strips the Lua-side forced-CWD handoff state and no longer passes the extra HDD game-slot keep request from Lua.
   - finally, current source falls back to corrected direct-launch `reboot_iop` handling if staging is unavailable.
   - hardware result on that source is still `Unknown (verify on hardware)`.
 - `D-14` HDD-backed POPSTARTER with non-HDD game:
@@ -225,7 +226,9 @@ The workflow uses the `ps2dev/ps2dev` container and validates packaging after bu
 - `D-15` HDD game with non-HDD sidecar POPSTARTER:
   - a later 2026-03-27 hardware report said booting from another device and launching an HDD game with sidecar `POPSTARTER.ELF` on that boot device also black-screened.
   - that was reported as a regression on the EE-side HDD direct-load attempt, which has now been reverted in source.
-  - reverted-source hardware status is still `Unknown (verify on hardware)`.
+  - a later 2026-03-27 hardware report said the broader stripped-handoff HDD-game path also black-screened.
+  - current source now restores the older default HDD selector behavior and HDD launch CWD for non-HDD POPSTARTER launches while keeping the stripped handoff scoped to HDD-backed POPSTARTER.
+  - corrected-source hardware status is still `Unknown (verify on hardware)`.
 - Shared default/Profile 1 local POPSTARTER baseline:
   - reported failing with `Cant find POPSTARTER ELF` on 2026-03-27 when booted from USB with USB sidecar/cwd/Profile 1.
   - current source was rolled back to `BETA-10-play-CHECKPOINT2` shared resolver behavior for this path after the later unverified common-path changes failed to restore launch.

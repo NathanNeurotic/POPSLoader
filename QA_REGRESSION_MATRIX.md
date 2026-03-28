@@ -102,6 +102,7 @@ This matrix tracks current behavior across:
 | 2026-03-27 | Unknown (not reported) | Boot source not reported; Profile 2 `POPSTARTER.ELF` on HDD; game device USB | D-14 | FAIL: black screen |
 | 2026-03-27 | Unknown (not reported) | Booted from non-HDD device; HDD game; sidecar/cwd `POPSTARTER.ELF` on boot device; EE-side HDD direct-load attempt | D-15 | FAIL: black screen (reported regression) |
 | 2026-03-27 | Unknown (not reported) | Booted from HDD; HDD POPSTARTER was staged to Memory Card before launch; game device HDD | D-17 | FAIL: black screen |
+| 2026-03-27 | Unknown (not reported) | HDD game with non-HDD `POPSTARTER.ELF` on the broader stripped-handoff source | D-15 | FAIL: black screen |
 | YYYY-MM-DD | SCPH-xxxxx | USB/MMCE/MX4SIO/HDD details | e.g. S-01,S-02,D-02 | PASS/FAIL + notes |
 
 ## Current Verification Status
@@ -124,8 +125,8 @@ This matrix tracks current behavior across:
     - the later EE-side direct-load workaround was reverted after it did not fix this and coincided with a broader regression report.
     - a later 2026-03-27 hardware run showed that staging POPSTARTER to Memory Card alone was not sufficient; the HDD-game launch still black-screened.
     - current source now first tries a Memory Card staging workaround for HDD-backed `POPSTARTER.ELF`, reusing `mc?:/POPSTARTER/POPSTARTER.ELF` when it already matches and otherwise preflighting the whole pack write before any directory creation or temp write.
-    - current source now uses the explicit HDD selector contract for HDD launches by default and strips the Lua-side forced-CWD / extra-keep-slot handoff state for HDD-backed POPSTARTER launches.
-    - boot-slot preservation is still restored when a HDD game slot is explicitly being carried through, because removing that too broadly regressed the working non-HDD POPSTARTER + HDD game path.
+    - current source now keeps the explicit HDD selector contract scoped to HDD-backed POPSTARTER launches and strips the Lua-side forced-CWD / extra-keep-slot handoff state only for that path.
+    - non-HDD POPSTARTER HDD-game launches now restore the older default HDD selector behavior, HDD launch CWD, and boot-slot preservation because removing those too broadly regressed the working path.
     - corrected direct-launch `reboot_iop` handling still applies if staging is unavailable.
     - current source still exposes an `R2` alternate HDD launch for HDD-resident `POPSTARTER.ELF` that changes only the selector path to `hdd0:PART:pfs0:/GAME.ELF`; hardware result is still `Unknown (verify on hardware)`.
   - `D-14`: reported FAIL on 2026-03-27 when launching a USB game with Profile 2 pointing `POPSTARTER.ELF` to HDD.
@@ -133,10 +134,12 @@ This matrix tracks current behavior across:
     - current source uses the same Memory Card staging plus stripped Lua-side forced-CWD / extra-keep-slot handoff state; hardware result is still `Unknown (verify on hardware)`.
   - `D-15`: reported FAIL on 2026-03-27 when booting from a non-HDD device and launching an HDD title with sidecar/cwd `POPSTARTER.ELF` on that boot device.
     - the user identified this as a regression on the EE-side HDD direct-load attempt.
-    - that direct-load workaround has now been reverted; reverted-source hardware result is still `Unknown (verify on hardware)`.
+    - a later hardware run also failed on the broader stripped-handoff HDD-game source.
+    - current source now restores the older default HDD selector behavior, HDD launch CWD, and boot-slot preservation for this path while keeping the stripped handoff scoped to HDD-backed POPSTARTER.
+    - corrected-source hardware result is still `Unknown (verify on hardware)`.
   - `D-17`: 2026-03-27 hardware showed that HDD-backed `POPSTARTER.ELF` could be staged to Memory Card before launch, but the HDD-game launch still black-screened.
     - current source now keeps that staging path Memory Card-only, targets `mc?:/POPSTARTER/POPSTARTER.ELF`, and adds a free-space preflight before any directory creation or temp write.
-    - current source now also changes non-HDD/staged HDD-game launches to the explicit HDD selector contract with POPSTARTER-dir CWD.
+    - current source still leaves the stripped handoff scoped to HDD-backed POPSTARTER and restores the older HDD-game selector/CWD path for non-HDD POPSTARTER launches.
     - corrected-source hardware result is still `Unknown (verify on hardware)`.
   - `U-10`: one artifact was reported good before a later regression experiment; current source has been restored away from that experiment and must be re-tested.
 - All other manual hardware items remain `Unknown (verify on hardware)` unless run logs are added above.

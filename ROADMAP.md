@@ -7,7 +7,7 @@ Last updated: 2026-03-27
 - The shared default/Profile 1 local POPSTARTER baseline was restored by rolling back to the `BETA-10-play-CHECKPOINT2` resolver behavior; user hardware confirmed that fix.
 - Current source includes a 2026-03-27 HDD startup auto-init correction so HDD boot/configured paths run the full HDD module-load path at startup.
 - Current source also includes a 2026-03-27 USB first-entry backend discovery correction that adds a bounded wait between failed USB root probes; MX4SIO discovery code is unchanged.
-- Current source now also tries to stage HDD-backed `POPSTARTER.ELF` only to `mc?:/POPSTARTER/POPSTARTER.ELF`, reusing an existing matching file when present and otherwise preflighting the whole Memory Card pack write before any directory creation or temp write; for non-HDD/staged HDD-game launches it uses the explicit HDD selector contract plus POPSTARTER-dir CWD.
+- Current source now also tries to stage HDD-backed `POPSTARTER.ELF` only to `mc?:/POPSTARTER/POPSTARTER.ELF`, reusing an existing matching file when present and otherwise preflighting the whole Memory Card pack write before any directory creation or temp write; the stripped handoff remains scoped to HDD-backed POPSTARTER while non-HDD POPSTARTER HDD-game launches use the older selector/CWD path.
 - The main stabilization blocker is still HDD-backed `POPSTARTER.ELF` handoff when the launcher, sidecar/CWD, or configured POPSTARTER path lives on HDD. Reported hardware results still black-screen both HDD-game and USB-game repros.
 - The latest EE-side HDD direct-load workaround was reverted after it did not fix `D-10` and coincided with a reported HDD-game regression when POPSTARTER stayed on the non-HDD boot device.
 - `HDD (exFAT)` and `SMB (v1)` remain intentionally unimplemented menu entries.
@@ -38,9 +38,9 @@ Last updated: 2026-03-27
 - 2026-03-27 user hardware also black-screened when launching a USB game with Profile 2 pointing `POPSTARTER.ELF` to HDD, so `D-14` now shows the remaining bug is the HDD-backed POPSTARTER exec path itself, not only HDD game routing.
 - The latest EE-side `open/read` HDD direct-load attempt has been reverted after it still failed `D-10` and coincided with a reported `D-15` regression on HDD-game launch with non-HDD sidecar POPSTARTER.
 - A later hardware run showed that staging POPSTARTER to Memory Card alone was not sufficient; the launch still black-screened on an HDD title.
-- Current source now first tries a Memory Card staging workaround for HDD-backed `POPSTARTER.ELF`, reusing `mc?:/POPSTARTER/POPSTARTER.ELF` when it already matches and otherwise preflighting the whole pack write before any directory creation or temp write, then uses the explicit `hdd0:PART:pfs0:/GAME.ELF` selector contract for HDD launches by default and strips the Lua-side forced-CWD / extra-keep-slot handoff state for HDD-backed POPSTARTER launches before falling back to corrected direct-launch `reboot_iop` handling if staging is unavailable.
+- Current source now first tries a Memory Card staging workaround for HDD-backed `POPSTARTER.ELF`, reusing `mc?:/POPSTARTER/POPSTARTER.ELF` when it already matches and otherwise preflighting the whole pack write before any directory creation or temp write, keeps the explicit `hdd0:PART:pfs0:/GAME.ELF` selector contract scoped to HDD-backed POPSTARTER launches, restores the older default HDD selector behavior and HDD launch CWD for non-HDD POPSTARTER HDD-game launches, and still falls back to corrected direct-launch `reboot_iop` handling if staging is unavailable.
 - Next hardware step:
-  - first re-run `D-15` on the reverted source to confirm HDD-game launch with non-HDD sidecar POPSTARTER is restored,
+  - first re-run `D-15` on the current source to confirm HDD-game launch with non-HDD sidecar POPSTARTER is restored,
   - then re-run `D-14` with `mc0` or `mc1` available and enough free space for staged HDD `POPSTARTER.ELF`,
   - then re-run `D-14` with a USB game and HDD `POPSTARTER.ELF`,
   - then re-run `D-10` with boot source HDD and HDD `POPSTARTER.ELF`,
