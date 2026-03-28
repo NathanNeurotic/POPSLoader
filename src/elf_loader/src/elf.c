@@ -308,11 +308,11 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, const char *sourc
 		}
 	}
 
-	/* Match the parent-to-loader ownership more closely to wLaunchELF for
-	 * HDD-backed launches: the parent mounts pfs0: and passes control to the
-	 * embedded loader without trying to reshuffle other PFS state here.
+	/* Repo-local HDD diagnostics previously narrowed one failure boundary to
+	 * tearing down EE RPC right before the jump into the embedded loader.
+	 * Keep the mounted pfs0: handoff minimal here, but leave EE RPC state
+	 * intact across the final ExecPS2 boundary.
 	 */
-	SifExitRpc();
 	FlushCache(0);
 	FlushCache(2);
 
