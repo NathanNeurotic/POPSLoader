@@ -381,21 +381,6 @@ local function ExtractEmbeddedHddMountPrefix(path)
   return NormalizePfsPrefix(pfs_device)
 end
 
-local function BuildDirectHddExecPathFromMounted(path)
-  local candidate = tostring(path or "")
-  local prefix = NormalizePfsPrefix(candidate)
-  if prefix == nil then
-    return nil
-  end
-  local slot = ParsePfsSlot(prefix)
-  local mount = HDD_MOUNT_STATE.slots[slot]
-  local relpath = string.gsub(candidate, "^pfs%d*:/", "")
-  if mount == nil or type(mount.partition) ~= "string" or mount.partition == "" or relpath == "" then
-    return nil
-  end
-  return mount.partition..":"..string.sub(prefix, 1, -2)..":/"..relpath
-end
-
 local ProbePathExists
 
 local function ResolveHddPartitionReadablePath(partition, relpath, mounted_prefix_hint, slot)
@@ -506,20 +491,6 @@ end
 
 local function ResolveHddExecMountedPath(path)
   return ResolveHddReadablePath(path)
-end
-
-local function ResolveDirectHddExecPath(path)
-  local candidate = tostring(path or "")
-  if candidate == "" or string.match(string.lower(candidate), "^hdd%d:") == nil then
-    return nil
-  end
-  if not EnsureHddRuntimeReadyForExec() then
-    return nil
-  end
-  if ProbePathExists(candidate) then
-    return candidate
-  end
-  return nil
 end
 
 local function ExtractLaunchPfsSlot(path)
@@ -858,13 +829,6 @@ local function ResolveHddBootSidecarPopstarter()
   add_candidate(APP_DIR_LOCAL)
 
   for i = 1, #mounted_candidates do
-    local direct_hdd = BuildDirectHddExecPathFromMounted(mounted_candidates[i])
-    if direct_hdd ~= nil then
-      local resolved_direct = ResolveDirectHddExecPath(direct_hdd)
-      if resolved_direct ~= nil then
-        return resolved_direct
-      end
-    end
     if ProbePathExists(mounted_candidates[i]) then
       return mounted_candidates[i]
     end
@@ -874,10 +838,6 @@ local function ResolveHddBootSidecarPopstarter()
     local resolved_hdd = ResolveHddReadablePath(hdd_candidates[i])
     if resolved_hdd ~= nil then
       return resolved_hdd
-    end
-    local direct_hdd = ResolveDirectHddExecPath(hdd_candidates[i])
-    if direct_hdd ~= nil then
-      return direct_hdd
     end
   end
 
@@ -958,21 +918,9 @@ local function ResolvePopstarterPath(path)
   chosen = ResolveMx4sioMassAliasPath(chosen)
 
   if string.match(string.lower(chosen), "^hdd%d:") ~= nil then
-    local direct_hdd = ResolveDirectHddExecPath(chosen)
-    if direct_hdd ~= nil then
-      return direct_hdd
-    end
     local resolved_hdd = ResolveHddExecMountedPath(chosen)
     if resolved_hdd ~= nil then
       return resolved_hdd
-    end
-  elseif string.match(string.lower(chosen), "^pfs%d*:/") ~= nil then
-    local direct_from_mounted = BuildDirectHddExecPathFromMounted(chosen)
-    if direct_from_mounted ~= nil then
-      local resolved_direct = ResolveDirectHddExecPath(direct_from_mounted)
-      if resolved_direct ~= nil then
-        return resolved_direct
-      end
     end
   end
   local resolved = ResolvePathWithEnsure(chosen)
@@ -990,15 +938,7 @@ local function ResolvePopstarterPath(path)
     local candidate = fallbacks[i]
     local resolved_fallback = nil
     if string.match(string.lower(candidate), "^hdd%d:") ~= nil then
-      resolved_fallback = ResolveDirectHddExecPath(candidate)
-      if resolved_fallback == nil then
-        resolved_fallback = ResolveHddReadablePath(candidate)
-      end
-    elseif string.match(string.lower(candidate), "^pfs%d*:/") ~= nil then
-      local direct_from_mounted = BuildDirectHddExecPathFromMounted(candidate)
-      if direct_from_mounted ~= nil then
-        resolved_fallback = ResolveDirectHddExecPath(direct_from_mounted)
-      end
+      resolved_fallback = ResolveHddReadablePath(candidate)
     end
     if resolved_fallback == nil then
       resolved_fallback = ResolvePathWithEnsure(candidate)
@@ -1620,8 +1560,6 @@ local function EnsureDirectory(path)
   return ok
 end
 
-local MC_STAGE_CLUSTER_BYTES = 1024
-
 local function GetEmbeddedAssetBytes(path)
   if type(System) ~= "table" or type(System.getEmbeddedAsset) ~= "function" then
     return nil
@@ -1631,41 +1569,6 @@ local function GetEmbeddedAssetBytes(path)
     return nil
   end
   return embedded
-end
-
-local function ParseMcSlot(path)
-  local slot = string.match(string.lower(tostring(path or "")), "^mc([01]):/")
-  if slot == nil then
-    return nil
-  end
-  return tonumber(slot)
-end
-
-local function GetMcStageFreeBytes(path)
-  local slot = ParseMcSlot(path)
-  if slot == nil or type(System) ~= "table" or type(System.getMCInfo) ~= "function" then
-    return nil, "info_unavailable"
-  end
-  local ok_info, info = pcall(System.getMCInfo, slot)
-  if not ok_info or type(info) ~= "table" then
-    return nil, "info_unavailable"
-  end
-  local card_type = tonumber(info.type)
-  local free_clusters = tonumber(info.freemem)
-  if card_type == nil or card_type <= 0 then
-    return nil, "no_card"
-  end
-  if free_clusters == nil or free_clusters < 0 then
-    return nil, "info_unavailable"
-  end
-  return free_clusters * MC_STAGE_CLUSTER_BYTES, nil
-end
-
-local function RoundMcStageBytes(size)
-  if type(size) ~= "number" or size <= 0 then
-    return 0
-  end
-  return math.floor((size + MC_STAGE_CLUSTER_BYTES - 1) / MC_STAGE_CLUSTER_BYTES) * MC_STAGE_CLUSTER_BYTES
 end
 
 local function EnsurePopstarterPackDir(path)
@@ -1691,128 +1594,6 @@ local function EnsurePopstarterPackDir(path)
     end
   end
   return true
-end
-
-local function GetMcPopstarterPackRequiredBytes(path)
-  local pack_root = string.gsub(tostring(path or ""), "/+$", "")
-  if pack_root == "" then
-    return nil
-  end
-  local required_bytes = 0
-  if not doesFolderExist(pack_root) then
-    required_bytes = required_bytes + MC_STAGE_CLUSTER_BYTES
-  end
-  for i = 1, #BDMA_UI_FILES do
-    local asset = BDMA_UI_FILES[i]
-    local dest = pack_root.."/"..asset.dst
-    if not doesFileExist(dest) then
-      local bytes = GetEmbeddedAssetBytes(asset.src)
-      if type(bytes) ~= "string" then
-        return nil
-      end
-      required_bytes = required_bytes + RoundMcStageBytes(string.len(bytes))
-    end
-  end
-  return required_bytes
-end
-
-local function GetMcStageRequiredBytes(path, source_size)
-  local slot = ParseMcSlot(path)
-  if slot == nil or type(source_size) ~= "number" or source_size <= 0 then
-    return nil
-  end
-  local required_bytes = RoundMcStageBytes(source_size)
-  local pack_root = DirectoryFromExecPath(path)
-  if pack_root ~= nil and pack_root ~= "" then
-    local pack_bytes = GetMcPopstarterPackRequiredBytes(pack_root)
-    if type(pack_bytes) ~= "number" then
-      return nil
-    end
-    required_bytes = required_bytes + pack_bytes
-  end
-  return required_bytes
-end
-
-local function CanStageHddPopstarterToMc(path, source_size)
-  local required_bytes = GetMcStageRequiredBytes(path, source_size)
-  if type(required_bytes) ~= "number" or required_bytes <= 0 then
-    return false, "unsupported"
-  end
-  local free_bytes, reason = GetMcStageFreeBytes(path)
-  if type(free_bytes) ~= "number" or free_bytes < 0 then
-    return false, reason or "info_unavailable"
-  end
-  if free_bytes < required_bytes then
-    return false, "insufficient_space"
-  end
-  return true, nil
-end
-
-local function BuildHddPopstarterStageCandidates()
-  return {
-    "mc0:/POPSTARTER/POPSTARTER.ELF",
-    "mc1:/POPSTARTER/POPSTARTER.ELF"
-  }
-end
-
-local function StageHddPopstarterForLaunch(source_path)
-  local source = tostring(source_path or "")
-  if source == "" or not IsHddExecContextPath(source) then
-    return source
-  end
-
-  local source_size = GetFileSizeSafe(source)
-  if type(source_size) ~= "number" or source_size <= 0 then
-    return source
-  end
-
-  local candidates = BuildHddPopstarterStageCandidates()
-  local stage_skip_reason = nil
-  for i = 1, #candidates do
-    local dest = candidates[i]
-    if type(dest) == "string" and dest ~= "" and dest ~= source and not IsHddExecContextPath(dest) then
-      local dest_size = GetFileSizeSafe(dest)
-      local ready = doesFileExist(dest) and dest_size == source_size
-      if not ready then
-        local can_stage, reason = CanStageHddPopstarterToMc(dest, source_size)
-        local pack_root = DirectoryFromExecPath(dest)
-        if can_stage and pack_root ~= nil and pack_root ~= "" then
-          local showed_overlay = false
-          if type(UI) == "table" and type(UI.ShowSavingOverlay) == "function" then
-            UI.ShowSavingOverlay("Preparing POPSTARTER...", 0.18)
-            showed_overlay = true
-          end
-          local prepared = EnsurePopstarterPackDir(pack_root)
-          if prepared then
-            if showed_overlay and type(UI) == "table" and type(UI.ShowSavingOverlay) == "function" then
-              UI.ShowSavingOverlay("Preparing POPSTARTER...", 0.52)
-            end
-            local ok_copy, copied = pcall(CopyExternalAtomicBounded, source, dest, source_size)
-            ready = ok_copy and copied == true
-          end
-          if showed_overlay and type(UI) == "table" then
-            if ready and type(UI.ShowSavingOverlay) == "function" then
-              UI.ShowSavingOverlay("Preparing POPSTARTER...", 0.92)
-            end
-            if type(UI.HideSavingOverlay) == "function" then
-              UI.HideSavingOverlay()
-            end
-          end
-        elseif reason ~= "no_card" and stage_skip_reason == nil then
-          stage_skip_reason = reason
-        end
-      end
-      if ready and PLDR.PopstarterProbeWithEnsure(dest) then
-        return dest
-      end
-    end
-  end
-
-  if stage_skip_reason == "insufficient_space" and type(UI) == "table" and UI.Notif_queue ~= nil and type(UI.Notif_queue.add) == "function" then
-    UI.Notif_queue.add("Not enough Memory Card space for staged POPSTARTER")
-  end
-
-  return source
 end
 
 function PLDR.EnsurePopstarterDir()

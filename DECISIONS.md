@@ -59,12 +59,12 @@ Each entry records:
   - a 2026-03-27 hardware report said booting from HDD did not auto-init the HDD driver stack.
   - current code had detected HDD startup targets correctly but only called `EnsureHddRuntimeReadyForExec()`, which stops at low-level `HDD.Initialize()`.
   - current source now routes HDD startup targets through `PLDR.LoadHDDModules()` so startup uses the same HDD status/partition/cache initialization path as the HDD page.
-  - corrected-source hardware verification is still required.
+  - user later confirmed the corrected source on hardware.
 - USB first-entry backend discovery:
   - a 2026-03-27 hardware report said the first USB page entry reported no backend, but backing out and re-entering then worked.
   - current code already had bounded retry loops for USB root discovery, but all retries happened back-to-back with no yield for the backend to become visible.
   - current source now adds a bounded wait only in `BuildUsbIdentityDeferred()`, leaving MX4SIO discovery logic unchanged.
-  - corrected-source hardware verification is still required.
+  - user later confirmed the corrected source on hardware.
 - HDD `POPSTARTER.ELF` when launcher/sidecar/CWD is on HDD:
   - current reported hardware result is still a black-screen hang.
   - path/mount/CWD mitigations plus the HDD-backed non-reboot `ExecPS2` cleanup are present in current code.
@@ -86,7 +86,7 @@ Each entry records:
   - this repo's earlier HDD diagnostics also recorded that the embedded-loader boundary only became stable once EE-side SIF teardown before `ExecPS2` was removed from the parent handoff.
   - comparison against `wLaunchELF` and `PlayStation2-Basic-BootLoader-Extended` also showed another remaining mismatch: this repo's embedded loader had no separate original HDD source-context argument, so it could only make reset decisions from the mounted `pfs0:/...` load target.
   - broader comparison against `wLaunchELF` also showed the remaining ownership mismatch was not just reset policy: the parent/loader boundary there does not pre-unmount PFS state and the embedded loader calls `SifLoadElf` directly after `SifInitRpc(0)`, without `SifLoadFileInit/Exit`.
-  - current source therefore keeps the restored non-HDD POPSTARTER path, keeps the HDD-backed reboot handoff on mounted `pfs0:/...`, stops preserving boot PFS slots during launch prep for HDD-backed `POPSTARTER.ELF`, passes the original HDD source context into the embedded loader explicitly, resets IOP there only when that explicit source context is HDD-backed, fixes the malformed direct-HDD alias builder, keeps the no-pre-unmount / direct-`SifLoadElf` loader ownership changes from the broader `wLaunchELF` comparison, and restores the repo-local parent handoff rule of keeping EE RPC alive across the final embedded-loader `ExecPS2`.
+  - current source therefore keeps the restored non-HDD POPSTARTER path, removes the experimental direct-`hdd0:` POPSTARTER resolution preference from `bin/POPSLDR/system.lua`, keeps HDD-backed POPSTARTER on mounted PFS paths during Lua resolution, drops the now-unused Memory Card staging helpers from that file, keeps the HDD-backed reboot handoff on mounted `pfs0:/...`, stops preserving boot PFS slots during launch prep for HDD-backed `POPSTARTER.ELF`, passes the original HDD source context into the embedded loader explicitly, resets IOP there only when that explicit source context is HDD-backed, keeps the no-pre-unmount / direct-`SifLoadElf` loader ownership changes from the broader `wLaunchELF` comparison, and restores the repo-local parent handoff rule of keeping EE RPC alive across the final embedded-loader `ExecPS2`.
   - current source still keeps the `R2` selector-path experiment for HDD game launches, but that remains secondary to restoring and preserving the non-HDD POPSTARTER baseline for HDD titles.
 - `BOOT.ELF` after HDD page init:
   - the last failed backend experiment was reverted in source,
