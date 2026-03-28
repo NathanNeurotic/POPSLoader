@@ -69,6 +69,7 @@ Reported hardware issues currently being tracked are:
   - current source now keeps the explicit `hdd0:PART:pfs0:/GAME.ELF` selector contract scoped to HDD-backed POPSTARTER launches by default.
   - for HDD-backed POPSTARTER launches, current source now strips the Lua-side forced-CWD handoff state and no longer passes the extra HDD game-slot keep request from Lua.
   - non-HDD POPSTARTER launches for HDD games have been moved back toward the older baseline by restoring the default HDD selector behavior and HDD launch CWD, because the broader stripped-handoff change regressed that previously working path.
+  - current source also no longer marks `HDD_EXEC_INIT_DONE` inside `PLDR.LoadHDDModules()`, so later HDD-game exec prep can still re-run the lower-level `HDD.Initialize()` path instead of short-circuiting on shared HDD-page state.
   - the direct HDD fallback also restores HDD-backed POPSTARTER priority in the `reboot_iop` decision instead of letting the game device override it.
   - the latest EE-side HDD direct-load workaround was reverted after it still failed `D-10` and coincided with a reported HDD-game regression elsewhere.
   - current source therefore remains on the earlier handoff path while this failure is investigated.
@@ -228,6 +229,7 @@ The workflow uses the `ps2dev/ps2dev` container and validates packaging after bu
   - that was reported as a regression on the EE-side HDD direct-load attempt, which has now been reverted in source.
   - a later 2026-03-27 hardware report said the broader stripped-handoff HDD-game path also black-screened.
   - current source now restores the older default HDD selector behavior and HDD launch CWD for non-HDD POPSTARTER launches while keeping the stripped handoff scoped to HDD-backed POPSTARTER.
+  - current source also lets later HDD-game exec prep re-run `HDD.Initialize()` after `PLDR.LoadHDDModules()` instead of sharing the `HDD_EXEC_INIT_DONE` short-circuit.
   - corrected-source hardware status is still `Unknown (verify on hardware)`.
 - Shared default/Profile 1 local POPSTARTER baseline:
   - reported failing with `Cant find POPSTARTER ELF` on 2026-03-27 when booted from USB with USB sidecar/cwd/Profile 1.

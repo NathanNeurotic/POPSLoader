@@ -76,6 +76,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - current source now keeps the explicit HDD selector path scoped to HDD-backed POPSTARTER launches by default.
   - for HDD-backed POPSTARTER launches, current source now strips the Lua-side forced-CWD handoff state and no longer passes the extra HDD game-slot keep request from Lua.
   - non-HDD POPSTARTER launches for HDD games now restore the older default HDD selector behavior and HDD launch CWD, while boot-slot preservation is still restored when a HDD game slot is explicitly being carried through.
+  - current source also no longer marks `HDD_EXEC_INIT_DONE` inside `PLDR.LoadHDDModules()`, so later HDD-game exec prep can still re-run `HDD.Initialize()` instead of short-circuiting on shared page-init state.
   - corrected direct-launch `reboot_iop` fallback still applies if staging is unavailable.
 - `D-14` HDD-backed POPSTARTER with non-HDD game:
   - reported failing on hardware.
@@ -88,6 +89,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - 2026-03-27 user hardware reported a black screen on the EE-side HDD direct-load attempt.
   - a later 2026-03-27 hardware report also black-screened on the broader stripped-handoff HDD-game path.
   - current source now restores the older default HDD selector behavior and HDD launch CWD for this path while keeping the stripped handoff scoped to HDD-backed POPSTARTER.
+  - current source also lets later HDD-game exec prep re-run `HDD.Initialize()` after `PLDR.LoadHDDModules()` instead of sharing the `HDD_EXEC_INIT_DONE` short-circuit.
   - corrected-source hardware status is still `Unknown (verify on hardware)`.
 - `U-10` BOOT.ELF after HDD page init:
   - one prior artifact was reported good,

@@ -127,6 +127,7 @@ This matrix tracks current behavior across:
     - current source now first tries a Memory Card staging workaround for HDD-backed `POPSTARTER.ELF`, reusing `mc?:/POPSTARTER/POPSTARTER.ELF` when it already matches and otherwise preflighting the whole pack write before any directory creation or temp write.
     - current source now keeps the explicit HDD selector contract scoped to HDD-backed POPSTARTER launches and strips the Lua-side forced-CWD / extra-keep-slot handoff state only for that path.
     - non-HDD POPSTARTER HDD-game launches now restore the older default HDD selector behavior, HDD launch CWD, and boot-slot preservation because removing those too broadly regressed the working path.
+    - current source also no longer lets `PLDR.LoadHDDModules()` mark `HDD_EXEC_INIT_DONE`, so later HDD-game exec prep can still re-run `HDD.Initialize()` instead of sharing the page-init short-circuit.
     - corrected direct-launch `reboot_iop` handling still applies if staging is unavailable.
     - current source still exposes an `R2` alternate HDD launch for HDD-resident `POPSTARTER.ELF` that changes only the selector path to `hdd0:PART:pfs0:/GAME.ELF`; hardware result is still `Unknown (verify on hardware)`.
   - `D-14`: reported FAIL on 2026-03-27 when launching a USB game with Profile 2 pointing `POPSTARTER.ELF` to HDD.
@@ -136,6 +137,7 @@ This matrix tracks current behavior across:
     - the user identified this as a regression on the EE-side HDD direct-load attempt.
     - a later hardware run also failed on the broader stripped-handoff HDD-game source.
     - current source now restores the older default HDD selector behavior, HDD launch CWD, and boot-slot preservation for this path while keeping the stripped handoff scoped to HDD-backed POPSTARTER.
+    - current source also lets later HDD-game exec prep re-run `HDD.Initialize()` after `PLDR.LoadHDDModules()` instead of sharing the `HDD_EXEC_INIT_DONE` short-circuit.
     - corrected-source hardware result is still `Unknown (verify on hardware)`.
   - `D-17`: 2026-03-27 hardware showed that HDD-backed `POPSTARTER.ELF` could be staged to Memory Card before launch, but the HDD-game launch still black-screened.
     - current source now keeps that staging path Memory Card-only, targets `mc?:/POPSTARTER/POPSTARTER.ELF`, and adds a free-space preflight before any directory creation or temp write.

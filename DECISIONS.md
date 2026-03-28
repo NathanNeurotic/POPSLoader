@@ -79,6 +79,8 @@ Each entry records:
   - for HDD-backed POPSTARTER launches, current source strips the Lua-side forced-CWD handoff state and no longer passes the extra HDD game-slot keep request from Lua.
   - a later hardware regression report showed that stripping the HDD-game launch CWD and forcing the explicit selector too broadly also broke the previously working non-HDD POPSTARTER + HDD game path.
   - current source therefore restores the older default HDD selector behavior, HDD launch CWD, and boot-slot preservation for non-HDD POPSTARTER HDD-game launches while leaving the stripped handoff scoped to HDD-backed POPSTARTER.
+  - comparison against `BETA-10-play-CHECKPOINT2` showed one more remaining HDD-game-path difference: `PLDR.LoadHDDModules()` had started setting `HDD_EXEC_INIT_DONE`, which prevented later launch prep from re-running `HDD.Initialize()`.
+  - current source no longer sets that flag in `PLDR.LoadHDDModules()`, so HDD page/startup init and HDD-game exec prep no longer share that short-circuit.
   - the direct fallback restores HDD-backed POPSTARTER priority in the `reboot_iop` decision.
   - current source still keeps the `R2` selector-path experiment for HDD game launches, but that remains secondary to restoring and preserving the non-HDD POPSTARTER baseline for HDD titles.
 - `BOOT.ELF` after HDD page init:
