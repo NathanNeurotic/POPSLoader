@@ -59,7 +59,10 @@ Each entry records:
   - a 2026-03-27 hardware report said booting from HDD did not auto-init the HDD driver stack.
   - current code had detected HDD startup targets correctly but only called `EnsureHddRuntimeReadyForExec()`, which stops at low-level `HDD.Initialize()`.
   - current source now routes HDD startup targets through `PLDR.LoadHDDModules()` so startup uses the same HDD status/partition/cache initialization path as the HDD page.
-  - user later confirmed the corrected source on hardware.
+  - a later boot-time report showed that using the full HDD page path at startup also caused large HDD libraries to spend boot time scanning partitions and building the games list.
+  - current source therefore keeps startup HDD auto-init limited to runtime readiness only; partition scanning and game-list building remain page-entry work.
+  - optional HDD cache writing now reuses the page-built game list instead of rebuilding one during startup.
+  - the earlier startup auto-init fix was hardware-confirmed, but this narrower boot-time split still needs hardware re-validation.
 - USB first-entry backend discovery:
   - a 2026-03-27 hardware report said the first USB page entry reported no backend, but backing out and re-entering then worked.
   - current code already had bounded retry loops for USB root discovery, but all retries happened back-to-back with no yield for the backend to become visible.

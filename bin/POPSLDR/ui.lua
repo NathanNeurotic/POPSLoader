@@ -2743,6 +2743,9 @@ UI = {
 	                PLDR.HDD.CheckAvailableHddPopsParts(partition_progress)
 	                report("Building HDD game list...", 0.68)
 	                PLDR.HDD.BuildGameList(game_progress)
+                  if PLDR.HDD.USECACHE and type(PLDR.HDD.CreateCache) == "function" then
+                    PLDR.HDD.CreateCache(true)
+                  end
 	                if not PLDR.HDD.FOUNDANY then
 	                  UI.Notif_queue.add("Could not find any '__.POPS' partitions")
 	                elseif #PLDR.GAMES < 1 then

@@ -6,6 +6,7 @@ Last updated: 2026-03-28
 - Core launcher functionality is present in code for MMCE, MX4SIO, HDD (PFS), USB, Disc (`DKWDRV`), settings persistence, cover preview, path editing, startup backend auto-init, and exit flows.
 - The shared default/Profile 1 local POPSTARTER baseline was restored by rolling back to the `BETA-10-play-CHECKPOINT2` resolver behavior; user hardware confirmed that fix.
 - Current source includes a 2026-03-27 HDD startup auto-init correction, and user hardware later confirmed that fix.
+- Current source now narrows HDD startup auto-init further so boot only brings the HDD runtime up; HDD partition scanning and game-list building stay deferred to HDD page entry.
 - Current source also includes a 2026-03-27 USB first-entry backend discovery correction, and user hardware later confirmed that fix; MX4SIO discovery code is unchanged.
 - A later 2026-03-28 hardware re-test confirmed `D-15` now passes on the narrowed source, so the restored non-HDD POPSTARTER HDD-game path is back.
 - A later 2026-03-28 re-test still black-screened on that narrowed Lua-side HDD-backed source with no visible positive change.
@@ -13,7 +14,7 @@ Last updated: 2026-03-28
 - A later 2026-03-28 re-test on that forced-`reboot_iop = 1` source still black-screened for `D-10` and `D-14`.
 - A later 2026-03-28 re-test on that direct-`hdd0:PART:pfsN:/POPSTARTER.ELF` preference source still black-screened for both `D-10` and `D-14`.
 - A later 2026-03-28 re-test on that mounted-`pfs0:` embedded-loader source still black-screened for `D-10`.
-- Current source now keeps the narrowed Lua-side HDD-backed handoff, keeps the HDD-backed reboot loader path on mounted `pfs0:/...`, and additionally stops tearing down EE-side SIF state before `ExecPS2` into the embedded loader; `R2` can still request the full `hdd0:PART:pfs0:/GAME.ELF` selector.
+- Current source now keeps the narrowed Lua-side HDD-backed handoff, removes the experimental direct-`hdd0:` POPSTARTER resolution preference, keeps HDD-backed POPSTARTER on mounted PFS paths during Lua resolution, drops the now-unused Memory Card staging helpers from `bin/POPSLDR/system.lua`, keeps the HDD-backed reboot loader path on mounted `pfs0:/...`, and still leaves EE RPC alive across the final `ExecPS2` into the embedded loader; `R2` can still request the full `hdd0:PART:pfs0:/GAME.ELF` selector.
 - The main stabilization blocker is still HDD-backed `POPSTARTER.ELF` handoff when the launcher, sidecar/CWD, or configured POPSTARTER path lives on HDD. Reported hardware results still black-screen both HDD-game and USB-game repros.
 - The latest EE-side HDD direct-load workaround was reverted after it did not fix `D-10` and coincided with a reported HDD-game regression when POPSTARTER stayed on the non-HDD boot device.
 - `HDD (exFAT)` and `SMB (v1)` remain intentionally unimplemented menu entries.
@@ -34,7 +35,7 @@ Last updated: 2026-03-28
 - A later 2026-03-28 re-test still black-screened on that narrowed Lua-side HDD-backed source with no visible positive change.
 - A later 2026-03-28 re-test on that loader-side source still black-screened for `D-10` on both `X` and `R2`, while the other same-day success result was clarified as another `D-15` run rather than `D-14`.
 - A later 2026-03-28 re-test on that forced-`reboot_iop = 1` source still black-screened for `D-10` and `D-14`.
-- Current source now keeps the narrowed Lua-side HDD-backed handoff, routes HDD-backed reboot launches through an explicit mounted-`pfs0:` embedded-loader path in `src/elf_loader/src/elf.c`, stops preserving boot PFS slots during launch prep for HDD-backed `POPSTARTER.ELF`, passes the original HDD source context into the embedded loader explicitly, resets IOP there only when that explicit source context is HDD-backed, fixes the malformed direct-HDD alias builder that had been omitting the colon after `pfsN`, keeps the no-pre-unmount / direct-`SifLoadElf` loader ownership changes from the broader `wLaunchELF` comparison, restores the repo-local parent handoff rule of keeping EE RPC alive across the final embedded-loader `ExecPS2`, and keeps the restored selector-only handoff for non-HDD POPSTARTER HDD-game launches.
+- Current source now keeps the narrowed Lua-side HDD-backed handoff, removes the experimental direct-`hdd0:` POPSTARTER resolution preference, keeps HDD-backed POPSTARTER on mounted PFS paths during Lua resolution, drops the now-unused Memory Card staging helpers from `bin/POPSLDR/system.lua`, routes HDD-backed reboot launches through an explicit mounted-`pfs0:` embedded-loader path in `src/elf_loader/src/elf.c`, stops preserving boot PFS slots during launch prep for HDD-backed `POPSTARTER.ELF`, passes the original HDD source context into the embedded loader explicitly, resets IOP there only when that explicit source context is HDD-backed, keeps the no-pre-unmount / direct-`SifLoadElf` loader ownership changes from the broader `wLaunchELF` comparison, restores the repo-local parent handoff rule of keeping EE RPC alive across the final embedded-loader `ExecPS2`, and keeps the restored selector-only handoff for non-HDD POPSTARTER HDD-game launches.
 - Next hardware step:
   - first re-run `D-10` with boot source HDD and HDD `POPSTARTER.ELF`,
   - then re-run `D-14` with a USB game and HDD `POPSTARTER.ELF`,
@@ -45,11 +46,17 @@ Last updated: 2026-03-28
 - Re-run `U-05` (`OSDSYS`) and `U-10` (`BOOT.ELF after HDD page init`) on current source after the last reverted launch-backend experiment.
 - Record exact run results in `QA_REGRESSION_MATRIX.md` instead of carrying them only in chat history.
 
-### 3) Display and UX verification
+### 3) Startup/page split re-validation
+- Re-run HDD boot with a large HDD library on current source.
+- Expected:
+  - boot-time HDD auto-init should make the device runtime ready without building the HDD games list,
+  - first HDD page entry should still perform partition scan and game-list build normally.
+
+### 4) Display and UX verification
 - Re-run `U-06` to confirm PAL/NTSC menu asset proportions on hardware.
 - Re-run `U-08` and `U-09` on slower/large libraries to judge whether busy overlays communicate activity clearly enough.
 
-### 4) Coverage and documentation
+### 5) Coverage and documentation
 - Add concrete run logs for:
   - startup backend auto-init (`D-12`),
   - device switching without runtime locks (`D-13`),

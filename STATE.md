@@ -56,7 +56,9 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 - `D-12` startup backend auto-init:
   - a 2026-03-27 hardware report said booting from HDD did not auto-init the HDD driver stack.
   - current source now routes HDD startup targets through `PLDR.LoadHDDModules()` instead of only `EnsureHddRuntimeReadyForExec()`.
-  - user later confirmed that corrected source fixed HDD startup auto-init on hardware.
+  - current source now keeps that startup HDD path limited to runtime readiness; it no longer scans HDD POPS partitions or builds the HDD game list during boot.
+  - HDD page entry still performs the partition scan and game-list build, and optional HDD cache writing now reuses the page-built list instead of rebuilding at startup.
+  - user previously confirmed the earlier HDD startup auto-init correction on hardware; this narrower boot-time change still needs hardware re-validation.
 - `D-16` first-entry USB backend discovery:
   - a 2026-03-27 hardware report said the first USB page entry reported no backend, but backing out and re-entering then worked.
   - current source now adds a bounded wait between failed USB root probes in `BuildUsbIdentityDeferred()`.
@@ -75,7 +77,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - a later 2026-03-28 re-test on the forced-`reboot_iop = 1` source still black-screened on both `X` and `R2`.
   - a later 2026-03-28 re-test on the direct-`hdd0:PART:pfsN:/POPSTARTER.ELF` preference source still black-screened on `X`.
   - a later 2026-03-28 re-test on the mounted-`pfs0:` embedded-loader source still black-screened on `X`.
-  - current source now keeps the narrowed Lua-side HDD-backed handoff, keeps the reboot loader path on mounted `pfs0:/...`, no longer preserves boot PFS slots during launch prep for HDD-backed `POPSTARTER.ELF`, passes the original HDD source context into the embedded loader explicitly, resets IOP there only when that explicit source context is HDD-backed, fixes the malformed direct-HDD alias builder that had been omitting the colon after `pfsN`, keeps the no-pre-unmount / direct-`SifLoadElf` loader ownership changes from the broader `wLaunchELF` comparison, and restores the repo-local parent handoff rule of keeping EE RPC alive across the final embedded-loader `ExecPS2`.
+  - current source now keeps the narrowed Lua-side HDD-backed handoff, removes the experimental direct-`hdd0:` POPSTARTER resolution preference, keeps HDD-backed POPSTARTER on mounted PFS paths during Lua resolution, drops the now-unused Memory Card staging helpers from `bin/POPSLDR/system.lua`, keeps the reboot loader path on mounted `pfs0:/...`, no longer preserves boot PFS slots during launch prep for HDD-backed `POPSTARTER.ELF`, passes the original HDD source context into the embedded loader explicitly, resets IOP there only when that explicit source context is HDD-backed, keeps the no-pre-unmount / direct-`SifLoadElf` loader ownership changes from the broader `wLaunchELF` comparison, and restores the repo-local parent handoff rule of keeping EE RPC alive across the final embedded-loader `ExecPS2`.
   - corrected-source hardware status is still `Unknown (verify on hardware)`.
 - `D-14` HDD-backed POPSTARTER with non-HDD game:
   - reported failing on hardware.
@@ -84,7 +86,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - the user later clarified that the other same-day 2026-03-28 success report referred to `D-15`, not this case.
   - a later 2026-03-28 re-test on the forced-`reboot_iop = 1` source still black-screened on `X`; `R2` produced no response in that non-HDD-game repro.
   - a later 2026-03-28 re-test on the direct-`hdd0:PART:pfsN:/POPSTARTER.ELF` preference source still black-screened on `X`.
-  - current source now uses the same mounted-`pfs0:` embedded-loader handoff as `D-10` for HDD-backed POPSTARTER, no longer preserves boot PFS slots during launch prep for HDD-backed `POPSTARTER.ELF`, passes the original HDD source context into the embedded loader explicitly, resets IOP there only when that explicit source context is HDD-backed, fixes the malformed direct-HDD alias builder that had been omitting the colon after `pfsN`, keeps the no-pre-unmount / direct-`SifLoadElf` loader ownership changes from the broader `wLaunchELF` comparison, and restores the repo-local parent handoff rule of keeping EE RPC alive across the final embedded-loader `ExecPS2`.
+  - current source now uses the same mounted-`pfs0:` embedded-loader handoff as `D-10`, removes the experimental direct-`hdd0:` POPSTARTER resolution preference, keeps HDD-backed POPSTARTER on mounted PFS paths during Lua resolution, drops the now-unused Memory Card staging helpers from `bin/POPSLDR/system.lua`, no longer preserves boot PFS slots during launch prep for HDD-backed `POPSTARTER.ELF`, passes the original HDD source context into the embedded loader explicitly, resets IOP there only when that explicit source context is HDD-backed, keeps the no-pre-unmount / direct-`SifLoadElf` loader ownership changes from the broader `wLaunchELF` comparison, and restores the repo-local parent handoff rule of keeping EE RPC alive across the final embedded-loader `ExecPS2`.
   - corrected-source hardware status is still `Unknown (verify on hardware)`.
 - `D-15` HDD game with non-HDD sidecar POPSTARTER:
   - reported as a regression on hardware.

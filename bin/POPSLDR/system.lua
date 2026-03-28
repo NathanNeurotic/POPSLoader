@@ -2866,8 +2866,6 @@ function PLDR.LoadHDDModules()
       end
     end
     PLDR.HDD.LOADSTATE = 1
-    PLDR.HDD.CheckAvailableHddPopsParts()
-    PLDR.HDD.CreateCache()
   end
 end
 
@@ -2876,13 +2874,20 @@ function PLDR.CleanupGameList()
   for i=0, count do PLDR.GAMES[i]=nil end
 end
 
-function PLDR.HDD.CreateCache()
+function PLDR.HDD.CreateCache(reuse_current_list)
   if not PLDR.HDD.USECACHE then return end
   local C = ResolveWritablePath("hdd_gamecache.lua")
   local temp = "PLDR.HDDCACHE = {\n"
-  PLDR.HDD.BuildGameList()
-  for i = 1, #PLDR.GAMES do
-    temp = temp..("  %q,\n"):format(PLDR.GAMES[i])
+  local cache_source = PLDR.GAMES
+  if reuse_current_list ~= true then
+    PLDR.HDD.BuildGameList()
+    cache_source = PLDR.GAMES
+  end
+  if type(cache_source) ~= "table" then
+    cache_source = {}
+  end
+  for i = 1, #cache_source do
+    temp = temp..("  %q,\n"):format(cache_source[i])
   end
   temp = temp.."\n}\n"
   local fd = System.openFile(C, FCREATE)

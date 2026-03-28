@@ -195,7 +195,9 @@ The workflow uses the `ps2dev/ps2dev` container and validates packaging after bu
 - `D-12` startup backend auto-init:
   - a 2026-03-27 hardware report said booting from HDD did not auto-init the HDD driver stack.
   - current source now routes HDD startup targets through `PLDR.LoadHDDModules()` instead of only `EnsureHddRuntimeReadyForExec()`.
-  - user later confirmed that corrected source fixed HDD startup auto-init on hardware.
+  - current source also keeps startup HDD init limited to runtime readiness; it no longer scans HDD POPS partitions or builds the HDD game list during boot.
+  - the HDD page still scans partitions and builds the games list on page entry, and if HDD cache is enabled it now writes that cache from the page-built list instead of rebuilding during startup.
+  - user previously confirmed the earlier HDD startup auto-init correction on hardware; this narrower boot-time change still needs hardware re-validation.
 - `D-16` first-entry USB backend discovery:
   - a 2026-03-27 hardware report said the first USB page entry reported no backend, but backing out and re-entering then worked.
   - current source now adds a bounded wait between failed USB root probes in `BuildUsbIdentityDeferred()`.
