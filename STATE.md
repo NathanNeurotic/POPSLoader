@@ -68,12 +68,17 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - result: black-screen hang.
   - 2026-03-27 re-test of the current source still failed when booted from HDD with default/Profile 1/cwd/sidecar `POPSTARTER.ELF` on HDD and game device HDD.
   - current source also exposes an `R2` alternate HDD launch path for HDD-resident `POPSTARTER.ELF` that swaps only the selector contract to `hdd0:PART:pfs0:/GAME.ELF`.
-  - current source now also tries to stage HDD-backed `POPSTARTER.ELF` to the first available non-HDD launch path before exec, with corrected direct-launch `reboot_iop` fallback if staging is unavailable.
+  - a later 2026-03-27 hardware test reported that POPSTARTER was visibly staged to Memory Card but the HDD-game launch still black-screened.
+  - current source now only stages HDD-backed `POPSTARTER.ELF` to `mc0:/POPSTARTER/POPSTARTER.ELF` or `mc1:/POPSTARTER/POPSTARTER.ELF`.
+  - if that Memory Card `POPSTARTER.ELF` already exists with the matching size, current source reuses it without writing again.
+  - if `mc?:/POPSTARTER` must be created for staging, current source also writes the same `icon.sys`, `list.icn`, and `del.icn` assets used for the settings pack.
+  - current source pre-checks Memory Card free space for the whole pack write before any directory creation or temp write.
+  - for non-HDD/staged HDD-game launches, current source uses explicit HDD selector plus POPSTARTER-dir CWD, with corrected direct-launch `reboot_iop` fallback if staging is unavailable.
 - `D-14` HDD-backed POPSTARTER with non-HDD game:
   - reported failing on hardware.
   - repro: launch a non-HDD title while `POPSTARTER.ELF` itself is configured on HDD.
   - 2026-03-27 user hardware also black-screened when launching a USB game with Profile 2 pointing `POPSTARTER.ELF` to HDD.
-  - current source uses the same staging-or-corrected-direct-launch path for this case.
+  - current source uses the same Memory Card staging plus explicit-selector/non-HDD-CWD path for this case.
 - `D-15` HDD game with non-HDD sidecar POPSTARTER:
   - reported as a regression on hardware.
   - repro: boot from a non-HDD device with sidecar `POPSTARTER.ELF` on that same device, then launch an HDD title.

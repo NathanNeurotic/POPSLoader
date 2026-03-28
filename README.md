@@ -62,7 +62,11 @@ Reported hardware issues currently being tracked are:
     - game device: HDD.
   - 2026-03-27 hardware also reported the same black-screen when launching a USB game with Profile 2 pointing `POPSTARTER.ELF` to HDD, so the current reported failure scope is broader than HDD game routing alone.
   - current source now exposes an HDD-list alternate launch on `R2` for HDD-resident `POPSTARTER.ELF`, changing only the selector contract to `hdd0:PART:pfs0:/GAME.ELF` for A/B hardware testing.
-  - current source now also tries to stage HDD-backed `POPSTARTER.ELF` to the first available non-HDD launch path before exec, falling back to direct HDD launch only if staging is unavailable.
+  - current source now also tries to stage HDD-backed `POPSTARTER.ELF` only to `mc0:/POPSTARTER/POPSTARTER.ELF` or `mc1:/POPSTARTER/POPSTARTER.ELF` before exec.
+  - if that Memory Card `POPSTARTER.ELF` already exists with the matching size, current source reuses it without writing again.
+  - if `mc?:/POPSTARTER` must be created for staging, current source also writes the same `icon.sys`, `list.icn`, and `del.icn` assets used for the settings pack.
+  - Memory Card staging now pre-checks free space for the whole pack write before creating `mc?:/POPSTARTER` or writing the temporary staged ELF, and falls back to direct HDD launch if no card has enough confirmed space.
+  - current source now also auto-switches non-HDD/staged HDD-game launches to the explicit `hdd0:PART:pfs0:/GAME.ELF` selector contract and leaves CWD at the POPSTARTER location instead of forcing HDD CWD.
   - the direct HDD fallback also restores HDD-backed POPSTARTER priority in the `reboot_iop` decision instead of letting the game device override it.
   - the latest EE-side HDD direct-load workaround was reverted after it still failed `D-10` and coincided with a reported HDD-game regression elsewhere.
   - current source therefore remains on the earlier handoff path while this failure is investigated.
@@ -200,15 +204,20 @@ The workflow uses the `ps2dev/ps2dev` container and validates packaging after bu
   - current source now adds a bounded wait between failed USB root probes in `BuildUsbIdentityDeferred()`.
   - MX4SIO discovery code was not changed by this correction.
   - corrected-source hardware status is still `Unknown (verify on hardware)`.
+- HDD POPSTARTER staging UI:
+  - when HDD-backed `POPSTARTER.ELF` is being prepared on a Memory Card stage destination, current source now shows the existing busy overlay with `Preparing POPSTARTER...`.
 - `D-10` HDD POPSTARTER on HDD:
   - reported failing.
   - 2026-03-27 re-test of the current source still failed with boot source HDD, POPSTARTER on HDD via default/Profile 1/cwd/sidecar, and game device HDD.
-  - current source now first tries a non-HDD staging workaround for HDD-backed `POPSTARTER.ELF`, then falls back to corrected direct-launch `reboot_iop` handling if staging is unavailable.
+  - a later 2026-03-27 hardware test reported that POPSTARTER was visibly staged to Memory Card but the HDD-game launch still black-screened.
+  - current source now first tries a Memory Card staging workaround for HDD-backed `POPSTARTER.ELF`, reusing `mc?:/POPSTARTER/POPSTARTER.ELF` when it already matches.
+  - if a Memory Card `POPSTARTER` pack must be created for staging, current source pre-checks free space for the directory assets plus staged ELF before any directory creation or temp write.
+  - for non-HDD/staged HDD-game launches, current source uses the explicit `hdd0:PART:pfs0:/GAME.ELF` selector contract with POPSTARTER-dir CWD, and finally falls back to corrected direct-launch `reboot_iop` handling if staging is unavailable.
   - hardware result on that source is still `Unknown (verify on hardware)`.
 - `D-14` HDD-backed POPSTARTER with non-HDD game:
   - reported failing.
   - 2026-03-27 user hardware also black-screened when launching a USB game with Profile 2 pointing `POPSTARTER.ELF` to HDD.
-  - current source uses the same staging-or-corrected-direct-launch path for this case.
+  - current source uses the same Memory Card staging plus explicit-selector/non-HDD-CWD path for this case.
   - hardware result on that source is still `Unknown (verify on hardware)`.
 - `D-15` HDD game with non-HDD sidecar POPSTARTER:
   - a later 2026-03-27 hardware report said booting from another device and launching an HDD game with sidecar `POPSTARTER.ELF` on that boot device also black-screened.

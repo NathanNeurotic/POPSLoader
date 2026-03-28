@@ -72,7 +72,10 @@ Each entry records:
   - a second 2026-03-27 hardware report also black-screened while launching a USB game with Profile 2 pointing `POPSTARTER.ELF` to HDD, so the remaining failure is now treated as the HDD-backed POPSTARTER exec path itself rather than only HDD game routing.
   - a later 2026-03-27 hardware report also said booting from another device and launching an HDD title with sidecar `POPSTARTER.ELF` on that boot device black-screened, and the user identified it as a regression.
   - the EE-side HDD direct-load workaround in `src/elf_loader/src/elf.c` has therefore been reverted; it did not fix `D-10` and is no longer supported by hardware evidence.
-  - current source now tries a non-HDD staging workaround in `bin/POPSLDR/system.lua` before direct exec, and the direct fallback restores HDD-backed POPSTARTER priority in the `reboot_iop` decision.
+  - a later 2026-03-27 hardware run showed that staging POPSTARTER to Memory Card alone was not sufficient; the HDD-game launch still black-screened.
+  - current source now limits that workaround in `bin/POPSLDR/system.lua` to `mc?:/POPSTARTER/POPSTARTER.ELF`, reusing a matching file when present and otherwise preflighting the whole pack write before any directory creation or temp write.
+  - when staging has to create `mc?:/POPSTARTER`, it also writes the same `icon.sys`, `list.icn`, and `del.icn` assets used by the settings pack.
+  - for non-HDD/staged HDD-game launches, current source uses the explicit HDD selector contract plus POPSTARTER-dir CWD, and the direct fallback restores HDD-backed POPSTARTER priority in the `reboot_iop` decision.
   - current source still keeps the `R2` selector-path experiment for HDD game launches, but that remains secondary to restoring and preserving the non-HDD POPSTARTER baseline for HDD titles.
 - `BOOT.ELF` after HDD page init:
   - the last failed backend experiment was reverted in source,
