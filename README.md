@@ -59,7 +59,8 @@ Reported hardware issues currently being tracked are:
   - a later 2026-03-28 re-test still black-screened on the source that stripped the remaining Lua-side HDD game prep and cleared the post-load PFS keep mask, with no visible positive change.
   - a later 2026-03-28 re-test on the loader-side no-auto-exec-slot-preserve source still black-screened for `D-10` on both `X` and `R2`, and the user clarified the other same-day success result was another `D-15` run, not `D-14`.
   - a later 2026-03-28 re-test on the forced-`reboot_iop = 1` source still black-screened for both `D-10` and `D-14`.
-  - current source now keeps the confirmed HDD startup auto-init and USB first-entry fixes, leaves the narrowed Lua-side HDD-backed handoff plus the loader-side no-auto-exec-slot-preserve change in place, and prefers a direct `hdd0:PART:pfsN:/POPSTARTER.ELF` exec path over a mounted `pfsN:/POPSTARTER.ELF` path whenever the HDD partition mapping is known.
+  - a later 2026-03-28 re-test on that direct-`hdd0:PART:pfsN:/POPSTARTER.ELF` preference source still black-screened for both `D-10` and `D-14`.
+  - current source now keeps the confirmed HDD startup auto-init and USB first-entry fixes, preserves the restored `D-15` split, and changes the HDD-backed reboot handoff in `src/elf_loader/src/elf.c` to mount the target partition on `pfs0:` and run the embedded loader against `pfs0:/...` instead of handing `SifLoadElf` a direct `hdd0:` path.
   - hardware result on this corrected current source is still `Unknown (verify on hardware)`.
 - HDD game with non-HDD POPSTARTER (`D-15`)
   - this path had regressed on several 2026-03-27 and early 2026-03-28 experimental sources.
@@ -207,14 +208,16 @@ The workflow uses the `ps2dev/ps2dev` container and validates packaging after bu
   - a later 2026-03-28 re-test still black-screened on the source that stripped the remaining Lua-side HDD game prep and cleared the post-load PFS keep mask, with no visible positive change.
   - a later 2026-03-28 re-test on the loader-side no-auto-exec-slot-preserve source still black-screened on both `X` and `R2`.
   - a later 2026-03-28 re-test on the forced-`reboot_iop = 1` source still black-screened on both `X` and `R2`.
-  - current source now keeps that narrowed Lua-side HDD-backed handoff plus the loader-side no-auto-exec-slot-preserve change, and additionally prefers a direct `hdd0:PART:pfsN:/POPSTARTER.ELF` exec path over a mounted `pfsN:/POPSTARTER.ELF` path whenever the HDD partition mapping is known.
+  - a later 2026-03-28 re-test on the direct-`hdd0:PART:pfsN:/POPSTARTER.ELF` preference source still black-screened on `X`.
+  - current source now keeps the narrowed Lua-side HDD-backed handoff, but changes the reboot loader path in `src/elf_loader/src/elf.c` to mount the target partition on `pfs0:` and invoke the embedded loader with a mounted `pfs0:/...` load path for HDD-backed POPSTARTER.
   - hardware result on this corrected current source is still `Unknown (verify on hardware)`.
 - `D-14` HDD-backed POPSTARTER with non-HDD game:
   - reported failing.
   - 2026-03-27 user hardware also black-screened when launching a USB game with Profile 2 pointing `POPSTARTER.ELF` to HDD.
   - the user later clarified that a same-day 2026-03-28 success report referred to `D-15`, not this case, so `D-14` remains unverified on the loader-side current branch.
   - a later 2026-03-28 re-test on the forced-`reboot_iop = 1` source still black-screened on `X`; `R2` produced no response in that non-HDD-game repro.
-  - current source now uses the same narrowed HDD-backed handoff as `D-10`, removes the loader's automatic post-load exec-slot preservation in `src/elf_loader/src/elf.c`, and prefers a direct `hdd0:PART:pfsN:/POPSTARTER.ELF` exec path over a mounted `pfsN:/POPSTARTER.ELF` path whenever the HDD partition mapping is known.
+  - a later 2026-03-28 re-test on the direct-`hdd0:PART:pfsN:/POPSTARTER.ELF` preference source still black-screened on `X`.
+  - current source now uses the same mounted-`pfs0:` embedded-loader handoff as `D-10` for HDD-backed POPSTARTER.
   - hardware result on this corrected current source is still `Unknown (verify on hardware)`.
 - `D-15` HDD game with non-HDD sidecar POPSTARTER:
   - a later 2026-03-27 hardware report said booting from another device and launching an HDD game with sidecar `POPSTARTER.ELF` on that boot device also black-screened.

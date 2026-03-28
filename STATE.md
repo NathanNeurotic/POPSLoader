@@ -73,7 +73,8 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - a later 2026-03-28 re-test still black-screened on the narrowed Lua-side HDD-backed source with no visible positive change.
   - a later 2026-03-28 re-test on the loader-side no-auto-exec-slot-preserve source still black-screened on both `X` and `R2`.
   - a later 2026-03-28 re-test on the forced-`reboot_iop = 1` source still black-screened on both `X` and `R2`.
-  - current source now keeps that narrowed Lua-side HDD-backed handoff plus the loader-side no-auto-exec-slot-preserve change, and additionally prefers a direct `hdd0:PART:pfsN:/POPSTARTER.ELF` exec path over a mounted `pfsN:/POPSTARTER.ELF` path whenever the recorded HDD partition mapping is known.
+  - a later 2026-03-28 re-test on the direct-`hdd0:PART:pfsN:/POPSTARTER.ELF` preference source still black-screened on `X`.
+  - current source now keeps the narrowed Lua-side HDD-backed handoff, but changes the reboot loader path in `src/elf_loader/src/elf.c` to mount the target partition on `pfs0:` and invoke the embedded loader with a mounted `pfs0:/...` load path for HDD-backed POPSTARTER.
   - corrected-source hardware status is still `Unknown (verify on hardware)`.
 - `D-14` HDD-backed POPSTARTER with non-HDD game:
   - reported failing on hardware.
@@ -81,7 +82,8 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - 2026-03-27 user hardware also black-screened when launching a USB game with Profile 2 pointing `POPSTARTER.ELF` to HDD.
   - the user later clarified that the other same-day 2026-03-28 success report referred to `D-15`, not this case.
   - a later 2026-03-28 re-test on the forced-`reboot_iop = 1` source still black-screened on `X`; `R2` produced no response in that non-HDD-game repro.
-  - current source now uses the same narrowed HDD-backed handoff as `D-10`, removes the loader's automatic post-load exec-slot preservation in `src/elf_loader/src/elf.c`, and prefers a direct `hdd0:PART:pfsN:/POPSTARTER.ELF` exec path over a mounted `pfsN:/POPSTARTER.ELF` path whenever the recorded HDD partition mapping is known.
+  - a later 2026-03-28 re-test on the direct-`hdd0:PART:pfsN:/POPSTARTER.ELF` preference source still black-screened on `X`.
+  - current source now uses the same mounted-`pfs0:` embedded-loader handoff as `D-10` for HDD-backed POPSTARTER.
   - corrected-source hardware status is still `Unknown (verify on hardware)`.
 - `D-15` HDD game with non-HDD sidecar POPSTARTER:
   - reported as a regression on hardware.

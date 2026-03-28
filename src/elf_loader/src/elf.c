@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <fileio.h>
 #include "../../include/dprintf.h"
 #include "elf.h"
 
@@ -113,6 +114,123 @@ static unsigned int build_exec_keep_mask(const char *resolved_path) {
 static bool is_hdd_backed_exec_path(const char *path) {
 	return (path != NULL &&
 	        (strncmp(path, "hdd", 3) == 0 || strncmp(path, "pfs", 3) == 0));
+}
+
+static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *argv[]);
+
+static int extract_exec_pfs_slot(const char *path) {
+	if (path != NULL && strncmp(path, "pfs", 3) == 0) {
+		const char *prefix = path + 3;
+		if (*prefix == ':') {
+			return 0;
+		}
+		if (*prefix >= '0' && *prefix <= '3' && prefix[1] == ':') {
+			return *prefix - '0';
+		}
+	}
+	return -1;
+}
+
+static int mount_hdd_exec_partition(const char *partition, int slot) {
+	char mount_name[6] = "pfs0:";
+
+	if (partition == NULL || slot < 0 || slot > 3) {
+		return -1;
+	}
+
+	mount_name[3] = '0' + slot;
+	if (fileXioMount(mount_name, partition, FIO_MT_RDONLY) < 0) {
+		fileXioUmount(mount_name);
+		if (fileXioMount(mount_name, partition, FIO_MT_RDONLY) < 0) {
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+static int build_hdd_embedded_loader_target(const char *resolved_path, char *load_path, size_t load_path_size, unsigned int *keep_mask_out) {
+	const char *partition_end;
+	const char *fs_prefix_end;
+	const char *relpath;
+
+	if (resolved_path == NULL || load_path == NULL || keep_mask_out == NULL) {
+		return -1;
+	}
+
+	if (strncmp(resolved_path, "pfs", 3) == 0) {
+		int slot = extract_exec_pfs_slot(resolved_path);
+		if (slot < 0 || slot > 3) {
+			return -1;
+		}
+		snprintf(load_path, load_path_size, "%s", resolved_path);
+		*keep_mask_out = (1U << slot);
+		return 0;
+	}
+
+	if (strncmp(resolved_path, "hdd", 3) != 0) {
+		return -1;
+	}
+
+	partition_end = strchr(resolved_path + 5, ':');
+	if (partition_end == NULL) {
+		return -1;
+	}
+
+	fs_prefix_end = strchr(partition_end + 1, ':');
+	if (fs_prefix_end == NULL) {
+		return -1;
+	}
+
+	relpath = fs_prefix_end + 1;
+	while (*relpath == '/') {
+		relpath++;
+	}
+	if (*relpath == '\0') {
+		return -1;
+	}
+
+	{
+		char partition[128];
+		size_t partition_len = (size_t)(partition_end - resolved_path);
+		if (partition_len == 0 || partition_len >= sizeof(partition)) {
+			return -1;
+		}
+		memcpy(partition, resolved_path, partition_len);
+		partition[partition_len] = '\0';
+		if (mount_hdd_exec_partition(partition, 0) != 0) {
+			return -1;
+		}
+	}
+
+	snprintf(load_path, load_path_size, "pfs0:/%s", relpath);
+	if (!can_open_exec_path(load_path)) {
+		return -1;
+	}
+
+	*keep_mask_out = 0x01;
+	return 0;
+}
+
+static int ExecuteHddBackedViaEmbeddedLoader(const char *resolved_path, int argc, char *argv[]) {
+	char load_path[256];
+	unsigned int previous_keep_mask;
+	unsigned int required_keep_mask;
+	int ret;
+
+	if (argc <= 0 || argv == NULL || argv[0] == NULL) {
+		return -4;
+	}
+
+	if (build_hdd_embedded_loader_target(resolved_path, load_path, sizeof(load_path), &required_keep_mask) != 0) {
+		return -1;
+	}
+
+	previous_keep_mask = GetExecKeepPfsMask();
+	SetExecKeepPfsMask(previous_keep_mask | required_keep_mask);
+	ret = ExecuteViaEmbeddedLoader(load_path, argc, argv);
+	SetExecKeepPfsMask(previous_keep_mask);
+	return ret;
 }
 
 /* IMPORTANT: This method wipe memory where the loader is going to be allocated 
@@ -324,6 +442,10 @@ int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]
 
 	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
 		return -1;
+	}
+
+	if (is_hdd_backed_exec_path(resolved_path) && argc > 0 && argv != NULL && argv[0] != NULL) {
+		return ExecuteHddBackedViaEmbeddedLoader(resolved_path, argc, argv);
 	}
 
 	SifInitRpc(0);

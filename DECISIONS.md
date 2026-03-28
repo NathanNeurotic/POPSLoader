@@ -74,11 +74,13 @@ Each entry records:
   - the EE-side HDD direct-load workaround in `src/elf_loader/src/elf.c` has therefore been reverted; it did not fix `D-10` and is no longer supported by hardware evidence.
   - later 2026-03-27 Memory Card staging, stripped-handoff, CWD/selector, and HDD-init-state experiments in `bin/POPSLDR/system.lua` did not fix `D-10` / `D-14` and coincided with repeated `D-15` failures.
   - user later confirmed on 2026-03-28 that USB boot + USB sidecar/cwd `POPSTARTER.ELF` + HDD game passes on the narrowed source, so the remaining blocker is again isolated to HDD-backed `POPSTARTER.ELF`.
-  - a later 2026-03-28 re-test still black-screened on that narrowed Lua-side source with no visible positive change, so the remaining shared preservation step was the loader's automatic post-load exec-slot keep in `src/elf_loader/src/elf.c`.
-  - current source therefore keeps the narrowed Lua-side HDD-backed handoff, but now removes the loader's automatic post-load exec-slot preservation so only the Lua-supplied keep mask survives after `SifLoadElf`. Non-HDD POPSTARTER HDD-game launches still keep the restored selector-only handoff, while `R2` can still request the explicit `hdd0:PART:pfs0:/GAME.ELF` selector.
+  - a later 2026-03-28 re-test still black-screened on that narrowed Lua-side source with no visible positive change, so the next shared preservation step tested was the loader's automatic post-load exec-slot keep in `src/elf_loader/src/elf.c`.
+  - that loader-side no-auto-exec-slot-preserve source still left non-HDD POPSTARTER HDD-game launches on the restored selector-only handoff, while `R2` could still request the explicit `hdd0:PART:pfs0:/GAME.ELF` selector.
   - a later 2026-03-28 re-test on that loader-side source still black-screened for `D-10` on both `X` and `R2`, and the user clarified the other same-day success result was another `D-15` run rather than `D-14`.
   - a later 2026-03-28 re-test on that forced-`reboot_iop = 1` source still black-screened for `D-10` and `D-14`, so reboot mode alone did not separate the remaining failure.
-  - current source now isolates another HDD-backed-only difference in `bin/POPSLDR/system.lua`: when the recorded HDD mount mapping is known, POPSTARTER exec now prefers a direct `hdd0:PART:pfsN:/POPSTARTER.ELF` path over a mounted `pfsN:/POPSTARTER.ELF` path.
+  - a later 2026-03-28 re-test on that direct-`hdd0:PART:pfsN:/POPSTARTER.ELF` preference source still black-screened for both `D-10` and `D-14`, so exec-path form alone did not separate the remaining failure.
+  - inspection of `wLaunchELF` and `PlayStation2-Basic-BootLoader-Extended` showed the common HDD ELF pattern is to mount the target partition explicitly and feed `SifLoadElf` a mounted `pfs0:/...` path rather than a direct `hdd0:` path.
+  - current source therefore keeps the restored non-HDD POPSTARTER path, but now changes the HDD-backed reboot handoff in `src/elf_loader/src/elf.c` to mount the target partition on `pfs0:` and route the actual load through the embedded loader using a mounted `pfs0:/...` target.
   - current source still keeps the `R2` selector-path experiment for HDD game launches, but that remains secondary to restoring and preserving the non-HDD POPSTARTER baseline for HDD titles.
 - `BOOT.ELF` after HDD page init:
   - the last failed backend experiment was reverted in source,

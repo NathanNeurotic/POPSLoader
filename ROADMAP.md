@@ -1,4 +1,4 @@
-Last updated: 2026-03-27
+Last updated: 2026-03-28
 
 # ROADMAP
 
@@ -11,7 +11,8 @@ Last updated: 2026-03-27
 - A later 2026-03-28 re-test still black-screened on that narrowed Lua-side HDD-backed source with no visible positive change.
 - A later 2026-03-28 re-test on that loader-side source still black-screened for `D-10` on both `X` and `R2`, and the user clarified the other same-day success result was another `D-15` run rather than `D-14`.
 - A later 2026-03-28 re-test on that forced-`reboot_iop = 1` source still black-screened for `D-10` and `D-14`.
-- Current source now keeps the narrowed Lua-side HDD-backed handoff plus the loader-side no-auto-exec-slot-preserve change, and additionally prefers a direct `hdd0:PART:pfsN:/POPSTARTER.ELF` exec path over a mounted `pfsN:/POPSTARTER.ELF` path when the recorded HDD partition mapping is known; `R2` can still request the full `hdd0:PART:pfs0:/GAME.ELF` selector.
+- A later 2026-03-28 re-test on that direct-`hdd0:PART:pfsN:/POPSTARTER.ELF` preference source still black-screened for both `D-10` and `D-14`.
+- Current source now keeps the narrowed Lua-side HDD-backed handoff, but changes the HDD-backed reboot loader path in `src/elf_loader/src/elf.c` to mount the target partition on `pfs0:` and run the embedded loader against `pfs0:/...`; `R2` can still request the full `hdd0:PART:pfs0:/GAME.ELF` selector.
 - The main stabilization blocker is still HDD-backed `POPSTARTER.ELF` handoff when the launcher, sidecar/CWD, or configured POPSTARTER path lives on HDD. Reported hardware results still black-screen both HDD-game and USB-game repros.
 - The latest EE-side HDD direct-load workaround was reverted after it did not fix `D-10` and coincided with a reported HDD-game regression when POPSTARTER stayed on the non-HDD boot device.
 - `HDD (exFAT)` and `SMB (v1)` remain intentionally unimplemented menu entries.
@@ -32,7 +33,7 @@ Last updated: 2026-03-27
 - A later 2026-03-28 re-test still black-screened on that narrowed Lua-side HDD-backed source with no visible positive change.
 - A later 2026-03-28 re-test on that loader-side source still black-screened for `D-10` on both `X` and `R2`, while the other same-day success result was clarified as another `D-15` run rather than `D-14`.
 - A later 2026-03-28 re-test on that forced-`reboot_iop = 1` source still black-screened for `D-10` and `D-14`.
-- Current source now keeps the narrowed Lua-side HDD-backed handoff, removes the loader's automatic post-load exec-slot preservation in `src/elf_loader/src/elf.c`, prefers a direct `hdd0:PART:pfsN:/POPSTARTER.ELF` exec path over a mounted `pfsN:/POPSTARTER.ELF` path when the recorded HDD partition mapping is known, and keeps the restored selector-only handoff for non-HDD POPSTARTER HDD-game launches.
+- Current source now keeps the narrowed Lua-side HDD-backed handoff, routes HDD-backed reboot launches through an explicit mounted-`pfs0:` embedded-loader path in `src/elf_loader/src/elf.c`, and keeps the restored selector-only handoff for non-HDD POPSTARTER HDD-game launches.
 - Next hardware step:
   - first re-run `D-10` with boot source HDD and HDD `POPSTARTER.ELF`,
   - then re-run `D-14` with a USB game and HDD `POPSTARTER.ELF`,
