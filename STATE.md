@@ -58,7 +58,9 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - current source now routes HDD startup targets through `PLDR.LoadHDDModules()` instead of only `EnsureHddRuntimeReadyForExec()`.
   - current source now keeps that startup HDD path limited to runtime readiness; it no longer scans HDD POPS partitions or builds the HDD game list during boot.
   - HDD page entry still performs the partition scan and game-list build, and optional HDD cache writing now reuses the page-built list instead of rebuilding at startup.
-  - user previously confirmed the earlier HDD startup auto-init correction on hardware; this narrower boot-time change still needs hardware re-validation.
+  - user previously confirmed the earlier HDD startup auto-init correction on hardware, but a later 2026-03-28 report on the narrowed boot-time split source said HDD default/Profile 1 sidecar POPSTARTER still could not be found after entering the USB page before the HDD page.
+  - current source now also adds the raw boot `APP_DIR` as a fallback startup/sidecar candidate so HDD same-folder/Profile 1 POPSTARTER resolution can remount from raw `hdd0:` paths instead of depending only on the boot `pfs:/` context.
+  - corrected-source hardware status is still `Unknown (verify on hardware)`.
 - `D-16` first-entry USB backend discovery:
   - a 2026-03-27 hardware report said the first USB page entry reported no backend, but backing out and re-entering then worked.
   - current source now adds a bounded wait between failed USB root probes in `BuildUsbIdentityDeferred()`.

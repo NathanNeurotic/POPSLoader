@@ -105,6 +105,10 @@ local function ResolveAppDirLocal()
   return EnsureTrailingSlashNormRaw(app_dir)
 end
 
+local function ResolveAppDirRaw()
+  return EnsureTrailingSlashNormRaw(APP_DIR or System.currentDirectory() or "")
+end
+
 function NormalizeDirPath(path)
   if path == nil or path == "" then return "" end
   local normalized = NormalizeFsPathRaw(path)
@@ -125,6 +129,7 @@ function JoinPath(base, rel)
   return normalized..cleaned
 end
 
+local APP_DIR_RAW = ResolveAppDirRaw()
 local APP_DIR_LOCAL = ResolveAppDirLocal()
 APP_DIR_NORM = APP_DIR_LOCAL
 local SELECTOR_MODE = "basename"
@@ -826,6 +831,7 @@ local function ResolveHddBootSidecarPopstarter()
 
   add_candidate(BOOT_ARGV0_RAW)
   add_candidate(BOOT_PATH_RAW)
+  add_candidate(APP_DIR_RAW)
   add_candidate(APP_DIR_LOCAL)
 
   for i = 1, #mounted_candidates do
@@ -2047,6 +2053,7 @@ local function CollectStartupBackendTargets()
 
   AddUniqueStartupPath(paths, seen_paths, BOOT_ARGV0_RAW)
   AddUniqueStartupPath(paths, seen_paths, BOOT_PATH_RAW)
+  AddUniqueStartupPath(paths, seen_paths, APP_DIR_RAW)
   AddUniqueStartupPath(paths, seen_paths, APP_DIR_LOCAL)
   AddUniqueStartupPath(paths, seen_paths, PLDR.POPSTARTER_PATH)
   AddUniqueStartupPath(paths, seen_paths, PLDR.DKWDRV_PATH)

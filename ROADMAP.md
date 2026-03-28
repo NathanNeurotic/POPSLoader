@@ -7,6 +7,8 @@ Last updated: 2026-03-28
 - The shared default/Profile 1 local POPSTARTER baseline was restored by rolling back to the `BETA-10-play-CHECKPOINT2` resolver behavior; user hardware confirmed that fix.
 - Current source includes a 2026-03-27 HDD startup auto-init correction, and user hardware later confirmed that fix.
 - Current source now narrows HDD startup auto-init further so boot only brings the HDD runtime up; HDD partition scanning and game-list building stay deferred to HDD page entry.
+- A later 2026-03-28 hardware report on that boot-time split source said HDD default/Profile 1 sidecar POPSTARTER could still disappear after entering the USB page before the HDD page.
+- Current source now adds the raw boot `APP_DIR` as a startup/sidecar fallback so same-folder/Profile 1 HDD POPSTARTER resolution can remount from `hdd0:` without reintroducing HDD page work at boot.
 - Current source also includes a 2026-03-27 USB first-entry backend discovery correction, and user hardware later confirmed that fix; MX4SIO discovery code is unchanged.
 - A later 2026-03-28 hardware re-test confirmed `D-15` now passes on the narrowed source, so the restored non-HDD POPSTARTER HDD-game path is back.
 - A later 2026-03-28 re-test still black-screened on that narrowed Lua-side HDD-backed source with no visible positive change.
@@ -21,7 +23,14 @@ Last updated: 2026-03-28
 
 ## Immediate Priorities
 
-### 1) HDD-backed POPSTARTER exec
+### 1) HDD startup/profile resolution re-validation
+- Re-run `D-12` on current source with the March 28, 2026 repro:
+  - boot from HDD,
+  - keep default/Profile 1 sidecar `POPSTARTER.ELF` on HDD,
+  - enter the USB page before the HDD page,
+  - confirm HDD POPSTARTER still resolves without needing HDD page entry.
+
+### 2) HDD-backed POPSTARTER exec
 - Reproduce and resolve `D-10`:
   - POPSLoader booted from HDD,
   - HDD game launched from HDD (PFS),
@@ -42,21 +51,21 @@ Last updated: 2026-03-28
   - use `R2` only if the corrected-source HDD-game repro still differs from the USB-game repro.
 - Keep `BOOT.ELF` and OSDSYS behavior stable while iterating on this.
 
-### 2) External exit/launch re-validation
+### 3) External exit/launch re-validation
 - Re-run `U-05` (`OSDSYS`) and `U-10` (`BOOT.ELF after HDD page init`) on current source after the last reverted launch-backend experiment.
 - Record exact run results in `QA_REGRESSION_MATRIX.md` instead of carrying them only in chat history.
 
-### 3) Startup/page split re-validation
+### 4) Startup/page split re-validation
 - Re-run HDD boot with a large HDD library on current source.
 - Expected:
   - boot-time HDD auto-init should make the device runtime ready without building the HDD games list,
   - first HDD page entry should still perform partition scan and game-list build normally.
 
-### 4) Display and UX verification
+### 5) Display and UX verification
 - Re-run `U-06` to confirm PAL/NTSC menu asset proportions on hardware.
 - Re-run `U-08` and `U-09` on slower/large libraries to judge whether busy overlays communicate activity clearly enough.
 
-### 5) Coverage and documentation
+### 6) Coverage and documentation
 - Add concrete run logs for:
   - startup backend auto-init (`D-12`),
   - device switching without runtime locks (`D-13`),
