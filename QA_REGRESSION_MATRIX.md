@@ -73,8 +73,6 @@ This matrix tracks current behavior across:
 | D-14 | HDD-backed POPSTARTER with non-HDD game | Configure `POPSTARTER_PATH` or Profile 2 to an HDD-resident `POPSTARTER.ELF` | Launch a USB, MMCE, or MX4SIO title | POPSTARTER launches without hanging on a black screen even though the executable itself is on HDD |
 | D-15 | HDD game with non-HDD sidecar POPSTARTER | Boot from USB/MMCE/MX4SIO or another non-HDD device with sidecar/cwd `POPSTARTER.ELF` on that same device | Launch an HDD title | HDD title still launches without a black screen when POPSTARTER itself remains off-HDD |
 | D-16 | USB first-entry backend discovery | Cold boot without first opening the USB page | Open USB once | USB backend is found on the first entry without backing out and re-entering |
-| D-17 | HDD POPSTARTER staging fallback | Configure `POPSTARTER.ELF` on HDD and make `mc0:/POPSTARTER` or `mc1:/POPSTARTER` available with enough free space | Launch a title | POPSTARTER is staged to `mc?:/POPSTARTER/POPSTARTER.ELF` before exec and launch no longer black-screens |
-| D-18 | HDD POPSTARTER stage preflight | Configure `POPSTARTER.ELF` on HDD and leave `mc0:/POPSTARTER` / `mc1:/POPSTARTER` absent or below the required free space | Launch a title | Current source does not create the Memory Card directory, write `icon.sys`/`.icn` assets, or write the temporary staged ELF before the free-space check passes |
 
 ### UI behavior
 | ID | Area | Setup | Action | Pass Criteria |
@@ -97,12 +95,14 @@ This matrix tracks current behavior across:
 | 2026-03-27 | Unknown (not reported) | Booted from USB; USB `POPSTARTER.ELF` via default/Profile 1/cwd/sidecar; launch stopped before handoff | L-08 | FAIL: `Cant find POPSTARTER ELF` |
 | 2026-03-27 | Unknown (not reported) | Same USB sidecar/cwd/Profile 1 repro after rollback to checkpoint resolver behavior | L-08 | PASS |
 | 2026-03-27 | Unknown (not reported) | Booted from HDD; startup auto-init did not bring up the HDD driver stack before manual HDD page entry | D-12 | FAIL |
+| 2026-03-28 | Unknown (not reported) | Same HDD-boot auto-init repro on corrected source | D-12 | PASS |
 | 2026-03-27 | Unknown (not reported) | Cold boot; first USB page entry said no backend; backing out and re-entering then worked | D-16 | FAIL |
+| 2026-03-28 | Unknown (not reported) | Cold boot; first USB page entry on corrected source | D-16 | PASS |
 | 2026-03-27 | Unknown (not reported) | Booted from HDD; POPSTARTER via default/Profile 1/cwd/sidecar on HDD; game device HDD | D-10 | FAIL: black screen |
 | 2026-03-27 | Unknown (not reported) | Boot source not reported; Profile 2 `POPSTARTER.ELF` on HDD; game device USB | D-14 | FAIL: black screen |
 | 2026-03-27 | Unknown (not reported) | Booted from non-HDD device; HDD game; sidecar/cwd `POPSTARTER.ELF` on boot device; EE-side HDD direct-load attempt | D-15 | FAIL: black screen (reported regression) |
-| 2026-03-27 | Unknown (not reported) | Booted from HDD; HDD POPSTARTER was staged to Memory Card before launch; game device HDD | D-17 | FAIL: black screen |
 | 2026-03-27 | Unknown (not reported) | HDD game with non-HDD `POPSTARTER.ELF` on the broader stripped-handoff source | D-15 | FAIL: black screen |
+| 2026-03-28 | Unknown (not reported) | HDD game with non-HDD `POPSTARTER.ELF` on broader experimental source before current rollback | D-15 | FAIL: black screen |
 | YYYY-MM-DD | SCPH-xxxxx | USB/MMCE/MX4SIO/HDD details | e.g. S-01,S-02,D-02 | PASS/FAIL + notes |
 
 ## Current Verification Status
@@ -115,33 +115,24 @@ This matrix tracks current behavior across:
   - `U-05`: reported PASS.
   - `D-12`: a 2026-03-27 hardware report said booting from HDD did not auto-init the HDD driver stack.
     - current source now routes HDD startup targets through `PLDR.LoadHDDModules()` instead of only `EnsureHddRuntimeReadyForExec()`.
-    - corrected-source hardware result is still `Unknown (verify on hardware)`.
+    - user later confirmed the corrected source passed on hardware.
   - `D-16`: a 2026-03-27 hardware report said the first USB page entry reported no backend, but backing out and re-entering then worked.
     - current source now adds a bounded wait between failed USB root probes in `BuildUsbIdentityDeferred()`.
     - MX4SIO discovery code was not changed by this correction.
-    - corrected-source hardware result is still `Unknown (verify on hardware)`.
+    - user later confirmed the corrected source passed on hardware.
   - `D-10`: reported FAIL when booted from HDD and launching an HDD title with HDD `POPSTARTER.ELF` sidecar/CWD.
     - 2026-03-27 re-test of the current source still failed with boot source HDD, POPSTARTER on HDD via default/Profile 1/cwd/sidecar, and game device HDD.
     - the later EE-side direct-load workaround was reverted after it did not fix this and coincided with a broader regression report.
-    - a later 2026-03-27 hardware run showed that staging POPSTARTER to Memory Card alone was not sufficient; the HDD-game launch still black-screened.
-    - current source now first tries a Memory Card staging workaround for HDD-backed `POPSTARTER.ELF`, reusing `mc?:/POPSTARTER/POPSTARTER.ELF` when it already matches and otherwise preflighting the whole pack write before any directory creation or temp write.
-    - current source now keeps the explicit HDD selector contract scoped to HDD-backed POPSTARTER launches and strips the Lua-side forced-CWD / extra-keep-slot handoff state only for that path.
-    - non-HDD POPSTARTER HDD-game launches now keep the older default HDD selector behavior, restore boot-slot preservation, and remove the later HDD launch-CWD override.
-    - current source also no longer lets `PLDR.LoadHDDModules()` mark `HDD_EXEC_INIT_DONE`, so later HDD-game exec prep can still re-run `HDD.Initialize()` instead of sharing the page-init short-circuit.
-    - corrected direct-launch `reboot_iop` handling still applies if staging is unavailable.
+    - later 2026-03-27 Memory Card staging, stripped-handoff, CWD/selector, and HDD-init-state experiments did not fix this.
+    - current source now rolls those post-`0d2c042` `system.lua` launch-path experiments back toward the earlier baseline while preserving the confirmed `D-12` and `D-16` fixes.
     - current source still exposes an `R2` alternate HDD launch for HDD-resident `POPSTARTER.ELF` that changes only the selector path to `hdd0:PART:pfs0:/GAME.ELF`; hardware result is still `Unknown (verify on hardware)`.
   - `D-14`: reported FAIL on 2026-03-27 when launching a USB game with Profile 2 pointing `POPSTARTER.ELF` to HDD.
     - this broadened the remaining issue from “HDD game launch” to “HDD-backed POPSTARTER exec path”.
-    - current source uses the same Memory Card staging plus stripped Lua-side forced-CWD / extra-keep-slot handoff state; hardware result is still `Unknown (verify on hardware)`.
+    - current source now rolls later `system.lua` launch-path experiments back toward the earlier `0d2c042` behavior; hardware result is still `Unknown (verify on hardware)`.
   - `D-15`: reported FAIL on 2026-03-27 when booting from a non-HDD device and launching an HDD title with sidecar/cwd `POPSTARTER.ELF` on that boot device.
     - the user identified this as a regression on the EE-side HDD direct-load attempt.
-    - a later hardware run also failed on the broader stripped-handoff HDD-game source.
-    - current source now keeps the older default HDD selector behavior, restores boot-slot preservation, and removes the later HDD launch-CWD override for this path while keeping the stripped handoff scoped to HDD-backed POPSTARTER.
-    - current source also lets later HDD-game exec prep re-run `HDD.Initialize()` after `PLDR.LoadHDDModules()` instead of sharing the `HDD_EXEC_INIT_DONE` short-circuit.
-    - corrected-source hardware result is still `Unknown (verify on hardware)`.
-  - `D-17`: 2026-03-27 hardware showed that HDD-backed `POPSTARTER.ELF` could be staged to Memory Card before launch, but the HDD-game launch still black-screened.
-    - current source now keeps that staging path Memory Card-only, targets `mc?:/POPSTARTER/POPSTARTER.ELF`, and adds a free-space preflight before any directory creation or temp write.
-    - current source still leaves the stripped handoff scoped to HDD-backed POPSTARTER and restores the older HDD-game selector/CWD path for non-HDD POPSTARTER launches.
-    - corrected-source hardware result is still `Unknown (verify on hardware)`.
+    - a later 2026-03-27 broader stripped-handoff source also failed, and a 2026-03-28 experimental source still black-screened.
+    - current source now rolls those post-`0d2c042` `system.lua` launch-path experiments back toward the earlier baseline while preserving the confirmed `D-12` and `D-16` fixes.
+    - rolled-back-source hardware result is still `Unknown (verify on hardware)`.
   - `U-10`: one artifact was reported good before a later regression experiment; current source has been restored away from that experiment and must be re-tested.
 - All other manual hardware items remain `Unknown (verify on hardware)` unless run logs are added above.

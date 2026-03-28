@@ -56,41 +56,34 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 - `D-12` startup backend auto-init:
   - a 2026-03-27 hardware report said booting from HDD did not auto-init the HDD driver stack.
   - current source now routes HDD startup targets through `PLDR.LoadHDDModules()` instead of only `EnsureHddRuntimeReadyForExec()`.
-  - corrected-source hardware status is still `Unknown (verify on hardware)`.
+  - user later confirmed that corrected source fixed HDD startup auto-init on hardware.
 - `D-16` first-entry USB backend discovery:
   - a 2026-03-27 hardware report said the first USB page entry reported no backend, but backing out and re-entering then worked.
   - current source now adds a bounded wait between failed USB root probes in `BuildUsbIdentityDeferred()`.
   - MX4SIO discovery code was not changed by this correction.
-  - corrected-source hardware status is still `Unknown (verify on hardware)`.
+  - user later confirmed that corrected source fixed the first-entry USB issue on hardware.
 - `D-10` HDD POPSTARTER on HDD:
   - reported failing on hardware.
   - repro: boot from HDD, launch HDD title with HDD `POPSTARTER.ELF` sidecar/CWD.
   - result: black-screen hang.
   - 2026-03-27 re-test of the current source still failed when booted from HDD with default/Profile 1/cwd/sidecar `POPSTARTER.ELF` on HDD and game device HDD.
   - current source also exposes an `R2` alternate HDD launch path for HDD-resident `POPSTARTER.ELF` that swaps only the selector contract to `hdd0:PART:pfs0:/GAME.ELF`.
-  - a later 2026-03-27 hardware test reported that POPSTARTER was visibly staged to Memory Card but the HDD-game launch still black-screened.
-  - current source now only stages HDD-backed `POPSTARTER.ELF` to `mc0:/POPSTARTER/POPSTARTER.ELF` or `mc1:/POPSTARTER/POPSTARTER.ELF`.
-  - if that Memory Card `POPSTARTER.ELF` already exists with the matching size, current source reuses it without writing again.
-  - if `mc?:/POPSTARTER` must be created for staging, current source also writes the same `icon.sys`, `list.icn`, and `del.icn` assets used for the settings pack.
-  - current source pre-checks Memory Card free space for the whole pack write before any directory creation or temp write.
-  - current source now keeps the explicit HDD selector path scoped to HDD-backed POPSTARTER launches by default.
-  - for HDD-backed POPSTARTER launches, current source now strips the Lua-side forced-CWD handoff state and no longer passes the extra HDD game-slot keep request from Lua.
-  - non-HDD POPSTARTER launches for HDD games now keep the older default HDD selector behavior, restore boot-slot preservation, and no longer override launch CWD.
-  - current source also no longer marks `HDD_EXEC_INIT_DONE` inside `PLDR.LoadHDDModules()`, so later HDD-game exec prep can still re-run `HDD.Initialize()` instead of short-circuiting on shared page-init state.
-  - corrected direct-launch `reboot_iop` fallback still applies if staging is unavailable.
+  - later 2026-03-27 experimental sources also black-screened after direct-load, Memory Card staging, and stripped-handoff changes.
+  - current source now rolls those later `system.lua` launch-path experiments back toward the earlier `0d2c042` behavior while preserving the confirmed `D-12` and `D-16` fixes.
+  - rolled-back-source hardware status is still `Unknown (verify on hardware)`.
 - `D-14` HDD-backed POPSTARTER with non-HDD game:
   - reported failing on hardware.
   - repro: launch a non-HDD title while `POPSTARTER.ELF` itself is configured on HDD.
   - 2026-03-27 user hardware also black-screened when launching a USB game with Profile 2 pointing `POPSTARTER.ELF` to HDD.
-  - current source uses the same Memory Card staging plus stripped Lua-side forced-CWD / extra-keep-slot handoff state for this case.
+  - current source now rolls later `system.lua` launch-path experiments back toward the earlier `0d2c042` behavior.
+  - rolled-back-source hardware status is still `Unknown (verify on hardware)`.
 - `D-15` HDD game with non-HDD sidecar POPSTARTER:
   - reported as a regression on hardware.
   - repro: boot from a non-HDD device with sidecar `POPSTARTER.ELF` on that same device, then launch an HDD title.
   - 2026-03-27 user hardware reported a black screen on the EE-side HDD direct-load attempt.
   - a later 2026-03-27 hardware report also black-screened on the broader stripped-handoff HDD-game path.
-  - current source now keeps the older default HDD selector behavior, restores boot-slot preservation, and removes the later HDD launch-CWD override for this path while keeping the stripped handoff scoped to HDD-backed POPSTARTER.
-  - current source also lets later HDD-game exec prep re-run `HDD.Initialize()` after `PLDR.LoadHDDModules()` instead of sharing the `HDD_EXEC_INIT_DONE` short-circuit.
-  - corrected-source hardware status is still `Unknown (verify on hardware)`.
+  - current source now rolls those later `system.lua` launch-path experiments back toward the earlier `0d2c042` behavior while preserving the confirmed `D-12` and `D-16` fixes.
+  - rolled-back-source hardware status is still `Unknown (verify on hardware)`.
 - `U-10` BOOT.ELF after HDD page init:
   - one prior artifact was reported good,
   - a later launch-backend experiment regressed it,
@@ -101,8 +94,8 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - hardware result is still `Unknown (verify on hardware)`.
 
 ## Known Open Work
-- Re-verify `D-12` on current source, especially HDD boot/configured HDD-path startup cases.
-- Re-verify `D-16` on current source and confirm MX4SIO behavior is unchanged.
+- Preserve the reported `D-12` HDD startup auto-init fix while iterating on HDD launch-path regressions.
+- Preserve the reported `D-16` USB first-entry fix and confirm MX4SIO behavior remains unchanged on future retests.
 - Resolve HDD-backed `POPSTARTER.ELF` handoff when POPSTARTER itself is on HDD, including non-HDD game launches.
 - Re-confirm that HDD titles still launch correctly when POPSTARTER stays on the non-HDD boot device after reverting the failed HDD direct-load attempt.
 - Re-verify `BOOT.ELF` after HDD page init on current source.
