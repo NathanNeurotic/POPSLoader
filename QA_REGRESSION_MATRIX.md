@@ -72,6 +72,7 @@ This matrix tracks current behavior across:
 | D-13 | No runtime device lock gating | Enter one backend page first, then move to another backend page in the same session | Open the second backend page | UI does not block the scene transition with a restart-required device-lock gate |
 | D-14 | HDD-backed POPSTARTER with non-HDD game | Configure `POPSTARTER_PATH` or Profile 2 to an HDD-resident `POPSTARTER.ELF` | Launch a USB, MMCE, or MX4SIO title | POPSTARTER launches without hanging on a black screen even though the executable itself is on HDD |
 | D-15 | HDD game with non-HDD sidecar POPSTARTER | Boot from USB/MMCE/MX4SIO or another non-HDD device with sidecar/cwd `POPSTARTER.ELF` on that same device | Launch an HDD title | HDD title still launches without a black screen when POPSTARTER itself remains off-HDD |
+| D-16 | USB first-entry backend discovery | Cold boot without first opening the USB page | Open USB once | USB backend is found on the first entry without backing out and re-entering |
 
 ### UI behavior
 | ID | Area | Setup | Action | Pass Criteria |
@@ -94,6 +95,7 @@ This matrix tracks current behavior across:
 | 2026-03-27 | Unknown (not reported) | Booted from USB; USB `POPSTARTER.ELF` via default/Profile 1/cwd/sidecar; launch stopped before handoff | L-08 | FAIL: `Cant find POPSTARTER ELF` |
 | 2026-03-27 | Unknown (not reported) | Same USB sidecar/cwd/Profile 1 repro after rollback to checkpoint resolver behavior | L-08 | PASS |
 | 2026-03-27 | Unknown (not reported) | Booted from HDD; startup auto-init did not bring up the HDD driver stack before manual HDD page entry | D-12 | FAIL |
+| 2026-03-27 | Unknown (not reported) | Cold boot; first USB page entry said no backend; backing out and re-entering then worked | D-16 | FAIL |
 | 2026-03-27 | Unknown (not reported) | Booted from HDD; POPSTARTER via default/Profile 1/cwd/sidecar on HDD; game device HDD | D-10 | FAIL: black screen |
 | 2026-03-27 | Unknown (not reported) | Boot source not reported; Profile 2 `POPSTARTER.ELF` on HDD; game device USB | D-14 | FAIL: black screen |
 | 2026-03-27 | Unknown (not reported) | Booted from non-HDD device; HDD game; sidecar/cwd `POPSTARTER.ELF` on boot device; EE-side HDD direct-load attempt | D-15 | FAIL: black screen (reported regression) |
@@ -109,6 +111,10 @@ This matrix tracks current behavior across:
   - `U-05`: reported PASS.
   - `D-12`: a 2026-03-27 hardware report said booting from HDD did not auto-init the HDD driver stack.
     - current source now routes HDD startup targets through `PLDR.LoadHDDModules()` instead of only `EnsureHddRuntimeReadyForExec()`.
+    - corrected-source hardware result is still `Unknown (verify on hardware)`.
+  - `D-16`: a 2026-03-27 hardware report said the first USB page entry reported no backend, but backing out and re-entering then worked.
+    - current source now adds a bounded wait between failed USB root probes in `BuildUsbIdentityDeferred()`.
+    - MX4SIO discovery code was not changed by this correction.
     - corrected-source hardware result is still `Unknown (verify on hardware)`.
   - `D-10`: reported FAIL when booted from HDD and launching an HDD title with HDD `POPSTARTER.ELF` sidecar/CWD.
     - 2026-03-27 re-test of the current source still failed with boot source HDD, POPSTARTER on HDD via default/Profile 1/cwd/sidecar, and game device HDD.

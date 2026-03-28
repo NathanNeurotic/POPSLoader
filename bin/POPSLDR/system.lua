@@ -2250,6 +2250,8 @@ local function BuildMassRootIdentity(mode)
 end
 
 local function BuildUsbIdentityDeferred()
+  -- Bounded retry masks the first-entry USB probe quirk without requiring
+  -- the user to leave and re-enter the page.
   local attempts = 0
   local identity = nil
   while attempts < 3 do
@@ -2259,6 +2261,9 @@ local function BuildUsbIdentityDeferred()
       return identity
     end
     WaitMassProbeRetry(attempts, 3)
+    if attempts < 3 and type(System) == "table" and type(System.sleep) == "function" then
+      pcall(System.sleep, 1)
+    end
   end
   return identity or BuildMassRootIdentity("usb")
 end

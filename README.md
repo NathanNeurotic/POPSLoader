@@ -182,6 +182,8 @@ The workflow uses the `ps2dev/ps2dev` container and validates packaging after bu
 - PAL/NTSC menu asset proportions (`U-06`)
 - startup backend auto-init across all boot/configured path combinations (`D-12`)
   - current source includes a 2026-03-27 HDD-target correction so HDD boot/configured paths initialize the full HDD stack at startup.
+- first-entry USB backend discovery (`D-16`)
+  - current source includes a bounded retry wait in USB root discovery so the first page entry does not require backing out and re-entering.
 - boot-device label across all boot sources (`U-11`)
 
 ### Reported hardware outcomes that matter right now
@@ -190,6 +192,11 @@ The workflow uses the `ps2dev/ps2dev` container and validates packaging after bu
 - `D-12` startup backend auto-init:
   - a 2026-03-27 hardware report said booting from HDD did not auto-init the HDD driver stack.
   - current source now routes HDD startup targets through `PLDR.LoadHDDModules()` instead of only `EnsureHddRuntimeReadyForExec()`.
+  - corrected-source hardware status is still `Unknown (verify on hardware)`.
+- `D-16` first-entry USB backend discovery:
+  - a 2026-03-27 hardware report said the first USB page entry reported no backend, but backing out and re-entering then worked.
+  - current source now adds a bounded wait between failed USB root probes in `BuildUsbIdentityDeferred()`.
+  - MX4SIO discovery code was not changed by this correction.
   - corrected-source hardware status is still `Unknown (verify on hardware)`.
 - `D-10` HDD POPSTARTER on HDD:
   - reported failing.

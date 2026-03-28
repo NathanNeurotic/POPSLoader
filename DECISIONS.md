@@ -60,6 +60,11 @@ Each entry records:
   - current code had detected HDD startup targets correctly but only called `EnsureHddRuntimeReadyForExec()`, which stops at low-level `HDD.Initialize()`.
   - current source now routes HDD startup targets through `PLDR.LoadHDDModules()` so startup uses the same HDD status/partition/cache initialization path as the HDD page.
   - corrected-source hardware verification is still required.
+- USB first-entry backend discovery:
+  - a 2026-03-27 hardware report said the first USB page entry reported no backend, but backing out and re-entering then worked.
+  - current code already had bounded retry loops for USB root discovery, but all retries happened back-to-back with no yield for the backend to become visible.
+  - current source now adds a bounded wait only in `BuildUsbIdentityDeferred()`, leaving MX4SIO discovery logic unchanged.
+  - corrected-source hardware verification is still required.
 - HDD `POPSTARTER.ELF` when launcher/sidecar/CWD is on HDD:
   - current reported hardware result is still a black-screen hang.
   - path/mount/CWD mitigations plus the HDD-backed non-reboot `ExecPS2` cleanup are present in current code.

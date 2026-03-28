@@ -6,6 +6,7 @@ Last updated: 2026-03-27
 - Core launcher functionality is present in code for MMCE, MX4SIO, HDD (PFS), USB, Disc (`DKWDRV`), settings persistence, cover preview, path editing, startup backend auto-init, and exit flows.
 - The shared default/Profile 1 local POPSTARTER baseline was restored by rolling back to the `BETA-10-play-CHECKPOINT2` resolver behavior; user hardware confirmed that fix.
 - Current source includes a 2026-03-27 HDD startup auto-init correction so HDD boot/configured paths run the full HDD module-load path at startup.
+- Current source also includes a 2026-03-27 USB first-entry backend discovery correction that adds a bounded wait between failed USB root probes; MX4SIO discovery code is unchanged.
 - The main stabilization blocker is still HDD-backed `POPSTARTER.ELF` handoff when the launcher, sidecar/CWD, or configured POPSTARTER path lives on HDD. Reported hardware results still black-screen both HDD-game and USB-game repros.
 - The latest EE-side HDD direct-load workaround was reverted after it did not fix `D-10` and coincided with a reported HDD-game regression when POPSTARTER stayed on the non-HDD boot device.
 - `HDD (exFAT)` and `SMB (v1)` remain intentionally unimplemented menu entries.
@@ -19,7 +20,14 @@ Last updated: 2026-03-27
   - launching without first opening the HDD page.
 - Expected on current source: HDD startup targets auto-init through `PLDR.LoadHDDModules()` and the HDD driver stack is ready before manual HDD page entry.
 
-### 2) HDD-backed POPSTARTER exec
+### 2) USB first-entry backend re-validation
+- Re-run `D-16` on current source:
+  - cold boot without first opening the USB page,
+  - enter USB once,
+  - confirm the backend is found without backing out and re-entering.
+- Cross-check MX4SIO once on the same source to confirm its first-entry behavior is unchanged.
+
+### 3) HDD-backed POPSTARTER exec
 - Reproduce and resolve `D-10`:
   - POPSLoader booted from HDD,
   - HDD game launched from HDD (PFS),
@@ -35,15 +43,15 @@ Last updated: 2026-03-27
   - use `R2` only if the reverted-source HDD-game repro still differs from the USB-game repro.
 - Keep `BOOT.ELF` and OSDSYS behavior stable while iterating on this.
 
-### 3) External exit/launch re-validation
+### 4) External exit/launch re-validation
 - Re-run `U-05` (`OSDSYS`) and `U-10` (`BOOT.ELF after HDD page init`) on current source after the last reverted launch-backend experiment.
 - Record exact run results in `QA_REGRESSION_MATRIX.md` instead of carrying them only in chat history.
 
-### 4) Display and UX verification
+### 5) Display and UX verification
 - Re-run `U-06` to confirm PAL/NTSC menu asset proportions on hardware.
 - Re-run `U-08` and `U-09` on slower/large libraries to judge whether busy overlays communicate activity clearly enough.
 
-### 5) Coverage and documentation
+### 6) Coverage and documentation
 - Add concrete run logs for:
   - startup backend auto-init (`D-12`),
   - device switching without runtime locks (`D-13`),
