@@ -68,7 +68,7 @@ Reported hardware issues currently being tracked are:
   - Memory Card staging now pre-checks free space for the whole pack write before creating `mc?:/POPSTARTER` or writing the temporary staged ELF, and falls back to direct HDD launch if no card has enough confirmed space.
   - current source now keeps the explicit `hdd0:PART:pfs0:/GAME.ELF` selector contract scoped to HDD-backed POPSTARTER launches by default.
   - for HDD-backed POPSTARTER launches, current source now strips the Lua-side forced-CWD handoff state and no longer passes the extra HDD game-slot keep request from Lua.
-  - non-HDD POPSTARTER launches for HDD games have been moved back toward the older baseline by restoring the default HDD selector behavior and HDD launch CWD, because the broader stripped-handoff change regressed that previously working path.
+  - non-HDD POPSTARTER launches for HDD games now keep the older default HDD selector behavior, restore boot-slot preservation, and no longer override launch CWD, because later HDD-specific CWD handling postdated the older baseline.
   - current source also no longer marks `HDD_EXEC_INIT_DONE` inside `PLDR.LoadHDDModules()`, so later HDD-game exec prep can still re-run the lower-level `HDD.Initialize()` path instead of short-circuiting on shared HDD-page state.
   - the direct HDD fallback also restores HDD-backed POPSTARTER priority in the `reboot_iop` decision instead of letting the game device override it.
   - the latest EE-side HDD direct-load workaround was reverted after it still failed `D-10` and coincided with a reported HDD-game regression elsewhere.
@@ -228,7 +228,7 @@ The workflow uses the `ps2dev/ps2dev` container and validates packaging after bu
   - a later 2026-03-27 hardware report said booting from another device and launching an HDD game with sidecar `POPSTARTER.ELF` on that boot device also black-screened.
   - that was reported as a regression on the EE-side HDD direct-load attempt, which has now been reverted in source.
   - a later 2026-03-27 hardware report said the broader stripped-handoff HDD-game path also black-screened.
-  - current source now restores the older default HDD selector behavior and HDD launch CWD for non-HDD POPSTARTER launches while keeping the stripped handoff scoped to HDD-backed POPSTARTER.
+  - current source now keeps the older default HDD selector behavior, restores boot-slot preservation, and removes the later HDD launch-CWD override for non-HDD POPSTARTER launches while keeping the stripped handoff scoped to HDD-backed POPSTARTER.
   - current source also lets later HDD-game exec prep re-run `HDD.Initialize()` after `PLDR.LoadHDDModules()` instead of sharing the `HDD_EXEC_INIT_DONE` short-circuit.
   - corrected-source hardware status is still `Unknown (verify on hardware)`.
 - Shared default/Profile 1 local POPSTARTER baseline:

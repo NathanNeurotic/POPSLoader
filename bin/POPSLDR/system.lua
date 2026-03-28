@@ -3810,7 +3810,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     bootparam_source = boot_source_mode,
     hdd_init = hdd_init,
     keep_hdd_slots = popstarter_source_on_hdd and nil or ((hdd_init ~= nil and hdd_init.mount_ok == true and hdd_init.mount_slot ~= nil) and {hdd_init.mount_slot} or nil),
-    launch_cwd = popstarter_source_on_hdd and false or ((hdd_init ~= nil and hdd_init.mount_ok == true) and hdd_init.mount_prefix or nil)
+    launch_cwd = policy.name == "HDD" and nil or (popstarter_source_on_hdd and false or ((hdd_init ~= nil and hdd_init.mount_ok == true) and hdd_init.mount_prefix or nil))
   }
   local reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
   if popstarter_on_hdd then
