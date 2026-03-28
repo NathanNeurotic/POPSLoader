@@ -116,7 +116,7 @@ static bool is_hdd_backed_exec_path(const char *path) {
 	        (strncmp(path, "hdd", 3) == 0 || strncmp(path, "pfs", 3) == 0));
 }
 
-static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *argv[]);
+static int ExecuteViaEmbeddedLoader(const char *resolved_path, const char *source_context, int argc, char *argv[]);
 
 static int extract_exec_pfs_slot(const char *path) {
 	if (path != NULL && strncmp(path, "pfs", 3) == 0) {
@@ -212,8 +212,9 @@ static int build_hdd_embedded_loader_target(const char *resolved_path, char *loa
 	return 0;
 }
 
-static int ExecuteHddBackedViaEmbeddedLoader(const char *resolved_path, int argc, char *argv[]) {
+static int ExecuteHddBackedViaEmbeddedLoader(const char *requested_path, const char *resolved_path, int argc, char *argv[]) {
 	char load_path[256];
+	const char *source_context;
 	unsigned int previous_keep_mask;
 	unsigned int required_keep_mask;
 	int ret;
@@ -226,9 +227,14 @@ static int ExecuteHddBackedViaEmbeddedLoader(const char *resolved_path, int argc
 		return -1;
 	}
 
+	source_context = requested_path;
+	if (source_context == NULL || source_context[0] == '\0') {
+		source_context = resolved_path;
+	}
+
 	previous_keep_mask = GetExecKeepPfsMask();
 	SetExecKeepPfsMask(previous_keep_mask | required_keep_mask);
-	ret = ExecuteViaEmbeddedLoader(load_path, argc, argv);
+	ret = ExecuteViaEmbeddedLoader(load_path, source_context, argc, argv);
 	SetExecKeepPfsMask(previous_keep_mask);
 	return ret;
 }
@@ -253,9 +259,9 @@ static void wipe_bramMem(void) {
 	}
 }
 
-static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *argv[]) {
+static int ExecuteViaEmbeddedLoader(const char *resolved_path, const char *source_context, int argc, char *argv[]) {
 	int i;
-	int final_argc = argc + 1;
+	int final_argc = argc + 2;
 	static const int kMaxArgc = 32;
 	static char *launch_argv[33];
 	static char launch_arg_storage[2048];
@@ -278,12 +284,16 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *a
 	if (!launch_argv[0]) {
 		return -3;
 	}
+	launch_argv[1] = store_arg(source_context != NULL ? source_context : resolved_path, launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
+	if (!launch_argv[1]) {
+		return -3;
+	}
 	for (i = 0; i < argc; i++) {
 		char *stored_arg = store_arg(argv[i], launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
 		if (!stored_arg) {
 			return -3;
 		}
-		launch_argv[i + 1] = stored_arg;
+		launch_argv[i + 2] = stored_arg;
 	}
 	launch_argv[final_argc] = NULL;
 
@@ -443,7 +453,7 @@ int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]
 	}
 
 	if (is_hdd_backed_exec_path(resolved_path) && argc > 0 && argv != NULL && argv[0] != NULL) {
-		return ExecuteHddBackedViaEmbeddedLoader(resolved_path, argc, argv);
+		return ExecuteHddBackedViaEmbeddedLoader(filename, resolved_path, argc, argv);
 	}
 
 	SifInitRpc(0);

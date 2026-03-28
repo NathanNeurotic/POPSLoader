@@ -80,6 +80,7 @@ int main(int argc, char *argv[])
 {
 	SET_GS_BGCOLOUR(WHITE_BG);
 	static t_ExecData elfdata;
+	static char source_context[1024];
 	static char target_path[1024];
 	static char target_arg_storage[1024];
 	static char *target_argv[33];
@@ -89,23 +90,25 @@ int main(int argc, char *argv[])
 
 	elfdata.epc = 0;
 
-	// argv[0]=path to ELF, argv[1..]=arguments
+	// argv[0]=mounted path to ELF, argv[1]=original source context,
+	// argv[2..]=arguments for the target ELF
 	if (argc < 2) {  
 		SET_GS_BGCOLOUR(RED_BG);
 		return -EINVAL;
 	}
 	snprintf(target_path, sizeof(target_path), "%s", argv[0] ? argv[0] : "");
-	target_argc = argc - 1;
+	snprintf(source_context, sizeof(source_context), "%s", argv[1] ? argv[1] : target_path);
+	target_argc = argc - 2;
 	if (target_argc > 32) {
 		return -E2BIG;
 	}
-	for (i = 1; i < argc; i++) {
+	for (i = 2; i < argc; i++) {
 		size_t arg_len = strlen(argv[i]) + 1;
 		if ((target_arg_offset + arg_len) > sizeof(target_arg_storage)) {
 			return -E2BIG;
 		}
 		memcpy(&target_arg_storage[target_arg_offset], argv[i], arg_len);
-		target_argv[i - 1] = &target_arg_storage[target_arg_offset];
+		target_argv[i - 2] = &target_arg_storage[target_arg_offset];
 		target_arg_offset += arg_len;
 	}
 	target_argv[target_argc] = NULL;
@@ -135,12 +138,15 @@ int main(int argc, char *argv[])
 	if (ret == 0 && elfdata.epc != 0) {
 		SET_GS_BGCOLOUR(YELLOW_BG);
 
-		/* Reference HDD loaders do not unconditionally reset IOP here.
-		 * wLaunchELF only resets when the loader receives explicit HDD
-		 * source context, and PS2 BBL defaults this path off entirely.
-		 * Keep the mounted-PFS handoff minimal and let the target own the
-		 * next-stage runtime from its entry point.
+		/* Match the reference pattern more closely: only apply the HDD-side
+		 * IOP reset when the parent explicitly tells us the original ELF
+		 * source lived on HDD. The target ELF still receives only its own
+		 * launch arguments, not this control metadata.
 		 */
+		if (strncmp(source_context, "hdd", 3) == 0 && (source_context[3] >= '0' && source_context[3] <= ':')) {
+			while(!SifIopReset(NULL, 0)){};
+			while (!SifIopSync()) {};
+		}
 		SifExitRpc();
 
 		SET_GS_BGCOLOUR(ORANGE_BG);
