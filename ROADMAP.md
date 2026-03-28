@@ -7,7 +7,7 @@ Last updated: 2026-03-27
 - The shared default/Profile 1 local POPSTARTER baseline was restored by rolling back to the `BETA-10-play-CHECKPOINT2` resolver behavior; user hardware confirmed that fix.
 - Current source includes a 2026-03-27 HDD startup auto-init correction, and user hardware later confirmed that fix.
 - Current source also includes a 2026-03-27 USB first-entry backend discovery correction, and user hardware later confirmed that fix; MX4SIO discovery code is unchanged.
-- A 2026-03-28 hardware re-test showed `D-15` still failed on that rolled-back source, so the remaining issue is not explained by the later post-`0d2c042` experiments alone.
+- A later 2026-03-28 hardware re-test confirmed `D-15` now passes on the narrowed source, so the restored non-HDD POPSTARTER HDD-game path is back.
 - Current source now narrows HDD game prep in `bin/POPSLDR/system.lua` so only HDD/PFS-backed `POPSTARTER.ELF` launches run `EnsureHDDReadyForLaunch()` plus Lua-side HDD mount/CWD preservation.
 - The main stabilization blocker is still HDD-backed `POPSTARTER.ELF` handoff when the launcher, sidecar/CWD, or configured POPSTARTER path lives on HDD. Reported hardware results still black-screen both HDD-game and USB-game repros.
 - The latest EE-side HDD direct-load workaround was reverted after it did not fix `D-10` and coincided with a reported HDD-game regression when POPSTARTER stayed on the non-HDD boot device.
@@ -15,14 +15,7 @@ Last updated: 2026-03-27
 
 ## Immediate Priorities
 
-### 1) HDD-game regression containment
-- `D-15` is the first gate on current source:
-  - boot from a non-HDD device with non-HDD sidecar/cwd `POPSTARTER.ELF`,
-  - launch an HDD title,
-  - confirm the previously working path is restored.
-- Current source now removes Lua-side HDD game pre-mount/CWD preservation from this path and leaves only the selector handoff unless `POPSTARTER.ELF` itself is HDD/PFS-backed.
-
-### 2) HDD-backed POPSTARTER exec
+### 1) HDD-backed POPSTARTER exec
 - Reproduce and resolve `D-10`:
   - POPSLoader booted from HDD,
   - HDD game launched from HDD (PFS),
@@ -32,24 +25,23 @@ Last updated: 2026-03-27
 - 2026-03-27 user hardware also black-screened when launching a USB game with Profile 2 pointing `POPSTARTER.ELF` to HDD, so `D-14` now shows the remaining bug is the HDD-backed POPSTARTER exec path itself, not only HDD game routing.
 - The latest EE-side `open/read` HDD direct-load attempt has been reverted after it still failed `D-10` and coincided with a reported `D-15` regression on HDD-game launch with non-HDD sidecar POPSTARTER.
 - A later hardware run showed that Memory Card staging alone was not sufficient; the launch still black-screened on an HDD title.
-- A 2026-03-28 hardware re-test also still black-screened on the rolled-back current source with USB boot, USB sidecar/cwd `POPSTARTER.ELF`, and an HDD title.
+- A later 2026-03-28 hardware re-test confirmed that the narrowed source restored `D-15`, so the remaining blocker is again isolated to HDD-backed `POPSTARTER.ELF`.
 - Current source now keeps HDD game prep scoped to HDD/PFS-backed `POPSTARTER.ELF`, while non-HDD POPSTARTER HDD-game launches use the normal selector-only handoff again.
 - Next hardware step:
-  - first re-run `D-15` on the current narrowed source,
-  - then re-run `D-14` with a USB game and HDD `POPSTARTER.ELF`,
+  - first re-run `D-14` with a USB game and HDD `POPSTARTER.ELF`,
   - then re-run `D-10` with boot source HDD and HDD `POPSTARTER.ELF`,
   - use `R2` only if the corrected-source HDD-game repro still differs from the USB-game repro.
 - Keep `BOOT.ELF` and OSDSYS behavior stable while iterating on this.
 
-### 3) External exit/launch re-validation
+### 2) External exit/launch re-validation
 - Re-run `U-05` (`OSDSYS`) and `U-10` (`BOOT.ELF after HDD page init`) on current source after the last reverted launch-backend experiment.
 - Record exact run results in `QA_REGRESSION_MATRIX.md` instead of carrying them only in chat history.
 
-### 4) Display and UX verification
+### 3) Display and UX verification
 - Re-run `U-06` to confirm PAL/NTSC menu asset proportions on hardware.
 - Re-run `U-08` and `U-09` on slower/large libraries to judge whether busy overlays communicate activity clearly enough.
 
-### 5) Coverage and documentation
+### 4) Coverage and documentation
 - Add concrete run logs for:
   - startup backend auto-init (`D-12`),
   - device switching without runtime locks (`D-13`),

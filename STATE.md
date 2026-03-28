@@ -82,9 +82,8 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - repro: boot from a non-HDD device with sidecar `POPSTARTER.ELF` on that same device, then launch an HDD title.
   - 2026-03-27 user hardware reported a black screen on the EE-side HDD direct-load attempt.
   - a later 2026-03-27 hardware report also black-screened on the broader stripped-handoff HDD-game path.
-  - a 2026-03-28 hardware re-test also still black-screened on the rolled-back current source with USB boot, USB sidecar/cwd `POPSTARTER.ELF`, and an HDD title.
   - current source now removes Lua-side HDD game pre-mount/CWD preservation from this path and passes only the normal selector handoff unless `POPSTARTER.ELF` itself is HDD/PFS-backed.
-  - corrected-source hardware status is still `Unknown (verify on hardware)`.
+  - user later confirmed on 2026-03-28 that USB boot + USB sidecar/cwd `POPSTARTER.ELF` + HDD game passes on hardware.
 - `U-10` BOOT.ELF after HDD page init:
   - one prior artifact was reported good,
   - a later launch-backend experiment regressed it,
@@ -98,7 +97,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 - Preserve the reported `D-12` HDD startup auto-init fix while iterating on HDD launch-path regressions.
 - Preserve the reported `D-16` USB first-entry fix and confirm MX4SIO behavior remains unchanged on future retests.
 - Resolve HDD-backed `POPSTARTER.ELF` handoff when POPSTARTER itself is on HDD, including non-HDD game launches.
-- Re-confirm that HDD titles still launch correctly when POPSTARTER stays on the non-HDD boot device after reverting the failed HDD direct-load attempt.
+- Preserve the restored `D-15` path where HDD titles launch correctly when POPSTARTER stays on the non-HDD boot device.
 - Re-verify `BOOT.ELF` after HDD page init on current source.
 - Record concrete run logs in `QA_REGRESSION_MATRIX.md`.
 - Implement HDD exFAT menu flow.

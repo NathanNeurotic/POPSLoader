@@ -104,6 +104,7 @@ This matrix tracks current behavior across:
 | 2026-03-27 | Unknown (not reported) | HDD game with non-HDD `POPSTARTER.ELF` on the broader stripped-handoff source | D-15 | FAIL: black screen |
 | 2026-03-28 | Unknown (not reported) | HDD game with non-HDD `POPSTARTER.ELF` on broader experimental source before current rollback | D-15 | FAIL: black screen |
 | 2026-03-28 | Unknown (not reported) | USB boot; USB sidecar/cwd `POPSTARTER.ELF`; HDD game on the rolled-back current source | D-15 | FAIL: black screen |
+| 2026-03-28 | Unknown (not reported) | USB boot; USB Profile 1 sidecar/cwd `POPSTARTER.ELF`; HDD game on the narrowed current source | D-15 | PASS |
 | YYYY-MM-DD | SCPH-xxxxx | USB/MMCE/MX4SIO/HDD details | e.g. S-01,S-02,D-02 | PASS/FAIL + notes |
 
 ## Current Verification Status
@@ -134,6 +135,6 @@ This matrix tracks current behavior across:
     - the user identified this as a regression on the EE-side HDD direct-load attempt.
     - a later 2026-03-27 broader stripped-handoff source also failed, a 2026-03-28 experimental source still black-screened, and the 2026-03-28 rolled-back current source still black-screened with USB boot plus USB sidecar/cwd `POPSTARTER.ELF`.
     - current source now removes Lua-side HDD game pre-mount/CWD preservation from this path and leaves only the normal selector handoff unless `POPSTARTER.ELF` itself is HDD/PFS-backed.
-    - corrected-source hardware result is still `Unknown (verify on hardware)`.
+    - user later confirmed on 2026-03-28 that USB boot + USB Profile 1 sidecar/cwd `POPSTARTER.ELF` + HDD game passes on the corrected source.
   - `U-10`: one artifact was reported good before a later regression experiment; current source has been restored away from that experiment and must be re-tested.
 - All other manual hardware items remain `Unknown (verify on hardware)` unless run logs are added above.
