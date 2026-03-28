@@ -287,10 +287,6 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *a
 	}
 	launch_argv[final_argc] = NULL;
 
-	SifInitRpc(0);
-	SifLoadFileInit();
-	SifLoadFileExit();
-
 	boot_pheader = (elf_pheader_t *)(boot_elf + boot_header->phoff);
 	for (i = 0; i < boot_header->phnum; i++) {
 		if (boot_pheader[i].type != ELF_PT_LOAD) {
@@ -306,9 +302,11 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, int argc, char *a
 		unmount_pfs_slots_for_exec(build_exec_keep_mask(resolved_path));
 	}
 
-	SifExitIopHeap();
-	SifExitRpc();
-	SifExitCmd();
+	/* Prior HDD diagnostics in this repo showed the embedded-loader handoff
+	 * becomes unstable when EE-side SIF state is torn down before ExecPS2.
+	 * Keep the handoff minimal here and let the embedded loader own the next
+	 * stage from its own entry point.
+	 */
 	FlushCache(0);
 	FlushCache(2);
 

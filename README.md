@@ -60,7 +60,8 @@ Reported hardware issues currently being tracked are:
   - a later 2026-03-28 re-test on the loader-side no-auto-exec-slot-preserve source still black-screened for `D-10` on both `X` and `R2`, and the user clarified the other same-day success result was another `D-15` run, not `D-14`.
   - a later 2026-03-28 re-test on the forced-`reboot_iop = 1` source still black-screened for both `D-10` and `D-14`.
   - a later 2026-03-28 re-test on that direct-`hdd0:PART:pfsN:/POPSTARTER.ELF` preference source still black-screened for both `D-10` and `D-14`.
-  - current source now keeps the confirmed HDD startup auto-init and USB first-entry fixes, preserves the restored `D-15` split, and changes the HDD-backed reboot handoff in `src/elf_loader/src/elf.c` to mount the target partition on `pfs0:` and run the embedded loader against `pfs0:/...` instead of handing `SifLoadElf` a direct `hdd0:` path.
+  - a later 2026-03-28 re-test on that mounted-`pfs0:` embedded-loader source still black-screened for `D-10`.
+  - current source now keeps the confirmed HDD startup auto-init and USB first-entry fixes, preserves the restored `D-15` split, keeps the HDD-backed reboot handoff on mounted `pfs0:/...`, and additionally removes EE-side SIF teardown before `ExecPS2` into the embedded loader.
   - hardware result on this corrected current source is still `Unknown (verify on hardware)`.
 - HDD game with non-HDD POPSTARTER (`D-15`)
   - this path had regressed on several 2026-03-27 and early 2026-03-28 experimental sources.
@@ -209,7 +210,8 @@ The workflow uses the `ps2dev/ps2dev` container and validates packaging after bu
   - a later 2026-03-28 re-test on the loader-side no-auto-exec-slot-preserve source still black-screened on both `X` and `R2`.
   - a later 2026-03-28 re-test on the forced-`reboot_iop = 1` source still black-screened on both `X` and `R2`.
   - a later 2026-03-28 re-test on the direct-`hdd0:PART:pfsN:/POPSTARTER.ELF` preference source still black-screened on `X`.
-  - current source now keeps the narrowed Lua-side HDD-backed handoff, but changes the reboot loader path in `src/elf_loader/src/elf.c` to mount the target partition on `pfs0:` and invoke the embedded loader with a mounted `pfs0:/...` load path for HDD-backed POPSTARTER.
+  - a later 2026-03-28 re-test on the mounted-`pfs0:` embedded-loader source still black-screened on `X`.
+  - current source now keeps the narrowed Lua-side HDD-backed handoff, keeps the reboot loader path on mounted `pfs0:/...`, and additionally stops tearing down EE-side SIF state before `ExecPS2` into the embedded loader.
   - hardware result on this corrected current source is still `Unknown (verify on hardware)`.
 - `D-14` HDD-backed POPSTARTER with non-HDD game:
   - reported failing.
@@ -217,7 +219,7 @@ The workflow uses the `ps2dev/ps2dev` container and validates packaging after bu
   - the user later clarified that a same-day 2026-03-28 success report referred to `D-15`, not this case, so `D-14` remains unverified on the loader-side current branch.
   - a later 2026-03-28 re-test on the forced-`reboot_iop = 1` source still black-screened on `X`; `R2` produced no response in that non-HDD-game repro.
   - a later 2026-03-28 re-test on the direct-`hdd0:PART:pfsN:/POPSTARTER.ELF` preference source still black-screened on `X`.
-  - current source now uses the same mounted-`pfs0:` embedded-loader handoff as `D-10` for HDD-backed POPSTARTER.
+  - current source now uses the same mounted-`pfs0:` embedded-loader handoff as `D-10` for HDD-backed POPSTARTER, and additionally stops tearing down EE-side SIF state before `ExecPS2` into the embedded loader.
   - hardware result on this corrected current source is still `Unknown (verify on hardware)`.
 - `D-15` HDD game with non-HDD sidecar POPSTARTER:
   - a later 2026-03-27 hardware report said booting from another device and launching an HDD game with sidecar `POPSTARTER.ELF` on that boot device also black-screened.

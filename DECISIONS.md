@@ -80,7 +80,9 @@ Each entry records:
   - a later 2026-03-28 re-test on that forced-`reboot_iop = 1` source still black-screened for `D-10` and `D-14`, so reboot mode alone did not separate the remaining failure.
   - a later 2026-03-28 re-test on that direct-`hdd0:PART:pfsN:/POPSTARTER.ELF` preference source still black-screened for both `D-10` and `D-14`, so exec-path form alone did not separate the remaining failure.
   - inspection of `wLaunchELF` and `PlayStation2-Basic-BootLoader-Extended` showed the common HDD ELF pattern is to mount the target partition explicitly and feed `SifLoadElf` a mounted `pfs0:/...` path rather than a direct `hdd0:` path.
-  - current source therefore keeps the restored non-HDD POPSTARTER path, but now changes the HDD-backed reboot handoff in `src/elf_loader/src/elf.c` to mount the target partition on `pfs0:` and route the actual load through the embedded loader using a mounted `pfs0:/...` target.
+  - a later 2026-03-28 re-test on that mounted-`pfs0:` embedded-loader source still black-screened for `D-10`.
+  - this repo's earlier HDD diagnostics also recorded that the embedded-loader boundary only became stable once EE-side SIF teardown before `ExecPS2` was removed from the parent handoff.
+  - current source therefore keeps the restored non-HDD POPSTARTER path, keeps the HDD-backed reboot handoff on mounted `pfs0:/...`, and additionally removes EE-side SIF teardown before `ExecPS2` into the embedded loader.
   - current source still keeps the `R2` selector-path experiment for HDD game launches, but that remains secondary to restoring and preserving the non-HDD POPSTARTER baseline for HDD titles.
 - `BOOT.ELF` after HDD page init:
   - the last failed backend experiment was reverted in source,
