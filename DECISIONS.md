@@ -76,7 +76,9 @@ Each entry records:
   - current source now limits that workaround in `bin/POPSLDR/system.lua` to `mc?:/POPSTARTER/POPSTARTER.ELF`, reusing a matching file when present and otherwise preflighting the whole pack write before any directory creation or temp write.
   - when staging has to create `mc?:/POPSTARTER`, it also writes the same `icon.sys`, `list.icn`, and `del.icn` assets used by the settings pack.
   - current source now uses the explicit HDD selector contract for HDD launches by default.
-  - for HDD-backed POPSTARTER launches, current source strips the Lua-side keep-slot and forced-CWD handoff state, and the direct fallback restores HDD-backed POPSTARTER priority in the `reboot_iop` decision.
+  - for HDD-backed POPSTARTER launches, current source strips the Lua-side forced-CWD handoff state and no longer passes the extra HDD game-slot keep request from Lua.
+  - boot-slot preservation is still restored when a HDD game slot is explicitly being carried through, because removing that too broadly regressed the working non-HDD POPSTARTER + HDD game path.
+  - the direct fallback restores HDD-backed POPSTARTER priority in the `reboot_iop` decision.
   - current source still keeps the `R2` selector-path experiment for HDD game launches, but that remains secondary to restoring and preserving the non-HDD POPSTARTER baseline for HDD titles.
 - `BOOT.ELF` after HDD page init:
   - the last failed backend experiment was reverted in source,

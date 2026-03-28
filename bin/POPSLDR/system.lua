@@ -588,6 +588,9 @@ end
 
 local function PrepareForExternalELFLaunch(path, extra_keep_slots)
   local keep_slots = CollectHddKeepSlots(path, extra_keep_slots)
+  if extra_keep_slots ~= nil then
+    keep_slots = PreserveBootPfsSlotsDuringElfLoad(path, keep_slots)
+  end
   if type(System) == "table" and type(System.setExecKeepPfsMask) == "function" then
     pcall(System.setExecKeepPfsMask, BuildPfsKeepMask(keep_slots))
   end
