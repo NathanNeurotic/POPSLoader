@@ -60,8 +60,9 @@ Each entry records:
   - path/mount/CWD mitigations plus the HDD-backed non-reboot `ExecPS2` cleanup are present in current code.
   - a 2026-03-27 hardware re-test of the current source still black-screened with boot source HDD, default/Profile 1/cwd/sidecar `POPSTARTER.ELF` on HDD, and game device HDD.
   - a second 2026-03-27 hardware report also black-screened while launching a USB game with Profile 2 pointing `POPSTARTER.ELF` to HDD, so the remaining failure is now treated as the HDD-backed POPSTARTER exec path itself rather than only HDD game routing.
-  - current source now bypasses `SifLoadElf` only for HDD/PFS-backed exec paths and instead stages the ELF through EE-side `open/read` plus direct segment copy before the existing reboot/non-reboot `ExecPS2` handoff in `src/elf_loader/src/elf.c`.
-  - current source still keeps the `R2` selector-path experiment for HDD game launches, but that is now secondary to validating the new HDD-backed exec workaround on both `D-10` and `D-14`.
+  - a later 2026-03-27 hardware report also said booting from another device and launching an HDD title with sidecar `POPSTARTER.ELF` on that boot device black-screened, and the user identified it as a regression.
+  - the EE-side HDD direct-load workaround in `src/elf_loader/src/elf.c` has therefore been reverted; it did not fix `D-10` and is no longer supported by hardware evidence.
+  - current source still keeps the `R2` selector-path experiment for HDD game launches, but that remains secondary to restoring and preserving the non-HDD POPSTARTER baseline for HDD titles.
 - `BOOT.ELF` after HDD page init:
   - the last failed backend experiment was reverted in source,
   - current hardware status on that restored source is still `Unknown (verify on hardware)`.

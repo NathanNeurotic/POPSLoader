@@ -6,6 +6,7 @@ Last updated: 2026-03-27
 - Core launcher functionality is present in code for MMCE, MX4SIO, HDD (PFS), USB, Disc (`DKWDRV`), settings persistence, cover preview, path editing, startup backend auto-init, and exit flows.
 - The shared default/Profile 1 local POPSTARTER baseline was restored by rolling back to the `BETA-10-play-CHECKPOINT2` resolver behavior; user hardware confirmed that fix.
 - The main stabilization blocker is still HDD-backed `POPSTARTER.ELF` handoff when the launcher, sidecar/CWD, or configured POPSTARTER path lives on HDD. Reported hardware results still black-screen both HDD-game and USB-game repros.
+- The latest EE-side HDD direct-load workaround was reverted after it did not fix `D-10` and coincided with a reported HDD-game regression when POPSTARTER stayed on the non-HDD boot device.
 - `HDD (exFAT)` and `SMB (v1)` remain intentionally unimplemented menu entries.
 
 ## Immediate Priorities
@@ -18,11 +19,12 @@ Last updated: 2026-03-27
   - current reported result: black-screen hang.
 - 2026-03-27 re-test of the current source still black-screened with boot source HDD, `POPSTARTER.ELF` on HDD via default/Profile 1/cwd/sidecar, and game device HDD.
 - 2026-03-27 user hardware also black-screened when launching a USB game with Profile 2 pointing `POPSTARTER.ELF` to HDD, so `D-14` now shows the remaining bug is the HDD-backed POPSTARTER exec path itself, not only HDD game routing.
-- Current source now routes HDD/PFS-backed exec paths through an EE-side `open/read` ELF copy in `src/elf_loader/src/elf.c` before the existing reboot/non-reboot `ExecPS2` handoff.
+- The latest EE-side `open/read` HDD direct-load attempt has been reverted after it still failed `D-10` and coincided with a reported `D-15` regression on HDD-game launch with non-HDD sidecar POPSTARTER.
 - Next hardware step:
-  - re-run `D-14` first with a USB game and HDD `POPSTARTER.ELF`,
-  - re-run `D-10` with boot source HDD and HDD `POPSTARTER.ELF`,
-  - use `R2` only if the HDD-game repro still differs from the USB-game repro after the new HDD-only handoff change.
+  - first re-run `D-15` on the reverted source to confirm HDD-game launch with non-HDD sidecar POPSTARTER is restored,
+  - then re-run `D-14` with a USB game and HDD `POPSTARTER.ELF`,
+  - then re-run `D-10` with boot source HDD and HDD `POPSTARTER.ELF`,
+  - use `R2` only if the reverted-source HDD-game repro still differs from the USB-game repro.
 - Keep `BOOT.ELF` and OSDSYS behavior stable while iterating on this.
 
 ### 2) External exit/launch re-validation

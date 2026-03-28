@@ -62,7 +62,11 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - reported failing on hardware.
   - repro: launch a non-HDD title while `POPSTARTER.ELF` itself is configured on HDD.
   - 2026-03-27 user hardware also black-screened when launching a USB game with Profile 2 pointing `POPSTARTER.ELF` to HDD.
-  - current source now routes HDD/PFS-backed exec paths through an EE-side direct ELF copy in `src/elf_loader/src/elf.c`; corrected-source hardware status is still `Unknown (verify on hardware)`.
+- `D-15` HDD game with non-HDD sidecar POPSTARTER:
+  - reported as a regression on hardware.
+  - repro: boot from a non-HDD device with sidecar `POPSTARTER.ELF` on that same device, then launch an HDD title.
+  - 2026-03-27 user hardware reported a black screen on the EE-side HDD direct-load attempt.
+  - that direct-load workaround has now been reverted; reverted-source hardware status is still `Unknown (verify on hardware)`.
 - `U-10` BOOT.ELF after HDD page init:
   - one prior artifact was reported good,
   - a later launch-backend experiment regressed it,
@@ -74,6 +78,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 
 ## Known Open Work
 - Resolve HDD-backed `POPSTARTER.ELF` handoff when POPSTARTER itself is on HDD, including non-HDD game launches.
+- Re-confirm that HDD titles still launch correctly when POPSTARTER stays on the non-HDD boot device after reverting the failed HDD direct-load attempt.
 - Re-verify `BOOT.ELF` after HDD page init on current source.
 - Record concrete run logs in `QA_REGRESSION_MATRIX.md`.
 - Implement HDD exFAT menu flow.

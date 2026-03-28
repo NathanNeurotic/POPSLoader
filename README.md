@@ -62,8 +62,8 @@ Reported hardware issues currently being tracked are:
     - game device: HDD.
   - 2026-03-27 hardware also reported the same black-screen when launching a USB game with Profile 2 pointing `POPSTARTER.ELF` to HDD, so the current reported failure scope is broader than HDD game routing alone.
   - current source now exposes an HDD-list alternate launch on `R2` for HDD-resident `POPSTARTER.ELF`, changing only the selector contract to `hdd0:PART:pfs0:/GAME.ELF` for A/B hardware testing.
-  - current source also routes HDD/PFS-backed exec paths through an EE-side `open/read` ELF copy in `src/elf_loader/src/elf.c` before the existing reboot/non-reboot `ExecPS2` handoff, instead of using `SifLoadElf` for those paths.
-  - hardware re-test is still required before treating that HDD-only handoff workaround as successful.
+  - the latest EE-side HDD direct-load workaround was reverted after it still failed `D-10` and coincided with a reported HDD-game regression elsewhere.
+  - current source therefore remains on the earlier handoff path while this failure is investigated.
 
 ## Runtime Behavior (Current Code)
 
@@ -188,11 +188,13 @@ The workflow uses the `ps2dev/ps2dev` container and validates packaging after bu
 - `D-10` HDD POPSTARTER on HDD:
   - reported failing.
   - 2026-03-27 re-test of the current source still failed with boot source HDD, POPSTARTER on HDD via default/Profile 1/cwd/sidecar, and game device HDD.
-  - current source now also contains an HDD/PFS-backed direct-load workaround in `src/elf_loader/src/elf.c`; hardware result on that source is still `Unknown (verify on hardware)`.
 - `D-14` HDD-backed POPSTARTER with non-HDD game:
   - reported failing.
   - 2026-03-27 user hardware also black-screened when launching a USB game with Profile 2 pointing `POPSTARTER.ELF` to HDD.
-  - current source uses the same HDD/PFS-backed direct-load workaround for this path; hardware result on that source is still `Unknown (verify on hardware)`.
+- `D-15` HDD game with non-HDD sidecar POPSTARTER:
+  - a later 2026-03-27 hardware report said booting from another device and launching an HDD game with sidecar `POPSTARTER.ELF` on that boot device also black-screened.
+  - that was reported as a regression on the EE-side HDD direct-load attempt, which has now been reverted in source.
+  - reverted-source hardware status is still `Unknown (verify on hardware)`.
 - Shared default/Profile 1 local POPSTARTER baseline:
   - reported failing with `Cant find POPSTARTER ELF` on 2026-03-27 when booted from USB with USB sidecar/cwd/Profile 1.
   - current source was rolled back to `BETA-10-play-CHECKPOINT2` shared resolver behavior for this path after the later unverified common-path changes failed to restore launch.
