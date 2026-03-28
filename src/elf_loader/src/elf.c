@@ -308,15 +308,11 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, const char *sourc
 		}
 	}
 
-	if (is_hdd_backed_exec_path(resolved_path)) {
-		unmount_pfs_slots_for_exec(build_exec_keep_mask(resolved_path));
-	}
-
-	/* Prior HDD diagnostics in this repo showed the embedded-loader handoff
-	 * becomes unstable when EE-side SIF state is torn down before ExecPS2.
-	 * Keep the handoff minimal here and let the embedded loader own the next
-	 * stage from its own entry point.
+	/* Match the parent-to-loader ownership more closely to wLaunchELF for
+	 * HDD-backed launches: the parent mounts pfs0: and passes control to the
+	 * embedded loader without trying to reshuffle other PFS state here.
 	 */
+	SifExitRpc();
 	FlushCache(0);
 	FlushCache(2);
 
