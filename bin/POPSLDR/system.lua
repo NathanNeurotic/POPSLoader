@@ -1577,6 +1577,62 @@ local function EnsureDirectory(path)
   return ok
 end
 
+local function EnsureParentDirectory(path)
+  local parent = DirectoryFromExecPath(path)
+  if parent == nil or parent == "" then
+    return false
+  end
+  local normalized_parent = string.gsub(parent, "/+$", "")
+  if normalized_parent == "" then
+    return false
+  end
+  if doesFolderExist(parent) or doesFolderExist(normalized_parent) then
+    return true
+  end
+  return EnsureDirectory(normalized_parent)
+end
+
+local function BuildHddPopstarterStageCandidates()
+  local out = {}
+  local app_stage = ResolveWritablePath("POPSLDR_HDD.ELF")
+  if type(app_stage) == "string" and app_stage ~= "" and not IsHddExecContextPath(app_stage) then
+    table.insert(out, app_stage)
+  end
+  table.insert(out, "mc0:/POPSTARTER/POPSLDR_HDD.ELF")
+  table.insert(out, "mc1:/POPSTARTER/POPSLDR_HDD.ELF")
+  return out
+end
+
+local function StageHddPopstarterForLaunch(source_path)
+  local source = tostring(source_path or "")
+  if source == "" or not IsHddExecContextPath(source) then
+    return source
+  end
+
+  local source_size = GetFileSizeSafe(source)
+  if type(source_size) ~= "number" or source_size <= 0 then
+    return source
+  end
+
+  local candidates = BuildHddPopstarterStageCandidates()
+  for i = 1, #candidates do
+    local dest = candidates[i]
+    if type(dest) == "string" and dest ~= "" and dest ~= source and not IsHddExecContextPath(dest) and EnsureParentDirectory(dest) then
+      local dest_size = GetFileSizeSafe(dest)
+      local ready = doesFileExist(dest) and dest_size == source_size
+      if not ready then
+        local ok_copy, copied = pcall(CopyExternalAtomicBounded, source, dest, source_size)
+        ready = ok_copy and copied == true
+      end
+      if ready and PLDR.PopstarterProbeWithEnsure(dest) then
+        return dest
+      end
+    end
+  end
+
+  return source
+end
+
 function PLDR.EnsurePopstarterDir()
   if not EnsureDirectory(PLDR.POPSTARTER_DIR) then
     return false
@@ -3441,6 +3497,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     )
     return
   end
+  popstarter = StageHddPopstarterForLaunch(popstarter)
   local hdd_init = nil
   local hdd_partition_label = nil
   local hdd_relpath = nil
@@ -3629,10 +3686,10 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     launch_cwd = (hdd_init ~= nil and hdd_init.mount_ok == true) and hdd_init.mount_prefix or nil
   }
   local reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
-  if policy.name == "HDD" then
-    reboot_iop = 0
-  elseif IsPfsExecPath(popstarter) then
+  if IsHddExecContextPath(popstarter) then
     reboot_iop = 1
+  elseif policy.name == "HDD" then
+    reboot_iop = 0
   end
   if UI ~= nil and UI.CoverCache ~= nil and UI.CoverCache.Clear ~= nil then
     UI.CoverCache:Clear()

@@ -62,6 +62,8 @@ Reported hardware issues currently being tracked are:
     - game device: HDD.
   - 2026-03-27 hardware also reported the same black-screen when launching a USB game with Profile 2 pointing `POPSTARTER.ELF` to HDD, so the current reported failure scope is broader than HDD game routing alone.
   - current source now exposes an HDD-list alternate launch on `R2` for HDD-resident `POPSTARTER.ELF`, changing only the selector contract to `hdd0:PART:pfs0:/GAME.ELF` for A/B hardware testing.
+  - current source now also tries to stage HDD-backed `POPSTARTER.ELF` to the first available non-HDD launch path before exec, falling back to direct HDD launch only if staging is unavailable.
+  - the direct HDD fallback also restores HDD-backed POPSTARTER priority in the `reboot_iop` decision instead of letting the game device override it.
   - the latest EE-side HDD direct-load workaround was reverted after it still failed `D-10` and coincided with a reported HDD-game regression elsewhere.
   - current source therefore remains on the earlier handoff path while this failure is investigated.
 
@@ -201,9 +203,13 @@ The workflow uses the `ps2dev/ps2dev` container and validates packaging after bu
 - `D-10` HDD POPSTARTER on HDD:
   - reported failing.
   - 2026-03-27 re-test of the current source still failed with boot source HDD, POPSTARTER on HDD via default/Profile 1/cwd/sidecar, and game device HDD.
+  - current source now first tries a non-HDD staging workaround for HDD-backed `POPSTARTER.ELF`, then falls back to corrected direct-launch `reboot_iop` handling if staging is unavailable.
+  - hardware result on that source is still `Unknown (verify on hardware)`.
 - `D-14` HDD-backed POPSTARTER with non-HDD game:
   - reported failing.
   - 2026-03-27 user hardware also black-screened when launching a USB game with Profile 2 pointing `POPSTARTER.ELF` to HDD.
+  - current source uses the same staging-or-corrected-direct-launch path for this case.
+  - hardware result on that source is still `Unknown (verify on hardware)`.
 - `D-15` HDD game with non-HDD sidecar POPSTARTER:
   - a later 2026-03-27 hardware report said booting from another device and launching an HDD game with sidecar `POPSTARTER.ELF` on that boot device also black-screened.
   - that was reported as a regression on the EE-side HDD direct-load attempt, which has now been reverted in source.

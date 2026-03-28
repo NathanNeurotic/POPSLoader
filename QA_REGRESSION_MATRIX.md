@@ -73,6 +73,7 @@ This matrix tracks current behavior across:
 | D-14 | HDD-backed POPSTARTER with non-HDD game | Configure `POPSTARTER_PATH` or Profile 2 to an HDD-resident `POPSTARTER.ELF` | Launch a USB, MMCE, or MX4SIO title | POPSTARTER launches without hanging on a black screen even though the executable itself is on HDD |
 | D-15 | HDD game with non-HDD sidecar POPSTARTER | Boot from USB/MMCE/MX4SIO or another non-HDD device with sidecar/cwd `POPSTARTER.ELF` on that same device | Launch an HDD title | HDD title still launches without a black screen when POPSTARTER itself remains off-HDD |
 | D-16 | USB first-entry backend discovery | Cold boot without first opening the USB page | Open USB once | USB backend is found on the first entry without backing out and re-entering |
+| D-17 | HDD POPSTARTER staging fallback | Configure `POPSTARTER.ELF` on HDD and make at least one non-HDD writable stage destination available (`APP_DIR`, `mc0:/POPSTARTER`, or `mc1:/POPSTARTER`) | Launch a title | POPSTARTER is staged off-HDD before exec and launch no longer black-screens |
 
 ### UI behavior
 | ID | Area | Setup | Action | Pass Criteria |
@@ -119,11 +120,15 @@ This matrix tracks current behavior across:
   - `D-10`: reported FAIL when booted from HDD and launching an HDD title with HDD `POPSTARTER.ELF` sidecar/CWD.
     - 2026-03-27 re-test of the current source still failed with boot source HDD, POPSTARTER on HDD via default/Profile 1/cwd/sidecar, and game device HDD.
     - the later EE-side direct-load workaround was reverted after it did not fix this and coincided with a broader regression report.
+    - current source now first tries a non-HDD staging workaround for HDD-backed `POPSTARTER.ELF`, then falls back to corrected direct-launch `reboot_iop` handling if staging is unavailable.
     - current source still exposes an `R2` alternate HDD launch for HDD-resident `POPSTARTER.ELF` that changes only the selector path to `hdd0:PART:pfs0:/GAME.ELF`; hardware result is still `Unknown (verify on hardware)`.
   - `D-14`: reported FAIL on 2026-03-27 when launching a USB game with Profile 2 pointing `POPSTARTER.ELF` to HDD.
     - this broadened the remaining issue from “HDD game launch” to “HDD-backed POPSTARTER exec path”.
+    - current source uses the same staging-or-corrected-direct-launch path; hardware result is still `Unknown (verify on hardware)`.
   - `D-15`: reported FAIL on 2026-03-27 when booting from a non-HDD device and launching an HDD title with sidecar/cwd `POPSTARTER.ELF` on that boot device.
     - the user identified this as a regression on the EE-side HDD direct-load attempt.
     - that direct-load workaround has now been reverted; reverted-source hardware result is still `Unknown (verify on hardware)`.
+  - `D-17`: current source now tries to stage HDD-backed `POPSTARTER.ELF` to the first available non-HDD launch path before exec.
+    - corrected-source hardware result is still `Unknown (verify on hardware)`.
   - `U-10`: one artifact was reported good before a later regression experiment; current source has been restored away from that experiment and must be re-tested.
 - All other manual hardware items remain `Unknown (verify on hardware)` unless run logs are added above.
