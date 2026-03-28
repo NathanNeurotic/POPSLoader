@@ -135,20 +135,15 @@ int main(int argc, char *argv[])
 	if (ret == 0 && elfdata.epc != 0) {
 		SET_GS_BGCOLOUR(YELLOW_BG);
 
-		// Let's reset IOP because ELF was already loaded in memory
-		while(!SifIopReset(NULL, 0)){};
-		while (!SifIopSync()) {};
+		/* Reference HDD loaders do not unconditionally reset IOP here.
+		 * wLaunchELF only resets when the loader receives explicit HDD
+		 * source context, and PS2 BBL defaults this path off entirely.
+		 * Keep the mounted-PFS handoff minimal and let the target own the
+		 * next-stage runtime from its entry point.
+		 */
+		SifExitRpc();
 
 		SET_GS_BGCOLOUR(ORANGE_BG);
-
-        SifInitRpc(0);
-        // Load modules.
-        SifLoadFileInit();
-        SifLoadModule("rom0:SIO2MAN", 0, NULL);
-        SifLoadModule("rom0:MCMAN", 0, NULL);
-        SifLoadModule("rom0:MCSERV", 0, NULL);
-        SifLoadFileExit();
-        SifExitRpc();
 
 		SET_GS_BGCOLOUR(BROWN_BG);
 

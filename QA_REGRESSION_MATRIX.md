@@ -139,14 +139,14 @@ This matrix tracks current behavior across:
     - a later 2026-03-28 re-test on the forced-`reboot_iop = 1` source still black-screened on both `X` and `R2`.
     - a later 2026-03-28 re-test on the direct-`hdd0:PART:pfsN:/POPSTARTER.ELF` preference source still black-screened on `X`.
     - a later 2026-03-28 re-test on the mounted-`pfs0:` embedded-loader source still black-screened on `X`.
-    - current source now keeps the narrowed Lua-side HDD-backed handoff, keeps the reboot loader path on mounted `pfs0:/...`, stops tearing down EE-side SIF state before `ExecPS2` into the embedded loader, and no longer preserves boot PFS slots during launch prep for HDD-backed `POPSTARTER.ELF`.
+    - current source now keeps the narrowed Lua-side HDD-backed handoff, keeps the reboot loader path on mounted `pfs0:/...`, stops tearing down EE-side SIF state before `ExecPS2` into the embedded loader, no longer preserves boot PFS slots during launch prep for HDD-backed `POPSTARTER.ELF`, and no longer unconditionally resets IOP inside the embedded loader before `ExecPS2`.
     - current source still exposes an `R2` alternate HDD launch for HDD-resident `POPSTARTER.ELF` that changes only the selector path to `hdd0:PART:pfs0:/GAME.ELF`; hardware result is still `Unknown (verify on hardware)`.
   - `D-14`: reported FAIL on 2026-03-27 when launching a USB game with Profile 2 pointing `POPSTARTER.ELF` to HDD.
     - this broadened the remaining issue from “HDD game launch” to “HDD-backed POPSTARTER exec path”.
     - the user later clarified that the other same-day 2026-03-28 success result referred to `D-15`, not this case.
     - a later 2026-03-28 re-test on the forced-`reboot_iop = 1` source still black-screened on `X`; `R2` produced no response in that non-HDD-game repro.
     - a later 2026-03-28 re-test on the direct-`hdd0:PART:pfsN:/POPSTARTER.ELF` preference source still black-screened on `X`.
-    - current source now uses the same mounted-`pfs0:` embedded-loader handoff as `D-10`, stops tearing down EE-side SIF state before `ExecPS2` into the embedded loader, and no longer preserves boot PFS slots during launch prep for HDD-backed `POPSTARTER.ELF`; hardware result is still `Unknown (verify on hardware)`.
+    - current source now uses the same mounted-`pfs0:` embedded-loader handoff as `D-10`, stops tearing down EE-side SIF state before `ExecPS2` into the embedded loader, no longer preserves boot PFS slots during launch prep for HDD-backed `POPSTARTER.ELF`, and no longer unconditionally resets IOP inside the embedded loader before `ExecPS2`; hardware result is still `Unknown (verify on hardware)`.
   - `D-15`: reported FAIL on 2026-03-27 when booting from a non-HDD device and launching an HDD title with sidecar/cwd `POPSTARTER.ELF` on that boot device.
     - the user identified this as a regression on the EE-side HDD direct-load attempt.
     - a later 2026-03-27 broader stripped-handoff source also failed, a 2026-03-28 experimental source still black-screened, and the 2026-03-28 rolled-back current source still black-screened with USB boot plus USB sidecar/cwd `POPSTARTER.ELF`.
