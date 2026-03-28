@@ -603,7 +603,9 @@ end
 
 local function PrepareForExternalELFLaunch(path, extra_keep_slots, keep_slots_after_load)
   local keep_slots = CollectHddKeepSlots(path, extra_keep_slots)
-  if not IsHddExecContextPath(path) then
+  local lowered_path = string.lower(tostring(path or ""))
+  local is_hdd_exec_context = string.match(lowered_path, "^hdd%d:") ~= nil or string.match(lowered_path, "^pfs%d*:/") ~= nil
+  if not is_hdd_exec_context then
     keep_slots = PreserveBootPfsSlotsDuringElfLoad(path, keep_slots)
   end
   local postload_keep_slots = keep_slots_after_load
