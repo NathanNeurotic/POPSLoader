@@ -160,8 +160,9 @@ This matrix tracks current behavior across:
     - a later 2026-03-28 re-test on that exact-boot-mount/source-context source still black-screened on `X`.
     - current source now replaces the earlier ad hoc HDD source-context reboot handoff with an explicit partition-aware contract across `bin/POPSLDR/system.lua`, `src/luasystem.cpp`, `src/elf_loader/src/elf.c`, and `src/elf_loader/src/loader/src/loader.c`.
     - on that contract, the parent passes exact HDD partition context separately from the mounted load path, remounts `pfs0:` from that partition while reusing the mounted relpath Lua already resolved, and the embedded loader follows the local `ps2sdk` partition/load-path/argv split with `SifLoadFileInit/Exit` around `SifLoadElf` plus the post-reset MC module reload.
-    - the latest 2026-03-28 hardware result on that partition-aware source no longer black-screened, but the launcher still regained control through its generic timeout failure path.
-    - current source now stops masking the returned loader rc behind that timeout message and also restores the earlier embedded-loader fix that avoids `printf`/`snprintf` in that environment.
+    - the latest 2026-03-28 hardware result on that partition-aware source no longer black-screened, but the launcher regained control with `rc=-1 (returned after 3528 ms)`.
+    - current source now restores more of the original parent-side embedded-loader jump contract in `src/elf_loader/src/elf.c`: BRAM wipe plus `SifInitRpc`/`SifLoadFileInit`/`SifLoadFileExit` before the copy, and `SifExitIopHeap`/`SifExitRpc`/`SifExitCmd` before the final `ExecPS2`.
+    - current source also keeps the safer embedded-loader fix that avoids `printf`/`snprintf` in that environment and surfaces the real returned rc instead of masking it as a timeout.
     - current source still exposes an `R2` alternate HDD launch for HDD-resident `POPSTARTER.ELF` that changes only the selector path to `hdd0:PART:pfs0:/GAME.ELF`; hardware result is still `Unknown (verify on hardware)`.
   - `D-14`: reported FAIL on 2026-03-27 when launching a USB game with Profile 2 pointing `POPSTARTER.ELF` to HDD.
     - this broadened the remaining issue from “HDD game launch” to “HDD-backed POPSTARTER exec path”.
@@ -174,5 +175,7 @@ This matrix tracks current behavior across:
     - a later 2026-03-27 broader stripped-handoff source also failed, a 2026-03-28 experimental source still black-screened, and the 2026-03-28 rolled-back current source still black-screened with USB boot plus USB sidecar/cwd `POPSTARTER.ELF`.
     - current source now removes Lua-side HDD game pre-mount/CWD preservation from this path and leaves only the normal selector handoff unless `POPSTARTER.ELF` itself is HDD/PFS-backed.
     - user later confirmed on 2026-03-28 that USB boot + USB Profile 1 sidecar/cwd `POPSTARTER.ELF` + HDD game passes on the corrected source.
-  - `U-10`: one artifact was reported good before a later regression experiment; current source has been restored away from that experiment and must be re-tested.
+  - `U-10`: one artifact was reported good before a later regression experiment.
+    - repo history shows the BOOT.ELF modal later changed from its older non-reboot direct `System.loadELF(elf_path, 0, elf_path)` path to a reboot-I/O path with launch-CWD setup.
+    - current source now restores the older BOOT.ELF-specific non-reboot/no-launch-CWD path and must be re-tested.
 - All other manual hardware items remain `Unknown (verify on hardware)` unless run logs are added above.

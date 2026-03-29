@@ -1169,17 +1169,10 @@ UI = {
         end
         UI.LAUNCHING = true
         UI.Modal.Close()
-        local previous_cwd = nil
-        if type(PLDR) == "table" and type(PLDR.SetLaunchWorkingDirectory) == "function" then
-          previous_cwd = PLDR.SetLaunchWorkingDirectory(elf_path)
-        end
         if type(PLDR) == "table" and type(PLDR.PrepareForExternalELFLaunch) == "function" then
           pcall(PLDR.PrepareForExternalELFLaunch, elf_path)
         end
-        local rc = System.loadELF(elf_path, 1, elf_path)
-        if type(PLDR) == "table" and type(PLDR.RestoreWorkingDirectory) == "function" then
-          pcall(PLDR.RestoreWorkingDirectory, previous_cwd)
-        end
+        local rc = System.loadELF(elf_path, 0, elf_path)
         UI.LAUNCHING = false
         UI.Notify("BOOT.ELF launch failed\nrc="..tostring(rc), 150)
         return

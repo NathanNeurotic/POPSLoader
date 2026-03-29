@@ -100,11 +100,13 @@ Each entry records:
   - repo comparison against the local `ps2sdk` tree then showed the remaining drift was structural: the header still documented a partition-aware loader contract, but the live reboot path was still using a custom source-context channel instead of the same partition/load-path/argv split.
   - current source therefore keeps the restored non-HDD POPSTARTER path, seeds the exact boot `pfs1:` mount metadata from `etc/boot.lua` into Lua-side HDD mount tracking, and replaces that ad hoc reboot handoff with an explicit partition-aware contract across `bin/POPSLDR/system.lua`, `src/luasystem.cpp`, `src/elf_loader/src/elf.c`, and `src/elf_loader/src/loader/src/loader.c`.
   - on that contract, Lua passes exact HDD partition context separately from the mounted load path, the parent remounts `pfs0:` from that partition while reusing the mounted relpath Lua already resolved, and the embedded loader follows the local `ps2sdk` partition/load-path/argv split with `SifLoadFileInit/Exit` around `SifLoadElf` plus the post-reset MC module reload.
-  - the next 2026-03-28 hardware result on that partition-aware source no longer black-screened, but the launcher still regained control through its generic timeout failure path, which means the handoff is now returning instead of hanging.
-  - repo history also showed an earlier embedded-loader fix (`e2c4b8f`) that removed `printf`/`snprintf` dependence in that environment to avoid libc-related memory corruption, and current source now restores that safer pattern while also surfacing the real loader return code instead of masking it as a timeout.
+  - the next 2026-03-28 hardware result on that partition-aware source no longer black-screened, but the launcher regained control with `rc=-1`, which means the parent `ExecPS2` jump into the embedded loader is returning instead of handing off cleanly.
+  - repo history comparison then showed that this partition-aware reboot path had drifted away from the original parent-side embedded-loader jump contract in `src/elf_loader/src/elf.c`: it no longer performed the BRAM wipe or the original `SifInitRpc`/`SifLoadFileInit`/`SifLoadFileExit` and `SifExitIopHeap`/`SifExitRpc`/`SifExitCmd` sequence around that final `ExecPS2`.
+  - current source restores that original parent-side jump contract while still keeping the safer embedded-loader fix (`e2c4b8f`) that avoids `printf`/`snprintf` dependence in that environment and surfaces the real loader return code instead of masking it as a timeout.
   - current source still keeps the `R2` selector-path experiment for HDD game launches, but that remains secondary to restoring and preserving the non-HDD POPSTARTER baseline for HDD titles.
 - `BOOT.ELF` after HDD page init:
-  - the last failed backend experiment was reverted in source,
+  - repo history shows the BOOT.ELF modal originally used a simpler non-reboot `System.loadELF(elf_path, 0, elf_path)` path without launch-CWD setup, and later source changed it to `reboot_iop = 1` plus launch-CWD.
+  - current source restores that older BOOT.ELF-specific path as the smallest evidence-backed rollback, while leaving POPSTARTER/HDD handoff work unchanged.
   - current hardware status on that restored source is still `Unknown (verify on hardware)`.
 - PAL asset proportions:
   - code compensates for PAL layout,

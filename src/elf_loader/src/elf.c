@@ -341,6 +341,11 @@ static int ExecuteViaEmbeddedLoader(const char *partition_context, const char *l
 		return -5;
 	}
 
+	/* The embedded loader is linked into BRAM. Keep the original BRAM wipe
+	 * contract before copying its segments there.
+	 */
+	wipe_bramMem();
+
 	launch_argv[0] = store_arg(partition_context != NULL ? partition_context : "", launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
 	if (!launch_argv[0]) {
 		return -3;
@@ -358,6 +363,10 @@ static int ExecuteViaEmbeddedLoader(const char *partition_context, const char *l
 	}
 	launch_argv[final_argc] = NULL;
 
+	SifInitRpc(0);
+	SifLoadFileInit();
+	SifLoadFileExit();
+
 	boot_pheader = (elf_pheader_t *)(boot_elf + boot_header->phoff);
 	for (i = 0; i < boot_header->phnum; i++) {
 		if (boot_pheader[i].type != ELF_PT_LOAD) {
@@ -369,11 +378,9 @@ static int ExecuteViaEmbeddedLoader(const char *partition_context, const char *l
 		}
 	}
 
-	/* Repo-local HDD diagnostics previously narrowed one failure boundary to
-	 * tearing down EE RPC right before the jump into the embedded loader.
-	 * Keep the mounted pfs0: handoff minimal here, but leave EE RPC state
-	 * intact across the final ExecPS2 boundary.
-	 */
+	SifExitIopHeap();
+	SifExitRpc();
+	SifExitCmd();
 	FlushCache(0);
 	FlushCache(2);
 
