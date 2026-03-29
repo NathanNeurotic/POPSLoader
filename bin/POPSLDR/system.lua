@@ -2077,6 +2077,7 @@ local function CollectStartupBackendTargets()
   end
 
   for i = 1, #paths do
+    local raw = tostring(paths[i] or "")
     local normalized = string.lower(NormalizeFsPathRaw(paths[i]))
     if string.match(normalized, "^mx4sio%d*:/") ~= nil then
       targets.mx4sio = true
@@ -2085,6 +2086,9 @@ local function CollectStartupBackendTargets()
     elseif string.match(normalized, "^pfs%d*:/") ~= nil or string.match(normalized, "^hdd%d:") ~= nil then
       targets.hdd = true
       AddUniqueStartupPath(targets.hdd_paths, seen_hdd_paths, paths[i])
+    elseif targets.boot_name == "HDD" and (IsDefaultRelativePopstarterPath(raw) or IsLegacyDefaultPopstarterPath(raw)) then
+      targets.hdd = true
+      AddUniqueStartupPath(targets.hdd_paths, seen_hdd_paths, raw)
     else
       AddUniqueMassRoot(targets.mass_roots, seen_roots, ExtractMassRootFromPath(normalized))
     end
