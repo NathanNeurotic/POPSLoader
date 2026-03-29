@@ -17,12 +17,14 @@
 #include <sifrpc.h>
 #include <errno.h>
 #include <ps2sdkapi.h>
-#define DPRINTF(x...) printf(x)
 
 #ifdef LOADER_ENABLE_DEBUG_COLORS
+#include <debug.h>
 #define SET_GS_BGCOLOUR(colour) {*((volatile unsigned long int *)0x120000E0) = colour;}
+#define DPRINTF(x...) scr_printf(x)
 #else
 #define SET_GS_BGCOLOUR(colour)
+#define DPRINTF(x...) do {} while (0)
 #endif
 
 // Color status helper in BGR format
@@ -92,7 +94,8 @@ static int build_default_target_arg0(const char *partition_context, const char *
 	}
 
 	if (partition_context == NULL || partition_context[0] == '\0') {
-		snprintf(out, out_size, "%s", load_path);
+		strncpy(out, load_path, out_size - 1);
+		out[out_size - 1] = '\0';
 		return 0;
 	}
 
@@ -104,15 +107,21 @@ static int build_default_target_arg0(const char *partition_context, const char *
 		if (suffix == NULL || suffix[0] == '\0') {
 			suffix = "/";
 		}
+		strncpy(out, partition_context, out_size - 1);
+		out[out_size - 1] = '\0';
 		if (suffix[0] != '/') {
-			snprintf(out, out_size, "%spfs:/%s", partition_context, suffix);
+			strncat(out, "pfs:/", out_size - strlen(out) - 1);
+			strncat(out, suffix, out_size - strlen(out) - 1);
 		} else {
-			snprintf(out, out_size, "%spfs:%s", partition_context, suffix);
+			strncat(out, "pfs:", out_size - strlen(out) - 1);
+			strncat(out, suffix, out_size - strlen(out) - 1);
 		}
 		return 0;
 	}
 
-	snprintf(out, out_size, "%s%s", partition_context, load_path);
+	strncpy(out, partition_context, out_size - 1);
+	out[out_size - 1] = '\0';
+	strncat(out, load_path, out_size - strlen(out) - 1);
 	return 0;
 }
 
@@ -143,8 +152,10 @@ int main(int argc, char *argv[])
 		SET_GS_BGCOLOUR(RED_BG);
 		return -EINVAL;
 	}
-	snprintf(partition_context, sizeof(partition_context), "%s", argv[0] ? argv[0] : "");
-	snprintf(load_path, sizeof(load_path), "%s", argv[1] ? argv[1] : "");
+	strncpy(partition_context, argv[0] ? argv[0] : "", sizeof(partition_context) - 1);
+	partition_context[sizeof(partition_context) - 1] = '\0';
+	strncpy(load_path, argv[1] ? argv[1] : "", sizeof(load_path) - 1);
+	load_path[sizeof(load_path) - 1] = '\0';
 	if (load_path[0] == '\0') {
 		SET_GS_BGCOLOUR(RED_BG);
 		return -EINVAL;
@@ -223,11 +234,15 @@ int main(int argc, char *argv[])
 		for (i = 0; i < target_argc; i++) {
 			DPRINTF("POPS EXEC: argv[%d] = %s\n", i, target_argv[i]);
 		}
-		return ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, target_argc, target_argv);
+		ret = ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, target_argc, target_argv);
+		return (ret != 0) ? ret : -3500;
 	} else {
 		SET_GS_BGCOLOUR(MAGENTA_BG);
 		SifExitRpc();
-		return -ENOENT;
+		if (ret != 0) {
+			return -3200 + ret;
+		}
+		return -3201;
 	}
 }
 

@@ -3566,19 +3566,9 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   else
     rc = System.loadELF(popstarter, reboot_iop)
   end
-  if (Timer.getTime(LaunchState.fade_timer) - LaunchState.fade_start) >= LaunchState.watchdog_ms then
-    BlockLaunchFailure(
-      "Launch timeout: exec did not transfer control",
-      popstarter,
-      context and context.device_page or "unknown",
-      argv0,
-      argv0,
-      app_dir,
-      nil,
-      nil
-    )
-    RestoreWorkingDirectory(previous_cwd)
-    return
+  local elapsed_ms = Timer.getTime(LaunchState.fade_timer) - LaunchState.fade_start
+  if elapsed_ms >= LaunchState.watchdog_ms then
+    rc = string.format("%s (returned after %d ms)", tostring(rc), elapsed_ms)
   end
   RestoreWorkingDirectory(previous_cwd)
   BlockLaunchFailure(
