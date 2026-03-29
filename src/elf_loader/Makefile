@@ -16,6 +16,7 @@ src/loader/bin/loader.elf:
 	$(MAKE) src/loader
 
 $(EE_OBJS_DIR)loader.c: src/loader/bin/loader.elf FORCE
+	sleep 1
 	$(BIN2C) $< $@ loader_elf
 
 all: $(EE_LIB)
