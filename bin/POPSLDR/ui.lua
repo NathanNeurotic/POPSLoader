@@ -1169,17 +1169,13 @@ UI = {
         end
         UI.LAUNCHING = true
         UI.Modal.Close()
-        local reboot_iop = 0
         local hdd_loaded = type(PLDR) == "table" and type(PLDR.HDD) == "table" and tonumber(PLDR.HDD.LOADSTATE or 0) ~= 0
         if hdd_loaded and type(PLDR) == "table" and type(PLDR.PrepareForColdExternalELFLaunch) == "function" then
           pcall(PLDR.PrepareForColdExternalELFLaunch)
         elseif type(PLDR) == "table" and type(PLDR.PrepareForExternalELFLaunch) == "function" then
           pcall(PLDR.PrepareForExternalELFLaunch, elf_path)
         end
-        if hdd_loaded then
-          reboot_iop = 1
-        end
-        local rc = System.loadELF(elf_path, reboot_iop, elf_path)
+        local rc = System.loadELF(elf_path, 0, elf_path)
         UI.LAUNCHING = false
         UI.Notify("BOOT.ELF launch failed\nrc="..tostring(rc), 150)
         return

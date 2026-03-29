@@ -66,7 +66,7 @@ Reported hardware issues currently being tracked are:
 - `BOOT.ELF` after HDD runtime (`U-10`)
   - BOOT.ELF is reached, but later reported hardware said it could still misbehave after HDD runtime had already been initialized.
   - current working inference is that `U-10` may share the same underlying handoff/state-poisoning boundary as `D-10`, but that is not yet proven and must not be treated as an automatic fix dependency.
-  - current line uses BOOT.ELF-specific cold prep plus conditional `reboot_iop`, but hardware on that exact line is still `Unknown (verify on hardware)`.
+  - current line keeps BOOT.ELF-specific cold prep after HDD init, but no longer forces `reboot_iop = 1`; hardware on that exact line is still `Unknown (verify on hardware)`.
 
 ## Runtime Behavior (Current Code)
 
@@ -237,7 +237,7 @@ The workflow uses the `ps2dev/ps2dev` container and validates packaging after bu
   - repo history shows the BOOT.ELF modal later changed from its older non-reboot direct `System.loadELF(elf_path, 0, elf_path)` path to a reboot-I/O path with launch-CWD setup.
   - a later 2026-03-29 hardware report said BOOT.ELF still behaved incorrectly once HDD had been initialized, which points more specifically at carried HDD runtime state than BOOT.ELF lookup.
   - current working inference is that `U-10` may share the same underlying handoff/state-poisoning boundary as `D-10`, but that is not yet proven and `U-10` still requires its own hardware re-check after any `D-10` change.
-  - current source therefore keeps the no-launch-CWD rollback, re-enables `reboot_iop = 1` only when HDD runtime has already been loaded, and uses a BOOT.ELF-specific cold external-launch prep that clears the exec keep mask and unmounts tracked HDD slots instead of preserving boot PFS state.
+  - current source therefore keeps the no-launch-CWD rollback, keeps the BOOT.ELF-specific cold external-launch prep that clears the exec keep mask and unmounts tracked HDD slots instead of preserving boot PFS state, and no longer forces `reboot_iop = 1` after HDD runtime has already been loaded.
   - current-source hardware status is still `Unknown (verify on hardware)`.
 
 ## Documentation Map

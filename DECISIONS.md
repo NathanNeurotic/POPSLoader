@@ -121,8 +121,8 @@ Each entry records:
   - repo history shows the BOOT.ELF modal originally used a simpler non-reboot `System.loadELF(elf_path, 0, elf_path)` path without launch-CWD setup, and later source changed it to `reboot_iop = 1` plus launch-CWD.
   - a later 2026-03-29 hardware report said BOOT.ELF still behaved incorrectly once HDD runtime had been initialized, which points more narrowly at carried HDD/IOP state than BOOT.ELF lookup itself.
   - current working inference is that this `U-10` failure may share the same underlying handoff/state-poisoning boundary as `D-10`, but that remains an inference rather than a proven shared root cause.
-  - current source therefore keeps the no-launch-CWD rollback, re-enables `reboot_iop = 1` for BOOT.ELF only when HDD runtime has already been loaded, and uses a BOOT.ELF-specific cold external-launch prep that clears the exec keep mask and unmounts tracked HDD slots instead of preserving boot PFS state.
-  - current hardware status on that conditional-reboot/cold-prep source is still `Unknown (verify on hardware)`.
+  - the newer BOOT.ELF-specific reboot path has still failed once HDD runtime was initialized, so current source now isolates that variable: it keeps the no-launch-CWD rollback, keeps the BOOT.ELF-specific cold external-launch prep that clears the exec keep mask and unmounts tracked HDD slots instead of preserving boot PFS state, and no longer forces `reboot_iop = 1` after HDD runtime has already been loaded.
+  - current hardware status on that cold-prep/no-forced-reboot source is still `Unknown (verify on hardware)`.
 - PAL asset proportions:
   - code compensates for PAL layout,
   - final display result still needs hardware confirmation.

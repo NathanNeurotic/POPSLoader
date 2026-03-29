@@ -29,7 +29,7 @@ Last updated: 2026-03-29
   - use `QA_REGRESSION_MATRIX.md` for the full experiment chronology instead of rebuilding that ledger here.
 
 ### 2) External exit/launch re-validation
-- Re-run `U-05` (`OSDSYS`) and `U-10` (`BOOT.ELF after HDD page init`) on current source after the BOOT.ELF-specific conditional-reboot/cold-prep change for HDD-initialized sessions.
+- Re-run `U-05` (`OSDSYS`) and `U-10` (`BOOT.ELF after HDD page init`) on current source after the BOOT.ELF-specific cold-prep/no-forced-reboot change for HDD-initialized sessions.
 - Treat `U-10` as potentially sharing the same underlying handoff/state-poisoning boundary as `D-10`, but do not assume a `D-10` fix automatically resolves `U-10` without hardware confirmation.
 - Record exact run results in `QA_REGRESSION_MATRIX.md` instead of carrying them only in chat history.
 
