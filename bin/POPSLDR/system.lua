@@ -328,6 +328,21 @@ local function BuildRawHddExecPathFromMounted(path)
   return entry.partition..":pfs:/"..relpath
 end
 
+local function BuildHddPartitionContext(path)
+  local mount_part = ParseHddPartitionMount(path)
+  if mount_part ~= nil then
+    return mount_part..":"
+  end
+  local raw_hdd = BuildRawHddExecPathFromMounted(path)
+  if raw_hdd ~= nil then
+    local raw_part = ParseHddPartitionMount(raw_hdd)
+    if raw_part ~= nil then
+      return raw_part..":"
+    end
+  end
+  return nil
+end
+
 local function NormalizeHddHelperSlot(slot)
   local normalized = tonumber(slot)
   if normalized == nil or normalized < HDD_SLOT_COMMON then
@@ -947,7 +962,7 @@ local function ResolveHddBootSidecarSourceContext()
 
   for i = 1, #hdd_candidates do
     if ResolveHddReadablePath(hdd_candidates[i]) ~= nil then
-      return hdd_candidates[i]
+      return BuildHddPartitionContext(hdd_candidates[i])
     end
   end
 
@@ -955,7 +970,7 @@ local function ResolveHddBootSidecarSourceContext()
     local mounted = mounted_candidates[i]
     local raw_hdd = BuildRawHddExecPathFromMounted(mounted)
     if raw_hdd ~= nil and (ProbePathExists(mounted) or ResolveHddReadablePath(raw_hdd) ~= nil) then
-      return raw_hdd
+      return BuildHddPartitionContext(raw_hdd)
     end
   end
 
@@ -1055,17 +1070,11 @@ local function ResolvePopstarterSourceContext(path, resolved_path)
   end
 
   if IsHddExecContextPath(configured) then
-    return configured
+    return BuildHddPartitionContext(configured)
   end
 
   if IsHddExecContextPath(resolved_path) then
-    if IsPfsExecPath(resolved_path) then
-      local raw_hdd = BuildRawHddExecPathFromMounted(resolved_path)
-      if raw_hdd ~= nil then
-        return raw_hdd
-      end
-    end
-    return resolved_path
+    return BuildHddPartitionContext(resolved_path)
   end
 
   return nil

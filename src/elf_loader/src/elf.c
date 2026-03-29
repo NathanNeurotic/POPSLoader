@@ -150,10 +150,83 @@ static int mount_hdd_exec_partition(const char *partition, int slot) {
 	return 0;
 }
 
+static const char *extract_exec_relpath(const char *path) {
+	const char *relpath;
+	const char *prefix_end;
+
+	if (path == NULL) {
+		return NULL;
+	}
+	if (strncmp(path, "pfs", 3) == 0) {
+		prefix_end = strchr(path, ':');
+		if (prefix_end == NULL) {
+			return NULL;
+		}
+		relpath = prefix_end + 1;
+		while (*relpath == '/') {
+			relpath++;
+		}
+		return (*relpath != '\0') ? relpath : NULL;
+	}
+	if (strncmp(path, "hdd", 3) == 0) {
+		const char *partition_end = strchr(path + 5, ':');
+		const char *fs_prefix_end = partition_end ? strchr(partition_end + 1, ':') : NULL;
+		if (fs_prefix_end == NULL) {
+			return NULL;
+		}
+		relpath = fs_prefix_end + 1;
+		while (*relpath == '/') {
+			relpath++;
+		}
+		return (*relpath != '\0') ? relpath : NULL;
+	}
+	return NULL;
+}
+
+static int build_hdd_embedded_loader_target_from_partition(const char *resolved_path, const char *partition_context, char *load_path, size_t load_path_size, unsigned int *keep_mask_out) {
+	char partition[128];
+	const char *relpath;
+	size_t partition_len;
+
+	if (resolved_path == NULL || partition_context == NULL || load_path == NULL || keep_mask_out == NULL) {
+		return -1;
+	}
+	if (strncmp(partition_context, "hdd", 3) != 0) {
+		return -1;
+	}
+
+	partition_len = strlen(partition_context);
+	while (partition_len > 0 && partition_context[partition_len - 1] == ':') {
+		partition_len--;
+	}
+	if (partition_len == 0 || partition_len >= sizeof(partition)) {
+		return -1;
+	}
+	memcpy(partition, partition_context, partition_len);
+	partition[partition_len] = '\0';
+
+	relpath = extract_exec_relpath(resolved_path);
+	if (relpath == NULL) {
+		return -1;
+	}
+
+	if (mount_hdd_exec_partition(partition, 0) != 0) {
+		return -1;
+	}
+
+	snprintf(load_path, load_path_size, "pfs0:/%s", relpath);
+	if (!can_open_exec_path(load_path)) {
+		return -1;
+	}
+
+	*keep_mask_out = 0x01;
+	return 0;
+}
+
 static int build_hdd_embedded_loader_target_from_hdd_path(const char *source_path, char *load_path, size_t load_path_size, unsigned int *keep_mask_out) {
 	const char *partition_end;
-	const char *fs_prefix_end;
-	const char *relpath;
+	char partition_context[128];
+	size_t partition_len;
 
 	if (source_path == NULL || load_path == NULL || keep_mask_out == NULL) {
 		return -1;
@@ -167,45 +240,18 @@ static int build_hdd_embedded_loader_target_from_hdd_path(const char *source_pat
 	if (partition_end == NULL) {
 		return -1;
 	}
-
-	fs_prefix_end = strchr(partition_end + 1, ':');
-	if (fs_prefix_end == NULL) {
+	partition_len = (size_t)(partition_end - source_path) + 1;
+	if (partition_len == 0 || partition_len >= sizeof(partition_context)) {
 		return -1;
 	}
-
-	relpath = fs_prefix_end + 1;
-	while (*relpath == '/') {
-		relpath++;
-	}
-	if (*relpath == '\0') {
-		return -1;
-	}
-
-	{
-		char partition[128];
-		size_t partition_len = (size_t)(partition_end - source_path);
-		if (partition_len == 0 || partition_len >= sizeof(partition)) {
-			return -1;
-		}
-		memcpy(partition, source_path, partition_len);
-		partition[partition_len] = '\0';
-		if (mount_hdd_exec_partition(partition, 0) != 0) {
-			return -1;
-		}
-	}
-
-	snprintf(load_path, load_path_size, "pfs0:/%s", relpath);
-	if (!can_open_exec_path(load_path)) {
-		return -1;
-	}
-
-	*keep_mask_out = 0x01;
-	return 0;
+	memcpy(partition_context, source_path, partition_len);
+	partition_context[partition_len] = '\0';
+	return build_hdd_embedded_loader_target_from_partition(source_path, partition_context, load_path, load_path_size, keep_mask_out);
 }
 
 static int build_hdd_embedded_loader_target(const char *resolved_path, const char *source_context, char *load_path, size_t load_path_size, unsigned int *keep_mask_out) {
 	if (source_context != NULL && strncmp(source_context, "hdd", 3) == 0) {
-		if (build_hdd_embedded_loader_target_from_hdd_path(source_context, load_path, load_path_size, keep_mask_out) == 0) {
+		if (build_hdd_embedded_loader_target_from_partition(resolved_path, source_context, load_path, load_path_size, keep_mask_out) == 0) {
 			return 0;
 		}
 	}
