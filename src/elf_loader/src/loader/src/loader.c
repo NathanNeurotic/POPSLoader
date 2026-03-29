@@ -21,6 +21,12 @@
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
 
+/* FIO_MT_RDONLY was added to fileXio_rpc.h in a later PS2 SDK revision.
+ * Guard-define it here so the loader compiles against older SDK toolchains. */
+#ifndef FIO_MT_RDONLY
+#define FIO_MT_RDONLY 0x01
+#endif
+
 #ifdef LOADER_ENABLE_DEBUG_COLORS
 #include <debug.h>
 #define SET_GS_BGCOLOUR(colour) {*((volatile unsigned long int *)0x120000E0) = colour;}
