@@ -18,9 +18,12 @@
 #include <errno.h>
 #include <ps2sdkapi.h>
 #include <fcntl.h>
-#include <io_common.h>
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
+
+#ifndef FIO_MT_RDONLY
+#define FIO_MT_RDONLY 0x01
+#endif
 
 #ifdef LOADER_ENABLE_DEBUG_COLORS
 #include <debug.h>
