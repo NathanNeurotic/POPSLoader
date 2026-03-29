@@ -154,7 +154,7 @@ Current source also includes:
 - popup support for showing probe path and exec path separately
 - profile-path normalization so selected Profile 1/default does not silently keep another profile’s canonical HDD path
 - child-loader target argv preservation so the selector/extra args are no longer replaced by a synthetic executable path on the HDD partition-aware path
-- BOOT.ELF-specific cold external-launch prep remains separate from the POPSTARTER path
+- BOOT.ELF now uses the standard external-launch prep again even after HDD init, because the later cold-prep/no-forced-reboot BOOT.ELF line still froze after HDD page use on hardware
 
 `D-10` still fails after those changes.
 

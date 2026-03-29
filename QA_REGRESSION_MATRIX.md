@@ -124,6 +124,7 @@ This file is the authoritative detailed run ledger for CI and hardware outcomes.
 | 2026-03-28 | Unknown (not reported) | HDD boot; HDD sidecar/cwd `POPSTARTER.ELF`; HDD game on partition-aware reboot-contract source | D-10 | FAIL: no black screen, but launcher regained control through generic timeout failure path |
 | 2026-03-29 | Unknown (not reported) | HDD boot; HDD sidecar/cwd `POPSTARTER.ELF`; HDD game on prior partition-aware source with real returned-rc popup | D-10 | FAIL: launcher regained control with `rc=-1 (returned after 22618 ms)` |
 | 2026-03-29 | Unknown (not reported) | HDD boot; HDD sidecar/cwd `POPSTARTER.ELF`; HDD game on later GitHub artifact from the broader partition-aware/current-source line | D-10 | FAIL: black screen |
+| 2026-03-29 | Unknown (not reported) | HDD boot; default/Profile 1 sidecar/cwd `POPSTARTER.ELF` on HDD; entered HDD page; Exit -> `BOOT.ELF` on the cold-prep/no-forced-reboot BOOT.ELF line | U-10 | FAIL: freeze |
 | YYYY-MM-DD | SCPH-xxxxx | USB/MMCE/MX4SIO/HDD details | e.g. S-01,S-02,D-02 | PASS/FAIL + notes |
 
 ## Current Verification Status
@@ -187,6 +188,7 @@ This file is the authoritative detailed run ledger for CI and hardware outcomes.
     - repo history shows the BOOT.ELF modal later changed from its older non-reboot direct `System.loadELF(elf_path, 0, elf_path)` path to a reboot-I/O path with launch-CWD setup.
     - a later 2026-03-29 hardware report said BOOT.ELF still behaved incorrectly once HDD runtime had been initialized on that restored non-reboot source.
     - current working inference is that `U-10` may share the same underlying handoff/state-poisoning boundary as `D-10`, but that remains unproven and must be validated separately on hardware.
-    - the newer BOOT.ELF-specific reboot path has still failed once HDD runtime was initialized, so current source now isolates that variable: it keeps the no-launch-CWD rollback, keeps the BOOT.ELF-specific cold external-launch prep that clears the exec keep mask and unmounts tracked HDD slots instead of preserving boot PFS state, and no longer forces `reboot_iop = 1` after HDD runtime has already been loaded.
-    - current-source hardware result is still `Unknown (verify on hardware)`.
+    - a later 2026-03-29 hardware report on that cold-prep/no-forced-reboot line still froze on `HDD boot -> default/Profile 1 sidecar/cwd POPSTARTER on HDD -> enter HDD page -> Exit -> BOOT.ELF`, so removing forced reboot alone did not isolate the failure.
+    - current source now keeps the no-launch-CWD rollback and non-forced-reboot BOOT.ELF load shape, but restores standard external-launch prep even after HDD init so non-HDD BOOT.ELF handoff preserves the boot PFS slot instead of clearing all tracked HDD slots up front.
+    - current-source hardware result on that restored-standard-prep line is still `Unknown (verify on hardware)`.
 - All other manual hardware items remain `Unknown (verify on hardware)` unless run logs are added above.
