@@ -97,8 +97,7 @@ static int build_default_target_arg0(const char *partition_context, const char *
 	}
 
 	if (partition_context == NULL || partition_context[0] == '\0') {
-		strncpy(out, load_path, out_size - 1);
-		out[out_size - 1] = '\0';
+		snprintf(out, out_size, "%s", load_path);
 		return 0;
 	}
 
@@ -110,8 +109,7 @@ static int build_default_target_arg0(const char *partition_context, const char *
 		if (suffix == NULL || suffix[0] == '\0') {
 			suffix = "/";
 		}
-		strncpy(out, partition_context, out_size - 1);
-		out[out_size - 1] = '\0';
+		snprintf(out, out_size, "%s", partition_context);
 		if (suffix[0] != '/') {
 			strncat(out, "pfs:/", out_size - strlen(out) - 1);
 			strncat(out, suffix, out_size - strlen(out) - 1);
@@ -122,8 +120,7 @@ static int build_default_target_arg0(const char *partition_context, const char *
 		return 0;
 	}
 
-	strncpy(out, partition_context, out_size - 1);
-	out[out_size - 1] = '\0';
+	snprintf(out, out_size, "%s", partition_context);
 	strncat(out, load_path, out_size - strlen(out) - 1);
 	return 0;
 }
