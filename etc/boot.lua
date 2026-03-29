@@ -34,12 +34,18 @@ local ARGV0 = System.GetArgv0()
 if string.find(ARGV0, "^hdd0:") then
   local MNTPART
   BOOTPATH = nil
+  BOOT_HDD_MOUNTPART = nil
+  BOOT_HDD_MOUNT_SLOT = nil
+  BOOT_HDD_MOUNT_PREFIX = nil
   MNTPART, _, BOOTPATH = GetMountData(ARGV0)
   if string.find(BOOTPATH, "^pfs") then
     SUCCESS, MODULE, ID, RET = HDD.Initialize()
     if SUCCESS then
       System.sleep(2) -- lets give it time to get ready
       if HDD.MountPartition(MNTPART, 1) then -- mount to "pfs1:" and NEVER USE IT FOR ANYTHING ELSE
+        BOOT_HDD_MOUNTPART = MNTPART
+        BOOT_HDD_MOUNT_SLOT = 1
+        BOOT_HDD_MOUNT_PREFIX = "pfs1:/"
         BOOTPATH, _, _ = string.match(BOOTPATH, "(.-)([^/]-([^%.]+))$")
         System.currentDirectory(BOOTPATH)
       end

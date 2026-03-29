@@ -218,6 +218,14 @@ local HDD_MOUNT_STATE = {
   partitions = {}
 }
 
+local function GetBootHddMountSlot()
+  local slot = tonumber(rawget(_G, "BOOT_HDD_MOUNT_SLOT"))
+  if slot == nil or slot < 0 or slot > 3 then
+    return nil
+  end
+  return slot
+end
+
 local function NormalizePfsPrefix(prefix)
   local device = string.match(string.lower(tostring(prefix or "")), "^(pfs%d*):/")
   if device ~= nil then
@@ -275,6 +283,24 @@ local function RememberRecordedHddMount(partition, prefix)
   HDD_MOUNT_STATE.partitions[normalized_partition] = normalized_prefix
   return normalized_prefix
 end
+
+local function SeedBootHddMountState()
+  local boot_part = ParseHddPartitionMount(rawget(_G, "BOOT_HDD_MOUNTPART"))
+  local boot_slot = GetBootHddMountSlot()
+  local boot_prefix = NormalizePfsPrefix(rawget(_G, "BOOT_HDD_MOUNT_PREFIX"))
+  if boot_part == nil then
+    return nil
+  end
+  if boot_prefix == nil and boot_slot ~= nil then
+    boot_prefix = BuildMountedPfsPrefix(boot_slot)
+  end
+  if boot_prefix == nil then
+    return nil
+  end
+  return RememberRecordedHddMount(boot_part, boot_prefix)
+end
+
+SeedBootHddMountState()
 
 local function GetRecordedHddMountPrefix(partition)
   local normalized_partition = ParseHddPartitionMount(partition)
@@ -869,8 +895,16 @@ local function ResolveHddBootSidecarPopstarter()
   local mounted_candidates, hdd_candidates, other_candidates = CollectHddBootSidecarCandidates()
 
   for i = 1, #mounted_candidates do
-    if ProbePathExists(mounted_candidates[i]) then
-      return mounted_candidates[i]
+    local mounted_candidate = mounted_candidates[i]
+    if ProbePathExists(mounted_candidate) then
+      return mounted_candidate
+    end
+    local raw_hdd = BuildRawHddExecPathFromMounted(mounted_candidate)
+    if raw_hdd ~= nil then
+      local resolved_hdd = ResolveHddReadablePath(raw_hdd)
+      if resolved_hdd ~= nil then
+        return resolved_hdd
+      end
     end
   end
 
@@ -919,11 +953,9 @@ local function ResolveHddBootSidecarSourceContext()
 
   for i = 1, #mounted_candidates do
     local mounted = mounted_candidates[i]
-    if ProbePathExists(mounted) then
-      local raw_hdd = BuildRawHddExecPathFromMounted(mounted)
-      if raw_hdd ~= nil then
-        return raw_hdd
-      end
+    local raw_hdd = BuildRawHddExecPathFromMounted(mounted)
+    if raw_hdd ~= nil and (ProbePathExists(mounted) or ResolveHddReadablePath(raw_hdd) ~= nil) then
+      return raw_hdd
     end
   end
 
@@ -2170,6 +2202,8 @@ local function CollectStartupBackendTargets()
 end
 
 local function EnsureBootHddMountReady()
+  SeedBootHddMountState()
+
   local boot_slot = nil
   local boot_slot_candidates = {
     BOOT_ARGV0_RAW,
@@ -2186,7 +2220,18 @@ local function EnsureBootHddMountReady()
     end
   end
   if boot_slot == nil then
+    boot_slot = GetBootHddMountSlot()
+  end
+  if boot_slot == nil then
     return nil
+  end
+
+  local boot_mount_part = ParseHddPartitionMount(rawget(_G, "BOOT_HDD_MOUNTPART"))
+  if boot_mount_part ~= nil then
+    local mounted, prefix = MountHddPartitionTracked(boot_mount_part, boot_slot, FIO_MT_RDONLY)
+    if mounted and prefix ~= nil then
+      return prefix
+    end
   end
 
   local candidates = {

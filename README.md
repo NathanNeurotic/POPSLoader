@@ -203,7 +203,7 @@ The workflow uses the `ps2dev/ps2dev` container and validates packaging after bu
   - current source now also pre-resolves any HDD-backed startup/configured exec paths immediately after `PLDR.LoadHDDModules()` so HDD POPSTARTER/Profile paths are mounted and recorded without reintroducing HDD page work at boot.
   - current source also routes on-demand HDD path mounts through `PLDR.LoadHDDModules()` instead of only the lower-level `EnsureHddRuntimeReadyForExec()` gate, so HDD POPSTARTER/Profile probes from USB or other pages use the same runtime init path as HDD page entry.
   - current source also fixes the startup warm-path classification for Profile 1/default relative `POPSTARTER.ELF`, which had previously been skipped because only explicit `hdd:` / `pfs:` paths were being marked for HDD warm-up.
-  - because `etc/boot.lua` establishes HDD boot on a dedicated `pfs1:` mount before `system.lua` runs, current source now also recreates that boot mount after startup HDD init so Profile 1/default sidecar lookup does not depend on entering the HDD page first.
+  - because `etc/boot.lua` establishes HDD boot on a dedicated `pfs1:` mount before `system.lua` runs, current source now also carries that exact boot partition/slot metadata into `system.lua`, seeds the HDD mount tracker from it, and rebuilds raw HDD sidecar/source-context paths from mounted `pfs1:` candidates instead of relying only on later rediscovery.
   - corrected-source hardware result is still `Unknown (verify on hardware)`.
 - `D-16` first-entry USB backend discovery:
   - a 2026-03-27 hardware report said the first USB page entry reported no backend, but backing out and re-entering then worked.
@@ -221,7 +221,7 @@ The workflow uses the `ps2dev/ps2dev` container and validates packaging after bu
   - a later 2026-03-28 re-test on the direct-`hdd0:PART:pfsN:/POPSTARTER.ELF` preference source still black-screened on `X`.
   - a later 2026-03-28 re-test on the mounted-`pfs0:` embedded-loader source still black-screened on `X`.
   - follow-up repo comparison showed that earlier source-context work was still incomplete because Lua had usually already normalized HDD POPSTARTER to mounted `pfs1:` / `pfs3:` paths before the reboot loader saw it.
-  - current source now passes an original HDD-side POPSTARTER source path from `bin/POPSLDR/system.lua` into the reboot loader, forces the HDD reboot handoff in `src/elf_loader/src/elf.c` back through an explicit `pfs0:` remount based on that original HDD source, and matches the reference reset call shape with `SifIopReset("", 0)`.
+  - current source now passes an original HDD-side POPSTARTER source path from `bin/POPSLDR/system.lua` into the reboot loader, forces the HDD reboot handoff in `src/elf_loader/src/elf.c` back through an explicit `pfs0:` remount based on that original HDD source, matches the reference reset call shape with `SifIopReset("", 0)`, and seeds the raw HDD source reconstruction from the exact boot `pfs1:` mount metadata exported by `etc/boot.lua`.
   - hardware result on this corrected current source is still `Unknown (verify on hardware)`.
 - `D-14` HDD-backed POPSTARTER with non-HDD game:
   - reported failing.
