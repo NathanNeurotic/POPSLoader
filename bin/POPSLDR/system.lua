@@ -362,6 +362,43 @@ local function BuildPartitionScopedExecPath(path)
   return nil
 end
 
+local function GetProfilePopstarterPath(profile)
+  local index = tonumber(profile)
+  if index == nil or type(PLDR.PROFILES) ~= "table" or PLDR.PROFILES[index] == nil then
+    return ""
+  end
+  return tostring(PLDR.PROFILES[index].ELF or "")
+end
+
+local function FindMatchingProfileForPopstarterPath(path)
+  local normalized = NormalizeFsPathRaw(tostring(path or ""))
+  if normalized == "" or type(PLDR.PROFILES) ~= "table" then
+    return nil
+  end
+  for i = 1, #PLDR.PROFILES do
+    local profile_path = tostring(PLDR.PROFILES[i].ELF or "")
+    if profile_path ~= "" and NormalizeFsPathRaw(profile_path) == normalized then
+      return i
+    end
+  end
+  return nil
+end
+
+local function NormalizeSelectedProfilePopstarterPath(profile, path)
+  local selected_profile_path = GetProfilePopstarterPath(profile)
+  local configured_path = tostring(path or "")
+  if configured_path == "" then
+    return selected_profile_path ~= "" and selected_profile_path or configured_path
+  end
+
+  local matched_profile = FindMatchingProfileForPopstarterPath(configured_path)
+  if matched_profile ~= nil and tonumber(matched_profile) ~= tonumber(profile) and selected_profile_path ~= "" then
+    return selected_profile_path
+  end
+
+  return configured_path
+end
+
 local function NormalizeHddHelperSlot(slot)
   local normalized = tonumber(slot)
   if normalized == nil or normalized < HDD_SLOT_COMMON then
@@ -1119,6 +1156,11 @@ function PLDR.ResolvePopstarterPath(path)
   return ResolvePopstarterPath(path)
 end
 
+function PLDR.GetEffectiveConfiguredPopstarterPath(path, profile)
+  local selected_profile = tonumber(profile) or tonumber(PLDR.SELECTED_PROFILE) or tonumber(PLDR.DEFAULT_PROFILE) or 1
+  return NormalizeSelectedProfilePopstarterPath(selected_profile, path or PLDR.POPSTARTER_PATH)
+end
+
 function PLDR.ResolveHddReadablePath(path)
   return ResolveHddReadablePath(path)
 end
@@ -1802,11 +1844,8 @@ end
 
 local function EncodeSettings()
   local selected_profile = tonumber(PLDR.SELECTED_PROFILE) or 1
-  local configured_popstarter = tostring(PLDR.POPSTARTER_PATH or "")
-  local profile_popstarter = ""
-  if PLDR.PROFILES ~= nil and PLDR.PROFILES[selected_profile] ~= nil then
-    profile_popstarter = tostring(PLDR.PROFILES[selected_profile].ELF or "")
-  end
+  local configured_popstarter = NormalizeSelectedProfilePopstarterPath(selected_profile, PLDR.POPSTARTER_PATH)
+  local profile_popstarter = GetProfilePopstarterPath(selected_profile)
   local persisted_popstarter = configured_popstarter
   if configured_popstarter ~= "" and NormalizeFsPathRaw(configured_popstarter) == NormalizeFsPathRaw(profile_popstarter) then
     persisted_popstarter = ""
@@ -1842,9 +1881,10 @@ local function NormalizeBdmaModeKey(mode)
 end
 
 local function SnapshotSettingsState()
+  local profile = tonumber(PLDR.SELECTED_PROFILE) or tonumber(PLDR.DEFAULT_PROFILE) or 1
   return {
-    profile = tonumber(PLDR.SELECTED_PROFILE) or tonumber(PLDR.DEFAULT_PROFILE) or 1,
-    popstarter_path = tostring(PLDR.POPSTARTER_PATH or ""),
+    profile = profile,
+    popstarter_path = NormalizeSelectedProfilePopstarterPath(profile, PLDR.POPSTARTER_PATH),
     bdma_mode = NormalizeBdmaModeKey(PLDR.BDMA_MODE_KEY) or "FAT32",
     dkwdrv_path = tostring(PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH),
     video_standard = NormalizeVideoStandard(PLDR.VIDEO_STANDARD),
@@ -1862,7 +1902,7 @@ local function ApplySettingsState(state)
     PLDR.SELECTED_PROFILE = profile
   end
   if state.popstarter_path ~= nil then
-    PLDR.POPSTARTER_PATH = tostring(state.popstarter_path)
+    PLDR.POPSTARTER_PATH = NormalizeSelectedProfilePopstarterPath(PLDR.SELECTED_PROFILE, state.popstarter_path)
   end
   local bdma = NormalizeBdmaModeKey(state.bdma_mode)
   if bdma ~= nil then
@@ -1995,6 +2035,7 @@ function PLDR.LoadSettingsNonFatal()
   if popstarter_path ~= nil and popstarter_path ~= "" then
     PLDR.POPSTARTER_PATH = popstarter_path
   end
+  PLDR.POPSTARTER_PATH = NormalizeSelectedProfilePopstarterPath(PLDR.SELECTED_PROFILE, PLDR.POPSTARTER_PATH)
   if dkwdrv_path ~= nil and dkwdrv_path ~= "" then
     PLDR.DKWDRV_PATH = dkwdrv_path
   end
@@ -2036,7 +2077,7 @@ function PLDR.CommitSettingsChanges(opts)
   end
   local next_state = {
     profile = tonumber(opts.profile) or prev.profile,
-    popstarter_path = opts.popstarter_path or prev.popstarter_path,
+    popstarter_path = NormalizeSelectedProfilePopstarterPath(tonumber(opts.profile) or prev.profile, opts.popstarter_path or prev.popstarter_path),
     bdma_mode = NormalizeBdmaModeKey(opts.bdma_mode) or prev.bdma_mode,
     dkwdrv_path = opts.dkwdrv_path or prev.dkwdrv_path,
     video_standard = NormalizeVideoStandard(opts.video_standard or prev.video_standard),
@@ -3699,7 +3740,7 @@ end
 function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
   local policy, device_page = ResolveLaunchPolicy(gamelocation, ui_scene)
   local selected_entry = tostring(game or "")
-  local configured_popstarter = tostring(PLDR.POPSTARTER_PATH or "")
+  local configured_popstarter = NormalizeSelectedProfilePopstarterPath(PLDR.SELECTED_PROFILE, PLDR.POPSTARTER_PATH)
   local popstarter = ResolvePopstarterPath(configured_popstarter)
   local popstarter_partition_context = ResolvePopstarterPartitionContext(configured_popstarter, popstarter)
   local popstarter_on_hdd = IsHddExecContextPath(popstarter)

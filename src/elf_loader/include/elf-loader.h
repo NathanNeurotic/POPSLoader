@@ -26,12 +26,13 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[]);
 int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]);
 int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const char *partition, int argc, char *argv[]);
 
-/** Modify argv[0] when partition info should be kept
+/** Preserve caller args for partition-aware loads; synthesize argv[0] only when none were supplied.
  *
  * @param filename  path to the file itself
  * @param partition block device + partition name
- * @param argc      Number of arguments.
- * @param argv      Pointer to array of arguments.
+ * @param argc      Number of caller-supplied arguments.
+ * @param argv      Pointer to caller-supplied arguments. When argc is zero, the loader synthesizes
+ *                  a default argv[0] from filename/partition.
  * @returns         positive on success, zero value on failure
  *
  * You should prepare filename and partition before parsing in function 

@@ -73,7 +73,8 @@ Reported hardware issues currently being tracked are:
   - current source now restores more of the original parent-side embedded-loader jump contract in `src/elf_loader/src/elf.c` and also aligns the child loader closer to the reference loaders by dropping the post-reset MC module reload and exiting SIF command state before the final `ExecPS2`.
   - current source also keeps the safer embedded-loader fix that avoids `printf`/`snprintf` in that environment and surfaces the real returned rc instead of masking it as a timeout.
   - current source now treats partition-aware HDD launches as a mounted-`pfs0:` `SifLoadElf` path again, matching `wLaunchELF` / PS2 BBL more closely once the parent has already remounted the target partition.
-  - on that partition-aware path, the embedded loader now restores a partition-scoped executable path in the target ELF's `argv[0]` and shifts caller-supplied selector/extra args after it, matching the loader contract documented in `src/elf_loader/include/elf-loader.h`.
+  - current source also normalizes stale canonical profile-path state before launch/save, so a selected Profile 1/default path no longer silently keeps another profile's canonical HDD `POPSTARTER.ELF` path.
+  - on that partition-aware path, the embedded loader now keeps the caller-supplied POPSTARTER selector/extra args intact, matching the repo's normal non-HDD POPSTARTER `ExecPS2` argv layout instead of prepending a replacement executable path.
   - current source keeps the older iomanX-aware `fileXio` ELF load path only for direct iomanX-style `pfs:` / `hdd:` loads where no HDD partition context was supplied, and still keeps that fallback on the older direct `ExecPS2` handoff instead of the later reset / teardown sequence.
   - hardware result on this corrected current source is still `Unknown (verify on hardware)`.
 - HDD game with non-HDD POPSTARTER (`D-15`)

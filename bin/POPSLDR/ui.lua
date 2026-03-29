@@ -2000,9 +2000,13 @@ UI = {
             UI.Notif_queue.add("No games found")
             return
           end
-          local popstarter_path = PLDR.POPSTARTER_PATH
+          local configured_popstarter_path = tostring(PLDR.POPSTARTER_PATH or "")
+          if type(PLDR.GetEffectiveConfiguredPopstarterPath) == "function" then
+            configured_popstarter_path = tostring(PLDR.GetEffectiveConfiguredPopstarterPath(PLDR.POPSTARTER_PATH, PLDR.SELECTED_PROFILE) or configured_popstarter_path)
+          end
+          local popstarter_path = configured_popstarter_path
           if type(PLDR.ResolvePopstarterPath) == "function" then
-            popstarter_path = PLDR.ResolvePopstarterPath(PLDR.POPSTARTER_PATH)
+            popstarter_path = PLDR.ResolvePopstarterPath(configured_popstarter_path)
           end
           local popstarter_ok = false
           if type(PLDR.PopstarterProbeWithEnsure) == "function" then
@@ -2011,7 +2015,6 @@ UI = {
             popstarter_ok = doesFileExist(popstarter_path)
           end
           if not popstarter_ok then
-            local configured_popstarter_path = tostring(PLDR.POPSTARTER_PATH or "")
             local message = "Cant find POPSTARTER ELF\n"..configured_popstarter_path
             if configured_popstarter_path ~= tostring(popstarter_path) then
               message = message.."\nResolved: "..tostring(popstarter_path)
@@ -2251,6 +2254,9 @@ UI = {
           end
           local profile_index = CLAMP(UI.ProfileQuery.curopt, 1, #PLDR.PROFILES)
           local pop_path = tostring(UI.PopstarterPathDraft or PLDR.POPSTARTER_PATH or "")
+          if type(PLDR.GetEffectiveConfiguredPopstarterPath) == "function" then
+            pop_path = tostring(PLDR.GetEffectiveConfiguredPopstarterPath(pop_path, profile_index) or pop_path)
+          end
           local dkwdrv_path = tostring(UI.DkwdrvPathDraft or PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
           local mode_entry = UI.BdmaModes[UI.BdmaModeIndex] or UI.BdmaModes[1]
           local mode_key = mode_entry and mode_entry.key or "FAT32"
@@ -3089,7 +3095,11 @@ function UI.ApplyVideoStandardFromRuntime(video_standard)
   end
 end
 function UI.SyncSettingsDraftFromRuntime()
-  UI.PopstarterPathDraft = tostring(PLDR.POPSTARTER_PATH or "")
+  if type(PLDR) == "table" and type(PLDR.GetEffectiveConfiguredPopstarterPath) == "function" then
+    UI.PopstarterPathDraft = tostring(PLDR.GetEffectiveConfiguredPopstarterPath(PLDR.POPSTARTER_PATH, PLDR.SELECTED_PROFILE) or "")
+  else
+    UI.PopstarterPathDraft = tostring(PLDR.POPSTARTER_PATH or "")
+  end
   UI.DkwdrvPathDraft = tostring(PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
   if type(PLDR) == "table" and type(PLDR.NormalizeKeyboardLayout) == "function" then
     UI.KeyboardLayoutDraft = PLDR.NormalizeKeyboardLayout(PLDR.KEYBOARD_LAYOUT)

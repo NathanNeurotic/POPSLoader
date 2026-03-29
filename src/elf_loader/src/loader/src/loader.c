@@ -250,7 +250,6 @@ int main(int argc, char *argv[])
 	size_t target_arg_offset = 0;
 	unsigned int filexio_entry = 0;
 	unsigned int filexio_gp = 0;
-	int prepend_target_path = 0;
 	int loaded_via_filexio = 0;
 	int target_argc = 0;
 	int ret, i;
@@ -272,32 +271,25 @@ int main(int argc, char *argv[])
 		return -EINVAL;
 	}
 	target_argc = argc - 2;
-	/* The partition-aware loader contract keeps the target's argv[0] as the
-	 * partition-scoped executable path, then shifts caller-supplied args after it.
-	 */
-	prepend_target_path = is_hdd_partition_context(partition_context) ? 1 : 0;
-	if ((target_argc + prepend_target_path) > 32) {
+	if (target_argc > 32) {
 		return -E2BIG;
 	}
-	if (target_argc == 0 || prepend_target_path) {
+	if (target_argc == 0) {
 		if (build_default_target_arg0(partition_context, load_path, default_target_arg0, sizeof(default_target_arg0)) != 0) {
 			return -EINVAL;
 		}
 		target_argv[0] = default_target_arg0;
-	}
-	for (i = 2; i < argc; i++) {
-		size_t arg_len = strlen(argv[i]) + 1;
-		if ((target_arg_offset + arg_len) > sizeof(target_arg_storage)) {
-			return -E2BIG;
-		}
-		memcpy(&target_arg_storage[target_arg_offset], argv[i], arg_len);
-		target_argv[(i - 2) + prepend_target_path] = &target_arg_storage[target_arg_offset];
-		target_arg_offset += arg_len;
-	}
-	if (target_argc == 0) {
 		target_argc = 1;
-	} else if (prepend_target_path) {
-		target_argc += 1;
+	} else {
+		for (i = 2; i < argc; i++) {
+			size_t arg_len = strlen(argv[i]) + 1;
+			if ((target_arg_offset + arg_len) > sizeof(target_arg_storage)) {
+				return -E2BIG;
+			}
+			memcpy(&target_arg_storage[target_arg_offset], argv[i], arg_len);
+			target_argv[i - 2] = &target_arg_storage[target_arg_offset];
+			target_arg_offset += arg_len;
+		}
 	}
 	target_argv[target_argc] = NULL;
 
