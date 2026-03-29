@@ -178,5 +178,6 @@ This matrix tracks current behavior across:
     - user later confirmed on 2026-03-28 that USB boot + USB Profile 1 sidecar/cwd `POPSTARTER.ELF` + HDD game passes on the corrected source.
   - `U-10`: one artifact was reported good before a later regression experiment.
     - repo history shows the BOOT.ELF modal later changed from its older non-reboot direct `System.loadELF(elf_path, 0, elf_path)` path to a reboot-I/O path with launch-CWD setup.
-    - current source now restores the older BOOT.ELF-specific non-reboot/no-launch-CWD path and must be re-tested.
+    - a later 2026-03-29 hardware report said BOOT.ELF still behaved incorrectly once HDD runtime had been initialized on that restored non-reboot source.
+    - current source now keeps the no-launch-CWD rollback but re-enables `reboot_iop = 1` for BOOT.ELF only when HDD runtime has already been loaded, and must be re-tested.
 - All other manual hardware items remain `Unknown (verify on hardware)` unless run logs are added above.

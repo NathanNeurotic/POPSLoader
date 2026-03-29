@@ -106,8 +106,9 @@ Each entry records:
   - current source still keeps the `R2` selector-path experiment for HDD game launches, but that remains secondary to restoring and preserving the non-HDD POPSTARTER baseline for HDD titles.
 - `BOOT.ELF` after HDD page init:
   - repo history shows the BOOT.ELF modal originally used a simpler non-reboot `System.loadELF(elf_path, 0, elf_path)` path without launch-CWD setup, and later source changed it to `reboot_iop = 1` plus launch-CWD.
-  - current source restores that older BOOT.ELF-specific path as the smallest evidence-backed rollback, while leaving POPSTARTER/HDD handoff work unchanged.
-  - current hardware status on that restored source is still `Unknown (verify on hardware)`.
+  - a later 2026-03-29 hardware report said BOOT.ELF still behaved incorrectly once HDD runtime had been initialized, which points more narrowly at carried HDD/IOP state than BOOT.ELF lookup itself.
+  - current source therefore keeps the no-launch-CWD rollback but re-enables `reboot_iop = 1` for BOOT.ELF only when HDD runtime has already been loaded.
+  - current hardware status on that conditional-reboot source is still `Unknown (verify on hardware)`.
 - PAL asset proportions:
   - code compensates for PAL layout,
   - final display result still needs hardware confirmation.

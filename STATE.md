@@ -111,8 +111,9 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 - `U-10` BOOT.ELF after HDD page init:
   - one prior artifact was reported good,
   - repo history shows the BOOT.ELF modal later moved from its older non-reboot direct `System.loadELF(elf_path, 0, elf_path)` path to a reboot-I/O path with launch-CWD setup.
-  - current source now restores that older BOOT.ELF-specific non-reboot/no-launch-CWD path.
-  - current hardware status on restored source is `Unknown (verify on hardware)`.
+  - a later 2026-03-29 hardware report said BOOT.ELF still behaved incorrectly after HDD runtime had been initialized.
+  - current source now keeps the no-launch-CWD rollback but re-enables `reboot_iop = 1` for BOOT.ELF only when HDD runtime has already been loaded.
+  - current hardware status on this conditional-reboot source is `Unknown (verify on hardware)`.
 - `U-06` PAL asset aspect:
   - current code compensates for PAL UI layout,
   - hardware result is still `Unknown (verify on hardware)`.

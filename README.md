@@ -254,7 +254,8 @@ The workflow uses the `ps2dev/ps2dev` container and validates packaging after bu
 - `U-10` BOOT.ELF after HDD page init:
   - one prior artifact was reported good,
   - repo history shows the BOOT.ELF modal later changed from its older non-reboot direct `System.loadELF(elf_path, 0, elf_path)` path to a reboot-I/O path with launch-CWD setup.
-  - current source now restores the older BOOT.ELF-specific non-reboot/no-launch-CWD path while leaving POPSTARTER/HDD launch logic unchanged.
+  - a later 2026-03-29 hardware report said BOOT.ELF still behaved incorrectly once HDD had been initialized, which points more specifically at carried HDD runtime state than BOOT.ELF lookup.
+  - current source therefore keeps the no-launch-CWD rollback but now re-enables `reboot_iop = 1` only when HDD runtime has already been loaded, while leaving the non-HDD BOOT.ELF path on the simpler direct launch.
   - current hardware status still needs re-test.
 
 ## Documentation Map

@@ -62,7 +62,7 @@ Last updated: 2026-03-28
 - Keep `BOOT.ELF` and OSDSYS behavior stable while iterating on this.
 
 ### 3) External exit/launch re-validation
-- Re-run `U-05` (`OSDSYS`) and `U-10` (`BOOT.ELF after HDD page init`) on current source after the BOOT.ELF-specific rollback to the older non-reboot/no-launch-CWD modal path.
+- Re-run `U-05` (`OSDSYS`) and `U-10` (`BOOT.ELF after HDD page init`) on current source after the BOOT.ELF-specific conditional-reboot change for HDD-initialized sessions.
 - Record exact run results in `QA_REGRESSION_MATRIX.md` instead of carrying them only in chat history.
 
 ### 4) Startup/page split re-validation
