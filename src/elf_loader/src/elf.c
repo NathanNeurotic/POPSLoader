@@ -379,9 +379,7 @@ static int ExecuteViaEmbeddedLoader(const char *partition_context, const char *l
 		}
 	}
 
-	SifExitIopHeap();
 	SifExitRpc();
-	SifExitCmd();
 	FlushCache(0);
 	FlushCache(2);
 
@@ -499,9 +497,7 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 		 * launch paths.
 		 */
 		unmount_pfs_slots_for_exec(build_exec_keep_mask(resolved_path));
-		SifExitIopHeap();
 		SifExitRpc();
-		SifExitCmd();
 		FlushCache(0);
 		FlushCache(2);
 	}
