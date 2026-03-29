@@ -83,6 +83,16 @@ static int is_hdd_partition_context(const char *partition_context)
 	        partition_context[4] == ':');
 }
 
+static int should_use_filexio_direct_load(const char *partition_context, const char *load_path)
+{
+	if (is_hdd_partition_context(partition_context)) {
+		return 0;
+	}
+	return (load_path != NULL &&
+	        (strncmp(load_path, "pfs", 3) == 0 || strncmp(load_path, "PFS", 3) == 0 ||
+	         strncmp(load_path, "hdd", 3) == 0 || strncmp(load_path, "HDD", 3) == 0));
+}
+
 static int build_default_target_arg0(const char *partition_context, const char *load_path, char *out, size_t out_size)
 {
 	const char *suffix = load_path;
@@ -301,8 +311,7 @@ int main(int argc, char *argv[])
 	//Writeback data cache before loading ELF.
 	FlushCache(0);
 	SET_GS_BGCOLOUR(GREEN_BG);
-	if (strncmp(load_path, "pfs", 3) == 0 || strncmp(load_path, "PFS", 3) == 0 ||
-	    strncmp(load_path, "hdd", 3) == 0 || strncmp(load_path, "HDD", 3) == 0) {
+	if (should_use_filexio_direct_load(partition_context, load_path)) {
 		loaded_via_filexio = 1;
 		fileXioInit();
 		ret = load_elf_via_filexio(load_path, &filexio_entry, &filexio_gp);
@@ -322,11 +331,14 @@ int main(int argc, char *argv[])
 	if (ret == 0 && elfdata.epc != 0) {
 		SET_GS_BGCOLOUR(YELLOW_BG);
 
-		/* Older repo-local HDD fixes that first restored the iomanX-aware
-		 * fileXio load path jumped directly into ExecPS2 from this branch.
-		 * Keep that contract here too: once the target ELF has been copied
-		 * into EE RAM through fileXio, avoid extra HDD reset / SIF teardown
-		 * that the SifLoadElf path still uses.
+		/* Direct iomanX-only paths still need the older fileXio loader
+		 * contract.  Once the target ELF has been copied into EE RAM
+		 * through fileXio, avoid the later HDD reset / teardown path.
+		 *
+		 * Partition-aware HDD launches are different: the parent has
+		 * already mounted the target partition on pfs0:, so match the
+		 * reference loaders and use SifLoadElf on that mounted path
+		 * instead of forcing fileXio here.
 		 */
 		if (loaded_via_filexio) {
 			FlushCache(0);
