@@ -59,7 +59,8 @@ Reported hardware issues currently being tracked are:
   - current repo line keeps the partition-aware HDD reboot contract, separate exec-path reporting, and profile-path normalization.
   - a later hardware re-test on that child-remount/cold-parent line still black-screened.
   - current repo line now narrows the HDD-backed POPSTARTER goal further: it bypasses the partition-aware HDD handoff entirely for this path and just tries to execute the resolved HDD `POPSTARTER.ELF` itself with no selector or extra args.
-  - current repo line now derives the partition-scoped exec filename from the final resolved POPSTARTER path at launch time, so a stale precomputed exec path cannot drop the ELF basename before the HDD loader handoff.
+  - a later hardware popup on that stripped line still returned `rc=-1`, but it also showed another remaining repo bug: the launcher was still probing/opening `pfs3:/.../POPSTARTER.ELF` while separately trying to exec a rewritten `pfs:/.../POPSTARTER.ELF`.
+  - current repo line now removes that stale exec-path rewrite from the stripped HDD-backed POPSTARTER experiment, so probe/open and exec both use the same resolved HDD ELF path.
   - clarification: POPSTARTER itself is not believed to require slot preservation, launch CWD, partition context, or carried runtime state after exec. The current temporary goal is only to start the HDD-backed ELF successfully; selector/`argv[0]` restoration is deferred until that works.
   - detailed per-artifact experiment chronology lives in `QA_REGRESSION_MATRIX.md` and `DECISIONS.md`.
 - HDD game with non-HDD POPSTARTER (`D-15`)
@@ -217,7 +218,8 @@ The workflow uses the `ps2dev/ps2dev` container and validates packaging after bu
   - current repo line keeps the partition-aware reboot contract, separate exec-path reporting, and profile-path normalization.
   - a later hardware re-test on that child-remount/cold-parent line still black-screened.
   - current repo line now bypasses the partition-aware HDD handoff entirely for HDD-backed POPSTARTER and just tries to execute the resolved HDD ELF with no selector or extra args, so the remaining current-source question is only whether the ELF can start at all.
-  - current repo line now derives the partition-scoped exec filename from the final resolved POPSTARTER path at launch time, so a stale precomputed exec path cannot drop the ELF basename before the HDD loader handoff.
+  - a later hardware popup on that stripped line still returned `rc=-1`, but it also showed the launcher was probing/opening `pfs3:/.../POPSTARTER.ELF` while separately trying to exec a rewritten `pfs:/.../POPSTARTER.ELF`.
+  - current repo line now removes that stale exec-path rewrite from the stripped HDD-backed POPSTARTER experiment, so probe/open and exec both use the same resolved HDD ELF path.
   - clarification: POPSTARTER itself is not believed to require slot preservation, launch CWD, partition context, or carried runtime state after exec; selector/`argv[0]` restoration is intentionally deferred until the HDD-backed ELF starts at all.
   - see `QA_REGRESSION_MATRIX.md` and `DECISIONS.md` for the detailed experiment chronology.
 - `D-14` HDD-backed POPSTARTER with non-HDD game:

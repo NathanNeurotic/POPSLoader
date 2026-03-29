@@ -154,6 +154,7 @@ Current source also includes:
 - popup support for showing probe path and exec path separately
 - profile-path normalization so selected Profile 1/default does not silently keep another profile’s canonical HDD path
 - the current temporary HDD-backed POPSTARTER experiment bypasses partition-aware handoff entirely and executes the resolved HDD ELF with no selector or extra args, so the artifact answers only whether the ELF starts at all
+- current source also removes the stale stripped-line exec-path rewrite so probe/open and exec both use the same resolved HDD ELF path
 - BOOT.ELF now uses standard external-launch prep with conditional reboot after HDD init, because both later no-forced-reboot BOOT.ELF lines still froze after HDD page use on hardware
 
 `D-10` still fails after those changes.

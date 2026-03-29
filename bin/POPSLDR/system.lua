@@ -3756,7 +3756,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
   local popstarter_partition_context = ResolvePopstarterPartitionContext(configured_popstarter, popstarter)
   local popstarter_on_hdd = IsHddExecContextPath(popstarter)
   local popstarter_exec_path = popstarter
-  if popstarter_partition_context ~= nil and popstarter_partition_context ~= "" then
+  if not popstarter_on_hdd and popstarter_partition_context ~= nil and popstarter_partition_context ~= "" then
     local normalized_exec_path = BuildPartitionScopedExecPath(popstarter)
     if normalized_exec_path ~= nil then
       popstarter_exec_path = normalized_exec_path

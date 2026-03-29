@@ -11,7 +11,8 @@ Last updated: 2026-03-29
 - Current repo line uses the partition-aware HDD reboot contract, separate exec-path reporting, and profile-path normalization while preserving the restored non-HDD POPSTARTER path.
 - The later child-remount/cold-parent HDD POPSTARTER line still black-screened on hardware.
 - Current repo line now narrows the HDD-backed POPSTARTER experiment further: bypass the partition-aware HDD handoff entirely and just try to execute the resolved HDD ELF with no selector or extra args.
-- Current repo line now derives the partition-scoped exec filename from the final resolved POPSTARTER path at launch time, so stale precomputed exec strings cannot drop the ELF basename before the HDD loader handoff.
+- The latest stripped-line hardware popup returned `rc=-1`, but it also showed one more repo bug: probe/open used `pfs3:/.../POPSTARTER.ELF` while exec still used a rewritten `pfs:/.../POPSTARTER.ELF`.
+- Current repo line now removes that stale exec-path rewrite from the stripped HDD-backed POPSTARTER experiment so probe/open and exec use the same resolved HDD ELF path.
 - Treat slot preservation, launch CWD preservation, partition context, and other carried launch-state prep as non-goals for POPSTARTER itself; the current temporary target is only to make HDD-backed `POPSTARTER.ELF` launch successfully at all, with selector/`argv[0]` restoration deferred until after that.
 - The latest EE-side HDD direct-load workaround was reverted after it did not fix `D-10` and coincided with a reported HDD-game regression when POPSTARTER stayed on the non-HDD boot device.
 - `HDD (exFAT)` and `SMB (v1)` remain intentionally unimplemented menu entries.
