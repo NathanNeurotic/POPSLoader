@@ -18,6 +18,7 @@
 #include <errno.h>
 #include <ps2sdkapi.h>
 #include <fcntl.h>
+#include <io_common.h>
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
 
