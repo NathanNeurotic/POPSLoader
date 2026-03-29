@@ -364,10 +364,13 @@ static int ExecuteViaEmbeddedLoader(const char *partition_context, const char *l
 	}
 	launch_argv[final_argc] = NULL;
 
-	SifInitRpc(0);
-	SifLoadFileInit();
-	SifLoadFileExit();
-
+	/* Do NOT call SifInitRpc/SifLoadFileInit/SifLoadFileExit here — they can
+	 * corrupt the IOP fileXio state that the embedded loader needs to open
+	 * the pfs: target path after ExecPS2.  Do NOT call SifExitIopHeap/
+	 * SifExitRpc/SifExitCmd either — SifExitIopHeap can hang indefinitely
+	 * when the IOP is busy, producing a permanent black screen.  The loader
+	 * manages its own SIF lifecycle after ExecPS2 via SifInitRpc(0).
+	 */
 	boot_pheader = (elf_pheader_t *)(boot_elf + boot_header->phoff);
 	for (i = 0; i < boot_header->phnum; i++) {
 		if (boot_pheader[i].type != ELF_PT_LOAD) {
@@ -379,9 +382,6 @@ static int ExecuteViaEmbeddedLoader(const char *partition_context, const char *l
 		}
 	}
 
-	SifExitIopHeap();
-	SifExitRpc();
-	SifExitCmd();
 	FlushCache(0);
 	FlushCache(2);
 

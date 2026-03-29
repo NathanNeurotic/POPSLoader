@@ -7,8 +7,8 @@ Last updated: 2026-03-29
 - The shared default/Profile 1 local POPSTARTER baseline was restored by rolling back to the `BETA-10-play-CHECKPOINT2` resolver behavior; user hardware confirmed that fix.
 - Recorded hardware confirms `D-12` startup/Profile lookup is restored, `D-16` first-entry USB discovery is restored, and `D-15` non-HDD-POPSTARTER HDD-game launch is restored.
 - The main stabilization blocker is still HDD-backed `POPSTARTER.ELF` execution when the launcher, sidecar/CWD, or configured POPSTARTER path lives on HDD (`D-10`, `D-14`).
-- One 2026-03-29 artifact briefly moved `D-10` to a returned `rc=-1`, but later artifacts returned to black screen, so that was not a stable new boundary.
-- Current repo line uses the partition-aware HDD reboot contract, separate exec-path reporting, and profile-path normalization while preserving the restored non-HDD POPSTARTER path.
+- One 2026-03-29 artifact briefly moved `D-10` to a returned `rc=-1`, but later artifacts returned to black screen; the regression to black screen was traced to `SifExitIopHeap()` inside `ExecuteViaEmbeddedLoader` hanging indefinitely.
+- Current repo line removes all six problematic SIF calls from `ExecuteViaEmbeddedLoader` (`SifInitRpc`/`SifLoadFileInit`/`SifLoadFileExit` before the BRAM copy, and `SifExitIopHeap`/`SifExitRpc`/`SifExitCmd` before `ExecPS2`), keeping only `FlushCache(0)`/`FlushCache(2)` before the jump; hardware result is `Unknown (verify on hardware)`.
 - Current repo line keeps the BOOT.ELF-specific cold-prep path, but HDD-backed POPSTARTER now stays on the standard external-launch prep so the current HDD mount remains available until the parent remounts `pfs0:`.
 - The latest EE-side HDD direct-load workaround was reverted after it did not fix `D-10` and coincided with a reported HDD-game regression when POPSTARTER stayed on the non-HDD boot device.
 - `HDD (exFAT)` and `SMB (v1)` remain intentionally unimplemented menu entries.
