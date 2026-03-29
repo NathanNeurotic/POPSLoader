@@ -1060,7 +1060,7 @@ local function ResolvePopstarterPath(path)
   return chosen
 end
 
-local function ResolvePopstarterSourceContext(path, resolved_path)
+local function ResolvePopstarterPartitionContext(path, resolved_path)
   local configured = tostring(path or "")
   if IsDefaultRelativePopstarterPath(configured) or IsLegacyDefaultPopstarterPath(configured) then
     local sidecar_source = ResolveHddBootSidecarSourceContext()
@@ -3552,14 +3552,14 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   )
   local rc
   if exec_args ~= nil and #exec_args > 0 and unpack_fn ~= nil then
-    if context ~= nil and type(context.exec_source_context) == "string" and context.exec_source_context ~= "" then
-      rc = System.loadELF(popstarter, reboot_iop, unpack_fn(exec_args), context.exec_source_context)
+    if context ~= nil and type(context.exec_partition_context) == "string" and context.exec_partition_context ~= "" then
+      rc = System.loadELF(popstarter, reboot_iop, unpack_fn(exec_args), context.exec_partition_context)
     else
       rc = System.loadELF(popstarter, reboot_iop, unpack_fn(exec_args))
     end
   elseif exec_args ~= nil and #exec_args == 1 then
-    if context ~= nil and type(context.exec_source_context) == "string" and context.exec_source_context ~= "" then
-      rc = System.loadELF(popstarter, reboot_iop, exec_args[1], context.exec_source_context)
+    if context ~= nil and type(context.exec_partition_context) == "string" and context.exec_partition_context ~= "" then
+      rc = System.loadELF(popstarter, reboot_iop, exec_args[1], context.exec_partition_context)
     else
       rc = System.loadELF(popstarter, reboot_iop, exec_args[1])
     end
@@ -3662,7 +3662,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
   local selected_entry = tostring(game or "")
   local configured_popstarter = tostring(PLDR.POPSTARTER_PATH or "")
   local popstarter = ResolvePopstarterPath(configured_popstarter)
-  local popstarter_source_context = ResolvePopstarterSourceContext(configured_popstarter, popstarter)
+  local popstarter_partition_context = ResolvePopstarterPartitionContext(configured_popstarter, popstarter)
   local popstarter_on_hdd = IsHddExecContextPath(popstarter)
   local hdd_selector_mode = nil
   if type(launch_options) == "table" then
@@ -3858,7 +3858,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     keep_hdd_slots = nil,
     keep_hdd_slots_after_load = popstarter_on_hdd and {} or nil,
     launch_cwd = popstarter_on_hdd and false or nil,
-    exec_source_context = popstarter_source_context
+    exec_partition_context = popstarter_partition_context
   }
   local reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
   if popstarter_on_hdd then

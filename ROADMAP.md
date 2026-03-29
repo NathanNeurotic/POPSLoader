@@ -23,7 +23,8 @@ Last updated: 2026-03-28
 - A later 2026-03-28 re-test on that mounted-`pfs0:` embedded-loader source still black-screened for `D-10`.
 - Follow-up repo comparison then showed the prior source-context work had still been incomplete because Lua had usually already normalized HDD POPSTARTER to mounted `pfs1:` / `pfs3:` paths before the reboot loader saw it.
 - A later 2026-03-28 re-test on that exact-boot-mount/source-context source still black-screened for `D-10`.
-- Current source now passes exact HDD partition context from `bin/POPSLDR/system.lua` into the reboot loader, forces the HDD reboot handoff in `src/elf_loader/src/elf.c` back through an explicit `pfs0:` remount based on that partition plus the mounted relpath Lua had already resolved, and matches the reference reset call shape with `SifIopReset("", 0)`; `R2` can still request the full `hdd0:PART:pfs0:/GAME.ELF` selector.
+- Current source now replaces the earlier ad hoc HDD source-context reboot handoff with an explicit partition-aware contract across Lua, `src/luasystem.cpp`, `src/elf_loader/src/elf.c`, and the embedded loader; `R2` can still request the full `hdd0:PART:pfs0:/GAME.ELF` selector.
+- On that contract, the parent passes exact HDD partition context separately from the mounted load path, remounts `pfs0:` from that partition while reusing the mounted relpath Lua already resolved, and the embedded loader follows the local `ps2sdk` partition/load-path/argv split with `SifLoadFileInit/Exit` around `SifLoadElf` plus the post-reset MC module reload.
 - The main stabilization blocker is still HDD-backed `POPSTARTER.ELF` handoff when the launcher, sidecar/CWD, or configured POPSTARTER path lives on HDD. Reported hardware results still black-screen both HDD-game and USB-game repros.
 - The latest EE-side HDD direct-load workaround was reverted after it did not fix `D-10` and coincided with a reported HDD-game regression when POPSTARTER stayed on the non-HDD boot device.
 - `HDD (exFAT)` and `SMB (v1)` remain intentionally unimplemented menu entries.
@@ -51,7 +52,7 @@ Last updated: 2026-03-28
 - A later 2026-03-28 re-test still black-screened on that narrowed Lua-side HDD-backed source with no visible positive change.
 - A later 2026-03-28 re-test on that loader-side source still black-screened for `D-10` on both `X` and `R2`, while the other same-day success result was clarified as another `D-15` run rather than `D-14`.
 - A later 2026-03-28 re-test on that forced-`reboot_iop = 1` source still black-screened for `D-10` and `D-14`.
-- Current source now keeps the restored selector-only handoff for non-HDD POPSTARTER HDD-game launches, seeds the exact boot `pfs1:` mount metadata from `etc/boot.lua` into Lua-side HDD mount tracking, and passes exact HDD partition context from Lua into the reboot loader so HDD-backed launches are remounted on `pfs0:` there instead of inheriting whichever mounted `pfsN:` path Lua resolved first.
+- Current source now keeps the restored selector-only handoff for non-HDD POPSTARTER HDD-game launches, seeds the exact boot `pfs1:` mount metadata from `etc/boot.lua` into Lua-side HDD mount tracking, and uses the partition-aware reboot contract for HDD-backed launches instead of the earlier ad hoc source-context handoff.
 - Next hardware step:
   - first re-run `D-10` with boot source HDD and HDD `POPSTARTER.ELF`,
   - then re-run `D-14` with a USB game and HDD `POPSTARTER.ELF`,

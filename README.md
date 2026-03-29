@@ -1,6 +1,6 @@
 # POPSLoader
 
-Last updated: 2026-03-27
+Last updated: 2026-03-28
 
 POPSLoader is a PlayStation 2 launcher for POPStarter, built on Enceladus runtime components and driven primarily by embedded Lua scripts.
 
@@ -63,7 +63,8 @@ Reported hardware issues currently being tracked are:
   - a later 2026-03-28 re-test on that mounted-`pfs0:` embedded-loader source still black-screened for `D-10`.
   - follow-up repo comparison then showed the prior source-context work had still been incomplete because Lua had usually already normalized HDD POPSTARTER to mounted `pfs1:` / `pfs3:` paths before the reboot loader saw it.
   - a later 2026-03-28 re-test on that exact-boot-mount/source-context source still black-screened for `D-10`.
-  - current source now keeps the confirmed HDD startup auto-init and USB first-entry fixes, preserves the restored `D-15` split, seeds the exact HDD boot mount metadata from `etc/boot.lua`, and passes exact HDD partition context from `bin/POPSLDR/system.lua` into the reboot loader so `src/elf_loader/src/elf.c` can remount `pfs0:` from that partition while reusing the mounted relpath Lua had already resolved.
+  - current source now keeps the confirmed HDD startup auto-init and USB first-entry fixes, preserves the restored `D-15` split, seeds the exact HDD boot mount metadata from `etc/boot.lua`, and replaces the earlier ad hoc HDD source-context reboot handoff with an explicit partition-aware contract across `bin/POPSLDR/system.lua`, `src/luasystem.cpp`, `src/elf_loader/src/elf.c`, and `src/elf_loader/src/loader/src/loader.c`.
+  - on that contract, Lua now passes exact HDD partition context separately, the parent loader remounts `pfs0:` from that partition while reusing the mounted relpath it already resolved, and the embedded loader uses the same partition/load-path/argv split documented in the local `ps2sdk` tree, including `SifLoadFileInit/Exit` around `SifLoadElf` and the post-reset MC module reload.
   - hardware result on this corrected current source is still `Unknown (verify on hardware)`.
 - HDD game with non-HDD POPSTARTER (`D-15`)
   - this path had regressed on several 2026-03-27 and early 2026-03-28 experimental sources.
@@ -224,7 +225,8 @@ The workflow uses the `ps2dev/ps2dev` container and validates packaging after bu
   - a later 2026-03-28 re-test on the mounted-`pfs0:` embedded-loader source still black-screened on `X`.
   - follow-up repo comparison showed that earlier source-context work was still incomplete because Lua had usually already normalized HDD POPSTARTER to mounted `pfs1:` / `pfs3:` paths before the reboot loader saw it.
   - a later 2026-03-28 re-test on that exact-boot-mount/source-context source still black-screened on `X`.
-  - current source now passes exact HDD partition context from `bin/POPSLDR/system.lua` into the reboot loader, forces the HDD reboot handoff in `src/elf_loader/src/elf.c` back through an explicit `pfs0:` remount based on that partition plus the mounted relpath Lua had already resolved, matches the reference reset call shape with `SifIopReset("", 0)`, and seeds that partition context from the exact boot `pfs1:` mount metadata exported by `etc/boot.lua`.
+  - current source now replaces the earlier ad hoc HDD source-context reboot handoff with an explicit partition-aware contract across Lua, `src/luasystem.cpp`, `src/elf_loader/src/elf.c`, and the embedded loader.
+  - on that contract, the parent passes exact HDD partition context separately from the mounted load path, remounts `pfs0:` from that partition while reusing the mounted relpath Lua already resolved, and the embedded loader follows the local `ps2sdk` partition/load-path/argv split with `SifLoadFileInit/Exit` around `SifLoadElf` plus the post-reset MC module reload.
   - hardware result on this corrected current source is still `Unknown (verify on hardware)`.
 - `D-14` HDD-backed POPSTARTER with non-HDD game:
   - reported failing.
@@ -232,7 +234,7 @@ The workflow uses the `ps2dev/ps2dev` container and validates packaging after bu
   - the user later clarified that a same-day 2026-03-28 success report referred to `D-15`, not this case, so `D-14` remains unverified on the loader-side current branch.
   - a later 2026-03-28 re-test on the forced-`reboot_iop = 1` source still black-screened on `X`; `R2` produced no response in that non-HDD-game repro.
   - a later 2026-03-28 re-test on the direct-`hdd0:PART:pfsN:/POPSTARTER.ELF` preference source still black-screened on `X`.
-  - current source now uses the same exact-HDD-partition-to-`pfs0:` reboot handoff as `D-10`, rather than relying on whichever mounted `pfsN:` path Lua happened to resolve first.
+  - current source now uses the same partition-aware HDD reboot contract as `D-10`, rather than the earlier ad hoc source-context handoff or whichever mounted `pfsN:` path Lua happened to resolve first.
   - hardware result on this corrected current source is still `Unknown (verify on hardware)`.
 - `D-15` HDD game with non-HDD sidecar POPSTARTER:
   - a later 2026-03-27 hardware report said booting from another device and launching an HDD game with sidecar `POPSTARTER.ELF` on that boot device also black-screened.

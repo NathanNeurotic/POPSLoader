@@ -1,4 +1,4 @@
-Last updated: 2026-03-27
+Last updated: 2026-03-28
 
 # DECISIONS
 
@@ -97,7 +97,9 @@ Each entry records:
   - follow-up repo comparison then showed the remaining source-context gap was broader than the loader alone: Lua had usually already normalized HDD POPSTARTER to mounted `pfs1:` / `pfs3:` paths before the reboot loader saw it, so the loader was still not being given the original HDD path it needed to force the `pfs0:` remount pattern used by `wLaunchELF`.
   - broader comparison against `wLaunchELF` also showed the remaining ownership mismatch was not just reset policy: the parent/loader boundary there does not pre-unmount PFS state and the embedded loader calls `SifLoadElf` directly after `SifInitRpc(0)`, without `SifLoadFileInit/Exit`.
   - a later 2026-03-28 re-test on that exact-boot-mount/source-context source still black-screened for `D-10`, so full raw-source reconstruction alone was still not the missing link.
-  - current source therefore keeps the restored non-HDD POPSTARTER path, seeds the exact boot `pfs1:` mount metadata from `etc/boot.lua` into Lua-side HDD mount tracking, passes exact HDD partition context from `bin/POPSLDR/system.lua` into the reboot loader, forces the HDD reboot handoff in `src/elf_loader/src/elf.c` back through an explicit `pfs0:` remount based on that partition plus the mounted relpath Lua had already resolved, matches the reference reset call shape with `SifIopReset("", 0)`, keeps the no-pre-unmount / direct-`SifLoadElf` loader ownership changes from the broader `wLaunchELF` comparison, and restores the repo-local parent handoff rule of keeping EE RPC alive across the final embedded-loader `ExecPS2`.
+  - repo comparison against the local `ps2sdk` tree then showed the remaining drift was structural: the header still documented a partition-aware loader contract, but the live reboot path was still using a custom source-context channel instead of the same partition/load-path/argv split.
+  - current source therefore keeps the restored non-HDD POPSTARTER path, seeds the exact boot `pfs1:` mount metadata from `etc/boot.lua` into Lua-side HDD mount tracking, and replaces that ad hoc reboot handoff with an explicit partition-aware contract across `bin/POPSLDR/system.lua`, `src/luasystem.cpp`, `src/elf_loader/src/elf.c`, and `src/elf_loader/src/loader/src/loader.c`.
+  - on that contract, Lua passes exact HDD partition context separately from the mounted load path, the parent remounts `pfs0:` from that partition while reusing the mounted relpath Lua already resolved, and the embedded loader follows the local `ps2sdk` partition/load-path/argv split with `SifLoadFileInit/Exit` around `SifLoadElf` plus the post-reset MC module reload.
   - current source still keeps the `R2` selector-path experiment for HDD game launches, but that remains secondary to restoring and preserving the non-HDD POPSTARTER baseline for HDD titles.
 - `BOOT.ELF` after HDD page init:
   - the last failed backend experiment was reverted in source,

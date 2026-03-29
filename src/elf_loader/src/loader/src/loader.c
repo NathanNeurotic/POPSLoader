@@ -70,6 +70,52 @@ static void wipeUserMem(void)
 	}
 }
 
+static int is_hdd_partition_context(const char *partition_context)
+{
+	return (partition_context != NULL &&
+	        strncmp(partition_context, "hdd", 3) == 0 &&
+	        partition_context[3] >= '0' && partition_context[3] <= '9' &&
+	        partition_context[4] == ':');
+}
+
+static int build_default_target_arg0(const char *partition_context, const char *load_path, char *out, size_t out_size)
+{
+	const char *suffix = load_path;
+
+	if (out == NULL || out_size == 0) {
+		return -EINVAL;
+	}
+
+	if (load_path == NULL) {
+		out[0] = '\0';
+		return 0;
+	}
+
+	if (partition_context == NULL || partition_context[0] == '\0') {
+		snprintf(out, out_size, "%s", load_path);
+		return 0;
+	}
+
+	if (strncmp(load_path, "pfs", 3) == 0) {
+		const char *prefix_end = strchr(load_path, ':');
+		if (prefix_end != NULL) {
+			suffix = prefix_end + 1;
+		}
+		if (suffix == NULL || suffix[0] == '\0') {
+			suffix = "/";
+		}
+		if (suffix[0] != '/') {
+			snprintf(out, out_size, "%spfs:/%s", partition_context, suffix);
+		} else {
+			snprintf(out, out_size, "%spfs:%s", partition_context, suffix);
+		}
+		return 0;
+	}
+
+	snprintf(out, out_size, "%s%s", partition_context, load_path);
+	return 0;
+}
+
 //--------------------------------------------------------------
 //End of func:  void wipeUserMem(void)
 //--------------------------------------------------------------
@@ -80,8 +126,9 @@ int main(int argc, char *argv[])
 {
 	SET_GS_BGCOLOUR(WHITE_BG);
 	static t_ExecData elfdata;
-	static char source_context[1024];
-	static char target_path[1024];
+	static char partition_context[256];
+	static char load_path[1024];
+	static char default_target_arg0[1024];
 	static char target_arg_storage[1024];
 	static char *target_argv[33];
 	size_t target_arg_offset = 0;
@@ -90,26 +137,38 @@ int main(int argc, char *argv[])
 
 	elfdata.epc = 0;
 
-	// argv[0]=mounted path to ELF, argv[1]=original source context,
+	// argv[0]=partition context when present, argv[1]=load path,
 	// argv[2..]=arguments for the target ELF
 	if (argc < 2) {  
 		SET_GS_BGCOLOUR(RED_BG);
 		return -EINVAL;
 	}
-	snprintf(target_path, sizeof(target_path), "%s", argv[0] ? argv[0] : "");
-	snprintf(source_context, sizeof(source_context), "%s", argv[1] ? argv[1] : target_path);
+	snprintf(partition_context, sizeof(partition_context), "%s", argv[0] ? argv[0] : "");
+	snprintf(load_path, sizeof(load_path), "%s", argv[1] ? argv[1] : "");
+	if (load_path[0] == '\0') {
+		SET_GS_BGCOLOUR(RED_BG);
+		return -EINVAL;
+	}
 	target_argc = argc - 2;
 	if (target_argc > 32) {
 		return -E2BIG;
 	}
-	for (i = 2; i < argc; i++) {
-		size_t arg_len = strlen(argv[i]) + 1;
-		if ((target_arg_offset + arg_len) > sizeof(target_arg_storage)) {
-			return -E2BIG;
+	if (target_argc == 0) {
+		if (build_default_target_arg0(partition_context, load_path, default_target_arg0, sizeof(default_target_arg0)) != 0) {
+			return -EINVAL;
 		}
-		memcpy(&target_arg_storage[target_arg_offset], argv[i], arg_len);
-		target_argv[i - 2] = &target_arg_storage[target_arg_offset];
-		target_arg_offset += arg_len;
+		target_argv[0] = default_target_arg0;
+		target_argc = 1;
+	} else {
+		for (i = 2; i < argc; i++) {
+			size_t arg_len = strlen(argv[i]) + 1;
+			if ((target_arg_offset + arg_len) > sizeof(target_arg_storage)) {
+				return -E2BIG;
+			}
+			memcpy(&target_arg_storage[target_arg_offset], argv[i], arg_len);
+			target_argv[i - 2] = &target_arg_storage[target_arg_offset];
+			target_arg_offset += arg_len;
+		}
 	}
 	target_argv[target_argc] = NULL;
 
@@ -131,23 +190,27 @@ int main(int argc, char *argv[])
 	//Writeback data cache before loading ELF.
 	FlushCache(0);
 	SET_GS_BGCOLOUR(GREEN_BG);
-	ret = SifLoadElf(target_path, &elfdata);
+	SifLoadFileInit();
+	ret = SifLoadElf(load_path, &elfdata);
+	SifLoadFileExit();
 	SET_GS_BGCOLOUR(BLUE_BG);
 	if (ret == 0 && elfdata.epc != 0) {
 		SET_GS_BGCOLOUR(YELLOW_BG);
 
-		/* Match the reference pattern more closely: only apply the HDD-side
-		 * IOP reset when the parent explicitly tells us the original ELF
-		 * source lived on HDD. The target ELF still receives only its own
-		 * launch arguments, not this control metadata.
-		 */
-		if (strncmp(source_context, "hdd", 3) == 0 && (source_context[3] >= '0' && source_context[3] <= ':')) {
+		if (is_hdd_partition_context(partition_context)) {
 			while(!SifIopReset("", 0)){};
 			while (!SifIopSync()) {};
+
+			SET_GS_BGCOLOUR(ORANGE_BG);
+
+			SifInitRpc(0);
+			SifLoadFileInit();
+			SifLoadModule("rom0:SIO2MAN", 0, NULL);
+			SifLoadModule("rom0:MCMAN", 0, NULL);
+			SifLoadModule("rom0:MCSERV", 0, NULL);
+			SifLoadFileExit();
 		}
 		SifExitRpc();
-
-		SET_GS_BGCOLOUR(ORANGE_BG);
 
 		SET_GS_BGCOLOUR(BROWN_BG);
 

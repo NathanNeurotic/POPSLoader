@@ -940,7 +940,7 @@ extern "C" {
 int LoadELFFromFile(const char *filename, int argc, char *argv[]);
 int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[]);
 int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]);
-int LoadELFFromFileExecPS2RebootIOPWithContext(const char *filename, const char *source_context, int argc, char *argv[]);
+int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const char *partition, int argc, char *argv[]);
 void SetExecKeepPfsMask(unsigned int mask);
 void ClearExecKeepPfsMask(void);
 }
@@ -965,14 +965,14 @@ static int lua_loadELF(lua_State *L)
 	const char *elftoload = luaL_checklstring(L, 1, &size);
 	int rebootIOP = luaL_checkinteger(L, 2);
 	int extra_args = argc - 2;
-	const char *source_context = NULL;
+	const char *partition_context = NULL;
 	static char selector_buf[256];
 	static char *argv_static[2];
 	DPRINTF("# Loading ELF '%s' iop_reboot=%d, extra_args=%d\n", elftoload, rebootIOP, extra_args);
 	if (extra_args > 0) {
 		const char *selector = luaL_checkstring(L, 3);
 		if (argc >= 4 && !lua_isnil(L, 4)) {
-			source_context = luaL_checkstring(L, 4);
+			partition_context = luaL_checkstring(L, 4);
 		}
 		snprintf(selector_buf, sizeof(selector_buf), "%s", selector ? selector : "");
 		argv_static[0] = selector_buf;
@@ -980,8 +980,8 @@ static int lua_loadELF(lua_State *L)
 		DPRINTF("# Loading ELF argv0='%s' argc=1\n", argv_static[0]);
 		int rc;
 		if (rebootIOP != 0) {
-			if (source_context != NULL && source_context[0] != '\0') {
-				rc = LoadELFFromFileExecPS2RebootIOPWithContext(elftoload, source_context, 1, argv_static);
+			if (partition_context != NULL && partition_context[0] != '\0') {
+				rc = LoadELFFromFileExecPS2RebootIOPWithPartition(elftoload, partition_context, 1, argv_static);
 			} else {
 				rc = LoadELFFromFileExecPS2RebootIOP(elftoload, 1, argv_static);
 			}

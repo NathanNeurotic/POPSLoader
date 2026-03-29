@@ -116,8 +116,8 @@ static bool is_hdd_backed_exec_path(const char *path) {
 	        (strncmp(path, "hdd", 3) == 0 || strncmp(path, "pfs", 3) == 0));
 }
 
-static int ExecuteViaEmbeddedLoader(const char *resolved_path, const char *source_context, int argc, char *argv[]);
-int LoadELFFromFileExecPS2RebootIOPWithContext(const char *filename, const char *source_context, int argc, char *argv[]);
+static int ExecuteViaEmbeddedLoader(const char *partition_context, const char *load_path, int argc, char *argv[]);
+int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const char *partition, int argc, char *argv[]);
 
 static int extract_exec_pfs_slot(const char *path) {
 	if (path != NULL && strncmp(path, "pfs", 3) == 0) {
@@ -249,11 +249,9 @@ static int build_hdd_embedded_loader_target_from_hdd_path(const char *source_pat
 	return build_hdd_embedded_loader_target_from_partition(source_path, partition_context, load_path, load_path_size, keep_mask_out);
 }
 
-static int build_hdd_embedded_loader_target(const char *resolved_path, const char *source_context, char *load_path, size_t load_path_size, unsigned int *keep_mask_out) {
-	if (source_context != NULL && strncmp(source_context, "hdd", 3) == 0) {
-		if (build_hdd_embedded_loader_target_from_partition(resolved_path, source_context, load_path, load_path_size, keep_mask_out) == 0) {
-			return 0;
-		}
+static int build_hdd_embedded_loader_target(const char *resolved_path, const char *partition_context, char *load_path, size_t load_path_size, unsigned int *keep_mask_out) {
+	if (partition_context != NULL && strncmp(partition_context, "hdd", 3) == 0) {
+		return build_hdd_embedded_loader_target_from_partition(resolved_path, partition_context, load_path, load_path_size, keep_mask_out);
 	}
 
 	if (resolved_path != NULL && strncmp(resolved_path, "pfs", 3) == 0) {
@@ -273,32 +271,33 @@ static int build_hdd_embedded_loader_target(const char *resolved_path, const cha
 	return -1;
 }
 
-static int ExecuteHddBackedViaEmbeddedLoader(const char *requested_path, const char *resolved_path, const char *source_context_override, int argc, char *argv[]) {
+static int ExecuteHddBackedViaEmbeddedLoader(const char *resolved_path, const char *partition_context_override, int argc, char *argv[]) {
 	char load_path[256];
-	const char *source_context;
+	const char *partition_context;
 	unsigned int previous_keep_mask;
 	unsigned int required_keep_mask;
 	int ret;
 
-	if (argc <= 0 || argv == NULL || argv[0] == NULL) {
-		return -4;
+	partition_context = partition_context_override;
+	if ((partition_context == NULL || partition_context[0] == '\0') &&
+	    resolved_path != NULL && strncmp(resolved_path, "hdd", 3) == 0) {
+		static char derived_partition[128];
+		const char *partition_end = strchr(resolved_path + 5, ':');
+		size_t partition_len = partition_end != NULL ? (size_t)(partition_end - resolved_path) + 1 : 0;
+		if (partition_len > 0 && partition_len < sizeof(derived_partition)) {
+			memcpy(derived_partition, resolved_path, partition_len);
+			derived_partition[partition_len] = '\0';
+			partition_context = derived_partition;
+		}
 	}
 
-	source_context = source_context_override;
-	if (source_context == NULL || source_context[0] == '\0') {
-		source_context = requested_path;
-	}
-	if (source_context == NULL || source_context[0] == '\0') {
-		source_context = resolved_path;
-	}
-
-	if (build_hdd_embedded_loader_target(resolved_path, source_context, load_path, sizeof(load_path), &required_keep_mask) != 0) {
+	if (build_hdd_embedded_loader_target(resolved_path, partition_context, load_path, sizeof(load_path), &required_keep_mask) != 0) {
 		return -1;
 	}
 
 	previous_keep_mask = GetExecKeepPfsMask();
 	SetExecKeepPfsMask(previous_keep_mask | required_keep_mask);
-	ret = ExecuteViaEmbeddedLoader(load_path, source_context, argc, argv);
+	ret = ExecuteViaEmbeddedLoader(partition_context != NULL ? partition_context : "", load_path, argc, argv);
 	SetExecKeepPfsMask(previous_keep_mask);
 	return ret;
 }
@@ -323,20 +322,18 @@ static void wipe_bramMem(void) {
 	}
 }
 
-static int ExecuteViaEmbeddedLoader(const char *resolved_path, const char *source_context, int argc, char *argv[]) {
+static int ExecuteViaEmbeddedLoader(const char *partition_context, const char *load_path, int argc, char *argv[]) {
 	int i;
-	int final_argc = argc + 2;
-	static const int kMaxArgc = 32;
-	static char *launch_argv[33];
+	int extra_argc = (argc > 0 && argv != NULL) ? argc : 0;
+	int final_argc = extra_argc + 2;
+	static const int kMaxArgc = 34;
+	static char *launch_argv[35];
 	static char launch_arg_storage[2048];
 	size_t storage_offset = 0;
 	u8 *boot_elf = (u8 *)&loader_elf;
 	elf_header_t *boot_header = (elf_header_t *)boot_elf;
 	elf_pheader_t *boot_pheader;
 
-	if (argc <= 0 || argv == NULL || argv[0] == NULL) {
-		return -4;
-	}
 	if (final_argc > kMaxArgc) {
 		return -2;
 	}
@@ -344,15 +341,15 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, const char *sourc
 		return -5;
 	}
 
-	launch_argv[0] = store_arg(resolved_path, launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
+	launch_argv[0] = store_arg(partition_context != NULL ? partition_context : "", launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
 	if (!launch_argv[0]) {
 		return -3;
 	}
-	launch_argv[1] = store_arg(source_context != NULL ? source_context : resolved_path, launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
+	launch_argv[1] = store_arg(load_path, launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
 	if (!launch_argv[1]) {
 		return -3;
 	}
-	for (i = 0; i < argc; i++) {
+	for (i = 0; i < extra_argc; i++) {
 		char *stored_arg = store_arg(argv[i], launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
 		if (!stored_arg) {
 			return -3;
@@ -384,7 +381,7 @@ static int ExecuteViaEmbeddedLoader(const char *resolved_path, const char *sourc
 	return -1;
 }
 
-int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
+int LoadELFFromFileWithPartition(const char *filename, const char *partition, int argc, char *argv[]) {
 	int i;
 	int new_argc = 1;
 	int fd = -1;
@@ -401,6 +398,10 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 	}
 	// ELF Exists
 	wipe_bramMem();
+
+	if (partition != NULL && partition[0] != '\0') {
+		return ExecuteViaEmbeddedLoader(partition, resolved_path, argc, argv);
+	}
 
 	DPRINTF("LAUNCH: BEGIN\n");
 	if (strcmp(resolved_path, filename) != 0) {
@@ -456,7 +457,7 @@ int LoadELFFromFileWithPartition(const char *filename, int argc, char *argv[]) {
 
 int LoadELFFromFile(const char *filename, int argc, char *argv[])
 {
-	return LoadELFFromFileWithPartition(filename, argc, argv);
+	return LoadELFFromFileWithPartition(filename, NULL, argc, argv);
 }
 
 int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
@@ -504,10 +505,10 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 
 int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[])
 {
-	return LoadELFFromFileExecPS2RebootIOPWithContext(filename, NULL, argc, argv);
+	return LoadELFFromFileExecPS2RebootIOPWithPartition(filename, NULL, argc, argv);
 }
 
-int LoadELFFromFileExecPS2RebootIOPWithContext(const char *filename, const char *source_context, int argc, char *argv[])
+int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const char *partition, int argc, char *argv[])
 {
 	t_ExecData elfdata;
 	char resolved_path[256];
@@ -517,9 +518,9 @@ int LoadELFFromFileExecPS2RebootIOPWithContext(const char *filename, const char 
 		return -1;
 	}
 
-	if ((is_hdd_backed_exec_path(resolved_path) || is_hdd_backed_exec_path(source_context)) &&
+	if ((is_hdd_backed_exec_path(resolved_path) || is_hdd_backed_exec_path(partition)) &&
 	    argc > 0 && argv != NULL && argv[0] != NULL) {
-		return ExecuteHddBackedViaEmbeddedLoader(filename, resolved_path, source_context, argc, argv);
+		return ExecuteHddBackedViaEmbeddedLoader(resolved_path, partition, argc, argv);
 	}
 
 	SifInitRpc(0);
