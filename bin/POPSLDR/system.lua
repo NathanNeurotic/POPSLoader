@@ -3935,6 +3935,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     end
   end
   local argv = {argv0_selector}
+  local use_partition_cold_handoff = popstarter_on_hdd and type(popstarter_partition_context) == "string" and popstarter_partition_context ~= ""
 
   local context = {
     device_page = device_page,
@@ -3959,11 +3960,12 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     bootparam_source = boot_source_mode,
     hdd_init = hdd_init,
     keep_hdd_slots = nil,
-    keep_hdd_slots_after_load = popstarter_on_hdd and {} or nil,
+    keep_hdd_slots_after_load = (popstarter_on_hdd and not use_partition_cold_handoff) and {} or nil,
     launch_cwd = popstarter_on_hdd and false or nil,
-    -- BOOT.ELF keeps the colder handoff after HDD runtime init. For HDD-backed
-    -- POPSTARTER, keep the current mount alive until the parent remounts pfs0:.
-    cold_external_launch = false,
+    -- Partition-aware HDD POPSTARTER no longer depends on inheriting the live
+    -- pfsN mount into exec; the child loader remounts pfs0: from partition
+    -- context itself, so the parent can clear tracked mounts before handoff.
+    cold_external_launch = use_partition_cold_handoff,
     exec_path = popstarter_exec_path,
     exec_partition_context = popstarter_partition_context
   }

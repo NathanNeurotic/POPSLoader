@@ -132,24 +132,6 @@ static int extract_exec_pfs_slot(const char *path) {
 	return -1;
 }
 
-static int mount_hdd_exec_partition(const char *partition, int slot) {
-	char mount_name[6] = "pfs0:";
-
-	if (partition == NULL || slot < 0 || slot > 3) {
-		return -1;
-	}
-
-	mount_name[3] = '0' + slot;
-	if (fileXioMount(mount_name, partition, FIO_MT_RDONLY) < 0) {
-		fileXioUmount(mount_name);
-		if (fileXioMount(mount_name, partition, FIO_MT_RDONLY) < 0) {
-			return -1;
-		}
-	}
-
-	return 0;
-}
-
 static const char *extract_exec_relpath(const char *path) {
 	const char *relpath;
 	const char *prefix_end;
@@ -184,9 +166,7 @@ static const char *extract_exec_relpath(const char *path) {
 }
 
 static int build_hdd_embedded_loader_target_from_partition(const char *resolved_path, const char *partition_context, char *load_path, size_t load_path_size, unsigned int *keep_mask_out) {
-	char partition[128];
 	const char *relpath;
-	size_t partition_len;
 
 	if (resolved_path == NULL || partition_context == NULL || load_path == NULL || keep_mask_out == NULL) {
 		return -1;
@@ -195,31 +175,13 @@ static int build_hdd_embedded_loader_target_from_partition(const char *resolved_
 		return -1;
 	}
 
-	partition_len = strlen(partition_context);
-	while (partition_len > 0 && partition_context[partition_len - 1] == ':') {
-		partition_len--;
-	}
-	if (partition_len == 0 || partition_len >= sizeof(partition)) {
-		return -1;
-	}
-	memcpy(partition, partition_context, partition_len);
-	partition[partition_len] = '\0';
-
 	relpath = extract_exec_relpath(resolved_path);
 	if (relpath == NULL) {
 		return -1;
 	}
 
-	if (mount_hdd_exec_partition(partition, 0) != 0) {
-		return -1;
-	}
-
 	snprintf(load_path, load_path_size, "pfs0:/%s", relpath);
-	if (!can_open_exec_path(load_path)) {
-		return -1;
-	}
-
-	*keep_mask_out = 0x01;
+	*keep_mask_out = 0;
 	return 0;
 }
 

@@ -1169,16 +1169,16 @@ UI = {
         end
         UI.LAUNCHING = true
         UI.Modal.Close()
-        local reboot_iop = 0
-        local hdd_loaded = type(PLDR) == "table" and type(PLDR.HDD) == "table" and tonumber(PLDR.HDD.LOADSTATE or 0) ~= 0
-        if hdd_loaded and type(PLDR) == "table" and type(PLDR.PrepareForColdExternalELFLaunch) == "function" then
-          pcall(PLDR.PrepareForColdExternalELFLaunch)
-        elseif type(PLDR) == "table" and type(PLDR.PrepareForExternalELFLaunch) == "function" then
+        if type(PLDR) == "table" and type(PLDR.PrepareForExternalELFLaunch) == "function" then
           pcall(PLDR.PrepareForExternalELFLaunch, elf_path)
         end
         -- Do NOT set reboot_iop=1 when HDD is loaded: SifIopReset with HDD
         -- modules active can hang, causing BOOT.ELF to freeze.  LoadExecPS2
         -- (reboot_iop=0) works correctly regardless of HDD init state.
+        local reboot_iop = 0
+        if type(PLDR) == "table" and type(PLDR.HDD) == "table" and tonumber(PLDR.HDD.LOADSTATE or 0) ~= 0 then
+          reboot_iop = 1
+        end
         local rc = System.loadELF(elf_path, reboot_iop, elf_path)
         UI.LAUNCHING = false
         UI.Notify("BOOT.ELF launch failed\nrc="..tostring(rc), 150)
