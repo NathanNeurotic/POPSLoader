@@ -88,6 +88,8 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - a later 2026-03-28 re-test on that exact-boot-mount/source-context source still black-screened on `X`.
   - current source now replaces the earlier ad hoc HDD source-context reboot handoff with an explicit partition-aware contract across Lua, `src/luasystem.cpp`, `src/elf_loader/src/elf.c`, and the embedded loader.
   - on that contract, the parent passes exact HDD partition context separately from the mounted load path, remounts `pfs0:` from that partition while reusing the mounted relpath Lua already resolved, and the embedded loader follows the local `ps2sdk` partition/load-path/argv split with `SifLoadFileInit/Exit` around `SifLoadElf` plus the post-reset MC module reload.
+  - the latest 2026-03-28 `D-10` run on that partition-aware source no longer black-screened, but the launcher still regained control through its generic timeout failure path instead of transferring to POPSTARTER.
+  - current source now stops masking the returned loader rc behind that timeout message and also restores the earlier embedded-loader fix that avoids `printf`/`snprintf` in that environment.
   - corrected-source hardware status is still `Unknown (verify on hardware)`.
 - `D-14` HDD-backed POPSTARTER with non-HDD game:
   - reported failing on hardware.

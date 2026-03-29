@@ -117,6 +117,7 @@ This matrix tracks current behavior across:
 | 2026-03-28 | Unknown (not reported) | Non-HDD game with HDD-backed `POPSTARTER.ELF` on direct-`hdd0:PART:pfsN:/POPSTARTER.ELF` preference source | D-14 | FAIL: `X` black screen |
 | 2026-03-28 | Unknown (not reported) | HDD boot; HDD sidecar/cwd `POPSTARTER.ELF`; HDD game on mounted-`pfs0:` embedded-loader source | D-10 | FAIL: `X` black screen |
 | 2026-03-28 | Unknown (not reported) | HDD boot; HDD sidecar/cwd `POPSTARTER.ELF`; HDD game on exact-boot-mount/source-context source | D-10 | FAIL: black screen |
+| 2026-03-28 | Unknown (not reported) | HDD boot; HDD sidecar/cwd `POPSTARTER.ELF`; HDD game on partition-aware reboot-contract source | D-10 | FAIL: no black screen, but launcher regained control through generic timeout failure path |
 | YYYY-MM-DD | SCPH-xxxxx | USB/MMCE/MX4SIO/HDD details | e.g. S-01,S-02,D-02 | PASS/FAIL + notes |
 
 ## Current Verification Status
@@ -159,6 +160,8 @@ This matrix tracks current behavior across:
     - a later 2026-03-28 re-test on that exact-boot-mount/source-context source still black-screened on `X`.
     - current source now replaces the earlier ad hoc HDD source-context reboot handoff with an explicit partition-aware contract across `bin/POPSLDR/system.lua`, `src/luasystem.cpp`, `src/elf_loader/src/elf.c`, and `src/elf_loader/src/loader/src/loader.c`.
     - on that contract, the parent passes exact HDD partition context separately from the mounted load path, remounts `pfs0:` from that partition while reusing the mounted relpath Lua already resolved, and the embedded loader follows the local `ps2sdk` partition/load-path/argv split with `SifLoadFileInit/Exit` around `SifLoadElf` plus the post-reset MC module reload.
+    - the latest 2026-03-28 hardware result on that partition-aware source no longer black-screened, but the launcher still regained control through its generic timeout failure path.
+    - current source now stops masking the returned loader rc behind that timeout message and also restores the earlier embedded-loader fix that avoids `printf`/`snprintf` in that environment.
     - current source still exposes an `R2` alternate HDD launch for HDD-resident `POPSTARTER.ELF` that changes only the selector path to `hdd0:PART:pfs0:/GAME.ELF`; hardware result is still `Unknown (verify on hardware)`.
   - `D-14`: reported FAIL on 2026-03-27 when launching a USB game with Profile 2 pointing `POPSTARTER.ELF` to HDD.
     - this broadened the remaining issue from “HDD game launch” to “HDD-backed POPSTARTER exec path”.

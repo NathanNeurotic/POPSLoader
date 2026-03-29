@@ -25,6 +25,8 @@ Last updated: 2026-03-28
 - A later 2026-03-28 re-test on that exact-boot-mount/source-context source still black-screened for `D-10`.
 - Current source now replaces the earlier ad hoc HDD source-context reboot handoff with an explicit partition-aware contract across Lua, `src/luasystem.cpp`, `src/elf_loader/src/elf.c`, and the embedded loader; `R2` can still request the full `hdd0:PART:pfs0:/GAME.ELF` selector.
 - On that contract, the parent passes exact HDD partition context separately from the mounted load path, remounts `pfs0:` from that partition while reusing the mounted relpath Lua already resolved, and the embedded loader follows the local `ps2sdk` partition/load-path/argv split with `SifLoadFileInit/Exit` around `SifLoadElf` plus the post-reset MC module reload.
+- The latest 2026-03-28 `D-10` run on that partition-aware source no longer black-screened, but the launcher still regained control through its generic timeout failure path instead of transferring to POPSTARTER.
+- Current source now stops masking the returned loader rc behind that timeout message and also restores the earlier embedded-loader fix that avoids `printf`/`snprintf` in that environment.
 - The main stabilization blocker is still HDD-backed `POPSTARTER.ELF` handoff when the launcher, sidecar/CWD, or configured POPSTARTER path lives on HDD. Reported hardware results still black-screen both HDD-game and USB-game repros.
 - The latest EE-side HDD direct-load workaround was reverted after it did not fix `D-10` and coincided with a reported HDD-game regression when POPSTARTER stayed on the non-HDD boot device.
 - `HDD (exFAT)` and `SMB (v1)` remain intentionally unimplemented menu entries.

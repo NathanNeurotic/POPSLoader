@@ -65,6 +65,8 @@ Reported hardware issues currently being tracked are:
   - a later 2026-03-28 re-test on that exact-boot-mount/source-context source still black-screened for `D-10`.
   - current source now keeps the confirmed HDD startup auto-init and USB first-entry fixes, preserves the restored `D-15` split, seeds the exact HDD boot mount metadata from `etc/boot.lua`, and replaces the earlier ad hoc HDD source-context reboot handoff with an explicit partition-aware contract across `bin/POPSLDR/system.lua`, `src/luasystem.cpp`, `src/elf_loader/src/elf.c`, and `src/elf_loader/src/loader/src/loader.c`.
   - on that contract, Lua now passes exact HDD partition context separately, the parent loader remounts `pfs0:` from that partition while reusing the mounted relpath it already resolved, and the embedded loader uses the same partition/load-path/argv split documented in the local `ps2sdk` tree, including `SifLoadFileInit/Exit` around `SifLoadElf` and the post-reset MC module reload.
+  - the latest 2026-03-28 `D-10` run on that partition-aware source no longer black-screened, but the launcher still regained control through its generic timeout failure path instead of transferring to POPSTARTER.
+  - current source now stops masking the returned loader rc behind that timeout message and also restores the earlier embedded-loader fix that avoids `printf`/`snprintf` in that environment.
   - hardware result on this corrected current source is still `Unknown (verify on hardware)`.
 - HDD game with non-HDD POPSTARTER (`D-15`)
   - this path had regressed on several 2026-03-27 and early 2026-03-28 experimental sources.
@@ -227,6 +229,8 @@ The workflow uses the `ps2dev/ps2dev` container and validates packaging after bu
   - a later 2026-03-28 re-test on that exact-boot-mount/source-context source still black-screened on `X`.
   - current source now replaces the earlier ad hoc HDD source-context reboot handoff with an explicit partition-aware contract across Lua, `src/luasystem.cpp`, `src/elf_loader/src/elf.c`, and the embedded loader.
   - on that contract, the parent passes exact HDD partition context separately from the mounted load path, remounts `pfs0:` from that partition while reusing the mounted relpath Lua already resolved, and the embedded loader follows the local `ps2sdk` partition/load-path/argv split with `SifLoadFileInit/Exit` around `SifLoadElf` plus the post-reset MC module reload.
+  - the latest 2026-03-28 `D-10` run on that partition-aware source no longer black-screened, but the launcher still regained control through its generic timeout failure path instead of transferring to POPSTARTER.
+  - current source now stops masking the returned loader rc behind that timeout message and also restores the earlier embedded-loader fix that avoids `printf`/`snprintf` in that environment.
   - hardware result on this corrected current source is still `Unknown (verify on hardware)`.
 - `D-14` HDD-backed POPSTARTER with non-HDD game:
   - reported failing.
