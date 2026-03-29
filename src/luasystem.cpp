@@ -957,6 +957,23 @@ static int lua_set_exec_keep_pfs_mask(lua_State *L)
 	return 0;
 }
 
+static bool is_partition_context_arg(const char *arg)
+{
+	size_t len;
+	if (arg == NULL) {
+		return false;
+	}
+	len = strlen(arg);
+	if (len < 6 || arg[len - 1] != ':') {
+		return false;
+	}
+	if ((strncmp(arg, "hdd", 3) == 0 && arg[3] >= '0' && arg[3] <= '9' && arg[4] == ':') ||
+	    (strncmp(arg, "dvr_hdd", 7) == 0 && arg[7] >= '0' && arg[7] <= '9' && arg[8] == ':')) {
+		return true;
+	}
+	return false;
+}
+
 static int lua_loadELF(lua_State *L)
 {
 	int argc = lua_gettop(L);
@@ -964,38 +981,62 @@ static int lua_loadELF(lua_State *L)
 	size_t size;
 	const char *elftoload = luaL_checklstring(L, 1, &size);
 	int rebootIOP = luaL_checkinteger(L, 2);
-	int extra_args = argc - 2;
 	const char *partition_context = NULL;
-	static char selector_buf[256];
-	static char *argv_static[2];
-	DPRINTF("# Loading ELF '%s' iop_reboot=%d, extra_args=%d\n", elftoload, rebootIOP, extra_args);
-	if (extra_args > 0) {
-		const char *selector = luaL_checkstring(L, 3);
-		if (argc >= 4 && !lua_isnil(L, 4)) {
-			partition_context = luaL_checkstring(L, 4);
+	static char arg_storage[2048];
+	static char *argv_static[33];
+	int rc;
+	int arg_count = 0;
+	int arg_end = argc;
+	size_t storage_offset = 0;
+
+	if (rebootIOP != 0 && argc >= 4 && !lua_isnil(L, argc)) {
+		const char *maybe_partition = luaL_checkstring(L, argc);
+		if (is_partition_context_arg(maybe_partition)) {
+			partition_context = maybe_partition;
+			arg_end = argc - 1;
 		}
-		snprintf(selector_buf, sizeof(selector_buf), "%s", selector ? selector : "");
-		argv_static[0] = selector_buf;
-		argv_static[1] = NULL;
-		DPRINTF("# Loading ELF argv0='%s' argc=1\n", argv_static[0]);
-		int rc;
+	}
+
+	DPRINTF("# Loading ELF '%s' iop_reboot=%d, extra_args=%d\n", elftoload, rebootIOP, arg_end - 2);
+	for (int index = 3; index <= arg_end; index++) {
+		const char *arg = luaL_checkstring(L, index);
+		size_t len = strlen(arg) + 1;
+		if (arg_count >= 32) {
+			return luaL_error(L, "System.loadELF supports at most 32 extra arguments");
+		}
+		if ((storage_offset + len) > sizeof(arg_storage)) {
+			return luaL_error(L, "System.loadELF argument storage exceeded");
+		}
+		memcpy(&arg_storage[storage_offset], arg, len);
+		argv_static[arg_count] = &arg_storage[storage_offset];
+		DPRINTF("#  argv[%d]='%s'\n", arg_count, argv_static[arg_count]);
+		storage_offset += len;
+		arg_count++;
+	}
+	argv_static[arg_count] = NULL;
+
+	if (arg_count > 0) {
 		if (rebootIOP != 0) {
 			if (partition_context != NULL && partition_context[0] != '\0') {
-				rc = LoadELFFromFileExecPS2RebootIOPWithPartition(elftoload, partition_context, 1, argv_static);
+				rc = LoadELFFromFileExecPS2RebootIOPWithPartition(elftoload, partition_context, arg_count, argv_static);
 			} else {
-				rc = LoadELFFromFileExecPS2RebootIOP(elftoload, 1, argv_static);
+				rc = LoadELFFromFileExecPS2RebootIOP(elftoload, arg_count, argv_static);
 			}
 		} else {
-			rc = LoadELFFromFileExecPS2(elftoload, 1, argv_static);
+			rc = LoadELFFromFileExecPS2(elftoload, arg_count, argv_static);
 		}
 		ClearExecKeepPfsMask();
 		lua_pushinteger(L, rc);
 		return 1;
 	}
+
 	DPRINTF("# Loading ELF argv0 default (argc=0)\n");
-	int rc;
 	if (rebootIOP != 0) {
-		rc = LoadELFFromFileExecPS2RebootIOP(elftoload, 0, NULL);
+		if (partition_context != NULL && partition_context[0] != '\0') {
+			rc = LoadELFFromFileExecPS2RebootIOPWithPartition(elftoload, partition_context, 0, NULL);
+		} else {
+			rc = LoadELFFromFileExecPS2RebootIOP(elftoload, 0, NULL);
+		}
 	} else {
 		rc = LoadELFFromFile(elftoload, 0, NULL);
 	}

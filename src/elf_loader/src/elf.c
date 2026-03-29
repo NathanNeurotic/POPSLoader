@@ -324,6 +324,7 @@ static void wipe_bramMem(void) {
 
 static int ExecuteViaEmbeddedLoader(const char *partition_context, const char *load_path, int argc, char *argv[]) {
 	int i;
+	int ret;
 	int extra_argc = (argc > 0 && argv != NULL) ? argc : 0;
 	int final_argc = extra_argc + 2;
 	static const int kMaxArgc = 34;
@@ -384,8 +385,8 @@ static int ExecuteViaEmbeddedLoader(const char *partition_context, const char *l
 	FlushCache(0);
 	FlushCache(2);
 
-	ExecPS2((void *)boot_header->entry, 0, final_argc, launch_argv);
-	return -1;
+	ret = ExecPS2((void *)boot_header->entry, 0, final_argc, launch_argv);
+	return (ret != 0) ? ret : -3600;
 }
 
 int LoadELFFromFileWithPartition(const char *filename, const char *partition, int argc, char *argv[]) {

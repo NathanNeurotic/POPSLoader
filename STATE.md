@@ -88,9 +88,9 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - a later 2026-03-28 re-test on that exact-boot-mount/source-context source still black-screened on `X`.
   - current source now replaces the earlier ad hoc HDD source-context reboot handoff with an explicit partition-aware contract across Lua, `src/luasystem.cpp`, `src/elf_loader/src/elf.c`, and the embedded loader.
   - on that contract, the parent passes exact HDD partition context separately from the mounted load path, remounts `pfs0:` from that partition while reusing the mounted relpath Lua already resolved, and the embedded loader follows the local `ps2sdk` partition/load-path/argv split with `SifLoadFileInit/Exit` around `SifLoadElf` plus the post-reset MC module reload.
-  - the latest 2026-03-28 `D-10` run on that partition-aware source no longer black-screened, but the launcher regained control with `rc=-1`, which narrows the remaining failure to the parent `ExecPS2` jump into the embedded loader instead of a later loader stage.
+  - the latest 2026-03-28 `D-10` run on that partition-aware source no longer black-screened, but the launcher regained control with `rc=-1 (returned after 3528 ms)`, which narrows the remaining failure to the parent `ExecPS2` jump into the embedded loader instead of a later POPSTARTER stage.
   - current source now restores more of the original parent-side embedded-loader jump contract in `src/elf_loader/src/elf.c`: BRAM wipe plus `SifInitRpc`/`SifLoadFileInit`/`SifLoadFileExit` before the copy, and `SifExitIopHeap`/`SifExitRpc`/`SifExitCmd` before the final `ExecPS2`.
-  - current source also keeps the safer embedded-loader fix that avoids `printf`/`snprintf` in that environment and surfaces the real returned rc instead of masking it as a timeout.
+  - current source also keeps the safer embedded-loader fix that avoids `printf`/`snprintf` in that environment, returns the actual embedded-loader `ExecPS2` result instead of collapsing it to `-1`, and fixes `System.loadELF(path, reboot_iop, args...)` so it forwards all extra args instead of dropping everything after the first one.
   - corrected-source hardware status is still `Unknown (verify on hardware)`.
 - `D-14` HDD-backed POPSTARTER with non-HDD game:
   - reported failing on hardware.
