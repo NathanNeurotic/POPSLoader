@@ -17,6 +17,9 @@
 #include <sifrpc.h>
 #include <errno.h>
 #include <ps2sdkapi.h>
+#include <fcntl.h>
+#define NEWLIB_PORT_AWARE
+#include <fileXio_rpc.h>
 
 #ifdef LOADER_ENABLE_DEBUG_COLORS
 #include <debug.h>
@@ -125,6 +128,103 @@ static int build_default_target_arg0(const char *partition_context, const char *
 	return 0;
 }
 
+#define LOADER_ELF_MAGIC        0x464c457fU
+#define LOADER_PT_LOAD          1
+#define LOADER_PT_MIPS_REGINFO  0x70000000U
+#define LOADER_ELF_MAX_PHDRS    16
+
+typedef struct {
+	unsigned char  ident[16];
+	unsigned short type, machine;
+	unsigned int   version, entry, phoff, shoff, flags;
+	unsigned short ehsize, phentsize, phnum, shentsize, shnum, shstrndx;
+} loader_elf_hdr_t;
+
+typedef struct {
+	unsigned int type, offset;
+	void        *vaddr;
+	unsigned int paddr, filesz, memsz, flags, align;
+} loader_elf_phdr_t;
+
+static int load_elf_via_filexio(const char *path,
+                                unsigned int *entry_out,
+                                unsigned int *gp_out)
+{
+	int fd;
+	int i;
+	int n;
+	static loader_elf_hdr_t hdr;
+	static loader_elf_phdr_t phdrs[LOADER_ELF_MAX_PHDRS];
+	unsigned int gp = 0;
+
+	if (entry_out == NULL || gp_out == NULL) {
+		return -EINVAL;
+	}
+
+	*entry_out = 0;
+	*gp_out = 0;
+
+	fd = fileXioOpen(path, O_RDONLY, 0);
+	if (fd < 0 && path != NULL &&
+	    (strncmp(path, "hdd", 3) == 0 || strncmp(path, "HDD", 3) == 0)) {
+		const char *first_colon = strchr(path, ':');
+		const char *second_colon = first_colon ? strchr(first_colon + 1, ':') : NULL;
+		if (second_colon != NULL &&
+		    (strncmp(second_colon + 1, "pfs", 3) == 0 ||
+		     strncmp(second_colon + 1, "PFS", 3) == 0)) {
+			fd = fileXioOpen(second_colon + 1, O_RDONLY, 0);
+		}
+	}
+	if (fd < 0) {
+		return -ENOENT;
+	}
+
+	n = fileXioRead(fd, &hdr, sizeof(hdr));
+	if (n != (int)sizeof(hdr) || *(unsigned int *)hdr.ident != LOADER_ELF_MAGIC) {
+		fileXioClose(fd);
+		return -ENOEXEC;
+	}
+	if (hdr.phnum == 0 || hdr.phnum > LOADER_ELF_MAX_PHDRS) {
+		fileXioClose(fd);
+		return -ENOEXEC;
+	}
+
+	fileXioLseek(fd, hdr.phoff, SEEK_SET);
+	n = fileXioRead(fd, phdrs, sizeof(loader_elf_phdr_t) * hdr.phnum);
+	if (n != (int)(sizeof(loader_elf_phdr_t) * hdr.phnum)) {
+		fileXioClose(fd);
+		return -EIO;
+	}
+
+	for (i = 0; i < hdr.phnum; i++) {
+		if (phdrs[i].type == LOADER_PT_MIPS_REGINFO) {
+			unsigned int tmp_gp = 0;
+			fileXioLseek(fd, phdrs[i].offset + 20, SEEK_SET);
+			if (fileXioRead(fd, &tmp_gp, sizeof(tmp_gp)) == (int)sizeof(tmp_gp)) {
+				gp = tmp_gp;
+			}
+		}
+		if (phdrs[i].type != LOADER_PT_LOAD || phdrs[i].filesz == 0) {
+			continue;
+		}
+		fileXioLseek(fd, phdrs[i].offset, SEEK_SET);
+		n = fileXioRead(fd, phdrs[i].vaddr, phdrs[i].filesz);
+		if (n != (int)phdrs[i].filesz) {
+			fileXioClose(fd);
+			return -EIO;
+		}
+		if (phdrs[i].memsz > phdrs[i].filesz) {
+			memset((void *)((unsigned int)phdrs[i].vaddr + phdrs[i].filesz),
+			       0, phdrs[i].memsz - phdrs[i].filesz);
+		}
+	}
+
+	fileXioClose(fd);
+	*entry_out = hdr.entry;
+	*gp_out = gp;
+	return 0;
+}
+
 //--------------------------------------------------------------
 //End of func:  void wipeUserMem(void)
 //--------------------------------------------------------------
@@ -141,6 +241,8 @@ int main(int argc, char *argv[])
 	static char target_arg_storage[1024];
 	static char *target_argv[33];
 	size_t target_arg_offset = 0;
+	unsigned int filexio_entry = 0;
+	unsigned int filexio_gp = 0;
 	int target_argc = 0;
 	int ret, i;
 
@@ -201,9 +303,22 @@ int main(int argc, char *argv[])
 	//Writeback data cache before loading ELF.
 	FlushCache(0);
 	SET_GS_BGCOLOUR(GREEN_BG);
-	SifLoadFileInit();
-	ret = SifLoadElf(load_path, &elfdata);
-	SifLoadFileExit();
+	if (strncmp(load_path, "pfs", 3) == 0 || strncmp(load_path, "PFS", 3) == 0 ||
+	    strncmp(load_path, "hdd", 3) == 0 || strncmp(load_path, "HDD", 3) == 0) {
+		fileXioInit();
+		ret = load_elf_via_filexio(load_path, &filexio_entry, &filexio_gp);
+		if (ret == 0) {
+			elfdata.epc = filexio_entry;
+			elfdata.gp = filexio_gp;
+		} else {
+			elfdata.epc = 0;
+			elfdata.gp = 0;
+		}
+	} else {
+		SifLoadFileInit();
+		ret = SifLoadElf(load_path, &elfdata);
+		SifLoadFileExit();
+	}
 	SET_GS_BGCOLOUR(BLUE_BG);
 	if (ret == 0 && elfdata.epc != 0) {
 		SET_GS_BGCOLOUR(YELLOW_BG);
