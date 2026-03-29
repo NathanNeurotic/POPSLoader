@@ -145,7 +145,7 @@ The active line of work has already moved the repo to a partition-aware HDD rebo
 
 - Lua resolves HDD-backed POPSTARTER and derives partition context.
 - The parent loader uses a partition-aware reboot path.
-- The parent remounts the HDD partition onto `pfs0:`.
+- The child loader now remounts the HDD partition onto `pfs0:` from partition context before `SifLoadElf`.
 - The embedded loader uses mounted `pfs0:/...` with `SifLoadElf` for partition-aware HDD launches.
 - Direct iomanX-style `pfs:` / `hdd:` loads still retain a `fileXio` fallback path when no HDD partition context is present.
 
@@ -154,7 +154,8 @@ Current source also includes:
 - popup support for showing probe path and exec path separately
 - profile-path normalization so selected Profile 1/default does not silently keep another profile’s canonical HDD path
 - child-loader target argv preservation so the selector/extra args are no longer replaced by a synthetic executable path on the HDD partition-aware path
-- BOOT.ELF now uses the standard external-launch prep again even after HDD init, because the later cold-prep/no-forced-reboot BOOT.ELF line still froze after HDD page use on hardware
+- partition-aware HDD POPSTARTER no longer depends on inheriting the live parent-side `pfsN` mount into the child loader; the child remounts `pfs0:` from partition context itself before `SifLoadElf`
+- BOOT.ELF now uses standard external-launch prep with conditional reboot after HDD init, because both later no-forced-reboot BOOT.ELF lines still froze after HDD page use on hardware
 
 `D-10` still fails after those changes.
 
