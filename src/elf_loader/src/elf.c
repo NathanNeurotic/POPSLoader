@@ -278,6 +278,8 @@ static int ExecuteHddBackedViaEmbeddedLoader(const char *resolved_path, const ch
 	unsigned int required_keep_mask;
 	int ret;
 
+	unmount_pfs_slots_for_exec(0);
+
 	partition_context = partition_context_override;
 	if ((partition_context == NULL || partition_context[0] == '\0') &&
 	    resolved_path != NULL && strncmp(resolved_path, "hdd", 3) == 0) {

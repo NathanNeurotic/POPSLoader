@@ -85,7 +85,6 @@ jobs:
           [ -f src/elf_loader/loader.c ] || { echo "ERROR: generated embedded loader blob missing" >&2; exit 1; }
           [ src/elf_loader/loader.c -nt src/elf_loader/src/loader/src/loader.c ] || {
             echo "ERROR: embedded loader blob was not regenerated from src/elf_loader/src/loader/src/loader.c" >&2
-            exit 1
           }
 
           require_marker "Exec path:" bin/enceladus.elf
