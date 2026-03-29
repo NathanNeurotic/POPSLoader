@@ -9,9 +9,10 @@ Last updated: 2026-03-29
 - The main stabilization blocker is still HDD-backed `POPSTARTER.ELF` execution when the launcher, sidecar/CWD, or configured POPSTARTER path lives on HDD (`D-10`, `D-14`).
 - One 2026-03-29 artifact briefly moved `D-10` to a returned `rc=-1`, but later artifacts returned to black screen, so that was not a stable new boundary.
 - Current repo line uses the partition-aware HDD reboot contract, separate exec-path reporting, and profile-path normalization while preserving the restored non-HDD POPSTARTER path.
-- Current repo line now removes the parent-side inherited-`pfsN` dependency from partition-aware HDD POPSTARTER by letting the child remount `pfs0:` from partition context itself before `SifLoadElf`, and it retries BOOT.ELF with standard prep plus conditional reboot after the later no-forced-reboot lines still froze on hardware.
+- The later child-remount/cold-parent HDD POPSTARTER line still black-screened on hardware.
+- Current repo line now narrows the HDD-backed POPSTARTER experiment further: bypass the partition-aware HDD handoff entirely and just try to execute the resolved HDD ELF with no selector or extra args.
 - Current repo line now derives the partition-scoped exec filename from the final resolved POPSTARTER path at launch time, so stale precomputed exec strings cannot drop the ELF basename before the HDD loader handoff.
-- Treat slot preservation, launch CWD preservation, and other carried launch-state prep as non-goals for POPSTARTER itself; the remaining work is only to make HDD-backed `POPSTARTER.ELF` launch successfully with the correct selector in `argv[0]`.
+- Treat slot preservation, launch CWD preservation, partition context, and other carried launch-state prep as non-goals for POPSTARTER itself; the current temporary target is only to make HDD-backed `POPSTARTER.ELF` launch successfully at all, with selector/`argv[0]` restoration deferred until after that.
 - The latest EE-side HDD direct-load workaround was reverted after it did not fix `D-10` and coincided with a reported HDD-game regression when POPSTARTER stayed on the non-HDD boot device.
 - `HDD (exFAT)` and `SMB (v1)` remain intentionally unimplemented menu entries.
 - Detailed experiment chronology lives in `QA_REGRESSION_MATRIX.md` and `DECISIONS.md`.
@@ -24,6 +25,7 @@ Last updated: 2026-03-29
   - HDD game launched from HDD (PFS),
   - `POPSTARTER.ELF` resolved from HDD sidecar/CWD or configured HDD path,
   - current reported result: black-screen hang.
+  - current narrowed-source experiment intentionally drops partition context, selector, and extra args on the HDD-backed POPSTARTER path to answer the simpler “does the ELF start?” question first.
   - preserve `D-15`, `D-12`, `D-16`, `U-05`, and shared Profile 1/default sidecar behavior while iterating.
   - treat `D-14` as the paired non-HDD-game repro for the same HDD-backed POPSTARTER blocker.
   - use `QA_REGRESSION_MATRIX.md` for the full experiment chronology instead of rebuilding that ledger here.

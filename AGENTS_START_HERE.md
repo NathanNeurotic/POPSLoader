@@ -153,8 +153,7 @@ Current source also includes:
 
 - popup support for showing probe path and exec path separately
 - profile-path normalization so selected Profile 1/default does not silently keep another profile’s canonical HDD path
-- child-loader target argv preservation so the selector/extra args are no longer replaced by a synthetic executable path on the HDD partition-aware path
-- partition-aware HDD POPSTARTER no longer depends on inheriting the live parent-side `pfsN` mount into the child loader; the child remounts `pfs0:` from partition context itself before `SifLoadElf`
+- the current temporary HDD-backed POPSTARTER experiment bypasses partition-aware handoff entirely and executes the resolved HDD ELF with no selector or extra args, so the artifact answers only whether the ELF starts at all
 - BOOT.ELF now uses standard external-launch prep with conditional reboot after HDD init, because both later no-forced-reboot BOOT.ELF lines still froze after HDD page use on hardware
 
 `D-10` still fails after those changes.
@@ -189,7 +188,7 @@ These are evidence-backed conclusions from the repo and recorded runs:
 - The remaining failure is not adequately explained by USB/HDD backend discovery alone.
 - The remaining failure is not adequately explained by Lua-side HDD pre-mount/CWD handling alone.
 - The remaining failure is not adequately explained by simply choosing `pfs` vs `pfsN` path spelling alone.
-- Do not assume POPSTARTER needs slot preservation, launch CWD, or other carried runtime state after exec; current repo evidence only supports “successfully launch HDD-backed `POPSTARTER.ELF` and deliver the correct selector in `argv[0]`”.
+- Do not assume POPSTARTER needs slot preservation, launch CWD, partition context, or other carried runtime state after exec. Current short-term repo goal is narrower: successfully launch HDD-backed `POPSTARTER.ELF` at all; restore selector/`argv[0]` behavior only after that boundary moves.
 
 ## Profile / Settings Caveat
 
