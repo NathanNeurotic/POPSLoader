@@ -3669,7 +3669,11 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
       rc = System.loadELF(exec_path, reboot_iop, exec_args[1])
     end
   else
-    rc = System.loadELF(exec_path, reboot_iop)
+    if context ~= nil and type(context.exec_partition_context) == "string" and context.exec_partition_context ~= "" then
+      rc = System.loadELF(exec_path, reboot_iop, context.exec_partition_context)
+    else
+      rc = System.loadELF(exec_path, reboot_iop)
+    end
   end
   local elapsed_ms = Timer.getTime(LaunchState.fade_timer) - LaunchState.fade_start
   if elapsed_ms >= LaunchState.watchdog_ms then
@@ -3934,8 +3938,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
       prefix_used = ""
     end
   end
-  local argv = {argv0_selector}
-  local use_partition_cold_handoff = popstarter_on_hdd and type(popstarter_partition_context) == "string" and popstarter_partition_context ~= ""
+  local argv = popstarter_on_hdd and {} or {argv0_selector}
 
   local context = {
     device_page = device_page,
@@ -3960,18 +3963,15 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     bootparam_source = boot_source_mode,
     hdd_init = hdd_init,
     keep_hdd_slots = nil,
-    keep_hdd_slots_after_load = (popstarter_on_hdd and not use_partition_cold_handoff) and {} or nil,
+    keep_hdd_slots_after_load = popstarter_on_hdd and {} or nil,
     launch_cwd = popstarter_on_hdd and false or nil,
-    -- Partition-aware HDD POPSTARTER no longer depends on inheriting the live
-    -- pfsN mount into exec; the child loader remounts pfs0: from partition
-    -- context itself, so the parent can clear tracked mounts before handoff.
-    cold_external_launch = use_partition_cold_handoff,
+    cold_external_launch = false,
     exec_path = popstarter_exec_path,
-    exec_partition_context = popstarter_partition_context
+    exec_partition_context = popstarter_on_hdd and nil or popstarter_partition_context
   }
   local reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
   if popstarter_on_hdd then
-    reboot_iop = 1
+    reboot_iop = 0
   elseif policy.name == "HDD" then
     reboot_iop = 0
   end

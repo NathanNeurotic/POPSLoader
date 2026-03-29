@@ -57,9 +57,10 @@ Reported hardware issues currently being tracked are:
   - `D-15` passing again isolates the remaining blocker to HDD-backed POPSTARTER execution, not HDD games in general.
   - one 2026-03-29 artifact briefly moved `D-10` from a black screen to `rc=-1 (returned after 22618 ms)`, but later artifacts returned to a black screen, so that boundary was not stable.
   - current repo line keeps the partition-aware HDD reboot contract, separate exec-path reporting, and profile-path normalization.
-  - current repo line now removes the parent-side inherited-`pfsN` dependency from partition-aware HDD POPSTARTER: the parent uses cold external-launch prep again for that path, and the child loader remounts `pfs0:` from partition context itself before `SifLoadElf`.
+  - a later hardware re-test on that child-remount/cold-parent line still black-screened.
+  - current repo line now narrows the HDD-backed POPSTARTER goal further: it bypasses the partition-aware HDD handoff entirely for this path and just tries to execute the resolved HDD `POPSTARTER.ELF` itself with no selector or extra args.
   - current repo line now derives the partition-scoped exec filename from the final resolved POPSTARTER path at launch time, so a stale precomputed exec path cannot drop the ELF basename before the HDD loader handoff.
-  - clarification: POPSTARTER itself is not believed to require slot preservation, launch CWD, or carried runtime state after exec; the remaining requirement is to start the HDD-backed ELF successfully and give it the correct selector in `argv[0]`.
+  - clarification: POPSTARTER itself is not believed to require slot preservation, launch CWD, partition context, or carried runtime state after exec. The current temporary goal is only to start the HDD-backed ELF successfully; selector/`argv[0]` restoration is deferred until that works.
   - detailed per-artifact experiment chronology lives in `QA_REGRESSION_MATRIX.md` and `DECISIONS.md`.
 - HDD game with non-HDD POPSTARTER (`D-15`)
   - user later confirmed on 2026-03-28 that USB boot + USB Profile 1 sidecar/cwd `POPSTARTER.ELF` + HDD game now passes on hardware.
@@ -214,9 +215,10 @@ The workflow uses the `ps2dev/ps2dev` container and validates packaging after bu
   - `D-15` passing again isolates the remaining blocker to HDD-backed POPSTARTER execution.
   - one 2026-03-29 artifact briefly returned `rc=-1 (returned after 22618 ms)` instead of black-screening, but later artifacts returned to black screen, so that boundary is not treated as the stable current state.
   - current repo line keeps the partition-aware reboot contract, separate exec-path reporting, and profile-path normalization.
-  - current repo line now clears tracked HDD mounts again before the parent-side jump on the partition-aware HDD POPSTARTER path, and the child loader remounts `pfs0:` from partition context itself before `SifLoadElf`.
+  - a later hardware re-test on that child-remount/cold-parent line still black-screened.
+  - current repo line now bypasses the partition-aware HDD handoff entirely for HDD-backed POPSTARTER and just tries to execute the resolved HDD ELF with no selector or extra args, so the remaining current-source question is only whether the ELF can start at all.
   - current repo line now derives the partition-scoped exec filename from the final resolved POPSTARTER path at launch time, so a stale precomputed exec path cannot drop the ELF basename before the HDD loader handoff.
-  - clarification: POPSTARTER itself is not believed to require slot preservation, launch CWD, or carried runtime state after exec; the remaining requirement is to start the HDD-backed ELF successfully and give it the correct selector in `argv[0]`.
+  - clarification: POPSTARTER itself is not believed to require slot preservation, launch CWD, partition context, or carried runtime state after exec; selector/`argv[0]` restoration is intentionally deferred until the HDD-backed ELF starts at all.
   - see `QA_REGRESSION_MATRIX.md` and `DECISIONS.md` for the detailed experiment chronology.
 - `D-14` HDD-backed POPSTARTER with non-HDD game:
   - reported failing.
