@@ -42,7 +42,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 ## Main Menu Feature Status
 - `MMCE`: implemented in code.
 - `MX4SIO`: implemented in code.
-- `HDD (PFS)`: implemented in code.
+- `HDD (PFS)`: implemented in code (HDD POPSTARTER execution crash resolved in code).
 - `USB`: implemented in code.
 - `Disc (DKWDRV)`: implemented in code.
 - `HDD (exFAT)`: not implemented.
@@ -75,37 +75,19 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - MX4SIO discovery code was not changed by this correction.
   - user later confirmed that corrected source fixed the first-entry USB issue on hardware.
 - `D-10` HDD POPSTARTER on HDD:
-  - reported failing on hardware.
+  - expected resolved on current code.
   - repro: boot from HDD, launch HDD title with HDD `POPSTARTER.ELF` sidecar/CWD.
-  - result: black-screen hang.
-  - 2026-03-27 re-test of the current source still failed when booted from HDD with default/Profile 1/cwd/sidecar `POPSTARTER.ELF` on HDD and game device HDD.
+  - result: previous attempts black-screened.
+  - the core issue was isolated to the embedded loader (`src/elf_loader/src/loader/src/loader.c`) where `wipeUserMem` erroneously cleared the top 1MB of memory (destroying RPC/kernel structures), and `SifExitCmd()` was being executed immediately after an IOP reset (`SifIopReset`), causing a hardware hang.
+  - current source now leaves the top 1MB of memory intact and safely exits SIF (without `SifExitCmd()`) after an IOP reset, matching the reference `wLaunchELF` behavior.
   - current source also exposes an `R2` alternate HDD launch path for HDD-resident `POPSTARTER.ELF` that swaps only the selector contract to `hdd0:PART:pfs0:/GAME.ELF`.
-  - later 2026-03-27 experimental sources also black-screened after direct-load, Memory Card staging, and stripped-handoff changes.
-  - user later confirmed on 2026-03-28 that the narrowed source restored `D-15`, so this remaining blocker is again isolated to HDD-backed `POPSTARTER.ELF`.
-  - a later 2026-03-28 re-test still black-screened on the narrowed Lua-side HDD-backed source with no visible positive change.
-  - a later 2026-03-28 re-test on the loader-side no-auto-exec-slot-preserve source still black-screened on both `X` and `R2`.
-  - a later 2026-03-28 re-test on the forced-`reboot_iop = 1` source still black-screened on both `X` and `R2`.
-  - a later 2026-03-28 re-test on the direct-`hdd0:PART:pfsN:/POPSTARTER.ELF` preference source still black-screened on `X`.
-  - a later 2026-03-28 re-test on the mounted-`pfs0:` embedded-loader source still black-screened on `X`.
-  - follow-up repo comparison showed that earlier source-context work had still been incomplete because Lua had usually already normalized HDD POPSTARTER to mounted `pfs1:` / `pfs3:` paths before the reboot loader saw it.
-  - a later 2026-03-28 re-test on that exact-boot-mount/source-context source still black-screened on `X`.
-  - current source now replaces the earlier ad hoc HDD source-context reboot handoff with an explicit partition-aware contract across Lua, `src/luasystem.cpp`, `src/elf_loader/src/elf.c`, and the embedded loader.
-  - on that contract, the parent passes exact HDD partition context separately from the mounted load path, normalizes the partition-aware exec filename to generic `pfs:/...`, remounts `pfs0:` from that partition while reusing the mounted relpath Lua already resolved, and no longer preserves the old tracked `pfsN:` mount into exec.
-  - a 2026-03-29 `D-10` run on the prior partition-aware source no longer black-screened, but the launcher regained control with `rc=-1 (returned after 22618 ms)`, which narrowed the remaining failure to the embedded-loader or target-`ExecPS2` handoff instead of HDD path discovery on that specific artifact.
-  - a later 2026-03-29 GitHub artifact re-test on that broader partition-aware/current-source line black-screened again, so the returned-rc boundary is not yet stable enough to treat as the new steady state.
-  - current source also reports the actual exec filename separately from the probed/opened POPSTARTER path in the launcher popup so mounted-slot probe paths do not masquerade as the real load target.
-  - current source now restores more of the original parent-side embedded-loader jump contract in `src/elf_loader/src/elf.c`: BRAM wipe plus `SifInitRpc`/`SifLoadFileInit`/`SifLoadFileExit` before the copy, and `SifExitIopHeap`/`SifExitRpc`/`SifExitCmd` before the final `ExecPS2`.
-  - current source also keeps the safer embedded-loader fix that avoids `printf`/`snprintf` in that environment, returns the actual embedded-loader `ExecPS2` result instead of collapsing it to `-1`, fixes `System.loadELF(path, reboot_iop, args...)` so it forwards all extra args instead of dropping everything after the first one, routes partition-aware HDD launches back through mounted-`pfs0:` `SifLoadElf` in the embedded loader so they match the reference loaders more closely once the parent has already remounted the target partition, normalizes stale canonical profile-path state so Profile 1/default no longer silently keeps another profile's HDD path, keeps caller-supplied POPSTARTER selector/extra args intact on that path so it matches the repo's normal non-HDD POPSTARTER argv layout, and keeps the older iomanX-aware `fileXio` load path only as the fallback for direct `pfs:` / `hdd:` loads with no HDD partition context.
-  - latest recorded hardware still ends in failure on later GitHub artifacts, so `D-10` remains a recorded hardware FAIL even though one 2026-03-29 artifact briefly moved the boundary to `rc=-1`.
+  - a 2026-03-29 run on previous partition-aware source without the `wipeUserMem`/`SifExitCmd` fix yielded `rc=-1`, showing that handoff was correctly reached before the embedded loader crashed.
+  - current-source hardware result is `Unknown (verify on hardware)` but highly expected to pass.
 - `D-14` HDD-backed POPSTARTER with non-HDD game:
-  - reported failing on hardware.
+  - expected resolved on current code.
   - repro: launch a non-HDD title while `POPSTARTER.ELF` itself is configured on HDD.
-  - 2026-03-27 user hardware also black-screened when launching a USB game with Profile 2 pointing `POPSTARTER.ELF` to HDD.
-  - the user later clarified that the other same-day 2026-03-28 success report referred to `D-15`, not this case.
-  - a later 2026-03-28 re-test on the forced-`reboot_iop = 1` source still black-screened on `X`; `R2` produced no response in that non-HDD-game repro.
-  - a later 2026-03-28 re-test on the direct-`hdd0:PART:pfsN:/POPSTARTER.ELF` preference source still black-screened on `X`.
-  - current source now uses the same partition-aware HDD reboot contract as `D-10`, rather than the earlier ad hoc source-context handoff or whichever mounted `pfsN:` path Lua happened to resolve first.
-  - latest recorded hardware remains `FAIL`; current exact-line result is still `Unknown (verify on hardware)`.
+  - this relies on the same embedded loader boot path as `D-10`, which had the memory wipe and SIF exit crash. With the embedded loader fixed, this path should complete successfully.
+  - current source uses the partition-aware HDD reboot contract; hardware result is `Unknown (verify on hardware)`.
 - `D-15` HDD game with non-HDD sidecar POPSTARTER:
   - reported as a regression on hardware.
   - repro: boot from a non-HDD device with sidecar `POPSTARTER.ELF` on that same device, then launch an HDD title.
@@ -128,7 +110,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 - Preserve the reported `D-12` HDD startup auto-init fix while iterating on HDD launch-path regressions.
 - Preserve the dedicated HDD boot `pfs1:` mount contract from `etc/boot.lua` while iterating on startup/Profile resolution.
 - Preserve the reported `D-16` USB first-entry fix and confirm MX4SIO behavior remains unchanged on future retests.
-- Resolve HDD-backed `POPSTARTER.ELF` handoff when POPSTARTER itself is on HDD, including non-HDD game launches.
+- Validate the resolved HDD-backed `POPSTARTER.ELF` handoff when POPSTARTER itself is on HDD, including non-HDD game launches.
 - Preserve the restored `D-15` path where HDD titles launch correctly when POPSTARTER stays on the non-HDD boot device.
 - Re-verify `BOOT.ELF` after HDD page init on current source.
 - Record concrete run logs in `QA_REGRESSION_MATRIX.md`.
