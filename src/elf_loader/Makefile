@@ -10,10 +10,12 @@ BIN2C = $(PS2SDK)/bin/bin2c
 EE_OBJS = src/elf.o loader.o
 EE_LIB = libcustom-elf-loader.a
 
+.PHONY: FORCE
+
 src/loader/bin/loader.elf:
 	$(MAKE) src/loader
 
-$(EE_OBJS_DIR)loader.c: src/loader/bin/loader.elf
+$(EE_OBJS_DIR)loader.c: src/loader/bin/loader.elf FORCE
 	$(BIN2C) $< $@ loader_elf
 
 all: $(EE_LIB)
