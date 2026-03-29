@@ -3595,7 +3595,14 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     popstarter = open_path
   end
   local exec_path = popstarter
-  if context ~= nil and type(context.exec_path) == "string" and context.exec_path ~= "" then
+  if context ~= nil and type(context.exec_partition_context) == "string" and context.exec_partition_context ~= "" then
+    local normalized_exec_path = BuildPartitionScopedExecPath(popstarter)
+    if type(normalized_exec_path) == "string" and normalized_exec_path ~= "" then
+      exec_path = normalized_exec_path
+    elseif type(context.exec_path) == "string" and context.exec_path ~= "" then
+      exec_path = context.exec_path
+    end
+  elseif context ~= nil and type(context.exec_path) == "string" and context.exec_path ~= "" then
     exec_path = context.exec_path
   end
   local launch_cwd = popstarter
