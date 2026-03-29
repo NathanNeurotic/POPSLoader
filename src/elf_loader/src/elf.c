@@ -250,6 +250,23 @@ static int build_hdd_embedded_loader_target_from_hdd_path(const char *source_pat
 }
 
 static int build_hdd_embedded_loader_target(const char *resolved_path, const char *partition_context, char *load_path, size_t load_path_size, unsigned int *keep_mask_out) {
+	/* Prefer an already-accessible pfs slot path over remounting via the
+	 * partition context.  The PS2 HDD driver rejects mounting a partition
+	 * at a second pfs slot when it is already mounted at another, so
+	 * build_hdd_embedded_loader_target_from_partition would always fail in
+	 * that situation.  Using the existing mount is also simpler and avoids
+	 * the unnecessary unmount/remount cycle at pfs0:.
+	 */
+	if (resolved_path != NULL && strncmp(resolved_path, "pfs", 3) == 0 &&
+	    can_open_exec_path(resolved_path)) {
+		int slot = extract_exec_pfs_slot(resolved_path);
+		if (slot >= 0 && slot <= 3) {
+			snprintf(load_path, load_path_size, "%s", resolved_path);
+			*keep_mask_out = (1U << slot);
+			return 0;
+		}
+	}
+
 	if (partition_context != NULL && strncmp(partition_context, "hdd", 3) == 0) {
 		return build_hdd_embedded_loader_target_from_partition(resolved_path, partition_context, load_path, load_path_size, keep_mask_out);
 	}
@@ -297,7 +314,15 @@ static int ExecuteHddBackedViaEmbeddedLoader(const char *resolved_path, const ch
 
 	previous_keep_mask = GetExecKeepPfsMask();
 	SetExecKeepPfsMask(previous_keep_mask | required_keep_mask);
-	ret = ExecuteViaEmbeddedLoader(partition_context != NULL ? partition_context : "", load_path, argc, argv);
+	/* For pfs: load paths the embedded loader must use fileXio on the
+	 * existing mount rather than SifLoadElf + IOP reset.  Pass an empty
+	 * partition_context so loader.c's should_use_filexio_direct_load()
+	 * returns true and the IOP-reset branch is skipped.  POPSTARTER always
+	 * performs its own IOP reset, so no pre-reset is needed here.
+	 */
+	ret = ExecuteViaEmbeddedLoader(
+	    (strncmp(load_path, "pfs", 3) == 0) ? "" : (partition_context != NULL ? partition_context : ""),
+	    load_path, argc, argv);
 	SetExecKeepPfsMask(previous_keep_mask);
 	return ret;
 }

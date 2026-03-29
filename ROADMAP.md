@@ -6,13 +6,10 @@ Last updated: 2026-03-29
 - Core launcher functionality is present in code for MMCE, MX4SIO, HDD (PFS), USB, Disc (`DKWDRV`), settings persistence, cover preview, path editing, startup backend auto-init, and exit flows.
 - The shared default/Profile 1 local POPSTARTER baseline was restored by rolling back to the `BETA-10-play-CHECKPOINT2` resolver behavior; user hardware confirmed that fix.
 - Recorded hardware confirms `D-12` startup/Profile lookup is restored, `D-16` first-entry USB discovery is restored, and `D-15` non-HDD-POPSTARTER HDD-game launch is restored.
-- The main stabilization blocker is still HDD-backed `POPSTARTER.ELF` execution when the launcher, sidecar/CWD, or configured POPSTARTER path lives on HDD (`D-10`, `D-14`).
-- One 2026-03-29 artifact briefly moved `D-10` to a returned `rc=-1`, but later artifacts returned to black screen; the regression to black screen was traced to `SifExitIopHeap()` inside `ExecuteViaEmbeddedLoader` hanging indefinitely.
-- Current repo line removes all six problematic SIF calls from `ExecuteViaEmbeddedLoader` (`SifInitRpc`/`SifLoadFileInit`/`SifLoadFileExit` before the BRAM copy, and `SifExitIopHeap`/`SifExitRpc`/`SifExitCmd` before `ExecPS2`), keeping only `FlushCache(0)`/`FlushCache(2)` before the jump; hardware result is `Unknown (verify on hardware)`.
-- Current repo line keeps the BOOT.ELF-specific cold-prep path, but HDD-backed POPSTARTER now stays on the standard external-launch prep so the current HDD mount remains available until the parent remounts `pfs0:`.
-- Current repo line now derives the partition-scoped exec filename from the final resolved POPSTARTER path at launch time, so stale precomputed exec strings cannot drop the ELF basename before the HDD loader handoff.
-- Treat slot preservation, launch CWD preservation, and other carried launch-state prep as non-goals for POPSTARTER itself; the remaining work is only to make HDD-backed `POPSTARTER.ELF` launch successfully with the correct selector in `argv[0]`.
-- The latest EE-side HDD direct-load workaround was reverted after it did not fix `D-10` and coincided with a reported HDD-game regression when POPSTARTER stayed on the non-HDD boot device.
+- The main stabilization blocker is still HDD-backed `POPSTARTER.ELF` execution (`D-10`, `D-14`).
+- The 2026-03-29 hardware re-test on the SIF-teardown-removed source returned `rc=-1`; root cause traced to `BuildPartitionScopedExecPath` stripping the pfs slot and the C remount then failing because the PS2 HDD driver rejects mounting the same partition at two pfs slots simultaneously.
+- Current repo line fixes the pfs-slot-stripping bug in Lua, adds an accessible-pfs-first check in C `build_hdd_embedded_loader_target`, and passes empty `partition_context` for pfs load paths so the embedded loader uses fileXio (no IOP reset) to load POPSTARTER; hardware result is `Unknown (verify on hardware)`.
+- 2026-03-29 hardware confirmed BOOT.ELF freezes when HDD is init'd; traced to `reboot_iop=1` (SifIopReset with HDD modules active); current repo removes `reboot_iop=1` and always uses `LoadExecPS2` for BOOT.ELF; hardware result is `Unknown (verify on hardware)`.
 - `HDD (exFAT)` and `SMB (v1)` remain intentionally unimplemented menu entries.
 - Detailed experiment chronology lives in `QA_REGRESSION_MATRIX.md` and `DECISIONS.md`.
 

@@ -348,10 +348,19 @@ local function BuildPartitionScopedExecPath(path)
   if candidate == "" then
     return nil
   end
-  local relpath = string.gsub(candidate, "^pfs%d*:/", "")
-  if relpath ~= candidate and relpath ~= "" then
-    return "pfs:/"..relpath
+  -- For already-mounted pfs slot paths keep the slot intact so the embedded
+  -- loader can reach the file via fileXio on the existing mount.  Stripping
+  -- the slot (pfs3:/ → pfs:/) makes C try to remount the same partition at
+  -- pfs0:, which PS2 HDD driver rejects when it is already at pfsN:.
+  if string.match(candidate, "^pfs%d*:/") then
+    return candidate
   end
+  -- For hdd:partition:pfsN:/relpath extract the pfs portion with its slot.
+  local pfs_with_slot = string.match(candidate, "^[Hh][Dd][Dd]%d:[^:]+:([Pp][Ff][Ss]%d*:/.+)$")
+  if pfs_with_slot ~= nil and pfs_with_slot ~= "" then
+    return pfs_with_slot
+  end
+  -- Last-resort fallback: extract bare relpath as generic pfs:/.
   local mounted_relpath = string.match(candidate, "^[Hh][Dd][Dd]%d:[^:]+:[%a]+%d*:/(.+)$")
   if mounted_relpath == nil then
     mounted_relpath = string.match(candidate, "^[Hh][Dd][Dd]%d:[^:]+:[%a]+%d*:(.+)$")

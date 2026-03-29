@@ -99,9 +99,9 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - current source also keeps the safer embedded-loader fix that avoids `printf`/`snprintf` in that environment, returns the actual embedded-loader `ExecPS2` result instead of collapsing it to `-1`, fixes `System.loadELF(path, reboot_iop, args...)` so it forwards all extra args instead of dropping everything after the first one, routes partition-aware HDD launches back through mounted-`pfs0:` `SifLoadElf` in the embedded loader so they match the reference loaders more closely once the parent has already remounted the target partition, keeps the standard external-launch prep for HDD-backed POPSTARTER so the current HDD mount survives until that parent remount, normalizes stale canonical profile-path state so Profile 1/default no longer silently keeps another profile's HDD path, keeps caller-supplied POPSTARTER selector/extra args intact on that path so it matches the repo's normal non-HDD POPSTARTER argv layout, and keeps the older iomanX-aware `fileXio` load path only as the fallback for direct `pfs:` / `hdd:` loads with no HDD partition context.
   - the 2026-03-29 regression to black screen was traced to `SifExitIopHeap()` inside `ExecuteViaEmbeddedLoader` hanging indefinitely, and `SifInitRpc`/`SifLoadFileInit`/`SifLoadFileExit` before the BRAM copy corrupting the IOP fileXio state the loader needs to open its `pfs:` target after `ExecPS2`.
   - current source therefore removes all six of those SIF calls from `ExecuteViaEmbeddedLoader`, keeping only `FlushCache(0)`/`FlushCache(2)` before `ExecPS2`; the embedded loader manages its own SIF lifecycle via `SifInitRpc(0)` in `loader.c`.
-  - latest recorded hardware still ends in failure on 2026-03-29 artifacts; this latest change is `Unknown (verify on hardware)`.
-  - current working clarification: POPSTARTER itself is not believed to require slot preservation, launch CWD, or carried runtime state after exec; the remaining launcher/loader work is only to get the HDD-backed ELF started and hand it the correct selector in `argv[0]`.
-  - latest recorded hardware still ends in failure on later GitHub artifacts, so `D-10` remains a recorded hardware FAIL even though one 2026-03-29 artifact briefly moved the boundary to `rc=-1`.
+  - 2026-03-29 hardware re-test with the SIF-teardown-removed source returned `rc=-1`; root cause traced to two bugs: `BuildPartitionScopedExecPath` in Lua was stripping the pfs slot number (`pfs3:/` → `pfs:/`), and the C `build_hdd_embedded_loader_target_from_partition` then tried to remount the same partition at `pfs0:`, which the PS2 HDD driver rejects when it is already mounted at another slot.
+  - current source fixes `BuildPartitionScopedExecPath` to return the pfs path unchanged (slot preserved), adds an accessible-pfs-first check to `build_hdd_embedded_loader_target` that prefers the already-mounted slot over any remount, and changes `ExecuteHddBackedViaEmbeddedLoader` to pass empty `partition_context` for pfs load paths so the embedded loader's `should_use_filexio_direct_load` returns true and it takes the fileXio branch instead of the SifLoadElf+IOP-reset branch.
+  - hardware result is `Unknown (verify on hardware)` pending a new build and test.
 - `D-14` HDD-backed POPSTARTER with non-HDD game:
   - reported failing on hardware.
   - repro: launch a non-HDD title while `POPSTARTER.ELF` itself is configured on HDD.
@@ -122,9 +122,10 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - one prior artifact was reported good,
   - repo history shows the BOOT.ELF modal later moved from its older non-reboot direct `System.loadELF(elf_path, 0, elf_path)` path to a reboot-I/O path with launch-CWD setup.
   - a later 2026-03-29 hardware report said BOOT.ELF still behaved incorrectly after HDD runtime had been initialized.
-  - current working inference is that `U-10` may share the same underlying handoff/state-poisoning boundary as `D-10`, but that remains unproven and `U-10` still requires separate hardware confirmation.
-  - current source now keeps the no-launch-CWD rollback, re-enables `reboot_iop = 1` for BOOT.ELF only when HDD runtime has already been loaded, and uses a BOOT.ELF-specific cold external-launch prep that clears the exec keep mask and unmounts tracked HDD slots instead of preserving boot PFS state.
-  - current-source hardware status on this conditional-reboot/cold-prep line is `Unknown (verify on hardware)`.
+  - current working inference was that `U-10` might share the same underlying handoff/state-poisoning boundary as `D-10`.
+  - 2026-03-29 hardware confirmed: BOOT.ELF freezes when HDD is init'd at all; the `reboot_iop = 1` path (SifIopReset with HDD modules active) causes the freeze.
+  - current source removes `reboot_iop = 1` from `LaunchBootElf`: always uses `reboot_iop = 0` regardless of HDD state; `PrepareForColdExternalELFLaunch` (which unmounts all pfs slots) is still called when HDD is loaded.  `LoadExecPS2` handles the BOOT.ELF handoff cleanly with no IOP reset required.
+  - hardware result is `Unknown (verify on hardware)` pending a new build and test.
 - `U-06` PAL asset aspect:
   - current code compensates for PAL UI layout,
   - hardware result is still `Unknown (verify on hardware)`.

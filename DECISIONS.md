@@ -119,13 +119,14 @@ Each entry records:
   - current source still keeps the `R2` selector-path experiment for HDD game launches, but that remains secondary to restoring and preserving the non-HDD POPSTARTER baseline for HDD titles.
   - the later 2026-03-29 regression to black screen was traced to `SifExitIopHeap()` inside `ExecuteViaEmbeddedLoader`: `SifExitIopHeap` can hang indefinitely when the IOP is busy, and `SifInitRpc`/`SifLoadFileInit`/`SifLoadFileExit` called before the BRAM copy can also corrupt the IOP fileXio state the embedded loader needs to open its `pfs:` target after `ExecPS2`.
   - current source therefore removes all six of those SIF calls from `ExecuteViaEmbeddedLoader`, leaving only `FlushCache(0)`/`FlushCache(2)` before the final `ExecPS2`; the embedded loader manages its own SIF lifecycle (via `SifInitRpc(0)` in loader.c) after `ExecPS2` transfers control.
-  - hardware result is still `Unknown (verify on hardware)` pending a new artifact build and test.
+  - 2026-03-29 hardware re-test on the SIF-teardown-removed source returned `rc=-1`; root cause traced to two separate bugs: (1) `BuildPartitionScopedExecPath` in Lua was stripping the pfs slot number from `pfs3:/` to `pfs:/`, and (2) the C `build_hdd_embedded_loader_target_from_partition` then tried to remount the same partition at `pfs0:`, which the PS2 HDD driver rejects when the partition is already mounted at another slot — resulting in `-1` before the embedded loader ever ran.
+  - current source fixes `BuildPartitionScopedExecPath` to return the pfs path unchanged (slot preserved), adds an accessible-pfs-first check to `build_hdd_embedded_loader_target` that prefers the already-mounted slot path over any remount attempt, and changes `ExecuteHddBackedViaEmbeddedLoader` to pass empty `partition_context` for pfs load paths so the embedded loader's `should_use_filexio_direct_load` returns true and the fileXio branch is taken (no IOP reset from the loader side, since POPSTARTER always performs its own IOP reset).
+  - hardware result is `Unknown (verify on hardware)` pending a new build and test.
 - `BOOT.ELF` after HDD page init:
   - repo history shows the BOOT.ELF modal originally used a simpler non-reboot `System.loadELF(elf_path, 0, elf_path)` path without launch-CWD setup, and later source changed it to `reboot_iop = 1` plus launch-CWD.
-  - a later 2026-03-29 hardware report said BOOT.ELF still behaved incorrectly once HDD runtime had been initialized, which points more narrowly at carried HDD/IOP state than BOOT.ELF lookup itself.
-  - current working inference is that this `U-10` failure may share the same underlying handoff/state-poisoning boundary as `D-10`, but that remains an inference rather than a proven shared root cause.
-  - current source therefore keeps the no-launch-CWD rollback, re-enables `reboot_iop = 1` for BOOT.ELF only when HDD runtime has already been loaded, and uses a BOOT.ELF-specific cold external-launch prep that clears the exec keep mask and unmounts tracked HDD slots instead of preserving boot PFS state.
-  - current hardware status on that conditional-reboot/cold-prep source is still `Unknown (verify on hardware)`.
+  - 2026-03-29 hardware confirmed: BOOT.ELF freezes when HDD is init'd at all; the `reboot_iop = 1` path (SifIopReset with HDD modules active) causes the freeze.
+  - current source removes `reboot_iop = 1` from `LaunchBootElf` entirely: always uses `reboot_iop = 0` regardless of HDD state; `PrepareForColdExternalELFLaunch` (which unmounts all pfs slots and clears the exec keep mask) is still called when HDD is loaded so the handoff is clean, but the IOP reset itself is skipped because `LoadExecPS2` handles BOOT.ELF correctly with the existing IOP state.
+  - hardware result is `Unknown (verify on hardware)` pending a new build and test.
 - PAL asset proportions:
   - code compensates for PAL layout,
   - final display result still needs hardware confirmation.
