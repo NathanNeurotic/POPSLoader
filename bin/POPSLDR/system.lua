@@ -343,6 +343,25 @@ local function BuildHddPartitionContext(path)
   return nil
 end
 
+local function BuildPartitionScopedExecPath(path)
+  local candidate = tostring(path or "")
+  if candidate == "" then
+    return nil
+  end
+  local relpath = string.gsub(candidate, "^pfs%d*:/", "")
+  if relpath ~= candidate and relpath ~= "" then
+    return "pfs:/"..relpath
+  end
+  local mounted_relpath = string.match(candidate, "^[Hh][Dd][Dd]%d:[^:]+:[%a]+%d*:/(.+)$")
+  if mounted_relpath == nil then
+    mounted_relpath = string.match(candidate, "^[Hh][Dd][Dd]%d:[^:]+:[%a]+%d*:(.+)$")
+  end
+  if mounted_relpath ~= nil and mounted_relpath ~= "" then
+    return "pfs:/"..string.gsub(mounted_relpath, "^/+", "")
+  end
+  return nil
+end
+
 local function NormalizeHddHelperSlot(slot)
   local normalized = tonumber(slot)
   if normalized == nil or normalized < HDD_SLOT_COMMON then
@@ -3513,6 +3532,10 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   if open_path ~= nil and open_path ~= popstarter then
     popstarter = open_path
   end
+  local exec_path = popstarter
+  if context ~= nil and type(context.exec_path) == "string" and context.exec_path ~= "" then
+    exec_path = context.exec_path
+  end
   local launch_cwd = popstarter
   if context ~= nil and context.launch_cwd == false then
     launch_cwd = nil
@@ -3553,18 +3576,18 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   local rc
   if exec_args ~= nil and #exec_args > 0 and unpack_fn ~= nil then
     if context ~= nil and type(context.exec_partition_context) == "string" and context.exec_partition_context ~= "" then
-      rc = System.loadELF(popstarter, reboot_iop, unpack_fn(exec_args), context.exec_partition_context)
+      rc = System.loadELF(exec_path, reboot_iop, unpack_fn(exec_args), context.exec_partition_context)
     else
-      rc = System.loadELF(popstarter, reboot_iop, unpack_fn(exec_args))
+      rc = System.loadELF(exec_path, reboot_iop, unpack_fn(exec_args))
     end
   elseif exec_args ~= nil and #exec_args == 1 then
     if context ~= nil and type(context.exec_partition_context) == "string" and context.exec_partition_context ~= "" then
-      rc = System.loadELF(popstarter, reboot_iop, exec_args[1], context.exec_partition_context)
+      rc = System.loadELF(exec_path, reboot_iop, exec_args[1], context.exec_partition_context)
     else
-      rc = System.loadELF(popstarter, reboot_iop, exec_args[1])
+      rc = System.loadELF(exec_path, reboot_iop, exec_args[1])
     end
   else
-    rc = System.loadELF(popstarter, reboot_iop)
+    rc = System.loadELF(exec_path, reboot_iop)
   end
   local elapsed_ms = Timer.getTime(LaunchState.fade_timer) - LaunchState.fade_start
   if elapsed_ms >= LaunchState.watchdog_ms then
@@ -3654,6 +3677,13 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
   local popstarter = ResolvePopstarterPath(configured_popstarter)
   local popstarter_partition_context = ResolvePopstarterPartitionContext(configured_popstarter, popstarter)
   local popstarter_on_hdd = IsHddExecContextPath(popstarter)
+  local popstarter_exec_path = popstarter
+  if popstarter_partition_context ~= nil and popstarter_partition_context ~= "" then
+    local normalized_exec_path = BuildPartitionScopedExecPath(popstarter)
+    if normalized_exec_path ~= nil then
+      popstarter_exec_path = normalized_exec_path
+    end
+  end
   local hdd_selector_mode = nil
   if type(launch_options) == "table" then
     hdd_selector_mode = tostring(launch_options.hdd_selector_mode or "")
@@ -3848,6 +3878,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     keep_hdd_slots = nil,
     keep_hdd_slots_after_load = popstarter_on_hdd and {} or nil,
     launch_cwd = popstarter_on_hdd and false or nil,
+    exec_path = popstarter_exec_path,
     exec_partition_context = popstarter_partition_context
   }
   local reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER

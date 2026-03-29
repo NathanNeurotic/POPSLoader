@@ -522,6 +522,13 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 	char resolved_path[256];
 	int ret;
 
+	if (partition != NULL && partition[0] != '\0' &&
+	    is_hdd_backed_exec_path(partition) &&
+	    is_hdd_backed_exec_path(filename) &&
+	    argc > 0 && argv != NULL && argv[0] != NULL) {
+		return ExecuteHddBackedViaEmbeddedLoader(filename, partition, argc, argv);
+	}
+
 	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
 		return -1;
 	}
