@@ -24,6 +24,7 @@ extern "C" {
 int LoadELFFromFile(const char *filename, int argc, char *argv[]);
 int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[]);
 int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]);
+int LoadELFFromFileExecPS2RebootIOPWithContext(const char *filename, const char *source_context, int argc, char *argv[]);
 
 /** Modify argv[0] when partition info should be kept
  *

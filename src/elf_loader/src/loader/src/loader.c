@@ -142,7 +142,7 @@ int main(int argc, char *argv[])
 		 * launch arguments, not this control metadata.
 		 */
 		if (strncmp(source_context, "hdd", 3) == 0 && (source_context[3] >= '0' && source_context[3] <= ':')) {
-			while(!SifIopReset(NULL, 0)){};
+			while(!SifIopReset("", 0)){};
 			while (!SifIopSync()) {};
 		}
 		SifExitRpc();

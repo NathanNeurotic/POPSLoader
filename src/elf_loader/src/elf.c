@@ -117,6 +117,7 @@ static bool is_hdd_backed_exec_path(const char *path) {
 }
 
 static int ExecuteViaEmbeddedLoader(const char *resolved_path, const char *source_context, int argc, char *argv[]);
+int LoadELFFromFileExecPS2RebootIOPWithContext(const char *filename, const char *source_context, int argc, char *argv[]);
 
 static int extract_exec_pfs_slot(const char *path) {
 	if (path != NULL && strncmp(path, "pfs", 3) == 0) {
@@ -149,30 +150,20 @@ static int mount_hdd_exec_partition(const char *partition, int slot) {
 	return 0;
 }
 
-static int build_hdd_embedded_loader_target(const char *resolved_path, char *load_path, size_t load_path_size, unsigned int *keep_mask_out) {
+static int build_hdd_embedded_loader_target_from_hdd_path(const char *source_path, char *load_path, size_t load_path_size, unsigned int *keep_mask_out) {
 	const char *partition_end;
 	const char *fs_prefix_end;
 	const char *relpath;
 
-	if (resolved_path == NULL || load_path == NULL || keep_mask_out == NULL) {
+	if (source_path == NULL || load_path == NULL || keep_mask_out == NULL) {
 		return -1;
 	}
 
-	if (strncmp(resolved_path, "pfs", 3) == 0) {
-		int slot = extract_exec_pfs_slot(resolved_path);
-		if (slot < 0 || slot > 3) {
-			return -1;
-		}
-		snprintf(load_path, load_path_size, "%s", resolved_path);
-		*keep_mask_out = (1U << slot);
-		return 0;
-	}
-
-	if (strncmp(resolved_path, "hdd", 3) != 0) {
+	if (strncmp(source_path, "hdd", 3) != 0) {
 		return -1;
 	}
 
-	partition_end = strchr(resolved_path + 5, ':');
+	partition_end = strchr(source_path + 5, ':');
 	if (partition_end == NULL) {
 		return -1;
 	}
@@ -192,11 +183,11 @@ static int build_hdd_embedded_loader_target(const char *resolved_path, char *loa
 
 	{
 		char partition[128];
-		size_t partition_len = (size_t)(partition_end - resolved_path);
+		size_t partition_len = (size_t)(partition_end - source_path);
 		if (partition_len == 0 || partition_len >= sizeof(partition)) {
 			return -1;
 		}
-		memcpy(partition, resolved_path, partition_len);
+		memcpy(partition, source_path, partition_len);
 		partition[partition_len] = '\0';
 		if (mount_hdd_exec_partition(partition, 0) != 0) {
 			return -1;
@@ -212,7 +203,31 @@ static int build_hdd_embedded_loader_target(const char *resolved_path, char *loa
 	return 0;
 }
 
-static int ExecuteHddBackedViaEmbeddedLoader(const char *requested_path, const char *resolved_path, int argc, char *argv[]) {
+static int build_hdd_embedded_loader_target(const char *resolved_path, const char *source_context, char *load_path, size_t load_path_size, unsigned int *keep_mask_out) {
+	if (source_context != NULL && strncmp(source_context, "hdd", 3) == 0) {
+		if (build_hdd_embedded_loader_target_from_hdd_path(source_context, load_path, load_path_size, keep_mask_out) == 0) {
+			return 0;
+		}
+	}
+
+	if (resolved_path != NULL && strncmp(resolved_path, "pfs", 3) == 0) {
+		int slot = extract_exec_pfs_slot(resolved_path);
+		if (slot < 0 || slot > 3) {
+			return -1;
+		}
+		snprintf(load_path, load_path_size, "%s", resolved_path);
+		*keep_mask_out = (1U << slot);
+		return 0;
+	}
+
+	if (resolved_path != NULL && strncmp(resolved_path, "hdd", 3) == 0) {
+		return build_hdd_embedded_loader_target_from_hdd_path(resolved_path, load_path, load_path_size, keep_mask_out);
+	}
+
+	return -1;
+}
+
+static int ExecuteHddBackedViaEmbeddedLoader(const char *requested_path, const char *resolved_path, const char *source_context_override, int argc, char *argv[]) {
 	char load_path[256];
 	const char *source_context;
 	unsigned int previous_keep_mask;
@@ -223,13 +238,16 @@ static int ExecuteHddBackedViaEmbeddedLoader(const char *requested_path, const c
 		return -4;
 	}
 
-	if (build_hdd_embedded_loader_target(resolved_path, load_path, sizeof(load_path), &required_keep_mask) != 0) {
-		return -1;
+	source_context = source_context_override;
+	if (source_context == NULL || source_context[0] == '\0') {
+		source_context = requested_path;
 	}
-
-	source_context = requested_path;
 	if (source_context == NULL || source_context[0] == '\0') {
 		source_context = resolved_path;
+	}
+
+	if (build_hdd_embedded_loader_target(resolved_path, source_context, load_path, sizeof(load_path), &required_keep_mask) != 0) {
+		return -1;
 	}
 
 	previous_keep_mask = GetExecKeepPfsMask();
@@ -440,6 +458,11 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 
 int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[])
 {
+	return LoadELFFromFileExecPS2RebootIOPWithContext(filename, NULL, argc, argv);
+}
+
+int LoadELFFromFileExecPS2RebootIOPWithContext(const char *filename, const char *source_context, int argc, char *argv[])
+{
 	t_ExecData elfdata;
 	char resolved_path[256];
 	int ret;
@@ -448,8 +471,9 @@ int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]
 		return -1;
 	}
 
-	if (is_hdd_backed_exec_path(resolved_path) && argc > 0 && argv != NULL && argv[0] != NULL) {
-		return ExecuteHddBackedViaEmbeddedLoader(filename, resolved_path, argc, argv);
+	if ((is_hdd_backed_exec_path(resolved_path) || is_hdd_backed_exec_path(source_context)) &&
+	    argc > 0 && argv != NULL && argv[0] != NULL) {
+		return ExecuteHddBackedViaEmbeddedLoader(filename, resolved_path, source_context, argc, argv);
 	}
 
 	SifInitRpc(0);
@@ -466,7 +490,7 @@ int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]
 	}
 
 	FlushCache(0);
-	while (!SifIopReset(NULL, 0)) {
+	while (!SifIopReset("", 0)) {
 	}
 	while (!SifIopSync()) {
 	}
