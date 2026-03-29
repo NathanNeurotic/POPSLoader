@@ -3595,7 +3595,14 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     popstarter = open_path
   end
   local exec_path = popstarter
-  if context ~= nil and type(context.exec_path) == "string" and context.exec_path ~= "" then
+  if context ~= nil and type(context.exec_partition_context) == "string" and context.exec_partition_context ~= "" then
+    local normalized_exec_path = BuildPartitionScopedExecPath(popstarter)
+    if type(normalized_exec_path) == "string" and normalized_exec_path ~= "" then
+      exec_path = normalized_exec_path
+    elseif type(context.exec_path) == "string" and context.exec_path ~= "" then
+      exec_path = context.exec_path
+    end
+  elseif context ~= nil and type(context.exec_path) == "string" and context.exec_path ~= "" then
     exec_path = context.exec_path
   end
   local launch_cwd = popstarter
@@ -3945,7 +3952,9 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     keep_hdd_slots = nil,
     keep_hdd_slots_after_load = popstarter_on_hdd and {} or nil,
     launch_cwd = popstarter_on_hdd and false or nil,
-    cold_external_launch = popstarter_partition_context ~= nil and popstarter_partition_context ~= "",
+    -- BOOT.ELF keeps the colder handoff after HDD runtime init. For HDD-backed
+    -- POPSTARTER, keep the current mount alive until the parent remounts pfs0:.
+    cold_external_launch = false,
     exec_path = popstarter_exec_path,
     exec_partition_context = popstarter_partition_context
   }

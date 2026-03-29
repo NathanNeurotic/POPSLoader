@@ -8,6 +8,12 @@ Last updated: 2026-03-29
 - Recorded hardware confirms `D-12` startup/Profile lookup is restored, `D-16` first-entry USB discovery is restored, and `D-15` non-HDD-POPSTARTER HDD-game launch is restored.
 - The main stabilization blocker for HDD-backed `POPSTARTER.ELF` execution when the launcher, sidecar/CWD, or configured POPSTARTER path lives on HDD (`D-10`, `D-14`) has been resolved in code. The embedded loader was previously erasing high memory and failing post-IOP resets.
 - Current repo line uses the partition-aware HDD reboot contract, cold external-launch prep, separate exec-path reporting, profile-path normalization, and a safely adjusted embedded loader while preserving the restored non-HDD POPSTARTER path.
+- The main stabilization blocker is still HDD-backed `POPSTARTER.ELF` execution when the launcher, sidecar/CWD, or configured POPSTARTER path lives on HDD (`D-10`, `D-14`).
+- One 2026-03-29 artifact briefly moved `D-10` to a returned `rc=-1`, but later artifacts returned to black screen, so that was not a stable new boundary.
+- Current repo line uses the partition-aware HDD reboot contract, separate exec-path reporting, and profile-path normalization while preserving the restored non-HDD POPSTARTER path.
+- Current repo line keeps HDD-backed POPSTARTER on the standard external-launch prep so the current HDD mount remains available until the parent remounts `pfs0:`, and it also restores standard external-launch prep for BOOT.ELF after HDD init so non-HDD BOOT.ELF handoff preserves the boot PFS slot instead of clearing tracked HDD mounts up front.
+- Current repo line now derives the partition-scoped exec filename from the final resolved POPSTARTER path at launch time, so stale precomputed exec strings cannot drop the ELF basename before the HDD loader handoff.
+- Treat slot preservation, launch CWD preservation, and other carried launch-state prep as non-goals for POPSTARTER itself; the remaining work is only to make HDD-backed `POPSTARTER.ELF` launch successfully with the correct selector in `argv[0]`.
 - The latest EE-side HDD direct-load workaround was reverted after it did not fix `D-10` and coincided with a reported HDD-game regression when POPSTARTER stayed on the non-HDD boot device.
 - `HDD (exFAT)` and `SMB (v1)` remain intentionally unimplemented menu entries.
 - Detailed experiment chronology lives in `QA_REGRESSION_MATRIX.md` and `DECISIONS.md`.
@@ -19,7 +25,7 @@ Last updated: 2026-03-29
 - The root cause isolated to the `loader.c` embedded loader wiping critical high-memory bounds and incorrectly calling `SifExitCmd()` after an IOP reset. Both are resolved in the latest artifact.
 
 ### 2) External exit/launch re-validation
-- Re-run `U-05` (`OSDSYS`) and `U-10` (`BOOT.ELF after HDD page init`) on current source after the BOOT.ELF-specific conditional-reboot/cold-prep change for HDD-initialized sessions.
+- Re-run `U-05` (`OSDSYS`) and `U-10` (`BOOT.ELF after HDD page init`) on current source after the BOOT.ELF restored-standard-prep/no-forced-reboot change for HDD-initialized sessions.
 - Treat `U-10` as potentially sharing the same underlying handoff/state-poisoning boundary as `D-10`, but do not assume a `D-10` fix automatically resolves `U-10` without hardware confirmation.
 - Record exact run results in `QA_REGRESSION_MATRIX.md` instead of carrying them only in chat history.
 

@@ -55,13 +55,20 @@ Reported hardware issues currently being tracked are:
 - HDD-backed `POPSTARTER.ELF` handoff (`D-10`, `D-14`)
   - `D-10` and `D-14` previously resulted in a black screen hang because the embedded loader wiped the top 1MB of memory and improperly called `SifExitCmd()` after an IOP reset. The current code fixes these constraints and the remaining blockers are now resolved in code.
   - `D-15` passes on hardware, isolating the prior issues directly to the embedded loader execution phase for HDD-backed POPSTARTER.
+  - latest recorded hardware outcomes still fail when `POPSTARTER.ELF` itself is HDD-backed.
+  - `D-15` passing again isolates the remaining blocker to HDD-backed POPSTARTER execution, not HDD games in general.
+  - one 2026-03-29 artifact briefly moved `D-10` from a black screen to `rc=-1 (returned after 22618 ms)`, but later artifacts returned to a black screen, so that boundary was not stable.
+  - current repo line keeps the partition-aware HDD reboot contract, separate exec-path reporting, and profile-path normalization.
+  - current repo line no longer routes HDD-backed POPSTARTER through the BOOT.ELF-style cold external-launch pre-unmount; it keeps the standard external-launch prep so the current HDD mount survives until the parent loader remounts `pfs0:`.
+  - current repo line now derives the partition-scoped exec filename from the final resolved POPSTARTER path at launch time, so a stale precomputed exec path cannot drop the ELF basename before the HDD loader handoff.
+  - clarification: POPSTARTER itself is not believed to require slot preservation, launch CWD, or carried runtime state after exec; the remaining requirement is to start the HDD-backed ELF successfully and give it the correct selector in `argv[0]`.
   - detailed per-artifact experiment chronology lives in `QA_REGRESSION_MATRIX.md` and `DECISIONS.md`.
 - HDD game with non-HDD POPSTARTER (`D-15`)
   - user later confirmed on 2026-03-28 that USB boot + USB Profile 1 sidecar/cwd `POPSTARTER.ELF` + HDD game now passes on hardware.
 - `BOOT.ELF` after HDD runtime (`U-10`)
   - BOOT.ELF is reached, but later reported hardware said it could still misbehave after HDD runtime had already been initialized.
   - current working inference is that `U-10` may share the same underlying handoff/state-poisoning boundary as `D-10`, but that is not yet proven and must not be treated as an automatic fix dependency.
-  - current line uses BOOT.ELF-specific cold prep plus conditional `reboot_iop`, but hardware on that exact line is still `Unknown (verify on hardware)`.
+  - the later BOOT.ELF cold-prep/no-forced-reboot line still froze after HDD page use on hardware, so current source now restores the standard external-launch prep for BOOT.ELF even after HDD init while keeping the no-launch-CWD/non-forced-reboot load shape; hardware on that exact line is still `Unknown (verify on hardware)`.
 
 ## Runtime Behavior (Current Code)
 
@@ -207,6 +214,14 @@ The workflow uses the `ps2dev/ps2dev` container and validates packaging after bu
   - previous artifacts black-screened because `wipeUserMem` cleared high memory (where RPC buffers and kernel states are stored), and `SifExitCmd()` was called after an IOP reset. The current code fixes these embedded-loader issues.
   - hardware re-test is still `Unknown (verify on hardware)`.
   - current repo line keeps the partition-aware reboot contract, cold external-launch prep, separate exec-path reporting, and profile-path normalization.
+  - reported failing.
+  - latest recorded hardware outcomes still fail when `POPSTARTER.ELF` itself is HDD-backed.
+  - `D-15` passing again isolates the remaining blocker to HDD-backed POPSTARTER execution.
+  - one 2026-03-29 artifact briefly returned `rc=-1 (returned after 22618 ms)` instead of black-screening, but later artifacts returned to black screen, so that boundary is not treated as the stable current state.
+  - current repo line keeps the partition-aware reboot contract, separate exec-path reporting, and profile-path normalization.
+  - current repo line no longer routes HDD-backed POPSTARTER through the BOOT.ELF-style cold external-launch pre-unmount; it keeps the standard external-launch prep so the current HDD mount survives until the parent loader remounts `pfs0:`.
+  - current repo line now derives the partition-scoped exec filename from the final resolved POPSTARTER path at launch time, so a stale precomputed exec path cannot drop the ELF basename before the HDD loader handoff.
+  - clarification: POPSTARTER itself is not believed to require slot preservation, launch CWD, or carried runtime state after exec; the remaining requirement is to start the HDD-backed ELF successfully and give it the correct selector in `argv[0]`.
   - see `QA_REGRESSION_MATRIX.md` and `DECISIONS.md` for the detailed experiment chronology.
 - `D-14` HDD-backed POPSTARTER with non-HDD game:
   - expected resolved on current code along with `D-10`, as they shared the same embedded loader launch path crashes.
@@ -226,7 +241,8 @@ The workflow uses the `ps2dev/ps2dev` container and validates packaging after bu
   - repo history shows the BOOT.ELF modal later changed from its older non-reboot direct `System.loadELF(elf_path, 0, elf_path)` path to a reboot-I/O path with launch-CWD setup.
   - a later 2026-03-29 hardware report said BOOT.ELF still behaved incorrectly once HDD had been initialized, which points more specifically at carried HDD runtime state than BOOT.ELF lookup.
   - current working inference is that `U-10` may share the same underlying handoff/state-poisoning boundary as `D-10`, but that is not yet proven and `U-10` still requires its own hardware re-check after any `D-10` change.
-  - current source therefore keeps the no-launch-CWD rollback, re-enables `reboot_iop = 1` only when HDD runtime has already been loaded, and uses a BOOT.ELF-specific cold external-launch prep that clears the exec keep mask and unmounts tracked HDD slots instead of preserving boot PFS state.
+  - a later 2026-03-29 hardware report on that cold-prep/no-forced-reboot line still froze on `HDD boot -> default/Profile 1 sidecar/cwd POPSTARTER on HDD -> enter HDD page -> Exit -> BOOT.ELF`.
+  - current source therefore keeps the no-launch-CWD rollback, keeps the non-forced-reboot BOOT.ELF load shape, and restores the standard external-launch prep even after HDD init so non-HDD BOOT.ELF handoff preserves the boot PFS slot instead of clearing all tracked HDD slots up front.
   - current-source hardware status is still `Unknown (verify on hardware)`.
 
 ## Documentation Map
