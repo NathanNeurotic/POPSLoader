@@ -240,6 +240,7 @@ int main(int argc, char *argv[])
 	size_t target_arg_offset = 0;
 	unsigned int filexio_entry = 0;
 	unsigned int filexio_gp = 0;
+	int loaded_via_filexio = 0;
 	int target_argc = 0;
 	int ret, i;
 
@@ -302,6 +303,7 @@ int main(int argc, char *argv[])
 	SET_GS_BGCOLOUR(GREEN_BG);
 	if (strncmp(load_path, "pfs", 3) == 0 || strncmp(load_path, "PFS", 3) == 0 ||
 	    strncmp(load_path, "hdd", 3) == 0 || strncmp(load_path, "HDD", 3) == 0) {
+		loaded_via_filexio = 1;
 		fileXioInit();
 		ret = load_elf_via_filexio(load_path, &filexio_entry, &filexio_gp);
 		if (ret == 0) {
@@ -319,6 +321,19 @@ int main(int argc, char *argv[])
 	SET_GS_BGCOLOUR(BLUE_BG);
 	if (ret == 0 && elfdata.epc != 0) {
 		SET_GS_BGCOLOUR(YELLOW_BG);
+
+		/* Older repo-local HDD fixes that first restored the iomanX-aware
+		 * fileXio load path jumped directly into ExecPS2 from this branch.
+		 * Keep that contract here too: once the target ELF has been copied
+		 * into EE RAM through fileXio, avoid extra HDD reset / SIF teardown
+		 * that the SifLoadElf path still uses.
+		 */
+		if (loaded_via_filexio) {
+			FlushCache(0);
+			FlushCache(2);
+			ret = ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, target_argc, target_argv);
+			return (ret != 0) ? ret : -3500;
+		}
 
 		if (is_hdd_partition_context(partition_context)) {
 			while(!SifIopReset("", 0)){};
