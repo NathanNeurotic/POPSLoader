@@ -3596,11 +3596,15 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   end
   local exec_path = popstarter
   if context ~= nil and type(context.exec_partition_context) == "string" and context.exec_partition_context ~= "" then
-    local normalized_exec_path = BuildPartitionScopedExecPath(popstarter)
-    if type(normalized_exec_path) == "string" and normalized_exec_path ~= "" then
-      exec_path = normalized_exec_path
-    elseif type(context.exec_path) == "string" and context.exec_path ~= "" then
+    if context.preserve_exec_path_with_partition == true and type(context.exec_path) == "string" and context.exec_path ~= "" then
       exec_path = context.exec_path
+    else
+      local normalized_exec_path = BuildPartitionScopedExecPath(popstarter)
+      if type(normalized_exec_path) == "string" and normalized_exec_path ~= "" then
+        exec_path = normalized_exec_path
+      elseif type(context.exec_path) == "string" and context.exec_path ~= "" then
+        exec_path = context.exec_path
+      end
     end
   elseif context ~= nil and type(context.exec_path) == "string" and context.exec_path ~= "" then
     exec_path = context.exec_path
@@ -3957,12 +3961,13 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     keep_hdd_slots_after_load = popstarter_on_hdd and {} or nil,
     launch_cwd = popstarter_on_hdd and false or nil,
     cold_external_launch = false,
+    preserve_exec_path_with_partition = popstarter_on_hdd and popstarter_partition_context ~= nil and popstarter_partition_context ~= "",
     exec_path = popstarter_exec_path,
-    exec_partition_context = popstarter_on_hdd and nil or popstarter_partition_context
+    exec_partition_context = popstarter_partition_context
   }
   local reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
   if popstarter_on_hdd then
-    reboot_iop = 0
+    reboot_iop = 1
   elseif policy.name == "HDD" then
     reboot_iop = 0
   end

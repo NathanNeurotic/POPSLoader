@@ -16,6 +16,7 @@
 #include <loadfile.h>
 #include <iopheap.h>
 #include <iopcontrol.h>
+#include <sbv_patches.h>
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
 #include <sys/stat.h>
@@ -109,6 +110,41 @@ static void unmount_pfs_slots_for_exec(unsigned int keep_mask) {
 static unsigned int build_exec_keep_mask(const char *resolved_path) {
 	(void)resolved_path;
 	return GetExecKeepPfsMask() & 0x0F;
+}
+
+static void load_post_reset_modules(void) {
+	sbv_patch_enable_lmb();
+	sbv_patch_disable_prefix_check();
+	SifLoadModule("rom0:SIO2MAN", 0, NULL);
+	SifLoadModule("rom0:CDVDFSV", 0, NULL);
+	SifLoadModule("rom0:CDVDMAN", 0, NULL);
+	SifLoadModule("rom0:MCMAN", 0, NULL);
+	SifLoadModule("rom0:MCSERV", 0, NULL);
+	SifLoadModule("rom0:PADMAN", 0, NULL);
+}
+
+static void prepare_reboot_exec_environment(void) {
+	FlushCache(0);
+	while (!SifIopReset("rom0:UDNL rom0:EELOADCNF", 0)) {
+	}
+	while (!SifIopSync()) {
+	}
+
+	SifExitIopHeap();
+	SifLoadFileExit();
+	SifExitRpc();
+	SifExitCmd();
+
+	SifInitRpc(0);
+	SifLoadFileInit();
+	load_post_reset_modules();
+	SifExitIopHeap();
+	SifLoadFileExit();
+	SifExitRpc();
+	SifExitCmd();
+
+	FlushCache(0);
+	FlushCache(2);
 }
 
 static bool is_hdd_backed_exec_path(const char *path) {
@@ -480,14 +516,12 @@ int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]
 
 int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const char *partition, int argc, char *argv[])
 {
-	t_ExecData elfdata;
 	char resolved_path[256];
-	int ret;
 
 	if (partition != NULL && partition[0] != '\0' &&
 	    is_hdd_backed_exec_path(partition) &&
 	    is_hdd_backed_exec_path(filename) &&
-	    argc > 0 && argv != NULL && argv[0] != NULL) {
+	    (argc == 0 || (argc > 0 && argv != NULL && argv[0] != NULL))) {
 		return ExecuteHddBackedViaEmbeddedLoader(filename, partition, argc, argv);
 	}
 
@@ -496,40 +530,10 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 	}
 
 	if ((is_hdd_backed_exec_path(resolved_path) || is_hdd_backed_exec_path(partition)) &&
-	    argc > 0 && argv != NULL && argv[0] != NULL) {
+	    (argc == 0 || (argc > 0 && argv != NULL && argv[0] != NULL))) {
 		return ExecuteHddBackedViaEmbeddedLoader(resolved_path, partition, argc, argv);
 	}
 
-	SifInitRpc(0);
-	SifLoadFileInit();
-	ret = SifLoadElf(resolved_path, &elfdata);
-	SifLoadFileExit();
-
-	if (ret != 0 || elfdata.epc == 0) {
-		return -2;
-	}
-
-	if (is_hdd_backed_exec_path(resolved_path)) {
-		unmount_pfs_slots_for_exec(build_exec_keep_mask(resolved_path));
-	}
-
-	FlushCache(0);
-	while (!SifIopReset("", 0)) {
-	}
-	while (!SifIopSync()) {
-	}
-
-	SifInitRpc(0);
-	SifLoadFileInit();
-	SifLoadModule("rom0:SIO2MAN", 0, NULL);
-	SifLoadModule("rom0:MCMAN", 0, NULL);
-	SifLoadModule("rom0:MCSERV", 0, NULL);
-	SifLoadFileExit();
-	SifExitRpc();
-
-	FlushCache(0);
-	FlushCache(2);
-
-	ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc, argv);
-	return -1;
+	prepare_reboot_exec_environment();
+	return ExecuteViaEmbeddedLoader("", resolved_path, argc, argv);
 }

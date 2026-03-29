@@ -153,8 +153,11 @@ Current source also includes:
 
 - popup support for showing probe path and exec path separately
 - profile-path normalization so selected Profile 1/default does not silently keep another profile’s canonical HDD path
-- the current temporary HDD-backed POPSTARTER experiment bypasses partition-aware handoff entirely and executes the resolved HDD ELF with no selector or extra args, so the artifact answers only whether the ELF starts at all
+- the current temporary HDD-backed POPSTARTER experiment keeps no selector or extra args and executes the resolved HDD ELF, while restoring only the minimum loader metadata needed to keep the child off the newer `fileXio` shortcut
 - current source also removes the stale stripped-line exec-path rewrite so probe/open and exec both use the same resolved HDD ELF path
+- current source also retries that same stripped HDD ELF launch through reboot mode instead of the non-reboot `LoadExecPS2` path that returned `rc=-1`, and it lets that zero-arg reboot path still enter the HDD embedded loader
+- repo comparison then showed the stripped line was still falling into the child loader's newer `fileXio` direct-load shortcut for `pfsN:/...` because `exec_partition_context` had been cleared; current source now restores partition context only as loader metadata so the child uses the older remount/reset path again while still keeping zero selector/game args and the same visible exec path
+- current source also restores the generic reboot exec path in `src/elf_loader/src/elf.c` to the repo's older embedded-loader handoff style after the post-reset cleanup/module-reload contract from `src/system.cpp`
 - BOOT.ELF now uses standard external-launch prep with conditional reboot after HDD init, because both later no-forced-reboot BOOT.ELF lines still froze after HDD page use on hardware
 
 `D-10` still fails after those changes.
