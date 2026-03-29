@@ -1,6 +1,6 @@
 # POPSLoader
 
-Last updated: 2026-03-28
+Last updated: 2026-03-29
 
 POPSLoader is a PlayStation 2 launcher for POPStarter, built on Enceladus runtime components and driven primarily by embedded Lua scripts.
 
@@ -20,6 +20,7 @@ PS1_POPSLOADER/
   POPSLOADER.ELF
   POPSTARTER.ELF
   APPINFO.PBT
+  BUILD_INFO.txt
   title.cfg
   icon.sys
   list.icn
@@ -30,6 +31,7 @@ POPS/
 ```
 
 That package contract is enforced by `.github/workflows/compilation.yml`.
+Current CI also verifies that the built `enceladus.elf` still contains the expected embedded Lua runtime markers and that the generated embedded-loader blob was regenerated before packaging.
 
 ## Current Status At A Glance
 

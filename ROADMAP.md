@@ -1,4 +1,4 @@
-Last updated: 2026-03-28
+Last updated: 2026-03-29
 
 # ROADMAP
 
@@ -97,6 +97,7 @@ Last updated: 2026-03-28
 
 ### 3) Install/build clarity
 - Keep CI package layout and docs synchronized.
+- Keep GitHub-built hardware artifacts self-identifying: package `BUILD_INFO.txt` and fail CI when expected embedded runtime markers are missing.
 - Keep README installation steps explicit enough for users who are not familiar with PS2 launcher layouts.
 
 ## Deferred Ideas

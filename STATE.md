@@ -1,4 +1,4 @@
-Last updated: 2026-03-28
+Last updated: 2026-03-29
 
 # STATE
 
@@ -35,6 +35,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - sidecar PNG next to the selected `.VCD`,
   - `hdd0:__common/POPS/ART/<title>.png` for HDD titles.
 - Release packaging policy in CI is `PS1_POPSLOADER/*` + `POPS/PATCH_5.BIN` with strict manifest validation.
+- Current CI package also includes `PS1_POPSLOADER/BUILD_INFO.txt`, and the workflow fails if the built ELF is missing key embedded runtime markers or if the generated embedded-loader blob was not regenerated.
 
 ## Main Menu Feature Status
 - `MMCE`: implemented in code.

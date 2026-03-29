@@ -1,4 +1,4 @@
-Last updated: 2026-03-28
+Last updated: 2026-03-29
 
 # DECISIONS
 
@@ -49,9 +49,9 @@ Each entry records:
 - Evidence: `bin/POPSLDR/system.lua`, `bin/POPSLDR/ui.lua`.
 
 ### 2026-03-26 — Release ZIP contract is strict and PATCH_5-based
-- Decision: CI package includes exact `PS1_POPSLOADER/*` launcher files plus `POPS/PATCH_5.BIN`, and rejects legacy `POPS/*.tm2` payloads.
+- Decision: CI package includes exact `PS1_POPSLOADER/*` launcher files plus `POPS/PATCH_5.BIN`, now including `PS1_POPSLOADER/BUILD_INFO.txt`, and rejects legacy `POPS/*.tm2` payloads.
 - Rationale: prevent release drift and ambiguous installation instructions.
-- Implications: docs and workflow validation must stay synchronized.
+- Implications: docs and workflow validation must stay synchronized, and GitHub-built hardware candidates now carry a visible build stamp while CI also checks for expected embedded runtime markers before packaging.
 - Evidence: `.github/workflows/compilation.yml`.
 
 ## Open Investigations

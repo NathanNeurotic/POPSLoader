@@ -26,6 +26,8 @@ This matrix tracks current behavior across:
 | CI-03 | Release package assembly | workflow packaging step | ZIP includes expected tree rooted at `PS1_POPSLOADER/` + `POPS/` |
 | CI-04 | Release manifest exactness | workflow python verifier | exact expected file set; no extra/missing files |
 | CI-05 | Legacy payload rejection | workflow python verifier | no `POPS/*.tm2` entries present |
+| CI-06 | Packaged build identity | workflow packaging step | ZIP includes `PS1_POPSLOADER/BUILD_INFO.txt` so hardware can confirm the exact GitHub-built artifact |
+| CI-07 | Embedded runtime identity | workflow step `Verify embedded build identity` | built `enceladus.elf` contains expected embedded Lua markers and the generated embedded-loader blob was regenerated |
 
 ## Manual Runtime Matrix
 
