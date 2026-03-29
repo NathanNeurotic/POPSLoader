@@ -99,6 +99,7 @@ This matrix tracks current behavior across:
 | 2026-03-28 | Unknown (not reported) | Booted from HDD; default/Profile 1 sidecar POPSTARTER on HDD; entered USB page before HDD page on the boot-time split source | D-12 | FAIL: HDD POPSTARTER could not be found until HDD page entry |
 | 2026-03-28 | Unknown (not reported) | Same HDD-backed startup/Profile POPSTARTER repro on raw-`APP_DIR` fallback source | D-12 | FAIL: still required HDD page entry |
 | 2026-03-28 | Unknown (not reported) | Same HDD-backed startup/Profile POPSTARTER repro after startup warm-path and on-demand path-access follow-ups | D-12 | FAIL: still required HDD page entry |
+| 2026-03-28 | Unknown (not reported) | Same HDD-backed startup/Profile POPSTARTER repro on exact-boot-mount/source-context source | D-12 | PASS |
 | 2026-03-27 | Unknown (not reported) | Cold boot; first USB page entry said no backend; backing out and re-entering then worked | D-16 | FAIL |
 | 2026-03-28 | Unknown (not reported) | Cold boot; first USB page entry on corrected source | D-16 | PASS |
 | 2026-03-27 | Unknown (not reported) | Booted from HDD; POPSTARTER via default/Profile 1/cwd/sidecar on HDD; game device HDD | D-10 | FAIL: black screen |
@@ -137,6 +138,7 @@ This matrix tracks current behavior across:
     - current source also routes on-demand HDD path mounts through `PLDR.LoadHDDModules()` instead of only the lower-level `EnsureHddRuntimeReadyForExec()` gate, so later POPSTARTER/Profile resolution from USB or other pages uses the same runtime init path as HDD page entry.
     - current source also fixes the startup warm-path classification for Profile 1/default relative `POPSTARTER.ELF`, which had previously been skipped because only explicit `hdd:` / `pfs:` paths were being marked for HDD warm-up.
     - because `etc/boot.lua` establishes HDD boot on a dedicated `pfs1:` mount before `system.lua` runs, current source now also carries that exact boot partition/slot metadata into `system.lua`, seeds the HDD mount tracker from it, and rebuilds HDD sidecar/partition context from mounted `pfs1:` candidates instead of relying only on later rediscovery.
+    - user later confirmed on 2026-03-28 that the exact-boot-mount/source-context source restored the USB-before-HDD-page startup/Profile repro on hardware.
     - updated-source hardware result is still `Unknown (verify on hardware)`.
   - `D-16`: a 2026-03-27 hardware report said the first USB page entry reported no backend, but backing out and re-entering then worked.
     - current source now adds a bounded wait between failed USB root probes in `BuildUsbIdentityDeferred()`.

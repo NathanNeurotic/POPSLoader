@@ -68,6 +68,7 @@ Each entry records:
   - current source also routes on-demand HDD path mounts through `PLDR.LoadHDDModules()` instead of only the lower-level `EnsureHddRuntimeReadyForExec()` gate, so later POPSTARTER/Profile resolution from USB or other pages uses the same runtime init path as HDD page entry.
   - repo inspection also showed the startup HDD warm-path list had been skipping Profile 1/default relative `POPSTARTER.ELF` because it only recorded explicit `hdd:` / `pfs:` paths, so current source now includes that default-relative case when boot source is HDD.
   - repo inspection of `etc/boot.lua` also showed HDD boot is established on a dedicated `pfs1:` mount before `system.lua` runs, so current source now carries that exact boot partition/slot metadata into `system.lua`, seeds the HDD mount tracker from it, and rebuilds HDD sidecar/partition context from mounted `pfs1:` candidates instead of assuming low-level HDD readiness alone preserves the boot-side path contract.
+  - user later confirmed on 2026-03-28 that the exact-boot-mount/source-context source restored the USB-before-HDD-page startup/Profile repro on hardware, so the remaining blocker is no longer startup/Profile lookup.
 - USB first-entry backend discovery:
   - a 2026-03-27 hardware report said the first USB page entry reported no backend, but backing out and re-entering then worked.
   - current code already had bounded retry loops for USB root discovery, but all retries happened back-to-back with no yield for the backend to become visible.
