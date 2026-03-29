@@ -3945,7 +3945,9 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     keep_hdd_slots = nil,
     keep_hdd_slots_after_load = popstarter_on_hdd and {} or nil,
     launch_cwd = popstarter_on_hdd and false or nil,
-    cold_external_launch = popstarter_partition_context ~= nil and popstarter_partition_context ~= "",
+    -- BOOT.ELF keeps the colder handoff after HDD runtime init. For HDD-backed
+    -- POPSTARTER, keep the current mount alive until the parent remounts pfs0:.
+    cold_external_launch = false,
     exec_path = popstarter_exec_path,
     exec_partition_context = popstarter_partition_context
   }
