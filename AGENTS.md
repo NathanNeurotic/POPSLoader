@@ -1,5 +1,5 @@
 ## AI Docs
-Last updated: 2026-03-26
+Last updated: 2026-03-29
 
 ### Purpose
 Operational guidance for AI agents working in this repository.
@@ -48,6 +48,7 @@ Changes in these files can break core behavior and require extra care:
 ### Documentation Expectations
 When updating docs:
 - Keep `README.md`, `STATE.md`, `ROADMAP.md`, `DECISIONS.md`, and `QA_REGRESSION_MATRIX.md` synchronized.
+- Treat `QA_REGRESSION_MATRIX.md` as the detailed hardware/CI run ledger; other root docs should summarize the stable current state and constraints instead of duplicating every experiment.
 - Remove stale branch names, stale feature claims, and outdated decisions.
 - Do not silently carry forward old “fixed” claims when the only evidence is a prior chat report.
 - If a regression was reported on hardware, record that result explicitly.

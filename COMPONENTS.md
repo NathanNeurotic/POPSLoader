@@ -1,4 +1,4 @@
-Last updated: 2026-03-26
+Last updated: 2026-03-29
 
 # COMPONENTS
 
@@ -102,8 +102,9 @@ Current technical map of POPSLoader modules, ownership boundaries, and entry poi
 
 ## Current Validation Hotspots
 - HDD POPSTARTER when POPSTARTER itself resolves from HDD (`D-10`).
+- HDD-backed POPSTARTER with non-HDD game (`D-14`).
 - BOOT.ELF after HDD page initialization (`U-10`).
-- OSDSYS after HDD page initialization (`U-05`).
+- Preserve the restored non-HDD POPSTARTER HDD-game path (`D-15`).
 - PAL UI aspect verification (`U-06`).
 
 ## Primary Change Entry Points

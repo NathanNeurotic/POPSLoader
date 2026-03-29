@@ -1,7 +1,7 @@
 # POPSLoader Regression Matrix
 
-Last updated: 2026-03-28
-Target branch: `BETA-10-play`
+Last updated: 2026-03-29
+Target line: current repository source
 
 ## Scope
 This matrix tracks current behavior across:
@@ -17,6 +17,8 @@ This matrix tracks current behavior across:
 - exit handoff behavior,
 - currently unimplemented menu options (`HDD (exFAT)`, `SMB (v1)`),
 - release package validation gates.
+
+This file is the authoritative detailed run ledger for CI and hardware outcomes. The other root docs should summarize the active state and point here for chronology.
 
 ## Automated CI Gates
 | ID | Area | Source | Pass Criteria |
@@ -144,7 +146,7 @@ This matrix tracks current behavior across:
     - current source also fixes the startup warm-path classification for Profile 1/default relative `POPSTARTER.ELF`, which had previously been skipped because only explicit `hdd:` / `pfs:` paths were being marked for HDD warm-up.
     - because `etc/boot.lua` establishes HDD boot on a dedicated `pfs1:` mount before `system.lua` runs, current source now also carries that exact boot partition/slot metadata into `system.lua`, seeds the HDD mount tracker from it, and rebuilds HDD sidecar/partition context from mounted `pfs1:` candidates instead of relying only on later rediscovery.
     - user later confirmed on 2026-03-28 that the exact-boot-mount/source-context source restored the USB-before-HDD-page startup/Profile repro on hardware.
-    - updated-source hardware result is still `Unknown (verify on hardware)`.
+    - latest recorded hardware on this line is therefore `PASS`; preserve that behavior through further `D-10` work.
   - `D-16`: a 2026-03-27 hardware report said the first USB page entry reported no backend, but backing out and re-entering then worked.
     - current source now adds a bounded wait between failed USB root probes in `BuildUsbIdentityDeferred()`.
     - MX4SIO discovery code was not changed by this correction.
@@ -183,5 +185,7 @@ This matrix tracks current behavior across:
   - `U-10`: one artifact was reported good before a later regression experiment.
     - repo history shows the BOOT.ELF modal later changed from its older non-reboot direct `System.loadELF(elf_path, 0, elf_path)` path to a reboot-I/O path with launch-CWD setup.
     - a later 2026-03-29 hardware report said BOOT.ELF still behaved incorrectly once HDD runtime had been initialized on that restored non-reboot source.
+    - current working inference is that `U-10` may share the same underlying handoff/state-poisoning boundary as `D-10`, but that remains unproven and must be validated separately on hardware.
     - current source now keeps the no-launch-CWD rollback, re-enables `reboot_iop = 1` for BOOT.ELF only when HDD runtime has already been loaded, and uses a BOOT.ELF-specific cold external-launch prep that clears the exec keep mask and unmounts tracked HDD slots instead of preserving boot PFS state.
+    - current-source hardware result is still `Unknown (verify on hardware)`.
 - All other manual hardware items remain `Unknown (verify on hardware)` unless run logs are added above.

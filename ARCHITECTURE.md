@@ -1,4 +1,4 @@
-Last updated: 2026-03-26
+Last updated: 2026-03-29
 
 # ARCHITECTURE
 
@@ -111,5 +111,6 @@ Last updated: 2026-03-26
 ## Current Known Gaps
 - `HDD (exFAT)` is still a stub menu entry.
 - `SMB (v1)` is still a stub menu entry.
-- HDD `POPSTARTER.ELF` when launcher/sidecar/CWD is on HDD is still unresolved on reported hardware.
+- HDD-backed `POPSTARTER.ELF` exec handoff is still unresolved on reported hardware (`D-10`, `D-14`).
+- `BOOT.ELF` after HDD runtime initialization is still a connected concern on the current line (`U-10`).
 - PAL UI aspect compensation exists in code, but final display correctness still needs hardware confirmation.

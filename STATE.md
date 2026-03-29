@@ -5,6 +5,8 @@ Last updated: 2026-03-29
 ## Project Identity
 POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, with behavior primarily orchestrated by embedded Lua modules (`system.lua`, `ui.lua`, `images.lua`, `pops_profiles.lua`).
 
+`QA_REGRESSION_MATRIX.md` is the detailed run ledger. This file summarizes the stable current repo state and the latest materially relevant hardware outcomes.
+
 ## Repo-Verified Runtime State
 - Boot/runtime uses embedded Lua scripts.
 - Settings are persisted at `mc0:/POPSTARTER/.pldrs`.
@@ -66,7 +68,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - current source also fixes the startup warm-path classification for Profile 1/default relative `POPSTARTER.ELF`, which had previously been skipped because only explicit `hdd:` / `pfs:` paths were being marked for HDD warm-up.
   - because `etc/boot.lua` establishes HDD boot on a dedicated `pfs1:` mount before `system.lua` runs, current source now also carries that exact boot partition/slot metadata into `system.lua`, seeds the HDD mount tracker from it, and rebuilds HDD sidecar/partition context from mounted `pfs1:` candidates instead of relying only on later rediscovery.
   - user later confirmed on 2026-03-28 that the exact-boot-mount/source-context source restored the USB-before-HDD-page startup/Profile repro on hardware.
-  - corrected-source hardware status is still `Unknown (verify on hardware)`.
+  - latest recorded hardware on this line is therefore `PASS`; preserve that behavior through further `D-10` work.
 - `D-16` first-entry USB backend discovery:
   - a 2026-03-27 hardware report said the first USB page entry reported no backend, but backing out and re-entering then worked.
   - current source now adds a bounded wait between failed USB root probes in `BuildUsbIdentityDeferred()`.
@@ -94,7 +96,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - current source also reports the actual exec filename separately from the probed/opened POPSTARTER path in the launcher popup so mounted-slot probe paths do not masquerade as the real load target.
   - current source now restores more of the original parent-side embedded-loader jump contract in `src/elf_loader/src/elf.c`: BRAM wipe plus `SifInitRpc`/`SifLoadFileInit`/`SifLoadFileExit` before the copy, and `SifExitIopHeap`/`SifExitRpc`/`SifExitCmd` before the final `ExecPS2`.
   - current source also keeps the safer embedded-loader fix that avoids `printf`/`snprintf` in that environment, returns the actual embedded-loader `ExecPS2` result instead of collapsing it to `-1`, fixes `System.loadELF(path, reboot_iop, args...)` so it forwards all extra args instead of dropping everything after the first one, routes partition-aware HDD launches back through mounted-`pfs0:` `SifLoadElf` in the embedded loader so they match the reference loaders more closely once the parent has already remounted the target partition, normalizes stale canonical profile-path state so Profile 1/default no longer silently keeps another profile's HDD path, keeps caller-supplied POPSTARTER selector/extra args intact on that path so it matches the repo's normal non-HDD POPSTARTER argv layout, and keeps the older iomanX-aware `fileXio` load path only as the fallback for direct `pfs:` / `hdd:` loads with no HDD partition context.
-  - corrected-source hardware status is still `Unknown (verify on hardware)`.
+  - latest recorded hardware still ends in failure on later GitHub artifacts, so `D-10` remains a recorded hardware FAIL even though one 2026-03-29 artifact briefly moved the boundary to `rc=-1`.
 - `D-14` HDD-backed POPSTARTER with non-HDD game:
   - reported failing on hardware.
   - repro: launch a non-HDD title while `POPSTARTER.ELF` itself is configured on HDD.
@@ -103,7 +105,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - a later 2026-03-28 re-test on the forced-`reboot_iop = 1` source still black-screened on `X`; `R2` produced no response in that non-HDD-game repro.
   - a later 2026-03-28 re-test on the direct-`hdd0:PART:pfsN:/POPSTARTER.ELF` preference source still black-screened on `X`.
   - current source now uses the same partition-aware HDD reboot contract as `D-10`, rather than the earlier ad hoc source-context handoff or whichever mounted `pfsN:` path Lua happened to resolve first.
-  - corrected-source hardware status is still `Unknown (verify on hardware)`.
+  - latest recorded hardware remains `FAIL`; current exact-line result is still `Unknown (verify on hardware)`.
 - `D-15` HDD game with non-HDD sidecar POPSTARTER:
   - reported as a regression on hardware.
   - repro: boot from a non-HDD device with sidecar `POPSTARTER.ELF` on that same device, then launch an HDD title.
@@ -115,8 +117,9 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - one prior artifact was reported good,
   - repo history shows the BOOT.ELF modal later moved from its older non-reboot direct `System.loadELF(elf_path, 0, elf_path)` path to a reboot-I/O path with launch-CWD setup.
   - a later 2026-03-29 hardware report said BOOT.ELF still behaved incorrectly after HDD runtime had been initialized.
+  - current working inference is that `U-10` may share the same underlying handoff/state-poisoning boundary as `D-10`, but that remains unproven and `U-10` still requires separate hardware confirmation.
   - current source now keeps the no-launch-CWD rollback, re-enables `reboot_iop = 1` for BOOT.ELF only when HDD runtime has already been loaded, and uses a BOOT.ELF-specific cold external-launch prep that clears the exec keep mask and unmounts tracked HDD slots instead of preserving boot PFS state.
-  - current hardware status on this conditional-reboot/cold-prep source is `Unknown (verify on hardware)`.
+  - current-source hardware status on this conditional-reboot/cold-prep line is `Unknown (verify on hardware)`.
 - `U-06` PAL asset aspect:
   - current code compensates for PAL UI layout,
   - hardware result is still `Unknown (verify on hardware)`.

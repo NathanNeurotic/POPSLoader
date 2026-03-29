@@ -1,4 +1,4 @@
-Last updated: 2026-03-26
+Last updated: 2026-03-29
 
 # TRUTHSHEET
 
@@ -53,7 +53,8 @@ Non-negotiable behavioral invariants that changes must preserve unless an explic
 
 ## Current Unresolved Hardware Markers
 - `D-10`: HDD `POPSTARTER.ELF` on HDD sidecar/CWD is still reported to black-screen on hardware.
-- `U-10`: `BOOT.ELF` after HDD page init must be re-verified on current source after the last reverted regression experiment.
+- `D-14`: non-HDD game + HDD-backed `POPSTARTER.ELF` is also still reported failing on hardware.
+- `U-10`: `BOOT.ELF` after HDD page init is still a connected concern; the current conditional-reboot/cold-prep line remains `Unknown (verify on hardware)`.
 - `U-06`: PAL/NTSC menu asset proportions still need hardware confirmation.
 
 ## Add-New-Truth Template

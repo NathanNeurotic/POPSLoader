@@ -1,4 +1,4 @@
-Last updated: 2026-03-26
+Last updated: 2026-03-29
 
 # PROMPTS
 
@@ -81,6 +81,7 @@ Goal:
 
 Allowed files:
 - AGENTS.md
+- AGENTS_START_HERE.md
 - ARCHITECTURE.md
 - COMPONENTS.md
 - CONTRIBUTING.md
@@ -96,6 +97,7 @@ Allowed files:
 Required checks:
 - Every behavior claim is traceable to current repository files or recorded run results
 - Repo-verified behavior and hardware-reported behavior are clearly separated
+- `QA_REGRESSION_MATRIX.md` remains the detailed run ledger while the other docs summarize the active state
 - Unverified hardware claims are marked `Unknown (verify on hardware)`
 - Stale lock-system references are removed
 - Implemented vs not-implemented menu options are accurate
