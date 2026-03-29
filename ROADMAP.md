@@ -24,7 +24,7 @@ Last updated: 2026-03-28
 - Follow-up repo comparison then showed the prior source-context work had still been incomplete because Lua had usually already normalized HDD POPSTARTER to mounted `pfs1:` / `pfs3:` paths before the reboot loader saw it.
 - A later 2026-03-28 re-test on that exact-boot-mount/source-context source still black-screened for `D-10`.
 - Current source now replaces the earlier ad hoc HDD source-context reboot handoff with an explicit partition-aware contract across Lua, `src/luasystem.cpp`, `src/elf_loader/src/elf.c`, and the embedded loader; `R2` can still request the full `hdd0:PART:pfs0:/GAME.ELF` selector.
-- On that contract, the parent passes exact HDD partition context separately from the mounted load path, normalizes the partition-aware exec filename to generic `pfs:/...`, remounts `pfs0:` from that partition while reusing the mounted relpath Lua already resolved, and the embedded loader now drops the post-reset MC module reload in favor of the simpler reference-style cleanup before `ExecPS2`.
+- On that contract, the parent passes exact HDD partition context separately from the mounted load path, normalizes the partition-aware exec filename to generic `pfs:/...`, remounts `pfs0:` from that partition while reusing the mounted relpath Lua already resolved, routes HDD partition-aware launches through cold external-launch prep so the old tracked `pfsN:` mount is not preserved into exec, and the embedded loader now drops the post-reset MC module reload in favor of the simpler reference-style cleanup before `ExecPS2`.
 - The latest 2026-03-29 `D-10` run on the prior partition-aware source no longer black-screened, but the launcher regained control with `rc=-1 (returned after 22618 ms)`, which narrows the remaining failure to the embedded-loader or target-`ExecPS2` handoff.
 - Current source now restores more of the original parent-side embedded-loader jump contract in `src/elf_loader/src/elf.c` before that final `ExecPS2`, keeps the safer embedded-loader fix that avoids `printf`/`snprintf` in that environment, returns the actual embedded-loader `ExecPS2` result instead of collapsing it to `-1`, and fixes `System.loadELF(path, reboot_iop, args...)` so it forwards all extra args.
 - The main stabilization blocker is still HDD-backed `POPSTARTER.ELF` handoff when the launcher, sidecar/CWD, or configured POPSTARTER path lives on HDD. Reported hardware results still black-screen both HDD-game and USB-game repros.
@@ -62,7 +62,7 @@ Last updated: 2026-03-28
 - Keep `BOOT.ELF` and OSDSYS behavior stable while iterating on this.
 
 ### 3) External exit/launch re-validation
-- Re-run `U-05` (`OSDSYS`) and `U-10` (`BOOT.ELF after HDD page init`) on current source after the BOOT.ELF-specific conditional-reboot change for HDD-initialized sessions.
+- Re-run `U-05` (`OSDSYS`) and `U-10` (`BOOT.ELF after HDD page init`) on current source after the BOOT.ELF-specific conditional-reboot/cold-prep change for HDD-initialized sessions.
 - Record exact run results in `QA_REGRESSION_MATRIX.md` instead of carrying them only in chat history.
 
 ### 4) Startup/page split re-validation

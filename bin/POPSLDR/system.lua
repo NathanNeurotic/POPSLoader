@@ -689,6 +689,18 @@ local function PrepareForExternalELFLaunch(path, extra_keep_slots, keep_slots_af
   end
 end
 
+local function PrepareForColdExternalELFLaunch()
+  if type(System) == "table" and type(System.setExecKeepPfsMask) == "function" then
+    pcall(System.setExecKeepPfsMask, 0)
+  end
+  if type(HDD) ~= "table" or type(HDD.UMountPartition) ~= "function" then
+    return
+  end
+  for slot = 0, 3 do
+    UMountHddPartitionTracked(slot)
+  end
+end
+
 local function AppendUniquePath(out, seen, path)
   local candidate = tostring(path or "")
   if candidate == "" then
@@ -1117,6 +1129,10 @@ end
 
 function PLDR.PrepareForExternalELFLaunch(path, extra_keep_slots, keep_slots_after_load)
   return PrepareForExternalELFLaunch(path, extra_keep_slots, keep_slots_after_load)
+end
+
+function PLDR.PrepareForColdExternalELFLaunch()
+  return PrepareForColdExternalELFLaunch()
 end
 
 function PLDR.SetLaunchWorkingDirectory(path)
@@ -3469,14 +3485,19 @@ local function TryOpenForLaunch(path)
   return true, size, "stat", "open", path
 end
 
-local function BlockLaunchFailure(rc, popstarter, device_page, argv0, game_path, app_dir, open_rc, open_api)
+local function BlockLaunchFailure(rc, popstarter, device_page, argv0, game_path, app_dir, open_rc, open_api, exec_path)
   SetLaunchPhase(LaunchState.PHASE_FAILED)
   UI.LAUNCHING = false
+  local display_exec_path = exec_path
+  if type(display_exec_path) ~= "string" or display_exec_path == "" then
+    display_exec_path = popstarter
+  end
   local body = string.format(
-    "LAUNCH RETURNED\nrc=%s\nDevice: %s\nPOPSTARTER: %s\nOpen/stat rc: %s\nOpen API: %s\nAPP_DIR: %s\nargv[0]: %s\nGame arg: %s\nPress X/O to continue.",
+    "LAUNCH RETURNED\nrc=%s\nDevice: %s\nPOPSTARTER: %s\nExec path: %s\nOpen/stat rc: %s\nOpen API: %s\nAPP_DIR: %s\nargv[0]: %s\nGame arg: %s\nPress X/O to continue.",
     tostring(rc),
     tostring(device_page),
     tostring(popstarter),
+    tostring(display_exec_path),
     tostring(open_rc),
     tostring(open_api),
     tostring(app_dir),
@@ -3568,11 +3589,15 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     return
   end
   SetLaunchPhase(LaunchState.PHASE_EXEC)
-  PrepareForExternalELFLaunch(
-    popstarter,
-    context and context.keep_hdd_slots or nil,
-    context and context.keep_hdd_slots_after_load or nil
-  )
+  if context ~= nil and context.cold_external_launch == true and type(PLDR) == "table" and type(PLDR.PrepareForColdExternalELFLaunch) == "function" then
+    pcall(PLDR.PrepareForColdExternalELFLaunch)
+  else
+    PrepareForExternalELFLaunch(
+      popstarter,
+      context and context.keep_hdd_slots or nil,
+      context and context.keep_hdd_slots_after_load or nil
+    )
+  end
   local rc
   if exec_args ~= nil and #exec_args > 0 and unpack_fn ~= nil then
     if context ~= nil and type(context.exec_partition_context) == "string" and context.exec_partition_context ~= "" then
@@ -3602,7 +3627,8 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     argv0,
     app_dir,
     nil,
-    nil
+    nil,
+    exec_path
   )
 end
 
@@ -3878,6 +3904,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     keep_hdd_slots = nil,
     keep_hdd_slots_after_load = popstarter_on_hdd and {} or nil,
     launch_cwd = popstarter_on_hdd and false or nil,
+    cold_external_launch = popstarter_partition_context ~= nil and popstarter_partition_context ~= "",
     exec_path = popstarter_exec_path,
     exec_partition_context = popstarter_partition_context
   }

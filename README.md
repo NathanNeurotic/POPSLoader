@@ -66,6 +66,7 @@ Reported hardware issues currently being tracked are:
   - current source now keeps the confirmed HDD startup auto-init and USB first-entry fixes, preserves the restored `D-15` split, seeds the exact HDD boot mount metadata from `etc/boot.lua`, and replaces the earlier ad hoc HDD source-context reboot handoff with an explicit partition-aware contract across `bin/POPSLDR/system.lua`, `src/luasystem.cpp`, `src/elf_loader/src/elf.c`, and `src/elf_loader/src/loader/src/loader.c`.
   - on that contract, Lua now passes exact HDD partition context separately, normalizes the partition-aware exec filename back to generic `pfs:/...`, and the parent loader remounts `pfs0:` from that partition while reusing the already-resolved relpath.
   - the latest 2026-03-29 `D-10` run on the prior partition-aware source no longer black-screened, but the launcher still regained control with `rc=-1 (returned after 22618 ms)`.
+  - current source now also routes partition-aware HDD POPSTARTER launches through a cold external-launch prep so the old tracked `pfsN:` mount is no longer preserved into exec, and the failure popup now reports the actual exec path separately from the probed/opened path.
   - current source now restores more of the original parent-side embedded-loader jump contract in `src/elf_loader/src/elf.c` and also aligns the child loader closer to the reference loaders by dropping the post-reset MC module reload and exiting SIF command state before the final `ExecPS2`.
   - current source also keeps the safer embedded-loader fix that avoids `printf`/`snprintf` in that environment and surfaces the real returned rc instead of masking it as a timeout.
   - hardware result on this corrected current source is still `Unknown (verify on hardware)`.
@@ -229,8 +230,9 @@ The workflow uses the `ps2dev/ps2dev` container and validates packaging after bu
   - follow-up repo comparison showed that earlier source-context work was still incomplete because Lua had usually already normalized HDD POPSTARTER to mounted `pfs1:` / `pfs3:` paths before the reboot loader saw it.
   - a later 2026-03-28 re-test on that exact-boot-mount/source-context source still black-screened on `X`.
   - current source now replaces the earlier ad hoc HDD source-context reboot handoff with an explicit partition-aware contract across Lua, `src/luasystem.cpp`, `src/elf_loader/src/elf.c`, and the embedded loader.
-  - on that contract, the parent passes exact HDD partition context separately from the mounted load path, normalizes the partition-aware exec filename to generic `pfs:/...`, and remounts `pfs0:` from that partition while reusing the relpath Lua already resolved.
+  - on that contract, the parent passes exact HDD partition context separately from the mounted load path, normalizes the partition-aware exec filename to generic `pfs:/...`, remounts `pfs0:` from that partition while reusing the relpath Lua already resolved, and no longer preserves the old tracked `pfsN:` mount into exec.
   - the latest 2026-03-29 `D-10` run on the prior partition-aware source no longer black-screened, but the launcher regained control with `rc=-1 (returned after 22618 ms)` instead of transferring to POPSTARTER.
+  - current source also exposes the actual exec filename separately in the launcher popup so the probe/open path and the load target can be distinguished on hardware.
   - current source now restores more of the original parent-side embedded-loader jump contract in `src/elf_loader/src/elf.c`, keeps the safer embedded-loader fix that avoids `printf`/`snprintf` in that environment, returns the actual embedded-loader `ExecPS2` result instead of collapsing it to `-1`, fixes `System.loadELF(path, reboot_iop, args...)` so it forwards all extra args instead of dropping everything after the first one, and aligns the child loader closer to the reference loaders by removing the post-reset MC module reload and exiting SIF command state before the final `ExecPS2`.
   - hardware result on this corrected current source is still `Unknown (verify on hardware)`.
 - `D-14` HDD-backed POPSTARTER with non-HDD game:
@@ -255,7 +257,7 @@ The workflow uses the `ps2dev/ps2dev` container and validates packaging after bu
   - one prior artifact was reported good,
   - repo history shows the BOOT.ELF modal later changed from its older non-reboot direct `System.loadELF(elf_path, 0, elf_path)` path to a reboot-I/O path with launch-CWD setup.
   - a later 2026-03-29 hardware report said BOOT.ELF still behaved incorrectly once HDD had been initialized, which points more specifically at carried HDD runtime state than BOOT.ELF lookup.
-  - current source therefore keeps the no-launch-CWD rollback but now re-enables `reboot_iop = 1` only when HDD runtime has already been loaded, while leaving the non-HDD BOOT.ELF path on the simpler direct launch.
+  - current source therefore keeps the no-launch-CWD rollback, re-enables `reboot_iop = 1` only when HDD runtime has already been loaded, and uses a BOOT.ELF-specific cold external-launch prep that clears the exec keep mask and unmounts tracked HDD slots instead of preserving boot PFS state.
   - current hardware status still needs re-test.
 
 ## Documentation Map

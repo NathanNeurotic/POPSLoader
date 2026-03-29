@@ -87,8 +87,9 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - follow-up repo comparison showed that earlier source-context work had still been incomplete because Lua had usually already normalized HDD POPSTARTER to mounted `pfs1:` / `pfs3:` paths before the reboot loader saw it.
   - a later 2026-03-28 re-test on that exact-boot-mount/source-context source still black-screened on `X`.
   - current source now replaces the earlier ad hoc HDD source-context reboot handoff with an explicit partition-aware contract across Lua, `src/luasystem.cpp`, `src/elf_loader/src/elf.c`, and the embedded loader.
-  - on that contract, the parent passes exact HDD partition context separately from the mounted load path, normalizes the partition-aware exec filename to generic `pfs:/...`, and remounts `pfs0:` from that partition while reusing the mounted relpath Lua already resolved.
+  - on that contract, the parent passes exact HDD partition context separately from the mounted load path, normalizes the partition-aware exec filename to generic `pfs:/...`, remounts `pfs0:` from that partition while reusing the mounted relpath Lua already resolved, and no longer preserves the old tracked `pfsN:` mount into exec.
   - the latest 2026-03-29 `D-10` run on the prior partition-aware source no longer black-screened, but the launcher regained control with `rc=-1 (returned after 22618 ms)`, which narrows the remaining failure to the embedded-loader or target-`ExecPS2` handoff instead of HDD path discovery.
+  - current source also reports the actual exec filename separately from the probed/opened POPSTARTER path in the launcher popup so mounted-slot probe paths do not masquerade as the real load target.
   - current source now restores more of the original parent-side embedded-loader jump contract in `src/elf_loader/src/elf.c`: BRAM wipe plus `SifInitRpc`/`SifLoadFileInit`/`SifLoadFileExit` before the copy, and `SifExitIopHeap`/`SifExitRpc`/`SifExitCmd` before the final `ExecPS2`.
   - current source also keeps the safer embedded-loader fix that avoids `printf`/`snprintf` in that environment, returns the actual embedded-loader `ExecPS2` result instead of collapsing it to `-1`, fixes `System.loadELF(path, reboot_iop, args...)` so it forwards all extra args instead of dropping everything after the first one, and aligns the child loader closer to the reference loaders by removing the post-reset MC module reload and exiting SIF command state before the final `ExecPS2`.
   - corrected-source hardware status is still `Unknown (verify on hardware)`.
@@ -112,8 +113,8 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - one prior artifact was reported good,
   - repo history shows the BOOT.ELF modal later moved from its older non-reboot direct `System.loadELF(elf_path, 0, elf_path)` path to a reboot-I/O path with launch-CWD setup.
   - a later 2026-03-29 hardware report said BOOT.ELF still behaved incorrectly after HDD runtime had been initialized.
-  - current source now keeps the no-launch-CWD rollback but re-enables `reboot_iop = 1` for BOOT.ELF only when HDD runtime has already been loaded.
-  - current hardware status on this conditional-reboot source is `Unknown (verify on hardware)`.
+  - current source now keeps the no-launch-CWD rollback, re-enables `reboot_iop = 1` for BOOT.ELF only when HDD runtime has already been loaded, and uses a BOOT.ELF-specific cold external-launch prep that clears the exec keep mask and unmounts tracked HDD slots instead of preserving boot PFS state.
+  - current hardware status on this conditional-reboot/cold-prep source is `Unknown (verify on hardware)`.
 - `U-06` PAL asset aspect:
   - current code compensates for PAL UI layout,
   - hardware result is still `Unknown (verify on hardware)`.
