@@ -635,19 +635,21 @@ local function ExtractLaunchPfsSlot(path)
   return nil
 end
 
-local function CollectHddKeepSlots(path, extra_keep_slots)
+local function CollectHddKeepSlots(path, extra_keep_slots, keep_exec_path_slot)
   local keep = {}
-  local slot = ExtractLaunchPfsSlot(path)
+  if keep_exec_path_slot ~= false then
+    local slot = ExtractLaunchPfsSlot(path)
 
-  if slot == nil then
-    local resolved = ResolveHddReadablePath(path)
-    if resolved ~= nil then
-      slot = ExtractLaunchPfsSlot(resolved)
+    if slot == nil then
+      local resolved = ResolveHddReadablePath(path)
+      if resolved ~= nil then
+        slot = ExtractLaunchPfsSlot(resolved)
+      end
     end
-  end
 
-  if slot ~= nil then
-    keep[slot] = true
+    if slot ~= nil then
+      keep[slot] = true
+    end
   end
   if type(extra_keep_slots) == "table" then
     for i = 1, #extra_keep_slots do
@@ -702,8 +704,8 @@ local function BuildPfsKeepMask(keep_slots)
   return mask
 end
 
-local function PrepareForExternalELFLaunch(path, extra_keep_slots, keep_slots_after_load)
-  local keep_slots = CollectHddKeepSlots(path, extra_keep_slots)
+local function PrepareForExternalELFLaunch(path, extra_keep_slots, keep_slots_after_load, keep_exec_path_slot)
+  local keep_slots = CollectHddKeepSlots(path, extra_keep_slots, keep_exec_path_slot)
   local lowered_path = string.lower(tostring(path or ""))
   local is_hdd_exec_context = string.match(lowered_path, "^hdd%d:") ~= nil or string.match(lowered_path, "^pfs%d*:/") ~= nil
   if not is_hdd_exec_context then
@@ -3647,7 +3649,8 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     PrepareForExternalELFLaunch(
       popstarter,
       context and context.keep_hdd_slots or nil,
-      context and context.keep_hdd_slots_after_load or nil
+      context and context.keep_hdd_slots_after_load or nil,
+      context and context.keep_exec_path_slot
     )
   end
   local rc
@@ -3959,6 +3962,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     hdd_init = hdd_init,
     keep_hdd_slots = nil,
     keep_hdd_slots_after_load = popstarter_on_hdd and {} or nil,
+    keep_exec_path_slot = popstarter_on_hdd and false or nil,
     launch_cwd = popstarter_on_hdd and false or nil,
     cold_external_launch = false,
     preserve_exec_path_with_partition = popstarter_on_hdd and popstarter_partition_context ~= nil and popstarter_partition_context ~= "",

@@ -989,7 +989,7 @@ static int lua_loadELF(lua_State *L)
 	int arg_end = argc;
 	size_t storage_offset = 0;
 
-	if (rebootIOP != 0 && argc >= 4 && !lua_isnil(L, argc)) {
+	if (rebootIOP != 0 && argc >= 3 && !lua_isnil(L, argc)) {
 		const char *maybe_partition = luaL_checkstring(L, argc);
 		if (is_partition_context_arg(maybe_partition)) {
 			partition_context = maybe_partition;
