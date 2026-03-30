@@ -71,6 +71,15 @@ static bool can_open_exec_path(const char *filename) {
 }
 
 static int resolve_exec_path(const char *filename, char *out, size_t out_size) {
+	if (filename != NULL && filename[0] != '/' && strchr(filename, ':') == NULL) {
+		char cwd[256];
+		if (getcwd(cwd, sizeof(cwd)) != NULL) {
+			snprintf(out, out_size, "%s%s%s", cwd, (cwd[strlen(cwd)-1] == '/' || cwd[strlen(cwd)-1] == ':') ? "" : "/", filename);
+			if (can_open_exec_path(out)) {
+				return 0;
+			}
+		}
+	}
 	if (can_open_exec_path(filename)) {
 		snprintf(out, out_size, "%s", filename);
 		return 0;
@@ -203,6 +212,8 @@ static const char *extract_exec_relpath(const char *path) {
 
 static int build_hdd_embedded_loader_target_from_partition(const char *resolved_path, const char *partition_context, char *load_path, size_t load_path_size, unsigned int *keep_mask_out) {
 	const char *relpath;
+	char partition_name[256];
+	size_t partition_len;
 
 	if (resolved_path == NULL || partition_context == NULL || load_path == NULL || keep_mask_out == NULL) {
 		return -1;
@@ -216,8 +227,35 @@ static int build_hdd_embedded_loader_target_from_partition(const char *resolved_
 		return -1;
 	}
 
+	partition_len = strlen(partition_context);
+	while (partition_len > 0 && partition_context[partition_len - 1] == ':') {
+		partition_len--;
+	}
+	if (partition_len == 0 || partition_len >= sizeof(partition_name)) {
+		return -1;
+	}
+
+	memcpy(partition_name, partition_context, partition_len);
+	partition_name[partition_len] = '\0';
+
+	fileXioInit();
+	/* Critical: The target partition might already be mounted on pfs1:, pfs2:, or pfs3:
+	   by the background Lua scanner. PS2 PFS strictly blocks duplicate block mounts.
+	   We MUST force-unmount all other slots before attempting to mount it to pfs0:. */
+	unmount_pfs_slots_for_exec(1);
+
+	fileXioUmount("pfs0:");
+	if (fileXioMount("pfs0:", partition_name, FIO_MT_RDONLY) < 0) {
+		fileXioUmount("pfs0:");
+		if (fileXioMount("pfs0:", partition_name, FIO_MT_RDONLY) < 0) {
+			return -1;
+		}
+	}
+
 	snprintf(load_path, load_path_size, "pfs0:/%s", relpath);
-	*keep_mask_out = 0;
+	/* Retain pfs0: so the embedded child loader can read the target ELF from it.
+	   unmount_pfs_slots_for_exec will preserve this bit mask slot. */
+	*keep_mask_out = 1;
 	return 0;
 }
 
@@ -295,6 +333,13 @@ static int ExecuteHddBackedViaEmbeddedLoader(const char *resolved_path, const ch
 
 	previous_keep_mask = GetExecKeepPfsMask();
 	SetExecKeepPfsMask(previous_keep_mask | required_keep_mask);
+
+	/* Unmount ALL PFS slots EXCEPT the one needed for the embedded loader target.
+	   Note: build_hdd_embedded_loader_target_from_partition pre-emptively unmounts
+	   them to guarantee pfs0: mount success. Doing it again here is a harmless no-op
+	   that enforces the keep mask cleanly across all codepaths. */
+	unmount_pfs_slots_for_exec(required_keep_mask);
+
 	ret = ExecuteViaEmbeddedLoader(partition_context != NULL ? partition_context : "", load_path, argc, argv);
 	SetExecKeepPfsMask(previous_keep_mask);
 	return ret;
@@ -362,10 +407,6 @@ static int ExecuteViaEmbeddedLoader(const char *partition_context, const char *l
 	}
 	launch_argv[final_argc] = NULL;
 
-	SifInitRpc(0);
-	SifLoadFileInit();
-	SifLoadFileExit();
-
 	boot_pheader = (elf_pheader_t *)(boot_elf + boot_header->phoff);
 	for (i = 0; i < boot_header->phnum; i++) {
 		if (boot_pheader[i].type != ELF_PT_LOAD) {
@@ -377,9 +418,7 @@ static int ExecuteViaEmbeddedLoader(const char *partition_context, const char *l
 		}
 	}
 
-	SifExitIopHeap();
 	SifExitRpc();
-	SifExitCmd();
 	FlushCache(0);
 	FlushCache(2);
 
