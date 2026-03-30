@@ -143,7 +143,8 @@ static int build_default_target_arg0(const char *partition_context, const char *
 	}
 
 	if (partition_context == NULL || partition_context[0] == '\0') {
-		snprintf(out, out_size, "%s", load_path);
+		strncpy(out, load_path, out_size - 1);
+		out[out_size - 1] = '\0';
 		return 0;
 	}
 
@@ -155,7 +156,8 @@ static int build_default_target_arg0(const char *partition_context, const char *
 		if (suffix == NULL || suffix[0] == '\0') {
 			suffix = "/";
 		}
-		snprintf(out, out_size, "%s", partition_context);
+		strncpy(out, partition_context, out_size - 1);
+		out[out_size - 1] = '\0';
 		if (suffix[0] != '/') {
 			strncat(out, "pfs:/", out_size - strlen(out) - 1);
 			strncat(out, suffix, out_size - strlen(out) - 1);
@@ -166,7 +168,8 @@ static int build_default_target_arg0(const char *partition_context, const char *
 		return 0;
 	}
 
-	snprintf(out, out_size, "%s", partition_context);
+	strncpy(out, partition_context, out_size - 1);
+	out[out_size - 1] = '\0';
 	strncat(out, load_path, out_size - strlen(out) - 1);
 	return 0;
 }
@@ -403,7 +406,6 @@ int main(int argc, char *argv[])
 			SifLoadFileExit();
 		}
 		SifExitRpc();
-		SifExitCmd();
 
 		SET_GS_BGCOLOUR(BROWN_BG);
 
