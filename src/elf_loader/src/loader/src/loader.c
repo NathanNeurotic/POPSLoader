@@ -97,38 +97,6 @@ static int should_use_filexio_direct_load(const char *partition_context, const c
 	         strncmp(load_path, "hdd", 3) == 0 || strncmp(load_path, "HDD", 3) == 0));
 }
 
-static int mount_partition_context_on_pfs0(const char *partition_context)
-{
-	char partition[256];
-	size_t partition_len;
-
-	if (!is_hdd_partition_context(partition_context)) {
-		return 0;
-	}
-
-	partition_len = strlen(partition_context);
-	while (partition_len > 0 && partition_context[partition_len - 1] == ':') {
-		partition_len--;
-	}
-	if (partition_len == 0 || partition_len >= sizeof(partition)) {
-		return -EINVAL;
-	}
-
-	memcpy(partition, partition_context, partition_len);
-	partition[partition_len] = '\0';
-
-	fileXioInit();
-	fileXioUmount("pfs0:");
-	if (fileXioMount("pfs0:", partition, FIO_MT_RDONLY) < 0) {
-		fileXioUmount("pfs0:");
-		if (fileXioMount("pfs0:", partition, FIO_MT_RDONLY) < 0) {
-			return -EIO;
-		}
-	}
-
-	return 0;
-}
-
 static int build_default_target_arg0(const char *partition_context, const char *load_path, char *out, size_t out_size)
 {
 	const char *suffix = load_path;
@@ -362,49 +330,19 @@ int main(int argc, char *argv[])
 			elfdata.gp = 0;
 		}
 	} else {
-		ret = mount_partition_context_on_pfs0(partition_context);
-		if (ret == 0) {
-			SifLoadFileInit();
-			ret = SifLoadElf(load_path, &elfdata);
-			SifLoadFileExit();
-		} else {
-			elfdata.epc = 0;
-			elfdata.gp = 0;
-		}
+		/* Partition context is assumed to be mounted already (e.g., pfs0:)
+		   from the parent EE environment just like wLaunchELF does. */
+		SifInitRpc(0);
+		SifLoadFileInit();
+		ret = SifLoadElf(load_path, &elfdata);
+		SifLoadFileExit();
 	}
 	SET_GS_BGCOLOUR(BLUE_BG);
 	if (ret == 0 && elfdata.epc != 0) {
 		SET_GS_BGCOLOUR(YELLOW_BG);
 
-		/* Direct iomanX-only paths still need the older fileXio loader
-		 * contract.  Once the target ELF has been copied into EE RAM
-		 * through fileXio, avoid the later HDD reset / teardown path.
-		 *
-		 * Partition-aware HDD launches are different: the child now
-		 * remounts pfs0: from the passed partition context before
-		 * SifLoadElf, so match the reference loaders and keep using the
-		 * mounted-path SifLoadElf flow instead of forcing fileXio here.
-		 */
-		if (loaded_via_filexio) {
-			FlushCache(0);
-			FlushCache(2);
-			ret = ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, target_argc, target_argv);
-			return (ret != 0) ? ret : -3500;
-		}
-
-		if (is_hdd_partition_context(partition_context)) {
-			while(!SifIopReset("", 0)){};
-			while (!SifIopSync()) {};
-
-			SET_GS_BGCOLOUR(ORANGE_BG);
-
-			SifInitRpc(0);
-			SifLoadFileInit();
-			SifLoadModule("rom0:SIO2MAN", 0, NULL);
-			SifLoadModule("rom0:MCMAN", 0, NULL);
-			SifLoadModule("rom0:MCSERV", 0, NULL);
-			SifLoadFileExit();
-		}
+		/* Mimicking wLaunchELF: We skip SifIopReset() completely.
+		   Direct fileXio/mounted path launches can execute directly. */
 		SifExitRpc();
 
 		SET_GS_BGCOLOUR(BROWN_BG);

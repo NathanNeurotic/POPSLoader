@@ -128,6 +128,7 @@ This file is the authoritative detailed run ledger for CI and hardware outcomes.
 | 2026-03-29 | Unknown (not reported) | HDD boot; HDD sidecar/cwd `POPSTARTER.ELF`; HDD game on the selectorless stripped current `HEAD` line | D-10 | FAIL: black screen |
 | 2026-03-29 | Unknown (not reported) | HDD boot; default/Profile 1 sidecar/cwd `POPSTARTER.ELF` on HDD; entered HDD page; Exit -> `BOOT.ELF` on the cold-prep/no-forced-reboot BOOT.ELF line | U-10 | FAIL: freeze |
 | 2026-03-29 | Unknown (not reported) | HDD boot; default/Profile 1 sidecar/cwd `POPSTARTER.ELF` on HDD; entered HDD page; Exit -> `BOOT.ELF` on the restored-standard-prep/no-forced-reboot BOOT.ELF line | U-10 | FAIL: freeze |
+| 2026-03-29 | Unknown (not reported) | HDD boot; HDD sidecar/cwd `POPSTARTER.ELF`; HDD game on loader.c with safe string primitives and no `SifExitCmd` | D-10 | FAIL: black screen |
 | YYYY-MM-DD | SCPH-xxxxx | USB/MMCE/MX4SIO/HDD details | e.g. S-01,S-02,D-02 | PASS/FAIL + notes |
 
 ## Current Verification Status
@@ -185,6 +186,7 @@ This file is the authoritative detailed run ledger for CI and hardware outcomes.
     - audit then found another remaining carry-over in parent-side launch prep: `PrepareForExternalELFLaunch(...)` still auto-kept the mounted `pfsN` slot whenever the exec path itself was on `pfsN:/...`. Current source now suppresses that implicit exec-slot keep specifically for HDD-backed POPSTARTER, so the stripped line no longer preserves the mounted parent slot just because the executable was resolved there.
     - a later 2026-03-29 hardware re-test on the selectorless stripped current `HEAD` line still black-screened.
     - current source now restores selector-only `argv[0]` for HDD-backed POPSTARTER because that selectorless line did not improve hardware behavior, while the loader still keeps partition metadata only to load the HDD ELF cleanly.
+    - a later 2026-03-29 hardware re-test replacing `snprintf` with safe strings and removing `SifExitCmd()` in the child loader still black-screened, so those hardware exception/hang mitigations alone did not solve `D-10`.
     - current source still exposes an `R2` alternate HDD launch for HDD-resident `POPSTARTER.ELF` that changes only the selector path to `hdd0:PART:pfs0:/GAME.ELF`; hardware result is still `Unknown (verify on hardware)`.
   - `D-14`: reported FAIL on 2026-03-27 when launching a USB game with Profile 2 pointing `POPSTARTER.ELF` to HDD.
     - this broadened the remaining issue from “HDD game launch” to “HDD-backed POPSTARTER exec path”.

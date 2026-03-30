@@ -295,6 +295,10 @@ static int ExecuteHddBackedViaEmbeddedLoader(const char *resolved_path, const ch
 
 	previous_keep_mask = GetExecKeepPfsMask();
 	SetExecKeepPfsMask(previous_keep_mask | required_keep_mask);
+
+	/* Unmount ALL PFS slots EXCEPT the one needed for the embedded loader target */
+	unmount_pfs_slots_for_exec(required_keep_mask);
+
 	ret = ExecuteViaEmbeddedLoader(partition_context != NULL ? partition_context : "", load_path, argc, argv);
 	SetExecKeepPfsMask(previous_keep_mask);
 	return ret;
@@ -362,10 +366,6 @@ static int ExecuteViaEmbeddedLoader(const char *partition_context, const char *l
 	}
 	launch_argv[final_argc] = NULL;
 
-	SifInitRpc(0);
-	SifLoadFileInit();
-	SifLoadFileExit();
-
 	boot_pheader = (elf_pheader_t *)(boot_elf + boot_header->phoff);
 	for (i = 0; i < boot_header->phnum; i++) {
 		if (boot_pheader[i].type != ELF_PT_LOAD) {
@@ -377,9 +377,7 @@ static int ExecuteViaEmbeddedLoader(const char *partition_context, const char *l
 		}
 	}
 
-	SifExitIopHeap();
 	SifExitRpc();
-	SifExitCmd();
 	FlushCache(0);
 	FlushCache(2);
 
