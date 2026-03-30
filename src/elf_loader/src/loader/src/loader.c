@@ -345,8 +345,21 @@ int main(int argc, char *argv[])
 	if (ret == 0 && elfdata.epc != 0) {
 		SET_GS_BGCOLOUR(YELLOW_BG);
 
-		/* Mimicking wLaunchELF: We skip SifIopReset() completely.
-		   Direct fileXio/mounted path launches can execute directly. */
+		/* Unlike wLaunchELF (which runs homebrew), POPSTARTER.ELF strictly
+		   requires a sterile IOP environment seeded with Memory Card drivers
+		   before execution. Now that fileXio has successfully loaded the ELF
+		   into EE RAM, we MUST wipe the dirty HDD modules from the IOP. */
+		while(!SifIopReset("", 0)){};
+		while (!SifIopSync()) {};
+
+		SET_GS_BGCOLOUR(ORANGE_BG);
+
+		SifInitRpc(0);
+		SifLoadFileInit();
+		SifLoadModule("rom0:SIO2MAN", 0, NULL);
+		SifLoadModule("rom0:MCMAN", 0, NULL);
+		SifLoadModule("rom0:MCSERV", 0, NULL);
+		SifLoadFileExit();
 		SifExitRpc();
 
 		SET_GS_BGCOLOUR(BROWN_BG);
