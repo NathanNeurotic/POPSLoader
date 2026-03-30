@@ -239,6 +239,11 @@ static int build_hdd_embedded_loader_target_from_partition(const char *resolved_
 	partition_name[partition_len] = '\0';
 
 	fileXioInit();
+	/* Critical: The target partition might already be mounted on pfs1:, pfs2:, or pfs3:
+	   by the background Lua scanner. PS2 PFS strictly blocks duplicate block mounts.
+	   We MUST force-unmount all other slots before attempting to mount it to pfs0:. */
+	unmount_pfs_slots_for_exec(1);
+
 	fileXioUmount("pfs0:");
 	if (fileXioMount("pfs0:", partition_name, FIO_MT_RDONLY) < 0) {
 		fileXioUmount("pfs0:");
@@ -329,7 +334,10 @@ static int ExecuteHddBackedViaEmbeddedLoader(const char *resolved_path, const ch
 	previous_keep_mask = GetExecKeepPfsMask();
 	SetExecKeepPfsMask(previous_keep_mask | required_keep_mask);
 
-	/* Unmount ALL PFS slots EXCEPT the one needed for the embedded loader target */
+	/* Unmount ALL PFS slots EXCEPT the one needed for the embedded loader target.
+	   Note: build_hdd_embedded_loader_target_from_partition pre-emptively unmounts
+	   them to guarantee pfs0: mount success. Doing it again here is a harmless no-op
+	   that enforces the keep mask cleanly across all codepaths. */
 	unmount_pfs_slots_for_exec(required_keep_mask);
 
 	ret = ExecuteViaEmbeddedLoader(partition_context != NULL ? partition_context : "", load_path, argc, argv);
