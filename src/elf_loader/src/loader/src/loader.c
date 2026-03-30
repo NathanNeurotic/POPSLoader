@@ -173,6 +173,7 @@ static int load_elf_via_filexio(const char *path,
 	static loader_elf_hdr_t hdr;
 	static loader_elf_phdr_t phdrs[LOADER_ELF_MAX_PHDRS];
 	unsigned int gp = 0;
+	int wLaunchElfFileMode = FIO_S_IRUSR | FIO_S_IWUSR | FIO_S_IXUSR | FIO_S_IRGRP | FIO_S_IWGRP | FIO_S_IXGRP | FIO_S_IROTH | FIO_S_IWOTH | FIO_S_IXOTH;
 
 	if (entry_out == NULL || gp_out == NULL) {
 		return -EINVAL;
@@ -181,7 +182,7 @@ static int load_elf_via_filexio(const char *path,
 	*entry_out = 0;
 	*gp_out = 0;
 
-	fd = fileXioOpen(path, O_RDONLY, 0);
+	fd = fileXioOpen(path, O_RDONLY, wLaunchElfFileMode);
 	if (fd < 0 && path != NULL &&
 	    (strncmp(path, "hdd", 3) == 0 || strncmp(path, "HDD", 3) == 0)) {
 		const char *first_colon = strchr(path, ':');
@@ -189,7 +190,7 @@ static int load_elf_via_filexio(const char *path,
 		if (second_colon != NULL &&
 		    (strncmp(second_colon + 1, "pfs", 3) == 0 ||
 		     strncmp(second_colon + 1, "PFS", 3) == 0)) {
-			fd = fileXioOpen(second_colon + 1, O_RDONLY, 0);
+			fd = fileXioOpen(second_colon + 1, O_RDONLY, wLaunchElfFileMode);
 		}
 	}
 	if (fd < 0) {

@@ -1,0 +1,35 @@
+<<<<<<< SEARCH
+      local slot_str = string.match(absolute_path, "^pfs(%d):")
+      if slot_str then
+        local slot = tonumber(slot_str)
+        if slot and PLDR.HDD and PLDR.HDD.mounted_slots and PLDR.HDD.mounted_slots[slot] then
+          return "hdd0:" .. PLDR.HDD.mounted_slots[slot]
+        end
+      end
+    end
+  end
+  return nil
+end
+=======
+      local slot_str = string.match(absolute_path, "^pfs(%d):")
+      if slot_str then
+        local slot = tonumber(slot_str)
+        if slot and PLDR.HDD and PLDR.HDD.mounted_slots and PLDR.HDD.mounted_slots[slot] then
+          return "hdd0:" .. PLDR.HDD.mounted_slots[slot]
+        end
+        local app_dir = ""
+        if type(System) == "table" and type(System.getAppDir) == "function" then
+            app_dir = System.getAppDir() or ""
+        end
+        local app_part = string.match(app_dir, "^(hdd0:.-):")
+        local app_slot = string.match(app_dir, ":pfs(%d*):")
+        if app_slot == "" then app_slot = "0" end
+        if app_part and app_slot == slot_str then
+            return app_part
+        end
+      end
+    end
+  end
+  return nil
+end
+>>>>>>> REPLACE
