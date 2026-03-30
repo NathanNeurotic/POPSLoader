@@ -90,7 +90,11 @@ jobs:
             git config --local user.email "github-actions[bot]@users.noreply.github.com"
             git add src/elf_loader/loader.c
             git commit -m "Auto-regenerate embedded loader blob [skip ci]"
-            git push origin HEAD:${GITHUB_REF#refs/heads/}
+            if [ -n "${GITHUB_HEAD_REF:-}" ]; then
+              git push origin HEAD:${GITHUB_HEAD_REF}
+            else
+              git push origin HEAD:${GITHUB_REF#refs/heads/}
+            fi
           fi
 
           require_marker "Exec path:" bin/enceladus.elf
