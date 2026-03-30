@@ -3661,10 +3661,16 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
       rc = System.loadELF(exec_path, reboot_iop, unpack_fn(exec_args))
     end
   elseif exec_args ~= nil and #exec_args == 1 then
+    local arg0 = exec_args[1]
+    if context ~= nil and type(context.device_page) == "string" and context.device_page == "HDD" then
+      if type(arg0) == "string" and string.match(arg0, "%.[Vv][Cc][Dd]$") then
+        arg0 = arg0:gsub("%.[Vv][Cc][Dd]$", ".ELF")
+      end
+    end
     if context ~= nil and type(context.exec_partition_context) == "string" and context.exec_partition_context ~= "" then
-      rc = System.loadELF(exec_path, reboot_iop, exec_args[1], context.exec_partition_context)
+      rc = System.loadELF(exec_path, reboot_iop, arg0, context.exec_partition_context)
     else
-      rc = System.loadELF(exec_path, reboot_iop, exec_args[1])
+      rc = System.loadELF(exec_path, reboot_iop, arg0)
     end
   else
     if context ~= nil and type(context.exec_partition_context) == "string" and context.exec_partition_context ~= "" then
