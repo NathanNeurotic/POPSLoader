@@ -3936,7 +3936,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
       prefix_used = ""
     end
   end
-  local argv = popstarter_on_hdd and {} or {argv0_selector}
+  local argv = {argv0_selector}
 
   local context = {
     device_page = device_page,
