@@ -85,21 +85,17 @@ jobs:
           [ -f src/elf_loader/loader.c ] || { echo "ERROR: generated embedded loader blob missing" >&2; exit 1; }
 
           if ! git diff --exit-code src/elf_loader/loader.c >/dev/null; then
-            echo "ERROR: embedded loader blob (src/elf_loader/loader.c) is out of date!" >&2
-            echo "Please download the generated 'updated-loader-blob' artifact and commit it to the repository." >&2
-            exit 1
+            echo "NOTE: embedded loader blob (src/elf_loader/loader.c) is out of date. Auto-committing the regenerated blob."
+            git config --local user.name "github-actions[bot]"
+            git config --local user.email "github-actions[bot]@users.noreply.github.com"
+            git add src/elf_loader/loader.c
+            git commit -m "Auto-regenerate embedded loader blob [skip ci]"
+            git push origin HEAD:${GITHUB_REF#refs/heads/}
           fi
 
           require_marker "Exec path:" bin/enceladus.elf
           require_marker "PrepareForColdExternalELFLaunch" bin/enceladus.elf
           require_marker "BOOT.ELF launch failed" bin/enceladus.elf
-
-      - name: Upload updated embedded loader blob on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: updated-loader-blob
-          path: src/elf_loader/loader.c
 
       - name: Create release package (PS1_POPSLOADER + POPS/PATCH_5.BIN)
         shell: sh

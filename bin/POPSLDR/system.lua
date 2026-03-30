@@ -1140,11 +1140,53 @@ local function ResolvePopstarterPartitionContext(path, resolved_path)
   end
 
   if IsHddExecContextPath(configured) then
-    return BuildHddPartitionContext(configured)
+    local ctx = BuildHddPartitionContext(configured)
+    if ctx ~= nil then return ctx end
   end
 
   if IsHddExecContextPath(resolved_path) then
-    return BuildHddPartitionContext(resolved_path)
+    local ctx = BuildHddPartitionContext(resolved_path)
+    if ctx ~= nil then return ctx end
+  end
+
+  -- Fallback: If it's a relative or pfsN:/ path launched from the HDD boot CWD
+  local absolute_path = tostring(resolved_path or "")
+  if not string.match(absolute_path, "^%a+%d*:") then
+    local app_dir = ""
+    if type(System) == "table" and type(System.getAppDir) == "function" then
+      app_dir = System.getAppDir() or ""
+    end
+    absolute_path = app_dir .. absolute_path
+  end
+
+  -- If it has the full hdd0:PARTITION: prefix natively or from app_dir
+  local partition_match = string.match(absolute_path, "^(hdd0:.-):")
+  if partition_match then
+    return partition_match .. ":"
+  end
+
+  local is_hdd = (string.sub(absolute_path, 1, 4) == "hdd0" or string.sub(absolute_path, 1, 4) == "pfs0" or string.sub(absolute_path, 1, 4) == "pfs1" or string.sub(absolute_path, 1, 4) == "pfs2" or string.sub(absolute_path, 1, 4) == "pfs3")
+  if is_hdd then
+    -- Check if it starts with pfsN: or contains :pfsN:
+    local slot_str = string.match(absolute_path, "^pfs(%d):") or string.match(absolute_path, ":pfs(%d):")
+    if slot_str then
+      local slot = tonumber(slot_str)
+      if slot and PLDR.HDD and PLDR.HDD.mounted_slots and PLDR.HDD.mounted_slots[slot] then
+        return "hdd0:" .. PLDR.HDD.mounted_slots[slot] .. ":"
+      end
+
+      -- Second fallback: matches the boot app directory slot
+      local app_dir = ""
+      if type(System) == "table" and type(System.getAppDir) == "function" then
+          app_dir = System.getAppDir() or ""
+      end
+      local app_part = string.match(app_dir, "^(hdd0:.-):")
+      local app_slot = string.match(app_dir, ":pfs(%d*):")
+      if app_slot == "" then app_slot = "0" end
+      if app_part and app_slot == slot_str then
+          return app_part .. ":"
+      end
+    end
   end
 
   return nil
