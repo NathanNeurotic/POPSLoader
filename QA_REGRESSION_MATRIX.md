@@ -132,6 +132,7 @@ This file is the authoritative detailed run ledger for CI and hardware outcomes.
 | 2026-03-30 | Unknown (not reported) | HDD boot; HDD sidecar/cwd `POPSTARTER.ELF`; HDD game on loader.c mimicking wLaunchELF PFS retention | D-10 | FAIL: OSDSYS fallback |
 | 2026-03-30 | Unknown (not reported) | HDD boot; HDD sidecar/cwd `POPSTARTER.ELF`; HDD game on loader.c with fileXio force and unmount debugging | D-10 | FAIL: OSDSYS fallback |
 | 2026-03-30 | Unknown (not reported) | HDD boot; HDD sidecar/cwd `POPSTARTER.ELF`; HDD game on loader.c with pfs0: correctly preserved | D-10 | FAIL: OSDSYS fallback |
+| 2026-03-30 | Unknown (not reported) | HDD boot; HDD sidecar/cwd `POPSTARTER.ELF`; HDD game with CWD resolution fix | D-10 | FAIL: OSDSYS fallback |
 | YYYY-MM-DD | SCPH-xxxxx | USB/MMCE/MX4SIO/HDD details | e.g. S-01,S-02,D-02 | PASS/FAIL + notes |
 
 ## Current Verification Status
@@ -193,6 +194,7 @@ This file is the authoritative detailed run ledger for CI and hardware outcomes.
     - a later 2026-03-30 hardware re-test mimicking `wLaunchELF`'s PFS retention (leaving `pfs0:` mounted across the exec boundary and bypassing `SifIopReset`) stabilized execution and returned to OSDSYS. This proved the loader ran but failed to load the ELF, isolating the final failure to `SifLoadElf`'s inability to read from PFS.
     - a later 2026-03-30 hardware re-test forcing `fileXio` direct load on HDD/PFS paths still resulted in an OSDSYS fallback. Subsequent debugging showed the parent loader (`elf.c`) was generating a `keep_mask` of 0 for `pfs0:`, explicitly instructing the unmount loop to teardown the exact partition the embedded child loader needed to load the ELF.
     - a later 2026-03-30 hardware re-test correctly preserving `pfs0:` in the parent loader still resulted in an OSDSYS fallback. Subsequent code review revealed the embedded loader (`loader.c`) was executing `wipeUserMem()` up to `GetMemorySize()`, destroying the top 1MB of memory containing the RPC buffers required by `fileXio` to actually read the file.
+    - a later 2026-03-30 hardware re-test fixing the memory wipe still returned to OSDSYS. Deep code review revealed that the "Profile 1/Default" sidecar path uses the relative filename `POPSTARTER.ELF`. The parent loader failed to resolve this relative path to its absolute `pfs0:/POPSTARTER.ELF` equivalent, meaning it failed the `is_hdd_backed_exec_path()` check. Because it wasn't flagged as an HDD execution, the parent performed a standard destructive `SifIopReset` fallback execution, entirely bypassing the specialized retention fixes!
     - current source still exposes an `R2` alternate HDD launch for HDD-resident `POPSTARTER.ELF` that changes only the selector path to `hdd0:PART:pfs0:/GAME.ELF`; hardware result is still `Unknown (verify on hardware)`.
   - `D-14`: reported FAIL on 2026-03-27 when launching a USB game with Profile 2 pointing `POPSTARTER.ELF` to HDD.
     - this broadened the remaining issue from “HDD game launch” to “HDD-backed POPSTARTER exec path”.

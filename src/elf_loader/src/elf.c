@@ -71,6 +71,15 @@ static bool can_open_exec_path(const char *filename) {
 }
 
 static int resolve_exec_path(const char *filename, char *out, size_t out_size) {
+	if (filename != NULL && filename[0] != '/' && strchr(filename, ':') == NULL) {
+		char cwd[256];
+		if (getcwd(cwd, sizeof(cwd)) != NULL) {
+			snprintf(out, out_size, "%s%s%s", cwd, (cwd[strlen(cwd)-1] == '/' || cwd[strlen(cwd)-1] == ':') ? "" : "/", filename);
+			if (can_open_exec_path(out)) {
+				return 0;
+			}
+		}
+	}
 	if (can_open_exec_path(filename)) {
 		snprintf(out, out_size, "%s", filename);
 		return 0;
