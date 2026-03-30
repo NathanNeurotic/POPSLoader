@@ -65,7 +65,6 @@ jobs:
         shell: sh
         run: |
           set -eu
-          sleep 2
           make clean elfloader all
 
       - name: Verify embedded build identity

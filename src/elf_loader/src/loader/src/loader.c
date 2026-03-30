@@ -89,12 +89,13 @@ static int is_hdd_partition_context(const char *partition_context)
 
 static int should_use_filexio_direct_load(const char *partition_context, const char *load_path)
 {
-	if (is_hdd_partition_context(partition_context)) {
-		return 0;
-	}
-	return (load_path != NULL &&
-	        (strncmp(load_path, "pfs", 3) == 0 || strncmp(load_path, "PFS", 3) == 0 ||
-	         strncmp(load_path, "hdd", 3) == 0 || strncmp(load_path, "HDD", 3) == 0));
+	/* wLaunchELF intentionally bypasses SifLoadElf for pfs0:/... paths because
+	   the IOP loadfile module often fails to read from PFS.
+	   We force fileXio for ALL HDD/PFS paths (even with partition context). */
+	return (is_hdd_partition_context(partition_context) ||
+	        (load_path != NULL &&
+	         (strncmp(load_path, "pfs", 3) == 0 || strncmp(load_path, "PFS", 3) == 0 ||
+	          strncmp(load_path, "hdd", 3) == 0 || strncmp(load_path, "HDD", 3) == 0)));
 }
 
 static int build_default_target_arg0(const char *partition_context, const char *load_path, char *out, size_t out_size)
