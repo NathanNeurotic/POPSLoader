@@ -212,6 +212,8 @@ static const char *extract_exec_relpath(const char *path) {
 
 static int build_hdd_embedded_loader_target_from_partition(const char *resolved_path, const char *partition_context, char *load_path, size_t load_path_size, unsigned int *keep_mask_out) {
 	const char *relpath;
+	char partition_name[256];
+	size_t partition_len;
 
 	if (resolved_path == NULL || partition_context == NULL || load_path == NULL || keep_mask_out == NULL) {
 		return -1;
@@ -223,6 +225,26 @@ static int build_hdd_embedded_loader_target_from_partition(const char *resolved_
 	relpath = extract_exec_relpath(resolved_path);
 	if (relpath == NULL) {
 		return -1;
+	}
+
+	partition_len = strlen(partition_context);
+	while (partition_len > 0 && partition_context[partition_len - 1] == ':') {
+		partition_len--;
+	}
+	if (partition_len == 0 || partition_len >= sizeof(partition_name)) {
+		return -1;
+	}
+
+	memcpy(partition_name, partition_context, partition_len);
+	partition_name[partition_len] = '\0';
+
+	fileXioInit();
+	fileXioUmount("pfs0:");
+	if (fileXioMount("pfs0:", partition_name, FIO_MT_RDONLY) < 0) {
+		fileXioUmount("pfs0:");
+		if (fileXioMount("pfs0:", partition_name, FIO_MT_RDONLY) < 0) {
+			return -1;
+		}
 	}
 
 	snprintf(load_path, load_path_size, "pfs0:/%s", relpath);
