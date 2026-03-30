@@ -217,7 +217,9 @@ static int build_hdd_embedded_loader_target_from_partition(const char *resolved_
 	}
 
 	snprintf(load_path, load_path_size, "pfs0:/%s", relpath);
-	*keep_mask_out = 0;
+	/* Retain pfs0: so the embedded child loader can read the target ELF from it.
+	   unmount_pfs_slots_for_exec will preserve this bit mask slot. */
+	*keep_mask_out = 1;
 	return 0;
 }
 
