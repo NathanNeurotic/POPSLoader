@@ -323,7 +323,9 @@ int main(int argc, char *argv[])
 	SET_GS_BGCOLOUR(GREEN_BG);
 	if (should_use_filexio_direct_load(partition_context, load_path)) {
 		loaded_via_filexio = 1;
-		fileXioInit();
+		/* Mimicking wLaunchELF: We intentionally do NOT call fileXioInit() here,
+		   as it would re-bind RPC and likely destroy the inherited pfs0: mount state.
+		   We rely on the existing RPC connection established by SifInitRpc(0) above. */
 		ret = load_elf_via_filexio(load_path, &filexio_entry, &filexio_gp);
 		if (ret == 0) {
 			elfdata.epc = filexio_entry;
