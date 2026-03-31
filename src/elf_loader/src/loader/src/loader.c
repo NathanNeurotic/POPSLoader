@@ -91,13 +91,9 @@ static int is_hdd_partition_context(const char *partition_context)
 
 static int should_use_filexio_direct_load(const char *partition_context, const char *load_path)
 {
-	/* wLaunchELF intentionally bypasses SifLoadElf for pfs0:/... paths because
-	   the IOP loadfile module often fails to read from PFS.
-	   We force fileXio for ALL HDD/PFS paths (even with partition context). */
-	return (is_hdd_partition_context(partition_context) ||
-	        (load_path != NULL &&
-	         (strncmp(load_path, "pfs", 3) == 0 || strncmp(load_path, "PFS", 3) == 0 ||
-	          strncmp(load_path, "hdd", 3) == 0 || strncmp(load_path, "HDD", 3) == 0)));
+	/* Disable fileXio manual ELF parsing entirely to rely on the PS2 kernel's SifLoadElf.
+	   Manual fileXioRead parsing of commercial ELFs on PFS can corrupt the execution memory. */
+	return 0;
 }
 
 static int build_default_target_arg0(const char *partition_context, const char *load_path, char *out, size_t out_size)
@@ -322,42 +318,29 @@ int main(int argc, char *argv[])
 	//Writeback data cache before loading ELF.
 	FlushCache(0);
 	SET_GS_BGCOLOUR(GREEN_BG);
-	if (should_use_filexio_direct_load(partition_context, load_path)) {
-		loaded_via_filexio = 1;
-		fileXioInit();
-		ret = load_elf_via_filexio(load_path, &filexio_entry, &filexio_gp);
-		if (ret == 0) {
-			elfdata.epc = filexio_entry;
-			elfdata.gp = filexio_gp;
-		} else {
-			elfdata.epc = 0;
-			elfdata.gp = 0;
-		}
-	} else {
-		/* Partition context is assumed to be mounted already (e.g., pfs0:)
-		   from the parent EE environment just like wLaunchELF does. */
-		SifInitRpc(0);
-		SifLoadFileInit();
-		ret = SifLoadElf(load_path, &elfdata);
-		SifLoadFileExit();
-	}
+
+	/* Partition context is assumed to be mounted already (e.g., pfs0:)
+	   from the parent EE environment just like wLaunchELF does. */
+	SifInitRpc(0);
+	SifLoadFileInit();
+	ret = SifLoadElf(load_path, &elfdata);
+	SifLoadFileExit();
+
 	SET_GS_BGCOLOUR(BLUE_BG);
 	if (ret == 0 && elfdata.epc != 0) {
 		SET_GS_BGCOLOUR(YELLOW_BG);
 
-		/* Properly teardown any EE-side RPC clients before ExecPS2 */
-		/* WAIT! Do NOT teardown SifExitRpc or SifExitCmd! We need the EE SIF DMA running! */
-		if (!loaded_via_filexio) {
-			SifLoadFileExit();
-		}
-
 		if (is_hdd_partition_context(partition_context)) {
 			/* IF we are about to wipe the IOP, we MUST teardown the SIF servers FIRST to prevent DMA lockups! */
+			SifLoadFileExit();
 			SifExitRpc();
 			SifExitCmd();
 
-			while(!SifIopReset("rom0:UDNL rom0:EELOADCNF", 0)){};
-			while (!SifIopSync()) {};
+			/* We must wipe the IOP so the dirty HDD/fileXio modules are gone before ExecPS2. */
+			while (!SifIopReset("rom0:UDNL rom0:EELOADCNF", 0)) {
+			}
+			while (!SifIopSync()) {
+			}
 
 			SET_GS_BGCOLOUR(ORANGE_BG);
 
@@ -373,8 +356,12 @@ int main(int argc, char *argv[])
 
 			/* Teardown again before ExecPS2 */
 			SifLoadFileExit();
-			/* DO NOT teardown SifExitRpc or SifExitCmd! USB POPSTARTER inherits
-			   them active from LoadELFFromFileExecPS2, so HDD must too! */
+			SifExitRpc();
+			SifExitCmd();
+		} else {
+			SifLoadFileExit();
+			SifExitRpc();
+			SifExitCmd();
 		}
 
 		SET_GS_BGCOLOUR(BROWN_BG);
@@ -388,10 +375,7 @@ int main(int argc, char *argv[])
 		for (i = 0; i < target_argc; i++) {
 			DPRINTF("POPS EXEC: argv[%d] = %s\n", i, target_argv[i]);
 		}
-		/* If fileXio was used, elfdata.gp was manually parsed and is extremely dangerous to pass
-		   to commercial ELFs. Passing 0 forces POPSTARTER to recalculate it correctly. */
-		unsigned int safe_gp = loaded_via_filexio ? 0 : elfdata.gp;
-		ret = ExecPS2((void *)elfdata.epc, (void *)safe_gp, target_argc, target_argv);
+		ret = ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, target_argc, target_argv);
 		return (ret != 0) ? ret : -3500;
 	} else {
 		SET_GS_BGCOLOUR(MAGENTA_BG);
