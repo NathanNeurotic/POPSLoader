@@ -3807,18 +3807,8 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
   local configured_popstarter = NormalizeSelectedProfilePopstarterPath(PLDR.SELECTED_PROFILE, PLDR.POPSTARTER_PATH)
   local popstarter = ResolvePopstarterPath(configured_popstarter)
   local popstarter_partition_context = ResolvePopstarterPartitionContext(configured_popstarter, popstarter)
-  -- Critical fix: Check both the resolved path AND partition context.
-  -- For relative sidecar paths (e.g., "POPSTARTER.ELF"), IsHddExecContextPath returns FALSE,
-  -- but if partition_context exists, it means the POPSTARTER is HDD-backed.
-  local popstarter_on_hdd = IsHddExecContextPath(popstarter) or
-                            (popstarter_partition_context ~= nil and popstarter_partition_context ~= "")
+  local popstarter_on_hdd = nil
   local popstarter_exec_path = popstarter
-  if not popstarter_on_hdd and popstarter_partition_context ~= nil and popstarter_partition_context ~= "" then
-    local normalized_exec_path = BuildPartitionScopedExecPath(popstarter)
-    if normalized_exec_path ~= nil then
-      popstarter_exec_path = normalized_exec_path
-    end
-  end
   local hdd_selector_mode = nil
   if type(launch_options) == "table" then
     hdd_selector_mode = tostring(launch_options.hdd_selector_mode or "")
@@ -3850,11 +3840,20 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
 
     -- CRITICAL FALLBACK: If we're booting from HDD and POPSTARTER partition context
     -- wasn't detected (e.g., relative sidecar), derive it from the game's partition.
-    -- This ensures popstarter_on_hdd is correctly set to TRUE and the embedded loader is called.
     if (popstarter_partition_context == nil or popstarter_partition_context == "") and
        hdd_partition_label ~= nil and hdd_partition_label ~= "" then
       popstarter_partition_context = "hdd0:" .. hdd_partition_label .. ":"
-      popstarter_on_hdd = true
+    end
+  end
+
+  -- NOW calculate popstarter_on_hdd AFTER all partition context detection is complete
+  popstarter_on_hdd = IsHddExecContextPath(popstarter) or
+                      (popstarter_partition_context ~= nil and popstarter_partition_context ~= "")
+
+  if popstarter_on_hdd and popstarter_partition_context ~= nil and popstarter_partition_context ~= "" then
+    local normalized_exec_path = BuildPartitionScopedExecPath(popstarter)
+    if normalized_exec_path ~= nil then
+      popstarter_exec_path = normalized_exec_path
     end
   end
   local normalized_gamelocation = policy.normalize(gamelocation)
