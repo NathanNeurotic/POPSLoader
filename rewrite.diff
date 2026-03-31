@@ -11,7 +11,7 @@
 		asm volatile(
 			"\tsq $0, 0(%0) \n"
 			"\tsq $0, 16(%0) \n"
-@@ -89,44 +91,13 @@
+@@ -89,33 +91,12 @@
 
  static int should_use_filexio_direct_load(const char *partition_context, const char *load_path)
  {
@@ -63,7 +63,7 @@
  }
 
  static int build_default_target_arg0(const char *partition_context, const char *load_path, char *out, size_t out_size)
-@@ -143,7 +114,8 @@
+@@ -143,7 +124,8 @@
 	}
 
 	if (partition_context == NULL || partition_context[0] == '\0') {
@@ -73,7 +73,7 @@
 		return 0;
 	}
 
-@@ -155,7 +127,8 @@
+@@ -155,7 +137,8 @@
 		if (suffix == NULL || suffix[0] == '\0') {
 			suffix = "/";
 		}
@@ -83,7 +83,7 @@
 		if (suffix[0] != '/') {
 			strncat(out, "pfs:/", out_size - strlen(out) - 1);
 			strncat(out, suffix, out_size - strlen(out) - 1);
-@@ -166,7 +139,8 @@
+@@ -166,7 +149,8 @@
 		return 0;
 	}
 
@@ -93,7 +93,7 @@
 	strncat(out, load_path, out_size - strlen(out) - 1);
 	return 0;
  }
-@@ -199,6 +173,7 @@
+@@ -199,6 +183,7 @@
 	static loader_elf_hdr_t hdr;
 	static loader_elf_phdr_t phdrs[LOADER_ELF_MAX_PHDRS];
 	unsigned int gp = 0;
@@ -101,7 +101,7 @@
 
 	if (entry_out == NULL || gp_out == NULL) {
 		return -EINVAL;
-@@ -207,7 +182,7 @@
+@@ -207,7 +192,7 @@
 	*entry_out = 0;
 	*gp_out = 0;
 
@@ -110,7 +110,7 @@
 	if (fd < 0 && path != NULL &&
 	    (strncmp(path, "hdd", 3) == 0 || strncmp(path, "HDD", 3) == 0)) {
 		const char *first_colon = strchr(path, ':');
-@@ -215,7 +190,7 @@
+@@ -215,7 +200,7 @@
 		if (second_colon != NULL &&
 		    (strncmp(second_colon + 1, "pfs", 3) == 0 ||
 		     strncmp(second_colon + 1, "PFS", 3) == 0)) {
@@ -119,7 +119,7 @@
 		}
 	}
 	if (fd < 0) {
-@@ -359,48 +334,26 @@
+@@ -359,15 +344,11 @@
 			elfdata.gp = 0;
 		}
 	} else {
@@ -140,52 +140,3 @@
 +		SifLoadFileExit();
 	}
 	SET_GS_BGCOLOUR(BLUE_BG);
-	if (ret == 0 && elfdata.epc != 0) {
-		SET_GS_BGCOLOUR(YELLOW_BG);
-
--		/* Direct iomanX-only paths still need the older fileXio loader
--		 * contract.  Once the target ELF has been copied into EE RAM
--		 * through fileXio, avoid the later HDD reset / teardown path.
--		 *
--		 * Partition-aware HDD launches are different: the child now
--		 * remounts pfs0: from the passed partition context before
--		 * SifLoadElf, so match the reference loaders and keep using the
--		 * mounted-path SifLoadElf flow instead of forcing fileXio here.
--		 */
--		if (loaded_via_filexio) {
--			FlushCache(0);
--			FlushCache(2);
--			ret = ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, target_argc, target_argv);
--			return (ret != 0) ? ret : -3500;
-+		/* Properly teardown any EE-side RPC clients *before* we wipe the IOP,
-+		   otherwise the DMA channel will hang waiting for a response from the dead IOP. */
-+		if (!loaded_via_filexio) {
-+			SifLoadFileExit();
-		}
--
--		/* We successfully loaded the ELF. Now we must prepare the IOP for execution. */
--
--		/* Properly teardown any EE-side RPC clients *before* we wipe the IOP,
--		   otherwise the DMA channel will hang waiting for a response from the dead IOP. */
--		if (!loaded_via_filexio) {
--			SifLoadFileExit();
--		}
-		SifExitRpc();
-
-		if (is_hdd_partition_context(partition_context)) {
--			while(!SifIopReset("rom0:UDNL rom0:EELOADCNF", 0)){};
-+			while(!SifIopReset("", 0)){};
-			while (!SifIopSync()) {};
-
-			SET_GS_BGCOLOUR(ORANGE_BG);
-@@ -409,10 +362,7 @@
-			SifInitRpc(0);
-			SifLoadFileInit();
-			SifLoadModule("rom0:SIO2MAN", 0, NULL);
--			SifLoadModule("rom0:CDVDFSV", 0, NULL);
--			SifLoadModule("rom0:CDVDMAN", 0, NULL);
-			SifLoadModule("rom0:MCMAN", 0, NULL);
-			SifLoadModule("rom0:MCSERV", 0, NULL);
--			SifLoadModule("rom0:PADMAN", 0, NULL);
-
-			/* Teardown again before ExecPS2 */
