@@ -38,8 +38,14 @@
 static void log_to_mc(const char *msg)
 {
 	static int log_fd = -1;
+	static int dir_created = 0;
 	int fd_local;
 	if (log_fd < 0) {
+		// Create directory if it doesn't exist (safe to call multiple times)
+		if (!dir_created) {
+			fileXioMkdir("mc0:/POPSTARTER", 0777);
+			dir_created = 1;
+		}
 		// Open log file - create if doesn't exist
 		fd_local = fileXioOpen("mc0:/POPSTARTER/debug.log", O_WRONLY | O_CREAT | O_APPEND, 0666);
 		if (fd_local >= 0) {
