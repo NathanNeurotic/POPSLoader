@@ -399,7 +399,8 @@ int main(int argc, char *argv[])
 		if (partition_context[0] != '\0' &&
 		    (strncmp(partition_context, "hdd", 3) == 0 || strncmp(partition_context, "pfs", 3) == 0) &&
 		    load_path[0] != '\0' && load_path[0] != '/' && strchr(load_path, ':') == NULL) {
-			/* load_path is relative, partition_context is HDD-backed: combine them */
+			/* load_path is relative, partition_context is HDD-backed: combine them directly.
+			   Format should be: partition_context already includes trailing "/" or ":/" */
 			snprintf(actual_load_path, sizeof(actual_load_path), "%s%s",
 				partition_context, load_path);
 			LOG_DEBUG("Constructed HDD path: '%s'", actual_load_path);

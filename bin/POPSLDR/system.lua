@@ -3842,7 +3842,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     -- wasn't detected (e.g., relative sidecar), derive it from the game's partition.
     if (popstarter_partition_context == nil or popstarter_partition_context == "") and
        hdd_partition_label ~= nil and hdd_partition_label ~= "" then
-      popstarter_partition_context = "hdd0:" .. hdd_partition_label .. ":"
+      popstarter_partition_context = "hdd0:" .. hdd_partition_label .. ":/"
     end
   end
 
