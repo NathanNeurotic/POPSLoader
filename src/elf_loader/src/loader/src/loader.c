@@ -364,11 +364,14 @@ int main(int argc, char *argv[])
 	//new_argv[3] = argv[3];
 
 	SET_GS_BGCOLOUR(CYAN_BG);
+
+	// Initialize fileXio FIRST so we can write debug logs
+	fileXioInit();
 	LOG_DEBUG("Embedded loader started: argc=%d", argc);
 	LOG_DEBUG("partition_context='%s'", partition_context ? partition_context : "(null)");
 	LOG_DEBUG("load_path='%s'", load_path);
 
-	// Initialize
+	// Initialize RPC
 	SifInitRpc(0);
 	LOG_DEBUG("SifInitRpc(0) called");
 	wipeUserMem();
@@ -382,10 +385,7 @@ int main(int argc, char *argv[])
 	if (should_use_filexio_direct_load(partition_context, load_path)) {
 		loaded_via_filexio = 1;
 		LOG_DEBUG("Using fileXio direct load path");
-		LOG_DEBUG("Calling fileXioInit()");
-		fileXioInit();
-		LOG_DEBUG("fileXioInit() completed");
-		LOG_DEBUG("Calling load_elf_via_filexio()");
+		LOG_DEBUG("Calling load_elf_via_filexio() (fileXio already initialized)");
 		ret = load_elf_via_filexio(load_path, &filexio_entry, &filexio_gp);
 		LOG_DEBUG("load_elf_via_filexio returned: %d", ret);
 		if (ret == 0) {
