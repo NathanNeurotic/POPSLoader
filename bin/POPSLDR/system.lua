@@ -3847,6 +3847,15 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
   if policy.name == "HDD" then
     hdd_partition_label, hdd_relpath = ParseHddGameEntry(selected_entry)
     hdd_relpath = NormalizeHddRelpath(hdd_relpath or selected_entry)
+
+    -- CRITICAL FALLBACK: If we're booting from HDD and POPSTARTER partition context
+    -- wasn't detected (e.g., relative sidecar), derive it from the game's partition.
+    -- This ensures popstarter_on_hdd is correctly set to TRUE and the embedded loader is called.
+    if (popstarter_partition_context == nil or popstarter_partition_context == "") and
+       hdd_partition_label ~= nil and hdd_partition_label ~= "" then
+      popstarter_partition_context = "hdd0:" .. hdd_partition_label .. ":"
+      popstarter_on_hdd = true
+    end
   end
   local normalized_gamelocation = policy.normalize(gamelocation)
   local handoff_gamelocation = policy.handoff(normalized_gamelocation)
