@@ -556,6 +556,7 @@ int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]
 int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const char *partition, int argc, char *argv[])
 {
 	char resolved_path[256];
+	int resolve_result;
 
 	if (partition != NULL && partition[0] != '\0' &&
 	    is_hdd_backed_exec_path(partition) &&
@@ -564,7 +565,17 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 		return ExecuteHddBackedViaEmbeddedLoader(filename, partition, argc, argv);
 	}
 
-	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
+	resolve_result = resolve_exec_path(filename, resolved_path, sizeof(resolved_path));
+
+	/* CRITICAL FIX for D-10: Even if resolve_exec_path() fails, if the partition context
+	   is HDD-backed, we must use ExecuteHddBackedViaEmbeddedLoader with the original filename.
+	   This handles the case where POPSTARTER is a relative sidecar on HDD boot.
+	   The embedded loader will resolve the path within its own fileXio context. */
+	if (resolve_result < 0) {
+		if (partition != NULL && partition[0] != '\0' && is_hdd_backed_exec_path(partition) &&
+		    (argc == 0 || (argc > 0 && argv != NULL && argv[0] != NULL))) {
+			return ExecuteHddBackedViaEmbeddedLoader(filename, partition, argc, argv);
+		}
 		return -1;
 	}
 
