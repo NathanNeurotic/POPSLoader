@@ -50,7 +50,7 @@
 //--------------------------------------------------------------
 // Redefinition of init/deinit libc:
 //--------------------------------------------------------------
-// DON'T REMOVE is for reducing binary size. 
+// DON'T REMOVE is for reducing binary size.
 // These funtios are defined as weak in /libc/src/init.c
 //--------------------------------------------------------------
    void _libcglue_init() {}
@@ -247,7 +247,7 @@ static int load_elf_via_filexio(const char *path,
 //End of func:  void wipeUserMem(void)
 //--------------------------------------------------------------
 // *** MAIN ***
-// 
+//
 //--------------------------------------------------------------
 int main(int argc, char *argv[])
 {
@@ -269,7 +269,7 @@ int main(int argc, char *argv[])
 
 	// argv[0]=partition context when present, argv[1]=load path,
 	// argv[2..]=arguments for the target ELF
-	if (argc < 2) {  
+	if (argc < 2) {
 		SET_GS_BGCOLOUR(RED_BG);
 		return -EINVAL;
 	}
@@ -308,7 +308,7 @@ int main(int argc, char *argv[])
 	for (i = 1; i < argc; i++) {
 		DPRINTF("> argv[%d] = %s\n", i, argv[i]);
 	}
-	
+
 	// new_argv[0] = argv[0];
 	// new_argv[1] = argv[1];
 	//new_argv[3] = argv[3];
@@ -334,12 +334,15 @@ int main(int argc, char *argv[])
 			elfdata.gp = 0;
 		}
 	} else {
-		/* Partition context is assumed to be mounted already (e.g., pfs0:)
-		   from the parent EE environment just like wLaunchELF does. */
-		SifInitRpc(0);
-		SifLoadFileInit();
-		ret = SifLoadElf(load_path, &elfdata);
-		SifLoadFileExit();
+		ret = mount_partition_context_on_pfs0(partition_context);
+		if (ret == 0) {
+			SifLoadFileInit();
+			ret = SifLoadElf(load_path, &elfdata);
+			SifLoadFileExit();
+		} else {
+			elfdata.epc = 0;
+			elfdata.gp = 0;
+		}
 	}
 	SET_GS_BGCOLOUR(BLUE_BG);
 	if (ret == 0 && elfdata.epc != 0) {
@@ -377,7 +380,7 @@ int main(int argc, char *argv[])
 		FlushCache(2);
 
 		SET_GS_BGCOLOUR(PURPBLE_BG);
-		
+
 		DPRINTF("POPS EXEC: argc=%d\n", target_argc);
 		for (i = 0; i < target_argc; i++) {
 			DPRINTF("POPS EXEC: argv[%d] = %s\n", i, target_argv[i]);
