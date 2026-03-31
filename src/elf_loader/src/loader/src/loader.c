@@ -391,8 +391,25 @@ int main(int argc, char *argv[])
 	if (should_use_filexio_direct_load(partition_context, load_path)) {
 		loaded_via_filexio = 1;
 		LOG_DEBUG("Using fileXio direct load path");
+
+		/* CRITICAL FIX: If load_path is relative and partition_context is HDD-backed,
+		   construct the full HDD path. Otherwise fileXioOpen will try to open a relative
+		   path which hangs. */
+		char actual_load_path[256];
+		if (partition_context[0] != '\0' &&
+		    (strncmp(partition_context, "hdd", 3) == 0 || strncmp(partition_context, "pfs", 3) == 0) &&
+		    load_path[0] != '\0' && load_path[0] != '/' && strchr(load_path, ':') == NULL) {
+			/* load_path is relative, partition_context is HDD-backed: combine them */
+			snprintf(actual_load_path, sizeof(actual_load_path), "%s%s",
+				partition_context, load_path);
+			LOG_DEBUG("Constructed HDD path: '%s'", actual_load_path);
+		} else {
+			strncpy(actual_load_path, load_path, sizeof(actual_load_path) - 1);
+			actual_load_path[sizeof(actual_load_path) - 1] = '\0';
+		}
+
 		LOG_DEBUG("Calling load_elf_via_filexio() (fileXio already initialized)");
-		ret = load_elf_via_filexio(load_path, &filexio_entry, &filexio_gp);
+		ret = load_elf_via_filexio(actual_load_path, &filexio_entry, &filexio_gp);
 		LOG_DEBUG("load_elf_via_filexio returned: %d", ret);
 		if (ret == 0) {
 			elfdata.epc = filexio_entry;
