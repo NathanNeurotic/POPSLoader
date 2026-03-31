@@ -1181,9 +1181,7 @@ local function ResolvePopstarterPartitionContext(path, resolved_path)
           app_dir = System.getAppDir() or ""
       end
       local app_part = string.match(app_dir, "^(hdd0:.-):")
-      local app_slot = string.match(app_dir, ":pfs(%d*):")
-      if app_slot == "" then app_slot = "0" end
-      if app_part and app_slot == slot_str then
+      if app_part then
           return app_part .. ":"
       end
     end

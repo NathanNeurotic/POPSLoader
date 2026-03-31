@@ -1,0 +1,9 @@
+--- src/elf_loader/src/loader/src/loader.c
++++ src/elf_loader/src/loader/src/loader.c
+@@ -382,7 +382,6 @@
+			SifLoadFileExit();
+		}
+		SifExitRpc();
+-		SifExitCmd();
+
+		SET_GS_BGCOLOUR(BROWN_BG);
