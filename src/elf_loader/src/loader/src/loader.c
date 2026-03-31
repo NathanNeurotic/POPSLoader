@@ -334,15 +334,12 @@ int main(int argc, char *argv[])
 			elfdata.gp = 0;
 		}
 	} else {
-		ret = mount_partition_context_on_pfs0(partition_context);
-		if (ret == 0) {
-			SifLoadFileInit();
-			ret = SifLoadElf(load_path, &elfdata);
-			SifLoadFileExit();
-		} else {
-			elfdata.epc = 0;
-			elfdata.gp = 0;
-		}
+		/* Partition context is assumed to be mounted already (e.g., pfs0:)
+		   from the parent EE environment just like wLaunchELF does. */
+		SifInitRpc(0);
+		SifLoadFileInit();
+		ret = SifLoadElf(load_path, &elfdata);
+		SifLoadFileExit();
 	}
 	SET_GS_BGCOLOUR(BLUE_BG);
 	if (ret == 0 && elfdata.epc != 0) {
