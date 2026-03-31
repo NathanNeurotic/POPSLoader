@@ -389,37 +389,70 @@ int main(int argc, char *argv[])
 
 	LOG_DEBUG("Checking should_use_filexio_direct_load()");
 	if (should_use_filexio_direct_load(partition_context, load_path)) {
-		loaded_via_filexio = 1;
-		LOG_DEBUG("Using fileXio direct load path");
+		LOG_DEBUG("Using HDD-backed load path");
 
-		/* CRITICAL FIX: If load_path is relative and partition_context is HDD-backed,
-		   construct the full HDD path. Otherwise fileXioOpen will try to open a relative
-		   path which hangs. */
-		char actual_load_path[256];
-		if (partition_context[0] != '\0' &&
-		    (strncmp(partition_context, "hdd", 3) == 0 || strncmp(partition_context, "pfs", 3) == 0) &&
-		    load_path[0] != '\0' && load_path[0] != '/' && strchr(load_path, ':') == NULL) {
-			/* load_path is relative, partition_context is HDD-backed: combine them directly.
-			   Format should be: partition_context already includes trailing "/" or ":/" */
-			snprintf(actual_load_path, sizeof(actual_load_path), "%s%s",
-				partition_context, load_path);
-			LOG_DEBUG("Constructed HDD path: '%s'", actual_load_path);
-		} else {
-			strncpy(actual_load_path, load_path, sizeof(actual_load_path) - 1);
-			actual_load_path[sizeof(actual_load_path) - 1] = '\0';
-		}
+		/* CRITICAL FIX: Use fileXioMount() to mount the partition at pfs0:,
+		   then use SifLoadElf() on the mounted path. This mirrors wLaunchELF's approach.
+		   Direct fileXioOpen() on unmounted HDD paths causes the ps2fs module to hang. */
 
-		LOG_DEBUG("Calling load_elf_via_filexio() (fileXio already initialized)");
-		ret = load_elf_via_filexio(actual_load_path, &filexio_entry, &filexio_gp);
-		LOG_DEBUG("load_elf_via_filexio returned: %d", ret);
-		if (ret == 0) {
-			elfdata.epc = filexio_entry;
-			elfdata.gp = filexio_gp;
-			LOG_DEBUG("ELF loaded successfully: epc=0x%x, gp=0x%x", elfdata.epc, elfdata.gp);
+		if (is_hdd_partition_context(partition_context)) {
+			/* Mount the HDD partition at pfs0: with read-only access */
+			LOG_DEBUG("Mounting HDD partition: '%s' at pfs0:", partition_context);
+			ret = fileXioMount("pfs0:", partition_context, FIO_MT_RDONLY);
+			LOG_DEBUG("fileXioMount returned: %d", ret);
+
+			if (ret == 0) {
+				/* Build the path on the mounted partition */
+				char mounted_path[256];
+				if (load_path[0] == '\0') {
+					strcpy(mounted_path, "pfs0:/");
+				} else if (load_path[0] == '/') {
+					snprintf(mounted_path, sizeof(mounted_path), "pfs0:%s", load_path);
+				} else {
+					snprintf(mounted_path, sizeof(mounted_path), "pfs0:/%s", load_path);
+				}
+
+				LOG_DEBUG("Using mounted path: '%s'", mounted_path);
+
+				/* Use SifLoadElf on the mounted partition */
+				SifInitRpc(0);
+				LOG_DEBUG("SifLoadFileInit() called");
+				SifLoadFileInit();
+				LOG_DEBUG("SifLoadElf('%s') called", mounted_path);
+				ret = SifLoadElf(mounted_path, &elfdata);
+				LOG_DEBUG("SifLoadElf returned: %d", ret);
+				SifLoadFileExit();
+				LOG_DEBUG("SifLoadFileExit() called");
+
+				if (ret == 0) {
+					LOG_DEBUG("ELF loaded successfully: epc=0x%x, gp=0x%x", elfdata.epc, elfdata.gp);
+				} else {
+					elfdata.epc = 0;
+					elfdata.gp = 0;
+					LOG_DEBUG("ELF load FAILED: ret=%d", ret);
+				}
+			} else {
+				LOG_DEBUG("Mount FAILED: ret=%d", ret);
+				elfdata.epc = 0;
+				elfdata.gp = 0;
+			}
 		} else {
-			elfdata.epc = 0;
-			elfdata.gp = 0;
-			LOG_DEBUG("ELF load FAILED: ret=%d", ret);
+			/* Non-HDD pfs path or pfs: path - use fileXio direct load as fallback */
+			LOG_DEBUG("Using fileXio direct load path for non-mounted partition");
+			loaded_via_filexio = 1;
+
+			LOG_DEBUG("Calling load_elf_via_filexio()");
+			ret = load_elf_via_filexio(load_path, &filexio_entry, &filexio_gp);
+			LOG_DEBUG("load_elf_via_filexio returned: %d", ret);
+			if (ret == 0) {
+				elfdata.epc = filexio_entry;
+				elfdata.gp = filexio_gp;
+				LOG_DEBUG("ELF loaded successfully: epc=0x%x, gp=0x%x", elfdata.epc, elfdata.gp);
+			} else {
+				elfdata.epc = 0;
+				elfdata.gp = 0;
+				LOG_DEBUG("ELF load FAILED: ret=%d", ret);
+			}
 		}
 	} else {
 		LOG_DEBUG("Using SifLoadElf path (pfs0: assumed pre-mounted)");
@@ -440,21 +473,17 @@ int main(int argc, char *argv[])
 		SET_GS_BGCOLOUR(YELLOW_BG);
 		LOG_DEBUG("ELF load successful, preparing for handoff");
 
-		/* CRITICAL FIX: Don't exit RPC if we loaded via fileXio (HDD-backed ELF).
-		   The target (POPSTARTER) needs RPC available to call SifLoadElf() when
-		   loading the game ELF. If we exit RPC here, POPSTARTER's SifLoadElf will
-		   hang or fail, causing the game to hang after "launch". */
-		if (!loaded_via_filexio) {
-			LOG_DEBUG("Calling SifLoadFileExit()");
-			SifLoadFileExit();
-			LOG_DEBUG("Calling SifExitRpc()");
-			SifExitRpc();
-			LOG_DEBUG("Calling SifExitCmd()");
-			SifExitCmd();
-			LOG_DEBUG("RPC teardown complete");
-		} else {
-			LOG_DEBUG("Skipping RPC teardown - HDD target needs RPC for game loading");
-		}
+		/* Clean up RPC state before ExecPS2().
+		   We've mounted the HDD partition and loaded the ELF via SifLoadElf(),
+		   which is the proper, tested approach used by wLaunchELF.
+		   POPSTARTER will reinitialize RPC in its own context if needed. */
+		LOG_DEBUG("Calling SifLoadFileExit()");
+		SifLoadFileExit();
+		LOG_DEBUG("Calling SifExitRpc()");
+		SifExitRpc();
+		LOG_DEBUG("Calling SifExitCmd()");
+		SifExitCmd();
+		LOG_DEBUG("RPC teardown complete");
 
 		SET_GS_BGCOLOUR(BROWN_BG);
 
