@@ -34,6 +34,34 @@
 #define DPRINTF(x...) do {} while (0)
 #endif
 
+// Memory card logging for D-10 debugging
+static void log_to_mc(const char *msg)
+{
+	static int log_fd = -1;
+	int fd_local;
+	if (log_fd < 0) {
+		// Open log file - create if doesn't exist
+		fd_local = fileXioOpen("mc0:/POPSTARTER/debug.log", O_WRONLY | O_CREAT | O_APPEND, 0666);
+		if (fd_local >= 0) {
+			log_fd = fd_local;
+			fileXioWrite(log_fd, "=== D-10 Debug Log Started ===\n", 31);
+		}
+	} else {
+		fd_local = log_fd;
+	}
+
+	if (fd_local >= 0 && msg != NULL) {
+		fileXioWrite(fd_local, (const void *)msg, strlen(msg));
+		fileXioWrite(fd_local, "\n", 1);
+	}
+}
+
+#define LOG_DEBUG(x...) do { \
+	static char debug_buf[512]; \
+	snprintf(debug_buf, sizeof(debug_buf), x); \
+	log_to_mc(debug_buf); \
+} while (0)
+
 // Color status helper in BGR format
 #define WHITE_BG 0xFFFFFF // start main
 #define CYAN_BG 0xFFFF00 // proper argc count
@@ -182,7 +210,10 @@ static int load_elf_via_filexio(const char *path,
 	*entry_out = 0;
 	*gp_out = 0;
 
+	LOG_DEBUG("load_elf_via_filexio: attempting to open '%s'", path);
 	fd = fileXioOpen(path, O_RDONLY, wLaunchElfFileMode);
+	LOG_DEBUG("fileXioOpen('%s') returned fd=%d", path, fd);
+
 	if (fd < 0 && path != NULL) {
 		/* If pfs0:/... open failed, try without the slot number (pfs:/) as fallback.
 		   This can happen when pfs0: mount doesn't exist in the child's fileXio context,
@@ -192,7 +223,9 @@ static int load_elf_via_filexio(const char *path,
 			/* Try without the slot number: pfs0:/path → pfs:/path */
 			const char *path_after_slot = strchr(path, ':');
 			if (path_after_slot != NULL) {
+				LOG_DEBUG("Fallback: trying without slot number: '%s'", path_after_slot);
 				fd = fileXioOpen(path_after_slot, O_RDONLY, wLaunchElfFileMode);
+				LOG_DEBUG("fileXioOpen('%s') returned fd=%d", path_after_slot, fd);
 			}
 		}
 		/* Original fallback for hdd0:partition:pfs:... format */
@@ -202,13 +235,17 @@ static int load_elf_via_filexio(const char *path,
 			if (second_colon != NULL &&
 			    (strncmp(second_colon + 1, "pfs", 3) == 0 ||
 			     strncmp(second_colon + 1, "PFS", 3) == 0)) {
+				LOG_DEBUG("Fallback: trying hdd direct path: '%s'", second_colon + 1);
 				fd = fileXioOpen(second_colon + 1, O_RDONLY, wLaunchElfFileMode);
+				LOG_DEBUG("fileXioOpen('%s') returned fd=%d", second_colon + 1, fd);
 			}
 		}
 	}
 	if (fd < 0) {
+		LOG_DEBUG("FAILED: Could not open ELF file, returning -ENOENT");
 		return -ENOENT;
 	}
+	LOG_DEBUG("Successfully opened ELF file, fd=%d", fd);
 
 	n = fileXioRead(fd, &hdr, sizeof(hdr));
 	if (n != (int)sizeof(hdr) || *(unsigned int *)hdr.ident != LOADER_ELF_MAGIC) {
@@ -327,63 +364,97 @@ int main(int argc, char *argv[])
 	//new_argv[3] = argv[3];
 
 	SET_GS_BGCOLOUR(CYAN_BG);
+	LOG_DEBUG("Embedded loader started: argc=%d", argc);
+	LOG_DEBUG("partition_context='%s'", partition_context ? partition_context : "(null)");
+	LOG_DEBUG("load_path='%s'", load_path);
 
 	// Initialize
 	SifInitRpc(0);
+	LOG_DEBUG("SifInitRpc(0) called");
 	wipeUserMem();
+	LOG_DEBUG("wipeUserMem() completed");
 
 	//Writeback data cache before loading ELF.
 	FlushCache(0);
 	SET_GS_BGCOLOUR(GREEN_BG);
+
+	LOG_DEBUG("Checking should_use_filexio_direct_load()");
 	if (should_use_filexio_direct_load(partition_context, load_path)) {
 		loaded_via_filexio = 1;
+		LOG_DEBUG("Using fileXio direct load path");
+		LOG_DEBUG("Calling fileXioInit()");
 		fileXioInit();
+		LOG_DEBUG("fileXioInit() completed");
+		LOG_DEBUG("Calling load_elf_via_filexio()");
 		ret = load_elf_via_filexio(load_path, &filexio_entry, &filexio_gp);
+		LOG_DEBUG("load_elf_via_filexio returned: %d", ret);
 		if (ret == 0) {
 			elfdata.epc = filexio_entry;
 			elfdata.gp = filexio_gp;
+			LOG_DEBUG("ELF loaded successfully: epc=0x%x, gp=0x%x", elfdata.epc, elfdata.gp);
 		} else {
 			elfdata.epc = 0;
 			elfdata.gp = 0;
+			LOG_DEBUG("ELF load FAILED: ret=%d", ret);
 		}
 	} else {
+		LOG_DEBUG("Using SifLoadElf path (pfs0: assumed pre-mounted)");
 		/* Partition context is assumed to be mounted already (e.g., pfs0:)
 		   from the parent EE environment just like wLaunchELF does. */
 		SifInitRpc(0);
+		LOG_DEBUG("SifLoadFileInit() called");
 		SifLoadFileInit();
+		LOG_DEBUG("SifLoadElf('%s') called", load_path);
 		ret = SifLoadElf(load_path, &elfdata);
+		LOG_DEBUG("SifLoadElf returned: %d", ret);
 		SifLoadFileExit();
+		LOG_DEBUG("SifLoadFileExit() called");
 	}
 	SET_GS_BGCOLOUR(BLUE_BG);
+	LOG_DEBUG("ELF load phase complete: ret=%d, epc=0x%x", ret, elfdata.epc);
 	if (ret == 0 && elfdata.epc != 0) {
 		SET_GS_BGCOLOUR(YELLOW_BG);
+		LOG_DEBUG("ELF load successful, preparing for handoff");
 
 		/* Properly teardown any EE-side RPC clients before ExecPS2 */
 		if (!loaded_via_filexio) {
+			LOG_DEBUG("Calling SifLoadFileExit()");
 			SifLoadFileExit();
 		}
+		LOG_DEBUG("Calling SifExitRpc()");
 		SifExitRpc();
+		LOG_DEBUG("Calling SifExitCmd()");
 		SifExitCmd();
+		LOG_DEBUG("RPC teardown complete");
 
 		SET_GS_BGCOLOUR(BROWN_BG);
 
+		LOG_DEBUG("Flushing caches");
 		FlushCache(0);
 		FlushCache(2);
+		LOG_DEBUG("Caches flushed");
 
 		SET_GS_BGCOLOUR(PURPBLE_BG);
-		
+
 		DPRINTF("POPS EXEC: argc=%d\n", target_argc);
 		for (i = 0; i < target_argc; i++) {
 			DPRINTF("POPS EXEC: argv[%d] = %s\n", i, target_argv[i]);
 		}
+		LOG_DEBUG("About to ExecPS2: epc=0x%x, gp=0x%x, argc=%d", elfdata.epc, elfdata.gp, target_argc);
+		LOG_DEBUG("LAST LOG BEFORE EXEC");
 		ret = ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, target_argc, target_argv);
+		LOG_DEBUG("ExecPS2 returned: %d (should not reach here)", ret);
 		return (ret != 0) ? ret : -3500;
 	} else {
 		SET_GS_BGCOLOUR(MAGENTA_BG);
+		LOG_DEBUG("ELF LOAD FAILED: ret=%d, epc=0x%x", ret, elfdata.epc);
+		LOG_DEBUG("Calling SifExitRpc() in error path");
 		SifExitRpc();
 		if (ret != 0) {
+			LOG_DEBUG("Returning error: %d", -3200 + ret);
 			return -3200 + ret;
 		}
+		LOG_DEBUG("Returning -3201 (ELF not loaded)");
 		return -3201;
 	}
 }
