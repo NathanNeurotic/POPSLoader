@@ -4019,7 +4019,10 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     bootparam_source = boot_source_mode,
     hdd_init = hdd_init,
     keep_hdd_slots = nil,
-    keep_hdd_slots_after_load = popstarter_on_hdd and {} or nil,
+    -- CRITICAL FIX: When POPSTARTER is on HDD, it needs to load the game from HDD.
+    -- If the game partition is unmounted after loading POPSTARTER, POPSTARTER will hang
+    -- trying to access game files. Keep the game's HDD slot mounted after loading POPSTARTER.
+    keep_hdd_slots_after_load = popstarter_on_hdd and policy.name == "HDD" and CollectHddKeepSlots(popstarter_exec_path, {}, false) or nil,
     keep_exec_path_slot = popstarter_on_hdd and false or nil,
     launch_cwd = popstarter_on_hdd and false or nil,
     cold_external_launch = false,
