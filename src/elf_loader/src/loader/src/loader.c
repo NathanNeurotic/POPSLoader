@@ -70,7 +70,9 @@
 static void wipeUserMem(void)
 {
 	int i;
-	for (i = 0x100000; i < GetMemorySize(); i += 64) {
+	/* Memory note: Avoid wiping the top 1MB of memory where the PS2 kernel state,
+	   thread stacks, and RPC buffers reside, to prevent breaking fileXio and causing crashes. */
+	for (i = 0x100000; i < (GetMemorySize() - 0x100000); i += 64) {
 		asm volatile(
 			"\tsq $0, 0(%0) \n"
 			"\tsq $0, 16(%0) \n"
@@ -89,43 +91,8 @@ static int is_hdd_partition_context(const char *partition_context)
 
 static int should_use_filexio_direct_load(const char *partition_context, const char *load_path)
 {
-	if (is_hdd_partition_context(partition_context)) {
-		return 0;
-	}
-	return (load_path != NULL &&
-	        (strncmp(load_path, "pfs", 3) == 0 || strncmp(load_path, "PFS", 3) == 0 ||
-	         strncmp(load_path, "hdd", 3) == 0 || strncmp(load_path, "HDD", 3) == 0));
-}
-
-static int mount_partition_context_on_pfs0(const char *partition_context)
-{
-	char partition[256];
-	size_t partition_len;
-
-	if (!is_hdd_partition_context(partition_context)) {
-		return 0;
-	}
-
-	partition_len = strlen(partition_context);
-	while (partition_len > 0 && partition_context[partition_len - 1] == ':') {
-		partition_len--;
-	}
-	if (partition_len == 0 || partition_len >= sizeof(partition)) {
-		return -EINVAL;
-	}
-
-	memcpy(partition, partition_context, partition_len);
-	partition[partition_len] = '\0';
-
-	fileXioInit();
-	fileXioUmount("pfs0:");
-	if (fileXioMount("pfs0:", partition, FIO_MT_RDONLY) < 0) {
-		fileXioUmount("pfs0:");
-		if (fileXioMount("pfs0:", partition, FIO_MT_RDONLY) < 0) {
-			return -EIO;
-		}
-	}
-
+	/* Disable fileXio manual ELF parsing entirely to rely on the PS2 kernel's SifLoadElf.
+	   Manual fileXioRead parsing of commercial ELFs on PFS can corrupt the execution memory. */
 	return 0;
 }
 
@@ -143,7 +110,8 @@ static int build_default_target_arg0(const char *partition_context, const char *
 	}
 
 	if (partition_context == NULL || partition_context[0] == '\0') {
-		snprintf(out, out_size, "%s", load_path);
+		strncpy(out, load_path, out_size - 1);
+		out[out_size - 1] = '\0';
 		return 0;
 	}
 
@@ -155,7 +123,8 @@ static int build_default_target_arg0(const char *partition_context, const char *
 		if (suffix == NULL || suffix[0] == '\0') {
 			suffix = "/";
 		}
-		snprintf(out, out_size, "%s", partition_context);
+		strncpy(out, partition_context, out_size - 1);
+		out[out_size - 1] = '\0';
 		if (suffix[0] != '/') {
 			strncat(out, "pfs:/", out_size - strlen(out) - 1);
 			strncat(out, suffix, out_size - strlen(out) - 1);
@@ -166,7 +135,8 @@ static int build_default_target_arg0(const char *partition_context, const char *
 		return 0;
 	}
 
-	snprintf(out, out_size, "%s", partition_context);
+	strncpy(out, partition_context, out_size - 1);
+	out[out_size - 1] = '\0';
 	strncat(out, load_path, out_size - strlen(out) - 1);
 	return 0;
 }
@@ -199,6 +169,7 @@ static int load_elf_via_filexio(const char *path,
 	static loader_elf_hdr_t hdr;
 	static loader_elf_phdr_t phdrs[LOADER_ELF_MAX_PHDRS];
 	unsigned int gp = 0;
+	int wLaunchElfFileMode = FIO_S_IRUSR | FIO_S_IWUSR | FIO_S_IXUSR | FIO_S_IRGRP | FIO_S_IWGRP | FIO_S_IXGRP | FIO_S_IROTH | FIO_S_IWOTH | FIO_S_IXOTH;
 
 	if (entry_out == NULL || gp_out == NULL) {
 		return -EINVAL;
@@ -207,7 +178,7 @@ static int load_elf_via_filexio(const char *path,
 	*entry_out = 0;
 	*gp_out = 0;
 
-	fd = fileXioOpen(path, O_RDONLY, 0);
+	fd = fileXioOpen(path, O_RDONLY, wLaunchElfFileMode);
 	if (fd < 0 && path != NULL &&
 	    (strncmp(path, "hdd", 3) == 0 || strncmp(path, "HDD", 3) == 0)) {
 		const char *first_colon = strchr(path, ':');
@@ -215,7 +186,7 @@ static int load_elf_via_filexio(const char *path,
 		if (second_colon != NULL &&
 		    (strncmp(second_colon + 1, "pfs", 3) == 0 ||
 		     strncmp(second_colon + 1, "PFS", 3) == 0)) {
-			fd = fileXioOpen(second_colon + 1, O_RDONLY, 0);
+			fd = fileXioOpen(second_colon + 1, O_RDONLY, wLaunchElfFileMode);
 		}
 	}
 	if (fd < 0) {
@@ -347,63 +318,51 @@ int main(int argc, char *argv[])
 	//Writeback data cache before loading ELF.
 	FlushCache(0);
 	SET_GS_BGCOLOUR(GREEN_BG);
-	if (should_use_filexio_direct_load(partition_context, load_path)) {
-		loaded_via_filexio = 1;
-		fileXioInit();
-		ret = load_elf_via_filexio(load_path, &filexio_entry, &filexio_gp);
-		if (ret == 0) {
-			elfdata.epc = filexio_entry;
-			elfdata.gp = filexio_gp;
-		} else {
-			elfdata.epc = 0;
-			elfdata.gp = 0;
-		}
-	} else {
-		ret = mount_partition_context_on_pfs0(partition_context);
-		if (ret == 0) {
-			SifLoadFileInit();
-			ret = SifLoadElf(load_path, &elfdata);
-			SifLoadFileExit();
-		} else {
-			elfdata.epc = 0;
-			elfdata.gp = 0;
-		}
-	}
+
+	/* Partition context is assumed to be mounted already (e.g., pfs0:)
+	   from the parent EE environment just like wLaunchELF does. */
+	SifInitRpc(0);
+	SifLoadFileInit();
+	ret = SifLoadElf(load_path, &elfdata);
+	SifLoadFileExit();
+
 	SET_GS_BGCOLOUR(BLUE_BG);
 	if (ret == 0 && elfdata.epc != 0) {
 		SET_GS_BGCOLOUR(YELLOW_BG);
 
-		/* Direct iomanX-only paths still need the older fileXio loader
-		 * contract.  Once the target ELF has been copied into EE RAM
-		 * through fileXio, avoid the later HDD reset / teardown path.
-		 *
-		 * Partition-aware HDD launches are different: the child now
-		 * remounts pfs0: from the passed partition context before
-		 * SifLoadElf, so match the reference loaders and keep using the
-		 * mounted-path SifLoadElf flow instead of forcing fileXio here.
-		 */
-		if (loaded_via_filexio) {
-			FlushCache(0);
-			FlushCache(2);
-			ret = ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, target_argc, target_argv);
-			return (ret != 0) ? ret : -3500;
-		}
-
 		if (is_hdd_partition_context(partition_context)) {
-			while(!SifIopReset("", 0)){};
-			while (!SifIopSync()) {};
+			/* IF we are about to wipe the IOP, we MUST teardown the SIF servers FIRST to prevent DMA lockups! */
+			SifLoadFileExit();
+			SifExitRpc();
+			SifExitCmd();
+
+			/* We must wipe the IOP so the dirty HDD/fileXio modules are gone before ExecPS2. */
+			while (!SifIopReset("rom0:UDNL rom0:EELOADCNF", 0)) {
+			}
+			while (!SifIopSync()) {
+			}
 
 			SET_GS_BGCOLOUR(ORANGE_BG);
 
+			/* Re-initialize RPC temporarily to load the necessary modules */
 			SifInitRpc(0);
 			SifLoadFileInit();
 			SifLoadModule("rom0:SIO2MAN", 0, NULL);
+			SifLoadModule("rom0:CDVDFSV", 0, NULL);
+			SifLoadModule("rom0:CDVDMAN", 0, NULL);
 			SifLoadModule("rom0:MCMAN", 0, NULL);
 			SifLoadModule("rom0:MCSERV", 0, NULL);
+			SifLoadModule("rom0:PADMAN", 0, NULL);
+
+			/* Teardown again before ExecPS2 */
 			SifLoadFileExit();
+			SifExitRpc();
+			SifExitCmd();
+		} else {
+			SifLoadFileExit();
+			SifExitRpc();
+			SifExitCmd();
 		}
-		SifExitRpc();
-		SifExitCmd();
 
 		SET_GS_BGCOLOUR(BROWN_BG);
 
