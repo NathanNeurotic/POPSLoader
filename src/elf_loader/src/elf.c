@@ -639,14 +639,19 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 		ret = SifLoadElf(resolved_path, &elfdata);
 		SifLoadFileExit();
 
-		/* Clean up partition mount before jump */
-		unmount_pfs_slots_for_exec(0);
-
 		if (ret != 0 || elfdata.epc == 0) {
+			fileXioUmount("pfs0:");
 			return -2;
 		}
 
-		/* Jump directly to POPSTARTER (no embedded loader) */
+		/* Keep pfs0: mounted for POPSTARTER to access HDD files during execution */
+		SifExitIopHeap();
+		SifExitRpc();
+		SifExitCmd();
+		FlushCache(0);
+		FlushCache(2);
+
+		/* Jump directly to POPSTARTER with partition still mounted */
 		ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc, argv);
 		return -1;
 	}
