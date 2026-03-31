@@ -3807,7 +3807,11 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
   local configured_popstarter = NormalizeSelectedProfilePopstarterPath(PLDR.SELECTED_PROFILE, PLDR.POPSTARTER_PATH)
   local popstarter = ResolvePopstarterPath(configured_popstarter)
   local popstarter_partition_context = ResolvePopstarterPartitionContext(configured_popstarter, popstarter)
-  local popstarter_on_hdd = IsHddExecContextPath(popstarter)
+  -- Critical fix: Check both the resolved path AND partition context.
+  -- For relative sidecar paths (e.g., "POPSTARTER.ELF"), IsHddExecContextPath returns FALSE,
+  -- but if partition_context exists, it means the POPSTARTER is HDD-backed.
+  local popstarter_on_hdd = IsHddExecContextPath(popstarter) or
+                            (popstarter_partition_context ~= nil and popstarter_partition_context ~= "")
   local popstarter_exec_path = popstarter
   if not popstarter_on_hdd and popstarter_partition_context ~= nil and popstarter_partition_context ~= "" then
     local normalized_exec_path = BuildPartitionScopedExecPath(popstarter)

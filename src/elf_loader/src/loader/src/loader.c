@@ -183,14 +183,27 @@ static int load_elf_via_filexio(const char *path,
 	*gp_out = 0;
 
 	fd = fileXioOpen(path, O_RDONLY, wLaunchElfFileMode);
-	if (fd < 0 && path != NULL &&
-	    (strncmp(path, "hdd", 3) == 0 || strncmp(path, "HDD", 3) == 0)) {
-		const char *first_colon = strchr(path, ':');
-		const char *second_colon = first_colon ? strchr(first_colon + 1, ':') : NULL;
-		if (second_colon != NULL &&
-		    (strncmp(second_colon + 1, "pfs", 3) == 0 ||
-		     strncmp(second_colon + 1, "PFS", 3) == 0)) {
-			fd = fileXioOpen(second_colon + 1, O_RDONLY, wLaunchElfFileMode);
+	if (fd < 0 && path != NULL) {
+		/* If pfs0:/... open failed, try without the slot number (pfs:/) as fallback.
+		   This can happen when pfs0: mount doesn't exist in the child's fileXio context,
+		   because the parent's mount isn't automatically inherited after ExecPS2(). */
+		if ((strncmp(path, "pfs0", 4) == 0 || strncmp(path, "PFS0", 4) == 0) &&
+		    path[4] == ':') {
+			/* Try without the slot number: pfs0:/path → pfs:/path */
+			const char *path_after_slot = strchr(path, ':');
+			if (path_after_slot != NULL) {
+				fd = fileXioOpen(path_after_slot, O_RDONLY, wLaunchElfFileMode);
+			}
+		}
+		/* Original fallback for hdd0:partition:pfs:... format */
+		if (fd < 0 && (strncmp(path, "hdd", 3) == 0 || strncmp(path, "HDD", 3) == 0)) {
+			const char *first_colon = strchr(path, ':');
+			const char *second_colon = first_colon ? strchr(first_colon + 1, ':') : NULL;
+			if (second_colon != NULL &&
+			    (strncmp(second_colon + 1, "pfs", 3) == 0 ||
+			     strncmp(second_colon + 1, "PFS", 3) == 0)) {
+				fd = fileXioOpen(second_colon + 1, O_RDONLY, wLaunchElfFileMode);
+			}
 		}
 	}
 	if (fd < 0) {
