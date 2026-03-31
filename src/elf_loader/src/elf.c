@@ -557,31 +557,103 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 {
 	char resolved_path[256];
 	int resolve_result;
+	int ret;
+	t_ExecData elfdata;
+	char partition_context[128];
+	size_t partition_len;
+	bool is_hdd_popstarter;
 
-	if (partition != NULL && partition[0] != '\0' &&
-	    is_hdd_backed_exec_path(partition) &&
-	    is_hdd_backed_exec_path(filename) &&
-	    (argc == 0 || (argc > 0 && argv != NULL && argv[0] != NULL))) {
-		return ExecuteHddBackedViaEmbeddedLoader(filename, partition, argc, argv);
-	}
+	/* Check if this is HDD-backed POPSTARTER scenario (both filename and partition point to HDD) */
+	is_hdd_popstarter = (partition != NULL && partition[0] != '\0' &&
+	                     is_hdd_backed_exec_path(partition) &&
+	                     filename != NULL && is_hdd_backed_exec_path(filename) &&
+	                     (argc == 0 || (argc > 0 && argv != NULL && argv[0] != NULL)));
 
 	resolve_result = resolve_exec_path(filename, resolved_path, sizeof(resolved_path));
 
-	/* CRITICAL FIX for D-10: Even if resolve_exec_path() fails, if the partition context
-	   is HDD-backed, we must use ExecuteHddBackedViaEmbeddedLoader with the original filename.
-	   This handles the case where POPSTARTER is a relative sidecar on HDD boot.
-	   The embedded loader will resolve the path within its own fileXio context. */
-	if (resolve_result < 0) {
-		if (partition != NULL && partition[0] != '\0' && is_hdd_backed_exec_path(partition) &&
-		    (argc == 0 || (argc > 0 && argv != NULL && argv[0] != NULL))) {
-			return ExecuteHddBackedViaEmbeddedLoader(filename, partition, argc, argv);
+	/* Handle HDD POPSTARTER by mounting partition in parent, then loading normally */
+	if (is_hdd_popstarter || (resolve_result >= 0 &&
+	    (is_hdd_backed_exec_path(resolved_path) || is_hdd_backed_exec_path(partition)))) {
+
+		/* Extract partition context from filename or partition parameter */
+		if (partition != NULL && partition[0] != '\0') {
+			partition_len = strlen(partition);
+			while (partition_len > 0 && partition[partition_len - 1] == ':') {
+				partition_len--;
+			}
+			if (partition_len >= sizeof(partition_context)) {
+				return -1;
+			}
+			memcpy(partition_context, partition, partition_len);
+			partition_context[partition_len] = '\0';
+		} else if (resolve_result >= 0 && is_hdd_backed_exec_path(resolved_path)) {
+			/* Extract partition from resolved HDD path (hdd0:partition:...) */
+			const char *partition_end = strchr(resolved_path + 5, ':');
+			if (partition_end == NULL) {
+				return -1;
+			}
+			partition_len = (size_t)(partition_end - resolved_path);
+			if (partition_len >= sizeof(partition_context)) {
+				return -1;
+			}
+			memcpy(partition_context, resolved_path, partition_len);
+			partition_context[partition_len] = '\0';
+		} else {
+			return -1;
 		}
+
+		/* Mount the partition in parent before loading POPSTARTER */
+		fileXioInit();
+		unmount_pfs_slots_for_exec(1);
+		fileXioUmount("pfs0:");
+		if (fileXioMount("pfs0:", partition_context, FIO_MT_RDONLY) < 0) {
+			fileXioUmount("pfs0:");
+			if (fileXioMount("pfs0:", partition_context, FIO_MT_RDONLY) < 0) {
+				return -1;
+			}
+		}
+
+		/* Use resolved path if available, otherwise build pfs0: path from filename */
+		if (resolve_result < 0) {
+			const char *relpath = extract_exec_relpath(filename);
+			if (relpath == NULL) {
+				fileXioUmount("pfs0:");
+				return -1;
+			}
+			snprintf(resolved_path, sizeof(resolved_path), "pfs0:/%s", relpath);
+		} else if (is_hdd_backed_exec_path(resolved_path)) {
+			const char *relpath = extract_exec_relpath(resolved_path);
+			if (relpath == NULL) {
+				fileXioUmount("pfs0:");
+				return -1;
+			}
+			snprintf(resolved_path, sizeof(resolved_path), "pfs0:/%s", relpath);
+		}
+
+		/* Prepare environment for POPSTARTER execution */
+		prepare_reboot_exec_environment();
+
+		/* Load POPSTARTER via SifLoadElf on mounted partition */
+		SifInitRpc(0);
+		SifLoadFileInit();
+		ret = SifLoadElf(resolved_path, &elfdata);
+		SifLoadFileExit();
+
+		/* Clean up partition mount before jump */
+		unmount_pfs_slots_for_exec(0);
+
+		if (ret != 0 || elfdata.epc == 0) {
+			return -2;
+		}
+
+		/* Jump directly to POPSTARTER (no embedded loader) */
+		ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc, argv);
 		return -1;
 	}
 
-	if ((is_hdd_backed_exec_path(resolved_path) || is_hdd_backed_exec_path(partition)) &&
-	    (argc == 0 || (argc > 0 && argv != NULL && argv[0] != NULL))) {
-		return ExecuteHddBackedViaEmbeddedLoader(resolved_path, partition, argc, argv);
+	/* Non-HDD fallback: use embedded loader (legacy path) */
+	if (resolve_result < 0) {
+		return -1;
 	}
 
 	prepare_reboot_exec_environment();
