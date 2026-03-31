@@ -1,0 +1,32 @@
+--- src/elf_loader/src/loader/src/loader.c
++++ src/elf_loader/src/loader/src/loader.c
+@@ -345,21 +345,11 @@
+	if (ret == 0 && elfdata.epc != 0) {
+		SET_GS_BGCOLOUR(YELLOW_BG);
+
+-		/* Unlike wLaunchELF (which runs homebrew), POPSTARTER.ELF strictly
+-		   requires a sterile IOP environment seeded with Memory Card drivers
+-		   before execution. Now that fileXio has successfully loaded the ELF
+-		   into EE RAM, we MUST wipe the dirty HDD modules from the IOP. */
+-		while(!SifIopReset("rom0:UDNL rom0:EELOADCNF", 0)){};
+-		while (!SifIopSync()) {};
+-
+-		SET_GS_BGCOLOUR(ORANGE_BG);
+-
+-		SifInitRpc(0);
+-		SifLoadFileInit();
+-		SifLoadModule("rom0:SIO2MAN", 0, NULL);
+-		SifLoadModule("rom0:MCMAN", 0, NULL);
+-		SifLoadModule("rom0:MCSERV", 0, NULL);
+-		SifLoadFileExit();
+-		SifExitRpc();
+-
+-		SET_GS_BGCOLOUR(BROWN_BG);
++		/* Now that the ELF is loaded into memory, wipe the IOP
++		   so the environment is clean before ExecPS2. */
++		while(!SifIopReset("", 0)){};
++		while (!SifIopSync()) {};
++
++		SET_GS_BGCOLOUR(ORANGE_BG);
+
+		FlushCache(0);
