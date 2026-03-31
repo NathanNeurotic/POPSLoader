@@ -440,16 +440,21 @@ int main(int argc, char *argv[])
 		SET_GS_BGCOLOUR(YELLOW_BG);
 		LOG_DEBUG("ELF load successful, preparing for handoff");
 
-		/* Properly teardown any EE-side RPC clients before ExecPS2 */
+		/* CRITICAL FIX: Don't exit RPC if we loaded via fileXio (HDD-backed ELF).
+		   The target (POPSTARTER) needs RPC available to call SifLoadElf() when
+		   loading the game ELF. If we exit RPC here, POPSTARTER's SifLoadElf will
+		   hang or fail, causing the game to hang after "launch". */
 		if (!loaded_via_filexio) {
 			LOG_DEBUG("Calling SifLoadFileExit()");
 			SifLoadFileExit();
+			LOG_DEBUG("Calling SifExitRpc()");
+			SifExitRpc();
+			LOG_DEBUG("Calling SifExitCmd()");
+			SifExitCmd();
+			LOG_DEBUG("RPC teardown complete");
+		} else {
+			LOG_DEBUG("Skipping RPC teardown - HDD target needs RPC for game loading");
 		}
-		LOG_DEBUG("Calling SifExitRpc()");
-		SifExitRpc();
-		LOG_DEBUG("Calling SifExitCmd()");
-		SifExitCmd();
-		LOG_DEBUG("RPC teardown complete");
 
 		SET_GS_BGCOLOUR(BROWN_BG);
 
