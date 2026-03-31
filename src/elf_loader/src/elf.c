@@ -602,7 +602,33 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 			return -1;
 		}
 
-		/* Mount the partition in parent before loading POPSTARTER */
+		/* Use resolved path if available, otherwise build pfs0: path from filename */
+		if (resolve_result < 0) {
+			const char *relpath = extract_exec_relpath(filename);
+			if (relpath == NULL) {
+				return -1;
+			}
+			snprintf(resolved_path, sizeof(resolved_path), "pfs0:/%s", relpath);
+		} else if (is_hdd_backed_exec_path(resolved_path)) {
+			const char *relpath = extract_exec_relpath(resolved_path);
+			if (relpath == NULL) {
+				return -1;
+			}
+			snprintf(resolved_path, sizeof(resolved_path), "pfs0:/%s", relpath);
+		}
+
+		/* Prepare environment for POPSTARTER execution (includes IOP reboot) */
+		prepare_reboot_exec_environment();
+
+		/* Load HDD modules after IOP reboot so fileXio is available for mounting */
+		SifLoadModule("rom0:IOMANX", 0, NULL);
+		SifLoadModule("rom0:FILEXIO", 0, NULL);
+		SifLoadModule("rom0:PS2DEV9", 0, NULL);
+		SifLoadModule("rom0:PS2ATAD", 0, NULL);
+		SifLoadModule("rom0:PS2HDD", 0, NULL);
+		SifLoadModule("rom0:PS2FS", 0, NULL);
+
+		/* Now mount the partition with fileXio available */
 		fileXioInit();
 		unmount_pfs_slots_for_exec(1);
 		fileXioUmount("pfs0:");
@@ -612,26 +638,6 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 				return -1;
 			}
 		}
-
-		/* Use resolved path if available, otherwise build pfs0: path from filename */
-		if (resolve_result < 0) {
-			const char *relpath = extract_exec_relpath(filename);
-			if (relpath == NULL) {
-				fileXioUmount("pfs0:");
-				return -1;
-			}
-			snprintf(resolved_path, sizeof(resolved_path), "pfs0:/%s", relpath);
-		} else if (is_hdd_backed_exec_path(resolved_path)) {
-			const char *relpath = extract_exec_relpath(resolved_path);
-			if (relpath == NULL) {
-				fileXioUmount("pfs0:");
-				return -1;
-			}
-			snprintf(resolved_path, sizeof(resolved_path), "pfs0:/%s", relpath);
-		}
-
-		/* Prepare environment for POPSTARTER execution */
-		prepare_reboot_exec_environment();
 
 		/* Load POPSTARTER via SifLoadElf on mounted partition */
 		SifInitRpc(0);
