@@ -345,34 +345,12 @@ int main(int argc, char *argv[])
 	if (ret == 0 && elfdata.epc != 0) {
 		SET_GS_BGCOLOUR(YELLOW_BG);
 
-		/* Properly teardown any EE-side RPC clients *before* we wipe the IOP,
-		   otherwise the DMA channel will hang waiting for a response from the dead IOP. */
+		/* Properly teardown any EE-side RPC clients before ExecPS2 */
 		if (!loaded_via_filexio) {
 			SifLoadFileExit();
 		}
 		SifExitRpc();
 		SifExitCmd();
-
-		if (is_hdd_partition_context(partition_context)) {
-			while(!SifIopReset("rom0:UDNL rom0:EELOADCNF", 0)){};
-			while (!SifIopSync()) {};
-
-			SET_GS_BGCOLOUR(ORANGE_BG);
-
-			/* Re-initialize RPC temporarily to load the necessary modules */
-			SifInitRpc(0);
-			SifLoadFileInit();
-			SifLoadModule("rom0:SIO2MAN", 0, NULL);
-			SifLoadModule("rom0:CDVDFSV", 0, NULL);
-			SifLoadModule("rom0:CDVDMAN", 0, NULL);
-			SifLoadModule("rom0:MCMAN", 0, NULL);
-			SifLoadModule("rom0:MCSERV", 0, NULL);
-			SifLoadModule("rom0:PADMAN", 0, NULL);
-
-			/* Teardown again before ExecPS2 */
-			SifLoadFileExit();
-			SifExitRpc();
-		}
 
 		SET_GS_BGCOLOUR(BROWN_BG);
 
