@@ -1,0 +1,53 @@
+--- src/elf_loader/src/loader/src/loader.c
++++ src/elf_loader/src/loader/src/loader.c
+@@ -370,16 +370,7 @@
+	if (ret == 0 && elfdata.epc != 0) {
+		SET_GS_BGCOLOUR(YELLOW_BG);
+
+-		/* Direct iomanX-only paths still need the older fileXio loader
+-		 * contract.  Once the target ELF has been copied into EE RAM
+-		 * through fileXio, avoid the later HDD reset / teardown path.
+-		 *
+-		 * Partition-aware HDD launches are different: the child now
+-		 * remounts pfs0: from the passed partition context before
+-		 * SifLoadElf, so match the reference loaders and keep using the
+-		 * mounted-path SifLoadElf flow instead of forcing fileXio here.
+-		 */
+-		if (loaded_via_filexio) {
+-			FlushCache(0);
+-			FlushCache(2);
+-			ret = ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, target_argc, target_argv);
+-			return (ret != 0) ? ret : -3500;
+-		}
+-
++		/* We successfully loaded the ELF. Now we must prepare the IOP for execution. */
++
++		/* Properly teardown any EE-side RPC clients *before* we wipe the IOP,
++		   otherwise the DMA channel will hang waiting for a response from the dead IOP. */
++		SifExitIopHeap();
++		if (!loaded_via_filexio) {
++			SifLoadFileExit();
++		}
++		SifExitRpc();
++
+		if (is_hdd_partition_context(partition_context)) {
+			while(!SifIopReset("", 0)){};
+			while (!SifIopSync()) {};
+
+			SET_GS_BGCOLOUR(ORANGE_BG);
+
++			/* Re-initialize RPC temporarily to load the necessary modules */
+			SifInitRpc(0);
+			SifLoadFileInit();
+			SifLoadModule("rom0:SIO2MAN", 0, NULL);
+			SifLoadModule("rom0:MCMAN", 0, NULL);
+			SifLoadModule("rom0:MCSERV", 0, NULL);
++
++			/* Teardown again before ExecPS2 */
+			SifLoadFileExit();
++			SifExitRpc();
+		}
+-		SifExitRpc();
+-		SifExitCmd();
+
+		SET_GS_BGCOLOUR(BROWN_BG);
