@@ -617,6 +617,9 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 		const char *relpath = NULL;
 		if (resolve_result >= 0 && is_hdd_backed_exec_path(resolved_path)) {
 			relpath = extract_exec_relpath(resolved_path);
+		} else if (filename != NULL && strchr(filename, ':') == NULL) {
+			/* filename is a relative path with no device prefix - use directly */
+			relpath = filename;
 		} else {
 			relpath = extract_exec_relpath(filename);
 		}
