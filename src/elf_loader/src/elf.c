@@ -690,17 +690,46 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 #endif
 
 		/* Extract the relative path from the full path.
-		   Use filename if it contains path info, otherwise use resolved_path. */
+		   Handles pfs:/path, hdd0:partition:pfsN:/path, and hdd0:partition:path formats. */
 		const char *relpath = NULL;
 		if (filename != NULL && strncmp(filename, "pfs", 3) == 0) {
 			/* Format: pfs0:/path or pfs:/path - extract relpath after pfsN: or pfs: */
 			relpath = extract_exec_relpath(filename);
 		} else if (filename != NULL && strncmp(filename, "hdd", 3) == 0) {
-			/* Format: hdd0:partition:pfs.../path - extract everything after pfsN: */
+			/* Format: hdd0:partition:pfsN:/path OR hdd0:partition:path
+			   First try the pfsN: format via extract_exec_relpath.
+			   If it fails, extract directly after second colon. */
 			relpath = extract_exec_relpath(filename);
+			if (relpath == NULL) {
+				/* Fallback: format is hdd0:partition:path (no pfsN)
+				   Find second colon and everything after it is the path */
+				const char *second_colon = strchr(filename + 5, ':');
+				if (second_colon != NULL) {
+					relpath = second_colon + 1;
+					/* Skip leading slashes */
+					while (relpath[0] == '/') {
+						relpath++;
+					}
+					if (relpath[0] == '\0') {
+						relpath = NULL;
+					}
+				}
+			}
 		} else if (resolve_result >= 0 && strncmp(resolved_path, "hdd", 3) == 0) {
-			/* Use resolved path for HDD extraction */
+			/* Use resolved path for HDD extraction (same logic as filename) */
 			relpath = extract_exec_relpath(resolved_path);
+			if (relpath == NULL) {
+				const char *second_colon = strchr(resolved_path + 5, ':');
+				if (second_colon != NULL) {
+					relpath = second_colon + 1;
+					while (relpath[0] == '/') {
+						relpath++;
+					}
+					if (relpath[0] == '\0') {
+						relpath = NULL;
+					}
+				}
+			}
 		} else if (filename != NULL) {
 			/* Fallback: use filename directly (relative path) */
 			relpath = filename;
