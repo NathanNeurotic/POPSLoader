@@ -563,20 +563,31 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 	size_t partition_len;
 	bool is_hdd_popstarter;
 
+	/* Check if args are valid for execution */
+	bool has_valid_args = (argc == 0 || (argc > 0 && argv != NULL && argv[0] != NULL));
+
 	/* Check if this is HDD-backed POPSTARTER scenario (both filename and partition point to HDD) */
-	is_hdd_popstarter = (partition != NULL && partition[0] != '\0' &&
+	is_hdd_popstarter = (has_valid_args &&
+	                     partition != NULL && partition[0] != '\0' &&
 	                     is_hdd_backed_exec_path(partition) &&
-	                     filename != NULL && is_hdd_backed_exec_path(filename) &&
-	                     (argc == 0 || (argc > 0 && argv != NULL && argv[0] != NULL)));
+	                     filename != NULL && is_hdd_backed_exec_path(filename));
 
 	resolve_result = resolve_exec_path(filename, resolved_path, sizeof(resolved_path));
 
-	/* Handle HDD POPSTARTER by mounting partition in parent, then loading normally */
-	if (is_hdd_popstarter || (resolve_result >= 0 &&
-	    (is_hdd_backed_exec_path(resolved_path) || is_hdd_backed_exec_path(partition)))) {
+	/* Determine if this is any HDD-backed execution scenario */
+	bool is_hdd_scenario = is_hdd_popstarter ||
+	                       (has_valid_args &&
+	                        partition != NULL && partition[0] != '\0' &&
+	                        is_hdd_backed_exec_path(partition)) ||
+	                       (has_valid_args &&
+	                        resolve_result >= 0 &&
+	                        is_hdd_backed_exec_path(resolved_path));
+
+	/* Handle HDD-backed execution by mounting partition in parent, then loading normally */
+	if (is_hdd_scenario) {
 
 		/* Extract partition context from filename or partition parameter */
-		if (partition != NULL && partition[0] != '\0') {
+		if (partition != NULL && partition[0] != '\0' && is_hdd_backed_exec_path(partition)) {
 			partition_len = strlen(partition);
 			while (partition_len > 0 && partition[partition_len - 1] == ':') {
 				partition_len--;
@@ -602,20 +613,17 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 			return -1;
 		}
 
-		/* Use resolved path if available, otherwise build pfs0: path from filename */
-		if (resolve_result < 0) {
-			const char *relpath = extract_exec_relpath(filename);
-			if (relpath == NULL) {
-				return -1;
-			}
-			snprintf(resolved_path, sizeof(resolved_path), "pfs0:/%s", relpath);
-		} else if (is_hdd_backed_exec_path(resolved_path)) {
-			const char *relpath = extract_exec_relpath(resolved_path);
-			if (relpath == NULL) {
-				return -1;
-			}
-			snprintf(resolved_path, sizeof(resolved_path), "pfs0:/%s", relpath);
+		/* Build pfs0: path - always use pfs0: when loading from mounted HDD partition */
+		const char *relpath = NULL;
+		if (resolve_result >= 0 && is_hdd_backed_exec_path(resolved_path)) {
+			relpath = extract_exec_relpath(resolved_path);
+		} else {
+			relpath = extract_exec_relpath(filename);
 		}
+		if (relpath == NULL) {
+			return -1;
+		}
+		snprintf(resolved_path, sizeof(resolved_path), "pfs0:/%s", relpath);
 
 		/* Prepare environment for POPSTARTER execution (includes IOP reboot) */
 		prepare_reboot_exec_environment();
