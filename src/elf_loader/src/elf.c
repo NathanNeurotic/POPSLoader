@@ -609,6 +609,11 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 			}
 			memcpy(partition_context, resolved_path, partition_len);
 			partition_context[partition_len] = '\0';
+			/* Strip trailing colons from extracted partition (match first branch behavior) */
+			while (partition_len > 0 && partition_context[partition_len - 1] == ':') {
+				partition_len--;
+				partition_context[partition_len] = '\0';
+			}
 		} else {
 			return -1;
 		}
