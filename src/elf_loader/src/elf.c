@@ -614,7 +614,6 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 	   If partition parameter has HDD prefix (hdd0:, dvr_hdd0:), treat as HDD load.
 	   Otherwise, check filename and resolved_path for HDD paths to extract partition context. */
 	bool has_explicit_hdd_partition = (partition != NULL && partition[0] != '\0' &&
-	                                    partition_len > 0 &&
 	                                    ((strncmp(partition, "hdd", 3) == 0 && partition[3] >= '0' && partition[3] <= '9') ||
 	                                     (strncmp(partition, "dvr_hdd", 7) == 0 && partition[7] >= '0' && partition[7] <= '9')));
 
@@ -728,9 +727,8 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 		/* Prepare environment for POPSTARTER execution (includes IOP reboot) */
 		prepare_reboot_exec_environment();
 
-		/* Reinitialize RPC and LOADFILE to load HDD modules from embedded buffers */
+		/* Reinitialize RPC to load HDD modules */
 		SifInitRpc(0);
-		SifLoadFileInit();
 
 		/* Load HDD modules from embedded IRX buffers after IOP reboot.
 		   These modules are NOT in PS2 ROM - they are embedded as binary blobs
@@ -741,36 +739,54 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 			static const char hddarg[] = "-o\0" "4\0" "-n\0" "20";
 			static const char pfsarg[] = "-m\0" "4\0" "-o\0" "10\0" "-n\0" "40";
 
+#ifdef DEBUG
+			dprintf("DEBUG: Loading iomanX module\n");
+#endif
 			if (SifExecModuleBuffer(iomanX_irx, size_iomanX_irx, 0, NULL, &mod_res) < 0) {
 #ifdef DEBUG
 				dprintf("DEBUG: iomanX load failed (res=%d)\n", mod_res);
 #endif
 				return -1;
 			}
+#ifdef DEBUG
+			dprintf("DEBUG: Loading fileXio module\n");
+#endif
 			if (SifExecModuleBuffer(fileXio_irx, size_fileXio_irx, 0, NULL, &mod_res) < 0) {
 #ifdef DEBUG
 				dprintf("DEBUG: fileXio load failed (res=%d)\n", mod_res);
 #endif
 				return -1;
 			}
+#ifdef DEBUG
+			dprintf("DEBUG: Loading ps2dev9 module\n");
+#endif
 			if (SifExecModuleBuffer(ps2dev9_irx, size_ps2dev9_irx, 0, NULL, &mod_res) < 0) {
 #ifdef DEBUG
 				dprintf("DEBUG: ps2dev9 load failed (res=%d)\n", mod_res);
 #endif
 				return -1;
 			}
+#ifdef DEBUG
+			dprintf("DEBUG: Loading ps2atad module\n");
+#endif
 			if (SifExecModuleBuffer(ps2atad_irx, size_ps2atad_irx, 0, NULL, &mod_res) < 0) {
 #ifdef DEBUG
 				dprintf("DEBUG: ps2atad load failed (res=%d)\n", mod_res);
 #endif
 				return -1;
 			}
+#ifdef DEBUG
+			dprintf("DEBUG: Loading ps2hdd module\n");
+#endif
 			if (SifExecModuleBuffer(ps2hdd_osd_irx, size_ps2hdd_osd_irx, sizeof(hddarg), hddarg, &mod_res) < 0) {
 #ifdef DEBUG
 				dprintf("DEBUG: ps2hdd load failed (res=%d)\n", mod_res);
 #endif
 				return -1;
 			}
+#ifdef DEBUG
+			dprintf("DEBUG: Loading ps2fs module\n");
+#endif
 			if (SifExecModuleBuffer(ps2fs_irx, size_ps2fs_irx, sizeof(pfsarg), pfsarg, &mod_res) < 0) {
 #ifdef DEBUG
 				dprintf("DEBUG: ps2fs load failed (res=%d)\n", mod_res);
@@ -782,13 +798,10 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 #endif
 		}
 
-
-#ifdef DEBUG
-		dprintf("DEBUG: Attempting to mount '%s' at '%s'\n", partition_context, mount_point);
-#endif
+		/* Now that fileXio module is loaded, initialize fileXio RPC client */
+		fileXioInit();
 
 		/* Mount HDD partition at pfs0: (mirrors embedded loader approach) */
-		fileXioInit();
 		fileXioUmount("pfs0:");
 
 #ifdef DEBUG
@@ -813,7 +826,6 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 #endif
 
 		/* Load ELF from mounted partition */
-		SifInitRpc(0);
 		SifLoadFileInit();
 		ret = SifLoadElf(pfs_load_path, &elfdata);
 		SifLoadFileExit();
