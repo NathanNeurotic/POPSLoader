@@ -1,15 +1,15 @@
 --- bin/POPSLDR/system.lua
 +++ bin/POPSLDR/system.lua
-@@ -4016,11 +4016,7 @@
+@@ -4016,7 +4016,11 @@
      exec_partition_context = popstarter_partition_context
    }
    local reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
--  if popstarter_on_hdd then
--    reboot_iop = 1
--  elseif policy.name == "HDD" then
--    reboot_iop = 0
--  end
-+  reboot_iop = 0
+-  reboot_iop = 0
++  if popstarter_on_hdd then
++    reboot_iop = 1
++  elseif policy.name == "HDD" then
++    reboot_iop = 0
++  end
    if UI ~= nil and UI.CoverCache ~= nil and UI.CoverCache.Clear ~= nil then
      UI.CoverCache:Clear()
    end

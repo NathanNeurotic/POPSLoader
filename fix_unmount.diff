@@ -1,0 +1,11 @@
+--- src/elf_loader/src/elf.c
++++ src/elf_loader/src/elf.c
+@@ -536,7 +536,7 @@
+		 * starts with the same clean runtime expected by the other HDD
+		 * launch paths.
+		 */
+-		unmount_pfs_slots_for_exec(build_exec_keep_mask(resolved_path));
++		unmount_pfs_slots_for_exec(0);
+		FlushCache(0);
+		FlushCache(2);
+	}

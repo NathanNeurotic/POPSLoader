@@ -345,7 +345,7 @@ static int ExecuteHddBackedViaEmbeddedLoader(const char *resolved_path, const ch
 	return ret;
 }
 
-/* IMPORTANT: This method wipe memory where the loader is going to be allocated 
+/* IMPORTANT: This method wipe memory where the loader is going to be allocated
 * This values come from the linkfile used by the loader.c
 MEMORY {
 	bios	: ORIGIN = 0x00000000, LENGTH = 528K --- 0x00000000 - 0x00084000: BIOS memory
@@ -435,7 +435,7 @@ int LoadELFFromFileWithPartition(const char *filename, const char *partition, in
 	char resolved_path[256];
 	size_t storage_offset = 0;
 	bool use_default_argv0 = false;
-	
+
 	// We need to check that the ELF file before continue
 	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
 		return -1; // ELF file doesn't exists
@@ -534,7 +534,7 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 		 * starts with the same clean runtime expected by the other HDD
 		 * launch paths.
 		 */
-		unmount_pfs_slots_for_exec(0);
+		unmount_pfs_slots_for_exec(build_exec_keep_mask(resolved_path));
 		FlushCache(0);
 		FlushCache(2);
 	}
