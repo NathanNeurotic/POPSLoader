@@ -161,6 +161,28 @@ static bool is_hdd_backed_exec_path(const char *path) {
 	        (strncmp(path, "hdd", 3) == 0 || strncmp(path, "pfs", 3) == 0));
 }
 
+/* Extract HDD partition name (e.g., "hdd0:partition" from "hdd0:partition:file.elf") */
+static bool extract_hdd_partition_prefix(const char *path, char *out, size_t out_size) {
+	const char *partition_end;
+	size_t partition_len;
+
+	if (path == NULL || strncmp(path, "hdd", 3) != 0) {
+		return false;
+	}
+	/* Find second ':' in hdd0:partition:... format */
+	partition_end = strchr(path + 5, ':');
+	if (partition_end == NULL) {
+		return false;
+	}
+	partition_len = (size_t)(partition_end - path);
+	if (partition_len >= out_size) {
+		return false;
+	}
+	memcpy(out, path, partition_len);
+	out[partition_len] = '\0';
+	return true;
+}
+
 static int ExecuteViaEmbeddedLoader(const char *partition_context, const char *load_path, int argc, char *argv[]);
 int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const char *partition, int argc, char *argv[]);
 
@@ -628,6 +650,17 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 			if (filename != NULL && strchr(filename, ':') == NULL) {
 				/* filename is a relative path with no device prefix - use directly */
 				relpath = filename;
+			} else if (filename != NULL && is_hdd_backed_exec_path(filename)) {
+				/* filename has partition prefix - verify it matches partition_context */
+				char filename_partition[128];
+				if (extract_hdd_partition_prefix(filename, filename_partition, sizeof(filename_partition))) {
+					/* Verify partitions match (both may have trailing colons stripped, so compare carefully) */
+					if (strcmp(filename_partition, partition_context) != 0) {
+						/* Partition mismatch: partition parameter and filename point to different partitions */
+						return -1;
+					}
+				}
+				relpath = extract_exec_relpath(filename);
 			} else {
 				relpath = extract_exec_relpath(filename);
 			}
@@ -660,12 +693,24 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 		SifInitRpc(0);
 
 		/* Load HDD modules after IOP reboot so fileXio is available for mounting */
-		SifLoadModule("rom0:IOMANX", 0, NULL);
-		SifLoadModule("rom0:FILEXIO", 0, NULL);
-		SifLoadModule("rom0:PS2DEV9", 0, NULL);
-		SifLoadModule("rom0:PS2ATAD", 0, NULL);
-		SifLoadModule("rom0:PS2HDD", 0, NULL);
-		SifLoadModule("rom0:PS2FS", 0, NULL);
+		if (SifLoadModule("rom0:IOMANX", 0, NULL) < 0) {
+			return -1;
+		}
+		if (SifLoadModule("rom0:FILEXIO", 0, NULL) < 0) {
+			return -1;
+		}
+		if (SifLoadModule("rom0:PS2DEV9", 0, NULL) < 0) {
+			return -1;
+		}
+		if (SifLoadModule("rom0:PS2ATAD", 0, NULL) < 0) {
+			return -1;
+		}
+		if (SifLoadModule("rom0:PS2HDD", 0, NULL) < 0) {
+			return -1;
+		}
+		if (SifLoadModule("rom0:PS2FS", 0, NULL) < 0) {
+			return -1;
+		}
 
 		/* Now mount the partition with fileXio available */
 		fileXioInit();
@@ -679,6 +724,7 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 		}
 
 		/* Load POPSTARTER via SifLoadElf on mounted partition */
+		/* Re-initialize RPC to ensure it's in proper state after fileXio mount operations */
 		SifInitRpc(0);
 		SifLoadFileInit();
 		ret = SifLoadElf(resolved_path, &elfdata);
