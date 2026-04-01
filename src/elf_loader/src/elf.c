@@ -33,6 +33,20 @@
 extern unsigned char loader_elf[];
 static unsigned int s_exec_keep_pfs_mask = 0;
 
+/* Embedded IOP module binaries for HDD access (loaded via SifExecModuleBuffer) */
+extern unsigned char iomanX_irx[];
+extern unsigned int size_iomanX_irx;
+extern unsigned char fileXio_irx[];
+extern unsigned int size_fileXio_irx;
+extern unsigned char ps2dev9_irx[];
+extern unsigned int size_ps2dev9_irx;
+extern unsigned char ps2atad_irx[];
+extern unsigned int size_ps2atad_irx;
+extern unsigned char ps2hdd_osd_irx[];
+extern unsigned int size_ps2hdd_osd_irx;
+extern unsigned char ps2fs_irx[];
+extern unsigned int size_ps2fs_irx;
+
 void SetExecKeepPfsMask(unsigned int mask) {
 	s_exec_keep_pfs_mask = mask & 0x0F;
 }
@@ -773,27 +787,58 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 		/* Prepare environment for POPSTARTER execution (includes IOP reboot) */
 		prepare_reboot_exec_environment();
 
-		/* Reinitialize RPC to load HDD modules (prepare_reboot_exec_environment exits it) */
+		/* Reinitialize RPC and LOADFILE to load HDD modules from embedded buffers */
 		SifInitRpc(0);
+		SifLoadFileInit();
 
-		/* Load HDD modules after IOP reboot so fileXio is available for mounting */
-		if (SifLoadModule("rom0:IOMANX", 0, NULL) < 0) {
-			return -1;
-		}
-		if (SifLoadModule("rom0:FILEXIO", 0, NULL) < 0) {
-			return -1;
-		}
-		if (SifLoadModule("rom0:PS2DEV9", 0, NULL) < 0) {
-			return -1;
-		}
-		if (SifLoadModule("rom0:PS2ATAD", 0, NULL) < 0) {
-			return -1;
-		}
-		if (SifLoadModule("rom0:PS2HDD", 0, NULL) < 0) {
-			return -1;
-		}
-		if (SifLoadModule("rom0:PS2FS", 0, NULL) < 0) {
-			return -1;
+		/* Load HDD modules from embedded IRX buffers after IOP reboot.
+		   These modules are NOT in PS2 ROM - they are embedded as binary blobs
+		   in the EE executable and must be loaded via SifExecModuleBuffer().
+		   sbv_patch_enable_lmb() was already called during prepare_reboot_exec_environment(). */
+		{
+			int mod_res = 0;
+			static const char hddarg[] = "-o\0" "4\0" "-n\0" "20";
+			static const char pfsarg[] = "-m\0" "4\0" "-o\0" "10\0" "-n\0" "40";
+
+			if (SifExecModuleBuffer(iomanX_irx, size_iomanX_irx, 0, NULL, &mod_res) < 0) {
+#ifdef DEBUG
+				dprintf("DEBUG: iomanX load failed (res=%d)\n", mod_res);
+#endif
+				return -1;
+			}
+			if (SifExecModuleBuffer(fileXio_irx, size_fileXio_irx, 0, NULL, &mod_res) < 0) {
+#ifdef DEBUG
+				dprintf("DEBUG: fileXio load failed (res=%d)\n", mod_res);
+#endif
+				return -1;
+			}
+			if (SifExecModuleBuffer(ps2dev9_irx, size_ps2dev9_irx, 0, NULL, &mod_res) < 0) {
+#ifdef DEBUG
+				dprintf("DEBUG: ps2dev9 load failed (res=%d)\n", mod_res);
+#endif
+				return -1;
+			}
+			if (SifExecModuleBuffer(ps2atad_irx, size_ps2atad_irx, 0, NULL, &mod_res) < 0) {
+#ifdef DEBUG
+				dprintf("DEBUG: ps2atad load failed (res=%d)\n", mod_res);
+#endif
+				return -1;
+			}
+			if (SifExecModuleBuffer(ps2hdd_osd_irx, size_ps2hdd_osd_irx, sizeof(hddarg), hddarg, &mod_res) < 0) {
+#ifdef DEBUG
+				dprintf("DEBUG: ps2hdd load failed (res=%d)\n", mod_res);
+#endif
+				return -1;
+			}
+			if (SifExecModuleBuffer(ps2fs_irx, size_ps2fs_irx, sizeof(pfsarg), pfsarg, &mod_res) < 0) {
+#ifdef DEBUG
+				dprintf("DEBUG: ps2fs load failed (res=%d)\n", mod_res);
+#endif
+				return -1;
+			}
+#ifdef DEBUG
+			dprintf("DEBUG: All HDD modules loaded successfully\n");
+#endif
 		}
 
 		/* Now mount the partition with fileXio available at the detected pfs slot */
