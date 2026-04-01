@@ -610,29 +610,31 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 
 	resolve_result = resolve_exec_path(filename, resolved_path, sizeof(resolved_path));
 
-	/* Determine if this is any HDD-backed execution scenario
-	   IMPORTANT: Check filename directly for HDD paths even if partition parameter is NULL.
-	   This handles cases where filename itself contains the full HDD path (hdd0:partition:pfsN:/path)
-	   and partition parameter is not separately provided. */
-	bool is_hdd_scenario = is_hdd_popstarter ||
-	                       (has_valid_args &&
-	                        partition != NULL && partition[0] != '\0' &&
-	                        is_hdd_backed_exec_path(partition)) ||
-	                       (has_valid_args &&
-	                        filename != NULL &&
-	                        is_hdd_backed_exec_path(filename)) ||
-	                       (has_valid_args &&
-	                        resolve_result >= 0 &&
-	                        is_hdd_backed_exec_path(resolved_path));
+	/* Simplify: Check if partition context explicitly indicates HDD.
+	   If partition parameter has HDD prefix (hdd0:, dvr_hdd0:), treat as HDD load.
+	   Otherwise, check filename and resolved_path for HDD paths to extract partition context. */
+	bool has_explicit_hdd_partition = (partition != NULL && partition[0] != '\0' &&
+	                                    partition_len > 0 &&
+	                                    ((strncmp(partition, "hdd", 3) == 0 && partition[3] >= '0' && partition[3] <= '9') ||
+	                                     (strncmp(partition, "dvr_hdd", 7) == 0 && partition[7] >= '0' && partition[7] <= '9')));
 
-	/* Handle HDD-backed execution by mounting partition in parent, then loading normally */
+	bool is_hdd_scenario = (has_valid_args &&
+	                        (has_explicit_hdd_partition ||
+	                         (filename != NULL && is_hdd_backed_exec_path(filename)) ||
+	                         (resolve_result >= 0 && is_hdd_backed_exec_path(resolved_path))));
+
+	/* Handle HDD-backed execution by mounting partition in parent, then loading normally.
+	   Mirrors the embedded loader's approach but executes in parent context. */
 	if (is_hdd_scenario) {
 #ifdef DEBUG
 		dprintf("DEBUG: HDD scenario detected\n");
 #endif
 
-		/* Extract partition context from filename or partition parameter */
-		if (partition != NULL && partition[0] != '\0' && is_hdd_backed_exec_path(partition)) {
+		/* Extract partition context: use explicit partition param if available,
+		   otherwise extract from filename or resolved path.
+		   All extraction follows the pattern: hdd0:partition (no trailing colon in result) */
+		if (has_explicit_hdd_partition) {
+			/* Use partition parameter directly */
 			partition_len = strlen(partition);
 			while (partition_len > 0 && partition[partition_len - 1] == ':') {
 				partition_len--;
@@ -642,22 +644,12 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 			}
 			memcpy(partition_context, partition, partition_len);
 			partition_context[partition_len] = '\0';
-		} else if (filename != NULL && is_hdd_backed_exec_path(filename)) {
-			/* Extract partition directly from filename when it contains HDD path but partition param is NULL
-			   Handles multiple formats:
-			   - "hdd0:partition:pfs0:/path" (colon-separated)
-			   - "hdd0:/partition/path" (slash after device)
-			   - "hdd0:partition/path" (slash separators) */
-			const char *partition_end = NULL;
-
-			/* Try format 1: hdd0:partition:pfsN:... (look for second colon) */
-			partition_end = strchr(filename + 5, ':');
-
-			/* Try format 2/3: hdd0:partition/... or hdd0:/partition/... (look for slash) */
+		} else if (filename != NULL && strncmp(filename, "hdd", 3) == 0) {
+			/* Extract partition from filename: hdd0:partition:... or hdd0:partition/... */
+			const char *partition_end = strchr(filename + 5, ':');
 			if (partition_end == NULL) {
 				partition_end = strchr(filename + 5, '/');
 			}
-
 			if (partition_end == NULL) {
 				return -1;
 			}
@@ -667,15 +659,15 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 			}
 			memcpy(partition_context, filename, partition_len);
 			partition_context[partition_len] = '\0';
-			/* Strip trailing colons and slashes from extracted partition */
+			/* Strip trailing colons/slashes */
 			while (partition_len > 0 &&
 			       (partition_context[partition_len - 1] == ':' ||
 			        partition_context[partition_len - 1] == '/')) {
 				partition_len--;
 				partition_context[partition_len] = '\0';
 			}
-		} else if (resolve_result >= 0 && is_hdd_backed_exec_path(resolved_path)) {
-			/* Extract partition from resolved HDD path (hdd0:partition:...) */
+		} else if (resolve_result >= 0 && strncmp(resolved_path, "hdd", 3) == 0) {
+			/* Extract partition from resolved path */
 			const char *partition_end = strchr(resolved_path + 5, ':');
 			if (partition_end == NULL) {
 				return -1;
@@ -686,7 +678,6 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 			}
 			memcpy(partition_context, resolved_path, partition_len);
 			partition_context[partition_len] = '\0';
-			/* Strip trailing colons from extracted partition (match first branch behavior) */
 			while (partition_len > 0 && partition_context[partition_len - 1] == ':') {
 				partition_len--;
 				partition_context[partition_len] = '\0';
@@ -699,89 +690,39 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 		dprintf("DEBUG: partition_context='%s'\n", partition_context);
 #endif
 
-		/* Extract pfs slot from path (e.g., pfs0, pfs1, pfs2, pfs3) to determine mount point
-		   Formats with explicit pfsN: use that slot; slash-separated formats default to pfs1 */
-		int pfs_slot = 0; /* default to pfs0 for explicit pfsN: formats */
-		bool is_explicit_pfs_format = false; /* true if path contains explicit pfsN: */
-
-		if (filename != NULL && is_hdd_backed_exec_path(filename)) {
-			int slot = extract_exec_pfs_slot(filename);
-			if (slot >= 0) {
-				pfs_slot = slot;
-				is_explicit_pfs_format = true;
-			}
-		} else if (resolve_result >= 0 && is_hdd_backed_exec_path(resolved_path)) {
-			int slot = extract_exec_pfs_slot(resolved_path);
-			if (slot >= 0) {
-				pfs_slot = slot;
-				is_explicit_pfs_format = true;
-			}
-		}
-
-		/* For slash-separated formats (hdd0:/partition/... or hdd0:partition/...),
-		   default to pfs1 (matching boot.lua behavior) */
-		if (!is_explicit_pfs_format && filename != NULL && is_hdd_backed_exec_path(filename)) {
-			if (strchr(filename + 5, '/') != NULL && strchr(filename + 5, ':') == NULL) {
-				/* Slash-separated format detected, use pfs1 by default */
-				pfs_slot = 1;
-			}
-		}
-
-		/* Build path for loading from mounted partition using detected pfs slot */
+		/* Extract the relative path from the full path.
+		   Use filename if it contains path info, otherwise use resolved_path. */
 		const char *relpath = NULL;
-		const char *pfs_device = "pfs0:"; /* will be updated based on detected slot */
-
-		/* Determine pfs device name based on extracted slot */
-		if (pfs_slot == 0) pfs_device = "pfs0:";
-		else if (pfs_slot == 1) pfs_device = "pfs1:";
-		else if (pfs_slot == 2) pfs_device = "pfs2:";
-		else if (pfs_slot == 3) pfs_device = "pfs3:";
-
-		/* If partition was explicitly provided, prefer extracting relpath from filename
-		   to ensure consistency between partition and path */
-		if (partition != NULL && partition[0] != '\0' && is_hdd_backed_exec_path(partition)) {
-			/* Partition explicitly provided - extract relpath from filename/filename-based sources */
-			if (filename != NULL && strchr(filename, ':') == NULL) {
-				/* filename is a relative path with no device prefix - use directly */
-				relpath = filename;
-			} else if (filename != NULL && is_hdd_backed_exec_path(filename)) {
-				/* filename has partition prefix - verify it matches partition_context */
-				char filename_partition[128];
-				if (extract_hdd_partition_prefix(filename, filename_partition, sizeof(filename_partition))) {
-					/* Verify partitions match (both may have trailing colons stripped, so compare carefully) */
-					if (strcmp(filename_partition, partition_context) != 0) {
-						/* Partition mismatch: partition parameter and filename point to different partitions */
-						return -1;
-					}
-				}
-				relpath = extract_exec_relpath(filename);
-			} else {
-				relpath = extract_exec_relpath(filename);
-			}
-		} else if (resolve_result >= 0 && is_hdd_backed_exec_path(resolved_path)) {
-			/* No explicit partition - extract from resolved_path */
-			relpath = extract_exec_relpath(resolved_path);
-		} else if (filename != NULL && strchr(filename, ':') == NULL) {
-			/* filename is a relative path with no device prefix - use directly */
-			relpath = filename;
-		} else {
+		if (filename != NULL && strncmp(filename, "pfs", 3) == 0) {
+			/* Format: pfs0:/path or pfs:/path - extract relpath after pfsN: or pfs: */
 			relpath = extract_exec_relpath(filename);
+		} else if (filename != NULL && strncmp(filename, "hdd", 3) == 0) {
+			/* Format: hdd0:partition:pfs.../path - extract everything after pfsN: */
+			relpath = extract_exec_relpath(filename);
+		} else if (resolve_result >= 0 && strncmp(resolved_path, "hdd", 3) == 0) {
+			/* Use resolved path for HDD extraction */
+			relpath = extract_exec_relpath(resolved_path);
+		} else if (filename != NULL) {
+			/* Fallback: use filename directly (relative path) */
+			relpath = filename;
 		}
+
 		if (relpath == NULL) {
 			return -1;
 		}
-		/* Strip leading slashes from relpath to avoid double slashes in pfs path */
-		while (relpath != NULL && relpath[0] == '/') {
-			relpath++;
+
+		/* Build the load path for pfs0: (we'll mount partition there) */
+		char pfs_load_path[256];
+		if (relpath[0] == '\0') {
+			snprintf(pfs_load_path, sizeof(pfs_load_path), "pfs0:/");
+		} else if (relpath[0] == '/') {
+			snprintf(pfs_load_path, sizeof(pfs_load_path), "pfs0:%s", relpath);
+		} else {
+			snprintf(pfs_load_path, sizeof(pfs_load_path), "pfs0:/%s", relpath);
 		}
-		/* Ensure relpath is not empty after stripping */
-		if (relpath == NULL || relpath[0] == '\0') {
-			return -1;
-		}
-		snprintf(resolved_path, sizeof(resolved_path), "%s/%s", pfs_device, relpath);
 
 #ifdef DEBUG
-		dprintf("DEBUG: pfs_slot=%d, mount_path='%s', load_path='%s'\n", pfs_slot, pfs_device, resolved_path);
+		dprintf("DEBUG: partition_context='%s', load_path='%s'\n", partition_context, pfs_load_path);
 #endif
 
 		/* Prepare environment for POPSTARTER execution (includes IOP reboot) */
@@ -841,43 +782,40 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 #endif
 		}
 
-		/* Now mount the partition with fileXio available at the detected pfs slot */
-		char mount_point[16];
-		snprintf(mount_point, sizeof(mount_point), "pfs%d:", pfs_slot);
 
 #ifdef DEBUG
 		dprintf("DEBUG: Attempting to mount '%s' at '%s'\n", partition_context, mount_point);
 #endif
 
+		/* Mount HDD partition at pfs0: (mirrors embedded loader approach) */
 		fileXioInit();
-		unmount_pfs_slots_for_exec(1);
-		fileXioUmount(mount_point);
-		int mount_result = fileXioMount(mount_point, partition_context, FIO_MT_RDONLY);
+		fileXioUmount("pfs0:");
+
+#ifdef DEBUG
+		dprintf("DEBUG: Mounting '%s' at pfs0:\n", partition_context);
+#endif
+		int mount_result = fileXioMount("pfs0:", partition_context, FIO_MT_RDONLY);
 		if (mount_result < 0) {
 #ifdef DEBUG
-			dprintf("DEBUG: First mount attempt failed (ret=%d), retrying\n", mount_result);
+			dprintf("DEBUG: Mount failed (ret=%d), retrying\n", mount_result);
 #endif
-			fileXioUmount(mount_point);
-			mount_result = fileXioMount(mount_point, partition_context, FIO_MT_RDONLY);
+			fileXioUmount("pfs0:");
+			mount_result = fileXioMount("pfs0:", partition_context, FIO_MT_RDONLY);
 			if (mount_result < 0) {
 #ifdef DEBUG
-				dprintf("DEBUG: Second mount attempt failed (ret=%d), aborting\n", mount_result);
+				dprintf("DEBUG: Mount failed again (ret=%d), aborting\n", mount_result);
 #endif
 				return -1;
 			}
 		}
 #ifdef DEBUG
-		dprintf("DEBUG: Mount successful\n");
+		dprintf("DEBUG: Mount successful, loading ELF from '%s'\n", pfs_load_path);
 #endif
 
-		/* Load POPSTARTER via SifLoadElf on mounted partition */
-		/* Re-initialize RPC to ensure it's in proper state after fileXio mount operations */
-#ifdef DEBUG
-		dprintf("DEBUG: About to call SifLoadElf with path='%s'\n", resolved_path);
-#endif
+		/* Load ELF from mounted partition */
 		SifInitRpc(0);
 		SifLoadFileInit();
-		ret = SifLoadElf(resolved_path, &elfdata);
+		ret = SifLoadElf(pfs_load_path, &elfdata);
 		SifLoadFileExit();
 
 #ifdef DEBUG
@@ -886,10 +824,9 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 
 		if (ret != 0 || elfdata.epc == 0) {
 #ifdef DEBUG
-			dprintf("DEBUG: SifLoadElf failed, unmounting and cleaning up\n");
+			dprintf("DEBUG: SifLoadElf failed\n");
 #endif
-			fileXioUmount(mount_point);
-			/* Clean up RPC/cache state on error, same as success path */
+			fileXioUmount("pfs0:");
 			SifExitIopHeap();
 			SifExitRpc();
 			SifExitCmd();
