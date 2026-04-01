@@ -615,7 +615,19 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 
 		/* Build pfs0: path - always use pfs0: when loading from mounted HDD partition */
 		const char *relpath = NULL;
-		if (resolve_result >= 0 && is_hdd_backed_exec_path(resolved_path)) {
+
+		/* If partition was explicitly provided, prefer extracting relpath from filename
+		   to ensure consistency between partition and path */
+		if (partition != NULL && partition[0] != '\0' && is_hdd_backed_exec_path(partition)) {
+			/* Partition explicitly provided - extract relpath from filename/filename-based sources */
+			if (filename != NULL && strchr(filename, ':') == NULL) {
+				/* filename is a relative path with no device prefix - use directly */
+				relpath = filename;
+			} else {
+				relpath = extract_exec_relpath(filename);
+			}
+		} else if (resolve_result >= 0 && is_hdd_backed_exec_path(resolved_path)) {
+			/* No explicit partition - extract from resolved_path */
 			relpath = extract_exec_relpath(resolved_path);
 		} else if (filename != NULL && strchr(filename, ':') == NULL) {
 			/* filename is a relative path with no device prefix - use directly */
