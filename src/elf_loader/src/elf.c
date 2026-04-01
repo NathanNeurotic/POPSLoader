@@ -686,6 +686,10 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 
 		if (ret != 0 || elfdata.epc == 0) {
 			fileXioUmount("pfs0:");
+			/* Clean up RPC/cache state on error, same as success path */
+			SifExitIopHeap();
+			SifExitRpc();
+			SifExitCmd();
 			return -2;
 		}
 
