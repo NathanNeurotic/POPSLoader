@@ -620,6 +620,9 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 		/* Prepare environment for POPSTARTER execution (includes IOP reboot) */
 		prepare_reboot_exec_environment();
 
+		/* Reinitialize RPC to load HDD modules (prepare_reboot_exec_environment exits it) */
+		SifInitRpc(0);
+
 		/* Load HDD modules after IOP reboot so fileXio is available for mounting */
 		SifLoadModule("rom0:IOMANX", 0, NULL);
 		SifLoadModule("rom0:FILEXIO", 0, NULL);
