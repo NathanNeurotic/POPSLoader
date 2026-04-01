@@ -539,7 +539,7 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 		FlushCache(2);
 	}
 
-	ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc, argv);
+	ExecPS2((void *)elfdata.epc, 0, argc, argv);
 	return -1;
 }
 

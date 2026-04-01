@@ -346,33 +346,14 @@ int main(int argc, char *argv[])
 		SET_GS_BGCOLOUR(YELLOW_BG);
 
 		if (is_hdd_partition_context(partition_context)) {
-			/* IF we are about to wipe the IOP, we MUST teardown the SIF servers FIRST to prevent DMA lockups! */
 			if (!loaded_via_filexio) {
 				SifLoadFileExit();
 			}
-			SifExitRpc();
-			SifExitCmd();
-
-			/* We must wipe the IOP so the dirty HDD/fileXio/audsrv modules are gone before ExecPS2. */
-			while (!SifIopReset("rom0:UDNL rom0:EELOADCNF", 0)) {
-			}
-			while (!SifIopSync()) {
-			}
-
-			SET_GS_BGCOLOUR(ORANGE_BG);
-
-			/* Re-initialize RPC temporarily to load the necessary modules */
-			SifInitRpc(0);
-			SifLoadFileInit();
-			SifLoadModule("rom0:SIO2MAN", 0, NULL);
-			SifLoadModule("rom0:CDVDFSV", 0, NULL);
-			SifLoadModule("rom0:CDVDMAN", 0, NULL);
-			SifLoadModule("rom0:MCMAN", 0, NULL);
-			SifLoadModule("rom0:MCSERV", 0, NULL);
-			SifLoadModule("rom0:PADMAN", 0, NULL);
-
-			/* Teardown LoadFile, but leave Rpc and Cmd active for POPSTARTER! */
-			SifLoadFileExit();
+			/* D-15 Success Proof: POPSTARTER running from USB does not reset the IOP
+			   or tear down SifExitRpc/SifExitCmd before calling ExecPS2.
+			   It relies on the SIF interfaces remaining active so it can handle
+			   its own IOP reset and teardowns. We mirror that environment here
+			   by skipping SifIopReset entirely. */
 		}
 
 		SET_GS_BGCOLOUR(BROWN_BG);
@@ -386,7 +367,14 @@ int main(int argc, char *argv[])
 		for (i = 0; i < target_argc; i++) {
 			DPRINTF("POPS EXEC: argv[%d] = %s\n", i, target_argv[i]);
 		}
-		ret = ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, target_argc, target_argv);
+
+		/* Unmount pfs0: so POPSTARTER can safely mount its own game partition without hitting -EBUSY block collisions! */
+		if (loaded_via_filexio) {
+			fileXioUmount("pfs0:");
+		}
+
+		/* Pass 0 for gp, so POPSTARTER recalculates its own gp correctly */
+		ret = ExecPS2((void *)elfdata.epc, (void *)0, target_argc, target_argv);
 		return (ret != 0) ? ret : -3500;
 	} else {
 		SET_GS_BGCOLOUR(MAGENTA_BG);
