@@ -613,6 +613,9 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 
 	/* Handle HDD-backed execution by mounting partition in parent, then loading normally */
 	if (is_hdd_scenario) {
+#ifdef DEBUG
+		dprintf("DEBUG: HDD scenario detected\n");
+#endif
 
 		/* Extract partition context from filename or partition parameter */
 		if (partition != NULL && partition[0] != '\0' && is_hdd_backed_exec_path(partition)) {
@@ -677,6 +680,10 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 		} else {
 			return -1;
 		}
+
+#ifdef DEBUG
+		dprintf("DEBUG: partition_context='%s'\n", partition_context);
+#endif
 
 		/* Extract pfs slot from path (e.g., pfs0, pfs1, pfs2, pfs3) to determine mount point
 		   Formats with explicit pfsN: use that slot; slash-separated formats default to pfs1 */
@@ -759,6 +766,10 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 		}
 		snprintf(resolved_path, sizeof(resolved_path), "%s/%s", pfs_device, relpath);
 
+#ifdef DEBUG
+		dprintf("DEBUG: pfs_slot=%d, mount_path='%s', load_path='%s'\n", pfs_slot, pfs_device, resolved_path);
+#endif
+
 		/* Prepare environment for POPSTARTER execution (includes IOP reboot) */
 		prepare_reboot_exec_environment();
 
@@ -789,24 +800,49 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 		char mount_point[16];
 		snprintf(mount_point, sizeof(mount_point), "pfs%d:", pfs_slot);
 
+#ifdef DEBUG
+		dprintf("DEBUG: Attempting to mount '%s' at '%s'\n", partition_context, mount_point);
+#endif
+
 		fileXioInit();
 		unmount_pfs_slots_for_exec(1);
 		fileXioUmount(mount_point);
-		if (fileXioMount(mount_point, partition_context, FIO_MT_RDONLY) < 0) {
+		int mount_result = fileXioMount(mount_point, partition_context, FIO_MT_RDONLY);
+		if (mount_result < 0) {
+#ifdef DEBUG
+			dprintf("DEBUG: First mount attempt failed (ret=%d), retrying\n", mount_result);
+#endif
 			fileXioUmount(mount_point);
-			if (fileXioMount(mount_point, partition_context, FIO_MT_RDONLY) < 0) {
+			mount_result = fileXioMount(mount_point, partition_context, FIO_MT_RDONLY);
+			if (mount_result < 0) {
+#ifdef DEBUG
+				dprintf("DEBUG: Second mount attempt failed (ret=%d), aborting\n", mount_result);
+#endif
 				return -1;
 			}
 		}
+#ifdef DEBUG
+		dprintf("DEBUG: Mount successful\n");
+#endif
 
 		/* Load POPSTARTER via SifLoadElf on mounted partition */
 		/* Re-initialize RPC to ensure it's in proper state after fileXio mount operations */
+#ifdef DEBUG
+		dprintf("DEBUG: About to call SifLoadElf with path='%s'\n", resolved_path);
+#endif
 		SifInitRpc(0);
 		SifLoadFileInit();
 		ret = SifLoadElf(resolved_path, &elfdata);
 		SifLoadFileExit();
 
+#ifdef DEBUG
+		dprintf("DEBUG: SifLoadElf returned ret=%d, epc=0x%x, gp=0x%x\n", ret, elfdata.epc, elfdata.gp);
+#endif
+
 		if (ret != 0 || elfdata.epc == 0) {
+#ifdef DEBUG
+			dprintf("DEBUG: SifLoadElf failed, unmounting and cleaning up\n");
+#endif
 			fileXioUmount(mount_point);
 			/* Clean up RPC/cache state on error, same as success path */
 			SifExitIopHeap();
@@ -814,6 +850,10 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 			SifExitCmd();
 			return -2;
 		}
+
+#ifdef DEBUG
+		dprintf("DEBUG: SifLoadElf successful, about to ExecPS2\n");
+#endif
 
 		/* Keep partition mounted for POPSTARTER to access HDD files during execution */
 		SifExitIopHeap();

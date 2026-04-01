@@ -61,11 +61,33 @@ jobs:
             echo "NOTE: luac/lua not found; skipped Lua syntax validation"
           fi
 
-      - name: Compile project
+      - name: Compile project (Release)
         shell: sh
         run: |
           set -eu
           make clean elfloader all
+
+      - name: Copy release artifacts
+        shell: sh
+        run: |
+          set -eu
+          mkdir -p bin/release
+          cp -f bin/POPSLOADER.ELF bin/release/POPSLOADER.ELF
+          cp -r bin/POPSLDR bin/release/
+
+      - name: Compile project (Debug)
+        shell: sh
+        run: |
+          set -eu
+          make clean elfloader all DEBUG=1
+
+      - name: Copy debug artifacts
+        shell: sh
+        run: |
+          set -eu
+          mkdir -p bin/debug
+          cp -f bin/POPSLOADER.ELF bin/debug/POPSLOADER.ELF
+          cp -r bin/POPSLDR bin/debug/
 
       - name: Verify embedded build identity
         shell: sh
@@ -111,35 +133,75 @@ jobs:
 
           req() { [ -f "$1" ] || { echo "ERROR: required release file missing: $1" >&2; exit 1; }; }
 
-          req bin/POPSLOADER.ELF
-          req bin/POPSLDR/POPSTARTER.ELF
-          req bin/POPSLDR/APPINFO.PBT
-          req bin/POPSLDR/BUILD_INFO.txt
-          req bin/POPSLDR/title.cfg
-          req bin/POPSLDR/icon.sys
-          req bin/POPSLDR/list.icn
-          req bin/POPSLDR/copy.icn
-          req bin/POPSLDR/del.icn
-          req bin/POPSLDR/PATCH_5.BIN
+          req bin/release/POPSLOADER.ELF
+          req bin/release/POPSLDR/POPSTARTER.ELF
+          req bin/release/POPSLDR/APPINFO.PBT
+          req bin/release/POPSLDR/BUILD_INFO.txt
+          req bin/release/POPSLDR/title.cfg
+          req bin/release/POPSLDR/icon.sys
+          req bin/release/POPSLDR/list.icn
+          req bin/release/POPSLDR/copy.icn
+          req bin/release/POPSLDR/del.icn
+          req bin/release/POPSLDR/PATCH_5.BIN
 
-          cp -f bin/POPSLOADER.ELF dist_root/PS1_POPSLOADER/POPSLOADER.ELF
-          cp -f bin/POPSLDR/POPSTARTER.ELF dist_root/PS1_POPSLOADER/POPSTARTER.ELF
-          cp -f bin/POPSLDR/APPINFO.PBT dist_root/PS1_POPSLOADER/APPINFO.PBT
-          cp -f bin/POPSLDR/BUILD_INFO.txt dist_root/PS1_POPSLOADER/BUILD_INFO.txt
-          cp -f bin/POPSLDR/title.cfg dist_root/PS1_POPSLOADER/title.cfg
-          cp -f bin/POPSLDR/icon.sys dist_root/PS1_POPSLOADER/icon.sys
-          cp -f bin/POPSLDR/list.icn dist_root/PS1_POPSLOADER/list.icn
-          cp -f bin/POPSLDR/copy.icn dist_root/PS1_POPSLOADER/copy.icn
-          cp -f bin/POPSLDR/del.icn dist_root/PS1_POPSLOADER/del.icn
+          cp -f bin/release/POPSLOADER.ELF dist_root/PS1_POPSLOADER/POPSLOADER.ELF
+          cp -f bin/release/POPSLDR/POPSTARTER.ELF dist_root/PS1_POPSLOADER/POPSTARTER.ELF
+          cp -f bin/release/POPSLDR/APPINFO.PBT dist_root/PS1_POPSLOADER/APPINFO.PBT
+          cp -f bin/release/POPSLDR/BUILD_INFO.txt dist_root/PS1_POPSLOADER/BUILD_INFO.txt
+          cp -f bin/release/POPSLDR/title.cfg dist_root/PS1_POPSLOADER/title.cfg
+          cp -f bin/release/POPSLDR/icon.sys dist_root/PS1_POPSLOADER/icon.sys
+          cp -f bin/release/POPSLDR/list.icn dist_root/PS1_POPSLOADER/list.icn
+          cp -f bin/release/POPSLDR/copy.icn dist_root/PS1_POPSLOADER/copy.icn
+          cp -f bin/release/POPSLDR/del.icn dist_root/PS1_POPSLOADER/del.icn
 
-          cp -f bin/POPSLDR/PATCH_5.BIN dist_root/POPS/PATCH_5.BIN
+          cp -f bin/release/POPSLDR/PATCH_5.BIN dist_root/POPS/PATCH_5.BIN
 
           cd dist_root
           find PS1_POPSLOADER POPS -type f | LC_ALL=C sort | zip -X -9 ../POPSLOADER.zip -@ >/dev/null
           cd - >/dev/null
 
-          echo "== Package contents =="
+          echo "== Release package contents =="
           unzip -Z1 POPSLOADER.zip
+
+      - name: Create debug package
+        shell: sh
+        run: |
+          set -eu
+
+          rm -rf dist_root POPSLOADER_DEBUG.zip
+          mkdir -p dist_root/PS1_POPSLOADER dist_root/POPS
+
+          req() { [ -f "$1" ] || { echo "ERROR: required debug file missing: $1" >&2; exit 1; }; }
+
+          req bin/debug/POPSLOADER.ELF
+          req bin/debug/POPSLDR/POPSTARTER.ELF
+          req bin/debug/POPSLDR/APPINFO.PBT
+          req bin/debug/POPSLDR/BUILD_INFO.txt
+          req bin/debug/POPSLDR/title.cfg
+          req bin/debug/POPSLDR/icon.sys
+          req bin/debug/POPSLDR/list.icn
+          req bin/debug/POPSLDR/copy.icn
+          req bin/debug/POPSLDR/del.icn
+          req bin/debug/POPSLDR/PATCH_5.BIN
+
+          cp -f bin/debug/POPSLOADER.ELF dist_root/PS1_POPSLOADER/POPSLOADER.ELF
+          cp -f bin/debug/POPSLDR/POPSTARTER.ELF dist_root/PS1_POPSLOADER/POPSTARTER.ELF
+          cp -f bin/debug/POPSLDR/APPINFO.PBT dist_root/PS1_POPSLOADER/APPINFO.PBT
+          cp -f bin/debug/POPSLDR/BUILD_INFO.txt dist_root/PS1_POPSLOADER/BUILD_INFO.txt
+          cp -f bin/debug/POPSLDR/title.cfg dist_root/PS1_POPSLOADER/title.cfg
+          cp -f bin/debug/POPSLDR/icon.sys dist_root/PS1_POPSLOADER/icon.sys
+          cp -f bin/debug/POPSLDR/list.icn dist_root/PS1_POPSLOADER/list.icn
+          cp -f bin/debug/POPSLDR/copy.icn dist_root/PS1_POPSLOADER/copy.icn
+          cp -f bin/debug/POPSLDR/del.icn dist_root/PS1_POPSLOADER/del.icn
+
+          cp -f bin/debug/POPSLDR/PATCH_5.BIN dist_root/POPS/PATCH_5.BIN
+
+          cd dist_root
+          find PS1_POPSLOADER POPS -type f | LC_ALL=C sort | zip -X -9 ../POPSLOADER_DEBUG.zip -@ >/dev/null
+          cd - >/dev/null
+
+          echo "== Debug package contents =="
+          unzip -Z1 POPSLOADER_DEBUG.zip
 
       - name: Verify release package contents (python)
         shell: sh
@@ -201,11 +263,48 @@ jobs:
           print("OK: POPSLOADER.zip contents verified")
           PY
 
-      - name: Upload artifact
+      - name: Verify debug package contents (python)
+        shell: sh
+        run: |
+          set -eu
+          python3 - <<'PY'
+          import sys, zipfile
+
+          zpath = "POPSLOADER_DEBUG.zip"
+          expected = {
+              "POPS/PATCH_5.BIN",
+              "PS1_POPSLOADER/APPINFO.PBT",
+              "PS1_POPSLOADER/BUILD_INFO.txt",
+              "PS1_POPSLOADER/POPSLOADER.ELF",
+              "PS1_POPSLOADER/POPSTARTER.ELF",
+                  "PS1_POPSLOADER/copy.icn",
+                  "PS1_POPSLOADER/del.icn",
+                  "PS1_POPSLOADER/icon.sys",
+                  "PS1_POPSLOADER/list.icn",
+                  "PS1_POPSLOADER/title.cfg",
+              }
+
+          with zipfile.ZipFile(zpath, "r") as z:
+              names = [n for n in z.namelist() if n and not n.endswith("/")]
+          actual = set(names)
+
+          print("OK: POPSLOADER_DEBUG.zip contents verified")
+          PY
+
+      - name: Upload release artifact
         if: success()
         uses: actions/upload-artifact@v6
         with:
-          name: POPSLOADER
+          name: POPSLOADER-Release
           path: POPSLOADER.zip
+          if-no-files-found: error
+          compression-level: 0
+
+      - name: Upload debug artifact
+        if: success()
+        uses: actions/upload-artifact@v6
+        with:
+          name: POPSLOADER-Debug
+          path: POPSLOADER_DEBUG.zip
           if-no-files-found: error
           compression-level: 0
