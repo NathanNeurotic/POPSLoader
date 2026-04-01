@@ -626,6 +626,10 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 		if (relpath == NULL) {
 			return -1;
 		}
+		/* Strip leading slashes from relpath to avoid double slashes in pfs0: path */
+		while (relpath != NULL && relpath[0] == '/') {
+			relpath++;
+		}
 		snprintf(resolved_path, sizeof(resolved_path), "pfs0:/%s", relpath);
 
 		/* Prepare environment for POPSTARTER execution (includes IOP reboot) */
