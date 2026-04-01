@@ -627,8 +627,20 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 			partition_context[partition_len] = '\0';
 		} else if (filename != NULL && is_hdd_backed_exec_path(filename)) {
 			/* Extract partition directly from filename when it contains HDD path but partition param is NULL
-			   This handles the case where filename is like "hdd0:partition:pfs0:/path/file.elf" */
-			const char *partition_end = strchr(filename + 5, ':');
+			   Handles multiple formats:
+			   - "hdd0:partition:pfs0:/path" (colon-separated)
+			   - "hdd0:/partition/path" (slash after device)
+			   - "hdd0:partition/path" (slash separators) */
+			const char *partition_end = NULL;
+
+			/* Try format 1: hdd0:partition:pfsN:... (look for second colon) */
+			partition_end = strchr(filename + 5, ':');
+
+			/* Try format 2/3: hdd0:partition/... or hdd0:/partition/... (look for slash) */
+			if (partition_end == NULL) {
+				partition_end = strchr(filename + 5, '/');
+			}
+
 			if (partition_end == NULL) {
 				return -1;
 			}
@@ -638,8 +650,10 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 			}
 			memcpy(partition_context, filename, partition_len);
 			partition_context[partition_len] = '\0';
-			/* Strip trailing colons from extracted partition */
-			while (partition_len > 0 && partition_context[partition_len - 1] == ':') {
+			/* Strip trailing colons and slashes from extracted partition */
+			while (partition_len > 0 &&
+			       (partition_context[partition_len - 1] == ':' ||
+			        partition_context[partition_len - 1] == '/')) {
 				partition_len--;
 				partition_context[partition_len] = '\0';
 			}
@@ -664,17 +678,31 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 			return -1;
 		}
 
-		/* Extract pfs slot from path (e.g., pfs0, pfs1, pfs2, pfs3) to determine mount point */
-		int pfs_slot = 0; /* default to pfs0 */
+		/* Extract pfs slot from path (e.g., pfs0, pfs1, pfs2, pfs3) to determine mount point
+		   Formats with explicit pfsN: use that slot; slash-separated formats default to pfs1 */
+		int pfs_slot = 0; /* default to pfs0 for explicit pfsN: formats */
+		bool is_explicit_pfs_format = false; /* true if path contains explicit pfsN: */
+
 		if (filename != NULL && is_hdd_backed_exec_path(filename)) {
 			int slot = extract_exec_pfs_slot(filename);
 			if (slot >= 0) {
 				pfs_slot = slot;
+				is_explicit_pfs_format = true;
 			}
 		} else if (resolve_result >= 0 && is_hdd_backed_exec_path(resolved_path)) {
 			int slot = extract_exec_pfs_slot(resolved_path);
 			if (slot >= 0) {
 				pfs_slot = slot;
+				is_explicit_pfs_format = true;
+			}
+		}
+
+		/* For slash-separated formats (hdd0:/partition/... or hdd0:partition/...),
+		   default to pfs1 (matching boot.lua behavior) */
+		if (!is_explicit_pfs_format && filename != NULL && is_hdd_backed_exec_path(filename)) {
+			if (strchr(filename + 5, '/') != NULL && strchr(filename + 5, ':') == NULL) {
+				/* Slash-separated format detected, use pfs1 by default */
+				pfs_slot = 1;
 			}
 		}
 
