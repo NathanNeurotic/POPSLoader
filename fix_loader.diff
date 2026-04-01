@@ -1,0 +1,55 @@
+--- src/elf_loader/src/loader/src/loader.c
++++ src/elf_loader/src/loader/src/loader.c
+@@ -258,6 +258,9 @@
+	static char target_arg_storage[1024];
+	static char *target_argv[33];
+	size_t target_arg_offset = 0;
++	unsigned int filexio_entry = 0;
++	unsigned int filexio_gp = 0;
++	int loaded_via_filexio = 0;
+	int target_argc = 0;
+	int ret, i;
+
+@@ -318,13 +321,24 @@
+	//Writeback data cache before loading ELF.
+	FlushCache(0);
+	SET_GS_BGCOLOUR(GREEN_BG);
+-
+-	/* Partition context is assumed to be mounted already (e.g., pfs0:)
+-	   from the parent EE environment just like wLaunchELF does. */
+-	SifInitRpc(0);
+-	SifLoadFileInit();
+-	ret = SifLoadElf(load_path, &elfdata);
+-	SifLoadFileExit();
++	if (should_use_filexio_direct_load(partition_context, load_path)) {
++		loaded_via_filexio = 1;
++		fileXioInit();
++		ret = load_elf_via_filexio(load_path, &filexio_entry, &filexio_gp);
++		if (ret == 0) {
++			elfdata.epc = filexio_entry;
++			elfdata.gp = filexio_gp;
++		} else {
++			elfdata.epc = 0;
++			elfdata.gp = 0;
++		}
++	} else {
++		/* Partition context is assumed to be mounted already (e.g., pfs0:)
++		   from the parent EE environment just like wLaunchELF does. */
++		SifInitRpc(0);
++		SifLoadFileInit();
++		ret = SifLoadElf(load_path, &elfdata);
++		SifLoadFileExit();
++	}
+
+	SET_GS_BGCOLOUR(BLUE_BG);
+	if (ret == 0 && elfdata.epc != 0) {
+@@ -333,6 +347,9 @@
+		/* DO NOT teardown SifExitRpc or SifExitCmd! USB POPSTARTER inherits
+		   them active from LoadELFFromFileExecPS2, so HDD must too! */
+
++		if (!loaded_via_filexio) {
++			SifLoadFileExit();
++		}
+		SET_GS_BGCOLOUR(BROWN_BG);
+
+		FlushCache(0);
