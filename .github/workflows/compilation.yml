@@ -112,7 +112,7 @@ jobs:
             newer="$1"
             older="$2"
             [ "$newer" -nt "$older" ] || {
-              echo "ERROR: expected '$newer' to be newer than '$older' after incremental rebuild" >&2
+              echo "ERROR: expected '$newer' to be newer than '$older' after rebuild verification" >&2
               exit 1
             }
           }
@@ -124,17 +124,19 @@ jobs:
           require_file "$EE_ELF"
           require_file "$PKD_ELF"
 
-          # Force one incremental rebuild signal and require it to propagate
-          # through every embedded-loader output consumed by packaging.
+          # Force one source-change signal, then require the subsequent clean
+          # rebuild to regenerate every embedded-loader output consumed by
+          # packaging.
           touch "$LOADER_SRC"
+          REBUILD_STAMP="$(mktemp)"
           sleep 1
-          make elfloader all
+          make clean elfloader all
 
-          assert_newer "$LOADER_ELF" "$LOADER_SRC"
-          assert_newer "$LOADER_BLOB" "$LOADER_ELF"
-          assert_newer "$LOADER_LIB" "$LOADER_BLOB"
-          assert_newer "$EE_ELF" "$LOADER_LIB"
-          assert_newer "$PKD_ELF" "$EE_ELF"
+          assert_newer "$LOADER_ELF" "$REBUILD_STAMP"
+          assert_newer "$LOADER_BLOB" "$REBUILD_STAMP"
+          assert_newer "$LOADER_LIB" "$REBUILD_STAMP"
+          assert_newer "$EE_ELF" "$REBUILD_STAMP"
+          assert_newer "$PKD_ELF" "$REBUILD_STAMP"
 
       - name: Create release package (PS1_POPSLOADER + POPS/PATCH_5.BIN)
         shell: sh

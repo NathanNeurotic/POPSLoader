@@ -31,7 +31,7 @@ POPS/
 ```
 
 That package contract is enforced by `.github/workflows/compilation.yml`.
-Current CI also verifies that the built `enceladus.elf` still contains the expected embedded Lua runtime markers, and it now asserts embedded-loader rebuild propagation by touching `src/elf_loader/src/loader/src/loader.c` and requiring one incremental `make elfloader all` pass to rebuild `loader.elf` -> generated blob -> `libcustom-elf-loader.a` -> `enceladus.elf` -> `POPSLOADER.ELF`.
+Current CI also verifies that the built `enceladus.elf` still contains the expected embedded Lua runtime markers, and it now asserts embedded-loader rebuild propagation by touching `src/elf_loader/src/loader/src/loader.c`, running a clean rebuild, and requiring regenerated timestamps across `loader.elf` -> generated blob -> `libcustom-elf-loader.a` -> `enceladus.elf` -> `POPSLOADER.ELF`.
 
 ## Current Status At A Glance
 

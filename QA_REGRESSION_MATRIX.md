@@ -30,7 +30,7 @@ This file is the authoritative detailed run ledger for CI and hardware outcomes.
 | CI-05 | Legacy payload rejection | workflow python verifier | no `POPS/*.tm2` entries present |
 | CI-06 | Packaged build identity | workflow packaging step | ZIP includes `PS1_POPSLOADER/BUILD_INFO.txt` so hardware can confirm the exact GitHub-built artifact |
 | CI-07 | Embedded runtime identity | workflow step `Verify embedded build identity` | built `enceladus.elf` contains expected embedded Lua markers and the generated embedded-loader blob was regenerated |
-| CI-08 | Embedded loader rebuild propagation | workflow step `Verify embedded loader rebuild propagation` | touching `src/elf_loader/src/loader/src/loader.c` and rerunning `make elfloader all` rebuilds `src/elf_loader/src/loader/bin/loader.elf` -> `src/elf_loader/loader.c` -> `src/elf_loader/libcustom-elf-loader.a` -> `bin/enceladus.elf` -> `bin/POPSLOADER.ELF` in-order |
+| CI-08 | Embedded loader rebuild propagation | workflow step `Verify embedded loader rebuild propagation` | touching `src/elf_loader/src/loader/src/loader.c` and running a clean rebuild regenerates `src/elf_loader/src/loader/bin/loader.elf` -> `src/elf_loader/loader.c` -> `src/elf_loader/libcustom-elf-loader.a` -> `bin/enceladus.elf` -> `bin/POPSLOADER.ELF` |
 
 ## Manual Runtime Matrix
 
