@@ -666,8 +666,13 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 				partition_context[partition_len] = '\0';
 			}
 		} else if (resolve_result >= 0 && strncmp(resolved_path, "hdd", 3) == 0) {
-			/* Extract partition from resolved path */
+			/* Extract partition from resolved path.
+			   Handles both hdd0:partition:... and hdd0:partition/... formats. */
 			const char *partition_end = strchr(resolved_path + 5, ':');
+			if (partition_end == NULL) {
+				/* Try slash separator (hdd0:partition/...) */
+				partition_end = strchr(resolved_path + 5, '/');
+			}
 			if (partition_end == NULL) {
 				return -1;
 			}
@@ -677,7 +682,10 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 			}
 			memcpy(partition_context, resolved_path, partition_len);
 			partition_context[partition_len] = '\0';
-			while (partition_len > 0 && partition_context[partition_len - 1] == ':') {
+			/* Strip trailing colons/slashes */
+			while (partition_len > 0 &&
+			       (partition_context[partition_len - 1] == ':' ||
+			        partition_context[partition_len - 1] == '/')) {
 				partition_len--;
 				partition_context[partition_len] = '\0';
 			}
