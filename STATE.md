@@ -1,4 +1,4 @@
-Last updated: 2026-03-29
+Last updated: 2026-04-02
 
 # STATE
 
@@ -97,10 +97,11 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - current source also reports the actual exec filename separately from the probed/opened POPSTARTER path in the launcher popup so mounted-slot probe paths do not masquerade as the real load target.
   - a later hardware popup on the stripped HDD-backed line still returned `rc=-1`, but it also showed the launcher was probing/opening `pfs3:/.../POPSTARTER.ELF` while separately trying to exec a rewritten `pfs:/.../POPSTARTER.ELF`.
   - current source now removes that stale exec-path rewrite from the stripped HDD-backed POPSTARTER experiment so probe/open and exec both use the same resolved HDD ELF path, retries that exact stripped HDD ELF attempt with `reboot_iop = 1` instead of the non-reboot `LoadExecPS2` path that returned `rc=-1`, and lets that reboot path still enter the HDD embedded loader.
-  - repo comparison then showed the stripped line still had a deeper loader drift: with `exec_partition_context = nil`, the child loader falls into its newer `fileXio` direct-load shortcut for `pfsN:/...` and skips the older remount/reset path.
-  - current source therefore restores partition context only as loader metadata for HDD-backed POPSTARTER so the child uses the remount/reset path again, while still keeping no launch CWD and the same visible resolved exec path.
+  - repo comparison then showed the stripped line still had a deeper loader drift: with `exec_partition_context = nil`, the child loader falls into its newer `fileXio` direct-load shortcut for `pfsN:/...` and skips the older partition-aware remount path.
+  - current source therefore restores partition context only as loader metadata for HDD-backed POPSTARTER so the child uses the partition-aware remount path again, while still keeping no launch CWD and the same visible resolved exec path.
   - audit also found a Lua binding bug in `src/luasystem.cpp`: the trailing reboot partition context was only parsed when `System.loadELF(...)` had at least four Lua arguments, so the new HDD path could not actually deliver loader-only partition metadata in the three-argument reboot form. Current source now accepts that trailing partition context with three arguments as well.
-  - audit then found one more regression in the exact HDD child-loader path now in use: older child-loader source reloaded `SIO2MAN`, `MCMAN`, and `MCSERV` after HDD `SifIopReset("")`, while current HEAD had drifted to jump straight to `ExecPS2`. Current source restores that older child-loader reload before the final handoff.
+  - audit then found one more regression in the exact HDD child-loader path now in use: older child-loader source reloaded `SIO2MAN`, `MCMAN`, and `MCSERV` after HDD `SifIopReset("")`, while later `HEAD` had drifted to jump straight to `ExecPS2`.
+  - current source now applies a no-reset-first child-loader handoff for partition-aware HDD POPSTARTER: after mount + `SifLoadElf`, the child exits RPC and jumps via `ExecPS2` without a second child-side `SifIopReset("")` + module-reload stage; hardware on this exact line is `Unknown (verify on hardware)`.
   - audit then found another remaining carry-over in parent-side launch prep: `PrepareForExternalELFLaunch(...)` still auto-kept the mounted `pfsN` slot whenever the exec path itself was on `pfsN:/...`. Current source now suppresses that implicit exec-slot keep specifically for HDD-backed POPSTARTER, so the stripped line no longer preserves the mounted parent slot just because the executable was resolved there.
   - current source now restores more of the original parent-side embedded-loader jump contract in `src/elf_loader/src/elf.c`: BRAM wipe plus `SifInitRpc`/`SifLoadFileInit`/`SifLoadFileExit` before the copy, and `SifExitIopHeap`/`SifExitRpc`/`SifExitCmd` before the final `ExecPS2`.
   - the latest hardware re-test on that stripped selectorless line still black-screened, while the only recorded move away from a black screen happened on an earlier selector-passing line.
@@ -114,7 +115,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - the user later clarified that the other same-day 2026-03-28 success report referred to `D-15`, not this case.
   - a later 2026-03-28 re-test on the forced-`reboot_iop = 1` source still black-screened on `X`; `R2` produced no response in that non-HDD-game repro.
   - a later 2026-03-28 re-test on the direct-`hdd0:PART:pfsN:/POPSTARTER.ELF` preference source still black-screened on `X`.
-  - current source now uses the same partition-aware HDD reboot contract as `D-10`, rather than the earlier ad hoc source-context handoff or whichever mounted `pfsN:` path Lua happened to resolve first.
+  - current source now uses the same partition-aware HDD reboot contract as `D-10`, including the no-reset-first child-loader handoff, rather than the earlier ad hoc source-context handoff or whichever mounted `pfsN:` path Lua happened to resolve first.
   - latest recorded hardware remains `FAIL`; current exact-line result is still `Unknown (verify on hardware)`.
 - `D-15` HDD game with non-HDD sidecar POPSTARTER:
   - reported as a regression on hardware.

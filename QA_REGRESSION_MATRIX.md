@@ -1,6 +1,6 @@
 # POPSLoader Regression Matrix
 
-Last updated: 2026-03-29
+Last updated: 2026-04-02
 Target line: current repository source
 
 ## Scope
@@ -179,9 +179,10 @@ This file is the authoritative detailed run ledger for CI and hardware outcomes.
     - current source now keeps the safer embedded-loader fix that avoids `printf`/`snprintf` in that environment, returns the actual embedded-loader `ExecPS2` result instead of collapsing it to `-1`, now shows the actual exec path separately from the probed/opened POPSTARTER path in the launcher popup, restores partition context only as loader metadata so the child avoids the newer `fileXio` shortcut, normalizes stale canonical profile-path state so Profile 1/default does not silently keep another profile's HDD POPSTARTER path, and keeps the older iomanX-aware `fileXio` path only as the fallback for direct `pfs:` / `hdd:` loads with no HDD partition context.
     - the latest hardware popup on that stripped line returned `rc=-1`, but it also showed the source was still probing/opening `pfs3:/.../POPSTARTER.ELF` while separately trying to exec a rewritten `pfs:/.../POPSTARTER.ELF`.
     - current source now removes that stale exec-path rewrite from the stripped HDD-backed POPSTARTER experiment so probe/open and exec use the same resolved HDD ELF path, retries that stripped HDD ELF launch through reboot mode instead of the non-reboot `LoadExecPS2` path that returned `rc=-1`, and still uses the HDD embedded loader.
-    - repo comparison then showed the stripped line was still using the child loader's newer `fileXio` direct-load shortcut for `pfsN:/...` because `exec_partition_context` had been cleared; current source now restores partition context only as loader metadata so the child uses the older remount/reset path again while still keeping the same visible exec path.
+    - repo comparison then showed the stripped line was still using the child loader's newer `fileXio` direct-load shortcut for `pfsN:/...` because `exec_partition_context` had been cleared; current source now restores partition context only as loader metadata so the child uses the older partition-aware remount path again while still keeping the same visible exec path.
     - audit also found a Lua binding bug in `src/luasystem.cpp`: the trailing reboot partition context was only recognized when `System.loadELF(...)` had at least four Lua arguments, so the HDD reboot path could not actually pass loader-only partition metadata until current source widened that check to the three-argument form.
-    - audit then found one more regression in the exact HDD child-loader path now in use: older child-loader source reloaded `SIO2MAN`, `MCMAN`, and `MCSERV` after HDD `SifIopReset("")`, while current HEAD had drifted to jump straight to `ExecPS2`. Current source restores that older child-loader reload before the final handoff.
+    - audit then found one more regression in the exact HDD child-loader path now in use: older child-loader source reloaded `SIO2MAN`, `MCMAN`, and `MCSERV` after HDD `SifIopReset("")`, while later `HEAD` had drifted to jump straight to `ExecPS2`.
+    - current source now applies a no-reset-first child-loader handoff for partition-aware HDD POPSTARTER: mount `pfs0:` + `SifLoadElf`, then `SifExitRpc`/`ExecPS2` without a child-side post-load `SifIopReset("")` + module-reload stage. Hardware on this exact line is still `Unknown (verify on hardware)`.
     - audit then found another remaining carry-over in parent-side launch prep: `PrepareForExternalELFLaunch(...)` still auto-kept the mounted `pfsN` slot whenever the exec path itself was on `pfsN:/...`. Current source now suppresses that implicit exec-slot keep specifically for HDD-backed POPSTARTER, so the stripped line no longer preserves the mounted parent slot just because the executable was resolved there.
     - a later 2026-03-29 hardware re-test on the selectorless stripped current `HEAD` line still black-screened.
     - current source now restores selector-only `argv[0]` for HDD-backed POPSTARTER because that selectorless line did not improve hardware behavior, while the loader still keeps partition metadata only to load the HDD ELF cleanly.
@@ -191,7 +192,7 @@ This file is the authoritative detailed run ledger for CI and hardware outcomes.
     - the user later clarified that the other same-day 2026-03-28 success result referred to `D-15`, not this case.
     - a later 2026-03-28 re-test on the forced-`reboot_iop = 1` source still black-screened on `X`; `R2` produced no response in that non-HDD-game repro.
     - a later 2026-03-28 re-test on the direct-`hdd0:PART:pfsN:/POPSTARTER.ELF` preference source still black-screened on `X`.
-    - current source now uses the same partition-aware HDD reboot contract as `D-10`, rather than the earlier ad hoc source-context handoff or whichever mounted `pfsN:` path Lua happened to resolve first; hardware result is still `Unknown (verify on hardware)`.
+    - current source now uses the same partition-aware HDD reboot contract as `D-10`, including the no-reset-first child-loader handoff, rather than the earlier ad hoc source-context handoff or whichever mounted `pfsN:` path Lua happened to resolve first; hardware result is still `Unknown (verify on hardware)`.
   - `D-15`: reported FAIL on 2026-03-27 when booting from a non-HDD device and launching an HDD title with sidecar/cwd `POPSTARTER.ELF` on that boot device.
     - the user identified this as a regression on the EE-side HDD direct-load attempt.
     - a later 2026-03-27 broader stripped-handoff source also failed, a 2026-03-28 experimental source still black-screened, and the 2026-03-28 rolled-back current source still black-screened with USB boot plus USB sidecar/cwd `POPSTARTER.ELF`.

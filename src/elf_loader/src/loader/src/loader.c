@@ -390,20 +390,16 @@ int main(int argc, char *argv[])
 		}
 
 		if (is_hdd_partition_context(partition_context)) {
-			while(!SifIopReset("", 0)){};
-			while (!SifIopSync()) {};
-
-			SET_GS_BGCOLOUR(ORANGE_BG);
-
-			SifInitRpc(0);
-			SifLoadFileInit();
-			SifLoadModule("rom0:SIO2MAN", 0, NULL);
-			SifLoadModule("rom0:MCMAN", 0, NULL);
-			SifLoadModule("rom0:MCSERV", 0, NULL);
-			SifLoadFileExit();
+			/* Keep partition-aware HDD handoff aligned with the PS2SDK
+			 * loader contract: once SifLoadElf copied the target ELF,
+			 * jump without a second child-side IOP reset/module-reload
+			 * stage.
+			 */
+			SifExitRpc();
+		} else {
+			SifExitRpc();
+			SifExitCmd();
 		}
-		SifExitRpc();
-		SifExitCmd();
 
 		SET_GS_BGCOLOUR(BROWN_BG);
 
