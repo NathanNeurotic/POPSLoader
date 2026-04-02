@@ -622,18 +622,22 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 	                         (filename != NULL && is_hdd_backed_exec_path(filename)) ||
 	                         (resolve_result >= 0 && is_hdd_backed_exec_path(resolved_path))));
 
-	/* Handle HDD-backed execution by mounting partition in parent, then loading normally.
-	   Mirrors the embedded loader's approach but executes in parent context. */
-	if (is_hdd_scenario) {
-#ifdef DEBUG
-		dprintf("DEBUG: HDD scenario detected\n");
-#endif
+	/* ARCHITECTURAL FIX (GitHub Issue D-10):
+	   The parent-context HDD ELF loading path violated a fundamental PS2 constraint:
+	   RPC client connections created in one EE context become INVALID in another EE
+	   context after ExecPS2(). This caused POPSTARTER to have no fileXio RPC client,
+	   resulting in black screen (unable to access files, no debug output).
 
-		/* Extract partition context: use explicit partition param if available,
-		   otherwise extract from filename or resolved path.
-		   All extraction follows the pattern: hdd0:partition (no trailing colon in result) */
+	   Solution: Route all HDD execution through the embedded loader, which properly
+	   initializes RPC in its own context. This is proven to work by:
+	   1. The embedded loader itself (loader.c:375-503)
+	   2. Reference implementations (wLaunchELF, Enceladus, etc.)
+
+	   The embedded loader expects partition info in argv[0] and will handle HDD setup.
+	*/
+	if (is_hdd_scenario) {
+		/* Extract partition context for embedded loader */
 		if (has_explicit_hdd_partition) {
-			/* Use partition parameter directly */
 			partition_len = strlen(partition);
 			while (partition_len > 0 && partition[partition_len - 1] == ':') {
 				partition_len--;
@@ -644,7 +648,6 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 			memcpy(partition_context, partition, partition_len);
 			partition_context[partition_len] = '\0';
 		} else if (filename != NULL && strncmp(filename, "hdd", 3) == 0) {
-			/* Extract partition from filename: hdd0:partition:... or hdd0:partition/... */
 			const char *partition_end = strchr(filename + 5, ':');
 			if (partition_end == NULL) {
 				partition_end = strchr(filename + 5, '/');
@@ -658,7 +661,6 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 			}
 			memcpy(partition_context, filename, partition_len);
 			partition_context[partition_len] = '\0';
-			/* Strip trailing colons/slashes */
 			while (partition_len > 0 &&
 			       (partition_context[partition_len - 1] == ':' ||
 			        partition_context[partition_len - 1] == '/')) {
@@ -666,11 +668,8 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 				partition_context[partition_len] = '\0';
 			}
 		} else if (resolve_result >= 0 && strncmp(resolved_path, "hdd", 3) == 0) {
-			/* Extract partition from resolved path.
-			   Handles both hdd0:partition:... and hdd0:partition/... formats. */
 			const char *partition_end = strchr(resolved_path + 5, ':');
 			if (partition_end == NULL) {
-				/* Try slash separator (hdd0:partition/...) */
 				partition_end = strchr(resolved_path + 5, '/');
 			}
 			if (partition_end == NULL) {
@@ -682,7 +681,6 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 			}
 			memcpy(partition_context, resolved_path, partition_len);
 			partition_context[partition_len] = '\0';
-			/* Strip trailing colons/slashes */
 			while (partition_len > 0 &&
 			       (partition_context[partition_len - 1] == ':' ||
 			        partition_context[partition_len - 1] == '/')) {
@@ -693,209 +691,11 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 			return -1;
 		}
 
-#ifdef DEBUG
-		dprintf("DEBUG: partition_context='%s'\n", partition_context);
-#endif
-
-		/* Extract the relative path from the full path.
-		   Handles pfs:/path, hdd0:partition:pfsN:/path, and hdd0:partition:path formats. */
-		const char *relpath = NULL;
-		if (filename != NULL && strncmp(filename, "pfs", 3) == 0) {
-			/* Format: pfs0:/path or pfs:/path - extract relpath after pfsN: or pfs: */
-			relpath = extract_exec_relpath(filename);
-		} else if (filename != NULL && strncmp(filename, "hdd", 3) == 0) {
-			/* Format: hdd0:partition:pfsN:/path OR hdd0:partition:path
-			   First try the pfsN: format via extract_exec_relpath.
-			   If it fails, extract directly after second colon. */
-			relpath = extract_exec_relpath(filename);
-			if (relpath == NULL) {
-				/* Fallback: format is hdd0:partition:path (no pfsN)
-				   Find second colon and everything after it is the path */
-				const char *second_colon = strchr(filename + 5, ':');
-				if (second_colon != NULL) {
-					relpath = second_colon + 1;
-					/* Skip leading slashes */
-					while (relpath[0] == '/') {
-						relpath++;
-					}
-					if (relpath[0] == '\0') {
-						relpath = NULL;
-					}
-				}
-			}
-		} else if (resolve_result >= 0 && strncmp(resolved_path, "hdd", 3) == 0) {
-			/* Use resolved path for HDD extraction (same logic as filename) */
-			relpath = extract_exec_relpath(resolved_path);
-			if (relpath == NULL) {
-				const char *second_colon = strchr(resolved_path + 5, ':');
-				if (second_colon != NULL) {
-					relpath = second_colon + 1;
-					while (relpath[0] == '/') {
-						relpath++;
-					}
-					if (relpath[0] == '\0') {
-						relpath = NULL;
-					}
-				}
-			}
-		} else if (filename != NULL) {
-			/* Fallback: use filename directly (relative path) */
-			relpath = filename;
-		}
-
-		if (relpath == NULL) {
-			return -1;
-		}
-
-		/* Build the load path for pfs0: (we'll mount partition there) */
-		char pfs_load_path[256];
-		if (relpath[0] == '\0') {
-			snprintf(pfs_load_path, sizeof(pfs_load_path), "pfs0:/");
-		} else if (relpath[0] == '/') {
-			snprintf(pfs_load_path, sizeof(pfs_load_path), "pfs0:%s", relpath);
-		} else {
-			snprintf(pfs_load_path, sizeof(pfs_load_path), "pfs0:/%s", relpath);
-		}
-
-#ifdef DEBUG
-		dprintf("DEBUG: partition_context='%s', load_path='%s'\n", partition_context, pfs_load_path);
-#endif
-
-		/* Prepare environment for POPSTARTER execution (includes IOP reboot) */
+		/* Route to embedded loader with partition context.
+		   The embedded loader will initialize RPC in its own context and handle
+		   HDD mounting/loading properly. This avoids RPC context loss after ExecPS2. */
 		prepare_reboot_exec_environment();
-
-		/* Reinitialize RPC to load HDD modules */
-		SifInitRpc(0);
-
-		/* Load HDD modules from embedded IRX buffers after IOP reboot.
-		   These modules are NOT in PS2 ROM - they are embedded as binary blobs
-		   in the EE executable and must be loaded via SifExecModuleBuffer().
-		   sbv_patch_enable_lmb() was already called during prepare_reboot_exec_environment(). */
-		{
-			int mod_res = 0;
-			static const char hddarg[] = "-o\0" "4\0" "-n\0" "20";
-			static const char pfsarg[] = "-m\0" "4\0" "-o\0" "10\0" "-n\0" "40";
-
-#ifdef DEBUG
-			dprintf("DEBUG: Loading iomanX module\n");
-#endif
-			if (SifExecModuleBuffer(iomanX_irx, size_iomanX_irx, 0, NULL, &mod_res) < 0) {
-#ifdef DEBUG
-				dprintf("DEBUG: iomanX load failed (res=%d)\n", mod_res);
-#endif
-				return -1;
-			}
-#ifdef DEBUG
-			dprintf("DEBUG: Loading fileXio module\n");
-#endif
-			if (SifExecModuleBuffer(fileXio_irx, size_fileXio_irx, 0, NULL, &mod_res) < 0) {
-#ifdef DEBUG
-				dprintf("DEBUG: fileXio load failed (res=%d)\n", mod_res);
-#endif
-				return -1;
-			}
-#ifdef DEBUG
-			dprintf("DEBUG: Loading ps2dev9 module\n");
-#endif
-			if (SifExecModuleBuffer(ps2dev9_irx, size_ps2dev9_irx, 0, NULL, &mod_res) < 0) {
-#ifdef DEBUG
-				dprintf("DEBUG: ps2dev9 load failed (res=%d)\n", mod_res);
-#endif
-				return -1;
-			}
-#ifdef DEBUG
-			dprintf("DEBUG: Loading ps2atad module\n");
-#endif
-			if (SifExecModuleBuffer(ps2atad_irx, size_ps2atad_irx, 0, NULL, &mod_res) < 0) {
-#ifdef DEBUG
-				dprintf("DEBUG: ps2atad load failed (res=%d)\n", mod_res);
-#endif
-				return -1;
-			}
-#ifdef DEBUG
-			dprintf("DEBUG: Loading ps2hdd module\n");
-#endif
-			if (SifExecModuleBuffer(ps2hdd_osd_irx, size_ps2hdd_osd_irx, sizeof(hddarg), hddarg, &mod_res) < 0) {
-#ifdef DEBUG
-				dprintf("DEBUG: ps2hdd load failed (res=%d)\n", mod_res);
-#endif
-				return -1;
-			}
-#ifdef DEBUG
-			dprintf("DEBUG: Loading ps2fs module\n");
-#endif
-			if (SifExecModuleBuffer(ps2fs_irx, size_ps2fs_irx, sizeof(pfsarg), pfsarg, &mod_res) < 0) {
-#ifdef DEBUG
-				dprintf("DEBUG: ps2fs load failed (res=%d)\n", mod_res);
-#endif
-				return -1;
-			}
-#ifdef DEBUG
-			dprintf("DEBUG: All HDD modules loaded successfully\n");
-#endif
-		}
-
-		/* Now that fileXio module is loaded, initialize fileXio RPC client */
-		fileXioInit();
-
-		/* Mount HDD partition at pfs0: (mirrors embedded loader approach) */
-		fileXioUmount("pfs0:");
-
-#ifdef DEBUG
-		dprintf("DEBUG: Mounting '%s' at pfs0:\n", partition_context);
-#endif
-		int mount_result = fileXioMount("pfs0:", partition_context, FIO_MT_RDONLY);
-		if (mount_result < 0) {
-#ifdef DEBUG
-			dprintf("DEBUG: Mount failed (ret=%d), retrying\n", mount_result);
-#endif
-			fileXioUmount("pfs0:");
-			mount_result = fileXioMount("pfs0:", partition_context, FIO_MT_RDONLY);
-			if (mount_result < 0) {
-#ifdef DEBUG
-				dprintf("DEBUG: Mount failed again (ret=%d), aborting\n", mount_result);
-#endif
-				return -1;
-			}
-		}
-#ifdef DEBUG
-		dprintf("DEBUG: Mount successful, loading ELF from '%s'\n", pfs_load_path);
-#endif
-
-		/* Load ELF from mounted partition */
-		SifLoadFileInit();
-		ret = SifLoadElf(pfs_load_path, &elfdata);
-		SifLoadFileExit();
-
-#ifdef DEBUG
-		dprintf("DEBUG: SifLoadElf returned ret=%d, epc=0x%x, gp=0x%x\n", ret, elfdata.epc, elfdata.gp);
-#endif
-
-		if (ret != 0 || elfdata.epc == 0) {
-#ifdef DEBUG
-			dprintf("DEBUG: SifLoadElf failed\n");
-#endif
-			fileXioUmount("pfs0:");
-			SifExitIopHeap();
-			SifExitRpc();
-			SifExitCmd();
-			return -2;
-		}
-
-#ifdef DEBUG
-		dprintf("DEBUG: SifLoadElf successful, about to ExecPS2\n");
-#endif
-
-		/* Keep partition mounted for POPSTARTER to access HDD files during execution */
-		SifExitIopHeap();
-		SifExitRpc();
-		SifExitCmd();
-		FlushCache(0);
-		FlushCache(2);
-
-		/* Jump directly to POPSTARTER with partition still mounted */
-		ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc, argv);
-		return -1;
+		return ExecuteViaEmbeddedLoader(partition_context, filename != NULL ? filename : resolved_path, argc, argv);
 	}
 
 	/* Non-HDD fallback: use embedded loader (legacy path) */

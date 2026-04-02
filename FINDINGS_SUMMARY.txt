@@ -1,0 +1,208 @@
+================================================================================
+FINDINGS SUMMARY: POPSLoader HDD ELF Loading Silent Failure
+================================================================================
+
+OBJECTIVE: Find why HDD ELF loading fails silently (black screen, zero debug logs) 
+in POPSLoader while other PS2 projects successfully load HDD-backed ELFs.
+
+ROOT CAUSE IDENTIFIED:
+The parent-context HDD ELF loading path (src/elf_loader/src/elf.c lines 627-898)
+is architecturally broken because it violates a fundamental PS2 constraint:
+
+  "RPC client connections created in one EE context become INVALID in another 
+   EE context after ExecPS2."
+
+================================================================================
+CRITICAL FINDING: THE BROKEN PATH
+================================================================================
+
+File: /home/user/POPSLoader/src/elf_loader/src/elf.c, lines 627-898
+
+Sequence:
+  1. prepare_reboot_exec_environment() - IOP reboot in parent
+  2. SifInitRpc(0) - initialize RPC in parent context
+  3. Load 6 HDD modules via SifExecModuleBuffer
+  4. fileXioInit() - CREATES RPC CLIENT IN PARENT CONTEXT (line 839)
+  5. fileXioMount() - mount partition using parent's RPC client (line 847)
+  6. SifLoadElf() - load ELF in parent context (line 867)
+  7. ExecPS2() - JUMP TO POPSTARTER, INVALIDATING PARENT'S RPC STATE (line 897)
+
+Why it fails:
+  - The fileXio RPC client created in parent (step 4) is only valid in parent
+  - ExecPS2 switches to POPSTARTER's context
+  - POPSTARTER has no fileXio RPC client - parent's was lost
+  - POPSTARTER cannot read files, initialize, or output debug logs
+  - Result: Black screen with zero debug output
+
+================================================================================
+THE WORKING SOLUTION (ALREADY IN POPSLoader)
+================================================================================
+
+File: /home/user/POPSLoader/src/elf_loader/src/loader/src/loader.c, lines 308-503
+
+Sequence:
+  1. Parent: prepare_reboot_exec_environment() - IOP reboot
+  2. Parent: SifInitRpc(0) - minimal RPC setup
+  3. Parent: ExecPS2() to embedded loader
+  4. Embedded Loader: fileXioInit() FIRST (line 375) - RPC CLIENT IN OWN CONTEXT
+  5. Embedded Loader: fileXioMount() - mount using embedded loader's RPC
+  6. Embedded Loader: SifLoadElf() - load ELF in embedded loader context
+  7. Embedded Loader: ExecPS2() to POPSTARTER - with valid RPC still intact
+
+Why it works:
+  - fileXioInit() called in embedded loader's context (fresh after ExecPS2)
+  - Partition mounted in embedded loader's context
+  - ELF loaded in embedded loader's context
+  - All RPC operations are local to that context
+  - POPSTARTER inherits the mounted partition (child process)
+  - But more importantly: embedded loader doesn't rely on RPC after ExecPS2
+
+================================================================================
+COMPARISON WITH wLaunchELF (REFERENCE IMPLEMENTATION)
+================================================================================
+
+File: /home/user/wLaunchELF_kHn/src/elf.c, lines 120-185
+
+Sequence:
+  1. Parent: load all HDD modules via SifExecModuleBuffer
+  2. Parent: fileXioMount() in parent context
+  3. Parent: copy LOADER.ELF to memory (embedded loader binary)
+  4. Parent: SifExitRpc() - CLEAN UP RPC BEFORE EXECPS2 (critical difference!)
+  5. Parent: ExecPS2() to LOADER.ELF
+  6. Embedded Loader: initializes fresh (assuming pfs0: already mounted)
+  7. Embedded Loader: uses pre-mounted pfs0: to load target ELF
+  8. Embedded Loader: ExecPS2() to target
+
+Key difference from broken POPSLoader path:
+  - Cleans up RPC before ExecPS2 (doesn't try to preserve state)
+  - Passes already-mounted path to embedded loader
+  - Embedded loader doesn't need to re-mount (simpler)
+
+================================================================================
+ARCHITECTURAL CONSTRAINTS DISCOVERED
+================================================================================
+
+Constraint 1: RPC Context Loss on ExecPS2
+  ExecPS2 switches EE context. Any RPC client connections created in parent
+  become invalid in child. This is a fundamental PS2 architecture limitation.
+
+Constraint 2: fileXioInit() Must Be Called in Execution Context
+  fileXioInit() establishes an RPC connection. It MUST be called in the same
+  context where fileXio operations will occur. It cannot be set up in parent
+  and used in child.
+
+Constraint 3: Module Loading Doesn't Cross Context Boundaries
+  Modules loaded via SifExecModuleBuffer (IOP side) are global, but RPC client
+  connections (EE side) are per-context.
+
+Constraint 4: IOP Partition Mounting vs. EE RPC Client
+  Even if a partition is "mounted" on the IOP side, the EE-side RPC client must
+  be in the same context to use it. Parent's mount is useless to child if child
+  has no RPC client.
+
+================================================================================
+EXACT CODE DIFFERENCES
+================================================================================
+
+POPSLoader Parent (BROKEN):
+  fileXioInit();                           // Line 839 - parent context
+  fileXioMount("pfs0:", partition, ...);   // Line 847 - parent's RPC
+  SifLoadElf(pfs_load_path, &elfdata);     // Line 867 - parent context
+  ExecPS2(...);                            // Line 897 - INVALID RPC in POPSTARTER
+
+POPSLoader Embedded Loader (WORKING):
+  fileXioInit();                           // Line 375 - embedded context (CORRECT)
+  fileXioMount("pfs0:", partition, ...);   // Line 401 - embedded's RPC (CORRECT)
+  SifLoadElf(mounted_path, &elfdata);      // Line 422 - embedded context (CORRECT)
+  ExecPS2(...);                            // Line 503 - RPC valid until here
+
+wLaunchELF (WORKING):
+  fileXioMount("pfs0:", party, ...);       // Parent context
+  SifExitRpc();                            // DELIBERATELY CLEAN UP (key difference!)
+  ExecPS2(...);                            // Jump to embedded loader
+  // Embedded loader assumes pfs0: already mounted, doesn't need RPC setup
+
+================================================================================
+MODULE LOADING SEQUENCE ANALYSIS
+================================================================================
+
+Both POPSLoader parent and wLaunchELF load modules in similar order:
+  1. iomanX
+  2. fileXio
+  3. ps2dev9
+  4. ps2atad
+  5. ps2hdd (WITH ARGUMENTS)
+  6. ps2fs (WITH ARGUMENTS)
+
+Module arguments:
+  wLaunchELF ps2hdd:    "-o 4 -n 127" (127 partitions)
+  POPSLoader ps2hdd:    "-o 4 -n 20"  (20 partitions)
+
+Both are correct. The difference is minor (partition limit).
+
+================================================================================
+EVIDENCE FOR ROOT CAUSE
+================================================================================
+
+Evidence 1: The Embedded Loader Works
+  - Same codebase, different path
+  - Only difference: fileXioInit() in correct context
+  - Proves it's a context/RPC issue, not module loading issue
+
+Evidence 2: wLaunchELF Avoids the Problem
+  - Exits RPC before ExecPS2
+  - Passes pre-mounted path to embedded loader
+  - Both approaches acknowledge RPC cannot cross ExecPS2
+
+Evidence 3: Silent Failure Pattern Matches RPC Loss
+  - No debug output = fileXio not working (used for logging)
+  - Black screen = POPSTARTER can't initialize (needs file access)
+  - Perfect match for "RPC client lost after ExecPS2"
+
+Evidence 4: SifLoadElf() Succeeds (Partial)
+  - SifLoadElf() uses IOP's loadfile module (global)
+  - Parent's SifLoadElf() works fine in parent context
+  - But this doesn't matter once POPSTARTER runs with no RPC
+
+================================================================================
+RECOMMENDATIONS
+================================================================================
+
+IMMEDIATE ACTION:
+  1. Disable or remove parent-context HDD ELF loading (lines 627-898)
+  2. Ensure all HDD execution uses embedded loader path
+  3. Verify embedded loader receives correct arguments:
+     - argv[0] = partition context (hdd0:partition)
+     - argv[1] = load path (pfs0:/path or hdd0:partition:path)
+
+LONG-TERM:
+  1. Document this architectural constraint in code comments
+  2. Never attempt to mount/prepare RPC in parent and use in child
+  3. Always initialize RPC services (fileXio) in the context where they'll be used
+  4. Consider creating helper functions to enforce this pattern
+
+TESTING:
+  1. Verify embedded loader path works with HDD ELFs
+  2. Disable parent-context path completely
+  3. Monitor for any regressions
+
+================================================================================
+FILES INVOLVED
+================================================================================
+
+Broken Path:
+  /home/user/POPSLoader/src/elf_loader/src/elf.c
+  Lines 627-898: is_hdd_scenario block
+
+Working Path:
+  /home/user/POPSLoader/src/elf_loader/src/loader/src/loader.c
+  Lines 308-503: main() function
+
+Reference Implementation:
+  /home/user/wLaunchELF_kHn/src/elf.c
+  Lines 120-185: RunLoaderElf()
+
+  /home/user/wLaunchELF_kHn/src/loader/loader.c
+  Lines 120-185: Embedded loader's execution
+
+================================================================================

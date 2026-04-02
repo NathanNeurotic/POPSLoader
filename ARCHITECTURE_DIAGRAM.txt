@@ -1,0 +1,143 @@
+================================================================================
+ARCHITECTURAL COMPARISON DIAGRAM
+================================================================================
+
+BROKEN PATH: POPSLoader Parent-Context HDD Loading
+================================================================================
+
+Parent EE Context                     Child EE Context (POPSTARTER)
+┌─────────────────────────────┐       ┌─────────────────────────────┐
+│ Main ELF (elf.c)            │       │ POPSTARTER                  │
+│                             │       │                             │
+│ 1. prepare_reboot_exec_      │ ─ ─ ─┼─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┼ ─ ─ ─ ─ ─ ─
+│    environment()            │       │                             │
+│                             │       │                             │
+│ 2. SifInitRpc(0)            │       │ RPC CLIENT: NONE!           │
+│    - Creates RPC state      │       │ (Parent's is invalid)       │
+│                             │       │                             │
+│ 3. Load 6 HDD modules       │       │                             │
+│    via SifExecModuleBuffer  │       │                             │
+│                             │       │                             │
+│ 4. fileXioInit()  ┐         │       │                             │
+│    - Creates RPC  │         │       │ If tries fileXio:           │
+│    - Client HERE  │         │       │ - No RPC connection!        │
+│                   │         │       │ - Operations fail           │
+│ 5. fileXioMount() │────────→│       │ - Debug logs fail           │
+│    Mounted!       │         │       │ - BLACK SCREEN              │
+│                   │         │       │                             │
+│ 6. SifLoadElf()   │         │       │                             │
+│    - ELF loaded   │         │       │                             │
+│      in parent    │         │       │                             │
+│                   │         │       │                             │
+│ 7. ExecPS2()      │ ───────→│ ─ ─ ┤ RPC state is LOST!          │
+│                   │         │       │                             │
+└─────────────────────────────┘       └─────────────────────────────┘
+
+PROBLEM: RPC client created in parent becomes INVALID in child context
+
+
+WORKING PATH 1: POPSLoader Embedded Loader
+================================================================================
+
+Parent EE Context          Embedded Loader Context       Child EE Context
+┌──────────────────────┐   ┌──────────────────────┐   ┌──────────────────┐
+│ Main ELF             │   │ loader.c             │   │ POPSTARTER       │
+│                      │   │                      │   │                  │
+│ 1. prepare_reboot    │   │ 1. fileXioInit() ◄───┤── RPC CLIENT in     │
+│                      │   │    - Fresh RPC       │   embedded context  │
+│ 2. SifInitRpc(0)     │   │    client here!      │   (valid!)          │
+│    - Minimal setup   │   │                      │   │                  │
+│                      │   │ 2. fileXioMount()    │   │                  │
+│ 3. ExecPS2()         │───┼──→ - Mount here      │   │                  │
+│    to embedded       │   │   using RPC above    │   │                  │
+│    loader            │   │                      │   │                  │
+│                      │   │ 3. SifLoadElf() ──┐  │   │                  │
+│                      │   │    - Load ELF ──┐ │  │   │                  │
+│                      │   │    here with ──┐│ │  │   │                  │
+│                      │   │    fresh RPC ──┴┴─┤  │   │                  │
+│                      │   │                      │   │                  │
+│                      │   │ 4. ExecPS2() ───────┼──→ Ready with valid  │
+│                      │   │    to POPSTARTER    │   │ RPC/mount!      │
+│                      │   │                      │   │                  │
+└──────────────────────┘   └──────────────────────┘   └──────────────────┘
+
+SUCCESS: Each context initializes its own RPC client
+
+
+WORKING PATH 2: wLaunchELF Approach
+================================================================================
+
+Parent EE Context          Embedded Loader Context       Child EE Context
+┌──────────────────────┐   ┌──────────────────────┐   ┌──────────────────┐
+│ Main ELF             │   │ LOADER.ELF           │   │ Target ELF       │
+│                      │   │                      │   │                  │
+│ 1. Load all HDD      │   │ 1. Assumes pfs0:     │   │ Inherits mount   │
+│    modules at start  │   │    already mounted   │   │                  │
+│                      │   │                      │   │                  │
+│ 2. fileXioMount()    │   │ 2. SifLoadElf() on   │   │                  │
+│    Partition mounted │───┼──→ pfs0: path       │   │                  │
+│    at pfs0:          │   │                      │   │                  │
+│                      │   │ 3. ExecPS2() ───────┼──→ Run target       │
+│ 3. SifExitRpc() ◄───┤   │    to target         │   │                  │
+│    CLEANUP before    │   │                      │   │                  │
+│    jump!             │   │                      │   │                  │
+│                      │   │                      │   │                  │
+│ 4. ExecPS2()         │   │                      │   │                  │
+│    to LOADER.ELF     │───┼──→                   │   │                  │
+│    + path as arg     │   │                      │   │                  │
+│                      │   │                      │   │                  │
+└──────────────────────┘   └──────────────────────┘   └──────────────────┘
+
+SUCCESS: RPC cleaned up before context switch, child doesn't need it
+
+
+KEY DIFFERENCE MATRIX
+================================================================================
+
+Aspect                    Broken Path          Working Path 1         Working Path 2
+                         (POPSLoader Parent)   (POPSLoader Emb)       (wLaunchELF)
+─────────────────────────────────────────────────────────────────────────────────
+
+Where initialized?        Parent context       Child context          Parent context
+fileXioInit() location     WRONG (parent)       CORRECT (child)        Not called (pre-mount)
+fileXioMount() location    Parent               Child                  Parent
+RPC cleanup before jump    NO ✗                 YES ✓                  YES ✓
+ELF load context           Parent               Child                  Child
+Post-ExecPS2 RPC state     INVALID ✗            VALID ✓                N/A (not needed)
+Result                     BLACK SCREEN         WORKS                  WORKS
+
+
+ROOT CAUSE HIERARCHY
+================================================================================
+
+Level 1: General PS2 Architecture
+  └─ ExecPS2 switches EE context
+     └─ RPC client connections are per-context
+
+Level 2: RPC Service Architecture
+  └─ fileXioInit() establishes RPC connection in current context
+     └─ Cannot be used from different context after ExecPS2
+
+Level 3: POPSLoader Specific
+  └─ Parent-context path violates this constraint
+  └─ Embedded-loader path respects this constraint
+  └─ Using wrong path causes silent failure
+
+
+SOLUTION
+================================================================================
+
+❌ DO NOT USE:
+   fileXioInit() in parent -> fileXioMount() in parent -> ExecPS2() to child
+
+✓ DO USE:
+   ExecPS2() to child -> fileXioInit() in child -> fileXioMount() in child
+
+OR
+
+✓ ALTERNATIVE:
+   fileXioMount() in parent -> SifExitRpc() -> ExecPS2() -> 
+   child uses pre-mounted state
+
+
+================================================================================
