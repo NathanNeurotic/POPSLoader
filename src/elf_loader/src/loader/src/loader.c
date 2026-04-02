@@ -361,9 +361,31 @@ int main(int argc, char *argv[])
 	} else {
 		ret = mount_partition_context_on_pfs0(partition_context);
 		if (ret == 0) {
-			SifLoadFileInit();
-			ret = SifLoadElf(load_path, &elfdata);
-			SifLoadFileExit();
+			if (is_hdd_partition_context(partition_context)) {
+				/* Keep the partition-aware mount contract, but for HDD-backed
+				 * targets prefer the same mounted-path fileXio segment-copy
+				 * style that wLaunchELF's pfs0 flow uses. If that load fails,
+				 * fall back to SifLoadElf on the same mounted path.
+				 */
+				loaded_via_filexio = 1;
+				fileXioInit();
+				ret = load_elf_via_filexio(load_path, &filexio_entry, &filexio_gp);
+				if (ret == 0) {
+					elfdata.epc = filexio_entry;
+					elfdata.gp = filexio_gp;
+				} else {
+					loaded_via_filexio = 0;
+					elfdata.epc = 0;
+					elfdata.gp = 0;
+					SifLoadFileInit();
+					ret = SifLoadElf(load_path, &elfdata);
+					SifLoadFileExit();
+				}
+			} else {
+				SifLoadFileInit();
+				ret = SifLoadElf(load_path, &elfdata);
+				SifLoadFileExit();
+			}
 		} else {
 			elfdata.epc = 0;
 			elfdata.gp = 0;
@@ -373,14 +395,8 @@ int main(int argc, char *argv[])
 	if (ret == 0 && elfdata.epc != 0) {
 		SET_GS_BGCOLOUR(YELLOW_BG);
 
-		/* Direct iomanX-only paths still need the older fileXio loader
-		 * contract.  Once the target ELF has been copied into EE RAM
-		 * through fileXio, avoid the later HDD reset / teardown path.
-		 *
-		 * Partition-aware HDD launches are different: the child now
-		 * remounts pfs0: from the passed partition context before
-		 * SifLoadElf, so match the reference loaders and keep using the
-		 * mounted-path SifLoadElf flow instead of forcing fileXio here.
+		/* Any path loaded through the fileXio segment-copy flow should
+		 * jump immediately once segments are in EE RAM.
 		 */
 		if (loaded_via_filexio) {
 			FlushCache(0);
