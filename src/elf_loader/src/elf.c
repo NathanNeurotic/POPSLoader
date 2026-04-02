@@ -636,7 +636,10 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 	   The embedded loader expects partition info in argv[0] and will handle HDD setup.
 	*/
 	if (is_hdd_scenario) {
-		/* Extract partition context for embedded loader */
+		/* Extract partition context and relative path for embedded loader */
+		char hdd_relpath[1024];
+		const char *relpath_src = NULL;
+
 		if (has_explicit_hdd_partition) {
 			partition_len = strlen(partition);
 			while (partition_len > 0 && partition[partition_len - 1] == ':') {
@@ -647,6 +650,7 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 			}
 			memcpy(partition_context, partition, partition_len);
 			partition_context[partition_len] = '\0';
+			relpath_src = filename;
 		} else if (filename != NULL && strncmp(filename, "hdd", 3) == 0) {
 			const char *partition_end = strchr(filename + 5, ':');
 			if (partition_end == NULL) {
@@ -667,6 +671,7 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 				partition_len--;
 				partition_context[partition_len] = '\0';
 			}
+			relpath_src = partition_end;
 		} else if (resolve_result >= 0 && strncmp(resolved_path, "hdd", 3) == 0) {
 			const char *partition_end = strchr(resolved_path + 5, ':');
 			if (partition_end == NULL) {
@@ -687,15 +692,28 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 				partition_len--;
 				partition_context[partition_len] = '\0';
 			}
+			relpath_src = partition_end;
 		} else {
 			return -1;
 		}
 
-		/* Route to embedded loader with partition context.
+		/* Extract relative path: skip leading ':' or '/' and everything before it */
+		if (relpath_src != NULL && relpath_src[0] != '\0') {
+			/* Skip any leading ':' or '/' characters */
+			while (relpath_src[0] == ':' || relpath_src[0] == '/') {
+				relpath_src++;
+			}
+			strncpy(hdd_relpath, relpath_src, sizeof(hdd_relpath) - 1);
+			hdd_relpath[sizeof(hdd_relpath) - 1] = '\0';
+		} else {
+			hdd_relpath[0] = '\0';
+		}
+
+		/* Route to embedded loader with partition context and relative path.
 		   The embedded loader will initialize RPC in its own context and handle
 		   HDD mounting/loading properly. This avoids RPC context loss after ExecPS2. */
 		prepare_reboot_exec_environment();
-		return ExecuteViaEmbeddedLoader(partition_context, filename != NULL ? filename : resolved_path, argc, argv);
+		return ExecuteViaEmbeddedLoader(partition_context, hdd_relpath, argc, argv);
 	}
 
 	/* Non-HDD fallback: use embedded loader (legacy path) */
