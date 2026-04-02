@@ -26,7 +26,7 @@ EE_LIBS += -lfileXio
 
 all: $(EE_BIN) $(BINDIR)
 $(BINDIR):
-	mkdir $@
+	mkdir -p $@
 
 clean:
 	rm -f $(EE_BIN) $(EE_OBJS)
