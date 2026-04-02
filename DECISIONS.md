@@ -51,7 +51,7 @@ Each entry records:
 ### 2026-03-26 — Release ZIP contract is strict and PATCH_5-based
 - Decision: CI package includes exact `PS1_POPSLOADER/*` launcher files plus `POPS/PATCH_5.BIN`, now including `PS1_POPSLOADER/BUILD_INFO.txt`, and rejects legacy `POPS/*.tm2` payloads.
 - Rationale: prevent release drift and ambiguous installation instructions.
-- Implications: docs and workflow validation must stay synchronized, and GitHub-built hardware candidates now carry a visible build stamp while CI also checks for expected embedded runtime markers before packaging.
+- Implications: docs and workflow validation must stay synchronized, and GitHub-built hardware candidates now carry a visible build stamp while CI also checks for expected embedded runtime markers before packaging and enforces embedded-loader rebuild propagation from child loader source through final packaged ELF outputs.
 - Evidence: `.github/workflows/compilation.yml`.
 
 ### 2026-03-29 — `QA_REGRESSION_MATRIX.md` is the detailed run ledger

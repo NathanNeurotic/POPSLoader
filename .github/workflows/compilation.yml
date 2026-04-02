@@ -92,6 +92,50 @@ jobs:
           require_marker "PrepareForColdExternalELFLaunch" bin/enceladus.elf
           require_marker "BOOT.ELF launch failed" bin/enceladus.elf
 
+      - name: Verify embedded loader rebuild propagation
+        shell: sh
+        run: |
+          set -eu
+
+          LOADER_SRC="src/elf_loader/src/loader/src/loader.c"
+          LOADER_ELF="src/elf_loader/src/loader/bin/loader.elf"
+          LOADER_BLOB="src/elf_loader/loader.c"
+          LOADER_LIB="src/elf_loader/libcustom-elf-loader.a"
+          EE_ELF="bin/enceladus.elf"
+          PKD_ELF="bin/POPSLOADER.ELF"
+
+          require_file() {
+            [ -f "$1" ] || { echo "ERROR: required build output missing: $1" >&2; exit 1; }
+          }
+
+          assert_newer() {
+            newer="$1"
+            older="$2"
+            [ "$newer" -nt "$older" ] || {
+              echo "ERROR: expected '$newer' to be newer than '$older' after incremental rebuild" >&2
+              exit 1
+            }
+          }
+
+          require_file "$LOADER_SRC"
+          require_file "$LOADER_ELF"
+          require_file "$LOADER_BLOB"
+          require_file "$LOADER_LIB"
+          require_file "$EE_ELF"
+          require_file "$PKD_ELF"
+
+          # Force one incremental rebuild signal and require it to propagate
+          # through every embedded-loader output consumed by packaging.
+          touch "$LOADER_SRC"
+          sleep 1
+          make elfloader all
+
+          assert_newer "$LOADER_ELF" "$LOADER_SRC"
+          assert_newer "$LOADER_BLOB" "$LOADER_ELF"
+          assert_newer "$LOADER_LIB" "$LOADER_BLOB"
+          assert_newer "$EE_ELF" "$LOADER_LIB"
+          assert_newer "$PKD_ELF" "$EE_ELF"
+
       - name: Create release package (PS1_POPSLOADER + POPS/PATCH_5.BIN)
         shell: sh
         run: |

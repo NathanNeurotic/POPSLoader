@@ -73,7 +73,7 @@ Last updated: 2026-04-02
 
 ### 3) Install/build clarity
 - Keep CI package layout and docs synchronized.
-- Keep GitHub-built hardware artifacts self-identifying: package `BUILD_INFO.txt` and fail CI when expected embedded runtime markers are missing.
+- Keep GitHub-built hardware artifacts self-identifying: package `BUILD_INFO.txt` and fail CI when expected embedded runtime markers are missing or embedded-loader rebuild propagation does not reach final packaged ELF outputs.
 - Keep README installation steps explicit enough for users who are not familiar with PS2 launcher layouts.
 
 ## Deferred Ideas
