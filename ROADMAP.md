@@ -1,4 +1,4 @@
-Last updated: 2026-04-02
+Last updated: 2026-04-19
 
 # ROADMAP
 
@@ -17,11 +17,8 @@ Last updated: 2026-04-02
 - Audit also found a Lua binding bug: the trailing reboot partition context was only recognized when `System.loadELF(...)` had at least four Lua arguments, so the HDD reboot path could not actually pass loader-only partition metadata in the three-argument form. Current source now accepts that form as well.
 - Audit then found one more regression in the exact HDD child-loader path now in use: older child-loader source reloaded `SIO2MAN`, `MCMAN`, and `MCSERV` after HDD `SifIopReset(\"\")`, while later `HEAD` had drifted to jump straight to `ExecPS2`. Current source now uses a no-reset-first child-loader handoff for partition-aware HDD POPSTARTER with bounded mounted-path load fallback (`fileXio` segment load first, mounted-path `SifLoadElf` fallback, then `SifExitRpc`/`ExecPS2` without child-side reset/module reload); hardware on this exact line is still `Unknown (verify on hardware)`.
 - Latest user hardware report from the 2026-04-02 GitHub artifact (`cd76569`) still black-screened on `D-10`.
-- Audit then found another remaining carry-over in parent-side launch prep: `PrepareForExternalELFLaunch(...)` still auto-kept the mounted `pfsN` slot whenever the exec path itself was on `pfsN:/...`. Current source now suppresses that implicit exec-slot keep specifically for HDD-backed POPSTARTER.
-- The current hypothesis boundary is now narrower again: preserve the later loader/binding fixes, but give HDD-backed POPSTARTER back its selector-only `argv[0]` because the selectorless line did not improve hardware behavior.
-- Current repo line also restores the generic reboot exec path in `src/elf_loader/src/elf.c` to the repo's older embedded-loader handoff style after the post-reset cleanup/module-reload contract from `src/system.cpp`.
-- Treat slot preservation, launch CWD preservation, partition context, and other carried launch-state prep as non-goals for POPSTARTER itself. Current source now gives POPSTARTER only its selector in `argv[0]` while keeping loader-side partition metadata only as the minimum needed to load the HDD ELF.
-- The latest EE-side HDD direct-load workaround was reverted after it did not fix `D-10` and coincided with a reported HDD-game regression when POPSTARTER stayed on the non-HDD boot device.
+- Audit identified the mechanism behind the persistent black screen: `ExecuteViaEmbeddedLoader` called `SifExitCmd()` unconditionally before `ExecPS2(loader)`; on a non-reset IOP, `SifExitCmd()` sends a "terminate" to the IOP's SIF CMD handler; the loader's `SifInitRpc(0)` then hangs waiting for a response that never comes = black screen. Reference launchers (wLaunchELF) do not call `SifExitCmd` before their embedded loader on a non-reset IOP.
+- Current repo line now conditionally skips `SifExitIopHeap`, `SifExitRpc`, and `SifExitCmd` in `ExecuteViaEmbeddedLoader` when `partition_context` is HDD-backed; non-HDD reboot paths retain the full teardown sequence. Hardware on this exact line is `Unknown (verify on hardware)`.
 - `HDD (exFAT)` and `SMB (v1)` remain intentionally unimplemented menu entries.
 - Detailed experiment chronology lives in `QA_REGRESSION_MATRIX.md` and `DECISIONS.md`.
 
@@ -33,7 +30,7 @@ Last updated: 2026-04-02
   - HDD game launched from HDD (PFS),
   - `POPSTARTER.ELF` resolved from HDD sidecar/CWD or configured HDD path,
   - current reported result: black-screen hang.
-  - current no-reset-first iteration keeps selector-only `argv[0]` and loader partition metadata, removes the child-side post-load reset/module-reload stage, and now uses mounted-path fileXio-first with mounted-path `SifLoadElf` fallback for the partition-aware HDD POPSTARTER child-loader load step.
+  - current no-reset-first iteration keeps selector-only `argv[0]` and loader partition metadata, removes the child-side post-load reset/module-reload stage, uses mounted-path fileXio-first with mounted-path `SifLoadElf` fallback for the partition-aware HDD POPSTARTER child-loader load step, and now skips `SifExitIopHeap`/`SifExitRpc`/`SifExitCmd` before `ExecPS2(loader)` when the IOP was not reset.
   - preserve `D-15`, `D-12`, `D-16`, `U-05`, and shared Profile 1/default sidecar behavior while iterating.
   - treat `D-14` as the paired non-HDD-game repro for the same HDD-backed POPSTARTER blocker.
   - use `QA_REGRESSION_MATRIX.md` for the full experiment chronology instead of rebuilding that ledger here.

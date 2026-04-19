@@ -377,9 +377,26 @@ static int ExecuteViaEmbeddedLoader(const char *partition_context, const char *l
 		}
 	}
 
-	SifExitIopHeap();
-	SifExitRpc();
-	SifExitCmd();
+	/* For HDD-backed handoffs the IOP was not reset before this call.
+	 * SifExitCmd() sends a "terminate" packet to the IOP's SIF command
+	 * handler, which puts the IOP's SIF CMD module into a
+	 * waiting-for-re-init state.  The embedded loader then starts fresh
+	 * (C-runtime zeros .bss) and calls SifInitRpc(0), which sends a new
+	 * SIF_CMD_INIT_CMD to the IOP.  On a non-reset IOP that received a
+	 * prior "terminate", the SIF CMD module does not respond to the new
+	 * init command and SifInitRpc(0) hangs forever = black screen.
+	 * Skip the teardown so the IOP SIF handler stays active; the
+	 * loader's SifInitRpc(0) then finds a responsive IOP and completes
+	 * without hanging.
+	 * For non-HDD paths, prepare_reboot_exec_environment() has already
+	 * reset the IOP before this function is called, so the full teardown
+	 * sequence is correct and must be preserved.
+	 */
+	if (!is_hdd_backed_exec_path(partition_context)) {
+		SifExitIopHeap();
+		SifExitRpc();
+		SifExitCmd();
+	}
 	FlushCache(0);
 	FlushCache(2);
 

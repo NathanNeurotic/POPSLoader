@@ -1,6 +1,6 @@
 # POPSLoader
 
-Last updated: 2026-04-02
+Last updated: 2026-04-19
 
 POPSLoader is a PlayStation 2 launcher for POPStarter, built on Enceladus runtime components and driven primarily by embedded Lua scripts.
 
@@ -68,6 +68,8 @@ Reported hardware issues currently being tracked are:
   - audit then found another remaining carry-over in parent-side launch prep: `PrepareForExternalELFLaunch(...)` still auto-kept the mounted `pfsN` slot whenever the exec path itself was on `pfsN:/...`. Current source now suppresses that implicit exec-slot keep specifically for HDD-backed POPSTARTER, so the stripped line no longer preserves the mounted parent slot just because the executable was resolved there.
   - the latest hardware re-test on that stripped selectorless line still black-screened, and the only recorded move away from a black screen happened before the selector was stripped. Current source therefore restores selector-only `argv[0]` for HDD-backed POPSTARTER while still avoiding slot/CWD preservation and keeping partition context only as loader metadata.
   - clarification: POPSTARTER itself is not believed to require slot preservation, launch CWD, partition context, or carried runtime state after exec. Current source again gives POPSTARTER only its selector in `argv[0]`; the loader still keeps partition metadata only so the HDD ELF can be loaded cleanly.
+  - audit then identified the mechanism behind the persistent black screen: `ExecuteViaEmbeddedLoader` called `SifExitCmd()` unconditionally before `ExecPS2(loader)`; on a non-reset IOP, `SifExitCmd()` sends a "terminate" to the IOP's SIF CMD handler, putting it in a "waiting-for-re-init" state; the loader's `SifInitRpc(0)` then sends `SIF_CMD_INIT_CMD` to the IOP but gets no response — `SifInitRpc(0)` hangs = black screen. This mechanism is consistent with DECISIONS.md line 101 and with reference launchers (wLaunchELF) that do not call `SifExitCmd` before their embedded loader on a non-reset IOP.
+  - current repo line now conditionally skips `SifExitIopHeap`, `SifExitRpc`, and `SifExitCmd` in `ExecuteViaEmbeddedLoader` when `partition_context` is HDD-backed, so the IOP SIF CMD handler stays active and the loader's `SifInitRpc(0)` completes without hanging; non-HDD reboot paths retain the full teardown. Hardware on this exact line is `Unknown (verify on hardware)`.
   - detailed per-artifact experiment chronology lives in `QA_REGRESSION_MATRIX.md` and `DECISIONS.md`.
 - HDD game with non-HDD POPSTARTER (`D-15`)
   - user later confirmed on 2026-03-28 that USB boot + USB Profile 1 sidecar/cwd `POPSTARTER.ELF` + HDD game now passes on hardware.
@@ -228,6 +230,8 @@ The workflow uses the `ps2dev/ps2dev` container and validates packaging after bu
   - the later stripped direct-HDD-ELF line moved `D-10` back to a returned `rc=-1`, but the popup also showed the launcher was still probing/opening `pfs3:/.../POPSTARTER.ELF` while separately trying to exec a rewritten `pfs:/.../POPSTARTER.ELF`.
   - current repo line now removes that stale exec-path rewrite from the stripped HDD-backed POPSTARTER experiment, keeps the reboot/embedded-loader path plus loader-only partition metadata, and restores selector-only `argv[0]` because the selectorless stripped line still black-screened while the only recorded non-black-screen boundary preceded the strip.
   - clarification: POPSTARTER itself is not believed to require slot preservation, launch CWD, partition context, or carried runtime state after exec; current source again passes only the selector in `argv[0]` while keeping the loader-side state prep minimal.
+  - audit identified the mechanism behind the persistent black screen: `ExecuteViaEmbeddedLoader` called `SifExitCmd()` unconditionally before `ExecPS2(loader)`; on a non-reset IOP, `SifExitCmd()` puts the IOP's SIF CMD handler in "waiting-for-re-init" state; the loader's `SifInitRpc(0)` then hangs waiting for a response that never comes = black screen. This is consistent with DECISIONS.md line 101 and reference launchers (wLaunchELF) that do not call `SifExitCmd` before their embedded loader on a non-reset IOP.
+  - current repo line now conditionally skips `SifExitIopHeap`, `SifExitRpc`, and `SifExitCmd` in `ExecuteViaEmbeddedLoader` when `partition_context` is HDD-backed; non-HDD reboot paths retain the full teardown. Hardware on this exact line is `Unknown (verify on hardware)`.
   - see `QA_REGRESSION_MATRIX.md` and `DECISIONS.md` for the detailed experiment chronology.
 - `D-14` HDD-backed POPSTARTER with non-HDD game:
   - reported failing.
