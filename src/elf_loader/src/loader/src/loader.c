@@ -171,6 +171,13 @@ static int build_default_target_arg0(const char *partition_context, const char *
 	return 0;
 }
 
+static void load_post_reset_mc_modules(void)
+{
+	SifLoadModule("rom0:SIO2MAN", 0, NULL);
+	SifLoadModule("rom0:MCMAN", 0, NULL);
+	SifLoadModule("rom0:MCSERV", 0, NULL);
+}
+
 #define LOADER_ELF_MAGIC        0x464c457fU
 #define LOADER_PT_LOAD          1
 #define LOADER_PT_MIPS_REGINFO  0x70000000U
@@ -361,31 +368,9 @@ int main(int argc, char *argv[])
 	} else {
 		ret = mount_partition_context_on_pfs0(partition_context);
 		if (ret == 0) {
-			if (is_hdd_partition_context(partition_context)) {
-				/* Keep the partition-aware mount contract, but for HDD-backed
-				 * targets prefer the same mounted-path fileXio segment-copy
-				 * style that wLaunchELF's pfs0 flow uses. If that load fails,
-				 * fall back to SifLoadElf on the same mounted path.
-				 */
-				loaded_via_filexio = 1;
-				fileXioInit();
-				ret = load_elf_via_filexio(load_path, &filexio_entry, &filexio_gp);
-				if (ret == 0) {
-					elfdata.epc = filexio_entry;
-					elfdata.gp = filexio_gp;
-				} else {
-					loaded_via_filexio = 0;
-					elfdata.epc = 0;
-					elfdata.gp = 0;
-					SifLoadFileInit();
-					ret = SifLoadElf(load_path, &elfdata);
-					SifLoadFileExit();
-				}
-			} else {
-				SifLoadFileInit();
-				ret = SifLoadElf(load_path, &elfdata);
-				SifLoadFileExit();
-			}
+			SifLoadFileInit();
+			ret = SifLoadElf(load_path, &elfdata);
+			SifLoadFileExit();
 		} else {
 			elfdata.epc = 0;
 			elfdata.gp = 0;
@@ -406,11 +391,17 @@ int main(int argc, char *argv[])
 		}
 
 		if (is_hdd_partition_context(partition_context)) {
-			/* Keep partition-aware HDD handoff aligned with the PS2SDK
-			 * loader contract: once SifLoadElf copied the target ELF,
-			 * jump without a second child-side IOP reset/module-reload
-			 * stage.
+			/* D-10 remains the HDD-backed POPSTARTER boundary; retry the older
+			 * child-side reset and MC ROM module reload after SifLoadElf has
+			 * copied the target into EE RAM.
 			 */
+			while(!SifIopReset("", 0)){};
+			while(!SifIopSync()) {};
+			SET_GS_BGCOLOUR(ORANGE_BG);
+			SifInitRpc(0);
+			SifLoadFileInit();
+			load_post_reset_mc_modules();
+			SifLoadFileExit();
 			SifExitRpc();
 		} else {
 			SifExitRpc();

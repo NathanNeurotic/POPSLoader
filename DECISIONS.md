@@ -1,4 +1,4 @@
-Last updated: 2026-04-02
+Last updated: 2026-04-19
 
 # DECISIONS
 
@@ -59,6 +59,12 @@ Each entry records:
 - Rationale: repeated experiment history had started drifting across the root docs and obscuring the actual current handoff state.
 - Implications: root docs should point to the matrix for detailed chronology instead of carrying their own competing mini-ledgers.
 - Evidence: repository documentation audit on 2026-03-29.
+
+### 2026-04-19 — Restore post-load reset child handoff for partition-aware HDD POPSTARTER
+- Decision: the embedded child loader now uses mounted-path `SifLoadElf` for partition-aware HDD POPSTARTER and restores child-side `SifIopReset("")` + ROM MC module reload (`SIO2MAN`, `MCMAN`, `MCSERV`) before `ExecPS2`.
+- Rationale: current tip `0565ae5` still black-screened on D-10, so the mounted fileXio-first child-loader fallback is not the right current boundary.
+- Implications: non-partition direct fileXio fallback remains intact, while the HDD partition-aware branch returns to one deterministic post-load reset handoff for the next GitHub Actions artifact.
+- Evidence: `src/elf_loader/src/loader/src/loader.c`, `QA_REGRESSION_MATRIX.md` latest D-10 run log.
 
 ## Open Investigations
 - HDD startup auto-init on HDD boot/configured paths:
@@ -124,8 +130,8 @@ Each entry records:
   - current source therefore restores partition context only as loader metadata for HDD-backed POPSTARTER so the child uses the partition-aware remount path again, while still keeping no launch CWD and the same visible resolved exec path.
   - audit also found a Lua binding bug in `src/luasystem.cpp`: the trailing reboot partition context was only parsed when `System.loadELF(...)` had at least four Lua arguments, so the new HDD reboot path could not actually pass loader-only partition metadata until current source widened that check to the three-argument form.
   - audit then exposed one more regression in the exact HDD child-loader path now in use: older child-loader source reloaded `SIO2MAN`, `MCMAN`, and `MCSERV` after HDD `SifIopReset("")`, while later `HEAD` had drifted to jump straight to `ExecPS2`.
-  - current source then realigns that partition-aware HDD child handoff to a no-reset-first path with a bounded reference-style load fallback: mount `pfs0:`, try mounted-path fileXio segment load first, and fall back to mounted-path `SifLoadElf`; handoff stays `SifExitRpc`/`ExecPS2` without a second child-side `SifIopReset("")` + module-reload stage. Hardware on this exact line remains `Unknown (verify on hardware)`.
-  - latest user hardware report from the 2026-04-02 GitHub artifact (`cd76569`) still black-screened on `D-10`.
+  - current source now restores the post-load reset child handoff for partition-aware HDD POPSTARTER: mount `pfs0:`, load with mounted-path `SifLoadElf`, then run child-side `SifIopReset("")`/`SifIopSync()`, reinitialize RPC, reload `rom0:SIO2MAN`, `rom0:MCMAN`, and `rom0:MCSERV`, and jump via `ExecPS2`. Hardware on this exact line remains `Unknown (verify on hardware)`.
+  - latest user hardware report for current tip `0565ae5` still black-screened on `D-10`, so the mounted fileXio-first child-loader fallback did not resolve the blocker.
   - audit then exposed another remaining carry-over in parent-side launch prep: `PrepareForExternalELFLaunch(...)` still auto-kept the mounted `pfsN` slot whenever the exec path itself was on `pfsN:/...`. Current source now suppresses that implicit exec-slot keep specifically for HDD-backed POPSTARTER, so the stripped line no longer preserves the mounted parent slot just because the executable was resolved there.
   - the latest hardware re-test on that stripped selectorless line still black-screened, while the only recorded move away from a black screen happened before the selector was stripped.
   - current working rule from repo evidence: POPSTARTER itself does not need slot preservation, launch CWD, partition context, or other carried runtime state after exec, but it does still want its selector in `argv[0]`. Current source therefore restores selector-only `argv[0]` for HDD-backed POPSTARTER while keeping partition context only as loader metadata so the HDD ELF can be loaded cleanly.

@@ -1,4 +1,4 @@
-Last updated: 2026-04-02
+Last updated: 2026-04-19
 
 # STATE
 
@@ -101,14 +101,14 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - current source therefore restores partition context only as loader metadata for HDD-backed POPSTARTER so the child uses the partition-aware remount path again, while still keeping no launch CWD and the same visible resolved exec path.
   - audit also found a Lua binding bug in `src/luasystem.cpp`: the trailing reboot partition context was only parsed when `System.loadELF(...)` had at least four Lua arguments, so the new HDD path could not actually deliver loader-only partition metadata in the three-argument reboot form. Current source now accepts that trailing partition context with three arguments as well.
   - audit then found one more regression in the exact HDD child-loader path now in use: older child-loader source reloaded `SIO2MAN`, `MCMAN`, and `MCSERV` after HDD `SifIopReset("")`, while later `HEAD` had drifted to jump straight to `ExecPS2`.
-  - current source now applies a no-reset-first child-loader handoff for partition-aware HDD POPSTARTER, but updates the load order to a bounded reference-style fallback: after mount on `pfs0:`, the child tries mounted-path fileXio segment copy first and falls back to mounted-path `SifLoadElf` if needed, then exits RPC and jumps via `ExecPS2` without a second child-side `SifIopReset("")` + module-reload stage; hardware on this exact line is `Unknown (verify on hardware)`.
-  - latest user hardware report from the 2026-04-02 GitHub artifact (`cd76569`) still black-screened on `D-10`.
+  - current source now restores the post-load reset child handoff for partition-aware HDD POPSTARTER: mount `pfs0:`, load the target with mounted-path `SifLoadElf`, then do `SifIopReset("")`, `SifIopSync()`, `SifInitRpc(0)`, and reload `rom0:SIO2MAN`, `rom0:MCMAN`, and `rom0:MCSERV` before `ExecPS2`; hardware on this exact line is `Unknown (verify on hardware)`.
+  - latest user hardware report for current tip `0565ae5` still black-screened on `D-10`, so the mounted fileXio-first child-loader fallback did not resolve the blocker.
   - audit then found another remaining carry-over in parent-side launch prep: `PrepareForExternalELFLaunch(...)` still auto-kept the mounted `pfsN` slot whenever the exec path itself was on `pfsN:/...`. Current source now suppresses that implicit exec-slot keep specifically for HDD-backed POPSTARTER, so the stripped line no longer preserves the mounted parent slot just because the executable was resolved there.
   - current source now restores more of the original parent-side embedded-loader jump contract in `src/elf_loader/src/elf.c`: BRAM wipe plus `SifInitRpc`/`SifLoadFileInit`/`SifLoadFileExit` before the copy, and `SifExitIopHeap`/`SifExitRpc`/`SifExitCmd` before the final `ExecPS2`.
   - the latest hardware re-test on that stripped selectorless line still black-screened, while the only recorded move away from a black screen happened on an earlier selector-passing line.
   - current source therefore keeps the safer embedded-loader fix that avoids `printf`/`snprintf` in that environment, returns the actual embedded-loader `ExecPS2` result instead of collapsing it to `-1`, restores selector-only `argv[0]` for HDD-backed POPSTARTER, restores partition context only as loader metadata so the child avoids the newer `fileXio` shortcut, normalizes stale canonical profile-path state so Profile 1/default no longer silently keeps another profile's HDD path, and keeps the older iomanX-aware `fileXio` load path only as the fallback for direct `pfs:` / `hdd:` loads with no HDD partition context.
   - current working clarification: POPSTARTER itself is not believed to require slot preservation, launch CWD, partition context, or carried runtime state after exec. Current source again gives POPSTARTER only its selector in `argv[0]`; the loader-side partition metadata remains only to get the HDD ELF loaded.
-  - latest recorded hardware still ends in failure on later GitHub artifacts, so `D-10` remains a recorded hardware FAIL even though one 2026-03-29 artifact briefly moved the boundary to `rc=-1`.
+  - latest recorded hardware still ends in failure on later GitHub artifacts, so `D-10` remains a recorded hardware FAIL even though one 2026-03-29 artifact briefly moved the boundary to `rc=-1`; this source must be verified from a GitHub Actions artifact before any fix claim.
 - `D-14` HDD-backed POPSTARTER with non-HDD game:
   - reported failing on hardware.
   - repro: launch a non-HDD title while `POPSTARTER.ELF` itself is configured on HDD.
@@ -116,7 +116,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - the user later clarified that the other same-day 2026-03-28 success report referred to `D-15`, not this case.
   - a later 2026-03-28 re-test on the forced-`reboot_iop = 1` source still black-screened on `X`; `R2` produced no response in that non-HDD-game repro.
   - a later 2026-03-28 re-test on the direct-`hdd0:PART:pfsN:/POPSTARTER.ELF` preference source still black-screened on `X`.
-  - current source now uses the same partition-aware HDD reboot contract as `D-10`, including the no-reset-first child-loader handoff with mounted-path fileXio-first and mounted-path `SifLoadElf` fallback, rather than the earlier ad hoc source-context handoff or whichever mounted `pfsN:` path Lua happened to resolve first.
+  - current source now uses the same partition-aware HDD reboot contract as `D-10`, including the post-load reset child-loader handoff with mounted-path `SifLoadElf` plus child-side IOP reset/module reload, rather than the earlier ad hoc source-context handoff or whichever mounted `pfsN:` path Lua happened to resolve first.
   - latest recorded hardware remains `FAIL`; current exact-line result is still `Unknown (verify on hardware)`.
 - `D-15` HDD game with non-HDD sidecar POPSTARTER:
   - reported as a regression on hardware.
