@@ -90,9 +90,12 @@ jobs:
             git add src/elf_loader/loader.c
             git commit -m "Auto-regenerate embedded loader blob"
             if [ -n "${GITHUB_HEAD_REF:-}" ]; then
-              git push origin "HEAD:${GITHUB_HEAD_REF}"
+              git fetch origin "${GITHUB_HEAD_REF}"
+              git rebase "origin/${GITHUB_HEAD_REF}" || git rebase --abort
+              git push origin "HEAD:${GITHUB_HEAD_REF}" || echo "Warning: concurrent push detected."
             else
-              git push origin HEAD
+              git pull --rebase origin HEAD || git rebase --abort
+              git push origin HEAD || echo "Warning: concurrent push detected."
             fi
           fi
 
