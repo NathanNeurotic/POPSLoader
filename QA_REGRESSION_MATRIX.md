@@ -1,6 +1,6 @@
 # POPSLoader Regression Matrix
 
-Last updated: 2026-04-02
+Last updated: 2026-04-19
 Target line: current repository source
 
 ## Scope
@@ -184,7 +184,7 @@ This file is the authoritative detailed run ledger for CI and hardware outcomes.
     - repo comparison then showed the stripped line was still using the child loader's newer `fileXio` direct-load shortcut for `pfsN:/...` because `exec_partition_context` had been cleared; current source now restores partition context only as loader metadata so the child uses the older partition-aware remount path again while still keeping the same visible exec path.
     - audit also found a Lua binding bug in `src/luasystem.cpp`: the trailing reboot partition context was only recognized when `System.loadELF(...)` had at least four Lua arguments, so the HDD reboot path could not actually pass loader-only partition metadata until current source widened that check to the three-argument form.
     - audit then found one more regression in the exact HDD child-loader path now in use: older child-loader source reloaded `SIO2MAN`, `MCMAN`, and `MCSERV` after HDD `SifIopReset("")`, while later `HEAD` had drifted to jump straight to `ExecPS2`.
-    - current source now applies a no-reset-first child-loader handoff for partition-aware HDD POPSTARTER with bounded reference-style load fallback: mount `pfs0:`, try mounted-path fileXio segment load first, and fall back to mounted-path `SifLoadElf`, then `SifExitRpc`/`ExecPS2` without a child-side post-load `SifIopReset("")` + module-reload stage. Hardware on this exact line is still `Unknown (verify on hardware)`.
+    - current source now applies a post-load reset child-loader handoff for partition-aware HDD POPSTARTER: mount `pfs0:`, load with mounted-path `SifLoadElf`, then run `SifIopReset("")`/`SifIopSync()`, reinitialize RPC, reload `rom0:SIO2MAN` + `rom0:MCMAN` + `rom0:MCSERV`, and jump via `ExecPS2`. Hardware on this exact line is still `Unknown (verify on hardware)`.
     - latest user hardware report from the 2026-04-02 GitHub artifact (`cd76569`) still black-screened on `D-10`.
     - audit then found another remaining carry-over in parent-side launch prep: `PrepareForExternalELFLaunch(...)` still auto-kept the mounted `pfsN` slot whenever the exec path itself was on `pfsN:/...`. Current source now suppresses that implicit exec-slot keep specifically for HDD-backed POPSTARTER, so the stripped line no longer preserves the mounted parent slot just because the executable was resolved there.
     - a later 2026-03-29 hardware re-test on the selectorless stripped current `HEAD` line still black-screened.
@@ -195,7 +195,7 @@ This file is the authoritative detailed run ledger for CI and hardware outcomes.
     - the user later clarified that the other same-day 2026-03-28 success result referred to `D-15`, not this case.
     - a later 2026-03-28 re-test on the forced-`reboot_iop = 1` source still black-screened on `X`; `R2` produced no response in that non-HDD-game repro.
     - a later 2026-03-28 re-test on the direct-`hdd0:PART:pfsN:/POPSTARTER.ELF` preference source still black-screened on `X`.
-    - current source now uses the same partition-aware HDD reboot contract as `D-10`, including the no-reset-first child-loader handoff with mounted-path fileXio-first and mounted-path `SifLoadElf` fallback, rather than the earlier ad hoc source-context handoff or whichever mounted `pfsN:` path Lua happened to resolve first; hardware result is still `Unknown (verify on hardware)`.
+    - current source now uses the same partition-aware HDD reboot contract as `D-10`, including the post-load reset child-loader handoff with mounted-path `SifLoadElf` plus post-load reset/module reload, rather than the earlier ad hoc source-context handoff or whichever mounted `pfsN:` path Lua happened to resolve first; hardware result is still `Unknown (verify on hardware)`.
   - `D-15`: reported FAIL on 2026-03-27 when booting from a non-HDD device and launching an HDD title with sidecar/cwd `POPSTARTER.ELF` on that boot device.
     - the user identified this as a regression on the EE-side HDD direct-load attempt.
     - a later 2026-03-27 broader stripped-handoff source also failed, a 2026-03-28 experimental source still black-screened, and the 2026-03-28 rolled-back current source still black-screened with USB boot plus USB sidecar/cwd `POPSTARTER.ELF`.
