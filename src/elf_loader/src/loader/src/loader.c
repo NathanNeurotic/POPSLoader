@@ -395,6 +395,10 @@ int main(int argc, char *argv[])
 	if (ret == 0 && elfdata.epc != 0) {
 		SET_GS_BGCOLOUR(YELLOW_BG);
 
+		if (is_hdd_partition_context(partition_context)) {
+			fileXioUmount("pfs0:");
+		}
+
 		/* Any path loaded through the fileXio segment-copy flow should
 		 * jump immediately once segments are in EE RAM.
 		 */
@@ -409,9 +413,8 @@ int main(int argc, char *argv[])
 			/* Keep partition-aware HDD handoff aligned with the PS2SDK
 			 * loader contract: once SifLoadElf copied the target ELF,
 			 * jump without a second child-side IOP reset/module-reload
-			 * stage.
+			 * stage. POPSTARTER expects the IOP environment to be left alive.
 			 */
-			SifExitRpc();
 		} else {
 			SifExitRpc();
 			SifExitCmd();

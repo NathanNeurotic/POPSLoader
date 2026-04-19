@@ -128,6 +128,7 @@ This file is the authoritative detailed run ledger for CI and hardware outcomes.
 | 2026-03-29 | Unknown (not reported) | HDD boot; HDD sidecar/cwd `POPSTARTER.ELF`; HDD game on the child-remount/cold-parent partition-aware line | D-10 | FAIL: black screen |
 | 2026-03-29 | Unknown (not reported) | HDD boot; HDD sidecar/cwd `POPSTARTER.ELF`; HDD game on the selectorless stripped current `HEAD` line | D-10 | FAIL: black screen |
 | 2026-04-02 | Unknown (not reported) | HDD boot; HDD sidecar/cwd `POPSTARTER.ELF`; HDD game on latest GitHub artifact from CI-focused line (`cd76569`) | D-10 | FAIL: black screen |
+| 2026-04-19 | Unknown (verify on hardware) | HDD boot; HDD sidecar/cwd `POPSTARTER.ELF`; HDD game on child loader unmount-pfs0/no-SIF-teardown fix | D-10 | Unknown (verify on hardware) |
 | 2026-03-29 | Unknown (not reported) | HDD boot; default/Profile 1 sidecar/cwd `POPSTARTER.ELF` on HDD; entered HDD page; Exit -> `BOOT.ELF` on the cold-prep/no-forced-reboot BOOT.ELF line | U-10 | FAIL: freeze |
 | 2026-03-29 | Unknown (not reported) | HDD boot; default/Profile 1 sidecar/cwd `POPSTARTER.ELF` on HDD; entered HDD page; Exit -> `BOOT.ELF` on the restored-standard-prep/no-forced-reboot BOOT.ELF line | U-10 | FAIL: freeze |
 | YYYY-MM-DD | SCPH-xxxxx | USB/MMCE/MX4SIO/HDD details | e.g. S-01,S-02,D-02 | PASS/FAIL + notes |
