@@ -377,10 +377,12 @@ static int ExecuteViaEmbeddedLoader(const char *partition_context, const char *l
 		}
 	}
 
-	SifExitIopHeap();
+	if (!is_hdd_backed_exec_path(partition_context)) {
+SifExitIopHeap();
 	SifExitRpc();
 	SifExitCmd();
-	FlushCache(0);
+	}
+FlushCache(0);
 	FlushCache(2);
 
 	ret = ExecPS2((void *)boot_header->entry, 0, final_argc, launch_argv);
