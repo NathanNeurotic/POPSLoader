@@ -293,13 +293,6 @@ int main(int argc, char * argv[])
     boot_start = clock();
     BootStamp("EE init start");
 
-#ifdef RESET_IOP  
-    SifInitRpc(0);
-    while (!SifIopReset("", 0)){};
-    while (!SifIopSync()){};
-    SifInitRpc(0);
-    BootStamp("IOP reset");
-#endif
     
     // install sbv patch fix
     DPRINTF("Installing SBV Patches...\n");
@@ -432,4 +425,13 @@ int main(int argc, char * argv[])
     }
 
 	return 0;
+}
+
+extern "C" void _ps2sdk_memory_init() {
+#ifdef RESET_IOP  
+    SifInitRpc(0);
+    while (!SifIopReset("", 0)){};
+    while (!SifIopSync()){};
+    SifInitRpc(0);
+#endif
 }
