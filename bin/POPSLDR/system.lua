@@ -404,6 +404,39 @@ local function BuildPartitionRecoveryCandidates(extra)
   return candidates
 end
 
+local function BuildMountedSlotRecoveryCandidates(slot, relpath, recovery_candidates)
+  local ordered = {}
+  local seen = {}
+  local function push(partition)
+    local normalized = ParseHddPartitionMount(partition)
+    if normalized ~= nil and seen[normalized] ~= true then
+      seen[normalized] = true
+      table.insert(ordered, normalized)
+    end
+  end
+
+  if relpath ~= nil and relpath ~= "" then
+    local active_label = ParseHddPartitionMount(PLDR and PLDR.POPS_GAME_PARTITION or nil)
+    if active_label == nil then
+      active_label = ParseHddPartitionMount(PLDR and PLDR.GAME_PARTITION or nil)
+    end
+    push(active_label)
+
+    local configured_popstarter = ParseHddPartitionMount(PLDR and PLDR.POPSTARTER_PATH or nil)
+    push(configured_popstarter)
+
+    push(rawget(_G, "BOOT_HDD_MOUNTPART"))
+    push(rawget(_G, "BOOT_HDD_PARTITION"))
+    push(rawget(_G, "BOOT_PARTITION"))
+  end
+
+  local extra = BuildPartitionRecoveryCandidates(recovery_candidates)
+  for i = 1, #extra do
+    push(extra[i])
+  end
+  return ordered
+end
+
 local function RecoverHddPartitionFromMountedPath(path, candidates)
   local candidate = tostring(path or "")
   local mounted_prefix = NormalizePfsPrefix(candidate)
@@ -463,23 +496,20 @@ local function BuildHddPartitionContext(path, recovery_candidates)
       return ParseHddPartitionMount(entry.partition)..":", nil
     end
 
-    local candidates = BuildPartitionRecoveryCandidates(recovery_candidates)
+    local candidates = BuildMountedSlotRecoveryCandidates(slot, relpath, recovery_candidates)
+    local probe_path = "pfs"..tostring(slot)..":/"..relpath
+    local mount_prefix = BuildMountedPfsPrefix(slot)
 
     for i = 1, #candidates do
       local part = ParseHddPartitionMount(candidates[i])
-      if part ~= nil then
-        local mount_ok, _ = MountHddPartitionTracked(part, slot, FIO_MT_RDONLY)
-        if mount_ok then
-          local probe_path = "pfs"..tostring(slot)..":/"..relpath
-          if ProbePathExists(probe_path) then
-            RememberRecordedHddMount(part, BuildMountedPfsPrefix(slot))
-            return part..":", nil
-          end
-        end
+      local mount_ok, _ = MountHddPartitionTracked(part, slot, FIO_MT_RDONLY)
+      if mount_ok and ProbePathExists(probe_path) then
+        RememberRecordedHddMount(part, mount_prefix)
+        return part..":", nil
       end
     end
 
-    return nil, "slot_recovery_candidates_failed"
+    return nil, "slot_recovery_all_candidates_failed"
   end
 
   local slot = ParsePfsSlot(candidate)
