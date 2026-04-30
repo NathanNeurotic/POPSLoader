@@ -88,11 +88,14 @@ jobs:
             exit 1
           }
 
+          LOADER_ELF="src/elf_loader/src/loader/bin/loader.elf"
+          [ -f "$LOADER_ELF" ] || { echo "ERROR: expected loader ELF missing at $LOADER_ELF" >&2; exit 1; }
+
           TMP_LOADER_C="$(mktemp)"
           trap 'rm -f "$TMP_LOADER_C"' EXIT
-          "${PS2SDK}/bin/bin2c" src/loader/bin/loader.elf "$TMP_LOADER_C" loader_elf
+          "${PS2SDK}/bin/bin2c" "$LOADER_ELF" "$TMP_LOADER_C" loader_elf
           if ! cmp -s "$TMP_LOADER_C" src/elf_loader/loader.c; then
-            echo "ERROR: src/elf_loader/loader.c content diverges from deterministic bin2c output of src/loader/bin/loader.elf" >&2
+            echo "ERROR: src/elf_loader/loader.c content diverges from deterministic bin2c output of $LOADER_ELF" >&2
             exit 1
           fi
 
