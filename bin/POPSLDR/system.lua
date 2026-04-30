@@ -666,6 +666,45 @@ local function ResolveProfilePopstarterSelection(profile, selected_path, persist
   }
 end
 
+local function ValidateLoadedPopstarterSelection(profile, persisted_path, mode)
+  local normalized_mode = NormalizePopstarterSelectionMode(mode)
+  local profile_path = GetProfilePopstarterPath(profile)
+  local persisted_raw = tostring(persisted_path or "")
+  local normalized_persisted = NormalizeSelectedProfilePopstarterPath(profile, persisted_raw, POPSTARTER_MODE_CUSTOM)
+  local repaired = false
+  local reason = nil
+  local effective_mode = normalized_mode
+  local effective_path = ""
+
+  if normalized_mode == POPSTARTER_MODE_PROFILE_DEFAULT then
+    effective_path = NormalizeSelectedProfilePopstarterPath(profile, profile_path, POPSTARTER_MODE_PROFILE_DEFAULT)
+    if normalized_persisted ~= "" and NormalizeFsPathRaw(normalized_persisted) ~= NormalizeFsPathRaw(effective_path) then
+      repaired = true
+      reason = "profile_mode_ignored_custom_persisted_path"
+    end
+  else
+    effective_path = normalized_persisted
+    if effective_path == "" then
+      if profile_path ~= "" then
+        effective_mode = POPSTARTER_MODE_PROFILE_DEFAULT
+        effective_path = NormalizeSelectedProfilePopstarterPath(profile, profile_path, POPSTARTER_MODE_PROFILE_DEFAULT)
+        repaired = true
+        reason = "custom_mode_missing_path_fallback_profile"
+      else
+        repaired = true
+        reason = "custom_mode_missing_path_no_profile"
+      end
+    end
+  end
+
+  return {
+    path = effective_path,
+    mode = effective_mode,
+    repaired = repaired,
+    reason = reason
+  }
+end
+
 local function NormalizeHddHelperSlot(slot)
   local normalized = tonumber(slot)
   if normalized == nil or normalized < HDD_SLOT_COMMON then
@@ -2423,9 +2462,9 @@ function PLDR.LoadSettingsNonFatal()
   local video_standard = string.match(data, "\nVIDEO_STANDARD=([^\n]+)") or string.match(data, "^VIDEO_STANDARD=([^\n]+)")
   local hide_text = string.match(data, "\nHIDE_TEXT=([^\n]+)") or string.match(data, "^HIDE_TEXT=([^\n]+)")
   local keyboard_layout = string.match(data, "\nKEYBOARD_LAYOUT=([^\n]+)") or string.match(data, "^KEYBOARD_LAYOUT=([^\n]+)")
+  local notify_popstarter_repair = false
   if profile ~= nil and PLDR.PROFILES ~= nil and PLDR.PROFILES[profile] ~= nil then
     PLDR.SELECTED_PROFILE = profile
-    PLDR.POPSTARTER_PATH = PLDR.PROFILES[profile].ELF
   end
   local persisted_candidate = ""
   if popstarter_path ~= nil and popstarter_path ~= "" then
@@ -2438,8 +2477,19 @@ function PLDR.LoadSettingsNonFatal()
     persisted_candidate,
     PLDR.POPSTARTER_SELECTION_MODE
   )
-  PLDR.POPSTARTER_PATH = selection.effective_path
-  PLDR.POPSTARTER_SELECTION_MODE = selection.mode
+  local validated_selection = ValidateLoadedPopstarterSelection(
+    PLDR.SELECTED_PROFILE,
+    persisted_candidate,
+    selection.mode
+  )
+  PLDR.POPSTARTER_PATH = validated_selection.path
+  PLDR.POPSTARTER_SELECTION_MODE = validated_selection.mode
+  if validated_selection.repaired then
+    notify_popstarter_repair = true
+    PLDR.SETTINGS_POPSTARTER_REPAIR_REASON = validated_selection.reason
+  else
+    PLDR.SETTINGS_POPSTARTER_REPAIR_REASON = nil
+  end
   PLDR.SETTINGS_POPSTARTER_SELECTION_RULE = selection.rule
   PLDR.SETTINGS_POPSTARTER_SELECTED_BACKEND = selection.selected_backend
   PLDR.SETTINGS_POPSTARTER_PERSISTED_BACKEND = selection.persisted_backend
@@ -2462,6 +2512,9 @@ function PLDR.LoadSettingsNonFatal()
   end
   PLDR.BDMA_MODE_KEY = NormalizeBdmaModeKey(bdma_mode) or PLDR.BDMA_MODE_KEY
   PLDR.ReconcileBdmaModeWithEffectiveState()
+  if notify_popstarter_repair and UI ~= nil and UI.Notif_queue ~= nil then
+    UI.Notif_queue.add("Repaired POPStarter selection settings")
+  end
   PLDR.ApplyVideoStandardRuntime(PLDR.VIDEO_STANDARD)
   if type(UI) == "table" then
     local hide_text_enabled = ParseBooleanSetting(hide_text)
