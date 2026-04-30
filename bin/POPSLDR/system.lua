@@ -4096,10 +4096,20 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
   local hdd_preexec_gate_mode = strict_hdd_preexec_gate and "strict-hard-fail" or "fallback-mounted-pfs"
   local launch_route_pfs_fallback = "mounted-pfs-fallback"
   local normalized_popstarter_exec = string.lower(tostring(popstarter or ""))
+  local normalized_game_location = string.lower(tostring(gamelocation or ""))
+  local is_hdd_device_route = policy.name == "HDD"
+  local popstarter_is_mounted_pfs_exec = string.match(normalized_popstarter_exec, "^pfs%d*:/") ~= nil
+  local selected_game_is_hdd_derived = is_hdd_device_route and (
+    (hdd_partition_label ~= nil and hdd_partition_label ~= "")
+    or string.match(normalized_game_location, "^pfs%d*:/") ~= nil
+    or string.match(normalized_game_location, "^hdd%d:") ~= nil
+  )
   if (not strict_hdd_preexec_gate)
     and popstarter_partition_context == nil
-    and string.match(normalized_popstarter_exec, "^pfs%d*:/") ~= nil
+    and popstarter_is_mounted_pfs_exec
     and popstarter_on_hdd
+    and is_hdd_device_route
+    and selected_game_is_hdd_derived
   then
     -- Controlled fallback: keep mounted pfsN:/ exec path and skip
     -- partition-aware embedded-loader contract only for this explicit case.
