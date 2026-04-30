@@ -993,7 +993,6 @@ static int lua_loadELF(lua_State *L)
 		const char *maybe_partition = luaL_checkstring(L, argc);
 		if (is_partition_context_arg(maybe_partition)) {
 			partition_context = maybe_partition;
-			arg_end = argc - 1;
 		}
 	}
 
