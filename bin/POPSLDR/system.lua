@@ -599,16 +599,31 @@ local function FindMatchingProfileForPopstarterPath(path)
   return nil
 end
 
-local function NormalizeSelectedProfilePopstarterPath(profile, path)
+local POPSTARTER_MODE_PROFILE_DEFAULT = "PROFILE_DEFAULT"
+local POPSTARTER_MODE_CUSTOM = "CUSTOM"
+
+local function NormalizePopstarterSelectionMode(mode)
+  local normalized = string.upper(tostring(mode or ""))
+  if normalized == POPSTARTER_MODE_PROFILE_DEFAULT then
+    return POPSTARTER_MODE_PROFILE_DEFAULT
+  end
+  return POPSTARTER_MODE_CUSTOM
+end
+
+local function NormalizeSelectedProfilePopstarterPath(profile, path, mode)
   local selected_profile_path = GetProfilePopstarterPath(profile)
   local configured_path = tostring(path or "")
-  if configured_path == "" then
-    return selected_profile_path ~= "" and selected_profile_path or configured_path
+  local selected_mode = NormalizePopstarterSelectionMode(mode or PLDR.POPSTARTER_SELECTION_MODE)
+
+  if selected_mode == POPSTARTER_MODE_PROFILE_DEFAULT then
+    if selected_profile_path ~= "" then
+      return selected_profile_path
+    end
+    return configured_path
   end
 
-  local matched_profile = FindMatchingProfileForPopstarterPath(configured_path)
-  if matched_profile ~= nil and tonumber(matched_profile) ~= tonumber(profile) and selected_profile_path ~= "" then
-    return selected_profile_path
+  if configured_path == "" then
+    return ""
   end
 
   return configured_path
@@ -625,30 +640,29 @@ local function GetPopstarterStorageBackend(path)
   return "NON_HDD"
 end
 
-local function ResolveProfilePopstarterSelection(profile, selected_path, persisted_path)
-  local normalized_selected = NormalizeSelectedProfilePopstarterPath(profile, selected_path)
-  local normalized_persisted = NormalizeSelectedProfilePopstarterPath(profile, persisted_path)
+local function ResolveProfilePopstarterSelection(profile, selected_path, persisted_path, mode)
+  local selected_mode = NormalizePopstarterSelectionMode(mode)
+  local normalized_selected = NormalizeSelectedProfilePopstarterPath(profile, selected_path, selected_mode)
+  local normalized_persisted = NormalizeSelectedProfilePopstarterPath(profile, persisted_path, selected_mode)
   local selected_backend = GetPopstarterStorageBackend(normalized_selected)
   local persisted_backend = GetPopstarterStorageBackend(normalized_persisted)
   local rule = "persisted_wins"
   local effective = normalized_persisted
 
   if normalized_persisted == "" then
-    rule = "profile_wins_missing_persisted"
-    effective = normalized_selected
-  elseif selected_backend ~= "UNKNOWN" and persisted_backend ~= "UNKNOWN" and selected_backend ~= persisted_backend then
-    rule = "profile_wins_backend_mismatch"
+    rule = "selected_wins_missing_persisted"
     effective = normalized_selected
   end
 
-  effective = NormalizeSelectedProfilePopstarterPath(profile, effective)
+  effective = NormalizeSelectedProfilePopstarterPath(profile, effective, selected_mode)
   return {
     effective_path = effective,
     normalized_selected_path = normalized_selected,
     normalized_persisted_path = normalized_persisted,
     selected_backend = selected_backend,
     persisted_backend = persisted_backend,
-    rule = rule
+    rule = rule,
+    mode = selected_mode
   }
 end
 
@@ -1338,7 +1352,8 @@ end
 
 local function ResolvePopstarterPath(path)
   local raw_path = tostring(path or "")
-  if IsDefaultRelativePopstarterPath(raw_path) or IsLegacyDefaultPopstarterPath(raw_path) then
+  local can_sidecar_fallback = (raw_path == "" or not IsAbsoluteDevicePath(raw_path))
+  if can_sidecar_fallback and (IsDefaultRelativePopstarterPath(raw_path) or IsLegacyDefaultPopstarterPath(raw_path)) then
     local sidecar = ResolveHddBootSidecarPopstarter()
     if sidecar ~= nil then
       return sidecar
@@ -1362,6 +1377,10 @@ local function ResolvePopstarterPath(path)
   local resolved = ResolvePathWithEnsure(chosen)
   if resolved ~= nil then
     return resolved
+  end
+
+  if IsAbsoluteDevicePath(raw_path) then
+    return chosen
   end
 
   local fallbacks = {
@@ -1498,7 +1517,7 @@ end
 
 function PLDR.GetEffectiveConfiguredPopstarterPath(path, profile)
   local selected_profile = tonumber(profile) or tonumber(PLDR.SELECTED_PROFILE) or tonumber(PLDR.DEFAULT_PROFILE) or 1
-  return NormalizeSelectedProfilePopstarterPath(selected_profile, path or PLDR.POPSTARTER_PATH)
+  return NormalizeSelectedProfilePopstarterPath(selected_profile, path or PLDR.POPSTARTER_PATH, PLDR.POPSTARTER_SELECTION_MODE)
 end
 
 function PLDR.ResolveHddReadablePath(path)
@@ -1605,6 +1624,7 @@ local pldr_defaults = {
   REBOOT_IOP_WHILE_LOADING_POPSTARTER = 0;
   STRICT_HDD_PREEXEC_GATE = false;
   POPSTARTER_PATH = "POPSTARTER.ELF";
+  POPSTARTER_SELECTION_MODE = POPSTARTER_MODE_PROFILE_DEFAULT;
   CHECK_POPSTARTER_FILES = false;
   GAMEPATH = ".";
   GAMES = {};
@@ -2185,15 +2205,18 @@ end
 
 local function EncodeSettings()
   local selected_profile = tonumber(PLDR.SELECTED_PROFILE) or 1
-  local configured_popstarter = NormalizeSelectedProfilePopstarterPath(selected_profile, PLDR.POPSTARTER_PATH)
+  local selection_mode = NormalizePopstarterSelectionMode(PLDR.POPSTARTER_SELECTION_MODE)
+  local configured_popstarter = NormalizeSelectedProfilePopstarterPath(selected_profile, PLDR.POPSTARTER_PATH, selection_mode)
   local profile_popstarter = GetProfilePopstarterPath(selected_profile)
   local persisted_popstarter = configured_popstarter
-  if configured_popstarter ~= "" and NormalizeFsPathRaw(configured_popstarter) == NormalizeFsPathRaw(profile_popstarter) then
+  if selection_mode == POPSTARTER_MODE_PROFILE_DEFAULT or
+     (configured_popstarter ~= "" and NormalizeFsPathRaw(configured_popstarter) == NormalizeFsPathRaw(profile_popstarter)) then
     persisted_popstarter = ""
   end
   local lines = {
     "PROFILE="..tostring(selected_profile),
     "POPSTARTER_PATH="..persisted_popstarter,
+    "POPSTARTER_MODE="..selection_mode,
     "BDMA="..tostring(PLDR.BDMA_MODE_KEY or "FAT32"),
     "DKWDRV_PATH="..tostring(PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH),
     "STRICT_HDD_PREEXEC_GATE="..((PLDR.STRICT_HDD_PREEXEC_GATE == true) and "1" or "0"),
@@ -2226,7 +2249,8 @@ local function SnapshotSettingsState()
   local profile = tonumber(PLDR.SELECTED_PROFILE) or tonumber(PLDR.DEFAULT_PROFILE) or 1
   return {
     profile = profile,
-    popstarter_path = NormalizeSelectedProfilePopstarterPath(profile, PLDR.POPSTARTER_PATH),
+    popstarter_path = NormalizeSelectedProfilePopstarterPath(profile, PLDR.POPSTARTER_PATH, PLDR.POPSTARTER_SELECTION_MODE),
+    popstarter_mode = NormalizePopstarterSelectionMode(PLDR.POPSTARTER_SELECTION_MODE),
     bdma_mode = NormalizeBdmaModeKey(PLDR.BDMA_MODE_KEY) or "FAT32",
     dkwdrv_path = tostring(PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH),
     video_standard = NormalizeVideoStandard(PLDR.VIDEO_STANDARD),
@@ -2243,8 +2267,9 @@ local function ApplySettingsState(state)
   if profile ~= nil and PLDR.PROFILES ~= nil and PLDR.PROFILES[profile] ~= nil then
     PLDR.SELECTED_PROFILE = profile
   end
+  PLDR.POPSTARTER_SELECTION_MODE = NormalizePopstarterSelectionMode(state.popstarter_mode)
   if state.popstarter_path ~= nil then
-    PLDR.POPSTARTER_PATH = NormalizeSelectedProfilePopstarterPath(PLDR.SELECTED_PROFILE, state.popstarter_path)
+    PLDR.POPSTARTER_PATH = NormalizeSelectedProfilePopstarterPath(PLDR.SELECTED_PROFILE, state.popstarter_path, PLDR.POPSTARTER_SELECTION_MODE)
   end
   local bdma = NormalizeBdmaModeKey(state.bdma_mode)
   if bdma ~= nil then
@@ -2339,6 +2364,7 @@ function PLDR.LoadSettingsNonFatal()
   PLDR.EnsurePopstarterDir()
   PLDR.SELECTED_PROFILE = defaults_profile
   PLDR.BDMA_MODE_KEY = "FAT32"
+  PLDR.POPSTARTER_SELECTION_MODE = POPSTARTER_MODE_PROFILE_DEFAULT
   PLDR.STRICT_HDD_PREEXEC_GATE = false
   PLDR.VIDEO_STANDARD = PLDR.VIDEO_STANDARD_NTSC
   PLDR.DKWDRV_PATH = tostring(PLDR.DKWDRV_DEFAULT_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
@@ -2366,6 +2392,7 @@ function PLDR.LoadSettingsNonFatal()
   end
   local profile = tonumber(string.match(data, "\nPROFILE=([^\n]+)")) or tonumber(string.match(data, "^PROFILE=([^\n]+)"))
   local popstarter_path = string.match(data, "\nPOPSTARTER_PATH=([^\n]*)") or string.match(data, "^POPSTARTER_PATH=([^\n]*)")
+  local popstarter_mode = string.match(data, "\nPOPSTARTER_MODE=([^\n]+)") or string.match(data, "^POPSTARTER_MODE=([^\n]+)")
   local bdma_mode = string.match(data, "\nBDMA=([^\n]+)") or string.match(data, "^BDMA=([^\n]+)") or string.match(data, "\nBDMA_MODE=([^\n]+)") or string.match(data, "^BDMA_MODE=([^\n]+)")
   local dkwdrv_path = string.match(data, "\nDKWDRV_PATH=([^\n]*)") or string.match(data, "^DKWDRV_PATH=([^\n]*)")
   local strict_hdd_preexec_gate = string.match(data, "\nSTRICT_HDD_PREEXEC_GATE=([^\n]+)") or string.match(data, "^STRICT_HDD_PREEXEC_GATE=([^\n]+)")
@@ -2380,12 +2407,15 @@ function PLDR.LoadSettingsNonFatal()
   if popstarter_path ~= nil and popstarter_path ~= "" then
     persisted_candidate = popstarter_path
   end
+  PLDR.POPSTARTER_SELECTION_MODE = NormalizePopstarterSelectionMode(popstarter_mode)
   local selection = ResolveProfilePopstarterSelection(
     PLDR.SELECTED_PROFILE,
     GetProfilePopstarterPath(PLDR.SELECTED_PROFILE),
-    persisted_candidate
+    persisted_candidate,
+    PLDR.POPSTARTER_SELECTION_MODE
   )
   PLDR.POPSTARTER_PATH = selection.effective_path
+  PLDR.POPSTARTER_SELECTION_MODE = selection.mode
   PLDR.SETTINGS_POPSTARTER_SELECTION_RULE = selection.rule
   PLDR.SETTINGS_POPSTARTER_SELECTED_BACKEND = selection.selected_backend
   PLDR.SETTINGS_POPSTARTER_PERSISTED_BACKEND = selection.persisted_backend
