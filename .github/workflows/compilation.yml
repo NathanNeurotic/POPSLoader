@@ -88,6 +88,14 @@ jobs:
             exit 1
           }
 
+          TMP_LOADER_C="$(mktemp)"
+          trap 'rm -f "$TMP_LOADER_C"' EXIT
+          "${PS2SDK}/bin/bin2c" src/loader/bin/loader.elf "$TMP_LOADER_C" loader_elf
+          if ! cmp -s "$TMP_LOADER_C" src/elf_loader/loader.c; then
+            echo "ERROR: src/elf_loader/loader.c content diverges from deterministic bin2c output of src/loader/bin/loader.elf" >&2
+            exit 1
+          fi
+
           require_marker "Exec path:" bin/enceladus.elf
           require_marker "PrepareForColdExternalELFLaunch" bin/enceladus.elf
           require_marker "BOOT.ELF launch failed" bin/enceladus.elf
