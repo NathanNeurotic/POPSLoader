@@ -310,37 +310,74 @@ local function GetRecordedHddMountPrefix(partition)
   return HDD_MOUNT_STATE.partitions[normalized_partition]
 end
 
+local function GetDeterministicHddPartitionForSlot(slot)
+  local normalized_slot = tonumber(slot)
+  if normalized_slot == nil then
+    return nil
+  end
+
+  local entry = HDD_MOUNT_STATE.slots[normalized_slot]
+  if entry ~= nil and type(entry.partition) == "string" and entry.partition ~= "" then
+    return ParseHddPartitionMount(entry.partition)
+  end
+
+  local boot_part = ParseHddPartitionMount(rawget(_G, "BOOT_HDD_MOUNTPART"))
+  local boot_slot = GetBootHddMountSlot()
+  if boot_part ~= nil and boot_slot == normalized_slot then
+    return boot_part
+  end
+
+  local active_slot = tonumber(PLDR and PLDR.HDD and PLDR.HDD.GAME_SLOT or nil)
+  if active_slot == normalized_slot then
+    local context_candidates = {
+      BOOT_ARGV0_RAW,
+      BOOT_PATH_RAW,
+      APP_DIR_RAW,
+      APP_DIR_LOCAL
+    }
+    for i = 1, #context_candidates do
+      local part = ParseHddPartitionMount(context_candidates[i])
+      if part ~= nil then
+        return part
+      end
+    end
+  end
+
+  return nil
+end
+
 local function BuildRawHddExecPathFromMounted(path)
   local candidate = tostring(path or "")
   local prefix = NormalizePfsPrefix(candidate)
   if prefix == nil then
-    return nil
+    return nil, "not-mounted-pfs-path"
   end
   local slot = ParsePfsSlot(prefix)
-  local entry = HDD_MOUNT_STATE.slots[slot]
-  if entry == nil or type(entry.partition) ~= "string" or entry.partition == "" then
-    return nil
-  end
   local relpath = string.gsub(candidate, "^pfs%d*:/", "")
   if relpath == "" then
-    return nil
+    return nil, "empty-relative-path"
   end
-  return entry.partition..":pfs:/"..relpath
+
+  local partition = GetDeterministicHddPartitionForSlot(slot)
+  if partition == nil then
+    return nil, "slot-unknown"
+  end
+  return partition..":pfs:/"..relpath, nil
 end
 
 local function BuildHddPartitionContext(path)
   local mount_part = ParseHddPartitionMount(path)
   if mount_part ~= nil then
-    return mount_part..":"
+    return mount_part..":", nil
   end
-  local raw_hdd = BuildRawHddExecPathFromMounted(path)
+  local raw_hdd, reason = BuildRawHddExecPathFromMounted(path)
   if raw_hdd ~= nil then
     local raw_part = ParseHddPartitionMount(raw_hdd)
     if raw_part ~= nil then
-      return raw_part..":"
+      return raw_part..":", nil
     end
   end
-  return nil
+  return nil, reason
 end
 
 local function BuildPartitionScopedExecPath(path)
@@ -982,7 +1019,7 @@ local function ResolveHddBootSidecarPopstarter()
     if ProbePathExists(mounted_candidate) then
       return mounted_candidate
     end
-    local raw_hdd = BuildRawHddExecPathFromMounted(mounted_candidate)
+    local raw_hdd = select(1, BuildRawHddExecPathFromMounted(mounted_candidate))
     if raw_hdd ~= nil then
       local resolved_hdd = ResolveHddReadablePath(raw_hdd)
       if resolved_hdd ~= nil then
@@ -1030,15 +1067,15 @@ local function ResolveHddBootSidecarSourceContext()
 
   for i = 1, #hdd_candidates do
     if ResolveHddReadablePath(hdd_candidates[i]) ~= nil then
-      return BuildHddPartitionContext(hdd_candidates[i])
+      return select(1, BuildHddPartitionContext(hdd_candidates[i]))
     end
   end
 
   for i = 1, #mounted_candidates do
     local mounted = mounted_candidates[i]
-    local raw_hdd = BuildRawHddExecPathFromMounted(mounted)
+    local raw_hdd = select(1, BuildRawHddExecPathFromMounted(mounted))
     if raw_hdd ~= nil and (ProbePathExists(mounted) or ResolveHddReadablePath(raw_hdd) ~= nil) then
-      return BuildHddPartitionContext(raw_hdd)
+      return select(1, BuildHddPartitionContext(raw_hdd))
     end
   end
 
@@ -1138,11 +1175,11 @@ local function ResolvePopstarterPartitionContext(path, resolved_path)
   end
 
   if IsHddExecContextPath(configured) then
-    return BuildHddPartitionContext(configured)
+    return select(1, BuildHddPartitionContext(configured))
   end
 
   if IsHddExecContextPath(resolved_path) then
-    return BuildHddPartitionContext(resolved_path)
+    return select(1, BuildHddPartitionContext(resolved_path))
   end
 
   return nil
@@ -1160,20 +1197,44 @@ local function ValidateHddPopstarterExecGate(exec_path, partition_context)
   end
 
   local normalized_partition = ParseHddPartitionMount(partition_context)
+  local partition_reason = nil
   if normalized_partition == nil then
     normalized_partition = ParseHddPartitionMount(target_exec_path)
   end
   if normalized_partition == nil then
-    local raw_hdd = BuildRawHddExecPathFromMounted(target_exec_path)
+    local raw_hdd, raw_reason = BuildRawHddExecPathFromMounted(target_exec_path)
     normalized_partition = ParseHddPartitionMount(raw_hdd)
+    partition_reason = raw_reason
   end
+
+  local target_slot = ParsePfsSlot(target_exec_path)
+  if normalized_partition == nil and target_slot ~= nil then
+    local recovered_partition = GetDeterministicHddPartitionForSlot(target_slot)
+    if recovered_partition ~= nil then
+      local mount_ok, prefix = MountHddPartitionTracked(recovered_partition, target_slot, FIO_MT_RDONLY)
+      if mount_ok and prefix ~= nil then
+        normalized_partition = recovered_partition
+        partition_reason = nil
+      else
+        return false, "Cannot mount HDD partition required by POPSTARTER (slot pfs"..tostring(target_slot).." mount failed)"
+      end
+    end
+  end
+
   if normalized_partition == nil then
+    if partition_reason == "slot-unknown" then
+      return false, "Cannot resolve HDD partition context for POPSTARTER (slot unknown)"
+    end
     return false, "Cannot resolve HDD partition context for POPSTARTER"
   end
 
   local mounted_prefix = GetRecordedHddMountPrefix(normalized_partition)
   if mounted_prefix == nil then
-    local mount_ok, prefix = MountHddPartitionTracked(normalized_partition, HDD_SLOT_POPSTARTER, FIO_MT_RDONLY)
+    local mount_slot = HDD_SLOT_POPSTARTER
+    if target_slot ~= nil then
+      mount_slot = target_slot
+    end
+    local mount_ok, prefix = MountHddPartitionTracked(normalized_partition, mount_slot, FIO_MT_RDONLY)
     if not mount_ok or prefix == nil then
       return false, "Cannot mount HDD partition required by POPSTARTER"
     end
