@@ -117,6 +117,19 @@ static bool is_hdd_backed_exec_path(const char *path) {
 }
 
 static int ExecuteViaEmbeddedLoader(const char *partition_context, const char *load_path, int argc, char *argv[]);
+
+#define EMBEDDED_LOADER_METADATA_ADDR ((volatile struct EmbeddedLoaderMetadata *)0x00083C00)
+#define EMBEDDED_LOADER_METADATA_MAGIC 0x504F504CU /* POPL */
+#define EMBEDDED_LOADER_METADATA_VERSION 1
+
+typedef struct EmbeddedLoaderMetadata {
+	u32 magic;
+	u32 version;
+	u32 valid;
+	u32 reserved;
+	char partition_context[128];
+	char load_path[256];
+} EmbeddedLoaderMetadata;
 int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const char *partition, int argc, char *argv[]);
 
 static int extract_exec_pfs_slot(const char *path) {
@@ -326,8 +339,8 @@ static int ExecuteViaEmbeddedLoader(const char *partition_context, const char *l
 	int i;
 	int ret;
 	int extra_argc = (argc > 0 && argv != NULL) ? argc : 0;
-	int final_argc = extra_argc + 2;
-	static const int kMaxArgc = 34;
+	int final_argc = extra_argc;
+	static const int kMaxArgc = 32;
 	static char *launch_argv[35];
 	static char launch_arg_storage[2048];
 	size_t storage_offset = 0;
@@ -347,20 +360,26 @@ static int ExecuteViaEmbeddedLoader(const char *partition_context, const char *l
 	 */
 	wipe_bramMem();
 
-	launch_argv[0] = store_arg(partition_context != NULL ? partition_context : "", launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
-	if (!launch_argv[0]) {
-		return -3;
+	{
+		volatile EmbeddedLoaderMetadata *meta = EMBEDDED_LOADER_METADATA_ADDR;
+		memset((void *)meta, 0, sizeof(*meta));
+		meta->magic = EMBEDDED_LOADER_METADATA_MAGIC;
+		meta->version = EMBEDDED_LOADER_METADATA_VERSION;
+		snprintf((char *)meta->partition_context, sizeof(meta->partition_context), "%s", partition_context != NULL ? partition_context : "");
+		snprintf((char *)meta->load_path, sizeof(meta->load_path), "%s", load_path != NULL ? load_path : "");
+		meta->valid = 1;
+		if (meta->magic != EMBEDDED_LOADER_METADATA_MAGIC || meta->version != EMBEDDED_LOADER_METADATA_VERSION ||
+		    meta->valid != 1 || meta->load_path[0] == '\0') {
+			return -6;
+		}
 	}
-	launch_argv[1] = store_arg(load_path, launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
-	if (!launch_argv[1]) {
-		return -3;
-	}
+
 	for (i = 0; i < extra_argc; i++) {
 		char *stored_arg = store_arg(argv[i], launch_arg_storage, sizeof(launch_arg_storage), &storage_offset);
 		if (!stored_arg) {
 			return -3;
 		}
-		launch_argv[i + 2] = stored_arg;
+		launch_argv[i] = stored_arg;
 	}
 	launch_argv[final_argc] = NULL;
 
