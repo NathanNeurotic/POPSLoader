@@ -447,8 +447,12 @@ local function BuildHddPartitionContext(path, recovery_candidates)
   end
 
   local candidate = tostring(path or "")
-  local slot = ParsePfsSlot(candidate)
-  if slot ~= nil then
+  if string.match(candidate, "^pfs%d*:/") ~= nil then
+    local slot = ParsePfsSlot(candidate)
+    if slot == nil then
+      return nil, "slot_unmapped"
+    end
+
     local relpath = string.gsub(candidate, "^pfs%d*:/", "")
     if relpath == "" then
       return nil, "slot_relpath_missing"
@@ -460,6 +464,7 @@ local function BuildHddPartitionContext(path, recovery_candidates)
     end
 
     local candidates = BuildPartitionRecoveryCandidates(recovery_candidates)
+
     for i = 1, #candidates do
       local part = ParseHddPartitionMount(candidates[i])
       if part ~= nil then
@@ -475,6 +480,11 @@ local function BuildHddPartitionContext(path, recovery_candidates)
     end
 
     return nil, "slot_recovery_candidates_failed"
+  end
+
+  local slot = ParsePfsSlot(candidate)
+  if slot ~= nil then
+    return nil, "slot_unmapped"
   end
 
   local mounted_part, mounted_reason = RecoverHddPartitionFromMountedPath(path, recovery_candidates)
