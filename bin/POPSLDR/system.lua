@@ -1318,13 +1318,36 @@ local function ResolveHddBootSidecarSourceContext()
   return nil
 end
 
+local function IsExplicitAbsoluteCustomPopstarterPath(path)
+  local candidate = string.lower(NormalizeFsPathRaw(tostring(path or "")))
+  if candidate == "" then
+    return false
+  end
+  if string.match(candidate, "^mc[01]:/") ~= nil then
+    return true
+  end
+  if string.match(candidate, "^mass%d*:/") ~= nil then
+    return true
+  end
+  if string.match(candidate, "^hdd%d:/") ~= nil then
+    return true
+  end
+  return string.match(candidate, "^hdd%d:[^:]+:[%a]+%d*:/") ~= nil
+end
+
 local function IsDefaultRelativePopstarterPath(path)
+  if IsExplicitAbsoluteCustomPopstarterPath(path) or IsAbsoluteDevicePath(path) then
+    return false
+  end
   local candidate = string.lower(string.gsub(tostring(path or ""), "\\", "/"))
   candidate = string.gsub(candidate, "^%./", "")
   return candidate == "" or candidate == "popstarter.elf"
 end
 
 local function IsLegacyDefaultPopstarterPath(path)
+  if IsExplicitAbsoluteCustomPopstarterPath(path) or IsAbsoluteDevicePath(path) then
+    return false
+  end
   local candidate = string.lower(NormalizeFsPathRaw(tostring(path or "")))
   return string.match(candidate, "^mass%d*:/pops/popstarter%.elf$") ~= nil
 end
@@ -1408,7 +1431,8 @@ end
 
 local function ResolvePopstarterPartitionContext(path, resolved_path, preferred_partition_label)
   local configured = tostring(path or "")
-  if IsDefaultRelativePopstarterPath(configured) or IsLegacyDefaultPopstarterPath(configured) then
+  local can_sidecar_source_fallback = (configured == "" or not IsAbsoluteDevicePath(configured)) and not IsExplicitAbsoluteCustomPopstarterPath(configured)
+  if can_sidecar_source_fallback and (IsDefaultRelativePopstarterPath(configured) or IsLegacyDefaultPopstarterPath(configured)) then
     local sidecar_source = ResolveHddBootSidecarSourceContext()
     if sidecar_source ~= nil then
       return sidecar_source
