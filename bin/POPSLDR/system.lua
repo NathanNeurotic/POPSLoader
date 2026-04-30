@@ -1148,6 +1148,50 @@ local function ResolvePopstarterPartitionContext(path, resolved_path)
   return nil
 end
 
+local function ValidateHddPopstarterExecGate(exec_path, partition_context)
+  local target_exec_path = tostring(exec_path or "")
+  if target_exec_path == "" then
+    return false, "POPSTARTER executable path is empty"
+  end
+
+  local normalized_target = string.lower(target_exec_path)
+  if string.match(normalized_target, "^hdd%d:") == nil and string.match(normalized_target, "^pfs%d*:/") == nil then
+    return true, nil
+  end
+
+  local normalized_partition = ParseHddPartitionMount(partition_context)
+  if normalized_partition == nil then
+    normalized_partition = ParseHddPartitionMount(target_exec_path)
+  end
+  if normalized_partition == nil then
+    local raw_hdd = BuildRawHddExecPathFromMounted(target_exec_path)
+    normalized_partition = ParseHddPartitionMount(raw_hdd)
+  end
+  if normalized_partition == nil then
+    return false, "Cannot resolve HDD partition context for POPSTARTER"
+  end
+
+  local mounted_prefix = GetRecordedHddMountPrefix(normalized_partition)
+  if mounted_prefix == nil then
+    local mount_ok, prefix = MountHddPartitionTracked(normalized_partition, HDD_SLOT_POPSTARTER, FIO_MT_RDONLY)
+    if not mount_ok or prefix == nil then
+      return false, "Cannot mount HDD partition required by POPSTARTER"
+    end
+    mounted_prefix = prefix
+  end
+
+  if not doesFileExist(target_exec_path) then
+    return false, "POPSTARTER is not accessible using exec path: "..target_exec_path
+  end
+
+  local partition_scoped = BuildPartitionScopedExecPath(target_exec_path)
+  if partition_scoped ~= nil and not doesFileExist(partition_scoped) then
+    return false, "POPSTARTER partition-scoped path is not accessible: "..partition_scoped
+  end
+
+  return true, nil
+end
+
 local function ResolveIrx(name)
   return System.resolveAssetType(name, ASSET_IRX) or JoinPath(APP_DIR_LOCAL, name)
 end
@@ -3976,6 +4020,24 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     exec_path = popstarter_exec_path,
     exec_partition_context = popstarter_partition_context
   }
+
+  if popstarter_on_hdd then
+    local gate_ok, gate_err = ValidateHddPopstarterExecGate(popstarter_exec_path, popstarter_partition_context)
+    if not gate_ok then
+      BlockLaunchFailure(
+        "POPSTARTER HDD pre-exec gate failed: "..tostring(gate_err or "unknown error"),
+        popstarter,
+        device_page,
+        nil,
+        vcd_basename_raw,
+        APP_DIR_LOCAL,
+        nil,
+        nil
+      )
+      return
+    end
+  end
+
   local reboot_iop = launch_cmd.reboot_iop
   if UI ~= nil and UI.CoverCache ~= nil and UI.CoverCache.Clear ~= nil then
     UI.CoverCache:Clear()
