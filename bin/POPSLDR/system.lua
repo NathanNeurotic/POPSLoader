@@ -365,10 +365,92 @@ local function BuildRawHddExecPathFromMounted(path)
   return partition..":pfs:/"..relpath, nil
 end
 
+local function BuildPartitionRecoveryCandidates(extra)
+  local candidates = {}
+  local seen = {}
+  local function push(partition)
+    local normalized = ParseHddPartitionMount(partition)
+    if normalized ~= nil and seen[normalized] ~= true then
+      seen[normalized] = true
+      table.insert(candidates, normalized)
+    end
+  end
+
+  local context_candidates = {
+    APP_DIR_RAW,
+    APP_DIR_LOCAL,
+    BOOT_ARGV0_RAW,
+    BOOT_PATH_RAW,
+    rawget(_G, "BOOT_HDD_MOUNTPART"),
+    rawget(_G, "BOOT_HDD_PARTITION"),
+    rawget(_G, "BOOT_PARTITION"),
+    PLDR and PLDR.POPS_GAME_PARTITION or nil,
+    PLDR and PLDR.GAME_PARTITION or nil,
+    PLDR and PLDR.POPSTARTER_PATH or nil
+  }
+
+  for i = 1, #context_candidates do
+    push(context_candidates[i])
+  end
+
+  if type(extra) == "table" then
+    for i = 1, #extra do
+      push(extra[i])
+    end
+  elseif type(extra) == "string" then
+    push(extra)
+  end
+
+  return candidates
+end
+
+local function RecoverHddPartitionFromMountedPath(path, candidates)
+  local candidate = tostring(path or "")
+  local mounted_prefix = NormalizePfsPrefix(candidate)
+  if mounted_prefix == nil then
+    return nil, "not-mounted-pfs-path"
+  end
+
+  local slot = ParsePfsSlot(mounted_prefix)
+  if slot == nil then
+    return nil, "slot_unmapped"
+  end
+
+  local entry = HDD_MOUNT_STATE.slots[slot]
+  if entry ~= nil and entry.partition ~= nil then
+    return ParseHddPartitionMount(entry.partition), nil
+  end
+
+  local relpath = string.gsub(candidate, "^pfs%d*:/", "")
+  if relpath == "" then
+    return nil, "mount_probe_failed"
+  end
+
+  local recovery_candidates = BuildPartitionRecoveryCandidates(candidates)
+  for i = 1, #recovery_candidates do
+    local mount_ok, _ = MountHddPartitionTracked(recovery_candidates[i], slot, FIO_MT_RDONLY)
+    if mount_ok then
+      local probe_path = "pfs"..tostring(slot)..":/"..relpath
+      if ProbePathExists(probe_path) then
+        return recovery_candidates[i], nil
+      end
+    end
+  end
+
+  return nil, "mount_probe_failed"
+end
+
 local function BuildHddPartitionContext(path)
   local mount_part = ParseHddPartitionMount(path)
   if mount_part ~= nil then
     return mount_part..":", nil
+  end
+  local mounted_part, mounted_reason = RecoverHddPartitionFromMountedPath(path)
+  if mounted_part ~= nil then
+    return mounted_part..":", nil
+  end
+  if mounted_reason == "slot_unmapped" or mounted_reason == "mount_probe_failed" then
+    return nil, mounted_reason
   end
   local raw_hdd, reason = BuildRawHddExecPathFromMounted(path)
   if raw_hdd ~= nil then
@@ -1175,11 +1257,13 @@ local function ResolvePopstarterPartitionContext(path, resolved_path)
   end
 
   if IsHddExecContextPath(configured) then
-    return select(1, BuildHddPartitionContext(configured))
+    local part, _ = BuildHddPartitionContext(configured)
+    return part
   end
 
   if IsHddExecContextPath(resolved_path) then
-    return select(1, BuildHddPartitionContext(resolved_path))
+    local part, _ = BuildHddPartitionContext(resolved_path)
+    return part
   end
 
   return nil
