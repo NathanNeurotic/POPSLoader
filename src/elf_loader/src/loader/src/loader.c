@@ -135,6 +135,40 @@ static int build_default_target_arg0(const char *partition_context, const char *
 	return 0;
 }
 
+
+#define EMBEDDED_LOADER_METADATA_ADDR ((volatile embedded_loader_metadata_t *)0x00083C00)
+#define EMBEDDED_LOADER_METADATA_MAGIC 0x504F504CU /* POPL */
+#define EMBEDDED_LOADER_METADATA_VERSION 1
+
+typedef struct {
+	unsigned int magic;
+	unsigned int version;
+	unsigned int valid;
+	unsigned int reserved;
+	char partition_context[128];
+	char load_path[256];
+} embedded_loader_metadata_t;
+
+static int read_embedded_loader_metadata(char *partition_context, size_t partition_context_size, char *load_path, size_t load_path_size)
+{
+	const volatile embedded_loader_metadata_t *meta = EMBEDDED_LOADER_METADATA_ADDR;
+
+	if (partition_context == NULL || load_path == NULL || partition_context_size == 0 || load_path_size == 0) {
+		return -EINVAL;
+	}
+
+	if (meta->magic != EMBEDDED_LOADER_METADATA_MAGIC ||
+	    meta->version != EMBEDDED_LOADER_METADATA_VERSION ||
+	    meta->valid != 1 ||
+	    meta->load_path[0] == '\0') {
+		return -3302;
+	}
+
+	snprintf(partition_context, partition_context_size, "%s", (const char *)meta->partition_context);
+	snprintf(load_path, load_path_size, "%s", (const char *)meta->load_path);
+	return 0;
+}
+
 #define LOADER_ELF_MAGIC        0x464c457fU
 #define LOADER_PT_LOAD          1
 #define LOADER_PT_MIPS_REGINFO  0x70000000U
@@ -256,21 +290,12 @@ int main(int argc, char *argv[])
 
 	elfdata.epc = 0;
 
-	// argv[0]=partition context when present, argv[1]=load path,
-	// argv[2..]=arguments for the target ELF
-	if (argc < 2) {  
+	ret = read_embedded_loader_metadata(partition_context, sizeof(partition_context), load_path, sizeof(load_path));
+	if (ret != 0) {
 		SET_GS_BGCOLOUR(RED_BG);
-		return -EINVAL;
+		return ret;
 	}
-	strncpy(partition_context, argv[0] ? argv[0] : "", sizeof(partition_context) - 1);
-	partition_context[sizeof(partition_context) - 1] = '\0';
-	strncpy(load_path, argv[1] ? argv[1] : "", sizeof(load_path) - 1);
-	load_path[sizeof(load_path) - 1] = '\0';
-	if (load_path[0] == '\0') {
-		SET_GS_BGCOLOUR(RED_BG);
-		return -EINVAL;
-	}
-	target_argc = argc - 2;
+	target_argc = argc;
 	if (target_argc > 32) {
 		return -E2BIG;
 	}
@@ -281,13 +306,13 @@ int main(int argc, char *argv[])
 		target_argv[0] = default_target_arg0;
 		target_argc = 1;
 	} else {
-		for (i = 2; i < argc; i++) {
+		for (i = 0; i < argc; i++) {
 			size_t arg_len = strlen(argv[i]) + 1;
 			if ((target_arg_offset + arg_len) > sizeof(target_arg_storage)) {
 				return -E2BIG;
 			}
 			memcpy(&target_arg_storage[target_arg_offset], argv[i], arg_len);
-			target_argv[i - 2] = &target_arg_storage[target_arg_offset];
+			target_argv[i] = &target_arg_storage[target_arg_offset];
 			target_arg_offset += arg_len;
 		}
 	}
