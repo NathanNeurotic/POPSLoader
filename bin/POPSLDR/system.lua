@@ -440,12 +440,44 @@ local function RecoverHddPartitionFromMountedPath(path, candidates)
   return nil, "mount_probe_failed"
 end
 
-local function BuildHddPartitionContext(path)
+local function BuildHddPartitionContext(path, recovery_candidates)
   local mount_part = ParseHddPartitionMount(path)
   if mount_part ~= nil then
     return mount_part..":", nil
   end
-  local mounted_part, mounted_reason = RecoverHddPartitionFromMountedPath(path)
+
+  local candidate = tostring(path or "")
+  local slot = ParsePfsSlot(candidate)
+  if slot ~= nil then
+    local relpath = string.gsub(candidate, "^pfs%d*:/", "")
+    if relpath == "" then
+      return nil, "slot_relpath_missing"
+    end
+
+    local entry = HDD_MOUNT_STATE.slots[slot]
+    if entry ~= nil and entry.partition ~= nil then
+      return ParseHddPartitionMount(entry.partition)..":", nil
+    end
+
+    local candidates = BuildPartitionRecoveryCandidates(recovery_candidates)
+    for i = 1, #candidates do
+      local part = ParseHddPartitionMount(candidates[i])
+      if part ~= nil then
+        local mount_ok, _ = MountHddPartitionTracked(part, slot, FIO_MT_RDONLY)
+        if mount_ok then
+          local probe_path = "pfs"..tostring(slot)..":/"..relpath
+          if ProbePathExists(probe_path) then
+            RememberRecordedHddMount(part, BuildMountedPfsPrefix(slot))
+            return part..":", nil
+          end
+        end
+      end
+    end
+
+    return nil, "slot_recovery_candidates_failed"
+  end
+
+  local mounted_part, mounted_reason = RecoverHddPartitionFromMountedPath(path, recovery_candidates)
   if mounted_part ~= nil then
     return mounted_part..":", nil
   end
@@ -1256,13 +1288,23 @@ local function ResolvePopstarterPartitionContext(path, resolved_path)
     end
   end
 
+  local recovery_candidates = BuildPartitionRecoveryCandidates({
+    PLDR and PLDR.POPS_GAME_PARTITION or nil,
+    PLDR and PLDR.GAME_PARTITION or nil,
+    configured,
+    resolved_path,
+    rawget(_G, "BOOT_HDD_MOUNTPART"),
+    rawget(_G, "BOOT_HDD_PARTITION"),
+    rawget(_G, "BOOT_PARTITION")
+  })
+
   if IsHddExecContextPath(configured) then
-    local part, _ = BuildHddPartitionContext(configured)
+    local part, _ = BuildHddPartitionContext(configured, recovery_candidates)
     return part
   end
 
   if IsHddExecContextPath(resolved_path) then
-    local part, _ = BuildHddPartitionContext(resolved_path)
+    local part, _ = BuildHddPartitionContext(resolved_path, recovery_candidates)
     return part
   end
 
