@@ -83,10 +83,17 @@ jobs:
 
           [ -f bin/enceladus.elf ] || { echo "ERROR: bin/enceladus.elf missing after build" >&2; exit 1; }
           [ -f src/elf_loader/loader.c ] || { echo "ERROR: generated embedded loader blob missing" >&2; exit 1; }
-          [ src/elf_loader/loader.c -nt src/elf_loader/src/loader/src/loader.c ] || {
-            echo "ERROR: embedded loader blob was not regenerated from src/elf_loader/src/loader/src/loader.c" >&2
-            exit 1
-          }
+          if [ ! src/elf_loader/loader.c -nt src/elf_loader/src/loader/src/loader.c ]; then
+            echo "WARN: loader.c timestamp is not newer than loader source; validating content parity" >&2
+            TMP_LOADER_C="$(mktemp)"
+            "${PS2SDK}/bin/bin2c" src/elf_loader/src/loader/bin/loader.elf "$TMP_LOADER_C" loader_elf
+            if ! cmp -s src/elf_loader/loader.c "$TMP_LOADER_C"; then
+              echo "ERROR: embedded loader blob content does not match src/elf_loader/src/loader/bin/loader.elf" >&2
+              rm -f "$TMP_LOADER_C"
+              exit 1
+            fi
+            rm -f "$TMP_LOADER_C"
+          fi
 
           require_marker "Exec path:" bin/enceladus.elf
           require_marker "PrepareForColdExternalELFLaunch" bin/enceladus.elf
