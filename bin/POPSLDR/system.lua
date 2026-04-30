@@ -4176,6 +4176,18 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
   )
   launch_cmd.elf_path = popstarter_exec_path
   local argv0_selector = launch_cmd.argv0_selector
+  local argv = launch_cmd.argv
+  if type(argv) ~= "table" then
+    argv = {}
+    launch_cmd.argv = argv
+  end
+  if type(argv0_selector) ~= "string" or argv0_selector == "" then
+    argv0_selector = BuildLiteralElfName(game_name)
+    launch_cmd.argv0_selector = argv0_selector
+  end
+  if type(argv[1]) ~= "string" or argv[1] == "" then
+    argv[1] = argv0_selector
+  end
   if selector_prefix == "" and string.upper(game_name) == "POPSTARTER" then
     BlockLaunchFailure(
       "Internal error: game_base derived as POPSTARTER; refusing to launch.",
@@ -4199,8 +4211,20 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
       prefix_used = ""
     end
   end
-  local argv = launch_cmd.argv
-
+  local keep_slots = {}
+  if popstarter_keep_slot ~= nil then
+    keep_slots[#keep_slots + 1] = popstarter_keep_slot
+  end
+  if popstarter_original_slot ~= nil and popstarter_original_slot ~= popstarter_keep_slot then
+    keep_slots[#keep_slots + 1] = popstarter_original_slot
+  end
+  local keep_slots_after_load = nil
+  if popstarter_on_hdd then
+    keep_slots_after_load = {}
+    for i = 1, #keep_slots do
+      keep_slots_after_load[#keep_slots_after_load + 1] = keep_slots[i]
+    end
+  end
   local context = {
     device_page = device_page,
     device_mode = device_mode,
@@ -4224,23 +4248,15 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     game_name = game_name,
     bootparam_source = boot_source_mode,
     hdd_init = hdd_init,
-    keep_hdd_slots = popstarter_keep_slot ~= nil and {popstarter_keep_slot} or nil,
-    keep_hdd_slots_after_load = popstarter_on_hdd and (popstarter_keep_slot ~= nil and {popstarter_keep_slot} or {}) or nil,
+    keep_hdd_slots = #keep_slots > 0 and keep_slots or nil,
+    keep_hdd_slots_after_load = keep_slots_after_load,
     launch_cwd = popstarter_on_hdd and false or nil,
     cold_external_launch = popstarter_partition_context ~= nil and popstarter_partition_context ~= "",
     exec_path = popstarter_exec_path,
     exec_partition_context = popstarter_partition_context,
-    exec_original_slot = popstarter_original_slot
+    exec_original_slot = popstarter_original_slot,
+    exec_pfs_slot = popstarter_original_slot
   }
-  if context.exec_original_slot ~= nil then
-    if type(context.keep_hdd_slots) ~= "table" then
-      context.keep_hdd_slots = {}
-    end
-    context.keep_hdd_slots[#context.keep_hdd_slots + 1] = context.exec_original_slot
-    if type(context.keep_hdd_slots_after_load) == "table" then
-      context.keep_hdd_slots_after_load[#context.keep_hdd_slots_after_load + 1] = context.exec_original_slot
-    end
-  end
   if use_pfs_exec_fallback_without_partition_context then
     context.launch_route = tostring(context.launch_route).."+pfs_exec_fallback_no_partition_context"
   end
@@ -4257,7 +4273,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
           "POPSTARTER HDD pre-exec gate failed: "..tostring(gate_err or "unknown error"),
           popstarter,
           device_page,
-          nil,
+          argv and argv[1] or nil,
           vcd_basename_raw,
           APP_DIR_LOCAL,
           nil,
