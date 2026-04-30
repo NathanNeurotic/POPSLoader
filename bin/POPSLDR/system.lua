@@ -3980,9 +3980,12 @@ local function BuildLaunchDiagnosticsLines(diag)
   local lines = {
     "Diag prf="..v(diag.selected_profile_id).." route="..v(diag.route).." src="..v(diag.source_pfs_slot),
     "Diag cfg="..v(diag.configured_path),
+    "Diag cfg_reason="..v(diag.configured_path_reason),
     "Diag eff="..v(diag.normalized_profile_selected_path),
+    "Diag eff_reason="..v(diag.normalized_profile_selected_path_reason),
     "Diag exec="..v(diag.final_resolved_exec_path),
-    "Diag partctx="..v(diag.derived_partition_context)
+    "Diag partctx="..v(diag.derived_partition_context),
+    "Diag part_reason="..v(diag.derived_partition_context_reason)
   }
   return table.concat(lines, "\n")
 end
@@ -4000,7 +4003,7 @@ local function BlockLaunchFailure(rc, popstarter, device_page, argv0, game_path,
     diag_block = "\n"..diag_lines
   end
   local body = string.format(
-    "LAUNCH RETURNED\nrc=%s\nDev:%s Prf:%s Rt:%s\nGate:%s Open:%s/%s\nPOP:%s\nCfg:%s\nEff:%s\nExec:%s\nAPP:%s\nArg0:%s\nGame:%s%s\nPress X/O to continue.",
+    "LAUNCH RETURNED\nrc=%s\nDev:%s Prf:%s Rt:%s\nGate:%s Open:%s/%s\nPOP:%s\nCfg:%s (%s)\nEff:%s (%s)\nExec:%s\nAPP:%s\nArg0:%s\nGame:%s%s\nPress X/O to continue.",
     tostring(rc),
     tostring(device_page),
     tostring(context and context.launch_diagnostics and context.launch_diagnostics.selected_profile_id or nil),
@@ -4010,7 +4013,9 @@ local function BlockLaunchFailure(rc, popstarter, device_page, argv0, game_path,
     tostring(open_api),
     tostring(popstarter),
     tostring(context and context.launch_diagnostics and context.launch_diagnostics.configured_path or nil),
+    tostring(context and context.launch_diagnostics and context.launch_diagnostics.configured_path_reason or nil),
     tostring(context and context.launch_diagnostics and context.launch_diagnostics.normalized_profile_selected_path or nil),
+    tostring(context and context.launch_diagnostics and context.launch_diagnostics.normalized_profile_selected_path_reason or nil),
     tostring(context and context.launch_diagnostics and context.launch_diagnostics.final_resolved_exec_path or display_exec_path),
     tostring(app_dir),
     tostring(argv0),
@@ -4255,16 +4260,21 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
   end
   local selected_profile_id = tonumber(PLDR.SELECTED_PROFILE) or tonumber(PLDR.DEFAULT_PROFILE) or 1
   local persisted_popstarter_path = PLDR and PLDR.POPSTARTER_PATH or nil
+  local persisted_popstarter_path_reason = persisted_popstarter_path == nil and "cfg_nil" or nil
   local configured_popstarter = NormalizeSelectedProfilePopstarterPath(selected_profile_id, persisted_popstarter_path)
+  local configured_popstarter_reason = configured_popstarter == "" and "eff_nil" or nil
   local launch_diagnostics = {
     selected_profile_id = selected_profile_id,
     route = nil,
     persisted_popstarter_path = persisted_popstarter_path,
     normalized_profile_selected_path = configured_popstarter,
+    normalized_profile_selected_path_reason = configured_popstarter_reason,
     configured_path = persisted_popstarter_path,
+    configured_path_reason = persisted_popstarter_path_reason,
     effective_path = nil,
     final_resolved_exec_path = nil,
     derived_partition_context = nil,
+    derived_partition_context_reason = nil,
     source_pfs_slot = nil
   }
   local failure_context = {
@@ -4279,6 +4289,9 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
   end
   if configured_partition_context ~= nil and configured_partition_context ~= "" then
     popstarter_partition_context = configured_partition_context
+  end
+  if popstarter_partition_context == nil and IsHddExecContextPath(popstarter) then
+    launch_diagnostics.derived_partition_context_reason = "partition_unresolved"
   end
   local popstarter_on_hdd = IsHddExecContextPath(popstarter)
   local popstarter_exec_path = popstarter
@@ -4517,6 +4530,9 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
   end
   launch_diagnostics.final_resolved_exec_path = popstarter_exec_path
   launch_diagnostics.derived_partition_context = popstarter_partition_context
+  if popstarter_partition_context ~= nil and popstarter_partition_context ~= "" then
+    launch_diagnostics.derived_partition_context_reason = nil
+  end
   launch_diagnostics.source_pfs_slot = popstarter_source_slot
 
   local keep_slots = {}
