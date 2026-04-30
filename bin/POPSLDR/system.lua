@@ -893,8 +893,12 @@ local function BuildPfsKeepMask(keep_slots)
   return mask
 end
 
-local function PrepareForExternalELFLaunch(path, extra_keep_slots, keep_slots_after_load)
+local function PrepareForExternalELFLaunch(path, extra_keep_slots, keep_slots_after_load, forced_keep_slot)
   local keep_slots = CollectHddKeepSlots(path, extra_keep_slots)
+  local forced_slot = tonumber(forced_keep_slot)
+  if forced_slot ~= nil and forced_slot >= 0 and forced_slot <= 3 then
+    keep_slots[forced_slot] = true
+  end
   local lowered_path = string.lower(tostring(path or ""))
   local is_hdd_exec_context = string.match(lowered_path, "^hdd%d:") ~= nil or string.match(lowered_path, "^pfs%d*:/") ~= nil
   if not is_hdd_exec_context then
@@ -903,6 +907,8 @@ local function PrepareForExternalELFLaunch(path, extra_keep_slots, keep_slots_af
   local postload_keep_slots = keep_slots_after_load
   if type(postload_keep_slots) ~= "table" then
     postload_keep_slots = keep_slots
+  elseif forced_slot ~= nil and forced_slot >= 0 and forced_slot <= 3 then
+    postload_keep_slots[forced_slot] = true
   end
   if type(System) == "table" and type(System.setExecKeepPfsMask) == "function" then
     pcall(System.setExecKeepPfsMask, BuildPfsKeepMask(postload_keep_slots))
@@ -3912,7 +3918,8 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     PrepareForExternalELFLaunch(
       popstarter,
       context and context.keep_hdd_slots or nil,
-      context and context.keep_hdd_slots_after_load or nil
+      context and context.keep_hdd_slots_after_load or nil,
+      context and context.exec_pfs_slot or nil
     )
   end
   local rc
@@ -4253,6 +4260,9 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     end
   end
   local keep_slots = {}
+  if popstarter_original_slot == nil then
+    popstarter_original_slot = ExtractLaunchPfsSlot(popstarter_exec_path)
+  end
   if popstarter_keep_slot ~= nil then
     keep_slots[#keep_slots + 1] = popstarter_keep_slot
   end
