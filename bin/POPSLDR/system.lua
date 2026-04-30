@@ -3737,6 +3737,30 @@ local function BuildHddPopstarterSelectorPathForPartition(game_name, hdd_selecto
   return selector_name
 end
 
+local function BuildPopstarterLaunchCommand(policy_name, device_page, game_name, hdd_selector_mode, hdd_init, hdd_partition_label, popstarter_on_hdd)
+  local argv0_selector = BuildPopstarterSelectorPath(device_page, game_name)
+  if policy_name == "HDD" then
+    if popstarter_on_hdd then
+      argv0_selector = BuildHddPopstarterSelectorPathForPartition(game_name, hdd_selector_mode, hdd_partition_label)
+    else
+      argv0_selector = BuildHddPopstarterSelectorPath(game_name, hdd_selector_mode, hdd_init)
+    end
+  end
+  local argv = {argv0_selector}
+  local reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
+  if popstarter_on_hdd then
+    reboot_iop = 1
+  elseif policy_name == "HDD" then
+    reboot_iop = 0
+  end
+  return {
+    elf_path = nil,
+    argv = argv,
+    argv0_selector = argv0_selector,
+    reboot_iop = reboot_iop
+  }
+end
+
 function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
   local policy, device_page = ResolveLaunchPolicy(gamelocation, ui_scene)
   local selected_entry = tostring(game or "")
@@ -3887,14 +3911,17 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     return
   end
   local selector_prefix = SelectPopstarterSelectorPrefix(device_page)
-  local argv0_selector = BuildPopstarterSelectorPath(device_page, game_name)
-  if policy.name == "HDD" then
-    if popstarter_on_hdd then
-      argv0_selector = BuildHddPopstarterSelectorPathForPartition(game_name, hdd_selector_mode, hdd_partition_label)
-    else
-      argv0_selector = BuildHddPopstarterSelectorPath(game_name, hdd_selector_mode, hdd_init)
-    end
-  end
+  local launch_cmd = BuildPopstarterLaunchCommand(
+    policy.name,
+    device_page,
+    game_name,
+    hdd_selector_mode,
+    hdd_init,
+    hdd_partition_label,
+    popstarter_on_hdd
+  )
+  launch_cmd.elf_path = popstarter_exec_path
+  local argv0_selector = launch_cmd.argv0_selector
   if selector_prefix == "" and string.upper(game_name) == "POPSTARTER" then
     BlockLaunchFailure(
       "Internal error: game_base derived as POPSTARTER; refusing to launch.",
@@ -3918,7 +3945,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
       prefix_used = ""
     end
   end
-  local argv = {argv0_selector}
+  local argv = launch_cmd.argv
 
   local context = {
     device_page = device_page,
@@ -3949,12 +3976,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     exec_path = popstarter_exec_path,
     exec_partition_context = popstarter_partition_context
   }
-  local reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
-  if popstarter_on_hdd then
-    reboot_iop = 1
-  elseif policy.name == "HDD" then
-    reboot_iop = 0
-  end
+  local reboot_iop = launch_cmd.reboot_iop
   if UI ~= nil and UI.CoverCache ~= nil and UI.CoverCache.Clear ~= nil then
     UI.CoverCache:Clear()
   end
