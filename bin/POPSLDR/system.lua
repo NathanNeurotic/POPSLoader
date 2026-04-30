@@ -614,6 +614,44 @@ local function NormalizeSelectedProfilePopstarterPath(profile, path)
   return configured_path
 end
 
+local function GetPopstarterStorageBackend(path)
+  local candidate = string.lower(tostring(path or ""))
+  if string.match(candidate, "^hdd%d:") ~= nil or string.match(candidate, "^pfs%d*:/") ~= nil then
+    return "HDD"
+  end
+  if candidate == "" then
+    return "UNKNOWN"
+  end
+  return "NON_HDD"
+end
+
+local function ResolveProfilePopstarterSelection(profile, selected_path, persisted_path)
+  local normalized_selected = NormalizeSelectedProfilePopstarterPath(profile, selected_path)
+  local normalized_persisted = NormalizeSelectedProfilePopstarterPath(profile, persisted_path)
+  local selected_backend = GetPopstarterStorageBackend(normalized_selected)
+  local persisted_backend = GetPopstarterStorageBackend(normalized_persisted)
+  local rule = "persisted_wins"
+  local effective = normalized_persisted
+
+  if normalized_persisted == "" then
+    rule = "profile_wins_missing_persisted"
+    effective = normalized_selected
+  elseif selected_backend ~= "UNKNOWN" and persisted_backend ~= "UNKNOWN" and selected_backend ~= persisted_backend then
+    rule = "profile_wins_backend_mismatch"
+    effective = normalized_selected
+  end
+
+  effective = NormalizeSelectedProfilePopstarterPath(profile, effective)
+  return {
+    effective_path = effective,
+    normalized_selected_path = normalized_selected,
+    normalized_persisted_path = normalized_persisted,
+    selected_backend = selected_backend,
+    persisted_backend = persisted_backend,
+    rule = rule
+  }
+end
+
 local function NormalizeHddHelperSlot(slot)
   local normalized = tonumber(slot)
   if normalized == nil or normalized < HDD_SLOT_COMMON then
@@ -2338,10 +2376,19 @@ function PLDR.LoadSettingsNonFatal()
     PLDR.SELECTED_PROFILE = profile
     PLDR.POPSTARTER_PATH = PLDR.PROFILES[profile].ELF
   end
+  local persisted_candidate = ""
   if popstarter_path ~= nil and popstarter_path ~= "" then
-    PLDR.POPSTARTER_PATH = popstarter_path
+    persisted_candidate = popstarter_path
   end
-  PLDR.POPSTARTER_PATH = NormalizeSelectedProfilePopstarterPath(PLDR.SELECTED_PROFILE, PLDR.POPSTARTER_PATH)
+  local selection = ResolveProfilePopstarterSelection(
+    PLDR.SELECTED_PROFILE,
+    GetProfilePopstarterPath(PLDR.SELECTED_PROFILE),
+    persisted_candidate
+  )
+  PLDR.POPSTARTER_PATH = selection.effective_path
+  PLDR.SETTINGS_POPSTARTER_SELECTION_RULE = selection.rule
+  PLDR.SETTINGS_POPSTARTER_SELECTED_BACKEND = selection.selected_backend
+  PLDR.SETTINGS_POPSTARTER_PERSISTED_BACKEND = selection.persisted_backend
   if dkwdrv_path ~= nil and dkwdrv_path ~= "" then
     PLDR.DKWDRV_PATH = dkwdrv_path
   end
