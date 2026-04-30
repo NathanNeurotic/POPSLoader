@@ -3961,6 +3961,8 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
   local popstarter_partition_context = ResolvePopstarterPartitionContext(configured_popstarter, popstarter)
   local popstarter_on_hdd = IsHddExecContextPath(popstarter)
   local popstarter_exec_path = popstarter
+  local popstarter_keep_slot = ExtractLaunchPfsSlot(popstarter_exec_path or popstarter)
+  local popstarter_original_slot = popstarter_keep_slot
   local use_pfs_exec_fallback_without_partition_context = false
   local normalized_popstarter_exec = string.lower(tostring(popstarter or ""))
   if popstarter_partition_context == nil
@@ -3976,6 +3978,15 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     if normalized_exec_path ~= nil then
       popstarter_exec_path = normalized_exec_path
     end
+  end
+  local normalized_exec_slot = ExtractLaunchPfsSlot(popstarter_exec_path)
+  if popstarter_original_slot == nil then
+    popstarter_original_slot = normalized_exec_slot
+  end
+  if popstarter_keep_slot == nil then
+    popstarter_keep_slot = normalized_exec_slot
+  elseif normalized_exec_slot ~= nil then
+    popstarter_keep_slot = normalized_exec_slot
   end
   local hdd_selector_mode = nil
   if type(launch_options) == "table" then
@@ -4171,13 +4182,23 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     game_name = game_name,
     bootparam_source = boot_source_mode,
     hdd_init = hdd_init,
-    keep_hdd_slots = nil,
-    keep_hdd_slots_after_load = popstarter_on_hdd and {} or nil,
+    keep_hdd_slots = popstarter_keep_slot ~= nil and {popstarter_keep_slot} or nil,
+    keep_hdd_slots_after_load = popstarter_on_hdd and (popstarter_keep_slot ~= nil and {popstarter_keep_slot} or {}) or nil,
     launch_cwd = popstarter_on_hdd and false or nil,
     cold_external_launch = popstarter_partition_context ~= nil and popstarter_partition_context ~= "",
     exec_path = popstarter_exec_path,
-    exec_partition_context = popstarter_partition_context
+    exec_partition_context = popstarter_partition_context,
+    exec_original_slot = popstarter_original_slot
   }
+  if context.exec_original_slot ~= nil then
+    if type(context.keep_hdd_slots) ~= "table" then
+      context.keep_hdd_slots = {}
+    end
+    context.keep_hdd_slots[#context.keep_hdd_slots + 1] = context.exec_original_slot
+    if type(context.keep_hdd_slots_after_load) == "table" then
+      context.keep_hdd_slots_after_load[#context.keep_hdd_slots_after_load + 1] = context.exec_original_slot
+    end
+  end
   if use_pfs_exec_fallback_without_partition_context then
     context.launch_route = tostring(context.launch_route).."+pfs_exec_fallback_no_partition_context"
   end
