@@ -3952,11 +3952,9 @@ local function BuildLaunchDiagnosticsLines(diag)
     return out
   end
   local lines = {
-    "Diag prf="..v(diag.selected_profile_id).." src="..v(diag.source_pfs_slot),
-    "Diag persisted="..v(diag.persisted_popstarter_path),
-    "Diag selected="..v(diag.normalized_profile_selected_path),
-    "Diag configured="..v(diag.configured_path),
-    "Diag effective="..v(diag.effective_path),
+    "Diag prf="..v(diag.selected_profile_id).." route="..v(diag.route).." src="..v(diag.source_pfs_slot),
+    "Diag cfg="..v(diag.configured_path),
+    "Diag eff="..v(diag.normalized_profile_selected_path),
     "Diag exec="..v(diag.final_resolved_exec_path),
     "Diag partctx="..v(diag.derived_partition_context)
   }
@@ -3976,17 +3974,18 @@ local function BlockLaunchFailure(rc, popstarter, device_page, argv0, game_path,
     diag_block = "\n"..diag_lines
   end
   local body = string.format(
-    "LAUNCH RETURNED\nrc=%s\nDevice: %s\nRoute: %s\nHDD pre-exec gate: %s\nPOPSTARTER: %s\nConfigured path: %s\nEffective path: %s\nResolved exec path: %s\nOpen/stat rc: %s\nOpen API: %s\nAPP_DIR: %s\nargv[0]: %s\nGame arg: %s%s\nPress X/O to continue.",
+    "LAUNCH RETURNED\nrc=%s\nDev:%s Prf:%s Rt:%s\nGate:%s Open:%s/%s\nPOP:%s\nCfg:%s\nEff:%s\nExec:%s\nAPP:%s\nArg0:%s\nGame:%s%s\nPress X/O to continue.",
     tostring(rc),
     tostring(device_page),
+    tostring(context and context.launch_diagnostics and context.launch_diagnostics.selected_profile_id or nil),
     tostring(launch_route or "default"),
     tostring(hdd_preexec_gate_mode or "n/a"),
-    tostring(popstarter),
-    tostring(context and context.launch_diagnostics and context.launch_diagnostics.configured_path or nil),
-    tostring(context and context.launch_diagnostics and context.launch_diagnostics.effective_path or nil),
-    tostring(display_exec_path),
     tostring(open_rc),
     tostring(open_api),
+    tostring(popstarter),
+    tostring(context and context.launch_diagnostics and context.launch_diagnostics.configured_path or nil),
+    tostring(context and context.launch_diagnostics and context.launch_diagnostics.normalized_profile_selected_path or nil),
+    tostring(context and context.launch_diagnostics and context.launch_diagnostics.final_resolved_exec_path or display_exec_path),
     tostring(app_dir),
     tostring(argv0),
     tostring(game_path),
@@ -4233,9 +4232,10 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
   local configured_popstarter = NormalizeSelectedProfilePopstarterPath(selected_profile_id, persisted_popstarter_path)
   local launch_diagnostics = {
     selected_profile_id = selected_profile_id,
+    route = nil,
     persisted_popstarter_path = persisted_popstarter_path,
     normalized_profile_selected_path = configured_popstarter,
-    configured_path = configured_popstarter,
+    configured_path = persisted_popstarter_path,
     effective_path = nil,
     final_resolved_exec_path = nil,
     derived_partition_context = nil,
@@ -4448,6 +4448,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     popstarter_on_hdd
   )
   launch_cmd.elf_path = popstarter_exec_path
+  launch_diagnostics.route = launch_cmd.launch_route
   local argv0_selector = launch_cmd.argv0_selector
   local argv = launch_cmd.argv
   if type(argv) ~= "table" then
@@ -4548,6 +4549,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
   }
   if use_pfs_exec_fallback_without_partition_context then
     context.launch_route = launch_route_pfs_fallback
+    launch_diagnostics.route = launch_route_pfs_fallback
   end
 
   if popstarter_on_hdd then
