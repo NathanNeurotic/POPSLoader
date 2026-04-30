@@ -1289,7 +1289,7 @@ local function ResolvePopstarterPath(path)
   return chosen
 end
 
-local function ResolvePopstarterPartitionContext(path, resolved_path)
+local function ResolvePopstarterPartitionContext(path, resolved_path, preferred_partition_label)
   local configured = tostring(path or "")
   if IsDefaultRelativePopstarterPath(configured) or IsLegacyDefaultPopstarterPath(configured) then
     local sidecar_source = ResolveHddBootSidecarSourceContext()
@@ -1299,6 +1299,7 @@ local function ResolvePopstarterPartitionContext(path, resolved_path)
   end
 
   local recovery_candidates = BuildPartitionRecoveryCandidates({
+    preferred_partition_label,
     PLDR and PLDR.POPS_GAME_PARTITION or nil,
     PLDR and PLDR.GAME_PARTITION or nil,
     configured,
@@ -4008,9 +4009,15 @@ end
 function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
   local policy, device_page = ResolveLaunchPolicy(gamelocation, ui_scene)
   local selected_entry = tostring(game or "")
+  local hdd_partition_label = nil
+  local hdd_relpath = nil
+  if policy.name == "HDD" then
+    hdd_partition_label, hdd_relpath = ParseHddGameEntry(selected_entry)
+    hdd_relpath = NormalizeHddRelpath(hdd_relpath or selected_entry)
+  end
   local configured_popstarter = NormalizeSelectedProfilePopstarterPath(PLDR.SELECTED_PROFILE, PLDR.POPSTARTER_PATH)
   local popstarter = ResolvePopstarterPath(configured_popstarter)
-  local popstarter_partition_context = ResolvePopstarterPartitionContext(configured_popstarter, popstarter)
+  local popstarter_partition_context = ResolvePopstarterPartitionContext(configured_popstarter, popstarter, hdd_partition_label)
   local popstarter_on_hdd = IsHddExecContextPath(popstarter)
   local popstarter_exec_path = popstarter
   local popstarter_keep_slot = ExtractLaunchPfsSlot(popstarter_exec_path or popstarter)
@@ -4063,12 +4070,6 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     return
   end
   local hdd_init = nil
-  local hdd_partition_label = nil
-  local hdd_relpath = nil
-  if policy.name == "HDD" then
-    hdd_partition_label, hdd_relpath = ParseHddGameEntry(selected_entry)
-    hdd_relpath = NormalizeHddRelpath(hdd_relpath or selected_entry)
-  end
   local normalized_gamelocation = policy.normalize(gamelocation)
   local handoff_gamelocation = policy.handoff(normalized_gamelocation)
   local source_mode = policy.mode
