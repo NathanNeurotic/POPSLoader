@@ -3955,6 +3955,8 @@ local function BuildLaunchDiagnosticsLines(diag)
     "Diag prf="..v(diag.selected_profile_id).." src="..v(diag.source_pfs_slot),
     "Diag persisted="..v(diag.persisted_popstarter_path),
     "Diag selected="..v(diag.normalized_profile_selected_path),
+    "Diag configured="..v(diag.configured_path),
+    "Diag effective="..v(diag.effective_path),
     "Diag exec="..v(diag.final_resolved_exec_path),
     "Diag partctx="..v(diag.derived_partition_context)
   }
@@ -3974,12 +3976,14 @@ local function BlockLaunchFailure(rc, popstarter, device_page, argv0, game_path,
     diag_block = "\n"..diag_lines
   end
   local body = string.format(
-    "LAUNCH RETURNED\nrc=%s\nDevice: %s\nRoute: %s\nHDD pre-exec gate: %s\nPOPSTARTER: %s\nExec path: %s\nOpen/stat rc: %s\nOpen API: %s\nAPP_DIR: %s\nargv[0]: %s\nGame arg: %s%s\nPress X/O to continue.",
+    "LAUNCH RETURNED\nrc=%s\nDevice: %s\nRoute: %s\nHDD pre-exec gate: %s\nPOPSTARTER: %s\nConfigured path: %s\nEffective path: %s\nResolved exec path: %s\nOpen/stat rc: %s\nOpen API: %s\nAPP_DIR: %s\nargv[0]: %s\nGame arg: %s%s\nPress X/O to continue.",
     tostring(rc),
     tostring(device_page),
     tostring(launch_route or "default"),
     tostring(hdd_preexec_gate_mode or "n/a"),
     tostring(popstarter),
+    tostring(context and context.launch_diagnostics and context.launch_diagnostics.configured_path or nil),
+    tostring(context and context.launch_diagnostics and context.launch_diagnostics.effective_path or nil),
     tostring(display_exec_path),
     tostring(open_rc),
     tostring(open_api),
@@ -4231,11 +4235,17 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     selected_profile_id = selected_profile_id,
     persisted_popstarter_path = persisted_popstarter_path,
     normalized_profile_selected_path = configured_popstarter,
+    configured_path = configured_popstarter,
+    effective_path = nil,
     final_resolved_exec_path = nil,
     derived_partition_context = nil,
     source_pfs_slot = nil
   }
+  local failure_context = {
+    launch_diagnostics = launch_diagnostics
+  }
   local popstarter = ResolvePopstarterPath(configured_popstarter)
+  launch_diagnostics.effective_path = popstarter
   local popstarter_partition_context = ResolvePopstarterPartitionContext(configured_popstarter, popstarter, hdd_partition_label)
   local configured_partition_context = nil
   if IsHddExecContextPath(configured_popstarter) then
@@ -4305,7 +4315,11 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
       nil,
       APP_DIR_LOCAL,
       nil,
-      nil
+      nil,
+      nil,
+      nil,
+      nil,
+      failure_context
     )
     return
   end
@@ -4373,7 +4387,11 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
         selected_entry,
         APP_DIR_LOCAL,
         nil,
-        nil
+        nil,
+        nil,
+        nil,
+        nil,
+        failure_context
       )
       return
     end
@@ -4412,7 +4430,11 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
       vcd_basename_raw,
       APP_DIR_LOCAL,
       nil,
-      nil
+      nil,
+      nil,
+      nil,
+      nil,
+      failure_context
     )
     return
   end
@@ -4448,7 +4470,11 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
       vcd_basename_raw,
       APP_DIR_LOCAL,
       nil,
-      nil
+      nil,
+      nil,
+      nil,
+      nil,
+      failure_context
     )
     return
   end
