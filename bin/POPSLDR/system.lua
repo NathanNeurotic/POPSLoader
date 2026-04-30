@@ -601,6 +601,8 @@ end
 
 local POPSTARTER_MODE_PROFILE_DEFAULT = "PROFILE_DEFAULT"
 local POPSTARTER_MODE_CUSTOM = "CUSTOM"
+local POPSTARTER_PATH_FALLBACK = "POPSTARTER.ELF"
+local POPSTARTER_DIAG_PLACEHOLDER = "<unset>"
 
 local function NormalizePopstarterSelectionMode(mode)
   local normalized = string.upper(tostring(mode or ""))
@@ -623,10 +625,25 @@ local function NormalizeSelectedProfilePopstarterPath(profile, path, mode)
   end
 
   if configured_path == "" then
-    return ""
+    if selected_profile_path ~= "" then
+      return selected_profile_path
+    end
+    return POPSTARTER_PATH_FALLBACK
   end
 
   return configured_path
+end
+
+local function EnsureNonEmptyPopstarterPath(path, profile)
+  local normalized = tostring(path or "")
+  if normalized ~= "" then
+    return normalized, nil
+  end
+  local profile_path = GetProfilePopstarterPath(profile)
+  if profile_path ~= "" then
+    return profile_path, "profile-default-fallback"
+  end
+  return POPSTARTER_PATH_FALLBACK, "global-default-fallback"
 end
 
 local function GetPopstarterStorageBackend(path)
@@ -2400,9 +2417,11 @@ function PLDR.LoadSettingsNonFatal()
       UI.HideTextMode = false
     end
   end
+  local initial_popstarter
   if PLDR.PROFILES ~= nil and PLDR.PROFILES[defaults_profile] ~= nil then
-    PLDR.POPSTARTER_PATH = PLDR.PROFILES[defaults_profile].ELF
+    initial_popstarter = PLDR.PROFILES[defaults_profile].ELF
   end
+  PLDR.POPSTARTER_PATH = select(1, EnsureNonEmptyPopstarterPath(initial_popstarter, defaults_profile))
   if not doesFileExist(PLDR.SETTINGS_PATH) then
     PLDR.ReconcileBdmaModeWithEffectiveState()
     PLDR.ApplyVideoStandardRuntime(PLDR.VIDEO_STANDARD)
@@ -2425,7 +2444,7 @@ function PLDR.LoadSettingsNonFatal()
   local keyboard_layout = string.match(data, "\nKEYBOARD_LAYOUT=([^\n]+)") or string.match(data, "^KEYBOARD_LAYOUT=([^\n]+)")
   if profile ~= nil and PLDR.PROFILES ~= nil and PLDR.PROFILES[profile] ~= nil then
     PLDR.SELECTED_PROFILE = profile
-    PLDR.POPSTARTER_PATH = PLDR.PROFILES[profile].ELF
+    PLDR.POPSTARTER_PATH = select(1, EnsureNonEmptyPopstarterPath(PLDR.PROFILES[profile].ELF, profile))
   end
   local persisted_candidate = ""
   if popstarter_path ~= nil and popstarter_path ~= "" then
@@ -2438,7 +2457,7 @@ function PLDR.LoadSettingsNonFatal()
     persisted_candidate,
     PLDR.POPSTARTER_SELECTION_MODE
   )
-  PLDR.POPSTARTER_PATH = selection.effective_path
+  PLDR.POPSTARTER_PATH = select(1, EnsureNonEmptyPopstarterPath(selection.effective_path, PLDR.SELECTED_PROFILE))
   PLDR.POPSTARTER_SELECTION_MODE = selection.mode
   PLDR.SETTINGS_POPSTARTER_SELECTION_RULE = selection.rule
   PLDR.SETTINGS_POPSTARTER_SELECTED_BACKEND = selection.selected_backend
@@ -4229,23 +4248,44 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
   end
   local selected_profile_id = tonumber(PLDR.SELECTED_PROFILE) or tonumber(PLDR.DEFAULT_PROFILE) or 1
   local persisted_popstarter_path = PLDR and PLDR.POPSTARTER_PATH or nil
-  local configured_popstarter = NormalizeSelectedProfilePopstarterPath(selected_profile_id, persisted_popstarter_path)
+  local raw_configured_popstarter = tostring(persisted_popstarter_path or "")
+  local configured_popstarter = NormalizeSelectedProfilePopstarterPath(selected_profile_id, raw_configured_popstarter)
+  configured_popstarter = tostring(configured_popstarter or "")
+  local launch_fallback_reason = "none"
+  if raw_configured_popstarter == "" or configured_popstarter == "" then
+    local fallback_path, fallback_reason = EnsureNonEmptyPopstarterPath(configured_popstarter ~= "" and configured_popstarter or raw_configured_popstarter, selected_profile_id)
+    raw_configured_popstarter = fallback_path
+    configured_popstarter = fallback_path
+    launch_fallback_reason = "launch-entry-"..tostring(fallback_reason or "forced-default")
+  end
   local launch_diagnostics = {
     selected_profile_id = selected_profile_id,
     route = nil,
-    persisted_popstarter_path = persisted_popstarter_path,
-    normalized_profile_selected_path = configured_popstarter,
-    configured_path = persisted_popstarter_path,
+    persisted_popstarter_path = tostring(persisted_popstarter_path or POPSTARTER_DIAG_PLACEHOLDER),
+    raw_configured_path = tostring(raw_configured_popstarter ~= "" and raw_configured_popstarter or POPSTARTER_DIAG_PLACEHOLDER),
+    normalized_profile_selected_path = tostring(configured_popstarter ~= "" and configured_popstarter or POPSTARTER_DIAG_PLACEHOLDER),
+    configured_path = tostring(raw_configured_popstarter ~= "" and raw_configured_popstarter or POPSTARTER_DIAG_PLACEHOLDER),
     effective_path = nil,
     final_resolved_exec_path = nil,
     derived_partition_context = nil,
-    source_pfs_slot = nil
+    source_pfs_slot = nil,
+    entry_fallback_reason = launch_fallback_reason
   }
   local failure_context = {
     launch_diagnostics = launch_diagnostics
   }
   local popstarter = ResolvePopstarterPath(configured_popstarter)
-  launch_diagnostics.effective_path = popstarter
+  popstarter = tostring(popstarter or "")
+  if popstarter == "" then
+    local fallback_path, fallback_reason = EnsureNonEmptyPopstarterPath(configured_popstarter, selected_profile_id)
+    popstarter = fallback_path
+    configured_popstarter = fallback_path
+    if launch_fallback_reason == "none" then
+      launch_fallback_reason = "launch-resolve-"..tostring(fallback_reason or "forced-default")
+      launch_diagnostics.entry_fallback_reason = launch_fallback_reason
+    end
+  end
+  launch_diagnostics.effective_path = tostring(popstarter ~= "" and popstarter or POPSTARTER_DIAG_PLACEHOLDER)
   local popstarter_partition_context = ResolvePopstarterPartitionContext(configured_popstarter, popstarter, hdd_partition_label)
   local configured_partition_context = nil
   if IsHddExecContextPath(configured_popstarter) then
@@ -4489,7 +4529,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
       prefix_used = ""
     end
   end
-  launch_diagnostics.final_resolved_exec_path = popstarter_exec_path
+  launch_diagnostics.final_resolved_exec_path = tostring(popstarter_exec_path or POPSTARTER_DIAG_PLACEHOLDER)
   launch_diagnostics.derived_partition_context = popstarter_partition_context
   launch_diagnostics.source_pfs_slot = popstarter_source_slot
 
