@@ -1531,6 +1531,32 @@ local function ValidateHddPopstarterExecGate(exec_path, partition_context, sourc
   return true, nil
 end
 
+local function ResolveFallbackMountedPfsExecPath(exec_path, hdd_partition_label)
+  local target_exec_path = tostring(exec_path or "")
+  local mount_part = ParseHddPartitionMount(hdd_partition_label)
+  if target_exec_path == "" or mount_part == nil then
+    return nil, "missing-target-or-partition"
+  end
+
+  local relpath = string.match(target_exec_path, "^pfs%d*:/(.+)$")
+  if relpath == nil or relpath == "" then
+    return nil, "not-mounted-pfs-path"
+  end
+
+  -- Direct reconstruction first: remount selected game partition into POPSTARTER slot.
+  local remount_ok, remount_prefix = MountHddPartitionTracked(mount_part, HDD_SLOT_POPSTARTER, FIO_MT_RDONLY)
+  if not remount_ok or remount_prefix == nil then
+    return nil, "slot3-remount-failed"
+  end
+
+  local direct_candidate = BuildMountedReadablePath(remount_prefix, relpath)
+  if direct_candidate ~= nil and ProbePathExists(direct_candidate) then
+    return direct_candidate, nil
+  end
+
+  return nil, "direct-slot3-probe-failed"
+end
+
 local function ResolveIrx(name)
   return System.resolveAssetType(name, ASSET_IRX) or JoinPath(APP_DIR_LOCAL, name)
 end
@@ -4548,6 +4574,34 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     launch_diagnostics = launch_diagnostics
   }
   if use_pfs_exec_fallback_without_partition_context then
+    local fallback_exec_path, fallback_exec_reason = ResolveFallbackMountedPfsExecPath(popstarter_exec_path, hdd_partition_label)
+    if fallback_exec_path ~= nil then
+      popstarter_exec_path = fallback_exec_path
+      launch_cmd.elf_path = popstarter_exec_path
+      local fallback_partition = ParseHddPartitionMount(hdd_partition_label)
+      if fallback_partition ~= nil then
+        popstarter_partition_context = fallback_partition
+        popstarter_exec_info = BuildPartitionScopedExecInfo(popstarter_exec_path, popstarter_partition_context)
+        popstarter_source_slot = popstarter_exec_info.source_pfs_slot
+        popstarter_keep_slot = popstarter_source_slot
+        popstarter_original_slot = popstarter_source_slot
+      end
+    elseif strict_hdd_preexec_gate then
+      BlockLaunchFailure(
+        "POPSTARTER HDD pre-exec fallback reconstruction failed: "..tostring(fallback_exec_reason or "unknown error"),
+        popstarter,
+        device_page,
+        argv and argv[1] or nil,
+        vcd_basename_raw,
+        APP_DIR_LOCAL,
+        nil,
+        nil,
+        nil,
+        hdd_preexec_gate_mode,
+        context
+      )
+      return
+    end
     context.launch_route = launch_route_pfs_fallback
     launch_diagnostics.route = launch_route_pfs_fallback
   end
