@@ -4076,6 +4076,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
   local popstarter_keep_slot = popstarter_source_slot
   local popstarter_original_slot = popstarter_source_slot
   local use_pfs_exec_fallback_without_partition_context = false
+  local launch_route_pfs_fallback = "mounted-pfs-fallback"
   local normalized_popstarter_exec = string.lower(tostring(popstarter or ""))
   if popstarter_partition_context == nil
     and string.match(normalized_popstarter_exec, "^pfs%d*:/") ~= nil
@@ -4324,7 +4325,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     source_pfs_slot = popstarter_source_slot
   }
   if use_pfs_exec_fallback_without_partition_context then
-    context.launch_route = tostring(context.launch_route).."+pfs_exec_fallback_no_partition_context"
+    context.launch_route = launch_route_pfs_fallback
   end
 
   if popstarter_on_hdd then
