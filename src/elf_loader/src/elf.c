@@ -116,6 +116,10 @@ static bool is_hdd_backed_exec_path(const char *path) {
 	        (strncmp(path, "hdd", 3) == 0 || strncmp(path, "pfs", 3) == 0));
 }
 
+static bool has_valid_target_argv0(int argc, char *argv[]) {
+	return (argc > 0 && argv != NULL && argv[0] != NULL && argv[0][0] != '\0');
+}
+
 static int ExecuteViaEmbeddedLoader(const char *partition_context, const char *load_path, int argc, char *argv[]);
 
 #define EMBEDDED_LOADER_METADATA_ADDR ((volatile struct EmbeddedLoaderMetadata *)0x00083C00)
@@ -291,6 +295,13 @@ static int ExecuteHddBackedViaEmbeddedLoader(const char *resolved_path, const ch
 	unsigned int required_keep_mask;
 	int ret;
 
+	/* POPSTARTER contract for HDD-backed launch: argv[0] must carry the
+	 * selector literal/path. Loader metadata is written separately.
+	 */
+	if (!has_valid_target_argv0(argc, argv)) {
+		return -7;
+	}
+
 	partition_context = partition_context_override;
 	if ((partition_context == NULL || partition_context[0] == '\0') &&
 	    resolved_path != NULL && strncmp(resolved_path, "hdd", 3) == 0) {
@@ -372,6 +383,10 @@ static int ExecuteViaEmbeddedLoader(const char *partition_context, const char *l
 		    meta->valid != 1 || meta->load_path[0] == '\0') {
 			return -6;
 		}
+	}
+
+	if (!has_valid_target_argv0(extra_argc, argv)) {
+		return -7;
 	}
 
 	for (i = 0; i < extra_argc; i++) {
@@ -493,7 +508,7 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 	char resolved_path[256];
 	int ret;
 
-	if (argc <= 0 || argv == NULL || argv[0] == NULL) {
+	if (!has_valid_target_argv0(argc, argv)) {
 		return -4;
 	}
 	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
