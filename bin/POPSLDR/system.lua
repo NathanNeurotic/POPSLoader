@@ -3877,6 +3877,16 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
   local popstarter_partition_context = ResolvePopstarterPartitionContext(configured_popstarter, popstarter)
   local popstarter_on_hdd = IsHddExecContextPath(popstarter)
   local popstarter_exec_path = popstarter
+  local use_pfs_exec_fallback_without_partition_context = false
+  local normalized_popstarter_exec = string.lower(tostring(popstarter or ""))
+  if popstarter_partition_context == nil
+    and string.match(normalized_popstarter_exec, "^pfs%d*:/") ~= nil
+    and popstarter_on_hdd
+  then
+    -- Controlled fallback: keep mounted pfsN:/ exec path and skip
+    -- partition-aware embedded-loader contract only for this explicit case.
+    use_pfs_exec_fallback_without_partition_context = true
+  end
   if popstarter_partition_context ~= nil and popstarter_partition_context ~= "" then
     local normalized_exec_path = BuildPartitionScopedExecPath(popstarter)
     if normalized_exec_path ~= nil then
@@ -4084,21 +4094,30 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     exec_path = popstarter_exec_path,
     exec_partition_context = popstarter_partition_context
   }
+  if use_pfs_exec_fallback_without_partition_context then
+    context.launch_route = tostring(context.launch_route).."+pfs_exec_fallback_no_partition_context"
+  end
 
   if popstarter_on_hdd then
-    local gate_ok, gate_err = ValidateHddPopstarterExecGate(popstarter_exec_path, popstarter_partition_context)
-    if not gate_ok then
-      BlockLaunchFailure(
-        "POPSTARTER HDD pre-exec gate failed: "..tostring(gate_err or "unknown error"),
-        popstarter,
-        device_page,
-        nil,
-        vcd_basename_raw,
-        APP_DIR_LOCAL,
-        nil,
-        nil
-      )
-      return
+    local should_run_gate = true
+    if use_pfs_exec_fallback_without_partition_context then
+      should_run_gate = false
+    end
+    if should_run_gate then
+      local gate_ok, gate_err = ValidateHddPopstarterExecGate(popstarter_exec_path, popstarter_partition_context)
+      if not gate_ok then
+        BlockLaunchFailure(
+          "POPSTARTER HDD pre-exec gate failed: "..tostring(gate_err or "unknown error"),
+          popstarter,
+          device_page,
+          nil,
+          vcd_basename_raw,
+          APP_DIR_LOCAL,
+          nil,
+          nil
+        )
+        return
+      end
     end
   end
 
