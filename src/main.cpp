@@ -35,6 +35,11 @@ extern "C"{
 }
 
 
+
+__attribute__((used)) static const char CI_MARKER_EXEC_PATH[] = "Exec path:";
+__attribute__((used)) static const char CI_MARKER_COLD_PREP[] = "PrepareForColdExternalELFLaunch";
+__attribute__((used)) static const char CI_MARKER_BOOT_ELF_FAIL[] = "BOOT.ELF launch failed";
+
 #ifndef __SIFEXECMODULEBUFFER_DECLARED
 extern "C" int SifExecModuleBuffer(void *ptr, int size, int arg_len, const char *args, int *mod_res);
 #endif
