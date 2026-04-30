@@ -15,7 +15,7 @@ EE_LIB = libcustom-elf-loader.a
 src/loader/bin/loader.elf:
 	$(MAKE) src/loader
 
-loader.c: src/loader/bin/loader.elf src/loader/src/loader/src/loader.c
+loader.c: src/loader/bin/loader.elf src/loader/src/loader.c
 	$(BIN2C) src/loader/bin/loader.elf $@ loader_elf
 	touch $@
 
