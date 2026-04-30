@@ -3526,7 +3526,7 @@ local function TryOpenForLaunch(path)
   return true, size, "stat", "open", path
 end
 
-local function BlockLaunchFailure(rc, popstarter, device_page, argv0, game_path, app_dir, open_rc, open_api, exec_path)
+local function BlockLaunchFailure(rc, popstarter, device_page, argv0, game_path, app_dir, open_rc, open_api, exec_path, launch_route)
   SetLaunchPhase(LaunchState.PHASE_FAILED)
   UI.LAUNCHING = false
   local display_exec_path = exec_path
@@ -3534,9 +3534,10 @@ local function BlockLaunchFailure(rc, popstarter, device_page, argv0, game_path,
     display_exec_path = popstarter
   end
   local body = string.format(
-    "LAUNCH RETURNED\nrc=%s\nDevice: %s\nPOPSTARTER: %s\nExec path: %s\nOpen/stat rc: %s\nOpen API: %s\nAPP_DIR: %s\nargv[0]: %s\nGame arg: %s\nPress X/O to continue.",
+    "LAUNCH RETURNED\nrc=%s\nDevice: %s\nRoute: %s\nPOPSTARTER: %s\nExec path: %s\nOpen/stat rc: %s\nOpen API: %s\nAPP_DIR: %s\nargv[0]: %s\nGame arg: %s\nPress X/O to continue.",
     tostring(rc),
     tostring(device_page),
+    tostring(launch_route or "default"),
     tostring(popstarter),
     tostring(display_exec_path),
     tostring(open_rc),
@@ -3573,7 +3574,8 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
       context and context.vcd_path or nil,
       app_dir,
       nil,
-      nil
+      nil,
+      context and context.launch_route
     )
     return
   end
@@ -3587,7 +3589,8 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
       context and context.vcd_path or nil,
       app_dir,
       open_rc,
-      open_api
+      open_api,
+      context and context.launch_route
     )
     return
   end
@@ -3624,7 +3627,8 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
       argv0,
       app_dir,
       nil,
-      nil
+      nil,
+      context and context.launch_route
     )
     RestoreWorkingDirectory(previous_cwd)
     return
@@ -3669,7 +3673,8 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     app_dir,
     nil,
     nil,
-    exec_path
+    exec_path,
+    context and context.launch_route
   )
 end
 
@@ -3707,21 +3712,6 @@ local function ResolveLaunchPolicy(gamelocation, ui_scene)
   return BuildLaunchPolicy("unknown", "mass", "mass", nil), "unknown"
 end
 
-local function BuildHddPopstarterSelectorPath(game_name, hdd_selector_mode, hdd_init)
-  local selector_name = BuildLiteralElfName(game_name)
-  if selector_name == "" then
-    return ""
-  end
-  if hdd_selector_mode == "full_hdd_pfs0" and hdd_init ~= nil and hdd_init.mount_ok == true then
-    local partition = tostring(hdd_init.mount_partition or "")
-    if partition ~= "" then
-      return partition..":pfs0:/"..selector_name
-    end
-    return "pfs0:/"..selector_name
-  end
-  return selector_name
-end
-
 local function BuildHddPopstarterSelectorPathForPartition(game_name, hdd_selector_mode, hdd_partition_label)
   local selector_name = BuildLiteralElfName(game_name)
   if selector_name == "" then
@@ -3737,14 +3727,26 @@ local function BuildHddPopstarterSelectorPathForPartition(game_name, hdd_selecto
   return selector_name
 end
 
-local function BuildPopstarterLaunchCommand(policy_name, device_page, game_name, hdd_selector_mode, hdd_init, hdd_partition_label, popstarter_on_hdd)
+local function ResolveHddPopstarterSelectorRoute(game_name, hdd_selector_mode, hdd_partition_label, popstarter_on_hdd)
+  if not popstarter_on_hdd then
+    return BuildLiteralElfName(game_name), "non_hdd_exec"
+  end
+
+  local partition = tostring(hdd_partition_label or "")
+  if hdd_selector_mode == "full_hdd_pfs0" and partition ~= "" then
+    return BuildHddPopstarterSelectorPathForPartition(game_name, hdd_selector_mode, partition), "hdd_partition_scoped"
+  end
+
+  -- Fallback only for explicit, detectable mismatch: missing HDD partition label
+  -- while the partition-scoped selector contract was requested.
+  return BuildLiteralElfName(game_name), "fallback_basename_missing_partition"
+end
+
+local function BuildPopstarterLaunchCommand(policy_name, device_page, game_name, hdd_selector_mode, hdd_partition_label, popstarter_on_hdd)
   local argv0_selector = BuildPopstarterSelectorPath(device_page, game_name)
+  local launch_route = "default"
   if policy_name == "HDD" then
-    if popstarter_on_hdd then
-      argv0_selector = BuildHddPopstarterSelectorPathForPartition(game_name, hdd_selector_mode, hdd_partition_label)
-    else
-      argv0_selector = BuildHddPopstarterSelectorPath(game_name, hdd_selector_mode, hdd_init)
-    end
+    argv0_selector, launch_route = ResolveHddPopstarterSelectorRoute(game_name, hdd_selector_mode, hdd_partition_label, popstarter_on_hdd)
   end
   local argv = {argv0_selector}
   local reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
@@ -3757,6 +3759,7 @@ local function BuildPopstarterLaunchCommand(policy_name, device_page, game_name,
     elf_path = nil,
     argv = argv,
     argv0_selector = argv0_selector,
+    launch_route = launch_route,
     reboot_iop = reboot_iop
   }
 end
@@ -3916,7 +3919,6 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     device_page,
     game_name,
     hdd_selector_mode,
-    hdd_init,
     hdd_partition_label,
     popstarter_on_hdd
   )
@@ -3966,6 +3968,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     bootparam_basename_prefixed = normalized_basename,
     bootparam_basename = bootparam_basename_used,
     argv0_selector = argv0_selector,
+    launch_route = launch_cmd.launch_route,
     game_name = game_name,
     bootparam_source = boot_source_mode,
     hdd_init = hdd_init,
