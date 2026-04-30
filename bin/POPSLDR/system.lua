@@ -553,6 +553,20 @@ local function BuildPartitionScopedExecPath(path)
   return nil
 end
 
+local function BuildPartitionScopedExecInfo(path)
+  local candidate = tostring(path or "")
+  if candidate == "" then
+    return {
+      exec_path = nil,
+      source_pfs_slot = nil
+    }
+  end
+  return {
+    exec_path = BuildPartitionScopedExecPath(candidate),
+    source_pfs_slot = ParsePfsSlot(candidate)
+  }
+end
+
 local function GetProfilePopstarterPath(profile)
   local index = tonumber(profile)
   if index == nil or type(PLDR.PROFILES) ~= "table" or PLDR.PROFILES[index] == nil then
@@ -1358,7 +1372,7 @@ local function ResolvePopstarterPartitionContext(path, resolved_path, preferred_
   return nil
 end
 
-local function ValidateHddPopstarterExecGate(exec_path, partition_context)
+local function ValidateHddPopstarterExecGate(exec_path, partition_context, source_pfs_slot)
   local target_exec_path = tostring(exec_path or "")
   if target_exec_path == "" then
     return false, "POPSTARTER executable path is empty"
@@ -1396,9 +1410,9 @@ local function ValidateHddPopstarterExecGate(exec_path, partition_context)
 
   if normalized_partition == nil then
     if partition_reason == "slot-unknown" then
-      return false, "Cannot resolve HDD partition context for POPSTARTER (slot unknown)"
+      return false, "Cannot resolve HDD partition context for POPSTARTER (slot unknown, source_pfs_slot="..tostring(source_pfs_slot)..")"
     end
-    return false, "Cannot resolve HDD partition context for POPSTARTER"
+    return false, "Cannot resolve HDD partition context for POPSTARTER (source_pfs_slot="..tostring(source_pfs_slot)..")"
   end
 
   local mounted_prefix = GetRecordedHddMountPrefix(normalized_partition)
@@ -4057,8 +4071,10 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
   local popstarter_partition_context = ResolvePopstarterPartitionContext(configured_popstarter, popstarter, hdd_partition_label)
   local popstarter_on_hdd = IsHddExecContextPath(popstarter)
   local popstarter_exec_path = popstarter
-  local popstarter_keep_slot = ExtractLaunchPfsSlot(popstarter_exec_path or popstarter)
-  local popstarter_original_slot = popstarter_keep_slot
+  local popstarter_exec_info = BuildPartitionScopedExecInfo(popstarter)
+  local popstarter_source_slot = popstarter_exec_info.source_pfs_slot
+  local popstarter_keep_slot = popstarter_source_slot
+  local popstarter_original_slot = popstarter_source_slot
   local use_pfs_exec_fallback_without_partition_context = false
   local normalized_popstarter_exec = string.lower(tostring(popstarter or ""))
   if popstarter_partition_context == nil
@@ -4070,7 +4086,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     use_pfs_exec_fallback_without_partition_context = true
   end
   if popstarter_partition_context ~= nil and popstarter_partition_context ~= "" then
-    local normalized_exec_path = BuildPartitionScopedExecPath(popstarter)
+    local normalized_exec_path = popstarter_exec_info.exec_path
     if normalized_exec_path ~= nil then
       popstarter_exec_path = normalized_exec_path
     end
@@ -4080,8 +4096,6 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     popstarter_original_slot = normalized_exec_slot
   end
   if popstarter_keep_slot == nil then
-    popstarter_keep_slot = normalized_exec_slot
-  elseif normalized_exec_slot ~= nil then
     popstarter_keep_slot = normalized_exec_slot
   end
   local hdd_selector_mode = nil
@@ -4306,7 +4320,8 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     exec_path = popstarter_exec_path,
     exec_partition_context = popstarter_partition_context,
     exec_original_slot = popstarter_original_slot,
-    exec_pfs_slot = popstarter_original_slot
+    exec_pfs_slot = popstarter_original_slot,
+    source_pfs_slot = popstarter_source_slot
   }
   if use_pfs_exec_fallback_without_partition_context then
     context.launch_route = tostring(context.launch_route).."+pfs_exec_fallback_no_partition_context"
@@ -4318,7 +4333,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
       should_run_gate = false
     end
     if should_run_gate then
-      local gate_ok, gate_err = ValidateHddPopstarterExecGate(popstarter_exec_path, popstarter_partition_context)
+      local gate_ok, gate_err = ValidateHddPopstarterExecGate(popstarter_exec_path, popstarter_partition_context, popstarter_source_slot)
       if not gate_ok then
         BlockLaunchFailure(
           "POPSTARTER HDD pre-exec gate failed: "..tostring(gate_err or "unknown error"),
