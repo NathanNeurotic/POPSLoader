@@ -1555,6 +1555,7 @@ end
 HDD_DIAG_BYPASS = 0
 local pldr_defaults = {
   REBOOT_IOP_WHILE_LOADING_POPSTARTER = 0;
+  STRICT_HDD_PREEXEC_GATE = false;
   POPSTARTER_PATH = "POPSTARTER.ELF";
   CHECK_POPSTARTER_FILES = false;
   GAMEPATH = ".";
@@ -2147,6 +2148,7 @@ local function EncodeSettings()
     "POPSTARTER_PATH="..persisted_popstarter,
     "BDMA="..tostring(PLDR.BDMA_MODE_KEY or "FAT32"),
     "DKWDRV_PATH="..tostring(PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH),
+    "STRICT_HDD_PREEXEC_GATE="..((PLDR.STRICT_HDD_PREEXEC_GATE == true) and "1" or "0"),
     "VIDEO_STANDARD="..tostring(NormalizeVideoStandard(PLDR.VIDEO_STANDARD)),
     "HIDE_TEXT="..(((type(UI) == "table" and UI.HideTextMode == true) and "1") or "0"),
     "KEYBOARD_LAYOUT="..tostring(NormalizeKeyboardLayout(PLDR.KEYBOARD_LAYOUT))
@@ -2289,6 +2291,7 @@ function PLDR.LoadSettingsNonFatal()
   PLDR.EnsurePopstarterDir()
   PLDR.SELECTED_PROFILE = defaults_profile
   PLDR.BDMA_MODE_KEY = "FAT32"
+  PLDR.STRICT_HDD_PREEXEC_GATE = false
   PLDR.VIDEO_STANDARD = PLDR.VIDEO_STANDARD_NTSC
   PLDR.DKWDRV_PATH = tostring(PLDR.DKWDRV_DEFAULT_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
   PLDR.KEYBOARD_LAYOUT = PLDR.KEYBOARD_LAYOUT_ABC
@@ -2317,6 +2320,7 @@ function PLDR.LoadSettingsNonFatal()
   local popstarter_path = string.match(data, "\nPOPSTARTER_PATH=([^\n]*)") or string.match(data, "^POPSTARTER_PATH=([^\n]*)")
   local bdma_mode = string.match(data, "\nBDMA=([^\n]+)") or string.match(data, "^BDMA=([^\n]+)") or string.match(data, "\nBDMA_MODE=([^\n]+)") or string.match(data, "^BDMA_MODE=([^\n]+)")
   local dkwdrv_path = string.match(data, "\nDKWDRV_PATH=([^\n]*)") or string.match(data, "^DKWDRV_PATH=([^\n]*)")
+  local strict_hdd_preexec_gate = string.match(data, "\nSTRICT_HDD_PREEXEC_GATE=([^\n]+)") or string.match(data, "^STRICT_HDD_PREEXEC_GATE=([^\n]+)")
   local video_standard = string.match(data, "\nVIDEO_STANDARD=([^\n]+)") or string.match(data, "^VIDEO_STANDARD=([^\n]+)")
   local hide_text = string.match(data, "\nHIDE_TEXT=([^\n]+)") or string.match(data, "^HIDE_TEXT=([^\n]+)")
   local keyboard_layout = string.match(data, "\nKEYBOARD_LAYOUT=([^\n]+)") or string.match(data, "^KEYBOARD_LAYOUT=([^\n]+)")
@@ -2330,6 +2334,10 @@ function PLDR.LoadSettingsNonFatal()
   PLDR.POPSTARTER_PATH = NormalizeSelectedProfilePopstarterPath(PLDR.SELECTED_PROFILE, PLDR.POPSTARTER_PATH)
   if dkwdrv_path ~= nil and dkwdrv_path ~= "" then
     PLDR.DKWDRV_PATH = dkwdrv_path
+  end
+  local strict_gate_enabled = ParseBooleanSetting(strict_hdd_preexec_gate)
+  if strict_gate_enabled ~= nil then
+    PLDR.STRICT_HDD_PREEXEC_GATE = strict_gate_enabled == true
   end
   if video_standard ~= nil and video_standard ~= "" then
     PLDR.VIDEO_STANDARD = NormalizeVideoStandard(video_standard)
@@ -3818,7 +3826,7 @@ local function TryOpenForLaunch(path)
   return true, size, "stat", "open", path
 end
 
-local function BlockLaunchFailure(rc, popstarter, device_page, argv0, game_path, app_dir, open_rc, open_api, exec_path, launch_route)
+local function BlockLaunchFailure(rc, popstarter, device_page, argv0, game_path, app_dir, open_rc, open_api, exec_path, launch_route, hdd_preexec_gate_mode)
   SetLaunchPhase(LaunchState.PHASE_FAILED)
   UI.LAUNCHING = false
   local display_exec_path = exec_path
@@ -3826,10 +3834,11 @@ local function BlockLaunchFailure(rc, popstarter, device_page, argv0, game_path,
     display_exec_path = popstarter
   end
   local body = string.format(
-    "LAUNCH RETURNED\nrc=%s\nDevice: %s\nRoute: %s\nPOPSTARTER: %s\nExec path: %s\nOpen/stat rc: %s\nOpen API: %s\nAPP_DIR: %s\nargv[0]: %s\nGame arg: %s\nPress X/O to continue.",
+    "LAUNCH RETURNED\nrc=%s\nDevice: %s\nRoute: %s\nHDD pre-exec gate: %s\nPOPSTARTER: %s\nExec path: %s\nOpen/stat rc: %s\nOpen API: %s\nAPP_DIR: %s\nargv[0]: %s\nGame arg: %s\nPress X/O to continue.",
     tostring(rc),
     tostring(device_page),
     tostring(launch_route or "default"),
+    tostring(hdd_preexec_gate_mode or "n/a"),
     tostring(popstarter),
     tostring(display_exec_path),
     tostring(open_rc),
@@ -3867,7 +3876,9 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
       app_dir,
       nil,
       nil,
-      context and context.launch_route
+      nil,
+      context and context.launch_route,
+      context and context.hdd_preexec_gate_mode
     )
     return
   end
@@ -3882,7 +3893,9 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
       app_dir,
       open_rc,
       open_api,
-      context and context.launch_route
+      nil,
+      context and context.launch_route,
+      context and context.hdd_preexec_gate_mode
     )
     return
   end
@@ -3920,7 +3933,9 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
       app_dir,
       nil,
       nil,
-      context and context.launch_route
+      nil,
+      context and context.launch_route,
+      context and context.hdd_preexec_gate_mode
     )
     RestoreWorkingDirectory(previous_cwd)
     return
@@ -3967,7 +3982,8 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     nil,
     nil,
     exec_path,
-    context and context.launch_route
+    context and context.launch_route,
+    context and context.hdd_preexec_gate_mode
   )
 end
 
@@ -4076,9 +4092,12 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
   local popstarter_keep_slot = popstarter_source_slot
   local popstarter_original_slot = popstarter_source_slot
   local use_pfs_exec_fallback_without_partition_context = false
+  local strict_hdd_preexec_gate = PLDR.STRICT_HDD_PREEXEC_GATE == true
+  local hdd_preexec_gate_mode = strict_hdd_preexec_gate and "strict-hard-fail" or "fallback-mounted-pfs"
   local launch_route_pfs_fallback = "mounted-pfs-fallback"
   local normalized_popstarter_exec = string.lower(tostring(popstarter or ""))
-  if popstarter_partition_context == nil
+  if (not strict_hdd_preexec_gate)
+    and popstarter_partition_context == nil
     and string.match(normalized_popstarter_exec, "^pfs%d*:/") ~= nil
     and popstarter_on_hdd
   then
@@ -4344,7 +4363,9 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
           vcd_basename_raw,
           APP_DIR_LOCAL,
           nil,
-          nil
+          nil,
+          nil,
+          hdd_preexec_gate_mode
         )
         return
       end
@@ -4355,6 +4376,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
   if UI ~= nil and UI.CoverCache ~= nil and UI.CoverCache.Clear ~= nil then
     UI.CoverCache:Clear()
   end
+  context.hdd_preexec_gate_mode = hdd_preexec_gate_mode
   LaunchEngine(popstarter, argv, reboot_iop, context)
 end
 
