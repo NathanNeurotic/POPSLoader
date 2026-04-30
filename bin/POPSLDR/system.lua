@@ -553,17 +553,27 @@ local function BuildPartitionScopedExecPath(path)
   return nil
 end
 
-local function BuildPartitionScopedExecInfo(path)
+local function BuildPartitionScopedExecInfo(path, authoritative_partition_context)
   local candidate = tostring(path or "")
+  local mounted_exec_path = BuildPartitionScopedExecPath(candidate)
+  local mounted_source_slot = ParsePfsSlot(candidate)
+
   if candidate == "" then
     return {
       exec_path = nil,
-      source_pfs_slot = nil
+      source_pfs_slot = nil,
+      mounted_exec_path = nil,
+      mounted_source_pfs_slot = nil,
+      authoritative_partition_context = authoritative_partition_context
     }
   end
+
   return {
-    exec_path = BuildPartitionScopedExecPath(candidate),
-    source_pfs_slot = ParsePfsSlot(candidate)
+    exec_path = mounted_exec_path,
+    source_pfs_slot = mounted_source_slot,
+    mounted_exec_path = mounted_exec_path,
+    mounted_source_pfs_slot = mounted_source_slot,
+    authoritative_partition_context = authoritative_partition_context
   }
 end
 
@@ -4085,9 +4095,16 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
   local configured_popstarter = NormalizeSelectedProfilePopstarterPath(PLDR.SELECTED_PROFILE, PLDR.POPSTARTER_PATH)
   local popstarter = ResolvePopstarterPath(configured_popstarter)
   local popstarter_partition_context = ResolvePopstarterPartitionContext(configured_popstarter, popstarter, hdd_partition_label)
+  local configured_partition_context = nil
+  if IsHddExecContextPath(configured_popstarter) then
+    configured_partition_context = select(1, BuildHddPartitionContext(configured_popstarter))
+  end
+  if configured_partition_context ~= nil and configured_partition_context ~= "" then
+    popstarter_partition_context = configured_partition_context
+  end
   local popstarter_on_hdd = IsHddExecContextPath(popstarter)
   local popstarter_exec_path = popstarter
-  local popstarter_exec_info = BuildPartitionScopedExecInfo(popstarter)
+  local popstarter_exec_info = BuildPartitionScopedExecInfo(popstarter, popstarter_partition_context)
   local popstarter_source_slot = popstarter_exec_info.source_pfs_slot
   local popstarter_keep_slot = popstarter_source_slot
   local popstarter_original_slot = popstarter_source_slot
@@ -4349,6 +4366,9 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     cold_external_launch = popstarter_partition_context ~= nil and popstarter_partition_context ~= "",
     exec_path = popstarter_exec_path,
     exec_partition_context = popstarter_partition_context,
+    exec_partition_context_authoritative = popstarter_partition_context,
+    exec_partition_context_configured = configured_partition_context,
+    exec_mounted_path = popstarter_exec_info.mounted_exec_path,
     exec_original_slot = popstarter_original_slot,
     exec_pfs_slot = popstarter_original_slot,
     source_pfs_slot = popstarter_source_slot
