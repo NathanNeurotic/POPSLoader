@@ -15,10 +15,11 @@ EE_LIB = libcustom-elf-loader.a
 src/loader/bin/loader.elf:
 	$(MAKE) src/loader
 
-$(EE_OBJS_DIR)loader.c: src/loader/bin/loader.elf FORCE
-	$(BIN2C) $< $@ loader_elf
+loader.c: src/loader/bin/loader.elf src/loader/src/loader/src/loader.c
+	$(BIN2C) src/loader/bin/loader.elf $@ loader_elf
+	touch $@
 
-all: $(EE_LIB)
+all: loader.c $(EE_LIB)
 
 clean:
 	rm -f $(EE_LIB) $(EE_OBJS)
