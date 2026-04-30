@@ -543,8 +543,7 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 
 	if (partition != NULL && partition[0] != '\0' &&
 	    is_hdd_backed_exec_path(partition) &&
-	    is_hdd_backed_exec_path(filename) &&
-	    argc > 0 && argv != NULL && argv[0] != NULL) {
+	    is_hdd_backed_exec_path(filename)) {
 		return ExecuteHddBackedViaEmbeddedLoader(filename, partition, argc, argv);
 	}
 
@@ -552,8 +551,7 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 		return -1;
 	}
 
-	if ((is_hdd_backed_exec_path(resolved_path) || is_hdd_backed_exec_path(partition)) &&
-	    argc > 0 && argv != NULL && argv[0] != NULL) {
+	if (is_hdd_backed_exec_path(resolved_path) || is_hdd_backed_exec_path(partition)) {
 		return ExecuteHddBackedViaEmbeddedLoader(resolved_path, partition, argc, argv);
 	}
 
