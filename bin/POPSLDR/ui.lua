@@ -447,6 +447,7 @@ UI = {
 	    VideoStandardDirty = false;
 	    ProfileDirty = false;
 	    PopPathDirty = false;
+	    PopPathProfileDefaultDirty = false;
 	    DkwdrvDirty = false;
     PopstarterPathDraft = nil;
     DkwdrvPathDraft = nil;
@@ -2223,6 +2224,7 @@ UI = {
           UI.ProfileDirty = false
           UI.BdmaDirty = false
           UI.PopPathDirty = false
+          UI.PopPathProfileDefaultDirty = false
           UI.DkwdrvDirty = false
           UI.VideoStandardDirty = false
         end
@@ -2254,7 +2256,12 @@ UI = {
           end
           local profile_index = CLAMP(UI.ProfileQuery.curopt, 1, #PLDR.PROFILES)
           local pop_path = tostring(UI.PopstarterPathDraft or PLDR.POPSTARTER_PATH or "")
-          if type(PLDR.GetEffectiveConfiguredPopstarterPath) == "function" then
+          local popstarter_mode = nil
+          if UI.PopPathDirty == true then
+            popstarter_mode = "CUSTOM"
+          elseif UI.PopPathProfileDefaultDirty == true then
+            popstarter_mode = "PROFILE_DEFAULT"
+          elseif type(PLDR.GetEffectiveConfiguredPopstarterPath) == "function" then
             pop_path = tostring(PLDR.GetEffectiveConfiguredPopstarterPath(pop_path, profile_index) or pop_path)
           end
           local dkwdrv_path = tostring(UI.DkwdrvPathDraft or PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
@@ -2267,7 +2274,7 @@ UI = {
               return PLDR.CommitSettingsChanges({
                 profile = profile_index,
                 popstarter_path = pop_path,
-                popstarter_mode = (UI.PopPathDirty == true) and "CUSTOM" or nil,
+                popstarter_mode = popstarter_mode,
                 dkwdrv_path = dkwdrv_path,
                 bdma_mode = mode_key,
                 video_standard = video_key,
@@ -2281,8 +2288,8 @@ UI = {
             end
 
             PLDR.SELECTED_PROFILE = profile_index
-            if UI.PopPathDirty == true then
-              PLDR.POPSTARTER_SELECTION_MODE = "CUSTOM"
+            if popstarter_mode ~= nil then
+              PLDR.POPSTARTER_SELECTION_MODE = popstarter_mode
             end
             PLDR.POPSTARTER_PATH = pop_path
             PLDR.DKWDRV_PATH = dkwdrv_path
@@ -2316,6 +2323,7 @@ UI = {
             UI.ProfileDirty = false
             UI.BdmaDirty = false
             UI.PopPathDirty = false
+            UI.PopPathProfileDefaultDirty = false
             UI.DkwdrvDirty = false
             UI.VideoStandardDirty = false
             clear_settings_session()
@@ -2338,6 +2346,7 @@ UI = {
               UI.ProfileDirty = false
               UI.BdmaDirty = false
               UI.PopPathDirty = false
+              UI.PopPathProfileDefaultDirty = false
               UI.DkwdrvDirty = false
               UI.VideoStandardDirty = false
               clear_settings_session()
@@ -2354,6 +2363,7 @@ UI = {
             if not UI.PopPathDirty then
               local profile = PLDR.PROFILES[UI.ProfileQuery.curopt]
               UI.PopstarterPathDraft = tostring((profile and profile.ELF) or UI.PopstarterPathDraft or "")
+              UI.PopPathProfileDefaultDirty = true
             end
             UI.ProfileDirty = true
           end
@@ -2365,6 +2375,7 @@ UI = {
             if not UI.PopPathDirty then
               local profile = PLDR.PROFILES[UI.ProfileQuery.curopt]
               UI.PopstarterPathDraft = tostring((profile and profile.ELF) or UI.PopstarterPathDraft or "")
+              UI.PopPathProfileDefaultDirty = true
             end
             UI.ProfileDirty = true
           end
@@ -2373,6 +2384,7 @@ UI = {
           UI.PathEditor.Open("Edit POPStarter Path", UI.PopstarterPathDraft or "", function(path)
             UI.PopstarterPathDraft = tostring(path or "")
             UI.PopPathDirty = true
+            UI.PopPathProfileDefaultDirty = false
             UI.ProfileDirty = true
           end)
         end
@@ -2416,6 +2428,7 @@ UI = {
           if default_entry ~= nil then
             UI.PopstarterPathDraft = tostring(default_entry.ELF or UI.PopstarterPathDraft or "")
             UI.PopPathDirty = false
+            UI.PopPathProfileDefaultDirty = true
             UI.ProfileDirty = true
           end
           local default_dkw = tostring(PLDR.DKWDRV_DEFAULT_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
@@ -3111,6 +3124,7 @@ function UI.SyncSettingsDraftFromRuntime()
     UI.KeyboardLayoutDraft = tostring(PLDR.KEYBOARD_LAYOUT or "ABC")
   end
   UI.PopPathDirty = false
+  UI.PopPathProfileDefaultDirty = false
   UI.DkwdrvDirty = false
   UI.VideoStandardDirty = false
 end
