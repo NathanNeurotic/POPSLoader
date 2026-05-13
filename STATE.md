@@ -41,9 +41,10 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 - Repository automation also includes `.github/workflows/opencode.yml`, a comment-triggered AI-assistance workflow; it is not part of the build/package validation contract.
 
 ## Potential Settings/Path Integrity Risks
-- Source-inferred: editing the POPSTARTER path from the Settings/Profile path editor marks the POPSTARTER selection as custom during the settings commit. The saved `mc0:/POPSTARTER/.pldrs` state should therefore contain `POPSTARTER_MODE=CUSTOM` and the edited `POPSTARTER_PATH`, rather than allowing profile-default normalization to discard the edited path.
-- Source-inferred: profile-default POPSTARTER mode still persists an empty `POPSTARTER_PATH` and relies on the selected profile's configured ELF path at load time.
-- Hardware verification: the POPSTARTER path-editor custom-mode save/load path is `Unknown (verify on hardware)` until a real memory-card `.pldrs` write and reboot/load cycle is recorded in `QA_REGRESSION_MATRIX.md`.
+- Source-inferred: `bin/POPSLDR/ui.lua` stages the Settings/Profile POPSTARTER path editor draft, resolves it through the selected profile, and calls `PLDR.CommitSettingsChanges()` with `popstarter_mode = "CUSTOM"` only when `UI.PopPathDirty == true`; the local fallback save path also sets `PLDR.POPSTARTER_SELECTION_MODE = "CUSTOM"` before writing `PLDR.POPSTARTER_PATH`.
+- Source-inferred: `bin/POPSLDR/system.lua` `CommitSettingsChanges()` normalizes the incoming `popstarter_mode` with the previous mode as the fallback, applies the normalized state, and then `EncodeSettings()` persists `POPSTARTER_MODE=<mode>` plus `POPSTARTER_PATH=<path>`; when the normalized mode is profile-default, `EncodeSettings()` intentionally writes an empty `POPSTARTER_PATH` and relies on the selected profile path at load time.
+- Risk: if the UI dirty flag, selected-profile normalization, or `POPSTARTER_SELECTION_MODE` transition is wrong during a real settings save/load cycle, an edited POPSTARTER path could be persisted or reloaded differently than the user expects. This is source-inferred only and is `Unknown (verify on hardware)` until a memory-card `.pldrs` write plus reboot/load cycle is recorded in `QA_REGRESSION_MATRIX.md`.
+- Scope guard: this potential settings/path integrity risk is not claimed as the cause of `D-10`, `D-14`, or `U-10`; those remain tracked through the detailed hardware chronology in `QA_REGRESSION_MATRIX.md` and the decision notes in `DECISIONS.md`.
 
 ## Main Menu Feature Status
 - `MMCE`: implemented in code.
