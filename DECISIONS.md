@@ -1,4 +1,4 @@
-Last updated: 2026-03-29
+Last updated: 2026-05-13
 
 # DECISIONS
 
@@ -59,6 +59,12 @@ Each entry records:
 - Rationale: repeated experiment history had started drifting across the root docs and obscuring the actual current handoff state.
 - Implications: root docs should point to the matrix for detailed chronology instead of carrying their own competing mini-ledgers.
 - Evidence: repository documentation audit on 2026-03-29.
+
+### 2026-05-13 — Separate build/package CI from comment-triggered AI automation
+- Decision: treat `.github/workflows/compilation.yml` as the build/package validation source of truth, and document `.github/workflows/opencode.yml` separately as comment-triggered repository automation.
+- Rationale: the opencode workflow can affect repository collaboration but does not build artifacts, enforce the release ZIP contract, or prove runtime/hardware behavior.
+- Implications: source-truth audits should include both workflow files, while CI/package claims should continue to cite only the compilation workflow unless the automation contract changes.
+- Evidence: `.github/workflows/compilation.yml`, `.github/workflows/opencode.yml`.
 
 ## Open Investigations
 - HDD startup auto-init on HDD boot/configured paths:

@@ -1,4 +1,4 @@
-Last updated: 2026-03-29
+Last updated: 2026-05-13
 
 # ARCHITECTURE
 
@@ -62,6 +62,10 @@ Last updated: 2026-03-29
 - `.github/workflows/compilation.yml` compiles in a `ps2dev/ps2dev` container and packages:
   - `PS1_POPSLOADER/*`
   - `POPS/PATCH_5.BIN`
+
+### 6) Repository automation
+- `.github/workflows/opencode.yml` runs comment-triggered AI assistance for issue and pull-request review comments.
+- It is outside the runtime boot/launch path and does not define build/package validation gates.
 
 ## Core Data Flows
 

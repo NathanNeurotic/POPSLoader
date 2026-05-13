@@ -1,4 +1,4 @@
-Last updated: 2026-03-29
+Last updated: 2026-05-13
 
 # COMPONENTS
 
@@ -40,6 +40,10 @@ Current technical map of POPSLoader modules, ownership boundaries, and entry poi
 ### Build/package pipeline
 - `Makefile` builds and embeds the runtime.
 - `.github/workflows/compilation.yml` packages the release ZIP and verifies its exact contents.
+
+### Repository automation
+- `.github/workflows/opencode.yml` handles comment-triggered AI assistance.
+- It is not part of release packaging or runtime behavior.
 
 ## Runtime Functional Ownership
 
@@ -122,3 +126,5 @@ Current technical map of POPSLoader modules, ownership boundaries, and entry poi
 - Packaging/release issues:
   - `Makefile`
   - `.github/workflows/compilation.yml`
+- Repository automation issues:
+  - `.github/workflows/opencode.yml`
