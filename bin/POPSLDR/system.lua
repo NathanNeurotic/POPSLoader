@@ -2257,10 +2257,8 @@ local function EncodeSettings()
   local selected_profile = tonumber(PLDR.SELECTED_PROFILE) or 1
   local selection_mode = NormalizePopstarterSelectionMode(PLDR.POPSTARTER_SELECTION_MODE)
   local configured_popstarter = NormalizeSelectedProfilePopstarterPath(selected_profile, PLDR.POPSTARTER_PATH, selection_mode)
-  local profile_popstarter = GetProfilePopstarterPath(selected_profile)
   local persisted_popstarter = configured_popstarter
-  if selection_mode == POPSTARTER_MODE_PROFILE_DEFAULT or
-     (configured_popstarter ~= "" and NormalizeFsPathRaw(configured_popstarter) == NormalizeFsPathRaw(profile_popstarter)) then
+  if selection_mode == POPSTARTER_MODE_PROFILE_DEFAULT then
     persisted_popstarter = ""
   end
   local lines = {
@@ -2512,9 +2510,12 @@ function PLDR.CommitSettingsChanges(opts)
   if type(opts.prev_hide_text) == "boolean" then
     prev.hide_text = opts.prev_hide_text
   end
+  local next_profile = tonumber(opts.profile) or prev.profile
+  local next_popstarter_mode = NormalizePopstarterSelectionMode(opts.popstarter_mode or prev.popstarter_mode)
   local next_state = {
-    profile = tonumber(opts.profile) or prev.profile,
-    popstarter_path = NormalizeSelectedProfilePopstarterPath(tonumber(opts.profile) or prev.profile, opts.popstarter_path or prev.popstarter_path),
+    profile = next_profile,
+    popstarter_path = NormalizeSelectedProfilePopstarterPath(next_profile, opts.popstarter_path or prev.popstarter_path, next_popstarter_mode),
+    popstarter_mode = next_popstarter_mode,
     bdma_mode = NormalizeBdmaModeKey(opts.bdma_mode) or prev.bdma_mode,
     dkwdrv_path = opts.dkwdrv_path or prev.dkwdrv_path,
     video_standard = NormalizeVideoStandard(opts.video_standard or prev.video_standard),
@@ -2544,6 +2545,7 @@ function PLDR.CommitSettingsChanges(opts)
       ApplySettingsState({
         profile = next_state.profile,
         popstarter_path = next_state.popstarter_path,
+        popstarter_mode = next_state.popstarter_mode,
         bdma_mode = prev.bdma_mode,
         dkwdrv_path = next_state.dkwdrv_path,
         video_standard = next_state.video_standard

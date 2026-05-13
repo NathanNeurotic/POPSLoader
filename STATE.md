@@ -40,6 +40,11 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 - Current CI package also includes `PS1_POPSLOADER/BUILD_INFO.txt`, and the build/package workflow fails if the built ELF is missing key embedded runtime markers or if the generated embedded-loader blob was not regenerated.
 - Repository automation also includes `.github/workflows/opencode.yml`, a comment-triggered AI-assistance workflow; it is not part of the build/package validation contract.
 
+## Potential Settings/Path Integrity Risks
+- Source-inferred: editing the POPSTARTER path from the Settings/Profile path editor marks the POPSTARTER selection as custom during the settings commit. The saved `mc0:/POPSTARTER/.pldrs` state should therefore contain `POPSTARTER_MODE=CUSTOM` and the edited `POPSTARTER_PATH`, rather than allowing profile-default normalization to discard the edited path.
+- Source-inferred: profile-default POPSTARTER mode still persists an empty `POPSTARTER_PATH` and relies on the selected profile's configured ELF path at load time.
+- Hardware verification: the POPSTARTER path-editor custom-mode save/load path is `Unknown (verify on hardware)` until a real memory-card `.pldrs` write and reboot/load cycle is recorded in `QA_REGRESSION_MATRIX.md`.
+
 ## Main Menu Feature Status
 - `MMCE`: implemented in code.
 - `MX4SIO`: implemented in code.

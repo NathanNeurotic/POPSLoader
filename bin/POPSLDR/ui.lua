@@ -2267,6 +2267,7 @@ UI = {
               return PLDR.CommitSettingsChanges({
                 profile = profile_index,
                 popstarter_path = pop_path,
+                popstarter_mode = (UI.PopPathDirty == true) and "CUSTOM" or nil,
                 dkwdrv_path = dkwdrv_path,
                 bdma_mode = mode_key,
                 video_standard = video_key,
@@ -2280,6 +2281,9 @@ UI = {
             end
 
             PLDR.SELECTED_PROFILE = profile_index
+            if UI.PopPathDirty == true then
+              PLDR.POPSTARTER_SELECTION_MODE = "CUSTOM"
+            end
             PLDR.POPSTARTER_PATH = pop_path
             PLDR.DKWDRV_PATH = dkwdrv_path
             PLDR.BDMA_MODE_KEY = mode_key
