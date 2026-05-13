@@ -1,6 +1,6 @@
 # POPSLoader
 
-Last updated: 2026-03-29
+Last updated: 2026-05-13
 
 POPSLoader is a PlayStation 2 launcher for POPStarter, built on Enceladus runtime components and driven primarily by embedded Lua scripts.
 
@@ -9,7 +9,8 @@ This repository contains:
 - embedded runtime Lua and asset data,
 - embedded IOP modules,
 - the POPStarter packaging payload used by CI,
-- documentation for current code state and validation status.
+- documentation for current code state and validation status,
+- repository automation workflows for build/package CI and comment-triggered AI assistance.
 
 ## What This Repository Builds
 
@@ -32,6 +33,7 @@ POPS/
 
 That package contract is enforced by `.github/workflows/compilation.yml`.
 Current CI also verifies that the built `enceladus.elf` still contains the expected embedded Lua runtime markers and that the generated embedded-loader blob was regenerated before packaging.
+The separate `.github/workflows/opencode.yml` workflow is repository automation for comment-triggered AI assistance; it is not a build/package validation gate.
 
 ## Current Status At A Glance
 
@@ -147,7 +149,7 @@ Reported hardware issues currently being tracked are:
   - `hdd0:__common/POPS/ART/GAME.png`
 
 ### HDD (PFS) notes
-- HDD scan code currently looks for POPS game partitions in the configured POPS partition set (`__.POPS`, `__.POPS1` ...).
+- HDD scan code currently looks for POPS game partitions in the configured POPS partition set (`__.POPS`, `__.POPS0`, `__.POPS1` ... `__.POPS9`).
 - HDD dependency checks look for runtime files under `hdd0:__common/POPS/`.
 
 ## Build From Source
@@ -159,7 +161,7 @@ Use the same environment as CI:
 make clean elfloader all
 ```
 
-The workflow uses the `ps2dev/ps2dev` container and validates packaging after build.
+The build/package workflow uses the `ps2dev/ps2dev` container and validates packaging after build.
 
 ### Local build prerequisites
 - PS2 toolchain environment (`PS2DEV`, `PS2SDK`, gsKit/ports libs)

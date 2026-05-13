@@ -1,6 +1,6 @@
 # POPSLoader Regression Matrix
 
-Last updated: 2026-03-29
+Last updated: 2026-05-13
 Target line: current repository source
 
 ## Scope
@@ -16,11 +16,15 @@ This matrix tracks current behavior across:
 - cover art behavior,
 - exit handoff behavior,
 - currently unimplemented menu options (`HDD (exFAT)`, `SMB (v1)`),
-- release package validation gates.
+- release package validation gates,
+- repository automation workflows that are not runtime/hardware gates.
 
 This file is the authoritative detailed run ledger for CI and hardware outcomes. The other root docs should summarize the active state and point here for chronology.
 
 ## Automated CI Gates
+
+These gates are defined by `.github/workflows/compilation.yml`. The separate `.github/workflows/opencode.yml` workflow only runs comment-triggered AI assistance and is not a build, package, runtime, or hardware validation gate.
+
 | ID | Area | Source | Pass Criteria |
 |---|---|---|---|
 | CI-01 | Build | `.github/workflows/compilation.yml` | `make clean elfloader all` succeeds |
