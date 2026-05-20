@@ -69,25 +69,11 @@ Last updated: 2026-05-19
 - Keep README installation steps explicit enough for users who are not familiar with PS2 launcher layouts.
 
 ### 4) Settings page UI redesign
-- Current Settings scene was assembled in a hurry; functionally complete but visually rough and awkward to operate. Redesign the layout for clarity and pad-friendly navigation while preserving every existing function and persisted setting.
-- Must preserve:
-  - POPSTARTER path editor (manual edit + profile/default selection modes).
-  - DKWDRV path editor.
-  - Profile selection (Profile 1/default + others).
-  - Video standard toggle (`NTSC` / `PAL`).
-  - Hide-text toggle (and the `Select` shortcut that toggles it).
-  - Keyboard layout selection (`ABC` / `QWERTY` / `DVORAK`).
-  - BDMA mode.
-  - Save progress overlay during commit/apply.
-  - Save-failure notification path.
-  - Back-discards-staged-edits behavior (`O Back`).
-  - The transactional commit-on-confirm/leave contract documented in `TRUTHSHEET.md` Truth 2.
-- Must not change:
-  - Persisted settings format at `mc0:/POPSTARTER/.pldrs`.
-  - The `POPSTARTER_MODE=<mode>` + `POPSTARTER_PATH=<path>` encoding pair.
-  - Any function name that lives in `bin/POPSLDR/system.lua` and is touched from the UI side; rename only inside `bin/POPSLDR/ui.lua` if at all.
-- Scope of work lives in `bin/POPSLDR/ui.lua` (Settings scene layout + input handling). Coordinate any new IMG asset requirements with `bin/POPSLDR/images.lua` and `src/embed_assets.cpp` so embedded asset lookups stay consistent with the optional-default-cover pattern.
-- Validate against the relevant `S-*` and `U-*` rows in `QA_REGRESSION_MATRIX.md` before declaring complete.
+- 2026-05-19: implemented in `bin/POPSLDR/ui.lua` (MPROFILE scene). Layout regrouped into three named sections (Storage, Display, POPSTARTER) with single-row label/hint/value layout, consistent column metrics, and an accent-color dirty indicator on rows with unsaved changes. Input bindings unchanged from the prior version, so muscle memory and the S-* / U-* regression rows in `QA_REGRESSION_MATRIX.md` remain valid.
+- Hardware verification pending alongside the D-10/D-14/U-10 retest sequence. Walk the S-01..S-09 and U-01..U-11 rows on the next artifact to confirm parity.
+- Future polish (deferred, optional):
+  - Consider a clearer per-section visual divider (line/background) once we have a stable hardware baseline; the current accent-color header may be sufficient.
+  - Consider exposing the keyboard layout selector as its own row instead of only setting it from inside the path editor (`S-09` currently routes through the path editor on entry).
 
 ## Deferred Ideas
 - Additional themes/skins.
