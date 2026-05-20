@@ -4068,8 +4068,19 @@ local function BlockLaunchFailure(rc, popstarter, device_page, argv0, game_path,
   if type(diag_lines) == "string" and diag_lines ~= "" then
     diag_block = "\n"..diag_lines
   end
+  local on_hdd_flag = (context and context.popstarter_on_hdd) and "y" or "n"
+  local reboot_flag = (context and context.reboot_iop ~= nil) and tostring(context.reboot_iop) or "?"
+  local partition_ctx_disp = (context and type(context.exec_partition_context) == "string" and context.exec_partition_context ~= "")
+    and context.exec_partition_context or "nil"
+  local api_used = (context and type(context.exec_partition_context) == "string" and context.exec_partition_context ~= "")
+    and "loadELFWithPartition" or "loadELF"
+  local cold_launch_flag = (context and context.cold_external_launch == true) and "y" or "n"
+  local boot_disp = (context and type(context.boot_path) == "string" and context.boot_path ~= "")
+    and context.boot_path or "?"
+  local boot_label_disp = (context and type(context.boot_device_label) == "string" and context.boot_device_label ~= "")
+    and context.boot_device_label or "?"
   local body = string.format(
-    "LAUNCH RETURNED\nrc=%s\nDev:%s Prf:%s Rt:%s\nGate:%s Open:%s/%s\nPOP:%s\nCfg:%s (%s)\nEff:%s (%s)\nExec:%s\nAPP:%s\nArg0:%s\nGame:%s%s\nPress X/O to continue.",
+    "LAUNCH RETURNED\nrc=%s\nDev:%s Prf:%s Rt:%s\nGate:%s Open:%s/%s\nPOP:%s\nCfg:%s (%s)\nEff:%s (%s)\nExec:%s\nAPP:%s\nBoot:%s [%s]\nPath:Hdd=%s Reboot=%s Cold=%s API:%s\nCtx:%s\nArg0:%s\nGame:%s%s\nPress X/O to continue.",
     tostring(rc),
     tostring(device_page),
     tostring(context and context.launch_diagnostics and context.launch_diagnostics.selected_profile_id or nil),
@@ -4084,6 +4095,13 @@ local function BlockLaunchFailure(rc, popstarter, device_page, argv0, game_path,
     tostring(context and context.launch_diagnostics and context.launch_diagnostics.normalized_profile_selected_path_reason or nil),
     tostring(context and context.launch_diagnostics and context.launch_diagnostics.final_resolved_exec_path or display_exec_path),
     tostring(app_dir),
+    boot_disp,
+    boot_label_disp,
+    on_hdd_flag,
+    reboot_flag,
+    cold_launch_flag,
+    api_used,
+    partition_ctx_disp,
     tostring(argv0),
     tostring(game_path),
     diag_block
@@ -4667,6 +4685,10 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     exec_original_slot = popstarter_original_slot,
     exec_pfs_slot = popstarter_original_slot,
     source_pfs_slot = popstarter_source_slot,
+    popstarter_on_hdd = popstarter_on_hdd,
+    reboot_iop = launch_cmd.reboot_iop,
+    boot_path = (type(System) == "table" and type(System.currentDirectory) == "function") and tostring(System.currentDirectory() or "") or "",
+    boot_device_label = UI and UI.boot_device_label or nil,
     launch_diagnostics = launch_diagnostics
   }
   local fallback_succeeded = false
