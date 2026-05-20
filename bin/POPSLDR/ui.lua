@@ -1128,6 +1128,24 @@ UI = {
         UI.Modal.triangle_action = nil
         UI.Modal.ignore_until_release = true
       end;
+      OpenSaveSettings = function (on_save, on_discard)
+        UI.Modal.active = true
+        UI.Modal.title = "Save Settings"
+        UI.Modal.body = "Save your changes before leaving?"
+        UI.Modal.options = {"Save", "Cancel", "Don't Save"}
+        UI.Modal.confirm_action = function ()
+          UI.Modal.Close()
+          if type(on_save) == "function" then on_save() end
+        end
+        UI.Modal.cancel_action = function ()
+          UI.Modal.Close()
+        end
+        UI.Modal.triangle_action = function ()
+          UI.Modal.Close()
+          if type(on_discard) == "function" then on_discard() end
+        end
+        UI.Modal.ignore_until_release = true
+      end;
       OpenDeviceLock = function (reason, active, target)
         local active_name = UI.device_lock_name(active)
         local target_name = UI.device_lock_name(target)
@@ -2503,10 +2521,21 @@ UI = {
           KeyboardLayoutDirty
         )
 
+        local function HasUnsavedChanges()
+          return UI.ProfileDirty == true
+            or UI.BdmaDirty == true
+            or UI.PopPathDirty == true
+            or UI.PopPathProfileDefaultDirty == true
+            or UI.DkwdrvDirty == true
+            or UI.VideoStandardDirty == true
+            or HideTextDirty()
+            or KeyboardLayoutDirty()
+        end
+
         AddSpacer()
-        AddAction("Save Changes",   function() queue_exit(UI.SCENES.MMAIN, true) end, true)
-        AddAction("Reset Defaults", function() ResetDefaults() end, false)
-        AddAction("Cancel",         function() discard_settings_and_return() end, false)
+        AddAction("Save Changes",      function() queue_exit(UI.SCENES.MMAIN, true) end, true)
+        AddAction("Reset Defaults",    function() ResetDefaults() end, false)
+        AddAction("Discard & Exit",    function() discard_settings_and_return() end, false)
 
         -- Focus normalization: clamp + skip non-selectable rows.
         local function IsSelectable(idx)
@@ -2655,7 +2684,15 @@ UI = {
         end
 
         if UI.Pad.Events.BACK then
-          discard_settings_and_return()
+          if HasUnsavedChanges() then
+            local return_scene = UI.GetSettingsReturnScene()
+            UI.Modal.OpenSaveSettings(
+              function() queue_exit(return_scene, true) end,
+              function() discard_settings_and_return() end
+            )
+          else
+            discard_settings_and_return()
+          end
           return
         end
         if UI.Pad.Events.START then
