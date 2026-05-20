@@ -4633,7 +4633,11 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
       launch_cmd.elf_path = popstarter_exec_path
       local fallback_partition = NormalizeHddPartitionLabelForMount(hdd_partition_label)
       if fallback_partition ~= nil then
-        popstarter_partition_context = fallback_partition
+        -- BuildHddPartitionContext / ResolvePopstarterPartitionContext store
+        -- partition_context in "hdd0:PART:" form (with trailing colon); match
+        -- that convention here so the C-side is_partition_context_arg
+        -- validator in lua_loadELFWithPartition accepts it.
+        popstarter_partition_context = fallback_partition..":"
         popstarter_exec_info = BuildPartitionScopedExecInfo(popstarter_exec_path, popstarter_partition_context)
         popstarter_source_slot = popstarter_exec_info.source_pfs_slot
         popstarter_keep_slot = popstarter_source_slot
