@@ -68,6 +68,27 @@ Last updated: 2026-05-19
 - Keep GitHub-built hardware artifacts self-identifying: package `BUILD_INFO.txt` and fail CI when expected embedded runtime markers are missing.
 - Keep README installation steps explicit enough for users who are not familiar with PS2 launcher layouts.
 
+### 4) Settings page UI redesign
+- Current Settings scene was assembled in a hurry; functionally complete but visually rough and awkward to operate. Redesign the layout for clarity and pad-friendly navigation while preserving every existing function and persisted setting.
+- Must preserve:
+  - POPSTARTER path editor (manual edit + profile/default selection modes).
+  - DKWDRV path editor.
+  - Profile selection (Profile 1/default + others).
+  - Video standard toggle (`NTSC` / `PAL`).
+  - Hide-text toggle (and the `Select` shortcut that toggles it).
+  - Keyboard layout selection (`ABC` / `QWERTY` / `DVORAK`).
+  - BDMA mode.
+  - Save progress overlay during commit/apply.
+  - Save-failure notification path.
+  - Back-discards-staged-edits behavior (`O Back`).
+  - The transactional commit-on-confirm/leave contract documented in `TRUTHSHEET.md` Truth 2.
+- Must not change:
+  - Persisted settings format at `mc0:/POPSTARTER/.pldrs`.
+  - The `POPSTARTER_MODE=<mode>` + `POPSTARTER_PATH=<path>` encoding pair.
+  - Any function name that lives in `bin/POPSLDR/system.lua` and is touched from the UI side; rename only inside `bin/POPSLDR/ui.lua` if at all.
+- Scope of work lives in `bin/POPSLDR/ui.lua` (Settings scene layout + input handling). Coordinate any new IMG asset requirements with `bin/POPSLDR/images.lua` and `src/embed_assets.cpp` so embedded asset lookups stay consistent with the optional-default-cover pattern.
+- Validate against the relevant `S-*` and `U-*` rows in `QA_REGRESSION_MATRIX.md` before declaring complete.
+
 ## Deferred Ideas
 - Additional themes/skins.
 - Broader network/backend support after SMB and ILINK have defined baselines.
