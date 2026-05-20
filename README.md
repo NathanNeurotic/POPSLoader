@@ -66,6 +66,7 @@ Reported hardware issues currently being tracked are:
   - user later confirmed on 2026-03-28 that USB boot + USB Profile 1 sidecar/cwd `POPSTARTER.ELF` + HDD game now passes on hardware.
   - user reported a 2026-05-20 latest-artifact regression: USB boot with USB sidecar/cwd `POPSTARTER.ELF`, then launching an HDD title, black-screened.
   - current source restores legacy `System.loadELF(path, reboot_iop, selector)` one-argument selector behavior for normal/non-HDD POPSTARTER launches; hardware result is `Unknown (verify on hardware)`.
+  - a follow-up 2026-05-20 report narrowed the non-HDD regression to default/cwd sidecar resolution: explicit `mass:/POPS/POPSTARTER.ELF` launches, but default `POPSTARTER.ELF` could stop at `Cant find POPSTARTER ELF`. Current source expands default sidecar lookup to the live current directory plus boot/app directories; hardware result is `Unknown (verify on hardware)`.
 - `BOOT.ELF` after HDD runtime (`U-10`)
   - BOOT.ELF is reached, but later reported hardware said it could still misbehave after HDD runtime had already been initialized.
   - current working inference is that `U-10` may share the same underlying handoff/state-poisoning boundary as `D-10`, but that is not yet proven and must not be treated as an automatic fix dependency.
@@ -236,6 +237,7 @@ The build/package workflow uses the `ps2dev/ps2dev` container and validates pack
   - user later confirmed on 2026-03-28 that USB boot + USB sidecar/cwd `POPSTARTER.ELF` + HDD game passes on hardware.
   - user reported a 2026-05-20 latest-artifact regression where that same shape black-screened.
   - current source restores the legacy one-argument `System.loadELF` selector handoff for this normal/non-HDD POPSTARTER path; hardware result is `Unknown (verify on hardware)`.
+  - user then reported explicit `mass:/POPS/POPSTARTER.ELF` launches still work, while default/cwd sidecar resolution can stop at `Cant find POPSTARTER ELF`; current source expands the default sidecar candidates without changing the selector handoff.
 - Shared default/Profile 1 local POPSTARTER baseline:
   - reported failing with `Cant find POPSTARTER ELF` on 2026-03-27 when booted from USB with USB sidecar/cwd/Profile 1.
   - current source was rolled back to `BETA-10-play-CHECKPOINT2` shared resolver behavior for this path after the later unverified common-path changes failed to restore launch.

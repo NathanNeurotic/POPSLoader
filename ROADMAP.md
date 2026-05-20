@@ -6,6 +6,7 @@ Last updated: 2026-05-20
 - Core launcher functionality is present in code for MMCE, MX4SIO, HDD (PFS), USB, Disc (`DKWDRV`), settings persistence, cover preview, path editing, startup backend auto-init, and exit flows.
 - The shared default/Profile 1 local POPSTARTER baseline was restored by rolling back to the `BETA-10-play-CHECKPOINT2` resolver behavior; user hardware confirmed that fix.
 - Recorded hardware previously confirmed `D-12` startup/Profile lookup is restored, `D-16` first-entry USB discovery is restored, and `D-15` non-HDD-POPSTARTER HDD-game launch was restored; a 2026-05-20 latest-artifact report regressed `D-15` again with USB boot + USB sidecar `POPSTARTER.ELF` + HDD game black-screening.
+- A follow-up 2026-05-20 report narrowed the non-HDD sidecar regression to default/cwd POPSTARTER resolution: explicit `mass:/POPS/POPSTARTER.ELF` launches, while default `POPSTARTER.ELF` can stop at `Cant find POPSTARTER ELF`; current source expands the sidecar search and remains `Unknown (verify on hardware)`.
 - The main stabilization blocker is still HDD-backed `POPSTARTER.ELF` execution when the launcher, sidecar/CWD, or configured POPSTARTER path lives on HDD (`D-10`, `D-14`).
 - One 2026-03-29 artifact briefly moved `D-10` to a returned `rc=-1`, but later artifacts returned to black screen, so that was not a stable new boundary.
 - Current repo line uses the partition-aware HDD reboot contract, cold external-launch prep, separate exec-path reporting, and profile-path normalization while preserving the restored non-HDD POPSTARTER path.

@@ -22,6 +22,7 @@ Repo and hardware ledger:
 - `QA_REGRESSION_MATRIX.md` records `D-14` as non-HDD game with HDD-resident configured/Profile `POPSTARTER.ELF` failing with black screen.
 - `QA_REGRESSION_MATRIX.md` records `D-15` as passing after rollback/narrowing: USB boot plus USB sidecar/Profile 1 `POPSTARTER.ELF` can launch an HDD game.
 - `QA_REGRESSION_MATRIX.md` also records a 2026-05-20 latest-artifact `D-15` regression: USB boot with USB sidecar/cwd `POPSTARTER.ELF`, then launching an HDD title, black-screened.
+- A follow-up 2026-05-20 report narrowed that non-HDD regression to default/cwd sidecar resolution: explicit `mass:/POPS/POPSTARTER.ELF` launches, while default `POPSTARTER.ELF` can stop at `Cant find POPSTARTER ELF`.
 - The historical `D-15` pass was the key separator because it showed the remaining issue was not HDD game discovery, HDD game mount, or the POPSTARTER selector in general. The 2026-05-20 `D-15` regression means that guardrail must be retested first on the next artifact.
 - One 2026-03-29 artifact moved `D-10` to `rc=-1 (returned after 22618 ms)`, but later artifacts returned to black screen. Treat that as an unstable boundary, not as the current steady-state failure mode.
 - A 2026-05-20 hardware screenshot from the latest `BETA-12-PLAY` artifact showed `D-10` returning to the launcher with `POPSTARTER HDD pre-exec gate failed: Cannot resolve HDD partition context`, `POP:pfs3:/POPS/POPSTARTER.ELF`, and `APP:hdd0:+OPL:pfs:/APPS/PS1_POPSLOADER/`.
@@ -160,6 +161,7 @@ Source/build checks:
 Hardware checks to record in `QA_REGRESSION_MATRIX.md`:
 
 - `D-15`: USB/MMCE/MX4SIO or other non-HDD boot, non-HDD sidecar/Profile 1 `POPSTARTER.ELF`, HDD game.
+- `L-08`: same non-HDD boot and sidecar/Profile 1 setup, confirming launch no longer stops at `Cant find POPSTARTER ELF` before the handoff.
 - `D-10`: HDD boot, HDD sidecar/CWD/Profile/default `POPSTARTER.ELF`, HDD game, normal `X`.
 - `D-10` alternate: same setup with `R2`, only after normal `X` is tested.
 - `D-14`: USB/MMCE/MX4SIO game with Profile/custom path pointing `POPSTARTER.ELF` to HDD.

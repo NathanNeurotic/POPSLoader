@@ -129,6 +129,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - user later confirmed on 2026-03-28 that USB boot + USB sidecar/cwd `POPSTARTER.ELF` + HDD game passes on hardware.
   - user reported a 2026-05-20 latest-artifact regression: USB boot with USB sidecar/cwd `POPSTARTER.ELF`, then launching an HDD title, black-screened.
   - current source follow-up restores legacy `System.loadELF(path, reboot_iop, selector)` one-argument selector behavior for normal/non-HDD POPSTARTER launches and keeps partition context on the explicit HDD API; hardware result is `Unknown (verify on hardware)`.
+  - user then reported the narrowed default/cwd sidecar failure: explicit `mass:/POPS/POPSTARTER.ELF` launches, but default `POPSTARTER.ELF` can stop at `Cant find POPSTARTER ELF`. Current source expands default sidecar lookup to include the live current directory plus boot/app directories; hardware result is `Unknown (verify on hardware)`.
 - `U-10` BOOT.ELF after HDD page init:
   - one prior artifact was reported good,
   - repo history shows the BOOT.ELF modal later moved from its older non-reboot direct `System.loadELF(elf_path, 0, elf_path)` path to a reboot-I/O path with launch-CWD setup.

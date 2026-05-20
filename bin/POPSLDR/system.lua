@@ -1221,6 +1221,14 @@ local function CaptureCurrentDirectory()
   return nil
 end
 
+local function BuildPopstarterSidecarCandidate(base_path)
+  local basedir = DirectoryFromExecPath(base_path)
+  if basedir == nil or basedir == "" then
+    return nil
+  end
+  return JoinPath(basedir, "POPSTARTER.ELF")
+end
+
 local function SetLaunchWorkingDirectory(path)
   local previous_cwd = CaptureCurrentDirectory()
   local launch_dir = DirectoryFromExecPath(path)
@@ -1253,11 +1261,10 @@ local function CollectHddBootSidecarCandidates()
   local other_candidates = {}
   local seen = {}
   local function add_candidate(base_path)
-    local basedir = DirectoryFromExecPath(base_path)
-    if basedir == nil or basedir == "" then
+    local sidecar = BuildPopstarterSidecarCandidate(base_path)
+    if sidecar == nil or sidecar == "" then
       return
     end
-    local sidecar = JoinPath(basedir, "POPSTARTER.ELF")
     if seen[sidecar] == true then
       return
     end
@@ -1274,6 +1281,7 @@ local function CollectHddBootSidecarCandidates()
 
   add_candidate(BOOT_ARGV0_RAW)
   add_candidate(BOOT_PATH_RAW)
+  add_candidate(CaptureCurrentDirectory())
   add_candidate(APP_DIR_RAW)
   add_candidate(APP_DIR_LOCAL)
 
@@ -1439,12 +1447,18 @@ local function ResolvePopstarterPath(path)
     return chosen
   end
 
-  local fallbacks = {
-    JoinPath(APP_DIR_LOCAL, "POPSTARTER.ELF"),
-    JoinPath(BOOT_PATH_RAW or System.currentDirectory() or "", "POPSTARTER.ELF"),
-    "mc0:/POPSTARTER/POPSTARTER.ELF",
-    "mc1:/POPSTARTER/POPSTARTER.ELF"
-  }
+  local fallbacks = {}
+  local seen_fallbacks = {}
+  local function add_fallback(path)
+    AppendUniquePath(fallbacks, seen_fallbacks, path)
+  end
+  add_fallback(BuildPopstarterSidecarCandidate(APP_DIR_LOCAL))
+  add_fallback(BuildPopstarterSidecarCandidate(CaptureCurrentDirectory()))
+  add_fallback(BuildPopstarterSidecarCandidate(BOOT_ARGV0_RAW))
+  add_fallback(BuildPopstarterSidecarCandidate(BOOT_PATH_RAW))
+  add_fallback(BuildPopstarterSidecarCandidate(APP_DIR_RAW))
+  add_fallback("mc0:/POPSTARTER/POPSTARTER.ELF")
+  add_fallback("mc1:/POPSTARTER/POPSTARTER.ELF")
   for i = 1, #fallbacks do
     local candidate = fallbacks[i]
     local resolved_fallback = nil
