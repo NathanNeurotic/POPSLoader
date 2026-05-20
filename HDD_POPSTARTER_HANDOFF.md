@@ -1,6 +1,6 @@
 # HDD POPSTARTER Handoff Audit
 
-Last updated: 2026-05-19
+Last updated: 2026-05-20
 
 Branch audited: `BETA-12-PLAY`
 
@@ -11,7 +11,7 @@ Purpose: source-backed handoff notes for the remaining HDD-backed `POPSTARTER.EL
 - Do not frame the active bug as "HDD games fail." Current hardware history says HDD games launch when `POPSTARTER.ELF` is on a non-HDD device (`D-15` pass).
 - The active blocker is narrower: if `POPSTARTER.ELF` itself resolves from HDD, games fail regardless of whether the game is HDD (`D-10`) or non-HDD (`D-14`).
 - Custom POPSTARTER paths are only implicated when the effective custom path is HDD-backed. There is no current source-backed reason to treat custom non-HDD POPSTARTER paths as broken.
-- Current code contains multiple source-confirmed defects or drift points in the HDD-backed POPSTARTER handoff. Hardware test results should be interpreted through those defects before drawing broader conclusions.
+- Current and recent code contain source-confirmed defects or drift points in the HDD-backed POPSTARTER handoff. Hardware test results should be interpreted through the exact artifact under test before drawing broader conclusions.
 - No source change should claim `D-10` or `D-14` fixed until hardware proves it. Mark runtime outcomes as `Unknown (verify on hardware)` until retested.
 
 ## Current Evidence
@@ -23,6 +23,8 @@ Repo and hardware ledger:
 - `QA_REGRESSION_MATRIX.md` records `D-15` as passing after rollback/narrowing: USB boot plus USB sidecar/Profile 1 `POPSTARTER.ELF` can launch an HDD game.
 - `D-15` passing is the key separator. It means the remaining issue is not HDD game discovery, HDD game mount, or the POPSTARTER selector in general. The failure follows the executable location of `POPSTARTER.ELF`.
 - One 2026-03-29 artifact moved `D-10` to `rc=-1 (returned after 22618 ms)`, but later artifacts returned to black screen. Treat that as an unstable boundary, not as the current steady-state failure mode.
+- A 2026-05-20 hardware screenshot from the latest `BETA-12-PLAY` artifact showed `D-10` returning to the launcher with `POPSTARTER HDD pre-exec gate failed: Cannot resolve HDD partition context`, `POP:pfs3:/POPS/POPSTARTER.ELF`, and `APP:hdd0:+OPL:pfs:/APPS/PS1_POPSLOADER/`.
+- Source follow-up found that the failure popup itself had two argument-shifted `BlockLaunchFailure()` calls, so `Rt:` showed the gate mode and `Gate:` showed the context table pointer. Treat screenshots from before that correction as useful for the high-level failure, but not for detailed route/gate diagnostics.
 
 Preserve these known-good or important flows while fixing:
 
@@ -42,14 +44,21 @@ Current `D-10` / `D-14` path in source:
 3. `ResolvePopstarterPath()` can normalize an HDD `POPSTARTER.ELF` path to a mounted `pfsN:/...` path.
 4. `ResolvePopstarterPartitionContext()` tries to derive the backing `hdd0:PART:` context. For HDD-backed launches this context is supposed to travel separately from the mounted load path.
 5. `BuildPartitionScopedExecInfo()` normalizes mounted paths like `pfs1:/POPSTARTER.ELF` to generic `pfs:/POPSTARTER.ELF` when a partition context exists.
-6. `LaunchEngine()` calls `System.loadELF(exec_path, reboot_iop, selector, partition_context)` for partition-aware HDD POPSTARTER launches.
-7. `src/luasystem.cpp` detects the final argument as partition context, but currently still copies that final argument into the target argv array.
+6. `LaunchEngine()` calls `System.loadELFWithPartition(exec_path, reboot_iop, partition_context, selector)` for partition-aware HDD POPSTARTER launches.
+7. `src/luasystem.cpp` keeps the partition context out-of-band in `System.loadELFWithPartition()` and copies only explicit target args into the target argv array.
 8. `src/elf_loader/src/elf.c` writes metadata for the embedded child loader, remounts the HDD partition as `pfs0:`, and passes caller target argv to the child loader.
 9. `src/elf_loader/src/loader/src/loader.c` loads the target ELF and performs the final target `ExecPS2`.
 
 The intended shape is sound: keep POPSTARTER's selector as target `argv[0]`, pass HDD partition/load-path metadata out of band, and remount deterministically before the child loader loads `POPSTARTER.ELF`. The current implementation has defects in that shape.
 
 ## Source-Confirmed Findings
+
+Note: findings 1-5 below were the 2026-05-19 audit inputs and have source changes in current `BETA-12-PLAY`. They remain here because they explain why older hardware artifacts were not clean controls. Finding 6 is still deferred unless a child-loader rebuild/regeneration is intentionally taken on.
+
+0. The 2026-05-20 artifact exposed an additional mounted-PFS recovery gap.
+   - General recovery candidates still parsed only `hddN:`-prefixed partition names, so the plain `__.POPS` label from `ParseHddGameEntry()` did not participate in `BuildHddPartitionContext()` recovery.
+   - The mounted-PFS fallback then tried only the selected game partition. That is too narrow when `POPSTARTER.ELF` was resolved from an already-mounted HDD source such as `pfs3:/POPS/POPSTARTER.ELF`.
+   - Follow-up source change: `ParseHddPartitionMount()` now accepts the repo's own `hdd0:PART:` partition-context form, `NormalizeHddPartitionLabelForMount()` is used by the shared candidate builder for safe bare labels, and `ResolveFallbackMountedPfsExecPath()` first asks `BuildHddPartitionContext()` to recover the actual mounted POPSTARTER source partition before falling back to the selected HDD game partition.
 
 1. Mounted-PFS fallback is currently unreliable and can invalidate tests.
    - `RunPOPStarterGame()` builds `context` before the mounted-PFS fallback block.
@@ -102,6 +111,8 @@ Do not repeat these as if they were clean controls:
 - The one returned-rc artifact is useful evidence, but later artifacts black-screened again. Do not assume the returned-rc behavior is stable.
 
 ## Recommended Fix Order
+
+As of the 2026-05-20 source, the 2026-05-19 Lua fallback/API/parent-loader audit fixes and the 2026-05-20 mounted-source recovery/diagnostic follow-up are implemented in source only. Do not claim them as hardware fixes until a GitHub Actions artifact is tested.
 
 1. Fix Lua fallback correctness first.
    - Normalize plain HDD partition labels before fallback. A helper should accept both `__.POPS` and `hdd0:__.POPS` and produce `hdd0:__.POPS`.

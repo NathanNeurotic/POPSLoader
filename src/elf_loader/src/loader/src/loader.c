@@ -399,7 +399,15 @@ int main(int argc, char *argv[])
 			SifLoadFileExit();
 		}
 		SifExitRpc();
-		SifExitCmd();
+		/* Intentionally NO SifExitCmd() here. The working non-HDD
+		 * launch path (src/elf_loader/src/elf.c
+		 * LoadELFFromFileExecPS2RebootIOPWithPartition non-HDD
+		 * branch, line ~606) ends teardown with SifExitRpc only
+		 * before ExecPS2 and passes hardware (D-15). An earlier
+		 * "align with reference loaders" change added SifExitCmd
+		 * here on the HDD path; that was the only remaining
+		 * pre-ExecPS2 difference between D-15-pass and D-10-fail.
+		 */
 
 		SET_GS_BGCOLOUR(BROWN_BG);
 

@@ -1,4 +1,4 @@
-Last updated: 2026-05-19
+Last updated: 2026-05-20
 
 # DECISIONS
 
@@ -132,7 +132,9 @@ Each entry records:
     3. The HDD pre-exec gate is skipped only when the fallback actually reconstructed a partition-aware path; if reconstruction failed in non-strict mode, the gate now runs so its own partition-recovery logic can succeed or fail loudly instead of silently launching with stale context.
     4. `src/luasystem.cpp` exposes `System.loadELFWithPartition(path, reboot_iop, partition_context, args...)`. The legacy `System.loadELF` trailing partition_context detection has been removed; partition_context can no longer be copied into target argv. `LaunchEngine` calls the new binding when `context.exec_partition_context` is set.
     5. `src/elf_loader/src/elf.c` `ExecuteViaEmbeddedLoader` no longer rejects `argc == 0`, so the documented child-loader default-argv synthesis (`build_default_target_arg0`) is reachable. The HDD POPSTARTER-specific `argv[0]` guard in `ExecuteHddBackedViaEmbeddedLoader` is intentionally left in place.
-  - hardware status on the 2026-05-19 source remains `Unknown (verify on hardware)`. The handoff doc verification sequence (`D-15` first, then `D-10` `X`, then `D-10` `R2`, then `D-14`, then `D-12` sanity, then `U-10` separately) still applies.
+  - a 2026-05-20 artifact screenshot then showed `D-10` returning to the launcher with `POPSTARTER HDD pre-exec gate failed: Cannot resolve HDD partition context`, `POP:pfs3:/POPS/POPSTARTER.ELF`, and `APP:hdd0:+OPL:pfs:/APPS/PS1_POPSLOADER/`.
+  - 2026-05-20 source follow-up fixes the argument-shifted failure popup call sites, lets Lua parse `hdd0:PART:` partition-context strings, lets shared HDD recovery candidates accept safe bare labels such as `__.POPS`, and changes mounted-PFS fallback to recover the actual mounted POPSTARTER source partition before falling back to the selected HDD game partition. It does not change the POPSTARTER selector `argv[0]` contract.
+  - hardware status after the 2026-05-20 source follow-up remains `Unknown (verify on hardware)`. The handoff doc verification sequence (`D-15` first, then `D-10` `X`, then `D-10` `R2`, then `D-14`, then `D-12` sanity, then `U-10` separately) still applies.
   - current source still keeps the `R2` selector-path experiment for HDD game launches, but that remains secondary to restoring and preserving the non-HDD POPSTARTER baseline for HDD titles.
 - `BOOT.ELF` after HDD page init:
   - repo history shows the BOOT.ELF modal originally used a simpler non-reboot `System.loadELF(elf_path, 0, elf_path)` path without launch-CWD setup, and later source changed it to `reboot_iop = 1` plus launch-CWD.
