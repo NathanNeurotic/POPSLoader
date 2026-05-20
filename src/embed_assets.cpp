@@ -57,8 +57,10 @@ extern unsigned char asset_square_png[];
 extern unsigned int size_asset_square_png;
 extern unsigned char asset_frame_png[];
 extern unsigned int size_asset_frame_png;
+#ifdef HAVE_ASSET_DEFAULT_PNG
 extern unsigned char asset_default_png[];
 extern unsigned int size_asset_default_png;
+#endif
 extern unsigned char asset_missing_png[];
 extern unsigned int size_asset_missing_png;
 extern unsigned char asset_left_png[];
@@ -125,7 +127,9 @@ static const embedded_asset_t g_embedded_assets[] = {
 	ASSET_ENTRY("R2.png", asset_r2_png),
 	ASSET_ENTRY("square.png", asset_square_png),
 	ASSET_ENTRY("frame.png", asset_frame_png),
+#ifdef HAVE_ASSET_DEFAULT_PNG
 	ASSET_ENTRY("default.png", asset_default_png),
+#endif
 	ASSET_ENTRY("MISSING.png", asset_missing_png),
 	ASSET_ENTRY("left.png", asset_left_png),
 	ASSET_ENTRY("right.png", asset_right_png),
@@ -171,7 +175,9 @@ static const embedded_asset_t g_embedded_assets[] = {
 	ASSET_ENTRY("POPSLDR/IMG/R2.png", asset_r2_png),
 	ASSET_ENTRY("POPSLDR/IMG/square.png", asset_square_png),
 	ASSET_ENTRY("POPSLDR/IMG/frame.png", asset_frame_png),
+#ifdef HAVE_ASSET_DEFAULT_PNG
 	ASSET_ENTRY("POPSLDR/IMG/default.png", asset_default_png),
+#endif
 	ASSET_ENTRY("POPSLDR/IMG/MISSING.png", asset_missing_png),
 	ASSET_ENTRY("POPSLDR/IMG/left.png", asset_left_png),
 	ASSET_ENTRY("POPSLDR/IMG/right.png", asset_right_png),
@@ -202,6 +208,14 @@ static const embedded_asset_t *embedded_find(const char *key)
 	}
 
 	return NULL;
+}
+
+static int is_default_png_key(const char *key)
+{
+	return key != NULL &&
+	       (strcmp(key, "default.png") == 0 ||
+	        strcmp(key, "IMG/default.png") == 0 ||
+	        strcmp(key, "POPSLDR/IMG/default.png") == 0);
 }
 
 int embedded_get(const char* path_or_name, const uint8_t** out_data, size_t* out_size)
@@ -247,6 +261,11 @@ int embedded_get(const char* path_or_name, const uint8_t** out_data, size_t* out
 	if (asset == NULL && lookup_key != input && strchr(input, '/') == NULL) {
 		asset = embedded_find(input);
 	}
+#ifndef HAVE_ASSET_DEFAULT_PNG
+	if (asset == NULL && (is_default_png_key(lookup_key) || is_default_png_key(input))) {
+		asset = embedded_find("MISSING.png");
+	}
+#endif
 	if (asset == NULL) {
 		return 0;
 	}

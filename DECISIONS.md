@@ -1,4 +1,4 @@
-Last updated: 2026-05-13
+Last updated: 2026-05-19
 
 # DECISIONS
 
@@ -66,6 +66,12 @@ Each entry records:
 - Implications: source-truth audits should include both workflow files, while CI/package claims should continue to cite only the compilation workflow unless the automation contract changes.
 - Evidence: `.github/workflows/compilation.yml`, `.github/workflows/opencode.yml`.
 
+### 2026-05-19 — Default cover image is optional at compile time
+- Decision: `bin/POPSLDR/IMG/default.png` is optional. CI/artifact builds without it omit `asset_default_png` and fall back to the required `MISSING.png` asset for `IMG.default`.
+- Rationale: default cover art should only be embedded when the PNG is present in the checkout used by GitHub Actions.
+- Implications: `MISSING.png` remains required; `default.png` can be removed without breaking artifact builds.
+- Evidence: `Makefile`, `src/embed_assets.cpp`, `bin/POPSLDR/images.lua`, `bin/POPSLDR/ui.lua`.
+
 ## Open Investigations
 - HDD startup auto-init on HDD boot/configured paths:
   - a 2026-03-27 hardware report said booting from HDD did not auto-init the HDD driver stack.
@@ -118,7 +124,8 @@ Each entry records:
   - repo history comparison also showed that earlier child-loader `fileXio` experiments had never been retested after the later parent-side jump-contract fixes, so they were not a clean control for the current boundary.
   - later repo audit also showed that POPSLoader's normal POPSTARTER launch path passes only the selector as target `argv[0]`, while the newer HDD child-loader path had started prepending a replacement executable path; that changed the HDD-backed POPSTARTER argv layout away from the working non-HDD path.
   - repo audit also found that selected-profile state and stored canonical profile paths could drift apart, so a chosen Profile 1/default path could still launch another profile's canonical HDD POPSTARTER path without the user realizing it.
-  - current source restores that original parent-side jump contract while still keeping the safer embedded-loader fix (`e2c4b8f`) that avoids `printf`/`snprintf` dependence in that environment, returns the actual embedded-loader `ExecPS2` result instead of collapsing it to `-1`, fixes `System.loadELF(path, reboot_iop, args...)` so it no longer drops every extra arg after the first one, aligns the child loader closer to `wLaunchELF` / `PlayStation2-Basic-BootLoader-Extended` by removing the post-reset MC module reload and exiting SIF command state before the final target `ExecPS2`, routes partition-aware HDD launches back through mounted-`pfs0:` `SifLoadElf` once the parent has already remounted the target partition, normalizes stale canonical profile-path state before launch/save, keeps caller-supplied POPSTARTER selector/extra args intact on the HDD child-loader path so it matches the repo's normal non-HDD POPSTARTER argv layout, keeps the older iomanX-aware `fileXio` path only for direct `pfs:` / `hdd:` loads with no partition-aware HDD context, and now exposes the real exec filename separately from the probe/open path in the launcher popup.
+  - current source restores that original parent-side jump contract, returns the actual embedded-loader `ExecPS2` result instead of collapsing it to `-1`, fixes `System.loadELF(path, reboot_iop, args...)` so it no longer drops every extra arg after the first one, aligns the child loader closer to `wLaunchELF` / `PlayStation2-Basic-BootLoader-Extended` by removing the post-reset MC module reload and exiting SIF command state before the final target `ExecPS2`, routes partition-aware HDD launches back through mounted-`pfs0:` `SifLoadElf` once the parent has already remounted the target partition, normalizes stale canonical profile-path state before launch/save, keeps caller-supplied POPSTARTER selector/extra args intended to match the repo's normal non-HDD POPSTARTER argv layout, keeps the older iomanX-aware `fileXio` path only for direct `pfs:` / `hdd:` loads with no partition-aware HDD context, and now exposes the real exec filename separately from the probe/open path in the launcher popup.
+  - 2026-05-19 source audit found that several current-source defects must be fixed before treating new hardware results as clean controls: Lua mounted-PFS fallback can leave stale launch context, normal HDD game labels can fail fallback partition parsing, the fallback path can skip the pre-exec gate even when reconstruction failed, `System.loadELF(..., args..., partition_context)` can leak the partition context into target argv, the generic embedded-loader default-argv contract is unreachable, and the child loader still uses `snprintf`/`strncat` despite older docs claiming that risk was avoided. See `HDD_POPSTARTER_HANDOFF.md`.
   - current source still keeps the `R2` selector-path experiment for HDD game launches, but that remains secondary to restoring and preserving the non-HDD POPSTARTER baseline for HDD titles.
 - `BOOT.ELF` after HDD page init:
   - repo history shows the BOOT.ELF modal originally used a simpler non-reboot `System.loadELF(elf_path, 0, elf_path)` path without launch-CWD setup, and later source changed it to `reboot_iop = 1` plus launch-CWD.

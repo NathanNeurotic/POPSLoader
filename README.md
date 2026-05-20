@@ -59,6 +59,7 @@ Reported hardware issues currently being tracked are:
   - `D-15` passing again isolates the remaining blocker to HDD-backed POPSTARTER execution, not HDD games in general.
   - one 2026-03-29 artifact briefly moved `D-10` from a black screen to `rc=-1 (returned after 22618 ms)`, but later artifacts returned to a black screen, so that boundary was not stable.
   - current repo line keeps the partition-aware HDD reboot contract, cold external-launch prep, separate exec-path reporting, and profile-path normalization.
+  - `HDD_POPSTARTER_HANDOFF.md` contains the 2026-05-19 source audit, current suspected failure path, known bad attempts, and recommended fix order.
   - detailed per-artifact experiment chronology lives in `QA_REGRESSION_MATRIX.md` and `DECISIONS.md`.
 - HDD game with non-HDD POPSTARTER (`D-15`)
   - user later confirmed on 2026-03-28 that USB boot + USB Profile 1 sidecar/cwd `POPSTARTER.ELF` + HDD game now passes on hardware.
@@ -109,6 +110,7 @@ Reported hardware issues currently being tracked are:
 - Standard cover lookup uses a sidecar PNG next to the selected `.VCD`.
 - HDD entries can also load cover art from:
   - `hdd0:__common/POPS/ART/<title>.png`
+- `bin/POPSLDR/IMG/default.png` is optional at compile time. If it is absent from the GitHub Actions checkout, `IMG.default` falls back to the required embedded `MISSING.png` asset.
 
 ### Path editor / keyboard behavior
 - The on-screen keyboard supports:
@@ -162,6 +164,8 @@ make clean elfloader all
 ```
 
 The build/package workflow uses the `ps2dev/ps2dev` container and validates packaging after build.
+
+`bin/POPSLDR/IMG/default.png` is optional for CI/artifact builds. Add it to the checkout only when a custom default-cover image should be embedded; otherwise `MISSING.png` is compiled and used as the fallback.
 
 ### Local build prerequisites
 - PS2 toolchain environment (`PS2DEV`, `PS2SDK`, gsKit/ports libs)
