@@ -2083,25 +2083,57 @@ UI = {
         local layout = UI.LAYOUT
         local profcnt = #PLDR.PROFILES
         Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Settings", UI.CCOL.GREY)
+
+        -- Pad-friendly Settings layout: grouped sections, single-row label/hint/value,
+        -- consistent column metrics, and a visible dirty indicator on rows the user
+        -- has changed but not yet saved. Input bindings are unchanged from the
+        -- previous version so muscle memory and the S-* / U-* regression rows in
+        -- QA_REGRESSION_MATRIX.md continue to match.
+        --
+        -- Layout map:
+        --   Title (centered, LFONT)
+        --   Section: Storage
+        --     BDMA Mode            [<-] [->]   <value>
+        --   Section: Display
+        --     Video Standard       [Square]    <value>
+        --   Section: POPSTARTER
+        --     Profile              [Up] [Down] <value>
+        --     POPSTARTER Path      [L1]        <value (truncated middle)>
+        --     DKWDRV Path          [R1]        <value (truncated middle)>
+        --
+        -- Hint icons sit between label and value so it is visually obvious which
+        -- button affects which row without having to remember the footer legend.
+
         local mode = UI.BdmaModes[UI.BdmaModeIndex]
-        local left_icon  = IMG.left
-        local right_icon = IMG.right
-        local up_icon    = IMG.up
-        local down_icon  = IMG.down
-        local l1_icon    = IMG.L1
-        local r1_icon    = IMG.R1
+        local left_icon   = IMG.left
+        local right_icon  = IMG.right
+        local up_icon     = IMG.up
+        local down_icon   = IMG.down
+        local l1_icon     = IMG.L1
+        local r1_icon     = IMG.R1
         local square_icon = IMG.square
-        local safe = layout.SAFE or {L = 24, R = 24}
-        local H_ROW = 24
-        local TITLE_TO_BLOCK = 30
-        local BLOCK_GAP = 22
-        local ROW_GAP = 6
-        local BUTTON_GAP = 64
-        local LABEL_X = safe.L + 24
-        local VALUE_X = LABEL_X + 185
-        local VALUE_W = UI.SCR.X - safe.R - VALUE_X - 12
-        local ICON_MARGIN = 24
+
+        local safe = layout.SAFE or {L = 40, R = 40}
         local icon_scale = 0.55
+
+        local SECTION_TOP_GAP    = 22  -- gap below the title before the first section
+        local SECTION_HEADER_H   = 22  -- height occupied by a section header line
+        local SECTION_GAP        = 14  -- gap between the last row of a section and the next section header
+        local ROW_H              = 24
+        local ROW_GAP            = 6   -- gap between rows inside the same section
+
+        local LABEL_X = safe.L + 24
+        local LABEL_W = 220
+        local HINT_W  = 56              -- wide enough for two icons side by side
+        local HINT_X  = LABEL_X + LABEL_W + 6
+        local VALUE_X = HINT_X + HINT_W + 8
+        local VALUE_W = UI.SCR.X - safe.R - VALUE_X
+        if VALUE_W < 80 then VALUE_W = 80 end
+
+        local accent_color = (UI.COLORS and UI.COLORS.TEXT_PRIMARY) or UI.CCOL.YELLOW
+        local label_color  = UI.CCOL.GREY
+        local value_color  = UI.CCOL.GREY
+        local muted_color  = Color.new(128, 128, 128, 110)
 
         local function IconSize(icon)
           if icon == nil then return 0, 0 end
@@ -2110,12 +2142,39 @@ UI = {
           return icon_w, icon_h
         end
 
+        local function DrawSectionHeader(text, row_y)
+          Font.ftPrint(BFONT, LABEL_X, row_y, 0, UI.SCR.X, 16, text, accent_color)
+        end
+
         local function DrawLabel(text, row_y, color)
-          Font.ftPrint(BFONT, LABEL_X, row_y, 0, UI.SCR.X, 16, text, color or UI.CCOL.GREY)
+          Font.ftPrint(BFONT, LABEL_X, row_y, 0, LABEL_W, 16, text, color or label_color)
         end
 
         local function DrawValue(text, row_y, color)
-          Font.ftPrint(BFONT, VALUE_X, row_y, 0, VALUE_W, 16, text, color or UI.CCOL.GREY)
+          Font.ftPrint(BFONT, VALUE_X, row_y, 0, VALUE_W, 16, text, color or value_color)
+        end
+
+        local function DrawHint1(icon, row_y)
+          if icon == nil then return end
+          local w, h = IconSize(icon)
+          local x = math.floor(HINT_X + ((HINT_W - w) / 2))
+          local y_off = row_y + math.floor((ROW_H - h) / 2)
+          Graphics.drawScaleImage(icon, x, y_off, w, h, label_color)
+        end
+
+        local function DrawHint2(icon_a, icon_b, row_y)
+          if icon_a == nil and icon_b == nil then return end
+          local wa, ha = IconSize(icon_a)
+          local wb, hb = IconSize(icon_b)
+          local gap = 6
+          local total_w = wa + gap + wb
+          local start_x = math.floor(HINT_X + ((HINT_W - total_w) / 2))
+          if icon_a ~= nil then
+            Graphics.drawScaleImage(icon_a, start_x, row_y + math.floor((ROW_H - ha) / 2), wa, ha, label_color)
+          end
+          if icon_b ~= nil then
+            Graphics.drawScaleImage(icon_b, start_x + wa + gap, row_y + math.floor((ROW_H - hb) / 2), wb, hb, label_color)
+          end
         end
 
         local function TruncateMiddle(text, max_chars)
@@ -2128,73 +2187,70 @@ UI = {
           return string.sub(raw, 1, keep_left).."..."..string.sub(raw, -keep_right)
         end
 
-        local function DrawIconOnRow(icon, center_x, row_y)
-          if icon == nil then return end
-          local icon_w, icon_h = IconSize(icon)
-          local icon_x = math.floor(center_x - (icon_w / 2))
-          local icon_y = row_y + math.floor((H_ROW - icon_h) / 2)
-          Graphics.drawScaleImage(icon, icon_x, icon_y, icon_w, icon_h, UI.CCOL.GREY)
+        local function ValueColor(is_dirty, dim_when_clean)
+          if is_dirty then return accent_color end
+          if dim_when_clean then return muted_color end
+          return value_color
         end
 
-        local mode_text = tostring(mode.label or "")
+        local mode_text = tostring((mode and mode.label) or "")
         local video_mode = UI.VideoStandardModes[UI.VideoStandardIndex] or UI.VideoStandardModes[1]
         local video_mode_text = tostring((video_mode and video_mode.label) or "")
         local profile_text = "Profile "..UI.ProfileQuery.curopt
         local draft_pop_path = tostring(UI.PopstarterPathDraft or PLDR.POPSTARTER_PATH or "")
         local draft_dkw_path = tostring(UI.DkwdrvPathDraft or PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
-        local pop_path_label = "POPStarter Path"
-        local pop_path_value = TruncateMiddle(draft_pop_path, 46)
-        local dkwdrv_label = "DKWDRV Path"
-        local dkwdrv_value = TruncateMiddle(draft_dkw_path, 46)
+        local pop_path_value = TruncateMiddle(draft_pop_path, 38)
+        local dkwdrv_value   = TruncateMiddle(draft_dkw_path, 38)
 
-        local y = layout.TITLE_Y + TITLE_TO_BLOCK
+        -- 3 section headers + 5 rows + 2 intra-section row gaps + 2 between-section gaps.
+        local content_h = (3 * SECTION_HEADER_H)
+          + (5 * ROW_H)
+          + (2 * ROW_GAP)
+          + (2 * SECTION_GAP)
         local footer_top_y = (layout.FOOTER_ICON_Y or (UI.SCR.Y - (layout.BTN_BAR_SAFE_BOTTOM or 56))) - 24
-        local total_h = (9 * H_ROW) + (3 * BLOCK_GAP) + (8 * ROW_GAP) + BUTTON_GAP
-        if (y + total_h) > footer_top_y then
-          y = footer_top_y - total_h
+        local top_y = layout.TITLE_Y + SECTION_TOP_GAP
+        if (top_y + content_h) > footer_top_y then
+          top_y = footer_top_y - content_h
         end
-        if y < (layout.TITLE_Y + TITLE_TO_BLOCK) then
-          y = layout.TITLE_Y + TITLE_TO_BLOCK
+        if top_y < (layout.TITLE_Y + SECTION_TOP_GAP) then
+          top_y = layout.TITLE_Y + SECTION_TOP_GAP
         end
 
-        DrawLabel("BDMA", y)
-        y = y + H_ROW + ROW_GAP
+        local y = top_y
 
-        DrawLabel("Mode", y)
-        DrawIconOnRow(left_icon, VALUE_X - ICON_MARGIN, y)
-        DrawIconOnRow(right_icon, VALUE_X + 170, y)
-        DrawValue(mode_text, y)
-        y = y + H_ROW
-        y = y + BLOCK_GAP
+        -- Storage section
+        DrawSectionHeader("Storage", y)
+        y = y + SECTION_HEADER_H
+        DrawLabel("BDMA Mode", y)
+        DrawHint2(left_icon, right_icon, y)
+        DrawValue(mode_text, y, ValueColor(UI.BdmaDirty == true, false))
+        y = y + ROW_H + SECTION_GAP
 
+        -- Display section
+        DrawSectionHeader("Display", y)
+        y = y + SECTION_HEADER_H
         DrawLabel("Video Standard", y)
-        DrawIconOnRow(square_icon, LABEL_X + 168, y)
-        y = y + H_ROW + ROW_GAP
-        DrawValue(video_mode_text, y)
-        y = y + H_ROW
-        y = y + BLOCK_GAP
+        DrawHint1(square_icon, y)
+        DrawValue(video_mode_text, y, ValueColor(UI.VideoStandardDirty == true, false))
+        y = y + ROW_H + SECTION_GAP
 
-        DrawLabel("POPStarter Profile", y)
-        y = y + H_ROW + ROW_GAP
+        -- POPSTARTER section
+        DrawSectionHeader("POPSTARTER", y)
+        y = y + SECTION_HEADER_H
+        DrawLabel("Profile", y)
+        DrawHint2(up_icon, down_icon, y)
+        DrawValue(profile_text, y, ValueColor(UI.ProfileDirty == true, false))
+        y = y + ROW_H + ROW_GAP
 
-        DrawLabel("Selected", y)
-        DrawIconOnRow(up_icon, VALUE_X - ICON_MARGIN, y)
-        DrawIconOnRow(down_icon, VALUE_X + 170, y)
-        DrawValue(profile_text, y)
-        y = y + H_ROW + ROW_GAP
+        DrawLabel("POPSTARTER Path", y)
+        DrawHint1(l1_icon, y)
+        DrawValue(pop_path_value, y, ValueColor(UI.PopPathDirty == true or UI.PopPathProfileDefaultDirty == true, true))
+        y = y + ROW_H + ROW_GAP
 
-        DrawLabel(pop_path_label, y)
-        DrawIconOnRow(l1_icon, LABEL_X + 168, y)
-        y = y + H_ROW
-        DrawValue(pop_path_value, y, Color.new(128,128,128, 110))
-        y = y + ROW_GAP
-        y = y + BLOCK_GAP
-
-        DrawLabel(dkwdrv_label, y)
-        DrawIconOnRow(r1_icon, LABEL_X + 168, y)
-        y = y + H_ROW + ROW_GAP
-        DrawValue(dkwdrv_value, y, Color.new(128,128,128, 110))
-        y = y + H_ROW + BUTTON_GAP
+        DrawLabel("DKWDRV Path", y)
+        DrawHint1(r1_icon, y)
+        DrawValue(dkwdrv_value, y, ValueColor(UI.DkwdrvDirty == true, true))
+        y = y + ROW_H
 
         Input_GetEvent()
 	        if UI.PathEditor.active then
