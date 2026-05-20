@@ -68,6 +68,13 @@ Last updated: 2026-05-19
 - Keep GitHub-built hardware artifacts self-identifying: package `BUILD_INFO.txt` and fail CI when expected embedded runtime markers are missing.
 - Keep README installation steps explicit enough for users who are not familiar with PS2 launcher layouts.
 
+### 4) Settings page UI redesign
+- 2026-05-19: implemented in `bin/POPSLDR/ui.lua` (MPROFILE scene). Layout regrouped into three named sections (Storage, Display, POPSTARTER) with single-row label/hint/value layout, consistent column metrics, and an accent-color dirty indicator on rows with unsaved changes. Input bindings unchanged from the prior version, so muscle memory and the S-* / U-* regression rows in `QA_REGRESSION_MATRIX.md` remain valid.
+- Hardware verification pending alongside the D-10/D-14/U-10 retest sequence. Walk the S-01..S-09 and U-01..U-11 rows on the next artifact to confirm parity.
+- Future polish (deferred, optional):
+  - Consider a clearer per-section visual divider (line/background) once we have a stable hardware baseline; the current accent-color header may be sufficient.
+  - Consider exposing the keyboard layout selector as its own row instead of only setting it from inside the path editor (`S-09` currently routes through the path editor on entry).
+
 ## Deferred Ideas
 - Additional themes/skins.
 - Broader network/backend support after SMB and ILINK have defined baselines.

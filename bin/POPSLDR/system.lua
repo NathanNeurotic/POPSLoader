@@ -1531,9 +1531,32 @@ local function ValidateHddPopstarterExecGate(exec_path, partition_context, sourc
   return true, nil
 end
 
+local function NormalizeHddPartitionLabelForMount(label)
+  local candidate = tostring(label or "")
+  if candidate == "" then
+    return nil
+  end
+  local already = ParseHddPartitionMount(candidate)
+  if already ~= nil then
+    return already
+  end
+  -- HDD game entries from ParseHddGameEntry use bare partition labels (e.g. "__.POPS")
+  -- because the prefixed form lives separately in PLDR.HDD.GAMEPARTS. Accept the
+  -- bare form by stripping trailing punctuation and prepending the canonical
+  -- "hdd0:" prefix before re-parsing.
+  if string.match(candidate, "^[Hh][Dd][Dd]%d:") ~= nil then
+    return nil
+  end
+  local stripped = string.gsub(candidate, "[:/]+$", "")
+  if stripped == "" then
+    return nil
+  end
+  return ParseHddPartitionMount("hdd0:"..stripped)
+end
+
 local function ResolveFallbackMountedPfsExecPath(exec_path, hdd_partition_label)
   local target_exec_path = tostring(exec_path or "")
-  local mount_part = ParseHddPartitionMount(hdd_partition_label)
+  local mount_part = NormalizeHddPartitionLabelForMount(hdd_partition_label)
   if target_exec_path == "" or mount_part == nil then
     return nil, "missing-target-or-partition"
   end
@@ -4129,20 +4152,31 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
     )
   end
   local rc
+  local exec_partition_context = nil
+  if context ~= nil and type(context.exec_partition_context) == "string" and context.exec_partition_context ~= "" then
+    exec_partition_context = context.exec_partition_context
+  end
+  local use_partition_api = exec_partition_context ~= nil
+    and reboot_iop ~= 0
+    and type(System.loadELFWithPartition) == "function"
   if exec_args ~= nil and #exec_args > 0 and unpack_fn ~= nil then
-    if context ~= nil and type(context.exec_partition_context) == "string" and context.exec_partition_context ~= "" then
-      rc = System.loadELF(exec_path, reboot_iop, unpack_fn(exec_args), context.exec_partition_context)
+    if use_partition_api then
+      rc = System.loadELFWithPartition(exec_path, reboot_iop, exec_partition_context, unpack_fn(exec_args))
     else
       rc = System.loadELF(exec_path, reboot_iop, unpack_fn(exec_args))
     end
   elseif exec_args ~= nil and #exec_args == 1 then
-    if context ~= nil and type(context.exec_partition_context) == "string" and context.exec_partition_context ~= "" then
-      rc = System.loadELF(exec_path, reboot_iop, exec_args[1], context.exec_partition_context)
+    if use_partition_api then
+      rc = System.loadELFWithPartition(exec_path, reboot_iop, exec_partition_context, exec_args[1])
     else
       rc = System.loadELF(exec_path, reboot_iop, exec_args[1])
     end
   else
-    rc = System.loadELF(exec_path, reboot_iop)
+    if use_partition_api then
+      rc = System.loadELFWithPartition(exec_path, reboot_iop, exec_partition_context)
+    else
+      rc = System.loadELF(exec_path, reboot_iop)
+    end
   end
   local elapsed_ms = Timer.getTime(LaunchState.fade_timer) - LaunchState.fade_start
   if elapsed_ms >= LaunchState.watchdog_ms then
@@ -4591,19 +4625,61 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     source_pfs_slot = popstarter_source_slot,
     launch_diagnostics = launch_diagnostics
   }
+  local fallback_succeeded = false
   if use_pfs_exec_fallback_without_partition_context then
     local fallback_exec_path, fallback_exec_reason = ResolveFallbackMountedPfsExecPath(popstarter_exec_path, hdd_partition_label)
     if fallback_exec_path ~= nil then
       popstarter_exec_path = fallback_exec_path
       launch_cmd.elf_path = popstarter_exec_path
-      local fallback_partition = ParseHddPartitionMount(hdd_partition_label)
+      local fallback_partition = NormalizeHddPartitionLabelForMount(hdd_partition_label)
       if fallback_partition ~= nil then
-        popstarter_partition_context = fallback_partition
+        -- BuildHddPartitionContext / ResolvePopstarterPartitionContext store
+        -- partition_context in "hdd0:PART:" form (with trailing colon); match
+        -- that convention here so the C-side is_partition_context_arg
+        -- validator in lua_loadELFWithPartition accepts it.
+        popstarter_partition_context = fallback_partition..":"
         popstarter_exec_info = BuildPartitionScopedExecInfo(popstarter_exec_path, popstarter_partition_context)
         popstarter_source_slot = popstarter_exec_info.source_pfs_slot
         popstarter_keep_slot = popstarter_source_slot
         popstarter_original_slot = popstarter_source_slot
       end
+      fallback_succeeded = true
+      -- Refresh context fields that LaunchEngine consumes. The context table
+      -- was built above from the pre-fallback locals; without this sync,
+      -- exec_path/partition_context/slot/cold-launch flags would all be
+      -- stale and the C side would receive the original mounted-PFS path
+      -- with no partition context, defeating the fallback's purpose.
+      context.exec_path = popstarter_exec_path
+      context.exec_partition_context = popstarter_partition_context
+      context.exec_partition_context_authoritative = popstarter_partition_context
+      context.exec_mounted_path = popstarter_exec_info.mounted_exec_path
+      context.exec_original_slot = popstarter_original_slot
+      context.exec_pfs_slot = popstarter_original_slot
+      context.source_pfs_slot = popstarter_source_slot
+      context.cold_external_launch = popstarter_partition_context ~= nil and popstarter_partition_context ~= ""
+      local refreshed_keep_slots = {}
+      if popstarter_keep_slot ~= nil then
+        refreshed_keep_slots[#refreshed_keep_slots + 1] = popstarter_keep_slot
+      end
+      if popstarter_original_slot ~= nil and popstarter_original_slot ~= popstarter_keep_slot then
+        refreshed_keep_slots[#refreshed_keep_slots + 1] = popstarter_original_slot
+      end
+      context.keep_hdd_slots = #refreshed_keep_slots > 0 and refreshed_keep_slots or nil
+      if popstarter_on_hdd then
+        local after_load = {}
+        for i = 1, #refreshed_keep_slots do
+          after_load[#after_load + 1] = refreshed_keep_slots[i]
+        end
+        context.keep_hdd_slots_after_load = after_load
+      end
+      launch_diagnostics.final_resolved_exec_path = popstarter_exec_path
+      launch_diagnostics.derived_partition_context = popstarter_partition_context
+      launch_diagnostics.source_pfs_slot = popstarter_source_slot
+      if popstarter_partition_context ~= nil and popstarter_partition_context ~= "" then
+        launch_diagnostics.derived_partition_context_reason = nil
+      end
+      context.launch_route = launch_route_pfs_fallback
+      launch_diagnostics.route = launch_route_pfs_fallback
     elseif strict_hdd_preexec_gate then
       BlockLaunchFailure(
         "POPSTARTER HDD pre-exec fallback reconstruction failed: "..tostring(fallback_exec_reason or "unknown error"),
@@ -4620,15 +4696,14 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
       )
       return
     end
-    context.launch_route = launch_route_pfs_fallback
-    launch_diagnostics.route = launch_route_pfs_fallback
   end
 
   if popstarter_on_hdd then
-    local should_run_gate = true
-    if use_pfs_exec_fallback_without_partition_context then
-      should_run_gate = false
-    end
+    -- Skip the gate only when the fallback actually reconstructed a
+    -- partition-aware exec path. If the fallback failed in non-strict mode,
+    -- let the gate run so its own partition-recovery logic can fire (or
+    -- fail loudly), instead of silently launching with stale context.
+    local should_run_gate = not fallback_succeeded
     if should_run_gate then
       local gate_ok, gate_err = ValidateHddPopstarterExecGate(popstarter_exec_path, popstarter_partition_context, popstarter_source_slot)
       if not gate_ok then
