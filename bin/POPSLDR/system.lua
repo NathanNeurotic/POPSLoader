@@ -183,6 +183,10 @@ local function ParseHddPartitionMount(path)
   if device ~= nil and part ~= nil and part ~= "" then
     return string.lower(device)..":"..part
   end
+  device, part = string.match(candidate, "^([Hh][Dd][Dd]%d):([^:/]+):$")
+  if device ~= nil and part ~= nil and part ~= "" then
+    return string.lower(device)..":"..part
+  end
   device, part = string.match(candidate, "^([Hh][Dd][Dd]%d):([^:/]+)/")
   if device ~= nil and part ~= nil and part ~= "" then
     return string.lower(device)..":"..part
@@ -365,11 +369,40 @@ local function BuildRawHddExecPathFromMounted(path)
   return partition..":pfs:/"..relpath, nil
 end
 
+local function NormalizeHddPartitionLabelForMount(label)
+  local candidate = tostring(label or "")
+  if candidate == "" then
+    return nil
+  end
+  local already = ParseHddPartitionMount(candidate)
+  if already ~= nil then
+    return already
+  end
+  -- HDD game entries from ParseHddGameEntry use bare partition labels (e.g. "__.POPS")
+  -- because the prefixed form lives separately in PLDR.HDD.GAMEPARTS. Accept the
+  -- bare form by stripping trailing punctuation and prepending the canonical
+  -- "hdd0:" prefix before re-parsing.
+  if string.match(candidate, "^[Hh][Dd][Dd]%d:") ~= nil then
+    return nil
+  end
+  local stripped = string.gsub(candidate, "[:/]+$", "")
+  if stripped == "" then
+    return nil
+  end
+  if string.find(stripped, "[/\\|:]") ~= nil then
+    return nil
+  end
+  if string.match(stripped, "^__") == nil and string.match(stripped, "^%+") == nil then
+    return nil
+  end
+  return ParseHddPartitionMount("hdd0:"..stripped)
+end
+
 local function BuildPartitionRecoveryCandidates(extra)
   local candidates = {}
   local seen = {}
   local function push(partition)
-    local normalized = ParseHddPartitionMount(partition)
+    local normalized = NormalizeHddPartitionLabelForMount(partition)
     if normalized ~= nil and seen[normalized] ~= true then
       seen[normalized] = true
       table.insert(candidates, normalized)
@@ -1531,34 +1564,10 @@ local function ValidateHddPopstarterExecGate(exec_path, partition_context, sourc
   return true, nil
 end
 
-local function NormalizeHddPartitionLabelForMount(label)
-  local candidate = tostring(label or "")
-  if candidate == "" then
-    return nil
-  end
-  local already = ParseHddPartitionMount(candidate)
-  if already ~= nil then
-    return already
-  end
-  -- HDD game entries from ParseHddGameEntry use bare partition labels (e.g. "__.POPS")
-  -- because the prefixed form lives separately in PLDR.HDD.GAMEPARTS. Accept the
-  -- bare form by stripping trailing punctuation and prepending the canonical
-  -- "hdd0:" prefix before re-parsing.
-  if string.match(candidate, "^[Hh][Dd][Dd]%d:") ~= nil then
-    return nil
-  end
-  local stripped = string.gsub(candidate, "[:/]+$", "")
-  if stripped == "" then
-    return nil
-  end
-  return ParseHddPartitionMount("hdd0:"..stripped)
-end
-
 local function ResolveFallbackMountedPfsExecPath(exec_path, hdd_partition_label)
   local target_exec_path = tostring(exec_path or "")
-  local mount_part = NormalizeHddPartitionLabelForMount(hdd_partition_label)
-  if target_exec_path == "" or mount_part == nil then
-    return nil, "missing-target-or-partition"
+  if target_exec_path == "" then
+    return nil, "missing-target"
   end
 
   local relpath = string.match(target_exec_path, "^pfs%d*:/(.+)$")
@@ -1566,7 +1575,18 @@ local function ResolveFallbackMountedPfsExecPath(exec_path, hdd_partition_label)
     return nil, "not-mounted-pfs-path"
   end
 
-  -- Direct reconstruction first: remount selected game partition into POPSTARTER slot.
+  local selected_game_part = NormalizeHddPartitionLabelForMount(hdd_partition_label)
+  local recovered_context = select(1, BuildHddPartitionContext(target_exec_path, { selected_game_part }))
+  local mount_part = ParseHddPartitionMount(recovered_context)
+  if mount_part == nil then
+    mount_part = selected_game_part
+  end
+  if mount_part == nil then
+    return nil, "missing-target-partition"
+  end
+
+  -- Direct reconstruction: remount the recovered POPSTARTER source partition
+  -- into the POPSTARTER slot and verify the mounted relpath still exists.
   local remount_ok, remount_prefix = MountHddPartitionTracked(mount_part, HDD_SLOT_POPSTARTER, FIO_MT_RDONLY)
   if not remount_ok or remount_prefix == nil then
     return nil, "slot3-remount-failed"
@@ -1574,7 +1594,7 @@ local function ResolveFallbackMountedPfsExecPath(exec_path, hdd_partition_label)
 
   local direct_candidate = BuildMountedReadablePath(remount_prefix, relpath)
   if direct_candidate ~= nil and ProbePathExists(direct_candidate) then
-    return direct_candidate, nil
+    return direct_candidate, nil, mount_part
   end
 
   return nil, "direct-slot3-probe-failed"
@@ -4078,7 +4098,8 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
       nil,
       nil,
       context and context.launch_route,
-      context and context.hdd_preexec_gate_mode
+      context and context.hdd_preexec_gate_mode,
+      context
     )
     return
   end
@@ -4095,7 +4116,8 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
       open_api,
       nil,
       context and context.launch_route,
-      context and context.hdd_preexec_gate_mode
+      context and context.hdd_preexec_gate_mode,
+      context
     )
     return
   end
@@ -4135,7 +4157,8 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
       nil,
       nil,
       context and context.launch_route,
-      context and context.hdd_preexec_gate_mode
+      context and context.hdd_preexec_gate_mode,
+      context
     )
     RestoreWorkingDirectory(previous_cwd)
     return
@@ -4627,11 +4650,13 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
   }
   local fallback_succeeded = false
   if use_pfs_exec_fallback_without_partition_context then
-    local fallback_exec_path, fallback_exec_reason = ResolveFallbackMountedPfsExecPath(popstarter_exec_path, hdd_partition_label)
+    local fallback_exec_path, fallback_exec_reason, fallback_partition = ResolveFallbackMountedPfsExecPath(popstarter_exec_path, hdd_partition_label)
     if fallback_exec_path ~= nil then
       popstarter_exec_path = fallback_exec_path
       launch_cmd.elf_path = popstarter_exec_path
-      local fallback_partition = NormalizeHddPartitionLabelForMount(hdd_partition_label)
+      if fallback_partition == nil then
+        fallback_partition = NormalizeHddPartitionLabelForMount(hdd_partition_label)
+      end
       if fallback_partition ~= nil then
         -- BuildHddPartitionContext / ResolvePopstarterPartitionContext store
         -- partition_context in "hdd0:PART:" form (with trailing colon); match
@@ -4691,6 +4716,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
         nil,
         nil,
         nil,
+        context and context.launch_route or nil,
         hdd_preexec_gate_mode,
         context
       )
@@ -4717,6 +4743,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
           nil,
           nil,
           nil,
+          context and context.launch_route or nil,
           hdd_preexec_gate_mode,
           context
         )
