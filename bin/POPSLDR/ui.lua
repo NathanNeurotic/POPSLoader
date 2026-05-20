@@ -455,6 +455,8 @@ UI = {
     HideTextMode = false;
     SettingsReturnScene = nil;
     SettingsEntryHideTextMode = false;
+    SettingsEntryKeyboardLayout = nil;
+    SettingsFocus = 1;
     SavingActive = false;
     SavingMessage = "Saving...";
     SavingAnimTick = 0;
@@ -1800,6 +1802,8 @@ UI = {
         UI.ProfileDirty = false
         UI.BdmaDirty = false
         UI.VideoStandardDirty = false
+        UI.SettingsEntryKeyboardLayout = tostring(UI.KeyboardLayoutDraft or (type(PLDR) == "table" and PLDR.KEYBOARD_LAYOUT) or "ABC")
+        UI.SettingsFocus = 1
         UI.SceneChange(UI.SCENES.MPROFILE)
         return true
       end
@@ -2084,98 +2088,52 @@ UI = {
         local profcnt = #PLDR.PROFILES
         Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Settings", UI.CCOL.GREY)
 
-        -- Pad-friendly Settings layout: grouped sections, single-row label/hint/value,
-        -- consistent column metrics, and a visible dirty indicator on rows the user
-        -- has changed but not yet saved. Input bindings are unchanged from the
-        -- previous version so muscle memory and the S-* / U-* regression rows in
-        -- QA_REGRESSION_MATRIX.md continue to match.
+        -- OPL-style focused-list Settings page.
         --
-        -- Layout map:
-        --   Title (centered, LFONT)
-        --   Section: Storage
-        --     BDMA Mode            [<-] [->]   <value>
-        --   Section: Display
-        --     Video Standard       [Square]    <value>
-        --   Section: POPSTARTER
-        --     Profile              [Up] [Down] <value>
-        --     POPSTARTER Path      [L1]        <value (truncated middle)>
-        --     DKWDRV Path          [R1]        <value (truncated middle)>
+        -- Layout: title -> stack of items (section headers, cycle rows, path
+        -- rows, action rows). A single highlight bar follows the focused row.
+        -- Section headers are non-selectable separators. The footer just shows
+        -- "Back / Select / Reset / Hide" -- the whole interaction is
+        -- D-pad-driven so the previous one-button-per-field hotkey grid is
+        -- gone (Square/L1/R1/Left/Right/Up/Down were each tied to a single
+        -- widget; that has been replaced with a single focused cursor).
         --
-        -- Hint icons sit between label and value so it is visually obvious which
-        -- button affects which row without having to remember the footer legend.
-
-        local mode = UI.BdmaModes[UI.BdmaModeIndex]
-        local left_icon   = IMG.left
-        local right_icon  = IMG.right
-        local up_icon     = IMG.up
-        local down_icon   = IMG.down
-        local l1_icon     = IMG.L1
-        local r1_icon     = IMG.R1
-        local square_icon = IMG.square
+        -- Bindings:
+        --   D-pad Up/Down: move focus, skipping section headers and spacers.
+        --   D-pad Left/Right: cycle the focused value (cycle items only).
+        --   X (CONFIRM): activate focused item -- cycles a cycle row,
+        --                opens the path editor for a path row, or fires the
+        --                action for an action row.
+        --   O (BACK): discard staged edits and return to the previous scene.
+        --   Start (Reset Defaults): keep the legacy "Reset Defaults" shortcut.
+        --   Select: hide-text toggle (global; handled outside this block).
+        --
+        -- Persistence: every field still routes through the same draft
+        -- variables and PLDR.CommitSettingsChanges contract used by the
+        -- previous Settings page, so S-01..S-09 and U-01..U-11 paths in
+        -- QA_REGRESSION_MATRIX.md continue to apply unchanged.
 
         local safe = layout.SAFE or {L = 40, R = 40}
-        local icon_scale = 0.55
 
-        local SECTION_TOP_GAP    = 22  -- gap below the title before the first section
-        local SECTION_HEADER_H   = 22  -- height occupied by a section header line
-        local SECTION_GAP        = 14  -- gap between the last row of a section and the next section header
-        local ROW_H              = 24
-        local ROW_GAP            = 6   -- gap between rows inside the same section
+        local accent_color    = (UI.COLORS and UI.COLORS.TEXT_PRIMARY) or UI.CCOL.YELLOW
+        local label_color     = UI.CCOL.GREY
+        local muted_color     = Color.new(128, 128, 128, 110)
+        local highlight_color = Color.new(50, 80, 160, 110)
+        local separator_color = Color.new(140, 200, 255, 60)
 
-        local LABEL_X = safe.L + 24
-        local LABEL_W = 220
-        local HINT_W  = 56              -- wide enough for two icons side by side
-        local HINT_X  = LABEL_X + LABEL_W + 6
-        local VALUE_X = HINT_X + HINT_W + 8
-        local VALUE_W = UI.SCR.X - safe.R - VALUE_X
+        local TITLE_GAP = 22
+        local SECTION_GAP_BEFORE = 10
+        local SECTION_HEADER_H = 22
+        local SPACER_H = 12
+        local ROW_H = 22
+
+        local SAFE_LEFT  = safe.L + 12
+        local SAFE_RIGHT = UI.SCR.X - safe.R - 12
+        local LABEL_X = safe.L + 28
+        local LABEL_W = 240
+        local VALUE_X = LABEL_X + LABEL_W + 24
+        local VALUE_W = SAFE_RIGHT - VALUE_X - 12
         if VALUE_W < 80 then VALUE_W = 80 end
-
-        local accent_color = (UI.COLORS and UI.COLORS.TEXT_PRIMARY) or UI.CCOL.YELLOW
-        local label_color  = UI.CCOL.GREY
-        local value_color  = UI.CCOL.GREY
-        local muted_color  = Color.new(128, 128, 128, 110)
-
-        local function IconSize(icon)
-          if icon == nil then return 0, 0 end
-          local icon_w = math.floor(Graphics.getImageWidth(icon) * icon_scale + 0.5)
-          local icon_h = math.floor(Graphics.getImageHeight(icon) * icon_scale + 0.5)
-          return icon_w, icon_h
-        end
-
-        local function DrawSectionHeader(text, row_y)
-          Font.ftPrint(BFONT, LABEL_X, row_y, 0, UI.SCR.X, 16, text, accent_color)
-        end
-
-        local function DrawLabel(text, row_y, color)
-          Font.ftPrint(BFONT, LABEL_X, row_y, 0, LABEL_W, 16, text, color or label_color)
-        end
-
-        local function DrawValue(text, row_y, color)
-          Font.ftPrint(BFONT, VALUE_X, row_y, 0, VALUE_W, 16, text, color or value_color)
-        end
-
-        local function DrawHint1(icon, row_y)
-          if icon == nil then return end
-          local w, h = IconSize(icon)
-          local x = math.floor(HINT_X + ((HINT_W - w) / 2))
-          local y_off = row_y + math.floor((ROW_H - h) / 2)
-          Graphics.drawScaleImage(icon, x, y_off, w, h, label_color)
-        end
-
-        local function DrawHint2(icon_a, icon_b, row_y)
-          if icon_a == nil and icon_b == nil then return end
-          local wa, ha = IconSize(icon_a)
-          local wb, hb = IconSize(icon_b)
-          local gap = 6
-          local total_w = wa + gap + wb
-          local start_x = math.floor(HINT_X + ((HINT_W - total_w) / 2))
-          if icon_a ~= nil then
-            Graphics.drawScaleImage(icon_a, start_x, row_y + math.floor((ROW_H - ha) / 2), wa, ha, label_color)
-          end
-          if icon_b ~= nil then
-            Graphics.drawScaleImage(icon_b, start_x + wa + gap, row_y + math.floor((ROW_H - hb) / 2), wb, hb, label_color)
-          end
-        end
 
         local function TruncateMiddle(text, max_chars)
           local raw = tostring(text or "")
@@ -2187,91 +2145,19 @@ UI = {
           return string.sub(raw, 1, keep_left).."..."..string.sub(raw, -keep_right)
         end
 
-        local function ValueColor(is_dirty, dim_when_clean)
-          if is_dirty then return accent_color end
-          if dim_when_clean then return muted_color end
-          return value_color
+        local function CycleIndex(current, delta, count)
+          if type(count) ~= "number" or count <= 0 then return current end
+          local n = ((current - 1 + delta) % count) + 1
+          return n
         end
 
-        local mode_text = tostring((mode and mode.label) or "")
-        local video_mode = UI.VideoStandardModes[UI.VideoStandardIndex] or UI.VideoStandardModes[1]
-        local video_mode_text = tostring((video_mode and video_mode.label) or "")
-        local profile_text = "Profile "..UI.ProfileQuery.curopt
-        local draft_pop_path = tostring(UI.PopstarterPathDraft or PLDR.POPSTARTER_PATH or "")
-        local draft_dkw_path = tostring(UI.DkwdrvPathDraft or PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
-        local pop_path_value = TruncateMiddle(draft_pop_path, 38)
-        local dkwdrv_value   = TruncateMiddle(draft_dkw_path, 38)
-
-        -- 3 section headers + 5 rows + 2 intra-section row gaps + 2 between-section gaps.
-        local content_h = (3 * SECTION_HEADER_H)
-          + (5 * ROW_H)
-          + (2 * ROW_GAP)
-          + (2 * SECTION_GAP)
-        local footer_top_y = (layout.FOOTER_ICON_Y or (UI.SCR.Y - (layout.BTN_BAR_SAFE_BOTTOM or 56))) - 24
-        local top_y = layout.TITLE_Y + SECTION_TOP_GAP
-        if (top_y + content_h) > footer_top_y then
-          top_y = footer_top_y - content_h
-        end
-        if top_y < (layout.TITLE_Y + SECTION_TOP_GAP) then
-          top_y = layout.TITLE_Y + SECTION_TOP_GAP
-        end
-
-        local y = top_y
-
-        -- Storage section
-        DrawSectionHeader("Storage", y)
-        y = y + SECTION_HEADER_H
-        DrawLabel("BDMA Mode", y)
-        DrawHint2(left_icon, right_icon, y)
-        DrawValue(mode_text, y, ValueColor(UI.BdmaDirty == true, false))
-        y = y + ROW_H + SECTION_GAP
-
-        -- Display section
-        DrawSectionHeader("Display", y)
-        y = y + SECTION_HEADER_H
-        DrawLabel("Video Standard", y)
-        DrawHint1(square_icon, y)
-        DrawValue(video_mode_text, y, ValueColor(UI.VideoStandardDirty == true, false))
-        y = y + ROW_H + SECTION_GAP
-
-        -- POPSTARTER section
-        DrawSectionHeader("POPSTARTER", y)
-        y = y + SECTION_HEADER_H
-        DrawLabel("Profile", y)
-        DrawHint2(up_icon, down_icon, y)
-        DrawValue(profile_text, y, ValueColor(UI.ProfileDirty == true, false))
-        y = y + ROW_H + ROW_GAP
-
-        DrawLabel("POPSTARTER Path", y)
-        DrawHint1(l1_icon, y)
-        DrawValue(pop_path_value, y, ValueColor(UI.PopPathDirty == true or UI.PopPathProfileDefaultDirty == true, true))
-        y = y + ROW_H + ROW_GAP
-
-        DrawLabel("DKWDRV Path", y)
-        DrawHint1(r1_icon, y)
-        DrawValue(dkwdrv_value, y, ValueColor(UI.DkwdrvDirty == true, true))
-        y = y + ROW_H
-
-        Input_GetEvent()
-	        if UI.PathEditor.active then
-	          UI.PathEditor.HandleInput()
-	          UI.PathEditor.Draw()
-	          local labels, order = UI.Footer.ResolveLegend({
-	            order = UI.Footer.order_keyboard,
-	            order_id = "keyboard",
-	            circle = UI.Footer.labels.circle_other,
-	            cross = UI.Footer.labels.cross_confirm,
-	            square = UI.Footer.labels.square_backspace,
-	            start = "Save",
-	          })
-	          UI.Footer.Draw(labels, order)
-	          return
-        end
-        if UI.HandleGlobalInput(false) then return end
-
+        -- Session helpers (kept compatible with the previous Settings Play
+        -- so external state machines using them stay correct).
         local function clear_settings_session()
           UI.SettingsReturnScene = nil
           UI.SettingsEntryHideTextMode = false
+          UI.SettingsEntryKeyboardLayout = nil
+          UI.SettingsFocus = 1
         end
 
         local function restore_settings_session()
@@ -2412,9 +2298,9 @@ UI = {
           end
         end
 
-        if UI.Pad.Events.EXIT then queue_exit(UI.SCENES.CREDITS, true) end
-        if UI.Pad.Events.NAV_DOWN then
-          local next_opt = CLAMP(UI.ProfileQuery.curopt+1, 1, profcnt)
+        -- Field-specific helpers (used by item callbacks below).
+        local function CycleProfile(delta)
+          local next_opt = CycleIndex(UI.ProfileQuery.curopt, delta, profcnt)
           if next_opt ~= UI.ProfileQuery.curopt then
             UI.ProfileQuery.curopt = next_opt
             if not UI.PopPathDirty then
@@ -2425,56 +2311,23 @@ UI = {
             UI.ProfileDirty = true
           end
         end
-        if UI.Pad.Events.NAV_UP then
-          local next_opt = CLAMP(UI.ProfileQuery.curopt-1, 1, profcnt)
-          if next_opt ~= UI.ProfileQuery.curopt then
-            UI.ProfileQuery.curopt = next_opt
-            if not UI.PopPathDirty then
-              local profile = PLDR.PROFILES[UI.ProfileQuery.curopt]
-              UI.PopstarterPathDraft = tostring((profile and profile.ELF) or UI.PopstarterPathDraft or "")
-              UI.PopPathProfileDefaultDirty = true
-            end
-            UI.ProfileDirty = true
+
+        local keyboard_layouts = (UI.PathEditor and UI.PathEditor.layout_order) or {"ABC", "QWERTY", "DVORAK"}
+        local function CurrentKeyboardLayoutIndex()
+          local key = string.upper(tostring(UI.KeyboardLayoutDraft or "ABC"))
+          for i = 1, #keyboard_layouts do
+            if string.upper(tostring(keyboard_layouts[i])) == key then return i end
           end
+          return 1
         end
-        if UI.Pad.Events.L1 then
-          UI.PathEditor.Open("Edit POPStarter Path", UI.PopstarterPathDraft or "", function(path)
-            UI.PopstarterPathDraft = tostring(path or "")
-            UI.PopPathDirty = true
-            UI.PopPathProfileDefaultDirty = false
-            UI.ProfileDirty = true
-          end)
+        local function CycleKeyboardLayout(delta)
+          local n = #keyboard_layouts
+          if n <= 0 then return end
+          local idx = CycleIndex(CurrentKeyboardLayoutIndex(), delta, n)
+          UI.KeyboardLayoutDraft = keyboard_layouts[idx]
         end
-        if UI.Pad.Events.R1 then
-          UI.PathEditor.Open("Edit DKWDRV Path", UI.DkwdrvPathDraft or "", function(path)
-            UI.DkwdrvPathDraft = tostring(path or "")
-            UI.DkwdrvDirty = true
-            UI.ProfileDirty = true
-          end)
-        end
-        if UI.Pad.Events.NAV_RIGHT then
-          UI.BdmaModeIndex = UI.BdmaModeIndex + 1
-          if UI.BdmaModeIndex > #UI.BdmaModes then UI.BdmaModeIndex = 1 end
-          UI.BdmaDirty = true
-        end
-        if UI.Pad.Events.NAV_LEFT then
-          UI.BdmaModeIndex = UI.BdmaModeIndex - 1
-          if UI.BdmaModeIndex < 1 then UI.BdmaModeIndex = #UI.BdmaModes end
-          UI.BdmaDirty = true
-        end
-        if UI.Pad.Events.SQUARE then
-          UI.VideoStandardIndex = UI.VideoStandardIndex + 1
-          if UI.VideoStandardIndex > #UI.VideoStandardModes then
-            UI.VideoStandardIndex = 1
-          end
-          UI.VideoStandardDirty = true
-          UI.ProfileDirty = true
-        end
-        if UI.Pad.Events.BACK then
-          discard_settings_and_return()
-          return
-        end
-        if UI.Pad.Events.START then
+
+        local function ResetDefaults()
           local default_profile = tonumber(PLDR.DEFAULT_PROFILE) or 1
           local next_default = CLAMP(default_profile, 1, profcnt)
           if next_default ~= UI.ProfileQuery.curopt then
@@ -2524,15 +2377,296 @@ UI = {
           end
           UI.Notif_queue.add("Profile defaults restored")
         end
-        if UI.Pad.Events.CONFIRM then
-          queue_exit(UI.SCENES.MMAIN, true)
+
+        local function OpenPopstarterPathEditor()
+          UI.PathEditor.Open("Edit POPStarter Path", UI.PopstarterPathDraft or "", function(path)
+            UI.PopstarterPathDraft = tostring(path or "")
+            UI.PopPathDirty = true
+            UI.PopPathProfileDefaultDirty = false
+            UI.ProfileDirty = true
+          end)
         end
+
+        local function OpenDkwdrvPathEditor()
+          UI.PathEditor.Open("Edit DKWDRV Path", UI.DkwdrvPathDraft or "", function(path)
+            UI.DkwdrvPathDraft = tostring(path or "")
+            UI.DkwdrvDirty = true
+            UI.ProfileDirty = true
+          end)
+        end
+
+        local function KeyboardLayoutDirty()
+          local current = string.upper(tostring(UI.KeyboardLayoutDraft or "ABC"))
+          local entry = string.upper(tostring(UI.SettingsEntryKeyboardLayout or current))
+          return current ~= entry
+        end
+
+        local function HideTextDirty()
+          return (UI.HideTextMode == true) ~= (UI.SettingsEntryHideTextMode == true)
+        end
+
+        -- Build the items list. Sections and spacers are non-selectable
+        -- markers; cycle/path/action items respond to focus + activation.
+        local items = {}
+        local function AddSection(label)
+          table.insert(items, { kind = "section", label = label })
+        end
+        local function AddSpacer()
+          table.insert(items, { kind = "spacer" })
+        end
+        local function AddCycle(label, get_value, prev_fn, next_fn, dirty_fn)
+          table.insert(items, {
+            kind = "cycle",
+            label = label,
+            value = get_value,
+            prev = prev_fn,
+            next = next_fn,
+            dirty = dirty_fn
+          })
+        end
+        local function AddPath(label, get_value, open_fn, dirty_fn)
+          table.insert(items, {
+            kind = "path",
+            label = label,
+            value = get_value,
+            open = open_fn,
+            dirty = dirty_fn
+          })
+        end
+        local function AddAction(label, activate_fn, accent)
+          table.insert(items, {
+            kind = "action",
+            label = label,
+            activate = activate_fn,
+            accent = accent == true
+          })
+        end
+
+        AddSection("Storage")
+        AddCycle(
+          "BDMA Mode",
+          function() return tostring((UI.BdmaModes[UI.BdmaModeIndex] or UI.BdmaModes[1] or {}).label or "") end,
+          function() UI.BdmaModeIndex = CycleIndex(UI.BdmaModeIndex, -1, #UI.BdmaModes); UI.BdmaDirty = true end,
+          function() UI.BdmaModeIndex = CycleIndex(UI.BdmaModeIndex,  1, #UI.BdmaModes); UI.BdmaDirty = true end,
+          function() return UI.BdmaDirty == true end
+        )
+
+        AddSection("Display")
+        AddCycle(
+          "Video Standard",
+          function() return tostring((UI.VideoStandardModes[UI.VideoStandardIndex] or UI.VideoStandardModes[1] or {}).label or "") end,
+          function()
+            UI.VideoStandardIndex = CycleIndex(UI.VideoStandardIndex, -1, #UI.VideoStandardModes)
+            UI.VideoStandardDirty = true
+            UI.ProfileDirty = true
+          end,
+          function()
+            UI.VideoStandardIndex = CycleIndex(UI.VideoStandardIndex,  1, #UI.VideoStandardModes)
+            UI.VideoStandardDirty = true
+            UI.ProfileDirty = true
+          end,
+          function() return UI.VideoStandardDirty == true end
+        )
+        AddCycle(
+          "Hide UI Text",
+          function() return UI.HideTextMode and "Hidden" or "Visible" end,
+          function() UI.SetHideTextMode(not UI.HideTextMode, false) end,
+          function() UI.SetHideTextMode(not UI.HideTextMode, false) end,
+          HideTextDirty
+        )
+
+        AddSection("POPSTARTER")
+        AddCycle(
+          "Profile",
+          function() return "Profile "..tostring(UI.ProfileQuery.curopt) end,
+          function() CycleProfile(-1) end,
+          function() CycleProfile( 1) end,
+          function() return UI.ProfileDirty == true end
+        )
+        AddPath(
+          "POPSTARTER Path",
+          function() return TruncateMiddle(UI.PopstarterPathDraft or PLDR.POPSTARTER_PATH or "", 40) end,
+          OpenPopstarterPathEditor,
+          function() return UI.PopPathDirty == true or UI.PopPathProfileDefaultDirty == true end
+        )
+        AddPath(
+          "DKWDRV Path",
+          function() return TruncateMiddle(UI.DkwdrvPathDraft or PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF", 40) end,
+          OpenDkwdrvPathEditor,
+          function() return UI.DkwdrvDirty == true end
+        )
+        AddCycle(
+          "Keyboard Layout",
+          function() return string.upper(tostring(UI.KeyboardLayoutDraft or "ABC")) end,
+          function() CycleKeyboardLayout(-1) end,
+          function() CycleKeyboardLayout( 1) end,
+          KeyboardLayoutDirty
+        )
+
+        AddSpacer()
+        AddAction("Save Changes",   function() queue_exit(UI.SCENES.MMAIN, true) end, true)
+        AddAction("Reset Defaults", function() ResetDefaults() end, false)
+        AddAction("Cancel",         function() discard_settings_and_return() end, false)
+
+        -- Focus normalization: clamp + skip non-selectable rows.
+        local function IsSelectable(idx)
+          local it = items[idx]
+          return it ~= nil and it.kind ~= "section" and it.kind ~= "spacer"
+        end
+        if type(UI.SettingsFocus) ~= "number" or UI.SettingsFocus < 1 or UI.SettingsFocus > #items then
+          UI.SettingsFocus = 1
+        end
+        if not IsSelectable(UI.SettingsFocus) then
+          for i = 1, #items do
+            if IsSelectable(i) then UI.SettingsFocus = i; break end
+          end
+        end
+        local function MoveFocus(delta)
+          local n = #items
+          if n == 0 then return end
+          local cur = UI.SettingsFocus
+          for _ = 1, n do
+            cur = cur + delta
+            if cur < 1 then cur = n
+            elseif cur > n then cur = 1
+            end
+            if IsSelectable(cur) then
+              UI.SettingsFocus = cur
+              return
+            end
+          end
+        end
+
+        -- Compute total content height for top-Y placement.
+        local total_h = 0
+        for i = 1, #items do
+          local it = items[i]
+          if it.kind == "section" then
+            total_h = total_h + SECTION_HEADER_H + (i > 1 and SECTION_GAP_BEFORE or 0)
+          elseif it.kind == "spacer" then
+            total_h = total_h + SPACER_H
+          else
+            total_h = total_h + ROW_H
+          end
+        end
+        local footer_top_y = (layout.FOOTER_ICON_Y or (UI.SCR.Y - (layout.BTN_BAR_SAFE_BOTTOM or 56))) - 18
+        local top_y = layout.TITLE_Y + TITLE_GAP
+        if (top_y + total_h) > footer_top_y then
+          top_y = footer_top_y - total_h
+        end
+        if top_y < (layout.TITLE_Y + TITLE_GAP) then
+          top_y = layout.TITLE_Y + TITLE_GAP
+        end
+
+        -- Draw
+        local function DrawHighlight(row_y)
+          Graphics.drawRect(SAFE_LEFT, row_y - 2, SAFE_RIGHT - SAFE_LEFT, ROW_H, highlight_color)
+        end
+
+        local function DrawSection(label, row_y)
+          Font.ftPrint(BFONT, LABEL_X, row_y, 0, UI.SCR.X, 16, label, accent_color)
+          Graphics.drawRect(SAFE_LEFT, row_y + SECTION_HEADER_H - 4, SAFE_RIGHT - SAFE_LEFT, 1, separator_color)
+        end
+
+        local function DrawRow(it, row_y, focused)
+          if focused and it.kind ~= "action" then
+            DrawHighlight(row_y)
+          end
+          local label_text_color = focused and accent_color or label_color
+          if it.kind == "action" then
+            -- Action items are centered, accent-tinted when focused.
+            local color = focused and accent_color or (it.accent and accent_color or label_color)
+            if focused then DrawHighlight(row_y) end
+            Font.ftPrint(BFONT, UI.SCR.X_MID, row_y, 8, UI.SCR.X, 16, it.label, color)
+            return
+          end
+          Font.ftPrint(BFONT, LABEL_X, row_y, 0, LABEL_W, 16, it.label, label_text_color)
+          local value_text = it.value and tostring(it.value() or "") or ""
+          local dirty = (it.dirty and it.dirty()) == true
+          local value_text_color
+          if dirty then
+            value_text_color = accent_color
+          elseif it.kind == "path" then
+            value_text_color = muted_color
+          else
+            value_text_color = label_color
+          end
+          Font.ftPrint(BFONT, VALUE_X, row_y, 0, VALUE_W, 16, value_text, value_text_color)
+          if focused and it.kind == "cycle" then
+            -- Small left/right arrow chevrons hint at D-pad cycling.
+            Font.ftPrint(BFONT, VALUE_X - 14, row_y, 0, 12, 16, "<", accent_color)
+            Font.ftPrint(BFONT, SAFE_RIGHT - 8, row_y, 0, 12, 16, ">", accent_color)
+          end
+        end
+
+        local y = top_y
+        for i = 1, #items do
+          local it = items[i]
+          if it.kind == "section" then
+            if i > 1 then y = y + SECTION_GAP_BEFORE end
+            DrawSection(it.label, y)
+            y = y + SECTION_HEADER_H
+          elseif it.kind == "spacer" then
+            y = y + SPACER_H
+          else
+            DrawRow(it, y, UI.SettingsFocus == i)
+            y = y + ROW_H
+          end
+        end
+
+        Input_GetEvent()
+        if UI.PathEditor.active then
+          UI.PathEditor.HandleInput()
+          UI.PathEditor.Draw()
+          local labels, order = UI.Footer.ResolveLegend({
+            order = UI.Footer.order_keyboard,
+            order_id = "keyboard",
+            circle = UI.Footer.labels.circle_other,
+            cross = UI.Footer.labels.cross_confirm,
+            square = UI.Footer.labels.square_backspace,
+            start = "Save",
+          })
+          UI.Footer.Draw(labels, order)
+          return
+        end
+        if UI.HandleGlobalInput(false) then return end
+
+        if UI.Pad.Events.NAV_UP   then MoveFocus(-1) end
+        if UI.Pad.Events.NAV_DOWN then MoveFocus( 1) end
+
+        local focused_item = items[UI.SettingsFocus]
+        if focused_item ~= nil then
+          if UI.Pad.Events.NAV_LEFT then
+            if focused_item.kind == "cycle" and focused_item.prev then focused_item.prev() end
+          end
+          if UI.Pad.Events.NAV_RIGHT then
+            if focused_item.kind == "cycle" and focused_item.next then focused_item.next() end
+          end
+          if UI.Pad.Events.CONFIRM then
+            if focused_item.kind == "cycle" and focused_item.next then
+              focused_item.next()
+            elseif focused_item.kind == "path" and focused_item.open then
+              focused_item.open()
+            elseif focused_item.kind == "action" and focused_item.activate then
+              focused_item.activate()
+              return
+            end
+          end
+        end
+
+        if UI.Pad.Events.BACK then
+          discard_settings_and_return()
+          return
+        end
+        if UI.Pad.Events.START then
+          ResetDefaults()
+        end
+
         local labels, order = UI.Footer.ResolveLegend({
-          order = UI.Footer.order_settings,
-          order_id = "settings",
+          order = UI.Footer.order_settings_save,
+          order_id = "settings_focus",
           circle = UI.Footer.labels.circle_other,
           cross = UI.Footer.labels.cross_select,
-          square = "Video Std",
           start = UI.Footer.labels.start_reset,
           select = UI.Footer.labels.select_toggle
         })

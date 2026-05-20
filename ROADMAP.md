@@ -69,11 +69,12 @@ Last updated: 2026-05-19
 - Keep README installation steps explicit enough for users who are not familiar with PS2 launcher layouts.
 
 ### 4) Settings page UI redesign
-- 2026-05-19: implemented in `bin/POPSLDR/ui.lua` (MPROFILE scene). Layout regrouped into three named sections (Storage, Display, POPSTARTER) with single-row label/hint/value layout, consistent column metrics, and an accent-color dirty indicator on rows with unsaved changes. Input bindings unchanged from the prior version, so muscle memory and the S-* / U-* regression rows in `QA_REGRESSION_MATRIX.md` remain valid.
-- Hardware verification pending alongside the D-10/D-14/U-10 retest sequence. Walk the S-01..S-09 and U-01..U-11 rows on the next artifact to confirm parity.
+- 2026-05-19: first pass, single-page label/hint/value layout grouped into three sections with consistent metrics and a dirty indicator.
+- 2026-05-20: second pass moves to an OPL-style focused-list model. D-pad Up/Down moves a highlight bar between rows (skipping section headers and spacers); D-pad Left/Right cycles the focused value; X activates the focused row (cycles a cycle row, opens the path editor for a path row, or fires the menu action for an action row); O discards and exits; Start still resets defaults; Select still toggles hide-text. Adds Keyboard Layout as its own cycle row and surfaces Save Changes / Reset Defaults / Cancel as menu items at the bottom. The Square / L1 / R1 / Triangle one-button-per-field shortcuts are gone -- the whole interaction is D-pad-driven.
+- Hardware verification pending alongside the D-10/D-14/U-10 retest sequence. Walk the S-01..S-09 and U-01..U-11 rows on the next artifact to confirm parity (Square no longer toggles Video Standard; cycle it via Left/Right or X on the focused row).
 - Future polish (deferred, optional):
-  - Consider a clearer per-section visual divider (line/background) once we have a stable hardware baseline; the current accent-color header may be sufficient.
-  - Consider exposing the keyboard layout selector as its own row instead of only setting it from inside the path editor (`S-09` currently routes through the path editor on entry).
+  - If we grow Settings beyond ~14 visible rows, add scrolling.
+  - Consider grouping into category sub-pages (OPL pattern: top-level lists categories, each opens a child page) once there are more settings to justify the navigation cost.
 
 ## Deferred Ideas
 - Additional themes/skins.
