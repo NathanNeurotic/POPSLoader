@@ -48,6 +48,10 @@ for x = 1, #IMG_REGISTRATIONS do
   IMG_SOURCES[name] = path
 end
 
+local IMG_FALLBACKS = {
+  default = "missing"
+}
+
 local IMG_FAILED = {}
 
 IMG = setmetatable({}, {
@@ -64,6 +68,13 @@ IMG = setmetatable({}, {
     end
 
     if img == nil then
+      local fallback_key = IMG_FALLBACKS[key]
+      if fallback_key ~= nil and fallback_key ~= key then
+        local fallback_img = tbl[fallback_key]
+        if fallback_img ~= nil then
+          return fallback_img
+        end
+      end
       IMG_FAILED[key] = true
       return nil
     end

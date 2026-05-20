@@ -60,6 +60,14 @@ endif
 
 BIN2S = $(PS2SDK)/bin/bin2c
 
+# `default.png` is an optional cover placeholder. When it is absent from the
+# checkout, the runtime falls back to the required `MISSING.png` asset.
+OPTIONAL_EMBEDDED_RSC =
+ifneq ($(wildcard bin/POPSLDR/IMG/default.png),)
+OPTIONAL_EMBEDDED_RSC += asset_default_png.o
+EE_CXXFLAGS += -DHAVE_ASSET_DEFAULT_PNG=1
+endif
+
 #-------------------------- App Content ---------------------------#
 EXT_LIBS = modules/ds34usb/ee/libds34usb.a modules/ds34bt/ee/libds34bt.a
 
@@ -83,7 +91,7 @@ EMBEDDED_RSC = boot.o builtin_font.o \
 	asset_bdhdd_png.o asset_bg_png.o asset_bkg_png.o asset_bgm_png.o asset_disc_png.o asset_splash_bg_png.o \
 	asset_splash_logo_png.o asset_splash_appname_png.o asset_splash_credits_png.o asset_select_png.o \
 	asset_start_png.o asset_triangle_png.o asset_circle_png.o asset_cross_png.o asset_l1_png.o asset_r1_png.o asset_r2_png.o asset_square_png.o \
-	asset_frame_png.o asset_default_png.o asset_missing_png.o \
+	asset_frame_png.o asset_missing_png.o $(OPTIONAL_EMBEDDED_RSC) \
 	asset_left_png.o asset_right_png.o asset_up_png.o asset_down_png.o \
 	asset_system_lua.o asset_ui_lua.o asset_images_lua.o asset_pops_profiles_lua.o asset_boot_adp.o \
 	asset_usbd_irx_usbexfat.o asset_usbhdfsd_irx_usbexfat.o asset_usbd_irx_mx4sio.o asset_usbhdfsd_irx_mx4sio.o \

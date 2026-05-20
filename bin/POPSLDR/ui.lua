@@ -1911,7 +1911,7 @@ UI = {
               preview_img = IMG.missing
             end
           else
-            preview_img = IMG.default
+            preview_img = IMG.default or IMG.missing
           end
           local draw_x = preview_x
           local draw_y = preview_y

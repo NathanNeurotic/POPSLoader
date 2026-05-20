@@ -385,7 +385,14 @@ static int ExecuteViaEmbeddedLoader(const char *partition_context, const char *l
 		}
 	}
 
-	if (!has_valid_target_argv0(extra_argc, argv)) {
+	/* The child loader synthesizes a default target argv0 from the load path
+	 * when extra_argc == 0 (see loader.c:build_default_target_arg0). Allow
+	 * argc == 0 through so that generic, non-HDD partition-aware paths can
+	 * rely on the documented default-argv contract. POPSTARTER-specific
+	 * argv0 enforcement still happens in ExecuteHddBackedViaEmbeddedLoader
+	 * before this is reached.
+	 */
+	if (extra_argc > 0 && !has_valid_target_argv0(extra_argc, argv)) {
 		return -7;
 	}
 

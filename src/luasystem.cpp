@@ -981,23 +981,14 @@ static int lua_loadELF(lua_State *L)
 	size_t size;
 	const char *elftoload = luaL_checklstring(L, 1, &size);
 	int rebootIOP = luaL_checkinteger(L, 2);
-	const char *partition_context = NULL;
 	static char arg_storage[2048];
 	static char *argv_static[33];
 	int rc;
 	int arg_count = 0;
-	int arg_end = argc;
 	size_t storage_offset = 0;
 
-	if (rebootIOP != 0 && argc >= 4 && !lua_isnil(L, argc)) {
-		const char *maybe_partition = luaL_checkstring(L, argc);
-		if (is_partition_context_arg(maybe_partition)) {
-			partition_context = maybe_partition;
-		}
-	}
-
-	DPRINTF("# Loading ELF '%s' iop_reboot=%d, extra_args=%d\n", elftoload, rebootIOP, arg_end - 2);
-	for (int index = 3; index <= arg_end; index++) {
+	DPRINTF("# Loading ELF '%s' iop_reboot=%d, extra_args=%d\n", elftoload, rebootIOP, argc - 2);
+	for (int index = 3; index <= argc; index++) {
 		const char *arg = luaL_checkstring(L, index);
 		size_t len = strlen(arg) + 1;
 		if (arg_count >= 32) {
@@ -1016,11 +1007,7 @@ static int lua_loadELF(lua_State *L)
 
 	if (arg_count > 0) {
 		if (rebootIOP != 0) {
-			if (partition_context != NULL && partition_context[0] != '\0') {
-				rc = LoadELFFromFileExecPS2RebootIOPWithPartition(elftoload, partition_context, arg_count, argv_static);
-			} else {
-				rc = LoadELFFromFileExecPS2RebootIOP(elftoload, arg_count, argv_static);
-			}
+			rc = LoadELFFromFileExecPS2RebootIOP(elftoload, arg_count, argv_static);
 		} else {
 			rc = LoadELFFromFileExecPS2(elftoload, arg_count, argv_static);
 		}
@@ -1031,13 +1018,61 @@ static int lua_loadELF(lua_State *L)
 
 	DPRINTF("# Loading ELF argv0 default (argc=0)\n");
 	if (rebootIOP != 0) {
-		if (partition_context != NULL && partition_context[0] != '\0') {
-			rc = LoadELFFromFileExecPS2RebootIOPWithPartition(elftoload, partition_context, 0, NULL);
-		} else {
-			rc = LoadELFFromFileExecPS2RebootIOP(elftoload, 0, NULL);
-		}
+		rc = LoadELFFromFileExecPS2RebootIOP(elftoload, 0, NULL);
 	} else {
 		rc = LoadELFFromFile(elftoload, 0, NULL);
+	}
+	ClearExecKeepPfsMask();
+	lua_pushinteger(L, rc);
+	return 1;
+}
+
+// Partition-aware launch binding. The partition_context is passed out-of-band
+// to the embedded loader and MUST NOT be copied into the target argv. Use this
+// instead of the legacy System.loadELF(path, reboot_iop, args..., partition_ctx)
+// pattern, which leaked the partition_context string into target argv[N].
+static int lua_loadELFWithPartition(lua_State *L)
+{
+	int argc = lua_gettop(L);
+	if (argc < 3) return luaL_error(L, "%s(path, reboot_iop, partition_context, args...): not enough args", __FUNCTION__);
+	const char *elftoload = luaL_checkstring(L, 1);
+	int rebootIOP = luaL_checkinteger(L, 2);
+	const char *partition_context = luaL_checkstring(L, 3);
+	static char arg_storage[2048];
+	static char *argv_static[33];
+	int rc;
+	int arg_count = 0;
+	size_t storage_offset = 0;
+
+	if (partition_context == NULL || partition_context[0] == '\0' || !is_partition_context_arg(partition_context)) {
+		return luaL_error(L, "System.loadELFWithPartition: partition_context must look like \"hdd?:PART:\"");
+	}
+	if (rebootIOP == 0) {
+		return luaL_error(L, "System.loadELFWithPartition: partition-aware launch requires reboot_iop != 0");
+	}
+
+	DPRINTF("# WithPartition ELF '%s' partition='%s' extra_args=%d\n", elftoload, partition_context, argc - 3);
+	for (int index = 4; index <= argc; index++) {
+		const char *arg = luaL_checkstring(L, index);
+		size_t len = strlen(arg) + 1;
+		if (arg_count >= 32) {
+			return luaL_error(L, "System.loadELFWithPartition supports at most 32 extra arguments");
+		}
+		if ((storage_offset + len) > sizeof(arg_storage)) {
+			return luaL_error(L, "System.loadELFWithPartition argument storage exceeded");
+		}
+		memcpy(&arg_storage[storage_offset], arg, len);
+		argv_static[arg_count] = &arg_storage[storage_offset];
+		DPRINTF("#  argv[%d]='%s'\n", arg_count, argv_static[arg_count]);
+		storage_offset += len;
+		arg_count++;
+	}
+	argv_static[arg_count] = NULL;
+
+	if (arg_count > 0) {
+		rc = LoadELFFromFileExecPS2RebootIOPWithPartition(elftoload, partition_context, arg_count, argv_static);
+	} else {
+		rc = LoadELFFromFileExecPS2RebootIOPWithPartition(elftoload, partition_context, 0, NULL);
 	}
 	ClearExecKeepPfsMask();
 	lua_pushinteger(L, rc);
@@ -1370,6 +1405,7 @@ static const luaL_Reg System_functions[] = {
 	{"exitToBrowser",                  lua_exit},
 	{"getMCInfo",                 lua_getmcinfo},
 	{"loadELF",                 	lua_loadELF},
+	{"loadELFWithPartition",    	lua_loadELFWithPartition},
 	{"loadELFRebootIOP",        	lua_loadELFRebootIOP},
 	{"setExecKeepPfsMask",      lua_set_exec_keep_pfs_mask},
 	{"checkValidDisc",       lua_checkValidDisc},
