@@ -5,7 +5,7 @@ Last updated: 2026-05-20
 ## Status Snapshot
 - Core launcher functionality is present in code for MMCE, MX4SIO, HDD (PFS), USB, Disc (`DKWDRV`), settings persistence, cover preview, path editing, startup backend auto-init, and exit flows.
 - The shared default/Profile 1 local POPSTARTER baseline was restored by rolling back to the `BETA-10-play-CHECKPOINT2` resolver behavior; user hardware confirmed that fix.
-- Recorded hardware confirms `D-12` startup/Profile lookup is restored, `D-16` first-entry USB discovery is restored, and `D-15` non-HDD-POPSTARTER HDD-game launch is restored.
+- Recorded hardware previously confirmed `D-12` startup/Profile lookup is restored, `D-16` first-entry USB discovery is restored, and `D-15` non-HDD-POPSTARTER HDD-game launch was restored; a 2026-05-20 latest-artifact report regressed `D-15` again with USB boot + USB sidecar `POPSTARTER.ELF` + HDD game black-screening.
 - The main stabilization blocker is still HDD-backed `POPSTARTER.ELF` execution when the launcher, sidecar/CWD, or configured POPSTARTER path lives on HDD (`D-10`, `D-14`).
 - One 2026-03-29 artifact briefly moved `D-10` to a returned `rc=-1`, but later artifacts returned to black screen, so that was not a stable new boundary.
 - Current repo line uses the partition-aware HDD reboot contract, cold external-launch prep, separate exec-path reporting, and profile-path normalization while preserving the restored non-HDD POPSTARTER path.
@@ -22,7 +22,7 @@ Last updated: 2026-05-20
   - HDD game launched from HDD (PFS),
   - `POPSTARTER.ELF` resolved from HDD sidecar/CWD or configured HDD path,
   - current reported result: black-screen hang, or on recent readable-diagnostic artifacts returned pre-exec gate popups for partition-context resolution and generic `pfs:/...` accessibility.
-  - preserve `D-15`, `D-12`, `D-16`, `U-05`, and shared Profile 1/default sidecar behavior while iterating.
+  - restore and preserve `D-15`, `D-12`, `D-16`, `U-05`, and shared Profile 1/default sidecar behavior while iterating.
   - treat `D-14` as the paired non-HDD-game repro for the same HDD-backed POPSTARTER blocker.
   - fix source-confirmed handoff defects before broader experiments: stale Lua fallback context, plain-label fallback partition parsing, over-broad fallback gate skip, partition-context argv leakage, embedded-loader contract drift, mounted-PFS source-partition recovery, failure-popup diagnostic argument order, and generic-`pfs:/` gate probing.
   - use `QA_REGRESSION_MATRIX.md` for the full experiment chronology instead of rebuilding that ledger here.

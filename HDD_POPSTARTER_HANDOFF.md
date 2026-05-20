@@ -21,7 +21,8 @@ Repo and hardware ledger:
 - `QA_REGRESSION_MATRIX.md` records `D-10` as HDD boot / HDD game / HDD sidecar or CWD `POPSTARTER.ELF` failing with black screen.
 - `QA_REGRESSION_MATRIX.md` records `D-14` as non-HDD game with HDD-resident configured/Profile `POPSTARTER.ELF` failing with black screen.
 - `QA_REGRESSION_MATRIX.md` records `D-15` as passing after rollback/narrowing: USB boot plus USB sidecar/Profile 1 `POPSTARTER.ELF` can launch an HDD game.
-- `D-15` passing is the key separator. It means the remaining issue is not HDD game discovery, HDD game mount, or the POPSTARTER selector in general. The failure follows the executable location of `POPSTARTER.ELF`.
+- `QA_REGRESSION_MATRIX.md` also records a 2026-05-20 latest-artifact `D-15` regression: USB boot with USB sidecar/cwd `POPSTARTER.ELF`, then launching an HDD title, black-screened.
+- The historical `D-15` pass was the key separator because it showed the remaining issue was not HDD game discovery, HDD game mount, or the POPSTARTER selector in general. The 2026-05-20 `D-15` regression means that guardrail must be retested first on the next artifact.
 - One 2026-03-29 artifact moved `D-10` to `rc=-1 (returned after 22618 ms)`, but later artifacts returned to black screen. Treat that as an unstable boundary, not as the current steady-state failure mode.
 - A 2026-05-20 hardware screenshot from the latest `BETA-12-PLAY` artifact showed `D-10` returning to the launcher with `POPSTARTER HDD pre-exec gate failed: Cannot resolve HDD partition context`, `POP:pfs3:/POPS/POPSTARTER.ELF`, and `APP:hdd0:+OPL:pfs:/APPS/PS1_POPSLOADER/`.
 - Source follow-up found that the failure popup itself had two argument-shifted `BlockLaunchFailure()` calls, so `Rt:` showed the gate mode and `Gate:` showed the context table pointer. Treat screenshots from before that correction as useful for the high-level failure, but not for detailed route/gate diagnostics.
@@ -86,7 +87,7 @@ Note: findings 1-5 below were the 2026-05-19 audit inputs and have source change
 4. `System.loadELF(..., args..., partition_context)` leaks partition context into target argv.
    - `src/luasystem.cpp` detects a final partition-context argument, but does not reduce the arg range before copying arguments into `argv_static`.
    - Current HDD POPSTARTER calls can therefore turn target argv into `[selector, hdd0:PART:]`.
-   - Do not blindly re-add the older `arg_end = argc - 1` behavior. Repo history indicates that was intentionally removed to restore `System.loadELF(path, reboot_iop, args...)` forwarding. The safer fix is a distinct partition-aware Lua API.
+   - Do not pass partition context through the legacy `System.loadELF(path, reboot_iop, selector)` API. The safer fix is a distinct partition-aware Lua API.
 
 5. Generic embedded-loader default-argv contract is blocked.
    - `src/elf_loader/include/elf-loader.h` says partition-aware loads preserve caller args and synthesize `argv[0]` only when none are supplied.
@@ -131,7 +132,7 @@ As of the 2026-05-20 source, the 2026-05-19 Lua fallback/API/parent-loader audit
    - Add `System.loadELFWithPartition(path, reboot_iop, partition_context, args...)`.
    - In that function, collect target args only from the explicit args range. The partition context must never be copied into target argv.
    - Update `LaunchEngine()` to call this binding when `context.exec_partition_context` exists.
-   - Keep `System.loadELF(path, reboot_iop, args...)` behavior intact for USB/MMCE/MX4SIO/SMB/non-HDD and existing callers.
+   - Keep `System.loadELF(path, reboot_iop, selector)` behavior intact for USB/MMCE/MX4SIO/SMB/non-HDD and existing callers.
 
 3. Repair embedded-loader contract drift.
    - Keep the HDD POPSTARTER-specific `argv[0]` guard in `ExecuteHddBackedViaEmbeddedLoader()`.

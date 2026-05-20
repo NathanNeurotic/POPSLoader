@@ -981,35 +981,22 @@ static int lua_loadELF(lua_State *L)
 	size_t size;
 	const char *elftoload = luaL_checklstring(L, 1, &size);
 	int rebootIOP = luaL_checkinteger(L, 2);
-	static char arg_storage[2048];
-	static char *argv_static[33];
-	int rc;
-	int arg_count = 0;
-	size_t storage_offset = 0;
+	int extra_args = argc - 2;
+	static char selector_buf[256];
+	static char *argv_static[2];
 
-	DPRINTF("# Loading ELF '%s' iop_reboot=%d, extra_args=%d\n", elftoload, rebootIOP, argc - 2);
-	for (int index = 3; index <= argc; index++) {
-		const char *arg = luaL_checkstring(L, index);
-		size_t len = strlen(arg) + 1;
-		if (arg_count >= 32) {
-			return luaL_error(L, "System.loadELF supports at most 32 extra arguments");
-		}
-		if ((storage_offset + len) > sizeof(arg_storage)) {
-			return luaL_error(L, "System.loadELF argument storage exceeded");
-		}
-		memcpy(&arg_storage[storage_offset], arg, len);
-		argv_static[arg_count] = &arg_storage[storage_offset];
-		DPRINTF("#  argv[%d]='%s'\n", arg_count, argv_static[arg_count]);
-		storage_offset += len;
-		arg_count++;
-	}
-	argv_static[arg_count] = NULL;
-
-	if (arg_count > 0) {
+	DPRINTF("# Loading ELF '%s' iop_reboot=%d, extra_args=%d\n", elftoload, rebootIOP, extra_args);
+	if (extra_args > 0) {
+		const char *selector = luaL_checkstring(L, 3);
+		snprintf(selector_buf, sizeof(selector_buf), "%s", selector ? selector : "");
+		argv_static[0] = selector_buf;
+		argv_static[1] = NULL;
+		DPRINTF("# Loading ELF argv0='%s' argc=1\n", argv_static[0]);
+		int rc;
 		if (rebootIOP != 0) {
-			rc = LoadELFFromFileExecPS2RebootIOP(elftoload, arg_count, argv_static);
+			rc = LoadELFFromFileExecPS2RebootIOP(elftoload, 1, argv_static);
 		} else {
-			rc = LoadELFFromFileExecPS2(elftoload, arg_count, argv_static);
+			rc = LoadELFFromFileExecPS2(elftoload, 1, argv_static);
 		}
 		ClearExecKeepPfsMask();
 		lua_pushinteger(L, rc);
@@ -1017,6 +1004,7 @@ static int lua_loadELF(lua_State *L)
 	}
 
 	DPRINTF("# Loading ELF argv0 default (argc=0)\n");
+	int rc;
 	if (rebootIOP != 0) {
 		rc = LoadELFFromFileExecPS2RebootIOP(elftoload, 0, NULL);
 	} else {
@@ -1029,8 +1017,9 @@ static int lua_loadELF(lua_State *L)
 
 // Partition-aware launch binding. The partition_context is passed out-of-band
 // to the embedded loader and MUST NOT be copied into the target argv. Use this
-// instead of the legacy System.loadELF(path, reboot_iop, args..., partition_ctx)
-// pattern, which leaked the partition_context string into target argv[N].
+// instead of trying to pass partition_context through the legacy
+// System.loadELF(path, reboot_iop, selector) API. The legacy API preserves
+// POPSTARTER's normal one-argument selector contract for non-HDD launches.
 static int lua_loadELFWithPartition(lua_State *L)
 {
 	int argc = lua_gettop(L);

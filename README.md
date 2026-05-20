@@ -57,13 +57,15 @@ The separate `.github/workflows/opencode.yml` workflow is repository automation 
 Reported hardware issues currently being tracked are:
 - HDD-backed `POPSTARTER.ELF` handoff (`D-10`, `D-14`)
   - latest recorded hardware outcomes still fail when `POPSTARTER.ELF` itself is HDD-backed.
-  - `D-15` passing again isolates the remaining blocker to HDD-backed POPSTARTER execution, not HDD games in general.
+  - the historical `D-15` pass isolated the remaining blocker to HDD-backed POPSTARTER execution, not HDD games in general; the 2026-05-20 latest-artifact `D-15` regression is now a guardrail failure to retest first.
   - one 2026-03-29 artifact briefly moved `D-10` from a black screen to `rc=-1 (returned after 22618 ms)`, but later artifacts returned to a black screen, so that boundary was not stable.
   - current repo line keeps the partition-aware HDD reboot contract, cold external-launch prep, separate exec-path reporting, and profile-path normalization.
   - `HDD_POPSTARTER_HANDOFF.md` contains the 2026-05-19 source audit, current suspected failure path, known bad attempts, and recommended fix order.
   - detailed per-artifact experiment chronology lives in `QA_REGRESSION_MATRIX.md` and `DECISIONS.md`.
 - HDD game with non-HDD POPSTARTER (`D-15`)
   - user later confirmed on 2026-03-28 that USB boot + USB Profile 1 sidecar/cwd `POPSTARTER.ELF` + HDD game now passes on hardware.
+  - user reported a 2026-05-20 latest-artifact regression: USB boot with USB sidecar/cwd `POPSTARTER.ELF`, then launching an HDD title, black-screened.
+  - current source restores legacy `System.loadELF(path, reboot_iop, selector)` one-argument selector behavior for normal/non-HDD POPSTARTER launches; hardware result is `Unknown (verify on hardware)`.
 - `BOOT.ELF` after HDD runtime (`U-10`)
   - BOOT.ELF is reached, but later reported hardware said it could still misbehave after HDD runtime had already been initialized.
   - current working inference is that `U-10` may share the same underlying handoff/state-poisoning boundary as `D-10`, but that is not yet proven and must not be treated as an automatic fix dependency.
@@ -232,6 +234,8 @@ The build/package workflow uses the `ps2dev/ps2dev` container and validates pack
   - a later 2026-03-27 hardware report said the broader stripped-handoff HDD-game path also black-screened.
   - current source now removes Lua-side HDD game pre-mount/CWD preservation from this path and leaves only the normal selector handoff unless `POPSTARTER.ELF` itself is HDD/PFS-backed.
   - user later confirmed on 2026-03-28 that USB boot + USB sidecar/cwd `POPSTARTER.ELF` + HDD game passes on hardware.
+  - user reported a 2026-05-20 latest-artifact regression where that same shape black-screened.
+  - current source restores the legacy one-argument `System.loadELF` selector handoff for this normal/non-HDD POPSTARTER path; hardware result is `Unknown (verify on hardware)`.
 - Shared default/Profile 1 local POPSTARTER baseline:
   - reported failing with `Cant find POPSTARTER ELF` on 2026-03-27 when booted from USB with USB sidecar/cwd/Profile 1.
   - current source was rolled back to `BETA-10-play-CHECKPOINT2` shared resolver behavior for this path after the later unverified common-path changes failed to restore launch.
