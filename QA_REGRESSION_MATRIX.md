@@ -15,7 +15,7 @@ This matrix tracks current behavior across:
 - busy/progress overlays,
 - cover art behavior,
 - exit handoff behavior,
-- currently unimplemented menu options (`HDD (exFAT)`, `SMB (v1)`),
+- currently unimplemented menu options (`HDD (exFAT)`, `SMB (v1)`, `ILINK`),
 - release package validation gates,
 - repository automation workflows that are not runtime/hardware gates.
 
@@ -73,6 +73,7 @@ These gates are defined by `.github/workflows/compilation.yml`. The separate `.g
 | D-05 | HDD PFS unavailable | No usable HDD | Open HDD (PFS) | explicit HDD status/partition error notification |
 | D-06 | HDD exFAT option status | any setup | Select `HDD (exFAT)` | UI shows `Not Implemented Yet` |
 | D-07 | SMB option status | any setup | Select `SMB (v1)` | UI shows `Not Implemented Yet` |
+| D-07A | ILINK option status | any setup | Select `ILINK` | UI shows `Not Implemented Yet` |
 | D-08 | HDD POPS partition scan | `__.POPS`, `__.POPS0`, and one higher `__.POPSN` present | Open HDD (PFS) | titles from all present POPS partitions list in stable partition order |
 | D-09 | HDD duplicate title names | Same VCD filename exists in two POPS partitions | Launch each entry from HDD (PFS) | each entry launches from its own source partition |
 | D-10 | HDD POPSTARTER on HDD | POPSLoader and/or configured `POPSTARTER_PATH` points to HDD, including HDD sidecar/CWD resolution | Launch HDD title | POPSTARTER resolves from sidecar or configured HDD path without blocking launch or hanging on a black screen |
@@ -97,6 +98,7 @@ These gates are defined by `.github/workflows/compilation.yml`. The separate `.g
 | U-09 | Device-load progress overlay | Use a slow or large MMCE/MX4SIO/HDD/USB library | Open the device page and wait for list generation | A visible progress popup/overlay stays on-screen during scanning/list generation and advances through the scan instead of only jumping between coarse stage markers |
 | U-10 | BOOT.ELF after HDD page init | Open `HDD (PFS)` first so dependency checks and partition scans run | Return to main menu and launch `BOOT.ELF` from Exit | `BOOT.ELF` handoff succeeds without freezing or black-screening after HDD page access |
 | U-11 | Boot-device label | Boot from USB, MX4SIO, MMCE, and HDD | Reach the main menu | Main menu boot label reflects the detected boot device/backend family |
+| U-12 | Notification interrupt behavior | Trigger two or more notifications before the first fades out | Observe the on-screen notification | The newest notification appears immediately and older pending notifications do not backlog |
 
 ## Run Log Template
 | Date | Console | Storage Setup | IDs Run | Result |

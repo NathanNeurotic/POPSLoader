@@ -87,7 +87,7 @@ IOP_MODULES = iomanX.o fileXio.o \
 			  mx4sio_bd.o bdm_query.o
 
 EMBEDDED_RSC = boot.o builtin_font.o \
-	asset_usb_png.o asset_smb_png.o asset_mmce_png.o asset_mx4sio_png.o asset_apahdd_png.o \
+	asset_usb_png.o asset_smb_png.o asset_ilink_png.o asset_mmce_png.o asset_mx4sio_png.o asset_apahdd_png.o \
 	asset_bdhdd_png.o asset_bg_png.o asset_bkg_png.o asset_bgm_png.o asset_disc_png.o asset_splash_bg_png.o \
 	asset_splash_logo_png.o asset_splash_appname_png.o asset_splash_credits_png.o asset_select_png.o \
 	asset_start_png.o asset_triangle_png.o asset_circle_png.o asset_cross_png.o asset_l1_png.o asset_r1_png.o asset_r2_png.o asset_square_png.o \
@@ -128,6 +128,8 @@ $(EE_ASM_DIR)asset_usb_png.c: bin/POPSLDR/IMG/USB.png | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_usb_png
 $(EE_ASM_DIR)asset_smb_png.c: bin/POPSLDR/IMG/SMB.png | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_smb_png
+$(EE_ASM_DIR)asset_ilink_png.c: bin/POPSLDR/IMG/ILINK.png | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_ilink_png
 $(EE_ASM_DIR)asset_mmce_png.c: bin/POPSLDR/IMG/MMCE.png | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_mmce_png
 $(EE_ASM_DIR)asset_mx4sio_png.c: bin/POPSLDR/IMG/MX4SIO.png | $(EE_ASM_DIR)

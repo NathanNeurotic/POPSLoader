@@ -55,6 +55,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 - `Disc (DKWDRV)`: implemented in code.
 - `HDD (exFAT)`: not implemented.
 - `SMB (v1)`: not implemented.
+- `ILINK`: not implemented.
 
 ## Reported Hardware Status
 - Shared default/Profile 1 local POPSTARTER baseline:
@@ -143,6 +144,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 - Record concrete run logs in `QA_REGRESSION_MATRIX.md`.
 - Implement HDD exFAT menu flow.
 - Implement SMB menu flow.
+- Implement ILINK menu flow.
 - Decide whether a broader ART system is still needed beyond current sidecar/HDD-common cover support.
 
 ## Verification Status
