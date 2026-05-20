@@ -563,7 +563,8 @@ UI = {
       end;
       ALFA = 0x80;
       add = function (NOTIF)
-        table.insert(UI.Notif_queue.msg, NOTIF)
+        UI.Notif_queue.msg = { NOTIF }
+        UI.Notif_queue.ALFA = 0x90
       end;
       msg = {};
     };
@@ -2484,7 +2485,7 @@ UI = {
     };
     MainMenu = {
       OPT = 1;
-      opts = {"MMCE", "MX4SIO", "HDD (exFAT)", "HDD (PFS)", "USB", "SMB (v1)", "Disc (DKWDRV)"};
+      opts = {"MMCE", "MX4SIO", "HDD (exFAT)", "HDD (PFS)", "USB", "SMB (v1)", "ILINK", "Disc (DKWDRV)"};
       Carousel = {
         currentIndex = 1,
         targetIndex = 1,
@@ -2511,10 +2512,11 @@ UI = {
           ["MMCE"] = "MMCE",
           ["MX4SIO"] = "MX4SIO",
           ["HDD (exFAT)"] = "BDHDD",
-          ["HDD (PFS)"] = "APAHDD",
-          ["USB"] = "USB",
-          ["SMB (v1)"] = "SMB",
-          ["Disc (DKWDRV)"] = "DISC"
+	          ["HDD (PFS)"] = "APAHDD",
+	          ["USB"] = "USB",
+	          ["SMB (v1)"] = "SMB",
+	          ["ILINK"] = "ILINK",
+	          ["Disc (DKWDRV)"] = "DISC"
         }
         local icon_keys = {}
         for x = 1, #UI.MainMenu.opts do
@@ -2825,14 +2827,16 @@ UI = {
               UI.SceneChange(UI.SCENES.GUSBFAT)
             end, "Failed to load USB")
             if not ok then return end
-          elseif UI.MainMenu.OPT == 6 then
-            UI.Notif_queue.add("Not Implemented Yet")
-          elseif UI.MainMenu.OPT == 7 then
-            if type(System) == "table" and type(System.ensureCDFS) == "function" then
-              System.ensureCDFS()
-            end
-            UI.Modal.OpenDKWDRV()
-          end --because we still dont support SMB
+	          elseif UI.MainMenu.OPT == 6 then
+	            UI.Notif_queue.add("Not Implemented Yet")
+	          elseif UI.MainMenu.OPT == 7 then
+	            UI.Notif_queue.add("Not Implemented Yet")
+	          elseif UI.MainMenu.OPT == 8 then
+	            if type(System) == "table" and type(System.ensureCDFS) == "function" then
+	              System.ensureCDFS()
+	            end
+	            UI.Modal.OpenDKWDRV()
+	          end
         end
       end
     };

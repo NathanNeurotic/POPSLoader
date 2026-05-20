@@ -13,6 +13,8 @@ extern unsigned char asset_usb_png[];
 extern unsigned int size_asset_usb_png;
 extern unsigned char asset_smb_png[];
 extern unsigned int size_asset_smb_png;
+extern unsigned char asset_ilink_png[];
+extern unsigned int size_asset_ilink_png;
 extern unsigned char asset_mmce_png[];
 extern unsigned int size_asset_mmce_png;
 extern unsigned char asset_mx4sio_png[];
@@ -105,6 +107,7 @@ extern unsigned int size_asset_boot_adp;
 static const embedded_asset_t g_embedded_assets[] = {
 	ASSET_ENTRY("USB.png", asset_usb_png),
 	ASSET_ENTRY("SMB.png", asset_smb_png),
+	ASSET_ENTRY("ILINK.png", asset_ilink_png),
 	ASSET_ENTRY("MMCE.png", asset_mmce_png),
 	ASSET_ENTRY("MX4SIO.png", asset_mx4sio_png),
 	ASSET_ENTRY("APAHDD.png", asset_apahdd_png),
@@ -153,6 +156,7 @@ static const embedded_asset_t g_embedded_assets[] = {
 
 	ASSET_ENTRY("POPSLDR/IMG/USB.png", asset_usb_png),
 	ASSET_ENTRY("POPSLDR/IMG/SMB.png", asset_smb_png),
+	ASSET_ENTRY("POPSLDR/IMG/ILINK.png", asset_ilink_png),
 	ASSET_ENTRY("POPSLDR/IMG/MMCE.png", asset_mmce_png),
 	ASSET_ENTRY("POPSLDR/IMG/MX4SIO.png", asset_mx4sio_png),
 	ASSET_ENTRY("POPSLDR/IMG/APAHDD.png", asset_apahdd_png),

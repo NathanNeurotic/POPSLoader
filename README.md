@@ -50,6 +50,7 @@ The separate `.github/workflows/opencode.yml` workflow is repository automation 
 | Exit to `BOOT.ELF` | Implemented in code | Mixed; reached on hardware, but later reports said it misbehaved after HDD runtime init |
 | `HDD (exFAT)` | Not implemented | Not implemented |
 | `SMB (v1)` | Not implemented | Not implemented |
+| `ILINK` | Not implemented | Not implemented |
 
 ### Current known unresolved issues
 
@@ -183,6 +184,7 @@ The build/package workflow uses the `ps2dev/ps2dev` container and validates pack
 ### Not implemented
 - `HDD (exFAT)` menu flow
 - `SMB (v1)` menu flow
+- `ILINK` menu flow
 
 ### Implemented but still needing current-source hardware proof
 - PAL/NTSC menu asset proportions (`U-06`)

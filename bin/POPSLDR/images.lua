@@ -11,6 +11,7 @@
 local IMG_REGISTRATIONS = {
   {"USB", "USB.png"},
   {"SMB", "SMB.png"},
+  {"ILINK", "ILINK.png"},
   {"MMCE", "MMCE.png"},
   {"MX4SIO", "MX4SIO.png"},
   {"APAHDD", "APAHDD.png"},

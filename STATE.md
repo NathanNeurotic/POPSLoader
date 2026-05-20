@@ -55,6 +55,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 - `Disc (DKWDRV)`: implemented in code.
 - `HDD (exFAT)`: not implemented.
 - `SMB (v1)`: not implemented.
+- `ILINK`: not implemented.
 
 ## Reported Hardware Status
 - Shared default/Profile 1 local POPSTARTER baseline:
@@ -106,7 +107,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - current source also returns the actual embedded-loader `ExecPS2` result instead of collapsing it to `-1`, fixes `System.loadELF(path, reboot_iop, args...)` so it forwards all extra args instead of dropping everything after the first one, routes partition-aware HDD launches back through mounted-`pfs0:` `SifLoadElf` in the embedded loader so they match the reference loaders more closely once the parent has already remounted the target partition, normalizes stale canonical profile-path state so Profile 1/default no longer silently keeps another profile's HDD path, keeps caller-supplied POPSTARTER selector/extra args intended to match the repo's normal non-HDD POPSTARTER argv layout, and keeps the older iomanX-aware `fileXio` load path only as the fallback for direct `pfs:` / `hdd:` loads with no HDD partition context.
   - 2026-05-19 source audit found remaining handoff defects before new hardware retests: Lua mounted-PFS fallback can leave stale launch context, normal HDD game labels can fail fallback partition parsing, the fallback path can skip the pre-exec gate even when reconstruction failed, `System.loadELF(..., args..., partition_context)` can leak the partition context into target argv, and the child loader still uses `snprintf`/`strncat` despite older docs claiming that risk was avoided. See `HDD_POPSTARTER_HANDOFF.md`.
   - 2026-05-19 source change addresses the audit defects (excluding child-loader `snprintf` cleanup which would require regenerating the embedded loader blob): `ResolveFallbackMountedPfsExecPath` now accepts bare partition labels via `NormalizeHddPartitionLabelForMount`, `RunPOPStarterGame` syncs `context.exec_path`/`exec_partition_context`/`exec_*_slot`/`cold_external_launch`/`keep_hdd_slots*` and `launch_diagnostics` after a successful fallback, the HDD pre-exec gate is skipped only when the fallback actually reconstructed a path, `src/luasystem.cpp` exposes a dedicated `System.loadELFWithPartition(path, reboot_iop, partition_context, args...)` binding instead of overloading `System.loadELF` with a trailing partition_context (the trailing detection was removed so partition_context can no longer leak into target argv), `LaunchEngine` calls the new binding when `context.exec_partition_context` is set, and `ExecuteViaEmbeddedLoader` no longer rejects `argc == 0` so the child loader's documented default-argv synthesis is reachable. The POPSTARTER-specific `argv[0]` guard in `ExecuteHddBackedViaEmbeddedLoader` is unchanged.
-  - latest recorded hardware still ends in failure on later GitHub artifacts; the 2026-05-19 changes are repo-verified only and `D-10` remains `Unknown (verify on hardware)` for the new artifact.
+  - latest recorded hardware result on this `D-10` line is still FAIL on the previous artifacts; the 2026-05-19 changes are repo-verified only and `D-10` remains `Unknown (verify on hardware)` for the new artifact.
 - `D-14` HDD-backed POPSTARTER with non-HDD game:
   - reported failing on hardware.
   - repro: launch a non-HDD title while `POPSTARTER.ELF` itself is configured on HDD.
@@ -144,6 +145,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 - Record concrete run logs in `QA_REGRESSION_MATRIX.md`.
 - Implement HDD exFAT menu flow.
 - Implement SMB menu flow.
+- Implement ILINK menu flow.
 - Decide whether a broader ART system is still needed beyond current sidecar/HDD-common cover support.
 
 ## Verification Status

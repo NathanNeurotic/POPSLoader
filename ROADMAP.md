@@ -11,7 +11,7 @@ Last updated: 2026-05-19
 - Current repo line uses the partition-aware HDD reboot contract, cold external-launch prep, separate exec-path reporting, and profile-path normalization while preserving the restored non-HDD POPSTARTER path.
 - The latest EE-side HDD direct-load workaround was reverted after it did not fix `D-10` and coincided with a reported HDD-game regression when POPSTARTER stayed on the non-HDD boot device.
 - `HDD_POPSTARTER_HANDOFF.md` is the current source-audit handoff for this blocker. It separates source-confirmed defects from hardware-only unknowns and should be read before new `D-10` / `D-14` fix attempts.
-- `HDD (exFAT)` and `SMB (v1)` remain intentionally unimplemented menu entries.
+- `HDD (exFAT)`, `SMB (v1)`, and `ILINK` remain intentionally unimplemented menu entries.
 - Detailed experiment chronology lives in `QA_REGRESSION_MATRIX.md` and `DECISIONS.md`; `STATE.md` also summarizes the source-inferred Settings/Profile POPSTARTER path save/load integrity risk as `Unknown (verify on hardware)` without attributing `D-10`, `D-14`, or `U-10` to it.
 
 ## Immediate Priorities
@@ -54,6 +54,7 @@ Last updated: 2026-05-19
 ### 1) Unimplemented menu paths
 - Implement `HDD (exFAT)` flow.
 - Implement `SMB (v1)` flow.
+- Implement `ILINK` flow.
 
 ### 2) Art/asset behavior
 - Keep current cover behavior stable:
@@ -69,5 +70,5 @@ Last updated: 2026-05-19
 
 ## Deferred Ideas
 - Additional themes/skins.
-- Broader network backend support after SMB has a defined baseline.
+- Broader network/backend support after SMB and ILINK have defined baselines.
 - More ambitious artwork cache policy after current launch/runtime issues are stable.
