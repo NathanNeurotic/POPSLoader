@@ -25,6 +25,7 @@ Repo and hardware ledger:
 - One 2026-03-29 artifact moved `D-10` to `rc=-1 (returned after 22618 ms)`, but later artifacts returned to black screen. Treat that as an unstable boundary, not as the current steady-state failure mode.
 - A 2026-05-20 hardware screenshot from the latest `BETA-12-PLAY` artifact showed `D-10` returning to the launcher with `POPSTARTER HDD pre-exec gate failed: Cannot resolve HDD partition context`, `POP:pfs3:/POPS/POPSTARTER.ELF`, and `APP:hdd0:+OPL:pfs:/APPS/PS1_POPSLOADER/`.
 - Source follow-up found that the failure popup itself had two argument-shifted `BlockLaunchFailure()` calls, so `Rt:` showed the gate mode and `Gate:` showed the context table pointer. Treat screenshots from before that correction as useful for the high-level failure, but not for detailed route/gate diagnostics.
+- A later 2026-05-20 screenshot after readable diagnostics showed the next gate failure: `POPSTARTER is not accessible using exec path`, with configured/effective path `hdd0:__common:pfs:/POPS/POPSTARTER.ELF`, resolved POP path `pfs3:/POPS/POPSTARTER.ELF`, and exec path `pfs:/POPS/POPSTARTER.ELF`.
 
 Preserve these known-good or important flows while fixing:
 
@@ -59,6 +60,11 @@ Note: findings 1-5 below were the 2026-05-19 audit inputs and have source change
    - General recovery candidates still parsed only `hddN:`-prefixed partition names, so the plain `__.POPS` label from `ParseHddGameEntry()` did not participate in `BuildHddPartitionContext()` recovery.
    - The mounted-PFS fallback then tried only the selected game partition. That is too narrow when `POPSTARTER.ELF` was resolved from an already-mounted HDD source such as `pfs3:/POPS/POPSTARTER.ELF`.
    - Follow-up source change: `ParseHddPartitionMount()` now accepts the repo's own `hdd0:PART:` partition-context form, `NormalizeHddPartitionLabelForMount()` is used by the shared candidate builder for safe bare labels, and `ResolveFallbackMountedPfsExecPath()` first asks `BuildHddPartitionContext()` to recover the actual mounted POPSTARTER source partition before falling back to the selected HDD game partition.
+
+0a. The pre-exec gate was probing the C-side generic exec path as if it were a real mounted path.
+   - When partition context exists, `BuildPartitionScopedExecInfo()` intentionally normalizes a mounted POPSTARTER path like `pfs3:/POPS/POPSTARTER.ELF` to `pfs:/POPS/POPSTARTER.ELF` for the partition-aware C loader contract.
+   - `ValidateHddPopstarterExecGate()` then called `doesFileExist()` on that generic `pfs:/...` path, which is not a real slot-bound mount path on hardware.
+   - Follow-up source change: the gate now derives a real probe path from the recovered/recorded mounted prefix plus the exec relpath, while leaving the loader-facing `exec_path` unchanged.
 
 1. Mounted-PFS fallback is currently unreliable and can invalidate tests.
    - `RunPOPStarterGame()` builds `context` before the mounted-PFS fallback block.

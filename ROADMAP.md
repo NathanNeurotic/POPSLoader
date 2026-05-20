@@ -21,10 +21,10 @@ Last updated: 2026-05-20
   - POPSLoader booted from HDD,
   - HDD game launched from HDD (PFS),
   - `POPSTARTER.ELF` resolved from HDD sidecar/CWD or configured HDD path,
-  - current reported result: black-screen hang, or on the latest reported artifact a returned pre-exec gate popup that could not resolve partition context for `pfs3:/POPS/POPSTARTER.ELF`.
+  - current reported result: black-screen hang, or on recent readable-diagnostic artifacts returned pre-exec gate popups for partition-context resolution and generic `pfs:/...` accessibility.
   - preserve `D-15`, `D-12`, `D-16`, `U-05`, and shared Profile 1/default sidecar behavior while iterating.
   - treat `D-14` as the paired non-HDD-game repro for the same HDD-backed POPSTARTER blocker.
-  - fix source-confirmed handoff defects before broader experiments: stale Lua fallback context, plain-label fallback partition parsing, over-broad fallback gate skip, partition-context argv leakage, embedded-loader contract drift, mounted-PFS source-partition recovery, and failure-popup diagnostic argument order.
+  - fix source-confirmed handoff defects before broader experiments: stale Lua fallback context, plain-label fallback partition parsing, over-broad fallback gate skip, partition-context argv leakage, embedded-loader contract drift, mounted-PFS source-partition recovery, failure-popup diagnostic argument order, and generic-`pfs:/` gate probing.
   - use `QA_REGRESSION_MATRIX.md` for the full experiment chronology instead of rebuilding that ledger here.
 
 ### 2) External exit/launch re-validation

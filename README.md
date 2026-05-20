@@ -217,6 +217,7 @@ The build/package workflow uses the `ps2dev/ps2dev` container and validates pack
   - latest recorded hardware outcomes still fail when `POPSTARTER.ELF` itself is HDD-backed.
   - `D-15` passing again isolates the remaining blocker to HDD-backed POPSTARTER execution.
   - a 2026-05-20 artifact screenshot returned to the launcher with a pre-exec gate partition-context failure for `pfs3:/POPS/POPSTARTER.ELF`; the follow-up source change is repo-verified only until the next artifact is tested on hardware.
+  - a later readable screenshot showed the next pre-exec gate issue: the gate checked generic `pfs:/POPS/POPSTARTER.ELF` instead of a real mounted path.
   - one 2026-03-29 artifact briefly returned `rc=-1 (returned after 22618 ms)` instead of black-screening, but later artifacts returned to black screen, so that boundary is not treated as the stable current state.
   - current repo line keeps the partition-aware reboot contract, cold external-launch prep, separate exec-path reporting, and profile-path normalization.
   - see `QA_REGRESSION_MATRIX.md` and `DECISIONS.md` for the detailed experiment chronology.

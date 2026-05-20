@@ -1496,6 +1496,23 @@ local function ResolvePopstarterPartitionContext(path, resolved_path, preferred_
   return nil
 end
 
+local function BuildMountedExecProbePath(exec_path, mounted_prefix)
+  local candidate = tostring(exec_path or "")
+  local relpath = string.match(candidate, "^pfs%d*:/(.+)$")
+  if relpath == nil or relpath == "" then
+    relpath = select(2, ParseHddExecMountAndRelpath(candidate))
+  end
+  if relpath == nil or relpath == "" then
+    return candidate
+  end
+
+  local mounted_candidate = BuildMountedReadablePath(mounted_prefix, relpath)
+  if mounted_candidate ~= nil then
+    return mounted_candidate
+  end
+  return candidate
+end
+
 local function ValidateHddPopstarterExecGate(exec_path, partition_context, source_pfs_slot)
   local target_exec_path = tostring(exec_path or "")
   if target_exec_path == "" then
@@ -1552,13 +1569,17 @@ local function ValidateHddPopstarterExecGate(exec_path, partition_context, sourc
     mounted_prefix = prefix
   end
 
-  if not doesFileExist(target_exec_path) then
-    return false, "POPSTARTER is not accessible using exec path: "..target_exec_path
+  local mounted_probe_path = BuildMountedExecProbePath(target_exec_path, mounted_prefix)
+  if not doesFileExist(mounted_probe_path) then
+    return false, "POPSTARTER is not accessible using exec path: "..mounted_probe_path
   end
 
   local partition_scoped = BuildPartitionScopedExecPath(target_exec_path)
-  if partition_scoped ~= nil and not doesFileExist(partition_scoped) then
-    return false, "POPSTARTER partition-scoped path is not accessible: "..partition_scoped
+  if partition_scoped ~= nil then
+    local partition_probe_path = BuildMountedExecProbePath(partition_scoped, mounted_prefix)
+    if not doesFileExist(partition_probe_path) then
+      return false, "POPSTARTER partition-scoped path is not accessible: "..partition_probe_path
+    end
   end
 
   return true, nil
