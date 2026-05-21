@@ -534,20 +534,6 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 		return -2;
 	}
 
-	if (is_hdd_backed_exec_path(resolved_path)) {
-		/* SifLoadElf has already copied the ELF into EE RAM. For HDD-backed
-		 * handoff, drop stale PFS/SIF state before ExecPS2 so POPSTARTER
-		 * starts with the same clean runtime expected by the other HDD
-		 * launch paths.
-		 */
-		unmount_pfs_slots_for_exec(build_exec_keep_mask(resolved_path));
-		SifExitIopHeap();
-		SifExitRpc();
-		SifExitCmd();
-		FlushCache(0);
-		FlushCache(2);
-	}
-
 	ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc, argv);
 	return -1;
 }

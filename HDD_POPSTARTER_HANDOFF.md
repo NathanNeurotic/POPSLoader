@@ -120,7 +120,7 @@ Do not repeat these as if they were clean controls:
 
 ## Recommended Fix Order
 
-As of the latest 2026-05-20 source, the earlier Lua fallback/API/parent-loader audit fixes remain in source, but the normal HDD-backed POPSTARTER path has been simplified again because hardware evidence suggested the partition-aware route may be over-engineered. Normal `X` now keeps the resolved executable path, clears Lua partition context, skips the Lua HDD pre-exec gate/remount fallback, skips the embedded-loader reboot path, and calls `System.loadELF(path, 0, selector)`. Do not claim this as a hardware fix until a GitHub Actions artifact is tested.
+As of the latest 2026-05-20 source, the earlier Lua fallback/API/parent-loader audit fixes remain in source, but the normal HDD-backed POPSTARTER path has been simplified again because hardware evidence suggested the partition-aware route may be over-engineered. Normal `X` now keeps the resolved executable path, clears Lua partition context, skips the Lua HDD pre-exec gate/remount fallback, skips the embedded-loader reboot path, calls `System.loadELF(path, 0, selector)`, and no longer runs HDD-only parent cleanup immediately before `ExecPS2`. Do not claim this as a hardware fix until a GitHub Actions artifact is tested.
 
 Current simplification target:
 
@@ -136,6 +136,7 @@ Previous partition-aware route retained in source but not default:
 - Lua HDD pre-exec gate
 - mounted-PFS fallback/remount reconstruction
 - HDD embedded-loader reboot handoff
+- parent-side direct-path HDD pre-`ExecPS2` PFS/SIF cleanup
 
 1. Fix Lua fallback correctness first.
    - Normalize plain HDD partition labels before fallback. A helper should accept both `__.POPS` and `hdd0:__.POPS` and produce `hdd0:__.POPS`.
