@@ -4334,9 +4334,7 @@ local function ResolveHddPopstarterSelectorRoute(game_name, hdd_selector_mode, h
     return BuildHddPopstarterSelectorPathForPartition(game_name, hdd_selector_mode, partition), "hdd_partition_scoped"
   end
 
-  -- Fallback only for explicit, detectable mismatch: missing HDD partition label
-  -- while the partition-scoped selector contract was requested.
-  return BuildLiteralElfName(game_name), "fallback_basename_missing_partition"
+  return BuildLiteralElfName(game_name), "hdd_legacy_selector"
 end
 
 local function BuildPopstarterLaunchCommand(policy_name, device_page, game_name, hdd_selector_mode, hdd_partition_label, popstarter_on_hdd)
@@ -4402,10 +4400,15 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
   if configured_partition_context ~= nil and configured_partition_context ~= "" then
     popstarter_partition_context = configured_partition_context
   end
-  if popstarter_partition_context == nil and IsHddExecContextPath(popstarter) then
+  local popstarter_on_hdd = IsHddExecContextPath(popstarter)
+  local use_minimal_hdd_popstarter_exec = popstarter_on_hdd
+  if use_minimal_hdd_popstarter_exec then
+    popstarter_partition_context = nil
+    configured_partition_context = nil
+    launch_diagnostics.derived_partition_context_reason = "minimal_hdd_legacy_exec"
+  elseif popstarter_partition_context == nil and popstarter_on_hdd then
     launch_diagnostics.derived_partition_context_reason = "partition_unresolved"
   end
-  local popstarter_on_hdd = IsHddExecContextPath(popstarter)
   local popstarter_exec_path = popstarter
   local popstarter_exec_info = BuildPartitionScopedExecInfo(popstarter, popstarter_partition_context)
   local popstarter_source_slot = popstarter_exec_info.source_pfs_slot
@@ -4414,6 +4417,9 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
   local use_pfs_exec_fallback_without_partition_context = false
   local strict_hdd_preexec_gate = PLDR.STRICT_HDD_PREEXEC_GATE == true
   local hdd_preexec_gate_mode = strict_hdd_preexec_gate and "strict-hard-fail" or "fallback-mounted-pfs"
+  if use_minimal_hdd_popstarter_exec then
+    hdd_preexec_gate_mode = "minimal-legacy-load"
+  end
   local launch_route_pfs_fallback = "mounted-pfs-fallback"
   local normalized_popstarter_exec = string.lower(tostring(popstarter or ""))
   local normalized_game_location = string.lower(tostring(gamelocation or ""))
@@ -4425,6 +4431,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     or string.match(normalized_game_location, "^hdd%d:") ~= nil
   )
   if (not strict_hdd_preexec_gate)
+    and not use_minimal_hdd_popstarter_exec
     and popstarter_partition_context == nil
     and popstarter_is_mounted_pfs_exec
     and popstarter_on_hdd
@@ -4658,7 +4665,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     keep_slots[#keep_slots + 1] = popstarter_original_slot
   end
   local keep_slots_after_load = nil
-  if popstarter_on_hdd then
+  if popstarter_on_hdd and not use_minimal_hdd_popstarter_exec then
     keep_slots_after_load = {}
     for i = 1, #keep_slots do
       keep_slots_after_load[#keep_slots_after_load + 1] = keep_slots[i]
@@ -4781,7 +4788,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     end
   end
 
-  if popstarter_on_hdd then
+  if popstarter_on_hdd and not use_minimal_hdd_popstarter_exec then
     -- Skip the gate only when the fallback actually reconstructed a
     -- partition-aware exec path. If the fallback failed in non-strict mode,
     -- let the gate run so its own partition-recovery logic can fire (or

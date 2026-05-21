@@ -120,7 +120,21 @@ Do not repeat these as if they were clean controls:
 
 ## Recommended Fix Order
 
-As of the 2026-05-20 source, the 2026-05-19 Lua fallback/API/parent-loader audit fixes and the 2026-05-20 mounted-source recovery/diagnostic follow-up are implemented in source only. Do not claim them as hardware fixes until a GitHub Actions artifact is tested.
+As of the latest 2026-05-20 source, the earlier Lua fallback/API/parent-loader audit fixes remain in source, but the normal HDD-backed POPSTARTER path has been simplified again because hardware evidence suggested the partition-aware route may be over-engineered. Normal `X` now keeps the resolved executable path, clears Lua partition context, skips the Lua HDD pre-exec gate/remount fallback, and calls `System.loadELF(path, reboot_iop, selector)`. Do not claim this as a hardware fix until a GitHub Actions artifact is tested.
+
+Current simplification target:
+
+- Preserve the POPSTARTER selector `argv[0]` contract.
+- Preserve non-HDD POPSTARTER paths and `D-15`.
+- For HDD-resident `POPSTARTER.ELF`, solve only the execution of that ELF from HDD first.
+- Do not also manage the selected HDD game partition unless hardware proves POPSTARTER needs that help.
+
+Previous partition-aware route retained in source but not default:
+
+- `System.loadELFWithPartition(...)`
+- generic `pfs:/...` exec-path rewriting
+- Lua HDD pre-exec gate
+- mounted-PFS fallback/remount reconstruction
 
 1. Fix Lua fallback correctness first.
    - Normalize plain HDD partition labels before fallback. A helper should accept both `__.POPS` and `hdd0:__.POPS` and produce `hdd0:__.POPS`.
