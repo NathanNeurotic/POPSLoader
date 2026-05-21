@@ -4346,7 +4346,7 @@ local function BuildPopstarterLaunchCommand(policy_name, device_page, game_name,
   local argv = {argv0_selector}
   local reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
   if popstarter_on_hdd then
-    reboot_iop = 1
+    reboot_iop = 0
   elseif policy_name == "HDD" then
     reboot_iop = 0
   end

@@ -59,7 +59,7 @@ Reported hardware issues currently being tracked are:
   - latest recorded hardware outcomes still fail when `POPSTARTER.ELF` itself is HDD-backed.
   - the historical `D-15` pass isolated the remaining blocker to HDD-backed POPSTARTER execution, not HDD games in general; the 2026-05-20 latest-artifact `D-15` regression is now a guardrail failure to retest first.
   - one 2026-03-29 artifact briefly moved `D-10` from a black screen to `rc=-1 (returned after 22618 ms)`, but later artifacts returned to a black screen, so that boundary was not stable.
-  - current repo line now simplifies the default HDD-backed POPSTARTER attempt: it keeps the real resolved executable path, passes only the legacy selector arg, skips the Lua partition-aware gate/remount layer, and leaves the deeper partition-aware path as non-default source code until hardware proves it is needed.
+  - current repo line now simplifies the default HDD-backed POPSTARTER attempt: it keeps the real resolved executable path, passes only the legacy selector arg, uses the direct non-reboot `System.loadELF(...)` path, skips the Lua partition-aware gate/remount layer, and leaves the deeper partition-aware path as non-default source code until hardware proves it is needed.
   - `HDD_POPSTARTER_HANDOFF.md` contains the 2026-05-19 source audit, current suspected failure path, known bad attempts, and recommended fix order.
   - detailed per-artifact experiment chronology lives in `QA_REGRESSION_MATRIX.md` and `DECISIONS.md`.
 - HDD game with non-HDD POPSTARTER (`D-15`)
@@ -221,7 +221,7 @@ The build/package workflow uses the `ps2dev/ps2dev` container and validates pack
   - `D-15` passing again isolates the remaining blocker to HDD-backed POPSTARTER execution.
   - a 2026-05-20 artifact screenshot returned to the launcher with a pre-exec gate partition-context failure for `pfs3:/POPS/POPSTARTER.ELF`; the follow-up source change is repo-verified only until the next artifact is tested on hardware.
   - a later readable screenshot showed the next pre-exec gate issue: the gate checked generic `pfs:/POPS/POPSTARTER.ELF` instead of a real mounted path.
-  - current source pivots away from that over-engineered default path: normal `X` keeps the mounted/resolved POPSTARTER path, uses `System.loadELF(...)` with the legacy selector, reports `minimal-legacy-load`, and does not send Lua partition context.
+  - current source pivots away from that over-engineered default path: normal `X` keeps the mounted/resolved POPSTARTER path, uses direct non-reboot `System.loadELF(...)` with the legacy selector, reports `minimal-legacy-load`, and does not send Lua partition context.
   - one 2026-03-29 artifact briefly returned `rc=-1 (returned after 22618 ms)` instead of black-screening, but later artifacts returned to black screen, so that boundary is not treated as the stable current state.
   - the partition-aware reboot path remains in source for comparison, but it is no longer the normal `X` route for HDD-backed POPSTARTER.
   - see `QA_REGRESSION_MATRIX.md` and `DECISIONS.md` for the detailed experiment chronology.
