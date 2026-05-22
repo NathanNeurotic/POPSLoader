@@ -150,7 +150,11 @@ These gates are defined by `.github/workflows/compilation.yml`. The separate `.g
 | 2026-05-22 | D-10 Hardware | HDD Boot; diagnostic B0 POPSLOADER (direct fileXio load only); HDD POPSTARTER | D-10 | FAIL: black screen |
 | 2026-05-22 | D-10 Hardware | HDD Boot; diagnostic B3 POPSLOADER (direct fileXio load + target PFS unmount); HDD POPSTARTER | D-10 | FAIL: black screen |
 | 2026-05-22 | D-10 Hardware | HDD Boot; diagnostic B2 POPSLOADER (standard SifLoadElf + dynamic PFS unmount); HDD POPSTARTER | D-10 | PASS: Real POPSTARTER booted and worked successfully |
-| 2026-05-22 | D-10 Hardware | HDD Boot; Production POPSLOADER with B2 fix; HDD POPSTARTER | D-10 | Unknown (pending hardware validation) |
+| 2026-05-22 | D-10 Hardware | HDD Boot; Production POPSLOADER with B2 fix; HDD POPSTARTER | D-10 | PASS: Real POPSTARTER booted and worked successfully |
+| 2026-05-22 | D-14 Hardware | HDD-backed POPSTARTER with non-HDD game; Production POPSLOADER | D-14 | PASS: Real POPSTARTER booted and worked successfully |
+| 2026-05-22 | D-15 Hardware | USB Boot; USB sidecar POPSTARTER + HDD game; Production POPSLOADER | D-15 | PASS: Real POPSTARTER booted and worked successfully |
+| 2026-05-22 | USB Hardware | USB Boot; USB sidecar POPSTARTER + USB game; Production POPSLOADER | USB Path | PASS: Real POPSTARTER booted and worked successfully |
+| 2026-05-22 | Non-HDD Hardware | Checked non-HDD paths tested in the regression set; Production POPSLOADER | Other Paths | PASS: Checked non-HDD paths remained functional |
 | YYYY-MM-DD | SCPH-xxxxx | USB/MMCE/MX4SIO/HDD details | e.g. S-01,S-02,D-02 | PASS/FAIL + notes |
 
 
