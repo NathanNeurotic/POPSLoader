@@ -1267,8 +1267,8 @@ UI = {
       pressed_row = 0;
       pressed_col = 0;
       pressed_until = 0;
-      layout_key = "ABC";
-      layout_order = {"ABC", "QWERTY", "DVORAK"};
+      layout_key = "QWERTY";
+      layout_order = {"QWERTY", "ABC", "DVORAK"};
       layouts = {
         ABC = {
           {"a","b","c","d","e","f","g","h","i","j"},
@@ -1303,10 +1303,10 @@ UI = {
           return PLDR.NormalizeKeyboardLayout(layout)
         end
         local key = string.upper(tostring(layout or ""))
-        if key == "QWERTY" or key == "DVORAK" then
+        if key == "ABC" or key == "DVORAK" then
           return key
         end
-        return "ABC"
+        return "QWERTY"
       end;
       _CurrentRows = function ()
         local layout_key = UI.PathEditor._NormalizeLayout(UI.PathEditor.layout_key)
@@ -1328,7 +1328,7 @@ UI = {
         UI.PathEditor.pressed_row = 0
         UI.PathEditor.pressed_col = 0
         UI.PathEditor.pressed_until = 0
-        UI.PathEditor.layout_key = UI.PathEditor._NormalizeLayout(UI.KeyboardLayoutDraft or (type(PLDR) == "table" and PLDR.KEYBOARD_LAYOUT) or "ABC")
+        UI.PathEditor.layout_key = UI.PathEditor._NormalizeLayout(UI.KeyboardLayoutDraft or (type(PLDR) == "table" and PLDR.KEYBOARD_LAYOUT) or "QWERTY")
       end;
       Close = function ()
         UI.PathEditor.active = false
@@ -1820,7 +1820,7 @@ UI = {
         UI.ProfileDirty = false
         UI.BdmaDirty = false
         UI.VideoStandardDirty = false
-        UI.SettingsEntryKeyboardLayout = tostring(UI.KeyboardLayoutDraft or (type(PLDR) == "table" and PLDR.KEYBOARD_LAYOUT) or "ABC")
+        UI.SettingsEntryKeyboardLayout = tostring(UI.KeyboardLayoutDraft or (type(PLDR) == "table" and PLDR.KEYBOARD_LAYOUT) or "QWERTY")
         UI.SettingsFocus = 1
         UI.SceneChange(UI.SCENES.MPROFILE)
         return true
@@ -2239,7 +2239,7 @@ UI = {
                 dkwdrv_path = dkwdrv_path,
                 bdma_mode = mode_key,
                 video_standard = video_key,
-                keyboard_layout = UI.KeyboardLayoutDraft or (type(PLDR) == "table" and PLDR.KEYBOARD_LAYOUT) or "ABC",
+                keyboard_layout = UI.KeyboardLayoutDraft or (type(PLDR) == "table" and PLDR.KEYBOARD_LAYOUT) or "QWERTY",
                 hide_text = UI.HideTextMode == true,
                 prev_hide_text = UI.SettingsEntryHideTextMode == true,
                 apply_bdma = UI.BdmaDirty,
@@ -2257,9 +2257,9 @@ UI = {
             PLDR.BDMA_MODE_KEY = mode_key
             PLDR.VIDEO_STANDARD = video_key
             if type(PLDR) == "table" and type(PLDR.NormalizeKeyboardLayout) == "function" then
-              PLDR.KEYBOARD_LAYOUT = PLDR.NormalizeKeyboardLayout(UI.KeyboardLayoutDraft or PLDR.KEYBOARD_LAYOUT or "ABC")
+              PLDR.KEYBOARD_LAYOUT = PLDR.NormalizeKeyboardLayout(UI.KeyboardLayoutDraft or PLDR.KEYBOARD_LAYOUT or "QWERTY")
             else
-              PLDR.KEYBOARD_LAYOUT = UI.KeyboardLayoutDraft or PLDR.KEYBOARD_LAYOUT or "ABC"
+              PLDR.KEYBOARD_LAYOUT = UI.KeyboardLayoutDraft or PLDR.KEYBOARD_LAYOUT or "QWERTY"
             end
             if type(PLDR.ApplyVideoStandardRuntime) == "function" then
               PLDR.ApplyVideoStandardRuntime(video_key)
@@ -2330,9 +2330,9 @@ UI = {
           end
         end
 
-        local keyboard_layouts = (UI.PathEditor and UI.PathEditor.layout_order) or {"ABC", "QWERTY", "DVORAK"}
+        local keyboard_layouts = (UI.PathEditor and UI.PathEditor.layout_order) or {"QWERTY", "ABC", "DVORAK"}
         local function CurrentKeyboardLayoutIndex()
-          local key = string.upper(tostring(UI.KeyboardLayoutDraft or "ABC"))
+          local key = string.upper(tostring(UI.KeyboardLayoutDraft or "QWERTY"))
           for i = 1, #keyboard_layouts do
             if string.upper(tostring(keyboard_layouts[i])) == key then return i end
           end
@@ -2385,7 +2385,7 @@ UI = {
             UI.SetHideTextMode(false, false)
             UI.ProfileDirty = true
           end
-          local default_keyboard_layout = "ABC"
+          local default_keyboard_layout = "QWERTY"
           if type(PLDR) == "table" and type(PLDR.NormalizeKeyboardLayout) == "function" then
             default_keyboard_layout = PLDR.NormalizeKeyboardLayout(default_keyboard_layout)
           end
@@ -2414,7 +2414,7 @@ UI = {
         end
 
         local function KeyboardLayoutDirty()
-          local current = string.upper(tostring(UI.KeyboardLayoutDraft or "ABC"))
+          local current = string.upper(tostring(UI.KeyboardLayoutDraft or "QWERTY"))
           local entry = string.upper(tostring(UI.SettingsEntryKeyboardLayout or current))
           return current ~= entry
         end
@@ -2515,7 +2515,7 @@ UI = {
         )
         AddCycle(
           "Keyboard Layout",
-          function() return string.upper(tostring(UI.KeyboardLayoutDraft or "ABC")) end,
+          function() return string.upper(tostring(UI.KeyboardLayoutDraft or "QWERTY")) end,
           function() CycleKeyboardLayout(-1) end,
           function() CycleKeyboardLayout( 1) end,
           KeyboardLayoutDirty
@@ -2712,7 +2712,7 @@ UI = {
     };
     MainMenu = {
       OPT = 1;
-      opts = {"MMCE", "MX4SIO", "HDD (exFAT)", "HDD (PFS)", "USB", "SMB (v1)", "ILINK", "Disc (DKWDRV)"};
+      opts = {"MMCE", "MX4SIO", "HDD (exFAT)", "HDD (PFS)", "USB", "i.Link", "SMB (v1)", "Disc (DKWDRV)"};
       Carousel = {
         currentIndex = 1,
         targetIndex = 1,
@@ -2742,7 +2742,7 @@ UI = {
 	          ["HDD (PFS)"] = "APAHDD",
 	          ["USB"] = "USB",
 	          ["SMB (v1)"] = "SMB",
-	          ["ILINK"] = "ILINK",
+	          ["i.Link"] = "ILINK",
 	          ["Disc (DKWDRV)"] = "DISC"
         }
         local icon_keys = {}
@@ -3352,7 +3352,7 @@ function UI.SyncSettingsDraftFromRuntime()
   if type(PLDR) == "table" and type(PLDR.NormalizeKeyboardLayout) == "function" then
     UI.KeyboardLayoutDraft = PLDR.NormalizeKeyboardLayout(PLDR.KEYBOARD_LAYOUT)
   else
-    UI.KeyboardLayoutDraft = tostring(PLDR.KEYBOARD_LAYOUT or "ABC")
+    UI.KeyboardLayoutDraft = tostring(PLDR.KEYBOARD_LAYOUT or "QWERTY")
   end
   UI.PopPathDirty = false
   UI.PopPathProfileDefaultDirty = false

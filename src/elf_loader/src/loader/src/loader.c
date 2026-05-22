@@ -373,30 +373,27 @@ int main(int argc, char *argv[])
 		}
 
 		if (is_hdd_partition_context(partition_context)) {
-			while(!SifIopReset("", 0)){};
-			while (!SifIopSync()) {};
+			// Extract PFS mount prefix dynamically
+			char mount_prefix[16];
+			char *colon = strchr(load_path, ':');
+			if (strncmp(load_path, "pfs", 3) == 0 &&
+			    colon != NULL &&
+			    (size_t)(colon - load_path) < sizeof(mount_prefix) - 1) {
+				size_t prefix_len = (size_t)(colon - load_path) + 1;
+				memcpy(mount_prefix, load_path, prefix_len);
+				mount_prefix[prefix_len] = '\0';
 
-			SET_GS_BGCOLOUR(ORANGE_BG);
+				fileXioInit();
+				fileXioUmount(mount_prefix);
+			}
 
-			/* Match the non-HDD parent-side reboot-IOP path (src/elf_loader/src/elf.c
-			 * LoadELFFromFileExecPS2RebootIOPWithPartition): after resetting the IOP,
-			 * re-init RPC and reload the minimum module set that POPSTARTER expects
-			 * (SIO2MAN/MCMAN/MCSERV) so memory-card and pad I/O are functional
-			 * from the moment POPSTARTER starts. A previous "align with reference
-			 * loaders" change deleted this reload, which left POPSTARTER on a bare
-			 * IOP only on the HDD path. D-15 (non-HDD POPSTARTER -> HDD game)
-			 * goes through the parent-side path that does reload these modules and
-			 * passes on hardware; D-10/D-14 (HDD POPSTARTER) go through this
-			 * child-loader path and black-screen. Restoring the reload here is the
-			 * most surgical way to put the HDD POPSTARTER launch back on the same
-			 * proven IOP-state contract as the working non-HDD path.
-			 */
-			SifInitRpc(0);
-			SifLoadFileInit();
-			SifLoadModule("rom0:SIO2MAN", 0, NULL);
-			SifLoadModule("rom0:MCMAN", 0, NULL);
-			SifLoadModule("rom0:MCSERV", 0, NULL);
-			SifLoadFileExit();
+			SifExitRpc();
+			SifExitCmd();
+
+			FlushCache(0);
+
+			ret = ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, target_argc, target_argv);
+			return (ret != 0) ? ret : -3500;
 		}
 		SifExitRpc();
 		/* Intentionally NO SifExitCmd() here. The working non-HDD

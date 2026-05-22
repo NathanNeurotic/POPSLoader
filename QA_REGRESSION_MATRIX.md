@@ -135,7 +135,24 @@ These gates are defined by `.github/workflows/compilation.yml`. The separate `.g
 | 2026-05-20 | Unknown (not reported) | Later readable-diagnostic artifact; configured/effective POPSTARTER path `hdd0:__common:pfs:/POPS/POPSTARTER.ELF`; resolved POP path `pfs3:/POPS/POPSTARTER.ELF`; exec path `pfs:/POPS/POPSTARTER.ELF`; HDD title `SLUS_007.42.Rampage 2 - Uni.VCD` | D-10 | FAIL: launcher popup returned with `POPSTARTER HDD pre-exec gate failed: POPSTARTER is not accessible using exec path`; source showed the gate was probing generic `pfs:/...` instead of a real slot-mounted path |
 | 2026-05-20 | Unknown (not reported) | Latest-artifact regression after D-10 gate follow-up; USB boot with USB sidecar/cwd `POPSTARTER.ELF`; HDD title selected from the HDD page | D-15 | FAIL: black screen; source follow-up restores legacy `System.loadELF(path, reboot_iop, selector)` one-argument selector behavior so no extra Lua argument can reach normal POPSTARTER launches |
 | 2026-05-20 | Unknown (not reported) | Follow-up non-HDD POPSTARTER test; explicit `mass:/POPS/POPSTARTER.ELF` launches, while default/cwd sidecar `POPSTARTER.ELF` stops before launch | L-08/D-15 guard | FAIL: `Cant find POPSTARTER ELF`; source follow-up expands default sidecar lookup to live current directory plus boot/app directories without changing the selector handoff |
+| 2026-05-22 | D-10 Hardware | HDD Boot; diagnostic pre-exec POPSLOADER; HDD POPSTARTER replaced with SIFLOADFILE sentinel | D-10 | PASS: target-side SifInitRpc(0) & SifLoadFileInit() succeeded (GREEN->YELLOW->WHITE->RED/MAGENTA loop) |
+| 2026-05-22 | D-10 Hardware | HDD Boot; diagnostic pre-exec POPSLOADER; HDD POPSTARTER replaced with FILEXIOINIT sentinel | D-10 | PASS: target-side fileXioInit() succeeded (GREEN->CYAN->YELLOW->WHITE->RED->BLUE->MAGENTA/GREEN loop) |
+| 2026-05-22 | D-10 Hardware | HDD Boot; diagnostic pre-exec POPSLOADER; HDD POPSTARTER replaced with TARGET-IOPRESET sentinel | D-10 | FAIL: post-reset target-side SifInitRpc(0) hung (froze on TEAL) |
+| 2026-05-22 | D-10 Hardware | HDD Boot; diagnostic pre-exec POPSLOADER; HDD POPSTARTER replaced with TARGET-IOPRESET-EXITRPC sentinel | D-10 | FAIL: post-reset target-side SifInitRpc(0) hung (froze on TEAL) |
+| 2026-05-22 | D-10 Hardware | HDD Boot; diagnostic pre-exec POPSLOADER; HDD POPSTARTER replaced with MINIMAL TARGET-IOPRESET sentinel | D-10 | FAIL: post-reset target-side SifInitRpc(0) hung (froze on TEAL) |
+| 2026-05-22 | D-10 Hardware | HDD Boot; diagnostic pre-exec POPSLOADER; HDD POPSTARTER replaced with MINIMAL TARGET-IOPRESET-EXITRPC sentinel | D-10 | FAIL: post-reset target-side SifInitRpc(0) hung (froze on TEAL) |
+| 2026-05-22 | D-10 Hardware | HDD Boot; diagnostic pre-exec POPSLOADER; HDD POPSTARTER replaced with POST-RESET INITCMD SPLIT sentinel | D-10 | FAIL: post-reset SifInitRpc(0) hung (froze on BLUE) |
+| 2026-05-22 | D-10 Hardware | HDD Boot; diagnostic pre-exec POPSLOADER; HDD POPSTARTER replaced with POSTINITCMD RPCMODE1 sentinel | D-10 | FAIL: post-reset SifInitRpc(1) hung (froze on BLUE) |
+| 2026-05-22 | D-10 Hardware | HDD Boot; diagnostic pre-exec POPSLOADER; HDD POPSTARTER replaced with MANUAL RPCINIT HANDSHAKE sentinel | D-10 | FAIL: manual post-reset RPCINIT handshake timed out (froze on PURPLE/MAGENTA loop) |
+| 2026-05-22 | D-10 Hardware | HDD Boot; diagnostic pre-exec POPSLOADER; HDD POPSTARTER replaced with MANUAL RPCINIT HANDSHAKE RETRY sentinel | D-10 | FAIL: manual post-reset RPCINIT handshake retry timed out (froze on PURPLE/MAGENTA loop) |
+| 2026-05-22 | D-10 Hardware | HDD Boot; diagnostic pre-exec POPSLOADER; HDD POPSTARTER replaced with MANUAL RPCINIT HANDSHAKE UDNL RESET sentinel | D-10 | FAIL: manual post-reset RPCINIT handshake timed out (froze on PURPLE/MAGENTA loop) |
+| 2026-05-22 | USB Control | USB-launched POPSLOADER.ELF + USB sidecar/CWD POPSTARTER.ELF; launching HDD or USB games | D-10 / Control | PASS: Works (IOP reset and SIF RPC initialization succeed) |
+| 2026-05-22 | D-10 Hardware | HDD Boot; diagnostic B0 POPSLOADER (direct fileXio load only); HDD POPSTARTER | D-10 | FAIL: black screen |
+| 2026-05-22 | D-10 Hardware | HDD Boot; diagnostic B3 POPSLOADER (direct fileXio load + target PFS unmount); HDD POPSTARTER | D-10 | FAIL: black screen |
+| 2026-05-22 | D-10 Hardware | HDD Boot; diagnostic B2 POPSLOADER (standard SifLoadElf + dynamic PFS unmount); HDD POPSTARTER | D-10 | PASS: Real POPSTARTER booted and worked successfully |
+| 2026-05-22 | D-10 Hardware | HDD Boot; Production POPSLOADER with B2 fix; HDD POPSTARTER | D-10 | Unknown (pending hardware validation) |
 | YYYY-MM-DD | SCPH-xxxxx | USB/MMCE/MX4SIO/HDD details | e.g. S-01,S-02,D-02 | PASS/FAIL + notes |
+
 
 ## Current Verification Status
 - CI gates: repository-verified by workflow definition.
@@ -190,6 +207,22 @@ These gates are defined by `.github/workflows/compilation.yml`. The separate `.g
     - that direct non-reboot artifact still black-screened before POPSTARTER debug screens, so the current source removes the remaining HDD-only parent pre-`ExecPS2` cleanup from `LoadELFFromFileExecPS2()` to avoid `fileXioUmount`/SIF teardown behavior that the working non-HDD POPSTARTER path does not use.
     - hardware result after the 2026-05-20 source follow-up remains `Unknown (verify on hardware)`. Verify `D-15` first to confirm non-HDD-POPSTARTER HDD-game still passes, then `D-10` `X`, then `D-10` `R2`, then `D-14`.
     - current source still exposes an `R2` alternate HDD launch for HDD-resident `POPSTARTER.ELF` that changes only the selector path to `hdd0:PART:pfs0:/GAME.ELF`; hardware result is still `Unknown (verify on hardware)`.
+    - on 2026-05-22, a series of targeted target-side diagnostic sentinels were run on hardware to isolate the D-10 black screen / hang location:
+      1) SIFLOADFILE sentinel: target-side SifInitRpc(0) and SifLoadFileInit() succeeded (GREEN->YELLOW->WHITE->RED/MAGENTA loop), proving the hang is later than SifLoadFileInit().
+      2) FILEXIOINIT sentinel: target-side fileXioInit() succeeded (GREEN->CYAN->YELLOW->WHITE->RED->BLUE->MAGENTA/GREEN loop), proving the hang is later than fileXioInit().
+      3) TARGET-IOPRESET and TARGET-IOPRESET-EXITRPC sentinels: target-side SifIopReset("", 0) and SifIopSync() returned, but the subsequent post-reset SifInitRpc(0) hung (froze on TEAL).
+      4) MINIMAL TARGET-IOPRESET and MINIMAL TARGET-IOPRESET-EXITRPC sentinels: post-reset SifInitRpc(0) still hung (froze on TEAL), proving prior SifLoadFileInit() or fileXioInit() state is not the cause.
+      5) POST-RESET INITCMD SPLIT and POSTINITCMD RPCMODE1 sentinels: explicit post-reset SifInitCmd() succeeded, but subsequent SifInitRpc(0) or SifInitRpc(1) still hung (froze on BLUE).
+      6) Manual RPCINIT Handshake Probing sentinel (SENTINEL_TARGET_IOPRESET_RPCINIT_HANDSHAKE_POPSTARTER.ELF): manual post-reset RPCINIT handshake probe. Timed out on hardware (froze on PURPLE/MAGENTA loop), confirming IOP does not respond to the initialization command after reset.
+      7) Manual RPCINIT Handshake Retry sentinel (SENTINEL_TARGET_IOPRESET_RPCINIT_RETRY_POPSTARTER.ELF): manual post-reset RPCINIT handshake attempts with named retry delays (RETRY_DELAY_1, RETRY_DELAY_2, RETRY_DELAY_3) and packet reinitialization. Hardware result: FAIL (timed out, froze on PURPLE/MAGENTA loop).
+      8) Manual RPCINIT Handshake UDNL Reset sentinel (SENTINEL_TARGET_IOPRESET_UDNL_RPCINIT_POPSTARTER.ELF): tests whether the blank target-side IOP reset argument is the poisonous variable by calling SifIopReset("rom0:UDNL rom0:EELOADCNF", 0). Hardware result: FAIL (timed out, froze on PURPLE/MAGENTA loop).
+         - *Interpretation*: Blank reset argument is ruled out as the sole poisonous variable. SifIopReset/Sync/InitCmd and sceSifSendCmd all return, but SIF_SREG_RPCINIT is never signaled.
+         - *Boundary Correction*: The failure is tied to the HDD-backed POPSTARTER source / HDD-backed loader-origin state, not the selected game device/listing.
+           - **Known-good**: USB POPSLOADER.ELF + USB sidecar/CWD POPSTARTER.ELF works, including when selecting HDD games.
+           - **Known-bad**: HDD POPSLOADER.ELF + HDD sidecar/CWD POPSTARTER.ELF fails. HDD POPSTARTER.ELF fails regardless of selected game device/listing.
+           - **Diagnostic Boundary**: The next investigation should isolate differences immediately before ExecPS2 when loading the target ELF from HDD versus USB sidecar/CWD (file-open/mount state, CWD/source device state, argv/environment, and leftover IOP module state).
+      9) USB Control Test: USB-launched POPSLOADER.ELF + USB sidecar/CWD POPSTARTER.ELF works, including when selecting HDD games. Hardware result: PASS.
+         - *Interpretation*: The post-reset SIF RPC handshake succeeds when POPSTARTER is executed from USB, even if the game was selected from the HDD listing. This proves the HDD game-selection environment itself is not the poison. The failure follows the HDD-backed POPSTARTER / HDD-backed launch-origin state.
   - `D-14`: reported FAIL on 2026-03-27 when launching a USB game with Profile 2 pointing `POPSTARTER.ELF` to HDD.
     - this broadened the remaining issue from “HDD game launch” to “HDD-backed POPSTARTER exec path”.
     - the user later clarified that the other same-day 2026-03-28 success result referred to `D-15`, not this case.

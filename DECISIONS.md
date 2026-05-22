@@ -12,6 +12,12 @@ Each entry records:
 
 ## Decision Log
 
+### 2026-05-22 — Minimal B2 Dynamic PFS Unmount Production Fix
+- Decision: Apply the B2 dynamic PFS unmount fix to the child loader pre-ExecPS2 sequence for HDD-backed POPSTARTER paths, bypassing the child loader's post-load IOP reset and re-initialization.
+- Rationale: Target-side diagnostic sentinel testing proved that resetting the IOP post-load in the HDD-backed loader environment causes subsequent RPC/SIF handshake initialization (SifInitRpc) to hang due to the target partition remaining mounted. Dynamically unmounting only the exact target PFS mount prefix (e.g., `pfs0:`) resolved the hang and restored the handshake without needing a loader-side reset.
+- Implications: HDD-backed POPSTARTER launches proceed with the standard SifLoadElf path but with PFS slot cleanup before ExecPS2. Non-HDD paths remain completely unaffected.
+- Evidence: `src/elf_loader/src/loader/src/loader.c`, B2 diagnostic variant (`artifacts/local-d10/20260522-122000-popsloader-hdd-preexec-unmount-target-pfs/POPSLOADER.ELF`).
+
 ### 2026-03-06 — Lua runtime is embedded-only at boot
 - Decision: boot and required runtime Lua modules are loaded from embedded blobs, not loose filesystem Lua files.
 - Rationale: deterministic startup and fewer layout-dependent failures.
@@ -150,3 +156,17 @@ Each entry records:
 - PAL asset proportions:
   - code compensates for PAL layout,
   - final display result still needs hardware confirmation.
+- 2026-05-22 Diagnostic Sentinels & USB Control Test Decision:
+  - A series of targeted sentinels were executed to debug the post-load/post-reset SIF RPC handshake hang (Teal/Blue freeze) on D-10.
+  - SifLoadFile (`SENTINEL_SIFLOADFILE_POPSTARTER.ELF`) and fileXioInit (`SENTINEL_FILEXIOINIT_POPSTARTER.ELF`) sentinels passed on hardware, showing that initial target-side setup and fileXio services are fully stable post-handoff.
+  - Post-reset SifInitRpc sentinels (`TARGET-IOPRESET`, `POST-RESET INITCMD SPLIT`, and `POSTINITCMD RPCMODE1`) hung, proving the rebooted IOP fails to respond to RPC initialization.
+  - Manual RPCINIT handshake probing and retry sentinels timed out, confirming the IOP does not signal `SIF_SREG_RPCINIT` after resetting.
+  - Resetting the IOP with UDNL arguments (`SifIopReset("rom0:UDNL rom0:EELOADCNF", 0)`) via `SENTINEL_TARGET_IOPRESET_UDNL_RPCINIT_POPSTARTER.ELF` also timed out (PURPLE/MAGENTA loop), ruling out the blank reset argument as the sole cause of the SIF handshake hang.
+  - The USB control path (USB POPSLOADER.ELF + USB sidecar/CWD POPSTARTER.ELF) was verified on hardware to work successfully, including when selecting games from the HDD listing.
+  - *Source/Device Boundary established*:
+    - **Known-good**: USB POPSLOADER.ELF + USB sidecar/CWD POPSTARTER.ELF works, including when selecting HDD games.
+    - **Known-bad**: HDD POPSLOADER.ELF + HDD sidecar/CWD POPSTARTER.ELF fails. HDD POPSTARTER.ELF fails regardless of selected game device/listing.
+    - **Interpretation**: The failure does not follow the selected game device or the HDD game listing by itself. The failure follows the HDD-backed POPSTARTER / HDD-backed loader-origin state.
+  - *Updated Diagnostic Boundary*: The next investigation focuses on what differs when POPSTARTER.ELF is resolved, loaded, and executed from HDD versus USB sidecar/CWD, including file-open/mount state, current working directory/source device state, argv/environment passed to POPSTARTER, and IOP module state left behind by loading the target ELF from HDD.
+
+

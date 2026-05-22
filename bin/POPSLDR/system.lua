@@ -88,7 +88,7 @@ local function IsRawHddPartitionPath(path)
   local candidate = NormalizeFsPathRaw(tostring(path or ""))
   candidate = string.lower(candidate)
   if string.match(candidate, "^hdd%d:[^:]+:[%a]+%d*:/") ~= nil then
-    return false
+    return true
   end
   if string.match(candidate, "^hdd%d:/+[^/]+/.+") ~= nil then
     return true
@@ -4346,7 +4346,7 @@ local function BuildPopstarterLaunchCommand(policy_name, device_page, game_name,
   local argv = {argv0_selector}
   local reboot_iop = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
   if popstarter_on_hdd then
-    reboot_iop = 0
+    reboot_iop = 1
   elseif policy_name == "HDD" then
     reboot_iop = 0
   end
@@ -4401,7 +4401,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     popstarter_partition_context = configured_partition_context
   end
   local popstarter_on_hdd = IsHddExecContextPath(popstarter)
-  local use_minimal_hdd_popstarter_exec = popstarter_on_hdd
+  local use_minimal_hdd_popstarter_exec = false
   if use_minimal_hdd_popstarter_exec then
     popstarter_partition_context = nil
     configured_partition_context = nil

@@ -51,7 +51,7 @@ PLDR.PROFILES = {
     DESC="the POPSTARTER ELF located on Hdd in the POPS folder";
   },
   {
-    ELF="hdd0:__common:pfs0:/POPS/POPSTARTER.ELF";
+    ELF="hdd0:__common:pfs3:/POPS/POPSTARTER.ELF";
     DESC="the POPSTARTER ELF located on Hdd in the POPS folder";
   },
   {
