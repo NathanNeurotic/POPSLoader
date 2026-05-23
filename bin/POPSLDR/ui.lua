@@ -1207,10 +1207,10 @@ UI = {
         UI.Modal.active = true
         UI.Modal.title = "Exit"
         UI.Modal.body = "Return to OSDSYS?"
-        UI.Modal.options = {"OSDSYS", "Cancel"}
+        UI.Modal.options = {"OSDSYS", "Cancel", "BOOT.ELF"}
         UI.Modal.confirm_action = UI.Modal.ConfirmExit
         UI.Modal.cancel_action = UI.Modal.Close
-        UI.Modal.triangle_action = nil
+        UI.Modal.triangle_action = UI.Modal.LaunchBootElf
         UI.Modal.ignore_until_release = true
       end;
       OpenDKWDRV = function ()
