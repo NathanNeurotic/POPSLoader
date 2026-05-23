@@ -366,6 +366,7 @@ int main(int argc, char *argv[])
 		 * instead of forcing fileXio here.
 		 */
 		if (loaded_via_filexio) {
+			SifExitRpc();
 			FlushCache(0);
 			FlushCache(2);
 			ret = ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, target_argc, target_argv);
