@@ -1186,22 +1186,18 @@ UI = {
         System.exitToBrowser()
       end;
       LaunchBootElf = function ()
-        local elf_path = ResolveFirstExistingElf({
-          "mc0:/BOOT/BOOT.ELF",
-          "mc1:/BOOT/BOOT.ELF"
-        })
-        if elf_path == nil then
-          UI.Notify("BOOT.ELF not found", 120)
+        local configured_path = "mc0:/BOOT/BOOT.ELF"
+        local elf_path = configured_path
+        if type(PLDR) == "table" and type(PLDR.ResolveFirstExistingPath) == "function" then
+          elf_path = PLDR.ResolveFirstExistingPath(configured_path)
+        end
+        if elf_path == nil or not SafeDoesFileExist(elf_path) then
+          UI.Modal.Close()
+          UI.Notif_queue.add("Cant find BOOT.ELF\n"..configured_path)
           return
         end
-
         UI.LAUNCHING = true
         UI.Modal.Close()
-
-        -- BOOT.ELF is an external ELF handoff, not a POPStarter HDD launch.
-        -- Do not use the cold/HDD-specific handoff here: D-10 hardware work showed
-        -- target-side IOP reset paths are fragile. Match the DKWDRV external ELF
-        -- pattern instead: set cwd, perform warm external cleanup, then pass argv[0].
         local previous_cwd = nil
         if type(PLDR) == "table" and type(PLDR.SetLaunchWorkingDirectory) == "function" then
           previous_cwd = PLDR.SetLaunchWorkingDirectory(elf_path)
@@ -1209,14 +1205,12 @@ UI = {
         if type(PLDR) == "table" and type(PLDR.PrepareForExternalELFLaunch) == "function" then
           pcall(PLDR.PrepareForExternalELFLaunch, elf_path)
         end
-
         local rc = System.loadELF(elf_path, 1, elf_path)
-
         if type(PLDR) == "table" and type(PLDR.RestoreWorkingDirectory) == "function" then
           pcall(PLDR.RestoreWorkingDirectory, previous_cwd)
         end
         UI.LAUNCHING = false
-        UI.Notify("BOOT.ELF launch failed\n"..tostring(elf_path).."\nrc="..tostring(rc), 150)
+        UI.Notify("BOOT.ELF launch failed\nrc="..tostring(rc), 150)
         return
       end;
       HandleInput = function ()
