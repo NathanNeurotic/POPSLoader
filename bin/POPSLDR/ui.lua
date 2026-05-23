@@ -255,6 +255,67 @@ local function ResolveVideoSpecForKey(key)
   return { key = VIDEO_STANDARD_NTSC, mode = NTSC, width = 640, height = 448, fps = 60 }
 end
 
+local function WrapText(text, limit)
+  limit = tonumber(limit) or 38
+  if limit < 4 then limit = 4 end
+
+  local function push_wrapped_token(out, token)
+    token = tostring(token or "")
+    while #token > limit do
+      table.insert(out, string.sub(token, 1, limit))
+      token = string.sub(token, limit + 1)
+    end
+    if token ~= "" then
+      table.insert(out, token)
+    end
+  end
+
+  local function wrap_paragraph(paragraph, out)
+    paragraph = tostring(paragraph or "")
+    if paragraph == "" then
+      table.insert(out, "")
+      return
+    end
+
+    local current_line = ""
+    for word in paragraph:gmatch("%S+") do
+      if #word > limit then
+        if current_line ~= "" then
+          table.insert(out, current_line)
+          current_line = ""
+        end
+        push_wrapped_token(out, word)
+      elseif current_line == "" then
+        current_line = word
+      elseif #current_line + 1 + #word <= limit then
+        current_line = current_line .. " " .. word
+      else
+        table.insert(out, current_line)
+        current_line = word
+      end
+    end
+
+    if current_line ~= "" then
+      table.insert(out, current_line)
+    end
+  end
+
+  local wrapped = {}
+  text = tostring(text or "")
+  local start = 1
+  while true do
+    local pos = string.find(text, "\n", start, true)
+    if not pos then
+      wrap_paragraph(string.sub(text, start), wrapped)
+      break
+    end
+    wrap_paragraph(string.sub(text, start, pos - 1), wrapped)
+    start = pos + 1
+  end
+
+  return wrapped
+end
+
 local INITIAL_VIDEO_SPEC = ResolveVideoSpecForKey((type(PLDR) == "table" and PLDR.VIDEO_STANDARD) or VIDEO_STANDARD_NTSC)
 UI = {
     LASTSCENE = 5;
@@ -336,6 +397,8 @@ UI = {
       YELLOW = Color.new(80, 170, 255, 128);
       RED = Color.new(128,0,0);
       TRANSP_BLACK = Color.new(0,0,0,40);
+      MODAL_BACKDROP = Color.new(0,0,0,48);
+      LOADING_BACKDROP = Color.new(0,0,0,64);
     };
     COLORS = {
 	      TEXT_PRIMARY = Color.new(140, 200, 255, 128);
@@ -466,9 +529,9 @@ UI = {
       UI.HideTextMode = next_state
       if notify == true then
         if next_state then
-          UI.Notif_queue.add("UI text hidden")
+          UI.Notif_queue.add("UI text hidden", "ok")
         else
-          UI.Notif_queue.add("UI text shown")
+          UI.Notif_queue.add("UI text shown", "ok")
         end
       end
       return next_state
@@ -544,34 +607,79 @@ UI = {
       end
     end;
     --- Notifications queue handler
+    --- Content-sized toast: wraps long text and long path-like tokens, separates head/body, supports
+    --- severity ("info" / "warn" / "error" / "ok") and stacks up to MAX toasts.
+    --- Backward compatible: existing UI.Notif_queue.add(string) call sites still work.
     Notif_queue = {
+      msg   = {};
+      MAX   = 2;
+      LIMIT = 60;   -- chars per wrapped line at BFONT inside the safe area
+      LINE  = 18;
+      PADX  = 10;
+      PADY  = 8;
+      GAP   = 4;    -- vertical gap between stacked toasts
+      ALFA  = 0x80; -- legacy field, kept for any external readers
       display = function ()
-        local Q
-        if #UI.Notif_queue.msg < 1 then return end
-        if #UI.Notif_queue.msg > 1 then
-          Q = 0x50
-        elseif UI.Notif_queue.ALFA > 0x50 then
-          Q = 0x50
+        local q = UI.Notif_queue
+        if #q.msg < 1 then return end
+        local safe   = UI.LAYOUT.SAFE
+        local box_x  = safe.L
+        local box_w  = UI.SCR.X - safe.L - safe.R
+        local y      = safe.T
+        local function sev_color(sev, a)
+          if sev == "error" then return Color.new(255, 130, 130, a) end
+          if sev == "warn"  then return Color.new(255, 200,  90, a) end
+          if sev == "ok"    then return Color.new(120, 230, 170, a) end
+          return Color.new(140, 200, 255, a) -- info / default
+        end
+        for i = 1, #q.msg do
+          local t = q.msg[i]
+          local alfa = math.floor(t.alfa or 0x90)
+          if alfa < 1 then alfa = 1 end
+          local head_lines = WrapText(t.head or "", q.LIMIT)
+          local body_lines = WrapText(t.body or "", q.LIMIT)
+          local total = #head_lines + #body_lines
+          if total < 1 then total = 1 end
+          local box_h = (total * q.LINE) + (q.PADY * 2)
+          Graphics.drawRect(box_x, y, box_w, box_h, Color.new(0, 0, 0, math.min(alfa, 0xA0)))
+          Graphics.drawRect(box_x, y, 2,     box_h, sev_color(t.sev, alfa))
+          local ty = y + q.PADY
+          for hi = 1, #head_lines do
+            Font.ftPrint(BFONT, box_x + q.PADX, ty, 0, box_w - q.PADX*2, q.LINE,
+                         head_lines[hi], sev_color(t.sev, alfa))
+            ty = ty + q.LINE
+          end
+          for bi = 1, #body_lines do
+            Font.ftPrint(BFONT, box_x + q.PADX, ty, 0, box_w - q.PADX*2, q.LINE,
+                         body_lines[bi], Color.new(180, 200, 230, alfa))
+            ty = ty + q.LINE
+          end
+          t.alfa = (t.alfa or 0x90) - ((#q.msg > 1) and 1.4 or 0.8)
+          y = y + box_h + q.GAP
+        end
+        local n = 1
+        while n <= #q.msg do
+          if (q.msg[n].alfa or 0) < 1 then table.remove(q.msg, n) else n = n + 1 end
+        end
+      end;
+      add = function (notif, sev)
+        local q = UI.Notif_queue
+        local text = tostring(notif or "")
+        local head, body
+        local nl = string.find(text, "\n", 1, true)
+        if nl then
+          head = string.sub(text, 1, nl - 1)
+          body = string.sub(text, nl + 1)
         else
-          Q = math.floor(UI.Notif_queue.ALFA)
+          head = text
+          body = ""
         end
-        Graphics.drawRect(30, 30, UI.SCR.X_MID-30, 40, Color.new(0, 0, 0, Q))
-        Font.ftPrint(BFONT, 32, 32, 0, UI.SCR.X_MID-30, 32, UI.Notif_queue.msg[1], Color.new(0, 100, 255, math.floor(UI.Notif_queue.ALFA)))
-        UI.Notif_queue.ALFA = UI.Notif_queue.ALFA-.8
-        if UI.Notif_queue.ALFA < 1 then
-          UI.Notif_queue.ALFA = 0x90
-          table.remove(UI.Notif_queue.msg, 1)
-        end
+        table.insert(q.msg, { head = head, body = body, sev = sev or "info", alfa = 0xC8 })
+        while #q.msg > q.MAX do table.remove(q.msg, 1) end
       end;
-      ALFA = 0x80;
-      add = function (NOTIF)
-        UI.Notif_queue.msg = { NOTIF }
-        UI.Notif_queue.ALFA = 0x90
-      end;
-      msg = {};
     };
-    Notify = function (msg, _ms)
-      UI.Notif_queue.add(msg)
+    Notify = function (msg, _ms, sev)
+      UI.Notif_queue.add(msg, sev)
     end;
     Footer = {
       order = {"triangle", "circle", "cross", "square"};
@@ -718,6 +826,15 @@ UI = {
     };
     --- wrapper for Screen.flip(), here you add UI draws that renders on top of everything (for example, error notifications)
     flip = function (notif)
+      if UI.SavingActive then
+        Screen.clear(UI.SCR.BGCOL or Color.new(20, 30, 80))
+        if type(IMG) == "table" and type(Graphics) == "table" and type(Graphics.drawScaleImage) == "function" then
+          local cached_bg = rawget(IMG, "BG") or rawget(IMG, "BGM") or rawget(IMG, "BKG")
+          if cached_bg ~= nil then
+            pcall(Graphics.drawScaleImage, cached_bg, 0, 0, UI.SCR.X, UI.SCR.Y)
+          end
+        end
+      end
       UI.Notif_queue.display()
       UI.Modal.Draw()
       if UI.SavingActive then
@@ -739,7 +856,7 @@ UI = {
         local bar_y = box_y + 64
         local bar_w = box_w - 40
         local bar_h = 14
-        Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, 140))
+        Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, UI.CCOL.LOADING_BACKDROP or Color.new(0, 0, 0, 64))
         Graphics.drawRect(box_x, box_y, box_w, box_h, Color.new(0, 0, 0, 210))
 	        Graphics.drawRect(box_x, box_y, box_w, 2, UI.CCOL.GREY)
 	        Graphics.drawRect(box_x, box_y + box_h - 2, box_w, 2, UI.CCOL.GREY)
@@ -1109,7 +1226,7 @@ UI = {
           end
           if elf_path == nil or not SafeDoesFileExist(elf_path) then
             UI.Modal.Close()
-            UI.Notif_queue.add("Cant find DKWDRV ELF\n"..configured_path)
+            UI.Notif_queue.add("No DKWDRV found at this path\n"..configured_path, "error")
             return
           end
           UI.LAUNCHING = true
@@ -1126,7 +1243,7 @@ UI = {
             pcall(PLDR.RestoreWorkingDirectory, previous_cwd)
           end
           UI.LAUNCHING = false
-          UI.Notify("DKWDRV launch failed\nrc="..tostring(rc), 150)
+          UI.Notify("DKWDRV failed to launch\nreturn code: "..tostring(rc), 150, "error")
           return
         end
         UI.Modal.cancel_action = UI.Modal.Close
@@ -1191,7 +1308,7 @@ UI = {
           "mc1:/BOOT/BOOT.ELF"
         })
         if elf_path == nil then
-          UI.Notify("BOOT.ELF not found", 120)
+          UI.Notify("BOOT.ELF not found\nchecked mc0:/BOOT and mc1:/BOOT", 120, "error")
           return
         end
         UI.LAUNCHING = true
@@ -1208,7 +1325,7 @@ UI = {
         end
         local rc = System.loadELF(elf_path, 0)
         UI.LAUNCHING = false
-        UI.Notify("BOOT.ELF launch failed\nrc="..tostring(rc), 150)
+        UI.Notify("BOOT.ELF failed to launch\nreturn code: "..tostring(rc), 150, "error")
         return
       end;
       HandleInput = function ()
@@ -1239,24 +1356,32 @@ UI = {
       end;
       Draw = function ()
         if not UI.Modal.active then return end
+        local body_lines = WrapText(UI.Modal.body or "", 38)
+        local line_spacing = 16
+        local confirm_label = UI.Modal.options[1] or "Confirm"
+        local cancel_label = UI.Modal.options[2] or "Cancel"
+        local triangle_label = UI.Modal.options[3]
+        local extra_footer_h = (triangle_label ~= nil) and 16 or 0
         local box_w = 320
-        local box_h = 140
-        local box_x = UI.SCR.X_MID - (box_w / 2)
-        local box_y = UI.SCR.Y_MID - (box_h / 2)
-        Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, 120))
+        local box_h = 140 + (math.max(1, #body_lines) - 1) * line_spacing + extra_footer_h
+        local box_x = math.floor(UI.SCR.X_MID - (box_w / 2))
+        local box_y = math.floor(UI.SCR.Y_MID - (box_h / 2))
+        Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, UI.CCOL.MODAL_BACKDROP)
         Graphics.drawRect(box_x, box_y, box_w, box_h, Color.new(0, 0, 0, 200))
         Graphics.drawRect(box_x, box_y, box_w, 2, UI.CCOL.GREY)
         Graphics.drawRect(box_x, box_y + box_h - 2, box_w, 2, UI.CCOL.GREY)
         Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 10, 8, UI.SCR.X, 16, UI.Modal.title, UI.CCOL.YELLOW)
-        Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 50, 8, UI.SCR.X, 16, UI.Modal.body, UI.CCOL.GREY)
-        local confirm_label = UI.Modal.options[1] or "Confirm"
-        local cancel_label = UI.Modal.options[2] or "Cancel"
-        local triangle_label = UI.Modal.options[3]
-        local hint = ("X: %s    O: %s"):format(confirm_label, cancel_label)
-        if triangle_label ~= nil then
-          hint = ("%s    Triangle: %s"):format(hint, triangle_label)
+        for i, line in ipairs(body_lines) do
+          Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 50 + (i - 1) * line_spacing, 8, UI.SCR.X, 16, line, UI.CCOL.GREY)
         end
-        Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 95, 8, UI.SCR.X, 16, hint, UI.CCOL.GREY)
+        local hint1 = ("X: %s    O: %s"):format(confirm_label, cancel_label)
+        if triangle_label ~= nil then
+          local hint2 = ("Triangle: %s"):format(triangle_label)
+          Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + box_h - 60, 8, UI.SCR.X, 16, hint1, UI.CCOL.GREY)
+          Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + box_h - 45, 8, UI.SCR.X, 16, hint2, UI.CCOL.GREY)
+        else
+          Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + box_h - 45, 8, UI.SCR.X, 16, hint1, UI.CCOL.GREY)
+        end
       end;
     };
     PathEditor = {
@@ -1889,7 +2014,7 @@ UI = {
           if UI.Pad.Events.EXIT then UI.SceneChange(UI.SCENES.CREDITS) end
           if UI.Pad.Events.BACK then UI.SceneChange(UI.SCENES.MMAIN) end
           if UI.Pad.Events.CONFIRM then
-            UI.Notif_queue.add("Not implemented yet")
+            UI.Notif_queue.add("This backend isn't implemented yet", "warn")
           end
           local labels, order = UI.Footer.ResolveLegend({
             order = UI.Footer.order_with_start_r2,
@@ -1999,13 +2124,13 @@ UI = {
             UI.GameList.CoverLastIndex = nil
             UI.GameList.CoverPending = true
             UI.GameList.CoverPendingAt = now - UI.GameList.CoverIdleMs
-            UI.Notif_queue.add("Cover Art enabled")
+            UI.Notif_queue.add("Cover Art enabled", "ok")
           else
             if UI.CoverCache ~= nil then
               UI.CoverCache:UpdateSelection(nil)
             end
             UI.GameList.CoverPending = false
-            UI.Notif_queue.add("Cover Art disabled")
+            UI.Notif_queue.add("Cover Art disabled", "ok")
           end
         end
         if UI.CoverCache ~= nil then
@@ -2039,7 +2164,7 @@ UI = {
         end
         local function LaunchSelectedGame(launch_options)
           if ammount <= 0 then
-            UI.Notif_queue.add("No games found")
+            UI.Notif_queue.add("No games found on this device", "warn")
             return
           end
           local configured_popstarter_path = tostring(PLDR.POPSTARTER_PATH or "")
@@ -2057,30 +2182,30 @@ UI = {
             popstarter_ok = doesFileExist(popstarter_path)
           end
           if not popstarter_ok then
-            local message = "Cant find POPSTARTER ELF\n"..configured_popstarter_path
+            local message = "No POPSTARTER found at this path\n"..configured_popstarter_path
             if configured_popstarter_path ~= tostring(popstarter_path) then
               message = message.."\nResolved: "..tostring(popstarter_path)
             end
-            UI.Notif_queue.add(message)
+            UI.Notif_queue.add(message, "error")
             return
           end
           if type(launch_options) == "table" and launch_options.hdd_selector_mode == "full_hdd_pfs0" then
             local lowered_popstarter = string.lower(tostring(popstarter_path or ""))
             if string.match(lowered_popstarter, "^hdd%d:") == nil and string.match(lowered_popstarter, "^pfs%d*:/") == nil then
-              UI.Notif_queue.add("HDD Alt requires HDD POPSTARTER")
+              UI.Notif_queue.add("HDD Alt mode needs POPSTARTER on HDD", "warn")
               return
             end
           end
           local entry = PLDR.GAMES[UI.GameList.CURR]
           if entry == nil then
-            UI.Notif_queue.add("Invalid game selection")
+            UI.Notif_queue.add("Couldn't read that game selection", "error")
             return
           end
           local root, rel = string.match(entry or "", "^([^|]+)|(.+)$")
           local vcd_full = ResolveSelectedVcdPath(entry, PLDR.GAMEPATH)
           if UI.CURSCENE ~= UI.SCENES.GHDD then -- only check if game can be found on USB and SMB
             if not doesFileExist(vcd_full) then
-              UI.Notif_queue.add("Cant find Game\n"..vcd_full)
+              UI.Notif_queue.add("Game file missing\n"..vcd_full, "error")
             end
           end
           local launch_path = PLDR.GAMEPATH
@@ -2309,15 +2434,15 @@ UI = {
             UI.SceneChange(target_scene)
           else
             if reason == "bdma_apply_failed" then
-              UI.Notif_queue.add("Failed to apply BDMA mode")
+              UI.Notif_queue.add("BDMA mode change didn't apply\nsettings weren't saved", "error")
               UI.SyncSettingsSelectionFromRuntime()
               UI.SyncSettingsDraftFromRuntime()
             elseif reason == "save_failed" then
-              UI.Notif_queue.add("Failed to save settings")
+              UI.Notif_queue.add("Couldn't save settings\nmc0:/POPSTARTER/.pldrs may be read-only", "error")
               UI.SyncSettingsSelectionFromRuntime()
               UI.SyncSettingsDraftFromRuntime()
             else
-              UI.Notif_queue.add("Failed to save settings")
+              UI.Notif_queue.add("Couldn't save settings\nmc0:/POPSTARTER/.pldrs may be read-only", "error")
               UI.SyncSettingsSelectionFromRuntime()
               UI.SyncSettingsDraftFromRuntime()
             end
@@ -2411,7 +2536,7 @@ UI = {
             UI.KeyboardLayoutDraft = default_keyboard_layout
             UI.ProfileDirty = true
           end
-          UI.Notif_queue.add("Profile defaults restored")
+          UI.Notif_queue.add("Profile defaults restored", "ok")
         end
 
         local function OpenPopstarterPathEditor()
@@ -2941,7 +3066,7 @@ UI = {
 	              end
               local slots = PLDR.GetMMCESlots()
               if #slots < 1 then
-                UI.Notif_queue.add("No MMCE device found (mmce0/mmce1).")
+                UI.Notif_queue.add("No MMCE device detected\nchecked mmce0: and mmce1:", "warn")
                 PLDR.CleanupGameList()
                 PLDR.GAMEPATH = ""
                 UI.SceneChange(UI.SCENES.GSMB)
@@ -2953,7 +3078,7 @@ UI = {
               end
               local mmce_prefix = PLDR.MMCE.PREFIX or PLDR.SetMMCESlot(1)
               if mmce_prefix == nil then
-                UI.Notif_queue.add("No MMCE device found (mmce0/mmce1).")
+                UI.Notif_queue.add("No MMCE device detected\nchecked mmce0: and mmce1:", "warn")
                 return
               end
 	              PLDR.CleanupGameList()
@@ -2962,7 +3087,7 @@ UI = {
 	                report("Scanning MMCE games...", 0.48)
 	                PLDR.GetPS1GameLists(mmce_pops, true, scan_progress)
 	              else
-	                UI.Notif_queue.add("No MMCE POPS folder found")
+	                UI.Notif_queue.add("MMCE has no POPS folder\nexpected mmce0:/POPS/", "warn")
 	              end
               report("Opening MMCE list...", 1.0)
               UI.setDeviceLock(DEVLOCK.MMCE)
@@ -2981,7 +3106,7 @@ UI = {
               report("Locating MX4SIO POPS folder...", 0.42)
               local mx4sio_root = PLDR.InitMX4SIOPopsRoot()
               if mx4sio_root == nil then
-                UI.Notif_queue.add("No MX4SIO device found")
+                UI.Notif_queue.add("No MX4SIO device detected", "warn")
                 return
 	              end
 	              report("Scanning MX4SIO games...", 0.48)
@@ -2993,7 +3118,7 @@ UI = {
             end, "Failed to load MX4SIO")
             if not ok then return end
           elseif UI.MainMenu.OPT == 3 then
-            UI.Notif_queue.add("Not Implemented Yet")
+            UI.Notif_queue.add("This backend isn't implemented yet", "warn")
 	          elseif UI.MainMenu.OPT == 4 then
 	            local ok = UI.RunBusyTask("Loading HDD...", function (report)
               local partition_progress = UI.MakeBusyProgressReporter(report, "Scanning HDD partitions...", 0.42, 0.66)
@@ -3006,9 +3131,9 @@ UI = {
               report("Checking POPStarter dependencies...", 0.36)
               local a, b, c = PLDR.CheckPOPStarterDEPS(UI.SCENES.GHDD)
               if PLDR.HDD.STATUS == 0 then
-	                if not a then UI.Notif_queue.add("ERROR: cannot access 'hdd0:__common' partition") end
-	                if not b then UI.Notif_queue.add("missing POPS file\nhdd0:__common/POPS/POPS.ELF") end
-	                if not c then UI.Notif_queue.add("missing POPS file\nhdd0:__common/POPS/IOPRP252.IMG") end
+	                if not a then UI.Notif_queue.add("Can't access hdd0:__common\n(common partition missing or unmounted)", "error") end
+	                if not b then UI.Notif_queue.add("POPS runtime missing\nhdd0:__common/POPS/POPS.ELF", "error") end
+	                if not c then UI.Notif_queue.add("POPS IOPRP image missing\nhdd0:__common/POPS/IOPRP252.IMG", "error") end
 	                report("Scanning HDD partitions...", 0.42)
 	                PLDR.HDD.CheckAvailableHddPopsParts(partition_progress)
 	                report("Building HDD game list...", 0.68)
@@ -3017,12 +3142,12 @@ UI = {
                     PLDR.HDD.CreateCache(true)
                   end
 	                if not PLDR.HDD.FOUNDANY then
-	                  UI.Notif_queue.add("Could not find any '__.POPS' partitions")
+	                  UI.Notif_queue.add("No '__.POPS' partitions on hdd0:\nformat one with __.POPS / __.POPS0...9", "warn")
 	                elseif #PLDR.GAMES < 1 then
-                  UI.Notif_queue.add("Could not find any games on 'hdd0:'")
+                  UI.Notif_queue.add("No games found on hdd0:\n(__.POPS partitions are empty)", "warn")
                 end
               else
-                UI.Notif_queue.add("ERROR: Cant detect usable HDD ("..PLDR.HDD.STATUS..")")
+                UI.Notif_queue.add("HDD not usable\nstatus: "..PLDR.HDD.STATUS, "error")
               end
               report("Opening HDD list...", 1.0)
               UI.SceneChange(UI.SCENES.GHDD)
@@ -3053,7 +3178,7 @@ UI = {
                 usb_roots = PLDR.GetRootsByType("usb")
               end
 	              if usb_roots == nil or #usb_roots < 1 then
-	                UI.Notif_queue.add("No USB backend found")
+	                UI.Notif_queue.add("No USB backend detected\nreseat the drive and try again", "warn")
 	              end
 	              report("Building USB game list...", 0.44)
 	              local games = PLDR.BuildMassGameListByType("usb", nil, build_progress)
@@ -3073,9 +3198,9 @@ UI = {
             end, "Failed to load USB")
             if not ok then return end
 	          elseif UI.MainMenu.OPT == 6 then
-	            UI.Notif_queue.add("Not Implemented Yet")
+	            UI.Notif_queue.add("This backend isn't implemented yet", "warn")
 	          elseif UI.MainMenu.OPT == 7 then
-	            UI.Notif_queue.add("Not Implemented Yet")
+	            UI.Notif_queue.add("This backend isn't implemented yet", "warn")
 	          elseif UI.MainMenu.OPT == 8 then
 	            if type(System) == "table" and type(System.ensureCDFS) == "function" then
 	              System.ensureCDFS()
@@ -3350,11 +3475,17 @@ function UI.ApplyVideoStandardFromRuntime(video_standard)
       break
     end
   end
+  local req_mode = selected.mode or NTSC
+  local req_width = tonumber(selected.width) or 640
+  local req_height = tonumber(selected.height) or 448
   UI.VideoStandardIndex = selected_index
   UI.VideoStandardDirty = false
-  UI.SCR.VMODE = selected.mode or NTSC
-  UI.SCR.X = tonumber(selected.width) or 640
-  UI.SCR.Y = tonumber(selected.height) or 448
+  if UI.SCR.VMODE == req_mode and UI.SCR.X == req_width and UI.SCR.Y == req_height then
+    return
+  end
+  UI.SCR.VMODE = req_mode
+  UI.SCR.X = req_width
+  UI.SCR.Y = req_height
   UI.RecalcLayout()
   if type(Screen) == "table" and type(Screen.setMode) == "function" then
     pcall(Screen.setMode, UI.SCR.VMODE, UI.SCR.X, UI.SCR.Y, CT24, INTERLACED, FIELD)

@@ -448,6 +448,12 @@ int LoadELFFromFileWithPartition(const char *filename, const char *partition, in
 	// ELF Exists
 	wipe_bramMem();
 
+	if (strcmp(resolved_path, "mc0:/BOOT/BOOT.ELF") == 0 || strcmp(resolved_path, "mc1:/BOOT/BOOT.ELF") == 0) {
+		char *boot_argv[1];
+		boot_argv[0] = (char *)resolved_path;
+		return ExecuteViaEmbeddedLoader("", resolved_path, 1, boot_argv);
+	}
+
 	if (partition != NULL && partition[0] != '\0') {
 		return ExecuteViaEmbeddedLoader(partition, resolved_path, argc, argv);
 	}
