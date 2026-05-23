@@ -255,6 +255,43 @@ local function ResolveVideoSpecForKey(key)
   return { key = VIDEO_STANDARD_NTSC, mode = NTSC, width = 640, height = 448, fps = 60 }
 end
 
+local function WrapText(text, limit)
+  limit = limit or 38
+  local lines = {}
+  local start = 1
+  while true do
+    local pos = string.find(text, "\n", start, true)
+    if not pos then
+      table.insert(lines, string.sub(text, start))
+      break
+    end
+    table.insert(lines, string.sub(text, start, pos - 1))
+    start = pos + 1
+  end
+  local wrapped = {}
+  for _, paragraph in ipairs(lines) do
+    if paragraph == "" then
+      table.insert(wrapped, "")
+    else
+      local current_line = ""
+      for word in paragraph:gmatch("%S+") do
+        if current_line == "" then
+          current_line = word
+        elseif #current_line + 1 + #word <= limit then
+          current_line = current_line .. " " .. word
+        else
+          table.insert(wrapped, current_line)
+          current_line = word
+        end
+      end
+      if current_line ~= "" then
+        table.insert(wrapped, current_line)
+      end
+    end
+  end
+  return wrapped
+end
+
 local INITIAL_VIDEO_SPEC = ResolveVideoSpecForKey((type(PLDR) == "table" and PLDR.VIDEO_STANDARD) or VIDEO_STANDARD_NTSC)
 UI = {
     LASTSCENE = 5;
@@ -336,6 +373,7 @@ UI = {
       YELLOW = Color.new(80, 170, 255, 128);
       RED = Color.new(128,0,0);
       TRANSP_BLACK = Color.new(0,0,0,40);
+      MODAL_BACKDROP = Color.new(0,0,0,48);
     };
     COLORS = {
 	      TEXT_PRIMARY = Color.new(140, 200, 255, 128);
@@ -718,6 +756,18 @@ UI = {
     };
     --- wrapper for Screen.flip(), here you add UI draws that renders on top of everything (for example, error notifications)
     flip = function (notif)
+      if UI.SavingActive then
+        local bg_drawn = false
+        if type(UI.BottomDraw) == "table" and type(UI.BottomDraw.Play) == "function" then
+          local ok = pcall(UI.BottomDraw.Play)
+          if ok then
+            bg_drawn = true
+          end
+        end
+        if not bg_drawn then
+          Screen.clear(UI.SCR.BGCOL or Color.new(20, 30, 80))
+        end
+      end
       UI.Notif_queue.display()
       UI.Modal.Draw()
       if UI.SavingActive then
@@ -1239,24 +1289,32 @@ UI = {
       end;
       Draw = function ()
         if not UI.Modal.active then return end
+        local body_lines = WrapText(UI.Modal.body or "", 38)
+        local line_spacing = 16
+        local confirm_label = UI.Modal.options[1] or "Confirm"
+        local cancel_label = UI.Modal.options[2] or "Cancel"
+        local triangle_label = UI.Modal.options[3]
+        local extra_footer_h = (triangle_label ~= nil) and 16 or 0
         local box_w = 320
-        local box_h = 140
-        local box_x = UI.SCR.X_MID - (box_w / 2)
-        local box_y = UI.SCR.Y_MID - (box_h / 2)
-        Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, 120))
+        local box_h = 140 + (math.max(1, #body_lines) - 1) * line_spacing + extra_footer_h
+        local box_x = math.floor(UI.SCR.X_MID - (box_w / 2))
+        local box_y = math.floor(UI.SCR.Y_MID - (box_h / 2))
+        Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, UI.CCOL.MODAL_BACKDROP)
         Graphics.drawRect(box_x, box_y, box_w, box_h, Color.new(0, 0, 0, 200))
         Graphics.drawRect(box_x, box_y, box_w, 2, UI.CCOL.GREY)
         Graphics.drawRect(box_x, box_y + box_h - 2, box_w, 2, UI.CCOL.GREY)
         Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 10, 8, UI.SCR.X, 16, UI.Modal.title, UI.CCOL.YELLOW)
-        Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 50, 8, UI.SCR.X, 16, UI.Modal.body, UI.CCOL.GREY)
-        local confirm_label = UI.Modal.options[1] or "Confirm"
-        local cancel_label = UI.Modal.options[2] or "Cancel"
-        local triangle_label = UI.Modal.options[3]
-        local hint = ("X: %s    O: %s"):format(confirm_label, cancel_label)
-        if triangle_label ~= nil then
-          hint = ("%s    Triangle: %s"):format(hint, triangle_label)
+        for i, line in ipairs(body_lines) do
+          Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 50 + (i - 1) * line_spacing, 8, UI.SCR.X, 16, line, UI.CCOL.GREY)
         end
-        Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 95, 8, UI.SCR.X, 16, hint, UI.CCOL.GREY)
+        local hint1 = ("X: %s    O: %s"):format(confirm_label, cancel_label)
+        if triangle_label ~= nil then
+          local hint2 = ("Triangle: %s"):format(triangle_label)
+          Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + box_h - 60, 8, UI.SCR.X, 16, hint1, UI.CCOL.GREY)
+          Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + box_h - 45, 8, UI.SCR.X, 16, hint2, UI.CCOL.GREY)
+        else
+          Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + box_h - 45, 8, UI.SCR.X, 16, hint1, UI.CCOL.GREY)
+        end
       end;
     };
     PathEditor = {
@@ -3350,11 +3408,17 @@ function UI.ApplyVideoStandardFromRuntime(video_standard)
       break
     end
   end
+  local req_mode = selected.mode or NTSC
+  local req_width = tonumber(selected.width) or 640
+  local req_height = tonumber(selected.height) or 448
   UI.VideoStandardIndex = selected_index
   UI.VideoStandardDirty = false
-  UI.SCR.VMODE = selected.mode or NTSC
-  UI.SCR.X = tonumber(selected.width) or 640
-  UI.SCR.Y = tonumber(selected.height) or 448
+  if UI.SCR.VMODE == req_mode and UI.SCR.X == req_width and UI.SCR.Y == req_height then
+    return
+  end
+  UI.SCR.VMODE = req_mode
+  UI.SCR.X = req_width
+  UI.SCR.Y = req_height
   UI.RecalcLayout()
   if type(Screen) == "table" and type(Screen.setMode) == "function" then
     pcall(Screen.setMode, UI.SCR.VMODE, UI.SCR.X, UI.SCR.Y, CT24, INTERLACED, FIELD)
