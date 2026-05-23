@@ -783,7 +783,12 @@ UI = {
       if UI.Transition ~= nil then
         local alpha = UI.Transition.Update()
         if alpha > 0 then
-          Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
+          local overlay = UI.Transition.GetOverlayImage()
+          if overlay ~= nil then
+            Graphics.drawScaleImage(overlay, 0, 0, UI.SCR.X, UI.SCR.Y, Color.new(128, 128, 128, alpha))
+          else
+            Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, alpha))
+          end
         end
       end
       Screen.flip()
@@ -1201,7 +1206,7 @@ UI = {
         if hdd_loaded then
           reboot_iop = 1
         end
-        local rc = System.loadELF(elf_path, reboot_iop, elf_path)
+        local rc = System.loadELF(elf_path, 0)
         UI.LAUNCHING = false
         UI.Notify("BOOT.ELF launch failed\nrc="..tostring(rc), 150)
         return
@@ -1714,6 +1719,17 @@ UI = {
       max_step = 33,
       duration_out = 1200,
       duration_in = 1400,
+      overlay_img = nil,
+      overlay_resolved = false,
+      GetOverlayImage = function ()
+        if not UI.Transition.overlay_resolved then
+          if type(IMG) == "table" and IMG.BG ~= nil then
+            UI.Transition.overlay_img = IMG.BG
+          end
+          UI.Transition.overlay_resolved = true
+        end
+        return UI.Transition.overlay_img
+      end,
       Queue = function (target)
         if target == nil then return end
         if UI.Transition.active and UI.Transition.phase == "out" then
@@ -1754,11 +1770,13 @@ UI = {
         local t = elapsed / duration
         if t > 1 then t = 1 end
         local e = EaseInOutCubic(t)
+        local overlay = UI.Transition.GetOverlayImage()
+        local max_alpha = (overlay ~= nil) and 255 or 128
         local alpha
         if UI.Transition.phase == "out" then
-          alpha = Round(128 * e)
+          alpha = Round(max_alpha * e)
         else
-          alpha = Round(128 * (1 - e))
+          alpha = Round(max_alpha * (1 - e))
         end
         if t >= 1 then
           if UI.Transition.phase == "out" then
@@ -1777,7 +1795,7 @@ UI = {
             UI.Transition.start = now
             UI.Transition.elapsed = 0
             UI.Transition.last_time = now
-            alpha = 128
+            alpha = max_alpha
           else
             local queued = UI.Transition.next_target
             if queued ~= nil and queued ~= UI.CURSCENE then

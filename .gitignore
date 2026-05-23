@@ -44,3 +44,16 @@ bin/LICENSE
 !EMBED/*
 bin/POPSLDR/hdd_gamecache.lua
 !iop/embed/*.irx
+*.orig
+
+# Local AI/tool directories
+.agents/
+.codex/
+.cursor/
+
+# Local diagnostic artifacts
+artifacts/
+
+# Ensure specific tracked binary assets stay visible
+!bin/POPSLDR/POPSTARTER.ELF
+!iop/embed/BDMASSAULT_MX4SIO/*.irx
