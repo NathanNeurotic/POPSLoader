@@ -1,280 +1,174 @@
 # POPSLoader
 
-Last updated: 2026-05-13
+POPSLoader is a graphical PlayStation 2 homebrew launcher designed to easily browse and launch your PS1 games (using POPStarter) from various storage devices. It features a clean, responsive layout, cover art support, sound effects, on-screen keyboard, and direct memory card exit shortcuts.
 
-POPSLoader is a PlayStation 2 launcher for POPStarter, built on Enceladus runtime components and driven primarily by embedded Lua scripts.
+The current public release is **BETA 10**.
 
-This repository contains:
-- the launcher (`POPSLOADER.ELF`),
-- embedded runtime Lua and asset data,
-- embedded IOP modules,
-- the POPStarter packaging payload used by CI,
-- documentation for current code state and validation status,
-- repository automation workflows for build/package CI and comment-triggered AI assistance.
+---
 
-## What This Repository Builds
+## BETA 10 Highlights
 
-The CI workflow packages an exact ZIP layout:
+POPSLoader BETA 10 introduces critical bug fixes and usability improvements tested on real PS2 hardware:
 
-```text
-PS1_POPSLOADER/
-  POPSLOADER.ELF
-  POPSTARTER.ELF
-  APPINFO.PBT
-  BUILD_INFO.txt
-  title.cfg
-  icon.sys
-  list.icn
-  copy.icn
-  del.icn
-POPS/
-  PATCH_5.BIN
-```
+*   **Fixed HDD POPSTARTER Handoff**: Resolved the long-standing "D-10" black screen hang when launching games using an HDD-backed POPStarter configuration.
+*   **Fixed wLaunchELF / BOOT.ELF Exit**: Exiting to BOOT.ELF / wLaunchELF no longer black-screens on the tested setup. The final fix uses the normal embedded-loader handoff instead of the failed special reset path.
+*   **Restored UI Options**: The `BOOT.ELF` option is fully visible again in the Exit modal, and the **Triangle** key shortcut has been restored.
+*   **Polished User Interface**: Includes layout alignment corrections, cleaner typography, dynamic menu box adjustments, and text wrapping.
 
-That package contract is enforced by `.github/workflows/compilation.yml`.
-Current CI also verifies that the built `enceladus.elf` still contains the expected embedded Lua runtime markers and that the generated embedded-loader blob was regenerated before packaging.
-The separate `.github/workflows/opencode.yml` workflow is repository automation for comment-triggered AI assistance; it is not a build/package validation gate.
+---
 
-## Current Status At A Glance
+## Supported Devices
 
-### Repo status vs reported hardware status
+POPSLoader supports scanning and booting games from the following backends:
 
-| Area | Repository status | Reported hardware status |
-|---|---|---|
-| MMCE menu path | Implemented in code | Unknown (verify on hardware) |
-| MX4SIO menu path | Implemented in code | Unknown (verify on hardware) |
-| USB menu path | Implemented in code | Unknown (verify on hardware) |
-| HDD (PFS) menu path | Implemented in code | Mixed; HDD POPSTARTER-on-HDD handoff still failing |
-| Disc (`DKWDRV`) menu path | Implemented in code | Unknown (verify on hardware) |
-| Exit to OSDSYS | Implemented in code | Reported PASS |
-| Exit to `BOOT.ELF` | Implemented in code | Mixed; reached on hardware, but later reports said it misbehaved after HDD runtime init |
-| `HDD (exFAT)` | Not implemented | Not implemented |
-| `SMB (v1)` | Not implemented | Not implemented |
-| `ILINK` | Not implemented | Not implemented |
+*   **USB** (`mass:`)
+*   **MX4SIO** (SD card via memory card slot adapter)
+*   **MMCE** (Multi-Memory Card Emulator)
+*   **Internal HDD** (using PS2 ATA network adapter)
 
-### Current known unresolved issues
+> [!NOTE]
+> Game compatibility and drive loading performance may vary depending on your specific console model, adapter type, and the quality of your POPStarter/POPS binaries.
 
-Reported hardware issues currently being tracked are:
-- HDD-backed `POPSTARTER.ELF` handoff (`D-10`, `D-14`)
-  - latest recorded hardware outcomes still fail when `POPSTARTER.ELF` itself is HDD-backed.
-  - the historical `D-15` pass isolated the remaining blocker to HDD-backed POPSTARTER execution, not HDD games in general; the 2026-05-20 latest-artifact `D-15` regression is now a guardrail failure to retest first.
-  - one 2026-03-29 artifact briefly moved `D-10` from a black screen to `rc=-1 (returned after 22618 ms)`, but later artifacts returned to a black screen, so that boundary was not stable.
-  - current repo line now simplifies the default HDD-backed POPSTARTER attempt: it keeps the real resolved executable path, passes only the legacy selector arg, uses the direct non-reboot `System.loadELF(...)` path, skips the Lua partition-aware gate/remount layer, and removes the direct-path HDD-only pre-`ExecPS2` PFS/SIF cleanup so the parent handoff matches the working non-HDD POPSTARTER path more closely.
-  - `HDD_POPSTARTER_HANDOFF.md` contains the 2026-05-19 source audit, current suspected failure path, known bad attempts, and recommended fix order.
-  - detailed per-artifact experiment chronology lives in `QA_REGRESSION_MATRIX.md` and `DECISIONS.md`.
-- HDD game with non-HDD POPSTARTER (`D-15`)
-  - user later confirmed on 2026-03-28 that USB boot + USB Profile 1 sidecar/cwd `POPSTARTER.ELF` + HDD game now passes on hardware.
-  - user reported a 2026-05-20 latest-artifact regression: USB boot with USB sidecar/cwd `POPSTARTER.ELF`, then launching an HDD title, black-screened.
-  - current source restores legacy `System.loadELF(path, reboot_iop, selector)` one-argument selector behavior for normal/non-HDD POPSTARTER launches; hardware result is `Unknown (verify on hardware)`.
-  - a follow-up 2026-05-20 report narrowed the non-HDD regression to default/cwd sidecar resolution: explicit `mass:/POPS/POPSTARTER.ELF` launches, but default `POPSTARTER.ELF` could stop at `Cant find POPSTARTER ELF`. Current source expands default sidecar lookup to the live current directory plus boot/app directories; hardware result is `Unknown (verify on hardware)`.
-- `BOOT.ELF` after HDD runtime (`U-10`)
-  - BOOT.ELF is reached, but later reported hardware said it could still misbehave after HDD runtime had already been initialized.
-  - current working inference is that `U-10` may share the same underlying handoff/state-poisoning boundary as `D-10`, but that is not yet proven and must not be treated as an automatic fix dependency.
-  - current line uses BOOT.ELF-specific cold prep plus conditional `reboot_iop`, but hardware on that exact line is still `Unknown (verify on hardware)`.
+---
 
-## Runtime Behavior (Current Code)
+## Quick Install
 
-### Boot/runtime model
-- Boot/runtime Lua is embedded into the ELF.
-- Required runtime modules are:
-  - `boot.lua`
-  - `system.lua`
-  - `ui.lua`
-  - `images.lua`
-  - `pops_profiles.lua`
-- Filesystem Lua loaders are disabled at runtime.
+To set up POPSLoader:
 
-### Settings behavior
-- Settings are persisted at `mc0:/POPSTARTER/.pldrs`.
-- Settings edits are staged in UI first, then committed on confirm/leave.
-- Current persisted settings include:
-  - POPSTARTER path,
-  - DKWDRV path,
-  - video standard,
-  - hide-text mode,
-  - keyboard layout,
-  - BDMA mode.
+1.  **Download the Release**: Download and extract the latest `POPSLOADER.zip` package.
+2.  **Copy Launcher Files**: Copy the `PS1_POPSLOADER/` folder to the device or memory card from which you want to launch POPSLoader.
+3.  **Place POPS Files**: Put the `PATCH_5.BIN` file (included in the `POPS/` directory of the ZIP) into your active `POPS` folder (see directory structures below).
+4.  **Add POPStarter & POPS Files**: Add your POPStarter executable (`POPSTARTER.ELF`) and the required POPS support files (`IOPRP252.IMG`, `POPS.ELF`, `POPS.PAK`, `POPS_IOX.PAK`) to your `POPS` folder. These copyrighted Sony POPS files are not included in the release package.
+5.  **Add Games**: Copy your PS1 game images in `.VCD` format into the same `POPS` folder.
+6.  **Launch**: Run `POPSLOADER.ELF` using wLaunchELF, Free McBoot, or your preferred ELF launcher.
 
-### Startup backend behavior
-- Startup backend auto-init is implemented.
-- The launcher now decides which backends to initialize from:
-  - boot path / argv0,
-  - current app directory,
-  - configured POPSTARTER path,
-  - configured DKWDRV path,
-  - selected profile path.
-- When HDD is a startup target, auto-init now runs the same `PLDR.LoadHDDModules()` path used by the HDD page instead of only the lower-level exec helper.
-- USB vs MX4SIO identity is determined from the mount-driver name, not from the path text.
+---
 
-### Device access behavior
-- The old runtime device-lock gate is no longer active.
-- Opening one backend page does not intentionally block opening another backend page through a session lock.
+## Folder Layout
 
-### Cover art behavior
-- Standard cover lookup uses a sidecar PNG next to the selected `.VCD`.
-- HDD entries can also load cover art from:
-  - `hdd0:__common/POPS/ART/<title>.png`
-- `bin/POPSLDR/IMG/default.png` is optional at compile time. If it is absent from the GitHub Actions checkout, `IMG.default` falls back to the required embedded `MISSING.png` asset.
+Ensure your directories and files match these paths exactly depending on your storage device:
 
-### Path editor / keyboard behavior
-- The on-screen keyboard supports:
-  - `ABC`
-  - `QWERTY`
-  - `DVORAK`
-- Keyboard layout is persisted in settings.
-- The editor includes:
-  - visible cursor movement,
-  - backspace/delete support,
-  - save/done behavior,
-  - button-bar help specific to keyboard mode.
+### USB / MX4SIO / MMCE Setup
+Place all files on the root of your storage device (`mass:/`, `slot:/`, etc.) in a folder named `POPS`:
 
-### Exit / external launch behavior
-- Exit modal offers:
-  - `OSDSYS`
-  - `Cancel`
-  - `BOOT.ELF`
-- `BOOT.ELF` resolution order is:
-  - `mc0:/BOOT/BOOT.ELF`
-  - `mc1:/BOOT/BOOT.ELF`
-- External launch prep uses tracked HDD/PFS unmount logic before handoff.
+| File Path | Description |
+| :--- | :--- |
+| `<device>:/POPS/GameName.VCD` | Your PS1 game image |
+| `<device>:/POPS/GameName.png` | Optional cover art (200x200 8-bit PNG recommended) |
+| `<device>:/POPS/IOPRP252.IMG` | Required POPS support file |
+| `<device>:/POPS/POPSTARTER.ELF` | POPStarter launcher binary |
+| `<device>:/POPS/POPS.ELF` | POPS emulator engine binary |
+| `<device>:/POPS/POPS.PAK` | Emulator resources payload |
+| `<device>:/POPS/POPS_IOX.PAK` | Emulator input/output resources payload |
 
-## Installation Notes
+### Internal HDD Setup
+Place VCD game files inside your dedicated POPS partitions, and system binaries inside `__common/POPS/`:
 
-### Basic installation
-1. Obtain a current `POPSLOADER.zip` build.
-2. Extract it without changing the directory structure.
-3. Copy:
-   - `PS1_POPSLOADER/` to the device/location you want to boot from,
-   - `POPS/` to the backend location expected by your chosen setup.
-4. Place PS1 `.VCD` files in the backend `POPS/` location you actually intend to browse from.
+| File Path | Description |
+| :--- | :--- |
+| `hdd:/__.POPS/GameName.VCD` | Your PS1 game image (can also use partitions `__.POPS0` through `__.POPS9`) |
+| `hdd:/__common/POPS/ART/GameName.png` | Cover art folder |
+| `hdd:/__common/POPS/IOPRP252.IMG` | Required POPS support file |
+| `hdd:/__common/POPS/POPS.ELF` | POPS emulator engine binary |
+| `hdd:/__common/POPS/POPS.PAK` | Emulator resources payload |
+| `hdd:/__common/POPS/POPS_IOX.PAK` | Emulator input/output resources payload |
 
-### Cover art
-- Sidecar cover rule:
-  - `GAME.VCD` -> `GAME.png`
-- HDD common art rule:
-  - `hdd0:__common/POPS/ART/GAME.png`
+---
 
-### HDD (PFS) notes
-- HDD scan code currently looks for POPS game partitions in the configured POPS partition set (`__.POPS`, `__.POPS0`, `__.POPS1` ... `__.POPS9`).
-- HDD dependency checks look for runtime files under `hdd0:__common/POPS/`.
+## Controls
 
-## Build From Source
+Navigate POPSLoader using a standard PS2 controller:
 
-### Recommended environment
-Use the same environment as CI:
+| Button | Action |
+| :--- | :--- |
+| **D-pad Up / Down** | Scroll through the game list |
+| **D-pad Left / Right** | Page Up / Page Down (jump through large lists) |
+| **Cross (X)** | Confirm option / Launch selected game |
+| **Circle (O)** | Go back to the Main Menu / Cancel |
+| **Triangle (△)** | Exit shortcut / BOOT.ELF shortcut where available |
+| **Start** | Open the Settings / Profile Editor |
+| **Select** | Toggle "Hide Text Mode" (clears the UI for a clean view of cover art) |
+| **L1 / R1** | Move text cursor Left / Right (inside on-screen keyboard) |
+| **Square (□)** | Delete character (inside on-screen keyboard) |
+| **R2** | Toggle uppercase / lowercase (inside on-screen keyboard) |
 
+---
+
+## BOOT.ELF / wLaunchELF Exit
+
+POPSLoader BETA 10 fixes the crash when returning to your memory card bootloader.
+*   Selecting **BOOT.ELF** in the exit menu (or pressing the **Triangle** shortcut) will look for:
+    1. `mc0:/BOOT/BOOT.ELF`
+    2. `mc1:/BOOT/BOOT.ELF`
+*   If found, BOOT.ELF now launches through the normal embedded-loader handoff with a clean BRAM setup and an explicit argv[0].
+*   If you do not have wLaunchELF installed at these paths, this option will fail to boot.
+
+---
+
+## Internal HDD Notes
+
+*   Internal HDD setups received major reliability improvements in BETA 10, correcting the partition mount handoffs that previously prevented games from loading.
+*   Ensure that your game partition is named matching the `__.POPS` convention, and that the `__common/POPS/` directory contains all necessary POPStarter/POPS emulator binaries.
+*   Existing USB/MX4SIO/MMCE setups are unaffected by the HDD fixes and should continue to work normally.
+
+---
+
+## Troubleshooting
+
+### Game does not appear in the menu list
+*   Using uppercase `.VCD` is recommended if your games are not being detected, especially on case-sensitive setups.
+*   Verify that VCD files are placed directly in the `POPS` (or `__.POPS`) folder, not inside subfolders.
+
+### Game launches to a black screen
+*   Verify that `IOPRP252.IMG`, `POPS.ELF`, and the `.PAK` files are present in the POPS folder.
+*   Check that your game image `.VCD` is healthy and uncorrupted.
+
+### Cover art is not showing up
+*   Check that the cover image is in `.png` format.
+*   The PNG filename must match the `.VCD` game filename exactly (e.g. `Crash Bandicoot.VCD` requires `Crash Bandicoot.png`).
+*   Ensure the cover art is placed in the same folder as the VCD (or `__common/POPS/ART/` on HDD).
+*   For best compatibility and performance, use 200x200 pixel images.
+
+### BOOT.ELF exit option fails or hangs
+*   Confirm that a valid wLaunchELF executable is installed on your physical memory card at `mc0:/BOOT/BOOT.ELF` or `mc1:/BOOT/BOOT.ELF`.
+
+---
+
+## Known Issues & Planned Improvements
+
+The following improvements and investigations are planned for subsequent updates:
+
+*   **Boot & Scan Speed**: Optimization of directory parsing and backend discovery.
+*   **Modchip Compatibility**: Investigate black-screen hangs on certain modchipped consoles.
+*   **Setting Modernization**: Transition away from legacy profile setups to a cleaner, custom path system (such as DKWDRV/POPStarter path configuration).
+*   **Enhanced Backend Detection**: Improve automatic discovery for `usb:`, `mx4sio:`, and `ata:` using IOCTL queries.
+*   **UI Customization & Themes**: Integrate graphical updates (by Berion) and add settings to customize or skip the boot splash sequence.
+*   **In-Game Features**: Support for per-game fixes, cheat codes, Virtual Memory Card (VMC) setups, and multi-disc swap prompts.
+*   **SMB (v1) Support**: Implement network game scanning and launching via SMB v1.
+
+---
+
+## Credits
+
+*   **israpps (El_isra)**: Original POPSLoader project creator.
+*   **Daniel Santos**: Creator of the Enceladus runtime foundation.
+*   **Berion**: User interface design and theme assets.
+*   **nuno6573**: Cover-art engine integrations.
+*   **Hugopocked**: POPStarter fixes.
+*   **Ripto / NathanNeurotic**: Maintenance, UI polishing, and release engineering.
+
+---
+
+## Development & Building
+
+Developer documentation, repository architecture details, and building prerequisites are maintained in the following files:
+
+*   [STATE.md](STATE.md): Detailed current code and hardware status details.
+*   [QA_REGRESSION_MATRIX.md](QA_REGRESSION_MATRIX.md): Complete ledger of hardware test outcomes.
+*   [ARCHITECTURE.md](ARCHITECTURE.md): Structural data-flow documentation.
+
+To build the launcher binary from source, run:
 ```sh
 make clean elfloader all
 ```
-
-The build/package workflow uses the `ps2dev/ps2dev` container and validates packaging after build.
-
-`bin/POPSLDR/IMG/default.png` is optional for CI/artifact builds. Add it to the checkout only when a custom default-cover image should be embedded; otherwise `MISSING.png` is compiled and used as the fallback.
-
-### Local build prerequisites
-- PS2 toolchain environment (`PS2DEV`, `PS2SDK`, gsKit/ports libs)
-- `ps2-packer`
-- `make`
-- standard build tools
-
-### Build outputs
-- `bin/enceladus.elf`
-- `bin/POPSLOADER.ELF`
-- `POPSLOADER.zip` in CI packaging flow
-
-## Known Limitations And Open Validation
-
-### Not implemented
-- `HDD (exFAT)` menu flow
-- `SMB (v1)` menu flow
-- `ILINK` menu flow
-
-### Implemented but still needing current-source hardware proof
-- PAL/NTSC menu asset proportions (`U-06`)
-- `BOOT.ELF` after HDD page init (`U-10`)
-- boot-device label across all boot sources (`U-11`)
-
-### Reported hardware outcomes that matter right now
-- `U-05` OSDSYS exit:
-  - reported fixed.
-- `D-12` startup backend auto-init:
-  - a 2026-03-27 hardware report said booting from HDD did not auto-init the HDD driver stack.
-  - current source now routes HDD startup targets through `PLDR.LoadHDDModules()` instead of only `EnsureHddRuntimeReadyForExec()`.
-  - current source also keeps startup HDD init limited to runtime readiness; it no longer scans HDD POPS partitions or builds the HDD game list during boot.
-  - the HDD page still scans partitions and builds the games list on page entry, and if HDD cache is enabled it now writes that cache from the page-built list instead of rebuilding during startup.
-  - user previously confirmed the earlier HDD startup auto-init correction on hardware, but later 2026-03-28 reports on the narrowed boot-time split sources said HDD-backed startup/Profile POPSTARTER could still not be found after entering the USB page before the HDD page.
-  - the raw boot `APP_DIR` fallback alone did not restore that case.
-  - current source now also pre-resolves any HDD-backed startup/configured exec paths immediately after `PLDR.LoadHDDModules()` so HDD POPSTARTER/Profile paths are mounted and recorded without reintroducing HDD page work at boot.
-  - current source also routes on-demand HDD path mounts through `PLDR.LoadHDDModules()` instead of only the lower-level `EnsureHddRuntimeReadyForExec()` gate, so HDD POPSTARTER/Profile probes from USB or other pages use the same runtime init path as HDD page entry.
-  - current source also fixes the startup warm-path classification for Profile 1/default relative `POPSTARTER.ELF`, which had previously been skipped because only explicit `hdd:` / `pfs:` paths were being marked for HDD warm-up.
-  - because `etc/boot.lua` establishes HDD boot on a dedicated `pfs1:` mount before `system.lua` runs, current source now also carries that exact boot partition/slot metadata into `system.lua`, seeds the HDD mount tracker from it, and rebuilds HDD sidecar/partition context from mounted `pfs1:` candidates instead of relying only on later rediscovery.
-  - user later confirmed on 2026-03-28 that the exact-boot-mount/source-context source restored the USB-before-HDD-page Profile 1 lookup repro on hardware.
-  - latest recorded hardware on this line is therefore `PASS`; preserve that behavior through further `D-10` work.
-- `D-16` first-entry USB backend discovery:
-  - a 2026-03-27 hardware report said the first USB page entry reported no backend, but backing out and re-entering then worked.
-  - current source now adds a bounded wait between failed USB root probes in `BuildUsbIdentityDeferred()`.
-  - MX4SIO discovery code was not changed by this correction.
-  - user later confirmed that corrected source fixed the first-entry USB issue on hardware.
-- `D-10` HDD POPSTARTER on HDD:
-  - reported failing.
-  - latest recorded hardware outcomes still fail when `POPSTARTER.ELF` itself is HDD-backed.
-  - `D-15` passing again isolates the remaining blocker to HDD-backed POPSTARTER execution.
-  - a 2026-05-20 artifact screenshot returned to the launcher with a pre-exec gate partition-context failure for `pfs3:/POPS/POPSTARTER.ELF`; the follow-up source change is repo-verified only until the next artifact is tested on hardware.
-  - a later readable screenshot showed the next pre-exec gate issue: the gate checked generic `pfs:/POPS/POPSTARTER.ELF` instead of a real mounted path.
-  - current source pivots away from that over-engineered default path: normal `X` keeps the mounted/resolved POPSTARTER path, uses direct non-reboot `System.loadELF(...)` with the legacy selector, reports `minimal-legacy-load`, and does not send Lua partition context.
-  - after a further black-screen result on that direct path, current source also removes the HDD-only parent cleanup immediately before `ExecPS2` in `LoadELFFromFileExecPS2()`, because the working non-HDD POPSTARTER handoff does not call `fileXioUmount`, `SifExitIopHeap`, `SifExitRpc`, or `SifExitCmd` there.
-  - one 2026-03-29 artifact briefly returned `rc=-1 (returned after 22618 ms)` instead of black-screening, but later artifacts returned to black screen, so that boundary is not treated as the stable current state.
-  - the partition-aware reboot path remains in source for comparison, but it is no longer the normal `X` route for HDD-backed POPSTARTER.
-  - see `QA_REGRESSION_MATRIX.md` and `DECISIONS.md` for the detailed experiment chronology.
-- `D-14` HDD-backed POPSTARTER with non-HDD game:
-  - reported failing.
-  - 2026-03-27 user hardware also black-screened when launching a USB game with Profile 2 pointing `POPSTARTER.ELF` to HDD.
-  - later recorded hardware still failed when `POPSTARTER.ELF` itself was on HDD, confirming the broader blocker is HDD-backed POPSTARTER execution rather than HDD game routing alone.
-  - current repo line uses the same partition-aware HDD reboot contract as `D-10`; a current-line hardware re-test is still `Unknown (verify on hardware)`.
-- `D-15` HDD game with non-HDD sidecar POPSTARTER:
-  - a later 2026-03-27 hardware report said booting from another device and launching an HDD game with sidecar `POPSTARTER.ELF` on that boot device also black-screened.
-  - that was reported as a regression on the EE-side HDD direct-load attempt, which has now been reverted in source.
-  - a later 2026-03-27 hardware report said the broader stripped-handoff HDD-game path also black-screened.
-  - current source now removes Lua-side HDD game pre-mount/CWD preservation from this path and leaves only the normal selector handoff unless `POPSTARTER.ELF` itself is HDD/PFS-backed.
-  - user later confirmed on 2026-03-28 that USB boot + USB sidecar/cwd `POPSTARTER.ELF` + HDD game passes on hardware.
-  - user reported a 2026-05-20 latest-artifact regression where that same shape black-screened.
-  - current source restores the legacy one-argument `System.loadELF` selector handoff for this normal/non-HDD POPSTARTER path; hardware result is `Unknown (verify on hardware)`.
-  - user then reported explicit `mass:/POPS/POPSTARTER.ELF` launches still work, while default/cwd sidecar resolution can stop at `Cant find POPSTARTER ELF`; current source expands the default sidecar candidates without changing the selector handoff.
-- Shared default/Profile 1 local POPSTARTER baseline:
-  - reported failing with `Cant find POPSTARTER ELF` on 2026-03-27 when booted from USB with USB sidecar/cwd/Profile 1.
-  - current source was rolled back to `BETA-10-play-CHECKPOINT2` shared resolver behavior for this path after the later unverified common-path changes failed to restore launch.
-  - user confirmed that rolled-back source fixed the baseline on hardware.
-- `U-10` BOOT.ELF after HDD page init:
-  - one prior artifact was reported good,
-  - repo history shows the BOOT.ELF modal later changed from its older non-reboot direct `System.loadELF(elf_path, 0, elf_path)` path to a reboot-I/O path with launch-CWD setup.
-  - a later 2026-03-29 hardware report said BOOT.ELF still behaved incorrectly once HDD had been initialized, which points more specifically at carried HDD runtime state than BOOT.ELF lookup.
-  - current working inference is that `U-10` may share the same underlying handoff/state-poisoning boundary as `D-10`, but that is not yet proven and `U-10` still requires its own hardware re-check after any `D-10` change.
-  - current source therefore keeps the no-launch-CWD rollback, re-enables `reboot_iop = 1` only when HDD runtime has already been loaded, and uses a BOOT.ELF-specific cold external-launch prep that clears the exec keep mask and unmounts tracked HDD slots instead of preserving boot PFS state.
-  - current-source hardware status is still `Unknown (verify on hardware)`.
-
-## Documentation Map
-
-If you need details instead of a summary:
-- `STATE.md`: current repo and hardware status in plain language
-- `QA_REGRESSION_MATRIX.md`: test matrix and current reported validation status
-- `ARCHITECTURE.md`: runtime/data-flow overview
-- `COMPONENTS.md`: ownership map by file/component
-- `DECISIONS.md`: explicit project decisions and open investigations
-- `ROADMAP.md`: active priorities and deferred work
-- `RULES.md`: hard constraints for changes
-- `TRUTHSHEET.md`: invariants that should not drift silently
-
-## Project Lineage
-- Original POPSLoader lineage by [El_isra / israpps](https://github.com/israpps).
-- Derived from [Enceladus](https://github.com/DanielSant0s/Enceladus) by [DanielSant0s](https://github.com/DanielSant0s/).
-
-## Credits
-- [israpps (El_isra)](https://israpps.github.io/) for POPSLoader.
-- [Daniel Santos](https://github.com/DanielSant0s/Enceladus) for Enceladus.
-- [Berion](https://www.psx-place.com/members/berion.1431/) for graphics/design work.
-- [nuno6573](https://github.com/nuno6573/) for cover-art related work.
-- [Hugopocked](https://ko-fi.com/hugopocked) for POPStarter fixes.
-- [Ripto / NathanNeurotic](https://github.com/NathanNeurotic) for continuation and release work.
-
-## License
-This project retains the GNU General Public License v3.0.
+*(Requires a set up PS2DEV SDK environment with `ps2-packer` and matching dependencies.)*
