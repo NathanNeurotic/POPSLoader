@@ -374,6 +374,7 @@ UI = {
       RED = Color.new(128,0,0);
       TRANSP_BLACK = Color.new(0,0,0,40);
       MODAL_BACKDROP = Color.new(0,0,0,48);
+      LOADING_BACKDROP = Color.new(0,0,0,64);
     };
     COLORS = {
 	      TEXT_PRIMARY = Color.new(140, 200, 255, 128);
@@ -757,15 +758,12 @@ UI = {
     --- wrapper for Screen.flip(), here you add UI draws that renders on top of everything (for example, error notifications)
     flip = function (notif)
       if UI.SavingActive then
-        local bg_drawn = false
-        if type(UI.BottomDraw) == "table" and type(UI.BottomDraw.Play) == "function" then
-          local ok = pcall(UI.BottomDraw.Play)
-          if ok then
-            bg_drawn = true
+        Screen.clear(UI.SCR.BGCOL or Color.new(20, 30, 80))
+        if type(IMG) == "table" and type(Graphics) == "table" and type(Graphics.drawScaleImage) == "function" then
+          local cached_bg = rawget(IMG, "BG") or rawget(IMG, "BGM") or rawget(IMG, "BKG")
+          if cached_bg ~= nil then
+            pcall(Graphics.drawScaleImage, cached_bg, 0, 0, UI.SCR.X, UI.SCR.Y)
           end
-        end
-        if not bg_drawn then
-          Screen.clear(UI.SCR.BGCOL or Color.new(20, 30, 80))
         end
       end
       UI.Notif_queue.display()
@@ -789,7 +787,7 @@ UI = {
         local bar_y = box_y + 64
         local bar_w = box_w - 40
         local bar_h = 14
-        Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, Color.new(0, 0, 0, 140))
+        Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, UI.CCOL.LOADING_BACKDROP or Color.new(0, 0, 0, 64))
         Graphics.drawRect(box_x, box_y, box_w, box_h, Color.new(0, 0, 0, 210))
 	        Graphics.drawRect(box_x, box_y, box_w, 2, UI.CCOL.GREY)
 	        Graphics.drawRect(box_x, box_y + box_h - 2, box_w, 2, UI.CCOL.GREY)
