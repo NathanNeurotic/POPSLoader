@@ -4,6 +4,9 @@ Current branch:
 BETA-12-PLAY
 
 Current pushed HEAD:
+d1d67bc Add Antigravity handoff note for BOOT.ELF debugging
+
+Previous checkpoint merge:
 e0a4ec4 Merge latest Antigravity work into BETA-12-PLAY
 
 Important status:
