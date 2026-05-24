@@ -116,6 +116,53 @@ static bool is_hdd_backed_exec_path(const char *path) {
 	        (strncmp(path, "hdd", 3) == 0 || strncmp(path, "pfs", 3) == 0));
 }
 
+static bool is_dkwdrv_elf_path(const char *path) {
+	if (path == NULL) return false;
+	size_t len = strlen(path);
+	if (len < 10) return false;
+	const char *name = path + len - 10;
+	if (!((name[0] == 'D' || name[0] == 'd') &&
+	      (name[1] == 'K' || name[1] == 'k') &&
+	      (name[2] == 'W' || name[2] == 'w') &&
+	      (name[3] == 'D' || name[3] == 'd') &&
+	      (name[4] == 'R' || name[4] == 'r') &&
+	      (name[5] == 'V' || name[5] == 'v') &&
+	      name[6] == '.' &&
+	      (name[7] == 'E' || name[7] == 'e') &&
+	      (name[8] == 'L' || name[8] == 'l') &&
+	      (name[9] == 'F' || name[9] == 'f'))) {
+		return false;
+	}
+	if (len == 10) {
+		return true;
+	}
+	char sep = path[len - 11];
+	if (sep == '/' || sep == '\\' || sep == ':') {
+		return true;
+	}
+	return false;
+}
+
+static const char *extract_dkwdrv_pfs_path(const char *path) {
+	if (path == NULL) return NULL;
+	const char *p = path;
+	while (*p != '\0') {
+		if (p[0] == ':' &&
+		    (p[1] == 'p' || p[1] == 'P') &&
+		    (p[2] == 'f' || p[2] == 'F') &&
+		    (p[3] == 's' || p[3] == 'S')) {
+			const char *digit = p + 4;
+			if (*digit >= '0' && *digit <= '9') {
+				if (digit[1] == ':') {
+					return p + 1;
+				}
+			}
+		}
+		p++;
+	}
+	return NULL;
+}
+
 static bool has_valid_target_argv0(int argc, char *argv[]) {
 	return (argc > 0 && argv != NULL && argv[0] != NULL && argv[0][0] != '\0');
 }
@@ -555,18 +602,32 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 	t_ExecData elfdata;
 	char resolved_path[256];
 	int ret;
+	const char *launch_path = filename;
+	int final_argc = argc;
+	char **final_argv = argv;
+	static char *dkwdrv_argv[2];
+	static char dkwdrv_argv0[256];
+
+	if (is_dkwdrv_elf_path(filename)) {
+		const char *pfs_seg = extract_dkwdrv_pfs_path(filename);
+		if (pfs_seg != NULL) {
+			launch_path = pfs_seg;
+		}
+	}
 
 	if (partition != NULL && partition[0] != '\0' &&
 	    is_hdd_backed_exec_path(partition) &&
-	    is_hdd_backed_exec_path(filename)) {
-		return ExecuteHddBackedViaEmbeddedLoader(filename, partition, argc, argv);
+	    is_hdd_backed_exec_path(launch_path) &&
+	    !is_dkwdrv_elf_path(launch_path)) {
+		return ExecuteHddBackedViaEmbeddedLoader(launch_path, partition, argc, argv);
 	}
 
-	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
+	if (resolve_exec_path(launch_path, resolved_path, sizeof(resolved_path)) < 0) {
 		return -1;
 	}
 
-	if (is_hdd_backed_exec_path(resolved_path) || is_hdd_backed_exec_path(partition)) {
+	if (!is_dkwdrv_elf_path(resolved_path) &&
+	    (is_hdd_backed_exec_path(resolved_path) || is_hdd_backed_exec_path(partition))) {
 		return ExecuteHddBackedViaEmbeddedLoader(resolved_path, partition, argc, argv);
 	}
 
@@ -600,6 +661,14 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 	FlushCache(0);
 	FlushCache(2);
 
-	ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc, argv);
+	if (is_dkwdrv_elf_path(resolved_path)) {
+		snprintf(dkwdrv_argv0, sizeof(dkwdrv_argv0), "%s", resolved_path);
+		dkwdrv_argv[0] = dkwdrv_argv0;
+		dkwdrv_argv[1] = NULL;
+		final_argc = 1;
+		final_argv = dkwdrv_argv;
+	}
+
+	ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, final_argc, final_argv);
 	return -1;
 }
