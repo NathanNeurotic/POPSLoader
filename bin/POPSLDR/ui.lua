@@ -1323,14 +1323,26 @@ UI = {
         if hdd_loaded then
           reboot_iop = 1
         end
-        -- Pass the computed reboot_iop. Previously this was hard-coded to 0,
-        -- which silently discarded the HDD-aware conditional reboot logic
-        -- above and meant BOOT.ELF after HDD page init always went down the
-        -- non-reboot LoadExecPS2 path even though the surrounding code was
-        -- intentionally selecting a full IOP reset. wLaunchELF / BOOT.ELF
-        -- typically expects a clean IOP state when HDD has been used in the
-        -- current session, so honor the computed value here.
-        local rc = System.loadELF(elf_path, reboot_iop)
+        -- Routing rules below match what's actually wired in the C side:
+        --   * Non-reboot, no selector: System.loadELF(path, 0) lands in
+        --     LoadELFFromFile -> LoadELFFromFileWithPartition, which has
+        --     a hard-coded special case that routes mc?:/BOOT/BOOT.ELF
+        --     through the BRAM child loader with argv[0] = resolved_path.
+        --     This is the historically-working path for USB-boot exit.
+        --   * Reboot path: LoadELFFromFileExecPS2RebootIOPWithPartition
+        --     does NOT have the same special case, so we must supply
+        --     argv[0] explicitly. wLaunchELF reads argv[0] to determine
+        --     its own boot path; passing nothing results in argc=0/argv=NULL
+        --     at ExecPS2 and a black screen.
+        --   * Either way, the cwd we run in must NOT be a stale HDD mount;
+        --     PrepareForColdExternalELFLaunch above already unmounts every
+        --     tracked HDD slot when HDD was loaded.
+        local rc
+        if reboot_iop ~= 0 then
+          rc = System.loadELF(elf_path, reboot_iop, elf_path)
+        else
+          rc = System.loadELF(elf_path, 0)
+        end
         UI.LAUNCHING = false
         UI.Notify("BOOT.ELF failed to launch\nreturn code: "..tostring(rc), 150, "error")
         return
