@@ -1323,7 +1323,14 @@ UI = {
         if hdd_loaded then
           reboot_iop = 1
         end
-        local rc = System.loadELF(elf_path, 0)
+        -- Pass the computed reboot_iop. Previously this was hard-coded to 0,
+        -- which silently discarded the HDD-aware conditional reboot logic
+        -- above and meant BOOT.ELF after HDD page init always went down the
+        -- non-reboot LoadExecPS2 path even though the surrounding code was
+        -- intentionally selecting a full IOP reset. wLaunchELF / BOOT.ELF
+        -- typically expects a clean IOP state when HDD has been used in the
+        -- current session, so honor the computed value here.
+        local rc = System.loadELF(elf_path, reboot_iop)
         UI.LAUNCHING = false
         UI.Notify("BOOT.ELF failed to launch\nreturn code: "..tostring(rc), 150, "error")
         return
