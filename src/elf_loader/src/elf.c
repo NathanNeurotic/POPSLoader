@@ -151,11 +151,24 @@ static const char *extract_dkwdrv_pfs_path(const char *path) {
 		    (p[1] == 'p' || p[1] == 'P') &&
 		    (p[2] == 'f' || p[2] == 'F') &&
 		    (p[3] == 's' || p[3] == 'S')) {
-			const char *digit = p + 4;
-			if (*digit >= '0' && *digit <= '9') {
-				if (digit[1] == ':') {
-					return p + 1;
-				}
+			const char *after_pfs = p + 4;
+			/* Match ":pfs<digit>:" -- partition-scoped paths that name an
+			 * explicit slot, e.g. "hdd0:+OPL:pfs0:/APPS/DKWDRV/DKWDRV.ELF".
+			 * Return the embedded "pfs<digit>:/..." segment.
+			 */
+			if (*after_pfs >= '0' && *after_pfs <= '9' && after_pfs[1] == ':') {
+				return p + 1;
+			}
+			/* Match ":pfs:" with no slot digit -- the typical user-typed
+			 * shape "hdd0:+OPL:pfs:/APPS/DKWDRV/DKWDRV.ELF" from the path
+			 * editor, which the original V3 helper did not match. Return
+			 * the embedded "pfs:/..." segment so resolve_exec_path can
+			 * attempt the open and the launch either succeeds via an
+			 * already-mounted slot 0 or fails cleanly with rc=-1 instead
+			 * of black-screening past ExecPS2 on an unresolved path.
+			 */
+			if (*after_pfs == ':') {
+				return p + 1;
 			}
 		}
 		p++;

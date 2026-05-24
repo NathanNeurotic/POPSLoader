@@ -1238,7 +1238,22 @@ UI = {
           if type(PLDR) == "table" and type(PLDR.PrepareForExternalELFLaunch) == "function" then
             pcall(PLDR.PrepareForExternalELFLaunch, elf_path)
           end
-          local rc = System.loadELF(elf_path, 1, elf_path)
+          -- Pick the launch route based on where DKWDRV.ELF lives.
+          --   * mc / non-HDD: reboot_iop=1 -- full IOP reset, reload
+          --     SIO2MAN/MCMAN/MCSERV, ExecPS2. DKWDRV runs on a clean IOP
+          --     and reads its config from MC, which is still accessible.
+          --   * HDD: reboot_iop=0 -- the non-reboot path uses the
+          --     PrepareForExternalELFLaunch keep mask (set above) so the
+          --     DKWDRV partition's PFS slot stays mounted across
+          --     unmount_pfs_slots_for_exec. The full IOP reset path would
+          --     wipe that mount before ExecPS2, leaving DKWDRV unable to
+          --     read its own config / BIOS image (the empirical
+          --     black-screen mode users hit when DKWDRV_PATH is on HDD).
+          local lower_elf = string.lower(tostring(elf_path or ""))
+          local is_hdd_path = string.find(lower_elf, "^hdd%d:") ~= nil
+            or string.find(lower_elf, "^pfs%d*:/") ~= nil
+          local dkwdrv_reboot_iop = is_hdd_path and 0 or 1
+          local rc = System.loadELF(elf_path, dkwdrv_reboot_iop, elf_path)
           if type(PLDR) == "table" and type(PLDR.RestoreWorkingDirectory) == "function" then
             pcall(PLDR.RestoreWorkingDirectory, previous_cwd)
           end
