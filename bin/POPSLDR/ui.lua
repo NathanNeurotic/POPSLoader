@@ -1238,17 +1238,27 @@ UI = {
           if type(PLDR) == "table" and type(PLDR.PrepareForExternalELFLaunch) == "function" then
             pcall(PLDR.PrepareForExternalELFLaunch, elf_path)
           end
-          -- 2026-05-24 hardware result: routing HDD DKWDRV through the
-          -- non-reboot path (reboot_iop=0) so the keep mask preserves the
-          -- partition slot also black-screened on hardware (PR #452
-          -- reverted). The non-reboot HDD branch in LoadELFFromFileExecPS2
-          -- tears SIF down via SifExitIopHeap/Rpc/Cmd before ExecPS2 --
-          -- DKWDRV may not be re-initializing SIF cleanly afterward, OR
-          -- the keep-mask wiring isn't actually keeping the slot. Needs a
-          -- different angle (maybe load DKWDRV via the BRAM child loader
-          -- like the BOOT.ELF mc-special-case, or copy DKWDRV.ELF into EE
-          -- RAM and launch with no HDD dependency at exec time).
-          local rc = System.loadELF(elf_path, 1, elf_path)
+          -- Pick the launch route based on where DKWDRV.ELF lives.
+          --   * mc / non-HDD: reboot_iop=1 -- direct path with full IOP
+          --     reset, reload SIO2MAN/MCMAN/MCSERV, ExecPS2 with
+          --     synthesized argv0. MC DKWDRV is confirmed working.
+          --   * HDD (hdd?:/ or pfs?:/): reboot_iop=0 -- non-reboot path.
+          --     This pairs with the DKWDRV special-case route in
+          --     src/elf_loader/src/elf.c LoadELFFromFileWithPartition,
+          --     which mirrors the BOOT.ELF V2 contract (d23520a) and
+          --     routes through ExecuteViaEmbeddedLoader so the child
+          --     loader's wipeUserMem + filexio-direct-load + SifExitRpc
+          --     + ExecPS2 sequence fires. PR #452 (V4) tried only the
+          --     Lua-side reboot_iop=0 without the C-side routing change,
+          --     which fell through to direct LoadExecPS2 and black-
+          --     screened. The complete V2-mimicry needs BOTH halves.
+          local lower_elf = string.lower(tostring(elf_path or ""))
+          local is_hdd_path = string.find(lower_elf, "^hdd%d:") ~= nil
+            or string.find(lower_elf, "^pfs%d*:/") ~= nil
+            or string.find(lower_elf, "^ata%d*:") ~= nil
+            or string.find(lower_elf, "^apa%d*:") ~= nil
+          local dkwdrv_reboot_iop = is_hdd_path and 0 or 1
+          local rc = System.loadELF(elf_path, dkwdrv_reboot_iop, elf_path)
           if type(PLDR) == "table" and type(PLDR.RestoreWorkingDirectory) == "function" then
             pcall(PLDR.RestoreWorkingDirectory, previous_cwd)
           end

@@ -488,6 +488,23 @@ int LoadELFFromFileWithPartition(const char *filename, const char *partition, in
 		return ExecuteViaEmbeddedLoader("", resolved_path, 1, boot_argv);
 	}
 
+	/* DKWDRV special-case: mirror the BOOT.ELF V2 contract (d23520a,
+	 * 2026-05-23) for the DKWDRV-on-HDD path. Route through
+	 * ExecuteViaEmbeddedLoader so the child loader's wipeUserMem +
+	 * filexio-direct-load + SifExitRpc + ExecPS2 sequence fires.
+	 * Caller (ui.lua OpenDKWDRV) selects reboot_iop=0 for HDD paths so
+	 * we land here; MC DKWDRV continues to use the reboot variant which
+	 * already works. PR #452 (V4) tried reboot_iop=0 in Lua alone but
+	 * skipped this routing, falling through to direct LoadExecPS2 --
+	 * that black-screened on hardware. The V2 contract requires BOTH
+	 * the Lua-side reboot_iop=0 AND this C-side embedded-loader route.
+	 */
+	if (is_dkwdrv_elf_path(resolved_path)) {
+		char *dkwdrv_argv[1];
+		dkwdrv_argv[0] = (char *)resolved_path;
+		return ExecuteViaEmbeddedLoader("", resolved_path, 1, dkwdrv_argv);
+	}
+
 	if (partition != NULL && partition[0] != '\0') {
 		return ExecuteViaEmbeddedLoader(partition, resolved_path, argc, argv);
 	}
@@ -623,25 +640,6 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 
 	if (is_hdd_backed_exec_path(resolved_path) || is_hdd_backed_exec_path(partition)) {
 		return ExecuteHddBackedViaEmbeddedLoader(resolved_path, partition, argc, argv);
-	}
-
-	/* BOOT.ELF on MC: route through the BRAM child loader. Mirrors the
-	 * BOOT.ELF special-case in LoadELFFromFileWithPartition (this file,
-	 * non-reboot variant). The child loader runs wipeUserMem() before
-	 * SifLoadElf'ing BOOT.ELF, which clears EE-RAM residue left behind
-	 * by HDD-booted POPSLoader, and the child loader's BOOT.ELF branch
-	 * does its own IOP reset + minimum-IRX reload before ExecPS2.
-	 *
-	 * Without this routing, LaunchBootElf with reboot_iop=1 fell through
-	 * to the direct SifIopReset path below. That path black-screens when
-	 * POPSLoader was booted from HDD (Nuno 2026-05-25) -- the IOP reset
-	 * alone wasn't enough; we also needed the EE-RAM wipe.
-	 */
-	if (strcmp(resolved_path, "mc0:/BOOT/BOOT.ELF") == 0 ||
-	    strcmp(resolved_path, "mc1:/BOOT/BOOT.ELF") == 0) {
-		char *boot_argv[1];
-		boot_argv[0] = (char *)resolved_path;
-		return ExecuteViaEmbeddedLoader("", resolved_path, 1, boot_argv);
 	}
 
 	SifInitRpc(0);
