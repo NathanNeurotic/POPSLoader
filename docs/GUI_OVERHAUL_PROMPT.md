@@ -6,11 +6,20 @@
 
 ## Repository state of referenced files (as of 2026-05-24)
 
-The prompt below references `app/screens.jsx`, `app/styles.css`, and an `index.html` mockup wrapper as the "visual oracle." **Those files are not currently committed to this repo.** They were delivered by the Designer agent as part of `assets.zip` (the PNG bundle landed in commit `f8fec64` "Add OSK + nav UI assets to bin/POPSLDR/IMG/"), but the HTML/JSX mockup wrapper itself was not extracted into the source tree.
+The original prompt below referenced `app/screens.jsx`, `app/styles.css`, and an `index.html` mockup wrapper from Designer's package as the "visual oracle." **Those files are NOT the source of truth.** They are Designer's interpretation of Berion's design, and at least one spec they encode is wrong: Designer described Settings as "main page + per-category sub-pages," but Berion's actual mockup PNG shows Settings as a **single scrollable page** with section headers inline.
 
-Before starting this work, either:
-- commit the mockup HTML/JSX into a fresh `app/` directory (recommended — gives future agents the same visual oracle the prompt assumes), or
-- adapt the prompt to point at the screenshot PNGs / hosted mockup link the implementer has access to.
+The **actual source of truth** is Berion's mockup PNG screenshots (Context menu, Settings, Joypad configuration, OSK) shared by the project owner on 2026-05-24. They should live in `docs/mockups/` once dropped on disk:
+
+- `docs/mockups/context_menu.png`
+- `docs/mockups/settings.png`
+- `docs/mockups/joypad_config.png`
+- `docs/mockups/osk.png`
+
+> ⚠️ As of 2026-05-24, these mockup PNGs are not yet committed -- the project owner attached them inline in chat. Once dropped into `Documents/assets/` (or wherever convenient on disk), commit them under `docs/mockups/` and update this doc's image links.
+
+The PNG asset list the spec cites is fully present under `bin/POPSLDR/IMG/` after commit `f8fec64`. The 33 production assets are:
+
+`arrow_choose_left_active.png`, `arrow_choose_left_active_no.png`, `arrow_choose_right_active.png`, `arrow_choose_right_active_no.png`, `arrow_pointer.png`, `bar_highlight.png`, `bar_top.png`, `checkbox_empty.png`, `checkbox_full.png`, `icon_sub_about.png`, `icon_sub_exit.png`, `icon_sub_joypad.png`, `icon_sub_mcmanager.png`, `icon_sub_settings.png`, `icon_sub_settings_restore.png`, `icon_sub_settings_save.png`, `joypad.png`, `osk_bg.png`, `osk_cursor.png`, `osk_highlight_1.png`, `osk_highlight_2.png`, `osk_highlight_3.png`, `osk_highlight_4.png`, `osk_highlight_5.png`, `osk_symbol_backspace.png`, `osk_symbol_caps.png`, `osk_symbol_clear.png`, `osk_symbol_mode.png`, `osk_symbol_space.png`, `scroll_bg_bottom.png`, `scroll_bg_middle.png`, `scroll_bg_top.png`, `scroll_zip.png`.
 
 The PNG asset list the prompt cites is fully present under `bin/POPSLDR/IMG/` after `f8fec64`. The 33 new files are:
 
@@ -85,7 +94,11 @@ Load each via `Image.new("IMG/<file>.png")` (or whatever path convention `ui.lua
 
 #### 1. Context menu
 
-A vertically centered list, left-padded ~52 px. Rows are 38 px tall with 6 px gaps, font weight 700 / 22 px / off-white when unselected, full white when selected. The 32×32 icon sits left of each label with 16 px gap. Unselected rows are 55% opacity (icon + text).
+A vertically centered list, left-padded ~52 px. Rows are ~38 px tall with ~6 px gaps. Font weight 700 / ~22 px. The ~32×32 icon sits left of each label with ~16 px gap.
+
+- **Selected row**: full white (icon + text both at full opacity).
+- **Unselected rows**: dim grey -- match the opacity in Berion's mockup PNG (`docs/mockups/context_menu.png` once dropped). Treat the mockup as authoritative; the precise alpha is roughly in the 35-55% range but the eye-check against the PNG is the deciding factor.
+- No bar highlight, no ▸ pointer, no value chevrons -- just the opacity contrast tells the user which row is focused.
 
 Order, top to bottom:
 1. Settings (`icon_sub_settings.png`)
@@ -97,29 +110,30 @@ Order, top to bottom:
 
 (MC Manager entry can be added wherever appropriate using `icon_sub_mcmanager.png` — confirm placement with the project owner.)
 
-#### 2. Settings — main page + per-category pages
+#### 2. Settings — single scrollable page
 
-**Main page** (`Settings`):
-- Header strip: `icon_sub_settings.png` (32×32) + title "Settings" (22 px / 700).
-- Body: three rows, one per category. Each row is just the category name — **no hints, no chevrons, no descriptions, no icons.**
-  - Storage
-  - Display
-  - Keyboard
-- Selected row uses `bar_highlight.png` tiled to row width, with `arrow_pointer.png` (12×12) at left edge.
-- Right-edge scrollbar: thin 2 px rail with `bar_top.png` (8 px wide × ~64 px tall) as the thumb.
-- × on a row enters that category's page. ○ returns to the prior screen.
+> ⚠️ **2026-05-24 correction:** Designer originally specified Settings as "main page listing categories + per-category sub-pages." Berion's actual mockup PNG (`docs/mockups/settings.png` once dropped) shows a **single scrollable page** with all sections visible at once. The "Storage", "Display", and "Keyboard" labels are inline section headers within the same list, not separate pages. Discard the sub-page navigation model.
 
-**Per-category page** (same header style, title becomes "Settings · <Category>"):
+**One page**:
+- Header strip (~44 px): `icon_sub_settings.png` (~24×24) at x≈18, "Settings" title (20 px / 700) at x≈52, 1 px bottom divider at rgba(170,190,240,0.25).
+- Body: a single vertical list with section-header rows and setting-rows interleaved.
+- Section-header rows: bold section name flush-left at the label column (no icon, no chevron, no bar highlight). Acts as a visual divider.
+- Setting rows below each header.
+- Right-edge scrollbar: thin ~2 px rail with `bar_top.png` (8 px wide × ~64 px tall) as the thumb. Scrollbar shows when content exceeds viewport.
+- Selected setting-row uses `bar_highlight.png` tiled across the row width, with `arrow_pointer.png` (~12×12) at the left edge (left of the label).
+- × on a value-row triggers the editor for that field (path editor, cycle, etc.); ← / → also cycle on cycle-rows. ○ returns to the prior screen.
 
-- **Storage**
-  - `BDMA Mode:` value `Disabled (USB FAT32 driver)`, chevrons on both sides for value cycling.
+**Section + row content (top to bottom)**:
 
-- **Display**
+- **Section: Storage**
+  - `BDMA Mode:` value `Disabled (USB FAT32 driver)` -- chevrons on both sides for cycling.
+
+- **Section: Display**
   - `Video Mode:` value `NTSC (60Hz, 480i/240p)` (cyclable).
-  - `Language:` value `English` (disabled — grey, chevrons use `*_no.png`).
+  - `Language:` value `English` (disabled / grey, chevrons use `arrow_choose_{left,right}_active_no.png`).
   - `Theme:` value `Default` (disabled).
   - `Show Devices:` value `Custom` (cyclable).
-  - Below "Show Devices", a sub-list (indented ~201 px from row start) of device checkboxes:
+  - Below "Show Devices", an **indented checkbox sub-list** (label column shifted right ~140 px from the parent label, no label-column reserve, no value column):
     - USB (disabled, off)
     - i.Link (disabled, off)
     - HDD BDM (disabled, off)
@@ -127,17 +141,24 @@ Order, top to bottom:
     - MX4SIO (disabled, off)
     - MMCE (enabled, on)
     - SMB (disabled, off)
-  - Checkbox state: `checkbox_empty.png` / `checkbox_full.png`.
+  - Checkbox state: `checkbox_empty.png` / `checkbox_full.png`. Disabled checkboxes render at ~42% opacity.
 
-- **Keyboard**
+- **Section: Keyboard**
   - `Layout:` value `QWERTY` (cyclable).
 
-Row geometry (all categories):
-- Body padding: 6 px top / 8 px bottom / 24 px left / 32 px right.
-- Row height 26 px, font 17 px / 700.
-- Label column: 175 px wide; value column begins after that.
+**Row geometry (uniform for the whole list)**:
+- Body padding: 6 px top / 8 px bottom / 24 px left / 32 px right (so the scrollbar rail can sit at ~x=628).
+- Setting-row height ≈26 px, font 17 px / 700.
+- Section-header rows are taller (~36 px) to give visual breathing room. Section text color is the dim variant (rgba(140,200,255,0.55) or similar) -- they read as labels, not as selectable rows.
+- Label column starts at x≈64 (after the ▸-pointer reserve), ~175 px wide; value column begins at x≈260 with chevrons flanking the value.
 - Disabled rows: text + chevrons at ~42% opacity.
-- Selected-row highlight + ▸ pointer same as the main page.
+- Selected-row visual: full-width `bar_highlight.png` + ▸ pointer.
+
+**Focus behavior**:
+- D-pad Up/Down moves focus between setting-rows AND checkbox-rows. Section headers and any spacer rows are skipped.
+- D-pad Left/Right cycles the focused row's value (no-op for checkbox rows -- × toggles those).
+- × activates the focused row (cycles a value, toggles a checkbox, opens a path editor).
+- ○ exits Settings.
 
 #### 3. Joypad configuration
 
@@ -172,6 +193,8 @@ Layout container is 560 × 290 px, centered horizontally with 36 px top padding 
 
 ### Reference
 
-A working HTML/JSX mockup of every screen above (rendered at native 640×480 with the exact assets in place) lives in this repo at `app/screens.jsx` + `app/styles.css`, presented through `index.html` via the design-canvas wrapper. Open that locally in a browser to confirm the visual target before/while writing the Lua port. Treat the mockup as the visual oracle — if your Lua output and the mockup disagree, the mockup is correct.
+**Visual oracle:** Berion's PNG mockup screenshots at `docs/mockups/{context_menu,settings,joypad_config,osk}.png`. If your Lua output and the mockup PNG disagree, the mockup PNG is correct.
 
-> ⚠️ **Note from 2026-05-24 archival:** the `app/` mockup files referenced in this paragraph are NOT currently committed to the repo. The PNG assets are present (commit `f8fec64`), but the HTML/JSX mockup wrapper from Berion's design package was not extracted into source. Future implementer: either commit the mockup files first or have a screenshot/hosted-mockup link as the visual oracle before writing Lua.
+Do NOT use Designer's `app/screens.jsx` / `app/styles.css` / `index.html` (from their assets.zip) as the visual oracle. Designer's interpretation of Berion's design got at least one major spec wrong (Settings sub-pages vs single page) and the project owner has explicitly flagged it as unreliable. The PNGs are the only authoritative reference for this overhaul.
+
+If the mockup PNGs are missing under `docs/mockups/`, stop and ask the project owner to commit them before starting the Lua port.
