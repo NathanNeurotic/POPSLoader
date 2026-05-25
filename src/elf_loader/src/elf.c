@@ -143,25 +143,12 @@ static bool is_dkwdrv_elf_path(const char *path) {
 	return false;
 }
 
-static const char *extract_dkwdrv_pfs_path(const char *path) {
-	if (path == NULL) return NULL;
-	const char *p = path;
-	while (*p != '\0') {
-		if (p[0] == ':' &&
-		    (p[1] == 'p' || p[1] == 'P') &&
-		    (p[2] == 'f' || p[2] == 'F') &&
-		    (p[3] == 's' || p[3] == 'S')) {
-			const char *digit = p + 4;
-			if (*digit >= '0' && *digit <= '9') {
-				if (digit[1] == ':') {
-					return p + 1;
-				}
-			}
-		}
-		p++;
-	}
-	return NULL;
-}
+/* extract_dkwdrv_pfs_path -- removed 2026-05-24 along with the V3
+ * DKWDRV-bypass logic in LoadELFFromFileExecPS2RebootIOPWithPartition.
+ * HDD DKWDRV now routes through ExecuteHddBackedViaEmbeddedLoader, which
+ * derives the partition_context and mounts pfs0 on its own; the inline
+ * pfs-segment extraction is no longer needed.
+ */
 
 static bool has_valid_target_argv0(int argc, char *argv[]) {
 	return (argc > 0 && argv != NULL && argv[0] != NULL && argv[0][0] != '\0');
@@ -602,32 +589,39 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 	t_ExecData elfdata;
 	char resolved_path[256];
 	int ret;
-	const char *launch_path = filename;
 	int final_argc = argc;
 	char **final_argv = argv;
 	static char *dkwdrv_argv[2];
 	static char dkwdrv_argv0[256];
 
-	if (is_dkwdrv_elf_path(filename)) {
-		const char *pfs_seg = extract_dkwdrv_pfs_path(filename);
-		if (pfs_seg != NULL) {
-			launch_path = pfs_seg;
-		}
-	}
-
+	/* HDD-backed launches (POPSTARTER on HDD AND DKWDRV on HDD) route
+	 * through ExecuteHddBackedViaEmbeddedLoader -> ExecuteViaEmbeddedLoader
+	 * -> BRAM child loader. This is the path that hardware-passes D-10
+	 * (HDD POPSTARTER + HDD game) via the 2026-05-22 B2 fix.
+	 *
+	 * The previous V3 logic explicitly excluded DKWDRV from this path
+	 * (via !is_dkwdrv_elf_path guards) and tried the standard
+	 * SifLoadElf -> SifIopReset -> reload-MC-modules -> ExecPS2 route
+	 * directly here instead. That route black-screened on hardware
+	 * (2026-05-24). DKWDRV is now routed through the same BRAM child
+	 * loader path as POPSTARTER so it inherits the proven IOP-state
+	 * contract.
+	 *
+	 * The argv0 synthesis at the bottom of this function still applies
+	 * to the NON-HDD DKWDRV path (e.g. mc0:/PS1_DKWDRV/DKWDRV.ELF) which
+	 * falls through to the standard direct-launch path below.
+	 */
 	if (partition != NULL && partition[0] != '\0' &&
 	    is_hdd_backed_exec_path(partition) &&
-	    is_hdd_backed_exec_path(launch_path) &&
-	    !is_dkwdrv_elf_path(launch_path)) {
-		return ExecuteHddBackedViaEmbeddedLoader(launch_path, partition, argc, argv);
+	    is_hdd_backed_exec_path(filename)) {
+		return ExecuteHddBackedViaEmbeddedLoader(filename, partition, argc, argv);
 	}
 
-	if (resolve_exec_path(launch_path, resolved_path, sizeof(resolved_path)) < 0) {
+	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
 		return -1;
 	}
 
-	if (!is_dkwdrv_elf_path(resolved_path) &&
-	    (is_hdd_backed_exec_path(resolved_path) || is_hdd_backed_exec_path(partition))) {
+	if (is_hdd_backed_exec_path(resolved_path) || is_hdd_backed_exec_path(partition)) {
 		return ExecuteHddBackedViaEmbeddedLoader(resolved_path, partition, argc, argv);
 	}
 
