@@ -79,12 +79,32 @@ Strategy:
 - **Lazy on first use:** audsrv + libsd (only when audio plays),
   ds34usb + ds34bt (only when user enables bluetooth pads in Settings).
 
-Device detection: peek at `argv[0]` device prefix (`mass:`, `mc?:`, `hdd0:`,
-`mmce?:`, `mx4sio?:`) in `setLuaBootPath()` to know which device the user
-launched from. Settings sidecar resolution (cwd-anchored) stays unchanged.
+Device detection: peek at `argv[0]` device prefix in `setLuaBootPath()` to
+know which device the user launched from. Settings sidecar resolution
+(cwd-anchored) stays unchanged.
 
-Expected improvement: 30-50% reduction in pre-Lua startup time, possibly
-more on cold boots where IRX loads dominate the budget.
+#### Layer C precursor (landed 2026-05-25)
+
+`bin/POPSLDR/system.lua` `DetectBootDevice()` now recognizes additional
+semantic device-kind prefixes that some homebrew launchers pass. These are
+**additive** -- the existing detection chain (mmce, mx4sio, mass with the
+mx4sio classify_mass_boot fix, pfs, hdd, smb, host) is unchanged. The new
+branches are placed just before the `return nil` fallback so they only
+catch what would otherwise be unclassified:
+
+| Prefix pattern | Maps to | Rationale |
+|---|---|---|
+| `usb`, `usb0`, `usb1`, ... | USB | Some launchers use `usb:` instead of the SDK-standard `mass:` |
+| `ata`, `ata0`, `ata1`, ... | HDD | ATA-backed HDD semantic prefix |
+| `apa`, `apa0`, `apa1`, ... | HDD | APA partition system semantic prefix |
+
+`mx4sio` was already in the existing detection (line 1705); the user's
+"mx4sio's mass fix" lives entirely inside the `mass%d*` branch and is
+not touched.
+
+Expected improvement (when Layer C lazy IRX loading lands): 30-50%
+reduction in pre-Lua startup time, possibly more on cold boots where
+IRX loads dominate the budget.
 
 ### Layer D -- NHDDL-style launch arguments (future PR)
 
@@ -106,6 +126,30 @@ expose to Lua as a `LaunchArgs` global table. Candidate arguments:
 | DKWDRV from MC (working baseline) | Boot teardown runs once | Not reached (MC DKWDRV uses direct path, not child loader) |
 | BOOT.ELF from USB-booted POPSLoader | Boot teardown runs once | Routed through child loader (PR #458 change); now also gets the SifExitRpc pre-teardown |
 | All clean-parent launches | SifExitRpc + fileXioExit are guarded no-ops; same effective state as before | N/A |
+
+## Flagged separately: settings sidecar is not currently implemented
+
+User raised the concern that "settings sidecar may not be working" while
+discussing Layer C. Confirmed during the 2026-05-25 audit:
+
+- `PLDR.SETTINGS_PATH` is hardcoded to `"mc0:/POPSTARTER/.pldrs"` at
+  `bin/POPSLDR/system.lua` line 1971.
+- `PLDR.SaveSettingsAtomic()` writes to that exact path (no fallback).
+- `PLDR.LoadSettingsNonFatal()` reads from that exact path (no fallback).
+- The "sidecar" functions that DO exist (`BuildPopstarterSidecarCandidate`,
+  `CollectHddBootSidecarCandidates`, `ResolveHddBootSidecarPopstarter`) are
+  for resolving the **POPSTARTER.ELF** path -- not for settings.
+
+So a POPSLoader running off USB/HDD/MX4SIO still writes settings to
+`mc0:/POPSTARTER/.pldrs`. There is currently no per-device settings
+sidecar, despite naming that suggests otherwise.
+
+This is **not in scope of the launch hygiene fix**. A separate PR
+should:
+1. Add per-device settings sidecar resolution: try `<APP_DIR>.pldrs`
+   first, fall back to `mc0:/POPSTARTER/.pldrs`.
+2. Migrate write-side similarly (write to wherever it was loaded from).
+3. Consider whether to copy from MC to sidecar on first run.
 
 ## References
 

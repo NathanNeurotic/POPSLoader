@@ -1717,6 +1717,25 @@ local function DetectBootDevice()
   if prefix == "host" then
     return "HOST", boot_path, prefix
   end
+  -- Additive device-kind prefix recognition (2026-05-25).
+  -- Some homebrew launchers pass semantic device-kind prefixes that
+  -- aren't real ps2sdk mount points. Recognize them so downstream
+  -- DEVLOCK / boot_device_label / Layer-C lazy IRX loading have the
+  -- correct classification. None of these match the existing branches
+  -- above, so the mx4sio mass: fix (classify_mass_boot) and every
+  -- other working detection stays untouched.
+  --   usb / usb0 / usb1 / ... -> USB
+  --   ata / ata0 / ata1 / ... -> HDD (ATA-backed)
+  --   apa / apa0 / apa1 / ... -> HDD (APA partition system)
+  if string.match(prefix, "^usb%d*$") then
+    return "USB", boot_path, prefix
+  end
+  if string.match(prefix, "^ata%d*$") then
+    return "HDD", boot_path, prefix
+  end
+  if string.match(prefix, "^apa%d*$") then
+    return "HDD", boot_path, prefix
+  end
   return nil, boot_path, prefix
 end
 
