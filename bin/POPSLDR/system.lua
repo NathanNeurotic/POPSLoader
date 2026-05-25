@@ -1834,6 +1834,63 @@ if type(PLDR.HDD.POPS_PARTITIONS) ~= "table" or #PLDR.HDD.POPS_PARTITIONS < 1 th
 end
 PLDR.HDD.GAMEPARTS = PLDR.HDD.GAMEPARTS or {}
 
+-- Launch arguments (NHDDL-style) parsed in main.cpp parseLaunchArgs().
+-- Exposed via System.getLaunchArgs() and normalized here into a single
+-- PLDR.LAUNCH_ARGS table. Downstream code (UI navigation, IRX deferral)
+-- can read this to auto-route the boot.
+local function NormalizeLaunchPage(value)
+  if type(value) ~= "string" or value == "" then
+    return nil
+  end
+  local key = string.lower(value)
+  if key == "hdd" or key == "ata" or key == "pfs" or key == "apa" then
+    return "HDD"
+  end
+  if key == "usb" or key == "mass" then
+    return "USB"
+  end
+  if key == "mc" or key == "memcard" then
+    return "MC"
+  end
+  if key == "mmce" then
+    return "MMCE"
+  end
+  if key == "mx4sio" or key == "mx4" or key == "sdc" then
+    return "MX4SIO"
+  end
+  if key == "smb" then
+    return "SMB"
+  end
+  if key == "bdma" then
+    return "BDMA"
+  end
+  return nil
+end
+
+PLDR.LAUNCH_ARGS = PLDR.LAUNCH_ARGS or {
+  page = nil,
+  page_raw = nil,
+  game = nil,
+  noaudio = false,
+  debug = false,
+}
+if type(System) == "table" and type(System.getLaunchArgs) == "function" then
+  local ok, args = pcall(System.getLaunchArgs)
+  if ok and type(args) == "table" then
+    local page_raw = tostring(args.page or "")
+    if page_raw ~= "" then
+      PLDR.LAUNCH_ARGS.page_raw = page_raw
+      PLDR.LAUNCH_ARGS.page = NormalizeLaunchPage(page_raw)
+    end
+    local game_raw = tostring(args.game or "")
+    if game_raw ~= "" then
+      PLDR.LAUNCH_ARGS.game = game_raw
+    end
+    PLDR.LAUNCH_ARGS.noaudio = (args.noaudio == true)
+    PLDR.LAUNCH_ARGS.debug = (args.debug == true)
+  end
+end
+
 PLDR.VIDEO_STANDARD_NTSC = "NTSC"
 PLDR.VIDEO_STANDARD_PAL = "PAL"
 PLDR.KEYBOARD_LAYOUT_ABC = "ABC"
@@ -1987,7 +2044,39 @@ end
 require("images")
 
 PLDR.POPSTARTER_DIR = "mc0:/POPSTARTER"
-PLDR.SETTINGS_PATH = "mc0:/POPSTARTER/.pldrs"
+
+-- Settings path resolution: prefer a per-device sidecar at
+-- APP_DIR_LOCAL/.pldrs so a POPSLoader installed on USB / MX4SIO / MMCE
+-- keeps its own settings. Fall back to the legacy mc0:/POPSTARTER/.pldrs
+-- for first-run migration AND for HDD-backed boots (where writing into
+-- the PFS partition would require an RW remount).
+--
+-- The actual PLDR.SETTINGS_PATH is decided at load time in
+-- LoadSettingsNonFatal: whichever path's settings file is opened first
+-- becomes the path subsequent saves use, so saves go back where loads
+-- came from. If neither file exists yet, sidecar wins (or fallback if
+-- no sidecar is computable, e.g. HDD-backed APP_DIR).
+PLDR.SETTINGS_PATH_FALLBACK = "mc0:/POPSTARTER/.pldrs"
+
+local function ComputeSettingsSidecarPath()
+  local dir = APP_DIR_LOCAL
+  if type(dir) ~= "string" or dir == "" then
+    return nil
+  end
+  -- HDD-backed APP_DIR means the PFS partition would need RW; avoid the
+  -- mount complexity and let HDD installs keep using mc0 sidecar.
+  local lower = string.lower(dir)
+  if string.match(lower, "^hdd%d*:") ~= nil
+     or string.match(lower, "^pfs%d*:") ~= nil
+     or string.match(lower, "^ata%d*:") ~= nil
+     or string.match(lower, "^apa%d*:") ~= nil then
+    return nil
+  end
+  return JoinPath(dir, ".pldrs")
+end
+
+PLDR.SETTINGS_PATH_SIDECAR = ComputeSettingsSidecarPath()
+PLDR.SETTINGS_PATH = PLDR.SETTINGS_PATH_SIDECAR or PLDR.SETTINGS_PATH_FALLBACK
 PLDR.BDMA_MODE_KEY = "FAT32"
 PLDR.SELECTED_PROFILE = tonumber(PLDR.DEFAULT_PROFILE) or 1
 PLDR.DKWDRV_DEFAULT_PATH = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
@@ -2490,14 +2579,22 @@ function PLDR.ReconcileBdmaModeWithEffectiveState()
 end
 
 function PLDR.SaveSettingsAtomic()
-  if not PLDR.EnsurePopstarterDir() then
+  local target = PLDR.SETTINGS_PATH or PLDR.SETTINGS_PATH_FALLBACK
+  local target_is_mc = (target == PLDR.SETTINGS_PATH_FALLBACK)
+  -- Always best-effort the MC POPSTARTER pack dir so the BDMA OSD icon
+  -- assets remain valid regardless of where settings actually live.
+  local mc_dir_ok = PLDR.EnsurePopstarterDir()
+  -- Only treat the MC pack failure as fatal when our target IS the MC
+  -- fallback. Per-device sidecar saves (mass:/.pldrs, usb:/.pldrs, etc.)
+  -- don't depend on mc0:/POPSTARTER existing.
+  if target_is_mc and not mc_dir_ok then
     if UI ~= nil and UI.Notif_queue ~= nil then
       UI.Notif_queue.add("Cannot access mc0:/POPSTARTER")
     end
     return false
   end
   local data = EncodeSettings()
-  local ok = WriteAtomic(PLDR.SETTINGS_PATH, data)
+  local ok = WriteAtomic(target, data)
   if not ok and UI ~= nil and UI.Notif_queue ~= nil then
     UI.Notif_queue.add("Failed to save settings")
   end
@@ -2524,11 +2621,27 @@ function PLDR.LoadSettingsNonFatal()
   if PLDR.PROFILES ~= nil and PLDR.PROFILES[defaults_profile] ~= nil then
     PLDR.POPSTARTER_PATH = PLDR.PROFILES[defaults_profile].ELF
   end
-  if not doesFileExist(PLDR.SETTINGS_PATH) then
+  -- Resolve actual settings source: prefer per-device sidecar
+  -- (APP_DIR/.pldrs), fall back to legacy mc0:/POPSTARTER/.pldrs.
+  -- Whichever file is found first wins -- PLDR.SETTINGS_PATH is then
+  -- pinned to that path so subsequent saves go to the same place.
+  local sidecar = PLDR.SETTINGS_PATH_SIDECAR
+  local fallback = PLDR.SETTINGS_PATH_FALLBACK
+  local loaded_path = nil
+  if sidecar ~= nil and sidecar ~= "" and doesFileExist(sidecar) then
+    loaded_path = sidecar
+  elseif fallback ~= nil and fallback ~= "" and doesFileExist(fallback) then
+    loaded_path = fallback
+  end
+  if loaded_path == nil then
+    -- No settings yet on either path. Leave PLDR.SETTINGS_PATH at its
+    -- init default (sidecar preferred, fallback if no sidecar) so the
+    -- first save lands on the right device.
     PLDR.ReconcileBdmaModeWithEffectiveState()
     PLDR.ApplyVideoStandardRuntime(PLDR.VIDEO_STANDARD)
     return false
   end
+  PLDR.SETTINGS_PATH = loaded_path
   local data = ReadWholeFile(PLDR.SETTINGS_PATH)
   if data == nil then
     PLDR.ReconcileBdmaModeWithEffectiveState()

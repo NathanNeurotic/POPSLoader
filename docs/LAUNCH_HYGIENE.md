@@ -65,28 +65,81 @@ same hang because POPSLoader's own `fileXio` is alive on the IOP at hand-off
 time. Layer B prepends `SifExitRpc(); SifInitRpc(0);` before each
 `SifIopReset` to detach the RPC client cleanly.
 
-### Layer C -- Lazy IRX loading (future PR)
+### Layer D -- NHDDL-style launch arguments (landed 2026-05-25)
 
-`main()` currently loads 11 IRX modules sequentially before `boot.lua`
-starts. Most aren't needed until the user navigates to a specific page.
-Strategy:
+CosmicScale requested `-mode=ata` style boot arguments to skip directly to
+a device page. Shipped infrastructure:
 
-- **Always at startup (core):** iomanX, fileXio, sio2man, mcman, mcserv,
-  padman. These are needed for settings I/O, MC, controllers, RPC plumbing.
-- **Lazy on device-page entry:** usbd + usbhdfsd (USB page), mmceman (MMCE
-  page), mx4sio (MX4SIO page), ps2dev9 + ps2atad + ps2hdd + ps2fs (HDD pages,
-  already lazy via `luaHDD.cpp`).
-- **Lazy on first use:** audsrv + libsd (only when audio plays),
-  ds34usb + ds34bt (only when user enables bluetooth pads in Settings).
+**`src/main.cpp` `parseLaunchArgs()`** runs immediately after `argv[0]`
+capture, before any IRX loads. Recognized flags:
 
-Device detection: peek at `argv[0]` device prefix in `setLuaBootPath()` to
-know which device the user launched from. Settings sidecar resolution
-(cwd-anchored) stays unchanged.
+| Flag | Effect |
+|---|---|
+| `-page=hdd|usb|mc|mmce|mx4sio|smb|bdma` | Auto-navigate hint for the UI |
+| `-mode=<value>` | NHDDL-compatible alias for `-page` (e.g. `-mode=ata` maps to HDD) |
+| `-game=<selector>` | Auto-launch hint (game selector / profile / path) |
+| `-noaudio` | Skip `audsrv_irx` + `libsd_irx` at boot |
+| `-debug` | Enable diagnostic output |
+
+**Lua exposure**: `System.getLaunchArgs()` returns `{page, game, noaudio,
+debug}`. `system.lua` reads this at init and stores normalized values in
+`PLDR.LAUNCH_ARGS = {page, page_raw, game, noaudio, debug}`. Page values
+are normalized via `NormalizeLaunchPage()` so `ata`/`pfs`/`apa`/`hdd` all
+map to `"HDD"`, `usb`/`mass` to `"USB"`, etc.
+
+**Auto-navigation wiring** is intentionally deferred. The infrastructure
+is in place; downstream UI code in `ui.lua` can pick up `PLDR.LAUNCH_ARGS`
+when ready to act on it. This avoids touching the existing initial-page
+selection logic until that's a focused follow-up.
+
+### Settings sidecar (landed 2026-05-25)
+
+Replaces hardcoded `PLDR.SETTINGS_PATH = "mc0:/POPSTARTER/.pldrs"` with a
+per-device sidecar resolution + MC fallback. New constants:
+
+- `PLDR.SETTINGS_PATH_FALLBACK = "mc0:/POPSTARTER/.pldrs"` (legacy path)
+- `PLDR.SETTINGS_PATH_SIDECAR` -- computed from `APP_DIR_LOCAL/.pldrs`
+  when `APP_DIR_LOCAL` is NOT HDD-backed (avoid PFS RW remount). `nil`
+  for HDD-backed installs.
+- `PLDR.SETTINGS_PATH` -- the *active* path; resolved at load time to
+  whichever file exists first (sidecar preferred, fallback otherwise).
+
+Behavior:
+- **Load**: try sidecar first, then fallback. Pin `PLDR.SETTINGS_PATH`
+  to whichever loaded. If neither exists, leave it at the init default
+  (sidecar preferred so the first save lands per-device).
+- **Save**: write to `PLDR.SETTINGS_PATH`. Only fail on
+  `EnsurePopstarterDir` if the target IS the MC fallback (sidecar saves
+  don't need `mc0:/POPSTARTER`).
+- **HDD installs**: `SETTINGS_PATH_SIDECAR == nil`, so settings continue
+  to use `mc0:/POPSTARTER/.pldrs`. Avoids the PFS-mounted-RW complexity
+  for HDD-resident POPSLoader.
+
+### Layer C -- Lazy IRX loading (partial; landed 2026-05-25, more queued)
+
+Shipped in this PR:
+- **Pre-Lua device classification hint**: `main.cpp`
+  `detectBootDeviceHintFromArgv0()` returns the device-kind label for
+  argv[0]. Stored in `boot_device_hint` global, exposed via
+  `System.getBootDeviceHint()`. Used by `system.lua` for early decisions
+  before `DetectBootDevice` runs full authoritative resolution.
+- **`-noaudio` deferral**: skips `libsd_irx` and `audsrv_irx` IRX loads
+  at boot when the flag is present. Lua sound code should check
+  `PLDR.LAUNCH_ARGS.noaudio` before calling sound APIs (TODO: audit
+  sound call sites).
+
+Still queued for a focused follow-up (intentionally NOT in this PR
+because aggressive deferral changes module load order which is high-
+risk for input/controller availability):
+- Defer `mmceman_irx` unless boot device is MMCE (saves ~1 module load)
+- Defer `ds34bt_irx` unless user has BT pads enabled
+- Defer `usbd_irx` unless boot device is USB / MX4SIO / DS3-4 USB
+- Add `EnsureAudio()`, `EnsureBluetoothPad()` Lua-callable helpers
 
 #### Layer C precursor (landed 2026-05-25)
 
 `bin/POPSLDR/system.lua` `DetectBootDevice()` now recognizes additional
-semantic device-kind prefixes that some homebrew launchers pass. These are
+SDK device-kind prefixes that some homebrew launchers pass. These are
 **additive** -- the existing detection chain (mmce, mx4sio, mass with the
 mx4sio classify_mass_boot fix, pfs, hdd, smb, host) is unchanged. The new
 branches are placed just before the `return nil` fallback so they only
@@ -94,28 +147,18 @@ catch what would otherwise be unclassified:
 
 | Prefix pattern | Maps to | Rationale |
 |---|---|---|
-| `usb`, `usb0`, `usb1`, ... | USB | Some launchers use `usb:` instead of the SDK-standard `mass:` |
+| `usb`, `usb0`, `usb1`, ... | USB | Newer ps2sdk SDK USB prefix (was `mass:` only) |
 | `ata`, `ata0`, `ata1`, ... | HDD | ATA-backed HDD semantic prefix |
 | `apa`, `apa0`, `apa1`, ... | HDD | APA partition system semantic prefix |
 
 `mx4sio` was already in the existing detection (line 1705); the user's
 "mx4sio's mass fix" lives entirely inside the `mass%d*` branch and is
-not touched.
+not touched. Both old launchers (using `mass:`) and new launchers (using
+`usb:`/`ata:`/`apa:`) now resolve to the correct device classification.
 
-Expected improvement (when Layer C lazy IRX loading lands): 30-50%
+Expected improvement (when full Layer C lazy IRX loading lands): 30-50%
 reduction in pre-Lua startup time, possibly more on cold boots where
 IRX loads dominate the budget.
-
-### Layer D -- NHDDL-style launch arguments (future PR)
-
-CosmicScale requested `-mode=ata` style boot arguments to skip directly to
-a device page. Parse `argv` in `main()` before `runScript("boot.lua")` and
-expose to Lua as a `LaunchArgs` global table. Candidate arguments:
-
-- `-page=hdd` / `-page=usb` / `-page=mmce` / `-page=mx4sio` / `-page=smb` / `-page=bdma`
-- `-game=<selector>` (auto-launch a specific game on boot)
-- `-noaudio` (skip audio init for fastest possible boot)
-- `-debug` (enable on-screen diagnostics)
 
 ## Safety audit (Layers A and B)
 
