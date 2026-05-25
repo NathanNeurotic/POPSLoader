@@ -1672,9 +1672,37 @@ function PLDR.RestoreWorkingDirectory(path)
   return RestoreWorkingDirectory(path)
 end
 
-local function DetectBootDevice()
+-- Single source of truth for "where did POPSLoader come from?". Combines
+-- the C-side argv[0] classification hint (computed pre-IRX in main.cpp
+-- detectBootDeviceHintFromArgv0) with Lua-side refinement (the mx4sio
+-- mass:/ disambiguation via BDM driver lookup, plus the additive
+-- usb/ata/apa SDK prefix recognition).
+--
+-- Returns a table:
+--   kind         -- "USB"/"HDD"/"MC"/"MMCE"/"MX4SIO"/"SMB"/"HOST" or nil
+--   prefix       -- raw argv prefix (e.g. "mass0", "hdd0"), or nil
+--   boot_path    -- normalized BOOT_PATH_RAW (with trailing slash)
+--   sidecar_path -- per-device .pldrs path if appropriate, else nil
+--   c_hint       -- pre-IRX C-side classification (debug / fallback)
+--
+-- Robust to bad/missing argv: empty boot_path, nil prefix/kind, nil
+-- sidecar_path -- all callers degrade gracefully (settings -> MC,
+-- DetectBootDevice -> nil kind, UI -> default page).
+--
+-- Cheap enough to call per-invocation; classify_mass_boot's RPC is the
+-- only non-trivial cost and is only hit when prefix matches "mass%d*".
+local function ResolveBootContext()
   local boot_path = NormalizeDirPath(BOOT_PATH_RAW or "")
   local prefix = string.match(boot_path, "^([%a]+%d*):")
+
+  local c_hint = ""
+  if type(System) == "table" and type(System.getBootDeviceHint) == "function" then
+    local ok, hint = pcall(System.getBootDeviceHint)
+    if ok and type(hint) == "string" then
+      c_hint = hint
+    end
+  end
+
   local function classify_mass_boot(root)
     if type(System) == "table" and type(System.getMassMountDriver) == "function" then
       local ok, driver = pcall(System.getMassMountDriver, root)
@@ -1686,38 +1714,94 @@ local function DetectBootDevice()
         return "USB"
       end
     end
-    local mx_marker = JoinPath(APP_DIR_LOCAL, ".boot_mx4sio")
-    local usb_marker = JoinPath(APP_DIR_LOCAL, ".boot_usb")
-    if doesFileExist(mx_marker) then
-      return "MX4SIO"
-    end
-    if doesFileExist(usb_marker) then
-      return "USB"
+    if type(APP_DIR_LOCAL) == "string" and APP_DIR_LOCAL ~= "" then
+      local mx_marker = JoinPath(APP_DIR_LOCAL, ".boot_mx4sio")
+      local usb_marker = JoinPath(APP_DIR_LOCAL, ".boot_usb")
+      if doesFileExist(mx_marker) then
+        return "MX4SIO"
+      end
+      if doesFileExist(usb_marker) then
+        return "USB"
+      end
     end
     return "USB"
   end
-  if prefix == nil then
-    return nil, boot_path, prefix
+
+  -- Lua-side prefix classification. Order preserves the historical
+  -- DetectBootDevice precedence (mmce/mx4sio/mass/pfs|hdd/smb/host
+  -- first; usb/ata/apa SDK additions below them so existing behavior
+  -- never changes for the legacy prefixes).
+  local kind = nil
+  if prefix ~= nil then
+    if string.match(prefix, "^mmce%d*$") then
+      kind = "MMCE"
+    elseif string.match(prefix, "^mx4sio%d*$") then
+      kind = "MX4SIO"
+    elseif string.match(prefix, "^mass%d*$") then
+      kind = classify_mass_boot(prefix..":/")
+    elseif string.match(prefix, "^pfs%d*$") or string.match(prefix, "^hdd%d*$") then
+      kind = "HDD"
+    elseif prefix == "smb" then
+      kind = "SMB"
+    elseif prefix == "host" then
+      kind = "HOST"
+    elseif string.match(prefix, "^usb%d*$") then
+      kind = "USB"
+    elseif string.match(prefix, "^ata%d*$") then
+      kind = "HDD"
+    elseif string.match(prefix, "^apa%d*$") then
+      kind = "HDD"
+    end
   end
-  if string.match(prefix, "^mmce%d*$") then
-    return "MMCE", boot_path, prefix
+
+  -- Fallback to C-side hint if Lua-side prefix classification yielded
+  -- nothing (e.g. boot_path is empty because argv[0] was NULL/garbage
+  -- but C saw enough to classify).
+  if kind == nil and c_hint ~= "" then
+    kind = c_hint
   end
-  if string.match(prefix, "^mx4sio%d*$") then
-    return "MX4SIO", boot_path, prefix
+
+  -- Settings sidecar path: APP_DIR_LOCAL/.pldrs when on a non-HDD
+  -- device. HDD-backed APP_DIR returns nil here so settings fall back
+  -- to mc0:/POPSTARTER/.pldrs (avoids PFS RW remount complexity).
+  local sidecar = nil
+  if type(APP_DIR_LOCAL) == "string" and APP_DIR_LOCAL ~= "" then
+    local lower = string.lower(APP_DIR_LOCAL)
+    local is_hdd_backed = string.match(lower, "^hdd%d*:") ~= nil
+       or string.match(lower, "^pfs%d*:") ~= nil
+       or string.match(lower, "^ata%d*:") ~= nil
+       or string.match(lower, "^apa%d*:") ~= nil
+    if not is_hdd_backed then
+      sidecar = JoinPath(APP_DIR_LOCAL, ".pldrs")
+    end
   end
-  if string.match(prefix, "^mass%d*$") then
-    return classify_mass_boot(prefix..":/"), boot_path, prefix
-  end
-  if string.match(prefix, "^pfs%d*$") or string.match(prefix, "^hdd%d*$") then
-    return "HDD", boot_path, prefix
-  end
-  if prefix == "smb" then
-    return "SMB", boot_path, prefix
-  end
-  if prefix == "host" then
-    return "HOST", boot_path, prefix
-  end
-  return nil, boot_path, prefix
+
+  return {
+    kind = kind,
+    prefix = prefix,
+    boot_path = boot_path,
+    sidecar_path = sidecar,
+    c_hint = c_hint,
+  }
+end
+
+-- DetectBootDevice keeps its historical signature; thin wrapper around
+-- ResolveBootContext so the call sites scattered through system.lua and
+-- ui.lua continue to work unchanged.
+local function DetectBootDevice()
+  local ctx = ResolveBootContext()
+  return ctx.kind, ctx.boot_path, ctx.prefix
+end
+
+-- Public APIs for callers that want the full boot context (UI, future
+-- lazy-IRX consumers, telemetry, etc.) without having to glue three
+-- separate detection paths together.
+function PLDR.GetBootContext()
+  return ResolveBootContext()
+end
+
+function PLDR.GetBootKind()
+  return ResolveBootContext().kind
 end
 
 local function LoadIrxFromDir(dir)
@@ -1814,6 +1898,61 @@ if type(PLDR.HDD.POPS_PARTITIONS) ~= "table" or #PLDR.HDD.POPS_PARTITIONS < 1 th
   end
 end
 PLDR.HDD.GAMEPARTS = PLDR.HDD.GAMEPARTS or {}
+
+-- Launch arguments (NHDDL-style) parsed in main.cpp parseLaunchArgs().
+-- Exposed via System.getLaunchArgs() and normalized here into a single
+-- PLDR.LAUNCH_ARGS table. Downstream code (UI navigation, IRX deferral)
+-- can read this to auto-route the boot.
+local function NormalizeLaunchPage(value)
+  if type(value) ~= "string" or value == "" then
+    return nil
+  end
+  local key = string.lower(value)
+  if key == "hdd" or key == "ata" or key == "pfs" or key == "apa" then
+    return "HDD"
+  end
+  if key == "usb" or key == "mass" then
+    return "USB"
+  end
+  if key == "mc" or key == "memcard" then
+    return "MC"
+  end
+  if key == "mmce" then
+    return "MMCE"
+  end
+  if key == "mx4sio" or key == "mx4" or key == "sdc" then
+    return "MX4SIO"
+  end
+  if key == "smb" then
+    return "SMB"
+  end
+  if key == "bdma" then
+    return "BDMA"
+  end
+  return nil
+end
+
+PLDR.LAUNCH_ARGS = PLDR.LAUNCH_ARGS or {
+  page = nil,
+  page_raw = nil,
+  game = nil,
+  debug = false,
+}
+if type(System) == "table" and type(System.getLaunchArgs) == "function" then
+  local ok, args = pcall(System.getLaunchArgs)
+  if ok and type(args) == "table" then
+    local page_raw = tostring(args.page or "")
+    if page_raw ~= "" then
+      PLDR.LAUNCH_ARGS.page_raw = page_raw
+      PLDR.LAUNCH_ARGS.page = NormalizeLaunchPage(page_raw)
+    end
+    local game_raw = tostring(args.game or "")
+    if game_raw ~= "" then
+      PLDR.LAUNCH_ARGS.game = game_raw
+    end
+    PLDR.LAUNCH_ARGS.debug = (args.debug == true)
+  end
+end
 
 PLDR.VIDEO_STANDARD_NTSC = "NTSC"
 PLDR.VIDEO_STANDARD_PAL = "PAL"
@@ -1968,7 +2107,25 @@ end
 require("images")
 
 PLDR.POPSTARTER_DIR = "mc0:/POPSTARTER"
-PLDR.SETTINGS_PATH = "mc0:/POPSTARTER/.pldrs"
+
+-- Settings path resolution: prefer a per-device sidecar at
+-- APP_DIR_LOCAL/.pldrs so a POPSLoader installed on USB / MX4SIO / MMCE
+-- keeps its own settings. Fall back to the legacy mc0:/POPSTARTER/.pldrs
+-- for first-run migration AND for HDD-backed boots (where writing into
+-- the PFS partition would require an RW remount).
+--
+-- The sidecar path comes from the unified boot-context resolver above
+-- (ResolveBootContext().sidecar_path), so settings/IRX/UI navigation
+-- all derive from the same argv[0]-rooted detection pipeline.
+--
+-- The actual PLDR.SETTINGS_PATH is decided at load time in
+-- LoadSettingsNonFatal: whichever path's settings file is opened first
+-- becomes the path subsequent saves use, so saves go back where loads
+-- came from. If neither file exists yet, sidecar wins (or fallback if
+-- no sidecar is computable, e.g. HDD-backed APP_DIR).
+PLDR.SETTINGS_PATH_FALLBACK = "mc0:/POPSTARTER/.pldrs"
+PLDR.SETTINGS_PATH_SIDECAR = ResolveBootContext().sidecar_path
+PLDR.SETTINGS_PATH = PLDR.SETTINGS_PATH_SIDECAR or PLDR.SETTINGS_PATH_FALLBACK
 PLDR.BDMA_MODE_KEY = "FAT32"
 PLDR.SELECTED_PROFILE = tonumber(PLDR.DEFAULT_PROFILE) or 1
 PLDR.DKWDRV_DEFAULT_PATH = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
@@ -2471,14 +2628,22 @@ function PLDR.ReconcileBdmaModeWithEffectiveState()
 end
 
 function PLDR.SaveSettingsAtomic()
-  if not PLDR.EnsurePopstarterDir() then
+  local target = PLDR.SETTINGS_PATH or PLDR.SETTINGS_PATH_FALLBACK
+  local target_is_mc = (target == PLDR.SETTINGS_PATH_FALLBACK)
+  -- Always best-effort the MC POPSTARTER pack dir so the BDMA OSD icon
+  -- assets remain valid regardless of where settings actually live.
+  local mc_dir_ok = PLDR.EnsurePopstarterDir()
+  -- Only treat the MC pack failure as fatal when our target IS the MC
+  -- fallback. Per-device sidecar saves (mass:/.pldrs, usb:/.pldrs, etc.)
+  -- don't depend on mc0:/POPSTARTER existing.
+  if target_is_mc and not mc_dir_ok then
     if UI ~= nil and UI.Notif_queue ~= nil then
       UI.Notif_queue.add("Cannot access mc0:/POPSTARTER")
     end
     return false
   end
   local data = EncodeSettings()
-  local ok = WriteAtomic(PLDR.SETTINGS_PATH, data)
+  local ok = WriteAtomic(target, data)
   if not ok and UI ~= nil and UI.Notif_queue ~= nil then
     UI.Notif_queue.add("Failed to save settings")
   end
@@ -2505,11 +2670,27 @@ function PLDR.LoadSettingsNonFatal()
   if PLDR.PROFILES ~= nil and PLDR.PROFILES[defaults_profile] ~= nil then
     PLDR.POPSTARTER_PATH = PLDR.PROFILES[defaults_profile].ELF
   end
-  if not doesFileExist(PLDR.SETTINGS_PATH) then
+  -- Resolve actual settings source: prefer per-device sidecar
+  -- (APP_DIR/.pldrs), fall back to legacy mc0:/POPSTARTER/.pldrs.
+  -- Whichever file is found first wins -- PLDR.SETTINGS_PATH is then
+  -- pinned to that path so subsequent saves go to the same place.
+  local sidecar = PLDR.SETTINGS_PATH_SIDECAR
+  local fallback = PLDR.SETTINGS_PATH_FALLBACK
+  local loaded_path = nil
+  if sidecar ~= nil and sidecar ~= "" and doesFileExist(sidecar) then
+    loaded_path = sidecar
+  elseif fallback ~= nil and fallback ~= "" and doesFileExist(fallback) then
+    loaded_path = fallback
+  end
+  if loaded_path == nil then
+    -- No settings yet on either path. Leave PLDR.SETTINGS_PATH at its
+    -- init default (sidecar preferred, fallback if no sidecar) so the
+    -- first save lands on the right device.
     PLDR.ReconcileBdmaModeWithEffectiveState()
     PLDR.ApplyVideoStandardRuntime(PLDR.VIDEO_STANDARD)
     return false
   end
+  PLDR.SETTINGS_PATH = loaded_path
   local data = ReadWholeFile(PLDR.SETTINGS_PATH)
   if data == nil then
     PLDR.ReconcileBdmaModeWithEffectiveState()

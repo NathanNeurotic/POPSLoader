@@ -625,6 +625,25 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 		return ExecuteHddBackedViaEmbeddedLoader(resolved_path, partition, argc, argv);
 	}
 
+	/* BOOT.ELF on MC: route through the BRAM child loader. Mirrors the
+	 * BOOT.ELF special-case in LoadELFFromFileWithPartition (this file,
+	 * non-reboot variant). The child loader runs wipeUserMem() before
+	 * SifLoadElf'ing BOOT.ELF, which clears EE-RAM residue left behind
+	 * by HDD-booted POPSLoader, and the child loader's BOOT.ELF branch
+	 * does its own IOP reset + minimum-IRX reload before ExecPS2.
+	 *
+	 * Without this routing, LaunchBootElf with reboot_iop=1 fell through
+	 * to the direct SifIopReset path below. That path black-screens when
+	 * POPSLoader was booted from HDD (Nuno 2026-05-25) -- the IOP reset
+	 * alone wasn't enough; we also needed the EE-RAM wipe.
+	 */
+	if (strcmp(resolved_path, "mc0:/BOOT/BOOT.ELF") == 0 ||
+	    strcmp(resolved_path, "mc1:/BOOT/BOOT.ELF") == 0) {
+		char *boot_argv[1];
+		boot_argv[0] = (char *)resolved_path;
+		return ExecuteViaEmbeddedLoader("", resolved_path, 1, boot_argv);
+	}
+
 	SifInitRpc(0);
 	SifLoadFileInit();
 	ret = SifLoadElf(resolved_path, &elfdata);

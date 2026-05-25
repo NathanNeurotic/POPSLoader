@@ -89,6 +89,100 @@ int mmce_slot0_ready = -1;
 int mmce_slot1_ready = -1;
 static clock_t boot_start = 0;
 
+/* NHDDL-style launch arguments. Parsed early in main() so downstream
+ * code (IRX loading, Lua boot) can act on the requested mode.
+ *
+ *   -page=hdd|usb|mc|mmce|mx4sio|smb|bdma   auto-navigate to that page
+ *   -mode=<value>                            NHDDL-compatible alias
+ *   -game=<selector>                         auto-launch that game
+ *   -debug                                   enable on-screen diagnostics
+ *
+ * (-noaudio was considered and dropped: audio modules are embedded in
+ *  the ELF, load in ~few hundred ms, and POPSLoader uses sound for UI
+ *  feedback. The skip-audio path was a footgun for negligible savings.)
+ *
+ * Empty strings / zero ints mean "not specified". Exported via the
+ * System.getLaunchArgs() Lua binding (see luasystem.cpp).
+ */
+char launch_arg_page[64] = "";
+char launch_arg_game[256] = "";
+int  launch_arg_debug   = 0;
+
+/* C-side mirror of system.lua DetectBootDevice. Returns the canonical
+ * device-kind label (USB / HDD / MC / MMCE / MX4SIO / SMB / HOST) for a
+ * given argv[0]-style path, or "" when unrecognized. This is consulted
+ * by main() to decide whether device-specific IRX loads can be deferred
+ * (Layer C lazy loading) and by the Lua binding System.getBootDeviceHint().
+ *
+ * IMPORTANT: this returns a CLASSIFICATION HINT, not the authoritative
+ * boot device. The authoritative device is still resolved later in
+ * system.lua DetectBootDevice() which handles the mass:/ MX4SIO fix
+ * (BDM driver lookup + .boot_mx4sio marker). Use this hint only for
+ * pre-Lua, pre-IRX-load decisions.
+ */
+char boot_device_hint[16] = "";
+
+static const char * detectBootDeviceHintFromArgv0(const char * argv0)
+{
+    if (argv0 == NULL || argv0[0] == '\0') {
+        return "";
+    }
+    if (strncmp(argv0, "mass", 4) == 0) {
+        return "USB";    /* could be MX4SIO; classify_mass_boot refines later */
+    }
+    if (strncmp(argv0, "usb", 3) == 0) {
+        return "USB";
+    }
+    if (strncmp(argv0, "mx4sio", 6) == 0) {
+        return "MX4SIO";
+    }
+    if (strncmp(argv0, "mmce", 4) == 0) {
+        return "MMCE";
+    }
+    if (strncmp(argv0, "mc", 2) == 0 && argv0[2] != 'm') {
+        /* "mc0:" / "mc1:" but not "mcm" (mcman would never appear in argv0) */
+        return "MC";
+    }
+    if (strncmp(argv0, "hdd", 3) == 0 ||
+        strncmp(argv0, "pfs", 3) == 0 ||
+        strncmp(argv0, "ata", 3) == 0 ||
+        strncmp(argv0, "apa", 3) == 0) {
+        return "HDD";
+    }
+    if (strncmp(argv0, "smb", 3) == 0) {
+        return "SMB";
+    }
+    if (strncmp(argv0, "host", 4) == 0) {
+        return "HOST";
+    }
+    return "";
+}
+
+static void parseLaunchArgs(int argc, char ** argv)
+{
+    if (argc <= 1 || argv == NULL) {
+        return;
+    }
+    for (int i = 1; i < argc; i++) {
+        const char * a = argv[i];
+        if (a == NULL || a[0] == '\0') {
+            continue;
+        }
+        if (strncmp(a, "-page=", 6) == 0) {
+            snprintf(launch_arg_page, sizeof(launch_arg_page), "%s", a + 6);
+        } else if (strncmp(a, "-mode=", 6) == 0) {
+            /* NHDDL-compat alias: -mode=ata maps to our -page=ata/hdd flow */
+            snprintf(launch_arg_page, sizeof(launch_arg_page), "%s", a + 6);
+        } else if (strncmp(a, "-game=", 6) == 0) {
+            snprintf(launch_arg_game, sizeof(launch_arg_game), "%s", a + 6);
+        } else if (strcmp(a, "-debug") == 0) {
+            launch_arg_debug = 1;
+        }
+    }
+    DPRINTF("LaunchArgs: page=\"%s\" game=\"%s\" debug=%d\n",
+            launch_arg_page, launch_arg_game, launch_arg_debug);
+}
+
 static unsigned int boot_ms(void)
 {
     if (boot_start == 0) {
@@ -298,7 +392,19 @@ int main(int argc, char * argv[])
     boot_start = clock();
     BootStamp("EE init start");
 
-    
+    /* Parse NHDDL-style launch arguments early so Lua and any
+     * conditional IRX loading paths can read them. Argv parsing has
+     * no SDK dependencies so it's safe at this point. */
+    parseLaunchArgs(argc, argv);
+
+    /* Pre-IRX classification hint. Used by the conditional audsrv/libsd
+     * load below and exposed to Lua via System.getBootDeviceHint(). */
+    {
+        const char * hint = detectBootDeviceHintFromArgv0(argc > 0 ? argv[0] : NULL);
+        snprintf(boot_device_hint, sizeof(boot_device_hint), "%s", hint != NULL ? hint : "");
+        DPRINTF("BootDeviceHint: \"%s\"\n", boot_device_hint);
+    }
+
     // install sbv patch fix
     DPRINTF("Installing SBV Patches...\n");
     sbv_patch_enable_lmb();
@@ -366,10 +472,10 @@ int main(int argc, char * argv[])
     LOAD_IRX_NARG(libsd_irx);
 
 
-    // load USB modules    
+    // load USB modules
     LOAD_IRX_NARG(usbd_irx);
 
-    
+
     int ds3pads = 1;
     LOAD_IRX(ds34usb_irx, 4, (char *)&ds3pads);
     LOAD_IRX(ds34bt_irx, 4, (char *)&ds3pads);
@@ -433,8 +539,47 @@ int main(int argc, char * argv[])
 }
 
 extern "C" void _ps2sdk_memory_init() {
-#ifdef RESET_IOP  
+#ifdef RESET_IOP
+    /* Bootstrap IOP hygiene for parent launchers that do NOT reset the
+     * IOP before handing control to POPSLoader. The canonical offender
+     * is wLaunchELF, which only resets the IOP for HDD targets (per
+     * wLaunchELF/loader/loader.c). When POPSLoader is launched from
+     * wLaunchELF off USB, MC, MX4SIO, or any non-HDD device, we inherit
+     * wLaunchELF's fileXio + iomanX IOP modules. fileXio holds threads
+     * and semaphores that BLOCK a plain SifIopReset (documented:
+     * https://github.com/ps2dev/ps2sdk/issues/425). The symptom is a
+     * silent hang here -> black screen for the user (CosmicScale report
+     * 2026-05-25).
+     *
+     * The teardown contract below survives both clean and polluted
+     * parents:
+     *
+     *   SifExitRpc()    -- drop any inherited RPC client binding so the
+     *                      next SifInitRpc starts from a known state.
+     *                      Safe on uninitialized RPC (graceful no-op).
+     *   SifInitRpc(0)   -- fresh RPC handshake; required before
+     *                      fileXioExit can issue any RPC.
+     *   fileXioExit()   -- guarded by __fileXioInited internally
+     *                      (ps2sdk PR #426 contract): restores libc fio
+     *                      function pointers (open/read/close/...)
+     *                      that fileXioInit would have hijacked, and
+     *                      releases its EE-side semaphores. No-op on
+     *                      clean parents because __fileXioInited == 0
+     *                      in a fresh EE process; meaningful only if
+     *                      newlib startup happens to have entered the
+     *                      hijacked state.
+     *   SifIopReset     -- now succeeds; no fileXio RPC channel pinned.
+     *   SifIopSync      -- wait for IOP boot.
+     *   SifInitRpc(0)   -- ready for main() to load our own IRX stack.
+     *
+     * Existing clean-parent paths (PSBBN, Browser, HOSDMenu, OSDMenu,
+     * MC autoboot) are unaffected: each new call has a "not
+     * initialized" guard. The only behavioral delta is that the IOP
+     * reset now completes instead of hanging when fileXio was alive.
+     */
+    SifExitRpc();
     SifInitRpc(0);
+    fileXioExit();
     while (!SifIopReset("", 0)){};
     while (!SifIopSync()){};
     SifInitRpc(0);

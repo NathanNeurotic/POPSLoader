@@ -83,6 +83,45 @@ static int is_hdd_partition_context(const char *partition_context)
 	        partition_context[4] == ':');
 }
 
+/* Detects DKWDRV.ELF as the launch target. Used to gate the IOP reset
+ * branch in main(): DKWDRV doesn't self-bootstrap the way POPSTARTER
+ * does, so leaving the parent's HDD/DEV9 IOP state alive across the
+ * hand-off causes a hang. The fix is hdd -> ram -> reset -> load.
+ */
+static int is_dkwdrv_target(const char *load_path, const char *argv0)
+{
+	if (load_path != NULL &&
+	    (strstr(load_path, "DKWDRV.ELF") != NULL ||
+	     strstr(load_path, "dkwdrv.elf") != NULL)) {
+		return 1;
+	}
+	if (argv0 != NULL &&
+	    (strstr(argv0, "DKWDRV.ELF") != NULL ||
+	     strstr(argv0, "dkwdrv.elf") != NULL)) {
+		return 1;
+	}
+	return 0;
+}
+
+/* Detects mc?:/BOOT/BOOT.ELF as the launch target. Same rationale as
+ * is_dkwdrv_target: BOOT.ELF leaving an HDD-booted POPSLoader hangs
+ * because the IOP carries DEV9/HDD state. The reset branch gives BOOT
+ * .ELF a clean IOP, and routing through the child loader also wipes EE
+ * RAM via wipeUserMem before reload (cleaner than the parent's direct
+ * path).
+ */
+static int is_boot_elf_target(const char *load_path)
+{
+	if (load_path == NULL) {
+		return 0;
+	}
+	if (strcmp(load_path, "mc0:/BOOT/BOOT.ELF") == 0 ||
+	    strcmp(load_path, "mc1:/BOOT/BOOT.ELF") == 0) {
+		return 1;
+	}
+	return 0;
+}
+
 static int should_use_filexio_direct_load(const char *partition_context, const char *load_path)
 {
 	if (is_hdd_partition_context(partition_context)) {
@@ -371,6 +410,101 @@ int main(int argc, char *argv[])
 			FlushCache(2);
 			ret = ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, target_argc, target_argv);
 			return (ret != 0) ? ret : -3500;
+		}
+
+		/* DKWDRV-specific IOP reset path.
+		 *
+		 * DKWDRV does not bring its own DEV9/HDD/PFS bootstrap (unlike
+		 * POPSTARTER), so it cannot inherit POPSLoader's polluted IOP
+		 * state across ExecPS2 -- the symptom is a black screen on
+		 * hardware (Nuno 2026-05-25). The fix is "hdd -> ram -> reset
+		 * -> load": target was just SifLoadElf'd into EE RAM above, so
+		 * now reset the IOP cleanly and reload only the minimum IRX
+		 * surface (SIO2MAN/MCMAN/MCSERV) before ExecPS2. This mirrors
+		 * the parent's non-HDD direct path in elf.c
+		 * LoadELFFromFileExecPS2RebootIOPWithPartition (the route MC
+		 * DKWDRV already takes successfully).
+		 *
+		 * POPSTARTER takes the is_hdd_partition_context branch below,
+		 * which is byte-identical to D-10's hardware-passing 2026-05-22
+		 * B2 fix -- DO NOT MERGE the two paths.
+		 */
+		if (is_dkwdrv_target(load_path, target_argv[0])) {
+			/* Drop POPSLoader's RPC binding before the IOP reset to
+			 * avoid the fileXio-blocks-reset hang (ps2sdk #425). The
+			 * parent (POPSLoader main app) initialized fileXio for HDD
+			 * access; its IOP-side server thread holds RPC locks that
+			 * keep SifIopReset from completing. SifExitRpc tears down
+			 * the EE-side RPC client cleanly, SifInitRpc re-establishes
+			 * a fresh handshake, then the reset proceeds.
+			 */
+			SifExitRpc();
+			SifInitRpc(0);
+
+			FlushCache(0);
+
+			while (!SifIopReset("", 0)) {}
+			while (!SifIopSync()) {}
+
+			SifInitRpc(0);
+			SifLoadFileInit();
+			SifLoadModule("rom0:SIO2MAN", 0, NULL);
+			SifLoadModule("rom0:MCMAN", 0, NULL);
+			SifLoadModule("rom0:MCSERV", 0, NULL);
+			SifLoadFileExit();
+			SifExitRpc();
+
+			FlushCache(0);
+			FlushCache(2);
+
+			DPRINTF("DKWDRV EXEC: argc=%d\n", target_argc);
+			for (i = 0; i < target_argc; i++) {
+				DPRINTF("DKWDRV EXEC: argv[%d] = %s\n", i, target_argv[i]);
+			}
+			ret = ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, target_argc, target_argv);
+			return (ret != 0) ? ret : -3550;
+		}
+
+		/* BOOT.ELF on MC: same hdd -> ram -> reset -> load contract as
+		 * DKWDRV. The parent's direct path with IOP reset worked when
+		 * launched from USB-booted POPSLoader but not from HDD-booted
+		 * (Nuno 2026-05-25). Routing through the child loader adds the
+		 * wipeUserMem() EE-RAM scrub before the SifLoadElf above; this
+		 * branch then performs the IOP reset and minimum-IRX reload
+		 * before ExecPS2. Net effect: BOOT.ELF inherits a clean EE +
+		 * IOP regardless of whether POPSLoader was on USB or HDD.
+		 */
+		if (is_boot_elf_target(load_path)) {
+			/* Same fileXio-block defense as the DKWDRV branch above.
+			 * POPSLoader's parent fileXio is holding IOP RPC locks; we
+			 * have to detach the RPC client before SifIopReset or the
+			 * reset hangs (ps2sdk #425).
+			 */
+			SifExitRpc();
+			SifInitRpc(0);
+
+			FlushCache(0);
+
+			while (!SifIopReset("", 0)) {}
+			while (!SifIopSync()) {}
+
+			SifInitRpc(0);
+			SifLoadFileInit();
+			SifLoadModule("rom0:SIO2MAN", 0, NULL);
+			SifLoadModule("rom0:MCMAN", 0, NULL);
+			SifLoadModule("rom0:MCSERV", 0, NULL);
+			SifLoadFileExit();
+			SifExitRpc();
+
+			FlushCache(0);
+			FlushCache(2);
+
+			DPRINTF("BOOT.ELF EXEC: argc=%d\n", target_argc);
+			for (i = 0; i < target_argc; i++) {
+				DPRINTF("BOOT.ELF EXEC: argv[%d] = %s\n", i, target_argv[i]);
+			}
+			ret = ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, target_argc, target_argv);
+			return (ret != 0) ? ret : -3560;
 		}
 
 		if (is_hdd_partition_context(partition_context)) {

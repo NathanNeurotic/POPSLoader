@@ -1291,6 +1291,29 @@ static int lua_getAppDir(lua_State *L) {
 	return 1;
 }
 
+/* NHDDL-style launch arguments parsed in main.cpp parseLaunchArgs().
+ * Externs declared in include/luaplayer.h. */
+static int lua_getLaunchArgs(lua_State *L) {
+	lua_newtable(L);
+	lua_pushstring(L, launch_arg_page);
+	lua_setfield(L, -2, "page");
+	lua_pushstring(L, launch_arg_game);
+	lua_setfield(L, -2, "game");
+	lua_pushboolean(L, launch_arg_debug != 0);
+	lua_setfield(L, -2, "debug");
+	return 1;
+}
+
+/* Pre-Lua C-side device classification hint (from argv[0]). The
+ * authoritative boot device is still resolved in system.lua
+ * DetectBootDevice (it handles the mass:/ MX4SIO disambiguation via
+ * BDM driver lookup). This hint is for early decisions only.
+ * Extern declared in include/luaplayer.h. */
+static int lua_getBootDeviceHint(lua_State *L) {
+	lua_pushstring(L, boot_device_hint);
+	return 1;
+}
+
 static int lua_resolveAsset(lua_State *L) {
 	int argc = lua_gettop(L);
 	if (argc != 1) return luaL_error(L, "Argument error: System.resolveAsset(relativeName) takes one argument.");
@@ -1402,6 +1425,8 @@ static const luaL_Reg System_functions[] = {
 	{"checkDiscTray",         lua_checkDiscTray},
 	{"GetArgv0",                   lua_popargv0},
 	{"getAppDir",                 lua_getAppDir},
+	{"getLaunchArgs",         lua_getLaunchArgs},
+	{"getBootDeviceHint", lua_getBootDeviceHint},
 	{"getEmbeddedAsset",      lua_getEmbeddedAsset},
 	{"resolveAsset",           lua_resolveAsset},
 	{"resolveAssetType",   lua_resolveAssetType},
