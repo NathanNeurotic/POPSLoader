@@ -1238,22 +1238,17 @@ UI = {
           if type(PLDR) == "table" and type(PLDR.PrepareForExternalELFLaunch) == "function" then
             pcall(PLDR.PrepareForExternalELFLaunch, elf_path)
           end
-          -- Pick the launch route based on where DKWDRV.ELF lives.
-          --   * mc / non-HDD: reboot_iop=1 -- full IOP reset, reload
-          --     SIO2MAN/MCMAN/MCSERV, ExecPS2. DKWDRV runs on a clean IOP
-          --     and reads its config from MC, which is still accessible.
-          --   * HDD: reboot_iop=0 -- the non-reboot path uses the
-          --     PrepareForExternalELFLaunch keep mask (set above) so the
-          --     DKWDRV partition's PFS slot stays mounted across
-          --     unmount_pfs_slots_for_exec. The full IOP reset path would
-          --     wipe that mount before ExecPS2, leaving DKWDRV unable to
-          --     read its own config / BIOS image (the empirical
-          --     black-screen mode users hit when DKWDRV_PATH is on HDD).
-          local lower_elf = string.lower(tostring(elf_path or ""))
-          local is_hdd_path = string.find(lower_elf, "^hdd%d:") ~= nil
-            or string.find(lower_elf, "^pfs%d*:/") ~= nil
-          local dkwdrv_reboot_iop = is_hdd_path and 0 or 1
-          local rc = System.loadELF(elf_path, dkwdrv_reboot_iop, elf_path)
+          -- 2026-05-24 hardware result: routing HDD DKWDRV through the
+          -- non-reboot path (reboot_iop=0) so the keep mask preserves the
+          -- partition slot also black-screened on hardware (PR #452
+          -- reverted). The non-reboot HDD branch in LoadELFFromFileExecPS2
+          -- tears SIF down via SifExitIopHeap/Rpc/Cmd before ExecPS2 --
+          -- DKWDRV may not be re-initializing SIF cleanly afterward, OR
+          -- the keep-mask wiring isn't actually keeping the slot. Needs a
+          -- different angle (maybe load DKWDRV via the BRAM child loader
+          -- like the BOOT.ELF mc-special-case, or copy DKWDRV.ELF into EE
+          -- RAM and launch with no HDD dependency at exec time).
+          local rc = System.loadELF(elf_path, 1, elf_path)
           if type(PLDR) == "table" and type(PLDR.RestoreWorkingDirectory) == "function" then
             pcall(PLDR.RestoreWorkingDirectory, previous_cwd)
           end
@@ -1338,26 +1333,23 @@ UI = {
         if hdd_loaded then
           reboot_iop = 1
         end
-        -- Routing rules below match what's actually wired in the C side:
-        --   * Non-reboot, no selector: System.loadELF(path, 0) lands in
-        --     LoadELFFromFile -> LoadELFFromFileWithPartition, which has
-        --     a hard-coded special case that routes mc?:/BOOT/BOOT.ELF
-        --     through the BRAM child loader with argv[0] = resolved_path.
-        --     This is the historically-working path for USB-boot exit.
-        --   * Reboot path: LoadELFFromFileExecPS2RebootIOPWithPartition
-        --     does NOT have the same special case, so we must supply
-        --     argv[0] explicitly. wLaunchELF reads argv[0] to determine
-        --     its own boot path; passing nothing results in argc=0/argv=NULL
-        --     at ExecPS2 and a black screen.
-        --   * Either way, the cwd we run in must NOT be a stale HDD mount;
-        --     PrepareForColdExternalELFLaunch above already unmounts every
-        --     tracked HDD slot when HDD was loaded.
-        local rc
-        if reboot_iop ~= 0 then
-          rc = System.loadELF(elf_path, reboot_iop, elf_path)
-        else
-          rc = System.loadELF(elf_path, 0)
-        end
+        -- Pass the computed reboot_iop. Previously this was hard-coded to 0,
+        -- which silently discarded the HDD-aware conditional reboot logic
+        -- above and meant BOOT.ELF after HDD page init always went down the
+        -- non-reboot LoadExecPS2 path even though the surrounding code was
+        -- intentionally selecting a full IOP reset. wLaunchELF / BOOT.ELF
+        -- typically expects a clean IOP state when HDD has been used in the
+        -- current session, so honor the computed value here.
+        --
+        -- 2026-05-24 hardware result: this dead-code fix alone (PR #450)
+        -- did not unblock HDD-boot -> Exit -> BOOT.ELF on hardware. PR #451
+        -- additionally tried passing argv[0]=elf_path to the reboot path,
+        -- which also did not help on hardware (PR #451 reverted). The
+        -- reboot-IOP path itself appears to be the wrong target for
+        -- BOOT.ELF; needs a different angle next round (likely a special
+        -- case in the BRAM child loader that conditionally resets the IOP
+        -- when launching BOOT.ELF on top of a HDD-loaded state).
+        local rc = System.loadELF(elf_path, reboot_iop)
         UI.LAUNCHING = false
         UI.Notify("BOOT.ELF failed to launch\nreturn code: "..tostring(rc), 150, "error")
         return
