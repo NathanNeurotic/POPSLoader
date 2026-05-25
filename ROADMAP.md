@@ -77,6 +77,12 @@ Last updated: 2026-05-20
   - If we grow Settings beyond ~14 visible rows, add scrolling.
   - Consider grouping into category sub-pages (OPL pattern: top-level lists categories, each opens a child page) once there are more settings to justify the navigation cost.
 
+### 5) Full GUI overhaul (Berion mockups)
+- 2026-05-24: graphics-team mockups by Berion and the matching PNG asset set landed (`f8fec64`). The full implementation prompt and per-screen pixel specs live in `docs/GUI_OVERHAUL_PROMPT.md`.
+- Scope: Context menu, Settings (restructured as main page + per-category pages, superseding the current OPL focused-list), Joypad configuration, On-screen keyboard. Boot/splash and game list are explicitly out of scope.
+- Prereq: do not start until D-10/D-14/U-10 hardware verification settles. The category-page Settings model in the prompt replaces the OPL focused-list currently in production, so coordinate hardware retest sequencing.
+- Mockup HTML/JSX wrapper from Berion's package (`app/screens.jsx` + `app/styles.css` + `index.html`) is referenced by the prompt but is NOT yet committed to this repo -- only the PNG assets are. Commit the mockup files (or substitute a screenshot/hosted-mockup oracle) before starting the Lua port.
+
 ## Deferred Ideas
 - Additional themes/skins.
 - Broader network/backend support after SMB and ILINK have defined baselines.
