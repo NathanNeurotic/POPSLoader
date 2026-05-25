@@ -1761,17 +1761,27 @@ local function ResolveBootContext()
     kind = c_hint
   end
 
-  -- Settings sidecar path: APP_DIR_LOCAL/.pldrs when on a non-HDD
-  -- device. HDD-backed APP_DIR returns nil here so settings fall back
-  -- to mc0:/POPSTARTER/.pldrs (avoids PFS RW remount complexity).
+  -- Settings sidecar path: APP_DIR_LOCAL/.pldrs.
+  --
+  -- HDD installs are supported via the pfs%d* mounted form. etc/boot.lua
+  -- mounts the boot partition at pfs1: with HDD.MountPartition's default
+  -- mode (FIO_MT_RDWR per src/luaHDD.cpp), so writing .pldrs at
+  -- pfs1:/POPSLOADER/.pldrs succeeds. ResolveAppDirLocal normalizes
+  -- HDD-booted APP_DIR to the pfs1:/ form (see line ~99), so this
+  -- branch covers HDD-only users without any explicit remount logic.
+  --
+  -- Raw hdd0:partition:pfs:/ paths (no live pfs%d* mount) and the
+  -- newer ata:/apa: forms are still excluded -- writing through those
+  -- prefixes requires an active mount that may not exist when settings
+  -- are accessed. These cases gracefully fall back to mc0 via the
+  -- doesFileExist check in LoadSettingsNonFatal.
   local sidecar = nil
   if type(APP_DIR_LOCAL) == "string" and APP_DIR_LOCAL ~= "" then
     local lower = string.lower(APP_DIR_LOCAL)
-    local is_hdd_backed = string.match(lower, "^hdd%d*:") ~= nil
-       or string.match(lower, "^pfs%d*:") ~= nil
+    local is_unmounted_hdd = string.match(lower, "^hdd%d*:") ~= nil
        or string.match(lower, "^ata%d*:") ~= nil
        or string.match(lower, "^apa%d*:") ~= nil
-    if not is_hdd_backed then
+    if not is_unmounted_hdd then
       sidecar = JoinPath(APP_DIR_LOCAL, ".pldrs")
     end
   end

@@ -135,15 +135,17 @@ is in place; downstream UI code in `ui.lua` can pick up `PLDR.LAUNCH_ARGS`
 when ready to act on it. This avoids touching the existing initial-page
 selection logic until that's a focused follow-up.
 
-### Settings sidecar (landed 2026-05-25)
+### Settings sidecar (landed 2026-05-25, HDD support 2026-05-25)
 
 Replaces hardcoded `PLDR.SETTINGS_PATH = "mc0:/POPSTARTER/.pldrs"` with a
 per-device sidecar resolution + MC fallback. New constants:
 
 - `PLDR.SETTINGS_PATH_FALLBACK = "mc0:/POPSTARTER/.pldrs"` (legacy path)
-- `PLDR.SETTINGS_PATH_SIDECAR` -- computed from `APP_DIR_LOCAL/.pldrs`
-  when `APP_DIR_LOCAL` is NOT HDD-backed (avoid PFS RW remount). `nil`
-  for HDD-backed installs.
+- `PLDR.SETTINGS_PATH_SIDECAR` -- computed from `APP_DIR_LOCAL/.pldrs`.
+  Set for USB/MC/MMCE/MX4SIO installs AND for HDD installs reached via
+  the `pfs1:` boot mount (etc/boot.lua already mounts that partition
+  `FIO_MT_RDWR` by default via `HDD.MountPartition`, so writes succeed).
+  Only `nil` for raw `hdd0:`/`ata:`/`apa:` paths with no live mount.
 - `PLDR.SETTINGS_PATH` -- the *active* path; resolved at load time to
   whichever file exists first (sidecar preferred, fallback otherwise).
 
@@ -153,10 +155,12 @@ Behavior:
   (sidecar preferred so the first save lands per-device).
 - **Save**: write to `PLDR.SETTINGS_PATH`. Only fail on
   `EnsurePopstarterDir` if the target IS the MC fallback (sidecar saves
-  don't need `mc0:/POPSTARTER`).
-- **HDD installs**: `SETTINGS_PATH_SIDECAR == nil`, so settings continue
-  to use `mc0:/POPSTARTER/.pldrs`. Avoids the PFS-mounted-RW complexity
-  for HDD-resident POPSLoader.
+  don't need `mc0:/POPSTARTER`). UI error toast now reads the actual
+  active path instead of hardcoding the MC string.
+- **HDD installs**: `SETTINGS_PATH_SIDECAR` is `pfs1:/.../<.pldrs>` --
+  same partition POPSLOADER.ELF lives on. The boot mount is already RW,
+  so write-atomic-rename works. If the mount lapses for any reason, the
+  graceful fallback in LoadSettingsNonFatal sends us back to mc0.
 
 ### Layer C -- Lazy IRX loading (precursor; more queued)
 
