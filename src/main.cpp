@@ -93,17 +93,19 @@ static clock_t boot_start = 0;
  * code (IRX loading, Lua boot) can act on the requested mode.
  *
  *   -page=hdd|usb|mc|mmce|mx4sio|smb|bdma   auto-navigate to that page
+ *   -mode=<value>                            NHDDL-compatible alias
  *   -game=<selector>                         auto-launch that game
- *   -noaudio                                 skip audsrv/libsd at boot
- *                                            (consumed by Layer C lazy IRX)
  *   -debug                                   enable on-screen diagnostics
+ *
+ * (-noaudio was considered and dropped: audio modules are embedded in
+ *  the ELF, load in ~few hundred ms, and POPSLoader uses sound for UI
+ *  feedback. The skip-audio path was a footgun for negligible savings.)
  *
  * Empty strings / zero ints mean "not specified". Exported via the
  * System.getLaunchArgs() Lua binding (see luasystem.cpp).
  */
 char launch_arg_page[64] = "";
 char launch_arg_game[256] = "";
-int  launch_arg_noaudio = 0;
 int  launch_arg_debug   = 0;
 
 /* C-side mirror of system.lua DetectBootDevice. Returns the canonical
@@ -173,14 +175,12 @@ static void parseLaunchArgs(int argc, char ** argv)
             snprintf(launch_arg_page, sizeof(launch_arg_page), "%s", a + 6);
         } else if (strncmp(a, "-game=", 6) == 0) {
             snprintf(launch_arg_game, sizeof(launch_arg_game), "%s", a + 6);
-        } else if (strcmp(a, "-noaudio") == 0) {
-            launch_arg_noaudio = 1;
         } else if (strcmp(a, "-debug") == 0) {
             launch_arg_debug = 1;
         }
     }
-    DPRINTF("LaunchArgs: page=\"%s\" game=\"%s\" noaudio=%d debug=%d\n",
-            launch_arg_page, launch_arg_game, launch_arg_noaudio, launch_arg_debug);
+    DPRINTF("LaunchArgs: page=\"%s\" game=\"%s\" debug=%d\n",
+            launch_arg_page, launch_arg_game, launch_arg_debug);
 }
 
 static unsigned int boot_ms(void)
@@ -469,16 +469,8 @@ int main(int argc, char * argv[])
     initMC();
     LOAD_IRX_NARG(padman_irx);
 
-    /* libsd + audsrv: SDK SPU2 lib + audio mixer. Skipped when -noaudio
-     * was passed (NHDDL-style launch arg) to shave the audio stack
-     * out of the boot path. Audio-dependent Lua code is responsible
-     * for either checking PLDR.LAUNCH_ARGS.noaudio or no-oping if the
-     * IRX wasn't loaded. */
-    if (!launch_arg_noaudio) {
-        LOAD_IRX_NARG(libsd_irx);
-    } else {
-        DPRINTF("LaunchArgs: skipping libsd (-noaudio)\n");
-    }
+    LOAD_IRX_NARG(libsd_irx);
+
 
     // load USB modules
     LOAD_IRX_NARG(usbd_irx);
@@ -490,11 +482,7 @@ int main(int argc, char * argv[])
     ds34usb_init();
     ds34bt_init();
 
-    if (!launch_arg_noaudio) {
-        LOAD_IRX_NARG(audsrv_irx);
-    } else {
-        DPRINTF("LaunchArgs: skipping audsrv (-noaudio)\n");
-    }
+    LOAD_IRX_NARG(audsrv_irx);
 	
         setLuaBootPath (argc, argv, 0);
         if (argc > 0 && argv[0]) {

@@ -65,6 +65,45 @@ same hang because POPSLoader's own `fileXio` is alive on the IOP at hand-off
 time. Layer B prepends `SifExitRpc(); SifInitRpc(0);` before each
 `SifIopReset` to detach the RPC client cleanly.
 
+### Unified boot-context resolver (landed 2026-05-25)
+
+User insight: argv[0] tells us where POPSLoader came from. From that one
+fact, three things follow -- which IRX stack to prefer, where settings
+should live, which page to land on. The three features should share one
+detection pipeline, not have three near-copies.
+
+`bin/POPSLDR/system.lua` `ResolveBootContext()` is now the single source
+of truth. It returns:
+
+```
+{
+  kind         = "USB" / "HDD" / "MC" / "MMCE" / "MX4SIO" / "SMB" / "HOST" or nil,
+  prefix       = raw argv prefix (e.g. "mass0", "hdd0") or nil,
+  boot_path    = normalized BOOT_PATH_RAW (with trailing slash),
+  sidecar_path = per-device .pldrs path or nil,
+  c_hint       = pre-IRX C-side classification (debug / fallback),
+}
+```
+
+Inputs (all derived from argv[0]):
+- `BOOT_PATH_RAW` (set by main.cpp `setLuaBootPath`)
+- `APP_DIR_LOCAL` (set by main.cpp `setAppDirFromPath`)
+- `boot_device_hint` (set by main.cpp `detectBootDeviceHintFromArgv0`,
+  exposed via `System.getBootDeviceHint()`)
+
+Outputs (all consumed via this one resolver):
+- `DetectBootDevice()` is a thin wrapper returning `kind, boot_path, prefix`.
+- `PLDR.SETTINGS_PATH_SIDECAR` is `ResolveBootContext().sidecar_path`.
+- `PLDR.GetBootContext()` / `PLDR.GetBootKind()` are public APIs for any
+  downstream consumer (UI auto-nav, future lazy-IRX deferrals, telemetry).
+
+Robust to bad/missing argv:
+- argv[0] NULL/empty -> boot_path empty -> prefix nil -> Lua kind nil ->
+  fall back to C hint (also empty) -> kind stays nil
+- nil kind -> DetectBootDevice returns nil first; UI shows default page
+- HDD-backed APP_DIR -> sidecar_path is nil -> settings use mc0 fallback
+- non-HDD APP_DIR with no prior .pldrs -> sidecar wins on first save
+
 ### Layer D -- NHDDL-style launch arguments (landed 2026-05-25)
 
 CosmicScale requested `-mode=ata` style boot arguments to skip directly to
@@ -78,13 +117,17 @@ capture, before any IRX loads. Recognized flags:
 | `-page=hdd|usb|mc|mmce|mx4sio|smb|bdma` | Auto-navigate hint for the UI |
 | `-mode=<value>` | NHDDL-compatible alias for `-page` (e.g. `-mode=ata` maps to HDD) |
 | `-game=<selector>` | Auto-launch hint (game selector / profile / path) |
-| `-noaudio` | Skip `audsrv_irx` + `libsd_irx` at boot |
 | `-debug` | Enable diagnostic output |
 
-**Lua exposure**: `System.getLaunchArgs()` returns `{page, game, noaudio,
-debug}`. `system.lua` reads this at init and stores normalized values in
-`PLDR.LAUNCH_ARGS = {page, page_raw, game, noaudio, debug}`. Page values
-are normalized via `NormalizeLaunchPage()` so `ata`/`pfs`/`apa`/`hdd` all
+`-noaudio` was considered and dropped on review: audio IRX is embedded
+in the ELF, loads in a few hundred ms, and POPSLoader uses sound for UI
+feedback (menu beeps, toast notifications). Skipping it would be a
+footgun for negligible savings.
+
+**Lua exposure**: `System.getLaunchArgs()` returns `{page, game, debug}`.
+`system.lua` reads this at init and stores normalized values in
+`PLDR.LAUNCH_ARGS = {page, page_raw, game, debug}`. Page values are
+normalized via `NormalizeLaunchPage()` so `ata`/`pfs`/`apa`/`hdd` all
 map to `"HDD"`, `usb`/`mass` to `"USB"`, etc.
 
 **Auto-navigation wiring** is intentionally deferred. The infrastructure
@@ -115,18 +158,32 @@ Behavior:
   to use `mc0:/POPSTARTER/.pldrs`. Avoids the PFS-mounted-RW complexity
   for HDD-resident POPSLoader.
 
-### Layer C -- Lazy IRX loading (partial; landed 2026-05-25, more queued)
+### Layer C -- Lazy IRX loading (precursor; more queued)
 
 Shipped in this PR:
 - **Pre-Lua device classification hint**: `main.cpp`
   `detectBootDeviceHintFromArgv0()` returns the device-kind label for
   argv[0]. Stored in `boot_device_hint` global, exposed via
-  `System.getBootDeviceHint()`. Used by `system.lua` for early decisions
-  before `DetectBootDevice` runs full authoritative resolution.
-- **`-noaudio` deferral**: skips `libsd_irx` and `audsrv_irx` IRX loads
-  at boot when the flag is present. Lua sound code should check
-  `PLDR.LAUNCH_ARGS.noaudio` before calling sound APIs (TODO: audit
-  sound call sites).
+  `System.getBootDeviceHint()`. Consumed by the unified
+  `ResolveBootContext` resolver above as a fallback when Lua-side
+  prefix parsing yields nothing.
+
+Audit of which IRX is loaded when (confirming nothing critical is
+deferred by mistake):
+
+| Module | When | Notes |
+|---|---|---|
+| iomanX, fileXio | Always at boot | Filesystem base; required |
+| sio2man, mcman, mcserv | Always at boot | MC + controller base |
+| mmceman | Always at boot (if fileXio OK) | MMCE memcard |
+| padman | Always at boot | Standard PS2 controllers (UI input) |
+| libsd, audsrv | Always at boot | Audio (UI feedback) |
+| usbd | Always at boot | USB driver base (incl. DS3/4 USB) |
+| ds34usb, ds34bt | Always at boot | DS3/4 over USB / Bluetooth |
+| bdm, bdmfs_fatfs, usbmass_bd | Lazy (`EnsureBDM*` in luasystem.cpp) | BDM stack for USB mass storage |
+| mx4sio_bd | Lazy (`initMX4SIO()`) | MX4SIO BDM driver |
+| cdfs | Lazy (`EnsureCDFS()`) | CD/DVD |
+| ps2dev9, ps2atad, ps2hdd-osd, ps2fs | Lazy (`luaHDD.cpp`) | HDD stack |
 
 Still queued for a focused follow-up (intentionally NOT in this PR
 because aggressive deferral changes module load order which is high-

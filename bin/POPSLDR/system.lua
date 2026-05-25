@@ -1672,9 +1672,37 @@ function PLDR.RestoreWorkingDirectory(path)
   return RestoreWorkingDirectory(path)
 end
 
-local function DetectBootDevice()
+-- Single source of truth for "where did POPSLoader come from?". Combines
+-- the C-side argv[0] classification hint (computed pre-IRX in main.cpp
+-- detectBootDeviceHintFromArgv0) with Lua-side refinement (the mx4sio
+-- mass:/ disambiguation via BDM driver lookup, plus the additive
+-- usb/ata/apa SDK prefix recognition).
+--
+-- Returns a table:
+--   kind         -- "USB"/"HDD"/"MC"/"MMCE"/"MX4SIO"/"SMB"/"HOST" or nil
+--   prefix       -- raw argv prefix (e.g. "mass0", "hdd0"), or nil
+--   boot_path    -- normalized BOOT_PATH_RAW (with trailing slash)
+--   sidecar_path -- per-device .pldrs path if appropriate, else nil
+--   c_hint       -- pre-IRX C-side classification (debug / fallback)
+--
+-- Robust to bad/missing argv: empty boot_path, nil prefix/kind, nil
+-- sidecar_path -- all callers degrade gracefully (settings -> MC,
+-- DetectBootDevice -> nil kind, UI -> default page).
+--
+-- Cheap enough to call per-invocation; classify_mass_boot's RPC is the
+-- only non-trivial cost and is only hit when prefix matches "mass%d*".
+local function ResolveBootContext()
   local boot_path = NormalizeDirPath(BOOT_PATH_RAW or "")
   local prefix = string.match(boot_path, "^([%a]+%d*):")
+
+  local c_hint = ""
+  if type(System) == "table" and type(System.getBootDeviceHint) == "function" then
+    local ok, hint = pcall(System.getBootDeviceHint)
+    if ok and type(hint) == "string" then
+      c_hint = hint
+    end
+  end
+
   local function classify_mass_boot(root)
     if type(System) == "table" and type(System.getMassMountDriver) == "function" then
       local ok, driver = pcall(System.getMassMountDriver, root)
@@ -1686,57 +1714,94 @@ local function DetectBootDevice()
         return "USB"
       end
     end
-    local mx_marker = JoinPath(APP_DIR_LOCAL, ".boot_mx4sio")
-    local usb_marker = JoinPath(APP_DIR_LOCAL, ".boot_usb")
-    if doesFileExist(mx_marker) then
-      return "MX4SIO"
-    end
-    if doesFileExist(usb_marker) then
-      return "USB"
+    if type(APP_DIR_LOCAL) == "string" and APP_DIR_LOCAL ~= "" then
+      local mx_marker = JoinPath(APP_DIR_LOCAL, ".boot_mx4sio")
+      local usb_marker = JoinPath(APP_DIR_LOCAL, ".boot_usb")
+      if doesFileExist(mx_marker) then
+        return "MX4SIO"
+      end
+      if doesFileExist(usb_marker) then
+        return "USB"
+      end
     end
     return "USB"
   end
-  if prefix == nil then
-    return nil, boot_path, prefix
+
+  -- Lua-side prefix classification. Order preserves the historical
+  -- DetectBootDevice precedence (mmce/mx4sio/mass/pfs|hdd/smb/host
+  -- first; usb/ata/apa SDK additions below them so existing behavior
+  -- never changes for the legacy prefixes).
+  local kind = nil
+  if prefix ~= nil then
+    if string.match(prefix, "^mmce%d*$") then
+      kind = "MMCE"
+    elseif string.match(prefix, "^mx4sio%d*$") then
+      kind = "MX4SIO"
+    elseif string.match(prefix, "^mass%d*$") then
+      kind = classify_mass_boot(prefix..":/")
+    elseif string.match(prefix, "^pfs%d*$") or string.match(prefix, "^hdd%d*$") then
+      kind = "HDD"
+    elseif prefix == "smb" then
+      kind = "SMB"
+    elseif prefix == "host" then
+      kind = "HOST"
+    elseif string.match(prefix, "^usb%d*$") then
+      kind = "USB"
+    elseif string.match(prefix, "^ata%d*$") then
+      kind = "HDD"
+    elseif string.match(prefix, "^apa%d*$") then
+      kind = "HDD"
+    end
   end
-  if string.match(prefix, "^mmce%d*$") then
-    return "MMCE", boot_path, prefix
+
+  -- Fallback to C-side hint if Lua-side prefix classification yielded
+  -- nothing (e.g. boot_path is empty because argv[0] was NULL/garbage
+  -- but C saw enough to classify).
+  if kind == nil and c_hint ~= "" then
+    kind = c_hint
   end
-  if string.match(prefix, "^mx4sio%d*$") then
-    return "MX4SIO", boot_path, prefix
+
+  -- Settings sidecar path: APP_DIR_LOCAL/.pldrs when on a non-HDD
+  -- device. HDD-backed APP_DIR returns nil here so settings fall back
+  -- to mc0:/POPSTARTER/.pldrs (avoids PFS RW remount complexity).
+  local sidecar = nil
+  if type(APP_DIR_LOCAL) == "string" and APP_DIR_LOCAL ~= "" then
+    local lower = string.lower(APP_DIR_LOCAL)
+    local is_hdd_backed = string.match(lower, "^hdd%d*:") ~= nil
+       or string.match(lower, "^pfs%d*:") ~= nil
+       or string.match(lower, "^ata%d*:") ~= nil
+       or string.match(lower, "^apa%d*:") ~= nil
+    if not is_hdd_backed then
+      sidecar = JoinPath(APP_DIR_LOCAL, ".pldrs")
+    end
   end
-  if string.match(prefix, "^mass%d*$") then
-    return classify_mass_boot(prefix..":/"), boot_path, prefix
-  end
-  if string.match(prefix, "^pfs%d*$") or string.match(prefix, "^hdd%d*$") then
-    return "HDD", boot_path, prefix
-  end
-  if prefix == "smb" then
-    return "SMB", boot_path, prefix
-  end
-  if prefix == "host" then
-    return "HOST", boot_path, prefix
-  end
-  -- Additive device-kind prefix recognition (2026-05-25).
-  -- Some homebrew launchers pass semantic device-kind prefixes that
-  -- aren't real ps2sdk mount points. Recognize them so downstream
-  -- DEVLOCK / boot_device_label / Layer-C lazy IRX loading have the
-  -- correct classification. None of these match the existing branches
-  -- above, so the mx4sio mass: fix (classify_mass_boot) and every
-  -- other working detection stays untouched.
-  --   usb / usb0 / usb1 / ... -> USB
-  --   ata / ata0 / ata1 / ... -> HDD (ATA-backed)
-  --   apa / apa0 / apa1 / ... -> HDD (APA partition system)
-  if string.match(prefix, "^usb%d*$") then
-    return "USB", boot_path, prefix
-  end
-  if string.match(prefix, "^ata%d*$") then
-    return "HDD", boot_path, prefix
-  end
-  if string.match(prefix, "^apa%d*$") then
-    return "HDD", boot_path, prefix
-  end
-  return nil, boot_path, prefix
+
+  return {
+    kind = kind,
+    prefix = prefix,
+    boot_path = boot_path,
+    sidecar_path = sidecar,
+    c_hint = c_hint,
+  }
+end
+
+-- DetectBootDevice keeps its historical signature; thin wrapper around
+-- ResolveBootContext so the call sites scattered through system.lua and
+-- ui.lua continue to work unchanged.
+local function DetectBootDevice()
+  local ctx = ResolveBootContext()
+  return ctx.kind, ctx.boot_path, ctx.prefix
+end
+
+-- Public APIs for callers that want the full boot context (UI, future
+-- lazy-IRX consumers, telemetry, etc.) without having to glue three
+-- separate detection paths together.
+function PLDR.GetBootContext()
+  return ResolveBootContext()
+end
+
+function PLDR.GetBootKind()
+  return ResolveBootContext().kind
 end
 
 local function LoadIrxFromDir(dir)
@@ -1871,7 +1936,6 @@ PLDR.LAUNCH_ARGS = PLDR.LAUNCH_ARGS or {
   page = nil,
   page_raw = nil,
   game = nil,
-  noaudio = false,
   debug = false,
 }
 if type(System) == "table" and type(System.getLaunchArgs) == "function" then
@@ -1886,7 +1950,6 @@ if type(System) == "table" and type(System.getLaunchArgs) == "function" then
     if game_raw ~= "" then
       PLDR.LAUNCH_ARGS.game = game_raw
     end
-    PLDR.LAUNCH_ARGS.noaudio = (args.noaudio == true)
     PLDR.LAUNCH_ARGS.debug = (args.debug == true)
   end
 end
@@ -2051,31 +2114,17 @@ PLDR.POPSTARTER_DIR = "mc0:/POPSTARTER"
 -- for first-run migration AND for HDD-backed boots (where writing into
 -- the PFS partition would require an RW remount).
 --
+-- The sidecar path comes from the unified boot-context resolver above
+-- (ResolveBootContext().sidecar_path), so settings/IRX/UI navigation
+-- all derive from the same argv[0]-rooted detection pipeline.
+--
 -- The actual PLDR.SETTINGS_PATH is decided at load time in
 -- LoadSettingsNonFatal: whichever path's settings file is opened first
 -- becomes the path subsequent saves use, so saves go back where loads
 -- came from. If neither file exists yet, sidecar wins (or fallback if
 -- no sidecar is computable, e.g. HDD-backed APP_DIR).
 PLDR.SETTINGS_PATH_FALLBACK = "mc0:/POPSTARTER/.pldrs"
-
-local function ComputeSettingsSidecarPath()
-  local dir = APP_DIR_LOCAL
-  if type(dir) ~= "string" or dir == "" then
-    return nil
-  end
-  -- HDD-backed APP_DIR means the PFS partition would need RW; avoid the
-  -- mount complexity and let HDD installs keep using mc0 sidecar.
-  local lower = string.lower(dir)
-  if string.match(lower, "^hdd%d*:") ~= nil
-     or string.match(lower, "^pfs%d*:") ~= nil
-     or string.match(lower, "^ata%d*:") ~= nil
-     or string.match(lower, "^apa%d*:") ~= nil then
-    return nil
-  end
-  return JoinPath(dir, ".pldrs")
-end
-
-PLDR.SETTINGS_PATH_SIDECAR = ComputeSettingsSidecarPath()
+PLDR.SETTINGS_PATH_SIDECAR = ResolveBootContext().sidecar_path
 PLDR.SETTINGS_PATH = PLDR.SETTINGS_PATH_SIDECAR or PLDR.SETTINGS_PATH_FALLBACK
 PLDR.BDMA_MODE_KEY = "FAT32"
 PLDR.SELECTED_PROFILE = tonumber(PLDR.DEFAULT_PROFILE) or 1
