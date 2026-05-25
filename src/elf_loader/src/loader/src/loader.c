@@ -430,6 +430,17 @@ int main(int argc, char *argv[])
 		 * B2 fix -- DO NOT MERGE the two paths.
 		 */
 		if (is_dkwdrv_target(load_path, target_argv[0])) {
+			/* Drop POPSLoader's RPC binding before the IOP reset to
+			 * avoid the fileXio-blocks-reset hang (ps2sdk #425). The
+			 * parent (POPSLoader main app) initialized fileXio for HDD
+			 * access; its IOP-side server thread holds RPC locks that
+			 * keep SifIopReset from completing. SifExitRpc tears down
+			 * the EE-side RPC client cleanly, SifInitRpc re-establishes
+			 * a fresh handshake, then the reset proceeds.
+			 */
+			SifExitRpc();
+			SifInitRpc(0);
+
 			FlushCache(0);
 
 			while (!SifIopReset("", 0)) {}
@@ -464,6 +475,14 @@ int main(int argc, char *argv[])
 		 * IOP regardless of whether POPSLoader was on USB or HDD.
 		 */
 		if (is_boot_elf_target(load_path)) {
+			/* Same fileXio-block defense as the DKWDRV branch above.
+			 * POPSLoader's parent fileXio is holding IOP RPC locks; we
+			 * have to detach the RPC client before SifIopReset or the
+			 * reset hangs (ps2sdk #425).
+			 */
+			SifExitRpc();
+			SifInitRpc(0);
+
 			FlushCache(0);
 
 			while (!SifIopReset("", 0)) {}

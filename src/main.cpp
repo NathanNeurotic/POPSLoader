@@ -433,8 +433,47 @@ int main(int argc, char * argv[])
 }
 
 extern "C" void _ps2sdk_memory_init() {
-#ifdef RESET_IOP  
+#ifdef RESET_IOP
+    /* Bootstrap IOP hygiene for parent launchers that do NOT reset the
+     * IOP before handing control to POPSLoader. The canonical offender
+     * is wLaunchELF, which only resets the IOP for HDD targets (per
+     * wLaunchELF/loader/loader.c). When POPSLoader is launched from
+     * wLaunchELF off USB, MC, MX4SIO, or any non-HDD device, we inherit
+     * wLaunchELF's fileXio + iomanX IOP modules. fileXio holds threads
+     * and semaphores that BLOCK a plain SifIopReset (documented:
+     * https://github.com/ps2dev/ps2sdk/issues/425). The symptom is a
+     * silent hang here -> black screen for the user (CosmicScale report
+     * 2026-05-25).
+     *
+     * The teardown contract below survives both clean and polluted
+     * parents:
+     *
+     *   SifExitRpc()    -- drop any inherited RPC client binding so the
+     *                      next SifInitRpc starts from a known state.
+     *                      Safe on uninitialized RPC (graceful no-op).
+     *   SifInitRpc(0)   -- fresh RPC handshake; required before
+     *                      fileXioExit can issue any RPC.
+     *   fileXioExit()   -- guarded by __fileXioInited internally
+     *                      (ps2sdk PR #426 contract): restores libc fio
+     *                      function pointers (open/read/close/...)
+     *                      that fileXioInit would have hijacked, and
+     *                      releases its EE-side semaphores. No-op on
+     *                      clean parents because __fileXioInited == 0
+     *                      in a fresh EE process; meaningful only if
+     *                      newlib startup happens to have entered the
+     *                      hijacked state.
+     *   SifIopReset     -- now succeeds; no fileXio RPC channel pinned.
+     *   SifIopSync      -- wait for IOP boot.
+     *   SifInitRpc(0)   -- ready for main() to load our own IRX stack.
+     *
+     * Existing clean-parent paths (PSBBN, Browser, HOSDMenu, OSDMenu,
+     * MC autoboot) are unaffected: each new call has a "not
+     * initialized" guard. The only behavioral delta is that the IOP
+     * reset now completes instead of hanging when fileXio was alive.
+     */
+    SifExitRpc();
     SifInitRpc(0);
+    fileXioExit();
     while (!SifIopReset("", 0)){};
     while (!SifIopSync()){};
     SifInitRpc(0);
