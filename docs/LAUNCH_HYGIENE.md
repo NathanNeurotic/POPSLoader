@@ -57,13 +57,70 @@ Adds the teardown contract above before the existing reset. Runs once, before
 `main()`, as a ps2sdk weak-function override. Effectively a defensive prelude
 for any future parent that leaves `fileXio` loaded.
 
-### Layer B -- Child loader DKWDRV/BOOT.ELF reset branches (`src/elf_loader/src/loader/src/loader.c`)
+### Layer B -- Child loader DKWDRV/BOOT.ELF reset branches (REVERTED 2026-05-25)
 
-PR #458 added new reset branches in the BRAM child loader's `main()` for
-DKWDRV and BOOT.ELF targets. Without Layer B, those resets are subject to the
-same hang because POPSLoader's own `fileXio` is alive on the IOP at hand-off
-time. Layer B prepends `SifExitRpc(); SifInitRpc(0);` before each
-`SifIopReset` to detach the RPC client cleanly.
+PR #458 added DKWDRV- and BOOT.ELF-specific IOP-reset branches in the BRAM
+child loader's `main()`. Nuno's 2026-05-25 hardware test showed both still
+black-screened. Worse, the new `is_boot_elf_target` branch actively regressed
+V2's working BOOT.ELF flow (d23520a, 2026-05-23): V2 routed BOOT.ELF through
+the embedded loader's non-HDD branch (no IOP reset), and my reset branch
+hijacked that and forced a reset BOOT.ELF doesn't tolerate.
+
+PR #460 reverts the `is_boot_elf_target` and `is_dkwdrv_target` branches and
+the helpers that gated them. The child loader is back to pre-PR-#458 behavior
+for these target families.
+
+The Layer A `fileXio` teardown in `_ps2sdk_memory_init` stays -- that's a
+defensive prelude with no evidence of regression.
+
+### DKWDRV-on-HDD: V2 mimicry done correctly (landed 2026-05-25)
+
+V2 (d23520a) made BOOT.ELF exit work by combining THREE things:
+
+1. Lua-side: `reboot_iop = 0` (non-reboot path)
+2. C-side routing: `LoadELFFromFileWithPartition` BOOT.ELF special-case
+   → `ExecuteViaEmbeddedLoader("", resolved_path, 1, boot_argv)`
+3. Child loader: lands in the embedded loader's non-HDD or filexio-direct
+   branch (no IOP reset, just `SifExitRpc + FlushCache + ExecPS2`)
+
+PR #452 (V4 DKWDRV, reverted) did only step 1 for DKWDRV-on-HDD and skipped
+step 2, falling through to the legacy direct `LoadExecPS2` path. That's why
+V4 black-screened: it inherited V2's `reboot_iop=0` choice but never reached
+the embedded-loader contract that V2 BOOT.ELF relied on.
+
+PR #460 completes the mimicry:
+
+- **`src/elf_loader/src/elf.c` `LoadELFFromFileWithPartition`**: adds a
+  DKWDRV special-case mirroring the BOOT.ELF case at line 485 -- when
+  `is_dkwdrv_elf_path(resolved_path)`, route through
+  `ExecuteViaEmbeddedLoader("", resolved_path, 1, dkwdrv_argv)`.
+- **`bin/POPSLDR/ui.lua` `OpenDKWDRV`**: for HDD-resident DKWDRV
+  (`hdd?:/`, `pfs?:/`, `ata?:/`, `apa?:/`), use `reboot_iop = 0` so the
+  non-reboot variant fires. For MC / non-HDD paths, keep `reboot_iop = 1`
+  (the known-working route).
+
+The result chain for HDD DKWDRV is now:
+
+```
+ui.lua OpenDKWDRV (HDD path)
+  System.loadELF(elf_path, 0, elf_path)
+  -> LoadELFFromFile -> LoadELFFromFileWithPartition
+     -> DKWDRV special case
+     -> ExecuteViaEmbeddedLoader("", resolved_path, 1, dkwdrv_argv)
+     -> child loader main()
+        should_use_filexio_direct_load -> true (load_path is hdd/pfs)
+        load_elf_via_filexio -> loaded_via_filexio = 1
+        SifExitRpc -> FlushCache(0,2) -> ExecPS2
+DKWDRV runs on POPSLoader's HDD-aware IOP state, can read its config from
+the still-mounted partition.
+```
+
+For MC DKWDRV: unchanged. The reboot variant + direct path + IOP reset +
+module reload + ExecPS2 still happens, as it always has.
+
+For BOOT.ELF: V2's working route is preserved verbatim. U-10 (HDD-boot ->
+BOOT.ELF) remains broken because V2 didn't solve U-10 either; that's a
+separate problem.
 
 ### Unified boot-context resolver (landed 2026-05-25)
 
