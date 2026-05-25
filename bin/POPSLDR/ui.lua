@@ -2464,11 +2464,11 @@ UI = {
               UI.SyncSettingsSelectionFromRuntime()
               UI.SyncSettingsDraftFromRuntime()
             elseif reason == "save_failed" then
-              UI.Notif_queue.add("Couldn't save settings\nmc0:/POPSTARTER/.pldrs may be read-only", "error")
+              UI.Notif_queue.add("Couldn't save settings\n"..tostring(PLDR.SETTINGS_PATH or "mc0:/POPSTARTER/.pldrs").." may be read-only", "error")
               UI.SyncSettingsSelectionFromRuntime()
               UI.SyncSettingsDraftFromRuntime()
             else
-              UI.Notif_queue.add("Couldn't save settings\nmc0:/POPSTARTER/.pldrs may be read-only", "error")
+              UI.Notif_queue.add("Couldn't save settings\n"..tostring(PLDR.SETTINGS_PATH or "mc0:/POPSTARTER/.pldrs").." may be read-only", "error")
               UI.SyncSettingsSelectionFromRuntime()
               UI.SyncSettingsDraftFromRuntime()
             end
