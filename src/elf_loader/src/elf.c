@@ -507,17 +507,28 @@ int LoadELFFromFileWithPartition(const char *filename, const char *partition, in
 	char resolved_path[256];
 	size_t storage_offset = 0;
 	bool use_default_argv0 = false;
-	
+
+	/* DIAG_U10: paint WHITE so we know we entered the non-reboot variant
+	 * (the path DKWDRV-on-HDD via PR #460 V2-mimicry uses). The reboot
+	 * variant is instrumented separately further down. Both variants
+	 * share the DIAG_U10_* color table so the screen color uniquely
+	 * identifies which function and which stage we're stuck on. */
+	DIAG_U10_BG(DIAG_U10_WHITE);
+
 	// We need to check that the ELF file before continue
 	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
+		DIAG_U10_BG(DIAG_U10_RED); /* resolve_exec_path failed */
 		return -1; // ELF file doesn't exists
 	}
 	// ELF Exists
 	wipe_bramMem();
 
+	DIAG_U10_BG(DIAG_U10_CYAN); /* after resolve + wipe_bramMem */
+
 	if (strcmp(resolved_path, "mc0:/BOOT/BOOT.ELF") == 0 || strcmp(resolved_path, "mc1:/BOOT/BOOT.ELF") == 0) {
 		char *boot_argv[1];
 		boot_argv[0] = (char *)resolved_path;
+		DIAG_U10_BG(DIAG_U10_GREEN); /* BOOT.ELF route -> ExecuteViaEmbeddedLoader */
 		return ExecuteViaEmbeddedLoader("", resolved_path, 1, boot_argv);
 	}
 
@@ -535,6 +546,7 @@ int LoadELFFromFileWithPartition(const char *filename, const char *partition, in
 	if (is_dkwdrv_elf_path(resolved_path)) {
 		char *dkwdrv_argv[1];
 		dkwdrv_argv[0] = (char *)resolved_path;
+		DIAG_U10_BG(DIAG_U10_YELLOW); /* DKWDRV route -> ExecuteViaEmbeddedLoader */
 		return ExecuteViaEmbeddedLoader("", resolved_path, 1, dkwdrv_argv);
 	}
 
