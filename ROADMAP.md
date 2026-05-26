@@ -1,89 +1,83 @@
-Last updated: 2026-05-20
+Last updated: 2026-05-25
 
 # ROADMAP
 
 ## Status Snapshot
-- Core launcher functionality is present in code for MMCE, MX4SIO, HDD (PFS), USB, Disc (`DKWDRV`), settings persistence, cover preview, path editing, startup backend auto-init, and exit flows.
-- The shared default/Profile 1 local POPSTARTER baseline was restored by rolling back to the `BETA-10-play-CHECKPOINT2` resolver behavior; user hardware confirmed that fix.
-- Recorded hardware previously confirmed `D-12` startup/Profile lookup is restored, `D-16` first-entry USB discovery is restored, and `D-15` non-HDD-POPSTARTER HDD-game launch was restored; a 2026-05-20 latest-artifact report regressed `D-15` again with USB boot + USB sidecar `POPSTARTER.ELF` + HDD game black-screening.
-- A follow-up 2026-05-20 report narrowed the non-HDD sidecar regression to default/cwd POPSTARTER resolution: explicit `mass:/POPS/POPSTARTER.ELF` launches, while default `POPSTARTER.ELF` can stop at `Cant find POPSTARTER ELF`; current source expands the sidecar search and remains `Unknown (verify on hardware)`.
-- The main stabilization blocker is still HDD-backed `POPSTARTER.ELF` execution when the launcher, sidecar/CWD, or configured POPSTARTER path lives on HDD (`D-10`, `D-14`).
-- One 2026-03-29 artifact briefly moved `D-10` to a returned `rc=-1`, but later artifacts returned to black screen, so that was not a stable new boundary.
-- Current repo line now uses the direct non-reboot legacy selector handoff as the default for HDD-backed POPSTARTER too: keep the resolved executable path, avoid Lua partition-context/generic-`pfs:/` rewriting on normal `X`, avoid HDD-only parent cleanup immediately before `ExecPS2`, and preserve the partition-aware/embedded-loader code only as a non-default fallback surface until hardware proves it is needed.
-- The latest EE-side HDD direct-load workaround was reverted after it did not fix `D-10` and coincided with a reported HDD-game regression when POPSTARTER stayed on the non-HDD boot device.
-- `HDD_POPSTARTER_HANDOFF.md` is the current source-audit handoff for this blocker. It separates source-confirmed defects from hardware-only unknowns and should be read before new `D-10` / `D-14` fix attempts.
-- `HDD (exFAT)`, `SMB (v1)`, and `ILINK` remain intentionally unimplemented menu entries.
-- Detailed experiment chronology lives in `QA_REGRESSION_MATRIX.md` and `DECISIONS.md`; `STATE.md` also summarizes the source-inferred Settings/Profile POPSTARTER path save/load integrity risk as `Unknown (verify on hardware)` without attributing `D-10`, `D-14`, or `U-10` to it.
+
+- D-10, D-14, D-15 are hardware-PASS as of 2026-05-22 (B2 fix at commit `4ae6679`). The partition-aware HDD POPSTARTER route is the load-bearing fix to preserve through any new work.
+- DKWDRV from MC is hardware-PASS as of 2026-05-25 (Nuno).
+- DKWDRV from custom HDD path is **awaiting hardware** on PR #460 (commit `740fa87`, BETA-12-PLAY head). PR #460 completes the V2-mimicry that PR #452 (V4) missed: Lua `reboot_iop=0` + a new DKWDRV special-case route in `LoadELFFromFileWithPartition` mirroring the BOOT.ELF V2 contract.
+- BOOT.ELF from USB-booted POPSLoader (L-07) was working in V2 (commit `d23520a`, 2026-05-23). PR #458 regressed it by adding an `is_boot_elf_target` IOP-reset branch in the child loader; PR #460 reverted that. Source-verified back at the V2 working route; hardware re-verification pending.
+- BOOT.ELF from HDD-booted POPSLoader (U-10) is **still broken** and was never solved by V2 either. Pursued only after PR #460 hardware verdict settles.
+- POPSLoader launched from wLaunchELF (CosmicScale 2026-05-25) fails on some wLE builds. PR #458's `_ps2sdk_memory_init` fileXio-teardown (Layer A) targets this. Hardware pending.
+- Backend infrastructure added in PR #458/459/460: per-device settings sidecar (`PLDR.SETTINGS_PATH` resolves at load time with `APP_DIR_LOCAL/.pldrs` preferred and `mc0:/POPSTARTER/.pldrs` fallback), unified `ResolveBootContext` resolver feeding settings/UI/IRX decisions, NHDDL-style launch arg parsing (`-page=`, `-mode=`, `-game=`, `-debug`).
+- `docs/LAUNCH_HYGIENE.md` documents the launch-path architecture and the V2 mimicry rationale.
+- `HDD (exFAT)`, `SMB (v1)`, `ILINK` remain intentionally unimplemented menu entries.
 
 ## Immediate Priorities
 
-### 1) HDD-backed POPSTARTER exec
-- Reproduce and resolve `D-10`:
-  - POPSLoader booted from HDD,
-  - HDD game launched from HDD (PFS),
-  - `POPSTARTER.ELF` resolved from HDD sidecar/CWD or configured HDD path,
-  - current reported result: black-screen hang, or on recent readable-diagnostic artifacts returned pre-exec gate popups for partition-context resolution and generic `pfs:/...` accessibility.
-  - restore and preserve `D-15`, `D-12`, `D-16`, `U-05`, and shared Profile 1/default sidecar behavior while iterating.
-  - treat `D-14` as the paired non-HDD-game repro for the same HDD-backed POPSTARTER blocker.
-  - fix source-confirmed handoff defects before broader experiments: stale Lua fallback context, plain-label fallback partition parsing, over-broad fallback gate skip, partition-context argv leakage, embedded-loader contract drift, mounted-PFS source-partition recovery, failure-popup diagnostic argument order, and generic-`pfs:/` gate probing.
-  - use `QA_REGRESSION_MATRIX.md` for the full experiment chronology instead of rebuilding that ledger here.
+### 1) Resolve DKWDRV-on-HDD on hardware
+- Test PR #460 artifact: https://github.com/NathanNeurotic/POPSLoader/actions/runs/26416917597
+- If DKWDRV-on-HDD PASSES, that closes the V4 saga (PR #452 reverted, PR #458 reverted, PR #460 completes the V2 mimicry).
+- If FAILS, escalate to a diagnostic build: enable `LOADER_ENABLE_DEBUG_COLORS` in the child loader, ship to Nuno, identify the exact stage at which the black-screen happens. The hooks already exist in `src/elf_loader/src/loader/src/loader.c` lines 24-43; just need to define the macro at build time.
+- Regression checks on the same artifact: D-10, D-15, DKWDRV-MC, BOOT.ELF from USB-booted POPSLoader.
 
-### 2) External exit/launch re-validation
-- Re-run `U-05` (`OSDSYS`) and `U-10` (`BOOT.ELF after HDD page init`) on current source after the BOOT.ELF-specific conditional-reboot/cold-prep change for HDD-initialized sessions.
-- Treat `U-10` as potentially sharing the same underlying handoff/state-poisoning boundary as `D-10`, but do not assume a `D-10` fix automatically resolves `U-10` without hardware confirmation.
-- Record exact run results in `QA_REGRESSION_MATRIX.md` instead of carrying them only in chat history.
+### 2) wLaunchELF launch (CosmicScale)
+- Same artifact as priority 1.
+- PR #458 added `SifExitRpc() + SifInitRpc(0) + fileXioExit()` before `SifIopReset` in `_ps2sdk_memory_init`, per the documented ps2sdk #425 workaround.
+- If still failing, the next angles are: pin a specific ps2dev/ps2dev image tag in CI to rule out toolchain drift, or investigate whether `SifIopReset(NULL, 0x80000000)` (verbose-mode flag) has a different IOP-reset path than `("", 0)`.
 
-### 3) Startup/page split re-validation
-- Re-run HDD boot with a large HDD library on current source.
-- Expected:
-  - boot-time HDD auto-init should make the device runtime ready without building the HDD games list,
-  - first HDD page entry should still perform partition scan and game-list build normally.
+### 3) U-10 BOOT.ELF from HDD-booted POPSLoader
+- Long-standing, predates this session.
+- V2 didn't solve it. PR #458's attempts didn't solve it. Reverted.
+- Investigation candidates: explicit `dev9Shutdown()` before exec (the network/HDD expansion module retains hardware state across `SifIopReset` — BOOT.ELF inheriting that may be the culprit), or routing through the child loader with a specifically-crafted IOP teardown.
+- Worth a focused investigation PR (no code) before another fix attempt.
 
-### 4) Display and UX verification
+### 4) `PLDR.LAUNCH_ARGS` UI auto-navigation
+- Infrastructure landed in PR #458. Parsing, normalization, and a `PLDR.LAUNCH_ARGS = {page, page_raw, game, debug}` table all work.
+- Need to wire the consumer: `ui.lua` initial page selection should check `PLDR.LAUNCH_ARGS.page` and jump to the named carousel target on boot.
+- Smallest risk: gate on `PLDR.LAUNCH_ARGS.page ~= nil` only; existing flows unchanged when no flag passed.
+
+### 5) Display and UX verification
 - Re-run `U-06` to confirm PAL/NTSC menu asset proportions on hardware.
-- Re-run `U-08` and `U-09` on slower/large libraries to judge whether busy overlays communicate activity clearly enough.
+- Re-run `U-08` / `U-09` on slower/large libraries to judge whether busy overlays communicate activity clearly enough.
 
-### 5) Coverage and documentation
-- Add concrete run logs for:
-  - device switching without runtime locks (`D-13`),
-  - keyboard layout persistence (`S-09`),
-  - boot-device label display (`U-11`).
-- Keep `README.md`, `STATE.md`, `DECISIONS.md`, and `QA_REGRESSION_MATRIX.md` synchronized.
+### 6) Coverage and documentation
+- `STATE.md`, `TRUTHSHEET.md`, `QA_REGRESSION_MATRIX.md`, `HDD_POPSTARTER_HANDOFF.md` were all updated to current reality on 2026-05-25 alongside this file (PR #461).
+- Add concrete run logs for: D-13 device switching without runtime locks, S-09 keyboard layout persistence, U-11 boot-device label display.
 
 ## Secondary Work
 
 ### 1) Unimplemented menu paths
-- Implement `HDD (exFAT)` flow.
-- Implement `SMB (v1)` flow.
-- Implement `ILINK` flow.
+- `HDD (exFAT)`, `SMB (v1)`, `ILINK` — intentionally not implemented; surface "not supported" if entered.
 
 ### 2) Art/asset behavior
-- Keep current cover behavior stable:
-  - sidecar PNG beside the selected `.VCD`,
-  - HDD common art from `hdd0:__common/POPS/ART/<title>.png`.
-- Keep `default.png` optional in CI artifacts; missing default-cover builds must fall back to embedded `MISSING.png`.
-- Decide whether a broader ART system still needs to exist beyond those current code paths.
+- Keep current cover behavior stable: sidecar PNG beside the selected `.VCD`, plus `hdd0:__common/POPS/ART/<title>.png` for HDD titles.
+- Keep `default.png` optional in CI artifacts; missing default-cover builds fall back to embedded `MISSING.png`.
 
 ### 3) Install/build clarity
 - Keep CI package layout and docs synchronized.
-- Keep GitHub-built hardware artifacts self-identifying: package `BUILD_INFO.txt` and fail CI when expected embedded runtime markers are missing.
-- Keep README installation steps explicit enough for users who are not familiar with PS2 launcher layouts.
+- Pin `ps2dev/ps2dev` image tag in `.github/workflows/compilation.yml` to a specific version instead of `:latest` (toolchain drift mitigation).
+- Lua syntax check now covers `bin/POPSLDR/*.lua` plus `etc/boot.lua` (extended in PR #461, was previously only boot.lua).
 
-### 4) Settings page UI redesign
-- 2026-05-19: first pass, single-page label/hint/value layout grouped into three sections with consistent metrics and a dirty indicator.
-- 2026-05-20: second pass moves to an OPL-style focused-list model. D-pad Up/Down moves a highlight bar between rows (skipping section headers and spacers); D-pad Left/Right cycles the focused value; X activates the focused row (cycles a cycle row, opens the path editor for a path row, or fires the menu action for an action row); O discards and exits; Start still resets defaults; Select still toggles hide-text. Adds Keyboard Layout as its own cycle row and surfaces Save Changes / Reset Defaults / Cancel as menu items at the bottom. The Square / L1 / R1 / Triangle one-button-per-field shortcuts are gone -- the whole interaction is D-pad-driven.
-- Hardware verification pending alongside the D-10/D-14/U-10 retest sequence. Walk the S-01..S-09 and U-01..U-11 rows on the next artifact to confirm parity (Square no longer toggles Video Standard; cycle it via Left/Right or X on the focused row).
-- Future polish (deferred, optional):
-  - If we grow Settings beyond ~14 visible rows, add scrolling.
-  - Consider grouping into category sub-pages (OPL pattern: top-level lists categories, each opens a child page) once there are more settings to justify the navigation cost.
+### 4) Settings UI redesign
+- 2026-05-19/20 OPL-style focused-list shipped (Settings page rewrite). Hardware verification deferred per the launch-path retest sequence.
+- Berion-mockup-driven GUI overhaul is queued (see #5 below). The OPL focused list is intended to be replaced when that overhaul lands, so further iteration on the focused list is paused unless a specific bug appears.
 
 ### 5) Full GUI overhaul (Berion mockups)
-- 2026-05-24: graphics-team mockups by Berion and the matching PNG asset set landed (`f8fec64`). The full implementation prompt and per-screen pixel specs live in `docs/GUI_OVERHAUL_PROMPT.md`.
-- Scope: Context menu, Settings (restructured as main page + per-category pages, superseding the current OPL focused-list), Joypad configuration, On-screen keyboard. Boot/splash and game list are explicitly out of scope.
-- Prereq: do not start until D-10/D-14/U-10 hardware verification settles. The category-page Settings model in the prompt replaces the OPL focused-list currently in production, so coordinate hardware retest sequencing.
-- Mockup HTML/JSX wrapper from Berion's package (`app/screens.jsx` + `app/styles.css` + `index.html`) is referenced by the prompt but is NOT yet committed to this repo -- only the PNG assets are. Commit the mockup files (or substitute a screenshot/hosted-mockup oracle) before starting the Lua port.
+- 2026-05-24: graphics-team mockups by Berion and the matching PNG asset set landed (`f8fec64`). Full implementation prompt and per-screen pixel specs live in `docs/GUI_OVERHAUL_PROMPT.md`.
+- Scope: Context menu, Settings (per-category pages superseding the OPL focused-list), Joypad configuration, On-screen keyboard. Boot/splash and game list are out of scope.
+- Prereq: hardware verification of DKWDRV-on-HDD + wLaunchELF + U-10 settles. The category-page Settings model in the prompt replaces the OPL focused-list, so coordinate retest sequencing.
+- Mockup HTML/JSX wrapper from Berion's package is referenced by the prompt but not yet committed; either commit the mockup files or use a screenshot/hosted-mockup oracle before starting the Lua port.
+
+### 6) Layer C full lazy IRX loading
+- Precursor landed in PR #458: pre-IRX device classification (`detectBootDeviceHintFromArgv0` / `System.getBootDeviceHint`).
+- Deferred (high risk for input/controllers): defer `mmceman` unless boot device is MMCE, `ds34bt` unless user has BT pads enabled, `usbd` unless boot device is USB/MX4SIO/DS3-4 USB.
+- Tackle only after current launch-path PRs (#458/459/460) are hardware-confirmed.
 
 ## Deferred Ideas
+
 - Additional themes/skins.
 - Broader network/backend support after SMB and ILINK have defined baselines.
 - More ambitious artwork cache policy after current launch/runtime issues are stable.
+- First-run MC-to-sidecar settings migration: if user moves POPSLoader to a new device, optionally copy `mc0:/POPSTARTER/.pldrs` to the new sidecar on first save.

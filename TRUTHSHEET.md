@@ -1,4 +1,4 @@
-Last updated: 2026-03-29
+Last updated: 2026-05-25
 
 # TRUTHSHEET
 
@@ -12,10 +12,10 @@ Non-negotiable behavioral invariants that changes must preserve unless an explic
 - Rationale: deterministic startup and no dependency on external Lua script files.
 - Verification: embedded searcher is installed, filesystem Lua loaders are disabled, and required runtime Lua blobs are embedded.
 
-### Truth 2: Settings persistence is transactional
+### Truth 2: Settings persistence is transactional and per-device
 - Scope: `bin/POPSLDR/ui.lua`, `bin/POPSLDR/system.lua`.
-- Rationale: avoid immediate writes while navigating and keep save/apply failure handling explicit.
-- Verification: edits stage in drafts; `CommitSettingsChanges` runs on confirm/leave; persisted file is `mc0:/POPSTARTER/.pldrs`.
+- Rationale: avoid immediate writes while navigating, keep save/apply failure handling explicit, and let a POPSLoader install carry its own settings (not always to Memory Card).
+- Verification: edits stage in drafts; `CommitSettingsChanges` runs on confirm/leave; `PLDR.SETTINGS_PATH` is resolved at load time -- `APP_DIR_LOCAL/.pldrs` sidecar preferred (HDD installs land at `pfs1:/<install dir>/.pldrs` because `etc/boot.lua` mounts the boot partition RW by default), with `mc0:/POPSTARTER/.pldrs` as fallback. Save writes go to whichever was loaded.
 
 ### Truth 3: USB vs MX4SIO identity comes from mount driver
 - Scope: `bin/POPSLDR/system.lua`, `src/luasystem.cpp`.
@@ -51,11 +51,16 @@ Non-negotiable behavioral invariants that changes must preserve unless an explic
 - `HDD (exFAT)` main-menu path is intentionally not implemented and must continue to report that status until feature work lands.
 - `SMB (v1)` main-menu path is intentionally not implemented and must continue to report that status until feature work lands.
 
-## Current Unresolved Hardware Markers
-- `D-10`: HDD `POPSTARTER.ELF` on HDD sidecar/CWD is still reported to black-screen on hardware.
-- `D-14`: non-HDD game + HDD-backed `POPSTARTER.ELF` is also still reported failing on hardware.
-- `U-10`: `BOOT.ELF` after HDD page init is still a connected concern; the current conditional-reboot/cold-prep line remains `Unknown (verify on hardware)`.
-- `U-06`: PAL/NTSC menu asset proportions still need hardware confirmation.
+## Current Hardware Status Markers
+- `D-10` (HDD POPSTARTER + HDD game): **PASS** as of 2026-05-22 hardware (B2 fix at commit `4ae6679`). Must be preserved by any future launch-path change.
+- `D-14` (HDD POPSTARTER + non-HDD game): **PASS** as of 2026-05-22 hardware. Same partition-aware route as D-10.
+- `D-15` (non-HDD POPSTARTER + HDD game): **PASS** as of 2026-05-22 hardware.
+- `DKWDRV from MC`: **PASS** as of 2026-05-25 hardware (Nuno).
+- `DKWDRV from HDD custom path`: **Hardware pending** on PR #460 (V2-mimicry, commit `740fa87`); previous PR #458 attempt FAILED 2026-05-25.
+- `BOOT.ELF from USB-booted POPSLoader` (L-07): V2 working route restored by PR #460. Hardware pending re-verification.
+- `BOOT.ELF from HDD-booted POPSLoader` (U-10): **FAIL** 2026-05-25 (Nuno). Long-standing, not addressed by current PRs. Pursued only after PR #460 verdict settles.
+- `POPSLoader from wLaunchELF`: **FAIL** on some wLE builds (CosmicScale 2026-05-25). PR #458's fileXio-teardown in `_ps2sdk_memory_init` targets this. Hardware pending.
+- `U-06` (PAL/NTSC menu asset proportions): Unknown, still needs hardware confirmation.
 
 ## Add-New-Truth Template
 ```markdown
