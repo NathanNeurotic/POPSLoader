@@ -10,7 +10,10 @@ EE_BIN = $(BINDIR)loader.elf
 EE_OBJS = src/loader.o
 
 # Enable debug colors?
-LOADER_ENABLE_DEBUG_COLORS ?= 0
+# DIAG_U10 BRANCH: default flipped to 1 so the child loader paints
+# background colors at each stage. To prune: revert this line to ?= 0
+# OR delete the entire claude/diag-u10 branch.
+LOADER_ENABLE_DEBUG_COLORS ?= 1
 
 # Use nano newlib for saving space
 EE_NEWLIB_NANO ?= 1

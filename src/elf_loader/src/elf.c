@@ -27,6 +27,39 @@
 #include "../../include/dprintf.h"
 #include "elf.h"
 
+/* DIAG_U10: paint GS background at each stage of
+ * LoadELFFromFileExecPS2RebootIOPWithPartition's direct path so the next
+ * U-10 hardware failure tells us which stage actually dies. Defined via
+ * src/elf_loader/Makefile when POPSLOADER_DIAG_U10=1 (default 1 on the
+ * claude/diag-u10 branch, default 0 / undefined elsewhere). To prune:
+ * grep -n POPSLOADER_DIAG_U10 src/elf_loader/ and delete all matches.
+ *
+ * Color -> stage mapping for the reboot-variant direct path:
+ *   WHITE  function entry
+ *   CYAN   after resolve_exec_path / partition-aware routing decisions
+ *   GREEN  before SifLoadElf
+ *   YELLOW after SifLoadElf success
+ *   BLUE   after optional PFS unmount on HDD-backed exec path
+ *   ORANGE after SifIopReset + SifIopSync
+ *   BROWN  after rom0:SIO2MAN/MCMAN/MCSERV reload + SifExitRpc
+ *   PURPLE immediately before ExecPS2
+ *   RED    SifLoadElf failure (won't reach ExecPS2)
+ */
+#ifdef POPSLOADER_DIAG_U10
+#define DIAG_U10_BG(colour) do { *((volatile unsigned long int *)0x120000E0) = (colour); } while (0)
+#define DIAG_U10_WHITE  0xFFFFFFu
+#define DIAG_U10_CYAN   0xFFFF00u
+#define DIAG_U10_GREEN  0x00FF00u
+#define DIAG_U10_YELLOW 0x00FFFFu
+#define DIAG_U10_BLUE   0xFF0000u
+#define DIAG_U10_ORANGE 0x00A5FFu
+#define DIAG_U10_BROWN  0x2A2AA5u
+#define DIAG_U10_PURPLE 0x800080u
+#define DIAG_U10_RED    0x0000FFu
+#else
+#define DIAG_U10_BG(colour) do {} while (0)
+#endif
+
 #define ELF_MAGIC 0x464c457f
 #define ELF_PT_LOAD 1
 extern unsigned char loader_elf[];
@@ -611,6 +644,8 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 	static char *dkwdrv_argv[2];
 	static char dkwdrv_argv0[256];
 
+	DIAG_U10_BG(DIAG_U10_WHITE); /* DIAG_U10 stage 1: function entry */
+
 	/* HDD-backed launches (POPSTARTER on HDD AND DKWDRV on HDD) route
 	 * through ExecuteHddBackedViaEmbeddedLoader -> ExecuteViaEmbeddedLoader
 	 * -> BRAM child loader. This is the path that hardware-passes D-10
@@ -642,17 +677,24 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 		return ExecuteHddBackedViaEmbeddedLoader(resolved_path, partition, argc, argv);
 	}
 
+	DIAG_U10_BG(DIAG_U10_CYAN); /* DIAG_U10 stage 2: direct path reached (non-HDD target) */
+
 	SifInitRpc(0);
 	SifLoadFileInit();
+	DIAG_U10_BG(DIAG_U10_GREEN); /* DIAG_U10 stage 3: before SifLoadElf */
 	ret = SifLoadElf(resolved_path, &elfdata);
 	SifLoadFileExit();
 
 	if (ret != 0 || elfdata.epc == 0) {
+		DIAG_U10_BG(DIAG_U10_RED); /* DIAG_U10 stage E1: SifLoadElf failed */
 		return -2;
 	}
 
+	DIAG_U10_BG(DIAG_U10_YELLOW); /* DIAG_U10 stage 4: SifLoadElf success */
+
 	if (is_hdd_backed_exec_path(resolved_path)) {
 		unmount_pfs_slots_for_exec(build_exec_keep_mask(resolved_path));
+		DIAG_U10_BG(DIAG_U10_BLUE); /* DIAG_U10 stage 5: PFS slots unmounted (HDD path only) */
 	}
 
 	FlushCache(0);
@@ -660,6 +702,8 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 	}
 	while (!SifIopSync()) {
 	}
+
+	DIAG_U10_BG(DIAG_U10_ORANGE); /* DIAG_U10 stage 6: SifIopReset + SifIopSync returned */
 
 	SifInitRpc(0);
 	SifLoadFileInit();
@@ -669,8 +713,12 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 	SifLoadFileExit();
 	SifExitRpc();
 
+	DIAG_U10_BG(DIAG_U10_BROWN); /* DIAG_U10 stage 7: module reload + SifExitRpc done */
+
 	FlushCache(0);
 	FlushCache(2);
+
+	DIAG_U10_BG(DIAG_U10_PURPLE); /* DIAG_U10 stage 8: immediately before ExecPS2 */
 
 	if (is_dkwdrv_elf_path(resolved_path)) {
 		snprintf(dkwdrv_argv0, sizeof(dkwdrv_argv0), "%s", resolved_path);
