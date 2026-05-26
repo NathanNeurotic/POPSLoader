@@ -2114,6 +2114,39 @@ if UI.DEVLOCK ~= nil then
   else
   end
 end
+
+-- Apply NHDDL-style launch arg -page=<kind> / -mode=<kind> to start the
+-- main menu carousel on a specific page. PLDR.LAUNCH_ARGS.page is set by
+-- parseLaunchArgs in main.cpp + NormalizeLaunchPage above. Only fires
+-- when the launch arg is explicitly present AND maps to a real page;
+-- default carousel behavior (start at MMCE / index 1) is unchanged when
+-- the flag is absent or unrecognized.
+--
+-- Page mapping mirrors UI.MainMenu.opts at the time of this writing:
+--   opts = {"MMCE","MX4SIO","HDD (exFAT)","HDD (PFS)","USB","i.Link","SMB (v1)","Disc (DKWDRV)"}
+-- HDD launch arg targets the implemented PFS page (index 4); the BDMA
+-- (HDD exFAT, index 3) and i.Link (index 6) pages are intentionally not
+-- implemented so we don't auto-route to them.
+if type(PLDR) == "table" and type(PLDR.LAUNCH_ARGS) == "table"
+   and type(PLDR.LAUNCH_ARGS.page) == "string" and PLDR.LAUNCH_ARGS.page ~= "" then
+  local page_to_opt = {
+    MMCE = 1,
+    MX4SIO = 2,
+    HDD = 4,
+    USB = 5,
+    SMB = 7,
+  }
+  local opt = page_to_opt[PLDR.LAUNCH_ARGS.page]
+  if opt ~= nil and type(UI.MainMenu) == "table" then
+    UI.MainMenu.OPT = opt
+    if type(UI.MainMenu.Carousel) == "table" then
+      UI.MainMenu.Carousel.currentIndex = opt
+      UI.MainMenu.Carousel.targetIndex = opt
+      UI.MainMenu.Carousel.scrollPos = opt + 0.0
+    end
+  end
+end
+
 require("images")
 
 PLDR.POPSTARTER_DIR = "mc0:/POPSTARTER"
@@ -2683,14 +2716,27 @@ function PLDR.LoadSettingsNonFatal()
   -- Resolve actual settings source: prefer per-device sidecar
   -- (APP_DIR/.pldrs), fall back to legacy mc0:/POPSTARTER/.pldrs.
   -- Whichever file is found first wins -- PLDR.SETTINGS_PATH is then
-  -- pinned to that path so subsequent saves go to the same place.
+  -- pinned to that path so subsequent saves go to the same place,
+  -- EXCEPT when we load from the MC fallback AND a sidecar location
+  -- is computable. In that case (first-run migration), we read from
+  -- MC but pin PLDR.SETTINGS_PATH to the SIDECAR so the next save
+  -- writes the user's settings to the per-device location and the
+  -- legacy MC copy stops being authoritative. Subsequent boots will
+  -- find the sidecar first and stay on it.
   local sidecar = PLDR.SETTINGS_PATH_SIDECAR
   local fallback = PLDR.SETTINGS_PATH_FALLBACK
   local loaded_path = nil
+  local migrate_to_sidecar = false
   if sidecar ~= nil and sidecar ~= "" and doesFileExist(sidecar) then
     loaded_path = sidecar
   elseif fallback ~= nil and fallback ~= "" and doesFileExist(fallback) then
     loaded_path = fallback
+    -- First-run migration: if we have a usable sidecar target but the
+    -- sidecar file doesn't exist yet, schedule the next save to write
+    -- there instead of back to MC.
+    if sidecar ~= nil and sidecar ~= "" then
+      migrate_to_sidecar = true
+    end
   end
   if loaded_path == nil then
     -- No settings yet on either path. Leave PLDR.SETTINGS_PATH at its
@@ -2700,8 +2746,15 @@ function PLDR.LoadSettingsNonFatal()
     PLDR.ApplyVideoStandardRuntime(PLDR.VIDEO_STANDARD)
     return false
   end
-  PLDR.SETTINGS_PATH = loaded_path
-  local data = ReadWholeFile(PLDR.SETTINGS_PATH)
+  if migrate_to_sidecar then
+    PLDR.SETTINGS_PATH = sidecar
+  else
+    PLDR.SETTINGS_PATH = loaded_path
+  end
+  -- Always READ from loaded_path: the migration case sets PLDR.SETTINGS_PATH
+  -- to the sidecar (which doesn't exist yet) so the next SAVE writes there,
+  -- but the actual settings data still has to come from the file we found.
+  local data = ReadWholeFile(loaded_path)
   if data == nil then
     PLDR.ReconcileBdmaModeWithEffectiveState()
     PLDR.ApplyVideoStandardRuntime(PLDR.VIDEO_STANDARD)
