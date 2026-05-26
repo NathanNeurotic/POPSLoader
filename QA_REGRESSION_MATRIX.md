@@ -1,7 +1,7 @@
 # POPSLoader Regression Matrix
 
-Last updated: 2026-05-20
-Target line: current repository source
+Last updated: 2026-05-25
+Target line: current repository source (BETA-12-PLAY head, commit `740fa87`)
 
 ## Scope
 This matrix tracks current behavior across:
@@ -162,6 +162,12 @@ These gates are defined by `.github/workflows/compilation.yml`. The separate `.g
 | 2026-05-24 | DKWDRV Hardware | DKWDRV_PATH set to custom HDD path; Production POPSLOADER at dabfe96 (PR #452 merged: V4 :pfs:/ + reboot_iop=0 for HDD DKWDRV) | DKWDRV / D-10 paired | FAIL: black screen. Conclusion: routing HDD DKWDRV through LoadELFFromFileExecPS2 (no-reboot) with HDD keep-mask preservation also does not unblock the launch. The SifExitIopHeap/SifExitRpc/SifExitCmd teardown in the HDD-backed branch may be incompatible with DKWDRV's startup, OR the keep mask isn't actually retaining the partition slot on the way to ExecPS2. PR #452 reverted on 2026-05-24. Next angle: route HDD DKWDRV through the BRAM child loader (same path as POPSTARTER on HDD, since that passes), or copy DKWDRV.ELF to EE RAM before ExecPS2 so it has no HDD dependency at runtime. |
 | 2026-05-24 | BOOT.ELF / DKWDRV | Production POPSLOADER at baed871 with PRs #451 + #452 reverted (current source returns to b725464-equivalent behavior for these two flows; PR #450 reboot_iop-dead-code-fix retained as a clean source defect repair even though it does not unblock BOOT.ELF on hardware) | U-10 / DKWDRV | Unknown (verify on hardware). Treat the rolled-back state as the next baseline. |
 | 2026-05-24 | DKWDRV Hardware | DKWDRV_PATH set to custom HDD path; Production POPSLOADER with `LoadELFFromFileExecPS2RebootIOPWithPartition` updated to route HDD DKWDRV through `ExecuteHddBackedViaEmbeddedLoader` (the BRAM child-loader path POPSTARTER uses successfully on D-10). Removes the V3 `!is_dkwdrv_elf_path` exclusions; HDD DKWDRV now inherits the same B2-fix IOP-state contract as D-10. Non-HDD DKWDRV (e.g. `mc0:/PS1_DKWDRV/DKWDRV.ELF`) is unchanged: falls through to standard direct-launch + V3 argv0 synthesis. | DKWDRV | Unknown (verify on hardware). |
+| 2026-05-25 | DKWDRV Hardware | Production POPSLOADER at PR #457 (commit `de6da75`): DKWDRV-HDD routed through BRAM child loader, no IOP reset. Test path: `hdd0:/__common:pfs1:/APPS/PS1_DKWDRV/DKWDRV.ELF` | DKWDRV-HDD | FAIL (Nuno): black screen. POPSTARTER-on-HDD still PASS (no regression). Conclusion: same BRAM-loader path POPSTARTER uses doesn't automatically work for DKWDRV; DKWDRV needs additional state. |
+| 2026-05-25 | BOOT.ELF Hardware | Production POPSLOADER at PR #457 (commit `de6da75`): BOOT.ELF exit after HDD-boot | U-10 | FAIL (Nuno): black screen. U-10 unchanged from prior tests. |
+| 2026-05-25 | DKWDRV Hardware | Production POPSLOADER at PR #458 (commit `dff091c`): added fileXio teardown to `_ps2sdk_memory_init` AND new IOP-reset branches in child loader for DKWDRV + BOOT.ELF (`is_dkwdrv_target`, `is_boot_elf_target`). Test path: `hdd0:/__common:pfs1:/APPS/PS1_DKWDRV/DKWDRV.ELF` | DKWDRV-HDD | FAIL (Nuno): black screen. POPSTARTER-on-HDD still PASS. |
+| 2026-05-25 | BOOT.ELF Hardware | Production POPSLOADER at PR #458 (commit `dff091c`): BOOT.ELF exit after HDD-boot through new `is_boot_elf_target` reset branch | U-10 | FAIL (Nuno): black screen. **Worse: PR #458's `is_boot_elf_target` branch ALSO regressed V2's working USB-boot-exit-to-BOOT.ELF case** (intercepted before non-HDD branch, forced IOP reset BOOT.ELF doesn't tolerate). PR #460 reverts the regression. |
+| 2026-05-25 | wLaunchELF Report | POPSLoader launched from wLaunchELF on some wLE builds (CosmicScale). PSBBN / Browser / HOSDMenu / OSDMenu launches all work. | (new) | FAIL on certain wLE builds, regardless of POPSLoader source device. PR #458 Layer A (`SifExitRpc + SifInitRpc + fileXioExit` in `_ps2sdk_memory_init` per ps2sdk #425) targets this. Hardware pending. |
+| 2026-05-25 | PR #460 Source-verified | V2 mimicry: revert PR #458's `is_dkwdrv_target` and `is_boot_elf_target` child-loader branches and the reboot-variant BOOT.ELF route. Add DKWDRV special-case in `LoadELFFromFileWithPartition` mirroring V2 BOOT.ELF route (d23520a). `ui.lua OpenDKWDRV` uses `reboot_iop=0` for HDD paths. Completes the V2 contract V4 (PR #452) missed. Commit `740fa87` (BETA-12-PLAY head). | DKWDRV-HDD / L-07 | Source-verified only. Hardware pending. CI green: https://github.com/NathanNeurotic/POPSLoader/actions/runs/26416917597 |
 | YYYY-MM-DD | SCPH-xxxxx | USB/MMCE/MX4SIO/HDD details | e.g. S-01,S-02,D-02 | PASS/FAIL + notes |
 
 

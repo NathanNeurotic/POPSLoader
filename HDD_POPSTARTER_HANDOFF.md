@@ -1,12 +1,18 @@
 # HDD POPSTARTER Handoff Audit
 
-Last updated: 2026-05-20
+> **STATUS 2026-05-25: RESOLVED.** D-10, D-14, and D-15 are all hardware-PASS as of 2026-05-22 (Nuno). The fix that resolved them is the B2 contract at commit `4ae6679` — unmounting the target PFS slot before `ExecPS2` on the HDD-POPSTARTER handoff. This contract is preserved through PRs #455-#460 and must be preserved by any future launch-path change.
+>
+> This document is archived. The historical analysis below is kept as a reference for the diagnostic trail; the contents do NOT describe current behavior. See `STATE.md`, `ROADMAP.md`, and `QA_REGRESSION_MATRIX.md` for the current ledger and `docs/LAUNCH_HYGIENE.md` for the current launch-path architecture.
+
+---
+
+Last updated: 2026-05-20 (historical content below this point)
 
 Branch audited: `BETA-12-PLAY`
 
-Purpose: source-backed handoff notes for the remaining HDD-backed `POPSTARTER.ELF` failure. This is intended for a fresh Codex session so the same failed attempts and misleading diagnoses are not repeated.
+Purpose: source-backed handoff notes for the remaining HDD-backed `POPSTARTER.ELF` failure. This was intended for a fresh Codex session so the same failed attempts and misleading diagnoses were not repeated. The actual fix that closed D-10/D-14 was the B2 contract (PFS unmount before ExecPS2) at commit `4ae6679`, applied after this document was written.
 
-## Bottom Line
+## Bottom Line (historical 2026-05-20)
 
 - Do not frame the active bug as "HDD games fail." Current hardware history says HDD games launch when `POPSTARTER.ELF` is on a non-HDD device (`D-15` pass).
 - The active blocker is narrower: if `POPSTARTER.ELF` itself resolves from HDD, games fail regardless of whether the game is HDD (`D-10`) or non-HDD (`D-14`).

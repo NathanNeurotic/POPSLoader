@@ -37,8 +37,6 @@ int ResolveAssetPathTyped(char* out, size_t outsz, const char* relativeName, Ass
 #define dbgprintf(args...) ;
 #endif
 
-int getBootDevice(void);
-
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define CLAMP(val, min, max) ((val)>(max)?(max):((val)<(min)?(min):(val)))
 

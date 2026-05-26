@@ -13,8 +13,6 @@
 
 //extern int size_loader_elf;
 
-void IOP_Reset(void);
-
 /* Normalize a pathname by removing
   . and .. components, duplicated /, etc. */
 char* __ps2_normalize_path(char *path_name)
@@ -166,154 +164,19 @@ int ResolveAssetPathTyped(char* out, size_t outsz, const char* relativeName, Ass
 }
 
 
-void IOP_Reset(void)
-{
-	// resets IOP and update with EELOADCNF
-	
-  	while(!SifIopReset("rom0:UDNL rom0:EELOADCNF",0));
-  	while(!SifIopSync());
-  	SifExitIopHeap();
-  	SifLoadFileExit();
-  	SifExitRpc();
-  	SifExitCmd();
-  	
-  	SifInitRpc(0);
-  	FlushCache(0);
-  	FlushCache(2);
-}
-
-//--------------------------------------------------------------
-// ELF-header structures and identifiers
-#define ELF_MAGIC	0x464c457f
-#define ELF_PT_LOAD	1
-
-//--------------------------------------------------------------
-typedef struct
-{
-	u8	ident[16];
-	u16	type;
-	u16	machine;
-	u32	version;
-	u32	entry;
-	u32	phoff;
-	u32	shoff;
-	u32	flags;
-	u16	ehsize;
-	u16	phentsize;
-	u16	phnum;
-	u16	shentsize;
-	u16	shnum;
-	u16	shstrndx;
-} elf_header_t;
-//--------------------------------------------------------------
-typedef struct
-{
-	u32	  type;
-	u32	  offset;
-	void *vaddr;
-	u32	  paddr;
-	u32	  filesz;
-	u32	  memsz;
-	u32	  flags;
-	u32	  align;
-} elf_pheader_t;
-
-void load_modules(void)
-{
-    // Apply loadmodulebuffer and prefix check patch
-    sbv_patch_enable_lmb();
-    sbv_patch_disable_prefix_check();
-    
-    SifLoadModule("rom0:SIO2MAN", 0, 0);
-	SifLoadModule("rom0:CDVDFSV", 0, 0);
-    SifLoadModule("rom0:CDVDMAN", 0, 0);
-    SifLoadModule("rom0:MCMAN", 0, 0);
-    SifLoadModule("rom0:MCSERV", 0, 0);
-   	SifLoadModule("rom0:PADMAN", 0, 0);  
-	
-}
-
-void CleanUp(int iop_reset)
-{	
-   if (iop_reset) {
-   		IOP_Reset();
-    
-   		SifLoadFileInit();
-		load_modules();
-	}
-	
-  	SifExitIopHeap();
-  	SifLoadFileExit();
-  	SifExitRpc();
-  	SifExitCmd();
-  	
-  	FlushCache(0);
-  	FlushCache(2);
-}
-
-/*
-void load_elf(const char *elf_path, int reboot_iop, char** Cargs, int Cargc)
-{   
-	u8 *boot_elf;
-	elf_header_t *boot_header;
-	elf_pheader_t *boot_pheader;
-	int i;
-	char *args[6];
-	char **final_argv;
-	int final_argc = 1;
-	char elfpath[1024];
-	//int n = 0;
-	
-    CleanUp(reboot_iop);	
-
-	SifInitRpc(0);
-	SifLoadFileInit();
- 	SifLoadFileExit();  
-
-	strcpy(elfpath, elf_path);
-	if (Cargs == NULL || Cargc < 1) {
-		args[0] = elfpath;
-		args[1] = elfpath;
-		final_argv = args;
-	} else {
-		final_argv = Cargs;
-		final_argc = Cargc;
-	}
-
-	// Load & execute embedded loader from here	
-	boot_elf = (u8 *)&loader_elf;
-	
-	// Get Elf header
-	boot_header = (elf_header_t *)boot_elf;
-	
-	// Check elf magic
-	if ((*(u32*)boot_header->ident) != ELF_MAGIC) 
-		return;
-
-	// Get program headers
-	boot_pheader = (elf_pheader_t *)(boot_elf + boot_header->phoff);
-	
-	// Scan through the ELF's program headers and copy them into apropriate RAM
-	// section, then padd with zeros if needed.
-	for (i = 0; i < boot_header->phnum; i++) {
-		
-		if (boot_pheader[i].type != ELF_PT_LOAD)
-			continue;
-
-		memcpy(boot_pheader[i].vaddr, boot_elf + boot_pheader[i].offset, boot_pheader[i].filesz);
-	
-		if (boot_pheader[i].memsz > boot_pheader[i].filesz)
-			memset((void*)((int)boot_pheader[i].vaddr + boot_pheader[i].filesz), 0, boot_pheader[i].memsz - boot_pheader[i].filesz);
-	}		
-	
-	SifExitRpc();
-	
-	// Execute Elf Loader
-	ExecPS2((void *)boot_header->entry, 0, final_argc, final_argv);	
-	
-}
-*/
-///////////////////////////////////////////////
+/* Removed 2026-05-25 (audit cleanup):
+ *
+ * The IOP_Reset / load_modules / CleanUp trio and the commented-out
+ * load_elf function were the original (pre-elf_loader) launch
+ * infrastructure. They were superseded by src/elf_loader/src/elf.c and
+ * the BRAM child loader long ago; the only caller of CleanUp was the
+ * already-commented-out load_elf, so the whole chain was dead weight
+ * with shadow elf_header_t / elf_pheader_t typedefs that conflicted
+ * with the proper definitions in src/elf_loader/src/elf.h.
+ *
+ * If you need to reference the historical implementation, it's
+ * preserved in git history at commit dff091c (BETA-12-PLAY pre-audit).
+ */
 
 void* AllocateLargestFreeBlock(size_t* Size)
 {
