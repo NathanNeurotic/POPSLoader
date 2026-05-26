@@ -23,6 +23,11 @@ EE_LINKFILE ?= linkfile
 
 ifneq (x$(LOADER_ENABLE_DEBUG_COLORS), x0)
 EE_CFLAGS += -DLOADER_ENABLE_DEBUG_COLORS
+# loader.c uses scr_printf for DPRINTF when LOADER_ENABLE_DEBUG_COLORS is
+# defined (see #include <debug.h> in loader.c). Pull in -ldebug so the
+# scr_printf symbol resolves at link time. Without this, enabling the
+# debug colors flag fails the build with `undefined reference to scr_printf`.
+EE_LIBS += -ldebug
 endif
 
 EE_LIBS += -lfileXio
