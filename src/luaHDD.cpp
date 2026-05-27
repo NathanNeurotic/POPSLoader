@@ -84,7 +84,7 @@ static int GetHDDStatus(lua_State *L) {
 IMPORT_BIN2C(poweroff_irx);
 IMPORT_BIN2C(ps2dev9_irx);
 IMPORT_BIN2C(ps2atad_irx);
-IMPORT_BIN2C(ps2hdd_osd_irx);
+IMPORT_BIN2C(ps2hdd_irx);
 IMPORT_BIN2C(ps2fs_irx);
 
 #define CHECK_ERR(MODULE) if (ID < 0 || RET == 1) {lua_pushboolean(L, false); lua_pushstring(L, MODULE); lua_pushinteger(L, ID); lua_pushinteger(L, RET); goto ERR;}
@@ -116,7 +116,7 @@ static int Load_HDD_IRX(lua_State *L) {
     CHECK_ERR("ATAD");
 
     /* PS2HDD.IRX */
-    ID = SifExecModuleBuffer(&ps2hdd_osd_irx, size_ps2hdd_osd_irx, sizeof(hddarg), hddarg, &RET);
+    ID = SifExecModuleBuffer(&ps2hdd_irx, size_ps2hdd_irx, sizeof(hddarg), hddarg, &RET);
     DPRINTF(" [PS2HDD.IRX]: ret=%d, ID=%d\n", RET, ID);
     CHECK_ERR("PS2HDD");
 
