@@ -1763,25 +1763,31 @@ local function ResolveBootContext()
 
   -- Settings sidecar path: APP_DIR_LOCAL/.pldrs.
   --
-  -- HDD installs are supported via the pfs%d* mounted form. etc/boot.lua
-  -- mounts the boot partition at pfs1: with HDD.MountPartition's default
-  -- mode (FIO_MT_RDWR per src/luaHDD.cpp), so writing .pldrs at
-  -- pfs1:/POPSLOADER/.pldrs succeeds. ResolveAppDirLocal normalizes
-  -- HDD-booted APP_DIR to the pfs1:/ form (see line ~99), so this
-  -- branch covers HDD-only users without any explicit remount logic.
+  -- HDD installs are EXCLUDED from sidecar (Nuno 2026-05-26 hardware
+  -- report on PR #464: write to pfs1:/APPS/PS1_POPSLOADER/.pldrs still
+  -- fails with "may be read-only" even after the boot.lua pfs1: prefix
+  -- normalization). The bundled ps2hdd-osd.irx driver appears to have
+  -- read-write limitations that we can't reliably work around without
+  -- an IRX swap that risks regressing D-10 (the HDD POPSTARTER read
+  -- path uses the same driver and is hardware-PASS).
   --
-  -- Raw hdd0:partition:pfs:/ paths (no live pfs%d* mount) and the
-  -- newer ata:/apa: forms are still excluded -- writing through those
-  -- prefixes requires an active mount that may not exist when settings
-  -- are accessed. These cases gracefully fall back to mc0 via the
-  -- doesFileExist check in LoadSettingsNonFatal.
+  -- Pragmatic decision: HDD-installed POPSLoader saves settings to
+  -- mc0:/POPSTARTER/.pldrs like it did before PR #459. No regression
+  -- vs. legacy behavior; the sidecar feature stays for the devices
+  -- where it actually works (USB / MX4SIO / MMCE / MC).
+  --
+  -- Raw hdd0:partition:pfs:/ paths (no live mount), the newer ata:/
+  -- apa: forms, AND the mounted pfs%d:/ form are all excluded -- HDD
+  -- in any shape falls back to mc0 via the doesFileExist check in
+  -- LoadSettingsNonFatal.
   local sidecar = nil
   if type(APP_DIR_LOCAL) == "string" and APP_DIR_LOCAL ~= "" then
     local lower = string.lower(APP_DIR_LOCAL)
-    local is_unmounted_hdd = string.match(lower, "^hdd%d*:") ~= nil
+    local is_hdd_backed = string.match(lower, "^hdd%d*:") ~= nil
+       or string.match(lower, "^pfs%d*:") ~= nil
        or string.match(lower, "^ata%d*:") ~= nil
        or string.match(lower, "^apa%d*:") ~= nil
-    if not is_unmounted_hdd then
+    if not is_hdd_backed then
       sidecar = JoinPath(APP_DIR_LOCAL, ".pldrs")
     end
   end

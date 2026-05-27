@@ -1,4 +1,4 @@
-Last updated: 2026-05-25
+Last updated: 2026-05-27 (release-prep)
 
 # STATE
 
@@ -17,7 +17,8 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 ### Settings
 - Settings persist at `PLDR.SETTINGS_PATH`, which is resolved at load time by `LoadSettingsNonFatal`:
   - **Sidecar preferred**: `APP_DIR_LOCAL/.pldrs` (the directory POPSLOADER.ELF lives in). HDD installs use `pfs1:/<install dir>/.pldrs` because `etc/boot.lua` mounts the boot partition `FIO_MT_RDWR` at `pfs1:` by default.
-  - **Fallback**: `mc0:/POPSTARTER/.pldrs` (the legacy path). Used when no sidecar can be computed (raw `hdd0:`/`ata:`/`apa:` paths with no live mount) or when the sidecar file doesn't exist yet.
+  - **Fallback**: `mc0:/POPSTARTER/.pldrs` (the legacy path). Used when no sidecar can be computed.
+  - **HDD installs always use the MC fallback** (PR #466, 2026-05-27). The bundled `ps2hdd-osd.irx` driver has read-write limitations that we can't reliably work around without an IRX swap that risks regressing D-10. So HDD-installed POPSLoader saves settings to `mc0:/POPSTARTER/.pldrs` just like it did before the sidecar feature landed. No regression vs. legacy behavior; sidecar still works for USB / MX4SIO / MMCE installs.
   - **Save**: writes to whichever path was loaded from, so settings stay where they were found.
 - Settings edits are staged and committed on Settings/Profile confirm/leave.
 - Persisted settings include POPSTARTER path, DKWDRV path, video standard, hide-text mode, keyboard layout, BDMA mode.
@@ -87,9 +88,17 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 | **U-11** boot-device label display | Unknown | — | Main menu can show the label; not formally verified. |
 | **S-09** keyboard layout persistence | Unknown | — | |
 
-## Known Open Work
+## Known Broken (Accepted for Release)
 
-1. **U-10 BOOT.ELF from HDD-booted POPSLoader** — still broken, not solved by V2 or PR #458/460. Investigation pending. Suspect DEV9 hardware state or memory-layout pollution unique to HDD-booted POPSLoader; needs diagnostic instrumentation to confirm before next code attempt.
+The following are known-broken edge cases that are NOT blocking release. They've been investigated repeatedly without a stable fix; pragmatic acceptance per Nuno + maintainer 2026-05-27.
+
+- **DKWDRV-on-HDD-custom-path** — black-screens. Most users have DKWDRV on MC; the small subset with HDD installs typically don't keep DKWDRV on HDD. Workaround: configure DKWDRV path to MC.
+- **U-10 BOOT.ELF-from-HDD-boot** — exits to BOOT.ELF black-screen when POPSLoader was booted from HDD. Long-standing (predates this session). USB-booted POPSLoader → BOOT.ELF still works. Workaround: use Exit → OSDSYS or reboot the console instead.
+- **Settings save on HDD-installed POPSLoader writes to MC** — by design (see Settings section above). The `ps2hdd-osd.irx` write limitation is the underlying cause. User-visible: settings still persist; they just live on `mc0:/POPSTARTER/.pldrs` instead of next to POPSLOADER.ELF.
+
+Investigation artifacts archived: `docs/U10_INVESTIGATION.md` (hypotheses + diagnostic plan), `docs/LAUNCH_HYGIENE.md` (architecture + revert history), `docs/HDD_POPSTARTER_HANDOFF.md` (D-10 historical notes).
+
+## Known Open Work
 2. **DKWDRV-on-HDD and wLaunchELF launch verdicts** — awaiting hardware testing of PR #460 artifact at https://github.com/NathanNeurotic/POPSLoader/actions/runs/26416917597 .
 3. **`PLDR.LAUNCH_ARGS` UI auto-navigation** — infrastructure landed in PR #458; consumer not yet wired into `ui.lua` initial page selection.
 4. **Layer C full lazy IRX loading** — only the precursor (device hint) shipped. Aggressive deferrals (`mmceman` unless MMCE boot, `ds34bt` unless BT enabled, `usbd` unless USB family) queued for a separate PR after current launch-path fixes settle.
