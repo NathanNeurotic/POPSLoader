@@ -19,3 +19,16 @@
 
 [v1.0.0 - rev4]
 - Fix: Fix detection of `__POPS#` Partitions on internal HDD
+
+[v1.0.0 - rev5]
+- Fix: HDD POPSTARTER + HDD games (D-10) — partition unmount before ExecPS2 contract makes the HDD-resident POPSTARTER + HDD game flow reliable. Was the long-standing main stabilization blocker.
+- Fix: POPSLoader launches from wLaunchELF (and similar non-IOP-resetting parent launchers) — bootstrap now tears down inherited RPC client and fileXio state before SifIopReset (ps2sdk #425 workaround).
+- Fix: BOOT.ELF exit from autoboot / OSDSYS / Browser / HOSDMenu-launched POPSLoader — V2 route restored after an intermediate regression.
+- Feature: Per-device settings sidecar — settings (.pldrs) now save next to POPSLOADER.ELF on USB / MC / MMCE / MX4SIO installs. HDD installs continue saving to mc0:/POPSTARTER/.pldrs (HDD driver write limitation).
+- Feature: NHDDL-style launch arguments — `-page=<device>`, `-mode=<device>` (NHDDL alias), `-game=<selector>`, `-debug`. Passing `-page=hdd` (or `-mode=ata`) auto-navigates the main menu carousel to the HDD page on boot.
+- Feature: Recognize additional SDK device prefixes (`usb:`, `usbN:`, `ata:`, `apa:`) in boot device detection so newer launchers are correctly classified.
+- change: Unified boot-context detection — `ResolveBootContext` replaces three near-copies of the same "where are we" logic. Settings, IRX decisions, and UI navigation share one source of truth.
+- Internal: CI Lua syntax validation now covers all bundled .lua files (was only etc/boot.lua); removed pre-elf_loader dead code from system.cpp.
+- Known broken (see STATE.md):
+  - DKWDRV from a custom HDD path (workaround: use default MC path)
+  - BOOT.ELF exit when POPSLoader was booted from HDD (workaround: Exit -> OSDSYS)
