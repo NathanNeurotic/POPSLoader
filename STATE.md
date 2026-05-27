@@ -94,7 +94,8 @@ The following are known-broken edge cases that are NOT blocking release. They've
 
 - **DKWDRV-on-HDD-custom-path** — black-screens. Most users have DKWDRV on MC; the small subset with HDD installs typically don't keep DKWDRV on HDD. Workaround: configure DKWDRV path to MC.
 - **U-10 BOOT.ELF-from-HDD-boot** — exits to BOOT.ELF black-screen when POPSLoader was booted from HDD. Long-standing (predates this session). USB-autoboot POPSLoader → BOOT.ELF still works. Workaround: use Exit → OSDSYS or reboot the console instead.
-- **BOOT.ELF exit when POPSLoader was launched via wLaunchELF** (any source device) — black-screens. Same failure family as U-10: the upstream wLaunchELF state pollutes IOP/EE in a way BOOT.ELF can't recover from. POPSLoader from autoboot / Browser / HOSDMenu / OSDSYS keys → BOOT.ELF still works. Workaround: same as U-10. (Reported by Nuno 2026-05-27.)
+
+(2026-05-27: a wLE→USB-POPSLoader→BOOT.ELF case was reported by Nuno during the release-candidate hardware pass. Code analysis suggests this case takes the same BOOT.ELF route as the working autoboot/OSDSYS/Browser/HOSDMenu cases — so it was likely always-broken/latent rather than a regression introduced by recent PRs. Not reproducible from the most common launch contexts. If a user hits it, the U-10 workaround applies. Not enumerated above pending a clearer repro pattern.)
 - **Settings save on HDD-installed POPSLoader writes to MC** — by design (see Settings section above). The `ps2hdd-osd.irx` write limitation is the underlying cause. User-visible: settings still persist; they just live on `mc0:/POPSTARTER/.pldrs` instead of next to POPSLOADER.ELF.
 
 Investigation artifacts archived: `docs/U10_INVESTIGATION.md` (hypotheses + diagnostic plan), `docs/LAUNCH_HYGIENE.md` (architecture + revert history), `docs/HDD_POPSTARTER_HANDOFF.md` (D-10 historical notes).
