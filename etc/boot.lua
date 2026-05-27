@@ -47,6 +47,17 @@ if string.find(ARGV0, "^hdd0:") then
         BOOT_HDD_MOUNT_SLOT = 1
         BOOT_HDD_MOUNT_PREFIX = "pfs1:/"
         BOOTPATH, _, _ = string.match(BOOTPATH, "(.-)([^/]-([^%.]+))$")
+        -- Normalize whatever pfs slot prefix came from ARGV0 to the
+        -- actual mount slot we just established. GetMountData preserves
+        -- the original prefix from ARGV0, which can be slot-less ("pfs:")
+        -- when launchers don't include a digit -- e.g. wLaunchELF passing
+        -- "hdd0:_OPL:pfs:/APPS/PS1_POPSLOADER/POPSLOADER.ELF". But we
+        -- always mount to pfs1: above. Lua's cwd must match the mount
+        -- or relative-path file I/O (and the settings sidecar at
+        -- APP_DIR/.pldrs) fails: Nuno 2026-05-26 saw "pfs:/APPS/PS1_
+        -- POPSLOADER/.pldrs may be read-only" because cwd was pfs:/...
+        -- and pfs: isn't a real mount.
+        BOOTPATH = string.gsub(BOOTPATH, "^[Pp][Ff][Ss]%d*:", "pfs1:")
         System.currentDirectory(BOOTPATH)
       end
     end

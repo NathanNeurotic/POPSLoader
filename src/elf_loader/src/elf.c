@@ -704,10 +704,14 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 
 	DIAG_U10_BG(DIAG_U10_YELLOW); /* DIAG_U10 stage 4: SifLoadElf success */
 
-	if (is_hdd_backed_exec_path(resolved_path)) {
-		unmount_pfs_slots_for_exec(build_exec_keep_mask(resolved_path));
-		DIAG_U10_BG(DIAG_U10_BLUE); /* DIAG_U10 stage 5: PFS slots unmounted (HDD path only) */
-	}
+	/* PR #464 F4 fix: unconditional unmount before SifIopReset (was previously
+	 * gated on is_hdd_backed_exec_path, which skipped unmount for BOOT.ELF
+	 * on MC). With F4 + diag merged, BLUE now paints AFTER the unmount
+	 * regardless of target, so if U-10 still stops at YELLOW we know
+	 * unmount itself hung; if it advances past BLUE the unmount succeeded
+	 * but the reset (or something later) still hangs. */
+	unmount_pfs_slots_for_exec(build_exec_keep_mask(resolved_path));
+	DIAG_U10_BG(DIAG_U10_BLUE); /* DIAG_U10 stage 5: PFS slots unmounted */
 
 	FlushCache(0);
 	while (!SifIopReset("", 0)) {
