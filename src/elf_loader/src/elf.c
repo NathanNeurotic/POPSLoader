@@ -651,9 +651,25 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 		return -2;
 	}
 
-	if (is_hdd_backed_exec_path(resolved_path)) {
-		unmount_pfs_slots_for_exec(build_exec_keep_mask(resolved_path));
-	}
+	/* Unmount all live PFS slots before SifIopReset, including the boot
+	 * partition's pfs1: that etc/boot.lua established for HDD-booted
+	 * POPSLoader. The diagnostic build (PR #463, Nuno 2026-05-26) showed
+	 * that for U-10 (BOOT.ELF from HDD-booted POPSLoader) the screen
+	 * stops painting at YELLOW = right after SifLoadElf, before ORANGE
+	 * = post-SifIopReset would paint. SifIopReset itself hangs because
+	 * fileXio is still holding the pfs1: RPC server thread on the IOP
+	 * side (ps2sdk #425). Unmounting all PFS slots here releases those
+	 * server-side resources so the reset completes.
+	 *
+	 * For HDD-backed targets the keep mask is set by Lua-side launch
+	 * prep (see PrepareForExternalELFLaunch / SetExecKeepPfsMask) so we
+	 * preserve any slot that the target needs across exec. For non-HDD
+	 * targets the keep mask defaults to 0 and we unmount every slot.
+	 * The previous `is_hdd_backed_exec_path` gate skipped the unmount
+	 * entirely for non-HDD targets like BOOT.ELF, which was the active
+	 * sabotage diagnosed in PR #463.
+	 */
+	unmount_pfs_slots_for_exec(build_exec_keep_mask(resolved_path));
 
 	FlushCache(0);
 	while (!SifIopReset("", 0)) {
