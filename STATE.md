@@ -93,7 +93,8 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 The following are known-broken edge cases that are NOT blocking release. They've been investigated repeatedly without a stable fix; pragmatic acceptance per Nuno + maintainer 2026-05-27.
 
 - **DKWDRV-on-HDD-custom-path** — black-screens. Most users have DKWDRV on MC; the small subset with HDD installs typically don't keep DKWDRV on HDD. Workaround: configure DKWDRV path to MC.
-- **U-10 BOOT.ELF-from-HDD-boot** — exits to BOOT.ELF black-screen when POPSLoader was booted from HDD. Long-standing (predates this session). USB-booted POPSLoader → BOOT.ELF still works. Workaround: use Exit → OSDSYS or reboot the console instead.
+- **U-10 BOOT.ELF-from-HDD-boot** — exits to BOOT.ELF black-screen when POPSLoader was booted from HDD. Long-standing (predates this session). USB-autoboot POPSLoader → BOOT.ELF still works. Workaround: use Exit → OSDSYS or reboot the console instead.
+- **BOOT.ELF exit when POPSLoader was launched via wLaunchELF** (any source device) — black-screens. Same failure family as U-10: the upstream wLaunchELF state pollutes IOP/EE in a way BOOT.ELF can't recover from. POPSLoader from autoboot / Browser / HOSDMenu / OSDSYS keys → BOOT.ELF still works. Workaround: same as U-10. (Reported by Nuno 2026-05-27.)
 - **Settings save on HDD-installed POPSLoader writes to MC** — by design (see Settings section above). The `ps2hdd-osd.irx` write limitation is the underlying cause. User-visible: settings still persist; they just live on `mc0:/POPSTARTER/.pldrs` instead of next to POPSLOADER.ELF.
 
 Investigation artifacts archived: `docs/U10_INVESTIGATION.md` (hypotheses + diagnostic plan), `docs/LAUNCH_HYGIENE.md` (architecture + revert history), `docs/HDD_POPSTARTER_HANDOFF.md` (D-10 historical notes).
