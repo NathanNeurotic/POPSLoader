@@ -1,3 +1,14 @@
+[Unreleased]
+- Feature: `PLDR.LAUNCH_ARGS.game` auto-launch consumer — `-page=<kind> -game=<selector>` now triggers `PLDR.RunPOPStarterGame` after `AutoInitStartupBackends` (PR #470). Supports HDD (`PARTITION|relpath`), USB (`FILE.VCD` relative to `mass:/POPS`), MX4SIO, MMCE.
+- Feature: `-debug` boot-context toast — `PLDR.SurfaceLaunchArgsDebug()` queues a toast showing kind, boot_path, sidecar_path, settings, and parsed launch args. Useful for diagnosing environment classification without rebuilding with DPRINTF (PR #470).
+- change: MX4SIO evidence-based mass: classification (PR #472 + maintainer refinement) — `mx4sio_bd.irx` only loads on explicit MX4SIO evidence (`mx4sio:/` prefix, `sdc`/`mx4` ioctl, or `.boot_mx4sio` marker). Pure USB boots never pay the mx4sio_bd cost. The maintainer rule: "If ioctl/devctl is anything other than sdc or mx4, and it's a mass device, then it is USB."
+- change: mx4sio_bd → usbmass_bd dependency enforced at C layer (PR #472) — `lua_mx4sio_init` calls `EnsureUsbMass()` first; the order is unviolatable from Lua. "MX4SIO needs the USB drivers active before it; USB never needs MX4SIO drivers."
+- Fix: Lua forward-reference crash on boot (PR #473) — `ClassifyMassRootDriver` declaration moved above `ClassifyStartupMassTargets`. Fixes `attempt to call a nil value (global 'ClassifyMassRootDriver')` crash reproduced on 2026-05-28 hardware.
+- Internal: Rolling release workflow operational — `.github/workflows/rolling-release.yml` publishes the current build to a single canonical URL on push-to-BETA-12-PLAY and on PR events.
+- Internal: CI image pinned to `ps2dev/ps2dev:v2.0.0` (was `:latest`).
+
+(All [Unreleased] entries are CI-verified but hardware-unverified except where `QA_REGRESSION_MATRIX.md` records a tester result.)
+
 [v1.0.0]
 - Feature: Initial release
 - Feature: USB support

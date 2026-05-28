@@ -1,4 +1,4 @@
-Last updated: 2026-05-13
+Last updated: 2026-05-28 (post-BETA-10-5)
 
 # COMPONENTS
 
@@ -39,7 +39,8 @@ Current technical map of POPSLoader modules, ownership boundaries, and entry poi
 
 ### Build/package pipeline
 - `Makefile` builds and embeds the runtime.
-- `.github/workflows/compilation.yml` packages the release ZIP and verifies its exact contents.
+- `.github/workflows/compilation.yml` packages the release ZIP and verifies its exact contents (pinned to `ps2dev/ps2dev:v2.0.0` at commit `ba8f0d0`).
+- `.github/workflows/rolling-release.yml` (added post-release) publishes a `POPSLOADER-rolling-release.zip` asset to the canonical `rolling-release` GitHub Release on push-to-BETA-12-PLAY and on PR events.
 
 ### Repository automation
 - `.github/workflows/opencode.yml` handles comment-triggered AI assistance.
@@ -101,15 +102,29 @@ Current technical map of POPSLoader modules, ownership boundaries, and entry poi
 - `HDD (PFS)`: implemented in code.
 - `USB`: implemented in code.
 - `Disc (DKWDRV)`: implemented in code.
-- `HDD (exFAT)`: not implemented.
-- `SMB (v1)`: not implemented.
+- `HDD (exFAT)`: not implemented (intentionally surfaces "Not Implemented Yet").
+- `SMB (v1)`: not implemented (intentionally surfaces "Not Implemented Yet").
+- `ILINK`: not implemented (intentionally surfaces "Not Implemented Yet").
 
-## Current Validation Hotspots
-- HDD POPSTARTER when POPSTARTER itself resolves from HDD (`D-10`).
-- HDD-backed POPSTARTER with non-HDD game (`D-14`).
-- BOOT.ELF after HDD page initialization (`U-10`).
-- Preserve the restored non-HDD POPSTARTER HDD-game path (`D-15`).
-- PAL UI aspect verification (`U-06`).
+## Current Validation Hotspots (preservation tests, not active failures)
+
+These are hardware-confirmed PASS in BETA-10-5 and must continue to pass on any future artifact:
+- D-10 (HDD POPSTARTER + HDD game) — B2 fix at `4ae6679` is load-bearing.
+- D-14 (HDD POPSTARTER + non-HDD game) — same partition-aware route as D-10.
+- D-15 (non-HDD POPSTARTER + HDD game) — keep-mask preserves boot partition PFS slot.
+- DKWDRV from MC — reboot variant direct path with argv0 synthesis.
+- BOOT.ELF from USB-booted POPSLoader (L-07) — V2 route at `d23520a`.
+- Settings save: USB / MC / MMCE / MX4SIO → per-device sidecar; HDD → mc0 fallback (PR #466 by design).
+
+Hardware-unknown items still needing verification:
+- U-06 (PAL UI aspect).
+- D-13 (device switching without runtime locks).
+- S-09 (keyboard layout persistence).
+- U-11 (boot-device label display).
+
+Pragmatically accepted (known-broken, do not test):
+- DKWDRV from custom HDD path — workaround: use MC DKWDRV path.
+- U-10 BOOT.ELF from HDD-booted POPSLoader — workaround: Exit → OSDSYS or reboot.
 
 ## Primary Change Entry Points
 - Settings persistence/apply issues:
