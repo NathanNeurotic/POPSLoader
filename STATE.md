@@ -94,22 +94,24 @@ The following are known-broken edge cases that are NOT blocking release. They've
 
 - **DKWDRV-on-HDD-custom-path** — black-screens. Most users have DKWDRV on MC; the small subset with HDD installs typically don't keep DKWDRV on HDD. Workaround: configure DKWDRV path to MC.
 - **U-10 BOOT.ELF-from-HDD-boot** — exits to BOOT.ELF black-screen when POPSLoader was booted from HDD. Long-standing (predates this session). USB-autoboot POPSLoader → BOOT.ELF still works. Workaround: use Exit → OSDSYS or reboot the console instead.
-
-(2026-05-27: a wLE→USB-POPSLoader→BOOT.ELF case was reported by Nuno during the release-candidate hardware pass. Code analysis suggests this case takes the same BOOT.ELF route as the working autoboot/OSDSYS/Browser/HOSDMenu cases — so it was likely always-broken/latent rather than a regression introduced by recent PRs. Not reproducible from the most common launch contexts. If a user hits it, the U-10 workaround applies. Not enumerated above pending a clearer repro pattern.)
 - **Settings save on HDD-installed POPSLoader writes to MC** — by design (see Settings section above). The `ps2hdd-osd.irx` write limitation is the underlying cause. User-visible: settings still persist; they just live on `mc0:/POPSTARTER/.pldrs` instead of next to POPSLOADER.ELF.
 
-Investigation artifacts archived: `docs/U10_INVESTIGATION.md` (hypotheses + diagnostic plan), `docs/LAUNCH_HYGIENE.md` (architecture + revert history), `docs/HDD_POPSTARTER_HANDOFF.md` (D-10 historical notes).
+(2026-05-27: a wLE→USB-POPSLoader→BOOT.ELF case was reported by Nuno during the release-candidate hardware pass. Code analysis suggests this case takes the same BOOT.ELF route as the working autoboot/OSDSYS/Browser/HOSDMenu cases — so it was likely always-broken/latent rather than a regression introduced by recent PRs. Not reproducible from the most common launch contexts. If a user hits it, the U-10 workaround applies. Not enumerated above pending a clearer repro pattern.)
+
+Investigation artifacts archived: `docs/U10_INVESTIGATION.md` (hypotheses + diagnostic plan), `docs/LAUNCH_HYGIENE.md` (architecture + revert history), `HDD_POPSTARTER_HANDOFF.md` at repo root (D-10 historical notes, marked RESOLVED).
 
 ## Known Open Work
-2. **DKWDRV-on-HDD and wLaunchELF launch verdicts** — awaiting hardware testing of PR #460 artifact at https://github.com/NathanNeurotic/POPSLoader/actions/runs/26416917597 .
-3. **`PLDR.LAUNCH_ARGS` UI auto-navigation** — infrastructure landed in PR #458; consumer not yet wired into `ui.lua` initial page selection.
-4. **Layer C full lazy IRX loading** — only the precursor (device hint) shipped. Aggressive deferrals (`mmceman` unless MMCE boot, `ds34bt` unless BT enabled, `usbd` unless USB family) queued for a separate PR after current launch-path fixes settle.
-5. **Settings sidecar first-run MC-to-sidecar migration** — currently we just save where we loaded from. Could optionally copy MC settings to per-device sidecar on first save when the user moves POPSLoader to a new device.
-6. **Settings UI redesign (Berion mockup)** — gated on U-10 + DKWDRV-HDD + wLaunchELF hardware results settling. Mockup PNGs still to land at `C:\Users\natha\Documents\assets\` for `docs/mockups/`.
+
+1. **`PLDR.LAUNCH_ARGS.game` auto-launch wiring** — argv parser + Lua storage landed in PR #458. The `page` value drives carousel auto-nav (PR #462). `game` and `debug` are parsed but no consumer is wired yet.
+2. **Layer C full lazy IRX loading** — only the precursor (device hint) shipped. Aggressive deferrals (`mmceman` unless MMCE boot, `ds34bt` unless BT enabled, `usbd` unless USB family) queued for a separate PR. High reward for boot time; high risk to input/controller availability if done carelessly.
+3. **Settings sidecar first-run MC-to-sidecar migration** — currently we just save where we loaded from. Could optionally copy MC settings to per-device sidecar on first save when the user moves POPSLoader to a new device. Disabled for HDD installs (driver constraint).
+4. **Settings UI redesign (Berion mockup)** — Mockup PNGs still to land at `C:\Users\natha\Documents\assets\` for `docs/mockups/`. Hardware blockers (D-10/D-14/D-15/DKWDRV-MC/BOOT.ELF) are now settled per Nuno's BETA-10-5 hardware pass; this is ready to start once the visual oracle is committed.
+5. **U-10 / DKWDRV-HDD proper fixes** — pragmatically accepted as known-broken in BETA-10-5. If revisited, see `docs/U10_INVESTIGATION.md` for the hypothesis catalog and diagnostic-first workflow.
+6. **HDD r/w driver swap probe** (`ps2hdd-osd.irx` → `ps2hdd.irx`) — branch `claude/hdd-rw-probe` exists with the 2-line change ready for hardware test. Would unlock HDD settings sidecar IF D-10 doesn't regress.
 7. **HDD (exFAT), SMB (v1), ILINK** menu flows remain intentionally unimplemented.
 
 ## Verification Status
 
-- Code/build/package statements above are repository-verified at commit `740fa87` (BETA-12-PLAY head after PR #460 merge).
+- Code/build/package statements above are repository-verified at commit `9a0ebe2` (BETA-12-PLAY head, tagged `BETA-10-5` on 2026-05-27).
 - Hardware behavior is `Unknown (verify on hardware)` unless explicitly recorded in the table above with a date.
 - See `QA_REGRESSION_MATRIX.md` for the full experiment chronology.
