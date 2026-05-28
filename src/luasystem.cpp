@@ -176,7 +176,7 @@ static const char *ClassifyMassBackend(const char *driver)
 	if (strstr(driver, "usb") != NULL) {
 		return "usb";
 	}
-	if (strstr(driver, "sdc") != NULL || strstr(driver, "mx4sio") != NULL) {
+	if (strstr(driver, "sdc") != NULL || strstr(driver, "mx4") != NULL) {
 		return "mx4sio";
 	}
 	if (strstr(driver, "mmce") != NULL) {
@@ -1375,7 +1375,15 @@ static int lua_mx4sio_init(lua_State *L)
 		(void)luaL_checkstring(L, 1);
 	}
 
-	bool ok = EnsureBDMFatFs();
+	// Per maintainer 2026-05-28: "mx4sio will need the usb drivers to
+	// activate before it with it. USB will never need MX4SIO drivers."
+	// Enforce the dependency order at the lowest level so any caller of
+	// System.initMX4SIO automatically gets usbmass_bd loaded first --
+	// previously, Lua callers that didn't explicitly ensure UsbMass
+	// could load mx4sio_bd into a state where the broader BDM mass
+	// stack wasn't ready. EnsureUsbMass is idempotent (gated by
+	// usbmass_irx_loaded), so this costs nothing on repeat calls.
+	bool ok = EnsureUsbMass();
 	if (ok && !mx4sio_irx_loaded) {
 		ok = LoadIrxCheckedBuffer("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL);
 		if (ok) {

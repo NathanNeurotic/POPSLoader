@@ -1703,26 +1703,47 @@ local function ResolveBootContext()
     end
   end
 
+  -- Authoritative mass: classification rule (maintainer, 2026-05-28):
+  -- if ioctl/devctl identifies the mass slot as sdc/mx4, it is MX4SIO;
+  -- anything else is USB. Do not load mx4sio_bd just to find out. MX4SIO
+  -- does need the USB/BDM base first, but only after MX4SIO evidence is
+  -- present (explicit mx4sio:/ boot, sdc/mx4 driver identity, or marker).
   local function classify_mass_boot(root)
     if type(System) == "table" and type(System.getMassMountDriver) == "function" then
       local ok, driver = pcall(System.getMassMountDriver, root)
       if ok and type(driver) == "string" and driver ~= "" then
         local lowered = string.lower(driver)
         if string.find(lowered, "mx4", 1, true) ~= nil or string.find(lowered, "sdc", 1, true) ~= nil then
+          if type(System.initMX4SIO) == "function" then
+            pcall(System.initMX4SIO)
+          end
           return "MX4SIO"
+        end
+        if type(System.ensureUsbMass) == "function" then
+          pcall(System.ensureUsbMass)
         end
         return "USB"
       end
     end
+
     if type(APP_DIR_LOCAL) == "string" and APP_DIR_LOCAL ~= "" then
       local mx_marker = JoinPath(APP_DIR_LOCAL, ".boot_mx4sio")
       local usb_marker = JoinPath(APP_DIR_LOCAL, ".boot_usb")
       if doesFileExist(mx_marker) then
+        if type(System) == "table" and type(System.initMX4SIO) == "function" then
+          pcall(System.initMX4SIO)
+        end
         return "MX4SIO"
       end
       if doesFileExist(usb_marker) then
+        if type(System) == "table" and type(System.ensureUsbMass) == "function" then
+          pcall(System.ensureUsbMass)
+        end
         return "USB"
       end
+    end
+    if type(System) == "table" and type(System.ensureUsbMass) == "function" then
+      pcall(System.ensureUsbMass)
     end
     return "USB"
   end
@@ -3146,9 +3167,14 @@ function PLDR.AutoInitStartupBackends()
   local targets = CollectStartupBackendTargets()
   ClassifyStartupMassTargets(targets)
 
+  -- USB stays USB-only. MX4SIO gets initialized below only when
+  -- CollectStartupBackendTargets/driver identity already set targets.mx4sio.
   if targets.usb or targets.mass_probe_needed then
     if type(PLDR.EnsureUsbMassReadyOnce) == "function" then
       pcall(PLDR.EnsureUsbMassReadyOnce)
+    end
+    if type(PLDR.RefreshMassBackends) == "function" then
+      pcall(PLDR.RefreshMassBackends)
     end
     targets.mass_probe_needed = false
     ClassifyStartupMassTargets(targets)
@@ -3386,7 +3412,8 @@ function PLDR.EnsureBackendForAppDir()
     if mass_root ~= nil then
       driver = PLDR.GetMassMountDriver(mass_root)
     end
-    local is_mx4_mass_path = type(driver) == "string" and driver ~= "" and string.find(driver, "sdc", 1, true) ~= nil
+    local is_mx4_mass_path = type(driver) == "string" and driver ~= ""
+      and (string.find(driver, "sdc", 1, true) ~= nil or string.find(driver, "mx4", 1, true) ~= nil)
 
     if is_mx4_mass_path then
       if type(_G.ensureMx4sioInit) == "function" then
