@@ -1703,17 +1703,53 @@ local function ResolveBootContext()
     end
   end
 
+  -- Authoritative mass: classification rule (per maintainer 2026-05-28):
+  -- mass mounting is VOLATILE -- mass:/, mass0:/, .. mass7:/, mx4sio:/,
+  -- usb:/ ... can each be either backend depending on hotplug + IRX
+  -- load order. The ONLY trustworthy way to disambiguate is the ioctl
+  -- driver name. If it returns "sdc" or "mx4", it's MX4SIO. ANY other
+  -- value (incl. empty when the device isn't mounted) is treated as USB.
+  --
+  -- Critical: for ioctl to return the driver name, the appropriate BDM
+  -- backend must be LOADED so the device actually mounts on a mass slot.
+  -- We can't know in advance whether the user's mass device is USB or
+  -- MX4SIO, so we load BOTH backends here. usbmass_bd / mx4sio_bd are
+  -- idempotent and only payload-claim devices of their respective kind.
+  --
+  -- MX4SIO has a documented "double-ping" quirk: the very first ioctl
+  -- after the driver loads can return empty even when the card is
+  -- present. One retry with a short sleep handles this without making
+  -- the classification path miss a real MX4SIO boot.
   local function classify_mass_boot(root)
-    if type(System) == "table" and type(System.getMassMountDriver) == "function" then
-      local ok, driver = pcall(System.getMassMountDriver, root)
-      if ok and type(driver) == "string" and driver ~= "" then
-        local lowered = string.lower(driver)
-        if string.find(lowered, "mx4", 1, true) ~= nil or string.find(lowered, "sdc", 1, true) ~= nil then
-          return "MX4SIO"
-        end
-        return "USB"
+    if type(System) == "table" then
+      if type(System.ensureUsbMass) == "function" then
+        pcall(System.ensureUsbMass)
+      end
+      if type(System.initMX4SIO) == "function" then
+        pcall(System.initMX4SIO)
       end
     end
+
+    if type(System) == "table" and type(System.getMassMountDriver) == "function" then
+      for attempt = 1, 2 do
+        local ok, driver = pcall(System.getMassMountDriver, root)
+        if ok and type(driver) == "string" and driver ~= "" then
+          local lowered = string.lower(driver)
+          if string.find(lowered, "mx4", 1, true) ~= nil or string.find(lowered, "sdc", 1, true) ~= nil then
+            return "MX4SIO"
+          end
+          return "USB"
+        end
+        if attempt < 2 and type(System.sleep) == "function" then
+          pcall(System.sleep, 1)
+        end
+      end
+    end
+
+    -- Marker fallback for legacy users who placed .boot_mx4sio /
+    -- .boot_usb next to POPSLOADER.ELF on earlier versions; only hit
+    -- when ioctl never returns a non-empty driver (extreme hardware
+    -- quirks). Authoritative driver classification above takes priority.
     if type(APP_DIR_LOCAL) == "string" and APP_DIR_LOCAL ~= "" then
       local mx_marker = JoinPath(APP_DIR_LOCAL, ".boot_mx4sio")
       local usb_marker = JoinPath(APP_DIR_LOCAL, ".boot_usb")
@@ -3144,11 +3180,37 @@ end
 
 function PLDR.AutoInitStartupBackends()
   local targets = CollectStartupBackendTargets()
+
+  -- Pre-load BOTH mass BDM backends BEFORE the first classification pass.
+  -- mass: paths are volatile (any of mass:/, massN:/, mx4sio:/, usb:/
+  -- can be either USB or MX4SIO depending on hotplug + IRX load order),
+  -- and the ioctl driver lookup is only reliable once the matching
+  -- backend has claimed the device. Loading both makes the first
+  -- ClassifyStartupMassTargets pass authoritative instead of speculative.
+  --
+  -- usbmass_bd handles USB sticks; mx4sio_bd handles MX4SIO SD cards.
+  -- Both Ensure* paths are idempotent -- subsequent calls are cheap.
+  if type(PLDR.EnsureUsbMassReadyOnce) == "function" then
+    pcall(PLDR.EnsureUsbMassReadyOnce)
+  end
+  if type(System) == "table" and type(System.initMX4SIO) == "function" then
+    pcall(System.initMX4SIO)
+  end
+  if type(PLDR.RefreshMassBackends) == "function" then
+    pcall(PLDR.RefreshMassBackends)
+  end
+
   ClassifyStartupMassTargets(targets)
 
-  if targets.usb or targets.mass_probe_needed then
-    if type(PLDR.EnsureUsbMassReadyOnce) == "function" then
-      pcall(PLDR.EnsureUsbMassReadyOnce)
+  -- Second pass after a brief settle, only if any mass root still
+  -- looks ambiguous (MX4SIO double-ping quirk: ioctl can return empty
+  -- on the very first probe even when the card is present).
+  if targets.mass_probe_needed then
+    if type(System) == "table" and type(System.sleep) == "function" then
+      pcall(System.sleep, 1)
+    end
+    if type(PLDR.RefreshMassBackends) == "function" then
+      pcall(PLDR.RefreshMassBackends)
     end
     targets.mass_probe_needed = false
     ClassifyStartupMassTargets(targets)
