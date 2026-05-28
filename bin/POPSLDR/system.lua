@@ -102,6 +102,18 @@ local function ResolveAppDirLocal()
   if IsPfsMountedPath(current_dir) and IsRawHddPartitionPath(app_dir) then
     return current_dir
   end
+  -- MX4SIO boot: argv0 prefix mx4sio:/ is the BDM device-kind label,
+  -- not a writable fileXio mount. etc/boot.lua translates cwd to the
+  -- actual mass*:/ slot (identified by sdc/mx4 ioctl driver name --
+  -- the same PR #472 rule). When that translation succeeded, prefer
+  -- the cwd over the raw mx4sio:/-rooted APP_DIR so the settings
+  -- sidecar at APP_DIR/.pldrs and other write paths target the
+  -- writable mass*:/ root. Hardware regression 2026-05-28 PM:
+  -- "mx4sio:/APPS/PS1_POPSLOADER/.pldrs may be read-only" (Nuno).
+  local app_dir_lower = string.lower(app_dir or "")
+  if string.match(app_dir_lower, "^mx4sio%d*:") and string.match(current_dir, "^mass%d*:/") then
+    return current_dir
+  end
   return EnsureTrailingSlashNormRaw(app_dir)
 end
 
