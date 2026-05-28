@@ -67,6 +67,9 @@ Non-negotiable behavioral invariants that changes must preserve unless an explic
 **Known-broken accepted for BETA-10-5** (documented workarounds):
 - `DKWDRV from HDD custom path`: **FAIL** 2026-05-25 (Nuno on PR #460 artifact); re-confirmed broken 2026-05-28 PM by Nuno on rolling-release post PR #470/#472/#473. Pragmatic acceptance per Nuno + maintainer 2026-05-27. Workaround: configure DKWDRV path to MC.
 
+**Broken with fix in flight** (PR #476):
+- MX4SIO-rooted POPSLoader settings save: **FAIL** 2026-05-28 PM (Nuno) with `mx4sio:/<path>/.pldrs may be read-only`. The `mx4sio:/` argv0 prefix is the BDM device-kind label, not a writable fileXio mount. PR #476 (`claude/mx4sio-boot-path-normalize`) translates the boot cwd to the actual `mass*:/` slot dynamically via ioctl driver lookup (sdc/mx4), mirroring the existing HDD branch in `etc/boot.lua`.
+
 **Unexpectedly resolved 2026-05-28 PM:**
 - `BOOT.ELF from HDD-booted POPSLoader` (U-10): was **FAIL** 2026-05-27 (Nuno on PR #464 F4 artifact); **now PASS** 2026-05-28 PM (Nuno on rolling-release post PR #470/#472/#473). None of those PRs architecturally touch the U-10 path, so the cause is not obvious. Investigation notes preserved in `docs/U10_INVESTIGATION.md` in case it regresses.
 

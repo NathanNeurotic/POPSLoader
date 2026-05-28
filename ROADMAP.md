@@ -9,7 +9,8 @@ Last updated: 2026-05-28 (post-BETA-10-5)
 - D-10, D-14, D-15 are hardware-PASS preservation contracts (B2 fix at commit `4ae6679`). The partition-aware HDD POPSTARTER route must be preserved through any new work.
 - DKWDRV from MC is hardware-PASS (Nuno, 2026-05-25 and 2026-05-28 on the release artifact).
 - BOOT.ELF from USB-booted POPSLoader (L-07) is hardware-PASS via the V2 route at `d23520a` (Nuno 2026-05-28).
-- DKWDRV from custom HDD path is **known-broken accepted** in BETA-10-5. Workaround: use the default MC DKWDRV path.
+- DKWDRV from custom HDD path is **known-broken accepted** in BETA-10-5. Workaround: use the default MC DKWDRV path. (Re-confirmed broken Nuno 2026-05-28 PM.)
+- **MX4SIO-rooted POPSLoader settings save** is **broken with fix in flight** (PR #476). The `mx4sio:/` argv0 prefix isn't a writable fileXio mount; PR #476 translates cwd to the actual `mass*:/` slot via dynamic ioctl driver lookup (sdc/mx4), mirroring the HDD branch in `etc/boot.lua`.
 - **BOOT.ELF from HDD-booted POPSLoader (U-10) is now PASS** per Nuno 2026-05-28 PM ("BOOT.ELF working across the board"). Previously known-broken-accepted in BETA-10-5; the resolution after PR #470/#472/#473 was unexpected since none of those PRs touch the U-10 path architecturally. Investigation notes preserved in `docs/U10_INVESTIGATION.md` for any regression revisit.
 - POPSLoader launched from wLaunchELF: works in the common flow (CosmicScale post-PR #458). One latent failure mode (wLE → USB POPSLoader → BOOT.ELF) reported by Nuno 2026-05-27 — code analysis says it takes the same route as the working autoboot/OSDSYS cases, so likely always-broken/latent rather than a regression; not enumerated as known-broken pending a clearer repro.
 

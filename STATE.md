@@ -105,9 +105,10 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 
 ## Known Broken (Accepted for Release)
 
-After Nuno's 2026-05-28 PM hardware test on the post-PR-#470/#472/#473 rolling-release, the only confirmed-broken edge case is:
+After Nuno's 2026-05-28 PM hardware test on the post-PR-#470/#472/#473 rolling-release, the confirmed-broken edge cases are:
 
 - **DKWDRV-on-HDD-custom-path** — black-screens. Most users have DKWDRV on MC; the small subset with HDD installs typically don't keep DKWDRV on HDD. Workaround: configure DKWDRV path to MC.
+- **MX4SIO-rooted POPSLoader settings save** (NEW, fix in flight via PR #476) — when POPSLoader is launched from `mx4sio:/`, settings save fails with `mx4sio:/<path>/.pldrs may be read-only`. Root cause: `mx4sio:/` is the BDM device-kind label, not a writable fileXio mount. The writable path is the `mass*:/` slot where `bdmfs_fatfs` mounts the SD card. PR #476 (`claude/mx4sio-boot-path-normalize`) translates the boot cwd from `mx4sio:/<rel>/` to `<mass*>:/<rel>/` using the dynamic ioctl driver lookup (sdc/mx4) — mirrors the existing HDD branch in `etc/boot.lua`. Workaround until merged: launch POPSLoader from a different storage device, or use the `mass*:/` slot path directly in argv0 if your launcher supports it.
 
 **By-design fallback (confirmed working, not a bug):**
 - **Settings save on HDD-installed POPSLoader writes to `mc0:/POPSTARTER/.pldrs`** by design (PR #466). The `ps2hdd-osd.irx` write limitation is the underlying cause. User-visible: settings still persist; they just live on MC instead of next to POPSLOADER.ELF.

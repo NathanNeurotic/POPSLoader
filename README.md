@@ -23,9 +23,10 @@ POPSLoader BETA-10-5 ships the launcher's stable backbone after an extended hard
 
 ### Known broken (after BETA-10-5 + post-release PR #470/#472/#473 + Nuno 2026-05-28 PM verification)
 
-Only one confirmed-broken edge case remains:
+Currently confirmed-broken edge cases:
 
 *   **DKWDRV from a custom HDD path** black-screens. Use the default Memory Card DKWDRV path.
+*   **MX4SIO-rooted POPSLoader settings save** — when POPSLoader is launched from `mx4sio:/`, settings save fails with `mx4sio:/<path>/.pldrs may be read-only`. Fix in flight via [PR #476](https://github.com/NathanNeurotic/POPSLoader/pull/476), which translates the boot cwd from `mx4sio:/<rel>/` to the writable `mass*:/` slot dynamically. Workaround until merged: launch POPSLoader from a different device.
 
 (`U-10` BOOT.ELF-exit when POPSLoader was booted from HDD was previously known-broken; Nuno's 2026-05-28 PM hardware test reports BOOT.ELF working across the board including HDD-booted on the post-PR-#473 rolling-release. The cause is not architecturally obvious from PR #470/#472/#473 — investigation notes are preserved in [docs/U10_INVESTIGATION.md](docs/U10_INVESTIGATION.md) in case it regresses.)
 
