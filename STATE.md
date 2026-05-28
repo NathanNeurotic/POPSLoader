@@ -1,4 +1,4 @@
-Last updated: 2026-05-28 (post-BETA-10-5; LAUNCH_ARGS game/debug consumers wired)
+Last updated: 2026-05-28 (post-BETA-10-5; PR #470 LAUNCH_ARGS, PR #472 MX4SIO classification, PR #473 hotfix all merged)
 
 # STATE
 
@@ -41,16 +41,16 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 ### Backend init / runtime
 - Startup backend auto-init exists and uses boot path information, configured executable paths, and selected profile path.
 - HDD startup targets run `PLDR.LoadHDDModules()` (same as HDD page entry).
-- USB vs MX4SIO classification is via mount-driver identity (`System.getMassMountDriver` -> `sdc`/`mx4` -> MX4SIO; else USB).
+- USB vs MX4SIO classification is via mount-driver identity. Per the post-release PR #472 refinement: `mass:/` boots stay USB-only unless explicit MX4SIO evidence is present (`mx4sio:/` prefix, `sdc`/`mx4` ioctl driver name, or `.boot_mx4sio` marker). `mx4sio_bd.irx` is only loaded when an ambiguous mass slot exists (mass_probe_needed) or a configured path requires it; `usbmass_bd.irx` is always loaded first because `mx4sio_bd` depends on it. The maintainer rule: "If ioctl/devctl is ANYTHING OTHER THAN `sdc` or `mx4`, and it's a mass device, then it is USB; if a mass device is `sdc`/`mx4` on ioctl/devctl, then it must be MX4SIO."
 - Runtime device access is not gated by the old device-lock system; `canEnterDevice()` always returns true.
 
 ### Launch paths (current routing)
 - **HDD POPSTARTER on HDD partition** (D-10): `LoadELFFromFileExecPS2RebootIOPWithPartition` → `ExecuteHddBackedViaEmbeddedLoader` → child loader `is_hdd_partition_context` branch (fileXioUmount + SifExitRpc/Cmd + ExecPS2, no IOP reset). Byte-identical to the 2026-05-22 B2 hardware-passing fix at commit `4ae6679`.
 - **Non-HDD POPSTARTER + HDD game** (D-15): same `ExecuteHddBackedViaEmbeddedLoader` route with the boot partition's PFS slot preserved via keep_mask.
-- **DKWDRV from MC** (Nuno 2026-05-25 confirmed PASS): reboot variant direct path, IOP reset + reload `SIO2MAN/MCMAN/MCSERV` + ExecPS2 with synthesized argv0.
-- **DKWDRV from HDD** (PR #460, source-verified, hardware pending): non-reboot variant → new DKWDRV special-case in `LoadELFFromFileWithPartition` → `ExecuteViaEmbeddedLoader` → child loader's filexio-direct-load branch (`SifExitRpc + FlushCache + ExecPS2`, no IOP reset). Mirrors V2 BOOT.ELF contract exactly.
-- **BOOT.ELF from USB-booted POPSLoader** (V2 working route): non-reboot variant → BOOT.ELF special-case in `LoadELFFromFileWithPartition` (line 485) → `ExecuteViaEmbeddedLoader` → child loader non-HDD branch (no IOP reset).
-- **BOOT.ELF from HDD-booted POPSLoader** (U-10, **known broken**): reboot variant direct path with IOP reset. Has never worked; V2 didn't solve it either. Treated as separate problem.
+- **DKWDRV from MC** (Nuno 2026-05-25 + 2026-05-28 confirmed PASS): reboot variant direct path, IOP reset + reload `SIO2MAN/MCMAN/MCSERV` + ExecPS2 with synthesized argv0.
+- **DKWDRV from HDD custom path** (**known broken accepted for BETA-10-5**): PR #460 V2-mimicry shipped, but Nuno's 2026-05-25 hardware test on that artifact still black-screened. Pragmatic acceptance per Nuno + maintainer 2026-05-27: most users keep DKWDRV on MC. Workaround: configure DKWDRV path to MC.
+- **BOOT.ELF from USB-booted POPSLoader** (V2 working route, Nuno 2026-05-28 confirmed PASS): non-reboot variant → BOOT.ELF special-case in `LoadELFFromFileWithPartition` → `ExecuteViaEmbeddedLoader` → child loader non-HDD branch (no IOP reset).
+- **BOOT.ELF from HDD-booted POPSLoader** (U-10, **known broken**): reboot variant direct path with IOP reset. Has never worked; V2 didn't solve it either. PR #463 diagnostic colors localized the hang to `SifIopReset` itself (last visible stage YELLOW; ORANGE post-reset never paints). PR #464 F4 unconditional unmount didn't fix it on hardware. Treated as separate problem with the hypothesis catalog preserved in `docs/U10_INVESTIGATION.md`.
 
 ### Main menu feature status
 - `MMCE`, `MX4SIO`, `HDD (PFS)`, `USB`, `Disc (DKWDRV)`: implemented in code.
@@ -67,21 +67,25 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 - Release packaging policy is `PS1_POPSLOADER/*` + `POPS/PATCH_5.BIN` with strict manifest validation.
 - Build is gated on embedded build identity markers (`Exec path:`, `PrepareForColdExternalELFLaunch`, `BOOT.ELF launch failed`) being present in `bin/enceladus.elf`.
 - Embedded loader blob staleness check runs when timestamp suggests `src/elf_loader/loader.c` is older than its source.
-- As of 2026-05-25, Lua syntax check covers all bundled `bin/POPSLDR/*.lua` plus `etc/boot.lua`; previously only `boot.lua` was validated.
+- CI image pinned to `ps2dev/ps2dev:v2.0.0` (post-release pin in `ba8f0d0`).
+- Lua syntax check covers all bundled `bin/POPSLDR/*.lua` plus `etc/boot.lua` (extended in PR #461).
+- `.github/workflows/rolling-release.yml` (added post-release) publishes a `POPSLOADER-rolling-release.zip` asset to the canonical `rolling-release` GitHub Release on every push to `BETA-12-PLAY` and on every pull-request event (including drafts). The tag floats; testers grab the latest asset. PRs that update `BETA-12-PLAY` and PRs that update PR head SHAs both overwrite the same asset (last-write-wins).
 
 ## Reported Hardware Status
 
 | Case | Last result | Date | Notes |
 |---|---|---|---|
-| **D-10** HDD POPSTARTER + HDD game | **PASS** | 2026-05-22 | B2 fix at commit `4ae6679` (PFS unmount before ExecPS2). Preserved through all subsequent PRs. |
-| **D-14** HDD POPSTARTER + non-HDD game | **PASS** | 2026-05-22 | Same partition-aware route as D-10. |
-| **D-15** non-HDD POPSTARTER + HDD game | **PASS** | 2026-05-22 | Keep-mask preserves boot partition's PFS slot across exec. |
-| **DKWDRV from MC** | **PASS** | 2026-05-25 | Reboot variant direct path with argv0 synthesis. Confirmed by Nuno on PR #458 artifact. |
-| **DKWDRV from HDD custom path** | **FAIL** | 2026-05-25 (PR #458) | Confirmed by Nuno. PR #460 ships V2-mimicry fix (non-reboot variant + new DKWDRV embedded-loader route). Hardware pending. |
-| **BOOT.ELF from USB-booted POPSLoader** (L-07) | Source-verified | (V2 working state d23520a 2026-05-23) | PR #458 regressed this by adding an `is_boot_elf_target` IOP-reset branch in the child loader. PR #460 reverts that revert; expected back to V2-working behavior on next hardware test. |
-| **BOOT.ELF from HDD-booted POPSLoader** (U-10) | **FAIL** | 2026-05-25 | Long-standing. V2 didn't solve this either. Not addressed by PR #460. Separate problem; pursued only after PR #460 hardware verdict. |
-| **POPSLoader launched from wLaunchELF** | **FAIL** (CosmicScale 2026-05-25) | 2026-05-25 | Some wLaunchELF builds. PR #458's `_ps2sdk_memory_init` fileXio teardown (Layer A) targets this. Hardware pending. |
-| **POPSLoader launched from PSBBN / Browser / HOSDMenu / OSDMenu** | **PASS** | (ongoing) | CosmicScale 2026-05-25 confirmed these work. |
+| **D-10** HDD POPSTARTER + HDD game | **PASS** (preservation contract) | 2026-05-22, reconfirmed 2026-05-28 (Nuno on BETA-10-5 release artifact) | B2 fix at commit `4ae6679` (PFS unmount before ExecPS2). Must be preserved by any future launch-path change. |
+| **D-14** HDD POPSTARTER + non-HDD game | **PASS** (preservation contract) | 2026-05-22 | Same partition-aware route as D-10. |
+| **D-15** non-HDD POPSTARTER + HDD game | **PASS** (preservation contract) | 2026-05-22 | Keep-mask preserves boot partition's PFS slot across exec. |
+| **DKWDRV from MC** | **PASS** (preservation contract) | 2026-05-25, reconfirmed 2026-05-28 (Nuno on BETA-10-5 release artifact) | Reboot variant direct path with argv0 synthesis. |
+| **DKWDRV from HDD custom path** | **FAIL — known broken accepted** | 2026-05-25 (last hardware test) | Pragmatically accepted for BETA-10-5 per Nuno + maintainer 2026-05-27. Workaround: configure DKWDRV path to MC. |
+| **BOOT.ELF from USB-booted POPSLoader** (L-07) | **PASS** | 2026-05-28 (Nuno on BETA-10-5 release artifact) | V2 working route at `d23520a`. |
+| **BOOT.ELF from HDD-booted POPSLoader** (U-10) | **FAIL — known broken accepted** | 2026-05-27 (PR #464 hardware) | Long-standing. V2 didn't solve it; F4 unconditional unmount didn't either. Workaround: Exit → OSDSYS or reboot. Investigation notes preserved in `docs/U10_INVESTIGATION.md`. |
+| **POPSLoader launched from wLaunchELF** | **PASS** (common cases) | 2026-05-28 | PR #458 Layer A fileXio teardown in `_ps2sdk_memory_init` resolved the CosmicScale-reported failure for the common cases. One latent failure mode (wLE → USB POPSLoader → BOOT.ELF) reported by Nuno 2026-05-27; code analysis suggests this is the same BOOT.ELF route as the working autoboot/OSDSYS cases, so likely always-broken/latent rather than a regression. Not enumerated as known-broken pending a clearer repro. |
+| **POPSLoader launched from PSBBN / Browser / HOSDMenu / OSDMenu** | **PASS** (preservation contract) | CosmicScale 2026-05-25 + Nuno 2026-05-28 | |
+| **Settings save on HDD-installed POPSLoader → MC** | **PASS** (preservation contract) | 2026-05-28 (Nuno) | By design (PR #466 release prep). HDD installs fall back to `mc0:/POPSTARTER/.pldrs`; user-visible: settings still persist. |
+| **Settings save on USB / MC-installed POPSLoader** | **PASS** | 2026-05-27 (Nuno) | Per-device sidecar at `APP_DIR/.pldrs` working. |
 | **U-05** OSDSYS exit | Reported fixed (date unrecorded) | — | |
 | **U-06** PAL asset aspect | Unknown (verify on hardware) | — | |
 | **D-12** startup backend auto-init | PASS | 2026-03-28 | `PLDR.LoadHDDModules()` routing restored Profile/cwd HDD POPSTARTER resolution. |
@@ -89,6 +93,15 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 | **D-16** first-entry USB backend discovery | PASS | (after 2026-03-27 fix) | Bounded wait in `BuildUsbIdentityDeferred()`. |
 | **U-11** boot-device label display | Unknown | — | Main menu can show the label; not formally verified. |
 | **S-09** keyboard layout persistence | Unknown | — | |
+
+### Post-release work (BETA-10-5 → BETA-12-PLAY current tip `81c886e`)
+
+| PR | What landed | Hardware status |
+|---|---|---|
+| **#470** | `PLDR.LAUNCH_ARGS.game` auto-launch consumer (`PLDR.AutoLaunchFromLaunchArgs`) and `-debug` toast (`PLDR.SurfaceLaunchArgsDebug`). | Repo / CI verified. Hardware UNKNOWN (verify on hardware). |
+| **#472** | MX4SIO evidence-based mass: classification: `mx4sio_bd` only loads on explicit MX4SIO evidence. Maintainer refinement commit `7b587fe` enforces "USB or unknown mass stays USB-only". C-layer `lua_mx4sio_init` now calls `EnsureUsbMass()` first so the dependency is unviolatable. | Repo / CI verified. Hardware UNKNOWN (verify on hardware). |
+| **#473** | HOTFIX: move `local function ClassifyMassRootDriver` declaration above `ClassifyStartupMassTargets` so the closure captures it correctly. Fixes Lua forward-reference nil-call crash at boot reported on 2026-05-28 hardware. | Repo / CI verified. Hardware UNKNOWN (verify on hardware — next rolling-release test). |
+| **#471 (DRAFT)** | Layer C: `mmceman.irx` lazy-loaded unless boot device is MMCE; `System.ensureMmceman` Lua binding. | Repo / CI verified. Hardware UNKNOWN (DRAFT explicitly requires hardware verification; pad input survival on USB / HDD / MC boots is the critical regression check). |
 
 ## Known Broken (Accepted for Release)
 
@@ -114,6 +127,7 @@ Investigation artifacts archived: `docs/U10_INVESTIGATION.md` (hypotheses + diag
 
 ## Verification Status
 
-- Code/build/package statements above are repository-verified at commit `9a0ebe2` (BETA-12-PLAY head, tagged `BETA-10-5` on 2026-05-27).
+- BETA-10-5 release tag is at commit `9a0ebe2` (tagged 2026-05-27). That release was hardware-confirmed clean by Nuno on 2026-05-28.
+- `BETA-12-PLAY` development branch tip is currently `81c886e` (Merge PR #473 hotfix). Code/build/package statements above are repository-verified at that tip. Post-release PR work (`#470` LAUNCH_ARGS, `#472` MX4SIO, `#473` hotfix) has CI green but is not BETA-10-5 hardware evidence — it is `Unknown (verify on hardware)` unless a tester result is recorded in `QA_REGRESSION_MATRIX.md`.
 - Hardware behavior is `Unknown (verify on hardware)` unless explicitly recorded in the table above with a date.
 - See `QA_REGRESSION_MATRIX.md` for the full experiment chronology.
