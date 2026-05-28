@@ -2474,11 +2474,11 @@ UI = {
               UI.SyncSettingsSelectionFromRuntime()
               UI.SyncSettingsDraftFromRuntime()
             elseif reason == "save_failed" then
-              UI.Notif_queue.add("Couldn't save settings\n"..tostring(PLDR.SETTINGS_PATH or "mc0:/POPSTARTER/.pldrs").." may be read-only", "error")
+              UI.Notif_queue.add("Couldn't save settings\n"..tostring(PLDR.SETTINGS_PATH or "mc0:/POPSTARTER/.pldrs").." may be read-only"..((type(BOOT_MX4SIO_PROBE_RESULT) == "string" and BOOT_MX4SIO_PROBE_RESULT ~= "") and "\nmx4sio probe: "..BOOT_MX4SIO_PROBE_RESULT or ""), "error")
               UI.SyncSettingsSelectionFromRuntime()
               UI.SyncSettingsDraftFromRuntime()
             else
-              UI.Notif_queue.add("Couldn't save settings\n"..tostring(PLDR.SETTINGS_PATH or "mc0:/POPSTARTER/.pldrs").." may be read-only", "error")
+              UI.Notif_queue.add("Couldn't save settings\n"..tostring(PLDR.SETTINGS_PATH or "mc0:/POPSTARTER/.pldrs").." may be read-only"..((type(BOOT_MX4SIO_PROBE_RESULT) == "string" and BOOT_MX4SIO_PROBE_RESULT ~= "") and "\nmx4sio probe: "..BOOT_MX4SIO_PROBE_RESULT or ""), "error")
               UI.SyncSettingsSelectionFromRuntime()
               UI.SyncSettingsDraftFromRuntime()
             end

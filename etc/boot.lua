@@ -65,6 +65,7 @@ if string.find(ARGV0, "^hdd0:") then
 end
 
 BOOT_MX4SIO_PREFIX = nil
+BOOT_MX4SIO_PROBE_RESULT = nil
 if string.find(ARGV0, "^[Mm][Xx]4[Ss][Ii][Oo]") then
   -- MX4SIO boot: the mx4sio:/ argv0 prefix is the BDM device-kind
   -- label, NOT a writable fileXio mount. The launcher (wLaunchELF,
@@ -89,27 +90,48 @@ if string.find(ARGV0, "^[Mm][Xx]4[Ss][Ii][Oo]") then
   if type(System) == "table" and type(System.initMX4SIO) == "function" then
     pcall(System.initMX4SIO)
   end
-  System.sleep(1) -- MX4SIO double-ping settle
-  if type(System) == "table" and type(System.refreshMassBackends) == "function" then
-    pcall(System.refreshMassBackends)
-  end
-  -- Scan mass slots for the one with sdc/mx4 ioctl driver. First match
-  -- wins. mass slots are volatile so do NOT cache the slot number --
-  -- subsequent boots may land on a different one.
-  local MX_ROOT = nil
-  if type(System.getMassMountDriver) == "function" then
+  -- Initial settle for the MX4SIO double-ping. PR #476 had a single
+  -- 1-second sleep + single scan; Nuno's 2026-05-28 PM hardware test
+  -- showed that's not enough on real hardware -- the BDM didn't see
+  -- the SD card on the first probe, the scan returned nothing, the
+  -- cwd translation never happened, and settings still tried to write
+  -- to mx4sio:/<path>/.pldrs. PLDR.InitMX4SIOPopsRoot uses a 3-attempt
+  -- retry with sleep(1) between failures (~3s worst case) -- mirror
+  -- that here so the scan succeeds even when the first probe misses.
+  System.sleep(1)
+  local function scan_for_mx4sio_root()
+    if type(System.refreshMassBackends) == "function" then
+      pcall(System.refreshMassBackends)
+    end
+    if type(System.getMassMountDriver) ~= "function" then
+      return nil, "no_getMassMountDriver"
+    end
     for slot = 0, 9 do
       local root = (slot == 0) and "mass:/" or ("mass"..tostring(slot)..":/")
       local ok, driver = pcall(System.getMassMountDriver, root)
       if ok and type(driver) == "string" and driver ~= "" then
         local lowered = string.lower(driver)
         if string.find(lowered, "mx4", 1, true) ~= nil or string.find(lowered, "sdc", 1, true) ~= nil then
-          MX_ROOT = root
-          break
+          return root, "found:"..root.."="..driver
         end
       end
     end
+    return nil, "no_match"
   end
+  local MX_ROOT = nil
+  local probe_trace = {}
+  for attempt = 1, 3 do
+    local root, info = scan_for_mx4sio_root()
+    probe_trace[#probe_trace + 1] = "a"..tostring(attempt)..":"..tostring(info or "nil")
+    if root ~= nil then
+      MX_ROOT = root
+      break
+    end
+    if attempt < 3 then
+      System.sleep(1)
+    end
+  end
+  BOOT_MX4SIO_PROBE_RESULT = table.concat(probe_trace, ";")
   if MX_ROOT ~= nil then
     BOOT_MX4SIO_PREFIX = MX_ROOT
     -- Translate mx4sio:/<rel> argv0 directory to MX_ROOT/<rel>/.
