@@ -7,7 +7,7 @@
 - Internal: Rolling release workflow operational — `.github/workflows/rolling-release.yml` publishes the current build to a single canonical URL on push-to-BETA-12-PLAY and on PR events.
 - Internal: CI image pinned to `ps2dev/ps2dev:v2.0.0` (was `:latest`).
 
-(All [Unreleased] entries are CI-verified but hardware-unverified except where `QA_REGRESSION_MATRIX.md` records a tester result.)
+(All [Unreleased] entries are hardware-verified per Nuno's 2026-05-28 PM test on the rolling-release artifact: MX4SIO + USB classification working, BOOT.ELF exit working across the board including HDD-booted POPSLoader -- which was previously the long-standing U-10 known-broken case -- DKWDRV from MC working regardless of POPSLoader boot source, USB sidecar settings save working. Confirmed-broken: DKWDRV from custom HDD path. By-design fallback (not a bug): HDD-installed POPSLoader saves settings to mc0:/POPSTARTER/.pldrs.)
 
 [v1.0.0]
 - Feature: Initial release

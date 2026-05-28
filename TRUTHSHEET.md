@@ -65,18 +65,20 @@ Non-negotiable behavioral invariants that changes must preserve unless an explic
 - Settings save on USB and MC sidecars: **PASS** 2026-05-27 (Nuno). Per-device `APP_DIR/.pldrs`.
 
 **Known-broken accepted for BETA-10-5** (documented workarounds):
-- `DKWDRV from HDD custom path`: **FAIL** 2026-05-25 (Nuno on PR #460 artifact). Pragmatic acceptance per Nuno + maintainer 2026-05-27. Workaround: configure DKWDRV path to MC.
-- `BOOT.ELF from HDD-booted POPSLoader` (U-10): **FAIL** 2026-05-27 (Nuno on PR #464 F4 artifact). Long-standing; PR #463 diagnostic colors localized the hang to `SifIopReset` itself. Workaround: Exit → OSDSYS or reboot.
+- `DKWDRV from HDD custom path`: **FAIL** 2026-05-25 (Nuno on PR #460 artifact); re-confirmed broken 2026-05-28 PM by Nuno on rolling-release post PR #470/#472/#473. Pragmatic acceptance per Nuno + maintainer 2026-05-27. Workaround: configure DKWDRV path to MC.
+
+**Unexpectedly resolved 2026-05-28 PM:**
+- `BOOT.ELF from HDD-booted POPSLoader` (U-10): was **FAIL** 2026-05-27 (Nuno on PR #464 F4 artifact); **now PASS** 2026-05-28 PM (Nuno on rolling-release post PR #470/#472/#473). None of those PRs architecturally touch the U-10 path, so the cause is not obvious. Investigation notes preserved in `docs/U10_INVESTIGATION.md` in case it regresses.
 
 **Other:**
 - `POPSLoader from wLaunchELF`: **PASS** for common cases 2026-05-28; one latent failure mode (wLE → USB POPSLoader → BOOT.ELF) reported by Nuno 2026-05-27. Code analysis says it takes the same BOOT.ELF route as working autoboot/OSDSYS cases, so likely always-broken/latent rather than a regression. Not enumerated as known-broken pending a clearer repro.
 - `U-06` (PAL/NTSC menu asset proportions): Unknown, still needs hardware confirmation.
 
-**Post-release PR work** (CI-verified, hardware-unverified except where noted in `QA_REGRESSION_MATRIX.md`):
-- PR #470 (LAUNCH_ARGS): `Unknown (verify on hardware)`.
-- PR #472 (MX4SIO classification): `Unknown (verify on hardware)`. Maintainer's MX4SIO unit was the trigger for filing; hardware verification of the fix is the next step.
-- PR #473 (HOTFIX): `Unknown (verify on hardware)`. Crash reproduced by Nathan's tester 2026-05-28; fix verification is the next rolling-release test cycle.
-- PR #471 (Layer C mmceman defer): DRAFT, `Unknown (verify on hardware)`. Test plan must cover pad input survival on USB / HDD / MC boots.
+**Post-release PR work** (Nuno's 2026-05-28 PM rolling-release hardware test):
+- PR #470 (LAUNCH_ARGS): **Indirect PASS**. Rolling-release boots and runs all tested flows. Explicit `-page=/-game=` launch not directly tested but the consumer is no-op when those args are absent.
+- PR #472 (MX4SIO classification): **PASS**. MX4SIO and USB working as intended on hardware.
+- PR #473 (HOTFIX): **PASS**. Rolling-release boots cleanly, no Enceladus error.
+- PR #471 (Layer C mmceman defer): DRAFT, **Indirect PASS**. Pad input survives, all tested flows work — implies the defer didn't break general boot. MMCE-specific device access from the deferred-load state not directly tested; recommend an MMCE test before promoting from DRAFT.
 
 ## Add-New-Truth Template
 ```markdown

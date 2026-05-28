@@ -21,12 +21,13 @@ POPSLoader BETA-10-5 ships the launcher's stable backbone after an extended hard
 *   **Per-device Settings Sidecar**: Non-HDD installs (USB / MX4SIO / MMCE) save settings to `APP_DIR/.pldrs` next to the launcher; HDD installs use the legacy `mc0:/POPSTARTER/.pldrs` fallback by design (see Settings Storage below).
 *   **Polished User Interface**: Layout alignment corrections, cleaner typography, dynamic menu box adjustments, text wrapping, and notification toast hardening.
 
-### Known broken (accepted for BETA-10-5)
+### Known broken (after BETA-10-5 + post-release PR #470/#472/#473 + Nuno 2026-05-28 PM verification)
 
-These edge cases have documented workarounds and are not blocking the release:
+Only one confirmed-broken edge case remains:
 
 *   **DKWDRV from a custom HDD path** black-screens. Use the default Memory Card DKWDRV path.
-*   **BOOT.ELF exit when POPSLoader itself was booted from HDD** (`U-10`) black-screens. Use Exit → OSDSYS, or reboot the console.
+
+(`U-10` BOOT.ELF-exit when POPSLoader was booted from HDD was previously known-broken; Nuno's 2026-05-28 PM hardware test reports BOOT.ELF working across the board including HDD-booted on the post-PR-#473 rolling-release. The cause is not architecturally obvious from PR #470/#472/#473 — investigation notes are preserved in [docs/U10_INVESTIGATION.md](docs/U10_INVESTIGATION.md) in case it regresses.)
 
 See [STATE.md](STATE.md) and [QA_REGRESSION_MATRIX.md](QA_REGRESSION_MATRIX.md) for the full hardware ledger.
 
@@ -117,9 +118,7 @@ Selecting **BOOT.ELF** in the exit menu (or pressing the **Triangle** shortcut) 
 
 If found, BOOT.ELF launches through the embedded-loader handoff with a clean BRAM setup and an explicit `argv[0]`. If you do not have wLaunchELF installed at these paths, this option will fail to boot.
 
-**Hardware-confirmed working** when POPSLoader was launched from USB, OSDmenu, Browser, HOSDMenu, or PSBBN.
-
-**Known broken** (`U-10`): when POPSLoader itself was launched from HDD, the BOOT.ELF exit black-screens. Use Exit → OSDSYS, or reboot the console. Investigation notes live in [docs/U10_INVESTIGATION.md](docs/U10_INVESTIGATION.md).
+**Hardware-confirmed working "across the board"** (Nuno 2026-05-28 PM on rolling-release post-PR-#470/#472/#473) — including HDD-booted POPSLoader, which was previously the `U-10` known-broken case. The architectural cause of the resolution is not obvious from those PRs; investigation notes are preserved in [docs/U10_INVESTIGATION.md](docs/U10_INVESTIGATION.md) in case the issue regresses.
 
 ---
 
@@ -158,9 +157,10 @@ HDD-installed POPSLoader saves its settings file to `mc0:/POPSTARTER/.pldrs` rat
 
 ## Known Issues & Planned Improvements
 
-Known broken in BETA-10-5 (workarounds documented above):
+Confirmed broken (workaround documented above):
 *   **DKWDRV from custom HDD path** — use Memory Card DKWDRV path.
-*   **BOOT.ELF exit from HDD-booted POPSLoader** (`U-10`) — use Exit → OSDSYS or reboot.
+
+(BOOT.ELF exit from HDD-booted POPSLoader (`U-10`) was previously listed here as known-broken; it now passes hardware testing per Nuno 2026-05-28 PM — see Known broken section above.)
 
 Planned for subsequent updates:
 *   **Layer C Lazy IRX Loading**: Defer `mmceman`, `ds34bt`, `usbd` IRX loads when not needed by the boot device family, to reduce boot time. PR #471 (DRAFT) ships the `mmceman` portion pending hardware verification.

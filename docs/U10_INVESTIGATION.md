@@ -1,13 +1,19 @@
 # U-10 Investigation: BOOT.ELF exit from HDD-booted POPSLoader
 
-Date: 2026-05-26 (original), updated 2026-05-28 with PR #463/#464 outcomes
+Date: 2026-05-26 (original), updated 2026-05-28 with PR #463/#464 outcomes, and again 2026-05-28 PM with the surprising resolution.
 Author: Claude (with NathanNeurotic direction)
 
-## Status (as of BETA-10-5, 2026-05-27)
+## Status (as of 2026-05-28 PM)
 
-**Known broken — accepted for release.** Per Nuno + maintainer 2026-05-27 ("rollout dkwdrv; vast majority of users will have other devices for DKWDRV, small percentage have HDD installs"), U-10 is pragmatically accepted in BETA-10-5 with a documented workaround. Users hit by it use **Exit → OSDSYS** or reboot the console.
+**PASS — unexpectedly resolved.** Nuno reports BOOT.ELF exit working "across the board" including HDD-booted POPSLoader on the rolling-release artifact built post-PR-#470/#472/#473.
 
-This file is preserved as the **hypothesis catalog for any future revisit**. Investigation discipline still applies: ship a diagnostic build before another fix attempt; verify one hypothesis at a time.
+None of those PRs architecturally touch the U-10 path (`LoadELFFromFileExecPS2RebootIOPWithPartition` direct path, IOP reset, MC module reload). The cause of the resolution is not obvious from the diff. Possible explanations:
+
+1. **C-layer `EnsureUsbMass`-first reordering in `lua_mx4sio_init` (PR #472)** — the maintainer-enforced order now means `usbmass_bd`/`bdmfs_fatfs`/`bdm` are guaranteed loaded before any MX4SIO call, even when MX4SIO isn't actually present. This might be incidentally cleaning some IOP state that the U-10 reset path was tripping over.
+2. **The "U-10 fails" reports were partially obscured by the now-fixed boot crash.** The 2026-05-28 morning rolling-release had the `ClassifyMassRootDriver` forward-reference nil-call crash (PR #473 hotfix). Earlier U-10 fail reports may have been misattributed; the actual failure point might have been earlier (boot crash) rather than at BOOT.ELF exit.
+3. **Test-environment change** on Nuno's side (MC contents, HDD state, etc.).
+
+This file is preserved as the **hypothesis catalog in case U-10 regresses**. If a future change reintroduces the failure, the diagnostic-first workflow below still applies: ship a colored sentinel build before another fix attempt.
 
 ### What was tried since the original investigation note
 

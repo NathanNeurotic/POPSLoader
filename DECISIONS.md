@@ -12,6 +12,19 @@ Each entry records:
 
 ## Decision Log
 
+### 2026-05-28 PM — U-10 Unexpectedly Resolved; Known-Broken List Reduced to DKWDRV-HDD-Custom
+- Decision: Mark U-10 (BOOT.ELF from HDD-booted POPSLoader) as PASS in STATE.md, README.md, ROADMAP.md, TRUTHSHEET.md, and `QA_REGRESSION_MATRIX.md`. Remove the known-broken-accepted entry for U-10. Preserve `docs/U10_INVESTIGATION.md` and `claude/diag-u10` branch in case of regression.
+- Rationale: Nuno's 2026-05-28 PM hardware test on the rolling-release artifact built post-PR-#470/#472/#473 reports BOOT.ELF exit working "across the board" including HDD-booted POPSLoader. None of those PRs architecturally touch the U-10 path; the cause is not obvious. Candidate explanations: (a) C-layer `EnsureUsbMass`-first ordering in PR #472 incidentally cleans IOP state; (b) earlier "U-10 fails" reports were partially obscured by the now-fixed PR #473 boot crash; (c) test environment shifted. None of these is conclusive without further investigation.
+- Implications: The only confirmed-broken edge case in BETA-10-5 + post-release work is **DKWDRV from custom HDD path** (re-confirmed broken by Nuno same session). HDD-install settings save to MC fallback is by design (PR #466), not a bug. The previously-noted wLE → USB POPSLoader → BOOT.ELF latent failure is covered by the "across the board" PASS.
+- Implications (continued): Since the root cause of the resolution is not understood, treat U-10 as conditionally PASS. Any future change touching IOP teardown, mass-backend ordering, or BOOT.ELF launch routes should retest U-10 explicitly.
+- Evidence: `QA_REGRESSION_MATRIX.md` row "2026-05-28 PM | Nuno on rolling-release". Maintainer report 2026-05-28 PM: "Everything is working except saving settings, and hdd custom path dkwdrv."
+
+### 2026-05-28 PM — PR #470, #472, #473 Hardware-Verified
+- Decision: Promote PR #470 (LAUNCH_ARGS consumers), PR #472 (MX4SIO evidence-based classification), and PR #473 (forward-reference hotfix) from `Unknown (verify on hardware)` to PASS in STATE.md and TRUTHSHEET.md.
+- Rationale: Nuno's 2026-05-28 PM hardware test on the rolling-release artifact (commit `860ae26` from PR #471 branch, includes all merged BETA-12-PLAY changes plus Layer C mmceman defer) confirms: MX4SIO and USB working as intended, BOOT.ELF exit working across the board, DKWDRV from MC working regardless of POPSLoader boot source, USB sidecar settings save working. No boot crash.
+- Implications: The post-release backbone is now hardware-validated. PR #471 (Layer C mmceman defer, currently DRAFT) is indirectly hardware-PASS for general boot + pad input; MMCE-specific device access from deferred-load state is the one untested case. Recommend an explicit MMCE test before promoting PR #471 from DRAFT.
+- Evidence: `QA_REGRESSION_MATRIX.md` row "2026-05-28 PM | Nuno on rolling-release".
+
 ### 2026-05-28 — Layer C `mmceman` Lazy Load (PR #471, DRAFT)
 - Decision: `mmceman.irx` is eagerly loaded at boot only when `boot_device_hint == "MMCE"`; for USB / MC / MX4SIO / HDD boots (all HDD root variants — `hdd*`, `pfs*`, `ata*`, `apa*`) the IRX is deferred and loaded on demand via `System.ensureMmceman` from `PLDR.EnsureMmceReadyOnce`.
 - Rationale: MMCE third-party adapters (`mmce0:/`, `mmce1:/`) are a small subset of installs; loading the IRX eagerly for all boot types wastes ~50-100ms. MC (`mc0:/`, `mc1:/`, standard PS2 memory cards) is a distinct device handled by `mcman`/`mcserv` which are always loaded — MMCE and MC are not the same device.
