@@ -3124,6 +3124,25 @@ local function EnsureBootHddMountReady()
   return nil
 end
 
+-- Defined BEFORE ClassifyStartupMassTargets so the closure correctly
+-- captures the local. Lua's `local function f()` is sugar for
+-- `local f; f = function()...end` -- the local doesn't exist in scope
+-- until its declaration line, so a caller above can't capture it as an
+-- upvalue and falls through to a global lookup (nil) at call time.
+-- Hardware regression 2026-05-28: rolling-release crashed on Enceladus
+-- boot with `attempt to call a nil value (global 'ClassifyMassRootDriver')`
+-- because this was declared further down the file.
+local function ClassifyMassRootDriver(driver)
+  local value = string.lower(tostring(driver or ""))
+  if value == "" then
+    return "unknown"
+  end
+  if string.find(value, "mx4", 1, true) ~= nil or string.find(value, "sdc", 1, true) ~= nil then
+    return "mx4sio"
+  end
+  return "usb"
+end
+
 local function ClassifyStartupMassTargets(targets)
   if type(targets) ~= "table" or type(targets.mass_roots) ~= "table" then
     return
@@ -3259,17 +3278,6 @@ local function EnsureMassBackendsReady(mode)
   if type(System) == "table" and type(System.initUSB) == "function" then
     pcall(System.initUSB)
   end
-end
-
-local function ClassifyMassRootDriver(driver)
-  local value = string.lower(tostring(driver or ""))
-  if value == "" then
-    return "unknown"
-  end
-  if string.find(value, "mx4", 1, true) ~= nil or string.find(value, "sdc", 1, true) ~= nil then
-    return "mx4sio"
-  end
-  return "usb"
 end
 
 local function WaitMassProbeRetry(attempt, max_attempts)
