@@ -63,6 +63,73 @@ if string.find(ARGV0, "^hdd0:") then
     end
   end
 end
+
+BOOT_MX4SIO_PREFIX = nil
+if string.find(ARGV0, "^[Mm][Xx]4[Ss][Ii][Oo]") then
+  -- MX4SIO boot: the mx4sio:/ argv0 prefix is the BDM device-kind
+  -- label, NOT a writable fileXio mount. The launcher (wLaunchELF,
+  -- HOSDmenu, NHDDL, etc.) was able to load POPSLOADER.ELF through
+  -- some kernel-side indirection, but fileXio file writes against
+  -- mx4sio:/<path> fail with "may be read-only" (Nuno 2026-05-28 PM
+  -- hardware: `mx4sio:/APPS/PS1_POPSLOADER/.pldrs may be read-only`).
+  --
+  -- The writable filesystem path is the mass*:/ slot where bdmfs_fatfs
+  -- mounts the SD card once mx4sio_bd has loaded. The slot is volatile
+  -- (depends on hotplug + IRX load order), so we identify it
+  -- dynamically by the same ioctl driver-name rule PR #472 uses for
+  -- boot-device classification: sdc/mx4 ioctl => MX4SIO.
+  --
+  -- PR #472 also enforces at the C layer that mx4sio_bd requires
+  -- usbmass_bd to be loaded first (maintainer rule: "mx4sio will need
+  -- the usb drivers to activate before it with it"), so this branch
+  -- calls System.ensureUsbMass before System.initMX4SIO.
+  if type(System) == "table" and type(System.ensureUsbMass) == "function" then
+    pcall(System.ensureUsbMass)
+  end
+  if type(System) == "table" and type(System.initMX4SIO) == "function" then
+    pcall(System.initMX4SIO)
+  end
+  System.sleep(1) -- MX4SIO double-ping settle
+  if type(System) == "table" and type(System.refreshMassBackends) == "function" then
+    pcall(System.refreshMassBackends)
+  end
+  -- Scan mass slots for the one with sdc/mx4 ioctl driver. First match
+  -- wins. mass slots are volatile so do NOT cache the slot number --
+  -- subsequent boots may land on a different one.
+  local MX_ROOT = nil
+  if type(System.getMassMountDriver) == "function" then
+    for slot = 0, 9 do
+      local root = (slot == 0) and "mass:/" or ("mass"..tostring(slot)..":/")
+      local ok, driver = pcall(System.getMassMountDriver, root)
+      if ok and type(driver) == "string" and driver ~= "" then
+        local lowered = string.lower(driver)
+        if string.find(lowered, "mx4", 1, true) ~= nil or string.find(lowered, "sdc", 1, true) ~= nil then
+          MX_ROOT = root
+          break
+        end
+      end
+    end
+  end
+  if MX_ROOT ~= nil then
+    BOOT_MX4SIO_PREFIX = MX_ROOT
+    -- Translate mx4sio:/<rel> argv0 directory to MX_ROOT/<rel>/.
+    -- ResolveAppDirLocal in system.lua will see APP_DIR is mx4sio:/-
+    -- prefixed and cwd is mass*:/ and prefer the cwd, so settings
+    -- sidecar resolves to the writable mass*:/ root.
+    local relpath = string.match(ARGV0, "^[Mm][Xx]4[Ss][Ii][Oo]%d*:/?(.*)$") or ""
+    -- Strip the filename so cwd is the directory containing the ELF
+    -- (matches what the HDD branch does for its BOOTPATH).
+    local dir_rel = string.match(relpath, "^(.-)/[^/]*$")
+    if dir_rel == nil then
+      dir_rel = ""
+    end
+    local translated_cwd = MX_ROOT..string.gsub(dir_rel, "^/+", "")
+    if string.sub(translated_cwd, -1) ~= "/" then
+      translated_cwd = translated_cwd.."/"
+    end
+    System.currentDirectory(translated_cwd)
+  end
+end
 GPAD = 0
 Font.ftInit()
 local BOOT_FONT_KEY = "fonts/Roboto-Regular.ttf"
