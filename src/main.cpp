@@ -44,6 +44,15 @@ __attribute__((used)) static const char CI_MARKER_BOOT_ELF_FAIL[] = "BOOT.ELF la
 extern "C" int SifExecModuleBuffer(void *ptr, int size, int arg_len, const char *args, int *mod_res);
 #endif
 
+/* Layer C lazy-load hooks defined in luasystem.cpp. EnsureMmceman loads
+ * mmceman.irx on demand (idempotent); MarkMmcemanLoaded() lets the
+ * eager MMCE-boot path here record the load so the lazy path is a no-op
+ * later. See detectBootDeviceHintFromArgv0 for the device-kind hint that
+ * gates the eager vs deferred decision; all HDD root variants (hdd, hdd0,
+ * pfs, pfs0, pfs1, ata, apa) classify as "HDD" and defer mmceman. */
+extern bool EnsureMmceman(void);
+extern void MarkMmcemanLoaded(void);
+
 extern char bootString[];
 extern unsigned int size_bootString;
 
@@ -435,28 +444,47 @@ int main(int argc, char * argv[])
 
 	LOAD_IRX_NARG(sio2man_irx);
     if (filexio_ok) {
-        int mmceman_id = -1;
-        int mmceman_ret = -1;
-        bool mmceman_ok = LoadIrxChecked("mmceman_irx", &mmceman_irx, size_mmceman_irx, &mmceman_id, &mmceman_ret);
-        DPRINTF("mmceman load result: id=%d ret=%d\n", mmceman_id, mmceman_ret);
+        /* Layer C: mmceman is only needed for MMCE memcards. Load it
+         * eagerly only when the boot device is MMCE; otherwise defer to
+         * PLDR.EnsureMmceReadyOnce in system.lua (which calls
+         * System.ensureMmceman before any MMCE probe). All HDD root
+         * variants (hdd, hdd0, pfs, pfs0, pfs1, ata, apa) classify as
+         * "HDD" via detectBootDeviceHintFromArgv0 and defer. */
+        bool mmceman_required_at_boot = (strcmp(boot_device_hint, "MMCE") == 0);
+        if (mmceman_required_at_boot) {
+            int mmceman_id = -1;
+            int mmceman_ret = -1;
+            bool mmceman_ok = LoadIrxChecked("mmceman_irx", &mmceman_irx, size_mmceman_irx, &mmceman_id, &mmceman_ret);
+            DPRINTF("mmceman eager load (boot=MMCE) result: id=%d ret=%d\n", mmceman_id, mmceman_ret);
 #ifdef DEBUG
-        if (mmceman_ok) {
-            smod_mod_info_t info;
-            int lookup_ret = smod_get_mod_by_name("mmceman", &info);
-            if (lookup_ret < 0) {
-                DPRINTF("mmceman module lookup failed: ret=%d\n", lookup_ret);
-                DumpLoadedModules();
+            if (mmceman_ok) {
+                smod_mod_info_t info;
+                int lookup_ret = smod_get_mod_by_name("mmceman", &info);
+                if (lookup_ret < 0) {
+                    DPRINTF("mmceman module lookup failed: ret=%d\n", lookup_ret);
+                    DumpLoadedModules();
+                }
             }
-        }
 #endif
-        BootStamp("mmceman load/init");
-        if (mmceman_ok) {
+            if (mmceman_ok) {
+                MarkMmcemanLoaded();
+                mmce_slot0_ready = -1;
+                mmce_slot1_ready = -1;
+                DPRINTF("MMCE probe deferred until MMCE page entry.\n");
+            } else {
+                mmce_slot0_ready = 0;
+                mmce_slot1_ready = 0;
+            }
+            BootStamp("mmceman load/init");
+        } else {
+            /* Non-MMCE boot: skip the eager load. System.ensureMmceman()
+             * will load on demand if a configured POPSTARTER path lives
+             * on MMCE (AutoInitStartupBackends -> DetectMMCESlot) or if
+             * the user enters the MMCE page from the carousel. */
+            DPRINTF("mmceman deferred (boot_device_hint=\"%s\"); will load on demand.\n", boot_device_hint);
             mmce_slot0_ready = -1;
             mmce_slot1_ready = -1;
-            DPRINTF("MMCE probe deferred until MMCE page entry.\n");
-        } else {
-            mmce_slot0_ready = 0;
-            mmce_slot1_ready = 0;
+            BootStamp("mmceman deferred");
         }
     } else {
         DPRINTF("Skipping mmceman init; fileXio not ready.\n");
