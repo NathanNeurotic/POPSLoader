@@ -1,4 +1,4 @@
-Last updated: 2026-05-27 (release-prep)
+Last updated: 2026-05-28 (post-BETA-10-5; LAUNCH_ARGS game/debug consumers wired)
 
 # STATE
 
@@ -34,7 +34,9 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 - `parseLaunchArgs()` in `main.cpp` recognizes `-page=*`, `-mode=*` (NHDDL alias for `-page`), `-game=*`, `-debug`.
 - `System.getLaunchArgs()` exposes parsed values to Lua.
 - `PLDR.LAUNCH_ARGS = {page, page_raw, game, debug}` normalized in `system.lua`.
-- Auto-navigation wiring not yet consumed by `ui.lua`; the infrastructure is in place but a downstream PR is needed to wire `-page=hdd` into the initial page selection.
+- `-page=` drives carousel auto-nav (PR #462).
+- `-game=` triggers `PLDR.AutoLaunchFromLaunchArgs()` after `AutoInitStartupBackends`; requires `-page=` to be set so the target backend is brought up and the right scene is used. Supported pages: HDD (game format `PARTITION|relpath`), USB / MX4SIO / MMCE (game format `FILE.VCD`). On launch failure, falls through to the main menu with an error toast.
+- `-debug` queues a boot-context toast (`PLDR.SurfaceLaunchArgsDebug()`) showing the resolved `kind`, `boot_path`, `sidecar_path`, `settings`, and parsed launch args. Useful for diagnosing how POPSLoader classified its environment without rebuilding with DPRINTF.
 
 ### Backend init / runtime
 - Startup backend auto-init exists and uses boot path information, configured executable paths, and selected profile path.
@@ -102,13 +104,13 @@ Investigation artifacts archived: `docs/U10_INVESTIGATION.md` (hypotheses + diag
 
 ## Known Open Work
 
-1. **`PLDR.LAUNCH_ARGS.game` auto-launch wiring** — argv parser + Lua storage landed in PR #458. The `page` value drives carousel auto-nav (PR #462). `game` and `debug` are parsed but no consumer is wired yet.
-2. **Layer C full lazy IRX loading** — only the precursor (device hint) shipped. Aggressive deferrals (`mmceman` unless MMCE boot, `ds34bt` unless BT enabled, `usbd` unless USB family) queued for a separate PR. High reward for boot time; high risk to input/controller availability if done carelessly.
-3. **Settings sidecar first-run MC-to-sidecar migration** — currently we just save where we loaded from. Could optionally copy MC settings to per-device sidecar on first save when the user moves POPSLoader to a new device. Disabled for HDD installs (driver constraint).
-4. **Settings UI redesign (Berion mockup)** — Mockup PNGs still to land at `C:\Users\natha\Documents\assets\` for `docs/mockups/`. Hardware blockers (D-10/D-14/D-15/DKWDRV-MC/BOOT.ELF) are now settled per Nuno's BETA-10-5 hardware pass; this is ready to start once the visual oracle is committed.
-5. **U-10 / DKWDRV-HDD proper fixes** — pragmatically accepted as known-broken in BETA-10-5. If revisited, see `docs/U10_INVESTIGATION.md` for the hypothesis catalog and diagnostic-first workflow.
-6. **HDD r/w driver swap probe** (`ps2hdd-osd.irx` → `ps2hdd.irx`) — branch `claude/hdd-rw-probe` exists with the 2-line change ready for hardware test. Would unlock HDD settings sidecar IF D-10 doesn't regress.
-7. **HDD (exFAT), SMB (v1), ILINK** menu flows remain intentionally unimplemented.
+1. **Layer C full lazy IRX loading** — only the precursor (device hint) shipped. Aggressive deferrals (`mmceman` unless MMCE boot, `ds34bt` unless BT enabled, `usbd` unless USB family) queued for a separate PR. High reward for boot time; high risk to input/controller availability if done carelessly.
+2. **Settings UI redesign (Berion mockup)** — Mockup PNGs still to land at `C:\Users\natha\Documents\assets\` for `docs/mockups/`. Hardware blockers (D-10/D-14/D-15/DKWDRV-MC/BOOT.ELF) are now settled per Nuno's BETA-10-5 hardware pass; this is ready to start once the visual oracle is committed.
+3. **U-10 / DKWDRV-HDD proper fixes** — pragmatically accepted as known-broken in BETA-10-5. If revisited, see `docs/U10_INVESTIGATION.md` for the hypothesis catalog and diagnostic-first workflow.
+4. **HDD r/w driver swap probe** (`ps2hdd-osd.irx` → `ps2hdd.irx`) — branch `claude/hdd-rw-probe` exists with the 2-line change ready for hardware test. Would unlock HDD settings sidecar IF D-10 doesn't regress.
+5. **HDD (exFAT), SMB (v1), ILINK** menu flows remain intentionally unimplemented.
+
+(`PLDR.LAUNCH_ARGS.game` and `-debug` consumers wired in this branch — see Launch arguments section above. The first-run MC-to-sidecar settings migration is implemented in `LoadSettingsNonFatal` via the `migrate_to_sidecar` flag added in PR #462; it pins `PLDR.SETTINGS_PATH` to the sidecar location whenever settings load from the MC fallback but a non-HDD sidecar is computable.)
 
 ## Verification Status
 

@@ -1712,26 +1712,47 @@ local function ResolveBootContext()
     end
   end
 
+  -- Authoritative mass: classification rule (maintainer, 2026-05-28):
+  -- if ioctl/devctl identifies the mass slot as sdc/mx4, it is MX4SIO;
+  -- anything else is USB. Do not load mx4sio_bd just to find out. MX4SIO
+  -- does need the USB/BDM base first, but only after MX4SIO evidence is
+  -- present (explicit mx4sio:/ boot, sdc/mx4 driver identity, or marker).
   local function classify_mass_boot(root)
     if type(System) == "table" and type(System.getMassMountDriver) == "function" then
       local ok, driver = pcall(System.getMassMountDriver, root)
       if ok and type(driver) == "string" and driver ~= "" then
         local lowered = string.lower(driver)
         if string.find(lowered, "mx4", 1, true) ~= nil or string.find(lowered, "sdc", 1, true) ~= nil then
+          if type(System.initMX4SIO) == "function" then
+            pcall(System.initMX4SIO)
+          end
           return "MX4SIO"
+        end
+        if type(System.ensureUsbMass) == "function" then
+          pcall(System.ensureUsbMass)
         end
         return "USB"
       end
     end
+
     if type(APP_DIR_LOCAL) == "string" and APP_DIR_LOCAL ~= "" then
       local mx_marker = JoinPath(APP_DIR_LOCAL, ".boot_mx4sio")
       local usb_marker = JoinPath(APP_DIR_LOCAL, ".boot_usb")
       if doesFileExist(mx_marker) then
+        if type(System) == "table" and type(System.initMX4SIO) == "function" then
+          pcall(System.initMX4SIO)
+        end
         return "MX4SIO"
       end
       if doesFileExist(usb_marker) then
+        if type(System) == "table" and type(System.ensureUsbMass) == "function" then
+          pcall(System.ensureUsbMass)
+        end
         return "USB"
       end
+    end
+    if type(System) == "table" and type(System.ensureUsbMass) == "function" then
+      pcall(System.ensureUsbMass)
     end
     return "USB"
   end
@@ -3155,9 +3176,14 @@ function PLDR.AutoInitStartupBackends()
   local targets = CollectStartupBackendTargets()
   ClassifyStartupMassTargets(targets)
 
+  -- USB stays USB-only. MX4SIO gets initialized below only when
+  -- CollectStartupBackendTargets/driver identity already set targets.mx4sio.
   if targets.usb or targets.mass_probe_needed then
     if type(PLDR.EnsureUsbMassReadyOnce) == "function" then
       pcall(PLDR.EnsureUsbMassReadyOnce)
+    end
+    if type(PLDR.RefreshMassBackends) == "function" then
+      pcall(PLDR.RefreshMassBackends)
     end
     targets.mass_probe_needed = false
     ClassifyStartupMassTargets(targets)
@@ -3395,7 +3421,8 @@ function PLDR.EnsureBackendForAppDir()
     if mass_root ~= nil then
       driver = PLDR.GetMassMountDriver(mass_root)
     end
-    local is_mx4_mass_path = type(driver) == "string" and driver ~= "" and string.find(driver, "sdc", 1, true) ~= nil
+    local is_mx4_mass_path = type(driver) == "string" and driver ~= ""
+      and (string.find(driver, "sdc", 1, true) ~= nil or string.find(driver, "mx4", 1, true) ~= nil)
 
     if is_mx4_mass_path then
       if type(_G.ensureMx4sioInit) == "function" then
@@ -5093,8 +5120,100 @@ function Touch(FILE)
   end
 end
 
+-- NHDDL-style auto-launch from -page=<kind> -game=<selector>. Both args
+-- must be set; if either is missing, behavior is unchanged. Page selects
+-- the target device backend and scene; game is the device-specific
+-- selector that PLDR.RunPOPStarterGame already understands:
+--   page=hdd    game=<PARTITION>|<relpath>   e.g. __.POPS|SLUS_007.42.RAMPAGE.VCD
+--   page=usb    game=<FILE.VCD>              relative to mass:/POPS
+--   page=mmce   game=<FILE.VCD>              relative to mmce0:/POPS
+--   page=mx4sio game=<FILE.VCD>              relative to mx4sio:/POPS
+-- On success the function never returns (ExecPS2 hands off to POPSTARTER).
+-- On failure it returns false and the welcome screen + main menu run
+-- normally with an error toast queued for the user.
+function PLDR.AutoLaunchFromLaunchArgs()
+  if type(PLDR.LAUNCH_ARGS) ~= "table" then return false end
+  local page = PLDR.LAUNCH_ARGS.page
+  local game = PLDR.LAUNCH_ARGS.game
+  if type(page) ~= "string" or page == "" then return false end
+  if type(game) ~= "string" or game == "" then return false end
+  if type(UI) ~= "table" or type(UI.SCENES) ~= "table" then return false end
+
+  local scene, gamelocation
+  if page == "HDD" and UI.SCENES.GHDD ~= nil then
+    scene = UI.SCENES.GHDD
+    gamelocation = ""
+    if type(PLDR.LoadHDDModules) == "function" then
+      pcall(PLDR.LoadHDDModules)
+    end
+  elseif page == "USB" and UI.SCENES.GUSBFAT ~= nil then
+    scene = UI.SCENES.GUSBFAT
+    gamelocation = "mass:/POPS"
+    if type(PLDR.EnsureUsbMassReadyOnce) == "function" then
+      pcall(PLDR.EnsureUsbMassReadyOnce)
+    end
+  elseif page == "MX4SIO" and UI.SCENES.GMX4SIO ~= nil then
+    scene = UI.SCENES.GMX4SIO
+    gamelocation = "mx4sio:/POPS"
+    if type(PLDR.InitMX4SIOPopsRoot) == "function" then
+      pcall(PLDR.InitMX4SIOPopsRoot)
+    end
+  elseif page == "MMCE" and UI.SCENES.GSMB ~= nil then
+    scene = UI.SCENES.GSMB
+    if type(PLDR.DetectMMCESlot) == "function" then
+      pcall(PLDR.DetectMMCESlot, true)
+    end
+    local mmce_prefix = (type(PLDR.MMCE) == "table" and PLDR.MMCE.PREFIX) or "mmce0:/"
+    gamelocation = mmce_prefix.."POPS"
+  else
+    if type(UI.Notif_queue) == "table" and type(UI.Notif_queue.add) == "function" then
+      UI.Notif_queue.add("Auto-launch page not supported: "..tostring(page), "warn")
+    end
+    return false
+  end
+
+  UI.CURSCENE = scene
+  if UI.LASTSCENE == nil then
+    UI.LASTSCENE = scene
+  end
+
+  local ok, err = pcall(PLDR.RunPOPStarterGame, gamelocation, game, scene, nil)
+  if not ok and type(UI.Notif_queue) == "table" and type(UI.Notif_queue.add) == "function" then
+    UI.Notif_queue.add("Auto-launch failed: "..tostring(err), "error")
+  end
+  return ok
+end
+
+-- Debug consumer: when -debug is passed, surface the resolved boot context
+-- and launch args as a toast so the user can verify how POPSLoader classified
+-- its environment without rebuilding with DPRINTF enabled. Visible on the
+-- main menu if no -game= is passed, or on the main menu after an auto-launch
+-- failure if both -debug and -game= are passed.
+function PLDR.SurfaceLaunchArgsDebug()
+  if type(PLDR.LAUNCH_ARGS) ~= "table" or PLDR.LAUNCH_ARGS.debug ~= true then
+    return
+  end
+  if type(UI) ~= "table" or type(UI.Notif_queue) ~= "table"
+     or type(UI.Notif_queue.add) ~= "function" then
+    return
+  end
+  local lines = {"[debug] boot context"}
+  local ctx = (type(PLDR.GetBootContext) == "function") and PLDR.GetBootContext() or nil
+  if type(ctx) == "table" then
+    lines[#lines+1] = "kind: "..tostring(ctx.kind or "<nil>")
+    lines[#lines+1] = "boot_path: "..tostring(ctx.boot_path or "<nil>")
+    lines[#lines+1] = "sidecar: "..tostring(ctx.sidecar_path or "<nil>")
+  end
+  lines[#lines+1] = "settings: "..tostring(PLDR.SETTINGS_PATH or "<nil>")
+  lines[#lines+1] = "args.page: "..tostring(PLDR.LAUNCH_ARGS.page or "<nil>")
+  lines[#lines+1] = "args.game: "..tostring(PLDR.LAUNCH_ARGS.game or "<nil>")
+  UI.Notif_queue.add(table.concat(lines, "\n"), "info")
+end
+
 PLDR.LoadSettingsNonFatal()
 PLDR.AutoInitStartupBackends()
+PLDR.SurfaceLaunchArgsDebug()
+PLDR.AutoLaunchFromLaunchArgs()
 
 ---MAIN PROGRAM BEHAVIOUR BEGINS
 local initial_scene = UI.SCENES.MMAIN
