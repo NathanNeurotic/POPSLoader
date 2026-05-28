@@ -444,12 +444,19 @@ int main(int argc, char * argv[])
 
 	LOAD_IRX_NARG(sio2man_irx);
     if (filexio_ok) {
-        /* Layer C: mmceman is only needed for MMCE memcards. Load it
-         * eagerly only when the boot device is MMCE; otherwise defer to
-         * PLDR.EnsureMmceReadyOnce in system.lua (which calls
-         * System.ensureMmceman before any MMCE probe). All HDD root
-         * variants (hdd, hdd0, pfs, pfs0, pfs1, ata, apa) classify as
-         * "HDD" via detectBootDeviceHintFromArgv0 and defer. */
+        /* Layer C: mmceman is only needed for MMCE memcards (third-party
+         * memory card adapters like MemoryCard Pro that expose mmce0:/,
+         * mmce1:/ paths). This is a DISTINCT device from standard PS2
+         * memory cards, which use mc0:/, mc1:/ paths and the mcman/mcserv
+         * IRX stack loaded unconditionally just below.
+         *
+         * Load mmceman eagerly only when the boot device is MMCE;
+         * otherwise defer to PLDR.EnsureMmceReadyOnce in system.lua
+         * (which calls System.ensureMmceman before any MMCE probe).
+         * All HDD root variants (hdd, hdd0, pfs, pfs0, pfs1, ata, apa)
+         * classify as "HDD" via detectBootDeviceHintFromArgv0 and defer;
+         * MC-booted units (boot_device_hint == "MC") also defer, since
+         * MC support is provided entirely by mcman/mcserv. */
         bool mmceman_required_at_boot = (strcmp(boot_device_hint, "MMCE") == 0);
         if (mmceman_required_at_boot) {
             int mmceman_id = -1;
