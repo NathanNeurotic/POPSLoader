@@ -16,7 +16,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: ps2dev/ps2dev:latest
+      # Pinned to v2.0.0 (2026-05-17 release) so unrelated upstream
+      # toolchain changes don't silently break our builds. To upgrade:
+      # check https://hub.docker.com/r/ps2dev/ps2dev/tags, verify the
+      # target tag builds POPSLoader locally (or via a draft PR), then
+      # update this line.
+      image: ps2dev/ps2dev:v2.0.0
 
     steps:
       - name: Install dependencies
