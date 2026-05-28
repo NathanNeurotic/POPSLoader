@@ -1,9 +1,11 @@
 # POPSLoader High-Level Code Audit
 
-**Audited branch:** `BETA-12-PLAY`
+**Audited branch:** `BETA-12-PLAY` at commit `dc7184c` (the audit snapshot point)
 **Audit date:** 2026-05-23
 **Auditor:** Antigravity (AI)
 **Scope:** Read-only survey of checked-out source. No source changes made.
+
+> **Historical note (2026-05-28):** This audit is a snapshot from before the BETA-10-5 release (tagged 2026-05-27 at `9a0ebe2`) and before the post-release PRs #470 (LAUNCH_ARGS consumers), #472 (MX4SIO evidence-based classification), and #473 (Lua forward-reference hotfix). Some of the "Findings" and "Recommended Next Steps" below have since been acted on. Treat this file as **historical reference**; the current state lives in [STATE.md](../STATE.md), [TRUTHSHEET.md](../TRUTHSHEET.md), and [QA_REGRESSION_MATRIX.md](../QA_REGRESSION_MATRIX.md).
 
 ---
 
@@ -251,7 +253,7 @@ Key `System.*` bindings relevant to launch:
 ### 3.8 CI Pipeline (`compilation.yml`)
 
 **Not read in full during this audit pass, but cross-referenced from docs:**
-- Compiles in `ps2dev/ps2dev:latest` container.
+- Compiles in `ps2dev/ps2dev:v2.0.0` container (pinned post-release at commit `ba8f0d0`; at audit time the workflow still used `:latest`).
 - Checks that `src/elf_loader/loader.c` matches the regenerated child loader.
 - Checks for embedded runtime markers in the final ELF.
 - Packages `PS1_POPSLOADER/*` + `POPS/PATCH_5.BIN` + `PS1_POPSLOADER/BUILD_INFO.txt`.

@@ -1,11 +1,23 @@
 # U-10 Investigation: BOOT.ELF exit from HDD-booted POPSLoader
 
-Date: 2026-05-26
+Date: 2026-05-26 (original), updated 2026-05-28 with PR #463/#464 outcomes
 Author: Claude (with NathanNeurotic direction)
 
-## Status
+## Status (as of BETA-10-5, 2026-05-27)
 
-**Open. Not solved by any prior attempt.** Multiple agents (Codex, Antigravity, Claude) have tried; all failed. This document is the consolidated investigation note before the next attempt, intended to stop the cycle of throwing fixes at the wall without instrumentation.
+**Known broken — accepted for release.** Per Nuno + maintainer 2026-05-27 ("rollout dkwdrv; vast majority of users will have other devices for DKWDRV, small percentage have HDD installs"), U-10 is pragmatically accepted in BETA-10-5 with a documented workaround. Users hit by it use **Exit → OSDSYS** or reboot the console.
+
+This file is preserved as the **hypothesis catalog for any future revisit**. Investigation discipline still applies: ship a diagnostic build before another fix attempt; verify one hypothesis at a time.
+
+### What was tried since the original investigation note
+
+- **PR #463 diagnostic build** (`LOADER_ENABLE_DEBUG_COLORS=1`, branch `claude/diag-u10`): localized the hang. Last visible stage on hardware (Nuno 2026-05-26) was **YELLOW** (post-`SifLoadElf`, pre-`SifIopReset`). The **ORANGE** post-reset stage never paints — `SifIopReset` itself hangs. This matches **H5** below (stale `pfs1:` mount blocks the reset, similar to the documented `fileXio`-blocks-reset class from ps2sdk #425).
+- **PR #464 F4 fix**: `LoadELFFromFileExecPS2RebootIOPWithPartition` unconditionally calls `unmount_pfs_slots_for_exec(build_exec_keep_mask(resolved_path))` before `SifIopReset` (was previously gated on HDD-backed exec path, which skipped the unmount for BOOT.ELF on MC). Plus `etc/boot.lua` normalizes any pfs slot prefix in `BOOTPATH` to `pfs1:` so Lua's cwd matches the actual mount slot. **Hardware result 2026-05-27 (Nuno): FAIL — still black-screens.** F4 unconditional unmount alone wasn't enough.
+- **PR #466 release prep**: accepted U-10 as known-broken; closed PR #463 (diag) and PR #465 (HDD r/w driver swap probe) as superseded. Branches preserved.
+
+The H5-based unmount approach (F4) doesn't fix it; the next investigation angle would likely be **H1** (explicit `dev9Shutdown` before exec) or stacking F1+F4. But the diagnostic-first discipline applies: confirm via colored sentinel that the hang point moved before claiming a fix on hardware.
+
+> **This file is U-10-specific.** Other BOOT.ELF routes (autoboot / OSDmenu / Browser / HOSDMenu / PSBBN / USB-booted POPSLoader) work via the V2 route at commit `d23520a` and are hardware-confirmed. Do not collapse U-10 status into generic BOOT.ELF status.
 
 ## Symptom
 
