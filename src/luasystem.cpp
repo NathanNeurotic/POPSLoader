@@ -176,7 +176,7 @@ static const char *ClassifyMassBackend(const char *driver)
 	if (strstr(driver, "usb") != NULL) {
 		return "usb";
 	}
-	if (strstr(driver, "sdc") != NULL || strstr(driver, "mx4sio") != NULL) {
+	if (strstr(driver, "sdc") != NULL || strstr(driver, "mx4") != NULL) {
 		return "mx4sio";
 	}
 	if (strstr(driver, "mmce") != NULL) {

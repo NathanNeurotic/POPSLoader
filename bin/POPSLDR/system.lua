@@ -1703,74 +1703,47 @@ local function ResolveBootContext()
     end
   end
 
-  -- Authoritative mass: classification rule (per maintainer 2026-05-28):
-  --   "If ioctl/devctl is ANYTHING OTHER THAN sdc or mx4, and it's a
-  --    mass device, then it is USB. If a mass device is sdc/mx4 on
-  --    ioctl/devctl, then it must be MX4SIO."
-  --   "MX4SIO should only init on startup if it came from mx4sio:/ or
-  --    mass with sdc devctl".
-  --
-  -- mass paths are volatile -- mass:/, mass0:/, ..., mass7:/, mx4sio:/,
-  -- usb:/ can each be either backend depending on hotplug + IRX load
-  -- order. The ONLY trustworthy way to disambiguate is the ioctl driver
-  -- name. For ioctl to return a driver name the device must be claimed
-  -- by a loaded backend.
-  --
-  -- We CONDITIONALLY load mx4sio_bd: usbmass_bd is loaded first (cheap,
-  -- claims only USB devices). If ioctl then returns a non-empty driver
-  -- name, classification is settled WITHOUT loading mx4sio_bd. Pure USB
-  -- boots never pay the mx4sio_bd cost. Only when ioctl returns empty
-  -- (mass slot unclaimed by usbmass_bd, likely an MX4SIO card whose
-  -- driver isn't loaded yet) do we load mx4sio_bd and re-probe with a
-  -- short sleep for the MX4SIO double-ping quirk.
+  -- Authoritative mass: classification rule (maintainer, 2026-05-28):
+  -- if ioctl/devctl identifies the mass slot as sdc/mx4, it is MX4SIO;
+  -- anything else is USB. Do not load mx4sio_bd just to find out. MX4SIO
+  -- does need the USB/BDM base first, but only after MX4SIO evidence is
+  -- present (explicit mx4sio:/ boot, sdc/mx4 driver identity, or marker).
   local function classify_mass_boot(root)
-    -- Stage 1: usbmass_bd-only probe.
-    if type(System) == "table" and type(System.ensureUsbMass) == "function" then
-      pcall(System.ensureUsbMass)
-    end
-
     if type(System) == "table" and type(System.getMassMountDriver) == "function" then
       local ok, driver = pcall(System.getMassMountDriver, root)
       if ok and type(driver) == "string" and driver ~= "" then
         local lowered = string.lower(driver)
         if string.find(lowered, "mx4", 1, true) ~= nil or string.find(lowered, "sdc", 1, true) ~= nil then
+          if type(System.initMX4SIO) == "function" then
+            pcall(System.initMX4SIO)
+          end
           return "MX4SIO"
+        end
+        if type(System.ensureUsbMass) == "function" then
+          pcall(System.ensureUsbMass)
         end
         return "USB"
       end
     end
 
-    -- Stage 2: ioctl empty -> mass slot exists but no loaded backend
-    -- claimed it. Load mx4sio_bd and re-probe ONCE (with sleep for the
-    -- double-ping). This is the "mass with sdc devctl" startup path.
-    if type(System) == "table" and type(System.initMX4SIO) == "function" then
-      pcall(System.initMX4SIO)
-      if type(System.sleep) == "function" then
-        pcall(System.sleep, 1)
-      end
-      if type(System.getMassMountDriver) == "function" then
-        local ok, driver = pcall(System.getMassMountDriver, root)
-        if ok and type(driver) == "string" and driver ~= "" then
-          local lowered = string.lower(driver)
-          if string.find(lowered, "mx4", 1, true) ~= nil or string.find(lowered, "sdc", 1, true) ~= nil then
-            return "MX4SIO"
-          end
-          return "USB"
-        end
-      end
-    end
-
-    -- Stage 3: even after both backends loaded, ioctl returned empty.
-    -- Extreme hardware quirk. Fall back to legacy markers, then USB.
     if type(APP_DIR_LOCAL) == "string" and APP_DIR_LOCAL ~= "" then
       local mx_marker = JoinPath(APP_DIR_LOCAL, ".boot_mx4sio")
       local usb_marker = JoinPath(APP_DIR_LOCAL, ".boot_usb")
       if doesFileExist(mx_marker) then
+        if type(System) == "table" and type(System.initMX4SIO) == "function" then
+          pcall(System.initMX4SIO)
+        end
         return "MX4SIO"
       end
       if doesFileExist(usb_marker) then
+        if type(System) == "table" and type(System.ensureUsbMass) == "function" then
+          pcall(System.ensureUsbMass)
+        end
         return "USB"
       end
+    end
+    if type(System) == "table" and type(System.ensureUsbMass) == "function" then
+      pcall(System.ensureUsbMass)
     end
     return "USB"
   end
@@ -3192,43 +3165,13 @@ end
 
 function PLDR.AutoInitStartupBackends()
   local targets = CollectStartupBackendTargets()
-
-  -- Mass storage classification rule (per maintainer 2026-05-28):
-  -- "MX4SIO should only init on startup if it came from mx4sio:/ or
-  --  mass with sdc devctl".
-  --
-  -- So mx4sio_bd is loaded ONLY when there's actual evidence MX4SIO is
-  -- involved: the boot prefix was mx4sio:/ (caught upstream by
-  -- CollectStartupBackendTargets -> targets.mx4sio), OR a mass slot
-  -- exists but no currently-loaded backend has claimed it (ambiguous
-  -- = could be MX4SIO whose driver isn't loaded yet). Pure USB boots
-  -- with USB devices on mass:/ never trigger the mx4sio_bd load --
-  -- usbmass_bd is enough, ioctl returns a non-sdc/mx4 driver name,
-  -- and classification settles to USB definitively.
-  --
-  -- Step 1: usbmass_bd is always safe to load (cheap, idempotent, only
-  -- claims USB devices). It gives the ioctl driver lookup something to
-  -- report for any USB device that's present.
-  if type(PLDR.EnsureUsbMassReadyOnce) == "function" then
-    pcall(PLDR.EnsureUsbMassReadyOnce)
-  end
-  if type(PLDR.RefreshMassBackends) == "function" then
-    pcall(PLDR.RefreshMassBackends)
-  end
-
   ClassifyStartupMassTargets(targets)
 
-  -- Step 2: if any mass slot is ambiguous (mass_probe_needed = true),
-  -- the slot is present but no loaded backend claimed it. The most
-  -- likely cause is an MX4SIO card whose driver isn't loaded yet.
-  -- THIS is the only path that loads mx4sio_bd at startup, matching
-  -- the "mass with sdc devctl" rule once the driver is up to confirm.
-  if targets.mass_probe_needed then
-    if type(System) == "table" and type(System.initMX4SIO) == "function" then
-      pcall(System.initMX4SIO)
-    end
-    if type(System) == "table" and type(System.sleep) == "function" then
-      pcall(System.sleep, 1) -- MX4SIO double-ping settle
+  -- USB stays USB-only. MX4SIO gets initialized below only when
+  -- CollectStartupBackendTargets/driver identity already set targets.mx4sio.
+  if targets.usb or targets.mass_probe_needed then
+    if type(PLDR.EnsureUsbMassReadyOnce) == "function" then
+      pcall(PLDR.EnsureUsbMassReadyOnce)
     end
     if type(PLDR.RefreshMassBackends) == "function" then
       pcall(PLDR.RefreshMassBackends)
@@ -3469,7 +3412,8 @@ function PLDR.EnsureBackendForAppDir()
     if mass_root ~= nil then
       driver = PLDR.GetMassMountDriver(mass_root)
     end
-    local is_mx4_mass_path = type(driver) == "string" and driver ~= "" and string.find(driver, "sdc", 1, true) ~= nil
+    local is_mx4_mass_path = type(driver) == "string" and driver ~= ""
+      and (string.find(driver, "sdc", 1, true) ~= nil or string.find(driver, "mx4", 1, true) ~= nil)
 
     if is_mx4_mass_path then
       if type(_G.ensureMx4sioInit) == "function" then
