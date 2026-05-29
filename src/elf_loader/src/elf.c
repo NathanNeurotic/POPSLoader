@@ -642,29 +642,36 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 		return ExecuteHddBackedViaEmbeddedLoader(resolved_path, partition, argc, argv);
 	}
 
-	/* B2 (Nuno hardware report 2026-05-29): HDD-launched POPSLoader -> Exit
-	 * -> BOOT.ELF reaches here because ui.lua forces reboot_iop=1 when an
-	 * HDD page was used this session. The manual SifIopReset -> reload-MC-
-	 * modules -> ExecPS2 sequence below then hangs POST-reset: the
-	 * diagnostic build stopped at BLUE for HOSDMENU (hang in the post-reset
-	 * SifInitRpc / SifLoadModule MC reload) and reached RED for wLE (hang at
-	 * ExecPS2). SifIopReset itself COMPLETES -- the reset is not the
-	 * problem; doing the reload+exec from POPSLoader's live EE process is.
+	/* B2 (Nuno hardware report 2026-05-29): POPSLoader was BOOTED FROM HDD,
+	 * then triangle -> Exit -> BOOT.ELF (the normal mc0:/mc1: BOOT.ELF, NOT
+	 * an HDD-backed target). ui.lua forces reboot_iop=1 here because the HDD
+	 * boot left pfs1: mounted, so we land in this reboot variant. Its manual
+	 * SifIopReset -> reload-MC-modules -> ExecPS2 sequence below hangs
+	 * POST-reset: the diagnostic stopped at BLUE for HOSDMENU (hang in the
+	 * post-reset SifInitRpc / SifLoadModule MC reload) and reached RED for
+	 * wLE (hang at ExecPS2). SifIopReset itself COMPLETES -- the reset is
+	 * not the problem; the in-EE-process reload+exec is.
 	 *
-	 * Non-HDD-launched BOOT.ELF works because ui.lua leaves reboot_iop=0, so
-	 * it goes through LoadELFFromFileWithPartition -> the embedded child
-	 * loader (identical mc0/mc1 case there). The child loader runs as a
-	 * fresh EE process whose own startup performs the IOP reset (the proven
-	 * Layer-A contract) and unmounts pfs internally (loader.c), so it is
-	 * robust to the HDD session state. Route HDD-launched BOOT.ELF through
-	 * that SAME proven path instead of the fragile in-process reboot
-	 * sequence. No manual PFS unmount / fileXioExit is needed here -- the
-	 * child loader's startup reset tears the IOP (including pfs1:) down.
+	 * Non-HDD-booted POPSLoader -> BOOT.ELF works because ui.lua leaves
+	 * reboot_iop=0 and it goes through the embedded child loader, which does
+	 * NOT do that fragile in-process reset+reload. Route this case through
+	 * the same proven child loader.
+	 *
+	 * IMPORTANT (the gap in the first B2 attempt): the child loader does NOT
+	 * reset the IOP, and for an mc:/ target it takes its generic branch
+	 * which does NOT unmount pfs (loader.c only unmounts pfs for HDD-
+	 * partition-context *targets*). Since POPSLoader was booted from HDD,
+	 * pfs1: is STILL MOUNTED -- so we must tear the live PFS mounts + fileXio
+	 * down HERE, in-process, before handing off, or BOOT.ELF starts on top
+	 * of a live pfs1:/HDD state. keep_mask=0: a cold BOOT.ELF launch needs
+	 * no pfs slot preserved.
 	 */
 	if (strcmp(resolved_path, "mc0:/BOOT/BOOT.ELF") == 0 ||
 	    strcmp(resolved_path, "mc1:/BOOT/BOOT.ELF") == 0) {
 		char *boot_argv[1];
 		boot_argv[0] = (char *)resolved_path;
+		unmount_pfs_slots_for_exec(0);
+		fileXioExit();
 		return ExecuteViaEmbeddedLoader("", resolved_path, 1, boot_argv);
 	}
 
