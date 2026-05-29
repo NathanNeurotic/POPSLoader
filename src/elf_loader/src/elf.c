@@ -642,70 +642,85 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 		return ExecuteHddBackedViaEmbeddedLoader(resolved_path, partition, argc, argv);
 	}
 
-	/* B2 (Nuno hardware report 2026-05-29): POPSLoader was BOOTED FROM HDD,
-	 * then triangle -> Exit -> BOOT.ELF (the normal mc0:/mc1: BOOT.ELF, NOT
-	 * an HDD-backed target). ui.lua forces reboot_iop=1 here because the HDD
-	 * boot left pfs1: mounted, so we land in this reboot variant. Its manual
-	 * SifIopReset -> reload-MC-modules -> ExecPS2 sequence below hangs
-	 * POST-reset: the diagnostic stopped at BLUE for HOSDMENU (hang in the
-	 * post-reset SifInitRpc / SifLoadModule MC reload) and reached RED for
-	 * wLE (hang at ExecPS2). SifIopReset itself COMPLETES -- the reset is
-	 * not the problem; the in-EE-process reload+exec is.
-	 *
-	 * Non-HDD-booted POPSLoader -> BOOT.ELF works because ui.lua leaves
-	 * reboot_iop=0 and it goes through the embedded child loader, which does
-	 * NOT do that fragile in-process reset+reload. Route this case through
-	 * the same proven child loader.
-	 *
-	 * IMPORTANT (the gap in the first B2 attempt): the child loader does NOT
-	 * reset the IOP, and for an mc:/ target it takes its generic branch
-	 * which does NOT unmount pfs (loader.c only unmounts pfs for HDD-
-	 * partition-context *targets*). Since POPSLoader was booted from HDD,
-	 * pfs1: is STILL MOUNTED -- so we must tear the live PFS mounts + fileXio
-	 * down HERE, in-process, before handing off, or BOOT.ELF starts on top
-	 * of a live pfs1:/HDD state. keep_mask=0: a cold BOOT.ELF launch needs
-	 * no pfs slot preserved.
-	 */
-	if (strcmp(resolved_path, "mc0:/BOOT/BOOT.ELF") == 0 ||
-	    strcmp(resolved_path, "mc1:/BOOT/BOOT.ELF") == 0) {
-		char *boot_argv[1];
-		boot_argv[0] = (char *)resolved_path;
-		unmount_pfs_slots_for_exec(0);
-		fileXioExit();
-		return ExecuteViaEmbeddedLoader("", resolved_path, 1, boot_argv);
-	}
-
-	/* Class B / U-10 exit-path diagnostic. When EXIT_DEBUG_COLORS is
-	 * defined (Makefile toggle, off by default), paint the GS background
-	 * register at each stage of the direct-launch sequence so a hardware
-	 * tester's photograph of the hang point tells us exactly which call
-	 * pinned the IOP. This is a pure no-op in release builds.
-	 *
-	 *   WHITE  - entered direct-launch (post-HDD-backed gate)
-	 *   CYAN   - SifLoadElf returned with a valid ELF
-	 *   GREEN  - unmount_pfs_slots_for_exec returned
-	 *   YELLOW - FlushCache(0) returned, about to SifIopReset
-	 *   ORANGE - SifIopReset returned (suspect from PR #463 -- screen
-	 *            stops here on U-10 with current code)
-	 *   BLUE   - SifIopSync returned
-	 *   PURPLE - re-init RPC + reload MC modules returned
-	 *   RED    - about to ExecPS2 the loaded ELF
-	 *
-	 * UPDATE (B1, 2026-05-29): the fileXioExit() teardown this note
-	 * predicted is now APPLIED below (after the PFS unmount, before the
-	 * reset). Corroborated independently by a Codex audit of cc74a3e and
-	 * by this project's own prior analysis. So this build is now a
-	 * CANDIDATE-FIX + diagnostic in one:
-	 *   - If U-10 now boots through (screen sails past YELLOW to ORANGE/
-	 *     BLUE/PURPLE/RED and BOOT.ELF launches), B1 is confirmed.
-	 *   - If it still stops at YELLOW, fileXioExit was insufficient and
-	 *     the next angle is dev9Shutdown() for HDD-launched POPSLoader.
-	 */
+	/* EXIT_DEBUG_COLORS: paint the GS background register at each stage so a
+	 * hardware tester's photo of the hang point tells us which call pinned
+	 * the IOP. No-op in release builds. Defined here so both the wLE-matched
+	 * BOOT.ELF handler below and the general direct-launch path can use it. */
 #ifdef EXIT_DEBUG_COLORS
 #define SET_EXIT_BG(c) {*((volatile unsigned long int *)0x120000E0) = c;}
 #else
 #define SET_EXIT_BG(c)
 #endif
+
+	/* wLE-matched BOOT.ELF exit (Nuno hardware 2026-05-29). Scenario:
+	 * POPSLoader was BOOTED FROM HDD, then triangle -> Exit -> BOOT.ELF
+	 * (the normal mc0:/mc1: target). ui.lua forces reboot_iop=1 for the HDD
+	 * session, landing here. The general direct-launch path below reloads MC
+	 * modules AFTER SifIopReset -- and that is exactly where hardware hung:
+	 * HOSDMENU stopped at BLUE (in the post-reset SifInitRpc / SifLoadModule
+	 * block) and wLE reached RED (ExecPS2). SifIopReset itself COMPLETES.
+	 *
+	 * POPSLoader's elf_loader is forked from wLaunchELF, whose loader.c does
+	 * NOT reload any modules after the reset: it loads the target ELF into EE
+	 * RAM, resets the IOP, SifExitRpc, ExecPS2, and lets the target load its
+	 * own IRXs. Mirror that proven sequence here, scoped to BOOT.ELF so MC
+	 * DKWDRV / generic keep their current (working) reload path below.
+	 *
+	 * The ELF is loaded into EE RAM BEFORE the reset (survives it, needs no
+	 * IOP modules at exec time). pfs1: (live from the HDD boot) + fileXio are
+	 * torn down first; SifIopReset then clears the rest of the IOP. NO
+	 * post-reset reload -- that block is POPSLoader's non-wLE divergence and
+	 * the confirmed hang site.
+	 */
+	if (strcmp(resolved_path, "mc0:/BOOT/BOOT.ELF") == 0 ||
+	    strcmp(resolved_path, "mc1:/BOOT/BOOT.ELF") == 0) {
+		char *boot_argv[1];
+		boot_argv[0] = (char *)resolved_path;
+
+		SET_EXIT_BG(0xFFFFFF); /* WHITE - BOOT.ELF handler entered */
+		SifInitRpc(0);
+		SifLoadFileInit();
+		ret = SifLoadElf(resolved_path, &elfdata);
+		SifLoadFileExit();
+		if (ret != 0 || elfdata.epc == 0) {
+			return -2;
+		}
+		SET_EXIT_BG(0xFFFF00); /* CYAN - SifLoadElf OK, ELF in EE RAM */
+
+		unmount_pfs_slots_for_exec(0); /* clear pfs1: from the HDD boot */
+		fileXioExit();
+		SET_EXIT_BG(0x00FF00); /* GREEN - pfs + fileXio torn down */
+
+		FlushCache(0);
+		SET_EXIT_BG(0x00FFFF); /* YELLOW - about to SifIopReset */
+		while (!SifIopReset("", 0)) {
+		}
+		SET_EXIT_BG(0x00A5FF); /* ORANGE - SifIopReset returned */
+		while (!SifIopSync()) {
+		}
+		SET_EXIT_BG(0xFF0000); /* BLUE - SifIopSync returned */
+
+		/* wLE contract: NO post-reset module reload -- straight to ExecPS2. */
+		SifExitRpc();
+		FlushCache(0);
+		FlushCache(2);
+		SET_EXIT_BG(0x0000FF); /* RED - about to ExecPS2 (wLE-matched) */
+		ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, 1, boot_argv);
+		return -1;
+	}
+
+	/* Class B / U-10 exit-path diagnostic for the GENERAL direct-launch path
+	 * (MC DKWDRV, generic non-HDD-backed reboot launches). BOOT.ELF no longer
+	 * reaches here -- it is handled by the wLE-matched branch above. Colors:
+	 *   WHITE  - entered general direct-launch
+	 *   CYAN   - SifLoadElf returned with a valid ELF
+	 *   GREEN  - unmount_pfs_slots_for_exec returned
+	 *   YELLOW - FlushCache(0) returned, about to SifIopReset
+	 *   ORANGE - SifIopReset returned
+	 *   BLUE   - SifIopSync returned
+	 *   PURPLE - re-init RPC + reload MC modules returned
+	 *   RED    - about to ExecPS2 the loaded ELF
+	 */
 	SET_EXIT_BG(0xFFFFFF); /* WHITE - entered direct-launch */
 
 	SifInitRpc(0);
