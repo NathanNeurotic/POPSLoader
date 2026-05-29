@@ -611,12 +611,48 @@ extern "C" void _ps2sdk_memory_init() {
      * MC autoboot) are unaffected: each new call has a "not
      * initialized" guard. The only behavioral delta is that the IOP
      * reset now completes instead of hanging when fileXio was alive.
+     *
+     * Class A diagnostic (BOOTSTRAP_DEBUG_COLORS): Nuno 2026-05-28 PM
+     * reported "HOSDmenu black screens when launching POPSLoader, we
+     * don't even get to the splash" and "Some builds of wLE blackscreen
+     * as well when booting POPSLoader." Layer A above was meant to
+     * resolve this class (parent-launcher IOP poisoning POPSLoader's
+     * startup) but apparently doesn't for HOSDmenu and certain wLE
+     * builds. Stage-paint the GS background register at each step so
+     * a hardware tester's photograph tells us exactly which call hangs.
+     * The macro is a no-op unless BOOTSTRAP_DEBUG_COLORS is defined in
+     * the build (release builds stay clean).
+     *
+     *   WHITE  - _ps2sdk_memory_init entry (parent IOP state inherited)
+     *   CYAN   - SifExitRpc returned
+     *   GREEN  - SifInitRpc(0) returned (first call)
+     *   YELLOW - fileXioExit returned
+     *   ORANGE - SifIopReset returned (the historically suspect call)
+     *   BLUE   - SifIopSync returned
+     *   PURPLE - SifInitRpc(0) returned (final, about to enter main)
+     *
+     * If the screen stays the previous color for >5 seconds with no
+     * progress, that's the call that hung. Send a photo back so we
+     * know which hypothesis to pursue.
      */
+#ifdef BOOTSTRAP_DEBUG_COLORS
+#define SET_BOOTSTRAP_BG(c) {*((volatile unsigned long int *)0x120000E0) = c;}
+#else
+#define SET_BOOTSTRAP_BG(c)
+#endif
+    SET_BOOTSTRAP_BG(0xFFFFFF); /* WHITE  - entry */
     SifExitRpc();
+    SET_BOOTSTRAP_BG(0xFFFF00); /* CYAN   - after SifExitRpc */
     SifInitRpc(0);
+    SET_BOOTSTRAP_BG(0x00FF00); /* GREEN  - after first SifInitRpc(0) */
     fileXioExit();
+    SET_BOOTSTRAP_BG(0x00FFFF); /* YELLOW - after fileXioExit */
     while (!SifIopReset("", 0)){};
+    SET_BOOTSTRAP_BG(0x00A5FF); /* ORANGE - after SifIopReset */
     while (!SifIopSync()){};
+    SET_BOOTSTRAP_BG(0xFF0000); /* BLUE   - after SifIopSync */
     SifInitRpc(0);
+    SET_BOOTSTRAP_BG(0x800080); /* PURPLE - after final SifInitRpc */
+#undef SET_BOOTSTRAP_BG
 #endif
 }

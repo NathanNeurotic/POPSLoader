@@ -642,6 +642,35 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 		return ExecuteHddBackedViaEmbeddedLoader(resolved_path, partition, argc, argv);
 	}
 
+	/* Class B / U-10 exit-path diagnostic. When EXIT_DEBUG_COLORS is
+	 * defined (Makefile toggle, off by default), paint the GS background
+	 * register at each stage of the direct-launch sequence so a hardware
+	 * tester's photograph of the hang point tells us exactly which call
+	 * pinned the IOP. This is a pure no-op in release builds.
+	 *
+	 *   WHITE  - entered direct-launch (post-HDD-backed gate)
+	 *   CYAN   - SifLoadElf returned with a valid ELF
+	 *   GREEN  - unmount_pfs_slots_for_exec returned
+	 *   YELLOW - FlushCache(0) returned, about to SifIopReset
+	 *   ORANGE - SifIopReset returned (suspect from PR #463 -- screen
+	 *            stops here on U-10 with current code)
+	 *   BLUE   - SifIopSync returned
+	 *   PURPLE - re-init RPC + reload MC modules returned
+	 *   RED    - about to ExecPS2 the loaded ELF
+	 *
+	 * If the tester's screen stops on YELLOW (no further paint for >5s)
+	 * we have direct confirmation that SifIopReset is the hang point and
+	 * the next F-fix angle (fileXioExit() / dev9Shutdown() before reset,
+	 * mirroring the Layer A teardown in main.cpp::_ps2sdk_memory_init)
+	 * is the right next experiment.
+	 */
+#ifdef EXIT_DEBUG_COLORS
+#define SET_EXIT_BG(c) {*((volatile unsigned long int *)0x120000E0) = c;}
+#else
+#define SET_EXIT_BG(c)
+#endif
+	SET_EXIT_BG(0xFFFFFF); /* WHITE - entered direct-launch */
+
 	SifInitRpc(0);
 	SifLoadFileInit();
 	ret = SifLoadElf(resolved_path, &elfdata);
@@ -650,6 +679,7 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 	if (ret != 0 || elfdata.epc == 0) {
 		return -2;
 	}
+	SET_EXIT_BG(0xFFFF00); /* CYAN - SifLoadElf returned, ELF valid */
 
 	/* Unmount all live PFS slots before SifIopReset, including the boot
 	 * partition's pfs1: that etc/boot.lua established for HDD-booted
@@ -670,12 +700,16 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 	 * sabotage diagnosed in PR #463.
 	 */
 	unmount_pfs_slots_for_exec(build_exec_keep_mask(resolved_path));
+	SET_EXIT_BG(0x00FF00); /* GREEN - PFS unmount returned */
 
 	FlushCache(0);
+	SET_EXIT_BG(0x00FFFF); /* YELLOW - about to SifIopReset */
 	while (!SifIopReset("", 0)) {
 	}
+	SET_EXIT_BG(0x00A5FF); /* ORANGE - SifIopReset returned */
 	while (!SifIopSync()) {
 	}
+	SET_EXIT_BG(0xFF0000); /* BLUE - SifIopSync returned */
 
 	SifInitRpc(0);
 	SifLoadFileInit();
@@ -687,6 +721,7 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 
 	FlushCache(0);
 	FlushCache(2);
+	SET_EXIT_BG(0x800080); /* PURPLE - MC modules reloaded, about to ExecPS2 */
 
 	if (is_dkwdrv_elf_path(resolved_path)) {
 		snprintf(dkwdrv_argv0, sizeof(dkwdrv_argv0), "%s", resolved_path);
@@ -696,6 +731,8 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 		final_argv = dkwdrv_argv;
 	}
 
+	SET_EXIT_BG(0x0000FF); /* RED - about to ExecPS2 (last EE instruction we control) */
 	ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, final_argc, final_argv);
+#undef SET_EXIT_BG
 	return -1;
 }

@@ -34,6 +34,20 @@ export HEADER
 RESET_IOP = 1
 #---------------------- enable DEBUGGING MODE ---------------------#
 DEBUG = 0
+#- Class A bootstrap diagnostic (GS_BGCOLOUR per-stage paint in    #
+#- _ps2sdk_memory_init). Turn ON only for diagnostic-build         #
+#- artifacts handed to hardware testers; release builds MUST be 0. #
+#- ACTIVE in this branch for the Class A/B diagnostic DRAFT PR.    #
+#- Revert to 0 before any non-diagnostic release.                  #
+BOOTSTRAP_DEBUG_COLORS = 1
+#- Class B / U-10 exit diagnostic (GS_BGCOLOUR per-stage paint in  #
+#- LoadELFFromFileExecPS2RebootIOPWithPartition direct-launch      #
+#- path: BOOT.ELF / DKWDRV.ELF / generic non-HDD-backed exec).     #
+#- Turn ON only for diagnostic-build artifacts handed to hardware  #
+#- testers; release builds MUST be 0.                              #
+#- ACTIVE in this branch for the Class A/B diagnostic DRAFT PR.    #
+#- Revert to 0 before any non-diagnostic release.                  #
+EXIT_DEBUG_COLORS = 1
 #----------------------- Set IP for PS2Client ---------------------#
 PS2LINK_IP = 192.168.1.10
 #------------------------------------------------------------------#
@@ -57,6 +71,14 @@ endif
 ifeq ($(DEBUG),1)
 EE_CXXFLAGS += -DDEBUG
 endif
+
+ifeq ($(BOOTSTRAP_DEBUG_COLORS),1)
+EE_CXXFLAGS += -DBOOTSTRAP_DEBUG_COLORS
+endif
+
+#- EXIT_DEBUG_COLORS is consumed by src/elf_loader/Makefile (elf.c #
+#- is built there, not here). We propagate the variable explicitly #
+#- via the sub-make invocation in the elfloader target below.      #
 
 BIN2S = $(PS2SDK)/bin/bin2c
 
@@ -267,7 +289,7 @@ elfloader: src/elf_loader/libcustom-elf-loader.a
 src/elf_loader/libcustom-elf-loader.a: src/elf_loader
 	@$(MAKE) cleanbin
 	@$(MAKE) -C src/elf_loader/src/loader/ clean all
-	@$(MAKE) -C src/elf_loader clean all
+	@$(MAKE) -C src/elf_loader EXIT_DEBUG_COLORS=$(EXIT_DEBUG_COLORS) clean all
 
 $(EE_OBJS_DIR):
 	@mkdir -p $@
