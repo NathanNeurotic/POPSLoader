@@ -6,18 +6,32 @@
 
 POPSLoader is a graphical PlayStation 2 homebrew launcher designed to easily browse and launch your PS1 games (using POPStarter) from various storage devices. It features a clean, responsive layout, cover art support, sound effects, on-screen keyboard, and direct memory card exit shortcuts.
 
-The current public release is **BETA 10**.
+The current public release is **BETA-10-5** (`v1.0.0-rev5`), tagged at commit `9a0ebe2` on 2026-05-27 and hardware-confirmed clean by Nuno on 2026-05-28.
 
 ---
 
-## BETA 10 Highlights
+## BETA-10-5 Highlights
 
-POPSLoader BETA 10 introduces critical bug fixes and usability improvements tested on real PS2 hardware:
+POPSLoader BETA-10-5 ships the launcher's stable backbone after an extended hardware-validation pass:
 
-*   **Fixed HDD POPSTARTER Handoff**: Resolved the long-standing "D-10" black screen hang when launching games using an HDD-backed POPStarter configuration.
-*   **Fixed wLaunchELF / BOOT.ELF Exit**: Exiting to BOOT.ELF / wLaunchELF no longer black-screens on the tested setup. The final fix uses the normal embedded-loader handoff instead of the failed special reset path.
-*   **Restored UI Options**: The `BOOT.ELF` option is fully visible again in the Exit modal, and the **Triangle** key shortcut has been restored.
-*   **Polished User Interface**: Includes layout alignment corrections, cleaner typography, dynamic menu box adjustments, and text wrapping.
+*   **Fixed HDD POPSTARTER Handoff (D-10)**: Resolved the long-standing "D-10" black-screen hang when launching games using an HDD-backed POPStarter configuration. Hardware-confirmed.
+*   **Fixed Cross-Device POPSTARTER (D-14 / D-15)**: HDD-backed POPSTARTER with non-HDD games and non-HDD POPSTARTER with HDD games both launch cleanly. Hardware-confirmed.
+*   **DKWDRV from Memory Card**: Default MC DKWDRV launch path works through a reboot-IOP route with synthesized argv. Hardware-confirmed.
+*   **BOOT.ELF Exit from USB-booted POPSLoader**: Returns to wLaunchELF / BOOT.ELF via the embedded-loader non-reboot route. Hardware-confirmed when POPSLoader was launched from USB / OSDmenu / Browser / HOSDMenu / PSBBN.
+*   **Per-device Settings Sidecar**: Non-HDD installs (USB / MX4SIO / MMCE) save settings to `APP_DIR/.pldrs` next to the launcher; HDD installs use the legacy `mc0:/POPSTARTER/.pldrs` fallback by design (see Settings Storage below).
+*   **Polished User Interface**: Layout alignment corrections, cleaner typography, dynamic menu box adjustments, text wrapping, and notification toast hardening.
+
+### Known broken (after BETA-10-5 + post-release PRs #470/#472/#473/#476/#477 + Nuno's full 2026-05-28 PM hardware sweep)
+
+Currently confirmed-broken edge cases:
+
+*   **DKWDRV from a custom HDD path** black-screens. Use the default Memory Card DKWDRV path.
+*   **BOOT.ELF exit when POPSLoader was launched from HDD** (`U-10`) black-screens. Use Exit → OSDSYS, or reboot the console. Other launch sources (MC, USB, MX4SIO, MMCE) → BOOT.ELF exit still works. Investigation hypotheses in [docs/U10_INVESTIGATION.md](docs/U10_INVESTIGATION.md); maintainer's next angle: explicit IOP reset on boot.
+*   **HOSDmenu → POPSLoader black-screens** (POPSLoader never reaches its splash). Same launcher-IOP-state class PR #458 Layer A targeted but not resolved for HOSDmenu. Workaround: launch POPSLoader via a different launcher (autoboot, OSDmenu, Browser, PSBBN, a working wLE build).
+*   **Some wLaunchELF builds black-screen when launching POPSLoader**. Common wLE builds work (PR #458 Layer A fix); specific builds still fail. Workaround: switch wLE build, or use a different launcher.
+*   _(formerly)_ MX4SIO-rooted POPSLoader settings save — **resolved by PRs #476 + #477** (the boot.lua mass-slot scan now retries up to 3 times with diagnostic trace). Hardware-confirmed by Nuno 2026-05-29 02:58Z.
+
+See [STATE.md](STATE.md) and [QA_REGRESSION_MATRIX.md](QA_REGRESSION_MATRIX.md) for the full hardware ledger.
 
 ---
 
@@ -100,20 +114,29 @@ Navigate POPSLoader using a standard PS2 controller:
 
 ## BOOT.ELF / wLaunchELF Exit
 
-POPSLoader BETA 10 fixes the crash when returning to your memory card bootloader.
-*   Selecting **BOOT.ELF** in the exit menu (or pressing the **Triangle** shortcut) will look for:
-    1. `mc0:/BOOT/BOOT.ELF`
-    2. `mc1:/BOOT/BOOT.ELF`
-*   If found, BOOT.ELF now launches through the normal embedded-loader handoff with a clean BRAM setup and an explicit argv[0].
-*   If you do not have wLaunchELF installed at these paths, this option will fail to boot.
+Selecting **BOOT.ELF** in the exit menu (or pressing the **Triangle** shortcut) will look for:
+1. `mc0:/BOOT/BOOT.ELF`
+2. `mc1:/BOOT/BOOT.ELF`
+
+If found, BOOT.ELF launches through the embedded-loader handoff with a clean BRAM setup and an explicit `argv[0]`. If you do not have wLaunchELF installed at these paths, this option will fail to boot.
+
+**Hardware-confirmed working** when POPSLoader was launched from USB, MC, MMCE, MX4SIO, OSDmenu, Browser, or PSBBN.
+
+**Known broken** (`U-10`): when POPSLoader itself was launched from HDD, the BOOT.ELF exit black-screens. Use Exit → OSDSYS, or reboot the console. Investigation notes live in [docs/U10_INVESTIGATION.md](docs/U10_INVESTIGATION.md).
+
+(See "Known broken" above for the separate "POPSLoader fails to start under HOSDmenu / some wLE builds" Class-A issues, which prevent reaching BOOT.ELF exit at all.)
 
 ---
 
 ## Internal HDD Notes
 
-*   Internal HDD setups received major reliability improvements in BETA 10, correcting the partition mount handoffs that previously prevented games from loading.
+*   Internal HDD setups received major reliability improvements in BETA-10-5 (the "B2" PFS-unmount fix at commit `4ae6679`), correcting the partition mount handoffs that previously prevented games from loading.
 *   Ensure that your game partition is named matching the `__.POPS` convention, and that the `__common/POPS/` directory contains all necessary POPStarter/POPS emulator binaries.
 *   Existing USB/MX4SIO/MMCE setups are unaffected by the HDD fixes and should continue to work normally.
+
+### Settings Storage on HDD Installs
+
+HDD-installed POPSLoader saves its settings file to `mc0:/POPSTARTER/.pldrs` rather than next to `POPSLOADER.ELF`. This is intentional: the bundled `ps2hdd-osd.irx` driver has read-write limitations that we can't reliably work around without an IRX swap that risks regressing `D-10`. Non-HDD installs (USB / MX4SIO / MMCE) keep the per-device sidecar at `<install dir>/.pldrs`.
 
 ---
 
@@ -140,15 +163,20 @@ POPSLoader BETA 10 fixes the crash when returning to your memory card bootloader
 
 ## Known Issues & Planned Improvements
 
-The following improvements and investigations are planned for subsequent updates:
+Confirmed broken (workarounds documented above):
+*   **DKWDRV from custom HDD path** — use Memory Card DKWDRV path.
+*   **BOOT.ELF exit from HDD-launched POPSLoader** (`U-10`) — use Exit → OSDSYS or reboot.
+*   **HOSDmenu fails to launch POPSLoader** — use a different launcher.
+*   **Some wLaunchELF builds fail to launch POPSLoader** — use a different wLE build or launcher.
 
-*   **Boot & Scan Speed**: Optimization of directory parsing and backend discovery.
-*   **Modchip Compatibility**: Investigate black-screen hangs on certain modchipped consoles.
-*   **Setting Modernization**: Transition away from legacy profile setups to a cleaner, custom path system (such as DKWDRV/POPStarter path configuration).
-*   **Enhanced Backend Detection**: Improve automatic discovery for `usb:`, `mx4sio:`, and `ata:` using IOCTL queries.
-*   **UI Customization & Themes**: Integrate graphical updates (by Berion) and add settings to customize or skip the boot splash sequence.
+Planned for subsequent updates:
+*   **Layer C Lazy IRX Loading**: Defer `mmceman`, `ds34bt`, `usbd` IRX loads when not needed by the boot device family, to reduce boot time. PR #471 (DRAFT) ships the `mmceman` portion pending hardware verification.
+*   **Settings UI Redesign (Berion)**: Visual overhaul replacing the current OPL-style focused-list with per-category Settings pages. Awaiting Berion's mockup PNGs.
+*   **GUI Themes**: Customizable colors / skins / fonts and a setting to skip the boot splash.
 *   **In-Game Features**: Support for per-game fixes, cheat codes, Virtual Memory Card (VMC) setups, and multi-disc swap prompts.
-*   **SMB (v1) Support**: Implement network game scanning and launching via SMB v1.
+*   **`HDD (exFAT)`, `SMB (v1)`, `ILINK`** menu flows: surface as "Not Implemented Yet" until feature work lands.
+
+See [STATE.md](STATE.md) "Known Open Work" and [ROADMAP.md](ROADMAP.md) for the prioritized backlog.
 
 ---
 
@@ -165,14 +193,22 @@ The following improvements and investigations are planned for subsequent updates
 
 ## Development & Building
 
-Developer documentation, repository architecture details, and building prerequisites are maintained in the following files:
+GitHub Actions is the canonical build path. The pinned CI image is `ps2dev/ps2dev:v2.0.0`. Every change must pass the CI workflow in `.github/workflows/compilation.yml` before merging; rolling release artifacts for testing are produced by `.github/workflows/rolling-release.yml` on push to `BETA-12-PLAY` and on pull request events.
 
-*   [STATE.md](STATE.md): Detailed current code and hardware status details.
-*   [QA_REGRESSION_MATRIX.md](QA_REGRESSION_MATRIX.md): Complete ledger of hardware test outcomes.
+Developer documentation, repository architecture details, and the current state are maintained in:
+
+*   [STATE.md](STATE.md): Current code and hardware status.
+*   [QA_REGRESSION_MATRIX.md](QA_REGRESSION_MATRIX.md): Complete ledger of CI gates and hardware test outcomes.
+*   [TRUTHSHEET.md](TRUTHSHEET.md): Non-negotiable behavioral invariants.
+*   [ROADMAP.md](ROADMAP.md): Prioritized backlog.
+*   [DECISIONS.md](DECISIONS.md): Decision log with rationale and evidence.
 *   [ARCHITECTURE.md](ARCHITECTURE.md): Structural data-flow documentation.
 
-To build the launcher binary from source, run:
+To build the launcher binary locally (optional; CI is canonical), run:
 ```sh
 make clean elfloader all
 ```
 *(Requires a set up PS2DEV SDK environment with `ps2-packer` and matching dependencies.)*
+
+To grab the latest test build, download from the rolling release URL:
+[https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/POPSLOADER-rolling-release.zip](https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/POPSLOADER-rolling-release.zip)

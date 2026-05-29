@@ -21,14 +21,14 @@ The PNG asset list the spec cites is fully present under `bin/POPSLDR/IMG/` afte
 
 `arrow_choose_left_active.png`, `arrow_choose_left_active_no.png`, `arrow_choose_right_active.png`, `arrow_choose_right_active_no.png`, `arrow_pointer.png`, `bar_highlight.png`, `bar_top.png`, `checkbox_empty.png`, `checkbox_full.png`, `icon_sub_about.png`, `icon_sub_exit.png`, `icon_sub_joypad.png`, `icon_sub_mcmanager.png`, `icon_sub_settings.png`, `icon_sub_settings_restore.png`, `icon_sub_settings_save.png`, `joypad.png`, `osk_bg.png`, `osk_cursor.png`, `osk_highlight_1.png`, `osk_highlight_2.png`, `osk_highlight_3.png`, `osk_highlight_4.png`, `osk_highlight_5.png`, `osk_symbol_backspace.png`, `osk_symbol_caps.png`, `osk_symbol_clear.png`, `osk_symbol_mode.png`, `osk_symbol_space.png`, `scroll_bg_bottom.png`, `scroll_bg_middle.png`, `scroll_bg_top.png`, `scroll_zip.png`.
 
-The PNG asset list the prompt cites is fully present under `bin/POPSLDR/IMG/` after `f8fec64`. The 33 new files are:
+## Prerequisites before starting (updated 2026-05-28)
 
-`arrow_choose_left_active.png`, `arrow_choose_left_active_no.png`, `arrow_choose_right_active.png`, `arrow_choose_right_active_no.png`, `arrow_pointer.png`, `bar_highlight.png`, `bar_top.png`, `checkbox_empty.png`, `checkbox_full.png`, `icon_sub_about.png`, `icon_sub_exit.png`, `icon_sub_joypad.png`, `icon_sub_mcmanager.png`, `icon_sub_settings.png`, `icon_sub_settings_restore.png`, `icon_sub_settings_save.png`, `joypad.png`, `osk_bg.png`, `osk_cursor.png`, `osk_highlight_1.png`, `osk_highlight_2.png`, `osk_highlight_3.png`, `osk_highlight_4.png`, `osk_highlight_5.png`, `osk_symbol_backspace.png`, `osk_symbol_caps.png`, `osk_symbol_clear.png`, `osk_symbol_mode.png`, `osk_symbol_space.png`, `scroll_bg_bottom.png`, `scroll_bg_middle.png`, `scroll_bg_top.png`, `scroll_zip.png`.
-
-## Prerequisites before starting
-
-- D-10 / D-14 / D-15 / U-10 hardware verification must settle first (per `memory/project-settings-redesign.md` standing rule). U-10 + DKWDRV-on-HDD are still in active hardware testing as of 2026-05-24 (PRs #451 / #452 merged, awaiting results).
-- Do not regress any of the `S-*` / `U-*` rows in `QA_REGRESSION_MATRIX.md` while doing the visual overhaul. The current Settings page in `bin/POPSLDR/ui.lua` is the OPL-style focused-list (commit `c8312d8`); this overhaul replaces that with the category-page model below.
+- **D-10 / D-14 / D-15 are hardware-confirmed PASS** in BETA-10-5 (tag `9a0ebe2`, Nuno 2026-05-28). They are now preservation contracts, not active blockers. **Do not regress** these while doing the visual overhaul.
+- **DKWDRV from MC and BOOT.ELF from USB-booted POPSLoader** are also hardware-confirmed PASS. Preserve.
+- **DKWDRV from custom HDD path** and **U-10 BOOT.ELF from HDD-booted POPSLoader** are accepted known-broken in BETA-10-5 with documented workarounds. They are NOT blockers for the GUI overhaul.
+- Do not regress any of the `S-*` / `U-*` rows in `QA_REGRESSION_MATRIX.md` while doing the visual overhaul.
+- **Active blocker for starting this work**: Berion's mockup PNGs (`context_menu.png`, `settings.png`, `joypad_config.png`, `osk.png`) still need to land at `C:\Users\natha\Documents\assets\` and be committed to `docs/mockups/`. Without the visual oracle, the implementer can't match pixel-for-pixel.
+- The current Settings page in `bin/POPSLDR/ui.lua` is the OPL-style focused-list. This overhaul replaces that with the category-page model below.
 
 ---
 
@@ -48,7 +48,7 @@ You are working on **NathanNeurotic/POPSLoader**, a PS2 homebrew launcher whose 
 
 **Do** overhaul these four screens to match the mockups exactly (no improvising, no extra hints/labels/icons):
 1. Context menu
-2. Settings — restructured as a main page listing categories, each category opens its own page
+2. Settings — single scrollable page with inline section headers (see the 2026-05-24 correction below; do NOT implement per-category sub-pages)
 3. Joypad configuration
 4. On-screen keyboard (OSK)
 
@@ -61,7 +61,7 @@ You are working on **NathanNeurotic/POPSLoader**, a PS2 homebrew launcher whose 
 - Do not add new dependencies. Use only what `ui.lua` already imports.
 - Do not refactor unrelated code paths or rename existing globals. Add helpers locally next to where they're used.
 - Keep the existing input model (D-pad navigation, ×/○/△/▢, L1/R1).
-- Open a PR branch — **do not push to `master`**. Suggested branch name: `feat/gui-overhaul-berion-mockups`.
+- Open a PR branch — **do not push to `BETA-12-PLAY`** (the canonical dev branch). Suggested branch name: `claude/gui-overhaul-berion-mockups`.
 
 ---
 
@@ -187,7 +187,7 @@ Layout container is 560 × 290 px, centered horizontally with 36 px top padding 
 2. Read `ui.lua` end-to-end to locate the existing context-menu, settings, joypad-config, and OSK draw functions.
 3. Implement each screen per the spec above. Keep diffs surgical — replace the body of each draw function, don't restructure the file.
 4. Verify ELF still builds (whatever Makefile / build script the repo uses). Expect ~150 KiB binary growth from the new image assets.
-5. Open a PR against `master` with the spec link, a short summary, and screenshots/captures from a PCSX2 run.
+5. Open a PR against `BETA-12-PLAY` (the canonical dev branch) with the spec link, a short summary, and screenshots/captures from a PCSX2 run.
 
 ---
 

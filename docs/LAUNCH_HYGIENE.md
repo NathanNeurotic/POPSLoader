@@ -1,19 +1,15 @@
 # POPSLoader Launch Hygiene
 
-Date: 2026-05-25
-Author: Claude (with NathanNeurotic direction; user thesis on hang/deinit problem confirmed)
+Date: 2026-05-25 (original), updated 2026-05-28 with post-release verdict
+Author: Claude (with NathanNeurotic direction)
+
+> **Status update 2026-05-28**: Layer A (`_ps2sdk_memory_init` fileXio teardown) **does** resolve the wLaunchELF-launched-POPSLoader symptom for the common cases (CosmicScale confirmed). Layers B (child-loader reset branches) and the V2-mimicry DKWDRV-HDD work in PR #460 **did not** fix DKWDRV-from-HDD-custom-path or U-10 BOOT.ELF-from-HDD-boot on hardware. Both of those are accepted as known-broken in BETA-10-5 (see `STATE.md` Known Broken section, and `docs/U10_INVESTIGATION.md` for U-10 specifically). The "single root cause" framing of the original TL;DR was too broad — `fileXio` lifecycle is _one_ cause; the remaining HDD-boot exec-path issues have additional state that the EE-side teardown alone doesn't resolve. Sections 1-3 below remain accurate for what they describe; the broader unification claim is partially walked back.
+>
+> **Also updated post-release**: PR #472 redefined the MX4SIO/USB classification rule (evidence-based; `mx4sio_bd` only loads on explicit MX4SIO evidence). See Section "Unified boot-context resolver" below — the resolver behavior is unchanged, but the downstream `classify_mass_boot` and `AutoInitStartupBackends` logic is more conservative than this doc originally described.
 
 ## TL;DR
 
-Four launch-related symptoms reported across recent hardware testing share a
-single root cause: **POPSLoader does not survive an IOP that has `fileXio`
-loaded from a parent process**. The `fileXio` IRX module holds threads and RPC
-locks on the IOP that cause `SifIopReset` to hang silently. This bug is
-documented upstream in [ps2sdk issue #425](https://github.com/ps2dev/ps2sdk/issues/425)
-and partly addressed by [ps2sdk PR #426](https://github.com/ps2dev/ps2sdk/pull/426).
-The fix family in this document covers the EE-side workaround (detach the RPC
-client before resetting) and the resulting unification of three previously
-unrelated-looking bugs.
+Four launch-related symptoms reported across mid-May 2026 hardware testing partially share a root cause: **POPSLoader does not always survive an IOP that has `fileXio` loaded from a parent process**. The `fileXio` IRX module holds threads and RPC locks on the IOP that can cause `SifIopReset` to hang silently. This bug is documented upstream in [ps2sdk issue #425](https://github.com/ps2dev/ps2sdk/issues/425) and partly addressed by [ps2sdk PR #426](https://github.com/ps2dev/ps2sdk/pull/426). Layer A in this document is the EE-side workaround (detach the RPC client before resetting). It resolved the wLaunchELF-launched-POPSLoader case but did not unify the DKWDRV-HDD-custom-path and U-10 cases — those have additional state beyond `fileXio` lifecycle.
 
 ## Symptoms
 
@@ -288,29 +284,25 @@ IRX loads dominate the budget.
 | BOOT.ELF from USB-booted POPSLoader | Boot teardown runs once | Routed through child loader (PR #458 change); now also gets the SifExitRpc pre-teardown |
 | All clean-parent launches | SifExitRpc + fileXioExit are guarded no-ops; same effective state as before | N/A |
 
-## Flagged separately: settings sidecar is not currently implemented
+## Flagged separately: settings sidecar (resolved by PR #459 / PR #462 / PR #466)
 
-User raised the concern that "settings sidecar may not be working" while
-discussing Layer C. Confirmed during the 2026-05-25 audit:
+User raised the concern that "settings sidecar may not be working" while discussing Layer C. The original 2026-05-25 audit text below documented the gap; this is **now implemented and shipped in BETA-10-5**, with one carve-out:
 
-- `PLDR.SETTINGS_PATH` is hardcoded to `"mc0:/POPSTARTER/.pldrs"` at
-  `bin/POPSLDR/system.lua` line 1971.
-- `PLDR.SaveSettingsAtomic()` writes to that exact path (no fallback).
-- `PLDR.LoadSettingsNonFatal()` reads from that exact path (no fallback).
-- The "sidecar" functions that DO exist (`BuildPopstarterSidecarCandidate`,
-  `CollectHddBootSidecarCandidates`, `ResolveHddBootSidecarPopstarter`) are
-  for resolving the **POPSTARTER.ELF** path -- not for settings.
+- PR #459 / PR #462: `LoadSettingsNonFatal` resolves `PLDR.SETTINGS_PATH` at load time. Sidecar at `APP_DIR_LOCAL/.pldrs` is preferred; legacy `mc0:/POPSTARTER/.pldrs` is fallback. First-run migration: if settings load from MC but a sidecar path is computable, pin `PLDR.SETTINGS_PATH` to the sidecar so the next save migrates. `SaveSettingsAtomic` writes to `PLDR.SETTINGS_PATH` (no longer hardcoded).
+- **PR #466 release prep**: HDD-rooted APP_DIRs (`pfs%d*`, `hdd%d*`, `ata%d*`, `apa%d*`) are excluded from the sidecar — `ResolveBootContext` returns `sidecar_path = nil` and HDD installs fall back to `mc0:/POPSTARTER/.pldrs`. This is by design: Nuno's hardware test on PR #464 confirmed that `pfs1:/.../.pldrs` writes still fail with "may be read-only" despite the boot.lua path normalization. The bundled `ps2hdd-osd.irx` has read-write limitations we can't work around without an IRX swap that risks regressing D-10.
 
-So a POPSLoader running off USB/HDD/MX4SIO still writes settings to
-`mc0:/POPSTARTER/.pldrs`. There is currently no per-device settings
-sidecar, despite naming that suggests otherwise.
+Net: USB / MX4SIO / MMCE / MC installs keep per-device sidecars. HDD installs save to MC by design.
 
-This is **not in scope of the launch hygiene fix**. A separate PR
-should:
-1. Add per-device settings sidecar resolution: try `<APP_DIR>.pldrs`
-   first, fall back to `mc0:/POPSTARTER/.pldrs`.
-2. Migrate write-side similarly (write to wherever it was loaded from).
-3. Consider whether to copy from MC to sidecar on first run.
+### Original 2026-05-25 audit text (historical)
+
+The original audit found:
+
+- `PLDR.SETTINGS_PATH` was hardcoded to `"mc0:/POPSTARTER/.pldrs"`.
+- `PLDR.SaveSettingsAtomic()` wrote to that exact path (no fallback).
+- `PLDR.LoadSettingsNonFatal()` read from that exact path (no fallback).
+- The "sidecar" functions that existed (`BuildPopstarterSidecarCandidate`, `CollectHddBootSidecarCandidates`, `ResolveHddBootSidecarPopstarter`) were for resolving the **POPSTARTER.ELF** path -- not for settings.
+
+That gap is now closed (per above).
 
 ## References
 

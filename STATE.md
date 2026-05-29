@@ -1,4 +1,4 @@
-Last updated: 2026-05-28 (post-BETA-10-5; LAUNCH_ARGS game/debug consumers wired)
+Last updated: 2026-05-28 (post-BETA-10-5; PR #470 LAUNCH_ARGS, PR #472 MX4SIO classification, PR #473 hotfix all merged)
 
 # STATE
 
@@ -41,16 +41,16 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 ### Backend init / runtime
 - Startup backend auto-init exists and uses boot path information, configured executable paths, and selected profile path.
 - HDD startup targets run `PLDR.LoadHDDModules()` (same as HDD page entry).
-- USB vs MX4SIO classification is via mount-driver identity (`System.getMassMountDriver` -> `sdc`/`mx4` -> MX4SIO; else USB).
+- USB vs MX4SIO classification is via mount-driver identity. Per the post-release PR #472 refinement: `mass:/` boots stay USB-only unless explicit MX4SIO evidence is present (`mx4sio:/` prefix, `sdc`/`mx4` ioctl driver name, or `.boot_mx4sio` marker). `mx4sio_bd.irx` is only loaded when an ambiguous mass slot exists (mass_probe_needed) or a configured path requires it; `usbmass_bd.irx` is always loaded first because `mx4sio_bd` depends on it. The maintainer rule: "If ioctl/devctl is ANYTHING OTHER THAN `sdc` or `mx4`, and it's a mass device, then it is USB; if a mass device is `sdc`/`mx4` on ioctl/devctl, then it must be MX4SIO."
 - Runtime device access is not gated by the old device-lock system; `canEnterDevice()` always returns true.
 
 ### Launch paths (current routing)
 - **HDD POPSTARTER on HDD partition** (D-10): `LoadELFFromFileExecPS2RebootIOPWithPartition` → `ExecuteHddBackedViaEmbeddedLoader` → child loader `is_hdd_partition_context` branch (fileXioUmount + SifExitRpc/Cmd + ExecPS2, no IOP reset). Byte-identical to the 2026-05-22 B2 hardware-passing fix at commit `4ae6679`.
 - **Non-HDD POPSTARTER + HDD game** (D-15): same `ExecuteHddBackedViaEmbeddedLoader` route with the boot partition's PFS slot preserved via keep_mask.
-- **DKWDRV from MC** (Nuno 2026-05-25 confirmed PASS): reboot variant direct path, IOP reset + reload `SIO2MAN/MCMAN/MCSERV` + ExecPS2 with synthesized argv0.
-- **DKWDRV from HDD** (PR #460, source-verified, hardware pending): non-reboot variant → new DKWDRV special-case in `LoadELFFromFileWithPartition` → `ExecuteViaEmbeddedLoader` → child loader's filexio-direct-load branch (`SifExitRpc + FlushCache + ExecPS2`, no IOP reset). Mirrors V2 BOOT.ELF contract exactly.
-- **BOOT.ELF from USB-booted POPSLoader** (V2 working route): non-reboot variant → BOOT.ELF special-case in `LoadELFFromFileWithPartition` (line 485) → `ExecuteViaEmbeddedLoader` → child loader non-HDD branch (no IOP reset).
-- **BOOT.ELF from HDD-booted POPSLoader** (U-10, **known broken**): reboot variant direct path with IOP reset. Has never worked; V2 didn't solve it either. Treated as separate problem.
+- **DKWDRV from MC** (Nuno 2026-05-25 + 2026-05-28 confirmed PASS): reboot variant direct path, IOP reset + reload `SIO2MAN/MCMAN/MCSERV` + ExecPS2 with synthesized argv0.
+- **DKWDRV from HDD custom path** (**known broken accepted for BETA-10-5**): PR #460 V2-mimicry shipped, but Nuno's 2026-05-25 hardware test on that artifact still black-screened. Pragmatic acceptance per Nuno + maintainer 2026-05-27: most users keep DKWDRV on MC. Workaround: configure DKWDRV path to MC.
+- **BOOT.ELF from USB-booted POPSLoader** (V2 working route, Nuno 2026-05-28 confirmed PASS): non-reboot variant → BOOT.ELF special-case in `LoadELFFromFileWithPartition` → `ExecuteViaEmbeddedLoader` → child loader non-HDD branch (no IOP reset).
+- **BOOT.ELF from HDD-booted POPSLoader** (U-10, **known broken**): reboot variant direct path with IOP reset. Has never worked; V2 didn't solve it either. PR #463 diagnostic colors localized the hang to `SifIopReset` itself (last visible stage YELLOW; ORANGE post-reset never paints). PR #464 F4 unconditional unmount didn't fix it on hardware. Treated as separate problem with the hypothesis catalog preserved in `docs/U10_INVESTIGATION.md`.
 
 ### Main menu feature status
 - `MMCE`, `MX4SIO`, `HDD (PFS)`, `USB`, `Disc (DKWDRV)`: implemented in code.
@@ -67,21 +67,27 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 - Release packaging policy is `PS1_POPSLOADER/*` + `POPS/PATCH_5.BIN` with strict manifest validation.
 - Build is gated on embedded build identity markers (`Exec path:`, `PrepareForColdExternalELFLaunch`, `BOOT.ELF launch failed`) being present in `bin/enceladus.elf`.
 - Embedded loader blob staleness check runs when timestamp suggests `src/elf_loader/loader.c` is older than its source.
-- As of 2026-05-25, Lua syntax check covers all bundled `bin/POPSLDR/*.lua` plus `etc/boot.lua`; previously only `boot.lua` was validated.
+- CI image pinned to `ps2dev/ps2dev:v2.0.0` (post-release pin in `ba8f0d0`).
+- Lua syntax check covers all bundled `bin/POPSLDR/*.lua` plus `etc/boot.lua` (extended in PR #461).
+- `.github/workflows/rolling-release.yml` (added post-release) publishes a `POPSLOADER-rolling-release.zip` asset to the canonical `rolling-release` GitHub Release on every push to `BETA-12-PLAY` and on every pull-request event (including drafts). The tag floats; testers grab the latest asset. PRs that update `BETA-12-PLAY` and PRs that update PR head SHAs both overwrite the same asset (last-write-wins).
 
 ## Reported Hardware Status
 
 | Case | Last result | Date | Notes |
 |---|---|---|---|
-| **D-10** HDD POPSTARTER + HDD game | **PASS** | 2026-05-22 | B2 fix at commit `4ae6679` (PFS unmount before ExecPS2). Preserved through all subsequent PRs. |
-| **D-14** HDD POPSTARTER + non-HDD game | **PASS** | 2026-05-22 | Same partition-aware route as D-10. |
-| **D-15** non-HDD POPSTARTER + HDD game | **PASS** | 2026-05-22 | Keep-mask preserves boot partition's PFS slot across exec. |
-| **DKWDRV from MC** | **PASS** | 2026-05-25 | Reboot variant direct path with argv0 synthesis. Confirmed by Nuno on PR #458 artifact. |
-| **DKWDRV from HDD custom path** | **FAIL** | 2026-05-25 (PR #458) | Confirmed by Nuno. PR #460 ships V2-mimicry fix (non-reboot variant + new DKWDRV embedded-loader route). Hardware pending. |
-| **BOOT.ELF from USB-booted POPSLoader** (L-07) | Source-verified | (V2 working state d23520a 2026-05-23) | PR #458 regressed this by adding an `is_boot_elf_target` IOP-reset branch in the child loader. PR #460 reverts that revert; expected back to V2-working behavior on next hardware test. |
-| **BOOT.ELF from HDD-booted POPSLoader** (U-10) | **FAIL** | 2026-05-25 | Long-standing. V2 didn't solve this either. Not addressed by PR #460. Separate problem; pursued only after PR #460 hardware verdict. |
-| **POPSLoader launched from wLaunchELF** | **FAIL** (CosmicScale 2026-05-25) | 2026-05-25 | Some wLaunchELF builds. PR #458's `_ps2sdk_memory_init` fileXio teardown (Layer A) targets this. Hardware pending. |
-| **POPSLoader launched from PSBBN / Browser / HOSDMenu / OSDMenu** | **PASS** | (ongoing) | CosmicScale 2026-05-25 confirmed these work. |
+| **D-10** HDD POPSTARTER + HDD game | **PASS** (preservation contract) | 2026-05-22, reconfirmed 2026-05-28 (Nuno on BETA-10-5 release artifact) | B2 fix at commit `4ae6679` (PFS unmount before ExecPS2). Must be preserved by any future launch-path change. |
+| **D-14** HDD POPSTARTER + non-HDD game | **PASS** (preservation contract) | 2026-05-22 | Same partition-aware route as D-10. |
+| **D-15** non-HDD POPSTARTER + HDD game | **PASS** (preservation contract) | 2026-05-22 | Keep-mask preserves boot partition's PFS slot across exec. |
+| **DKWDRV from MC** | **PASS** (preservation contract) | 2026-05-25, reconfirmed 2026-05-28 (Nuno on BETA-10-5 release artifact) | Reboot variant direct path with argv0 synthesis. |
+| **DKWDRV from HDD custom path** | **FAIL — known broken accepted** | 2026-05-25 (last hardware test) | Pragmatically accepted for BETA-10-5 per Nuno + maintainer 2026-05-27. Workaround: configure DKWDRV path to MC. |
+| **BOOT.ELF from USB-booted POPSLoader** (L-07) | **PASS** | 2026-05-28 (Nuno on BETA-10-5 release artifact) | V2 working route at `d23520a`. |
+| **BOOT.ELF from HDD-launched POPSLoader** (U-10) | **FAIL — known broken accepted** | 2026-05-28 PM late (Nuno) | When POPSLoader has been successfully launched from HDD, Exit → BOOT.ELF black-screens. Other launch sources (MC, USB, MX4SIO, MMCE) → BOOT.ELF exit OK. Workaround: Exit → OSDSYS or reboot. Maintainer hypothesis: "maybe I need to reset IOP on boot before anything else" (aligns with H1 dev9Shutdown / H5 stale pfs1: mount in `docs/U10_INVESTIGATION.md`). |
+| **HOSDmenu → POPSLoader** (Class A: POPSLoader fails to start) | **FAIL** | 2026-05-28 PM late (Nuno) | When HOSDmenu attempts to launch POPSLoader, black screen — POPSLoader never reaches its splash. Not the same as U-10: U-10 is about BOOT.ELF exit FROM a successfully-running HDD-launched POPSLoader; this is about POPSLoader itself never starting under HOSDmenu. Likely the same IOP-state-from-parent-launcher class PR #458 Layer A targeted (`fileXio` blocks `SifIopReset` per ps2sdk #425) but not fully resolved for HOSDmenu. Workaround: launch POPSLoader via a different launcher. |
+| **wLaunchELF → POPSLoader** (Class A: some wLE builds fail to start POPSLoader) | **FAIL on some wLE builds** | 2026-05-28 PM late (Nuno) + CosmicScale 2026-05-25 | Some wLaunchELF builds black-screen when attempting to start POPSLoader (POPSLoader never reaches splash). PR #458 Layer A targeted this. Common wLE builds work; specific builds still fail. Workaround: use a different wLE build, or a different launcher. |
+| **POPSLoader launched from wLaunchELF** | **PASS** (common cases) | 2026-05-28 | PR #458 Layer A fileXio teardown in `_ps2sdk_memory_init` resolved the CosmicScale-reported failure for the common cases. One latent failure mode (wLE → USB POPSLoader → BOOT.ELF) reported by Nuno 2026-05-27; code analysis suggests this is the same BOOT.ELF route as the working autoboot/OSDSYS cases, so likely always-broken/latent rather than a regression. Not enumerated as known-broken pending a clearer repro. |
+| **POPSLoader launched from PSBBN / Browser / HOSDMenu / OSDMenu** | **PASS** (preservation contract) | CosmicScale 2026-05-25 + Nuno 2026-05-28 | |
+| **Settings save on HDD-installed POPSLoader → MC** | **PASS** (preservation contract) | 2026-05-28 (Nuno) | By design (PR #466 release prep). HDD installs fall back to `mc0:/POPSTARTER/.pldrs`; user-visible: settings still persist. |
+| **Settings save on USB / MC-installed POPSLoader** | **PASS** | 2026-05-27 (Nuno) | Per-device sidecar at `APP_DIR/.pldrs` working. |
 | **U-05** OSDSYS exit | Reported fixed (date unrecorded) | — | |
 | **U-06** PAL asset aspect | Unknown (verify on hardware) | — | |
 | **D-12** startup backend auto-init | PASS | 2026-03-28 | `PLDR.LoadHDDModules()` routing restored Profile/cwd HDD POPSTARTER resolution. |
@@ -90,17 +96,34 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 | **U-11** boot-device label display | Unknown | — | Main menu can show the label; not formally verified. |
 | **S-09** keyboard layout persistence | Unknown | — | |
 
+### Post-release work (BETA-10-5 → BETA-12-PLAY current tip `81c886e`)
+
+| PR | What landed | Hardware status |
+|---|---|---|
+| **#470** | `PLDR.LAUNCH_ARGS.game` auto-launch consumer (`PLDR.AutoLaunchFromLaunchArgs`) and `-debug` toast (`PLDR.SurfaceLaunchArgsDebug`). | Repo / CI verified. Indirect hardware PASS (Nuno 2026-05-28 PM): rolling-release boots and runs all tested flows. Explicit `-page=/-game=` launch was not directly tested but the consumer is no-op when those args are absent. |
+| **#472** | MX4SIO evidence-based mass: classification: `mx4sio_bd` only loads on explicit MX4SIO evidence. Maintainer refinement commit `7b587fe` enforces "USB or unknown mass stays USB-only". C-layer `lua_mx4sio_init` now calls `EnsureUsbMass()` first so the dependency is unviolatable. | Repo / CI verified. **Hardware PASS** (Nuno 2026-05-28 PM): MX4SIO and USB working as intended on rolling-release. |
+| **#473** | HOTFIX: move `local function ClassifyMassRootDriver` declaration above `ClassifyStartupMassTargets` so the closure captures it correctly. Fixes Lua forward-reference nil-call crash at boot reported on 2026-05-28 hardware. | Repo / CI verified. **Hardware PASS** (Nuno 2026-05-28 PM): rolling-release boots cleanly, no Enceladus error. |
+| **#471 (DRAFT)** | Layer C: `mmceman.irx` lazy-loaded unless boot device is MMCE; `System.ensureMmceman` Lua binding. | Repo / CI verified. Indirect hardware PASS (Nuno 2026-05-28 PM): pad input survives, all tested flows work — implies the mmceman defer didn't break general boot. MMCE-specific device access from the deferred-load state not directly tested; recommend an MMCE test before promoting from DRAFT. |
+
 ## Known Broken (Accepted for Release)
 
-The following are known-broken edge cases that are NOT blocking release. They've been investigated repeatedly without a stable fix; pragmatic acceptance per Nuno + maintainer 2026-05-27.
+After Nuno's full 2026-05-28 PM hardware sweep on the post-PR-#477 rolling-release, the confirmed-broken edge cases are:
 
 - **DKWDRV-on-HDD-custom-path** — black-screens. Most users have DKWDRV on MC; the small subset with HDD installs typically don't keep DKWDRV on HDD. Workaround: configure DKWDRV path to MC.
-- **U-10 BOOT.ELF-from-HDD-boot** — exits to BOOT.ELF black-screen when POPSLoader was booted from HDD. Long-standing (predates this session). USB-autoboot POPSLoader → BOOT.ELF still works. Workaround: use Exit → OSDSYS or reboot the console instead.
-- **Settings save on HDD-installed POPSLoader writes to MC** — by design (see Settings section above). The `ps2hdd-osd.irx` write limitation is the underlying cause. User-visible: settings still persist; they just live on `mc0:/POPSTARTER/.pldrs` instead of next to POPSLOADER.ELF.
+- **U-10 BOOT.ELF from HDD-launched POPSLoader** — when POPSLoader has been successfully launched from HDD (via any working launcher), Exit → BOOT.ELF black-screens. Long-standing. Other launch sources → BOOT.ELF still work. Workaround: Exit → OSDSYS or reboot. Maintainer hypothesis to investigate next: explicit IOP reset on boot before anything else (aligns with `docs/U10_INVESTIGATION.md` H1/H5).
+- **POPSLoader fails to start under HOSDmenu** (Class A) — HOSDmenu → POPSLoader black-screens before the splash. Same IOP-state-from-parent-launcher class PR #458 Layer A targeted (`fileXio` blocks `SifIopReset` per ps2sdk #425) but Layer A didn't resolve it for HOSDmenu. Workaround: use a different launcher.
+- **POPSLoader fails to start on some wLaunchELF builds** (Class A) — common wLE builds work (PR #458 Layer A's fix). Some specific builds still black-screen attempting to start POPSLoader. Workaround: use a different wLE build, or a different launcher.
+- **MX4SIO-rooted POPSLoader settings save** was fixed by PR #477 (3-attempt retry on the boot.lua mass-slot scan with diagnostic trace) — hardware-confirmed by Nuno 2026-05-29 02:58Z. PR #476's single-shot scan wasn't enough on real hardware; PR #477 mirrors the existing `PLDR.InitMX4SIOPopsRoot` retry pattern.
 
-(2026-05-27: a wLE→USB-POPSLoader→BOOT.ELF case was reported by Nuno during the release-candidate hardware pass. Code analysis suggests this case takes the same BOOT.ELF route as the working autoboot/OSDSYS/Browser/HOSDMenu cases — so it was likely always-broken/latent rather than a regression introduced by recent PRs. Not reproducible from the most common launch contexts. If a user hits it, the U-10 workaround applies. Not enumerated above pending a clearer repro pattern.)
+**By-design fallback (confirmed working, not a bug):**
+- **Settings save on HDD-installed POPSLoader writes to `mc0:/POPSTARTER/.pldrs`** by design (PR #466). The `ps2hdd-osd.irx` write limitation is the underlying cause. User-visible: settings still persist; they just live on MC instead of next to POPSLOADER.ELF.
 
-Investigation artifacts archived: `docs/U10_INVESTIGATION.md` (hypotheses + diagnostic plan), `docs/LAUNCH_HYGIENE.md` (architecture + revert history), `HDD_POPSTARTER_HANDOFF.md` at repo root (D-10 historical notes, marked RESOLVED).
+**Unexpectedly resolved 2026-05-28 PM:**
+- **U-10 BOOT.ELF-from-HDD-boot** — previously known-broken-accepted. Nuno reports BOOT.ELF exit working "across the board" including HDD-booted on the post-PR-#473 rolling-release. None of PR #470/#472/#473 architecturally touch the U-10 path, so the cause is not obvious. See the hardware status table above and `docs/U10_INVESTIGATION.md` for investigation notes (preserved in case it regresses).
+
+(2026-05-27: a wLE→USB-POPSLoader→BOOT.ELF case was reported by Nuno during the release-candidate hardware pass. Code analysis suggested it took the same BOOT.ELF route as working cases, so likely always-broken/latent rather than a regression. The 2026-05-28 "BOOT.ELF across the board PASS" report covers this case too unless a new failure is reported.)
+
+Investigation artifacts archived: `docs/U10_INVESTIGATION.md` (hypotheses + diagnostic plan, kept for revisit), `docs/LAUNCH_HYGIENE.md` (architecture + revert history), `HDD_POPSTARTER_HANDOFF.md` at repo root (D-10 historical notes, marked RESOLVED).
 
 ## Known Open Work
 
@@ -114,6 +137,7 @@ Investigation artifacts archived: `docs/U10_INVESTIGATION.md` (hypotheses + diag
 
 ## Verification Status
 
-- Code/build/package statements above are repository-verified at commit `9a0ebe2` (BETA-12-PLAY head, tagged `BETA-10-5` on 2026-05-27).
+- BETA-10-5 release tag is at commit `9a0ebe2` (tagged 2026-05-27). That release was hardware-confirmed clean by Nuno on 2026-05-28.
+- `BETA-12-PLAY` development branch tip is currently `81c886e` (Merge PR #473 hotfix). Code/build/package statements above are repository-verified at that tip. Post-release PR work (`#470` LAUNCH_ARGS, `#472` MX4SIO, `#473` hotfix) has CI green but is not BETA-10-5 hardware evidence — it is `Unknown (verify on hardware)` unless a tester result is recorded in `QA_REGRESSION_MATRIX.md`.
 - Hardware behavior is `Unknown (verify on hardware)` unless explicitly recorded in the table above with a date.
 - See `QA_REGRESSION_MATRIX.md` for the full experiment chronology.
