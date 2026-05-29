@@ -5,9 +5,11 @@ Author: Claude (with NathanNeurotic direction)
 
 ## Status (as of 2026-05-28 PM late)
 
-**Known broken — accepted for release. Walked back from a brief "PASS" claim.** Earlier on 2026-05-28 PM the maintainer interpreted Nuno's "BOOT.ELF working across the board" report as a U-10 resolution and updated this file accordingly; a fuller hardware sweep later that day with explicit HDD-booted retests reproduced the failure (HOSDmenu → HDD-POPSloader → BOOT.ELF = black screen; wLE → HDD-POPSloader → BOOT.ELF = black screen). The earlier "across the board" was a partial sweep covering only the non-HDD-booted launch contexts. U-10 remains the same as it was in BETA-10-5: known-broken-accepted with the workaround Exit → OSDSYS or reboot.
+**Known broken — accepted for release.** Earlier on 2026-05-28 PM the maintainer interpreted Nuno's "BOOT.ELF working across the board" report as a U-10 resolution and updated this file accordingly; a fuller hardware sweep later that day with explicit HDD-launched POPSLoader retests reproduced the failure. U-10 remains the same as it was in BETA-10-5: known-broken-accepted with the workaround Exit → OSDSYS or reboot.
 
-Hypothesis to investigate next (per maintainer 2026-05-28 PM): **"maybe I need to reset IOP on boot or something before anything else."** This aligns with H1 (DEV9 state survives `SifIopReset`; an explicit `dev9Shutdown` before exec might unblock) and H5 (stale `pfs1:` mount blocks the reset). See those sections below.
+**Scope clarification (important):** U-10 is about exit-to-BOOT.ELF from a successfully-running POPSLoader that was launched from HDD. It is NOT about the separate "POPSLoader fails to launch under HOSDmenu / some wLE builds" failures — those are a distinct failure class (Class A in the doc updates of 2026-05-28 PM late) where POPSLoader never reaches its splash. Class A is about parent-launcher → POPSLoader IOP-state hygiene (same class PR #458 Layer A targeted; Layer A didn't fully resolve it for HOSDmenu or specific wLE builds). U-10 is about POPSLoader → BOOT.ELF IOP-state hygiene. Different layers. Don't conflate the diagnostic paths.
+
+Hypothesis to investigate next for U-10 (per maintainer 2026-05-28 PM): **"maybe I need to reset IOP on boot or something before anything else."** This aligns with H1 (DEV9 state survives `SifIopReset`; an explicit `dev9Shutdown` before exec might unblock) and H5 (stale `pfs1:` mount blocks the reset). See those sections below.
 
 ### What was tried since the original investigation note
 

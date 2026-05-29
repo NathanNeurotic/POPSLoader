@@ -26,7 +26,9 @@ POPSLoader BETA-10-5 ships the launcher's stable backbone after an extended hard
 Currently confirmed-broken edge cases:
 
 *   **DKWDRV from a custom HDD path** black-screens. Use the default Memory Card DKWDRV path.
-*   **BOOT.ELF exit when POPSLoader was booted from HDD** (`U-10`) black-screens. Use Exit → OSDSYS, or reboot the console. (An earlier 2026-05-28 PM "across the board PASS" report was a partial sweep that didn't cover the HDD-booted case explicitly; an explicit HDD-booted retest re-confirmed the failure. Investigation hypotheses in [docs/U10_INVESTIGATION.md](docs/U10_INVESTIGATION.md). Maintainer hypothesis to investigate next: explicit IOP reset on boot before anything else.)
+*   **BOOT.ELF exit when POPSLoader was launched from HDD** (`U-10`) black-screens. Use Exit → OSDSYS, or reboot the console. Other launch sources (MC, USB, MX4SIO, MMCE) → BOOT.ELF exit still works. Investigation hypotheses in [docs/U10_INVESTIGATION.md](docs/U10_INVESTIGATION.md); maintainer's next angle: explicit IOP reset on boot.
+*   **HOSDmenu → POPSLoader black-screens** (POPSLoader never reaches its splash). Same launcher-IOP-state class PR #458 Layer A targeted but not resolved for HOSDmenu. Workaround: launch POPSLoader via a different launcher (autoboot, OSDmenu, Browser, PSBBN, a working wLE build).
+*   **Some wLaunchELF builds black-screen when launching POPSLoader**. Common wLE builds work (PR #458 Layer A fix); specific builds still fail. Workaround: switch wLE build, or use a different launcher.
 *   _(formerly)_ MX4SIO-rooted POPSLoader settings save — **resolved by PRs #476 + #477** (the boot.lua mass-slot scan now retries up to 3 times with diagnostic trace). Hardware-confirmed by Nuno 2026-05-29 02:58Z.
 
 See [STATE.md](STATE.md) and [QA_REGRESSION_MATRIX.md](QA_REGRESSION_MATRIX.md) for the full hardware ledger.
@@ -118,9 +120,11 @@ Selecting **BOOT.ELF** in the exit menu (or pressing the **Triangle** shortcut) 
 
 If found, BOOT.ELF launches through the embedded-loader handoff with a clean BRAM setup and an explicit `argv[0]`. If you do not have wLaunchELF installed at these paths, this option will fail to boot.
 
-**Hardware-confirmed working** when POPSLoader was launched from USB, MC, MMCE, MX4SIO, OSDmenu, Browser, HOSDMenu, or PSBBN.
+**Hardware-confirmed working** when POPSLoader was launched from USB, MC, MMCE, MX4SIO, OSDmenu, Browser, or PSBBN.
 
-**Known broken** (`U-10`): when POPSLoader itself was launched from HDD (via HOSDmenu, wLE, etc.), the BOOT.ELF exit black-screens. Use Exit → OSDSYS, or reboot the console. Investigation notes live in [docs/U10_INVESTIGATION.md](docs/U10_INVESTIGATION.md).
+**Known broken** (`U-10`): when POPSLoader itself was launched from HDD, the BOOT.ELF exit black-screens. Use Exit → OSDSYS, or reboot the console. Investigation notes live in [docs/U10_INVESTIGATION.md](docs/U10_INVESTIGATION.md).
+
+(See "Known broken" above for the separate "POPSLoader fails to start under HOSDmenu / some wLE builds" Class-A issues, which prevent reaching BOOT.ELF exit at all.)
 
 ---
 
@@ -161,7 +165,9 @@ HDD-installed POPSLoader saves its settings file to `mc0:/POPSTARTER/.pldrs` rat
 
 Confirmed broken (workarounds documented above):
 *   **DKWDRV from custom HDD path** — use Memory Card DKWDRV path.
-*   **BOOT.ELF exit from HDD-booted POPSLoader** (`U-10`) — use Exit → OSDSYS or reboot.
+*   **BOOT.ELF exit from HDD-launched POPSLoader** (`U-10`) — use Exit → OSDSYS or reboot.
+*   **HOSDmenu fails to launch POPSLoader** — use a different launcher.
+*   **Some wLaunchELF builds fail to launch POPSLoader** — use a different wLE build or launcher.
 
 Planned for subsequent updates:
 *   **Layer C Lazy IRX Loading**: Defer `mmceman`, `ds34bt`, `usbd` IRX loads when not needed by the boot device family, to reduce boot time. PR #471 (DRAFT) ships the `mmceman` portion pending hardware verification.
