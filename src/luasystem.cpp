@@ -34,6 +34,9 @@ extern unsigned int size_usbmass_bd_irx;
 extern unsigned char cdfs_irx[];
 extern unsigned int size_cdfs_irx;
 
+extern unsigned char mmceman_irx;
+extern unsigned int size_mmceman_irx;
+
 
 static bool LoadIrxCheckedBuffer(const char *name, unsigned char *irx, unsigned int size, int *out_id, int *out_ret);
 static void BuildMassRootPath(int index, char *out_root, size_t out_sz);
@@ -72,6 +75,7 @@ static bool bdm_fatfs_irx_loaded = false;
 static bool usbmass_irx_loaded = false;
 static bool cdfs_irx_loaded = false;
 static bool mx4sio_irx_loaded = false;
+static bool mmceman_irx_loaded = false;
 
 static bool EnsureBDM()
 {
@@ -125,6 +129,33 @@ static bool EnsureCDFS()
 	}
 	cdfs_irx_loaded = true;
 	return true;
+}
+
+// Layer C lazy-load entry point for mmceman. main.cpp's boot sequence
+// eagerly loads mmceman_irx ONLY when boot_device_hint == "MMCE"; for any
+// other boot device (USB / MC / MX4SIO / HDD in any variant: hdd*, pfs*,
+// ata*, apa* — see detectBootDeviceHintFromArgv0 in main.cpp), this is
+// called on demand by PLDR.EnsureMmceReadyOnce in system.lua before any
+// MMCE probe (PLDR.DetectMMCESlot). Idempotent: subsequent calls after a
+// successful load are no-ops.
+bool EnsureMmceman()
+{
+	if (mmceman_irx_loaded) {
+		return true;
+	}
+	if (!LoadIrxCheckedBuffer("mmceman.irx", &mmceman_irx, size_mmceman_irx, NULL, NULL)) {
+		return false;
+	}
+	mmceman_irx_loaded = true;
+	return true;
+}
+
+// Called from main.cpp when mmceman was loaded eagerly by the boot
+// sequence (MMCE-booted case). Syncs the EnsureMmceman tracker so the
+// Lua-side ensureMmceman() call later is a no-op instead of double-loading.
+void MarkMmcemanLoaded()
+{
+	mmceman_irx_loaded = true;
 }
 
 static bool EnsureBdmQueryRpc()
@@ -1365,6 +1396,12 @@ static int lua_ensure_cdfs(lua_State *L)
 	return 1;
 }
 
+static int lua_ensure_mmceman(lua_State *L)
+{
+	lua_pushboolean(L, EnsureMmceman());
+	return 1;
+}
+
 static int lua_mx4sio_init(lua_State *L)
 {
 	int argc = lua_gettop(L);
@@ -1442,6 +1479,7 @@ static const luaL_Reg System_functions[] = {
 	{"ensureBDMFatFs",         lua_ensure_bdm_fatfs},
 	{"ensureUsbMass",          lua_ensure_usb_mass},
 	{"ensureCDFS",             lua_ensure_cdfs},
+	{"ensureMmceman",          lua_ensure_mmceman},
 	{"initMX4SIO",             lua_mx4sio_init},
 	{"bdmList",                lua_bdm_list},
 	{"refreshMassBackends",    lua_refresh_mass_backends},

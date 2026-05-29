@@ -1105,6 +1105,18 @@ function PLDR.EnsureMmceReadyOnce()
     return true
   end
 
+  -- Layer C lazy load: mmceman.irx is only loaded eagerly when boot
+  -- device is MMCE (see src/main.cpp). For USB / MC / MX4SIO / HDD
+  -- (any of hdd*, pfs*, ata*, apa*) boots, the IRX is deferred and
+  -- must be loaded here before any mmce%d:/ accessor will work.
+  -- MMCE (third-party memory card adapters like MemoryCard Pro) is a
+  -- distinct device from standard PS2 MC -- MC uses mc%d:/ paths and
+  -- the always-loaded mcman/mcserv IRX stack, not mmceman.
+  -- System.ensureMmceman() is idempotent: no-op if already loaded.
+  if type(System) == "table" and type(System.ensureMmceman) == "function" then
+    pcall(System.ensureMmceman)
+  end
+
   if type(_G.ensureMmceInit) == "function" then
     pcall(_G.ensureMmceInit)
   end
