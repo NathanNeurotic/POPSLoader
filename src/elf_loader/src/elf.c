@@ -642,6 +642,32 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 		return ExecuteHddBackedViaEmbeddedLoader(resolved_path, partition, argc, argv);
 	}
 
+	/* B2 (Nuno hardware report 2026-05-29): HDD-launched POPSLoader -> Exit
+	 * -> BOOT.ELF reaches here because ui.lua forces reboot_iop=1 when an
+	 * HDD page was used this session. The manual SifIopReset -> reload-MC-
+	 * modules -> ExecPS2 sequence below then hangs POST-reset: the
+	 * diagnostic build stopped at BLUE for HOSDMENU (hang in the post-reset
+	 * SifInitRpc / SifLoadModule MC reload) and reached RED for wLE (hang at
+	 * ExecPS2). SifIopReset itself COMPLETES -- the reset is not the
+	 * problem; doing the reload+exec from POPSLoader's live EE process is.
+	 *
+	 * Non-HDD-launched BOOT.ELF works because ui.lua leaves reboot_iop=0, so
+	 * it goes through LoadELFFromFileWithPartition -> the embedded child
+	 * loader (identical mc0/mc1 case there). The child loader runs as a
+	 * fresh EE process whose own startup performs the IOP reset (the proven
+	 * Layer-A contract) and unmounts pfs internally (loader.c), so it is
+	 * robust to the HDD session state. Route HDD-launched BOOT.ELF through
+	 * that SAME proven path instead of the fragile in-process reboot
+	 * sequence. No manual PFS unmount / fileXioExit is needed here -- the
+	 * child loader's startup reset tears the IOP (including pfs1:) down.
+	 */
+	if (strcmp(resolved_path, "mc0:/BOOT/BOOT.ELF") == 0 ||
+	    strcmp(resolved_path, "mc1:/BOOT/BOOT.ELF") == 0) {
+		char *boot_argv[1];
+		boot_argv[0] = (char *)resolved_path;
+		return ExecuteViaEmbeddedLoader("", resolved_path, 1, boot_argv);
+	}
+
 	/* Class B / U-10 exit-path diagnostic. When EXIT_DEBUG_COLORS is
 	 * defined (Makefile toggle, off by default), paint the GS background
 	 * register at each stage of the direct-launch sequence so a hardware
