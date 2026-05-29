@@ -658,11 +658,15 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 	 *   PURPLE - re-init RPC + reload MC modules returned
 	 *   RED    - about to ExecPS2 the loaded ELF
 	 *
-	 * If the tester's screen stops on YELLOW (no further paint for >5s)
-	 * we have direct confirmation that SifIopReset is the hang point and
-	 * the next F-fix angle (fileXioExit() / dev9Shutdown() before reset,
-	 * mirroring the Layer A teardown in main.cpp::_ps2sdk_memory_init)
-	 * is the right next experiment.
+	 * UPDATE (B1, 2026-05-29): the fileXioExit() teardown this note
+	 * predicted is now APPLIED below (after the PFS unmount, before the
+	 * reset). Corroborated independently by a Codex audit of cc74a3e and
+	 * by this project's own prior analysis. So this build is now a
+	 * CANDIDATE-FIX + diagnostic in one:
+	 *   - If U-10 now boots through (screen sails past YELLOW to ORANGE/
+	 *     BLUE/PURPLE/RED and BOOT.ELF launches), B1 is confirmed.
+	 *   - If it still stops at YELLOW, fileXioExit was insufficient and
+	 *     the next angle is dev9Shutdown() for HDD-launched POPSLoader.
 	 */
 #ifdef EXIT_DEBUG_COLORS
 #define SET_EXIT_BG(c) {*((volatile unsigned long int *)0x120000E0) = c;}
@@ -701,6 +705,26 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 	 */
 	unmount_pfs_slots_for_exec(build_exec_keep_mask(resolved_path));
 	SET_EXIT_BG(0x00FF00); /* GREEN - PFS unmount returned */
+
+	/* B1 fix (Codex audit of cc74a3e + independent finding, 2026-05-29):
+	 * tear down EE-side fileXio before SifIopReset. POPSLoader calls
+	 * fileXioInit() during boot (src/main.cpp), so __fileXioInited is set
+	 * and the IOP-side fileXio RPC server is live at this point. A live
+	 * fileXio server blocks SifIopReset (ps2sdk #425) -- the same root
+	 * cause Layer A handles at startup in _ps2sdk_memory_init. The PR #464
+	 * F4 PFS unmount alone did NOT release it on hardware; fileXioExit()
+	 * performs the full deinit (clears __fileXioInited and tears down the
+	 * RPC binding) so the reset can complete. It is guarded internally by
+	 * __fileXioInited, so it is a safe no-op if fileXio was never inited.
+	 *
+	 * Scope: HDD-backed POPSTARTER (D-10) never reaches here -- it returns
+	 * earlier via ExecuteHddBackedViaEmbeddedLoader -- so this only affects
+	 * non-HDD-backed reboot launches: BOOT.ELF (the U-10 target), MC
+	 * DKWDRV, and generic direct reboot launches. MC DKWDRV must be
+	 * retested for regression (it gets a fresh IOP + MC modules after this,
+	 * and does not need fileXio across the handoff, so the teardown should
+	 * be transparent to it). */
+	fileXioExit();
 
 	FlushCache(0);
 	SET_EXIT_BG(0x00FFFF); /* YELLOW - about to SifIopReset */
