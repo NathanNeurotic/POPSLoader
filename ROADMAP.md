@@ -10,8 +10,8 @@ Last updated: 2026-05-28 (post-BETA-10-5)
 - DKWDRV from MC is hardware-PASS (Nuno, 2026-05-25 and 2026-05-28 on the release artifact).
 - BOOT.ELF from USB-booted POPSLoader (L-07) is hardware-PASS via the V2 route at `d23520a` (Nuno 2026-05-28).
 - DKWDRV from custom HDD path is **known-broken accepted** in BETA-10-5. Workaround: use the default MC DKWDRV path. (Re-confirmed broken Nuno 2026-05-28 PM.)
-- **MX4SIO-rooted POPSLoader settings save** is **broken with fix in flight** (PR #476). The `mx4sio:/` argv0 prefix isn't a writable fileXio mount; PR #476 translates cwd to the actual `mass*:/` slot via dynamic ioctl driver lookup (sdc/mx4), mirroring the HDD branch in `etc/boot.lua`.
-- **BOOT.ELF from HDD-booted POPSLoader (U-10) is now PASS** per Nuno 2026-05-28 PM ("BOOT.ELF working across the board"). Previously known-broken-accepted in BETA-10-5; the resolution after PR #470/#472/#473 was unexpected since none of those PRs touch the U-10 path architecturally. Investigation notes preserved in `docs/U10_INVESTIGATION.md` for any regression revisit.
+- **MX4SIO-rooted POPSLoader settings save** was fixed by PRs #476 + #477 — hardware-confirmed by Nuno 2026-05-29 02:58Z. PR #476 added the boot.lua mass-slot scan via dynamic ioctl driver lookup (sdc/mx4); PR #477 added a 3-attempt retry pattern after the single-shot scan missed on the first hardware test, plus a `BOOT_MX4SIO_PROBE_RESULT` diagnostic trace in the error toast for any future regression.
+- **BOOT.ELF from HDD-booted POPSLoader (U-10) is still known-broken accepted** in BETA-10-5. An earlier 2026-05-28 PM "across the board PASS" report turned out to be a partial sweep covering only non-HDD-booted cases; an explicit HDD-booted retest re-confirmed the failure (HOSDmenu → HDD-POPSLoader → BOOT.ELF and wLE → HDD-POPSLoader → BOOT.ELF both black-screen; MC/USB/MX4SIO-rooted BOOT.ELF still work). Workaround: Exit → OSDSYS or reboot. Maintainer hypothesis to investigate next: explicit IOP reset on boot before anything else (aligns with H1/H5 in `docs/U10_INVESTIGATION.md`).
 - POPSLoader launched from wLaunchELF: works in the common flow (CosmicScale post-PR #458). One latent failure mode (wLE → USB POPSLoader → BOOT.ELF) reported by Nuno 2026-05-27 — code analysis says it takes the same route as the working autoboot/OSDSYS cases, so likely always-broken/latent rather than a regression; not enumerated as known-broken pending a clearer repro.
 
 **Post-release work merged to `BETA-12-PLAY` (CI-verified, hardware-unverified except where noted):**
@@ -52,10 +52,10 @@ Last updated: 2026-05-28 (post-BETA-10-5)
 
 ## Pragmatically Accepted (not blocking)
 
-- **U-10 BOOT.ELF from HDD-booted POPSLoader** — was known-broken accepted; **now PASS per Nuno 2026-05-28 PM**. Investigation hypotheses preserved in `docs/U10_INVESTIGATION.md` in case it regresses. Branch `claude/diag-u10` preserved.
+- **U-10 BOOT.ELF from HDD-booted POPSLoader** — known-broken accepted (re-confirmed 2026-05-28 PM by Nuno after a fuller hardware sweep that explicitly covered HDD-booted launch contexts). Investigation hypotheses in `docs/U10_INVESTIGATION.md`. Branch `claude/diag-u10` preserved. Maintainer hypothesis to revisit: explicit IOP reset on boot before anything else.
 - **DKWDRV from custom HDD path** — known-broken accepted (re-confirmed broken by Nuno 2026-05-28 PM). PR #460's V2 mimicry didn't fix it on hardware. If revisited: GS BGCOLOUR diagnostics don't work on this path (runs through too fast against POPSLoader's still-active framebuffer); need a different angle (Lua-side notification or explicit framebuffer clear before paint).
 - **HDD r/w driver swap probe** (`ps2hdd-osd.irx` → `ps2hdd.irx`) — branch `claude/hdd-rw-probe` exists with the 2-line change. Would unlock HDD settings sidecar IF D-10 doesn't regress. Requires hardware test.
-- ~~**wLE → USB-POPSLoader → BOOT.ELF latent failure** (Nuno 2026-05-27)~~ — covered by the 2026-05-28 PM "BOOT.ELF across the board" PASS. Removed from this list unless a new failure is reported.
+- **wLE → USB-POPSLoader → BOOT.ELF latent failure** (Nuno 2026-05-27) — was tentatively covered by the 2026-05-28 PM partial-sweep PASS; status uncertain pending an explicit retest under this specific launch chain.
 
 ## Secondary Work
 
@@ -79,7 +79,7 @@ Last updated: 2026-05-28 (post-BETA-10-5)
 ### 5) Full GUI overhaul (Berion mockups)
 - 2026-05-24: graphics-team mockups by Berion and the matching PNG asset set landed (`f8fec64`). Full implementation prompt and per-screen pixel specs live in `docs/GUI_OVERHAUL_PROMPT.md`.
 - Scope: Context menu, Settings (per-category pages superseding the OPL focused-list), Joypad configuration, On-screen keyboard. Boot/splash and game list are out of scope.
-- Prereq: hardware verification of DKWDRV-on-HDD + wLaunchELF + U-10 has settled (BETA-10-5 release + Nuno 2026-05-28 PM verification). The category-page Settings model in the prompt replaces the OPL focused-list, so coordinate retest sequencing.
+- Prereq: hardware verification of DKWDRV-on-HDD + wLaunchELF + U-10 has settled (BETA-10-5 release + Nuno 2026-05-28 PM verification — DKWDRV-HDD-custom and U-10 remain known-broken-accepted with workarounds). The category-page Settings model in the prompt replaces the OPL focused-list, so coordinate retest sequencing.
 - Mockup HTML/JSX wrapper from Berion's package is referenced by the prompt but not yet committed; either commit the mockup files or use a screenshot/hosted-mockup oracle before starting the Lua port.
 
 ### 6) Documentation cleanup (per `docs/DOCUMENTATION_FOLLOWUP_AUDIT.md`)

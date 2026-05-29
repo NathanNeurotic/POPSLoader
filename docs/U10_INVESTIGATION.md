@@ -3,17 +3,11 @@
 Date: 2026-05-26 (original), updated 2026-05-28 with PR #463/#464 outcomes, and again 2026-05-28 PM with the surprising resolution.
 Author: Claude (with NathanNeurotic direction)
 
-## Status (as of 2026-05-28 PM)
+## Status (as of 2026-05-28 PM late)
 
-**PASS — unexpectedly resolved.** Nuno reports BOOT.ELF exit working "across the board" including HDD-booted POPSLoader on the rolling-release artifact built post-PR-#470/#472/#473.
+**Known broken — accepted for release. Walked back from a brief "PASS" claim.** Earlier on 2026-05-28 PM the maintainer interpreted Nuno's "BOOT.ELF working across the board" report as a U-10 resolution and updated this file accordingly; a fuller hardware sweep later that day with explicit HDD-booted retests reproduced the failure (HOSDmenu → HDD-POPSloader → BOOT.ELF = black screen; wLE → HDD-POPSloader → BOOT.ELF = black screen). The earlier "across the board" was a partial sweep covering only the non-HDD-booted launch contexts. U-10 remains the same as it was in BETA-10-5: known-broken-accepted with the workaround Exit → OSDSYS or reboot.
 
-None of those PRs architecturally touch the U-10 path (`LoadELFFromFileExecPS2RebootIOPWithPartition` direct path, IOP reset, MC module reload). The cause of the resolution is not obvious from the diff. Possible explanations:
-
-1. **C-layer `EnsureUsbMass`-first reordering in `lua_mx4sio_init` (PR #472)** — the maintainer-enforced order now means `usbmass_bd`/`bdmfs_fatfs`/`bdm` are guaranteed loaded before any MX4SIO call, even when MX4SIO isn't actually present. This might be incidentally cleaning some IOP state that the U-10 reset path was tripping over.
-2. **The "U-10 fails" reports were partially obscured by the now-fixed boot crash.** The 2026-05-28 morning rolling-release had the `ClassifyMassRootDriver` forward-reference nil-call crash (PR #473 hotfix). Earlier U-10 fail reports may have been misattributed; the actual failure point might have been earlier (boot crash) rather than at BOOT.ELF exit.
-3. **Test-environment change** on Nuno's side (MC contents, HDD state, etc.).
-
-This file is preserved as the **hypothesis catalog in case U-10 regresses**. If a future change reintroduces the failure, the diagnostic-first workflow below still applies: ship a colored sentinel build before another fix attempt.
+Hypothesis to investigate next (per maintainer 2026-05-28 PM): **"maybe I need to reset IOP on boot or something before anything else."** This aligns with H1 (DEV9 state survives `SifIopReset`; an explicit `dev9Shutdown` before exec might unblock) and H5 (stale `pfs1:` mount blocks the reset). See those sections below.
 
 ### What was tried since the original investigation note
 

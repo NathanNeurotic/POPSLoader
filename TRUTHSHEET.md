@@ -65,16 +65,14 @@ Non-negotiable behavioral invariants that changes must preserve unless an explic
 - Settings save on USB and MC sidecars: **PASS** 2026-05-27 (Nuno). Per-device `APP_DIR/.pldrs`.
 
 **Known-broken accepted for BETA-10-5** (documented workarounds):
-- `DKWDRV from HDD custom path`: **FAIL** 2026-05-25 (Nuno on PR #460 artifact); re-confirmed broken 2026-05-28 PM by Nuno on rolling-release post PR #470/#472/#473. Pragmatic acceptance per Nuno + maintainer 2026-05-27. Workaround: configure DKWDRV path to MC.
+- `DKWDRV from HDD custom path`: **FAIL** 2026-05-25 (Nuno on PR #460 artifact); re-confirmed broken 2026-05-28 PM. Pragmatic acceptance per Nuno + maintainer 2026-05-27. Workaround: configure DKWDRV path to MC.
+- `BOOT.ELF from HDD-booted POPSLoader` (U-10): **FAIL** 2026-05-28 PM late (Nuno, after a fuller sweep that explicitly retested the HDD-booted launch context: HOSDmenu → HDD-POPSloader → BOOT.ELF and wLE → HDD-POPSloader → BOOT.ELF both black-screen). An earlier 2026-05-28 PM "across the board PASS" report turned out to be a partial sweep covering only non-HDD-booted cases. MC/USB/MX4SIO-rooted BOOT.ELF still works. Workaround: Exit → OSDSYS or reboot. Maintainer hypothesis to investigate next: explicit IOP reset on boot before anything else (aligns with H1/H5 in `docs/U10_INVESTIGATION.md`).
 
-**Broken with fix in flight** (PR #476):
-- MX4SIO-rooted POPSLoader settings save: **FAIL** 2026-05-28 PM (Nuno) with `mx4sio:/<path>/.pldrs may be read-only`. The `mx4sio:/` argv0 prefix is the BDM device-kind label, not a writable fileXio mount. PR #476 (`claude/mx4sio-boot-path-normalize`) translates the boot cwd to the actual `mass*:/` slot dynamically via ioctl driver lookup (sdc/mx4), mirroring the existing HDD branch in `etc/boot.lua`.
-
-**Unexpectedly resolved 2026-05-28 PM:**
-- `BOOT.ELF from HDD-booted POPSLoader` (U-10): was **FAIL** 2026-05-27 (Nuno on PR #464 F4 artifact); **now PASS** 2026-05-28 PM (Nuno on rolling-release post PR #470/#472/#473). None of those PRs architecturally touch the U-10 path, so the cause is not obvious. Investigation notes preserved in `docs/U10_INVESTIGATION.md` in case it regresses.
+**Resolved (PR #476 + PR #477 hardware-confirmed by Nuno 2026-05-29 02:58Z):**
+- MX4SIO-rooted POPSLoader settings save: had been failing with `mx4sio:/<path>/.pldrs may be read-only` because `mx4sio:/` is the BDM device-kind label, not a writable fileXio mount. PR #476 added the boot.lua mass-slot scan via dynamic ioctl driver lookup (sdc/mx4) to translate the cwd to the writable `mass*:/` slot; PR #477 added a 3-attempt retry pattern after the single-shot scan missed on the first hardware test. `BOOT_MX4SIO_PROBE_RESULT` diagnostic trace is appended to the error toast if it ever regresses.
 
 **Other:**
-- `POPSLoader from wLaunchELF`: **PASS** for common cases 2026-05-28; one latent failure mode (wLE → USB POPSLoader → BOOT.ELF) reported by Nuno 2026-05-27. Code analysis says it takes the same BOOT.ELF route as working autoboot/OSDSYS cases, so likely always-broken/latent rather than a regression. Not enumerated as known-broken pending a clearer repro.
+- `POPSLoader from wLaunchELF`: **PASS** for common cases (CosmicScale post-PR #458, Nuno 2026-05-28); the previously-reported wLE → USB POPSLoader → BOOT.ELF latent failure status is uncertain pending an explicit retest under that specific launch chain. The wLE → HDD POPSLoader → BOOT.ELF case fails (covered by U-10 above).
 - `U-06` (PAL/NTSC menu asset proportions): Unknown, still needs hardware confirmation.
 
 **Post-release PR work** (Nuno's 2026-05-28 PM rolling-release hardware test):
