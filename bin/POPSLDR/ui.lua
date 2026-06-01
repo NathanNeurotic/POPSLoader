@@ -1257,8 +1257,27 @@ UI = {
             or string.find(lower_elf, "^pfs%d*:/") ~= nil
             or string.find(lower_elf, "^ata%d*:") ~= nil
             or string.find(lower_elf, "^apa%d*:") ~= nil
-          local dkwdrv_reboot_iop = is_hdd_path and 0 or 1
-          local rc = System.loadELF(elf_path, dkwdrv_reboot_iop, elf_path)
+          local rc
+          if is_hdd_path then
+            -- HDD DKWDRV: unchanged. reboot_iop=0 with argv0 -> existing
+            -- HDD-backed routing (its separate routing question is tracked
+            -- elsewhere; not touched here).
+            rc = System.loadELF(elf_path, 0, elf_path)
+          else
+            -- MC / non-HDD DKWDRV (Nuno 2026-05-31: "dkwdrv exit to memory
+            -- card hangs on pic"). Previously this used reboot_iop=1, which
+            -- routes to the in-process SifIopReset("",0) soft reset -- the
+            -- SAME mechanism that hung HDD->BOOT.ELF (fixed in PR #479).
+            -- Route MC DKWDRV through the proven embedded child loader
+            -- instead: the 2-arg loadELF (NO argv0) reaches
+            -- LoadELFFromFile -> is_dkwdrv_elf_path -> ExecuteViaEmbeddedLoader
+            -- (elf.c), which performs no in-process IOP reset. The C side
+            -- synthesizes argv0 (dkwdrv_argv[0] = resolved_path), so dropping
+            -- the Lua argv0 is required to hit that route, not the 3-arg
+            -- LoadELFFromFileExecPS2 direct-exec path. Mirrors the confirmed
+            -- BOOT.ELF fix (same embedded-loader, no-reset path).
+            rc = System.loadELF(elf_path, 0)
+          end
           if type(PLDR) == "table" and type(PLDR.RestoreWorkingDirectory) == "function" then
             pcall(PLDR.RestoreWorkingDirectory, previous_cwd)
           end
