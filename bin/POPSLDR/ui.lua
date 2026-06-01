@@ -1340,25 +1340,21 @@ UI = {
         elseif type(PLDR) == "table" and type(PLDR.PrepareForExternalELFLaunch) == "function" then
           pcall(PLDR.PrepareForExternalELFLaunch, elf_path)
         end
-        if hdd_loaded then
-          reboot_iop = 1
-        end
-        -- Pass the computed reboot_iop. Previously this was hard-coded to 0,
-        -- which silently discarded the HDD-aware conditional reboot logic
-        -- above and meant BOOT.ELF after HDD page init always went down the
-        -- non-reboot LoadExecPS2 path even though the surrounding code was
-        -- intentionally selecting a full IOP reset. wLaunchELF / BOOT.ELF
-        -- typically expects a clean IOP state when HDD has been used in the
-        -- current session, so honor the computed value here.
+        -- reboot_iop stays 0 for BOOT.ELF, including the HDD-boot case.
+        -- (hdd_loaded is still used above to pick the cold pfs teardown.)
         --
-        -- 2026-05-24 hardware result: this dead-code fix alone (PR #450)
-        -- did not unblock HDD-boot -> Exit -> BOOT.ELF on hardware. PR #451
-        -- additionally tried passing argv[0]=elf_path to the reboot path,
-        -- which also did not help on hardware (PR #451 reverted). The
-        -- reboot-IOP path itself appears to be the wrong target for
-        -- BOOT.ELF; needs a different angle next round (likely a special
-        -- case in the BRAM child loader that conditionally resets the IOP
-        -- when launching BOOT.ELF on top of a HDD-loaded state).
+        -- 2026-05-30: regression resolved by diffing against a build that
+        -- WORKED (Nuno's, on official Enceladus). That build launched
+        -- everything with reboot_iop=0 -- no IOP reset, embedded child-loader
+        -- handoff -- and it worked from an HDD boot. The reboot=1 path forces
+        -- SifIopReset("", 0), a soft reset that cannot reboot a HDD-dirtied
+        -- IOP (dev9/atad/pfs/fileXio still loaded) -> SifIopSync spins -> the
+        -- black screen testers saw (hardware froze at the reset/sync stage).
+        -- The prior assumption that BOOT.ELF needs a clean-IOP reset after HDD
+        -- use was wrong: PrepareForColdExternalELFLaunch() above already
+        -- unmounts every pfs slot (the only HDD state that matters here), so
+        -- the no-reset path is both correct and sufficient. PR #450/#451's
+        -- reboot=1 attempts were chasing the wrong mechanism.
         local rc = System.loadELF(elf_path, reboot_iop)
         UI.LAUNCHING = false
         UI.Notify("BOOT.ELF failed to launch\nreturn code: "..tostring(rc), 150, "error")
