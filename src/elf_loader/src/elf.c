@@ -651,25 +651,32 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 		return -2;
 	}
 
-	/* Unmount all live PFS slots before SifIopReset, including the boot
-	 * partition's pfs1: that etc/boot.lua established for HDD-booted
-	 * POPSLoader. The diagnostic build (PR #463, Nuno 2026-05-26) showed
-	 * that for U-10 (BOOT.ELF from HDD-booted POPSLoader) the screen
-	 * stops painting at YELLOW = right after SifLoadElf, before ORANGE
-	 * = post-SifIopReset would paint. SifIopReset itself hangs because
-	 * fileXio is still holding the pfs1: RPC server thread on the IOP
-	 * side (ps2sdk #425). Unmounting all PFS slots here releases those
-	 * server-side resources so the reset completes.
+	/* PFS unmount before SifIopReset -- gated on HDD-backed target.
 	 *
-	 * For HDD-backed targets the keep mask is set by Lua-side launch
-	 * prep (see PrepareForExternalELFLaunch / SetExecKeepPfsMask) so we
-	 * preserve any slot that the target needs across exec. For non-HDD
-	 * targets the keep mask defaults to 0 and we unmount every slot.
-	 * The previous `is_hdd_backed_exec_path` gate skipped the unmount
-	 * entirely for non-HDD targets like BOOT.ELF, which was the active
-	 * sabotage diagnosed in PR #463.
-	 */
-	unmount_pfs_slots_for_exec(build_exec_keep_mask(resolved_path));
+	 * This restores the EXACT pre-regression gate that had MC DKWDRV
+	 * hardware-confirmed working (QA 2026-05-26): a Memory Card DKWDRV
+	 * launch (reboot_iop=1, mc0:/PS1_DKWDRV/DKWDRV.ELF) is NOT
+	 * HDD-backed, so the unmount is skipped and the IOP is left intact
+	 * for DKWDRV.
+	 *
+	 * The U-10 "F4" change (PR #464) had removed this gate to make the
+	 * unmount unconditional so BOOT.ELF-from-HDD-boot could release the
+	 * boot-time pfs1: blocking SifIopReset. But that also began
+	 * unmounting on the MC DKWDRV launch -- the regression Nuno reported
+	 * 2026-05-31 ("hangs on pic"). PR #479 has since moved BOOT.ELF to
+	 * the reboot_iop=0 embedded-loader path, so U-10 NO LONGER reaches
+	 * this function -- making F4's unconditional unmount here vestigial
+	 * (it now only affects MC DKWDRV, which it breaks). Restoring the
+	 * gate is therefore safe for U-10 and fixes DKWDRV-MC.
+	 *
+	 * Note: every genuinely HDD-backed path already returns early above
+	 * via ExecuteHddBackedViaEmbeddedLoader, so in practice this gate is
+	 * false for everything that still reaches here. It is kept (rather
+	 * than deleting the unmount outright) to preserve the documented
+	 * keep-mask contract for any future non-early-returned HDD target. */
+	if (is_hdd_backed_exec_path(resolved_path)) {
+		unmount_pfs_slots_for_exec(build_exec_keep_mask(resolved_path));
+	}
 
 	FlushCache(0);
 	while (!SifIopReset("", 0)) {
