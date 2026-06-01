@@ -1238,27 +1238,26 @@ UI = {
           if type(PLDR) == "table" and type(PLDR.PrepareForExternalELFLaunch) == "function" then
             pcall(PLDR.PrepareForExternalELFLaunch, elf_path)
           end
-          -- Pick the launch route based on where DKWDRV.ELF lives.
-          --   * mc / non-HDD: reboot_iop=1 -- direct path with full IOP
-          --     reset, reload SIO2MAN/MCMAN/MCSERV, ExecPS2 with
-          --     synthesized argv0. MC DKWDRV is confirmed working.
-          --   * HDD (hdd?:/ or pfs?:/): reboot_iop=0 -- non-reboot path.
-          --     This pairs with the DKWDRV special-case route in
-          --     src/elf_loader/src/elf.c LoadELFFromFileWithPartition,
-          --     which mirrors the BOOT.ELF V2 contract (d23520a) and
-          --     routes through ExecuteViaEmbeddedLoader so the child
-          --     loader's wipeUserMem + filexio-direct-load + SifExitRpc
-          --     + ExecPS2 sequence fires. PR #452 (V4) tried only the
-          --     Lua-side reboot_iop=0 without the C-side routing change,
-          --     which fell through to direct LoadExecPS2 and black-
-          --     screened. The complete V2-mimicry needs BOTH halves.
-          local lower_elf = string.lower(tostring(elf_path or ""))
-          local is_hdd_path = string.find(lower_elf, "^hdd%d:") ~= nil
-            or string.find(lower_elf, "^pfs%d*:/") ~= nil
-            or string.find(lower_elf, "^ata%d*:") ~= nil
-            or string.find(lower_elf, "^apa%d*:") ~= nil
-          local dkwdrv_reboot_iop = is_hdd_path and 0 or 1
-          local rc = System.loadELF(elf_path, dkwdrv_reboot_iop, elf_path)
+          -- DKWDRV launch: reboot_iop=0 for ALL DKWDRV (MC and HDD).
+          --
+          -- 2026-05-31 regression fix, grounded in BETA-8 (commit f396020),
+          -- which the maintainer confirmed had WORKING DKWDRV-from-MC. In
+          -- BETA-8 the launch was System.loadELF(path, 1, path), but BETA-8's
+          -- lua_loadELF binding IGNORED the reboot flag whenever an argv0 was
+          -- present and always called LoadELFFromFileExecPS2 -- a direct
+          -- SifInitRpc -> SifLoadElf -> ExecPS2 with NO SifIopReset. So DKWDRV
+          -- historically launched with no IOP reset at all.
+          --
+          -- The current binding instead HONORS reboot_iop: a 3-arg call with
+          -- reboot=1 routes to LoadELFFromFileExecPS2RebootIOP, whose
+          -- SifIopReset("",0) soft reset is what hangs DKWDRV-MC on hardware
+          -- ("hangs on pic", Nuno 2026-05-31). reboot=0 + argv0 routes to
+          -- LoadELFFromFileExecPS2 (luasystem.cpp), which is byte-identical to
+          -- BETA-8's proven no-reset path. So passing reboot_iop=0 restores
+          -- exactly the BETA-8 behavior.
+          --
+          -- HDD DKWDRV already used reboot_iop=0, so it is unchanged.
+          local rc = System.loadELF(elf_path, 0, elf_path)
           if type(PLDR) == "table" and type(PLDR.RestoreWorkingDirectory) == "function" then
             pcall(PLDR.RestoreWorkingDirectory, previous_cwd)
           end
