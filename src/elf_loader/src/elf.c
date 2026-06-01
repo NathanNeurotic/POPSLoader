@@ -642,6 +642,21 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 		return ExecuteHddBackedViaEmbeddedLoader(resolved_path, partition, argc, argv);
 	}
 
+	/* DKWDRV launch diagnostic (DKWDRV_DEBUG_COLORS, Makefile toggle).
+	 * After the U-10 fix, the ONLY remaining caller of this reboot-IOP
+	 * path is MC DKWDRV (ui.lua OpenDKWDRV; POPSTARTER uses reboot=0 and
+	 * BOOT.ELF was moved to reboot=0). Nuno 2026-05-31 reported MC DKWDRV
+	 * "hangs on pic" -> black screen. Paint the GS background at each
+	 * stage so a tester photo shows exactly where it dies. No-op unless
+	 * DKWDRV_DEBUG_COLORS is defined. Colors match the child loader's
+	 * convention (loader.c) for consistency. */
+#ifdef DKWDRV_DEBUG_COLORS
+#define SET_DKW_BG(c) {*((volatile unsigned long int *)0x120000E0) = c;}
+#else
+#define SET_DKW_BG(c)
+#endif
+	SET_DKW_BG(0xFFFFFF); /* WHITE  - entered reboot-IOP exit path */
+
 	SifInitRpc(0);
 	SifLoadFileInit();
 	ret = SifLoadElf(resolved_path, &elfdata);
@@ -650,40 +665,55 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 	if (ret != 0 || elfdata.epc == 0) {
 		return -2;
 	}
+	SET_DKW_BG(0xFFFF00); /* CYAN   - SifLoadElf OK, target in EE RAM */
 
-	/* Unmount all live PFS slots before SifIopReset, including the boot
-	 * partition's pfs1: that etc/boot.lua established for HDD-booted
-	 * POPSLoader. The diagnostic build (PR #463, Nuno 2026-05-26) showed
-	 * that for U-10 (BOOT.ELF from HDD-booted POPSLoader) the screen
-	 * stops painting at YELLOW = right after SifLoadElf, before ORANGE
-	 * = post-SifIopReset would paint. SifIopReset itself hangs because
-	 * fileXio is still holding the pfs1: RPC server thread on the IOP
-	 * side (ps2sdk #425). Unmounting all PFS slots here releases those
-	 * server-side resources so the reset completes.
-	 *
-	 * For HDD-backed targets the keep mask is set by Lua-side launch
-	 * prep (see PrepareForExternalELFLaunch / SetExecKeepPfsMask) so we
-	 * preserve any slot that the target needs across exec. For non-HDD
-	 * targets the keep mask defaults to 0 and we unmount every slot.
-	 * The previous `is_hdd_backed_exec_path` gate skipped the unmount
-	 * entirely for non-HDD targets like BOOT.ELF, which was the active
-	 * sabotage diagnosed in PR #463.
+	/* Unmount all live PFS slots before SifIopReset (see PR #463/#464 for
+	 * the BOOT.ELF history). For MC DKWDRV with no HDD session the keep
+	 * mask is 0 and there is typically nothing mounted, but this is kept
+	 * unconditional so a DKWDRV launch after HDD use also tears pfs down.
 	 */
 	unmount_pfs_slots_for_exec(build_exec_keep_mask(resolved_path));
+	SET_DKW_BG(0x00FF00); /* GREEN  - PFS unmount returned */
 
 	FlushCache(0);
-	while (!SifIopReset("", 0)) {
+	SET_DKW_BG(0x00FFFF); /* YELLOW - about to SifIopReset (cold reboot) */
+
+	/* H-B fix (grounded in the known-good build's src/system.cpp::IOP_Reset,
+	 * which the maintainer's working POPSLoader used for every reboot
+	 * launch): use a FULL cold IOP reboot with the UDNL/EELOADCNF image,
+	 * NOT the bare soft reset. POPSLoader had SifIopReset("", 0) here; the
+	 * working source had SifIopReset("rom0:UDNL rom0:EELOADCNF", 0). For a
+	 * PS1 disc loader like DKWDRV the bare soft reset leaves the IOP in a
+	 * state DKWDRV cannot drive (candidate cause of the "hangs on pic"
+	 * black screen). The working reset also tears down IOP heap + cmd
+	 * before re-init, mirrored below. */
+	while (!SifIopReset("rom0:UDNL rom0:EELOADCNF", 0)) {
 	}
 	while (!SifIopSync()) {
 	}
+	/* Mirror the working IOP_Reset() teardown: tear down IOP heap + cmd
+	 * before re-initializing RPC, exactly as src/system.cpp did. */
+	SifExitIopHeap();
+	SifLoadFileExit();
+	SifExitRpc();
+	SifExitCmd();
+	SET_DKW_BG(0x00A5FF); /* ORANGE - IOP cold reboot + sync + teardown done */
 
 	SifInitRpc(0);
 	SifLoadFileInit();
+	/* H-B fix: reload the FULL module set the working build's load_modules()
+	 * used, not just SIO2MAN/MCMAN/MCSERV. DKWDRV is a PS1 disc loader and
+	 * needs the CDVD modules; their absence is a strong candidate for a
+	 * disc-init hang on the DKWDRV splash ("on pic"). Order matches the
+	 * working source exactly (CDVDFSV before CDVDMAN). */
 	SifLoadModule("rom0:SIO2MAN", 0, NULL);
+	SifLoadModule("rom0:CDVDFSV", 0, NULL);
+	SifLoadModule("rom0:CDVDMAN", 0, NULL);
 	SifLoadModule("rom0:MCMAN", 0, NULL);
 	SifLoadModule("rom0:MCSERV", 0, NULL);
+	SifLoadModule("rom0:PADMAN", 0, NULL);
 	SifLoadFileExit();
-	SifExitRpc();
+	SET_DKW_BG(0x800080); /* PURPLE - modules reloaded */
 
 	FlushCache(0);
 	FlushCache(2);
@@ -696,6 +726,8 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 		final_argv = dkwdrv_argv;
 	}
 
+	SET_DKW_BG(0x0000FF); /* RED    - about to ExecPS2 the target */
 	ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, final_argc, final_argv);
+#undef SET_DKW_BG
 	return -1;
 }
