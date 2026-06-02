@@ -1241,28 +1241,37 @@ UI = {
             or string.find(lower_elf, "^pfs%d*:/") ~= nil
             or string.find(lower_elf, "^ata%d*:") ~= nil
             or string.find(lower_elf, "^apa%d*:") ~= nil
-          -- Whether POPSLoader ITSELF was booted from HDD this session. This
-          -- is independent of where DKWDRV.ELF lives.
+          -- Whether POPSLoader ITSELF was booted from HDD this session
+          -- (independent of where DKWDRV.ELF lives).
           local hdd_loaded = type(PLDR) == "table" and type(PLDR.HDD) == "table"
             and tonumber(PLDR.HDD.LOADSTATE or 0) ~= 0
           --
-          -- DKWDRV launch routing (2026-05-31 fix). Nuno's screenshot showed
-          -- "Booted from: HDD" with MC DKWDRV hanging on the X press. That is
-          -- the SAME root cause as U-10: when POPSLoader is booted from HDD,
-          -- etc/boot.lua leaves pfs1: mounted, and a reboot_iop=1 launch hits
-          -- SifIopReset while pfs1: is still held -> the reset hangs (the
-          -- ps2sdk #425 class). MC DKWDRV used reboot_iop=1 with no cold pfs
-          -- teardown, so it black-screened specifically on HDD-booted setups.
-          -- (MC DKWDRV from a MC/USB-booted POPSLoader has no pfs1: and was
-          -- confirmed working -- that path is preserved below.)
+          -- Launch routing. Three cases:
           --
-          -- Fix: mirror LaunchBootElf, which fixed U-10. When POPSLoader was
-          -- booted from HDD, run the cold external-launch prep (unmounts the
-          -- boot-time pfs1: and clears the keep mask) and force reboot_iop=0
-          -- so we take the no-reset embedded-loader path instead of the
-          -- SifIopReset path that hangs on the held pfs1:.
+          --  (1) MC / non-HDD DKWDRV, POPSLoader booted from HDD
+          --      (Nuno 2026-05-31 "hangs on pic"). etc/boot.lua left pfs1:
+          --      mounted; the reboot_iop=1 SifIopReset hangs on that held
+          --      mount (ps2sdk #425, same root cause as U-10). Mirror the
+          --      U-10 LaunchBootElf fix: cold prep (unmount the boot pfs1:,
+          --      clear keep mask) + reboot_iop=0 (no in-process reset). This
+          --      is safe here precisely because DKWDRV is NOT on HDD, so no
+          --      HDD partition needs to survive the prep.
+          --
+          --  (2) HDD-resident DKWDRV (hdd?:/ pfs?:/ ata?:/ apa?:/), ANY boot
+          --      source. UNCHANGED from the prior confirmed behavior:
+          --      reboot_iop=0 -> the LoadELFFromFileWithPartition DKWDRV
+          --      special case -> ExecuteViaEmbeddedLoader. The cold prep is
+          --      deliberately NOT applied (it would unmount the very
+          --      partition DKWDRV launches from). PrepareForExternalELFLaunch
+          --      keeps DKWDRV's own slot via CollectHddKeepSlots.
+          --
+          --  (3) MC / non-HDD DKWDRV, POPSLoader NOT booted from HDD.
+          --      UNCHANGED: reboot_iop=1, full IOP reset (safe -- no pfs1:
+          --      is held when not HDD-booted). This is the confirmed-working
+          --      MC DKWDRV path (QA 2026-05-26).
           local dkwdrv_reboot_iop
-          if hdd_loaded then
+          if hdd_loaded and not is_hdd_path then
+            -- Case (1): the regression being fixed.
             if type(PLDR) == "table" and type(PLDR.PrepareForColdExternalELFLaunch) == "function" then
               pcall(PLDR.PrepareForColdExternalELFLaunch)
             elseif type(PLDR) == "table" and type(PLDR.PrepareForExternalELFLaunch) == "function" then
@@ -1270,13 +1279,10 @@ UI = {
             end
             dkwdrv_reboot_iop = 0
           else
+            -- Cases (2) and (3): byte-for-byte the original behavior.
             if type(PLDR) == "table" and type(PLDR.PrepareForExternalELFLaunch) == "function" then
               pcall(PLDR.PrepareForExternalELFLaunch, elf_path)
             end
-            -- Non-HDD-booted POPSLoader: preserve the prior, confirmed-working
-            -- routing -- HDD-resident DKWDRV uses reboot_iop=0 (embedded
-            -- loader); MC/non-HDD DKWDRV uses reboot_iop=1 (full IOP reset,
-            -- safe because no pfs1: is held when not HDD-booted).
             dkwdrv_reboot_iop = is_hdd_path and 0 or 1
           end
           local rc = System.loadELF(elf_path, dkwdrv_reboot_iop, elf_path)
