@@ -10,6 +10,14 @@ BIN2C = $(PS2SDK)/bin/bin2c
 EE_OBJS = src/elf.o loader.o
 EE_LIB = libcustom-elf-loader.a
 
+# DKWDRV launch diagnostic (GS_BGCOLOUR per-stage paint in elf.c's
+# LoadELFFromFileExecPS2). Propagated from the parent Makefile so a single
+# toggle controls it. Release builds MUST have DKWDRV_DEBUG_COLORS=0.
+DKWDRV_DEBUG_COLORS ?= 0
+ifeq ($(DKWDRV_DEBUG_COLORS),1)
+EE_CFLAGS += -DDKWDRV_DEBUG_COLORS
+endif
+
 .PHONY: FORCE
 
 src/loader/bin/loader.elf:

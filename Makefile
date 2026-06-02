@@ -34,6 +34,11 @@ export HEADER
 RESET_IOP = 1
 #---------------------- enable DEBUGGING MODE ---------------------#
 DEBUG = 0
+#- DKWDRV launch diagnostic (GS_BGCOLOUR per-stage paint in the      #
+#- direct-exec path LoadELFFromFileExecPS2 that HDD-booted MC DKWDRV  #
+#- now takes). ON for the tester build investigating "hangs on pic"; #
+#- release builds MUST set this to 0.                                #
+DKWDRV_DEBUG_COLORS = 1
 #----------------------- Set IP for PS2Client ---------------------#
 PS2LINK_IP = 192.168.1.10
 #------------------------------------------------------------------#
@@ -267,7 +272,7 @@ elfloader: src/elf_loader/libcustom-elf-loader.a
 src/elf_loader/libcustom-elf-loader.a: src/elf_loader
 	@$(MAKE) cleanbin
 	@$(MAKE) -C src/elf_loader/src/loader/ clean all
-	@$(MAKE) -C src/elf_loader clean all
+	@$(MAKE) -C src/elf_loader DKWDRV_DEBUG_COLORS=$(DKWDRV_DEBUG_COLORS) clean all
 
 $(EE_OBJS_DIR):
 	@mkdir -p $@

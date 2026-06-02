@@ -573,6 +573,20 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 	char resolved_path[256];
 	int ret;
 
+	/* DKWDRV launch diagnostic (DKWDRV_DEBUG_COLORS, Makefile toggle).
+	 * This is the no-reset direct-exec path that HDD-booted MC DKWDRV now
+	 * takes (ui.lua OpenDKWDRV -> reboot_iop=0 + argv0 after
+	 * PrepareForColdExternalELFLaunch clears pfs1:). Nuno's "hangs on pic"
+	 * was on an HDD-booted setup; if it still hangs after the pfs1: clear,
+	 * these stage paints show exactly which call. No-op unless the flag is
+	 * defined. Colors follow the child-loader convention (loader.c). */
+#ifdef DKWDRV_DEBUG_COLORS
+#define SET_DKW_BG(c) {*((volatile unsigned long int *)0x120000E0) = c;}
+#else
+#define SET_DKW_BG(c)
+#endif
+	SET_DKW_BG(0xFFFFFF); /* WHITE  - entered LoadELFFromFileExecPS2 */
+
 	if (!has_valid_target_argv0(argc, argv)) {
 		return -4;
 	}
@@ -581,17 +595,21 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 	}
 	DPRINTF("LAUNCH: Using ExecPS2\n");
 	DPRINTF("POPSTARTER ExecPS2 argv0=%s\n", argv[0]);
+	SET_DKW_BG(0x00FF00); /* GREEN  - path resolved, about to SifInitRpc */
 
 	SifInitRpc(0);
 	SifLoadFileInit();
+	SET_DKW_BG(0x00FFFF); /* YELLOW - RPC up, about to SifLoadElf */
 	ret = SifLoadElf(resolved_path, &elfdata);
 	SifLoadFileExit();
 
 	if (ret != 0 || elfdata.epc == 0) {
 		return -2;
 	}
+	SET_DKW_BG(0x0000FF); /* RED    - SifLoadElf OK, about to ExecPS2 */
 
 	ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, argc, argv);
+#undef SET_DKW_BG
 	return -1;
 }
 
