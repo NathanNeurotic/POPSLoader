@@ -1693,6 +1693,18 @@ function PLDR.BuildHddPartitionContext(path, recovery_candidates)
   return BuildHddPartitionContext(path, recovery_candidates)
 end
 
+-- Expose the partition-scoped exec-path normalizer (the SAME one POPSTARTER
+-- HDD custom paths use). Converts a composite/browsed HDD path like
+-- "hdd0:__common:pfs1:/APPS/PS1_DKWDRV/DKWDRV.ELF" -> a slot-less
+-- "pfs:/APPS/PS1_DKWDRV/DKWDRV.ELF". Paired with a "hdd?:PART:" context +
+-- PrepareForColdExternalELFLaunch, this lets the C side mount the partition
+-- FRESH on pfs0: by partition NAME -- so the launch never depends on which
+-- pfs slot the browser happened to use (works for __common, +OPL, etc.).
+-- Returns nil if the path carries no normalizable mounted/relpath form.
+function PLDR.BuildPartitionScopedExecPath(path)
+  return BuildPartitionScopedExecPath(path)
+end
+
 function PLDR.PrepareForColdExternalELFLaunch()
   return PrepareForColdExternalELFLaunch()
 end

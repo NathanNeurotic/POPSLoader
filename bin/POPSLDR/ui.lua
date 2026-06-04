@@ -1282,31 +1282,54 @@ UI = {
             end
             rc = System.loadELF(elf_path, 0, elf_path)
           elseif is_hdd_path then
-            -- Case (2): HDD-resident DKWDRV (custom HDD path). Route through
-            -- the SAME partition-aware machinery POPSTARTER games use:
-            -- loadELFWithPartition -> LoadELFFromFileExecPS2RebootIOPWith-
-            -- Partition -> ExecuteHddBackedViaEmbeddedLoader, which mounts the
-            -- partition and hands off via the BRAM child loader. The prior
-            -- code routed this through a plain direct ExecPS2 that cannot
-            -- mount an HDD partition, so a composite path like
-            -- hdd0:PART:pfs1:/.. black-screened (Nuno 2026-06-02).
-            -- nil-fallback: if the partition context can't be built, fall
-            -- back to the prior behavior (no worse than today).
-            if type(PLDR) == "table" and type(PLDR.PrepareForExternalELFLaunch) == "function" then
-              pcall(PLDR.PrepareForExternalELFLaunch, elf_path)
-            end
+            -- Case (2): HDD-resident DKWDRV (custom HDD path, e.g.
+            -- hdd0:__common:pfs1:/APPS/PS1_DKWDRV/DKWDRV.ELF, or +OPL, etc).
+            -- Normalize the launch EXACTLY like POPSTARTER's HDD custom-path
+            -- flow (the proven-working reference -- D-10 passes hardware):
+            --   1. partition context  -> "hdd0:PART:"   (BuildHddPartitionContext)
+            --   2. slot-less exec path -> "pfs:/REL"     (BuildPartitionScopedExecPath)
+            --   3. COLD prep (PrepareForColdExternalELFLaunch) -> unmount ALL
+            --      pfs slots so the partition the browser left mounted/held
+            --      (on whatever pfsN:) is freed.
+            --   4. loadELFWithPartition(pfs:/REL, 1, hdd0:PART:, argv0) ->
+            --      ExecuteHddBackedViaEmbeddedLoader mounts PART FRESH on pfs0:
+            --      BY NAME and hands off via the BRAM child loader.
+            -- This is slot-agnostic on purpose: we never assume which pfsN:
+            -- the browser used, because cold prep frees everything and the C
+            -- side re-mounts by partition name. The earlier attempt passed the
+            -- raw composite path + kept the held mount, so the C-side fresh
+            -- pfs0: mount collided (pfs won't double-mount a partition) and
+            -- returned -1 before the child loader (Nuno HW 2026-06-04).
+            -- nil-fallback: if no partition context / normalized path can be
+            -- built, fall back to prior plain behavior (no worse than today).
             local partition_context = nil
             if type(PLDR) == "table" and type(PLDR.BuildHddPartitionContext) == "function" then
               local ok, ctx = pcall(PLDR.BuildHddPartitionContext, elf_path)
               if ok then partition_context = ctx end
             end
+            local exec_path_norm = nil
+            if type(PLDR) == "table" and type(PLDR.BuildPartitionScopedExecPath) == "function" then
+              local ok, p = pcall(PLDR.BuildPartitionScopedExecPath, elf_path)
+              if ok and type(p) == "string" and p ~= "" then exec_path_norm = p end
+            end
             if partition_context ~= nil and partition_context ~= ""
+              and exec_path_norm ~= nil
               and type(System.loadELFWithPartition) == "function" then
-              -- loadELFWithPartition requires reboot_iop ~= 0; it still
-              -- routes to ExecuteHddBackedViaEmbeddedLoader (child loader
-              -- owns IOP state), NOT the in-process SifIopReset block.
-              rc = System.loadELFWithPartition(elf_path, 1, partition_context, elf_path)
+              -- COLD prep: unmount all slots so PART is free to re-mount fresh.
+              if type(PLDR) == "table" and type(PLDR.PrepareForColdExternalELFLaunch) == "function" then
+                pcall(PLDR.PrepareForColdExternalELFLaunch)
+              elseif type(PLDR) == "table" and type(PLDR.PrepareForExternalELFLaunch) == "function" then
+                pcall(PLDR.PrepareForExternalELFLaunch, elf_path)
+              end
+              -- reboot_iop=1 selects the partition API; the hdd-backed early
+              -- return reaches ExecuteHddBackedViaEmbeddedLoader (child loader
+              -- owns IOP state), NOT the in-process SifIopReset block. argv0 =
+              -- original path (matches the MC DKWDRV convention, #485).
+              rc = System.loadELFWithPartition(exec_path_norm, 1, partition_context, elf_path)
             else
+              if type(PLDR) == "table" and type(PLDR.PrepareForExternalELFLaunch) == "function" then
+                pcall(PLDR.PrepareForExternalELFLaunch, elf_path)
+              end
               rc = System.loadELF(elf_path, 0, elf_path)
             end
           else

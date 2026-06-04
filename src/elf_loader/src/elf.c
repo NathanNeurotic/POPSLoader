@@ -183,29 +183,6 @@ static int extract_exec_pfs_slot(const char *path) {
 	return -1;
 }
 
-/* For a composite HDD exec path "hddN:PART:pfsM:/rel", return the pfs slot M
- * that POPSLoader's file browser already mounted PART on (0-3), or -1 if the
- * path carries no embedded pfs prefix. Mirrors the colon navigation in
- * extract_exec_relpath, then reuses extract_exec_pfs_slot on the "pfsM:"
- * substring. Used to reuse a live mount when a fresh mount collides (pfs
- * refuses to mount the same partition on two slots). */
-static int extract_composite_pfs_slot(const char *path) {
-	const char *partition_end;
-	const char *fs_prefix;
-	if (path == NULL || strncmp(path, "hdd", 3) != 0) {
-		return -1;
-	}
-	partition_end = strchr(path + 5, ':');
-	if (partition_end == NULL) {
-		return -1;
-	}
-	fs_prefix = partition_end + 1;
-	if (strncmp(fs_prefix, "pfs", 3) != 0) {
-		return -1;
-	}
-	return extract_exec_pfs_slot(fs_prefix);
-}
-
 static int mount_hdd_exec_partition(const char *partition, int slot) {
 	char mount_name[6] = "pfs0:";
 
@@ -284,38 +261,23 @@ static int build_hdd_embedded_loader_target_from_partition(const char *resolved_
 		return -10; /* diag: relpath parse failed */
 	}
 
-	if (mount_hdd_exec_partition(partition, 0) == 0) {
-		/* Fresh mount on pfs0: succeeded -- the HDD-game case (D-10): the
-		 * target partition was not already mounted. Behavior here is
-		 * byte-identical to the prior happy path. */
-		snprintf(load_path, load_path_size, "pfs0:/%s", relpath);
-		if (!can_open_exec_path(load_path)) {
-			return -11; /* diag: mounted pfs0: but file not openable */
-		}
-		*keep_mask_out = 0x01;
-		return 0;
+	/* Mount the partition FRESH on pfs0:, BY NAME. The Lua launch prep does
+	 * a cold external launch (PrepareForColdExternalELFLaunch) before this,
+	 * matching POPSTARTER's HDD custom-path flow: it unmounts ALL pfs slots,
+	 * so the partition is free even if the file browser had left it mounted
+	 * on some other pfsN:. Re-mounting by name is what makes the launch
+	 * slot-agnostic (works for __common, +OPL, etc). */
+	if (mount_hdd_exec_partition(partition, 0) != 0) {
+		return -13; /* diag: fresh pfs0: mount failed (partition busy or absent) */
 	}
 
-	/* Fresh mount failed. The partition is almost certainly ALREADY mounted
-	 * on another pfs slot -- the DKWDRV-on-HDD case: POPSLoader's file
-	 * browser mounted PART on pfsM: to read DKWDRV.ELF and held it, and pfs
-	 * refuses to mount the same partition twice. The composite source path
-	 * carries that live pfsM: prefix (e.g. hdd0:__common:pfs1:/...), so reuse
-	 * the existing mount instead of failing. The child loader extracts the
-	 * pfs prefix from load_path dynamically (loader.c) and umounts exactly
-	 * that slot after SifLoadElf, so any slot 0-3 is a valid contract. */
-	{
-		int existing_slot = extract_composite_pfs_slot(resolved_path);
-		if (existing_slot < 0 || existing_slot > 3) {
-			return -13; /* diag: mount failed and no reusable pfs slot in path */
-		}
-		snprintf(load_path, load_path_size, "pfs%d:/%s", existing_slot, relpath);
-		if (!can_open_exec_path(load_path)) {
-			return -12; /* diag: reused live pfs slot but file not openable */
-		}
-		*keep_mask_out = (1U << existing_slot);
-		return 0;
+	snprintf(load_path, load_path_size, "pfs0:/%s", relpath);
+	if (!can_open_exec_path(load_path)) {
+		return -11; /* diag: mounted pfs0: but file not openable */
 	}
+
+	*keep_mask_out = 0x01;
+	return 0;
 }
 
 static int build_hdd_embedded_loader_target_from_hdd_path(const char *source_path, char *load_path, size_t load_path_size, unsigned int *keep_mask_out) {
