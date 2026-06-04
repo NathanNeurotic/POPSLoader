@@ -1235,29 +1235,56 @@ UI = {
           if type(PLDR) == "table" and type(PLDR.SetLaunchWorkingDirectory) == "function" then
             previous_cwd = PLDR.SetLaunchWorkingDirectory(elf_path)
           end
-          if type(PLDR) == "table" and type(PLDR.PrepareForExternalELFLaunch) == "function" then
-            pcall(PLDR.PrepareForExternalELFLaunch, elf_path)
-          end
-          -- Pick the launch route based on where DKWDRV.ELF lives.
-          --   * mc / non-HDD: reboot_iop=1 -- direct path with full IOP
-          --     reset, reload SIO2MAN/MCMAN/MCSERV, ExecPS2 with
-          --     synthesized argv0. MC DKWDRV is confirmed working.
-          --   * HDD (hdd?:/ or pfs?:/): reboot_iop=0 -- non-reboot path.
-          --     This pairs with the DKWDRV special-case route in
-          --     src/elf_loader/src/elf.c LoadELFFromFileWithPartition,
-          --     which mirrors the BOOT.ELF V2 contract (d23520a) and
-          --     routes through ExecuteViaEmbeddedLoader so the child
-          --     loader's wipeUserMem + filexio-direct-load + SifExitRpc
-          --     + ExecPS2 sequence fires. PR #452 (V4) tried only the
-          --     Lua-side reboot_iop=0 without the C-side routing change,
-          --     which fell through to direct LoadExecPS2 and black-
-          --     screened. The complete V2-mimicry needs BOTH halves.
+          -- Where DKWDRV.ELF itself lives (memory card vs HDD partition).
           local lower_elf = string.lower(tostring(elf_path or ""))
           local is_hdd_path = string.find(lower_elf, "^hdd%d:") ~= nil
             or string.find(lower_elf, "^pfs%d*:/") ~= nil
             or string.find(lower_elf, "^ata%d*:") ~= nil
             or string.find(lower_elf, "^apa%d*:") ~= nil
-          local dkwdrv_reboot_iop = is_hdd_path and 0 or 1
+          -- Whether POPSLoader ITSELF was booted from HDD this session
+          -- (independent of where DKWDRV.ELF lives).
+          local hdd_loaded = type(PLDR) == "table" and type(PLDR.HDD) == "table"
+            and tonumber(PLDR.HDD.LOADSTATE or 0) ~= 0
+          --
+          -- Launch routing. Three cases:
+          --
+          --  (1) MC / non-HDD DKWDRV, POPSLoader booted from HDD
+          --      (Nuno 2026-05-31 "hangs on pic"). etc/boot.lua left pfs1:
+          --      mounted; the reboot_iop=1 SifIopReset hangs on that held
+          --      mount (ps2sdk #425, same root cause as U-10). Mirror the
+          --      U-10 LaunchBootElf fix: cold prep (unmount the boot pfs1:,
+          --      clear keep mask) + reboot_iop=0 (no in-process reset). This
+          --      is safe here precisely because DKWDRV is NOT on HDD, so no
+          --      HDD partition needs to survive the prep.
+          --
+          --  (2) HDD-resident DKWDRV (hdd?:/ pfs?:/ ata?:/ apa?:/), ANY boot
+          --      source. UNCHANGED from the prior confirmed behavior:
+          --      reboot_iop=0 -> the LoadELFFromFileWithPartition DKWDRV
+          --      special case -> ExecuteViaEmbeddedLoader. The cold prep is
+          --      deliberately NOT applied (it would unmount the very
+          --      partition DKWDRV launches from). PrepareForExternalELFLaunch
+          --      keeps DKWDRV's own slot via CollectHddKeepSlots.
+          --
+          --  (3) MC / non-HDD DKWDRV, POPSLoader NOT booted from HDD.
+          --      UNCHANGED: reboot_iop=1, full IOP reset (safe -- no pfs1:
+          --      is held when not HDD-booted). This is the confirmed-working
+          --      MC DKWDRV path (QA 2026-05-26).
+          local dkwdrv_reboot_iop
+          if hdd_loaded and not is_hdd_path then
+            -- Case (1): the regression being fixed.
+            if type(PLDR) == "table" and type(PLDR.PrepareForColdExternalELFLaunch) == "function" then
+              pcall(PLDR.PrepareForColdExternalELFLaunch)
+            elseif type(PLDR) == "table" and type(PLDR.PrepareForExternalELFLaunch) == "function" then
+              pcall(PLDR.PrepareForExternalELFLaunch, elf_path)
+            end
+            dkwdrv_reboot_iop = 0
+          else
+            -- Cases (2) and (3): byte-for-byte the original behavior.
+            if type(PLDR) == "table" and type(PLDR.PrepareForExternalELFLaunch) == "function" then
+              pcall(PLDR.PrepareForExternalELFLaunch, elf_path)
+            end
+            dkwdrv_reboot_iop = is_hdd_path and 0 or 1
+          end
           local rc = System.loadELF(elf_path, dkwdrv_reboot_iop, elf_path)
           if type(PLDR) == "table" and type(PLDR.RestoreWorkingDirectory) == "function" then
             pcall(PLDR.RestoreWorkingDirectory, previous_cwd)
