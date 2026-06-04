@@ -1258,34 +1258,65 @@ UI = {
           --      HDD partition needs to survive the prep.
           --
           --  (2) HDD-resident DKWDRV (hdd?:/ pfs?:/ ata?:/ apa?:/), ANY boot
-          --      source. UNCHANGED from the prior confirmed behavior:
-          --      reboot_iop=0 -> the LoadELFFromFileWithPartition DKWDRV
-          --      special case -> ExecuteViaEmbeddedLoader. The cold prep is
-          --      deliberately NOT applied (it would unmount the very
-          --      partition DKWDRV launches from). PrepareForExternalELFLaunch
-          --      keeps DKWDRV's own slot via CollectHddKeepSlots.
+          --      source. Routed through the partition-aware games path
+          --      (loadELFWithPartition -> ExecuteHddBackedViaEmbeddedLoader),
+          --      which mounts the partition + uses the BRAM child loader. The
+          --      prior plain loadELF route went to a direct ExecPS2 that
+          --      cannot mount an HDD partition (black screen on custom HDD
+          --      paths). Cold prep is NOT applied (it would unmount the very
+          --      partition DKWDRV launches from). nil-fallback to the prior
+          --      behavior if no partition context can be built.
           --
           --  (3) MC / non-HDD DKWDRV, POPSLoader NOT booted from HDD.
           --      UNCHANGED: reboot_iop=1, full IOP reset (safe -- no pfs1:
           --      is held when not HDD-booted). This is the confirmed-working
           --      MC DKWDRV path (QA 2026-05-26).
-          local dkwdrv_reboot_iop
+          local rc
           if hdd_loaded and not is_hdd_path then
-            -- Case (1): the regression being fixed.
+            -- Case (1): MC DKWDRV from HDD-booted POPSLoader (MERGED FIX,
+            -- PR #485). Cold prep clears the held boot pfs1:, reboot_iop=0.
             if type(PLDR) == "table" and type(PLDR.PrepareForColdExternalELFLaunch) == "function" then
               pcall(PLDR.PrepareForColdExternalELFLaunch)
             elseif type(PLDR) == "table" and type(PLDR.PrepareForExternalELFLaunch) == "function" then
               pcall(PLDR.PrepareForExternalELFLaunch, elf_path)
             end
-            dkwdrv_reboot_iop = 0
-          else
-            -- Cases (2) and (3): byte-for-byte the original behavior.
+            rc = System.loadELF(elf_path, 0, elf_path)
+          elseif is_hdd_path then
+            -- Case (2): HDD-resident DKWDRV (custom HDD path). Route through
+            -- the SAME partition-aware machinery POPSTARTER games use:
+            -- loadELFWithPartition -> LoadELFFromFileExecPS2RebootIOPWith-
+            -- Partition -> ExecuteHddBackedViaEmbeddedLoader, which mounts the
+            -- partition and hands off via the BRAM child loader. The prior
+            -- code routed this through a plain direct ExecPS2 that cannot
+            -- mount an HDD partition, so a composite path like
+            -- hdd0:PART:pfs1:/.. black-screened (Nuno 2026-06-02).
+            -- nil-fallback: if the partition context can't be built, fall
+            -- back to the prior behavior (no worse than today).
             if type(PLDR) == "table" and type(PLDR.PrepareForExternalELFLaunch) == "function" then
               pcall(PLDR.PrepareForExternalELFLaunch, elf_path)
             end
-            dkwdrv_reboot_iop = is_hdd_path and 0 or 1
+            local partition_context = nil
+            if type(PLDR) == "table" and type(PLDR.BuildHddPartitionContext) == "function" then
+              local ok, ctx = pcall(PLDR.BuildHddPartitionContext, elf_path)
+              if ok then partition_context = ctx end
+            end
+            if partition_context ~= nil and partition_context ~= ""
+              and type(System.loadELFWithPartition) == "function" then
+              -- loadELFWithPartition requires reboot_iop ~= 0; it still
+              -- routes to ExecuteHddBackedViaEmbeddedLoader (child loader
+              -- owns IOP state), NOT the in-process SifIopReset block.
+              rc = System.loadELFWithPartition(elf_path, 1, partition_context, elf_path)
+            else
+              rc = System.loadELF(elf_path, 0, elf_path)
+            end
+          else
+            -- Case (3): MC / non-HDD DKWDRV, POPSLoader NOT booted from HDD.
+            -- UNCHANGED, confirmed-working (QA 2026-05-26): reboot_iop=1.
+            if type(PLDR) == "table" and type(PLDR.PrepareForExternalELFLaunch) == "function" then
+              pcall(PLDR.PrepareForExternalELFLaunch, elf_path)
+            end
+            rc = System.loadELF(elf_path, 1, elf_path)
           end
-          local rc = System.loadELF(elf_path, dkwdrv_reboot_iop, elf_path)
           if type(PLDR) == "table" and type(PLDR.RestoreWorkingDirectory) == "function" then
             pcall(PLDR.RestoreWorkingDirectory, previous_cwd)
           end

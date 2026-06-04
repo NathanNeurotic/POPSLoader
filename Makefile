@@ -34,6 +34,12 @@ export HEADER
 RESET_IOP = 1
 #---------------------- enable DEBUGGING MODE ---------------------#
 DEBUG = 0
+#- Embedded child-loader stage-color diagnostic. The HDD-resident      #
+#- DKWDRV launch now routes through the child loader, so enable this   #
+#- for the tester build investigating the custom-HDD-path black screen #
+#- -- a frozen color then names the exact failing stage. Release       #
+#- builds MUST set this to 0.                                          #
+LOADER_ENABLE_DEBUG_COLORS = 1
 #----------------------- Set IP for PS2Client ---------------------#
 PS2LINK_IP = 192.168.1.10
 #------------------------------------------------------------------#
@@ -266,7 +272,7 @@ elfloader: src/elf_loader/libcustom-elf-loader.a
 
 src/elf_loader/libcustom-elf-loader.a: src/elf_loader
 	@$(MAKE) cleanbin
-	@$(MAKE) -C src/elf_loader/src/loader/ clean all
+	@$(MAKE) -C src/elf_loader/src/loader/ LOADER_ENABLE_DEBUG_COLORS=$(LOADER_ENABLE_DEBUG_COLORS) clean all
 	@$(MAKE) -C src/elf_loader clean all
 
 $(EE_OBJS_DIR):

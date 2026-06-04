@@ -1684,6 +1684,15 @@ function PLDR.PrepareForExternalELFLaunch(path, extra_keep_slots, keep_slots_aft
   return PrepareForExternalELFLaunch(path, extra_keep_slots, keep_slots_after_load)
 end
 
+-- Expose the HDD partition-context builder so the launcher UI can route
+-- HDD-resident targets (e.g. DKWDRV on a custom HDD path) through the same
+-- partition-aware path POPSTARTER games use. Returns (context, reason):
+-- context is an "hdd?:PART:" string for System.loadELFWithPartition, or nil
+-- (with a reason) when the path can't be mapped to a partition.
+function PLDR.BuildHddPartitionContext(path, recovery_candidates)
+  return BuildHddPartitionContext(path, recovery_candidates)
+end
+
 function PLDR.PrepareForColdExternalELFLaunch()
   return PrepareForColdExternalELFLaunch()
 end
