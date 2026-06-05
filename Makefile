@@ -34,12 +34,12 @@ export HEADER
 RESET_IOP = 1
 #---------------------- enable DEBUGGING MODE ---------------------#
 DEBUG = 0
-#- Embedded child-loader stage-color diagnostic. The HDD-resident      #
-#- DKWDRV launch now routes through the child loader, so enable this   #
-#- for the tester build investigating the custom-HDD-path black screen #
-#- -- a frozen color then names the exact failing stage. Release       #
-#- builds MUST set this to 0.                                          #
-LOADER_ENABLE_DEBUG_COLORS = 1
+#- Embedded child-loader stage-color diagnostic (GS BGCOLOUR per stage).#
+#- 0 = release/off. Set to 1 only for a tester build that needs the     #
+#- child loader to paint its stage so a frozen color names the failing  #
+#- step (e.g. the custom-HDD-path DKWDRV investigation). MUST be 0 for   #
+#- any build that ships.                                                 #
+LOADER_ENABLE_DEBUG_COLORS = 0
 #----------------------- Set IP for PS2Client ---------------------#
 PS2LINK_IP = 192.168.1.10
 #------------------------------------------------------------------#
