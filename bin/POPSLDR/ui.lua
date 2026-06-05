@@ -1221,8 +1221,34 @@ UI = {
         UI.Modal.confirm_action = function ()
           local configured_path = tostring((PLDR and PLDR.DKWDRV_PATH) or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
           local elf_path = configured_path
-          if type(PLDR) == "table" and type(PLDR.ResolveFirstExistingPath) == "function" then
-            elf_path = PLDR.ResolveFirstExistingPath(configured_path)
+          -- For a custom HDD path, resolve through POPSTARTER's slot-tolerant
+          -- HDD resolver FIRST. POPSLoader mounts the user partition on
+          -- whatever pfs slot is free (commonly pfs1:), so a config that names
+          -- a specific slot -- or omits/mismatches it -- must be remapped to
+          -- the LIVE mount. ResolveHddReadablePath resolves an HDD path by
+          -- partition NAME + relpath to the actual mounted, readable pfsN:/..
+          -- path (and records the mount), so any slot (or slot-less) custom
+          -- HDD DKWDRV path works, exactly like POPSTARTER custom HDD paths.
+          -- (Previously HDD DKWDRV had to be pfs1: -- Nuno 2026-06-04.)
+          -- Non-HDD paths (mc0:/, mass:/, mmce:/ ...) keep the existing
+          -- first-existing-candidate resolution below.
+          local lower_cfg = string.lower(configured_path)
+          local cfg_is_hdd = string.find(lower_cfg, "^hdd%d:") ~= nil
+            or string.find(lower_cfg, "^pfs%d*:/") ~= nil
+            or string.find(lower_cfg, "^ata%d*:") ~= nil
+            or string.find(lower_cfg, "^apa%d*:") ~= nil
+          if cfg_is_hdd and type(PLDR) == "table" and type(PLDR.ResolveHddReadablePath) == "function" then
+            local ok, resolved = pcall(PLDR.ResolveHddReadablePath, configured_path)
+            if ok and type(resolved) == "string" and resolved ~= "" then
+              elf_path = resolved
+            end
+          end
+          if (elf_path == nil or elf_path == configured_path)
+            and type(PLDR) == "table" and type(PLDR.ResolveFirstExistingPath) == "function" then
+            local fallback = PLDR.ResolveFirstExistingPath(configured_path)
+            if fallback ~= nil then
+              elf_path = fallback
+            end
           end
           if elf_path == nil or not SafeDoesFileExist(elf_path) then
             UI.Modal.Close()
