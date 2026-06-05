@@ -1250,6 +1250,30 @@ UI = {
               elf_path = fallback
             end
           end
+          -- Live-pfs-slot scan fallback. The partition may already be mounted
+          -- on a pfs slot (e.g. you browsed to DKWDRV.ELF, which mounts the
+          -- partition on pfs1: and holds it). Name-based resolution above then
+          -- can't reuse that mount -- a fresh mount of the same partition
+          -- collides (pfs won't double-mount), so only a path whose slot hint
+          -- already matches the live mount resolves. That is why a custom HDD
+          -- path previously had to say pfs1: (Nuno 2026-06-04). Here we instead
+          -- probe the live pfs slots for the file's relpath DIRECTLY (read-only,
+          -- no mounting) and use whichever slot actually has it. This makes any
+          -- slot, or a slot-less path, resolve to the live mount. The resulting
+          -- pfsN:/.. path flows through the same confirmed case-(2) launch.
+          if cfg_is_hdd and (elf_path == nil or not SafeDoesFileExist(elf_path))
+            and type(PLDR) == "table" and type(PLDR.ParseHddExecMountAndRelpath) == "function" then
+            local ok, _part, relpath = pcall(PLDR.ParseHddExecMountAndRelpath, configured_path)
+            if ok and type(relpath) == "string" and relpath ~= "" then
+              for slot = 0, 3 do
+                local probe = "pfs"..tostring(slot)..":/"..relpath
+                if SafeDoesFileExist(probe) then
+                  elf_path = probe
+                  break
+                end
+              end
+            end
+          end
           if elf_path == nil or not SafeDoesFileExist(elf_path) then
             UI.Modal.Close()
             UI.Notif_queue.add("No DKWDRV found at this path\n"..configured_path, "error")

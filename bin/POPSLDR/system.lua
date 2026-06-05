@@ -1680,6 +1680,15 @@ function PLDR.ResolveHddPartitionReadablePath(partition, relpath, mounted_prefix
   return ResolveHddPartitionReadablePath(partition, relpath, mounted_prefix_hint, slot)
 end
 
+-- Expose the HDD exec-path parser so the launcher UI can extract the relpath
+-- from any custom-HDD-path form (hdd0:PART:pfsN:/rel, hdd0:PART:pfs:/rel,
+-- hdd0:PART/rel, ...). Returns (mount_part, relpath) or (nil, nil). Used for
+-- the live-pfs-slot scan that resolves a custom DKWDRV path to whatever slot
+-- the partition is actually mounted on (see ui.lua OpenDKWDRV).
+function PLDR.ParseHddExecMountAndRelpath(path)
+  return ParseHddExecMountAndRelpath(path)
+end
+
 function PLDR.PrepareForExternalELFLaunch(path, extra_keep_slots, keep_slots_after_load)
   return PrepareForExternalELFLaunch(path, extra_keep_slots, keep_slots_after_load)
 end
