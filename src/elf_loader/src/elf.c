@@ -258,16 +258,22 @@ static int build_hdd_embedded_loader_target_from_partition(const char *resolved_
 
 	relpath = extract_exec_relpath(resolved_path);
 	if (relpath == NULL) {
-		return -1;
+		return -10; /* diag: relpath parse failed */
 	}
 
+	/* Mount the partition FRESH on pfs0:, BY NAME. The Lua launch prep does
+	 * a cold external launch (PrepareForColdExternalELFLaunch) before this,
+	 * matching POPSTARTER's HDD custom-path flow: it unmounts ALL pfs slots,
+	 * so the partition is free even if the file browser had left it mounted
+	 * on some other pfsN:. Re-mounting by name is what makes the launch
+	 * slot-agnostic (works for __common, +OPL, etc). */
 	if (mount_hdd_exec_partition(partition, 0) != 0) {
-		return -1;
+		return -13; /* diag: fresh pfs0: mount failed (partition busy or absent) */
 	}
 
 	snprintf(load_path, load_path_size, "pfs0:/%s", relpath);
 	if (!can_open_exec_path(load_path)) {
-		return -1;
+		return -11; /* diag: mounted pfs0: but file not openable */
 	}
 
 	*keep_mask_out = 0x01;
@@ -349,8 +355,9 @@ static int ExecuteHddBackedViaEmbeddedLoader(const char *resolved_path, const ch
 		}
 	}
 
-	if (build_hdd_embedded_loader_target(resolved_path, partition_context, load_path, sizeof(load_path), &required_keep_mask) != 0) {
-		return -1;
+	ret = build_hdd_embedded_loader_target(resolved_path, partition_context, load_path, sizeof(load_path), &required_keep_mask);
+	if (ret != 0) {
+		return ret; /* propagate distinct diag code (-10..-13) instead of -1 */
 	}
 
 	previous_keep_mask = GetExecKeepPfsMask();
@@ -635,7 +642,7 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 	}
 
 	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
-		return -1;
+		return -20; /* diag: resolve_exec_path failed (non-HDD dispatch) */
 	}
 
 	if (is_hdd_backed_exec_path(resolved_path) || is_hdd_backed_exec_path(partition)) {
@@ -697,5 +704,5 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 	}
 
 	ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, final_argc, final_argv);
-	return -1;
+	return -21; /* diag: ExecPS2 returned on non-HDD direct path (should not happen) */
 }

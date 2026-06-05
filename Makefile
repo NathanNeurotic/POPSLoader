@@ -34,6 +34,12 @@ export HEADER
 RESET_IOP = 1
 #---------------------- enable DEBUGGING MODE ---------------------#
 DEBUG = 0
+#- Embedded child-loader stage-color diagnostic (GS BGCOLOUR per stage).#
+#- 0 = release/off. Set to 1 only for a tester build that needs the     #
+#- child loader to paint its stage so a frozen color names the failing  #
+#- step (e.g. the custom-HDD-path DKWDRV investigation). MUST be 0 for   #
+#- any build that ships.                                                 #
+LOADER_ENABLE_DEBUG_COLORS = 0
 #----------------------- Set IP for PS2Client ---------------------#
 PS2LINK_IP = 192.168.1.10
 #------------------------------------------------------------------#
@@ -266,7 +272,7 @@ elfloader: src/elf_loader/libcustom-elf-loader.a
 
 src/elf_loader/libcustom-elf-loader.a: src/elf_loader
 	@$(MAKE) cleanbin
-	@$(MAKE) -C src/elf_loader/src/loader/ clean all
+	@$(MAKE) -C src/elf_loader/src/loader/ LOADER_ENABLE_DEBUG_COLORS=$(LOADER_ENABLE_DEBUG_COLORS) clean all
 	@$(MAKE) -C src/elf_loader clean all
 
 $(EE_OBJS_DIR):

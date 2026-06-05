@@ -1258,34 +1258,88 @@ UI = {
           --      HDD partition needs to survive the prep.
           --
           --  (2) HDD-resident DKWDRV (hdd?:/ pfs?:/ ata?:/ apa?:/), ANY boot
-          --      source. UNCHANGED from the prior confirmed behavior:
-          --      reboot_iop=0 -> the LoadELFFromFileWithPartition DKWDRV
-          --      special case -> ExecuteViaEmbeddedLoader. The cold prep is
-          --      deliberately NOT applied (it would unmount the very
-          --      partition DKWDRV launches from). PrepareForExternalELFLaunch
-          --      keeps DKWDRV's own slot via CollectHddKeepSlots.
+          --      source. Routed through the partition-aware games path
+          --      (loadELFWithPartition -> ExecuteHddBackedViaEmbeddedLoader),
+          --      which mounts the partition + uses the BRAM child loader. The
+          --      prior plain loadELF route went to a direct ExecPS2 that
+          --      cannot mount an HDD partition (black screen on custom HDD
+          --      paths). Cold prep is NOT applied (it would unmount the very
+          --      partition DKWDRV launches from). nil-fallback to the prior
+          --      behavior if no partition context can be built.
           --
           --  (3) MC / non-HDD DKWDRV, POPSLoader NOT booted from HDD.
           --      UNCHANGED: reboot_iop=1, full IOP reset (safe -- no pfs1:
           --      is held when not HDD-booted). This is the confirmed-working
           --      MC DKWDRV path (QA 2026-05-26).
-          local dkwdrv_reboot_iop
+          local rc
           if hdd_loaded and not is_hdd_path then
-            -- Case (1): the regression being fixed.
+            -- Case (1): MC DKWDRV from HDD-booted POPSLoader (MERGED FIX,
+            -- PR #485). Cold prep clears the held boot pfs1:, reboot_iop=0.
             if type(PLDR) == "table" and type(PLDR.PrepareForColdExternalELFLaunch) == "function" then
               pcall(PLDR.PrepareForColdExternalELFLaunch)
             elseif type(PLDR) == "table" and type(PLDR.PrepareForExternalELFLaunch) == "function" then
               pcall(PLDR.PrepareForExternalELFLaunch, elf_path)
             end
-            dkwdrv_reboot_iop = 0
+            rc = System.loadELF(elf_path, 0, elf_path)
+          elseif is_hdd_path then
+            -- Case (2): HDD-resident DKWDRV (custom HDD path, e.g.
+            -- hdd0:__common:pfs1:/APPS/PS1_DKWDRV/DKWDRV.ELF, or +OPL, etc).
+            -- Normalize the launch EXACTLY like POPSTARTER's HDD custom-path
+            -- flow (the proven-working reference -- D-10 passes hardware):
+            --   1. partition context  -> "hdd0:PART:"   (BuildHddPartitionContext)
+            --   2. slot-less exec path -> "pfs:/REL"     (BuildPartitionScopedExecPath)
+            --   3. COLD prep (PrepareForColdExternalELFLaunch) -> unmount ALL
+            --      pfs slots so the partition the browser left mounted/held
+            --      (on whatever pfsN:) is freed.
+            --   4. loadELFWithPartition(pfs:/REL, 1, hdd0:PART:, argv0) ->
+            --      ExecuteHddBackedViaEmbeddedLoader mounts PART FRESH on pfs0:
+            --      BY NAME and hands off via the BRAM child loader.
+            -- This is slot-agnostic on purpose: we never assume which pfsN:
+            -- the browser used, because cold prep frees everything and the C
+            -- side re-mounts by partition name. The earlier attempt passed the
+            -- raw composite path + kept the held mount, so the C-side fresh
+            -- pfs0: mount collided (pfs won't double-mount a partition) and
+            -- returned -1 before the child loader (Nuno HW 2026-06-04).
+            -- nil-fallback: if no partition context / normalized path can be
+            -- built, fall back to prior plain behavior (no worse than today).
+            local partition_context = nil
+            if type(PLDR) == "table" and type(PLDR.BuildHddPartitionContext) == "function" then
+              local ok, ctx = pcall(PLDR.BuildHddPartitionContext, elf_path)
+              if ok then partition_context = ctx end
+            end
+            local exec_path_norm = nil
+            if type(PLDR) == "table" and type(PLDR.BuildPartitionScopedExecPath) == "function" then
+              local ok, p = pcall(PLDR.BuildPartitionScopedExecPath, elf_path)
+              if ok and type(p) == "string" and p ~= "" then exec_path_norm = p end
+            end
+            if partition_context ~= nil and partition_context ~= ""
+              and exec_path_norm ~= nil
+              and type(System.loadELFWithPartition) == "function" then
+              -- COLD prep: unmount all slots so PART is free to re-mount fresh.
+              if type(PLDR) == "table" and type(PLDR.PrepareForColdExternalELFLaunch) == "function" then
+                pcall(PLDR.PrepareForColdExternalELFLaunch)
+              elseif type(PLDR) == "table" and type(PLDR.PrepareForExternalELFLaunch) == "function" then
+                pcall(PLDR.PrepareForExternalELFLaunch, elf_path)
+              end
+              -- reboot_iop=1 selects the partition API; the hdd-backed early
+              -- return reaches ExecuteHddBackedViaEmbeddedLoader (child loader
+              -- owns IOP state), NOT the in-process SifIopReset block. argv0 =
+              -- original path (matches the MC DKWDRV convention, #485).
+              rc = System.loadELFWithPartition(exec_path_norm, 1, partition_context, elf_path)
+            else
+              if type(PLDR) == "table" and type(PLDR.PrepareForExternalELFLaunch) == "function" then
+                pcall(PLDR.PrepareForExternalELFLaunch, elf_path)
+              end
+              rc = System.loadELF(elf_path, 0, elf_path)
+            end
           else
-            -- Cases (2) and (3): byte-for-byte the original behavior.
+            -- Case (3): MC / non-HDD DKWDRV, POPSLoader NOT booted from HDD.
+            -- UNCHANGED, confirmed-working (QA 2026-05-26): reboot_iop=1.
             if type(PLDR) == "table" and type(PLDR.PrepareForExternalELFLaunch) == "function" then
               pcall(PLDR.PrepareForExternalELFLaunch, elf_path)
             end
-            dkwdrv_reboot_iop = is_hdd_path and 0 or 1
+            rc = System.loadELF(elf_path, 1, elf_path)
           end
-          local rc = System.loadELF(elf_path, dkwdrv_reboot_iop, elf_path)
           if type(PLDR) == "table" and type(PLDR.RestoreWorkingDirectory) == "function" then
             pcall(PLDR.RestoreWorkingDirectory, previous_cwd)
           end
