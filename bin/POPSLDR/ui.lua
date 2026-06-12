@@ -2937,19 +2937,79 @@ UI = {
           end
         end
 
-        local y = top_y
+        -- Focus-following scroll viewport. The page previously placed a fixed
+        -- top-Y and, when the item stack was taller than the title->footer
+        -- area, simply OVERFLOWED off-screen -- lower rows (Show Devices
+        -- checkboxes, the Save/Reset/Discard actions) became unreachable.
+        -- Precompute each item's content offset (variable row heights), then
+        -- scroll only when needed so the focused row stays visible. When the
+        -- content fits, item_off + base_y == the original y exactly, so the
+        -- non-overflowing layout is unchanged.
+        local view_top = layout.TITLE_Y + TITLE_GAP
+        local view_h = footer_top_y - view_top
+        local item_off = {}
+        local item_h = {}
+        do
+          local acc = 0
+          for i = 1, #items do
+            local it = items[i]
+            if it.kind == "section" and i > 1 then acc = acc + SECTION_GAP_BEFORE end
+            item_off[i] = acc
+            if it.kind == "section" then item_h[i] = SECTION_HEADER_H
+            elseif it.kind == "spacer" then item_h[i] = SPACER_H
+            else item_h[i] = ROW_H end
+            acc = acc + item_h[i]
+          end
+        end
+        local scrolling = total_h > view_h
+        local scroll = 0
+        local base_y = top_y
+        if scrolling then
+          base_y = view_top
+          scroll = UI.SettingsScroll or 0
+          local f = UI.SettingsFocus
+          local f_off = item_off[f] or 0
+          local f_h = item_h[f] or ROW_H
+          if f_off < scroll then
+            scroll = f_off
+          elseif (f_off + f_h) > (scroll + view_h) then
+            scroll = f_off + f_h - view_h
+          end
+          local max_scroll = total_h - view_h
+          if scroll < 0 then scroll = 0 end
+          if scroll > max_scroll then scroll = max_scroll end
+          UI.SettingsScroll = scroll
+        else
+          UI.SettingsScroll = 0
+        end
+
         for i = 1, #items do
           local it = items[i]
-          if it.kind == "section" then
-            if i > 1 then y = y + SECTION_GAP_BEFORE end
-            DrawSection(it.label, y)
-            y = y + SECTION_HEADER_H
-          elseif it.kind == "spacer" then
-            y = y + SPACER_H
-          else
-            DrawRow(it, y, UI.SettingsFocus == i)
-            y = y + ROW_H
+          local row_y = base_y + item_off[i] - scroll
+          -- When scrolling, draw only fully-visible rows so nothing paints
+          -- over the title or footer; when it fits, draw everything (original).
+          local show = (not scrolling)
+            or (row_y >= view_top and (row_y + item_h[i]) <= (footer_top_y + 1))
+          if show then
+            if it.kind == "section" then
+              DrawSection(it.label, row_y)
+            elseif it.kind == "spacer" then
+              -- nothing to draw
+            else
+              DrawRow(it, row_y, UI.SettingsFocus == i)
+            end
           end
+        end
+
+        -- Minimal scrollbar so "there's more below/above" is discoverable.
+        if scrolling and total_h > 0 then
+          local track_x = SAFE_RIGHT + 4
+          local thumb_h = math.max(16, math.floor(view_h * view_h / total_h))
+          local max_scroll = total_h - view_h
+          local t = (max_scroll > 0) and (scroll / max_scroll) or 0
+          local thumb_y = view_top + math.floor((view_h - thumb_h) * t)
+          Graphics.drawRect(track_x, view_top, 2, view_h, separator_color)
+          Graphics.drawRect(track_x, thumb_y, 2, thumb_h, accent_color)
         end
 
         Input_GetEvent()
