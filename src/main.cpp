@@ -167,8 +167,41 @@ static const char * detectBootDeviceHintFromArgv0(const char * argv0)
     return "";
 }
 
+/* Strip leading/trailing whitespace and one pair of surrounding quotes
+ * from a launch-arg token, in place. CNF-sourced argv entries arrive
+ * decorated in the wild: OSDMenu's parser strips only \r\n from an arg
+ * line (trailing spaces survive into the token), and users quote values.
+ * Internal spaces are deliberately preserved -- -game= selectors contain
+ * them ("Bomberman - Party Edition"). */
+static void trimLaunchArgToken(char * s)
+{
+    size_t len = strlen(s);
+    size_t start = 0;
+    while (len > 0 && (s[len - 1] == ' ' || s[len - 1] == '\t' ||
+                       s[len - 1] == '\r' || s[len - 1] == '\n')) {
+        s[--len] = '\0';
+    }
+    while (s[start] == ' ' || s[start] == '\t') {
+        start++;
+    }
+    if (len >= start + 2 && (s[start] == '"' || s[start] == '\'') &&
+        s[len - 1] == s[start]) {
+        s[len - 1] = '\0';
+        start++;
+        len--;
+    }
+    if (start > 0) {
+        memmove(s, s + start, len - start + 1);
+    }
+}
+
 static void parseLaunchArgs(int argc, char ** argv)
 {
+    /* Scratch large enough for any token we care about (-game= values cap
+     * at sizeof(launch_arg_game)). Longer tokens are truncated by snprintf,
+     * matching the capture buffers' own limits. */
+    char token[300];
+
     if (argc <= 1 || argv == NULL) {
         return;
     }
@@ -177,14 +210,24 @@ static void parseLaunchArgs(int argc, char ** argv)
         if (a == NULL || a[0] == '\0') {
             continue;
         }
-        if (strncmp(a, "-page=", 6) == 0) {
-            snprintf(launch_arg_page, sizeof(launch_arg_page), "%s", a + 6);
-        } else if (strncmp(a, "-mode=", 6) == 0) {
+        /* Work on a trimmed copy: argv strings live in the parent
+         * launcher's memory and must not be modified in place. */
+        snprintf(token, sizeof(token), "%s", a);
+        trimLaunchArgToken(token);
+        if (token[0] == '\0') {
+            continue;
+        }
+        if (strncmp(token, "-page=", 6) == 0) {
+            snprintf(launch_arg_page, sizeof(launch_arg_page), "%s", token + 6);
+            trimLaunchArgToken(launch_arg_page);
+        } else if (strncmp(token, "-mode=", 6) == 0) {
             /* NHDDL-compat alias: -mode=ata maps to our -page=ata/hdd flow */
-            snprintf(launch_arg_page, sizeof(launch_arg_page), "%s", a + 6);
-        } else if (strncmp(a, "-game=", 6) == 0) {
-            snprintf(launch_arg_game, sizeof(launch_arg_game), "%s", a + 6);
-        } else if (strcmp(a, "-debug") == 0) {
+            snprintf(launch_arg_page, sizeof(launch_arg_page), "%s", token + 6);
+            trimLaunchArgToken(launch_arg_page);
+        } else if (strncmp(token, "-game=", 6) == 0) {
+            snprintf(launch_arg_game, sizeof(launch_arg_game), "%s", token + 6);
+            trimLaunchArgToken(launch_arg_game);
+        } else if (strcmp(token, "-debug") == 0) {
             launch_arg_debug = 1;
         }
     }

@@ -1989,7 +1989,19 @@ local function NormalizeLaunchPage(value)
   if type(value) ~= "string" or value == "" then
     return nil
   end
+  -- Defensive normalization. CNF-sourced values can arrive decorated:
+  -- OSDMenu strips only \r\n from an arg line (trailing spaces survive),
+  -- users sometimes quote values, and two flags written on ONE arg line
+  -- arrive as a single argv token ("hdd -debug"). Strip quotes/whitespace
+  -- and keep only the first word so all of those still resolve. No
+  -- legitimate page value contains a space, so this is lossless.
   local key = string.lower(value)
+  key = string.gsub(key, '^[%s"\']+', "")
+  key = string.gsub(key, '[%s"\']+$', "")
+  key = string.match(key, "^([^%s]+)") or ""
+  if key == "" then
+    return nil
+  end
   if key == "hdd" or key == "ata" or key == "pfs" or key == "apa" then
     return "HDD"
   end
@@ -2030,9 +2042,23 @@ if type(System) == "table" and type(System.getLaunchArgs) == "function" then
     end
     local game_raw = tostring(args.game or "")
     if game_raw ~= "" then
-      PLDR.LAUNCH_ARGS.game = game_raw
+      -- Trim surrounding whitespace/quotes only; game selectors contain
+      -- internal spaces ("Bomberman - Party Edition") that must survive.
+      game_raw = string.gsub(game_raw, '^[%s"\']+', "")
+      game_raw = string.gsub(game_raw, '[%s"\']+$', "")
+      if game_raw ~= "" then
+        PLDR.LAUNCH_ARGS.game = game_raw
+      end
     end
     PLDR.LAUNCH_ARGS.debug = (args.debug == true)
+    -- Recover a -debug that was written on the same CNF arg line as the
+    -- page flag ("-page=hdd -debug" arrives as ONE argv token; the C parse
+    -- captures "hdd -debug" into page and the standalone -debug match
+    -- never fires). NormalizeLaunchPage above already keeps only the
+    -- first word of the page value.
+    if not PLDR.LAUNCH_ARGS.debug and string.find(string.lower(page_raw), "%-debug") ~= nil then
+      PLDR.LAUNCH_ARGS.debug = true
+    end
   end
 end
 
@@ -2210,11 +2236,25 @@ if type(PLDR) == "table" and type(PLDR.LAUNCH_ARGS) == "table"
   }
   local opt = page_to_opt[PLDR.LAUNCH_ARGS.page]
   if opt ~= nil and type(UI.MainMenu) == "table" then
+    -- UI.MainMenu carries a __newindex write-guard (ui.lua tail) that
+    -- SILENTLY DROPS any OPT assignment unless Carousel.allowOptWrite is
+    -- raised -- the carousel's own animation handler is the only code that
+    -- raises it. Without raising the same gate here, this whole block is a
+    -- no-op: the OPT write is swallowed, and the Carousel index writes
+    -- below get overwritten by the first MainMenu.Play(), which re-syncs
+    -- the carousel FROM OPT (still 1) on every non-animating frame. That
+    -- double clobber is exactly why -page/-mode had no visible effect on
+    -- hardware (CosmicScale, 2026-06-09).
+    local carousel = type(UI.MainMenu.Carousel) == "table" and UI.MainMenu.Carousel or nil
+    if carousel ~= nil then
+      carousel.allowOptWrite = true
+    end
     UI.MainMenu.OPT = opt
-    if type(UI.MainMenu.Carousel) == "table" then
-      UI.MainMenu.Carousel.currentIndex = opt
-      UI.MainMenu.Carousel.targetIndex = opt
-      UI.MainMenu.Carousel.scrollPos = opt + 0.0
+    if carousel ~= nil then
+      carousel.allowOptWrite = false
+      carousel.currentIndex = opt
+      carousel.targetIndex = opt
+      carousel.scrollPos = opt + 0.0
     end
   end
 end
@@ -5216,7 +5256,21 @@ function PLDR.AutoLaunchFromLaunchArgs()
     return false
   end
 
+  -- UI.CURSCENE carries a __newindex write-guard (ui.lua tail) that drops
+  -- the assignment unless UI.Transition.allowSceneWrite is raised -- and it
+  -- stays false until after WelcomeDraw. Raise it for this one write so the
+  -- scene context is real (BlockLaunchFailure/back-nav read it after a
+  -- failed auto-launch). The launch itself never depended on this: the
+  -- scene is passed to RunPOPStarterGame as an argument.
+  local scene_gate = type(UI.Transition) == "table" and UI.Transition or nil
+  local prev_scene_write = scene_gate ~= nil and scene_gate.allowSceneWrite or nil
+  if scene_gate ~= nil then
+    scene_gate.allowSceneWrite = true
+  end
   UI.CURSCENE = scene
+  if scene_gate ~= nil then
+    scene_gate.allowSceneWrite = prev_scene_write
+  end
   if UI.LASTSCENE == nil then
     UI.LASTSCENE = scene
   end
@@ -5256,8 +5310,12 @@ end
 
 PLDR.LoadSettingsNonFatal()
 PLDR.AutoInitStartupBackends()
-PLDR.SurfaceLaunchArgsDebug()
+-- Auto-launch BEFORE surfacing the debug toast: Notif_queue keeps only the
+-- 2 newest toasts, so queueing the debug toast last guarantees it survives
+-- an auto-launch failure toast instead of being evicted by it. (On
+-- auto-launch success control never returns, so the order is moot.)
 PLDR.AutoLaunchFromLaunchArgs()
+PLDR.SurfaceLaunchArgsDebug()
 
 ---MAIN PROGRAM BEHAVIOUR BEGINS
 local initial_scene = UI.SCENES.MMAIN
