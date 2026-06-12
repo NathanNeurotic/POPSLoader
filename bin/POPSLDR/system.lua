@@ -2001,13 +2001,17 @@ local function NormalizeLaunchPage(value)
   -- Defensive normalization. CNF-sourced values can arrive decorated:
   -- OSDMenu strips only \r\n from an arg line (trailing spaces survive),
   -- users sometimes quote values, and two flags written on ONE arg line
-  -- arrive as a single argv token ("hdd -debug"). Strip quotes/whitespace
-  -- and keep only the first word so all of those still resolve. No
-  -- legitimate page value contains a space, so this is lossless.
+  -- arrive as a single argv token ("hdd -debug"). Strip leading junk, take
+  -- the first whitespace-delimited token, THEN strip any quotes/whitespace
+  -- left on that token. Order matters: a quoted value followed by another
+  -- flag (-page="hdd" -debug -> '"hdd" -debug') leaves the closing quote
+  -- mid-string, so it must be stripped AFTER the token is extracted, not
+  -- before (Gemini review, PR #488). No legitimate page value contains a
+  -- space or quote, so this is lossless.
   local key = string.lower(value)
   key = string.gsub(key, '^[%s"\']+', "")
+  key = string.match(key, "^(%S+)") or ""
   key = string.gsub(key, '[%s"\']+$', "")
-  key = string.match(key, "^([^%s]+)") or ""
   if key == "" then
     return nil
   end
@@ -2264,6 +2268,19 @@ if type(PLDR) == "table" and type(PLDR.LAUNCH_ARGS) == "table"
       carousel.currentIndex = opt
       carousel.targetIndex = opt
       carousel.scrollPos = opt + 0.0
+    end
+    -- If -page/-mode was given WITHOUT -game, auto-ENTER that device's game
+    -- list on the first settled main-menu frame, rather than only
+    -- pre-positioning the carousel (CosmicScale 2026-06-12: "-page=hdd
+    -- highlights HDD (PFS) but doesn't open the list"). MainMenu.Play
+    -- consumes this flag by synthesizing one CONFIRM, reusing the exact
+    -- device-entry path (load games + SceneChange). With -game, the direct
+    -- auto-launch (PLDR.AutoLaunchFromLaunchArgs) handles it instead, so we
+    -- do NOT also auto-enter. All page_to_opt targets (MMCE/MX4SIO/HDD/USB/
+    -- SMB) are enterable via the same CONFIRM dispatch.
+    local has_game = type(PLDR.LAUNCH_ARGS.game) == "string" and PLDR.LAUNCH_ARGS.game ~= ""
+    if not has_game then
+      UI.MainMenu.PendingAutoEnter = true
     end
   end
 end

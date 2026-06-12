@@ -3311,6 +3311,18 @@ UI = {
         if UI.MainMenu._draw_only then return end
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
+        -- One-shot auto-enter for -page/-mode without -game: open the device's
+        -- game list directly instead of only pre-positioning the carousel
+        -- (CosmicScale 2026-06-12: "-page=hdd highlights HDD but doesn't open
+        -- the list"). Set by the launch-arg block in system.lua. Fire only once
+        -- the carousel has settled on the launch-arg page (OPT is final) by
+        -- synthesizing a single CONFIRM, which the dispatch below turns into the
+        -- normal device-entry (load + SceneChange). This runs past the
+        -- _draw_only return above, so it never fires during the welcome splash.
+        if UI.MainMenu.PendingAutoEnter and not carousel.animActive then
+          UI.MainMenu.PendingAutoEnter = false
+          UI.Pad.Events.CONFIRM = true
+        end
         if not carousel.animActive then
           if UI.Pad.Events.NAV_RIGHT then
             carousel.targetIndex = WrapIndex(carousel.currentIndex + 1, profcnt)
