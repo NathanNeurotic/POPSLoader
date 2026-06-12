@@ -71,6 +71,16 @@ local function BasenameWithoutExtension(path)
   end
   return StripExtension(basename) or basename
 end
+-- Strip a trailing POPS ".VCD" extension (any case) for game-list display,
+-- and ONLY that extension. The previous code blanket-chopped the last 4
+-- characters of every entry, which silently truncated titles that did NOT
+-- end in .VCD (e.g. "Bomberman" -> "Bombe"). A generic last-extension strip
+-- can't be used either: it would eat the tail of titles containing a dot
+-- ("Mr. Driller" -> "Mr"). So match .VCD specifically.
+local function StripVcdExtension(name)
+  local s = tostring(name or "")
+  return (string.gsub(s, "%.[Vv][Cc][Dd]$", ""))
+end
 local function ResolveSelectedVcdPath(entry, game_path)
   if entry == nil or entry == "" then
     return nil
@@ -2168,7 +2178,7 @@ UI = {
             display_name = string.match(hdd_relpath, "([^/]+)$") or hdd_relpath
           end
 	          local c = (i == UI.GameList.CURR) and UI.COLORS.LIST_SELECTED or UI.COLORS.LIST_UNSELECTED
-	          Font.ftPrint(BFONT, layout.LIST_X, Y, 0, layout.LIST_W, 16, string.sub(display_name,1, -5), c)
+	          Font.ftPrint(BFONT, layout.LIST_X, Y, 0, layout.LIST_W, 16, StripVcdExtension(display_name), c)
         end
         local cover_enabled = UI.CoverPreviewEnabled ~= false
         local cover_img = nil
