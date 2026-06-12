@@ -173,9 +173,18 @@ static int lua_ftprint(lua_State *L) {
 	return 0;
 }
 
+static int lua_ftwidth(lua_State *L) {
+	int argc = lua_gettop(L);
+	if (argc != 2) return luaL_error(L, "wrong number of arguments");
+	int fontid = luaL_checkinteger(L, 1);
+	const char* text = luaL_checkstring(L, 2);
+	lua_pushinteger(L, fntCalcDimensions(fontid, text));
+	return 1;
+}
+
 static int lua_ftunload(lua_State *L){
-	int argc = lua_gettop(L); 
-	if (argc != 1) return luaL_error(L, "wrong number of arguments"); 
+	int argc = lua_gettop(L);
+	if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	int fontid = luaL_checkinteger(L, 1);
 	fntRelease(fontid);
 	return 0;
@@ -225,6 +234,7 @@ static const luaL_Reg Font_functions[] = {
 	{"ftSetPixelSize",    lua_ftSetPixelSize},
 	{"ftSetCharSize", 	   lua_ftSetCharSize},
 	{"ftPrint",         		 lua_ftprint},
+	{"ftWidth",            		 lua_ftwidth},
 	{"ftUnload",           		lua_ftunload},
 	{"ftEnd",           	       lua_ftend},
 	//gsFont functions
