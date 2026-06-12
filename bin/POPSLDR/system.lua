@@ -1992,13 +1992,17 @@ local function NormalizeLaunchPage(value)
   -- Defensive normalization. CNF-sourced values can arrive decorated:
   -- OSDMenu strips only \r\n from an arg line (trailing spaces survive),
   -- users sometimes quote values, and two flags written on ONE arg line
-  -- arrive as a single argv token ("hdd -debug"). Strip quotes/whitespace
-  -- and keep only the first word so all of those still resolve. No
-  -- legitimate page value contains a space, so this is lossless.
+  -- arrive as a single argv token ("hdd -debug"). Strip leading junk, take
+  -- the first whitespace-delimited token, THEN strip any quotes/whitespace
+  -- left on that token. Order matters: a quoted value followed by another
+  -- flag (-page="hdd" -debug -> '"hdd" -debug') leaves the closing quote
+  -- mid-string, so it must be stripped AFTER the token is extracted, not
+  -- before (Gemini review, PR #488). No legitimate page value contains a
+  -- space or quote, so this is lossless.
   local key = string.lower(value)
   key = string.gsub(key, '^[%s"\']+', "")
+  key = string.match(key, "^(%S+)") or ""
   key = string.gsub(key, '[%s"\']+$', "")
-  key = string.match(key, "^([^%s]+)") or ""
   if key == "" then
     return nil
   end
