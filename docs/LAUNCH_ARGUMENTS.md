@@ -10,7 +10,7 @@ page or auto-launch a specific game. Arguments are parsed in
 
 | Argument | Effect |
 | --- | --- |
-| `-page=<device>` | Open the main-menu carousel already centered on that device page. |
+| `-page=<device>` | Boot **straight into that device's game list** (when used without `-game`). |
 | `-mode=<device>` | NHDDL-compatible **alias** for `-page=` (identical behavior, same values). |
 | `-game=<selector>` | Auto-launch a game. **Must be combined with `-page=`.** |
 | `-debug` | Show an on-screen toast with the parsed args + resolved boot context. |
@@ -74,9 +74,10 @@ Boots straight into launching a game. Requires **both** `-page=` and
 
 If auto-launch fails (game not found, etc.) POPSLoader does **not** hang —
 it falls back to the normal welcome screen + main menu and shows an error
-toast describing what happened. `-page=smb -game=...` will navigate to SMB
-but will **not** auto-launch (SMB auto-launch isn't wired); it shows an
-"Auto-launch page not supported" toast.
+toast describing what happened. **SMB:** `-page=smb` opens the SMB list like
+the other devices, but SMB has **no `-game` auto-launch wired** — passing
+`-page=smb -game=...` shows an "Auto-launch page not supported" toast and
+leaves you on the main menu at SMB.
 
 ### `-debug`
 Queues an on-screen info toast on the first main-menu frame listing:
