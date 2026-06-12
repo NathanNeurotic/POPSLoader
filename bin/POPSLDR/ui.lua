@@ -81,6 +81,37 @@ local function StripVcdExtension(name)
   local s = tostring(name or "")
   return (string.gsub(s, "%.[Vv][Cc][Dd]$", ""))
 end
+
+-- Horizontal marquee for the selected, overflowing game-list row. There is
+-- no scissor/clip API for a pixel-smooth scroll, so this steps by whole
+-- characters within the fixed column using the Font.ftWidth measurement
+-- (C fntCalcDimensions binding). Continuous via a "label .. gap .. label"
+-- scroll buffer; cosmetic; resets when the selection changes.
+local MARQUEE_HOLD_FRAMES = 36   -- pause showing the head before scrolling
+local MARQUEE_STEP_FRAMES = 6    -- frames per one-character advance
+local function FitFromLeft(font, text, max_w)
+  local s = tostring(text or "")
+  -- Trim from the right until the run fits the column. ftWidth is exact for
+  -- the proportional font; only runs for the single focused row.
+  while #s > 0 and Font.ftWidth(font, s) > max_w do
+    s = string.sub(s, 1, -2)
+  end
+  return s
+end
+local function MarqueeLabel(font, label, max_w, tick)
+  if type(Font.ftWidth) ~= "function" then return label end
+  if Font.ftWidth(font, label) <= max_w then
+    return label
+  end
+  local sep = "    "
+  local scroll = label..sep..label
+  local cycle = string.len(label) + string.len(sep)
+  local start_char = 1
+  if tick > MARQUEE_HOLD_FRAMES then
+    start_char = (math.floor((tick - MARQUEE_HOLD_FRAMES) / MARQUEE_STEP_FRAMES) % cycle) + 1
+  end
+  return FitFromLeft(font, string.sub(scroll, start_char), max_w)
+end
 local function ResolveSelectedVcdPath(entry, game_path)
   if entry == nil or entry == "" then
     return nil
@@ -2169,6 +2200,13 @@ UI = {
         elseif (UI.GameList.CURR < UI.GameList.STARTUP) then
           UI.GameList.STARTUP = CLAMP(UI.GameList.CURR-1, 1, ammount)
         end
+        -- Advance the marquee clock for the focused row; reset on selection change.
+        if UI.GameList.MarqueeSel ~= UI.GameList.CURR then
+          UI.GameList.MarqueeSel = UI.GameList.CURR
+          UI.GameList.MarqueeTick = 0
+        else
+          UI.GameList.MarqueeTick = (UI.GameList.MarqueeTick or 0) + 1
+        end
         for i = UI.GameList.STARTUP, ammount do
           if i >= (UI.GameList.STARTUP+UI.GameList.MAXDRAW) then break end
           local Y = layout.LIST_Y + ((i-UI.GameList.STARTUP) * layout.LIST_ROW_H)
@@ -2178,7 +2216,12 @@ UI = {
             display_name = string.match(hdd_relpath, "([^/]+)$") or hdd_relpath
           end
 	          local c = (i == UI.GameList.CURR) and UI.COLORS.LIST_SELECTED or UI.COLORS.LIST_UNSELECTED
-	          Font.ftPrint(BFONT, layout.LIST_X, Y, 0, layout.LIST_W, 16, StripVcdExtension(display_name), c)
+          local label = StripVcdExtension(display_name)
+          -- Only the focused row scrolls (OPL-style); others clip as before.
+          if i == UI.GameList.CURR then
+            label = MarqueeLabel(BFONT, label, layout.LIST_W, UI.GameList.MarqueeTick or 0)
+          end
+	          Font.ftPrint(BFONT, layout.LIST_X, Y, 0, layout.LIST_W, 16, label, c)
         end
         local cover_enabled = UI.CoverPreviewEnabled ~= false
         local cover_img = nil
