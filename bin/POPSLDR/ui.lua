@@ -1262,8 +1262,58 @@ UI = {
         UI.Modal.confirm_action = function ()
           local configured_path = tostring((PLDR and PLDR.DKWDRV_PATH) or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
           local elf_path = configured_path
-          if type(PLDR) == "table" and type(PLDR.ResolveFirstExistingPath) == "function" then
-            elf_path = PLDR.ResolveFirstExistingPath(configured_path)
+          -- For a custom HDD path, resolve through POPSTARTER's slot-tolerant
+          -- HDD resolver FIRST. POPSLoader mounts the user partition on
+          -- whatever pfs slot is free (commonly pfs1:), so a config that names
+          -- a specific slot -- or omits/mismatches it -- must be remapped to
+          -- the LIVE mount. ResolveHddReadablePath resolves an HDD path by
+          -- partition NAME + relpath to the actual mounted, readable pfsN:/..
+          -- path (and records the mount), so any slot (or slot-less) custom
+          -- HDD DKWDRV path works, exactly like POPSTARTER custom HDD paths.
+          -- (Previously HDD DKWDRV had to be pfs1: -- Nuno 2026-06-04.)
+          -- Non-HDD paths (mc0:/, mass:/, mmce:/ ...) keep the existing
+          -- first-existing-candidate resolution below.
+          local lower_cfg = string.lower(configured_path)
+          local cfg_is_hdd = string.find(lower_cfg, "^hdd%d:") ~= nil
+            or string.find(lower_cfg, "^pfs%d*:/") ~= nil
+            or string.find(lower_cfg, "^ata%d*:") ~= nil
+            or string.find(lower_cfg, "^apa%d*:") ~= nil
+          if cfg_is_hdd and type(PLDR) == "table" and type(PLDR.ResolveHddReadablePath) == "function" then
+            local ok, resolved = pcall(PLDR.ResolveHddReadablePath, configured_path)
+            if ok and type(resolved) == "string" and resolved ~= "" then
+              elf_path = resolved
+            end
+          end
+          if (elf_path == nil or elf_path == configured_path)
+            and type(PLDR) == "table" and type(PLDR.ResolveFirstExistingPath) == "function" then
+            local fallback = PLDR.ResolveFirstExistingPath(configured_path)
+            if fallback ~= nil then
+              elf_path = fallback
+            end
+          end
+          -- Live-pfs-slot scan fallback. The partition may already be mounted
+          -- on a pfs slot (e.g. you browsed to DKWDRV.ELF, which mounts the
+          -- partition on pfs1: and holds it). Name-based resolution above then
+          -- can't reuse that mount -- a fresh mount of the same partition
+          -- collides (pfs won't double-mount), so only a path whose slot hint
+          -- already matches the live mount resolves. That is why a custom HDD
+          -- path previously had to say pfs1: (Nuno 2026-06-04). Here we instead
+          -- probe the live pfs slots for the file's relpath DIRECTLY (read-only,
+          -- no mounting) and use whichever slot actually has it. This makes any
+          -- slot, or a slot-less path, resolve to the live mount. The resulting
+          -- pfsN:/.. path flows through the same confirmed case-(2) launch.
+          if cfg_is_hdd and (elf_path == nil or not SafeDoesFileExist(elf_path))
+            and type(PLDR) == "table" and type(PLDR.ParseHddExecMountAndRelpath) == "function" then
+            local ok, _part, relpath = pcall(PLDR.ParseHddExecMountAndRelpath, configured_path)
+            if ok and type(relpath) == "string" and relpath ~= "" then
+              for slot = 0, 3 do
+                local probe = "pfs"..tostring(slot)..":/"..relpath
+                if SafeDoesFileExist(probe) then
+                  elf_path = probe
+                  break
+                end
+              end
+            end
           end
           if elf_path == nil or not SafeDoesFileExist(elf_path) then
             UI.Modal.Close()
