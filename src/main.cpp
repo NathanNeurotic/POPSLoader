@@ -654,11 +654,26 @@ extern "C" void _ps2sdk_memory_init() {
      * MC autoboot) are unaffected: each new call has a "not
      * initialized" guard. The only behavioral delta is that the IOP
      * reset now completes instead of hanging when fileXio was alive.
+     *
+     * FULL COLD REBOOT (rom0:UDNL rom0:EELOADCNF) rather than the bare
+     * SifIopReset("", 0). A bare reset reboots the IOP but a heavier
+     * no-reset parent can leave residual IOP state that the plain reset
+     * does not fully clear, which later trips the partition-aware
+     * POPSTARTER launch ("exec did not transfer control"). The canonical
+     * offender here is OSD-XMB (HiroTex, on DanielSant0s' Athena Env):
+     * its "reset IOP before launch" option is OFF by default, so it hands
+     * us Athena's loaded IOP stack (dev9/atad/pfs/network/...). POPSLoader
+     * itself boots, but a subsequently-launched HDD POPSTARTER fails to
+     * hand off (Nuno 2026-06). UDNL reloads the IOP kernel from ROM,
+     * guaranteeing a clean slate regardless of what the parent left, which
+     * makes POPSLoader launcher-agnostic. This is exactly the reset the
+     * project's own known-good reference build used (src/system.cpp
+     * IOP_Reset: SifIopReset("rom0:UDNL rom0:EELOADCNF", 0)).
      */
     SifExitRpc();
     SifInitRpc(0);
     fileXioExit();
-    while (!SifIopReset("", 0)){};
+    while (!SifIopReset("rom0:UDNL rom0:EELOADCNF", 0)){};
     while (!SifIopSync()){};
     SifInitRpc(0);
 #endif
