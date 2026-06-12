@@ -2260,6 +2260,19 @@ if type(PLDR) == "table" and type(PLDR.LAUNCH_ARGS) == "table"
       carousel.targetIndex = opt
       carousel.scrollPos = opt + 0.0
     end
+    -- If -page/-mode was given WITHOUT -game, auto-ENTER that device's game
+    -- list on the first settled main-menu frame, rather than only
+    -- pre-positioning the carousel (CosmicScale 2026-06-12: "-page=hdd
+    -- highlights HDD (PFS) but doesn't open the list"). MainMenu.Play
+    -- consumes this flag by synthesizing one CONFIRM, reusing the exact
+    -- device-entry path (load games + SceneChange). With -game, the direct
+    -- auto-launch (PLDR.AutoLaunchFromLaunchArgs) handles it instead, so we
+    -- do NOT also auto-enter. All page_to_opt targets (MMCE/MX4SIO/HDD/USB/
+    -- SMB) are enterable via the same CONFIRM dispatch.
+    local has_game = type(PLDR.LAUNCH_ARGS.game) == "string" and PLDR.LAUNCH_ARGS.game ~= ""
+    if not has_game then
+      UI.MainMenu.PendingAutoEnter = true
+    end
   end
 end
 
