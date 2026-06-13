@@ -3104,21 +3104,27 @@ UI = {
         local layout = UI.LAYOUT
         local profcnt = #UI.MainMenu.opts
 	        -- Pages are no longer presented as "locked" in the UI.
-        local icon_map = {
-          ["MMCE"] = "MMCE",
-          ["MX4SIO"] = "MX4SIO",
-          ["HDD (exFAT)"] = "BDHDD",
-	          ["HDD (PFS)"] = "APAHDD",
-	          ["USB"] = "USB",
-	          ["SMB (v1)"] = "SMB",
-	          ["i.Link"] = "ILINK",
-	          ["Disc (DKWDRV)"] = "DISC"
-        }
-        local icon_keys = {}
-        for x = 1, #UI.MainMenu.opts do
-          local opt = UI.MainMenu.opts[x]
-          local key = icon_map[opt] or opt
-          icon_keys[x] = key
+        -- icon_map + icon_keys are pure functions of the fixed MainMenu.opts
+        -- literal; build once and cache on UI.MainMenu instead of reallocating
+        -- an 8-entry map + a keys table on every frame.
+        local icon_keys = UI.MainMenu._icon_keys
+        if icon_keys == nil then
+          local icon_map = {
+            ["MMCE"] = "MMCE",
+            ["MX4SIO"] = "MX4SIO",
+            ["HDD (exFAT)"] = "BDHDD",
+            ["HDD (PFS)"] = "APAHDD",
+            ["USB"] = "USB",
+            ["SMB (v1)"] = "SMB",
+            ["i.Link"] = "ILINK",
+            ["Disc (DKWDRV)"] = "DISC"
+          }
+          icon_keys = {}
+          for x = 1, #UI.MainMenu.opts do
+            local opt = UI.MainMenu.opts[x]
+            icon_keys[x] = icon_map[opt] or opt
+          end
+          UI.MainMenu._icon_keys = icon_keys
         end
         local function WrapIndex(index, count)
           return ((index - 1) % count) + 1
