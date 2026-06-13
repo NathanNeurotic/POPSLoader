@@ -48,7 +48,7 @@ BINDIR = bin/
 EE_BIN = $(BINDIR)enceladus.elf
 EE_BIN_PKD = $(BINDIR)POPSLOADER.ELF
 
-EE_LIBS = -L$(PS2SDK)/ports/lib -L$(PS2DEV)/gsKit/lib/ -Lmodules/ds34bt/ee/ -Lmodules/ds34usb/ee/ -lpatches -lfileXio -lpad -ldebug -llua -lmath3d -ljpeg -lfreetype -lgskit_toolkit -lgskit -ldmakit -lpng -lz -lmc -laudsrv  -lds34bt -lds34usb
+EE_LIBS = -L$(PS2SDK)/ports/lib -L$(PS2DEV)/gsKit/lib/ -Lmodules/ds34bt/ee/ -Lmodules/ds34usb/ee/ -lpatches -lfileXio -lpad -ldebug -llua -ljpeg -lfreetype -lgskit_toolkit -lgskit -ldmakit -lpng -lz -lmc -laudsrv  -lds34bt -lds34usb
 EE_LIBS += src/elf_loader/libcustom-elf-loader.a
 EE_INCS += -I$(PS2DEV)/gsKit/include -I$(PS2SDK)/ports/include -I$(PS2SDK)/ports/include/freetype2 -I$(PS2SDK)/ports/include/zlib
 EE_INCS += -Imodules/ds34bt/ee -Imodules/ds34usb/ee
@@ -77,13 +77,13 @@ endif
 #-------------------------- App Content ---------------------------#
 EXT_LIBS = modules/ds34usb/ee/libds34usb.a modules/ds34bt/ee/libds34bt.a
 
-APP_CORE = main.o system.o pad.o graphics.o render.o \
-		   calc_3d.o gsKit3d_sup.o atlas.o fntsys.o md5.o embed_assets.o \
+APP_CORE = main.o system.o pad.o graphics.o \
+		   atlas.o fntsys.o md5.o embed_assets.o \
 		   sound.o #strUtils.o
 
 LUA_LIBS =	luaplayer.o luasound.o luacontrols.o \
 			luatimer.o luaScreen.o luagraphics.o \
-			luasystem.o luaRender.o luaHDD.o
+			luasystem.o luaHDD.o
 
 IOP_MODULES = iomanX.o fileXio.o \
 			  sio2man.o mcman.o mcserv.o padman.o libsd.o \
