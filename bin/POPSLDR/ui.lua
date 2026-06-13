@@ -369,7 +369,8 @@ UI = {
       GBDMHDD = 6,
       MMAIN = 8,
       MPROFILE = 9,
-      CREDITS = 10
+      CREDITS = 10,
+      SELMENU = 11
     };
     LAUNCHING = false;
     DEVLOCK = DEVLOCK;
@@ -2065,9 +2066,13 @@ UI = {
         return true
       end
       if UI.LAUNCHING then return false end
-      -- SELECT is intentionally NOT bound here anymore. "Hide UI Text" lives in
-      -- Settings (the "Hide UI Text" cycle); SELECT is freed for the upcoming
-      -- Select-button context menu (#10).
+      -- SELECT opens the context menu (#10) on game lists + the main carousel.
+      -- (The old SELECT "Hide UI Text" toggle now lives in Settings + the menu.)
+      if UI.Pad.Events.SELECT and UI.CURSCENE ~= UI.SCENES.SELMENU
+          and (UI.IsGameScene(UI.CURSCENE) or UI.CURSCENE == UI.SCENES.MMAIN) then
+        UI.SelMenu.Open(UI.CURSCENE)
+        return true
+      end
       if UI.Pad.Events.START and UI.CURSCENE ~= UI.SCENES.MPROFILE then
         UI.SettingsReturnScene = UI.CURSCENE
         UI.SettingsEntryHideTextMode = (UI.HideTextMode == true)
@@ -3641,12 +3646,123 @@ function UI.IsUsbScene(scene)
   return scene == UI.SCENES.GUSBFAT
 end
 function UI.OnSceneExit(previous_scene, next_scene)
-  if UI.IsGameScene(previous_scene) and previous_scene ~= next_scene then
+  -- Keep cover-art cached when popping into the context menu (it returns to the
+  -- same game list), so covers don't flicker/reload on close.
+  if UI.IsGameScene(previous_scene) and previous_scene ~= next_scene
+     and next_scene ~= UI.SCENES.SELMENU then
     if UI.CoverCache ~= nil and UI.CoverCache.Clear ~= nil then
       UI.CoverCache:Clear()
     end
   end
 end
+
+-- Select-button context menu (#10). A lightweight scene entered/exited through
+-- the normal SceneChange transition (background fades to the BG png and back).
+-- Scoped to game-list scenes + the main carousel; items are context-aware.
+UI.SelMenu = {
+  sel = 1,
+  items = nil,
+  returnScene = UI.SCENES.MMAIN,
+  ToggleCover = function ()
+    UI.CoverPreviewEnabled = not UI.CoverPreviewEnabled
+    if UI.CoverPreviewEnabled then
+      UI.GameList.CoverLastIndex = nil
+      UI.GameList.CoverPending = true
+      UI.Notif_queue.add("Cover Art enabled", "ok")
+    else
+      if UI.CoverCache ~= nil then UI.CoverCache:UpdateSelection(nil) end
+      UI.GameList.CoverPending = false
+      UI.Notif_queue.add("Cover Art disabled", "ok")
+    end
+  end,
+  OpenSettings = function ()
+    -- Mirror the Start-button Settings entry, but return to the device scene
+    -- (not the menu) when Settings is closed.
+    UI.SettingsReturnScene = UI.SelMenu.returnScene or UI.SCENES.MMAIN
+    UI.SettingsEntryHideTextMode = (UI.HideTextMode == true)
+    if UI.SyncSettingsSelectionFromRuntime ~= nil then UI.SyncSettingsSelectionFromRuntime() end
+    if UI.SyncSettingsDraftFromRuntime ~= nil then UI.SyncSettingsDraftFromRuntime() end
+    UI.ProfileDirty = false
+    UI.BdmaDirty = false
+    UI.VideoStandardDirty = false
+    UI.SettingsEntryKeyboardLayout = tostring(UI.KeyboardLayoutDraft or (type(PLDR) == "table" and PLDR.KEYBOARD_LAYOUT) or "QWERTY")
+    UI.SettingsFocus = 1
+    UI.SceneChange(UI.SCENES.MPROFILE)
+  end,
+  BuildItems = function (returnScene)
+    local items = {}
+    local isGame = UI.IsGameScene(returnScene)
+    items[#items + 1] = {
+      label = "Hide UI Text",
+      value = function () return UI.HideTextMode and "Hidden" or "Visible" end,
+      action = function () UI.SetHideTextMode(not UI.HideTextMode, false) end
+    }
+    if isGame then
+      items[#items + 1] = {
+        label = "Cover Art",
+        value = function () return UI.CoverPreviewEnabled and "On" or "Off" end,
+        action = function () UI.SelMenu.ToggleCover() end
+      }
+    end
+    items[#items + 1] = {
+      label = "Settings",
+      value = function () return "" end,
+      action = function () UI.SelMenu.OpenSettings() end
+    }
+    return items
+  end,
+  Open = function (fromScene)
+    UI.SelMenu.returnScene = fromScene or UI.CURSCENE
+    UI.SelMenu.items = UI.SelMenu.BuildItems(UI.SelMenu.returnScene)
+    UI.SelMenu.sel = 1
+    UI.SceneChange(UI.SCENES.SELMENU)
+  end,
+  Close = function ()
+    UI.SceneChange(UI.SelMenu.returnScene or UI.SCENES.MMAIN)
+  end,
+  Play = function ()
+    local items = UI.SelMenu.items
+    if items == nil or #items == 0 then
+      items = UI.SelMenu.BuildItems(UI.SelMenu.returnScene)
+      UI.SelMenu.items = items
+    end
+    Input_GetEvent()
+    if not (UI.Transition ~= nil and UI.Transition.active) then
+      if UI.Pad.Events.NAV_DOWN then UI.SelMenu.sel = CLAMP(UI.SelMenu.sel + 1, 1, #items) end
+      if UI.Pad.Events.NAV_UP then UI.SelMenu.sel = CLAMP(UI.SelMenu.sel - 1, 1, #items) end
+      if UI.Pad.Events.BACK or UI.Pad.Events.SELECT then
+        UI.SelMenu.Close()
+        return
+      end
+      if UI.Pad.Events.CONFIRM then
+        local it = items[UI.SelMenu.sel]
+        if it ~= nil and type(it.action) == "function" then it.action() end
+        return
+      end
+    end
+    local layout = UI.LAYOUT
+    Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Menu", UI.CCOL.GREY)
+    local row_h = 26
+    local y = Round(UI.SCR.Y_MID - (#items * row_h) / 2)
+    for i = 1, #items do
+      local it = items[i]
+      local color = (i == UI.SelMenu.sel) and UI.CCOL.YELLOW or UI.CCOL.GREY
+      local text = it.label
+      local v = (type(it.value) == "function") and it.value() or ""
+      if v ~= "" then text = text .. ":  " .. v end
+      if i == UI.SelMenu.sel then text = "> " .. text end
+      Font.ftPrint(LFONT, UI.SCR.X_MID, y, 8, UI.SCR.X, 16, text, color)
+      y = y + row_h
+    end
+    local labels, order = UI.Footer.ResolveLegend({
+      order = {"circle", "cross"},
+      order_id = "selmenu",
+      circle = UI.Footer.labels.circle_other,
+      cross = UI.Footer.labels.cross_select
+    })
+    UI.Footer.Draw(labels, order)
+  end
+}
 UI.RecalcLayout()
 function UI.GetDisplayRefreshHz()
   local mode = UI.VideoStandardModes[UI.VideoStandardIndex] or UI.VideoStandardModes[1]

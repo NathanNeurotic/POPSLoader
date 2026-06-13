@@ -5249,6 +5249,8 @@ while true do
     UI.GameList.Play()
   elseif UI.CURSCENE == UI.SCENES.CREDITS then
     UI.Credits.Play()
+  elseif UI.CURSCENE == UI.SCENES.SELMENU then
+    UI.SelMenu.Play()
   end
   UI.flip()
 end
