@@ -1899,7 +1899,6 @@ local pldr_defaults = {
   STRICT_HDD_PREEXEC_GATE = false;
   POPSTARTER_PATH = "POPSTARTER.ELF";
   POPSTARTER_SELECTION_MODE = POPSTARTER_MODE_PROFILE_DEFAULT;
-  CHECK_POPSTARTER_FILES = false;
   GAMEPATH = ".";
   GAMES = {};
   HDDCACHE = nil;
@@ -3744,23 +3743,6 @@ function Font.ftPrintMultiLineAligned(font, x, y, spacing, width, height, text, 
   for line in text:gmatch("([^\n]*)\n?") do
     Font.ftPrint(font, x, internal_y, 8, width, height, line, COL)
     internal_y = internal_y+spacing
-  end
-end
-
-function PLDR.CheckPOPStarterDEPS(device)
-  if not PLDR.CHECK_POPSTARTER_FILES then return true, true, true end
-  if UI.IsUsbScene(device) then
-    return doesFileExist("mass:/POPS/POPS_IOX.PAK")
-  elseif device == UI.SCENES.GHDD then
-    local a, prefix = MountHddPartitionTracked("hdd0:__common", HDD_SLOT_COMMON, FIO_MT_RDONLY)
-    if a and prefix ~= nil then
-      local has_pops = doesFileExist(BuildMountedReadablePath(prefix, "POPS/POPS.ELF"))
-      local has_ioprp = doesFileExist(BuildMountedReadablePath(prefix, "POPS/IOPRP252.IMG"))
-      UMountHddPartitionTracked(HDD_SLOT_COMMON)
-      return a, has_pops, has_ioprp
-    else
-      return a, false, false
-    end
   end
 end
 
