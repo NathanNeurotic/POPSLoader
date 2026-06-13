@@ -709,6 +709,24 @@ static int lua_removeDir(lua_State *L)
 	return 0;
 }
 
+/* Shared raw byte copy: open src->dst, stream, close. Matches the historical
+   inline behavior (no open() error-checking) used by rename/copyFile. */
+static void copy_file_contents(const char *src, const char *dst)
+{
+	char buf[BUFSIZ];
+	size_t size;
+
+	int source = open(src, O_RDONLY, 0);
+	int dest = open(dst, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+
+	while ((size = read(source, buf, BUFSIZ)) > 0) {
+		write(dest, buf, size);
+	}
+
+	close(source);
+	close(dest);
+}
+
 static int lua_movefile(lua_State *L)
 {
 	const char *path = luaL_checkstring(L, 1);
@@ -752,21 +770,9 @@ static int lua_rename(lua_State *L)
 	if(!oldName || !newName)
 		return luaL_error(L, "Argument error: System.rename(source, destination) takes two filenames as strings as arguments.");
 
-	char buf[BUFSIZ];
-    size_t size;
-
-	int source = open(oldName, O_RDONLY, 0);
-    int dest = open(newName, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-
-	while ((size = read(source, buf, BUFSIZ)) > 0) {
-	   write(dest, buf, size);
-    }
-
-    close(source);
-    close(dest);
-
+	copy_file_contents(oldName, newName);
 	remove(oldName);
-	
+
 	return 0;
 }
 
@@ -777,19 +783,8 @@ static int lua_copyfile(lua_State *L)
 	if(!ogfile || !newfile)
 		return luaL_error(L, "Argument error: System.copyFile(source, destination) takes two filenames as strings as arguments.");
 
-	char buf[BUFSIZ];
-    size_t size;
+	copy_file_contents(ogfile, newfile);
 
-	int source = open(ogfile, O_RDONLY, 0);
-    int dest = open(newfile, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-
-	while ((size = read(source, buf, BUFSIZ)) > 0) {
-	   write(dest, buf, size);
-    }
-
-    close(source);
-    close(dest);
-	
 	return 0;
 }
 
