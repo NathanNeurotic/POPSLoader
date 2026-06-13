@@ -1943,7 +1943,9 @@ local pldr_defaults = {
   HDDCACHE = nil;
   PROFILES = {};
   HDD = {
-    USECACHE = false;
+    USECACHE = true;
+    LIST_BUILT = false; -- in-session memo: HDD already scanned/loaded this boot
+    FROM_CACHE = false; -- current PLDR.GAMES came from cache, not a fresh scan
     LOADSTATE = 0; -- 0:NOT_LOADED, 1:LOADED, -1:LOADED_BUT_FAILED
     FOUNDANY = false;
     HAS_CHECKED = false;
@@ -4020,9 +4022,13 @@ function PLDR.HDD.CheckAvailableHddPopsParts(on_progress)
 end
 
 function PLDR.HDD.BuildGameList(on_progress)
+  -- Pure scanner: always mounts each available __.POPS partition and lists it.
+  -- Cache handling lives in PLDR.HDD.EnsureGameList. Seeding PLDR.GAMES from the
+  -- cache here double-counted entries (it then appended a fresh scan) and left
+  -- GAMEPARTS empty, which is why USECACHE used to be disabled.
   PLDR.GAMES = {}
-  if type(PLDR.HDDCACHE) == "table" and PLDR.HDD.USECACHE then PLDR.GAMES = PLDR.HDDCACHE end
   PLDR.HDD.GAMEPARTS = {}
+  PLDR.HDD.FROM_CACHE = false
   PLDR.GAMEPATH = BuildMountedPfsPrefix(GetActiveHddGameSlot())
   if not PLDR.HDD.FOUNDANY then return end
   local ordered_partitions = GetOrderedHddPopsPartitions()
@@ -4128,6 +4134,79 @@ function PLDR.HDD.WipeCache(CACHE)
     System.removeFile(C)
     PLDR.HDD.HAS_CHECKED = false
   end
+end
+
+-- Rebuild PLDR.GAMES + PLDR.HDD.GAMEPARTS from the cached list (PLDR.HDDCACHE,
+-- a flat list of "partition|relpath" entries) WITHOUT mounting/scanning any
+-- partition. GAMEPARTS is derived from each entry's partition prefix, which is
+-- all RunPOPStarterGame needs to mount the right partition at launch time.
+function PLDR.HDD.ApplyCachedList()
+  PLDR.GAMES = {}
+  PLDR.HDD.GAMEPARTS = {}
+  if type(PLDR.HDDCACHE) == "table" then
+    for i = 1, #PLDR.HDDCACHE do
+      local enc = PLDR.HDDCACHE[i]
+      if type(enc) == "string" and enc ~= "" then
+        table.insert(PLDR.GAMES, enc)
+        local part = string.match(enc, "^([^|]+)|")
+        if part ~= nil and part ~= "" then
+          PLDR.HDD.GAMEPARTS[enc] = "hdd0:"..part
+        end
+      end
+    end
+  end
+  table.sort(PLDR.GAMES)
+  PLDR.HDD.FROM_CACHE = true
+  if #PLDR.GAMES > 0 then
+    PLDR.HDD.FOUNDANY = true
+  end
+end
+
+-- Single entry point for resolving the HDD game list, fastest source first:
+--   1. in-session memo - already scanned/loaded this boot (HDD content cannot
+--      change while powered on, so reusing it is always safe and instant)
+--   2. on-disk cache    - hdd_gamecache.lua written on a previous boot
+--   3. full scan        - mount every __.POPS partition and list it, then
+--      refresh both the in-memory and on-disk caches
+-- `force` (manual Refresh / R1) skips every cache and rescans from scratch.
+-- Returns the source used: "memo" | "disk" | "scan".
+function PLDR.HDD.EnsureGameList(partition_progress, game_progress, force)
+  if force then
+    if type(PLDR.HDD.WipeCache) == "function" then PLDR.HDD.WipeCache() end
+    PLDR.HDDCACHE = nil
+    PLDR.HDD.LIST_BUILT = false
+    PLDR.HDD.HAS_CHECKED = false
+  end
+
+  if PLDR.HDD.LIST_BUILT and not force and type(PLDR.HDDCACHE) == "table" then
+    PLDR.HDD.ApplyCachedList()
+    if type(game_progress) == "function" then pcall(game_progress, 1.0) end
+    return "memo"
+  end
+
+  if PLDR.HDD.USECACHE and not force then
+    if type(PLDR.HDD.ReadCache) == "function" then PLDR.HDD.ReadCache() end
+    if type(PLDR.HDDCACHE) == "table" and #PLDR.HDDCACHE > 0 then
+      PLDR.HDD.ApplyCachedList()
+      PLDR.HDD.LIST_BUILT = true
+      if type(game_progress) == "function" then pcall(game_progress, 1.0) end
+      return "disk"
+    end
+  end
+
+  -- cache miss (or forced): full mount+scan, then refresh both caches
+  PLDR.HDD.HAS_CHECKED = false
+  PLDR.HDD.CheckAvailableHddPopsParts(partition_progress)
+  PLDR.HDD.BuildGameList(game_progress)
+  PLDR.HDD.LIST_BUILT = true
+  PLDR.HDDCACHE = {}
+  for i = 1, #PLDR.GAMES do
+    PLDR.HDDCACHE[i] = PLDR.GAMES[i]
+  end
+  if PLDR.HDD.USECACHE and type(PLDR.HDD.CreateCache) == "function" then
+    PLDR.HDD.CreateCache(true)
+  end
+  return "scan"
 end
 
 local function NormalizeBootBasename(basename, desired_prefix)
