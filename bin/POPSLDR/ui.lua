@@ -429,9 +429,6 @@ UI = {
     SceneChange = function (SCENE)
       UI.RequestScene(SCENE)
     end;
-    UpdateVmode = function ()
-      Screen.setMode(UI.SCR.VMODE, UI.SCR.X, UI.SCR.Y, CT24, INTERLACED, FIELD)
-    end;
     --- Color Constants
     CCOL = {
       GREY = Color.new(128,128,128,128);
@@ -510,12 +507,6 @@ UI = {
       UI.LAYOUT.PREVIEW_Y = Round(UI.SCR.Y_MID - (preview_h / 2))
       UI.LAYOUT.FOOTER_ICON_Y = Round(UI.SCR.Y - UI.LAYOUT.BTN_BAR_SAFE_BOTTOM)
       UI.LAYOUT.FOOTER_LABEL_Y = Round(UI.LAYOUT.FOOTER_ICON_Y + UI.LAYOUT.FOOTER_LABEL_Y_OFFSET)
-    end;
-    GetRowPosition = function (index, count)
-      local spacing = UI.LAYOUT.ICON_SPACING
-      local center = UI.SCR.X_MID
-      local offset = (index - (count + 1) / 2) * spacing
-      return center + offset
     end;
     InputConfig = {
       MIN_ACTION_MS = 220;
