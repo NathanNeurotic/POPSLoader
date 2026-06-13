@@ -12,6 +12,11 @@
 #include "include/fntsys.h"
 #include "include/utf8.h"
 #include "include/atlas.h"
+
+/* Vertical advance per rendered text line, in px. The active render path
+   used a bare literal 19; the __RTL path referenced an undefined
+   MENU_ITEM_HEIGHT (a latent compile break). Shared here so both agree. */
+#define FNTSYS_LINE_ADVANCE 19
 #include "include/graphics.h"
 #include "include/dprintf.h"
 
@@ -661,7 +666,7 @@ int fntRenderString(int id, int x, int y, short aligned, size_t width, size_t he
         if (width) {
             if (codepoint == '\n') {
                 pen_x = x;
-                y +=19; // hmax is too tight and unordered, generally
+                y += FNTSYS_LINE_ADVANCE; // hmax is too tight and unordered, generally
                 continue;
             }
 
@@ -787,7 +792,7 @@ int fntRenderString(int id, int x, int y, short aligned, size_t width, size_t he
         if (width) {
             if (codepoint == '\n') {
                 pen_x = x;
-                y += rmScaleY(MENU_ITEM_HEIGHT); // hmax is too tight and unordered, generally
+                y += rmScaleY(FNTSYS_LINE_ADVANCE); // hmax is too tight and unordered, generally
                 continue;
             }
 

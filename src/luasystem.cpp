@@ -1144,6 +1144,7 @@ static int lua_checkValidDisc(lua_State *L)
 		case SCECdDETCTDVDS:
 		case SCECdDETCTDVDD:
 			result = 1;
+			break;
 		case SCECdNODISC:
 		case SCECdDETCT:
 		case SCECdUNKNOWN:
