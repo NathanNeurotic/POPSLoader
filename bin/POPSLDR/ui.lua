@@ -2390,6 +2390,22 @@ UI = {
           LaunchSelectedGame(nil)
         elseif UI.Pad.Events.R2 and UI.CURSCENE == UI.SCENES.GHDD then
           LaunchSelectedGame({ hdd_selector_mode = "full_hdd_pfs0" })
+        elseif UI.Pad.Events.R1 and UI.CURSCENE == UI.SCENES.GHDD then
+          UI.RunBusyTask("Refreshing HDD list...", function (report)
+            local partition_progress = UI.MakeBusyProgressReporter(report, "Rescanning HDD partitions...", 0.10, 0.55)
+            local game_progress = UI.MakeBusyProgressReporter(report, "Rebuilding HDD game list...", 0.55, 0.95)
+            report("Refreshing HDD list...", 0.05)
+            PLDR.HDD.EnsureGameList(partition_progress, game_progress, true)
+            report("Done", 1.0)
+          end, "Failed to refresh HDD list")
+          UI.GameList.CURR = 1
+          UI.GameList.CoverLastIndex = nil
+          UI.GameList.CoverPending = false
+          if #PLDR.GAMES < 1 then
+            UI.Notif_queue.add("HDD list refreshed (no games found)", "warn")
+          else
+            UI.Notif_queue.add("HDD list refreshed", "ok")
+          end
         end
         local cross_label = UI.Footer.labels.cross_launch
         if ammount <= 0 then
@@ -3361,12 +3377,11 @@ UI = {
 	                if not b then UI.Notif_queue.add("POPS runtime missing\nhdd0:__common/POPS/POPS.ELF", "error") end
 	                if not c then UI.Notif_queue.add("POPS IOPRP image missing\nhdd0:__common/POPS/IOPRP252.IMG", "error") end
 	                report("Scanning HDD partitions...", 0.42)
-	                PLDR.HDD.CheckAvailableHddPopsParts(partition_progress)
-	                report("Building HDD game list...", 0.68)
-	                PLDR.HDD.BuildGameList(game_progress)
-                  if PLDR.HDD.USECACHE and type(PLDR.HDD.CreateCache) == "function" then
-                    PLDR.HDD.CreateCache(true)
-                  end
+	                local hdd_list_src = PLDR.HDD.EnsureGameList(partition_progress, game_progress, false)
+	                if (hdd_list_src == "disk" or hdd_list_src == "memo") and not PLDR.HDD._hinted then
+	                  PLDR.HDD._hinted = true
+	                  UI.Notif_queue.add("HDD list loaded from cache (R1 rescans)", "ok")
+	                end
 	                if not PLDR.HDD.FOUNDANY then
 	                  UI.Notif_queue.add("No '__.POPS' partitions on hdd0:\nformat one with __.POPS / __.POPS0...9", "warn")
 	                elseif #PLDR.GAMES < 1 then
