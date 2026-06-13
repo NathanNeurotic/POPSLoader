@@ -1099,13 +1099,6 @@ function PLDR.EnsureMmceReadyOnce()
     pcall(System.ensureMmceman)
   end
 
-  if type(_G.ensureMmceInit) == "function" then
-    pcall(_G.ensureMmceInit)
-  end
-  if type(System) == "table" and type(System.initMMCE) == "function" then
-    pcall(System.initMMCE)
-  end
-
   -- mmceman shares the SIO2 bus with the controller. Loading it on demand
   -- here (after padman already opened the pad at boot) can disrupt the pad's
   -- in-flight transfer and silently kill input on the MMCE list. Re-open the
@@ -3314,11 +3307,6 @@ function PLDR.EnsureUsbMassReadyOnce()
 
   if type(System) == "table" and type(System.ensureUsbMass) == "function" then
     pcall(System.ensureUsbMass)
-  elseif type(System) == "table" and type(System.initUSBMass) == "function" then
-    pcall(System.initUSBMass)
-  end
-  if type(System) == "table" and type(System.initUSB) == "function" then
-    pcall(System.initUSB)
   end
   if type(PLDR.RefreshMassBackends) == "function" then
     pcall(PLDR.RefreshMassBackends)
@@ -3330,9 +3318,6 @@ end
 
 local function EnsureMassBackendsReady(mode)
   if mode == "mx4sio" then
-    if type(_G) == "table" and type(_G.ensureMx4sioInit) == "function" then
-      pcall(_G.ensureMx4sioInit)
-    end
     if type(System) == "table" and type(System.initMX4SIO) == "function" then
       pcall(System.initMX4SIO)
     end
@@ -3344,12 +3329,6 @@ local function EnsureMassBackendsReady(mode)
     return
   end
 
-  if type(System) == "table" and type(System.initUSBMass) == "function" then
-    pcall(System.initUSBMass)
-  end
-  if type(System) == "table" and type(System.initUSB) == "function" then
-    pcall(System.initUSB)
-  end
 end
 
 local function WaitMassProbeRetry(attempt, max_attempts)
