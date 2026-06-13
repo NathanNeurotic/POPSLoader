@@ -1124,6 +1124,15 @@ function PLDR.EnsureMmceReadyOnce()
     pcall(System.initMMCE)
   end
 
+  -- mmceman shares the SIO2 bus with the controller. Loading it on demand
+  -- here (after padman already opened the pad at boot) can disrupt the pad's
+  -- in-flight transfer and silently kill input on the MMCE list. Re-open the
+  -- pad port now that mmceman is up so buttons keep working. Idempotent and
+  -- only reached on the MMCE-page path, so it has no effect on other devices.
+  if type(System) == "table" and type(System.reinitPad) == "function" then
+    pcall(System.reinitPad)
+  end
+
   PLDR._mmce_ready = true
   return true
 end
