@@ -29,17 +29,10 @@ local IMG_REGISTRATIONS = {
   {"triangle", "triangle.png"},
   {"circle", "circle.png"},
   {"cross", "cross.png"},
-  {"L1", "L1.png"},
-  {"R1", "R1.png"},
-  {"R2", "R2.png"},
   {"square", "square.png"},
   {"frame", "frame.png"},
   {"missing", "MISSING.png"},
   {"default", "default.png"},
-  {"left",  "left.png"},
-  {"right", "right.png"},
-  {"up",    "up.png"},
-  {"down",  "down.png"},
 }
 
 local IMG_SOURCES = {}
