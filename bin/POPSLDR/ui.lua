@@ -2065,12 +2065,9 @@ UI = {
         return true
       end
       if UI.LAUNCHING then return false end
-      if UI.Pad.Events.SELECT then
-        if UI.IsHideToggleScene(UI.CURSCENE) or UI.CURSCENE == UI.SCENES.MPROFILE then
-          UI.ToggleHideTextMode(true)
-          return true
-        end
-      end
+      -- SELECT is intentionally NOT bound here anymore. "Hide UI Text" lives in
+      -- Settings (the "Hide UI Text" cycle); SELECT is freed for the upcoming
+      -- Select-button context menu (#10).
       if UI.Pad.Events.START and UI.CURSCENE ~= UI.SCENES.MPROFILE then
         UI.SettingsReturnScene = UI.CURSCENE
         UI.SettingsEntryHideTextMode = (UI.HideTextMode == true)
