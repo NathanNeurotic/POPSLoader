@@ -21,25 +21,7 @@ local function NormalizeDirPathCompat(path)
   return path
 end
 
-local function JoinPathCompat(base, rel)
-  if JoinPath ~= nil then
-    return JoinPath(base, rel)
-  end
-  local normalized = NormalizeDirPathCompat(base)
-  if rel == nil or rel == "" then
-    return normalized
-  end
-  if string.sub(rel, 1, 1) == "/" then
-    rel = string.sub(rel, 2)
-  end
-  return normalized..rel
-end
-
 local APP_DIR_LOCAL = NormalizeDirPathCompat(APP_DIR or System.currentDirectory())
-
-local function ResolveProfilePath(rel)
-  return System.resolveAsset(rel) or JoinPathCompat(APP_DIR_LOCAL, rel)
-end
 
 PLDR.PROFILES = {
   {

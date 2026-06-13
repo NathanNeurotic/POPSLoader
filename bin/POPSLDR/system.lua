@@ -630,20 +630,6 @@ local function GetProfilePopstarterPath(profile)
   return tostring(PLDR.PROFILES[index].ELF or "")
 end
 
-local function FindMatchingProfileForPopstarterPath(path)
-  local normalized = NormalizeFsPathRaw(tostring(path or ""))
-  if normalized == "" or type(PLDR.PROFILES) ~= "table" then
-    return nil
-  end
-  for i = 1, #PLDR.PROFILES do
-    local profile_path = tostring(PLDR.PROFILES[i].ELF or "")
-    if profile_path ~= "" and NormalizeFsPathRaw(profile_path) == normalized then
-      return i
-    end
-  end
-  return nil
-end
-
 local POPSTARTER_MODE_PROFILE_DEFAULT = "PROFILE_DEFAULT"
 local POPSTARTER_MODE_CUSTOM = "CUSTOM"
 
@@ -927,10 +913,6 @@ local function ResolveHddReadablePath(path)
   return ResolveHddPartitionReadablePath(mount_part, relpath, ExtractEmbeddedHddMountPrefix(candidate), HDD_SLOT_POPSTARTER)
 end
 
-local function EnsureHddExecPathReady(path)
-  return ResolveHddReadablePath(path) ~= nil
-end
-
 local function ResolveHddExecMountedPath(path)
   return ResolveHddReadablePath(path)
 end
@@ -1117,13 +1099,6 @@ function PLDR.EnsureMmceReadyOnce()
     pcall(System.ensureMmceman)
   end
 
-  if type(_G.ensureMmceInit) == "function" then
-    pcall(_G.ensureMmceInit)
-  end
-  if type(System) == "table" and type(System.initMMCE) == "function" then
-    pcall(System.initMMCE)
-  end
-
   -- mmceman shares the SIO2 bus with the controller. Loading it on demand
   -- here (after padman already opened the pad at boot) can disrupt the pad's
   -- in-flight transfer and silently kill input on the MMCE list. Re-open the
@@ -1217,10 +1192,6 @@ local function IsHddExecContextPath(path)
     return true
   end
   return string.match(candidate, "^pfs%d*:/") ~= nil
-end
-
-local function IsPfsExecPath(path)
-  return string.match(string.lower(tostring(path or "")), "^pfs%d*:/") ~= nil
 end
 
 local function DirectoryFromExecPath(path)
@@ -1928,7 +1899,6 @@ local pldr_defaults = {
   STRICT_HDD_PREEXEC_GATE = false;
   POPSTARTER_PATH = "POPSTARTER.ELF";
   POPSTARTER_SELECTION_MODE = POPSTARTER_MODE_PROFILE_DEFAULT;
-  CHECK_POPSTARTER_FILES = false;
   GAMEPATH = ".";
   GAMES = {};
   HDDCACHE = nil;
@@ -3353,11 +3323,6 @@ function PLDR.EnsureUsbMassReadyOnce()
 
   if type(System) == "table" and type(System.ensureUsbMass) == "function" then
     pcall(System.ensureUsbMass)
-  elseif type(System) == "table" and type(System.initUSBMass) == "function" then
-    pcall(System.initUSBMass)
-  end
-  if type(System) == "table" and type(System.initUSB) == "function" then
-    pcall(System.initUSB)
   end
   if type(PLDR.RefreshMassBackends) == "function" then
     pcall(PLDR.RefreshMassBackends)
@@ -3369,9 +3334,6 @@ end
 
 local function EnsureMassBackendsReady(mode)
   if mode == "mx4sio" then
-    if type(_G) == "table" and type(_G.ensureMx4sioInit) == "function" then
-      pcall(_G.ensureMx4sioInit)
-    end
     if type(System) == "table" and type(System.initMX4SIO) == "function" then
       pcall(System.initMX4SIO)
     end
@@ -3383,12 +3345,6 @@ local function EnsureMassBackendsReady(mode)
     return
   end
 
-  if type(System) == "table" and type(System.initUSBMass) == "function" then
-    pcall(System.initUSBMass)
-  end
-  if type(System) == "table" and type(System.initUSB) == "function" then
-    pcall(System.initUSB)
-  end
 end
 
 local function WaitMassProbeRetry(attempt, max_attempts)
@@ -3804,23 +3760,6 @@ function Font.ftPrintMultiLineAligned(font, x, y, spacing, width, height, text, 
   for line in text:gmatch("([^\n]*)\n?") do
     Font.ftPrint(font, x, internal_y, 8, width, height, line, COL)
     internal_y = internal_y+spacing
-  end
-end
-
-function PLDR.CheckPOPStarterDEPS(device)
-  if not PLDR.CHECK_POPSTARTER_FILES then return true, true, true end
-  if UI.IsUsbScene(device) then
-    return doesFileExist("mass:/POPS/POPS_IOX.PAK")
-  elseif device == UI.SCENES.GHDD then
-    local a, prefix = MountHddPartitionTracked("hdd0:__common", HDD_SLOT_COMMON, FIO_MT_RDONLY)
-    if a and prefix ~= nil then
-      local has_pops = doesFileExist(BuildMountedReadablePath(prefix, "POPS/POPS.ELF"))
-      local has_ioprp = doesFileExist(BuildMountedReadablePath(prefix, "POPS/IOPRP252.IMG"))
-      UMountHddPartitionTracked(HDD_SLOT_COMMON)
-      return a, has_pops, has_ioprp
-    else
-      return a, false, false
-    end
   end
 end
 
@@ -4327,62 +4266,6 @@ local function GetBootOccupiedPfsSlot()
     end
   end
   return nil
-end
-
-local function SelectHddLaunchGameSlot(popstarter)
-  local reserved = {}
-  local boot_slot = GetBootOccupiedPfsSlot()
-  if boot_slot ~= nil then
-    reserved[boot_slot] = true
-  end
-  local popstarter_slot = ExtractLaunchPfsSlot(popstarter)
-  if popstarter_slot ~= nil then
-    reserved[popstarter_slot] = true
-  end
-  local preferred_slots = {
-    HDD_SLOT_BOOT,
-    HDD_SLOT_GAME,
-    HDD_SLOT_COMMON
-  }
-  for i = 1, #preferred_slots do
-    local slot = preferred_slots[i]
-    if reserved[slot] ~= true then
-      return slot
-    end
-  end
-  return HDD_SLOT_GAME
-end
-
-local function EnsureHDDReadyForLaunch(game, partition_override, slot_override)
-  local result = {
-    init_ok = false,
-    status = nil,
-    mount_partition = nil,
-    mount_ok = nil,
-    mount_prefix = nil,
-    mount_slot = nil
-  }
-  PLDR.LoadHDDModules()
-  result.status = PLDR.HDD.STATUS
-  result.init_ok = PLDR.HDD.LOADSTATE == 1
-  if not result.init_ok or result.status ~= 0 then
-    return result
-  end
-  local partition = partition_override or PLDR.HDD.GAMEPARTS[game] or "hdd0:__.POPS"
-  local mount_slot = tonumber(slot_override)
-  if mount_slot == nil then
-    mount_slot = HDD_SLOT_GAME
-  end
-  result.mount_partition = partition
-  result.mount_slot = mount_slot
-  UMountHddPartitionTracked(mount_slot)
-  local mounted, prefix = MountHddPartitionTracked(partition, mount_slot, FIO_MT_RDONLY)
-  result.mount_ok = mounted == true
-  result.mount_prefix = prefix
-  if result.mount_ok and type(PLDR) == "table" and type(PLDR.HDD) == "table" then
-    PLDR.HDD.GAME_SLOT = mount_slot
-  end
-  return result
 end
 
 local LaunchState = {
