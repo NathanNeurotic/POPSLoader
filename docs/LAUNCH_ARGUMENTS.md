@@ -10,7 +10,7 @@ page or auto-launch a specific game. Arguments are parsed in
 
 | Argument | Effect |
 | --- | --- |
-| `-page=<device>` | Open the main-menu carousel already centered on that device page. |
+| `-page=<device>` | Boot **straight into that device's game list** (when used without `-game`). |
 | `-mode=<device>` | NHDDL-compatible **alias** for `-page=` (identical behavior, same values). |
 | `-game=<selector>` | Auto-launch a game. **Must be combined with `-page=`.** |
 | `-debug` | Show an on-screen toast with the parsed args + resolved boot context. |
@@ -48,16 +48,18 @@ NHDDL selects the HDD/ATA path).
 
 ## What each argument actually does
 
-### `-page=` / `-mode=` (carousel navigation)
-Opens the main menu with the carousel **pre-positioned** on the requested
-page. It does **not** auto-enter that page's game list — you still press
-**X** to enter, exactly as if you'd scrolled there yourself.
+### `-page=` / `-mode=` (open a device's game list)
+Boots **straight into the requested device's game list** (the same screen
+you'd reach by scrolling to that page and pressing **X**) — it loads the
+device and switches to its list automatically. Combine with `-game=` to go
+one step further and auto-launch a specific title (see below); `-page=`
+alone just opens the list so you can pick.
 
-Navigable pages: **MMCE, MX4SIO, HDD (PFS), USB, SMB.** The HDD value
+Enterable pages: **MMCE, MX4SIO, HDD (PFS), USB, SMB.** The HDD value
 targets the implemented **PFS** page. `bdma` (HDD exFAT) and the i.Link
-page are intentionally **not** auto-navigated (they aren't wired for it),
-so `-page=bdma` is accepted but has no visible effect. An unrecognized
-value is ignored and the carousel starts on its default page (MMCE).
+page are intentionally **not** wired, so `-page=bdma` is accepted but has
+no effect. An unrecognized value is ignored and the carousel starts on its
+default page (MMCE) with no auto-entry.
 
 ### `-game=` (auto-launch)
 Boots straight into launching a game. Requires **both** `-page=` and
@@ -72,9 +74,10 @@ Boots straight into launching a game. Requires **both** `-page=` and
 
 If auto-launch fails (game not found, etc.) POPSLoader does **not** hang —
 it falls back to the normal welcome screen + main menu and shows an error
-toast describing what happened. `-page=smb -game=...` will navigate to SMB
-but will **not** auto-launch (SMB auto-launch isn't wired); it shows an
-"Auto-launch page not supported" toast.
+toast describing what happened. **SMB:** `-page=smb` opens the SMB list like
+the other devices, but SMB has **no `-game` auto-launch wired** — passing
+`-page=smb -game=...` shows an "Auto-launch page not supported" toast and
+leaves you on the main menu at SMB.
 
 ### `-debug`
 Queues an on-screen info toast on the first main-menu frame listing:
