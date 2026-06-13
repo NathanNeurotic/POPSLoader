@@ -185,3 +185,38 @@ void pad_init()
     }
 }
 
+/*
+ * pad_reinit()
+ *
+ * Re-open the controller port mid-session. The pad shares the SIO2 bus with
+ * mcman/mcserv and mmceman; lazy-loading mmceman AFTER padman has opened the
+ * pad (the MMCE-page-on-demand path) can disrupt the pad's in-flight SIO2
+ * transfer and silently kill controller input — the list loads but no buttons
+ * register. Closing and re-opening the port re-establishes the transfer.
+ *
+ * Unlike pad_init() this must NOT SleepThread() on failure: it runs on the
+ * main thread well after boot, so a failure has to return a status the caller
+ * can react to, not deadlock the UI. padInit() is intentionally not repeated
+ * (the pad library is already up; we only re-establish the port).
+ *
+ * Returns 1 on success, 0 on failure.
+ */
+int pad_reinit()
+{
+    int ret;
+
+    padPortClose(port, slot); // release the stale port (best-effort)
+
+    if((ret = padPortOpen(port, slot, padBuf)) == 0) {
+        DPRINTF("pad_reinit: padPortOpen failed: %d\n", ret);
+        return 0;
+    }
+
+    if(!initializePad(port, slot)) {
+        DPRINTF("pad_reinit: pad initalization failed!\n");
+        return 0;
+    }
+
+    return 1;
+}
+

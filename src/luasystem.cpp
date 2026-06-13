@@ -37,6 +37,8 @@ extern unsigned int size_cdfs_irx;
 extern unsigned char mmceman_irx;
 extern unsigned int size_mmceman_irx;
 
+extern int pad_reinit();
+
 
 static bool LoadIrxCheckedBuffer(const char *name, unsigned char *irx, unsigned int size, int *out_id, int *out_ret);
 static void BuildMassRootPath(int index, char *out_root, size_t out_sz);
@@ -1402,6 +1404,15 @@ static int lua_ensure_mmceman(lua_State *L)
 	return 1;
 }
 
+// Re-open the controller port. Called from Lua after an on-demand mmceman
+// load (PLDR.EnsureMmceReadyOnce) to recover pad input that the shared-SIO2
+// disruption can silently drop. Returns true if the port came back up.
+static int lua_reinit_pad(lua_State *L)
+{
+	lua_pushboolean(L, pad_reinit());
+	return 1;
+}
+
 static int lua_mx4sio_init(lua_State *L)
 {
 	int argc = lua_gettop(L);
@@ -1480,6 +1491,7 @@ static const luaL_Reg System_functions[] = {
 	{"ensureUsbMass",          lua_ensure_usb_mass},
 	{"ensureCDFS",             lua_ensure_cdfs},
 	{"ensureMmceman",          lua_ensure_mmceman},
+	{"reinitPad",              lua_reinit_pad},
 	{"initMX4SIO",             lua_mx4sio_init},
 	{"bdmList",                lua_bdm_list},
 	{"refreshMassBackends",    lua_refresh_mass_backends},
