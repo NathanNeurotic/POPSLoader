@@ -11,7 +11,6 @@
 #include <fileXio_rpc.h>
 #include <fileio.h>
 #include "include/luaplayer.h"
-#include "include/md5.h"
 #include "include/graphics.h"
 #include "include/embed_assets.h"
 
@@ -801,27 +800,6 @@ static void setModulePath()
 	getcwd( modulePath, 256 );
 }
 
-static int lua_md5sum(lua_State *L)
-{
-	size_t size;
-	const char *string = luaL_checklstring(L, 1, &size);
-	if (!string) return luaL_error(L, "Argument error: System.md5sum(string) takes a string as argument.");
-
-	int i;
-	char result[33];        
-	u8 digest[16];
-
-	MD5_CTX ctx;
-    MD5Init( &ctx );
-    MD5Update( &ctx, (u8 *)string, size );
-    MD5Final( digest, &ctx );
-
-	for (i = 0; i < 16; i++) sprintf(result + 2 * i, "%02x", digest[i]);
-	lua_pushstring(L, result);
-	
-	return 1;
-}
-
 static int lua_sleep(lua_State *L)
 {
 	if (lua_gettop(L) != 1) return luaL_error(L, "milliseconds expected.");
@@ -1467,7 +1445,6 @@ static const luaL_Reg System_functions[] = {
 	{"getFileProgress",	    lua_getfileprogress},
 	{"removeFile",               lua_removeFile},
 	{"rename",                       lua_rename},
-	{"md5sum",                       lua_md5sum},
 	{"sleep",                         lua_sleep},
 	{"getFreeMemory",         lua_getFreeMemory},
 	{"exitToBrowser",                  lua_exit},

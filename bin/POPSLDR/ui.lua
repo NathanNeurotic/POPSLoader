@@ -373,10 +373,8 @@ UI = {
     };
     LAUNCHING = false;
     DEVLOCK = DEVLOCK;
-    device_lock = DEVLOCK.NONE;
     boot_device = DEVLOCK.NONE;
     boot_device_label = nil;
-    boot_locks = {};
     BOOT_SOUND = {
       ENABLED = true,
       PATH = "boot.adp",      -- relative to CWD (same folder as ui.lua on HostFS)
@@ -395,12 +393,6 @@ UI = {
       if lock == DEVLOCK.MMCE then return "MMCE" end
       if lock == DEVLOCK.MX4SIO then return "MX4SIO" end
       return "None"
-    end;
-    canEnterDevice = function (target)
-      return true
-    end;
-    setDeviceLock = function (target)
-      return target
     end;
     IsHideToggleScene = function (scene)
       return scene == UI.SCENES.MMAIN
@@ -428,9 +420,6 @@ UI = {
     end;
     SceneChange = function (SCENE)
       UI.RequestScene(SCENE)
-    end;
-    UpdateVmode = function ()
-      Screen.setMode(UI.SCR.VMODE, UI.SCR.X, UI.SCR.Y, CT24, INTERLACED, FIELD)
     end;
     --- Color Constants
     CCOL = {
@@ -510,12 +499,6 @@ UI = {
       UI.LAYOUT.PREVIEW_Y = Round(UI.SCR.Y_MID - (preview_h / 2))
       UI.LAYOUT.FOOTER_ICON_Y = Round(UI.SCR.Y - UI.LAYOUT.BTN_BAR_SAFE_BOTTOM)
       UI.LAYOUT.FOOTER_LABEL_Y = Round(UI.LAYOUT.FOOTER_ICON_Y + UI.LAYOUT.FOOTER_LABEL_Y_OFFSET)
-    end;
-    GetRowPosition = function (index, count)
-      local spacing = UI.LAYOUT.ICON_SPACING
-      local center = UI.SCR.X_MID
-      local offset = (index - (count + 1) / 2) * spacing
-      return center + offset
     end;
     InputConfig = {
       MIN_ACTION_MS = 220;
@@ -1458,25 +1441,6 @@ UI = {
           UI.Modal.Close()
           if type(on_discard) == "function" then on_discard() end
         end
-        UI.Modal.ignore_until_release = true
-      end;
-      OpenDeviceLock = function (reason, active, target)
-        local active_name = UI.device_lock_name(active)
-        local target_name = UI.device_lock_name(target)
-        UI.Modal.active = true
-        UI.Modal.title = "Device drivers already loaded"
-        if reason == "boot" then
-          UI.Modal.body = ("Current boot device (%s) requires drivers already loaded.\nTo use %s, restart POPSLoader to reload drivers."):format(active_name, target_name)
-        else
-          UI.Modal.body = ("Drivers for %s are already loaded.\nTo use %s, restart POPSLoader to reload drivers."):format(active_name, target_name)
-        end
-        UI.Modal.options = {"Return", "Back"}
-        UI.Modal.confirm_action = function ()
-          UI.Modal.Close()
-          UI.SceneChange(UI.SCENES.MMAIN)
-        end
-        UI.Modal.cancel_action = UI.Modal.Close
-        UI.Modal.triangle_action = nil
         UI.Modal.ignore_until_release = true
       end;
       Close = function ()
@@ -3394,7 +3358,6 @@ UI = {
 	                UI.Notif_queue.add("MMCE has no POPS folder\nexpected mmce0:/POPS/", "warn")
 	              end
               report("Opening MMCE list...", 1.0)
-              UI.setDeviceLock(DEVLOCK.MMCE)
               UI.SceneChange(UI.SCENES.GSMB)
             end, "Failed to load MMCE")
             if not ok then return end
@@ -3417,7 +3380,6 @@ UI = {
 	              PLDR.CleanupGameList()
 	              PLDR.GetPS1GameLists(mx4sio_root, true, scan_progress)
 	              report("Opening MX4SIO list...", 1.0)
-	              UI.setDeviceLock(DEVLOCK.MX4SIO)
 	              UI.SceneChange(UI.SCENES.GMX4SIO)
             end, "Failed to load MX4SIO")
             if not ok then return end
@@ -3432,12 +3394,7 @@ UI = {
 	              if UI.LASTSCENE ~= UI.SCENES.GHDD then
                 PLDR.CleanupGameList()
               end
-              report("Checking POPStarter dependencies...", 0.36)
-              local a, b, c = PLDR.CheckPOPStarterDEPS(UI.SCENES.GHDD)
               if PLDR.HDD.STATUS == 0 then
-	                if not a then UI.Notif_queue.add("Can't access hdd0:__common\n(common partition missing or unmounted)", "error") end
-	                if not b then UI.Notif_queue.add("POPS runtime missing\nhdd0:__common/POPS/POPS.ELF", "error") end
-	                if not c then UI.Notif_queue.add("POPS IOPRP image missing\nhdd0:__common/POPS/IOPRP252.IMG", "error") end
 	                report("Scanning HDD partitions...", 0.42)
 	                local hdd_list_src = PLDR.HDD.EnsureGameList(partition_progress, game_progress, false)
 	                if (hdd_list_src == "disk" or hdd_list_src == "memo") and not PLDR.HDD._hinted then
@@ -3496,7 +3453,6 @@ UI = {
 	                games = PLDR.BuildMassGameListByType("usb", nil, retry_progress)
 	              end
 	              report("Opening USB list...", 1.0)
-	              UI.setDeviceLock(DEVLOCK.USB)
               UI.SceneChange(UI.SCENES.GUSBFAT)
             end, "Failed to load USB")
             if not ok then return end
