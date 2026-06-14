@@ -4157,7 +4157,7 @@ function PLDR.HDD.EnsureGameList(partition_progress, game_progress, force)
   PLDR.HDD.HAS_CHECKED = false
   local _hdd_diag = function(where, err)
     if type(UI) == "table" and type(UI.Notif_queue) == "table" then
-      UI.Notif_queue.add("HDD FAIL @"..where.." st="..tostring(PLDR.HDD.STATUS)..
+      UI.Notif_queue.add("HDD FAIL[r2-mntretry] @"..where.." st="..tostring(PLDR.HDD.STATUS)..
         " found="..tostring(PLDR.HDD.FOUNDANY).." slot="..tostring(PLDR.HDD.GAME_SLOT)..
         "\n"..string.sub(tostring(err), 1, 160), "error")
     end
