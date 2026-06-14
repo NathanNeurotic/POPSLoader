@@ -4133,10 +4133,31 @@ function PLDR.HDD.EnsureGameList(partition_progress, game_progress, force)
     end
   end
 
-  -- cache miss (or forced): full mount+scan, then refresh both caches
+  -- cache miss (or forced): full mount+scan, then refresh both caches.
+  -- DIAGNOSTIC (2026-06-14, TEMPORARY): the MC-boot-via-launcher "Failed to load
+  -- HDD" is a thrown error somewhere in the scan; split the two steps and surface
+  -- the REAL fault + HDD state on screen so it can be pinpointed. Revert once
+  -- the root cause is known.
   PLDR.HDD.HAS_CHECKED = false
-  PLDR.HDD.CheckAvailableHddPopsParts(partition_progress)
-  PLDR.HDD.BuildGameList(game_progress)
+  local _hdd_diag = function(where, err)
+    if type(UI) == "table" and type(UI.Notif_queue) == "table" then
+      UI.Notif_queue.add("HDD FAIL @"..where.." st="..tostring(PLDR.HDD.STATUS)..
+        " found="..tostring(PLDR.HDD.FOUNDANY).." slot="..tostring(PLDR.HDD.GAME_SLOT)..
+        "\n"..string.sub(tostring(err), 1, 160), "error")
+    end
+    PLDR.HDD.LIST_BUILT = false
+  end
+  local check_ok, check_err = pcall(PLDR.HDD.CheckAvailableHddPopsParts, partition_progress)
+  if not check_ok then _hdd_diag("CheckParts", check_err) return "scan" end
+  local build_ok, build_err = pcall(PLDR.HDD.BuildGameList, game_progress)
+  if not build_ok then
+    local gslot = PLDR.HDD.GAME_SLOT
+    local boot_slot = nil
+    if type(GetBootHddMountSlot) == "function" then boot_slot = GetBootHddMountSlot() end
+    if gslot ~= nil and gslot ~= boot_slot then UMountHddPartitionTracked(gslot) end
+    _hdd_diag("BuildList", build_err)
+    return "scan"
+  end
   PLDR.HDD.LIST_BUILT = true
   PLDR.HDDCACHE = {}
   for i = 1, #PLDR.GAMES do
