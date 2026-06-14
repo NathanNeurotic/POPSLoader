@@ -1414,13 +1414,11 @@ static int lua_mx4sio_init(lua_State *L)
 	}
 
 	lua_pushboolean(L, ok);
-	lua_pushnil(L);
 	if (ok) {
-		lua_pushnil(L);
-	} else {
-		lua_pushstring(L, "IRX_LOAD_FAIL");
+		return 1;
 	}
-	return 3;
+	lua_pushstring(L, "IRX_LOAD_FAIL");
+	return 2;
 }
 
 static const luaL_Reg System_functions[] = {

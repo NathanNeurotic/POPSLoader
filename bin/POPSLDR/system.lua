@@ -3993,13 +3993,13 @@ function PLDR.LoadHDDModules()
     if SUCCESS ~= 0 then
       PLDR.HDD.LOADSTATE = -1
       if SUCCESS == 1 then
-        UI.Notif_queue.add(string.format("WARNING: HDD has no APA format", MODULE, ID, RET))
+        UI.Notif_queue.add("WARNING: HDD has no APA format")
       elseif SUCCESS == 2 then
-        UI.Notif_queue.add(string.format("ERROR: HDD is not accessible", MODULE, ID, RET))
+        UI.Notif_queue.add("ERROR: HDD is not accessible")
       elseif SUCCESS == 3 then
-        UI.Notif_queue.add(string.format("WARNING: No HDD detected", MODULE, ID, RET))
+        UI.Notif_queue.add("WARNING: No HDD detected")
       elseif SUCCESS == -19 then
-        UI.Notif_queue.add(string.format("ERROR: Hardware issue detected\nCheck your HDD, network adapter and connection", MODULE, ID, RET))
+        UI.Notif_queue.add("ERROR: Hardware issue detected\nCheck your HDD, network adapter and connection")
       end
     end
     PLDR.HDD.LOADSTATE = 1
