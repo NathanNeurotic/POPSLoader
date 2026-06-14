@@ -4133,10 +4133,31 @@ function PLDR.HDD.EnsureGameList(partition_progress, game_progress, force)
     end
   end
 
-  -- cache miss (or forced): full mount+scan, then refresh both caches
+  -- cache miss (or forced): full mount+scan, then refresh both caches.
+  -- Wrap the scan so a faulting HDD adapter (a partition that mounts but
+  -- then faults on read) degrades to a clear notice + an empty/partial list
+  -- instead of throwing out of RunBusyTask as a bare "Failed to load HDD".
   PLDR.HDD.HAS_CHECKED = false
-  PLDR.HDD.CheckAvailableHddPopsParts(partition_progress)
-  PLDR.HDD.BuildGameList(game_progress)
+  local scan_ok = pcall(function()
+    PLDR.HDD.CheckAvailableHddPopsParts(partition_progress)
+    PLDR.HDD.BuildGameList(game_progress)
+  end)
+  if not scan_ok then
+    -- release a game-partition mount left open mid-scan (never the boot
+    -- mount) so a later Refresh (R1) can retry from a clean slot.
+    local gslot = PLDR.HDD.GAME_SLOT
+    local boot_slot = nil
+    if type(GetBootHddMountSlot) == "function" then boot_slot = GetBootHddMountSlot() end
+    if gslot ~= nil and gslot ~= boot_slot then
+      UMountHddPartitionTracked(gslot)
+    end
+    PLDR.HDD.HAS_CHECKED = false
+    PLDR.HDD.LIST_BUILT = false
+    if type(UI) == "table" and type(UI.Notif_queue) == "table" then
+      UI.Notif_queue.add("HDD scan error - some partitions\ncouldn't be read (R1 to retry)", "error")
+    end
+    return "scan"
+  end
   PLDR.HDD.LIST_BUILT = true
   PLDR.HDDCACHE = {}
   for i = 1, #PLDR.GAMES do
