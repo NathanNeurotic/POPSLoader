@@ -4003,6 +4003,15 @@ function PLDR.LoadHDDModules()
       return
     end
     HDD_EXEC_INIT_DONE = true
+    -- Cold dev9/HDD spin-up settle. etc/boot.lua's HDD-boot path does
+    -- HDD.Initialize() then System.sleep(2) ("lets give it time to get ready")
+    -- BEFORE it mounts. This lazy MC/USB-boot path skipped that, so the partition
+    -- mount during the scan hit a not-yet-spun-up drive -> sector-read fault ->
+    -- the un-pcall'd scan threw -> "Failed to load HDD" (Nuno 2026-06-14, MC-boot
+    -- via wLE/OSD-XMB). Skip on an HDD boot, where boot.lua already settled.
+    if GetBootHddMountSlot() == nil and type(System) == "table" and type(System.sleep) == "function" then
+      pcall(System.sleep, 2)
+    end
     SUCCESS = HDD.GetHDDStatus()
     PLDR.HDD.STATUS = SUCCESS
     if SUCCESS ~= 0 then
@@ -4017,7 +4026,9 @@ function PLDR.LoadHDDModules()
         UI.Notif_queue.add(string.format("ERROR: Hardware issue detected\nCheck your HDD, network adapter and connection", MODULE, ID, RET))
       end
     end
-    PLDR.HDD.LOADSTATE = 1
+    if PLDR.HDD.LOADSTATE ~= -1 then
+      PLDR.HDD.LOADSTATE = 1
+    end
   end
 end
 
@@ -4042,9 +4053,14 @@ function PLDR.HDD.CreateCache(reuse_current_list)
     temp = temp..("  %q,\n"):format(cache_source[i])
   end
   temp = temp.."\n}\n"
-  local fd = System.openFile(C, FCREATE)
-  System.writeFile(fd, temp, temp:len())
-  System.closeFile(fd)
+  -- Guard the cache write: on an MC/USB boot the cache lands on mc0:/usb, which
+  -- can be full or read-only. An unguarded openFile/writeFile would throw out of
+  -- EnsureGameList and resurface as "Failed to load HDD" even after a clean scan.
+  pcall(function()
+    local fd = System.openFile(C, FCREATE)
+    System.writeFile(fd, temp, temp:len())
+    System.closeFile(fd)
+  end)
   PLDR.HDD.HAS_CHECKED = true
 end
 
