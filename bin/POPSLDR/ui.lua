@@ -2131,6 +2131,21 @@ UI = {
         UI.ProfileDirty = false
         UI.BdmaDirty = false
         UI.VideoStandardDirty = false
+        UI.BootPageModes = {
+          {key = "Carousel", label = "Carousel (default)"},
+          {key = "MX4SIO",   label = "MX4SIO"},
+          {key = "USB",      label = "USB"},
+          {key = "MMCE",     label = "MMCE"},
+          {key = "HDD",      label = "HDD (PFS)"},
+        }
+        UI.BootPageIndex = 1
+        for i = 1, #UI.BootPageModes do
+          if UI.BootPageModes[i].key == tostring((type(PLDR) == "table" and PLDR.BOOT_PAGE) or "Carousel") then
+            UI.BootPageIndex = i
+            break
+          end
+        end
+        UI.SettingsEntryBootPageIndex = UI.BootPageIndex
         UI.SettingsEntryKeyboardLayout = tostring(UI.KeyboardLayoutDraft or (type(PLDR) == "table" and PLDR.KEYBOARD_LAYOUT) or "QWERTY")
         UI.SettingsFocus = 1
         UI.SceneChange(UI.SCENES.MPROFILE)
@@ -2569,6 +2584,8 @@ UI = {
           local mode_key = mode_entry and mode_entry.key or "FAT32"
           local video_entry = UI.VideoStandardModes[UI.VideoStandardIndex] or UI.VideoStandardModes[1]
           local video_key = video_entry and video_entry.key or VIDEO_STANDARD_NTSC
+          local boot_page_entry = UI.BootPageModes[UI.BootPageIndex] or UI.BootPageModes[1]
+          local boot_page_key = boot_page_entry and boot_page_entry.key or "Carousel"
           local ok_run, result, reason = xpcall(function()
             if type(PLDR.CommitSettingsChanges) == "function" then
               return PLDR.CommitSettingsChanges({
@@ -2579,6 +2596,7 @@ UI = {
                 bdma_mode = mode_key,
                 video_standard = video_key,
                 keyboard_layout = UI.KeyboardLayoutDraft or (type(PLDR) == "table" and PLDR.KEYBOARD_LAYOUT) or "QWERTY",
+                boot_page = boot_page_key,
                 hide_text = UI.HideTextMode == true,
                 prev_hide_text = UI.SettingsEntryHideTextMode == true,
                 apply_bdma = UI.BdmaDirty,
@@ -2600,6 +2618,7 @@ UI = {
             else
               PLDR.KEYBOARD_LAYOUT = UI.KeyboardLayoutDraft or PLDR.KEYBOARD_LAYOUT or "QWERTY"
             end
+            PLDR.BOOT_PAGE = boot_page_key
             if type(PLDR.ApplyVideoStandardRuntime) == "function" then
               PLDR.ApplyVideoStandardRuntime(video_key)
             end
@@ -2830,6 +2849,15 @@ UI = {
           function() UI.SetHideTextMode(not UI.HideTextMode, false) end,
           function() UI.SetHideTextMode(not UI.HideTextMode, false) end,
           HideTextDirty
+        )
+
+        AddSection("Startup")
+        AddCycle(
+          "Boot Page",
+          function() return tostring((UI.BootPageModes[UI.BootPageIndex] or UI.BootPageModes[1] or {}).label or "") end,
+          function() UI.BootPageIndex = CycleIndex(UI.BootPageIndex, -1, #UI.BootPageModes) end,
+          function() UI.BootPageIndex = CycleIndex(UI.BootPageIndex,  1, #UI.BootPageModes) end,
+          function() return (UI.BootPageIndex or 1) ~= (UI.SettingsEntryBootPageIndex or 1) end
         )
 
         AddSection("POPSTARTER")

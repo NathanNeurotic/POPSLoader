@@ -2650,6 +2650,17 @@ function PLDR.BdmaSourceCandidates(rel)
   return out
 end
 
+-- Boot Page (persisted landing page after the boot sequence): "Carousel"
+-- (default device carousel) or a device key that auto-enters that game list.
+local function NormalizeBootPage(value)
+  local key = string.upper(tostring(value or ""))
+  if key == "MX4SIO" then return "MX4SIO" end
+  if key == "USB" then return "USB" end
+  if key == "MMCE" then return "MMCE" end
+  if key == "HDD" or key == "APAHDD" or key == "APA" or key == "PFS" then return "HDD" end
+  return "Carousel"
+end
+
 local function EncodeSettings()
   local selected_profile = tonumber(PLDR.SELECTED_PROFILE) or 1
   local selection_mode = NormalizePopstarterSelectionMode(PLDR.POPSTARTER_SELECTION_MODE)
@@ -2667,7 +2678,8 @@ local function EncodeSettings()
     "STRICT_HDD_PREEXEC_GATE="..((PLDR.STRICT_HDD_PREEXEC_GATE == true) and "1" or "0"),
     "VIDEO_STANDARD="..tostring(NormalizeVideoStandard(PLDR.VIDEO_STANDARD)),
     "HIDE_TEXT="..(((type(UI) == "table" and UI.HideTextMode == true) and "1") or "0"),
-    "KEYBOARD_LAYOUT="..tostring(NormalizeKeyboardLayout(PLDR.KEYBOARD_LAYOUT))
+    "KEYBOARD_LAYOUT="..tostring(NormalizeKeyboardLayout(PLDR.KEYBOARD_LAYOUT)),
+    "BOOT_PAGE="..NormalizeBootPage(PLDR.BOOT_PAGE)
   }
   return table.concat(lines, "\n").."\n"
 end
@@ -2700,7 +2712,8 @@ local function SnapshotSettingsState()
     dkwdrv_path = tostring(PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH),
     video_standard = NormalizeVideoStandard(PLDR.VIDEO_STANDARD),
     hide_text = (type(UI) == "table" and UI.HideTextMode == true) or false,
-    keyboard_layout = NormalizeKeyboardLayout(PLDR.KEYBOARD_LAYOUT)
+    keyboard_layout = NormalizeKeyboardLayout(PLDR.KEYBOARD_LAYOUT),
+    boot_page = NormalizeBootPage(PLDR.BOOT_PAGE)
   }
 end
 
@@ -2728,6 +2741,9 @@ local function ApplySettingsState(state)
   end
   if state.keyboard_layout ~= nil then
     PLDR.KEYBOARD_LAYOUT = NormalizeKeyboardLayout(state.keyboard_layout)
+  end
+  if state.boot_page ~= nil then
+    PLDR.BOOT_PAGE = NormalizeBootPage(state.boot_page)
   end
   PLDR.ApplyVideoStandardRuntime(PLDR.VIDEO_STANDARD)
   if type(state.hide_text) == "boolean" and type(UI) == "table" then
@@ -2822,6 +2838,7 @@ function PLDR.LoadSettingsNonFatal()
   PLDR.VIDEO_STANDARD = PLDR.VIDEO_STANDARD_NTSC
   PLDR.DKWDRV_PATH = tostring(PLDR.DKWDRV_DEFAULT_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
   PLDR.KEYBOARD_LAYOUT = PLDR.KEYBOARD_LAYOUT_ABC
+  PLDR.BOOT_PAGE = "Carousel"
   if type(UI) == "table" then
     if type(UI.SetHideTextMode) == "function" then
       UI.SetHideTextMode(false, false)
@@ -2888,6 +2905,7 @@ function PLDR.LoadSettingsNonFatal()
   local video_standard = string.match(data, "\nVIDEO_STANDARD=([^\n]+)") or string.match(data, "^VIDEO_STANDARD=([^\n]+)")
   local hide_text = string.match(data, "\nHIDE_TEXT=([^\n]+)") or string.match(data, "^HIDE_TEXT=([^\n]+)")
   local keyboard_layout = string.match(data, "\nKEYBOARD_LAYOUT=([^\n]+)") or string.match(data, "^KEYBOARD_LAYOUT=([^\n]+)")
+  local boot_page = string.match(data, "\nBOOT_PAGE=([^\n]+)") or string.match(data, "^BOOT_PAGE=([^\n]+)")
   if profile ~= nil and PLDR.PROFILES ~= nil and PLDR.PROFILES[profile] ~= nil then
     PLDR.SELECTED_PROFILE = profile
     PLDR.POPSTARTER_PATH = PLDR.PROFILES[profile].ELF
@@ -2925,6 +2943,11 @@ function PLDR.LoadSettingsNonFatal()
   else
     PLDR.KEYBOARD_LAYOUT = NormalizeKeyboardLayout(PLDR.KEYBOARD_LAYOUT)
   end
+  if boot_page ~= nil and boot_page ~= "" then
+    PLDR.BOOT_PAGE = NormalizeBootPage(boot_page)
+  else
+    PLDR.BOOT_PAGE = NormalizeBootPage(PLDR.BOOT_PAGE)
+  end
   PLDR.BDMA_MODE_KEY = NormalizeBdmaModeKey(bdma_mode) or PLDR.BDMA_MODE_KEY
   PLDR.ReconcileBdmaModeWithEffectiveState()
   PLDR.ApplyVideoStandardRuntime(PLDR.VIDEO_STANDARD)
@@ -2961,7 +2984,8 @@ function PLDR.CommitSettingsChanges(opts)
     dkwdrv_path = opts.dkwdrv_path or prev.dkwdrv_path,
     video_standard = NormalizeVideoStandard(opts.video_standard or prev.video_standard),
     hide_text = (type(opts.hide_text) == "boolean") and opts.hide_text or prev.hide_text,
-    keyboard_layout = NormalizeKeyboardLayout(opts.keyboard_layout or prev.keyboard_layout)
+    keyboard_layout = NormalizeKeyboardLayout(opts.keyboard_layout or prev.keyboard_layout),
+    boot_page = NormalizeBootPage(opts.boot_page or prev.boot_page)
   }
   local apply_bdma = opts.apply_bdma == true
   local bdma_token = opts.bdma_token
@@ -5338,6 +5362,31 @@ PLDR.AutoInitStartupBackends()
 -- auto-launch success control never returns, so the order is moot.)
 PLDR.AutoLaunchFromLaunchArgs()
 PLDR.SurfaceLaunchArgsDebug()
+
+-- Persisted Boot Page: on a NORMAL boot (no -page launch arg; and no auto-launch
+-- happened above -- that never returns on success), land the carousel on the
+-- user's chosen device and auto-ENTER its game list. Reuses the SAME OPT/carousel
+-- write-guard dance + PendingAutoEnter as the -page handler; no -game is involved,
+-- so this only enters the device list (never auto-launches a game). PLDR.BOOT_PAGE
+-- is already normalized by LoadSettingsNonFatal; "Carousel" (or any unmapped value)
+-- leaves the default MMCE-at-index-1 carousel behavior untouched.
+if type(PLDR.LAUNCH_ARGS) ~= "table"
+   or type(PLDR.LAUNCH_ARGS.page) ~= "string" or PLDR.LAUNCH_ARGS.page == "" then
+  local boot_to_opt = { MMCE = 1, MX4SIO = 2, HDD = 4, USB = 5 }
+  local opt = boot_to_opt[tostring(PLDR.BOOT_PAGE or "Carousel")]
+  if opt ~= nil and type(UI) == "table" and type(UI.MainMenu) == "table" then
+    local carousel = type(UI.MainMenu.Carousel) == "table" and UI.MainMenu.Carousel or nil
+    if carousel ~= nil then carousel.allowOptWrite = true end
+    UI.MainMenu.OPT = opt
+    if carousel ~= nil then
+      carousel.allowOptWrite = false
+      carousel.currentIndex = opt
+      carousel.targetIndex = opt
+      carousel.scrollPos = opt + 0.0
+    end
+    UI.MainMenu.PendingAutoEnter = true
+  end
+end
 
 ---MAIN PROGRAM BEHAVIOUR BEGINS
 local initial_scene = UI.SCENES.MMAIN
