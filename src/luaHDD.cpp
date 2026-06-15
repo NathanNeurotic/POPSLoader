@@ -118,7 +118,19 @@ enum HDDLOADSTATES {
 int HDDLOADSTATE = HDDLOADSTATES::NOT_LOADED;
 
 static int Load_HDD_IRX(lua_State *L) {
-    if (HDDLOADSTATE != HDDLOADSTATES::NOT_LOADED) goto OK;
+    if (HDDLOADSTATE == HDDLOADSTATES::LOADED) goto OK;
+    if (HDDLOADSTATE == HDDLOADSTATES::FAILED_TO_LOAD) {
+        /* A prior init failed: do NOT re-run a partial load and do NOT report
+         * success. The old `!= NOT_LOADED` jump to OK lied "true" on every retry,
+         * which let a second caller (EnsureHddRuntimeReadyForExec) proceed against
+         * a half-loaded HDD IRX stack. Report the prior failure honestly so the
+         * caller fails fast. */
+        lua_pushboolean(L, false);
+        lua_pushstring(L, "HDD_PRIOR_FAIL");
+        lua_pushinteger(L, -1);
+        lua_pushinteger(L, -1);
+        return 4;
+    }
     int ID, RET;
 #define _N "\0"
     static const char hddarg[] = "-o" _N "4" _N "-n" _N "20";

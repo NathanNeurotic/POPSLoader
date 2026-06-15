@@ -176,12 +176,16 @@ void pad_init()
 
     if((ret = padPortOpen(port, slot, padBuf)) == 0) {
         DPRINTF("padOpenPort failed: %d\n", ret);
-        SleepThread();
+        return;  // was SleepThread(): never deadlock the boot UI on a pad fault.
+                 // pad_init runs on the main thread before the Lua boot loop, so
+                 // SleepThread() here = permanent black screen, no error screen,
+                 // no recovery. Come up instead so the menu renders (user can
+                 // reconnect the controller / reboot). Mirrors pad_reinit() below.
     }
 
     if(!initializePad(port, slot)) {
         DPRINTF("pad initalization failed!\n");
-        SleepThread();
+        return;  // was SleepThread() — same reason.
     }
 }
 
