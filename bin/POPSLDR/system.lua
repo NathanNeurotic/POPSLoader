@@ -894,6 +894,39 @@ local function ResolveHddGamePartitionReadablePath(partition, relpath)
   return nil
 end
 
+-- HDD-write probe (diagnostic, TEST): on an HDD boot, try a SCOPED read-write to
+-- a __.POPS game partition -- mount RW, write+verify+delete a tiny test file,
+-- unmount. Answers whether the bundled ps2hdd-osd driver can write a NON-boot
+-- partition (the boot partition pfs1: is known-unwritable: Nuno PR#464, which is
+-- why HDD settings save to mc0:). Real settings are unaffected; this only reports
+-- via the settings-save toast. Returns: nil = not an HDD boot (skip);
+-- true,<partition> = writable; false,<reason> = not.
+function PLDR.ProbeHddSettingsWrite()
+  if GetBootHddMountSlot() == nil then return nil end
+  if type(HDD) ~= "table" then return false, "HDD modules not loaded" end
+  local parts = { "__.POPS", "__.POPS0", "__.POPS1", "__.POPS2", "__.POPS3" }
+  for i = 1, #parts do
+    local mounted, prefix, slot = MountHddGamePartitionTracked("hdd0:"..parts[i], FIO_MT_RDWR)
+    if mounted and prefix ~= nil then
+      local probe_path = BuildMountedReadablePath(prefix, "pldrs_wtest.tmp")
+      local wrote = false
+      if probe_path ~= nil then
+        local ok_open, fd = pcall(System.openFile, probe_path, FCREATE)
+        if ok_open and fd ~= nil and not (type(fd) == "number" and fd < 0) then
+          pcall(System.writeFile, fd, "ok", 2)
+          pcall(System.closeFile, fd)
+          wrote = (doesFileExist(probe_path) == true)
+          pcall(System.removeFile, probe_path)
+        end
+      end
+      if slot ~= nil then UMountHddPartitionTracked(slot) end
+      if wrote then return true, parts[i] end
+      return false, parts[i].." mounted, but write failed"
+    end
+  end
+  return false, "no __.POPS partition could be mounted"
+end
+
 local function ResolveHddReadablePath(path)
   local candidate = tostring(path or "")
   if candidate == "" then

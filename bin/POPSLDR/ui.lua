@@ -2651,6 +2651,18 @@ UI = {
             UI.DkwdrvDirty = false
             UI.VideoStandardDirty = false
             clear_settings_session()
+            -- HDD-write probe (TEST): on an HDD boot, report whether a __.POPS
+            -- partition accepts a scoped write -- tells us if settings/.hide can
+            -- live on the HDD. Settings already saved (to mc0: on HDD); this only
+            -- reports. (nil return = not an HDD boot -> no toast.)
+            if type(PLDR.ProbeHddSettingsWrite) == "function" then
+              local hdd_w_ok, hdd_w_info = PLDR.ProbeHddSettingsWrite()
+              if hdd_w_ok == true then
+                UI.Notif_queue.add("HDD partition "..tostring(hdd_w_info).." is WRITABLE -- settings can live on HDD", "ok")
+              elseif hdd_w_ok == false then
+                UI.Notif_queue.add("HDD write test FAILED ("..tostring(hdd_w_info)..")\nsettings stay on the memory card", "warn")
+              end
+            end
             UI.SceneChange(target_scene)
           else
             if reason == "bdma_apply_failed" then
