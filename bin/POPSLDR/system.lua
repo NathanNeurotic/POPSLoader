@@ -2386,6 +2386,29 @@ local function ReadWholeFile(path)
   return table.concat(chunks)
 end
 
+-- Promote a fully-written temp file onto dest as safely as System.rename allows.
+-- System.rename is copy-then-delete (not an atomic kernel rename), so a failure
+-- during its internal copy could otherwise destroy an existing dest. Back dest up
+-- first and restore it if the promotion fails, so a failed save never leaves the
+-- caller with a lost or half-written dest (e.g. the settings file).
+local function PromoteTmpToDest(tmp, dest)
+  local bak = dest..".bak"
+  local had_dest = doesFileExist(dest)
+  if had_dest then
+    if doesFileExist(bak) then pcall(System.removeFile, bak) end
+    pcall(System.rename, dest, bak)
+  end
+  local ok = pcall(System.rename, tmp, dest)
+  if not ok then
+    pcall(System.removeFile, dest)
+    if had_dest and doesFileExist(bak) then pcall(System.rename, bak, dest) end
+    pcall(System.removeFile, tmp)
+    return false
+  end
+  if doesFileExist(bak) then pcall(System.removeFile, bak) end
+  return true
+end
+
 local function WriteAtomic(dest, data)
   local tmp = dest..".tmp"
   if doesFileExist(tmp) then
@@ -2408,12 +2431,7 @@ local function WriteAtomic(dest, data)
     offset = offset + string.len(chunk)
   end
   pcall(System.closeFile, fd)
-  if doesFileExist(dest) then
-    pcall(System.removeFile, dest)
-  end
-  local ok = pcall(System.rename, tmp, dest)
-  if not ok then
-    pcall(System.removeFile, tmp)
+  if not PromoteTmpToDest(tmp, dest) then
     return false
   end
   return true
@@ -2532,12 +2550,7 @@ local function CopyExternalAtomicBounded(source, dest, expected_size)
     return false, "copy failed"
   end
 
-  if doesFileExist(dest) then
-    pcall(System.removeFile, dest)
-  end
-  local ok_rename = pcall(System.rename, tmp, dest)
-  if not ok_rename then
-    pcall(System.removeFile, tmp)
+  if not PromoteTmpToDest(tmp, dest) then
     return false, "rename failed"
   end
   return true
@@ -2588,12 +2601,7 @@ local function WriteBytesAtomicBounded(data, dest)
     return false, "write failed"
   end
 
-  if doesFileExist(dest) then
-    pcall(System.removeFile, dest)
-  end
-  local ok_rename = pcall(System.rename, tmp, dest)
-  if not ok_rename then
-    pcall(System.removeFile, tmp)
+  if not PromoteTmpToDest(tmp, dest) then
     return false, "rename failed"
   end
   return true
@@ -3026,6 +3034,12 @@ function PLDR.CommitSettingsChanges(opts)
   local next_popstarter_mode = NormalizePopstarterSelectionMode(opts.popstarter_mode or prev.popstarter_mode)
   local next_collapse = (prev.multidisc_collapse == true)
   if type(opts.multidisc_collapse) == "boolean" then next_collapse = opts.multidisc_collapse end
+  -- Explicit boolean check, NOT `(type==boolean) and opts.x or prev.x`: that
+  -- idiom collapses a legitimate `false` to prev (Lua and/or short-circuit), so
+  -- Hide-Text could never be toggled OFF through a settings save. Mirrors the
+  -- next_collapse pattern directly above.
+  local next_hide_text = (prev.hide_text == true)
+  if type(opts.hide_text) == "boolean" then next_hide_text = opts.hide_text end
   local next_state = {
     profile = next_profile,
     popstarter_path = NormalizeSelectedProfilePopstarterPath(next_profile, opts.popstarter_path or prev.popstarter_path, next_popstarter_mode),
@@ -3033,7 +3047,7 @@ function PLDR.CommitSettingsChanges(opts)
     bdma_mode = NormalizeBdmaModeKey(opts.bdma_mode) or prev.bdma_mode,
     dkwdrv_path = opts.dkwdrv_path or prev.dkwdrv_path,
     video_standard = NormalizeVideoStandard(opts.video_standard or prev.video_standard),
-    hide_text = (type(opts.hide_text) == "boolean") and opts.hide_text or prev.hide_text,
+    hide_text = next_hide_text,
     keyboard_layout = NormalizeKeyboardLayout(opts.keyboard_layout or prev.keyboard_layout),
     boot_page = NormalizeBootPage(opts.boot_page or prev.boot_page),
     multidisc_collapse = next_collapse
@@ -4171,11 +4185,17 @@ function PLDR.HDD.ReadCache()
 end
 
 function PLDR.HDD.WipeCache(CACHE)
+  -- Invalidate BOTH cache tiers. Clearing only the on-disk file left the
+  -- in-session memo (PLDR.HDDCACHE + PLDR.HDD.LIST_BUILT) intact, so a
+  -- multi-disc-collapse toggle had no visible effect until a reboot or a
+  -- manual R1 rescan -- EnsureGameList(force=false) returned the stale memo.
+  PLDR.HDDCACHE = nil
+  PLDR.HDD.LIST_BUILT = false
   local C = ResolveWritablePath("hdd_gamecache.lua")
   if doesFileExist(C) then
     System.removeFile(C)
-    PLDR.HDD.HAS_CHECKED = false
   end
+  PLDR.HDD.HAS_CHECKED = false
 end
 
 -- Rebuild PLDR.GAMES + PLDR.HDD.GAMEPARTS from the cached list (PLDR.HDDCACHE,

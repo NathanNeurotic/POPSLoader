@@ -2744,6 +2744,14 @@ UI = {
             UI.BdmaModeIndex = 1
             UI.BdmaDirty = true
           end
+          if (UI.BootPageIndex or 1) ~= 1 then
+            UI.BootPageIndex = 1
+            UI.ProfileDirty = true
+          end
+          if UI.MultiDiscCollapse == true then
+            UI.MultiDiscCollapse = false
+            UI.ProfileDirty = true
+          end
           local default_video_key = VIDEO_STANDARD_NTSC
           local default_video_index = 1
           for i = 1, #UI.VideoStandardModes do
