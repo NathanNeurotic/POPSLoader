@@ -125,6 +125,33 @@ Navigate POPSLoader using a standard PS2 controller.
 
 ---
 
+## Settings
+
+Press **Start** on the menu to open Settings; changes save when you confirm. Settings persist per install — every device saves a `.pldrs` file next to the launcher, **except HDD installs, which save to `mc0:/POPSTARTER/.pldrs`** (see [Settings Storage on HDD Installs](#settings-storage-on-hdd-installs); the HDD driver can't reliably write to its own partition, so the memory card is used instead). No settings are ever written to the HDD.
+
+### Startup
+
+| Setting | Options | What it does |
+| :--- | :--- | :--- |
+| **Boot Page** | **Carousel** (default) · MX4SIO · USB · MMCE · HDD (PFS) | Where POPSLoader lands after the boot sequence. *Carousel* shows the normal device wheel. Pick a device and POPSLoader opens **straight into that device's game list** at startup (it loads that backend automatically). A `-page=` launch argument still overrides this for that one boot. |
+
+### Game List
+
+| Setting | Options | What it does |
+| :--- | :--- | :--- |
+| **Multi-disc games** | **Show all discs** (default) · First disc only | *First disc only* hides the secondary discs of multi-disc games so only disc 1 shows. **Detection is purely by filename** — a disc is hidden if its name contains `(Disc 2)`, `(Disc 3)`, `(CD 2)`, `(Disk 2)`… (any number ≥ 2). So it **only works if you name your files with that convention**, e.g. `Final Fantasy IX (Disc 1).VCD` / `Final Fantasy IX (Disc 2).VCD`. Launch disc 1 and swap discs in-game via your VMC. (PS1 discs carry no shared "this is the same game" metadata, so the filename is the only signal.) Applies to every device. |
+
+### Other settings
+
+- **Profile / POPSTARTER mode / POPSTARTER path** — which `POPSTARTER.ELF` to use (a per-device profile, or a custom path).
+- **DKWDRV Path** — path to `DKWDRV.ELF` used by the Disc option.
+- **Video Standard** — NTSC / PAL.
+- **BDMA Mode** — mass-storage backend mode (FAT32 / exFAT).
+- **Hide UI Text** — clears on-screen text for a clean cover-art view (also toggled with **Select**).
+- **Keyboard Layout** — on-screen keyboard layout for the path editor.
+
+---
+
 ## BOOT.ELF / wLaunchELF Exit
 
 Selecting **BOOT.ELF** in the exit menu (or pressing the **Triangle** shortcut) will look for:
