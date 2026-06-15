@@ -11,7 +11,6 @@
 #include <fileXio_rpc.h>
 #include <fileio.h>
 #include "include/luaplayer.h"
-#include "include/md5.h"
 #include "include/graphics.h"
 #include "include/embed_assets.h"
 
@@ -33,6 +32,11 @@ extern unsigned char usbmass_bd_irx[];
 extern unsigned int size_usbmass_bd_irx;
 extern unsigned char cdfs_irx[];
 extern unsigned int size_cdfs_irx;
+
+extern unsigned char mmceman_irx;
+extern unsigned int size_mmceman_irx;
+
+extern int pad_reinit();
 
 
 static bool LoadIrxCheckedBuffer(const char *name, unsigned char *irx, unsigned int size, int *out_id, int *out_ret);
@@ -72,6 +76,7 @@ static bool bdm_fatfs_irx_loaded = false;
 static bool usbmass_irx_loaded = false;
 static bool cdfs_irx_loaded = false;
 static bool mx4sio_irx_loaded = false;
+static bool mmceman_irx_loaded = false;
 
 static bool EnsureBDM()
 {
@@ -127,6 +132,33 @@ static bool EnsureCDFS()
 	return true;
 }
 
+// Layer C lazy-load entry point for mmceman. main.cpp's boot sequence
+// eagerly loads mmceman_irx ONLY when boot_device_hint == "MMCE"; for any
+// other boot device (USB / MC / MX4SIO / HDD in any variant: hdd*, pfs*,
+// ata*, apa* — see detectBootDeviceHintFromArgv0 in main.cpp), this is
+// called on demand by PLDR.EnsureMmceReadyOnce in system.lua before any
+// MMCE probe (PLDR.DetectMMCESlot). Idempotent: subsequent calls after a
+// successful load are no-ops.
+bool EnsureMmceman()
+{
+	if (mmceman_irx_loaded) {
+		return true;
+	}
+	if (!LoadIrxCheckedBuffer("mmceman.irx", &mmceman_irx, size_mmceman_irx, NULL, NULL)) {
+		return false;
+	}
+	mmceman_irx_loaded = true;
+	return true;
+}
+
+// Called from main.cpp when mmceman was loaded eagerly by the boot
+// sequence (MMCE-booted case). Syncs the EnsureMmceman tracker so the
+// Lua-side ensureMmceman() call later is a no-op instead of double-loading.
+void MarkMmcemanLoaded()
+{
+	mmceman_irx_loaded = true;
+}
+
 static bool EnsureBdmQueryRpc()
 {
 	if (!bdm_rpc_loaded) {
@@ -176,7 +208,7 @@ static const char *ClassifyMassBackend(const char *driver)
 	if (strstr(driver, "usb") != NULL) {
 		return "usb";
 	}
-	if (strstr(driver, "sdc") != NULL || strstr(driver, "mx4sio") != NULL) {
+	if (strstr(driver, "sdc") != NULL || strstr(driver, "mx4") != NULL) {
 		return "mx4sio";
 	}
 	if (strstr(driver, "mmce") != NULL) {
@@ -677,30 +709,32 @@ static int lua_removeDir(lua_State *L)
 	return 0;
 }
 
-static int lua_movefile(lua_State *L)
+/* Shared raw byte copy: open src->dst, stream, close. Returns 0 on success,
+   -1 on failure. Used by rename (and historically by copyFile). */
+static int copy_file_contents(const char *src, const char *dst)
 {
-	const char *path = luaL_checkstring(L, 1);
-	if(!path) return luaL_error(L, "Argument error: System.removeFile(filename) takes a filename as string as argument.");
-		const char *oldName = luaL_checkstring(L, 1);
-	const char *newName = luaL_checkstring(L, 2);
-	if(!oldName || !newName)
-		return luaL_error(L, "Argument error: System.rename(source, destination) takes two filenames as strings as arguments.");
-
 	char buf[BUFSIZ];
-    size_t size;
+	int size;
 
-	int source = open(oldName, O_RDONLY, 0);
-    int dest = open(newName, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+	int source = open(src, O_RDONLY, 0);
+	if (source < 0) return -1;
+	int dest = open(dst, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+	if (dest < 0) {
+		close(source);
+		return -1;
+	}
 
 	while ((size = read(source, buf, BUFSIZ)) > 0) {
-	   write(dest, buf, size);
-    }
+		int wrote = write(dest, buf, size);
+		if (wrote < size) {
+			close(source);
+			close(dest);
+			return -1;
+		}
+	}
 
-    close(source);
-    close(dest);
-
-	remove(oldName);
-
+	close(source);
+	close(dest);
 	return 0;
 }
 
@@ -720,44 +754,10 @@ static int lua_rename(lua_State *L)
 	if(!oldName || !newName)
 		return luaL_error(L, "Argument error: System.rename(source, destination) takes two filenames as strings as arguments.");
 
-	char buf[BUFSIZ];
-    size_t size;
-
-	int source = open(oldName, O_RDONLY, 0);
-    int dest = open(newName, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-
-	while ((size = read(source, buf, BUFSIZ)) > 0) {
-	   write(dest, buf, size);
-    }
-
-    close(source);
-    close(dest);
-
+	if (copy_file_contents(oldName, newName) != 0)
+		return luaL_error(L, "System.rename: copy failed");
 	remove(oldName);
-	
-	return 0;
-}
 
-static int lua_copyfile(lua_State *L)
-{
-	const char *ogfile = luaL_checkstring(L, 1);
-	const char *newfile = luaL_checkstring(L, 2);
-	if(!ogfile || !newfile)
-		return luaL_error(L, "Argument error: System.copyFile(source, destination) takes two filenames as strings as arguments.");
-
-	char buf[BUFSIZ];
-    size_t size;
-
-	int source = open(ogfile, O_RDONLY, 0);
-    int dest = open(newfile, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-
-	while ((size = read(source, buf, BUFSIZ)) > 0) {
-	   write(dest, buf, size);
-    }
-
-    close(source);
-    close(dest);
-	
 	return 0;
 }
 
@@ -766,27 +766,6 @@ static char modulePath[256];
 static void setModulePath()
 {
 	getcwd( modulePath, 256 );
-}
-
-static int lua_md5sum(lua_State *L)
-{
-	size_t size;
-	const char *string = luaL_checklstring(L, 1, &size);
-	if (!string) return luaL_error(L, "Argument error: System.md5sum(string) takes a string as argument.");
-
-	int i;
-	char result[33];        
-	u8 digest[16];
-
-	MD5_CTX ctx;
-    MD5Init( &ctx );
-    MD5Update( &ctx, (u8 *)string, size );
-    MD5Final( digest, &ctx );
-
-	for (i = 0; i < 16; i++) sprintf(result + 2 * i, "%02x", digest[i]);
-	lua_pushstring(L, result);
-	
-	return 1;
 }
 
 static int lua_sleep(lua_State *L)
@@ -1133,6 +1112,7 @@ static int lua_checkValidDisc(lua_State *L)
 		case SCECdDETCTDVDS:
 		case SCECdDETCTDVDD:
 			result = 1;
+			break;
 		case SCECdNODISC:
 		case SCECdDETCT:
 		case SCECdUNKNOWN:
@@ -1172,91 +1152,8 @@ static int lua_getDiscType(lua_State *L)
     return 1; //return value quantity on stack
 }
 
-extern void *_gp;
 extern int mmce_slot0_ready;
 extern int mmce_slot1_ready;
-
-#define BUFSIZE (64*1024)
-
-static volatile off_t progress, max_progress;
-
-struct pathMap {
-	const char* in;
-	const char* out;
-};
-
-static int copyThread(void* data)
-{
-	pathMap* paths = (pathMap*)data;
-
-    char buffer[BUFSIZE];
-    int in = open(paths->in, O_RDONLY, 0);
-    int out = open(paths->out, O_WRONLY | O_CREAT | O_TRUNC, 644);
-
-    // Get the input file size
-	uint32_t size = lseek(in, 0, SEEK_END);
-	lseek(in, 0, SEEK_SET);
-
-    progress = 0;
-    max_progress = size;
-
-    ssize_t bytes_read;
-    while((bytes_read = read(in, buffer, BUFSIZE)) > 0)
-    {
-        write(out, buffer, bytes_read);
-        progress += bytes_read;
-    }
-
-    // copy is done, or an error occurred
-    close(in);
-    close(out);
-	free(paths);
-	ExitDeleteThread();
-    return 0;
-}
-
-
-static int lua_copyasync(lua_State *L){
-	int argc = lua_gettop(L);
-	if (argc != 2) return luaL_error(L, "wrong number of arguments");
-
-	pathMap* copypaths = (pathMap*)malloc(sizeof(pathMap));
-
-	copypaths->in = luaL_checkstring(L, 1);
-	copypaths->out = luaL_checkstring(L, 2);
-	
-	static u8 copyThreadStack[65*1024] __attribute__((aligned(16)));
-	
-	ee_thread_t thread_param;
-	
-	thread_param.gp_reg = &_gp;
-    thread_param.func = (void*)copyThread;
-    thread_param.stack = (void *)copyThreadStack;
-    thread_param.stack_size = sizeof(copyThreadStack);
-    thread_param.initial_priority = 0x12;
-	int thread = CreateThread(&thread_param);
-	
-	StartThread(thread, (void*)copypaths);
-	return 0;
-}
-
-
-static int lua_getfileprogress(lua_State *L) {
-	int argc = lua_gettop(L);
-	if (argc != 0) return luaL_error(L, "wrong number of arguments");
-
-	lua_newtable(L);
-
-    lua_pushstring(L, "current");
-    lua_pushinteger(L, (int)progress);
-    lua_settable(L, -3);
-
-    lua_pushstring(L, "final");
-    lua_pushinteger(L, (int)max_progress);
-    lua_settable(L, -3);
-
-	return 1;
-}
 
 static int lua_direxists(lua_State *L)
 {
@@ -1288,6 +1185,29 @@ static int lua_popargv0(lua_State *L) {
 
 static int lua_getAppDir(lua_State *L) {
 	lua_pushstring(L, app_dir);
+	return 1;
+}
+
+/* NHDDL-style launch arguments parsed in main.cpp parseLaunchArgs().
+ * Externs declared in include/luaplayer.h. */
+static int lua_getLaunchArgs(lua_State *L) {
+	lua_newtable(L);
+	lua_pushstring(L, launch_arg_page);
+	lua_setfield(L, -2, "page");
+	lua_pushstring(L, launch_arg_game);
+	lua_setfield(L, -2, "game");
+	lua_pushboolean(L, launch_arg_debug != 0);
+	lua_setfield(L, -2, "debug");
+	return 1;
+}
+
+/* Pre-Lua C-side device classification hint (from argv[0]). The
+ * authoritative boot device is still resolved in system.lua
+ * DetectBootDevice (it handles the mass:/ MX4SIO disambiguation via
+ * BDM driver lookup). This hint is for early decisions only.
+ * Extern declared in include/luaplayer.h. */
+static int lua_getBootDeviceHint(lua_State *L) {
+	lua_pushstring(L, boot_device_hint);
 	return 1;
 }
 
@@ -1342,6 +1262,21 @@ static int lua_ensure_cdfs(lua_State *L)
 	return 1;
 }
 
+static int lua_ensure_mmceman(lua_State *L)
+{
+	lua_pushboolean(L, EnsureMmceman());
+	return 1;
+}
+
+// Re-open the controller port. Called from Lua after an on-demand mmceman
+// load (PLDR.EnsureMmceReadyOnce) to recover pad input that the shared-SIO2
+// disruption can silently drop. Returns true if the port came back up.
+static int lua_reinit_pad(lua_State *L)
+{
+	lua_pushboolean(L, pad_reinit());
+	return 1;
+}
+
 static int lua_mx4sio_init(lua_State *L)
 {
 	int argc = lua_gettop(L);
@@ -1352,7 +1287,15 @@ static int lua_mx4sio_init(lua_State *L)
 		(void)luaL_checkstring(L, 1);
 	}
 
-	bool ok = EnsureBDMFatFs();
+	// Per maintainer 2026-05-28: "mx4sio will need the usb drivers to
+	// activate before it with it. USB will never need MX4SIO drivers."
+	// Enforce the dependency order at the lowest level so any caller of
+	// System.initMX4SIO automatically gets usbmass_bd loaded first --
+	// previously, Lua callers that didn't explicitly ensure UsbMass
+	// could load mx4sio_bd into a state where the broader BDM mass
+	// stack wasn't ready. EnsureUsbMass is idempotent (gated by
+	// usbmass_irx_loaded), so this costs nothing on repeat calls.
+	bool ok = EnsureUsbMass();
 	if (ok && !mx4sio_irx_loaded) {
 		ok = LoadIrxCheckedBuffer("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL);
 		if (ok) {
@@ -1361,13 +1304,11 @@ static int lua_mx4sio_init(lua_State *L)
 	}
 
 	lua_pushboolean(L, ok);
-	lua_pushnil(L);
 	if (ok) {
-		lua_pushnil(L);
-	} else {
-		lua_pushstring(L, "IRX_LOAD_FAIL");
+		return 1;
 	}
-	return 3;
+	lua_pushstring(L, "IRX_LOAD_FAIL");
+	return 2;
 }
 
 static const luaL_Reg System_functions[] = {
@@ -1382,13 +1323,8 @@ static const luaL_Reg System_functions[] = {
 	{"listDirectory",           	    lua_dir},
 	{"createDirectory",           lua_createDir},
 	{"removeDirectory",           lua_removeDir},
-	{"moveFile",	               lua_movefile},
-	{"copyFile",	               lua_copyfile},
-	{"threadCopyFile",	          lua_copyasync},
-	{"getFileProgress",	    lua_getfileprogress},
 	{"removeFile",               lua_removeFile},
 	{"rename",                       lua_rename},
-	{"md5sum",                       lua_md5sum},
 	{"sleep",                         lua_sleep},
 	{"getFreeMemory",         lua_getFreeMemory},
 	{"exitToBrowser",                  lua_exit},
@@ -1402,6 +1338,8 @@ static const luaL_Reg System_functions[] = {
 	{"checkDiscTray",         lua_checkDiscTray},
 	{"GetArgv0",                   lua_popargv0},
 	{"getAppDir",                 lua_getAppDir},
+	{"getLaunchArgs",         lua_getLaunchArgs},
+	{"getBootDeviceHint", lua_getBootDeviceHint},
 	{"getEmbeddedAsset",      lua_getEmbeddedAsset},
 	{"resolveAsset",           lua_resolveAsset},
 	{"resolveAssetType",   lua_resolveAssetType},
@@ -1409,6 +1347,8 @@ static const luaL_Reg System_functions[] = {
 	{"ensureBDMFatFs",         lua_ensure_bdm_fatfs},
 	{"ensureUsbMass",          lua_ensure_usb_mass},
 	{"ensureCDFS",             lua_ensure_cdfs},
+	{"ensureMmceman",          lua_ensure_mmceman},
+	{"reinitPad",              lua_reinit_pad},
 	{"initMX4SIO",             lua_mx4sio_init},
 	{"bdmList",                lua_bdm_list},
 	{"refreshMassBackends",    lua_refresh_mass_backends},

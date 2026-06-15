@@ -22,9 +22,14 @@
 #include <fileXio_rpc.h>
 
 #ifdef LOADER_ENABLE_DEBUG_COLORS
-#include <debug.h>
+// The GS BGCOLOUR write (raw register, no library) is the diagnostic that survives a
+// black screen: it paints the whole frame a stage color even when nothing else renders.
+// scr_printf text output is deliberately NOT wired up here -- it needs -ldebug plus
+// init_scr() (a GS framebuffer the loader never sets up at this stage), so it both fails
+// to link and would only target a text console we may not have on a black screen. Keep
+// DPRINTF a no-op so enabling the stage colors stays link-clean.
 #define SET_GS_BGCOLOUR(colour) {*((volatile unsigned long int *)0x120000E0) = colour;}
-#define DPRINTF(x...) scr_printf(x)
+#define DPRINTF(x...) do {} while (0)
 #else
 #define SET_GS_BGCOLOUR(colour)
 #define DPRINTF(x...) do {} while (0)

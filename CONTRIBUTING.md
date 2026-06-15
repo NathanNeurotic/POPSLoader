@@ -1,4 +1,4 @@
-Last updated: 2026-03-26
+Last updated: 2026-05-28 (post-BETA-10-5)
 
 # CONTRIBUTING
 
@@ -39,7 +39,8 @@ Practical contributor workflow for POPSLoader changes.
   - `ROADMAP.md`
   - `DECISIONS.md`
   - `QA_REGRESSION_MATRIX.md`
-- If behavior is only repo-verified and not hardware-verified, say so explicitly.
+  - `TRUTHSHEET.md` (for preservation contracts and behavioral invariants)
+- If behavior is only repo-verified and not hardware-verified, say so explicitly. Post-BETA-10-5 PR work is `Unknown (verify on hardware)` unless a tester result is recorded in `QA_REGRESSION_MATRIX.md`.
 - If hardware results contradict the intended code change, document the failure instead of assuming the next patch will fix it.
 
 ## Validation Expectations
@@ -56,10 +57,16 @@ Practical contributor workflow for POPSLoader changes.
 ### Hardware-sensitive behavior
 - Use `QA_REGRESSION_MATRIX.md` IDs in test notes.
 - Mark untested hardware scenarios explicitly as `Unknown (verify on hardware)`.
-- For current hot paths, prioritize:
-  - `D-10` HDD POPSTARTER on HDD,
-  - `U-05` OSDSYS after HDD init,
-  - `U-10` BOOT.ELF after HDD page init.
+- **Preservation contracts** (hardware-confirmed in BETA-10-5; must continue to PASS on any new artifact):
+  - `D-10` HDD POPSTARTER on HDD (B2 fix at `4ae6679`),
+  - `D-14` HDD POPSTARTER with non-HDD game,
+  - `D-15` non-HDD POPSTARTER with HDD game,
+  - DKWDRV from MC,
+  - BOOT.ELF from USB-booted POPSLoader (V2 route at `d23520a`).
+- **Known broken accepted** (do not test as regression; documented workarounds apply):
+  - DKWDRV from custom HDD path,
+  - `U-10` BOOT.ELF from HDD-booted POPSLoader.
+- The rolling-release workflow publishes to a single canonical URL. Pushing to your PR branch triggers a build that overwrites the asset (last-write-wins). Coordinate with the maintainer if testers are mid-cycle.
 
 ## Good Bug Reports
 Include:

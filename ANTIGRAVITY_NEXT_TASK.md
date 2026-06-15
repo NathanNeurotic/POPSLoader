@@ -1,37 +1,15 @@
-# Antigravity Next Task: BOOT.ELF / Triangle Exit Debugging
+# Antigravity Next Task — ARCHIVED
 
-Current branch:
-BETA-12-PLAY
+This handoff note dates from the March/May 2026 BOOT.ELF debugging cycle and is **superseded by the BETA-10-5 release** (tag `9a0ebe2`, 2026-05-27, hardware-confirmed clean by Nuno 2026-05-28).
 
-Current pushed HEAD:
-d1d67bc Add Antigravity handoff note for BOOT.ELF debugging
+**For current state and active work, see:**
+- [STATE.md](STATE.md) — current code and hardware status, post-release PR work
+- [ROADMAP.md](ROADMAP.md) — prioritized backlog
+- [QA_REGRESSION_MATRIX.md](QA_REGRESSION_MATRIX.md) — full hardware/CI ledger
+- [docs/U10_INVESTIGATION.md](docs/U10_INVESTIGATION.md) — U-10 BOOT.ELF-from-HDD-boot hypothesis catalog (now an accepted known-broken item in BETA-10-5; investigation preserved)
+- [docs/DOCUMENTATION_FOLLOWUP_AUDIT.md](docs/DOCUMENTATION_FOLLOWUP_AUDIT.md) — post-release doc cleanup plan
+- [AGENTS_START_HERE.md](AGENTS_START_HERE.md) — current entry point for new agents
 
-Previous checkpoint merge:
-e0a4ec4 Merge latest Antigravity work into BETA-12-PLAY
-
-Important status:
-- This is a checkpoint state, not a release state.
-- D-10 HDD POPSTARTER handoff fix passed hardware testing and must not be broken.
-- Latest BOOT.ELF / Triangle exit handoff candidate failed hardware testing.
-- Hardware result: selecting Exit to BOOT.ELF / Triangle still black-screened.
-- The failed/latest candidate is intentionally preserved in BETA-12-PLAY so work can continue from it.
-- Do not mark BOOT.ELF handoff as fixed.
-- Do not commit automatically.
-
-Next task:
-Continue debugging the BOOT.ELF / Triangle exit black-screen failure from this exact BETA-12-PLAY state.
-
-Requirements:
-1. Inspect bin/POPSLDR/ui.lua and recent git history related to BOOT.ELF handoff.
-2. Explain what the latest attempted fix changed.
-3. Identify why it may still black-screen on real PS2 hardware.
-4. Prepare a minimal next diagnostic or fix candidate.
-5. Preserve all working D-10 HDD POPSTARTER behavior.
-6. Do not disturb the already-passing HDD POPSTARTER fix.
-7. Hardware-first debugging only; assumptions must be backed by code evidence.
-
-Useful commands:
-git log --oneline --decorate -12
-git show --stat e0a4ec4
-git show b446fbd -- bin/POPSLDR/ui.lua
-git diff bea7c46..HEAD -- bin/POPSLDR/ui.lua
+**BOOT.ELF status as of 2026-05-28:**
+- BOOT.ELF from USB / OSDmenu / Browser / HOSDMenu / PSBBN: **PASS** (V2 working route at commit `d23520a`)
+- BOOT.ELF from HDD-booted POPSLoader (`U-10`): **known-broken accepted** in BETA-10-5. Workaround: Exit → OSDSYS or reboot. Diagnostic data from PR #463 localized the hang to `SifIopReset` itself; F4 unconditional unmount in PR #464 didn't fix it on hardware. Investigation hypotheses preserved in [docs/U10_INVESTIGATION.md](docs/U10_INVESTIGATION.md) for future revisits.

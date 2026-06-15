@@ -11,6 +11,27 @@
 static bool adpcm_started = false;
 static bool audsrv_started = false;
 
+/* Lazy one-time init helpers (audsrv must be up before adpcm). Replace the
+   repeated if(!started){init();started=true;} guards across the sound API. */
+static void ensure_audsrv(void)
+{
+    if(!audsrv_started) {
+        int rc = audsrv_init();
+        DPRINTF("ensure_audsrv: audsrv_init rc=%d\n", rc);
+        audsrv_started = true;
+    }
+}
+
+static void ensure_adpcm(void)
+{
+    ensure_audsrv();
+    if(!adpcm_started) {
+        int rc = audsrv_adpcm_init();
+        DPRINTF("ensure_adpcm: audsrv_adpcm_init rc=%d\n", rc);
+        adpcm_started = true;
+    }
+}
+
 /*static int fillbuffer(void *arg)
 {
 	iSignalSema((int)arg);
@@ -73,21 +94,13 @@ static bool audsrv_started = false;
 
 
 void sound_setvolume(int volume) {
-    if(!audsrv_started) {
-        int rc = audsrv_init();
-        DPRINTF("sound_setvolume: audsrv_init rc=%d\n", rc);
-        audsrv_started = true;
-    }
+    ensure_audsrv();
 
 	audsrv_set_volume(volume);
 }
 
 void sound_setformat(int bits, int freq, int channels){
-    if(!audsrv_started) {
-        int rc = audsrv_init();
-        DPRINTF("sound_setformat: audsrv_init rc=%d\n", rc);
-        audsrv_started = true;
-    }
+    ensure_audsrv();
 
 	struct audsrv_fmt_t format;
 
@@ -99,31 +112,13 @@ void sound_setformat(int bits, int freq, int channels){
 }
 
 void sound_setadpcmvolume(int slot, int volume) {
-    if(!audsrv_started) {
-        int rc = audsrv_init();
-        DPRINTF("sound_setadpcmvolume: audsrv_init rc=%d\n", rc);
-        audsrv_started = true;
-    }
-    if(!adpcm_started) {
-        int rc = audsrv_adpcm_init();
-        DPRINTF("sound_setadpcmvolume: adpcm_init rc=%d\n", rc);
-        adpcm_started = true;
-    }
+    ensure_adpcm();
 
 	audsrv_adpcm_set_volume(slot, volume);
 }
 
 audsrv_adpcm_t* sound_loadadpcm(const char* path){
-    if(!audsrv_started) {
-        int rc = audsrv_init();
-        DPRINTF("sound_loadadpcm: audsrv_init rc=%d\n", rc);
-        audsrv_started = true;
-    }
-    if(!adpcm_started) {
-        int rc = audsrv_adpcm_init();
-        DPRINTF("sound_loadadpcm: adpcm_init rc=%d\n", rc);
-        adpcm_started = true;
-    }
+    ensure_adpcm();
 
 	audsrv_adpcm_t *sample = (audsrv_adpcm_t *)malloc(sizeof(audsrv_adpcm_t));
     if (sample == NULL) {
@@ -187,16 +182,7 @@ audsrv_adpcm_t* sound_loadadpcm(const char* path){
 }
 
 void sound_playadpcm(int slot, audsrv_adpcm_t *sample) {
-    if(!audsrv_started) {
-        int rc = audsrv_init();
-        DPRINTF("sound_playadpcm: audsrv_init rc=%d\n", rc);
-        audsrv_started = true;
-    }
-    if(!adpcm_started) {
-        int rc = audsrv_adpcm_init();
-        DPRINTF("sound_playadpcm: adpcm_init rc=%d\n", rc);
-        adpcm_started = true;
-    }
+    ensure_adpcm();
 
     if (sample == NULL) {
         DPRINTF("sound_playadpcm: sample is NULL\n");

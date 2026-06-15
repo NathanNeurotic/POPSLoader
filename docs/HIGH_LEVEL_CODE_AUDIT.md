@@ -1,9 +1,11 @@
 # POPSLoader High-Level Code Audit
 
-**Audited branch:** `BETA-12-PLAY`
+**Audited branch:** `BETA-12-PLAY` at commit `dc7184c` (the audit snapshot point)
 **Audit date:** 2026-05-23
 **Auditor:** Antigravity (AI)
 **Scope:** Read-only survey of checked-out source. No source changes made.
+
+> **Historical note (2026-05-28):** This audit is a snapshot from before the BETA-10-5 release (tagged 2026-05-27 at `9a0ebe2`) and before the post-release PRs #470 (LAUNCH_ARGS consumers), #472 (MX4SIO evidence-based classification), and #473 (Lua forward-reference hotfix). Some of the "Findings" and "Recommended Next Steps" below have since been acted on. Treat this file as **historical reference**; the current state lives in [STATE.md](../STATE.md), [TRUTHSHEET.md](../TRUTHSHEET.md), and [QA_REGRESSION_MATRIX.md](../QA_REGRESSION_MATRIX.md).
 
 ---
 
@@ -251,7 +253,7 @@ Key `System.*` bindings relevant to launch:
 ### 3.8 CI Pipeline (`compilation.yml`)
 
 **Not read in full during this audit pass, but cross-referenced from docs:**
-- Compiles in `ps2dev/ps2dev:latest` container.
+- Compiles in `ps2dev/ps2dev:v2.0.0` container (pinned post-release at commit `ba8f0d0`; at audit time the workflow still used `:latest`).
 - Checks that `src/elf_loader/loader.c` matches the regenerated child loader.
 - Checks for embedded runtime markers in the final ELF.
 - Packages `PS1_POPSLOADER/*` + `POPS/PATCH_5.BIN` + `PS1_POPSLOADER/BUILD_INFO.txt`.
@@ -342,3 +344,44 @@ The following are **observations only**. All changes require user approval befor
 ---
 
 *Audit-only pass. No source files were modified.*
+
+---
+
+## 9. Follow-up audit (2026-05-24, Claude)
+
+A targeted second-pass audit was run while waiting on Nuno's hardware results for PR #451 + PR #452. Scope: the same class of bug as the BOOT.ELF `reboot_iop` dead-code (computed-but-not-passed vars, off-by-one positional args, unreachable branches) across `system.lua` (~4865 lines) + `ui.lua` launch handlers + `elf.c` / `luasystem.cpp`.
+
+### Findings
+
+**Fixed in production** (already landed before this audit pass):
+- `LaunchBootElf` `reboot_iop` dead-code → PR #450 / PR #451 (now passes computed value + argv0).
+- `OpenDKWDRV` reboot_iop hardcoded `1` for HDD paths → PR #452 (now conditional on HDD path detection).
+- 5× `BlockLaunchFailure` call sites off-by-one (`hdd_preexec_gate_mode` in `launch_route` slot, `context` table rendered as gate-mode string) → Codex's 2026-05-20 fix.
+
+**Verified clean** (no defects found):
+- All 10 `BlockLaunchFailure` call sites in `system.lua` now have exactly 12 positional args matching the signature `(rc, popstarter, device_page, argv0, game_path, app_dir, open_rc, open_api, exec_path, launch_route, hdd_preexec_gate_mode, context)`.
+- `fallback_succeeded` flag in `RunPOPStarterGame` is read by `should_run_gate = not fallback_succeeded` — wired correctly.
+- `SetExecKeepPfsMask` / `ClearExecKeepPfsMask` calls are balanced (lua_loadELF / lua_loadELFWithPartition clear the mask after every launch attempt regardless of return value).
+- No literal `if false` / `if not true` / `if true` branches in `system.lua`.
+- Profile / BDMA / Video / PopPath / Dkwdrv dirty flags are reset both on Settings scene entry and inside `restore_settings_session` (matches S-02..S-06 contract).
+
+**Minor finding** (non-bug, defensive code worth noting):
+
+> [!NOTE]
+> `LaunchEngine` at `bin/POPSLDR/system.lua:4244` has an `elseif exec_args ~= nil and #exec_args == 1 then` branch that is effectively unreachable under normal runtime.
+>
+> Branch 1 condition: `exec_args ~= nil and #exec_args > 0 and unpack_fn ~= nil`.
+> Branch 2 condition: `exec_args ~= nil and #exec_args == 1`.
+>
+> Branch 2 fires only when Branch 1 is false. Branch 1 is false iff `#exec_args == 0` OR `unpack_fn` is nil. `unpack_fn = table.unpack or unpack`. Both `table.unpack` (Lua 5.2+) and global `unpack` (Lua 5.1) are stdlib symbols guaranteed to exist in any Lua VM the project targets. So Branch 2 only fires if a future refactor explicitly nils out `unpack_fn`.
+>
+> This is harmless defensive code (it would correctly handle a single-element argv if unpack_fn ever became unavailable). Removing it would simplify the dispatcher by one branch but is not required. Treat as informational.
+
+### Scope of this follow-up audit
+
+- Source-only, no hardware execution.
+- `system.lua` and `ui.lua` launch handlers read targeted; full system.lua not line-by-line.
+- `pops_profiles.lua`, `images.lua`, `etc/boot.lua` not re-audited in this pass (covered in §3 originally).
+- The B2-fix child-loader path (`src/elf_loader/src/loader/src/loader.c`) was not re-read; hardware-confirmed PASS on 2026-05-22.
+
+*Audit-only follow-up. No source files modified by this section.*

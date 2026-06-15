@@ -143,25 +143,12 @@ static bool is_dkwdrv_elf_path(const char *path) {
 	return false;
 }
 
-static const char *extract_dkwdrv_pfs_path(const char *path) {
-	if (path == NULL) return NULL;
-	const char *p = path;
-	while (*p != '\0') {
-		if (p[0] == ':' &&
-		    (p[1] == 'p' || p[1] == 'P') &&
-		    (p[2] == 'f' || p[2] == 'F') &&
-		    (p[3] == 's' || p[3] == 'S')) {
-			const char *digit = p + 4;
-			if (*digit >= '0' && *digit <= '9') {
-				if (digit[1] == ':') {
-					return p + 1;
-				}
-			}
-		}
-		p++;
-	}
-	return NULL;
-}
+/* extract_dkwdrv_pfs_path -- removed 2026-05-24 along with the V3
+ * DKWDRV-bypass logic in LoadELFFromFileExecPS2RebootIOPWithPartition.
+ * HDD DKWDRV now routes through ExecuteHddBackedViaEmbeddedLoader, which
+ * derives the partition_context and mounts pfs0 on its own; the inline
+ * pfs-segment extraction is no longer needed.
+ */
 
 static bool has_valid_target_argv0(int argc, char *argv[]) {
 	return (argc > 0 && argv != NULL && argv[0] != NULL && argv[0][0] != '\0');
@@ -271,16 +258,22 @@ static int build_hdd_embedded_loader_target_from_partition(const char *resolved_
 
 	relpath = extract_exec_relpath(resolved_path);
 	if (relpath == NULL) {
-		return -1;
+		return -10; /* diag: relpath parse failed */
 	}
 
+	/* Mount the partition FRESH on pfs0:, BY NAME. The Lua launch prep does
+	 * a cold external launch (PrepareForColdExternalELFLaunch) before this,
+	 * matching POPSTARTER's HDD custom-path flow: it unmounts ALL pfs slots,
+	 * so the partition is free even if the file browser had left it mounted
+	 * on some other pfsN:. Re-mounting by name is what makes the launch
+	 * slot-agnostic (works for __common, +OPL, etc). */
 	if (mount_hdd_exec_partition(partition, 0) != 0) {
-		return -1;
+		return -13; /* diag: fresh pfs0: mount failed (partition busy or absent) */
 	}
 
 	snprintf(load_path, load_path_size, "pfs0:/%s", relpath);
 	if (!can_open_exec_path(load_path)) {
-		return -1;
+		return -11; /* diag: mounted pfs0: but file not openable */
 	}
 
 	*keep_mask_out = 0x01;
@@ -362,8 +355,9 @@ static int ExecuteHddBackedViaEmbeddedLoader(const char *resolved_path, const ch
 		}
 	}
 
-	if (build_hdd_embedded_loader_target(resolved_path, partition_context, load_path, sizeof(load_path), &required_keep_mask) != 0) {
-		return -1;
+	ret = build_hdd_embedded_loader_target(resolved_path, partition_context, load_path, sizeof(load_path), &required_keep_mask);
+	if (ret != 0) {
+		return ret; /* propagate distinct diag code (-10..-13) instead of -1 */
 	}
 
 	previous_keep_mask = GetExecKeepPfsMask();
@@ -501,6 +495,23 @@ int LoadELFFromFileWithPartition(const char *filename, const char *partition, in
 		return ExecuteViaEmbeddedLoader("", resolved_path, 1, boot_argv);
 	}
 
+	/* DKWDRV special-case: mirror the BOOT.ELF V2 contract (d23520a,
+	 * 2026-05-23) for the DKWDRV-on-HDD path. Route through
+	 * ExecuteViaEmbeddedLoader so the child loader's wipeUserMem +
+	 * filexio-direct-load + SifExitRpc + ExecPS2 sequence fires.
+	 * Caller (ui.lua OpenDKWDRV) selects reboot_iop=0 for HDD paths so
+	 * we land here; MC DKWDRV continues to use the reboot variant which
+	 * already works. PR #452 (V4) tried reboot_iop=0 in Lua alone but
+	 * skipped this routing, falling through to direct LoadExecPS2 --
+	 * that black-screened on hardware. The V2 contract requires BOTH
+	 * the Lua-side reboot_iop=0 AND this C-side embedded-loader route.
+	 */
+	if (is_dkwdrv_elf_path(resolved_path)) {
+		char *dkwdrv_argv[1];
+		dkwdrv_argv[0] = (char *)resolved_path;
+		return ExecuteViaEmbeddedLoader("", resolved_path, 1, dkwdrv_argv);
+	}
+
 	if (partition != NULL && partition[0] != '\0') {
 		return ExecuteViaEmbeddedLoader(partition, resolved_path, argc, argv);
 	}
@@ -602,32 +613,39 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 	t_ExecData elfdata;
 	char resolved_path[256];
 	int ret;
-	const char *launch_path = filename;
 	int final_argc = argc;
 	char **final_argv = argv;
 	static char *dkwdrv_argv[2];
 	static char dkwdrv_argv0[256];
 
-	if (is_dkwdrv_elf_path(filename)) {
-		const char *pfs_seg = extract_dkwdrv_pfs_path(filename);
-		if (pfs_seg != NULL) {
-			launch_path = pfs_seg;
-		}
-	}
-
+	/* HDD-backed launches (POPSTARTER on HDD AND DKWDRV on HDD) route
+	 * through ExecuteHddBackedViaEmbeddedLoader -> ExecuteViaEmbeddedLoader
+	 * -> BRAM child loader. This is the path that hardware-passes D-10
+	 * (HDD POPSTARTER + HDD game) via the 2026-05-22 B2 fix.
+	 *
+	 * The previous V3 logic explicitly excluded DKWDRV from this path
+	 * (via !is_dkwdrv_elf_path guards) and tried the standard
+	 * SifLoadElf -> SifIopReset -> reload-MC-modules -> ExecPS2 route
+	 * directly here instead. That route black-screened on hardware
+	 * (2026-05-24). DKWDRV is now routed through the same BRAM child
+	 * loader path as POPSTARTER so it inherits the proven IOP-state
+	 * contract.
+	 *
+	 * The argv0 synthesis at the bottom of this function still applies
+	 * to the NON-HDD DKWDRV path (e.g. mc0:/PS1_DKWDRV/DKWDRV.ELF) which
+	 * falls through to the standard direct-launch path below.
+	 */
 	if (partition != NULL && partition[0] != '\0' &&
 	    is_hdd_backed_exec_path(partition) &&
-	    is_hdd_backed_exec_path(launch_path) &&
-	    !is_dkwdrv_elf_path(launch_path)) {
-		return ExecuteHddBackedViaEmbeddedLoader(launch_path, partition, argc, argv);
+	    is_hdd_backed_exec_path(filename)) {
+		return ExecuteHddBackedViaEmbeddedLoader(filename, partition, argc, argv);
 	}
 
-	if (resolve_exec_path(launch_path, resolved_path, sizeof(resolved_path)) < 0) {
-		return -1;
+	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
+		return -20; /* diag: resolve_exec_path failed (non-HDD dispatch) */
 	}
 
-	if (!is_dkwdrv_elf_path(resolved_path) &&
-	    (is_hdd_backed_exec_path(resolved_path) || is_hdd_backed_exec_path(partition))) {
+	if (is_hdd_backed_exec_path(resolved_path) || is_hdd_backed_exec_path(partition)) {
 		return ExecuteHddBackedViaEmbeddedLoader(resolved_path, partition, argc, argv);
 	}
 
@@ -640,9 +658,25 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 		return -2;
 	}
 
-	if (is_hdd_backed_exec_path(resolved_path)) {
-		unmount_pfs_slots_for_exec(build_exec_keep_mask(resolved_path));
-	}
+	/* Unmount all live PFS slots before SifIopReset, including the boot
+	 * partition's pfs1: that etc/boot.lua established for HDD-booted
+	 * POPSLoader. The diagnostic build (PR #463, Nuno 2026-05-26) showed
+	 * that for U-10 (BOOT.ELF from HDD-booted POPSLoader) the screen
+	 * stops painting at YELLOW = right after SifLoadElf, before ORANGE
+	 * = post-SifIopReset would paint. SifIopReset itself hangs because
+	 * fileXio is still holding the pfs1: RPC server thread on the IOP
+	 * side (ps2sdk #425). Unmounting all PFS slots here releases those
+	 * server-side resources so the reset completes.
+	 *
+	 * For HDD-backed targets the keep mask is set by Lua-side launch
+	 * prep (see PrepareForExternalELFLaunch / SetExecKeepPfsMask) so we
+	 * preserve any slot that the target needs across exec. For non-HDD
+	 * targets the keep mask defaults to 0 and we unmount every slot.
+	 * The previous `is_hdd_backed_exec_path` gate skipped the unmount
+	 * entirely for non-HDD targets like BOOT.ELF, which was the active
+	 * sabotage diagnosed in PR #463.
+	 */
+	unmount_pfs_slots_for_exec(build_exec_keep_mask(resolved_path));
 
 	FlushCache(0);
 	while (!SifIopReset("", 0)) {
@@ -670,5 +704,5 @@ int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const cha
 	}
 
 	ExecPS2((void *)elfdata.epc, (void *)elfdata.gp, final_argc, final_argv);
-	return -1;
+	return -21; /* diag: ExecPS2 returned on non-HDD direct path (should not happen) */
 }

@@ -16,7 +16,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: ps2dev/ps2dev:latest
+      # Pinned to v2.0.0 (2026-05-17 release) so unrelated upstream
+      # toolchain changes don't silently break our builds. To upgrade:
+      # check https://hub.docker.com/r/ps2dev/ps2dev/tags, verify the
+      # target tag builds POPSLoader locally (or via a draft PR), then
+      # update this line.
+      image: ps2dev/ps2dev:v2.0.0
 
     steps:
       - name: Install dependencies
@@ -45,18 +50,31 @@ jobs:
           printf "%s\n%s\n" "$COMMIT_SHORT" "$BUILD_UTC" > bin/POPSLDR/BUILD_INFO.txt
           cat bin/POPSLDR/BUILD_INFO.txt
 
-      - name: Validate etc/boot.lua (syntax/newline)
+      - name: Validate bundled Lua sources (syntax/newline)
         shell: bash
         run: |
           set -eu
-          BOOT_LUA="etc/boot.lua"
-          [ -f "$BOOT_LUA" ] || { echo "ERROR: $BOOT_LUA not found" >&2; exit 1; }
-          LAST_BYTE_HEX="$(tail -c 1 "$BOOT_LUA" | od -An -tx1 | tr -d '[:space:]')"
-          [ "$LAST_BYTE_HEX" = "0a" ] || { echo "ERROR: $BOOT_LUA must end with newline (0x0A)" >&2; exit 1; }
+          # etc/boot.lua is the bootstrap that runs on POPSLoader EE init.
+          # bin/POPSLDR/*.lua are embedded into POPSLOADER.ELF via bin2c and
+          # require()'d at runtime. All are embedded as raw bytes, so syntax
+          # errors otherwise only surface on real hardware at boot time.
+          LUA_FILES="etc/boot.lua bin/POPSLDR/system.lua bin/POPSLDR/ui.lua bin/POPSLDR/images.lua bin/POPSLDR/pops_profiles.lua"
+          for f in $LUA_FILES; do
+            [ -f "$f" ] || { echo "ERROR: $f not found" >&2; exit 1; }
+          done
+          # Trailing-newline check is critical only for etc/boot.lua because
+          # bin2c-embedded files don't depend on file termination, but the
+          # boot.lua runner is fussier about it.
+          LAST_BYTE_HEX="$(tail -c 1 etc/boot.lua | od -An -tx1 | tr -d '[:space:]')"
+          [ "$LAST_BYTE_HEX" = "0a" ] || { echo "ERROR: etc/boot.lua must end with newline (0x0A)" >&2; exit 1; }
           if command -v luac >/dev/null 2>&1; then
-            luac -p "$BOOT_LUA"
+            for f in $LUA_FILES; do
+              luac -p "$f" || { echo "ERROR: luac -p failed for $f" >&2; exit 1; }
+            done
           elif command -v lua >/dev/null 2>&1; then
-            lua -e "assert(loadfile('$BOOT_LUA'))"
+            for f in $LUA_FILES; do
+              lua -e "assert(loadfile('$f'))" || { echo "ERROR: loadfile failed for $f" >&2; exit 1; }
+            done
           else
             echo "NOTE: luac/lua not found; skipped Lua syntax validation"
           fi

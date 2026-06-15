@@ -1,0 +1,312 @@
+# POPSLoader Launch Hygiene
+
+Date: 2026-05-25 (original), updated 2026-05-28 with post-release verdict
+Author: Claude (with NathanNeurotic direction)
+
+> **Status update 2026-05-28**: Layer A (`_ps2sdk_memory_init` fileXio teardown) **does** resolve the wLaunchELF-launched-POPSLoader symptom for the common cases (CosmicScale confirmed). Layers B (child-loader reset branches) and the V2-mimicry DKWDRV-HDD work in PR #460 **did not** fix DKWDRV-from-HDD-custom-path or U-10 BOOT.ELF-from-HDD-boot on hardware. Both of those are accepted as known-broken in BETA-10-5 (see `STATE.md` Known Broken section, and `docs/U10_INVESTIGATION.md` for U-10 specifically). The "single root cause" framing of the original TL;DR was too broad — `fileXio` lifecycle is _one_ cause; the remaining HDD-boot exec-path issues have additional state that the EE-side teardown alone doesn't resolve. Sections 1-3 below remain accurate for what they describe; the broader unification claim is partially walked back.
+>
+> **Also updated post-release**: PR #472 redefined the MX4SIO/USB classification rule (evidence-based; `mx4sio_bd` only loads on explicit MX4SIO evidence). See Section "Unified boot-context resolver" below — the resolver behavior is unchanged, but the downstream `classify_mass_boot` and `AutoInitStartupBackends` logic is more conservative than this doc originally described.
+
+## TL;DR
+
+Four launch-related symptoms reported across mid-May 2026 hardware testing partially share a root cause: **POPSLoader does not always survive an IOP that has `fileXio` loaded from a parent process**. The `fileXio` IRX module holds threads and RPC locks on the IOP that can cause `SifIopReset` to hang silently. This bug is documented upstream in [ps2sdk issue #425](https://github.com/ps2dev/ps2sdk/issues/425) and partly addressed by [ps2sdk PR #426](https://github.com/ps2dev/ps2sdk/pull/426). Layer A in this document is the EE-side workaround (detach the RPC client before resetting). It resolved the wLaunchELF-launched-POPSLoader case but did not unify the DKWDRV-HDD-custom-path and U-10 cases — those have additional state beyond `fileXio` lifecycle.
+
+## Symptoms
+
+| Symptom | Reporter | Root cause |
+|---|---|---|
+| Launching POPSLoader from wLaunchELF black-screens (only for non-HDD targets) | CosmicScale 2026-05-25 | `_ps2sdk_memory_init` hangs on `SifIopReset` because wLaunchELF left `fileXio` loaded |
+| DKWDRV from a custom HDD path black-screens | Nuno 2026-05-25 | Child loader's `SifIopReset` hangs because POPSLoader's `fileXio` (used to mount the partition) is still alive on the IOP |
+| BOOT.ELF from HDD-booted POPSLoader black-screens | Nuno 2026-05-25 | Same hang shape as DKWDRV; the reset never completes |
+| Atrocious boot times | NathanNeurotic | Sequential pre-Lua load of 11+ IRX modules in `main()`; unrelated to fileXio bug, but tracked as Layer C below |
+
+## Why each "clean" parent works
+
+PSBBN, Browser, HOSDMenu, OSDMenu either reset the IOP themselves before
+handing off, or never loaded `fileXio` in the first place. wLaunchELF
+[only resets the IOP when launching HDD targets](https://github.com/ps2homebrew/wLaunchELF/blob/master/loader/loader.c)
+for backward compatibility with older homebrew; that's the asymmetry that
+makes wLaunchELF-from-USB break while wLaunchELF-from-HDD works.
+
+## The teardown contract
+
+The robust pre-reset sequence is:
+
+```c
+SifExitRpc();        /* drop any inherited RPC client binding */
+SifInitRpc(0);       /* fresh RPC handshake */
+fileXioExit();       /* restore libc fio fn pointers if hijacked (PR #426) */
+SifIopReset("", 0);  /* now succeeds */
+SifIopSync();
+SifInitRpc(0);       /* ready for module loads */
+```
+
+`SifExitRpc()` and `fileXioExit()` are both safe to call on uninitialized
+state -- they're guarded. Clean parents see no behavior change; polluted
+parents now reset cleanly.
+
+## Fix layers
+
+### Layer A -- EE bootstrap (`src/main.cpp` `_ps2sdk_memory_init`)
+
+Adds the teardown contract above before the existing reset. Runs once, before
+`main()`, as a ps2sdk weak-function override. Effectively a defensive prelude
+for any future parent that leaves `fileXio` loaded.
+
+### Layer B -- Child loader DKWDRV/BOOT.ELF reset branches (REVERTED 2026-05-25)
+
+PR #458 added DKWDRV- and BOOT.ELF-specific IOP-reset branches in the BRAM
+child loader's `main()`. Nuno's 2026-05-25 hardware test showed both still
+black-screened. Worse, the new `is_boot_elf_target` branch actively regressed
+V2's working BOOT.ELF flow (d23520a, 2026-05-23): V2 routed BOOT.ELF through
+the embedded loader's non-HDD branch (no IOP reset), and my reset branch
+hijacked that and forced a reset BOOT.ELF doesn't tolerate.
+
+PR #460 reverts the `is_boot_elf_target` and `is_dkwdrv_target` branches and
+the helpers that gated them. The child loader is back to pre-PR-#458 behavior
+for these target families.
+
+The Layer A `fileXio` teardown in `_ps2sdk_memory_init` stays -- that's a
+defensive prelude with no evidence of regression.
+
+### DKWDRV-on-HDD: V2 mimicry done correctly (landed 2026-05-25)
+
+V2 (d23520a) made BOOT.ELF exit work by combining THREE things:
+
+1. Lua-side: `reboot_iop = 0` (non-reboot path)
+2. C-side routing: `LoadELFFromFileWithPartition` BOOT.ELF special-case
+   → `ExecuteViaEmbeddedLoader("", resolved_path, 1, boot_argv)`
+3. Child loader: lands in the embedded loader's non-HDD or filexio-direct
+   branch (no IOP reset, just `SifExitRpc + FlushCache + ExecPS2`)
+
+PR #452 (V4 DKWDRV, reverted) did only step 1 for DKWDRV-on-HDD and skipped
+step 2, falling through to the legacy direct `LoadExecPS2` path. That's why
+V4 black-screened: it inherited V2's `reboot_iop=0` choice but never reached
+the embedded-loader contract that V2 BOOT.ELF relied on.
+
+PR #460 completes the mimicry:
+
+- **`src/elf_loader/src/elf.c` `LoadELFFromFileWithPartition`**: adds a
+  DKWDRV special-case mirroring the BOOT.ELF case at line 485 -- when
+  `is_dkwdrv_elf_path(resolved_path)`, route through
+  `ExecuteViaEmbeddedLoader("", resolved_path, 1, dkwdrv_argv)`.
+- **`bin/POPSLDR/ui.lua` `OpenDKWDRV`**: for HDD-resident DKWDRV
+  (`hdd?:/`, `pfs?:/`, `ata?:/`, `apa?:/`), use `reboot_iop = 0` so the
+  non-reboot variant fires. For MC / non-HDD paths, keep `reboot_iop = 1`
+  (the known-working route).
+
+The result chain for HDD DKWDRV is now:
+
+```
+ui.lua OpenDKWDRV (HDD path)
+  System.loadELF(elf_path, 0, elf_path)
+  -> LoadELFFromFile -> LoadELFFromFileWithPartition
+     -> DKWDRV special case
+     -> ExecuteViaEmbeddedLoader("", resolved_path, 1, dkwdrv_argv)
+     -> child loader main()
+        should_use_filexio_direct_load -> true (load_path is hdd/pfs)
+        load_elf_via_filexio -> loaded_via_filexio = 1
+        SifExitRpc -> FlushCache(0,2) -> ExecPS2
+DKWDRV runs on POPSLoader's HDD-aware IOP state, can read its config from
+the still-mounted partition.
+```
+
+For MC DKWDRV: unchanged. The reboot variant + direct path + IOP reset +
+module reload + ExecPS2 still happens, as it always has.
+
+For BOOT.ELF: V2's working route is preserved verbatim. U-10 (HDD-boot ->
+BOOT.ELF) remains broken because V2 didn't solve U-10 either; that's a
+separate problem.
+
+### Unified boot-context resolver (landed 2026-05-25)
+
+User insight: argv[0] tells us where POPSLoader came from. From that one
+fact, three things follow -- which IRX stack to prefer, where settings
+should live, which page to land on. The three features should share one
+detection pipeline, not have three near-copies.
+
+`bin/POPSLDR/system.lua` `ResolveBootContext()` is now the single source
+of truth. It returns:
+
+```
+{
+  kind         = "USB" / "HDD" / "MC" / "MMCE" / "MX4SIO" / "SMB" / "HOST" or nil,
+  prefix       = raw argv prefix (e.g. "mass0", "hdd0") or nil,
+  boot_path    = normalized BOOT_PATH_RAW (with trailing slash),
+  sidecar_path = per-device .pldrs path or nil,
+  c_hint       = pre-IRX C-side classification (debug / fallback),
+}
+```
+
+Inputs (all derived from argv[0]):
+- `BOOT_PATH_RAW` (set by main.cpp `setLuaBootPath`)
+- `APP_DIR_LOCAL` (set by main.cpp `setAppDirFromPath`)
+- `boot_device_hint` (set by main.cpp `detectBootDeviceHintFromArgv0`,
+  exposed via `System.getBootDeviceHint()`)
+
+Outputs (all consumed via this one resolver):
+- `DetectBootDevice()` is a thin wrapper returning `kind, boot_path, prefix`.
+- `PLDR.SETTINGS_PATH_SIDECAR` is `ResolveBootContext().sidecar_path`.
+- `PLDR.GetBootContext()` / `PLDR.GetBootKind()` are public APIs for any
+  downstream consumer (UI auto-nav, future lazy-IRX deferrals, telemetry).
+
+Robust to bad/missing argv:
+- argv[0] NULL/empty -> boot_path empty -> prefix nil -> Lua kind nil ->
+  fall back to C hint (also empty) -> kind stays nil
+- nil kind -> DetectBootDevice returns nil first; UI shows default page
+- HDD-backed APP_DIR -> sidecar_path is nil -> settings use mc0 fallback
+- non-HDD APP_DIR with no prior .pldrs -> sidecar wins on first save
+
+### Layer D -- NHDDL-style launch arguments (landed 2026-05-25)
+
+CosmicScale requested `-mode=ata` style boot arguments to skip directly to
+a device page. Shipped infrastructure:
+
+**`src/main.cpp` `parseLaunchArgs()`** runs immediately after `argv[0]`
+capture, before any IRX loads. Recognized flags:
+
+| Flag | Effect |
+|---|---|
+| `-page=hdd|usb|mc|mmce|mx4sio|smb|bdma` | Auto-navigate hint for the UI |
+| `-mode=<value>` | NHDDL-compatible alias for `-page` (e.g. `-mode=ata` maps to HDD) |
+| `-game=<selector>` | Auto-launch hint (game selector / profile / path) |
+| `-debug` | Enable diagnostic output |
+
+`-noaudio` was considered and dropped on review: audio IRX is embedded
+in the ELF, loads in a few hundred ms, and POPSLoader uses sound for UI
+feedback (menu beeps, toast notifications). Skipping it would be a
+footgun for negligible savings.
+
+**Lua exposure**: `System.getLaunchArgs()` returns `{page, game, debug}`.
+`system.lua` reads this at init and stores normalized values in
+`PLDR.LAUNCH_ARGS = {page, page_raw, game, debug}`. Page values are
+normalized via `NormalizeLaunchPage()` so `ata`/`pfs`/`apa`/`hdd` all
+map to `"HDD"`, `usb`/`mass` to `"USB"`, etc.
+
+**Auto-navigation wiring** is intentionally deferred. The infrastructure
+is in place; downstream UI code in `ui.lua` can pick up `PLDR.LAUNCH_ARGS`
+when ready to act on it. This avoids touching the existing initial-page
+selection logic until that's a focused follow-up.
+
+### Settings sidecar (landed 2026-05-25, HDD support 2026-05-25)
+
+Replaces hardcoded `PLDR.SETTINGS_PATH = "mc0:/POPSTARTER/.pldrs"` with a
+per-device sidecar resolution + MC fallback. New constants:
+
+- `PLDR.SETTINGS_PATH_FALLBACK = "mc0:/POPSTARTER/.pldrs"` (legacy path)
+- `PLDR.SETTINGS_PATH_SIDECAR` -- computed from `APP_DIR_LOCAL/.pldrs`.
+  Set for USB/MC/MMCE/MX4SIO installs AND for HDD installs reached via
+  the `pfs1:` boot mount (etc/boot.lua already mounts that partition
+  `FIO_MT_RDWR` by default via `HDD.MountPartition`, so writes succeed).
+  Only `nil` for raw `hdd0:`/`ata:`/`apa:` paths with no live mount.
+- `PLDR.SETTINGS_PATH` -- the *active* path; resolved at load time to
+  whichever file exists first (sidecar preferred, fallback otherwise).
+
+Behavior:
+- **Load**: try sidecar first, then fallback. Pin `PLDR.SETTINGS_PATH`
+  to whichever loaded. If neither exists, leave it at the init default
+  (sidecar preferred so the first save lands per-device).
+- **Save**: write to `PLDR.SETTINGS_PATH`. Only fail on
+  `EnsurePopstarterDir` if the target IS the MC fallback (sidecar saves
+  don't need `mc0:/POPSTARTER`). UI error toast now reads the actual
+  active path instead of hardcoding the MC string.
+- **HDD installs**: `SETTINGS_PATH_SIDECAR` is `pfs1:/.../<.pldrs>` --
+  same partition POPSLOADER.ELF lives on. The boot mount is already RW,
+  so write-atomic-rename works. If the mount lapses for any reason, the
+  graceful fallback in LoadSettingsNonFatal sends us back to mc0.
+
+### Layer C -- Lazy IRX loading (precursor; more queued)
+
+Shipped in this PR:
+- **Pre-Lua device classification hint**: `main.cpp`
+  `detectBootDeviceHintFromArgv0()` returns the device-kind label for
+  argv[0]. Stored in `boot_device_hint` global, exposed via
+  `System.getBootDeviceHint()`. Consumed by the unified
+  `ResolveBootContext` resolver above as a fallback when Lua-side
+  prefix parsing yields nothing.
+
+Audit of which IRX is loaded when (confirming nothing critical is
+deferred by mistake):
+
+| Module | When | Notes |
+|---|---|---|
+| iomanX, fileXio | Always at boot | Filesystem base; required |
+| sio2man, mcman, mcserv | Always at boot | MC + controller base |
+| mmceman | Always at boot (if fileXio OK) | MMCE memcard |
+| padman | Always at boot | Standard PS2 controllers (UI input) |
+| libsd, audsrv | Always at boot | Audio (UI feedback) |
+| usbd | Always at boot | USB driver base (incl. DS3/4 USB) |
+| ds34usb, ds34bt | Always at boot | DS3/4 over USB / Bluetooth |
+| bdm, bdmfs_fatfs, usbmass_bd | Lazy (`EnsureBDM*` in luasystem.cpp) | BDM stack for USB mass storage |
+| mx4sio_bd | Lazy (`initMX4SIO()`) | MX4SIO BDM driver |
+| cdfs | Lazy (`EnsureCDFS()`) | CD/DVD |
+| ps2dev9, ps2atad, ps2hdd-osd, ps2fs | Lazy (`luaHDD.cpp`) | HDD stack |
+
+Still queued for a focused follow-up (intentionally NOT in this PR
+because aggressive deferral changes module load order which is high-
+risk for input/controller availability):
+- Defer `mmceman_irx` unless boot device is MMCE (saves ~1 module load)
+- Defer `ds34bt_irx` unless user has BT pads enabled
+- Defer `usbd_irx` unless boot device is USB / MX4SIO / DS3-4 USB
+- Add `EnsureAudio()`, `EnsureBluetoothPad()` Lua-callable helpers
+
+#### Layer C precursor (landed 2026-05-25)
+
+`bin/POPSLDR/system.lua` `DetectBootDevice()` now recognizes additional
+SDK device-kind prefixes that some homebrew launchers pass. These are
+**additive** -- the existing detection chain (mmce, mx4sio, mass with the
+mx4sio classify_mass_boot fix, pfs, hdd, smb, host) is unchanged. The new
+branches are placed just before the `return nil` fallback so they only
+catch what would otherwise be unclassified:
+
+| Prefix pattern | Maps to | Rationale |
+|---|---|---|
+| `usb`, `usb0`, `usb1`, ... | USB | Newer ps2sdk SDK USB prefix (was `mass:` only) |
+| `ata`, `ata0`, `ata1`, ... | HDD | ATA-backed HDD semantic prefix |
+| `apa`, `apa0`, `apa1`, ... | HDD | APA partition system semantic prefix |
+
+`mx4sio` was already in the existing detection (line 1705); the user's
+"mx4sio's mass fix" lives entirely inside the `mass%d*` branch and is
+not touched. Both old launchers (using `mass:`) and new launchers (using
+`usb:`/`ata:`/`apa:`) now resolve to the correct device classification.
+
+Expected improvement (when full Layer C lazy IRX loading lands): 30-50%
+reduction in pre-Lua startup time, possibly more on cold boots where
+IRX loads dominate the budget.
+
+## Safety audit (Layers A and B)
+
+| Path | Layer A impact | Layer B impact |
+|---|---|---|
+| D-10 (HDD POPSTARTER + HDD game) | New teardown runs at POPSLoader boot; child loader HDD partition branch unchanged | Unchanged -- POPSTARTER target matches neither `is_dkwdrv_target` nor `is_boot_elf_target` |
+| D-15 (USB POPSTARTER + HDD game) | New teardown runs at POPSLoader boot; direct path in elf.c unchanged | Not reached (POPSTARTER doesn't trigger child loader reset branches) |
+| DKWDRV from MC (working baseline) | Boot teardown runs once | Not reached (MC DKWDRV uses direct path, not child loader) |
+| BOOT.ELF from USB-booted POPSLoader | Boot teardown runs once | Routed through child loader (PR #458 change); now also gets the SifExitRpc pre-teardown |
+| All clean-parent launches | SifExitRpc + fileXioExit are guarded no-ops; same effective state as before | N/A |
+
+## Flagged separately: settings sidecar (resolved by PR #459 / PR #462 / PR #466)
+
+User raised the concern that "settings sidecar may not be working" while discussing Layer C. The original 2026-05-25 audit text below documented the gap; this is **now implemented and shipped in BETA-10-5**, with one carve-out:
+
+- PR #459 / PR #462: `LoadSettingsNonFatal` resolves `PLDR.SETTINGS_PATH` at load time. Sidecar at `APP_DIR_LOCAL/.pldrs` is preferred; legacy `mc0:/POPSTARTER/.pldrs` is fallback. First-run migration: if settings load from MC but a sidecar path is computable, pin `PLDR.SETTINGS_PATH` to the sidecar so the next save migrates. `SaveSettingsAtomic` writes to `PLDR.SETTINGS_PATH` (no longer hardcoded).
+- **PR #466 release prep**: HDD-rooted APP_DIRs (`pfs%d*`, `hdd%d*`, `ata%d*`, `apa%d*`) are excluded from the sidecar — `ResolveBootContext` returns `sidecar_path = nil` and HDD installs fall back to `mc0:/POPSTARTER/.pldrs`. This is by design: Nuno's hardware test on PR #464 confirmed that `pfs1:/.../.pldrs` writes still fail with "may be read-only" despite the boot.lua path normalization. The bundled `ps2hdd-osd.irx` has read-write limitations we can't work around without an IRX swap that risks regressing D-10.
+
+Net: USB / MX4SIO / MMCE / MC installs keep per-device sidecars. HDD installs save to MC by design.
+
+### Original 2026-05-25 audit text (historical)
+
+The original audit found:
+
+- `PLDR.SETTINGS_PATH` was hardcoded to `"mc0:/POPSTARTER/.pldrs"`.
+- `PLDR.SaveSettingsAtomic()` wrote to that exact path (no fallback).
+- `PLDR.LoadSettingsNonFatal()` read from that exact path (no fallback).
+- The "sidecar" functions that existed (`BuildPopstarterSidecarCandidate`, `CollectHddBootSidecarCandidates`, `ResolveHddBootSidecarPopstarter`) were for resolving the **POPSTARTER.ELF** path -- not for settings.
+
+That gap is now closed (per above).
+
+## References
+
+- [ps2sdk issue #425 -- "`fileXio` somehow blocks `IOP` to reset"](https://github.com/ps2dev/ps2sdk/issues/425)
+- [ps2sdk PR #426 -- libc fio pointer backup/restore in fileXioInit/Exit](https://github.com/ps2dev/ps2sdk/pull/426)
+- [wLaunchELF loader source -- conditional IOP reset for HDD targets only](https://github.com/ps2homebrew/wLaunchELF/blob/master/loader/loader.c)
+- [OPL ee_core/src/iopmgr.c -- gold-standard reset sequence with `SifSetReg` patches](https://github.com/ps2homebrew/Open-PS2-Loader/blob/master/ee_core/src/iopmgr.c)

@@ -13,6 +13,15 @@ extern "C" {
 extern char boot_path[255];
 extern char app_dir[255];
 
+/* NHDDL-style launch arguments + pre-Lua boot-device classification.
+ * Definitions live in main.cpp; consumers (luasystem.cpp Lua bindings)
+ * read these via the System.* binding layer. See parseLaunchArgs() and
+ * detectBootDeviceHintFromArgv0() in main.cpp. */
+extern char launch_arg_page[64];
+extern char launch_arg_game[256];
+extern int  launch_arg_debug;
+extern char boot_device_hint[16];
+
 typedef enum AssetKind {
 	ASSET_GENERIC = 0,
 	ASSET_IMG = 1,
@@ -27,8 +36,6 @@ int ResolveAssetPathTyped(char* out, size_t outsz, const char* relativeName, Ass
 #else
 #define dbgprintf(args...) ;
 #endif
-
-int getBootDevice(void);
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define CLAMP(val, min, max) ((val)>(max)?(max):((val)<(min)?(min):(val)))
@@ -48,7 +55,6 @@ extern void luaScreen_init(lua_State *L);
 extern void luaTimer_init(lua_State *L);
 extern void luaSystem_init(lua_State *L);
 extern void luaSound_init(lua_State *L);
-extern void luaRender_init(lua_State *L);
 extern void luaHDD_init(lua_State *L);
 extern void stackDump (lua_State *L);
 

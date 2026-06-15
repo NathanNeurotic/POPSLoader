@@ -44,29 +44,50 @@ static int UmountPart(lua_State *L)
     return 1;
 }
 
+/* Set once the HDD platter is confirmed spinning this session: either a mount
+ * succeeded, or we already spent the cold-spin-up budget waiting for it. After
+ * that, every mount uses a single fail-fast attempt so a disk with mostly-absent
+ * __.POPS candidates can't stall. An HDD boot sets this via boot.lua's mount. */
+static int hdd_spinup_waited = 0;
+
 int mnt(const char* path, int index, int openmod)
 {
     char PFS[5+1] = "pfs0:";
     if (index > 0)
         PFS[3] = '0' + index;
 
-    DPRINTF("Mounting '%s' into pfs%d:\n", path, index);
-    if (fileXioMount(PFS, path, openmod) < 0) // mount
+    /* Cold-platter spin-up tolerance. On a NON-HDD boot (USB/MC) the drive is
+     * mechanically cold and needs ~4-10s to reach DRDY, so the first PFS mount
+     * faults on the still-settling platter -- the HDD list failed only from a
+     * non-HDD boot (Nuno 2026-06-14: GetHDDStatus read 0 but the first PFS read
+     * still faulted). An HDD boot is unaffected: the BIOS spun the platter up to
+     * load us and boot.lua's mount already set hdd_spinup_waited, so the warm
+     * path takes a single attempt. Wait for the platter ONCE (1s backoff) until
+     * a mount succeeds or the budget is spent; afterwards every mount is one
+     * fail-fast attempt. Was: a single zero-delay unmount+remount. */
+    int max_attempts = hdd_spinup_waited ? 1 : 12;
+    int attempt;
+    for (attempt = 1; attempt <= max_attempts; attempt++)
     {
-        DPRINTF("Mount failed. unmounting trying again...\n");
-        if (fileXioUmount(PFS) < 0) //try to unmount then mount again in case it got mounted by something else
+        DPRINTF("Mounting '%s' into pfs%d: (attempt %d/%d)\n", path, index, attempt, max_attempts);
+        if (fileXioMount(PFS, path, openmod) >= 0)
         {
-            DPRINTF("Unmount failed!!!\n");
+            hdd_spinup_waited = 1;
+            if (attempt > 1) DPRINTF("mount ok after %d attempts (cold spin-up)\n", attempt);
+            return 0;
         }
-        if (fileXioMount(PFS, path, openmod) < 0)
+        /* best-effort unmount in case the slot was left mounted by something else */
+        if (fileXioUmount(PFS) < 0)
+            DPRINTF("pre-retry unmount no-op\n");
+        if (attempt < max_attempts)
         {
-            DPRINTF("mount failed again!\n");
-            return -4;
-        } else {
-            DPRINTF("Second mount succed!\n");
+            DPRINTF("Mount failed; waiting 1s for drive spin-up, retrying...\n");
+            sleep(1);
         }
-    } else DPRINTF("mount successfull on first attemp\n");
-    return 0;
+    }
+    hdd_spinup_waited = 1; /* budget spent: platter has had time; stop waiting on later partitions */
+    DPRINTF("mount failed for '%s' after %d attempt(s)\n", path, max_attempts);
+    return -4;
 }
 
 static int GetHDDStatus(lua_State *L) {
@@ -97,7 +118,19 @@ enum HDDLOADSTATES {
 int HDDLOADSTATE = HDDLOADSTATES::NOT_LOADED;
 
 static int Load_HDD_IRX(lua_State *L) {
-    if (HDDLOADSTATE != HDDLOADSTATES::NOT_LOADED) goto OK;
+    if (HDDLOADSTATE == HDDLOADSTATES::LOADED) goto OK;
+    if (HDDLOADSTATE == HDDLOADSTATES::FAILED_TO_LOAD) {
+        /* A prior init failed: do NOT re-run a partial load and do NOT report
+         * success. The old `!= NOT_LOADED` jump to OK lied "true" on every retry,
+         * which let a second caller (EnsureHddRuntimeReadyForExec) proceed against
+         * a half-loaded HDD IRX stack. Report the prior failure honestly so the
+         * caller fails fast. */
+        lua_pushboolean(L, false);
+        lua_pushstring(L, "HDD_PRIOR_FAIL");
+        lua_pushinteger(L, -1);
+        lua_pushinteger(L, -1);
+        return 4;
+    }
     int ID, RET;
 #define _N "\0"
     static const char hddarg[] = "-o" _N "4" _N "-n" _N "20";

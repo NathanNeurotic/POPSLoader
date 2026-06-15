@@ -1,4 +1,4 @@
-Last updated: 2026-05-20
+Last updated: 2026-05-28 (post-BETA-10-5; PR #470 LAUNCH_ARGS, PR #472 MX4SIO classification, PR #473 hotfix merged)
 
 # DECISIONS
 
@@ -11,6 +11,109 @@ Each entry records:
 - Evidence
 
 ## Decision Log
+
+### 2026-05-29 — MX4SIO Settings Save Fixed by PR #476 + PR #477 (Hardware-Confirmed)
+- Decision: Merge PR #477 to lock in the MX4SIO settings save fix. PR #476 (already merged) added the boot.lua mass-slot scan via dynamic ioctl driver lookup (sdc/mx4); PR #477 wrapped the scan in a 3-attempt retry pattern with sleep(1) between failures, plus a `BOOT_MX4SIO_PROBE_RESULT` diagnostic trace appended to the settings save error toast for future debugging.
+- Rationale: PR #476's single-shot scan didn't catch the MX4SIO SD card on real hardware (Nuno 2026-05-28 PM retest). `PLDR.InitMX4SIOPopsRoot` was already using a 3-attempt retry pattern for the same MX4SIO double-ping reason; the boot.lua scan needed to mirror that. Nuno confirmed PASS on 2026-05-29 02:58Z after PR #477 was merged.
+- Implications: MX4SIO-rooted POPSLoader now saves settings to the per-device sidecar at `<mass*>:/<install path>/.pldrs` like USB / MC / MMCE installs do. If the retry ever misses on future hardware, the `mx4sio probe: a1:...;a2:...;a3:...` diagnostic appears in the error toast and tells us what attempts hit what slot/driver.
+- Evidence: `etc/boot.lua` MX4SIO branch + retry loop; `bin/POPSLDR/system.lua` `ResolveAppDirLocal` mx4sio→mass override; `bin/POPSLDR/ui.lua` error toast diagnostic append. PR #476 merged 2026-05-28; PR #477 merged 2026-05-29 02:58Z.
+
+### 2026-05-28 PM late (correction 2) — Class A vs Class B: HOSDmenu/wLE Fail to Launch POPSLoader is Distinct from U-10
+- Decision: Document the broken launcher scenarios as TWO distinct failure classes, not one. Update STATE.md / README.md / ROADMAP.md / TRUTHSHEET.md / QA matrix / U10_INVESTIGATION.md accordingly.
+- Rationale: Maintainer's correction after closer reading of Nuno's Discord report. "HOSDmenu → POPSLoader = black screen, we don't even get to the splash" is fundamentally different from U-10. U-10 is about exit-to-BOOT.ELF from a successfully-running HDD-launched POPSLoader; the HOSDmenu / some-wLE failures are about POPSLoader never starting in the first place.
+- Implications: Class A (POPSLoader fails to launch under HOSDmenu / some wLE builds) is the same class as the CosmicScale 2026-05-25 wLE issue that PR #458 Layer A targeted. Layer A's `_ps2sdk_memory_init` `fileXio` teardown resolved Layer A for the common case but didn't fully resolve it for HOSDmenu or specific wLE builds. Class B (U-10) is unchanged from prior status. Documenting them separately gives future investigations a cleaner target (Class A = parent-launcher IOP-state hygiene before POPSLoader main runs; Class B = POPSLoader's own IOP-state hygiene before BOOT.ELF ExecPS2). Workarounds: Class A → use a different launcher; Class B → Exit → OSDSYS or reboot.
+- Evidence: Discord screenshot showing Nuno's tests: "Mmm... loaded from hosdmenu popsloader in hdd and exit to boot.elf give me black screen" (POPSLoader never reached splash); "Loading popsloader (hdd) from wle also results in black screen" (same); "Other devices memory card, usb and mx4sio exit boot.elf OK" (Class B test conditions met, BOOT.ELF works from those); maintainer correction "HOSDmenu black screens when launching POPSLoader, we don't even get to the splash" and "Some builds of wLE blackscreen as well when booting POPSLoader."
+
+### 2026-05-28 PM late — U-10 PASS Claim Walked Back; Remains Known-Broken Accepted
+- Decision: Reverse the earlier 2026-05-28 PM doc walk-down that marked U-10 (BOOT.ELF from HDD-booted POPSLoader) as PASS. U-10 remains known-broken-accepted in BETA-10-5, same as before, with the workaround Exit → OSDSYS or reboot.
+- Rationale: Nuno's earlier 2026-05-28 PM "BOOT.ELF working across the board" report turned out to be a partial hardware sweep that didn't explicitly cover the HDD-booted launch context. A fuller sweep later that day (with the cat keeping him company while his wife was on night shift) explicitly retested HOSDmenu → HDD-POPSloader → BOOT.ELF and wLE → HDD-POPSloader → BOOT.ELF — both black-screen. MC / USB / MX4SIO-rooted BOOT.ELF still work. The maintainer's "U-10 unexpectedly PASS" doc commit (in PR #475) was based on the partial sweep and is hereby reversed.
+- Implications: U-10 stays in `STATE.md` / `README.md` / `ROADMAP.md` / `TRUTHSHEET.md` known-broken sections. `docs/U10_INVESTIGATION.md` status reverted from "PASS unexpectedly resolved" to "known broken — accepted". The hypothesis catalog in that doc is preserved. Maintainer hypothesis to investigate next (post-walkback): "maybe I need to reset IOP on boot or something before anything else" — aligns with H1 (DEV9 state survives `SifIopReset`) and H5 (stale `pfs1:` mount blocks the reset). `claude/diag-u10` branch is preserved if a future agent wants to ship a diagnostic build.
+- Evidence: `QA_REGRESSION_MATRIX.md` row "2026-05-28 PM late | Nuno (full hardware sweep)". Maintainer Discord/chat exchange 2026-05-28 PM: Nuno reported HDD-booted BOOT.ELF failures while testing exit conditions across devices ("Other devices memory card, usb and mx4sio exit boot.elf OK").
+
+### 2026-05-28 PM — U-10 Unexpectedly Resolved; Known-Broken List Reduced to DKWDRV-HDD-Custom (WALKED BACK 2026-05-28 PM late — see entry above)
+- Decision: Mark U-10 (BOOT.ELF from HDD-booted POPSLoader) as PASS in STATE.md, README.md, ROADMAP.md, TRUTHSHEET.md, and `QA_REGRESSION_MATRIX.md`. Remove the known-broken-accepted entry for U-10. Preserve `docs/U10_INVESTIGATION.md` and `claude/diag-u10` branch in case of regression.
+- Rationale: Nuno's 2026-05-28 PM hardware test on the rolling-release artifact built post-PR-#470/#472/#473 reports BOOT.ELF exit working "across the board" including HDD-booted POPSLoader. None of those PRs architecturally touch the U-10 path; the cause is not obvious. Candidate explanations: (a) C-layer `EnsureUsbMass`-first ordering in PR #472 incidentally cleans IOP state; (b) earlier "U-10 fails" reports were partially obscured by the now-fixed PR #473 boot crash; (c) test environment shifted. None of these is conclusive without further investigation.
+- Implications: The only confirmed-broken edge case in BETA-10-5 + post-release work is **DKWDRV from custom HDD path** (re-confirmed broken by Nuno same session). HDD-install settings save to MC fallback is by design (PR #466), not a bug. The previously-noted wLE → USB POPSLoader → BOOT.ELF latent failure is covered by the "across the board" PASS.
+- Implications (continued): Since the root cause of the resolution is not understood, treat U-10 as conditionally PASS. Any future change touching IOP teardown, mass-backend ordering, or BOOT.ELF launch routes should retest U-10 explicitly.
+- Evidence: `QA_REGRESSION_MATRIX.md` row "2026-05-28 PM | Nuno on rolling-release". Maintainer report 2026-05-28 PM: "Everything is working except saving settings, and hdd custom path dkwdrv."
+
+### 2026-05-28 PM — PR #470, #472, #473 Hardware-Verified
+- Decision: Promote PR #470 (LAUNCH_ARGS consumers), PR #472 (MX4SIO evidence-based classification), and PR #473 (forward-reference hotfix) from `Unknown (verify on hardware)` to PASS in STATE.md and TRUTHSHEET.md.
+- Rationale: Nuno's 2026-05-28 PM hardware test on the rolling-release artifact (commit `860ae26` from PR #471 branch, includes all merged BETA-12-PLAY changes plus Layer C mmceman defer) confirms: MX4SIO and USB working as intended, BOOT.ELF exit working across the board, DKWDRV from MC working regardless of POPSLoader boot source, USB sidecar settings save working. No boot crash.
+- Implications: The post-release backbone is now hardware-validated. PR #471 (Layer C mmceman defer, currently DRAFT) is indirectly hardware-PASS for general boot + pad input; MMCE-specific device access from deferred-load state is the one untested case. Recommend an explicit MMCE test before promoting PR #471 from DRAFT.
+- Evidence: `QA_REGRESSION_MATRIX.md` row "2026-05-28 PM | Nuno on rolling-release".
+
+### 2026-05-28 — Layer C `mmceman` Lazy Load (PR #471, DRAFT)
+- Decision: `mmceman.irx` is eagerly loaded at boot only when `boot_device_hint == "MMCE"`; for USB / MC / MX4SIO / HDD boots (all HDD root variants — `hdd*`, `pfs*`, `ata*`, `apa*`) the IRX is deferred and loaded on demand via `System.ensureMmceman` from `PLDR.EnsureMmceReadyOnce`.
+- Rationale: MMCE third-party adapters (`mmce0:/`, `mmce1:/`) are a small subset of installs; loading the IRX eagerly for all boot types wastes ~50-100ms. MC (`mc0:/`, `mc1:/`, standard PS2 memory cards) is a distinct device handled by `mcman`/`mcserv` which are always loaded — MMCE and MC are not the same device.
+- Implications: PR #471 is DRAFT. Hardware test must verify pad input survives on USB / HDD / MC boots (no IRX load order regression) and that MMCE-page entry from a deferred state correctly lazy-loads.
+- Evidence: `src/main.cpp` line 446+, `src/luasystem.cpp` `EnsureMmceman`/`MarkMmcemanLoaded`, `bin/POPSLDR/system.lua` `PLDR.EnsureMmceReadyOnce`. PR #471, branch `claude/curious-noether-3f2a8`.
+
+### 2026-05-28 — Lua Forward-Reference Hotfix (PR #473)
+- Decision: Move `local function ClassifyMassRootDriver` declaration above `ClassifyStartupMassTargets`. Remove the duplicate later declaration.
+- Rationale: Lua's `local function f()` is sugar for `local f; f = function()...end`; the local doesn't exist in scope until its declaration line. A caller declared above can't capture it as an upvalue and falls through to a global lookup (nil) at call time. Hardware regression 2026-05-28: rolling-release crashed on Enceladus boot with `attempt to call a nil value (global 'ClassifyMassRootDriver')`. Source-valid; runtime-broken; Lua syntax check did not catch it.
+- Implications: Body unchanged. No behavior change other than the crash going away.
+- Evidence: `bin/POPSLDR/system.lua` post-PR #473 has `ClassifyMassRootDriver` at line 3135, `ClassifyStartupMassTargets` at line 3146. PR #473 (`claude/hotfix-classify-mass-root-driver`), merged 2026-05-28T17:20Z.
+
+### 2026-05-28 — MX4SIO Evidence-Based Mass: Classification (PR #472 + refinement `7b587fe`)
+- Decision: At boot, `mass:/`-prefixed devices are classified by the ioctl driver name returned by `System.getMassMountDriver`. `sdc`/`mx4` → MX4SIO; any other non-empty driver → USB; empty ioctl → fall through to legacy markers, then USB default. `mx4sio_bd.irx` is only loaded on explicit MX4SIO evidence: `mx4sio:/` prefix, `sdc`/`mx4` ioctl driver, or `.boot_mx4sio` marker. `AutoInitStartupBackends` loads only `usbmass_bd` before the first classification pass; `mx4sio_bd` loads conditionally on the second pass when an ambiguous mass slot remains (`mass_probe_needed`).
+- Rationale: Per maintainer 2026-05-28: "If ioctl/devctl is ANYTHING OTHER THAN `sdc` or `mx4`, and it's a mass device, then it is USB; if a mass device is `sdc`/`mx4` on ioctl/devctl, then it must be MX4SIO." "MX4SIO should only init on startup if it came from `mx4sio:/` or `mass` with `sdc` devctl." Mass mounting is volatile — the same path (`mass:/`, `massN:/`, `mx4sio:/`, `usb:/`) can be either backend depending on hotplug + IRX load order, and the ioctl driver name is the only authoritative classifier.
+- Implications: USB boots never load `mx4sio_bd`. MX4SIO boots load `mx4sio_bd` conditionally after the ambiguity is detected. The `.boot_mx4sio`/`.boot_usb` markers remain as legacy fallback for extreme hardware quirks where ioctl never returns a driver.
+- Evidence: `bin/POPSLDR/system.lua` `classify_mass_boot`, `AutoInitStartupBackends`, `ClassifyStartupMassTargets`. Maintainer refinement commit `7b587fe`. PR #472 merged 2026-05-28T11:22Z.
+
+### 2026-05-28 — `mx4sio_bd` Depends on `usbmass_bd` (Enforced at C Layer)
+- Decision: `lua_mx4sio_init` in `src/luasystem.cpp` calls `EnsureUsbMass()` before loading `mx4sio_bd.irx`. The order is unviolatable from Lua.
+- Rationale: Per maintainer 2026-05-28: "mx4sio will need the usb drivers to activate before it with it. USB will never need MX4SIO drivers." Multiple Lua call sites previously could load `mx4sio_bd` without first ensuring `usbmass_bd` was up; enforcing the order at the lowest level removes a class of bugs.
+- Implications: Pure USB boots still never load `mx4sio_bd` (per the evidence-based classification rule above). When `mx4sio_bd` does load, `EnsureUsbMass()` is a cheap idempotent call (gated by `usbmass_irx_loaded`).
+- Evidence: `src/luasystem.cpp` `lua_mx4sio_init`. PR #472 commit `357e3b8`.
+
+### 2026-05-28 — `PLDR.LAUNCH_ARGS.game` and `-debug` Consumers Wired (PR #470)
+- Decision: Add `PLDR.AutoLaunchFromLaunchArgs()` — when both `-page=<kind>` and `-game=<selector>` are set, auto-launch via `RunPOPStarterGame` after `AutoInitStartupBackends`. Supports HDD (`PARTITION|relpath`), USB (`FILE.VCD` relative to `mass:/POPS`), MX4SIO, MMCE. Add `PLDR.SurfaceLaunchArgsDebug()` — when `-debug` is set, queue a boot-context toast showing kind, boot_path, sidecar_path, settings, and parsed launch args.
+- Rationale: PR #458 / PR #462 shipped the LAUNCH_ARGS infrastructure (parser + carousel auto-nav) but the `game` and `debug` values were parsed without consumers. This PR completes the loop so NHDDL-style shortcuts (e.g. wLaunchELF entries launching POPSLoader with a specific HDD game) work end-to-end.
+- Implications: On launch failure, `AutoLaunchFromLaunchArgs` falls through to the main menu with an error toast — default behavior unchanged when no `-game=` is passed. `-debug` is a low-cost runtime diagnostic that doesn't require rebuilding with `DPRINTF` enabled.
+- Evidence: `bin/POPSLDR/system.lua` near line 5087+. PR #470 merged 2026-05-28T10:12Z.
+
+### 2026-05-28 — Rolling Release Workflow Operational
+- Decision: `.github/workflows/rolling-release.yml` publishes a `POPSLOADER-rolling-release.zip` asset to the canonical `rolling-release` GitHub Release on every push to `BETA-12-PLAY` and on every pull-request event (`opened`, `synchronize`, `reopened`, `ready_for_review`). The tag floats; testers grab the latest asset URL.
+- Rationale: Testers (Nuno, CosmicScale) consume builds from a single stable URL. Manual artifact hosting is fragile. Last-write-wins semantics are acceptable because tester traffic is coordinated.
+- Implications: PR builds AND BETA-12-PLAY push builds both overwrite the same asset. Multiple in-flight PRs can churn the asset; the maintainer must coordinate which PR's build is current when sending a tester to the URL. Per-PR per-tag releases were considered and rejected in favor of the single-URL workflow.
+- Evidence: `.github/workflows/rolling-release.yml` (added commit `761129a`). Rolling Release URL: https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/POPSLOADER-rolling-release.zip.
+
+### 2026-05-28 — BETA-10-5 Hardware Confirmation (Nuno)
+- Decision: BETA-10-5 release artifact at commit `9a0ebe2` is hardware-confirmed clean.
+- Rationale: 2026-05-28 09:04 AM hardware test by Nuno verified: (a) BOOT.ELF exit OK, (b) HDD games load OK (D-10), (c) settings save from HDD-installed POPSLoader to MC works (sidecar fallback by design), (d) DKWDRV launch from default MC path OK. Known-broken items match documented expectations (DKWDRV-from-HDD-custom-path, U-10 BOOT.ELF-from-HDD-boot).
+- Implications: D-10, D-14, D-15, DKWDRV-MC, BOOT.ELF (USB-booted), and HDD-install-settings-to-MC are now preservation contracts. Any future work must not regress these.
+- Evidence: `QA_REGRESSION_MATRIX.md` row dated 2026-05-28.
+
+### 2026-05-27 — BETA-10-5 Release Cut (`v1.0.0-rev5`, commit `9a0ebe2`)
+- Decision: Tag the stable backbone of post-March work as `BETA-10-5` (`v1.0.0-rev5`). Publish GitHub release at https://github.com/NathanNeurotic/POPSLoader/releases/tag/BETA-10-5.
+- Rationale: D-10/D-14/D-15 hardware-passing (B2 fix), DKWDRV-MC hardware-passing, BOOT.ELF (USB-booted) working via V2 route, per-device settings sidecar working for USB/MC/MMCE. The remaining items (DKWDRV-HDD-custom, U-10 BOOT.ELF-from-HDD-boot) had been investigated repeatedly without a stable fix; pragmatically accept them with workarounds rather than block the release.
+- Implications: `bin/changelog` v1.0.0-rev5 entry; `etc/boot.lua` POPSLDR_VER bumped; STATE.md known-broken list refined.
+- Evidence: PR #468 merged 2026-05-27. Tag `BETA-10-5` at `9a0ebe2`.
+
+### 2026-05-27 — HDD Sidecar Disabled; Known-Broken Edge Cases Accepted (PR #466)
+- Decision: HDD-installed POPSLoader saves settings to `mc0:/POPSTARTER/.pldrs` rather than `pfs1:/<install dir>/.pldrs`. `ResolveBootContext` returns `sidecar_path = nil` for any HDD-rooted APP_DIR (`pfs%d*`, `hdd%d*`, `ata%d*`, `apa%d*`). Document DKWDRV-from-HDD-custom-path and U-10 BOOT.ELF-from-HDD-boot as known-broken accepted for the release.
+- Rationale: PR #459 had added `pfs1:` write support assuming `etc/boot.lua`'s RW mount worked; Nuno's 2026-05-27 hardware test on PR #464 confirmed that `pfs1:/.../.pldrs` writes still fail with "may be read-only" despite the boot.lua path normalization. The bundled `ps2hdd-osd.irx` driver has read-write limitations we can't reliably work around without an IRX swap that risks regressing D-10. Per Nuno + maintainer 2026-05-27: "rollout dkwdrv; vast majority of users will have other devices for DKWDRV, small percentage have HDD installs". Shift from chasing edge-case bugs to shipping the stable backbone.
+- Implications: HDD-installed POPSLoader is back to pre-PR-#459 settings-save behavior (no regression vs. legacy). Non-HDD installs (USB / MX4SIO / MMCE / MC) keep per-device sidecar. In-flight diag PR #463 and HDD r/w probe PR #465 closed as superseded; branches preserved.
+- Evidence: `bin/POPSLDR/system.lua` `ResolveBootContext` (lines 1764+), PR #466 merged 2026-05-27.
+
+### 2026-05-25 — NHDDL-Style Launch Argument Parsing (PR #458)
+- Decision: `main.cpp parseLaunchArgs()` recognizes `-page=<kind>`, `-mode=<kind>` (NHDDL alias), `-game=<selector>`, `-debug`. `System.getLaunchArgs()` exposes parsed values to Lua. `PLDR.LAUNCH_ARGS = {page, page_raw, game, debug}` is normalized at module load.
+- Rationale: CosmicScale requested `-mode=ata` for NHDDL parity. Generalizing to `-page=`/`-game=` lets users wire wLaunchELF entries directly to a specific device page or game. Page-only consumer (carousel auto-nav) landed in PR #462; game and debug consumers landed in PR #470.
+- Implications: Default behavior unchanged when no flags are passed.
+- Evidence: `src/main.cpp` `parseLaunchArgs`, `src/luasystem.cpp` `lua_getLaunchArgs`, `bin/POPSLDR/system.lua` LAUNCH_ARGS parser. PR #458, #462, #470.
+
+### 2026-05-25 — Unified `ResolveBootContext` Resolver (PR #458)
+- Decision: A single canonical Lua resolver `ResolveBootContext()` combines the C-side argv[0] classification hint (`detectBootDeviceHintFromArgv0` / `System.getBootDeviceHint`), Lua-side prefix matching (`mass`/`mmce`/`mx4sio`/`pfs`/`hdd`/`smb`/`host`/`usb`/`ata`/`apa`), and the mx4sio `mass:/` driver-identity refinement. `DetectBootDevice`, `PLDR.GetBootContext`, `PLDR.GetBootKind`, and the settings sidecar path all consume this one resolver.
+- Rationale: Previously three near-duplicate detection paths drifted out of sync. Unification eliminates a class of "boot detection says X but settings think Y" bugs.
+- Implications: Future device-detection changes happen in one place. New ps2sdk device-kind prefixes (`usb`, `ata`, `apa`) added without breaking the legacy `mass`/`mmce`/`mx4sio`/`pfs`/`hdd`/`smb`/`host` detection.
+- Evidence: `bin/POPSLDR/system.lua` lines 1694+, `src/main.cpp` `detectBootDeviceHintFromArgv0`, `src/luasystem.cpp` `lua_getBootDeviceHint`. PR #458.
+
+### 2026-05-25 — Per-Device Settings Sidecar with First-Run Migration (PR #459, PR #462)
+- Decision: Settings persist at `PLDR.SETTINGS_PATH`, resolved at load time by `LoadSettingsNonFatal`. Sidecar at `APP_DIR_LOCAL/.pldrs` is preferred; legacy `mc0:/POPSTARTER/.pldrs` is fallback. First-run migration: when settings load from MC but a sidecar path is computable, pin `PLDR.SETTINGS_PATH` to the sidecar so the next save migrates. HDD-rooted APP_DIRs are excluded per the PR #466 decision above.
+- Rationale: Old design hardcoded `mc0:/POPSTARTER/.pldrs` regardless of where POPSLoader was installed. Users with USB / MX4SIO / MMCE installs got their settings written back to the boot card unconditionally.
+- Implications: USB / MX4SIO / MMCE installs keep their own settings without ever touching `mc0:/POPSTARTER`. HDD installs fall back to MC by design.
+- Evidence: `bin/POPSLDR/system.lua` `LoadSettingsNonFatal` (migration via `migrate_to_sidecar`), `SaveSettingsAtomic`, `ResolveBootContext` (sidecar path computation). PR #459, #462.
 
 ### 2026-05-22 — Minimal B2 Dynamic PFS Unmount Production Fix
 - Decision: Apply the B2 dynamic PFS unmount fix to the child loader pre-ExecPS2 sequence for HDD-backed POPSTARTER paths, bypassing the child loader's post-load IOP reset and re-initialization.
@@ -78,7 +181,11 @@ Each entry records:
 - Implications: `MISSING.png` remains required; `default.png` can be removed without breaking artifact builds.
 - Evidence: `Makefile`, `src/embed_assets.cpp`, `bin/POPSLDR/images.lua`, `bin/POPSLDR/ui.lua`.
 
-## Open Investigations
+## Archived Investigations
+
+> The investigations below were active during the March–May 2026 development cycle and are now **largely resolved** by the BETA-10-5 release. They are preserved verbatim for historical context and to document the diagnostic chain that produced the B2 fix at commit `4ae6679` (D-10) and the V2 BOOT.ELF route at commit `d23520a` (L-07). For the current state, see `STATE.md`, `TRUTHSHEET.md` Current Hardware Status Markers, and `QA_REGRESSION_MATRIX.md`.
+
+
 - HDD startup auto-init on HDD boot/configured paths:
   - a 2026-03-27 hardware report said booting from HDD did not auto-init the HDD driver stack.
   - current code had detected HDD startup targets correctly but only called `EnsureHddRuntimeReadyForExec()`, which stops at low-level `HDD.Initialize()`.

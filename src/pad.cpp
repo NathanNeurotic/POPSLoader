@@ -176,12 +176,59 @@ void pad_init()
 
     if((ret = padPortOpen(port, slot, padBuf)) == 0) {
         DPRINTF("padOpenPort failed: %d\n", ret);
-        SleepThread();
+        return;  // was SleepThread(): never deadlock the boot UI on a pad fault.
+                 // pad_init runs on the main thread before the Lua boot loop, so
+                 // SleepThread() here = permanent black screen, no error screen,
+                 // no recovery. Come up instead so the menu renders (user can
+                 // reconnect the controller / reboot). Mirrors pad_reinit() below.
     }
 
     if(!initializePad(port, slot)) {
         DPRINTF("pad initalization failed!\n");
-        SleepThread();
+        return;  // was SleepThread() — same reason.
     }
+}
+
+/*
+ * pad_reinit()
+ *
+ * Rebuild the controller subsystem mid-session. The pad shares the SIO2 bus
+ * with mcman/mcserv and mmceman; lazy-loading mmceman AFTER padman has opened
+ * the pad (the MMCE-page-on-demand path) can disrupt the pad's in-flight SIO2
+ * transfer and silently kill controller input — the list loads but no buttons
+ * register.
+ *
+ * Recovery mirrors Open-PS2-Loader's proven pattern around any bus-disrupting
+ * IOP operation (OPL src/opl.c ~1540-1590): unloadPads() = padPortClose +
+ * padEnd(), then padInit(0), then startPads() = padPortOpen + initializePad.
+ * A bare port close/open does NOT clear a desynced pad library, so we tear the
+ * library all the way down (padEnd) and rebuild it (padInit) — padman.irx
+ * stays resident, so no IRX reload is needed.
+ *
+ * Unlike pad_init() this must NOT SleepThread() on failure: it runs on the
+ * main thread well after boot, so a failure has to return a status the caller
+ * can react to, not deadlock the UI.
+ *
+ * Returns 1 on success, 0 on failure.
+ */
+int pad_reinit()
+{
+    int ret;
+
+    padPortClose(port, slot); // best-effort close of the stale port
+    padEnd();                 // tear the pad library down (OPL unloadPads)
+    padInit(0);               // rebuild it (padman.irx remains resident)
+
+    if((ret = padPortOpen(port, slot, padBuf)) == 0) {
+        DPRINTF("pad_reinit: padPortOpen failed: %d\n", ret);
+        return 0;
+    }
+
+    if(!initializePad(port, slot)) {
+        DPRINTF("pad_reinit: pad initalization failed!\n");
+        return 0;
+    }
+
+    return 1;
 }
 

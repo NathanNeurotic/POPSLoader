@@ -14,6 +14,8 @@
 #include "include/embed_assets.h"
 
 #define DEG2RAD(x) ((x)*0.01745329251)
+/* BMP pixel-array offset: 14-byte BITMAPFILEHEADER + 40-byte BITMAPINFOHEADER. */
+#define BMP_PALETTE_OFFSET 54
 
 static const u64 BLACK_RGBAQ   = GS_SETREG_RGBAQ(0x00,0x00,0x00,0x80,0x00);
 
@@ -368,7 +370,7 @@ GSTEXTURE* loadbmp(FILE* File, bool delayed)
 		tex->ClutStorageMode = GS_CLUT_STORAGE_CSM1;
 
 		memset(tex->Clut, 0, gsKit_texture_size_ee(8, 2, GS_PSM_CT32));
-		fseek(File, 54, SEEK_SET);
+		fseek(File, BMP_PALETTE_OFFSET, SEEK_SET);
 		if (fread(tex->Clut, Bitmap.InfoHeader.ColorUsed*sizeof(u32), 1, File) <= 0)
 		{
 			if (tex->Clut) {
@@ -403,7 +405,7 @@ GSTEXTURE* loadbmp(FILE* File, bool delayed)
 		tex->ClutPSM = GS_PSM_CT32;
 
 		memset(tex->Clut, 0, gsKit_texture_size_ee(16, 16, GS_PSM_CT32));
-		fseek(File, 54, SEEK_SET);
+		fseek(File, BMP_PALETTE_OFFSET, SEEK_SET);
 		if (fread(tex->Clut, Bitmap.InfoHeader.ColorUsed*sizeof(u32), 1, File) <= 0)
 		{
 			if (tex->Clut) {

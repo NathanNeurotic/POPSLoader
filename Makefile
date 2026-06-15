@@ -34,6 +34,12 @@ export HEADER
 RESET_IOP = 1
 #---------------------- enable DEBUGGING MODE ---------------------#
 DEBUG = 0
+#- Embedded child-loader stage-color diagnostic (GS BGCOLOUR per stage).#
+#- 0 = release/off. Set to 1 only for a tester build that needs the     #
+#- child loader to paint its stage so a frozen color names the failing  #
+#- step (e.g. the custom-HDD-path DKWDRV investigation). MUST be 0 for   #
+#- any build that ships.                                                 #
+LOADER_ENABLE_DEBUG_COLORS = 0
 #----------------------- Set IP for PS2Client ---------------------#
 PS2LINK_IP = 192.168.1.10
 #------------------------------------------------------------------#
@@ -42,7 +48,7 @@ BINDIR = bin/
 EE_BIN = $(BINDIR)enceladus.elf
 EE_BIN_PKD = $(BINDIR)POPSLOADER.ELF
 
-EE_LIBS = -L$(PS2SDK)/ports/lib -L$(PS2DEV)/gsKit/lib/ -Lmodules/ds34bt/ee/ -Lmodules/ds34usb/ee/ -lpatches -lfileXio -lpad -ldebug -llua -lmath3d -ljpeg -lfreetype -lgskit_toolkit -lgskit -ldmakit -lpng -lz -lmc -laudsrv  -lds34bt -lds34usb
+EE_LIBS = -L$(PS2SDK)/ports/lib -L$(PS2DEV)/gsKit/lib/ -Lmodules/ds34bt/ee/ -Lmodules/ds34usb/ee/ -lpatches -lfileXio -lpad -ldebug -llua -ljpeg -lfreetype -lgskit_toolkit -lgskit -ldmakit -lpng -lz -lmc -laudsrv  -lds34bt -lds34usb
 EE_LIBS += src/elf_loader/libcustom-elf-loader.a
 EE_INCS += -I$(PS2DEV)/gsKit/include -I$(PS2SDK)/ports/include -I$(PS2SDK)/ports/include/freetype2 -I$(PS2SDK)/ports/include/zlib
 EE_INCS += -Imodules/ds34bt/ee -Imodules/ds34usb/ee
@@ -71,13 +77,13 @@ endif
 #-------------------------- App Content ---------------------------#
 EXT_LIBS = modules/ds34usb/ee/libds34usb.a modules/ds34bt/ee/libds34bt.a
 
-APP_CORE = main.o system.o pad.o graphics.o render.o \
-		   calc_3d.o gsKit3d_sup.o atlas.o fntsys.o md5.o embed_assets.o \
-		   sound.o #strUtils.o
+APP_CORE = main.o system.o pad.o graphics.o \
+		   atlas.o fntsys.o embed_assets.o \
+		   sound.o
 
 LUA_LIBS =	luaplayer.o luasound.o luacontrols.o \
 			luatimer.o luaScreen.o luagraphics.o \
-			luasystem.o luaRender.o luaHDD.o
+			luasystem.o luaHDD.o
 
 IOP_MODULES = iomanX.o fileXio.o \
 			  sio2man.o mcman.o mcserv.o padman.o libsd.o \
@@ -90,9 +96,8 @@ EMBEDDED_RSC = boot.o builtin_font.o \
 	asset_usb_png.o asset_smb_png.o asset_ilink_png.o asset_mmce_png.o asset_mx4sio_png.o asset_apahdd_png.o \
 	asset_bdhdd_png.o asset_bg_png.o asset_bkg_png.o asset_bgm_png.o asset_disc_png.o asset_splash_bg_png.o \
 	asset_splash_logo_png.o asset_splash_appname_png.o asset_splash_credits_png.o asset_select_png.o \
-	asset_start_png.o asset_triangle_png.o asset_circle_png.o asset_cross_png.o asset_l1_png.o asset_r1_png.o asset_r2_png.o asset_square_png.o \
+	asset_start_png.o asset_triangle_png.o asset_circle_png.o asset_cross_png.o asset_square_png.o \
 	asset_frame_png.o asset_missing_png.o $(OPTIONAL_EMBEDDED_RSC) \
-	asset_left_png.o asset_right_png.o asset_up_png.o asset_down_png.o \
 	asset_system_lua.o asset_ui_lua.o asset_images_lua.o asset_pops_profiles_lua.o asset_boot_adp.o \
 	asset_usbd_irx_usbexfat.o asset_usbhdfsd_irx_usbexfat.o asset_usbd_irx_mx4sio.o asset_usbhdfsd_irx_mx4sio.o \
 	asset_usbd_irx_mmce.o asset_usbhdfsd_irx_mmce.o \
@@ -164,12 +169,6 @@ $(EE_ASM_DIR)asset_circle_png.c: bin/POPSLDR/IMG/circle.png | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_circle_png
 $(EE_ASM_DIR)asset_cross_png.c: bin/POPSLDR/IMG/cross.png | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_cross_png
-$(EE_ASM_DIR)asset_l1_png.c: bin/POPSLDR/IMG/L1.png | $(EE_ASM_DIR)
-	$(BIN2S) $< $@ asset_l1_png
-$(EE_ASM_DIR)asset_r1_png.c: bin/POPSLDR/IMG/R1.png | $(EE_ASM_DIR)
-	$(BIN2S) $< $@ asset_r1_png
-$(EE_ASM_DIR)asset_r2_png.c: bin/POPSLDR/IMG/R2.png | $(EE_ASM_DIR)
-	$(BIN2S) $< $@ asset_r2_png
 $(EE_ASM_DIR)asset_square_png.c: bin/POPSLDR/IMG/square.png | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_square_png
 $(EE_ASM_DIR)asset_frame_png.c: bin/POPSLDR/IMG/frame.png | $(EE_ASM_DIR)
@@ -178,14 +177,6 @@ $(EE_ASM_DIR)asset_default_png.c: bin/POPSLDR/IMG/default.png | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_default_png
 $(EE_ASM_DIR)asset_missing_png.c: bin/POPSLDR/IMG/MISSING.png | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_missing_png
-$(EE_ASM_DIR)asset_left_png.c: bin/POPSLDR/IMG/left.png | $(EE_ASM_DIR)
-	$(BIN2S) $< $@ asset_left_png
-$(EE_ASM_DIR)asset_right_png.c: bin/POPSLDR/IMG/right.png | $(EE_ASM_DIR)
-	$(BIN2S) $< $@ asset_right_png
-$(EE_ASM_DIR)asset_up_png.c: bin/POPSLDR/IMG/up.png | $(EE_ASM_DIR)
-	$(BIN2S) $< $@ asset_up_png
-$(EE_ASM_DIR)asset_down_png.c: bin/POPSLDR/IMG/down.png | $(EE_ASM_DIR)
-	$(BIN2S) $< $@ asset_down_png
 
 # Lua scripts
 $(EE_ASM_DIR)asset_system_lua.c: bin/POPSLDR/system.lua | $(EE_ASM_DIR)
@@ -266,7 +257,7 @@ elfloader: src/elf_loader/libcustom-elf-loader.a
 
 src/elf_loader/libcustom-elf-loader.a: src/elf_loader
 	@$(MAKE) cleanbin
-	@$(MAKE) -C src/elf_loader/src/loader/ clean all
+	@$(MAKE) -C src/elf_loader/src/loader/ LOADER_ENABLE_DEBUG_COLORS=$(LOADER_ENABLE_DEBUG_COLORS) clean all
 	@$(MAKE) -C src/elf_loader clean all
 
 $(EE_OBJS_DIR):

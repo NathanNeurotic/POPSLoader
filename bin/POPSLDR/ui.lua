@@ -71,6 +71,47 @@ local function BasenameWithoutExtension(path)
   end
   return StripExtension(basename) or basename
 end
+-- Strip a trailing POPS ".VCD" extension (any case) for game-list display,
+-- and ONLY that extension. The previous code blanket-chopped the last 4
+-- characters of every entry, which silently truncated titles that did NOT
+-- end in .VCD (e.g. "Bomberman" -> "Bombe"). A generic last-extension strip
+-- can't be used either: it would eat the tail of titles containing a dot
+-- ("Mr. Driller" -> "Mr"). So match .VCD specifically.
+local function StripVcdExtension(name)
+  local s = tostring(name or "")
+  return (string.gsub(s, "%.[Vv][Cc][Dd]$", ""))
+end
+
+-- Horizontal marquee for the selected, overflowing game-list row. There is
+-- no scissor/clip API for a pixel-smooth scroll, so this steps by whole
+-- characters within the fixed column using the Font.ftWidth measurement
+-- (C fntCalcDimensions binding). Continuous via a "label .. gap .. label"
+-- scroll buffer; cosmetic; resets when the selection changes.
+local MARQUEE_HOLD_FRAMES = 36   -- pause showing the head before scrolling
+local MARQUEE_STEP_FRAMES = 6    -- frames per one-character advance
+local function FitFromLeft(font, text, max_w)
+  local s = tostring(text or "")
+  -- Trim from the right until the run fits the column. ftWidth is exact for
+  -- the proportional font; only runs for the single focused row.
+  while #s > 0 and Font.ftWidth(font, s) > max_w do
+    s = string.sub(s, 1, -2)
+  end
+  return s
+end
+local function MarqueeLabel(font, label, max_w, tick)
+  if type(Font.ftWidth) ~= "function" then return label end
+  if Font.ftWidth(font, label) <= max_w then
+    return label
+  end
+  local sep = "    "
+  local scroll = label..sep..label
+  local cycle = string.len(label) + string.len(sep)
+  local start_char = 1
+  if tick > MARQUEE_HOLD_FRAMES then
+    start_char = (math.floor((tick - MARQUEE_HOLD_FRAMES) / MARQUEE_STEP_FRAMES) % cycle) + 1
+  end
+  return FitFromLeft(font, string.sub(scroll, start_char), max_w)
+end
 local function ResolveSelectedVcdPath(entry, game_path)
   if entry == nil or entry == "" then
     return nil
@@ -332,10 +373,8 @@ UI = {
     };
     LAUNCHING = false;
     DEVLOCK = DEVLOCK;
-    device_lock = DEVLOCK.NONE;
     boot_device = DEVLOCK.NONE;
     boot_device_label = nil;
-    boot_locks = {};
     BOOT_SOUND = {
       ENABLED = true,
       PATH = "boot.adp",      -- relative to CWD (same folder as ui.lua on HostFS)
@@ -354,12 +393,6 @@ UI = {
       if lock == DEVLOCK.MMCE then return "MMCE" end
       if lock == DEVLOCK.MX4SIO then return "MX4SIO" end
       return "None"
-    end;
-    canEnterDevice = function (target)
-      return true
-    end;
-    setDeviceLock = function (target)
-      return target
     end;
     IsHideToggleScene = function (scene)
       return scene == UI.SCENES.MMAIN
@@ -387,9 +420,6 @@ UI = {
     end;
     SceneChange = function (SCENE)
       UI.RequestScene(SCENE)
-    end;
-    UpdateVmode = function ()
-      Screen.setMode(UI.SCR.VMODE, UI.SCR.X, UI.SCR.Y, CT24, INTERLACED, FIELD)
     end;
     --- Color Constants
     CCOL = {
@@ -469,12 +499,6 @@ UI = {
       UI.LAYOUT.PREVIEW_Y = Round(UI.SCR.Y_MID - (preview_h / 2))
       UI.LAYOUT.FOOTER_ICON_Y = Round(UI.SCR.Y - UI.LAYOUT.BTN_BAR_SAFE_BOTTOM)
       UI.LAYOUT.FOOTER_LABEL_Y = Round(UI.LAYOUT.FOOTER_ICON_Y + UI.LAYOUT.FOOTER_LABEL_Y_OFFSET)
-    end;
-    GetRowPosition = function (index, count)
-      local spacing = UI.LAYOUT.ICON_SPACING
-      local center = UI.SCR.X_MID
-      local offset = (index - (count + 1) / 2) * spacing
-      return center + offset
     end;
     InputConfig = {
       MIN_ACTION_MS = 220;
@@ -1221,8 +1245,58 @@ UI = {
         UI.Modal.confirm_action = function ()
           local configured_path = tostring((PLDR and PLDR.DKWDRV_PATH) or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
           local elf_path = configured_path
-          if type(PLDR) == "table" and type(PLDR.ResolveFirstExistingPath) == "function" then
-            elf_path = PLDR.ResolveFirstExistingPath(configured_path)
+          -- For a custom HDD path, resolve through POPSTARTER's slot-tolerant
+          -- HDD resolver FIRST. POPSLoader mounts the user partition on
+          -- whatever pfs slot is free (commonly pfs1:), so a config that names
+          -- a specific slot -- or omits/mismatches it -- must be remapped to
+          -- the LIVE mount. ResolveHddReadablePath resolves an HDD path by
+          -- partition NAME + relpath to the actual mounted, readable pfsN:/..
+          -- path (and records the mount), so any slot (or slot-less) custom
+          -- HDD DKWDRV path works, exactly like POPSTARTER custom HDD paths.
+          -- (Previously HDD DKWDRV had to be pfs1: -- Nuno 2026-06-04.)
+          -- Non-HDD paths (mc0:/, mass:/, mmce:/ ...) keep the existing
+          -- first-existing-candidate resolution below.
+          local lower_cfg = string.lower(configured_path)
+          local cfg_is_hdd = string.find(lower_cfg, "^hdd%d:") ~= nil
+            or string.find(lower_cfg, "^pfs%d*:/") ~= nil
+            or string.find(lower_cfg, "^ata%d*:") ~= nil
+            or string.find(lower_cfg, "^apa%d*:") ~= nil
+          if cfg_is_hdd and type(PLDR) == "table" and type(PLDR.ResolveHddReadablePath) == "function" then
+            local ok, resolved = pcall(PLDR.ResolveHddReadablePath, configured_path)
+            if ok and type(resolved) == "string" and resolved ~= "" then
+              elf_path = resolved
+            end
+          end
+          if (elf_path == nil or elf_path == configured_path)
+            and type(PLDR) == "table" and type(PLDR.ResolveFirstExistingPath) == "function" then
+            local fallback = PLDR.ResolveFirstExistingPath(configured_path)
+            if fallback ~= nil then
+              elf_path = fallback
+            end
+          end
+          -- Live-pfs-slot scan fallback. The partition may already be mounted
+          -- on a pfs slot (e.g. you browsed to DKWDRV.ELF, which mounts the
+          -- partition on pfs1: and holds it). Name-based resolution above then
+          -- can't reuse that mount -- a fresh mount of the same partition
+          -- collides (pfs won't double-mount), so only a path whose slot hint
+          -- already matches the live mount resolves. That is why a custom HDD
+          -- path previously had to say pfs1: (Nuno 2026-06-04). Here we instead
+          -- probe the live pfs slots for the file's relpath DIRECTLY (read-only,
+          -- no mounting) and use whichever slot actually has it. This makes any
+          -- slot, or a slot-less path, resolve to the live mount. The resulting
+          -- pfsN:/.. path flows through the same confirmed case-(2) launch.
+          if cfg_is_hdd and (elf_path == nil or not SafeDoesFileExist(elf_path))
+            and type(PLDR) == "table" and type(PLDR.ParseHddExecMountAndRelpath) == "function" then
+            local ok, _part, relpath = pcall(PLDR.ParseHddExecMountAndRelpath, configured_path)
+            if ok and type(relpath) == "string" and relpath ~= "" then
+              for slot = 0, 3 do
+                local probe = "pfs"..tostring(slot)..":/"..relpath
+                if SafeDoesFileExist(probe) then
+                  elf_path = probe
+                  break
+                end
+              end
+            end
           end
           if elf_path == nil or not SafeDoesFileExist(elf_path) then
             UI.Modal.Close()
@@ -1235,10 +1309,111 @@ UI = {
           if type(PLDR) == "table" and type(PLDR.SetLaunchWorkingDirectory) == "function" then
             previous_cwd = PLDR.SetLaunchWorkingDirectory(elf_path)
           end
-          if type(PLDR) == "table" and type(PLDR.PrepareForExternalELFLaunch) == "function" then
-            pcall(PLDR.PrepareForExternalELFLaunch, elf_path)
+          -- Where DKWDRV.ELF itself lives (memory card vs HDD partition).
+          local lower_elf = string.lower(tostring(elf_path or ""))
+          local is_hdd_path = string.find(lower_elf, "^hdd%d:") ~= nil
+            or string.find(lower_elf, "^pfs%d*:/") ~= nil
+            or string.find(lower_elf, "^ata%d*:") ~= nil
+            or string.find(lower_elf, "^apa%d*:") ~= nil
+          -- Whether POPSLoader ITSELF was booted from HDD this session
+          -- (independent of where DKWDRV.ELF lives).
+          local hdd_loaded = type(PLDR) == "table" and type(PLDR.HDD) == "table"
+            and tonumber(PLDR.HDD.LOADSTATE or 0) ~= 0
+          --
+          -- Launch routing. Three cases:
+          --
+          --  (1) MC / non-HDD DKWDRV, POPSLoader booted from HDD
+          --      (Nuno 2026-05-31 "hangs on pic"). etc/boot.lua left pfs1:
+          --      mounted; the reboot_iop=1 SifIopReset hangs on that held
+          --      mount (ps2sdk #425, same root cause as U-10). Mirror the
+          --      U-10 LaunchBootElf fix: cold prep (unmount the boot pfs1:,
+          --      clear keep mask) + reboot_iop=0 (no in-process reset). This
+          --      is safe here precisely because DKWDRV is NOT on HDD, so no
+          --      HDD partition needs to survive the prep.
+          --
+          --  (2) HDD-resident DKWDRV (hdd?:/ pfs?:/ ata?:/ apa?:/), ANY boot
+          --      source. Routed through the partition-aware games path
+          --      (loadELFWithPartition -> ExecuteHddBackedViaEmbeddedLoader),
+          --      which mounts the partition + uses the BRAM child loader. The
+          --      prior plain loadELF route went to a direct ExecPS2 that
+          --      cannot mount an HDD partition (black screen on custom HDD
+          --      paths). Cold prep is NOT applied (it would unmount the very
+          --      partition DKWDRV launches from). nil-fallback to the prior
+          --      behavior if no partition context can be built.
+          --
+          --  (3) MC / non-HDD DKWDRV, POPSLoader NOT booted from HDD.
+          --      UNCHANGED: reboot_iop=1, full IOP reset (safe -- no pfs1:
+          --      is held when not HDD-booted). This is the confirmed-working
+          --      MC DKWDRV path (QA 2026-05-26).
+          local rc
+          if hdd_loaded and not is_hdd_path then
+            -- Case (1): MC DKWDRV from HDD-booted POPSLoader (MERGED FIX,
+            -- PR #485). Cold prep clears the held boot pfs1:, reboot_iop=0.
+            if type(PLDR) == "table" and type(PLDR.PrepareForColdExternalELFLaunch) == "function" then
+              pcall(PLDR.PrepareForColdExternalELFLaunch)
+            elseif type(PLDR) == "table" and type(PLDR.PrepareForExternalELFLaunch) == "function" then
+              pcall(PLDR.PrepareForExternalELFLaunch, elf_path)
+            end
+            rc = System.loadELF(elf_path, 0, elf_path)
+          elseif is_hdd_path then
+            -- Case (2): HDD-resident DKWDRV (custom HDD path, e.g.
+            -- hdd0:__common:pfs1:/APPS/PS1_DKWDRV/DKWDRV.ELF, or +OPL, etc).
+            -- Normalize the launch EXACTLY like POPSTARTER's HDD custom-path
+            -- flow (the proven-working reference -- D-10 passes hardware):
+            --   1. partition context  -> "hdd0:PART:"   (BuildHddPartitionContext)
+            --   2. slot-less exec path -> "pfs:/REL"     (BuildPartitionScopedExecPath)
+            --   3. COLD prep (PrepareForColdExternalELFLaunch) -> unmount ALL
+            --      pfs slots so the partition the browser left mounted/held
+            --      (on whatever pfsN:) is freed.
+            --   4. loadELFWithPartition(pfs:/REL, 1, hdd0:PART:, argv0) ->
+            --      ExecuteHddBackedViaEmbeddedLoader mounts PART FRESH on pfs0:
+            --      BY NAME and hands off via the BRAM child loader.
+            -- This is slot-agnostic on purpose: we never assume which pfsN:
+            -- the browser used, because cold prep frees everything and the C
+            -- side re-mounts by partition name. The earlier attempt passed the
+            -- raw composite path + kept the held mount, so the C-side fresh
+            -- pfs0: mount collided (pfs won't double-mount a partition) and
+            -- returned -1 before the child loader (Nuno HW 2026-06-04).
+            -- nil-fallback: if no partition context / normalized path can be
+            -- built, fall back to prior plain behavior (no worse than today).
+            local partition_context = nil
+            if type(PLDR) == "table" and type(PLDR.BuildHddPartitionContext) == "function" then
+              local ok, ctx = pcall(PLDR.BuildHddPartitionContext, elf_path)
+              if ok then partition_context = ctx end
+            end
+            local exec_path_norm = nil
+            if type(PLDR) == "table" and type(PLDR.BuildPartitionScopedExecPath) == "function" then
+              local ok, p = pcall(PLDR.BuildPartitionScopedExecPath, elf_path)
+              if ok and type(p) == "string" and p ~= "" then exec_path_norm = p end
+            end
+            if partition_context ~= nil and partition_context ~= ""
+              and exec_path_norm ~= nil
+              and type(System.loadELFWithPartition) == "function" then
+              -- COLD prep: unmount all slots so PART is free to re-mount fresh.
+              if type(PLDR) == "table" and type(PLDR.PrepareForColdExternalELFLaunch) == "function" then
+                pcall(PLDR.PrepareForColdExternalELFLaunch)
+              elseif type(PLDR) == "table" and type(PLDR.PrepareForExternalELFLaunch) == "function" then
+                pcall(PLDR.PrepareForExternalELFLaunch, elf_path)
+              end
+              -- reboot_iop=1 selects the partition API; the hdd-backed early
+              -- return reaches ExecuteHddBackedViaEmbeddedLoader (child loader
+              -- owns IOP state), NOT the in-process SifIopReset block. argv0 =
+              -- original path (matches the MC DKWDRV convention, #485).
+              rc = System.loadELFWithPartition(exec_path_norm, 1, partition_context, elf_path)
+            else
+              if type(PLDR) == "table" and type(PLDR.PrepareForExternalELFLaunch) == "function" then
+                pcall(PLDR.PrepareForExternalELFLaunch, elf_path)
+              end
+              rc = System.loadELF(elf_path, 0, elf_path)
+            end
+          else
+            -- Case (3): MC / non-HDD DKWDRV, POPSLoader NOT booted from HDD.
+            -- UNCHANGED, confirmed-working (QA 2026-05-26): reboot_iop=1.
+            if type(PLDR) == "table" and type(PLDR.PrepareForExternalELFLaunch) == "function" then
+              pcall(PLDR.PrepareForExternalELFLaunch, elf_path)
+            end
+            rc = System.loadELF(elf_path, 1, elf_path)
           end
-          local rc = System.loadELF(elf_path, 1, elf_path)
           if type(PLDR) == "table" and type(PLDR.RestoreWorkingDirectory) == "function" then
             pcall(PLDR.RestoreWorkingDirectory, previous_cwd)
           end
@@ -1266,25 +1441,6 @@ UI = {
           UI.Modal.Close()
           if type(on_discard) == "function" then on_discard() end
         end
-        UI.Modal.ignore_until_release = true
-      end;
-      OpenDeviceLock = function (reason, active, target)
-        local active_name = UI.device_lock_name(active)
-        local target_name = UI.device_lock_name(target)
-        UI.Modal.active = true
-        UI.Modal.title = "Device drivers already loaded"
-        if reason == "boot" then
-          UI.Modal.body = ("Current boot device (%s) requires drivers already loaded.\nTo use %s, restart POPSLoader to reload drivers."):format(active_name, target_name)
-        else
-          UI.Modal.body = ("Drivers for %s are already loaded.\nTo use %s, restart POPSLoader to reload drivers."):format(active_name, target_name)
-        end
-        UI.Modal.options = {"Return", "Back"}
-        UI.Modal.confirm_action = function ()
-          UI.Modal.Close()
-          UI.SceneChange(UI.SCENES.MMAIN)
-        end
-        UI.Modal.cancel_action = UI.Modal.Close
-        UI.Modal.triangle_action = nil
         UI.Modal.ignore_until_release = true
       end;
       Close = function ()
@@ -1320,10 +1476,22 @@ UI = {
         elseif type(PLDR) == "table" and type(PLDR.PrepareForExternalELFLaunch) == "function" then
           pcall(PLDR.PrepareForExternalELFLaunch, elf_path)
         end
-        if hdd_loaded then
-          reboot_iop = 1
-        end
-        local rc = System.loadELF(elf_path, 0)
+        -- reboot_iop stays 0 for BOOT.ELF, including the HDD-boot case.
+        -- (hdd_loaded is still used above to pick the cold pfs teardown.)
+        --
+        -- 2026-05-30: regression resolved by diffing against a build that
+        -- WORKED (Nuno's, on official Enceladus). That build launched
+        -- everything with reboot_iop=0 -- no IOP reset, embedded child-loader
+        -- handoff -- and it worked from an HDD boot. The reboot=1 path forces
+        -- SifIopReset("", 0), a soft reset that cannot reboot a HDD-dirtied
+        -- IOP (dev9/atad/pfs/fileXio still loaded) -> SifIopSync spins -> the
+        -- black screen testers saw (hardware froze at the reset/sync stage).
+        -- The prior assumption that BOOT.ELF needs a clean-IOP reset after HDD
+        -- use was wrong: PrepareForColdExternalELFLaunch() above already
+        -- unmounts every pfs slot (the only HDD state that matters here), so
+        -- the no-reset path is both correct and sufficient. PR #450/#451's
+        -- reboot=1 attempts were chasing the wrong mechanism.
+        local rc = System.loadELF(elf_path, reboot_iop)
         UI.LAUNCHING = false
         UI.Notify("BOOT.ELF failed to launch\nreturn code: "..tostring(rc), 150, "error")
         return
@@ -2046,6 +2214,13 @@ UI = {
         elseif (UI.GameList.CURR < UI.GameList.STARTUP) then
           UI.GameList.STARTUP = CLAMP(UI.GameList.CURR-1, 1, ammount)
         end
+        -- Advance the marquee clock for the focused row; reset on selection change.
+        if UI.GameList.MarqueeSel ~= UI.GameList.CURR then
+          UI.GameList.MarqueeSel = UI.GameList.CURR
+          UI.GameList.MarqueeTick = 0
+        else
+          UI.GameList.MarqueeTick = (UI.GameList.MarqueeTick or 0) + 1
+        end
         for i = UI.GameList.STARTUP, ammount do
           if i >= (UI.GameList.STARTUP+UI.GameList.MAXDRAW) then break end
           local Y = layout.LIST_Y + ((i-UI.GameList.STARTUP) * layout.LIST_ROW_H)
@@ -2055,7 +2230,12 @@ UI = {
             display_name = string.match(hdd_relpath, "([^/]+)$") or hdd_relpath
           end
 	          local c = (i == UI.GameList.CURR) and UI.COLORS.LIST_SELECTED or UI.COLORS.LIST_UNSELECTED
-	          Font.ftPrint(BFONT, layout.LIST_X, Y, 0, layout.LIST_W, 16, string.sub(display_name,1, -5), c)
+          local label = StripVcdExtension(display_name)
+          -- Only the focused row scrolls (OPL-style); others clip as before.
+          if i == UI.GameList.CURR then
+            label = MarqueeLabel(BFONT, label, layout.LIST_W, UI.GameList.MarqueeTick or 0)
+          end
+	          Font.ftPrint(BFONT, layout.LIST_X, Y, 0, layout.LIST_W, 16, label, c)
         end
         local cover_enabled = UI.CoverPreviewEnabled ~= false
         local cover_img = nil
@@ -2224,6 +2404,22 @@ UI = {
           LaunchSelectedGame(nil)
         elseif UI.Pad.Events.R2 and UI.CURSCENE == UI.SCENES.GHDD then
           LaunchSelectedGame({ hdd_selector_mode = "full_hdd_pfs0" })
+        elseif UI.Pad.Events.R1 and UI.CURSCENE == UI.SCENES.GHDD then
+          UI.RunBusyTask("Refreshing HDD list...", function (report)
+            local partition_progress = UI.MakeBusyProgressReporter(report, "Rescanning HDD partitions...", 0.10, 0.55)
+            local game_progress = UI.MakeBusyProgressReporter(report, "Rebuilding HDD game list...", 0.55, 0.95)
+            report("Refreshing HDD list...", 0.05)
+            PLDR.HDD.EnsureGameList(partition_progress, game_progress, true)
+            report("Done", 1.0)
+          end, "Failed to refresh HDD list")
+          UI.GameList.CURR = 1
+          UI.GameList.CoverLastIndex = nil
+          UI.GameList.CoverPending = false
+          if #PLDR.GAMES < 1 then
+            UI.Notif_queue.add("HDD list refreshed (no games found)", "warn")
+          else
+            UI.Notif_queue.add("HDD list refreshed", "ok")
+          end
         end
         local cross_label = UI.Footer.labels.cross_launch
         if ammount <= 0 then
@@ -2438,11 +2634,11 @@ UI = {
               UI.SyncSettingsSelectionFromRuntime()
               UI.SyncSettingsDraftFromRuntime()
             elseif reason == "save_failed" then
-              UI.Notif_queue.add("Couldn't save settings\nmc0:/POPSTARTER/.pldrs may be read-only", "error")
+              UI.Notif_queue.add("Couldn't save settings\n"..tostring(PLDR.SETTINGS_PATH or "mc0:/POPSTARTER/.pldrs").." may be read-only"..((type(BOOT_MX4SIO_PROBE_RESULT) == "string" and BOOT_MX4SIO_PROBE_RESULT ~= "") and "\nmx4sio probe: "..BOOT_MX4SIO_PROBE_RESULT or ""), "error")
               UI.SyncSettingsSelectionFromRuntime()
               UI.SyncSettingsDraftFromRuntime()
             else
-              UI.Notif_queue.add("Couldn't save settings\nmc0:/POPSTARTER/.pldrs may be read-only", "error")
+              UI.Notif_queue.add("Couldn't save settings\n"..tostring(PLDR.SETTINGS_PATH or "mc0:/POPSTARTER/.pldrs").." may be read-only"..((type(BOOT_MX4SIO_PROBE_RESULT) == "string" and BOOT_MX4SIO_PROBE_RESULT ~= "") and "\nmx4sio probe: "..BOOT_MX4SIO_PROBE_RESULT or ""), "error")
               UI.SyncSettingsSelectionFromRuntime()
               UI.SyncSettingsDraftFromRuntime()
             end
@@ -2771,19 +2967,79 @@ UI = {
           end
         end
 
-        local y = top_y
+        -- Focus-following scroll viewport. The page previously placed a fixed
+        -- top-Y and, when the item stack was taller than the title->footer
+        -- area, simply OVERFLOWED off-screen -- lower rows (Show Devices
+        -- checkboxes, the Save/Reset/Discard actions) became unreachable.
+        -- Precompute each item's content offset (variable row heights), then
+        -- scroll only when needed so the focused row stays visible. When the
+        -- content fits, item_off + base_y == the original y exactly, so the
+        -- non-overflowing layout is unchanged.
+        local view_top = layout.TITLE_Y + TITLE_GAP
+        local view_h = footer_top_y - view_top
+        local item_off = {}
+        local item_h = {}
+        do
+          local acc = 0
+          for i = 1, #items do
+            local it = items[i]
+            if it.kind == "section" and i > 1 then acc = acc + SECTION_GAP_BEFORE end
+            item_off[i] = acc
+            if it.kind == "section" then item_h[i] = SECTION_HEADER_H
+            elseif it.kind == "spacer" then item_h[i] = SPACER_H
+            else item_h[i] = ROW_H end
+            acc = acc + item_h[i]
+          end
+        end
+        local scrolling = total_h > view_h
+        local scroll = 0
+        local base_y = top_y
+        if scrolling then
+          base_y = view_top
+          scroll = UI.SettingsScroll or 0
+          local f = UI.SettingsFocus
+          local f_off = item_off[f] or 0
+          local f_h = item_h[f] or ROW_H
+          if f_off < scroll then
+            scroll = f_off
+          elseif (f_off + f_h) > (scroll + view_h) then
+            scroll = f_off + f_h - view_h
+          end
+          local max_scroll = total_h - view_h
+          if scroll < 0 then scroll = 0 end
+          if scroll > max_scroll then scroll = max_scroll end
+          UI.SettingsScroll = scroll
+        else
+          UI.SettingsScroll = 0
+        end
+
         for i = 1, #items do
           local it = items[i]
-          if it.kind == "section" then
-            if i > 1 then y = y + SECTION_GAP_BEFORE end
-            DrawSection(it.label, y)
-            y = y + SECTION_HEADER_H
-          elseif it.kind == "spacer" then
-            y = y + SPACER_H
-          else
-            DrawRow(it, y, UI.SettingsFocus == i)
-            y = y + ROW_H
+          local row_y = base_y + item_off[i] - scroll
+          -- When scrolling, draw only fully-visible rows so nothing paints
+          -- over the title or footer; when it fits, draw everything (original).
+          local show = (not scrolling)
+            or (row_y >= view_top and (row_y + item_h[i]) <= (footer_top_y + 1))
+          if show then
+            if it.kind == "section" then
+              DrawSection(it.label, row_y)
+            elseif it.kind == "spacer" then
+              -- nothing to draw
+            else
+              DrawRow(it, row_y, UI.SettingsFocus == i)
+            end
           end
+        end
+
+        -- Minimal scrollbar so "there's more below/above" is discoverable.
+        if scrolling and total_h > 0 then
+          local track_x = SAFE_RIGHT + 4
+          local thumb_h = math.max(16, math.floor(view_h * view_h / total_h))
+          local max_scroll = total_h - view_h
+          local t = (max_scroll > 0) and (scroll / max_scroll) or 0
+          local thumb_y = view_top + math.floor((view_h - thumb_h) * t)
+          Graphics.drawRect(track_x, view_top, 2, view_h, separator_color)
+          Graphics.drawRect(track_x, thumb_y, 2, thumb_h, accent_color)
         end
 
         Input_GetEvent()
@@ -3035,6 +3291,18 @@ UI = {
         if UI.MainMenu._draw_only then return end
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
+        -- One-shot auto-enter for -page/-mode without -game: open the device's
+        -- game list directly instead of only pre-positioning the carousel
+        -- (CosmicScale 2026-06-12: "-page=hdd highlights HDD but doesn't open
+        -- the list"). Set by the launch-arg block in system.lua. Fire only once
+        -- the carousel has settled on the launch-arg page (OPT is final) by
+        -- synthesizing a single CONFIRM, which the dispatch below turns into the
+        -- normal device-entry (load + SceneChange). This runs past the
+        -- _draw_only return above, so it never fires during the welcome splash.
+        if UI.MainMenu.PendingAutoEnter and not carousel.animActive then
+          UI.MainMenu.PendingAutoEnter = false
+          UI.Pad.Events.CONFIRM = true
+        end
         if not carousel.animActive then
           if UI.Pad.Events.NAV_RIGHT then
             carousel.targetIndex = WrapIndex(carousel.currentIndex + 1, profcnt)
@@ -3090,7 +3358,6 @@ UI = {
 	                UI.Notif_queue.add("MMCE has no POPS folder\nexpected mmce0:/POPS/", "warn")
 	              end
               report("Opening MMCE list...", 1.0)
-              UI.setDeviceLock(DEVLOCK.MMCE)
               UI.SceneChange(UI.SCENES.GSMB)
             end, "Failed to load MMCE")
             if not ok then return end
@@ -3113,7 +3380,6 @@ UI = {
 	              PLDR.CleanupGameList()
 	              PLDR.GetPS1GameLists(mx4sio_root, true, scan_progress)
 	              report("Opening MX4SIO list...", 1.0)
-	              UI.setDeviceLock(DEVLOCK.MX4SIO)
 	              UI.SceneChange(UI.SCENES.GMX4SIO)
             end, "Failed to load MX4SIO")
             if not ok then return end
@@ -3128,19 +3394,13 @@ UI = {
 	              if UI.LASTSCENE ~= UI.SCENES.GHDD then
                 PLDR.CleanupGameList()
               end
-              report("Checking POPStarter dependencies...", 0.36)
-              local a, b, c = PLDR.CheckPOPStarterDEPS(UI.SCENES.GHDD)
               if PLDR.HDD.STATUS == 0 then
-	                if not a then UI.Notif_queue.add("Can't access hdd0:__common\n(common partition missing or unmounted)", "error") end
-	                if not b then UI.Notif_queue.add("POPS runtime missing\nhdd0:__common/POPS/POPS.ELF", "error") end
-	                if not c then UI.Notif_queue.add("POPS IOPRP image missing\nhdd0:__common/POPS/IOPRP252.IMG", "error") end
 	                report("Scanning HDD partitions...", 0.42)
-	                PLDR.HDD.CheckAvailableHddPopsParts(partition_progress)
-	                report("Building HDD game list...", 0.68)
-	                PLDR.HDD.BuildGameList(game_progress)
-                  if PLDR.HDD.USECACHE and type(PLDR.HDD.CreateCache) == "function" then
-                    PLDR.HDD.CreateCache(true)
-                  end
+	                local hdd_list_src = PLDR.HDD.EnsureGameList(partition_progress, game_progress, false)
+	                if (hdd_list_src == "disk" or hdd_list_src == "memo") and not PLDR.HDD._hinted then
+	                  PLDR.HDD._hinted = true
+	                  UI.Notif_queue.add("HDD list loaded from cache (R1 rescans)", "ok")
+	                end
 	                if not PLDR.HDD.FOUNDANY then
 	                  UI.Notif_queue.add("No '__.POPS' partitions on hdd0:\nformat one with __.POPS / __.POPS0...9", "warn")
 	                elseif #PLDR.GAMES < 1 then
@@ -3193,7 +3453,6 @@ UI = {
 	                games = PLDR.BuildMassGameListByType("usb", nil, retry_progress)
 	              end
 	              report("Opening USB list...", 1.0)
-	              UI.setDeviceLock(DEVLOCK.USB)
               UI.SceneChange(UI.SCENES.GUSBFAT)
             end, "Failed to load USB")
             if not ok then return end

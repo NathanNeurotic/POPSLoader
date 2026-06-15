@@ -1,4 +1,4 @@
-Last updated: 2026-03-29
+Last updated: 2026-05-28 (post-BETA-10-5)
 
 # PROMPTS
 
@@ -64,14 +64,18 @@ Goal:
 
 Allowed files:
 - .github/workflows/compilation.yml
+- .github/workflows/rolling-release.yml
 - README.md
 - STATE.md
 - ROADMAP.md
+- bin/changelog
 
 Required checks:
 - ZIP root directories are still validated
 - Expected file set is exact
 - Forbidden legacy payloads are still rejected (or intentionally migrated)
+- ps2dev/ps2dev image stays pinned to a specific version (currently :v2.0.0)
+- Rolling-release workflow side-effects are documented (last-write-wins on the canonical asset URL)
 ```
 
 ### 3) Documentation audit/update
@@ -82,10 +86,12 @@ Goal:
 Allowed files:
 - AGENTS.md
 - AGENTS_START_HERE.md
+- ANTIGRAVITY_NEXT_TASK.md
 - ARCHITECTURE.md
 - COMPONENTS.md
 - CONTRIBUTING.md
 - DECISIONS.md
+- HDD_POPSTARTER_HANDOFF.md
 - PROMPTS.md
 - QA_REGRESSION_MATRIX.md
 - README.md
@@ -93,6 +99,8 @@ Allowed files:
 - RULES.md
 - STATE.md
 - TRUTHSHEET.md
+- bin/changelog
+- docs/*.md
 
 Required checks:
 - Every behavior claim is traceable to current repository files or recorded run results
@@ -101,6 +109,9 @@ Required checks:
 - Unverified hardware claims are marked `Unknown (verify on hardware)`
 - Stale lock-system references are removed
 - Implemented vs not-implemented menu options are accurate
+- D-10 / D-14 / D-15 / DKWDRV-MC / BOOT.ELF-USB-booted are written as preservation contracts, not open failures
+- Post-release PR work (#470, #472, #473, #471 DRAFT) hardware status is "Unknown (verify on hardware)" unless QA matrix has a tester result
+- BETA-10-5 changelog entries are not retroactively edited
 ```
 
 ## Prompt Hygiene Rules
