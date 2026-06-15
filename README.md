@@ -4,9 +4,9 @@
   <img src="banner.jpg" alt="POPSLoader Banner" width="800"/>
 </p>
 
-POPSLoader is a graphical PlayStation 2 homebrew launcher designed to easily browse and launch your PS1 games (using POPStarter) from various storage devices. It features a clean, responsive layout, cover art support, sound effects, on-screen keyboard, and direct memory card exit shortcuts.
+POPSLoader is a graphical PlayStation 2 homebrew launcher designed to easily browse and launch your PS1 games (using POPStarter) from various storage devices. It features a clean, responsive layout, cover art support, sound effects, an on-screen keyboard, and direct memory card exit shortcuts.
 
-The current public release is **BETA-10-5** (`v1.0.0-rev5`), tagged at commit `9a0ebe2` on 2026-05-27 and hardware-confirmed clean by Nuno on 2026-05-28.
+The current public release is **BETA-10-5** (`v1.0.0-rev5`), tagged at commit `9a0ebe2` on 2026-05-27 and hardware-confirmed clean by Nuno on 2026-05-28. Development continues on the `BETA-12-PLAY` branch; rolling test artifacts are published continuously (see [Development & Building](#development--building)).
 
 ---
 
@@ -37,12 +37,16 @@ See [STATE.md](STATE.md) and [QA_REGRESSION_MATRIX.md](QA_REGRESSION_MATRIX.md) 
 
 ## Supported Devices
 
-POPSLoader supports scanning and booting games from the following backends:
+POPSLoader's main menu exposes the following backends:
 
-*   **USB** (`mass:`)
+*   **MMCE** (Multi-Memory Card Emulator, e.g. MemoryCard PRO / SD2PSX)
 *   **MX4SIO** (SD card via memory card slot adapter)
-*   **MMCE** (Multi-Memory Card Emulator)
-*   **Internal HDD** (using PS2 ATA network adapter)
+*   **HDD (PFS)** (internal HDD via the PS2 network/ATA adapter)
+*   **USB** (`mass:`)
+*   **Disc (DKWDRV)** (boot DKWDRV to play PS1 discs)
+
+> [!NOTE]
+> The main menu also lists **HDD (exFAT)**, **i.Link**, and **SMB (v1)**, but these flows are not implemented yet — selecting them shows a "not implemented" notice. See [Known Issues & Planned Improvements](#known-issues--planned-improvements).
 
 > [!NOTE]
 > Game compatibility and drive loading performance may vary depending on your specific console model, adapter type, and the quality of your POPStarter/POPS binaries.
@@ -67,7 +71,7 @@ To set up POPSLoader:
 Ensure your directories and files match these paths exactly depending on your storage device:
 
 ### USB / MX4SIO / MMCE Setup
-Place all files on the root of your storage device (`mass:/`, `slot:/`, etc.) in a folder named `POPS`:
+Place all files on the root of your storage device (`mass:/`, `mx4sio:/`, `mmce0:/`, etc.) in a folder named `POPS`:
 
 | File Path | Description |
 | :--- | :--- |
@@ -95,7 +99,9 @@ Place VCD game files inside your dedicated POPS partitions, and system binaries 
 
 ## Controls
 
-Navigate POPSLoader using a standard PS2 controller:
+Navigate POPSLoader using a standard PS2 controller.
+
+### Menus & Game List
 
 | Button | Action |
 | :--- | :--- |
@@ -106,9 +112,16 @@ Navigate POPSLoader using a standard PS2 controller:
 | **Triangle (△)** | Exit shortcut / BOOT.ELF shortcut where available |
 | **Start** | Open the Settings / Profile Editor |
 | **Select** | Toggle "Hide Text Mode" (clears the UI for a clean view of cover art) |
-| **L1 / R1** | Move text cursor Left / Right (inside on-screen keyboard) |
-| **Square (□)** | Delete character (inside on-screen keyboard) |
-| **R2** | Toggle uppercase / lowercase (inside on-screen keyboard) |
+| **Square (□)** | Toggle cover-art preview on / off (in the game list) |
+| **R2** | Launch in "HDD Alt" mode (HDD (PFS) game list only — for an HDD-resident POPSTARTER) |
+
+### On-screen Keyboard (Settings path editor)
+
+| Button | Action |
+| :--- | :--- |
+| **L1 / R1** | Move the text cursor Left / Right |
+| **Square (□)** | Delete character (backspace) |
+| **R2** | Toggle uppercase / lowercase |
 
 ---
 
@@ -154,6 +167,7 @@ HDD-installed POPSLoader saves its settings file to `mc0:/POPSTARTER/.pldrs` rat
 *   Check that the cover image is in `.png` format.
 *   The PNG filename must match the `.VCD` game filename exactly (e.g. `Crash Bandicoot.VCD` requires `Crash Bandicoot.png`).
 *   Ensure the cover art is placed in the same folder as the VCD (or `__common/POPS/ART/` on HDD).
+*   Confirm cover-art preview is enabled — press **Square (□)** in the game list to toggle it.
 *   For best compatibility and performance, use 200x200 pixel images.
 
 ### BOOT.ELF exit option fails or hangs
@@ -170,11 +184,11 @@ Confirmed broken (workarounds documented above):
 *   **Some wLaunchELF builds fail to launch POPSLoader** — use a different wLE build or launcher.
 
 Planned for subsequent updates:
-*   **Layer C Lazy IRX Loading**: Defer `mmceman`, `ds34bt`, `usbd` IRX loads when not needed by the boot device family, to reduce boot time. PR #471 (DRAFT) ships the `mmceman` portion pending hardware verification.
+*   **Layer C Lazy IRX Loading**: Defer device-specific IRX modules so they only load when the boot device family needs them, reducing boot time. The `mmceman` portion has **landed** (PR #471): it is now loaded eagerly only when POPSLoader is booted from an MMCE device, and deferred everywhere else. Further deferral of `ds34bt` / `usbd` remains future work — they are still loaded at boot today.
 *   **Settings UI Redesign (Berion)**: Visual overhaul replacing the current OPL-style focused-list with per-category Settings pages. Awaiting Berion's mockup PNGs.
 *   **GUI Themes**: Customizable colors / skins / fonts and a setting to skip the boot splash.
 *   **In-Game Features**: Support for per-game fixes, cheat codes, Virtual Memory Card (VMC) setups, and multi-disc swap prompts.
-*   **`HDD (exFAT)`, `SMB (v1)`, `ILINK`** menu flows: surface as "Not Implemented Yet" until feature work lands.
+*   **`HDD (exFAT)`, `SMB (v1)`, `i.Link`** menu flows: currently surface as "Not Implemented Yet" until feature work lands.
 
 See [STATE.md](STATE.md) "Known Open Work" and [ROADMAP.md](ROADMAP.md) for the prioritized backlog.
 
@@ -184,16 +198,20 @@ See [STATE.md](STATE.md) "Known Open Work" and [ROADMAP.md](ROADMAP.md) for the 
 
 *   **israpps (El_isra)**: Original POPSLoader project creator.
 *   **Daniel Santos**: Creator of the Enceladus runtime foundation.
+*   **krHACKen**: Author of POPStarter.
 *   **Berion**: User interface design and theme assets.
-*   **nuno6573**: Cover-art engine integrations.
+*   **nuno6573**: Cover-art engine integrations and scripting.
 *   **Hugopocked**: POPStarter fixes.
 *   **Ripto / NathanNeurotic**: Maintenance, UI polishing, and release engineering.
+*   **P4NCHOL1NO, VizoR, and the community**: Hardware testing.
 
 ---
 
 ## Development & Building
 
 GitHub Actions is the canonical build path. The pinned CI image is `ps2dev/ps2dev:v2.0.0`. Every change must pass the CI workflow in `.github/workflows/compilation.yml` before merging; rolling release artifacts for testing are produced by `.github/workflows/rolling-release.yml` on push to `BETA-12-PLAY` and on pull request events.
+
+POPSLoader is an EE C/C++ application (`src/`) with the entire front-end UI and launch logic written as embedded Lua (`bin/POPSLDR/*.lua`, `etc/boot.lua`) and an embedded IOP-side child ELF loader (`src/elf_loader/`). The Lua scripts, PNG art, IRX modules, and the child loader are all baked directly into the EE ELF at build time via `bin2c`, so the on-card scripts are not read at runtime — building from source is required to change them.
 
 Developer documentation, repository architecture details, and the current state are maintained in:
 
@@ -208,7 +226,7 @@ To build the launcher binary locally (optional; CI is canonical), run:
 ```sh
 make clean elfloader all
 ```
-*(Requires a set up PS2DEV SDK environment with `ps2-packer` and matching dependencies.)*
+This cleans, force-regenerates the embedded child ELF loader (`elfloader`), then compiles every EE/IOP object, embeds all assets, links, strips, and runs `ps2-packer` to produce the packed `bin/POPSLOADER.ELF`. It requires a configured PS2DEV SDK environment (`ps2dev/ps2dev:v2.0.0` toolchain) with `ps2-packer` and the `bin2c` tool on `PATH`.
 
 To grab the latest test build, download from the rolling release URL:
 [https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/POPSLOADER-rolling-release.zip](https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/POPSLOADER-rolling-release.zip)
