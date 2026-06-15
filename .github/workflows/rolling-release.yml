@@ -238,9 +238,16 @@ jobs:
                   "sha": sha,
               })
 
+          notes_path = pathlib.Path("ROLLING_NOTES.md")
+          try:
+              notes = notes_path.read_text(encoding="utf-8").rstrip()
+          except OSError:
+              notes = "Rolling test build."
           body = "\n".join([
-              "Rolling build updated automatically.",
+              notes,
               "",
+              "---",
+              "_Automatic rolling build:_",
               f"- Event: {os.environ['EVENT_NAME']}",
               f"- Ref: {os.environ['REF_NAME']}",
               f"- Commit: {sha}",
