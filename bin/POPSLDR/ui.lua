@@ -2146,6 +2146,8 @@ UI = {
           end
         end
         UI.SettingsEntryBootPageIndex = UI.BootPageIndex
+        UI.MultiDiscCollapse = (type(PLDR) == "table" and PLDR.COLLAPSE_MULTIDISC == true)
+        UI.SettingsEntryMultiDiscCollapse = UI.MultiDiscCollapse
         UI.SettingsEntryKeyboardLayout = tostring(UI.KeyboardLayoutDraft or (type(PLDR) == "table" and PLDR.KEYBOARD_LAYOUT) or "QWERTY")
         UI.SettingsFocus = 1
         UI.SceneChange(UI.SCENES.MPROFILE)
@@ -2586,6 +2588,7 @@ UI = {
           local video_key = video_entry and video_entry.key or VIDEO_STANDARD_NTSC
           local boot_page_entry = UI.BootPageModes[UI.BootPageIndex] or UI.BootPageModes[1]
           local boot_page_key = boot_page_entry and boot_page_entry.key or "Carousel"
+          local multidisc_collapse_val = UI.MultiDiscCollapse == true
           local ok_run, result, reason = xpcall(function()
             if type(PLDR.CommitSettingsChanges) == "function" then
               return PLDR.CommitSettingsChanges({
@@ -2597,6 +2600,7 @@ UI = {
                 video_standard = video_key,
                 keyboard_layout = UI.KeyboardLayoutDraft or (type(PLDR) == "table" and PLDR.KEYBOARD_LAYOUT) or "QWERTY",
                 boot_page = boot_page_key,
+                multidisc_collapse = multidisc_collapse_val,
                 hide_text = UI.HideTextMode == true,
                 prev_hide_text = UI.SettingsEntryHideTextMode == true,
                 apply_bdma = UI.BdmaDirty,
@@ -2619,6 +2623,7 @@ UI = {
               PLDR.KEYBOARD_LAYOUT = UI.KeyboardLayoutDraft or PLDR.KEYBOARD_LAYOUT or "QWERTY"
             end
             PLDR.BOOT_PAGE = boot_page_key
+            PLDR.COLLAPSE_MULTIDISC = multidisc_collapse_val
             if type(PLDR.ApplyVideoStandardRuntime) == "function" then
               PLDR.ApplyVideoStandardRuntime(video_key)
             end
@@ -2858,6 +2863,15 @@ UI = {
           function() UI.BootPageIndex = CycleIndex(UI.BootPageIndex, -1, #UI.BootPageModes) end,
           function() UI.BootPageIndex = CycleIndex(UI.BootPageIndex,  1, #UI.BootPageModes) end,
           function() return (UI.BootPageIndex or 1) ~= (UI.SettingsEntryBootPageIndex or 1) end
+        )
+
+        AddSection("Game List")
+        AddCycle(
+          "Multi-disc games",
+          function() return UI.MultiDiscCollapse and "First disc only" or "Show all discs" end,
+          function() UI.MultiDiscCollapse = not UI.MultiDiscCollapse end,
+          function() UI.MultiDiscCollapse = not UI.MultiDiscCollapse end,
+          function() return (UI.MultiDiscCollapse == true) ~= (UI.SettingsEntryMultiDiscCollapse == true) end
         )
 
         AddSection("POPSTARTER")

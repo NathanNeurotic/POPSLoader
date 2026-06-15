@@ -2679,7 +2679,8 @@ local function EncodeSettings()
     "VIDEO_STANDARD="..tostring(NormalizeVideoStandard(PLDR.VIDEO_STANDARD)),
     "HIDE_TEXT="..(((type(UI) == "table" and UI.HideTextMode == true) and "1") or "0"),
     "KEYBOARD_LAYOUT="..tostring(NormalizeKeyboardLayout(PLDR.KEYBOARD_LAYOUT)),
-    "BOOT_PAGE="..NormalizeBootPage(PLDR.BOOT_PAGE)
+    "BOOT_PAGE="..NormalizeBootPage(PLDR.BOOT_PAGE),
+    "MULTIDISC_COLLAPSE="..((PLDR.COLLAPSE_MULTIDISC == true) and "1" or "0")
   }
   return table.concat(lines, "\n").."\n"
 end
@@ -2713,7 +2714,8 @@ local function SnapshotSettingsState()
     video_standard = NormalizeVideoStandard(PLDR.VIDEO_STANDARD),
     hide_text = (type(UI) == "table" and UI.HideTextMode == true) or false,
     keyboard_layout = NormalizeKeyboardLayout(PLDR.KEYBOARD_LAYOUT),
-    boot_page = NormalizeBootPage(PLDR.BOOT_PAGE)
+    boot_page = NormalizeBootPage(PLDR.BOOT_PAGE),
+    multidisc_collapse = (PLDR.COLLAPSE_MULTIDISC == true)
   }
 end
 
@@ -2744,6 +2746,9 @@ local function ApplySettingsState(state)
   end
   if state.boot_page ~= nil then
     PLDR.BOOT_PAGE = NormalizeBootPage(state.boot_page)
+  end
+  if type(state.multidisc_collapse) == "boolean" then
+    PLDR.COLLAPSE_MULTIDISC = state.multidisc_collapse
   end
   PLDR.ApplyVideoStandardRuntime(PLDR.VIDEO_STANDARD)
   if type(state.hide_text) == "boolean" and type(UI) == "table" then
@@ -2839,6 +2844,7 @@ function PLDR.LoadSettingsNonFatal()
   PLDR.DKWDRV_PATH = tostring(PLDR.DKWDRV_DEFAULT_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
   PLDR.KEYBOARD_LAYOUT = PLDR.KEYBOARD_LAYOUT_ABC
   PLDR.BOOT_PAGE = "Carousel"
+  PLDR.COLLAPSE_MULTIDISC = false
   if type(UI) == "table" then
     if type(UI.SetHideTextMode) == "function" then
       UI.SetHideTextMode(false, false)
@@ -2906,6 +2912,7 @@ function PLDR.LoadSettingsNonFatal()
   local hide_text = string.match(data, "\nHIDE_TEXT=([^\n]+)") or string.match(data, "^HIDE_TEXT=([^\n]+)")
   local keyboard_layout = string.match(data, "\nKEYBOARD_LAYOUT=([^\n]+)") or string.match(data, "^KEYBOARD_LAYOUT=([^\n]+)")
   local boot_page = string.match(data, "\nBOOT_PAGE=([^\n]+)") or string.match(data, "^BOOT_PAGE=([^\n]+)")
+  local multidisc_collapse = string.match(data, "\nMULTIDISC_COLLAPSE=([^\n]+)") or string.match(data, "^MULTIDISC_COLLAPSE=([^\n]+)")
   if profile ~= nil and PLDR.PROFILES ~= nil and PLDR.PROFILES[profile] ~= nil then
     PLDR.SELECTED_PROFILE = profile
     PLDR.POPSTARTER_PATH = PLDR.PROFILES[profile].ELF
@@ -2948,6 +2955,10 @@ function PLDR.LoadSettingsNonFatal()
   else
     PLDR.BOOT_PAGE = NormalizeBootPage(PLDR.BOOT_PAGE)
   end
+  local mdc = ParseBooleanSetting(multidisc_collapse)
+  if mdc ~= nil then
+    PLDR.COLLAPSE_MULTIDISC = mdc == true
+  end
   PLDR.BDMA_MODE_KEY = NormalizeBdmaModeKey(bdma_mode) or PLDR.BDMA_MODE_KEY
   PLDR.ReconcileBdmaModeWithEffectiveState()
   PLDR.ApplyVideoStandardRuntime(PLDR.VIDEO_STANDARD)
@@ -2976,6 +2987,8 @@ function PLDR.CommitSettingsChanges(opts)
   end
   local next_profile = tonumber(opts.profile) or prev.profile
   local next_popstarter_mode = NormalizePopstarterSelectionMode(opts.popstarter_mode or prev.popstarter_mode)
+  local next_collapse = (prev.multidisc_collapse == true)
+  if type(opts.multidisc_collapse) == "boolean" then next_collapse = opts.multidisc_collapse end
   local next_state = {
     profile = next_profile,
     popstarter_path = NormalizeSelectedProfilePopstarterPath(next_profile, opts.popstarter_path or prev.popstarter_path, next_popstarter_mode),
@@ -2985,7 +2998,8 @@ function PLDR.CommitSettingsChanges(opts)
     video_standard = NormalizeVideoStandard(opts.video_standard or prev.video_standard),
     hide_text = (type(opts.hide_text) == "boolean") and opts.hide_text or prev.hide_text,
     keyboard_layout = NormalizeKeyboardLayout(opts.keyboard_layout or prev.keyboard_layout),
-    boot_page = NormalizeBootPage(opts.boot_page or prev.boot_page)
+    boot_page = NormalizeBootPage(opts.boot_page or prev.boot_page),
+    multidisc_collapse = next_collapse
   }
   local apply_bdma = opts.apply_bdma == true
   local bdma_token = opts.bdma_token
@@ -2996,6 +3010,11 @@ function PLDR.CommitSettingsChanges(opts)
   if not PLDR.SaveSettingsAtomic() then
     ApplySettingsState(prev)
     return false, "save_failed"
+  end
+
+  if (prev.multidisc_collapse == true) ~= (next_collapse == true)
+     and type(PLDR.HDD) == "table" and type(PLDR.HDD.WipeCache) == "function" then
+    pcall(PLDR.HDD.WipeCache)
   end
 
   if apply_bdma then
@@ -3798,6 +3817,19 @@ function Font.ftPrintMultiLineAligned(font, x, y, spacing, width, height, text, 
   end
 end
 
+-- Multi-disc collapse: a VCD is a SECONDARY disc if its name carries a
+-- (Disc N)/(Disk N)/(CD N) marker with N>=2. Used to hide disc 2+ from the game
+-- list when PLDR.COLLAPSE_MULTIDISC is on (disc 1 / unmarked games always show).
+-- The user's VMC disk-swap handles changing discs in-game from the disc-1 entry.
+local function IsSecondaryDisc(name)
+  if type(name) ~= "string" then return false end
+  local lower = string.lower(name)
+  local n = string.match(lower, "%(disc%s*(%d+)%)")
+        or string.match(lower, "%(disk%s*(%d+)%)")
+        or string.match(lower, "%(cd%s*(%d+)%)")
+  return n ~= nil and (tonumber(n) or 0) >= 2
+end
+
 function PLDR.GetPS1GameLists(path, updating, on_progress)
   local RET = {}
   local found_smth = false
@@ -3806,7 +3838,8 @@ function PLDR.GetPS1GameLists(path, updating, on_progress)
   if DIR ~= nil then
     for i = 1, #DIR do
       if not DIR[i].directory then -- not a folder
-        if string.lower(string.sub(DIR[i].name,-4)) == ".vcd" then
+        if string.lower(string.sub(DIR[i].name,-4)) == ".vcd"
+           and not (PLDR.COLLAPSE_MULTIDISC and IsSecondaryDisc(DIR[i].name)) then
           found_smth = true
           if updating then
             table.insert(PLDR.GAMES, DIR[i].name)
@@ -3884,7 +3917,8 @@ function PLDR.BuildMassGameListByType(kind, mass_snapshot, on_progress)
         local dir_total = #DIR
         for j = 1, dir_total do
           local entry = DIR[j]
-          if not entry.directory and string.lower(string.sub(entry.name, -4)) == ".vcd" then
+          if not entry.directory and string.lower(string.sub(entry.name, -4)) == ".vcd"
+             and not (PLDR.COLLAPSE_MULTIDISC and IsSecondaryDisc(entry.name)) then
             found_any = true
             table.insert(PLDR.GAMES, pops_root.."|"..entry.name)
           end
@@ -3938,7 +3972,8 @@ local function AppendHddGameList(partition, list_path, on_progress, partition_in
   local total_entries = #DIR
   for i = 1, #DIR do
     if not DIR[i].directory then
-      if string.lower(string.sub(DIR[i].name, -4)) == ".vcd" then
+      if string.lower(string.sub(DIR[i].name, -4)) == ".vcd"
+         and not (PLDR.COLLAPSE_MULTIDISC and IsSecondaryDisc(DIR[i].name)) then
         local encoded = EncodeHddGameEntry(partition, DIR[i].name)
         if encoded ~= nil then
           table.insert(PLDR.GAMES, encoded)
