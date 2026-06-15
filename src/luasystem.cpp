@@ -709,22 +709,33 @@ static int lua_removeDir(lua_State *L)
 	return 0;
 }
 
-/* Shared raw byte copy: open src->dst, stream, close. Matches the historical
-   inline behavior (no open() error-checking) used by rename/copyFile. */
-static void copy_file_contents(const char *src, const char *dst)
+/* Shared raw byte copy: open src->dst, stream, close. Returns 0 on success,
+   -1 on failure. Used by rename (and historically by copyFile). */
+static int copy_file_contents(const char *src, const char *dst)
 {
 	char buf[BUFSIZ];
-	size_t size;
+	int size;
 
 	int source = open(src, O_RDONLY, 0);
+	if (source < 0) return -1;
 	int dest = open(dst, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+	if (dest < 0) {
+		close(source);
+		return -1;
+	}
 
 	while ((size = read(source, buf, BUFSIZ)) > 0) {
-		write(dest, buf, size);
+		int wrote = write(dest, buf, size);
+		if (wrote < size) {
+			close(source);
+			close(dest);
+			return -1;
+		}
 	}
 
 	close(source);
 	close(dest);
+	return 0;
 }
 
 static int lua_movefile(lua_State *L)
