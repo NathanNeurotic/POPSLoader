@@ -594,7 +594,7 @@ UI = {
       local ok, a, b, c, d = pcall(worker, report)
       UI.HideSavingOverlay()
       if not ok then
-        UI.Notif_queue.add(tostring(failure_message or "Operation failed"))
+        UI.Notif_queue.add(tostring(failure_message or "Operation failed").."\n[r3] "..string.sub(tostring(a), 1, 200), "error")
         return false, a
       end
       return true, a, b, c, d
