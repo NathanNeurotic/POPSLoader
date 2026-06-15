@@ -4141,16 +4141,13 @@ function PLDR.HDD.EnsureGameList(partition_progress, game_progress, force)
   end
 
   -- cache miss (or forced): full mount+scan, then refresh both caches.
-  -- DIAGNOSTIC (2026-06-14, TEMPORARY): the MC-boot-via-launcher "Failed to load
-  -- HDD" is a thrown error somewhere in the scan; split the two steps and surface
-  -- the REAL fault + HDD state on screen so it can be pinpointed. Revert once
-  -- the root cause is known.
+  -- Graceful degrade (F-01): the two scan steps are pcall-wrapped so a faulting
+  -- partition surfaces a notice and aborts the scan cleanly (no error thrown out
+  -- of EnsureGameList) instead of black-screening the device page.
   PLDR.HDD.HAS_CHECKED = false
   local _hdd_diag = function(where, err)
     if type(UI) == "table" and type(UI.Notif_queue) == "table" then
-      UI.Notif_queue.add("HDD FAIL[r2-mntretry] @"..where.." st="..tostring(PLDR.HDD.STATUS)..
-        " found="..tostring(PLDR.HDD.FOUNDANY).." slot="..tostring(PLDR.HDD.GAME_SLOT)..
-        "\n"..string.sub(tostring(err), 1, 160), "error")
+      UI.Notif_queue.add("Failed to load HDD", "error")
     end
     PLDR.HDD.LIST_BUILT = false
   end
