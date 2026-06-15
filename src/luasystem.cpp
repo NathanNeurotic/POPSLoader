@@ -33,7 +33,7 @@ extern unsigned int size_usbmass_bd_irx;
 extern unsigned char cdfs_irx[];
 extern unsigned int size_cdfs_irx;
 
-extern unsigned char mmceman_irx;
+extern unsigned char mmceman_irx[];
 extern unsigned int size_mmceman_irx;
 
 extern int pad_reinit();
@@ -144,7 +144,7 @@ bool EnsureMmceman()
 	if (mmceman_irx_loaded) {
 		return true;
 	}
-	if (!LoadIrxCheckedBuffer("mmceman.irx", &mmceman_irx, size_mmceman_irx, NULL, NULL)) {
+	if (!LoadIrxCheckedBuffer("mmceman.irx", mmceman_irx, size_mmceman_irx, NULL, NULL)) {
 		return false;
 	}
 	mmceman_irx_loaded = true;
@@ -735,6 +735,9 @@ static int copy_file_contents(const char *src, const char *dst)
 
 	close(source);
 	close(dest);
+	if (size < 0) {
+		return -1; /* read error mid-stream: don't report a partial copy as success */
+	}
 	return 0;
 }
 
