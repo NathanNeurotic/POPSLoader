@@ -738,33 +738,6 @@ static int copy_file_contents(const char *src, const char *dst)
 	return 0;
 }
 
-static int lua_movefile(lua_State *L)
-{
-	const char *path = luaL_checkstring(L, 1);
-	if(!path) return luaL_error(L, "Argument error: System.removeFile(filename) takes a filename as string as argument.");
-		const char *oldName = luaL_checkstring(L, 1);
-	const char *newName = luaL_checkstring(L, 2);
-	if(!oldName || !newName)
-		return luaL_error(L, "Argument error: System.rename(source, destination) takes two filenames as strings as arguments.");
-
-	char buf[BUFSIZ];
-    size_t size;
-
-	int source = open(oldName, O_RDONLY, 0);
-    int dest = open(newName, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-
-	while ((size = read(source, buf, BUFSIZ)) > 0) {
-	   write(dest, buf, size);
-    }
-
-    close(source);
-    close(dest);
-
-	remove(oldName);
-
-	return 0;
-}
-
 static int lua_removeFile(lua_State *L)
 {
 	const char *path = luaL_checkstring(L, 1);
@@ -784,18 +757,6 @@ static int lua_rename(lua_State *L)
 	if (copy_file_contents(oldName, newName) != 0)
 		return luaL_error(L, "System.rename: copy failed");
 	remove(oldName);
-
-	return 0;
-}
-
-static int lua_copyfile(lua_State *L)
-{
-	const char *ogfile = luaL_checkstring(L, 1);
-	const char *newfile = luaL_checkstring(L, 2);
-	if(!ogfile || !newfile)
-		return luaL_error(L, "Argument error: System.copyFile(source, destination) takes two filenames as strings as arguments.");
-
-	copy_file_contents(ogfile, newfile);
 
 	return 0;
 }
@@ -1191,91 +1152,8 @@ static int lua_getDiscType(lua_State *L)
     return 1; //return value quantity on stack
 }
 
-extern void *_gp;
 extern int mmce_slot0_ready;
 extern int mmce_slot1_ready;
-
-#define BUFSIZE (64*1024)
-
-static volatile off_t progress, max_progress;
-
-struct pathMap {
-	const char* in;
-	const char* out;
-};
-
-static int copyThread(void* data)
-{
-	pathMap* paths = (pathMap*)data;
-
-    char buffer[BUFSIZE];
-    int in = open(paths->in, O_RDONLY, 0);
-    int out = open(paths->out, O_WRONLY | O_CREAT | O_TRUNC, 644);
-
-    // Get the input file size
-	uint32_t size = lseek(in, 0, SEEK_END);
-	lseek(in, 0, SEEK_SET);
-
-    progress = 0;
-    max_progress = size;
-
-    ssize_t bytes_read;
-    while((bytes_read = read(in, buffer, BUFSIZE)) > 0)
-    {
-        write(out, buffer, bytes_read);
-        progress += bytes_read;
-    }
-
-    // copy is done, or an error occurred
-    close(in);
-    close(out);
-	free(paths);
-	ExitDeleteThread();
-    return 0;
-}
-
-
-static int lua_copyasync(lua_State *L){
-	int argc = lua_gettop(L);
-	if (argc != 2) return luaL_error(L, "wrong number of arguments");
-
-	pathMap* copypaths = (pathMap*)malloc(sizeof(pathMap));
-
-	copypaths->in = luaL_checkstring(L, 1);
-	copypaths->out = luaL_checkstring(L, 2);
-	
-	static u8 copyThreadStack[65*1024] __attribute__((aligned(16)));
-	
-	ee_thread_t thread_param;
-	
-	thread_param.gp_reg = &_gp;
-    thread_param.func = (void*)copyThread;
-    thread_param.stack = (void *)copyThreadStack;
-    thread_param.stack_size = sizeof(copyThreadStack);
-    thread_param.initial_priority = 0x12;
-	int thread = CreateThread(&thread_param);
-	
-	StartThread(thread, (void*)copypaths);
-	return 0;
-}
-
-
-static int lua_getfileprogress(lua_State *L) {
-	int argc = lua_gettop(L);
-	if (argc != 0) return luaL_error(L, "wrong number of arguments");
-
-	lua_newtable(L);
-
-    lua_pushstring(L, "current");
-    lua_pushinteger(L, (int)progress);
-    lua_settable(L, -3);
-
-    lua_pushstring(L, "final");
-    lua_pushinteger(L, (int)max_progress);
-    lua_settable(L, -3);
-
-	return 1;
-}
 
 static int lua_direxists(lua_State *L)
 {
@@ -1445,10 +1323,6 @@ static const luaL_Reg System_functions[] = {
 	{"listDirectory",           	    lua_dir},
 	{"createDirectory",           lua_createDir},
 	{"removeDirectory",           lua_removeDir},
-	{"moveFile",	               lua_movefile},
-	{"copyFile",	               lua_copyfile},
-	{"threadCopyFile",	          lua_copyasync},
-	{"getFileProgress",	    lua_getfileprogress},
 	{"removeFile",               lua_removeFile},
 	{"rename",                       lua_rename},
 	{"sleep",                         lua_sleep},
