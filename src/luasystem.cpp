@@ -781,7 +781,8 @@ static int lua_rename(lua_State *L)
 	if(!oldName || !newName)
 		return luaL_error(L, "Argument error: System.rename(source, destination) takes two filenames as strings as arguments.");
 
-	copy_file_contents(oldName, newName);
+	if (copy_file_contents(oldName, newName) != 0)
+		return luaL_error(L, "System.rename: copy failed");
 	remove(oldName);
 
 	return 0;
