@@ -904,10 +904,13 @@ end
 function PLDR.ProbeHddSettingsWrite()
   if GetBootHddMountSlot() == nil then return nil end
   if type(HDD) ~= "table" then return false, "HDD modules not loaded" end
-  local parts = { "__.POPS", "__.POPS0", "__.POPS1", "__.POPS2", "__.POPS3" }
+  local parts = { "__.POPS", "__.POPS0", "__.POPS1", "__.POPS2", "__.POPS3",
+                  "__.POPS4", "__.POPS5", "__.POPS6", "__.POPS7", "__.POPS8", "__.POPS9" }
+  local mounted_any = false
   for i = 1, #parts do
     local mounted, prefix, slot = MountHddGamePartitionTracked("hdd0:"..parts[i], FIO_MT_RDWR)
     if mounted and prefix ~= nil then
+      mounted_any = true
       local probe_path = BuildMountedReadablePath(prefix, "pldrs_wtest.tmp")
       local wrote = false
       if probe_path ~= nil then
@@ -921,9 +924,10 @@ function PLDR.ProbeHddSettingsWrite()
       end
       if slot ~= nil then UMountHddPartitionTracked(slot) end
       if wrote then return true, parts[i] end
-      return false, parts[i].." mounted, but write failed"
+      -- this partition mounted but rejected the write; try the next present one
     end
   end
+  if mounted_any then return false, "partition(s) mounted, but none accepted a write" end
   return false, "no __.POPS partition could be mounted"
 end
 
