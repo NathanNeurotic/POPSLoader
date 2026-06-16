@@ -32,10 +32,13 @@ Here's everything new or changed **since BETA-9**.
 - Leaner, faster build (removed unused internals) and assorted stability fixes.
 - A full documentation overhaul.
 
-## ⚠️ Known issues
-- **HDD-booted "Exit → BOOT.ELF"** can black-screen — use **Exit → OSDSYS** or reboot the console instead.
-- One specific hardware config still shows *"Failed to load HDD"* from a non-HDD boot; most setups are fine. If it happens, boot POPSLoader from the HDD, or open the HDD page a few seconds after the menu appears.
-- **HDD installs save settings to the Memory Card** (`mc0:`), not the HDD itself — the HDD driver can't reliably write its own partition. (We're testing whether that can change — that's the Settings-save message above.)
+## ⚠️ Known issues / still being verified
+<!-- MAINTAINER: re-check this list on every push against the ACTUAL open bugs. Do not leave fixed items here. -->
+- **The new features above aren't hardware-confirmed yet.** Boot Page, Multi-disc collapse, and the HDD settings probe are exactly what we're asking you to test — please report what works and what doesn't.
+- **A few setups report _"Failed to load HDD"_ when POPSLoader is launched from a non-HDD device** (USB / Memory Card). Most consoles are fine. Workaround: launch POPSLoader from the HDD, or open the HDD page a few seconds after the menu appears.
+
+## ℹ️ Good to know (by design, not bugs)
+- **HDD installs save their settings to the Memory Card** (`mc0:`), not the HDD — the HDD driver can't reliably write its own partition. The new HDD settings probe is testing whether that can change.
 
 ## Install
 Extract to your device like any POPSLoader build, replacing your current install.
