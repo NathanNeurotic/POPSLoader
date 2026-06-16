@@ -984,6 +984,30 @@ function PLDR.HDD.WriteGamePartitionFile(partition, relpath, content)
   return ok_done, reason
 end
 
+-- HDD-cwd takeover: when the launcher mounted the boot partition READ-ONLY, POPSLoader
+-- can't write its settings there, and PFS won't let us open a 2nd (RW) mount of the same
+-- partition. So we take OWNERSHIP of the launcher's mount -- explicitly unmount it, then
+-- remount the SAME partition RW at the SAME pfs slot (the OPL "own your mount" pattern;
+-- mnt()'s warm single-attempt path won't self-recover an occupied slot, so the unmount
+-- must be explicit and first). Idempotent. On failure it restores a read-only mount so
+-- the cwd is never left stranded. Returns true if the boot partition is now RW-mounted.
+function PLDR.HDD.EnsureBootPartitionWritable()
+  if PLDR.HDD.BOOT_PARTITION_RW == true then return true end
+  if PLDR.SETTINGS_HDD_PARTITION == nil then return false end
+  if type(HDD) ~= "table" or type(HDD.MountPartition) ~= "function"
+     or type(HDD.UMountPartition) ~= "function" then return false end
+  local slot = tonumber(string.match(tostring(APP_DIR_LOCAL or ""), "^[Pp][Ff][Ss](%d+):")) or 0
+  pcall(HDD.UMountPartition, slot)
+  local ok, mounted = pcall(HDD.MountPartition, PLDR.SETTINGS_HDD_PARTITION, slot, FIO_MT_RDWR)
+  if ok and mounted == true then
+    PLDR.HDD.BOOT_PARTITION_RW = true
+    return true
+  end
+  -- RW remount failed -- restore a read-only mount so the cwd stays accessible.
+  pcall(HDD.MountPartition, PLDR.SETTINGS_HDD_PARTITION, slot, FIO_MT_RDONLY)
+  return false
+end
+
 local function ResolveHddReadablePath(path)
   local candidate = tostring(path or "")
   if candidate == "" then
@@ -2416,11 +2440,11 @@ PLDR.SETTINGS_PATH_SIDECAR = ResolveBootContext().sidecar_path
 PLDR.SETTINGS_PATH = PLDR.SETTINGS_PATH_SIDECAR or PLDR.SETTINGS_PATH_FALLBACK
 -- HDD-cwd install: POPSLoader booted FROM the HDD, so its settings belong ON the
 -- HDD next to it (the cwd) -- NEVER scattered to mc0: (a single-device HDD setup
--- may have no memory card at all). Both read AND write go through the boot
--- partition's EXISTING mount (the launcher's pfs0:): PFS cannot mount the same
--- partition at two points at once (OPL structures OPL/__common around exactly this
--- limit), so we never open a 2nd mount -- we use the one POPSLoader is already
--- running from. No mc0: fallback: a failed HDD save is a loud error.
+-- may have no memory card at all). PFS cannot mount the same partition at two
+-- points at once (OPL structures OPL/__common around exactly this limit), so we
+-- never open a 2nd mount: reads + writes use the boot partition's existing pfs
+-- mount, and if the launcher mounted it read-only the save TAKES OVER that slot and
+-- remounts it RW in place (PLDR.HDD.EnsureBootPartitionWritable). No mc0: fallback.
 do
   local hdd_part = ParseHddPartitionMount(APP_DIR_RAW or "")
   if hdd_part ~= nil and IsPfsMountedPath(APP_DIR_LOCAL) then
@@ -2968,13 +2992,17 @@ end
 
 function PLDR.SaveSettingsAtomic()
   local data = EncodeSettings()
-  -- HDD-cwd install: settings live ON the HDD next to POPSLoader, written through
-  -- the boot partition's EXISTING mount (the launcher's pfs0:, = PLDR.SETTINGS_PATH).
-  -- PFS can't mount the same partition twice, so we do NOT open a 2nd mount -- we
-  -- write to the one POPSLoader is already running from. Works when that mount is
-  -- RW (the normal case). NEVER mc0: -- a failed save is a loud error, not a scatter.
+  -- HDD-cwd install: settings live ON the HDD next to POPSLoader, written through the
+  -- boot partition's EXISTING mount (the launcher's pfs0:, = PLDR.SETTINGS_PATH). PFS
+  -- can't mount the same partition twice, so we never open a 2nd mount. If the write
+  -- fails because the launcher mounted the partition read-only, TAKE OVER the mount
+  -- (remount the same partition RW in place) and retry. NEVER mc0:.
   if PLDR.SETTINGS_HDD_PARTITION ~= nil then
     local ok = WriteAtomic(PLDR.SETTINGS_PATH, data)
+    if not ok and type(PLDR.HDD.EnsureBootPartitionWritable) == "function"
+       and PLDR.HDD.EnsureBootPartitionWritable() then
+      ok = WriteAtomic(PLDR.SETTINGS_PATH, data)
+    end
     if not ok and UI ~= nil and UI.Notif_queue ~= nil then
       UI.Notif_queue.add("Couldn't save settings to the HDD", "error")
     end
