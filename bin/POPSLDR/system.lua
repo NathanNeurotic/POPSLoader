@@ -4366,7 +4366,18 @@ function PLDR.HDD.EnsureGameList(partition_progress, game_progress, force)
   PLDR.HDD.HAS_CHECKED = false
   local _hdd_diag = function(where, err)
     if type(UI) == "table" and type(UI.Notif_queue) == "table" then
-      UI.Notif_queue.add("Failed to load HDD", "error")
+      -- DIAGNOSTIC: surface WHY the scan faulted, not just "Failed to load HDD".
+      -- where = CheckParts | BuildList; status = GetHDDStatus (0 = drive seen);
+      -- avail_parts = how many __.POPS partitions mounted RDONLY in the check;
+      -- err = the actual thrown Lua error (this is the previously-discarded clue).
+      local navail = 0
+      if type(PLDR.HDD.AVAILABLE) == "table" then
+        for _, v in pairs(PLDR.HDD.AVAILABLE) do if v == true then navail = navail + 1 end end
+      end
+      UI.Notif_queue.add(
+        "Failed to load HDD ["..tostring(where).."]"
+        .."\nstatus="..tostring(PLDR.HDD.STATUS)..", avail_parts="..tostring(navail)
+        .."\nerr="..tostring(err), "error")
     end
     PLDR.HDD.LIST_BUILT = false
   end
