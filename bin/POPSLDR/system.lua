@@ -2416,11 +2416,10 @@ PLDR.SETTINGS_PATH_SIDECAR = ResolveBootContext().sidecar_path
 PLDR.SETTINGS_PATH = PLDR.SETTINGS_PATH_SIDECAR or PLDR.SETTINGS_PATH_FALLBACK
 -- HDD-cwd install: POPSLoader booted FROM the HDD, so its settings belong ON the
 -- HDD next to it (the cwd) -- NEVER scattered to mc0: (a single-device HDD setup
--- may have no memory card at all). The boot partition is mounted read-only as
--- pfs0:, so reads come straight off it; saves try a direct write first (works if
--- the boot mount is RW) then a scoped RW remount (PLDR.HDD.WriteGamePartitionFile,
--- the path the write-probe proved). No mc0: fallback: a failed HDD save is a loud
--- error, not a silent scatter to a card.
+-- may have no memory card at all). Saves go through the RW-capable mount
+-- (PLDR.HDD.WriteGamePartitionFile, the write-probe's path); the boot-time read
+-- comes off the partition the launcher already mounted (a read needs no RW). No
+-- mc0: fallback: a failed HDD save is a loud error, not a silent scatter to a card.
 do
   local hdd_part = ParseHddPartitionMount(APP_DIR_RAW or "")
   if hdd_part ~= nil and IsPfsMountedPath(APP_DIR_LOCAL) then
@@ -2968,14 +2967,11 @@ end
 
 function PLDR.SaveSettingsAtomic()
   local data = EncodeSettings()
-  -- HDD-cwd install: settings live ON the HDD next to POPSLoader, NEVER mc0:. Try
-  -- a direct write to the boot partition (works if it mounted read-write), else a
-  -- scoped RW remount. A failure is surfaced loudly -- we do NOT scatter to a card.
+  -- HDD-cwd install: settings live ON the HDD next to POPSLoader, written through
+  -- the RW-capable mount (PLDR.HDD.WriteGamePartitionFile -- the write-probe's
+  -- path). NEVER mc0: -- a failed HDD save is a loud error, not a card scatter.
   if PLDR.SETTINGS_HDD_PARTITION ~= nil and PLDR.SETTINGS_HDD_RELPATH ~= nil then
-    local ok = WriteAtomic(PLDR.SETTINGS_PATH, data)
-    if not ok then
-      ok = (PLDR.HDD.WriteGamePartitionFile(PLDR.SETTINGS_HDD_PARTITION, PLDR.SETTINGS_HDD_RELPATH, data)) == true
-    end
+    local ok = (PLDR.HDD.WriteGamePartitionFile(PLDR.SETTINGS_HDD_PARTITION, PLDR.SETTINGS_HDD_RELPATH, data)) == true
     if not ok and UI ~= nil and UI.Notif_queue ~= nil then
       UI.Notif_queue.add("Couldn't save settings to the HDD", "error")
     end
