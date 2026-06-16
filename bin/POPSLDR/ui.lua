@@ -3838,7 +3838,7 @@ UI = {
 Design by Berion
 Scripts by Nuno6573 and Ripto
 Based on Enceladus by Daniel Santos
-Testing by P4NCHOL1NO, VizoR, provato, and Community
+Testing by P4NCHOL1NO, VizoR, provato, Nuno6573, and Community
 
 Special Thanks To:
 krHACKen for making POPStarter
