@@ -30,7 +30,7 @@ jobs:
         shell: sh
         run: |
           set -eu
-          apk add --no-cache build-base git bash p7zip findutils coreutils zip unzip python3 ca-certificates
+          apk add --no-cache build-base git bash p7zip findutils coreutils zip unzip python3 lua5.4 ca-certificates
 
       - name: Workaround permission issue
         shell: sh
@@ -62,16 +62,35 @@ jobs:
           done
           LAST_BYTE_HEX="$(tail -c 1 etc/boot.lua | od -An -tx1 | tr -d '[:space:]')"
           [ "$LAST_BYTE_HEX" = "0a" ] || { echo "ERROR: etc/boot.lua must end with newline (0x0A)" >&2; exit 1; }
-          if command -v luac >/dev/null 2>&1; then
+          # lua5.4 is installed as a build dependency above, so this gate is LIVE.
+          # It used to silently skip: the ps2dev image ships no bare `luac`, so the
+          # old `command -v luac` check always fell through to the skip branch and
+          # embedded-Lua syntax errors shipped unseen (they only crash on real PS2
+          # hardware). Alpine installs the versioned `luac5.4`, so probe for it and
+          # HARD-FAIL rather than ever skipping again.
+          LUAC=""
+          for cand in luac5.4 luac luac5.3; do
+            if command -v "$cand" >/dev/null 2>&1; then LUAC="$cand"; break; fi
+          done
+          if [ -n "$LUAC" ]; then
             for f in $LUA_FILES; do
-              luac -p "$f" || { echo "ERROR: luac -p failed for $f" >&2; exit 1; }
+              "$LUAC" -p "$f" || { echo "ERROR: $LUAC -p failed for $f" >&2; exit 1; }
             done
-          elif command -v lua >/dev/null 2>&1; then
-            for f in $LUA_FILES; do
-              lua -e "assert(loadfile('$f'))" || { echo "ERROR: loadfile failed for $f" >&2; exit 1; }
-            done
+            echo "Lua syntax validated with $LUAC"
           else
-            echo "NOTE: luac/lua not found; skipped Lua syntax validation"
+            LUA=""
+            for cand in lua5.4 lua lua5.3; do
+              if command -v "$cand" >/dev/null 2>&1; then LUA="$cand"; break; fi
+            done
+            if [ -n "$LUA" ]; then
+              for f in $LUA_FILES; do
+                "$LUA" -e "assert(loadfile('$f'))" || { echo "ERROR: loadfile failed for $f" >&2; exit 1; }
+              done
+              echo "Lua syntax validated with $LUA (loadfile)"
+            else
+              echo "ERROR: lua5.4 is a build dependency but no luac/lua was found -- the Lua syntax gate must not silently skip" >&2
+              exit 1
+            fi
           fi
 
       - name: Compile project
