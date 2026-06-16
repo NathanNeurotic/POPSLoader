@@ -23,13 +23,15 @@ POPSLoader BETA-10-5 ships the launcher's stable backbone after an extended hard
 
 ### Known issues (current)
 
+<!-- CANONICAL known-issues list — update HERE. Other mentions (the BOOT.ELF Exit section and "Known Issues & Planned Improvements" below) link here instead of repeating it, so the list can't drift. -->
+
 *   **"Failed to load HDD" when POPSLoader is launched from a non-HDD device** (USB / Memory Card), on some configurations. Most setups list the HDD fine. Workaround: launch POPSLoader from the HDD, or open the HDD page a few seconds after the menu appears. Config-specific; under investigation.
 
 **Recently fixed (hardware-confirmed) — no longer broken:**
 
 *   **DKWDRV from a custom HDD path** — fixed (PRs #486/#487: partition-aware route + live pfs-slot scan; Nuno 2026-06-04/06-06).
 *   **BOOT.ELF exit from an HDD-launched POPSLoader** (`U-10`) — fixed (PR #479: `reboot_iop=0`; Nuno 2026-05-31).
-*   **HOSDmenu / specific wLaunchELF builds failing to launch POPSLoader** — fixed (launcher-agnostic IOP cold reboot).
+*   **HOSDmenu / specific wLaunchELF builds failing to launch POPSLoader** — fixed (maintainer-confirmed 2026-06-15).
 *   **MX4SIO-rooted settings save** — fixed (PRs #476 + #477; Nuno 2026-05-29).
 
 See [STATE.md](STATE.md) and [QA_REGRESSION_MATRIX.md](QA_REGRESSION_MATRIX.md) for the full hardware ledger.
@@ -203,8 +205,7 @@ HDD-installed POPSLoader saves its settings file to `mc0:/POPSTARTER/.pldrs` rat
 
 ## Known Issues & Planned Improvements
 
-Confirmed broken (workaround documented above):
-*   **"Failed to load HDD" from a non-HDD boot**, on some configurations — boot from HDD, or wait a moment before opening the HDD page.
+Confirmed broken: see the single canonical **[Known issues (current)](#known-issues-current)** list near the top of this README (currently just the "Failed to load HDD" from a non-HDD boot case).
 
 Planned for subsequent updates:
 *   **Layer C Lazy IRX Loading**: Defer device-specific IRX modules so they only load when the boot device family needs them, reducing boot time. The `mmceman` portion has **landed** (PR #471): it is now loaded eagerly only when POPSLoader is booted from an MMCE device, and deferred everywhere else. Further deferral of `ds34bt` / `usbd` remains future work — they are still loaded at boot today.

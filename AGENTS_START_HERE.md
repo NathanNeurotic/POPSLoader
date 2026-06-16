@@ -37,7 +37,7 @@ These are hardware-confirmed in BETA-10-5 and must not be broken by any new work
 
 - **"Failed to load HDD" from a non-HDD boot** (config-specific; Nuno 2026-06-14) — POPSLoader starts and most setups list the HDD fine, but a specific configuration still fails. Workaround: boot POPSLoader from the HDD, or open the HDD page a few seconds after the menu appears. Under investigation.
 
-**Resolved since BETA-10-5 (hardware-confirmed) — removed from known-broken 2026-06-15:** DKWDRV from a custom HDD path (#486/#487), U-10 BOOT.ELF-from-HDD-boot (#479, `reboot_iop=0`), and HOSDmenu / specific wLaunchELF builds failing to launch POPSLoader (launcher-agnostic IOP cold reboot). U-10 history preserved in [docs/U10_INVESTIGATION.md](docs/U10_INVESTIGATION.md).
+**Resolved since BETA-10-5 (hardware-confirmed) — removed from known-broken 2026-06-15:** DKWDRV from a custom HDD path (#486/#487), U-10 BOOT.ELF-from-HDD-boot (#479, `reboot_iop=0`), and HOSDmenu / specific wLaunchELF builds failing to launch POPSLoader (maintainer-confirmed 2026-06-15; mechanism not pinned). U-10 history preserved in [docs/U10_INVESTIGATION.md](docs/U10_INVESTIGATION.md).
 
 ## Post-release work in flight
 
