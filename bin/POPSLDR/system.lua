@@ -944,6 +944,46 @@ function PLDR.ProbeHddSettingsWrite()
   return false, "no __.POPS partition could be mounted"
 end
 
+-- RW write/delete a file on an HDD __.POPS game partition via a scoped RW
+-- remount -- the SAME proven path as ProbeHddSettingsWrite (mount RW -> openFile
+-- -> verify -> unmount), now that the probe confirmed __.POPS partitions accept
+-- writes. `partition` may be "__.POPS" or "hdd0:__.POPS"; `relpath` is the file
+-- within the partition; `content` nil = delete, string = create+write. Returns
+-- true on success or false,<reason> so callers can fall back. Always unmounts.
+function PLDR.HDD.WriteGamePartitionFile(partition, relpath, content)
+  if type(HDD) ~= "table" then return false, "hdd_not_loaded" end
+  local clean_part = string.gsub(tostring(partition or ""), "^[Hh][Dd][Dd]%d:", "")
+  if clean_part == "" then return false, "bad_partition" end
+  if type(relpath) ~= "string" or relpath == "" then return false, "bad_relpath" end
+  local mounted, prefix, slot = MountHddGamePartitionTracked("hdd0:"..clean_part, FIO_MT_RDWR)
+  if not mounted or prefix == nil then return false, "mount_failed" end
+  local target = BuildMountedReadablePath(prefix, relpath)
+  local ok_done, reason = false, "path_failed"
+  if target ~= nil then
+    if content == nil then
+      if not doesFileExist(target) then
+        ok_done, reason = true, nil
+      elseif pcall(System.removeFile, target) and not doesFileExist(target) then
+        ok_done, reason = true, nil
+      else
+        ok_done, reason = false, "remove_failed"
+      end
+    else
+      local ok_open, fd = pcall(System.openFile, target, FCREATE)
+      if ok_open and fd ~= nil and not (type(fd) == "number" and fd < 0) then
+        if #content > 0 then pcall(System.writeFile, fd, content, #content) end
+        pcall(System.closeFile, fd)
+        if doesFileExist(target) then ok_done, reason = true, nil
+        else ok_done, reason = false, "write_failed" end
+      else
+        ok_done, reason = false, "open_failed"
+      end
+    end
+  end
+  if slot ~= nil then UMountHddPartitionTracked(slot) end
+  return ok_done, reason
+end
+
 local function ResolveHddReadablePath(path)
   local candidate = tostring(path or "")
   if candidate == "" then
@@ -3995,6 +4035,27 @@ function PLDR.SetGameHidden(entry, vcd_path, hide_bool)
     end
     PLDR.HIDDEN[entry] = nil
   end
+  return true
+end
+
+-- HDD counterpart to SetGameHidden: write/remove the <game>.hide sidecar on the
+-- game's OWN __.POPS partition (RW remount), so HDD game hiding now works in-app
+-- like every other device. `entry` is the encoded HDD entry; the partition comes
+-- from PLDR.HDD.GAMEPARTS, the filename from the entry. Returns true / false,reason.
+function PLDR.SetHddGameHidden(entry, hide_bool)
+  if type(entry) ~= "string" or entry == "" then return false, "no_entry" end
+  local partition = nil
+  if type(PLDR.HDD) == "table" and type(PLDR.HDD.GAMEPARTS) == "table" then
+    partition = PLDR.HDD.GAMEPARTS[entry]
+  end
+  local filename = string.match(entry, "^[^|]+|(.+)$")
+  if partition == nil or filename == nil or filename == "" then return false, "unresolved" end
+  local hide_rel = string.gsub(filename, "%.[Vv][Cc][Dd]$", ".hide")
+  if hide_rel == filename then hide_rel = filename..".hide" end
+  if type(PLDR.HIDDEN) ~= "table" then PLDR.HIDDEN = {} end
+  local ok, reason = PLDR.HDD.WriteGamePartitionFile(partition, hide_rel, hide_bool and "" or nil)
+  if not ok then return false, reason end
+  PLDR.HIDDEN[entry] = hide_bool and true or nil
   return true
 end
 

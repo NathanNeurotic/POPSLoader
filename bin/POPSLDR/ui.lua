@@ -2467,7 +2467,14 @@ UI = {
           if PLDR.GLOBAL_HIDE then
             UI.Notif_queue.add("[Global Hide ON]\nTurn 'Hidden games' off in Settings to manage", "warn")
           elseif UI.CURSCENE == UI.SCENES.GHDD then
-            UI.Notif_queue.add("HDD games are read-only here.\nAdd a \"<game>.hide\" file next to the .VCD from a PC.", "warn")
+            local entry = PLDR.GAMES[UI.GameList.CURR]
+            local was_hidden = PLDR.IsGameHidden(entry)
+            local ok, reason = PLDR.SetHddGameHidden(entry, not was_hidden)
+            if ok then
+              UI.Notif_queue.add(was_hidden and "Game shown" or "Game hidden", "ok")
+            else
+              UI.Notif_queue.add("Couldn't write .hide to the HDD ("..tostring(reason or "")..").\nYou can still add a \"<game>.hide\" next to the .VCD from a PC.", "warn")
+            end
           else
             local entry = PLDR.GAMES[UI.GameList.CURR]
             local vcd_path = ResolveSelectedVcdPath(entry, PLDR.GAMEPATH)
