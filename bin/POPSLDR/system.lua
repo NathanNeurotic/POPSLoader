@@ -2227,8 +2227,10 @@ local function BuildVideoStandardSpec(standard)
       key = PLDR.VIDEO_STANDARD_PAL,
       mode = PAL,
       width = 640,
-      -- Keep the PAL UI raster aligned with the NTSC-authored artwork.
-      height = 448,
+      -- PAL-native 512-line framebuffer so the UI FILLS the PAL screen (no
+      -- letterbox). The square 512x512 art stretches LESS than at 448, and the
+      -- layout is UI.SCR.Y-relative so it repositions automatically (OPL does this).
+      height = 512,
       fps = 50
     }
   end
@@ -2247,7 +2249,7 @@ local function BuildVideoStandardSpec(standard)
     key = PLDR.VIDEO_STANDARD_AUTO,
     mode = CONSOLE_REGION_MODE,
     width = 640,
-    height = 448,
+    height = (CONSOLE_REGION_MODE == PAL) and 512 or 448,
     fps = (CONSOLE_REGION_MODE == PAL) and 50 or 60
   }
 end

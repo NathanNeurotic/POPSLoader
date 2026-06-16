@@ -300,8 +300,8 @@ local function ResolveVideoSpecForKey(key)
     return PLDR.GetVideoStandardSpec(key)
   end
   if tostring(key or "") == VIDEO_STANDARD_PAL then
-    -- Keep the PAL UI raster aligned with the NTSC-authored artwork.
-    return { key = VIDEO_STANDARD_PAL, mode = PAL, width = 640, height = 448, fps = 50 }
+    -- PAL-native 512 so the UI fills the PAL screen (matches BuildVideoStandardSpec).
+    return { key = VIDEO_STANDARD_PAL, mode = PAL, width = 640, height = 512, fps = 50 }
   end
   return { key = VIDEO_STANDARD_NTSC, mode = NTSC, width = 640, height = 448, fps = 60 }
 end
@@ -527,7 +527,7 @@ UI = {
 	        fps = (CONSOLE_REGION_MODE == PAL) and 50 or 60,
 	        mode = CONSOLE_REGION_MODE,
 	        width = 640,
-	        height = 448
+	        height = (CONSOLE_REGION_MODE == PAL) and 512 or 448
 	      },
 	      {
 	        key = VIDEO_STANDARD_NTSC,
@@ -543,7 +543,7 @@ UI = {
 	        fps = 50,
 	        mode = PAL,
 	        width = 640,
-	        height = 448
+	        height = 512
 	      }
 	    };
 	    BdmaModeIndex = 1;
