@@ -2933,11 +2933,23 @@ UI = {
         end
 
         AddSection("Storage")
+        local function CycleBdma(dir)
+          local next_idx = CycleIndex(UI.BdmaModeIndex, dir, #UI.BdmaModes)
+          local next_key = (UI.BdmaModes[next_idx] or {}).key
+          -- BDMA/SMB modules must live in mc:/POPSTARTER. Can't ENABLE BDMA while that
+          -- folder is disabled -- make the user turn it back on first.
+          if next_key ~= nil and next_key ~= "FAT32" and PLDR.POPSTARTER_MC_FOLDER == false then
+            UI.Notif_queue.add("Enable the POPSTARTER Folder first\n(BDMA / SMB modules must live on the memory card)", "warn")
+            return
+          end
+          UI.BdmaModeIndex = next_idx
+          UI.BdmaDirty = true
+        end
         AddCycle(
           "BDMA Mode",
           function() return tostring((UI.BdmaModes[UI.BdmaModeIndex] or UI.BdmaModes[1] or {}).label or "") end,
-          function() UI.BdmaModeIndex = CycleIndex(UI.BdmaModeIndex, -1, #UI.BdmaModes); UI.BdmaDirty = true end,
-          function() UI.BdmaModeIndex = CycleIndex(UI.BdmaModeIndex,  1, #UI.BdmaModes); UI.BdmaDirty = true end,
+          function() CycleBdma(-1) end,
+          function() CycleBdma(1) end,
           function() return UI.BdmaDirty == true end
         )
 
@@ -3035,6 +3047,14 @@ UI = {
             pcall(PLDR.EnsurePopstarterDir)
             pcall(PLDR.SaveSettingsAtomic)
             UI.Notif_queue.add("POPSTARTER folder restored on the memory card\n(set a BDMA mode to re-add the exFAT/SMB modules)", "ok")
+            return
+          end
+          -- Only allowed while BDMA is off (FAT32/None): the BDMA + SMB modules live
+          -- in this folder, so it can't be deleted while BDMA still needs it.
+          local bdma_draft = (UI.BdmaModes[UI.BdmaModeIndex] or {}).key
+          if (bdma_draft ~= nil and bdma_draft ~= "FAT32")
+             or (PLDR.BDMA_MODE_KEY ~= nil and PLDR.BDMA_MODE_KEY ~= "FAT32") then
+            UI.Notif_queue.add("Can't disable while BDMA is enabled\nSet BDMA Mode to FAT32 (None) first", "warn")
             return
           end
           local confirmed = UI.RunConfirm({

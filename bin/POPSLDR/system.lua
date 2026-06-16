@@ -3207,6 +3207,12 @@ function PLDR.LoadSettingsNonFatal()
   end
   PLDR.BDMA_MODE_KEY = NormalizeBdmaModeKey(bdma_mode) or PLDR.BDMA_MODE_KEY
   PLDR.ReconcileBdmaModeWithEffectiveState()
+  -- Invariant: BDMA/SMB modules live in mc:/POPSTARTER, so an enabled BDMA REQUIRES
+  -- the folder. Never honor an inconsistent saved state -- if BDMA is on, force the
+  -- POPSTARTER folder on (it can only be disabled while BDMA = FAT32/None).
+  if PLDR.BDMA_MODE_KEY ~= nil and PLDR.BDMA_MODE_KEY ~= "FAT32" then
+    PLDR.POPSTARTER_MC_FOLDER = true
+  end
   PLDR.ApplyVideoStandardRuntime(PLDR.VIDEO_STANDARD)
   if type(UI) == "table" then
     local hide_text_enabled = ParseBooleanSetting(hide_text)
