@@ -286,8 +286,10 @@ function CoverCache:UpdateSelection(vcd_path, use_hdd_common_art, entry)
   return nil
 end
 
+local VIDEO_STANDARD_AUTO = (type(PLDR) == "table" and PLDR.VIDEO_STANDARD_AUTO) or "AUTO"
 local VIDEO_STANDARD_NTSC = (type(PLDR) == "table" and PLDR.VIDEO_STANDARD_NTSC) or "NTSC"
 local VIDEO_STANDARD_PAL = (type(PLDR) == "table" and PLDR.VIDEO_STANDARD_PAL) or "PAL"
+local CONSOLE_REGION_MODE = (type(PLDR) == "table" and PLDR.CONSOLE_REGION_MODE) or NTSC
 
 local function ResolveVideoSpecForKey(key)
   if type(PLDR) == "table" and type(PLDR.GetVideoStandardSpec) == "function" then
@@ -361,7 +363,7 @@ local function WrapText(text, limit)
   return wrapped
 end
 
-local INITIAL_VIDEO_SPEC = ResolveVideoSpecForKey((type(PLDR) == "table" and PLDR.VIDEO_STANDARD) or VIDEO_STANDARD_NTSC)
+local INITIAL_VIDEO_SPEC = ResolveVideoSpecForKey((type(PLDR) == "table" and PLDR.VIDEO_STANDARD) or VIDEO_STANDARD_AUTO)
 UI = {
     LASTSCENE = 5;
     SCENES = {
@@ -515,6 +517,14 @@ UI = {
 	      { key = "MMCE", label = "MMCE" }
 	    };
 	    VideoStandardModes = {
+	      {
+	        key = VIDEO_STANDARD_AUTO,
+	        label = "Auto (console region)",
+	        fps = (CONSOLE_REGION_MODE == PAL) and 50 or 60,
+	        mode = CONSOLE_REGION_MODE,
+	        width = 640,
+	        height = 448
+	      },
 	      {
 	        key = VIDEO_STANDARD_NTSC,
 	        label = "NTSC (60Hz, 480i/240p)",
@@ -2785,7 +2795,7 @@ UI = {
             UI.GlobalHide = false
             UI.ProfileDirty = true
           end
-          local default_video_key = VIDEO_STANDARD_NTSC
+          local default_video_key = VIDEO_STANDARD_AUTO
           local default_video_index = 1
           for i = 1, #UI.VideoStandardModes do
             if UI.VideoStandardModes[i].key == default_video_key then
@@ -3843,7 +3853,20 @@ function UI.ApplyVideoStandardFromRuntime(video_standard)
   local req_height = tonumber(selected.height) or 448
   UI.VideoStandardIndex = selected_index
   UI.VideoStandardDirty = false
-  if UI.SCR.VMODE == req_mode and UI.SCR.X == req_width and UI.SCR.Y == req_height then
+  -- Decide whether to switch from the LIVE GS mode, not UI.SCR.VMODE. The GS
+  -- boots in the console's BIOS region, so on a PAL console the live mode is PAL
+  -- even though VMODE was seeded NTSC from the setting -- trusting that software
+  -- belief is the bug where "NTSC set" still displayed PAL. Only skip the switch
+  -- when the real GS already matches the request.
+  local live_mode = nil
+  if type(Screen) == "table" and type(Screen.getMode) == "function" then
+    local ok_live, live = pcall(Screen.getMode)
+    if ok_live and type(live) == "table" and type(live.mode) == "number" then
+      live_mode = live.mode
+    end
+  end
+  if UI.SCR.VMODE == req_mode and live_mode == req_mode
+     and UI.SCR.X == req_width and UI.SCR.Y == req_height then
     return
   end
   UI.SCR.VMODE = req_mode
