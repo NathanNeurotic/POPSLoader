@@ -2788,7 +2788,42 @@ local function EnsurePopstarterPackDir(path)
 end
 
 function PLDR.EnsurePopstarterDir()
+  -- When the user disabled the POPSTARTER memory-card folder, do NOT recreate it
+  -- (the toggle deletes it; we must not bring it back on the next settings save).
+  if PLDR.POPSTARTER_MC_FOLDER == false then return true end
   return EnsurePopstarterPackDir(PLDR.POPSTARTER_DIR)
+end
+
+local function RecursiveRemoveDir(dir, preserve_path)
+  local entries = System.listDirectory(dir)
+  if type(entries) == "table" then
+    for i = 1, #entries do
+      local name = entries[i].name
+      if name ~= nil and name ~= "." and name ~= ".." then
+        local full = dir.."/"..name
+        if entries[i].directory then
+          RecursiveRemoveDir(full, preserve_path)
+        elseif full ~= preserve_path then
+          pcall(System.removeFile, full)
+        end
+      end
+    end
+  end
+  -- removeDirectory (rmdir) only succeeds when empty; a preserved file keeps it.
+  pcall(System.removeDirectory, dir)
+end
+
+-- Delete the mc0:/mc1: POPSTARTER pack folder entirely (OSD icons + the BDMA/SMB
+-- modules). Preserves the ACTIVE settings file if it happens to live inside (rare
+-- mc0: fallback installs) so the user never loses their config.
+function PLDR.RemovePopstarterMcFolder()
+  local preserve = (type(PLDR.SETTINGS_PATH) == "string") and PLDR.SETTINGS_PATH or ""
+  for _, root in ipairs({ "mc0:/POPSTARTER", "mc1:/POPSTARTER" }) do
+    if doesFolderExist(root) then
+      RecursiveRemoveDir(root, preserve)
+    end
+  end
+  return true
 end
 
 function PLDR.EnsureTrailingSlashNorm(p)
@@ -2858,7 +2893,8 @@ local function EncodeSettings()
     "KEYBOARD_LAYOUT="..tostring(NormalizeKeyboardLayout(PLDR.KEYBOARD_LAYOUT)),
     "BOOT_PAGE="..NormalizeBootPage(PLDR.BOOT_PAGE),
     "MULTIDISC_COLLAPSE="..((PLDR.COLLAPSE_MULTIDISC == true) and "1" or "0"),
-    "GLOBAL_HIDE="..((PLDR.GLOBAL_HIDE == true) and "1" or "0")
+    "GLOBAL_HIDE="..((PLDR.GLOBAL_HIDE == true) and "1" or "0"),
+    "POPSTARTER_MC_FOLDER="..((PLDR.POPSTARTER_MC_FOLDER == false) and "0" or "1")
   }
   return table.concat(lines, "\n").."\n"
 end
@@ -3044,6 +3080,7 @@ function PLDR.LoadSettingsNonFatal()
   PLDR.BOOT_PAGE = "Carousel"
   PLDR.COLLAPSE_MULTIDISC = false
   PLDR.GLOBAL_HIDE = false
+  PLDR.POPSTARTER_MC_FOLDER = true
   if type(UI) == "table" then
     if type(UI.SetHideTextMode) == "function" then
       UI.SetHideTextMode(false, false)
@@ -3113,6 +3150,7 @@ function PLDR.LoadSettingsNonFatal()
   local boot_page = string.match(data, "\nBOOT_PAGE=([^\n]+)") or string.match(data, "^BOOT_PAGE=([^\n]+)")
   local multidisc_collapse = string.match(data, "\nMULTIDISC_COLLAPSE=([^\n]+)") or string.match(data, "^MULTIDISC_COLLAPSE=([^\n]+)")
   local global_hide = string.match(data, "\nGLOBAL_HIDE=([^\n]+)") or string.match(data, "^GLOBAL_HIDE=([^\n]+)")
+  local popstarter_mc_folder = string.match(data, "\nPOPSTARTER_MC_FOLDER=([^\n]+)") or string.match(data, "^POPSTARTER_MC_FOLDER=([^\n]+)")
   if profile ~= nil and PLDR.PROFILES ~= nil and PLDR.PROFILES[profile] ~= nil then
     PLDR.SELECTED_PROFILE = profile
     PLDR.POPSTARTER_PATH = PLDR.PROFILES[profile].ELF
@@ -3162,6 +3200,10 @@ function PLDR.LoadSettingsNonFatal()
   local gh = ParseBooleanSetting(global_hide)
   if gh ~= nil then
     PLDR.GLOBAL_HIDE = gh == true
+  end
+  local mcf = ParseBooleanSetting(popstarter_mc_folder)
+  if mcf ~= nil then
+    PLDR.POPSTARTER_MC_FOLDER = mcf == true
   end
   PLDR.BDMA_MODE_KEY = NormalizeBdmaModeKey(bdma_mode) or PLDR.BDMA_MODE_KEY
   PLDR.ReconcileBdmaModeWithEffectiveState()

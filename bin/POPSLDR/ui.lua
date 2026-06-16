@@ -3029,10 +3029,43 @@ UI = {
             or KeyboardLayoutDirty()
         end
 
+        local function ToggleMcFolder()
+          if PLDR.POPSTARTER_MC_FOLDER == false then
+            PLDR.POPSTARTER_MC_FOLDER = true
+            pcall(PLDR.EnsurePopstarterDir)
+            pcall(PLDR.SaveSettingsAtomic)
+            UI.Notif_queue.add("POPSTARTER folder restored on the memory card\n(set a BDMA mode to re-add the exFAT/SMB modules)", "ok")
+            return
+          end
+          local confirmed = UI.RunConfirm({
+            "Delete the POPSTARTER folder from the memory card?",
+            "",
+            "This removes the POPSTARTER pack -- including the",
+            "BDMA and SMB modules -- from mc0: / mc1:. They won't",
+            "return until you turn this back On (or re-add them",
+            "manually). Your POPSLoader settings are kept.",
+          })
+          if confirmed then
+            PLDR.POPSTARTER_MC_FOLDER = false
+            pcall(PLDR.SaveSettingsAtomic)
+            pcall(PLDR.RemovePopstarterMcFolder)
+            UI.Notif_queue.add("POPSTARTER folder deleted from the memory card", "warn")
+          end
+        end
+
         AddSpacer()
         AddAction("Save Changes",      function() queue_exit(UI.SCENES.MMAIN, true) end, true)
         AddAction("Reset Defaults",    function() ResetDefaults() end, false)
         AddAction("Discard & Exit",    function() discard_settings_and_return() end, false)
+        AddSpacer()
+        AddSection("Memory Card")
+        AddCycle(
+          "POPSTARTER Folder",
+          function() return (PLDR.POPSTARTER_MC_FOLDER == false) and "Off (deleted)" or "On (default)" end,
+          function() ToggleMcFolder() end,
+          function() ToggleMcFolder() end,
+          function() return false end
+        )
 
         -- Focus normalization: clamp + skip non-selectable rows.
         local function IsSelectable(idx)
@@ -3928,6 +3961,42 @@ function UI.ApplyVideoStandardFromRuntime(video_standard)
     pcall(Screen.setMode, UI.SCR.VMODE, UI.SCR.X, UI.SCR.Y, CT24, INTERLACED, FIELD)
   end
 end
+-- Generic blocking yes/no confirm (X = Yes, O = No). `lines` = array of text lines.
+-- Frame-paced + button-release-gated like RunVideoModeConfirm; defaults to NO on a
+-- ~30s timeout so a destructive prompt can never auto-confirm itself.
+function UI.RunConfirm(lines)
+  if type(Screen) ~= "table" or type(Screen.flip) ~= "function"
+     or type(Pads) ~= "table" or type(Pads.get) ~= "function" then
+    return false
+  end
+  if type(lines) ~= "table" then lines = { tostring(lines or "") } end
+  local settle = 0
+  while settle < 30 do
+    local okp, gp = pcall(Pads.get)
+    if settle >= 8 and okp and type(gp) == "number" and (gp & (PAD_CROSS | PAD_CIRCLE)) == 0 then break end
+    Screen.flip()
+    settle = settle + 1
+  end
+  local f, total = 0, 30 * 60
+  while f < total do
+    Screen.clear(UI.SCR.BGCOL or Color.new(20, 30, 80))
+    local y = UI.SCR.Y_MID - (#lines * 11) - 24
+    for i = 1, #lines do
+      Font.ftPrint(SFONT, UI.SCR.X_MID, y, 8, UI.SCR.X, 16, tostring(lines[i] or ""), UI.CCOL.GREY)
+      y = y + 22
+    end
+    Font.ftPrint(BFONT, UI.SCR.X_MID, y + 16, 8, UI.SCR.X, 24, "X = Yes      O = No", UI.CCOL.YELLOW)
+    Screen.flip()
+    f = f + 1
+    local okp, gp = pcall(Pads.get)
+    if okp and type(gp) == "number" then
+      if (gp & PAD_CROSS) ~= 0 then return true end
+      if (gp & PAD_CIRCLE) ~= 0 then return false end
+    end
+  end
+  return false
+end
+
 -- Display-change safety net: after a video-mode switch, confirm it IN THE NEW
 -- mode and auto-revert if the user can't confirm (e.g. the new mode shows nothing
 -- on their display). Mirrors OPL's "keep this video mode?" prompt. Blocking; uses
