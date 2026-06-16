@@ -598,7 +598,13 @@ UI = {
       local ok, a, b, c, d = pcall(worker, report)
       UI.HideSavingOverlay()
       if not ok then
-        UI.Notif_queue.add(tostring(failure_message or "Operation failed"))
+        -- DIAGNOSTIC: surface the SWALLOWED worker error (`a`). Without it,
+        -- "Failed to load HDD" et al. show no cause -- exactly why provato/Nuno's
+        -- real HDD failure was invisible (the thrown error, with its file:line,
+        -- was captured here and discarded). Truncate so the toast stays readable.
+        local err_detail = tostring(a)
+        if #err_detail > 160 then err_detail = string.sub(err_detail, 1, 160).."..." end
+        UI.Notif_queue.add(tostring(failure_message or "Operation failed").."\n"..err_detail, "error")
         return false, a
       end
       return true, a, b, c, d

@@ -749,7 +749,15 @@ local function MountHddPartitionTracked(partition, slot, mode)
   local ok, mounted = pcall(HDD.MountPartition, normalized_partition, mount_slot, mount_mode)
   if ok and mounted == true then
     local prefix = BuildMountedPfsPrefix(mount_slot)
-    return true, RememberRecordedHddMount(normalized_partition, prefix)
+    local recorded = RememberRecordedHddMount(normalized_partition, prefix)
+    if recorded == nil then
+      -- Mounted on the IOP but un-trackable (partition/prefix parse edge case).
+      -- Don't leak the slot: unmount + report a clean failure so no caller is
+      -- left holding a live pfs mount it never learns the slot to release.
+      if type(HDD.UMountPartition) == "function" then pcall(HDD.UMountPartition, mount_slot) end
+      return false, nil
+    end
+    return true, recorded
   end
   return false, nil
 end
@@ -902,7 +910,12 @@ end
 -- via the settings-save toast. Returns: nil = not an HDD boot (skip);
 -- true,<partition> = writable; false,<reason> = not.
 function PLDR.ProbeHddSettingsWrite()
-  if GetBootHddMountSlot() == nil then return nil end
+  -- Fire whenever the HDD is loaded + usable, NOT only on an HDD boot -- so it
+  -- also reports for a NON-HDD boot whose HDD page loaded (e.g. an MC/USB boot;
+  -- the old GetBootHddMountSlot gate skipped exactly Nuno/provato's case). The
+  -- probe writes to a __.POPS GAME partition (never the boot mount), so it's safe
+  -- regardless of boot source. nil = HDD not loaded/usable (skip, no toast).
+  if type(PLDR.HDD) ~= "table" or PLDR.HDD.LOADSTATE ~= 1 then return nil end
   if type(HDD) ~= "table" then return false, "HDD modules not loaded" end
   local parts = { "__.POPS", "__.POPS0", "__.POPS1", "__.POPS2", "__.POPS3",
                   "__.POPS4", "__.POPS5", "__.POPS6", "__.POPS7", "__.POPS8", "__.POPS9" }
