@@ -290,6 +290,10 @@ local VIDEO_STANDARD_AUTO = (type(PLDR) == "table" and PLDR.VIDEO_STANDARD_AUTO)
 local VIDEO_STANDARD_NTSC = (type(PLDR) == "table" and PLDR.VIDEO_STANDARD_NTSC) or "NTSC"
 local VIDEO_STANDARD_PAL = (type(PLDR) == "table" and PLDR.VIDEO_STANDARD_PAL) or "PAL"
 local CONSOLE_REGION_MODE = (type(PLDR) == "table" and PLDR.CONSOLE_REGION_MODE) or NTSC
+-- Force the FIRST video apply (at boot) to re-issue Screen.setMode even when UI.SCR
+-- already matches the request, so gsKit (re)centers the raster. Without it the boot
+-- image sat top-aligned with a bottom bar on PAL until the user re-picked a mode.
+local VIDEO_BOOT_APPLIED = false
 
 local function ResolveVideoSpecForKey(key)
   if type(PLDR) == "table" and type(PLDR.GetVideoStandardSpec) == "function" then
@@ -3911,10 +3915,11 @@ function UI.ApplyVideoStandardFromRuntime(video_standard)
       live_mode = live.mode
     end
   end
-  if UI.SCR.VMODE == req_mode and live_mode == req_mode
+  if VIDEO_BOOT_APPLIED and UI.SCR.VMODE == req_mode and live_mode == req_mode
      and UI.SCR.X == req_width and UI.SCR.Y == req_height then
     return
   end
+  VIDEO_BOOT_APPLIED = true
   UI.SCR.VMODE = req_mode
   UI.SCR.X = req_width
   UI.SCR.Y = req_height
@@ -3929,34 +3934,40 @@ end
 -- the same draw+flip+pad-poll pattern as the boot splash. Returns true = keep.
 function UI.RunVideoModeConfirm(seconds)
   if type(Screen) ~= "table" or type(Screen.flip) ~= "function"
-     or type(Pads) ~= "table" or type(Pads.get) ~= "function" or type(Timer) ~= "table" then
+     or type(Pads) ~= "table" or type(Pads.get) ~= "function" then
     return true
   end
-  local total_ms = (tonumber(seconds) or 15) * 1000
-  -- Wait for the Save button-press to release so a still-held X isn't read as an
-  -- instant confirm.
-  local rel = Timer.new()
-  while Timer.getTime(rel) < 1500 do
+  -- Frame-paced (count Screen.flip), NOT clock()-paced. clock()/vsync is unstable
+  -- for a moment right after Screen.setMode, which made the old Timer-based countdown
+  -- jump (14 -> 2) and auto-revert in 1-3s on PAL CRTs (provato). Counting flips is
+  -- immune to that, and Screen.flip's vsync provides the pacing.
+  local FPS = 60
+  local total_frames = (tonumber(seconds) or 15) * FPS
+  -- Let the freshly-switched GS settle (>= ~0.5s), AND wait for the Save X/O to
+  -- release so a still-held button isn't read as an instant confirm/revert.
+  local settle = 0
+  while settle < 90 do
     local okp, gp = pcall(Pads.get)
-    if okp and type(gp) == "number" and (gp & (PAD_CROSS | PAD_CIRCLE)) == 0 then break end
+    if settle >= 30 and okp and type(gp) == "number" and (gp & (PAD_CROSS | PAD_CIRCLE)) == 0 then break end
     Screen.flip()
+    settle = settle + 1
   end
-  local timer = Timer.new()
-  while true do
-    local elapsed = Timer.getTime(timer)
-    if elapsed >= total_ms then return false end
-    local remaining = math.max(0, math.ceil((total_ms - elapsed) / 1000))
+  local f = 0
+  while f < total_frames do
+    local remaining = math.max(0, math.ceil((total_frames - f) / FPS))
     Screen.clear(UI.SCR.BGCOL or Color.new(20, 30, 80))
     Font.ftPrint(LFONT, UI.SCR.X_MID, UI.SCR.Y_MID - 70, 8, UI.SCR.X, 32, "Keep this display mode?", UI.CCOL.YELLOW)
     Font.ftPrint(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID, 8, UI.SCR.X, 24, "X = Keep      O = Revert", UI.CCOL.GREY)
     Font.ftPrint(SFONT, UI.SCR.X_MID, UI.SCR.Y_MID + 54, 8, UI.SCR.X, 16, "Reverting in "..tostring(remaining).."s if not confirmed", UI.CCOL.GREY)
     Screen.flip()
+    f = f + 1
     local okp, gp = pcall(Pads.get)
     if okp and type(gp) == "number" then
       if (gp & PAD_CROSS) ~= 0 then return true end
       if (gp & PAD_CIRCLE) ~= 0 then return false end
     end
   end
+  return false
 end
 function UI.SyncSettingsDraftFromRuntime()
   if type(PLDR) == "table" and type(PLDR.GetEffectiveConfiguredPopstarterPath) == "function" then
