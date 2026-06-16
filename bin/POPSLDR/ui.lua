@@ -2632,12 +2632,6 @@ UI = {
           local boot_page_key = boot_page_entry and boot_page_entry.key or "Carousel"
           local multidisc_collapse_val = UI.MultiDiscCollapse == true
           local global_hide_val = UI.GlobalHide == true
-          local video_live_before = nil
-          if type(Screen) == "table" and type(Screen.getMode) == "function" then
-            local okb, mb = pcall(Screen.getMode)
-            if okb and type(mb) == "table" then video_live_before = mb.mode end
-          end
-          local video_standard_before = (type(PLDR) == "table") and PLDR.VIDEO_STANDARD or nil
           local ok_run, result, reason = xpcall(function()
             if type(PLDR.CommitSettingsChanges) == "function" then
               return PLDR.CommitSettingsChanges({
@@ -2712,29 +2706,6 @@ UI = {
                 UI.Notif_queue.add("HDD partition "..tostring(hdd_w_info).." is WRITABLE -- settings can live on HDD", "ok")
               elseif hdd_w_ok == false then
                 UI.Notif_queue.add("HDD write test FAILED ("..tostring(hdd_w_info)..")\nsettings stay on the memory card", "warn")
-              end
-            end
-            -- Display-change safety: if the GS mode actually switched, confirm it
-            -- in the new mode and auto-revert if the user can't (invisible mode).
-            if video_live_before ~= nil and type(Screen) == "table" and type(Screen.getMode) == "function" then
-              local oka, ma = pcall(Screen.getMode)
-              local video_live_after = (oka and type(ma) == "table") and ma.mode or nil
-              if video_live_after ~= nil and video_live_after ~= video_live_before then
-                local kept = true
-                if type(UI.RunVideoModeConfirm) == "function" then
-                  -- pcall: if the confirm modal itself errors, fall to REVERT
-                  -- (back to the known-good mode) rather than crash the scene.
-                  local ok_confirm, confirm_res = pcall(UI.RunVideoModeConfirm, 15)
-                  kept = (ok_confirm == true) and (confirm_res == true)
-                end
-                if not kept and video_standard_before ~= nil then
-                  PLDR.VIDEO_STANDARD = video_standard_before
-                  if type(PLDR.ApplyVideoStandardRuntime) == "function" then
-                    PLDR.ApplyVideoStandardRuntime(video_standard_before)
-                  end
-                  pcall(PLDR.SaveSettingsAtomic)
-                  UI.Notif_queue.add("Display reverted -- new mode wasn't confirmed", "warn")
-                end
               end
             end
             UI.SceneChange(target_scene)
@@ -3910,41 +3881,6 @@ function UI.ApplyVideoStandardFromRuntime(video_standard)
   UI.RecalcLayout()
   if type(Screen) == "table" and type(Screen.setMode) == "function" then
     pcall(Screen.setMode, UI.SCR.VMODE, UI.SCR.X, UI.SCR.Y, CT24, INTERLACED, FIELD)
-  end
-end
--- Display-change safety net: after a video-mode switch, confirm it IN THE NEW
--- mode and auto-revert if the user can't confirm (e.g. the new mode shows nothing
--- on their display). Mirrors OPL's "keep this video mode?" prompt. Blocking; uses
--- the same draw+flip+pad-poll pattern as the boot splash. Returns true = keep.
-function UI.RunVideoModeConfirm(seconds)
-  if type(Screen) ~= "table" or type(Screen.flip) ~= "function"
-     or type(Pads) ~= "table" or type(Pads.get) ~= "function" or type(Timer) ~= "table" then
-    return true
-  end
-  local total_ms = (tonumber(seconds) or 15) * 1000
-  -- Wait for the Save button-press to release so a still-held X isn't read as an
-  -- instant confirm.
-  local rel = Timer.new()
-  while Timer.getTime(rel) < 1500 do
-    local okp, gp = pcall(Pads.get)
-    if okp and type(gp) == "number" and (gp & (PAD_CROSS | PAD_CIRCLE)) == 0 then break end
-    Screen.flip()
-  end
-  local timer = Timer.new()
-  while true do
-    local elapsed = Timer.getTime(timer)
-    if elapsed >= total_ms then return false end
-    local remaining = math.max(0, math.ceil((total_ms - elapsed) / 1000))
-    Screen.clear(UI.SCR.BGCOL or Color.new(20, 30, 80))
-    Font.ftPrint(LFONT, UI.SCR.X_MID, UI.SCR.Y_MID - 70, 8, UI.SCR.X, 32, "Keep this display mode?", UI.CCOL.YELLOW)
-    Font.ftPrint(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID, 8, UI.SCR.X, 24, "X = Keep      O = Revert", UI.CCOL.GREY)
-    Font.ftPrint(SFONT, UI.SCR.X_MID, UI.SCR.Y_MID + 54, 8, UI.SCR.X, 16, "Reverting in "..tostring(remaining).."s if not confirmed", UI.CCOL.GREY)
-    Screen.flip()
-    local okp, gp = pcall(Pads.get)
-    if okp and type(gp) == "number" then
-      if (gp & PAD_CROSS) ~= 0 then return true end
-      if (gp & PAD_CIRCLE) ~= 0 then return false end
-    end
   end
 end
 function UI.SyncSettingsDraftFromRuntime()
