@@ -2463,7 +2463,7 @@ UI = {
             UI.Notif_queue.add("HDD list refreshed", "ok")
           end
         end
-        if UI.Pad.Events.L2 and ammount > 0 then
+        if UI.Pad.Events.L3 and ammount > 0 then
           if PLDR.GLOBAL_HIDE then
             UI.Notif_queue.add("[Global Hide ON]\nTurn 'Hidden games' off in Settings to manage", "warn")
           elseif UI.CURSCENE == UI.SCENES.GHDD then
@@ -3681,6 +3681,8 @@ UI = {
         UI.Pad.Events.R1 = false
         UI.Pad.Events.R2 = false
         UI.Pad.Events.L2 = false
+        UI.Pad.Events.L3 = false
+        UI.Pad.Events.R3 = false
         UI.Pad.Events.ANY = false
 
         local function emit(event)
@@ -3712,6 +3714,8 @@ UI = {
         if (pressed & PAD_R1) ~= 0 then emit_action("R1") end
         if (pressed & PAD_R2) ~= 0 then emit_action("R2") end
         if (pressed & PAD_L2) ~= 0 then emit_action("L2") end
+        if (pressed & PAD_L3) ~= 0 then emit_action("L3") end
+        if (pressed & PAD_R3) ~= 0 then emit_action("R3") end
 
         local function resolve_nav(dir, is_down)
           local was_down = UI.Pad.NavHeld[dir] == true
