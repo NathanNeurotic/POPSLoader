@@ -5597,7 +5597,32 @@ function PLDR.SurfaceLaunchArgsDebug()
   UI.Notif_queue.add(table.concat(lines, "\n"), "info")
 end
 
+-- Boot recovery (mirrors OPL's "hold to skip config"): hold START while
+-- POPSLoader boots to force a SAFE display mode (Auto = console region),
+-- ignoring the saved Video Standard. Recovers a user who locked themselves out
+-- with e.g. NTSC on a PAL-only display -- they get a visible UI to fix it. Poll
+-- a few times since a single pad read at boot can miss a held button.
+local boot_start_held = false
+if type(Pads) == "table" and type(Pads.get) == "function" and type(PAD_START) == "number" then
+  for _ = 1, 16 do
+    local ok_pad, gp = pcall(Pads.get)
+    if ok_pad and type(gp) == "number" and (gp & PAD_START) ~= 0 then
+      boot_start_held = true
+      break
+    end
+  end
+end
+
 PLDR.LoadSettingsNonFatal()
+if boot_start_held then
+  PLDR.VIDEO_STANDARD = PLDR.VIDEO_STANDARD_AUTO
+  if type(PLDR.ApplyVideoStandardRuntime) == "function" then
+    PLDR.ApplyVideoStandardRuntime(PLDR.VIDEO_STANDARD_AUTO)
+  end
+  if type(UI) == "table" and type(UI.Notif_queue) == "table" then
+    UI.Notif_queue.add("Start held at boot: display reset to Auto (console region).\nAdjust Video Standard in Settings if needed.", "warn")
+  end
+end
 PLDR.AutoInitStartupBackends()
 -- Auto-launch BEFORE surfacing the debug toast: Notif_queue keeps only the
 -- 2 newest toasts, so queueing the debug toast last guarantees it survives
