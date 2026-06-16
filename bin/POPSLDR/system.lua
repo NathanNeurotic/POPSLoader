@@ -2725,7 +2725,8 @@ local function EncodeSettings()
     "HIDE_TEXT="..(((type(UI) == "table" and UI.HideTextMode == true) and "1") or "0"),
     "KEYBOARD_LAYOUT="..tostring(NormalizeKeyboardLayout(PLDR.KEYBOARD_LAYOUT)),
     "BOOT_PAGE="..NormalizeBootPage(PLDR.BOOT_PAGE),
-    "MULTIDISC_COLLAPSE="..((PLDR.COLLAPSE_MULTIDISC == true) and "1" or "0")
+    "MULTIDISC_COLLAPSE="..((PLDR.COLLAPSE_MULTIDISC == true) and "1" or "0"),
+    "GLOBAL_HIDE="..((PLDR.GLOBAL_HIDE == true) and "1" or "0")
   }
   return table.concat(lines, "\n").."\n"
 end
@@ -2760,7 +2761,8 @@ local function SnapshotSettingsState()
     hide_text = (type(UI) == "table" and UI.HideTextMode == true) or false,
     keyboard_layout = NormalizeKeyboardLayout(PLDR.KEYBOARD_LAYOUT),
     boot_page = NormalizeBootPage(PLDR.BOOT_PAGE),
-    multidisc_collapse = (PLDR.COLLAPSE_MULTIDISC == true)
+    multidisc_collapse = (PLDR.COLLAPSE_MULTIDISC == true),
+    global_hide = (PLDR.GLOBAL_HIDE == true)
   }
 end
 
@@ -2794,6 +2796,9 @@ local function ApplySettingsState(state)
   end
   if type(state.multidisc_collapse) == "boolean" then
     PLDR.COLLAPSE_MULTIDISC = state.multidisc_collapse
+  end
+  if type(state.global_hide) == "boolean" then
+    PLDR.GLOBAL_HIDE = state.global_hide
   end
   PLDR.ApplyVideoStandardRuntime(PLDR.VIDEO_STANDARD)
   if type(state.hide_text) == "boolean" and type(UI) == "table" then
@@ -2890,6 +2895,7 @@ function PLDR.LoadSettingsNonFatal()
   PLDR.KEYBOARD_LAYOUT = PLDR.KEYBOARD_LAYOUT_ABC
   PLDR.BOOT_PAGE = "Carousel"
   PLDR.COLLAPSE_MULTIDISC = false
+  PLDR.GLOBAL_HIDE = false
   if type(UI) == "table" then
     if type(UI.SetHideTextMode) == "function" then
       UI.SetHideTextMode(false, false)
@@ -2958,6 +2964,7 @@ function PLDR.LoadSettingsNonFatal()
   local keyboard_layout = string.match(data, "\nKEYBOARD_LAYOUT=([^\n]+)") or string.match(data, "^KEYBOARD_LAYOUT=([^\n]+)")
   local boot_page = string.match(data, "\nBOOT_PAGE=([^\n]+)") or string.match(data, "^BOOT_PAGE=([^\n]+)")
   local multidisc_collapse = string.match(data, "\nMULTIDISC_COLLAPSE=([^\n]+)") or string.match(data, "^MULTIDISC_COLLAPSE=([^\n]+)")
+  local global_hide = string.match(data, "\nGLOBAL_HIDE=([^\n]+)") or string.match(data, "^GLOBAL_HIDE=([^\n]+)")
   if profile ~= nil and PLDR.PROFILES ~= nil and PLDR.PROFILES[profile] ~= nil then
     PLDR.SELECTED_PROFILE = profile
     PLDR.POPSTARTER_PATH = PLDR.PROFILES[profile].ELF
@@ -3004,6 +3011,10 @@ function PLDR.LoadSettingsNonFatal()
   if mdc ~= nil then
     PLDR.COLLAPSE_MULTIDISC = mdc == true
   end
+  local gh = ParseBooleanSetting(global_hide)
+  if gh ~= nil then
+    PLDR.GLOBAL_HIDE = gh == true
+  end
   PLDR.BDMA_MODE_KEY = NormalizeBdmaModeKey(bdma_mode) or PLDR.BDMA_MODE_KEY
   PLDR.ReconcileBdmaModeWithEffectiveState()
   PLDR.ApplyVideoStandardRuntime(PLDR.VIDEO_STANDARD)
@@ -3034,6 +3045,8 @@ function PLDR.CommitSettingsChanges(opts)
   local next_popstarter_mode = NormalizePopstarterSelectionMode(opts.popstarter_mode or prev.popstarter_mode)
   local next_collapse = (prev.multidisc_collapse == true)
   if type(opts.multidisc_collapse) == "boolean" then next_collapse = opts.multidisc_collapse end
+  local next_global_hide = (prev.global_hide == true)
+  if type(opts.global_hide) == "boolean" then next_global_hide = opts.global_hide end
   -- Explicit boolean check, NOT `(type==boolean) and opts.x or prev.x`: that
   -- idiom collapses a legitimate `false` to prev (Lua and/or short-circuit), so
   -- Hide-Text could never be toggled OFF through a settings save. Mirrors the
@@ -3050,7 +3063,8 @@ function PLDR.CommitSettingsChanges(opts)
     hide_text = next_hide_text,
     keyboard_layout = NormalizeKeyboardLayout(opts.keyboard_layout or prev.keyboard_layout),
     boot_page = NormalizeBootPage(opts.boot_page or prev.boot_page),
-    multidisc_collapse = next_collapse
+    multidisc_collapse = next_collapse,
+    global_hide = next_global_hide
   }
   local apply_bdma = opts.apply_bdma == true
   local bdma_token = opts.bdma_token
@@ -3063,7 +3077,8 @@ function PLDR.CommitSettingsChanges(opts)
     return false, "save_failed"
   end
 
-  if (prev.multidisc_collapse == true) ~= (next_collapse == true)
+  if (((prev.multidisc_collapse == true) ~= (next_collapse == true))
+      or ((prev.global_hide == true) ~= (next_global_hide == true)))
      and type(PLDR.HDD) == "table" and type(PLDR.HDD.WipeCache) == "function" then
     pcall(PLDR.HDD.WipeCache)
   end
@@ -3881,21 +3896,80 @@ local function IsSecondaryDisc(name)
   return n ~= nil and (tonumber(n) or 0) >= 2
 end
 
+-- Per-game hide layer: a "<name>.hide" sidecar next to "<name>.VCD" (like the
+-- "<name>.png" cover) marks a game hidden. It is read for free from the same
+-- directory listing during the scan. With PLDR.GLOBAL_HIDE on, hidden games are
+-- filtered out of the list; with it off they are kept and shown DIMMED so they
+-- can be managed (L2 toggles hide/unhide). PLDR.HIDDEN is a set keyed by the
+-- exact PLDR.GAMES entry string for the current device.
+PLDR.HIDDEN = PLDR.HIDDEN or {}
+
+local function HideBasenameOf(vcd_name)
+  return (string.gsub(string.lower(tostring(vcd_name or "")), "%.vcd$", ""))
+end
+
+local function CollectHideBasenames(DIR)
+  local set = {}
+  if type(DIR) ~= "table" then return set end
+  for i = 1, #DIR do
+    local e = DIR[i]
+    if type(e) == "table" and not e.directory and type(e.name) == "string"
+       and string.lower(string.sub(e.name, -5)) == ".hide" then
+      set[string.lower(string.sub(e.name, 1, -6))] = true
+    end
+  end
+  return set
+end
+
+function PLDR.IsGameHidden(entry)
+  return type(PLDR.HIDDEN) == "table" and entry ~= nil and PLDR.HIDDEN[entry] == true
+end
+
+-- Write/remove the "<name>.hide" sidecar given a game's resolved .VCD path.
+-- NON-HDD only -- the bundled ps2hdd-osd.irx cannot reliably write PFS, so the
+-- UI gates HDD games out before calling this.
+function PLDR.SetGameHidden(entry, vcd_path, hide_bool)
+  if type(vcd_path) ~= "string" or vcd_path == "" then return false, "no_path" end
+  local hide_path = string.gsub(vcd_path, "%.[Vv][Cc][Dd]$", ".hide")
+  if hide_path == vcd_path then hide_path = vcd_path..".hide" end
+  if type(PLDR.HIDDEN) ~= "table" then PLDR.HIDDEN = {} end
+  if hide_bool then
+    local ok = pcall(function()
+      local fd = System.openFile(hide_path, FCREATE)
+      if type(fd) == "number" and fd >= 0 then System.closeFile(fd) end
+    end)
+    if not ok or not doesFileExist(hide_path) then return false, "write_failed" end
+    PLDR.HIDDEN[entry] = true
+  else
+    if doesFileExist(hide_path) then
+      if not pcall(System.removeFile, hide_path) then return false, "remove_failed" end
+    end
+    PLDR.HIDDEN[entry] = nil
+  end
+  return true
+end
+
 function PLDR.GetPS1GameLists(path, updating, on_progress)
   local RET = {}
   local found_smth = false
   if path ~= nil then PLDR.GAMEPATH = path end
+  if not updating then PLDR.HIDDEN = {} end
   local DIR = System.listDirectory(PLDR.GAMEPATH)
   if DIR ~= nil then
+    local hide_set = CollectHideBasenames(DIR)
     for i = 1, #DIR do
       if not DIR[i].directory then -- not a folder
         if string.lower(string.sub(DIR[i].name,-4)) == ".vcd"
            and not (PLDR.COLLAPSE_MULTIDISC and IsSecondaryDisc(DIR[i].name)) then
-          found_smth = true
-          if updating then
-            table.insert(PLDR.GAMES, DIR[i].name)
-          else
-            table.insert(RET, DIR[i].name)
+          local is_hidden = hide_set[HideBasenameOf(DIR[i].name)] == true
+          if not (PLDR.GLOBAL_HIDE and is_hidden) then
+            found_smth = true
+            if is_hidden then PLDR.HIDDEN[DIR[i].name] = true end
+            if updating then
+              table.insert(PLDR.GAMES, DIR[i].name)
+            else
+              table.insert(RET, DIR[i].name)
+            end
           end
         end
       end
@@ -3957,6 +4031,7 @@ end
 
 function PLDR.BuildMassGameListByType(kind, mass_snapshot, on_progress)
   PLDR.CleanupGameList()
+  PLDR.HIDDEN = {}
   local roots = PLDR.GetRootsByType(kind, mass_snapshot)
   local found_any = false
   local total_roots = #roots
@@ -3965,13 +4040,19 @@ function PLDR.BuildMassGameListByType(kind, mass_snapshot, on_progress)
     if doesFolderExist(pops_root) then
       local DIR = System.listDirectory(pops_root)
       if DIR ~= nil then
+        local hide_set = CollectHideBasenames(DIR)
         local dir_total = #DIR
         for j = 1, dir_total do
           local entry = DIR[j]
           if not entry.directory and string.lower(string.sub(entry.name, -4)) == ".vcd"
              and not (PLDR.COLLAPSE_MULTIDISC and IsSecondaryDisc(entry.name)) then
-            found_any = true
-            table.insert(PLDR.GAMES, pops_root.."|"..entry.name)
+            local is_hidden = hide_set[HideBasenameOf(entry.name)] == true
+            if not (PLDR.GLOBAL_HIDE and is_hidden) then
+              found_any = true
+              local enc = pops_root.."|"..entry.name
+              if is_hidden then PLDR.HIDDEN[enc] = true end
+              table.insert(PLDR.GAMES, enc)
+            end
           end
           if type(on_progress) == "function" then
             local ratio = i / math.max(total_roots, 1)
@@ -4020,15 +4101,20 @@ local function AppendHddGameList(partition, list_path, on_progress, partition_in
     end
     return
   end
+  local hide_set = CollectHideBasenames(DIR)
   local total_entries = #DIR
   for i = 1, #DIR do
     if not DIR[i].directory then
       if string.lower(string.sub(DIR[i].name, -4)) == ".vcd"
          and not (PLDR.COLLAPSE_MULTIDISC and IsSecondaryDisc(DIR[i].name)) then
-        local encoded = EncodeHddGameEntry(partition, DIR[i].name)
-        if encoded ~= nil then
-          table.insert(PLDR.GAMES, encoded)
-          PLDR.HDD.GAMEPARTS[encoded] = "hdd0:"..partition
+        local is_hidden = hide_set[HideBasenameOf(DIR[i].name)] == true
+        if not (PLDR.GLOBAL_HIDE and is_hidden) then
+          local encoded = EncodeHddGameEntry(partition, DIR[i].name)
+          if encoded ~= nil then
+            if is_hidden then PLDR.HIDDEN[encoded] = true end
+            table.insert(PLDR.GAMES, encoded)
+            PLDR.HDD.GAMEPARTS[encoded] = "hdd0:"..partition
+          end
         end
       end
     end
@@ -4076,6 +4162,7 @@ function PLDR.HDD.BuildGameList(on_progress)
   -- cache here double-counted entries (it then appended a fresh scan) and left
   -- GAMEPARTS empty, which is why USECACHE used to be disabled.
   PLDR.GAMES = {}
+  PLDR.HIDDEN = {}
   PLDR.HDD.GAMEPARTS = {}
   PLDR.HDD.FROM_CACHE = false
   PLDR.GAMEPATH = BuildMountedPfsPrefix(GetActiveHddGameSlot())
@@ -4154,6 +4241,17 @@ function PLDR.HDD.CreateCache(reuse_current_list)
     temp = temp..("  %q,\n"):format(cache_source[i])
   end
   temp = temp.."\n}\n"
+  -- Persist the hide set so dimming (Global Hide off) survives a cold-boot disk
+  -- cache hit; with Global Hide on, hidden games are already filtered out above.
+  temp = temp.."PLDR.HDDCACHE_HIDDEN = {\n"
+  if type(PLDR.HIDDEN) == "table" then
+    for i = 1, #cache_source do
+      if PLDR.HIDDEN[cache_source[i]] == true then
+        temp = temp..("  [%q]=true,\n"):format(cache_source[i])
+      end
+    end
+  end
+  temp = temp.."\n}\n"
   -- Guard the cache write: on an MC/USB boot the cache lands on mc0:/usb, which
   -- can be full or read-only. An unguarded openFile/writeFile would throw out of
   -- EnsureGameList and resurface as "Failed to load HDD" even after a clean scan.
@@ -4190,6 +4288,7 @@ function PLDR.HDD.WipeCache(CACHE)
   -- multi-disc-collapse toggle had no visible effect until a reboot or a
   -- manual R1 rescan -- EnsureGameList(force=false) returned the stale memo.
   PLDR.HDDCACHE = nil
+  PLDR.HDDCACHE_HIDDEN = nil
   PLDR.HDD.LIST_BUILT = false
   local C = ResolveWritablePath("hdd_gamecache.lua")
   if doesFileExist(C) then
@@ -4205,6 +4304,10 @@ end
 function PLDR.HDD.ApplyCachedList()
   PLDR.GAMES = {}
   PLDR.HDD.GAMEPARTS = {}
+  PLDR.HIDDEN = {}
+  if type(PLDR.HDDCACHE_HIDDEN) == "table" then
+    for k, v in pairs(PLDR.HDDCACHE_HIDDEN) do if v == true then PLDR.HIDDEN[k] = true end end
+  end
   if type(PLDR.HDDCACHE) == "table" then
     for i = 1, #PLDR.HDDCACHE do
       local enc = PLDR.HDDCACHE[i]
@@ -4282,6 +4385,10 @@ function PLDR.HDD.EnsureGameList(partition_progress, game_progress, force)
   PLDR.HDDCACHE = {}
   for i = 1, #PLDR.GAMES do
     PLDR.HDDCACHE[i] = PLDR.GAMES[i]
+  end
+  PLDR.HDDCACHE_HIDDEN = {}
+  if type(PLDR.HIDDEN) == "table" then
+    for k, v in pairs(PLDR.HIDDEN) do if v == true then PLDR.HDDCACHE_HIDDEN[k] = true end end
   end
   if PLDR.HDD.USECACHE and type(PLDR.HDD.CreateCache) == "function" then
     PLDR.HDD.CreateCache(true)

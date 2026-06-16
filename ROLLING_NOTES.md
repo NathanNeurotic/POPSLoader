@@ -10,6 +10,7 @@ Here's everything new or changed **since BETA-9**.
 
 - **Boot Page** — *Settings → Startup.* Choose where POPSLoader opens after boot: the device carousel (default), or jump straight into a specific device's game list (**MX4SIO / USB / MMCE / HDD**).
 - **Multi-disc games** — *Settings → Game List.* Optionally hide the extra discs of multi-disc games so only **Disc 1** shows. It works by **filename**, so name your files like `Game (Disc 1).VCD` / `Game (Disc 2).VCD`. Launch Disc 1 and swap discs in-game with your VMC.
+- **Hide games** — press **L2** on any game to hide/unhide it (drops a tiny `<name>.hide` file next to its `.VCD`, like the cover `.png`). *Settings → Game List → Hidden games:* **Hidden** filters them out of the list; **Visible (manage)** shows them dimmed so you can toggle with L2. In-app L2 hiding works on USB / MX4SIO / MMCE / Memory Card; on internal **HDD** it's read-only for now (add/remove the `.hide` file from a PC — the HDD probe above is testing whether in-app HDD writes can be unlocked).
 - **HDD settings test** — on an HDD install, saving Settings pops a small message telling us whether your HDD can store settings directly. It's just a probe (your settings are unaffected) — please report what it says.
 
 ## 🎮 Since BETA-9 — the big stuff

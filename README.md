@@ -143,6 +143,7 @@ Press **Start** on the menu to open Settings; changes save when you confirm. Set
 | Setting | Options | What it does |
 | :--- | :--- | :--- |
 | **Multi-disc games** | **Show all discs** (default) · First disc only | *First disc only* hides the secondary discs of multi-disc games so only disc 1 shows. **Detection is purely by filename** — a disc is hidden if its name contains `(Disc 2)`, `(Disc 3)`, `(CD 2)`, `(Disk 2)`… (any number ≥ 2). So it **only works if you name your files with that convention**, e.g. `Final Fantasy IX (Disc 1).VCD` / `Final Fantasy IX (Disc 2).VCD`. Launch disc 1 and swap discs in-game via your VMC. (PS1 discs carry no shared "this is the same game" metadata, so the filename is the only signal.) Applies to every device. |
+| **Hidden games** | **Visible (manage)** (default) · Hidden | Per-game hide layer. Press **L2** on any game to hide or unhide it — this writes (or removes) a tiny `<name>.hide` marker next to the game's `.VCD`, exactly like the `<name>.png` cover. *Hidden* filters tagged games out of the list; *Visible (manage)* shows them **dimmed** so you can manage them with L2. In-app L2 hiding works on USB / MX4SIO / MMCE / Memory Card. On the internal **HDD** the `.hide` files are **read-only** (the bundled `ps2hdd-osd.irx` can't reliably write PFS) — add or remove them from a PC; the list still honors them. |
 
 ### Other settings
 

@@ -77,6 +77,10 @@ end
 -- end in .VCD (e.g. "Bomberman" -> "Bombe"). A generic last-extension strip
 -- can't be used either: it would eat the tail of titles containing a dot
 -- ("Mr. Driller" -> "Mr"). So match .VCD specifically.
+-- Faded palette for hidden games shown in the "manage" view (Global Hide off).
+-- The existing GREY renders brighter than LIST_UNSELECTED; these read as dimmer.
+local LIST_HIDDEN_COLOR = Color.new(92, 94, 120, 70)
+local LIST_HIDDEN_SELECTED_COLOR = Color.new(150, 152, 182, 110)
 local function StripVcdExtension(name)
   local s = tostring(name or "")
   return (string.gsub(s, "%.[Vv][Cc][Dd]$", ""))
@@ -2148,6 +2152,8 @@ UI = {
         UI.SettingsEntryBootPageIndex = UI.BootPageIndex
         UI.MultiDiscCollapse = (type(PLDR) == "table" and PLDR.COLLAPSE_MULTIDISC == true)
         UI.SettingsEntryMultiDiscCollapse = UI.MultiDiscCollapse
+        UI.GlobalHide = (type(PLDR) == "table" and PLDR.GLOBAL_HIDE == true)
+        UI.SettingsEntryGlobalHide = UI.GlobalHide
         UI.SettingsEntryKeyboardLayout = tostring(UI.KeyboardLayoutDraft or (type(PLDR) == "table" and PLDR.KEYBOARD_LAYOUT) or "QWERTY")
         UI.SettingsFocus = 1
         UI.SceneChange(UI.SCENES.MPROFILE)
@@ -2247,6 +2253,9 @@ UI = {
             display_name = string.match(hdd_relpath, "([^/]+)$") or hdd_relpath
           end
 	          local c = (i == UI.GameList.CURR) and UI.COLORS.LIST_SELECTED or UI.COLORS.LIST_UNSELECTED
+          if PLDR.IsGameHidden and PLDR.IsGameHidden(PLDR.GAMES[i]) then
+            c = (i == UI.GameList.CURR) and LIST_HIDDEN_SELECTED_COLOR or LIST_HIDDEN_COLOR
+          end
           local label = StripVcdExtension(display_name)
           -- Only the focused row scrolls (OPL-style); others clip as before.
           if i == UI.GameList.CURR then
@@ -2438,6 +2447,23 @@ UI = {
             UI.Notif_queue.add("HDD list refreshed", "ok")
           end
         end
+        if UI.Pad.Events.L2 and ammount > 0 then
+          if PLDR.GLOBAL_HIDE then
+            UI.Notif_queue.add("[Global Hide ON]\nTurn 'Hidden games' off in Settings to manage", "warn")
+          elseif UI.CURSCENE == UI.SCENES.GHDD then
+            UI.Notif_queue.add("HDD games are read-only here.\nAdd a \"<game>.hide\" file next to the .VCD from a PC.", "warn")
+          else
+            local entry = PLDR.GAMES[UI.GameList.CURR]
+            local vcd_path = ResolveSelectedVcdPath(entry, PLDR.GAMEPATH)
+            local was_hidden = PLDR.IsGameHidden(entry)
+            local ok, reason = PLDR.SetGameHidden(entry, vcd_path, not was_hidden)
+            if ok then
+              UI.Notif_queue.add(was_hidden and "Game shown" or "Game hidden", "ok")
+            else
+              UI.Notif_queue.add("Couldn't update hidden state ("..tostring(reason)..")", "error")
+            end
+          end
+        end
         local cross_label = UI.Footer.labels.cross_launch
         if ammount <= 0 then
           cross_label = UI.Footer.labels.cross_confirm
@@ -2589,6 +2615,7 @@ UI = {
           local boot_page_entry = UI.BootPageModes[UI.BootPageIndex] or UI.BootPageModes[1]
           local boot_page_key = boot_page_entry and boot_page_entry.key or "Carousel"
           local multidisc_collapse_val = UI.MultiDiscCollapse == true
+          local global_hide_val = UI.GlobalHide == true
           local ok_run, result, reason = xpcall(function()
             if type(PLDR.CommitSettingsChanges) == "function" then
               return PLDR.CommitSettingsChanges({
@@ -2601,6 +2628,7 @@ UI = {
                 keyboard_layout = UI.KeyboardLayoutDraft or (type(PLDR) == "table" and PLDR.KEYBOARD_LAYOUT) or "QWERTY",
                 boot_page = boot_page_key,
                 multidisc_collapse = multidisc_collapse_val,
+                global_hide = global_hide_val,
                 hide_text = UI.HideTextMode == true,
                 prev_hide_text = UI.SettingsEntryHideTextMode == true,
                 apply_bdma = UI.BdmaDirty,
@@ -2624,6 +2652,7 @@ UI = {
             end
             PLDR.BOOT_PAGE = boot_page_key
             PLDR.COLLAPSE_MULTIDISC = multidisc_collapse_val
+            PLDR.GLOBAL_HIDE = global_hide_val
             if type(PLDR.ApplyVideoStandardRuntime) == "function" then
               PLDR.ApplyVideoStandardRuntime(video_key)
             end
@@ -2750,6 +2779,10 @@ UI = {
           end
           if UI.MultiDiscCollapse == true then
             UI.MultiDiscCollapse = false
+            UI.ProfileDirty = true
+          end
+          if UI.GlobalHide == true then
+            UI.GlobalHide = false
             UI.ProfileDirty = true
           end
           local default_video_key = VIDEO_STANDARD_NTSC
@@ -2892,6 +2925,13 @@ UI = {
           function() UI.MultiDiscCollapse = not UI.MultiDiscCollapse end,
           function() UI.MultiDiscCollapse = not UI.MultiDiscCollapse end,
           function() return (UI.MultiDiscCollapse == true) ~= (UI.SettingsEntryMultiDiscCollapse == true) end
+        )
+        AddCycle(
+          "Hidden games",
+          function() return UI.GlobalHide and "Hidden" or "Visible (manage)" end,
+          function() UI.GlobalHide = not UI.GlobalHide end,
+          function() UI.GlobalHide = not UI.GlobalHide end,
+          function() return (UI.GlobalHide == true) ~= (UI.SettingsEntryGlobalHide == true) end
         )
 
         AddSection("POPSTARTER")
@@ -3588,6 +3628,7 @@ UI = {
         UI.Pad.Events.L1 = false
         UI.Pad.Events.R1 = false
         UI.Pad.Events.R2 = false
+        UI.Pad.Events.L2 = false
         UI.Pad.Events.ANY = false
 
         local function emit(event)
@@ -3618,6 +3659,7 @@ UI = {
         if (pressed & PAD_L1) ~= 0 then emit_action("L1") end
         if (pressed & PAD_R1) ~= 0 then emit_action("R1") end
         if (pressed & PAD_R2) ~= 0 then emit_action("R2") end
+        if (pressed & PAD_L2) ~= 0 then emit_action("L2") end
 
         local function resolve_nav(dir, is_down)
           local was_down = UI.Pad.NavHeld[dir] == true
