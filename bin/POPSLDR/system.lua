@@ -996,15 +996,23 @@ function PLDR.HDD.EnsureBootPartitionWritable()
   if PLDR.SETTINGS_HDD_PARTITION == nil then return false end
   if type(HDD) ~= "table" or type(HDD.MountPartition) ~= "function"
      or type(HDD.UMountPartition) ~= "function" then return false end
-  local slot = tonumber(string.match(tostring(APP_DIR_LOCAL or ""), "^[Pp][Ff][Ss](%d+):")) or 0
+  -- F-13: only ever operate on a real pfsN: cwd. A parse miss must NOT silently
+  -- default to slot 0 -- that could unmount/remount an unrelated partition.
+  local slot = tonumber(string.match(tostring(APP_DIR_LOCAL or ""), "^[Pp][Ff][Ss](%d+):"))
+  if slot == nil then return false end
   pcall(HDD.UMountPartition, slot)
   local ok, mounted = pcall(HDD.MountPartition, PLDR.SETTINGS_HDD_PARTITION, slot, FIO_MT_RDWR)
   if ok and mounted == true then
     PLDR.HDD.BOOT_PARTITION_RW = true
     return true
   end
-  -- RW remount failed -- restore a read-only mount so the cwd stays accessible.
-  pcall(HDD.MountPartition, PLDR.SETTINGS_HDD_PARTITION, slot, FIO_MT_RDONLY)
+  -- RW remount failed -- restore a read-only mount so the cwd stays accessible. F-6:
+  -- if even the RO restore fails the cwd now has NO mount; that is not silently
+  -- recoverable, so surface it loudly (a reboot re-mounts the boot partition cleanly).
+  local ro_ok, ro_mounted = pcall(HDD.MountPartition, PLDR.SETTINGS_HDD_PARTITION, slot, FIO_MT_RDONLY)
+  if not (ro_ok and ro_mounted == true) and type(UI) == "table" and type(UI.Notif_queue) == "table" then
+    UI.Notif_queue.add("HDD boot mount lost during settings write\nReboot to restore HDD access", "error")
+  end
   return false
 end
 
@@ -2001,8 +2009,12 @@ local function LoadIrxFromDir(dir)
       local name = entry.name
       if name ~= nil and string.lower(string.sub(name, -4)) == ".irx" then
         local PATH = ResolveIrx(name) or JoinPath(normalized, name)
-        local ID, RET = IOP.loadModule(PATH)
-        loaded = true
+        -- F-1: IOP is a C-binding global; guard it. A nil-global deref is invisible
+        -- to luac/CI and only faults on real hardware -- the loadfile-class trap.
+        if type(IOP) == "table" and type(IOP.loadModule) == "function" then
+          local ID, RET = IOP.loadModule(PATH)
+          loaded = true
+        end
       end
     end
   end
@@ -2794,7 +2806,11 @@ function PLDR.EnsurePopstarterDir()
   return EnsurePopstarterPackDir(PLDR.POPSTARTER_DIR)
 end
 
-local function RecursiveRemoveDir(dir, preserve_path)
+local function RecursiveRemoveDir(dir, preserve_path, depth)
+  -- F-12: bound the recursion. mc:/POPSTARTER is shallow; a pathological or looping
+  -- structure must not blow the Lua stack. 16 levels is far past any real layout.
+  depth = depth or 0
+  if depth > 16 then return end
   local entries = System.listDirectory(dir)
   if type(entries) == "table" then
     for i = 1, #entries do
@@ -2802,7 +2818,7 @@ local function RecursiveRemoveDir(dir, preserve_path)
       if name ~= nil and name ~= "." and name ~= ".." then
         local full = dir.."/"..name
         if entries[i].directory then
-          RecursiveRemoveDir(full, preserve_path)
+          RecursiveRemoveDir(full, preserve_path, depth + 1)
         elseif full ~= preserve_path then
           pcall(System.removeFile, full)
         end
@@ -2904,7 +2920,9 @@ local function NormalizeBdmaModeKey(mode)
     return nil
   end
   local value = string.upper(tostring(mode or ""))
-  value = string.gsub(value, "[%s_%-]", "")
+  -- F-28: strip ALL non-alphanumerics. Every key is alphanumeric (FAT32/USBEXFAT/
+  -- MX4SIO/MMCE), so quoting or paren artifacts from any source can't dodge the match.
+  value = string.gsub(value, "[^%w]", "")
   if value == "FAT32" then
     return "FAT32"
   elseif value == "USBEXFAT" or value == "EXFAT" then
@@ -4591,7 +4609,13 @@ function PLDR.HDD.EnsureGameList(partition_progress, game_progress, force)
   PLDR.HDD.HAS_CHECKED = false
   local _hdd_diag = function(where, err)
     if type(UI) == "table" and type(UI.Notif_queue) == "table" then
-      UI.Notif_queue.add("Failed to load HDD", "error")
+      -- F-5: surface the REAL scan error + which step faulted, not a bare generic.
+      -- The 3-month loadfile blindness was exactly this swallow class one level up
+      -- (RunBusyTask); EnsureGameList catches the scan error itself, so RunBusyTask
+      -- never sees it -- it has to be surfaced HERE or it stays undebuggable.
+      local detail = tostring(err)
+      if #detail > 180 then detail = string.sub(detail, 1, 180).."..." end
+      UI.Notif_queue.add("Failed to load HDD ["..tostring(where).."]\n"..detail, "error")
     end
     PLDR.HDD.LIST_BUILT = false
   end
