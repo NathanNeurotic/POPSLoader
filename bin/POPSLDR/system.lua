@@ -1963,7 +1963,14 @@ local pldr_defaults = {
   HDDCACHE = nil;
   PROFILES = {};
   HDD = {
-    USECACHE = true;
+    -- DISABLED 2026-06-16: the on-disk cache was read back with loadfile(), but
+    -- loadfile is NIL in the embedded Lua runtime (luac -p can't see it) -- so
+    -- once a cache file existed, the next session's ReadCache threw "attempt to
+    -- call a nil value (global 'loadfile')" -> "Failed to load HDD" (provato,
+    -- system.lua:4282). The in-session memo still gives instant repeat opens;
+    -- only cross-session caching is off (HDD rescans per fresh boot, which works).
+    -- Re-enable only with a loadfile-free reader (plain-text format).
+    USECACHE = false;
     LIST_BUILT = false; -- in-session memo: HDD already scanned/loaded this boot
     FROM_CACHE = false; -- current PLDR.GAMES came from cache, not a fresh scan
     LOADSTATE = 0; -- 0:NOT_LOADED, 1:LOADED, -1:LOADED_BUT_FAILED
@@ -4279,6 +4286,14 @@ end
 function PLDR.HDD.ReadCache()
   local C = ResolveWritablePath("hdd_gamecache.lua")
   if doesFileExist(C) then
+    if type(loadfile) ~= "function" then
+      -- loadfile is stripped from the embedded Lua runtime; calling it threw
+      -- "attempt to call a nil value (global 'loadfile')". Never call it -- drop
+      -- any stale cache and let EnsureGameList fall through to a fresh scan.
+      pcall(System.removeFile, C)
+      PLDR.HDD.HAS_CHECKED = false
+      return
+    end
     local loader, load_err = loadfile(C)
     if loader == nil then
       System.removeFile(C)
