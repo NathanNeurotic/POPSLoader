@@ -2113,36 +2113,18 @@ if type(System) == "table" and type(System.getLaunchArgs) == "function" then
   end
 end
 
-PLDR.VIDEO_STANDARD_AUTO = "AUTO"
 PLDR.VIDEO_STANDARD_NTSC = "NTSC"
 PLDR.VIDEO_STANDARD_PAL = "PAL"
-
--- The GS boots in the console's BIOS region (gsKit_check_rom) before any Lua
--- runs. Capture that mode ONCE here, before anything calls Screen.setMode, so
--- "Auto" resolves to the console's native region even after the user switches
--- modes and back. PAL console -> GS_MODE_PAL; NTSC console -> GS_MODE_NTSC.
-local CONSOLE_REGION_MODE = NTSC
-if type(Screen) == "table" and type(Screen.getMode) == "function" then
-  local ok_region, region = pcall(Screen.getMode)
-  if ok_region and type(region) == "table" and type(region.mode) == "number" then
-    CONSOLE_REGION_MODE = region.mode
-  end
-end
-PLDR.CONSOLE_REGION_MODE = CONSOLE_REGION_MODE
-
 PLDR.KEYBOARD_LAYOUT_ABC = "ABC"
 PLDR.KEYBOARD_LAYOUT_QWERTY = "QWERTY"
 PLDR.KEYBOARD_LAYOUT_DVORAK = "DVORAK"
 
 local function NormalizeVideoStandard(value)
   local key = string.upper(tostring(value or ""))
-  if key == PLDR.VIDEO_STANDARD_NTSC then
-    return PLDR.VIDEO_STANDARD_NTSC
-  end
   if key == PLDR.VIDEO_STANDARD_PAL then
     return PLDR.VIDEO_STANDARD_PAL
   end
-  return PLDR.VIDEO_STANDARD_AUTO
+  return PLDR.VIDEO_STANDARD_NTSC
 end
 
 local function NormalizeKeyboardLayout(value)
@@ -2168,23 +2150,12 @@ local function BuildVideoStandardSpec(standard)
       fps = 50
     }
   end
-  if key == PLDR.VIDEO_STANDARD_NTSC then
-    return {
-      key = PLDR.VIDEO_STANDARD_NTSC,
-      mode = NTSC,
-      width = 640,
-      height = 448,
-      fps = 60
-    }
-  end
-  -- AUTO: follow the console's native region (captured at boot), so we never
-  -- force a mode switch the user didn't ask for. Explicit NTSC/PAL above force.
   return {
-    key = PLDR.VIDEO_STANDARD_AUTO,
-    mode = CONSOLE_REGION_MODE,
+    key = PLDR.VIDEO_STANDARD_NTSC,
+    mode = NTSC,
     width = 640,
     height = 448,
-    fps = (CONSOLE_REGION_MODE == PAL) and 50 or 60
+    fps = 60
   }
 end
 
@@ -2939,7 +2910,7 @@ function PLDR.LoadSettingsNonFatal()
   PLDR.BDMA_MODE_KEY = "FAT32"
   PLDR.POPSTARTER_SELECTION_MODE = POPSTARTER_MODE_PROFILE_DEFAULT
   PLDR.STRICT_HDD_PREEXEC_GATE = false
-  PLDR.VIDEO_STANDARD = PLDR.VIDEO_STANDARD_AUTO
+  PLDR.VIDEO_STANDARD = PLDR.VIDEO_STANDARD_NTSC
   PLDR.DKWDRV_PATH = tostring(PLDR.DKWDRV_DEFAULT_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
   PLDR.KEYBOARD_LAYOUT = PLDR.KEYBOARD_LAYOUT_ABC
   PLDR.BOOT_PAGE = "Carousel"
