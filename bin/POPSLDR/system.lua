@@ -2414,6 +2414,23 @@ PLDR.POPSTARTER_DIR = "mc0:/POPSTARTER"
 PLDR.SETTINGS_PATH_FALLBACK = "mc0:/POPSTARTER/.pldrs"
 PLDR.SETTINGS_PATH_SIDECAR = ResolveBootContext().sidecar_path
 PLDR.SETTINGS_PATH = PLDR.SETTINGS_PATH_SIDECAR or PLDR.SETTINGS_PATH_FALLBACK
+-- HDD-cwd install: POPSLoader booted FROM the HDD, so its settings belong ON the
+-- HDD next to it (the cwd) -- NEVER scattered to mc0: (a single-device HDD setup
+-- may have no memory card at all). The boot partition is mounted read-only as
+-- pfs0:, so reads come straight off it; saves try a direct write first (works if
+-- the boot mount is RW) then a scoped RW remount (PLDR.HDD.WriteGamePartitionFile,
+-- the path the write-probe proved). No mc0: fallback: a failed HDD save is a loud
+-- error, not a silent scatter to a card.
+do
+  local hdd_part = ParseHddPartitionMount(APP_DIR_RAW or "")
+  if hdd_part ~= nil and IsPfsMountedPath(APP_DIR_LOCAL) then
+    local rel_dir = string.gsub(tostring(APP_DIR_LOCAL or ""), "^[Pp][Ff][Ss]%d*:/+", "")
+    PLDR.SETTINGS_HDD_PARTITION = hdd_part
+    PLDR.SETTINGS_HDD_RELPATH = rel_dir..".pldrs"
+    PLDR.SETTINGS_PATH_SIDECAR = JoinPath(APP_DIR_LOCAL, ".pldrs")
+    PLDR.SETTINGS_PATH = PLDR.SETTINGS_PATH_SIDECAR
+  end
+end
 PLDR.BDMA_MODE_KEY = "FAT32"
 PLDR.SELECTED_PROFILE = tonumber(PLDR.DEFAULT_PROFILE) or 1
 PLDR.DKWDRV_DEFAULT_PATH = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
@@ -2950,6 +2967,20 @@ function PLDR.ReconcileBdmaModeWithEffectiveState()
 end
 
 function PLDR.SaveSettingsAtomic()
+  local data = EncodeSettings()
+  -- HDD-cwd install: settings live ON the HDD next to POPSLoader, NEVER mc0:. Try
+  -- a direct write to the boot partition (works if it mounted read-write), else a
+  -- scoped RW remount. A failure is surfaced loudly -- we do NOT scatter to a card.
+  if PLDR.SETTINGS_HDD_PARTITION ~= nil and PLDR.SETTINGS_HDD_RELPATH ~= nil then
+    local ok = WriteAtomic(PLDR.SETTINGS_PATH, data)
+    if not ok then
+      ok = (PLDR.HDD.WriteGamePartitionFile(PLDR.SETTINGS_HDD_PARTITION, PLDR.SETTINGS_HDD_RELPATH, data)) == true
+    end
+    if not ok and UI ~= nil and UI.Notif_queue ~= nil then
+      UI.Notif_queue.add("Couldn't save settings to the HDD", "error")
+    end
+    return ok
+  end
   local target = PLDR.SETTINGS_PATH or PLDR.SETTINGS_PATH_FALLBACK
   local target_is_mc = (target == PLDR.SETTINGS_PATH_FALLBACK)
   -- Always best-effort the MC POPSTARTER pack dir so the BDMA OSD icon
@@ -2964,7 +2995,6 @@ function PLDR.SaveSettingsAtomic()
     end
     return false
   end
-  local data = EncodeSettings()
   local ok = WriteAtomic(target, data)
   if not ok and UI ~= nil and UI.Notif_queue ~= nil then
     UI.Notif_queue.add("Failed to save settings")
