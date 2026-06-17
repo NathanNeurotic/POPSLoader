@@ -2170,6 +2170,17 @@ UI = {
           end
         end
         UI.SettingsEntryBootPageIndex = UI.BootPageIndex
+        -- Carousel device-visibility draft ({KEY=true} set of hidden devices) +
+        -- entry snapshot for the dirty check.
+        UI.DeviceHiddenDraft = {}
+        UI.SettingsEntryHiddenSet = {}
+        if type(PLDR) == "table" then
+          for token in string.gmatch(string.upper(tostring(PLDR.HIDDEN_DEVICES or "")), "[^,%s]+") do
+            UI.DeviceHiddenDraft[token] = true
+            UI.SettingsEntryHiddenSet[token] = true
+          end
+        end
+        UI.SettingsEntryHiddenDevices = (type(PLDR) == "table" and type(PLDR.NormalizeHiddenDevices) == "function") and PLDR.NormalizeHiddenDevices(UI.DeviceHiddenDraft) or ""
         UI.MultiDiscCollapse = (type(PLDR) == "table" and PLDR.COLLAPSE_MULTIDISC == true)
         UI.SettingsEntryMultiDiscCollapse = UI.MultiDiscCollapse
         UI.GlobalHide = (type(PLDR) == "table" and PLDR.GLOBAL_HIDE == true)
@@ -2660,6 +2671,7 @@ UI = {
                 video_standard = video_key,
                 keyboard_layout = UI.KeyboardLayoutDraft or (type(PLDR) == "table" and PLDR.KEYBOARD_LAYOUT) or "QWERTY",
                 boot_page = boot_page_key,
+                hidden_devices = UI.DeviceHiddenDraft,
                 multidisc_collapse = multidisc_collapse_val,
                 global_hide = global_hide_val,
                 hide_text = UI.HideTextMode == true,
@@ -2684,6 +2696,9 @@ UI = {
               PLDR.KEYBOARD_LAYOUT = UI.KeyboardLayoutDraft or PLDR.KEYBOARD_LAYOUT or "QWERTY"
             end
             PLDR.BOOT_PAGE = boot_page_key
+            if type(UI.DeviceHiddenDraft) == "table" and type(PLDR.NormalizeHiddenDevices) == "function" then
+              PLDR.HIDDEN_DEVICES = PLDR.NormalizeHiddenDevices(UI.DeviceHiddenDraft)
+            end
             PLDR.COLLAPSE_MULTIDISC = multidisc_collapse_val
             PLDR.GLOBAL_HIDE = global_hide_val
             if type(PLDR.ApplyVideoStandardRuntime) == "function" then
@@ -2985,6 +3000,44 @@ UI = {
           function() UI.BootPageIndex = CycleIndex(UI.BootPageIndex,  1, #UI.BootPageModes) end,
           function() return (UI.BootPageIndex or 1) ~= (UI.SettingsEntryBootPageIndex or 1) end
         )
+
+        -- Carousel device visibility checklist: a Shown/Hidden row per main-menu
+        -- device. Toggling hides/shows it on the carousel (all shown by default).
+        AddSection("Carousel Devices")
+        if type(PLDR) == "table" and type(PLDR.CAROUSEL_DEVICE_KEYS) == "table" then
+          local function ToggleDevice(dkey)
+            if type(UI.DeviceHiddenDraft) ~= "table" then UI.DeviceHiddenDraft = {} end
+            if UI.DeviceHiddenDraft[dkey] then
+              UI.DeviceHiddenDraft[dkey] = nil
+            else
+              local visible = 0
+              for di = 1, #PLDR.CAROUSEL_DEVICE_KEYS do
+                if not UI.DeviceHiddenDraft[PLDR.CAROUSEL_DEVICE_KEYS[di]] then visible = visible + 1 end
+              end
+              if visible <= 1 then
+                UI.Notif_queue.add("At least one device must stay on the carousel", "warn")
+                return
+              end
+              UI.DeviceHiddenDraft[dkey] = true
+            end
+            UI.ProfileDirty = true
+          end
+          for di = 1, #PLDR.CAROUSEL_DEVICE_KEYS do
+            local dkey = PLDR.CAROUSEL_DEVICE_KEYS[di]
+            local dlabel = (type(UI.MainMenu) == "table" and type(UI.MainMenu.opts) == "table" and UI.MainMenu.opts[di]) or dkey
+            AddCycle(
+              dlabel,
+              function() return (type(UI.DeviceHiddenDraft) == "table" and UI.DeviceHiddenDraft[dkey]) and "Hidden" or "Shown" end,
+              function() ToggleDevice(dkey) end,
+              function() ToggleDevice(dkey) end,
+              function()
+                local d = (type(UI.DeviceHiddenDraft) == "table" and UI.DeviceHiddenDraft[dkey]) and true or false
+                local e = (type(UI.SettingsEntryHiddenSet) == "table" and UI.SettingsEntryHiddenSet[dkey]) and true or false
+                return d ~= e
+              end
+            )
+          end
+        end
 
         AddSection("Game List")
         AddCycle(
@@ -3361,6 +3414,24 @@ UI = {
           local key = icon_map[opt] or opt
           icon_keys[x] = key
         end
+        -- Carousel device visibility: drive nav + render over the VISIBLE subset
+        -- of opts so hidden devices are skipped with no gaps. With nothing hidden
+        -- this is the identity list (behavior unchanged). visible_seq[pos] = real
+        -- opts index; pos_of[real] = its position in the visible sequence.
+        local visible_seq = {}
+        local pos_of = {}
+        for x = 1, #UI.MainMenu.opts do
+          local dkey = (type(PLDR) == "table" and type(PLDR.CAROUSEL_DEVICE_KEYS) == "table") and PLDR.CAROUSEL_DEVICE_KEYS[x] or nil
+          local is_hidden = (type(PLDR) == "table" and type(PLDR.IsDeviceHidden) == "function" and PLDR.IsDeviceHidden(dkey)) == true
+          if not is_hidden then
+            visible_seq[#visible_seq + 1] = x
+            pos_of[x] = #visible_seq
+          end
+        end
+        if #visible_seq == 0 then
+          for x = 1, #UI.MainMenu.opts do visible_seq[x] = x; pos_of[x] = x end
+        end
+        profcnt = #visible_seq
         local function WrapIndex(index, count)
           return ((index - 1) % count) + 1
         end
@@ -3374,8 +3445,18 @@ UI = {
         carousel.last_ms = now_ms
         if dt_ms < 0 then dt_ms = 0 end
         if not carousel.animActive then
-          carousel.currentIndex = UI.MainMenu.OPT
-          carousel.scrollPos = carousel.currentIndex
+          local sync_pos = pos_of[UI.MainMenu.OPT]
+          if sync_pos == nil then
+            -- OPT points at a now-hidden device -- snap to the first visible one
+            -- and cancel any pending auto-enter so we don't enter the wrong device.
+            sync_pos = 1
+            carousel.allowOptWrite = true
+            UI.MainMenu.OPT = visible_seq[1]
+            carousel.allowOptWrite = false
+            UI.MainMenu.PendingAutoEnter = false
+          end
+          carousel.currentIndex = sync_pos
+          carousel.scrollPos = sync_pos
           carousel.slide = 0
         end
         if carousel.animActive then
@@ -3396,7 +3477,7 @@ UI = {
             carousel.animDir = 0
             carousel.slide = 0
             carousel.allowOptWrite = true
-            UI.MainMenu.OPT = carousel.currentIndex
+            UI.MainMenu.OPT = visible_seq[carousel.currentIndex] or visible_seq[1]
             carousel.allowOptWrite = false
           end
         end
@@ -3422,7 +3503,9 @@ UI = {
           UI.MainMenu.icons_ready = true
         end
         local function DrawIcon(index, x, y, color)
-          local key = icon_keys[index]
+          local real = visible_seq[index]
+          if real == nil then return end
+          local key = icon_keys[real]
           local icon = ResolveIcon(key)
           if icon == nil then return end
           local icon_w = Graphics.getImageWidth(icon)
@@ -3454,7 +3537,7 @@ UI = {
         local center_label_idx = carousel.animActive and carousel.targetIndex or base_sel
         local top_y = layout.TITLE_Y
         if not UI.ShouldHideAuxText(UI.CURSCENE) then
-          Font.ftPrint(UI.FONT.LABEL, UI.SCR.X_MID, top_y, 8, UI.SCR.X, 16, UI.MainMenu.opts[center_label_idx], UI.COLORS.TEXT_PRIMARY)
+          Font.ftPrint(UI.FONT.LABEL, UI.SCR.X_MID, top_y, 8, UI.SCR.X, 16, UI.MainMenu.opts[visible_seq[center_label_idx] or visible_seq[1]], UI.COLORS.TEXT_PRIMARY)
         end
         local status_y = top_y + 12
         local boot_label = UI.boot_device_label

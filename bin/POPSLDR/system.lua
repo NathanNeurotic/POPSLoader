@@ -2892,6 +2892,52 @@ function PLDR.BdmaSourceCandidates(rel)
   return out
 end
 
+-- Carousel device visibility: which main-menu carousel entries the user has
+-- hidden. Stored as a CSV of stable device KEYS (default empty = all shown),
+-- index-aligned with the carousel opts in ui.lua (MMCE / MX4SIO / HDD exFAT /
+-- HDD PFS / USB / i.Link / SMB / Disc DKWDRV). Persisted via the HIDDEN_DEVICES
+-- settings key. (PLDR exists here -- attach-after-init load-order is safe.)
+PLDR.CAROUSEL_DEVICE_KEYS = {"MMCE", "MX4SIO", "EXFAT", "PFS", "USB", "ILINK", "SMB", "DKWDRV"}
+local CAROUSEL_DEVICE_KEY_SET = {}
+for i = 1, #PLDR.CAROUSEL_DEVICE_KEYS do
+  CAROUSEL_DEVICE_KEY_SET[PLDR.CAROUSEL_DEVICE_KEYS[i]] = true
+end
+
+-- Normalize a hidden-devices value (a CSV string OR a {KEY=true} set table) to a
+-- clean CSV of known keys in canonical carousel order, deduped. REFUSES to hide
+-- every device (returns "" if asked to) so the carousel can never go empty.
+function PLDR.NormalizeHiddenDevices(value)
+  local hidden = {}
+  if type(value) == "table" then
+    for k, v in pairs(value) do
+      local key = string.upper(tostring(k))
+      if v == true and CAROUSEL_DEVICE_KEY_SET[key] then hidden[key] = true end
+    end
+  elseif value ~= nil then
+    for token in string.gmatch(string.upper(tostring(value)), "[^,%s]+") do
+      if CAROUSEL_DEVICE_KEY_SET[token] then hidden[token] = true end
+    end
+  end
+  local hidden_count = 0
+  for _ in pairs(hidden) do hidden_count = hidden_count + 1 end
+  if hidden_count >= #PLDR.CAROUSEL_DEVICE_KEYS then
+    return ""
+  end
+  local out = {}
+  for i = 1, #PLDR.CAROUSEL_DEVICE_KEYS do
+    if hidden[PLDR.CAROUSEL_DEVICE_KEYS[i]] then out[#out + 1] = PLDR.CAROUSEL_DEVICE_KEYS[i] end
+  end
+  return table.concat(out, ",")
+end
+
+-- True if the given carousel device key is currently hidden from the carousel.
+function PLDR.IsDeviceHidden(key)
+  if key == nil then return false end
+  local csv = string.upper(tostring(PLDR.HIDDEN_DEVICES or ""))
+  if csv == "" then return false end
+  return string.find(","..csv..",", ","..string.upper(tostring(key))..",", 1, true) ~= nil
+end
+
 -- Boot Page (persisted landing page after the boot sequence): "Carousel"
 -- (default device carousel) or a device key that auto-enters that game list.
 local function NormalizeBootPage(value)
@@ -2924,7 +2970,8 @@ local function EncodeSettings()
     "BOOT_PAGE="..NormalizeBootPage(PLDR.BOOT_PAGE),
     "MULTIDISC_COLLAPSE="..((PLDR.COLLAPSE_MULTIDISC == true) and "1" or "0"),
     "GLOBAL_HIDE="..((PLDR.GLOBAL_HIDE == true) and "1" or "0"),
-    "POPSTARTER_MC_FOLDER="..((PLDR.POPSTARTER_MC_FOLDER == false) and "0" or "1")
+    "POPSTARTER_MC_FOLDER="..((PLDR.POPSTARTER_MC_FOLDER == false) and "0" or "1"),
+    "HIDDEN_DEVICES="..PLDR.NormalizeHiddenDevices(PLDR.HIDDEN_DEVICES)
   }
   return table.concat(lines, "\n").."\n"
 end
@@ -2962,7 +3009,8 @@ local function SnapshotSettingsState()
     keyboard_layout = NormalizeKeyboardLayout(PLDR.KEYBOARD_LAYOUT),
     boot_page = NormalizeBootPage(PLDR.BOOT_PAGE),
     multidisc_collapse = (PLDR.COLLAPSE_MULTIDISC == true),
-    global_hide = (PLDR.GLOBAL_HIDE == true)
+    global_hide = (PLDR.GLOBAL_HIDE == true),
+    hidden_devices = PLDR.NormalizeHiddenDevices(PLDR.HIDDEN_DEVICES)
   }
 end
 
@@ -2999,6 +3047,9 @@ local function ApplySettingsState(state)
   end
   if type(state.global_hide) == "boolean" then
     PLDR.GLOBAL_HIDE = state.global_hide
+  end
+  if state.hidden_devices ~= nil then
+    PLDR.HIDDEN_DEVICES = PLDR.NormalizeHiddenDevices(state.hidden_devices)
   end
   PLDR.ApplyVideoStandardRuntime(PLDR.VIDEO_STANDARD)
   if type(state.hide_text) == "boolean" and type(UI) == "table" then
@@ -3114,6 +3165,7 @@ function PLDR.LoadSettingsNonFatal()
   PLDR.COLLAPSE_MULTIDISC = false
   PLDR.GLOBAL_HIDE = false
   PLDR.POPSTARTER_MC_FOLDER = true
+  PLDR.HIDDEN_DEVICES = ""
   if type(UI) == "table" then
     if type(UI.SetHideTextMode) == "function" then
       UI.SetHideTextMode(false, false)
@@ -3184,6 +3236,7 @@ function PLDR.LoadSettingsNonFatal()
   local multidisc_collapse = string.match(data, "\nMULTIDISC_COLLAPSE=([^\n]+)") or string.match(data, "^MULTIDISC_COLLAPSE=([^\n]+)")
   local global_hide = string.match(data, "\nGLOBAL_HIDE=([^\n]+)") or string.match(data, "^GLOBAL_HIDE=([^\n]+)")
   local popstarter_mc_folder = string.match(data, "\nPOPSTARTER_MC_FOLDER=([^\n]+)") or string.match(data, "^POPSTARTER_MC_FOLDER=([^\n]+)")
+  local hidden_devices = string.match(data, "\nHIDDEN_DEVICES=([^\n]*)") or string.match(data, "^HIDDEN_DEVICES=([^\n]*)")
   if profile ~= nil and PLDR.PROFILES ~= nil and PLDR.PROFILES[profile] ~= nil then
     PLDR.SELECTED_PROFILE = profile
     PLDR.POPSTARTER_PATH = PLDR.PROFILES[profile].ELF
@@ -3237,6 +3290,11 @@ function PLDR.LoadSettingsNonFatal()
   local mcf = ParseBooleanSetting(popstarter_mc_folder)
   if mcf ~= nil then
     PLDR.POPSTARTER_MC_FOLDER = mcf == true
+  end
+  if hidden_devices ~= nil then
+    PLDR.HIDDEN_DEVICES = PLDR.NormalizeHiddenDevices(hidden_devices)
+  else
+    PLDR.HIDDEN_DEVICES = PLDR.NormalizeHiddenDevices(PLDR.HIDDEN_DEVICES)
   end
   PLDR.BDMA_MODE_KEY = NormalizeBdmaModeKey(bdma_mode) or PLDR.BDMA_MODE_KEY
   PLDR.ReconcileBdmaModeWithEffectiveState()
@@ -3293,7 +3351,8 @@ function PLDR.CommitSettingsChanges(opts)
     keyboard_layout = NormalizeKeyboardLayout(opts.keyboard_layout or prev.keyboard_layout),
     boot_page = NormalizeBootPage(opts.boot_page or prev.boot_page),
     multidisc_collapse = next_collapse,
-    global_hide = next_global_hide
+    global_hide = next_global_hide,
+    hidden_devices = PLDR.NormalizeHiddenDevices(opts.hidden_devices or prev.hidden_devices)
   }
   local apply_bdma = opts.apply_bdma == true
   local bdma_token = opts.bdma_token
@@ -5862,6 +5921,13 @@ if type(PLDR.LAUNCH_ARGS) ~= "table"
    or type(PLDR.LAUNCH_ARGS.page) ~= "string" or PLDR.LAUNCH_ARGS.page == "" then
   local boot_to_opt = { MMCE = 1, MX4SIO = 2, HDD = 4, USB = 5 }
   local opt = boot_to_opt[tostring(PLDR.BOOT_PAGE or "Carousel")]
+  -- If the chosen Boot Page device has been hidden from the carousel, don't
+  -- auto-enter it -- fall back to the normal carousel instead.
+  if opt ~= nil and type(PLDR.IsDeviceHidden) == "function"
+     and type(PLDR.CAROUSEL_DEVICE_KEYS) == "table"
+     and PLDR.IsDeviceHidden(PLDR.CAROUSEL_DEVICE_KEYS[opt]) then
+    opt = nil
+  end
   if opt ~= nil and type(UI) == "table" and type(UI.MainMenu) == "table" then
     local carousel = type(UI.MainMenu.Carousel) == "table" and UI.MainMenu.Carousel or nil
     if carousel ~= nil then carousel.allowOptWrite = true end
