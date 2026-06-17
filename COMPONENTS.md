@@ -154,10 +154,10 @@ copies are not read at runtime. Editing them requires a rebuild.
 - Launch-arg ingest: `NormalizeLaunchPage` (system.lua:1967), `PLDR.LAUNCH_ARGS`
   (system.lua:1996), carousel page auto-nav `page_to_opt` (system.lua:2181-2199;
   maps MMCE/MX4SIO/HDD/USB/SMB only).
-- Settings: `EncodeSettings` (system.lua:2906, **13 keys**: PROFILE,
+- Settings: `EncodeSettings` (system.lua:2906, **14 keys**: PROFILE,
   POPSTARTER_PATH, POPSTARTER_MODE, BDMA, DKWDRV_PATH, STRICT_HDD_PREEXEC_GATE,
   VIDEO_STANDARD, HIDE_TEXT, KEYBOARD_LAYOUT, BOOT_PAGE, MULTIDISC_COLLAPSE,
-  GLOBAL_HIDE, POPSTARTER_MC_FOLDER), `LoadSettingsNonFatal` (system.lua:2747),
+  GLOBAL_HIDE, POPSTARTER_MC_FOLDER, HIDDEN_DEVICES), `LoadSettingsNonFatal` (system.lua:2747),
   `SaveSettingsAtomic` (system.lua:2724) -> `WriteAtomic` (system.lua:2284),
   `CommitSettingsChanges` (transactional, system.lua:2874). Per-device sidecar
   `.pldrs` at APP_DIR for every device; **HDD installs now persist on the HDD

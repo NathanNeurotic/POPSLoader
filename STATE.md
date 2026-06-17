@@ -21,7 +21,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - STATUS: implemented, boots on PCSX2; provato confirmed the HDD is **RW-writable on real hardware**; the full settings flow is still validating on hardware (not yet broadly hardware-confirmed).
 - `mc0:/POPSTARTER/.pldrs` remains only as a legacy fallback when no sidecar can be computed.
 - Settings edits are staged and committed on Settings/Profile confirm/leave.
-- Persisted settings — **13 keys** (`EncodeSettings`): `PROFILE`, `POPSTARTER_PATH`, `POPSTARTER_MODE`, `BDMA`, `DKWDRV_PATH`, `STRICT_HDD_PREEXEC_GATE`, `VIDEO_STANDARD`, `HIDE_TEXT`, `KEYBOARD_LAYOUT`, `BOOT_PAGE`, `MULTIDISC_COLLAPSE`, `GLOBAL_HIDE`, `POPSTARTER_MC_FOLDER`.
+- Persisted settings — **14 keys** (`EncodeSettings`): `PROFILE`, `POPSTARTER_PATH`, `POPSTARTER_MODE`, `BDMA`, `DKWDRV_PATH`, `STRICT_HDD_PREEXEC_GATE`, `VIDEO_STANDARD`, `HIDE_TEXT`, `KEYBOARD_LAYOUT`, `BOOT_PAGE`, `MULTIDISC_COLLAPSE`, `GLOBAL_HIDE`, `POPSTARTER_MC_FOLDER`, `HIDDEN_DEVICES`.
 
 ### Per-game hide layer
 - A `<name>.hide` sidecar next to the game's `.VCD` marks it hidden (read for free during the scan; tracked in `PLDR.HIDDEN`). **L3** toggles hide/show on the selected game; **R3** opens the per-device hidden list to unhide. *Settings → Game List → Hidden games:* **Hidden** filters them out; **Visible (manage)** shows them dimmed so you can toggle.
@@ -56,6 +56,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 
 ### Main menu feature status
 - Implemented: `MMCE`, `MX4SIO`, `HDD (PFS)`, `USB`, `Disc (DKWDRV)`. Not implemented: `HDD (exFAT)`, `SMB (v1)`, `ILINK`.
+- **Carousel device visibility** (Settings → Carousel Devices): a Shown/Hidden toggle per carousel device lets the user hide entries they don't use (e.g. the not-implemented stubs). Persisted as `HIDDEN_DEVICES` (CSV of stable device keys; all shown by default; a guard keeps ≥1 visible). The carousel nav/render skip hidden entries with no gaps; `UI.MainMenu.OPT` stays the real opts index so the launch dispatch is unchanged (with nothing hidden, behavior is identical). STATUS: implemented, validating on PCSX2/hardware.
 
 ### Exit handoff
 - Exit modal exposes OSDSYS, Cancel, BOOT.ELF. BOOT.ELF lookup order: `mc0:/BOOT/BOOT.ELF`, `mc1:/BOOT/BOOT.ELF`.

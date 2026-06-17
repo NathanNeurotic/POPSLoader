@@ -511,10 +511,11 @@ HDD=4, USB=5, SMB=7}` (`system.lua:2181-2199`); HDD maps to the PFS page (4),
 and unimplemented pages (BDMA/i.Link) are deliberately not routed.
 
 ### On-disk settings (`.pldrs`)
-Plain KEY=VALUE text with **13 keys** (`EncodeSettings`, `system.lua:2906-2930`):
+Plain KEY=VALUE text with **14 keys** (`EncodeSettings`, `system.lua:2906-2930`):
 `PROFILE`, `POPSTARTER_PATH`, `POPSTARTER_MODE`, `BDMA`, `DKWDRV_PATH`,
 `STRICT_HDD_PREEXEC_GATE`, `VIDEO_STANDARD`, `HIDE_TEXT`, `KEYBOARD_LAYOUT`,
-`BOOT_PAGE`, `MULTIDISC_COLLAPSE`, `GLOBAL_HIDE`, `POPSTARTER_MC_FOLDER`.
+`BOOT_PAGE`, `MULTIDISC_COLLAPSE`, `GLOBAL_HIDE`, `POPSTARTER_MC_FOLDER`,
+`HIDDEN_DEVICES`.
 Location is the **per-device** sidecar `APP_DIR/.pldrs`, preferred for every
 device — **including HDD installs**, which now persist on the HDD boot partition
 itself via the `PLDR.HDD.EnsureBootPartitionWritable` RW mount take-over
