@@ -54,6 +54,9 @@ bin/POPSLDR/hdd_gamecache.lua
 # Local diagnostic artifacts
 artifacts/
 
+# Outdated/superseded local working files (audit reports, prompts, old build outputs)
+outdated/
+
 # Ensure specific tracked binary assets stay visible
 !bin/POPSLDR/POPSTARTER.ELF
 !iop/embed/BDMASSAULT_MX4SIO/*.irx
