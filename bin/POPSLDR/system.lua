@@ -944,77 +944,12 @@ function PLDR.ProbeHddSettingsWrite()
   return false, "no __.POPS partition could be mounted"
 end
 
--- RW write/delete a file on an HDD __.POPS game partition via a scoped RW
--- remount -- the SAME proven path as ProbeHddSettingsWrite (mount RW -> openFile
--- -> verify -> unmount), now that the probe confirmed __.POPS partitions accept
--- writes. `partition` may be "__.POPS" or "hdd0:__.POPS"; `relpath` is the file
--- within the partition; `content` nil = delete, string = create+write. Returns
--- true on success or false,<reason> so callers can fall back. Always unmounts.
-function PLDR.HDD.WriteGamePartitionFile(partition, relpath, content)
-  if type(HDD) ~= "table" then return false, "hdd_not_loaded" end
-  local clean_part = string.gsub(tostring(partition or ""), "^[Hh][Dd][Dd]%d:", "")
-  if clean_part == "" then return false, "bad_partition" end
-  if type(relpath) ~= "string" or relpath == "" then return false, "bad_relpath" end
-  local mounted, prefix, slot = MountHddGamePartitionTracked("hdd0:"..clean_part, FIO_MT_RDWR)
-  if not mounted or prefix == nil then return false, "mount_failed" end
-  local target = BuildMountedReadablePath(prefix, relpath)
-  local ok_done, reason = false, "path_failed"
-  if target ~= nil then
-    if content == nil then
-      if not doesFileExist(target) then
-        ok_done, reason = true, nil
-      elseif pcall(System.removeFile, target) and not doesFileExist(target) then
-        ok_done, reason = true, nil
-      else
-        ok_done, reason = false, "remove_failed"
-      end
-    else
-      local ok_open, fd = pcall(System.openFile, target, FCREATE)
-      if ok_open and fd ~= nil and not (type(fd) == "number" and fd < 0) then
-        if #content > 0 then pcall(System.writeFile, fd, content, #content) end
-        pcall(System.closeFile, fd)
-        if doesFileExist(target) then ok_done, reason = true, nil
-        else ok_done, reason = false, "write_failed" end
-      else
-        ok_done, reason = false, "open_failed"
-      end
-    end
-  end
-  if slot ~= nil then UMountHddPartitionTracked(slot) end
-  return ok_done, reason
-end
-
--- HDD-cwd takeover: when the launcher mounted the boot partition READ-ONLY, POPSLoader
--- can't write its settings there, and PFS won't let us open a 2nd (RW) mount of the same
--- partition. So we take OWNERSHIP of the launcher's mount -- explicitly unmount it, then
--- remount the SAME partition RW at the SAME pfs slot (the OPL "own your mount" pattern;
--- mnt()'s warm single-attempt path won't self-recover an occupied slot, so the unmount
--- must be explicit and first). Idempotent. On failure it restores a read-only mount so
--- the cwd is never left stranded. Returns true if the boot partition is now RW-mounted.
-function PLDR.HDD.EnsureBootPartitionWritable()
-  if PLDR.HDD.BOOT_PARTITION_RW == true then return true end
-  if PLDR.SETTINGS_HDD_PARTITION == nil then return false end
-  if type(HDD) ~= "table" or type(HDD.MountPartition) ~= "function"
-     or type(HDD.UMountPartition) ~= "function" then return false end
-  -- F-13: only ever operate on a real pfsN: cwd. A parse miss must NOT silently
-  -- default to slot 0 -- that could unmount/remount an unrelated partition.
-  local slot = tonumber(string.match(tostring(APP_DIR_LOCAL or ""), "^[Pp][Ff][Ss](%d+):"))
-  if slot == nil then return false end
-  pcall(HDD.UMountPartition, slot)
-  local ok, mounted = pcall(HDD.MountPartition, PLDR.SETTINGS_HDD_PARTITION, slot, FIO_MT_RDWR)
-  if ok and mounted == true then
-    PLDR.HDD.BOOT_PARTITION_RW = true
-    return true
-  end
-  -- RW remount failed -- restore a read-only mount so the cwd stays accessible. F-6:
-  -- if even the RO restore fails the cwd now has NO mount; that is not silently
-  -- recoverable, so surface it loudly (a reboot re-mounts the boot partition cleanly).
-  local ro_ok, ro_mounted = pcall(HDD.MountPartition, PLDR.SETTINGS_HDD_PARTITION, slot, FIO_MT_RDONLY)
-  if not (ro_ok and ro_mounted == true) and type(UI) == "table" and type(UI.Notif_queue) == "table" then
-    UI.Notif_queue.add("HDD boot mount lost during settings write\nReboot to restore HDD access", "error")
-  end
-  return false
-end
+-- NOTE: PLDR.HDD.WriteGamePartitionFile and PLDR.HDD.EnsureBootPartitionWritable
+-- used to be defined HERE, but PLDR.HDD does not exist yet at this point in the
+-- chunk -- it is created by the pldr_defaults merge much further down -- so
+-- `function PLDR.HDD.X` here indexed a nil value and bricked the boot
+-- ("attempt to index a nil value (field 'HDD')"). They are now defined right
+-- after the PLDR.HDD init block (search for "WriteGamePartitionFile").
 
 local function ResolveHddReadablePath(path)
   local candidate = tostring(path or "")
@@ -2103,6 +2038,80 @@ if type(PLDR.HDD.POPS_PARTITIONS) ~= "table" or #PLDR.HDD.POPS_PARTITIONS < 1 th
   end
 end
 PLDR.HDD.GAMEPARTS = PLDR.HDD.GAMEPARTS or {}
+
+-- RW write/delete a file on an HDD __.POPS game partition via a scoped RW
+-- remount -- the SAME proven path as ProbeHddSettingsWrite (mount RW -> openFile
+-- -> verify -> unmount), now that the probe confirmed __.POPS partitions accept
+-- writes. `partition` may be "__.POPS" or "hdd0:__.POPS"; `relpath` is the file
+-- within the partition; `content` nil = delete, string = create+write. Returns
+-- true on success or false,<reason> so callers can fall back. Always unmounts.
+-- (Defined HERE, after the PLDR.HDD init above -- not up by ProbeHddSettingsWrite --
+--  because PLDR.HDD must exist before `function PLDR.HDD.X` can attach to it.)
+function PLDR.HDD.WriteGamePartitionFile(partition, relpath, content)
+  if type(HDD) ~= "table" then return false, "hdd_not_loaded" end
+  local clean_part = string.gsub(tostring(partition or ""), "^[Hh][Dd][Dd]%d:", "")
+  if clean_part == "" then return false, "bad_partition" end
+  if type(relpath) ~= "string" or relpath == "" then return false, "bad_relpath" end
+  local mounted, prefix, slot = MountHddGamePartitionTracked("hdd0:"..clean_part, FIO_MT_RDWR)
+  if not mounted or prefix == nil then return false, "mount_failed" end
+  local target = BuildMountedReadablePath(prefix, relpath)
+  local ok_done, reason = false, "path_failed"
+  if target ~= nil then
+    if content == nil then
+      if not doesFileExist(target) then
+        ok_done, reason = true, nil
+      elseif pcall(System.removeFile, target) and not doesFileExist(target) then
+        ok_done, reason = true, nil
+      else
+        ok_done, reason = false, "remove_failed"
+      end
+    else
+      local ok_open, fd = pcall(System.openFile, target, FCREATE)
+      if ok_open and fd ~= nil and not (type(fd) == "number" and fd < 0) then
+        if #content > 0 then pcall(System.writeFile, fd, content, #content) end
+        pcall(System.closeFile, fd)
+        if doesFileExist(target) then ok_done, reason = true, nil
+        else ok_done, reason = false, "write_failed" end
+      else
+        ok_done, reason = false, "open_failed"
+      end
+    end
+  end
+  if slot ~= nil then UMountHddPartitionTracked(slot) end
+  return ok_done, reason
+end
+
+-- HDD-cwd takeover: when the launcher mounted the boot partition READ-ONLY, POPSLoader
+-- can't write its settings there, and PFS won't let us open a 2nd (RW) mount of the same
+-- partition. So we take OWNERSHIP of the launcher's mount -- explicitly unmount it, then
+-- remount the SAME partition RW at the SAME pfs slot (the OPL "own your mount" pattern;
+-- mnt()'s warm single-attempt path won't self-recover an occupied slot, so the unmount
+-- must be explicit and first). Idempotent. On failure it restores a read-only mount so
+-- the cwd is never left stranded. Returns true if the boot partition is now RW-mounted.
+function PLDR.HDD.EnsureBootPartitionWritable()
+  if PLDR.HDD.BOOT_PARTITION_RW == true then return true end
+  if PLDR.SETTINGS_HDD_PARTITION == nil then return false end
+  if type(HDD) ~= "table" or type(HDD.MountPartition) ~= "function"
+     or type(HDD.UMountPartition) ~= "function" then return false end
+  -- F-13: only ever operate on a real pfsN: cwd. A parse miss must NOT silently
+  -- default to slot 0 -- that could unmount/remount an unrelated partition.
+  local slot = tonumber(string.match(tostring(APP_DIR_LOCAL or ""), "^[Pp][Ff][Ss](%d+):"))
+  if slot == nil then return false end
+  pcall(HDD.UMountPartition, slot)
+  local ok, mounted = pcall(HDD.MountPartition, PLDR.SETTINGS_HDD_PARTITION, slot, FIO_MT_RDWR)
+  if ok and mounted == true then
+    PLDR.HDD.BOOT_PARTITION_RW = true
+    return true
+  end
+  -- RW remount failed -- restore a read-only mount so the cwd stays accessible. F-6:
+  -- if even the RO restore fails the cwd now has NO mount; that is not silently
+  -- recoverable, so surface it loudly (a reboot re-mounts the boot partition cleanly).
+  local ro_ok, ro_mounted = pcall(HDD.MountPartition, PLDR.SETTINGS_HDD_PARTITION, slot, FIO_MT_RDONLY)
+  if not (ro_ok and ro_mounted == true) and type(UI) == "table" and type(UI.Notif_queue) == "table" then
+    UI.Notif_queue.add("HDD boot mount lost during settings write\nReboot to restore HDD access", "error")
+  end
+  return false
+end
 
 -- Launch arguments (NHDDL-style) parsed in main.cpp parseLaunchArgs().
 -- Exposed via System.getLaunchArgs() and normalized here into a single
