@@ -431,6 +431,21 @@ UI = {
     SceneChange = function (SCENE)
       UI.RequestScene(SCENE)
     end;
+    -- Force the game-list cover preview to (re)load for the focused game whenever a
+    -- scene is entered (called from the transition apply once CURSCENE flips). The
+    -- per-frame cover load only fires on a selection CHANGE (CURR ~= CoverLastIndex),
+    -- so re-entering a list where the entry selection equals the last-loaded index
+    -- (commonly index 1) otherwise never loaded the first game's art until you
+    -- scrolled away and back. Clearing the trigger here makes the current selection's
+    -- cover load on every entry. Touches only the cover-trigger state (not CURR), and
+    -- is inert outside game lists since only GameList.Play reads it.
+    OnSceneEnter = function (prev_scene, scene)
+      if type(UI.GameList) == "table" then
+        UI.GameList.CoverLastIndex = nil
+        UI.GameList.CoverPending = false
+        UI.GameList.CoverPendingAt = 0
+      end
+    end;
     --- Color Constants
     CCOL = {
       GREY = Color.new(128,128,128,128);
