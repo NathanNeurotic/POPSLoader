@@ -3836,9 +3836,9 @@ UI = {
           Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 60, 20, UI.SCR.X, 40, "Code by El_isra", currcol)
           Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 80, 20, UI.SCR.X, UI.SCR.Y, [[
 Design by Berion
-Scripts by Nuno6573 and Ripto
+Scripts by nuno6573 and Ripto
 Based on Enceladus by Daniel Santos
-Testing by P4NCHOL1NO, VizoR, provato, Nuno6573, and Community
+Testing by P4NCHOL1NO, VizoR, provato, nuno6573, and Community
 
 Special Thanks To:
 krHACKen for making POPStarter

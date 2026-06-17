@@ -4114,7 +4114,7 @@ end
 -- "<name>.png" cover) marks a game hidden. It is read for free from the same
 -- directory listing during the scan. With PLDR.GLOBAL_HIDE on, hidden games are
 -- filtered out of the list; with it off they are kept and shown DIMMED so they
--- can be managed (L2 toggles hide/unhide). PLDR.HIDDEN is a set keyed by the
+-- can be managed (L3 toggles hide/unhide). PLDR.HIDDEN is a set keyed by the
 -- exact PLDR.GAMES entry string for the current device.
 PLDR.HIDDEN = PLDR.HIDDEN or {}
 
