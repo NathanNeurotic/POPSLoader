@@ -1,8 +1,10 @@
 # POPSLoader Regression Matrix
 
-Last updated: 2026-05-28
-BETA-10-5 release tag: `9a0ebe2`, hardware-confirmed clean 2026-05-28 (Nuno).
-Current `BETA-12-PLAY` development tip: `81c886e` (Merge PR #473 hotfix). Post-release PR work is CI-verified but `Unknown (verify on hardware)` unless explicitly recorded below.
+Last updated: 2026-06-17 (post-BETA-11)
+Released line: **BETA-11** (2026-06-15). BETA-10-5 release tag: `9a0ebe2`, hardware-confirmed clean 2026-05-28 (Nuno).
+Current `BETA-12-PLAY` development tip: `7afdac3` (BDMA marker rename). Post-release PR work is CI-verified but `Unknown (verify on hardware)` unless explicitly recorded below.
+
+> This file is the detailed run ledger. For the canonical current state — Settings behavior, Known Issues, Preservation Contracts, Behavioral Invariants, and Hardware Status — see **`STATE.md`**; those shared blocks are not restated here.
 
 ## Scope
 This matrix tracks current behavior across:
@@ -42,10 +44,10 @@ These gates are defined by `.github/workflows/compilation.yml`. The separate `.g
 ### Settings and persistence
 | ID | Area | Setup | Action | Pass Criteria |
 |---|---|---|---|---|
-| S-01 | Defaults with missing settings file | Remove `mc0:/POPSTARTER/.pldrs` | Start app and open Settings | Defaults load without crash |
+| S-01 | Defaults with missing settings file | Remove the active `.pldrs` (the per-device `APP_DIR_LOCAL/.pldrs` sidecar for this install, or the `mc0:/POPSTARTER/.pldrs` legacy fallback; for an HDD install the on-HDD boot-partition `.pldrs`) | Start app and open Settings | Defaults load without crash |
 | S-02 | Staged edits are not immediate writes | Change settings rows but do not leave Settings | Hard-exit app | Prior persisted values remain |
 | S-03 | Commit on exit | Change profile/paths/BDMA and confirm or leave | Reopen Settings | Values persist and reload |
-| S-04 | Save failure feedback | Make `mc0:/POPSTARTER` unavailable | Leave Settings with changes | User sees explicit save/apply error notification |
+| S-04 | Save failure feedback | Make the active settings store unwritable (the per-device `APP_DIR_LOCAL/.pldrs` sidecar, the `mc0:/POPSTARTER` legacy fallback, or — for an HDD install — block the boot-partition RW take-over so the on-HDD `.pldrs` can't be written) | Leave Settings with changes | User sees explicit save/apply error notification |
 | S-05 | BDMA mode restore from marker | Prepare `bdma_mode.txt` marker (legacy `.pldr_bdma_mode` still read) | Boot and open Settings | Selected BDMA mode reflects effective marker state |
 | S-06 | Back prompts when staged settings exist | Open Settings from a non-main scene and change profile/path/video/hide-text state | Press `O Back` | A "Save Settings" modal appears with `X Save / O Cancel / Triangle Don't Save`. Triangle (Don't Save) returns to the originating scene without saving and reopening Settings shows prior runtime/persisted values. O (Cancel) stays on Settings. X (Save) commits and exits to the originating scene. With no staged changes, Back returns immediately with no prompt. |
 | S-07 | Video standard persistence | Set Video Standard to `PAL` or `NTSC` and save | Reboot/relaunch and reopen Settings | Selected video standard reloads from settings and runtime video mode matches the saved value |
@@ -190,12 +192,21 @@ These gates are defined by `.github/workflows/compilation.yml`. The separate `.g
 | 2026-05-29 02:58Z | Nuno on rolling-release post PR #477 merge | **MX4SIO save now works.** Maintainer: "Save now works he says. He said I should do my own sanity checks though, but from where he is he hasn't found a problem yet." | Settings save MX4SIO-rooted | **PASS** (Nuno 2026-05-29 02:58Z). PR #476 + PR #477 together resolve the MX4SIO settings save bug. |
 | 2026-05-28 PM late | Nuno (full hardware sweep with cat keeping him company) | Maintainer correction after closer reading of Nuno's Discord report: the symptoms break into two distinct classes, not one. Class A: HOSDmenu and some wLE builds → POPSLoader = black screen, POPSLoader never reaches its splash (POPSLoader fails to launch under those parents). Class B (U-10): when POPSLoader IS successfully launched from HDD (via any working launcher), Exit → BOOT.ELF black-screens. MC/USB/MX4SIO-launched POPSLoader → BOOT.ELF exit OK. | Class A: HOSDmenu launches POPSLoader; some wLE launches POPSLoader. Class B: U-10 BOOT.ELF-from-HDD-launched-POPSLoader | **FAIL all three** (Nuno 2026-05-28 PM late). Earlier doc framings conflated Class A and Class B — corrected now. Class A: HOSDmenu → POPSLoader = black; some wLE builds → POPSLoader = black. Likely the same IOP-state-from-parent-launcher class PR #458 Layer A targeted but Layer A didn't fully resolve for HOSDmenu / those wLE builds. Workaround: use a different launcher. Class B (U-10): POPSLoader-on-HDD-launched → BOOT.ELF = black. Workaround: Exit → OSDSYS or reboot. Maintainer hypothesis to investigate next for U-10: explicit IOP reset on boot before anything else (aligns with H1/H5 in `docs/U10_INVESTIGATION.md`). |
 | 2026-06-15 | Known-issues reconciliation | Maintainer-confirmed status pass (no new artifact; reconciling docs to current hardware reality). U-10 BOOT.ELF-from-HDD-boot resolved by PR #479 (`reboot_iop=0`; Nuno 2026-05-31). DKWDRV-from-custom-HDD-path resolved by PRs #486/#487 (partition-aware route + live pfs-slot scan; Nuno 2026-06-04/06-06). Class-A "POPSLoader won't start under HOSDmenu / some wLE builds" now starts (maintainer-confirmed; mechanism not pinned — the UDNL #490 attempt was dropped for breaking HDD). | U-10 / DKWDRV-HDD / Class-A HOSDmenu+wLE | **RESOLVED** — removed from known-broken in README / STATE / AGENTS / ROLLING_NOTES. Remaining open: "Failed to load HDD" from a non-HDD / via-launcher boot (config-specific, Nuno 2026-06-14). |
+| 2026-06-17 | HDD-RW take-over + load-order boot fix | **Load-order boot brick found + fixed `d4b04be`:** `PLDR.HDD` methods were attached BEFORE the `PLDR.HDD` table existed, which bricked every boot on the recent HDD-feature rolling builds (PCSX2 tester hit `system.lua:953`); fix moves the method definitions after the table merge/init. Invisible to `luac -p`/CI — fatal only at runtime. **HDD in-app `.hide` (L3 toggle / R3 hidden-list) + HDD-resident settings save** now land on the HDD itself via `PLDR.HDD.EnsureBootPartitionWritable` (unmount → remount the boot pfs slot RW at the same slot, the OPL "own your mount" pattern) — no `mc0:` fallback for HDD-cwd installs; single-device parity. **PAL native 640×512 full-screen render** (no letterbox) + auto-reverting display-change confirm; Video Standard gains an **Auto** default. **POPSTARTER Memory Card Folder toggle** (deletes `mc:/POPSTARTER` with confirm) + **BDMA ⟺ folder interlock**. BDMA marker renamed `.pldr_bdma_mode` → **`bdma_mode.txt`** (legacy names still read). **CI `luac5.4 -p` syntax gate now LIVE** (workflows `apk add lua5.4`; was a silent no-op — ps2dev image shipped no `luac`; SYNTAX-only, runtime/load-order errors still invisible). Testers **provato** + **nuno6573** credited. | Load-order boot / HDD `.hide` / HDD settings save / PAL-512 / MC-folder toggle / BDMA interlock / `bdma_mode.txt` / CI luac gate | Boot brick **FIXED** (`d4b04be`). HDD `.hide` + HDD-resident settings + PAL-512 + MC-folder toggle: **implemented, boots on PCSX2, provato confirmed HDD is RW-writable on real hardware**, full flows **still validating on hardware** (not yet broadly hardware-confirmed). CI luac gate **LIVE**. See STATE.md > Settings / Known Issues / Behavioral Invariants. |
 | YYYY-MM-DD | SCPH-xxxxx | USB/MMCE/MX4SIO/HDD details | e.g. S-01,S-02,D-02 | PASS/FAIL + notes |
 
 
 ## Current Verification Status
+
+**Current recorded outcomes (2026-06-17, post-BETA-11)** — these supersede the older `Unknown`/`FAIL` narratives below, which are kept as the forensic chronology of how each case was resolved. For the canonical hardware table see **STATE.md > Reported Hardware Status**.
+- **D-10** HDD POPSTARTER + HDD game — **PASS** (B2 fix `4ae6679`, hardware 2026-05-22, reconfirmed 2026-05-28 Nuno). Preservation contract — **do not regress.**
+- **D-14** HDD POPSTARTER + non-HDD game — **PASS** (same route, hardware 2026-05-22).
+- **D-15** non-HDD POPSTARTER + HDD game — **PASS** (keep-mask, hardware 2026-05-22). Preservation contract — **do not regress.**
+- **U-10** BOOT.ELF from HDD-booted POPSLoader — **RESOLVED** (PR #479, `reboot_iop=0`; Nuno 2026-05-31). Was known-broken through the chronology below.
+- The 2026-06 HDD-RW / PAL-512 / BDMA-folder features are repository-verified and **boot on PCSX2**; provato confirmed the **HDD is RW-writable on real hardware**; full flows are **still validating on hardware** (not yet broadly hardware-confirmed). See STATE.md > Known Issues / Reported Hardware Status.
+
 - CI gates: repository-verified by workflow definition.
-- Reported hardware outcomes:
+- Reported hardware outcomes (forensic chronology — see the current outcomes above for the latest recorded result):
   - `L-08`: reported FAIL on 2026-03-27 when booted from USB with USB sidecar/cwd/Profile 1; launch stopped at `Cant find POPSTARTER ELF`.
     - comparison against `BETA-10-play-CHECKPOINT2` showed the checkpoint branch worked without the later unverified common-path resolver/settings changes.
     - current source was rolled back to the checkpoint branch's shared resolver behavior for this path.
