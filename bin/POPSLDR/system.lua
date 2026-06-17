@@ -43,6 +43,40 @@ local function NormalizeDeviceRoot(path)
   return path
 end
 
+local function CanonicalizeMassSlot0(path)
+  if type(path) ~= "string" or path == "" then return path end
+  -- Slot 0 of the BDM 'mass' bus is spelled both 'mass:' (bare) and 'mass0:'
+  -- (explicit unit 0) depending on which alias argv0 carried this boot -- the
+  -- launch diag shows the two spellings appearing for the same device. They
+  -- address the SAME physical slot: luasystem's ParseMassRootSlot folds
+  -- 'mass:' == 'mass0:' == slot 0 and BuildMassRootPath(0) emits bare 'mass:/'.
+  -- Canonicalize to that bare form so the settings sidecar path is identical
+  -- across boots and save/load agree (GitHub #494). ONLY slot 0's bare/zero
+  -- pair is folded; slot NUMBERS (mass1:, mass2:, ...) are left intact -- they
+  -- can be different physical devices (USB vs MX4SIO), told apart downstream by
+  -- the ioctl driver name, and must never be merged.
+  local rest = string.match(path, "^mass0:(.*)$")
+  if rest ~= nil then
+    return "mass:"..rest
+  end
+  return path
+end
+
+local function MassSlot0PathAliases(path)
+  -- Distinct slot-0 spellings of a path, canonical ('mass:') first, for probing
+  -- on load so a .pldrs written under either spelling on a prior boot is found.
+  -- Non-mass-slot-0 paths yield just themselves.
+  local out = {}
+  if type(path) ~= "string" or path == "" then return out end
+  local canonical = CanonicalizeMassSlot0(path)
+  out[#out + 1] = canonical
+  local rest = string.match(canonical, "^mass:(.*)$")
+  if rest ~= nil then
+    out[#out + 1] = "mass0:"..rest
+  end
+  return out
+end
+
 local function NormalizeHostPath(path)
   if path == nil or path == "" then return path end
   if not string.match(path, "^host:") then
@@ -1900,7 +1934,7 @@ local function ResolveBootContext()
        or string.match(lower, "^ata%d*:") ~= nil
        or string.match(lower, "^apa%d*:") ~= nil
     if not is_hdd_backed then
-      sidecar = JoinPath(APP_DIR_LOCAL, ".pldrs")
+      sidecar = JoinPath(CanonicalizeMassSlot0(APP_DIR_LOCAL), ".pldrs")
     end
   end
 
@@ -3190,9 +3224,25 @@ function PLDR.LoadSettingsNonFatal()
   local fallback = PLDR.SETTINGS_PATH_FALLBACK
   local loaded_path = nil
   local migrate_to_sidecar = false
-  if sidecar ~= nil and sidecar ~= "" and doesFileExist(sidecar) then
-    loaded_path = sidecar
-  elseif fallback ~= nil and fallback ~= "" and doesFileExist(fallback) then
+  local pin_to_sidecar = false
+  -- The BDM 'mass' bus spells slot 0 as both 'mass:' and 'mass0:', and the
+  -- launcher's argv0 can alternate between them across boots (see launch diag),
+  -- so a .pldrs saved under one spelling must still be found under the other.
+  -- Probe every slot-0 spelling of the sidecar; if a non-canonical one matches,
+  -- read it but pin SETTINGS_PATH to the canonical sidecar so the next save
+  -- converges to one spelling. (Only slot 0's bare/zero pair is aliased -- slot
+  -- NUMBERS are never folded; they may be distinct physical devices.)
+  if sidecar ~= nil and sidecar ~= "" then
+    local candidates = MassSlot0PathAliases(sidecar)
+    for i = 1, #candidates do
+      if doesFileExist(candidates[i]) then
+        loaded_path = candidates[i]
+        pin_to_sidecar = true
+        break
+      end
+    end
+  end
+  if loaded_path == nil and fallback ~= nil and fallback ~= "" and doesFileExist(fallback) then
     loaded_path = fallback
     -- First-run migration: if we have a usable sidecar target but the
     -- sidecar file doesn't exist yet, schedule the next save to write
@@ -3209,7 +3259,7 @@ function PLDR.LoadSettingsNonFatal()
     PLDR.ApplyVideoStandardRuntime(PLDR.VIDEO_STANDARD)
     return false
   end
-  if migrate_to_sidecar then
+  if migrate_to_sidecar or pin_to_sidecar then
     PLDR.SETTINGS_PATH = sidecar
   else
     PLDR.SETTINGS_PATH = loaded_path
@@ -5136,24 +5186,15 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   LaunchState.fade_start = Timer.getTime(LaunchState.fade_timer)
   Screen.clear(Color.new(0, 0, 0))
   Screen.flip()
-  if (Timer.getTime(LaunchState.fade_timer) - LaunchState.fade_start) >= LaunchState.watchdog_ms then
-    BlockLaunchFailure(
-      "Launch timeout: exec did not transfer control",
-      popstarter,
-      context and context.device_page or "unknown",
-      argv0,
-      argv0,
-      app_dir,
-      nil,
-      nil,
-      nil,
-      context and context.launch_route,
-      context and context.hdd_preexec_gate_mode,
-      context
-    )
-    RestoreWorkingDirectory(previous_cwd)
-    return
-  end
+  -- (Removed) A pre-exec "launch timeout" watchdog used to sit here. It
+  -- captured fade_start (above), ran ONE Screen.flip, then aborted the launch
+  -- if Timer.getTime - fade_start >= watchdog_ms. With no loop the real budget
+  -- is a single vblank, and Timer.getTime returns raw clock() ticks
+  -- (luatimer.cpp) that are documented-unstable right after Screen.setMode
+  -- (see ui.lua) -- so it could ONLY false-trip and abort good launches before
+  -- loadELF was ever reached (GitHub #497, USB "crash"). The genuine
+  -- "exec returned without transferring control" case is still detected below,
+  -- AFTER loadELF, via the post-exec elapsed annotation + BlockLaunchFailure.
   SetLaunchPhase(LaunchState.PHASE_EXEC)
   if context ~= nil and context.cold_external_launch == true and type(PLDR) == "table" and type(PLDR.PrepareForColdExternalELFLaunch) == "function" then
     pcall(PLDR.PrepareForColdExternalELFLaunch)
@@ -5871,6 +5912,9 @@ function PLDR.SurfaceLaunchArgsDebug()
     lines[#lines+1] = "sidecar: "..tostring(ctx.sidecar_path or "<nil>")
   end
   lines[#lines+1] = "settings: "..tostring(PLDR.SETTINGS_PATH or "<nil>")
+  if type(UI.VIDEO_READBACK) == "string" then
+    lines[#lines+1] = "video: "..UI.VIDEO_READBACK
+  end
   lines[#lines+1] = "args.page: "..tostring(PLDR.LAUNCH_ARGS.page or "<nil>")
   lines[#lines+1] = "args.game: "..tostring(PLDR.LAUNCH_ARGS.game or "<nil>")
   UI.Notif_queue.add(table.concat(lines, "\n"), "info")

@@ -2337,8 +2337,31 @@ UI = {
           local draw_h = preview_h
           if preview_img ~= nil then
             if preview_is_live_cover then
-              local cover_w = math.min(layout.COVER_W or 232, draw_w)
-              local cover_h = math.min(layout.COVER_H or 232, draw_h)
+              -- Pixel-aspect-correct the cover. The PS2 displays the whole
+              -- 640xY framebuffer as one 4:3 frame, so equal pixel counts
+              -- render at different shapes per standard: a fixed pixel-square
+              -- looks slightly tall on NTSC (Y=448) and WIDE/stretched on
+              -- PAL-native (Y=512). Size the cover from the source image's true
+              -- aspect so it displays correctly on BOTH standards -- a source
+              -- of iw:ih shows right when cover_w/cover_h = (iw/ih)*(480/SCR.Y).
+              -- Fit that inside the COVER_W square window and keep the original
+              -- top/right anchor so on-screen placement is otherwise unchanged.
+              local box = math.min(layout.COVER_W or 232, draw_w, draw_h)
+              local iw = Graphics.getImageWidth(preview_img)
+              local ih = Graphics.getImageHeight(preview_img)
+              if type(iw) ~= "number" or iw <= 0 then iw = 1 end
+              if type(ih) ~= "number" or ih <= 0 then ih = 1 end
+              local ratio = (iw / ih) * (480 / (UI.SCR.Y or 448))
+              local cover_w, cover_h
+              if ratio >= 1 then
+                cover_w = box
+                cover_h = Round(box / ratio)
+              else
+                cover_h = box
+                cover_w = Round(box * ratio)
+              end
+              if cover_w > draw_w then cover_w = draw_w end
+              if cover_h > draw_h then cover_h = draw_h end
               local cover_x = draw_x + (draw_w - cover_w)
               local cover_y = draw_y
               Graphics.drawScaleImage(preview_img, cover_x, cover_y, cover_w, cover_h)
@@ -4077,6 +4100,26 @@ function UI.ApplyVideoStandardFromRuntime(video_standard)
   UI.RecalcLayout()
   if type(Screen) == "table" and type(Screen.setMode) == "function" then
     pcall(Screen.setMode, UI.SCR.VMODE, UI.SCR.X, UI.SCR.Y, CT24, INTERLACED, FIELD)
+    -- Readback (GitHub #495): did the GS actually flip to the requested mode?
+    -- NTSC=2, PAL=3. gsKit's init_screen calls SetGsCrt every time, so the CRTC
+    -- SHOULD re-latch -- this confirms it on hardware. got==req but a PAL TV
+    -- still showing PAL = the display won't lock to forced NTSC (no code fix);
+    -- got~=req = the re-latch genuinely failed. Always recorded (cheap); only
+    -- SHOWN under -debug, via PLDR.SurfaceLaunchArgsDebug.
+    local got_mode = -1
+    if type(Screen.getMode) == "function" then
+      local ok_rb, rb = pcall(Screen.getMode)
+      if ok_rb and type(rb) == "table" and type(rb.mode) == "number" then
+        got_mode = rb.mode
+      end
+    end
+    local free_vram = -1
+    if type(Screen.getFreeVRAM) == "function" then
+      local ok_v, v = pcall(Screen.getFreeVRAM)
+      if ok_v and type(v) == "number" then free_vram = v end
+    end
+    UI.VIDEO_READBACK = string.format("req=%d got=%d free=%d %dx%d",
+      req_mode, got_mode, free_vram, UI.SCR.X, UI.SCR.Y)
   end
 end
 -- Generic blocking yes/no confirm (X = Yes, O = No). `lines` = array of text lines.
