@@ -2485,7 +2485,12 @@ PLDR.DKWDRV_PATH = tostring(PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH)
 PLDR.KEYBOARD_LAYOUT = NormalizeKeyboardLayout(PLDR.KEYBOARD_LAYOUT)
 
 local POPSTARTER_PACK_ROOT = PLDR.POPSTARTER_DIR
-local BDMA_MODE_MARKER_PATH = POPSTARTER_PACK_ROOT.."/.pldr_bdma_mode"
+-- BDMA-mode marker in the POPSTARTER pack folder (records which mass-storage
+-- backend is installed). Renamed .pldr_bdma_mode -> bdma_mode.txt on 2026-06-17
+-- for a clearer, shared name (mSAS reads the same file, per Nad). Old names are
+-- still READ for back-compat in ResolveEffectiveBdmaMode so existing cards keep
+-- working; the writer always writes this current name.
+local BDMA_MODE_MARKER_PATH = POPSTARTER_PACK_ROOT.."/bdma_mode.txt"
 local BDMA_COPY_FILES = {
   "usbd.irx",
   "usbhdfsd.irx"
@@ -3033,8 +3038,9 @@ end
 
 local function ResolveEffectiveBdmaMode()
   local marker_candidates = {
-    ReadBdmaModeMarkerCompat(BDMA_MODE_MARKER_PATH),
-    ReadBdmaModeMarkerCompat(POPSTARTER_PACK_ROOT.."/.pldr_bdma")
+    ReadBdmaModeMarkerCompat(BDMA_MODE_MARKER_PATH),                    -- bdma_mode.txt (current)
+    ReadBdmaModeMarkerCompat(POPSTARTER_PACK_ROOT.."/.pldr_bdma_mode"), -- back-compat: pre-2026-06-17 name
+    ReadBdmaModeMarkerCompat(POPSTARTER_PACK_ROOT.."/.pldr_bdma")       -- back-compat: older alt name
   }
   for i = 1, #marker_candidates do
     local normalized = NormalizeBdmaModeKey(marker_candidates[i])
