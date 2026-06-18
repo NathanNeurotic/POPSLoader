@@ -219,38 +219,40 @@ local function ReadGameDetailsText(path)
   if type(data) == "string" and data ~= "" then return data end
   return nil
 end
--- Greedy word-wrap to max_chars per line, collapsing the source's own whitespace
--- so a details blurb re-flows to the narrow cover column, clipped to max_lines
--- (last kept line gets an ellipsis when more was dropped).
-local function WrapGameDetails(text, max_chars, max_lines)
-  if type(text) ~= "string" then return "" end
+-- Word-wrap a details blurb into an ARRAY of lines, PRESERVING the source's own
+-- line breaks: split on newlines first, then greedily wrap each line to max_chars;
+-- a blank source line stays a blank line (paragraph spacing). Returns ALL lines
+-- (no clipping) -- the list view windows/scrolls this. A trailing newline in the
+-- .txt is stripped so it doesn't reserve a phantom blank line at the end.
+local function WrapGameDetailsLines(text, max_chars)
+  local out = {}
+  if type(text) ~= "string" then return out end
+  text = string.gsub(text, "%s+$", "")
+  if text == "" then return out end
   max_chars = tonumber(max_chars) or 30
   if max_chars < 8 then max_chars = 8 end
-  max_lines = tonumber(max_lines) or 4
-  if max_lines < 1 then max_lines = 1 end
-  local lines = {}
-  local cur = ""
-  local truncated = false
-  for word in string.gmatch(text, "%S+") do
-    if cur == "" then
-      cur = word
-    elseif (#cur + 1 + #word) <= max_chars then
-      cur = cur.." "..word
+  -- Iterate source line-by-line (strip a trailing CR); the appended "\n" makes
+  -- gmatch yield the final line too. Authored line breaks survive this way.
+  for src in string.gmatch(text .. "\n", "([^\n]*)\n") do
+    src = string.gsub(src, "\r$", "")
+    if string.match(src, "%S") == nil then
+      out[#out + 1] = ""
     else
-      lines[#lines + 1] = cur
-      cur = word
-      if #lines >= max_lines then truncated = true; break end
+      local cur = ""
+      for word in string.gmatch(src, "%S+") do
+        if cur == "" then
+          cur = word
+        elseif (#cur + 1 + #word) <= max_chars then
+          cur = cur .. " " .. word
+        else
+          out[#out + 1] = cur
+          cur = word
+        end
+      end
+      if cur ~= "" then out[#out + 1] = cur end
     end
   end
-  if not truncated and cur ~= "" and #lines < max_lines then
-    lines[#lines + 1] = cur
-  end
-  if truncated and #lines > 0 then
-    local last = lines[#lines]
-    if #last > max_chars - 1 then last = string.sub(last, 1, max_chars - 1) end
-    lines[#lines] = last.."..."
-  end
-  return table.concat(lines, "\n")
+  return out
 end
 local CoverCache = {
   max = 3,
@@ -259,7 +261,8 @@ local CoverCache = {
   failed = {},
   last_key = nil,
   last_img = nil,
-  last_desc = nil
+  last_desc = nil,
+  desc_scroll = 0
 }
 function CoverCache:Clear()
   local free_ok = type(Graphics) == "table" and type(Graphics.freeImage) == "function"
@@ -274,6 +277,7 @@ function CoverCache:Clear()
   self.last_key = nil
   self.last_img = nil
   self.last_desc = nil
+  self.desc_scroll = 0
 end
 function CoverCache:EvictIfNeeded()
   while #self.order > self.max do
@@ -329,6 +333,7 @@ function CoverCache:UpdateSelection(vcd_path, use_hdd_common_art, entry)
   self.last_key = key
   self.last_img = nil
   self.last_desc = nil
+  self.desc_scroll = 0  -- new selection -> start its description at the top
   if (use_hdd_common_art ~= true) and (vcd_path == nil or vcd_path == "") then
     return nil
   end
@@ -2300,11 +2305,17 @@ UI = {
       CoverPending = false;
       CoverPendingAt = 0;
       CoverIdleMs = 200;
+      DetailsTotal = 0;       -- wrapped lines in the current description (0 = none)
+      DetailsVisible = 0;     -- how many of them fit on screen this frame
+      DescScrollAt = 0;       -- last right-stick scroll step (ms, for rate-limit)
       Reset = function ()
         UI.GameList.CURR = 1;
         UI.GameList.CoverLastIndex = nil
         UI.GameList.CoverPending = false
         UI.GameList.CoverPendingAt = 0
+        UI.GameList.DetailsTotal = 0
+        UI.GameList.DetailsVisible = 0
+        UI.GameList.DescScrollAt = 0
       end;
       Play = function()
         local layout = UI.LAYOUT
@@ -2414,55 +2425,39 @@ UI = {
           local draw_y = preview_y
           local draw_w = preview_w
           local draw_h = preview_h
-          if preview_img ~= nil then
-            if preview_is_live_cover then
-              -- Pixel-aspect-correct the cover. The PS2 displays the whole
-              -- 640xY framebuffer as one 4:3 frame, so equal pixel counts
-              -- render at different shapes per standard: a fixed pixel-square
-              -- looks slightly tall on NTSC (Y=448) and WIDE/stretched on
-              -- PAL-native (Y=512). Size the cover from the source image's true
-              -- aspect so it displays correctly on BOTH standards -- a source
-              -- of iw:ih shows right when cover_w/cover_h = (iw/ih)*(480/SCR.Y).
-              -- Fit that inside the COVER_W square window and keep the original
-              -- top/right anchor so on-screen placement is otherwise unchanged.
-              local box = math.min(layout.COVER_W or 232, draw_w, draw_h)
-              local iw = Graphics.getImageWidth(preview_img)
-              local ih = Graphics.getImageHeight(preview_img)
-              if type(iw) ~= "number" or iw <= 0 then iw = 1 end
-              if type(ih) ~= "number" or ih <= 0 then ih = 1 end
-              local ratio = (iw / ih) * (480 / (UI.SCR.Y or 448))
-              local cover_w, cover_h
-              if ratio >= 1 then
-                cover_w = box
-                cover_h = Round(box / ratio)
-              else
-                cover_h = box
-                cover_w = Round(box * ratio)
-              end
-              if cover_w > draw_w then cover_w = draw_w end
-              if cover_h > draw_h then cover_h = draw_h end
-              local cover_x = draw_x + (draw_w - cover_w)
-              local cover_y = draw_y
-              Graphics.drawScaleImage(preview_img, cover_x, cover_y, cover_w, cover_h)
+          -- Pixel-aspect-correct the cover + frame, and compute their on-screen size
+          -- UP FRONT (independent of Y) so the per-game description can sit directly
+          -- under the REAL artwork. The PS2 stretches the whole 640xY framebuffer to
+          -- one 4:3 frame, so a fixed pixel-square shows tall on NTSC (Y=448) and
+          -- wide on PAL (Y=512) (#496); size from the source aspect * (480/SCR.Y),
+          -- fit inside the COVER_W box, and keep the top/right anchor.
+          local cover_w, cover_h = nil, nil
+          if preview_img ~= nil and preview_is_live_cover then
+            local box = math.min(layout.COVER_W or 232, draw_w, draw_h)
+            local iw = Graphics.getImageWidth(preview_img)
+            local ih = Graphics.getImageHeight(preview_img)
+            if type(iw) ~= "number" or iw <= 0 then iw = 1 end
+            if type(ih) ~= "number" or ih <= 0 then ih = 1 end
+            local ratio = (iw / ih) * (480 / (UI.SCR.Y or 448))
+            if ratio >= 1 then
+              cover_w = box
+              cover_h = Round(box / ratio)
             else
-              Graphics.drawScaleImage(preview_img, draw_x, draw_y, draw_w, draw_h)
+              cover_h = box
+              cover_w = Round(box * ratio)
             end
+            if cover_w > draw_w then cover_w = draw_w end
+            if cover_h > draw_h then cover_h = draw_h end
           end
+          -- frame.png is the decorative border (256x256), same aspect correction so
+          -- it stays square on BOTH standards instead of warping per video mode.
+          local frame_w, frame_h = nil, nil
           if IMG.frame ~= nil then
-            -- Same pixel-aspect correction as the live cover above. frame.png is
-            -- a square (256x256) asset, but the PS2 stretches the whole 640xY
-            -- framebuffer to one 4:3 frame, so a flat pixel-square renders TALL
-            -- on NTSC (Y=448) and WIDE on PAL-native (Y=512) -- the warped border
-            -- the tester reported (#496). Size it from its own aspect *
-            -- (480/SCR.Y) and fit it in the preview box, top/right anchored to
-            -- match the cover, so the frame stays square on BOTH standards
-            -- instead of leaning the opposite way per video mode.
             local fiw = Graphics.getImageWidth(IMG.frame)
             local fih = Graphics.getImageHeight(IMG.frame)
             if type(fiw) ~= "number" or fiw <= 0 then fiw = 1 end
             if type(fih) ~= "number" or fih <= 0 then fih = 1 end
             local fratio = (fiw / fih) * (480 / (UI.SCR.Y or 448))
-            local frame_w, frame_h
             if fratio >= 1 then
               frame_w = draw_w
               frame_h = Round(draw_w / fratio)
@@ -2472,29 +2467,97 @@ UI = {
             end
             if frame_w > draw_w then frame_w = draw_w end
             if frame_h > draw_h then frame_h = draw_h end
-            local frame_x = draw_x + (draw_w - frame_w)
-            local frame_y = draw_y
-            Graphics.drawScaleImage(IMG.frame, frame_x, frame_y, frame_w, frame_h)
           end
-          -- Game details: a word-wrapped, centered blurb tucked under the cover --
-          -- shown only when the feature is on AND a "<name>.txt" was found for the
-          -- selected game, so it gracefully disappears otherwise. Accompanies the
-          -- cover (rides its load), clipped to the gap above the button bar.
+          -- Visible art height = the taller of the cover/frame (both top-anchored);
+          -- a missing/disabled cover falls back to the full placeholder box.
+          local art_h = 0
+          if cover_h ~= nil and cover_h > art_h then art_h = cover_h end
+          if frame_h ~= nil and frame_h > art_h then art_h = frame_h end
+          if not preview_is_live_cover and draw_h > art_h then art_h = draw_h end
+          if art_h <= 0 then art_h = draw_h end
+          -- Per-game details: when the feature is on AND a "<name>.txt" was found,
+          -- wrap it, place it DIRECTLY under the artwork, and lift the [art + gap +
+          -- text] group so it CENTERS in the content area (top safe margin .. above
+          -- the button bar) -- biased up so it doesn't feel bottom-heavy, and with no
+          -- dead gap between art and text. A blurb taller than fits is windowed and
+          -- SCROLLS with the right analog stick (input section). The art never moves
+          -- DOWN from its normal spot; the line budget clears the footer icons.
+          local details_lines, details_y, details_first = nil, nil, 1
+          local details_line_h, details_gap = 14, 8
+          local details_h, details_visible, details_total = 0, 0, 0
+          UI.GameList.DetailsTotal = 0
+          UI.GameList.DetailsVisible = 0
           if cover_enabled and type(PLDR) == "table" and PLDR.SHOW_DETAILS == true
              and UI.CoverCache ~= nil and type(UI.CoverCache.last_desc) == "string"
              and UI.CoverCache.last_desc ~= "" then
-            local center_x = draw_x + Round(draw_w / 2)
-            local desc_y = draw_y + draw_h + 6
             local footer_y = layout.FOOTER_ICON_Y or (UI.SCR.Y - 56)
-            local line_h = 14
-            local avail = footer_y - desc_y - 2
-            if avail >= line_h then
-              local max_lines = math.floor(avail / line_h)
-              local wrapped = WrapGameDetails(UI.CoverCache.last_desc, 30, max_lines)
-              if wrapped ~= "" then
-                Font.ftPrintMultiLineAligned(SFONT, center_x, desc_y, line_h, draw_w, avail, wrapped, UI.CCOL.GREY)
-              end
+            local bottom_limit = footer_y - 24  -- clear the centered footer icons
+            local top_margin = ((layout.SAFE and layout.SAFE.T) or 24) + 8
+            local avail = bottom_limit - top_margin
+            local cap = math.floor((avail - art_h - details_gap) / details_line_h)
+            if cap < 1 then cap = 1 end
+            local all_lines = WrapGameDetailsLines(UI.CoverCache.last_desc, 30)
+            details_total = #all_lines
+            if details_total > 0 then
+              details_visible = details_total
+              if details_visible > cap then details_visible = cap end
+              details_h = details_visible * details_line_h
+              -- clamp the persisted scroll offset to the current line count
+              local max_off = details_total - details_visible
+              if max_off < 0 then max_off = 0 end
+              local off = UI.CoverCache.desc_scroll or 0
+              if off < 0 then off = 0 end
+              if off > max_off then off = max_off end
+              UI.CoverCache.desc_scroll = off
+              details_first = off + 1
+              details_lines = all_lines
+              UI.GameList.DetailsTotal = details_total
+              UI.GameList.DetailsVisible = details_visible
+              local group_h = art_h + details_gap + details_h
+              local group_top = Round(top_margin + (avail - group_h) / 2)
+              if group_top < top_margin then group_top = top_margin end
+              if group_top > draw_y then group_top = draw_y end  -- only lift up, never down
+              -- Belt-and-suspenders: never let the group bottom cross into the button
+              -- bar, even on an unusually short screen where the art nearly fills the
+              -- content band (unreachable on real PS2 video modes; keeps the footer
+              -- icons clear if one ever exists). Prioritizes footer clearance.
+              if group_top + group_h > bottom_limit then group_top = bottom_limit - group_h end
+              draw_y = group_top
+              details_y = draw_y + art_h + details_gap
             end
+          end
+          -- Draw the cover/placeholder at the (possibly lifted) draw_y.
+          if preview_img ~= nil then
+            if preview_is_live_cover and cover_w ~= nil and cover_h ~= nil then
+              local cover_x = draw_x + (draw_w - cover_w)
+              Graphics.drawScaleImage(preview_img, cover_x, draw_y, cover_w, cover_h)
+            else
+              Graphics.drawScaleImage(preview_img, draw_x, draw_y, draw_w, draw_h)
+            end
+          end
+          if IMG.frame ~= nil and frame_w ~= nil and frame_h ~= nil then
+            local frame_x = draw_x + (draw_w - frame_w)
+            Graphics.drawScaleImage(IMG.frame, frame_x, draw_y, frame_w, frame_h)
+          end
+          -- Paint the description: window the visible slice from the scroll offset,
+          -- with a "..." affordance when there's more above/below (font-safe, same
+          -- idiom as the old truncation). draw_y/details_y already include the lift.
+          if details_lines ~= nil and details_y ~= nil and details_visible > 0 then
+            local buf = {}
+            for k = details_first, details_first + details_visible - 1 do
+              buf[#buf + 1] = details_lines[k] or ""
+            end
+            if details_first > 1 and #buf > 0 then
+              local L = buf[1] or ""
+              if #L > 27 then L = string.sub(L, 1, 27) end
+              buf[1] = "..." .. L
+            end
+            if (details_first + details_visible - 1) < details_total and #buf > 0 then
+              local L = buf[#buf] or ""
+              if #L > 27 then L = string.sub(L, 1, 27) end
+              buf[#buf] = L .. "..."
+            end
+            Font.ftPrintMultiLineAligned(SFONT, draw_x + Round(draw_w / 2), details_y, details_line_h, draw_w, details_h, table.concat(buf, "\n"), UI.CCOL.GREY)
           end
         end
         if ammount <= 0 then
@@ -2522,6 +2585,29 @@ UI = {
               UI.GameList.CURR = ammount
             else
               UI.GameList.CURR = 1
+            end
+          end
+          -- Right analog stick scrolls a description that's too long to fully fit
+          -- under the cover (when game details are on). The stick is otherwise
+          -- unused here (R3 is the click, separate), so this is a free, discoverable
+          -- "read the rest" gesture. Rate-limited so a held stick scrolls steadily
+          -- (~1 line / 90ms) instead of flying line-by-line every frame. DetailsTotal
+          -- / DetailsVisible were set by the render block just above this frame.
+          if UI.CoverCache ~= nil and (UI.GameList.DetailsTotal or 0) > (UI.GameList.DetailsVisible or 0)
+             and type(Pads) == "table" and type(Pads.getRightStick) == "function" then
+            local ok_rs, _, rv = pcall(Pads.getRightStick)
+            if ok_rs and type(rv) == "number" and math.abs(rv) > 48 then
+              local now = 0
+              if UI.Pad.Timer ~= nil then now = Timer.getTime(UI.Pad.Timer) end
+              if (now - (UI.GameList.DescScrollAt or 0)) >= 90 then
+                local off = UI.CoverCache.desc_scroll or 0
+                if rv > 0 then off = off + 1 else off = off - 1 end
+                local max_off = (UI.GameList.DetailsTotal or 0) - (UI.GameList.DetailsVisible or 0)
+                if off < 0 then off = 0 end
+                if off > max_off then off = max_off end
+                UI.CoverCache.desc_scroll = off
+                UI.GameList.DescScrollAt = now
+              end
             end
           end
         end
@@ -4197,7 +4283,8 @@ UI = {
 Design by Berion
 Scripts by nuno6573 and Ripto
 Based on Enceladus by Daniel Santos
-Testing by P4NCHOL1NO, VizoR, provato, nuno6573, oldman63, and Community
+Testing by P4NCHOL1NO, VizoR, provato,
+nuno6573, oldman63, and Community
 
 Special Thanks To:
 krHACKen for making POPStarter

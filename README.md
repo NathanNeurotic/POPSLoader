@@ -100,13 +100,14 @@ Navigate POPSLoader using a standard PS2 controller.
 | **D-pad Up / Down** | Scroll through the game list |
 | **D-pad Left / Right** | Page Up / Page Down (jump through large lists) |
 | **L1** | Jump to the top of the game list — press again to bounce to the bottom |
-| **R1** | Refresh / rescan the current game list (forces a fresh HDD scan) |
+| **R1** | Refresh / rescan the current device's game list, in place — HDD rebuilds its saved cache; USB / MMCE / MX4SIO re-scan live (e.g. after hot-plugging a drive or card) |
 | **Cross (X)** | Confirm option / Launch selected game |
 | **Circle (O)** | Go back to the Main Menu / Cancel |
 | **Triangle (△)** | Exit shortcut / BOOT.ELF shortcut where available |
 | **Start** | Open the Settings / Profile Editor |
 | **Select** | Toggle "Hide Text Mode" (clears the UI for a clean view of cover art) |
 | **Square (□)** | Toggle cover-art preview on / off (in the game list) |
+| **Right Analog Stick (up / down)** | Scroll a long game description that doesn't fully fit on screen (when *Game details* are enabled and a `<game>.txt` is present) |
 | **L3 (left stick click)** | Hide / unhide the selected game (writes/removes a `<name>.hide` marker — works on every device, including the internal HDD) |
 | **R3 (right stick click)** | Open the per-device **hidden games** list (to review and unhide) |
 | **R2** | Launch in "HDD Alt" mode (HDD (PFS) game list only — for an HDD-resident POPSTARTER) |
