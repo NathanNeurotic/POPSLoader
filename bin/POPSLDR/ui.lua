@@ -515,6 +515,16 @@ UI = {
         UI.GameList.CoverLastIndex = nil
         UI.GameList.CoverPending = false
         UI.GameList.CoverPendingAt = 0
+        -- Entering a device game-list from a non-list scene (carousel/menu): open at
+        -- the top instead of inheriting the previously-viewed device's (clamped)
+        -- cursor -- UI.GameList.CURR is a single global index shared across pages.
+        -- Gated to carousel->list entry, so R1 in-place rescan and the -page /
+        -- Boot-Page auto-enter (which set CURR deliberately, or want the top anyway)
+        -- are untouched. UI.IsGameScene(nil) is false, so a first/unknown prev is fine.
+        if UI.IsGameScene(scene) and not UI.IsGameScene(prev_scene) then
+          UI.GameList.CURR = 1
+          UI.GameList.STARTUP = 1
+        end
       end
     end;
     --- Color Constants

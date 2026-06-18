@@ -6030,7 +6030,13 @@ PLDR.AutoInitStartupBackends()
 -- 2 newest toasts, so queueing the debug toast last guarantees it survives
 -- an auto-launch failure toast instead of being evicted by it. (On
 -- auto-launch success control never returns, so the order is moot.)
-PLDR.AutoLaunchFromLaunchArgs()
+-- Recovery: holding START at boot must land on the plain carousel, so suppress
+-- the explicit -game auto-launch too (the block above already reset video +
+-- Boot Page). Otherwise a launcher chaining -page/-game would whisk the user
+-- straight past the recovery UI -- the very thing START-held is meant to escape.
+if not boot_start_held then
+  PLDR.AutoLaunchFromLaunchArgs()
+end
 PLDR.SurfaceLaunchArgsDebug()
 
 -- Persisted Boot Page: on a NORMAL boot (no -page launch arg; and no auto-launch
