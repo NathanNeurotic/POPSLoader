@@ -30,7 +30,10 @@ function GetMountData(PATH)
 end
 
 
-local ARGV0 = System.GetArgv0()
+-- Default to "" so a launcher that passes argc==0 (argv0 -> nil) can't crash the
+-- string.find calls below into the boot error screen; "" just falls through to the
+-- normal mass/mc resolution path, same as any non-HDD/non-MX4SIO launcher.
+local ARGV0 = System.GetArgv0() or ""
 if string.find(ARGV0, "^hdd0:") then
   local MNTPART
   BOOTPATH = nil

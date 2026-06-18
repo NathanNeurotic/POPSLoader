@@ -63,7 +63,9 @@ static void PngReadFromMemory(png_structp png_ptr, png_bytep outBytes, png_size_
 static GSTEXTURE* decode_png_stream(png_structp png_ptr, png_infop info_ptr, bool delayed)
 {
 	GSTEXTURE* tex = (GSTEXTURE*)malloc(sizeof(GSTEXTURE));
+	if (tex == NULL) return NULL;  // OOM: don't write tex->Delayed through NULL
 	tex->Delayed = delayed;
+	tex->Mem = NULL;  // parity with loadbmp: every error-path free(tex->Mem) is then safe even if a color-type branch doesn't set it
 
 	png_uint_32 width, height;
 	png_bytep *row_pointers;
@@ -234,7 +236,12 @@ static GSTEXTURE* decode_png_stream(png_structp png_ptr, png_infop info_ptr, boo
 	if (!tex->Delayed)
 	{
 		tex->Vram = gsKit_vram_alloc(gsGlobal, gsKit_texture_size(tex->Width, tex->Height, tex->PSM), GSKIT_ALLOC_USERBUFFER);
-		if (tex->Vram == GSKIT_ALLOC_ERROR) return NULL;
+		if (tex->Vram == GSKIT_ALLOC_ERROR) {
+			free(tex->Mem);
+			if (tex->Clut != NULL) free(tex->Clut);
+			free(tex);
+			return NULL;
+		}
 
 		if (tex->Clut != NULL)
 		{
@@ -243,7 +250,12 @@ static GSTEXTURE* decode_png_stream(png_structp png_ptr, png_infop info_ptr, boo
 			else
 				tex->VramClut = gsKit_vram_alloc(gsGlobal, gsKit_texture_size(16, 16, GS_PSM_CT32), GSKIT_ALLOC_USERBUFFER);
 
-			if (tex->VramClut == GSKIT_ALLOC_ERROR) return NULL;
+			if (tex->VramClut == GSKIT_ALLOC_ERROR) {
+				free(tex->Mem);
+				free(tex->Clut);
+				free(tex);
+				return NULL;
+			}
 		}
 
 		gsKit_texture_upload(gsGlobal, tex);
@@ -383,7 +395,11 @@ GSTEXTURE* loadbmp(FILE* File, bool delayed)
 
 		memset(tex->Clut, 0, gsKit_texture_size_ee(8, 2, GS_PSM_CT32));
 		fseek(File, BMP_PALETTE_OFFSET, SEEK_SET);
-		if (fread(tex->Clut, Bitmap.InfoHeader.ColorUsed*sizeof(u32), 1, File) <= 0)
+		// Clamp the file-supplied palette count to the 16-entry T4 CLUT buffer so a
+		// malformed ColorUsed can't overflow the fixed-size heap buffer above.
+		u32 bmp_clut4 = Bitmap.InfoHeader.ColorUsed;
+		if (bmp_clut4 > 16) bmp_clut4 = 16;
+		if (fread(tex->Clut, bmp_clut4*sizeof(u32), 1, File) <= 0)
 		{
 			if (tex->Clut) {
 				free(tex->Clut);
@@ -419,7 +435,11 @@ GSTEXTURE* loadbmp(FILE* File, bool delayed)
 
 		memset(tex->Clut, 0, gsKit_texture_size_ee(16, 16, GS_PSM_CT32));
 		fseek(File, BMP_PALETTE_OFFSET, SEEK_SET);
-		if (fread(tex->Clut, Bitmap.InfoHeader.ColorUsed*sizeof(u32), 1, File) <= 0)
+		// Clamp the file-supplied palette count to the 256-entry T8 CLUT buffer so a
+		// malformed ColorUsed can't overflow the fixed-size heap buffer above.
+		u32 bmp_clut8 = Bitmap.InfoHeader.ColorUsed;
+		if (bmp_clut8 > 256) bmp_clut8 = 256;
+		if (fread(tex->Clut, bmp_clut8*sizeof(u32), 1, File) <= 0)
 		{
 			if (tex->Clut) {
 				free(tex->Clut);
@@ -504,6 +524,7 @@ GSTEXTURE* loadbmp(FILE* File, bool delayed)
 				free(tex->Clut);
 				tex->Clut = NULL;
 			}
+			free(tex);
 			fclose(File);
 			return NULL;
 		}
@@ -542,6 +563,7 @@ GSTEXTURE* loadbmp(FILE* File, bool delayed)
 				free(tex->Clut);
 				tex->Clut = NULL;
 			}
+			free(tex);
 			fclose(File);
 			return NULL;
 		}
@@ -584,6 +606,7 @@ GSTEXTURE* loadbmp(FILE* File, bool delayed)
 				free(tex->Clut);
 				tex->Clut = NULL;
 			}
+			free(tex);
 			fclose(File);
 			return NULL;
 		}
@@ -601,6 +624,7 @@ GSTEXTURE* loadbmp(FILE* File, bool delayed)
 			DPRINTF("BMP: Read failed!, Size %d\n", FTexSize);
 			free(image);
 			image = NULL;
+			free(tex);
 			fclose(File);
 			return NULL;
 		}
@@ -646,6 +670,14 @@ GSTEXTURE* loadbmp(FILE* File, bool delayed)
 		if(tex->Vram == GSKIT_ALLOC_ERROR)
 		{
 			DPRINTF("VRAM Allocation Failed. Will not upload texture.\n");
+			free(tex->Mem);
+			tex->Mem = NULL;
+			if(tex->Clut != NULL)
+			{
+				free(tex->Clut);
+				tex->Clut = NULL;
+			}
+			free(tex);
 			return NULL;
 		}
 
@@ -659,6 +691,11 @@ GSTEXTURE* loadbmp(FILE* File, bool delayed)
 			if(tex->VramClut == GSKIT_ALLOC_ERROR)
 			{
 				DPRINTF("VRAM CLUT Allocation Failed. Will not upload texture.\n");
+				free(tex->Mem);
+				tex->Mem = NULL;
+				free(tex->Clut);
+				tex->Clut = NULL;
+				free(tex);
 				return NULL;
 			}
 		}
@@ -750,15 +787,16 @@ GSTEXTURE* loadjpeg(FILE* fp, bool scale_down, bool delayed)
 
 
     GSTEXTURE* tex = (GSTEXTURE*)malloc(sizeof(GSTEXTURE));
-	tex->Delayed = delayed;
 
 	struct jpeg_decompress_struct cinfo;
 	struct my_error_mgr jerr;
 
 	if (tex == NULL) {
 		DPRINTF("jpeg: error Texture is NULL\n");
+		if (fp != NULL) fclose(fp);
 		return NULL;
 	}
+	tex->Delayed = delayed;  // set only after the NULL check (don't write through NULL)
 
 	if (fp == NULL)
 	{
@@ -797,6 +835,14 @@ GSTEXTURE* loadjpeg(FILE* fp, bool scale_down, bool delayed)
 		if(tex->Vram == GSKIT_ALLOC_ERROR)
 		{
 			DPRINTF("VRAM Allocation Failed. Will not upload texture.\n");
+			free(tex->Mem);
+			tex->Mem = NULL;
+			if(tex->Clut != NULL)
+			{
+				free(tex->Clut);
+				tex->Clut = NULL;
+			}
+			free(tex);
 			return NULL;
 		}
 
@@ -810,6 +856,11 @@ GSTEXTURE* loadjpeg(FILE* fp, bool scale_down, bool delayed)
 			if(tex->VramClut == GSKIT_ALLOC_ERROR)
 			{
 				DPRINTF("VRAM CLUT Allocation Failed. Will not upload texture.\n");
+				free(tex->Mem);
+				tex->Mem = NULL;
+				free(tex->Clut);
+				tex->Clut = NULL;
+				free(tex);
 				return NULL;
 			}
 		}

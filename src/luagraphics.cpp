@@ -581,7 +581,13 @@ static int lua_load_embedded_png(lua_State *L) {
 	size_t siz = luaL_checkinteger(L, 2);
 	GSTEXTURE* image = NULL;
 	image = loadEmbeddedPNG(ptr, siz, true);
-	lua_pushinteger(L, (uint32_t)(image));
+	// Push nil (not 0) on a failed decode so the Lua "if img == nil" guards in
+	// images.lua actually catch it -- pushing integer 0 made callers cache/draw a
+	// NULL handle (NULL deref). Mirrors lua_loadimg's nil-on-failure convention.
+	if (image != NULL)
+		lua_pushinteger(L, (uint32_t)(image));
+	else
+		lua_pushnil(L);
 	return 1;
 }
 //Register our Graphics Functions

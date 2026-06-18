@@ -2,7 +2,7 @@
 
 Last updated: 2026-06-17 (post-BETA-11)
 Released line: **BETA-11** (2026-06-15). BETA-10-5 release tag: `9a0ebe2`, hardware-confirmed clean 2026-05-28 (Nuno).
-Current `BETA-12-PLAY` development tip: `7afdac3` (BDMA marker rename). Post-release PR work is CI-verified but `Unknown (verify on hardware)` unless explicitly recorded below.
+Current `BETA-12-PLAY` development tip moves every push — see `git log` for the exact HEAD (don't pin a SHA here; it goes stale immediately). Post-release PR work is CI-verified but `Unknown (verify on hardware)` unless explicitly recorded below.
 
 > This file is the detailed run ledger. For the canonical current state — Settings behavior, Known Issues, Preservation Contracts, Behavioral Invariants, and Hardware Status — see **`STATE.md`**; those shared blocks are not restated here.
 
