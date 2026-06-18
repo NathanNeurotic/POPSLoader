@@ -2854,6 +2854,29 @@ function PLDR.EnsurePopstarterDir()
   return EnsurePopstarterPackDir(PLDR.POPSTARTER_DIR)
 end
 
+-- MX4SIO auto-enter crash-marker. MX4SIO's card probe lives in a vendored IOP
+-- driver (mx4sio_bd.irx) that can BLOCK when no card is present (notably PCSX2
+-- with MX4SIO emulated but no card image). A blocked IOP module cannot be timed
+-- out from the EE, so instead we bound the blast radius: mark "MX4SIO entry
+-- pending" right before the probe and clear it once the probe returns. If a
+-- later boot still finds the marker set, the previous MX4SIO entry never
+-- returned (it hung) -- so the persisted-Boot-Page auto-enter skips MX4SIO that
+-- boot, and a single stall cannot brick every boot. All ops are best-effort
+-- (pcall) so the marker machinery can never itself error or wedge the boot.
+local MX4SIO_PENDING_MARKER = PLDR.POPSTARTER_DIR.."/.mx4sio_autoenter_pending"
+function PLDR.SetMx4sioAutoEnterPending(pending)
+  if pending then
+    pcall(PLDR.EnsurePopstarterDir)
+    pcall(WriteAtomic, MX4SIO_PENDING_MARKER, "1")
+  else
+    pcall(System.removeFile, MX4SIO_PENDING_MARKER)
+  end
+end
+function PLDR.IsMx4sioAutoEnterPending()
+  local ok, exists = pcall(doesFileExist, MX4SIO_PENDING_MARKER)
+  return ok and exists == true
+end
+
 local function RecursiveRemoveDir(dir, preserve_path, depth)
   -- F-12: bound the recursion. mc:/POPSTARTER is shallow; a pathological or looping
   -- structure must not blow the Lua stack. 16 levels is far past any real layout.
@@ -5979,6 +6002,21 @@ if type(PLDR.LAUNCH_ARGS) ~= "table"
      and type(PLDR.CAROUSEL_DEVICE_KEYS) == "table"
      and PLDR.IsDeviceHidden(PLDR.CAROUSEL_DEVICE_KEYS[opt]) then
     opt = nil
+  end
+  -- MX4SIO crash-loop guard: its probe can stall in a vendored IOP driver when
+  -- no card is present. If a prior MX4SIO entry left the pending marker set it
+  -- hung -- skip the auto-enter this boot and warn, so one stall cannot brick
+  -- every boot. When NOT auto-entering MX4SIO (opt 2), clear any stale marker so
+  -- a later working MX4SIO can auto-enter again.
+  if opt == 2 then
+    if type(PLDR.IsMx4sioAutoEnterPending) == "function" and PLDR.IsMx4sioAutoEnterPending() then
+      opt = nil
+      if type(UI) == "table" and type(UI.Notif_queue) == "table" then
+        UI.Notif_queue.add("MX4SIO auto-enter skipped: it stalled last boot.\nInsert a card or change Boot Page in Settings.", "warn")
+      end
+    end
+  elseif type(PLDR.SetMx4sioAutoEnterPending) == "function" then
+    PLDR.SetMx4sioAutoEnterPending(false)
   end
   if opt ~= nil and type(UI) == "table" and type(UI.MainMenu) == "table" then
     local carousel = type(UI.MainMenu.Carousel) == "table" and UI.MainMenu.Carousel or nil

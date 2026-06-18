@@ -3724,11 +3724,23 @@ UI = {
 	              report("Refreshing mass backends...", 0.18)
 	              PLDR.CleanupGameList()
 	              PLDR.GAMEPATH = ""
+              -- MX4SIO crash-marker: its probe lives in a vendored IOP driver
+              -- that can BLOCK with no card. Mark "pending" before the probe;
+              -- if we hang in there the marker survives, and the next boot's
+              -- Boot-Page auto-enter skips MX4SIO (see system.lua). Cleared as
+              -- soon as the probe returns -- it returns on a no-card result, just
+              -- never on a hang -- so only a genuine stall leaves it set.
+              if type(PLDR.SetMx4sioAutoEnterPending) == "function" then
+                PLDR.SetMx4sioAutoEnterPending(true)
+              end
               if type(PLDR.RefreshMassBackends) == "function" then
                 pcall(PLDR.RefreshMassBackends)
               end
               report("Locating MX4SIO POPS folder...", 0.42)
               local mx4sio_root = PLDR.InitMX4SIOPopsRoot()
+              if type(PLDR.SetMx4sioAutoEnterPending) == "function" then
+                PLDR.SetMx4sioAutoEnterPending(false)
+              end
               if mx4sio_root == nil then
                 UI.Notif_queue.add("No MX4SIO device detected", "warn")
                 return
