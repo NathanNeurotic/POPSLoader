@@ -2370,7 +2370,32 @@ UI = {
             end
           end
           if IMG.frame ~= nil then
-            Graphics.drawScaleImage(IMG.frame, draw_x, draw_y, draw_w, draw_h)
+            -- Same pixel-aspect correction as the live cover above. frame.png is
+            -- a square (256x256) asset, but the PS2 stretches the whole 640xY
+            -- framebuffer to one 4:3 frame, so a flat pixel-square renders TALL
+            -- on NTSC (Y=448) and WIDE on PAL-native (Y=512) -- the warped border
+            -- the tester reported (#496). Size it from its own aspect *
+            -- (480/SCR.Y) and fit it in the preview box, top/right anchored to
+            -- match the cover, so the frame stays square on BOTH standards
+            -- instead of leaning the opposite way per video mode.
+            local fiw = Graphics.getImageWidth(IMG.frame)
+            local fih = Graphics.getImageHeight(IMG.frame)
+            if type(fiw) ~= "number" or fiw <= 0 then fiw = 1 end
+            if type(fih) ~= "number" or fih <= 0 then fih = 1 end
+            local fratio = (fiw / fih) * (480 / (UI.SCR.Y or 448))
+            local frame_w, frame_h
+            if fratio >= 1 then
+              frame_w = draw_w
+              frame_h = Round(draw_w / fratio)
+            else
+              frame_h = draw_h
+              frame_w = Round(draw_h * fratio)
+            end
+            if frame_w > draw_w then frame_w = draw_w end
+            if frame_h > draw_h then frame_h = draw_h end
+            local frame_x = draw_x + (draw_w - frame_w)
+            local frame_y = draw_y
+            Graphics.drawScaleImage(IMG.frame, frame_x, frame_y, frame_w, frame_h)
           end
         end
         if ammount <= 0 then
