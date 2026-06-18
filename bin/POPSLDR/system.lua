@@ -5942,8 +5942,16 @@ if boot_start_held then
   if type(PLDR.ApplyVideoStandardRuntime) == "function" then
     PLDR.ApplyVideoStandardRuntime(PLDR.VIDEO_STANDARD_AUTO)
   end
+  -- Also drop the persisted Boot Page (and any -page auto-enter) so a device
+  -- whose probe can stall -- e.g. MX4SIO with no card -- can't auto-enter and
+  -- wedge the boot. Holding START thus always lands on the plain carousel,
+  -- where the user can change Boot Page / Video Standard in Settings.
+  PLDR.BOOT_PAGE = "Carousel"
+  if type(UI) == "table" and type(UI.MainMenu) == "table" then
+    UI.MainMenu.PendingAutoEnter = false
+  end
   if type(UI) == "table" and type(UI.Notif_queue) == "table" then
-    UI.Notif_queue.add("Start held at boot: display reset to Auto (console region).\nAdjust Video Standard in Settings if needed.", "warn")
+    UI.Notif_queue.add("Start held at boot: display reset to Auto, Boot Page reset to Carousel.\nAdjust them in Settings if needed.", "warn")
   end
 end
 PLDR.AutoInitStartupBackends()
