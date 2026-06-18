@@ -3242,20 +3242,6 @@ function PLDR.LoadSettingsNonFatal()
       end
     end
   end
-  -- Slot-independent recovery: a USB/MX4SIO device can re-enumerate to a
-  -- different mass slot than last boot, so the boot sidecar path (tied to this
-  -- boot's argv0 slot) won't find a .pldrs saved under the old slot. Probe the
-  -- same relative path on every mounted mass slot, preferring the boot device's
-  -- driver, and pin SETTINGS_PATH back to the canonical boot sidecar so the
-  -- next save re-converges. Only runs when the boot sidecar already missed, so
-  -- normal boots never reach it. (GitHub #494 robustness, beyond bare/zero.)
-  if loaded_path == nil and sidecar ~= nil and sidecar ~= "" then
-    local scanned = PLDR.FindSidecarOnAnyMassSlot(sidecar)
-    if scanned ~= nil then
-      loaded_path = scanned
-      pin_to_sidecar = true
-    end
-  end
   if loaded_path == nil and fallback ~= nil and fallback ~= "" and doesFileExist(fallback) then
     loaded_path = fallback
     -- First-run migration: if we have a usable sidecar target but the
@@ -3868,79 +3854,6 @@ local function BuildMassRootIdentity(mode)
   end
 
   return identity
-end
-
--- Best-effort FAT/exFAT volume serial (true device identity) for a mounted
--- mass root, via the IOP bdm_query RPC. Returns nil if unreadable -- callers
--- MUST degrade gracefully (the read is hardware-best-effort). Used only to
--- disambiguate multiple same-driver installs in FindSidecarOnAnyMassSlot.
-function PLDR.GetMassVolumeSerial(root)
-  if type(root) ~= "string" or root == "" then return nil end
-  if type(System) ~= "table" or type(System.getMassVolumeSerial) ~= "function" then
-    return nil
-  end
-  local ok, serial = pcall(System.getMassVolumeSerial, root)
-  if ok and type(serial) == "string" and serial ~= "" then
-    return serial
-  end
-  return nil
-end
-
--- Slot-independent settings recovery (used by LoadSettingsNonFatal). When a
--- USB/MX4SIO device re-enumerates to a different mass slot than the boot
--- recorded, the per-boot sidecar path won't find a .pldrs saved under the old
--- slot. Probe the SAME relative path on every currently-mounted mass slot and
--- return the match most likely to belong to the boot device: a lone match
--- wins; with several, prefer the slot whose ioctl driver-name matches the boot
--- device (READ-ONLY -- never modifies the detection). If still ambiguous
--- (multiple same-driver installs), return nil so the caller falls back; the
--- volume-serial layer (PLDR.GetMassVolumeSerial) settles that rarer case.
-function PLDR.FindSidecarOnAnyMassSlot(sidecar)
-  if type(sidecar) ~= "string" or sidecar == "" then return nil end
-  local reldir = string.match(sidecar, "^[Mm][Aa][Ss][Ss]%d*:/(.+)$")
-  if reldir == nil or reldir == "" then return nil end  -- not a mass sidecar
-  local boot_root = string.match(sidecar, "^([Mm][Aa][Ss][Ss]%d*:/)")
-  local boot_driver = nil
-  if boot_root ~= nil then
-    local nb = NormalizeMassRoot(boot_root)
-    if nb ~= nil then boot_driver = PLDR.GetMassMountDriver(nb) end
-  end
-  local matches = {}
-  for slot = 0, 9 do
-    local root = (slot == 0) and "mass:/" or ("mass"..tostring(slot)..":/")
-    local normalized = NormalizeMassRoot(root)
-    if normalized ~= nil and doesFolderExist(normalized) then
-      local cand = normalized..reldir
-      if doesFileExist(cand) then
-        matches[#matches + 1] = { path = cand, root = normalized, driver = PLDR.GetMassMountDriver(normalized) }
-      end
-    end
-  end
-  if #matches == 0 then return nil end
-  if #matches == 1 then return matches[1].path end
-  -- Several installs found. Narrow to the boot device's driver kind first.
-  local same = {}
-  if boot_driver ~= nil and boot_driver ~= "" then
-    for i = 1, #matches do
-      if matches[i].driver == boot_driver then same[#same + 1] = matches[i] end
-    end
-  end
-  if #same == 1 then return same[1].path end
-  -- Still ambiguous (multiple same-driver installs): disambiguate by VOLUME
-  -- SERIAL -- the boot device's true identity. Best-effort; if the serial is
-  -- unreadable on this hardware, fall through to MC/default rather than load
-  -- some other device's settings.
-  if #same > 1 then
-    local boot_serial = boot_root ~= nil and PLDR.GetMassVolumeSerial(NormalizeMassRoot(boot_root)) or nil
-    if boot_serial ~= nil and boot_serial ~= "" then
-      for i = 1, #same do
-        if PLDR.GetMassVolumeSerial(same[i].root) == boot_serial then
-          return same[i].path
-        end
-      end
-    end
-  end
-  return nil
 end
 
 local function BuildUsbIdentityDeferred()
