@@ -2967,6 +2967,11 @@ UI = {
             dirty = dirty_fn
           })
         end
+        local function AddInfo(label, get_value)
+          -- Read-only status row (not focusable -- see IsSelectable). Surfaces
+          -- live runtime state next to the relevant setting.
+          table.insert(items, { kind = "info", label = label, value = get_value })
+        end
         local function AddPath(label, get_value, open_fn, dirty_fn)
           table.insert(items, {
             kind = "path",
@@ -3021,6 +3026,25 @@ UI = {
             UI.ProfileDirty = true
           end,
           function() return UI.VideoStandardDirty == true end
+        )
+        -- Read-only: what the GS is ACTUALLY outputting right now, so a
+        -- PAL-console user who selects NTSC can see whether the hardware
+        -- really switched -- no -debug / launch args needed (GitHub #495).
+        AddInfo(
+          "Actual output",
+          function()
+            if type(Screen) ~= "table" or type(Screen.getMode) ~= "function" then
+              return "(unknown)"
+            end
+            local ok, m = pcall(Screen.getMode)
+            if not ok or type(m) ~= "table" or type(m.mode) ~= "number" then
+              return "(unknown)"
+            end
+            local name = (m.mode == PAL) and "PAL"
+              or (m.mode == NTSC) and "NTSC"
+              or ("mode "..tostring(m.mode))
+            return name.." "..tostring(UI.SCR.X or "?").."x"..tostring(UI.SCR.Y or "?")
+          end
         )
         AddCycle(
           "Hide UI Text",
@@ -3182,6 +3206,7 @@ UI = {
         local function IsSelectable(idx)
           local it = items[idx]
           return it ~= nil and it.kind ~= "section" and it.kind ~= "spacer"
+            and it.kind ~= "info"
         end
         if type(UI.SettingsFocus) ~= "number" or UI.SettingsFocus < 1 or UI.SettingsFocus > #items then
           UI.SettingsFocus = 1
@@ -3256,7 +3281,7 @@ UI = {
           local value_text_color
           if dirty then
             value_text_color = accent_color
-          elseif it.kind == "path" then
+          elseif it.kind == "path" or it.kind == "info" then
             value_text_color = muted_color
           else
             value_text_color = label_color
