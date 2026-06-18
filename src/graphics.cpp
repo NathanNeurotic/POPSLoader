@@ -65,11 +65,30 @@ static GSTEXTURE* decode_png_stream(png_structp png_ptr, png_infop info_ptr, boo
 	GSTEXTURE* tex = (GSTEXTURE*)malloc(sizeof(GSTEXTURE));
 	if (tex == NULL) return NULL;  // OOM: don't write tex->Delayed through NULL
 	tex->Delayed = delayed;
-	tex->Mem = NULL;  // parity with loadbmp: every error-path free(tex->Mem) is then safe even if a color-type branch doesn't set it
+	tex->Mem = NULL;   // NULL-init BEFORE the first libpng call that can longjmp, so
+	tex->Clut = NULL;  // the error cleanup below can free() these unconditionally.
 
 	png_uint_32 width, height;
-	png_bytep *row_pointers;
+	// volatile: written AFTER setjmp and read in the longjmp cleanup, so per the C
+	// standard they must be volatile to hold a defined value after a longjmp.
+	png_bytep * volatile row_pointers = NULL;
+	volatile int row_count = 0;
 	int row, i, k = 0, j, bit_depth, color_type, interlace_type;
+
+	// Own the libpng error path: a corrupt/truncated PNG -- or an allocation failure
+	// routed here via longjmp below -- frees THIS function's in-progress buffers
+	// (which the caller's setjmp cannot see; that was the leak) and fails cleanly.
+	// On the normal path setjmp returns 0 and this block never runs.
+	if (setjmp(png_jmpbuf(png_ptr))) {
+		if (row_pointers != NULL) {
+			for (row = 0; row < row_count; row++) free(row_pointers[row]);
+			free(row_pointers);
+		}
+		free(tex->Mem);
+		free(tex->Clut);
+		free(tex);
+		return NULL;
+	}
 
 	png_read_info(png_ptr, info_ptr);
 	/* Enable proper handling for interlaced PNGs.
@@ -99,9 +118,15 @@ static GSTEXTURE* decode_png_stream(png_structp png_ptr, png_infop info_ptr, boo
 		int row_bytes = png_get_rowbytes(png_ptr, info_ptr);
 		tex->PSM = GS_PSM_CT32;
 		tex->Mem = (u32*)memalign(128, gsKit_texture_size_ee(tex->Width, tex->Height, tex->PSM));
+		if (tex->Mem == NULL) longjmp(png_jmpbuf(png_ptr), 1);
 
 		row_pointers = (png_byte**)calloc(height, sizeof(png_bytep));
-		for (row = 0; row < (int)height; row++) row_pointers[row] = (png_bytep)malloc(row_bytes);
+		if (row_pointers == NULL) longjmp(png_jmpbuf(png_ptr), 1);
+		row_count = (int)height;  // calloc zeroed the array; cleanup frees all entries (NULL = no-op)
+		for (row = 0; row < (int)height; row++) {
+			row_pointers[row] = (png_bytep)malloc(row_bytes);
+			if (row_pointers[row] == NULL) longjmp(png_jmpbuf(png_ptr), 1);
+		}
 		png_read_image(png_ptr, row_pointers);
 
 		struct pixel { u8 r,g,b,a; };
@@ -115,15 +140,23 @@ static GSTEXTURE* decode_png_stream(png_structp png_ptr, png_infop info_ptr, boo
 
 		for (row = 0; row < (int)height; row++) free(row_pointers[row]);
 		free(row_pointers);
+		row_pointers = NULL;
+		row_count = 0;
 	}
 	else if (png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_RGB)
 	{
 		int row_bytes = png_get_rowbytes(png_ptr, info_ptr);
 		tex->PSM = GS_PSM_CT24;
 		tex->Mem = (u32*)memalign(128, gsKit_texture_size_ee(tex->Width, tex->Height, tex->PSM));
+		if (tex->Mem == NULL) longjmp(png_jmpbuf(png_ptr), 1);
 
 		row_pointers = (png_byte**)calloc(height, sizeof(png_bytep));
-		for (row = 0; row < (int)height; row++) row_pointers[row] = (png_bytep)malloc(row_bytes);
+		if (row_pointers == NULL) longjmp(png_jmpbuf(png_ptr), 1);
+		row_count = (int)height;  // calloc zeroed the array; cleanup frees all entries (NULL = no-op)
+		for (row = 0; row < (int)height; row++) {
+			row_pointers[row] = (png_bytep)malloc(row_bytes);
+			if (row_pointers[row] == NULL) longjmp(png_jmpbuf(png_ptr), 1);
+		}
 		png_read_image(png_ptr, row_pointers);
 
 		struct pixel3 { u8 r,g,b; };
@@ -136,6 +169,8 @@ static GSTEXTURE* decode_png_stream(png_structp png_ptr, png_infop info_ptr, boo
 
 		for (row = 0; row < (int)height; row++) free(row_pointers[row]);
 		free(row_pointers);
+		row_pointers = NULL;
+		row_count = 0;
 	}
 	else if (png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_PALETTE) {
 		struct png_clut { u8 r, g, b, a; };
@@ -152,12 +187,19 @@ static GSTEXTURE* decode_png_stream(png_structp png_ptr, png_infop info_ptr, boo
 			int row_bytes = png_get_rowbytes(png_ptr, info_ptr);
 			tex->PSM = GS_PSM_T4;
 			tex->Mem = (u32*)memalign(128, gsKit_texture_size_ee(tex->Width, tex->Height, tex->PSM));
+			if (tex->Mem == NULL) longjmp(png_jmpbuf(png_ptr), 1);
 
 			row_pointers = (png_byte**)calloc(height, sizeof(png_bytep));
-			for (row = 0; row < (int)height; row++) row_pointers[row] = (png_bytep)malloc(row_bytes);
+			if (row_pointers == NULL) longjmp(png_jmpbuf(png_ptr), 1);
+			row_count = (int)height;  // calloc zeroed the array; cleanup frees all entries (NULL = no-op)
+			for (row = 0; row < (int)height; row++) {
+				row_pointers[row] = (png_bytep)malloc(row_bytes);
+				if (row_pointers[row] == NULL) longjmp(png_jmpbuf(png_ptr), 1);
+			}
 			png_read_image(png_ptr, row_pointers);
 
 			tex->Clut = (u32*)memalign(128, gsKit_texture_size_ee(8, 2, GS_PSM_CT32));
+			if (tex->Clut == NULL) longjmp(png_jmpbuf(png_ptr), 1);
 			memset(tex->Clut, 0, gsKit_texture_size_ee(8, 2, GS_PSM_CT32));
 
 			unsigned char *pixel = (unsigned char *)tex->Mem;
@@ -183,17 +225,26 @@ static GSTEXTURE* decode_png_stream(png_structp png_ptr, png_infop info_ptr, boo
 
 			for (row = 0; row < (int)height; row++) free(row_pointers[row]);
 			free(row_pointers);
+			row_pointers = NULL;
+			row_count = 0;
 		}
 		else if (bit_depth == 8) {
 			int row_bytes = png_get_rowbytes(png_ptr, info_ptr);
 			tex->PSM = GS_PSM_T8;
 			tex->Mem = (u32*)memalign(128, gsKit_texture_size_ee(tex->Width, tex->Height, tex->PSM));
+			if (tex->Mem == NULL) longjmp(png_jmpbuf(png_ptr), 1);
 
 			row_pointers = (png_byte**)calloc(height, sizeof(png_bytep));
-			for (row = 0; row < (int)height; row++) row_pointers[row] = (png_bytep)malloc(row_bytes);
+			if (row_pointers == NULL) longjmp(png_jmpbuf(png_ptr), 1);
+			row_count = (int)height;  // calloc zeroed the array; cleanup frees all entries (NULL = no-op)
+			for (row = 0; row < (int)height; row++) {
+				row_pointers[row] = (png_bytep)malloc(row_bytes);
+				if (row_pointers[row] == NULL) longjmp(png_jmpbuf(png_ptr), 1);
+			}
 			png_read_image(png_ptr, row_pointers);
 
 			tex->Clut = (u32*)memalign(128, gsKit_texture_size_ee(16, 16, GS_PSM_CT32));
+			if (tex->Clut == NULL) longjmp(png_jmpbuf(png_ptr), 1);
 			memset(tex->Clut, 0, gsKit_texture_size_ee(16, 16, GS_PSM_CT32));
 
 			unsigned char *pixel = (unsigned char *)tex->Mem;
@@ -221,6 +272,8 @@ static GSTEXTURE* decode_png_stream(png_structp png_ptr, png_infop info_ptr, boo
 
 			for (row = 0; row < (int)height; row++) free(row_pointers[row]);
 			free(row_pointers);
+			row_pointers = NULL;
+			row_count = 0;
 		}
 	}
 	else {
