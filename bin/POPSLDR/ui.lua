@@ -590,12 +590,12 @@ UI = {
       UI.LAYOUT.ICON_ROW_Y = Round(UI.SCR.Y_MID - 40)
       UI.LAYOUT.LIST_X = Round(safe.L)
       UI.LAYOUT.LIST_Y = Round(safe.T + 16)
-      -- Cover preview box = 232 (== COVER_W), not 256: the 256 box was 24px wider
-      -- than the cover window, so its left side / frame was dead padding. Shrinking
-      -- it to the cover width frees ~24px on the left for a wider game list; the
-      -- cover is RIGHT-anchored (right edge = SCR.X - safe.R) so the art itself does
-      -- not move -- only the box/frame left edge shifts right.
-      local preview_w = 232
+      UI.LAYOUT.LIST_W = math.floor(safe_w * 0.52)
+      UI.LAYOUT.LIST_MAX = math.floor((safe_h - 80) / UI.LAYOUT.LIST_ROW_H)
+      if UI.LAYOUT.LIST_MAX < 1 then
+        UI.LAYOUT.LIST_MAX = 1
+      end
+      local preview_w = 256
       local preview_h = 256
       UI.LAYOUT.PREVIEW_W = preview_w
       UI.LAYOUT.PREVIEW_H = preview_h
@@ -603,14 +603,6 @@ UI = {
       UI.LAYOUT.COVER_H = 232
       UI.LAYOUT.PREVIEW_X = Round(UI.SCR.X - safe.R - preview_w)
       UI.LAYOUT.PREVIEW_Y = Round(UI.SCR.Y_MID - (preview_h / 2))
-      -- Game list fills from the left margin to a small gap before the preview, so
-      -- names get ~2-3 more characters without crowding the cover icon (oldman63).
-      UI.LAYOUT.LIST_W = UI.LAYOUT.PREVIEW_X - UI.LAYOUT.LIST_X - 14
-      if UI.LAYOUT.LIST_W < 96 then UI.LAYOUT.LIST_W = 96 end
-      UI.LAYOUT.LIST_MAX = math.floor((safe_h - 80) / UI.LAYOUT.LIST_ROW_H)
-      if UI.LAYOUT.LIST_MAX < 1 then
-        UI.LAYOUT.LIST_MAX = 1
-      end
       UI.LAYOUT.FOOTER_ICON_Y = Round(UI.SCR.Y - UI.LAYOUT.BTN_BAR_SAFE_BOTTOM)
       UI.LAYOUT.FOOTER_LABEL_Y = Round(UI.LAYOUT.FOOTER_ICON_Y + UI.LAYOUT.FOOTER_LABEL_Y_OFFSET)
     end;
