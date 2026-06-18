@@ -48,6 +48,7 @@ static void BuildMassRootPath(int index, char *out_root, size_t out_sz);
 
 #define BDM_QUERY_RPC_ID 0xB0D10B00
 #define BDM_QUERY_RPC_GET_LIST 0
+#define BDM_QUERY_RPC_GET_SERIAL 1
 #define BDM_QUERY_MAX_DEVICES 32
 
 typedef struct bdm_dev_info {
@@ -64,12 +65,24 @@ typedef struct bdm_dev_list {
 	bdm_dev_info_t devs[BDM_QUERY_MAX_DEVICES];
 } bdm_dev_list_t;
 
+/* GET_SERIAL request/response -- must match iop/bdm_query/bdm_query.c. */
+typedef struct bdm_serial_req {
+	u32 parId;
+} bdm_serial_req_t;
+
+typedef struct bdm_serial_resp {
+	u32 valid;
+	u32 serial;
+} bdm_serial_resp_t;
+
 static SifRpcClientData_t bdm_rpc_client;
 static bool bdm_rpc_bound = false;
 static bool bdm_rpc_loaded = false;
 static bdm_dev_list_t bdm_rpc_buffer __attribute__((aligned(64)));
 static bdm_dev_list_t mass_backend_cache;
 static bool mass_backend_cache_valid = false;
+static bdm_serial_req_t bdm_serial_req_buf __attribute__((aligned(64)));
+static bdm_serial_resp_t bdm_serial_resp_buf __attribute__((aligned(64)));
 
 static bool bdm_irx_loaded = false;
 static bool bdm_fatfs_irx_loaded = false;
@@ -352,6 +365,57 @@ static int lua_get_mass_mount_driver(lua_State *L)
 	const char *driver = GetMassMountDriverNameBySlot(slot);
 	if (driver != NULL && driver[0] != '\0') {
 		lua_pushstring(L, driver);
+	} else {
+		lua_pushnil(L);
+	}
+
+	return 1;
+}
+
+/* Best-effort FAT/exFAT volume serial for a mounted mass slot (parId == slot).
+ * Returns false on any failure -- the caller then uses the driver-name
+ * heuristic. Reads the IOP RPC only; never modifies the ioctl detection. */
+static bool FetchBdmSerial(int parId, u32 *out_serial)
+{
+	if (out_serial == NULL) {
+		return false;
+	}
+	if (!EnsureBdmQueryRpc()) {
+		return false;
+	}
+	memset(&bdm_serial_req_buf, 0, sizeof(bdm_serial_req_buf));
+	memset(&bdm_serial_resp_buf, 0, sizeof(bdm_serial_resp_buf));
+	bdm_serial_req_buf.parId = (u32)parId;
+	if (SifCallRpc(&bdm_rpc_client, BDM_QUERY_RPC_GET_SERIAL, 0,
+	               &bdm_serial_req_buf, sizeof(bdm_serial_req_buf),
+	               &bdm_serial_resp_buf, sizeof(bdm_serial_resp_buf), NULL, NULL) < 0) {
+		return false;
+	}
+	if (bdm_serial_resp_buf.valid == 0) {
+		return false;
+	}
+	*out_serial = bdm_serial_resp_buf.serial;
+	return true;
+}
+
+static int lua_get_mass_volume_serial(lua_State *L)
+{
+	if (lua_gettop(L) != 1) {
+		return luaL_error(L, "Argument error: System.getMassVolumeSerial(root) takes one argument.");
+	}
+
+	const char *root = luaL_checkstring(L, 1);
+	int slot = -1;
+	if (!ParseMassRootSlot(root, &slot)) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	u32 serial = 0;
+	if (FetchBdmSerial(slot, &serial)) {
+		char hex[16];
+		snprintf(hex, sizeof(hex), "%08X", serial);
+		lua_pushstring(L, hex);
 	} else {
 		lua_pushnil(L);
 	}
@@ -1357,6 +1421,7 @@ static const luaL_Reg System_functions[] = {
 	{"refreshMassBackends",    lua_refresh_mass_backends},
 	{"getMassBackendInfo",     lua_get_mass_backend_info},
 	{"getMassMountDriver",     lua_get_mass_mount_driver},
+	{"getMassVolumeSerial",    lua_get_mass_volume_serial},
 	{"getMassRootByBackendName", lua_get_mass_root_by_backend_name},
 	{"findBDMByDriver",    lua_find_bdm_by_driver},
 	{0, 0}
