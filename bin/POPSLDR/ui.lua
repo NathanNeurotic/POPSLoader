@@ -588,9 +588,13 @@ UI = {
       UI.LAYOUT.TITLE_Y = Round(safe.T + 6)
       UI.LAYOUT.STATUS_Y = Round(UI.LAYOUT.TITLE_Y + 20)
       UI.LAYOUT.ICON_ROW_Y = Round(UI.SCR.Y_MID - 40)
-      UI.LAYOUT.LIST_X = Round(safe.L)
+      -- Widen the list ~1.5 chars WITHOUT touching the cover (oldman63 #501): pull
+      -- the left margin in 8px (40 -> 32, still within typical CRT action-safe) and
+      -- extend the list to a 6px gap before the cover. Cover left = SCR.X - safe.R
+      -- - 256 (256 = preview_w set below); the cover stays right-anchored, unchanged.
+      UI.LAYOUT.LIST_X = Round(safe.L - 8)
       UI.LAYOUT.LIST_Y = Round(safe.T + 16)
-      UI.LAYOUT.LIST_W = math.floor(safe_w * 0.52)
+      UI.LAYOUT.LIST_W = (UI.SCR.X - safe.R - 256) - 6 - UI.LAYOUT.LIST_X
       UI.LAYOUT.LIST_MAX = math.floor((safe_h - 80) / UI.LAYOUT.LIST_ROW_H)
       if UI.LAYOUT.LIST_MAX < 1 then
         UI.LAYOUT.LIST_MAX = 1
