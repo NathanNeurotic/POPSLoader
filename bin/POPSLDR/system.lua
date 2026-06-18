@@ -3256,13 +3256,36 @@ function PLDR.LoadSettingsNonFatal()
   -- converges to one spelling. (Only slot 0's bare/zero pair is aliased -- slot
   -- NUMBERS are never folded; they may be distinct physical devices.)
   if sidecar ~= nil and sidecar ~= "" then
-    local candidates = MassSlot0PathAliases(sidecar)
-    for i = 1, #candidates do
-      if doesFileExist(candidates[i]) then
-        loaded_path = candidates[i]
-        pin_to_sidecar = true
-        break
+    local function ProbeSidecarAliases()
+      local candidates = MassSlot0PathAliases(sidecar)
+      for i = 1, #candidates do
+        if doesFileExist(candidates[i]) then
+          return candidates[i]
+        end
       end
+      return nil
+    end
+    loaded_path = ProbeSidecarAliases()
+    -- A 'mass' (USB/BDM) sidecar mounts LAZILY: the SDK reset at startup drops
+    -- the mount FMCB used to launch us, and bdmfs_fatfs re-enumerates the drive
+    -- asynchronously, so a cold boot can run this probe BEFORE the device is
+    -- back -- missing the .pldrs sitting in our own cwd and falling through to
+    -- defaults (#494: "saving works, but config not loaded after restart"). The
+    -- game-launch read already self-heals this way (TryOpenForLaunch); mirror it
+    -- here with the same bounded settle+retry the USB list build uses
+    -- (BuildUsbIdentityDeferred). Only a mass*: sidecar needs it -- MC/HDD/MMCE
+    -- are already mounted at boot, so they skip the retry (and its sleep).
+    if loaded_path == nil and string.match(string.lower(sidecar), "^mass%d*:/") ~= nil then
+      for _ = 1, 3 do
+        if type(PLDR.EnsureUsbMassReadyOnce) == "function" then pcall(PLDR.EnsureUsbMassReadyOnce) end
+        if type(PLDR.RefreshMassBackends) == "function" then pcall(PLDR.RefreshMassBackends) end
+        if type(System) == "table" and type(System.sleep) == "function" then pcall(System.sleep, 1) end
+        loaded_path = ProbeSidecarAliases()
+        if loaded_path ~= nil then break end
+      end
+    end
+    if loaded_path ~= nil then
+      pin_to_sidecar = true
     end
   end
   if loaded_path == nil and fallback ~= nil and fallback ~= "" and doesFileExist(fallback) then
