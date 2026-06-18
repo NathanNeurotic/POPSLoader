@@ -2643,6 +2643,57 @@ UI = {
           else
             UI.Notif_queue.add("HDD list refreshed", "ok")
           end
+        elseif UI.Pad.Events.R1 and (UI.CURSCENE == UI.SCENES.GSMB
+               or UI.CURSCENE == UI.SCENES.GMX4SIO
+               or UI.CURSCENE == UI.SCENES.GUSBFAT) then
+          -- R1 re-runs the SAME scan entering the page does, in place: re-detect
+          -- the device and rebuild the list -- for hotplugging a card/drive or a
+          -- config change without leaving the page. These devices keep no
+          -- persistent cache (unlike HDD), so it's simply a fresh live scan.
+          local rescan_scene = UI.CURSCENE
+          UI.RunBusyTask("Refreshing list...", function (report)
+            local scan = UI.MakeBusyProgressReporter(report, "Scanning games...", 0.30, 0.95)
+            if rescan_scene == UI.SCENES.GSMB then
+              report("Detecting MMCE device...", 0.16)
+              if type(PLDR.DetectMMCESlot) == "function" then pcall(PLDR.DetectMMCESlot, true) end
+              local mmce_prefix = (type(PLDR.MMCE) == "table" and PLDR.MMCE.PREFIX) or nil
+              if mmce_prefix == nil and type(PLDR.SetMMCESlot) == "function" then
+                mmce_prefix = PLDR.SetMMCESlot(1)
+              end
+              PLDR.CleanupGameList()
+              if type(mmce_prefix) == "string" and mmce_prefix ~= "" and doesFolderExist(mmce_prefix.."POPS/") then
+                report("Scanning MMCE games...", 0.30)
+                PLDR.GetPS1GameLists(mmce_prefix.."POPS/", true, scan)
+              end
+            elseif rescan_scene == UI.SCENES.GMX4SIO then
+              report("Refreshing mass backends...", 0.16)
+              if type(PLDR.RefreshMassBackends) == "function" then pcall(PLDR.RefreshMassBackends) end
+              if type(PLDR.SetMx4sioAutoEnterPending) == "function" then PLDR.SetMx4sioAutoEnterPending(true) end
+              local mx4sio_root = PLDR.InitMX4SIOPopsRoot()
+              if type(PLDR.SetMx4sioAutoEnterPending) == "function" then PLDR.SetMx4sioAutoEnterPending(false) end
+              PLDR.CleanupGameList()
+              if type(mx4sio_root) == "string" and mx4sio_root ~= "" then
+                report("Scanning MX4SIO games...", 0.30)
+                PLDR.GetPS1GameLists(mx4sio_root, true, scan)
+              end
+            else
+              report("Initializing USB backend...", 0.16)
+              if type(System) == "table" and type(System.ensureUsbMass) == "function" then pcall(System.ensureUsbMass) end
+              if type(PLDR.RefreshMassBackends) == "function" then pcall(PLDR.RefreshMassBackends) end
+              PLDR.CleanupGameList()
+              report("Building USB game list...", 0.30)
+              PLDR.BuildMassGameListByType("usb", nil, scan)
+            end
+            report("Done", 1.0)
+          end, "Failed to refresh list")
+          UI.GameList.CURR = 1
+          UI.GameList.CoverLastIndex = nil
+          UI.GameList.CoverPending = false
+          if #PLDR.GAMES < 1 then
+            UI.Notif_queue.add("List refreshed (no games found)", "warn")
+          else
+            UI.Notif_queue.add("List refreshed", "ok")
+          end
         end
         if UI.Pad.Events.L3 and ammount > 0 then
           if PLDR.GLOBAL_HIDE then
