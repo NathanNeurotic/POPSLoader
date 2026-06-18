@@ -99,7 +99,7 @@ EMBEDDED_RSC = boot.o builtin_font.o \
 	asset_start_png.o asset_triangle_png.o asset_circle_png.o asset_cross_png.o asset_square_png.o \
 	asset_frame_png.o asset_missing_png.o $(OPTIONAL_EMBEDDED_RSC) \
 	asset_system_lua.o asset_ui_lua.o asset_images_lua.o asset_pops_profiles_lua.o asset_boot_adp.o \
-	asset_usbd_irx_usbexfat.o asset_usbhdfsd_irx_usbexfat.o asset_usbd_irx_mx4sio.o asset_usbhdfsd_irx_mx4sio.o \
+	asset_usbd_irx_usbexfat.o asset_usbhdfsd_irx_usbexfat.o asset_usbhdfsd_irx_mx4sio.o \
 	asset_usbd_irx_mmce.o asset_usbhdfsd_irx_mmce.o \
 	asset_icon_sys_bdma.o asset_list_icn_bdma.o asset_del_icn_bdma.o
 
@@ -194,8 +194,6 @@ $(EE_ASM_DIR)asset_usbd_irx_usbexfat.c: bin/POPSLDR/usbd.irx.usbexfat | $(EE_ASM
 	$(BIN2S) $< $@ asset_usbd_irx_usbexfat
 $(EE_ASM_DIR)asset_usbhdfsd_irx_usbexfat.c: bin/POPSLDR/usbhdfsd.irx.usbexfat | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_usbhdfsd_irx_usbexfat
-$(EE_ASM_DIR)asset_usbd_irx_mx4sio.c: bin/POPSLDR/usbd.irx.mx4sio | $(EE_ASM_DIR)
-	$(BIN2S) $< $@ asset_usbd_irx_mx4sio
 $(EE_ASM_DIR)asset_usbhdfsd_irx_mx4sio.c: bin/POPSLDR/usbhdfsd.irx.mx4sio | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_usbhdfsd_irx_mx4sio
 $(EE_ASM_DIR)asset_usbd_irx_mmce.c: bin/POPSLDR/usbd.irx.mmce | $(EE_ASM_DIR)

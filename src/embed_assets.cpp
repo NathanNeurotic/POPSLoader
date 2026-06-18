@@ -71,8 +71,6 @@ extern unsigned char asset_usbd_irx_usbexfat[];
 extern unsigned int size_asset_usbd_irx_usbexfat;
 extern unsigned char asset_usbhdfsd_irx_usbexfat[];
 extern unsigned int size_asset_usbhdfsd_irx_usbexfat;
-extern unsigned char asset_usbd_irx_mx4sio[];
-extern unsigned int size_asset_usbd_irx_mx4sio;
 extern unsigned char asset_usbhdfsd_irx_mx4sio[];
 extern unsigned int size_asset_usbhdfsd_irx_mx4sio;
 extern unsigned char asset_usbd_irx_mmce[];
@@ -123,7 +121,11 @@ static const embedded_asset_t g_embedded_assets[] = {
 	ASSET_ENTRY("pops_profiles.lua", asset_pops_profiles_lua),
 	ASSET_ENTRY("usbd.irx.usbexfat", asset_usbd_irx_usbexfat),
 	ASSET_ENTRY("usbhdfsd.irx.usbexfat", asset_usbhdfsd_irx_usbexfat),
-	ASSET_ENTRY("usbd.irx.mx4sio", asset_usbd_irx_mx4sio),
+	// usbd.irx.mx4sio is BYTE-IDENTICAL to usbd.irx.usbexfat (the SD/BDM stack
+	// reuses the same usbd base), so this key aliases that one blob to save ~48KB
+	// in the ELF. If a future build needs a distinct mx4sio usbd.irx, restore a
+	// separate asset_usbd_irx_mx4sio (extern + Makefile rule + EMBEDDED_RSC entry).
+	ASSET_ENTRY("usbd.irx.mx4sio", asset_usbd_irx_usbexfat),
 	ASSET_ENTRY("usbhdfsd.irx.mx4sio", asset_usbhdfsd_irx_mx4sio),
 	ASSET_ENTRY("usbd.irx.mmce", asset_usbd_irx_mmce),
 	ASSET_ENTRY("usbhdfsd.irx.mmce", asset_usbhdfsd_irx_mmce),
@@ -165,7 +167,7 @@ static const embedded_asset_t g_embedded_assets[] = {
 	ASSET_ENTRY("POPSLDR/pops_profiles.lua", asset_pops_profiles_lua),
 	ASSET_ENTRY("POPSLDR/usbd.irx.usbexfat", asset_usbd_irx_usbexfat),
 	ASSET_ENTRY("POPSLDR/usbhdfsd.irx.usbexfat", asset_usbhdfsd_irx_usbexfat),
-	ASSET_ENTRY("POPSLDR/usbd.irx.mx4sio", asset_usbd_irx_mx4sio),
+	ASSET_ENTRY("POPSLDR/usbd.irx.mx4sio", asset_usbd_irx_usbexfat),
 	ASSET_ENTRY("POPSLDR/usbhdfsd.irx.mx4sio", asset_usbhdfsd_irx_mx4sio),
 	ASSET_ENTRY("POPSLDR/usbd.irx.mmce", asset_usbd_irx_mmce),
 	ASSET_ENTRY("POPSLDR/usbhdfsd.irx.mmce", asset_usbhdfsd_irx_mmce),
