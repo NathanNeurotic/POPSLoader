@@ -3028,7 +3028,8 @@ local function EncodeSettings()
     "MULTIDISC_COLLAPSE="..((PLDR.COLLAPSE_MULTIDISC == true) and "1" or "0"),
     "GLOBAL_HIDE="..((PLDR.GLOBAL_HIDE == true) and "1" or "0"),
     "POPSTARTER_MC_FOLDER="..((PLDR.POPSTARTER_MC_FOLDER == false) and "0" or "1"),
-    "HIDDEN_DEVICES="..PLDR.NormalizeHiddenDevices(PLDR.HIDDEN_DEVICES)
+    "HIDDEN_DEVICES="..PLDR.NormalizeHiddenDevices(PLDR.HIDDEN_DEVICES),
+    "SHOW_DETAILS="..((PLDR.SHOW_DETAILS == true) and "1" or "0")
   }
   return table.concat(lines, "\n").."\n"
 end
@@ -3067,7 +3068,8 @@ local function SnapshotSettingsState()
     boot_page = NormalizeBootPage(PLDR.BOOT_PAGE),
     multidisc_collapse = (PLDR.COLLAPSE_MULTIDISC == true),
     global_hide = (PLDR.GLOBAL_HIDE == true),
-    hidden_devices = PLDR.NormalizeHiddenDevices(PLDR.HIDDEN_DEVICES)
+    hidden_devices = PLDR.NormalizeHiddenDevices(PLDR.HIDDEN_DEVICES),
+    show_details = (PLDR.SHOW_DETAILS == true)
   }
 end
 
@@ -3107,6 +3109,9 @@ local function ApplySettingsState(state)
   end
   if state.hidden_devices ~= nil then
     PLDR.HIDDEN_DEVICES = PLDR.NormalizeHiddenDevices(state.hidden_devices)
+  end
+  if type(state.show_details) == "boolean" then
+    PLDR.SHOW_DETAILS = state.show_details
   end
   PLDR.ApplyVideoStandardRuntime(PLDR.VIDEO_STANDARD)
   if type(state.hide_text) == "boolean" and type(UI) == "table" then
@@ -3223,6 +3228,7 @@ function PLDR.LoadSettingsNonFatal()
   PLDR.GLOBAL_HIDE = false
   PLDR.POPSTARTER_MC_FOLDER = true
   PLDR.HIDDEN_DEVICES = ""
+  PLDR.SHOW_DETAILS = false
   if type(UI) == "table" then
     if type(UI.SetHideTextMode) == "function" then
       UI.SetHideTextMode(false, false)
@@ -3333,6 +3339,7 @@ function PLDR.LoadSettingsNonFatal()
   local global_hide = string.match(data, "\nGLOBAL_HIDE=([^\n]+)") or string.match(data, "^GLOBAL_HIDE=([^\n]+)")
   local popstarter_mc_folder = string.match(data, "\nPOPSTARTER_MC_FOLDER=([^\n]+)") or string.match(data, "^POPSTARTER_MC_FOLDER=([^\n]+)")
   local hidden_devices = string.match(data, "\nHIDDEN_DEVICES=([^\n]*)") or string.match(data, "^HIDDEN_DEVICES=([^\n]*)")
+  local show_details = string.match(data, "\nSHOW_DETAILS=([^\n]+)") or string.match(data, "^SHOW_DETAILS=([^\n]+)")
   if profile ~= nil and PLDR.PROFILES ~= nil and PLDR.PROFILES[profile] ~= nil then
     PLDR.SELECTED_PROFILE = profile
     PLDR.POPSTARTER_PATH = PLDR.PROFILES[profile].ELF
@@ -3387,6 +3394,10 @@ function PLDR.LoadSettingsNonFatal()
   if mcf ~= nil then
     PLDR.POPSTARTER_MC_FOLDER = mcf == true
   end
+  local sd = ParseBooleanSetting(show_details)
+  if sd ~= nil then
+    PLDR.SHOW_DETAILS = sd == true
+  end
   if hidden_devices ~= nil then
     PLDR.HIDDEN_DEVICES = PLDR.NormalizeHiddenDevices(hidden_devices)
   else
@@ -3430,6 +3441,8 @@ function PLDR.CommitSettingsChanges(opts)
   if type(opts.multidisc_collapse) == "boolean" then next_collapse = opts.multidisc_collapse end
   local next_global_hide = (prev.global_hide == true)
   if type(opts.global_hide) == "boolean" then next_global_hide = opts.global_hide end
+  local next_show_details = (prev.show_details == true)
+  if type(opts.show_details) == "boolean" then next_show_details = opts.show_details end
   -- Explicit boolean check, NOT `(type==boolean) and opts.x or prev.x`: that
   -- idiom collapses a legitimate `false` to prev (Lua and/or short-circuit), so
   -- Hide-Text could never be toggled OFF through a settings save. Mirrors the
@@ -3448,6 +3461,7 @@ function PLDR.CommitSettingsChanges(opts)
     boot_page = NormalizeBootPage(opts.boot_page or prev.boot_page),
     multidisc_collapse = next_collapse,
     global_hide = next_global_hide,
+    show_details = next_show_details,
     hidden_devices = PLDR.NormalizeHiddenDevices(opts.hidden_devices or prev.hidden_devices)
   }
   local apply_bdma = opts.apply_bdma == true

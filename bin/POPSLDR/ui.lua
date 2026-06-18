@@ -198,13 +198,68 @@ local function BuildCoverCandidates(vcd_path, use_hdd_common_art, entry)
     base..".png"
   }
 end
+-- Read a game's "<name>.txt" details sidecar. Bounded so a stray huge file can't
+-- stall the snappy cover-load path it rides on.
+local function ReadGameDetailsText(path)
+  if path == nil or path == "" then return nil end
+  if type(System) ~= "table" or type(System.openFile) ~= "function" then return nil end
+  local ok_open, fd = pcall(System.openFile, path, FREAD)
+  if not ok_open or type(fd) ~= "number" or fd < 0 then return nil end
+  local data = nil
+  -- pcall the size/read/close (not just open): a valid-but-unreadable fd can
+  -- throw, and this runs inside the un-pcall'd game-list render frame -- degrade
+  -- to "no details" instead of erroring the whole frame (matches system.lua).
+  local ok_sz, size = pcall(System.sizeFile, fd)
+  if ok_sz and type(size) == "number" and size > 0 then
+    if size > 8192 then size = 8192 end
+    local ok_rd, rd = pcall(System.readFile, fd, size)
+    if ok_rd then data = rd end
+  end
+  pcall(System.closeFile, fd)
+  if type(data) == "string" and data ~= "" then return data end
+  return nil
+end
+-- Greedy word-wrap to max_chars per line, collapsing the source's own whitespace
+-- so a details blurb re-flows to the narrow cover column, clipped to max_lines
+-- (last kept line gets an ellipsis when more was dropped).
+local function WrapGameDetails(text, max_chars, max_lines)
+  if type(text) ~= "string" then return "" end
+  max_chars = tonumber(max_chars) or 30
+  if max_chars < 8 then max_chars = 8 end
+  max_lines = tonumber(max_lines) or 4
+  if max_lines < 1 then max_lines = 1 end
+  local lines = {}
+  local cur = ""
+  local truncated = false
+  for word in string.gmatch(text, "%S+") do
+    if cur == "" then
+      cur = word
+    elseif (#cur + 1 + #word) <= max_chars then
+      cur = cur.." "..word
+    else
+      lines[#lines + 1] = cur
+      cur = word
+      if #lines >= max_lines then truncated = true; break end
+    end
+  end
+  if not truncated and cur ~= "" and #lines < max_lines then
+    lines[#lines + 1] = cur
+  end
+  if truncated and #lines > 0 then
+    local last = lines[#lines]
+    if #last > max_chars - 1 then last = string.sub(last, 1, max_chars - 1) end
+    lines[#lines] = last.."..."
+  end
+  return table.concat(lines, "\n")
+end
 local CoverCache = {
   max = 3,
   entries = {},
   order = {},
   failed = {},
   last_key = nil,
-  last_img = nil
+  last_img = nil,
+  last_desc = nil
 }
 function CoverCache:Clear()
   local free_ok = type(Graphics) == "table" and type(Graphics.freeImage) == "function"
@@ -218,6 +273,7 @@ function CoverCache:Clear()
   self.failed = {}
   self.last_key = nil
   self.last_img = nil
+  self.last_desc = nil
 end
 function CoverCache:EvictIfNeeded()
   while #self.order > self.max do
@@ -272,10 +328,20 @@ function CoverCache:UpdateSelection(vcd_path, use_hdd_common_art, entry)
   end
   self.last_key = key
   self.last_img = nil
+  self.last_desc = nil
   if (use_hdd_common_art ~= true) and (vcd_path == nil or vcd_path == "") then
     return nil
   end
   local candidates = BuildCoverCandidates(vcd_path, use_hdd_common_art == true, entry)
+  -- Game details: read "<cover-base>.txt" next to the cover art, but only when the
+  -- feature is on (otherwise this read is skipped so navigation stays snappy).
+  -- Stored raw; the list view word-wraps it under the cover.
+  if type(PLDR) == "table" and PLDR.SHOW_DETAILS == true and candidates[1] ~= nil then
+    local desc_path = string.gsub(candidates[1], "%.png$", ".txt")
+    if desc_path ~= candidates[1] then
+      self.last_desc = ReadGameDetailsText(desc_path)
+    end
+  end
   for i = 1, #candidates do
     local img = self:GetOrLoad(candidates[i])
     if img ~= nil then
@@ -666,7 +732,10 @@ UI = {
 	        end
 	        last_ratio = next_ratio
         last_ms = current_ms
-        report(label.." "..tostring(math.floor(next_ratio * 100 + 0.5)).."%", next_progress)
+        -- Report only the OVERALL progress (the overlay draws one %+bar from it).
+        -- The label deliberately carries NO per-phase % -- showing both the phase
+        -- count and the overall bar was two different numbers at once (#498).
+        report(label, next_progress)
       end
     end;
     --- Notifications queue handler
@@ -2200,6 +2269,8 @@ UI = {
         UI.SettingsEntryMultiDiscCollapse = UI.MultiDiscCollapse
         UI.GlobalHide = (type(PLDR) == "table" and PLDR.GLOBAL_HIDE == true)
         UI.SettingsEntryGlobalHide = UI.GlobalHide
+        UI.ShowDetails = (type(PLDR) == "table" and PLDR.SHOW_DETAILS == true)
+        UI.SettingsEntryShowDetails = UI.ShowDetails
         UI.SettingsEntryKeyboardLayout = tostring(UI.KeyboardLayoutDraft or (type(PLDR) == "table" and PLDR.KEYBOARD_LAYOUT) or "QWERTY")
         UI.SettingsFocus = 1
         UI.SceneChange(UI.SCENES.MPROFILE)
@@ -2397,6 +2468,26 @@ UI = {
             local frame_y = draw_y
             Graphics.drawScaleImage(IMG.frame, frame_x, frame_y, frame_w, frame_h)
           end
+          -- Game details: a word-wrapped, centered blurb tucked under the cover --
+          -- shown only when the feature is on AND a "<name>.txt" was found for the
+          -- selected game, so it gracefully disappears otherwise. Accompanies the
+          -- cover (rides its load), clipped to the gap above the button bar.
+          if cover_enabled and type(PLDR) == "table" and PLDR.SHOW_DETAILS == true
+             and UI.CoverCache ~= nil and type(UI.CoverCache.last_desc) == "string"
+             and UI.CoverCache.last_desc ~= "" then
+            local center_x = draw_x + Round(draw_w / 2)
+            local desc_y = draw_y + draw_h + 6
+            local footer_y = layout.FOOTER_ICON_Y or (UI.SCR.Y - 56)
+            local line_h = 14
+            local avail = footer_y - desc_y - 2
+            if avail >= line_h then
+              local max_lines = math.floor(avail / line_h)
+              local wrapped = WrapGameDetails(UI.CoverCache.last_desc, 30, max_lines)
+              if wrapped ~= "" then
+                Font.ftPrintMultiLineAligned(SFONT, center_x, desc_y, line_h, draw_w, avail, wrapped, UI.CCOL.GREY)
+              end
+            end
+          end
         end
         if ammount <= 0 then
           if not UI.ShouldHideAuxText(UI.CURSCENE) then
@@ -2413,6 +2504,18 @@ UI = {
           if UI.Pad.Events.NAV_RIGHT then UI.GameList.CURR = CLAMP(UI.GameList.CURR+UI.GameList.MAXDRAW, 1, ammount) end
           if UI.Pad.Events.NAV_UP then UI.GameList.CURR = CLAMP(UI.GameList.CURR-1, 1, ammount) end
           if UI.Pad.Events.NAV_LEFT then UI.GameList.CURR = CLAMP(UI.GameList.CURR-UI.GameList.MAXDRAW, 1, ammount) end
+          -- L1 bounces between the top and bottom -- the page-at-a-time d-pad is
+          -- slow on big libraries (1000+ games). At the top it jumps to the bottom;
+          -- anywhere else it jumps to the top -- so repeated presses ping-pong. The
+          -- cursor position itself is the state (no toggle to drift out of sync),
+          -- and this leaves R1 free for the per-page rescan. (#499)
+          if UI.Pad.Events.L1 then
+            if UI.GameList.CURR == 1 then
+              UI.GameList.CURR = ammount
+            else
+              UI.GameList.CURR = 1
+            end
+          end
         end
         if UI.Pad.Events.SQUARE then
           UI.CoverPreviewEnabled = not UI.CoverPreviewEnabled
@@ -2717,6 +2820,7 @@ UI = {
           local boot_page_key = boot_page_entry and boot_page_entry.key or "Carousel"
           local multidisc_collapse_val = UI.MultiDiscCollapse == true
           local global_hide_val = UI.GlobalHide == true
+          local show_details_val = UI.ShowDetails == true
           local video_live_before = nil
           if type(Screen) == "table" and type(Screen.getMode) == "function" then
             local okb, mb = pcall(Screen.getMode)
@@ -2737,6 +2841,7 @@ UI = {
                 hidden_devices = UI.DeviceHiddenDraft,
                 multidisc_collapse = multidisc_collapse_val,
                 global_hide = global_hide_val,
+                show_details = show_details_val,
                 hide_text = UI.HideTextMode == true,
                 prev_hide_text = UI.SettingsEntryHideTextMode == true,
                 apply_bdma = UI.BdmaDirty,
@@ -2764,6 +2869,7 @@ UI = {
             end
             PLDR.COLLAPSE_MULTIDISC = multidisc_collapse_val
             PLDR.GLOBAL_HIDE = global_hide_val
+            PLDR.SHOW_DETAILS = show_details_val
             if type(PLDR.ApplyVideoStandardRuntime) == "function" then
               PLDR.ApplyVideoStandardRuntime(video_key)
             end
@@ -2771,7 +2877,7 @@ UI = {
             local saved = PLDR.SaveSettingsAtomic()
             local applied = true
             if saved and UI.BdmaDirty then
-              report_stage("apply", "Applying BDMA mode")
+              report_stage("apply_bdma", "Applying BDMA mode")
               applied = PLDR.ApplyBdmaMode(mode_key)
             end
             if not saved then
@@ -2917,6 +3023,10 @@ UI = {
           end
           if UI.GlobalHide == true then
             UI.GlobalHide = false
+            UI.ProfileDirty = true
+          end
+          if UI.ShowDetails == true then
+            UI.ShowDetails = false
             UI.ProfileDirty = true
           end
           local default_video_key = VIDEO_STANDARD_AUTO
@@ -3140,6 +3250,13 @@ UI = {
           function() UI.GlobalHide = not UI.GlobalHide end,
           function() UI.GlobalHide = not UI.GlobalHide end,
           function() return (UI.GlobalHide == true) ~= (UI.SettingsEntryGlobalHide == true) end
+        )
+        AddCycle(
+          "Game details",
+          function() return UI.ShowDetails and "Shown" or "Hidden" end,
+          function() UI.ShowDetails = not UI.ShowDetails end,
+          function() UI.ShowDetails = not UI.ShowDetails end,
+          function() return (UI.ShowDetails == true) ~= (UI.SettingsEntryShowDetails == true) end
         )
 
         AddSection("POPSTARTER")
