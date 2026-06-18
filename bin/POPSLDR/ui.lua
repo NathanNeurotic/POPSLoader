@@ -1043,7 +1043,7 @@ UI = {
       Screen.flip()
     end;
     WelcomeDraw = {
-      Play = function (next_scene, show_boot_credits)
+      Play = function (next_scene, show_boot_credits, boot_init_fn)
 	        -- Boot splash fades in from black, then fades out into the next scene.
 	        local function DrawBackground()
 	          Screen.clear(Color.new(0, 0, 0))
@@ -1283,6 +1283,14 @@ UI = {
         local INTRO_FADE_OUT_MS = math.floor(FADE_OUT_MS * INTRO_FADE_SCALE + 0.5)
 
         StepFade(DrawSplash, 128, 0, INTRO_FADE_IN_MS)
+        -- Run the heavy boot init (settings load + device bring-up + boot-page
+        -- selection) HERE, with the splash already painted: the synchronous work
+        -- freezes on THIS splash frame instead of behind a black screen, so the
+        -- splash COVERS what used to be the boot black-out (the device settle
+        -- retries, the #494 USB sidecar wait, etc.). The hold/credits/menu below
+        -- then resume and read the now-ready state. (boot_init_fn never returns on
+        -- a -game auto-launch -- the splash just showed briefly before the launch.)
+        if type(boot_init_fn) == "function" then boot_init_fn() end
         StepHoldFrames(DrawSplash, SPLASH_HOLD_FRAMES)
         StepFade(DrawSplash, 0, 128, INTRO_FADE_OUT_MS)
 

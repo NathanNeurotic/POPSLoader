@@ -6000,6 +6000,13 @@ if type(Pads) == "table" and type(Pads.get) == "function" and type(PAD_START) ==
   end
 end
 
+-- Everything from here runs INSIDE do_boot_init, handed to UI.WelcomeDraw.Play as
+-- boot_init_fn: the welcome splash paints FIRST, then this work runs under it (it
+-- freezes on the splash frame), so the old boot BLACK screen is now the splash.
+-- The START-held poll ABOVE stays before the splash so a held-START recovery is
+-- still caught immediately at boot (boot_start_held is read below as an upvalue).
+-- Inner block kept at its original indentation to keep the diff reviewable.
+local function do_boot_init()
 PLDR.LoadSettingsNonFatal()
 if boot_start_held then
   PLDR.VIDEO_STANDARD = PLDR.VIDEO_STANDARD_AUTO
@@ -6072,11 +6079,14 @@ if type(PLDR.LAUNCH_ARGS) ~= "table"
     UI.MainMenu.PendingAutoEnter = true
   end
 end
+end -- do_boot_init
 
 ---MAIN PROGRAM BEHAVIOUR BEGINS
 local initial_scene = UI.SCENES.MMAIN
 local show_boot_credits = true
-UI.WelcomeDraw.Play(initial_scene, show_boot_credits)
+-- Splash-first: paint the welcome splash, then run do_boot_init UNDER it (see the
+-- boot_init_fn call in UI.WelcomeDraw.Play), so the boot black screen is covered.
+UI.WelcomeDraw.Play(initial_scene, show_boot_credits, do_boot_init)
 if UI.Transition ~= nil then
   UI.Transition.allowSceneWrite = true
 end
