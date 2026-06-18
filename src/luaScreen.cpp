@@ -53,7 +53,7 @@ static int lua_getFreeVRAM(lua_State *L)
 
 static int lua_getFPS(lua_State *L)
 {
-	if (lua_gettop(L) != 1) return luaL_error(L, "no arguments expected.");
+	if (lua_gettop(L) != 1) return luaL_error(L, "exactly one argument expected.");
 	int result = FPSCounter(luaL_checkinteger(L, 1));
 	lua_pushinteger(L, (uint32_t)(result));
 	return 1;

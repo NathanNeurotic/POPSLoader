@@ -3557,7 +3557,7 @@ UI = {
           return value
         end
         local function ResolveIcon(key)
-          return IMG[key] or IMG["MISSING"]
+          return IMG[key] or IMG["missing"]
         end
         if not UI.MainMenu.icons_ready then
           for _, key in ipairs(icon_keys) do
@@ -3577,7 +3577,7 @@ UI = {
           local pos_y = Round(y - (icon_h / 2))
           Graphics.drawImage(icon, pos_x, pos_y, color)
         end
-        local first_icon = ResolveIcon(icon_keys[1] or "MISSING")
+        local first_icon = ResolveIcon(icon_keys[1] or "missing")
         local base_icon_w = 0
         if first_icon ~= nil then
           base_icon_w = Graphics.getImageWidth(first_icon)

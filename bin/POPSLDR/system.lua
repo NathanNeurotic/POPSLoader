@@ -3461,6 +3461,13 @@ function PLDR.CommitSettingsChanges(opts)
         dkwdrv_path = next_state.dkwdrv_path,
         video_standard = next_state.video_standard
       })
+      -- The sidecar was already written with the NEW bdma_mode above; the apply
+      -- just failed and we rolled bdma_mode back to prev in memory. Re-persist so
+      -- the disk BDMA= field matches the rolled-back (effective) state instead of
+      -- a mode that never took. (The bdma_mode.txt marker is still the runtime
+      -- source of truth via ReconcileBdmaModeWithEffectiveState; this just keeps
+      -- the sidecar honest.)
+      PLDR.SaveSettingsAtomic()
       PLDR.ReconcileBdmaModeWithEffectiveState()
       return false, "bdma_apply_failed"
     end
