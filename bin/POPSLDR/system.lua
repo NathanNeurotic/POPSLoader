@@ -3761,7 +3761,12 @@ function PLDR.AutoInitStartupBackends()
     ClassifyStartupMassTargets(targets)
   end
 
-  if targets.mx4sio and type(PLDR.InitMX4SIOPopsRoot) == "function" then
+  -- MX4SIO is a BDM mass device, not a special boot device. Only bring it up at
+  -- boot when we actually BOOTED from it (card present, settings live there).
+  -- Never touch it speculatively just because a config path mentions mx4sio: --
+  -- the mass list surfaces it on demand when the user opens the MX4SIO page.
+  if targets.mx4sio and targets.boot_name == "MX4SIO"
+     and type(PLDR.InitMX4SIOPopsRoot) == "function" then
     pcall(PLDR.InitMX4SIOPopsRoot)
   end
   if targets.mmce and type(PLDR.DetectMMCESlot) == "function" then
@@ -4380,34 +4385,18 @@ function PLDR.InitMX4SIOPopsRoot()
   PLDR.MX4SIO.ROOT = nil
   PLDR.MX4SIO.MASSINDX = nil
   PLDR.MX4SIO.IS_MASS_ALIAS = false
-  if type(PLDR.EnsureUsbMassReadyOnce) == "function" then
-    pcall(PLDR.EnsureUsbMassReadyOnce)
+  -- MX4SIO is a BDM mass device, listed like USB. GetMX4SIOMassRootNow loads the
+  -- driver (idempotent; System.initMX4SIO pulls usbmass first, then the SD
+  -- driver, which self-detects a card on its OWN IOP thread -- OPL-style) and
+  -- enumerates the mass list with a bounded, PASSIVE retry. NO EE-side card
+  -- probe / System.sleep re-poke loop / _G.ensureMx4sioInit: that synchronous
+  -- card-hunting is exactly what stalled a no-card MX4SIO on PCSX2. With no card
+  -- this just returns nil (empty list) instead of blocking.
+  local root = PLDR.GetMX4SIOMassRootNow()
+  if type(root) == "string" and root ~= "" then
+    PLDR.SetMX4SIORoot(root)
+    return root.."POPS/"
   end
-
-  for attempt = 1, 3 do
-    if type(System) == "table" and type(System.ensureUsbMass) == "function" then
-      pcall(System.ensureUsbMass)
-    end
-    if type(_G.ensureMx4sioInit) == "function" then
-      pcall(_G.ensureMx4sioInit)
-    end
-    if type(System) == "table" and type(System.initMX4SIO) == "function" then
-      pcall(System.initMX4SIO)
-    end
-    if type(PLDR.RefreshMassBackends) == "function" then
-      pcall(PLDR.RefreshMassBackends)
-    end
-
-    local root = PLDR.GetMX4SIOMassRootNow()
-    if root ~= nil then
-      PLDR.SetMX4SIORoot(root)
-      return root.."POPS/"
-    end
-    if attempt < 3 and type(System) == "table" and type(System.sleep) == "function" then
-      pcall(System.sleep, 1)
-    end
-  end
-
   return nil
 end
 
