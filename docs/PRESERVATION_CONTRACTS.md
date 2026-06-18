@@ -1,6 +1,6 @@
 # POPSLoader Preservation Contracts
 
-Date: 2026-06-15
+Date: 2026-06-17
 Branch documented: `BETA-12-PLAY` (this `docs-overhaul` worktree, shipped state)
 
 Purpose: regression armor for the launch / ELF-handoff layer. Each contract below
@@ -21,11 +21,12 @@ surrounding function as the real unit and re-confirm the line if the file moves.
 > `PrepareForExternalELFLaunch`, `src/luasystem.cpp` `lua_loadELF*`, or
 > `etc/boot.lua` HDD-boot mount.
 
-Related docs: `docs/LAUNCH_HYGIENE.md` (launch-path architecture and fix history),
-`docs/U10_INVESTIGATION.md` (U-10 deep dive), `HDD_POPSTARTER_HANDOFF.md`
-(archived D-10/D-14 diagnostic trail), `QA_REGRESSION_MATRIX.md` (the hardware
-ledger and canonical test-case definitions), `STATE.md` (current Known Broken
-list).
+Related docs: `docs/archive/LAUNCH_HYGIENE.md` (launch-path architecture and fix
+history), `docs/archive/U10_INVESTIGATION.md` (U-10 deep dive),
+`docs/archive/HDD_POPSTARTER_HANDOFF.md` (archived D-10/D-14 diagnostic trail),
+`QA_REGRESSION_MATRIX.md` (the hardware ledger and canonical test-case
+definitions), `STATE.md` (current status, Known Issues, and Hardware Status — the
+canonical source).
 
 ## How the launch chain is wired (orientation)
 
@@ -135,8 +136,8 @@ black screen, no silent `SifIopReset` hang.
 
 ### How to test on hardware
 
-Per `QA_REGRESSION_MATRIX.md:80` and the `HDD_POPSTARTER_HANDOFF.md` test
-sequence: boot from HDD, with HDD sidecar/CWD/Profile/default `POPSTARTER.ELF`,
+Per `QA_REGRESSION_MATRIX.md:80` and the `docs/archive/HDD_POPSTARTER_HANDOFF.md`
+test sequence: boot from HDD, with HDD sidecar/CWD/Profile/default `POPSTARTER.ELF`,
 select an HDD title, confirm with `X`. Expected: real POPSTARTER boots the game,
 no black screen. Then repeat with `R2` ("HDD Alt" / `full_hdd_pfs0` mode,
 `ui.lua:2261-2262`). Record in `QA_REGRESSION_MATRIX.md` as D-10.
@@ -200,81 +201,92 @@ is preserved.
 
 Boot from USB (or MMCE/MX4SIO), sidecar/Profile 1 `POPSTARTER.ELF` on that same
 device, select an HDD title, confirm with `X`. Expected: HDD title launches, no
-black screen. Per `HDD_POPSTARTER_HANDOFF.md` this is the **first** case to retest
+black screen. Per `docs/archive/HDD_POPSTARTER_HANDOFF.md` this is the **first** case to retest
 after any launch-path change, because it is the known-good separator. Record as
 D-15 in `QA_REGRESSION_MATRIX.md`.
 
 ---
 
-## Contract U-10 — BOOT.ELF exit, `reboot_iop = 0` embedded-loader route
+## Contract U-10 — BOOT.ELF exit, `reboot_iop = 0` embedded-loader route (preserve the fix)
 
 **QA definition:** `QA_REGRESSION_MATRIX.md:100` — open `HDD (PFS)` first so
 dependency checks/scans run, return to the menu, launch `BOOT.ELF` from Exit;
 "`BOOT.ELF` handoff succeeds without freezing or black-screening after HDD page
 access."
 
-**Hardware status: KNOWN BROKEN, accepted for release** for the HDD-booted
-sub-case (`docs/U10_INVESTIGATION.md:6-8`). The contract documented here is the
-**working** non-HDD BOOT.ELF route (L-07 PASS at V2 commit `d23520a`,
-`docs/U10_INVESTIGATION.md:22,28`). The HDD-boot → Exit → BOOT.ELF path is NOT
-fixed; do not assume current code fixes it (`QA_REGRESSION_MATRIX.md:162`,
-`ui.lua:1346-1361`).
+**Hardware status: RESOLVED — preserve-the-fix contract.** The HDD-booted
+sub-case (HDD-boot → Exit → BOOT.ELF) that previously black-screened was **fixed
+by PR #479**, which forces `reboot_iop = 0` for BOOT.ELF in **all** cases —
+including the HDD-booted one — so it takes the same working embedded-loader
+no-reset route as the non-HDD case (Nuno hardware-confirmed 2026-05-31;
+`STATE.md` "Reported Hardware Status" U-10 row). The non-HDD BOOT.ELF route
+(L-07) was already PASS at V2 commit `d23520a`. **Both** sub-cases now share one
+route; this contract is no longer a known-broken item but a regression-armor
+contract that keeps the `reboot_iop = 0` route in place. Do not reintroduce a
+`reboot_iop = 1` / `SifIopReset` branch for BOOT.ELF.
 
 ### What it guarantees (the working route)
 
-For a non-HDD-booted POPSLoader, "Exit → BOOT.ELF" reaches `mc?:/BOOT/BOOT.ELF`
-through the embedded child loader's no-reset branch and runs without hanging.
+For BOTH a non-HDD-booted AND an HDD-booted POPSLoader, "Exit → BOOT.ELF" reaches
+`mc?:/BOOT/BOOT.ELF` through the embedded child loader's no-reset branch and runs
+without hanging.
 
 ### How it is implemented
 
-- **`reboot_iop` is computed, default `0`.** `LaunchBootElf` sets
-  `reboot_iop = 0`, then raises it to `1` only if HDD was loaded this session
-  (`PLDR.HDD.LOADSTATE != 0`): `bin/POPSLDR/ui.lua:1336-1345`.
-- **The mc BOOT.ELF special-case routes through the embedded loader — only on the
-  `reboot_iop = 0` branch.** `System.loadELF(elf_path, 0)` with no args →
-  `LoadELFFromFile` → `LoadELFFromFileWithPartition`, which special-cases
-  `mc0:/BOOT/BOOT.ELF` / `mc1:/BOOT/BOOT.ELF` and calls
+- **`reboot_iop` is pinned to `0` for BOOT.ELF — always.** `LaunchBootElf` sets
+  `reboot_iop = 0` and never raises it; the HDD-loaded flag is now used **only**
+  to pick the pfs teardown, not to change `reboot_iop`:
+  `bin/POPSLDR/ui.lua:1496-1518`. When HDD was loaded this session
+  (`PLDR.HDD.LOADSTATE != 0`), it calls `PrepareForColdExternalELFLaunch` (which
+  unmounts every pfs slot, the only HDD state that matters here); otherwise
+  `PrepareForExternalELFLaunch`: `ui.lua:1497-1502`. The inline comment
+  (`ui.lua:1503-1517`) records the PR #479 diagnosis — a `reboot_iop = 1`
+  `SifIopReset("", 0)` soft reset **cannot** reboot an HDD-dirtied IOP (dev9 /
+  atad / pfs / fileXio still loaded), so `SifIopSync` spins → the black screen;
+  the cold-prep unmount makes the no-reset path correct **and** sufficient.
+- **The mc BOOT.ELF special-case routes through the embedded loader.**
+  `System.loadELF(elf_path, 0)` with no extra args → `LoadELFFromFile` →
+  `LoadELFFromFileWithPartition`, which special-cases `mc0:/BOOT/BOOT.ELF` /
+  `mc1:/BOOT/BOOT.ELF` and calls
   `ExecuteViaEmbeddedLoader("", resolved_path, 1, boot_argv)`:
-  `src/elf_loader/src/elf.c:485-489`. The child then takes the non-HDD generic
-  branch (`SifExitRpc` only, no reset): `loader.c:399-422`.
-- **The `reboot_iop = 1` branch does NOT hit the mc special-case.** When HDD was
-  loaded this session, `LaunchBootElf` passes `reboot_iop = 1`
-  (`ui.lua:1343-1362`), which routes to
-  `LoadELFFromFileExecPS2RebootIOPWithPartition` — the direct
-  `SifLoadElf + SifIopReset + reload SIO2MAN/MCMAN/MCSERV + ExecPS2` path
-  (`elf.c:645-700`). This is the HDD-booted sub-case that **remains broken**:
-  `SifIopReset` hangs after `SifLoadElf` (`docs/U10_INVESTIGATION.md:16,34-36`).
-- **U-10 partial fix that IS preserved (do not revert).** The direct-reset path
-  now unconditionally unmounts non-kept pfs slots before `SifIopReset`, including
-  the boot partition's `pfs1:`, instead of skipping the unmount for non-HDD
-  targets like BOOT.ELF: `src/elf_loader/src/elf.c:654-672`, with the PR #463
-  diagnosis comment at `elf.c:654-671`. This released `fileXio`'s hold on the
-  `pfs1:` RPC server for the cases it covers; it did not by itself fix the
-  HDD-boot sub-case (`docs/U10_INVESTIGATION.md:17`), but reverting it
-  reintroduces the U-10 "freeze at YELLOW after `SifLoadElf`" sabotage.
+  `src/elf_loader/src/elf.c:492-496`. The child then takes the non-HDD generic
+  branch (`SifExitRpc` only, no reset): `loader.c:399-422`. Because `reboot_iop`
+  is now `0` for the HDD-booted case too, the HDD-boot sub-case takes this exact
+  route — that is the PR #479 fix.
+- **`PrepareForColdExternalELFLaunch` is what makes the no-reset route safe after
+  HDD use.** It forces the keep mask to 0 and unmounts all pfs slots (including
+  the held boot `pfs1:`), so no `SifIopReset` is needed to release `fileXio`'s
+  hold: see the cross-cutting invariant below and `system.lua` cold-prep. This
+  replaces the old approach that tried to reset the IOP for BOOT.ELF after HDD
+  use (PR #450/#451, the wrong mechanism per the `ui.lua:1503-1517` comment).
 
 ### What breaks it
 
+- Re-raising `reboot_iop` to `1` for BOOT.ELF when HDD was loaded (the exact
+  pre-PR-#479 regression). The `SifIopReset` soft reset cannot reboot an
+  HDD-dirtied IOP and `SifIopSync` spins → black screen (`ui.lua:1503-1517`).
+  Keep `LaunchBootElf`'s `reboot_iop` at `0` and use the HDD flag only to select
+  the cold pfs teardown.
 - Adding a BOOT.ELF-specific IOP-reset branch to the child loader. PR #458 did
   this and regressed V2's working USB-boot exit (forced a reset BOOT.ELF does not
-  tolerate); PR #460 reverted it (`docs/LAUNCH_HYGIENE.md:56-71`,
+  tolerate); PR #460 reverted it (`docs/archive/LAUNCH_HYGIENE.md:56-71`,
   `QA_REGRESSION_MATRIX.md:169`). The child loader must stay reset-free for
   BOOT.ELF.
-- Removing the mc BOOT.ELF special-case at `elf.c:485-489`, which would drop the
-  working non-HDD route to the direct path.
-- Re-gating the pre-reset unmount on `is_hdd_backed_exec_path` (the original
-  sabotage, `elf.c:668-671`).
-- Hard-coding `LaunchBootElf`'s `reboot_iop` back to a constant, discarding the
-  HDD-aware conditional (`ui.lua:1346-1352`).
+- Removing the mc BOOT.ELF special-case at `elf.c:492-496`, which would drop the
+  working route through the embedded loader.
+- Routing BOOT.ELF (which needs the cold pfs teardown when HDD was loaded) so
+  that `PrepareForColdExternalELFLaunch` no longer unmounts the held boot
+  `pfs1:` before the no-reset exec — that reintroduces the held-mount hang.
 
 ### How to test on hardware
 
-- Working route (L-07): boot from USB/MC/MMCE/MX4SIO, Exit → BOOT.ELF. Expected:
+- Non-HDD route (L-07): boot from USB/MC/MMCE/MX4SIO, Exit → BOOT.ELF. Expected:
   BOOT.ELF runs. Record as L-07/U-10 non-HDD.
-- Broken route (U-10): boot from HDD, open `HDD (PFS)` first, return to menu,
-  Exit → BOOT.ELF. Currently black-screens; the accepted workaround is Exit →
-  OSDSYS or reboot (`docs/U10_INVESTIGATION.md:8`). Do not mark this PASS without
-  a fresh HDD-launched hardware retest.
+- HDD route (U-10): boot from HDD, open `HDD (PFS)` first, return to menu,
+  Exit → BOOT.ELF. Expected: BOOT.ELF runs (fixed by PR #479, Nuno-confirmed
+  2026-05-31). Re-run this after any change to `LaunchBootElf`'s `reboot_iop` /
+  cold-prep selection or to the mc BOOT.ELF special-case, and record the result
+  in `QA_REGRESSION_MATRIX.md`.
 
 ---
 
@@ -286,7 +298,7 @@ the confirmed-working baseline; HDD DKWDRV is source-verified V2-mimicry whose
 hardware result has been FAIL on the tested builds.
 
 **Hardware status:** MC DKWDRV works (`ui.lua:1242-1244` notes it confirmed
-working; `docs/LAUNCH_HYGIENE.md:114`). HDD DKWDRV: the V2-mimicry route is
+working; `docs/archive/LAUNCH_HYGIENE.md:114`). HDD DKWDRV: the V2-mimicry route is
 source-verified (`QA_REGRESSION_MATRIX.md:171`) but earlier HDD-DKWDRV builds
 black-screened on hardware (`QA_REGRESSION_MATRIX.md:163,166`); treat HDD DKWDRV
 as not-yet-confirmed and preserve the two-half contract regardless.
@@ -369,8 +381,32 @@ as not-yet-confirmed and preserve the two-half contract regardless.
   a launch is fatal, not success.
 - **`PrepareForColdExternalELFLaunch` forces the keep mask to 0** and unmounts all
   pfs slots (`system.lua:1047-...`, invoked from `LaunchEngine` when
-  `context.cold_external_launch == true`, `system.lua:4529-4530`). Do not route a
-  launch that needs `pfs1:` (e.g. HDD-boot BOOT.ELF) through the cold prep.
+  `context.cold_external_launch == true`, `system.lua:4529-4530`). Use it only for
+  a no-reset launch that does **not** need any `pfs1:` mount to survive into the
+  target. This is exactly the HDD-boot BOOT.ELF case post-PR-#479: BOOT.ELF takes
+  the `reboot_iop = 0` embedded-loader route, so unmounting the held boot `pfs1:`
+  is what makes the no-reset handoff safe (see Contract U-10). Conversely, a launch
+  that needs `pfs1:` to survive (an HDD game / HDD POPSTARTER) must **not** go
+  through the cold prep — use the keep-mask route instead.
+
+## Settings-path mini-contract — `EnsureBootPartitionWritable` (HDD RW take-over)
+
+`PLDR.HDD.EnsureBootPartitionWritable` is the boot pfs-slot "take over the mount"
+routine: it explicitly unmounts the launcher's own boot partition and remounts the
+**same partition read-write at the same pfs slot** (the OPL "own your mount"
+pattern). It is now **load-bearing for HDD-resident settings save and for HDD
+in-app `.hide`** (L3 toggle / R3 hidden-list) — on an HDD install there is no
+`mc0:` fallback, so this RW remount is the only path that lets the `.pldrs`
+sidecar and `.hide` markers be written on-HDD. provato hardware-confirmed the HDD
+is RW-writable via this take-over.
+
+This is a **settings/persistence** path, not a launch / ELF-handoff path, so it is
+not one of the four launch contracts above — but mount/launch changes must not
+break it: do not change which pfs slot the boot partition owns, do not leave the
+boot partition mounted read-only when settings need to persist, and do not unmount
+it out from under the settings write. Cross-reference: `STATE.md` > "Settings
+(single-device parity)", "Behavioral Invariants" (#2, #10), and the
+`EnsureBootPartitionWritable` bullet under `STATE.md` > "Preservation Contracts".
 
 ## Do not do
 
@@ -379,7 +415,7 @@ as not-yet-confirmed and preserve the two-half contract regardless.
   (`loader.c:376-397`) intentionally DOES call `SifExitCmd()` — but only after
   unmounting the pfs prefix; do not remove that umount.
 - Do not add IOP-reset branches for BOOT.ELF or DKWDRV to the child loader
-  (reverted in PR #460; `docs/LAUNCH_HYGIENE.md:56-71`).
+  (reverted in PR #460; `docs/archive/LAUNCH_HYGIENE.md:56-71`).
 - Do not re-gate the pre-reset pfs unmount on `is_hdd_backed_exec_path`
   (`elf.c:668-671`).
 - Do not edit the `EmbeddedLoaderMetadata` struct in only one of the two files.
@@ -389,4 +425,4 @@ as not-yet-confirmed and preserve the two-half contract regardless.
   actual hardware result recorded in `QA_REGRESSION_MATRIX.md`.
 - After ANY edit to `src/elf_loader/src/loader/src/loader.c`, regenerate and
   commit `src/elf_loader/loader.c` (`make clean elfloader all`); CI enforces a
-  byte-parity check (`HDD_POPSTARTER_HANDOFF.md:110-114`).
+  byte-parity check (`docs/archive/HDD_POPSTARTER_HANDOFF.md:110-114`).

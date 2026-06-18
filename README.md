@@ -6,32 +6,24 @@
 
 POPSLoader is a graphical PlayStation 2 homebrew launcher designed to easily browse and launch your PS1 games (using POPStarter) from various storage devices. It features a clean, responsive layout, cover art support, sound effects, an on-screen keyboard, and direct memory card exit shortcuts.
 
-The current public release is **BETA-10-5** (`v1.0.0-rev5`), tagged at commit `9a0ebe2` on 2026-05-27 and hardware-confirmed clean by Nuno on 2026-05-28. Development continues on the `BETA-12-PLAY` branch; rolling test artifacts are published continuously (see [Development & Building](#development--building)).
+The current public release is **BETA-11** (released 2026-06-15). Development continues on the `BETA-12-PLAY` branch; rolling test artifacts are published continuously (see [Development & Building](#development--building)).
 
 ---
 
-## BETA-10-5 Highlights
+## Highlights
 
-POPSLoader BETA-10-5 ships the launcher's stable backbone after an extended hardware-validation pass:
+POPSLoader's stable backbone, hardware-confirmed across an extended validation pass:
 
 *   **Fixed HDD POPSTARTER Handoff (D-10)**: Resolved the long-standing "D-10" black-screen hang when launching games using an HDD-backed POPStarter configuration. Hardware-confirmed.
 *   **Fixed Cross-Device POPSTARTER (D-14 / D-15)**: HDD-backed POPSTARTER with non-HDD games and non-HDD POPSTARTER with HDD games both launch cleanly. Hardware-confirmed.
-*   **DKWDRV from Memory Card**: Default MC DKWDRV launch path works through a reboot-IOP route with synthesized argv. Hardware-confirmed.
-*   **BOOT.ELF Exit from USB-booted POPSLoader**: Returns to wLaunchELF / BOOT.ELF via the embedded-loader non-reboot route. Hardware-confirmed when POPSLoader was launched from USB / OSDmenu / Browser / HOSDMenu / PSBBN.
-*   **Per-device Settings Sidecar**: Non-HDD installs (USB / MX4SIO / MMCE) save settings to `APP_DIR/.pldrs` next to the launcher; HDD installs use the legacy `mc0:/POPSTARTER/.pldrs` fallback by design (see Settings Storage below).
+*   **DKWDRV from Memory Card and custom HDD path**: Both launch routes work — the MC route via a reboot-IOP path with synthesized argv, the HDD custom path via a partition-aware route. Hardware-confirmed.
+*   **BOOT.ELF Exit from POPSLoader**: Returns to wLaunchELF / BOOT.ELF via the embedded-loader route, including the previously broken HDD-launched case (`U-10`). Hardware-confirmed.
+*   **Single-device Settings parity**: Every install — USB / MX4SIO / MMCE **and the internal HDD** — saves settings to `.pldrs` next to the launcher. HDD installs write it on the HDD's own boot partition (read-write mount take-over), no `mc0:` fallback (see [Settings Storage on HDD Installs](#settings-storage-on-hdd-installs)).
+*   **In-app HDD game hiding, PAL full-screen, BDMA + MC-folder controls**: The newer Settings work — see the [Settings](#settings) section below.
 *   **Polished User Interface**: Layout alignment corrections, cleaner typography, dynamic menu box adjustments, text wrapping, and notification toast hardening.
 
-### Known broken (after BETA-10-5 + post-release PRs #470/#472/#473/#476/#477 + Nuno's full 2026-05-28 PM hardware sweep)
-
-Currently confirmed-broken edge cases:
-
-*   **DKWDRV from a custom HDD path** black-screens. Use the default Memory Card DKWDRV path.
-*   **BOOT.ELF exit when POPSLoader was launched from HDD** (`U-10`) black-screens. Use Exit → OSDSYS, or reboot the console. Other launch sources (MC, USB, MX4SIO, MMCE) → BOOT.ELF exit still works. Investigation hypotheses in [docs/U10_INVESTIGATION.md](docs/U10_INVESTIGATION.md); maintainer's next angle: explicit IOP reset on boot.
-*   **HOSDmenu → POPSLoader black-screens** (POPSLoader never reaches its splash). Same launcher-IOP-state class PR #458 Layer A targeted but not resolved for HOSDmenu. Workaround: launch POPSLoader via a different launcher (autoboot, OSDmenu, Browser, PSBBN, a working wLE build).
-*   **Some wLaunchELF builds black-screen when launching POPSLoader**. Common wLE builds work (PR #458 Layer A fix); specific builds still fail. Workaround: switch wLE build, or use a different launcher.
-*   _(formerly)_ MX4SIO-rooted POPSLoader settings save — **resolved by PRs #476 + #477** (the boot.lua mass-slot scan now retries up to 3 times with diagnostic trace). Hardware-confirmed by Nuno 2026-05-29 02:58Z.
-
-See [STATE.md](STATE.md) and [QA_REGRESSION_MATRIX.md](QA_REGRESSION_MATRIX.md) for the full hardware ledger.
+> [!NOTE]
+> The canonical, always-current **Known Issues** list and **hardware-verification status** live in **[STATE.md > Known Issues](STATE.md#known-issues-canonical--the-single-list-readme--agents--rolling_notes-point-here)** (with the full ledger in [QA_REGRESSION_MATRIX.md](QA_REGRESSION_MATRIX.md)). The current open item is the config-specific "Failed to load HDD" from a non-HDD boot; the 2026-06 HDD/PAL/BDMA features are implemented and boot on PCSX2 (HDD confirmed read-write on hardware by provato) and are still validating on hardware.
 
 ---
 
@@ -107,12 +99,16 @@ Navigate POPSLoader using a standard PS2 controller.
 | :--- | :--- |
 | **D-pad Up / Down** | Scroll through the game list |
 | **D-pad Left / Right** | Page Up / Page Down (jump through large lists) |
+| **L1** | Jump to the top of the game list — press again to bounce to the bottom |
+| **R1** | Refresh / rescan the current game list (forces a fresh HDD scan) |
 | **Cross (X)** | Confirm option / Launch selected game |
 | **Circle (O)** | Go back to the Main Menu / Cancel |
 | **Triangle (△)** | Exit shortcut / BOOT.ELF shortcut where available |
 | **Start** | Open the Settings / Profile Editor |
 | **Select** | Toggle "Hide Text Mode" (clears the UI for a clean view of cover art) |
 | **Square (□)** | Toggle cover-art preview on / off (in the game list) |
+| **L3 (left stick click)** | Hide / unhide the selected game (writes/removes a `<name>.hide` marker — works on every device, including the internal HDD) |
+| **R3 (right stick click)** | Open the per-device **hidden games** list (to review and unhide) |
 | **R2** | Launch in "HDD Alt" mode (HDD (PFS) game list only — for an HDD-resident POPSTARTER) |
 
 ### On-screen Keyboard (Settings path editor)
@@ -125,6 +121,35 @@ Navigate POPSLoader using a standard PS2 controller.
 
 ---
 
+## Settings
+
+Press **Start** on the menu to open Settings; changes save when you confirm. Settings persist per install with **single-device parity** — every device, **including the internal HDD**, saves a `.pldrs` file next to the launcher. HDD installs write that sidecar **on the HDD boot partition itself** (POPSLoader remounts its own boot partition read-write to do so — there is no `mc0:` fallback for HDD installs). For the full rules, see **[STATE.md > Settings](STATE.md#settings-single-device-parity)**.
+
+### Startup
+
+| Setting | Options | What it does |
+| :--- | :--- | :--- |
+| **Boot Page** | **Carousel** (default) · MX4SIO · USB · MMCE · HDD (PFS) | Where POPSLoader lands after the boot sequence. *Carousel* shows the normal device wheel. Pick a device and POPSLoader opens **straight into that device's game list** at startup (it loads that backend automatically). A `-page=` launch argument still overrides this for that one boot. |
+
+### Game List
+
+| Setting | Options | What it does |
+| :--- | :--- | :--- |
+| **Multi-disc games** | **Show all discs** (default) · First disc only | *First disc only* hides the secondary discs of multi-disc games so only disc 1 shows. **Detection is purely by filename** — a disc is hidden if its name contains `(Disc 2)`, `(Disc 3)`, `(CD 2)`, `(Disk 2)`… (any number ≥ 2). So it **only works if you name your files with that convention**, e.g. `Final Fantasy IX (Disc 1).VCD` / `Final Fantasy IX (Disc 2).VCD`. Launch disc 1 and swap discs in-game via your VMC. (PS1 discs carry no shared "this is the same game" metadata, so the filename is the only signal.) Applies to every device. |
+| **Hidden games** | **Visible (manage)** (default) · Hidden | Per-game hide layer. Press **L3** on any game to hide or unhide it, or **R3** to open the per-device hidden list — hiding writes (or removes) a tiny `<name>.hide` marker next to the game's `.VCD`, exactly like the `<name>.png` cover. *Hidden* filters tagged games out of the list; *Visible (manage)* shows them **dimmed** so you can manage them with L3. In-app hiding works on **every device** — USB / MX4SIO / MMCE / Memory Card **and the internal HDD** (POPSLoader writes the `.hide` on the HDD via its read-write boot-partition mount). |
+
+### Other settings
+
+- **Profile / POPSTARTER mode / POPSTARTER path** — which `POPSTARTER.ELF` to use (a per-device profile, or a custom path).
+- **DKWDRV Path** — path to `DKWDRV.ELF` used by the Disc option.
+- **Video Standard** — **Auto** (default — matches your console's region) / NTSC / PAL. On PAL the UI now renders **natively at 640×512** so it fills the whole screen with no letterbox (NTSC is 640×448). A display-mode change shows a confirm prompt that **auto-reverts** if you don't confirm, so a bad mode can't strand you; you can also hold **Start** during boot to skip past a bad video mode.
+- **BDMA Mode** — mass-storage backend mode: **FAT32** (`FAT32-USB (None)`) / **USBEXFAT** (`exFAT-USB`) / **MX4SIO** / **MMCE**. The installed mode is recorded in a `bdma_mode.txt` marker file in the POPSTARTER pack folder (older `.pldr_bdma_mode` markers are still read for compatibility).
+- **POPSTARTER Memory Card Folder** — toggles the `mc:/POPSTARTER` folder. Turning it **off deletes** `mc:/POPSTARTER` (with a confirm prompt). It is **interlocked with BDMA Mode**: you can't turn this folder off while BDMA Mode is on, and you can't enable BDMA Mode while this folder is off.
+- **Hide UI Text** — clears on-screen text for a clean cover-art view (also toggled with **Select**).
+- **Keyboard Layout** — on-screen keyboard layout for the path editor.
+
+---
+
 ## BOOT.ELF / wLaunchELF Exit
 
 Selecting **BOOT.ELF** in the exit menu (or pressing the **Triangle** shortcut) will look for:
@@ -133,11 +158,9 @@ Selecting **BOOT.ELF** in the exit menu (or pressing the **Triangle** shortcut) 
 
 If found, BOOT.ELF launches through the embedded-loader handoff with a clean BRAM setup and an explicit `argv[0]`. If you do not have wLaunchELF installed at these paths, this option will fail to boot.
 
-**Hardware-confirmed working** when POPSLoader was launched from USB, MC, MMCE, MX4SIO, OSDmenu, Browser, or PSBBN.
+**Hardware-confirmed working** when POPSLoader was launched from USB, MC, MMCE, MX4SIO, OSDmenu, Browser, PSBBN, or HDD.
 
-**Known broken** (`U-10`): when POPSLoader itself was launched from HDD, the BOOT.ELF exit black-screens. Use Exit → OSDSYS, or reboot the console. Investigation notes live in [docs/U10_INVESTIGATION.md](docs/U10_INVESTIGATION.md).
-
-(See "Known broken" above for the separate "POPSLoader fails to start under HOSDmenu / some wLE builds" Class-A issues, which prevent reaching BOOT.ELF exit at all.)
+The `U-10` case (BOOT.ELF exit from an HDD-launched POPSLoader) previously black-screened; it was **fixed in PR #479** (`reboot_iop=0`), hardware-confirmed by Nuno 2026-05-31. History in [docs/archive/U10_INVESTIGATION.md](docs/archive/U10_INVESTIGATION.md).
 
 ---
 
@@ -149,7 +172,7 @@ If found, BOOT.ELF launches through the embedded-loader handoff with a clean BRA
 
 ### Settings Storage on HDD Installs
 
-HDD-installed POPSLoader saves its settings file to `mc0:/POPSTARTER/.pldrs` rather than next to `POPSLOADER.ELF`. This is intentional: the bundled `ps2hdd-osd.irx` driver has read-write limitations that we can't reliably work around without an IRX swap that risks regressing `D-10`. Non-HDD installs (USB / MX4SIO / MMCE) keep the per-device sidecar at `<install dir>/.pldrs`.
+HDD-installed POPSLoader saves its `.pldrs` settings file **on the HDD itself**, in the launcher's boot partition — same single-device behavior as USB / MX4SIO / MMCE, which keep the sidecar at `<install dir>/.pldrs`. To do this POPSLoader takes over its own boot partition's mount and remounts it read-write (the OPL "own your mount" pattern), so there is **no `mc0:` fallback** for HDD installs. The same read-write mount is what lets in-app `.hide` markers (L3 / R3) be written on the HDD. See **[STATE.md > Settings](STATE.md#settings-single-device-parity)** for the canonical rules.
 
 ---
 
@@ -177,11 +200,7 @@ HDD-installed POPSLoader saves its settings file to `mc0:/POPSTARTER/.pldrs` rat
 
 ## Known Issues & Planned Improvements
 
-Confirmed broken (workarounds documented above):
-*   **DKWDRV from custom HDD path** — use Memory Card DKWDRV path.
-*   **BOOT.ELF exit from HDD-launched POPSLoader** (`U-10`) — use Exit → OSDSYS or reboot.
-*   **HOSDmenu fails to launch POPSLoader** — use a different launcher.
-*   **Some wLaunchELF builds fail to launch POPSLoader** — use a different wLE build or launcher.
+Confirmed broken: see the single canonical **[STATE.md > Known Issues](STATE.md#known-issues-canonical--the-single-list-readme--agents--rolling_notes-point-here)** list (currently just the "Failed to load HDD" from a non-HDD boot case).
 
 Planned for subsequent updates:
 *   **Layer C Lazy IRX Loading**: Defer device-specific IRX modules so they only load when the boot device family needs them, reducing boot time. The `mmceman` portion has **landed** (PR #471): it is now loaded eagerly only when POPSLoader is booted from an MMCE device, and deferred everywhere else. Further deferral of `ds34bt` / `usbd` remains future work — they are still loaded at boot today.
@@ -203,21 +222,20 @@ See [STATE.md](STATE.md) "Known Open Work" and [ROADMAP.md](ROADMAP.md) for the 
 *   **nuno6573**: Cover-art engine integrations and scripting.
 *   **Hugopocked**: POPStarter fixes.
 *   **Ripto / NathanNeurotic**: Maintenance, UI polishing, and release engineering.
-*   **P4NCHOL1NO, VizoR, and the community**: Hardware testing.
+*   **P4NCHOL1NO, VizoR, provato, nuno6573, and the community**: Hardware testing.
 
 ---
 
 ## Development & Building
 
-GitHub Actions is the canonical build path. The pinned CI image is `ps2dev/ps2dev:v2.0.0`. Every change must pass the CI workflow in `.github/workflows/compilation.yml` before merging; rolling release artifacts for testing are produced by `.github/workflows/rolling-release.yml` on push to `BETA-12-PLAY` and on pull request events.
+GitHub Actions is the canonical build path. The pinned CI image is `ps2dev/ps2dev:v2.0.0`. Every change must pass the CI workflow in `.github/workflows/compilation.yml` before merging; rolling release artifacts for testing are produced by `.github/workflows/rolling-release.yml` on push to `BETA-12-PLAY` and on pull request events. CI now runs a live `luac` syntax gate over the embedded Lua (`bin/POPSLDR/*.lua` + `etc/boot.lua`) and hard-fails on a syntax error — note this catches **syntax** only; runtime and load-order errors still only surface on real PS2 / PCSX2.
 
 POPSLoader is an EE C/C++ application (`src/`) with the entire front-end UI and launch logic written as embedded Lua (`bin/POPSLDR/*.lua`, `etc/boot.lua`) and an embedded IOP-side child ELF loader (`src/elf_loader/`). The Lua scripts, PNG art, IRX modules, and the child loader are all baked directly into the EE ELF at build time via `bin2c`, so the on-card scripts are not read at runtime — building from source is required to change them.
 
 Developer documentation, repository architecture details, and the current state are maintained in:
 
-*   [STATE.md](STATE.md): Current code and hardware status.
+*   [STATE.md](STATE.md): Current code and hardware status, the canonical Known Issues list, Behavioral Invariants, and Preservation Contracts.
 *   [QA_REGRESSION_MATRIX.md](QA_REGRESSION_MATRIX.md): Complete ledger of CI gates and hardware test outcomes.
-*   [TRUTHSHEET.md](TRUTHSHEET.md): Non-negotiable behavioral invariants.
 *   [ROADMAP.md](ROADMAP.md): Prioritized backlog.
 *   [DECISIONS.md](DECISIONS.md): Decision log with rationale and evidence.
 *   [ARCHITECTURE.md](ARCHITECTURE.md): Structural data-flow documentation.

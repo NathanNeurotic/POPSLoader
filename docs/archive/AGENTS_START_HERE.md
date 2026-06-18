@@ -33,14 +33,11 @@ These are hardware-confirmed in BETA-10-5 and must not be broken by any new work
 - **Settings sidecar**: non-HDD installs (USB / MX4SIO / MMCE) save settings to `APP_DIR/.pldrs`. HDD installs deliberately fall back to `mc0:/POPSTARTER/.pldrs` (PR #466).
 - **MX4SIO mass: classification rule**: ioctl driver name is authoritative. `sdc`/`mx4` → MX4SIO; anything else → USB. `mx4sio_bd` only loads on explicit MX4SIO evidence (PR #472 + refinement `7b587fe`). `mx4sio_bd` depends on `usbmass_bd` loaded first (enforced at C layer).
 
-## Known Broken (Accepted for BETA-10-5)
+## Known Broken (current)
 
-These were investigated repeatedly without a stable fix; pragmatically accepted with documented workarounds:
+- **"Failed to load HDD" from a non-HDD boot** (config-specific; Nuno 2026-06-14) — POPSLoader starts and most setups list the HDD fine, but a specific configuration still fails. Workaround: boot POPSLoader from the HDD, or open the HDD page a few seconds after the menu appears. Under investigation.
 
-- **DKWDRV from custom HDD path** — black-screens. Workaround: use the default MC DKWDRV path.
-- **U-10 BOOT.ELF-from-HDD-boot** — when POPSLoader itself was booted from HDD, the BOOT.ELF exit black-screens. Workaround: Exit → OSDSYS or reboot. Diagnostic data from PR #463 localized the hang to `SifIopReset` itself (last visible stage YELLOW; ORANGE post-reset never paints). PR #464 F4 unconditional unmount did not fix it on hardware. Hypothesis catalog preserved in [docs/U10_INVESTIGATION.md](docs/U10_INVESTIGATION.md).
-
-(One latent failure mode — wLE → USB POPSLoader → BOOT.ELF — reported by Nuno 2026-05-27. Code analysis says it takes the same BOOT.ELF route as the working autoboot/OSDSYS cases, so likely always-broken/latent rather than a regression. Not enumerated as known-broken pending a clearer repro.)
+**Resolved since BETA-10-5 (hardware-confirmed) — removed from known-broken 2026-06-15:** DKWDRV from a custom HDD path (#486/#487), U-10 BOOT.ELF-from-HDD-boot (#479, `reboot_iop=0`), and HOSDmenu / specific wLaunchELF builds failing to launch POPSLoader (maintainer-confirmed 2026-06-15; mechanism not pinned). U-10 history preserved in [docs/U10_INVESTIGATION.md](docs/U10_INVESTIGATION.md).
 
 ## Post-release work in flight
 

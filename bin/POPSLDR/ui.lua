@@ -77,6 +77,10 @@ end
 -- end in .VCD (e.g. "Bomberman" -> "Bombe"). A generic last-extension strip
 -- can't be used either: it would eat the tail of titles containing a dot
 -- ("Mr. Driller" -> "Mr"). So match .VCD specifically.
+-- Faded palette for hidden games shown in the "manage" view (Global Hide off).
+-- The existing GREY renders brighter than LIST_UNSELECTED; these read as dimmer.
+local LIST_HIDDEN_COLOR = Color.new(92, 94, 120, 70)
+local LIST_HIDDEN_SELECTED_COLOR = Color.new(150, 152, 182, 110)
 local function StripVcdExtension(name)
   local s = tostring(name or "")
   return (string.gsub(s, "%.[Vv][Cc][Dd]$", ""))
@@ -194,13 +198,68 @@ local function BuildCoverCandidates(vcd_path, use_hdd_common_art, entry)
     base..".png"
   }
 end
+-- Read a game's "<name>.txt" details sidecar. Bounded so a stray huge file can't
+-- stall the snappy cover-load path it rides on.
+local function ReadGameDetailsText(path)
+  if path == nil or path == "" then return nil end
+  if type(System) ~= "table" or type(System.openFile) ~= "function" then return nil end
+  local ok_open, fd = pcall(System.openFile, path, FREAD)
+  if not ok_open or type(fd) ~= "number" or fd < 0 then return nil end
+  local data = nil
+  -- pcall the size/read/close (not just open): a valid-but-unreadable fd can
+  -- throw, and this runs inside the un-pcall'd game-list render frame -- degrade
+  -- to "no details" instead of erroring the whole frame (matches system.lua).
+  local ok_sz, size = pcall(System.sizeFile, fd)
+  if ok_sz and type(size) == "number" and size > 0 then
+    if size > 8192 then size = 8192 end
+    local ok_rd, rd = pcall(System.readFile, fd, size)
+    if ok_rd then data = rd end
+  end
+  pcall(System.closeFile, fd)
+  if type(data) == "string" and data ~= "" then return data end
+  return nil
+end
+-- Greedy word-wrap to max_chars per line, collapsing the source's own whitespace
+-- so a details blurb re-flows to the narrow cover column, clipped to max_lines
+-- (last kept line gets an ellipsis when more was dropped).
+local function WrapGameDetails(text, max_chars, max_lines)
+  if type(text) ~= "string" then return "" end
+  max_chars = tonumber(max_chars) or 30
+  if max_chars < 8 then max_chars = 8 end
+  max_lines = tonumber(max_lines) or 4
+  if max_lines < 1 then max_lines = 1 end
+  local lines = {}
+  local cur = ""
+  local truncated = false
+  for word in string.gmatch(text, "%S+") do
+    if cur == "" then
+      cur = word
+    elseif (#cur + 1 + #word) <= max_chars then
+      cur = cur.." "..word
+    else
+      lines[#lines + 1] = cur
+      cur = word
+      if #lines >= max_lines then truncated = true; break end
+    end
+  end
+  if not truncated and cur ~= "" and #lines < max_lines then
+    lines[#lines + 1] = cur
+  end
+  if truncated and #lines > 0 then
+    local last = lines[#lines]
+    if #last > max_chars - 1 then last = string.sub(last, 1, max_chars - 1) end
+    lines[#lines] = last.."..."
+  end
+  return table.concat(lines, "\n")
+end
 local CoverCache = {
   max = 3,
   entries = {},
   order = {},
   failed = {},
   last_key = nil,
-  last_img = nil
+  last_img = nil,
+  last_desc = nil
 }
 function CoverCache:Clear()
   local free_ok = type(Graphics) == "table" and type(Graphics.freeImage) == "function"
@@ -214,6 +273,7 @@ function CoverCache:Clear()
   self.failed = {}
   self.last_key = nil
   self.last_img = nil
+  self.last_desc = nil
 end
 function CoverCache:EvictIfNeeded()
   while #self.order > self.max do
@@ -268,10 +328,20 @@ function CoverCache:UpdateSelection(vcd_path, use_hdd_common_art, entry)
   end
   self.last_key = key
   self.last_img = nil
+  self.last_desc = nil
   if (use_hdd_common_art ~= true) and (vcd_path == nil or vcd_path == "") then
     return nil
   end
   local candidates = BuildCoverCandidates(vcd_path, use_hdd_common_art == true, entry)
+  -- Game details: read "<cover-base>.txt" next to the cover art, but only when the
+  -- feature is on (otherwise this read is skipped so navigation stays snappy).
+  -- Stored raw; the list view word-wraps it under the cover.
+  if type(PLDR) == "table" and PLDR.SHOW_DETAILS == true and candidates[1] ~= nil then
+    local desc_path = string.gsub(candidates[1], "%.png$", ".txt")
+    if desc_path ~= candidates[1] then
+      self.last_desc = ReadGameDetailsText(desc_path)
+    end
+  end
   for i = 1, #candidates do
     local img = self:GetOrLoad(candidates[i])
     if img ~= nil then
@@ -282,16 +352,22 @@ function CoverCache:UpdateSelection(vcd_path, use_hdd_common_art, entry)
   return nil
 end
 
+local VIDEO_STANDARD_AUTO = (type(PLDR) == "table" and PLDR.VIDEO_STANDARD_AUTO) or "AUTO"
 local VIDEO_STANDARD_NTSC = (type(PLDR) == "table" and PLDR.VIDEO_STANDARD_NTSC) or "NTSC"
 local VIDEO_STANDARD_PAL = (type(PLDR) == "table" and PLDR.VIDEO_STANDARD_PAL) or "PAL"
+local CONSOLE_REGION_MODE = (type(PLDR) == "table" and PLDR.CONSOLE_REGION_MODE) or NTSC
+-- Force the FIRST video apply (at boot) to re-issue Screen.setMode even when UI.SCR
+-- already matches the request, so gsKit (re)centers the raster. Without it the boot
+-- image sat top-aligned with a bottom bar on PAL until the user re-picked a mode.
+local VIDEO_BOOT_APPLIED = false
 
 local function ResolveVideoSpecForKey(key)
   if type(PLDR) == "table" and type(PLDR.GetVideoStandardSpec) == "function" then
     return PLDR.GetVideoStandardSpec(key)
   end
   if tostring(key or "") == VIDEO_STANDARD_PAL then
-    -- Keep the PAL UI raster aligned with the NTSC-authored artwork.
-    return { key = VIDEO_STANDARD_PAL, mode = PAL, width = 640, height = 448, fps = 50 }
+    -- PAL-native 512 so the UI fills the PAL screen (matches BuildVideoStandardSpec).
+    return { key = VIDEO_STANDARD_PAL, mode = PAL, width = 640, height = 512, fps = 50 }
   end
   return { key = VIDEO_STANDARD_NTSC, mode = NTSC, width = 640, height = 448, fps = 60 }
 end
@@ -357,7 +433,7 @@ local function WrapText(text, limit)
   return wrapped
 end
 
-local INITIAL_VIDEO_SPEC = ResolveVideoSpecForKey((type(PLDR) == "table" and PLDR.VIDEO_STANDARD) or VIDEO_STANDARD_NTSC)
+local INITIAL_VIDEO_SPEC = ResolveVideoSpecForKey((type(PLDR) == "table" and PLDR.VIDEO_STANDARD) or VIDEO_STANDARD_AUTO)
 UI = {
     LASTSCENE = 5;
     SCENES = {
@@ -420,6 +496,21 @@ UI = {
     end;
     SceneChange = function (SCENE)
       UI.RequestScene(SCENE)
+    end;
+    -- Force the game-list cover preview to (re)load for the focused game whenever a
+    -- scene is entered (called from the transition apply once CURSCENE flips). The
+    -- per-frame cover load only fires on a selection CHANGE (CURR ~= CoverLastIndex),
+    -- so re-entering a list where the entry selection equals the last-loaded index
+    -- (commonly index 1) otherwise never loaded the first game's art until you
+    -- scrolled away and back. Clearing the trigger here makes the current selection's
+    -- cover load on every entry. Touches only the cover-trigger state (not CURR), and
+    -- is inert outside game lists since only GameList.Play reads it.
+    OnSceneEnter = function (prev_scene, scene)
+      if type(UI.GameList) == "table" then
+        UI.GameList.CoverLastIndex = nil
+        UI.GameList.CoverPending = false
+        UI.GameList.CoverPendingAt = 0
+      end
     end;
     --- Color Constants
     CCOL = {
@@ -512,6 +603,14 @@ UI = {
 	    };
 	    VideoStandardModes = {
 	      {
+	        key = VIDEO_STANDARD_AUTO,
+	        label = "Auto (console region)",
+	        fps = (CONSOLE_REGION_MODE == PAL) and 50 or 60,
+	        mode = CONSOLE_REGION_MODE,
+	        width = 640,
+	        height = (CONSOLE_REGION_MODE == PAL) and 512 or 448
+	      },
+	      {
 	        key = VIDEO_STANDARD_NTSC,
 	        label = "NTSC (60Hz, 480i/240p)",
 	        fps = 60,
@@ -525,7 +624,7 @@ UI = {
 	        fps = 50,
 	        mode = PAL,
 	        width = 640,
-	        height = 448
+	        height = 512
 	      }
 	    };
 	    BdmaModeIndex = 1;
@@ -594,7 +693,13 @@ UI = {
       local ok, a, b, c, d = pcall(worker, report)
       UI.HideSavingOverlay()
       if not ok then
-        UI.Notif_queue.add(tostring(failure_message or "Operation failed"))
+        -- DIAGNOSTIC: surface the SWALLOWED worker error (`a`). Without it,
+        -- "Failed to load HDD" et al. show no cause -- exactly why provato/Nuno's
+        -- real HDD failure was invisible (the thrown error, with its file:line,
+        -- was captured here and discarded). Truncate so the toast stays readable.
+        local err_detail = tostring(a)
+        if #err_detail > 160 then err_detail = string.sub(err_detail, 1, 160).."..." end
+        UI.Notif_queue.add(tostring(failure_message or "Operation failed").."\n"..err_detail, "error")
         return false, a
       end
       return true, a, b, c, d
@@ -627,7 +732,10 @@ UI = {
 	        end
 	        last_ratio = next_ratio
         last_ms = current_ms
-        report(label.." "..tostring(math.floor(next_ratio * 100 + 0.5)).."%", next_progress)
+        -- Report only the OVERALL progress (the overlay draws one %+bar from it).
+        -- The label deliberately carries NO per-phase % -- showing both the phase
+        -- count and the overall bar was two different numbers at once (#498).
+        report(label, next_progress)
       end
     end;
     --- Notifications queue handler
@@ -2131,6 +2239,38 @@ UI = {
         UI.ProfileDirty = false
         UI.BdmaDirty = false
         UI.VideoStandardDirty = false
+        UI.BootPageModes = {
+          {key = "Carousel", label = "Carousel (default)"},
+          {key = "MX4SIO",   label = "MX4SIO"},
+          {key = "USB",      label = "USB"},
+          {key = "MMCE",     label = "MMCE"},
+          {key = "HDD",      label = "HDD (PFS)"},
+        }
+        UI.BootPageIndex = 1
+        for i = 1, #UI.BootPageModes do
+          if UI.BootPageModes[i].key == tostring((type(PLDR) == "table" and PLDR.BOOT_PAGE) or "Carousel") then
+            UI.BootPageIndex = i
+            break
+          end
+        end
+        UI.SettingsEntryBootPageIndex = UI.BootPageIndex
+        -- Carousel device-visibility draft ({KEY=true} set of hidden devices) +
+        -- entry snapshot for the dirty check.
+        UI.DeviceHiddenDraft = {}
+        UI.SettingsEntryHiddenSet = {}
+        if type(PLDR) == "table" then
+          for token in string.gmatch(string.upper(tostring(PLDR.HIDDEN_DEVICES or "")), "[^,%s]+") do
+            UI.DeviceHiddenDraft[token] = true
+            UI.SettingsEntryHiddenSet[token] = true
+          end
+        end
+        UI.SettingsEntryHiddenDevices = (type(PLDR) == "table" and type(PLDR.NormalizeHiddenDevices) == "function") and PLDR.NormalizeHiddenDevices(UI.DeviceHiddenDraft) or ""
+        UI.MultiDiscCollapse = (type(PLDR) == "table" and PLDR.COLLAPSE_MULTIDISC == true)
+        UI.SettingsEntryMultiDiscCollapse = UI.MultiDiscCollapse
+        UI.GlobalHide = (type(PLDR) == "table" and PLDR.GLOBAL_HIDE == true)
+        UI.SettingsEntryGlobalHide = UI.GlobalHide
+        UI.ShowDetails = (type(PLDR) == "table" and PLDR.SHOW_DETAILS == true)
+        UI.SettingsEntryShowDetails = UI.ShowDetails
         UI.SettingsEntryKeyboardLayout = tostring(UI.KeyboardLayoutDraft or (type(PLDR) == "table" and PLDR.KEYBOARD_LAYOUT) or "QWERTY")
         UI.SettingsFocus = 1
         UI.SceneChange(UI.SCENES.MPROFILE)
@@ -2230,6 +2370,9 @@ UI = {
             display_name = string.match(hdd_relpath, "([^/]+)$") or hdd_relpath
           end
 	          local c = (i == UI.GameList.CURR) and UI.COLORS.LIST_SELECTED or UI.COLORS.LIST_UNSELECTED
+          if PLDR.IsGameHidden and PLDR.IsGameHidden(PLDR.GAMES[i]) then
+            c = (i == UI.GameList.CURR) and LIST_HIDDEN_SELECTED_COLOR or LIST_HIDDEN_COLOR
+          end
           local label = StripVcdExtension(display_name)
           -- Only the focused row scrolls (OPL-style); others clip as before.
           if i == UI.GameList.CURR then
@@ -2265,8 +2408,31 @@ UI = {
           local draw_h = preview_h
           if preview_img ~= nil then
             if preview_is_live_cover then
-              local cover_w = math.min(layout.COVER_W or 232, draw_w)
-              local cover_h = math.min(layout.COVER_H or 232, draw_h)
+              -- Pixel-aspect-correct the cover. The PS2 displays the whole
+              -- 640xY framebuffer as one 4:3 frame, so equal pixel counts
+              -- render at different shapes per standard: a fixed pixel-square
+              -- looks slightly tall on NTSC (Y=448) and WIDE/stretched on
+              -- PAL-native (Y=512). Size the cover from the source image's true
+              -- aspect so it displays correctly on BOTH standards -- a source
+              -- of iw:ih shows right when cover_w/cover_h = (iw/ih)*(480/SCR.Y).
+              -- Fit that inside the COVER_W square window and keep the original
+              -- top/right anchor so on-screen placement is otherwise unchanged.
+              local box = math.min(layout.COVER_W or 232, draw_w, draw_h)
+              local iw = Graphics.getImageWidth(preview_img)
+              local ih = Graphics.getImageHeight(preview_img)
+              if type(iw) ~= "number" or iw <= 0 then iw = 1 end
+              if type(ih) ~= "number" or ih <= 0 then ih = 1 end
+              local ratio = (iw / ih) * (480 / (UI.SCR.Y or 448))
+              local cover_w, cover_h
+              if ratio >= 1 then
+                cover_w = box
+                cover_h = Round(box / ratio)
+              else
+                cover_h = box
+                cover_w = Round(box * ratio)
+              end
+              if cover_w > draw_w then cover_w = draw_w end
+              if cover_h > draw_h then cover_h = draw_h end
               local cover_x = draw_x + (draw_w - cover_w)
               local cover_y = draw_y
               Graphics.drawScaleImage(preview_img, cover_x, cover_y, cover_w, cover_h)
@@ -2275,7 +2441,52 @@ UI = {
             end
           end
           if IMG.frame ~= nil then
-            Graphics.drawScaleImage(IMG.frame, draw_x, draw_y, draw_w, draw_h)
+            -- Same pixel-aspect correction as the live cover above. frame.png is
+            -- a square (256x256) asset, but the PS2 stretches the whole 640xY
+            -- framebuffer to one 4:3 frame, so a flat pixel-square renders TALL
+            -- on NTSC (Y=448) and WIDE on PAL-native (Y=512) -- the warped border
+            -- the tester reported (#496). Size it from its own aspect *
+            -- (480/SCR.Y) and fit it in the preview box, top/right anchored to
+            -- match the cover, so the frame stays square on BOTH standards
+            -- instead of leaning the opposite way per video mode.
+            local fiw = Graphics.getImageWidth(IMG.frame)
+            local fih = Graphics.getImageHeight(IMG.frame)
+            if type(fiw) ~= "number" or fiw <= 0 then fiw = 1 end
+            if type(fih) ~= "number" or fih <= 0 then fih = 1 end
+            local fratio = (fiw / fih) * (480 / (UI.SCR.Y or 448))
+            local frame_w, frame_h
+            if fratio >= 1 then
+              frame_w = draw_w
+              frame_h = Round(draw_w / fratio)
+            else
+              frame_h = draw_h
+              frame_w = Round(draw_h * fratio)
+            end
+            if frame_w > draw_w then frame_w = draw_w end
+            if frame_h > draw_h then frame_h = draw_h end
+            local frame_x = draw_x + (draw_w - frame_w)
+            local frame_y = draw_y
+            Graphics.drawScaleImage(IMG.frame, frame_x, frame_y, frame_w, frame_h)
+          end
+          -- Game details: a word-wrapped, centered blurb tucked under the cover --
+          -- shown only when the feature is on AND a "<name>.txt" was found for the
+          -- selected game, so it gracefully disappears otherwise. Accompanies the
+          -- cover (rides its load), clipped to the gap above the button bar.
+          if cover_enabled and type(PLDR) == "table" and PLDR.SHOW_DETAILS == true
+             and UI.CoverCache ~= nil and type(UI.CoverCache.last_desc) == "string"
+             and UI.CoverCache.last_desc ~= "" then
+            local center_x = draw_x + Round(draw_w / 2)
+            local desc_y = draw_y + draw_h + 6
+            local footer_y = layout.FOOTER_ICON_Y or (UI.SCR.Y - 56)
+            local line_h = 14
+            local avail = footer_y - desc_y - 2
+            if avail >= line_h then
+              local max_lines = math.floor(avail / line_h)
+              local wrapped = WrapGameDetails(UI.CoverCache.last_desc, 30, max_lines)
+              if wrapped ~= "" then
+                Font.ftPrintMultiLineAligned(SFONT, center_x, desc_y, line_h, draw_w, avail, wrapped, UI.CCOL.GREY)
+              end
+            end
           end
         end
         if ammount <= 0 then
@@ -2293,6 +2504,18 @@ UI = {
           if UI.Pad.Events.NAV_RIGHT then UI.GameList.CURR = CLAMP(UI.GameList.CURR+UI.GameList.MAXDRAW, 1, ammount) end
           if UI.Pad.Events.NAV_UP then UI.GameList.CURR = CLAMP(UI.GameList.CURR-1, 1, ammount) end
           if UI.Pad.Events.NAV_LEFT then UI.GameList.CURR = CLAMP(UI.GameList.CURR-UI.GameList.MAXDRAW, 1, ammount) end
+          -- L1 bounces between the top and bottom -- the page-at-a-time d-pad is
+          -- slow on big libraries (1000+ games). At the top it jumps to the bottom;
+          -- anywhere else it jumps to the top -- so repeated presses ping-pong. The
+          -- cursor position itself is the state (no toggle to drift out of sync),
+          -- and this leaves R1 free for the per-page rescan. (#499)
+          if UI.Pad.Events.L1 then
+            if UI.GameList.CURR == 1 then
+              UI.GameList.CURR = ammount
+            else
+              UI.GameList.CURR = 1
+            end
+          end
         end
         if UI.Pad.Events.SQUARE then
           UI.CoverPreviewEnabled = not UI.CoverPreviewEnabled
@@ -2419,6 +2642,81 @@ UI = {
             UI.Notif_queue.add("HDD list refreshed (no games found)", "warn")
           else
             UI.Notif_queue.add("HDD list refreshed", "ok")
+          end
+        elseif UI.Pad.Events.R1 and (UI.CURSCENE == UI.SCENES.GSMB
+               or UI.CURSCENE == UI.SCENES.GMX4SIO
+               or UI.CURSCENE == UI.SCENES.GUSBFAT) then
+          -- R1 re-runs the SAME scan entering the page does, in place: re-detect
+          -- the device and rebuild the list -- for hotplugging a card/drive or a
+          -- config change without leaving the page. These devices keep no
+          -- persistent cache (unlike HDD), so it's simply a fresh live scan.
+          local rescan_scene = UI.CURSCENE
+          UI.RunBusyTask("Refreshing list...", function (report)
+            local scan = UI.MakeBusyProgressReporter(report, "Scanning games...", 0.30, 0.95)
+            if rescan_scene == UI.SCENES.GSMB then
+              report("Detecting MMCE device...", 0.16)
+              if type(PLDR.DetectMMCESlot) == "function" then pcall(PLDR.DetectMMCESlot, true) end
+              local mmce_prefix = (type(PLDR.MMCE) == "table" and PLDR.MMCE.PREFIX) or nil
+              if mmce_prefix == nil and type(PLDR.SetMMCESlot) == "function" then
+                mmce_prefix = PLDR.SetMMCESlot(1)
+              end
+              PLDR.CleanupGameList()
+              if type(mmce_prefix) == "string" and mmce_prefix ~= "" and doesFolderExist(mmce_prefix.."POPS/") then
+                report("Scanning MMCE games...", 0.30)
+                PLDR.GetPS1GameLists(mmce_prefix.."POPS/", true, scan)
+              end
+            elseif rescan_scene == UI.SCENES.GMX4SIO then
+              report("Refreshing mass backends...", 0.16)
+              if type(PLDR.RefreshMassBackends) == "function" then pcall(PLDR.RefreshMassBackends) end
+              if type(PLDR.SetMx4sioAutoEnterPending) == "function" then PLDR.SetMx4sioAutoEnterPending(true) end
+              local mx4sio_root = PLDR.InitMX4SIOPopsRoot()
+              if type(PLDR.SetMx4sioAutoEnterPending) == "function" then PLDR.SetMx4sioAutoEnterPending(false) end
+              PLDR.CleanupGameList()
+              if type(mx4sio_root) == "string" and mx4sio_root ~= "" then
+                report("Scanning MX4SIO games...", 0.30)
+                PLDR.GetPS1GameLists(mx4sio_root, true, scan)
+              end
+            else
+              report("Initializing USB backend...", 0.16)
+              if type(System) == "table" and type(System.ensureUsbMass) == "function" then pcall(System.ensureUsbMass) end
+              if type(PLDR.RefreshMassBackends) == "function" then pcall(PLDR.RefreshMassBackends) end
+              PLDR.CleanupGameList()
+              report("Building USB game list...", 0.30)
+              PLDR.BuildMassGameListByType("usb", nil, scan)
+            end
+            report("Done", 1.0)
+          end, "Failed to refresh list")
+          UI.GameList.CURR = 1
+          UI.GameList.CoverLastIndex = nil
+          UI.GameList.CoverPending = false
+          if #PLDR.GAMES < 1 then
+            UI.Notif_queue.add("List refreshed (no games found)", "warn")
+          else
+            UI.Notif_queue.add("List refreshed", "ok")
+          end
+        end
+        if UI.Pad.Events.L3 and ammount > 0 then
+          if PLDR.GLOBAL_HIDE then
+            UI.Notif_queue.add("[Global Hide ON]\nTurn 'Hidden games' off in Settings to manage", "warn")
+          elseif UI.CURSCENE == UI.SCENES.GHDD then
+            local entry = PLDR.GAMES[UI.GameList.CURR]
+            local was_hidden = PLDR.IsGameHidden(entry)
+            local ok, reason = PLDR.SetHddGameHidden(entry, not was_hidden)
+            if ok then
+              UI.Notif_queue.add(was_hidden and "Game shown" or "Game hidden", "ok")
+            else
+              UI.Notif_queue.add("Couldn't write .hide to the HDD ("..tostring(reason or "")..").\nYou can still add a \"<game>.hide\" next to the .VCD from a PC.", "warn")
+            end
+          else
+            local entry = PLDR.GAMES[UI.GameList.CURR]
+            local vcd_path = ResolveSelectedVcdPath(entry, PLDR.GAMEPATH)
+            local was_hidden = PLDR.IsGameHidden(entry)
+            local ok, reason = PLDR.SetGameHidden(entry, vcd_path, not was_hidden)
+            if ok then
+              UI.Notif_queue.add(was_hidden and "Game shown" or "Game hidden", "ok")
+            else
+              UI.Notif_queue.add("Couldn't update hidden state ("..tostring(reason)..")", "error")
+            end
           end
         end
         local cross_label = UI.Footer.labels.cross_launch
@@ -2569,6 +2867,17 @@ UI = {
           local mode_key = mode_entry and mode_entry.key or "FAT32"
           local video_entry = UI.VideoStandardModes[UI.VideoStandardIndex] or UI.VideoStandardModes[1]
           local video_key = video_entry and video_entry.key or VIDEO_STANDARD_NTSC
+          local boot_page_entry = UI.BootPageModes[UI.BootPageIndex] or UI.BootPageModes[1]
+          local boot_page_key = boot_page_entry and boot_page_entry.key or "Carousel"
+          local multidisc_collapse_val = UI.MultiDiscCollapse == true
+          local global_hide_val = UI.GlobalHide == true
+          local show_details_val = UI.ShowDetails == true
+          local video_live_before = nil
+          if type(Screen) == "table" and type(Screen.getMode) == "function" then
+            local okb, mb = pcall(Screen.getMode)
+            if okb and type(mb) == "table" then video_live_before = mb.mode end
+          end
+          local video_standard_before = (type(PLDR) == "table") and PLDR.VIDEO_STANDARD or nil
           local ok_run, result, reason = xpcall(function()
             if type(PLDR.CommitSettingsChanges) == "function" then
               return PLDR.CommitSettingsChanges({
@@ -2579,6 +2888,11 @@ UI = {
                 bdma_mode = mode_key,
                 video_standard = video_key,
                 keyboard_layout = UI.KeyboardLayoutDraft or (type(PLDR) == "table" and PLDR.KEYBOARD_LAYOUT) or "QWERTY",
+                boot_page = boot_page_key,
+                hidden_devices = UI.DeviceHiddenDraft,
+                multidisc_collapse = multidisc_collapse_val,
+                global_hide = global_hide_val,
+                show_details = show_details_val,
                 hide_text = UI.HideTextMode == true,
                 prev_hide_text = UI.SettingsEntryHideTextMode == true,
                 apply_bdma = UI.BdmaDirty,
@@ -2600,6 +2914,13 @@ UI = {
             else
               PLDR.KEYBOARD_LAYOUT = UI.KeyboardLayoutDraft or PLDR.KEYBOARD_LAYOUT or "QWERTY"
             end
+            PLDR.BOOT_PAGE = boot_page_key
+            if type(UI.DeviceHiddenDraft) == "table" and type(PLDR.NormalizeHiddenDevices) == "function" then
+              PLDR.HIDDEN_DEVICES = PLDR.NormalizeHiddenDevices(UI.DeviceHiddenDraft)
+            end
+            PLDR.COLLAPSE_MULTIDISC = multidisc_collapse_val
+            PLDR.GLOBAL_HIDE = global_hide_val
+            PLDR.SHOW_DETAILS = show_details_val
             if type(PLDR.ApplyVideoStandardRuntime) == "function" then
               PLDR.ApplyVideoStandardRuntime(video_key)
             end
@@ -2607,7 +2928,7 @@ UI = {
             local saved = PLDR.SaveSettingsAtomic()
             local applied = true
             if saved and UI.BdmaDirty then
-              report_stage("apply", "Applying BDMA mode")
+              report_stage("apply_bdma", "Applying BDMA mode")
               applied = PLDR.ApplyBdmaMode(mode_key)
             end
             if not saved then
@@ -2627,6 +2948,41 @@ UI = {
             UI.DkwdrvDirty = false
             UI.VideoStandardDirty = false
             clear_settings_session()
+            -- HDD-write probe (TEST): on an HDD boot, report whether a __.POPS
+            -- partition accepts a scoped write -- tells us if settings/.hide can
+            -- live on the HDD. Settings already saved (to mc0: on HDD); this only
+            -- reports. (nil return = not an HDD boot -> no toast.)
+            if type(PLDR.ProbeHddSettingsWrite) == "function" then
+              local hdd_w_ok, hdd_w_info = PLDR.ProbeHddSettingsWrite()
+              if hdd_w_ok == true then
+                UI.Notif_queue.add("HDD partition "..tostring(hdd_w_info).." is WRITABLE -- settings can live on HDD", "ok")
+              elseif hdd_w_ok == false then
+                UI.Notif_queue.add("HDD write test FAILED ("..tostring(hdd_w_info)..")\nsettings stay on the memory card", "warn")
+              end
+            end
+            -- Display-change safety: if the GS mode actually switched, confirm it
+            -- in the new mode and auto-revert if the user can't (invisible mode).
+            if video_live_before ~= nil and type(Screen) == "table" and type(Screen.getMode) == "function" then
+              local oka, ma = pcall(Screen.getMode)
+              local video_live_after = (oka and type(ma) == "table") and ma.mode or nil
+              if video_live_after ~= nil and video_live_after ~= video_live_before then
+                local kept = true
+                if type(UI.RunVideoModeConfirm) == "function" then
+                  -- pcall: if the confirm modal itself errors, fall to REVERT
+                  -- (back to the known-good mode) rather than crash the scene.
+                  local ok_confirm, confirm_res = pcall(UI.RunVideoModeConfirm, 15)
+                  kept = (ok_confirm == true) and (confirm_res == true)
+                end
+                if not kept and video_standard_before ~= nil then
+                  PLDR.VIDEO_STANDARD = video_standard_before
+                  if type(PLDR.ApplyVideoStandardRuntime) == "function" then
+                    PLDR.ApplyVideoStandardRuntime(video_standard_before)
+                  end
+                  pcall(PLDR.SaveSettingsAtomic)
+                  UI.Notif_queue.add("Display reverted -- new mode wasn't confirmed", "warn")
+                end
+              end
+            end
             UI.SceneChange(target_scene)
           else
             if reason == "bdma_apply_failed" then
@@ -2708,7 +3064,23 @@ UI = {
             UI.BdmaModeIndex = 1
             UI.BdmaDirty = true
           end
-          local default_video_key = VIDEO_STANDARD_NTSC
+          if (UI.BootPageIndex or 1) ~= 1 then
+            UI.BootPageIndex = 1
+            UI.ProfileDirty = true
+          end
+          if UI.MultiDiscCollapse == true then
+            UI.MultiDiscCollapse = false
+            UI.ProfileDirty = true
+          end
+          if UI.GlobalHide == true then
+            UI.GlobalHide = false
+            UI.ProfileDirty = true
+          end
+          if UI.ShowDetails == true then
+            UI.ShowDetails = false
+            UI.ProfileDirty = true
+          end
+          local default_video_key = VIDEO_STANDARD_AUTO
           local default_video_index = 1
           for i = 1, #UI.VideoStandardModes do
             if UI.VideoStandardModes[i].key == default_video_key then
@@ -2781,6 +3153,11 @@ UI = {
             dirty = dirty_fn
           })
         end
+        local function AddInfo(label, get_value)
+          -- Read-only status row (not focusable -- see IsSelectable). Surfaces
+          -- live runtime state next to the relevant setting.
+          table.insert(items, { kind = "info", label = label, value = get_value })
+        end
         local function AddPath(label, get_value, open_fn, dirty_fn)
           table.insert(items, {
             kind = "path",
@@ -2800,11 +3177,23 @@ UI = {
         end
 
         AddSection("Storage")
+        local function CycleBdma(dir)
+          local next_idx = CycleIndex(UI.BdmaModeIndex, dir, #UI.BdmaModes)
+          local next_key = (UI.BdmaModes[next_idx] or {}).key
+          -- BDMA/SMB modules must live in mc:/POPSTARTER. Can't ENABLE BDMA while that
+          -- folder is disabled -- make the user turn it back on first.
+          if next_key ~= nil and next_key ~= "FAT32" and PLDR.POPSTARTER_MC_FOLDER == false then
+            UI.Notif_queue.add("Enable the POPSTARTER Folder first\n(BDMA / SMB modules must live on the memory card)", "warn")
+            return
+          end
+          UI.BdmaModeIndex = next_idx
+          UI.BdmaDirty = true
+        end
         AddCycle(
           "BDMA Mode",
           function() return tostring((UI.BdmaModes[UI.BdmaModeIndex] or UI.BdmaModes[1] or {}).label or "") end,
-          function() UI.BdmaModeIndex = CycleIndex(UI.BdmaModeIndex, -1, #UI.BdmaModes); UI.BdmaDirty = true end,
-          function() UI.BdmaModeIndex = CycleIndex(UI.BdmaModeIndex,  1, #UI.BdmaModes); UI.BdmaDirty = true end,
+          function() CycleBdma(-1) end,
+          function() CycleBdma(1) end,
           function() return UI.BdmaDirty == true end
         )
 
@@ -2824,12 +3213,101 @@ UI = {
           end,
           function() return UI.VideoStandardDirty == true end
         )
+        -- Read-only: what the GS is ACTUALLY outputting right now, so a
+        -- PAL-console user who selects NTSC can see whether the hardware
+        -- really switched -- no -debug / launch args needed (GitHub #495).
+        AddInfo(
+          "Actual output",
+          function()
+            if type(Screen) ~= "table" or type(Screen.getMode) ~= "function" then
+              return "(unknown)"
+            end
+            local ok, m = pcall(Screen.getMode)
+            if not ok or type(m) ~= "table" or type(m.mode) ~= "number" then
+              return "(unknown)"
+            end
+            local name = (m.mode == PAL) and "PAL"
+              or (m.mode == NTSC) and "NTSC"
+              or ("mode "..tostring(m.mode))
+            return name.." "..tostring(UI.SCR.X or "?").."x"..tostring(UI.SCR.Y or "?")
+          end
+        )
         AddCycle(
           "Hide UI Text",
           function() return UI.HideTextMode and "Hidden" or "Visible" end,
           function() UI.SetHideTextMode(not UI.HideTextMode, false) end,
           function() UI.SetHideTextMode(not UI.HideTextMode, false) end,
           HideTextDirty
+        )
+
+        AddSection("Startup")
+        AddCycle(
+          "Boot Page",
+          function() return tostring((UI.BootPageModes[UI.BootPageIndex] or UI.BootPageModes[1] or {}).label or "") end,
+          function() UI.BootPageIndex = CycleIndex(UI.BootPageIndex, -1, #UI.BootPageModes) end,
+          function() UI.BootPageIndex = CycleIndex(UI.BootPageIndex,  1, #UI.BootPageModes) end,
+          function() return (UI.BootPageIndex or 1) ~= (UI.SettingsEntryBootPageIndex or 1) end
+        )
+
+        -- Carousel device visibility checklist: a Shown/Hidden row per main-menu
+        -- device. Toggling hides/shows it on the carousel (all shown by default).
+        AddSection("Carousel Devices")
+        if type(PLDR) == "table" and type(PLDR.CAROUSEL_DEVICE_KEYS) == "table" then
+          local function ToggleDevice(dkey)
+            if type(UI.DeviceHiddenDraft) ~= "table" then UI.DeviceHiddenDraft = {} end
+            if UI.DeviceHiddenDraft[dkey] then
+              UI.DeviceHiddenDraft[dkey] = nil
+            else
+              local visible = 0
+              for di = 1, #PLDR.CAROUSEL_DEVICE_KEYS do
+                if not UI.DeviceHiddenDraft[PLDR.CAROUSEL_DEVICE_KEYS[di]] then visible = visible + 1 end
+              end
+              if visible <= 1 then
+                UI.Notif_queue.add("At least one device must stay on the carousel", "warn")
+                return
+              end
+              UI.DeviceHiddenDraft[dkey] = true
+            end
+            UI.ProfileDirty = true
+          end
+          for di = 1, #PLDR.CAROUSEL_DEVICE_KEYS do
+            local dkey = PLDR.CAROUSEL_DEVICE_KEYS[di]
+            local dlabel = (type(UI.MainMenu) == "table" and type(UI.MainMenu.opts) == "table" and UI.MainMenu.opts[di]) or dkey
+            AddCycle(
+              dlabel,
+              function() return (type(UI.DeviceHiddenDraft) == "table" and UI.DeviceHiddenDraft[dkey]) and "Hidden" or "Shown" end,
+              function() ToggleDevice(dkey) end,
+              function() ToggleDevice(dkey) end,
+              function()
+                local d = (type(UI.DeviceHiddenDraft) == "table" and UI.DeviceHiddenDraft[dkey]) and true or false
+                local e = (type(UI.SettingsEntryHiddenSet) == "table" and UI.SettingsEntryHiddenSet[dkey]) and true or false
+                return d ~= e
+              end
+            )
+          end
+        end
+
+        AddSection("Game List")
+        AddCycle(
+          "Multi-disc games",
+          function() return UI.MultiDiscCollapse and "First disc only" or "Show all discs" end,
+          function() UI.MultiDiscCollapse = not UI.MultiDiscCollapse end,
+          function() UI.MultiDiscCollapse = not UI.MultiDiscCollapse end,
+          function() return (UI.MultiDiscCollapse == true) ~= (UI.SettingsEntryMultiDiscCollapse == true) end
+        )
+        AddCycle(
+          "Hidden games",
+          function() return UI.GlobalHide and "Hidden" or "Visible (manage)" end,
+          function() UI.GlobalHide = not UI.GlobalHide end,
+          function() UI.GlobalHide = not UI.GlobalHide end,
+          function() return (UI.GlobalHide == true) ~= (UI.SettingsEntryGlobalHide == true) end
+        )
+        AddCycle(
+          "Game details",
+          function() return UI.ShowDetails and "Shown" or "Hidden" end,
+          function() UI.ShowDetails = not UI.ShowDetails end,
+          function() UI.ShowDetails = not UI.ShowDetails end,
+          function() return (UI.ShowDetails == true) ~= (UI.SettingsEntryShowDetails == true) end
         )
 
         AddSection("POPSTARTER")
@@ -2871,15 +3349,57 @@ UI = {
             or KeyboardLayoutDirty()
         end
 
+        local function ToggleMcFolder()
+          if PLDR.POPSTARTER_MC_FOLDER == false then
+            PLDR.POPSTARTER_MC_FOLDER = true
+            pcall(PLDR.EnsurePopstarterDir)
+            pcall(PLDR.SaveSettingsAtomic)
+            UI.Notif_queue.add("POPSTARTER folder restored on the memory card\n(set a BDMA mode to re-add the exFAT/SMB modules)", "ok")
+            return
+          end
+          -- Only allowed while BDMA is off (FAT32/None): the BDMA + SMB modules live
+          -- in this folder, so it can't be deleted while BDMA still needs it.
+          local bdma_draft = (UI.BdmaModes[UI.BdmaModeIndex] or {}).key
+          if (bdma_draft ~= nil and bdma_draft ~= "FAT32")
+             or (PLDR.BDMA_MODE_KEY ~= nil and PLDR.BDMA_MODE_KEY ~= "FAT32") then
+            UI.Notif_queue.add("Can't disable while BDMA is enabled\nSet BDMA Mode to FAT32 (None) first", "warn")
+            return
+          end
+          local confirmed = UI.RunConfirm({
+            "Delete the POPSTARTER folder from the memory card?",
+            "",
+            "This removes the POPSTARTER pack -- including the",
+            "BDMA and SMB modules -- from mc0: / mc1:. They won't",
+            "return until you turn this back On (or re-add them",
+            "manually). Your POPSLoader settings are kept.",
+          })
+          if confirmed then
+            PLDR.POPSTARTER_MC_FOLDER = false
+            pcall(PLDR.SaveSettingsAtomic)
+            pcall(PLDR.RemovePopstarterMcFolder)
+            UI.Notif_queue.add("POPSTARTER folder deleted from the memory card", "warn")
+          end
+        end
+
         AddSpacer()
         AddAction("Save Changes",      function() queue_exit(UI.SCENES.MMAIN, true) end, true)
         AddAction("Reset Defaults",    function() ResetDefaults() end, false)
         AddAction("Discard & Exit",    function() discard_settings_and_return() end, false)
+        AddSpacer()
+        AddSection("Memory Card")
+        AddCycle(
+          "POPSTARTER Folder",
+          function() return (PLDR.POPSTARTER_MC_FOLDER == false) and "Off (deleted)" or "On (default)" end,
+          function() ToggleMcFolder() end,
+          function() ToggleMcFolder() end,
+          function() return false end
+        )
 
         -- Focus normalization: clamp + skip non-selectable rows.
         local function IsSelectable(idx)
           local it = items[idx]
           return it ~= nil and it.kind ~= "section" and it.kind ~= "spacer"
+            and it.kind ~= "info"
         end
         if type(UI.SettingsFocus) ~= "number" or UI.SettingsFocus < 1 or UI.SettingsFocus > #items then
           UI.SettingsFocus = 1
@@ -2954,7 +3474,7 @@ UI = {
           local value_text_color
           if dirty then
             value_text_color = accent_color
-          elseif it.kind == "path" then
+          elseif it.kind == "path" or it.kind == "info" then
             value_text_color = muted_color
           else
             value_text_color = label_color
@@ -3150,6 +3670,24 @@ UI = {
           local key = icon_map[opt] or opt
           icon_keys[x] = key
         end
+        -- Carousel device visibility: drive nav + render over the VISIBLE subset
+        -- of opts so hidden devices are skipped with no gaps. With nothing hidden
+        -- this is the identity list (behavior unchanged). visible_seq[pos] = real
+        -- opts index; pos_of[real] = its position in the visible sequence.
+        local visible_seq = {}
+        local pos_of = {}
+        for x = 1, #UI.MainMenu.opts do
+          local dkey = (type(PLDR) == "table" and type(PLDR.CAROUSEL_DEVICE_KEYS) == "table") and PLDR.CAROUSEL_DEVICE_KEYS[x] or nil
+          local is_hidden = (type(PLDR) == "table" and type(PLDR.IsDeviceHidden) == "function" and PLDR.IsDeviceHidden(dkey)) == true
+          if not is_hidden then
+            visible_seq[#visible_seq + 1] = x
+            pos_of[x] = #visible_seq
+          end
+        end
+        if #visible_seq == 0 then
+          for x = 1, #UI.MainMenu.opts do visible_seq[x] = x; pos_of[x] = x end
+        end
+        profcnt = #visible_seq
         local function WrapIndex(index, count)
           return ((index - 1) % count) + 1
         end
@@ -3163,8 +3701,18 @@ UI = {
         carousel.last_ms = now_ms
         if dt_ms < 0 then dt_ms = 0 end
         if not carousel.animActive then
-          carousel.currentIndex = UI.MainMenu.OPT
-          carousel.scrollPos = carousel.currentIndex
+          local sync_pos = pos_of[UI.MainMenu.OPT]
+          if sync_pos == nil then
+            -- OPT points at a now-hidden device -- snap to the first visible one
+            -- and cancel any pending auto-enter so we don't enter the wrong device.
+            sync_pos = 1
+            carousel.allowOptWrite = true
+            UI.MainMenu.OPT = visible_seq[1]
+            carousel.allowOptWrite = false
+            UI.MainMenu.PendingAutoEnter = false
+          end
+          carousel.currentIndex = sync_pos
+          carousel.scrollPos = sync_pos
           carousel.slide = 0
         end
         if carousel.animActive then
@@ -3185,7 +3733,7 @@ UI = {
             carousel.animDir = 0
             carousel.slide = 0
             carousel.allowOptWrite = true
-            UI.MainMenu.OPT = carousel.currentIndex
+            UI.MainMenu.OPT = visible_seq[carousel.currentIndex] or visible_seq[1]
             carousel.allowOptWrite = false
           end
         end
@@ -3202,7 +3750,7 @@ UI = {
           return value
         end
         local function ResolveIcon(key)
-          return IMG[key] or IMG["MISSING"]
+          return IMG[key] or IMG["missing"]
         end
         if not UI.MainMenu.icons_ready then
           for _, key in ipairs(icon_keys) do
@@ -3211,7 +3759,9 @@ UI = {
           UI.MainMenu.icons_ready = true
         end
         local function DrawIcon(index, x, y, color)
-          local key = icon_keys[index]
+          local real = visible_seq[index]
+          if real == nil then return end
+          local key = icon_keys[real]
           local icon = ResolveIcon(key)
           if icon == nil then return end
           local icon_w = Graphics.getImageWidth(icon)
@@ -3220,7 +3770,7 @@ UI = {
           local pos_y = Round(y - (icon_h / 2))
           Graphics.drawImage(icon, pos_x, pos_y, color)
         end
-        local first_icon = ResolveIcon(icon_keys[1] or "MISSING")
+        local first_icon = ResolveIcon(icon_keys[1] or "missing")
         local base_icon_w = 0
         if first_icon ~= nil then
           base_icon_w = Graphics.getImageWidth(first_icon)
@@ -3243,7 +3793,7 @@ UI = {
         local center_label_idx = carousel.animActive and carousel.targetIndex or base_sel
         local top_y = layout.TITLE_Y
         if not UI.ShouldHideAuxText(UI.CURSCENE) then
-          Font.ftPrint(UI.FONT.LABEL, UI.SCR.X_MID, top_y, 8, UI.SCR.X, 16, UI.MainMenu.opts[center_label_idx], UI.COLORS.TEXT_PRIMARY)
+          Font.ftPrint(UI.FONT.LABEL, UI.SCR.X_MID, top_y, 8, UI.SCR.X, 16, UI.MainMenu.opts[visible_seq[center_label_idx] or visible_seq[1]], UI.COLORS.TEXT_PRIMARY)
         end
         local status_y = top_y + 12
         local boot_label = UI.boot_device_label
@@ -3367,11 +3917,23 @@ UI = {
 	              report("Refreshing mass backends...", 0.18)
 	              PLDR.CleanupGameList()
 	              PLDR.GAMEPATH = ""
+              -- MX4SIO crash-marker: its probe lives in a vendored IOP driver
+              -- that can BLOCK with no card. Mark "pending" before the probe;
+              -- if we hang in there the marker survives, and the next boot's
+              -- Boot-Page auto-enter skips MX4SIO (see system.lua). Cleared as
+              -- soon as the probe returns -- it returns on a no-card result, just
+              -- never on a hang -- so only a genuine stall leaves it set.
+              if type(PLDR.SetMx4sioAutoEnterPending) == "function" then
+                PLDR.SetMx4sioAutoEnterPending(true)
+              end
               if type(PLDR.RefreshMassBackends) == "function" then
                 pcall(PLDR.RefreshMassBackends)
               end
               report("Locating MX4SIO POPS folder...", 0.42)
               local mx4sio_root = PLDR.InitMX4SIOPopsRoot()
+              if type(PLDR.SetMx4sioAutoEnterPending) == "function" then
+                PLDR.SetMx4sioAutoEnterPending(false)
+              end
               if mx4sio_root == nil then
                 UI.Notif_queue.add("No MX4SIO device detected", "warn")
                 return
@@ -3526,6 +4088,9 @@ UI = {
         UI.Pad.Events.L1 = false
         UI.Pad.Events.R1 = false
         UI.Pad.Events.R2 = false
+        UI.Pad.Events.L2 = false
+        UI.Pad.Events.L3 = false
+        UI.Pad.Events.R3 = false
         UI.Pad.Events.ANY = false
 
         local function emit(event)
@@ -3556,6 +4121,9 @@ UI = {
         if (pressed & PAD_L1) ~= 0 then emit_action("L1") end
         if (pressed & PAD_R1) ~= 0 then emit_action("R1") end
         if (pressed & PAD_R2) ~= 0 then emit_action("R2") end
+        if (pressed & PAD_L2) ~= 0 then emit_action("L2") end
+        if (pressed & PAD_L3) ~= 0 then emit_action("L3") end
+        if (pressed & PAD_R3) ~= 0 then emit_action("R3") end
 
         local function resolve_nav(dir, is_down)
           local was_down = UI.Pad.NavHeld[dir] == true
@@ -3619,9 +4187,9 @@ UI = {
           Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 60, 20, UI.SCR.X, 40, "Code by El_isra", currcol)
           Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 80, 20, UI.SCR.X, UI.SCR.Y, [[
 Design by Berion
-Scripts by Nuno6573 and Ripto
+Scripts by nuno6573 and Ripto
 Based on Enceladus by Daniel Santos
-Testing by P4NCHOL1NO, VizoR, and Community
+Testing by P4NCHOL1NO, VizoR, provato, nuno6573, oldman63, and Community
 
 Special Thanks To:
 krHACKen for making POPStarter
@@ -3739,16 +4307,127 @@ function UI.ApplyVideoStandardFromRuntime(video_standard)
   local req_height = tonumber(selected.height) or 448
   UI.VideoStandardIndex = selected_index
   UI.VideoStandardDirty = false
-  if UI.SCR.VMODE == req_mode and UI.SCR.X == req_width and UI.SCR.Y == req_height then
+  -- Decide whether to switch from the LIVE GS mode, not UI.SCR.VMODE. The GS
+  -- boots in the console's BIOS region, so on a PAL console the live mode is PAL
+  -- even though VMODE was seeded NTSC from the setting -- trusting that software
+  -- belief is the bug where "NTSC set" still displayed PAL. Only skip the switch
+  -- when the real GS already matches the request.
+  local live_mode = nil
+  if type(Screen) == "table" and type(Screen.getMode) == "function" then
+    local ok_live, live = pcall(Screen.getMode)
+    if ok_live and type(live) == "table" and type(live.mode) == "number" then
+      live_mode = live.mode
+    end
+  end
+  if VIDEO_BOOT_APPLIED and UI.SCR.VMODE == req_mode and live_mode == req_mode
+     and UI.SCR.X == req_width and UI.SCR.Y == req_height then
     return
   end
+  VIDEO_BOOT_APPLIED = true
   UI.SCR.VMODE = req_mode
   UI.SCR.X = req_width
   UI.SCR.Y = req_height
   UI.RecalcLayout()
   if type(Screen) == "table" and type(Screen.setMode) == "function" then
     pcall(Screen.setMode, UI.SCR.VMODE, UI.SCR.X, UI.SCR.Y, CT24, INTERLACED, FIELD)
+    -- Readback (GitHub #495): did the GS actually flip to the requested mode?
+    -- NTSC=2, PAL=3. gsKit's init_screen calls SetGsCrt every time, so the CRTC
+    -- SHOULD re-latch -- this confirms it on hardware. got==req but a PAL TV
+    -- still showing PAL = the display won't lock to forced NTSC (no code fix);
+    -- got~=req = the re-latch genuinely failed. Always recorded (cheap); only
+    -- SHOWN under -debug, via PLDR.SurfaceLaunchArgsDebug.
+    local got_mode = -1
+    if type(Screen.getMode) == "function" then
+      local ok_rb, rb = pcall(Screen.getMode)
+      if ok_rb and type(rb) == "table" and type(rb.mode) == "number" then
+        got_mode = rb.mode
+      end
+    end
+    local free_vram = -1
+    if type(Screen.getFreeVRAM) == "function" then
+      local ok_v, v = pcall(Screen.getFreeVRAM)
+      if ok_v and type(v) == "number" then free_vram = v end
+    end
+    UI.VIDEO_READBACK = string.format("req=%d got=%d free=%d %dx%d",
+      req_mode, got_mode, free_vram, UI.SCR.X, UI.SCR.Y)
   end
+end
+-- Generic blocking yes/no confirm (X = Yes, O = No). `lines` = array of text lines.
+-- Frame-paced + button-release-gated like RunVideoModeConfirm; defaults to NO on a
+-- ~30s timeout so a destructive prompt can never auto-confirm itself.
+function UI.RunConfirm(lines)
+  if type(Screen) ~= "table" or type(Screen.flip) ~= "function"
+     or type(Pads) ~= "table" or type(Pads.get) ~= "function" then
+    return false
+  end
+  if type(lines) ~= "table" then lines = { tostring(lines or "") } end
+  local settle = 0
+  while settle < 30 do
+    local okp, gp = pcall(Pads.get)
+    if settle >= 8 and okp and type(gp) == "number" and (gp & (PAD_CROSS | PAD_CIRCLE)) == 0 then break end
+    Screen.flip()
+    settle = settle + 1
+  end
+  local f, total = 0, 30 * 60
+  while f < total do
+    Screen.clear(UI.SCR.BGCOL or Color.new(20, 30, 80))
+    local y = UI.SCR.Y_MID - (#lines * 11) - 24
+    for i = 1, #lines do
+      Font.ftPrint(SFONT, UI.SCR.X_MID, y, 8, UI.SCR.X, 16, tostring(lines[i] or ""), UI.CCOL.GREY)
+      y = y + 22
+    end
+    Font.ftPrint(BFONT, UI.SCR.X_MID, y + 16, 8, UI.SCR.X, 24, "X = Yes      O = No", UI.CCOL.YELLOW)
+    Screen.flip()
+    f = f + 1
+    local okp, gp = pcall(Pads.get)
+    if okp and type(gp) == "number" then
+      if (gp & PAD_CROSS) ~= 0 then return true end
+      if (gp & PAD_CIRCLE) ~= 0 then return false end
+    end
+  end
+  return false
+end
+
+-- Display-change safety net: after a video-mode switch, confirm it IN THE NEW
+-- mode and auto-revert if the user can't confirm (e.g. the new mode shows nothing
+-- on their display). Mirrors OPL's "keep this video mode?" prompt. Blocking; uses
+-- the same draw+flip+pad-poll pattern as the boot splash. Returns true = keep.
+function UI.RunVideoModeConfirm(seconds)
+  if type(Screen) ~= "table" or type(Screen.flip) ~= "function"
+     or type(Pads) ~= "table" or type(Pads.get) ~= "function" then
+    return true
+  end
+  -- Frame-paced (count Screen.flip), NOT clock()-paced. clock()/vsync is unstable
+  -- for a moment right after Screen.setMode, which made the old Timer-based countdown
+  -- jump (14 -> 2) and auto-revert in 1-3s on PAL CRTs (provato). Counting flips is
+  -- immune to that, and Screen.flip's vsync provides the pacing.
+  local FPS = 60
+  local total_frames = (tonumber(seconds) or 15) * FPS
+  -- Let the freshly-switched GS settle (>= ~0.5s), AND wait for the Save X/O to
+  -- release so a still-held button isn't read as an instant confirm/revert.
+  local settle = 0
+  while settle < 90 do
+    local okp, gp = pcall(Pads.get)
+    if settle >= 30 and okp and type(gp) == "number" and (gp & (PAD_CROSS | PAD_CIRCLE)) == 0 then break end
+    Screen.flip()
+    settle = settle + 1
+  end
+  local f = 0
+  while f < total_frames do
+    local remaining = math.max(0, math.ceil((total_frames - f) / FPS))
+    Screen.clear(UI.SCR.BGCOL or Color.new(20, 30, 80))
+    Font.ftPrint(LFONT, UI.SCR.X_MID, UI.SCR.Y_MID - 70, 8, UI.SCR.X, 32, "Keep this display mode?", UI.CCOL.YELLOW)
+    Font.ftPrint(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID, 8, UI.SCR.X, 24, "X = Keep      O = Revert", UI.CCOL.GREY)
+    Font.ftPrint(SFONT, UI.SCR.X_MID, UI.SCR.Y_MID + 54, 8, UI.SCR.X, 16, "Reverting in "..tostring(remaining).."s if not confirmed", UI.CCOL.GREY)
+    Screen.flip()
+    f = f + 1
+    local okp, gp = pcall(Pads.get)
+    if okp and type(gp) == "number" then
+      if (gp & PAD_CROSS) ~= 0 then return true end
+      if (gp & PAD_CIRCLE) ~= 0 then return false end
+    end
+  end
+  return false
 end
 function UI.SyncSettingsDraftFromRuntime()
   if type(PLDR) == "table" and type(PLDR.GetEffectiveConfiguredPopstarterPath) == "function" then

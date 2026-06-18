@@ -1,4 +1,4 @@
-Last updated: 2026-05-28 (post-BETA-10-5; PR #470 LAUNCH_ARGS, PR #472 MX4SIO classification, PR #473 hotfix merged)
+Last updated: 2026-06-17 (post-BETA-11; the 2026-06 HDD-RW take-over / PAL-512 / BDMA-folder work + the `d4b04be` load-order boot fix + the `bdma_mode.txt` marker rename). Released line: BETA-11 (2026-06-15); dev branch `BETA-12-PLAY`. Shared volatile facts (Known Issues, Preservation Contracts, Settings behavior, Invariants, Hardware Status) live in **STATE.md** — this log records the decisions, not the current-state snapshot.
 
 # DECISIONS
 
@@ -11,6 +11,48 @@ Each entry records:
 - Evidence
 
 ## Decision Log
+
+### 2026-06-17 — `PLDR.HDD` Attach-Before-Init Load-Order Boot Fix (`d4b04be`)
+- Decision: Move the `PLDR.HDD.*` method definitions so they run **after** `PLDR.HDD` exists (after the table merge/init), unbricking cold boot.
+- Rationale: The recent HDD-feature rolling builds defined `PLDR.HDD` methods before `PLDR.HDD` itself existed, so every cold boot hit a runtime error (`system.lua:953`, reproduced under PCSX2) — the `.hide` / HDD-cwd settings rolling builds were never actually cold-bootable. This is a **load-order** error: `luac -p` and the new CI syntax gate parse it as valid Lua, and markers can't see it; it is only fatal at runtime. CI / luac structurally **cannot** catch load-order (attach-before-init) bugs.
+- Implications: HDD-feature builds boot again. The HDD features need a **full hardware retest once boot is confirmed**, because they were never reachable on the bricked builds. See STATE.md > Known Issues ("Load-order boot brick", Recently resolved) and the embedded-Lua load-order trap note in MEMORY.
+- Evidence: commit `d4b04be` (2026-06-17), `bin/POPSLDR/system.lua`.
+
+### 2026-06-17 — BDMA Marker File Renamed `.pldr_bdma_mode` → `bdma_mode.txt` (Legacy Names Still Read)
+- Decision: Write the installed BDMA mode key to a plain-text marker named **`bdma_mode.txt`** in the POPSTARTER pack folder. The legacy `.pldr_bdma_mode` / `.pldr_bdma` names remain **read** for back-compat; the current name is always written.
+- Rationale: A clearer, shared, non-dotfile name (mSAS reads the same file). BDMA mode keys are `FAT32` / `USBEXFAT` / `MX4SIO` / `MMCE`.
+- Implications: Existing installs keep working (legacy read path); new writes go to `bdma_mode.txt`. See STATE.md > "BDMA mode / POPSTARTER memory-card folder".
+- Evidence: commit `7afdac3` (2026-06-17), `bin/POPSLDR/system.lua`.
+
+### 2026-06 — POPSTARTER Memory Card Folder Toggle + BDMA Interlock
+- Decision: Add a **POPSTARTER Memory Card Folder** toggle in Settings (below Discard). Disabling it **deletes `mc:/POPSTARTER`** behind a destructive-action confirm. Add a **BDMA ⟺ folder interlock**: the folder can't be disabled while BDMA mode is on, and BDMA can't be enabled while the folder is off. Persisted via the new `POPSTARTER_MC_FOLDER` settings key.
+- Rationale: BDMA (mass-storage backend) depends on the POPSTARTER MC folder being present; letting a user delete the folder while BDMA is on, or enable BDMA after deleting it, would leave an inconsistent install. The interlock makes the dependency unbreakable from the UI.
+- Implications: `EncodeSettings` now carries `POPSTARTER_MC_FOLDER` (13 keys total). New behavioral invariant — see STATE.md > Behavioral Invariants (#9, BDMA ⟺ folder interlock). STATUS: implemented / boots on PCSX2 / validating on hardware.
+- Evidence: `bin/POPSLDR/system.lua`, `bin/POPSLDR/ui.lua`. See STATE.md > "BDMA mode / POPSTARTER memory-card folder".
+
+### 2026-06 — PAL Renders Natively at 640×512 (Supersedes the 640×448 PAL Layout)
+- Decision: On PAL the UI now renders **natively at 640×512** so it fills the screen with no letterbox (NTSC stays 640×448). The display-change confirm prompt **auto-reverts** if not confirmed (the OPL pattern); hold START during boot to skip past a bad video mode; the boot screen is centered. Video Standard gains an **Auto** default (matches the console region) alongside NTSC / PAL.
+- Rationale: The old 640×448-on-PAL layout (2026-03-26 decision) deliberately kept the NTSC raster to avoid vertical squish, but left PAL letterboxed rather than filling the screen. Rendering natively at 640×512 fills the PAL frame; the auto-revert confirm protects against a bad mode locking the user out.
+- Implications: **Supersedes** the 2026-03-26 "PAL UI uses 640×448" decision (see that entry's superseded-by note). STATUS: implemented / boots on PCSX2 / PAL hardware validation pending. See STATE.md > "Video standard".
+- Evidence: `bin/POPSLDR/system.lua`, `bin/POPSLDR/ui.lua`.
+
+### 2026-06 — HDD Boot-Partition RW Take-Over for Settings + In-App `.hide` (`EnsureBootPartitionWritable`)
+- Decision: HDD-installed POPSLoader now persists settings **on the HDD boot partition itself**, and writes per-game `.hide` markers in-app on HDD too. `PLDR.HDD.EnsureBootPartitionWritable` **takes over the launcher's boot pfs mount** — it explicitly unmounts the boot pfs slot and remounts the **same partition read-write at the same slot** ("own your mount", the OPL pattern) — so the `.pldrs` sidecar and `.hide` files are written on-HDD. **There is no `mc0:` fallback for an HDD-cwd install.** Single-device parity with USB / MX4SIO / MMCE. In-app hide is now **L3** (toggle hide/show) + **R3** (per-device hidden list) on **every** device page including HDD; the "add the `.hide` from a PC" message is now only a write-failure fallback.
+- Rationale: This **directly supersedes** the 2026-05-27 PR #466 premise ("HDD saves to `mc0:` because the bundled `ps2hdd-osd.irx` can't reliably write PFS, and an IRX swap would risk D-10"). The boot-partition remount take-over achieves HDD read-write **without** an IRX swap, so it doesn't touch the D-10 launch path. provato **confirmed the HDD is RW-writable on real hardware**, which validated the approach.
+- Implications: New load-bearing preservation contract — `EnsureBootPartitionWritable` (the boot pfs-slot unmount→remount-RW take-over) must not be broken by any future launch-path / mount change; see STATE.md > Preservation Contracts. New invariants: settings persistence is per-device including HDD (no `mc0:` HDD exception), and `.hide` is in-app on every device (STATE.md > Behavioral Invariants #2, #10). The old "`ps2hdd-osd.irx` → `ps2hdd.irx` driver-swap probe" investigation item is retired. STATUS: implemented / boots on PCSX2 / **HDD RW confirmed on hardware (provato)** / full settings + `.hide` flow validating on hardware (not yet broadly hardware-confirmed). NOTE: the recent HDD-feature rolling builds that carried this work were bricked by an unrelated load-order bug until `d4b04be` (see the 2026-06-17 entry above), so the on-hardware full-flow validation post-dates that fix.
+- Evidence: `bin/POPSLDR/system.lua` (`PLDR.HDD.EnsureBootPartitionWritable`, `ComputeSettingsSidecarPath`, HDD `.hide` write path), `bin/POPSLDR/ui.lua` (L3/R3 bindings, hidden-list). provato hardware confirmation 2026-06 (HDD RW-writable). See STATE.md > "Settings (single-device parity)" and "Per-game hide layer".
+
+### 2026-06 — Embedded-Lua Syntax Gate (`luac5.4 -p`) Is Now Live in CI
+- Decision: The CI workflows now `apk add lua5.4` and run `luac5.4 -p` over `bin/POPSLDR/*.lua` + `etc/boot.lua`, hard-failing on a syntax error.
+- Rationale: The gate had been silently **skipping** because the pinned `ps2dev` image ships no `luac` — every "syntax check" was a no-op. Installing lua5.4 in the workflow makes it actually run.
+- Implications: SYNTAX errors are now caught pre-merge. It catches **syntax only** — runtime nil-global / type / **load-order** errors stay invisible to CI (the `d4b04be` attach-before-init boot brick was exactly such a case and passed the gate). See STATE.md > "CI / release".
+- Evidence: `.github/workflows/compilation.yml` / `rolling-release.yml` (lua5.4 install + `luac5.4 -p` step). Run #492 green.
+
+### 2026-05-31 — U-10 (BOOT.ELF from HDD-Booted POPSLoader) Resolved by PR #479 (`reboot_iop=0`)
+- Decision: Mark U-10 as **PASS / resolved**. Launch BOOT.ELF from an HDD-booted POPSLoader with `reboot_iop=0` (PR #479).
+- Rationale: This supersedes the 2026-05-28 PM late walk-back below, which (correctly for that build) returned U-10 to known-broken after the partial-sweep PASS was reversed. PR #479 then actually fixed the path: launching BOOT.ELF without rebooting the IOP from the HDD-booted context avoids the post-reset SIF-handshake hang that black-screened the HDD-launch case. Nuno confirmed PASS on hardware 2026-05-31. (Recorded here as the latest U-10 decision so this log's most-recent U-10 state is the resolution, not the walk-back-to-broken entry.)
+- Implications: U-10 leaves the known-broken list and becomes a preservation contract; the related Class-A HOSDmenu / some-wLE launch failures were separately maintainer-confirmed resolved 2026-06-15. See STATE.md > Preservation Contracts and the Reported Hardware Status table (U-10 PASS, 2026-05-31, PR #479).
+- Evidence: PR #479 (`reboot_iop=0` for HDD-booted BOOT.ELF); `QA_REGRESSION_MATRIX.md` U-10 row; Nuno 2026-05-31. Investigation chain preserved in `docs/archive/U10_INVESTIGATION.md`.
 
 ### 2026-05-29 — MX4SIO Settings Save Fixed by PR #476 + PR #477 (Hardware-Confirmed)
 - Decision: Merge PR #477 to lock in the MX4SIO settings save fix. PR #476 (already merged) added the boot.lua mass-slot scan via dynamic ioctl driver lookup (sdc/mx4); PR #477 wrapped the scan in a 3-attempt retry pattern with sleep(1) between failures, plus a `BOOT_MX4SIO_PROBE_RESULT` diagnostic trace appended to the settings save error toast for future debugging.
@@ -96,6 +138,7 @@ Each entry records:
 - Rationale: PR #459 had added `pfs1:` write support assuming `etc/boot.lua`'s RW mount worked; Nuno's 2026-05-27 hardware test on PR #464 confirmed that `pfs1:/.../.pldrs` writes still fail with "may be read-only" despite the boot.lua path normalization. The bundled `ps2hdd-osd.irx` driver has read-write limitations we can't reliably work around without an IRX swap that risks regressing D-10. Per Nuno + maintainer 2026-05-27: "rollout dkwdrv; vast majority of users will have other devices for DKWDRV, small percentage have HDD installs". Shift from chasing edge-case bugs to shipping the stable backbone.
 - Implications: HDD-installed POPSLoader is back to pre-PR-#459 settings-save behavior (no regression vs. legacy). Non-HDD installs (USB / MX4SIO / MMCE / MC) keep per-device sidecar. In-flight diag PR #463 and HDD r/w probe PR #465 closed as superseded; branches preserved.
 - Evidence: `bin/POPSLDR/system.lua` `ResolveBootContext` (lines 1764+), PR #466 merged 2026-05-27.
+- SUPERSEDED-BY (2026-06): the "HDD saves to `mc0:`" premise no longer holds. HDD installs now persist on the HDD boot partition via the `EnsureBootPartitionWritable` RW take-over (no `mc0:` fallback); provato confirmed HDD RW on hardware. See the 2026-06 "HDD Boot-Partition RW Take-Over" entry above and STATE.md > "Settings (single-device parity)".
 
 ### 2026-05-25 — NHDDL-Style Launch Argument Parsing (PR #458)
 - Decision: `main.cpp parseLaunchArgs()` recognizes `-page=<kind>`, `-mode=<kind>` (NHDDL alias), `-game=<selector>`, `-debug`. `System.getLaunchArgs()` exposes parsed values to Lua. `PLDR.LAUNCH_ARGS = {page, page_raw, game, debug}` is normalized at module load.
@@ -156,6 +199,7 @@ Each entry records:
 - Rationale: reduce PAL squish on menus and authored UI assets.
 - Implications: final on-TV proportions still require hardware confirmation.
 - Evidence: `bin/POPSLDR/system.lua`, `bin/POPSLDR/ui.lua`.
+- SUPERSEDED-BY (2026-06): PAL now renders natively at 640×512 (fills the screen, no letterbox) with an auto-reverting display-change confirm and an Auto Video-Standard default. See the 2026-06 "PAL Renders Natively at 640×512" entry above and STATE.md > "Video standard".
 
 ### 2026-03-26 — Release ZIP contract is strict and PATCH_5-based
 - Decision: CI package includes exact `PS1_POPSLOADER/*` launcher files plus `POPS/PATCH_5.BIN`, now including `PS1_POPSLOADER/BUILD_INFO.txt`, and rejects legacy `POPS/*.tm2` payloads.
@@ -183,7 +227,7 @@ Each entry records:
 
 ## Archived Investigations
 
-> The investigations below were active during the March–May 2026 development cycle and are now **largely resolved** by the BETA-10-5 release. They are preserved verbatim for historical context and to document the diagnostic chain that produced the B2 fix at commit `4ae6679` (D-10) and the V2 BOOT.ELF route at commit `d23520a` (L-07). For the current state, see `STATE.md`, `TRUTHSHEET.md` Current Hardware Status Markers, and `QA_REGRESSION_MATRIX.md`.
+> The investigations below were active during the March–May 2026 development cycle and are now **largely resolved** by the BETA-10-5 release. They are preserved verbatim for historical context and to document the diagnostic chain that produced the B2 fix at commit `4ae6679` (D-10) and the V2 BOOT.ELF route at commit `d23520a` (L-07). For the current state, see `STATE.md` (current state, hardware status, and known issues) and `QA_REGRESSION_MATRIX.md`.
 
 
 - HDD startup auto-init on HDD boot/configured paths:

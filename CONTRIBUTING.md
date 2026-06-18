@@ -1,9 +1,13 @@
-Last updated: 2026-05-28 (post-BETA-10-5)
+Last updated: 2026-06-17 (post-BETA-11)
 
 # CONTRIBUTING
 
 ## Purpose
 Practical contributor workflow for POPSLoader changes.
+
+`STATE.md` is the canonical status doc. The shared/volatile facts — the Known-Issues list, the Preservation Contracts, the Behavioral Invariants, the Settings (single-device parity) behavior, and the Hardware Status — live there and are **not** restated here; this doc links to the relevant `STATE.md` section instead. Keep distinct workflow guidance here.
+
+*(Scope/runtime-invariant rules formerly in `RULES.md` are folded into this doc; `RULES.md` is archived.)*
 
 ## Branch and PR Expectations
 - Keep branches short-lived and task-focused.
@@ -22,25 +26,42 @@ Practical contributor workflow for POPSLoader changes.
 - Keep diffs minimal and localized.
 - Avoid unrelated formatting/refactors.
 
+## Scope Discipline
+- Keep changes small and tied to one clear objective.
+- Use the narrowest file set that can solve the task.
+- Avoid mixing runtime logic, packaging policy, and broad refactors in one PR unless explicitly requested.
+
 ## Development Guardrails
-- Preserve these unless the task explicitly changes them:
-  - embedded-Lua boot flow,
-  - settings transaction behavior,
-  - mount-driver based USB/MX4SIO classification,
-  - current package manifest contract,
-  - no runtime device-family lock gating.
-- Do not add unbounded retries/poll loops in runtime paths.
+The full invariant list is in **STATE.md > Behavioral Invariants** — preserve all of it unless the task is an explicit, documented migration. Highlights a contributor must not break:
+- embedded-Lua boot chain (`main.cpp -> runScript("boot.lua") -> require("system")`); boot/runtime Lua is embedded-only.
+- transactional, per-device settings persistence — edits stage in the UI and commit on Settings/Profile confirm/leave. **HDD installs now persist on the HDD boot partition via the `EnsureBootPartitionWritable` RW take-over; there is no `mc0:` fallback for an HDD-cwd install** (single-device parity). See **STATE.md > Settings (single-device parity)** and **STATE.md > Preservation Contracts**.
+- mount-driver-based USB/MX4SIO classification (`sdc`/`mx4` ioctl → MX4SIO; anything else → USB; `mx4sio_bd` loads only on explicit MX4SIO evidence and requires `usbmass_bd` first).
+- `mc?:/` alias resolution (`mc0` then `mc1`) for executable path probes.
+- backend-specific launch policy for USB / MMCE / MX4SIO / HDD.
+- the **BDMA ⟺ POPSTARTER-MC-folder interlock** (BDMA can't be enabled while the folder is off; the folder can't be disabled while BDMA is on) and the destructive folder-disable confirm. See **STATE.md > Behavioral Invariants**.
+- **in-app per-game `.hide` on every device including HDD** (L3 toggle / R3 hidden-list, written via the HDD RW mount take-over). See **STATE.md > Behavioral Invariants**.
+- no runtime device-family lock gating (`canEnterDevice()` always true; `setDeviceLock()` is a no-op).
+- Do not add unbounded retries/poll loops in runtime paths; keep probe/retry behavior bounded and deterministic.
+- Do not silently change POPStarter selector/argv behavior without explicit migration notes.
+- Avoid expensive repeated rescans unless explicitly required.
 - Avoid adding runtime logging unless requested.
 
+## Packaging Rules
+- CI packaging contract must stay synchronized with docs. Current release manifest: `PS1_POPSLOADER/*` launcher files, `PS1_POPSLOADER/BUILD_INFO.txt` (so hardware can confirm the exact GitHub-built artifact), and `POPS/PATCH_5.BIN`. Legacy `POPS/*.tm2` entries are forbidden by CI.
+- CI build is gated on embedded build-identity markers (`Exec path:`, `PrepareForColdExternalELFLaunch`, `BOOT.ELF launch failed`) being present in `bin/enceladus.elf`, plus an embedded-loader blob staleness check.
+- The `ps2dev/ps2dev` container image is pinned to `v2.0.0`.
+- The rolling-release workflow publishes a single canonical asset on push-to-`BETA-12-PLAY` and on PR events (last-write-wins on the shared asset).
+- **The embedded-Lua syntax gate is now LIVE** (`luac5.4 -p` on the embedded Lua; the workflows `apk add lua5.4` and hard-fail on a syntax error). It used to silently skip because the ps2dev image shipped no `luac`. It catches **SYNTAX only** — runtime nil-global / type / **load-order** errors stay invisible to CI, so still cold-boot test the build in PCSX2 (the `d4b04be` load-order boot brick was exactly such a case).
+
 ## Documentation Sync Rules
-- If runtime behavior changes, update the relevant root docs:
+- If runtime behavior changes, update `STATE.md` first — it is canonical for behavioral invariants, preservation contracts, known issues, and hardware status. Then update the relevant root docs:
+  - `STATE.md` (canonical — invariants, preservation contracts, known issues, hardware status)
   - `README.md`
-  - `STATE.md`
   - `ROADMAP.md`
   - `DECISIONS.md`
   - `QA_REGRESSION_MATRIX.md`
-  - `TRUTHSHEET.md` (for preservation contracts and behavioral invariants)
-- If behavior is only repo-verified and not hardware-verified, say so explicitly. Post-BETA-10-5 PR work is `Unknown (verify on hardware)` unless a tester result is recorded in `QA_REGRESSION_MATRIX.md`.
+- The other root docs point to `STATE.md` instead of duplicating the shared blocks — when you touch one of those facts, change it in `STATE.md` and leave the pointers alone.
+- If behavior is only repo-verified and not hardware-verified, say so explicitly. Post-BETA-11 PR work is `Unknown (verify on hardware)` unless a tester result is recorded in `QA_REGRESSION_MATRIX.md` / `STATE.md > Reported Hardware Status`. Do not call PCSX2-only or implemented-but-unvalidated features "confirmed working on hardware".
 - If hardware results contradict the intended code change, document the failure instead of assuming the next patch will fix it.
 
 ## Validation Expectations
@@ -57,15 +78,10 @@ Practical contributor workflow for POPSLoader changes.
 ### Hardware-sensitive behavior
 - Use `QA_REGRESSION_MATRIX.md` IDs in test notes.
 - Mark untested hardware scenarios explicitly as `Unknown (verify on hardware)`.
-- **Preservation contracts** (hardware-confirmed in BETA-10-5; must continue to PASS on any new artifact):
-  - `D-10` HDD POPSTARTER on HDD (B2 fix at `4ae6679`),
-  - `D-14` HDD POPSTARTER with non-HDD game,
-  - `D-15` non-HDD POPSTARTER with HDD game,
-  - DKWDRV from MC,
-  - BOOT.ELF from USB-booted POPSLoader (V2 route at `d23520a`).
-- **Known broken accepted** (do not test as regression; documented workarounds apply):
-  - DKWDRV from custom HDD path,
-  - `U-10` BOOT.ELF from HDD-booted POPSLoader.
+- **Preservation contracts** (hardware-load-bearing; must continue to PASS on any new artifact) — the canonical list is **STATE.md > Preservation Contracts**. It covers `D-10` / `D-14` / `D-15` (B2 fix `4ae6679`), DKWDRV from MC, BOOT.ELF from USB-booted POPSLoader (V2 route `d23520a`), and `EnsureBootPartitionWritable` (the boot pfs-slot RW take-over, now load-bearing for HDD settings save and HDD in-app `.hide`). Any launch-path or mount change must not break them.
+- The old "HDD-install settings save to `mc0:/POPSTARTER/.pldrs`" preservation contract is **obsolete**: HDD installs now persist on the HDD boot partition via the RW take-over (single-device parity, no `mc0:` fallback). See **STATE.md > Settings** and **STATE.md > Preservation Contracts**.
+- **Resolved** (no longer "known broken accepted" — do not document as regressions): `U-10` BOOT.ELF from HDD-booted POPSLoader (PR #479), DKWDRV from a custom HDD path (PRs #486/#487), and the Class-A HOSDmenu / some-wLE start failures. See **STATE.md > Known Issues**.
+- For the current open / in-testing items (e.g. "Failed to load HDD" from a non-HDD boot, and the in-testing HDD/PAL/BDMA-folder features), see **STATE.md > Known Issues** — do not re-derive a cause from source.
 - The rolling-release workflow publishes to a single canonical URL. Pushing to your PR branch triggers a build that overwrites the asset (last-write-wins). Coordinate with the maintainer if testers are mid-cycle.
 
 ## Good Bug Reports
@@ -79,7 +95,8 @@ Include:
 
 ## Review Checklist
 - Scope is narrow and task-aligned.
-- Core invariants are preserved or intentionally migrated.
+- Core invariants (**STATE.md > Behavioral Invariants**) and preservation contracts (**STATE.md > Preservation Contracts**) are preserved or intentionally migrated.
 - Failure paths remain explicit and user-visible.
-- Docs and matrix entries are updated.
-- Repo-verified behavior and hardware-reported behavior are not conflated.
+- Docs are updated: `STATE.md` first for any shared fact, plus matrix entries.
+- Repo-verified / PCSX2-only behavior and hardware-reported behavior are not conflated.
+- The build was cold-boot tested in PCSX2 (the live `luac` gate catches syntax only, not load-order/runtime errors).

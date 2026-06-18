@@ -222,6 +222,9 @@ static GSTEXTURE* decode_png_stream(png_structp png_ptr, png_infop info_ptr, boo
 		}
 	}
 	else {
+		// Unsupported color type: tex->Mem was never allocated (set only inside
+		// the handled branches) and tex->Clut is NULL -- free just the struct.
+		free(tex);
 		return NULL;
 	}
 
@@ -337,16 +340,24 @@ GSTEXTURE* loadbmp(FILE* File, bool delayed)
 	u8  *p;
 
     GSTEXTURE* tex = (GSTEXTURE*)malloc(sizeof(GSTEXTURE));
+	if (tex == NULL) { if (File != NULL) fclose(File); return NULL; }
 	tex->Delayed = delayed;
+	// NULL these up front so every error path below can free() them safely --
+	// they are otherwise set only inside the per-bit-depth branches, and the
+	// unknown-bit-depth path used to read an uninitialized tex->Clut.
+	tex->Mem = NULL;
+	tex->Clut = NULL;
 
 	if (File == NULL)
 	{
 		DPRINTF("BMP: Failed to load bitmap\n");
+		free(tex);
 		return NULL;
 	}
 	if (fread(&Bitmap.FileHeader, sizeof(Bitmap.FileHeader), 1, File) <= 0)
 	{
 		DPRINTF("BMP: Could not load bitmap\n");
+		free(tex);
 		fclose(File);
 		return NULL;
 	}
@@ -354,6 +365,7 @@ GSTEXTURE* loadbmp(FILE* File, bool delayed)
 	if (fread(&Bitmap.InfoHeader, sizeof(Bitmap.InfoHeader), 1, File) <= 0)
 	{
 		DPRINTF("BMP: Could not load bitmap\n");
+		free(tex);
 		fclose(File);
 		return NULL;
 	}
@@ -378,6 +390,7 @@ GSTEXTURE* loadbmp(FILE* File, bool delayed)
 				tex->Clut = NULL;
 			}
 			DPRINTF("BMP: Could not load bitmap\n");
+			free(tex);
 			fclose(File);
 			return NULL;
 		}
@@ -413,6 +426,7 @@ GSTEXTURE* loadbmp(FILE* File, bool delayed)
 				tex->Clut = NULL;
 			}
 			DPRINTF("BMP: Could not load bitmap\n");
+			free(tex);
 			fclose(File);
 			return NULL;
 		}
@@ -457,7 +471,18 @@ GSTEXTURE* loadbmp(FILE* File, bool delayed)
 	}
 
 	fseek(File, 0, SEEK_END);
-	FTexSize = ftell(File);
+	long ftell_end = ftell(File);
+	if (ftell_end < 0 || (u32)ftell_end < Bitmap.FileHeader.Offset)
+	{
+		// ftell failure (-1) would make FTexSize a ~4GB value -> the memalign
+		// below is undefined behavior. Bail cleanly (Mem not yet allocated).
+		DPRINTF("BMP: ftell failed / bad pixel offset\n");
+		free(tex->Clut);
+		free(tex);
+		fclose(File);
+		return NULL;
+	}
+	FTexSize = (u32)ftell_end;
 	FTexSize -= Bitmap.FileHeader.Offset;
 
 	fseek(File, Bitmap.FileHeader.Offset, SEEK_SET);
@@ -483,7 +508,16 @@ GSTEXTURE* loadbmp(FILE* File, bool delayed)
 			return NULL;
 		}
 
-		fread(image, FTexSize, 1, File);
+		if (fread(image, FTexSize, 1, File) != 1)
+		{
+			DPRINTF("BMP: 24-bit pixel read failed\n");
+			free(image);
+			free(tex->Mem);
+			free(tex->Clut);
+			free(tex);
+			fclose(File);
+			return NULL;
+		}
 		p = (u8*)((u32)tex->Mem);
 		for (y = tex->Height - 1, cy = 0; y >= 0; y--, cy++) {
 			for (x = 0; x < tex->Width; x++) {
@@ -512,7 +546,16 @@ GSTEXTURE* loadbmp(FILE* File, bool delayed)
 			return NULL;
 		}
 
-		fread(image, FTexSize, 1, File);
+		if (fread(image, FTexSize, 1, File) != 1)
+		{
+			DPRINTF("BMP: 16-bit pixel read failed\n");
+			free(image);
+			free(tex->Mem);
+			free(tex->Clut);
+			free(tex);
+			fclose(File);
+			return NULL;
+		}
 
 		p = (u8*)((u32*)tex->Mem);
 		for (y = tex->Height - 1, cy = 0; y >= 0; y--, cy++) {
@@ -585,7 +628,14 @@ GSTEXTURE* loadbmp(FILE* File, bool delayed)
 	}
 	else
 	{
+		// Unknown bit depth: tex->PSM was never set, so tex->Mem above was sized
+		// from a garbage PSM and we'd upload a garbage texture. Fail cleanly.
 		DPRINTF("BMP: Unknown bit depth format %d\n", Bitmap.InfoHeader.BitCount);
+		free(tex->Mem);
+		free(tex->Clut);
+		free(tex);
+		fclose(File);
+		return NULL;
 	}
 
 	fclose(File);

@@ -1,4 +1,4 @@
-Last updated: 2026-06-15 (BETA-12-PLAY shipped state; full top-to-bottom architecture rewrite)
+Last updated: 2026-06-17 (post-BETA-11; HDD-RW take-over + PAL-512 + BDMA-folder + `bdma_mode.txt` rename + the `d4b04be` load-order boot fix). For current Settings behavior, Known Issues, Preservation Contracts, Behavioral Invariants, and Hardware Status, see **`STATE.md`** (canonical) — this doc points there instead of restating them.
 
 # ARCHITECTURE
 
@@ -511,18 +511,28 @@ HDD=4, USB=5, SMB=7}` (`system.lua:2181-2199`); HDD maps to the PFS page (4),
 and unimplemented pages (BDMA/i.Link) are deliberately not routed.
 
 ### On-disk settings (`.pldrs`)
-Plain KEY=VALUE text with 9 keys (`EncodeSettings`, `system.lua:2585-2604`):
+Plain KEY=VALUE text with **14 keys** (`EncodeSettings`, `system.lua:2906-2930`):
 `PROFILE`, `POPSTARTER_PATH`, `POPSTARTER_MODE`, `BDMA`, `DKWDRV_PATH`,
-`STRICT_HDD_PREEXEC_GATE`, `VIDEO_STANDARD`, `HIDE_TEXT`, `KEYBOARD_LAYOUT`.
-Location is per-device: sidecar `APP_DIR/.pldrs` is preferred, with legacy MC
-fallback `mc0:/POPSTARTER/.pldrs` (`system.lua:2220-2222`). HDD installs are
-**deliberately excluded** from the sidecar and save to MC, because the bundled
-`ps2hdd-osd.irx` has read-write limitations on PFS (`system.lua:1809-1838`).
-`LoadSettingsNonFatal` (`system.lua:2747`) performs first-run MC->sidecar
-migration; `SaveSettingsAtomic` (`system.lua:2724`) writes via `WriteAtomic`
-(tmp + rename, `system.lua:2284-2315`). Edits are staged as UI drafts and
-committed transactionally by `PLDR.CommitSettingsChanges` (`system.lua:2874`),
-which snapshots prior state and rolls back on save or BDMA-apply failure.
+`STRICT_HDD_PREEXEC_GATE`, `VIDEO_STANDARD`, `HIDE_TEXT`, `KEYBOARD_LAYOUT`,
+`BOOT_PAGE`, `MULTIDISC_COLLAPSE`, `GLOBAL_HIDE`, `POPSTARTER_MC_FOLDER`,
+`HIDDEN_DEVICES`.
+Location is the **per-device** sidecar `APP_DIR/.pldrs`, preferred for every
+device — **including HDD installs**, which now persist on the HDD boot partition
+itself via the `PLDR.HDD.EnsureBootPartitionWritable` RW mount take-over
+(`system.lua:2091`): the launcher's boot pfs slot is unmounted and remounted
+read-write in place ("own your mount", the OPL pattern), so the sidecar is
+written on-HDD. There is **no `mc0:` fallback for an HDD-cwd install** —
+single-device parity; `mc0:/POPSTARTER/.pldrs` remains only as a legacy fallback
+when no per-device sidecar can be computed. (This supersedes the old PR #466
+carve-out — "HDD saves to MC because the bundled `ps2hdd-osd.irx` can't reliably
+write PFS"; see `STATE.md > Settings (single-device parity)` and
+`STATE.md > Preservation Contracts`.)
+`LoadSettingsNonFatal` (`system.lua:2747`) resolves the path and performs the
+legacy MC->sidecar migration; `SaveSettingsAtomic` (`system.lua:2724`) writes via
+`WriteAtomic` (tmp + rename, `system.lua:2284-2315`). Edits are staged as UI
+drafts and committed transactionally by `PLDR.CommitSettingsChanges`
+(`system.lua:2874`), which snapshots prior state and rolls back on save or
+BDMA-apply failure.
 
 ---
 
@@ -561,8 +571,9 @@ normalized name, with a `default.png -> MISSING.png` fallback when
 
 ### CI/CD
 Two build workflows duplicate most logic inline:
-- `compilation.yml` — runs on all branches/tags/PRs/dispatch; validates Lua,
-  builds, packages `POPSLOADER.zip` as an artifact (no GitHub release).
+- `compilation.yml` — runs on all branches/tags/PRs/dispatch; runs the now-LIVE
+  embedded-Lua syntax gate (`luac5.4 -p`, see below), builds, and packages
+  `POPSLOADER.zip` as an artifact (no GitHub release).
 - `rolling-release.yml` — runs on push to `BETA-12-PLAY` and PR events; bundles
   the ELF + full git-tracked source and force-updates a single
   `rolling-release` prerelease via the GitHub API.
@@ -578,7 +589,12 @@ Both build workflows enforce embed-identity gates:
   newer than the loader source, CI re-runs bin2c on the freshly built
   `loader.elf` and `cmp -s` requires byte-for-byte equality.
 - **Lua validation** — required `.lua` files must exist, `etc/boot.lua` must end
-  with `0x0A`, and `luac -p`/`loadfile` runs if available.
+  with `0x0A`, and the embedded-Lua **syntax gate is now LIVE**: the workflows
+  `apk add lua5.4` and run `luac5.4 -p` on `bin/POPSLDR/*.lua` + `etc/boot.lua`,
+  hard-failing on a syntax error. It previously **silently no-op'd** because the
+  pinned ps2dev image shipped no `luac`. It catches **SYNTAX only** — runtime
+  nil-global / type / **load-order** errors stay invisible to CI (the `d4b04be`
+  load-order boot brick was exactly such a case). See `STATE.md > CI / release`.
 
 `BUILD_INFO.txt` is generated fresh in CI (7-char commit SHA + UTC stamp), not
 committed; the runtime UI reads it (`ui.lua:3413-3465`) and shows the stamp on
@@ -590,7 +606,13 @@ screen so hardware testers can confirm the exact artifact.
 
 Several teardown details across `elf.c` and `loader.c` are load-bearing and each
 maps to a specific hardware regression (D-10, D-15, U-10). Do not change them
-without a hardware-verified replacement. The authoritative list — including the
-"no `SifExitCmd` on the generic child branch", the partition-aware HDD route,
-the keep-PFS-mask handling for `pfs1:`, and the BRAM metadata address/magic
-coupling — lives in **`PRESERVATION_CONTRACTS.md`**.
+without a hardware-verified replacement. The HDD boot-partition RW take-over
+(`PLDR.HDD.EnsureBootPartitionWritable`, `system.lua:2091`) is also now
+load-bearing — it owns the boot pfs slot for HDD settings save and HDD in-app
+`.hide`, so any launch-path / mount change must not break it.
+
+The authoritative list — including the "no `SifExitCmd` on the generic child
+branch", the partition-aware HDD route, the keep-PFS-mask handling for `pfs1:`,
+the BRAM metadata address/magic coupling, and the `EnsureBootPartitionWritable`
+take-over — lives in **`PRESERVATION_CONTRACTS.md`**; see also
+**`STATE.md > Preservation Contracts`** and **`STATE.md > Behavioral Invariants`**.

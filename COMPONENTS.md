@@ -1,4 +1,4 @@
-Last updated: 2026-06-15 (BETA-12-PLAY / docs-overhaul)
+Last updated: 2026-06-17 (post-BETA-11; HDD-RW take-over + PAL-512 + BDMA-folder + `bdma_mode.txt` rename + `d4b04be` load-order boot fix). For current Settings behavior, Known Issues, Preservation Contracts, Behavioral Invariants, and Hardware Status, see **`STATE.md`** (canonical) — this doc points there instead of restating them.
 
 # COMPONENTS
 
@@ -77,11 +77,15 @@ technical claim below cites `path:line` against this worktree.
   binding `lua_getBootDeviceHint` (luasystem.cpp:1343).
 - `System.md5sum` (`lua_md5sum`, luasystem.cpp:802, registered luasystem.cpp:1459)
   — uses `src/md5.cpp`; has NO embedded-Lua caller (live binding, no consumer).
-- `lua_movefile` (luasystem.cpp:711) and `lua_rename` (luasystem.cpp:747) are a
-  naive non-atomic copy+delete that do NOT check the copy result before
-  `remove()` — a failed copy still deletes the source (data loss). Master
-  commits `54cb154`/`3e606c5` hardened these, but those fixes are NOT in this
-  worktree. Not on the launch path.
+- `lua_rename` (luasystem.cpp:753) is a non-atomic copy+delete, but the
+  safe-promote fix has **landed in this worktree**: it calls the shared
+  `copy_file_contents` (luasystem.cpp:714) and **only `remove()`s the source if
+  the copy returned 0** (luasystem.cpp:760-762). `copy_file_contents` returns -1
+  on an open/short-write/mid-stream-read error, so a failed copy no longer
+  deletes the source. (There is no longer a separate `lua_movefile`; only
+  `lua_rename` is registered, luasystem.cpp:1330. `copyFile` is historical — the
+  comment at luasystem.cpp:713 notes the shared helper was "historically used by
+  copyFile".) Not on the launch path.
 
 ### `src/luaHDD.cpp` — HDD (dev9) IRX stack and PFS mounting
 - `Load_HDD_IRX` (luaHDD.cpp:99, exposed as `HDD.Initialize`) loads
@@ -150,14 +154,16 @@ copies are not read at runtime. Editing them requires a rebuild.
 - Launch-arg ingest: `NormalizeLaunchPage` (system.lua:1967), `PLDR.LAUNCH_ARGS`
   (system.lua:1996), carousel page auto-nav `page_to_opt` (system.lua:2181-2199;
   maps MMCE/MX4SIO/HDD/USB/SMB only).
-- Settings: `EncodeSettings` (system.lua:2585, 9 keys: PROFILE,
+- Settings: `EncodeSettings` (system.lua:2906, **14 keys**: PROFILE,
   POPSTARTER_PATH, POPSTARTER_MODE, BDMA, DKWDRV_PATH, STRICT_HDD_PREEXEC_GATE,
-  VIDEO_STANDARD, HIDE_TEXT, KEYBOARD_LAYOUT), `LoadSettingsNonFatal`
-  (system.lua:2747), `SaveSettingsAtomic` (system.lua:2724) -> `WriteAtomic`
-  (system.lua:2284), `CommitSettingsChanges` (transactional, system.lua:2874).
-  Per-device sidecar `.pldrs` at APP_DIR preferred over MC fallback
-  `mc0:/POPSTARTER/.pldrs`; HDD installs excluded from sidecar by design
-  (system.lua:1809-1838).
+  VIDEO_STANDARD, HIDE_TEXT, KEYBOARD_LAYOUT, BOOT_PAGE, MULTIDISC_COLLAPSE,
+  GLOBAL_HIDE, POPSTARTER_MC_FOLDER, HIDDEN_DEVICES), `LoadSettingsNonFatal` (system.lua:2747),
+  `SaveSettingsAtomic` (system.lua:2724) -> `WriteAtomic` (system.lua:2284),
+  `CommitSettingsChanges` (transactional, system.lua:2874). Per-device sidecar
+  `.pldrs` at APP_DIR for every device; **HDD installs now persist on the HDD
+  boot partition** via the `PLDR.HDD.EnsureBootPartitionWritable` RW mount
+  take-over (system.lua:2091) — no `mc0:` carve-out. `mc0:/POPSTARTER/.pldrs`
+  remains only a legacy fallback. See `STATE.md > Settings (single-device parity)`.
 - Game-list builders: `GetPS1GameLists` (system.lua:3740, MMCE/MX4SIO, bare
   basenames), `BuildMassGameListByType` (system.lua:3813, USB, `root|name`),
   `HDD.BuildGameList` (system.lua:3926, `partition|relpath`). HDD cache
@@ -284,9 +290,14 @@ copies are not read at runtime. Editing them requires a rebuild.
   and `embed_assets.cpp`'s table must be kept in sync MANUALLY — there is no
   machine-checked embed manifest.
 - `.github/workflows/compilation.yml` — CI on all branches/tags/PRs/dispatch:
-  validates Lua, generates `BUILD_INFO.txt`, runs `make clean elfloader all`,
-  enforces embed-identity gates (three string markers in the ELF + loader.c
-  parity), and packages `POPSLOADER.zip` as an artifact (no GitHub release).
+  runs the now-LIVE embedded-Lua **syntax** gate (`apk add lua5.4` + `luac5.4 -p`
+  on `bin/POPSLDR/*.lua` + `etc/boot.lua`, hard-fail on syntax error — it used to
+  silently no-op because the pinned ps2dev image had no `luac`; catches SYNTAX
+  only, so runtime nil-global / type / load-order errors stay invisible),
+  generates `BUILD_INFO.txt`, runs `make clean elfloader all`, enforces
+  embed-identity gates (three string markers in the ELF + loader.c parity), and
+  packages `POPSLOADER.zip` as an artifact (no GitHub release).
+  See `STATE.md > CI / release`.
 - `.github/workflows/rolling-release.yml` — on push to BETA-12-PLAY and PR
   events: bundles the ELF + full git-tracked source and force-updates the
   `rolling-release` prerelease via the GitHub API.
@@ -317,8 +328,13 @@ Dispatch at ui.lua:3095-3245.
   (elf.c:614-635); the V3 direct-reset route black-screened on hardware.
 - BRAM metadata struct (`partition_context[128]`, `load_path[256]`, magic `POPL`)
   must stay byte-identical between writer (elf.c) and reader (loader.c).
-- Settings sidecar carve-out: USB/MC/MMCE/MX4SIO use per-device `.pldrs`; HDD
-  falls back to `mc0:/POPSTARTER/.pldrs` by design (system.lua:1809-1838).
+- Settings sidecar (single-device parity): USB/MC/MMCE/MX4SIO **and HDD** all use
+  the per-device `.pldrs` sidecar. HDD installs persist on the HDD boot partition
+  via the `PLDR.HDD.EnsureBootPartitionWritable` RW mount take-over
+  (system.lua:2091) — there is **no** `mc0:` HDD carve-out. That take-over is now
+  load-bearing for HDD settings save and HDD in-app `.hide`; don't regress it.
+  (Supersedes the old HDD-to-MC exception.) See `STATE.md > Preservation Contracts`
+  and `STATE.md > Settings (single-device parity)`.
 
 > Divergence note (per project memory): this BETA-12-PLAY worktree's
 > `PLDR.LoadHDDModules` (system.lua:3955) and `Load_HDD_IRX` (luaHDD.cpp:99) have

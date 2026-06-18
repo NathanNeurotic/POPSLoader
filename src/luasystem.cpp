@@ -33,7 +33,7 @@ extern unsigned int size_usbmass_bd_irx;
 extern unsigned char cdfs_irx[];
 extern unsigned int size_cdfs_irx;
 
-extern unsigned char mmceman_irx;
+extern unsigned char mmceman_irx[];
 extern unsigned int size_mmceman_irx;
 
 extern int pad_reinit();
@@ -144,7 +144,7 @@ bool EnsureMmceman()
 	if (mmceman_irx_loaded) {
 		return true;
 	}
-	if (!LoadIrxCheckedBuffer("mmceman.irx", &mmceman_irx, size_mmceman_irx, NULL, NULL)) {
+	if (!LoadIrxCheckedBuffer("mmceman.irx", mmceman_irx, size_mmceman_irx, NULL, NULL)) {
 		return false;
 	}
 	mmceman_irx_loaded = true;
@@ -735,6 +735,9 @@ static int copy_file_contents(const char *src, const char *dst)
 
 	close(source);
 	close(dest);
+	if (size < 0) {
+		return -1; /* read error mid-stream: don't report a partial copy as success */
+	}
 	return 0;
 }
 
@@ -852,8 +855,18 @@ static int lua_readfile(lua_State *L){
 	if (argc != 2) return luaL_error(L, "wrong number of arguments");
 	int file = luaL_checkinteger(L, 1);
 	uint32_t size = luaL_checkinteger(L, 2);
+	// Bound the request (callers read in small chunks) so a bogus/huge size
+	// can't wrap size+1 to 0 and overflow the heap on the read().
+	if (size > 64u * 1024u * 1024u) return luaL_error(L, "read size too large");
 	uint8_t *buffer = (uint8_t*)malloc(size + 1);
-	int len = read(file,buffer, size);
+	if (buffer == NULL) return luaL_error(L, "out of memory");
+	int len = read(file, buffer, size);
+	if (len < 0) {
+		// A device read error (-1) would index buffer[-1] (heap-corrupt) and
+		// push a ~4GB string. Fail cleanly; callers pcall this.
+		free(buffer);
+		return luaL_error(L, "read error");
+	}
 	buffer[len] = 0;
 	lua_pushlstring(L,(const char*)buffer,len);
 	free(buffer);
@@ -895,10 +908,15 @@ static int lua_sizefile(lua_State *L){
 	int argc = lua_gettop(L);
 	if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	int fileHandle = luaL_checkinteger(L, 1);
-	uint32_t cur_off = lseek(fileHandle, 0, SEEK_CUR);
-	uint32_t size = lseek(fileHandle, 0, SEEK_END);
-	lseek(fileHandle, cur_off, SEEK_SET);
-	lua_pushinteger(L, size);
+	// Use off_t: a uint32_t cast turned an lseek failure (-1) into 4GB, which
+	// made size-checked copies expect a 4GB source and falsely fail. On error
+	// return -1 honestly and don't seek back to a bogus offset.
+	off_t cur_off = lseek(fileHandle, 0, SEEK_CUR);
+	off_t size = lseek(fileHandle, 0, SEEK_END);
+	if (cur_off >= 0) {
+		lseek(fileHandle, cur_off, SEEK_SET);
+	}
+	lua_pushinteger(L, (lua_Integer)size);
 	return 1;
 }
 

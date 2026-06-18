@@ -244,8 +244,12 @@ int test_error(lua_State * L) {
     TPRINTF("\n");
     }
 #ifndef FORBID_LUA_ATPANIC_TEXTDUMP
-    fflush(LOG);
-    fclose(LOG);
+    // fopen() above returns NULL on a read-only boot (e.g. host:); fclose(NULL)
+    // is UB and crashed the crash handler itself, hiding the Lua traceback.
+    if (LOG != NULL) {
+        fflush(LOG);
+        fclose(LOG);
+    }
 #endif
 	SleepThread();
     return 0;
