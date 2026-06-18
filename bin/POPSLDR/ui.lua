@@ -985,16 +985,14 @@ UI = {
       UI.Notif_queue.display()
       UI.Modal.Draw()
       if UI.SavingActive then
-        local tick = math.floor((tonumber(UI.SavingAnimTick) or 0))
-        local tick_ms = tick * 200
+        -- Animation clock for the bar marquee (ms). The spinner + animated title
+        -- dots were removed: the title is center-aligned, so a changing-width dot
+        -- string re-centered it every 200ms (the tester's "flickers for no reason"),
+        -- and the messages already end in "..." so the dots were redundant churn.
+        local tick_ms = (math.floor((tonumber(UI.SavingAnimTick) or 0))) * 200
         if UI.Pad ~= nil and UI.Pad.Timer ~= nil then
           tick_ms = math.floor(Timer.getTime(UI.Pad.Timer))
-          tick = math.floor(tick_ms / 200)
         end
-        local dots = {"", ".", "..", "..."}
-        local spinners = {"|", "/", "-", "\\"}
-        local dot_suffix = dots[(tick % #dots) + 1]
-        local spinner = spinners[(tick % #spinners) + 1]
         local box_w = 320
         local box_h = 110
         local box_x = UI.SCR.X_MID - (box_w / 2)
@@ -1009,24 +1007,13 @@ UI = {
 	        Graphics.drawRect(box_x, box_y + box_h - 2, box_w, 2, UI.CCOL.GREY)
 	        Graphics.drawRect(bar_x, bar_y, bar_w, bar_h, Color.new(24, 34, 68, 128))
 	        Graphics.drawRect(bar_x + 1, bar_y + 1, bar_w - 2, bar_h - 2, Color.new(10, 14, 26, 128))
-	        local pulse_w = math.max(12, math.floor((bar_w - 4) * 0.08))
-	        local pulse_travel = math.max(0, (bar_w - 4) - pulse_w)
-	        local pulse_offset = 0
-	        if pulse_travel > 0 then
-	          pulse_offset = math.floor((tick_ms / 60) % (pulse_travel + 1))
-	        end
-	        Graphics.drawRect(bar_x + 2 + pulse_offset, bar_y + 3, pulse_w, bar_h - 6, Color.new(120, 190, 255, 36))
+	        -- (Removed the always-on pulse sweep: it slid across the whole bar
+	        -- independent of progress, reading as a detached/glitchy highlight.)
 	        if type(UI.SavingProgress) == "number" then
 	          local fill_w = math.floor((bar_w - 4) * UI.SavingProgress + 0.5)
 	          if fill_w > 0 then
+	            -- Determinate: a single clean fill, no moving shimmer overlay.
 	            Graphics.drawRect(bar_x + 2, bar_y + 2, fill_w, bar_h - 4, Color.new(110, 190, 255, 120))
-	            local shimmer_w = math.max(14, math.floor((bar_w - 4) * 0.12))
-	            local shimmer_travel = math.max(0, fill_w - shimmer_w)
-	            local shimmer_offset = 0
-	            if shimmer_travel > 0 then
-	              shimmer_offset = math.floor((tick_ms / 45) % (shimmer_travel + 1))
-	            end
-	            Graphics.drawRect(bar_x + 2 + shimmer_offset, bar_y + 2, math.min(shimmer_w, fill_w), bar_h - 4, Color.new(210, 235, 255, 48))
 	          end
 	        else
           local marquee_w = math.max(42, math.floor((bar_w - 4) * 0.26))
@@ -1037,11 +1024,11 @@ UI = {
           end
           Graphics.drawRect(bar_x + 2 + offset, bar_y + 2, marquee_w, bar_h - 4, Color.new(110, 190, 255, 96))
         end
-        Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 20, 8, UI.SCR.X, 16, tostring(UI.SavingMessage or "Saving/Applying...")..dot_suffix, UI.CCOL.YELLOW)
+        Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 20, 8, UI.SCR.X, 16, tostring(UI.SavingMessage or "Saving/Applying..."), UI.CCOL.YELLOW)
         if type(UI.SavingProgress) == "number" then
-          Font.ftPrint(SFONT, UI.SCR.X_MID, box_y + 84, 8, UI.SCR.X, 16, tostring(math.floor(UI.SavingProgress * 100 + 0.5)).."%  "..spinner, UI.CCOL.GREY)
+          Font.ftPrint(SFONT, UI.SCR.X_MID, box_y + 84, 8, UI.SCR.X, 16, tostring(math.floor(UI.SavingProgress * 100 + 0.5)).."%", UI.CCOL.GREY)
         else
-          Font.ftPrint(SFONT, UI.SCR.X_MID, box_y + 84, 8, UI.SCR.X, 16, "Working "..spinner, UI.CCOL.GREY)
+          Font.ftPrint(SFONT, UI.SCR.X_MID, box_y + 84, 8, UI.SCR.X, 16, "Working...", UI.CCOL.GREY)
         end
       end
       if UI.Transition ~= nil then
