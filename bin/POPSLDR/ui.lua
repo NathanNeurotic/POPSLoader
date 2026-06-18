@@ -521,7 +521,7 @@ UI = {
         -- Gated to carousel->list entry, so R1 in-place rescan and the -page /
         -- Boot-Page auto-enter (which set CURR deliberately, or want the top anyway)
         -- are untouched. UI.IsGameScene(nil) is false, so a first/unknown prev is fine.
-        if UI.IsGameScene(scene) and not UI.IsGameScene(prev_scene) then
+        if UI.IsGameScene(scene) and not UI.IsGameScene(prev_scene) and prev_scene ~= UI.SCENES.CREDITS then
           UI.GameList.CURR = 1
           UI.GameList.STARTUP = 1
         end
@@ -590,12 +590,12 @@ UI = {
       UI.LAYOUT.ICON_ROW_Y = Round(UI.SCR.Y_MID - 40)
       UI.LAYOUT.LIST_X = Round(safe.L)
       UI.LAYOUT.LIST_Y = Round(safe.T + 16)
-      UI.LAYOUT.LIST_W = math.floor(safe_w * 0.52)
-      UI.LAYOUT.LIST_MAX = math.floor((safe_h - 80) / UI.LAYOUT.LIST_ROW_H)
-      if UI.LAYOUT.LIST_MAX < 1 then
-        UI.LAYOUT.LIST_MAX = 1
-      end
-      local preview_w = 256
+      -- Cover preview box = 232 (== COVER_W), not 256: the 256 box was 24px wider
+      -- than the cover window, so its left side / frame was dead padding. Shrinking
+      -- it to the cover width frees ~24px on the left for a wider game list; the
+      -- cover is RIGHT-anchored (right edge = SCR.X - safe.R) so the art itself does
+      -- not move -- only the box/frame left edge shifts right.
+      local preview_w = 232
       local preview_h = 256
       UI.LAYOUT.PREVIEW_W = preview_w
       UI.LAYOUT.PREVIEW_H = preview_h
@@ -603,6 +603,14 @@ UI = {
       UI.LAYOUT.COVER_H = 232
       UI.LAYOUT.PREVIEW_X = Round(UI.SCR.X - safe.R - preview_w)
       UI.LAYOUT.PREVIEW_Y = Round(UI.SCR.Y_MID - (preview_h / 2))
+      -- Game list fills from the left margin to a small gap before the preview, so
+      -- names get ~2-3 more characters without crowding the cover icon (oldman63).
+      UI.LAYOUT.LIST_W = UI.LAYOUT.PREVIEW_X - UI.LAYOUT.LIST_X - 14
+      if UI.LAYOUT.LIST_W < 96 then UI.LAYOUT.LIST_W = 96 end
+      UI.LAYOUT.LIST_MAX = math.floor((safe_h - 80) / UI.LAYOUT.LIST_ROW_H)
+      if UI.LAYOUT.LIST_MAX < 1 then
+        UI.LAYOUT.LIST_MAX = 1
+      end
       UI.LAYOUT.FOOTER_ICON_Y = Round(UI.SCR.Y - UI.LAYOUT.BTN_BAR_SAFE_BOTTOM)
       UI.LAYOUT.FOOTER_LABEL_Y = Round(UI.LAYOUT.FOOTER_ICON_Y + UI.LAYOUT.FOOTER_LABEL_Y_OFFSET)
     end;
@@ -2335,7 +2343,7 @@ UI = {
           end
           Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
-          if UI.Pad.Events.EXIT then UI.SceneChange(UI.SCENES.CREDITS) end
+          if UI.Pad.Events.EXIT then UI.CreditsReturnScene = UI.CURSCENE; UI.SceneChange(UI.SCENES.CREDITS) end
           if UI.Pad.Events.BACK then UI.SceneChange(UI.SCENES.MMAIN) end
           if UI.Pad.Events.CONFIRM then
             UI.Notif_queue.add("This backend isn't implemented yet", "warn")
@@ -2572,7 +2580,7 @@ UI = {
         end
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
-        if UI.Pad.Events.EXIT then UI.SceneChange(UI.SCENES.CREDITS) end
+        if UI.Pad.Events.EXIT then UI.CreditsReturnScene = UI.CURSCENE; UI.SceneChange(UI.SCENES.CREDITS) end
         if UI.Pad.Events.BACK then UI.SceneChange(UI.SCENES.MMAIN) end
         if ammount > 0 then
           if UI.Pad.Events.NAV_DOWN then UI.GameList.CURR = CLAMP(UI.GameList.CURR+1, 1, ammount) end
@@ -3917,15 +3925,20 @@ UI = {
           end
           return 0
         end
+        -- With a single visible device, draw ONLY the center icon. Otherwise the
+        -- carousel ghosts the same icon across the -3..3 slots, which reads as a
+        -- scrollable multi-item list of one repeated entry (oldman63).
         for k = -3, 3 do
-          local idx = WrapIndex(base_scroll + k, profcnt)
-          local x = center_x + slot_spacing * (k - scroll_frac)
-          local y = center_y
-          local dist = math.abs(k - scroll_frac)
-          local alpha = SlotAlpha(dist)
-          if alpha > 0 then
-            local tint = Color.new(128, 128, 128, alpha)
-            DrawIcon(idx, x, y, tint)
+          if profcnt > 1 or k == 0 then
+            local idx = WrapIndex(base_scroll + k, profcnt)
+            local x = center_x + slot_spacing * (k - scroll_frac)
+            local y = center_y
+            local dist = math.abs(k - scroll_frac)
+            local alpha = SlotAlpha(dist)
+            if alpha > 0 then
+              local tint = Color.new(128, 128, 128, alpha)
+              DrawIcon(idx, x, y, tint)
+            end
           end
         end
         local labels, order = UI.Footer.ResolveLegend({
@@ -3951,7 +3964,7 @@ UI = {
           UI.MainMenu.PendingAutoEnter = false
           UI.Pad.Events.CONFIRM = true
         end
-        if not carousel.animActive then
+        if not carousel.animActive and profcnt > 1 then  -- no left/right nav with a single visible device
           if UI.Pad.Events.NAV_RIGHT then
             carousel.targetIndex = WrapIndex(carousel.currentIndex + 1, profcnt)
             carousel.animDir = 1
@@ -3967,7 +3980,7 @@ UI = {
             carousel.slide = 0
           end
         end
-        if UI.Pad.Events.EXIT then UI.SceneChange(UI.SCENES.CREDITS) end
+        if UI.Pad.Events.EXIT then UI.CreditsReturnScene = UI.CURSCENE; UI.SceneChange(UI.SCENES.CREDITS) end
         if UI.Pad.Events.BACK then
           UI.Modal.OpenExit()
           return
@@ -4309,7 +4322,11 @@ youtube.com/@hugopocked6695
           Input_GetEvent()
           if UI.HandleGlobalInput(false) then return end
           if UI.Pad.Events.EXIT or UI.Pad.Events.BACK or UI.Pad.Events.ANY then
-            UI.SceneChange(UI.SCENES.MMAIN)
+            -- Return to wherever Credits was opened from (e.g. the game list, so it
+            -- doesn't bounce to the Main Menu and force a rescan); MMAIN otherwise.
+            local back_scene = UI.CreditsReturnScene or UI.SCENES.MMAIN
+            UI.CreditsReturnScene = nil
+            UI.SceneChange(back_scene)
           end
         end
 
