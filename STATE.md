@@ -1,4 +1,4 @@
-Last updated: 2026-06-17 (post-BETA-11; the 2026-06 HDD-RW take-over / PAL-512 / BDMA-folder work + the `d4b04be` load-order boot fix + the `bdma_mode.txt` marker rename). Released line: **BETA-11** (2026-06-15). Dev branch `BETA-12-PLAY` feature tip: `7afdac3`.
+Last updated: 2026-06-18 (BETA-12 released; body content from the 2026-06 HDD-RW take-over / PAL-512 / BDMA-folder work + the `d4b04be` load-order boot fix + the `bdma_mode.txt` marker rename). Released line: **BETA-12** (2026-06-18; BETA-11 was 2026-06-15). Dev branch `BETA-12-PLAY` (tip moves per push; see `git log`).
 
 # STATE
 
@@ -143,7 +143,7 @@ Investigation artifacts archived under `docs/archive/`: `U10_INVESTIGATION.md`, 
 *(The old "`ps2hdd-osd.irx` → `ps2hdd.irx` driver swap probe" item is removed: HDD read-write was achieved instead via the `EnsureBootPartitionWritable` boot-partition remount take-over, and provato confirmed the HDD is RW-writable on hardware — the IRX swap is no longer the gating path.)*
 
 ## Verification Status
-- **BETA-11** released 2026-06-15. `BETA-12-PLAY` feature tip `7afdac3` at this writing (the docs may move it; code/build statements above are repository-verified around this tip).
+- **BETA-12** released 2026-06-18 (BETA-11 2026-06-15). `BETA-12-PLAY` is the active dev branch; its tip moves per push (see `git log`) — code/build statements above are repository-verified around the current tip.
 - The 2026-06 HDD/PAL/BDMA features are repository-verified and **boot on PCSX2**; provato confirmed the **HDD is RW-writable on real hardware**; the full feature flows are **still validating on hardware** and are **not** broadly hardware-confirmed.
 - Hardware behavior is `Unknown (verify on hardware)` unless explicitly recorded above (or in `QA_REGRESSION_MATRIX.md`) with a date.
 - See `QA_REGRESSION_MATRIX.md` for the full experiment chronology and `DECISIONS.md` for the decision log.

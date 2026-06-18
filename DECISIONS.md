@@ -1,4 +1,4 @@
-Last updated: 2026-06-17 (post-BETA-11; the 2026-06 HDD-RW take-over / PAL-512 / BDMA-folder work + the `d4b04be` load-order boot fix + the `bdma_mode.txt` marker rename). Released line: BETA-11 (2026-06-15); dev branch `BETA-12-PLAY`. Shared volatile facts (Known Issues, Preservation Contracts, Settings behavior, Invariants, Hardware Status) live in **STATE.md** — this log records the decisions, not the current-state snapshot.
+Last updated: 2026-06-17 (post-BETA-11; the 2026-06 HDD-RW take-over / PAL-512 / BDMA-folder work + the `d4b04be` load-order boot fix + the `bdma_mode.txt` marker rename). Released line: **BETA-12** (2026-06-18; BETA-11 2026-06-15); dev branch `BETA-12-PLAY`. Shared volatile facts (Known Issues, Preservation Contracts, Settings behavior, Invariants, Hardware Status) live in **STATE.md** — this log records the decisions, not the current-state snapshot.
 
 # DECISIONS
 
