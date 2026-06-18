@@ -3029,7 +3029,8 @@ local function EncodeSettings()
     "GLOBAL_HIDE="..((PLDR.GLOBAL_HIDE == true) and "1" or "0"),
     "POPSTARTER_MC_FOLDER="..((PLDR.POPSTARTER_MC_FOLDER == false) and "0" or "1"),
     "HIDDEN_DEVICES="..PLDR.NormalizeHiddenDevices(PLDR.HIDDEN_DEVICES),
-    "SHOW_DETAILS="..((PLDR.SHOW_DETAILS == true) and "1" or "0")
+    "SHOW_DETAILS="..((PLDR.SHOW_DETAILS == true) and "1" or "0"),
+    "DETAILS_ALIGN="..((PLDR.DETAILS_ALIGN == "center" or PLDR.DETAILS_ALIGN == "right") and PLDR.DETAILS_ALIGN or "left")
   }
   return table.concat(lines, "\n").."\n"
 end
@@ -3069,7 +3070,8 @@ local function SnapshotSettingsState()
     multidisc_collapse = (PLDR.COLLAPSE_MULTIDISC == true),
     global_hide = (PLDR.GLOBAL_HIDE == true),
     hidden_devices = PLDR.NormalizeHiddenDevices(PLDR.HIDDEN_DEVICES),
-    show_details = (PLDR.SHOW_DETAILS == true)
+    show_details = (PLDR.SHOW_DETAILS == true),
+    details_align = ((PLDR.DETAILS_ALIGN == "center" or PLDR.DETAILS_ALIGN == "right") and PLDR.DETAILS_ALIGN or "left")
   }
 end
 
@@ -3112,6 +3114,9 @@ local function ApplySettingsState(state)
   end
   if type(state.show_details) == "boolean" then
     PLDR.SHOW_DETAILS = state.show_details
+  end
+  if type(state.details_align) == "string" then
+    PLDR.DETAILS_ALIGN = (state.details_align == "center" or state.details_align == "right") and state.details_align or "left"
   end
   PLDR.ApplyVideoStandardRuntime(PLDR.VIDEO_STANDARD)
   if type(state.hide_text) == "boolean" and type(UI) == "table" then
@@ -3229,6 +3234,7 @@ function PLDR.LoadSettingsNonFatal()
   PLDR.POPSTARTER_MC_FOLDER = true
   PLDR.HIDDEN_DEVICES = ""
   PLDR.SHOW_DETAILS = false
+  PLDR.DETAILS_ALIGN = "left"  -- left|center|right; alignment of the game-details box (used only when SHOW_DETAILS)
   if type(UI) == "table" then
     if type(UI.SetHideTextMode) == "function" then
       UI.SetHideTextMode(false, false)
@@ -3340,6 +3346,7 @@ function PLDR.LoadSettingsNonFatal()
   local popstarter_mc_folder = string.match(data, "\nPOPSTARTER_MC_FOLDER=([^\n]+)") or string.match(data, "^POPSTARTER_MC_FOLDER=([^\n]+)")
   local hidden_devices = string.match(data, "\nHIDDEN_DEVICES=([^\n]*)") or string.match(data, "^HIDDEN_DEVICES=([^\n]*)")
   local show_details = string.match(data, "\nSHOW_DETAILS=([^\n]+)") or string.match(data, "^SHOW_DETAILS=([^\n]+)")
+  local details_align = string.match(data, "\nDETAILS_ALIGN=([^\n]+)") or string.match(data, "^DETAILS_ALIGN=([^\n]+)")
   if profile ~= nil and PLDR.PROFILES ~= nil and PLDR.PROFILES[profile] ~= nil then
     PLDR.SELECTED_PROFILE = profile
     PLDR.POPSTARTER_PATH = PLDR.PROFILES[profile].ELF
@@ -3398,6 +3405,9 @@ function PLDR.LoadSettingsNonFatal()
   if sd ~= nil then
     PLDR.SHOW_DETAILS = sd == true
   end
+  if details_align ~= nil then
+    PLDR.DETAILS_ALIGN = (details_align == "center" or details_align == "right") and details_align or "left"
+  end
   if hidden_devices ~= nil then
     PLDR.HIDDEN_DEVICES = PLDR.NormalizeHiddenDevices(hidden_devices)
   else
@@ -3443,6 +3453,8 @@ function PLDR.CommitSettingsChanges(opts)
   if type(opts.global_hide) == "boolean" then next_global_hide = opts.global_hide end
   local next_show_details = (prev.show_details == true)
   if type(opts.show_details) == "boolean" then next_show_details = opts.show_details end
+  local next_details_align = (prev.details_align == "center" or prev.details_align == "right") and prev.details_align or "left"
+  if opts.details_align == "left" or opts.details_align == "center" or opts.details_align == "right" then next_details_align = opts.details_align end
   -- Explicit boolean check, NOT `(type==boolean) and opts.x or prev.x`: that
   -- idiom collapses a legitimate `false` to prev (Lua and/or short-circuit), so
   -- Hide-Text could never be toggled OFF through a settings save. Mirrors the
@@ -3462,6 +3474,7 @@ function PLDR.CommitSettingsChanges(opts)
     multidisc_collapse = next_collapse,
     global_hide = next_global_hide,
     show_details = next_show_details,
+    details_align = next_details_align,
     hidden_devices = PLDR.NormalizeHiddenDevices(opts.hidden_devices or prev.hidden_devices)
   }
   local apply_bdma = opts.apply_bdma == true

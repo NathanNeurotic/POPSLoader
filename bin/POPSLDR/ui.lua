@@ -2283,8 +2283,12 @@ UI = {
         UI.SettingsEntryMultiDiscCollapse = UI.MultiDiscCollapse
         UI.GlobalHide = (type(PLDR) == "table" and PLDR.GLOBAL_HIDE == true)
         UI.SettingsEntryGlobalHide = UI.GlobalHide
-        UI.ShowDetails = (type(PLDR) == "table" and PLDR.SHOW_DETAILS == true)
-        UI.SettingsEntryShowDetails = UI.ShowDetails
+        -- Game-details draft as a 4-way value: off | left | center | right. Derived
+        -- from the on/off (PLDR.SHOW_DETAILS) + the alignment (PLDR.DETAILS_ALIGN).
+        local _da = (type(PLDR) == "table" and PLDR.DETAILS_ALIGN) or "left"
+        if _da ~= "center" and _da ~= "right" then _da = "left" end
+        UI.DetailsAlign = ((type(PLDR) == "table" and PLDR.SHOW_DETAILS == true) and _da) or "off"
+        UI.SettingsEntryDetailsAlign = UI.DetailsAlign
         UI.SettingsEntryKeyboardLayout = tostring(UI.KeyboardLayoutDraft or (type(PLDR) == "table" and PLDR.KEYBOARD_LAYOUT) or "QWERTY")
         UI.SettingsFocus = 1
         UI.SceneChange(UI.SCENES.MPROFILE)
@@ -2561,9 +2565,16 @@ UI = {
             -- Left-align each line (ALIGN_LEFT = 0) at the panel's left edge instead
             -- of centering, so a "table"-style sidecar (Title=..., Genre=..., etc.)
             -- reads cleanly as a list. One ftPrint per visible line.
+            -- Alignment of the description box per the Game-details setting: left
+            -- (ALIGN_LEFT=0) at the panel's left edge, center (ALIGN_HCENTER=8) on its
+            -- middle, right (ALIGN_RIGHT=4) at its right edge.
+            local d_align = (type(PLDR) == "table") and PLDR.DETAILS_ALIGN or "left"
+            local d_x, d_flag = draw_x, 0
+            if d_align == "center" then d_x, d_flag = draw_x + Round(draw_w / 2), 8
+            elseif d_align == "right" then d_x, d_flag = draw_x + draw_w, 4 end
             local ly = details_y
             for bi = 1, #buf do
-              Font.ftPrint(SFONT, draw_x, ly, 0, draw_w, details_line_h, buf[bi], UI.CCOL.GREY)
+              Font.ftPrint(SFONT, d_x, ly, d_flag, draw_w, details_line_h, buf[bi], UI.CCOL.GREY)
               ly = ly + details_line_h
             end
           end
@@ -2973,7 +2984,10 @@ UI = {
           local boot_page_key = boot_page_entry and boot_page_entry.key or "Carousel"
           local multidisc_collapse_val = UI.MultiDiscCollapse == true
           local global_hide_val = UI.GlobalHide == true
-          local show_details_val = UI.ShowDetails == true
+          local show_details_val = (UI.DetailsAlign ~= nil and UI.DetailsAlign ~= "off")
+          local details_align_val = (show_details_val and UI.DetailsAlign)
+            or ((type(PLDR) == "table" and PLDR.DETAILS_ALIGN) or "left")
+          if details_align_val ~= "center" and details_align_val ~= "right" then details_align_val = "left" end
           local video_live_before = nil
           if type(Screen) == "table" and type(Screen.getMode) == "function" then
             local okb, mb = pcall(Screen.getMode)
@@ -2995,6 +3009,7 @@ UI = {
                 multidisc_collapse = multidisc_collapse_val,
                 global_hide = global_hide_val,
                 show_details = show_details_val,
+                details_align = details_align_val,
                 hide_text = UI.HideTextMode == true,
                 prev_hide_text = UI.SettingsEntryHideTextMode == true,
                 apply_bdma = UI.BdmaDirty,
@@ -3023,6 +3038,7 @@ UI = {
             PLDR.COLLAPSE_MULTIDISC = multidisc_collapse_val
             PLDR.GLOBAL_HIDE = global_hide_val
             PLDR.SHOW_DETAILS = show_details_val
+            PLDR.DETAILS_ALIGN = details_align_val
             if type(PLDR.ApplyVideoStandardRuntime) == "function" then
               PLDR.ApplyVideoStandardRuntime(video_key)
             end
@@ -3178,8 +3194,8 @@ UI = {
             UI.GlobalHide = false
             UI.ProfileDirty = true
           end
-          if UI.ShowDetails == true then
-            UI.ShowDetails = false
+          if UI.DetailsAlign ~= nil and UI.DetailsAlign ~= "off" then
+            UI.DetailsAlign = "off"
             UI.ProfileDirty = true
           end
           local default_video_key = VIDEO_STANDARD_AUTO
@@ -3404,12 +3420,22 @@ UI = {
           function() UI.GlobalHide = not UI.GlobalHide end,
           function() return (UI.GlobalHide == true) ~= (UI.SettingsEntryGlobalHide == true) end
         )
+        local DETAILS_ALIGN_SEQ = {"off", "left", "center", "right"}
+        local DETAILS_ALIGN_TXT = {off = "Off", left = "Left aligned", center = "Center aligned", right = "Right aligned"}
+        local function DetailsAlignStep(cur, dir)
+          local idx = 1
+          for i = 1, #DETAILS_ALIGN_SEQ do
+            if DETAILS_ALIGN_SEQ[i] == cur then idx = i; break end
+          end
+          idx = ((idx - 1 + dir) % #DETAILS_ALIGN_SEQ) + 1
+          return DETAILS_ALIGN_SEQ[idx]
+        end
         AddCycle(
           "Game details",
-          function() return UI.ShowDetails and "Shown" or "Hidden" end,
-          function() UI.ShowDetails = not UI.ShowDetails end,
-          function() UI.ShowDetails = not UI.ShowDetails end,
-          function() return (UI.ShowDetails == true) ~= (UI.SettingsEntryShowDetails == true) end
+          function() return DETAILS_ALIGN_TXT[UI.DetailsAlign] or "Off" end,
+          function() UI.DetailsAlign = DetailsAlignStep(UI.DetailsAlign, 1) end,
+          function() UI.DetailsAlign = DetailsAlignStep(UI.DetailsAlign, -1) end,
+          function() return tostring(UI.DetailsAlign) ~= tostring(UI.SettingsEntryDetailsAlign) end
         )
 
         AddSection("POPSTARTER")

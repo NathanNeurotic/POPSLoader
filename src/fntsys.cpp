@@ -621,6 +621,17 @@ int fntRenderString(int id, int x, int y, short aligned, size_t width, size_t he
         }
     }
 
+    // Right alignment: shift x left by the full text width so the string ENDS at x
+    // (symmetric with HCENTER's half-shift). Inert for existing callers (which pass
+    // only ALIGN_LEFT/ALIGN_HCENTER); used by the right-aligned game-details box.
+    if (aligned & ALIGN_RIGHT) {
+        if (width) {
+            x -= min(fntCalcDimensions(id, string), width);
+        } else {
+            x -= fntCalcDimensions(id, string);
+        }
+    }
+
     if (aligned & ALIGN_VCENTER) {
         y += (FNTSYS_CHAR_SIZE - 4) >> 1;
     } else {
@@ -744,6 +755,17 @@ int fntRenderString(int id, int x, int y, short aligned, size_t width, size_t he
             x -= min(fntCalcDimensions(id, string), width) >> 1;
         } else {
             x -= fntCalcDimensions(id, string) >> 1;
+        }
+    }
+
+    // Right alignment: shift x left by the full text width so the string ENDS at x
+    // (symmetric with HCENTER's half-shift). Inert for existing callers (which pass
+    // only ALIGN_LEFT/ALIGN_HCENTER); used by the right-aligned game-details box.
+    if (aligned & ALIGN_RIGHT) {
+        if (width) {
+            x -= min(fntCalcDimensions(id, string), width);
+        } else {
+            x -= fntCalcDimensions(id, string);
         }
     }
 
