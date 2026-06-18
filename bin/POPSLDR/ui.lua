@@ -2567,7 +2567,14 @@ UI = {
               if #L > 27 then L = string.sub(L, 1, 27) end
               buf[#buf] = L .. "..."
             end
-            Font.ftPrintMultiLineAligned(SFONT, draw_x + Round(draw_w / 2), details_y, details_line_h, draw_w, details_h, table.concat(buf, "\n"), UI.CCOL.GREY)
+            -- Left-align each line (ALIGN_LEFT = 0) at the panel's left edge instead
+            -- of centering, so a "table"-style sidecar (Title=..., Genre=..., etc.)
+            -- reads cleanly as a list. One ftPrint per visible line.
+            local ly = details_y
+            for bi = 1, #buf do
+              Font.ftPrint(SFONT, draw_x, ly, 0, draw_w, details_line_h, buf[bi], UI.CCOL.GREY)
+              ly = ly + details_line_h
+            end
           end
         end
         if ammount <= 0 then
@@ -2600,16 +2607,16 @@ UI = {
           -- Right analog stick scrolls a description that's too long to fully fit
           -- under the cover (when game details are on). The stick is otherwise
           -- unused here (R3 is the click, separate), so this is a free, discoverable
-          -- "read the rest" gesture. Rate-limited so a held stick scrolls steadily
-          -- (~1 line / 90ms) instead of flying line-by-line every frame. DetailsTotal
-          -- / DetailsVisible were set by the render block just above this frame.
+          -- "read the rest" gesture. Rate-limited to a gentle ~1 line / 200ms (≈5
+          -- lines/sec) so it's easy to read rather than flying past. DetailsTotal /
+          -- DetailsVisible were set by the render block just above this frame.
           if UI.CoverCache ~= nil and (UI.GameList.DetailsTotal or 0) > (UI.GameList.DetailsVisible or 0)
              and type(Pads) == "table" and type(Pads.getRightStick) == "function" then
             local ok_rs, _, rv = pcall(Pads.getRightStick)
             if ok_rs and type(rv) == "number" and math.abs(rv) > 48 then
               local now = 0
               if UI.Pad.Timer ~= nil then now = Timer.getTime(UI.Pad.Timer) end
-              if (now - (UI.GameList.DescScrollAt or 0)) >= 90 then
+              if (now - (UI.GameList.DescScrollAt or 0)) >= 200 then
                 local off = UI.CoverCache.desc_scroll or 0
                 if rv > 0 then off = off + 1 else off = off - 1 end
                 local max_off = (UI.GameList.DetailsTotal or 0) - (UI.GameList.DetailsVisible or 0)
