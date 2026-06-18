@@ -4256,16 +4256,24 @@ function Font.ftPrintMultiLineAligned(font, x, y, spacing, width, height, text, 
   end
 end
 
--- Multi-disc collapse: a VCD is a SECONDARY disc if its name carries a
--- (Disc N)/(Disk N)/(CD N) marker with N>=2. Used to hide disc 2+ from the game
--- list when PLDR.COLLAPSE_MULTIDISC is on (disc 1 / unmarked games always show).
--- The user's VMC disk-swap handles changing discs in-game from the disc-1 entry.
+-- Multi-disc collapse: a VCD is a SECONDARY disc if its name carries a DELIMITED
+-- disc marker with N>=2 -- opened by "(" or "[":  (Disc N) / [Disc N] / (Disk N)
+-- / (CD N) / (CD2) / (Disc N of M). This is the Redump/No-Intro convention.
+-- A BARE "... Disc N" / "... CD N" suffix (no brackets) is deliberately NOT
+-- matched: real standalone discs end that way -- magazine demo discs ("... Demo
+-- CD 47"), music-creation software ("Music 2000 CD 2"), compilation volumes
+-- ("Net Yaroze Official CD 2") -- and would be wrongly hidden. Missing a bare
+-- "Disc 2" only shows an extra row; hiding a launchable game is far worse.
+-- Used to hide disc 2+ from the list when PLDR.COLLAPSE_MULTIDISC is on (disc 1 /
+-- unmarked games always show); it never runs when collapse is off (the `and`
+-- short-circuits before this is called). The user's VMC disk-swap handles
+-- changing discs in-game from the disc-1 entry.
 local function IsSecondaryDisc(name)
   if type(name) ~= "string" then return false end
   local lower = string.lower(name)
-  local n = string.match(lower, "%(disc%s*(%d+)%)")
-        or string.match(lower, "%(disk%s*(%d+)%)")
-        or string.match(lower, "%(cd%s*(%d+)%)")
+  local n = string.match(lower, "[%(%[]%s*disc%s*(%d+)")
+        or string.match(lower, "[%(%[]%s*disk%s*(%d+)")
+        or string.match(lower, "[%(%[]%s*cd%s*(%d+)")
   return n ~= nil and (tonumber(n) or 0) >= 2
 end
 
