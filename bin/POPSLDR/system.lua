@@ -3031,7 +3031,8 @@ local function EncodeSettings()
     "HIDDEN_DEVICES="..PLDR.NormalizeHiddenDevices(PLDR.HIDDEN_DEVICES),
     "SHOW_DETAILS="..((PLDR.SHOW_DETAILS == true) and "1" or "0"),
     "DETAILS_ALIGN="..((PLDR.DETAILS_ALIGN == "center" or PLDR.DETAILS_ALIGN == "right") and PLDR.DETAILS_ALIGN or "left"),
-    "GAMELIST_CACHE="..((PLDR.GAMELIST_CACHE == true) and "1" or "0")
+    "GAMELIST_CACHE="..((PLDR.GAMELIST_CACHE == true) and "1" or "0"),
+    "DESC_SCROLL_SPEED="..((PLDR.DESC_SCROLL_SPEED == "fast" or PLDR.DESC_SCROLL_SPEED == "medium") and PLDR.DESC_SCROLL_SPEED or "slow")
   }
   return table.concat(lines, "\n").."\n"
 end
@@ -3073,7 +3074,8 @@ local function SnapshotSettingsState()
     hidden_devices = PLDR.NormalizeHiddenDevices(PLDR.HIDDEN_DEVICES),
     show_details = (PLDR.SHOW_DETAILS == true),
     details_align = ((PLDR.DETAILS_ALIGN == "center" or PLDR.DETAILS_ALIGN == "right") and PLDR.DETAILS_ALIGN or "left"),
-    gamelist_cache = (PLDR.GAMELIST_CACHE == true)
+    gamelist_cache = (PLDR.GAMELIST_CACHE == true),
+    desc_scroll_speed = ((PLDR.DESC_SCROLL_SPEED == "fast" or PLDR.DESC_SCROLL_SPEED == "medium") and PLDR.DESC_SCROLL_SPEED or "slow")
   }
 end
 
@@ -3119,6 +3121,9 @@ local function ApplySettingsState(state)
   end
   if type(state.details_align) == "string" then
     PLDR.DETAILS_ALIGN = (state.details_align == "center" or state.details_align == "right") and state.details_align or "left"
+  end
+  if type(state.desc_scroll_speed) == "string" then
+    PLDR.DESC_SCROLL_SPEED = (state.desc_scroll_speed == "fast" or state.desc_scroll_speed == "medium") and state.desc_scroll_speed or "slow"
   end
   if type(state.gamelist_cache) == "boolean" then
     PLDR.GAMELIST_CACHE = state.gamelist_cache
@@ -3240,6 +3245,7 @@ function PLDR.LoadSettingsNonFatal()
   PLDR.HIDDEN_DEVICES = ""
   PLDR.SHOW_DETAILS = false
   PLDR.DETAILS_ALIGN = "left"  -- left|center|right; alignment of the game-details box (used only when SHOW_DETAILS)
+  PLDR.DESC_SCROLL_SPEED = "slow"  -- fast|medium|slow; right-stick description scroll speed (slow = current shipped feel)
   PLDR.GAMELIST_CACHE = false  -- opt-in persistent per-device USB/MMCE/MX4SIO list cache (OFF = always live scan)
   if type(UI) == "table" then
     if type(UI.SetHideTextMode) == "function" then
@@ -3353,6 +3359,7 @@ function PLDR.LoadSettingsNonFatal()
   local hidden_devices = string.match(data, "\nHIDDEN_DEVICES=([^\n]*)") or string.match(data, "^HIDDEN_DEVICES=([^\n]*)")
   local show_details = string.match(data, "\nSHOW_DETAILS=([^\n]+)") or string.match(data, "^SHOW_DETAILS=([^\n]+)")
   local details_align = string.match(data, "\nDETAILS_ALIGN=([^\n]+)") or string.match(data, "^DETAILS_ALIGN=([^\n]+)")
+  local desc_scroll_speed = string.match(data, "\nDESC_SCROLL_SPEED=([^\n]+)") or string.match(data, "^DESC_SCROLL_SPEED=([^\n]+)")
   local gamelist_cache = string.match(data, "\nGAMELIST_CACHE=([^\n]+)") or string.match(data, "^GAMELIST_CACHE=([^\n]+)")
   if profile ~= nil and PLDR.PROFILES ~= nil and PLDR.PROFILES[profile] ~= nil then
     PLDR.SELECTED_PROFILE = profile
@@ -3415,6 +3422,9 @@ function PLDR.LoadSettingsNonFatal()
   if details_align ~= nil then
     PLDR.DETAILS_ALIGN = (details_align == "center" or details_align == "right") and details_align or "left"
   end
+  if desc_scroll_speed ~= nil then
+    PLDR.DESC_SCROLL_SPEED = (desc_scroll_speed == "fast" or desc_scroll_speed == "medium") and desc_scroll_speed or "slow"
+  end
   local glc = ParseBooleanSetting(gamelist_cache)
   if glc ~= nil then
     PLDR.GAMELIST_CACHE = glc == true
@@ -3466,6 +3476,8 @@ function PLDR.CommitSettingsChanges(opts)
   if type(opts.show_details) == "boolean" then next_show_details = opts.show_details end
   local next_details_align = (prev.details_align == "center" or prev.details_align == "right") and prev.details_align or "left"
   if opts.details_align == "left" or opts.details_align == "center" or opts.details_align == "right" then next_details_align = opts.details_align end
+  local next_desc_scroll_speed = (prev.desc_scroll_speed == "fast" or prev.desc_scroll_speed == "medium") and prev.desc_scroll_speed or "slow"
+  if opts.desc_scroll_speed == "fast" or opts.desc_scroll_speed == "medium" or opts.desc_scroll_speed == "slow" then next_desc_scroll_speed = opts.desc_scroll_speed end
   local next_gamelist_cache = (prev.gamelist_cache == true)
   if type(opts.gamelist_cache) == "boolean" then next_gamelist_cache = opts.gamelist_cache end
   -- Explicit boolean check, NOT `(type==boolean) and opts.x or prev.x`: that
@@ -3488,6 +3500,7 @@ function PLDR.CommitSettingsChanges(opts)
     global_hide = next_global_hide,
     show_details = next_show_details,
     details_align = next_details_align,
+    desc_scroll_speed = next_desc_scroll_speed,
     gamelist_cache = next_gamelist_cache,
     hidden_devices = PLDR.NormalizeHiddenDevices(opts.hidden_devices or prev.hidden_devices)
   }

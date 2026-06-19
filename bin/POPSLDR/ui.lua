@@ -2294,6 +2294,10 @@ UI = {
         if _da ~= "center" and _da ~= "right" then _da = "left" end
         UI.DetailsAlign = ((type(PLDR) == "table" and PLDR.SHOW_DETAILS == true) and _da) or "off"
         UI.SettingsEntryDetailsAlign = UI.DetailsAlign
+        local _ds = (type(PLDR) == "table" and PLDR.DESC_SCROLL_SPEED) or "slow"
+        if _ds ~= "fast" and _ds ~= "medium" then _ds = "slow" end
+        UI.DescScrollSpeed = _ds
+        UI.SettingsEntryDescScrollSpeed = UI.DescScrollSpeed
         UI.GameListCache = (type(PLDR) == "table" and PLDR.GAMELIST_CACHE == true)
         UI.SettingsEntryGameListCache = UI.GameListCache
         UI.SettingsEntryKeyboardLayout = tostring(UI.KeyboardLayoutDraft or (type(PLDR) == "table" and PLDR.KEYBOARD_LAYOUT) or "QWERTY")
@@ -2662,17 +2666,22 @@ UI = {
           -- Right analog stick scrolls a description that's too long to fully fit
           -- under the cover (when game details are on). The stick is otherwise
           -- unused here (R3 is the click, separate), so this is a free, discoverable
-          -- "read the rest" gesture. Deliberately slow + low-sensitivity: needs a
-          -- FIRM push (deadzone 80 of ~127) and steps only ~1 line / 500ms (≈2
-          -- lines/sec) so a light touch does nothing and it never flies past.
-          -- DetailsTotal / DetailsVisible were set by the render block this frame.
+          -- "read the rest" gesture. Sensitivity + step rate come from the
+          -- "Description scroll speed" setting (fast/medium/slow); slow is the
+          -- deliberate default (firm push, ~2 lines/sec) so a light touch does
+          -- nothing and it never flies past. DetailsTotal / DetailsVisible were set
+          -- by the render block this frame.
           if UI.CoverCache ~= nil and (UI.GameList.DetailsTotal or 0) > (UI.GameList.DetailsVisible or 0)
              and type(Pads) == "table" and type(Pads.getRightStick) == "function" then
             local ok_rs, _, rv = pcall(Pads.getRightStick)
-            if ok_rs and type(rv) == "number" and math.abs(rv) > 80 then
+            local _spd = (type(PLDR) == "table" and PLDR.DESC_SCROLL_SPEED) or "slow"
+            local _dz, _ms = 80, 500          -- slow (default): firm push, ~2 lines/sec
+            if _spd == "fast" then _dz, _ms = 48, 150
+            elseif _spd == "medium" then _dz, _ms = 64, 300 end
+            if ok_rs and type(rv) == "number" and math.abs(rv) > _dz then
               local now = 0
               if UI.Pad.Timer ~= nil then now = Timer.getTime(UI.Pad.Timer) end
-              if (now - (UI.GameList.DescScrollAt or 0)) >= 500 then
+              if (now - (UI.GameList.DescScrollAt or 0)) >= _ms then
                 local off = UI.CoverCache.desc_scroll or 0
                 if rv > 0 then off = off + 1 else off = off - 1 end
                 local max_off = (UI.GameList.DetailsTotal or 0) - (UI.GameList.DetailsVisible or 0)
@@ -3050,6 +3059,8 @@ UI = {
             or ((type(PLDR) == "table" and PLDR.DETAILS_ALIGN) or "left")
           if details_align_val ~= "center" and details_align_val ~= "right" then details_align_val = "left" end
           local gamelist_cache_val = UI.GameListCache == true
+          local desc_scroll_speed_val = UI.DescScrollSpeed
+          if desc_scroll_speed_val ~= "fast" and desc_scroll_speed_val ~= "medium" then desc_scroll_speed_val = "slow" end
           local video_live_before = nil
           if type(Screen) == "table" and type(Screen.getMode) == "function" then
             local okb, mb = pcall(Screen.getMode)
@@ -3072,6 +3083,7 @@ UI = {
                 global_hide = global_hide_val,
                 show_details = show_details_val,
                 details_align = details_align_val,
+                desc_scroll_speed = desc_scroll_speed_val,
                 gamelist_cache = gamelist_cache_val,
                 hide_text = UI.HideTextMode == true,
                 prev_hide_text = UI.SettingsEntryHideTextMode == true,
@@ -3102,6 +3114,7 @@ UI = {
             PLDR.GLOBAL_HIDE = global_hide_val
             PLDR.SHOW_DETAILS = show_details_val
             PLDR.DETAILS_ALIGN = details_align_val
+            PLDR.DESC_SCROLL_SPEED = desc_scroll_speed_val
             PLDR.GAMELIST_CACHE = gamelist_cache_val
             if type(PLDR.ApplyVideoStandardRuntime) == "function" then
               PLDR.ApplyVideoStandardRuntime(video_key)
@@ -3260,6 +3273,10 @@ UI = {
           end
           if UI.DetailsAlign ~= nil and UI.DetailsAlign ~= "off" then
             UI.DetailsAlign = "off"
+            UI.ProfileDirty = true
+          end
+          if UI.DescScrollSpeed ~= nil and UI.DescScrollSpeed ~= "slow" then
+            UI.DescScrollSpeed = "slow"
             UI.ProfileDirty = true
           end
           if UI.GameListCache == true then
@@ -3504,6 +3521,23 @@ UI = {
           function() UI.DetailsAlign = DetailsAlignStep(UI.DetailsAlign, 1) end,
           function() UI.DetailsAlign = DetailsAlignStep(UI.DetailsAlign, -1) end,
           function() return tostring(UI.DetailsAlign) ~= tostring(UI.SettingsEntryDetailsAlign) end
+        )
+        local DESC_SPEED_SEQ = {"fast", "medium", "slow"}
+        local DESC_SPEED_TXT = {fast = "Fast", medium = "Medium", slow = "Slow"}
+        local function DescSpeedStep(cur, dir)
+          local idx = 1
+          for i = 1, #DESC_SPEED_SEQ do
+            if DESC_SPEED_SEQ[i] == cur then idx = i; break end
+          end
+          idx = ((idx - 1 + dir) % #DESC_SPEED_SEQ) + 1
+          return DESC_SPEED_SEQ[idx]
+        end
+        AddCycle(
+          "Description scroll speed",
+          function() return DESC_SPEED_TXT[UI.DescScrollSpeed] or "Slow" end,
+          function() UI.DescScrollSpeed = DescSpeedStep(UI.DescScrollSpeed, 1) end,
+          function() UI.DescScrollSpeed = DescSpeedStep(UI.DescScrollSpeed, -1) end,
+          function() return tostring(UI.DescScrollSpeed) ~= tostring(UI.SettingsEntryDescScrollSpeed) end
         )
         AddCycle(
           "Game list cache",
