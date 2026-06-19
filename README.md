@@ -100,6 +100,7 @@ Navigate POPSLoader using a standard PS2 controller.
 | **D-pad Up / Down** | Scroll through the game list |
 | **D-pad Left / Right** | Page Up / Page Down (jump through large lists) |
 | **L1** | Jump to the top of the game list — press again to bounce to the bottom |
+| **Left Analog Stick (up / down)** | Fast page-jump through the game list — give it a firm push and hold to fly through large libraries a page at a time |
 | **R1** | Refresh / rescan the current device's game list, in place (e.g. after hot-plugging a drive or card). USB / MMCE / MX4SIO re-scan live by default; if *Game list cache* is enabled in Settings they instead rebuild their saved per-device cache. |
 | **Cross (X)** | Confirm option / Launch selected game |
 | **Circle (O)** | Go back to the Main Menu / Cancel |

@@ -2315,6 +2315,7 @@ UI = {
       DetailsTotal = 0;       -- wrapped lines in the current description (0 = none)
       DetailsVisible = 0;     -- how many of them fit on screen this frame
       DescScrollAt = 0;       -- last right-stick scroll step (ms, for rate-limit)
+      PageNavAt = 0;          -- last left-stick fast-page-nav step (ms, for rate-limit)
       Reset = function ()
         UI.GameList.CURR = 1;
         UI.GameList.CoverLastIndex = nil
@@ -2323,6 +2324,7 @@ UI = {
         UI.GameList.DetailsTotal = 0
         UI.GameList.DetailsVisible = 0
         UI.GameList.DescScrollAt = 0
+        UI.GameList.PageNavAt = 0
       end;
       Play = function()
         local layout = UI.LAYOUT
@@ -2606,6 +2608,25 @@ UI = {
               UI.GameList.CURR = ammount
             else
               UI.GameList.CURR = 1
+            end
+          end
+          -- Left analog stick UP/DOWN = fast PAGE navigation (held = repeats), the
+          -- controllable companion to L1's instant top/bottom jump for true freedom
+          -- on big lists. Firm push (deadzone 64 of ~127) so a resting stick never
+          -- drifts the cursor; steps a full page (MAXDRAW) every ~100ms while held.
+          if type(Pads) == "table" and type(Pads.getLeftStick) == "function" then
+            local ok_ls, _, lv = pcall(Pads.getLeftStick)
+            if ok_ls and type(lv) == "number" and math.abs(lv) > 64 then
+              local now = 0
+              if UI.Pad.Timer ~= nil then now = Timer.getTime(UI.Pad.Timer) end
+              if (now - (UI.GameList.PageNavAt or 0)) >= 100 then
+                if lv > 0 then
+                  UI.GameList.CURR = CLAMP(UI.GameList.CURR + UI.GameList.MAXDRAW, 1, ammount)
+                else
+                  UI.GameList.CURR = CLAMP(UI.GameList.CURR - UI.GameList.MAXDRAW, 1, ammount)
+                end
+                UI.GameList.PageNavAt = now
+              end
             end
           end
           -- Right analog stick scrolls a description that's too long to fully fit
