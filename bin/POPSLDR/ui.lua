@@ -2611,16 +2611,17 @@ UI = {
           -- Right analog stick scrolls a description that's too long to fully fit
           -- under the cover (when game details are on). The stick is otherwise
           -- unused here (R3 is the click, separate), so this is a free, discoverable
-          -- "read the rest" gesture. Rate-limited to a gentle ~1 line / 200ms (≈5
-          -- lines/sec) so it's easy to read rather than flying past. DetailsTotal /
-          -- DetailsVisible were set by the render block just above this frame.
+          -- "read the rest" gesture. Deliberately slow + low-sensitivity: needs a
+          -- FIRM push (deadzone 80 of ~127) and steps only ~1 line / 500ms (≈2
+          -- lines/sec) so a light touch does nothing and it never flies past.
+          -- DetailsTotal / DetailsVisible were set by the render block this frame.
           if UI.CoverCache ~= nil and (UI.GameList.DetailsTotal or 0) > (UI.GameList.DetailsVisible or 0)
              and type(Pads) == "table" and type(Pads.getRightStick) == "function" then
             local ok_rs, _, rv = pcall(Pads.getRightStick)
-            if ok_rs and type(rv) == "number" and math.abs(rv) > 48 then
+            if ok_rs and type(rv) == "number" and math.abs(rv) > 80 then
               local now = 0
               if UI.Pad.Timer ~= nil then now = Timer.getTime(UI.Pad.Timer) end
-              if (now - (UI.GameList.DescScrollAt or 0)) >= 200 then
+              if (now - (UI.GameList.DescScrollAt or 0)) >= 500 then
                 local off = UI.CoverCache.desc_scroll or 0
                 if rv > 0 then off = off + 1 else off = off - 1 end
                 local max_off = (UI.GameList.DetailsTotal or 0) - (UI.GameList.DetailsVisible or 0)
