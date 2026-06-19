@@ -6129,31 +6129,15 @@ if type(Pads) == "table" and type(Pads.get) == "function" and type(PAD_START) ==
   end
 end
 
--- Everything from here runs INSIDE do_boot_init, handed to UI.WelcomeDraw.Play as
+-- do_boot_init runs the SLOW device bring-up, handed to UI.WelcomeDraw.Play as
 -- boot_init_fn: the welcome splash paints FIRST, then this work runs under it (it
 -- freezes on the splash frame), so the old boot BLACK screen is now the splash.
--- The START-held poll ABOVE stays before the splash so a held-START recovery is
--- still caught immediately at boot (boot_start_held is read below as an upvalue).
--- Inner block kept at its original indentation to keep the diff reviewable.
+-- NOTE: settings load + the video-mode apply happen BEFORE the splash (just above
+-- the WelcomeDraw.Play call) so the splash is centered from frame one and a held-
+-- START recovery is viewable immediately; only the slow device init is under the
+-- splash. The START-held poll ABOVE also stays pre-splash (boot_start_held is read
+-- below as an upvalue). Inner block kept at its original indentation for a clean diff.
 local function do_boot_init()
-PLDR.LoadSettingsNonFatal()
-if boot_start_held then
-  PLDR.VIDEO_STANDARD = PLDR.VIDEO_STANDARD_AUTO
-  if type(PLDR.ApplyVideoStandardRuntime) == "function" then
-    PLDR.ApplyVideoStandardRuntime(PLDR.VIDEO_STANDARD_AUTO)
-  end
-  -- Also drop the persisted Boot Page (and any -page auto-enter) so a device
-  -- whose probe can stall -- e.g. MX4SIO with no card -- can't auto-enter and
-  -- wedge the boot. Holding START thus always lands on the plain carousel,
-  -- where the user can change Boot Page / Video Standard in Settings.
-  PLDR.BOOT_PAGE = "Carousel"
-  if type(UI) == "table" and type(UI.MainMenu) == "table" then
-    UI.MainMenu.PendingAutoEnter = false
-  end
-  if type(UI) == "table" and type(UI.Notif_queue) == "table" then
-    UI.Notif_queue.add("Start held at boot: display reset to Auto, Boot Page reset to Carousel.\nAdjust them in Settings if needed.", "warn")
-  end
-end
 PLDR.AutoInitStartupBackends()
 -- Auto-launch BEFORE surfacing the debug toast: Notif_queue keeps only the
 -- 2 newest toasts, so queueing the debug toast last guarantees it survives
@@ -6219,8 +6203,35 @@ end -- do_boot_init
 ---MAIN PROGRAM BEHAVIOUR BEGINS
 local initial_scene = UI.SCENES.MMAIN
 local show_boot_credits = true
--- Splash-first: paint the welcome splash, then run do_boot_init UNDER it (see the
--- boot_init_fn call in UI.WelcomeDraw.Play), so the boot black screen is covered.
+-- Load settings + apply the video mode BEFORE the splash paints. The first video
+-- apply force-recenters the raster (on PAL the boot image sat top-aligned with a
+-- bottom bar otherwise), so doing it here centers the splash from frame one instead
+-- of snapping mid-fade; and a held-START recovery shows a viewable picture at once
+-- rather than fading in behind the broken mode. Settings load is cheap -- only the
+-- SLOW device bring-up stays under the splash (do_boot_init). This restores the
+-- START-held video + Boot-Page recovery that used to live at the top of
+-- do_boot_init. (#501 splash centering)
+PLDR.LoadSettingsNonFatal()
+if boot_start_held then
+  PLDR.VIDEO_STANDARD = PLDR.VIDEO_STANDARD_AUTO
+  if type(PLDR.ApplyVideoStandardRuntime) == "function" then
+    PLDR.ApplyVideoStandardRuntime(PLDR.VIDEO_STANDARD_AUTO)
+  end
+  -- Also drop the persisted Boot Page (and any -page auto-enter) so a device whose
+  -- probe can stall -- e.g. MX4SIO with no card -- can't auto-enter and wedge the
+  -- boot. Holding START thus always lands on the plain carousel, where the user can
+  -- change Boot Page / Video Standard in Settings.
+  PLDR.BOOT_PAGE = "Carousel"
+  if type(UI) == "table" and type(UI.MainMenu) == "table" then
+    UI.MainMenu.PendingAutoEnter = false
+  end
+  if type(UI) == "table" and type(UI.Notif_queue) == "table" then
+    UI.Notif_queue.add("Start held at boot: display reset to Auto, Boot Page reset to Carousel.\nAdjust them in Settings if needed.", "warn")
+  end
+end
+-- Splash-first: paint the welcome splash, then run do_boot_init (slow device
+-- bring-up) UNDER it (see the boot_init_fn call in UI.WelcomeDraw.Play), so the
+-- boot black screen is covered.
 UI.WelcomeDraw.Play(initial_scene, show_boot_credits, do_boot_init)
 if UI.Transition ~= nil then
   UI.Transition.allowSceneWrite = true
