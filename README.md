@@ -53,7 +53,7 @@ To set up POPSLoader:
 2.  **Copy Launcher Files**: Copy the `PS1_POPSLOADER/` folder to the device or memory card from which you want to launch POPSLoader.
 3.  **Place POPS Files**: Put the `PATCH_5.BIN` file (included in the `POPS/` directory of the ZIP) into your active `POPS` folder (see directory structures below).
 4.  **Add POPStarter & POPS Files**: Add your POPStarter executable (`POPSTARTER.ELF`) and the required POPS support files (`IOPRP252.IMG`, `POPS.ELF`, `POPS.PAK`, `POPS_IOX.PAK`) to your `POPS` folder. These copyrighted Sony POPS files are not included in the release package.
-5.  **Add Games**: Copy your PS1 game images in `.VCD` format into the same `POPS` folder.
+5.  **Add Games**: Copy your PS1 game images in `.VCD` format into the same `POPS` folder. Keep `.VCD` filenames to **73 characters or fewer** — POPStarter (which performs the actual launch) will not load longer names.
 6.  **Launch**: Run `POPSLOADER.ELF` using wLaunchELF, Free McBoot, or your preferred ELF launcher.
 
 ---
@@ -187,6 +187,9 @@ HDD-installed POPSLoader saves its `.pldrs` settings file **on the HDD itself**,
 ### Game launches to a black screen
 *   Verify that `IOPRP252.IMG`, `POPS.ELF`, and the `.PAK` files are present in the POPS folder.
 *   Check that your game image `.VCD` is healthy and uncorrupted.
+
+### A game appears in the list but won't launch
+*   Check the `.VCD` **filename length**. POPStarter (which performs the actual launch) caps it: a **73-character** filename launches, but **74 or more** will not. Shorten the filename. This is a POPStarter limitation, not POPSLoader, so it cannot be raised in the launcher. (The POPStarter readme cites 89 characters, but testing on real hardware found the working limit is 73.)
 
 ### Cover art is not showing up
 *   Check that the cover image is in `.png` format.
