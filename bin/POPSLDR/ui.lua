@@ -262,6 +262,7 @@ local CoverCache = {
   last_key = nil,
   last_img = nil,
   last_desc = nil,
+  last_desc_lines = nil,
   desc_scroll = 0
 }
 function CoverCache:Clear()
@@ -277,6 +278,7 @@ function CoverCache:Clear()
   self.last_key = nil
   self.last_img = nil
   self.last_desc = nil
+  self.last_desc_lines = nil
   self.desc_scroll = 0
 end
 function CoverCache:EvictIfNeeded()
@@ -333,6 +335,7 @@ function CoverCache:UpdateSelection(vcd_path, use_hdd_common_art, entry)
   self.last_key = key
   self.last_img = nil
   self.last_desc = nil
+  self.last_desc_lines = nil
   self.desc_scroll = 0  -- new selection -> start its description at the top
   if (use_hdd_common_art ~= true) and (vcd_path == nil or vcd_path == "") then
     return nil
@@ -345,6 +348,7 @@ function CoverCache:UpdateSelection(vcd_path, use_hdd_common_art, entry)
     local desc_path = string.gsub(candidates[1], "%.png$", ".txt")
     if desc_path ~= candidates[1] then
       self.last_desc = ReadGameDetailsText(desc_path)
+      self.last_desc_lines = nil  -- re-wrap lazily for the new description
     end
   end
   for i = 1, #candidates do
@@ -2513,7 +2517,13 @@ UI = {
             local avail = bottom_limit - top_margin
             local cap = math.floor((avail - art_h - details_gap) / details_line_h)
             if cap < 1 then cap = 1 end
-            local all_lines = WrapGameDetailsLines(UI.CoverCache.last_desc, 30)
+            local all_lines = UI.CoverCache.last_desc_lines
+            if all_lines == nil then
+              -- Wrap ONCE per selection and cache it; re-wrapping the .txt every
+              -- frame was dragging list nav while cover preview is on (#499/#501).
+              all_lines = WrapGameDetailsLines(UI.CoverCache.last_desc, 30)
+              UI.CoverCache.last_desc_lines = all_lines
+            end
             details_total = #all_lines
             if details_total > 0 then
               details_visible = details_total
@@ -2560,10 +2570,13 @@ UI = {
           -- "Cover disabled" rather than reusing the "Missing Cover" placeholder,
           -- which is only correct when a game truly has no cover image. (#501)
           if not cover_enabled then
-            local box_h = frame_h or draw_h
-            Font.ftPrint(SFONT, draw_x + Round(draw_w / 2),
-                         draw_y + Round((box_h - 16) / 2), 8,
-                         draw_w, 16, "Cover disabled", UI.CCOL.GREY)
+            -- Center on the FRAME (right-anchored in the preview box), not the box:
+            -- on PAL frame_w < draw_w, so box-center left-shifted the label. (#501)
+            local fw = frame_w or draw_w
+            local fh = frame_h or draw_h
+            Font.ftPrint(SFONT, draw_x + draw_w - Round(fw / 2),
+                         draw_y + Round((fh - 16) / 2), 8,
+                         fw, 16, "Cover disabled", UI.CCOL.GREY)
           end
           -- Paint the description: window the visible slice from the scroll offset,
           -- with a "..." affordance when there's more above/below (font-safe, same
