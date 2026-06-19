@@ -588,13 +588,14 @@ UI = {
       UI.LAYOUT.TITLE_Y = Round(safe.T + 6)
       UI.LAYOUT.STATUS_Y = Round(UI.LAYOUT.TITLE_Y + 20)
       UI.LAYOUT.ICON_ROW_Y = Round(UI.SCR.Y_MID - 40)
-      -- Expand the list 3px on EACH side without touching the cover (oldman63 #501
-      -- r3): left margin 40 -> 21, and the gap before the cover 6 -> 3 (still clear
-      -- of the opaque 256-wide frame box at SCR.X - safe.R - 256, so list text never
-      -- slides under the artwork). Net ~6px wider; the cover stays right-anchored.
-      UI.LAYOUT.LIST_X = Round(safe.L - 19)
+      -- Expand the list 3px MORE on each side (oldman63 #501 r4): left margin 40 -> 18
+      -- and the gap before the cover 3 -> 0, so the list now runs FLUSH to the opaque
+      -- 256-wide frame box (SCR.X - safe.R - 256) on the right and 18px from the screen
+      -- edge on the left. NB: both are past CRT action-safe now -- the left characters
+      -- and the right edge butting the cover frame want a hardware eyeball. Cover unmoved.
+      UI.LAYOUT.LIST_X = Round(safe.L - 22)
       UI.LAYOUT.LIST_Y = Round(safe.T + 16)
-      UI.LAYOUT.LIST_W = (UI.SCR.X - safe.R - 256) - 3 - UI.LAYOUT.LIST_X
+      UI.LAYOUT.LIST_W = (UI.SCR.X - safe.R - 256) - UI.LAYOUT.LIST_X
       UI.LAYOUT.LIST_MAX = math.floor((safe_h - 80) / UI.LAYOUT.LIST_ROW_H)
       if UI.LAYOUT.LIST_MAX < 1 then
         UI.LAYOUT.LIST_MAX = 1
