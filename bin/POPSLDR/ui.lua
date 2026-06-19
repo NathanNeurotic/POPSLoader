@@ -588,14 +588,13 @@ UI = {
       UI.LAYOUT.TITLE_Y = Round(safe.T + 6)
       UI.LAYOUT.STATUS_Y = Round(UI.LAYOUT.TITLE_Y + 20)
       UI.LAYOUT.ICON_ROW_Y = Round(UI.SCR.Y_MID - 40)
-      -- Widen the list ~2 chars more WITHOUT touching the cover (oldman63 #501 r2):
-      -- pull the left margin in 16px (40 -> 24, the overscan-capped max -- going
-      -- further risks clipping on tight CRTs) and extend the list to a 6px gap
-      -- before the cover. Cover left = SCR.X - safe.R - 256 (256 = preview_w set
-      -- below); the cover stays right-anchored, unchanged.
-      UI.LAYOUT.LIST_X = Round(safe.L - 16)
+      -- Expand the list 3px on EACH side without touching the cover (oldman63 #501
+      -- r3): left margin 40 -> 21, and the gap before the cover 6 -> 3 (still clear
+      -- of the opaque 256-wide frame box at SCR.X - safe.R - 256, so list text never
+      -- slides under the artwork). Net ~6px wider; the cover stays right-anchored.
+      UI.LAYOUT.LIST_X = Round(safe.L - 19)
       UI.LAYOUT.LIST_Y = Round(safe.T + 16)
-      UI.LAYOUT.LIST_W = (UI.SCR.X - safe.R - 256) - 6 - UI.LAYOUT.LIST_X
+      UI.LAYOUT.LIST_W = (UI.SCR.X - safe.R - 256) - 3 - UI.LAYOUT.LIST_X
       UI.LAYOUT.LIST_MAX = math.floor((safe_h - 80) / UI.LAYOUT.LIST_ROW_H)
       if UI.LAYOUT.LIST_MAX < 1 then
         UI.LAYOUT.LIST_MAX = 1
@@ -2334,8 +2333,12 @@ UI = {
           [UI.SCENES.GUSBFAT] = "USB"
         }
         local scene_title = titles[UI.CURSCENE]
+        -- Lift the device label clear of the first game row: it's centered at
+        -- TITLE_Y, only ~10px above LIST_Y, so a long first-row title overlaps it.
+        -- Raise ~8px (to the top safe edge) without moving the list. (#501)
+        local device_title_y = layout.TITLE_Y - 8
         if scene_title ~= nil and not UI.ShouldHideAuxText(UI.CURSCENE) then
-          Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, scene_title, UI.CCOL.GREY)
+          Font.ftPrint(LFONT, UI.SCR.X_MID, device_title_y, 8, UI.SCR.X, 16, scene_title, UI.CCOL.GREY)
         end
         local placeholders = {
           [UI.SCENES.GBDMHDD] = "BDM HDD"
@@ -2343,7 +2346,7 @@ UI = {
         local placeholder_title = placeholders[UI.CURSCENE]
         if placeholder_title ~= nil then
           if not UI.ShouldHideAuxText(UI.CURSCENE) then
-            Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, placeholder_title, UI.CCOL.GREY)
+            Font.ftPrint(LFONT, UI.SCR.X_MID, device_title_y, 8, UI.SCR.X, 16, placeholder_title, UI.CCOL.GREY)
             Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID, 20, UI.SCR.X, 32, "Not implemented yet", UI.CCOL.YELLOW)
           end
           Input_GetEvent()
