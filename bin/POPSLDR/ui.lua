@@ -2289,6 +2289,8 @@ UI = {
         if _da ~= "center" and _da ~= "right" then _da = "left" end
         UI.DetailsAlign = ((type(PLDR) == "table" and PLDR.SHOW_DETAILS == true) and _da) or "off"
         UI.SettingsEntryDetailsAlign = UI.DetailsAlign
+        UI.GameListCache = (type(PLDR) == "table" and PLDR.GAMELIST_CACHE == true)
+        UI.SettingsEntryGameListCache = UI.GameListCache
         UI.SettingsEntryKeyboardLayout = tostring(UI.KeyboardLayoutDraft or (type(PLDR) == "table" and PLDR.KEYBOARD_LAYOUT) or "QWERTY")
         UI.SettingsFocus = 1
         UI.SceneChange(UI.SCENES.MPROFILE)
@@ -2761,8 +2763,9 @@ UI = {
                or UI.CURSCENE == UI.SCENES.GUSBFAT) then
           -- R1 re-runs the SAME scan entering the page does, in place: re-detect
           -- the device and rebuild the list -- for hotplugging a card/drive or a
-          -- config change without leaving the page. These devices keep no
-          -- persistent cache (unlike HDD), so it's simply a fresh live scan.
+          -- config change without leaving the page. This is the FORCE path: a
+          -- fresh live scan that then OVERWRITES the device's .gamecache so the
+          -- refresh survives a reboot.
           local rescan_scene = UI.CURSCENE
           UI.RunBusyTask("Refreshing list...", function (report)
             local scan = UI.MakeBusyProgressReporter(report, "Scanning games...", 0.30, 0.95)
@@ -2777,6 +2780,7 @@ UI = {
               if type(mmce_prefix) == "string" and mmce_prefix ~= "" and doesFolderExist(mmce_prefix.."POPS/") then
                 report("Scanning MMCE games...", 0.30)
                 PLDR.GetPS1GameLists(mmce_prefix.."POPS/", true, scan)
+                PLDR.SaveGameListCache(mmce_prefix.."POPS/.gamecache", PLDR.GAMES, PLDR.HIDDEN)
               end
             elseif rescan_scene == UI.SCENES.GMX4SIO then
               report("Refreshing mass backends...", 0.16)
@@ -2788,6 +2792,7 @@ UI = {
               if type(mx4sio_root) == "string" and mx4sio_root ~= "" then
                 report("Scanning MX4SIO games...", 0.30)
                 PLDR.GetPS1GameLists(mx4sio_root, true, scan)
+                PLDR.SaveGameListCache(mx4sio_root..".gamecache", PLDR.GAMES, PLDR.HIDDEN)
               end
             else
               report("Initializing USB backend...", 0.16)
@@ -2796,6 +2801,10 @@ UI = {
               PLDR.CleanupGameList()
               report("Building USB game list...", 0.30)
               PLDR.BuildMassGameListByType("usb", nil, scan)
+              local usb_roots_r1 = PLDR.GetRootsByType("usb")
+              if type(usb_roots_r1) == "table" and usb_roots_r1[1] ~= nil and #PLDR.GAMES > 0 then
+                PLDR.SaveGameListCache(usb_roots_r1[1].."POPS/.gamecache", PLDR.GAMES, PLDR.HIDDEN)
+              end
             end
             report("Done", 1.0)
           end, "Failed to refresh list")
@@ -2988,6 +2997,7 @@ UI = {
           local details_align_val = (show_details_val and UI.DetailsAlign)
             or ((type(PLDR) == "table" and PLDR.DETAILS_ALIGN) or "left")
           if details_align_val ~= "center" and details_align_val ~= "right" then details_align_val = "left" end
+          local gamelist_cache_val = UI.GameListCache == true
           local video_live_before = nil
           if type(Screen) == "table" and type(Screen.getMode) == "function" then
             local okb, mb = pcall(Screen.getMode)
@@ -3010,6 +3020,7 @@ UI = {
                 global_hide = global_hide_val,
                 show_details = show_details_val,
                 details_align = details_align_val,
+                gamelist_cache = gamelist_cache_val,
                 hide_text = UI.HideTextMode == true,
                 prev_hide_text = UI.SettingsEntryHideTextMode == true,
                 apply_bdma = UI.BdmaDirty,
@@ -3039,6 +3050,7 @@ UI = {
             PLDR.GLOBAL_HIDE = global_hide_val
             PLDR.SHOW_DETAILS = show_details_val
             PLDR.DETAILS_ALIGN = details_align_val
+            PLDR.GAMELIST_CACHE = gamelist_cache_val
             if type(PLDR.ApplyVideoStandardRuntime) == "function" then
               PLDR.ApplyVideoStandardRuntime(video_key)
             end
@@ -3196,6 +3208,10 @@ UI = {
           end
           if UI.DetailsAlign ~= nil and UI.DetailsAlign ~= "off" then
             UI.DetailsAlign = "off"
+            UI.ProfileDirty = true
+          end
+          if UI.GameListCache == true then
+            UI.GameListCache = false
             UI.ProfileDirty = true
           end
           local default_video_key = VIDEO_STANDARD_AUTO
@@ -3436,6 +3452,13 @@ UI = {
           function() UI.DetailsAlign = DetailsAlignStep(UI.DetailsAlign, 1) end,
           function() UI.DetailsAlign = DetailsAlignStep(UI.DetailsAlign, -1) end,
           function() return tostring(UI.DetailsAlign) ~= tostring(UI.SettingsEntryDetailsAlign) end
+        )
+        AddCycle(
+          "Game list cache",
+          function() return UI.GameListCache and "On" or "Off" end,
+          function() UI.GameListCache = not UI.GameListCache end,
+          function() UI.GameListCache = not UI.GameListCache end,
+          function() return (UI.GameListCache == true) ~= (UI.SettingsEntryGameListCache == true) end
         )
 
         AddSection("POPSTARTER")
@@ -4034,9 +4057,15 @@ UI = {
               end
 	              PLDR.CleanupGameList()
 	              local mmce_pops = mmce_prefix.."POPS/"
-	              if doesFolderExist(mmce_pops) then
+	              local mmce_cache = mmce_pops..".gamecache"
+	              local mmce_cg, mmce_ch = PLDR.LoadGameListCache(mmce_cache)
+	              if mmce_cg ~= nil then
+	                PLDR.ApplyGameListCache(mmce_cg, mmce_pops, mmce_ch)
+	                report("Loaded MMCE list from cache...", 1.0)
+	              elseif doesFolderExist(mmce_pops) then
 	                report("Scanning MMCE games...", 0.48)
 	                PLDR.GetPS1GameLists(mmce_pops, true, scan_progress)
+	                PLDR.SaveGameListCache(mmce_cache, PLDR.GAMES, PLDR.HIDDEN)
 	              else
 	                UI.Notif_queue.add("MMCE has no POPS folder\nexpected mmce0:/POPS/", "warn")
 	              end
@@ -4071,9 +4100,17 @@ UI = {
                 UI.Notif_queue.add("No MX4SIO device detected", "warn")
                 return
 	              end
-	              report("Scanning MX4SIO games...", 0.48)
 	              PLDR.CleanupGameList()
-	              PLDR.GetPS1GameLists(mx4sio_root, true, scan_progress)
+	              local mx4sio_cache = mx4sio_root..".gamecache"
+	              local mx4_cg, mx4_ch = PLDR.LoadGameListCache(mx4sio_cache)
+	              if mx4_cg ~= nil then
+	                PLDR.ApplyGameListCache(mx4_cg, mx4sio_root, mx4_ch)
+	                report("Loaded MX4SIO list from cache...", 1.0)
+	              else
+	                report("Scanning MX4SIO games...", 0.48)
+	                PLDR.GetPS1GameLists(mx4sio_root, true, scan_progress)
+	                PLDR.SaveGameListCache(mx4sio_cache, PLDR.GAMES, PLDR.HIDDEN)
+	              end
 	              report("Opening MX4SIO list...", 1.0)
 	              UI.SceneChange(UI.SCENES.GMX4SIO)
             end, "Failed to load MX4SIO")
@@ -4136,16 +4173,27 @@ UI = {
 	                UI.Notif_queue.add("No USB backend detected\nreseat the drive and try again", "warn")
 	              end
 	              report("Building USB game list...", 0.44)
-	              local games = PLDR.BuildMassGameListByType("usb", nil, build_progress)
-	              if (games == nil or #games < 1) and usb_roots ~= nil and #usb_roots > 0 then
-	                report("Retrying USB scan...", 0.9)
-	                if type(System) == "table" and type(System.ensureUsbMass) == "function" then
-	                  System.ensureUsbMass()
-                end
-	                if type(PLDR.RefreshMassBackends) == "function" then
-	                  pcall(PLDR.RefreshMassBackends)
+	              local usb_cache = (usb_roots ~= nil and usb_roots[1] ~= nil) and (usb_roots[1].."POPS/.gamecache") or nil
+	              local usb_cg, usb_ch = nil, nil
+	              if usb_cache ~= nil then usb_cg, usb_ch = PLDR.LoadGameListCache(usb_cache) end
+	              if usb_cg ~= nil then
+	                PLDR.ApplyGameListCache(usb_cg, "", usb_ch)
+	                report("Loaded USB list from cache...", 1.0)
+	              else
+	                local games = PLDR.BuildMassGameListByType("usb", nil, build_progress)
+	                if (games == nil or #games < 1) and usb_roots ~= nil and #usb_roots > 0 then
+	                  report("Retrying USB scan...", 0.9)
+	                  if type(System) == "table" and type(System.ensureUsbMass) == "function" then
+	                    System.ensureUsbMass()
+	                  end
+	                  if type(PLDR.RefreshMassBackends) == "function" then
+	                    pcall(PLDR.RefreshMassBackends)
+	                  end
+	                  games = PLDR.BuildMassGameListByType("usb", nil, retry_progress)
 	                end
-	                games = PLDR.BuildMassGameListByType("usb", nil, retry_progress)
+	                if usb_cache ~= nil and #PLDR.GAMES > 0 then
+	                  PLDR.SaveGameListCache(usb_cache, PLDR.GAMES, PLDR.HIDDEN)
+	                end
 	              end
 	              report("Opening USB list...", 1.0)
               UI.SceneChange(UI.SCENES.GUSBFAT)

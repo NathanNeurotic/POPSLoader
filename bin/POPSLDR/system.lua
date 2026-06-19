@@ -3030,7 +3030,8 @@ local function EncodeSettings()
     "POPSTARTER_MC_FOLDER="..((PLDR.POPSTARTER_MC_FOLDER == false) and "0" or "1"),
     "HIDDEN_DEVICES="..PLDR.NormalizeHiddenDevices(PLDR.HIDDEN_DEVICES),
     "SHOW_DETAILS="..((PLDR.SHOW_DETAILS == true) and "1" or "0"),
-    "DETAILS_ALIGN="..((PLDR.DETAILS_ALIGN == "center" or PLDR.DETAILS_ALIGN == "right") and PLDR.DETAILS_ALIGN or "left")
+    "DETAILS_ALIGN="..((PLDR.DETAILS_ALIGN == "center" or PLDR.DETAILS_ALIGN == "right") and PLDR.DETAILS_ALIGN or "left"),
+    "GAMELIST_CACHE="..((PLDR.GAMELIST_CACHE == true) and "1" or "0")
   }
   return table.concat(lines, "\n").."\n"
 end
@@ -3071,7 +3072,8 @@ local function SnapshotSettingsState()
     global_hide = (PLDR.GLOBAL_HIDE == true),
     hidden_devices = PLDR.NormalizeHiddenDevices(PLDR.HIDDEN_DEVICES),
     show_details = (PLDR.SHOW_DETAILS == true),
-    details_align = ((PLDR.DETAILS_ALIGN == "center" or PLDR.DETAILS_ALIGN == "right") and PLDR.DETAILS_ALIGN or "left")
+    details_align = ((PLDR.DETAILS_ALIGN == "center" or PLDR.DETAILS_ALIGN == "right") and PLDR.DETAILS_ALIGN or "left"),
+    gamelist_cache = (PLDR.GAMELIST_CACHE == true)
   }
 end
 
@@ -3117,6 +3119,9 @@ local function ApplySettingsState(state)
   end
   if type(state.details_align) == "string" then
     PLDR.DETAILS_ALIGN = (state.details_align == "center" or state.details_align == "right") and state.details_align or "left"
+  end
+  if type(state.gamelist_cache) == "boolean" then
+    PLDR.GAMELIST_CACHE = state.gamelist_cache
   end
   PLDR.ApplyVideoStandardRuntime(PLDR.VIDEO_STANDARD)
   if type(state.hide_text) == "boolean" and type(UI) == "table" then
@@ -3235,6 +3240,7 @@ function PLDR.LoadSettingsNonFatal()
   PLDR.HIDDEN_DEVICES = ""
   PLDR.SHOW_DETAILS = false
   PLDR.DETAILS_ALIGN = "left"  -- left|center|right; alignment of the game-details box (used only when SHOW_DETAILS)
+  PLDR.GAMELIST_CACHE = false  -- opt-in persistent per-device USB/MMCE/MX4SIO list cache (OFF = always live scan)
   if type(UI) == "table" then
     if type(UI.SetHideTextMode) == "function" then
       UI.SetHideTextMode(false, false)
@@ -3347,6 +3353,7 @@ function PLDR.LoadSettingsNonFatal()
   local hidden_devices = string.match(data, "\nHIDDEN_DEVICES=([^\n]*)") or string.match(data, "^HIDDEN_DEVICES=([^\n]*)")
   local show_details = string.match(data, "\nSHOW_DETAILS=([^\n]+)") or string.match(data, "^SHOW_DETAILS=([^\n]+)")
   local details_align = string.match(data, "\nDETAILS_ALIGN=([^\n]+)") or string.match(data, "^DETAILS_ALIGN=([^\n]+)")
+  local gamelist_cache = string.match(data, "\nGAMELIST_CACHE=([^\n]+)") or string.match(data, "^GAMELIST_CACHE=([^\n]+)")
   if profile ~= nil and PLDR.PROFILES ~= nil and PLDR.PROFILES[profile] ~= nil then
     PLDR.SELECTED_PROFILE = profile
     PLDR.POPSTARTER_PATH = PLDR.PROFILES[profile].ELF
@@ -3408,6 +3415,10 @@ function PLDR.LoadSettingsNonFatal()
   if details_align ~= nil then
     PLDR.DETAILS_ALIGN = (details_align == "center" or details_align == "right") and details_align or "left"
   end
+  local glc = ParseBooleanSetting(gamelist_cache)
+  if glc ~= nil then
+    PLDR.GAMELIST_CACHE = glc == true
+  end
   if hidden_devices ~= nil then
     PLDR.HIDDEN_DEVICES = PLDR.NormalizeHiddenDevices(hidden_devices)
   else
@@ -3455,6 +3466,8 @@ function PLDR.CommitSettingsChanges(opts)
   if type(opts.show_details) == "boolean" then next_show_details = opts.show_details end
   local next_details_align = (prev.details_align == "center" or prev.details_align == "right") and prev.details_align or "left"
   if opts.details_align == "left" or opts.details_align == "center" or opts.details_align == "right" then next_details_align = opts.details_align end
+  local next_gamelist_cache = (prev.gamelist_cache == true)
+  if type(opts.gamelist_cache) == "boolean" then next_gamelist_cache = opts.gamelist_cache end
   -- Explicit boolean check, NOT `(type==boolean) and opts.x or prev.x`: that
   -- idiom collapses a legitimate `false` to prev (Lua and/or short-circuit), so
   -- Hide-Text could never be toggled OFF through a settings save. Mirrors the
@@ -3475,6 +3488,7 @@ function PLDR.CommitSettingsChanges(opts)
     global_hide = next_global_hide,
     show_details = next_show_details,
     details_align = next_details_align,
+    gamelist_cache = next_gamelist_cache,
     hidden_devices = PLDR.NormalizeHiddenDevices(opts.hidden_devices or prev.hidden_devices)
   }
   local apply_bdma = opts.apply_bdma == true
@@ -4659,6 +4673,95 @@ end
 function PLDR.CleanupGameList()
   local count = #PLDR.GAMES
   for i=0, count do PLDR.GAMES[i]=nil end
+end
+
+-- ============================================================================
+-- Per-device persistent game-list cache (plain text, loadfile-FREE).
+-- Lets USB / MMCE / MX4SIO skip the "Building game list..." rescan on every boot:
+-- the scanned list is written next to the games (<root>POPS/.gamecache) and read
+-- back on the next page-open; R1 (Refresh) forces a fresh scan + rewrite. Matters
+-- on large libraries.
+--
+-- Format (one record per line; entries never contain newlines):
+--   PLDRGC1            -- magic/version
+--   G <entry>          -- one per game, the EXACT PLDR.GAMES[i] string, verbatim
+--   H <entry>          -- one per PLDR.HIDDEN key (preserves dimmed/hidden state)
+--
+-- The device GAME PATH is NOT stored: the caller passes the LIVE path to Apply,
+-- so a card/drive that re-enumerates to a different slot still resolves (MMCE /
+-- MX4SIO entries are bare names + the live PLDR.GAMEPATH; USB entries embed their
+-- own root). NEVER loadfile/load/dofile -- they are nil in the embedded runtime
+-- (the landmine that disabled the old HDD cache); pure string parsing only.
+-- ============================================================================
+-- Signature of the scan-affecting settings (Global Hide + multi-disc collapse).
+-- Stored in the cache; a mismatch on load forces a rescan, so toggling those
+-- settings takes effect without a manual R1 (the HDD path WipeCache's on change;
+-- on-device caches can't be deleted at settings-time, so we self-invalidate here).
+function PLDR.GameListCacheSignature()
+  return "gh"..((PLDR.GLOBAL_HIDE == true) and "1" or "0")
+        .."md"..((PLDR.COLLAPSE_MULTIDISC == true) and "1" or "0")
+end
+
+function PLDR.SaveGameListCache(cache_path, games, hidden)
+  if PLDR.GAMELIST_CACHE ~= true then return false end  -- opt-in; OFF by default -> never writes a cache file
+  if type(cache_path) ~= "string" or cache_path == "" then return false end
+  if type(games) ~= "table" then return false end
+  local lines = { "PLDRGC1", "S "..PLDR.GameListCacheSignature() }
+  for i = 1, #games do lines[#lines + 1] = "G "..tostring(games[i]) end
+  if type(hidden) == "table" then
+    for k, v in pairs(hidden) do
+      if v == true then lines[#lines + 1] = "H "..tostring(k) end
+    end
+  end
+  local ok_cat, data = pcall(table.concat, lines, "\n")
+  if not ok_cat then return false end
+  local ok_w, saved = pcall(WriteAtomic, cache_path, data)  -- pcall: device may be full/RO
+  return ok_w and saved == true
+end
+
+-- Returns games(table), hidden(table) on success; nil on a miss or ANY parse
+-- problem (the caller then falls through to a fresh scan -- never throws).
+function PLDR.LoadGameListCache(cache_path)
+  if PLDR.GAMELIST_CACHE ~= true then return nil end  -- opt-in; OFF by default -> always a miss -> live scan
+  if type(cache_path) ~= "string" or cache_path == "" then return nil end
+  if not doesFileExist(cache_path) then return nil end
+  local data = ReadWholeFile(cache_path)
+  if type(data) ~= "string" or data == "" then return nil end
+  local games, hidden = {}, {}
+  local first, sig_ok = true, false
+  local want_sig = PLDR.GameListCacheSignature()
+  for line in string.gmatch(data .. "\n", "([^\n]*)\n") do
+    line = string.gsub(line, "\r$", "")
+    if first then
+      first = false
+      if line ~= "PLDRGC1" then return nil end  -- not our format / corrupt
+    elseif string.sub(line, 1, 2) == "S " then
+      if string.sub(line, 3) ~= want_sig then return nil end  -- built under different settings -> rescan
+      sig_ok = true
+    elseif string.sub(line, 1, 2) == "G " then
+      games[#games + 1] = string.sub(line, 3)
+    elseif string.sub(line, 1, 2) == "H " then
+      hidden[string.sub(line, 3)] = true
+    end
+  end
+  if not sig_ok or #games == 0 then return nil end
+  return games, hidden
+end
+
+-- Rebuild the live list from a loaded cache, exactly as a fresh scan leaves it
+-- (PLDR.GAMES reassigned + sorted, PLDR.GAMEPATH = the LIVE device path, PLDR.HIDDEN
+-- rehydrated) so render / cover / launch behave identically to a real scan.
+function PLDR.ApplyGameListCache(games, gamepath, hidden)
+  if type(games) ~= "table" then return false end
+  PLDR.GAMES = {}
+  for i = 1, #games do PLDR.GAMES[i] = games[i] end
+  table.sort(PLDR.GAMES)
+  PLDR.GAMEPATH = gamepath or ""
+  PLDR.HIDDEN = {}
+  if type(hidden) == "table" then
+    for k, v in pairs(hidden) do if v == true then PLDR.HIDDEN[k] = true end end
+  end
+  return true
 end
 
 function PLDR.HDD.CreateCache(reuse_current_list)
