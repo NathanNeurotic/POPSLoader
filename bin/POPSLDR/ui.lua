@@ -524,8 +524,11 @@ UI = {
         -- cursor -- UI.GameList.CURR is a single global index shared across pages.
         -- Gated to carousel->list entry, so R1 in-place rescan and the -page /
         -- Boot-Page auto-enter (which set CURR deliberately, or want the top anyway)
-        -- are untouched. UI.IsGameScene(nil) is false, so a first/unknown prev is fine.
-        if UI.IsGameScene(scene) and not UI.IsGameScene(prev_scene) and prev_scene ~= UI.SCENES.CREDITS then
+        -- are untouched. Overlays opened FROM a list that return to it -- Credits AND
+        -- Settings (MPROFILE) -- are exempted so they keep your scroll position.
+        -- UI.IsGameScene(nil) is false, so a first/unknown prev is fine.
+        if UI.IsGameScene(scene) and not UI.IsGameScene(prev_scene)
+           and prev_scene ~= UI.SCENES.CREDITS and prev_scene ~= UI.SCENES.MPROFILE then
           UI.GameList.CURR = 1
           UI.GameList.STARTUP = 1
         end
