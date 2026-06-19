@@ -588,11 +588,12 @@ UI = {
       UI.LAYOUT.TITLE_Y = Round(safe.T + 6)
       UI.LAYOUT.STATUS_Y = Round(UI.LAYOUT.TITLE_Y + 20)
       UI.LAYOUT.ICON_ROW_Y = Round(UI.SCR.Y_MID - 40)
-      -- Widen the list ~1.5 chars WITHOUT touching the cover (oldman63 #501): pull
-      -- the left margin in 8px (40 -> 32, still within typical CRT action-safe) and
-      -- extend the list to a 6px gap before the cover. Cover left = SCR.X - safe.R
-      -- - 256 (256 = preview_w set below); the cover stays right-anchored, unchanged.
-      UI.LAYOUT.LIST_X = Round(safe.L - 8)
+      -- Widen the list ~2 chars more WITHOUT touching the cover (oldman63 #501 r2):
+      -- pull the left margin in 16px (40 -> 24, the overscan-capped max -- going
+      -- further risks clipping on tight CRTs) and extend the list to a 6px gap
+      -- before the cover. Cover left = SCR.X - safe.R - 256 (256 = preview_w set
+      -- below); the cover stays right-anchored, unchanged.
+      UI.LAYOUT.LIST_X = Round(safe.L - 16)
       UI.LAYOUT.LIST_Y = Round(safe.T + 16)
       UI.LAYOUT.LIST_W = (UI.SCR.X - safe.R - 256) - 6 - UI.LAYOUT.LIST_X
       UI.LAYOUT.LIST_MAX = math.floor((safe_h - 80) / UI.LAYOUT.LIST_ROW_H)
@@ -2428,7 +2429,10 @@ UI = {
               preview_img = IMG.missing
             end
           else
-            preview_img = IMG.default or IMG.missing
+            -- Preview toggled OFF (Square): leave the box empty + framed and label
+            -- it "Cover disabled" below, instead of reusing the "Missing Cover" art
+            -- (which only fits a game that genuinely has no cover image). (#501)
+            preview_img = nil
           end
           local draw_x = preview_x
           local draw_y = preview_y
@@ -2547,6 +2551,15 @@ UI = {
           if IMG.frame ~= nil and frame_w ~= nil and frame_h ~= nil then
             local frame_x = draw_x + (draw_w - frame_w)
             Graphics.drawScaleImage(IMG.frame, frame_x, draw_y, frame_w, frame_h)
+          end
+          -- Cover preview toggled OFF (Square): label the empty framed box
+          -- "Cover disabled" rather than reusing the "Missing Cover" placeholder,
+          -- which is only correct when a game truly has no cover image. (#501)
+          if not cover_enabled then
+            local box_h = frame_h or draw_h
+            Font.ftPrint(SFONT, draw_x + Round(draw_w / 2),
+                         draw_y + Round((box_h - 16) / 2), 8,
+                         draw_w, 16, "Cover disabled", UI.CCOL.GREY)
           end
           -- Paint the description: window the visible slice from the scroll offset,
           -- with a "..." affordance when there's more above/below (font-safe, same
