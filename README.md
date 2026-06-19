@@ -108,7 +108,7 @@ Navigate POPSLoader using a standard PS2 controller.
 | **Start** | Open the Settings / Profile Editor |
 | **Select** | Toggle "Hide Text Mode" (clears the UI for a clean view of cover art) |
 | **Square (□)** | Toggle cover-art preview on / off (in the game list) |
-| **Right Analog Stick (up / down)** | Scroll a long game description that doesn't fully fit on screen (when *Game details* are enabled and a `<game>.txt` is present) |
+| **Right Analog Stick (up / down)** | Scroll a long game description that doesn't fully fit on screen (when *Game details* are enabled and a `<game>.txt` is present). Speed is set in *Settings → Description scroll speed*. |
 | **L3 (left stick click)** | Hide / unhide the selected game (writes/removes a `<name>.hide` marker — works on every device, including the internal HDD) |
 | **R3 (right stick click)** | Open the per-device **hidden games** list (to review and unhide) |
 | **R2** | Launch in "HDD Alt" mode (HDD (PFS) game list only — for an HDD-resident POPSTARTER) |
@@ -139,6 +139,9 @@ Press **Start** on the menu to open Settings; changes save when you confirm. Set
 | :--- | :--- | :--- |
 | **Multi-disc games** | **Show all discs** (default) · First disc only | *First disc only* hides the secondary discs of multi-disc games so only disc 1 shows. **Detection is purely by filename** — a disc is hidden if its name contains `(Disc 2)`, `(Disc 3)`, `(CD 2)`, `(Disk 2)`… (any number ≥ 2). So it **only works if you name your files with that convention**, e.g. `Final Fantasy IX (Disc 1).VCD` / `Final Fantasy IX (Disc 2).VCD`. Launch disc 1 and swap discs in-game via your VMC. (PS1 discs carry no shared "this is the same game" metadata, so the filename is the only signal.) Applies to every device. |
 | **Hidden games** | **Visible (manage)** (default) · Hidden | Per-game hide layer. Press **L3** on any game to hide or unhide it, or **R3** to open the per-device hidden list — hiding writes (or removes) a tiny `<name>.hide` marker next to the game's `.VCD`, exactly like the `<name>.png` cover. *Hidden* filters tagged games out of the list; *Visible (manage)* shows them **dimmed** so you can manage them with L3. In-app hiding works on **every device** — USB / MX4SIO / MMCE / Memory Card **and the internal HDD** (POPSLoader writes the `.hide` on the HDD via its read-write boot-partition mount). |
+| **Game details** | **Off** (default) · Left · Center · Right | Shows a per-game blurb from a `<game>.txt` sidecar in a small panel under the cover, in the chosen text alignment (*Off* hides it). Authored line breaks are preserved; scroll a long blurb with the **right analog stick**. |
+| **Description scroll speed** | Fast · Medium · **Slow** (default) | How fast — and how firm a stick push — the **right analog stick** scrolls the *Game details* blurb. *Slow* is the most deliberate; *Fast* moves more lines per second. Only relevant when *Game details* is on. |
+| **Game list cache** | **Off** (default) · On | When **On**, USB / MMCE / MX4SIO save their scanned game list per device so the "Building game list…" rescan only runs once (rebuild it with **R1**). **Off** = always live-scan (the default, unchanged behavior). |
 
 ### Other settings
 
