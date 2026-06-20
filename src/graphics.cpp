@@ -563,6 +563,13 @@ GSTEXTURE* loadbmp(FILE* File, bool delayed)
 	u32 TextureSize = gsKit_texture_size_ee(tex->Width, tex->Height, tex->PSM);
 
 	tex->Mem = (u32*)memalign(128,TextureSize);
+	if (tex->Mem == NULL) {
+		DPRINTF("BMP: pixel buffer alloc failed\n");
+		free(tex->Clut);   // NULL-inited up front; set only in the 4/8-bit paths below
+		free(tex);
+		fclose(File);
+		return NULL;
+	}
 
 	if(Bitmap.InfoHeader.BitCount == 24)
 	{
@@ -824,6 +831,8 @@ static void  _ps2_load_JPEG_generic(GSTEXTURE *Texture, struct jpeg_decompress_s
 	DPRINTF("Texture Size = %i\n",textureSize);
 	#endif
 	Texture->Mem = (u32*)memalign(128, textureSize);
+	if (Texture->Mem == NULL)
+		longjmp(jerr->setjmp_buffer, 1);  // OOM (oversized/corrupt cover) -> setjmp cleanup frees Mem/Clut/tex + fclose
 
 	unsigned int row_stride = textureSize/Texture->Height;
 	unsigned char *row_pointer = (unsigned char *)Texture->Mem;
