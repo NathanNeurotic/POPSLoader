@@ -168,6 +168,7 @@ jobs:
           cp -f bin/POPSLDR/del.icn dist_root/PS1_POPSLOADER/del.icn
 
           cp -f bin/POPSLDR/PATCH_5.BIN dist_root/POPS/PATCH_5.BIN
+          cp -f bin/POPSLDR/POPSTARTER.ELF dist_root/POPS/POPSTARTER.ELF
 
           cd dist_root
           find PS1_POPSLOADER POPS -type f | LC_ALL=C sort | zip -X -9 ../POPSLOADER.zip -@ >/dev/null
@@ -186,6 +187,7 @@ jobs:
           zpath = "POPSLOADER.zip"
           expected = {
               "POPS/PATCH_5.BIN",
+              "POPS/POPSTARTER.ELF",
               "PS1_POPSLOADER/APPINFO.PBT",
               "PS1_POPSLOADER/BUILD_INFO.txt",
               "PS1_POPSLOADER/POPSLOADER.ELF",
