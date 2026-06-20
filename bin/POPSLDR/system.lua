@@ -2614,13 +2614,17 @@ local function WriteAtomic(dest, data)
   local offset = 1
   while offset <= total do
     local chunk = string.sub(data, offset, math.min(offset + 32768 - 1, total))
-    local ok_write = pcall(System.writeFile, fd, chunk, string.len(chunk))
-    if not ok_write then
+    local chunk_len = string.len(chunk)
+    -- System.writeFile is a raw POSIX write(): it returns the bytes ACTUALLY written
+    -- (short on a full/flaky device, -1 on error) and does NOT throw. Require the full
+    -- count, else a truncated temp file gets promoted as a valid save/cache. (Codex F1)
+    local ok_write, wrote = pcall(System.writeFile, fd, chunk, chunk_len)
+    if not ok_write or type(wrote) ~= "number" or wrote ~= chunk_len then
       pcall(System.closeFile, fd)
       pcall(System.removeFile, tmp)
       return false
     end
-    offset = offset + string.len(chunk)
+    offset = offset + chunk_len
   end
   pcall(System.closeFile, fd)
   if not PromoteTmpToDest(tmp, dest) then
@@ -4747,6 +4751,8 @@ function PLDR.LoadGameListCache(cache_path)
   if PLDR.GAMELIST_CACHE ~= true then return nil end  -- opt-in; OFF by default -> always a miss -> live scan
   if type(cache_path) ~= "string" or cache_path == "" then return nil end
   if not doesFileExist(cache_path) then return nil end
+  local sz = GetFileSizeSafe(cache_path)
+  if type(sz) == "number" and sz > 4*1024*1024 then return nil end  -- corrupt/huge -> miss -> live scan (Codex F5)
   local data = ReadWholeFile(cache_path)
   if type(data) ~= "string" or data == "" then return nil end
   local games, hidden = {}, {}
@@ -4823,8 +4829,11 @@ function PLDR.HDD.CreateCache(reuse_current_list)
   pcall(function()
     local fd = System.openFile(C, FCREATE)
     if fd ~= nil and not (type(fd) == "number" and fd < 0) then
-      System.writeFile(fd, data, #data)
+      local wrote = System.writeFile(fd, data, #data)  -- raw write(): short/-1, no throw
       System.closeFile(fd)
+      if type(wrote) ~= "number" or wrote ~= #data then
+        pcall(System.removeFile, C)  -- partial write -> drop the truncated cache (rescan next) (Codex F1)
+      end
     end
   end)
   PLDR.HDD.HAS_CHECKED = true
@@ -4834,6 +4843,8 @@ function PLDR.HDD.ReadCache()
   if PLDR.GAMELIST_CACHE ~= true then return end  -- opt-in; OFF -> always a miss -> live scan
   local C = ResolveWritablePath("hdd_gamecache.txt")
   if not doesFileExist(C) then return end
+  local sz = GetFileSizeSafe(C)
+  if type(sz) == "number" and sz > 4*1024*1024 then return end  -- corrupt/huge -> miss -> live scan (Codex F5)
   local data = ReadWholeFile(C)
   if type(data) ~= "string" or data == "" then return end
   -- Plain-text parse (NEVER loadfile/load/dofile -- nil in the embedded runtime, the
