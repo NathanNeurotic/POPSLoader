@@ -3052,6 +3052,7 @@ local function EncodeSettings()
     "SHOW_DETAILS="..((PLDR.SHOW_DETAILS == true) and "1" or "0"),
     "DETAILS_ALIGN="..((PLDR.DETAILS_ALIGN == "center" or PLDR.DETAILS_ALIGN == "right") and PLDR.DETAILS_ALIGN or "left"),
     "GAMELIST_CACHE="..((PLDR.GAMELIST_CACHE == true) and "1" or "0"),
+    "BOOT_SOUND="..((PLDR.BOOT_SOUND ~= false) and "1" or "0"),
     "DESC_SCROLL_SPEED="..((PLDR.DESC_SCROLL_SPEED == "fast" or PLDR.DESC_SCROLL_SPEED == "medium") and PLDR.DESC_SCROLL_SPEED or "slow")
   }
   return table.concat(lines, "\n").."\n"
@@ -3095,6 +3096,7 @@ local function SnapshotSettingsState()
     show_details = (PLDR.SHOW_DETAILS == true),
     details_align = ((PLDR.DETAILS_ALIGN == "center" or PLDR.DETAILS_ALIGN == "right") and PLDR.DETAILS_ALIGN or "left"),
     gamelist_cache = (PLDR.GAMELIST_CACHE == true),
+    boot_sound = (PLDR.BOOT_SOUND ~= false),
     desc_scroll_speed = ((PLDR.DESC_SCROLL_SPEED == "fast" or PLDR.DESC_SCROLL_SPEED == "medium") and PLDR.DESC_SCROLL_SPEED or "slow")
   }
 end
@@ -3147,6 +3149,7 @@ local function ApplySettingsState(state)
   end
   if type(state.gamelist_cache) == "boolean" then
     PLDR.GAMELIST_CACHE = state.gamelist_cache
+    PLDR.BOOT_SOUND = state.boot_sound
   end
   PLDR.ApplyVideoStandardRuntime(PLDR.VIDEO_STANDARD)
   if type(state.hide_text) == "boolean" and type(UI) == "table" then
@@ -3267,6 +3270,7 @@ function PLDR.LoadSettingsNonFatal()
   PLDR.DETAILS_ALIGN = "left"  -- left|center|right; alignment of the game-details box (used only when SHOW_DETAILS)
   PLDR.DESC_SCROLL_SPEED = "slow"  -- fast|medium|slow; right-stick description scroll speed (slow = current shipped feel)
   PLDR.GAMELIST_CACHE = false  -- opt-in persistent per-device USB/MMCE/MX4SIO list cache (OFF = always live scan)
+  PLDR.BOOT_SOUND = true  -- play the boot/splash chime (default ON; oldman63 #501 wanted an off switch)
   if type(UI) == "table" then
     if type(UI.SetHideTextMode) == "function" then
       UI.SetHideTextMode(false, false)
@@ -3381,6 +3385,7 @@ function PLDR.LoadSettingsNonFatal()
   local details_align = string.match(data, "\nDETAILS_ALIGN=([^\n]+)") or string.match(data, "^DETAILS_ALIGN=([^\n]+)")
   local desc_scroll_speed = string.match(data, "\nDESC_SCROLL_SPEED=([^\n]+)") or string.match(data, "^DESC_SCROLL_SPEED=([^\n]+)")
   local gamelist_cache = string.match(data, "\nGAMELIST_CACHE=([^\n]+)") or string.match(data, "^GAMELIST_CACHE=([^\n]+)")
+  local boot_sound = string.match(data, "\nBOOT_SOUND=([^\n]+)") or string.match(data, "^BOOT_SOUND=([^\n]+)")
   if profile ~= nil and PLDR.PROFILES ~= nil and PLDR.PROFILES[profile] ~= nil then
     PLDR.SELECTED_PROFILE = profile
     PLDR.POPSTARTER_PATH = PLDR.PROFILES[profile].ELF
@@ -3448,6 +3453,10 @@ function PLDR.LoadSettingsNonFatal()
   local glc = ParseBooleanSetting(gamelist_cache)
   if glc ~= nil then
     PLDR.GAMELIST_CACHE = glc == true
+  end
+  local bs = ParseBooleanSetting(boot_sound)
+  if bs ~= nil then
+    PLDR.BOOT_SOUND = bs == true
   end
   if hidden_devices ~= nil then
     PLDR.HIDDEN_DEVICES = PLDR.NormalizeHiddenDevices(hidden_devices)

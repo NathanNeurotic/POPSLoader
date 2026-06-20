@@ -1100,7 +1100,8 @@ UI = {
           if boot_sound_tried then return end
           boot_sound_tried = true
 
-          if UI.BOOT_SOUND == nil or UI.BOOT_SOUND.ENABLED ~= true then
+          if UI.BOOT_SOUND == nil or UI.BOOT_SOUND.ENABLED ~= true
+             or (type(PLDR) == "table" and PLDR.BOOT_SOUND == false) then
             return
           end
           if type(Sound) ~= "table" or type(Sound.loadADPCM) ~= "function" then
@@ -2303,6 +2304,8 @@ UI = {
         UI.SettingsEntryDescScrollSpeed = UI.DescScrollSpeed
         UI.GameListCache = (type(PLDR) == "table" and PLDR.GAMELIST_CACHE == true)
         UI.SettingsEntryGameListCache = UI.GameListCache
+        UI.BootSound = (type(PLDR) == "table" and PLDR.BOOT_SOUND ~= false)
+        UI.SettingsEntryBootSound = UI.BootSound
         UI.SettingsEntryKeyboardLayout = tostring(UI.KeyboardLayoutDraft or (type(PLDR) == "table" and PLDR.KEYBOARD_LAYOUT) or "QWERTY")
         UI.SettingsFocus = 1
         UI.SceneChange(UI.SCENES.MPROFILE)
@@ -2650,13 +2653,14 @@ UI = {
           -- Left analog stick UP/DOWN = fast PAGE navigation (held = repeats), the
           -- controllable companion to L1's instant top/bottom jump for true freedom
           -- on big lists. Firm push (deadzone 64 of ~127) so a resting stick never
-          -- drifts the cursor; steps a full page (MAXDRAW) every ~100ms while held.
+          -- drifts the cursor; steps a full page (MAXDRAW) every ~250ms while held
+          -- (oldman63 #501: was 100ms, too fast to track -- esp. with cover art off).
           if type(Pads) == "table" and type(Pads.getLeftStick) == "function" then
             local ok_ls, _, lv = pcall(Pads.getLeftStick)
             if ok_ls and type(lv) == "number" and math.abs(lv) > 64 then
               local now = 0
               if UI.Pad.Timer ~= nil then now = Timer.getTime(UI.Pad.Timer) end
-              if (now - (UI.GameList.PageNavAt or 0)) >= 100 then
+              if (now - (UI.GameList.PageNavAt or 0)) >= 250 then
                 if lv > 0 then
                   UI.GameList.CURR = CLAMP(UI.GameList.CURR + UI.GameList.MAXDRAW, 1, ammount)
                 else
@@ -2678,7 +2682,7 @@ UI = {
              and type(Pads) == "table" and type(Pads.getRightStick) == "function" then
             local ok_rs, _, rv = pcall(Pads.getRightStick)
             local _spd = (type(PLDR) == "table" and PLDR.DESC_SCROLL_SPEED) or "slow"
-            local _dz, _ms = 80, 500          -- slow (default): firm push, ~2 lines/sec
+            local _dz, _ms = 80, 900          -- slow (default): firm push, ~1.1 lines/sec (oldman63 #501: slower)
             if _spd == "fast" then _dz, _ms = 48, 150
             elseif _spd == "medium" then _dz, _ms = 64, 300 end
             if ok_rs and type(rv) == "number" and math.abs(rv) > _dz then
@@ -3106,6 +3110,7 @@ UI = {
             or ((type(PLDR) == "table" and PLDR.DETAILS_ALIGN) or "left")
           if details_align_val ~= "center" and details_align_val ~= "right" then details_align_val = "left" end
           local gamelist_cache_val = UI.GameListCache == true
+          local boot_sound_val = UI.BootSound == true
           local desc_scroll_speed_val = UI.DescScrollSpeed
           if desc_scroll_speed_val ~= "fast" and desc_scroll_speed_val ~= "medium" then desc_scroll_speed_val = "slow" end
           local video_live_before = nil
@@ -3132,6 +3137,7 @@ UI = {
                 details_align = details_align_val,
                 desc_scroll_speed = desc_scroll_speed_val,
                 gamelist_cache = gamelist_cache_val,
+                boot_sound = boot_sound_val,
                 hide_text = UI.HideTextMode == true,
                 prev_hide_text = UI.SettingsEntryHideTextMode == true,
                 apply_bdma = UI.BdmaDirty,
@@ -3163,6 +3169,7 @@ UI = {
             PLDR.DETAILS_ALIGN = details_align_val
             PLDR.DESC_SCROLL_SPEED = desc_scroll_speed_val
             PLDR.GAMELIST_CACHE = gamelist_cache_val
+            PLDR.BOOT_SOUND = boot_sound_val
             if type(PLDR.ApplyVideoStandardRuntime) == "function" then
               PLDR.ApplyVideoStandardRuntime(video_key)
             end
@@ -3593,6 +3600,13 @@ UI = {
           function() UI.GameListCache = not UI.GameListCache end,
           function() return (UI.GameListCache == true) ~= (UI.SettingsEntryGameListCache == true) end
         )
+        AddCycle(
+          "Boot sound",
+          function() return UI.BootSound and "On" or "Off" end,
+          function() UI.BootSound = not UI.BootSound end,
+          function() UI.BootSound = not UI.BootSound end,
+          function() return (UI.BootSound == true) ~= (UI.SettingsEntryBootSound == true) end
+        )
 
         AddSection("POPSTARTER")
         AddCycle(
@@ -3640,6 +3654,7 @@ UI = {
             or tostring(UI.DetailsAlign) ~= tostring(UI.SettingsEntryDetailsAlign)
             or tostring(UI.DescScrollSpeed) ~= tostring(UI.SettingsEntryDescScrollSpeed)
             or (UI.GameListCache == true) ~= (UI.SettingsEntryGameListCache == true)
+            or (UI.BootSound == true) ~= (UI.SettingsEntryBootSound == true)
             or (UI.BootPageIndex or 1) ~= (UI.SettingsEntryBootPageIndex or 1)
         end
 
@@ -4377,6 +4392,8 @@ UI = {
       };
       NavHeld = {};
       NavNeutral = {UP = true, DOWN = true, LEFT = true, RIGHT = true};
+      NavFirstMs = {};   -- per-direction press time (ms) for OPL-style auto-repeat
+      NavLastMs = {};    -- per-direction last auto-repeat fire (ms)
       Queue = {};
       DebugPadTimer = nil;
       DebugPadLast = 0;
@@ -4449,27 +4466,39 @@ UI = {
         if (pressed & PAD_L3) ~= 0 then emit_action("L3") end
         if (pressed & PAD_R3) ~= 0 then emit_action("R3") end
 
-        local function resolve_nav(dir, is_down)
-          local was_down = UI.Pad.NavHeld[dir] == true
+        -- OPL-style D-pad auto-repeat: the press edge fires immediately, then a
+        -- held direction auto-repeats after an initial delay so you can scroll a
+        -- long list continuously without mashing the button (oldman63 #501). Only
+        -- UP/DOWN repeat; LEFT/RIGHT stay edge-only so holding never spins the
+        -- main-menu device carousel past where you meant to stop.
+        local NAV_REPEAT_DELAY_MS, NAV_REPEAT_RATE_MS = 280, 90
+        local function resolve_nav(dir, is_down, repeatable)
           if not is_down then
-            if was_down then
-              UI.Pad.NavNeutral[dir] = true
-            end
+            if UI.Pad.NavHeld[dir] == true then UI.Pad.NavNeutral[dir] = true end
             UI.Pad.NavHeld[dir] = false
             return false
           end
+          local was_held = UI.Pad.NavHeld[dir] == true
           UI.Pad.NavHeld[dir] = true
-          if not UI.Pad.NavNeutral[dir] then
-            return false
+          if not was_held and UI.Pad.NavNeutral[dir] then
+            UI.Pad.NavNeutral[dir] = false
+            UI.Pad.NavFirstMs[dir] = now
+            UI.Pad.NavLastMs[dir] = now
+            return true
           end
-          UI.Pad.NavNeutral[dir] = false
-          return true
+          if repeatable and was_held
+             and (now - (UI.Pad.NavFirstMs[dir] or now)) >= NAV_REPEAT_DELAY_MS
+             and (now - (UI.Pad.NavLastMs[dir] or 0)) >= NAV_REPEAT_RATE_MS then
+            UI.Pad.NavLastMs[dir] = now
+            return true
+          end
+          return false
         end
 
-        if resolve_nav("UP", ((UI.Pad.GPAD & PAD_UP) ~= 0)) then emit_nav("NAV_UP") end
-        if resolve_nav("DOWN", ((UI.Pad.GPAD & PAD_DOWN) ~= 0)) then emit_nav("NAV_DOWN") end
-        if resolve_nav("LEFT", ((UI.Pad.GPAD & PAD_LEFT) ~= 0)) then emit_nav("NAV_LEFT") end
-        if resolve_nav("RIGHT", ((UI.Pad.GPAD & PAD_RIGHT) ~= 0)) then emit_nav("NAV_RIGHT") end
+        if resolve_nav("UP", ((UI.Pad.GPAD & PAD_UP) ~= 0), true) then emit_nav("NAV_UP") end
+        if resolve_nav("DOWN", ((UI.Pad.GPAD & PAD_DOWN) ~= 0), true) then emit_nav("NAV_DOWN") end
+        if resolve_nav("LEFT", ((UI.Pad.GPAD & PAD_LEFT) ~= 0), false) then emit_nav("NAV_LEFT") end
+        if resolve_nav("RIGHT", ((UI.Pad.GPAD & PAD_RIGHT) ~= 0), false) then emit_nav("NAV_RIGHT") end
 
         if UI.InputConfig.DEBUG_INPUT_LOG then
           if UI.Pad.DebugPadTimer == nil then
