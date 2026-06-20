@@ -107,6 +107,15 @@ static GSTEXTURE* decode_png_stream(png_structp png_ptr, png_infop info_ptr, boo
 	png_set_filler(png_ptr, 0xff, PNG_FILLER_AFTER);
 	png_read_update_info(png_ptr, info_ptr);
 
+	// Reject zero/oversized dimensions before allocating from them (matches the
+	// JPEG dimension cap). png_uint_32 width/height are attacker-controlled IHDR
+	// fields; an absurd value would drive a huge alloc and an int-cast row loop.
+	// (Codex F3 2026-06-20)
+	if (width == 0 || height == 0 || width > 8192u || height > 8192u) {
+		DPRINTF("PNG: rejecting out-of-range dimensions %ux%u\n", (unsigned)width, (unsigned)height);
+		longjmp(png_jmpbuf(png_ptr), 1);
+	}
+
 	tex->Width = width;
 	tex->Height = height;
 	tex->VramClut = 0;
@@ -571,6 +580,29 @@ GSTEXTURE* loadbmp(FILE* File, bool delayed)
 	}
 	FTexSize = (u32)ftell_end;
 	FTexSize -= Bitmap.FileHeader.Offset;
+
+	// Reject impossible dimensions, then require the file to actually contain
+	// enough pixel bytes for the declared W*H at this bit depth (BMP rows pad to
+	// 4 bytes). The per-depth conversion loops below index `image` by
+	// tex->Width*tex->Height, so a truncated/crafted BMP with a short FTexSize
+	// would read past `image` (OOB). (Codex F2 2026-06-20)
+	{
+		if (tex->Width <= 0 || tex->Height <= 0 || tex->Width > 8192 || tex->Height > 8192) {
+			DPRINTF("BMP: bad dimensions %dx%d\n", tex->Width, tex->Height);
+			free(tex->Clut);
+			free(tex);
+			fclose(File);
+			return NULL;
+		}
+		u32 bmp_stride = (((u32)tex->Width * (u32)Bitmap.InfoHeader.BitCount + 31u) / 32u) * 4u;
+		if (FTexSize < bmp_stride * (u32)tex->Height) {
+			DPRINTF("BMP: insufficient pixel data (%u < %u)\n", FTexSize, bmp_stride * (u32)tex->Height);
+			free(tex->Clut);
+			free(tex);
+			fclose(File);
+			return NULL;
+		}
+	}
 
 	fseek(File, Bitmap.FileHeader.Offset, SEEK_SET);
 

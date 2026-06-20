@@ -966,10 +966,12 @@ end
 
 -- HDD-write probe (diagnostic, TEST): on an HDD boot, try a SCOPED read-write to
 -- a __.POPS game partition -- mount RW, write+verify+delete a tiny test file,
--- unmount. Answers whether the bundled ps2hdd-osd driver can write a NON-boot
--- partition (the boot partition pfs1: is known-unwritable: Nuno PR#464, which is
--- why HDD settings save to mc0:). Real settings are unaffected; this only reports
--- via the settings-save toast. Returns: nil = not an HDD boot (skip);
+-- unmount. Answers whether the bundled ps2hdd-osd driver can write a __.POPS GAME
+-- partition (used for HDD per-game .hide markers via WriteGamePartitionFile).
+-- NOTE: settings/.hide/cache now save to the HDD BOOT partition via
+-- EnsureBootPartitionWritable's RW take-over -- the pre-#466 "save to mc0:" model
+-- is SUPERSEDED. Real settings are unaffected; this only reports a game-partition
+-- diagnostic toast. Returns: nil = not an HDD boot (skip);
 -- true,<partition> = writable; false,<reason> = not.
 function PLDR.ProbeHddSettingsWrite()
   -- Fire whenever the HDD is loaded + usable, NOT only on an HDD boot -- so it
@@ -991,9 +993,9 @@ function PLDR.ProbeHddSettingsWrite()
       if probe_path ~= nil then
         local ok_open, fd = pcall(System.openFile, probe_path, FCREATE)
         if ok_open and fd ~= nil and not (type(fd) == "number" and fd < 0) then
-          pcall(System.writeFile, fd, "ok", 2)
+          local okw, wn = pcall(System.writeFile, fd, "ok", 2)
           pcall(System.closeFile, fd)
-          wrote = (doesFileExist(probe_path) == true)
+          wrote = (okw and type(wn) == "number" and wn == 2 and doesFileExist(probe_path) == true)
           pcall(System.removeFile, probe_path)
         end
       end
@@ -2130,9 +2132,13 @@ function PLDR.HDD.WriteGamePartitionFile(partition, relpath, content)
     else
       local ok_open, fd = pcall(System.openFile, target, FCREATE)
       if ok_open and fd ~= nil and not (type(fd) == "number" and fd < 0) then
-        if #content > 0 then pcall(System.writeFile, fd, content, #content) end
+        local content_ok = true
+        if #content > 0 then
+          local okw, wn = pcall(System.writeFile, fd, content, #content)
+          content_ok = (okw and type(wn) == "number" and wn == #content)
+        end
         pcall(System.closeFile, fd)
-        if doesFileExist(target) then ok_done, reason = true, nil
+        if content_ok and doesFileExist(target) then ok_done, reason = true, nil
         else ok_done, reason = false, "write_failed" end
       else
         ok_done, reason = false, "open_failed"
@@ -2632,7 +2638,16 @@ local function PromoteTmpToDest(tmp, dest)
   local had_dest = doesFileExist(dest)
   if had_dest then
     if doesFileExist(bak) then pcall(System.removeFile, bak) end
+    -- System.rename is copy+delete: a failed dest->bak fails its COPY before
+    -- deleting the source, so dest stays intact. REQUIRE the backup exists before
+    -- letting tmp->dest open dest with O_TRUNC -- otherwise a doubly-failed save
+    -- (backup fails, then tmp->dest fails) truncates the live file with no .bak to
+    -- restore, losing the original .pldrs/cache. (Codex F1 2026-06-20)
     pcall(System.rename, dest, bak)
+    if not doesFileExist(bak) then
+      pcall(System.removeFile, tmp)
+      return false
+    end
   end
   local ok = pcall(System.rename, tmp, dest)
   if not ok then

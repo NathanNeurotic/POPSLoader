@@ -2813,13 +2813,16 @@ UI = {
         -- Persisted so it stays in sync with Settings > Game List > Hidden games.
         -- Revealed games render dimmed; press L3 to unhide. Only the device list
         -- scenes R1 serves are eligible (others ignore R3 harmlessly).
-        local r3_hide_toggle = false
+        local r3_hide_toggle, r3_save_ok = false, true
         if UI.Pad.Events.R3 and (UI.CURSCENE == UI.SCENES.GHDD
              or UI.CURSCENE == UI.SCENES.GSMB
              or UI.CURSCENE == UI.SCENES.GMX4SIO
              or UI.CURSCENE == UI.SCENES.GUSBFAT) then
           PLDR.GLOBAL_HIDE = (PLDR.GLOBAL_HIDE ~= true)
-          if type(PLDR.SaveSettingsAtomic) == "function" then pcall(PLDR.SaveSettingsAtomic) end
+          if type(PLDR.SaveSettingsAtomic) == "function" then
+            local ok_s, saved = pcall(PLDR.SaveSettingsAtomic)
+            r3_save_ok = (ok_s and saved ~= false)
+          end
           r3_hide_toggle = true
           UI.Pad.Events.R1 = true   -- drive the same in-place rebuild R1 performs
         end
@@ -2947,10 +2950,12 @@ UI = {
           end
         end
         if r3_hide_toggle then
-          if PLDR.GLOBAL_HIDE == true then
-            UI.Notif_queue.add("Hidden games are now hidden", "ok")
+          local _r3msg = (PLDR.GLOBAL_HIDE == true) and "Hidden games are now hidden"
+            or "Showing hidden games (dimmed) -- press L3 to unhide"
+          if r3_save_ok then
+            UI.Notif_queue.add(_r3msg, "ok")
           else
-            UI.Notif_queue.add("Showing hidden games (dimmed) -- press L3 to unhide", "ok")
+            UI.Notif_queue.add(_r3msg.."\n(could NOT save -- reverts on reboot)", "warn")
           end
         end
         local cross_label = UI.Footer.labels.cross_launch
@@ -3198,15 +3203,16 @@ UI = {
             UI.VideoStandardDirty = false
             clear_settings_session()
             -- HDD-write probe (TEST): on an HDD boot, report whether a __.POPS
-            -- partition accepts a scoped write -- tells us if settings/.hide can
-            -- live on the HDD. Settings already saved (to mc0: on HDD); this only
-            -- reports. (nil return = not an HDD boot -> no toast.)
+            -- GAME partition accepts a scoped write (used for HDD per-game .hide
+            -- markers). Settings already saved to the HDD BOOT partition via
+            -- EnsureBootPartitionWritable -- NOT mc0:; this is just a game-partition
+            -- diagnostic. (nil return = not an HDD boot -> no toast.)
             if type(PLDR.ProbeHddSettingsWrite) == "function" then
               local hdd_w_ok, hdd_w_info = PLDR.ProbeHddSettingsWrite()
               if hdd_w_ok == true then
-                UI.Notif_queue.add("HDD partition "..tostring(hdd_w_info).." is WRITABLE -- settings can live on HDD", "ok")
+                UI.Notif_queue.add("__.POPS partition "..tostring(hdd_w_info).." accepts writes (game-partition RW test)", "ok")
               elseif hdd_w_ok == false then
-                UI.Notif_queue.add("HDD write test FAILED ("..tostring(hdd_w_info)..")\nsettings stay on the memory card", "warn")
+                UI.Notif_queue.add("HDD game-partition write test FAILED ("..tostring(hdd_w_info)..")", "warn")
               end
             end
             -- Display-change safety: if the GS mode actually switched, confirm it
