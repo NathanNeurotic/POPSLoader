@@ -60,3 +60,4 @@ outdated/
 # Ensure specific tracked binary assets stay visible
 !bin/POPSLDR/POPSTARTER.ELF
 !iop/embed/BDMASSAULT_MX4SIO/*.irx
+!POPSTARTER/*.irx
