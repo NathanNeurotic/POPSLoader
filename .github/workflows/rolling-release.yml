@@ -154,6 +154,9 @@ jobs:
               if not raw_path:
                   continue
               rel = pathlib.Path(raw_path.decode("utf-8"))
+              # POPSTARTER/ ships at the ZIP ROOT (copied below), not under source/.
+              if rel.parts and rel.parts[0] == "POPSTARTER":
+                  continue
               dest = source_root / rel
               dest.parent.mkdir(parents=True, exist_ok=True)
               shutil.copy2(rel, dest)
@@ -162,8 +165,17 @@ jobs:
           cp -f bin/POPSLOADER.ELF "$BUNDLE_DIR/POPSLOADER.ELF"
           cp -f bin/POPSLDR/BUILD_INFO.txt "$BUNDLE_DIR/source/bin/POPSLDR/BUILD_INFO.txt"
 
+          # Ship the POPSTARTER pack folder (BDMA / SMB modules, etc.) at the ZIP ROOT
+          # so users can drop it straight onto a memory card. Tracked at the repo root;
+          # .gitkeep is excluded so a still-empty folder ships nothing.
+          ZIP_ROOTS="POPSLOADER.ELF source"
+          if [ -d POPSTARTER ]; then
+            cp -r POPSTARTER "$BUNDLE_DIR/POPSTARTER"
+            ZIP_ROOTS="$ZIP_ROOTS POPSTARTER"
+          fi
+
           cd "$BUNDLE_DIR"
-          find POPSLOADER.ELF source -type f | LC_ALL=C sort | zip -X -9 "../$BUNDLE_ZIP" -@ >/dev/null
+          find $ZIP_ROOTS -type f ! -name '.gitkeep' | LC_ALL=C sort | zip -X -9 "../$BUNDLE_ZIP" -@ >/dev/null
           cd - >/dev/null
 
           echo "== Rolling release bundle contents =="

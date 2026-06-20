@@ -1,0 +1,5 @@
+# Drop BDMA / SMB IOP modules (*.irx) and any other POPSTARTER pack files in THIS
+# folder, then commit them. They ship at the ROOT of the release zip as
+# POPSTARTER/<files>, ready to copy onto a memory card's POPSTARTER folder.
+# This .gitkeep only holds the (otherwise-empty) folder in git; it is excluded
+# from the release zip.
