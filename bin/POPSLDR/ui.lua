@@ -3338,6 +3338,15 @@ UI = {
             UI.GameListCache = false
             UI.ProfileDirty = true
           end
+          if UI.BootSound ~= true then   -- default ON
+            UI.BootSound = true
+            UI.ProfileDirty = true
+          end
+          if (math.floor(tonumber(UI.Overscan) or 0)) ~= 0 then   -- default 0 (off)
+            UI.Overscan = 0
+            if type(Screen) == "table" and type(Screen.setOverscan) == "function" then pcall(Screen.setOverscan, 0) end
+            UI.ProfileDirty = true
+          end
           local default_video_key = VIDEO_STANDARD_AUTO
           local default_video_index = 1
           for i = 1, #UI.VideoStandardModes do
