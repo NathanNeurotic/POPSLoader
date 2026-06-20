@@ -748,14 +748,42 @@ local function GetActiveHddGameSlot()
 end
 
 local function GetHddGameSlotCandidates()
+  -- Default order keeps the historical {GAME=1, BOOT=0} preference.
+  local ordered = { HDD_SLOT_GAME, HDD_SLOT_BOOT }
   local active = tonumber(PLDR and PLDR.HDD and PLDR.HDD.GAME_SLOT or nil)
-  if active == HDD_SLOT_BOOT or active == HDD_SLOT_GAME then
-    if active == HDD_SLOT_BOOT then
-      return { HDD_SLOT_BOOT, HDD_SLOT_GAME }
-    end
-    return { HDD_SLOT_GAME, HDD_SLOT_BOOT }
+  if active == HDD_SLOT_BOOT then
+    ordered = { HDD_SLOT_BOOT, HDD_SLOT_GAME }
   end
-  return { HDD_SLOT_GAME, HDD_SLOT_BOOT }
+  -- Proposal A (root fix for the scan-clobbers-boot-mount bug, Nuno 2026-06-20):
+  -- an HDD-resident boot keeps its boot/settings partition mounted on
+  -- GetBootHddMountSlot() (pfs1: -- "NEVER USE IT FOR ANYTHING ELSE", boot.lua:48).
+  -- Mounting a game partition onto that occupied slot FAILS at the C layer
+  -- (luaHDD's warm single-attempt mnt) AND collaterally unmounts the boot
+  -- partition, stranding the settings cwd. So never offer the live boot slot to
+  -- the game scan; drop it and add HDD_SLOT_COMMON (a slot the scan never
+  -- otherwise uses) as the off-boot fallback. On a non-HDD boot
+  -- GetBootHddMountSlot() is nil -> return the full historical list UNCHANGED so
+  -- the scan still fires (do NOT repeat the reverted bec5e90 firing gate).
+  -- See memory reference-hdd-pfs-slot-model. NOT hardware-tested -- Nuno to verify
+  -- game partitions still mount/list when forced off the boot slot.
+  local boot_slot = nil
+  if type(GetBootHddMountSlot) == "function" then boot_slot = GetBootHddMountSlot() end
+  if boot_slot == nil then
+    return ordered
+  end
+  local candidates = {}
+  local seen = {}
+  for i = 1, #ordered do
+    local slot = ordered[i]
+    if slot ~= boot_slot and not seen[slot] then
+      candidates[#candidates + 1] = slot
+      seen[slot] = true
+    end
+  end
+  if not seen[HDD_SLOT_COMMON] and HDD_SLOT_COMMON ~= boot_slot then
+    candidates[#candidates + 1] = HDD_SLOT_COMMON
+  end
+  return candidates
 end
 
 local function MountHddPartitionTracked(partition, slot, mode)
