@@ -24,7 +24,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 - Persisted settings — **18 keys** (`EncodeSettings`): `PROFILE`, `POPSTARTER_PATH`, `POPSTARTER_MODE`, `BDMA`, `DKWDRV_PATH`, `STRICT_HDD_PREEXEC_GATE`, `VIDEO_STANDARD`, `HIDE_TEXT`, `KEYBOARD_LAYOUT`, `BOOT_PAGE`, `MULTIDISC_COLLAPSE`, `GLOBAL_HIDE`, `POPSTARTER_MC_FOLDER`, `HIDDEN_DEVICES`, `SHOW_DETAILS`, `DETAILS_ALIGN`, `GAMELIST_CACHE`, `DESC_SCROLL_SPEED`.
 
 ### Per-game hide layer
-- A `<name>.hide` sidecar next to the game's `.VCD` marks it hidden (read for free during the scan; tracked in `PLDR.HIDDEN`). **L3** toggles hide/show on the selected game. To unhide, set *Settings → Game List → Hidden games* to **Visible (manage)**, which shows hidden games dimmed so L3 can toggle them back (**Hidden** filters them out). (R3 is wired but currently has no handler — it does nothing.)
+- A `<name>.hide` sidecar next to the game's `.VCD` marks it hidden (read for free during the scan; tracked in `PLDR.HIDDEN`). **L3** toggles hide/show on the selected game. To unhide, set *Settings → Game List → Hidden games* to **Visible (manage)**, which shows hidden games dimmed so L3 can toggle them back (**Hidden** filters them out). **R3** is the in-list shortcut for that setting: on a device game list it flips `GLOBAL_HIDE` (persisted via `SaveSettingsAtomic`) and rebuilds the list in place (reusing the R1 refresh path) so the new filter applies immediately — revealing hidden games dimmed (then L3 unhides) or re-hiding them.
 - In-app hide writes work on **every device page** — USB / MX4SIO / MMCE / Memory Card **and the internal HDD**. On HDD the `.hide` is written via the RW mount take-over (`EnsureBootPartitionWritable`); the "add the `.hide` file from a PC" message is now only a write-*failure* fallback, not the primary path.
 - STATUS: implemented, boots on PCSX2, validating on hardware.
 
@@ -123,6 +123,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 
 **In testing on hardware** (implemented + boots on PCSX2; **not yet broadly hardware-confirmed** — these are what the current rolling build asks testers to verify):
 - HDD in-app `.hide` (L3 toggle; unhide via *Settings → Game List → Hidden games*).
+- **R3 reveal/hide** on a device game list — toggles + persists `GLOBAL_HIDE` and rebuilds the list in place (reuses the R1 refresh path). NEW this build; not yet hardware-tested.
 - HDD-resident settings save (boot-partition RW take-over; provato confirmed the HDD is RW-writable).
 - PAL native 640×512 full-screen render + auto-revert display-change confirm.
 - POPSTARTER Memory Card Folder toggle + the BDMA interlock.

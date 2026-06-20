@@ -111,6 +111,7 @@ Navigate POPSLoader using a standard PS2 controller.
 | **Square (□)** | Toggle cover-art preview on / off (in the game list) |
 | **Right Analog Stick (up / down)** | Scroll a long game description that doesn't fully fit on screen (when *Game details* are enabled and a `<game>.txt` is present). Speed is set in *Settings → Description scroll speed*. |
 | **L3 (left stick click)** | Hide / unhide the selected game (writes/removes a `<name>.hide` marker — works on every device, including the internal HDD). Set *Settings → Game List → Hidden games* to *Visible (manage)* to show hidden games dimmed, then press **L3** on a dimmed entry to unhide it. |
+| **R3 (right stick click)** | Reveal / re-hide this device's hidden games. When *Settings → Game List → Hidden games* is set to *Hidden* (games filtered out of the list), press **R3** to rebuild the list with them shown dimmed so you can manage them (then **L3** unhides); press **R3** again to hide them. Mirrors the *Hidden games* setting and is saved with it. |
 | **R2** | Launch in "HDD Alt" mode (HDD (PFS) game list only — for an HDD-resident POPSTARTER) |
 
 ### On-screen Keyboard (Settings path editor)

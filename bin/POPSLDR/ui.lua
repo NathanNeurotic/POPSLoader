@@ -2802,6 +2802,23 @@ UI = {
             PLDR.RunPOPStarterGame(launch_path, entry, UI.CURSCENE, launch_options)
           end
         end
+        -- R3 = reveal / re-hide this device's hidden games. The "Hidden games"
+        -- setting (GLOBAL_HIDE) filters hidden entries out of the list at SCAN
+        -- time, so flipping it requires rebuilding the current device's list --
+        -- reuse the proven R1 force-refresh path below by raising its event.
+        -- Persisted so it stays in sync with Settings > Game List > Hidden games.
+        -- Revealed games render dimmed; press L3 to unhide. Only the device list
+        -- scenes R1 serves are eligible (others ignore R3 harmlessly).
+        local r3_hide_toggle = false
+        if UI.Pad.Events.R3 and (UI.CURSCENE == UI.SCENES.GHDD
+             or UI.CURSCENE == UI.SCENES.GSMB
+             or UI.CURSCENE == UI.SCENES.GMX4SIO
+             or UI.CURSCENE == UI.SCENES.GUSBFAT) then
+          PLDR.GLOBAL_HIDE = (PLDR.GLOBAL_HIDE ~= true)
+          if type(PLDR.SaveSettingsAtomic) == "function" then pcall(PLDR.SaveSettingsAtomic) end
+          r3_hide_toggle = true
+          UI.Pad.Events.R1 = true   -- drive the same in-place rebuild R1 performs
+        end
         if UI.Pad.Events.CONFIRM then
           LaunchSelectedGame(nil)
         elseif UI.Pad.Events.R2 and UI.CURSCENE == UI.SCENES.GHDD then
@@ -2817,7 +2834,9 @@ UI = {
           UI.GameList.CURR = 1
           UI.GameList.CoverLastIndex = nil
           UI.GameList.CoverPending = false
-          if #PLDR.GAMES < 1 then
+          if r3_hide_toggle then
+            -- R3 drove this rebuild; its reveal/hide toast fires below instead.
+          elseif #PLDR.GAMES < 1 then
             UI.Notif_queue.add("HDD list refreshed (no games found)", "warn")
           else
             UI.Notif_queue.add("HDD list refreshed", "ok")
@@ -2875,7 +2894,9 @@ UI = {
           UI.GameList.CURR = 1
           UI.GameList.CoverLastIndex = nil
           UI.GameList.CoverPending = false
-          if #PLDR.GAMES < 1 then
+          if r3_hide_toggle then
+            -- R3 drove this rebuild; its reveal/hide toast fires below instead.
+          elseif #PLDR.GAMES < 1 then
             UI.Notif_queue.add("List refreshed (no games found)", "warn")
           else
             UI.Notif_queue.add("List refreshed", "ok")
@@ -2919,6 +2940,13 @@ UI = {
             else
               UI.Notif_queue.add("Couldn't update hidden state ("..tostring(reason)..")", "error")
             end
+          end
+        end
+        if r3_hide_toggle then
+          if PLDR.GLOBAL_HIDE == true then
+            UI.Notif_queue.add("Hidden games are now hidden", "ok")
+          else
+            UI.Notif_queue.add("Showing hidden games (dimmed) -- press L3 to unhide", "ok")
           end
         end
         local cross_label = UI.Footer.labels.cross_launch
