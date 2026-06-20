@@ -1125,6 +1125,46 @@ int getFreeVRAM(){
 	return (4096 - (gsGlobal->CurrentPointer / 1024));
 }
 
+// ---- Overscan (CRT inset) transform -------------------------------------
+// Adapts OPL's render-coordinate overscan (renderman.c rmSetOverscan) to
+// POPSLoader's single draw chokepoint: every gsKit_prim_* coordinate below runs
+// through OVX/OVY, which scale the whole UI uniformly toward screen center by the
+// overscan permille. The math is IDENTICAL to OPL: margin = W*permille/2000 per
+// edge, scale = 1 - permille/1000, so OVX(x) = x*scale + margin == OPL's X_SCALE.
+// At overscan 0 the transform is the IDENTITY -> the default render is unchanged.
+static int   g_overscan = 0;     // permille (OPL CONFIG_OPL_OVERSCAN units); 0 = off
+static float g_ov_scale = 1.0f;
+static float g_ov_ox    = 0.0f;
+static float g_ov_oy    = 0.0f;
+
+static void recompute_overscan(void)
+{
+	float s = 1.0f - (float)g_overscan / 1000.0f;
+	if (s < 0.80f) s = 0.80f;   // clamp: never shrink past 20% total (sane CRT range)
+	if (s > 1.0f)  s = 1.0f;
+	g_ov_scale = s;
+	if (gsGlobal != NULL) {
+		g_ov_ox = (1.0f - s) * (float)gsGlobal->Width  * 0.5f;
+		g_ov_oy = (1.0f - s) * (float)gsGlobal->Height * 0.5f;
+	} else {
+		g_ov_ox = 0.0f;
+		g_ov_oy = 0.0f;
+	}
+}
+
+void set_overscan(int permille)
+{
+	if (permille < 0)   permille = 0;
+	if (permille > 200) permille = 200;   // 200 permille = 20% total inset, the clamp above
+	g_overscan = permille;
+	recompute_overscan();
+}
+
+int get_overscan(void) { return g_overscan; }
+
+static inline float OVX(float x) { return x * g_ov_scale + g_ov_ox; }
+static inline float OVY(float y) { return y * g_ov_scale + g_ov_oy; }
+// -------------------------------------------------------------------------
 
 void drawImageCentered(GSTEXTURE* source, float x, float y, float width, float height, float startx, float starty, float endx, float endy, Color color)
 {
@@ -1133,12 +1173,12 @@ void drawImageCentered(GSTEXTURE* source, float x, float y, float width, float h
 		gsKit_TexManager_bind(gsGlobal, source);
 	}
 	gsKit_prim_sprite_texture(gsGlobal, source,
-					x-width/2, // X1
-					y-height/2, // Y1
+					OVX(x-width/2), // X1
+					OVY(y-height/2), // Y1
 					startx,  // U1
 					starty,  // V1
-					(width/2+x), // X2
-					(height/2+y), // Y2
+					OVX(width/2+x), // X2
+					OVY(height/2+y), // Y2
 					endx, // U2
 					endy, // V2
 					1,
@@ -1153,12 +1193,12 @@ void drawImage(GSTEXTURE* source, float x, float y, float width, float height, f
 		gsKit_TexManager_bind(gsGlobal, source);
 	}
 	gsKit_prim_sprite_texture(gsGlobal, source,
-					x-0.5f, // X1
-					y-0.5f, // Y1
+					OVX(x-0.5f), // X1
+					OVY(y-0.5f), // Y1
 					startx,  // U1
 					starty,  // V1
-					(width+x)-0.5f, // X2
-					(height+y)-0.5f, // Y2
+					OVX((width+x)-0.5f), // X2
+					OVY((height+y)-0.5f), // Y2
 					endx, // U2
 					endy, // V2
 					1,
@@ -1175,53 +1215,53 @@ void drawImageRotate(GSTEXTURE* source, float x, float y, float width, float hei
 		gsKit_TexManager_bind(gsGlobal, source);
 	}
 	gsKit_prim_quad_texture(gsGlobal, source,
-							(-width/2)*c - (-height/2)*s+x, (-height/2)*c + (-width/2)*s+y, startx, starty,
-							(-width/2)*c - height/2*s+x, height/2*c + (-width/2)*s+y, startx, endy,
-							width/2*c - (-height/2)*s+x, (-height/2)*c + width/2*s+y, endx, starty,
-							width/2*c - height/2*s+x, height/2*c + width/2*s+y, endx, endy,
+							OVX((-width/2)*c - (-height/2)*s+x), OVY((-height/2)*c + (-width/2)*s+y), startx, starty,
+							OVX((-width/2)*c - height/2*s+x), OVY(height/2*c + (-width/2)*s+y), startx, endy,
+							OVX(width/2*c - (-height/2)*s+x), OVY((-height/2)*c + width/2*s+y), endx, starty,
+							OVX(width/2*c - height/2*s+x), OVY(height/2*c + width/2*s+y), endx, endy,
 							1, color);
 
 }
 
 void drawPixel(float x, float y, Color color)
 {
-	gsKit_prim_point(gsGlobal, x, y, 1, color);
+	gsKit_prim_point(gsGlobal, OVX(x), OVY(y), 1, color);
 }
 
 void drawLine(float x, float y, float x2, float y2, Color color)
 {
-	gsKit_prim_line(gsGlobal, x, y, x2, y2, 1, color);
+	gsKit_prim_line(gsGlobal, OVX(x), OVY(y), OVX(x2), OVY(y2), 1, color);
 }
 
 
 void drawRect(float x, float y, int width, int height, Color color)
 {
-	gsKit_prim_sprite(gsGlobal, x-0.5f, y-0.5f, (x+width)-0.5f, (y+height)-0.5f, 1, color);
+	gsKit_prim_sprite(gsGlobal, OVX(x-0.5f), OVY(y-0.5f), OVX((x+width)-0.5f), OVY((y+height)-0.5f), 1, color);
 }
 
 void drawRectCentered(float x, float y, int width, int height, Color color)
 {
-	gsKit_prim_sprite(gsGlobal, x-width/2, y-height/2, (x+width)-width/2, (y+height)-height/2, 1, color);
+	gsKit_prim_sprite(gsGlobal, OVX(x-width/2), OVY(y-height/2), OVX((x+width)-width/2), OVY((y+height)-height/2), 1, color);
 }
 
 void drawTriangle(float x, float y, float x2, float y2, float x3, float y3, Color color)
 {
-	gsKit_prim_triangle(gsGlobal, x, y, x2, y2, x3, y3, 1, color);
+	gsKit_prim_triangle(gsGlobal, OVX(x), OVY(y), OVX(x2), OVY(y2), OVX(x3), OVY(y3), 1, color);
 }
 
 void drawTriangle_gouraud(float x, float y, float x2, float y2, float x3, float y3, Color color, Color color2, Color color3)
 {
-	gsKit_prim_triangle_gouraud(gsGlobal, x, y, x2, y2, x3, y3, 1, color, color2, color3);
+	gsKit_prim_triangle_gouraud(gsGlobal, OVX(x), OVY(y), OVX(x2), OVY(y2), OVX(x3), OVY(y3), 1, color, color2, color3);
 }
 
 void drawQuad(float x, float y, float x2, float y2, float x3, float y3, float x4, float y4, Color color)
 {
-	gsKit_prim_quad(gsGlobal, x, y, x2, y2, x3, y3, x4, y4, 1, color);
+	gsKit_prim_quad(gsGlobal, OVX(x), OVY(y), OVX(x2), OVY(y2), OVX(x3), OVY(y3), OVX(x4), OVY(y4), 1, color);
 }
 
 void drawQuad_gouraud(float x, float y, float x2, float y2, float x3, float y3, float x4, float y4, Color color, Color color2, Color color3, Color color4)
 {
-	gsKit_prim_quad_gouraud(gsGlobal, x, y, x2, y2, x3, y3, x4, y4, 1, color, color2, color3, color4);
+	gsKit_prim_quad_gouraud(gsGlobal, OVX(x), OVY(y), OVX(x2), OVY(y2), OVX(x3), OVY(y3), OVX(x4), OVY(y4), 1, color, color2, color3, color4);
 }
 
 void drawCircle(float x, float y, float radius, u64 color, u8 filled)
@@ -1232,13 +1272,13 @@ void drawCircle(float x, float y, float radius, u64 color, u8 filled)
 
 	for (a = 0; a < 36; a++) {
 		ra = DEG2RAD(a*10);
-		v[a*2] = cos(ra) * radius + x;
-		v[a*2+1] = sin(ra) * radius + y;
+		v[a*2] = OVX(cos(ra) * radius + x);
+		v[a*2+1] = OVY(sin(ra) * radius + y);
 	}
 
 	if (!filled) {
-		v[36*2] = radius + x;
-		v[36*2 + 1] = y;
+		v[36*2] = OVX(radius + x);
+		v[36*2 + 1] = OVY(y);
 	}
 
 	if (filled)
@@ -1296,6 +1336,7 @@ void setVideoMode(s16 mode, int width, int height, int psm, s16 interlace, s16 f
 	gsKit_vram_clear(gsGlobal);
 	gsKit_init_screen(gsGlobal);
 	gsKit_set_display_offset(gsGlobal, -0.5f, -0.5f);
+	recompute_overscan();   // screen dims just changed -> refresh the overscan offsets
 	gsKit_sync_flip(gsGlobal);
 
 	gsKit_mode_switch(gsGlobal, GS_ONESHOT);
@@ -1306,9 +1347,9 @@ void fntDrawQuad(rm_quad_t *q)
 {
     gsKit_TexManager_bind(gsGlobal, q->txt);
     gsKit_prim_sprite_texture(gsGlobal, q->txt,
-                              q->ul.x-0.5f, q->ul.y-0.5f,
+                              OVX(q->ul.x-0.5f), OVY(q->ul.y-0.5f),
                               q->ul.u, q->ul.v,
-                              q->br.x-0.5f, q->br.y-0.5f,
+                              OVX(q->br.x-0.5f), OVY(q->br.y-0.5f),
                               q->br.u, q->br.v, 1, q->color);
 }
 

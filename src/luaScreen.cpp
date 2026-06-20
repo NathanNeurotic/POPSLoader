@@ -59,6 +59,22 @@ static int lua_getFPS(lua_State *L)
 	return 1;
 }
 
+// Overscan (CRT inset): permille, 0 = off. Scales the whole UI uniformly toward
+// screen center (OPL rmSetOverscan units/math). Takes effect on the next frame.
+static int lua_set_overscan(lua_State *L)
+{
+	if (lua_gettop(L) != 1) return luaL_error(L, "exactly one argument expected.");
+	set_overscan(luaL_checkinteger(L, 1));
+	return 0;
+}
+
+static int lua_get_overscan(lua_State *L)
+{
+	if (lua_gettop(L) != 0) return luaL_error(L, "no arguments expected.");
+	lua_pushinteger(L, get_overscan());
+	return 1;
+}
+
 static int lua_setvmode(lua_State *L) {
 	int argc = lua_gettop(L);
 	if (argc != 6 && argc != 8) return luaL_error(L, "wrong number of arguments");
@@ -143,6 +159,8 @@ static const luaL_Reg Screen_functions[] = {
 	{"waitVblankStart",	  lua_vblank},
 	{"getMode",			lua_getvmode},
 	{"setMode",			lua_setvmode},
+	{"setOverscan",		lua_set_overscan},
+	{"getOverscan",		lua_get_overscan},
 	{0, 0}
 };
 
