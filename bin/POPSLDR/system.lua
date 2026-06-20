@@ -2008,13 +2008,13 @@ local pldr_defaults = {
   HDDCACHE = nil;
   PROFILES = {};
   HDD = {
-    -- DISABLED 2026-06-16: the on-disk cache was read back with loadfile(), but
-    -- loadfile is NIL in the embedded Lua runtime (luac -p can't see it) -- so
-    -- once a cache file existed, the next session's ReadCache threw "attempt to
-    -- call a nil value (global 'loadfile')" -> "Failed to load HDD" (provato,
-    -- system.lua:4282). The in-session memo still gives instant repeat opens;
-    -- only cross-session caching is off (HDD rescans per fresh boot, which works).
-    -- Re-enable only with a loadfile-free reader (plain-text format).
+    -- Cross-boot HDD disk cache: RE-ENABLED 2026-06-19 with a plain-text, loadfile-
+    -- FREE reader (the old .lua cache used loadfile, which is NIL in the embedded
+    -- runtime -> "attempt to call a nil value (global 'loadfile')" -> "Failed to load
+    -- HDD"; provato). It is now gated on the PLDR.GAMELIST_CACHE setting (opt-in, OFF
+    -- by default): OFF = the unchanged live HDD scan; the in-session memo (LIST_BUILT)
+    -- is always on regardless. USECACHE is a dead legacy flag now -- the real gate is
+    -- PLDR.GAMELIST_CACHE (see CreateCache / ReadCache / EnsureGameList below).
     USECACHE = false;
     LIST_BUILT = false; -- in-session memo: HDD already scanned/loaded this boot
     FROM_CACHE = false; -- current PLDR.GAMES came from cache, not a fresh scan
@@ -4778,9 +4778,7 @@ function PLDR.ApplyGameListCache(games, gamepath, hidden)
 end
 
 function PLDR.HDD.CreateCache(reuse_current_list)
-  if not PLDR.HDD.USECACHE then return end
-  local C = ResolveWritablePath("hdd_gamecache.lua")
-  local temp = "PLDR.HDDCACHE = {\n"
+  if PLDR.GAMELIST_CACHE ~= true then return end  -- opt-in; OFF -> no cross-boot cache
   local cache_source = PLDR.GAMES
   if reuse_current_list ~= true then
     PLDR.HDD.BuildGameList()
@@ -4789,57 +4787,70 @@ function PLDR.HDD.CreateCache(reuse_current_list)
   if type(cache_source) ~= "table" then
     cache_source = {}
   end
-  for i = 1, #cache_source do
-    temp = temp..("  %q,\n"):format(cache_source[i])
-  end
-  temp = temp.."\n}\n"
-  -- Persist the hide set so dimming (Global Hide off) survives a cold-boot disk
-  -- cache hit; with Global Hide on, hidden games are already filtered out above.
-  temp = temp.."PLDR.HDDCACHE_HIDDEN = {\n"
+  -- Plain-text PLDRGC1 (loadfile-FREE), same family as the per-device cache. Entries
+  -- are the EXACT "partition|relpath" PLDR.GAMES strings; ApplyCachedList rebuilds
+  -- GAMEPARTS from each entry's prefix on load. The hide set is persisted so dimming
+  -- (Global Hide off) survives a cold-boot hit. The settings signature lets a load
+  -- under different scan-affecting settings self-reject (belt-and-suspenders -- the
+  -- HDD path also WipeCache's on those toggles).
+  local lines = { "PLDRGC1", "S "..PLDR.GameListCacheSignature() }
+  for i = 1, #cache_source do lines[#lines + 1] = "G "..tostring(cache_source[i]) end
   if type(PLDR.HIDDEN) == "table" then
     for i = 1, #cache_source do
-      if PLDR.HIDDEN[cache_source[i]] == true then
-        temp = temp..("  [%q]=true,\n"):format(cache_source[i])
-      end
+      if PLDR.HIDDEN[cache_source[i]] == true then lines[#lines + 1] = "H "..tostring(cache_source[i]) end
     end
   end
-  temp = temp.."\n}\n"
-  -- Guard the cache write: on an MC/USB boot the cache lands on mc0:/usb, which
-  -- can be full or read-only. An unguarded openFile/writeFile would throw out of
-  -- EnsureGameList and resurface as "Failed to load HDD" even after a clean scan.
+  local ok_cat, data = pcall(table.concat, lines, "\n")
+  if not ok_cat then return end
+  -- On an HDD boot the cache lives on the boot partition (where settings save), which
+  -- the launcher mounted read-only -- take it RW first (idempotent; a no-op once a
+  -- settings save already did). On an MC/USB boot ResolveWritablePath is already
+  -- writable. Every step is pcall-guarded: a full/RO device just skips the cache (the
+  -- live scan still works), never throwing out of EnsureGameList.
+  if PLDR.SETTINGS_HDD_PARTITION ~= nil and type(PLDR.HDD.EnsureBootPartitionWritable) == "function" then
+    pcall(PLDR.HDD.EnsureBootPartitionWritable)
+  end
+  local C = ResolveWritablePath("hdd_gamecache.txt")  -- .txt = plain text (old .lua is dead)
   pcall(function()
     local fd = System.openFile(C, FCREATE)
-    System.writeFile(fd, temp, temp:len())
-    System.closeFile(fd)
+    if fd ~= nil and not (type(fd) == "number" and fd < 0) then
+      System.writeFile(fd, data, #data)
+      System.closeFile(fd)
+    end
   end)
   PLDR.HDD.HAS_CHECKED = true
 end
 
 function PLDR.HDD.ReadCache()
-  local C = ResolveWritablePath("hdd_gamecache.lua")
-  if doesFileExist(C) then
-    if type(loadfile) ~= "function" then
-      -- loadfile is stripped from the embedded Lua runtime; calling it threw
-      -- "attempt to call a nil value (global 'loadfile')". Never call it -- drop
-      -- any stale cache and let EnsureGameList fall through to a fresh scan.
-      pcall(System.removeFile, C)
-      PLDR.HDD.HAS_CHECKED = false
-      return
+  if PLDR.GAMELIST_CACHE ~= true then return end  -- opt-in; OFF -> always a miss -> live scan
+  local C = ResolveWritablePath("hdd_gamecache.txt")
+  if not doesFileExist(C) then return end
+  local data = ReadWholeFile(C)
+  if type(data) ~= "string" or data == "" then return end
+  -- Plain-text parse (NEVER loadfile/load/dofile -- nil in the embedded runtime, the
+  -- landmine that broke the old cache). On magic / sig mismatch or 0 games, leave
+  -- PLDR.HDDCACHE unset so EnsureGameList falls through to a fresh scan (never throws).
+  local games, hidden = {}, {}
+  local first, sig_ok = true, false
+  local want_sig = PLDR.GameListCacheSignature()
+  for line in string.gmatch(data .. "\n", "([^\n]*)\n") do
+    line = string.gsub(line, "\r$", "")
+    if first then
+      first = false
+      if line ~= "PLDRGC1" then return end  -- not our format / corrupt
+    elseif string.sub(line, 1, 2) == "S " then
+      if string.sub(line, 3) ~= want_sig then return end  -- built under different settings
+      sig_ok = true
+    elseif string.sub(line, 1, 2) == "G " then
+      games[#games + 1] = string.sub(line, 3)
+    elseif string.sub(line, 1, 2) == "H " then
+      hidden[string.sub(line, 3)] = true
     end
-    local loader, load_err = loadfile(C)
-    if loader == nil then
-      System.removeFile(C)
-      PLDR.HDD.HAS_CHECKED = false
-      return
-    end
-    local ok, run_err = pcall(loader)
-    if not ok then
-      System.removeFile(C)
-      PLDR.HDD.HAS_CHECKED = false
-      return
-    end
-    PLDR.HDD.HAS_CHECKED = true
   end
+  if not sig_ok or #games == 0 then return end
+  PLDR.HDDCACHE = games
+  PLDR.HDDCACHE_HIDDEN = hidden
+  PLDR.HDD.HAS_CHECKED = true
 end
 
 function PLDR.HDD.WipeCache(CACHE)
@@ -4850,9 +4861,12 @@ function PLDR.HDD.WipeCache(CACHE)
   PLDR.HDDCACHE = nil
   PLDR.HDDCACHE_HIDDEN = nil
   PLDR.HDD.LIST_BUILT = false
-  local C = ResolveWritablePath("hdd_gamecache.lua")
-  if doesFileExist(C) then
-    System.removeFile(C)
+  -- Remove the plain-text cache (and any stale old .lua); pcall in case the boot
+  -- partition is read-only -- a leftover stale file is harmless (rejected on load by
+  -- its magic/signature).
+  for _, name in ipairs({ "hdd_gamecache.txt", "hdd_gamecache.lua" }) do
+    local C = ResolveWritablePath(name)
+    if doesFileExist(C) then pcall(System.removeFile, C) end
   end
   PLDR.HDD.HAS_CHECKED = false
 end
@@ -4909,7 +4923,7 @@ function PLDR.HDD.EnsureGameList(partition_progress, game_progress, force)
     return "memo"
   end
 
-  if PLDR.HDD.USECACHE and not force then
+  if PLDR.GAMELIST_CACHE == true and not force then
     if type(PLDR.HDD.ReadCache) == "function" then PLDR.HDD.ReadCache() end
     if type(PLDR.HDDCACHE) == "table" and #PLDR.HDDCACHE > 0 then
       PLDR.HDD.ApplyCachedList()
@@ -4956,7 +4970,7 @@ function PLDR.HDD.EnsureGameList(partition_progress, game_progress, force)
   if type(PLDR.HIDDEN) == "table" then
     for k, v in pairs(PLDR.HIDDEN) do if v == true then PLDR.HDDCACHE_HIDDEN[k] = true end end
   end
-  if PLDR.HDD.USECACHE and type(PLDR.HDD.CreateCache) == "function" then
+  if PLDR.GAMELIST_CACHE == true and type(PLDR.HDD.CreateCache) == "function" then
     PLDR.HDD.CreateCache(true)
   end
   return "scan"
