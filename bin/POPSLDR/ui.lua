@@ -2306,6 +2306,8 @@ UI = {
         UI.SettingsEntryGameListCache = UI.GameListCache
         UI.BootSound = (type(PLDR) == "table" and PLDR.BOOT_SOUND ~= false)
         UI.SettingsEntryBootSound = UI.BootSound
+        UI.Overscan = math.floor(tonumber(type(PLDR) == "table" and PLDR.OVERSCAN or 0) or 0)
+        UI.SettingsEntryOverscan = UI.Overscan
         UI.SettingsEntryKeyboardLayout = tostring(UI.KeyboardLayoutDraft or (type(PLDR) == "table" and PLDR.KEYBOARD_LAYOUT) or "QWERTY")
         UI.SettingsFocus = 1
         UI.SceneChange(UI.SCENES.MPROFILE)
@@ -3054,6 +3056,10 @@ UI = {
 
         local function discard_settings_and_return()
           restore_settings_session()
+          -- the live overscan preview changed the GS display; restore the saved value
+          if type(Screen) == "table" and type(Screen.setOverscan) == "function" then
+            pcall(Screen.setOverscan, math.floor(tonumber(PLDR.OVERSCAN) or 0))
+          end
           local return_scene = UI.GetSettingsReturnScene()
           clear_settings_session()
           UI.SceneChange(return_scene)
@@ -3102,6 +3108,7 @@ UI = {
           if details_align_val ~= "center" and details_align_val ~= "right" then details_align_val = "left" end
           local gamelist_cache_val = UI.GameListCache == true
           local boot_sound_val = UI.BootSound == true
+          local overscan_val = math.floor(tonumber(UI.Overscan) or 0)
           local desc_scroll_speed_val = UI.DescScrollSpeed
           if desc_scroll_speed_val ~= "fast" and desc_scroll_speed_val ~= "medium" then desc_scroll_speed_val = "slow" end
           local video_live_before = nil
@@ -3129,6 +3136,7 @@ UI = {
                 desc_scroll_speed = desc_scroll_speed_val,
                 gamelist_cache = gamelist_cache_val,
                 boot_sound = boot_sound_val,
+                overscan = overscan_val,
                 hide_text = UI.HideTextMode == true,
                 prev_hide_text = UI.SettingsEntryHideTextMode == true,
                 apply_bdma = UI.BdmaDirty,
@@ -3161,6 +3169,7 @@ UI = {
             PLDR.DESC_SCROLL_SPEED = desc_scroll_speed_val
             PLDR.GAMELIST_CACHE = gamelist_cache_val
             PLDR.BOOT_SOUND = boot_sound_val
+            PLDR.OVERSCAN = overscan_val
             if type(PLDR.ApplyVideoStandardRuntime) == "function" then
               PLDR.ApplyVideoStandardRuntime(video_key)
             end
@@ -3599,6 +3608,19 @@ UI = {
           function() UI.BootSound = not UI.BootSound end,
           function() return (UI.BootSound == true) ~= (UI.SettingsEntryBootSound == true) end
         )
+        AddCycle(
+          "Overscan (CRT inset)",
+          function() return (UI.Overscan or 0) == 0 and "Off" or tostring(UI.Overscan) end,
+          function()
+            UI.Overscan = math.min((UI.Overscan or 0) + 5, 100)
+            if type(Screen) == "table" and type(Screen.setOverscan) == "function" then pcall(Screen.setOverscan, UI.Overscan) end
+          end,
+          function()
+            UI.Overscan = math.max((UI.Overscan or 0) - 5, 0)
+            if type(Screen) == "table" and type(Screen.setOverscan) == "function" then pcall(Screen.setOverscan, UI.Overscan) end
+          end,
+          function() return (UI.Overscan or 0) ~= (UI.SettingsEntryOverscan or 0) end
+        )
 
         AddSection("POPSTARTER")
         AddCycle(
@@ -3647,6 +3669,7 @@ UI = {
             or tostring(UI.DescScrollSpeed) ~= tostring(UI.SettingsEntryDescScrollSpeed)
             or (UI.GameListCache == true) ~= (UI.SettingsEntryGameListCache == true)
             or (UI.BootSound == true) ~= (UI.SettingsEntryBootSound == true)
+            or (math.floor(tonumber(UI.Overscan) or 0)) ~= (math.floor(tonumber(UI.SettingsEntryOverscan) or 0))
             or (UI.BootPageIndex or 1) ~= (UI.SettingsEntryBootPageIndex or 1)
         end
 

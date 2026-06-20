@@ -3096,6 +3096,7 @@ local function EncodeSettings()
     "DETAILS_ALIGN="..((PLDR.DETAILS_ALIGN == "center" or PLDR.DETAILS_ALIGN == "right") and PLDR.DETAILS_ALIGN or "left"),
     "GAMELIST_CACHE="..((PLDR.GAMELIST_CACHE == true) and "1" or "0"),
     "BOOT_SOUND="..((PLDR.BOOT_SOUND ~= false) and "1" or "0"),
+    "OVERSCAN="..tostring(math.floor(tonumber(PLDR.OVERSCAN) or 0)),
     "DESC_SCROLL_SPEED="..((PLDR.DESC_SCROLL_SPEED == "fast" or PLDR.DESC_SCROLL_SPEED == "medium") and PLDR.DESC_SCROLL_SPEED or "slow")
   }
   return table.concat(lines, "\n").."\n"
@@ -3140,6 +3141,7 @@ local function SnapshotSettingsState()
     details_align = ((PLDR.DETAILS_ALIGN == "center" or PLDR.DETAILS_ALIGN == "right") and PLDR.DETAILS_ALIGN or "left"),
     gamelist_cache = (PLDR.GAMELIST_CACHE == true),
     boot_sound = (PLDR.BOOT_SOUND ~= false),
+    overscan = math.floor(tonumber(PLDR.OVERSCAN) or 0),
     desc_scroll_speed = ((PLDR.DESC_SCROLL_SPEED == "fast" or PLDR.DESC_SCROLL_SPEED == "medium") and PLDR.DESC_SCROLL_SPEED or "slow")
   }
 end
@@ -3193,6 +3195,8 @@ local function ApplySettingsState(state)
   if type(state.gamelist_cache) == "boolean" then
     PLDR.GAMELIST_CACHE = state.gamelist_cache
     PLDR.BOOT_SOUND = state.boot_sound
+    PLDR.OVERSCAN = math.floor(tonumber(state.overscan) or 0)
+    if type(Screen) == "table" and type(Screen.setOverscan) == "function" then pcall(Screen.setOverscan, PLDR.OVERSCAN) end
   end
   PLDR.ApplyVideoStandardRuntime(PLDR.VIDEO_STANDARD)
   if type(state.hide_text) == "boolean" and type(UI) == "table" then
@@ -3314,6 +3318,7 @@ function PLDR.LoadSettingsNonFatal()
   PLDR.DESC_SCROLL_SPEED = "slow"  -- fast|medium|slow; right-stick description scroll speed (slow = current shipped feel)
   PLDR.GAMELIST_CACHE = false  -- opt-in persistent per-device USB/MMCE/MX4SIO list cache (OFF = always live scan)
   PLDR.BOOT_SOUND = true  -- play the boot/splash chime (default ON; oldman63 #501 wanted an off switch)
+  PLDR.OVERSCAN = 0  -- CRT overscan inset, permille (0 = off; OPL rmSetOverscan units/math)
   if type(UI) == "table" then
     if type(UI.SetHideTextMode) == "function" then
       UI.SetHideTextMode(false, false)
@@ -3429,6 +3434,7 @@ function PLDR.LoadSettingsNonFatal()
   local desc_scroll_speed = string.match(data, "\nDESC_SCROLL_SPEED=([^\n]+)") or string.match(data, "^DESC_SCROLL_SPEED=([^\n]+)")
   local gamelist_cache = string.match(data, "\nGAMELIST_CACHE=([^\n]+)") or string.match(data, "^GAMELIST_CACHE=([^\n]+)")
   local boot_sound = string.match(data, "\nBOOT_SOUND=([^\n]+)") or string.match(data, "^BOOT_SOUND=([^\n]+)")
+  local overscan = string.match(data, "\nOVERSCAN=([^\n]+)") or string.match(data, "^OVERSCAN=([^\n]+)")
   if profile ~= nil and PLDR.PROFILES ~= nil and PLDR.PROFILES[profile] ~= nil then
     PLDR.SELECTED_PROFILE = profile
     PLDR.POPSTARTER_PATH = PLDR.PROFILES[profile].ELF
@@ -3501,6 +3507,11 @@ function PLDR.LoadSettingsNonFatal()
   if bs ~= nil then
     PLDR.BOOT_SOUND = bs == true
   end
+  local ov = tonumber(overscan)
+  if ov ~= nil then
+    PLDR.OVERSCAN = math.floor(ov)
+    if type(Screen) == "table" and type(Screen.setOverscan) == "function" then pcall(Screen.setOverscan, PLDR.OVERSCAN) end
+  end
   if hidden_devices ~= nil then
     PLDR.HIDDEN_DEVICES = PLDR.NormalizeHiddenDevices(hidden_devices)
   else
@@ -3554,6 +3565,8 @@ function PLDR.CommitSettingsChanges(opts)
   if type(opts.gamelist_cache) == "boolean" then next_gamelist_cache = opts.gamelist_cache end
   local next_boot_sound = (prev.boot_sound ~= false)
   if type(opts.boot_sound) == "boolean" then next_boot_sound = opts.boot_sound end
+  local next_overscan = math.floor(tonumber(prev.overscan) or 0)
+  if type(opts.overscan) == "number" then next_overscan = math.floor(opts.overscan) end
   -- Explicit boolean check, NOT `(type==boolean) and opts.x or prev.x`: that
   -- idiom collapses a legitimate `false` to prev (Lua and/or short-circuit), so
   -- Hide-Text could never be toggled OFF through a settings save. Mirrors the
@@ -3577,6 +3590,7 @@ function PLDR.CommitSettingsChanges(opts)
     desc_scroll_speed = next_desc_scroll_speed,
     gamelist_cache = next_gamelist_cache,
     boot_sound = next_boot_sound,
+    overscan = next_overscan,
     hidden_devices = PLDR.NormalizeHiddenDevices(opts.hidden_devices or prev.hidden_devices)
   }
   local apply_bdma = opts.apply_bdma == true
