@@ -3587,6 +3587,16 @@ UI = {
             or UI.VideoStandardDirty == true
             or HideTextDirty()
             or KeyboardLayoutDirty()
+            -- Value-cycle settings are tracked by snapshot comparison (their cycle
+            -- handlers set NO dirty flag), so they must be compared here too -- else a
+            -- lone change to one is dropped on BACK with no save prompt. Same
+            -- expressions as each widget's own dirty indicator. (review)
+            or (UI.MultiDiscCollapse == true) ~= (UI.SettingsEntryMultiDiscCollapse == true)
+            or (UI.GlobalHide == true) ~= (UI.SettingsEntryGlobalHide == true)
+            or tostring(UI.DetailsAlign) ~= tostring(UI.SettingsEntryDetailsAlign)
+            or tostring(UI.DescScrollSpeed) ~= tostring(UI.SettingsEntryDescScrollSpeed)
+            or (UI.GameListCache == true) ~= (UI.SettingsEntryGameListCache == true)
+            or (UI.BootPageIndex or 1) ~= (UI.SettingsEntryBootPageIndex or 1)
         end
 
         local function ToggleMcFolder()
