@@ -174,11 +174,22 @@ jobs:
             ZIP_ROOTS="$ZIP_ROOTS POPSTARTER"
           fi
 
-          # Ship PATCH_5.BIN in a POPS/ folder at the zip ROOT -- the file users copy
-          # into their own POPS folder (README step 3). Sourced from the tracked binary.
-          if [ -f bin/POPSLDR/PATCH_5.BIN ]; then
+          # Ship the POPStarter launcher (POPSTARTER.ELF) at the ZIP ROOT next to
+          # POPSLOADER.ELF -- the same file is also copied into POPS/ below, so it's
+          # present wherever a user's setup expects it. Sourced from the tracked
+          # bin/POPSLDR/POPSTARTER.ELF (an embed input, survives make clean).
+          if [ -f bin/POPSLDR/POPSTARTER.ELF ]; then
+            cp -f bin/POPSLDR/POPSTARTER.ELF "$BUNDLE_DIR/POPSTARTER.ELF"
+            ZIP_ROOTS="$ZIP_ROOTS POPSTARTER.ELF"
+          fi
+
+          # Ship a POPS/ folder at the zip ROOT with PATCH_5.BIN and a copy of
+          # POPSTARTER.ELF -- the files users drop into their own POPS folder
+          # (README step 3). Sourced from the tracked binaries.
+          if [ -f bin/POPSLDR/PATCH_5.BIN ] || [ -f bin/POPSLDR/POPSTARTER.ELF ]; then
             mkdir -p "$BUNDLE_DIR/POPS"
-            cp -f bin/POPSLDR/PATCH_5.BIN "$BUNDLE_DIR/POPS/PATCH_5.BIN"
+            [ -f bin/POPSLDR/PATCH_5.BIN ] && cp -f bin/POPSLDR/PATCH_5.BIN "$BUNDLE_DIR/POPS/PATCH_5.BIN"
+            [ -f bin/POPSLDR/POPSTARTER.ELF ] && cp -f bin/POPSLDR/POPSTARTER.ELF "$BUNDLE_DIR/POPS/POPSTARTER.ELF"
             ZIP_ROOTS="$ZIP_ROOTS POPS"
           fi
 
