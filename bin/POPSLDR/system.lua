@@ -2123,7 +2123,23 @@ end
 -- must be explicit and first). Idempotent. On failure it restores a read-only mount so
 -- the cwd is never left stranded. Returns true if the boot partition is now RW-mounted.
 function PLDR.HDD.EnsureBootPartitionWritable()
-  if PLDR.HDD.BOOT_PARTITION_RW == true then return true end
+  -- The cached RW takeover is only valid while the boot partition is STILL
+  -- mounted at the launcher cwd. A game scan (or any game-partition mount) can
+  -- collaterally unmount the boot pfs slot at the C layer: luaHDD's warm
+  -- single-attempt mnt() unmounts an occupied slot it failed to mount onto and
+  -- does not remount it, so after a scan the boot slot (e.g. pfs1:) is left
+  -- EMPTY and the cwd dangles. A stale BOOT_PARTITION_RW==true would then skip
+  -- the remount and let WriteAtomic write to a dead slot ("...may be
+  -- read-only" -- Nuno 2026-06-20: HDD save works, then fails after a scan).
+  -- So verify the mount is live; if it's gone, clear the flag and fall through
+  -- to re-take it. (doesFolderExist on the cwd is true only while pfs is mounted.)
+  if PLDR.HDD.BOOT_PARTITION_RW == true then
+    local cwd_dir = tostring(APP_DIR_LOCAL or "")
+    if cwd_dir ~= "" and type(doesFolderExist) == "function" and doesFolderExist(cwd_dir) then
+      return true
+    end
+    PLDR.HDD.BOOT_PARTITION_RW = false
+  end
   if PLDR.SETTINGS_HDD_PARTITION == nil then return false end
   if type(HDD) ~= "table" or type(HDD.MountPartition) ~= "function"
      or type(HDD.UMountPartition) ~= "function" then return false end
