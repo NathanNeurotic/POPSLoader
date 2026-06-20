@@ -4425,6 +4425,15 @@ function PLDR.SetHddGameHidden(entry, hide_bool)
   local ok, reason = PLDR.HDD.WriteGamePartitionFile(partition, hide_rel, hide_bool and "" or nil)
   if not ok then return false, reason end
   PLDR.HIDDEN[entry] = hide_bool and true or nil
+  -- Keep the in-session memo (ApplyCachedList rehydrates PLDR.HIDDEN from this on an
+  -- HDD-page re-entry) and, when the opt-in disk cache is on, hdd_gamecache.txt in
+  -- sync -- otherwise the memo reverts this hide on the next re-entry (even cache-OFF).
+  if type(PLDR.HDDCACHE_HIDDEN) ~= "table" then PLDR.HDDCACHE_HIDDEN = {} end
+  PLDR.HDDCACHE_HIDDEN[entry] = hide_bool and true or nil
+  if PLDR.GAMELIST_CACHE == true and type(PLDR.HDD) == "table"
+     and type(PLDR.HDD.CreateCache) == "function" then
+    pcall(PLDR.HDD.CreateCache, true)  -- re-emit the H-lines from the live PLDR.HIDDEN
+  end
   return true
 end
 

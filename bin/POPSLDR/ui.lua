@@ -2900,6 +2900,22 @@ UI = {
             local ok, reason = PLDR.SetGameHidden(entry, vcd_path, not was_hidden)
             if ok then
               UI.Notif_queue.add(was_hidden and "Game shown" or "Game hidden", "ok")
+              -- Keep the opt-in per-device cache coherent: its H-records (written at
+              -- scan time) would otherwise revert this hide on the next page re-entry,
+              -- since a cache HIT never re-reads the live .hide. Re-save with the
+              -- now-correct PLDR.HIDDEN; SaveGameListCache no-ops when the cache is off.
+              -- USB GAMEPATH is "" (entries self-qualify) so derive its root. (audit)
+              local cache_path = nil
+              if (UI.CURSCENE == UI.SCENES.GSMB or UI.CURSCENE == UI.SCENES.GMX4SIO)
+                 and type(PLDR.GAMEPATH) == "string" and PLDR.GAMEPATH ~= "" then
+                cache_path = PLDR.GAMEPATH..".gamecache"
+              elseif UI.CURSCENE == UI.SCENES.GUSBFAT and type(PLDR.GetRootsByType) == "function" then
+                local r = PLDR.GetRootsByType("usb")
+                if type(r) == "table" and r[1] ~= nil then cache_path = r[1].."POPS/.gamecache" end
+              end
+              if cache_path ~= nil and type(PLDR.SaveGameListCache) == "function" then
+                PLDR.SaveGameListCache(cache_path, PLDR.GAMES, PLDR.HIDDEN)
+              end
             else
               UI.Notif_queue.add("Couldn't update hidden state ("..tostring(reason)..")", "error")
             end
