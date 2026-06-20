@@ -2650,26 +2650,12 @@ UI = {
               UI.GameList.CURR = 1
             end
           end
-          -- Left analog stick UP/DOWN = fast PAGE navigation (held = repeats), the
-          -- controllable companion to L1's instant top/bottom jump for true freedom
-          -- on big lists. Firm push (deadzone 64 of ~127) so a resting stick never
-          -- drifts the cursor; steps a full page (MAXDRAW) every ~250ms while held
-          -- (oldman63 #501: was 100ms, too fast to track -- esp. with cover art off).
-          if type(Pads) == "table" and type(Pads.getLeftStick) == "function" then
-            local ok_ls, _, lv = pcall(Pads.getLeftStick)
-            if ok_ls and type(lv) == "number" and math.abs(lv) > 64 then
-              local now = 0
-              if UI.Pad.Timer ~= nil then now = Timer.getTime(UI.Pad.Timer) end
-              if (now - (UI.GameList.PageNavAt or 0)) >= 250 then
-                if lv > 0 then
-                  UI.GameList.CURR = CLAMP(UI.GameList.CURR + UI.GameList.MAXDRAW, 1, ammount)
-                else
-                  UI.GameList.CURR = CLAMP(UI.GameList.CURR - UI.GameList.MAXDRAW, 1, ammount)
-                end
-                UI.GameList.PageNavAt = now
-              end
-            end
-          end
+          -- (Left-stick navigation now feeds the d-pad globally in the pad poll --
+          -- OPL-style stick->d-pad fold -- so the stick does smooth item-by-item nav
+          -- with auto-repeat just like the d-pad. The page-jump is NAV_LEFT/RIGHT
+          -- (stick left/right or d-pad left/right) above; L1 jumps top/bottom.
+          -- Replaces the old 250ms whole-page stick jump (oldman63 #501: "sped up
+          -- like crazy, can't select individual items" -- jumping pages, not items).)
           -- Right analog stick scrolls a description that's too long to fully fit
           -- under the cover (when game details are on). The stick is otherwise
           -- unused here (R3 is the click, separate), so this is a free, discoverable
@@ -4417,6 +4403,25 @@ UI = {
         UI.Pad.OLDPAD = UI.Pad.GPAD
         UI.Pad.GPAD = Pads.get()
         GPAD = UI.Pad.GPAD
+        -- OPL-style: fold the LEFT ANALOG STICK into the d-pad direction bits so
+        -- stick navigation runs through the exact same edge + auto-repeat path as
+        -- the d-pad (OPL pad.c readPad does this) -- smooth item-by-item, no separate
+        -- page-jump. Deadzone 64 of 127; getLeftStick returns (h, v) centered at 0
+        -- (up/left negative, down/right positive).
+        if type(Pads) == "table" and type(Pads.getLeftStick) == "function" then
+          local ok_ls, lh, lv = pcall(Pads.getLeftStick)
+          if ok_ls then
+            if type(lv) == "number" then
+              if lv < -64 then UI.Pad.GPAD = UI.Pad.GPAD | PAD_UP
+              elseif lv > 64 then UI.Pad.GPAD = UI.Pad.GPAD | PAD_DOWN end
+            end
+            if type(lh) == "number" then
+              if lh < -64 then UI.Pad.GPAD = UI.Pad.GPAD | PAD_LEFT
+              elseif lh > 64 then UI.Pad.GPAD = UI.Pad.GPAD | PAD_RIGHT end
+            end
+            GPAD = UI.Pad.GPAD
+          end
+        end
 
         local pressed = UI.Pad.GPAD & ~UI.Pad.OLDPAD
         local released = ~UI.Pad.GPAD & UI.Pad.OLDPAD
@@ -4472,12 +4477,13 @@ UI = {
         if (pressed & PAD_L3) ~= 0 then emit_action("L3") end
         if (pressed & PAD_R3) ~= 0 then emit_action("R3") end
 
-        -- OPL-style D-pad auto-repeat: the press edge fires immediately, then a
-        -- held direction auto-repeats after an initial delay so you can scroll a
-        -- long list continuously without mashing the button (oldman63 #501). Only
-        -- UP/DOWN repeat; LEFT/RIGHT stay edge-only so holding never spins the
-        -- main-menu device carousel past where you meant to stop.
-        local NAV_REPEAT_DELAY_MS, NAV_REPEAT_RATE_MS = 280, 90
+        -- OPL-style nav auto-repeat (matches OPL pad.c exactly: 600ms initial delay
+        -- then 200ms repeat): the press edge fires immediately; a held direction then
+        -- repeats ONE item at a time. The left analog stick is folded into the d-pad
+        -- bits above, so the stick uses this same path -- smooth item-by-item, no
+        -- page-jump (oldman63 #501). Only UP/DOWN repeat; LEFT/RIGHT stay edge-only
+        -- so holding never page-jumps or spins the carousel uncontrollably.
+        local NAV_REPEAT_DELAY_MS, NAV_REPEAT_RATE_MS = 600, 200
         local function resolve_nav(dir, is_down, repeatable)
           if not is_down then
             if UI.Pad.NavHeld[dir] == true then UI.Pad.NavNeutral[dir] = true end

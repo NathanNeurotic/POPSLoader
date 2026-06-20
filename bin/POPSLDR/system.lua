@@ -3552,6 +3552,8 @@ function PLDR.CommitSettingsChanges(opts)
   if opts.desc_scroll_speed == "fast" or opts.desc_scroll_speed == "medium" or opts.desc_scroll_speed == "slow" then next_desc_scroll_speed = opts.desc_scroll_speed end
   local next_gamelist_cache = (prev.gamelist_cache == true)
   if type(opts.gamelist_cache) == "boolean" then next_gamelist_cache = opts.gamelist_cache end
+  local next_boot_sound = (prev.boot_sound ~= false)
+  if type(opts.boot_sound) == "boolean" then next_boot_sound = opts.boot_sound end
   -- Explicit boolean check, NOT `(type==boolean) and opts.x or prev.x`: that
   -- idiom collapses a legitimate `false` to prev (Lua and/or short-circuit), so
   -- Hide-Text could never be toggled OFF through a settings save. Mirrors the
@@ -3574,6 +3576,7 @@ function PLDR.CommitSettingsChanges(opts)
     details_align = next_details_align,
     desc_scroll_speed = next_desc_scroll_speed,
     gamelist_cache = next_gamelist_cache,
+    boot_sound = next_boot_sound,
     hidden_devices = PLDR.NormalizeHiddenDevices(opts.hidden_devices or prev.hidden_devices)
   }
   local apply_bdma = opts.apply_bdma == true
