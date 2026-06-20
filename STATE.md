@@ -21,10 +21,10 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - STATUS: implemented, boots on PCSX2; provato confirmed the HDD is **RW-writable on real hardware**; the full settings flow is still validating on hardware (not yet broadly hardware-confirmed).
 - `mc0:/POPSTARTER/.pldrs` remains only as a legacy fallback when no sidecar can be computed.
 - Settings edits are staged and committed on Settings/Profile confirm/leave.
-- Persisted settings — **14 keys** (`EncodeSettings`): `PROFILE`, `POPSTARTER_PATH`, `POPSTARTER_MODE`, `BDMA`, `DKWDRV_PATH`, `STRICT_HDD_PREEXEC_GATE`, `VIDEO_STANDARD`, `HIDE_TEXT`, `KEYBOARD_LAYOUT`, `BOOT_PAGE`, `MULTIDISC_COLLAPSE`, `GLOBAL_HIDE`, `POPSTARTER_MC_FOLDER`, `HIDDEN_DEVICES`.
+- Persisted settings — **18 keys** (`EncodeSettings`): `PROFILE`, `POPSTARTER_PATH`, `POPSTARTER_MODE`, `BDMA`, `DKWDRV_PATH`, `STRICT_HDD_PREEXEC_GATE`, `VIDEO_STANDARD`, `HIDE_TEXT`, `KEYBOARD_LAYOUT`, `BOOT_PAGE`, `MULTIDISC_COLLAPSE`, `GLOBAL_HIDE`, `POPSTARTER_MC_FOLDER`, `HIDDEN_DEVICES`, `SHOW_DETAILS`, `DETAILS_ALIGN`, `GAMELIST_CACHE`, `DESC_SCROLL_SPEED`.
 
 ### Per-game hide layer
-- A `<name>.hide` sidecar next to the game's `.VCD` marks it hidden (read for free during the scan; tracked in `PLDR.HIDDEN`). **L3** toggles hide/show on the selected game; **R3** opens the per-device hidden list to unhide. *Settings → Game List → Hidden games:* **Hidden** filters them out; **Visible (manage)** shows them dimmed so you can toggle.
+- A `<name>.hide` sidecar next to the game's `.VCD` marks it hidden (read for free during the scan; tracked in `PLDR.HIDDEN`). **L3** toggles hide/show on the selected game. To unhide, set *Settings → Game List → Hidden games* to **Visible (manage)**, which shows hidden games dimmed so L3 can toggle them back (**Hidden** filters them out). (R3 is wired but currently has no handler — it does nothing.)
 - In-app hide writes work on **every device page** — USB / MX4SIO / MMCE / Memory Card **and the internal HDD**. On HDD the `.hide` is written via the RW mount take-over (`EnsureBootPartitionWritable`); the "add the `.hide` file from a PC" message is now only a write-*failure* fallback, not the primary path.
 - STATUS: implemented, boots on PCSX2, validating on hardware.
 
@@ -44,7 +44,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 
 ### Backend init / runtime
 - Startup backend auto-init uses boot path, configured executable paths, and selected profile. HDD startup targets run `PLDR.LoadHDDModules()`.
-- USB vs MX4SIO classification is by mount-driver identity: `mass:/` boots stay USB-only unless explicit MX4SIO evidence (`mx4sio:/` prefix, `sdc`/`mx4` ioctl, or `.boot_mx4sio`). `mx4sio_bd.irx` loads only on that evidence; `usbmass_bd.irx` always loads first (mx4sio depends on it). Runtime device access is not gated by the old device-lock system (`canEnterDevice()` always true).
+- USB vs MX4SIO classification is by mount-driver identity: `mass:/` boots stay USB-only unless explicit MX4SIO evidence (`mx4sio:/` prefix, `sdc`/`mx4` ioctl, or `.boot_mx4sio`). `mx4sio_bd.irx` loads only on that evidence; `usbmass_bd.irx` always loads first (mx4sio depends on it). Runtime device access is not gated by the old device-lock system (the `canEnterDevice`/`setDeviceLock` subsystem was removed).
 
 ### Launch paths (current routing)
 - **HDD POPSTARTER on HDD partition** (D-10): `LoadELFFromFileExecPS2RebootIOPWithPartition` → `ExecuteHddBackedViaEmbeddedLoader` → child loader `is_hdd_partition_context` branch (fileXioUmount + SifExitRpc/Cmd + ExecPS2, no IOP reset). Byte-identical to the 2026-05-22 B2 hardware-passing fix at commit `4ae6679`.
@@ -76,12 +76,12 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 2. **Settings persistence is transactional and per-device — including HDD.** Edits stage in drafts; `CommitSettingsChanges` runs on confirm/leave. `PLDR.SETTINGS_PATH` resolves to the per-device `APP_DIR_LOCAL/.pldrs` sidecar; **HDD installs persist on the HDD boot partition via the `EnsureBootPartitionWritable` RW take-over** (no `mc0:` fallback). (Supersedes the old HDD-to-MC exception.)
 3. **USB vs MX4SIO identity comes from the ioctl driver name; `mx4sio_bd` loads conditionally.** Maintainer rule: if a mass device's ioctl/devctl is anything other than `sdc`/`mx4` it is USB; `sdc`/`mx4` means MX4SIO. `usbmass_bd` always loads before `mx4sio_bd`. Pure USB boots never load `mx4sio_bd`.
 4. **Startup backend auto-init is path-driven** — boot source plus configured POPSTARTER/DKWDRV/profile paths drive which backends init before the first page visit.
-5. **Runtime device selection is not hard-locked** — `canEnterDevice()` always returns true; `setDeviceLock()` is a no-op.
+5. **Runtime device selection is not hard-locked** — the old runtime device-lock subsystem (`canEnterDevice`/`setDeviceLock`) was removed (commits a3e04b8, cef61af); any device page can be entered at runtime.
 6. **Probe/retry loops are bounded** — finite attempt counts and fixed phases (no frame stalls/hangs).
 7. **Launch failure feedback must be explicit** — missing POPStarter/DKWDRV paths and launch-return failures produce user-visible notifications/screens.
 8. **Release package manifest is strict** — CI enforces the exact ZIP set and rejects legacy `POPS/*.tm2` entries.
 9. **BDMA ⟺ POPSTARTER-MC-folder interlock** — BDMA can't be enabled while the POPSTARTER MC folder is off; the folder can't be disabled while BDMA is on.
-10. **HDD `.hide` is in-app on every device** — the `<name>.hide` per-game marker is written/removed in-app (L3 toggle, R3 hidden-list) on all device pages including HDD via the RW mount take-over.
+10. **HDD `.hide` is in-app on every device** — the `<name>.hide` per-game marker is written/removed in-app via the **L3** toggle on all device pages including HDD via the RW mount take-over.
 
 **Intentionally not implemented** (must keep reporting that status until feature work lands): `HDD (exFAT)`, `SMB (v1)`, `ILINK`.
 
@@ -122,7 +122,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 - **"Failed to load HDD" from a non-HDD boot** (config-specific; Nuno 2026-06-14) — when POPSLoader is launched from a non-HDD device (USB / MC) via a launcher, a specific configuration faults while building the HDD game list (most setups list the HDD fine). POPSLoader itself starts normally. Workaround: boot POPSLoader from the HDD, or open the HDD page a few seconds after the menu. **Instrument + isolate; do not assert a cause from source** — bare-reset hardware disproved the #490 theory. (Distinct from the fixed second-boot cache crash below.)
 
 **In testing on hardware** (implemented + boots on PCSX2; **not yet broadly hardware-confirmed** — these are what the current rolling build asks testers to verify):
-- HDD in-app `.hide` (L3 toggle / R3 hidden-list).
+- HDD in-app `.hide` (L3 toggle; unhide via *Settings → Game List → Hidden games*).
 - HDD-resident settings save (boot-partition RW take-over; provato confirmed the HDD is RW-writable).
 - PAL native 640×512 full-screen render + auto-revert display-change confirm.
 - POPSTARTER Memory Card Folder toggle + the BDMA interlock.

@@ -30,14 +30,14 @@ without hardware re-verification, see `PRESERVATION_CONTRACTS.md`.
                                                 |
                                                 v
 +----------------------------------------------------------------------------------------------+
-| PHASE 0  (BEFORE main)   src/main.cpp:576 _ps2sdk_memory_init()  [compiled iff -DRESET_IOP]   |
+| PHASE 0  (BEFORE main)   src/main.cpp:619 _ps2sdk_memory_init()  [compiled iff -DRESET_IOP]   |
 |   SifExitRpc -> SifInitRpc(0) -> fileXioExit -> SifIopReset(loop) -> SifIopSync -> SifInitRpc |
 |   Survives "polluted parents" that leave fileXio alive (ps2sdk #425).                          |
 +----------------------------------------------------------------------------------------------+
                                                 |
                                                 v
 +----------------------------------------------------------------------------------------------+
-| PHASE 1  EE entry   src/main.cpp:396 main()                                                   |
+| PHASE 1  EE entry   src/main.cpp:439 main()                                                   |
 |   parseLaunchArgs (-page/-mode/-game/-debug)  |  detectBootDeviceHintFromArgv0 (advisory)     |
 |   SBV patches  |  IRX bring-up (SifExecModuleBuffer from bin2c'd buffers)  |  gsKit+pad init   |
 |   runScript("boot.lua")                                                                        |
@@ -93,10 +93,10 @@ Boot has two distinct phases, and the order is non-obvious: the IOP is reset
 
 ### Phase 0: pre-`main()` IOP hygiene
 newlib calls `_ps2sdk_memory_init()` during EE process startup, before `main()`
-(`src/main.cpp:576`). When built with `-DRESET_IOP` it performs a defensive IOP
+(`src/main.cpp:619`). When built with `-DRESET_IOP` it performs a defensive IOP
 reset: `SifExitRpc()` -> `SifInitRpc(0)` -> `fileXioExit()` ->
 `while(!SifIopReset("",0)){}` -> `while(!SifIopSync()){}` -> `SifInitRpc(0)`
-(`src/main.cpp:615-620`). This recovers from "polluted parent" launchers that
+(`src/main.cpp:658-663`). This recovers from "polluted parent" launchers that
 hand off with `fileXio` still loaded on the IOP — notably wLaunchELF, which only
 resets the IOP for HDD targets. A live `fileXio` holds IOP threads/semaphores
 that block a plain `SifIopReset` (ps2sdk #425), causing a silent hang ->
@@ -104,8 +104,8 @@ black screen. `RESET_IOP = 1` is set in the shipped build (`Makefile:34`), and
 the flag is wired to the compiler at `Makefile:53-55`. Because this runs before
 `main()`, a top-down read of `main()` misses the reset entirely.
 
-### Phase 1: `main()` (`src/main.cpp:396`)
-1. `parseLaunchArgs(argc, argv)` (`src/main.cpp:170`, called at `:407`) parses
+### Phase 1: `main()` (`src/main.cpp:439`)
+1. `parseLaunchArgs(argc, argv)` (`src/main.cpp:198`, called at `:450`) parses
    NHDDL-style args into static buffers. `-page=` and `-mode=` both write
    `launch_arg_page` (`-mode` is an alias); `-game=` -> `launch_arg_game`;
    `-debug` -> `launch_arg_debug` (`src/main.cpp:180-189`).
@@ -115,27 +115,27 @@ the flag is wired to the compiler at `Makefile:53-55`. Because this runs before
    `mass` and `usb` both map to `"USB"` (`src/main.cpp:139-144`). This hint is
    for pre-Lua/pre-IRX decisions only — the authoritative device is resolved
    later in Lua (see Layer 4). Exposed to Lua as `System.getBootDeviceHint()`
-   (`src/luasystem.cpp:1343`).
+   (`src/luasystem.cpp:1227`).
 3. SBV patches: `sbv_patch_disable_prefix_check()` + `sbv_patch_fileio()`
-   (`src/main.cpp:420-421`).
+   (`src/main.cpp:463-464`).
 4. IRX bring-up via `SifExecModuleBuffer` from bin2c'd buffers (no module
    reload from rom0/disk during normal boot). The fixed order is:
    `iomanX` -> `fileXio` (+`fileXioInit`) -> `sio2man` ->
    `[mmceman only if hint==MMCE]` -> `mcman` -> `mcserv` -> `initMC` ->
    `padman` -> `libsd` -> `usbd` -> `ds34usb` -> `ds34bt` (+inits) -> `audsrv`
-   (`src/main.cpp:427-520`). Each stage degrades gracefully: `fileXio` is gated
+   (`src/main.cpp:470-563`). Each stage degrades gracefully: `fileXio` is gated
    on `iomanX` (`src/main.cpp:431`), and the `mmceman`/lazy decisions are gated
    on `fileXio` (`src/main.cpp:446`).
 5. `mmceman.irx` is the **only** device-specific module eagerly loaded at boot,
    and only when `boot_device_hint == "MMCE"`
-   (`src/main.cpp:460-461`), then `MarkMmcemanLoaded()` syncs the lazy tracker
-   (`src/main.cpp:477`). Every other backend (BDM/USB/MX4SIO/HDD) defers to
+   (`src/main.cpp:503-520`), then `MarkMmcemanLoaded()` syncs the lazy tracker
+   (`src/main.cpp:520`). Every other backend (BDM/USB/MX4SIO/HDD) defers to
    Layer C.
-6. Set boot path / app dir (`src/main.cpp:522-527`), init gsKit graphics + pad,
+6. Set boot path / app dir (`src/main.cpp:565-570`), init gsKit graphics + pad,
    `chdir(boot_path)`, then enter the `runScript("boot.lua")` loop.
 
 > MC is not MMCE. Standard PS2 memory cards (`mc0:`/`mc1:`) use the
-> unconditionally-loaded `mcman`/`mcserv` stack (`src/main.cpp:502-503`).
+> unconditionally-loaded `mcman`/`mcserv` stack (`src/main.cpp:545-546`).
 > MMCE (third-party adapters exposing `mmce0:`/`mmce1:`) uses `mmceman.irx`,
 > which is conditional/lazy. The argv0 classifier deliberately excludes `mcm`
 > so `mcman` is not mistaken for an MC boot.
@@ -170,7 +170,7 @@ control to the real application:
 
 - If `argv[0]` starts with `hdd0:`, it brings up HDD: `HDD.Initialize`,
   `System.sleep(2)` (a full 2-second blocking stall — `System.sleep` takes
-  **seconds**, not ms, despite its error string at `src/luasystem.cpp:823-829`),
+  **seconds**, not ms, despite its error string at `src/luasystem.cpp:774-776`),
   then mounts the boot partition to `pfs1:` and warns "NEVER USE IT FOR
   ANYTHING ELSE" (`etc/boot.lua:33-65`). It records `BOOT_HDD_MOUNT_SLOT=1` /
   `BOOT_HDD_MOUNT_PREFIX='pfs1:/'` and normalizes cwd to `pfs1:`
@@ -189,24 +189,28 @@ control to the real application:
 
 ## Layer 4 — UI and scene system (`bin/POPSLDR/ui.lua` + the controller in `system.lua`)
 
-The embedded Lua application is split into a controller (`system.lua`, 5266
-lines) and a view (`ui.lua`, 3622 lines), plus two data modules
+The embedded Lua application is split into a controller (`system.lua`, ~6291
+lines) and a view (`ui.lua`, ~4825 lines), plus two data modules
 (`pops_profiles.lua`, `images.lua`).
 
 ### Control flow lives in `system.lua`, not `ui.lua`
-`ui.lua` defines one giant `UI` table literal (`ui.lua:320` ... `return UI` at
-`ui.lua:3622`) holding every scene, the transition state machine, the
+`ui.lua` defines one giant `UI` table literal (`ui.lua:446` ... `return UI` at
+`ui.lua:4825`) holding every scene, the transition state machine, the
 notification queue, busy overlays, the cover cache, the path-editor keyboard,
 modals, and input — but **no main loop**. The controller `system.lua` loads the
 modules (`pops_profiles` -> `ui` -> `images`, `system.lua:2135-2201`), runs the
-init sequence, and owns the single render loop at the very bottom of the file:
+init sequence, and owns the single render loop at the very bottom of the file.
+Device bring-up now runs inside `do_boot_init` under the welcome splash
+(splash-first, commit `6b65b18`), while `LoadSettingsNonFatal` + the video-mode
+apply happen pre-splash:
 
 ```
-system.lua:5236  PLDR.LoadSettingsNonFatal()
-system.lua:5237  PLDR.AutoInitStartupBackends()
-system.lua:5238  PLDR.SurfaceLaunchArgsDebug()
-system.lua:5239  PLDR.AutoLaunchFromLaunchArgs()
-system.lua:5254  while true do  -- dispatch per-scene Play(), then UI.flip()
+system.lua:6175  PLDR.AutoInitStartupBackends()        -- inside do_boot_init (runs UNDER the splash)
+system.lua:6185  PLDR.AutoLaunchFromLaunchArgs()        -- gated by `if not boot_start_held` (6184)
+system.lua:6187  PLDR.SurfaceLaunchArgsDebug()
+system.lua:6248  PLDR.LoadSettingsNonFatal()            -- moved later: loads settings + applies video mode BEFORE the splash
+system.lua:6269  UI.WelcomeDraw.Play(initial_scene, show_boot_credits, do_boot_init)  -- splash-first paint; do_boot_init runs under it
+system.lua:6279  while true do  -- dispatch per-scene Play(), then UI.flip()
 ```
 
 The loop maps `MMAIN -> UI.MainMenu.Play`, `MPROFILE -> UI.ProfileQuery.Play`,
@@ -235,32 +239,32 @@ no-op. Launch-arg page routing only works because it writes the `Carousel`
 fields directly at module-init time (`system.lua:2181-2199`).
 
 ### Main menu and per-device entry
-`UI.MainMenu.opts` is an 8-entry horizontal animated carousel (`ui.lua:2894`):
+`UI.MainMenu.opts` is an 8-entry horizontal animated carousel (`ui.lua:3900`):
 MMCE, MX4SIO, HDD (exFAT), HDD (PFS), USB, i.Link, SMB (v1), Disc (DKWDRV).
-CONFIRM dispatches by OPT index inside `UI.RunBusyTask` (`ui.lua:3095-3245`):
+CONFIRM dispatches by OPT index inside the CONFIRM handler (`ui.lua:4148-4322`):
 
 | OPT | Entry | Action |
 |----|-------|--------|
 | 1 | MMCE | `DetectMMCESlot` + `GetPS1GameLists` -> scene `GSMB` |
 | 2 | MX4SIO | `InitMX4SIOPopsRoot` + `GetPS1GameLists` -> `GMX4SIO` |
-| 3 | HDD (exFAT) | **stub** — "not implemented" (`ui.lua:3157`) |
+| 3 | HDD (exFAT) | **stub** — "not implemented" (`ui.lua:4234`) |
 | 4 | HDD (PFS) | `LoadHDDModules` + deps + `BuildGameList` -> `GHDD` |
 | 5 | USB | `ensureUsbMass` + `BuildMassGameListByType` -> `GUSBFAT` |
-| 6 | i.Link | **stub** (`ui.lua:3237`) |
-| 7 | SMB (v1) | **stub** (`ui.lua:3239`) |
+| 6 | i.Link | **stub** (`ui.lua:4318`) |
+| 7 | SMB (v1) | **stub** (`ui.lua:4320`) |
 | 8 | Disc (DKWDRV) | open DKWDRV modal |
 
-`UI.RunBusyTask` (`ui.lua:565`) wraps every device-load worker in `pcall`
+`UI.RunBusyTask` (`ui.lua:715`) wraps every device-load worker in `pcall`
 behind a saving/loading overlay; progress flows through
-`MakeBusyProgressReporter` (`ui.lua:578`). The toast stack is `Notif_queue`
-(MAX 2, severity colors, `ui.lua:613-680`).
+`MakeBusyProgressReporter` (`ui.lua:734`). The toast stack is `Notif_queue`
+(MAX 2, severity colors, `ui.lua:772-841`).
 
 ### Game lists
 Three builders, with **non-uniform** entry encoding:
-- `PLDR.GetPS1GameLists` (`system.lua:3740`) — bare `.vcd` basenames
+- `PLDR.GetPS1GameLists` (`system.lua:4444`) — bare `.vcd` basenames
   (MMCE/MX4SIO).
-- `PLDR.BuildMassGameListByType` (`system.lua:3813`) — `"POPSroot|name"` (USB).
-- `PLDR.HDD.BuildGameList` (`system.lua:3926`) — `"partition|relpath"`, mounting
+- `PLDR.BuildMassGameListByType` (`system.lua:4508`) — `"POPSroot|name"` (USB).
+- `PLDR.HDD.BuildGameList` (`system.lua:4635`) — `"partition|relpath"`, mounting
   each `__.POPS`/`__.POPS0..9` partition read-only (`system.lua:1940-1952`).
 
 `UI.GameList.Play` (`ui.lua:2029`) strips the `"X|"` prefix for display and
@@ -268,19 +272,14 @@ launches via `PLDR.RunPOPStarterGame` on CONFIRM. On `GHDD`, R2 selects an
 "HDD Alt" (`full_hdd_pfs0`) mode that requires POPSTARTER itself to live on HDD
 (`ui.lua:2261-2262`).
 
-### HDD cache (dormant)
-The HDD game-list cache is gated behind `PLDR.HDD.USECACHE`, which **defaults
-false** (`system.lua:1907`) and is never set true in the shipped state.
-`CreateCache`/`ReadCache`/`WipeCache` (`system.lua:3988-4029`) serialize
-`PLDR.GAMES` to/from an executable Lua file `hdd_gamecache.lua`, deleting it on
-any parse error — but in BETA-12-PLAY this path is effectively dead. There is no
-`EnsureGameList` function.
+### HDD cache (opt-in)
+The per-device game-list cache (USB/MMCE/MX4SIO and HDD) is an opt-in feature gated by `PLDR.GAMELIST_CACHE` (default false, `system.lua:3253`; persisted as the `GAMELIST_CACHE` setting key). `PLDR.HDD.USECACHE` (`system.lua:2018`) is a dead legacy flag. `PLDR.HDD.EnsureGameList` (`system.lua:4932`) orchestrates the always-on in-session memo (`LIST_BUILT`) plus, when `GAMELIST_CACHE` is on, a plain-text cache file `hdd_gamecache.txt` via `CreateCache`/`ReadCache`/`WipeCache` (`system.lua:4795/4842/4876`), read with a loadfile-free parser (the old `.lua` cache used `loadfile`, which is nil in the embedded runtime). When `GAMELIST_CACHE` is OFF, every device does a fresh live scan.
 
 ### Cover art (separate from the icon atlas)
-`UI.CoverCache` (`ui.lua:156`) is a 3-entry LRU of loaded box-art images, driven
+`UI.CoverCache` (`ui.lua:257`) is a 3-entry LRU of loaded box-art images, driven
 by a 200 ms post-navigation idle (`UpdateSelection`). Non-HDD covers are
 `base.png` beside the VCD; HDD covers are
-`hdd0:__common/POPS/ART/<basename>.png` (`BuildCoverCandidates`, `ui.lua:130`).
+`hdd0:__common/POPS/ART/<basename>.png` (`BuildCoverCandidates`, `ui.lua:175`).
 This is **distinct** from the UI chrome/glyph atlas in `images.lua`.
 
 ---
@@ -290,7 +289,7 @@ This is **distinct** from the UI chrome/glyph atlas in `images.lua`.
 - `src/luasystem.cpp` provides the `System.*` bindings: file/dir I/O, cwd, ELF
   loading (three entry points, Layer 6), browser exit, embedded asset access,
   the BDM/USB/MMCE/MX4SIO lazy loaders, mount-driver queries, launch-args
-  (`lua_getLaunchArgs`, `src/luasystem.cpp:1327`), and the keep-PFS-mask
+  (`lua_getLaunchArgs`, `src/luasystem.cpp:1211`), and the keep-PFS-mask
   setter.
 - `src/luaHDD.cpp` provides the `HDD.*` bindings (status + partition mount).
 
@@ -299,9 +298,9 @@ Backends that are not eagerly loaded at boot are pulled in on demand:
 - BDM chain: `EnsureBDM` -> `EnsureBDMFatFs` -> `EnsureUsbMass`
   (`src/luasystem.cpp:80-120`), each idempotent.
 - MX4SIO: `lua_mx4sio_init` calls `EnsureUsbMass()` **before** loading
-  `mx4sio_bd.irx` (`src/luasystem.cpp:1405-1429`) — maintainer rule
+  `mx4sio_bd.irx` (`src/luasystem.cpp:1298-1330`) — maintainer rule
   (2026-05-28): MX4SIO needs the USB drivers first; USB never needs MX4SIO.
-- MMCE: `EnsureMmceman` (`src/luasystem.cpp:141`) loads `mmceman.irx` on demand
+- MMCE: `EnsureMmceman` (`src/luasystem.cpp:142`) loads `mmceman.irx` on demand
   and `MarkMmcemanLoaded()` syncs the tracker.
 - HDD: `Load_HDD_IRX` (`src/luaHDD.cpp:99`) loads `ps2dev9` -> `ps2atad` ->
   `ps2hdd_osd` (args `-o 4 -n 20`) -> `ps2fs` (args `-m 4 -o 10 -n 40`),
@@ -385,8 +384,8 @@ Lua orchestration            C bindings + parent loader         BRAM child loade
 ```
 
 ### Lua dispatch
-`PLDR.RunPOPStarterGame` (`system.lua:4671`) builds policy, partition context,
-keep-slots, and `reboot_iop`, then calls `LaunchEngine` (`system.lua:4445`).
+`PLDR.RunPOPStarterGame` (`system.lua:5568`) builds policy, partition context,
+keep-slots, and `reboot_iop`, then calls `LaunchEngine` (`system.lua:5351`).
 `BuildPopstarterLaunchCommand` (`system.lua:4649`) sets per-device `reboot_iop`:
 default `0` (`PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER`, `system.lua:1897`);
 POPSTARTER-on-HDD -> `1` (so the partition API + HDD routing fire); HDD game with
@@ -400,7 +399,8 @@ present AND reboot_iop != 0 AND System.loadELFWithPartition exists`
 selective-keep `PrepareForExternalELFLaunch`.
 
 ### C bindings (`src/luasystem.cpp`)
-Three launch bindings (`src/luasystem.cpp:1008` / `:1054` / `:1102`):
+Three launch bindings — `lua_loadELF` (`src/luasystem.cpp:974`) /
+`lua_loadELFWithPartition` (`:1020`) / `lua_loadELFRebootIOP` (`:1068`):
 - `System.loadELF` dispatches on `rebootIOP`.
 - `System.loadELFWithPartition` **hard-requires** `reboot_iop != 0` and a
   `partition_context` shaped like `hdd?:PART:` (`src/luasystem.cpp:1067-1072`);
@@ -410,26 +410,27 @@ Three launch bindings (`src/luasystem.cpp:1008` / `:1054` / `:1102`):
   effectively single-shot per successful launch.
 
 ### The three teardown contracts (`src/elf_loader/src/elf.c`)
-`LoadELFFromFileExecPS2RebootIOPWithPartition` (`src/elf_loader/src/elf.c:604`)
+`LoadELFFromFileExecPS2RebootIOPWithPartition` (`src/elf_loader/src/elf.c:618`)
 is the central fork:
 
 1. **HDD-backed** (partition is hdd/pfs AND filename is hdd/pfs, OR resolved
    path/partition is hdd/pfs) -> `ExecuteHddBackedViaEmbeddedLoader`
-   (`elf.c:631-643`). DKWDRV-on-HDD inherits this same path; the previous V3
+   (defined `elf.c:336`; dispatched at `elf.c:648`/`:656`). DKWDRV-on-HDD
+   inherits this same path; the previous V3
    logic that excluded DKWDRV and used a direct
    `SifLoadElf -> SifIopReset -> ExecPS2` route black-screened on hardware
-   (the documented regression, `elf.c:614-635`).
+   (the documented regression, `elf.c:628-644`).
 2. **BOOT.ELF / DKWDRV-on-HDD via `reboot_iop=0`** -> embedded-loader
    special-cases in `LoadELFFromFileWithPartition`: `mc?:/BOOT/BOOT.ELF`
-   routes through `ExecuteViaEmbeddedLoader` (`elf.c:485-489`), and
-   `is_dkwdrv_elf_path` does the same (`elf.c:502-506`).
+   routes through `ExecuteViaEmbeddedLoader` (`elf.c:499-502`), and
+   `is_dkwdrv_elf_path` does the same (`elf.c:516-519`).
 3. **Non-HDD** (USB/MC/MMCE/MX4SIO POPSTARTER, MC DKWDRV) -> the direct path:
    `SifLoadElf` -> `unmount_pfs_slots_for_exec(build_exec_keep_mask(...))` ->
    `FlushCache` -> `SifIopReset` (loop) -> `SifIopSync` -> reload
    `rom0:SIO2MAN`/`MCMAN`/`MCSERV` -> `SifExitRpc` -> (DKWDRV argv0 synthesis,
    `elf.c:691-697`) -> `ExecPS2` (`elf.c:645-700`).
 
-### The embedded loader handoff (`ExecuteViaEmbeddedLoader`, `elf.c:383`)
+### The embedded loader handoff (`ExecuteViaEmbeddedLoader`, `elf.c:397`)
 Validates the `loader_elf` ELF magic, wipes BRAM (0x84000-0x100000), writes the
 `EmbeddedLoaderMetadata` struct to the fixed address `0x00083C00` with magic
 `'POPL'` (`0x504F504C`) and version 1 (`elf.c:159-170`), copies the child's
@@ -438,19 +439,20 @@ Validates the `loader_elf` ELF magic, wipes BRAM (0x84000-0x100000), writes the
 `ExecPS2`'s the child entry. The metadata carries `partition_context[128]` +
 `load_path[256]`.
 
-### The BRAM child loader (`src/elf_loader/src/loader/src/loader.c:275`)
+### The BRAM child loader (`src/elf_loader/src/loader/src/loader.c:280`)
 Reads the metadata from `0x00083C00`, reconstructs/synthesizes target argv, then
-branches **three ways** before `ExecPS2` (`loader.c:355-422`):
+branches **three ways** before `ExecPS2` (`loader.c:373-427`):
 - **(a) filexio-direct-load** (non-hdd-context pfs/hdd `load_path`):
-  `SifExitRpc` only, then `ExecPS2` (`loader.c:368-374`).
+  `SifExitRpc` only, then `ExecPS2` (`loader.c:373-379`).
 - **(b) hdd-partition-context**: unmount the pfs prefix, `SifExitRpc` +
-  `SifExitCmd`, `ExecPS2` (`loader.c:376-398`).
+  `SifExitCmd`, `ExecPS2` (`loader.c:381-403`; `SifExitRpc` :396,
+  `SifExitCmd` :397, `ExecPS2` :401).
 - **(c) generic**: `SifExitRpc` only and **intentionally NO `SifExitCmd`**
-  (`loader.c:399-422`).
+  (`loader.c:404-427`).
 
 > The absence of `SifExitCmd` on branch (c) is the single remaining pre-ExecPS2
 > difference between the hardware-pass and hardware-fail states. The comment at
-> `loader.c:400-408` documents that an "align with reference loaders" change
+> `loader.c:405-413` documents that an "align with reference loaders" change
 > which added `SifExitCmd` here caused a black-screen regression. See
 > `PRESERVATION_CONTRACTS.md`.
 
@@ -473,7 +475,7 @@ reconstruct a partition-aware exec path from a bare `pfsN:/` path when the
 partition context could not be derived.
 
 ### Auto-launch (NHDDL `-page`/`-game`)
-`PLDR.AutoLaunchFromLaunchArgs` (`system.lua:5157`, called at `:5239`) requires
+`PLDR.AutoLaunchFromLaunchArgs` (`system.lua:6054`, called at `:6185`) requires
 **both** `-page` and `-game`, maps the page to a scene + game-location root,
 runs that backend's lazy init, then calls `PLDR.RunPOPStarterGame` (same engine).
 On success `ExecPS2` never returns, short-circuiting the normal UI boot.
@@ -484,7 +486,7 @@ On success `ExecPS2` never returns, short-circuiting the normal UI boot.
 
 ### POPS "profiles" (`bin/POPSLDR/pops_profiles.lua`)
 A "profile" is **not** a per-game tuning record. `PLDR.PROFILES`
-(`pops_profiles.lua:44-109`) is a 16-entry ordered list of candidate
+(`pops_profiles.lua:26-91`) is a 16-entry ordered list of candidate
 `POPSTARTER.ELF` **locations** (`{ELF=path, DESC=text}`) across same-folder, HDD
 pfs, USB mass, MX4SIO, MMCE, and MC layouts. `DEFAULT_PROFILE = 1`
 (`pops_profiles.lua:8-9`) is the same-folder ELF and seeds
@@ -494,7 +496,7 @@ override wins. In `PROFILE_DEFAULT` mode the persisted `POPSTARTER_PATH=` line i
 intentionally empty (`system.lua:2588-2595`).
 
 ### Image atlas (`bin/POPSLDR/images.lua`)
-`IMG_REGISTRATIONS` (`images.lua:11-43`) is 31 `{key, filename}` pairs (device
+`IMG_REGISTRATIONS` (`images.lua:11-36`) is 24 `{key, filename}` pairs (device
 icons, backgrounds, splash layers, button/d-pad glyphs, plus `missing` and
 `default`). The `IMG` table lazy-loads each PNG from an **embedded** blob via
 `System.getEmbeddedAsset` -> `Graphics.loadImageEmbedded`, caches it, and records
@@ -511,15 +513,16 @@ HDD=4, USB=5, SMB=7}` (`system.lua:2181-2199`); HDD maps to the PFS page (4),
 and unimplemented pages (BDMA/i.Link) are deliberately not routed.
 
 ### On-disk settings (`.pldrs`)
-Plain KEY=VALUE text with **14 keys** (`EncodeSettings`, `system.lua:2906-2930`):
+Plain KEY=VALUE text with **18 keys** (`EncodeSettings`, `system.lua:3013-3042`):
 `PROFILE`, `POPSTARTER_PATH`, `POPSTARTER_MODE`, `BDMA`, `DKWDRV_PATH`,
 `STRICT_HDD_PREEXEC_GATE`, `VIDEO_STANDARD`, `HIDE_TEXT`, `KEYBOARD_LAYOUT`,
 `BOOT_PAGE`, `MULTIDISC_COLLAPSE`, `GLOBAL_HIDE`, `POPSTARTER_MC_FOLDER`,
-`HIDDEN_DEVICES`.
+`HIDDEN_DEVICES`, `SHOW_DETAILS`, `DETAILS_ALIGN`, `GAMELIST_CACHE`,
+`DESC_SCROLL_SPEED`.
 Location is the **per-device** sidecar `APP_DIR/.pldrs`, preferred for every
 device — **including HDD installs**, which now persist on the HDD boot partition
 itself via the `PLDR.HDD.EnsureBootPartitionWritable` RW mount take-over
-(`system.lua:2091`): the launcher's boot pfs slot is unmounted and remounted
+(`system.lua:2125`): the launcher's boot pfs slot is unmounted and remounted
 read-write in place ("own your mount", the OPL pattern), so the sidecar is
 written on-HDD. There is **no `mc0:` fallback for an HDD-cwd install** —
 single-device parity; `mc0:/POPSTARTER/.pldrs` remains only as a legacy fallback
@@ -527,8 +530,8 @@ when no per-device sidecar can be computed. (This supersedes the old PR #466
 carve-out — "HDD saves to MC because the bundled `ps2hdd-osd.irx` can't reliably
 write PFS"; see `STATE.md > Settings (single-device parity)` and
 `STATE.md > Preservation Contracts`.)
-`LoadSettingsNonFatal` (`system.lua:2747`) resolves the path and performs the
-legacy MC->sidecar migration; `SaveSettingsAtomic` (`system.lua:2724`) writes via
+`LoadSettingsNonFatal` (`system.lua:3235`) resolves the path and performs the
+legacy MC->sidecar migration; `SaveSettingsAtomic` (`system.lua:3196`) writes via
 `WriteAtomic` (tmp + rename, `system.lua:2284-2315`). Edits are staged as UI
 drafts and committed transactionally by `PLDR.CommitSettingsChanges`
 (`system.lua:2874`), which snapshots prior state and rolls back on save or
@@ -607,7 +610,7 @@ screen so hardware testers can confirm the exact artifact.
 Several teardown details across `elf.c` and `loader.c` are load-bearing and each
 maps to a specific hardware regression (D-10, D-15, U-10). Do not change them
 without a hardware-verified replacement. The HDD boot-partition RW take-over
-(`PLDR.HDD.EnsureBootPartitionWritable`, `system.lua:2091`) is also now
+(`PLDR.HDD.EnsureBootPartitionWritable`, `system.lua:2125`) is also now
 load-bearing — it owns the boot pfs slot for HDD settings save and HDD in-app
 `.hide`, so any launch-path / mount change must not break it.
 

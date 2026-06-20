@@ -1,6 +1,6 @@
 # AGENTS
 
-Last updated: 2026-06-17 (post-BETA-11)
+Last updated: 2026-06-18 (post-BETA-12 release)
 
 Operational guidance and entry point for AI agents (cloud or interactive) working in this repository. This file is self-contained: it absorbs the former `AGENTS_START_HERE.md` orientation content. For current code/hardware status, behavioral invariants, preservation contracts, and the canonical known-issues list, defer to **`STATE.md`** rather than restating them here.
 

@@ -1,4 +1,4 @@
-Last updated: 2026-06-17 (post-BETA-11)
+Last updated: 2026-06-18 (BETA-12)
 
 # CONTRIBUTING
 
@@ -39,8 +39,8 @@ The full invariant list is in **STATE.md > Behavioral Invariants** — preserve 
 - `mc?:/` alias resolution (`mc0` then `mc1`) for executable path probes.
 - backend-specific launch policy for USB / MMCE / MX4SIO / HDD.
 - the **BDMA ⟺ POPSTARTER-MC-folder interlock** (BDMA can't be enabled while the folder is off; the folder can't be disabled while BDMA is on) and the destructive folder-disable confirm. See **STATE.md > Behavioral Invariants**.
-- **in-app per-game `.hide` on every device including HDD** (L3 toggle / R3 hidden-list, written via the HDD RW mount take-over). See **STATE.md > Behavioral Invariants**.
-- no runtime device-family lock gating (`canEnterDevice()` always true; `setDeviceLock()` is a no-op).
+- **in-app per-game `.hide` on every device including HDD** (L3 toggle, written via the HDD RW mount take-over). See **STATE.md > Behavioral Invariants**.
+- no runtime device-family lock gating (the old inert device-lock subsystem was removed in cef61af; device pages are always enterable).
 - Do not add unbounded retries/poll loops in runtime paths; keep probe/retry behavior bounded and deterministic.
 - Do not silently change POPStarter selector/argv behavior without explicit migration notes.
 - Avoid expensive repeated rescans unless explicitly required.

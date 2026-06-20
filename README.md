@@ -83,6 +83,7 @@ Place VCD game files inside your dedicated POPS partitions, and system binaries 
 | `hdd:/__.POPS/GameName.VCD` | Your PS1 game image (can also use partitions `__.POPS0` through `__.POPS9`) |
 | `hdd:/__common/POPS/ART/GameName.png` | Cover art folder |
 | `hdd:/__common/POPS/IOPRP252.IMG` | Required POPS support file |
+| `hdd:/__common/POPS/POPSTARTER.ELF` | POPStarter launcher binary |
 | `hdd:/__common/POPS/POPS.ELF` | POPS emulator engine binary |
 | `hdd:/__common/POPS/POPS.PAK` | Emulator resources payload |
 | `hdd:/__common/POPS/POPS_IOX.PAK` | Emulator input/output resources payload |
@@ -101,7 +102,7 @@ Navigate POPSLoader using a standard PS2 controller.
 | **D-pad Left / Right** | Page Up / Page Down (jump through large lists) |
 | **L1** | Jump to the top of the game list — press again to bounce to the bottom |
 | **Left Analog Stick (up / down)** | Fast page-jump through the game list — give it a firm push and hold to fly through large libraries a page at a time |
-| **R1** | Refresh / rescan the current device's game list, in place (e.g. after hot-plugging a drive or card). USB / MMCE / MX4SIO re-scan live by default; if *Game list cache* is enabled in Settings they instead rebuild their saved per-device cache. |
+| **R1** | Refresh / rescan the current device's game list, in place (e.g. after hot-plugging a drive or card). USB / MMCE / MX4SIO / HDD (PFS) re-scan live by default; if *Game list cache* is enabled in Settings they instead rebuild their saved per-device cache. |
 | **Cross (X)** | Confirm option / Launch selected game |
 | **Circle (O)** | Go back to the Main Menu / Cancel |
 | **Triangle (△)** | Exit shortcut / BOOT.ELF shortcut where available |
@@ -109,8 +110,7 @@ Navigate POPSLoader using a standard PS2 controller.
 | **Select** | Toggle "Hide Text Mode" (clears the UI for a clean view of cover art) |
 | **Square (□)** | Toggle cover-art preview on / off (in the game list) |
 | **Right Analog Stick (up / down)** | Scroll a long game description that doesn't fully fit on screen (when *Game details* are enabled and a `<game>.txt` is present). Speed is set in *Settings → Description scroll speed*. |
-| **L3 (left stick click)** | Hide / unhide the selected game (writes/removes a `<name>.hide` marker — works on every device, including the internal HDD) |
-| **R3 (right stick click)** | Open the per-device **hidden games** list (to review and unhide) |
+| **L3 (left stick click)** | Hide / unhide the selected game (writes/removes a `<name>.hide` marker — works on every device, including the internal HDD). Set *Settings → Game List → Hidden games* to *Visible (manage)* to show hidden games dimmed, then press **L3** on a dimmed entry to unhide it. |
 | **R2** | Launch in "HDD Alt" mode (HDD (PFS) game list only — for an HDD-resident POPSTARTER) |
 
 ### On-screen Keyboard (Settings path editor)
@@ -133,15 +133,21 @@ Press **Start** on the menu to open Settings; changes save when you confirm. Set
 | :--- | :--- | :--- |
 | **Boot Page** | **Carousel** (default) · MX4SIO · USB · MMCE · HDD (PFS) | Where POPSLoader lands after the boot sequence. *Carousel* shows the normal device wheel. Pick a device and POPSLoader opens **straight into that device's game list** at startup (it loads that backend automatically). A `-page=` launch argument still overrides this for that one boot. |
 
+### Carousel Devices
+
+| Setting | Options | What it does |
+| :--- | :--- | :--- |
+| **(one row per device: MMCE, MX4SIO, HDD (exFAT), HDD (PFS), USB, i.Link, SMB, Disc)** | **Shown** (default) · Hidden | Hide or show each entry on the main device carousel. Set unused or not-yet-implemented backends (e.g. HDD (exFAT), SMB, i.Link) to **Hidden** to remove them from the wheel. At least one device must stay **Shown**. Saved with your settings (`HIDDEN_DEVICES`); hidden entries are skipped during carousel navigation with no gaps, and launch behavior is unchanged. |
+
 ### Game List
 
 | Setting | Options | What it does |
 | :--- | :--- | :--- |
 | **Multi-disc games** | **Show all discs** (default) · First disc only | *First disc only* hides the secondary discs of multi-disc games so only disc 1 shows. **Detection is purely by filename** — a disc is hidden if its name contains `(Disc 2)`, `(Disc 3)`, `(CD 2)`, `(Disk 2)`… (any number ≥ 2). So it **only works if you name your files with that convention**, e.g. `Final Fantasy IX (Disc 1).VCD` / `Final Fantasy IX (Disc 2).VCD`. Launch disc 1 and swap discs in-game via your VMC. (PS1 discs carry no shared "this is the same game" metadata, so the filename is the only signal.) Applies to every device. |
-| **Hidden games** | **Visible (manage)** (default) · Hidden | Per-game hide layer. Press **L3** on any game to hide or unhide it, or **R3** to open the per-device hidden list — hiding writes (or removes) a tiny `<name>.hide` marker next to the game's `.VCD`, exactly like the `<name>.png` cover. *Hidden* filters tagged games out of the list; *Visible (manage)* shows them **dimmed** so you can manage them with L3. In-app hiding works on **every device** — USB / MX4SIO / MMCE / Memory Card **and the internal HDD** (POPSLoader writes the `.hide` on the HDD via its read-write boot-partition mount). |
+| **Hidden games** | **Visible (manage)** (default) · Hidden | Per-game hide layer. Press **L3** on any game to hide or unhide it — hiding writes (or removes) a tiny `<name>.hide` marker next to the game's `.VCD`, exactly like the `<name>.png` cover. *Hidden* filters tagged games out of the list; *Visible (manage)* shows them **dimmed** so you can manage them with L3. In-app hiding works on **every device** — USB / MX4SIO / MMCE / Memory Card **and the internal HDD** (POPSLoader writes the `.hide` on the HDD via its read-write boot-partition mount). |
 | **Game details** | **Off** (default) · Left · Center · Right | Shows a per-game blurb from a `<game>.txt` sidecar in a small panel under the cover, in the chosen text alignment (*Off* hides it). Authored line breaks are preserved; scroll a long blurb with the **right analog stick**. |
 | **Description scroll speed** | Fast · Medium · **Slow** (default) | How fast — and how firm a stick push — the **right analog stick** scrolls the *Game details* blurb. *Slow* is the most deliberate; *Fast* moves more lines per second. Only relevant when *Game details* is on. |
-| **Game list cache** | **Off** (default) · On | When **On**, USB / MMCE / MX4SIO save their scanned game list per device so the "Building game list…" rescan only runs once (rebuild it with **R1**). **Off** = always live-scan (the default, unchanged behavior). |
+| **Game list cache** | **Off** (default) · On | When **On**, USB / MMCE / MX4SIO **and the internal HDD (PFS)** save their scanned game list per device so the "Building game list…" rescan only runs once (rebuild it with **R1**). **Off** = always live-scan (the default, unchanged behavior). |
 
 ### Other settings
 
@@ -177,7 +183,7 @@ The `U-10` case (BOOT.ELF exit from an HDD-launched POPSLoader) previously black
 
 ### Settings Storage on HDD Installs
 
-HDD-installed POPSLoader saves its `.pldrs` settings file **on the HDD itself**, in the launcher's boot partition — same single-device behavior as USB / MX4SIO / MMCE, which keep the sidecar at `<install dir>/.pldrs`. To do this POPSLoader takes over its own boot partition's mount and remounts it read-write (the OPL "own your mount" pattern), so there is **no `mc0:` fallback** for HDD installs. The same read-write mount is what lets in-app `.hide` markers (L3 / R3) be written on the HDD. See **[STATE.md > Settings](STATE.md#settings-single-device-parity)** for the canonical rules.
+HDD-installed POPSLoader saves its `.pldrs` settings file **on the HDD itself**, in the launcher's boot partition — same single-device behavior as USB / MX4SIO / MMCE, which keep the sidecar at `<install dir>/.pldrs`. To do this POPSLoader takes over its own boot partition's mount and remounts it read-write (the OPL "own your mount" pattern), so there is **no `mc0:` fallback** for HDD installs. The same read-write mount is what lets in-app `.hide` markers (toggled with L3) be written on the HDD. See **[STATE.md > Settings](STATE.md#settings-single-device-parity)** for the canonical rules.
 
 ---
 

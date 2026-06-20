@@ -1,4 +1,4 @@
-Last updated: 2026-06-17 (post-BETA-11)
+Last updated: 2026-06-18 (post-BETA-12)
 
 # ROADMAP
 
@@ -27,7 +27,7 @@ This is the **forward plan**. For current runtime state, the canonical Known-Iss
 
 ### 2) Layer C full lazy IRX loading
 - Precursor (pre-IRX device classification hint) landed in PR #458.
-- **`mmceman` deferral** — PR #471 (DRAFT). Awaiting hardware test. Verify: MMCE boots still load mmceman eagerly, USB/MC/MX4SIO/HDD boots defer it, pad input survives on all boot types, MMCE-page entry from a deferred state correctly lazy-loads.
+- **`mmceman` deferral — SHIPPED** (PR #471, merged; commit `d10ec56`). MMCE boots load mmceman eagerly (`src/main.cpp:503-528`); USB/MC/MX4SIO/HDD boots defer it (`src/main.cpp:529-538`) and lazy-load on demand via `PLDR.EnsureMmceReadyOnce()` (`bin/POPSLDR/system.lua:1176` — `System.ensureMmceman` + `System.reinitPad`). MMCE pad-input behavior hardware-confirmed (FifthFox, commit `9f2d550`).
 - **`ds34bt` deferral** (Bluetooth pads) — queued. Needs a settings toggle ("Enable BT Pads", default off) or auto-detect, otherwise it breaks BT-pad-only users.
 - **`usbd` deferral** — queued, HIGH RISK. `ds34usb` (USB DS3/4 pads, the most common pad type) depends on `usbd`. Without `usbd`, USB pads stop working. Cannot ship without a robust opt-in or careful boot-time decision.
 - Expected gain per the audit in `docs/archive/LAUNCH_HYGIENE.md`: 30-50% pre-Lua startup time reduction once all three deferrals land.
