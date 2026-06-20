@@ -439,10 +439,23 @@ GSTEXTURE* loadbmp(FILE* File, bool delayed)
 	tex->Height = Bitmap.InfoHeader.Height;
 	tex->Filter = GS_FILTER_NEAREST;
 
+	// Reject unsupported bit depths up front so tex->PSM is always set by one of the
+	// branches below before it is read at gsKit_texture_size_ee -- otherwise a 32-bit
+	// (or 1/2-bit) BMP cover skips every branch and sizes the alloc from an
+	// uninitialized PSM (uninitialized read). (Codex F2)
+	if (Bitmap.InfoHeader.BitCount != 4 && Bitmap.InfoHeader.BitCount != 8 &&
+	    Bitmap.InfoHeader.BitCount != 16 && Bitmap.InfoHeader.BitCount != 24) {
+		DPRINTF("BMP: unsupported bit depth %d\n", Bitmap.InfoHeader.BitCount);
+		free(tex);
+		fclose(File);
+		return NULL;
+	}
+
 	if(Bitmap.InfoHeader.BitCount == 4)
 	{
 		tex->PSM = GS_PSM_T4;
 		tex->Clut = (u32*)memalign(128, gsKit_texture_size_ee(8, 2, GS_PSM_CT32));
+		if (tex->Clut == NULL) { DPRINTF("BMP: CLUT alloc failed\n"); free(tex); fclose(File); return NULL; }
 		tex->ClutPSM = GS_PSM_CT32;
 		tex->ClutStorageMode = GS_CLUT_STORAGE_CSM1;
 
@@ -484,6 +497,7 @@ GSTEXTURE* loadbmp(FILE* File, bool delayed)
 	{
 		tex->PSM = GS_PSM_T8;
 		tex->Clut = (u32*)memalign(128, gsKit_texture_size_ee(16, 16, GS_PSM_CT32));
+		if (tex->Clut == NULL) { DPRINTF("BMP: CLUT alloc failed\n"); free(tex); fclose(File); return NULL; }
 		tex->ClutPSM = GS_PSM_CT32;
 
 		memset(tex->Clut, 0, gsKit_texture_size_ee(16, 16, GS_PSM_CT32));
@@ -826,7 +840,15 @@ static void  _ps2_load_JPEG_generic(GSTEXTURE *Texture, struct jpeg_decompress_s
 	Texture->Clut = NULL;
 	Texture->ClutStorageMode = GS_CLUT_STORAGE_CSM1;
 
-	textureSize = cinfo->output_width*cinfo->output_height*cinfo->out_color_components;
+	// Reject implausible dimensions before the multiply so a crafted JPEG can't wrap
+	// output_width*output_height*components (32-bit) to a small value -> undersized
+	// alloc -> heap overflow in jpeg_read_scanlines. The cover path passes
+	// scale_down=false so dims are otherwise uncapped; 8192 is far above any real
+	// cover yet keeps the product < INT_MAX (8192*8192*4 = 268M). (Codex F3)
+	if (cinfo->output_width == 0 || cinfo->output_height == 0
+	    || cinfo->output_width > 8192u || cinfo->output_height > 8192u)
+		longjmp(jerr->setjmp_buffer, 1);
+	textureSize = (int)cinfo->output_width * (int)cinfo->output_height * cinfo->out_color_components;
 	#ifdef DEBUG
 	DPRINTF("Texture Size = %i\n",textureSize);
 	#endif
