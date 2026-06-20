@@ -850,10 +850,13 @@ GSTEXTURE* loadjpeg(FILE* fp, bool scale_down, bool delayed)
 		return NULL;
 	}
 	tex->Delayed = delayed;  // set only after the NULL check (don't write through NULL)
+	tex->Mem = NULL;   // NULL-init so the setjmp cleanup's free() is safe even if a
+	tex->Clut = NULL;  // longjmp fires before the decode runs (mirrors the PNG/BMP path)
 
 	if (fp == NULL)
 	{
 		DPRINTF("jpeg: Failed to load file\n");
+		free(tex);
 		return NULL;
 	}
 
@@ -867,8 +870,9 @@ GSTEXTURE* loadjpeg(FILE* fp, bool scale_down, bool delayed)
 		*/
 		jpeg_destroy_decompress(&cinfo);
 		fclose(fp);
-		if (tex->Mem)
-			free(tex->Mem);
+		free(tex->Mem);   // NULL-init above -> safe whether or not the decode ran
+		free(tex->Clut);  // ditto; the struct itself used to leak on every JPEG error
+		free(tex);
 		DPRINTF("jpeg: error during processing file\n");
 		return NULL;
 	}
