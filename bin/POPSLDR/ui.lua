@@ -4418,6 +4418,8 @@ UI = {
       NavNeutral = {UP = true, DOWN = true, LEFT = true, RIGHT = true};
       NavFirstMs = {};   -- per-direction press time (ms) for OPL-style auto-repeat
       NavLastMs = {};    -- per-direction last auto-repeat fire (ms)
+      StickV = 0;        -- latched left-stick vertical fold state (-1 up / 0 / +1 down)
+      StickH = 0;        -- latched left-stick horizontal fold state (-1 left / 0 / +1 right)
       Queue = {};
       DebugPadTimer = nil;
       DebugPadLast = 0;
@@ -4438,21 +4440,64 @@ UI = {
         -- OPL-style: fold the LEFT ANALOG STICK into the d-pad direction bits so
         -- stick navigation runs through the exact same edge + auto-repeat path as
         -- the d-pad (OPL pad.c readPad does this) -- smooth item-by-item, no separate
-        -- page-jump. Deadzone 64 of 127; getLeftStick returns (h, v) centered at 0
-        -- (up/left negative, down/right positive).
-        if type(Pads) == "table" and type(Pads.getLeftStick) == "function" then
+        -- page-jump. getLeftStick returns (h, v) centered at 0 (up/left negative,
+        -- down/right positive).
+        --
+        -- GATE (mirrors OPL pad.c:201 `if ((pad->buttons.mode >> 4) == 0x07)`): only
+        -- fold when the pad is ACTUALLY in analog/DualShock mode. A digital-mode pad
+        -- (src/pad.cpp initializePad leaves modes==0 controllers digital) returns
+        -- stale/zero analog bytes -> getLeftStick reports ~ -127 -> WITHOUT this gate
+        -- that injects a phantom PAD_UP|PAD_LEFT every frame and breaks up/down nav
+        -- (Nuno6573 #BETA-13). Pads.getMode() == PAD_MODECURID high nibble: 0x5
+        -- analog, 0x7 DualShock, 0x4 digital, 0 no-data. nil-safe: if getMode is
+        -- absent or non-analog, we skip the fold entirely (d-pad still works).
+        --
+        -- HYSTERESIS: assert a direction at |v|>64 but only RELEASE it below |v|<40,
+        -- and latch the asserted side. A stick parked at the deadzone boundary can't
+        -- dither across the threshold and edge-spam the immediate-fire nav branch
+        -- (resolve_nav fresh-press bypass) -> no runaway scroll.
+        local stick_analog = false
+        if type(Pads) == "table" and type(Pads.getMode) == "function" then
+          local ok_md, md = pcall(Pads.getMode)
+          if ok_md and type(md) == "number" and (md == PAD_ANALOG or md == PAD_DUALSHOCK) then
+            stick_analog = true
+          end
+        end
+        if stick_analog and type(Pads.getLeftStick) == "function" then
           local ok_ls, lh, lv = pcall(Pads.getLeftStick)
           if ok_ls then
-            if type(lv) == "number" then
-              if lv < -64 then UI.Pad.GPAD = UI.Pad.GPAD | PAD_UP
-              elseif lv > 64 then UI.Pad.GPAD = UI.Pad.GPAD | PAD_DOWN end
+            local ASSERT, RELEASE = 64, 40
+            if type(lv) ~= "number" then lv = 0 end
+            if type(lh) ~= "number" then lh = 0 end
+            -- vertical latch
+            if UI.Pad.StickV == 0 then
+              if lv < -ASSERT then UI.Pad.StickV = -1
+              elseif lv > ASSERT then UI.Pad.StickV = 1 end
+            elseif UI.Pad.StickV == -1 then
+              if lv > -RELEASE then UI.Pad.StickV = 0 end
+            else
+              if lv < RELEASE then UI.Pad.StickV = 0 end
             end
-            if type(lh) == "number" then
-              if lh < -64 then UI.Pad.GPAD = UI.Pad.GPAD | PAD_LEFT
-              elseif lh > 64 then UI.Pad.GPAD = UI.Pad.GPAD | PAD_RIGHT end
+            -- horizontal latch
+            if UI.Pad.StickH == 0 then
+              if lh < -ASSERT then UI.Pad.StickH = -1
+              elseif lh > ASSERT then UI.Pad.StickH = 1 end
+            elseif UI.Pad.StickH == -1 then
+              if lh > -RELEASE then UI.Pad.StickH = 0 end
+            else
+              if lh < RELEASE then UI.Pad.StickH = 0 end
             end
+            if UI.Pad.StickV == -1 then UI.Pad.GPAD = UI.Pad.GPAD | PAD_UP
+            elseif UI.Pad.StickV == 1 then UI.Pad.GPAD = UI.Pad.GPAD | PAD_DOWN end
+            if UI.Pad.StickH == -1 then UI.Pad.GPAD = UI.Pad.GPAD | PAD_LEFT
+            elseif UI.Pad.StickH == 1 then UI.Pad.GPAD = UI.Pad.GPAD | PAD_RIGHT end
             GPAD = UI.Pad.GPAD
           end
+        else
+          -- not analog this frame: drop any latched stick direction so a stale
+          -- latch can't keep asserting after the pad changes mode / disconnects.
+          UI.Pad.StickV = 0
+          UI.Pad.StickH = 0
         end
 
         local pressed = UI.Pad.GPAD & ~UI.Pad.OLDPAD

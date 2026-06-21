@@ -58,6 +58,9 @@ artifacts/
 # Outdated/superseded local working files (audit reports, prompts, old build outputs)
 outdated/
 
+# Local reference clones pulled by audit agents (ps2sdk / OPL / gsKit / ps2-packer)
+.codex_refs/
+
 # Ensure specific tracked binary assets stay visible
 !bin/POPSLDR/POPSTARTER.ELF
 !iop/embed/BDMASSAULT_MX4SIO/*.irx
