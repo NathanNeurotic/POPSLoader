@@ -201,6 +201,15 @@ details.deep summary::-webkit-details-marker{display:none}
 details.deep summary::before{content:"▸ ";color:var(--ps-tri)}
 details.deep[open] summary::before{content:"▾ "}
 
+/* ---- image gallery ---- */
+.gallery{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));margin:16px 0}
+.gallery figure{margin:0;background:var(--panel);border:1px solid var(--line2);border-radius:10px;overflow:hidden}
+.gallery img{width:100%;display:block;border:none;border-radius:0;aspect-ratio:4/3;object-fit:cover;
+  background:#02040a;transition:transform .2s}
+.gallery figure:hover img{transform:scale(1.04)}
+.gallery figcaption{padding:7px 10px;font-size:11.5px;color:var(--ink3);border-top:1px solid var(--line);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
 /* ---- misc ---- */
 .prov-inline{color:var(--ink3);font-size:12px}
 .pill{display:inline-block;font-size:11px;color:var(--ink3);border:1px solid var(--line2);border-radius:20px;

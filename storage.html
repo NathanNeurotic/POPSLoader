@@ -41,7 +41,87 @@
 <h2>Launch methods and per-mode ELF prefixes</h2>
 <p>Three launch methods exist. (1) Renamed-ELF-per-game: each game gets its own copy of POPSTARTER.ELF renamed to '<prefix><VCD name>.elf', where the prefix is XX. for USB, SB. for SMB, none for the modern HDD type, or PP./__. for the two legacy HDD types. The third character of every prefix is a literal dot, and both the prefix and the .VCD extension must be UPPERCASE or matching fails. This is the classic method and the reason the others exist: one ELF per game is tedious for large libraries.</p>
 <p>(2) Single direct-VCD: place ONE un-renamed POPSTARTER.ELF in the POPS folder and launch the .VCD directly. The special uLaunchELF build uLE_kHn (e.g. uLE_kHn_20191110) can run a .VCD like an ELF - put its BOOT at mc0:/BOOT/BOOT.ELF. (Base report's 'wLE_kHn' is a typo; the correct name is uLE_kHn, 'u' for uLaunchELF.) uLE_kHn supports USB but not SMB at time of writing. OPL's 'Apps' tab (driving conf_apps.cfg / APPS/<game>/<game>.elf) is the other common direct-launch UI and works across USB/HDD/SMB.</p>
-<p>(3) The modern POPSLoader fork (Lua/Enceladus): a single POPSLOADER.ELF plus bundled scripts/textures/modules; drop VCDs in a POPS folder alongside your POPStarter ELF and the POPS support files (IOPRP252.IMG, POPS.ELF, POPS.PAK, POPS_IOX.PAK), then run POPSLOADER.ELF. It boots from MC/MMCE/MX4SIO/USB (FAT32/exFAT) and runs games from MMCE/MX4SIO/USB/APA-HDD - a superset of stock POPStarter's backends.</p><h2>Partition-installed POPS games (PP.<em> / __.</em> — HDDOSD &amp; PSBBN)</h2>
+<p>(3) The modern POPSLoader fork (Lua/Enceladus): a single POPSLOADER.ELF plus bundled scripts/textures/modules; drop VCDs in a POPS folder alongside your POPStarter ELF and the POPS support files (IOPRP252.IMG, POPS.ELF, POPS.PAK, POPS_IOX.PAK), then run POPSLOADER.ELF. It boots from MC/MMCE/MX4SIO/USB (FAT32/exFAT) and runs games from MMCE/MX4SIO/USB/APA-HDD - a superset of stock POPStarter's backends.</p><h2>Maintainer-verified file structures (confirmed working)</h2>
+<blockquote>
+<p>These exact layouts are <strong>first-party, tested by the POPSLoader maintainer</strong> across multiple OPL forks<br />
+(Daily Build "Tenth Anniversary", Grimdoomer, official 1.1.0 / 1.2.0 betas) — the highest-confidence setups<br />
+on this site. The <code>Soul Blade</code> examples below use SLUS_002.40; substitute your own game. Save <code>title.cfg</code><br />
+as <strong><code>.cfg</code>, not <code>.txt</code></strong>, and it's best <strong>not</strong> to put the game ID in the <code>.VCD</code> filename for the<br />
+wLE_kHn / POPSLoader listings.</p>
+</blockquote>
+<h3>USB mass storage</h3>
+<p><strong>OPL — all versions — APPS page (renamed-ELF method):</strong></p>
+<pre><code>mass:/POPS/SLUS_002.40.Soul Blade.VCD            (converted from your BIN/CUE PS1 backup)
+mass:/POPS/SLUS_002.40.Soul Blade/               (per-game VMC + HugoPocked fixes folder)
+mass:/POPS/POPS_IOX.PAK
+mass:/APPS/PS1_Soul Blade/XX.SLUS_002.40.Soul Blade.ELF   (a renamed copy of POPSTARTER.ELF)
+mass:/APPS/PS1_Soul Blade/title.cfg
+        title=[PS1] Soul Blade
+        boot=XX.SLUS_002.40.Soul Blade.ELF
+</code></pre>
+<p><strong>OPL Daily Build (Tenth Anniversary) — PS1 page (direct VCD):</strong></p>
+<pre><code>mass:/POPS/POPSTARTER.ELF
+mass:/POPS/SLUS_002.40.Soul Blade.VCD
+mass:/POPS/SLUS_002.40.Soul Blade/
+mass:/POPS/POPS_IOX.PAK
+</code></pre>
+<p><strong>POPSLoader APP (USB):</strong></p>
+<pre><code>mass:/POPS/POPS_IOX.PAK
+mass:/POPS/POPSTARTER.ELF
+mass:/POPS/Soul Blade.VCD
+mass:/POPS/Soul Blade/
+mass:/APPS/PS1_POPSLDR/POPSLOADER.ELF
+mass:/APPS/PS1_POPSLDR/title.cfg
+        title=[PS1] !POPSLOADER
+        boot=POPSLOADER.ELF
+</code></pre>
+<p><strong>HugoPocked per-game fixes:</strong> drop them in a folder named after the VCD, e.g. <code>123.VCD</code> → <code>mass:/POPS/123/</code>.</p>
+<h3>exFAT on USB — BDMAssault enabler (case-sensitive!)</h3>
+<p>israpps' <a href="https://github.com/israpps/BDMAssault">BDMAssault</a> renames <code>usbd_bd_assault.irx</code> and<br />
+<code>bdm_assault.irx</code>. Place on a memory card (exact case matters):</p>
+<pre><code>mc?:/POPSTARTER/usbd.irx
+mc?:/POPSTARTER/usbhdfsd.irx
+mc?:/SYS-CONF/USBD.IRX
+mc?:/SYS-CONF/USBHDFSD.IRX
+</code></pre>
+<h3>SMB (Ethernet)</h3>
+<p>Confirmed on recent Grimdoomer, Daily Build, and the official OPL betas.<br />
+<strong>Required <code>mc?:/POPSTARTER/</code> files for SMB:</strong> <code>IPCONFIG.DAT</code>, <code>SMBCONFIG.DAT</code>, <code>poweroff.irx</code>, <code>ps2dev9.irx</code>,<br />
+<code>ps2ip.irx</code>, <code>ps2smap.irx</code>, <code>smbman.irx</code>, <code>SMSUTILS.irx</code>, <code>usbd.irx</code>, <code>usbhdfsd.irx</code> (the last two are the<br />
+BDMA exFAT drivers).</p>
+<pre><code>smb:/POPS/SLUS_002.40.Soul Blade.VCD
+smb:/POPS/POPS_IOX.PAK
+smb:/POPS/POPSTARTER.ELF
+smb:/APPS/Soul Blade/SB.SLUS_002.40.Soul Blade.ELF   (renamed POPSTARTER.ELF — note the SB. prefix for SMB)
+smb:/APPS/Soul Blade/title.cfg
+        title=[PS1]Soul Blade
+        boot=SB.SLUS_002.40.Soul Blade.ELF
+</code></pre>
+<h3>Internal SATA/IDE HDD/SSD — PFS-APA</h3>
+<p><strong>OPL — all versions — APPS page:</strong></p>
+<pre><code>hdd:/__.POPS/SLUS_002.40.Soul Blade.VCD
+hdd:/__common/POPS/IOPRP252.IMG
+hdd:/__common/POPS/POPS.ELF
+hdd:/__common/POPS/POPSTARTER.ELF
+hdd:/+OPL/APPS/Soul Blade/SLUS_002.40.Soul Blade.ELF   (renamed POPSTARTER.ELF)
+hdd:/+OPL/APPS/Soul Blade/title.cfg
+        title=[PS1]Soul Blade
+        boot=SLUS_002.40.Soul Blade.ELF
+</code></pre>
+<h3>exFAT internal — NOT supported, except via APA-Jail</h3>
+<p>POPStarter does <strong>not</strong> support internal exFAT storage directly. With APA-Jail you can do:</p>
+<pre><code>exfat:hdd:APPS/Soul Blade/SLUS_002.4.0.Soul Blade.ELF
+exfat:hdd:APPS/Soul Blade/title.cfg   (title=Soul Blade / boot=SLUS_002.4.0.Soul Blade.ELF)
+apa:hdd:/__.POPS/SLUS_002.4.0.Soul Blade.VCD
+apa:hdd:/__common/POPS/IOPRP252.IMG
+apa:hdd:/__common/POPS/POPS.ELF
+apa:hdd:/__common/POPS/POPSTARTER.ELF
+apa:hdd:/__common/POPS/POPS_IOX.PAK
+</code></pre>
+<blockquote>
+<p><strong>Note on POPS files</strong> (<code>POPS_IOX.PAK</code>, <code>POPS.ELF</code>, <code>IOPRP252.IMG</code>): Sony-copyrighted — supply your own and<br />
+verify against the checksums on the <a href="downloads.html">Downloads</a> page.</p>
+</blockquote><h2>Partition-installed POPS games (PP.<em> / __.</em> — HDDOSD &amp; PSBBN)</h2>
 <blockquote>
 <p><strong>This is an <em>additional</em> launch path, not a replacement.</strong> The standard internal-HDD method documented<br />
 above — the <code>__.POPS</code> / <code>__.POPS0</code>…<code>__.POPS9</code> partition holding named <code>.VCD</code> files — is unchanged and<br />

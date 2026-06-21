@@ -127,6 +127,28 @@
 <code>FFS Wrapper r6a : 35</code> then black. <em>(exo12)</em></li>
 <li>SMB: VMC save-dir not auto-created over Samba; manually creating it hangs on "Validating the resource<br />
   directory." <em>(SicariusLeif)</em> · SMB launch can fail with <code>LOGON has failed (0)</code>. <em>(RandomGuy2024)</em></li>
+</ul><h2>First-party display &amp; PAL notes (maintainer-tested)</h2>
+<blockquote>
+<p>First-party, tested by the POPSLoader maintainer.</p>
+</blockquote>
+<h3><code>PATCH_8.BIN</code> — "Black &amp; White? NTSC on PAL" fix</h3>
+<ul>
+<li>Place <code>PATCH_8.BIN</code> into the game's <strong>VMC folder</strong> (the actual file is 64 bytes). It forces the PAL path,<br />
+  which fixes the black-and-white picture you get when a PAL title runs in POPS' native NTSC — equivalent to<br />
+  the <code>$FORCEPAL</code> cheat.</li>
+<li>You may also need a <code>CHEATS.TXT</code> containing <code>$SAFEMODE</code> then <code>$YPOS_40</code> (raise/lower the number to move the<br />
+  screen down/up).</li>
+<li>VMC-folder paths for <code>&lt;vcd name&gt;.VCD</code>: <code>hdd:/__common/POPS/&lt;name&gt;/</code>, <code>mass:/POPS/&lt;name&gt;/</code>, <code>smb:/POPS/&lt;name&gt;/</code>.</li>
+</ul>
+<h3><code>$HDTVFIX</code> and vertical positioning — the reality</h3>
+<ul>
+<li><code>$HDTVFIX</code> only fixes HDTV / component <strong>compatibility</strong>; it does <strong>not</strong> resize the image.</li>
+<li>For vertical positioning use <code>$YPOS_##</code> in <code>CHEATS.TXT</code> (higher value = image moves <strong>down</strong>). Starting<br />
+  recipe: <code>$HDTVFIX</code> + <code>$YPOS_10</code>, then test <code>$YPOS_5 / 10 / 15 / 20</code> until centred. Works only in normal<br />
+  PAL/NTSC modes, <strong>not</strong> with <code>$480p</code>; there is no universal default (it's game-dependent).</li>
+<li>POPStarter has horizontal controls (<code>$XPOS_####</code>, <code>$DWSTRETCH_####</code>, <code>$DWCROP_####</code>) but <strong>no</strong> real<br />
+  vertical height-shrink/crop. If the image is cut off at <strong>both</strong> top and bottom, that's TV overscan — use<br />
+  the TV's "Just Scan / Screen Fit / Full Pixel / 1:1" setting.</li>
 </ul></main>
 </div>
 <footer>
