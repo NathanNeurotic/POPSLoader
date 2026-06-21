@@ -1,0 +1,305 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Compatibility — Patches &amp; TROJANs · POPStarter Docs</title>
+<meta name="description" content="Resurrected, searchable POPStarter documentation — cheats, patches, config, storage, multi-disc, IGR and downloads.">
+<link rel="stylesheet" href="assets/style.css">
+</head><body data-base="">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu">☰</button>
+  <a class="brand" href="index.html"><span class="logo">P1</span>
+    POPStarter&nbsp;Docs <small>· archive</small></a>
+  <div class="search">
+    <span class="ico">🔎</span>
+    <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar"><h4>Documentation</h4><a href="index.html"><span class="em">🏠</span>Home</a>
+<a href="getting-started.html"><span class="em">🚀</span>Getting Started</a>
+<a href="storage.html"><span class="em">💾</span>Storage Backends</a>
+<a href="cheats.html"><span class="em">🎮</span>Cheats</a>
+<a href="compatibility.html" class="active"><span class="em">🩹</span>Patches & TROJANs</a>
+<a href="igr.html"><span class="em">🎯</span>IGR & Hotkeys</a>
+<a href="config.html"><span class="em">🔧</span>Config Table</a>
+<a href="multidisc.html"><span class="em">💿</span>Multi-disc & VMC</a>
+<a href="troubleshooting.html"><span class="em">🛠️</span>Troubleshooting</a>
+<a href="downloads.html"><span class="em">📦</span>Downloads</a>
+<a href="history.html"><span class="em">📜</span>History</a>
+    <h4>Reference</h4>
+    <a href="wiki/index.html"><span class="em">📚</span>All wiki pages</a>
+  </nav>
+  <main class="content"><h1>Compatibility — Patches &amp; TROJANs</h1><p class="lead">PATCH_#.BIN files, $COMPATIBILITY modes, and TROJAN_# behaviour modifiers — three forms of the same capability. <b>“TROJAN” is POPStarter's name for a patch file, not malware.</b></p><div class="callout info"><div class="h">ℹ “TROJAN” = patch file</div>In POPStarter docs a “TROJAN” is simply a binary patch/behaviour file. It is <b>not</b> malicious software.</div><h2 id="equivalence">Equivalence map — one capability, three ways</h2>
+<p class="lead">POPStarter frequently exposes the same capability as a CHEATS.TXT <code>$command</code>, a binary
+<code>PATCH_#.BIN</code>, and/or a <code>TROJAN_#.BIN</code> — use whichever suits your setup. Click a header to sort.</p>
+<table data-sortable>
+<thead><tr><th>Capability</th><th>CHEATS.TXT</th><th>PATCH file</th><th>TROJAN file</th><th>Config byte</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>Compatibility mode</td><td><code>$COMPATIBILITY_0x##</code></td><td><code>PATCH_#.BIN</code> (#=1–7)</td><td>—</td><td><code>$418–$41F</code> array</td><td>## is hex 01–07</td></tr>
+<tr><td>Disable IGR</td><td><code>$NOIGR</code></td><td><code>PATCH_0.BIN</code></td><td>—</td><td>—</td><td>turns In-Game Reset off</td></tr>
+<tr><td>IGR behaviour</td><td><code>$IGR0</code> … <code>$IGR5</code></td><td>—</td><td><code>TROJAN_0.BIN</code> … <code>TROJAN_5.BIN</code></td><td>—</td><td>0–2 open menu · 3–5 terminate</td></tr>
+<tr><td>Disable PAL patcher</td><td><code>$NOPAL</code></td><td>stock <code>PATCH_9.BIN</code></td><td>—</td><td><code>$42A=0x00</code></td><td>PAL game runs native NTSC</td></tr>
+<tr><td>Force PAL</td><td><code>$FORCEPAL</code></td><td><code>PATCH_8.BIN</code></td><td>—</td><td><code>$42A</code></td><td>PAL patcher + Euro region</td></tr>
+<tr><td>480p output</td><td><code>$480p</code></td><td>—</td><td>—</td><td><code>$42A=0x02</code></td><td>not reliable on all titles</td></tr>
+<tr><td>Per-game fix bundle</td><td>—</td><td>—</td><td><code>TROJAN_7.BIN</code></td><td>—</td><td>cumulative per-game fixes</td></tr>
+</tbody></table><h2>Patches</h2><div class="cards"><div class="card" id="patch-1-bin-mode-0x01"><h3>PATCH_1.BIN (mode 0x01) <span class="badge primary">primary</span> <span class="cat-chip">patches</span></h3>
+<div class="field"><b>Effect:</b> &#x27;Helps restoring the music/voices in several games.&#x27;</div>
+<div class="field"><b>Scope:</b> Drop in game VMC dir (one game) or POPS dir (all games). r13.</div>
+<div class="field"><b>Conflicts:</b> MUST NOT combine with modes 0x02/0x03/0x05. May combine with 0x04/0x06.</div>
+<div class="ex">Drop PATCH_1.BIN, or put $COMPATIBILITY_0x01 in CHEATS.TXT</div>
+<div class="prov">📎 ShaolinAssassin wiki compatibility (Wayback 20170629151818)</div>
+</div>
+<div class="card" id="patch-2-bin-mode-0x02"><h3>PATCH_2.BIN (mode 0x02) <span class="badge primary">primary</span> <span class="cat-chip">patches</span></h3>
+<div class="field"><b>Effect:</b> Variant of mode 0x01 with a second hack to not break MDECoding of FMVs (designed for the Colony Wars series).</div>
+<div class="field"><b>Scope:</b> Game VMC dir or POPS dir. r13.</div>
+<div class="field"><b>Conflicts:</b> MUST NOT combine with 0x01/0x03/0x05. May combine with 0x04/0x06.</div>
+<div class="ex">$COMPATIBILITY_0x02</div>
+<div class="prov">📎 ShaolinAssassin wiki compatibility (Wayback 20170629151818)</div>
+</div>
+<div class="card" id="patch-3-bin-mode-0x03"><h3>PATCH_3.BIN (mode 0x03) <span class="badge primary">primary</span> <span class="cat-chip">patches</span></h3>
+<div class="field"><b>Effect:</b> Alternate to mode 0x01 - use when 0x01 doesn&#x27;t give the expected results.</div>
+<div class="field"><b>Scope:</b> Game VMC dir or POPS dir. r13.</div>
+<div class="field"><b>Conflicts:</b> MUST NOT combine with 0x01/0x02/0x05. May combine with 0x04/0x06.</div>
+<div class="ex">$COMPATIBILITY_0x03</div>
+<div class="prov">📎 ShaolinAssassin wiki compatibility (Wayback 20170629151818)</div>
+</div>
+<div class="card" id="patch-4-bin-mode-0x04"><h3>PATCH_4.BIN (mode 0x04) <span class="badge primary">primary</span> <span class="cat-chip">patches</span></h3>
+<div class="field"><b>Effect:</b> Fixes slowdowns, flickering and many glitches (prevents the emulator writing a garbage value into two virtual GPU registers).</div>
+<div class="field"><b>Scope:</b> Game VMC dir or POPS dir. r13.</div>
+<div class="field"><b>Conflicts:</b> SAFE to combine with 0x01/0x02/0x03/0x06. Documented combos: 1+4, 2+4, 1+4+6.</div>
+<div class="ex">$COMPATIBILITY_0x01 + $COMPATIBILITY_0x04 (allowed combo)</div>
+<div class="prov">📎 ShaolinAssassin wiki compatibility (Wayback 20170629151818)</div>
+</div>
+<div class="card" id="patch-5-bin-mode-0x05"><h3>PATCH_5.BIN (mode 0x05) <span class="badge primary">primary</span> <span class="cat-chip">patches</span></h3>
+<div class="field"><b>Effect:</b> Fixes the cutscenes of PAL Resident Evil: Director&#x27;s Cut. Still shipped as PATCH_5.BIN.</div>
+<div class="field"><b>Scope:</b> Game VMC dir or POPS dir. r13.</div>
+<div class="field"><b>Conflicts:</b> MUST NOT combine with 0x01/0x02/0x03. May combine with 0x04/0x06.</div>
+<div class="ex">$COMPATIBILITY_0x05</div>
+<div class="prov">📎 ShaolinAssassin wiki compatibility (Wayback 20170629151818)</div>
+</div>
+<div class="card" id="patch-6-bin-mode-0x06"><h3>PATCH_6.BIN (mode 0x06) <span class="badge primary">primary</span> <span class="cat-chip">patches</span></h3>
+<div class="field"><b>Effect:</b> Disables the OSD shell of the emulator&#x27;s built-in BIOS, making some games that freeze on startup run.</div>
+<div class="field"><b>Scope:</b> Game VMC dir or POPS dir. r13.</div>
+<div class="field"><b>Conflicts:</b> SAFE to combine. Documented combos: 3+6, 1+4+6, 6+4 (Tekken 3). Hardcode-equivalent: config offset $421=0x01.</div>
+<div class="ex">$COMPATIBILITY_0x06</div>
+<div class="prov">📎 ShaolinAssassin wiki compatibility (Wayback 20170629151818)</div>
+</div>
+<div class="card" id="mode-0x07-compatibility-0x07"><h3>Mode 0x07 ($COMPATIBILITY_0x07) <span class="badge primary">primary</span> <span class="cat-chip">patches</span></h3>
+<div class="field"><b>Effect:</b> Fixes missing-textures problems (example: Tomb Raider III). This mode IS documented in the recovered wiki compatibility table (it is not new/undocumented). Wiki caveat: &quot;Unfinished (breaks the gamma)&quot;; the 2024 wiki snapshot marks this mode obsolete. No documented stock PATCH_7.BIN ships it.</div>
+<div class="field"><b>Scope:</b> r13. Via $COMPATIBILITY_0x07 in CHEATS.TXT.</div>
+<div class="field"><b>Conflicts:</b> The wiki does not state combinability for 0x07 — treat with caution. (Modes 0x01/0x02/0x03/0x05 are the mutually-exclusive CD-status set.)</div>
+<div class="ex">$COMPATIBILITY_0x07</div>
+<div class="prov">📎 ShaolinAssassin wiki compatibility + krHACKen changelog (Wayback 20170629151818 / 20170629142002)</div>
+</div>
+<div class="card" id="no-combine-rule-modes-0x01-0x02-0x03-0x05"><h3>No-combine rule (modes 0x01/0x02/0x03/0x05) <span class="badge primary">primary</span> <span class="cat-chip">patches</span></h3>
+<div class="field"><b>Effect:</b> &#x27;Modes 0x01, 0x02, 0x03 and 0x05 cannot be combined - variants of the same hack, conflicting; use only one at a time.&#x27; These four poke CD status; 0x04/0x06/0x07 are independent and combinable.</div>
+<div class="field"><b>Scope:</b> All compatibility-mode entry points (PATCH file, CHEATS.TXT, hardcoded $418-$41F). r13.</div>
+<div class="field"><b>Conflicts:</b> Valid combos: 1+4, 2+4, 3+6, 1+4+6. Invalid: any two of 1/2/3/5.</div>
+<div class="ex">OK: 0x01+0x04. WRONG: 0x01+0x02</div>
+<div class="prov">📎 ShaolinAssassin wiki compatibility (Wayback 20170629151818)</div>
+</div>
+<div class="card" id="patch-7-bin"><h3>PATCH_7.BIN <span class="badge secondary">unverified</span> <span class="cat-chip">patches</span></h3>
+<div class="field"><b>Effect:</b> UNDOCUMENTED / AMBIGUOUS. Absent from the surviving wiki, r13 changelog, IGR download table, and the community manual (which jumps PATCH_6 -&gt; PATCH_8). Older (2014 krHACKen, ASSEMblergames) lore says it forced mode 0x06; later mirrors call &#x27;Mode 7&#x27; obsolete. No primary file recovered. DISTINCT from the verified TROJAN_7.BIN game-fix bundle.</div>
+<div class="field"><b>Scope:</b> Unknown / legacy. NOT in r13 stock asset set.</div>
+<div class="field"><b>Conflicts:</b> Cannot be assessed - file unverified.</div>
+<div class="ex">(none - existence unconfirmed)</div>
+<div class="prov">📎 NEGATIVE EVIDENCE: absent from wiki compatibility, changelog, IGR thread t=9909, and PDFCoffee manual. Lore only.</div>
+</div>
+<div class="card" id="patch-8-bin-pal-forcepal"><h3>PATCH_8.BIN (PAL / $FORCEPAL) <span class="badge secondary">mirror</span> <span class="cat-chip">patches</span></h3>
+<div class="field"><b>Effect:</b> Forces PAL output: activates the PAL patcher AND patches the BIOS region code to Euro (boot screen in PAL). For PAL VCDs with no/broken license text. Equivalent to $FORCEPAL.</div>
+<div class="field"><b>Scope:</b> Game VMC dir or POPS dir, or use $FORCEPAL. r13.</div>
+<div class="field"><b>Conflicts:</b> Opposite of stock PATCH_9.BIN/$NOPAL. The literal file name is documented in a community manual (mirror); primary docs document the equivalent $FORCEPAL command.</div>
+<div class="ex">$FORCEPAL (or drop PATCH_8.BIN)</div>
+<div class="prov">📎 $FORCEPAL semantics PRIMARY (wiki special-cheats); &#x27;PATCH_8.BIN = PAL&#x27; file name from community manual (pdfcoffee) + ps2-home t=621</div>
+</div>
+<div class="card" id="patch-9-bin-stock-nopal"><h3>PATCH_9.BIN (STOCK = $NOPAL) <span class="badge primary">primary</span> <span class="cat-chip">patches</span></h3>
+<div class="field"><b>Effect:</b> The long-standing stock file. Disables POPStarter&#x27;s automatic PAL patcher so a PAL game runs in POPS native NTSC video. Equivalent to $NOPAL. Wiki: &#x27;PATCH_9.BIN now obsolete (still working tho)&#x27; because GSM v0.23x auto-detection later made it usually unnecessary.</div>
+<div class="field"><b>Scope:</b> Game VMC dir or POPS dir. r13.</div>
+<div class="field"><b>Conflicts:</b> Opposite of PATCH_8/$FORCEPAL. DISTINCT FILE from the 2020 IGR-fix PATCH_9.BIN (same name, different binary). Hardcode-equivalent: config $42A=0x00 / NO_PAL.PPF.</div>
+<div class="ex">$NOPAL (or drop stock PATCH_9.BIN to run a PAL VCD in NTSC)</div>
+<div class="prov">📎 ShaolinAssassin wiki special-cheats (&#x27;$NOPAL - PATCH_9.BIN now obsolete&#x27;, Wayback 20170626021721); ps2-home t=621</div>
+</div>
+<div class="card" id="patch-9-bin-2020-igr-loader-disable-return-to-opl"><h3>PATCH_9.BIN (2020 IGR-loader-disable / return-to-OPL) <span class="badge primary">primary</span> <span class="cat-chip">patches</span></h3>
+<div class="field"><b>Effect:</b> A SEPARATE krHACKen file released 2020-03-21 that REUSES the name PATCH_9.BIN. Disables POPStarter&#x27;s bugged ELF loader (the Beta-13 BOOT.ELF launcher) so IGR/quit falls back to OSDSYS/Browser; with FMCB&#x27;s button action repointed to OPNPS2LD.ELF, IGR then chains into OPL. Restores &#x27;IGR back to OPL&#x27; which BETA-13 broke.</div>
+<div class="field"><b>Scope:</b> Drop in POPS dir (mass0:/POPS/, hdd __common/POPS, SMB share/POPS). Requires FMCB. r13 + BETA13 era. PATCH_9.7z MD5 9db1e18bae92c4991e3de7e2a752558c (188 bytes).</div>
+<div class="field"><b>Conflicts:</b> NAME-COLLIDES with the stock $NOPAL PATCH_9.BIN - different binaries, same filename. Distributed via the IGR &#x27;Trojans and Patches&#x27; thread, not the PAL/NTSC docs.</div>
+<div class="ex">mass0:/POPS/PATCH_9.BIN (the 2020 return-to-OPL build) + FMCB Configurator -&gt; OSDSYS action = mc1:/OPL/OPNPS2LD.ELF</div>
+<div class="prov">📎 PS2-HOME t=127 (Wayback 20230619145423 / 20230922122931) + IGR thread t=9909 (Wayback 20230623044907)</div>
+</div>
+<div class="card" id="patch-0-bin"><h3>PATCH_0.BIN <span class="badge primary">primary</span> <span class="cat-chip">patches</span></h3>
+<div class="field"><b>Effect:</b> Disables the IGR menu. Equivalent to $NOIGR. An IGR behaviour modifier shipped as a PATCH file. MD5 PATCH_0.zip b8d32e32d9d27c58e6558f9ad538f555 (221 bytes).</div>
+<div class="field"><b>Scope:</b> Game VMC dir or POPS dir. r13.</div>
+<div class="field"><b>Conflicts:</b> Mutually exclusive with the TROJAN_0..5 IGR modifiers. CHEATS.TXT equivalent: $NOIGR.</div>
+<div class="ex">Copy PATCH_0.BIN to POPS dir to kill the IGR menu globally (or $NOIGR)</div>
+<div class="prov">📎 ShaolinAssassin wiki igr + IGR thread t=9909 (Wayback 20170629144509 / 20230623044907)</div>
+</div>
+<div class="card" id="patch-trojan-header-number-integrity-check"><h3>PATCH/TROJAN header-number integrity check <span class="badge primary">primary</span> <span class="cat-chip">patches</span></h3>
+<div class="field"><b>Effect:</b> POPStarter validates that the NUMBER in a PATCH/TROJAN filename matches a number stored in the file&#x27;s header (TROJAN build-ID at offset Ah, version at offset Ch=0x03). It refuses to load the file if they don&#x27;t match; stale-version files auto-skip. To reuse a slot, rename AND hex-edit the header number.</div>
+<div class="field"><b>Scope:</b> All PATCH_#.BIN and TROJAN_#.BIN, both VMC-dir and POPS-dir. r13.</div>
+<div class="field"><b>Conflicts:</b> Renaming without editing the header = silently ignored. This is the mechanism behind the 2015 WIP06 Beta-3 changelog &#x27;fixed TROJAN/PATCH integrity check failures&#x27;.</div>
+<div class="ex">To run two copies: rename PATCH_1.BIN -&gt; PATCH_3.BIN AND hex-edit the embedded &#x27;1&#x27; -&gt; &#x27;3&#x27; in its header</div>
+<div class="prov">📎 ShaolinAssassin wiki igr + IGR thread t=9909 (Wayback 20170629144509 / 20230623044907); Dekazeta r13 changelog (TROJAN build-ID offsets)</div>
+</div>
+<div class="card" id="ppf-bunch-pack-on-load-patches"><h3>PPF bunch pack (on-load patches) <span class="badge primary">primary</span> <span class="cat-chip">patches</span></h3>
+<div class="field"><b>Effect:</b> A set of .PPF patches (apply over POPSTARTER.ELF with PPF-O-Matic) that toggle config-table bytes without hex editing: NO_LC_CRACKS.PPF, DEBUG_AND_HALT.PPF ($410+$411), NO_VMC.PPF ($429=01), ONLY_1ST_VMC.PPF ($429=02), NO_PAL.PPF ($42A=00), FORCE_MODEX.PPF ($418-$41F), DEFAULT_IGR_TEXTURES.PPF ($42D=00), LC_ONLY.PPF ($42F=02), NO_AUTO_PATCH.PPF ($42F=00).</div>
+<div class="field"><b>Scope:</b> Applied to POPSTARTER.ELF/.KELF, r13.</div>
+<div class="field"><b>Conflicts:</b> PPF-O-Matic is flagged by some AV (false positive). Don&#x27;t stack contradictory ones.</div>
+<div class="ex">Apply DEBUG_AND_HALT.PPF to turn on the diagnostic screen instead of hand-editing $410/$411</div>
+<div class="prov">📎 ShaolinAssassin wiki configuration-table PPF section (Wayback 20170626021731); ps2-home debug tutorial t=5311</div>
+</div></div><h2>TROJANs (patch files)</h2><div class="cards"><div class="card" id="trojan-file-definition"><h3>TROJAN file - DEFINITION <span class="badge primary">primary</span> <span class="cat-chip">trojans</span></h3>
+<div class="field"><b>Effect:</b> In POPStarter a &#x27;TROJAN&#x27; is NOT malware - it is krHACKen&#x27;s NAME for a binary patch asset (TROJAN_#.BIN) loaded from the game&#x27;s VMC folder or the POPS folder. Serves TWO roles: (1) IGR BEHAVIOUR MODIFIERS (TROJAN_0..5 = alternate IGR combo/quit method, TROJAN_9 = no-2nd-pad-in-IGR); (2) GAME FIXES (per-game-ID AntiCrash/LoadinFix/Boot Fix/SkipVSync/Skip-CutScenes from the &#x27;game fixes archive&#x27;, bundled cumulatively e.g. TROJAN_7). Differs from PATCH_#.BIN (forces compatibility modes / disables IGR) and CHEATS.TXT (plain-text $commands + raw codes).</div>
+<div class="field"><b>Scope:</b> Game VMC dir (one game) or POPS dir (all games). r13. Obeys the header-number integrity check.</div>
+<div class="field"><b>Conflicts:</b> A TROJAN IGR-modifier conflicts with PATCH_0/other IGR modifiers (pick one). Game-fix TROJANs are per-game-ID and generally independent.</div>
+<div class="ex">Game fix: copy a &#x27;WipEout AntiCrash&#x27; TROJAN into the WipEout VMC dir. IGR mod: copy TROJAN_1.BIN for a Start+Select reset combo.</div>
+<div class="prov">📎 ShaolinAssassin wiki compatibility + igr (Wayback 20170629151818 / 20170629144509)</div>
+</div>
+<div class="card" id="trojan-0-bin"><h3>TROJAN_0.BIN <span class="badge primary">primary</span> <span class="cat-chip">trojans</span></h3>
+<div class="field"><b>Effect:</b> IGR behaviour modifier - OPENS the IGR menu on a 6-button combo. CHEATS.TXT equivalent: $IGR0 (L1+L2+R1+R2+X+Down). MD5 TROJAN_0.zip 9c431cb92e72d38dcd015d2d1840e3c5 (246B).</div>
+<div class="field"><b>Scope:</b> Game VMC dir or POPS dir. r13.</div>
+<div class="field"><b>Conflicts:</b> Pick one IGR modifier only.</div>
+<div class="ex">$IGR0 (equivalent to dropping TROJAN_0.BIN)</div>
+<div class="prov">📎 ShaolinAssassin wiki igr + IGR thread t=9909 (Wayback 20170629144509 / 20230623044907)</div>
+</div>
+<div class="card" id="trojan-1-bin"><h3>TROJAN_1.BIN <span class="badge primary">primary</span> <span class="cat-chip">trojans</span></h3>
+<div class="field"><b>Effect:</b> IGR behaviour modifier - OPENS the IGR menu on Start+Select. CHEATS.TXT equivalent: $IGR1. MD5 d5551d731a0eae6745e894d8a1b823ed (248B).</div>
+<div class="field"><b>Scope:</b> Game VMC dir or POPS dir. r13.</div>
+<div class="field"><b>Conflicts:</b> Exclusive with other IGR modifiers.</div>
+<div class="ex">$IGR1</div>
+<div class="prov">📎 ShaolinAssassin wiki igr + IGR thread t=9909</div>
+</div>
+<div class="card" id="trojan-2-bin"><h3>TROJAN_2.BIN <span class="badge primary">primary</span> <span class="cat-chip">trojans</span></h3>
+<div class="field"><b>Effect:</b> IGR behaviour modifier - OPENS the IGR menu on L1+L2+R1+R2+Start+Select. CHEATS.TXT equivalent: $IGR2. MD5 5a5e519f2f396eb5323719a659790bee (245B).</div>
+<div class="field"><b>Scope:</b> Game VMC dir or POPS dir. r13.</div>
+<div class="field"><b>Conflicts:</b> Exclusive with other IGR modifiers.</div>
+<div class="ex">$IGR2</div>
+<div class="prov">📎 ShaolinAssassin wiki igr + IGR thread t=9909</div>
+</div>
+<div class="card" id="trojan-3-bin"><h3>TROJAN_3.BIN <span class="badge primary">primary</span> <span class="cat-chip">trojans</span></h3>
+<div class="field"><b>Effect:</b> IGR behaviour modifier - TERMINATES POPS (no menu) on L1+L2+R1+R2+X+Down. CHEATS.TXT equivalent: $IGR3. MD5 c85f0e2a9ef4e4ea35ab1462493c6a2d (263B).</div>
+<div class="field"><b>Scope:</b> Game VMC dir or POPS dir. r13.</div>
+<div class="field"><b>Conflicts:</b> Exclusive with other IGR modifiers.</div>
+<div class="ex">$IGR3</div>
+<div class="prov">📎 ShaolinAssassin wiki igr + IGR thread t=9909</div>
+</div>
+<div class="card" id="trojan-4-bin"><h3>TROJAN_4.BIN <span class="badge primary">primary</span> <span class="cat-chip">trojans</span></h3>
+<div class="field"><b>Effect:</b> IGR behaviour modifier - TERMINATES POPS (no menu) on Start+Select. CHEATS.TXT equivalent: $IGR4. MD5 8ac51ec7e36e1bf06f6ddd1f072b2c9f (262B).</div>
+<div class="field"><b>Scope:</b> Game VMC dir or POPS dir. r13.</div>
+<div class="field"><b>Conflicts:</b> Exclusive with other IGR modifiers.</div>
+<div class="ex">$IGR4</div>
+<div class="prov">📎 ShaolinAssassin wiki igr + IGR thread t=9909</div>
+</div>
+<div class="card" id="trojan-5-bin"><h3>TROJAN_5.BIN <span class="badge primary">primary</span> <span class="cat-chip">trojans</span></h3>
+<div class="field"><b>Effect:</b> IGR behaviour modifier - TERMINATES POPS (no menu) on L1+L2+R1+R2+Start+Select (the OPL-style no-popup combo). CHEATS.TXT equivalent: $IGR5. MD5 fb0ee2841ca3c40f2483ac4c00c4594c (260B).</div>
+<div class="field"><b>Scope:</b> Game VMC dir or POPS dir. r13.</div>
+<div class="field"><b>Conflicts:</b> Exclusive with other IGR modifiers.</div>
+<div class="ex">$IGR5</div>
+<div class="prov">📎 ShaolinAssassin wiki igr + IGR thread t=9909</div>
+</div>
+<div class="card" id="trojan-7-bin"><h3>TROJAN_7.BIN <span class="badge primary">primary</span> <span class="cat-chip">trojans</span></h3>
+<div class="field"><b>Effect:</b> GAME-FIX BUNDLE (not an IGR modifier). &#x27;Cumulative r6, fixes as of 2020/05/20&#x27; - a cumulative pack of per-game crash/compat fixes; released 2020-08-13. MD5 TROJAN_7.zip e5e150f8be4da1fa822b90cb9682cf8e (775B - notably larger than the IGR TROJANs).</div>
+<div class="field"><b>Scope:</b> Game VMC dir or POPS dir. 2020-era r13.</div>
+<div class="field"><b>Conflicts:</b> A game-fix asset, distinct from the IGR-combo TROJANs; the number does not imply an IGR role.</div>
+<div class="ex">Drop TROJAN_7.BIN in POPS dir to apply the 2020-05-20 cumulative game fixes</div>
+<div class="prov">📎 IGR &#x27;Trojans and Patches&#x27; thread t=9909 (Wayback 20230623044907)</div>
+</div>
+<div class="card" id="trojan-9-bin"><h3>TROJAN_9.BIN <span class="badge primary">primary</span> <span class="cat-chip">trojans</span></h3>
+<div class="field"><b>Effect:</b> IGR behaviour modifier variant - &#x27;No 2nd Pad in IGR&#x27; (ignores controller port 2 input in the IGR menu so a 2nd pad can&#x27;t trigger/navigate it). MD5 TROJAN_9.zip b6960e9a26034723eeea0ebcbe114334 (250B).</div>
+<div class="field"><b>Scope:</b> Game VMC dir or POPS dir. r13.</div>
+<div class="field"><b>Conflicts:</b> Interacts with the chosen IGR combo; addresses 2-pad IGR misfires.</div>
+<div class="ex">Drop TROJAN_9.BIN to stop pad-2 from opening the IGR menu</div>
+<div class="prov">📎 IGR &#x27;Trojans and Patches&#x27; thread t=9909 (Wayback 20230623044907)</div>
+</div></div><div class="callout red"><div class="h">⚠ Unverified / caution</div>PATCH_7.BIN (existence unconfirmed) - Present it in a RED warning box. State plainly: no primary file or definition survives; it is absent from the wiki, the r13 CHANGES.TXT, the IGR download table, and the community manual (which skips from PATCH_6 to PATCH_8). The &#x27;2014 krHACKen forced mode 0x06&#x27; vs &#x27;obsolete Mode 7&#x27; framings are community lore only. Explicitly distinguish it from the VERIFIED TROJAN_7.BIN game-fix bundle, which is a different file. Confidence: unverified.</div>
+<div class="callout amber"><div class="h">⚖ Conflicting sources</div>PATCH_9.BIN filename collision - Present as TWO separate site records that cross-warn each other in an AMBER box. (A) STOCK PATCH_9.BIN == $NOPAL, disables the auto PAL patcher so a PAL VCD runs in POPS native NTSC (wiki already calls it &#x27;obsolete (still working tho)&#x27;). (B) The 2020-03-21 krHACKen file that REUSES the name PATCH_9.BIN to disable the bugged ELF loader and restore IGR-to-OPL; PATCH_9.7z MD5 9db1e18bae92c4991e3de7e2a752558c (188 B), distributed via the IGR &#x27;Trojans and Patches&#x27; thread. Same filename, different binary - never mix them. NOT byte-diffed in this pass; flag that the 188 B/MD5 in the IGR table is not explicitly tied to one of the two roles.</div><h2>Per-game compatibility database & full sources</h2><div class="grid"><a class="tile" href="wiki/automated.html"><b>Automated</b><span>full wiki page</span></a>
+<a class="tile" href="wiki/compatibility.html"><b>Compatibility</b><span>full wiki page</span></a>
+<a class="tile" href="wiki/rip-off.html"><b>Rip Off</b><span>full wiki page</span></a></div><h2>From the official thread — compatibility notes &amp; per-game fixes</h2>
+<blockquote>
+<p>Sourced from the <a href="https://www.psx-place.com/threads/popstarter.19139/">official psx-place POPStarter thread</a>.</p>
+</blockquote>
+<ul>
+<li><strong>Merged multi-disc ISOs break per-game fixes.</strong> POPStarter's automatic fixes are keyed to the game ID in<br />
+<code>SYSTEM.CNF</code>; a merged "Crash 1+2+3" or all-in-one ISO carries the wrong ID, so the per-game fix never<br />
+  fires. <strong>Use clean single-disc rips.</strong> <em>(Peppe90 / El_Patas — high value, corrects a popular tutorial habit)</em></li>
+<li><strong><code>$COMPATIBILITY</code> modes are not universal — several are no-ops per game.</strong> Mode 4 was never integrated for<br />
+  Chrono Trigger / Xenogears (won't fix sound); Mega Man X4 never had Mode 1; SOTN has Mode 1 but keeps its<br />
+  old problems. Xenogears flicker and Chrono Trigger area/menu sound-slowdown are <strong>unfixable</strong> by any mode.<br />
+<em>(El_Patas)</em></li>
+<li><strong>CD-read-sensitive games on USB</strong> (e.g. Soul Blade): format the device <strong>FAT32/exFAT with 16 KB clusters</strong>.<br />
+  Larger clusters → corrupt loads/crashes. SMB and internal HDD are unaffected. <em>(hugopocked)</em></li>
+<li><strong>PAL PS1 games scroll/roll vertically through some HDMI adapters;</strong> <code>$NOPAL</code> stops the scroll but<br />
+  off-centres the image (re-centre with <code>$XPOS</code>/<code>$YPOS</code>). <em>(R3dRapt0r39)</em></li>
+</ul>
+<h3>Per-game datapoints (community-verified)</h3>
+<table>
+<thead>
+<tr>
+<th>Game</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Mega Man 8 / Mega Man X4 (NTSC-U)</td>
+<td><code>$CODECACHE_ADDON_0</code> in CHEATS.TXT restores the charge-beam / voice SFX (preferred over swapping to the PSP 6.60 BIOS)</td>
+</tr>
+<tr>
+<td>King's Field (JP, Eng-patched)</td>
+<td><code>$COMPATIBILITY 0x04</code> to avoid slowdowns</td>
+</tr>
+<tr>
+<td>C-12: Final Resistance (SCES-033.64)</td>
+<td><code>$COMPATIBILITY_0x07</code> partly fixes missing textures (mode is incomplete — speech/subs still missing)</td>
+</tr>
+<tr>
+<td>Resident Evil 3 (SLUS-00923)</td>
+<td>completable with the GameHacking.org "Skip Door Transition" code + PSP 6.60 BIOS, no compat mode</td>
+</tr>
+<tr>
+<td>Tekken 3 (PAL)</td>
+<td>in-game scanline-generator hotkey <strong>Select + R1 + R2</strong> fixes bottom-screen artifacts</td>
+</tr>
+<tr>
+<td>Tomb Raider 1 (USA)</td>
+<td>only Rev0 works untouched; Rev1–6 need krHACKen's per-revision PS3-tools patches (restore levels <strong>and</strong> music). TR2 USA Rev0–3 are fine; Gold ports won't load levels</td>
+</tr>
+<tr>
+<td>Speedball 2100 (US)</td>
+<td><code>TROJAN_7.BIN</code> clears the load freeze, but then reports "no controller in port 1" — a separate, unfixable emulation bug</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Known multi-track-audio bug:</strong> newer Tomb Raider revisions and Air Combat lose all CD music/voice tracks<br />
+even when levels load (a POPS emulation limitation). <em>(Peppe90)</em></p>
+</blockquote><h2>From the official thread — PATCH / TROJAN details</h2>
+<blockquote>
+<p>Sourced from the <a href="https://www.psx-place.com/threads/popstarter.19139/">official psx-place POPStarter thread</a>.</p>
+</blockquote>
+<ul>
+<li><strong><code>TROJAN_7.BIN</code> is krHACKen's final cumulative "goodbye" fix-pack</strong> — it patches POPStarter <strong>globally</strong><br />
+  (applied to all games), not per-game. Revision history runs <strong>r6 → r7 (2020-05-20, "unhook code just fixed")</strong>,<br />
+<em>after</em> the final r13 / 2019-06-05 ELF, and is <strong>not</strong> merged into that ELF. Drop it at<br />
+<code>hdd0:/__common/POPS/TROJAN_7.BIN</code> (or the POPS folder on USB). <em>(krHACKen / hugopocked)</em></li>
+<li><strong>Do not stack <code>TROJAN_7</code> with HugoPocked's per-game fixes</strong> — using both on a game HugoPocked already covers<br />
+<strong>adds</strong> crashes. Use TROJAN_7 only on titles HugoPocked doesn't fix. <em>(hugopocked)</em></li>
+<li><strong>The digit in a PATCH_#/TROJAN_# filename is a SLOT (0–9), not a version</strong>, and POPStarter validates the<br />
+  number embedded in the file header against the filename — it <strong>refuses to load on a mismatch</strong>. So you can't<br />
+  just rename <code>TROJAN_7.BIN</code> → <code>TROJAN_0.BIN</code>; the header number must be hex-edited too. <em>(ShaolinAssassin)</em></li>
+<li><strong><code>PATCH_9.BIN</code></strong> has a specific documented use beyond the "disable PAL patcher" meaning: it <strong>disables<br />
+  POPStarter's bugged internal ELF loader</strong> to restore IGR on setups where exit black-screens<br />
+  (see <a href="troubleshooting.html">Troubleshooting</a>). <em>(krHACKen)</em></li>
+<li><strong>HugoPocked's per-game fixes install differently</strong> from global TROJAN/PATCH BINs — you drop the fix files<br />
+<strong>into that game's VMC folder</strong>. Thread:<br />
+<a href="https://www.psx-place.com/threads/hugopocked-fixes-for-popstarter.39750/">HugoPocked fixes for POPStarter</a>.</li>
+</ul></main>
+</div>
+<footer>
+  <p><b>POPStarter Documentation Archive</b> — community-recovered from the Wayback Machine
+  (ShaolinAssassin's <code>popstarter-documentation-stuff</code> wiki) and krHACKen's r13 changelog,
+  cross-checked and merged across snapshots. Built for the POPSLoader project.</p>
+  <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
+  emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
+  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed.</p>
+</footer>
+<script src="assets/app.js"></script>
+</body></html>

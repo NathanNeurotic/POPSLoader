@@ -1,0 +1,136 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Quickstart USB · POPStarter Docs</title>
+<meta name="description" content="Resurrected, searchable POPStarter documentation — cheats, patches, config, storage, multi-disc, IGR and downloads.">
+<link rel="stylesheet" href="../assets/style.css">
+</head><body data-base="../">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu">☰</button>
+  <a class="brand" href="../index.html"><span class="logo">P1</span>
+    POPStarter&nbsp;Docs <small>· archive</small></a>
+  <div class="search">
+    <span class="ico">🔎</span>
+    <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar"><h4>Documentation</h4><a href="../index.html"><span class="em">🏠</span>Home</a>
+<a href="../getting-started.html"><span class="em">🚀</span>Getting Started</a>
+<a href="../storage.html"><span class="em">💾</span>Storage Backends</a>
+<a href="../cheats.html"><span class="em">🎮</span>Cheats</a>
+<a href="../compatibility.html"><span class="em">🩹</span>Patches & TROJANs</a>
+<a href="../igr.html"><span class="em">🎯</span>IGR & Hotkeys</a>
+<a href="../config.html"><span class="em">🔧</span>Config Table</a>
+<a href="../multidisc.html"><span class="em">💿</span>Multi-disc & VMC</a>
+<a href="../troubleshooting.html"><span class="em">🛠️</span>Troubleshooting</a>
+<a href="../downloads.html"><span class="em">📦</span>Downloads</a>
+<a href="../history.html"><span class="em">📜</span>History</a>
+    <h4>Reference</h4>
+    <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
+  </nav>
+  <main class="content"><h1>Quickstart USB</h1><p class="prov-inline">📎 Recovered from the ShaolinAssassin wiki · snapshot 20250202192148</p><h1><strong>Quick start guide for USB :</strong></h1>
+<p>______________________________________________________________________________________________________________</p>
+<p><em>(updated ~ 2020/02/09)</em></p>
+<p><em>(older snapshots carried these update stamps instead: <code>*[UPDATE 01-10-2016 – POPStarter version updated to OBT16]*</code> and <code>*(updated ~ 2017/10/27)*</code>)</em></p>
+<p>This is a step-by-step basic guide for new POPStarter users. If you are already familiar with POPStarter, you don’t need it. Quickstarter pack includes last POPStarter version (Rev 13 Beta 2019/06/05).</p>
+<p><em>(Version included in the pack changed over time — older snapshots stated:</em><br />
+- <em>Rev 13 WIP 6 OBT 16 — "which is now considered stable enough to be used as daily gaming version" (2016/2017 OBT16 snapshots)</em><br />
+- <em>Rev 13 RIP 06 (2017/10/27 snapshot)</em><br />
+- <em>Rev 13 Beta 2019/06/05 (current))</em></p>
+<ul>
+<li><strong>Download :</strong> <a href="../downloads/POPStarter_USB_Quickstarter_Pack_20200209.zip">here</a></li>
+</ul>
+<p><em>(Download links evolved across snapshots:</em><br />
+- <em>POPStarter_Quickstarter_Pack_USB__2017_01_10 (OBT16 snapshots)</em><br />
+- <em>POPStarter_USB_Quickstarter_Pack_20171027.7z (2017/10/27 snapshot)</em><br />
+- <em><a href="../downloads/POPStarter_USB_Quickstarter_Pack_20200209.zip">POPStarter_USB_Quickstarter_Pack_20200209.zip</a> (current))</em></p>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>Step-by-step :</em></h2>
+<p><strong>a) Installing the emulator :</strong></p>
+<p>Since POPS (the emulator) is copyrighted by SONY, it can not be redistributed with POPStarter. You have to find it. It’s made of 1 file (for USB mode).</p>
+<pre><code>POPS_IOX.PAK - MD5 : a625d0b3036823cdbf04a3c0e1648901
+</code></pre>
+<p><em>(Older OBT16 snapshots rendered the MD5 as a commit link: POPS_IOX.PAK – MD5 : a625d0b3036823cdbf04a3c0e1648901)</em></p>
+<ol>
+<li>
+<p>Find and download POPS_IOX.PAK ;</p>
+</li>
+<li>
+<p>Create a directory named POPS at the root of your USB device ;</p>
+</li>
+<li>
+<p>Copy POPS_IOX.PAK into POPS directory you’ve just created.</p>
+</li>
+</ol>
+<p><strong>b) Installing your PS1 Games :</strong></p>
+<p>POPStarter/POPS doesn’t support PS1 disc images as .iso – but only as .VCD.</p>
+<ol>
+<li>
+<p>Create a disc image of your PS1 game as .BIN/.CUE ;</p>
+</li>
+<li>
+<p>Drag &amp; drop your .CUE file over CUE2POPS.EXE to convert your BIN/CUE disc image to .VCD file (you can convert several games at once by running BULK_CUE2POPS.BAT) ;</p>
+</li>
+<li>
+<p>Put your .VCD files in mass:/POPS directory.</p>
+</li>
+</ol>
+<p><strong>c) Installing POPStarter :</strong></p>
+<ol>
+<li>
+<p>Rename the POPStarter ELF as the name of your VCDs, replace the .VCD extension with a .ELF extension, add the XX. prefix (example : for running a VCD named “Crash Bandicoot.VCD”, the POPStarter ELF must be renamed as “XX.Crash Bandicoot.ELF”) ;</p>
+</li>
+<li>
+<p>Copy the ELFs in mass:/POPS.</p>
+</li>
+</ol>
+<p>Now, check your setup. It must be the same as this one :</p>
+<pre><code>mass:/POPS/POPS_IOX.PAK
+mass:/POPS/XX.GAME.ELF
+mass:/POPS/GAME.VCD
+</code></pre>
+<p>=&gt; to launch your game, run XX.GAME.ELF.</p>
+<p><strong>Note :</strong> tired of renaming tons of ELF files ? Put uLE_kHn_20191110/BOOT in mc0:/BOOT folder and put POPSTARTER.ELF (not renamed) in mass:/POPS directory. This special uLE version can launch .VCD directly – just like you would do for any .ELF file.</p>
+<p><em>(The bundled special-uLE folder name differs by snapshot: the 2017/10/27 snapshot referenced <code>uLE_kHn_20160723/BOOT</code>; the current snapshot references <code>uLE_kHn_20191110/BOOT</code>.)</em></p>
+<pre><code>mass:/POPS/POPS_IOX.PAK
+mass:/POPS/POPSTARTER.ELF
+mass:/POPS/GAME.VCD
+mc0:/BOOT/BOOT.ELF
+</code></pre>
+<p>Need help ? Ask over at <a href="https://www.psx-place.com/threads/popstarter-beta-from-2019-06-05.19139/">PSX-Place</a>.</p>
+<p><em>(Older snapshots pointed support to ASSEMblergames instead of PSX-Place:</em><br />
+- <em><a href="http://assemblergames.com/l/threads/ps2-pops-stuff.45347/">ASSEMblergames</a> (earliest OBT16 snapshot)</em><br />
+- <em><a href="https://assemblergames.com/threads/ps2-pops-stuff.45347/">ASSEMblergames</a> (later OBT16 and 2017/10/27 snapshots))</em></p>
+<p>______________________________________________________________________________________________________________</p>
+<h2>Alternate POPStarter install method (older OBT16 snapshots)</h2>
+<p>The earliest OBT16 snapshots (Quickstarter Pack USB 2017_01_10, Rev 13 WIP 6 OBT 16) described <strong>Step c) Installing POPStarter</strong> differently — instead of renaming each ELF with the <code>XX.</code> prefix, you placed a special uLE loader ELF directly in <code>mass:/POPS</code>:</p>
+<ol>
+<li>
+<p>Put uLE_kHn.ELF in mass:/POPS directory. This special uLE version can launch .VCD directly ;</p>
+</li>
+<li>
+<p>Put POPSTARTER.ELF in mass:/POPS directory.</p>
+</li>
+</ol>
+<p>Now, check your setup. It must be the same as this :</p>
+<pre><code>mass:/POPS/POPS_IOX.PAK
+mass:/POPS/POPSTARTER.ELF
+mass:/POPS/GAME.VCD
+mass:/POPS/uLE_kHn.ELF
+</code></pre>
+<p>=&gt; to launch your game, run uLE_kHn.ELF, then launch GAME.VCD – just like you would do for any .ELF file.</p>
+<p>______________________________________________________________________________________________________________</p>
+<h3><a href="../wiki/home.html"><strong>Wiki Homepage</strong></a></h3><p style="margin-top:26px"><a class="pill" href="../storage.html">Related curated section → Storage Backends</a></p></main>
+</div>
+<footer>
+  <p><b>POPStarter Documentation Archive</b> — community-recovered from the Wayback Machine
+  (ShaolinAssassin's <code>popstarter-documentation-stuff</code> wiki) and krHACKen's r13 changelog,
+  cross-checked and merged across snapshots. Built for the POPSLoader project.</p>
+  <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
+  emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
+  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed.</p>
+</footer>
+<script src="../assets/app.js"></script>
+</body></html>

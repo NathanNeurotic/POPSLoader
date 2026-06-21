@@ -1,0 +1,218 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Popstarter11 · POPStarter Docs</title>
+<meta name="description" content="Resurrected, searchable POPStarter documentation — cheats, patches, config, storage, multi-disc, IGR and downloads.">
+<link rel="stylesheet" href="../assets/style.css">
+</head><body data-base="../">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu">☰</button>
+  <a class="brand" href="../index.html"><span class="logo">P1</span>
+    POPStarter&nbsp;Docs <small>· archive</small></a>
+  <div class="search">
+    <span class="ico">🔎</span>
+    <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar"><h4>Documentation</h4><a href="../index.html"><span class="em">🏠</span>Home</a>
+<a href="../getting-started.html"><span class="em">🚀</span>Getting Started</a>
+<a href="../storage.html"><span class="em">💾</span>Storage Backends</a>
+<a href="../cheats.html"><span class="em">🎮</span>Cheats</a>
+<a href="../compatibility.html"><span class="em">🩹</span>Patches & TROJANs</a>
+<a href="../igr.html"><span class="em">🎯</span>IGR & Hotkeys</a>
+<a href="../config.html"><span class="em">🔧</span>Config Table</a>
+<a href="../multidisc.html"><span class="em">💿</span>Multi-disc & VMC</a>
+<a href="../troubleshooting.html"><span class="em">🛠️</span>Troubleshooting</a>
+<a href="../downloads.html"><span class="em">📦</span>Downloads</a>
+<a href="../history.html"><span class="em">📜</span>History</a>
+    <h4>Reference</h4>
+    <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
+  </nav>
+  <main class="content"><h1>Popstarter11</h1><p class="prov-inline">📎 Recovered from the ShaolinAssassin wiki · snapshot 20200812191235</p><h1><strong>POPStarter Rev 11 – Readme [2013/04/24 &amp; 2013/04/30]</strong></h1>
+<p>______________________________________________________________________________________________________________</p>
+<pre><code>**************************
+* POPStarter Revision 11 *
+**************************
+////////////////
+PACKAGE CONTENTS
+////////////////
+__common/POPS/disc0         = The original virtual CD-ROM image of SLBB-00001
+__common/POPS/EXECUTE.ELF       = The emulator, encapsulated in the POPStarter container (it's the &quot;PORTABLE&quot; build, a stand alone
+ELF)
+PP.YOUR_GAME_PARTITION/EXECUTE.KELF = The emulator, encapsulated in the POPStarter container (it's a KryptoELF, for use with the
+HDD OSD)
+LAUNCHER.ELF                = The launcher which executes __common/POPS/EXECUTE.ELF
+CUE2POPS_v1.2.zip           = BIN/CUE to IMAGE0.VCD conversion tool v1.2
+README.TXT              = This file
+----------------------------------------
+I - EMULATOR INSTALLATION [IS DONE ONCE]
+----------------------------------------
+1) Mount the partition &quot;__common&quot; and create a directory called &quot;POPS&quot; (UPPERCASE) into it's root;
+2) Copy the files &quot;disc0&quot; and &quot;EXECUTE.ELF&quot; in the &quot;POPS&quot; directory you've just created.
+----------------------
+II - GAME INSTALLATION
+----------------------
+1) Dump your game as BIN/CUE with your favorite disc replication software (must output a raw Mode 2 disc image and an ASCII cue
+sheet);
+2) Convert it to a POPS virtual CD-ROM image with &quot;BIN/CUE to IMAGE0.VCD conversion tool v1.2&quot; (CUE2POPS_1_2.EXE);
+3) Create a parent partition in your PS2 HDD (example of a partition name : &quot;PP.PBPX-95000.MY_GAME&quot;)
+4) Transfer your virtual CD-ROM image (IT HAS TO BE NAMED &quot;IMAGE0.VCD&quot;, UPPERCASE) to the root of the partition you've just created
+&amp;#62; For HDD OSD users &amp;#60;
+5) Setup your partition icons;
+6) Copy the file &quot;EXECUTE.KELF&quot; to the root of the game partition, or write &quot;EXECUTE.KELF&quot; to the KELF field of PATINFO.
+&amp;#62; No HDD OSD ? &amp;#60;
+5) Setup your partition icons (optional);
+7) Rename &quot;LAUNCHER.ELF&quot; as the name of the game partition (for example, if the game partition name is &quot;PP.PBPX-95000.MY_GAME&quot;,
+rename &quot;LAUNCHER.ELF&quot; as &quot;PP.PBPX-95000.MY_GAME.ELF&quot;);
+8) Copy the ELF you've just renamed to any place you want to run it from (examples : USB mass drive, +OPL partition, a folder in a
+PS2 Memory Card...).
+You may need uLaunchELF 4.42_ev and pfsshell-0.2a...
+/////////////////////
+OVERVIEW OF THE SETUP
+/////////////////////
+*****************************************************************************************************************************************************************************************
+* PARTITION NAME        | FOLDER NAME   | SUB FOLDER NAME   | FILE NAME         | COMMENTS                                  *
+*****************************************************************************************************************************************************************************************
+* ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| *
+*****************************************************************************************************************************************************************************************
+* __common          | POPS      |           | disc0             | The SLBB-00001 VCD, must be present.                      *
+*****************************************************************************************************************************************************************************************
+* __common          | POPS      |           | EXECUTE.ELF           | Not needed if you don't use the LAUNCHER.                 *
+*****************************************************************************************************************************************************************************************
+* __common          | POPS      | GAME_PARTITION_NAME   | SLOT0.VMC         | Created by the emulator. Is the Virtual Memory Card of the first slot.    *
+*****************************************************************************************************************************************************************************************
+* __common          | POPS      | GAME_PARTITION_NAME   | SLOT1.VMC         | Created by the emulator. Is the Virtual Memory Card of the second slot.   *
+*****************************************************************************************************************************************************************************************
+* __common          | POPS      | GAME PARTITION_NAME   | BIOS.BIN          | User dumped BIOS. Optional.                           *
+*****************************************************************************************************************************************************************************************
+* __common          | POPS      | GAME_PARTITION_NAME   | OSD.BIN           | User made OSD replacement file of Version 1. Optional.            *
+*****************************************************************************************************************************************************************************************
+* ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| *
+*****************************************************************************************************************************************************************************************
+* PP.GAME_PARTITION_NAME    |       |           | IMAGE0.VCD            | The PlayStation game VCD, as it was converted by CUE2POPS. Required.      *
+*****************************************************************************************************************************************************************************************
+* PP.GAME_PARTITION_NAME    |       |           | EXECUTE.KELF          | Only needed when doing a BOOT2 = pfs:/EXECUTE.KELF installation (HDD OSD).    *
+*****************************************************************************************************************************************************************************************
+* ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| *
+*****************************************************************************************************************************************************************************************
+* +OPL              | APPS      |           | PP.GAME_PARTITION_NAME.ELF    | It's an example of a LAUNCHER.ELF installation                *
+*****************************************************************************************************************************************************************************************
+/////////////
+EXECUTION MAP
+/////////////
+EXECUTE.KELF (booting from the HDD OSD) -&amp;#62; POPS is running
+LAUNCHER.ELF (properly renamed)     -&amp;#62; __common/POPS/EXECUTE.ELF (NOT renamed) -&amp;#62; POPS is running
+EXECUTE.ELF  (properly renamed)     -&amp;#62; POPS is running
+/////////////////////////////////////
+HIDING GAME PARTITIONS IN THE HDD OSD
+/////////////////////////////////////
+Put the partition prefix &quot;__.&quot; instead of &quot;PP.&quot;.
+Examples :
+&quot;PP.PBPX-95000.MY_GAME&quot; ==  Shown
+&quot;__.PBPX-95000.MY_GAME&quot; ==  Hidden
+&quot;PP.SCUS-80085_FAPFAP&quot;  ==  Shown
+&quot;__.SCUS-80085_FAPFAP&quot;  ==  Hidden
+&quot;PP.SCUS-84115_BAMBAM&quot;  ==  Shown
+&quot;__.SCUS-84115_BAMBAM&quot;  ==  Hidden
+Make sure you wrote a DOT right after __
+As explained later in &quot;VIRTUAL MEMORY CARD&quot;, the prefix has to be 3 characters long !
+Of course, there's no point in hiding the partition if you want to run the game straight from the HDD OSD...
+////////////////////
+VIRTUAL MEMORY CARDS
+////////////////////
+VMCs are created by the emulator in __common/POPS/. One separate directory for each game partition.
+Examples
+__common/POPS/PBPX-95000.MY_GAME/SLOT0.VMC
+__common/POPS/PBPX-95000.MY_GAME/SLOT1.VMC
+__common/POPS/SCUS-80085_FAPFAP/SLOT0.VMC
+__common/POPS/SCUS-80085_FAPFAP/SLOT1.VMC
+__common/POPS/SCUS-84115_BAMBAM/SLOT0.VMC
+__common/POPS/SCUS-84115_BAMBAM/SLOT1.VMC
+The container skips the partition prefix when naming the VMC directory, so make sure you always name your partitions with a valid 3
+chars prefix (&quot;PP.&quot; or &quot;__.&quot;); otherwise it will truncate the game name.
+Examples :
+Partition &quot;PP.PBPX-95000.MY_GAME&quot;   ==  VMC directory &quot;PBPX-95000.MY_GAME&quot;
+Partition &quot;PP.SCUS-80085_FAPFAP&quot;    ==  VMC directory &quot;SCUS-80085_FAPFAP&quot;
+Partition &quot;PP.SCUS-84115_BAMBAM&quot;    ==  VMC directory &quot;SCUS-84115_BAMBAM&quot;
+Partition &quot;__.PBPX-95000.MY_GAME&quot;   ==  VMC directory &quot;PBPX-95000.MY_GAME&quot;
+Partition &quot;__.SCUS-80085_FAPFAP&quot;    ==  VMC directory &quot;SCUS-80085_FAPFAP&quot;
+Partition &quot;__.SCUS-84115_BAMBAM&quot;    ==  VMC directory &quot;SCUS-84115_BAMBAM&quot;
+///////////////
+VIRTUAL CD-ROMs
+///////////////
+The virtual CD-ROM images has to be named &quot;IMAGE0.VCD&quot; (UPPERCASE)  and located in the root of your game partition.
+Examples
+PP.PBPX-95000.MY_GAME/IMAGE0.VCD
+PP.SCUS-80085_FAPFAP/IMAGE0.VCD
+PP.SCUS-84115_BAMBAM/IMAGE0.VCD
+One copy of the original &quot;disc0&quot; has to be placed in __common/POPS/ (where &quot;__common&quot; is a system PARTITION and &quot;POPS&quot; is a
+DIRECTORY).
+__common/POPS/disc0
+////////////////
+PLAYSTATION BIOS
+////////////////
+You can use a PlayStation BIOS dump with POPS. Put a &quot;BIOS.BIN&quot; file in the VMC directory (example :
+__common/POPS/PBPX-95000.MY_GAME/BIOS.BIN) so POPStarter can handle it.
+If you didn't, POPS will use the built-in BIOS in fast boot mode (no PS OSD, just like POPStarter Rev.9 does).
+///////////////////////////
+PLAYSTATION OSD REPLACEMENT
+///////////////////////////
+POPStarter Revision 11 can replicate the PS-X EXE injection and execution method that was the heart of the POC1.
+If you put an OSD replacement image in the VMC directory, named as &quot;OSD.BIN&quot; (example : __common/POPS/PBPX-95000.MY_GAME/OSD.BIN),
+the container will inject it in the built-in BIOS for POPS to run it.
+When using a OSD replacement file, the container ignores &quot;BIOS.BIN&quot; (no user defined BIOS execution is possble).
+////////////////////
+MBR CALLBACK aka IGR
+////////////////////
+Your pad does not respond after pressing L1+START+SELECT ? Just disconnect the second pad or use the second pad to validate your
+choice o_O.
+@@@@@@@@@
+BLAH BLAH
+@@@@@@@@@
+Thanks to everyone who helped me in the making of POPStarter and CUE2POPS, with tests, bug reports and encouragements.
+This should be the last revision of the container, as the POC2 (aka POPS-00001) is now obsolete... unless someone reports a critical
+problem/bug/error.
+My respect and gratitude to the former project maintainers. It has been a pleasure working with you, in despite of the bullshit that
+followed the release of the second POC and the abortion of the development.
+Please do not bother me if you wanna make an installer. I'm not interested in spending more of my time in POPS related stuff (other
+than container/CUE2POPS bugs)...
+Feel free to spread the binaries, pack them with an installer you made, improve CUE2POPS etc etc... but please, do not waste my damn
+work like some lamers did with teh POPS-00001.
+Hope u liek that release and find it useful.
+---------
+CHANGELOG
+---------
+POPStarter Revision 11 - 2013/04/30
++ Fixed BIOS &amp;#38; OSD handlers activation failure in EXECUTE.KELF
+POPStarter Revision 11 - 2013/04/24
++ Added the &quot;ELF name to argument&quot; thing in LAUNCHER (LAUNCHER.ELF) and PORTABLE (EXECUTE.ELF) builds
++ Solved a file length problem in the OSD replacement file handler
++ Now displays enrypoint relocations of OSD replacement files (limited to jumps from the segment start and the EOF)
++ LAUNCHER, PORTABLE and KEXEC builds were packaged all together
+POPStarter Revision 10 [PATINFO/KEXEC Bundle] - 2013/04/19
++ Added on-screen debug info at container startup
++ Added an error handler
++ Added an user BIOS handler
++ Added an OSD replacement image handler
++ Fixed a bug in VMC directory naming
++ Container protections were completely rewritten
+POPStarter Revision 9 [PATINFO/KEXEC Bundle] - 2013/04/09
+First public release
+kHn, 2013/04/30
+
+</code></pre>
+<p>______________________________________________________________________________________________________________</p>
+<h3><a href="../wiki/index.html"><strong>Index</strong></a></h3></main>
+</div>
+<footer>
+  <p><b>POPStarter Documentation Archive</b> — community-recovered from the Wayback Machine
+  (ShaolinAssassin's <code>popstarter-documentation-stuff</code> wiki) and krHACKen's r13 changelog,
+  cross-checked and merged across snapshots. Built for the POPSLoader project.</p>
+  <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
+  emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
+  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed.</p>
+</footer>
+<script src="../assets/app.js"></script>
+</body></html>

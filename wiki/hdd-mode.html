@@ -1,0 +1,223 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HDD Mode · POPStarter Docs</title>
+<meta name="description" content="Resurrected, searchable POPStarter documentation — cheats, patches, config, storage, multi-disc, IGR and downloads.">
+<link rel="stylesheet" href="../assets/style.css">
+</head><body data-base="../">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu">☰</button>
+  <a class="brand" href="../index.html"><span class="logo">P1</span>
+    POPStarter&nbsp;Docs <small>· archive</small></a>
+  <div class="search">
+    <span class="ico">🔎</span>
+    <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar"><h4>Documentation</h4><a href="../index.html"><span class="em">🏠</span>Home</a>
+<a href="../getting-started.html"><span class="em">🚀</span>Getting Started</a>
+<a href="../storage.html"><span class="em">💾</span>Storage Backends</a>
+<a href="../cheats.html"><span class="em">🎮</span>Cheats</a>
+<a href="../compatibility.html"><span class="em">🩹</span>Patches & TROJANs</a>
+<a href="../igr.html"><span class="em">🎯</span>IGR & Hotkeys</a>
+<a href="../config.html"><span class="em">🔧</span>Config Table</a>
+<a href="../multidisc.html"><span class="em">💿</span>Multi-disc & VMC</a>
+<a href="../troubleshooting.html"><span class="em">🛠️</span>Troubleshooting</a>
+<a href="../downloads.html"><span class="em">📦</span>Downloads</a>
+<a href="../history.html"><span class="em">📜</span>History</a>
+    <h4>Reference</h4>
+    <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
+  </nav>
+  <main class="content"><h1>HDD Mode</h1><p class="prov-inline">📎 Recovered from the ShaolinAssassin wiki · snapshot 20170629165244</p><h1><strong>POPStarter for internal HDD</strong></h1>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>Requirements :</em></h2>
+<ul>
+<li><strong>POPS decrypted files :</strong></li>
+</ul>
+<p>To use POPStarter with an internal HDD, you have to find and download the POPS decrypted files. These files are named “POPS.ELF” and “IOPRP252.IMG”...</p>
+<table>
+<thead>
+<tr>
+<th><strong>File name</strong></th>
+<th><strong>MD5</strong></th>
+<th><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>| POPS.ELF | 355a892a8ce4e4a105469d4ef6f39a42 | main SLBB-00001 ELF, decrypted |</p>
+<p>| IOPRP252.IMG | 1db9c6020a2cd445a7bb176a1a3dd418 | can be found in some retail game discs and $CEI SDKs too |</p>
+<ul>
+<li><strong>Other Software Requirements :</strong></li>
+</ul>
+<p>. A software that allows you to convert your disc images to the POPS virtual CDROM format (such as <a href="../wiki/apps-last-version.html">CUE2POPS</a>)<br />
+. A software that allows you to manage/create partitions in your PS2 HDD (such as <a href="../wiki/related-stuff.html">AKuHAK’s uLaunchELF build</a> or <a href="../wiki/apps-last-version.html">uLE_kHn build</a>)<br />
+. A software that allows you to copy the decrypted POPS files to the __common partition of your PS2 HDD (such as <a href="../wiki/related-stuff.html">AKuHAK’s uLaunchELF build</a> or <a href="../wiki/apps-last-version.html">uLE_kHn build</a>)<br />
+. A software that allows you to transfer the converted disc images to your PS2 HDD (such as <a href="../wiki/related-stuff.html">PFSshell</a>, or <a href="../wiki/apps-last-version.html">uLaunchELF</a> and <a href="../wiki/related-stuff.html">RadHostClient</a>)<br />
+. A PS2 software that allows you to execute the POPStarter ELFs (such as <a href="../wiki/apps-last-version.html">uLaunchELF</a>, or <a href="http://ichiba.geocities.jp/ysai187/PS2/FMCB/">Free Harddisk Drive Boot</a>) or a GUI to execute POPSTARTER.ELF by selecting the VCDs (such as <a href="../wiki/apps-last-version.html">uLE_kHn</a> )</p>
+<ul>
+<li><strong>Hardware Requirements :</strong></li>
+</ul>
+<p>. A PS2 console which is able to run PS2 unsigned code;<br />
+. A network adapter with/or a HDD interface;<br />
+. A PS2-formatted HDD that fits your network adapter/HDD interface.</p>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>Installation :</em></h2>
+<ul>
+<li><strong>a) Installing the Emulator :</strong></li>
+</ul>
+<ol>
+<li>Find and download the decrypted emulator files;</li>
+<li>Create a directory named “POPS” in the “__common” partition of your PS2 HDD;</li>
+<li>Paste POPS.ELF and IOPRP252.IMG into the “POPS” directory you’ve just created.</li>
+</ol>
+<ul>
+<li><strong>b) Installing your PS1 Games :</strong></li>
+</ul>
+<ol>
+<li>Convert your BIN/CUE disc images to .VCD files using the latest stable version of <a href="../wiki/vcd.html">CUE2POPS</a> ;</li>
+<li>Create a partition named “__.POPS” in your PS2 HDD, large enough so you can put all your VCDs inside.<br />
+Note : +__.POPS is not correct. Use <a href="../wiki/related-stuff.html">AKuHAK’s uLaunchELF build</a> or <a href="../wiki/apps-last-version.html">uLE_kHn build</a> to create a partition without +.</li>
+</ol>
+<ul>
+<li><strong>c) Installing POPStarter :</strong></li>
+</ul>
+<ol>
+<li>Rename the POPStarter ELF as the name of your VCDs, replace the .VCD extension with a .elf extension [example : for running a VCD named “Gran Turismo.VCD”, the POPStarter ELF must be renamed as “Gran Turismo.elf”] ;</li>
+<li>Copy or leave the ELFs where you want to run them from ;</li>
+<li>Enjoy !</li>
+</ol>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>Example of Setup :</em></h2>
+<pre><code>
+=== INTERNAL HDD, NEW LAUNCH TYPE ===
+__common/POPS/IOPRP252.IMG
+__common/POPS/POPS.ELF
+__.POPS/Crash Bandicoot.VCD
+__sysconf/FMCB/Crash Bandicoot.elf
+
+</code></pre>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>POPSTARTER.KELF :</em></h2>
+<p>POPStarter bundle comes with a file named POPSTARTER.KELF (KELF = Krypo-ELF = ELF embedded into a container). It can be used if you have SONY Browser 2.00 (aka HDDOSD) installed on your HDD. Otherwise, it’s useless.</p>
+<p><strong>Notes if you use the POPStarter.KELF :</strong></p>
+<ul>
+<li>
+<p>Partition name prefix is of course PP. (PP(dot)) ;</p>
+</li>
+<li>
+<p>1 partition = 1 game – you can’t install several games into a single partition (unless it’s a multi-disc game).</p>
+</li>
+</ul>
+<p>Read <a href="../wiki/popstarter-hddosd.html">here</a> for a guide about how to set it up.</p>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>HDD Launch types (advanced) :</em></h2>
+<p>HDD supports 3 “launch types”. The “launch type” relies on the prefix of your ELF names. Each type uses his own way to name the VCD file :</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th><strong>Old launch type</strong></th>
+<th><strong>Alternate old launch type</strong></th>
+<th><strong>New launch type</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>| <strong>HDDOSD compatible</strong> | Yes | No | No |</p>
+<p>| <strong>Partition shown in the HDDOSD/PSBBN/PSX XMB</strong> | Yes | No | – |</p>
+<p>| <strong>Prefix for POPStarter.ELF</strong> | PP. (if used) | __. | No prefix |</p>
+<p>| <strong>Prefix for partition name</strong> | PP. | __. | __.POPS or __.POPS# |</p>
+<p>| <strong>Game name</strong> | IMAGE0.VCD (all uppercase) | IMAGE0.VCD (all uppercase) | Name of the Game.VCD |</p>
+<p>| <strong>Examples</strong> | (1) | (2) | (3) |</p>
+<p>| <strong>Description</strong> | Launch type that was used in POPStarter 12 and older. Allows to install one VCD per partition. | Launch type that was used in POPStarter 12 and older. Allows to install one VCD per partition. | Launch type introduced in POPStarter 13 WIP 01. Allows to put multiple VCDs in a single partition. |</p>
+<p><strong>Examples :</strong></p>
+<p>(1) With the POPStarter ELF renamed as PP.SomeGame.elf, POPStarter will launch IMAGE0.VCD which is in the partition named PP.SomeGame.</p>
+<p>(2) With the POPStarter ELF renamed as __.SomeGame.elf, POPStarter will launch IMAGE0.VCD which is in the partition named __.SomeGame.</p>
+<p>(3) With the POPStarter ELF renamed as Some Game.elf, POPStarter will launch Some Game.VCD which is in the partition named __.POPS or __.POPS0 or __.POPS1… up to __.POPS9.</p>
+<p><strong>Examples of Setups :</strong></p>
+<pre><code>
+=== INTERNAL HDD, OLD LAUNCH TYPE (HDDOSD COMPATIBLE) ===
+__common/POPS/IOPRP252.IMG
+__common/POPS/POPS.ELF
+PP.Crash_Bandicoot/EXECUTE.KELF
+PP.Crash_Bandicoot/IMAGE0.VCD
+
+</code></pre>
+<pre><code>
+=== INTERNAL HDD, ALTERNATE OLD LAUNCH TYPE (HIDDEN PARTITION) ===
+__common/POPS/IOPRP252.IMG
+__common/POPS/POPS.ELF
+__.Crash_Bandicoot/IMAGE0.VCD
+__sysconf/FMCB/__.Crash Bandicoot.elf
+
+</code></pre>
+<pre><code>
+=== INTERNAL HDD, NEW LAUNCH TYPE ===
+__common/POPS/IOPRP252.IMG
+__common/POPS/POPS.ELF
+__.POPS/Crash Bandicoot.VCD
+__sysconf/FMCB/Crash Bandicoot.elf
+
+</code></pre>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>Additional notes :</em></h2>
+<ul>
+<li>
+<p>The internal HDD has to be PS2 formatted. If you need to format it, use the latest WIP version of AKuHAK’s uLaunchELF HDD edition.</p>
+</li>
+<li>
+<p>The partition names are case sensitive, and have to match the POPStarter ELF names.</p>
+</li>
+<li>
+<p>The third character of the ELF prefix (when used) is a dot (PPdot / __dot ).</p>
+</li>
+<li>
+<p>The prefix (when used) has to be uppercase.</p>
+</li>
+<li>
+<p>The file extension .VCD has to be uppercase.</p>
+</li>
+<li>
+<p>Whitespaces are not allowed in the partition names (for old launch types).</p>
+</li>
+</ul>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>Related stuff :</em></h2>
+<p>You may want to give a look at this :</p>
+<ul>
+<li>
+<p>[HDD] <a href="../wiki/pfsshell.html">Transfer VCD files using PFSSHELL 0.2a</a></p>
+</li>
+<li>
+<p>[HDD] <a href="../wiki/radhostclient.html">Transfer VCD files over network using RadHostClient</a></p>
+</li>
+</ul>
+<p>______________________________________________________________________________________________________________</p>
+<h3><a href="../wiki/index.html"><strong>Index</strong></a></h3><p style="margin-top:26px"><a class="pill" href="../storage.html">Related curated section → Storage Backends</a></p></main>
+</div>
+<footer>
+  <p><b>POPStarter Documentation Archive</b> — community-recovered from the Wayback Machine
+  (ShaolinAssassin's <code>popstarter-documentation-stuff</code> wiki) and krHACKen's r13 changelog,
+  cross-checked and merged across snapshots. Built for the POPSLoader project.</p>
+  <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
+  emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
+  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed.</p>
+</footer>
+<script src="../assets/app.js"></script>
+</body></html>

@@ -1,0 +1,379 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Toolbox Commands · POPStarter Docs</title>
+<meta name="description" content="Resurrected, searchable POPStarter documentation — cheats, patches, config, storage, multi-disc, IGR and downloads.">
+<link rel="stylesheet" href="../assets/style.css">
+</head><body data-base="../">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu">☰</button>
+  <a class="brand" href="../index.html"><span class="logo">P1</span>
+    POPStarter&nbsp;Docs <small>· archive</small></a>
+  <div class="search">
+    <span class="ico">🔎</span>
+    <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar"><h4>Documentation</h4><a href="../index.html"><span class="em">🏠</span>Home</a>
+<a href="../getting-started.html"><span class="em">🚀</span>Getting Started</a>
+<a href="../storage.html"><span class="em">💾</span>Storage Backends</a>
+<a href="../cheats.html"><span class="em">🎮</span>Cheats</a>
+<a href="../compatibility.html"><span class="em">🩹</span>Patches & TROJANs</a>
+<a href="../igr.html"><span class="em">🎯</span>IGR & Hotkeys</a>
+<a href="../config.html"><span class="em">🔧</span>Config Table</a>
+<a href="../multidisc.html"><span class="em">💿</span>Multi-disc & VMC</a>
+<a href="../troubleshooting.html"><span class="em">🛠️</span>Troubleshooting</a>
+<a href="../downloads.html"><span class="em">📦</span>Downloads</a>
+<a href="../history.html"><span class="em">📜</span>History</a>
+    <h4>Reference</h4>
+    <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
+  </nav>
+  <main class="content"><h1>Toolbox Commands</h1><p class="prov-inline">📎 Recovered from the ShaolinAssassin wiki · snapshot 20170907050300</p><h1><strong>Toolbox commands</strong></h1>
+<p>______________________________________________________________________________________________________________<br />
+<em>[ToolBox Version 1.0]</em></p>
+<h2><em>List of Toolbox commands :</em></h2>
+<table>
+<thead>
+<tr>
+<th><strong>Command</strong></th>
+<th><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>| -cue2pops | Convert a BIN+CUE to a POPS formatted VCD |</p>
+<p>| -lc | Make a LibCrypt cracker, for protected PAL games (TROJAN file) |</p>
+<p>| -vmode | Make a PAL to NTSC patcher, expect unpleasant rendering (TROJAN file) |</p>
+<p>| -trainer | Compile a trainer so you activate permanent game cheats (TROJAN file) |</p>
+<p>| -makeosd | Convert a PS-X executable to a replacement OSD file (OSD.BIN) |</p>
+<p>| -igrpix | Assemble an IGR theme that you can copy to VMC folders (PATCH file) |</p>
+<p>| -vmcid | Configure POPStarter so it assigns a user ID to the VMCs |</p>
+<p>| -dbgdelay | Configure POPStarter so you can see the debug texts for the time you want |</p>
+<p>| -usbdelay | Configure the USB Mass access delay of POPStarter and the PFS Wrapper |</p>
+<p>| -cdid | Save the disc identification data, for dev or version check purposes |</p>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>Details :</em></h2>
+<h3><strong><em>-cue2pops :</em></strong></h3>
+<ul>
+<li><em>Tool name (version) :</em> CUE2POPS Lite (base v2.1 beta 2)</li>
+</ul>
+<pre><code>
+Hello! I convert BIN+CUE disc images to the POPS format.
+The BIN has to be a raw MODE2/2352 dump.
+The CUE has to be a standard ASCII cuesheet.
+Splitted dumps (with separate tracks) are not supported.
+High density dumps (aka merged/combined discs) are supported.
+Old extra commands gap++, gap--, vmode, trainer, whatever, no longer exist.
+
+</code></pre>
+<ul>
+<li><em>Usage :</em></li>
+</ul>
+<pre><code>
+&quot;toolbox.exe&quot; -cue2pops &quot;input_file&quot; &quot;output_file&quot;
+
+</code></pre>
+<p>OR</p>
+<pre><code>
+&quot;toolbox.exe&quot; -cue2pops &quot;input_file&quot;
+
+</code></pre>
+<ul>
+<li><em>Examples :</em></li>
+</ul>
+<pre><code>
+toolbox -cue2pops &quot;K:\toolbox\AMERICAN_POOL.cue&quot; &quot;L:\POPS\AMERICAN_POOL.VCD&quot;
+
+</code></pre>
+<p>OR</p>
+<pre><code>
+toolbox -cue2pops &quot;K:\toolbox\AMERICAN_POOL.cue&quot;
+
+</code></pre>
+<ul>
+<li><em>Notes :</em></li>
+</ul>
+<p>Input_file must be an ASCII cuesheet (CUE) which points to a Mode 2 Form 1 CD-ROM image<br />
+Output_file is the filename of the VCD you want to create (optional).</p>
+<p>______________________________________________________________________________________________________________</p>
+<h3><strong><em>-lc :</em></strong></h3>
+<ul>
+<li><em>Tool name (version) :</em> LC Crack Trojan Maker</li>
+</ul>
+<pre><code>
+Hello! I make TROJANs that crack your LibCrypt protected games.
+The crack is applied to the POPS memory, so your VCD remains untouched.
+1. Run your game in pSX/ePSXe/PCSX/Xebra (must have a genuine SBI or SUB)
+2. Do a savestate as soon as it has gone past the LibCrypt thread
+3. Decompress the savestate if it's compressed
+
+</code></pre>
+<ul>
+<li><em>Usage :</em> :</li>
+</ul>
+<pre><code>
+&quot;toolbox.exe&quot; -lc &quot;input_file&quot;
+
+</code></pre>
+<ul>
+<li><em>Notes :</em></li>
+</ul>
+<p>Input_file can be :<br />
+. a pSX Quicksave (PSV).<br />
+. a Xebra Running Image<br />
+. a PCSX Save State v3 (Uncompressed)<br />
+. a PCSX Save State v4 (Uncompressed)<br />
+. an ePSXe Save State (Uncompressed)<br />
+“(Uncompressed)” means that you must decompress it manually, using a gzip archiver such as 7-Zip…</p>
+<p>______________________________________________________________________________________________________________</p>
+<h3><strong><em>-vmode :</em></strong></h3>
+<ul>
+<li><em>Tool name (version) :</em> PAL2NTSC Trojan Maker v1.0</li>
+</ul>
+<pre><code>
+Hello! I make TROJANs that patch your games VMODE to NTSC.
+The patch is applied to the POPS memory, so your VCD remains untouched.
+Results are as horrible as what you got with the vmode function of the old CUE2POPS, because the display is not resized nor cropped to the NTSC resolution.
+Games with multiple EXEs/routines are not supported.
+
+</code></pre>
+<ul>
+<li><em>Usage :</em></li>
+</ul>
+<pre><code>
+&quot;toolbox.exe&quot; -vmode &quot;input_file&quot;
+
+</code></pre>
+<ul>
+<li><em>Example :</em></li>
+</ul>
+<pre><code>
+toolbox -vmode &quot;K:\toolbox\SLUS_014.88&quot;
+
+</code></pre>
+<ul>
+<li><em>Notes :</em></li>
+</ul>
+<p>Input_file can be :<br />
+. a pSX Quicksave (PSV)<br />
+. an ePSXe Save State (Uncompressed)<br />
+. a PCSX Save State v3 (Uncompressed)<br />
+. a PCSX Save State v4 (Uncompressed)<br />
+. a Xebra Running Image<br />
+. a PS-X Executable<br />
+. a PS-X RAM Dump<br />
+. a PS2 Kernel Memory Dump (POPS)<br />
+. a PS2 User Memory Dump (POPS)<br />
+“(Uncompressed)” means that you must decompress it manually, using a gzip archiver such as 7-Zip…</p>
+<p>______________________________________________________________________________________________________________</p>
+<h3><strong><em>-trainer :</em></strong></h3>
+<ul>
+<li><em>Tool name (version) :</em> Game Trainer Maker Version 1.0</li>
+</ul>
+<pre><code>
+Hello! I compile trainers (per-game cheat plugins), from a text file that contains PS1 GameShark/Action Replay codes
+for your game.
+
+</code></pre>
+<ul>
+<li><em>Usage :</em></li>
+</ul>
+<pre><code>
+&quot;toolbox.exe&quot; -trainer &quot;your codelist.txt&quot;
+
+</code></pre>
+<ul>
+<li><em>Example :</em></li>
+</ul>
+<pre><code>
+toolbox -trainer &quot;K:\toolbox\2Xtreme.txt&quot;
+
+</code></pre>
+<ul>
+<li><em>Notes :</em></li>
+</ul>
+<p>Syntax of the codelist:<br />
+. Each line of code you want to “activate” must start with the character $<br />
+. There must be a whitespace between the address and the value in your code(s)<br />
+. The supported code types are 30, 50, 80 and D0<br />
+. Anything that doesn’t match the above criteria’s will be ignored on compile</p>
+<p>Example of a codelist:</p>
+<pre><code>
+Unlock All Tracks
+$80076398 3F3F
+Refresh Skill Bonus (Press Select)
+$D00B69F2 0100
+$80086BB8 0200
+Stop Timer
+$50000202 3BF1
+$8005D468 270F
+
+</code></pre>
+<p>______________________________________________________________________________________________________________</p>
+<h3><strong><em>-makeosd :</em></strong></h3>
+<ul>
+<li><em>Tool name (version) :</em> PS-X executable to OSD.BIN converter v1.0</li>
+</ul>
+<pre><code>
+Hello! I convert PS-X EXEs to OSD.BIN files
+The maximum allowed size of the PS-X EXE is 317600 bytes.
+Note that OSD.BIN files are loaded by POPStarter with the built-in BIOS.
+OSD.BIN can't be loaded when a BIOS.BIN is used.
+
+</code></pre>
+<ul>
+<li><em>Usage :</em></li>
+</ul>
+<pre><code>
+&quot;toolbox.exe&quot; -makeosd &quot;PSX.EXE&quot;
+
+</code></pre>
+<p>______________________________________________________________________________________________________________</p>
+<h3><strong><em>-igrpix :</em></strong></h3>
+<ul>
+<li><em>Tool name (version) :</em> IGR Texture Replacer Version 1.0</li>
+</ul>
+<pre><code>
+Hello! I build patches that replace the IGR textures by the ones of your choice.
+Then you can copy the patches in the VMC directories you want...
+In other words, I assemble per-game IGR &quot;themes&quot; with your TIM2 pictures.
+
+</code></pre>
+<ul>
+<li><em>Usage :</em></li>
+</ul>
+<pre><code>
+&quot;toolbox.exe&quot; -igrpix &quot;background.tm2&quot; &quot;no_button.tm2&quot; &quot;yes_button.tm2&quot;
+
+</code></pre>
+<ul>
+<li><em>Example :</em></li>
+</ul>
+<pre><code>
+toolbox -igrpix &quot;K:\toolbox\IGR_BG.TM2&quot; &quot;K:\toolbox\IGR_NO.TM2&quot; &quot;K:\toolbox\IGR_YES.TM2&quot;
+
+</code></pre>
+<p>______________________________________________________________________________________________________________</p>
+<h3><strong><em>-vmcid :</em></strong></h3>
+<ul>
+<li><em>Tool name (version) :</em> User ID assignment util for making POPS save in individual VMC couples</li>
+</ul>
+<pre><code>
+Hello! I configure the POPStarter ELF/KELF to allow you and yours save on separate VMCs.
+
+</code></pre>
+<ul>
+<li><em>Usage :</em></li>
+</ul>
+<pre><code>
+&quot;toolbox.exe&quot; -vmcid &quot;POPStarter.elf&quot;
+
+</code></pre>
+<ul>
+<li><em>Example :</em></li>
+</ul>
+<pre><code>
+toolbox -vmcid &quot;K:\toolbox\XX.AMERICAN_POOL.ELF&quot;
+
+</code></pre>
+<p>______________________________________________________________________________________________________________</p>
+<h3><strong><em>-dbgdelay :</em></strong></h3>
+<ul>
+<li><em>Tool name (version) :</em> POPStarter debug pages delay config tool that has a long and stupid name</li>
+</ul>
+<pre><code>
+Hello! I configure the POPStarter ELF/KELF so you can choose how long to print debug stuff.
+
+</code></pre>
+<ul>
+<li><em>Usage :</em></li>
+</ul>
+<pre><code>
+&quot;toolbox.exe&quot; -dbgdelay &quot;POPStarter.elf&quot;
+
+</code></pre>
+<ul>
+<li><em>Example :</em></li>
+</ul>
+<pre><code>
+toolbox -dbgdelay &quot;K:\toolbox\XX.AMERICAN_POOL.ELF&quot;
+
+</code></pre>
+<p>______________________________________________________________________________________________________________</p>
+<h3><strong><em>-usbdelay :</em></strong></h3>
+<ul>
+<li><em>Tool name (version) :</em> USB Access Delay Config Tool v1.0</li>
+</ul>
+<pre><code>
+Hello! I let you set the USB access delay of Delcro's PFS Wrapper v2 and POPStarter.
+
+</code></pre>
+<ul>
+<li><em>Usage :</em></li>
+</ul>
+<pre><code>
+&quot;toolbox.exe&quot; -usbdelay &quot;POPStarter.elf&quot; &quot;PFS_WRAP.BIN&quot;
+
+</code></pre>
+<ul>
+<li><em>Example :</em></li>
+</ul>
+<pre><code>
+toolbox -usbdelay &quot;K:\toolbox\XX.AMERICAN_POOL.ELF&quot; &quot;K:\toolbox\PFS_WRAP.BIN&quot;
+
+</code></pre>
+<p>______________________________________________________________________________________________________________</p>
+<h3><strong><em>-cdid :</em></strong></h3>
+<ul>
+<li><em>Tool name (version) :</em> Game Identification Data Extractor (IdentRip)</li>
+</ul>
+<pre><code>
+Hello! I make disc identification files for the POPStarter development.
+These files are required for integrating and activating per-game stuff in POPStarter.
+The POPStarter end users don't need 'em, but krHACKen does.
+
+</code></pre>
+<ul>
+<li><em>Usage :</em></li>
+</ul>
+<pre><code>
+&quot;toolbox.exe&quot; -cdid &quot;input_file&quot;
+
+</code></pre>
+<ul>
+<li><em>Example :</em></li>
+</ul>
+<pre><code>
+toolbox -cdid &quot;K:\toolbox\AMERICAN_POOL.bin&quot;
+
+</code></pre>
+<ul>
+<li><em>Notes :</em></li>
+</ul>
+<p>Input_file can be :<br />
+. a Mode 2 Form 1 CDROM image<br />
+. an ASCII cuesheet (CUE) which points to a Mode 2 Form 1 CD-ROM image<br />
+. a POPS virtual CD-ROM image (VCD)</p>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em><a href="../wiki/apps-last-version.html">POPS2CUE</a> :</em></h2>
+<p>It does what its name says : revert back the conversion from .VCD to .BIN+.CUE or (.CUE only) files. See the screenshot for commands.</p>
+<p>______________________________________________________________________________________________________________</p>
+<h3><a href="../wiki/index.html"><strong>Index</strong></a></h3></main>
+</div>
+<footer>
+  <p><b>POPStarter Documentation Archive</b> — community-recovered from the Wayback Machine
+  (ShaolinAssassin's <code>popstarter-documentation-stuff</code> wiki) and krHACKen's r13 changelog,
+  cross-checked and merged across snapshots. Built for the POPSLoader project.</p>
+  <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
+  emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
+  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed.</p>
+</footer>
+<script src="../assets/app.js"></script>
+</body></html>

@@ -1,0 +1,384 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Home · POPStarter Docs</title>
+<meta name="description" content="Resurrected, searchable POPStarter documentation — cheats, patches, config, storage, multi-disc, IGR and downloads.">
+<link rel="stylesheet" href="../assets/style.css">
+</head><body data-base="../">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu">☰</button>
+  <a class="brand" href="../index.html"><span class="logo">P1</span>
+    POPStarter&nbsp;Docs <small>· archive</small></a>
+  <div class="search">
+    <span class="ico">🔎</span>
+    <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar"><h4>Documentation</h4><a href="../index.html"><span class="em">🏠</span>Home</a>
+<a href="../getting-started.html"><span class="em">🚀</span>Getting Started</a>
+<a href="../storage.html"><span class="em">💾</span>Storage Backends</a>
+<a href="../cheats.html"><span class="em">🎮</span>Cheats</a>
+<a href="../compatibility.html"><span class="em">🩹</span>Patches & TROJANs</a>
+<a href="../igr.html"><span class="em">🎯</span>IGR & Hotkeys</a>
+<a href="../config.html"><span class="em">🔧</span>Config Table</a>
+<a href="../multidisc.html"><span class="em">💿</span>Multi-disc & VMC</a>
+<a href="../troubleshooting.html"><span class="em">🛠️</span>Troubleshooting</a>
+<a href="../downloads.html"><span class="em">📦</span>Downloads</a>
+<a href="../history.html"><span class="em">📜</span>History</a>
+    <h4>Reference</h4>
+    <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
+  </nav>
+  <main class="content"><h1>Home</h1><p class="prov-inline">📎 Recovered from the ShaolinAssassin wiki · snapshot 20160707014842</p><h1><strong>Introduction to POPStarter rev13 – Official documentation</strong></h1>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>Disclaimer :</em></h2>
+<p>POPStarter is a launcher which lets you play your PS1 games in combination with $ony’s PS1 emulator for PS2 (known as “POPS” or “SLBB-00001”). Unlike the previous POPStarter versions and the proofs of concept, POPStarter r13 does NOT contain the emulator itself or libraries that belong to $ony. It is safe to publish in forums/sites that don’t tolerate warez stuff, as long as it’s not repacked with the decrypted emulator files or things like a PS BIOS.</p>
+<p>POPStarter is available for free download. If you spent an outrageous amount of money in ordering a HDD that contains preinstalled games and POPStarter, YOU HAVE BEEN ROBBED. Never purchase a physical copy of POPStarter when the “seller” wants more $$$ than the media price and the shipping fees.</p>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>Downloads :</em></h2>
+<p>POPStarter releases evolved across snapshots. The most recent / final release is listed first; older releases are preserved below for the historical record.</p>
+<h3>Final release (latest snapshots: 20191108, 20221202, 20230206, 20240619, 20250419)</h3>
+<ul>
+<li><strong>FINAL RELEASE :</strong> <strong><a href="../downloads/POPStarter_r13_Beta_20190605.zip">POPStarter Revision 13 Beta 2019/06/05</a></strong></li>
+</ul>
+<pre><code>- Compiled with jan 14 2019 USB drivers.
+- One (or more) non-working command was fixed too.
+I vaguely remember that $IGR5 was not working, and was fixed in this last build.
+- This is the POPStarter version everyone should use, 2019/06/05. This is the last beta.
+</code></pre>
+<h3>Earlier final release (snapshot: 20171027 / 20170810-era "Official documentation")</h3>
+<ul>
+<li><strong>FINAL RELEASE :</strong> <strong><a href="../downloads/POPStarter_r13_RIP_06.zip">POPStarter Revision 13 RIP 06</a></strong></li>
+</ul>
+<pre><code>- Code cleanup
+- USBD and USBHDFSD drivers reverted to builds from WIP 02
+Since the drivers from prototype 2 reduced performances in BOTH POPStarter and POPS.
+- Bugfixed : POPStarter wasn't loading MODULE_#.IRX.
+Massive thanks to ShaolinAssassin for helping me to find what was broken.
+- POPStarter now accepts PS2CD and PS2CDDA disc types.
+In other words, you can now perform the disc swap trick with a pressed PS2 CDROM, in uLE or Swap Magic for example.
+Your original disc (PS1/PS2) track 1 (data track) must have an equal or bigger TOC than the track 1 of your backup.
+- Automated $COMPATIBILITY_0x05 for Resident Evil SLES-00200/SLES-00227/SLES-00228 as requested.
+</code></pre>
+<h3>Earlier beta release bundle (snapshots: 20170625, 20170810)</h3>
+<ul>
+<li><strong>LATEST BETA VERSION BUNDLE :</strong> <a href="http://aybabtu.chez.com/kHn/SOFTWARES/POPStarter_r13_WIP_06_OBT_20170128.zip">POPStarter Revision 13, WIP 06, OBT 17</a></li>
+</ul>
+<p><em>Changelog [Rev 13, WIP 06, OBT 17]</em></p>
+<pre><code>
+- Added support for the HDD-OSD 1.00J pfs launch argument.
+
+</code></pre>
+<h3>Oldest releases (snapshot: 20160707)</h3>
+<ul>
+<li>
+<p><strong>LATEST STABLE VERSION :</strong> POPStarter Revision 13, WIP 05</p>
+</li>
+<li>
+<p><strong>LATEST BETA VERSION :</strong> POPStarter Revision 13, WIP 06, OBT 13</p>
+</li>
+</ul>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>Official Thread :</em></h2>
+<p>The official discussion thread moved hosts over time as forums went offline. All known thread URLs are preserved below.</p>
+<ul>
+<li>
+<p><strong>(latest snapshots: 20191108 onward)</strong> [PS2] POPS stuff &amp; POPStarter @<a href="https://www.psx-place.com/threads/popstarter-beta-from-2019-06-05.19139/">PSX-Place</a></p>
+</li>
+<li>
+<p><strong>(snapshots: 20171027 "Official documentation")</strong> [PS2] POPS stuff &amp; POPStarter @<a href="https://assemblergames.com/threads/ps2-pops-stuff.45347/">ASSEMblergames</a></p>
+</li>
+<li>
+<p><strong>(snapshot: 20170810)</strong> [PS2] POPS stuff… @<a href="https://assemblergames.com/threads/ps2-pops-stuff.45347/">ASSEMblergames</a></p>
+</li>
+<li>
+<p><strong>(snapshots: 20160707, 20170625)</strong> [PS2] POPS stuff… @<a href="http://assemblergames.com/l/threads/ps2-pops-stuff.45347/">ASSEMblergames</a></p>
+</li>
+</ul>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>Compatibility Lists :</em></h2>
+<p>Compatibility-list sources evolved substantially. All distinct lists, forms, and table formats from every snapshot are unioned below.</p>
+<h3>ElOtroLado Compatibility List (latest — snapshots: 20221202, 20230206, 20240619, 20250419)</h3>
+<p>The community-maintained ElOtroLado list became the active source in later snapshots. Status note across snapshots: "[UPDATED – 20/01/2023]" (20221202) → "[UPDATED – 03/04/2023]" (20230206) → "[Updated regularly]" (20240619, 20250419).</p>
+<table>
+<thead>
+<tr>
+<th><strong>Device</strong></th>
+<th><strong>Compatibility list</strong></th>
+<th><strong>Submit reports</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Internal HDD, USB &amp; SMB</strong></td>
+<td>here</td>
+<td>here</td>
+</tr>
+</tbody>
+</table>
+<p>(Older 20221202 snapshot listed this same ElOtroLado list with only the <strong>Compatibility list</strong> column — no submit-reports link yet — under the heading "ElOtroLado Compatibility List : [UPDATED – 20/01/2023]".)</p>
+<h3>Official Compatibility Lists (table format — snapshots: 20171027, 20191108, 20221202, 20230206)</h3>
+<p>Marked <strong>[OBSOLETE &amp; DEATH]</strong> in the 20221202 and 20230206 snapshots (these still carried the official Google Docs lists alongside the newer ElOtroLado list). The 20240619 and 20250419 snapshots dropped the official lists entirely in favor of ElOtroLado.</p>
+<table>
+<thead>
+<tr>
+<th><strong>Device</strong></th>
+<th><strong>Compatibility list</strong></th>
+<th><strong>The form for submitting reports</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Internal HDD</strong></td>
+<td>here</td>
+<td>here</td>
+</tr>
+<tr>
+<td><strong>USB Device</strong></td>
+<td>here</td>
+<td>here</td>
+</tr>
+<tr>
+<td><strong>SMB</strong></td>
+<td>here</td>
+<td>here</td>
+</tr>
+</tbody>
+</table>
+<h3>Official compatibility lists (bullet format — snapshots: 20170625, 20170810 "unofficial documentation")</h3>
+<p>The same official Google Docs lists/forms appeared earlier in a bullet layout (note: the SMB compatibility-list URL in these snapshots had no <code>/edit#gid=0</code> suffix):</p>
+<ul>
+<li>
+<p><strong>[Internal HDD]</strong></p>
+</li>
+<li>
+<p>Compatibility list</p>
+</li>
+<li>
+<p>The form for submitting reports</p>
+</li>
+<li>
+<p><strong>[USB Device]</strong></p>
+</li>
+<li>
+<p>Compatibility list</p>
+</li>
+<li>
+<p>The form for submitting reports</p>
+</li>
+<li>
+<p><strong>[SMB]</strong></p>
+</li>
+<li>
+<p>Compatibility list</p>
+</li>
+<li>The form for submitting reports</li>
+</ul>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>Features :</em></h2>
+<p>This is the union of all feature bullets across every snapshot. Snapshot notes are added inline where wording or presence differed.</p>
+<ul>
+<li>
+<p><a href="https://en.wikipedia.org/wiki/PSX_%28video_game_console%29">PSX DVR</a> support</p>
+</li>
+<li>
+<p>CD, HDD, USB &amp; SMB support <em>(older 20160707 / 20170625 / 20170810 snapshots listed this as "HDD, USB &amp; SMB support" — without CD; "CD" was added from the 20171027 "Official documentation" snapshot onward)</em></p>
+</li>
+<li>
+<p>High compatibility rate (around 75%/80%) <em>(only in 20160707; written "around 75%-80%" in 20170625 / 20170810; dropped from later snapshots)</em></p>
+</li>
+<li>
+<p>CDDA tracks support</p>
+</li>
+<li>
+<p>VMC support</p>
+</li>
+<li>
+<p>Embedded cheat engine <em>(earliest 20160707 snapshot called this "Cheat Engine")</em></p>
+</li>
+<li>
+<p>In-Game-Reset support <em>(earliest 20160707 snapshot called this "In Game-Reset")</em></p>
+</li>
+<li>
+<p>In-Game Hotkeys <em>(earliest 20160707 snapshot called this "Hotkeys"; not present in the 20170625 / 20170810 snapshots)</em></p>
+</li>
+<li>
+<p>Automatic PAL patcher for PAL games <em>(earliest 20160707 snapshot called this "Automatic PAL patcher")</em></p>
+</li>
+<li>
+<p>480p support (NOT reliable ATM) <em>(added from the 20170625 snapshot onward; not in 20160707)</em></p>
+</li>
+<li>
+<p>GTE widescreen hack <em>(added from the 20171027 "Official documentation" snapshot onward)</em></p>
+</li>
+<li>
+<p>Multi-disc support <em>(added from the 20170625 snapshot onward; not in 20160707)</em></p>
+</li>
+<li>
+<p>Analog and vibration support <em>(added from the 20170625 snapshot onward; not in 20160707)</em></p>
+</li>
+<li>
+<p>BIOS &amp; OSD handlers <em>(present in 20160707, 20170625, 20170810; dropped from the 20171027 "Official documentation" snapshot onward)</em></p>
+</li>
+</ul>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>Quickstart guides :</em></h2>
+<p><em>(Heading dated across snapshots: untitled "Quickstart guides :" in 20170625/20170810; "Quickstart guides (updated ~ 2017/10/27) :" in the 20171027 snapshot; "Quickstart guides (updated ~ 2020/02/09) :" in 20191108, 20221202, 20230206, 20240619, 20250419.)</em></p>
+<p>Since this documentation is growing – a lot – as POPStarter is developped, I felt that new users could be over either too bored to read the whole documentation or overwhelmed by too much informations at the same time. So I wrote 3 quickstart guides, whose explain how to set-up POPStarter quickly.</p>
+<p><strong>UPDATE 10-01-2017 :</strong> <em>(present in the 20170625 / 20170810 "unofficial documentation" snapshots)</em></p>
+<p>I’ve been told by krHACKen that the last POPStarter beta (<strong>Revision 13, WIP 06, OBT 16</strong>) can be considered stable enough to be used as daily gaming version. So I updated the quickstart guides accordingly, and created the SMB guide.</p>
+<p><em>(Later snapshots replaced that UPDATE note with a "which version the packs bundle" line:)</em></p>
+<ul>
+<li>"These packs include now Rev 13 RIP 06 as POPStarter version." <em>(20171027 snapshot)</em></li>
+<li>"These packs include now Rev 13 Beta 2019/06/05 as POPStarter version." <em>(20191108, 20221202, 20230206, 20240619, 20250419 snapshots)</em></li>
+</ul>
+<p>The three quickstart guides:</p>
+<ul>
+<li>
+<p><strong><a href="../wiki/quickstart-hdd.html">Quickstart guide for Internal HDD</a></strong></p>
+</li>
+<li>
+<p><strong><a href="../wiki/quickstart-usb.html">Quickstart guide for USB Device Storage Type</a></strong></p>
+</li>
+<li>
+<p><strong><a href="../wiki/quickstart-smb.html">Quickstart guide for SMB</a></strong></p>
+</li>
+</ul>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>Announcement :</em> <em>(snapshots: 20171027 onward)</em></h2>
+<p>POPStarter project is <a href="https://www.metagames-eu.com/forums/playstation-2/popstarter-revision-13-sorties-et-developpements-36-134569.html#post1776252">officially abandonned by krHACKen</a>.</p>
+<p><em>(The "Last build" line differs by snapshot:)</em><br />
+- <strong>(20171027 snapshot)</strong> Last build – <a href="../downloads/POPStarter_r13_RIP_06.zip">Rev 13 RIP 06</a> – was released on 2017/10/20.<br />
+- <strong>(20191108 onward)</strong> Last build – <a href="../downloads/POPStarter_r13_Beta_20190605.zip">Rev 13 Beta 2019/06/05</a> – was released on 2019/06/05.</p>
+<p>POPStarter src code is unreleased. Some stuff you need to know about it <a href="https://assemblergames.com/threads/ps2-pops-stuff-popstarter.45347/page-112#post-953611">here</a>.</p>
+<p>Thanks anyone who contributed, supported and helped this project.</p>
+<p><em>(Signature line differs by snapshot: "~shaolinassassin, 2017/10/27" in the 20171027 snapshot; "~shaolinassassin, 2020/02/09" in 20191108, 20221202, 20230206, 20240619, 20250419.)</em></p>
+<p>~shaolinassassin, 2020/02/09</p>
+<p>______________________________________________________________________________________________________________</p>
+<h1><strong><a href="../wiki/index.html">&gt;&gt;  ENTER WIKI  &lt;&lt;</a></strong> <em>(present from the 20170625 snapshot onward)</em></h1>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>Wiki Table of content :</em> <em>(present only in the earliest snapshot, 20160707; replaced by the "ENTER WIKI" link in all later snapshots — preserved here in full because it enumerates every sub-page of the wiki)</em></h2>
+<p><strong>0. News</strong></p>
+<p><a href="../wiki/vcd.html"><strong>1.  Convert your PS1 games to VCD format</strong></a></p>
+<ul>
+<li>
+<p><a href="../wiki/vcd.html">VCD creation</a></p>
+</li>
+<li>
+<p><a href="../wiki/vcd.html">Multi-disc games</a></p>
+</li>
+<li>
+<p>Toolbox commands</p>
+</li>
+</ul>
+<p><strong>2.  POPStarter for internal HDD</strong></p>
+<p><strong>3.  POPStarter for USB device storage type</strong></p>
+<p><strong>4.  POPStarter for SMB</strong></p>
+<p><strong>5.  Game Compatibility</strong></p>
+<ul>
+<li>
+<p>Compatibility rates</p>
+</li>
+<li>
+<p>Compatibility Lists and Forms</p>
+</li>
+<li>
+<p>Compatibility Modes</p>
+</li>
+<li>
+<p>Game fixes</p>
+</li>
+<li>
+<p>Automated fixes</p>
+</li>
+</ul>
+<p><strong>6.  Features and settings</strong></p>
+<ul>
+<li>
+<p>General note</p>
+</li>
+<li>
+<p><a href="../wiki/vmc.html">Virtual Memory Cards</a></p>
+</li>
+<li>
+<p><a href="../wiki/hotkeys.html">Hotkeys</a></p>
+</li>
+<li>
+<p>Cheat Engine</p>
+</li>
+<li>
+<p><a href="../wiki/igr.html">In-Game Reset</a></p>
+</li>
+<li>
+<p>BIOS &amp; OSD Handler</p>
+</li>
+<li>
+<p><a href="../wiki/ule-khn.html">uLE_kHn</a></p>
+</li>
+<li>
+<p>Advanced Settings</p>
+</li>
+</ul>
+<p><strong>7. Help</strong></p>
+<ul>
+<li>
+<p><a href="../wiki/help.html">POPStarter Help</a></p>
+</li>
+<li>
+<p>FAQ</p>
+</li>
+<li>
+<p>Known bugs</p>
+</li>
+</ul>
+<p><strong>8. About POPStarter &amp; POPS</strong></p>
+<ul>
+<li>
+<p>POPStarter changelog</p>
+</li>
+<li>
+<p>Toolbox/CUE2POPS changelog</p>
+</li>
+<li>
+<p><a href="../wiki/history.html">POPS’ History</a></p>
+</li>
+</ul>
+<p><a href="../downloads.html"><strong>9. Downloads</strong></a></p>
+<p><strong>10. Related stuff…</strong></p>
+<ul>
+<li>
+<p>Softwares</p>
+</li>
+<li>
+<p>Threads – POPStarter around the web</p>
+</li>
+<li>
+<p>Guides/informations :</p>
+</li>
+</ul>
+<p>.......... [EXE] <a href="../wiki/popstarter-batcher-2.html">POPStarter BATCHER v0.2</a><br />
+…....... [HDD] <a href="../wiki/pfsshell.html">Transfer VCD files using PFSSHELL 0.2a</a> .<br />
+.......... [HDD] <a href="../wiki/radhostclient.html">Transfer VCD files over network using RadHostClient</a> .<br />
+.......... [COMPATIBILITY] Troubleshooting games<br />
+…....... [VMC] Use your PS1 MC saves with POPStarter<br />
+.......... [VMC] Use your VMC saves on a PS1 retail console<br />
+.......... [IGR] Make your own IGR textures<br />
+…....... [SPECIAL DEVICE] Use your [special device] with POPS<br />
+…....... [CHEATS] Widescreen Codes Archive</p>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>Need help ?</em> <em>(present only in the earliest snapshots, 20160707 / 20170625-era; dropped once the dedicated "ENTER WIKI" entry point was added)</em></h2>
+<p>Ask over at <a href="http://assemblergames.com/l/threads/ps2-pops-stuff.45347/">ASSEMblergames</a> or at <a href="http://psx-scene.com/forums/f19/popstarter-wiki-155496/">psx-scene</a>.</p>
+<p>______________________________________________________________________________________________________________<br />
+<em>Original documentation : krHACKen – updated by ShaolinAssassin</em></p></main>
+</div>
+<footer>
+  <p><b>POPStarter Documentation Archive</b> — community-recovered from the Wayback Machine
+  (ShaolinAssassin's <code>popstarter-documentation-stuff</code> wiki) and krHACKen's r13 changelog,
+  cross-checked and merged across snapshots. Built for the POPSLoader project.</p>
+  <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
+  emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
+  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed.</p>
+</footer>
+<script src="../assets/app.js"></script>
+</body></html>

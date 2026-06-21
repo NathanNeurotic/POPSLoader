@@ -1,0 +1,97 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ps1cd Mode · POPStarter Docs</title>
+<meta name="description" content="Resurrected, searchable POPStarter documentation — cheats, patches, config, storage, multi-disc, IGR and downloads.">
+<link rel="stylesheet" href="../assets/style.css">
+</head><body data-base="../">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu">☰</button>
+  <a class="brand" href="../index.html"><span class="logo">P1</span>
+    POPStarter&nbsp;Docs <small>· archive</small></a>
+  <div class="search">
+    <span class="ico">🔎</span>
+    <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar"><h4>Documentation</h4><a href="../index.html"><span class="em">🏠</span>Home</a>
+<a href="../getting-started.html"><span class="em">🚀</span>Getting Started</a>
+<a href="../storage.html"><span class="em">💾</span>Storage Backends</a>
+<a href="../cheats.html"><span class="em">🎮</span>Cheats</a>
+<a href="../compatibility.html"><span class="em">🩹</span>Patches & TROJANs</a>
+<a href="../igr.html"><span class="em">🎯</span>IGR & Hotkeys</a>
+<a href="../config.html"><span class="em">🔧</span>Config Table</a>
+<a href="../multidisc.html"><span class="em">💿</span>Multi-disc & VMC</a>
+<a href="../troubleshooting.html"><span class="em">🛠️</span>Troubleshooting</a>
+<a href="../downloads.html"><span class="em">📦</span>Downloads</a>
+<a href="../history.html"><span class="em">📜</span>History</a>
+    <h4>Reference</h4>
+    <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
+  </nav>
+  <main class="content"><h1>Ps1cd Mode</h1><p class="prov-inline">📎 Recovered from the ShaolinAssassin wiki · snapshot 20240310061934</p><h1><strong>PS1 CD mode</strong></h1>
+<p>______________________________________________________________________________________________________________</p>
+<p>PS1 CD mode is a native POPS feature. It lets you play your PS1 games (originals, backups and imports) from the CDVD drive.</p>
+<p><strong>Warning :</strong> playing game CDs is not recommended. Playing game CDs with swap trick is super-not-recommended (see notes).</p>
+<p>To use that mode, you must rename POPSTARTER.ELF file using the name you want, as long as there is no VCD (or partition) with such a name in your setup. It saves VMCs to the device according to the ELF prefix.</p>
+<ul>
+<li>
+<p>GAME.ELF will save into __common/POPS/GAME/SLOT#.VMC ;</p>
+</li>
+<li>
+<p>XX.GAME.ELF will save into mass:/POPS/GAME/SLOT#.VMC ;</p>
+</li>
+<li>
+<p>SB.GAME.ELF will save into smb:/POPS/GAME/SLOT#.VMC.</p>
+</li>
+</ul>
+<p>You can use a generic name, such as (##.)PS1CD.ELF (PS1CD.ELF or XX.PS1CD.ELF or SB.PS1CD.ELF). When you use a generic name, all games will share the same VMCs (POPS/PS1CD/SLOT#.VMC).</p>
+<p><strong>Example :</strong></p>
+<ol>
+<li>
+<p>Rename POPSTARTER.ELF as “Metal Gear Solid.ELF” (Metal Gear Solid.VCD shall not exist in your setup) ;</p>
+</li>
+<li>
+<p>If you want to make your saves on USB device, add the XX. prefix to the ELF launcher (“XX.Metal Gear Solid.ELF”), if you want to make your saves on SMB, add the SB. prefix to the ELF launcher (“SB.Metal Gear Solid.ELF”) ;</p>
+</li>
+<li>
+<p>Insert your MGS disc in the CDVD drive ;</p>
+</li>
+<li>
+<p>Launch ##.Metal Gear Solid.ELF ;</p>
+</li>
+<li>
+<p>MGS disc should start. When you make a save, it will be stored into POPS/Metal Gear Solid/SLOT#.VMC. You can store external files such as CHEATS.TXT etc… in POPS/Metal Gear Solid folder and they will be loaded from there.</p>
+</li>
+</ol>
+<p><strong>Backups and imports discs :</strong></p>
+<p>If you want to use a PS1 <strong>import game disc</strong> or a PS1 <strong>backup disc</strong>, you must perform the swap trick (run uLaunchELF, insert an original PS1 original disc – with an equal or bigger TOC than your import game disc/backup disc – then swap with your PS1 import game disc/backup disc) before launching POPSTARTER.ELF (renamed and prefixed). PS2CD and PS2CDDA disc types are accepted to perform the swap trick.</p>
+<p><strong>Notes :</strong></p>
+<ul>
+<li>
+<p>Compatibility from physical disc is worse than from HDD/USB/SMB (games tend to freeze or not load) ;</p>
+</li>
+<li>
+<p>No CDDA tracks support in this mode (outputs some awful noises instead of the actual CDDA music/sound). You can force CDDA tracks using $UNDO_MUTE_CDDA command in a CHEATS.TXT file ;</p>
+</li>
+<li>
+<p>If you use a multi-disc game, use the <a href="../wiki/multi-disc.html">hotkeys</a> to swap the discs ;</p>
+</li>
+<li>
+<p>We found out after RIP 06 release that the HDD old launch type method (PP.GAME.ELF or __.GAME.ELF) <a href="https://assemblergames.com/threads/ps2-pops-stuff-popstarter.45347/page-112#post-952852">has a bug</a> : files from __common/POPS folder (and from __common/POPS/GAME) will not be loaded.</p>
+</li>
+</ul>
+<p>______________________________________________________________________________________________________________</p>
+<h3><a href="../wiki/index.html"><strong>Index</strong></a></h3><p style="margin-top:26px"><a class="pill" href="../storage.html">Related curated section → Storage Backends</a></p></main>
+</div>
+<footer>
+  <p><b>POPStarter Documentation Archive</b> — community-recovered from the Wayback Machine
+  (ShaolinAssassin's <code>popstarter-documentation-stuff</code> wiki) and krHACKen's r13 changelog,
+  cross-checked and merged across snapshots. Built for the POPSLoader project.</p>
+  <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
+  emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
+  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed.</p>
+</footer>
+<script src="../assets/app.js"></script>
+</body></html>

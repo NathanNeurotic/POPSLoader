@@ -1,0 +1,56 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Home · POPStarter Docs</title>
+<meta name="description" content="Resurrected, searchable POPStarter documentation — cheats, patches, config, storage, multi-disc, IGR and downloads.">
+<link rel="stylesheet" href="assets/style.css">
+</head><body data-base="">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu">☰</button>
+  <a class="brand" href="index.html"><span class="logo">P1</span>
+    POPStarter&nbsp;Docs <small>· archive</small></a>
+  <div class="search">
+    <span class="ico">🔎</span>
+    <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar"><h4>Documentation</h4><a href="index.html" class="active"><span class="em">🏠</span>Home</a>
+<a href="getting-started.html"><span class="em">🚀</span>Getting Started</a>
+<a href="storage.html"><span class="em">💾</span>Storage Backends</a>
+<a href="cheats.html"><span class="em">🎮</span>Cheats</a>
+<a href="compatibility.html"><span class="em">🩹</span>Patches & TROJANs</a>
+<a href="igr.html"><span class="em">🎯</span>IGR & Hotkeys</a>
+<a href="config.html"><span class="em">🔧</span>Config Table</a>
+<a href="multidisc.html"><span class="em">💿</span>Multi-disc & VMC</a>
+<a href="troubleshooting.html"><span class="em">🛠️</span>Troubleshooting</a>
+<a href="downloads.html"><span class="em">📦</span>Downloads</a>
+<a href="history.html"><span class="em">📜</span>History</a>
+    <h4>Reference</h4>
+    <a href="wiki/index.html"><span class="em">📚</span>All wiki pages</a>
+  </nav>
+  <main class="content"><div class="hero">
+<h1>POPStarter <span class="g">Documentation</span></h1>
+<p class="lead">ShaolinAssassin's lost wiki and krHACKen's r13 docs — recovered from the Wayback Machine,
+merged across every snapshot, and made <b>fully searchable</b>. Cheats, compatibility patches, the config
+table, storage setups, multi-disc, IGR, and every downloadable file in one place that won't 404.</p>
+<div class="stat-row"><div class="stat"><b>63</b><span>wiki pages recovered</span></div><div class="stat"><b>138</b><span>documented commands &amp; bytes</span></div><div class="stat"><b>24</b><span>downloads served locally</span></div><div class="stat"><b>124</b><span>images recovered</span></div></div>
+</div>
+<div class="grid"><a class="tile" href="getting-started.html"><span class="em">🚀</span><b>Getting Started</b><span>USB · HDD · SMB setup</span></a><a class="tile" href="storage.html"><span class="em">💾</span><b>Storage Backends</b><span>Path maps & launch methods</span></a><a class="tile" href="cheats.html"><span class="em">🎮</span><b>Cheats</b><span>Every $command</span></a><a class="tile" href="compatibility.html"><span class="em">🩹</span><b>Patches & TROJANs</b><span>Patches, modes & TROJANs</span></a><a class="tile" href="igr.html"><span class="em">🎯</span><b>IGR & Hotkeys</b><span>Reset, exit & hotkeys</span></a><a class="tile" href="config.html"><span class="em">🔧</span><b>Config Table</b><span>The 32-byte table</span></a><a class="tile" href="multidisc.html"><span class="em">💿</span><b>Multi-disc & VMC</b><span>DISCS.TXT & VMC</span></a><a class="tile" href="troubleshooting.html"><span class="em">🛠️</span><b>Troubleshooting</b><span>Fixes & display</span></a><a class="tile" href="downloads.html"><span class="em">📦</span><b>Downloads</b><span>Recovered files</span></a><a class="tile" href="history.html"><span class="em">📜</span><b>History</b><span>Timeline & sources</span></a></div>
+<h2>Architecture: POPStarter vs POPS vs POPSLoader</h2>
+<p>POPStarter is krHACKen's launcher and patch/cheat LAYER wrapped around Sony's PS1-on-PS2 emulator, POPS (POPS.ELF, derived from the SLBB-00001 boot disc). The two are distinct: POPS does the actual PlayStation 1 emulation; POPStarter mounts the disc image (.VCD), reads per-game assets, applies its embedded cheat engine and compatibility patches, then hands control to POPS. The canonical reference build is the 2019-06-05 r13 Beta package (on archive.org as popstarter-r-13-beta-20190605), which ships POPSTARTER.ELF (167,700 B), POPSTARTER.KELF (167,708 B - a Sony-container 'Krypto-ELF' for HDDOSD), and krHACKen's own ~38 KB CHANGES.TXT changelog.</p>
+<p>A THIRD project is easy to confuse with these two: the modern POPSLoader fork (a Lua launcher on the Enceladus runtime, originally by El_isra, now maintained by NathanNeurotic). POPSLoader is NOT POPStarter; it wraps the same POPS binaries but adds device backends stock POPStarter never had (MMCE, MX4SIO, USB exFAT, APA-HDD). For the site, treat the three names as separate entities and cross-link them.</p>
+<p>The four asset families POPStarter consumes are: (1) CHEATS.TXT - plain-text $commands and raw GameShark/Action-Replay codes; (2) PATCH_#.BIN - binary blobs that force compatibility modes 0x01-0x07, disable IGR (PATCH_0), or set PAL/NTSC (PATCH_8/PATCH_9); (3) TROJAN_#.BIN - binary IGR-behaviour modifiers (TROJAN_0..5/9) and cumulative per-game fix bundles (TROJAN_7); and (4) handler files - VMCDIR.TXT, DISCS.TXT, BIOS.BIN/OSD.BIN. Many of these have exact equivalents across families ($COMPATIBILITY_0x## == PATCH_#, $IGR# == TROJAN_#, $NOIGR == PATCH_0, $NOPAL == stock PATCH_9, $480p == config $42A=0x02), so the site should present an equivalence map rather than duplicating each capability three times.</p>
+</main>
+</div>
+<footer>
+  <p><b>POPStarter Documentation Archive</b> — community-recovered from the Wayback Machine
+  (ShaolinAssassin's <code>popstarter-documentation-stuff</code> wiki) and krHACKen's r13 changelog,
+  cross-checked and merged across snapshots. Built for the POPSLoader project.</p>
+  <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
+  emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
+  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed.</p>
+</footer>
+<script src="assets/app.js"></script>
+</body></html>

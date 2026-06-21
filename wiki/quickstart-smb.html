@@ -1,0 +1,141 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Quickstart SMB · POPStarter Docs</title>
+<meta name="description" content="Resurrected, searchable POPStarter documentation — cheats, patches, config, storage, multi-disc, IGR and downloads.">
+<link rel="stylesheet" href="../assets/style.css">
+</head><body data-base="../">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu">☰</button>
+  <a class="brand" href="../index.html"><span class="logo">P1</span>
+    POPStarter&nbsp;Docs <small>· archive</small></a>
+  <div class="search">
+    <span class="ico">🔎</span>
+    <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar"><h4>Documentation</h4><a href="../index.html"><span class="em">🏠</span>Home</a>
+<a href="../getting-started.html"><span class="em">🚀</span>Getting Started</a>
+<a href="../storage.html"><span class="em">💾</span>Storage Backends</a>
+<a href="../cheats.html"><span class="em">🎮</span>Cheats</a>
+<a href="../compatibility.html"><span class="em">🩹</span>Patches & TROJANs</a>
+<a href="../igr.html"><span class="em">🎯</span>IGR & Hotkeys</a>
+<a href="../config.html"><span class="em">🔧</span>Config Table</a>
+<a href="../multidisc.html"><span class="em">💿</span>Multi-disc & VMC</a>
+<a href="../troubleshooting.html"><span class="em">🛠️</span>Troubleshooting</a>
+<a href="../downloads.html"><span class="em">📦</span>Downloads</a>
+<a href="../history.html"><span class="em">📜</span>History</a>
+    <h4>Reference</h4>
+    <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
+  </nav>
+  <main class="content"><h1>Quickstart SMB</h1><p class="prov-inline">📎 Recovered from the ShaolinAssassin wiki · snapshot 20250106111812</p><h1><strong>Quick start guide for SMB :</strong></h1>
+<p>______________________________________________________________________________________________________________</p>
+<p><em>(updated ~ 2020/02/09)</em></p>
+<p>This is a step-by-step basic guide for new POPStarter users. If you are already familiar with POPStarter, you don’t need it. Quickstarter pack includes last POPStarter version (Rev 13 Beta 2019/06/05).</p>
+<ul>
+<li><strong>Download :</strong> <a href="../downloads/POPStarter_SMB_Quickstarter_Pack_20200209.zip">here</a></li>
+</ul>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>Step-by-step :</em></h2>
+<p><strong>a) Installing the emulator :</strong></p>
+<p>Since POPS (the emulator) is copyrighted by SONY, it can not be redistributed with POPStarter. You have to find it. It’s made of 1 file (for SMB mode).</p>
+<pre><code>POPS_IOX.PAK - MD5 : a625d0b3036823cdbf04a3c0e1648901
+</code></pre>
+<ol>
+<li>
+<p>Find and download POPS_IOX.PAK ;</p>
+</li>
+<li>
+<p>Create a directory named POPS in your PS2 shared folder ;</p>
+</li>
+<li>
+<p>Copy POPS_IOX.PAK into POPS directory you’ve just created.</p>
+</li>
+</ol>
+<p><strong>b) Installing your PS1 Games :</strong></p>
+<p>POPStarter/POPS doesn’t support PS1 disc images as .iso – but only as .VCD.</p>
+<ol>
+<li>
+<p>Create a disc image of your PS1 game as .BIN/.CUE;</p>
+</li>
+<li>
+<p>Drag &amp; drop your .CUE file over CUE2POPS.EXE to convert your BIN/CUE disc image to .VCD file (you can convert several games at once by running BULK_CUE2POPS.BAT);</p>
+</li>
+<li>
+<p>Put your .VCD files in POPS directory of your PS2 shared folder.</p>
+</li>
+</ol>
+<p><strong>c) Installing POPStarter :</strong></p>
+<ol>
+<li>
+<p>Edit the 2 .DAT files (syntax below) included with the network modules with your network settings;</p>
+</li>
+<li>
+<p>Create a directory named POPSTARTER in the root of your PS2 memory card and put the network modules and the .DAT files in it;</p>
+</li>
+<li>
+<p>Rename the POPStarter ELF as the name of your VCDs, replace the .VCD extension with a .ELF extension, add the SB. prefix (example : for running a VCD named “Crash Bandicoot.VCD”, the POPStarter ELF must be renamed as “SB.Crash Bandicoo.ELF”) ;</p>
+</li>
+<li>
+<p>Copy the ELFs where you want to run them from (example : mass:/POPSTARTER/SB.GAME.ELF).</p>
+</li>
+</ol>
+<p>Now, check your setup. It must be the same as this :</p>
+<pre><code>mc#:/POPSTARTER/IPCONFIG.DAT
+mc#:/POPSTARTER/SMBCONFIG.DAT
+mc#:/POPSTARTER/poweroff.irx
+mc#:/POPSTARTER/ps2dev9.irx
+mc#:/POPSTARTER/smsutils.irx
+mc#:/POPSTARTER/ps2ip.irx
+mc#:/POPSTARTER/ps2smap.irx
+mc#:/POPSTARTER/smbman.irx
+smb0:/My Shared Folder/POPS/POPS_IOX.PAK
+smb0:/My Shared Folder/POPS/GAME.VCD
+mass:/POPSTARTER/SB.GAME.ELF
+</code></pre>
+<p>=&gt; to launch your game, run SB.GAME.ELF. Need help ? Ask over at <a href="https://www.psx-place.com/threads/popstarter-beta-from-2019-06-05.19139/">PSX-Place</a>.</p>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>.DAT syntax :</em></h2>
+<ul>
+<li><strong>SMBCONFIG.DAT syntax :</strong></li>
+</ul>
+<p>In a single line :</p>
+<pre><code>SERVER IP ADDRESS space SHARE NAME
+</code></pre>
+<p>Example :</p>
+<pre><code>192.168.0.254 My Shared Folder
+</code></pre>
+<p>You can also specify a port, like this (default is 445) :</p>
+<pre><code>192.168.0.254:139 My Shared Folder
+</code></pre>
+<p>For user authentication, write your username to line 2 and your password to line 3.</p>
+<p>Example :</p>
+<pre><code>192.168.0.254 My Shared Folder
+MyName
+MyPassword
+</code></pre>
+<p>For guest access, don’t write anything to line 2 and 3.</p>
+<ul>
+<li><strong>IPCONFIG.DAT syntax :</strong></li>
+</ul>
+<p>In a single line :</p>
+<pre><code>PS2 IP ADDRESS space NETMASK space GATEWAY
+</code></pre>
+<p>Example :</p>
+<pre><code>192.168.0.13 255.255.255.0 192.168.0.254
+</code></pre>
+<p>______________________________________________________________________________________________________________</p>
+<h3><a href="../wiki/home.html"><strong>Wiki Homepage</strong></a></h3><p style="margin-top:26px"><a class="pill" href="../storage.html">Related curated section → Storage Backends</a></p></main>
+</div>
+<footer>
+  <p><b>POPStarter Documentation Archive</b> — community-recovered from the Wayback Machine
+  (ShaolinAssassin's <code>popstarter-documentation-stuff</code> wiki) and krHACKen's r13 changelog,
+  cross-checked and merged across snapshots. Built for the POPSLoader project.</p>
+  <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
+  emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
+  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed.</p>
+</footer>
+<script src="../assets/app.js"></script>
+</body></html>

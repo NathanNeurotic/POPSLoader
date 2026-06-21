@@ -1,0 +1,108 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cheat Engine · POPStarter Docs</title>
+<meta name="description" content="Resurrected, searchable POPStarter documentation — cheats, patches, config, storage, multi-disc, IGR and downloads.">
+<link rel="stylesheet" href="../assets/style.css">
+</head><body data-base="../">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu">☰</button>
+  <a class="brand" href="../index.html"><span class="logo">P1</span>
+    POPStarter&nbsp;Docs <small>· archive</small></a>
+  <div class="search">
+    <span class="ico">🔎</span>
+    <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar"><h4>Documentation</h4><a href="../index.html"><span class="em">🏠</span>Home</a>
+<a href="../getting-started.html"><span class="em">🚀</span>Getting Started</a>
+<a href="../storage.html"><span class="em">💾</span>Storage Backends</a>
+<a href="../cheats.html"><span class="em">🎮</span>Cheats</a>
+<a href="../compatibility.html"><span class="em">🩹</span>Patches & TROJANs</a>
+<a href="../igr.html"><span class="em">🎯</span>IGR & Hotkeys</a>
+<a href="../config.html"><span class="em">🔧</span>Config Table</a>
+<a href="../multidisc.html"><span class="em">💿</span>Multi-disc & VMC</a>
+<a href="../troubleshooting.html"><span class="em">🛠️</span>Troubleshooting</a>
+<a href="../downloads.html"><span class="em">📦</span>Downloads</a>
+<a href="../history.html"><span class="em">📜</span>History</a>
+    <h4>Reference</h4>
+    <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
+  </nav>
+  <main class="content"><h1>Cheat Engine</h1><p class="prov-inline">📎 Recovered from the ShaolinAssassin wiki · snapshot 20200920023545</p><h1><strong>Cheat Engine</strong></h1>
+<p>______________________________________________________________________________________________________________</p>
+<p>POPStarter has an embedded cheat engine that supports Gameshark/Action Replay PS1 codes (PS1 RAW codes of types 30, 50, 80 and D0 are supported). Some basic rules about the cheat engine :</p>
+<ul>
+<li>
+<p>codes will be stored into a txt file named CHEATS.TXT placed into the VMC game folder (each game will have his own dedicated CHEATS.TXT file) ;</p>
+</li>
+<li>
+<p>each code line has to start with the $ character otherwise the code is not enabled ;</p>
+</li>
+<li>
+<p>each code line must have a space between the adress and the value ;</p>
+</li>
+</ul>
+<p><strong>Example :</strong></p>
+<p><a href="https://gamehacking.org/game/88578">Castlevania – Symphony of the Night [NTSC-U]</a></p>
+<p>CHEATS.TXT location :</p>
+<pre><code>POPS/Castlevania Symphony of the Night (NTSC-U)/CHEATS.TXT
+
+</code></pre>
+<p>CHEATS.TXT content :</p>
+<pre><code>$SAFEMODE
+$80097BA0 270F // Infinite Health
+
+</code></pre>
+<p><strong>Notes :</strong></p>
+<ul>
+<li>
+<p>It is <strong>highly recommended</strong> to have to <a href="../wiki/special-cheats.html">$SAFEMODE command</a> code at the very first line of the CHEATS.TXT file ;</p>
+</li>
+<li>
+<p>Some PS1 games need mastercodes otherwise they crash (ex : Air Race Championship). Only type C0 are supported. Mastercodes of type C1 (aka activation on delay time) are not and will not be supported ;</p>
+</li>
+<li>
+<p>You can disable a code if you remove the $ character from the code ;</p>
+</li>
+<li>
+<p>You can enable a code for ALL your games if you place the CHEATS.TXT file in POPS folder ;</p>
+</li>
+<li>
+<p>You can find a list of useful generic commands <a href="../wiki/special-cheats.html">here</a> ;</p>
+</li>
+<li>
+<p>A massive PS1 codes list in PS1 RAW format can be found <a href="../wiki/ps1-codes-in-ps1-raw-format.html">here</a> ;</p>
+</li>
+<li>
+<p><a href="http://gamehacking.org/system/psx/all">Gamehacking.org</a> is also a great place for PS1 cheats code ;</p>
+</li>
+<li>
+<p>You can also use POPStarter with a PS2 cheat device (<a href="http://psx-scene.com/forums/f173/ps2rd-releases-63021/index6.html#post1024709">ps2rd</a>, Codebreaker, <a href="https://github.com/root670/CheatDevicePS2...">Cheat Device PS2</a>). POPS Mastercode is 902377F4 0C0902EF. PS2 RAW codes of types 0, 1 and 2 are supported. A massive PS1 codes list in PS2 RAW format – ready-to-use – can be found <a href="../wiki/ps1-codes-in-ps2-raw-format.html">here</a>. In order to use a PS1 code with a PS2 cheat device, you need to convert it to PS2 RAW format : add $01000000 to the PS1 code adresses and comply with the code type definitions of the target PS2 cheat engine. For more info about how to convert codes, check this <a href="https://assemblergames.com/threads/ps2-pops-stuff.45347/page-27#post-760915">post</a>.</p>
+</li>
+</ul>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>Related stuff :</em></h2>
+<p>You may want to give a look at this :</p>
+<ul>
+<li>
+<p><a href="../wiki/special-cheats.html">Special Cheats – Automated Codes</a>.</p>
+</li>
+<li>
+<p>[CHEATS] <a href="../wiki/ps1-widescreen-codes.html">Widescreen Codes Archive</a>.</p>
+</li>
+</ul>
+<p>______________________________________________________________________________________________________________</p>
+<h3><a href="../wiki/index.html"><strong>Index</strong></a></h3><p style="margin-top:26px"><a class="pill" href="../cheats.html">Related curated section → Cheats</a></p></main>
+</div>
+<footer>
+  <p><b>POPStarter Documentation Archive</b> — community-recovered from the Wayback Machine
+  (ShaolinAssassin's <code>popstarter-documentation-stuff</code> wiki) and krHACKen's r13 changelog,
+  cross-checked and merged across snapshots. Built for the POPSLoader project.</p>
+  <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
+  emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
+  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed.</p>
+</footer>
+<script src="../assets/app.js"></script>
+</body></html>

@@ -1,0 +1,66 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PS1 Special Devices · POPStarter Docs</title>
+<meta name="description" content="Resurrected, searchable POPStarter documentation — cheats, patches, config, storage, multi-disc, IGR and downloads.">
+<link rel="stylesheet" href="../assets/style.css">
+</head><body data-base="../">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu">☰</button>
+  <a class="brand" href="../index.html"><span class="logo">P1</span>
+    POPStarter&nbsp;Docs <small>· archive</small></a>
+  <div class="search">
+    <span class="ico">🔎</span>
+    <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar"><h4>Documentation</h4><a href="../index.html"><span class="em">🏠</span>Home</a>
+<a href="../getting-started.html"><span class="em">🚀</span>Getting Started</a>
+<a href="../storage.html"><span class="em">💾</span>Storage Backends</a>
+<a href="../cheats.html"><span class="em">🎮</span>Cheats</a>
+<a href="../compatibility.html"><span class="em">🩹</span>Patches & TROJANs</a>
+<a href="../igr.html"><span class="em">🎯</span>IGR & Hotkeys</a>
+<a href="../config.html"><span class="em">🔧</span>Config Table</a>
+<a href="../multidisc.html"><span class="em">💿</span>Multi-disc & VMC</a>
+<a href="../troubleshooting.html"><span class="em">🛠️</span>Troubleshooting</a>
+<a href="../downloads.html"><span class="em">📦</span>Downloads</a>
+<a href="../history.html"><span class="em">📜</span>History</a>
+    <h4>Reference</h4>
+    <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
+  </nav>
+  <main class="content"><h1>PS1 Special Devices</h1><p class="prov-inline">📎 Recovered from the ShaolinAssassin wiki · snapshot 20170629113655</p><h1>[PS1 devices] <strong>Use your [special device : light gun…] with POPS</strong></h1>
+<p>______________________________________________________________________________________________________________<br />
+<em>[Original tutorial by AKuHAK]</em> <a href="http://assemblergames.com/l/threads/ps2-pops-stuff.45347/page-56#post-794781">@ASSEMblergames</a></p>
+<p><strong>1.</strong> Find a PS2 game that supports your special device and look inside its content;</p>
+<p><strong>2.</strong> Look for some IRX files;</p>
+<p><strong>3.</strong> First file that you need is SIO2MAN.IRX. You need this module for making other modules working;</p>
+<p><strong>4.</strong> Copy it into POPS folder and rename as MODULE_0.IRX;</p>
+<p><strong>5.</strong> Then search for your specific IRX files. It can be one file or multiple files. For light gun, it might be USBD.IRX and USBGUN.IRX;</p>
+<p><strong>6.</strong> Rename them as MODULE_1.IRX, MODULE_2.IRX, ... etc. You have to experiment to find the correct order. For light gun, first .IRX might be USBD.IRX and second .IRX USBD.IRX;</p>
+<p><strong>7.</strong> Copy these files into POPS folder and run your game. If you got special device to work – have fun!</p>
+<p><strong>8.</strong> If you have no luck – you can copy specific IOPRPxxx.IMG from your game into POPS folder and rename it as IOPRP252.IMG. In such way, you have to delete POPS.PAK and use only POPS.ELF + IOPRP252.IMG.</p>
+<p><strong>9.</strong> If it still doesnt work, you can also try to add more modules from your game (repeat 6th step) or you can try to change modules order.</p>
+<p><strong>Notes :</strong></p>
+<ul>
+<li>
+<p>Don’t forget that USB devices may not work if you use POPS in USB mode.</p>
+</li>
+<li>
+<p>These manipulations doesn’t mean that you will be able to use all special functions. It only means that your device will be recognized properly (so all standard functions will work).</p>
+</li>
+</ul>
+<p>______________________________________________________________________________________________________________</p>
+<h3><a href="../wiki/index.html"><strong>Index</strong></a></h3></main>
+</div>
+<footer>
+  <p><b>POPStarter Documentation Archive</b> — community-recovered from the Wayback Machine
+  (ShaolinAssassin's <code>popstarter-documentation-stuff</code> wiki) and krHACKen's r13 changelog,
+  cross-checked and merged across snapshots. Built for the POPSLoader project.</p>
+  <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
+  emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
+  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed.</p>
+</footer>
+<script src="../assets/app.js"></script>
+</body></html>

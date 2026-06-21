@@ -1,0 +1,158 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Configuration Table · POPStarter Docs</title>
+<meta name="description" content="Resurrected, searchable POPStarter documentation — cheats, patches, config, storage, multi-disc, IGR and downloads.">
+<link rel="stylesheet" href="../assets/style.css">
+</head><body data-base="../">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu">☰</button>
+  <a class="brand" href="../index.html"><span class="logo">P1</span>
+    POPStarter&nbsp;Docs <small>· archive</small></a>
+  <div class="search">
+    <span class="ico">🔎</span>
+    <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar"><h4>Documentation</h4><a href="../index.html"><span class="em">🏠</span>Home</a>
+<a href="../getting-started.html"><span class="em">🚀</span>Getting Started</a>
+<a href="../storage.html"><span class="em">💾</span>Storage Backends</a>
+<a href="../cheats.html"><span class="em">🎮</span>Cheats</a>
+<a href="../compatibility.html"><span class="em">🩹</span>Patches & TROJANs</a>
+<a href="../igr.html"><span class="em">🎯</span>IGR & Hotkeys</a>
+<a href="../config.html"><span class="em">🔧</span>Config Table</a>
+<a href="../multidisc.html"><span class="em">💿</span>Multi-disc & VMC</a>
+<a href="../troubleshooting.html"><span class="em">🛠️</span>Troubleshooting</a>
+<a href="../downloads.html"><span class="em">📦</span>Downloads</a>
+<a href="../history.html"><span class="em">📜</span>History</a>
+    <h4>Reference</h4>
+    <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
+  </nav>
+  <main class="content"><h1>Configuration Table</h1><p class="prov-inline">📎 Recovered from the ShaolinAssassin wiki · snapshot 20170812012646</p><h1><strong>POPStarter Configuration Table – Advanced Settings</strong></h1>
+<p>______________________________________________________________________________________________________________</p>
+<p>This documentation concerns the advanced configuration of POPStarter r13, involving the harcoding (or the patch-on-load) of settings to the POPStarter ELF/KELF...</p>
+<p>The POPStarter r13 ELF and KELF have a 32 bytes long configuration table, starting from the offset $410 (or 1040 in decimal).</p>
+<ul>
+<li><strong>Caution</strong> : Unless you know exactly what it is for and what you’re doing, please don’t tamper with it. Hexediting of that stuff is for advanced users only. Make a backup of the default config before you start changing values. If you are not sure, read the section below (PPF bunch pack).</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th><strong>Offset</strong></th>
+<th><strong>Description</strong></th>
+<th><strong>Values</strong></th>
+<th><strong>Notes</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>| <strong>$410</strong> | Display of the debug texts/pages | 0×00 = disables the debug printing |  |</p>
+<p>|  |  | 0×01 &lt; X &lt; 0xFF = defines the delay between each page of texts | The higher the value is, the longer the delay is |</p>
+<p>|  |  | 0xFF = the debug texts are displayed in realtime without delay (like in POPStarter 12 and lower) |  |</p>
+<p>| <strong>$411</strong> | Break the POPStarter execution after an error has occured | 0×00 = POPStarter prints the error message for a short time, then it kicks the user to the OSD. |  |</p>
+<p>|  |  | 0×0X POPStarter prints the error message and sleeps on that screen indefinitely |  |</p>
+<p>| <strong>$412</strong> | SetGsCrt hack | 0×00 = disabled (default) |  |</p>
+<p>|  |  | 0×01 = enabled | Helps with the HDTVs that can’t deal with the interlaced resolutions thru component (plain green screens and other rubbish displayed otherwise). |</p>
+<p>| <strong>$413</strong> | USB access delay, after the execution of the POPStarter embedded USB modules | 0×02 should be fine. Increase the value if POPStarter fails to access your USB device |  |</p>
+<p>| <strong>$414</strong> | RESERVED (in USB operation mode) | Must be 0×40 |  |</p>
+<p>| <strong>$415</strong> | User ID for individual VMCs | If set to 0×00, the function is disabled. | For assigning an ID to the couple of VMC, the value must be an ASCII character of “0”, “1”, “2”, “3”, “4”, “5”, “6”, “7”, “8” or “9” |</p>
+<p>| <strong>$416</strong> | POPS dev9 module loading (in USB operation mode) | 0×00 = Let POPS load it Default is 0×03. If you need to wake the NIC up (for debugging stuff for example), set this to 0×00 |  |</p>
+<p>|  |  | 0×03 = Forbids its loading |  |</p>
+<p>| <strong>$417</strong> | NOT USED |  |  |</p>
+<p>| <strong>$418</strong> | Force a single compatibility mode | 0×00 = No compatibility mode is forced |  |</p>
+<p>|  |  | 0×0X = the respective compatibility mode is forced and the automatic activator gets disabled |  |</p>
+<p>| <strong>$419</strong> | Force a single compatibility mode | 0×00 = No compatibility mode is forced |  |</p>
+<p>|  |  | 0×0X = the respective compatibility mode is forced and the automatic activator gets disabled |  |</p>
+<p>| <strong>$41A</strong> | Force a single compatibility mode | 0×00 = No compatibility mode is forced |  |</p>
+<p>|  |  | 0×0X = the respective compatibility mode is forced and the automatic activator gets disabled |  |</p>
+<p>| <strong>$41B</strong> | Force a single compatibility mode | 0×00 = No compatibility mode is forced |  |</p>
+<p>|  |  | 0×0X = the respective compatibility mode is forced and the automatic activator gets disabled |  |</p>
+<p>| <strong>$41C</strong> | Force a single compatibility mode | 0×00 = No compatibility mode is forced |  |</p>
+<p>|  |  | 0×0X = the respective compatibility mode is forced and the automatic activator gets disabled |  |</p>
+<p>| <strong>$41D</strong> | Force a single compatibility mode | 0×00 = No compatibility mode is forced |  |</p>
+<p>|  |  | 0×0X = the respective compatibility mode is forced and the automatic activator gets disabled |  |</p>
+<p>| <strong>$41E</strong> | Force a single compatibility mode | 0×00 = No compatibility mode is forced |  |</p>
+<p>|  |  | 0×0X = the respective compatibility mode is forced and the automatic activator gets disabled |  |</p>
+<p>| <strong>$41F</strong> | Force a single compatibility mode | 0×00 = No compatibility mode is forced |  |</p>
+<p>|  |  | 0×0X = the respective compatibility mode is forced and the automatic activator gets disabled |  |</p>
+<p>| <strong>$420</strong> | Patch the genuine HDD check | 0×00 = Don’t patch | Totally useless. When running in a PS2, a homebrew ATAD is used. When running in a PSX, the original POPS ATAD is used. Leave it to 0×01 |</p>
+<p>|  |  | 0×01 = Patch |  |</p>
+<p>| <strong>$421</strong> | Loading and execution of the OSD shell of the POPS built-in BIOS | 0×00 = Load in the user memory and execute (don’t patch anything) | 0×01 has the same effect as the compatibility mode 0×06. Skips the CD checks and the PS logo. Both don’t work if the user uses a BIOS.BIN |</p>
+<p>|  |  | 0×01 = Don’t load, don’t execute |  |</p>
+<p>| <strong>$422</strong> | Exception breakpoints control | 0×00 = Break the emulator (don’t patch anything) | 0×01 NOPs the break instructions of the 2nd-stage exception handler, allowing the user to trigger IGR after the emulation has crashed (in a few cases) |</p>
+<p>|  |  | 0×01 = Don’t break the emulator |  |</p>
+<p>| <strong>$423</strong> | Original SLBB-00001 disc0 integrity check control | 0×00 = Don’t skip the integrity check |  |</p>
+<p>|  |  | 0×01 = Skip the integrity check |  |</p>
+<p>| <strong>$424</strong> | IGR exit method | 0×00 = Original SLBB-00001+PSBBN method | 0×00 causes the emulator to read the MBR by its own, without flushing the cache and without resetting the IOP. Crashy for most users. |</p>
+<p>|  |  | 0×01 = POPStarter r13 method |  |</p>
+<p>| <strong>$425</strong> | IOPCD stack size (in USB operation mode) | 0×00 = Don’t patch |  |</p>
+<p>|  |  | 0×01 = Patch |  |</p>
+<p>| <strong>$426</strong> | Delcro’s patches (in USB operation mode) | 0×00 = Don’t apply those to POPS |  |</p>
+<p>|  |  | 0×01 = Apply those to POPS |  |</p>
+<p>| <strong>$427</strong> | Emulator modules loading failure | 0×00 = Don’t patch (Kick to the PS2 OSD) | For your h4×0ring needz. . Patch it so you no longer have to care about the returned code of your injected IRX. |</p>
+<p>|  |  | 0×01 = Patch (Ignore and continue) |  |</p>
+<p>| <strong>$428</strong> | Internal HDD initialization failure | 0×00 = Don’t patch (Kick to the PS2 OSD) | For your h4×0ring needz. |</p>
+<p>|  |  | 0×01 = Patch (Ignore and continue) |  |</p>
+<p>| <strong>$429</strong> | Virtual Memory Cards control | 0×00 = Use both VMCs |</p>
+<p>|  |  | 0×01 = Don’t use VMCs at all |  |</p>
+<p>|  |  | 0×02 = Use just the first VMC in the first virtual slot |  |</p>
+<p>| <strong>$42A</strong> | Automatic PAL patch upon European VCD recognition | 0×00 = Disabled | The Automatic PAL Patcher of POPStarter expects “Euro” at the offset $102514 of the VCD |</p>
+<p>|  |  | 0×01 = Enabled |  |</p>
+<p>|  |  | 0×02 = Force 480p |  |</p>
+<p>| <strong>$42B</strong> | Resident modules loader | 0×00 = Disabled | POPS/MODULE_0.IRX POPS/MODULE_1.IRX... up to POPS/MODULE_9.IRX. Are executed AFTER the IOP gets reset with IOPRP252.IMG, for Great Justice. |</p>
+<p>|  |  | 0×01 = Enabled |  |</p>
+<p>| <strong>$42C</strong> | Software PowerOff fix | 0×00 = Disabled | Can’t remember what it is. Perhaps it’s a redundant option of a deimplemented function… Prolific, mass ? |</p>
+<p>|  |  | 0×01 = Enabled |  |</p>
+<p>| <strong>$42D</strong> | IGR textures loader | 0×00 = Disabled | POPS/IGR_BG.TM2 POPS/IGR_NO.TM2 POPS/IGR_YES.TM2 |</p>
+<p>|  |  | 0×01 = Enabled |  |</p>
+<p>| <strong>$42E</strong> | Game license/region check of the POPS built-in BIOS | 0×00 = Leave unpatched | The patch just NOPs the loop. The PS logo is not shown when a non-JAP game is run. |</p>
+<p>|  |  | 0×01 = Patch it so it does not loop the check when the VCD isn’t NTSC J |  |</p>
+<p>| <strong>$42F</strong> | POPStarter automatic compatibility mode activator | 0×00 = Do not enable anything | If set to 0×03 and a compatibility mode is forced, it will be changed to 0×02 automatically (applies the forced modes and not the automatic ones) |</p>
+<p>|  |  | 0×01 = Enable the automatic compatibility modes activation |  |</p>
+<p>|  |  | 0×02 = Enable the other subroutines (like LibCrypt cracks, when available) |  |</p>
+<p>|  |  | 0×03 = Enable all |  |</p>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>Default values :</em></h2>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>PPF bunch pack :</em></h2>
+<pre><code>
+=================================================================================
+-----------------------PPF Bunch pack for POPStarter r13-------------------------
+=================================================================================
+Hi !
+I am a bunch of .PFF files. You can use me to enable POPStarter advanced settings. You need a PPF patcher (such as PPF-O-Matic) to use me and apply PPF over POPStarter.ELF.
+Here is what I can do for you :
+- File name : description (notes)
+- NO_LC_CRACKS.PPF : Disables the built-in LC cracks of POPStarter r13 (from WIP05. Automated modes are disabled also).
+- DEBUG_AND_HALT.PPF : Prints the screen debug messages and halt (from WIP05).
+- NO_VMC.PPF : Disables VMC feature (new)
+- ONLY_1ST_VMC.PPF : Only the first VMC in the first virtual slot is created (new)
+- NO_PAL.PPF : Disables the automatic PAL patch (new)
+- FORCE_MODEX.PPF : Mode X hardcoded into POPStarter r13 (new)
+- DEFAULT_IGR_TEXTURES.PPF : Disables the IGR textures loader (new)
+- LC_ONLY.PPF : Enable the other subroutines (like LibCrypt cracks), disable the compatibility modes. (new).
+- NO_AUTO_PATCH.PPF : Disables everything (modes, LC cracks...) (new).
+
+</code></pre>
+<p>______________________________________________________________________________________________________________</p>
+<h3><a href="../wiki/index.html"><strong>Index</strong></a></h3><p style="margin-top:26px"><a class="pill" href="../config.html">Related curated section → Config Table</a></p></main>
+</div>
+<footer>
+  <p><b>POPStarter Documentation Archive</b> — community-recovered from the Wayback Machine
+  (ShaolinAssassin's <code>popstarter-documentation-stuff</code> wiki) and krHACKen's r13 changelog,
+  cross-checked and merged across snapshots. Built for the POPSLoader project.</p>
+  <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
+  emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
+  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed.</p>
+</footer>
+<script src="../assets/app.js"></script>
+</body></html>

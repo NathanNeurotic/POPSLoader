@@ -1,0 +1,124 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pfsshell · POPStarter Docs</title>
+<meta name="description" content="Resurrected, searchable POPStarter documentation — cheats, patches, config, storage, multi-disc, IGR and downloads.">
+<link rel="stylesheet" href="../assets/style.css">
+</head><body data-base="../">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu">☰</button>
+  <a class="brand" href="../index.html"><span class="logo">P1</span>
+    POPStarter&nbsp;Docs <small>· archive</small></a>
+  <div class="search">
+    <span class="ico">🔎</span>
+    <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar"><h4>Documentation</h4><a href="../index.html"><span class="em">🏠</span>Home</a>
+<a href="../getting-started.html"><span class="em">🚀</span>Getting Started</a>
+<a href="../storage.html"><span class="em">💾</span>Storage Backends</a>
+<a href="../cheats.html"><span class="em">🎮</span>Cheats</a>
+<a href="../compatibility.html"><span class="em">🩹</span>Patches & TROJANs</a>
+<a href="../igr.html"><span class="em">🎯</span>IGR & Hotkeys</a>
+<a href="../config.html"><span class="em">🔧</span>Config Table</a>
+<a href="../multidisc.html"><span class="em">💿</span>Multi-disc & VMC</a>
+<a href="../troubleshooting.html"><span class="em">🛠️</span>Troubleshooting</a>
+<a href="../downloads.html"><span class="em">📦</span>Downloads</a>
+<a href="../history.html"><span class="em">📜</span>History</a>
+    <h4>Reference</h4>
+    <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
+  </nav>
+  <main class="content"><h1>Pfsshell</h1><p class="prov-inline">📎 Recovered from the ShaolinAssassin wiki · snapshot 20250215031216</p><h1>[HDD] <strong>Transfer VCD files using PFSSHELL 0.2a</strong></h1>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>Hardware Requirements :</em></h2>
+<ul>
+<li>PS2 HDD formatted, with a __.POPS partition, locally connected to your PC</li>
+</ul>
+<h2><em>Software Requirements :</em></h2>
+<ul>
+<li><a href="../downloads/pfsshell-0.2a.7z">PFSSHELL 0.2a</a> (running under winxp – or enable XP compatibility mode). You can find an updated version of this program <a href="https://github.com/uyjulian/pfsshell">here</a> by @<a href="https://assemblergames.com/members/uyjulian.103145/">uyjulian</a> – but you have to compile it yourself.</li>
+</ul>
+<p>______________________________________________________________________________________________________________</p>
+<h3><em>Video tutorial :</em> <a href="https://www.youtube.com/watch?v=ks5CN-Kfv04">here</a></h3>
+<h3><em>Text version – based on the video :</em></h3>
+<p><strong>Transfer one VCD :</strong></p>
+<ol>
+<li>
+<p>Put your VCDs files in the psshell 0.2a folder.</p>
+</li>
+<li>
+<p>Run pfsshell.exe</p>
+</li>
+<li>
+<p>Select your PS2 HDD using the following command line :</p>
+</li>
+</ol>
+<pre><code>device hddX:
+</code></pre>
+<p>X = the number of your PS2 HDD.</p>
+<p>If you get this message : “ps2hdd: drive status 0, format version 00000002”, continue.</p>
+<ol start="4">
+<li>You now need to mount the __.POPS VCD partition, using the following command line :</li>
+</ol>
+<pre><code>mount __.POPS
+</code></pre>
+<ol start="5">
+<li>Transfer your 1st VCD file using the following command line :</li>
+</ol>
+<pre><code>put NAMEOFYOURVCD.VCD
+</code></pre>
+<ol start="6">
+<li>Once the transfer is over, you can transfer another VCD or quit the programm running :</li>
+</ol>
+<pre><code>umount
+</code></pre>
+<p>then</p>
+<pre><code>exit
+</code></pre>
+<ol start="7">
+<li>Done.</li>
+</ol>
+<p><strong>Transfer several VCD at once :</strong></p>
+<p><em>[Original tutorial by ElPatas]</em> @elotrolado –  <em>[.bat files thanks to <a href="http://psx-scene.com/forums/members/deba5er/">deba5er</a> ]</em></p>
+<ol>
+<li>
+<p>Get these <a href="../downloads/pfsshell-0.2a.7z">files</a>.</p>
+</li>
+<li>
+<p>Open command prompt, then type “cmd”.</p>
+</li>
+<li>
+<p>You need to launch the .bat file from it’s folder. In the example below, pfshell is placed into D: partition, into a folder named “CD Juegos PSX”.</p>
+</li>
+<li>
+<p>Execute the .bat running the following command line :</p>
+</li>
+</ol>
+<pre><code>pfs.bat hddX: __.POPS *.VCD
+</code></pre>
+<ul>
+<li>
+<p>where X is the number of your PS2 HDD;</p>
+</li>
+<li>
+<p>__.POPS the partition where the VCDs will be transfer;</p>
+</li>
+<li>
+<p>*.VCD means to tranfer all files with .VCD extension.</p>
+</li>
+</ul>
+<p>______________________________________________________________________________________________________________</p>
+<h3><a href="../wiki/index.html"><strong>Index</strong></a></h3><p style="margin-top:26px"><a class="pill" href="../storage.html">Related curated section → Storage Backends</a></p></main>
+</div>
+<footer>
+  <p><b>POPStarter Documentation Archive</b> — community-recovered from the Wayback Machine
+  (ShaolinAssassin's <code>popstarter-documentation-stuff</code> wiki) and krHACKen's r13 changelog,
+  cross-checked and merged across snapshots. Built for the POPSLoader project.</p>
+  <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
+  emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
+  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed.</p>
+</footer>
+<script src="../assets/app.js"></script>
+</body></html>

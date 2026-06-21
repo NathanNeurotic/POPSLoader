@@ -1,0 +1,87 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>General Note · POPStarter Docs</title>
+<meta name="description" content="Resurrected, searchable POPStarter documentation — cheats, patches, config, storage, multi-disc, IGR and downloads.">
+<link rel="stylesheet" href="../assets/style.css">
+</head><body data-base="../">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu">☰</button>
+  <a class="brand" href="../index.html"><span class="logo">P1</span>
+    POPStarter&nbsp;Docs <small>· archive</small></a>
+  <div class="search">
+    <span class="ico">🔎</span>
+    <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar"><h4>Documentation</h4><a href="../index.html"><span class="em">🏠</span>Home</a>
+<a href="../getting-started.html"><span class="em">🚀</span>Getting Started</a>
+<a href="../storage.html"><span class="em">💾</span>Storage Backends</a>
+<a href="../cheats.html"><span class="em">🎮</span>Cheats</a>
+<a href="../compatibility.html"><span class="em">🩹</span>Patches & TROJANs</a>
+<a href="../igr.html"><span class="em">🎯</span>IGR & Hotkeys</a>
+<a href="../config.html"><span class="em">🔧</span>Config Table</a>
+<a href="../multidisc.html"><span class="em">💿</span>Multi-disc & VMC</a>
+<a href="../troubleshooting.html"><span class="em">🛠️</span>Troubleshooting</a>
+<a href="../downloads.html"><span class="em">📦</span>Downloads</a>
+<a href="../history.html"><span class="em">📜</span>History</a>
+    <h4>Reference</h4>
+    <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
+  </nav>
+  <main class="content"><h1>General Note</h1><p class="prov-inline">📎 Recovered from the ShaolinAssassin wiki · snapshot 20200812192725</p><h1><strong>General note :</strong></h1>
+<p>______________________________________________________________________________________________________________</p>
+<p>POPStarter is able to handle external files, so you can configure its settings, even though POPStarter is a GUI-less app. These external files come as TROJAN_#BIN, PATCH_#.BIN, BIOS.BIN, OSD.BIN, CHEATS.TXT, VMCDIR.TXT, DISCS.TXT...<br />
+These files can be placed into 2 different locations : POPS folder and VMC game folder.</p>
+<p>As general rule :</p>
+<ul>
+<li>
+<p>If a TROJAN_#BIN, PATCH_#.BIN, BIOS.BIN, OSD.BIN, CHEATS.TXT, VMC.DIR, WHATEVER... is placed into POPS folder, it will be applied to ALL games ;</p>
+</li>
+<li>
+<p>If a TROJAN_#BIN, PATCH_#.BIN, BIOS.BIN, OSD.BIN, CHEATS.TXT, VMC.DIR, WHATEVER... is placed into the game VMC folder, it will be applied to only this particular game ;</p>
+</li>
+<li>
+<p>POPStarter can handle multiple different external files at the same time ;</p>
+</li>
+<li>
+<p>POPStarter can handle multiple different external files at the same time from different locations.</p>
+</li>
+</ul>
+<p><strong>Example :</strong></p>
+<pre><code>POPS/PATCH_1.BIN
+POPS/Crash Bandicoot (PAL)/CHEATS.TXT
+
+</code></pre>
+<p>Here, PATCH_1.BIN will be applied to all games while the CHEATS.TXT file will be only applied/active for Crash Bandicoot (PAL) game.</p>
+<ul>
+<li>When you use multiple external files <strong>of same type</strong> from both POPS folder and VMC game folder, the file which is in the VMC folder has priority;</li>
+</ul>
+<p><strong>Example :</strong></p>
+<pre><code>POPS/TROJAN_2.BIN
+POPS/Crash Bandicoot (PAL)/TROJAN_2.BIN
+
+</code></pre>
+<p>Here, only POPS/Crash Bandicoot/TROJAN_2.BIN will be applied.</p>
+<ul>
+<li>Only exception to this rule is when two CHEATS.TXT files are loaded from POPS and VMC game folder at the same time and that CHEATS.TXT file contains special command changing the video mode.</li>
+</ul>
+<pre><code>POPS/CHEATS.TXT --- with $480p written in it
+POPS/Crash Bandicoot (PAL)/CHEATS.TXT --- with $FORCEPAL written in it
+
+</code></pre>
+<p>Here, 480p has priority and $FORCEPAL will not be applied.</p>
+<p>______________________________________________________________________________________________________________</p>
+<h3><a href="../wiki/index.html"><strong>Index</strong></a></h3></main>
+</div>
+<footer>
+  <p><b>POPStarter Documentation Archive</b> — community-recovered from the Wayback Machine
+  (ShaolinAssassin's <code>popstarter-documentation-stuff</code> wiki) and krHACKen's r13 changelog,
+  cross-checked and merged across snapshots. Built for the POPSLoader project.</p>
+  <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
+  emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
+  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed.</p>
+</footer>
+<script src="../assets/app.js"></script>
+</body></html>

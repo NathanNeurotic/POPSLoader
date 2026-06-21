@@ -1,0 +1,141 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Multi-disc &amp; VMC · POPStarter Docs</title>
+<meta name="description" content="Resurrected, searchable POPStarter documentation — cheats, patches, config, storage, multi-disc, IGR and downloads.">
+<link rel="stylesheet" href="assets/style.css">
+</head><body data-base="">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu">☰</button>
+  <a class="brand" href="index.html"><span class="logo">P1</span>
+    POPStarter&nbsp;Docs <small>· archive</small></a>
+  <div class="search">
+    <span class="ico">🔎</span>
+    <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar"><h4>Documentation</h4><a href="index.html"><span class="em">🏠</span>Home</a>
+<a href="getting-started.html"><span class="em">🚀</span>Getting Started</a>
+<a href="storage.html"><span class="em">💾</span>Storage Backends</a>
+<a href="cheats.html"><span class="em">🎮</span>Cheats</a>
+<a href="compatibility.html"><span class="em">🩹</span>Patches & TROJANs</a>
+<a href="igr.html"><span class="em">🎯</span>IGR & Hotkeys</a>
+<a href="config.html"><span class="em">🔧</span>Config Table</a>
+<a href="multidisc.html" class="active"><span class="em">💿</span>Multi-disc & VMC</a>
+<a href="troubleshooting.html"><span class="em">🛠️</span>Troubleshooting</a>
+<a href="downloads.html"><span class="em">📦</span>Downloads</a>
+<a href="history.html"><span class="em">📜</span>History</a>
+    <h4>Reference</h4>
+    <a href="wiki/index.html"><span class="em">📚</span>All wiki pages</a>
+  </nav>
+  <main class="content"><h1>Multi-disc &amp; VMC</h1><p class="lead">DISCS.TXT multi-disc swapping and the SLOT0/SLOT1 virtual memory cards, including VMCDIR.TXT redirection.</p><h2>Multi-disc and virtual memory cards</h2>
+<p>VMCs: POPS auto-creates a pair of virtual memory-card images on first launch - SLOT0.VMC (controller port 1) and SLOT1.VMC (port 2) - in a per-game folder named after the VCD. PS1 retail saves imported with MemcardRex land in SLOT1.VMC. How many VMCs are created (two/one/none) is set by config offset $429 (NOT $42A, which is the 480p/PAL byte). Crucially, POPS flashes the WHOLE VMC on every save rather than writing a single MC block - this is why saving to a physical memory card is unsupported and why sharing one VMC pair across games is data-safe.</p>
+<p>VMCDIR.TXT is a one-line file (&lt;=103 bytes, no / \ : characters) that redirects ONLY the SLOT0/SLOT1 pair to a named folder while every other asset still loads from the game folder; the target must stay inside POPS. Put it in a game folder for per-game redirection, or in the POPS root to collapse the whole library onto one shared VMC pair (per-user save sets, shared saves). When the same asset exists in both the POPS folder and a game's VMC folder, the VMC-folder copy wins - the ONE documented exception is two CHEATS.TXT files where one changes the video mode, which is the actual mechanism behind the base report's 'root CHEATS.TXT may block per-game' note.</p>
+<p>DISCS.TXT is the orthogonal multi-disc mechanism: up to 4 VCD filenames (with the .VCD extension), one per line, all in the same partition, copied into every disc's folder. More than 4 lines breaks it; each filename is capped at 89 chars per the wiki, though POPSLoader's own testing shows a practical ~73-char ceiling because it is a full-PATH buffer. In-game disc swapping (since Beta 15) uses Select+L2+R2 plus Triangle (open lid), Up/Right/Down/Left (insert disc 1/2/3/4, mapping to DISCS.TXT LINE numbers), and Square (close lid). Pair DISCS.TXT with a VMCDIR.TXT pointing every disc at disc 1's folder so a multi-disc game keeps one save card. On internal HDD the convention is instead IMAGE0.VCD/IMAGE1.VCD in one PP. partition (sharing one VMC). The PC tool DISCS_POOPER.EXE auto-generates the DISCS.TXT + VMCDIR.TXT set for up to 4 VCDs. Finally, OSD.BIN beats BIOS.BIN: if both exist in a VMC dir, OSD.BIN is injected and BIOS.BIN is ignored (OSD.BIN must satisfy the strict 'PS-X OSD' v1 header).</p><h2>Reference</h2><div class="cards"><div class="card" id="vmcdir-txt"><h3>VMCDIR.TXT <span class="badge primary">primary</span> <span class="cat-chip">vmc</span></h3>
+<div class="field"><b>Effect:</b> One-line text file in a game&#x27;s VMC folder that redirects where POPS saves/reads the VMC pair (SLOT0.VMC + SLOT1.VMC); all other assets (TROJAN/PATCH/CHEATS) still load from the game folder. Forbidden chars / \ : . Not loaded if &gt;103 bytes or &gt;1 line. Target folder must stay inside the POPS folder.</div>
+<div class="field"><b>Scope:</b> Per-game in the game folder; GLOBAL (one shared VMC pair for ALL games) when placed in the POPS root. USB/SMB/HDD. Must be copied into every POPS# folder.</div>
+<div class="field"><b>Conflicts:</b> In POPS root it overrides per-game VMC isolation but mounts existing VMCs without overwriting (no data loss). Game-folder copy wins over a POPS-root copy. Destination outside POPS is rejected.</div>
+<div class="ex">Save &#x27;BLAHBLAH&#x27; as VMCDIR.TXT in mass:/POPS/MY_GAME/ -&gt; POPS reads mass:/POPS/BLAHBLAH/SLOT0.VMC + SLOT1.VMC</div>
+<div class="prov">📎 PRIMARY: ShaolinAssassin wiki vmc (Wayback 20170629133617)</div>
+</div>
+<div class="card" id="vmcdir-txt-shared-vmc-grouping"><h3>VMCDIR.TXT (shared VMC grouping) <span class="badge primary">primary</span> <span class="cat-chip">vmc</span></h3>
+<div class="field"><b>Effect:</b> Multiple games point at one VMC folder so they share a single VMC pair (e.g. all FF8 discs, or a per-user save set). Put a VMCDIR.TXT naming the same destination folder into each game&#x27;s folder.</div>
+<div class="field"><b>Scope:</b> Per group of games. Also gives multiple users their own VMC folders for one library.</div>
+<div class="field"><b>Conflicts:</b> Shared VMCs are mounted/loaded, not overwritten - data-safe (POPS flashes the whole VMC, see SLOT0/SLOT1).</div>
+<div class="ex">smb:/Share/POPS/VMCDIR.TXT contains &#x27;SAVES&#x27;; Crash/Tekken/Castlevania all save into smb:/Share/POPS/SAVES/SLOT0.VMC</div>
+<div class="prov">📎 PRIMARY: ShaolinAssassin wiki vmc (Wayback 20170629133617)</div>
+</div>
+<div class="card" id="slot0-vmc-slot1-vmc"><h3>SLOT0.VMC / SLOT1.VMC <span class="badge primary">primary</span> <span class="cat-chip">vmc</span></h3>
+<div class="field"><b>Effect:</b> The two virtual memory-card image files POPS auto-creates on first launch (POPS/&lt;GameName&gt;/SLOTx.VMC). SLOT0 = MC port 1, SLOT1 = port 2. PS1 retail saves imported via MemcardRex go into SLOT1.VMC. Standard PS1 MC images, MemcardRex-editable.</div>
+<div class="field"><b>Scope:</b> Per game by default; on HDD inside __common/POPS/&lt;vmcfolder&gt;/. Number created (2/1/none) controlled by config offset $429 (NOT $42A).</div>
+<div class="field"><b>Conflicts:</b> POPS does not save to a physical MC because it flashes the WHOLE VMC, not a single block.</div>
+<div class="ex">POPS/Crash Bandicoot.VCD -&gt; POPS/Crash Bandicoot/SLOT0.VMC + SLOT1.VMC</div>
+<div class="prov">📎 PRIMARY: ShaolinAssassin wiki vmc + pmc-to-vmc + faqs (Wayback 20170629133617 / 20170629154811 / 20170629120342)</div>
+</div>
+<div class="card" id="hdd-vmc-location"><h3>HDD VMC location <span class="badge primary">primary</span> <span class="cat-chip">vmc</span></h3>
+<div class="field"><b>Effect:</b> On internal HDD, VMCs and per-game BIOS/OSD assets live in the __common partition under __common/POPS/&lt;vmcfolder&gt;/, decoupled from the VCD (which sits in its own __.POPS / PP. / __. partition).</div>
+<div class="field"><b>Scope:</b> Internal HDD (hdd:) mode.</div>
+<div class="field"><b>Conflicts:</b> POPS.ELF + IOPRP252.IMG go in __common/POPS/. Old-type partition names are case-sensitive, no whitespace.</div>
+<div class="ex">__common/POPS/PBPX-95000.MY_GAME/SLOT0.VMC (VCD itself in __.POPS/MY_GAME.VCD)</div>
+<div class="prov">📎 PRIMARY: ShaolinAssassin wiki hdd-mode + bios-osd-handlers (Wayback 20170629165244)</div>
+</div>
+<div class="card" id="pops-vmc-folder-priority-rule"><h3>POPS/VMC folder priority rule <span class="badge primary">primary</span> <span class="cat-chip">vmc</span></h3>
+<div class="field"><b>Effect:</b> Any external file (TROJAN/PATCH/BIOS.BIN/OSD.BIN/CHEATS.TXT/VMCDIR.TXT/DISCS.TXT) can live in the POPS folder (all games) or the game&#x27;s VMC folder (that game). When the same type exists in both, the VMC-folder copy has priority. ONLY exception: two CHEATS.TXT loaded at once where one contains special cheats that change the video mode (special-cased).</div>
+<div class="field"><b>Scope:</b> All POPStarter external assets, all backends.</div>
+<div class="field"><b>Conflicts:</b> This exception is the precise mechanism behind the base report&#x27;s &#x27;root CHEATS.TXT may block per-game&#x27; note - the only documented blocking case.</div>
+<div class="ex">PATCH_5.BIN in POPS/ vs POPS/MY_GAME/ -&gt; the MY_GAME copy wins for that game</div>
+<div class="prov">📎 PRIMARY: ShaolinAssassin wiki general-note (Wayback 20170629125310)</div>
+</div>
+<div class="card" id="multi-folder-pops0-pops9-usb-asset-duplication-caveat"><h3>Multi-folder POPS0..POPS9 (USB) asset-duplication caveat <span class="badge primary">primary</span> <span class="cat-chip">vmc</span></h3>
+<div class="field"><b>Effect:</b> Up to 11 game folders scanned at USB root (POPS, POPS0..POPS9). VMCDIR.TXT, BIOS.BIN, PATCH_#.BIN and TROJAN_#.BIN meant to be global must be COPIED into every POPS# folder (they don&#x27;t propagate); POPS_IOX.PAK and the TM2 IGR-texture files must stay only in the MAIN POPS folder.</div>
+<div class="field"><b>Scope:</b> USB mass: storage. HDD has __.POPS0..9 equivalent; SMB has only a single POPS folder.</div>
+<div class="field"><b>Conflicts:</b> Forgetting to duplicate global assets into POPS# folders = they don&#x27;t apply there.</div>
+<div class="ex">mass:/POPS0/Tekken.VCD + mass:/POPS0/VMCDIR.TXT copied from mass:/POPS/VMCDIR.TXT</div>
+<div class="prov">📎 PRIMARY: ShaolinAssassin wiki usb-mode (Wayback 20170629123547)</div>
+</div>
+<div class="card" id="discs-txt"><h3>DISCS.TXT <span class="badge primary">primary</span> <span class="cat-chip">multidisc</span></h3>
+<div class="field"><b>Effect:</b> Multi-disc swap list. One VCD filename per line (WITH .VCD extension), up to 4 lines = disc 1..4. Enables in-game disc swapping without a PS1 reboot. Copy into the VMC/game folder of EVERY disc.</div>
+<div class="field"><b>Scope:</b> Per multi-disc game. All VCDs must be in the same partition/folder. Feature present since OBT15.</div>
+<div class="field"><b>Conflicts:</b> &gt;4 lines breaks the feature. Each VCD filename &lt;=89 chars (wiki) but POPSLoader&#x27;s own testing shows the practical ceiling is ~73 since it&#x27;s a full-PATH buffer, not a bare-name buffer. .TXT must be uppercase. For &gt;4 discs, install first 4, play to disc 4, then swap in 5-7.</div>
+<div class="ex">DISCS.TXT (in BOTH MGS_CD1/ and MGS_CD2/): MGS_CD1.VCD / MGS_CD2.VCD</div>
+<div class="prov">📎 PRIMARY: ShaolinAssassin wiki multi-disc (Wayback 20170626061653); CHANGES.TXT Beta 15; ~73 nuance from POPSLoader reference-vcd-filename-limit (#503)</div>
+</div>
+<div class="card" id="disc-swap-hotkeys-lid-disc-insert"><h3>Disc-swap hotkeys (lid + disc insert) <span class="badge primary">primary</span> <span class="cat-chip">multidisc</span></h3>
+<div class="field"><b>Effect:</b> Hotkeys (since Beta 15, 2016-09-18): Select+L2+R2+Triangle = open lid; +Up = disc 1; +Right = disc 2; +Down = disc 3; +Left = disc 4; +Square = close lid. D-pad direction maps to the DISCS.TXT LINE number, not a physical disc label.</div>
+<div class="field"><b>Scope:</b> In-game, multi-disc games with DISCS.TXT. OBT15+.</div>
+<div class="field"><b>Conflicts:</b> Earlier Beta-14-era build only exposed lid open/close (Triangle/Square) without the Up/Right/Down/Left inserts. A separate simple &#x27;open lid&#x27; hotkey (Select+L2+R1) also exists in the general hotkeys table.</div>
+<div class="ex">Insert Disc 2: Select+L2+R2+Right ; Close lid: Select+L2+R2+Square</div>
+<div class="prov">📎 PRIMARY: ShaolinAssassin wiki multi-disc + hotkeys (decoded from archived button-glyph filenames, Wayback 20170626061653 / 20170626021730); CHANGES.TXT lines 316-372</div>
+</div>
+<div class="card" id="vmcdir-txt-for-multi-disc-single-vmc-pair"><h3>VMCDIR.TXT for multi-disc (single VMC pair) <span class="badge primary">primary</span> <span class="cat-chip">multidisc</span></h3>
+<div class="field"><b>Effect:</b> Combine DISCS.TXT with a VMCDIR.TXT (naming disc 1&#x27;s VMC folder) placed in every disc folder so all discs of one game share a single VMC pair - avoids manual VMC copy/paste between disc folders.</div>
+<div class="field"><b>Scope:</b> Per multi-disc game. VMCDIR.TXT in disc 1 AND disc 2 (and any further disc) folders, naming the disc-1 folder.</div>
+<div class="field"><b>Conflicts:</b> Without it, saves made on disc 1 aren&#x27;t visible on disc 2 unless VMCs are manually copied. Same 103-byte/1-line/forbidden-char rules.</div>
+<div class="ex">MGS/VMCDIR.TXT and MGS_2/VMCDIR.TXT both contain &#x27;MGS&#x27; -&gt; both discs save into POPS/MGS/SLOT0.VMC+SLOT1.VMC</div>
+<div class="prov">📎 PRIMARY: ShaolinAssassin wiki multi-disc (Wayback 20170626061653)</div>
+</div>
+<div class="card" id="hdd-multi-disc-image0-vcd-image1-vcd"><h3>HDD multi-disc (IMAGE0.VCD / IMAGE1.VCD) <span class="badge secondary">near-primary</span> <span class="cat-chip">multidisc</span></h3>
+<div class="field"><b>Effect:</b> On internal HDD, multi-disc games use IMAGE0.VCD / IMAGE1.VCD in the SAME PP. partition (POPStarter only looks for IMAGE0.VCD when booting HDD-OSD mode). The discs share one VMC, so no VMCDIR.TXT is needed.</div>
+<div class="field"><b>Scope:</b> Internal HDD multi-disc.</div>
+<div class="field"><b>Conflicts:</b> Disc change cannot cross partitions (cannot unmount/mount). Both discs must share one PP. partition; first VCD MUST be IMAGE0.VCD, second IMAGE1.VCD.</div>
+<div class="ex">PP.&lt;game&gt; partition: IMAGE0.VCD + IMAGE1.VCD (shared VMC)</div>
+<div class="prov">📎 NEAR-PRIMARY: PS2-HOME t=144 (Wayback 20240407083519)</div>
+</div>
+<div class="card" id="discs-pooper-exe"><h3>DISCS_POOPER.EXE <span class="badge primary">primary</span> <span class="cat-chip">multidisc</span></h3>
+<div class="field"><b>Effect:</b> PC helper tool that automates multi-disc setup: drop all VCDs + DISCS_POOPER.EXE in a folder and run it; it creates a VMC folder for each VCD, a DISCS.TXT inside each, and a VMCDIR.TXT inside each so all discs share one VMC pair.</div>
+<div class="field"><b>Scope:</b> PC-side prep tool. Output VCD+VMC folders are then moved into POPS.</div>
+<div class="field"><b>Conflicts:</b> Does NOT comply with the 4-CD swap limit - don&#x27;t use with more than 4 VCDs. (POPS VCD Manager is a later GUI alternative that also generates DISCS.TXT + VMCDIR.TXT.)</div>
+<div class="ex">Folder with MGS_CD1.VCD + MGS_CD2.VCD + DISCS_POOPER.EXE -&gt; auto-generates DISCS.TXT and VMCDIR.TXT pairs</div>
+<div class="prov">📎 PRIMARY: ShaolinAssassin wiki multi-disc (Wayback 20170626061653); discs_pooper.exe on the Bitbucket downloads page</div>
+</div>
+<div class="card" id="osd-bin-over-bios-bin-precedence"><h3>OSD.BIN over BIOS.BIN precedence <span class="badge primary">primary</span> <span class="cat-chip">vmc</span></h3>
+<div class="field"><b>Effect:</b> If an OSD replacement image named OSD.BIN exists in the VMC dir (or POPS folder) it is injected into POPS&#x27;s built-in BIOS and used; when OSD.BIN is present, BIOS.BIN is IGNORED. BIOS.BIN alone lets you reach the MC manager / play CDDA tracks via the built-in shell. If neither exists, POPS uses its built-in BIOS. Using a BIOS/OSD does NOT improve game compatibility.</div>
+<div class="field"><b>Scope:</b> Per-game (VMC/game folder) or global (POPS folder). HDD path e.g. __common/POPS/PBPX-95000.MY_GAME/OSD.BIN.</div>
+<div class="field"><b>Conflicts:</b> OSD.BIN strictly wins over BIOS.BIN (mutually exclusive). OSD.BIN must satisfy a strict header or it won&#x27;t load.</div>
+<div class="ex">POPS/MY_GAME/OSD.BIN present -&gt; OSD.BIN used, POPS/MY_GAME/BIOS.BIN silently ignored</div>
+<div class="prov">📎 PRIMARY: ShaolinAssassin wiki bios-osd-handlers (Wayback 20170629161024)</div>
+</div>
+<div class="card" id="osd-bin-header-structure-v1"><h3>OSD.BIN header structure (v1) <span class="badge primary">primary</span> <span class="cat-chip">vmc</span></h3>
+<div class="field"><b>Effect:</b> Valid OSD replacement format. 0h-8h identifier &#x27;PS-X OSD&#x27;; Ch = image version (non-NULL); Eh = OSD build (non-NULL); 1Ch-20h = OSD loadable segment size (header excluded); 20h-34h = OSD name (1-20 ASCII, 0x00-terminated). OSD load address and entrypoint must be multiples of 0x10000. Total file size = header length + OSD size.</div>
+<div class="field"><b>Scope:</b> OSD.BIN files used with POPStarter (the BIOS-injection path).</div>
+<div class="field"><b>Conflicts:</b> Identifier must be exactly &#x27;PS-X OSD&#x27;; version (Ch) and build (Eh) cannot be NULL; load addr/entrypoint multiples of 0x10000; name &gt;=1 char. Violations -&gt; not loaded.</div>
+<div class="ex">Bytes 0-7 = &#x27;PS-X OSD&#x27;; name field at 0x20 = &#x27;MY OSD\0&#x27;</div>
+<div class="prov">📎 PRIMARY: ShaolinAssassin wiki bios-osd-handlers (Wayback 20170629161024)</div>
+</div></div><h2>Full wiki sources</h2><div class="grid"><a class="tile" href="wiki/multi-disc.html"><b>Multi Disc</b><span>full wiki page</span></a>
+<a class="tile" href="wiki/vmc.html"><b>VMC</b><span>full wiki page</span></a>
+<a class="tile" href="wiki/vmc-to-pmc.html"><b>VMC To PMC</b><span>full wiki page</span></a>
+<a class="tile" href="wiki/pmc-to-vmc.html"><b>PMC To VMC</b><span>full wiki page</span></a>
+<a class="tile" href="wiki/d2ls.html"><b>D2LS</b><span>full wiki page</span></a></div></main>
+</div>
+<footer>
+  <p><b>POPStarter Documentation Archive</b> — community-recovered from the Wayback Machine
+  (ShaolinAssassin's <code>popstarter-documentation-stuff</code> wiki) and krHACKen's r13 changelog,
+  cross-checked and merged across snapshots. Built for the POPSLoader project.</p>
+  <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
+  emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
+  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed.</p>
+</footer>
+<script src="assets/app.js"></script>
+</body></html>

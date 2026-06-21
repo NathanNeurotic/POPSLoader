@@ -1,0 +1,131 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VMC · POPStarter Docs</title>
+<meta name="description" content="Resurrected, searchable POPStarter documentation — cheats, patches, config, storage, multi-disc, IGR and downloads.">
+<link rel="stylesheet" href="../assets/style.css">
+</head><body data-base="../">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu">☰</button>
+  <a class="brand" href="../index.html"><span class="logo">P1</span>
+    POPStarter&nbsp;Docs <small>· archive</small></a>
+  <div class="search">
+    <span class="ico">🔎</span>
+    <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar"><h4>Documentation</h4><a href="../index.html"><span class="em">🏠</span>Home</a>
+<a href="../getting-started.html"><span class="em">🚀</span>Getting Started</a>
+<a href="../storage.html"><span class="em">💾</span>Storage Backends</a>
+<a href="../cheats.html"><span class="em">🎮</span>Cheats</a>
+<a href="../compatibility.html"><span class="em">🩹</span>Patches & TROJANs</a>
+<a href="../igr.html"><span class="em">🎯</span>IGR & Hotkeys</a>
+<a href="../config.html"><span class="em">🔧</span>Config Table</a>
+<a href="../multidisc.html"><span class="em">💿</span>Multi-disc & VMC</a>
+<a href="../troubleshooting.html"><span class="em">🛠️</span>Troubleshooting</a>
+<a href="../downloads.html"><span class="em">📦</span>Downloads</a>
+<a href="../history.html"><span class="em">📜</span>History</a>
+    <h4>Reference</h4>
+    <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
+  </nav>
+  <main class="content"><h1>VMC</h1><p class="prov-inline">📎 Recovered from the ShaolinAssassin wiki · snapshot 20170629133617</p><h1><strong>Virtual Memory Cards</strong></h1>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>About VMC :</em></h2>
+<p>The very first time a game is launched, a new folder named “GAME” (ex : Crash Bandicoot) will be created into your POPS directory – one separate folder for each game. This folder contains 2 files – SLOT0.VMC &amp; SLOT1.VMC, which are your VMCs.</p>
+<pre><code>
+POPS/Crash Bandicoot.VCD
+POPS/Crash Bandicoot/SLOT0.VMC
+POPS/Crash Bandicoot/SLOT1.VMC
+
+</code></pre>
+<p>If you know how to hexedit POPStarter, you can change that behaviour to have only 1 VMC created – or not at all. Check the <a href="../wiki/configuration-table.html">configuration table</a> to know how to change the default setting (offset $429).</p>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>Setting a path for the VMC folder :</em></h2>
+<p>Here’s how to change the destination VMC folder of your games :<br />
+Let’s say your game is MY_GAME.VCD. The VMCs are saved to POPS/MY_GAME/. You want the VMCs to be saved into POPS/BLAHBLAH/ instead.</p>
+<ol>
+<li>
+<p>Create an empty text file;</p>
+</li>
+<li>
+<p>Write BLAHBLAH into it;</p>
+</li>
+<li>
+<p>Save it as VMCDIR.TXT;</p>
+</li>
+<li>
+<p>Copy VMCDIR.TXT to POPS/MY_GAME/</p>
+</li>
+</ol>
+<p>Example :</p>
+<pre><code>
+mass:/POPS/MY_GAME.VCD
+mass:/POPS/MY_GAME/VMCDIR.TXT
+mass:/POPS/BLAHBLAH/SLOT0.VMC
+mass:/POPS/BLAHBLAH/SLOT1.VMC
+
+</code></pre>
+<p><strong>Notes :</strong></p>
+<ul>
+<li>
+<p>All the POPStarter files (TROJANs, PATCHes, CHEATS.TXT...) will still be loaded from /POPS/MY_GAME/, but POPS will use the VMCs that are in /POPS/BLAHBLAH/</p>
+</li>
+<li>
+<p>Characters that are obviously not allowed are / \ and :</p>
+</li>
+<li>
+<p>VMCDIR.TXT will not be loaded if it’s bigger than 103 bytes or if it contains more than 1 line.</p>
+</li>
+<li>
+<p>Target folder must remain in POPS folder.</p>
+</li>
+<li>
+<p>This feature is useful when you are several users and want to use different VMCs. Each user can have his own VMC folder.</p>
+</li>
+<li>
+<p>If you want to use a single pair of VMCs for ALL your games, place the VMCDIR.TXT file in POPS folder. The VMCs will not be overwritten but mounted and loaded, and you will be able to save in them with no data loss.</p>
+</li>
+</ul>
+<p>Example :</p>
+<pre><code>
+smb:/YourSharedFolder/POPS/Crash Bandicoot.VCD
+smb:/YourSharedFolder/POPS/Tekken.VCD
+smb:/YourSharedFolder/POPS/Castlevania - Symphony of the night.VCD
+smb:/YourSharedFolder/POPS/VMCDIR.TXT
+smb:/YourSharedFolder/POPS/SAVES/SLOT0.VMC
+smb:/YourSharedFolder/POPS/SAVES/SLOT1.VMC
+
+</code></pre>
+<p>with SAVES written into smb:/YourSharedFolder/POPS/VMCDIR.TXT</p>
+<p>Here the 3 games mentionned will use smb:/YourSharedFolder/POPS/SAVES/SLOT0.VMC and smb:/YourSharedFolder/POPS/SAVES/SLOT1.VMC as VMCs with no issue.</p>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>Additional notes :</em></h2>
+<ul>
+<li>No physical MC support ATM – would be too slow.</li>
+</ul>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>Related stuff :</em></h2>
+<p>You may want to give a look at this :</p>
+<ul>
+<li>
+<p>[VMC] <a href="../wiki/pmc-to-vmc.html">Use your PS1 MC saves with POPStarter</a></p>
+</li>
+<li>
+<p>[VMC] <a href="../wiki/vmc-to-pmc.html">Use your VMC saves on a PS1 retail console</a></p>
+</li>
+</ul>
+<p>______________________________________________________________________________________________________________</p>
+<h3><a href="../wiki/index.html"><strong>Index</strong></a></h3><p style="margin-top:26px"><a class="pill" href="../multidisc.html">Related curated section → Multi-disc & VMC</a></p></main>
+</div>
+<footer>
+  <p><b>POPStarter Documentation Archive</b> — community-recovered from the Wayback Machine
+  (ShaolinAssassin's <code>popstarter-documentation-stuff</code> wiki) and krHACKen's r13 changelog,
+  cross-checked and merged across snapshots. Built for the POPSLoader project.</p>
+  <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
+  emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
+  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed.</p>
+</footer>
+<script src="../assets/app.js"></script>
+</body></html>

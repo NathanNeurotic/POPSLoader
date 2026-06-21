@@ -1,0 +1,226 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Popstarter9 · POPStarter Docs</title>
+<meta name="description" content="Resurrected, searchable POPStarter documentation — cheats, patches, config, storage, multi-disc, IGR and downloads.">
+<link rel="stylesheet" href="../assets/style.css">
+</head><body data-base="../">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu">☰</button>
+  <a class="brand" href="../index.html"><span class="logo">P1</span>
+    POPStarter&nbsp;Docs <small>· archive</small></a>
+  <div class="search">
+    <span class="ico">🔎</span>
+    <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar"><h4>Documentation</h4><a href="../index.html"><span class="em">🏠</span>Home</a>
+<a href="../getting-started.html"><span class="em">🚀</span>Getting Started</a>
+<a href="../storage.html"><span class="em">💾</span>Storage Backends</a>
+<a href="../cheats.html"><span class="em">🎮</span>Cheats</a>
+<a href="../compatibility.html"><span class="em">🩹</span>Patches & TROJANs</a>
+<a href="../igr.html"><span class="em">🎯</span>IGR & Hotkeys</a>
+<a href="../config.html"><span class="em">🔧</span>Config Table</a>
+<a href="../multidisc.html"><span class="em">💿</span>Multi-disc & VMC</a>
+<a href="../troubleshooting.html"><span class="em">🛠️</span>Troubleshooting</a>
+<a href="../downloads.html"><span class="em">📦</span>Downloads</a>
+<a href="../history.html"><span class="em">📜</span>History</a>
+    <h4>Reference</h4>
+    <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
+  </nav>
+  <main class="content"><h1>Popstarter9</h1><p class="prov-inline">📎 Recovered from the ShaolinAssassin wiki · snapshot 20200804035332</p><h1><strong>POPStarter Rev 9 – Readme [2013/04/10]</strong></h1>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>LAUNCHER Bundle</em></h2>
+<pre><code>*********************************************
+*  POPStarter Revision 9 [LAUNCHER Bundle]  *
+*********************************************
+[ SUITABLE FOR EXECUTION FROM OTHER DEVICES ]
+#############################################
+----------------
+PACKAGE CONTENTS
+----------------
+__common/POPS/disc0 = Original virtual CD-ROM image of SLBB-00001
+PP.YOUR_GAME_PARTITION/EXECUTE.ELF = The emulator, encapsulated in the POPStarter container (ELF)
+LAUNCHER.ELF = The launcher that executes &quot;EXECUTE.ELF&quot;
+CUE2POPS_v1.zip = BIN/CUE to IMAGE0.VCD conversion tool v1.0
+README.TXT = This file
+---------------------
+EMULATOR INSTALLATION
+---------------------
+1) Mount the partition &quot;__common&quot; and create a directory called &quot;POPS&quot; (UPPERCASE) into it's root;
+2) Open the &quot;POPS&quot; directory you've just created and put the file &quot;disc0&quot; into it;
+3) Hardcode the name of your PlayStation game partition in &quot;LAUNCHER.ELF&quot; (31 CHARACTERS MAX, TERMINATED WITH 00h),
+at offset 60h (decimal 96);
+4) Mount the PlayStation game partition and put the file &quot;EXECUTE.ELF&quot; into it's root,
+5) Copy your modified &quot;LAUNCHER.ELF&quot; anywhere you want to run it from.
+-----------------
+GAME INSTALLATION
+-----------------
+1) Dump your game as BIN/CUE with your favorite disc replication software (must output a raw Mode 2 disc image and an ASCII cue sheet);
+2) Convert it to a POPS virtual CD-ROM image with &quot;BIN/CUE to IMAGE0.VCD conversion tool v1.0&quot; (CUE2POPS.EXE);
+3) Create a parent partition in your PS2 HDD (example of a partition name : PP.PBPX-95000.MY_GAME);
+4) Transfer your virtual CD-ROM image (HAVE TO BE RENAMED AS IMAGE0.VCD, UPPERCASE) to the root of the partition you've just created;
+5) Put the file &quot;EXECUTE.ELF&quot; into the root of the game partition;
+6) Not detailed here : Set up your game partition info/icons.
+You may need uLaunchELF 4.42_ev and pfsshell-0.2a...
+-------------
+EXECUTION MAP
+-------------
+somedevice:/LAUNCHER.ELF -&amp;#62; hdd0:/PP.PLAYSTATION_GAME_PARTITION/EXECUTE.ELF -&amp;#62; POPS is running
+* Firstly, LAUNCHER.ELF is executed by the user. Then LAUNCHER.ELF executes EXECUTE.ELF
+- LAUNCHER.ELF have to know the location of EXECUTE.ELF, so you must hardcode the partition name at LAUNCHER.ELF's offset 60h.
+- LAUNCHER.ELF can be renamed if necessary.
+- EXECUTE.ELF can NOT be renamed or altered in any way, and have to be placed in the root of the game partition (along with IMAGE0.VCD)
+- EXECUTE.ELF can NOT run directly. You must launch it by executing LAUNCHER.ELF
+-----------------------------------
+HIDING THE PARTITION IN THE HDD OSD
+-----------------------------------
+Optionally to BOOT2 = NOBOOT, you can hide the game partition in the PlayStation 2 HDD browser.
+By replacing the parent partition prefix &quot;PP.&quot; with &quot;___&quot; (_ three times) and putting at least one &quot;.&quot; (dot) in the partition name.
+Example :
+PP.MY_GAME [VISIBLE]
+___MY_GAME [WRONG !]
+___MY.GAME [HIDDEN]
+The system partition prefix is normally &quot;__&quot;, but due to a container limitation, the partition name must comply that particular syntax.
+--------------------
+VIRTUAL MEMORY CARDS
+--------------------
+VMCs are created by the emulator in __common/POPS/. One separate directory for each game partition.
+The container truncates the partition prefix, so make sure you always name your partitions with the parent partition prefix (PP.) or the hidden partition prefix (___); otherwise it will truncate the game name.
+---------------
+VIRTUAL CD-ROMs
+---------------
+Have to be named &quot;IMAGE0.VCD&quot; and located in the root of the game partition.
+One copy of the original &quot;disc0&quot; have to be placed in __common/POPS/
+--------------------
+MBR CALLBACK aka IGR
+--------------------
+Your pad does not respond after pressing L1+START+SELECT ? Just disconnect the second pad or use the second pad to validate your choice o_O.
+kHn, 2013/04/09
+
+</code></pre>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>PATINFO/KEXEC Bundle</em></h2>
+<pre><code>************************************************
+* POPStarter Revision 9 [PATINFO/KEXEC Bundle] *
+************************************************
+[      SUITABLE FOR HDD OSD INSTALLATIONS      ]
+################################################
+----------------
+PACKAGE CONTENTS
+----------------
+__common/POPS/disc0 = Original virtual CD-ROM image of SLBB-00001
+PP.YOUR_GAME_PARTITION/EXECUTE.KELF = The emulator, encapsulated in the POPStarter container (KryptoELF)
+CUE2POPS_v1.zip = BIN/CUE to IMAGE0.VCD conversion tool v1.0
+README.TXT = This file
+---------------------
+EMULATOR INSTALLATION
+---------------------
+1) Mount the partition &quot;__common&quot; and create a directory called &quot;POPS&quot; (UPPERCASE) into it's root;
+2) Open the &quot;POPS&quot; directory you've just created and put the file &quot;disc0&quot; into it;
+3) Mount the PlayStation game partition and put the file &quot;EXECUTE.KELF&quot; into it's root, OR raw-write &quot;EXECUTE.KELF&quot; to the PATINFO field of the game partition.
+-----------------
+GAME INSTALLATION
+-----------------
+1) Dump your game as BIN/CUE with your favorite disc replication software (must output a raw Mode 2 disc image and an ASCII cue sheet);
+2) Convert it to a POPS virtual CD-ROM image with &quot;BIN/CUE to IMAGE0.VCD conversion tool v1.0&quot; (CUE2POPS.EXE);
+3) Create a parent partition in your PS2 HDD (example of a partition name : PP.PBPX-95000.MY_GAME)
+4) Transfer your virtual CD-ROM image (HAVE TO BE RENAMED AS IMAGE0.VCD, UPPERCASE) to the root of the partition you've just created
+5) Put the file &quot;EXECUTE.KELF&quot; into the root of the game partition, OR raw-write &quot;EXECUTE.KELF&quot; to the PATINFO field of the game partition.
+6) Not detailed here : Set up your game partition info/icons
+You may need uLaunchELF 4.42_ev and pfsshell-0.2a...
+--------------------
+VIRTUAL MEMORY CARDS
+--------------------
+VMCs are created by the emulator in __common/POPS/. One separate directory for each game partition.
+The container truncates the partition prefix, so make sure you always name your partitions with the parent partition prefix (PP.); otherwise it will truncate the game name.
+---------------
+VIRTUAL CD-ROMs
+---------------
+Have to be named &quot;IMAGE0.VCD&quot; and located in the root of the game partition.
+One copy of the original &quot;disc0&quot; have to be placed in __common/POPS/
+--------------------
+MBR CALLBACK aka IGR
+--------------------
+Your pad does not respond after pressing L1+START+SELECT ? Just disconnect the second pad or use the second pad to validate your choice o_O.
+kHn, 2013/04/09
+
+</code></pre>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>PORTABLE Bundle</em></h2>
+<pre><code>*********************************************
+*  POPStarter Revision 9 [PORTABLE Bundle]  *
+*********************************************
+[ SUITABLE FOR EXECUTION FROM OTHER DEVICES ]
+#############################################
+----------------
+PACKAGE CONTENTS
+----------------
+__common/POPS/disc0 = Original virtual CD-ROM image of SLBB-00001
+POPSTARTER_REV9.ELF = The emulator, encapsulated in the POPStarter container (Stand alone ELF)
+CUE2POPS_v1.zip = BIN/CUE to IMAGE0.VCD conversion tool v1.0
+README.TXT = This file
+---------------------
+EMULATOR INSTALLATION
+---------------------
+1) Mount the partition &quot;__common&quot; and create a directory called &quot;POPS&quot; (UPPERCASE) into it's root;
+2) Open the &quot;POPS&quot; directory you've just created and put the file &quot;disc0&quot; into it;
+3) Hardcode the name of your PlayStation game partition in &quot;POPSTARTER_REV9.ELF&quot; (31 CHARACTERS MAX, TERMINATED WITH 00h), at offset 60h (decimal 96);
+4) Copy your modified &quot;POPSTARTER_REV9.ELF&quot; anywhere you want to run it from.
+-----------------
+GAME INSTALLATION
+-----------------
+1) Dump your game as BIN/CUE with your favorite disc replication software (must output a raw Mode 2 disc image and an ASCII cue sheet);
+2) Convert it to a POPS virtual CD-ROM image with &quot;BIN/CUE to IMAGE0.VCD conversion tool v1.0&quot; (CUE2POPS.EXE);
+3) Create a parent partition in your PS2 HDD (example of a partition name : PP.PBPX-95000.MY_GAME);
+4) Transfer your virtual CD-ROM image (HAVE TO BE RENAMED AS IMAGE0.VCD, UPPERCASE) to the root of the partition you've just created;
+You may need uLaunchELF 4.42_ev and pfsshell-0.2a...
+-------------
+EXECUTION MAP
+-------------
+somedevice:/POPSTARTER_REV9.ELF -&amp;#62; POPS is running
+* POPSTARTER_REV9.ELF can be run from any device. Unlike the &quot;LAUNCHER Bundle&quot;, it does not require another ELF to be copied to the HDD.
+- POPSTARTER_REV9.ELF have to know which partition to mount, so you must hardcode the partition name at POPSTARTER_REV9.ELF's offset 60h.
+- POPSTARTER_REV9.ELF can be renamed if necessary.
+-----------------------------------
+HIDING THE PARTITION IN THE HDD OSD
+-----------------------------------
+Optionally to BOOT2 = NOBOOT, you can hide the game partition in the PlayStation 2 HDD browser.
+By replacing the parent partition prefix &quot;PP.&quot; with &quot;___&quot; (_ three times) and putting at least one &quot;.&quot; (dot) in the partition name.
+Example :
+PP.MY_GAME [VISIBLE]
+___MY_GAME [WRONG !]
+___MY.GAME [HIDDEN]
+The system partition prefix is normally &quot;__&quot;, but due to a container limitation, the partition name must comply that particular syntax.
+--------------------
+VIRTUAL MEMORY CARDS
+--------------------
+VMCs are created by the emulator in __common/POPS/. One separate directory for each game partition.
+The container truncates the partition prefix, so make sure you always name your partitions with the parent partition prefix (PP.) or the hidden partition prefix (___); otherwise it will truncate the game name.
+---------------
+VIRTUAL CD-ROMs
+---------------
+Have to be named &quot;IMAGE0.VCD&quot; and located in the root of the game partition.
+One copy of the original &quot;disc0&quot; have to be placed in __common/POPS/
+--------------------
+MBR CALLBACK aka IGR
+--------------------
+Your pad does not respond after pressing L1+START+SELECT ? Just disconnect the second pad or use the second pad to validate your choice o_O.
+kHn, 2013/04/10
+
+</code></pre>
+<p>______________________________________________________________________________________________________________</p>
+<h3><a href="../wiki/index.html"><strong>Index</strong></a></h3></main>
+</div>
+<footer>
+  <p><b>POPStarter Documentation Archive</b> — community-recovered from the Wayback Machine
+  (ShaolinAssassin's <code>popstarter-documentation-stuff</code> wiki) and krHACKen's r13 changelog,
+  cross-checked and merged across snapshots. Built for the POPSLoader project.</p>
+  <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
+  emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
+  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed.</p>
+</footer>
+<script src="../assets/app.js"></script>
+</body></html>

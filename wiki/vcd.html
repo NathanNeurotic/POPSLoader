@@ -1,0 +1,80 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VCD · POPStarter Docs</title>
+<meta name="description" content="Resurrected, searchable POPStarter documentation — cheats, patches, config, storage, multi-disc, IGR and downloads.">
+<link rel="stylesheet" href="../assets/style.css">
+</head><body data-base="../">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu">☰</button>
+  <a class="brand" href="../index.html"><span class="logo">P1</span>
+    POPStarter&nbsp;Docs <small>· archive</small></a>
+  <div class="search">
+    <span class="ico">🔎</span>
+    <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar"><h4>Documentation</h4><a href="../index.html"><span class="em">🏠</span>Home</a>
+<a href="../getting-started.html"><span class="em">🚀</span>Getting Started</a>
+<a href="../storage.html"><span class="em">💾</span>Storage Backends</a>
+<a href="../cheats.html"><span class="em">🎮</span>Cheats</a>
+<a href="../compatibility.html"><span class="em">🩹</span>Patches & TROJANs</a>
+<a href="../igr.html"><span class="em">🎯</span>IGR & Hotkeys</a>
+<a href="../config.html"><span class="em">🔧</span>Config Table</a>
+<a href="../multidisc.html"><span class="em">💿</span>Multi-disc & VMC</a>
+<a href="../troubleshooting.html"><span class="em">🛠️</span>Troubleshooting</a>
+<a href="../downloads.html"><span class="em">📦</span>Downloads</a>
+<a href="../history.html"><span class="em">📜</span>History</a>
+    <h4>Reference</h4>
+    <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
+  </nav>
+  <main class="content"><h1>VCD</h1><p class="prov-inline">📎 Recovered from the ShaolinAssassin wiki · snapshot 20250226173918</p><h1><strong>Convert your PS1 games to VCD format</strong></h1>
+<p>______________________________________________________________________________________________________________</p>
+<p>POPS doesn’t support PS1 games images as .iso. It uses virtual CD-ROM format (VCD files). You need to create a 1:1 image of your PS1 game, first in BIN+CUE format using your favorite dump software, then to convert it to VCD.</p>
+<p>Your BIN image must be a raw MODE2/2352 dump and the CUE a standard ASCII cuesheet. Open the CUE file in a text editor and check the first lines. If you can see “MODE2/2352”, it’s ok.</p>
+<ul>
+<li><strong>How to convert to VCD format :</strong></li>
+</ul>
+<p>To convert your PS1 games from BIN+CUE to VCD format, you need to use the last version of <a href="../wiki/apps-last-version.html">CUE2POPS</a>.</p>
+<ol>
+<li>
+<p>Put your BIN+CUE image of your PS1 game in CUE2POPS folder ;</p>
+</li>
+<li>
+<p>Drag and drop your CUE file on CUE2POPS.EXE file ;</p>
+</li>
+<li>
+<p>A VCD image of your game is created in CUE2POPS folder.</p>
+</li>
+</ol>
+<p><strong>Notes :</strong></p>
+<ul>
+<li>
+<p>You can convert several games at once by running the BULK_CUE2POPS.BAT. BULK_CUE2POPS.BAT must be placed in CUE2POPS folder, along with your PS1 game images, as BIN+CUE ;</p>
+</li>
+<li>
+<p>If your PS1 game images has several .bin file, you can merge them into a single BIN+CUE file using <a href="http://aybabtu.chez.com/cdmage1-02-1b5.zip">CDmage Version 1.02.1 Beta 5</a> ;</p>
+</li>
+<li>
+<p>For multi-disc games, please read this section about how to use the <a href="../wiki/multi-disc.html">swap disc feature</a>.</p>
+</li>
+</ul>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>POPS2CUE :</em></h2>
+<p><strong>Download :</strong> <a href="../wiki/apps-last-version.html">here</a></p>
+<p>This tool reverts back the conversion from VCD to BIN+CUE or (CUE only) files. See the screenshot for commands.</p>
+<p>______________________________________________________________________________________________________________</p>
+<p><a href="../wiki/index.html"><strong>Index</strong></a></p></main>
+</div>
+<footer>
+  <p><b>POPStarter Documentation Archive</b> — community-recovered from the Wayback Machine
+  (ShaolinAssassin's <code>popstarter-documentation-stuff</code> wiki) and krHACKen's r13 changelog,
+  cross-checked and merged across snapshots. Built for the POPSLoader project.</p>
+  <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
+  emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
+  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed.</p>
+</footer>
+<script src="../assets/app.js"></script>
+</body></html>

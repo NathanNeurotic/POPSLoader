@@ -1,0 +1,296 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cheats — CHEATS.TXT · POPStarter Docs</title>
+<meta name="description" content="Resurrected, searchable POPStarter documentation — cheats, patches, config, storage, multi-disc, IGR and downloads.">
+<link rel="stylesheet" href="assets/style.css">
+</head><body data-base="">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu">☰</button>
+  <a class="brand" href="index.html"><span class="logo">P1</span>
+    POPStarter&nbsp;Docs <small>· archive</small></a>
+  <div class="search">
+    <span class="ico">🔎</span>
+    <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar"><h4>Documentation</h4><a href="index.html"><span class="em">🏠</span>Home</a>
+<a href="getting-started.html"><span class="em">🚀</span>Getting Started</a>
+<a href="storage.html"><span class="em">💾</span>Storage Backends</a>
+<a href="cheats.html" class="active"><span class="em">🎮</span>Cheats</a>
+<a href="compatibility.html"><span class="em">🩹</span>Patches & TROJANs</a>
+<a href="igr.html"><span class="em">🎯</span>IGR & Hotkeys</a>
+<a href="config.html"><span class="em">🔧</span>Config Table</a>
+<a href="multidisc.html"><span class="em">💿</span>Multi-disc & VMC</a>
+<a href="troubleshooting.html"><span class="em">🛠️</span>Troubleshooting</a>
+<a href="downloads.html"><span class="em">📦</span>Downloads</a>
+<a href="history.html"><span class="em">📜</span>History</a>
+    <h4>Reference</h4>
+    <a href="wiki/index.html"><span class="em">📚</span>All wiki pages</a>
+  </nav>
+  <main class="content"><h1>Cheats — CHEATS.TXT</h1><p class="lead">POPStarter's embedded cheat engine. Codes live in a CHEATS.TXT in the game's VMC folder; always start it with <code>$SAFEMODE</code>. Every documented $command below.</p><div class="callout red"><div class="h">⚠ Unverified / caution</div>Lost config-table &#x27;Default values&#x27; graphic and the official all-in-one sample CHEATS.TXT - Present in an INFO box. The wiki&#x27;s default-values IMAGE was not OCR&#x27;d; the defaults on the site come instead from a direct hexdump of the shipped r13 ELF (more authoritative). The official all-in-one sample CHEATS.TXT download is NOT recoverable (every Wayback snapshot 302s to an expired Bitbucket S3 URL). Mark both as documented-but-asset-unrecovered.</div>
+<div class="callout red"><div class="h">⚠ Unverified / caution</div>&#x27;Root CHEATS.TXT blocks per-game CHEATS.TXT&#x27; (base claim) - Present a clarifying note: the recovered wiki only documents one blocking case - the general-note priority rule&#x27;s single exception where two CHEATS.TXT load at once and one changes the video mode. A general &#x27;root blocks per-game&#x27; is otherwise NOT confirmed; the override rule is that the VMC-folder copy WINS. Confidence: community/unverified for the broad claim.</div><h2>Command reference</h2><div class="cards"><div class="card" id="safemode"><h3>$SAFEMODE <span class="badge primary">primary</span> <span class="cat-chip">cheats</span></h3>
+<div class="field"><b>Effect:</b> Gates the cheat engine so codes only apply after POPS has left the PS1 OSD/BIOS. Recommended as the first line of every CHEATS.TXT. Without it, raw codes that touch the OSD-load region can crash POPS on startup.</div>
+<div class="field"><b>Scope:</b> CHEATS.TXT global or per-game. Engine present since WIP06 OBT01; $SAFEMODE itself was made functional in Beta 12 (2015-11-24).</div>
+<div class="field"><b>Conflicts:</b> None functional; it is a timing gate, not a code.</div>
+<div class="ex">$SAFEMODE</div>
+<div class="prov">📎 ShaolinAssassin wiki special-cheats (Wayback 20170629123253 / 20220218153800); krHACKen r13 changelog Beta 12 &#x27;Bugfixed: $SAFEMODE not working&#x27; (Pastebin 719TCAd5)</div>
+</div>
+<div class="card" id="smooth"><h3>$SMOOTH <span class="badge primary">primary</span> <span class="cat-chip">cheats</span></h3>
+<div class="field"><b>Effect:</b> Enables smooth (bilinear) texture mapping at startup. Underlying raw value is &#x27;$S0003390 00000001&#x27;. Live in-game toggle: Select+L1+R2 = enable, Select+L2+R1 = disable.</div>
+<div class="field"><b>Scope:</b> CHEATS.TXT global or per-game. Added r13 WIP05/WIP06 era. Effect is subtle.</div>
+<div class="field"><b>Conflicts:</b> None; can be toggled live even when set at startup.</div>
+<div class="ex">$SMOOTH</div>
+<div class="prov">📎 ShaolinAssassin wiki special-cheats; krHACKen r13 changelog &#x27;Press Select+L1+R2 to enable / Select+L2+R1 to disable the smooth texture mapping&#x27; (Pastebin 719TCAd5)</div>
+</div>
+<div class="card" id="nopal"><h3>$NOPAL <span class="badge primary">primary</span> <span class="cat-chip">cheats</span></h3>
+<div class="field"><b>Effect:</b> Disables POPStarter&#x27;s automatic PAL patcher (a PAL game then runs in POPS native NTSC). Equivalent to the stock PATCH_9.BIN. Not meant to convert NTSC games to PAL. (Changelog-sourced, not in the wiki: since Beta 13 the PAL patcher auto-disables when GSM&#x27;s XBRA+GSM magics are in memory, so $NOPAL after launching GSModeSelector is no longer needed.)</div>
+<div class="field"><b>Scope:</b> CHEATS.TXT global or per-game.</div>
+<div class="field"><b>Conflicts:</b> Opposes $FORCEPAL (don&#x27;t set both). Same effect as stock PATCH_9.BIN and config offset $42A=0x00 / NO_PAL.PPF.</div>
+<div class="ex">$NOPAL</div>
+<div class="prov">📎 ShaolinAssassin wiki special-cheats; krHACKen r13 changelog Beta 13 GSM note (Pastebin 719TCAd5)</div>
+</div>
+<div class="card" id="forcepal"><h3>$FORCEPAL <span class="badge primary">primary</span> <span class="cat-chip">cheats</span></h3>
+<div class="field"><b>Effect:</b> Forces the PAL patcher (POPS runs PAL) AND patches the BIOS region code to Euro (boot screen shows in PAL). For PAL VCDs whose bootsector lacks valid license text. Equivalent to PATCH_8.BIN.</div>
+<div class="field"><b>Scope:</b> CHEATS.TXT global or per-game. Added Beta 12 (2015-11-24).</div>
+<div class="field"><b>Conflicts:</b> Opposes $NOPAL.</div>
+<div class="ex">$FORCEPAL</div>
+<div class="prov">📎 ShaolinAssassin wiki special-cheats; krHACKen r13 changelog Beta 12 &#x27;Added $FORCEPAL&#x27; (Pastebin 719TCAd5)</div>
+</div>
+<div class="card" id="fakelc"><h3>$FAKELC <span class="badge primary">primary</span> <span class="cat-chip">cheats</span></h3>
+<div class="field"><b>Effect:</b> Loads a null LibCrypt magic word into the cop0 register, for discs with messed-up LibCrypt protection.</div>
+<div class="field"><b>Scope:</b> CHEATS.TXT per-game. Added in the r13 WIP06 cheat-engine era. Beta 13 fixed &#x27;the LC fix was flushed and $FAKELC could not set it up&#x27;.</div>
+<div class="field"><b>Conflicts:</b> If it fails to stop freezing (e.g. Jackie Chan Stuntmaster PAL early batch lacking LibCrypt), use an explicit LibCrypt code block instead.</div>
+<div class="ex">$FAKELC</div>
+<div class="prov">📎 ShaolinAssassin wiki special-cheats; krHACKen r13 changelog Beta 13 (Pastebin 719TCAd5)</div>
+</div>
+<div class="card" id="compatibility-0x"><h3>$COMPATIBILITY_0x## <span class="badge primary">primary</span> <span class="cat-chip">cheats</span></h3>
+<div class="field"><b>Effect:</b> Activates a POPS compatibility mode at runtime; ## = hex 01-07. Textual equivalent of dropping the matching PATCH_#.BIN. You may write as many lines as you want (subject to the no-combine rule).</div>
+<div class="field"><b>Scope:</b> CHEATS.TXT global or per-game. Fixed (previously broken) in Beta 13 (2015-12-07).</div>
+<div class="field"><b>Conflicts:</b> Modes 0x01/0x02/0x03/0x05 poke CD status and MUST NOT be combined. 0x04/0x06/0x07 combine freely. Hardcode-equivalent: config offsets $418-$41F.</div>
+<div class="ex">$COMPATIBILITY_0x04</div>
+<div class="prov">📎 ShaolinAssassin wiki special-cheats (Wayback 20170626021721 / 20220218153800); krHACKen r13 changelog Beta 13 (Pastebin 719TCAd5)</div>
+</div>
+<div class="card" id="codecache-addon-0"><h3>$CODECACHE_ADDON_0 <span class="badge primary">primary</span> <span class="cat-chip">cheats</span></h3>
+<div class="field"><b>Effect:</b> For games that lag badly or stall randomly when mode 0x04 doesn&#x27;t help. Most games STOP working with it - use sparingly per-game.</div>
+<div class="field"><b>Scope:</b> CHEATS.TXT per-game. Documented from the 2017-10-28 wiki revision.</div>
+<div class="field"><b>Conflicts:</b> Breaks most titles; specific lag/stall cases only.</div>
+<div class="ex">$CODECACHE_ADDON_0</div>
+<div class="prov">📎 ShaolinAssassin wiki special-cheats (Wayback 20190403162824 / 20220218153800)</div>
+</div>
+<div class="card" id="subcdstatus"><h3>$SUBCDSTATUS <span class="badge primary">primary</span> <span class="cat-chip">cheats</span></h3>
+<div class="field"><b>Effect:</b> A variant of $COMPATIBILITY_0x05 (sub-CD status handling).</div>
+<div class="field"><b>Scope:</b> CHEATS.TXT per-game. Documented from the 2017-10-28 wiki revision.</div>
+<div class="field"><b>Conflicts:</b> As a 0x05 variant it pokes CD status; don&#x27;t stack with 0x01/0x02/0x03.</div>
+<div class="ex">$SUBCDSTATUS</div>
+<div class="prov">📎 ShaolinAssassin wiki special-cheats (Wayback 20190403162824 / 20220218153800)</div>
+</div>
+<div class="card" id="480p"><h3>$480p <span class="badge primary">primary</span> <span class="cat-chip">cheats</span></h3>
+<div class="field"><b>Effect:</b> Forces 480p output. Marked &#x27;NOT reliable ATM&#x27; in the wiki. Hardcode-equivalent: config offset $42A=0x02.</div>
+<div class="field"><b>Scope:</b> CHEATS.TXT per-game.</div>
+<div class="field"><b>Conflicts:</b> NOT compatible with $XPOS/$YPOS/$DWSTRETCH/$DWCROP. Some games (e.g. Dead Or Alive) output an unsupported 480p signal.</div>
+<div class="ex">$480p</div>
+<div class="prov">📎 ShaolinAssassin wiki special-cheats (Wayback 20170629123253 / 20220218153800); config-table wiki $42A</div>
+</div>
+<div class="card" id="hdtvfix"><h3>$HDTVFIX <span class="badge primary">primary</span> <span class="cat-chip">cheats</span></h3>
+<div class="field"><b>Effect:</b> Enables a SetGsCrt hack (static interlace param). Helps HDTVs/LED TVs that can&#x27;t deal with POPS interlaced resolutions over component (otherwise green screens / garbage). Hardcode-equivalent: config offset $412=0x01.</div>
+<div class="field"><b>Scope:</b> CHEATS.TXT per-game.</div>
+<div class="field"><b>Conflicts:</b> INCOMPATIBLE with some CRT TVs (leave off on CRTs).</div>
+<div class="ex">$HDTVFIX</div>
+<div class="prov">📎 ShaolinAssassin wiki special-cheats (Wayback 20170629123253 / 20220218153800); config-table wiki $412</div>
+</div>
+<div class="card" id="scanlines"><h3>$SCANLINES <span class="badge primary">primary</span> <span class="cat-chip">cheats</span></h3>
+<div class="field"><b>Effect:</b> Enables the scanlines generator - draws horizontal raster lines to mimic old CRT TVs/tube monitors.</div>
+<div class="field"><b>Scope:</b> CHEATS.TXT per-game. Present in the 2020-06-26 wiki revision; NOT in the 2017 revisions.</div>
+<div class="field"><b>Conflicts:</b> Cosmetic; none documented.</div>
+<div class="ex">$SCANLINES</div>
+<div class="prov">📎 ShaolinAssassin wiki special-cheats (Wayback 20220218153800, &#x27;Updated 2020-06-26&#x27;). MISSED BY BASE REPORT.</div>
+</div>
+<div class="card" id="xpos"><h3>$XPOS_#### <span class="badge primary">primary</span> <span class="cat-chip">cheats</span></h3>
+<div class="field"><b>Effect:</b> Centers/shifts the screen horizontally. #### is DECIMAL (no negatives). Default 640; below 640 moves left, above moves right.</div>
+<div class="field"><b>Scope:</b> CHEATS.TXT per-game. PAL/NTSC modes only.</div>
+<div class="field"><b>Conflicts:</b> NOT compatible with $480p.</div>
+<div class="ex">$XPOS_640</div>
+<div class="prov">📎 ShaolinAssassin wiki special-cheats (Wayback 20170629123253 confirms &#x27;Default value : 640&#x27;)</div>
+</div>
+<div class="card" id="ypos"><h3>$YPOS_## <span class="badge primary">primary</span> <span class="cat-chip">cheats</span></h3>
+<div class="field"><b>Effect:</b> Centers/shifts the screen vertically. DECIMAL (no negatives). No default - depends on the game; higher moves down.</div>
+<div class="field"><b>Scope:</b> CHEATS.TXT per-game. PAL/NTSC only. Was broken in OBT15, fixed OBT16.</div>
+<div class="field"><b>Conflicts:</b> NOT compatible with $480p.</div>
+<div class="ex">$YPOS_20</div>
+<div class="prov">📎 ShaolinAssassin wiki special-cheats (Wayback 20170629123253 / 20220218153800)</div>
+</div>
+<div class="card" id="dwstretch"><h3>$DWSTRETCH_#### <span class="badge primary">primary</span> <span class="cat-chip">cheats</span></h3>
+<div class="field"><b>Effect:</b> Stretches the display horizontally. DECIMAL. Default 2559; increase to stretch right, decrease to stretch left.</div>
+<div class="field"><b>Scope:</b> CHEATS.TXT per-game. PAL/NTSC only.</div>
+<div class="field"><b>Conflicts:</b> NOT compatible with $480p.</div>
+<div class="ex">$DWSTRETCH_2559</div>
+<div class="prov">📎 ShaolinAssassin wiki special-cheats (Wayback 20170629123253 confirms &#x27;Default value : 2559&#x27;)</div>
+</div>
+<div class="card" id="dwcrop"><h3>$DWCROP_#### <span class="badge primary">primary</span> <span class="cat-chip">cheats</span></h3>
+<div class="field"><b>Effect:</b> Reduces/expands the display area width. DECIMAL. Maximum 2560; decrease to crop on the right.</div>
+<div class="field"><b>Scope:</b> CHEATS.TXT per-game. PAL/NTSC only.</div>
+<div class="field"><b>Conflicts:</b> NOT compatible with $480p.</div>
+<div class="ex">$DWCROP_2560</div>
+<div class="prov">📎 ShaolinAssassin wiki special-cheats (Wayback 20170629123253 confirms &#x27;Maximum value : 2560&#x27;)</div>
+</div>
+<div class="card" id="widescreen"><h3>$WIDESCREEN <span class="badge primary">primary</span> <span class="cat-chip">cheats</span></h3>
+<div class="field"><b>Effect:</b> Enables the POPS GTE widescreen hack, forces 16:9. Does NOT fix HUDs, text/fonts, menus or 2D backgrounds (hack unfinished).</div>
+<div class="field"><b>Scope:</b> CHEATS.TXT per-game. Documented from 2017-10-28 wiki revision.</div>
+<div class="field"><b>Conflicts:</b> Pick one of $WIDESCREEN / $ULTRA_WIDESCREEN / $EYEFINITY.</div>
+<div class="ex">$WIDESCREEN</div>
+<div class="prov">📎 ShaolinAssassin wiki special-cheats (Wayback 20190403162824 / 20220218153800)</div>
+</div>
+<div class="card" id="ultra-widescreen"><h3>$ULTRA_WIDESCREEN <span class="badge primary">primary</span> <span class="cat-chip">cheats</span></h3>
+<div class="field"><b>Effect:</b> As $WIDESCREEN but wider FOV (matches no standard aspect ratio). No HUD/text/menu fix.</div>
+<div class="field"><b>Scope:</b> CHEATS.TXT per-game.</div>
+<div class="field"><b>Conflicts:</b> Mutually exclusive with $WIDESCREEN / $EYEFINITY.</div>
+<div class="ex">$ULTRA_WIDESCREEN</div>
+<div class="prov">📎 ShaolinAssassin wiki special-cheats (Wayback 20190403162824 / 20220218153800)</div>
+</div>
+<div class="card" id="eyefinity"><h3>$EYEFINITY <span class="badge primary">primary</span> <span class="cat-chip">cheats</span></h3>
+<div class="field"><b>Effect:</b> As $WIDESCREEN but 3x16:9 (triple-wide). No HUD/text/menu fix.</div>
+<div class="field"><b>Scope:</b> CHEATS.TXT per-game.</div>
+<div class="field"><b>Conflicts:</b> Mutually exclusive with $WIDESCREEN / $ULTRA_WIDESCREEN.</div>
+<div class="ex">$EYEFINITY</div>
+<div class="prov">📎 ShaolinAssassin wiki special-cheats (Wayback 20190403162824 / 20220218153800)</div>
+</div>
+<div class="card" id="mute-cdda"><h3>$MUTE_CDDA <span class="badge primary">primary</span> <span class="cat-chip">cheats</span></h3>
+<div class="field"><b>Effect:</b> Mutes CDDA (Red Book) tracks. Done automatically when playing a physical PS1 CD-ROM.</div>
+<div class="field"><b>Scope:</b> CHEATS.TXT per-game. From 2017-10-28 wiki revision.</div>
+<div class="field"><b>Conflicts:</b> Pairs with $UNDO_MUTE_CDDA (opposite).</div>
+<div class="ex">$MUTE_CDDA</div>
+<div class="prov">📎 ShaolinAssassin wiki special-cheats (Wayback 20190403162824 / 20220218153800)</div>
+</div>
+<div class="card" id="undo-mute-cdda"><h3>$UNDO_MUTE_CDDA <span class="badge primary">primary</span> <span class="cat-chip">cheats</span></h3>
+<div class="field"><b>Effect:</b> Unmutes CDDA tracks in PS1CD mode (overrides the automatic mute when reading a physical disc).</div>
+<div class="field"><b>Scope:</b> CHEATS.TXT per-game, PS1CD mode.</div>
+<div class="field"><b>Conflicts:</b> Opposite of $MUTE_CDDA.</div>
+<div class="ex">$UNDO_MUTE_CDDA</div>
+<div class="prov">📎 ShaolinAssassin wiki special-cheats (Wayback 20190403162824 / 20220218153800)</div>
+</div>
+<div class="card" id="mute-vab"><h3>$MUTE_VAB <span class="badge primary">primary</span> <span class="cat-chip">cheats</span></h3>
+<div class="field"><b>Effect:</b> Mutes VAB/VAG/VB+VH-based sound/music. For old games with distorted SFX, wrong samples or noise.</div>
+<div class="field"><b>Scope:</b> CHEATS.TXT per-game.</div>
+<div class="field"><b>Conflicts:</b> Silences SPU-streamed audio; cosmetic tradeoff.</div>
+<div class="ex">$MUTE_VAB</div>
+<div class="prov">📎 ShaolinAssassin wiki special-cheats (Wayback 20190403162824 / 20220218153800)</div>
+</div>
+<div class="card" id="d2ls"><h3>$D2LS <span class="badge primary">primary</span> <span class="cat-chip">cheats</span></h3>
+<div class="field"><b>Effect:</b> &#x27;Left Stick is the D-Pad&#x27; code + stay on Digital mode. Enables analog-stick support for games that don&#x27;t support it natively. Recommended default; try $D2LS_ALT if it fails.</div>
+<div class="field"><b>Scope:</b> CHEATS.TXT per-game. Dedicated D2LS wiki page exists.</div>
+<div class="field"><b>Conflicts:</b> Use one of $D2LS / $D2LS_ALT, not both.</div>
+<div class="ex">$D2LS</div>
+<div class="prov">📎 ShaolinAssassin wiki special-cheats + &#x27;D2LS&#x27; page (Wayback 20170629123253 / 20220218153800)</div>
+</div>
+<div class="card" id="d2ls-alt"><h3>$D2LS_ALT <span class="badge primary">primary</span> <span class="cat-chip">cheats</span></h3>
+<div class="field"><b>Effect:</b> &#x27;Left Stick is the D-Pad&#x27; code + stay on Analog mode. Alternative when the digital-mode variant fails.</div>
+<div class="field"><b>Scope:</b> CHEATS.TXT per-game.</div>
+<div class="field"><b>Conflicts:</b> Use one of $D2LS / $D2LS_ALT.</div>
+<div class="ex">$D2LS_ALT</div>
+<div class="prov">📎 ShaolinAssassin wiki special-cheats (Wayback 20170629123253 / 20220218153800)</div>
+</div>
+<div class="card" id="novmc0"><h3>$NOVMC0 <span class="badge primary">primary</span> <span class="cat-chip">cheats</span></h3>
+<div class="field"><b>Effect:</b> Use VMC1 only (do not mount VMC0, the first virtual memory card). Hardcode-equivalent partial: config offset $429.</div>
+<div class="field"><b>Scope:</b> CHEATS.TXT per-game. From 2017-10-28 wiki revision.</div>
+<div class="field"><b>Conflicts:</b> Pairs with $NOVMC1; don&#x27;t set both or you have no VMC.</div>
+<div class="ex">$NOVMC0</div>
+<div class="prov">📎 ShaolinAssassin wiki special-cheats (Wayback 20190403162824 / 20220218153800)</div>
+</div>
+<div class="card" id="novmc1"><h3>$NOVMC1 <span class="badge primary">primary</span> <span class="cat-chip">cheats</span></h3>
+<div class="field"><b>Effect:</b> Use VMC0 only (do not mount VMC1, the second virtual memory card).</div>
+<div class="field"><b>Scope:</b> CHEATS.TXT per-game.</div>
+<div class="field"><b>Conflicts:</b> Pairs with $NOVMC0.</div>
+<div class="ex">$NOVMC1</div>
+<div class="prov">📎 ShaolinAssassin wiki special-cheats (Wayback 20190403162824 / 20220218153800)</div>
+</div>
+<div class="card" id="cache1"><h3>$CACHE1 <span class="badge primary">primary</span> <span class="cat-chip">cheats</span></h3>
+<div class="field"><b>Effect:</b> Makes POPS buffer 1 sector instead of the default 16.</div>
+<div class="field"><b>Scope:</b> CHEATS.TXT per-game. Added r13 WIP05/06 era.</div>
+<div class="field"><b>Conflicts:</b> Performance/compatibility tradeoff; default is 16.</div>
+<div class="ex">$CACHE1</div>
+<div class="prov">📎 ShaolinAssassin wiki special-cheats; krHACKen r13 changelog (Pastebin 719TCAd5)</div>
+</div>
+<div class="card" id="usbdelay"><h3>$USBDELAY_# <span class="badge primary">primary</span> <span class="cat-chip">cheats</span></h3>
+<div class="field"><b>Effect:</b> Sets the PFS-wrapper USB delay applied inside POPS (# = a number); smooths streaming on slow USB devices. NOTE: this patches POPS, NOT POPStarter - it does NOT fix &#x27;USB drive not detected&#x27; (use config offset $413 for that).</div>
+<div class="field"><b>Scope:</b> CHEATS.TXT per-game/global. Added r13 WIP05/06 era.</div>
+<div class="field"><b>Conflicts:</b> Beta 13 fixed &#x27;$USBDELAY_# didn&#x27;t coexist with $C0 codes&#x27; - now they coexist. Distinct from the $413 ELF byte.</div>
+<div class="ex">$USBDELAY_5</div>
+<div class="prov">📎 ShaolinAssassin wiki special-cheats; krHACKen r13 changelog (Pastebin 719TCAd5); $413-vs-$USBDELAY distinction from ps2-home debug tutorial t=5311</div>
+</div>
+<div class="card" id="undo-game-fixes"><h3>$UNDO_GAME_FIXES <span class="badge primary">primary</span> <span class="cat-chip">cheats</span></h3>
+<div class="field"><b>Effect:</b> Prevents POPStarter from applying its built-in per-game fixes (re-exposes original bugs). Some fixes became obsolete via later POPS patches, so it may not re-expose every problem (e.g. Crash Bandicoot PAL now works without its fix).</div>
+<div class="field"><b>Scope:</b> CHEATS.TXT per-game. Present in the 2020-06-26 wiki revision.</div>
+<div class="field"><b>Conflicts:</b> Diagnostic/advanced; turns OFF the automated compatibility fixes.</div>
+<div class="ex">$UNDO_GAME_FIXES</div>
+<div class="prov">📎 ShaolinAssassin wiki special-cheats (Wayback 20220218153800, &#x27;Updated 2020-06-26&#x27;)</div>
+</div>
+<div class="card" id="raw-gameshark-ar-code-line-addr-val"><h3>Raw GameShark/AR code line ($&lt;addr&gt; &lt;val&gt;) <span class="badge primary">primary</span> <span class="cat-chip">cheats</span></h3>
+<div class="field"><b>Effect:</b> Any line starting with $ followed by address, a space, then value is applied as a raw cheat. PS1 RAW types 30/50/80/D0 (GameShark/Action Replay) supported; PS2 RAW types 0/1/2 supported.</div>
+<div class="field"><b>Scope:</b> CHEATS.TXT in the game&#x27;s VMC folder (per-game) or in the POPS root (ALL games). Engine present since WIP06 OBT01.</div>
+<div class="field"><b>Conflicts:</b> Each code line MUST have a space between address and value. (Base claim that a root CHEATS.TXT BLOCKS per-game ones is NOT on the wiki - see VMC priority rule and ambiguities.)</div>
+<div class="ex">$800AC402 0800</div>
+<div class="prov">📎 ShaolinAssassin wiki cheat-engine (Wayback 20170629113247)</div>
+</div>
+<div class="card" id="c0-master-code"><h3>C0 master code <span class="badge primary">primary</span> <span class="cat-chip">cheats</span></h3>
+<div class="field"><b>Effect:</b> Some PS1 games require a master/enable code or they crash (e.g. Air Race Championship). ONLY type C0 master codes are supported; type C1 (activation-on-delay-time) are not and &#x27;will not be&#x27; supported.</div>
+<div class="field"><b>Scope:</b> CHEATS.TXT per-game. Beta 13 fixed an &#x27;incorrect load instruction for $C0&#x27; bug and a $USBDELAY/$C0 coexistence bug.</div>
+<div class="field"><b>Conflicts:</b> C1 codes silently unsupported.</div>
+<div class="ex">$C00AB840 1234</div>
+<div class="prov">📎 ShaolinAssassin wiki cheat-engine (Wayback 20170629113247); krHACKen r13 changelog $C0 fixes (Pastebin 719TCAd5)</div>
+</div>
+<div class="card" id="ps1-ps2-raw-conversion-external-mastercode"><h3>PS1-&gt;PS2 RAW conversion / external mastercode <span class="badge primary">primary</span> <span class="cat-chip">cheats</span></h3>
+<div class="field"><b>Effect:</b> To convert a PS1 code to PS2 RAW, add 01000000 to the address and follow the target engine&#x27;s code-type rules. The POPS mastercode for EXTERNAL PS2 cheat devices (ps2rd/CodeBreaker) is 902377F4 0C0902EF - NOT needed when using CHEATS.TXT.</div>
+<div class="field"><b>Scope:</b> Applies when porting external PS1 cheat lists or using a hardware/software PS2 cheat device.</div>
+<div class="field"><b>Conflicts:</b> Do NOT add the 902377F4 mastercode inside CHEATS.TXT.</div>
+<div class="ex">902377F4 0C0902EF</div>
+<div class="prov">📎 ShaolinAssassin wiki cheat-engine (Wayback 20170629113247)</div>
+</div>
+<div class="card" id="rumble-always-on-raw-codes"><h3>Rumble Always On raw codes <span class="badge primary">primary</span> <span class="cat-chip">cheats</span></h3>
+<div class="field"><b>Effect:</b> $00507028 00000001 = Pad 1 rumble always on; $005070B8 00000001 = Pad 2 rumble always on. Pre-listed example raw codes.</div>
+<div class="field"><b>Scope:</b> CHEATS.TXT per-game.</div>
+<div class="field"><b>Conflicts:</b> None.</div>
+<div class="ex">$00507028 00000001</div>
+<div class="prov">📎 ShaolinAssassin wiki special-cheats (Wayback 20190403162824 / 20220218153800)</div>
+</div>
+<div class="card" id="libcrypt-example-block-jackie-chan-stuntmaster-pal"><h3>LibCrypt example block (Jackie Chan Stuntmaster PAL) <span class="badge primary">primary</span> <span class="cat-chip">cheats</span></h3>
+<div class="field"><b>Effect:</b> A complete real LibCrypt fix code block to use when the built-in crack and $FAKELC both fail: $20210CF8 2442FFFF / $20210CFC 7C640000 / $20210D00 00000000 / $20210D04 00000000 / $20210D08 00000000 / $00210D0C 000000FA / $S200009C 1F000000.</div>
+<div class="field"><b>Scope:</b> CHEATS.TXT per-game (Jackie Chan Stuntmaster PAL, also see SCES-01444 entry).</div>
+<div class="field"><b>Conflicts:</b> Use instead of $FAKELC when the disc batch lacks LibCrypt.</div>
+<div class="ex">$20210CF8 2442FFFF (first line of the block)</div>
+<div class="prov">📎 ShaolinAssassin wiki special-cheats (Wayback 20220218153800)</div>
+</div></div><h2>Full wiki sources</h2><div class="grid"><a class="tile" href="wiki/cheat-engine.html"><b>Cheat Engine</b><span>full wiki page</span></a>
+<a class="tile" href="wiki/special-cheats.html"><b>Special Cheats</b><span>full wiki page</span></a>
+<a class="tile" href="wiki/ps1-codes-in-ps2-raw-format.html"><b>PS1 Codes In PS2 Raw Format</b><span>full wiki page</span></a>
+<a class="tile" href="wiki/ps1-codes-in-ps1-raw-format.html"><b>PS1 Codes In PS1 Raw Format</b><span>full wiki page</span></a></div><h2>From the official thread — cheat clarifications</h2>
+<blockquote>
+<p>Sourced from the <a href="https://www.psx-place.com/threads/popstarter.19139/">official psx-place POPStarter thread</a>;<br />
+items marked <strong>krHACKen</strong> are from POPStarter's author and are authoritative.</p>
+</blockquote>
+<ul>
+<li><strong><code>CHEATS.TXT</code> must be UPPERCASE.</strong> A <code>CHEATS.txt</code> is silently ignored on internal HDD/PFS (case-sensitive),<br />
+  even though SMB is tolerant — this is the real root cause behind many "my cheat / <code>$HDTVFIX</code> does nothing on<br />
+  HDD" reports. In uLaunchELF press <strong>R1</strong> to rename <code>CHEATS.txt</code> → <code>CHEATS.TXT</code>. <em>(krHACKen / jolek)</em></li>
+<li><strong><code>$SAFEMODE</code> is ONLY for raw hexadecimal (GameShark/Action-Replay) codes</strong> — the built-in named <code>$</code><br />
+  commands (<code>$IGR#</code>, <code>$NOPAL</code>, <code>$NOIGR</code>, <code>$WIDESCREEN</code>, …) do <strong>not</strong> need it. Leading every file with<br />
+<code>$SAFEMODE</code> is harmless but unnecessary for named commands. <em>(krHACKen)</em></li>
+<li><strong><code>$IGR5</code> is the OPL-style In-Game-Reset</strong> — combo <strong>Select + Start + L1 + L2 + R1 + R2</strong>, with <strong>no<br />
+  YES/NO exit popup</strong>. This is the variant most people actually want for a clean, OPL-like instant exit.<br />
+<em>(krHACKen)</em></li>
+<li><strong>Raw codes:</strong> put them in <code>CHEATS.TXT</code> in the game's VMC folder, prefix <strong>every</strong> code line with <code>$</code>, and<br />
+  lead the file with <code>$SAFEMODE</code>. Some unusual code types simply won't work or will crash the emulation.<br />
+<em>(krHACKen, hand-correcting a user's syntax)</em></li>
+</ul></main>
+</div>
+<footer>
+  <p><b>POPStarter Documentation Archive</b> — community-recovered from the Wayback Machine
+  (ShaolinAssassin's <code>popstarter-documentation-stuff</code> wiki) and krHACKen's r13 changelog,
+  cross-checked and merged across snapshots. Built for the POPSLoader project.</p>
+  <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
+  emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
+  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed.</p>
+</footer>
+<script src="assets/app.js"></script>
+</body></html>

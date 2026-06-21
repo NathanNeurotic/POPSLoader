@@ -1,0 +1,304 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Game Compatibility · POPStarter Docs</title>
+<meta name="description" content="Resurrected, searchable POPStarter documentation — cheats, patches, config, storage, multi-disc, IGR and downloads.">
+<link rel="stylesheet" href="../assets/style.css">
+</head><body data-base="../">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu">☰</button>
+  <a class="brand" href="../index.html"><span class="logo">P1</span>
+    POPStarter&nbsp;Docs <small>· archive</small></a>
+  <div class="search">
+    <span class="ico">🔎</span>
+    <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar"><h4>Documentation</h4><a href="../index.html"><span class="em">🏠</span>Home</a>
+<a href="../getting-started.html"><span class="em">🚀</span>Getting Started</a>
+<a href="../storage.html"><span class="em">💾</span>Storage Backends</a>
+<a href="../cheats.html"><span class="em">🎮</span>Cheats</a>
+<a href="../compatibility.html"><span class="em">🩹</span>Patches & TROJANs</a>
+<a href="../igr.html"><span class="em">🎯</span>IGR & Hotkeys</a>
+<a href="../config.html"><span class="em">🔧</span>Config Table</a>
+<a href="../multidisc.html"><span class="em">💿</span>Multi-disc & VMC</a>
+<a href="../troubleshooting.html"><span class="em">🛠️</span>Troubleshooting</a>
+<a href="../downloads.html"><span class="em">📦</span>Downloads</a>
+<a href="../history.html"><span class="em">📜</span>History</a>
+    <h4>Reference</h4>
+    <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
+  </nav>
+  <main class="content"><h1>Game Compatibility</h1><p class="prov-inline">📎 Recovered from the ShaolinAssassin wiki · snapshot 20160706185742</p><h1><strong>Game Compatibility</strong></h1>
+<p>______________________________________________________________________________________________________________<br />
+<em>[Up-to-date with WIP 06, OBT 13 (2015/12/07)]</em></p>
+<h2><em>Compatibility rates (04/21/2016) :</em></h2>
+<pre><code>
+* MODE (Region) : XX% games playable (partially or perfectly emulated/tested)
+
+</code></pre>
+<ul>
+<li>
+<p>HDD (PAL) : 78% (343/438)</p>
+</li>
+<li>
+<p>HDD (NTSC) : 75% (165/219)</p>
+</li>
+<li>
+<p>USB (PAL) : 79% (298/377)</p>
+</li>
+<li>
+<p>USB (NTSC) : 83% (211/252)</p>
+</li>
+<li>
+<p>SMB (PAL) : 76% (133/174)</p>
+</li>
+<li>
+<p>SMB (NTSC) : 80% (92/114)</p>
+</li>
+</ul>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>Compatibility Lists and Forms :</em></h2>
+<p>These compatibility lists are managed by AlGollan84 (aka Algol aka Allan58) and krHACKen.</p>
+<ul>
+<li><strong>Rev 13 Official Compatibility Lists :</strong></li>
+</ul>
+<table>
+<thead>
+<tr>
+<th><strong>Device</strong></th>
+<th><strong>Compatibility list</strong></th>
+<th><strong>Form to submit reports</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>| HDD | here | here |</p>
+<p>| USB | here | here |</p>
+<p>| SMB | here | here |</p>
+<ul>
+<li>
+<p><strong>EOL Compatibility List</strong> (managed by El_Patas) : here</p>
+</li>
+<li>
+<p><strong>Old Compatibility Lists</strong> (outdated &amp; locked, for history) :</p>
+</li>
+</ul>
+<p>POPStarter Rev 12 : here</p>
+<p>POPS-00001 : here</p>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>Compatibility modes :</em></h2>
+<p>If your game is poorly emulated, you can try to enable a compatibility mode to see if it helps.</p>
+<table>
+<thead>
+<tr>
+<th><strong>Compatibility mode</strong></th>
+<th><strong>Description</strong></th>
+<th><strong>File Name</strong></th>
+<th><strong>Cheat code</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>| 0×01 | help restoring the music/voices in several games | PATCH_1.BIN | $COMPATIBILITY_0×01 |</p>
+<p>| 0×02 | a variant of mode 0×01, with a second hack for not breaking the MDECoding of FMVs (was designed for the Colony Wars series) | PATCH_2.BIN | $COMPATIBILITY_0×02 |</p>
+<p>| 0×03 | can be used if the mode 0×01 doesn’t provide the expected results | PATCH_3.BIN | $COMPATIBILITY_0×03 |</p>
+<p>| 0×04 | prevent the emulator from writing a garbage value in two of the virtual GPU registers (fixes slowdowns, flickering, and many other glitches) | PATCH_4.BIN | $COMPATIBILITY_0×04 |</p>
+<p>| 0×05 | made for fixing the cutscenes of the PAL Resident Evil: Director’s Cut | PATCH_5.BIN | $COMPATIBILITY_0×05 |</p>
+<p>| 0×06 | disable the OSD shell of the emulator’s built-in BIOS, making some games that freeze on startup run | PATCH_6.BIN | $COMPATIBILITY_0×06 |</p>
+<p><strong>Caution :</strong> Modes 0×01, 0×02, 0×03 and 0×05 cannot be enabled in the same time or combined. These are variants of the same hack and they are conflicting, so use only use one of them at a time. Please let us know (at ASSEMblergames) if you managed to solve a problem in your game by forcing modes, so I could integrate the fix in POPStarter.</p>
+<p><strong>How to use a mode ?</strong></p>
+<p>3 options :</p>
+<ol>
+<li>
+<p>Using a PATCH_X.BIN file;</p>
+</li>
+<li>
+<p>Using a CHEATS.TXT file;</p>
+</li>
+<li>
+<p>Hardcoding the mode into POPStarter (see configuration table).</p>
+</li>
+</ol>
+<p><strong>Using PATCH_X.BIN file</strong><br />
+Copy the PATCH file in the VMC directory of your problematic game then test the game;<br />
+If the compatibility mode doesn’t solve any problem in your game, delete the PATCH file from the VMC directory and redo the operations with the next PATCH file.</p>
+<p><strong>Using CHEATS.TXT file</strong><br />
+See 6. Features section.</p>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>Game fixes (manual) :</em></h2>
+<p>In the Game Fixes Archive, you can find some TROJAN files fixing problematic games. Copy the file in the VMC directory of your problematic game.</p>
+<p><strong>List of game fixes :</strong></p>
+<ul>
+<li>
+<p>007 – Demain Ne Meurt Jamais (SLES-02375) – AntiCrash Fix</p>
+</li>
+<li>
+<p>007 – Der Morgen Stirbt Nie (SLES-02376) – AntiCrash Fix</p>
+</li>
+<li>
+<p>007 – Tomorrow Never Dies (SLES-01324) – AntiCrash Fix</p>
+</li>
+<li>
+<p>007 – Tomorrow Never Dies (SLPS-02604) – AntiCrash Fix</p>
+</li>
+<li>
+<p>007 – Tomorrow Never Dies (SLUS-00975) – AntiCrash Fix</p>
+</li>
+<li>
+<p>Casper (SLES-00045) – LoadinFix</p>
+</li>
+<li>
+<p>Casper (SLUS-00162) – LoadinFix</p>
+</li>
+<li>
+<p>Crash Bandicoot Racing (SCPS-10118) – LoadinFix</p>
+</li>
+<li>
+<p>Crash Team Racing (SCUS-94426) – Boot Fix</p>
+</li>
+<li>
+<p>CTR – Crash Team Racing (SCES-02105) – Boot Fix</p>
+</li>
+<li>
+<p>Destruction Derby 2 (SCUS-94350) – AntiCrash Fix</p>
+</li>
+<li>
+<p>Destruction Derby 2 (SIPS-60012)  – AntiCrash Fix</p>
+</li>
+<li>
+<p>Destruction Derby 2 (SLES-00299)  – AntiCrash Fix</p>
+</li>
+<li>
+<p>Future Racer (SLES-03508) – “Boost” Fix + mode 0×04</p>
+</li>
+<li>
+<p>Harry Potter And The Chamber Of Secrets (SLES-03972) – AntiCrash Fix</p>
+</li>
+<li>
+<p>Harry Potter And The Chamber Of Secrets (SLES-03973) – AntiCrash Fix</p>
+</li>
+<li>
+<p>Harry Potter And The Chamber Of Secrets (SLES-03974) – AntiCrash Fix</p>
+</li>
+<li>
+<p>Harry Potter And The Chamber Of Secrets (SLUS-01503) – AntiCrash Fix</p>
+</li>
+<li>
+<p>Harry Potter And The Philosopher’s Stone (SLES-03662) – AntiCrash Fix</p>
+</li>
+<li>
+<p>Harry Potter And The Philosopher’s Stone (SLES-03663) – AntiCrash Fix</p>
+</li>
+<li>
+<p>Harry Potter And The Philosopher’s Stone (SLES-03664) – AntiCrash Fix</p>
+</li>
+<li>
+<p>Harry Potter And The Philosopher’s Stone (SLES-03665) – AntiCrash Fix</p>
+</li>
+<li>
+<p>Harry Potter And The Sorcerer’s Stone (SLUS-01415) – AntiCrash Fix</p>
+</li>
+<li>
+<p>Harry Potter To Kenja No Ishi (SLPS-03355) – AntiCrash Fix</p>
+</li>
+<li>
+<p>Metal Gear Solid (Disc 1) (SLES-01370) – Skip problematic CutScenes</p>
+</li>
+<li>
+<p>Metal Gear Solid (Disc 1) (SLES-01506) – Skip problematic CutScenes</p>
+</li>
+<li>
+<p>Metal Gear Solid (Disc 1) (SLES-01507) – Skip problematic CutScenes</p>
+</li>
+<li>
+<p>Metal Gear Solid (Disc 1) (SLES-01508) – Skip problematic CutScenes</p>
+</li>
+<li>
+<p>Metal Gear Solid (Disc 1) (SLES-01734) – Skip problematic CutScenes</p>
+</li>
+<li>
+<p>Metal Gear Solid (Disc 1) (SLPM-86111) – Skip problematic CutScenes</p>
+</li>
+<li>
+<p>Metal Gear Solid v1.0 (Disc 1) (SLUS-00594) – Skip problematic CutScenes</p>
+</li>
+<li>
+<p>Metal Gear Solid v1.1 (Disc 1) (SLUS-00594) – Skip problematic CutScenes</p>
+</li>
+<li>
+<p>Roadsters (SLES-02326) – AntiCrash Fix</p>
+</li>
+<li>
+<p>Roadsters (SLUS-01024)  – AntiCrash Fix</p>
+</li>
+<li>
+<p>Tomb Raider (PAL Retail) – SkipVSync</p>
+</li>
+<li>
+<p>Tomb Raider (SLUS-00152) – SkipVSync</p>
+</li>
+<li>
+<p>Tomb Raider 2 (SLPS-01200) – SkipVSync</p>
+</li>
+<li>
+<p>Tomb Raider II – Starring Lara Croft (Beta 1997-09-30) – SkipVSync</p>
+</li>
+<li>
+<p>Tomb Raider II – Starring Lara Croft (PAL Retail) – SkipVSync</p>
+</li>
+<li>
+<p>Tomb Raider II – Starring Lara Croft v1.0 (SLUS-00437) – SkipVSync</p>
+</li>
+<li>
+<p>Tomb Raiders (SLPS-00617) – SkipVSync</p>
+</li>
+<li>
+<p>WipEout (SCUS-94301) – AntiCrash Fix</p>
+</li>
+<li>
+<p>WipEout (SIPS-60003)  – AntiCrash Fix</p>
+</li>
+<li>
+<p>WipEout v1.0 (SCES-00010)  – AntiCrash Fix</p>
+</li>
+<li>
+<p>WipEout v1.1 (SCES-00010)  – AntiCrash Fix</p>
+</li>
+</ul>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>Automated fixes :</em></h2>
+<p><a href="../wiki/automated.html">Here</a> is the list of all the LC Cracks, crash fixes &amp; compatibility modes integrated into POPStarter.</p>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>Related stuff :</em></h2>
+<p>You may want to give a look at this :</p>
+<ul>
+<li>[COMPATIBILITY] Troubleshooting games</li>
+</ul>
+<p>______________________________________________________________________________________________________________</p>
+<h1><a href="../wiki/home.html"><strong>Back</strong></a></h1><p style="margin-top:26px"><a class="pill" href="../compatibility.html">Related curated section → Patches & TROJANs</a></p></main>
+</div>
+<footer>
+  <p><b>POPStarter Documentation Archive</b> — community-recovered from the Wayback Machine
+  (ShaolinAssassin's <code>popstarter-documentation-stuff</code> wiki) and krHACKen's r13 changelog,
+  cross-checked and merged across snapshots. Built for the POPSLoader project.</p>
+  <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
+  emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
+  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed.</p>
+</footer>
+<script src="../assets/app.js"></script>
+</body></html>

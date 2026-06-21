@@ -1,0 +1,233 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Troubleshooting Games · POPStarter Docs</title>
+<meta name="description" content="Resurrected, searchable POPStarter documentation — cheats, patches, config, storage, multi-disc, IGR and downloads.">
+<link rel="stylesheet" href="../assets/style.css">
+</head><body data-base="../">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu">☰</button>
+  <a class="brand" href="../index.html"><span class="logo">P1</span>
+    POPStarter&nbsp;Docs <small>· archive</small></a>
+  <div class="search">
+    <span class="ico">🔎</span>
+    <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar"><h4>Documentation</h4><a href="../index.html"><span class="em">🏠</span>Home</a>
+<a href="../getting-started.html"><span class="em">🚀</span>Getting Started</a>
+<a href="../storage.html"><span class="em">💾</span>Storage Backends</a>
+<a href="../cheats.html"><span class="em">🎮</span>Cheats</a>
+<a href="../compatibility.html"><span class="em">🩹</span>Patches & TROJANs</a>
+<a href="../igr.html"><span class="em">🎯</span>IGR & Hotkeys</a>
+<a href="../config.html"><span class="em">🔧</span>Config Table</a>
+<a href="../multidisc.html"><span class="em">💿</span>Multi-disc & VMC</a>
+<a href="../troubleshooting.html"><span class="em">🛠️</span>Troubleshooting</a>
+<a href="../downloads.html"><span class="em">📦</span>Downloads</a>
+<a href="../history.html"><span class="em">📜</span>History</a>
+    <h4>Reference</h4>
+    <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
+  </nav>
+  <main class="content"><h1>Troubleshooting Games</h1><p class="prov-inline">📎 Recovered from the ShaolinAssassin wiki · snapshot 20240909123815</p><h1>[COMPATIBILITY] <strong>Troubleshooting games</strong></h1>
+<p>______________________________________________________________________________________________________________</p>
+<p>You can use the Cheat Engine feature to troubleshoot problematic games.</p>
+<p>Here is a ready-to-use <a href="../downloads/CHEATS.TXT">CHEATS.TXT</a> file with all possible combinaison of modes which can help you and save you time :</p>
+<pre><code>Single compatibility mode test
+// mode 1 = help restoring the music/voices in several games
+COMPATIBILITY_0×01
+------------------------------------------------------------------
+// mode 2 = help restoring the music/voices + not breaking the MDECoding of FMVs
+COMPATIBILITY_0×02
+------------------------------------------------------------------
+// mode 3 = help restoring the music/voices in several games
+COMPATIBILITY_0×03
+------------------------------------------------------------------
+// mode 4 = fixes slowdowns, flickering, and many other glitches
+COMPATIBILITY_0×04
+------------------------------------------------------------------
+// mode 5 = made for fixing the cutscenes of the PAL Resident Evil: Director’s Cut
+COMPATIBILITY_0×05
+------------------------------------------------------------------
+// mode 6 = un-freeze somes games at startup
+COMPATIBILITY_0×06
+==================================================================
+Combinaison of 2 compatibility modes
+// modes 1+4
+COMPATIBILITY_0×01
+COMPATIBILITY_0×04
+------------------------------------------------------------------
+// modes 1+6
+COMPATIBILITY_0×01
+COMPATIBILITY_0×06
+------------------------------------------------------------------
+// modes 2+4
+COMPATIBILITY_0×02
+COMPATIBILITY_0×04
+------------------------------------------------------------------
+// modes 2+6
+COMPATIBILITY_0×02
+COMPATIBILITY_0×06
+------------------------------------------------------------------
+// modes 3+4
+COMPATIBILITY_0×03
+COMPATIBILITY_0×04
+------------------------------------------------------------------
+// modes 3+6
+COMPATIBILITY_0×03
+COMPATIBILITY_0×06
+------------------------------------------------------------------
+// modes 4+5
+COMPATIBILITY_0×04
+COMPATIBILITY_0×05
+------------------------------------------------------------------
+// modes 4+6
+COMPATIBILITY_0×04
+COMPATIBILITY_0×06
+------------------------------------------------------------------
+// modes 6+5
+COMPATIBILITY_0×06
+COMPATIBILITY_0×05
+==================================================================
+Combinaison of 3 compatibility modes
+// modes 1+4+6
+COMPATIBILITY_0×01
+COMPATIBILITY_0×04
+COMPATIBILITY_0×06
+------------------------------------------------------------------
+// modes 2+4+6
+COMPATIBILITY_0×02
+COMPATIBILITY_0×04
+COMPATIBILITY_0×06
+------------------------------------------------------------------
+// modes 3+4+6
+COMPATIBILITY_0×03
+COMPATIBILITY_0×04
+COMPATIBILITY_0×06
+------------------------------------------------------------------
+// modes 4+5+6
+COMPATIBILITY_0×04
+COMPATIBILITY_0×05
+COMPATIBILITY_0×06
+</code></pre>
+<ul>
+<li><strong>How to use it :</strong></li>
+</ul>
+<ol>
+<li>
+<p>Copy/past all lines into a CHEATS.TXT file (or download <a href="../downloads/CHEATS.TXT">it</a> ).</p>
+</li>
+<li>
+<p>Put that file into the game VMC folder.</p>
+</li>
+<li>
+<p>Use uLE Text editor to active the wanted combinaison (+ $) and let the other lines unedited.</p>
+</li>
+</ol>
+<p>Ex : modes 3+4 enabled</p>
+<pre><code>Single compatibility mode test
+// mode 1 = help restoring the music/voices in several games
+COMPATIBILITY_0×01
+------------------------------------------------------------------
+// mode 2 = help restoring the music/voices + not breaking the MDECoding of FMVs
+COMPATIBILITY_0×02
+------------------------------------------------------------------
+// mode 3 = help restoring the music/voices in several games
+COMPATIBILITY_0×03
+------------------------------------------------------------------
+// mode 4 = fixes slowdowns, flickering, and many other glitches
+COMPATIBILITY_0×04
+------------------------------------------------------------------
+// mode 5 = made for fixing the cutscenes of the PAL Resident Evil: Director’s Cut
+COMPATIBILITY_0×05
+------------------------------------------------------------------
+// mode 6 = un-freeze somes games at startup
+COMPATIBILITY_0×06
+==================================================================
+Combinaison of 2 compatibility modes
+// modes 1+4
+COMPATIBILITY_0×01
+COMPATIBILITY_0×04
+------------------------------------------------------------------
+// modes 1+6
+COMPATIBILITY_0×01
+COMPATIBILITY_0×06
+------------------------------------------------------------------
+// modes 2+4
+COMPATIBILITY_0×02
+COMPATIBILITY_0×04
+------------------------------------------------------------------
+// modes 2+6
+COMPATIBILITY_0×02
+COMPATIBILITY_0×06
+------------------------------------------------------------------
+// modes 3+4
+$COMPATIBILITY_0×03
+$COMPATIBILITY_0×04
+------------------------------------------------------------------
+// modes 3+6
+COMPATIBILITY_0×03
+COMPATIBILITY_0×06
+------------------------------------------------------------------
+// modes 4+5
+COMPATIBILITY_0×04
+COMPATIBILITY_0×05
+------------------------------------------------------------------
+// modes 4+6
+COMPATIBILITY_0×04
+COMPATIBILITY_0×06
+------------------------------------------------------------------
+// modes 6+5
+COMPATIBILITY_0×06
+COMPATIBILITY_0×05
+==================================================================
+Combinaison of 3 compatibility modes
+// modes 1+4+6
+COMPATIBILITY_0×01
+COMPATIBILITY_0×04
+COMPATIBILITY_0×06
+------------------------------------------------------------------
+// modes 2+4+6
+COMPATIBILITY_0×02
+COMPATIBILITY_0×04
+COMPATIBILITY_0×06
+------------------------------------------------------------------
+// modes 3+4+6
+COMPATIBILITY_0×03
+COMPATIBILITY_0×04
+COMPATIBILITY_0×06
+------------------------------------------------------------------
+// modes 4+5+6
+COMPATIBILITY_0×04
+COMPATIBILITY_0×05
+COMPATIBILITY_0×06
+</code></pre>
+<ul>
+<li><strong>Tip :</strong> start by mode 0×04.</li>
+</ul>
+<p>If you find a combinaison that improves emulation, do not forget to report it on the official compatibility lists :</p>
+<ul>
+<li>
+<p>HDD</p>
+</li>
+<li>
+<p>USB</p>
+</li>
+<li>
+<p>SMB</p>
+</li>
+</ul>
+<p>______________________________________________________________________________________________________________</p>
+<h1><a href="../wiki/home.html"><strong>Home</strong></a></h1><p style="margin-top:26px"><a class="pill" href="../troubleshooting.html">Related curated section → Troubleshooting</a></p></main>
+</div>
+<footer>
+  <p><b>POPStarter Documentation Archive</b> — community-recovered from the Wayback Machine
+  (ShaolinAssassin's <code>popstarter-documentation-stuff</code> wiki) and krHACKen's r13 changelog,
+  cross-checked and merged across snapshots. Built for the POPSLoader project.</p>
+  <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
+  emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
+  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed.</p>
+</footer>
+<script src="../assets/app.js"></script>
+</body></html>

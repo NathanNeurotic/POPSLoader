@@ -1,0 +1,118 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cue2pops And Toolbox Changelogs · POPStarter Docs</title>
+<meta name="description" content="Resurrected, searchable POPStarter documentation — cheats, patches, config, storage, multi-disc, IGR and downloads.">
+<link rel="stylesheet" href="../assets/style.css">
+</head><body data-base="../">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu">☰</button>
+  <a class="brand" href="../index.html"><span class="logo">P1</span>
+    POPStarter&nbsp;Docs <small>· archive</small></a>
+  <div class="search">
+    <span class="ico">🔎</span>
+    <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar"><h4>Documentation</h4><a href="../index.html"><span class="em">🏠</span>Home</a>
+<a href="../getting-started.html"><span class="em">🚀</span>Getting Started</a>
+<a href="../storage.html"><span class="em">💾</span>Storage Backends</a>
+<a href="../cheats.html"><span class="em">🎮</span>Cheats</a>
+<a href="../compatibility.html"><span class="em">🩹</span>Patches & TROJANs</a>
+<a href="../igr.html"><span class="em">🎯</span>IGR & Hotkeys</a>
+<a href="../config.html"><span class="em">🔧</span>Config Table</a>
+<a href="../multidisc.html"><span class="em">💿</span>Multi-disc & VMC</a>
+<a href="../troubleshooting.html"><span class="em">🛠️</span>Troubleshooting</a>
+<a href="../downloads.html"><span class="em">📦</span>Downloads</a>
+<a href="../history.html"><span class="em">📜</span>History</a>
+    <h4>Reference</h4>
+    <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
+  </nav>
+  <main class="content"><h1>Cue2pops And Toolbox Changelogs</h1><p class="prov-inline">📎 Recovered from the ShaolinAssassin wiki · snapshot 20240910020532</p><h1><strong>CUE2POPS changelog :</strong></h1>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>CUE2POPS (stand alone versions) :</em></h2>
+<ul>
+<li><strong><a href="https://assemblergames.com/threads/ps2-pops-stuff-popstarter.45347/page-97#post-917595">2016/11/03 – v2.3</a></strong></li>
+</ul>
+<pre><code>- Bugfix for the input file being overwritten (the issue which was reported by MonkeyBoyJoey).
+- The ability to handle the .bin file from the workdir (without the full .cue file path in the command
+line) was restored.
+Apparently it got broken when I extracted the cue2pops function from ToolBox.exe lol.
+- The output file path which is generated from the .cue file path (when you don't specify an output file
+name, ie drag'n'drop) is checked before the creation of the VCD.
+If for some oddball reason the output file extension is not .VCD, CUE2POPS will display an error and not
+create the file.
+</code></pre>
+<ul>
+<li><strong><a href="https://assemblergames.com/threads/ps2-pops-stuff-popstarter.45347/page-84#post-895401">2016/07/23 – v2.2</a></strong></li>
+</ul>
+<pre><code>Not documented.
+</code></pre>
+<ul>
+<li><strong><a href="https://assemblergames.com/threads/ps2-pops-stuff-popstarter.45347/page-43#post-781168">2014/10/19 – v2.1b2</a></strong></li>
+</ul>
+<pre><code>Part of Toolbox v1.0.
+</code></pre>
+<ul>
+<li><strong><a href="https://assemblergames.com/threads/ps2-pops-stuff-popstarter.45347/page-23#post-719131">2013/12/27 – v2.1b1</a></strong></li>
+</ul>
+<pre><code>- Support for VCDs with high TOC.
+</code></pre>
+<ul>
+<li><strong><a href="https://assemblergames.com/threads/ps2-pops-stuff-popstarter.45347/page-10#post-674126">2013/05/16 – v2.0</a></strong></li>
+</ul>
+<pre><code>- Fixed : dumpsize not known / daTrack_ptr set to zero when running a non-debug build.
+- Fixed : False-positive Y-Pos pattern detections.
+- Fixed : Incorrect Track Type in the descriptor A2.
+- Blocked non-MODE2/2352 dumps.
+- The NTSCpatcher console output is no longer restricted to the DEBUG build.
+- Introduced the title identification system.
+- Introduced NTSC Patcher exceptions (deny_vmode), for Crash Bandicoot [SCES-00344].
+- Added the Y-Pos fix for PAL VMODE.
+- Introduced game cheats (command &quot;trainer&quot;), for Crash Bandicoot NTSC J, NTSC U/C and PAL.
+- Introduced game fixes (automatic), for MGS Special Missions [SLES-02136].
+- Pregap correctors (gap--, gap-- and the unconditional one) were rewritten.
+- The CUE2POPS version identifier is now 0x20.
+</code></pre>
+<ul>
+<li><strong><a href="https://assemblergames.com/threads/ps2-pops-stuff-popstarter.45347/page-5#post-667711">2013/04/22 – v1.2</a></strong></li>
+</ul>
+<pre><code>- Fixed : dumpsize not known / daTrack_ptr set to zero when trying to patch a single track game to NTSC.
+- The CUE2POPS version identifier is now 0x02.
+</code></pre>
+<ul>
+<li><strong><a href="https://assemblergames.com/threads/ps2-pops-stuff-popstarter.45347/page-4#post-667149">2013/04/19 – v1.1</a></strong></li>
+</ul>
+<pre><code>- A bit of sanitization.
+- Fixed : the INDEX 01 of TRACK 01 = 00:02:00 (mistakenly marked as 00:00:00 in the previous build, without a pregap).
+- Now adds 2 seconds to all tracks unconditionally.
+- Writes a CUE2POPS version identifier in the POPS header, for interaction with POPStarter Revision 10.
+</code></pre>
+<ul>
+<li><strong>2013/04/06 – v1.0</strong></li>
+</ul>
+<pre><code>Initial release.
+</code></pre>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em><a href="../wiki/toolbox-commands.html">Toolbox</a> :</em></h2>
+<p><strong>Note :</strong> this tool is discontinued.</p>
+<ul>
+<li><strong><a href="https://assemblergames.com/threads/ps2-pops-stuff-popstarter.45347/page-43#post-781168">2014/10/19 – v1.0</a></strong></li>
+</ul>
+<pre><code>Initial release
+</code></pre>
+<p>______________________________________________________________________________________________________________</p>
+<h3><a href="../wiki/index.html"><strong>Index</strong></a></h3><p style="margin-top:26px"><a class="pill" href="../history.html">Related curated section → History</a></p></main>
+</div>
+<footer>
+  <p><b>POPStarter Documentation Archive</b> — community-recovered from the Wayback Machine
+  (ShaolinAssassin's <code>popstarter-documentation-stuff</code> wiki) and krHACKen's r13 changelog,
+  cross-checked and merged across snapshots. Built for the POPSLoader project.</p>
+  <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
+  emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
+  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed.</p>
+</footer>
+<script src="../assets/app.js"></script>
+</body></html>

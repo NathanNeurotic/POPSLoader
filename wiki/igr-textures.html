@@ -1,0 +1,176 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IGR Textures · POPStarter Docs</title>
+<meta name="description" content="Resurrected, searchable POPStarter documentation — cheats, patches, config, storage, multi-disc, IGR and downloads.">
+<link rel="stylesheet" href="../assets/style.css">
+</head><body data-base="../">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu">☰</button>
+  <a class="brand" href="../index.html"><span class="logo">P1</span>
+    POPStarter&nbsp;Docs <small>· archive</small></a>
+  <div class="search">
+    <span class="ico">🔎</span>
+    <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar"><h4>Documentation</h4><a href="../index.html"><span class="em">🏠</span>Home</a>
+<a href="../getting-started.html"><span class="em">🚀</span>Getting Started</a>
+<a href="../storage.html"><span class="em">💾</span>Storage Backends</a>
+<a href="../cheats.html"><span class="em">🎮</span>Cheats</a>
+<a href="../compatibility.html"><span class="em">🩹</span>Patches & TROJANs</a>
+<a href="../igr.html"><span class="em">🎯</span>IGR & Hotkeys</a>
+<a href="../config.html"><span class="em">🔧</span>Config Table</a>
+<a href="../multidisc.html"><span class="em">💿</span>Multi-disc & VMC</a>
+<a href="../troubleshooting.html"><span class="em">🛠️</span>Troubleshooting</a>
+<a href="../downloads.html"><span class="em">📦</span>Downloads</a>
+<a href="../history.html"><span class="em">📜</span>History</a>
+    <h4>Reference</h4>
+    <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
+  </nav>
+  <main class="content"><h1>IGR Textures</h1><p class="prov-inline">📎 Recovered from the ShaolinAssassin wiki · snapshot 20200810125809</p><h1>[IGR] <strong>Make your own IGR textures</strong></h1>
+<p>______________________________________________________________________________________________________________<br />
+<em>Based on infos shared by arkl1t32</em> @<a href="https://assemblergames.com/threads/ps2-pops-stuff.45347/page-38#post-771111">ASSEMblergames</a></p>
+<p><strong>Software requirements :</strong></p>
+<ul>
+<li>
+<p>A graphic editor, such as <a href="https://media.giphy.com/media/z1RWCfBXTue3K/giphy.gif">Photoshop</a> or <a href="http://www.gimp.org/">GIMP</a> ;</p>
+</li>
+<li>
+<p>A TIM2 editor, such as OPTPiX iMageStudio;</p>
+</li>
+<li>
+<p>A hex editor, such as <a href="https://mh-nexus.de/en/hxd/">HxD</a>.</p>
+</li>
+</ul>
+<p><strong>Sample files :</strong> here.</p>
+<p>Included :</p>
+<ul>
+<li>
+<p>PSD file with guidelines ;</p>
+</li>
+<li>
+<p>3 image files, as .bmp ;</p>
+</li>
+<li>
+<p>3 image files, as .TM2 ;</p>
+</li>
+<li>
+<p>static &amp; animated previews ;</p>
+</li>
+<li>
+<p>IGR replacement, compiled as PATCH_1.BIN file.</p>
+</li>
+</ul>
+<p>______________________________________________________________________________________________________________</p>
+<ol>
+<li>Using your favorite graphic editor, create 3 .bmp files with the above dimensions :</li>
+</ol>
+<ul>
+<li>
+<p>IGR_BG : 400 × 260 px</p>
+</li>
+<li>
+<p>IGR_YES &amp; IGR_NO : 74 × 34 px</p>
+</li>
+</ul>
+<p>Use the PSD file with guidelines if need to crop properly.</p>
+<ol start="2">
+<li>
+<p>Open these 3 files with a TM2 editor &amp; save them as .TM2 files ;</p>
+</li>
+<li>
+<p>Open IGR_YES.TM2 and IGR_NO.TM2 with a hex editor and delete the last 8 digits in last offset (1D80) ;</p>
+</li>
+<li>
+<p>You can either :  – place your .TM2 files as they are in the POPS folder (named as IGR_BG.TM2, IGR_NO.TM2 &amp; IGR_YES.TM2) ;<br />
+OR – [optionnal step] compiled them as a PATCH_#.BIN ;</p>
+</li>
+<li>
+<p>If you want to compile them as PATCH_#.BIN, use <a href="../wiki/toolbox-commands.html">toolbox command</a> ;</p>
+</li>
+</ol>
+<pre><code>toolbox.exe -igrpix &quot;background.tm2&quot; &quot;no_button.tm2 &quot;yes_button.tm2&quot;
+
+</code></pre>
+<ol start="6">
+<li>Place your PATCH_#.BIN file into POPS folder.</li>
+</ol>
+<p>Result :</p>
+<p>Feel free to submit it @<a href="https://assemblergames.com/threads/ps2-pops-stuff.45347/">ASSEMblergames</a> and it will be added to the wiki.</p>
+<p>If you want to submit language versions :</p>
+<ul>
+<li><strong>ENGLISH :</strong></li>
+</ul>
+<pre><code>1. Do you want to return to the PlayStation®2 main menu ?
+2. Warning all unsaved data will be lost!
+3. Press O to accept or X to cancel.
+4. Yes
+5. No
+
+</code></pre>
+<ul>
+<li><strong>FRENCH :</strong></li>
+</ul>
+<pre><code>1. Voulez-vous retourner au menu principal de la PlayStation®2 ?
+2. Attention : toutes les données non sauvegardées seront perdues.
+3. Appuyer sur O pour valider ou sur X pour annuler.
+4. Oui
+5. Non
+
+</code></pre>
+<ul>
+<li><strong>GERMAN :</strong></li>
+</ul>
+<pre><code>1. Möchten Sie POPStarter verlassen ?
+2. Nicht gespeicherte Daten gehen verloren !
+3. (untranslated)
+4. Ja
+5. Nein
+
+</code></pre>
+<ul>
+<li><strong>POLISH :</strong></li>
+</ul>
+<pre><code>1. Czy chcesz powrócić do głównego menu PlayStation®2?
+2. Uwaga, wszystkie niezapisane dane zostaną utracone!
+3. Wciśnij O by potwierdzić, X by anulować.
+4. Tak
+5. Nie
+
+</code></pre>
+<ul>
+<li><strong>PORTUGUESE :</strong></li>
+</ul>
+<pre><code>1. Você deseja retornar para o menu principal do Playstation®2?
+2. Alterta: Todos os dados que não forem salvos, serão perdidos!
+3. (untranslated)
+4. Sim
+5. Não
+
+</code></pre>
+<ul>
+<li><strong>SPANISH :</strong></li>
+</ul>
+<pre><code>1. ¿Deseas volver al menú principal de Playstation®2?
+2. Aviso: ¡Todos los datos que no se hayan guardado se perderán!
+3. Pulsa O para aceptar o X para cancelar.
+4. Si
+5. No
+
+</code></pre>
+<p>______________________________________________________________________________________________________________</p>
+<h3><a href="../wiki/index.html"><strong>Index</strong></a></h3><p style="margin-top:26px"><a class="pill" href="../igr.html">Related curated section → IGR & Hotkeys</a></p></main>
+</div>
+<footer>
+  <p><b>POPStarter Documentation Archive</b> — community-recovered from the Wayback Machine
+  (ShaolinAssassin's <code>popstarter-documentation-stuff</code> wiki) and krHACKen's r13 changelog,
+  cross-checked and merged across snapshots. Built for the POPSLoader project.</p>
+  <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
+  emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
+  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed.</p>
+</footer>
+<script src="../assets/app.js"></script>
+</body></html>

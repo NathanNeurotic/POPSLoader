@@ -1,0 +1,245 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SMB Mode · POPStarter Docs</title>
+<meta name="description" content="Resurrected, searchable POPStarter documentation — cheats, patches, config, storage, multi-disc, IGR and downloads.">
+<link rel="stylesheet" href="../assets/style.css">
+</head><body data-base="../">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu">☰</button>
+  <a class="brand" href="../index.html"><span class="logo">P1</span>
+    POPStarter&nbsp;Docs <small>· archive</small></a>
+  <div class="search">
+    <span class="ico">🔎</span>
+    <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar"><h4>Documentation</h4><a href="../index.html"><span class="em">🏠</span>Home</a>
+<a href="../getting-started.html"><span class="em">🚀</span>Getting Started</a>
+<a href="../storage.html"><span class="em">💾</span>Storage Backends</a>
+<a href="../cheats.html"><span class="em">🎮</span>Cheats</a>
+<a href="../compatibility.html"><span class="em">🩹</span>Patches & TROJANs</a>
+<a href="../igr.html"><span class="em">🎯</span>IGR & Hotkeys</a>
+<a href="../config.html"><span class="em">🔧</span>Config Table</a>
+<a href="../multidisc.html"><span class="em">💿</span>Multi-disc & VMC</a>
+<a href="../troubleshooting.html"><span class="em">🛠️</span>Troubleshooting</a>
+<a href="../downloads.html"><span class="em">📦</span>Downloads</a>
+<a href="../history.html"><span class="em">📜</span>History</a>
+    <h4>Reference</h4>
+    <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
+  </nav>
+  <main class="content"><h1>SMB Mode</h1><p class="prov-inline">📎 Recovered from the ShaolinAssassin wiki · snapshot 20240310054522</p><h1><strong>POPStarter for SMB</strong></h1>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>Requirements :</em></h2>
+<p><strong>POPS compressed file :</strong></p>
+<p>To use POPStarter in SMB mode, you have to find and download the compressed POPS file. This file is named “POPS_IOX.PAK”…</p>
+<table>
+<thead>
+<tr>
+<th><strong>File name</strong></th>
+<th><strong>MD5</strong></th>
+<th><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>| POPS_IOX.PAK | a625d0b3036823cdbf04a3c0e1648901 | POPS.PAK with network modules embedded. |</p>
+<p><strong>Other Software Requirements :</strong></p>
+<ul>
+<li>
+<p>A software that allows you to convert your disc images to the POPS virtual CDROM format (such as <a href="../wiki/apps-last-version.html">CUE2POPS</a>) ;</p>
+</li>
+<li>
+<p>A PS2 software that allows you to execute the POPStarter ELFs (such as <a href="../wiki/related-stuff.html">uLaunchELF</a>, or <a href="http://ichiba.geocities.jp/ysai187/PS2/FMCB/">Free Harddisk Drive Boot</a>) or a GUI to execute POPSTARTER.ELF by selecting the VCDs (such as <a href="../wiki/apps-last-version.html">uLE_kHn</a>) ;</p>
+</li>
+<li>
+<p><a href="../downloads/network_modules.7z">PS2 network modules</a> ;</p>
+</li>
+<li>
+<p>A text editor (such as Notepad).</p>
+</li>
+</ul>
+<p><strong>Hardware Requirements :</strong></p>
+<ul>
+<li>
+<p>A PS2 console which is able to run PS2 unsigned code ;</p>
+</li>
+<li>
+<p>A PS2 console with a network interface (network adaptor or native) ;</p>
+</li>
+<li>
+<p>A network cable ;</p>
+</li>
+<li>
+<p>A PS2 Memory Card.</p>
+</li>
+</ul>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>Installation :</em></h2>
+<p><strong>a) Installing the emulator :</strong></p>
+<ol>
+<li>
+<p>Find and download the compressed emulator files ;</p>
+</li>
+<li>
+<p>Create a directory named “POPS” in your PS2 shared folder ;</p>
+</li>
+<li>
+<p>Copy POPS_IOX.PAK  into the “POPS” directory you’ve just created.</p>
+</li>
+</ol>
+<p><strong>b) Installing your PS1 Games :</strong></p>
+<ol>
+<li>
+<p>Convert your BIN/CUE disc images to .VCD files using the latest stable version of <a href="../wiki/vcd.html">CUE2POPS</a> ;</p>
+</li>
+<li>
+<p>Put your .VCD files in the “POPS” directory of your PS2 shared folder.</p>
+</li>
+</ol>
+<p><strong>c) Installing POPStarter :</strong></p>
+<ol>
+<li>
+<p>Grab the network modules and edit the 2 .DAT files (syntax below) with your network settings;</p>
+</li>
+<li>
+<p>Paste the network modules and the .DAT files into mc#/:POPSTARTER/ folder;</p>
+</li>
+<li>
+<p>Rename the POPStarter ELF as the name of your VCDs, replace the .VCD extension with a .ELF extension, add the SB. prefix (example : for running a VCD named “Crash Bandicoot (PAL).VCD”, the POPStarter ELF must be renamed as “SB.Crash Bandicoot (PAL).ELF”) ;</p>
+</li>
+<li>
+<p>Copy or leave the ELFs where you want to run them from ;</p>
+</li>
+<li>
+<p>Enjoy !</p>
+</li>
+</ol>
+<ul>
+<li><strong>SMBCONFIG.DAT syntax :</strong></li>
+</ul>
+<p>In a single line,</p>
+<pre><code>SERVER IP ADDRESS space SHARE NAME
+</code></pre>
+<p><strong>Example :</strong></p>
+<pre><code>192.168.0.254 My Shared Folder
+</code></pre>
+<p>You can also specify a port, like this (default is 445) :</p>
+<pre><code>192.168.0.254:139 My Shared Folder
+</code></pre>
+<p>For user authentication, write your username to line 2 and your password to line 3.</p>
+<p><strong>Example :</strong></p>
+<pre><code>192.168.0.254 My Shared Folder
+MyName
+MyPassword
+</code></pre>
+<p><strong>Note :</strong> for guest access, don’t write anything to line 2 and 3.</p>
+<ul>
+<li><strong>IPCONFIG.DAT syntax :</strong> <em>(this file is optionnal in SMB mode)</em></li>
+</ul>
+<p>In a single line,</p>
+<pre><code>PS2 IP ADDRESS space NETMASK space GATEWAY
+</code></pre>
+<p><strong>Example :</strong></p>
+<pre><code>192.168.0.13 255.255.255.0 192.168.0.254
+</code></pre>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>Example of setup :</em></h2>
+<pre><code>=== SMB LAUNCH TYPE ===
+mc#:/POPSTARTER/IPCONFIG.DAT
+mc#:/POPSTARTER/SMBCONFIG.DAT
+mc#:/POPSTARTER/poweroff.irx
+mc#:/POPSTARTER/ps2dev9.irx
+mc#:/POPSTARTER/smsutils.irx
+mc#:/POPSTARTER/ps2ip.irx
+mc#:/POPSTARTER/ps2smap.irx
+mc#:/POPSTARTER/smbman.irx
+smb0:/YourSharedFolder/POPS/POPS_IOX.PAK
+smb0:/YourSharedFolder/POPS/Crash Bandicoot (PAL).VCD
+mass:/SB.Crash Bandicoot (PAL).ELF
+</code></pre>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>SMB launch type :</em></h2>
+<p>SMB supports only 1 launch type – the “new” one :</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th><strong>SMB launch type</strong></th>
+<th></th>
+<th><strong>Prefix for POPStarter.ELF</strong></th>
+<th>SB.</th>
+<th></th>
+<th><strong>POPStarter folder name</strong></th>
+<th>POPS</th>
+<th></th>
+<th><strong>Game name</strong></th>
+<th>GAME.VCD</th>
+<th></th>
+<th><strong>Description</strong></th>
+<th>Launch type introduced in POPStarter 13 WIP 06, OBT 08. Allows to run VCDs from an SMB share.</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>| <strong>Example</strong> | With the POPStarter ELF renamed as SB.GAME.ELF, POPStarter will launch GAME.VCD which is in POPS folder, placed into your shared folder. |</p>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>Additional notes :</em></h2>
+<ul>
+<li>
+<p>You can NOT use the old POPS.ELF+IOPRP252.IMG files (POPS.PAK) in SMB mode, updating to POPS_IOX.PAK is <strong>mandatory</strong> ;</p>
+</li>
+<li>
+<p>You can load the network modules from the MC that is in the second slot too. When a file can’t be found in mc0:/POPSTARTER/, POPStarter tries to load it from mc1:/POPSTARTER/ ;</p>
+</li>
+<li>
+<p>Debug infos at startup can not be skipped in SMB mode ;</p>
+</li>
+<li>
+<p>The third character of the ELF prefix is a dot (SBdot) ;</p>
+</li>
+<li>
+<p>The file extension .VCD has to be uppercase ;</p>
+</li>
+<li>
+<p>The prefix has to be uppercase.</p>
+</li>
+</ul>
+<p>______________________________________________________________________________________________________________</p>
+<h3><a href="../wiki/index.html"><strong>Index</strong></a></h3><p style="margin-top:26px"><a class="pill" href="../storage.html">Related curated section → Storage Backends</a></p></main>
+</div>
+<footer>
+  <p><b>POPStarter Documentation Archive</b> — community-recovered from the Wayback Machine
+  (ShaolinAssassin's <code>popstarter-documentation-stuff</code> wiki) and krHACKen's r13 changelog,
+  cross-checked and merged across snapshots. Built for the POPSLoader project.</p>
+  <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
+  emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
+  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed.</p>
+</footer>
+<script src="../assets/app.js"></script>
+</body></html>
