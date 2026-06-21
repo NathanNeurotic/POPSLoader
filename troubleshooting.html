@@ -34,57 +34,238 @@
     <h4>Reference</h4>
     <a href="wiki/index.html"><span class="em">📚</span>All wiki pages</a>
   </nav>
-  <main class="content"><h1>Troubleshooting &amp; Display</h1><p class="lead">Boot/launch failures, USB-not-detected, HDTV/component fixes, widescreen, and game-specific lore.</p><h2>Troubleshooting and display fixes</h2>
+  <main class="content"><h1>Troubleshooting &amp; Display</h1><p class="lead">Boot/launch failures, USB-not-detected, HDTV/component fixes, widescreen, and game-specific lore.</p><p class="prov-inline">📎 from the recovered <a href="wiki/known-bugs.html">Known Bugs</a> wiki page · merged across snapshots, primary 20240913183110</p><h1><strong>Known bugs / limitations</strong></h1>
+<p>______________________________________________________________________________________________________________</p>
+<ul>
+<li>
+<p><strong>$COMPATIBILITY_0×07 mode :</strong> unfinished. Breaks the gamma.</p>
+</li>
+<li>
+<p><strong>$WIDESCREEN command :</strong> unfinished. No render fix…</p>
+</li>
+<li>
+<p><strong>Multi-disc support :</strong> does not work properly with all games (not working with : <a href="https://assemblergames.com/threads/ps2-pops-stuff-popstarter.45347/page-102#post-927043">Final Fantasy IX</a>, <a href="https://assemblergames.com/threads/ps2-pops-stuff-popstarter.45347/page-100#post-920264">Grandia</a>).</p>
+</li>
+<li>
+<p><strong><a href="https://assemblergames.com/threads/ps2-pops-stuff-popstarter.45347/page-109#post-950500">POPS USB oddities :</a></strong> we found out that latest USBD and USBHDFSD drivers reduced performances in BOTH POPStarter and POPS – so USBD and USBHDFSD drivers embedded into POPStarter are quite old. You can use your own USB modules (named as usbd.irx &amp; usbhdfsd.irx, case sensitive, lowercase, no file size restriction) from mc#:/POPSTARTER – but expect lower performances.</p>
+</li>
+<li>
+<p><strong><a href="https://assemblergames.com/threads/ps2-pops-stuff-popstarter.45347/page-112#post-952852">PS1 CD mode :</a></strong> we found out after RIP 06 release that the HDD old launch type method (PP.PS1CD.ELF or __.PS1CD.ELF) has a bug : files from __common/POPS folder (and from __common/POPS/PS1CD) will not be loaded.</p>
+</li>
+<li>
+<p><strong><a href="https://assemblergames.com/threads/ps2-pops-stuff-popstarter.45347/page-105#post-936970">PS3 support :</a></strong> POPStarter test build works in a CECHA (no controller response on POPS tho).</p>
+</li>
+<li>
+<p><strong><a href="https://www.metagames-eu.com/forums/playstation-2/popstarter-revision-13-a-48-134569.html#post1776443">IGR :</a></strong> not working with a DS3 controller in BT mode (working in USB mode).</p>
+</li>
+</ul>
+<p>______________________________________________________________________________________________________________</p>
+<h3><a href="wiki/index.html"><strong>Index</strong></a></h3>
+<p class="prov-inline">📎 from the recovered <a href="wiki/troubleshooting-games.html">Troubleshooting Games</a> wiki page · merged across snapshots, primary 20240909123815</p><h1>[COMPATIBILITY] <strong>Troubleshooting games</strong></h1>
+<p>______________________________________________________________________________________________________________</p>
+<p>You can use the Cheat Engine feature to troubleshoot problematic games.</p>
+<p>Here is a ready-to-use <a href="downloads/CHEATS.TXT">CHEATS.TXT</a> file with all possible combinaison of modes which can help you and save you time :</p>
+<pre><code>Single compatibility mode test
+// mode 1 = help restoring the music/voices in several games
+COMPATIBILITY_0×01
+------------------------------------------------------------------
+// mode 2 = help restoring the music/voices + not breaking the MDECoding of FMVs
+COMPATIBILITY_0×02
+------------------------------------------------------------------
+// mode 3 = help restoring the music/voices in several games
+COMPATIBILITY_0×03
+------------------------------------------------------------------
+// mode 4 = fixes slowdowns, flickering, and many other glitches
+COMPATIBILITY_0×04
+------------------------------------------------------------------
+// mode 5 = made for fixing the cutscenes of the PAL Resident Evil: Director’s Cut
+COMPATIBILITY_0×05
+------------------------------------------------------------------
+// mode 6 = un-freeze somes games at startup
+COMPATIBILITY_0×06
+==================================================================
+Combinaison of 2 compatibility modes
+// modes 1+4
+COMPATIBILITY_0×01
+COMPATIBILITY_0×04
+------------------------------------------------------------------
+// modes 1+6
+COMPATIBILITY_0×01
+COMPATIBILITY_0×06
+------------------------------------------------------------------
+// modes 2+4
+COMPATIBILITY_0×02
+COMPATIBILITY_0×04
+------------------------------------------------------------------
+// modes 2+6
+COMPATIBILITY_0×02
+COMPATIBILITY_0×06
+------------------------------------------------------------------
+// modes 3+4
+COMPATIBILITY_0×03
+COMPATIBILITY_0×04
+------------------------------------------------------------------
+// modes 3+6
+COMPATIBILITY_0×03
+COMPATIBILITY_0×06
+------------------------------------------------------------------
+// modes 4+5
+COMPATIBILITY_0×04
+COMPATIBILITY_0×05
+------------------------------------------------------------------
+// modes 4+6
+COMPATIBILITY_0×04
+COMPATIBILITY_0×06
+------------------------------------------------------------------
+// modes 6+5
+COMPATIBILITY_0×06
+COMPATIBILITY_0×05
+==================================================================
+Combinaison of 3 compatibility modes
+// modes 1+4+6
+COMPATIBILITY_0×01
+COMPATIBILITY_0×04
+COMPATIBILITY_0×06
+------------------------------------------------------------------
+// modes 2+4+6
+COMPATIBILITY_0×02
+COMPATIBILITY_0×04
+COMPATIBILITY_0×06
+------------------------------------------------------------------
+// modes 3+4+6
+COMPATIBILITY_0×03
+COMPATIBILITY_0×04
+COMPATIBILITY_0×06
+------------------------------------------------------------------
+// modes 4+5+6
+COMPATIBILITY_0×04
+COMPATIBILITY_0×05
+COMPATIBILITY_0×06
+</code></pre>
+<ul>
+<li><strong>How to use it :</strong></li>
+</ul>
+<ol>
+<li>
+<p>Copy/past all lines into a CHEATS.TXT file (or download <a href="downloads/CHEATS.TXT">it</a> ).</p>
+</li>
+<li>
+<p>Put that file into the game VMC folder.</p>
+</li>
+<li>
+<p>Use uLE Text editor to active the wanted combinaison (+ $) and let the other lines unedited.</p>
+</li>
+</ol>
+<p>Ex : modes 3+4 enabled</p>
+<pre><code>Single compatibility mode test
+// mode 1 = help restoring the music/voices in several games
+COMPATIBILITY_0×01
+------------------------------------------------------------------
+// mode 2 = help restoring the music/voices + not breaking the MDECoding of FMVs
+COMPATIBILITY_0×02
+------------------------------------------------------------------
+// mode 3 = help restoring the music/voices in several games
+COMPATIBILITY_0×03
+------------------------------------------------------------------
+// mode 4 = fixes slowdowns, flickering, and many other glitches
+COMPATIBILITY_0×04
+------------------------------------------------------------------
+// mode 5 = made for fixing the cutscenes of the PAL Resident Evil: Director’s Cut
+COMPATIBILITY_0×05
+------------------------------------------------------------------
+// mode 6 = un-freeze somes games at startup
+COMPATIBILITY_0×06
+==================================================================
+Combinaison of 2 compatibility modes
+// modes 1+4
+COMPATIBILITY_0×01
+COMPATIBILITY_0×04
+------------------------------------------------------------------
+// modes 1+6
+COMPATIBILITY_0×01
+COMPATIBILITY_0×06
+------------------------------------------------------------------
+// modes 2+4
+COMPATIBILITY_0×02
+COMPATIBILITY_0×04
+------------------------------------------------------------------
+// modes 2+6
+COMPATIBILITY_0×02
+COMPATIBILITY_0×06
+------------------------------------------------------------------
+// modes 3+4
+$COMPATIBILITY_0×03
+$COMPATIBILITY_0×04
+------------------------------------------------------------------
+// modes 3+6
+COMPATIBILITY_0×03
+COMPATIBILITY_0×06
+------------------------------------------------------------------
+// modes 4+5
+COMPATIBILITY_0×04
+COMPATIBILITY_0×05
+------------------------------------------------------------------
+// modes 4+6
+COMPATIBILITY_0×04
+COMPATIBILITY_0×06
+------------------------------------------------------------------
+// modes 6+5
+COMPATIBILITY_0×06
+COMPATIBILITY_0×05
+==================================================================
+Combinaison of 3 compatibility modes
+// modes 1+4+6
+COMPATIBILITY_0×01
+COMPATIBILITY_0×04
+COMPATIBILITY_0×06
+------------------------------------------------------------------
+// modes 2+4+6
+COMPATIBILITY_0×02
+COMPATIBILITY_0×04
+COMPATIBILITY_0×06
+------------------------------------------------------------------
+// modes 3+4+6
+COMPATIBILITY_0×03
+COMPATIBILITY_0×04
+COMPATIBILITY_0×06
+------------------------------------------------------------------
+// modes 4+5+6
+COMPATIBILITY_0×04
+COMPATIBILITY_0×05
+COMPATIBILITY_0×06
+</code></pre>
+<ul>
+<li><strong>Tip :</strong> start by mode 0×04.</li>
+</ul>
+<p>If you find a combinaison that improves emulation, do not forget to report it on the official compatibility lists :</p>
+<ul>
+<li>
+<p>HDD</p>
+</li>
+<li>
+<p>USB</p>
+</li>
+<li>
+<p>SMB</p>
+</li>
+</ul>
+<p>______________________________________________________________________________________________________________</p>
+<h1><a href="wiki/home.html"><strong>Home</strong></a></h1>
+<p class="prov-inline">📎 from the recovered <a href="wiki/faqs.html">FAQS</a> wiki page · merged across snapshots, primary 20240909182922</p><h1><strong>FAQs</strong></h1>
+<p>______________________________________________________________________________________________________________</p>
+<ul>
+<li><strong>Question : does POPS support mutitap player ?</strong></li>
+</ul>
+<p><strong>Answer :</strong> Unfortunately, no. Only the 2 first controllers are recognised.</p>
+<ul>
+<li><strong>Question : does POPS support physical memory card saving ?</strong></li>
+</ul>
+<p><strong>Answer :</strong> No, it doesnt. There is a technical reason about it : POPS doesnt save on a single memory card block but flashes the whole VMC. Doing it on physical memory card would be very slow if possible.</p>
+<p>______________________________________________________________________________________________________________</p>
+<h3><a href="wiki/index.html"><strong>Index</strong></a></h3><h2>Troubleshooting and display fixes</h2>
 <p>Boot/launch failures: enable the debug screen to see where a launch dies - hex-edit $410 to FF (realtime) or ~12 (paced), and optionally $411=0x01 to halt on the error so you can read it, or simply apply DEBUG_AND_HALT.PPF. SMB-mode setups already run debug-on. For 'USB drive not detected,' raise config offset $413 from 0x02 toward 0x05/0x0A, confirm FAT32 + a defragmented device + the POPS folder at the root, and remember $USBDELAY_# will NOT help (it patches POPS, not the loader). For 'POPS_IOX.PAK not found,' verify the PAK is in the main POPS folder (and duplicated logic for POPS# folders).</p>
 <p>Display: green-screen / no-signal on an HDTV over component is the SetGsCrt case - use $HDTVFIX (config $412=0x01), but leave it off on CRTs where it is incompatible. Force 480p with $480p (config $42A=0x02), noting some titles (e.g. Dead Or Alive) output an unsupported 480p signal. Screen geometry ($XPOS default 640, $YPOS no default, $DWSTRETCH default 2559, $DWCROP max 2560) works only in PAL/NTSC and is mutually exclusive with $480p.</p>
-<p>Game-specific lore: Tomb Raider 1/2 CDDA music desync is a POPS emulation limitation, not a config error - don't chase it. Tekken 3 is fixed by combining modes 0x06+0x04 (a clean example that those two combine, since neither is in the exclusive 0x01/0x02/0x03/0x05 set). Jackie Chan Stuntmaster (SCES-01444) has a built-in LibCrypt crack; if a disc batch lacks LibCrypt and still freezes, fall back to $FAKELC or the explicit LibCrypt code block (a complete real example for the PAL release is in the corpus). If the OPL Apps menu gets corrupted after editing entries, delete conf_elm.cfg and conf_elms.cfg (keep conf_elmz.cfg). And always start CHEATS.TXT with $SAFEMODE, which gates the cheat engine until POPS has left the PS1 OSD - without it, codes that touch the OSD-load region crash POPS on startup.</p><h2>Fixes</h2><div class="cards"><div class="card" id="usb-not-detected-fix-offset-413-vs-usbdelay"><h3>USB-not-detected fix (offset $413 vs $USBDELAY) <span class="badge secondary">near-primary</span> <span class="cat-chip">troubleshooting</span></h3>
-<div class="field"><b>Effect:</b> If a USB drive/HDD isn&#x27;t detected: hex-edit POPSTARTER.ELF offset $413 from 0x02 up toward 0x05/0x0A. Also verify FAT32 formatting, a defragmented device, and the POPS folder at the device ROOT. Debug the boot via DEBUG_AND_HALT.PPF or $410=non-zero. NOTE: $USBDELAY_# patches POPS (streaming) not POPStarter - it does NOT fix detection.</div>
-<div class="field"><b>Scope:</b> r13 USB mode (older builds used $417).</div>
-<div class="field"><b>Conflicts:</b> Don&#x27;t patch $417 in r13 (NOT USED). Use $413.</div>
-<div class="ex">Offset $413: 0x02 -&gt; 0x05</div>
-<div class="prov">📎 NEAR-PRIMARY: ps2-home DEBUG tutorial t=5311 (Wayback 20190808161830); config-table wiki</div>
-</div>
-<div class="card" id="conf-elm-cfg-cleanup-opl-apps-menu-corruption"><h3>conf_elm.cfg cleanup (OPL Apps menu corruption) <span class="badge community">community</span> <span class="cat-chip">troubleshooting</span></h3>
-<div class="field"><b>Effect:</b> If the OPL ELF-loader/Apps menu misbehaves after editing entries, delete conf_elm.cfg and conf_elms.cfg; conf_elmz.cfg is safe to keep. OPL regenerates the deleted files.</div>
-<div class="field"><b>Scope:</b> OPL Apps-tab launching of POPStarter games.</div>
-<div class="field"><b>Conflicts:</b> Community troubleshooting step, not a POPStarter feature.</div>
-<div class="ex">Delete conf_elm.cfg + conf_elms.cfg (keep conf_elmz.cfg)</div>
-<div class="prov">📎 PRIMARY/community: Dekazeta r13 changelog mirror + ps2-home wiki t=144</div>
-</div>
-<div class="card" id="tomb-raider-1-2-cdda-desync-emulation-limitation"><h3>Tomb Raider 1/2 CDDA desync (emulation limitation) <span class="badge community">community</span> <span class="cat-chip">troubleshooting</span></h3>
-<div class="field"><b>Effect:</b> Tomb Raider 1/2 CDDA (Red Book) music desync/drift is a POPS emulation limitation, not a POPStarter misconfiguration - no CHEATS.TXT command reliably fixes it.</div>
-<div class="field"><b>Scope:</b> Specific titles; documented as a known emulation limit.</div>
-<div class="field"><b>Conflicts:</b> Don&#x27;t chase it with geometry/compat commands.</div>
-<div class="ex">(known limitation - no fix)</div>
-<div class="prov">📎 COMMUNITY: ps2-home / PSX-Place HugoPocked fixes discussion 39750</div>
-</div>
-<div class="card" id="jackie-chan-stuntmaster-sces-01444-built-in-libcrypt-crack"><h3>Jackie Chan Stuntmaster (SCES-01444) - built-in LibCrypt crack <span class="badge secondary">near-primary</span> <span class="cat-chip">troubleshooting</span></h3>
-<div class="field"><b>Effect:</b> POPStarter has a built-in LibCrypt crack for Jackie Chan Stuntmaster (SCES-01444). If a particular disc batch lacks LibCrypt and still freezes, use $FAKELC or the explicit LibCrypt code block instead.</div>
-<div class="field"><b>Scope:</b> Specific title. r13.</div>
-<div class="field"><b>Conflicts:</b> Built-in crack vs $FAKELC vs explicit block - try in that order.</div>
-<div class="ex">SCES-01444 runs via the built-in crack; fall back to the LibCrypt example block</div>
-<div class="prov">📎 PRIMARY/community: Dekazeta r13 changelog; ShaolinAssassin wiki special-cheats LibCrypt example</div>
-</div>
-<div class="card" id="tekken-3-mode-0x06-0x04-combo"><h3>Tekken 3 - mode 0x06 + 0x04 combo <span class="badge community">community</span> <span class="cat-chip">troubleshooting</span></h3>
-<div class="field"><b>Effect:</b> Tekken 3 is fixed by combining compatibility modes 0x06 and 0x04 - a concrete example that 0x06 and 0x04 combine safely (neither is in the exclusive 0x01/0x02/0x03/0x05 set).</div>
-<div class="field"><b>Scope:</b> Specific title. r13.</div>
-<div class="field"><b>Conflicts:</b> Demonstrates the no-combine rule applies only to 0x01/0x02/0x03/0x05.</div>
-<div class="ex">$COMPATIBILITY_0x06 + $COMPATIBILITY_0x04</div>
-<div class="prov">📎 COMMUNITY/near-primary: ps2-home t=8744 (Wayback 20230723000350)</div>
-</div>
-<div class="card" id="crash-bash-pal-best-playable-config"><h3>Crash Bash PAL - best playable config <span class="badge community">community</span> <span class="cat-chip">troubleshooting</span></h3>
-<div class="field"><b>Effect:</b> Community-documented best-playable configuration for Crash Bash PAL (a notoriously finicky title); pursue the per-title fix thread rather than a generic mode.</div>
-<div class="field"><b>Scope:</b> Specific title.</div>
-<div class="field"><b>Conflicts:</b> Title-specific; no single universal command.</div>
-<div class="ex">(see the title&#x27;s fix thread)</div>
-<div class="prov">📎 COMMUNITY: ps2-home / PSX-Place title threads</div>
-</div></div><h2>Full wiki sources</h2><div class="grid"><a class="tile" href="wiki/known-bugs.html"><b>Known Bugs</b><span>full wiki page</span></a>
-<a class="tile" href="wiki/troubleshooting-games.html"><b>Troubleshooting Games</b><span>full wiki page</span></a>
-<a class="tile" href="wiki/faqs.html"><b>FAQS</b><span>full wiki page</span></a>
-<a class="tile" href="wiki/widescreen.html"><b>Widescreen</b><span>full wiki page</span></a>
-<a class="tile" href="wiki/ps1-widescreen-codes.html"><b>PS1 Widescreen Codes</b><span>full wiki page</span></a>
-<a class="tile" href="wiki/scanlines.html"><b>Scanlines</b><span>full wiki page</span></a>
-<a class="tile" href="wiki/smooth.html"><b>Smooth</b><span>full wiki page</span></a></div><h2>From the official thread — troubleshooting &amp; known issues</h2>
+<p>Game-specific lore: Tomb Raider 1/2 CDDA music desync is a POPS emulation limitation, not a config error - don't chase it. Tekken 3 is fixed by combining modes 0x06+0x04 (a clean example that those two combine, since neither is in the exclusive 0x01/0x02/0x03/0x05 set). Jackie Chan Stuntmaster (SCES-01444) has a built-in LibCrypt crack; if a disc batch lacks LibCrypt and still freezes, fall back to $FAKELC or the explicit LibCrypt code block (a complete real example for the PAL release is in the corpus). If the OPL Apps menu gets corrupted after editing entries, delete conf_elm.cfg and conf_elms.cfg (keep conf_elmz.cfg). And always start CHEATS.TXT with $SAFEMODE, which gates the cheat engine until POPS has left the PS1 OSD - without it, codes that touch the OSD-load region crash POPS on startup.</p><h2>From the official thread — troubleshooting &amp; known issues</h2>
 <blockquote>
 <p>Sourced from the <a href="https://www.psx-place.com/threads/popstarter.19139/">official psx-place POPStarter thread</a>.<br />
 <strong>krHACKen</strong> items are authoritative.</p>
@@ -149,7 +330,51 @@
 <li>POPStarter has horizontal controls (<code>$XPOS_####</code>, <code>$DWSTRETCH_####</code>, <code>$DWCROP_####</code>) but <strong>no</strong> real<br />
   vertical height-shrink/crop. If the image is cut off at <strong>both</strong> top and bottom, that's TV overscan — use<br />
   the TV's "Just Scan / Screen Fit / Full Pixel / 1:1" setting.</li>
-</ul></main>
+</ul><h2>Display &amp; widescreen wiki pages</h2><div class="grid"><a class="tile" href="wiki/widescreen.html"><b>Widescreen</b><span>full wiki page</span></a>
+<a class="tile" href="wiki/ps1-widescreen-codes.html"><b>PS1 Widescreen Codes</b><span>full wiki page</span></a>
+<a class="tile" href="wiki/scanlines.html"><b>Scanlines</b><span>full wiki page</span></a>
+<a class="tile" href="wiki/smooth.html"><b>Smooth</b><span>full wiki page</span></a></div><details class="deep"><summary>Cross-sourced quick-reference cards (provenance-tagged)</summary><div class="cards"><div class="card" id="usb-not-detected-fix-offset-413-vs-usbdelay"><h3>USB-not-detected fix (offset $413 vs $USBDELAY) <span class="badge secondary">near-primary</span> <span class="cat-chip">troubleshooting</span></h3>
+<div class="field"><b>Effect:</b> If a USB drive/HDD isn&#x27;t detected: hex-edit POPSTARTER.ELF offset $413 from 0x02 up toward 0x05/0x0A. Also verify FAT32 formatting, a defragmented device, and the POPS folder at the device ROOT. Debug the boot via DEBUG_AND_HALT.PPF or $410=non-zero. NOTE: $USBDELAY_# patches POPS (streaming) not POPStarter - it does NOT fix detection.</div>
+<div class="field"><b>Scope:</b> r13 USB mode (older builds used $417).</div>
+<div class="field"><b>Conflicts:</b> Don&#x27;t patch $417 in r13 (NOT USED). Use $413.</div>
+<div class="ex">Offset $413: 0x02 -&gt; 0x05</div>
+<div class="prov">📎 NEAR-PRIMARY: ps2-home DEBUG tutorial t=5311 (Wayback 20190808161830); config-table wiki</div>
+</div>
+<div class="card" id="conf-elm-cfg-cleanup-opl-apps-menu-corruption"><h3>conf_elm.cfg cleanup (OPL Apps menu corruption) <span class="badge community">community</span> <span class="cat-chip">troubleshooting</span></h3>
+<div class="field"><b>Effect:</b> If the OPL ELF-loader/Apps menu misbehaves after editing entries, delete conf_elm.cfg and conf_elms.cfg; conf_elmz.cfg is safe to keep. OPL regenerates the deleted files.</div>
+<div class="field"><b>Scope:</b> OPL Apps-tab launching of POPStarter games.</div>
+<div class="field"><b>Conflicts:</b> Community troubleshooting step, not a POPStarter feature.</div>
+<div class="ex">Delete conf_elm.cfg + conf_elms.cfg (keep conf_elmz.cfg)</div>
+<div class="prov">📎 PRIMARY/community: Dekazeta r13 changelog mirror + ps2-home wiki t=144</div>
+</div>
+<div class="card" id="tomb-raider-1-2-cdda-desync-emulation-limitation"><h3>Tomb Raider 1/2 CDDA desync (emulation limitation) <span class="badge community">community</span> <span class="cat-chip">troubleshooting</span></h3>
+<div class="field"><b>Effect:</b> Tomb Raider 1/2 CDDA (Red Book) music desync/drift is a POPS emulation limitation, not a POPStarter misconfiguration - no CHEATS.TXT command reliably fixes it.</div>
+<div class="field"><b>Scope:</b> Specific titles; documented as a known emulation limit.</div>
+<div class="field"><b>Conflicts:</b> Don&#x27;t chase it with geometry/compat commands.</div>
+<div class="ex">(known limitation - no fix)</div>
+<div class="prov">📎 COMMUNITY: ps2-home / PSX-Place HugoPocked fixes discussion 39750</div>
+</div>
+<div class="card" id="jackie-chan-stuntmaster-sces-01444-built-in-libcrypt-crack"><h3>Jackie Chan Stuntmaster (SCES-01444) - built-in LibCrypt crack <span class="badge secondary">near-primary</span> <span class="cat-chip">troubleshooting</span></h3>
+<div class="field"><b>Effect:</b> POPStarter has a built-in LibCrypt crack for Jackie Chan Stuntmaster (SCES-01444). If a particular disc batch lacks LibCrypt and still freezes, use $FAKELC or the explicit LibCrypt code block instead.</div>
+<div class="field"><b>Scope:</b> Specific title. r13.</div>
+<div class="field"><b>Conflicts:</b> Built-in crack vs $FAKELC vs explicit block - try in that order.</div>
+<div class="ex">SCES-01444 runs via the built-in crack; fall back to the LibCrypt example block</div>
+<div class="prov">📎 PRIMARY/community: Dekazeta r13 changelog; ShaolinAssassin wiki special-cheats LibCrypt example</div>
+</div>
+<div class="card" id="tekken-3-mode-0x06-0x04-combo"><h3>Tekken 3 - mode 0x06 + 0x04 combo <span class="badge community">community</span> <span class="cat-chip">troubleshooting</span></h3>
+<div class="field"><b>Effect:</b> Tekken 3 is fixed by combining compatibility modes 0x06 and 0x04 - a concrete example that 0x06 and 0x04 combine safely (neither is in the exclusive 0x01/0x02/0x03/0x05 set).</div>
+<div class="field"><b>Scope:</b> Specific title. r13.</div>
+<div class="field"><b>Conflicts:</b> Demonstrates the no-combine rule applies only to 0x01/0x02/0x03/0x05.</div>
+<div class="ex">$COMPATIBILITY_0x06 + $COMPATIBILITY_0x04</div>
+<div class="prov">📎 COMMUNITY/near-primary: ps2-home t=8744 (Wayback 20230723000350)</div>
+</div>
+<div class="card" id="crash-bash-pal-best-playable-config"><h3>Crash Bash PAL - best playable config <span class="badge community">community</span> <span class="cat-chip">troubleshooting</span></h3>
+<div class="field"><b>Effect:</b> Community-documented best-playable configuration for Crash Bash PAL (a notoriously finicky title); pursue the per-title fix thread rather than a generic mode.</div>
+<div class="field"><b>Scope:</b> Specific title.</div>
+<div class="field"><b>Conflicts:</b> Title-specific; no single universal command.</div>
+<div class="ex">(see the title&#x27;s fix thread)</div>
+<div class="prov">📎 COMMUNITY: ps2-home / PSX-Place title threads</div>
+</div></div></details></main>
   <aside class="toc"><div class="toc-h">On this page</div><nav id="toc-nav"></nav></aside>
 </div>
 <footer>

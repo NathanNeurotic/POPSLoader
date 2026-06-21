@@ -34,10 +34,286 @@
     <h4>Reference</h4>
     <a href="wiki/index.html"><span class="em">📚</span>All wiki pages</a>
   </nav>
-  <main class="content"><h1>Multi-disc &amp; VMC</h1><p class="lead">DISCS.TXT multi-disc swapping and the SLOT0/SLOT1 virtual memory cards, including VMCDIR.TXT redirection.</p><h2>Multi-disc and virtual memory cards</h2>
+  <main class="content"><h1>Multi-disc &amp; VMC</h1><p class="lead">DISCS.TXT multi-disc swapping and the SLOT0/SLOT1 virtual memory cards, including VMCDIR.TXT redirection.</p><p class="prov-inline">📎 from the recovered <a href="wiki/multi-disc.html">Multi Disc</a> wiki page · merged across snapshots, primary 20250110103459</p><h1><strong>Swap disc feature</strong></h1>
+<p>______________________________________________________________________________________________________________</p>
+<p>You can now play multi-discs games with POPS. (Older snapshots: "Since OBT 15, POPStarter has a swap disc feature that lets you play multi-disc games easily.")</p>
+<ol>
+<li>Create a DISCS.TXT text file containing the file names of your VCDs, one file name per line (with VCD extension)  ;</li>
+</ol>
+<pre><code>DISCS.TXT line 1 = disc 1
+DISCS.TXT line 2 = disc 2
+DISCS.TXT line 3 = disc 3
+DISCS.TXT line 4 = disc 4
+</code></pre>
+<p><strong>Example :</strong></p>
+<pre><code>MGS_CD1.VCD
+MGS_CD2.VCD
+[Empty]
+[Empty]
+</code></pre>
+<p>(Older snapshots used full names in this example instead of <code>[Empty]</code> placeholders:)</p>
+<pre><code>Metal Gear Solid (Disc 1).VCD
+Metal Gear Solid (Disc 2).VCD
+</code></pre>
+<ol start="2">
+<li>
+<p>Copy/paste this DISCS.TXT file to the VMC folders of ALL your game discs ;</p>
+</li>
+<li>
+<p>When required by the game, open the lid using the hotkey ;</p>
+</li>
+<li>
+<p>Insert the disc you want to load using the hotkey ;</p>
+</li>
+<li>
+<p>Close the lid using the hotkey.</p>
+</li>
+</ol>
+<p><strong>Hotkeys :</strong></p>
+<ul>
+<li>
+<p>To open the lid :  +  +  +</p>
+</li>
+<li>
+<p>To insert Disc 1 :  +  +  +</p>
+</li>
+<li>
+<p>To insert Disc 2 :  +  +  +</p>
+</li>
+<li>
+<p>To insert Disc 3 :  +  +  +</p>
+</li>
+<li>
+<p>To insert Disc 4 :  +  +  +</p>
+</li>
+<li>
+<p>To close the lid :  +  +  +</p>
+</li>
+</ul>
+<p><strong>Limitations :</strong></p>
+<ul>
+<li>
+<p>Up to 4 file names in DISCS.TXT ;</p>
+</li>
+<li>
+<p>A file name must not exceed 89 characters ;</p>
+</li>
+<li>
+<p>The VCD files have to be in the same partition/folder ;</p>
+</li>
+<li>
+<p>If you have more than 4 lines in the DISCS.TXT file, the feature will not work.</p>
+</li>
+</ul>
+<p><strong>Example of working setup :</strong></p>
+<pre><code>mass:/POPS/MGS_CD1.VCD
+mass:/POPS/MGS_CD2.VCD
+mass:/POPS/XX.MGS_CD1.ELF
+mass:/POPS/XX.MGS_CD2.ELF
+mass:/POPS/MGS_CD1/DISCS.TXT
+mass:/POPS/MGS_CD2/DISCS.TXT
+</code></pre>
+<p>(Older snapshots showed the same setup with explicit per-disc VMC files included:)</p>
+<pre><code>mass:/POPS/MGS_CD1.VCD
+mass:/POPS/MGS_CD2.VCD
+mass:/POPS/XX.MGS_CD1.ELF
+mass:/POPS/XX.MGS_CD2.ELF
+mass:/POPS/MGS_CD1/DISCS.TXT
+mass:/POPS/MGS_CD1/SLOT0.VMC
+mass:/POPS/MGS_CD1/SLOT1.VMC
+mass:/POPS/MGS_CD2/DISCS.TXT
+mass:/POPS/MGS_CD2/SLOT0.VMC
+mass:/POPS/MGS_CD2/SLOT1.VMC
+</code></pre>
+<p>DISCS.TXT content :</p>
+<pre><code>MGS_CD1.VCD
+MGS_CD2.VCD
+</code></pre>
+<p><strong>Notes :</strong></p>
+<ul>
+<li>
+<p>The swap disc feature is useful only if you must swap discs <strong>without any PS1 reboot</strong>. For the other games, you only need to swap the VMCs manually (copy/paste VMCs from VMC disc 1 folder to VMC disc 2 folder) – or you can use the "trick" below to avoid such a manipulation ;</p>
+</li>
+<li>
+<p>If your game has more than 4 discs, install the forth first ones, play them until disc 4, then uninstall discs 1, 2 and 3, and install disc 5, 6, 7… (Older snapshots: "If your disc has more than 4 discs, …")</p>
+</li>
+<li>
+<p>Does not work properly with all games ((not working with Final Fantasy IX and Grandia) ;</p>
+</li>
+<li>
+<p>Multi disc games <a href="downloads/Disc_Combining_Kits.7z">combined</a> to single VCDs still work, up to ~2GB per VCD.</p>
+</li>
+</ul>
+<p>(The last two notes — the Final Fantasy IX / Grandia caveat and the combined-VCD note — appear only in the newer snapshots.)</p>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>Use a single pair of VMCs for multi-disc games :</em></h2>
+<p>You can use the VMCDIR.TXT file to use only 1 pair of VMCs for a multi-disc game. This VMCDIR.TXT must be placed into disc 1 and disc 2 VMC game folders. Read <a href="wiki/vmc.html">here</a> to know more about the VMCDIR.TXT file ("Setting a path for the VMC folder" section).</p>
+<p><strong>Example :</strong></p>
+<pre><code>mass:/POPS/MGS_CD1.VCD
+mass:/POPS/MGS_CD2.VCD
+mass:/POPS/XX.MGS_CD1.ELF
+mass:/POPS/XX.MGS_CD2.ELF
+mass:/POPS/MGS_CD1/DISCS.TXT
+mass:/POPS/MGS_CD1/VMCDIR.TXT
+mass:/POPS/MGS_CD2/DISCS.TXT
+mass:/POPS/MGS_CD2/VMCDIR.TXT
+</code></pre>
+<p>(Older snapshots gave a single-ELF variant of this example that also lists the explicit VMC files and shares one ELF across both discs:)</p>
+<pre><code>mass:/POPS/MGS.VCD
+mass:/POPS/MGS_2.VCD
+mass:/POPS/XX.MGS.ELF
+mass:/POPS/MGS/DISCS.TXT
+mass:/POPS/MGS/VMCDIR.TXT
+mass:/POPS/MGS/SLOT0.VMC
+mass:/POPS/MGS/SLOT1.VMC
+mass:/POPS/MGS_2/DISCS.TXT
+mass:/POPS/MGS_2/VMCDIR.TXT
+</code></pre>
+<p>DISCS.TXT content :</p>
+<pre><code>MGS_CD1.VCD
+MGS_CD2.VCD
+</code></pre>
+<p>(In the older single-ELF variant the DISCS.TXT instead reads:)</p>
+<pre><code>MGS.VCD
+MGS_2.VCD
+</code></pre>
+<p>VMCDIR.TXT content (= CD1 VMC game folder) :</p>
+<pre><code>MGS_CD1
+</code></pre>
+<p>(In the older single-ELF variant VMCDIR.TXT holds the name of the disc 1 VMC folder:)</p>
+<pre><code>MGS
+</code></pre>
+<p>In this situation, disc 1 and disc 2 share the same VMC folder.</p>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>DISCS POOPER</em></h2>
+<p>(Older snapshots titled this section "<em>Use DISCS POOPER tool !</em>".)</p>
+<p>DISCS_POOPER is a little program that does the boring job for you.</p>
+<ul>
+<li><strong>Download :</strong> here</li>
+</ul>
+<p>(The download link target varies across snapshots: the newest primary snapshot points to <code>DISCS_POOPER.BAT.7z</code>; snapshot 20240618063809 and the older 2017 snapshots point to the direct <code>DISCS_POOPER.EXE</code>. In the older snapshots the Download link appeared at the end of this section rather than the top.)</p>
+<p><strong>How to use it :</strong></p>
+<ol>
+<li>
+<p>Create a new folder ;</p>
+</li>
+<li>
+<p>Drop the VCD files of your multic-disc game in it ;</p>
+</li>
+<li>
+<p>Drop DISCS_POOPER.EXE in the folder and run it ;</p>
+</li>
+</ol>
+<p>DISCS_POOPER creates :</p>
+<p>. A VMC folder for each VCD in the folder ;</p>
+<p>. A DISCS.TXT inside each VMC folder ;</p>
+<p>. A VMCDIR.TXT inside each VMC to use only a pair of VMC for this multi-disc game.</p>
+<ol start="4">
+<li>
+<p>Move your VCD and VMC game folders to your POPS folder ;</p>
+</li>
+<li>
+<p>Enjoy.</p>
+</li>
+</ol>
+<p><strong>Limits :</strong></p>
+<p>. Doesn't comply with 4 CDs limit of the swap disc feature (don't use it with more than 4 VCDs) ;</p>
+<p>. Barney Stinson voice non-included. (This second limit line appears only in the older 2017 snapshots.)</p>
+<p>______________________________________________________________________________________________________________</p>
+<h3><a href="wiki/index.html"><strong>Index</strong></a></h3><h2>Images &amp; screenshots</h2><div class="gallery"><figure><a href="img/3405191067-Playstation-Button-Select.png" target="_blank"><img src="img/3405191067-Playstation-Button-Select.png" alt="Playstation Button Select" loading="lazy"></a><figcaption>Playstation Button Select</figcaption></figure><figure><a href="img/1165364186-Playstation-Button-L2.png" target="_blank"><img src="img/1165364186-Playstation-Button-L2.png" alt="Playstation Button L2" loading="lazy"></a><figcaption>Playstation Button L2</figcaption></figure><figure><a href="img/1712503932-Playstation-Button-R2.png" target="_blank"><img src="img/1712503932-Playstation-Button-R2.png" alt="Playstation Button R2" loading="lazy"></a><figcaption>Playstation Button R2</figcaption></figure><figure><a href="img/2651471562-Playstation-Button-T.png" target="_blank"><img src="img/2651471562-Playstation-Button-T.png" alt="Playstation Button T" loading="lazy"></a><figcaption>Playstation Button T</figcaption></figure><figure><a href="img/3199916752-Playstation-Dpad-Up.png" target="_blank"><img src="img/3199916752-Playstation-Dpad-Up.png" alt="Playstation Dpad Up" loading="lazy"></a><figcaption>Playstation Dpad Up</figcaption></figure><figure><a href="img/2374122730-Playstation-Dpad-Right.png" target="_blank"><img src="img/2374122730-Playstation-Dpad-Right.png" alt="Playstation Dpad Right" loading="lazy"></a><figcaption>Playstation Dpad Right</figcaption></figure><figure><a href="img/202135531-Playstation-Dpad-Down.png" target="_blank"><img src="img/202135531-Playstation-Dpad-Down.png" alt="Playstation Dpad Down" loading="lazy"></a><figcaption>Playstation Dpad Down</figcaption></figure><figure><a href="img/4108913469-Playstation-Dpad-Left.png" target="_blank"><img src="img/4108913469-Playstation-Dpad-Left.png" alt="Playstation Dpad Left" loading="lazy"></a><figcaption>Playstation Dpad Left</figcaption></figure><figure><a href="img/3011564833-Playstation-Button-S.png" target="_blank"><img src="img/3011564833-Playstation-Button-S.png" alt="Playstation Button S" loading="lazy"></a><figcaption>Playstation Button S</figcaption></figure></div>
+<p class="prov-inline">📎 from the recovered <a href="wiki/vmc.html">VMC</a> wiki page · merged across snapshots, primary 20170629133617</p><h1><strong>Virtual Memory Cards</strong></h1>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>About VMC :</em></h2>
+<p>The very first time a game is launched, a new folder named “GAME” (ex : Crash Bandicoot) will be created into your POPS directory – one separate folder for each game. This folder contains 2 files – SLOT0.VMC &amp; SLOT1.VMC, which are your VMCs.</p>
+<pre><code>
+POPS/Crash Bandicoot.VCD
+POPS/Crash Bandicoot/SLOT0.VMC
+POPS/Crash Bandicoot/SLOT1.VMC
+
+</code></pre>
+<p>If you know how to hexedit POPStarter, you can change that behaviour to have only 1 VMC created – or not at all. Check the <a href="wiki/configuration-table.html">configuration table</a> to know how to change the default setting (offset $429).</p>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>Setting a path for the VMC folder :</em></h2>
+<p>Here’s how to change the destination VMC folder of your games :<br />
+Let’s say your game is MY_GAME.VCD. The VMCs are saved to POPS/MY_GAME/. You want the VMCs to be saved into POPS/BLAHBLAH/ instead.</p>
+<ol>
+<li>
+<p>Create an empty text file;</p>
+</li>
+<li>
+<p>Write BLAHBLAH into it;</p>
+</li>
+<li>
+<p>Save it as VMCDIR.TXT;</p>
+</li>
+<li>
+<p>Copy VMCDIR.TXT to POPS/MY_GAME/</p>
+</li>
+</ol>
+<p>Example :</p>
+<pre><code>
+mass:/POPS/MY_GAME.VCD
+mass:/POPS/MY_GAME/VMCDIR.TXT
+mass:/POPS/BLAHBLAH/SLOT0.VMC
+mass:/POPS/BLAHBLAH/SLOT1.VMC
+
+</code></pre>
+<p><strong>Notes :</strong></p>
+<ul>
+<li>
+<p>All the POPStarter files (TROJANs, PATCHes, CHEATS.TXT...) will still be loaded from /POPS/MY_GAME/, but POPS will use the VMCs that are in /POPS/BLAHBLAH/</p>
+</li>
+<li>
+<p>Characters that are obviously not allowed are / \ and :</p>
+</li>
+<li>
+<p>VMCDIR.TXT will not be loaded if it’s bigger than 103 bytes or if it contains more than 1 line.</p>
+</li>
+<li>
+<p>Target folder must remain in POPS folder.</p>
+</li>
+<li>
+<p>This feature is useful when you are several users and want to use different VMCs. Each user can have his own VMC folder.</p>
+</li>
+<li>
+<p>If you want to use a single pair of VMCs for ALL your games, place the VMCDIR.TXT file in POPS folder. The VMCs will not be overwritten but mounted and loaded, and you will be able to save in them with no data loss.</p>
+</li>
+</ul>
+<p>Example :</p>
+<pre><code>
+smb:/YourSharedFolder/POPS/Crash Bandicoot.VCD
+smb:/YourSharedFolder/POPS/Tekken.VCD
+smb:/YourSharedFolder/POPS/Castlevania - Symphony of the night.VCD
+smb:/YourSharedFolder/POPS/VMCDIR.TXT
+smb:/YourSharedFolder/POPS/SAVES/SLOT0.VMC
+smb:/YourSharedFolder/POPS/SAVES/SLOT1.VMC
+
+</code></pre>
+<p>with SAVES written into smb:/YourSharedFolder/POPS/VMCDIR.TXT</p>
+<p>Here the 3 games mentionned will use smb:/YourSharedFolder/POPS/SAVES/SLOT0.VMC and smb:/YourSharedFolder/POPS/SAVES/SLOT1.VMC as VMCs with no issue.</p>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>Additional notes :</em></h2>
+<ul>
+<li>No physical MC support ATM – would be too slow.</li>
+</ul>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>Related stuff :</em></h2>
+<p>You may want to give a look at this :</p>
+<ul>
+<li>
+<p>[VMC] <a href="wiki/pmc-to-vmc.html">Use your PS1 MC saves with POPStarter</a></p>
+</li>
+<li>
+<p>[VMC] <a href="wiki/vmc-to-pmc.html">Use your VMC saves on a PS1 retail console</a></p>
+</li>
+</ul>
+<p>______________________________________________________________________________________________________________</p>
+<h3><a href="wiki/index.html"><strong>Index</strong></a></h3><h2>Images &amp; screenshots</h2><div class="gallery"><figure><a href="img/1241696584-default_VMC.JPG" target="_blank"><img src="img/1241696584-default_VMC.JPG" alt="default VMC" loading="lazy"></a><figcaption>default VMC</figcaption></figure></div><h2>Multi-disc and virtual memory cards</h2>
 <p>VMCs: POPS auto-creates a pair of virtual memory-card images on first launch - SLOT0.VMC (controller port 1) and SLOT1.VMC (port 2) - in a per-game folder named after the VCD. PS1 retail saves imported with MemcardRex land in SLOT1.VMC. How many VMCs are created (two/one/none) is set by config offset $429 (NOT $42A, which is the 480p/PAL byte). Crucially, POPS flashes the WHOLE VMC on every save rather than writing a single MC block - this is why saving to a physical memory card is unsupported and why sharing one VMC pair across games is data-safe.</p>
 <p>VMCDIR.TXT is a one-line file (&lt;=103 bytes, no / \ : characters) that redirects ONLY the SLOT0/SLOT1 pair to a named folder while every other asset still loads from the game folder; the target must stay inside POPS. Put it in a game folder for per-game redirection, or in the POPS root to collapse the whole library onto one shared VMC pair (per-user save sets, shared saves). When the same asset exists in both the POPS folder and a game's VMC folder, the VMC-folder copy wins - the ONE documented exception is two CHEATS.TXT files where one changes the video mode, which is the actual mechanism behind the base report's 'root CHEATS.TXT may block per-game' note.</p>
-<p>DISCS.TXT is the orthogonal multi-disc mechanism: up to 4 VCD filenames (with the .VCD extension), one per line, all in the same partition, copied into every disc's folder. More than 4 lines breaks it; each filename is capped at 89 chars per the wiki, though POPSLoader's own testing shows a practical ~73-char ceiling because it is a full-PATH buffer. In-game disc swapping (since Beta 15) uses Select+L2+R2 plus Triangle (open lid), Up/Right/Down/Left (insert disc 1/2/3/4, mapping to DISCS.TXT LINE numbers), and Square (close lid). Pair DISCS.TXT with a VMCDIR.TXT pointing every disc at disc 1's folder so a multi-disc game keeps one save card. On internal HDD the convention is instead IMAGE0.VCD/IMAGE1.VCD in one PP. partition (sharing one VMC). The PC tool DISCS_POOPER.EXE auto-generates the DISCS.TXT + VMCDIR.TXT set for up to 4 VCDs. Finally, OSD.BIN beats BIOS.BIN: if both exist in a VMC dir, OSD.BIN is injected and BIOS.BIN is ignored (OSD.BIN must satisfy the strict 'PS-X OSD' v1 header).</p><h2>Reference</h2><div class="cards"><div class="card" id="vmcdir-txt"><h3>VMCDIR.TXT <span class="badge primary">primary</span> <span class="cat-chip">vmc</span></h3>
+<p>DISCS.TXT is the orthogonal multi-disc mechanism: up to 4 VCD filenames (with the .VCD extension), one per line, all in the same partition, copied into every disc's folder. More than 4 lines breaks it; each filename is capped at 89 chars per the wiki, though POPSLoader's own testing shows a practical ~73-char ceiling because it is a full-PATH buffer. In-game disc swapping (since Beta 15) uses Select+L2+R2 plus Triangle (open lid), Up/Right/Down/Left (insert disc 1/2/3/4, mapping to DISCS.TXT LINE numbers), and Square (close lid). Pair DISCS.TXT with a VMCDIR.TXT pointing every disc at disc 1's folder so a multi-disc game keeps one save card. On internal HDD the convention is instead IMAGE0.VCD/IMAGE1.VCD in one PP. partition (sharing one VMC). The PC tool DISCS_POOPER.EXE auto-generates the DISCS.TXT + VMCDIR.TXT set for up to 4 VCDs. Finally, OSD.BIN beats BIOS.BIN: if both exist in a VMC dir, OSD.BIN is injected and BIOS.BIN is ignored (OSD.BIN must satisfy the strict 'PS-X OSD' v1 header).</p><h2>More wiki sources</h2><div class="grid"><a class="tile" href="wiki/vmc-to-pmc.html"><b>VMC To PMC</b><span>full wiki page</span></a>
+<a class="tile" href="wiki/pmc-to-vmc.html"><b>PMC To VMC</b><span>full wiki page</span></a>
+<a class="tile" href="wiki/d2ls.html"><b>D2LS</b><span>full wiki page</span></a></div><details class="deep"><summary>Cross-sourced quick-reference cards (provenance-tagged)</summary><div class="cards"><div class="card" id="vmcdir-txt"><h3>VMCDIR.TXT <span class="badge primary">primary</span> <span class="cat-chip">vmc</span></h3>
 <div class="field"><b>Effect:</b> One-line text file in a game&#x27;s VMC folder that redirects where POPS saves/reads the VMC pair (SLOT0.VMC + SLOT1.VMC); all other assets (TROJAN/PATCH/CHEATS) still load from the game folder. Forbidden chars / \ : . Not loaded if &gt;103 bytes or &gt;1 line. Target folder must stay inside the POPS folder.</div>
 <div class="field"><b>Scope:</b> Per-game in the game folder; GLOBAL (one shared VMC pair for ALL games) when placed in the POPS root. USB/SMB/HDD. Must be copied into every POPS# folder.</div>
 <div class="field"><b>Conflicts:</b> In POPS root it overrides per-game VMC isolation but mounts existing VMCs without overwriting (no data loss). Game-folder copy wins over a POPS-root copy. Destination outside POPS is rejected.</div>
@@ -127,11 +403,7 @@
 <div class="field"><b>Conflicts:</b> Identifier must be exactly &#x27;PS-X OSD&#x27;; version (Ch) and build (Eh) cannot be NULL; load addr/entrypoint multiples of 0x10000; name &gt;=1 char. Violations -&gt; not loaded.</div>
 <div class="ex">Bytes 0-7 = &#x27;PS-X OSD&#x27;; name field at 0x20 = &#x27;MY OSD\0&#x27;</div>
 <div class="prov">📎 PRIMARY: ShaolinAssassin wiki bios-osd-handlers (Wayback 20170629161024)</div>
-</div></div><h2>Full wiki sources</h2><div class="grid"><a class="tile" href="wiki/multi-disc.html"><b>Multi Disc</b><span>full wiki page</span></a>
-<a class="tile" href="wiki/vmc.html"><b>VMC</b><span>full wiki page</span></a>
-<a class="tile" href="wiki/vmc-to-pmc.html"><b>VMC To PMC</b><span>full wiki page</span></a>
-<a class="tile" href="wiki/pmc-to-vmc.html"><b>PMC To VMC</b><span>full wiki page</span></a>
-<a class="tile" href="wiki/d2ls.html"><b>D2LS</b><span>full wiki page</span></a></div></main>
+</div></div></details></main>
   <aside class="toc"><div class="toc-h">On this page</div><nav id="toc-nav"></nav></aside>
 </div>
 <footer>

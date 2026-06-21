@@ -34,10 +34,382 @@
     <h4>Reference</h4>
     <a href="wiki/index.html"><span class="em">📚</span>All wiki pages</a>
   </nav>
-  <main class="content"><h1>IGR, Exit &amp; Hotkeys</h1><p class="lead">In-Game Reset, the <code>mc0:/BOOT/BOOT.ELF</code> exit chain, and the in-game hotkeys.</p><h2>IGR, in-game reset, and the exit chain</h2>
+  <main class="content"><h1>IGR, Exit &amp; Hotkeys</h1><p class="lead">In-Game Reset, the <code>mc0:/BOOT/BOOT.ELF</code> exit chain, and the in-game hotkeys.</p><div class="callout red"><div class="h">⚠ Unverified / caution</div>PATCH_7.BIN (existence unconfirmed) - Present it in a RED warning box. State plainly: no primary file or definition survives; it is absent from the wiki, the r13 CHANGES.TXT, the IGR download table, and the community manual (which skips from PATCH_6 to PATCH_8). The &#x27;2014 krHACKen forced mode 0x06&#x27; vs &#x27;obsolete Mode 7&#x27; framings are community lore only. Explicitly distinguish it from the VERIFIED TROJAN_7.BIN game-fix bundle, which is a different file. Confidence: unverified.</div>
+<div class="callout amber"><div class="h">⚖ Conflicting sources</div>PATCH_9.BIN filename collision - Present as TWO separate site records that cross-warn each other in an AMBER box. (A) STOCK PATCH_9.BIN == $NOPAL, disables the auto PAL patcher so a PAL VCD runs in POPS native NTSC (wiki already calls it &#x27;obsolete (still working tho)&#x27;). (B) The 2020-03-21 krHACKen file that REUSES the name PATCH_9.BIN to disable the bugged ELF loader and restore IGR-to-OPL; PATCH_9.7z MD5 9db1e18bae92c4991e3de7e2a752558c (188 B), distributed via the IGR &#x27;Trojans and Patches&#x27; thread. Same filename, different binary - never mix them. NOT byte-diffed in this pass; flag that the 188 B/MD5 in the IGR table is not explicitly tied to one of the two roles.</div>
+<div class="callout info"><div class="h">ℹ Nuance</div>Default IGR combo (L1+Select+Start) - Present with a &#x27;community-reported&#x27; tag. The default-skin-enabled fact is primary (CHANGES.TXT), but the specific default button combo is from a PS2-HOME tutorial, not the CHANGES.TXT; confidence near-primary.</div>
+<div class="callout red"><div class="h">⚠ Unverified / caution</div>TROJAN_6 / TROJAN_8 - Note they are absent from the recovered IGR download table (only 0-5, 7, 9 exist there); whether they ever existed is unknown. Low-importance gap.</div><p class="prov-inline">📎 from the recovered <a href="wiki/igr.html">IGR</a> wiki page · merged across snapshots, primary 20240324023512</p><h1><strong>In-Game-Reset</strong></h1>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>IGR Behaviour Modifiers :</em></h2>
+<p>POPStarter has his own IGR (  +  +  ). You can change the button combo using one PATCH/TROJAN of the IGR behaviour modifiers archive – or just use a <a href="wiki/special-cheats.html">special command</a> for it in POPS/CHEATS.TXT or POPS/GAME/CHEATS.TXT.</p>
+<table>
+<thead>
+<tr>
+<th><strong>File name</strong></th>
+<th><strong>Button combo</strong></th>
+<th><strong>Action</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>| TROJAN_0.BIN | + + + + + | Opens the IGR menu. |</p>
+<p>| TROJAN_1.BIN | + | Opens the IGR menu. |</p>
+<p>| TROJAN_2.BIN | + + + + + | Opens the IGR menu. |</p>
+<p>| TROJAN_3.BIN | + + + + + | Terminates POPS (no IGR menu). |</p>
+<p>| TROJAN_4.BIN | + | Terminates POPS (no IGR menu). |</p>
+<p>| TROJAN_5.BIN | + + + + + | Terminates POPS (no IGR menu). |</p>
+<p>| PATCH_0.BIN | (none) | Disables the IGR menu. |</p>
+<ul>
+<li><strong>How to install :</strong></li>
+</ul>
+<p>Copy one of the PATCH/TROJAN files to the VMC game folder or to the POPS folder.</p>
+<p>When copied to a VMC game folder, it’s used on the relative game only.</p>
+<p>When copied to the POPS folder, it’s used on all the installed games.</p>
+<ul>
+<li><strong>What to do if you don’t want to overwrite your existing TROJAN_#.BIN/PATCH_#.BIN file :</strong></li>
+</ul>
+<ol>
+<li>
+<p>Change the number in the name of the file you want to copy ;</p>
+</li>
+<li>
+<p>Open the file you want to copy with a hexadecimal editor, change the number in its header according to the one of the new file name ;</p>
+</li>
+<li>
+<p>And finally copy the edited file.</p>
+</li>
+</ol>
+<p>POPStarter will refuse to load the PATCH/TROJAN file if the number in its filename doesn’t match the number in its header.</p>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>IGR Textures:</em></h2>
+<p>POPStarter has a built-in IGR loader texture making you able to change the japanese IGR screen with one of your language. Just drop the “IGR_BG.TM2”, “IGR_NO.TM2” and “IGR_YES.TM2” files into your POPS folder.</p>
+<p><strong>Example :</strong></p>
+<pre><code>__common/POPS/IGR_BG.TM2
+__common/POPS/IGR_NO.TM2
+__common/POPS/IGR_YES.TM2
+</code></pre>
+<p><strong>Note :</strong> .TM2 extension MUST be UPPERCASE for internal HDD – or it won’t work.</p>
+<p>Some IGR textures made by the guys @<a href="https://assemblergames.com/threads/ps2-pops-stuff.45347/">ASSEMbler</a>. Kudos to them. Credits go to their original authors.</p>
+<table>
+<thead>
+<tr>
+<th><strong>Preview</strong></th>
+<th><strong>Author</strong></th>
+<th><strong>Chinese</strong></th>
+<th><strong>English</strong></th>
+<th><strong>French</strong></th>
+<th><strong>Spanish</strong></th>
+<th><strong>Polish</strong></th>
+<th><strong>Portuguese</strong></th>
+<th><strong>German</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>|  | arkl1t32 | – | X | X | – | X | – | – |</p>
+<p>|  | arkl1t32 | – | X | X | – | X | – | – |</p>
+<p>|  | arkl1t32 | – | X | X | – | X | – | – |</p>
+<p>|  | arkl1t32 | X | X | X | – | X | X | – |</p>
+<p>|  | arkl1t32 | – | X | X | – | X | – | – |</p>
+<p>|  | gledson999 | – | X | X | – | – | X | – |</p>
+<p>|  | El_Patas (mod of gledson999’s) | – | X | – | – | X | – | – |</p>
+<p>|  | LopoTRI | – | X | – | – | – | – | X |</p>
+<p>| <strong>Download links for language packs</strong> |  | <strong><a href="downloads/IGR_textures_-_Chinese_pack.7z">Chinese</a></strong> | <strong>English</strong> | <strong>French</strong> | <strong>Spanish</strong> | <strong>Polish</strong> | <strong>Portuguese</strong> | <strong>German</strong> |</p>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>“Exit to [name of app]” function :</em></h2>
+<p>POPStarter has a built-in launcher added to the in-game reset function. It looks for mc0:/BOOT/BOOT.ELF then mc1:/BOOT/BOOT.ELF. If not found/invalid, it exits to the PS2 browser.</p>
+<p>If you want to exit game to some app (uLE_kHn for example), name it BOOT.ELF and place it in the BOOT folder of your memory card.</p>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>Related stuff :</em></h2>
+<p>You may want to give a look at this :</p>
+<ul>
+<li>[IGR] <a href="wiki/igr-textures.html">Make your own IGR textures</a></li>
+</ul>
+<p>______________________________________________________________________________________________________________</p>
+<h3><a href="wiki/index.html"><strong>Index</strong></a></h3><h2>Images &amp; screenshots</h2><div class="gallery"><figure><a href="img/2984521000-Playstation-Button-Select.png" target="_blank"><img src="img/2984521000-Playstation-Button-Select.png" alt="Playstation Button Select" loading="lazy"></a><figcaption>Playstation Button Select</figcaption></figure><figure><a href="img/3507486238-Playstation-Button-R1.png" target="_blank"><img src="img/3507486238-Playstation-Button-R1.png" alt="Playstation Button R1" loading="lazy"></a><figcaption>Playstation Button R1</figcaption></figure><figure><a href="img/1415872802-Playstation-Button-L1.png" target="_blank"><img src="img/1415872802-Playstation-Button-L1.png" alt="Playstation Button L1" loading="lazy"></a><figcaption>Playstation Button L1</figcaption></figure><figure><a href="img/3667653909-Playstation-Button-L2.png" target="_blank"><img src="img/3667653909-Playstation-Button-L2.png" alt="Playstation Button L2" loading="lazy"></a><figcaption>Playstation Button L2</figcaption></figure><figure><a href="img/2283666138-Playstation-Button-R2.png" target="_blank"><img src="img/2283666138-Playstation-Button-R2.png" alt="Playstation Button R2" loading="lazy"></a><figcaption>Playstation Button R2</figcaption></figure><figure><a href="img/310130791-Playstation-Button-X.png" target="_blank"><img src="img/310130791-Playstation-Button-X.png" alt="Playstation Button X" loading="lazy"></a><figcaption>Playstation Button X</figcaption></figure><figure><a href="img/202135531-Playstation-Dpad-Down.png" target="_blank"><img src="img/202135531-Playstation-Dpad-Down.png" alt="Playstation Dpad Down" loading="lazy"></a><figcaption>Playstation Dpad Down</figcaption></figure><figure><a href="img/2691718556-Playstation-Button-Start.png" target="_blank"><img src="img/2691718556-Playstation-Button-Start.png" alt="Playstation Button Start" loading="lazy"></a><figcaption>Playstation Button Start</figcaption></figure><figure><a href="img/1646263520-Original.png" target="_blank"><img src="img/1646263520-Original.png" alt="Original" loading="lazy"></a><figcaption>Original</figcaption></figure><figure><a href="img/2807855345-preview_en.png" target="_blank"><img src="img/2807855345-preview_en.png" alt="preview en" loading="lazy"></a><figcaption>preview en</figcaption></figure><figure><a href="img/3600508499-preview_sp.png" target="_blank"><img src="img/3600508499-preview_sp.png" alt="preview sp" loading="lazy"></a><figcaption>preview sp</figcaption></figure><figure><a href="img/1470393228-lopoprev.png" target="_blank"><img src="img/1470393228-lopoprev.png" alt="lopoprev" loading="lazy"></a><figcaption>lopoprev</figcaption></figure></div>
+<p class="prov-inline">📎 from the recovered <a href="wiki/hotkeys.html">Hotkeys</a> wiki page · merged across snapshots, primary 20240910140014</p><h1><strong>Hotkeys</strong></h1>
+<p>______________________________________________________________________________________________________________</p>
+<p>(Older snapshots label this column header "Hotkey" singular; newer snapshots use "Hotkeys".)</p>
+<table>
+<thead>
+<tr>
+<th><strong>Hotkeys</strong></th>
+<th><strong>Description</strong></th>
+<th><strong>Notes</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>+ +</td>
+<td>Native <a href="wiki/igr.html">In-Game-Reset</a>.</td>
+<td>Can be changed using the IGR Behaviour Modifiers.</td>
+</tr>
+<tr>
+<td>+ +</td>
+<td>Enables the <a href="wiki/smooth.html">smooth texture</a> mapping.</td>
+<td>Can be done using the <a href="wiki/special-cheats.html">$SMOOTH special command</a> in CHEATS.TXT file. (Older snapshots: "Can be done using the $SMOOTH special cheats in CHEATS.TXT file.")</td>
+</tr>
+<tr>
+<td>+ +</td>
+<td>Disables the <a href="wiki/smooth.html">smooth texture</a> mapping.</td>
+<td></td>
+</tr>
+<tr>
+<td>+ +</td>
+<td>Turns the <a href="wiki/scanlines.html">scanlines generator</a> ON.</td>
+<td>Starts with OBT 14.</td>
+</tr>
+<tr>
+<td>+ +</td>
+<td>Turns the <a href="wiki/scanlines.html">scanlines generator</a> OFF.</td>
+<td>Starts with OBT 14.</td>
+</tr>
+<tr>
+<td>+ + +</td>
+<td><a href="wiki/multi-disc.html">Opens the PS1 CD lid.</a></td>
+<td>(1) Part of the multi-disc change feature.</td>
+</tr>
+<tr>
+<td>+ + +</td>
+<td><a href="wiki/multi-disc.html">To Insert Disc 1 (DISCS.TXT line 1).</a></td>
+<td>Part of the multi-disc change feature. Starts with OBT 15.</td>
+</tr>
+<tr>
+<td>+ + +</td>
+<td><a href="wiki/multi-disc.html">To Insert Disc 2 (DISCS.TXT line 2).</a></td>
+<td>Part of the multi-disc change feature. Starts with OBT 15.</td>
+</tr>
+<tr>
+<td>+ + +</td>
+<td><a href="wiki/multi-disc.html">To Insert Disc 3 (DISCS.TXT line 3).</a></td>
+<td>Part of the multi-disc change feature. Starts with OBT 15.</td>
+</tr>
+<tr>
+<td>+ + +</td>
+<td><a href="wiki/multi-disc.html">To Insert Disc 4 (DISCS.TXT line 4).</a></td>
+<td>Part of the multi-disc change feature. Starts with OBT 15.</td>
+</tr>
+<tr>
+<td>+ + +</td>
+<td><a href="wiki/multi-disc.html">Closes the PS1 CD lid.</a></td>
+<td>Part of the multi-disc change feature.</td>
+</tr>
+<tr>
+<td>+ + +</td>
+<td>PS1 software reset system.</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>(1) If used a with <a href="wiki/bios-osd-handlers.html">BIOS.BIN</a>, MC manager and CD Player can be reached pressing the hotkeys at game startup. Closing the lid will run the game. (Older snapshots phrase this as: "If used a with BIOS.BIN, MC manager and CD Player can be reached via the hotkey at game startup. Closing the lid will run the game.")</p>
+<p>______________________________________________________________________________________________________________</p>
+<h3><a href="wiki/index.html"><strong>Index</strong></a></h3><h2>Images &amp; screenshots</h2><div class="gallery"><figure><a href="img/2984521000-Playstation-Button-Select.png" target="_blank"><img src="img/2984521000-Playstation-Button-Select.png" alt="Playstation Button Select" loading="lazy"></a><figcaption>Playstation Button Select</figcaption></figure><figure><a href="img/1415872802-Playstation-Button-L1.png" target="_blank"><img src="img/1415872802-Playstation-Button-L1.png" alt="Playstation Button L1" loading="lazy"></a><figcaption>Playstation Button L1</figcaption></figure><figure><a href="img/3507486238-Playstation-Button-R1.png" target="_blank"><img src="img/3507486238-Playstation-Button-R1.png" alt="Playstation Button R1" loading="lazy"></a><figcaption>Playstation Button R1</figcaption></figure><figure><a href="img/2283666138-Playstation-Button-R2.png" target="_blank"><img src="img/2283666138-Playstation-Button-R2.png" alt="Playstation Button R2" loading="lazy"></a><figcaption>Playstation Button R2</figcaption></figure><figure><a href="img/3667653909-Playstation-Button-L2.png" target="_blank"><img src="img/3667653909-Playstation-Button-L2.png" alt="Playstation Button L2" loading="lazy"></a><figcaption>Playstation Button L2</figcaption></figure><figure><a href="img/3405191067-Playstation-Button-Select.png" target="_blank"><img src="img/3405191067-Playstation-Button-Select.png" alt="Playstation Button Select" loading="lazy"></a><figcaption>Playstation Button Select</figcaption></figure><figure><a href="img/1165364186-Playstation-Button-L2.png" target="_blank"><img src="img/1165364186-Playstation-Button-L2.png" alt="Playstation Button L2" loading="lazy"></a><figcaption>Playstation Button L2</figcaption></figure><figure><a href="img/1712503932-Playstation-Button-R2.png" target="_blank"><img src="img/1712503932-Playstation-Button-R2.png" alt="Playstation Button R2" loading="lazy"></a><figcaption>Playstation Button R2</figcaption></figure><figure><a href="img/2651471562-Playstation-Button-T.png" target="_blank"><img src="img/2651471562-Playstation-Button-T.png" alt="Playstation Button T" loading="lazy"></a><figcaption>Playstation Button T</figcaption></figure><figure><a href="img/3199916752-Playstation-Dpad-Up.png" target="_blank"><img src="img/3199916752-Playstation-Dpad-Up.png" alt="Playstation Dpad Up" loading="lazy"></a><figcaption>Playstation Dpad Up</figcaption></figure><figure><a href="img/2374122730-Playstation-Dpad-Right.png" target="_blank"><img src="img/2374122730-Playstation-Dpad-Right.png" alt="Playstation Dpad Right" loading="lazy"></a><figcaption>Playstation Dpad Right</figcaption></figure><figure><a href="img/202135531-Playstation-Dpad-Down.png" target="_blank"><img src="img/202135531-Playstation-Dpad-Down.png" alt="Playstation Dpad Down" loading="lazy"></a><figcaption>Playstation Dpad Down</figcaption></figure><figure><a href="img/4108913469-Playstation-Dpad-Left.png" target="_blank"><img src="img/4108913469-Playstation-Dpad-Left.png" alt="Playstation Dpad Left" loading="lazy"></a><figcaption>Playstation Dpad Left</figcaption></figure><figure><a href="img/3011564833-Playstation-Button-S.png" target="_blank"><img src="img/3011564833-Playstation-Button-S.png" alt="Playstation Button S" loading="lazy"></a><figcaption>Playstation Button S</figcaption></figure><figure><a href="img/310130791-Playstation-Button-X.png" target="_blank"><img src="img/310130791-Playstation-Button-X.png" alt="Playstation Button X" loading="lazy"></a><figcaption>Playstation Button X</figcaption></figure></div>
+<p class="prov-inline">📎 from the recovered <a href="wiki/bios-osd-handlers.html">BIOS OSD Handlers</a> wiki page · merged across snapshots, primary 20240906220603</p><h1><strong>BIOS &amp; OSD Handlers</strong></h1>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>BIOS handler :</em></h2>
+<p>POPStarter has a BIOS handler so you can use your own external PlayStation BIOS dump in remplacement of POPS built-in BIOS. You have to rename it as BIOS.BIN and place it into the VMC game folder (example : __common/POPS/GAME/BIOS.BIN for internal HDD) and POPStarter will use it for this game. You can also place it into the POPS folder (__common/POPS/BIOS.BIN for internal HDD) and your BIOS will be used for all your games (this is NOT recommended). If no BIOS.BIN is found in VMC game folder (or in POPS folder), POPS will use its built-in BIOS.</p>
+<p>Though using a BIOS with a game doesn’t improve compatibility, you can use that feature to manage your  PS1 MC saves and listen to your CDDA game tracks…</p>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>OSD handler :</em></h2>
+<p>POPStarter has an OSD replacement image handler. The OSD replacement image have to be named as OSD.BIN and placed into the VMC game folder of your game (or in POPS folder). When an OSD replacement image is found in your VMC game folder (or in POPS folder), it will be injected in the built-in BIOS.</p>
+<p><strong>Notes :</strong></p>
+<ul>
+<li>
+<p>When using a OSD replacement image, “BIOS.BIN” is ignored ;</p>
+</li>
+<li>
+<p>2 OSD replacement examples were released by krHACKen : Import Player CD v1.4 and CodeBreaker Release 2.00 Build 2E. They are copyrighted so I will not share them here ;</p>
+</li>
+<li>
+<p>To create your own OSD files, you need a tool named OSD.BIN Maker ;</p>
+</li>
+<li>
+<p>More infos about the OSD replacement image @<a href="https://assemblergames.com/threads/ps2-pops-stuff.45347/page-4#post-667305">ASSEMblergames</a>.</p>
+</li>
+</ul>
+<p><strong>Description of the header structure of an OSD replacement image :</strong></p>
+<pre><code>===================================================
+OSD Replacement Image [Version 1] Header Structure
+===================================================
+Offset 0h to 8h     = Identifier (PS-X OSD)
+Offset 8h to Ch     = NULL NULL NULL NULL
+Offset Ch       = Image version (Currently 0x01 for Version 1, POPStarter Rev.10 compatible)
+Offset Dh       = NULL
+Offset Eh       = Program/OSD build, user defined
+Offset Fh       = NULL
+Offset 10h to 14h   = Load Address
+Offset 14h to 18h   = Entrypoint
+Offset 18h to 1Ch   = RESERVED RESERVED RESERVED RESERVED
+Offset 1Ch to 20h   = Size of the OSD (loadable segment size, the header length is excluded)
+Offset 20h to 34h   = Program/OSD name, 20 ASCII chars max, terminated with 0x00 (user defined)
+Offset 34h to 40h   = UNDEFINED (must be NULL)
+Offset 40h      = Executable segment start
+========================================
+LIMITATIONS AND RESTRICTIONS [Version 1]
+========================================
++ The file identifier must be &quot;PS-X OSD&quot;
++ The name of the OSD replacement (in the header, starting from offset 20h) must be at least 1 ASCII character long;
+the length can be up to 20 characters
++ The OSD Load Address and the Entrypoint have to be multiples of 10000h
++ The image version (offset Ch) and the OSD build (offset Eh) cannot be NULL
++ NULL/RESERVED/UNDEFINED fields have to be NULL
++ The size of the OSD replacement file (OSD.BIN) has to be the header length PLUS the OSD size
+</code></pre>
+<p>______________________________________________________________________________________________________________</p>
+<h3><a href="wiki/index.html"><strong>Index</strong></a></h3>
+<p class="prov-inline">📎 from the recovered <a href="wiki/igr-textures.html">IGR Textures</a> wiki page · merged across snapshots, primary 20200810125809</p><h1>[IGR] <strong>Make your own IGR textures</strong></h1>
+<p>______________________________________________________________________________________________________________<br />
+<em>Based on infos shared by arkl1t32</em> @<a href="https://assemblergames.com/threads/ps2-pops-stuff.45347/page-38#post-771111">ASSEMblergames</a></p>
+<p><strong>Software requirements :</strong></p>
+<ul>
+<li>
+<p>A graphic editor, such as <a href="https://media.giphy.com/media/z1RWCfBXTue3K/giphy.gif">Photoshop</a> or <a href="http://www.gimp.org/">GIMP</a> ;</p>
+</li>
+<li>
+<p>A TIM2 editor, such as OPTPiX iMageStudio;</p>
+</li>
+<li>
+<p>A hex editor, such as <a href="https://mh-nexus.de/en/hxd/">HxD</a>.</p>
+</li>
+</ul>
+<p><strong>Sample files :</strong> here.</p>
+<p>Included :</p>
+<ul>
+<li>
+<p>PSD file with guidelines ;</p>
+</li>
+<li>
+<p>3 image files, as .bmp ;</p>
+</li>
+<li>
+<p>3 image files, as .TM2 ;</p>
+</li>
+<li>
+<p>static &amp; animated previews ;</p>
+</li>
+<li>
+<p>IGR replacement, compiled as PATCH_1.BIN file.</p>
+</li>
+</ul>
+<p>______________________________________________________________________________________________________________</p>
+<ol>
+<li>Using your favorite graphic editor, create 3 .bmp files with the above dimensions :</li>
+</ol>
+<ul>
+<li>
+<p>IGR_BG : 400 × 260 px</p>
+</li>
+<li>
+<p>IGR_YES &amp; IGR_NO : 74 × 34 px</p>
+</li>
+</ul>
+<p>Use the PSD file with guidelines if need to crop properly.</p>
+<ol start="2">
+<li>
+<p>Open these 3 files with a TM2 editor &amp; save them as .TM2 files ;</p>
+</li>
+<li>
+<p>Open IGR_YES.TM2 and IGR_NO.TM2 with a hex editor and delete the last 8 digits in last offset (1D80) ;</p>
+</li>
+<li>
+<p>You can either :  – place your .TM2 files as they are in the POPS folder (named as IGR_BG.TM2, IGR_NO.TM2 &amp; IGR_YES.TM2) ;<br />
+OR – [optionnal step] compiled them as a PATCH_#.BIN ;</p>
+</li>
+<li>
+<p>If you want to compile them as PATCH_#.BIN, use <a href="wiki/toolbox-commands.html">toolbox command</a> ;</p>
+</li>
+</ol>
+<pre><code>toolbox.exe -igrpix &quot;background.tm2&quot; &quot;no_button.tm2 &quot;yes_button.tm2&quot;
+
+</code></pre>
+<ol start="6">
+<li>Place your PATCH_#.BIN file into POPS folder.</li>
+</ol>
+<p>Result :</p>
+<p>Feel free to submit it @<a href="https://assemblergames.com/threads/ps2-pops-stuff.45347/">ASSEMblergames</a> and it will be added to the wiki.</p>
+<p>If you want to submit language versions :</p>
+<ul>
+<li><strong>ENGLISH :</strong></li>
+</ul>
+<pre><code>1. Do you want to return to the PlayStation®2 main menu ?
+2. Warning all unsaved data will be lost!
+3. Press O to accept or X to cancel.
+4. Yes
+5. No
+
+</code></pre>
+<ul>
+<li><strong>FRENCH :</strong></li>
+</ul>
+<pre><code>1. Voulez-vous retourner au menu principal de la PlayStation®2 ?
+2. Attention : toutes les données non sauvegardées seront perdues.
+3. Appuyer sur O pour valider ou sur X pour annuler.
+4. Oui
+5. Non
+
+</code></pre>
+<ul>
+<li><strong>GERMAN :</strong></li>
+</ul>
+<pre><code>1. Möchten Sie POPStarter verlassen ?
+2. Nicht gespeicherte Daten gehen verloren !
+3. (untranslated)
+4. Ja
+5. Nein
+
+</code></pre>
+<ul>
+<li><strong>POLISH :</strong></li>
+</ul>
+<pre><code>1. Czy chcesz powrócić do głównego menu PlayStation®2?
+2. Uwaga, wszystkie niezapisane dane zostaną utracone!
+3. Wciśnij O by potwierdzić, X by anulować.
+4. Tak
+5. Nie
+
+</code></pre>
+<ul>
+<li><strong>PORTUGUESE :</strong></li>
+</ul>
+<pre><code>1. Você deseja retornar para o menu principal do Playstation®2?
+2. Alterta: Todos os dados que não forem salvos, serão perdidos!
+3. (untranslated)
+4. Sim
+5. Não
+
+</code></pre>
+<ul>
+<li><strong>SPANISH :</strong></li>
+</ul>
+<pre><code>1. ¿Deseas volver al menú principal de Playstation®2?
+2. Aviso: ¡Todos los datos que no se hayan guardado se perderán!
+3. Pulsa O para aceptar o X para cancelar.
+4. Si
+5. No
+
+</code></pre>
+<p>______________________________________________________________________________________________________________</p>
+<h3><a href="wiki/index.html"><strong>Index</strong></a></h3><h2>Images &amp; screenshots</h2><div class="gallery"><figure><a href="img/1390009092-IGR_BG.png" target="_blank"><img src="img/1390009092-IGR_BG.png" alt="IGR BG" loading="lazy"></a><figcaption>IGR BG</figcaption></figure><figure><a href="img/3308953039-IGR_YES.png" target="_blank"><img src="img/3308953039-IGR_YES.png" alt="IGR YES" loading="lazy"></a><figcaption>IGR YES</figcaption></figure><figure><a href="img/4238144417-preview-guidelines.png" target="_blank"><img src="img/4238144417-preview-guidelines.png" alt="preview guidelines" loading="lazy"></a><figcaption>preview guidelines</figcaption></figure><figure><a href="img/2013401434-animated_preview.gif" target="_blank"><img src="img/2013401434-animated_preview.gif" alt="animated preview" loading="lazy"></a><figcaption>animated preview</figcaption></figure></div><h2>IGR, in-game reset, and the exit chain</h2>
 <p>In-Game Reset (IGR) is POPStarter's pad-driven exit/reset. With no modifier set, the default combo (community-reported L1+Select+Start) opens a Japanese-language IGR menu (the skin is enabled by default in the config table). You override it with one of six $IGR# CHEATS.TXT commands (or the equivalent TROJAN_0..5.BIN) - and only one IGR behaviour is active at a time. The canonical CHANGES.TXT pins the combos exactly: $IGR0/$IGR3 use L1+L2+R1+R2+X+Down, $IGR1/$IGR4 use Start+Select, $IGR2/$IGR5 use L1+L2+R1+R2+Start+Select; the IGR0/1/2 trio OPENS the menu while IGR3/4/5 TERMINATE POPS directly with no popup. $IGR5 (the OPL-style no-popup macro) was broken in earlier r13 builds and fixed only in the 2019-06-05 final - so the canonical package is the one where it reliably works. $NOIGR (== PATCH_0.BIN) disables IGR entirely. CORRECTION: the widely-mirrored Portuguese manual swaps $IGR4 and $IGR5; the CHANGES.TXT ordering above is authoritative.</p>
 <p>The EXIT CHAIN (added Beta 13, 2015-12-07, gated by config $424=0x01): on IGR quit AND on POPStarter's own quit-on-failure, the launcher tries mc0:/BOOT/BOOT.ELF, then mc1:/BOOT/BOOT.ELF, and if neither is found/valid it drops to the PS2 Browser (OSDSYS, which runs FMCB/FHDB if installed). Two crucial caveats: there is NO documented path override (a user publicly asked krHACKen for one in 2016 and it was never implemented - BOOT.ELF must physically live on a memory card), and if POPS itself cannot initialise (can't load modules or open the VCD) the launcher is bypassed and you fall straight to the OSD.</p>
-<p>PRACTICAL RECIPES: to return to your own launcher, name it BOOT.ELF at mc0:/BOOT/. To return to OPL on a setup with no usable BOOT.ELF, drop the 2020-03-21 PATCH_9.BIN in the POPS folder and repoint FMCB's OSDSYS button action to OPNPS2LD.ELF. To kill POPS instantly with no menu, use $IGR5 (or TROJAN_5.BIN). To remove IGR entirely, use $NOIGR (or PATCH_0.BIN).</p><h2>IGR commands</h2><div class="cards"><div class="card" id="igr0"><h3>$IGR0 <span class="badge primary">primary</span> <span class="cat-chip">igr</span></h3>
+<p>PRACTICAL RECIPES: to return to your own launcher, name it BOOT.ELF at mc0:/BOOT/. To return to OPL on a setup with no usable BOOT.ELF, drop the 2020-03-21 PATCH_9.BIN in the POPS folder and repoint FMCB's OSDSYS button action to OPNPS2LD.ELF. To kill POPS instantly with no menu, use $IGR5 (or TROJAN_5.BIN). To remove IGR entirely, use $NOIGR (or PATCH_0.BIN).</p><details class="deep"><summary>Cross-sourced quick-reference cards (provenance-tagged)</summary><div class="cards"><div class="card" id="igr0"><h3>$IGR0 <span class="badge primary">primary</span> <span class="cat-chip">igr</span></h3>
 <div class="field"><b>Effect:</b> Hold L1+L2+R1+R2+X+Down to OPEN the IGR menu.</div>
 <div class="field"><b>Scope:</b> CHEATS.TXT command, integrated 2016/11/20 WIP06 Beta 16. Standalone equivalent: TROJAN_0.BIN.</div>
 <div class="field"><b>Conflicts:</b> Mutually exclusive with other $IGR#/$NOIGR. A global CHEATS.TXT can override per-game.</div>
@@ -120,13 +492,7 @@
 <div class="field"><b>Conflicts:</b> Reliability unknown (author flagged it untested).</div>
 <div class="ex">Select+L2+R2+X</div>
 <div class="prov">📎 PRIMARY: r13 CHANGES.TXT line 310</div>
-</div></div><div class="callout red"><div class="h">⚠ Unverified / caution</div>PATCH_7.BIN (existence unconfirmed) - Present it in a RED warning box. State plainly: no primary file or definition survives; it is absent from the wiki, the r13 CHANGES.TXT, the IGR download table, and the community manual (which skips from PATCH_6 to PATCH_8). The &#x27;2014 krHACKen forced mode 0x06&#x27; vs &#x27;obsolete Mode 7&#x27; framings are community lore only. Explicitly distinguish it from the VERIFIED TROJAN_7.BIN game-fix bundle, which is a different file. Confidence: unverified.</div>
-<div class="callout amber"><div class="h">⚖ Conflicting sources</div>PATCH_9.BIN filename collision - Present as TWO separate site records that cross-warn each other in an AMBER box. (A) STOCK PATCH_9.BIN == $NOPAL, disables the auto PAL patcher so a PAL VCD runs in POPS native NTSC (wiki already calls it &#x27;obsolete (still working tho)&#x27;). (B) The 2020-03-21 krHACKen file that REUSES the name PATCH_9.BIN to disable the bugged ELF loader and restore IGR-to-OPL; PATCH_9.7z MD5 9db1e18bae92c4991e3de7e2a752558c (188 B), distributed via the IGR &#x27;Trojans and Patches&#x27; thread. Same filename, different binary - never mix them. NOT byte-diffed in this pass; flag that the 188 B/MD5 in the IGR table is not explicitly tied to one of the two roles.</div>
-<div class="callout info"><div class="h">ℹ Nuance</div>Default IGR combo (L1+Select+Start) - Present with a &#x27;community-reported&#x27; tag. The default-skin-enabled fact is primary (CHANGES.TXT), but the specific default button combo is from a PS2-HOME tutorial, not the CHANGES.TXT; confidence near-primary.</div>
-<div class="callout red"><div class="h">⚠ Unverified / caution</div>TROJAN_6 / TROJAN_8 - Note they are absent from the recovered IGR download table (only 0-5, 7, 9 exist there); whether they ever existed is unknown. Low-importance gap.</div><h2>Full wiki sources</h2><div class="grid"><a class="tile" href="wiki/igr.html"><b>IGR</b><span>full wiki page</span></a>
-<a class="tile" href="wiki/igr-textures.html"><b>IGR Textures</b><span>full wiki page</span></a>
-<a class="tile" href="wiki/hotkeys.html"><b>Hotkeys</b><span>full wiki page</span></a>
-<a class="tile" href="wiki/bios-osd-handlers.html"><b>BIOS OSD Handlers</b><span>full wiki page</span></a></div></main>
+</div></div></details></main>
   <aside class="toc"><div class="toc-h">On this page</div><nav id="toc-nav"></nav></aside>
 </div>
 <footer>

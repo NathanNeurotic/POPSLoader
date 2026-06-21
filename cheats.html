@@ -34,8 +34,153 @@
     <h4>Reference</h4>
     <a href="wiki/index.html"><span class="em">📚</span>All wiki pages</a>
   </nav>
-  <main class="content"><h1>Cheats — CHEATS.TXT</h1><p class="lead">POPStarter's embedded cheat engine. Codes live in a CHEATS.TXT in the game's VMC folder; always start it with <code>$SAFEMODE</code>. Every documented $command below.</p><div class="callout red"><div class="h">⚠ Unverified / caution</div>Lost config-table &#x27;Default values&#x27; graphic and the official all-in-one sample CHEATS.TXT - Present in an INFO box. The wiki&#x27;s default-values IMAGE was not OCR&#x27;d; the defaults on the site come instead from a direct hexdump of the shipped r13 ELF (more authoritative). The official all-in-one sample CHEATS.TXT download is NOT recoverable (every Wayback snapshot 302s to an expired Bitbucket S3 URL). Mark both as documented-but-asset-unrecovered.</div>
-<div class="callout red"><div class="h">⚠ Unverified / caution</div>&#x27;Root CHEATS.TXT blocks per-game CHEATS.TXT&#x27; (base claim) - Present a clarifying note: the recovered wiki only documents one blocking case - the general-note priority rule&#x27;s single exception where two CHEATS.TXT load at once and one changes the video mode. A general &#x27;root blocks per-game&#x27; is otherwise NOT confirmed; the override rule is that the VMC-folder copy WINS. Confidence: community/unverified for the broad claim.</div><h2>Command reference</h2><div class="cards"><div class="card" id="safemode"><h3>$SAFEMODE <span class="badge primary">primary</span> <span class="cat-chip">cheats</span></h3>
+  <main class="content"><h1>Cheats — CHEATS.TXT</h1><p class="lead">POPStarter's embedded cheat engine. Codes live in a CHEATS.TXT in the game's VMC folder; always start it with <code>$SAFEMODE</code>. The full recovered cheat documentation is below, followed by community additions and a quick-reference.</p><div class="callout red"><div class="h">⚠ Unverified / caution</div>Lost config-table &#x27;Default values&#x27; graphic and the official all-in-one sample CHEATS.TXT - Present in an INFO box. The wiki&#x27;s default-values IMAGE was not OCR&#x27;d; the defaults on the site come instead from a direct hexdump of the shipped r13 ELF (more authoritative). The official all-in-one sample CHEATS.TXT download is NOT recoverable (every Wayback snapshot 302s to an expired Bitbucket S3 URL). Mark both as documented-but-asset-unrecovered.</div>
+<div class="callout red"><div class="h">⚠ Unverified / caution</div>&#x27;Root CHEATS.TXT blocks per-game CHEATS.TXT&#x27; (base claim) - Present a clarifying note: the recovered wiki only documents one blocking case - the general-note priority rule&#x27;s single exception where two CHEATS.TXT load at once and one changes the video mode. A general &#x27;root blocks per-game&#x27; is otherwise NOT confirmed; the override rule is that the VMC-folder copy WINS. Confidence: community/unverified for the broad claim.</div><p class="prov-inline">📎 from the recovered <a href="wiki/special-cheats.html">Special Cheats</a> wiki page · merged across snapshots, primary 20241203112538</p><h1><strong>Special Cheats – Automated Codes</strong></h1>
+<p>______________________________________________________________________________________________________________</p>
+<p>Some useful commands have been automated. Here are them :</p>
+<ul>
+<li><strong>Sample :</strong> <a href="downloads/CHEATS.TXT">here</a></li>
+</ul>
+<table>
+<thead>
+<tr>
+<th><strong>Cheat Code</strong></th>
+<th><strong>Description</strong></th>
+<th><strong>Notes</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>| $SAFEMODE | Disables the cheat engine and only activate it after POPS has left the PS OSD. | Should be always ON. Some game codes do patch the memory area where the PS OSD is loaded, causing crashes and other garbage… |</p>
+<p>| $COMPATIBILITY_0x## | Activates a <a href="wiki/compatibility.html">compatibility mode</a>. | <strong>##</strong> is a hexadecimal value. You can write as many $COMPATIBILITY_0x## as you want. |</p>
+<p>| $CODECACHE_ADDON_0 | For games that lag badly or stall randomly. | If compatibility mode and mode 0×04 doesn’t fix that doesn’t fix your issue. Do not use it by default on all your games, because most games will stop working with it. |</p>
+<p>| $SUBCDSTATUS | A variant of $COMPATIBILITY_0×05. |  |</p>
+<p>| $FAKELC | Loads a null LibCrypt magic word into the cop0 register. | May be needed by some discs that have a messed up LC protection. |</p>
+<p>| $SMOOTH | Enables the <a href="wiki/smooth.html">smooth texture</a> mapping at startup. | Just for the records : value is $S0003390 00000001. |</p>
+<p>| $NOPAL | Disables POPStarters’ PAL patcher. | Can be done using a <a href="downloads/NOPAL_PATCH.7z">PATCH_#.BIN</a> file. Not meant to convert NTSC games to PAL. |</p>
+<p>| $FORCEPAL | Forces the activation of the PAL patcher (POPS will run it PAL) and patches the BIOS region code to Euro (shows the boot screen in PAL). | Useful for PAL VCDs that don’t have a valid license text in their bootsector. Can be done using a <a href="downloads/FORCEPAL_PATCH.7z">PATCH_#.BIN file</a>. |</p>
+<p>| $480p | Forces 480p. | Not compatible with $XPOS, $YPOS, $DWSTRETCH, $DWCROP &amp; NOT reliable ATM. See notes <a href="https://assemblergames.com/threads/ps2-pops-stuff.45347/page-93#post-908556">here</a> |</p>
+<p>| $<a href="wiki/widescreen.html">WIDESCREEN</a> | Enables POPS GTE widescreen hack and forces 16:9. | Does not deal with stuff like HUDs, texts/fonts, menus, 2D backgrounds… This hack is not finished (no render fix…). |</p>
+<p>| $ULTRA_WIDESCREEN | Same as $WIDESCREEN, but wider FOV. | Does not match any aspect ratio standard. Does not deal with stuff like HUDs, texts/fonts, menus, 2D backgrounds… |</p>
+<p>| $EYEFINITY | Same as $WIDESCREEN, with 3×16:9 aspect ratio. | Does not deal with stuff like HUDs, texts/fonts, menus, 2D backgrounds… |</p>
+<p>| $XPOS_#### | Centers the screen horizontally. | <strong>####</strong> is a number (decimal, negative values not supported). Works only in PAL and NTSC modes. Default value : 640. Value lower than 640 will move the screen on the left, value higher than 640 will move it to the right. Not compatible with $480p. |</p>
+<p>| $YPOS_## | Centers the screen vertically. | <strong>##</strong> is a number (decimal, negative values not supported). Works only in PAL and NTSC modes. Not working in OBT15, fixed in OBT16. No default value, depends on the game, you have to experiment. The higher the value is, the more the screen moves down. Not compatible with $480p. |</p>
+<p>| $<a href="https://assemblergames.com/threads/ps2-pops-stuff-popstarter.45347/page-108#post-944768">DWSTRETCH_####</a> | Stretches the display horizontally to your screen. | <strong>####</strong> is a number (decimal). Works only in PAL and NTSC modes. Default value : 2559. Increase it to stretch the screen on the right, decrease it for the left. Not compatible with $480p. |</p>
+<p>| $<a href="https://assemblergames.com/threads/ps2-pops-stuff-popstarter.45347/page-108#post-944768">DWCROP_####</a> | Reduces/expands the display area width. | <strong>####</strong> is a number (decimal). Works only in PAL and NTSC modes. Maximum value : 2560. Decrease it to crop the screen on the right. Not compatible with $480p. |</p>
+<p>| $HDTVFIX | Enables SetGsCrt hack. | Helps with the HDTVs that can’t deal with the interlaced resolutions thru component (plain green screens and other rubbish displayed otherwise). Not compatible with some CRT TVs. |</p>
+<p>| $SCANLINES | Enables the scanlines generator. | A scanline is a horizontal line, or row, in a raster scanning pattern, so that the image of the games are seen with this type of lines that the old TVs and tube monitors (CRT) had. |</p>
+<p>| $MUTE_CDDA | Mutes CDDA tracks. | Done automatically when you play a <a href="wiki/ps1cd-mode.html">physical PS1 CDROM from the disc drive</a>. |</p>
+<p>| $UNDO_MUTE_CDDA | Unmutes CDDA tracks in <a href="wiki/ps1cd-mode.html">PS1CD mode</a>. |  |</p>
+<p>| $MUTE_VAB | Mute VAB/VAG/VB+VH based sounds/music on games. | May be useful for these old games which output distorted SFX, wrong audio samples or stupid noises. |</p>
+<p>| $00507028 00000001 | Rumble Always On (Pad 1). |  |</p>
+<p>| $005070B8 00000001 | Rumble Always On (Pad 2). |  |</p>
+<p>| <a href="wiki/d2ls.html">$D2LS</a> | “Left Stick is the D-Pad” code + Stay on Digital Mode. | Enables joystick support for games that doesn’t support it natively. $D2LS should be OK for most games. If it doesn’t work, the user should try $D2LS_ALT. |</p>
+<p>| $D2LS_ALT | “Left Stick is the D-Pad” code + Stay on Analog Mode. | Enables joystick support for games that doesn’t support it natively. |</p>
+<p>| $NOVMC0 | Use VMC1 only. |  |</p>
+<p>| $NOVMC1 | Use VMC0 only. |  |</p>
+<p>| $IGR0 | + + + + + | Opens the IGR menu. |</p>
+<p>| $IGR1 | + | Opens the IGR menu. |</p>
+<p>| $IGR2 | + + + + + | Opens the IGR menu. |</p>
+<p>| $IGR3 | + + + + + | Terminates POPS (no IGR menu). |</p>
+<p>| $IGR4 | + | Terminates POPS (no IGR menu). |</p>
+<p>| $IGR5 | + + + + + | Terminates POPS (no IGR menu). |</p>
+<p>| $NOIGR | Disables the IGR menu. |  |</p>
+<p>| $CACHE1 | Makes POPS buffer 1 sector instead of 16. |  |</p>
+<p>| $USBDELAY_# | Sets up the PFS wrapper USB delay. | <strong>#</strong> is a number. |</p>
+<p>| $UNDO_GAME_FIXES | Prevents POPStarter from activating game fixes. | This comand may not work for some games to show their problems again, since during the end development of the latest beta, work was done fixing bugs to the POPS, and probably due to patching one of this bugs makes the game work well without needing the specific fixes for each game, (which seems to be the case of the game Crash Bandicoot game in its PAL version). Some game fixes were also removed (it is not remembered for which games) because were made obsolete by the subsequent POPS patches. |</p>
+<p>| $20210CF8 2442FFFF $20210CFC 7C640000 $20210D00 00000000 $20210D04 00000000 $20210D08 00000000 $00210D0C 000000FA $S200009C 1F000000 | LibCrypt code for Jackie Chan Stuntmaster (PAL) | With this game in its first batch of discs it has been discovered that it lacks the LibCrypt protection. So if the LibCrypt code built into the POPStarter or the $FAKELC command fails to prevent game freezing, then these codes should be used. |</p>
+<p>______________________________________________________________________________________________________________</p>
+<h3><a href="wiki/index.html"><strong>Index</strong></a></h3><h2>Images &amp; screenshots</h2><div class="gallery"><figure><a href="img/1415872802-Playstation-Button-L1.png" target="_blank"><img src="img/1415872802-Playstation-Button-L1.png" alt="Playstation Button L1" loading="lazy"></a><figcaption>Playstation Button L1</figcaption></figure><figure><a href="img/3667653909-Playstation-Button-L2.png" target="_blank"><img src="img/3667653909-Playstation-Button-L2.png" alt="Playstation Button L2" loading="lazy"></a><figcaption>Playstation Button L2</figcaption></figure><figure><a href="img/3507486238-Playstation-Button-R1.png" target="_blank"><img src="img/3507486238-Playstation-Button-R1.png" alt="Playstation Button R1" loading="lazy"></a><figcaption>Playstation Button R1</figcaption></figure><figure><a href="img/2283666138-Playstation-Button-R2.png" target="_blank"><img src="img/2283666138-Playstation-Button-R2.png" alt="Playstation Button R2" loading="lazy"></a><figcaption>Playstation Button R2</figcaption></figure><figure><a href="img/310130791-Playstation-Button-X.png" target="_blank"><img src="img/310130791-Playstation-Button-X.png" alt="Playstation Button X" loading="lazy"></a><figcaption>Playstation Button X</figcaption></figure><figure><a href="img/202135531-Playstation-Dpad-Down.png" target="_blank"><img src="img/202135531-Playstation-Dpad-Down.png" alt="Playstation Dpad Down" loading="lazy"></a><figcaption>Playstation Dpad Down</figcaption></figure><figure><a href="img/2984521000-Playstation-Button-Select.png" target="_blank"><img src="img/2984521000-Playstation-Button-Select.png" alt="Playstation Button Select" loading="lazy"></a><figcaption>Playstation Button Select</figcaption></figure><figure><a href="img/2691718556-Playstation-Button-Start.png" target="_blank"><img src="img/2691718556-Playstation-Button-Start.png" alt="Playstation Button Start" loading="lazy"></a><figcaption>Playstation Button Start</figcaption></figure></div>
+<p class="prov-inline">📎 from the recovered <a href="wiki/cheat-engine.html">Cheat Engine</a> wiki page · merged across snapshots, primary 20200920023545</p><h1><strong>Cheat Engine</strong></h1>
+<p>______________________________________________________________________________________________________________</p>
+<p>POPStarter has an embedded cheat engine that supports Gameshark/Action Replay PS1 codes (PS1 RAW codes of types 30, 50, 80 and D0 are supported). Some basic rules about the cheat engine :</p>
+<ul>
+<li>
+<p>codes will be stored into a txt file named CHEATS.TXT placed into the VMC game folder (each game will have his own dedicated CHEATS.TXT file) ;</p>
+</li>
+<li>
+<p>each code line has to start with the $ character otherwise the code is not enabled ;</p>
+</li>
+<li>
+<p>each code line must have a space between the adress and the value ;</p>
+</li>
+</ul>
+<p><strong>Example :</strong></p>
+<p><a href="https://gamehacking.org/game/88578">Castlevania – Symphony of the Night [NTSC-U]</a></p>
+<p>CHEATS.TXT location :</p>
+<pre><code>POPS/Castlevania Symphony of the Night (NTSC-U)/CHEATS.TXT
+
+</code></pre>
+<p>CHEATS.TXT content :</p>
+<pre><code>$SAFEMODE
+$80097BA0 270F // Infinite Health
+
+</code></pre>
+<p><strong>Notes :</strong></p>
+<ul>
+<li>
+<p>It is <strong>highly recommended</strong> to have to <a href="wiki/special-cheats.html">$SAFEMODE command</a> code at the very first line of the CHEATS.TXT file ;</p>
+</li>
+<li>
+<p>Some PS1 games need mastercodes otherwise they crash (ex : Air Race Championship). Only type C0 are supported. Mastercodes of type C1 (aka activation on delay time) are not and will not be supported ;</p>
+</li>
+<li>
+<p>You can disable a code if you remove the $ character from the code ;</p>
+</li>
+<li>
+<p>You can enable a code for ALL your games if you place the CHEATS.TXT file in POPS folder ;</p>
+</li>
+<li>
+<p>You can find a list of useful generic commands <a href="wiki/special-cheats.html">here</a> ;</p>
+</li>
+<li>
+<p>A massive PS1 codes list in PS1 RAW format can be found <a href="wiki/ps1-codes-in-ps1-raw-format.html">here</a> ;</p>
+</li>
+<li>
+<p><a href="http://gamehacking.org/system/psx/all">Gamehacking.org</a> is also a great place for PS1 cheats code ;</p>
+</li>
+<li>
+<p>You can also use POPStarter with a PS2 cheat device (<a href="http://psx-scene.com/forums/f173/ps2rd-releases-63021/index6.html#post1024709">ps2rd</a>, Codebreaker, <a href="https://github.com/root670/CheatDevicePS2...">Cheat Device PS2</a>). POPS Mastercode is 902377F4 0C0902EF. PS2 RAW codes of types 0, 1 and 2 are supported. A massive PS1 codes list in PS2 RAW format – ready-to-use – can be found <a href="wiki/ps1-codes-in-ps2-raw-format.html">here</a>. In order to use a PS1 code with a PS2 cheat device, you need to convert it to PS2 RAW format : add $01000000 to the PS1 code adresses and comply with the code type definitions of the target PS2 cheat engine. For more info about how to convert codes, check this <a href="https://assemblergames.com/threads/ps2-pops-stuff.45347/page-27#post-760915">post</a>.</p>
+</li>
+</ul>
+<p>______________________________________________________________________________________________________________</p>
+<h2><em>Related stuff :</em></h2>
+<p>You may want to give a look at this :</p>
+<ul>
+<li>
+<p><a href="wiki/special-cheats.html">Special Cheats – Automated Codes</a>.</p>
+</li>
+<li>
+<p>[CHEATS] <a href="wiki/ps1-widescreen-codes.html">Widescreen Codes Archive</a>.</p>
+</li>
+</ul>
+<p>______________________________________________________________________________________________________________</p>
+<h3><a href="wiki/index.html"><strong>Index</strong></a></h3><h2>From the official thread — cheat clarifications</h2>
+<blockquote>
+<p>Sourced from the <a href="https://www.psx-place.com/threads/popstarter.19139/">official psx-place POPStarter thread</a>;<br />
+items marked <strong>krHACKen</strong> are from POPStarter's author and are authoritative.</p>
+</blockquote>
+<ul>
+<li><strong><code>CHEATS.TXT</code> must be UPPERCASE.</strong> A <code>CHEATS.txt</code> is silently ignored on internal HDD/PFS (case-sensitive),<br />
+  even though SMB is tolerant — this is the real root cause behind many "my cheat / <code>$HDTVFIX</code> does nothing on<br />
+  HDD" reports. In uLaunchELF press <strong>R1</strong> to rename <code>CHEATS.txt</code> → <code>CHEATS.TXT</code>. <em>(krHACKen / jolek)</em></li>
+<li><strong><code>$SAFEMODE</code> is ONLY for raw hexadecimal (GameShark/Action-Replay) codes</strong> — the built-in named <code>$</code><br />
+  commands (<code>$IGR#</code>, <code>$NOPAL</code>, <code>$NOIGR</code>, <code>$WIDESCREEN</code>, …) do <strong>not</strong> need it. Leading every file with<br />
+<code>$SAFEMODE</code> is harmless but unnecessary for named commands. <em>(krHACKen)</em></li>
+<li><strong><code>$IGR5</code> is the OPL-style In-Game-Reset</strong> — combo <strong>Select + Start + L1 + L2 + R1 + R2</strong>, with <strong>no<br />
+  YES/NO exit popup</strong>. This is the variant most people actually want for a clean, OPL-like instant exit.<br />
+<em>(krHACKen)</em></li>
+<li><strong>Raw codes:</strong> put them in <code>CHEATS.TXT</code> in the game's VMC folder, prefix <strong>every</strong> code line with <code>$</code>, and<br />
+  lead the file with <code>$SAFEMODE</code>. Some unusual code types simply won't work or will crash the emulation.<br />
+<em>(krHACKen, hand-correcting a user's syntax)</em></li>
+</ul><h2>Ready-to-use PS1 code lists</h2><p class="lead">Massive collections of PS1 GameShark/Action-Replay codes in POPS-ready format (large pages):</p><div class="grid"><a class="tile" href="wiki/ps1-codes-in-ps2-raw-format.html"><b>PS1 Codes In PS2 Raw Format</b><span>full wiki page</span></a>
+<a class="tile" href="wiki/ps1-codes-in-ps1-raw-format.html"><b>PS1 Codes In PS1 Raw Format</b><span>full wiki page</span></a></div><details class="deep"><summary>Cross-sourced quick-reference cards (provenance-tagged)</summary><div class="cards"><div class="card" id="safemode"><h3>$SAFEMODE <span class="badge primary">primary</span> <span class="cat-chip">cheats</span></h3>
 <div class="field"><b>Effect:</b> Gates the cheat engine so codes only apply after POPS has left the PS1 OSD/BIOS. Recommended as the first line of every CHEATS.TXT. Without it, raw codes that touch the OSD-load region can crash POPS on startup.</div>
 <div class="field"><b>Scope:</b> CHEATS.TXT global or per-game. Engine present since WIP06 OBT01; $SAFEMODE itself was made functional in Beta 12 (2015-11-24).</div>
 <div class="field"><b>Conflicts:</b> None functional; it is a timing gate, not a code.</div>
@@ -265,28 +410,7 @@
 <div class="field"><b>Conflicts:</b> Use instead of $FAKELC when the disc batch lacks LibCrypt.</div>
 <div class="ex">$20210CF8 2442FFFF (first line of the block)</div>
 <div class="prov">📎 ShaolinAssassin wiki special-cheats (Wayback 20220218153800)</div>
-</div></div><h2>Full wiki sources</h2><div class="grid"><a class="tile" href="wiki/cheat-engine.html"><b>Cheat Engine</b><span>full wiki page</span></a>
-<a class="tile" href="wiki/special-cheats.html"><b>Special Cheats</b><span>full wiki page</span></a>
-<a class="tile" href="wiki/ps1-codes-in-ps2-raw-format.html"><b>PS1 Codes In PS2 Raw Format</b><span>full wiki page</span></a>
-<a class="tile" href="wiki/ps1-codes-in-ps1-raw-format.html"><b>PS1 Codes In PS1 Raw Format</b><span>full wiki page</span></a></div><h2>From the official thread — cheat clarifications</h2>
-<blockquote>
-<p>Sourced from the <a href="https://www.psx-place.com/threads/popstarter.19139/">official psx-place POPStarter thread</a>;<br />
-items marked <strong>krHACKen</strong> are from POPStarter's author and are authoritative.</p>
-</blockquote>
-<ul>
-<li><strong><code>CHEATS.TXT</code> must be UPPERCASE.</strong> A <code>CHEATS.txt</code> is silently ignored on internal HDD/PFS (case-sensitive),<br />
-  even though SMB is tolerant — this is the real root cause behind many "my cheat / <code>$HDTVFIX</code> does nothing on<br />
-  HDD" reports. In uLaunchELF press <strong>R1</strong> to rename <code>CHEATS.txt</code> → <code>CHEATS.TXT</code>. <em>(krHACKen / jolek)</em></li>
-<li><strong><code>$SAFEMODE</code> is ONLY for raw hexadecimal (GameShark/Action-Replay) codes</strong> — the built-in named <code>$</code><br />
-  commands (<code>$IGR#</code>, <code>$NOPAL</code>, <code>$NOIGR</code>, <code>$WIDESCREEN</code>, …) do <strong>not</strong> need it. Leading every file with<br />
-<code>$SAFEMODE</code> is harmless but unnecessary for named commands. <em>(krHACKen)</em></li>
-<li><strong><code>$IGR5</code> is the OPL-style In-Game-Reset</strong> — combo <strong>Select + Start + L1 + L2 + R1 + R2</strong>, with <strong>no<br />
-  YES/NO exit popup</strong>. This is the variant most people actually want for a clean, OPL-like instant exit.<br />
-<em>(krHACKen)</em></li>
-<li><strong>Raw codes:</strong> put them in <code>CHEATS.TXT</code> in the game's VMC folder, prefix <strong>every</strong> code line with <code>$</code>, and<br />
-  lead the file with <code>$SAFEMODE</code>. Some unusual code types simply won't work or will crash the emulation.<br />
-<em>(krHACKen, hand-correcting a user's syntax)</em></li>
-</ul></main>
+</div></div></details></main>
   <aside class="toc"><div class="toc-h">On this page</div><nav id="toc-nav"></nav></aside>
 </div>
 <footer>
