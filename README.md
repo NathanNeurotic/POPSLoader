@@ -241,7 +241,7 @@ See [STATE.md](STATE.md) "Known Open Work" and [ROADMAP.md](ROADMAP.md) for the 
 *   **nuno6573**: Cover-art engine integrations and scripting.
 *   **Hugopocked**: POPStarter fixes.
 *   **Ripto / NathanNeurotic**: Maintenance, UI polishing, and release engineering.
-*   **P4NCHOL1NO, VizoR, provato, nuno6573, and the community**: Hardware testing.
+*   **P4NCHOL1NO, VizoR, provato, nuno6573, TnA-Plastic, saildot4k, and the community**: Hardware testing.
 
 ---
 

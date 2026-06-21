@@ -61,6 +61,9 @@ outdated/
 # Local reference clones pulled by audit agents (ps2sdk / OPL / gsKit / ps2-packer)
 .codex_refs/
 
+# POPStarter-docs research working material (first-party notes + agent corpus)
+.research/
+
 # Ensure specific tracked binary assets stay visible
 !bin/POPSLDR/POPSTARTER.ELF
 !iop/embed/BDMASSAULT_MX4SIO/*.irx
