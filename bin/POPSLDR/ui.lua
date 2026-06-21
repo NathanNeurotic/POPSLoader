@@ -4436,8 +4436,7 @@ UI = {
       };
       NavHeld = {};
       NavNeutral = {UP = true, DOWN = true, LEFT = true, RIGHT = true};
-      NavFirstMs = {};   -- per-direction press time (ms) for OPL-style auto-repeat
-      NavLastMs = {};    -- per-direction last auto-repeat fire (ms)
+      NavHoldFrames = {}; -- per-direction frames-held counter (frame-count auto-repeat)
       StickV = 0;        -- latched left-stick vertical fold state (-1 up / 0 / +1 down)
       StickH = 0;        -- latched left-stick horizontal fold state (-1 left / 0 / +1 right)
       Queue = {};
@@ -4574,38 +4573,42 @@ UI = {
         if (pressed & PAD_L3) ~= 0 then emit_action("L3") end
         if (pressed & PAD_R3) ~= 0 then emit_action("R3") end
 
-        -- OPL-style nav auto-repeat (matches OPL pad.c exactly: 600ms initial delay
-        -- then 200ms repeat): the press edge fires immediately; a held direction then
-        -- repeats ONE item at a time. The left analog stick is folded into the d-pad
-        -- bits above, so the stick uses this same path -- smooth item-by-item, no
-        -- page-jump (oldman63 #501). Only UP/DOWN repeat; LEFT/RIGHT stay edge-only
-        -- so holding never page-jumps or spins the carousel uncontrollably.
-        -- IMPORTANT: now == Timer.getTime() returns MICROSECONDS on PS2 (clock(),
-        -- CLOCKS_PER_SEC = 1e6), NOT milliseconds. These OPL-style delays must be
-        -- expressed in us. Treating 600/200 as ms compared them against a us 'now',
-        -- so both gates cleared on the very next frame and UP/DOWN auto-repeated
-        -- ~60x/sec -- "one click = 5 lines", up/down only (LEFT/RIGHT are edge-only),
-        -- on ANY device incl. keyboard (nuno6573 / LVD14 #504). 600ms then 200ms.
-        local NAV_REPEAT_DELAY_US, NAV_REPEAT_RATE_US = 600 * 1000, 200 * 1000
+        -- Nav auto-repeat, the CANONICAL Enceladus-ecosystem way: COUNT FRAMES, never
+        -- read the wall clock. Timer.getTime() returns raw clock() ticks -- MICROSECONDS
+        -- on PS2 (CLOCKS_PER_SEC = 1e6), undocumented -- and comparing that us value to
+        -- ms-named constants cleared both gates every frame, so UP/DOWN auto-repeated
+        -- ~60x/sec ("one click = 5 lines", up/down only, ANY device incl. keyboard --
+        -- nuno6573 / LVD14 #504). The sibling Enceladus launchers (OSDMenu-Configurator
+        -- ui_common.lua, RETROLauncher funciones.lua) deliberately avoid the timer and
+        -- gate nav on a per-frame hold counter scaled by the refresh rate. UI.Pad.Listen
+        -- runs once per vblank-paced frame, so one increment == one frame: frame-rate
+        -- independent and unit-safe. The press edge fires immediately; only UP/DOWN
+        -- repeat (LEFT/RIGHT stay edge-only so holding never page-jumps/spins the
+        -- carousel). Cadence keeps the OPL intent: ~0.6s initial delay then ~0.2s repeat,
+        -- derived from the video mode (PAL 50Hz / NTSC 60Hz).
+        local nav_fps = ((UI.SCR.Y or 448) >= 512) and 50 or 60
+        local NAV_DELAY_FRAMES = math.ceil(nav_fps * 0.6)   -- frames before the 1st repeat
+        local NAV_RATE_FRAMES  = math.ceil(nav_fps * 0.2)   -- frames between repeats (~5/s)
         local function resolve_nav(dir, is_down, repeatable)
           if not is_down then
             if UI.Pad.NavHeld[dir] == true then UI.Pad.NavNeutral[dir] = true end
             UI.Pad.NavHeld[dir] = false
+            UI.Pad.NavHoldFrames[dir] = 0
             return false
           end
           local was_held = UI.Pad.NavHeld[dir] == true
           UI.Pad.NavHeld[dir] = true
           if not was_held and UI.Pad.NavNeutral[dir] then
             UI.Pad.NavNeutral[dir] = false
-            UI.Pad.NavFirstMs[dir] = now
-            UI.Pad.NavLastMs[dir] = now
+            UI.Pad.NavHoldFrames[dir] = 0
             return true
           end
-          if repeatable and was_held
-             and (now - (UI.Pad.NavFirstMs[dir] or now)) >= NAV_REPEAT_DELAY_US
-             and (now - (UI.Pad.NavLastMs[dir] or 0)) >= NAV_REPEAT_RATE_US then
-            UI.Pad.NavLastMs[dir] = now
-            return true
+          if repeatable and was_held then
+            local f = (UI.Pad.NavHoldFrames[dir] or 0) + 1
+            UI.Pad.NavHoldFrames[dir] = f
+            if f >= NAV_DELAY_FRAMES and ((f - NAV_DELAY_FRAMES) % NAV_RATE_FRAMES) == 0 then
+              return true
+            end
           end
           return false
         end
