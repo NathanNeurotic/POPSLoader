@@ -2583,15 +2583,28 @@ UI = {
             local cover_x = draw_x + (draw_w - cover_w)
             Graphics.drawScaleImage(preview_img, cover_x, draw_y, cover_w, cover_h)
           elseif frame_w ~= nil and frame_h ~= nil then
-            -- No live cover -> the DEFAULT cover. Preview OFF: just the plain default
-            -- case. Preview ON but the game has no cover: default case with the
-            -- "missing cover" mark on top. (Replaces the old "Cover disabled" text and
-            -- the single combined placeholder image.)
+            -- No live cover -> the DEFAULT cover, drawn INSET in the case WINDOW exactly
+            -- like a live cover (right of the spine, above the case bottom) so the case
+            -- LEFT SPINE and borders don't cover it and it can't overhang the bottom.
+            -- frame.png is a jewel case: opaque left spine (~x0-25), top/bottom bars, and a
+            -- transparent cover window to the right. Drawing cover_default across the FULL
+            -- frame rect hid its left edge under the spine AND poked ~9% below the case on
+            -- PAL (provato). cover_default.png is square 256x256, so size it in the COVER_W
+            -- box with the same aspect correction + right-anchor a live cover uses; the
+            -- "missing cover" overlay rides the same rect.
+            local pbox = math.min(layout.COVER_W or 232, draw_w, draw_h)
+            local pratio = 480 / (UI.SCR.Y or 448)   -- square image -> iw/ih = 1
+            local ph_w, ph_h
+            if pratio >= 1 then ph_w = pbox; ph_h = Round(pbox / pratio)
+            else ph_h = pbox; ph_w = Round(pbox * pratio) end
+            if ph_w > draw_w then ph_w = draw_w end
+            if ph_h > draw_h then ph_h = draw_h end
+            local ph_x = draw_x + (draw_w - ph_w)
             if IMG.cover_default ~= nil then
-              Graphics.drawScaleImage(IMG.cover_default, frame_x, draw_y, frame_w, frame_h)
+              Graphics.drawScaleImage(IMG.cover_default, ph_x, draw_y, ph_w, ph_h)
             end
             if cover_enabled and IMG.cover_missing ~= nil then
-              Graphics.drawScaleImage(IMG.cover_missing, frame_x, draw_y, frame_w, frame_h)
+              Graphics.drawScaleImage(IMG.cover_missing, ph_x, draw_y, ph_w, ph_h)
             end
           end
           if IMG.frame ~= nil and frame_w ~= nil and frame_h ~= nil then
