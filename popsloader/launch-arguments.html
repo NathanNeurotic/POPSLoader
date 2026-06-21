@@ -1,0 +1,275 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Launch arguments · POPSLoader · POPStarter Docs</title>
+<meta name="description" content="Resurrected, searchable POPStarter documentation — cheats, patches, config, storage, multi-disc, IGR, downloads, and the POPSLoader fork.">
+<link rel="stylesheet" href="../assets/style.css">
+</head><body data-base="../">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu">☰</button>
+  <a class="brand" href="../index.html">
+    <span class="psbtns"><i class="tri">&#9651;</i><i class="cir">&#9711;</i><i class="cro">&#10005;</i><i class="squ">&#9633;</i></span>
+    POPStarter <small>DOCS</small></a>
+  <div class="search">
+    <span class="ico">🔎</span>
+    <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <a href="../index.html"><span class="em">🏠</span>Home</a>
+    <h4>POPSLoader · this project</h4>
+    <a href="../popsloader.html" class="active"><span class="em">📦</span>POPSLoader docs</a>
+    <h4>POPStarter · documentation</h4><a href="../getting-started.html"><span class="em">🚀</span>Getting Started</a>
+<a href="../storage.html"><span class="em">💾</span>Storage Backends</a>
+<a href="../cheats.html"><span class="em">🎮</span>Cheats</a>
+<a href="../compatibility.html"><span class="em">🩹</span>Patches & TROJANs</a>
+<a href="../igr.html"><span class="em">🎯</span>IGR & Hotkeys</a>
+<a href="../config.html"><span class="em">🔧</span>Config Table</a>
+<a href="../multidisc.html"><span class="em">💿</span>Multi-disc & VMC</a>
+<a href="../troubleshooting.html"><span class="em">🛠️</span>Troubleshooting</a>
+<a href="../downloads.html"><span class="em">📦</span>Downloads</a>
+<a href="../history.html"><span class="em">📜</span>History</a>
+    <h4>Reference</h4>
+    <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
+  </nav>
+  <main class="content"><h1>Launch arguments</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/BETA-13-PLAY/docs/LAUNCH_ARGUMENTS.md">view on GitHub ↗</a></p><p>POPSLoader accepts NHDDL-style launch arguments so a front-end (OSDMenu /<br />
+HOSDMenu, wLaunchELF, a forwarder, etc.) can boot it straight to a device<br />
+page or auto-launch a specific game. Arguments are parsed in<br />
+<code>src/main.cpp</code> <code>parseLaunchArgs()</code>, exposed to Lua via<br />
+<code>System.getLaunchArgs()</code>, and acted on in <code>bin/POPSLDR/system.lua</code>.</p>
+<h2>The arguments</h2>
+<table>
+<thead>
+<tr>
+<th>Argument</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-page=&lt;device&gt;</code></td>
+<td>Boot <strong>straight into that device's game list</strong> (when used without <code>-game</code>).</td>
+</tr>
+<tr>
+<td><code>-mode=&lt;device&gt;</code></td>
+<td>NHDDL-compatible <strong>alias</strong> for <code>-page=</code> (identical behavior, same values).</td>
+</tr>
+<tr>
+<td><code>-game=&lt;selector&gt;</code></td>
+<td>Auto-launch a game. <strong>Must be combined with <code>-page=</code>.</strong></td>
+</tr>
+<tr>
+<td><code>-debug</code></td>
+<td>Show an on-screen toast with the parsed args + resolved boot context.</td>
+</tr>
+</tbody>
+</table>
+<p>Each argument is a separate token, exactly like a command line:</p>
+<pre><code>mc0:/PS1_POPSLOADER/POPSLOADER.ELF -page=hdd
+mc0:/PS1_POPSLOADER/POPSLOADER.ELF -mode=ata
+mc0:/PS1_POPSLOADER/POPSLOADER.ELF -page=usb -game=Tekken 3
+mc0:/PS1_POPSLOADER/POPSLOADER.ELF -page=hdd -debug
+</code></pre>
+<p>The first token is always POPSLoader's own ELF path; the launcher supplies<br />
+it as <code>argv[0]</code>. Pass each flag as its <strong>own</strong> argument entry — do not join<br />
+them into one quoted string (see <em>Front-end notes</em> below).</p>
+<h2>Accepted <code>-page</code> / <code>-mode</code> values</h2>
+<p>Values are case-insensitive. Aliases in parentheses resolve to the same<br />
+page:</p>
+<table>
+<thead>
+<tr>
+<th>Page</th>
+<th>Accepted values</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>HDD</strong> (PFS)</td>
+<td><code>hdd</code>, <code>ata</code>, <code>pfs</code>, <code>apa</code></td>
+</tr>
+<tr>
+<td><strong>USB</strong></td>
+<td><code>usb</code>, <code>mass</code></td>
+</tr>
+<tr>
+<td><strong>MC</strong></td>
+<td><code>mc</code>, <code>memcard</code> <em>(accepted but not navigable — there is no standalone Memory Card page; standard PS2 memory cards are not a separate carousel device)</em></td>
+</tr>
+<tr>
+<td><strong>MMCE</strong></td>
+<td><code>mmce</code></td>
+</tr>
+<tr>
+<td><strong>MX4SIO</strong></td>
+<td><code>mx4sio</code>, <code>mx4</code>, <code>sdc</code></td>
+</tr>
+<tr>
+<td><strong>SMB</strong></td>
+<td><code>smb</code></td>
+</tr>
+<tr>
+<td><strong>BDMA</strong> (HDD exFAT)</td>
+<td><code>bdma</code> <em>(accepted but not navigable — see below)</em></td>
+</tr>
+</tbody>
+</table>
+<p><code>-mode=ata</code> is provided specifically for NHDDL parity (<code>-mode=ata</code> is how<br />
+NHDDL selects the HDD/ATA path).</p>
+<h2>What each argument actually does</h2>
+<h3><code>-page=</code> / <code>-mode=</code> (open a device's game list)</h3>
+<p>Boots <strong>straight into the requested device's game list</strong> (the same screen<br />
+you'd reach by scrolling to that page and pressing <strong>X</strong>) — it loads the<br />
+device and switches to its list automatically. Combine with <code>-game=</code> to go<br />
+one step further and auto-launch a specific title (see below); <code>-page=</code><br />
+alone just opens the list so you can pick.</p>
+<p>Enterable pages: <strong>MMCE, MX4SIO, HDD (PFS), USB.</strong> The HDD value<br />
+targets the implemented <strong>PFS</strong> page. <code>bdma</code> (HDD exFAT) and the i.Link<br />
+page are intentionally <strong>not</strong> wired, so <code>-page=bdma</code> is accepted but has<br />
+no effect. An unrecognized value is ignored and the carousel starts on its<br />
+default page (MMCE) with no auto-entry.</p>
+<h3><code>-game=</code> (auto-launch)</h3>
+<p>Boots straight into launching a game. Requires <strong>both</strong> <code>-page=</code> and<br />
+<code>-game=</code>. Auto-launch is wired for these pages:</p>
+<table>
+<thead>
+<tr>
+<th>Page</th>
+<th><code>-game=</code> selector format</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HDD</td>
+<td><code>&lt;PARTITION&gt;\|&lt;VCD&gt;</code> — the POPS partition label, a literal <code>\|</code>, then the <code>.VCD</code> filename (e.g. <code>__.POPS\|SLUS_007.42.RAMPAGE.VCD</code>). A bare title fails with an "Invalid HDD game entry" toast.</td>
+</tr>
+<tr>
+<td>USB</td>
+<td><code>&lt;FILE&gt;</code> relative to <code>mass:/POPS</code></td>
+</tr>
+<tr>
+<td>MX4SIO</td>
+<td><code>&lt;FILE&gt;</code> relative to <code>mx4sio:/POPS</code></td>
+</tr>
+<tr>
+<td>MMCE</td>
+<td><code>&lt;FILE&gt;</code> relative to <code>mmce0:/POPS</code></td>
+</tr>
+</tbody>
+</table>
+<p>If auto-launch fails (game not found, etc.) POPSLoader does <strong>not</strong> hang —<br />
+it falls back to the normal welcome screen + main menu and shows an error<br />
+toast describing what happened. <strong>SMB:</strong> SMB (v1) is an unimplemented stub.<br />
+<code>-page=smb</code> positions the carousel on the SMB page, but auto-entering it<br />
+shows a "This backend isn't implemented yet" toast (no list opens).<br />
+<code>-page=smb -game=...</code> shows an "Auto-launch page not supported: SMB" toast.<br />
+Both leave you on the main menu.</p>
+<h3><code>-debug</code></h3>
+<p>Queues an on-screen info toast on the first main-menu frame listing:</p>
+<pre><code>[debug] boot context
+kind: &lt;HDD|USB|MC|MMCE|MX4SIO|SMB|HOST&gt;
+boot_path: &lt;argv[0]&gt;
+sidecar: &lt;settings sidecar path&gt;
+settings: &lt;resolved settings path&gt;
+video: req=&lt;n&gt; got=&lt;n&gt; free=&lt;n&gt; &lt;W&gt;x&lt;H&gt;
+args.page: &lt;normalized page or &lt;nil&gt;&gt;
+args.game: &lt;selector or &lt;nil&gt;&gt;
+</code></pre>
+<p>Use this to confirm the args actually reached POPSLoader. If the toast<br />
+shows <code>args.page: HDD</code> you know parsing works and any remaining problem is<br />
+downstream; if the toast never appears, the args didn't reach<br />
+<code>parseLaunchArgs()</code> at all (front-end delivery or an outdated build).</p>
+<p>The <code>video:</code> line is the GS mode readback (requested vs. obtained mode,<br />
+free VRAM, and resolution; NTSC=2/PAL=3). It is omitted only if<br />
+<code>UI.VIDEO_READBACK</code> was not captured (e.g. the boot video-mode apply was<br />
+short-circuited).</p>
+<h2>Front-end notes (important)</h2>
+<ul>
+<li><strong>One flag per argument entry.</strong> Front-ends that pass each argument as a<br />
+  distinct <code>argv</code> token (OSDMenu's <code>arg_OSDSYS_ITEM_&lt;n&gt;</code> lines, NHDDL,<br />
+  OPL) work directly. Writing two flags on one line — e.g.<br />
+<code>-page=hdd -debug</code> as a single value — historically arrived as one token<br />
+<code>"-page=hdd -debug"</code>. POPSLoader now defends against this (it keeps only<br />
+  the first word of a page value and still detects a trailing <code>-debug</code>),<br />
+  but the clean, portable form is two separate argument entries.</li>
+<li><strong>Whitespace / quotes are tolerated.</strong> Leading/trailing spaces and one<br />
+  pair of surrounding quotes are stripped from each token (some CNF parsers<br />
+  leave a trailing space on the line). Internal spaces in <code>-game=</code> values<br />
+  are preserved (USB/MX4SIO/MMCE <code>.VCD</code> filenames may contain spaces; the<br />
+  HDD selector is the <code>&lt;PARTITION&gt;|&lt;VCD&gt;</code> form, not a bare title).</li>
+<li><strong>OSDMenu Browser-icon (PATINFO) launches</strong> don't read<br />
+<code>arg_OSDSYS_ITEM_*</code>; for those, arguments come from the OSDMenu<br />
+<code>SYSTEM.CNF</code> <code>arg</code> extensions in the partition attribute area.</li>
+<li><strong>Build requirement.</strong> These arguments shipped in <strong>BETA-12</strong> (feature<br />
+  added 2026-05-25 on the <code>BETA-12-PLAY</code> dev branch). Builds older than<br />
+  BETA-12 do not have them. All Lua runs from assets<br />
+  embedded in the ELF at build time, so updating on-card <code>.lua</code> files has<br />
+<strong>no effect</strong> — you must run a current <code>POPSLOADER.ELF</code>. Verify with<br />
+<code>-debug</code>.</li>
+</ul>
+<h2>Example OSDMenu <code>OSDMENU.CNF</code> entry</h2>
+<pre><code>name_OSDSYS_ITEM_1 = POPSLoader (HDD)
+path1_OSDSYS_ITEM_1 = mc0:/PS1_POPSLOADER/POPSLOADER.ELF
+arg_OSDSYS_ITEM_1 = -page=hdd
+</code></pre>
+<p>Add games or debug as additional, separate <code>arg_OSDSYS_ITEM_1</code> lines:</p>
+<pre><code>arg_OSDSYS_ITEM_1 = -page=hdd
+arg_OSDSYS_ITEM_1 = -game=__.POPS|SLUS_007.42.RAMPAGE.VCD
+arg_OSDSYS_ITEM_1 = -debug
+</code></pre>
+<h2>Source map (for maintainers)</h2>
+<table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>Location</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Token parse + trim</td>
+<td><code>src/main.cpp</code> <code>parseLaunchArgs()</code>, <code>trimLaunchArgToken()</code></td>
+</tr>
+<tr>
+<td>Lua binding</td>
+<td><code>src/luasystem.cpp</code> <code>lua_getLaunchArgs()</code> → <code>System.getLaunchArgs()</code></td>
+</tr>
+<tr>
+<td>Normalize + populate</td>
+<td><code>bin/POPSLDR/system.lua</code> <code>NormalizeLaunchPage()</code> + <code>PLDR.LAUNCH_ARGS</code></td>
+</tr>
+<tr>
+<td>Carousel navigation</td>
+<td><code>bin/POPSLDR/system.lua</code> page-jump block (raises <code>Carousel.allowOptWrite</code>)</td>
+</tr>
+<tr>
+<td>Auto-launch</td>
+<td><code>bin/POPSLDR/system.lua</code> <code>PLDR.AutoLaunchFromLaunchArgs()</code></td>
+</tr>
+<tr>
+<td>Debug toast</td>
+<td><code>bin/POPSLDR/system.lua</code> <code>PLDR.SurfaceLaunchArgsDebug()</code></td>
+</tr>
+</tbody>
+</table>
+<h3>Why navigation needs <code>allowOptWrite</code></h3>
+<p><code>UI.MainMenu</code> installs a <code>__newindex</code> write-guard that silently drops any<br />
+<code>OPT</code> assignment unless <code>Carousel.allowOptWrite</code> is raised, and<br />
+<code>MainMenu.Play()</code> re-syncs the carousel <strong>from</strong> <code>OPT</code> every non-animating<br />
+frame. The page-jump block therefore raises that gate around its <code>OPT</code><br />
+write (and sets the carousel indices to match). Without it the navigation<br />
+is a silent no-op — that was the 2026-06 "launch args do nothing on<br />
+hardware" bug.</p></main>
+</div>
+<footer>
+  <p><b>POPStarter Documentation Archive</b> — community-recovered from the Wayback Machine
+  (ShaolinAssassin's <code>popstarter-documentation-stuff</code> wiki) and krHACKen's r13 changelog,
+  cross-checked and merged across snapshots. Built for the POPSLoader project.</p>
+  <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
+  emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
+  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed.</p>
+</footer>
+<script src="../assets/app.js"></script>
+</body></html>

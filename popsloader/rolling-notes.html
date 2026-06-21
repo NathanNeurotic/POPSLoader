@@ -1,0 +1,94 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rolling notes · POPSLoader · POPStarter Docs</title>
+<meta name="description" content="Resurrected, searchable POPStarter documentation — cheats, patches, config, storage, multi-disc, IGR, downloads, and the POPSLoader fork.">
+<link rel="stylesheet" href="../assets/style.css">
+</head><body data-base="../">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu">☰</button>
+  <a class="brand" href="../index.html">
+    <span class="psbtns"><i class="tri">&#9651;</i><i class="cir">&#9711;</i><i class="cro">&#10005;</i><i class="squ">&#9633;</i></span>
+    POPStarter <small>DOCS</small></a>
+  <div class="search">
+    <span class="ico">🔎</span>
+    <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <a href="../index.html"><span class="em">🏠</span>Home</a>
+    <h4>POPSLoader · this project</h4>
+    <a href="../popsloader.html" class="active"><span class="em">📦</span>POPSLoader docs</a>
+    <h4>POPStarter · documentation</h4><a href="../getting-started.html"><span class="em">🚀</span>Getting Started</a>
+<a href="../storage.html"><span class="em">💾</span>Storage Backends</a>
+<a href="../cheats.html"><span class="em">🎮</span>Cheats</a>
+<a href="../compatibility.html"><span class="em">🩹</span>Patches & TROJANs</a>
+<a href="../igr.html"><span class="em">🎯</span>IGR & Hotkeys</a>
+<a href="../config.html"><span class="em">🔧</span>Config Table</a>
+<a href="../multidisc.html"><span class="em">💿</span>Multi-disc & VMC</a>
+<a href="../troubleshooting.html"><span class="em">🛠️</span>Troubleshooting</a>
+<a href="../downloads.html"><span class="em">📦</span>Downloads</a>
+<a href="../history.html"><span class="em">📜</span>History</a>
+    <h4>Reference</h4>
+    <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
+  </nav>
+  <main class="content"><h1>Rolling notes</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/BETA-13-PLAY/ROLLING_NOTES.md">view on GitHub ↗</a></p><p><strong>This is a bleeding-edge TEST build, not a stable release.</strong> It has everything from the latest stable <strong>plus</strong> features still being tested. Please try it and report anything odd — and mention you're on the <strong>rolling</strong> build. To go back to stable, just reinstall the latest entry on the <strong>Releases</strong> page.</p>
+<p>Here's everything new or changed <strong>since BETA-9</strong>.</p>
+<hr />
+<h2>🆕 Currently testing (newest — we'd love your feedback)</h2>
+<p><strong>Newest this cycle — UI, cover art &amp; navigation (please eyeball the items marked below):</strong><br />
+- <strong>Per-game info text</strong> — drop a <code>&lt;game&gt;.txt</code> next to a game, then turn on <em>Settings → Game details</em> (<strong>Off / Left / Center / Right</strong> alignment) to show it in a panel under the cover. Your line breaks are kept. Scroll long text with the <strong>right analog stick</strong>, and set the pace in <em>Settings → Description scroll speed</em> (<strong>Fast / Medium / Slow</strong>). The three speeds are now distinct (≈1, 3 and 7 lines/sec) — previously they all felt the same. Please tell us if the scroll feel is right.<br />
+- <strong>Smoother list navigation</strong> — the <strong>left analog stick</strong> now moves the cursor <strong>one game at a time</strong> (just like the d-pad), with a comfortable hold-to-repeat (it starts repeating after a short hold, then about 5 items/sec). <strong>Left/Right</strong> (d-pad or stick) jumps a <strong>whole page</strong>, and <strong>L1</strong> still bounces between top ↔ bottom. The stick only kicks in on real analog/DualShock pads now (a digital pad no longer injects a phantom direction), so up/down lands on individual items cleanly — <strong>oldman63 and Nuno6573 confirmed this on hardware</strong>. And the list no longer bogs down while cover art is on — it was redoing work every frame; please tell us if scrolling feels snappy with covers enabled.<br />
+- <strong>Game list cache (opt-in)</strong> — <em>Settings → Game list cache.</em> USB / MMCE / MX4SIO / HDD can save their scanned list per device so the "Building game list…" step only runs once (rebuild it any time with <strong>R1</strong>). <strong>Off by default.</strong> If you switch it on, please test that games still <strong>launch</strong> from the cached list, not just that it loads fast.<br />
+- <strong>New cover-box artwork (newest)</strong> — the placeholder in the preview box is now a proper <strong>jewel-case picture</strong> instead of a text label. With cover preview <strong>off</strong> you see a clean default case; with preview <strong>on</strong> but the game has <strong>no</strong> cover art, that default case gets a small "missing cover" mark layered on top. (The old <strong>"Cover disabled"</strong> text label is gone, and the single old <code>MISSING.png</code> placeholder was dropped — that alone shaved <strong>~62 KB</strong> off the build.) The default, the missing mark, and the frame outline all line up inside the jewel-case window. <strong>Please eyeball this on a TV</strong> — does the default cover + missing mark sit squarely inside the frame on <strong>both NTSC and PAL</strong>? It hasn't been checked on real hardware yet.<br />
+- <strong>Cleaner game list</strong> — wider list, the device name (e.g. "USB") no longer overlaps the top row, and the "Building…" progress bar is calmer.<br />
+- <strong>Boot polish</strong> — the welcome splash now appears <strong>immediately</strong> (covering the old boot black screen) and is centered from the first frame; leaner build (~48 KB smaller). Please just confirm boot still reaches the menu cleanly on each device.<br />
+- <strong>Boot sound on/off</strong> — <em>Settings.</em> A new <strong>Boot sound</strong> switch (<strong>default On</strong>) for the splash chime; turn it off for a silent boot. It saves with your other settings — <strong>oldman63 confirmed it saves and survives a reboot</strong> on hardware.<br />
+- <strong>Overscan (CRT inset)</strong> — <em>Settings → "Overscan (CRT inset)".</em> If a real CRT cuts off the edges of the menu, nudge this up (<strong>Off, then 5 → up</strong> in steps of 5) to pull the whole UI inward, OPL-style. It previews live as you adjust and reverts if you back out without saving; <strong>Off</strong> by default so nothing changes unless you ask. <strong>This one needs CRT eyeballs</strong> — try it on a tube TV and tell us whether the inset clears your overscan without leaving black borders.</p>
+<ul>
+<li><strong>HDD load crash — FIXED.</strong> The big one: the HDD game list could fail with <em>"Failed to load HDD"</em> on the <strong>second</strong> boot (and stay broken until you cleared a file) because of a cache bug. That's fixed — the HDD list should now load reliably <strong>every</strong> boot. If you ever see <em>"Failed to load HDD"</em> again, please screenshot it — it now shows the real reason on a second line.</li>
+<li><strong>Display / Video standard fix</strong> — <em>Settings → Video.</em> POPSLoader now honors your <strong>Video Standard</strong> choice, with a new <strong>Auto</strong> default that matches your console's region (fixes e.g. PAL consoles displaying in PAL when NTSC was selected). On <strong>PAL</strong> the UI now renders <strong>natively at 640×512</strong> so it fills the whole screen — no more letterbox / dead band. Two safety nets like OPL: <strong>hold START during boot</strong> to skip past video settings if a bad mode leaves you with no picture, and a <strong>confirm/revert prompt</strong> when you change the mode (it auto-reverts if you don't confirm in time). PAL hardware verification is exactly what we'd love feedback on — does the screen fill edge-to-edge?</li>
+<li><strong>POPSTARTER Memory Card Folder toggle</strong> — <em>Settings.</em> A new switch for the <code>mc:/POPSTARTER</code> folder on your Memory Card. Turning it <strong>off deletes</strong> <code>mc:/POPSTARTER</code> (you'll get a confirm prompt first — it's a destructive action). It's <strong>interlocked with BDMA</strong>: you can't disable the folder while BDMA mode is on, and you can't enable BDMA while the folder is off. (Heads-up for the curious: the installed BDMA mode is recorded in a <code>bdma_mode.txt</code> marker in your POPSTARTER pack folder — renamed from the old <code>.pldr_bdma_mode</code>; the legacy name is still read.)</li>
+<li><strong>Boot Page</strong> — <em>Settings → Startup.</em> Choose where POPSLoader opens after boot: the device carousel (default), or jump straight into a specific device's game list (<strong>MX4SIO / USB / MMCE / HDD</strong>).</li>
+<li><strong>Multi-disc games</strong> — <em>Settings → Game List.</em> Optionally hide the extra discs of multi-disc games so only <strong>Disc 1</strong> shows. It works by <strong>filename</strong>, so name your files like <code>Game (Disc 1).VCD</code> / <code>Game (Disc 2).VCD</code>. Launch Disc 1 and swap discs in-game with your VMC.</li>
+<li><strong>Hide games</strong> — press <strong>L3</strong> on any game to hide/unhide it (drops a tiny <code>&lt;name&gt;.hide</code> file next to its <code>.VCD</code>, like the cover <code>.png</code>); press <strong>R3</strong> to reveal a device's hidden games — they show dimmed so <strong>L3</strong> can unhide them — or hide them again. <em>Settings → Game List → Hidden games:</em> <strong>Hidden</strong> filters them out of the list; <strong>Visible (manage)</strong> shows them dimmed so you can toggle them back with <strong>L3</strong>. In-app hiding now works on <strong>every</strong> device page — USB / MX4SIO / MMCE / Memory Card <strong>and the internal HDD</strong> (the HDD writes the <code>.hide</code> straight to its boot partition; the old "add the file from a PC" step is gone). If an HDD write ever fails, it falls back to telling you to add the <code>.hide</code> from a PC — please report it if you see that.</li>
+<li><strong>Carousel device visibility</strong> — <em>Settings → Carousel Devices.</em> Hide carousel entries you don't use (including the not-yet-implemented stubs like <strong>SMB</strong> / <strong>iLink</strong>) with a <strong>Shown / Hidden</strong> toggle per device; at least one device always stays visible. Your launch behavior is unchanged — hidden entries are just skipped on the carousel.</li>
+<li><strong>HDD settings now save on the HDD</strong> — on an HDD install, your Settings save <strong>directly to the HDD</strong> (on its boot partition), right where POPSLoader lives — same as a USB / MX4SIO / MMCE install keeps its own settings. This used to be a read-only "probe"; it's a real save now. It boots on PCSX2 and provato confirmed the HDD is writable on real hardware, but the full save flow is still validating on hardware — so please save a setting, reboot, and tell us if it stuck.</li>
+</ul>
+<h2>🎮 Since BETA-9 — the big stuff</h2>
+<p><strong>Internal HDD (PFS)</strong><br />
+- Major HDD reliability fixes — games that wouldn't launch from an HDD-resident POPSTARTER now work.<br />
+- The HDD game list now loads even when you start POPSLoader from <strong>USB or Memory Card</strong> (it waits for a cold drive to spin up instead of failing instantly).<br />
+- The HDD game list opens instantly on repeat visits within a session — press <strong>R1</strong> on the HDD page to force a fresh rescan.<br />
+- <strong>DKWDRV</strong> launches from <strong>custom HDD paths</strong>, not just the default location.</p>
+<p><strong>BOOT.ELF / Exit</strong><br />
+- "Exit → BOOT.ELF" handoff fixed for the common cases (booting from USB / MC / MMCE / MX4SIO / OSDmenu / Browser / PSBBN).</p>
+<p><strong>Devices &amp; launching</strong><br />
+- <strong>MMCE</strong>: controller input no longer goes dead after you open the MMCE game list.<br />
+- <strong>Launch arguments</strong> (<code>-page</code> / <code>-mode</code> / <code>-game</code>): other launchers can open POPSLoader straight to a device — or straight into a game.<br />
+- Settings now save <strong>per device</strong> (right next to the launcher) — a USB / MX4SIO / MMCE install keeps its own settings.</p>
+<p><strong>Polish</strong><br />
+- Leaner, faster build (removed unused internals) and assorted stability fixes.<br />
+- A full documentation overhaul.</p>
+<h2>⚠️ Known issues / still being verified</h2>
+<p><em>Canonical list: </em><em>STATE.md &gt; Known Issues</em><em>. Tester summary:</em><br />
+- <strong>Confirmed on hardware this cycle (thank you!):</strong> the <strong>Boot sound</strong> toggle saves and survives a reboot (oldman63); up/down <strong>and</strong> left-stick navigation land on individual items with smooth continuous scroll (oldman63); and the latest rolling is running well overall (Nuno6573).<br />
+- <strong>Still wants an eyeball (works in testing, not yet hardware-confirmed):</strong> the new <strong>cover-box artwork</strong> (default cover + missing mark lining up inside the jewel-case frame on <strong>NTSC and PAL</strong>), the <strong>Overscan (CRT inset)</strong> on a real tube TV, and the <strong>Description scroll speed</strong> feel. Please report on these specifically.<br />
+- <strong>Other new features aren't broadly hardware-confirmed yet.</strong> HDD in-app hide (L3), HDD-resident settings save, native PAL 640×512, and the POPSTARTER Memory Card Folder toggle all boot on PCSX2, and provato confirmed the HDD is writable on real hardware — but the full flows are still validating on hardware. These are exactly what we're asking you to test; please report what works and what doesn't.<br />
+- <strong><em>"Failed to load HDD" on the second boot</em> — FIXED.</strong> That was the cache bug above (it hit setups that had loaded the HDD successfully at least once before). If you ever see it again, it now shows the real error on a second line — please screenshot.<br />
+- <strong><em>"Failed to load HDD" from a non-HDD boot</em> — still open (config-specific).</strong> On a specific setup, launching POPSLoader from <strong>USB / Memory Card</strong> via a launcher can fault while building the <strong>HDD</strong> game list (most setups list the HDD fine; POPSLoader itself starts normally). Workaround: boot POPSLoader from the HDD, or wait a few seconds on the menu before opening the HDD page. We're still isolating this one — if it hits you, tell us your exact boot setup.</p>
+<h2>Install</h2>
+<p>Extract to your device like any POPSLoader build, replacing your current install.</p></main>
+</div>
+<footer>
+  <p><b>POPStarter Documentation Archive</b> — community-recovered from the Wayback Machine
+  (ShaolinAssassin's <code>popstarter-documentation-stuff</code> wiki) and krHACKen's r13 changelog,
+  cross-checked and merged across snapshots. Built for the POPSLoader project.</p>
+  <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
+  emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
+  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed.</p>
+</footer>
+<script src="../assets/app.js"></script>
+</body></html>

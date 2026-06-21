@@ -1,0 +1,1373 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>QA regression matrix · POPSLoader · POPStarter Docs</title>
+<meta name="description" content="Resurrected, searchable POPStarter documentation — cheats, patches, config, storage, multi-disc, IGR, downloads, and the POPSLoader fork.">
+<link rel="stylesheet" href="../assets/style.css">
+</head><body data-base="../">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu">☰</button>
+  <a class="brand" href="../index.html">
+    <span class="psbtns"><i class="tri">&#9651;</i><i class="cir">&#9711;</i><i class="cro">&#10005;</i><i class="squ">&#9633;</i></span>
+    POPStarter <small>DOCS</small></a>
+  <div class="search">
+    <span class="ico">🔎</span>
+    <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <a href="../index.html"><span class="em">🏠</span>Home</a>
+    <h4>POPSLoader · this project</h4>
+    <a href="../popsloader.html" class="active"><span class="em">📦</span>POPSLoader docs</a>
+    <h4>POPStarter · documentation</h4><a href="../getting-started.html"><span class="em">🚀</span>Getting Started</a>
+<a href="../storage.html"><span class="em">💾</span>Storage Backends</a>
+<a href="../cheats.html"><span class="em">🎮</span>Cheats</a>
+<a href="../compatibility.html"><span class="em">🩹</span>Patches & TROJANs</a>
+<a href="../igr.html"><span class="em">🎯</span>IGR & Hotkeys</a>
+<a href="../config.html"><span class="em">🔧</span>Config Table</a>
+<a href="../multidisc.html"><span class="em">💿</span>Multi-disc & VMC</a>
+<a href="../troubleshooting.html"><span class="em">🛠️</span>Troubleshooting</a>
+<a href="../downloads.html"><span class="em">📦</span>Downloads</a>
+<a href="../history.html"><span class="em">📜</span>History</a>
+    <h4>Reference</h4>
+    <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
+  </nav>
+  <main class="content"><h1>QA regression matrix</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/BETA-13-PLAY/QA_REGRESSION_MATRIX.md">view on GitHub ↗</a></p><p>Last updated: 2026-06-21 (BETA-13 rolling candidate in progress)<br />
+Released line: <strong>BETA-12</strong> (af983d7, 2026-06-18; BETA-11 2026-06-15). BETA-10-5 release tag: <code>9a0ebe2</code>, hardware-confirmed clean 2026-05-28 (Nuno). <strong>BETA-13 is the in-progress rolling candidate (not yet cut).</strong><br />
+Active dev branch is now <strong><code>BETA-13-PLAY</code></strong> (created off <code>BETA-12-PLAY</code> @<code>8d1e67a</code>; <strong><code>BETA-12-PLAY</code> is now ARCHIVAL/frozen</strong>). <code>.github/workflows/rolling-release.yml</code> publishes from <code>BETA-13-PLAY</code> (repiped @<code>8c78296</code>). The development tip moves every push — see <code>git log</code> for the exact HEAD (don't pin a SHA here; it goes stale immediately). Post-release PR work is CI-verified but <code>Unknown (verify on hardware)</code> unless explicitly recorded below.</p>
+<blockquote>
+<p>This file is the detailed run ledger. For the canonical current state — Settings behavior, Known Issues, Preservation Contracts, Behavioral Invariants, and Hardware Status — see <strong><code>STATE.md</code></strong>; those shared blocks are not restated here.</p>
+</blockquote>
+<h2>Scope</h2>
+<p>This matrix tracks current behavior across:<br />
+- settings load/save/apply transaction flow,<br />
+- persisted UI preferences (<code>video standard</code>, <code>hide-text</code>, <code>keyboard layout</code>, <code>game-details display</code>, <code>description-scroll speed</code>, <code>game-list cache</code>, <code>boot sound</code>, <code>overscan</code>; the full persisted-key list — including launch/path/profile/device keys — lives in STATE.md),<br />
+- input/navigation behavior (analog-stick→d-pad fold gating, frame-counted nav auto-repeat, frame-counted description scroll),<br />
+- launch path validation and error feedback,<br />
+- startup backend auto-init,<br />
+- USB/MMCE/MX4SIO/HDD page behavior,<br />
+- removed runtime device-lock behavior,<br />
+- on-screen keyboard behavior,<br />
+- busy/progress overlays,<br />
+- cover art behavior,<br />
+- exit handoff behavior,<br />
+- currently unimplemented menu options (<code>HDD (exFAT)</code>, <code>SMB (v1)</code>, <code>i.Link</code>),<br />
+- release package validation gates,<br />
+- repository automation workflows that are not runtime/hardware gates.</p>
+<p>This file is the authoritative detailed run ledger for CI and hardware outcomes. The other root docs should summarize the active state and point here for chronology.</p>
+<h2>Automated CI Gates</h2>
+<p>These gates are defined by <code>.github/workflows/compilation.yml</code>. The separate <code>.github/workflows/opencode.yml</code> workflow only runs comment-triggered AI assistance and is not a build, package, runtime, or hardware validation gate.</p>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Area</th>
+<th>Source</th>
+<th>Pass Criteria</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CI-01</td>
+<td>Build</td>
+<td><code>.github/workflows/compilation.yml</code></td>
+<td><code>make clean elfloader all</code> succeeds</td>
+</tr>
+<tr>
+<td>CI-02</td>
+<td>Bundled Lua syntax/newline</td>
+<td>workflow step <code>Validate bundled Lua sources (syntax/newline)</code></td>
+<td><code>etc/boot.lua</code> + <code>bin/POPSLDR/{system,ui,images,pops_profiles}.lua</code> all exist; <code>etc/boot.lua</code> ends with newline (0x0A); every file passes <code>luac5.4 -p</code> (gate is LIVE and hard-fails -- <code>lua5.4</code> is a build dependency, no silent skip)</td>
+</tr>
+<tr>
+<td>CI-03</td>
+<td>Release package assembly</td>
+<td>workflow packaging step</td>
+<td>ZIP includes expected tree rooted at <code>PS1_POPSLOADER/</code> + <code>POPS/</code></td>
+</tr>
+<tr>
+<td>CI-04</td>
+<td>Release manifest exactness</td>
+<td>workflow python verifier</td>
+<td>exact expected file set; no extra/missing files</td>
+</tr>
+<tr>
+<td>CI-05</td>
+<td>Legacy payload rejection</td>
+<td>workflow python verifier</td>
+<td>no <code>POPS/*.tm2</code> entries present</td>
+</tr>
+<tr>
+<td>CI-06</td>
+<td>Packaged build identity</td>
+<td>workflow packaging step</td>
+<td>ZIP includes <code>PS1_POPSLOADER/BUILD_INFO.txt</code> so hardware can confirm the exact GitHub-built artifact</td>
+</tr>
+<tr>
+<td>CI-07</td>
+<td>Embedded runtime identity</td>
+<td>workflow step <code>Verify embedded build identity</code></td>
+<td>built <code>enceladus.elf</code> contains the expected embedded build markers (<code>Exec path:</code>, <code>PrepareForColdExternalELFLaunch</code>, <code>BOOT.ELF launch failed</code>) and the generated embedded-loader blob (<code>src/elf_loader/loader.c</code>) exists and matches its source (skipped when the blob's timestamp is newer than the loader source; otherwise byte-parity is checked against a fresh <code>bin2c</code> of <code>loader.elf</code>)</td>
+</tr>
+<tr>
+<td>CI-08</td>
+<td>Optional <code>default.png</code> asset</td>
+<td>Build without <code>bin/POPSLDR/IMG/default.png</code> (the only optional embed; gated by <code>HAVE_ASSET_DEFAULT_PNG</code> in <code>Makefile</code> + <code>src/embed_assets.cpp</code>)</td>
+<td>Build succeeds and omits <code>asset_default_png</code>. NOTE: <code>MISSING.png</code> was removed (BETA-13, <code>56a5ad5</code>), so <code>IMG_FALLBACKS</code> is now empty (<code>bin/POPSLDR/images.lua</code>) — when <code>default.png</code> is absent <code>IMG.default</code> simply returns <code>nil</code> (no fallback). The game-list cover box uses <code>cover_default.png</code> (+ <code>cover_missing.png</code> overlay), not <code>default.png</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2>Manual Runtime Matrix</h2>
+<h3>Settings and persistence</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Area</th>
+<th>Setup</th>
+<th>Action</th>
+<th>Pass Criteria</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>S-01</td>
+<td>Defaults with missing settings file</td>
+<td>Remove the active <code>.pldrs</code> (the per-device <code>APP_DIR_LOCAL/.pldrs</code> sidecar for this install, or the <code>mc0:/POPSTARTER/.pldrs</code> legacy fallback; for an HDD install the on-HDD boot-partition <code>.pldrs</code>)</td>
+<td>Start app and open Settings</td>
+<td>Defaults load without crash</td>
+</tr>
+<tr>
+<td>S-02</td>
+<td>Staged edits are not immediate writes</td>
+<td>Change settings rows but do not leave Settings</td>
+<td>Hard-exit app</td>
+<td>Prior persisted values remain</td>
+</tr>
+<tr>
+<td>S-03</td>
+<td>Commit on exit</td>
+<td>Change profile/paths/BDMA and confirm or leave</td>
+<td>Reopen Settings</td>
+<td>Values persist and reload</td>
+</tr>
+<tr>
+<td>S-04</td>
+<td>Save failure feedback</td>
+<td>Make the active settings store unwritable (the per-device <code>APP_DIR_LOCAL/.pldrs</code> sidecar, the <code>mc0:/POPSTARTER</code> legacy fallback, or — for an HDD install — block the boot-partition RW take-over so the on-HDD <code>.pldrs</code> can't be written)</td>
+<td>Leave Settings with changes</td>
+<td>User sees explicit save/apply error notification</td>
+</tr>
+<tr>
+<td>S-05</td>
+<td>BDMA mode restore from marker</td>
+<td>Prepare <code>bdma_mode.txt</code> marker (legacy <code>.pldr_bdma_mode</code> still read)</td>
+<td>Boot and open Settings</td>
+<td>Selected BDMA mode reflects effective marker state</td>
+</tr>
+<tr>
+<td>S-06</td>
+<td>Back prompts when staged settings exist</td>
+<td>Open Settings from a non-main scene and change profile/path/video/hide-text state</td>
+<td>Press <code>O Back</code></td>
+<td>A "Save Settings" modal appears with <code>X Save / O Cancel / Triangle Don't Save</code>. Triangle (Don't Save) returns to the originating scene without saving and reopening Settings shows prior runtime/persisted values. O (Cancel) stays on Settings. X (Save) commits and exits to the originating scene. With no staged changes, Back returns immediately with no prompt.</td>
+</tr>
+<tr>
+<td>S-07</td>
+<td>Video standard persistence</td>
+<td>Set Video Standard to <code>PAL</code> or <code>NTSC</code> and save</td>
+<td>Reboot/relaunch and reopen Settings</td>
+<td>Selected video standard reloads from settings and runtime video mode matches the saved value</td>
+</tr>
+<tr>
+<td>S-08</td>
+<td>Hide-text persistence</td>
+<td>Open Settings, press <code>Select</code>, then save</td>
+<td>Reboot/relaunch and reopen Settings</td>
+<td>Hidden/shown UI state reloads from settings and matches the last saved toggle state</td>
+</tr>
+<tr>
+<td>S-09</td>
+<td>Keyboard layout persistence</td>
+<td>Set keyboard layout to <code>ABC</code>, <code>QWERTY</code>, or <code>DVORAK</code> and save</td>
+<td>Reboot/relaunch and reopen the path editor</td>
+<td>Selected keyboard layout reloads from settings and the keyboard opens in that layout</td>
+</tr>
+<tr>
+<td>S-10</td>
+<td>Game-details display persistence</td>
+<td>Set <code>Game details</code> to <code>Off</code>, <code>Left</code>, <code>Center</code>, or <code>Right</code> and save</td>
+<td>Reboot/relaunch and reopen Settings</td>
+<td>Selected game-details on/off + alignment reload from settings (<code>SHOW_DETAILS</code>/<code>DETAILS_ALIGN</code>) and match the last saved value</td>
+</tr>
+<tr>
+<td>S-11</td>
+<td>Description-scroll-speed persistence</td>
+<td>Set <code>Description scroll speed</code> to <code>Fast</code>, <code>Medium</code>, or <code>Slow</code> and save</td>
+<td>Reboot/relaunch and reopen Settings</td>
+<td>Selected scroll speed reloads from settings (<code>DESC_SCROLL_SPEED</code>) and matches the last saved value</td>
+</tr>
+<tr>
+<td>S-12</td>
+<td>Game-list cache persistence</td>
+<td>Toggle <code>Game list cache</code> On/Off (default Off) and save</td>
+<td>Reboot/relaunch and reopen Settings</td>
+<td>Selected cache state reloads from settings (<code>GAMELIST_CACHE</code>); default remains Off when unset</td>
+</tr>
+<tr>
+<td>S-13</td>
+<td>Boot-sound persistence</td>
+<td>Toggle <code>Boot sound</code> On/Off (default On; gates the splash chime) and save</td>
+<td>Reboot/relaunch and reopen Settings</td>
+<td>Selected boot-sound state reloads from settings (<code>PLDR.BOOT_SOUND</code> / <code>CommitSettingsChanges</code> <code>boot_sound</code>); default remains On when unset. The setting actually gates the splash chime at boot (<code>UI.BOOT_SOUND.ENABLED</code> + <code>PLDR.BOOT_SOUND</code> check)</td>
+</tr>
+<tr>
+<td>S-14</td>
+<td>Overscan persistence</td>
+<td>Set <code>Overscan (CRT inset)</code> to a nonzero permille (default 0 = off; ±5 step) and save</td>
+<td>Reboot/relaunch and reopen Settings</td>
+<td>Selected overscan permille reloads from settings (<code>PLDR.OVERSCAN</code>); default remains 0 when unset. Discarding the live-adjuster restores the saved value via <code>Screen.setOverscan</code></td>
+</tr>
+</tbody>
+</table>
+<h3>Launch and path handling</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Area</th>
+<th>Setup</th>
+<th>Action</th>
+<th>Pass Criteria</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>L-01</td>
+<td>Missing POPStarter path</td>
+<td>Configure nonexistent POPStarter path</td>
+<td>Launch game</td>
+<td>UI shows <code>No POPSTARTER found at this path</code> notification (followed by the configured path; if the resolved path differs, also a <code>Resolved:</code> line)</td>
+</tr>
+<tr>
+<td>L-02</td>
+<td>Missing DKWDRV path</td>
+<td>Configure nonexistent DKWDRV path</td>
+<td>Launch Disc option</td>
+<td>UI shows <code>No DKWDRV found at this path</code> (plus the configured path)</td>
+</tr>
+<tr>
+<td>L-03</td>
+<td><code>mc?:/</code> POPStarter alias (<code>mc0</code>)</td>
+<td>Place POPStarter only on <code>mc0:/</code> and configure <code>mc?:/</code></td>
+<td>Launch game</td>
+<td>Path resolves to <code>mc0:/</code> and launch proceeds</td>
+</tr>
+<tr>
+<td>L-04</td>
+<td><code>mc?:/</code> POPStarter alias (<code>mc1</code>)</td>
+<td>Place POPStarter only on <code>mc1:/</code> and configure <code>mc?:/</code></td>
+<td>Launch game</td>
+<td>Path resolves to <code>mc1:/</code> and launch proceeds</td>
+</tr>
+<tr>
+<td>L-05</td>
+<td><code>mc?:/</code> DKWDRV alias</td>
+<td>Place DKWDRV only on <code>mc1:/</code> and configure <code>mc?:/</code></td>
+<td>Launch Disc option</td>
+<td>Path resolves to <code>mc1:/</code> and launch proceeds</td>
+</tr>
+<tr>
+<td>L-06</td>
+<td>Invalid alias targets</td>
+<td>Configure <code>mc?:/</code> path with file on neither card</td>
+<td>Launch game/Disc option</td>
+<td>Launch is blocked with explicit missing-file notification</td>
+</tr>
+<tr>
+<td>L-07</td>
+<td>BOOT.ELF exit fallback</td>
+<td>Put <code>BOOT.ELF</code> on <code>mc0:/BOOT/</code> only, then <code>mc1:/BOOT/</code> only</td>
+<td>Open Exit modal and choose <code>BOOT.ELF</code></td>
+<td><code>mc0:/BOOT/BOOT.ELF</code> is preferred and <code>mc1:/BOOT/BOOT.ELF</code> is used as fallback</td>
+</tr>
+<tr>
+<td>L-08</td>
+<td>Default/Profile 1 local POPSTARTER path</td>
+<td>Start from a settings file that may contain an older absolute local POPSTARTER path, then select default/Profile 1 with local sidecar/cwd <code>POPSTARTER.ELF</code> present</td>
+<td>Cold boot and launch a game</td>
+<td>Launch does not stop at <code>Cant find POPSTARTER ELF</code>; the current local sidecar/cwd POPSTARTER path wins over the stale equivalent override</td>
+</tr>
+</tbody>
+</table>
+<h3>Device pages and backend behavior</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Area</th>
+<th>Setup</th>
+<th>Action</th>
+<th>Pass Criteria</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>D-01</td>
+<td>USB backend unavailable</td>
+<td>No USB mass backend mounted</td>
+<td>Open USB page</td>
+<td>UI shows <code>No USB backend detected</code> (with reseat-the-drive hint)</td>
+</tr>
+<tr>
+<td>D-02</td>
+<td>MX4SIO present</td>
+<td>Insert MX4SIO media</td>
+<td>Open MX4SIO page</td>
+<td>Device is detected with bounded retry behavior; list loads or clear no-game state</td>
+</tr>
+<tr>
+<td>D-03</td>
+<td>MX4SIO absent</td>
+<td>No MX4SIO media</td>
+<td>Open MX4SIO page</td>
+<td>UI shows <code>No MX4SIO device detected</code></td>
+</tr>
+<tr>
+<td>D-04</td>
+<td>MMCE absent</td>
+<td>No MMCE card</td>
+<td>Open MMCE page</td>
+<td>UI shows MMCE-not-found notification</td>
+</tr>
+<tr>
+<td>D-05</td>
+<td>HDD PFS unavailable</td>
+<td>No usable HDD</td>
+<td>Open HDD (PFS)</td>
+<td>explicit HDD status/partition error notification</td>
+</tr>
+<tr>
+<td>D-06</td>
+<td>HDD exFAT option status</td>
+<td>any setup</td>
+<td>Select <code>HDD (exFAT)</code></td>
+<td>UI shows <code>Not Implemented Yet</code></td>
+</tr>
+<tr>
+<td>D-07</td>
+<td>SMB option status</td>
+<td>any setup</td>
+<td>Select <code>SMB (v1)</code></td>
+<td>UI shows <code>Not Implemented Yet</code></td>
+</tr>
+<tr>
+<td>D-07A</td>
+<td>i.Link option status</td>
+<td>any setup</td>
+<td>Select <code>i.Link</code></td>
+<td>UI shows <code>Not Implemented Yet</code></td>
+</tr>
+<tr>
+<td>D-08</td>
+<td>HDD POPS partition scan</td>
+<td><code>__.POPS</code>, <code>__.POPS0</code>, and one higher <code>__.POPSN</code> present</td>
+<td>Open HDD (PFS)</td>
+<td>titles from all present POPS partitions list in stable partition order</td>
+</tr>
+<tr>
+<td>D-09</td>
+<td>HDD duplicate title names</td>
+<td>Same VCD filename exists in two POPS partitions</td>
+<td>Launch each entry from HDD (PFS)</td>
+<td>each entry launches from its own source partition</td>
+</tr>
+<tr>
+<td>D-10</td>
+<td>HDD POPSTARTER on HDD</td>
+<td>POPSLoader and/or configured <code>POPSTARTER_PATH</code> points to HDD, including HDD sidecar/CWD resolution</td>
+<td>Launch HDD title</td>
+<td>POPSTARTER resolves from sidecar or configured HDD path without blocking launch or hanging on a black screen</td>
+</tr>
+<tr>
+<td>D-11</td>
+<td>HDD common art path</td>
+<td><code>hdd0:__common/POPS/ART/&lt;title&gt;.png</code> present</td>
+<td>Browse HDD title list</td>
+<td>cover art appears and launch still succeeds</td>
+</tr>
+<tr>
+<td>D-12</td>
+<td>Startup backend auto-init</td>
+<td>Boot from USB/MX4SIO/MMCE/HDD, or save a <code>POPSTARTER_PATH</code> / <code>DKWDRV_PATH</code> / profile on one of those devices</td>
+<td>Cold boot app and launch without first opening that device page</td>
+<td>Required backend drivers initialize automatically from boot/configured paths</td>
+</tr>
+<tr>
+<td>D-13</td>
+<td>No runtime device lock gating</td>
+<td>Enter one backend page first, then move to another backend page in the same session</td>
+<td>Open the second backend page</td>
+<td>UI does not block the scene transition with a restart-required device-lock gate</td>
+</tr>
+<tr>
+<td>D-14</td>
+<td>HDD-backed POPSTARTER with non-HDD game</td>
+<td>Configure <code>POPSTARTER_PATH</code> or Profile 2 to an HDD-resident <code>POPSTARTER.ELF</code></td>
+<td>Launch a USB, MMCE, or MX4SIO title</td>
+<td>POPSTARTER launches without hanging on a black screen even though the executable itself is on HDD</td>
+</tr>
+<tr>
+<td>D-15</td>
+<td>HDD game with non-HDD sidecar POPSTARTER</td>
+<td>Boot from USB/MMCE/MX4SIO or another non-HDD device with sidecar/cwd <code>POPSTARTER.ELF</code> on that same device</td>
+<td>Launch an HDD title</td>
+<td>HDD title still launches without a black screen when POPSTARTER itself remains off-HDD</td>
+</tr>
+<tr>
+<td>D-16</td>
+<td>USB first-entry backend discovery</td>
+<td>Cold boot without first opening the USB page</td>
+<td>Open USB once</td>
+<td>USB backend is found on the first entry without backing out and re-entering</td>
+</tr>
+</tbody>
+</table>
+<h3>UI behavior</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Area</th>
+<th>Setup</th>
+<th>Action</th>
+<th>Pass Criteria</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>U-01</td>
+<td>Hide auxiliary text toggle</td>
+<td>Main menu or game list scene</td>
+<td>Press Select twice</td>
+<td>Toggle shows/hides supported auxiliary text and reports state notification</td>
+</tr>
+<tr>
+<td>U-02</td>
+<td>Hide toggle on non-hide scenes</td>
+<td>Settings or Credits scene</td>
+<td>Press Select</td>
+<td>Settings updates the saved hide-text toggle without hiding the settings UI; Credits does not apply hide mode unexpectedly</td>
+</tr>
+<tr>
+<td>U-03</td>
+<td>Cover sidecar load</td>
+<td>Put <code>&lt;game&gt;.png</code> beside selected <code>.VCD</code></td>
+<td>Highlight game</td>
+<td>Cover preview appears</td>
+</tr>
+<tr>
+<td>U-04</td>
+<td>Cover sidecar missing</td>
+<td>Remove sidecar PNG</td>
+<td>Move selection repeatedly</td>
+<td>No notification spam; UI remains responsive</td>
+</tr>
+<tr>
+<td>U-05</td>
+<td>Exit to OSDSYS</td>
+<td>Boot POPSLoader on target hardware, including a run where <code>HDD (PFS)</code> was opened first</td>
+<td>Open Exit modal and choose <code>OSDSYS</code></td>
+<td>Returns to the PS2 browser without black screen, including after the HDD page initialized tracked mounts</td>
+</tr>
+<tr>
+<td>U-06</td>
+<td>PAL video asset aspect</td>
+<td>Set Video Standard to <code>PAL</code> in Settings</td>
+<td>Browse main menu, settings, and splash/UI assets</td>
+<td>Bundled UI assets retain expected proportions without PAL squish</td>
+</tr>
+<tr>
+<td>U-07</td>
+<td>Path editor cursor and press feedback</td>
+<td>Open POPStarter or DKWDRV path editor</td>
+<td>Move cursor with <code>L1</code>/<code>R1</code>, toggle case, insert/delete characters, confirm/cancel</td>
+<td>Cursor moves within the string, lowercase letter keys render uppercase when case is enabled, and the selected key flashes when pressed</td>
+</tr>
+<tr>
+<td>U-08</td>
+<td>Save progress overlay</td>
+<td>Change any setting and save</td>
+<td>Observe the save/apply sequence</td>
+<td>A visible progress popup/overlay stays on-screen until the save/apply flow completes or fails</td>
+</tr>
+<tr>
+<td>U-09</td>
+<td>Device-load progress overlay</td>
+<td>Use a slow or large MMCE/MX4SIO/HDD/USB library</td>
+<td>Open the device page and wait for list generation</td>
+<td>A visible progress popup/overlay stays on-screen during scanning/list generation and advances through the scan instead of only jumping between coarse stage markers</td>
+</tr>
+<tr>
+<td>U-10</td>
+<td>BOOT.ELF after HDD page init</td>
+<td>Open <code>HDD (PFS)</code> first so dependency checks and partition scans run</td>
+<td>Return to main menu and launch <code>BOOT.ELF</code> from Exit</td>
+<td><code>BOOT.ELF</code> handoff succeeds without freezing or black-screening after HDD page access</td>
+</tr>
+<tr>
+<td>U-11</td>
+<td>Boot-device label</td>
+<td>Boot from USB, MX4SIO, MMCE, and HDD</td>
+<td>Reach the main menu</td>
+<td>Main menu boot label reflects the detected boot device/backend family</td>
+</tr>
+<tr>
+<td>U-12</td>
+<td>Notification interrupt behavior</td>
+<td>Trigger two or more notifications before the first fades out</td>
+<td>Observe the on-screen notification</td>
+<td>The newest notification appears immediately and older pending notifications do not backlog</td>
+</tr>
+<tr>
+<td>U-13</td>
+<td>Up/down + analog-stick nav lands on individual items</td>
+<td>Main menu / game list / settings</td>
+<td>Press up/down on the d-pad; tilt the left analog stick up/down on a DualShock</td>
+<td>Each press/tilt moves selection by exactly one item; continuous-hold scroll is smooth and does not fly past items. Analog-stick fold is GATED on <code>Pads.getMode()</code> reporting <code>PAD_ANALOG</code>/<code>PAD_DUALSHOCK</code> (<code>Pads.getMode</code> = <code>padInfoMode(PAD_MODECURID)</code>, <code>src/luacontrols.cpp</code>); on a digital/non-analog pad the stick fold is suppressed so it cannot inject a phantom direction (<code>UI.Pad.Listen</code>, <code>bin/POPSLDR/ui.lua</code>)</td>
+</tr>
+<tr>
+<td>U-14</td>
+<td>Nav auto-repeat is frame-counted</td>
+<td>Hold up or down on a list</td>
+<td>Observe repeat timing</td>
+<td>First repeat after ~0.6s, then ~0.2s (~5/sec). Repeat is FRAME-counted (<code>NAV_DELAY_FRAMES</code>/<code>NAV_RATE_FRAMES</code>/<code>NavHoldFrames</code> in <code>resolve_nav</code>, <code>nav_fps</code> = 50 at &gt;=512 lines else 60), NOT wall-clock — <code>Timer.getTime()</code> returns microseconds on PS2, so the old ms-based timing flew. Left/right are edge-only (no auto-repeat)</td>
+</tr>
+<tr>
+<td>U-15</td>
+<td>Description right-stick scroll honors the speed setting</td>
+<td>Highlight a game with a long description; set <code>Description scroll speed</code> Fast/Med/Slow</td>
+<td>Push the right stick down to scroll the description</td>
+<td>Scroll steps once every <code>ceil(_secs * fps)</code> frames; Slow 0.9s / Medium 0.3s / Fast 0.15s actually differ (frame-counted via <code>DescScrollFrames</code>, <code>bin/POPSLDR/ui.lua</code>). Releasing the stick scrolls again immediately on the next push</td>
+</tr>
+<tr>
+<td>U-16</td>
+<td>Cover placeholder layering</td>
+<td>Browse the game list with cover preview ON (Square enabled) and OFF; include a game with no cover art</td>
+<td>Highlight games and toggle cover preview</td>
+<td>Preview OFF (Square) draws <code>IMG.cover_default</code> only — no "Cover disabled" text label (removed). Preview ON but no cover art -&gt; <code>cover_default.png</code> with <code>cover_missing.png</code> overlaid. A live cover draws unchanged. Default, overlay, and <code>frame.png</code> share the frame's aspect-corrected right-anchored rect so they register with the jewel-case window on NTSC + PAL</td>
+</tr>
+</tbody>
+</table>
+<h2>Run Log Template</h2>
+<table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Console</th>
+<th>Storage Setup</th>
+<th>IDs Run</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2026-03-27</td>
+<td>Unknown (not reported)</td>
+<td>Booted from USB; USB <code>POPSTARTER.ELF</code> via default/Profile 1/cwd/sidecar; launch stopped before handoff</td>
+<td>L-08</td>
+<td>FAIL: <code>Cant find POPSTARTER ELF</code></td>
+</tr>
+<tr>
+<td>2026-03-27</td>
+<td>Unknown (not reported)</td>
+<td>Same USB sidecar/cwd/Profile 1 repro after rollback to checkpoint resolver behavior</td>
+<td>L-08</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>2026-03-27</td>
+<td>Unknown (not reported)</td>
+<td>Booted from HDD; startup auto-init did not bring up the HDD driver stack before manual HDD page entry</td>
+<td>D-12</td>
+<td>FAIL</td>
+</tr>
+<tr>
+<td>2026-03-28</td>
+<td>Unknown (not reported)</td>
+<td>Same HDD-boot auto-init repro on corrected source</td>
+<td>D-12</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>2026-03-28</td>
+<td>Unknown (not reported)</td>
+<td>Booted from HDD; default/Profile 1 sidecar POPSTARTER on HDD; entered USB page before HDD page on the boot-time split source</td>
+<td>D-12</td>
+<td>FAIL: HDD POPSTARTER could not be found until HDD page entry</td>
+</tr>
+<tr>
+<td>2026-03-28</td>
+<td>Unknown (not reported)</td>
+<td>Same HDD-backed startup/Profile POPSTARTER repro on raw-<code>APP_DIR</code> fallback source</td>
+<td>D-12</td>
+<td>FAIL: still required HDD page entry</td>
+</tr>
+<tr>
+<td>2026-03-28</td>
+<td>Unknown (not reported)</td>
+<td>Same HDD-backed startup/Profile POPSTARTER repro after startup warm-path and on-demand path-access follow-ups</td>
+<td>D-12</td>
+<td>FAIL: still required HDD page entry</td>
+</tr>
+<tr>
+<td>2026-03-28</td>
+<td>Unknown (not reported)</td>
+<td>Same HDD-backed startup/Profile POPSTARTER repro on exact-boot-mount/source-context source</td>
+<td>D-12</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>2026-03-27</td>
+<td>Unknown (not reported)</td>
+<td>Cold boot; first USB page entry said no backend; backing out and re-entering then worked</td>
+<td>D-16</td>
+<td>FAIL</td>
+</tr>
+<tr>
+<td>2026-03-28</td>
+<td>Unknown (not reported)</td>
+<td>Cold boot; first USB page entry on corrected source</td>
+<td>D-16</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>2026-03-27</td>
+<td>Unknown (not reported)</td>
+<td>Booted from HDD; POPSTARTER via default/Profile 1/cwd/sidecar on HDD; game device HDD</td>
+<td>D-10</td>
+<td>FAIL: black screen</td>
+</tr>
+<tr>
+<td>2026-03-27</td>
+<td>Unknown (not reported)</td>
+<td>Boot source not reported; Profile 2 <code>POPSTARTER.ELF</code> on HDD; game device USB</td>
+<td>D-14</td>
+<td>FAIL: black screen</td>
+</tr>
+<tr>
+<td>2026-03-27</td>
+<td>Unknown (not reported)</td>
+<td>Booted from non-HDD device; HDD game; sidecar/cwd <code>POPSTARTER.ELF</code> on boot device; EE-side HDD direct-load attempt</td>
+<td>D-15</td>
+<td>FAIL: black screen (reported regression)</td>
+</tr>
+<tr>
+<td>2026-03-27</td>
+<td>Unknown (not reported)</td>
+<td>HDD game with non-HDD <code>POPSTARTER.ELF</code> on the broader stripped-handoff source</td>
+<td>D-15</td>
+<td>FAIL: black screen</td>
+</tr>
+<tr>
+<td>2026-03-28</td>
+<td>Unknown (not reported)</td>
+<td>HDD game with non-HDD <code>POPSTARTER.ELF</code> on broader experimental source before current rollback</td>
+<td>D-15</td>
+<td>FAIL: black screen</td>
+</tr>
+<tr>
+<td>2026-03-28</td>
+<td>Unknown (not reported)</td>
+<td>USB boot; USB sidecar/cwd <code>POPSTARTER.ELF</code>; HDD game on the rolled-back current source</td>
+<td>D-15</td>
+<td>FAIL: black screen</td>
+</tr>
+<tr>
+<td>2026-03-28</td>
+<td>Unknown (not reported)</td>
+<td>USB boot; USB Profile 1 sidecar/cwd <code>POPSTARTER.ELF</code>; HDD game on the narrowed current source</td>
+<td>D-15</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>2026-03-28</td>
+<td>Unknown (not reported)</td>
+<td>HDD boot; HDD sidecar/cwd <code>POPSTARTER.ELF</code>; HDD game on narrowed Lua-side source with cleared post-load PFS keep mask</td>
+<td>D-10</td>
+<td>FAIL: black screen (no visible change)</td>
+</tr>
+<tr>
+<td>2026-03-28</td>
+<td>Unknown (not reported)</td>
+<td>HDD boot; HDD sidecar/cwd <code>POPSTARTER.ELF</code>; HDD game on loader-side no-auto-exec-slot-preserve source</td>
+<td>D-10</td>
+<td>FAIL: black screen on both <code>X</code> and <code>R2</code></td>
+</tr>
+<tr>
+<td>2026-03-28</td>
+<td>Unknown (not reported)</td>
+<td>HDD boot; HDD sidecar/cwd <code>POPSTARTER.ELF</code>; HDD game on forced-<code>reboot_iop = 1</code> source</td>
+<td>D-10</td>
+<td>FAIL: black screen on both <code>X</code> and <code>R2</code></td>
+</tr>
+<tr>
+<td>2026-03-28</td>
+<td>Unknown (not reported)</td>
+<td>Non-HDD game with HDD-backed <code>POPSTARTER.ELF</code> on forced-<code>reboot_iop = 1</code> source</td>
+<td>D-14</td>
+<td>FAIL: <code>X</code> black screen, <code>R2</code> no response</td>
+</tr>
+<tr>
+<td>2026-03-28</td>
+<td>Unknown (not reported)</td>
+<td>HDD boot; HDD sidecar/cwd <code>POPSTARTER.ELF</code>; HDD game on direct-<code>hdd0:PART:pfsN:/POPSTARTER.ELF</code> preference source</td>
+<td>D-10</td>
+<td>FAIL: <code>X</code> black screen</td>
+</tr>
+<tr>
+<td>2026-03-28</td>
+<td>Unknown (not reported)</td>
+<td>Non-HDD game with HDD-backed <code>POPSTARTER.ELF</code> on direct-<code>hdd0:PART:pfsN:/POPSTARTER.ELF</code> preference source</td>
+<td>D-14</td>
+<td>FAIL: <code>X</code> black screen</td>
+</tr>
+<tr>
+<td>2026-03-28</td>
+<td>Unknown (not reported)</td>
+<td>HDD boot; HDD sidecar/cwd <code>POPSTARTER.ELF</code>; HDD game on mounted-<code>pfs0:</code> embedded-loader source</td>
+<td>D-10</td>
+<td>FAIL: <code>X</code> black screen</td>
+</tr>
+<tr>
+<td>2026-03-28</td>
+<td>Unknown (not reported)</td>
+<td>HDD boot; HDD sidecar/cwd <code>POPSTARTER.ELF</code>; HDD game on exact-boot-mount/source-context source</td>
+<td>D-10</td>
+<td>FAIL: black screen</td>
+</tr>
+<tr>
+<td>2026-03-28</td>
+<td>Unknown (not reported)</td>
+<td>HDD boot; HDD sidecar/cwd <code>POPSTARTER.ELF</code>; HDD game on partition-aware reboot-contract source</td>
+<td>D-10</td>
+<td>FAIL: no black screen, but launcher regained control through generic timeout failure path</td>
+</tr>
+<tr>
+<td>2026-03-29</td>
+<td>Unknown (not reported)</td>
+<td>HDD boot; HDD sidecar/cwd <code>POPSTARTER.ELF</code>; HDD game on prior partition-aware source with real returned-rc popup</td>
+<td>D-10</td>
+<td>FAIL: launcher regained control with <code>rc=-1 (returned after 22618 ms)</code></td>
+</tr>
+<tr>
+<td>2026-03-29</td>
+<td>Unknown (not reported)</td>
+<td>HDD boot; HDD sidecar/cwd <code>POPSTARTER.ELF</code>; HDD game on later GitHub artifact from the broader partition-aware/current-source line</td>
+<td>D-10</td>
+<td>FAIL: black screen</td>
+</tr>
+<tr>
+<td>2026-05-20</td>
+<td>Unknown (not reported)</td>
+<td>Latest <code>BETA-12-PLAY</code> artifact; HDD-resident <code>POPSTARTER.ELF</code> resolved as <code>pfs3:/POPS/POPSTARTER.ELF</code>; app dir shown as <code>hdd0:+OPL:pfs:/APPS/PS1_POPSLOADER/</code>; HDD title <code>SLUS_007.42.Rampage 2 - Uni.VCD</code></td>
+<td>D-10</td>
+<td>FAIL: launcher popup returned with <code>POPSTARTER HDD pre-exec gate failed: Cannot resolve HDD partition context</code>; source also showed the popup route/gate fields were argument-shifted before the 2026-05-20 follow-up</td>
+</tr>
+<tr>
+<td>2026-05-20</td>
+<td>Unknown (not reported)</td>
+<td>Later readable-diagnostic artifact; configured/effective POPSTARTER path <code>hdd0:__common:pfs:/POPS/POPSTARTER.ELF</code>; resolved POP path <code>pfs3:/POPS/POPSTARTER.ELF</code>; exec path <code>pfs:/POPS/POPSTARTER.ELF</code>; HDD title <code>SLUS_007.42.Rampage 2 - Uni.VCD</code></td>
+<td>D-10</td>
+<td>FAIL: launcher popup returned with <code>POPSTARTER HDD pre-exec gate failed: POPSTARTER is not accessible using exec path</code>; source showed the gate was probing generic <code>pfs:/...</code> instead of a real slot-mounted path</td>
+</tr>
+<tr>
+<td>2026-05-20</td>
+<td>Unknown (not reported)</td>
+<td>Latest-artifact regression after D-10 gate follow-up; USB boot with USB sidecar/cwd <code>POPSTARTER.ELF</code>; HDD title selected from the HDD page</td>
+<td>D-15</td>
+<td>FAIL: black screen; source follow-up restores legacy <code>System.loadELF(path, reboot_iop, selector)</code> one-argument selector behavior so no extra Lua argument can reach normal POPSTARTER launches</td>
+</tr>
+<tr>
+<td>2026-05-20</td>
+<td>Unknown (not reported)</td>
+<td>Follow-up non-HDD POPSTARTER test; explicit <code>mass:/POPS/POPSTARTER.ELF</code> launches, while default/cwd sidecar <code>POPSTARTER.ELF</code> stops before launch</td>
+<td>L-08/D-15 guard</td>
+<td>FAIL: <code>Cant find POPSTARTER ELF</code>; source follow-up expands default sidecar lookup to live current directory plus boot/app directories without changing the selector handoff</td>
+</tr>
+<tr>
+<td>2026-05-22</td>
+<td>D-10 Hardware</td>
+<td>HDD Boot; diagnostic pre-exec POPSLOADER; HDD POPSTARTER replaced with SIFLOADFILE sentinel</td>
+<td>D-10</td>
+<td>PASS: target-side SifInitRpc(0) &amp; SifLoadFileInit() succeeded (GREEN-&gt;YELLOW-&gt;WHITE-&gt;RED/MAGENTA loop)</td>
+</tr>
+<tr>
+<td>2026-05-22</td>
+<td>D-10 Hardware</td>
+<td>HDD Boot; diagnostic pre-exec POPSLOADER; HDD POPSTARTER replaced with FILEXIOINIT sentinel</td>
+<td>D-10</td>
+<td>PASS: target-side fileXioInit() succeeded (GREEN-&gt;CYAN-&gt;YELLOW-&gt;WHITE-&gt;RED-&gt;BLUE-&gt;MAGENTA/GREEN loop)</td>
+</tr>
+<tr>
+<td>2026-05-22</td>
+<td>D-10 Hardware</td>
+<td>HDD Boot; diagnostic pre-exec POPSLOADER; HDD POPSTARTER replaced with TARGET-IOPRESET sentinel</td>
+<td>D-10</td>
+<td>FAIL: post-reset target-side SifInitRpc(0) hung (froze on TEAL)</td>
+</tr>
+<tr>
+<td>2026-05-22</td>
+<td>D-10 Hardware</td>
+<td>HDD Boot; diagnostic pre-exec POPSLOADER; HDD POPSTARTER replaced with TARGET-IOPRESET-EXITRPC sentinel</td>
+<td>D-10</td>
+<td>FAIL: post-reset target-side SifInitRpc(0) hung (froze on TEAL)</td>
+</tr>
+<tr>
+<td>2026-05-22</td>
+<td>D-10 Hardware</td>
+<td>HDD Boot; diagnostic pre-exec POPSLOADER; HDD POPSTARTER replaced with MINIMAL TARGET-IOPRESET sentinel</td>
+<td>D-10</td>
+<td>FAIL: post-reset target-side SifInitRpc(0) hung (froze on TEAL)</td>
+</tr>
+<tr>
+<td>2026-05-22</td>
+<td>D-10 Hardware</td>
+<td>HDD Boot; diagnostic pre-exec POPSLOADER; HDD POPSTARTER replaced with MINIMAL TARGET-IOPRESET-EXITRPC sentinel</td>
+<td>D-10</td>
+<td>FAIL: post-reset target-side SifInitRpc(0) hung (froze on TEAL)</td>
+</tr>
+<tr>
+<td>2026-05-22</td>
+<td>D-10 Hardware</td>
+<td>HDD Boot; diagnostic pre-exec POPSLOADER; HDD POPSTARTER replaced with POST-RESET INITCMD SPLIT sentinel</td>
+<td>D-10</td>
+<td>FAIL: post-reset SifInitRpc(0) hung (froze on BLUE)</td>
+</tr>
+<tr>
+<td>2026-05-22</td>
+<td>D-10 Hardware</td>
+<td>HDD Boot; diagnostic pre-exec POPSLOADER; HDD POPSTARTER replaced with POSTINITCMD RPCMODE1 sentinel</td>
+<td>D-10</td>
+<td>FAIL: post-reset SifInitRpc(1) hung (froze on BLUE)</td>
+</tr>
+<tr>
+<td>2026-05-22</td>
+<td>D-10 Hardware</td>
+<td>HDD Boot; diagnostic pre-exec POPSLOADER; HDD POPSTARTER replaced with MANUAL RPCINIT HANDSHAKE sentinel</td>
+<td>D-10</td>
+<td>FAIL: manual post-reset RPCINIT handshake timed out (froze on PURPLE/MAGENTA loop)</td>
+</tr>
+<tr>
+<td>2026-05-22</td>
+<td>D-10 Hardware</td>
+<td>HDD Boot; diagnostic pre-exec POPSLOADER; HDD POPSTARTER replaced with MANUAL RPCINIT HANDSHAKE RETRY sentinel</td>
+<td>D-10</td>
+<td>FAIL: manual post-reset RPCINIT handshake retry timed out (froze on PURPLE/MAGENTA loop)</td>
+</tr>
+<tr>
+<td>2026-05-22</td>
+<td>D-10 Hardware</td>
+<td>HDD Boot; diagnostic pre-exec POPSLOADER; HDD POPSTARTER replaced with MANUAL RPCINIT HANDSHAKE UDNL RESET sentinel</td>
+<td>D-10</td>
+<td>FAIL: manual post-reset RPCINIT handshake timed out (froze on PURPLE/MAGENTA loop)</td>
+</tr>
+<tr>
+<td>2026-05-22</td>
+<td>USB Control</td>
+<td>USB-launched POPSLOADER.ELF + USB sidecar/CWD POPSTARTER.ELF; launching HDD or USB games</td>
+<td>D-10 / Control</td>
+<td>PASS: Works (IOP reset and SIF RPC initialization succeed)</td>
+</tr>
+<tr>
+<td>2026-05-22</td>
+<td>D-10 Hardware</td>
+<td>HDD Boot; diagnostic B0 POPSLOADER (direct fileXio load only); HDD POPSTARTER</td>
+<td>D-10</td>
+<td>FAIL: black screen</td>
+</tr>
+<tr>
+<td>2026-05-22</td>
+<td>D-10 Hardware</td>
+<td>HDD Boot; diagnostic B3 POPSLOADER (direct fileXio load + target PFS unmount); HDD POPSTARTER</td>
+<td>D-10</td>
+<td>FAIL: black screen</td>
+</tr>
+<tr>
+<td>2026-05-22</td>
+<td>D-10 Hardware</td>
+<td>HDD Boot; diagnostic B2 POPSLOADER (standard SifLoadElf + dynamic PFS unmount); HDD POPSTARTER</td>
+<td>D-10</td>
+<td>PASS: Real POPSTARTER booted and worked successfully</td>
+</tr>
+<tr>
+<td>2026-05-22</td>
+<td>D-10 Hardware</td>
+<td>HDD Boot; Production POPSLOADER with B2 fix; HDD POPSTARTER</td>
+<td>D-10</td>
+<td>PASS: Real POPSTARTER booted and worked successfully</td>
+</tr>
+<tr>
+<td>2026-05-22</td>
+<td>D-14 Hardware</td>
+<td>HDD-backed POPSTARTER with non-HDD game; Production POPSLOADER</td>
+<td>D-14</td>
+<td>PASS: Real POPSTARTER booted and worked successfully</td>
+</tr>
+<tr>
+<td>2026-05-22</td>
+<td>D-15 Hardware</td>
+<td>USB Boot; USB sidecar POPSTARTER + HDD game; Production POPSLOADER</td>
+<td>D-15</td>
+<td>PASS: Real POPSTARTER booted and worked successfully</td>
+</tr>
+<tr>
+<td>2026-05-22</td>
+<td>USB Hardware</td>
+<td>USB Boot; USB sidecar POPSTARTER + USB game; Production POPSLOADER</td>
+<td>USB Path</td>
+<td>PASS: Real POPSTARTER booted and worked successfully</td>
+</tr>
+<tr>
+<td>2026-05-22</td>
+<td>Non-HDD Hardware</td>
+<td>Checked non-HDD paths tested in the regression set; Production POPSLOADER</td>
+<td>Other Paths</td>
+<td>PASS: Checked non-HDD paths remained functional</td>
+</tr>
+<tr>
+<td>2026-05-22</td>
+<td>BOOT.ELF Hardware</td>
+<td>Exit to BOOT.ELF / Triangle using System.loadELF(elf_path, 0)</td>
+<td>L-07 / U-10</td>
+<td>FAIL: black screen / hangs (Candidate C SIF cleanup also failed)</td>
+</tr>
+<tr>
+<td>2026-05-22</td>
+<td>BOOT.ELF Hardware</td>
+<td>Exit to BOOT.ELF / Triangle using BRAM embedded loader</td>
+<td>L-07 / U-10</td>
+<td>FAIL: black screen / hangs (embedded BRAM loader diagnostic failed)</td>
+</tr>
+<tr>
+<td>2026-05-24</td>
+<td>D-10 Hardware</td>
+<td>HDD Boot; Production POPSLOADER at 73e6e5d (PR #451 merged: BOOT.ELF reboot path argv0); HDD POPSTARTER</td>
+<td>D-10</td>
+<td>PASS: D-10 still works -- no regression from BOOT.ELF / DKWDRV experiments</td>
+</tr>
+<tr>
+<td>2026-05-24</td>
+<td>BOOT.ELF Hardware</td>
+<td>HDD Boot; System.loadELF(elf_path, reboot_iop=1, elf_path) -- the LaunchBootElf reboot-IOP path with explicit argv0 (PR #451)</td>
+<td>U-10</td>
+<td>FAIL: black screen. Conclusion: standard LoadELFFromFileExecPS2RebootIOPWithPartition reboot path is the wrong target for BOOT.ELF on HDD-loaded state. PR #451 reverted on 2026-05-24. Next angle: special-case mc?:/BOOT/BOOT.ELF in the BRAM child loader so it can conditionally reset IOP under HDD-loaded state.</td>
+</tr>
+<tr>
+<td>2026-05-24</td>
+<td>DKWDRV Hardware</td>
+<td>DKWDRV_PATH set to custom HDD path; Production POPSLOADER at dabfe96 (PR #452 merged: V4 :pfs:/ + reboot_iop=0 for HDD DKWDRV)</td>
+<td>DKWDRV / D-10 paired</td>
+<td>FAIL: black screen. Conclusion: routing HDD DKWDRV through LoadELFFromFileExecPS2 (no-reboot) with HDD keep-mask preservation also does not unblock the launch. The SifExitIopHeap/SifExitRpc/SifExitCmd teardown in the HDD-backed branch may be incompatible with DKWDRV's startup, OR the keep mask isn't actually retaining the partition slot on the way to ExecPS2. PR #452 reverted on 2026-05-24. Next angle: route HDD DKWDRV through the BRAM child loader (same path as POPSTARTER on HDD, since that passes), or copy DKWDRV.ELF to EE RAM before ExecPS2 so it has no HDD dependency at runtime.</td>
+</tr>
+<tr>
+<td>2026-05-24</td>
+<td>BOOT.ELF / DKWDRV</td>
+<td>Production POPSLOADER at baed871 with PRs #451 + #452 reverted (current source returns to b725464-equivalent behavior for these two flows; PR #450 reboot_iop-dead-code-fix retained as a clean source defect repair even though it does not unblock BOOT.ELF on hardware)</td>
+<td>U-10 / DKWDRV</td>
+<td>Unknown (verify on hardware). Treat the rolled-back state as the next baseline.</td>
+</tr>
+<tr>
+<td>2026-05-24</td>
+<td>DKWDRV Hardware</td>
+<td>DKWDRV_PATH set to custom HDD path; Production POPSLOADER with <code>LoadELFFromFileExecPS2RebootIOPWithPartition</code> updated to route HDD DKWDRV through <code>ExecuteHddBackedViaEmbeddedLoader</code> (the BRAM child-loader path POPSTARTER uses successfully on D-10). Removes the V3 <code>!is_dkwdrv_elf_path</code> exclusions; HDD DKWDRV now inherits the same B2-fix IOP-state contract as D-10. Non-HDD DKWDRV (e.g. <code>mc0:/PS1_DKWDRV/DKWDRV.ELF</code>) is unchanged: falls through to standard direct-launch + V3 argv0 synthesis.</td>
+<td>DKWDRV</td>
+<td>Unknown (verify on hardware).</td>
+</tr>
+<tr>
+<td>2026-05-25</td>
+<td>DKWDRV Hardware</td>
+<td>Production POPSLOADER at PR #457 (commit <code>de6da75</code>): DKWDRV-HDD routed through BRAM child loader, no IOP reset. Test path: <code>hdd0:/__common:pfs1:/APPS/PS1_DKWDRV/DKWDRV.ELF</code></td>
+<td>DKWDRV-HDD</td>
+<td>FAIL (Nuno): black screen. POPSTARTER-on-HDD still PASS (no regression). Conclusion: same BRAM-loader path POPSTARTER uses doesn't automatically work for DKWDRV; DKWDRV needs additional state.</td>
+</tr>
+<tr>
+<td>2026-05-25</td>
+<td>BOOT.ELF Hardware</td>
+<td>Production POPSLOADER at PR #457 (commit <code>de6da75</code>): BOOT.ELF exit after HDD-boot</td>
+<td>U-10</td>
+<td>FAIL (Nuno): black screen. U-10 unchanged from prior tests.</td>
+</tr>
+<tr>
+<td>2026-05-25</td>
+<td>DKWDRV Hardware</td>
+<td>Production POPSLOADER at PR #458 (commit <code>dff091c</code>): added fileXio teardown to <code>_ps2sdk_memory_init</code> AND new IOP-reset branches in child loader for DKWDRV + BOOT.ELF (<code>is_dkwdrv_target</code>, <code>is_boot_elf_target</code>). Test path: <code>hdd0:/__common:pfs1:/APPS/PS1_DKWDRV/DKWDRV.ELF</code></td>
+<td>DKWDRV-HDD</td>
+<td>FAIL (Nuno): black screen. POPSTARTER-on-HDD still PASS.</td>
+</tr>
+<tr>
+<td>2026-05-25</td>
+<td>BOOT.ELF Hardware</td>
+<td>Production POPSLOADER at PR #458 (commit <code>dff091c</code>): BOOT.ELF exit after HDD-boot through new <code>is_boot_elf_target</code> reset branch</td>
+<td>U-10</td>
+<td>FAIL (Nuno): black screen. <strong>Worse: PR #458's <code>is_boot_elf_target</code> branch ALSO regressed V2's working USB-boot-exit-to-BOOT.ELF case</strong> (intercepted before non-HDD branch, forced IOP reset BOOT.ELF doesn't tolerate). PR #460 reverts the regression.</td>
+</tr>
+<tr>
+<td>2026-05-25</td>
+<td>wLaunchELF Report</td>
+<td>POPSLoader launched from wLaunchELF on some wLE builds (CosmicScale). PSBBN / Browser / HOSDMenu / OSDMenu launches all work.</td>
+<td>(new)</td>
+<td>FAIL on certain wLE builds, regardless of POPSLoader source device. PR #458 Layer A (<code>SifExitRpc + SifInitRpc + fileXioExit</code> in <code>_ps2sdk_memory_init</code> per ps2sdk #425) targets this. Hardware pending.</td>
+</tr>
+<tr>
+<td>2026-05-25</td>
+<td>PR #460 Source-verified</td>
+<td>V2 mimicry: revert PR #458's <code>is_dkwdrv_target</code> and <code>is_boot_elf_target</code> child-loader branches and the reboot-variant BOOT.ELF route. Add DKWDRV special-case in <code>LoadELFFromFileWithPartition</code> mirroring V2 BOOT.ELF route (d23520a). <code>ui.lua OpenDKWDRV</code> uses <code>reboot_iop=0</code> for HDD paths. Completes the V2 contract V4 (PR #452) missed. Commit <code>740fa87</code> (BETA-12-PLAY head).</td>
+<td>DKWDRV-HDD / L-07</td>
+<td>Source-verified only. Hardware pending. CI green: https://github.com/NathanNeurotic/POPSLoader/actions/runs/26416917597</td>
+</tr>
+<tr>
+<td>2026-05-25</td>
+<td>PR #460/461/462 Hardware</td>
+<td>Production POPSLOADER on BETA-12-PLAY post-merge of PR #460 + #461 (audit cleanup + doc refresh) + #462 (idle-work bundle).</td>
+<td>D-10 / DKWDRV-HDD / DKWDRV-MC / BOOT.ELF-from-USB-boot</td>
+<td>D-10 PASS (Nuno), DKWDRV-MC PASS (Nuno), BOOT.ELF-from-USB-boot PASS (Nuno -- V2 working route restored by reverting PR #458's regression), DKWDRV-from-HDD FAIL (Nuno, still black-screen). V2 mimicry was necessary but not sufficient for DKWDRV-HDD.</td>
+</tr>
+<tr>
+<td>2026-05-26</td>
+<td>PR #463 DIAG</td>
+<td>Diagnostic-only artifact at <code>claude/diag-u10</code> with <code>LOADER_ENABLE_DEBUG_COLORS=1</code> + <code>POPSLOADER_DIAG_U10</code> stage paints in <code>LoadELFFromFile{WithPartition,ExecPS2RebootIOPWithPartition}</code>. Side branch, NOT merged.</td>
+<td>U-10 / DKWDRV-HDD / Settings sidecar</td>
+<td>(a) U-10 BOOT.ELF-from-HDD-boot: <strong>last color YELLOW</strong> (Nuno). YELLOW = post-SifLoadElf, pre-SifIopReset. ORANGE (post-reset) never paints. <strong>SifIopReset itself hangs.</strong> Matches H5 in <code>docs/archive/U10_INVESTIGATION.md</code>: stale <code>pfs1:</code> mount blocks the reset. (b) DKWDRV-HDD: no colors visible -- non-reboot variant runs through to ExecPS2-to-child-loader too fast for GS BGCOLOUR to be visible against POPSLoader's still-rendering menu. Diagnostic limitation, not a code bug. (c) Settings save on HDD FAIL: error toast shows <code>pfs:/APPS/PS1_POPSLOADER/.pldrs may be read-only</code>. Bug: <code>etc/boot.lua</code> chdir's to slot-less <code>pfs:/...</code> (preserving whatever pfsdev came in via ARGV0) while the actual mount is at <code>pfs1:</code>. PR #464 normalizes to <code>pfs1:</code> in boot.lua. (d) HDD POPSTARTER + HDD games still PASS.</td>
+</tr>
+<tr>
+<td>2026-05-26</td>
+<td>PR #464 Source-verified</td>
+<td>F4 fix from <code>docs/archive/U10_INVESTIGATION.md</code> based on PR #463 diagnostic data: <code>LoadELFFromFileExecPS2RebootIOPWithPartition</code> now unconditionally calls <code>unmount_pfs_slots_for_exec(build_exec_keep_mask(resolved_path))</code> before <code>SifIopReset</code> (was previously gated on HDD-backed exec path, which skipped the unmount for BOOT.ELF on MC and let fileXio's pfs1: RPC server thread hang the reset). Plus <code>etc/boot.lua</code> normalizes any pfs slot prefix in BOOTPATH to <code>pfs1:</code> so Lua's cwd matches the actual mount slot.</td>
+<td>U-10 / Settings sidecar HDD</td>
+<td>Source-verified only. Hardware pending.</td>
+</tr>
+<tr>
+<td>2026-05-27</td>
+<td>PR #464 Hardware</td>
+<td>BETA-12-PLAY at commit <code>153e703</code> (post PR #464 merge). Tested: HDD-booted POPSLoader, OSDmenu launch.</td>
+<td>U-10 / Settings save HDD / D-10</td>
+<td>(a) U-10 BOOT.ELF-from-HDD-boot: <strong>FAIL</strong> (Nuno) -- still black-screens. F4 unconditional unmount wasn't enough alone. (b) Settings save on HDD-installed POPSLoader: <strong>FAIL</strong> (Nuno) -- error msg now correctly shows <code>pfs1:/APPS/PS1_POPSLOADER/.pldrs</code> (boot.lua normalization works) but the write still fails. Driver-level constraint suspected (<code>ps2hdd-osd.irx</code> r/w limitation). (c) D-10 still PASS (Nuno) -- HDD POPSLoader + POPSTARTER same dir, HDD games load OK.</td>
+</tr>
+<tr>
+<td>2026-05-27</td>
+<td>PR #466 Release prep</td>
+<td>Disable HDD sidecar (HDD-backed APP_DIR -&gt; sidecar=nil, save goes to mc0 fallback like pre-PR-#459). Document DKWDRV-on-HDD + U-10 as known-broken-accepted-for-release per Nuno's pragmatic call ("most users have other devices for DKWDRV, small percentage have HDD installs"). Close diag PR #463 and HDD r/w probe PR #465 as superseded.</td>
+<td>(release)</td>
+<td>Source-verified only. Pre-release regression check on D-10 / D-15 / DKWDRV-MC / BOOT.ELF-from-USB-boot before formal release.</td>
+</tr>
+<tr>
+<td>2026-05-27</td>
+<td>PR #466 Hardware</td>
+<td>BETA-12-PLAY post-merge. Tested: POPSLoader on USB launched from wLaunchELF.</td>
+<td>DKWDRV-MC / Settings save USB+MC / BOOT.ELF-from-wLE-USB</td>
+<td>(a) DKWDRV.ELF launch OK from default MC path (Nuno). (b) Settings save on USB and MC: PASS (Nuno) -- confirms sidecar works on non-HDD devices. (c) BOOT.ELF exit when POPSLoader was launched via wLaunchELF FAILS (Nuno) -- black screen. Possibly always-broken/latent (same BOOT.ELF route as the working autoboot/OSDSYS cases per code analysis). Not previously tested explicitly. (d) MX4SIO / MMCE untested (no hardware on hand).</td>
+</tr>
+<tr>
+<td>2026-05-27</td>
+<td>PR #468 Release cut</td>
+<td>Tagged <code>BETA-10-5</code> at commit <code>9a0ebe2</code>. <code>bin/changelog</code> v1.0.0-rev5 entry added; <code>etc/boot.lua</code> POPSLDR_VER bumped to v1.0.0-rev5; STATE.md known-broken list refined (wLE bullet removed since not confirmed as regression). GitHub release published at https://github.com/NathanNeurotic/POPSLoader/releases/tag/BETA-10-5 .</td>
+<td>(release)</td>
+<td>Source-verified release cut.</td>
+</tr>
+<tr>
+<td>2026-05-28</td>
+<td>BETA-10-5 Hardware</td>
+<td>Tagged release artifact downloaded and installed. Tested HDD-installed POPSLoader.</td>
+<td>D-10 / BOOT.ELF / Settings save / DKWDRV-MC</td>
+<td>All four checks <strong>PASS</strong> (Nuno 2026-05-28 09:04 AM): (a) BOOT.ELF exit OK, (b) games from HDD load OK (D-10 confirmed), (c) settings save from HDD to MC OK (sidecar falls back to MC by design for HDD installs), (d) DKWDRV launch from default MC path OK. <strong>Release is hardware-confirmed clean.</strong> Known-broken items (DKWDRV-from-HDD-custom-path, U-10 BOOT.ELF-from-HDD-boot) match the documented expectations.</td>
+</tr>
+<tr>
+<td>2026-05-28</td>
+<td>CI capstone</td>
+<td>PR #470 LAUNCH_ARGS game/debug consumers merged (commit <code>8b55072</code>).</td>
+<td>LAUNCH_ARGS</td>
+<td>Repo / CI verified (CI green on PR #470 merge run). Hardware UNKNOWN (verify on hardware). Test plan: boot with <code>-page=hdd -game=__.POPS|&lt;VCD&gt;</code> from wLE/HOSDMenu; boot with <code>-debug</code>; regression check with no args.</td>
+</tr>
+<tr>
+<td>2026-05-28</td>
+<td>Workflow capstone</td>
+<td><code>.github/workflows/rolling-release.yml</code> added (commit <code>761129a</code>). Publishes <code>POPSLOADER-rolling-release.zip</code> to canonical <code>rolling-release</code> tag on push to <code>BETA-12-PLAY</code> and on PR events. Last-write-wins.</td>
+<td>(infra)</td>
+<td>Operational. First production rolling-release built 2026-05-28T10:38Z. Subsequent PR builds overwrite as expected.</td>
+</tr>
+<tr>
+<td>2026-05-28</td>
+<td>CI capstone</td>
+<td>PR #472 MX4SIO evidence-based mass: classification merged (commit <code>b0c0baf</code>), including maintainer refinement <code>7b587fe</code> ("USB or unknown mass stays USB-only") and C-layer <code>mx4sio_bd</code> → <code>usbmass_bd</code> dependency enforcement.</td>
+<td>MX4SIO classification</td>
+<td>Repo / CI verified. Hardware UNKNOWN (verify on hardware on an MX4SIO unit). Test plan: MX4SIO-booted unit shows "MX4SIO" boot label; MX4SIO page lists games; pure USB boots never load <code>mx4sio_bd</code>; no regression on USB / HDD / MC boots.</td>
+</tr>
+<tr>
+<td>2026-05-28</td>
+<td>Hardware regression</td>
+<td>Tester reported rolling-release crashed on Enceladus boot with <code>[string "system.lua"]:3148: attempt to call a nil value (global 'ClassifyMassRootDriver')</code>. Cause: PR #472 maintainer refinement <code>7b587fe</code> reorganized mass-classification helpers, ending up with <code>local function ClassifyMassRootDriver</code> declared AFTER <code>ClassifyStartupMassTargets</code> which calls it. Lua's <code>local function</code> doesn't hoist; the closure couldn't capture it as an upvalue and fell through to globals (nil) at runtime.</td>
+<td>(crash)</td>
+<td>Reported by maintainer's tester 2026-05-28. Reproduced as Enceladus error screen. Lua syntax check did not catch it (source-valid; runtime-broken).</td>
+</tr>
+<tr>
+<td>2026-05-28</td>
+<td>CI capstone</td>
+<td>PR #473 HOTFIX merged (commit <code>81c886e</code>). Moves <code>local function ClassifyMassRootDriver</code> declaration above <code>ClassifyStartupMassTargets</code>. Removes duplicate later declaration. Body unchanged.</td>
+<td>(crash fix)</td>
+<td>Repo / CI verified. Hardware UNKNOWN (verify on hardware — the next rolling-release test cycle confirms whether boot reaches the menu).</td>
+</tr>
+<tr>
+<td>2026-05-28</td>
+<td>Open work</td>
+<td>PR #471 (DRAFT) <code>claude/curious-noether-3f2a8</code>: Layer C <code>mmceman.irx</code> lazy-loaded unless <code>boot_device_hint == "MMCE"</code>. Includes the PR #473 hotfix and a MMCE/MC clarification commit.</td>
+<td>Layer C mmceman</td>
+<td>Repo / CI verified. Hardware: pad input PASS (Nuno 2026-05-28; all his other tests worked and pad input is required for those). MMCE-specific page entry from deferred state NOT specifically tested.</td>
+</tr>
+<tr>
+<td>2026-05-28</td>
+<td>Reference branch</td>
+<td><code>NUNO-CHECKPOINT-5282026</code> pinned to PR #471 head <code>860ae26</code> as a stable reference to whatever rolling-release asset Nuno is testing. Tag floats; branch is fixed.</td>
+<td>(infra)</td>
+<td>Operational.</td>
+</tr>
+<tr>
+<td>2026-05-28 PM</td>
+<td>Nuno on rolling-release</td>
+<td>Hardware verification pass after PR #470/#472/#473 merged + PR #471 mmceman defer in artifact (commit <code>860ae26</code>). Tested: MX4SIO + USB boot/classification, BOOT.ELF exit "across the board", DKWDRV from MC regardless of booted source, USB sidecar settings save.</td>
+<td>MX4SIO classification / USB / BOOT.ELF (incl. U-10) / DKWDRV-MC / Settings save USB</td>
+<td><strong>PASS across the board (Nuno 2026-05-28 PM):</strong> (a) MX4SIO and USB working as intended — PR #472 evidence-based classification confirmed on hardware. (b) <strong>BOOT.ELF exit working across the board, including HDD-booted POPSLoader (U-10)</strong> — this is unexpected because PR #470/#472/#473 don't architecturally touch the U-10 path; possible side effects of the C-layer <code>EnsureUsbMass</code>-first ordering or the boot-crash fix changing earlier-than-BOOT.ELF state are not yet investigated. <strong>U-10 status downgraded from known-broken-accepted to PASS</strong> in STATE/ROADMAP/TRUTHSHEET/README. (c) DKWDRV from MC works regardless of POPSLoader boot source (USB/MX4SIO/HDD all confirmed). (d) Settings save works from USB-booted POPSLoader (sidecar at APP_DIR/.pldrs). <strong>Confirmed known-broken (no change):</strong> DKWDRV from custom HDD path. <strong>By-design fallback (confirmed working):</strong> HDD-installed POPSLoader settings save to <code>mc0:/POPSTARTER/.pldrs</code> (PR #466). MMCE device access from deferred-load state NOT specifically tested but pad/everything-else PASS implies the Layer C mmceman defer didn't break general boot.</td>
+</tr>
+<tr>
+<td>2026-05-28 PM (follow-up)</td>
+<td>Nuno on rolling-release</td>
+<td><strong>NEW failure</strong> isolated after the broader PASS: when POPSLoader is launched from <code>mx4sio:/APPS/PS1_POPSLOADER/POPSLOADER.ELF</code>, settings save fails with "mx4sio:/APPS/PS1_POPSLOADER/.pldrs may be read-only". Screenshot captured.</td>
+<td>Settings save MX4SIO-rooted</td>
+<td><strong>FAIL</strong> (Nuno 2026-05-28 PM hardware). Root cause: <code>mx4sio:/</code> argv0 prefix is the BDM device-kind label, not a writable fileXio mount. The writable filesystem path is the <code>mass*:/</code> slot where <code>bdmfs_fatfs</code> mounts the SD card. PR #476 added a boot.lua mass-slot scan via dynamic ioctl driver lookup (sdc/mx4).</td>
+</tr>
+<tr>
+<td>2026-05-28 PM (#476 retest)</td>
+<td>Nuno on rolling-release post PR #476 merge (target <code>95c937b</code>)</td>
+<td>Same error reproduced after PR #476's fix landed: <code>mx4sio:/APPS/PS1_POPSLOADER/.pldrs may be read-only</code>. PR #476's single-shot scan didn't catch the MX4SIO SD card on real hardware.</td>
+<td>Settings save MX4SIO-rooted</td>
+<td><strong>FAIL</strong> (Nuno 2026-05-28 PM). Single-shot scan was insufficient; PR #477 wraps the scan in a 3-attempt retry pattern with <code>BOOT_MX4SIO_PROBE_RESULT</code> diagnostic trace appended to the error toast.</td>
+</tr>
+<tr>
+<td>2026-05-29 02:58Z</td>
+<td>Nuno on rolling-release post PR #477 merge</td>
+<td><strong>MX4SIO save now works.</strong> Maintainer: "Save now works he says. He said I should do my own sanity checks though, but from where he is he hasn't found a problem yet."</td>
+<td>Settings save MX4SIO-rooted</td>
+<td><strong>PASS</strong> (Nuno 2026-05-29 02:58Z). PR #476 + PR #477 together resolve the MX4SIO settings save bug.</td>
+</tr>
+<tr>
+<td>2026-05-28 PM late</td>
+<td>Nuno (full hardware sweep with cat keeping him company)</td>
+<td>Maintainer correction after closer reading of Nuno's Discord report: the symptoms break into two distinct classes, not one. Class A: HOSDmenu and some wLE builds → POPSLoader = black screen, POPSLoader never reaches its splash (POPSLoader fails to launch under those parents). Class B (U-10): when POPSLoader IS successfully launched from HDD (via any working launcher), Exit → BOOT.ELF black-screens. MC/USB/MX4SIO-launched POPSLoader → BOOT.ELF exit OK.</td>
+<td>Class A: HOSDmenu launches POPSLoader; some wLE launches POPSLoader. Class B: U-10 BOOT.ELF-from-HDD-launched-POPSLoader</td>
+<td><strong>FAIL all three</strong> (Nuno 2026-05-28 PM late). Earlier doc framings conflated Class A and Class B — corrected now. Class A: HOSDmenu → POPSLoader = black; some wLE builds → POPSLoader = black. Likely the same IOP-state-from-parent-launcher class PR #458 Layer A targeted but Layer A didn't fully resolve for HOSDmenu / those wLE builds. Workaround: use a different launcher. Class B (U-10): POPSLoader-on-HDD-launched → BOOT.ELF = black. Workaround: Exit → OSDSYS or reboot. Maintainer hypothesis to investigate next for U-10: explicit IOP reset on boot before anything else (aligns with H1/H5 in <code>docs/archive/U10_INVESTIGATION.md</code>).</td>
+</tr>
+<tr>
+<td>2026-06-15</td>
+<td>Known-issues reconciliation</td>
+<td>Maintainer-confirmed status pass (no new artifact; reconciling docs to current hardware reality). U-10 BOOT.ELF-from-HDD-boot resolved by PR #479 (<code>reboot_iop=0</code>; Nuno 2026-05-31). DKWDRV-from-custom-HDD-path resolved by PRs #486/#487 (partition-aware route + live pfs-slot scan; Nuno 2026-06-04/06-06). Class-A "POPSLoader won't start under HOSDmenu / some wLE builds" now starts (maintainer-confirmed; mechanism not pinned — the UDNL #490 attempt was dropped for breaking HDD).</td>
+<td>U-10 / DKWDRV-HDD / Class-A HOSDmenu+wLE</td>
+<td><strong>RESOLVED</strong> — removed from known-broken in README / STATE / AGENTS / ROLLING_NOTES. Remaining open: "Failed to load HDD" from a non-HDD / via-launcher boot (config-specific, Nuno 2026-06-14).</td>
+</tr>
+<tr>
+<td>2026-06-17</td>
+<td>HDD-RW take-over + load-order boot fix</td>
+<td><strong>Load-order boot brick found + fixed <code>d4b04be</code>:</strong> <code>PLDR.HDD</code> methods were attached BEFORE the <code>PLDR.HDD</code> table existed, which bricked every boot on the recent HDD-feature rolling builds (PCSX2 tester hit <code>system.lua:953</code>); fix moves the method definitions after the table merge/init. Invisible to <code>luac -p</code>/CI — fatal only at runtime. <strong>HDD in-app <code>.hide</code> (L3 toggle) + HDD-resident settings save</strong> now land on the HDD itself via <code>PLDR.HDD.EnsureBootPartitionWritable</code> (unmount → remount the boot pfs slot RW at the same slot, the OPL "own your mount" pattern) — no <code>mc0:</code> fallback for HDD-cwd installs; single-device parity. <strong>PAL native 640×512 full-screen render</strong> (no letterbox) + auto-reverting display-change confirm; Video Standard gains an <strong>Auto</strong> default. <strong>POPSTARTER Memory Card Folder toggle</strong> (deletes <code>mc:/POPSTARTER</code> with confirm) + <strong>BDMA ⟺ folder interlock</strong>. BDMA marker renamed <code>.pldr_bdma_mode</code> → <strong><code>bdma_mode.txt</code></strong> (legacy names still read). <strong>CI <code>luac5.4 -p</code> syntax gate now LIVE</strong> (workflows <code>apk add lua5.4</code>; was a silent no-op — ps2dev image shipped no <code>luac</code>; SYNTAX-only, runtime/load-order errors still invisible). Testers <strong>provato</strong> + <strong>nuno6573</strong> credited.</td>
+<td>Load-order boot / HDD <code>.hide</code> / HDD settings save / PAL-512 / MC-folder toggle / BDMA interlock / <code>bdma_mode.txt</code> / CI luac gate</td>
+<td>Boot brick <strong>FIXED</strong> (<code>d4b04be</code>). HDD <code>.hide</code> + HDD-resident settings + PAL-512 + MC-folder toggle: <strong>implemented, boots on PCSX2, provato confirmed HDD is RW-writable on real hardware</strong>, full flows <strong>still validating on hardware</strong> (not yet broadly hardware-confirmed). CI luac gate <strong>LIVE</strong>. See STATE.md &gt; Settings / Known Issues / Behavioral Invariants.</td>
+</tr>
+<tr>
+<td>2026-06-20</td>
+<td>BETA-13 branch cut</td>
+<td>New dev branch <code>BETA-13-PLAY</code> off <code>BETA-12-PLAY</code> @<code>8d1e67a</code>; <code>BETA-12-PLAY</code> frozen/archival. <code>rolling-release.yml</code> repiped to publish from <code>BETA-13-PLAY</code> (<code>8c78296</code>). HDD settings-save-after-scan re-validation (<code>8d1e67a</code>: <code>doesFolderExist</code> liveness-check on <code>BOOT_PARTITION_RW</code>, save path only) + Proposal A scan-off-boot-slot steering (<code>b159a43</code>: <code>GetHddGameSlotCandidates</code> drops the live boot slot, adds <code>HDD_SLOT_COMMON</code>=2; <code>bin/POPSLDR/system.lua</code>).</td>
+<td>(infra) / S-04 HDD / D-08</td>
+<td>Repo / CI verified. Save-after-scan re-validate: Nuno-reported bug, source-fixed (NOT HW-retested). Proposal A: source-verified, <strong>deliberate HDD HW test still pending</strong> (Nuno to verify game partitions still mount/list when forced off the boot slot).</td>
+</tr>
+<tr>
+<td>2026-06-20</td>
+<td>BETA-13 input/UX</td>
+<td>Analog-stick→d-pad fold gated on real analog mode + per-axis hysteresis (<code>d233069</code>; new <code>Pads.getMode()</code> = <code>padInfoMode(PAD_MODECURID)</code>, <code>src/luacontrols.cpp</code>). Nav auto-repeat frame-counted (<code>d128779</code>; <code>resolve_nav</code> <code>NAV_DELAY_FRAMES</code>/<code>NAV_RATE_FRAMES</code>/<code>NavHoldFrames</code>). Description right-stick scroll frame-counted, honors Fast/Med/Slow (<code>c8fce10</code>; <code>DescScrollFrames</code>). Boot-sound On/Off setting + save fix (<code>6eba9e7</code>/<code>9b8a38e</code>; <code>CommitSettingsChanges</code> <code>boot_sound</code>, default On). ROOT-CAUSE: <code>Timer.getTime()</code> returns microseconds on PS2 (raw <code>clock()</code> tick) — canonical Enceladus idiom is frame-counting.</td>
+<td>U-13 / U-14 / U-15 / S-13</td>
+<td>Repo / CI verified. <strong>HW-CONFIRMED PASS (oldman63):</strong> boot-sound saves + survives reboot; up/down + analog-stick nav land on individual items, continuous scroll fine. Desc-scroll feel still pending an eyeball.</td>
+</tr>
+<tr>
+<td>2026-06-20</td>
+<td>BETA-13 overscan</td>
+<td>OPL-style render-inset (<code>1ac15ad</code> C core wraps the <code>gsKit_prim_*</code> draw sites in <code>OVX()</code>/<code>OVY()</code> scale macros, IDENTITY at permille 0; <code>src/graphics.cpp</code>). New <code>Screen.setOverscan(permille)</code>/<code>getOverscan()</code> (<code>src/luaScreen.cpp</code>). Settings <code>Overscan (CRT inset)</code> live-adjuster (±5 step, live preview, discard restores) (<code>6f0d742</code>) + Reset-Defaults coverage (<code>73f0933</code>). Math mirrors OPL <code>rmSetOverscan</code>.</td>
+<td>S-14 / U-06</td>
+<td>Repo / CI verified. <strong>Pending an eyeball on a real CRT</strong> (not yet HW/CRT-verified; inert by default at permille 0).</td>
+</tr>
+<tr>
+<td>2026-06-20</td>
+<td>BETA-13 cover art</td>
+<td>Layered placeholder using two NEW assets (<code>56a5ad5</code>): <code>bin/POPSLDR/IMG/cover_default.png</code> (base) + <code>cover_missing.png</code> (overlay). <code>MISSING.png</code> REMOVED (-62KB ELF, 1802052→1739428): dropped from Makefile BIN2S/EMBEDDED_RSC, <code>src/embed_assets.cpp</code> externs + both ASSET_ENTRY tables, <code>images.lua</code> registration + <code>IMG_FALLBACKS</code> (now empty), and the <code>default.png</code>→MISSING fallback. Cover preview OFF -&gt; <code>cover_default.png</code> only (old "Cover disabled" TEXT label gone); ON + no cover -&gt; default + missing overlay.</td>
+<td>U-16 / U-03 / U-04</td>
+<td>Repo / CI verified. Default+missing overlay registration on NTSC + PAL still <strong>pending an eyeball</strong> (the earlier <code>fa2d899</code> found the placeholder/frame misalignment was pre-existing since #496 in BETA-12, not a new BETA-13 regression).</td>
+</tr>
+<tr>
+<td>2026-06-20</td>
+<td>BETA-13 Codex audit</td>
+<td>6 findings, all verified REAL + FIXED (<code>ec81de3</code>): <code>PromoteTmpToDest</code> requires the backup exists before truncating dest (<code>bin/POPSLDR/system.lua:2636</code>); BMP pixel-size/stride validation; PNG dimension cap; stale <code>mc0:</code> probe cleanup; two <code>System.writeFile</code> full-byte-count checks; R3 no success-toast on a failed save. Report at <code>docs/AUDIT_CODEX_2026-06-20.md</code> (<code>afe4227</code>).</td>
+<td>(hardening)</td>
+<td>Source-verified + CI green. No behavior change intended; standard regression set (S-03/S-04 atomic save, U-16 cover decode) re-run on the next HW pass.</td>
+</tr>
+<tr>
+<td>2026-06-20</td>
+<td>BETA-13 release packaging</td>
+<td><code>POPSTARTER.ELF</code> (redistributable homebrew launcher; POPS engine binaries are NOT redistributable) now ships in BOTH zips: rolling at the zip ROOT next to <code>POPSLOADER.ELF</code> AND in <code>POPS/</code> (<code>6631a57</code>); formal <code>PS1_POPSLOADER/</code> install zip ships it in <code>PS1_POPSLOADER/</code> AND <code>POPS/</code> (<code>44ea070</code>). <code>POPS/PATCH_5.BIN</code> at the rolling root (<code>91315a0</code>); a <code>POPSTARTER/</code> SMB pack folder at the rolling root (<code>61fb2a2</code>/<code>915c4ce</code>/<code>aeb2469</code>).</td>
+<td>CI-03 / CI-04</td>
+<td>Repo / CI verified (manifest exactness gate updated for the new entries).</td>
+</tr>
+<tr>
+<td>2026-06-21</td>
+<td>Nuno on rolling-release</td>
+<td>Latest <code>BETA-13-PLAY</code> rolling artifact hardware pass.</td>
+<td>(broad sweep)</td>
+<td><strong>PASS — "everything working fantastically" (Nuno6573 2026-06-21).</strong></td>
+</tr>
+<tr>
+<td>YYYY-MM-DD</td>
+<td>SCPH-xxxxx</td>
+<td>USB/MMCE/MX4SIO/HDD details</td>
+<td>e.g. S-01,S-02,D-02</td>
+<td>PASS/FAIL + notes</td>
+</tr>
+</tbody>
+</table>
+<h2>Current Verification Status</h2>
+<p><strong>Current recorded outcomes (2026-06-21, BETA-13 rolling candidate)</strong> — these supersede the older <code>Unknown</code>/<code>FAIL</code> narratives below, which are kept as the forensic chronology of how each case was resolved. For the canonical hardware table see <strong>STATE.md &gt; Reported Hardware Status</strong>. The BETA-13-candidate tester checklist lives in <strong><code>TESTING.md</code></strong>.</p>
+<p>Preservation set (do not regress — kept passing across the BETA-13 session):<br />
+- <strong>D-10</strong> HDD POPSTARTER + HDD game — <strong>PASS</strong> (B2 fix <code>4ae6679</code>, hardware 2026-05-22, reconfirmed 2026-05-28 Nuno). Preservation contract — <strong>do not regress.</strong><br />
+- <strong>D-14</strong> HDD POPSTARTER + non-HDD game — <strong>PASS</strong> (same route, hardware 2026-05-22).<br />
+- <strong>D-15</strong> non-HDD POPSTARTER + HDD game — <strong>PASS</strong> (keep-mask, hardware 2026-05-22). Preservation contract — <strong>do not regress.</strong><br />
+- <strong>U-10</strong> BOOT.ELF from HDD-booted POPSLoader — <strong>RESOLVED</strong> (PR #479, <code>reboot_iop=0</code>; Nuno 2026-05-31). Was known-broken through the chronology below.</p>
+<p>BETA-13 features:<br />
+- <strong>Boot sound save + survives reboot (S-13)</strong> — <strong>PASS</strong> (oldman63, 2026-06-20).<br />
+- <strong>Up/down + analog-stick nav lands on individual items; continuous scroll fine (U-13/U-14)</strong> — <strong>PASS</strong> (oldman63, 2026-06-20).<br />
+- <strong>Broad rolling-release pass</strong> — <strong>PASS</strong>, "everything working fantastically" (Nuno6573, 2026-06-21).<br />
+- <strong>Still pending an eyeball (NOT broken):</strong> overscan CRT inset on a real CRT (S-14), <code>cover_default</code> + <code>cover_missing</code> overlay registration on NTSC + PAL (U-16), description-scroll feel (U-15), HDD Proposal A deliberate HW test (game scan steered off the boot slot), PAL-despite-NTSC carry-forward (no team PAL HW).<br />
+- The 2026-06 HDD-RW / PAL-512 / BDMA-folder features are repository-verified and <strong>boot on PCSX2</strong>; provato confirmed the <strong>HDD is RW-writable on real hardware</strong>; full flows are <strong>still validating on hardware</strong> (not yet broadly hardware-confirmed). See STATE.md &gt; Known Issues / Reported Hardware Status.</p>
+<ul>
+<li>CI gates: repository-verified by workflow definition.</li>
+<li>Reported hardware outcomes (forensic chronology — see the current outcomes above for the latest recorded result):</li>
+<li><code>L-08</code>: reported FAIL on 2026-03-27 when booted from USB with USB sidecar/cwd/Profile 1; launch stopped at <code>Cant find POPSTARTER ELF</code>.<ul>
+<li>comparison against <code>BETA-10-play-CHECKPOINT2</code> showed the checkpoint branch worked without the later unverified common-path resolver/settings changes.</li>
+<li>current source was rolled back to the checkpoint branch's shared resolver behavior for this path.</li>
+<li>user later confirmed the rolled-back source passed the same hardware repro.</li>
+</ul>
+</li>
+<li><code>U-05</code>: reported PASS.</li>
+<li><code>D-12</code>: a 2026-03-27 hardware report said booting from HDD did not auto-init the HDD driver stack.<ul>
+<li>current source now routes HDD startup targets through <code>PLDR.LoadHDDModules()</code> instead of only <code>EnsureHddRuntimeReadyForExec()</code>.</li>
+<li>user later confirmed the earlier corrected source passed on hardware.</li>
+<li>a later boot-time report showed startup HDD init was also scanning partitions and building the HDD games list, which can make HDD boot appear hung on large libraries.</li>
+<li>current source now keeps startup HDD init limited to runtime readiness only; the HDD page still scans partitions and builds the games list on page entry.</li>
+<li>later 2026-03-28 reports on that narrowed boot-time split source still said HDD-backed startup/Profile POPSTARTER could not be found after entering the USB page before the HDD page.</li>
+<li>the raw boot <code>APP_DIR</code> fallback alone did not restore that case.</li>
+<li>current source now also pre-resolves any HDD-backed startup/configured exec paths immediately after <code>PLDR.LoadHDDModules()</code> so HDD POPSTARTER/Profile paths are mounted and recorded without reintroducing HDD page work at boot.</li>
+<li>current source also routes on-demand HDD path mounts through <code>PLDR.LoadHDDModules()</code> instead of only the lower-level <code>EnsureHddRuntimeReadyForExec()</code> gate, so later POPSTARTER/Profile resolution from USB or other pages uses the same runtime init path as HDD page entry.</li>
+<li>current source also fixes the startup warm-path classification for Profile 1/default relative <code>POPSTARTER.ELF</code>, which had previously been skipped because only explicit <code>hdd:</code> / <code>pfs:</code> paths were being marked for HDD warm-up.</li>
+<li>because <code>etc/boot.lua</code> establishes HDD boot on a dedicated <code>pfs1:</code> mount before <code>system.lua</code> runs, current source now also carries that exact boot partition/slot metadata into <code>system.lua</code>, seeds the HDD mount tracker from it, and rebuilds HDD sidecar/partition context from mounted <code>pfs1:</code> candidates instead of relying only on later rediscovery.</li>
+<li>user later confirmed on 2026-03-28 that the exact-boot-mount/source-context source restored the USB-before-HDD-page startup/Profile repro on hardware.</li>
+<li>latest recorded hardware on this line is therefore <code>PASS</code>; preserve that behavior through further <code>D-10</code> work.</li>
+</ul>
+</li>
+<li><code>D-16</code>: a 2026-03-27 hardware report said the first USB page entry reported no backend, but backing out and re-entering then worked.<ul>
+<li>current source now adds a bounded wait between failed USB root probes in <code>BuildUsbIdentityDeferred()</code>.</li>
+<li>MX4SIO discovery code was not changed by this correction.</li>
+<li>user later confirmed the corrected source passed on hardware.</li>
+</ul>
+</li>
+<li><code>D-10</code>: reported FAIL when booted from HDD and launching an HDD title with HDD <code>POPSTARTER.ELF</code> sidecar/CWD.<ul>
+<li>2026-03-27 re-test of the current source still failed with boot source HDD, POPSTARTER on HDD via default/Profile 1/cwd/sidecar, and game device HDD.</li>
+<li>the later EE-side direct-load workaround was reverted after it did not fix this and coincided with a broader regression report.</li>
+<li>later 2026-03-27 Memory Card staging, stripped-handoff, CWD/selector, and HDD-init-state experiments did not fix this.</li>
+<li>user later confirmed on 2026-03-28 that the narrowed source restored <code>D-15</code>, so the remaining blocker is again isolated to HDD-backed <code>POPSTARTER.ELF</code>.</li>
+<li>a later 2026-03-28 re-test still black-screened on that narrowed Lua-side source with no visible positive change.</li>
+<li>a later 2026-03-28 re-test on the loader-side no-auto-exec-slot-preserve source still black-screened on both <code>X</code> and <code>R2</code>.</li>
+<li>a later 2026-03-28 re-test on the forced-<code>reboot_iop = 1</code> source still black-screened on both <code>X</code> and <code>R2</code>.</li>
+<li>a later 2026-03-28 re-test on the direct-<code>hdd0:PART:pfsN:/POPSTARTER.ELF</code> preference source still black-screened on <code>X</code>.</li>
+<li>follow-up repo inspection then found <code>BuildDirectHddExecPathFromMounted()</code> had been omitting the colon after <code>pfsN</code>, so that earlier direct-path experiment was not a clean control.</li>
+<li>a later 2026-03-28 re-test on the mounted-<code>pfs0:</code> embedded-loader source still black-screened on <code>X</code>.</li>
+<li>follow-up repo comparison showed that earlier source-context work had still been incomplete because Lua had usually already normalized HDD POPSTARTER to mounted <code>pfs1:</code> / <code>pfs3:</code> paths before the reboot loader saw it.</li>
+<li>a later 2026-03-28 re-test on that exact-boot-mount/source-context source still black-screened on <code>X</code>.</li>
+<li>current source now replaces the earlier ad hoc HDD source-context reboot handoff with an explicit partition-aware contract across <code>bin/POPSLDR/system.lua</code>, <code>src/luasystem.cpp</code>, <code>src/elf_loader/src/elf.c</code>, and <code>src/elf_loader/src/loader/src/loader.c</code>.</li>
+<li>on that contract, the parent passes exact HDD partition context separately from the mounted load path, normalizes the partition-aware exec filename to generic <code>pfs:/...</code>, remounts <code>pfs0:</code> from that partition while reusing the mounted relpath Lua already resolved, routes HDD partition-aware launches through cold external-launch prep so the old tracked <code>pfsN:</code> mount is not preserved into exec, and aligns the child loader closer to the reference loaders by removing the post-reset MC module reload and exiting SIF command state before the final target <code>ExecPS2</code>.</li>
+<li>a 2026-03-29 hardware result on the prior partition-aware source no longer black-screened, but the launcher regained control with <code>rc=-1 (returned after 22618 ms)</code>.</li>
+<li>a later 2026-03-29 GitHub artifact re-test on that broader partition-aware/current-source line black-screened again, so the returned-rc boundary is not yet stable enough to treat as the new steady state.</li>
+<li>current source now restores more of the original parent-side embedded-loader jump contract in <code>src/elf_loader/src/elf.c</code>: BRAM wipe plus <code>SifInitRpc</code>/<code>SifLoadFileInit</code>/<code>SifLoadFileExit</code> before the copy, and <code>SifExitIopHeap</code>/<code>SifExitRpc</code>/<code>SifExitCmd</code> before the final <code>ExecPS2</code>.</li>
+<li>current source also returns the actual embedded-loader <code>ExecPS2</code> result instead of collapsing it to <code>-1</code>, keeps legacy <code>System.loadELF(path, reboot_iop, selector)</code> on POPSTARTER's normal one-argument selector contract, now shows the actual exec path separately from the probed/opened POPSTARTER path in the launcher popup, routes partition-aware HDD launches through the explicit <code>System.loadELFWithPartition(path, reboot_iop, partition_context, selector)</code> API and mounted-<code>pfs0:</code> <code>SifLoadElf</code> in the embedded loader, normalizes stale canonical profile-path state so Profile 1/default does not silently keep another profile's HDD POPSTARTER path, and keeps the older iomanX-aware <code>fileXio</code> path only as the fallback for direct <code>pfs:</code> / <code>hdd:</code> loads with no partition-aware HDD context.</li>
+<li>2026-05-19 source audit found remaining handoff defects before new hardware retests: Lua mounted-PFS fallback can leave stale launch context, normal HDD game labels can fail fallback partition parsing, the fallback path can skip the pre-exec gate even when reconstruction failed, <code>System.loadELF(..., args..., partition_context)</code> can leak the partition context into target argv, the generic embedded-loader default-argv contract is unreachable, and the child loader still uses <code>snprintf</code>/<code>strncat</code> despite older docs claiming that risk was avoided. See <code>docs/archive/HDD_POPSTARTER_HANDOFF.md</code> (archived).</li>
+<li>2026-05-19 source change applies the audit fixes except for the child-loader <code>snprintf</code>/<code>strncat</code> cleanup (which would require regenerating the embedded loader blob): bare HDD partition labels are now normalized via <code>NormalizeHddPartitionLabelForMount</code> before the mounted-PFS fallback parses them, the <code>RunPOPStarterGame</code> context table is resynced from the fallback locals before <code>LaunchEngine</code> consumes it, the HDD pre-exec gate is only skipped when the fallback actually reconstructed a path, a dedicated <code>System.loadELFWithPartition(path, reboot_iop, partition_context, args...)</code> binding in <code>src/luasystem.cpp</code> replaces the trailing-arg overload so partition_context can no longer leak into target argv, <code>LaunchEngine</code> calls the new binding when partition context is set, and <code>ExecuteViaEmbeddedLoader</code> no longer rejects <code>argc == 0</code> so the documented child-loader default-argv synthesis is reachable. POPSTARTER-specific argv0 enforcement in <code>ExecuteHddBackedViaEmbeddedLoader</code> is unchanged.</li>
+<li>2026-05-20 hardware screenshot from the latest <code>BETA-12-PLAY</code> artifact showed a narrower returned failure: the HDD POPSTARTER pre-exec gate could not resolve partition context for <code>pfs3:/POPS/POPSTARTER.ELF</code>, while the app dir was <code>hdd0:+OPL:pfs:/APPS/PS1_POPSLOADER/</code>.</li>
+<li>2026-05-20 source follow-up keeps the selector contract unchanged, fixes the argument-shifted failure popup call sites, lets Lua parse the repo's own <code>hdd0:PART:</code> partition-context form, lets the shared HDD partition recovery candidate builder accept safe bare labels such as <code>__.POPS</code>, and lets mounted-PFS fallback recover the actual POPSTARTER source partition before falling back to the selected HDD game partition.</li>
+<li>a later 2026-05-20 readable-diagnostic screenshot showed the next source issue: the gate was checking the loader-facing generic <code>pfs:/POPS/POPSTARTER.ELF</code> path with <code>doesFileExist()</code> instead of checking a real mounted slot path. The source now derives a mounted probe path for the gate while preserving the generic exec path for the C loader.</li>
+<li>the latest source simplification pass makes that partition-aware/gated route non-default for normal <code>X</code>: HDD-backed POPSTARTER keeps the resolved executable path, clears Lua partition context, skips the Lua gate/remount fallback, skips the embedded-loader reboot path, and uses legacy <code>System.loadELF(path, 0, selector)</code>.</li>
+<li>that direct non-reboot artifact still black-screened before POPSTARTER debug screens, so the current source removes the remaining HDD-only parent pre-<code>ExecPS2</code> cleanup from <code>LoadELFFromFileExecPS2()</code> to avoid <code>fileXioUmount</code>/SIF teardown behavior that the working non-HDD POPSTARTER path does not use.</li>
+<li>hardware result after the 2026-05-20 source follow-up remains <code>Unknown (verify on hardware)</code>. Verify <code>D-15</code> first to confirm non-HDD-POPSTARTER HDD-game still passes, then <code>D-10</code> <code>X</code>, then <code>D-10</code> <code>R2</code>, then <code>D-14</code>.</li>
+<li>current source still exposes an <code>R2</code> alternate HDD launch for HDD-resident <code>POPSTARTER.ELF</code> that changes only the selector path to <code>hdd0:PART:pfs0:/GAME.ELF</code>; hardware result is still <code>Unknown (verify on hardware)</code>.</li>
+<li>on 2026-05-22, a series of targeted target-side diagnostic sentinels were run on hardware to isolate the D-10 black screen / hang location:<br />
+  1) SIFLOADFILE sentinel: target-side SifInitRpc(0) and SifLoadFileInit() succeeded (GREEN-&gt;YELLOW-&gt;WHITE-&gt;RED/MAGENTA loop), proving the hang is later than SifLoadFileInit().<br />
+  2) FILEXIOINIT sentinel: target-side fileXioInit() succeeded (GREEN-&gt;CYAN-&gt;YELLOW-&gt;WHITE-&gt;RED-&gt;BLUE-&gt;MAGENTA/GREEN loop), proving the hang is later than fileXioInit().<br />
+  3) TARGET-IOPRESET and TARGET-IOPRESET-EXITRPC sentinels: target-side SifIopReset("", 0) and SifIopSync() returned, but the subsequent post-reset SifInitRpc(0) hung (froze on TEAL).<br />
+  4) MINIMAL TARGET-IOPRESET and MINIMAL TARGET-IOPRESET-EXITRPC sentinels: post-reset SifInitRpc(0) still hung (froze on TEAL), proving prior SifLoadFileInit() or fileXioInit() state is not the cause.<br />
+  5) POST-RESET INITCMD SPLIT and POSTINITCMD RPCMODE1 sentinels: explicit post-reset SifInitCmd() succeeded, but subsequent SifInitRpc(0) or SifInitRpc(1) still hung (froze on BLUE).<br />
+  6) Manual RPCINIT Handshake Probing sentinel (SENTINEL_TARGET_IOPRESET_RPCINIT_HANDSHAKE_POPSTARTER.ELF): manual post-reset RPCINIT handshake probe. Timed out on hardware (froze on PURPLE/MAGENTA loop), confirming IOP does not respond to the initialization command after reset.<br />
+  7) Manual RPCINIT Handshake Retry sentinel (SENTINEL_TARGET_IOPRESET_RPCINIT_RETRY_POPSTARTER.ELF): manual post-reset RPCINIT handshake attempts with named retry delays (RETRY_DELAY_1, RETRY_DELAY_2, RETRY_DELAY_3) and packet reinitialization. Hardware result: FAIL (timed out, froze on PURPLE/MAGENTA loop).<br />
+  8) Manual RPCINIT Handshake UDNL Reset sentinel (SENTINEL_TARGET_IOPRESET_UDNL_RPCINIT_POPSTARTER.ELF): tests whether the blank target-side IOP reset argument is the poisonous variable by calling SifIopReset("rom0:UDNL rom0:EELOADCNF", 0). Hardware result: FAIL (timed out, froze on PURPLE/MAGENTA loop).<ul>
+<li><em>Interpretation</em>: Blank reset argument is ruled out as the sole poisonous variable. SifIopReset/Sync/InitCmd and sceSifSendCmd all return, but SIF_SREG_RPCINIT is never signaled.</li>
+<li><em>Boundary Correction</em>: The failure is tied to the HDD-backed POPSTARTER source / HDD-backed loader-origin state, not the selected game device/listing.</li>
+<li><strong>Known-good</strong>: USB POPSLOADER.ELF + USB sidecar/CWD POPSTARTER.ELF works, including when selecting HDD games.</li>
+<li><strong>Known-bad</strong>: HDD POPSLOADER.ELF + HDD sidecar/CWD POPSTARTER.ELF fails. HDD POPSTARTER.ELF fails regardless of selected game device/listing.</li>
+<li><strong>Diagnostic Boundary</strong>: The next investigation should isolate differences immediately before ExecPS2 when loading the target ELF from HDD versus USB sidecar/CWD (file-open/mount state, CWD/source device state, argv/environment, and leftover IOP module state).<br />
+  9) USB Control Test: USB-launched POPSLOADER.ELF + USB sidecar/CWD POPSTARTER.ELF works, including when selecting HDD games. Hardware result: PASS.</li>
+<li><em>Interpretation</em>: The post-reset SIF RPC handshake succeeds when POPSTARTER is executed from USB, even if the game was selected from the HDD listing. This proves the HDD game-selection environment itself is not the poison. The failure follows the HDD-backed POPSTARTER / HDD-backed launch-origin state.</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><code>D-14</code>: reported FAIL on 2026-03-27 when launching a USB game with Profile 2 pointing <code>POPSTARTER.ELF</code> to HDD.<ul>
+<li>this broadened the remaining issue from “HDD game launch” to “HDD-backed POPSTARTER exec path”.</li>
+<li>the user later clarified that the other same-day 2026-03-28 success result referred to <code>D-15</code>, not this case.</li>
+<li>a later 2026-03-28 re-test on the forced-<code>reboot_iop = 1</code> source still black-screened on <code>X</code>; <code>R2</code> produced no response in that non-HDD-game repro.</li>
+<li>a later 2026-03-28 re-test on the direct-<code>hdd0:PART:pfsN:/POPSTARTER.ELF</code> preference source still black-screened on <code>X</code>.</li>
+<li>current source now uses the same partition-aware HDD reboot contract as <code>D-10</code>, rather than the earlier ad hoc source-context handoff or whichever mounted <code>pfsN:</code> path Lua happened to resolve first; hardware result is still <code>Unknown (verify on hardware)</code>.</li>
+</ul>
+</li>
+<li><code>D-15</code>: reported FAIL on 2026-03-27 when booting from a non-HDD device and launching an HDD title with sidecar/cwd <code>POPSTARTER.ELF</code> on that boot device.<ul>
+<li>the user identified this as a regression on the EE-side HDD direct-load attempt.</li>
+<li>a later 2026-03-27 broader stripped-handoff source also failed, a 2026-03-28 experimental source still black-screened, and the 2026-03-28 rolled-back current source still black-screened with USB boot plus USB sidecar/cwd <code>POPSTARTER.ELF</code>.</li>
+<li>current source now removes Lua-side HDD game pre-mount/CWD preservation from this path and leaves only the normal selector handoff unless <code>POPSTARTER.ELF</code> itself is HDD/PFS-backed.</li>
+<li>user later confirmed on 2026-03-28 that USB boot + USB Profile 1 sidecar/cwd <code>POPSTARTER.ELF</code> + HDD game passes on the corrected source.</li>
+<li>user reported a 2026-05-20 latest-artifact regression where USB boot with USB sidecar/cwd <code>POPSTARTER.ELF</code> plus an HDD title black-screened.</li>
+<li>current source follow-up restores legacy <code>System.loadELF(path, reboot_iop, selector)</code> one-argument behavior for normal/non-HDD POPSTARTER launches while leaving partition-aware HDD POPSTARTER launches on <code>System.loadELFWithPartition(...)</code>; hardware result is <code>Unknown (verify on hardware)</code>.</li>
+<li>user then reported explicit <code>mass:/POPS/POPSTARTER.ELF</code> launches, while default/cwd sidecar resolution can stop at <code>Cant find POPSTARTER ELF</code>; current source now adds live-CWD sidecar lookup and safer boot/app fallback candidates. Hardware result is <code>Unknown (verify on hardware)</code>.</li>
+</ul>
+</li>
+<li><code>U-10</code>: one artifact was reported good before a later regression experiment.<ul>
+<li>repo history shows the BOOT.ELF modal later changed from its older non-reboot direct <code>System.loadELF(elf_path, 0, elf_path)</code> path to a reboot-I/O path with launch-CWD setup.</li>
+<li>a later 2026-03-29 hardware report said BOOT.ELF still behaved incorrectly once HDD runtime had been initialized on that restored non-reboot source.</li>
+<li>current working inference is that <code>U-10</code> may share the same underlying handoff/state-poisoning boundary as <code>D-10</code>, but that remains unproven and must be validated separately on hardware.</li>
+<li>2026-05-22 hardware testing of the System.loadELF(elf_path, 0) candidate (and Candidate C cleanup) failed with a black screen. U-10 remains FAILED/known-broken.</li>
+<li>2026-05-22 hardware testing of the BRAM-loader exact-path diagnostic (ExecuteViaEmbeddedLoader) also failed with a black screen.</li>
+</ul>
+</li>
+<li>All other manual hardware items remain <code>Unknown (verify on hardware)</code> unless run logs are added above.</li>
+</ul></main>
+</div>
+<footer>
+  <p><b>POPStarter Documentation Archive</b> — community-recovered from the Wayback Machine
+  (ShaolinAssassin's <code>popstarter-documentation-stuff</code> wiki) and krHACKen's r13 changelog,
+  cross-checked and merged across snapshots. Built for the POPSLoader project.</p>
+  <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
+  emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
+  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed.</p>
+</footer>
+<script src="../assets/app.js"></script>
+</body></html>

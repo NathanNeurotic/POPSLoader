@@ -1,0 +1,168 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Contributing · POPSLoader · POPStarter Docs</title>
+<meta name="description" content="Resurrected, searchable POPStarter documentation — cheats, patches, config, storage, multi-disc, IGR, downloads, and the POPSLoader fork.">
+<link rel="stylesheet" href="../assets/style.css">
+</head><body data-base="../">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu">☰</button>
+  <a class="brand" href="../index.html">
+    <span class="psbtns"><i class="tri">&#9651;</i><i class="cir">&#9711;</i><i class="cro">&#10005;</i><i class="squ">&#9633;</i></span>
+    POPStarter <small>DOCS</small></a>
+  <div class="search">
+    <span class="ico">🔎</span>
+    <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <a href="../index.html"><span class="em">🏠</span>Home</a>
+    <h4>POPSLoader · this project</h4>
+    <a href="../popsloader.html" class="active"><span class="em">📦</span>POPSLoader docs</a>
+    <h4>POPStarter · documentation</h4><a href="../getting-started.html"><span class="em">🚀</span>Getting Started</a>
+<a href="../storage.html"><span class="em">💾</span>Storage Backends</a>
+<a href="../cheats.html"><span class="em">🎮</span>Cheats</a>
+<a href="../compatibility.html"><span class="em">🩹</span>Patches & TROJANs</a>
+<a href="../igr.html"><span class="em">🎯</span>IGR & Hotkeys</a>
+<a href="../config.html"><span class="em">🔧</span>Config Table</a>
+<a href="../multidisc.html"><span class="em">💿</span>Multi-disc & VMC</a>
+<a href="../troubleshooting.html"><span class="em">🛠️</span>Troubleshooting</a>
+<a href="../downloads.html"><span class="em">📦</span>Downloads</a>
+<a href="../history.html"><span class="em">📜</span>History</a>
+    <h4>Reference</h4>
+    <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
+  </nav>
+  <main class="content"><h1>Contributing</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/BETA-13-PLAY/CONTRIBUTING.md">view on GitHub ↗</a></p><p>Last updated: 2026-06-21 (BETA-13 in progress)</p>
+<h1>CONTRIBUTING</h1>
+<h2>Purpose</h2>
+<p>Practical contributor workflow for POPSLoader changes.</p>
+<p><code>STATE.md</code> is the canonical status doc. The shared/volatile facts — the Known-Issues list, the Preservation Contracts, the Behavioral Invariants, the Settings (single-device parity) behavior, and the Hardware Status — live there and are <strong>not</strong> restated here; this doc links to the relevant <code>STATE.md</code> section instead. Keep distinct workflow guidance here.</p>
+<p><em>(Scope/runtime-invariant rules formerly in <code>RULES.md</code> are folded into this doc; <code>RULES.md</code> is archived.)</em></p>
+<h2>Branch and PR Expectations</h2>
+<ul>
+<li>Keep branches short-lived and task-focused.</li>
+<li>Prefer one objective per PR.</li>
+<li>If a change touches runtime behavior and docs, keep the code diff narrow but update the affected root docs in the same PR.</li>
+<li>PR descriptions should spell out:</li>
+<li>the exact problem,</li>
+<li>the exact scope,</li>
+<li>regression risk,</li>
+<li>checks run,</li>
+<li>hardware coverage gaps.</li>
+</ul>
+<h2>Commit Discipline</h2>
+<ul>
+<li>One logical task per commit.</li>
+<li>Use imperative commit messages.</li>
+<li>Keep diffs minimal and localized.</li>
+<li>Avoid unrelated formatting/refactors.</li>
+</ul>
+<h2>Scope Discipline</h2>
+<ul>
+<li>Keep changes small and tied to one clear objective.</li>
+<li>Use the narrowest file set that can solve the task.</li>
+<li>Avoid mixing runtime logic, packaging policy, and broad refactors in one PR unless explicitly requested.</li>
+</ul>
+<h2>Development Guardrails</h2>
+<p>The full invariant list is in <strong>STATE.md &gt; Behavioral Invariants</strong> — preserve all of it unless the task is an explicit, documented migration. Highlights a contributor must not break:<br />
+- embedded-Lua boot chain (<code>main.cpp -&gt; runScript("boot.lua") -&gt; require("system")</code>); boot/runtime Lua is embedded-only.<br />
+- transactional, per-device settings persistence — edits stage in the UI and commit on Settings/Profile confirm/leave. <strong>HDD installs now persist on the HDD boot partition via the <code>EnsureBootPartitionWritable</code> RW take-over; there is no <code>mc0:</code> fallback for an HDD-cwd install</strong> (single-device parity). See <strong>STATE.md &gt; Settings (single-device parity)</strong> and <strong>STATE.md &gt; Preservation Contracts</strong>.<br />
+- mount-driver-based USB/MX4SIO classification (<code>sdc</code>/<code>mx4</code> ioctl → MX4SIO; anything else → USB; <code>mx4sio_bd</code> loads only on explicit MX4SIO evidence and requires <code>usbmass_bd</code> first).<br />
+- <code>mc?:/</code> alias resolution (<code>mc0</code> then <code>mc1</code>) for executable path probes.<br />
+- backend-specific launch policy for USB / MMCE / MX4SIO / HDD.<br />
+- the <strong>BDMA ⟺ POPSTARTER-MC-folder interlock</strong> (BDMA can't be enabled while the folder is off; the folder can't be disabled while BDMA is on) and the destructive folder-disable confirm. See <strong>STATE.md &gt; Behavioral Invariants</strong>.<br />
+- <strong>in-app per-game <code>.hide</code> on every device including HDD</strong> (L3 toggle, written via the HDD RW mount take-over). See <strong>STATE.md &gt; Behavioral Invariants</strong>.<br />
+- no runtime device-family lock gating (the old inert device-lock subsystem was removed in cef61af; device pages are always enterable).<br />
+- Do not add unbounded retries/poll loops in runtime paths; keep probe/retry behavior bounded and deterministic.<br />
+- Do not silently change POPStarter selector/argv behavior without explicit migration notes.<br />
+- Avoid expensive repeated rescans unless explicitly required.<br />
+- Avoid adding runtime logging unless requested.</p>
+<h2>Packaging Rules</h2>
+<ul>
+<li>CI packaging contract must stay synchronized with docs. The strict-verified <code>compilation.yml</code> zip (<code>POPSLOADER.zip</code>) is an <strong>exact</strong> set — two top dirs only (<code>PS1_POPSLOADER/</code> and <code>POPS/</code>), no root files, and any mismatch fails the build:</li>
+<li><code>PS1_POPSLOADER/</code>: <code>POPSLOADER.ELF</code>, <code>POPSTARTER.ELF</code>, <code>BUILD_INFO.txt</code> (so hardware can confirm the exact GitHub-built artifact), <code>APPINFO.PBT</code>, <code>title.cfg</code>, <code>icon.sys</code>, <code>list.icn</code>, <code>copy.icn</code>, <code>del.icn</code>.</li>
+<li><code>POPS/</code>: <code>PATCH_5.BIN</code> and <code>POPSTARTER.ELF</code>.</li>
+<li><code>POPSTARTER.ELF</code> is the only redistributable launcher binary and ships in <strong>both</strong> the <code>PS1_POPSLOADER/</code> install dir and <code>POPS/</code>. The POPS engine binaries are NOT redistributable and are never bundled — hardware supplies its own.</li>
+<li>Legacy <code>POPS/*.tm2</code> entries are explicitly forbidden by CI.</li>
+<li>The <code>rolling-release.yml</code> zip is the loose dev bundle (different layout from the strict install zip): <code>POPSLOADER.ELF</code> + <code>POPSTARTER.ELF</code> at the zip root, a <code>POPS/</code> folder (<code>PATCH_5.BIN</code> + <code>POPSTARTER.ELF</code>), a <code>POPSTARTER/</code> pack folder (BDMA / SMB modules), and a <code>source/</code> tree. It is not strict-verified.</li>
+<li>CI build is gated on embedded build-identity markers (<code>Exec path:</code>, <code>PrepareForColdExternalELFLaunch</code>, <code>BOOT.ELF launch failed</code>) being present in <code>bin/enceladus.elf</code>, plus an embedded-loader blob staleness check.</li>
+<li>The <code>ps2dev/ps2dev</code> container image is pinned to <code>v2.0.0</code>.</li>
+<li>The rolling-release workflow publishes a single canonical asset on push-to-<code>BETA-13-PLAY</code> (the active rolling branch; <code>BETA-12-PLAY</code> is archival/frozen) and on PR events (last-write-wins on the shared asset).</li>
+<li><strong>The embedded-Lua syntax gate is now LIVE</strong> (<code>luac5.4 -p</code> on the embedded Lua; the workflows <code>apk add lua5.4</code> and hard-fail on a syntax error). It used to silently skip because the ps2dev image shipped no <code>luac</code>. It catches <strong>SYNTAX only</strong> — runtime nil-global / type / <strong>load-order</strong> errors stay invisible to CI, so still cold-boot test the build in PCSX2 (the <code>d4b04be</code> load-order boot brick was exactly such a case).</li>
+</ul>
+<h2>Embedded Assets (adding / removing one)</h2>
+<p>Every Lua script, font, IRX module, and game-list image is compiled <strong>into</strong> <code>POPSLOADER.ELF</code> (via <code>bin2c</code>); there is no on-disk asset directory at runtime and the asset list is <strong>not</strong> auto-globbed. Adding or removing one means editing <strong>three coordinated places</strong> — miss any one and the build breaks or the asset silently fails to load:<br />
+1. <strong><code>Makefile</code></strong> — add a <code>bin2c</code> rule that turns the source file under <code>bin/POPSLDR/...</code> into <code>asset_&lt;name&gt;.c</code> (the symbol name passed to <code>$(BIN2S)</code> is what the C code externs), <strong>and</strong> add the resulting <code>asset_&lt;name&gt;.o</code> to the <code>EMBEDDED_RSC</code> list so it gets linked. (Optional/large assets can go in <code>OPTIONAL_EMBEDDED_RSC</code> instead, which is concatenated into <code>EMBEDDED_RSC</code>.)<br />
+2. <strong><code>src/embed_assets.cpp</code></strong> — <code>extern</code> the <code>asset_&lt;name&gt;</code> symbol and its <code>size_asset_&lt;name&gt;</code>, then add an <code>ASSET_ENTRY("&lt;key&gt;", asset_&lt;name&gt;)</code> in <strong>both</strong> lookup tables: the bare-name table (e.g. <code>"frame.png"</code>) and the path-prefixed table (e.g. <code>"POPSLDR/IMG/frame.png"</code>).<br />
+3. <strong><code>bin/POPSLDR/images.lua</code></strong> (images only) — add a <code>{accessKey, "&lt;bareFilename&gt;"}</code> row to <code>IMG_REGISTRATIONS</code>. The <code>IMG[...]</code> metatable looks the asset up by the <strong>bare filename</strong> through <code>System.getEmbeddedAsset</code>, so the second field must match the bare-name key from step 2.</p>
+<p>Removal is the same three places in reverse (plus drop any fallback wiring). The recent <code>MISSING.png</code> removal (<code>-62KB</code> ELF) is the worked example: it deleted the <code>bin2c</code> rule + <code>EMBEDDED_RSC</code> entry, the <code>extern</code> + both <code>ASSET_ENTRY</code>s, the <code>images.lua</code> registration, and the now-unused <code>IMG_FALLBACKS</code> fallback. The cover-art placeholders <code>cover_default.png</code> + <code>cover_missing.png</code> are the current additions and follow this same pattern.</p>
+<h2>Runtime Timing (frame-count, not wall-clock)</h2>
+<p><code>Timer.getTime()</code> returns <strong>microseconds</strong>, not milliseconds (<code>src/luatimer.cpp</code> returns the raw <code>clock() - tick</code> delta; <code>CLOCKS_PER_SEC</code> is <code>1e6</code> on the EE toolchain). Code that treats it as ms runs 1000x too fast — that was the root cause of nav auto-repeat "flying" (one press scrolling many rows) before it was reworked.<br />
+- <strong>The canonical Enceladus idiom for UI cadence is frame-counting</strong>, not reading the wall clock — the sibling launchers do the same. New per-direction/per-step timing increments a counter once per frame and fires at frame thresholds derived from the live field rate (<code>nav_fps = (UI.SCR.Y &gt;= 512) and 50 or 60</code>). See <code>resolve_nav</code> / <code>NavHoldFrames</code> (nav auto-repeat) and <code>DescScrollFrames</code> (description scroll) in <code>bin/POPSLDR/ui.lua</code>.<br />
+- <code>os.clock()</code> (stock Lua, returns <strong>seconds</strong>) is the only pre-converted Lua time source and is currently unused. A couple of legacy timers (the action debounce <code>MIN_ACTION_MS</code>, the transition/carousel timers) still sit on the µs-as-ms footing but are masked by a per-frame clamp, so they are not visibly broken; prefer frame-counting (or <code>os.clock()</code> seconds) for any new timing rather than adding more <code>Timer.getTime()</code> math.</p>
+<h2>Settings Plumbing</h2>
+<p>Settings are write-staged in the UI and committed through a single funnel — <code>PLDR.CommitSettingsChanges(opts)</code> in <code>bin/POPSLDR/system.lua</code> — which serializes the merged state to the per-device config. A new setting touches the whole chain: the parse/serialize round-trip and the <code>next_*</code> merge in <code>system.lua</code>, plus the UI commit call in <code>bin/POPSLDR/ui.lua</code> (e.g. the boot-sound setting flows <code>UI.BootSound</code> → <code>PLDR.CommitSettingsChanges({ boot_sound = ... })</code> → <code>PLDR.BOOT_SOUND</code>). Add the field to every link or it stages but never persists. The user-facing settings <strong>behavior</strong> (single-device parity, the HDD RW take-over) is canonical in <code>STATE.md &gt; Settings</code> — don't restate it here.</p>
+<h2>Documentation Sync Rules</h2>
+<ul>
+<li>If runtime behavior changes, update <code>STATE.md</code> first — it is canonical for behavioral invariants, preservation contracts, known issues, and hardware status. Then update the relevant root docs:</li>
+<li><code>STATE.md</code> (canonical — invariants, preservation contracts, known issues, hardware status)</li>
+<li><code>README.md</code></li>
+<li><code>ROADMAP.md</code></li>
+<li><code>DECISIONS.md</code></li>
+<li><code>QA_REGRESSION_MATRIX.md</code></li>
+<li>The other root docs point to <code>STATE.md</code> instead of duplicating the shared blocks — when you touch one of those facts, change it in <code>STATE.md</code> and leave the pointers alone.</li>
+<li>If behavior is only repo-verified and not hardware-verified, say so explicitly. Post-BETA-11 PR work is <code>Unknown (verify on hardware)</code> unless a tester result is recorded in <code>QA_REGRESSION_MATRIX.md</code> / <code>STATE.md &gt; Reported Hardware Status</code>. Do not call PCSX2-only or implemented-but-unvalidated features "confirmed working on hardware".</li>
+<li>If hardware results contradict the intended code change, document the failure instead of assuming the next patch will fix it.</li>
+</ul>
+<h2>Validation Expectations</h2>
+<h3>Docs-only changes</h3>
+<ul>
+<li>Run light sanity checks if available.</li>
+<li>If no doc tooling is available, note <code>not run</code>.</li>
+</ul>
+<h3>Runtime/build changes</h3>
+<ul>
+<li>Run targeted checks first.</li>
+<li>Run broader build/package checks only when risk requires.</li>
+<li>For storage, launch, or exit behavior, document manual verification steps even when they were not run locally.</li>
+</ul>
+<h3>Hardware-sensitive behavior</h3>
+<ul>
+<li>Use <code>QA_REGRESSION_MATRIX.md</code> IDs in test notes.</li>
+<li>Mark untested hardware scenarios explicitly as <code>Unknown (verify on hardware)</code>.</li>
+<li><strong>Preservation contracts</strong> (hardware-load-bearing; must continue to PASS on any new artifact) — the canonical list is <strong>STATE.md &gt; Preservation Contracts</strong>. It covers <code>D-10</code> / <code>D-14</code> / <code>D-15</code> (B2 fix <code>4ae6679</code>), DKWDRV from MC, BOOT.ELF from USB-booted POPSLoader (V2 route <code>d23520a</code>), and <code>EnsureBootPartitionWritable</code> (the boot pfs-slot RW take-over, now load-bearing for HDD settings save and HDD in-app <code>.hide</code>). Any launch-path or mount change must not break them.</li>
+<li>The old "HDD-install settings save to <code>mc0:/POPSTARTER/.pldrs</code>" preservation contract is <strong>obsolete</strong>: HDD installs now persist on the HDD boot partition via the RW take-over (single-device parity, no <code>mc0:</code> fallback). See <strong>STATE.md &gt; Settings</strong> and <strong>STATE.md &gt; Preservation Contracts</strong>.</li>
+<li><strong>Resolved</strong> (no longer "known broken accepted" — do not document as regressions): <code>U-10</code> BOOT.ELF from HDD-booted POPSLoader (PR #479), DKWDRV from a custom HDD path (PRs #486/#487), and the Class-A HOSDmenu / some-wLE start failures. See <strong>STATE.md &gt; Known Issues</strong>.</li>
+<li>For the current open / in-testing items (e.g. "Failed to load HDD" from a non-HDD boot, and the in-testing HDD/PAL/BDMA-folder features), see <strong>STATE.md &gt; Known Issues</strong> — do not re-derive a cause from source.</li>
+<li>The rolling-release workflow publishes to a single canonical URL. Pushing to your PR branch triggers a build that overwrites the asset (last-write-wins). Coordinate with the maintainer if testers are mid-cycle.</li>
+</ul>
+<h2>Good Bug Reports</h2>
+<p>Include:<br />
+- expected behavior,<br />
+- actual behavior,<br />
+- exact repro steps,<br />
+- console/storage/backend layout,<br />
+- whether the issue occurs only after another page/backend was initialized,<br />
+- whether the result came from a local build or a CI workflow artifact.</p>
+<h2>Review Checklist</h2>
+<ul>
+<li>Scope is narrow and task-aligned.</li>
+<li>Core invariants (<strong>STATE.md &gt; Behavioral Invariants</strong>) and preservation contracts (<strong>STATE.md &gt; Preservation Contracts</strong>) are preserved or intentionally migrated.</li>
+<li>Failure paths remain explicit and user-visible.</li>
+<li>Docs are updated: <code>STATE.md</code> first for any shared fact, plus matrix entries.</li>
+<li>Repo-verified / PCSX2-only behavior and hardware-reported behavior are not conflated.</li>
+<li>The build was cold-boot tested in PCSX2 (the live <code>luac</code> gate catches syntax only, not load-order/runtime errors).</li>
+</ul></main>
+</div>
+<footer>
+  <p><b>POPStarter Documentation Archive</b> — community-recovered from the Wayback Machine
+  (ShaolinAssassin's <code>popstarter-documentation-stuff</code> wiki) and krHACKen's r13 changelog,
+  cross-checked and merged across snapshots. Built for the POPSLoader project.</p>
+  <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
+  emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
+  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed.</p>
+</footer>
+<script src="../assets/app.js"></script>
+</body></html>

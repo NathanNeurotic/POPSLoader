@@ -1,0 +1,449 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>README — Overview · POPSLoader · POPStarter Docs</title>
+<meta name="description" content="Resurrected, searchable POPStarter documentation — cheats, patches, config, storage, multi-disc, IGR, downloads, and the POPSLoader fork.">
+<link rel="stylesheet" href="../assets/style.css">
+</head><body data-base="../">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu">☰</button>
+  <a class="brand" href="../index.html">
+    <span class="psbtns"><i class="tri">&#9651;</i><i class="cir">&#9711;</i><i class="cro">&#10005;</i><i class="squ">&#9633;</i></span>
+    POPStarter <small>DOCS</small></a>
+  <div class="search">
+    <span class="ico">🔎</span>
+    <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <a href="../index.html"><span class="em">🏠</span>Home</a>
+    <h4>POPSLoader · this project</h4>
+    <a href="../popsloader.html" class="active"><span class="em">📦</span>POPSLoader docs</a>
+    <h4>POPStarter · documentation</h4><a href="../getting-started.html"><span class="em">🚀</span>Getting Started</a>
+<a href="../storage.html"><span class="em">💾</span>Storage Backends</a>
+<a href="../cheats.html"><span class="em">🎮</span>Cheats</a>
+<a href="../compatibility.html"><span class="em">🩹</span>Patches & TROJANs</a>
+<a href="../igr.html"><span class="em">🎯</span>IGR & Hotkeys</a>
+<a href="../config.html"><span class="em">🔧</span>Config Table</a>
+<a href="../multidisc.html"><span class="em">💿</span>Multi-disc & VMC</a>
+<a href="../troubleshooting.html"><span class="em">🛠️</span>Troubleshooting</a>
+<a href="../downloads.html"><span class="em">📦</span>Downloads</a>
+<a href="../history.html"><span class="em">📜</span>History</a>
+    <h4>Reference</h4>
+    <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
+  </nav>
+  <main class="content"><h1>README — Overview</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/BETA-13-PLAY/README.md">view on GitHub ↗</a></p><p align="center">
+  <img src="https://raw.githubusercontent.com/NathanNeurotic/POPSLoader/BETA-13-PLAY/banner.jpg" alt="POPSLoader Banner" width="800"/>
+</p>
+
+<p>POPSLoader is a graphical PlayStation 2 homebrew launcher designed to easily browse and launch your PS1 games (using POPStarter) from various storage devices. It features a clean, responsive layout, cover art support, sound effects, an on-screen keyboard, and direct memory card exit shortcuts.</p>
+<p>The current public release is <strong>BETA-12</strong> (released 2026-06-18). Development continues on the <code>BETA-13-PLAY</code> branch (the <code>BETA-12-PLAY</code> branch is now frozen/archival); rolling test artifacts are published continuously (see <a href="#development--building">Development &amp; Building</a>).</p>
+<hr />
+<h2>Highlights</h2>
+<p>POPSLoader's stable backbone, hardware-confirmed across an extended validation pass:</p>
+<ul>
+<li><strong>Fixed HDD POPSTARTER Handoff (D-10)</strong>: Resolved the long-standing "D-10" black-screen hang when launching games using an HDD-backed POPStarter configuration. Hardware-confirmed.</li>
+<li><strong>Fixed Cross-Device POPSTARTER (D-14 / D-15)</strong>: HDD-backed POPSTARTER with non-HDD games and non-HDD POPSTARTER with HDD games both launch cleanly. Hardware-confirmed.</li>
+<li><strong>DKWDRV from Memory Card and custom HDD path</strong>: Both launch routes work — the MC route via a reboot-IOP path with synthesized argv, the HDD custom path via a partition-aware route. Hardware-confirmed.</li>
+<li><strong>BOOT.ELF Exit from POPSLoader</strong>: Returns to wLaunchELF / BOOT.ELF via the embedded-loader route, including the previously broken HDD-launched case (<code>U-10</code>). Hardware-confirmed.</li>
+<li><strong>Single-device Settings parity</strong>: Every install — USB / MX4SIO / MMCE <strong>and the internal HDD</strong> — saves settings to <code>.pldrs</code> next to the launcher. HDD installs write it on the HDD's own boot partition (read-write mount take-over), no <code>mc0:</code> fallback (see <a href="#settings-storage-on-hdd-installs">Settings Storage on HDD Installs</a>).</li>
+<li><strong>In-app HDD game hiding, PAL full-screen, BDMA + MC-folder controls</strong>: The newer Settings work — see the <a href="#settings">Settings</a> section below.</li>
+<li><strong>Polished User Interface</strong>: Layout alignment corrections, cleaner typography, dynamic menu box adjustments, text wrapping, and notification toast hardening.</li>
+</ul>
+<blockquote>
+<p>[!NOTE]<br />
+The canonical, always-current <strong>Known Issues</strong> list and <strong>hardware-verification status</strong> live in <strong><a href="state.html#known-issues-canonical--the-single-list-readme--agents--rolling_notes-point-here">STATE.md &gt; Known Issues</a></strong> (with the full ledger in <a href="qa-regression-matrix.html">QA_REGRESSION_MATRIX.md</a>). The current open item is the config-specific "Failed to load HDD" from a non-HDD boot; the 2026-06 HDD/PAL/BDMA features are implemented and boot on PCSX2 (HDD confirmed read-write on hardware by provato) and are still validating on hardware.</p>
+</blockquote>
+<hr />
+<h2>Supported Devices</h2>
+<p>POPSLoader's main menu exposes the following backends:</p>
+<ul>
+<li><strong>MMCE</strong> (Multi-Memory Card Emulator, e.g. MemoryCard PRO / SD2PSX)</li>
+<li><strong>MX4SIO</strong> (SD card via memory card slot adapter)</li>
+<li><strong>HDD (PFS)</strong> (internal HDD via the PS2 network/ATA adapter)</li>
+<li><strong>USB</strong> (<code>mass:</code>)</li>
+<li><strong>Disc (DKWDRV)</strong> (boot DKWDRV to play PS1 discs)</li>
+</ul>
+<blockquote>
+<p>[!NOTE]<br />
+The main menu also lists <strong>HDD (exFAT)</strong>, <strong>i.Link</strong>, and <strong>SMB (v1)</strong>, but these flows are not implemented yet — selecting them shows a "not implemented" notice. See <a href="#known-issues--planned-improvements">Known Issues &amp; Planned Improvements</a>.</p>
+<p>[!NOTE]<br />
+Game compatibility and drive loading performance may vary depending on your specific console model, adapter type, and the quality of your POPStarter/POPS binaries.</p>
+</blockquote>
+<hr />
+<h2>Quick Install</h2>
+<p>To set up POPSLoader:</p>
+<ol>
+<li><strong>Download the Release</strong>: Download and extract the latest <code>POPSLOADER.zip</code> package.</li>
+<li><strong>Copy Launcher Files</strong>: Copy the <code>PS1_POPSLOADER/</code> folder to the device or memory card from which you want to launch POPSLoader.</li>
+<li><strong>Place POPS Files</strong>: Put the <code>PATCH_5.BIN</code> file (included in the <code>POPS/</code> directory of the ZIP) into your active <code>POPS</code> folder (see directory structures below).</li>
+<li><strong>Add POPStarter &amp; POPS Files</strong>: Add your POPStarter executable (<code>POPSTARTER.ELF</code>) and the required POPS support files (<code>IOPRP252.IMG</code>, <code>POPS.ELF</code>, <code>POPS.PAK</code>, <code>POPS_IOX.PAK</code>) to your <code>POPS</code> folder. These copyrighted Sony POPS files are not included in the release package.</li>
+<li><strong>Add Games</strong>: Copy your PS1 game images in <code>.VCD</code> format into the same <code>POPS</code> folder. Keep filenames reasonably short — roughly <strong>73 characters is the safe maximum</strong> for a standard <code>POPS/</code> folder; longer names can fail to launch (see Troubleshooting).</li>
+<li><strong>Launch</strong>: Run <code>POPSLOADER.ELF</code> using wLaunchELF, Free McBoot, or your preferred ELF launcher.</li>
+</ol>
+<hr />
+<h2>Folder Layout</h2>
+<p>Ensure your directories and files match these paths exactly depending on your storage device:</p>
+<h3>USB / MX4SIO / MMCE Setup</h3>
+<p>Place all files on the root of your storage device (<code>mass:/</code>, <code>mx4sio:/</code>, <code>mmce0:/</code>, etc.) in a folder named <code>POPS</code>:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">File Path</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>&lt;device&gt;:/POPS/GameName.VCD</code></td>
+<td style="text-align: left;">Your PS1 game image</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>&lt;device&gt;:/POPS/GameName.png</code></td>
+<td style="text-align: left;">Optional cover art (200x200 8-bit PNG recommended)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>&lt;device&gt;:/POPS/IOPRP252.IMG</code></td>
+<td style="text-align: left;">Required POPS support file</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>&lt;device&gt;:/POPS/POPSTARTER.ELF</code></td>
+<td style="text-align: left;">POPStarter launcher binary</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>&lt;device&gt;:/POPS/POPS.ELF</code></td>
+<td style="text-align: left;">POPS emulator engine binary</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>&lt;device&gt;:/POPS/POPS.PAK</code></td>
+<td style="text-align: left;">Emulator resources payload</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>&lt;device&gt;:/POPS/POPS_IOX.PAK</code></td>
+<td style="text-align: left;">Emulator input/output resources payload</td>
+</tr>
+</tbody>
+</table>
+<h3>Internal HDD Setup</h3>
+<p>Place VCD game files inside your dedicated POPS partitions, and system binaries inside <code>__common/POPS/</code>:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">File Path</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>hdd:/__.POPS/GameName.VCD</code></td>
+<td style="text-align: left;">Your PS1 game image (can also use partitions <code>__.POPS0</code> through <code>__.POPS9</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>hdd:/__common/POPS/ART/GameName.png</code></td>
+<td style="text-align: left;">Cover art folder</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>hdd:/__common/POPS/IOPRP252.IMG</code></td>
+<td style="text-align: left;">Required POPS support file</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>hdd:/__common/POPS/POPSTARTER.ELF</code></td>
+<td style="text-align: left;">POPStarter launcher binary</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>hdd:/__common/POPS/POPS.ELF</code></td>
+<td style="text-align: left;">POPS emulator engine binary</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>hdd:/__common/POPS/POPS.PAK</code></td>
+<td style="text-align: left;">Emulator resources payload</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>hdd:/__common/POPS/POPS_IOX.PAK</code></td>
+<td style="text-align: left;">Emulator input/output resources payload</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>Controls</h2>
+<p>Navigate POPSLoader using a standard PS2 controller.</p>
+<h3>Menus &amp; Game List</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Button</th>
+<th style="text-align: left;">Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>D-pad Up / Down</strong></td>
+<td style="text-align: left;">Scroll through the game list</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>D-pad Left / Right</strong></td>
+<td style="text-align: left;">Page Up / Page Down (jump through large lists)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>L1</strong></td>
+<td style="text-align: left;">Jump to the top of the game list — press again to bounce to the bottom</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Left Analog Stick (up / down)</strong></td>
+<td style="text-align: left;">Navigate the game list item-by-item — the stick folds into the d-pad, so a held push scrolls smoothly with the same auto-repeat (only an analog/DualShock pad's stick is read; a digital pad is ignored). Push the stick <strong>left / right</strong> to page-jump like the d-pad.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>R1</strong></td>
+<td style="text-align: left;">Refresh / rescan the current device's game list, in place (e.g. after hot-plugging a drive or card). USB / MMCE / MX4SIO / HDD (PFS) re-scan live by default; if <em>Game list cache</em> is enabled in Settings they instead rebuild their saved per-device cache.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Cross (X)</strong></td>
+<td style="text-align: left;">Confirm option / Launch selected game</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Circle (O)</strong></td>
+<td style="text-align: left;">Go back to the Main Menu / Cancel</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Triangle (△)</strong></td>
+<td style="text-align: left;">Exit shortcut / BOOT.ELF shortcut where available</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Start</strong></td>
+<td style="text-align: left;">Open the Settings / Profile Editor</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Select</strong></td>
+<td style="text-align: left;">Toggle "Hide Text Mode" (clears the UI for a clean view of cover art)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Square (□)</strong></td>
+<td style="text-align: left;">Toggle cover-art preview on / off (in the game list)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Right Analog Stick (up / down)</strong></td>
+<td style="text-align: left;">Scroll a long game description that doesn't fully fit on screen (when <em>Game details</em> are enabled and a <code>&lt;game&gt;.txt</code> is present). Speed is set in <em>Settings → Description scroll speed</em>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>L3 (left stick click)</strong></td>
+<td style="text-align: left;">Hide / unhide the selected game (writes/removes a <code>&lt;name&gt;.hide</code> marker — works on every device, including the internal HDD). Set <em>Settings → Game List → Hidden games</em> to <em>Visible (manage)</em> to show hidden games dimmed, then press <strong>L3</strong> on a dimmed entry to unhide it.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>R3 (right stick click)</strong></td>
+<td style="text-align: left;">Reveal / re-hide this device's hidden games. When <em>Settings → Game List → Hidden games</em> is set to <em>Hidden</em> (games filtered out of the list), press <strong>R3</strong> to rebuild the list with them shown dimmed so you can manage them (then <strong>L3</strong> unhides); press <strong>R3</strong> again to hide them. Mirrors the <em>Hidden games</em> setting and is saved with it.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>R2</strong></td>
+<td style="text-align: left;">Launch in "HDD Alt" mode (HDD (PFS) game list only — for an HDD-resident POPSTARTER)</td>
+</tr>
+</tbody>
+</table>
+<h3>On-screen Keyboard (Settings path editor)</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Button</th>
+<th style="text-align: left;">Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>L1 / R1</strong></td>
+<td style="text-align: left;">Move the text cursor Left / Right</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Square (□)</strong></td>
+<td style="text-align: left;">Delete character (backspace)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>R2</strong></td>
+<td style="text-align: left;">Toggle uppercase / lowercase</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>Settings</h2>
+<p>Press <strong>Start</strong> on the menu to open Settings; changes save when you confirm. Settings persist per install with <strong>single-device parity</strong> — every device, <strong>including the internal HDD</strong>, saves a <code>.pldrs</code> file next to the launcher. HDD installs write that sidecar <strong>on the HDD boot partition itself</strong> (POPSLoader remounts its own boot partition read-write to do so — there is no <code>mc0:</code> fallback for HDD installs). For the full rules, see <strong><a href="state.html#settings-single-device-parity">STATE.md &gt; Settings</a></strong>.</p>
+<h3>Startup</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Setting</th>
+<th style="text-align: left;">Options</th>
+<th style="text-align: left;">What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Boot Page</strong></td>
+<td style="text-align: left;"><strong>Carousel</strong> (default) · MX4SIO · USB · MMCE · HDD (PFS)</td>
+<td style="text-align: left;">Where POPSLoader lands after the boot sequence. <em>Carousel</em> shows the normal device wheel. Pick a device and POPSLoader opens <strong>straight into that device's game list</strong> at startup (it loads that backend automatically). A <code>-page=</code> launch argument still overrides this for that one boot.</td>
+</tr>
+</tbody>
+</table>
+<h3>Carousel Devices</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Setting</th>
+<th style="text-align: left;">Options</th>
+<th style="text-align: left;">What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>(one row per device: MMCE, MX4SIO, HDD (exFAT), HDD (PFS), USB, i.Link, SMB, Disc)</strong></td>
+<td style="text-align: left;"><strong>Shown</strong> (default) · Hidden</td>
+<td style="text-align: left;">Hide or show each entry on the main device carousel. Set unused or not-yet-implemented backends (e.g. HDD (exFAT), SMB, i.Link) to <strong>Hidden</strong> to remove them from the wheel. At least one device must stay <strong>Shown</strong>. Saved with your settings (<code>HIDDEN_DEVICES</code>); hidden entries are skipped during carousel navigation with no gaps, and launch behavior is unchanged.</td>
+</tr>
+</tbody>
+</table>
+<h3>Game List</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Setting</th>
+<th style="text-align: left;">Options</th>
+<th style="text-align: left;">What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Multi-disc games</strong></td>
+<td style="text-align: left;"><strong>Show all discs</strong> (default) · First disc only</td>
+<td style="text-align: left;"><em>First disc only</em> hides the secondary discs of multi-disc games so only disc 1 shows. <strong>Detection is purely by filename</strong> — a disc is hidden if its name contains <code>(Disc 2)</code>, <code>(Disc 3)</code>, <code>(CD 2)</code>, <code>(Disk 2)</code>… (any number ≥ 2). So it <strong>only works if you name your files with that convention</strong>, e.g. <code>Final Fantasy IX (Disc 1).VCD</code> / <code>Final Fantasy IX (Disc 2).VCD</code>. Launch disc 1 and swap discs in-game via your VMC. (PS1 discs carry no shared "this is the same game" metadata, so the filename is the only signal.) Applies to every device.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Hidden games</strong></td>
+<td style="text-align: left;"><strong>Visible (manage)</strong> (default) · Hidden</td>
+<td style="text-align: left;">Per-game hide layer. Press <strong>L3</strong> on any game to hide or unhide it — hiding writes (or removes) a tiny <code>&lt;name&gt;.hide</code> marker next to the game's <code>.VCD</code>, exactly like the <code>&lt;name&gt;.png</code> cover. <em>Hidden</em> filters tagged games out of the list; <em>Visible (manage)</em> shows them <strong>dimmed</strong> so you can manage them with L3. In-app hiding works on <strong>every device</strong> — USB / MX4SIO / MMCE / Memory Card <strong>and the internal HDD</strong> (POPSLoader writes the <code>.hide</code> on the HDD via its read-write boot-partition mount).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Game details</strong></td>
+<td style="text-align: left;"><strong>Off</strong> (default) · Left · Center · Right</td>
+<td style="text-align: left;">Shows a per-game blurb from a <code>&lt;game&gt;.txt</code> sidecar in a small panel under the cover, in the chosen text alignment (<em>Off</em> hides it). Authored line breaks are preserved; scroll a long blurb with the <strong>right analog stick</strong>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Description scroll speed</strong></td>
+<td style="text-align: left;">Fast · Medium · <strong>Slow</strong> (default)</td>
+<td style="text-align: left;">How fast — and how firm a stick push — the <strong>right analog stick</strong> scrolls the <em>Game details</em> blurb. <em>Slow</em> is the most deliberate; <em>Fast</em> moves more lines per second. Only relevant when <em>Game details</em> is on.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Game list cache</strong></td>
+<td style="text-align: left;"><strong>Off</strong> (default) · On</td>
+<td style="text-align: left;">When <strong>On</strong>, USB / MMCE / MX4SIO <strong>and the internal HDD (PFS)</strong> save their scanned game list per device so the "Building game list…" rescan only runs once (rebuild it with <strong>R1</strong>). <strong>Off</strong> = always live-scan (the default, unchanged behavior).</td>
+</tr>
+</tbody>
+</table>
+<h3>Other settings</h3>
+<ul>
+<li><strong>Profile / POPSTARTER mode / POPSTARTER path</strong> — which <code>POPSTARTER.ELF</code> to use (a per-device profile, or a custom path).</li>
+<li><strong>DKWDRV Path</strong> — path to <code>DKWDRV.ELF</code> used by the Disc option.</li>
+<li><strong>Video Standard</strong> — <strong>Auto</strong> (default — matches your console's region) / NTSC / PAL. On PAL the UI now renders <strong>natively at 640×512</strong> so it fills the whole screen with no letterbox (NTSC is 640×448). A display-mode change shows a confirm prompt that <strong>auto-reverts</strong> if you don't confirm, so a bad mode can't strand you; you can also hold <strong>Start</strong> during boot to skip past a bad video mode.</li>
+<li><strong>Overscan (CRT inset)</strong> — <strong>Off</strong> (default) up to a numeric inset, adjusted in steps of <strong>5</strong> (OPL-style render inset, same math as OPL's overscan). Pulls the whole UI slightly toward the center of the screen so nothing is lost in a CRT's overscan border. The change previews live as you adjust it; backing out of Settings without saving restores the previous value. <em>(Mainly useful on a real CRT; on a flat panel you'll usually leave it Off.)</em></li>
+<li><strong>Boot sound</strong> — <strong>On</strong> (default) / Off. Plays the startup chime over the boot splash. Turn it <strong>Off</strong> for a silent boot. (Hardware-confirmed to save and survive a reboot.)</li>
+<li><strong>BDMA Mode</strong> — mass-storage backend mode: <strong>FAT32</strong> (<code>FAT32-USB (None)</code>) / <strong>USBEXFAT</strong> (<code>exFAT-USB</code>) / <strong>MX4SIO</strong> / <strong>MMCE</strong>. The installed mode is recorded in a <code>bdma_mode.txt</code> marker file in the POPSTARTER pack folder (older <code>.pldr_bdma_mode</code> markers are still read for compatibility).</li>
+<li><strong>POPSTARTER Memory Card Folder</strong> — toggles the <code>mc:/POPSTARTER</code> folder. Turning it <strong>off deletes</strong> <code>mc:/POPSTARTER</code> (with a confirm prompt). It is <strong>interlocked with BDMA Mode</strong>: you can't turn this folder off while BDMA Mode is on, and you can't enable BDMA Mode while this folder is off.</li>
+<li><strong>Hide UI Text</strong> — clears on-screen text for a clean cover-art view (also toggled with <strong>Select</strong>).</li>
+<li><strong>Keyboard Layout</strong> — on-screen keyboard layout for the path editor.</li>
+</ul>
+<hr />
+<h2>BOOT.ELF / wLaunchELF Exit</h2>
+<p>Selecting <strong>BOOT.ELF</strong> in the exit menu (or pressing the <strong>Triangle</strong> shortcut) will look for:<br />
+1. <code>mc0:/BOOT/BOOT.ELF</code><br />
+2. <code>mc1:/BOOT/BOOT.ELF</code></p>
+<p>If found, BOOT.ELF launches through the embedded-loader handoff with a clean BRAM setup and an explicit <code>argv[0]</code>. If you do not have wLaunchELF installed at these paths, this option will fail to boot.</p>
+<p><strong>Hardware-confirmed working</strong> when POPSLoader was launched from USB, MC, MMCE, MX4SIO, OSDmenu, Browser, PSBBN, or HDD.</p>
+<p>The <code>U-10</code> case (BOOT.ELF exit from an HDD-launched POPSLoader) previously black-screened; it was <strong>fixed in PR #479</strong> (<code>reboot_iop=0</code>), hardware-confirmed by Nuno 2026-05-31. History in <a href="https://github.com/NathanNeurotic/POPSLoader/blob/BETA-13-PLAY/docs/archive/U10_INVESTIGATION.md">docs/archive/U10_INVESTIGATION.md</a>.</p>
+<hr />
+<h2>Internal HDD Notes</h2>
+<ul>
+<li>Internal HDD setups received major reliability improvements in BETA-10-5 (the "B2" PFS-unmount fix at commit <code>4ae6679</code>), correcting the partition mount handoffs that previously prevented games from loading.</li>
+<li>Ensure that your game partition is named matching the <code>__.POPS</code> convention, and that the <code>__common/POPS/</code> directory contains all necessary POPStarter/POPS emulator binaries.</li>
+<li>Existing USB/MX4SIO/MMCE setups are unaffected by the HDD fixes and should continue to work normally.</li>
+</ul>
+<h3>Settings Storage on HDD Installs</h3>
+<p>HDD-installed POPSLoader saves its <code>.pldrs</code> settings file <strong>on the HDD itself</strong>, in the launcher's boot partition — same single-device behavior as USB / MX4SIO / MMCE, which keep the sidecar at <code>&lt;install dir&gt;/.pldrs</code>. To do this POPSLoader takes over its own boot partition's mount and remounts it read-write (the OPL "own your mount" pattern), so there is <strong>no <code>mc0:</code> fallback</strong> for HDD installs. The same read-write mount is what lets in-app <code>.hide</code> markers (toggled with L3) be written on the HDD. See <strong><a href="state.html#settings-single-device-parity">STATE.md &gt; Settings</a></strong> for the canonical rules.</p>
+<hr />
+<h2>Troubleshooting</h2>
+<h3>Game does not appear in the menu list</h3>
+<ul>
+<li>Using uppercase <code>.VCD</code> is recommended if your games are not being detected, especially on case-sensitive setups.</li>
+<li>Verify that VCD files are placed directly in the <code>POPS</code> (or <code>__.POPS</code>) folder, not inside subfolders.</li>
+</ul>
+<h3>Game launches to a black screen</h3>
+<ul>
+<li>Verify that <code>IOPRP252.IMG</code>, <code>POPS.ELF</code>, and the <code>.PAK</code> files are present in the POPS folder.</li>
+<li>Check that your game image <code>.VCD</code> is healthy and uncorrupted.</li>
+</ul>
+<h3>A game appears in the list but won't launch</h3>
+<ul>
+<li>The most common cause is the <strong><code>.VCD</code> filename being too long</strong>. POPStarter — not POPSLoader — performs the actual launch and enforces a hard length limit. In testing, a <strong>73-character</strong> filename launches while a <strong>74-character</strong> one does not.</li>
+<li>POPStarter's own documentation lists an <strong>89-character</strong> limit, but that ceiling appears to count the <strong>full path string POPStarter builds</strong> (POPSLoader hands it something like <code>mass:/POPS/XX.&lt;name&gt;.ELF</code>), not just the bare filename. So the usable <em>filename</em> length is shorter than 89, and a <strong>deeper folder path leaves room for fewer characters</strong> — which is why ~73 is the safe target for a standard <code>POPS/</code> folder.</li>
+<li><strong>Fix:</strong> shorten the filename (and, if needed, use a shorter folder path). This is a POPStarter constraint and cannot be raised from POPSLoader.</li>
+</ul>
+<h3>Cover art is not showing up</h3>
+<ul>
+<li>Check that the cover image is in <code>.png</code> format.</li>
+<li>The PNG filename must match the <code>.VCD</code> game filename exactly (e.g. <code>Crash Bandicoot.VCD</code> requires <code>Crash Bandicoot.png</code>).</li>
+<li>Ensure the cover art is placed in the same folder as the VCD (or <code>__common/POPS/ART/</code> on HDD).</li>
+<li>Confirm cover-art preview is enabled — press <strong>Square (□)</strong> in the game list to toggle it.</li>
+<li>For best compatibility and performance, use 200x200 pixel images.</li>
+</ul>
+<h3>BOOT.ELF exit option fails or hangs</h3>
+<ul>
+<li>Confirm that a valid wLaunchELF executable is installed on your physical memory card at <code>mc0:/BOOT/BOOT.ELF</code> or <code>mc1:/BOOT/BOOT.ELF</code>.</li>
+</ul>
+<hr />
+<h2>Known Issues &amp; Planned Improvements</h2>
+<p>Confirmed broken: see the single canonical <strong><a href="state.html#known-issues-canonical--the-single-list-readme--agents--rolling_notes-point-here">STATE.md &gt; Known Issues</a></strong> list (currently just the "Failed to load HDD" from a non-HDD boot case).</p>
+<p>Planned for subsequent updates:<br />
+*   <strong>Layer C Lazy IRX Loading</strong>: Defer device-specific IRX modules so they only load when the boot device family needs them, reducing boot time. The <code>mmceman</code> portion has <strong>landed</strong> (PR #471): it is now loaded eagerly only when POPSLoader is booted from an MMCE device, and deferred everywhere else. Further deferral of <code>ds34bt</code> / <code>usbd</code> remains future work — they are still loaded at boot today.<br />
+*   <strong>Settings UI Redesign (Berion)</strong>: Visual overhaul replacing the current OPL-style focused-list with per-category Settings pages. Awaiting Berion's mockup PNGs.<br />
+*   <strong>GUI Themes</strong>: Customizable colors / skins / fonts and a setting to skip the boot splash.<br />
+*   <strong>In-Game Features</strong>: Support for per-game fixes, cheat codes, Virtual Memory Card (VMC) setups, and multi-disc swap prompts.<br />
+*   <strong><code>HDD (exFAT)</code>, <code>SMB (v1)</code>, <code>i.Link</code></strong> menu flows: currently surface as "Not Implemented Yet" until feature work lands.</p>
+<p>See <a href="state.html">STATE.md</a> "Known Open Work" and <a href="roadmap.html">ROADMAP.md</a> for the prioritized backlog.</p>
+<hr />
+<h2>Credits</h2>
+<ul>
+<li><strong>israpps (El_isra)</strong>: Original POPSLoader project creator.</li>
+<li><strong>Daniel Santos</strong>: Creator of the Enceladus runtime foundation.</li>
+<li><strong>krHACKen</strong>: Author of POPStarter.</li>
+<li><strong>Berion</strong>: User interface design and theme assets.</li>
+<li><strong>nuno6573</strong>: Cover-art engine integrations and scripting.</li>
+<li><strong>Hugopocked</strong>: POPStarter fixes.</li>
+<li><strong>Ripto / NathanNeurotic</strong>: Maintenance, UI polishing, and release engineering.</li>
+<li><strong>P4NCHOL1NO, VizoR, provato, nuno6573, TnA-Plastic, saildot4k, and the community</strong>: Hardware testing.</li>
+</ul>
+<hr />
+<h2>Development &amp; Building</h2>
+<p>GitHub Actions is the canonical build path. The pinned CI image is <code>ps2dev/ps2dev:v2.0.0</code>. Every change must pass the CI workflow in <code>.github/workflows/compilation.yml</code> before merging; rolling release artifacts for testing are produced by <code>.github/workflows/rolling-release.yml</code> on push to <code>BETA-13-PLAY</code> and on pull request events. CI now runs a live <code>luac</code> syntax gate over the embedded Lua (<code>bin/POPSLDR/*.lua</code> + <code>etc/boot.lua</code>) and hard-fails on a syntax error — note this catches <strong>syntax</strong> only; runtime and load-order errors still only surface on real PS2 / PCSX2.</p>
+<p>POPSLoader is an EE C/C++ application (<code>src/</code>) with the entire front-end UI and launch logic written as embedded Lua (<code>bin/POPSLDR/*.lua</code>, <code>etc/boot.lua</code>) and an embedded IOP-side child ELF loader (<code>src/elf_loader/</code>). The Lua scripts, PNG art, IRX modules, and the child loader are all baked directly into the EE ELF at build time via <code>bin2c</code>, so the on-card scripts are not read at runtime — building from source is required to change them.</p>
+<p>Developer documentation, repository architecture details, and the current state are maintained in:</p>
+<ul>
+<li><a href="state.html">STATE.md</a>: Current code and hardware status, the canonical Known Issues list, Behavioral Invariants, and Preservation Contracts.</li>
+<li><a href="qa-regression-matrix.html">QA_REGRESSION_MATRIX.md</a>: Complete ledger of CI gates and hardware test outcomes.</li>
+<li><a href="roadmap.html">ROADMAP.md</a>: Prioritized backlog.</li>
+<li><a href="decisions.html">DECISIONS.md</a>: Decision log with rationale and evidence.</li>
+<li><a href="architecture.html">ARCHITECTURE.md</a>: Structural data-flow documentation.</li>
+</ul>
+<p>To build the launcher binary locally (optional; CI is canonical), run:</p>
+<pre><code class="language-sh">make clean elfloader all
+</code></pre>
+<p>This cleans, force-regenerates the embedded child ELF loader (<code>elfloader</code>), then compiles every EE/IOP object, embeds all assets, links, strips, and runs <code>ps2-packer</code> to produce the packed <code>bin/POPSLOADER.ELF</code>. It requires a configured PS2DEV SDK environment (<code>ps2dev/ps2dev:v2.0.0</code> toolchain) with <code>ps2-packer</code> and the <code>bin2c</code> tool on <code>PATH</code>.</p>
+<p>To grab the latest test build, download from the rolling release URL:<br />
+<a href="https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/POPSLOADER-rolling-release.zip">https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/POPSLOADER-rolling-release.zip</a></p></main>
+</div>
+<footer>
+  <p><b>POPStarter Documentation Archive</b> — community-recovered from the Wayback Machine
+  (ShaolinAssassin's <code>popstarter-documentation-stuff</code> wiki) and krHACKen's r13 changelog,
+  cross-checked and merged across snapshots. Built for the POPSLoader project.</p>
+  <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
+  emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
+  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed.</p>
+</footer>
+<script src="../assets/app.js"></script>
+</body></html>

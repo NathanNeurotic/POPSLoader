@@ -1,0 +1,624 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Preservation contracts · POPSLoader · POPStarter Docs</title>
+<meta name="description" content="Resurrected, searchable POPStarter documentation — cheats, patches, config, storage, multi-disc, IGR, downloads, and the POPSLoader fork.">
+<link rel="stylesheet" href="../assets/style.css">
+</head><body data-base="../">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu">☰</button>
+  <a class="brand" href="../index.html">
+    <span class="psbtns"><i class="tri">&#9651;</i><i class="cir">&#9711;</i><i class="cro">&#10005;</i><i class="squ">&#9633;</i></span>
+    POPStarter <small>DOCS</small></a>
+  <div class="search">
+    <span class="ico">🔎</span>
+    <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <a href="../index.html"><span class="em">🏠</span>Home</a>
+    <h4>POPSLoader · this project</h4>
+    <a href="../popsloader.html" class="active"><span class="em">📦</span>POPSLoader docs</a>
+    <h4>POPStarter · documentation</h4><a href="../getting-started.html"><span class="em">🚀</span>Getting Started</a>
+<a href="../storage.html"><span class="em">💾</span>Storage Backends</a>
+<a href="../cheats.html"><span class="em">🎮</span>Cheats</a>
+<a href="../compatibility.html"><span class="em">🩹</span>Patches & TROJANs</a>
+<a href="../igr.html"><span class="em">🎯</span>IGR & Hotkeys</a>
+<a href="../config.html"><span class="em">🔧</span>Config Table</a>
+<a href="../multidisc.html"><span class="em">💿</span>Multi-disc & VMC</a>
+<a href="../troubleshooting.html"><span class="em">🛠️</span>Troubleshooting</a>
+<a href="../downloads.html"><span class="em">📦</span>Downloads</a>
+<a href="../history.html"><span class="em">📜</span>History</a>
+    <h4>Reference</h4>
+    <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
+  </nav>
+  <main class="content"><h1>Preservation contracts</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/BETA-13-PLAY/docs/PRESERVATION_CONTRACTS.md">view on GitHub ↗</a></p><p>Date: 2026-06-21 (re-synced to BETA-13-PLAY HEAD 56a5ad5; BETA-12 released 2026-06-18 per STATE.md)<br />
+Branch documented: <code>BETA-13-PLAY</code> (the active rolling-candidate branch; BETA-12-PLAY<br />
+is now ARCHIVAL/frozen and rolling-release.yml publishes from BETA-13-PLAY)</p>
+<p>Purpose: regression armor for the launch / ELF-handoff layer (the four launch<br />
+contracts below) <strong>and</strong> for the load-bearing UI / render / embed invariants that<br />
+a code-quality pass could plausibly "clean up" into a regression (the UI &amp;<br />
+render-pipeline contracts further down). Each contract is a rule that survived a<br />
+specific hardware black-screen, input bug, or render glitch and must not be broken<br />
+by future changes. For each launch contract this document records: what it<br />
+guarantees, the exact code that implements it (<code>path:line</code>), the <code>reboot_iop</code><br />
+value it depends on, the action that breaks it, and how to retest it on hardware.</p>
+<p>Every technical claim is cited to the named function in this branch. Line numbers<br />
+are best-effort and drift as files change — treat the cited function (not the<br />
+<code>path:line</code>) as the unit of truth and grep for the function/identifier rather than<br />
+jumping to the literal line.</p>
+<blockquote>
+<p><strong>Read this before touching any of:</strong> <code>src/elf_loader/src/elf.c</code>,<br />
+<code>src/elf_loader/src/loader/src/loader.c</code>, <code>bin/POPSLDR/ui.lua</code> launch handoffs<br />
+(<code>OpenDKWDRV</code>, <code>LaunchBootElf</code>, <code>ConfirmExit</code>), <code>bin/POPSLDR/system.lua</code><br />
+<code>LaunchEngine</code> / <code>RunPOPStarterGame</code> / <code>BuildPopstarterLaunchCommand</code> /<br />
+<code>PrepareForExternalELFLaunch</code>, <code>src/luasystem.cpp</code> <code>lua_loadELF*</code>, or<br />
+<code>etc/boot.lua</code> HDD-boot mount.</p>
+</blockquote>
+<p>Related docs: <code>docs/archive/LAUNCH_HYGIENE.md</code> (launch-path architecture and fix<br />
+history), <code>docs/archive/U10_INVESTIGATION.md</code> (U-10 deep dive),<br />
+<code>docs/archive/HDD_POPSTARTER_HANDOFF.md</code> (archived D-10/D-14 diagnostic trail),<br />
+<code>QA_REGRESSION_MATRIX.md</code> (the hardware ledger and canonical test-case<br />
+definitions), <code>STATE.md</code> (current status, Known Issues, and Hardware Status — the<br />
+canonical source).</p>
+<h2>How the launch chain is wired (orientation)</h2>
+<p>Launch is a three-stage chain. Lua decides the route and <code>reboot_iop</code>, the C<br />
+parent splits teardown by target family, and a BRAM child loader performs the<br />
+final <code>ExecPS2</code>.</p>
+<ol>
+<li><strong>Lua orchestration</strong> — <code>bin/POPSLDR/system.lua</code> <code>RunPOPStarterGame</code> (line 5653)<br />
+   → <code>BuildPopstarterLaunchCommand</code> (line 5631) sets <code>reboot_iop</code> → <code>LaunchEngine</code><br />
+   (line 5436; loadELF/loadELFWithPartition dispatch at <code>system.lua:5526-5547</code>) picks<br />
+   the C binding. <code>ui.lua</code><br />
+<code>OpenDKWDRV</code> (line 1370), <code>LaunchBootElf</code> (line 1591), and <code>ConfirmExit</code><br />
+   (line 1583) are the DKWDRV / BOOT.ELF / exit handoffs.</li>
+<li><strong>C bindings + parent loader</strong> — <code>src/luasystem.cpp</code> <code>lua_loadELF</code> (line 974),<br />
+<code>lua_loadELFWithPartition</code> (line 1020), <code>lua_loadELFRebootIOP</code> (line 1068) →<br />
+<code>src/elf_loader/src/elf.c</code>. Three teardown contracts live here:<br />
+<code>LoadELFFromFileExecPS2RebootIOPWithPartition</code> (line 618, the central<br />
+   reboot/HDD fork), <code>LoadELFFromFileWithPartition</code> (line 481, BOOT.ELF + HDD<br />
+   DKWDRV special-cases), and <code>ExecuteViaEmbeddedLoader</code> (line 397, BRAM handoff).</li>
+<li><strong>BRAM child loader</strong> — <code>src/elf_loader/src/loader/src/loader.c</code> <code>main</code> (line<br />
+   280). Reads metadata from <code>0x00083C00</code>, picks one of three pre-<code>ExecPS2</code><br />
+   teardown branches, then <code>ExecPS2</code>'s the final target.</li>
+</ol>
+<p>The per-device <code>reboot_iop</code> default is <code>0</code><br />
+(<code>PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER = 0</code>, <code>system.lua:2032</code>); it is raised<br />
+to <code>1</code> only when POPSTARTER itself lives on HDD — <code>BuildPopstarterLaunchCommand</code><br />
+pins <code>reboot_iop = 1</code> when <code>popstarter_on_hdd</code>, else <code>0</code> (<code>system.lua:5638-5642</code>).</p>
+<hr />
+<h2>Contract D-10 — HDD-resident POPSTARTER launching an HDD game</h2>
+<p><strong>QA definition:</strong> <code>QA_REGRESSION_MATRIX.md</code> test-case <code>D-10</code> — "POPSTARTER resolves from sidecar<br />
+or configured HDD path without blocking launch or hanging on a black screen" when<br />
+both POPSLoader/<code>POPSTARTER_PATH</code> and the game are on HDD.</p>
+<p><strong>Hardware status:</strong> PASS as of 2026-05-22 (<code>QA_REGRESSION_MATRIX.md:153-154</code>,<br />
+the B2 fix). Confirmed still-PASS after later BOOT.ELF/DKWDRV experiments<br />
+(<code>QA_REGRESSION_MATRIX.md:161</code>).</p>
+<h3>What it guarantees</h3>
+<p>An HDD-backed POPSTARTER.ELF, launched to run an HDD-backed game, reaches its own<br />
+<code>ExecPS2</code> of the target with the IOP in a state the target tolerates — no<br />
+black screen, no silent <code>SifIopReset</code> hang.</p>
+<h3>How it is implemented</h3>
+<ul>
+<li><strong>Routing into the BRAM child loader.</strong> HDD-backed launches do NOT take the<br />
+  direct <code>SifIopReset</code> path. <code>LoadELFFromFileExecPS2RebootIOPWithPartition</code><br />
+  routes to <code>ExecuteHddBackedViaEmbeddedLoader</code> when both the partition and<br />
+  filename are HDD-shaped, or when the resolved path / partition is HDD-shaped:<br />
+<code>src/elf_loader/src/elf.c:645-648</code> (partition+filename guard) and<br />
+<code>src/elf_loader/src/elf.c:655-656</code> (resolved-path/partition guard).<br />
+<code>is_hdd_backed_exec_path</code> matches <code>hdd</code> or <code>pfs</code> prefixes only<br />
+  (<code>src/elf_loader/src/elf.c:114-117</code>).</li>
+<li><strong>BRAM handoff and out-of-band metadata.</strong> <code>ExecuteViaEmbeddedLoader</code> wipes<br />
+  BRAM, writes the <code>EmbeddedLoaderMetadata</code> (magic <code>POPL</code> = <code>0x504F504C</code>, version<br />
+  1) to the fixed address <code>0x00083C00</code>, copies the child loader's <code>PT_LOAD</code><br />
+  segments into BRAM, then tears down and <code>ExecPS2</code>'s the child:<br />
+<code>src/elf_loader/src/elf.c:397-479</code>. Metadata struct + address + magic:<br />
+<code>src/elf_loader/src/elf.c:159-170</code>.</li>
+<li><strong>The decisive child teardown.</strong> The parent passes a non-empty HDD partition<br />
+  context (<code>hdd?:PART:</code>, written at <code>src/elf_loader/src/elf.c:361</code>), so in the<br />
+  child loader <code>is_hdd_partition_context</code> is true (<code>loader.c:381</code>,<code>:83-89</code>) and<br />
+<code>should_use_filexio_direct_load</code> short-circuits to 0 (<code>loader.c:93-94</code>).<br />
+  D-10 therefore takes the <strong>partition-context branch (<code>loader.c:381-403</code>)</strong>, NOT<br />
+  the generic branch. That branch <code>SifLoadElf</code>'s POPSTARTER from the<br />
+  parent-mounted <code>pfs0:</code> (<code>loader.c:357</code>), <strong>unmounts the pfs prefix</strong> it no<br />
+  longer needs (<code>loader.c:392-393</code>), then tears down with <code>SifExitRpc()</code> <strong>and</strong><br />
+<code>SifExitCmd()</code> (<code>loader.c:396-397</code>) before <code>ExecPS2</code> (<code>loader.c:401</code>). The<br />
+  umount-before-<code>SifExitCmd</code> ordering is the load-bearing part — it releases<br />
+  fileXio's hold on the partition so POPSTARTER can re-mount it.<br />
+  (The <strong>generic</strong> branch <code>loader.c:404-427</code> — <code>SifExitRpc</code> only, <strong>no<br />
+<code>SifExitCmd</code></strong> — is the <em>empty-partition-context</em> path used by BOOT.ELF<br />
+  (<code>ExecuteViaEmbeddedLoader("", ...)</code> at <code>elf.c:502</code>), not D-10. HDD DKWDRV does<br />
+  NOT use it: it passes a non-empty <code>hdd?:PART:</code> context (<code>ui.lua:1532</code>) and so<br />
+  takes the partition-context branch like D-10. The historical comment at<br />
+<code>loader.c:405-413</code> warns against adding <code>SifExitCmd</code> <em>there</em>; it dates from when<br />
+  HDD launches flowed through that branch without the umount, which is what<br />
+  produced "D-15-pass vs D-10-fail.")</li>
+<li><strong><code>reboot_iop</code> value: <code>1</code>.</strong> Set in <code>BuildPopstarterLaunchCommand</code> when<br />
+<code>popstarter_on_hdd</code> is true: <code>bin/POPSLDR/system.lua:5639-5640</code>. A non-zero<br />
+<code>reboot_iop</code> (here <code>1</code>) plus a present <code>exec_partition_context</code> is what makes<br />
+<code>LaunchEngine</code> select the partition-aware binding (the gate is<br />
+<code>exec_partition_context ~= nil and reboot_iop ~= 0</code>, <code>system.lua:5526-5527</code>).</li>
+<li><strong>Partition context is out-of-band.</strong> <code>lua_loadELFWithPartition</code> requires a<br />
+  context shaped like <code>hdd?:PART:</code> and <code>reboot_iop != 0</code>, and never copies the<br />
+  context into the target argv: <code>src/luasystem.cpp:1033-1038</code> (the two guards:<br />
+  partition-shape at 1033-1035, <code>reboot_iop != 0</code> at 1036-1038),<br />
+<code>src/luasystem.cpp:957-972</code> (<code>is_partition_context_arg</code>, which now also accepts a<br />
+<code>dvr_hdd?:</code> shape at <code>luasystem.cpp:968</code> in addition to <code>hdd?:</code>).</li>
+</ul>
+<h3>What breaks it</h3>
+<ul>
+<li>Removing the <code>fileXioUmount</code> of the pfs prefix before <code>SifExitCmd()</code> in the<br />
+  partition-context branch (<code>loader.c:392-397</code>), or deleting the<br />
+<code>is_hdd_partition_context</code> branch so D-10 falls through to the generic branch.<br />
+  The umount-then-<code>SifExitCmd</code> ordering in <code>loader.c:381-403</code> is what D-10<br />
+  depends on. (Relatedly, do not add <code>SifExitCmd()</code> to the generic branch<br />
+<code>loader.c:404-427</code> — the comment at <code>loader.c:405-413</code> records that regression<br />
+  from when HDD used that branch; it now governs BOOT.ELF only (HDD DKWDRV uses<br />
+  the partition-context branch).)</li>
+<li>Re-excluding DKWDRV or otherwise letting an HDD-backed target slip both routing<br />
+  guards at <code>elf.c:645-648</code> / <code>elf.c:655-656</code> so it falls through to the direct<br />
+<code>SifIopReset</code> path. The previous V3 logic did this and black-screened<br />
+  (<code>elf.c:628-648</code> comment; <code>QA_REGRESSION_MATRIX.md:124-134</code>).</li>
+<li>Changing the <code>EmbeddedLoaderMetadata</code> layout, address, or magic in only one of<br />
+  the two files (<code>elf.c:159-170</code> writer / <code>loader.c:148-155</code> reader). A mismatch<br />
+  makes <code>read_embedded_loader_metadata</code> return <code>-3302</code> (<code>loader.c:169</code>), and<br />
+<code>main</code> paints the RED background and bails (<code>loader.c:300-301</code>).</li>
+<li>Forcing <code>reboot_iop</code> away from <code>1</code> for HDD POPSTARTER, which drops the<br />
+  partition-aware route (<code>system.lua:5526-5527</code>).</li>
+</ul>
+<h3>How to test on hardware</h3>
+<p>Per <code>QA_REGRESSION_MATRIX.md</code> test-case <code>D-10</code> and the <code>docs/archive/HDD_POPSTARTER_HANDOFF.md</code><br />
+test sequence: boot from HDD, with HDD sidecar/CWD/Profile/default <code>POPSTARTER.ELF</code>,<br />
+select an HDD title, confirm with <code>X</code>. Expected: real POPSTARTER boots the game,<br />
+no black screen. Then repeat with <code>R2</code> ("HDD Alt" / <code>full_hdd_pfs0</code> mode,<br />
+<code>full_hdd_pfs0</code> guard <code>ui.lua:2774</code>, R2 launch <code>ui.lua:2808</code>, R2 "HDD Alt" label<br />
+<code>ui.lua:2935</code>). Record in <code>QA_REGRESSION_MATRIX.md</code> as D-10.</p>
+<hr />
+<h2>Contract D-15 — HDD game launched from a non-HDD POPSTARTER</h2>
+<p><strong>QA definition:</strong> <code>QA_REGRESSION_MATRIX.md</code> test-case <code>D-15</code> — boot from USB/MMCE/MX4SIO with<br />
+the sidecar/CWD <code>POPSTARTER.ELF</code> on that same non-HDD device, launch an HDD title;<br />
+"HDD title still launches without a black screen when POPSTARTER itself remains<br />
+off-HDD."</p>
+<p><strong>Hardware status:</strong> PASS as of 2026-05-22 (<code>QA_REGRESSION_MATRIX.md:156</code>). This<br />
+is the reference-good case that the D-10 child teardown is calibrated against.</p>
+<h3>What it guarantees</h3>
+<p>When POPSTARTER.ELF is on a non-HDD device but the selected game is on HDD, the<br />
+game launches. The game's HDD partition / pfs slots are not torn down out from<br />
+under the launch, and non-HDD POPSTARTER's normal one-argument selector contract<br />
+is preserved.</p>
+<h3>How it is implemented</h3>
+<ul>
+<li><strong>Non-HDD POPSTARTER keeps <code>reboot_iop = 0</code></strong> (the default,<br />
+<code>PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER</code>, <code>system.lua:2032</code>). When the policy<br />
+  is HDD (HDD game) but POPSTARTER is non-HDD, <code>BuildPopstarterLaunchCommand</code><br />
+  explicitly pins <code>reboot_iop = 0</code> (the <code>policy_name == "HDD"</code> branch):<br />
+<code>bin/POPSLDR/system.lua:5641-5642</code>.</li>
+<li><strong>Legacy selector path, no partition API.</strong> With <code>reboot_iop == 0</code>,<br />
+<code>use_partition_api</code> is false (<code>system.lua:5526</code>), so <code>LaunchEngine</code> calls<br />
+<code>System.loadELF(exec_path, reboot_iop, selector)</code> (<code>system.lua:5533</code> /<br />
+<code>5539</code> / <code>5545</code>). <code>lua_loadELF</code> with <code>reboot_iop == 0</code> and one extra arg goes to<br />
+<code>LoadELFFromFileExecPS2</code>; with no extra args, to <code>LoadELFFromFile</code>:<br />
+<code>src/luasystem.cpp:993-1008</code>. The selector stays as the single target<br />
+<code>argv[0]</code>.</li>
+<li><strong>Keep-PFS mask protects the game's slots across exec.</strong> Before exec,<br />
+<code>PrepareForExternalELFLaunch</code> computes the keep slots and calls<br />
+<code>System.setExecKeepPfsMask</code>, then unmounts only the non-kept slots:<br />
+<code>bin/POPSLDR/system.lua:1120-1148</code>, mask built by <code>BuildPfsKeepMask</code><br />
+  (<code>system.lua:1107-1118</code>). On the C side the mask is 4-bit<br />
+  (<code>SetExecKeepPfsMask</code>, <code>src/elf_loader/src/elf.c:35-37</code>) and<br />
+<code>unmount_pfs_slots_for_exec</code> preserves masked slots<br />
+  (<code>src/elf_loader/src/elf.c:97-107</code>, <code>build_exec_keep_mask</code> at<br />
+<code>elf.c:109-112</code>).</li>
+</ul>
+<h3>What breaks it</h3>
+<ul>
+<li>D-15 is the historical pass-side calibration point for the child teardown (the<br />
+<code>loader.c:405-413</code> comment frames the no-<code>SifExitCmd</code> rule as "D-15-pass vs<br />
+  D-10-fail"), so any teardown change in the child loader should be re-tested<br />
+  against D-15 as well as D-10.</li>
+<li>Letting a second Lua argument leak into the non-HDD POPSTARTER call (the<br />
+  2026-05-20 D-15 regression at <code>QA_REGRESSION_MATRIX.md:139</code>). The fix was to<br />
+  keep <code>System.loadELF(path, reboot_iop, selector)</code> strictly one-selector;<br />
+<code>lua_loadELF</code> enforces a single selector buffer (<code>src/luasystem.cpp:982-990</code>).</li>
+<li>Forcing <code>reboot_iop = 1</code> for non-HDD POPSTARTER, which would switch this case to<br />
+  the partition/reboot path it does not need.</li>
+</ul>
+<h3>How to test on hardware</h3>
+<p>Boot from USB (or MMCE/MX4SIO), sidecar/Profile 1 <code>POPSTARTER.ELF</code> on that same<br />
+device, select an HDD title, confirm with <code>X</code>. Expected: HDD title launches, no<br />
+black screen. Per <code>docs/archive/HDD_POPSTARTER_HANDOFF.md</code> this is the <strong>first</strong> case to retest<br />
+after any launch-path change, because it is the known-good separator. Record as<br />
+D-15 in <code>QA_REGRESSION_MATRIX.md</code>.</p>
+<hr />
+<h2>Contract U-10 — BOOT.ELF exit, <code>reboot_iop = 0</code> embedded-loader route (preserve the fix)</h2>
+<p><strong>QA definition:</strong> <code>QA_REGRESSION_MATRIX.md</code> test-case <code>U-10</code> — open <code>HDD (PFS)</code> first so<br />
+dependency checks/scans run, return to the menu, launch <code>BOOT.ELF</code> from Exit;<br />
+"<code>BOOT.ELF</code> handoff succeeds without freezing or black-screening after HDD page<br />
+access."</p>
+<p><strong>Hardware status: RESOLVED — preserve-the-fix contract.</strong> The HDD-booted<br />
+sub-case (HDD-boot → Exit → BOOT.ELF) that previously black-screened was <strong>fixed<br />
+by PR #479</strong>, which forces <code>reboot_iop = 0</code> for BOOT.ELF in <strong>all</strong> cases —<br />
+including the HDD-booted one — so it takes the same working embedded-loader<br />
+no-reset route as the non-HDD case (Nuno hardware-confirmed 2026-05-31;<br />
+<code>STATE.md</code> "Reported Hardware Status" U-10 row). The non-HDD BOOT.ELF route<br />
+(L-07) was already PASS at V2 commit <code>d23520a</code>. <strong>Both</strong> sub-cases now share one<br />
+route; this contract is no longer a known-broken item but a regression-armor<br />
+contract that keeps the <code>reboot_iop = 0</code> route in place. Do not reintroduce a<br />
+<code>reboot_iop = 1</code> / <code>SifIopReset</code> branch for BOOT.ELF.</p>
+<h3>What it guarantees (the working route)</h3>
+<p>For BOTH a non-HDD-booted AND an HDD-booted POPSLoader, "Exit → BOOT.ELF" reaches<br />
+<code>mc?:/BOOT/BOOT.ELF</code> through the embedded child loader's no-reset branch and runs<br />
+without hanging.</p>
+<h3>How it is implemented</h3>
+<ul>
+<li><strong><code>reboot_iop</code> is pinned to <code>0</code> for BOOT.ELF — always.</strong> <code>LaunchBootElf</code> sets<br />
+<code>reboot_iop = 0</code> and never raises it; the HDD-loaded flag is now used <strong>only</strong><br />
+  to pick the pfs teardown, not to change <code>reboot_iop</code>:<br />
+<code>bin/POPSLDR/ui.lua:1591-1628</code> (reboot_iop=0 set at <code>ui.lua:1602</code>). When HDD was<br />
+  loaded this session<br />
+  (<code>PLDR.HDD.LOADSTATE != 0</code>), it calls <code>PrepareForColdExternalELFLaunch</code> (which<br />
+  unmounts every pfs slot, the only HDD state that matters here); otherwise<br />
+<code>PrepareForExternalELFLaunch</code>: <code>ui.lua:1604-1608</code>. The inline comment<br />
+  (<code>ui.lua:1609-1623</code>) records the PR #479 diagnosis — a <code>reboot_iop = 1</code><br />
+<code>SifIopReset("", 0)</code> soft reset <strong>cannot</strong> reboot an HDD-dirtied IOP (dev9 /<br />
+  atad / pfs / fileXio still loaded), so <code>SifIopSync</code> spins → the black screen;<br />
+  the cold-prep unmount makes the no-reset path correct <strong>and</strong> sufficient.</li>
+<li><strong>The mc BOOT.ELF special-case routes through the embedded loader.</strong><br />
+<code>System.loadELF(elf_path, 0)</code> with no extra args → <code>LoadELFFromFile</code> →<br />
+<code>LoadELFFromFileWithPartition</code>, which special-cases <code>mc0:/BOOT/BOOT.ELF</code> /<br />
+<code>mc1:/BOOT/BOOT.ELF</code> and calls<br />
+<code>ExecuteViaEmbeddedLoader("", resolved_path, 1, boot_argv)</code>:<br />
+<code>src/elf_loader/src/elf.c:499-502</code>. The child then takes the non-HDD generic<br />
+  branch (<code>SifExitRpc</code> only, no reset): <code>loader.c:404-427</code>. Because <code>reboot_iop</code><br />
+  is now <code>0</code> for the HDD-booted case too, the HDD-boot sub-case takes this exact<br />
+  route — that is the PR #479 fix.</li>
+<li><strong><code>PrepareForColdExternalELFLaunch</code> is what makes the no-reset route safe after<br />
+  HDD use.</strong> It forces the keep mask to 0 and unmounts all pfs slots (including<br />
+  the held boot <code>pfs1:</code>), so no <code>SifIopReset</code> is needed to release <code>fileXio</code>'s<br />
+  hold: see the cross-cutting invariant below and <code>system.lua</code> cold-prep. This<br />
+  replaces the old approach that tried to reset the IOP for BOOT.ELF after HDD<br />
+  use (PR #450/#451, the wrong mechanism per the <code>ui.lua:1609-1623</code> comment).</li>
+</ul>
+<h3>What breaks it</h3>
+<ul>
+<li>Re-raising <code>reboot_iop</code> to <code>1</code> for BOOT.ELF when HDD was loaded (the exact<br />
+  pre-PR-#479 regression). The <code>SifIopReset</code> soft reset cannot reboot an<br />
+  HDD-dirtied IOP and <code>SifIopSync</code> spins → black screen (<code>ui.lua:1609-1623</code>).<br />
+  Keep <code>LaunchBootElf</code>'s <code>reboot_iop</code> at <code>0</code> and use the HDD flag only to select<br />
+  the cold pfs teardown.</li>
+<li>Adding a BOOT.ELF-specific IOP-reset branch to the child loader. PR #458 did<br />
+  this and regressed V2's working USB-boot exit (forced a reset BOOT.ELF does not<br />
+  tolerate); PR #460 reverted it (<code>docs/archive/LAUNCH_HYGIENE.md:56-71</code>,<br />
+<code>QA_REGRESSION_MATRIX.md:169</code>). The child loader must stay reset-free for<br />
+  BOOT.ELF.</li>
+<li>Removing the mc BOOT.ELF special-case at <code>elf.c:499-502</code>, which would drop the<br />
+  working route through the embedded loader.</li>
+<li>Routing BOOT.ELF (which needs the cold pfs teardown when HDD was loaded) so<br />
+  that <code>PrepareForColdExternalELFLaunch</code> no longer unmounts the held boot<br />
+<code>pfs1:</code> before the no-reset exec — that reintroduces the held-mount hang.</li>
+</ul>
+<h3>How to test on hardware</h3>
+<ul>
+<li>Non-HDD route (L-07): boot from USB/MC/MMCE/MX4SIO, Exit → BOOT.ELF. Expected:<br />
+  BOOT.ELF runs. Record as L-07/U-10 non-HDD.</li>
+<li>HDD route (U-10): boot from HDD, open <code>HDD (PFS)</code> first, return to menu,<br />
+  Exit → BOOT.ELF. Expected: BOOT.ELF runs (fixed by PR #479, Nuno-confirmed<br />
+  2026-05-31). Re-run this after any change to <code>LaunchBootElf</code>'s <code>reboot_iop</code> /<br />
+  cold-prep selection or to the mc BOOT.ELF special-case, and record the result<br />
+  in <code>QA_REGRESSION_MATRIX.md</code>.</li>
+</ul>
+<hr />
+<h2>Contract DKWDRV-from-MC vs DKWDRV-from-HDD</h2>
+<p><strong>QA definitions:</strong> <code>QA_REGRESSION_MATRIX.md</code> L-05 (mc?: DKWDRV alias resolves and<br />
+launches), <code>QA_REGRESSION_MATRIX.md</code> L-02 (missing-path UI message). MC DKWDRV is<br />
+the confirmed-working baseline; HDD DKWDRV from a custom HDD path is RESOLVED/PASS<br />
+(Nuno hardware-confirmed 2026-06-04/06-06, PRs #486/#487) via the partition-aware<br />
+route + live pfs-slot scan. Earlier HDD-DKWDRV builds black-screened (forensic<br />
+chronology in QA_REGRESSION_MATRIX.md); that route is superseded — see<br />
+QA_REGRESSION_MATRIX.md:194 and STATE.md:105.</p>
+<p><strong>Hardware status:</strong> MC DKWDRV works (<code>ui.lua:1540-1541</code> notes it confirmed<br />
+working; <code>docs/archive/LAUNCH_HYGIENE.md:114</code>). HDD DKWDRV from a custom HDD path<br />
+is RESOLVED/PASS (Nuno hardware-confirmed 2026-06-04/06-06, PRs #486/#487) via the<br />
+partition-aware route (loadELFWithPartition → ExecuteHddBackedViaEmbeddedLoader) +<br />
+live pfs-slot scan (<code>QA_REGRESSION_MATRIX.md:194</code>; <code>STATE.md:53,105</code>). Earlier<br />
+direct-path builds black-screened (forensic chronology<br />
+<code>QA_REGRESSION_MATRIX.md:163,166</code>); preserve the two-half contract regardless.</p>
+<h3>What it guarantees</h3>
+<ul>
+<li><strong>MC / non-HDD DKWDRV</strong> (<code>mc?:/PS1_DKWDRV/DKWDRV.ELF</code>) launches via a full IOP<br />
+  reset with reloaded MC modules and a synthesized <code>argv[0]</code>.</li>
+<li><strong>HDD DKWDRV</strong> (<code>hdd?:/</code>, <code>pfs?:/</code>, <code>ata?:/</code>, <code>apa?:/</code>) launches via the same<br />
+  BRAM embedded-loader contract as POPSTARTER-on-HDD — the V2 BOOT.ELF mimicry —<br />
+  rather than the direct path that black-screened.</li>
+</ul>
+<h3>How it is implemented</h3>
+<ul>
+<li><strong>Route selection in Lua by where DKWDRV lives AND whether POPSLoader booted<br />
+  from HDD.</strong> <code>OpenDKWDRV</code> (<code>bin/POPSLDR/ui.lua:1370</code>) resolves the configured<br />
+  path, then routes in three cases (<code>ui.lua:1453-1546</code>):<br />
+  (1) MC / non-HDD DKWDRV from an HDD-booted launcher (<code>hdd_loaded and not
+  is_hdd_path</code>) → cold prep + <code>System.loadELF(elf_path, 0, elf_path)</code><br />
+  (<code>ui.lua:1479-1487</code>);<br />
+  (2) HDD-resident DKWDRV (<code>is_hdd_path</code>, any boot source) → cold prep +<br />
+<code>System.loadELFWithPartition(pfs:/REL, 1, hdd0:PART:, argv0)</code><br />
+  (<code>ui.lua:1488-1532</code>), i.e. reboot_iop=1 via the partition-aware<br />
+<code>ExecuteHddBackedViaEmbeddedLoader</code> route shared with POPSTARTER-on-HDD (NOT a<br />
+  plain <code>loadELF</code> with reboot_iop=0);<br />
+  (3) MC / non-HDD DKWDRV, non-HDD boot → <code>System.loadELF(elf_path, 1, elf_path)</code><br />
+  (<code>ui.lua:1539-1545</code>), the confirmed-working MC reboot route.<br />
+  The per-case route rationale is documented inline at <code>ui.lua:1452-1477</code>.</li>
+<li><strong>HDD DKWDRV now uses the SAME partition-aware C path as POPSTARTER-on-HDD</strong>,<br />
+  not the <code>is_dkwdrv_elf_path</code> special-case. <code>OpenDKWDRV</code> Case (2) calls<br />
+<code>System.loadELFWithPartition(exec_path_norm, 1, partition_context, elf_path)</code><br />
+  (<code>bin/POPSLDR/ui.lua:1532</code>) with a non-empty <code>hdd0:PART:</code> context →<br />
+<code>lua_loadELFWithPartition</code> (<code>src/luasystem.cpp:1020</code>, registered at <code>:1351</code>) →<br />
+<code>LoadELFFromFileExecPS2RebootIOPWithPartition</code> (<code>src/elf_loader/src/elf.c:618</code>).<br />
+  The HDD guard at <code>elf.c:645-648</code> (non-empty partition + <code>is_hdd_backed_exec_path</code>)<br />
+  early-returns <code>ExecuteHddBackedViaEmbeddedLoader</code> (<code>elf.c:336</code>), and the BRAM<br />
+  child loader takes the <code>is_hdd_partition_context</code> branch<br />
+  (<code>src/elf_loader/src/loader/src/loader.c:381-403</code>). The <code>is_dkwdrv_elf_path</code><br />
+  special-case in <code>LoadELFFromFileWithPartition</code> (<code>elf.c:516-519</code>, contract comment<br />
+<code>elf.c:505-515</code>) is RETAINED but is no longer on the live HDD route — it only<br />
+  fires via the <code>System.loadELF</code> path. See the in-source note at <code>elf.c:146-150</code>.</li>
+<li><strong>MC DKWDRV</strong> (<code>reboot_iop = 1</code>) → <code>lua_loadELF</code> with one extra arg →<br />
+<code>LoadELFFromFileExecPS2RebootIOP</code> → the reboot variant<br />
+  (<code>LoadELFFromFileExecPS2RebootIOPWithPartition</code>, <code>elf.c:618</code>). Its non-HDD tail<br />
+  resets the IOP, reloads <code>rom0:SIO2MAN/MCMAN/MCSERV</code>, and synthesizes<br />
+<code>argv[0] = resolved_path</code> for DKWDRV before <code>ExecPS2</code>:<br />
+<code>src/elf_loader/src/elf.c:686-711</code> (module reload at <code>elf.c:696-698</code>, DKWDRV<br />
+  argv0 synthesis at <code>elf.c:705-711</code>).</li>
+</ul>
+<h3>What breaks it</h3>
+<ul>
+<li>Trying only the Lua half for HDD DKWDRV (<code>reboot_iop = 0</code>) without the C-side<br />
+  embedded-loader route — PR #452 (V4) did exactly this, fell through to direct<br />
+<code>LoadExecPS2</code>, and black-screened (<code>elf.c:509-514</code> comment;<br />
+<code>QA_REGRESSION_MATRIX.md:163</code>). Both halves are required.</li>
+<li>Removing the DKWDRV special-case at <code>elf.c:516-519</code>.</li>
+<li>Changing <code>is_dkwdrv_elf_path</code> (<code>elf.c:119-144</code>) so a real <code>DKWDRV.ELF</code> path no<br />
+  longer matches, which silently drops both the HDD route and the MC argv0<br />
+  synthesis.</li>
+<li>Changing the HDD-path → <code>reboot_iop = 1</code> + <code>loadELFWithPartition</code> selection<br />
+  (Case 2) in <code>OpenDKWDRV</code> (<code>ui.lua:1488-1532</code>).</li>
+</ul>
+<h3>How to test on hardware</h3>
+<ul>
+<li>MC DKWDRV: configure <code>DKWDRV_PATH</code> to <code>mc?:/PS1_DKWDRV/DKWDRV.ELF</code>, launch the<br />
+  Disc option. Expected: DKWDRV runs (baseline). Record per<br />
+<code>QA_REGRESSION_MATRIX.md:62</code>.</li>
+<li>HDD DKWDRV: set <code>DKWDRV_PATH</code> to an HDD path (e.g.<br />
+<code>hdd0:/__common:pfs1:/APPS/PS1_DKWDRV/DKWDRV.ELF</code>), launch the Disc option.<br />
+  Expected: DKWDRV runs. RESOLVED/PASS — Nuno hardware-confirmed 2026-06-04/06-06<br />
+  (PRs #486/#487). Re-run after any change to the OpenDKWDRV HDD-path route, the<br />
+  partition-context builders, or the elf.c is_dkwdrv_elf_path special-case, and<br />
+  record the result in <code>QA_REGRESSION_MATRIX.md</code>.</li>
+</ul>
+<hr />
+<h2>Cross-cutting invariants (apply to all four contracts)</h2>
+<ul>
+<li><strong><code>EmbeddedLoaderMetadata</code> is duplicated and must stay byte-identical.</strong> Writer:<br />
+<code>src/elf_loader/src/elf.c:159-170</code>. Reader: <code>src/elf_loader/src/loader/src/loader.c:144-155</code>.<br />
+  Same magic (<code>0x504F504C</code>), version (<code>1</code>), address (<code>0x00083C00</code>), and field<br />
+  layout (<code>partition_context[128]</code>, <code>load_path[256]</code>). A mismatch → <code>-3302</code> from<br />
+<code>read_embedded_loader_metadata</code> (<code>loader.c:169</code>) → RED background in <code>main</code><br />
+  (<code>loader.c:300-301</code>).</li>
+<li><strong>The keep-PFS mask is 4-bit and single-shot.</strong> <code>SetExecKeepPfsMask</code> masks<br />
+<code>&amp; 0x0F</code> (<code>elf.c:35-37</code>); only slots 0-3 are protected<br />
+  (<code>unmount_pfs_slots_for_exec</code>, <code>elf.c:97-107</code>). The boot partition is hard-mounted<br />
+  to <code>pfs1:</code> and "NEVER USE IT FOR ANYTHING ELSE" (<code>etc/boot.lua:45-48</code>), so slot 1<br />
+  must be kept across BOOT.ELF/exit or <code>SifIopReset</code> hangs (the U-10 mode). The<br />
+  bindings call <code>ClearExecKeepPfsMask()</code> only <em>after</em> the launch call returns<br />
+  (<code>src/luasystem.cpp:998,1010,1063,1081,1086</code>) — and a successful <code>ExecPS2</code> never returns,<br />
+  so the mask is cleared only on failure.</li>
+<li><strong>A launch that returns is a failure.</strong> <code>ExecuteViaEmbeddedLoader</code> returns<br />
+<code>(ret != 0) ? ret : -3600</code> (<code>elf.c:478</code>); the child returns <code>-3500</code> /<br />
+<code>-3200+ret</code> sentinels (<code>loader.c:378,402,427 (-3500); 432 (-3200+ret); 434 (-3201)</code>). These negative codes<br />
+  surface in the <code>BlockLaunchFailure</code> diagnostic screen. Any non-hang return from<br />
+  a launch is fatal, not success.</li>
+<li><strong><code>PrepareForColdExternalELFLaunch</code> forces the keep mask to 0</strong> and unmounts all<br />
+  pfs slots (<code>system.lua:1150-1160</code>, invoked from <code>LaunchEngine</code> when<br />
+<code>context.cold_external_launch == true</code>, <code>system.lua:5511</code>). Use it only for<br />
+  a no-reset launch that does <strong>not</strong> need any <code>pfs1:</code> mount to survive into the<br />
+  target. This is exactly the HDD-boot BOOT.ELF case post-PR-#479: BOOT.ELF takes<br />
+  the <code>reboot_iop = 0</code> embedded-loader route, so unmounting the held boot <code>pfs1:</code><br />
+  is what makes the no-reset handoff safe (see Contract U-10). Conversely, a launch<br />
+  that needs <code>pfs1:</code> to survive (an HDD game / HDD POPSTARTER) must <strong>not</strong> go<br />
+  through the cold prep — use the keep-mask route instead.</li>
+</ul>
+<h2>Settings-path mini-contract — <code>EnsureBootPartitionWritable</code> (HDD RW take-over)</h2>
+<p><code>PLDR.HDD.EnsureBootPartitionWritable</code> is the boot pfs-slot "take over the mount"<br />
+routine: it explicitly unmounts the launcher's own boot partition and remounts the<br />
+<strong>same partition read-write at the same pfs slot</strong> (the OPL "own your mount"<br />
+pattern). It is now <strong>load-bearing for HDD-resident settings save and for HDD<br />
+in-app <code>.hide</code></strong> (L3 toggle) — on an HDD install there is no<br />
+<code>mc0:</code> fallback, so this RW remount is the only path that lets the <code>.pldrs</code><br />
+sidecar and <code>.hide</code> markers be written on-HDD. provato hardware-confirmed the HDD<br />
+is RW-writable via this take-over.</p>
+<p>This is a <strong>settings/persistence</strong> path, not a launch / ELF-handoff path, so it is<br />
+not one of the four launch contracts above — but mount/launch changes must not<br />
+break it: do not change which pfs slot the boot partition owns, do not leave the<br />
+boot partition mounted read-only when settings need to persist, and do not unmount<br />
+it out from under the settings write. Two adjacent invariants protect it:</p>
+<ul>
+<li><strong>The HDD game scan must never borrow the live boot slot (Proposal A).</strong> The<br />
+  boot/settings partition is mounted on <code>GetBootHddMountSlot()</code> (<code>pfs1:</code>, slot 1).<br />
+  The game-partition scan's slot-candidate builder drops that slot from its<br />
+  ordered list and substitutes <code>HDD_SLOT_COMMON</code> as the off-boot fallback when<br />
+  the launcher booted from HDD; on a non-HDD boot <code>GetBootHddMountSlot()</code> is <code>nil</code><br />
+  and the <strong>full historical slot list is returned unchanged</strong> so the scan still<br />
+  fires (<code>bin/POPSLDR/system.lua:768-786</code>, rationale <code>:757-768</code>). Mounting a game<br />
+  partition onto the occupied boot slot both fails at the C layer and collaterally<br />
+  unmounts the boot partition (stranding the settings cwd). Do NOT re-add the boot<br />
+  slot to the candidate list, and do NOT gate the scan <em>firing</em> on boot source —<br />
+  that was the reverted <code>bec5e90</code> mistake (called out in the same comment).</li>
+<li><strong><code>EnsureBootPartitionWritable</code> liveness-validates its own RW flag.</strong> It clears<br />
+  / re-takes the mount when <code>PLDR.HDD.BOOT_PARTITION_RW == true</code> but the cwd no<br />
+  longer exists (a scan having since unmounted slot 1), via <code>doesFolderExist</code> on<br />
+  the save path (<code>bin/POPSLDR/system.lua:2159-2170</code>). A stale <code>true</code> flag would<br />
+  otherwise skip the re-take and the save would fail "...may be read-only" after a<br />
+  scan. Do not remove this liveness check or the RW take-over it guards.</li>
+</ul>
+<p>Cross-reference: <code>STATE.md</code> &gt; "Settings (single-device parity)", "Behavioral<br />
+Invariants" (#2, #10), and the <code>EnsureBootPartitionWritable</code> bullet under<br />
+<code>STATE.md</code> &gt; "Preservation Contracts".</p>
+<hr />
+<h2>UI &amp; render-pipeline contracts (input, embed, overscan, cover art)</h2>
+<p>These are not launch / ELF-handoff contracts, but they are load-bearing UI armor:<br />
+each one is the fix for a specific hardware input bug, a render glitch, or an<br />
+asset-coordination footgun, and each is the kind of thing a "tidy this up" pass<br />
+would plausibly undo. Most were added in the BETA-13 session (<code>d233069</code>,<br />
+<code>d128779</code>, <code>c8fce10</code>, <code>1ac15ad</code>/<code>6f0d742</code>/<code>73f0933</code>, <code>56a5ad5</code>). The canonical<br />
+status / known-issues home is <code>STATE.md</code>; this section is the code-armor detail.</p>
+<h3>Timing — frame-count nav, never the wall clock (<code>Timer.getTime()</code> is microseconds)</h3>
+<p><strong>Root-cause fact:</strong> <code>Timer.getTime()</code> returns <strong>raw <code>clock()</code> ticks</strong>, and on the<br />
+PS2 ee toolchain <code>CLOCKS_PER_SEC == 1e6</code>, so the value is <strong>MICROSECONDS</strong>, not<br />
+milliseconds (<code>src/luaTimer.cpp:33-46</code> <code>lua_time</code>, <code>clock() - src-&gt;tick</code>;<br />
+registered as <code>getTime</code> at <code>luaTimer.cpp:126</code>). The UI historically treated it as<br />
+ms, so every <code>_ms</code>-named comparison cleared its gate every frame (1000x too fast).</p>
+<p><strong>The contract:</strong> menu navigation auto-repeat is <strong>frame-counted</strong>, the canonical<br />
+Enceladus idiom (the sibling launchers OSDMenu-Configurator and RETROLauncher<br />
+both frame-count and never read the wall clock for nav). In <code>UI.Pad.Listen</code>'s<br />
+<code>resolve_nav</code> (<code>bin/POPSLDR/ui.lua:4580-4610</code>): <code>nav_fps = (UI.SCR.Y &gt;= 512) and
+50 or 60</code>; <code>NAV_DELAY_FRAMES = ceil(nav_fps*0.6)</code>; <code>NAV_RATE_FRAMES =
+ceil(nav_fps*0.2)</code>; a per-direction <code>UI.Pad.NavHoldFrames</code> counter increments once<br />
+per (vblank-paced) frame (<code>ui.lua:4598-4600</code>, table init <code>ui.lua:4430</code>). The press<br />
+edge fires immediately; <strong>only UP/DOWN repeat</strong> (after ~0.6s then ~0.2s ≈ 5/s),<br />
+LEFT/RIGHT are edge-only so a held stick never page-jumps or spins the carousel<br />
+(<code>ui.lua:4607-4610</code>). The description right-stick scroll is frame-counted the same<br />
+way (<code>UI.GameList.DescScrollFrames</code>, <code>ui.lua:2674-2698</code>; the "Description scroll<br />
+speed" Fast/Med/Slow setting is in SECONDS — slow 0.9 / med 0.3 / fast 0.15 —<br />
+converted to a per-frame step count).</p>
+<p><strong>What breaks it:</strong> reintroducing any wall-clock <code>Timer.getTime()</code> comparison<br />
+against an <code>_ms</code>-named constant for nav/scroll cadence — it will fly at ~60x<br />
+because the source is µs (the exact <code>adaa8ee → d128779</code> bug: "one click = 5 lines",<br />
+nuno6573 / LVD14 #504). Frame-count instead, or use <code>os.clock()</code> (stock Lua,<br />
+returns SECONDS — the only pre-converted Lua time source, currently unused).<br />
+<strong>Still on the µs-as-ms footing (parked, masked by a per-frame clamp, NOT a<br />
+license to copy the pattern):</strong> the <code>MIN_ACTION_MS</code> action debounce<br />
+(<code>emit_action</code>, <code>ui.lua:4547</code>) and the transition/carousel timers — a future<br />
+<code>os.clock()</code> sweep is the intended fix, do not extend the µs-as-ms idiom.</p>
+<h3>Input — fold the analog stick into the d-pad ONLY in real analog mode</h3>
+<p><strong>The contract:</strong> the left analog stick is folded into the d-pad direction bits in<br />
+<code>UI.Pad.Listen</code> <strong>only when the pad is genuinely in analog/DualShock mode</strong>, gated<br />
+on <code>Pads.getMode()</code> returning <code>PAD_ANALOG</code>/<code>PAD_DUALSHOCK</code>, with a per-axis<br />
+hysteresis latch (<code>bin/POPSLDR/ui.lua:4470-4511</code>; assert at <code>|v| &gt; 64</code>, release at<br />
+<code>|v| &lt; 40</code>, lines 4479, 4483-4499). A digital-mode pad returns stale/zero analog<br />
+bytes that read as a phantom <code>-127</code> → without the gate that injected a phantom<br />
+<code>PAD_UP|PAD_LEFT</code> every frame and broke up/down nav (Nuno6573 #BETA-13). Mirrors<br />
+OPL <code>pad.c:201</code> (<code>(pad-&gt;buttons.mode &gt;&gt; 4) == 0x07</code>).</p>
+<p><strong><code>Pads.getMode()</code> is the LIVE mode — do NOT "fix" it by swapping to<br />
+<code>Pads.getType()</code>.</strong> <code>Pads.getMode()</code> → <code>lua_getmode</code> calls <code>padInfoMode(...,
+PAD_MODECURID, 0)</code> (<code>src/luacontrols.cpp:70-80</code>, registered <code>getMode</code> at<br />
+<code>luacontrols.cpp:278</code>), which returns the <strong>live negotiated mode</strong>. The<br />
+pre-existing <code>Pads.getType()</code> → <code>lua_gettype</code> calls <code>padInfoMode(...,
+PAD_MODETABLE, 0)</code> (<code>luacontrols.cpp:9-20</code>, registered <code>getType</code> at<br />
+<code>luacontrols.cpp:277</code>), a <strong>capability-table entry</strong> — wrong for this gate and<br />
+unusable as the live mode. The in-source note at <code>luacontrols.cpp:63-69</code> records<br />
+exactly this; a "consolidate the two pad-mode getters" cleanup would silently<br />
+reintroduce the phantom-direction bug. The <code>PAD_ANALOG</code>/<code>PAD_DUALSHOCK</code>/<br />
+<code>PAD_DIGITAL</code> Lua globals (the high-nibble mode IDs 0x5 / 0x7 / 0x4) are exported<br />
+from <code>luacontrols.cpp:339-346</code>. <code>lua_getleft</code>/<code>lua_getright</code> are also hardened to<br />
+zero-init + neutral-default (<code>luacontrols.cpp:99-101</code>) and gate on <code>padRead</code>'s<br />
+return, but a <em>successful</em> read on a digital pad still yields a phantom <code>-127</code>, so<br />
+the analog-mode gate in <code>ui.lua</code> remains mandatory (note at <code>luacontrols.cpp:91-98</code>).</p>
+<p><strong>What breaks it:</strong> removing the <code>Pads.getMode()</code> analog gate (or the<br />
+<code>else</code>-branch latch drop at <code>ui.lua:4506-4511</code> that clears <code>StickV</code>/<code>StickH</code> when<br />
+not analog), or swapping <code>getMode</code> → <code>getType</code>.</p>
+<h3>Render — overscan transform is the IDENTITY at permille 0</h3>
+<p><strong>The contract:</strong> the OPL-style CRT-inset overscan in <code>src/graphics.cpp</code> scales the<br />
+whole UI uniformly toward screen center through the <code>OVX()</code>/<code>OVY()</code> helpers<br />
+(<code>graphics.cpp:1165-1166</code>), wrapping <strong>all 14 <code>gsKit_prim_*</code> draw sites</strong> (the<br />
+prim wrappers <code>graphics.cpp:1175-1287</code> plus the text glyph quad <code>fntDrawQuad</code> at<br />
+<code>graphics.cpp:1349-1353</code>). The math is OPL <code>rmSetOverscan</code> exactly: <code>margin =
+W*permille/2000</code> per edge, <code>scale = 1 - permille/1000</code> (<code>graphics.cpp:1129-1162</code>).<br />
+<strong>At permille 0 the transform is the IDENTITY (<code>OVX(x) == x</code>), so the default<br />
+render is byte-for-byte unchanged</strong> (<code>graphics.cpp:1134</code>, <code>g_overscan</code> default 0<br />
+at <code>:1135</code>). <code>set_overscan</code> clamps to 0..200 permille (<code>graphics.cpp:1157-1158</code>).<br />
+Exposed to Lua as <code>Screen.setOverscan(permille)</code> / <code>Screen.getOverscan()</code><br />
+(<code>src/luaScreen.cpp:64-76</code>, registered <code>:162-163</code>). The Settings UI is the<br />
+"Overscan (CRT inset)" live-adjuster, ±5 step, clamped 0..100 in the UI with live<br />
+preview and discard-restores (<code>ui.lua:3632-3642</code>; default-restore on Reset<br />
+Defaults <code>ui.lua:3356-3358</code>); the C clamp (200) is wider than the UI clamp (100).</p>
+<p><strong>What breaks it:</strong> making the transform non-identity at permille 0 (any UI shift<br />
+for users who never enable overscan), bypassing <code>OVX</code>/<code>OVY</code> at a draw site (that<br />
+primitive won't inset), or changing the OPL margin/scale math. NOT yet<br />
+HW/CRT-eyeballed — keep as pending verification, not broken.</p>
+<h3>Render — cover-art placeholder layers share the frame's anchored rect</h3>
+<p><strong>The contract:</strong> the game-list cover-preview box draws a <strong>layered</strong> placeholder<br />
+from two embedded assets — <code>cover_default.png</code> (base) + <code>cover_missing.png</code><br />
+(overlay) — in <code>bin/POPSLDR/ui.lua:2572-2591</code>. Preview OFF (Square) → just<br />
+<code>cover_default.png</code>; preview ON but the game has no cover → <code>cover_default.png</code><br />
+with <code>cover_missing.png</code> overlaid; a LIVE cover uses its own right-anchored<br />
+<code>COVER_W</code> inset (<code>ui.lua:2573-2576</code>). <strong>The default, the missing overlay, and<br />
+<code>frame.png</code> all share the frame's aspect-corrected, right-anchored rect</strong><br />
+(<code>frame_x, draw_y, frame_w, frame_h</code>, computed at <code>ui.lua:2572</code>, drawn 2582-2590)<br />
+so all three register with the jewel-case window on <strong>both</strong> NTSC (Y=448) and PAL<br />
+(Y=512). The old "Cover disabled" / "missing" TEXT labels are GONE<br />
+(<code>ui.lua:2580, 2592</code>).</p>
+<p><strong><code>MISSING.png</code> no longer exists.</strong> It was removed (its BIN2S rule + EMBEDDED_RSC<br />
+entry, the <code>embed_assets.cpp</code> extern + both ASSET_ENTRYs, the <code>is_default_png_key</code><br />
+default→MISSING fallback, the <code>images.lua</code> registration, and the <code>IMG_FALLBACKS</code><br />
+table contents) for a ~62KB ELF saving. <code>is_default_png_key</code> is gone from the<br />
+source; <code>IMG_FALLBACKS</code> is now an empty table (<code>bin/POPSLDR/images.lua:46</code>); the<br />
+main-menu icon resolver <code>ResolveIcon</code> is now a plain <code>return IMG[key]</code> with no<br />
+MISSING fallback (<code>ui.lua:4096-4098</code>). Any reference to <code>MISSING.png</code> as the cover<br />
+placeholder is stale.</p>
+<p><strong>What breaks it:</strong> drawing the default/overlay/frame at different rects (they'd<br />
+de-register from the jewel-case window per video mode — the pre-existing #496<br />
+misalignment), or reintroducing a text placeholder. NOT yet HW-eyeballed on a<br />
+CRT — pending, not broken.</p>
+<h3>Embed mechanism — adding/removing an embedded asset is THREE coordinated places</h3>
+<p>Embedded assets are <strong>not</strong> auto-globbed; each one is wired in three explicit<br />
+places, and a partial edit silently breaks the build or the runtime lookup:</p>
+<ol>
+<li><strong><code>Makefile</code></strong> — a <code>BIN2S</code> rule that emits the <code>asset_&lt;name&gt;</code> symbol (<code>BIN2S</code><br />
+   is <code>$(PS2SDK)/bin/bin2c</code>, <code>Makefile:67</code>; rules e.g. <code>Makefile:179-182</code> for the<br />
+   covers) <strong>and</strong> the resulting <code>.o</code> listed in <code>EMBEDDED_RSC</code> (<code>Makefile:96-101</code>;<br />
+   optional assets go through <code>OPTIONAL_EMBEDDED_RSC</code>, <code>Makefile:72-74</code>).</li>
+<li><strong><code>src/embed_assets.cpp</code></strong> — the <code>extern</code> declarations (<code>embed_assets.cpp:60-63</code><br />
+   for the covers) <strong>and</strong> an <code>ASSET_ENTRY</code> in <strong>BOTH</strong> the bare-name table<br />
+   (<code>embed_assets.cpp:119-120</code>) <strong>and</strong> the <code>POPSLDR/IMG/</code>-prefixed table<br />
+   (<code>embed_assets.cpp:166-167</code>).</li>
+<li><strong><code>bin/POPSLDR/images.lua</code></strong> — an <code>IMG_REGISTRATIONS</code> row mapping an access key<br />
+   to the <strong>bare</strong> filename (<code>images.lua:11-37</code>; covers at <code>:35-36</code>). <code>IMG[key]</code><br />
+   resolves the bare filename through <code>System.getEmbeddedAsset</code><br />
+   (<code>images.lua:50-60</code>).</li>
+</ol>
+<p>Optional assets (e.g. <code>default.png</code>) are additionally <code>#ifdef HAVE_ASSET_DEFAULT_PNG</code><br />
+in <code>embed_assets.cpp</code> (<code>:116-118</code>, <code>:163-165</code>). <strong>What breaks it:</strong> wiring fewer<br />
+than all three places — a missing Makefile <code>.o</code> fails the link, a missing<br />
+<code>ASSET_ENTRY</code> (in either table) or <code>IMG_REGISTRATIONS</code> row makes <code>IMG[key]</code> return<br />
+<code>nil</code> at runtime with no build error.</p>
+<h2>Do not do</h2>
+<ul>
+<li>Do not add <code>SifExitCmd()</code> to the child generic/empty-context branch<br />
+  (<code>loader.c:404-427</code>, used by BOOT.ELF only; HDD DKWDRV takes the partition-context<br />
+  branch like D-10). D-10's own branch<br />
+  (<code>loader.c:381-403</code>) intentionally DOES call <code>SifExitCmd()</code> — but only after<br />
+  unmounting the pfs prefix; do not remove that umount.</li>
+<li>Do not add IOP-reset branches for BOOT.ELF or DKWDRV to the child loader<br />
+  (reverted in PR #460; <code>docs/archive/LAUNCH_HYGIENE.md:56-71</code>).</li>
+<li>Do not re-gate the pre-reset pfs unmount on <code>is_hdd_backed_exec_path</code><br />
+  (<code>elf.c:686</code>).</li>
+<li>Do not edit the <code>EmbeddedLoaderMetadata</code> struct in only one of the two files.</li>
+<li>Do not change the POPSTARTER selector <code>argv[0]</code> contract or let partition<br />
+  context leak into target argv (<code>src/luasystem.cpp:1033-1038</code>).</li>
+<li>Do not mark D-10, D-14, D-15, U-10, or HDD DKWDRV as hardware-PASS without an<br />
+  actual hardware result recorded in <code>QA_REGRESSION_MATRIX.md</code>.</li>
+<li>After ANY edit to <code>src/elf_loader/src/loader/src/loader.c</code>, regenerate and<br />
+  commit <code>src/elf_loader/loader.c</code> (<code>make clean elfloader all</code>); CI enforces a<br />
+  byte-parity check (<code>docs/archive/HDD_POPSTARTER_HANDOFF.md:110-114</code>).</li>
+</ul></main>
+</div>
+<footer>
+  <p><b>POPStarter Documentation Archive</b> — community-recovered from the Wayback Machine
+  (ShaolinAssassin's <code>popstarter-documentation-stuff</code> wiki) and krHACKen's r13 changelog,
+  cross-checked and merged across snapshots. Built for the POPSLoader project.</p>
+  <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
+  emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
+  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed.</p>
+</footer>
+<script src="../assets/app.js"></script>
+</body></html>
