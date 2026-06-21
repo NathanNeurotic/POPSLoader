@@ -4580,7 +4580,13 @@ UI = {
         -- bits above, so the stick uses this same path -- smooth item-by-item, no
         -- page-jump (oldman63 #501). Only UP/DOWN repeat; LEFT/RIGHT stay edge-only
         -- so holding never page-jumps or spins the carousel uncontrollably.
-        local NAV_REPEAT_DELAY_MS, NAV_REPEAT_RATE_MS = 600, 200
+        -- IMPORTANT: now == Timer.getTime() returns MICROSECONDS on PS2 (clock(),
+        -- CLOCKS_PER_SEC = 1e6), NOT milliseconds. These OPL-style delays must be
+        -- expressed in us. Treating 600/200 as ms compared them against a us 'now',
+        -- so both gates cleared on the very next frame and UP/DOWN auto-repeated
+        -- ~60x/sec -- "one click = 5 lines", up/down only (LEFT/RIGHT are edge-only),
+        -- on ANY device incl. keyboard (nuno6573 / LVD14 #504). 600ms then 200ms.
+        local NAV_REPEAT_DELAY_US, NAV_REPEAT_RATE_US = 600 * 1000, 200 * 1000
         local function resolve_nav(dir, is_down, repeatable)
           if not is_down then
             if UI.Pad.NavHeld[dir] == true then UI.Pad.NavNeutral[dir] = true end
@@ -4596,8 +4602,8 @@ UI = {
             return true
           end
           if repeatable and was_held
-             and (now - (UI.Pad.NavFirstMs[dir] or now)) >= NAV_REPEAT_DELAY_MS
-             and (now - (UI.Pad.NavLastMs[dir] or 0)) >= NAV_REPEAT_RATE_MS then
+             and (now - (UI.Pad.NavFirstMs[dir] or now)) >= NAV_REPEAT_DELAY_US
+             and (now - (UI.Pad.NavLastMs[dir] or 0)) >= NAV_REPEAT_RATE_US then
             UI.Pad.NavLastMs[dir] = now
             return true
           end
