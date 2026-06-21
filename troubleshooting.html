@@ -101,10 +101,6 @@
 <li><strong>You CANNOT fix HDD mode by copying USB/HDD drivers into <code>__common/POPS</code>.</strong> USB drivers renamed<br />
 <code>MODULE_#.IRX</code> don't help; <code>ATAD.IRX</code> is incompatible with the other drivers, and <code>HDDLOAD.IRX</code> is the MBR<br />
   KELF loader (the wrong module). <em>(krHACKen / sp193 — kills a persistent myth)</em></li>
-<li><strong>POPSTARTER ELFs launched from OPL's APPS page on internal HDD hang on a black screen</strong> (HDD activity light<br />
-  stuck on; requires a hard power-off) <strong>when OPL has BDM, SMB and HDD all set to AUTO</strong> — even though the same<br />
-  ELF/VCD launch fine from USB, SMB, and uLaunchELF. <strong>Fix: set BDM and SMB to Manual</strong> in OPL. Confirmed<br />
-  OPL-side device-detection bug, not POPStarter. <em>(Ripto — found &amp; solved, p15)</em></li>
 <li><strong><code>$HDTVFIX</code> forces 480i and breaks 240p on CRTs.</strong> Some installers (PSF Batchkit Manager) add it silently;<br />
   remove it to restore 240p. <em>(BloodRaynare)</em></li>
 <li><strong>The OPL "DB" fork (not stock OPL) corrupts TROJAN loading</strong> — use official OPL to launch PS2 games. <em>(HWNJ)</em></li>
