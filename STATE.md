@@ -1,4 +1,4 @@
-Last updated: 2026-06-18 (BETA-12 released; body content from the 2026-06 HDD-RW take-over / PAL-512 / BDMA-folder work + the `d4b04be` load-order boot fix + the `bdma_mode.txt` marker rename). Released line: **BETA-12** (2026-06-18; BETA-11 was 2026-06-15). Dev branch `BETA-12-PLAY` (tip moves per push; see `git log`).
+Last updated: 2026-06-21 (BETA-13 rolling candidate; body reflects the 2026-06-20/21 input/nav + cover-art + overscan + HDD-scan-slot session on top of the 2026-06 HDD-RW take-over / PAL-512 / BDMA-folder work). Released line: **BETA-12** (2026-06-18; BETA-11 was 2026-06-15). Active dev branch is now **`BETA-13-PLAY`** (created off `BETA-12-PLAY`; **`BETA-12-PLAY` is frozen/archival**); `rolling-release.yml` publishes from `BETA-13-PLAY`. BETA-13 is the in-progress rolling candidate — **not yet cut**. Tip moves per push; see `git log`.
 
 # STATE
 
@@ -11,8 +11,9 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 
 ### Boot and runtime
 - Boot/runtime uses embedded Lua scripts (`etc/boot.lua` → `system.lua` → `ui.lua`).
-- `bin/POPSLDR/IMG/default.png` is optional for GitHub Actions artifact builds; if absent, `IMG.default` falls back to the required embedded `MISSING.png` asset.
+- `bin/POPSLDR/IMG/default.png` is an **optional legacy cover override** (Makefile `OPTIONAL_EMBEDDED_RSC`, gated on `$(wildcard …/default.png)`): when absent from the checkout it is simply not embedded, and there is **no fallback** — `IMG_FALLBACKS` is empty (`images.lua`). The game-list cover box uses the now-required embedded `cover_default.png` (+ `cover_missing.png` overlay), not `default.png`, for its no-cover / preview-off states. **`MISSING.png` has been removed** (no longer embedded, registered, or referenced anywhere — see Cover art).
 - `_ps2sdk_memory_init()` in `src/main.cpp` performs an IOP reset before `main()` runs (`RESET_IOP=1` Makefile default); it also runs `SifExitRpc()`, fresh `SifInitRpc(0)`, and `fileXioExit()` first to detach any inherited RPC client from a parent that left `fileXio` loaded (e.g. wLaunchELF). Architecture/revert history: `docs/archive/LAUNCH_HYGIENE.md`.
+- **`Timer.getTime()` returns MICROSECONDS on PS2, not milliseconds.** It is the raw `clock() - tick` delta (`src/luatimer.cpp` `lua_time`); `CLOCKS_PER_SEC` is `1e6` on the EE toolchain. The canonical Enceladus idiom for any per-frame rate-limit (nav auto-repeat, description scroll) is therefore **frame-counting** (one counter increment per vblank-paced frame), not reading the wall clock. `os.clock()` (stock Lua, returns **seconds**) is the only pre-converted Lua time source and is currently unused. Some non-input timers (the `MIN_ACTION_MS` action debounce and the transition/carousel timers) still sit on the µs-as-ms footing but are masked by a per-frame max-step clamp; a future `os.clock()` sweep is the planned fix (see Known Open Work).
 
 ### Settings (single-device parity)
 - Settings persist at `PLDR.SETTINGS_PATH`, resolved at load time by `LoadSettingsNonFatal`: the **per-device sidecar** `APP_DIR_LOCAL/.pldrs` (the directory POPSLOADER.ELF lives in) is preferred for every device.
@@ -21,7 +22,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   - STATUS: implemented, boots on PCSX2; provato confirmed the HDD is **RW-writable on real hardware**; the full settings flow is still validating on hardware (not yet broadly hardware-confirmed).
 - `mc0:/POPSTARTER/.pldrs` remains only as a legacy fallback when no sidecar can be computed.
 - Settings edits are staged and committed on Settings/Profile confirm/leave.
-- Persisted settings — **18 keys** (`EncodeSettings`): `PROFILE`, `POPSTARTER_PATH`, `POPSTARTER_MODE`, `BDMA`, `DKWDRV_PATH`, `STRICT_HDD_PREEXEC_GATE`, `VIDEO_STANDARD`, `HIDE_TEXT`, `KEYBOARD_LAYOUT`, `BOOT_PAGE`, `MULTIDISC_COLLAPSE`, `GLOBAL_HIDE`, `POPSTARTER_MC_FOLDER`, `HIDDEN_DEVICES`, `SHOW_DETAILS`, `DETAILS_ALIGN`, `GAMELIST_CACHE`, `DESC_SCROLL_SPEED`.
+- Persisted settings — **20 keys** (`EncodeSettings`, `system.lua`): `PROFILE`, `POPSTARTER_PATH`, `POPSTARTER_MODE`, `BDMA`, `DKWDRV_PATH`, `STRICT_HDD_PREEXEC_GATE`, `VIDEO_STANDARD`, `HIDE_TEXT`, `KEYBOARD_LAYOUT`, `BOOT_PAGE`, `MULTIDISC_COLLAPSE`, `GLOBAL_HIDE`, `POPSTARTER_MC_FOLDER`, `HIDDEN_DEVICES`, `SHOW_DETAILS`, `DETAILS_ALIGN`, `GAMELIST_CACHE`, `BOOT_SOUND`, `OVERSCAN`, `DESC_SCROLL_SPEED`. (`BOOT_SOUND` and `OVERSCAN` are new this build.)
 
 ### Per-game hide layer
 - A `<name>.hide` sidecar next to the game's `.VCD` marks it hidden (read for free during the scan; tracked in `PLDR.HIDDEN`). **L3** toggles hide/show on the selected game. To unhide, set *Settings → Game List → Hidden games* to **Visible (manage)**, which shows hidden games dimmed so L3 can toggle them back (**Hidden** filters them out). **R3** is the in-list shortcut for that setting: on a device game list it flips `GLOBAL_HIDE` (persisted via `SaveSettingsAtomic`) and rebuilds the list in place (reusing the R1 refresh path) so the new filter applies immediately — revealing hidden games dimmed (then L3 unhides) or re-hiding them.
@@ -34,6 +35,17 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 
 ### Video standard
 - Video Standard: **Auto** (default — matches the console region) / NTSC / PAL. On PAL the UI now renders **natively at 640×512** so it fills the screen (no letterbox); NTSC is 640×448. The display-change confirm prompt **auto-reverts** if not confirmed (like OPL); hold START during boot to skip past a bad video mode; the boot screen is centered. STATUS: PAL hardware validation pending.
+
+### Input / navigation (`UI.Pad.Listen` in `ui.lua`)
+- **Nav auto-repeat is frame-counted, not wall-clock.** In `resolve_nav`: `nav_fps = (UI.SCR.Y >= 512) and 50 or 60`; `NAV_DELAY_FRAMES = ceil(nav_fps*0.6)` (~0.6 s); `NAV_RATE_FRAMES = ceil(nav_fps*0.2)` (~5/s). A per-direction `UI.Pad.NavHoldFrames` counter increments once per frame; a press fires immediately, held UP/DOWN repeat after the delay then at the rate, LEFT/RIGHT are edge-only. This replaced an earlier wall-clock scheme that read `Timer.getTime()` as ms (µs in reality) and flew (one click ≈ 5 lines). CONFIRMED on hardware (oldman63).
+- **Analog-stick → d-pad fold is gated on real analog mode + per-axis hysteresis.** The left stick is folded into the d-pad direction bits (`UI.Pad.StickV`/`StickH` latches) **only** when `Pads.getMode()` reports `PAD_ANALOG` or `PAD_DUALSHOCK`; the latch asserts at `|v| > 64`, releases at `< 40`, so a deadzone-parked stick can't dither. When not analog this frame the latches are cleared. The new C binding `Pads.getMode()` (`src/luacontrols.cpp` `lua_getmode`) returns the **live negotiated** mode via `padInfoMode(port, 0, PAD_MODECURID, 0)`; the pre-existing `Pads.getType()` (`lua_gettype`, `PAD_MODETABLE`) reads a capability-table entry and is **not** usable for this gate. Mirrors OPL `src/pad.c`. WHY: an ungated fold injected a phantom −127 on a digital pad and broke up/down nav. CONFIRMED on hardware (oldman63).
+- **Description right-stick scroll is frame-counted** (`UI.GameList.DescScrollFrames`): one step every `ceil(_secs * fps)` frames; the *Description scroll speed* setting now actually takes effect — slow **0.9 s** (default), medium **0.3 s**, fast **0.15 s** (it previously gated sub-frame µs and ignored the setting).
+
+### Boot sound
+- **Boot sound On/Off** setting (default **On**; `PLDR.BOOT_SOUND`, `system.lua`) gates the splash chime (`embed:boot.adp`, played in `ui.lua`'s `TryBootSound`). Plumbed through the full settings chain incl. `CommitSettingsChanges` (`next_boot_sound` → `next_state.boot_sound`) and persisted as the `BOOT_SOUND=` key. CONFIRMED saving + surviving reboot on hardware (oldman63).
+
+### Overscan (CRT inset)
+- OPL-style render-coordinate inset: `Screen.setOverscan(permille)` / `getOverscan()` (`src/luaScreen.cpp`) drive a C-core scale-toward-center transform (`OVX()`/`OVY()`, `set_overscan`/`get_overscan` in `src/graphics.cpp`) applied at the single `gsKit_prim_*` draw chokepoint; the math is identical to OPL `rmSetOverscan` and is the **identity at permille 0**, so it is inert by default. Exposed as the *Overscan (CRT inset)* live adjuster in Settings (±5 step, live preview, discard restores), persisted as `OVERSCAN=`. STATUS: not yet CRT/HW-eyeballed.
 
 ### Boot-context resolution
 - Single canonical resolver `ResolveBootContext()` in `system.lua` combines the C-side argv[0] classification hint (`main.cpp detectBootDeviceHintFromArgv0()`, via `System.getBootDeviceHint()`), Lua-side prefix matching (`mass`/`mmce`/`mx4sio`/`pfs`/`hdd`/`smb`/`host`/`usb`/`ata`/`apa`), and the mx4sio `mass:` fix (`classify_mass_boot` via BDM driver lookup + `.boot_mx4sio`/`.boot_usb` markers). `DetectBootDevice()`, `PLDR.GetBootContext()`, `PLDR.GetBootKind()`, `ComputeSettingsSidecarPath` all read this one resolver.
@@ -61,13 +73,19 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 ### Exit handoff
 - Exit modal exposes OSDSYS, Cancel, BOOT.ELF. BOOT.ELF lookup order: `mc0:/BOOT/BOOT.ELF`, `mc1:/BOOT/BOOT.ELF`.
 
-### Cover art
-- Sidecar PNG next to the selected `.VCD`, or `hdd0:__common/POPS/ART/<title>.png` for HDD titles.
+### Cover art (game-list preview box, `ui.lua`)
+- A live cover is a sidecar PNG next to the selected `.VCD`, or `hdd0:__common/POPS/ART/<title>.png` for HDD titles; it draws into its own `COVER_W` inset.
+- **Placeholder is a two-asset layer**, both embedded: `bin/POPSLDR/IMG/cover_default.png` (base) + `cover_missing.png` (overlay). Cover preview **disabled** (Square) → `cover_default.png` only (the old "Cover disabled" **text** label is gone). Preview **enabled** but the game has **no cover** → `cover_default.png` with `cover_missing.png` drawn on top. The default cover, the missing overlay, and `frame.png` all share the frame's aspect-corrected, right-anchored rect so they register with the jewel-case window on **both NTSC and PAL** (HW eyeball still pending).
+- **`MISSING.png` is removed entirely** (ELF 1802052 → 1739428, ~−62 KB): dropped from the Makefile (`BIN2S` rule + `EMBEDDED_RSC`), `src/embed_assets.cpp` (extern + both bare-name and `POPSLDR/IMG/`-prefixed `ASSET_ENTRY`s + the `default.png`→MISSING fallback), and `images.lua` (registration + the `IMG_FALLBACKS` default). It was also the (never-hit, nil-safe) `ResolveIcon` icon fallback, dropped too. Any reference to `MISSING.png` as the cover placeholder is stale.
+
+### Embedded-asset mechanism
+- Adding or removing an embedded asset is **3 explicit coordinated places** (it is NOT auto-glob): (a) **Makefile** — a `BIN2S` rule plus the `.o` in `EMBEDDED_RSC` (or `OPTIONAL_EMBEDDED_RSC` for an optional one like `default.png`); (b) **`src/embed_assets.cpp`** — an `extern` plus an `ASSET_ENTRY` in **both** lookup tables (the bare-name table and the `POPSLDR/IMG/`-prefixed table); (c) **`bin/POPSLDR/images.lua`** `IMG_REGISTRATIONS` (looked up by the **bare** filename). `cover_default.png` / `cover_missing.png` were added this way; `MISSING.png` was removed from all three.
 
 ### CI / release
 - Release packaging policy is `PS1_POPSLOADER/*` + `POPS/PATCH_5.BIN` with strict manifest validation; build is gated on embedded build-identity markers (`Exec path:`, `PrepareForColdExternalELFLaunch`, `BOOT.ELF launch failed`) in `bin/enceladus.elf`; embedded-loader blob staleness check; CI image pinned to `ps2dev/ps2dev:v2.0.0`.
 - **The embedded-Lua syntax gate is now LIVE** (`luac5.4 -p` on `bin/POPSLDR/*.lua` + `etc/boot.lua`). It used to silently **skip** because the ps2dev image shipped no `luac`; the workflows now `apk add lua5.4` and hard-fail on a syntax error. It catches **SYNTAX only** — runtime nil-global / type / **load-order** errors stay invisible to CI (the `d4b04be` boot brick was exactly such a case).
-- `rolling-release.yml` publishes both the bare `POPSLOADER.ELF` and the zip from one build to the floating `rolling-release` GitHub Release on every push to `BETA-12-PLAY` and on PR events.
+- `rolling-release.yml` publishes both the bare `POPSLOADER.ELF` and the zip from one build to the floating `rolling-release` GitHub Release on every push to **`BETA-13-PLAY`** and on PR events.
+- **`POPSTARTER.ELF` ships in both zips** (the redistributable POPStarter launcher; the POPS engine binaries are NOT redistributable). `rolling-release.yml` puts `POPSTARTER.ELF` at the zip **root** (next to `POPSLOADER.ELF`) and in `POPS/`; the formal `compilation.yml` install zip ships it in `PS1_POPSLOADER/` (next to `POPSLOADER.ELF`) and `POPS/`. `POPS/PATCH_5.BIN` and a `POPSTARTER/` SMB pack folder ship at the rolling-zip root.
 
 ## Behavioral Invariants (must preserve)
 *(absorbed from the former TRUTHSHEET.md — invariants that changes must preserve unless an explicit migration is planned)*
@@ -82,6 +100,9 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 8. **Release package manifest is strict** — CI enforces the exact ZIP set and rejects legacy `POPS/*.tm2` entries.
 9. **BDMA ⟺ POPSTARTER-MC-folder interlock** — BDMA can't be enabled while the POPSTARTER MC folder is off; the folder can't be disabled while BDMA is on.
 10. **HDD `.hide` is in-app on every device** — the `<name>.hide` per-game marker is written/removed in-app via the **L3** toggle on all device pages including HDD via the RW mount take-over.
+11. **Per-frame UI timing is frame-counted, not wall-clock** — `Timer.getTime()` is **microseconds** on PS2, so nav auto-repeat and description scroll count frames (the canonical Enceladus idiom), not the clock. New time-based UI rate-limits must frame-count (or use `os.clock()` seconds), never treat `getTime()` as ms.
+12. **The analog-stick → d-pad fold must stay gated on `Pads.getMode()` being analog/DualShock** — an ungated fold injects a phantom −127 on a digital pad and breaks up/down nav. `Pads.getMode()` (`PAD_MODECURID`, live mode) is the correct source; `Pads.getType()` (`PAD_MODETABLE`) is not.
+13. **Embedded assets are wired in 3 explicit coordinated places** — Makefile (`BIN2S` + `EMBEDDED_RSC`), `src/embed_assets.cpp` (extern + `ASSET_ENTRY` in **both** lookup tables), `bin/POPSLDR/images.lua` (`IMG_REGISTRATIONS`, bare-filename key). Adding/removing an asset that touches fewer than all three is a build or runtime break.
 
 **Intentionally not implemented** (must keep reporting that status until feature work lands): `HDD (exFAT)`, `SMB (v1)`, `ILINK`.
 
@@ -115,6 +136,12 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 | **U-06** PAL/NTSC asset proportions | Targets the new PAL-512 render | — | Verify the full-screen fill + auto-revert confirm on PAL hardware. |
 | **D-12** startup backend auto-init | PASS | 2026-03-28 | |
 | **D-16** first-entry USB backend discovery | PASS | after 2026-03-27 | |
+| **Up/down + analog-stick nav** (frame-counted repeat; analog fold gated) | **PASS** | 2026-06-20 (oldman63) | Lands on individual items; continuous scroll fine. |
+| **Boot sound On/Off save** | **PASS** | 2026-06-20 (oldman63) | Saves and survives reboot. |
+| **Overall latest rolling** | **PASS** ("everything working fantastically") | 2026-06-21 (Nuno6573) | General confirmation, not item-by-item. |
+| **Overscan (CRT inset)** | Implemented / boots on PCSX2 | 2026-06-20 | Not yet CRT/HW-eyeballed. |
+| **Cover-art layering** (`cover_default` + `cover_missing` overlay) | Implemented / boots on PCSX2 | 2026-06-20 | Eyeball that both register inside the jewel-case frame on NTSC + PAL. |
+| **HDD scan steered off the boot pfs slot** (Proposal A) | Implemented / boots on PCSX2 | 2026-06-20 | `b159a43`. Wants a deliberate HW test that game partitions still mount/list off the boot slot. |
 
 ## Known Issues *(canonical — the single list; README / AGENTS / ROLLING_NOTES point here)*
 
@@ -123,12 +150,20 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 
 **In testing on hardware** (implemented + boots on PCSX2; **not yet broadly hardware-confirmed** — these are what the current rolling build asks testers to verify):
 - HDD in-app `.hide` (L3 toggle; unhide via *Settings → Game List → Hidden games*).
-- **R3 reveal/hide** on a device game list — toggles + persists `GLOBAL_HIDE` and rebuilds the list in place (reuses the R1 refresh path). NEW this build; not yet hardware-tested.
+- **R3 reveal/hide** on a device game list — toggles + persists `GLOBAL_HIDE` and rebuilds the list in place (reuses the R1 refresh path).
 - HDD-resident settings save (boot-partition RW take-over; provato confirmed the HDD is RW-writable).
 - PAL native 640×512 full-screen render + auto-revert display-change confirm.
 - POPSTARTER Memory Card Folder toggle + the BDMA interlock.
+- **Overscan (CRT inset)** — eyeball the inset on a real CRT.
+- **Cover-art layering** (`cover_default` + `cover_missing` overlay) — eyeball that both register inside the jewel-case frame on NTSC + PAL.
+- **HDD scan steered off the boot pfs slot** (Proposal A, `b159a43`) — deliberate HW test that game partitions still mount/list off the boot slot.
 
 **Recently resolved:**
+- **Nav auto-repeat flew / all desc-scroll speeds felt the same** — `Timer.getTime()` is µs not ms, so wall-clock gates were sub-frame; nav auto-repeat and description scroll are now **frame-counted** and the speed setting works. Up/down + analog-stick nav and boot-sound save are **HW-confirmed** (oldman63, 2026-06-20).
+- **Phantom analog input broke up/down nav** — the analog-stick → d-pad fold is now gated on `Pads.getMode()` being analog/DualShock with per-axis hysteresis. HW-confirmed (oldman63).
+- **HDD settings save failed after a game scan** ("...may be read-only") — a game scan borrowed the boot pfs slot and a never-cleared RW flag stranded the save path; **fixed `8d1e67a`** (liveness-validate the boot RW mount via `doesFolderExist` on the save path) and **`b159a43`** (Proposal A: steer the scan to non-boot slots). The latter still wants a deliberate HW test.
+- **`MISSING.png` cover placeholder replaced** by the `cover_default` + `cover_missing` layer; `MISSING.png` removed (~−62 KB ELF).
+- **Codex BETA-13 audit** — 6 findings, all verified real and **fixed (`ec81de3`)**: `PromoteTmpToDest` now requires its backup before truncating dest; BMP pixel-size/stride validation; PNG dimension cap; stale `mc0:` probe cleanup; two `System.writeFile` full-byte-count checks; R3 no success-toast on a failed save. Report: `docs/AUDIT_CODEX_2026-06-20.md`.
 - **"Failed to load HDD" on the second boot** (cache/`loadfile` crash) — fixed; the HDD list loads every boot, and a real error string now surfaces if it ever fails.
 - **Load-order boot brick** — `PLDR.HDD` methods were defined before `PLDR.HDD` existed, which made the recent HDD-feature rolling builds un-bootable; **fixed `d4b04be` (2026-06-17)**. (Invisible to `luac -p`/CI; only fatal at runtime.)
 - **U-10 BOOT.ELF-from-HDD-boot** — PR #479. **DKWDRV from a custom HDD path** — PRs #486/#487. **Class-A HOSDmenu / some-wLE start failures** — maintainer-confirmed 2026-06-15. **MX4SIO-rooted settings save** — PR #477.
@@ -139,12 +174,13 @@ Investigation artifacts archived under `docs/archive/`: `U10_INVESTIGATION.md`, 
 1. **Settings UI redesign (Berion mockup)** — gated on the outstanding hardware verification (D-10/D-14/U-10 plus the new HDD/PAL features) settling, and on the mockup PNGs landing.
 2. **"Failed to load HDD" from a non-HDD / via-launcher boot** — the remaining open launch-adjacent issue. Instrument + isolate.
 3. **Layer C full lazy IRX loading** — only the device-hint precursor shipped; aggressive deferrals (`mmceman` unless MMCE, `ds34bt` unless BT, `usbd` unless USB) queued for a separate PR. High reward for boot time; high risk to input availability.
-4. **`HDD (exFAT)`, `SMB (v1)`, `ILINK`** — intentionally unimplemented.
+4. **`os.clock()` sweep for the remaining µs-as-ms timers** — nav and description scroll are now frame-counted, but the `MIN_ACTION_MS` action debounce and the transition/carousel timers still read `Timer.getTime()` as ms (µs in reality), currently masked by a per-frame max-step clamp. Convert them to `os.clock()` seconds (or frame-counting) for unit-correct timing.
+5. **`HDD (exFAT)`, `SMB (v1)`, `ILINK`** — intentionally unimplemented.
 
 *(The old "`ps2hdd-osd.irx` → `ps2hdd.irx` driver swap probe" item is removed: HDD read-write was achieved instead via the `EnsureBootPartitionWritable` boot-partition remount take-over, and provato confirmed the HDD is RW-writable on hardware — the IRX swap is no longer the gating path.)*
 
 ## Verification Status
-- **BETA-12** released 2026-06-18 (BETA-11 2026-06-15). `BETA-12-PLAY` is the active dev branch; its tip moves per push (see `git log`) — code/build statements above are repository-verified around the current tip.
+- **BETA-12** is the public release (2026-06-18; BETA-11 2026-06-15). **`BETA-13-PLAY` is the active dev branch** and the rolling-publish source; **`BETA-12-PLAY` is frozen/archival**. BETA-13 is the in-progress rolling candidate (not yet cut). The branch tip moves per push (see `git log`) — code/build statements above are repository-verified around the current tip.
 - The 2026-06 HDD/PAL/BDMA features are repository-verified and **boot on PCSX2**; provato confirmed the **HDD is RW-writable on real hardware**; the full feature flows are **still validating on hardware** and are **not** broadly hardware-confirmed.
 - Hardware behavior is `Unknown (verify on hardware)` unless explicitly recorded above (or in `QA_REGRESSION_MATRIX.md`) with a date.
 - See `QA_REGRESSION_MATRIX.md` for the full experiment chronology and `DECISIONS.md` for the decision log.

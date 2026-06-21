@@ -6,7 +6,7 @@
 
 POPSLoader is a graphical PlayStation 2 homebrew launcher designed to easily browse and launch your PS1 games (using POPStarter) from various storage devices. It features a clean, responsive layout, cover art support, sound effects, an on-screen keyboard, and direct memory card exit shortcuts.
 
-The current public release is **BETA-12** (released 2026-06-18). Development continues on the `BETA-12-PLAY` branch; rolling test artifacts are published continuously (see [Development & Building](#development--building)).
+The current public release is **BETA-12** (released 2026-06-18). Development continues on the `BETA-13-PLAY` branch (the `BETA-12-PLAY` branch is now frozen/archival); rolling test artifacts are published continuously (see [Development & Building](#development--building)).
 
 ---
 
@@ -101,7 +101,7 @@ Navigate POPSLoader using a standard PS2 controller.
 | **D-pad Up / Down** | Scroll through the game list |
 | **D-pad Left / Right** | Page Up / Page Down (jump through large lists) |
 | **L1** | Jump to the top of the game list — press again to bounce to the bottom |
-| **Left Analog Stick (up / down)** | Fast page-jump through the game list — give it a firm push and hold to fly through large libraries a page at a time |
+| **Left Analog Stick (up / down)** | Navigate the game list item-by-item — the stick folds into the d-pad, so a held push scrolls smoothly with the same auto-repeat (only an analog/DualShock pad's stick is read; a digital pad is ignored). Push the stick **left / right** to page-jump like the d-pad. |
 | **R1** | Refresh / rescan the current device's game list, in place (e.g. after hot-plugging a drive or card). USB / MMCE / MX4SIO / HDD (PFS) re-scan live by default; if *Game list cache* is enabled in Settings they instead rebuild their saved per-device cache. |
 | **Cross (X)** | Confirm option / Launch selected game |
 | **Circle (O)** | Go back to the Main Menu / Cancel |
@@ -155,6 +155,8 @@ Press **Start** on the menu to open Settings; changes save when you confirm. Set
 - **Profile / POPSTARTER mode / POPSTARTER path** — which `POPSTARTER.ELF` to use (a per-device profile, or a custom path).
 - **DKWDRV Path** — path to `DKWDRV.ELF` used by the Disc option.
 - **Video Standard** — **Auto** (default — matches your console's region) / NTSC / PAL. On PAL the UI now renders **natively at 640×512** so it fills the whole screen with no letterbox (NTSC is 640×448). A display-mode change shows a confirm prompt that **auto-reverts** if you don't confirm, so a bad mode can't strand you; you can also hold **Start** during boot to skip past a bad video mode.
+- **Overscan (CRT inset)** — **Off** (default) up to a numeric inset, adjusted in steps of **5** (OPL-style render inset, same math as OPL's overscan). Pulls the whole UI slightly toward the center of the screen so nothing is lost in a CRT's overscan border. The change previews live as you adjust it; backing out of Settings without saving restores the previous value. *(Mainly useful on a real CRT; on a flat panel you'll usually leave it Off.)*
+- **Boot sound** — **On** (default) / Off. Plays the startup chime over the boot splash. Turn it **Off** for a silent boot. (Hardware-confirmed to save and survive a reboot.)
 - **BDMA Mode** — mass-storage backend mode: **FAT32** (`FAT32-USB (None)`) / **USBEXFAT** (`exFAT-USB`) / **MX4SIO** / **MMCE**. The installed mode is recorded in a `bdma_mode.txt` marker file in the POPSTARTER pack folder (older `.pldr_bdma_mode` markers are still read for compatibility).
 - **POPSTARTER Memory Card Folder** — toggles the `mc:/POPSTARTER` folder. Turning it **off deletes** `mc:/POPSTARTER` (with a confirm prompt). It is **interlocked with BDMA Mode**: you can't turn this folder off while BDMA Mode is on, and you can't enable BDMA Mode while this folder is off.
 - **Hide UI Text** — clears on-screen text for a clean cover-art view (also toggled with **Select**).
@@ -245,7 +247,7 @@ See [STATE.md](STATE.md) "Known Open Work" and [ROADMAP.md](ROADMAP.md) for the 
 
 ## Development & Building
 
-GitHub Actions is the canonical build path. The pinned CI image is `ps2dev/ps2dev:v2.0.0`. Every change must pass the CI workflow in `.github/workflows/compilation.yml` before merging; rolling release artifacts for testing are produced by `.github/workflows/rolling-release.yml` on push to `BETA-12-PLAY` and on pull request events. CI now runs a live `luac` syntax gate over the embedded Lua (`bin/POPSLDR/*.lua` + `etc/boot.lua`) and hard-fails on a syntax error — note this catches **syntax** only; runtime and load-order errors still only surface on real PS2 / PCSX2.
+GitHub Actions is the canonical build path. The pinned CI image is `ps2dev/ps2dev:v2.0.0`. Every change must pass the CI workflow in `.github/workflows/compilation.yml` before merging; rolling release artifacts for testing are produced by `.github/workflows/rolling-release.yml` on push to `BETA-13-PLAY` and on pull request events. CI now runs a live `luac` syntax gate over the embedded Lua (`bin/POPSLDR/*.lua` + `etc/boot.lua`) and hard-fails on a syntax error — note this catches **syntax** only; runtime and load-order errors still only surface on real PS2 / PCSX2.
 
 POPSLoader is an EE C/C++ application (`src/`) with the entire front-end UI and launch logic written as embedded Lua (`bin/POPSLDR/*.lua`, `etc/boot.lua`) and an embedded IOP-side child ELF loader (`src/elf_loader/`). The Lua scripts, PNG art, IRX modules, and the child loader are all baked directly into the EE ELF at build time via `bin2c`, so the on-card scripts are not read at runtime — building from source is required to change them.
 

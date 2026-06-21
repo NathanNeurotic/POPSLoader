@@ -1,6 +1,6 @@
 # AGENTS
 
-Last updated: 2026-06-18 (post-BETA-12 release)
+Last updated: 2026-06-21 (BETA-13-PLAY rolling cycle)
 
 Operational guidance and entry point for AI agents (cloud or interactive) working in this repository. This file is self-contained: it absorbs the former `AGENTS_START_HERE.md` orientation content. For current code/hardware status, behavioral invariants, preservation contracts, and the canonical known-issues list, defer to **`STATE.md`** rather than restating them here.
 
@@ -8,8 +8,8 @@ Operational guidance and entry point for AI agents (cloud or interactive) workin
 
 POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, with behavior primarily orchestrated by **embedded Lua** modules (`system.lua`, `ui.lua`, `images.lua`, `pops_profiles.lua`). The Lua is bin2c'd into the EE ELF at build time, so a *runtime* Lua error (nil global, type error, **load-order** error) is invisible to `luac -p` and to CI and only surfaces on real PS2 / PCSX2.
 
-- Released line: **BETA-12** (2026-06-18; BETA-11 was 2026-06-15).
-- Dev branch: **`BETA-12-PLAY`**.
+- Released line: **BETA-12** (2026-06-18; BETA-11 was 2026-06-15). BETA-13 is the in-progress rolling candidate, not yet cut.
+- Dev branch: **`BETA-13-PLAY`** (the active/rolling branch; `BETA-12-PLAY` is now **archival/frozen**). The rolling-release workflow publishes from `BETA-13-PLAY`.
 - Testers: maintainer + Nuno (primary), CosmicScale (secondary), plus **provato** and **nuno6573**. Agents cannot run hardware tests — claims of hardware verification must cite a recorded result in `QA_REGRESSION_MATRIX.md`.
 
 > **Historical note**: Earlier entry-point docs framed D-10 (HDD POPSTARTER + HDD game) as the single urgent unresolved objective. D-10 was resolved by the B2 PFS-unmount fix at commit `4ae6679` and is now a **preservation contract, not an open blocker** (see `STATE.md > Preservation Contracts`).
@@ -43,7 +43,7 @@ These are shared, volatile facts maintained in one place. **Do not restate or fo
 ## High-Risk Surfaces
 Changes in these files can break core behavior and require extra care:
 - `bin/POPSLDR/system.lua` (LaunchEngine, RunPOPStarterGame, ResolveBootContext, classify_mass_boot, AutoInitStartupBackends, EnsureMmceReadyOnce, and **`PLDR.HDD.EnsureBootPartitionWritable`** — the boot pfs-slot unmount→remount-RW "take over the mount" that is now load-bearing for HDD settings save and HDD in-app `.hide`; a launch-path or mount change must not break it. Note also the **load-order trap**: `PLDR.HDD` methods must be defined *after* `PLDR.HDD` exists — defining them early bricked recent HDD-feature rolling builds, fixed `d4b04be`.)
-- `bin/POPSLDR/ui.lua` (LaunchSelectedGame, LaunchBootElf, OpenDKWDRV)
+- `bin/POPSLDR/ui.lua` (LaunchSelectedGame, LaunchBootElf, OpenDKWDRV; also `UI.Pad.Listen`/`resolve_nav` — the frame-counted nav auto-repeat and the `Pads.getMode()`-gated analog-stick fold; do not reintroduce wall-clock timing or an ungated stick read — see Gotchas)
 - `src/main.cpp` (detectBootDeviceHintFromArgv0, parseLaunchArgs, eager IRX load order, conditional mmceman)
 - `src/luasystem.cpp` (lua_loadELF*, EnsureBDM*, EnsureMmceman, lua_mx4sio_init with mandatory EnsureUsbMass-first ordering, getMassMountDriver)
 - `src/luaplayer.cpp`
@@ -52,7 +52,7 @@ Changes in these files can break core behavior and require extra care:
 - `etc/boot.lua` (pfs1: boot mount normalization)
 - `Makefile`
 - `.github/workflows/compilation.yml`
-- `.github/workflows/rolling-release.yml` (publishes the bare ELF + zip from one build to the canonical `rolling-release` tag on push to `BETA-12-PLAY` and on PR events)
+- `.github/workflows/rolling-release.yml` (publishes the bare ELF + zip from one build to the canonical `rolling-release` tag on push to `BETA-13-PLAY` and on PR events)
 
 ## Change Discipline
 - Keep diffs minimal and localized. One objective per branch/PR when feasible.
@@ -69,8 +69,23 @@ Changes in these files can break core behavior and require extra care:
 ## Build / Test Reality
 - GitHub Actions is the canonical build path. The pinned CI image is `ps2dev/ps2dev:v2.0.0`.
 - **The embedded-Lua syntax gate is now LIVE** (`luac5.4 -p` on `bin/POPSLDR/*.lua` + `etc/boot.lua`; the workflows `apk add lua5.4` and hard-fail on a syntax error). It used to silently skip because the ps2dev image shipped no `luac`. It catches **SYNTAX only** — runtime nil-global / type / **load-order** errors stay invisible to CI (the `d4b04be` boot brick was exactly such a case, so HDD features still need a full hardware retest even when CI is green).
-- Rolling-release publishes the bare `POPSLOADER.ELF` and the zip from one build to the floating `rolling-release` GitHub Release; push-to-`BETA-12-PLAY` and PR events (including drafts) overwrite the same assets (last-write-wins).
+- Rolling-release publishes the bare `POPSLOADER.ELF` and the zip from one build to the floating `rolling-release` GitHub Release; push-to-`BETA-13-PLAY` and PR events (including drafts) overwrite the same assets (last-write-wins). `POPSTARTER.ELF` (the redistributable homebrew launcher — the POPS engine binaries are NOT redistributable) now ships in both the rolling zip and the formal install zip; do not strip it from a packaging step.
 - Hardware testing happens on real PS2 hardware via the maintainer and the testers. Agents cannot run hardware tests.
+
+## Gotchas / Footguns
+High-value traps that have actually burned agents in this repo. Verify the unit/binding from the toolchain or source, never from assumption.
+
+- **`Timer.getTime()` returns MICROSECONDS, not milliseconds.** `lua_time` (`src/luatimer.cpp:33`, registered `getTime`) returns raw `clock() - tick` ticks with *no* conversion, and `CLOCKS_PER_SEC == 1e6` on the EE toolchain (confirmed by `src/main.cpp:243`, which multiplies by 1000 then divides by `CLOCKS_PER_SEC` to get ms). Code that treats a `getTime()` delta as ms runs **1000x too fast**. The canonical Enceladus idiom is **frame-counting** for any per-frame timing (nav auto-repeat, scroll rate), not wall-clock reads — the UI nav repeat (`resolve_nav` / `NavHoldFrames` / `nav_fps`, `bin/POPSLDR/ui.lua:4580`) and the description right-stick scroll (`DescScrollFrames`, `ui.lua:2686`) are frame-counted. Stock-Lua `os.clock()` returns SECONDS (pre-converted) but is currently unused in the Lua. Some debounce/transition timers (e.g. `MIN_ACTION_MS`, `ui.lua:622`) are still on the µs-as-ms footing, masked by a per-frame clamp — if you touch them, switch to frames or `os.clock()`, do not assume ms.
+
+- **Embedding/removing an asset is THREE explicit, hand-coordinated places** (no auto-glob; missing any one fails the build or yields a blank image):
+  1. `Makefile` — add a `BIN2S` rule for the file **and** list its `.o` in `EMBEDDED_RSC` (`Makefile:96`).
+  2. `src/embed_assets.cpp` — add the `extern` symbol + size, and an `ASSET_ENTRY(...)` in **both** the bare-name and the `POPSLDR/IMG/`-prefixed sections of `g_embedded_assets[]` (`src/embed_assets.cpp:93`).
+  3. `bin/POPSLDR/images.lua` — add a row to `IMG_REGISTRATIONS` (`images.lua:11`); it looks the asset up by **bare filename**.
+  Removal is the same three places in reverse (the `MISSING.png` removal also had to drop a `default.png` fallback hook and `IMG_FALLBACKS` wiring — grep the whole tree for the bare name before declaring an asset gone).
+
+- **Pad mode: use `Pads.getMode()`, NOT `Pads.getType()`.** `Pads.getMode` → `lua_getmode` returns `padInfoMode(..., PAD_MODECURID, ...)` — the **live negotiated** controller mode (high nibble: `0x7` DualShock, `0x5` analog, `0x4` digital, `0` no-data), and is what the analog-stick→d-pad fold must gate on (`bin/POPSLDR/ui.lua:4470`). `Pads.getType` → `lua_gettype` returns a `PAD_MODETABLE` *capability-table* entry and is the wrong signal for "is the stick live" — an ungated fold injected a phantom `-127` on a digital pad and broke up/down nav.
+
+- **Verify every file:line / function / `PLDR.X` / `UI.X` / flag / asset name against the actual source before you write or repeat it.** A prior doc pass's per-doc agents self-reported "zero stale" yet left ~15 wrong anchors. `grep`/Read the source; do not trust a ledger, an audit report, or a sibling doc's anchor blindly. Codex/audit reports are *reference, not fact* — verify before acting on them.
 
 ## Testing Expectations
 - Choose the smallest test plan that can prove the change.

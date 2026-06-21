@@ -1,14 +1,17 @@
 # POPSLoader Preservation Contracts
 
-Date: 2026-06-20 (re-synced to BETA-12-PLAY HEAD 2859c60; BETA-12 released 2026-06-18 per STATE.md)
-Branch documented: `BETA-12-PLAY`
+Date: 2026-06-21 (re-synced to BETA-13-PLAY HEAD 56a5ad5; BETA-12 released 2026-06-18 per STATE.md)
+Branch documented: `BETA-13-PLAY` (the active rolling-candidate branch; BETA-12-PLAY
+is now ARCHIVAL/frozen and rolling-release.yml publishes from BETA-13-PLAY)
 
-Purpose: regression armor for the launch / ELF-handoff layer. Each contract below
-is a load-bearing teardown or routing rule that survived a specific hardware
-black-screen and must not be broken by future launch-path changes. For each
-contract this document records: what it guarantees, the exact code that
-implements it (`path:line`), the `reboot_iop` value it depends on, the action
-that breaks it, and how to retest it on hardware.
+Purpose: regression armor for the launch / ELF-handoff layer (the four launch
+contracts below) **and** for the load-bearing UI / render / embed invariants that
+a code-quality pass could plausibly "clean up" into a regression (the UI &
+render-pipeline contracts further down). Each contract is a rule that survived a
+specific hardware black-screen, input bug, or render glitch and must not be broken
+by future changes. For each launch contract this document records: what it
+guarantees, the exact code that implements it (`path:line`), the `reboot_iop`
+value it depends on, the action that breaks it, and how to retest it on hardware.
 
 Every technical claim is cited to the named function in this branch. Line numbers
 are best-effort and drift as files change — treat the cited function (not the
@@ -35,9 +38,9 @@ Launch is a three-stage chain. Lua decides the route and `reboot_iop`, the C
 parent splits teardown by target family, and a BRAM child loader performs the
 final `ExecPS2`.
 
-1. **Lua orchestration** — `bin/POPSLDR/system.lua` `RunPOPStarterGame` (line 5568)
-   → `BuildPopstarterLaunchCommand` (line 5546) sets `reboot_iop` → `LaunchEngine`
-   (line 5351; loadELF/loadELFWithPartition dispatch at `system.lua:5444-5462`) picks
+1. **Lua orchestration** — `bin/POPSLDR/system.lua` `RunPOPStarterGame` (line 5653)
+   → `BuildPopstarterLaunchCommand` (line 5631) sets `reboot_iop` → `LaunchEngine`
+   (line 5436; loadELF/loadELFWithPartition dispatch at `system.lua:5526-5547`) picks
    the C binding. `ui.lua`
    `OpenDKWDRV` (line 1370), `LaunchBootElf` (line 1591), and `ConfirmExit`
    (line 1583) are the DKWDRV / BOOT.ELF / exit handoffs.
@@ -52,8 +55,9 @@ final `ExecPS2`.
    teardown branches, then `ExecPS2`'s the final target.
 
 The per-device `reboot_iop` default is `0`
-(`PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER = 0`, `system.lua:2002`); it is raised
-to `1` only when POPSTARTER itself lives on HDD (`system.lua:5554-5555`).
+(`PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER = 0`, `system.lua:2032`); it is raised
+to `1` only when POPSTARTER itself lives on HDD — `BuildPopstarterLaunchCommand`
+pins `reboot_iop = 1` when `popstarter_on_hdd`, else `0` (`system.lua:5638-5642`).
 
 ---
 
@@ -109,10 +113,10 @@ black screen, no silent `SifIopReset` hang.
   HDD launches flowed through that branch without the umount, which is what
   produced "D-15-pass vs D-10-fail.")
 - **`reboot_iop` value: `1`.** Set in `BuildPopstarterLaunchCommand` when
-  `popstarter_on_hdd` is true: `bin/POPSLDR/system.lua:5554-5555`. A non-zero
+  `popstarter_on_hdd` is true: `bin/POPSLDR/system.lua:5639-5640`. A non-zero
   `reboot_iop` (here `1`) plus a present `exec_partition_context` is what makes
   `LaunchEngine` select the partition-aware binding (the gate is
-  `exec_partition_context ~= nil and reboot_iop ~= 0`, `system.lua:5441-5443`).
+  `exec_partition_context ~= nil and reboot_iop ~= 0`, `system.lua:5526-5527`).
 - **Partition context is out-of-band.** `lua_loadELFWithPartition` requires a
   context shaped like `hdd?:PART:` and `reboot_iop != 0`, and never copies the
   context into the target argv: `src/luasystem.cpp:1033-1038` (the two guards:
@@ -139,7 +143,7 @@ black screen, no silent `SifIopReset` hang.
   makes `read_embedded_loader_metadata` return `-3302` (`loader.c:169`), and
   `main` paints the RED background and bails (`loader.c:300-301`).
 - Forcing `reboot_iop` away from `1` for HDD POPSTARTER, which drops the
-  partition-aware route (`system.lua:5441-5443`).
+  partition-aware route (`system.lua:5526-5527`).
 
 ### How to test on hardware
 
@@ -172,21 +176,22 @@ is preserved.
 ### How it is implemented
 
 - **Non-HDD POPSTARTER keeps `reboot_iop = 0`** (the default,
-  `PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER`, `system.lua:2002`). When the policy
+  `PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER`, `system.lua:2032`). When the policy
   is HDD (HDD game) but POPSTARTER is non-HDD, `BuildPopstarterLaunchCommand`
-  explicitly pins `reboot_iop = 0`: `bin/POPSLDR/system.lua:5556-5557`.
+  explicitly pins `reboot_iop = 0` (the `policy_name == "HDD"` branch):
+  `bin/POPSLDR/system.lua:5641-5642`.
 - **Legacy selector path, no partition API.** With `reboot_iop == 0`,
-  `use_partition_api` is false (`system.lua:5441-5443`), so `LaunchEngine` calls
-  `System.loadELF(exec_path, reboot_iop, selector)` (`system.lua:5448` /
-  `5454` / `5460`). `lua_loadELF` with `reboot_iop == 0` and one extra arg goes to
+  `use_partition_api` is false (`system.lua:5526`), so `LaunchEngine` calls
+  `System.loadELF(exec_path, reboot_iop, selector)` (`system.lua:5533` /
+  `5539` / `5545`). `lua_loadELF` with `reboot_iop == 0` and one extra arg goes to
   `LoadELFFromFileExecPS2`; with no extra args, to `LoadELFFromFile`:
   `src/luasystem.cpp:993-1008`. The selector stays as the single target
   `argv[0]`.
 - **Keep-PFS mask protects the game's slots across exec.** Before exec,
   `PrepareForExternalELFLaunch` computes the keep slots and calls
   `System.setExecKeepPfsMask`, then unmounts only the non-kept slots:
-  `bin/POPSLDR/system.lua:1090-1118`, mask built by `BuildPfsKeepMask`
-  (`system.lua:1077-1088`). On the C side the mask is 4-bit
+  `bin/POPSLDR/system.lua:1120-1148`, mask built by `BuildPfsKeepMask`
+  (`system.lua:1107-1118`). On the C side the mask is 4-bit
   (`SetExecKeepPfsMask`, `src/elf_loader/src/elf.c:35-37`) and
   `unmount_pfs_slots_for_exec` preserves masked slots
   (`src/elf_loader/src/elf.c:97-107`, `build_exec_keep_mask` at
@@ -411,8 +416,8 @@ direct-path builds black-screened (forensic chronology
   surface in the `BlockLaunchFailure` diagnostic screen. Any non-hang return from
   a launch is fatal, not success.
 - **`PrepareForColdExternalELFLaunch` forces the keep mask to 0** and unmounts all
-  pfs slots (`system.lua:1120-1130`, invoked from `LaunchEngine` when
-  `context.cold_external_launch == true`, `system.lua:5426-5427`). Use it only for
+  pfs slots (`system.lua:1150-1160`, invoked from `LaunchEngine` when
+  `context.cold_external_launch == true`, `system.lua:5511`). Use it only for
   a no-reset launch that does **not** need any `pfs1:` mount to survive into the
   target. This is exactly the HDD-boot BOOT.ELF case post-PR-#479: BOOT.ELF takes
   the `reboot_iop = 0` embedded-loader route, so unmounting the held boot `pfs1:`
@@ -435,9 +440,177 @@ This is a **settings/persistence** path, not a launch / ELF-handoff path, so it 
 not one of the four launch contracts above — but mount/launch changes must not
 break it: do not change which pfs slot the boot partition owns, do not leave the
 boot partition mounted read-only when settings need to persist, and do not unmount
-it out from under the settings write. Cross-reference: `STATE.md` > "Settings
-(single-device parity)", "Behavioral Invariants" (#2, #10), and the
-`EnsureBootPartitionWritable` bullet under `STATE.md` > "Preservation Contracts".
+it out from under the settings write. Two adjacent invariants protect it:
+
+- **The HDD game scan must never borrow the live boot slot (Proposal A).** The
+  boot/settings partition is mounted on `GetBootHddMountSlot()` (`pfs1:`, slot 1).
+  The game-partition scan's slot-candidate builder drops that slot from its
+  ordered list and substitutes `HDD_SLOT_COMMON` as the off-boot fallback when
+  the launcher booted from HDD; on a non-HDD boot `GetBootHddMountSlot()` is `nil`
+  and the **full historical slot list is returned unchanged** so the scan still
+  fires (`bin/POPSLDR/system.lua:768-786`, rationale `:757-768`). Mounting a game
+  partition onto the occupied boot slot both fails at the C layer and collaterally
+  unmounts the boot partition (stranding the settings cwd). Do NOT re-add the boot
+  slot to the candidate list, and do NOT gate the scan *firing* on boot source —
+  that was the reverted `bec5e90` mistake (called out in the same comment).
+- **`EnsureBootPartitionWritable` liveness-validates its own RW flag.** It clears
+  / re-takes the mount when `PLDR.HDD.BOOT_PARTITION_RW == true` but the cwd no
+  longer exists (a scan having since unmounted slot 1), via `doesFolderExist` on
+  the save path (`bin/POPSLDR/system.lua:2159-2170`). A stale `true` flag would
+  otherwise skip the re-take and the save would fail "...may be read-only" after a
+  scan. Do not remove this liveness check or the RW take-over it guards.
+
+Cross-reference: `STATE.md` > "Settings (single-device parity)", "Behavioral
+Invariants" (#2, #10), and the `EnsureBootPartitionWritable` bullet under
+`STATE.md` > "Preservation Contracts".
+
+---
+
+## UI & render-pipeline contracts (input, embed, overscan, cover art)
+
+These are not launch / ELF-handoff contracts, but they are load-bearing UI armor:
+each one is the fix for a specific hardware input bug, a render glitch, or an
+asset-coordination footgun, and each is the kind of thing a "tidy this up" pass
+would plausibly undo. Most were added in the BETA-13 session (`d233069`,
+`d128779`, `c8fce10`, `1ac15ad`/`6f0d742`/`73f0933`, `56a5ad5`). The canonical
+status / known-issues home is `STATE.md`; this section is the code-armor detail.
+
+### Timing — frame-count nav, never the wall clock (`Timer.getTime()` is microseconds)
+
+**Root-cause fact:** `Timer.getTime()` returns **raw `clock()` ticks**, and on the
+PS2 ee toolchain `CLOCKS_PER_SEC == 1e6`, so the value is **MICROSECONDS**, not
+milliseconds (`src/luaTimer.cpp:33-46` `lua_time`, `clock() - src->tick`;
+registered as `getTime` at `luaTimer.cpp:126`). The UI historically treated it as
+ms, so every `_ms`-named comparison cleared its gate every frame (1000x too fast).
+
+**The contract:** menu navigation auto-repeat is **frame-counted**, the canonical
+Enceladus idiom (the sibling launchers OSDMenu-Configurator and RETROLauncher
+both frame-count and never read the wall clock for nav). In `UI.Pad.Listen`'s
+`resolve_nav` (`bin/POPSLDR/ui.lua:4580-4610`): `nav_fps = (UI.SCR.Y >= 512) and
+50 or 60`; `NAV_DELAY_FRAMES = ceil(nav_fps*0.6)`; `NAV_RATE_FRAMES =
+ceil(nav_fps*0.2)`; a per-direction `UI.Pad.NavHoldFrames` counter increments once
+per (vblank-paced) frame (`ui.lua:4598-4600`, table init `ui.lua:4430`). The press
+edge fires immediately; **only UP/DOWN repeat** (after ~0.6s then ~0.2s ≈ 5/s),
+LEFT/RIGHT are edge-only so a held stick never page-jumps or spins the carousel
+(`ui.lua:4607-4610`). The description right-stick scroll is frame-counted the same
+way (`UI.GameList.DescScrollFrames`, `ui.lua:2674-2698`; the "Description scroll
+speed" Fast/Med/Slow setting is in SECONDS — slow 0.9 / med 0.3 / fast 0.15 —
+converted to a per-frame step count).
+
+**What breaks it:** reintroducing any wall-clock `Timer.getTime()` comparison
+against an `_ms`-named constant for nav/scroll cadence — it will fly at ~60x
+because the source is µs (the exact `adaa8ee → d128779` bug: "one click = 5 lines",
+nuno6573 / LVD14 #504). Frame-count instead, or use `os.clock()` (stock Lua,
+returns SECONDS — the only pre-converted Lua time source, currently unused).
+**Still on the µs-as-ms footing (parked, masked by a per-frame clamp, NOT a
+license to copy the pattern):** the `MIN_ACTION_MS` action debounce
+(`emit_action`, `ui.lua:4547`) and the transition/carousel timers — a future
+`os.clock()` sweep is the intended fix, do not extend the µs-as-ms idiom.
+
+### Input — fold the analog stick into the d-pad ONLY in real analog mode
+
+**The contract:** the left analog stick is folded into the d-pad direction bits in
+`UI.Pad.Listen` **only when the pad is genuinely in analog/DualShock mode**, gated
+on `Pads.getMode()` returning `PAD_ANALOG`/`PAD_DUALSHOCK`, with a per-axis
+hysteresis latch (`bin/POPSLDR/ui.lua:4470-4511`; assert at `|v| > 64`, release at
+`|v| < 40`, lines 4479, 4483-4499). A digital-mode pad returns stale/zero analog
+bytes that read as a phantom `-127` → without the gate that injected a phantom
+`PAD_UP|PAD_LEFT` every frame and broke up/down nav (Nuno6573 #BETA-13). Mirrors
+OPL `pad.c:201` (`(pad->buttons.mode >> 4) == 0x07`).
+
+**`Pads.getMode()` is the LIVE mode — do NOT "fix" it by swapping to
+`Pads.getType()`.** `Pads.getMode()` → `lua_getmode` calls `padInfoMode(...,
+PAD_MODECURID, 0)` (`src/luacontrols.cpp:70-80`, registered `getMode` at
+`luacontrols.cpp:278`), which returns the **live negotiated mode**. The
+pre-existing `Pads.getType()` → `lua_gettype` calls `padInfoMode(...,
+PAD_MODETABLE, 0)` (`luacontrols.cpp:9-20`, registered `getType` at
+`luacontrols.cpp:277`), a **capability-table entry** — wrong for this gate and
+unusable as the live mode. The in-source note at `luacontrols.cpp:63-69` records
+exactly this; a "consolidate the two pad-mode getters" cleanup would silently
+reintroduce the phantom-direction bug. The `PAD_ANALOG`/`PAD_DUALSHOCK`/
+`PAD_DIGITAL` Lua globals (the high-nibble mode IDs 0x5 / 0x7 / 0x4) are exported
+from `luacontrols.cpp:339-346`. `lua_getleft`/`lua_getright` are also hardened to
+zero-init + neutral-default (`luacontrols.cpp:99-101`) and gate on `padRead`'s
+return, but a *successful* read on a digital pad still yields a phantom `-127`, so
+the analog-mode gate in `ui.lua` remains mandatory (note at `luacontrols.cpp:91-98`).
+
+**What breaks it:** removing the `Pads.getMode()` analog gate (or the
+`else`-branch latch drop at `ui.lua:4506-4511` that clears `StickV`/`StickH` when
+not analog), or swapping `getMode` → `getType`.
+
+### Render — overscan transform is the IDENTITY at permille 0
+
+**The contract:** the OPL-style CRT-inset overscan in `src/graphics.cpp` scales the
+whole UI uniformly toward screen center through the `OVX()`/`OVY()` helpers
+(`graphics.cpp:1165-1166`), wrapping **all 14 `gsKit_prim_*` draw sites** (the
+prim wrappers `graphics.cpp:1175-1287` plus the text glyph quad `fntDrawQuad` at
+`graphics.cpp:1349-1353`). The math is OPL `rmSetOverscan` exactly: `margin =
+W*permille/2000` per edge, `scale = 1 - permille/1000` (`graphics.cpp:1129-1162`).
+**At permille 0 the transform is the IDENTITY (`OVX(x) == x`), so the default
+render is byte-for-byte unchanged** (`graphics.cpp:1134`, `g_overscan` default 0
+at `:1135`). `set_overscan` clamps to 0..200 permille (`graphics.cpp:1157-1158`).
+Exposed to Lua as `Screen.setOverscan(permille)` / `Screen.getOverscan()`
+(`src/luaScreen.cpp:64-76`, registered `:162-163`). The Settings UI is the
+"Overscan (CRT inset)" live-adjuster, ±5 step, clamped 0..100 in the UI with live
+preview and discard-restores (`ui.lua:3632-3642`; default-restore on Reset
+Defaults `ui.lua:3356-3358`); the C clamp (200) is wider than the UI clamp (100).
+
+**What breaks it:** making the transform non-identity at permille 0 (any UI shift
+for users who never enable overscan), bypassing `OVX`/`OVY` at a draw site (that
+primitive won't inset), or changing the OPL margin/scale math. NOT yet
+HW/CRT-eyeballed — keep as pending verification, not broken.
+
+### Render — cover-art placeholder layers share the frame's anchored rect
+
+**The contract:** the game-list cover-preview box draws a **layered** placeholder
+from two embedded assets — `cover_default.png` (base) + `cover_missing.png`
+(overlay) — in `bin/POPSLDR/ui.lua:2572-2591`. Preview OFF (Square) → just
+`cover_default.png`; preview ON but the game has no cover → `cover_default.png`
+with `cover_missing.png` overlaid; a LIVE cover uses its own right-anchored
+`COVER_W` inset (`ui.lua:2573-2576`). **The default, the missing overlay, and
+`frame.png` all share the frame's aspect-corrected, right-anchored rect**
+(`frame_x, draw_y, frame_w, frame_h`, computed at `ui.lua:2572`, drawn 2582-2590)
+so all three register with the jewel-case window on **both** NTSC (Y=448) and PAL
+(Y=512). The old "Cover disabled" / "missing" TEXT labels are GONE
+(`ui.lua:2580, 2592`).
+
+**`MISSING.png` no longer exists.** It was removed (its BIN2S rule + EMBEDDED_RSC
+entry, the `embed_assets.cpp` extern + both ASSET_ENTRYs, the `is_default_png_key`
+default→MISSING fallback, the `images.lua` registration, and the `IMG_FALLBACKS`
+table contents) for a ~62KB ELF saving. `is_default_png_key` is gone from the
+source; `IMG_FALLBACKS` is now an empty table (`bin/POPSLDR/images.lua:46`); the
+main-menu icon resolver `ResolveIcon` is now a plain `return IMG[key]` with no
+MISSING fallback (`ui.lua:4096-4098`). Any reference to `MISSING.png` as the cover
+placeholder is stale.
+
+**What breaks it:** drawing the default/overlay/frame at different rects (they'd
+de-register from the jewel-case window per video mode — the pre-existing #496
+misalignment), or reintroducing a text placeholder. NOT yet HW-eyeballed on a
+CRT — pending, not broken.
+
+### Embed mechanism — adding/removing an embedded asset is THREE coordinated places
+
+Embedded assets are **not** auto-globbed; each one is wired in three explicit
+places, and a partial edit silently breaks the build or the runtime lookup:
+
+1. **`Makefile`** — a `BIN2S` rule that emits the `asset_<name>` symbol (`BIN2S`
+   is `$(PS2SDK)/bin/bin2c`, `Makefile:67`; rules e.g. `Makefile:179-182` for the
+   covers) **and** the resulting `.o` listed in `EMBEDDED_RSC` (`Makefile:96-101`;
+   optional assets go through `OPTIONAL_EMBEDDED_RSC`, `Makefile:72-74`).
+2. **`src/embed_assets.cpp`** — the `extern` declarations (`embed_assets.cpp:60-63`
+   for the covers) **and** an `ASSET_ENTRY` in **BOTH** the bare-name table
+   (`embed_assets.cpp:119-120`) **and** the `POPSLDR/IMG/`-prefixed table
+   (`embed_assets.cpp:166-167`).
+3. **`bin/POPSLDR/images.lua`** — an `IMG_REGISTRATIONS` row mapping an access key
+   to the **bare** filename (`images.lua:11-37`; covers at `:35-36`). `IMG[key]`
+   resolves the bare filename through `System.getEmbeddedAsset`
+   (`images.lua:50-60`).
+
+Optional assets (e.g. `default.png`) are additionally `#ifdef HAVE_ASSET_DEFAULT_PNG`
+in `embed_assets.cpp` (`:116-118`, `:163-165`). **What breaks it:** wiring fewer
+than all three places — a missing Makefile `.o` fails the link, a missing
+`ASSET_ENTRY` (in either table) or `IMG_REGISTRATIONS` row makes `IMG[key]` return
+`nil` at runtime with no build error.
 
 ## Do not do
 

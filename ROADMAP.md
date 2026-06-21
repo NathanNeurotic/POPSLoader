@@ -1,4 +1,4 @@
-Last updated: 2026-06-18 (post-BETA-12)
+Last updated: 2026-06-21 (BETA-13 in progress)
 
 # ROADMAP
 
@@ -6,37 +6,49 @@ This is the **forward plan**. For current runtime state, the canonical Known-Iss
 
 ## Status Snapshot
 
-- **BETA-12 shipped 2026-06-18** (BETA-11 2026-06-15). Dev branch `BETA-12-PLAY` (tip moves per push; see `git log`).
-- The 2026-06 deliverables landed on `BETA-12-PLAY`: HDD-resident settings save + in-app HDD `.hide` (boot-partition RW take-over via `EnsureBootPartitionWritable`), PAL native 640×512 full-screen render + auto-revert display-change confirm, the `bdma_mode.txt` marker rename (legacy names still read), the POPSTARTER Memory Card Folder toggle + BDMA⟺folder interlock, the launch-args auto-launch consumer, and the live CI luac syntax gate. See **STATE.md > Repo-Verified Runtime State** for the detail.
+- **Public release is still BETA-12** (shipped 2026-06-18; BETA-11 2026-06-15). **BETA-13 is the in-progress rolling candidate, not yet cut.** The active dev branch is **`BETA-13-PLAY`** (created off `BETA-12-PLAY` @`8d1e67a`); **`BETA-12-PLAY` is now archival/frozen.** `rolling-release.yml` was repiped to publish from `BETA-13-PLAY` (tip moves per push; see `git log`).
+- The 2026-06 (BETA-12-era) deliverables: HDD-resident settings save + in-app HDD `.hide` (boot-partition RW take-over via `EnsureBootPartitionWritable`), PAL native 640×512 full-screen render + auto-revert display-change confirm, the `bdma_mode.txt` marker rename (legacy names still read), the POPSTARTER Memory Card Folder toggle + BDMA⟺folder interlock, the launch-args auto-launch consumer, and the live CI luac syntax gate. See **STATE.md > Repo-Verified Runtime State** for the detail.
+- The BETA-13 session added: gated analog-stick→d-pad fold + frame-counted nav auto-repeat + frame-counted description scroll (all **hardware-confirmed**), the Boot sound On/Off setting (**hardware-confirmed**), the layered `cover_default.png` + `cover_missing.png` cover placeholder (replacing the removed `MISSING.png`, −62 KB ELF), the OPL-style Overscan (CRT inset) render-inset adjuster, the HDD save-after-scan fix + Proposal A scan-slot steering, a 6-finding Codex audit pass, and POPSTARTER.ELF / SMB-pack release-zip packaging. See **STATE.md > Repo-Verified Runtime State**.
 - **Hardware status, preservation contracts, and known issues are tracked in STATE.md** — see **STATE.md > Reported Hardware Status**, **> Preservation Contracts**, and **> Known Issues**. In short: D-10/D-14/D-15, DKWDRV-from-MC, and BOOT.ELF-from-USB (L-07) remain hardware-PASS contracts; U-10 (BOOT.ELF from HDD-booted POPSLoader), DKWDRV-from-custom-HDD-path, and the Class-A HOSDmenu / some-wLE start failures are now **RESOLVED** (no longer known-broken); the 2026-06 HDD/PAL/BDMA features are **implemented / boot on PCSX2 / HDD RW confirmed on hardware (provato) / full flow validating on hardware**.
 - **CAUTION — load-order regression risk.** A boot brick (PLDR.HDD methods defined before `PLDR.HDD` existed) made recent HDD-feature rolling builds un-bootable; fixed `d4b04be` (2026-06-17). Runtime nil-global / type / load-order errors are invisible to `luac -p` and CI — only the syntax gate is automated. Re-test HDD-feature builds on PCSX2/hardware before trusting a green CI.
 
 **Infrastructure landed post-release:**
-- `.github/workflows/rolling-release.yml` — automated rolling-release artifact publication on push to `BETA-12-PLAY` and on PR events.
+- `.github/workflows/rolling-release.yml` — automated rolling-release artifact publication on push to `BETA-13-PLAY` and on PR events.
 - `docs/archive/DOCUMENTATION_FOLLOWUP_AUDIT.md` — handoff plan for the post-BETA-10-5 doc cleanup work (now completed; see "Documentation cleanup" under Secondary Work).
 
 `HDD (exFAT)`, `SMB (v1)`, `ILINK` remain intentionally unimplemented menu entries.
 
 ## Immediate Priorities
 
-### 1) Settings UI redesign (Berion mockup)
+### 1) Cut BETA-13
+- The BETA-13 input/UX/cover work is in and the headline items are **hardware-confirmed**: up/down + analog-stick nav land on individual items with smooth continuous scroll (oldman63), boot sound saves and survives reboot (oldman63), and "everything working fantastically" on the latest rolling (Nuno6573). See **STATE.md > Reported Hardware Status**.
+- Remaining BETA-13 eyeballs before the cut (none currently believed broken — all "awaiting a look"): the Overscan (CRT inset) render-inset on a real CRT; the `cover_default.png` + `cover_missing.png` overlay registration against the jewel-case window on **both** NTSC and PAL; the description right-stick scroll feel; and the HDD **Proposal A** scan-slot steering (deliberate HW test — see #5 below).
+- Cutting BETA-13 needs the **tree-adopting merge to `master`** (the proven `-s ours` + `read-tree` + verify-empty-diff mechanic; `master` diverges from the dev branch, so a plain merge is wrong). See the release git-mechanics captured for BETA-12.
+
+### 2) `os.clock()` timer-unit sweep
+- **Root-cause fact** (also recorded in DECISIONS / ARCHITECTURE / AGENTS): `Timer.getTime()` returns **microseconds** on PS2 (it is a raw `clock()` tick; `CLOCKS_PER_SEC` is 1e6 on the ee toolchain). The UI historically treated it as milliseconds, so every `_ms` timing ran ~1000× too fast. Nav auto-repeat and description scroll were already moved to **frame-counting** (the canonical Enceladus idiom — sibling launchers OSDMenu-Configurator and RETROLauncher frame-count too), which fixed the visible breakage.
+- Still on the µs-as-ms footing, masked (not visibly broken) by a per-frame clamp: the `MIN_ACTION_MS = 220` action debounce (`bin/POPSLDR/ui.lua:622`, gated against `max_step` ≈ 33 ms `dt` clamps) and the transition / carousel timers. The proposed fix is a sweep to `os.clock()` (stock Lua, returns **seconds**, already pre-converted, currently **unused** anywhere in `bin/POPSLDR/*.lua`).
+
+### 3) Settings UI redesign (Berion mockup) — gated
 - Blocked on Berion's mockup PNGs landing at `C:\Users\natha\Documents\assets\` and being committed to `docs/mockups/`. Without the visual oracle, the Lua port is hard to start.
 - The original launch-path hardware blockers (D-10/D-14/D-15/DKWDRV-MC/BOOT.ELF, and now U-10) are settled. **However**, the 2026-06 HDD-resident settings save, in-app HDD `.hide`, and PAL-512 features are still **validating on hardware** (boot on PCSX2; HDD RW confirmed on hardware by provato; full flows not yet broadly hardware-confirmed). Per the maintainer, don't kick off the redesign until those settle, so the redesign builds on a verified settings/persistence base. See **STATE.md > Reported Hardware Status**.
 - Scope: Context menu, Settings (per-category pages superseding the OPL focused-list), Joypad configuration, On-screen keyboard. Boot/splash and game list are out of scope.
 - Full implementation prompt and per-screen pixel specs live in `docs/archive/GUI_OVERHAUL_PROMPT.md`.
 
-### 2) Layer C full lazy IRX loading
+### 4) Layer C full lazy IRX loading
 - Precursor (pre-IRX device classification hint) landed in PR #458.
-- **`mmceman` deferral — SHIPPED** (PR #471, merged; commit `d10ec56`). MMCE boots load mmceman eagerly (`src/main.cpp:503-528`); USB/MC/MX4SIO/HDD boots defer it (`src/main.cpp:529-538`) and lazy-load on demand via `PLDR.EnsureMmceReadyOnce()` (`bin/POPSLDR/system.lua:1176` — `System.ensureMmceman` + `System.reinitPad`). MMCE pad-input behavior hardware-confirmed (FifthFox, commit `9f2d550`).
+- **`mmceman` deferral — SHIPPED** (PR #471, merged; commit `d10ec56`). MMCE boots load mmceman eagerly (gate at `src/main.cpp:503`); USB/MC/MX4SIO/HDD boots defer it and lazy-load on demand via `PLDR.EnsureMmceReadyOnce()` (`bin/POPSLDR/system.lua:1206` — `System.ensureMmceman` + `System.reinitPad`). MMCE pad-input behavior hardware-confirmed (FifthFox, commit `9f2d550`). The vendored mmceman blob was later dropped in favor of ps2sdk's `mmceman` (no `iop/embed/mmceman.irx` in-tree).
 - **`ds34bt` deferral** (Bluetooth pads) — queued. Needs a settings toggle ("Enable BT Pads", default off) or auto-detect, otherwise it breaks BT-pad-only users.
 - **`usbd` deferral** — queued, HIGH RISK. `ds34usb` (USB DS3/4 pads, the most common pad type) depends on `usbd`. Without `usbd`, USB pads stop working. Cannot ship without a robust opt-in or careful boot-time decision.
 - Expected gain per the audit in `docs/archive/LAUNCH_HYGIENE.md`: 30-50% pre-Lua startup time reduction once all three deferrals land.
 
-### 3) Display and UX verification
-- `U-06` now targets the **new PAL native 640×512 full-screen render** (the menu fills the screen, no letterbox; NTSC is 640×448). On PAL hardware confirm the full-screen fill *and* the auto-revert display-change confirm prompt (reverts if the new mode isn't confirmed, like OPL). See **STATE.md > Reported Hardware Status** (`U-06` row).
+### 5) Display, HDD, and UX verification
+- **Overscan (CRT inset)** — new OPL-style render-inset shipped but **not yet eyeballed on a CRT**. `Screen.setOverscan(permille)` / `getOverscan()` (`src/luaScreen.cpp`) drive a `graphics.cpp` transform that wraps every `gsKit_prim_*` draw site in `OVX()`/`OVY()` (identity at permille 0, so inert by default; math identical to OPL `rmSetOverscan`). The live adjuster is Settings → "Overscan (CRT inset)" (`bin/POPSLDR/ui.lua:3632`, ±5 step, live preview, discard restores). Confirm the inset on a real CRT.
+- **HDD Proposal A** — the game scan now steers **off** the live boot pfs slot (`b159a43`; the boot/settings partition lives on the boot slot, "NEVER reuse"), and the boot RW mount is re-validated on the save path so settings save after a scan (`8d1e67a`). Still wants a **deliberate HW test** (Nuno) that game partitions still mount/list when forced off the boot slot. See **STATE.md** and memory `reference-hdd-pfs-slot-model`.
+- `U-06` targets the **PAL native 640×512 full-screen render** (the menu fills the screen, no letterbox; NTSC is 640×448). On PAL hardware confirm the full-screen fill *and* the auto-revert display-change confirm prompt (reverts if the new mode isn't confirmed, like OPL). See **STATE.md > Reported Hardware Status** (`U-06` row).
 - Re-run `U-08` / `U-09` on slower/large libraries to judge whether busy overlays communicate activity clearly enough.
 
-### 4) Coverage and documentation
+### 6) Coverage and documentation
 - Add concrete run logs for: D-13 device switching without runtime locks, S-09 keyboard layout persistence, U-11 boot-device label display.
 
 ## Resolved Since BETA-10-5 (no longer blocking)
@@ -55,13 +67,14 @@ The items previously parked here as "pragmatically accepted / known-broken" are 
 
 ### 2) Art/asset behavior
 - Keep current cover behavior stable: sidecar PNG beside the selected `.VCD`, plus `hdd0:__common/POPS/ART/<title>.png` for HDD titles.
-- Keep `default.png` optional in CI artifacts; missing default-cover builds fall back to embedded `MISSING.png`.
+- The no-cover / preview-off cover box now draws the layered `cover_default.png` base (+ `cover_missing.png` overlay when a game has no cover); `MISSING.png` was **removed** and is no longer a fallback anywhere; `default.png` stays an optional legacy cover override. The canonical detail (asset layering, the embed-mechanism's 3 coordinated edit sites, the ELF-size delta) lives in **STATE.md > Cover art** — don't re-enumerate it here.
 
 ### 3) Install/build clarity
 - Keep CI package layout and docs synchronized.
 - `ps2dev/ps2dev` image is pinned to `v2.0.0` in `.github/workflows/compilation.yml` and `.github/workflows/rolling-release.yml` (post-release pin at commit `ba8f0d0`).
 - The embedded-Lua syntax gate (`luac5.4 -p` on `bin/POPSLDR/*.lua` + `etc/boot.lua`) is now **LIVE** — it used to silently skip because the ps2dev image shipped no `luac`; the workflows now `apk add lua5.4` and hard-fail on a syntax error. It catches **SYNTAX only** — runtime nil-global / type / load-order errors stay invisible to CI (see the `d4b04be` load-order boot brick). See **STATE.md > CI / release**.
-- Rolling release workflow publishes a single `POPSLOADER-rolling-release.zip` asset to the canonical `rolling-release` GitHub Release; both push-to-BETA-12-PLAY and PR events overwrite the same asset (last-write-wins).
+- Rolling release workflow publishes a single `POPSLOADER-rolling-release.zip` asset to the canonical `rolling-release` GitHub Release; both push-to-`BETA-13-PLAY` and PR events overwrite the same asset (last-write-wins).
+- **Redistributable launcher in the zips.** `POPSTARTER.ELF` (the redistributable POPStarter homebrew launcher — the POPS engine binaries are **not** redistributable and are not shipped) now ships in both zips: `rolling-release.yml` puts it at the **zip root** next to `POPSLOADER.ELF` **and** in `POPS/`, and also ships a `POPSTARTER/` pack folder (BDMA/SMB modules) + `POPS/PATCH_5.BIN` at the rolling root; `compilation.yml` (the strict-verified `PS1_POPSLOADER/` install zip) ships `POPSTARTER.ELF` in `PS1_POPSLOADER/` (next to `POPSLOADER.ELF`) **and** `POPS/`.
 
 ### 4) Settings UI redesign
 - 2026-05-19/20 OPL-style focused-list shipped (Settings page rewrite). Hardware verification deferred per the launch-path retest sequence.

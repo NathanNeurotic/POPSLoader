@@ -1,4 +1,4 @@
-Last updated: 2026-06-18 (BETA-12)
+Last updated: 2026-06-21 (BETA-13 in progress)
 
 # CONTRIBUTING
 
@@ -47,11 +47,32 @@ The full invariant list is in **STATE.md > Behavioral Invariants** — preserve 
 - Avoid adding runtime logging unless requested.
 
 ## Packaging Rules
-- CI packaging contract must stay synchronized with docs. Current release manifest: `PS1_POPSLOADER/*` launcher files, `PS1_POPSLOADER/BUILD_INFO.txt` (so hardware can confirm the exact GitHub-built artifact), and `POPS/PATCH_5.BIN`. Legacy `POPS/*.tm2` entries are forbidden by CI.
+- CI packaging contract must stay synchronized with docs. The strict-verified `compilation.yml` zip (`POPSLOADER.zip`) is an **exact** set — two top dirs only (`PS1_POPSLOADER/` and `POPS/`), no root files, and any mismatch fails the build:
+  - `PS1_POPSLOADER/`: `POPSLOADER.ELF`, `POPSTARTER.ELF`, `BUILD_INFO.txt` (so hardware can confirm the exact GitHub-built artifact), `APPINFO.PBT`, `title.cfg`, `icon.sys`, `list.icn`, `copy.icn`, `del.icn`.
+  - `POPS/`: `PATCH_5.BIN` and `POPSTARTER.ELF`.
+  - `POPSTARTER.ELF` is the only redistributable launcher binary and ships in **both** the `PS1_POPSLOADER/` install dir and `POPS/`. The POPS engine binaries are NOT redistributable and are never bundled — hardware supplies its own.
+  - Legacy `POPS/*.tm2` entries are explicitly forbidden by CI.
+- The `rolling-release.yml` zip is the loose dev bundle (different layout from the strict install zip): `POPSLOADER.ELF` + `POPSTARTER.ELF` at the zip root, a `POPS/` folder (`PATCH_5.BIN` + `POPSTARTER.ELF`), a `POPSTARTER/` pack folder (BDMA / SMB modules), and a `source/` tree. It is not strict-verified.
 - CI build is gated on embedded build-identity markers (`Exec path:`, `PrepareForColdExternalELFLaunch`, `BOOT.ELF launch failed`) being present in `bin/enceladus.elf`, plus an embedded-loader blob staleness check.
 - The `ps2dev/ps2dev` container image is pinned to `v2.0.0`.
-- The rolling-release workflow publishes a single canonical asset on push-to-`BETA-12-PLAY` and on PR events (last-write-wins on the shared asset).
+- The rolling-release workflow publishes a single canonical asset on push-to-`BETA-13-PLAY` (the active rolling branch; `BETA-12-PLAY` is archival/frozen) and on PR events (last-write-wins on the shared asset).
 - **The embedded-Lua syntax gate is now LIVE** (`luac5.4 -p` on the embedded Lua; the workflows `apk add lua5.4` and hard-fail on a syntax error). It used to silently skip because the ps2dev image shipped no `luac`. It catches **SYNTAX only** — runtime nil-global / type / **load-order** errors stay invisible to CI, so still cold-boot test the build in PCSX2 (the `d4b04be` load-order boot brick was exactly such a case).
+
+## Embedded Assets (adding / removing one)
+Every Lua script, font, IRX module, and game-list image is compiled **into** `POPSLOADER.ELF` (via `bin2c`); there is no on-disk asset directory at runtime and the asset list is **not** auto-globbed. Adding or removing one means editing **three coordinated places** — miss any one and the build breaks or the asset silently fails to load:
+1. **`Makefile`** — add a `bin2c` rule that turns the source file under `bin/POPSLDR/...` into `asset_<name>.c` (the symbol name passed to `$(BIN2S)` is what the C code externs), **and** add the resulting `asset_<name>.o` to the `EMBEDDED_RSC` list so it gets linked. (Optional/large assets can go in `OPTIONAL_EMBEDDED_RSC` instead, which is concatenated into `EMBEDDED_RSC`.)
+2. **`src/embed_assets.cpp`** — `extern` the `asset_<name>` symbol and its `size_asset_<name>`, then add an `ASSET_ENTRY("<key>", asset_<name>)` in **both** lookup tables: the bare-name table (e.g. `"frame.png"`) and the path-prefixed table (e.g. `"POPSLDR/IMG/frame.png"`).
+3. **`bin/POPSLDR/images.lua`** (images only) — add a `{accessKey, "<bareFilename>"}` row to `IMG_REGISTRATIONS`. The `IMG[...]` metatable looks the asset up by the **bare filename** through `System.getEmbeddedAsset`, so the second field must match the bare-name key from step 2.
+
+Removal is the same three places in reverse (plus drop any fallback wiring). The recent `MISSING.png` removal (`-62KB` ELF) is the worked example: it deleted the `bin2c` rule + `EMBEDDED_RSC` entry, the `extern` + both `ASSET_ENTRY`s, the `images.lua` registration, and the now-unused `IMG_FALLBACKS` fallback. The cover-art placeholders `cover_default.png` + `cover_missing.png` are the current additions and follow this same pattern.
+
+## Runtime Timing (frame-count, not wall-clock)
+`Timer.getTime()` returns **microseconds**, not milliseconds (`src/luatimer.cpp` returns the raw `clock() - tick` delta; `CLOCKS_PER_SEC` is `1e6` on the EE toolchain). Code that treats it as ms runs 1000x too fast — that was the root cause of nav auto-repeat "flying" (one press scrolling many rows) before it was reworked.
+- **The canonical Enceladus idiom for UI cadence is frame-counting**, not reading the wall clock — the sibling launchers do the same. New per-direction/per-step timing increments a counter once per frame and fires at frame thresholds derived from the live field rate (`nav_fps = (UI.SCR.Y >= 512) and 50 or 60`). See `resolve_nav` / `NavHoldFrames` (nav auto-repeat) and `DescScrollFrames` (description scroll) in `bin/POPSLDR/ui.lua`.
+- `os.clock()` (stock Lua, returns **seconds**) is the only pre-converted Lua time source and is currently unused. A couple of legacy timers (the action debounce `MIN_ACTION_MS`, the transition/carousel timers) still sit on the µs-as-ms footing but are masked by a per-frame clamp, so they are not visibly broken; prefer frame-counting (or `os.clock()` seconds) for any new timing rather than adding more `Timer.getTime()` math.
+
+## Settings Plumbing
+Settings are write-staged in the UI and committed through a single funnel — `PLDR.CommitSettingsChanges(opts)` in `bin/POPSLDR/system.lua` — which serializes the merged state to the per-device config. A new setting touches the whole chain: the parse/serialize round-trip and the `next_*` merge in `system.lua`, plus the UI commit call in `bin/POPSLDR/ui.lua` (e.g. the boot-sound setting flows `UI.BootSound` → `PLDR.CommitSettingsChanges({ boot_sound = ... })` → `PLDR.BOOT_SOUND`). Add the field to every link or it stages but never persists. The user-facing settings **behavior** (single-device parity, the HDD RW take-over) is canonical in `STATE.md > Settings` — don't restate it here.
 
 ## Documentation Sync Rules
 - If runtime behavior changes, update `STATE.md` first — it is canonical for behavioral invariants, preservation contracts, known issues, and hardware status. Then update the relevant root docs:

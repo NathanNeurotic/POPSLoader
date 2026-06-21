@@ -1,7 +1,7 @@
 # POPSLoader — Tester Checklist (BETA-13 candidate)
 
-**Build:** rolling `BETA-12-PLAY` (BETA-13 candidate) — 40 commits since BETA-12.
-This is the structured "what to test" companion to **[ROLLING_NOTES.md](ROLLING_NOTES.md)** ("what's new"). Regenerate when the rolling batch changes.
+**Build:** rolling `BETA-13-PLAY` (BETA-13 candidate; rolling now publishes from this branch — `BETA-12-PLAY` is frozen/archival). Public release is still BETA-12.
+This is the structured "what to test" companion to **[ROLLING_NOTES.md](ROLLING_NOTES.md)** ("what's new"); for the canonical status / invariants / known-issues list see **[STATE.md](STATE.md)**. Regenerate when the rolling batch changes.
 
 **Devices:** USB · MX4SIO (SD over SIO2) · MMCE (SD2PSX / MemCard PRO) · HDD (internal PFS). Test the ones you use; **say which** in every report.
 
@@ -22,17 +22,21 @@ This is the structured "what to test" companion to **[ROLLING_NOTES.md](ROLLING_
 
 ## 🟧 P1 — New features this cycle
 
-- [ ] **R3 = reveal / hide hidden games** ⭐ **BRAND NEW — never run on hardware. Test on each device:**
-  1. Hide a couple of games with **L3**.
-  2. *Settings → Game List → Hidden games → **Hidden*** (they vanish).
-  3. On the device list press **R3** → list rebuilds, hidden games **reappear dimmed** + toast *"Showing hidden games (dimmed) — press L3 to unhide."*
-  4. **L3** on a dimmed game → *"Game shown."*
-  5. **R3** again → hidden games vanish + *"Hidden games are now hidden."*
-  6. **Reboot** → the Hidden-games state persisted.
+### Navigation & input — ✅ core nav CONFIRMED on hardware (oldman63); the rest still to feel out
+
+- [x] **Up/Down + analog-stick item nav** — ✅ **CONFIRMED (oldman63):** d-pad and **left analog stick up/down** both land on **individual items** (item-by-item), and a held direction does smooth continuous scroll. *(The stick now folds into the d-pad and runs the same edge + auto-repeat path — no more "flies a whole page" / "can't select individual items" #501. A non-analog/digital pad is gated out so it can't inject a phantom direction; the auto-repeat is frame-counted, ~0.6 s before the first repeat then ~5/sec.)* Re-confirm on **each device's** list if you can.
+- [ ] **Page-jump & top/bottom** — on a big list: **LEFT / RIGHT** (d-pad **or** left stick left/right) jumps a **page** at a time; **L1** ping-pongs **top ↔ bottom**. Confirm these still work after the nav rework.
+- [ ] **R3 = reveal / hide hidden games** ⭐ **STILL never run on hardware. Test on each device** (HDD / USB / MX4SIO / MMCE — R3 is ignored elsewhere):
+  1. Hide a couple of games with **L3** (with *Hidden games* set to **Visible (manage)**).
+  2. *Settings → Game List → Hidden games → **Hidden*** (they vanish). *(R3 toggles this same setting in place, so you can also just press R3.)*
+  3. On the device list press **R3** → list rebuilds, hidden games **reappear dimmed** + toast *"Showing hidden games (dimmed) -- press L3 to unhide"*.
+  4. **L3** on a dimmed game → *"Game shown"*. *(L3 is blocked while Hidden mode is ON — reveal with R3 first; otherwise it warns "[Global Hide ON] …".)*
+  5. **R3** again → hidden games vanish + *"Hidden games are now hidden"*.
+  6. **Reboot** → the Hidden-games state persisted. *(A failed save toasts "(could NOT save -- reverts on reboot)".)*
   - Report: empty/wrong list after R3, a crash, a device failing to re-scan, or the setting not sticking.
-- [ ] **Left analog stick = fast page-jump** — push & hold the left stick up/down on a big list → flies a page at a time. (**L1** still jumps top ↔ bottom.)
-- [ ] **Per-game info text** — drop `<game>.txt` next to a game → *Settings → Game details = Left/Center/Right* → blurb under the cover in that alignment, line breaks kept. *Off* hides it.
-- [ ] **Description scroll** — long `.txt` scrolls with the **right analog stick**; *Settings → Description scroll speed = Fast/Medium/Slow* changes the pace.
+- [ ] **Boot sound On/Off** — *Settings → Game List → Boot sound* (default **On**) gates the splash chime. ✅ **save survives reboot CONFIRMED (oldman63);** still confirm Off actually silences the chime.
+- [ ] **Per-game info text** — drop `<game>.txt` next to a game → *Settings → Game List → Game details = Left/Center/Right aligned* → blurb under the cover in that alignment, line breaks kept. *Off* hides it.
+- [ ] **Description scroll** — long `.txt` scrolls with the **right analog stick**; *Settings → Game List → Description scroll speed = Fast/Medium/Slow* now actually changes the pace (default **Slow**, ~1 line/sec; the speed setting was previously ignored). Confirm Fast/Medium/Slow feel distinct.
 - [ ] **Game list cache (opt-in, default OFF)** — *Settings → Game list cache → ON:*
   - [ ] First entry builds; second entry / reboot **loads fast** (no "Building…").
   - [ ] ⚠️ **CRITICAL: launch a game FROM the cached list** on each device incl. **HDD** — it must still **launch correctly**, not just load fast.
@@ -47,19 +51,21 @@ This is the structured "what to test" companion to **[ROLLING_NOTES.md](ROLLING_
 - [ ] **L3 hide/unhide** on every device incl. **HDD** (drops `.hide` next to the VCD; on HDD writes to the boot partition — old "add it from a PC" is now only a write-failure fallback).
 - [ ] **Hidden games filter** — *Hidden* filters out; *Visible (manage)* shows dimmed so L3 can toggle them back.
 - [ ] **Settings save & persist** — change a setting, **reboot**, confirm it stuck. **Especially HDD installs** (settings save to the HDD boot partition now — RW confirmed by provato, full flow wants more confirmation).
-- [ ] **Unsaved-changes prompt** — change a *cycle* setting (Game details / scroll speed / cache) and press **BACK** without saving → it warns you.
+- [ ] **Unsaved-changes prompt** — change a *cycle* setting (Game details / scroll speed / cache / Boot sound / Overscan / Boot Page) and press **BACK** without saving → it warns you.
 - [ ] **POPSTARTER MC Folder toggle + BDMA interlock** — toggle the `mc:/POPSTARTER` folder (off **deletes** it, with confirm). Can't disable the folder while BDMA is on, nor enable BDMA while the folder is off. *(BDMA mode now in `bdma_mode.txt`; legacy `.pldr_bdma_mode` still read.)*
 
 ## 🟦 P3 — Display / PAL (needs PAL hardware — we have none on the team)
 
-- [ ] **Video Standard** — *Settings → Video*. **Auto** default should match your console's region. On **PAL** the UI should fill the screen **edge-to-edge at 640×512** (no letterbox). Report your console's **actual output** reading.
+- [ ] **Video Standard** — *Settings → Display*. **Auto** default should match your console's region. On **PAL** the UI should fill the screen **edge-to-edge at 640×512** (no letterbox). Report your console's **actual output** reading.
 - [ ] **Display-change confirm/revert** — change the mode; if you don't confirm in time it **auto-reverts**.
+- [ ] **Overscan (CRT inset)** ⭐ **NEW — needs a CRT eyeball, not yet verified.** *Settings → Game List → Overscan (CRT inset)* (default **Off**; **LEFT/RIGHT steps ±5**, live preview). Raise it on a CRT that crops the edges → the whole UI should shrink **uniformly toward center** (OPL-style render inset). Discarding the settings change restores the previous value. Report the value that just clears your bezel.
 
 ## ⬜ P4 — Cosmetic / polish
 
-- [ ] List a touch **wider**; device name (e.g. "USB") no longer overlaps the **top row**; disabled-cover box reads **"Cover disabled"** (centered); "Building…" overlay calmer.
+- [ ] List a touch **wider**; device name (e.g. "USB") no longer overlaps the **top row**; "Building…" overlay calmer.
+- [ ] **Cover placeholder art** ⭐ **NEW assets, needs an eyeball on NTSC + PAL.** No live cover now draws a layered jewel-case placeholder (`cover_default.png`), with a `cover_missing.png` overlay **only** when the preview is **ON** but the game has no cover. *(The old "Cover disabled" **text** label is gone.)* Confirm the default cover, the missing overlay, and `frame.png` all **register** with the jewel-case window (right-anchored, no drift) on both NTSC and PAL.
+- [ ] **Cover-art preview** toggles with **Square** — OFF shows the plain default case (no overlay), ON shows the live cover or the missing-overlay placeholder.
 - [ ] **Scroll position kept** returning from Settings (cursor doesn't snap to row 1).
-- [ ] **Cover-art preview** toggles with **Square**.
 
 ## 🧪 P5 — Robustness (only if you hit it)
 
@@ -68,7 +74,7 @@ This is the structured "what to test" companion to **[ROLLING_NOTES.md](ROLLING_
 
 ## 📦 Release zip contents
 
-- [ ] The rolling zip ships a **`POPSTARTER/`** folder (SMB `.irx` pack) and **`POPS/PATCH_5.BIN`** at the root — confirm they're present in your download.
+- [ ] The rolling zip ships, at the **root**: a **`POPSTARTER/`** folder (SMB `.irx` pack), **`POPS/PATCH_5.BIN`**, **`POPSTARTER.ELF`** (also copied into **`POPS/`**) — confirm they're present in your download. *(POPS engine binaries are not redistributable and are NOT included; you still supply your own.)*
 
 ---
 
