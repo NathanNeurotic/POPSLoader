@@ -518,7 +518,7 @@ UI = {
       if type(UI.GameList) == "table" then
         UI.GameList.CoverLastIndex = nil
         UI.GameList.CoverPending = false
-        UI.GameList.CoverPendingAt = 0
+        UI.GameList.CoverPendingFrames = 0
         -- Entering a device game-list from a non-list scene (carousel/menu): open at
         -- the top instead of inheriting the previously-viewed device's (clamped)
         -- cursor -- UI.GameList.CURR is a single global index shared across pages.
@@ -2327,8 +2327,7 @@ UI = {
       STARTUP = 1;
       CoverLastIndex = nil;
       CoverPending = false;
-      CoverPendingAt = 0;
-      CoverIdleMs = 200;
+      CoverPendingFrames = 0;  -- frames the selection has been stable (frame-count cover-load settle)
       DetailsTotal = 0;       -- wrapped lines in the current description (0 = none)
       DetailsVisible = 0;     -- how many of them fit on screen this frame
       DescScrollFrames = nil; -- frames since last desc-scroll step (frame-count rate-limit)
@@ -2337,7 +2336,7 @@ UI = {
         UI.GameList.CURR = 1;
         UI.GameList.CoverLastIndex = nil
         UI.GameList.CoverPending = false
-        UI.GameList.CoverPendingAt = 0
+        UI.GameList.CoverPendingFrames = 0
         UI.GameList.DetailsTotal = 0
         UI.GameList.DetailsVisible = 0
         UI.GameList.DescScrollFrames = nil
@@ -2515,7 +2514,7 @@ UI = {
           -- SCROLLS with the right analog stick (input section). The art never moves
           -- DOWN from its normal spot; the line budget clears the footer icons.
           local details_lines, details_y, details_first = nil, nil, 1
-          local details_line_h, details_gap = 14, 8
+          local details_line_h, details_gap = 14, 4
           local details_h, details_visible, details_total = 0, 0, 0
           UI.GameList.DetailsTotal = 0
           UI.GameList.DetailsVisible = 0
@@ -2526,7 +2525,16 @@ UI = {
             local bottom_limit = footer_y - 24  -- clear the centered footer icons
             local top_margin = ((layout.SAFE and layout.SAFE.T) or 24) + 8
             local avail = bottom_limit - top_margin
-            local cap = math.floor((avail - art_h - details_gap) / details_line_h)
+            -- Pull the Details window up into the frame's transparent bottom margin
+            -- (frame.png's case art ends ~8px above frame_h) so it starts ~one line closer
+            -- to the cover for a bigger window (oldman63). Only when the frame is the lower
+            -- edge (placeholder, or a cover shorter than the frame).
+            local details_art_h = art_h
+            if frame_h ~= nil and frame_h >= (cover_h or 0) then
+              details_art_h = art_h - Round(frame_h * 0.03)
+              if details_art_h < 0 then details_art_h = 0 end
+            end
+            local cap = math.floor((avail - details_art_h - details_gap) / details_line_h)
             if cap < 1 then cap = 1 end
             local all_lines = UI.CoverCache.last_desc_lines
             if all_lines == nil then
@@ -2551,7 +2559,7 @@ UI = {
               details_lines = all_lines
               UI.GameList.DetailsTotal = details_total
               UI.GameList.DetailsVisible = details_visible
-              local group_h = art_h + details_gap + details_h
+              local group_h = details_art_h + details_gap + details_h
               local group_top = Round(top_margin + (avail - group_h) / 2)
               if group_top < top_margin then group_top = top_margin end
               if group_top > draw_y then group_top = draw_y end  -- only lift up, never down
@@ -2561,7 +2569,7 @@ UI = {
               -- icons clear if one ever exists). Prioritizes footer clearance.
               if group_top + group_h > bottom_limit then group_top = bottom_limit - group_h end
               draw_y = group_top
-              details_y = draw_y + art_h + details_gap
+              details_y = draw_y + details_art_h + details_gap
             end
           end
           -- Draw the cover/placeholder at the (possibly lifted) draw_y. The default
@@ -2701,14 +2709,10 @@ UI = {
         end
         if UI.Pad.Events.SQUARE then
           UI.CoverPreviewEnabled = not UI.CoverPreviewEnabled
-          local now = 0
-          if UI.Pad.Timer ~= nil then
-            now = Timer.getTime(UI.Pad.Timer)
-          end
           if UI.CoverPreviewEnabled then
             UI.GameList.CoverLastIndex = nil
             UI.GameList.CoverPending = true
-            UI.GameList.CoverPendingAt = now - UI.GameList.CoverIdleMs
+            UI.GameList.CoverPendingFrames = 9999  -- re-enabled: load on the next settled frame
             UI.Notif_queue.add("Cover Art enabled", "ok")
           else
             if UI.CoverCache ~= nil then
@@ -2719,31 +2723,38 @@ UI = {
           end
         end
         if UI.CoverCache ~= nil then
-          local now = 0
-          if UI.Pad.Timer ~= nil then
-            now = Timer.getTime(UI.Pad.Timer)
-          end
+          -- Cover-load settle: DECODE the selection's cover only after the cursor has been
+          -- STABLE for ~250ms, FRAME-COUNTED (Timer.getTime is microseconds, so the old
+          -- CoverIdleMs=200 was sub-frame and re-decoded the cover on nearly every selection
+          -- change while scrolling, dragging navigation -- oldman63). CURR keeps changing
+          -- while you scroll so the counter resets and nothing decodes; the cover loads only
+          -- once you stop.
           local nav_event = UI.Pad.Events.NAV_DOWN or UI.Pad.Events.NAV_RIGHT or UI.Pad.Events.NAV_UP or UI.Pad.Events.NAV_LEFT
+          local cover_fps = ((UI.SCR.Y or 448) >= 512) and 50 or 60
+          local COVER_IDLE_FRAMES = math.ceil(cover_fps * 0.25)  -- ~250ms, above the nav repeat rate
           if UI.CoverPreviewEnabled == false then
             UI.GameList.CoverPending = false
-            UI.GameList.CoverPendingAt = now
+            UI.GameList.CoverPendingFrames = 0
             UI.CoverCache:UpdateSelection(nil)
           elseif ammount <= 0 then
             UI.GameList.CoverLastIndex = nil
             UI.GameList.CoverPending = false
-            UI.GameList.CoverPendingAt = now
+            UI.GameList.CoverPendingFrames = 0
             UI.CoverCache:UpdateSelection(nil)
           else
             if UI.GameList.CURR ~= UI.GameList.CoverLastIndex then
               UI.GameList.CoverLastIndex = UI.GameList.CURR
               UI.GameList.CoverPending = true
-              UI.GameList.CoverPendingAt = now
+              UI.GameList.CoverPendingFrames = 0
             end
-            if UI.GameList.CoverPending and not nav_event and (now - UI.GameList.CoverPendingAt) >= UI.GameList.CoverIdleMs then
-              local entry = PLDR.GAMES[UI.GameList.CURR]
-              local vcd_path = ResolveSelectedVcdPath(entry, PLDR.GAMEPATH)
-              UI.CoverCache:UpdateSelection(vcd_path, UI.CURSCENE == UI.SCENES.GHDD, entry)
-              UI.GameList.CoverPending = false
+            if UI.GameList.CoverPending then
+              UI.GameList.CoverPendingFrames = (UI.GameList.CoverPendingFrames or 0) + 1
+              if not nav_event and UI.GameList.CoverPendingFrames >= COVER_IDLE_FRAMES then
+                local entry = PLDR.GAMES[UI.GameList.CURR]
+                local vcd_path = ResolveSelectedVcdPath(entry, PLDR.GAMEPATH)
+                UI.CoverCache:UpdateSelection(vcd_path, UI.CURSCENE == UI.SCENES.GHDD, entry)
+                UI.GameList.CoverPending = false
+              end
             end
           end
         end
