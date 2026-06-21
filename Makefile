@@ -66,8 +66,9 @@ endif
 
 BIN2S = $(PS2SDK)/bin/bin2c
 
-# `default.png` is an optional cover placeholder. When it is absent from the
-# checkout, the runtime falls back to the required `MISSING.png` asset.
+# `default.png` is an optional legacy cover override. When absent from the checkout
+# it is simply not embedded; the game-list cover box uses cover_default.png (+
+# cover_missing.png overlay) for the no-cover / preview-off states.
 OPTIONAL_EMBEDDED_RSC =
 ifneq ($(wildcard bin/POPSLDR/IMG/default.png),)
 OPTIONAL_EMBEDDED_RSC += asset_default_png.o
@@ -97,7 +98,7 @@ EMBEDDED_RSC = boot.o builtin_font.o \
 	asset_bdhdd_png.o asset_bg_png.o asset_bkg_png.o asset_bgm_png.o asset_disc_png.o asset_splash_bg_png.o \
 	asset_splash_logo_png.o asset_splash_appname_png.o asset_splash_credits_png.o asset_select_png.o \
 	asset_start_png.o asset_triangle_png.o asset_circle_png.o asset_cross_png.o asset_square_png.o \
-	asset_frame_png.o asset_missing_png.o $(OPTIONAL_EMBEDDED_RSC) \
+	asset_frame_png.o asset_cover_default_png.o asset_cover_missing_png.o $(OPTIONAL_EMBEDDED_RSC) \
 	asset_system_lua.o asset_ui_lua.o asset_images_lua.o asset_pops_profiles_lua.o asset_boot_adp.o \
 	asset_usbd_irx_usbexfat.o asset_usbhdfsd_irx_usbexfat.o asset_usbhdfsd_irx_mx4sio.o \
 	asset_usbd_irx_mmce.o asset_usbhdfsd_irx_mmce.o \
@@ -175,8 +176,10 @@ $(EE_ASM_DIR)asset_frame_png.c: bin/POPSLDR/IMG/frame.png | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_frame_png
 $(EE_ASM_DIR)asset_default_png.c: bin/POPSLDR/IMG/default.png | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_default_png
-$(EE_ASM_DIR)asset_missing_png.c: bin/POPSLDR/IMG/MISSING.png | $(EE_ASM_DIR)
-	$(BIN2S) $< $@ asset_missing_png
+$(EE_ASM_DIR)asset_cover_default_png.c: bin/POPSLDR/IMG/cover_default.png | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_cover_default_png
+$(EE_ASM_DIR)asset_cover_missing_png.c: bin/POPSLDR/IMG/cover_missing.png | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_cover_missing_png
 
 # Lua scripts
 $(EE_ASM_DIR)asset_system_lua.c: bin/POPSLDR/system.lua | $(EE_ASM_DIR)

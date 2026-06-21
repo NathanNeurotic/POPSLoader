@@ -2441,19 +2441,13 @@ UI = {
           local preview_h = layout.PREVIEW_H
           local preview_img = nil
           local preview_is_live_cover = false
-          if cover_enabled then
-            if cover_img ~= nil then
-              preview_img = cover_img
-              preview_is_live_cover = true
-            else
-              preview_img = IMG.missing
-            end
-          else
-            -- Preview toggled OFF (Square): leave the box empty + framed and label
-            -- it "Cover disabled" below, instead of reusing the "Missing Cover" art
-            -- (which only fits a game that genuinely has no cover image). (#501)
-            preview_img = nil
+          if cover_enabled and cover_img ~= nil then
+            preview_img = cover_img
+            preview_is_live_cover = true
           end
+          -- When there is NO live cover -- preview OFF (Square), or ON but the game
+          -- has no cover art -- the placeholder below draws cover_default.png, with
+          -- cover_missing.png overlaid only when the preview is ON (enabled + missing).
           local draw_x = preview_x
           local draw_y = preview_y
           local draw_w = preview_w
@@ -2570,46 +2564,32 @@ UI = {
               details_y = draw_y + art_h + details_gap
             end
           end
-          -- Draw the cover/placeholder at the (possibly lifted) draw_y.
-          if preview_img ~= nil then
-            if preview_is_live_cover and cover_w ~= nil and cover_h ~= nil then
-              local cover_x = draw_x + (draw_w - cover_w)
-              Graphics.drawScaleImage(preview_img, cover_x, draw_y, cover_w, cover_h)
-            elseif frame_w ~= nil and frame_h ~= nil then
-              -- "Missing Cover" placeholder: MISSING.png is the inner art ONLY (a
-              -- right/top-anchored opaque block sized to register 1:1 inside the
-              -- frame's transparent cover-window), with no case/spine of its own.
-              -- So it MUST share the frame's aspect-corrected, right-anchored rect
-              -- (frame_x,draw_y,frame_w,frame_h) -- NOT the full draw_w x draw_h
-              -- box. The full box is taller than the aspect-shrunk frame on NTSC
-              -- (frame_h<draw_h) and wider+left-shifted on PAL (frame_x>draw_x), so
-              -- the old full-box draw left the art hanging below/left of the frame
-              -- border. Matching the frame rect keeps the art and the frame window
-              -- on one footprint on BOTH video modes. (#496/#501 alignment fix)
-              local frame_x = draw_x + (draw_w - frame_w)
-              Graphics.drawScaleImage(preview_img, frame_x, draw_y, frame_w, frame_h)
-            else
-              -- Frame failed to load (both are embedded together, so unreachable in
-              -- practice): fall back to the full box so the placeholder still shows.
-              Graphics.drawScaleImage(preview_img, draw_x, draw_y, draw_w, draw_h)
+          -- Draw the cover/placeholder at the (possibly lifted) draw_y. The default
+          -- cover, the missing overlay, and the frame all share the frame's
+          -- aspect-corrected, right-anchored rect (frame_x,draw_y,frame_w,frame_h) so
+          -- they register with the jewel-case window on BOTH NTSC and PAL; a live
+          -- cover uses its own COVER_W inset (also right-anchored).
+          local frame_x = (frame_w ~= nil) and (draw_x + (draw_w - frame_w)) or draw_x
+          if preview_is_live_cover and preview_img ~= nil and cover_w ~= nil and cover_h ~= nil then
+            -- Live cover art: right-anchored inside the frame window.
+            local cover_x = draw_x + (draw_w - cover_w)
+            Graphics.drawScaleImage(preview_img, cover_x, draw_y, cover_w, cover_h)
+          elseif frame_w ~= nil and frame_h ~= nil then
+            -- No live cover -> the DEFAULT cover. Preview OFF: just the plain default
+            -- case. Preview ON but the game has no cover: default case with the
+            -- "missing cover" mark on top. (Replaces the old "Cover disabled" text and
+            -- the single combined placeholder image.)
+            if IMG.cover_default ~= nil then
+              Graphics.drawScaleImage(IMG.cover_default, frame_x, draw_y, frame_w, frame_h)
+            end
+            if cover_enabled and IMG.cover_missing ~= nil then
+              Graphics.drawScaleImage(IMG.cover_missing, frame_x, draw_y, frame_w, frame_h)
             end
           end
           if IMG.frame ~= nil and frame_w ~= nil and frame_h ~= nil then
-            local frame_x = draw_x + (draw_w - frame_w)
             Graphics.drawScaleImage(IMG.frame, frame_x, draw_y, frame_w, frame_h)
           end
-          -- Cover preview toggled OFF (Square): label the empty framed box
-          -- "Cover disabled" rather than reusing the "Missing Cover" placeholder,
-          -- which is only correct when a game truly has no cover image. (#501)
-          if not cover_enabled then
-            -- Center on the FRAME (right-anchored in the preview box), not the box:
-            -- on PAL frame_w < draw_w, so box-center left-shifted the label. (#501)
-            local fw = frame_w or draw_w
-            local fh = frame_h or draw_h
-            Font.ftPrint(SFONT, draw_x + draw_w - Round(fw / 2),
-                         draw_y + Round((fh - 16) / 2), 8,
-                         fw, 16, "Cover disabled", UI.CCOL.GREY)
-          end
+          -- (Cover preview OFF now shows the plain default cover above -- no text label.)
           -- Paint the description: window the visible slice from the scroll offset,
           -- with a "..." affordance when there's more above/below (font-safe, same
           -- idiom as the old truncation). draw_y/details_y already include the lift.
@@ -4114,7 +4094,7 @@ UI = {
           return value
         end
         local function ResolveIcon(key)
-          return IMG[key] or IMG["missing"]
+          return IMG[key]
         end
         if not UI.MainMenu.icons_ready then
           for _, key in ipairs(icon_keys) do
@@ -4134,7 +4114,7 @@ UI = {
           local pos_y = Round(y - (icon_h / 2))
           Graphics.drawImage(icon, pos_x, pos_y, color)
         end
-        local first_icon = ResolveIcon(icon_keys[1] or "missing")
+        local first_icon = ResolveIcon(icon_keys[1])
         local base_icon_w = 0
         if first_icon ~= nil then
           base_icon_w = Graphics.getImageWidth(first_icon)
