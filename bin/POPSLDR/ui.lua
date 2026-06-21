@@ -2331,7 +2331,7 @@ UI = {
       CoverIdleMs = 200;
       DetailsTotal = 0;       -- wrapped lines in the current description (0 = none)
       DetailsVisible = 0;     -- how many of them fit on screen this frame
-      DescScrollAt = 0;       -- last right-stick scroll step (ms, for rate-limit)
+      DescScrollFrames = nil; -- frames since last desc-scroll step (frame-count rate-limit)
       PageNavAt = 0;          -- last left-stick fast-page-nav step (ms, for rate-limit)
       Reset = function ()
         UI.GameList.CURR = 1;
@@ -2340,7 +2340,7 @@ UI = {
         UI.GameList.CoverPendingAt = 0
         UI.GameList.DetailsTotal = 0
         UI.GameList.DetailsVisible = 0
-        UI.GameList.DescScrollAt = 0
+        UI.GameList.DescScrollFrames = nil
         UI.GameList.PageNavAt = 0
       end;
       Play = function()
@@ -2690,21 +2690,32 @@ UI = {
              and type(Pads) == "table" and type(Pads.getRightStick) == "function" then
             local ok_rs, _, rv = pcall(Pads.getRightStick)
             local _spd = (type(PLDR) == "table" and PLDR.DESC_SCROLL_SPEED) or "slow"
-            local _dz, _ms = 80, 900          -- slow (default): firm push, ~1.1 lines/sec (oldman63 #501: slower)
-            if _spd == "fast" then _dz, _ms = 48, 150
-            elseif _spd == "medium" then _dz, _ms = 64, 300 end
+            -- One scroll step every _secs seconds, FRAME-COUNTED (not the wall clock):
+            -- Timer.getTime() is microseconds on PS2, so the old "(now - DescScrollAt)
+            -- >= _ms" gate was sub-frame and scrolled every frame regardless of the
+            -- speed setting (oldman63: too fast, all three speeds felt the same). This
+            -- block runs once per vblank-paced frame, so step_frames = ceil(_secs * fps)
+            -- is unit-safe and identical in real seconds on PAL (50Hz) and NTSC (60Hz).
+            -- Tune the feel below in SECONDS.
+            local _dz, _secs = 80, 0.9        -- slow (default): firm push, ~1.1 lines/sec
+            if _spd == "fast" then _dz, _secs = 48, 0.15
+            elseif _spd == "medium" then _dz, _secs = 64, 0.3 end
             if ok_rs and type(rv) == "number" and math.abs(rv) > _dz then
-              local now = 0
-              if UI.Pad.Timer ~= nil then now = Timer.getTime(UI.Pad.Timer) end
-              if (now - (UI.GameList.DescScrollAt or 0)) >= _ms then
+              local fps = ((UI.SCR.Y or 448) >= 512) and 50 or 60
+              local step_frames = math.ceil(_secs * fps)
+              local f = (UI.GameList.DescScrollFrames or step_frames) + 1
+              if f >= step_frames then
                 local off = UI.CoverCache.desc_scroll or 0
                 if rv > 0 then off = off + 1 else off = off - 1 end
                 local max_off = (UI.GameList.DetailsTotal or 0) - (UI.GameList.DetailsVisible or 0)
                 if off < 0 then off = 0 end
                 if off > max_off then off = max_off end
                 UI.CoverCache.desc_scroll = off
-                UI.GameList.DescScrollAt = now
+                f = 0
               end
+              UI.GameList.DescScrollFrames = f
+            else
+              UI.GameList.DescScrollFrames = nil  -- released: next push scrolls right away
             end
           end
         end
