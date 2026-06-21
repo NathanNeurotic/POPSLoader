@@ -2501,12 +2501,17 @@ UI = {
             if frame_w > draw_w then frame_w = draw_w end
             if frame_h > draw_h then frame_h = draw_h end
           end
-          -- Visible art height = the taller of the cover/frame (both top-anchored);
-          -- a missing/disabled cover falls back to the full placeholder box.
+          -- Visible art height = the taller of the cover/frame (both top-anchored).
+          -- The missing/disabled placeholder now shares the frame's aspect-corrected
+          -- rect (see the draw below), so the frame_h branch already accounts for it;
+          -- only fall back to the full box height when there is NO frame to size to,
+          -- otherwise details would sit ~17px (NTSC) below a dead gap. (#496/#501)
           local art_h = 0
           if cover_h ~= nil and cover_h > art_h then art_h = cover_h end
           if frame_h ~= nil and frame_h > art_h then art_h = frame_h end
-          if not preview_is_live_cover and draw_h > art_h then art_h = draw_h end
+          if frame_h == nil and not preview_is_live_cover and draw_h > art_h then
+            art_h = draw_h
+          end
           if art_h <= 0 then art_h = draw_h end
           -- Per-game details: when the feature is on AND a "<name>.txt" was found,
           -- wrap it, place it DIRECTLY under the artwork, and lift the [art + gap +
@@ -2570,7 +2575,22 @@ UI = {
             if preview_is_live_cover and cover_w ~= nil and cover_h ~= nil then
               local cover_x = draw_x + (draw_w - cover_w)
               Graphics.drawScaleImage(preview_img, cover_x, draw_y, cover_w, cover_h)
+            elseif frame_w ~= nil and frame_h ~= nil then
+              -- "Missing Cover" placeholder: MISSING.png is the inner art ONLY (a
+              -- right/top-anchored opaque block sized to register 1:1 inside the
+              -- frame's transparent cover-window), with no case/spine of its own.
+              -- So it MUST share the frame's aspect-corrected, right-anchored rect
+              -- (frame_x,draw_y,frame_w,frame_h) -- NOT the full draw_w x draw_h
+              -- box. The full box is taller than the aspect-shrunk frame on NTSC
+              -- (frame_h<draw_h) and wider+left-shifted on PAL (frame_x>draw_x), so
+              -- the old full-box draw left the art hanging below/left of the frame
+              -- border. Matching the frame rect keeps the art and the frame window
+              -- on one footprint on BOTH video modes. (#496/#501 alignment fix)
+              local frame_x = draw_x + (draw_w - frame_w)
+              Graphics.drawScaleImage(preview_img, frame_x, draw_y, frame_w, frame_h)
             else
+              -- Frame failed to load (both are embedded together, so unreachable in
+              -- practice): fall back to the full box so the placeholder still shows.
               Graphics.drawScaleImage(preview_img, draw_x, draw_y, draw_w, draw_h)
             end
           end
