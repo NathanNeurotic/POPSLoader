@@ -51,14 +51,17 @@
 </thead>
 <tbody>
 <tr>
-<td></td>
-<td></td>
-<td></td>
+<td>POPS.ELF</td>
+<td>355a892a8ce4e4a105469d4ef6f39a42</td>
+<td>main SLBB-00001 ELF, decrypted</td>
+</tr>
+<tr>
+<td>IOPRP252.IMG</td>
+<td>1db9c6020a2cd445a7bb176a1a3dd418</td>
+<td>can be found in some retail game discs and $CEI SDKs too</td>
 </tr>
 </tbody>
 </table>
-<p>| POPS.ELF | 355a892a8ce4e4a105469d4ef6f39a42 | main SLBB-00001 ELF, decrypted |</p>
-<p>| IOPRP252.IMG | 1db9c6020a2cd445a7bb176a1a3dd418 | can be found in some retail game discs and $CEI SDKs too |</p>
 <ul>
 <li><strong>Other Software Requirements :</strong></li>
 </ul>
@@ -136,20 +139,49 @@ __sysconf/FMCB/Crash Bandicoot.elf
 </thead>
 <tbody>
 <tr>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
+<td><strong>HDDOSD compatible</strong></td>
+<td>Yes</td>
+<td>No</td>
+<td>No</td>
+</tr>
+<tr>
+<td><strong>Partition shown in the HDDOSD/PSBBN/PSX XMB</strong></td>
+<td>Yes</td>
+<td>No</td>
+<td>–</td>
+</tr>
+<tr>
+<td><strong>Prefix for POPStarter.ELF</strong></td>
+<td>PP. (if used)</td>
+<td>__.</td>
+<td>No prefix</td>
+</tr>
+<tr>
+<td><strong>Prefix for partition name</strong></td>
+<td>PP.</td>
+<td>__.</td>
+<td>__.POPS or __.POPS#</td>
+</tr>
+<tr>
+<td><strong>Game name</strong></td>
+<td>IMAGE0.VCD (all uppercase)</td>
+<td>IMAGE0.VCD (all uppercase)</td>
+<td>Name of the Game.VCD</td>
+</tr>
+<tr>
+<td><strong>Examples</strong></td>
+<td>(1)</td>
+<td>(2)</td>
+<td>(3)</td>
+</tr>
+<tr>
+<td><strong>Description</strong></td>
+<td>Launch type that was used in POPStarter 12 and older. Allows to install one VCD per partition.</td>
+<td>Launch type that was used in POPStarter 12 and older. Allows to install one VCD per partition.</td>
+<td>Launch type introduced in POPStarter 13 WIP 01. Allows to put multiple VCDs in a single partition.</td>
 </tr>
 </tbody>
 </table>
-<p>| <strong>HDDOSD compatible</strong> | Yes | No | No |</p>
-<p>| <strong>Partition shown in the HDDOSD/PSBBN/PSX XMB</strong> | Yes | No | – |</p>
-<p>| <strong>Prefix for POPStarter.ELF</strong> | PP. (if used) | __. | No prefix |</p>
-<p>| <strong>Prefix for partition name</strong> | PP. | __. | __.POPS or __.POPS# |</p>
-<p>| <strong>Game name</strong> | IMAGE0.VCD (all uppercase) | IMAGE0.VCD (all uppercase) | Name of the Game.VCD |</p>
-<p>| <strong>Examples</strong> | (1) | (2) | (3) |</p>
-<p>| <strong>Description</strong> | Launch type that was used in POPStarter 12 and older. Allows to install one VCD per partition. | Launch type that was used in POPStarter 12 and older. Allows to install one VCD per partition. | Launch type introduced in POPStarter 13 WIP 01. Allows to put multiple VCDs in a single partition. |</p>
 <p><strong>Examples :</strong></p>
 <p>(1) With the POPStarter ELF renamed as PP.SomeGame.elf, POPStarter will launch IMAGE0.VCD which is in the partition named PP.SomeGame.</p>
 <p>(2) With the POPStarter ELF renamed as __.SomeGame.elf, POPStarter will launch IMAGE0.VCD which is in the partition named __.SomeGame.</p>

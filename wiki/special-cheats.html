@@ -50,50 +50,197 @@
 </thead>
 <tbody>
 <tr>
+<td>$SAFEMODE</td>
+<td>Disables the cheat engine and only activate it after POPS has left the PS OSD.</td>
+<td>Should be always ON. Some game codes do patch the memory area where the PS OSD is loaded, causing crashes and other garbage…</td>
+</tr>
+<tr>
+<td>$COMPATIBILITY_0x##</td>
+<td>Activates a <a href="../wiki/compatibility.html">compatibility mode</a>.</td>
+<td><strong>##</strong> is a hexadecimal value. You can write as many $COMPATIBILITY_0x## as you want.</td>
+</tr>
+<tr>
+<td>$CODECACHE_ADDON_0</td>
+<td>For games that lag badly or stall randomly.</td>
+<td>If compatibility mode and mode 0×04 doesn’t fix that doesn’t fix your issue. Do not use it by default on all your games, because most games will stop working with it.</td>
+</tr>
+<tr>
+<td>$SUBCDSTATUS</td>
+<td>A variant of $COMPATIBILITY_0×05.</td>
 <td></td>
+</tr>
+<tr>
+<td>$FAKELC</td>
+<td>Loads a null LibCrypt magic word into the cop0 register.</td>
+<td>May be needed by some discs that have a messed up LC protection.</td>
+</tr>
+<tr>
+<td>$SMOOTH</td>
+<td>Enables the <a href="../wiki/smooth.html">smooth texture</a> mapping at startup.</td>
+<td>Just for the records : value is $S0003390 00000001.</td>
+</tr>
+<tr>
+<td>$NOPAL</td>
+<td>Disables POPStarters’ PAL patcher.</td>
+<td>Can be done using a <a href="../downloads/NOPAL_PATCH.7z">PATCH_#.BIN</a> file. Not meant to convert NTSC games to PAL.</td>
+</tr>
+<tr>
+<td>$FORCEPAL</td>
+<td>Forces the activation of the PAL patcher (POPS will run it PAL) and patches the BIOS region code to Euro (shows the boot screen in PAL).</td>
+<td>Useful for PAL VCDs that don’t have a valid license text in their bootsector. Can be done using a <a href="../downloads/FORCEPAL_PATCH.7z">PATCH_#.BIN file</a>.</td>
+</tr>
+<tr>
+<td>$480p</td>
+<td>Forces 480p.</td>
+<td>Not compatible with $XPOS, $YPOS, $DWSTRETCH, $DWCROP &amp; NOT reliable ATM. See notes <a href="https://assemblergames.com/threads/ps2-pops-stuff.45347/page-93#post-908556">here</a></td>
+</tr>
+<tr>
+<td>$<a href="../wiki/widescreen.html">WIDESCREEN</a></td>
+<td>Enables POPS GTE widescreen hack and forces 16:9.</td>
+<td>Does not deal with stuff like HUDs, texts/fonts, menus, 2D backgrounds… This hack is not finished (no render fix…).</td>
+</tr>
+<tr>
+<td>$ULTRA_WIDESCREEN</td>
+<td>Same as $WIDESCREEN, but wider FOV.</td>
+<td>Does not match any aspect ratio standard. Does not deal with stuff like HUDs, texts/fonts, menus, 2D backgrounds…</td>
+</tr>
+<tr>
+<td>$EYEFINITY</td>
+<td>Same as $WIDESCREEN, with 3×16:9 aspect ratio.</td>
+<td>Does not deal with stuff like HUDs, texts/fonts, menus, 2D backgrounds…</td>
+</tr>
+<tr>
+<td>$XPOS_####</td>
+<td>Centers the screen horizontally.</td>
+<td><strong>####</strong> is a number (decimal, negative values not supported). Works only in PAL and NTSC modes. Default value : 640. Value lower than 640 will move the screen on the left, value higher than 640 will move it to the right. Not compatible with $480p.</td>
+</tr>
+<tr>
+<td>$YPOS_##</td>
+<td>Centers the screen vertically.</td>
+<td><strong>##</strong> is a number (decimal, negative values not supported). Works only in PAL and NTSC modes. Not working in OBT15, fixed in OBT16. No default value, depends on the game, you have to experiment. The higher the value is, the more the screen moves down. Not compatible with $480p.</td>
+</tr>
+<tr>
+<td>$<a href="https://assemblergames.com/threads/ps2-pops-stuff-popstarter.45347/page-108#post-944768">DWSTRETCH_####</a></td>
+<td>Stretches the display horizontally to your screen.</td>
+<td><strong>####</strong> is a number (decimal). Works only in PAL and NTSC modes. Default value : 2559. Increase it to stretch the screen on the right, decrease it for the left. Not compatible with $480p.</td>
+</tr>
+<tr>
+<td>$<a href="https://assemblergames.com/threads/ps2-pops-stuff-popstarter.45347/page-108#post-944768">DWCROP_####</a></td>
+<td>Reduces/expands the display area width.</td>
+<td><strong>####</strong> is a number (decimal). Works only in PAL and NTSC modes. Maximum value : 2560. Decrease it to crop the screen on the right. Not compatible with $480p.</td>
+</tr>
+<tr>
+<td>$HDTVFIX</td>
+<td>Enables SetGsCrt hack.</td>
+<td>Helps with the HDTVs that can’t deal with the interlaced resolutions thru component (plain green screens and other rubbish displayed otherwise). Not compatible with some CRT TVs.</td>
+</tr>
+<tr>
+<td>$SCANLINES</td>
+<td>Enables the scanlines generator.</td>
+<td>A scanline is a horizontal line, or row, in a raster scanning pattern, so that the image of the games are seen with this type of lines that the old TVs and tube monitors (CRT) had.</td>
+</tr>
+<tr>
+<td>$MUTE_CDDA</td>
+<td>Mutes CDDA tracks.</td>
+<td>Done automatically when you play a <a href="../wiki/ps1cd-mode.html">physical PS1 CDROM from the disc drive</a>.</td>
+</tr>
+<tr>
+<td>$UNDO_MUTE_CDDA</td>
+<td>Unmutes CDDA tracks in <a href="../wiki/ps1cd-mode.html">PS1CD mode</a>.</td>
 <td></td>
+</tr>
+<tr>
+<td>$MUTE_VAB</td>
+<td>Mute VAB/VAG/VB+VH based sounds/music on games.</td>
+<td>May be useful for these old games which output distorted SFX, wrong audio samples or stupid noises.</td>
+</tr>
+<tr>
+<td>$00507028 00000001</td>
+<td>Rumble Always On (Pad 1).</td>
 <td></td>
+</tr>
+<tr>
+<td>$005070B8 00000001</td>
+<td>Rumble Always On (Pad 2).</td>
+<td></td>
+</tr>
+<tr>
+<td><a href="../wiki/d2ls.html">$D2LS</a></td>
+<td>“Left Stick is the D-Pad” code + Stay on Digital Mode.</td>
+<td>Enables joystick support for games that doesn’t support it natively. $D2LS should be OK for most games. If it doesn’t work, the user should try $D2LS_ALT.</td>
+</tr>
+<tr>
+<td>$D2LS_ALT</td>
+<td>“Left Stick is the D-Pad” code + Stay on Analog Mode.</td>
+<td>Enables joystick support for games that doesn’t support it natively.</td>
+</tr>
+<tr>
+<td>$NOVMC0</td>
+<td>Use VMC1 only.</td>
+<td></td>
+</tr>
+<tr>
+<td>$NOVMC1</td>
+<td>Use VMC0 only.</td>
+<td></td>
+</tr>
+<tr>
+<td>$IGR0</td>
+<td>+ + + + +</td>
+<td>Opens the IGR menu.</td>
+</tr>
+<tr>
+<td>$IGR1</td>
+<td>+</td>
+<td>Opens the IGR menu.</td>
+</tr>
+<tr>
+<td>$IGR2</td>
+<td>+ + + + +</td>
+<td>Opens the IGR menu.</td>
+</tr>
+<tr>
+<td>$IGR3</td>
+<td>+ + + + +</td>
+<td>Terminates POPS (no IGR menu).</td>
+</tr>
+<tr>
+<td>$IGR4</td>
+<td>+</td>
+<td>Terminates POPS (no IGR menu).</td>
+</tr>
+<tr>
+<td>$IGR5</td>
+<td>+ + + + +</td>
+<td>Terminates POPS (no IGR menu).</td>
+</tr>
+<tr>
+<td>$NOIGR</td>
+<td>Disables the IGR menu.</td>
+<td></td>
+</tr>
+<tr>
+<td>$CACHE1</td>
+<td>Makes POPS buffer 1 sector instead of 16.</td>
+<td></td>
+</tr>
+<tr>
+<td>$USBDELAY_#</td>
+<td>Sets up the PFS wrapper USB delay.</td>
+<td><strong>#</strong> is a number.</td>
+</tr>
+<tr>
+<td>$UNDO_GAME_FIXES</td>
+<td>Prevents POPStarter from activating game fixes.</td>
+<td>This comand may not work for some games to show their problems again, since during the end development of the latest beta, work was done fixing bugs to the POPS, and probably due to patching one of this bugs makes the game work well without needing the specific fixes for each game, (which seems to be the case of the game Crash Bandicoot game in its PAL version). Some game fixes were also removed (it is not remembered for which games) because were made obsolete by the subsequent POPS patches.</td>
+</tr>
+<tr>
+<td>$20210CF8 2442FFFF $20210CFC 7C640000 $20210D00 00000000 $20210D04 00000000 $20210D08 00000000 $00210D0C 000000FA $S200009C 1F000000</td>
+<td>LibCrypt code for Jackie Chan Stuntmaster (PAL)</td>
+<td>With this game in its first batch of discs it has been discovered that it lacks the LibCrypt protection. So if the LibCrypt code built into the POPStarter or the $FAKELC command fails to prevent game freezing, then these codes should be used.</td>
 </tr>
 </tbody>
 </table>
-<p>| $SAFEMODE | Disables the cheat engine and only activate it after POPS has left the PS OSD. | Should be always ON. Some game codes do patch the memory area where the PS OSD is loaded, causing crashes and other garbage… |</p>
-<p>| $COMPATIBILITY_0x## | Activates a <a href="../wiki/compatibility.html">compatibility mode</a>. | <strong>##</strong> is a hexadecimal value. You can write as many $COMPATIBILITY_0x## as you want. |</p>
-<p>| $CODECACHE_ADDON_0 | For games that lag badly or stall randomly. | If compatibility mode and mode 0×04 doesn’t fix that doesn’t fix your issue. Do not use it by default on all your games, because most games will stop working with it. |</p>
-<p>| $SUBCDSTATUS | A variant of $COMPATIBILITY_0×05. |  |</p>
-<p>| $FAKELC | Loads a null LibCrypt magic word into the cop0 register. | May be needed by some discs that have a messed up LC protection. |</p>
-<p>| $SMOOTH | Enables the <a href="../wiki/smooth.html">smooth texture</a> mapping at startup. | Just for the records : value is $S0003390 00000001. |</p>
-<p>| $NOPAL | Disables POPStarters’ PAL patcher. | Can be done using a <a href="../downloads/NOPAL_PATCH.7z">PATCH_#.BIN</a> file. Not meant to convert NTSC games to PAL. |</p>
-<p>| $FORCEPAL | Forces the activation of the PAL patcher (POPS will run it PAL) and patches the BIOS region code to Euro (shows the boot screen in PAL). | Useful for PAL VCDs that don’t have a valid license text in their bootsector. Can be done using a <a href="../downloads/FORCEPAL_PATCH.7z">PATCH_#.BIN file</a>. |</p>
-<p>| $480p | Forces 480p. | Not compatible with $XPOS, $YPOS, $DWSTRETCH, $DWCROP &amp; NOT reliable ATM. See notes <a href="https://assemblergames.com/threads/ps2-pops-stuff.45347/page-93#post-908556">here</a> |</p>
-<p>| $<a href="../wiki/widescreen.html">WIDESCREEN</a> | Enables POPS GTE widescreen hack and forces 16:9. | Does not deal with stuff like HUDs, texts/fonts, menus, 2D backgrounds… This hack is not finished (no render fix…). |</p>
-<p>| $ULTRA_WIDESCREEN | Same as $WIDESCREEN, but wider FOV. | Does not match any aspect ratio standard. Does not deal with stuff like HUDs, texts/fonts, menus, 2D backgrounds… |</p>
-<p>| $EYEFINITY | Same as $WIDESCREEN, with 3×16:9 aspect ratio. | Does not deal with stuff like HUDs, texts/fonts, menus, 2D backgrounds… |</p>
-<p>| $XPOS_#### | Centers the screen horizontally. | <strong>####</strong> is a number (decimal, negative values not supported). Works only in PAL and NTSC modes. Default value : 640. Value lower than 640 will move the screen on the left, value higher than 640 will move it to the right. Not compatible with $480p. |</p>
-<p>| $YPOS_## | Centers the screen vertically. | <strong>##</strong> is a number (decimal, negative values not supported). Works only in PAL and NTSC modes. Not working in OBT15, fixed in OBT16. No default value, depends on the game, you have to experiment. The higher the value is, the more the screen moves down. Not compatible with $480p. |</p>
-<p>| $<a href="https://assemblergames.com/threads/ps2-pops-stuff-popstarter.45347/page-108#post-944768">DWSTRETCH_####</a> | Stretches the display horizontally to your screen. | <strong>####</strong> is a number (decimal). Works only in PAL and NTSC modes. Default value : 2559. Increase it to stretch the screen on the right, decrease it for the left. Not compatible with $480p. |</p>
-<p>| $<a href="https://assemblergames.com/threads/ps2-pops-stuff-popstarter.45347/page-108#post-944768">DWCROP_####</a> | Reduces/expands the display area width. | <strong>####</strong> is a number (decimal). Works only in PAL and NTSC modes. Maximum value : 2560. Decrease it to crop the screen on the right. Not compatible with $480p. |</p>
-<p>| $HDTVFIX | Enables SetGsCrt hack. | Helps with the HDTVs that can’t deal with the interlaced resolutions thru component (plain green screens and other rubbish displayed otherwise). Not compatible with some CRT TVs. |</p>
-<p>| $SCANLINES | Enables the scanlines generator. | A scanline is a horizontal line, or row, in a raster scanning pattern, so that the image of the games are seen with this type of lines that the old TVs and tube monitors (CRT) had. |</p>
-<p>| $MUTE_CDDA | Mutes CDDA tracks. | Done automatically when you play a <a href="../wiki/ps1cd-mode.html">physical PS1 CDROM from the disc drive</a>. |</p>
-<p>| $UNDO_MUTE_CDDA | Unmutes CDDA tracks in <a href="../wiki/ps1cd-mode.html">PS1CD mode</a>. |  |</p>
-<p>| $MUTE_VAB | Mute VAB/VAG/VB+VH based sounds/music on games. | May be useful for these old games which output distorted SFX, wrong audio samples or stupid noises. |</p>
-<p>| $00507028 00000001 | Rumble Always On (Pad 1). |  |</p>
-<p>| $005070B8 00000001 | Rumble Always On (Pad 2). |  |</p>
-<p>| <a href="../wiki/d2ls.html">$D2LS</a> | “Left Stick is the D-Pad” code + Stay on Digital Mode. | Enables joystick support for games that doesn’t support it natively. $D2LS should be OK for most games. If it doesn’t work, the user should try $D2LS_ALT. |</p>
-<p>| $D2LS_ALT | “Left Stick is the D-Pad” code + Stay on Analog Mode. | Enables joystick support for games that doesn’t support it natively. |</p>
-<p>| $NOVMC0 | Use VMC1 only. |  |</p>
-<p>| $NOVMC1 | Use VMC0 only. |  |</p>
-<p>| $IGR0 | + + + + + | Opens the IGR menu. |</p>
-<p>| $IGR1 | + | Opens the IGR menu. |</p>
-<p>| $IGR2 | + + + + + | Opens the IGR menu. |</p>
-<p>| $IGR3 | + + + + + | Terminates POPS (no IGR menu). |</p>
-<p>| $IGR4 | + | Terminates POPS (no IGR menu). |</p>
-<p>| $IGR5 | + + + + + | Terminates POPS (no IGR menu). |</p>
-<p>| $NOIGR | Disables the IGR menu. |  |</p>
-<p>| $CACHE1 | Makes POPS buffer 1 sector instead of 16. |  |</p>
-<p>| $USBDELAY_# | Sets up the PFS wrapper USB delay. | <strong>#</strong> is a number. |</p>
-<p>| $UNDO_GAME_FIXES | Prevents POPStarter from activating game fixes. | This comand may not work for some games to show their problems again, since during the end development of the latest beta, work was done fixing bugs to the POPS, and probably due to patching one of this bugs makes the game work well without needing the specific fixes for each game, (which seems to be the case of the game Crash Bandicoot game in its PAL version). Some game fixes were also removed (it is not remembered for which games) because were made obsolete by the subsequent POPS patches. |</p>
-<p>| $20210CF8 2442FFFF $20210CFC 7C640000 $20210D00 00000000 $20210D04 00000000 $20210D08 00000000 $00210D0C 000000FA $S200009C 1F000000 | LibCrypt code for Jackie Chan Stuntmaster (PAL) | With this game in its first batch of discs it has been discovered that it lacks the LibCrypt protection. So if the LibCrypt code built into the POPStarter or the $FAKELC command fails to prevent game freezing, then these codes should be used. |</p>
 <p>______________________________________________________________________________________________________________</p>
 <h3><a href="../wiki/index.html"><strong>Index</strong></a></h3><h2>Images &amp; screenshots</h2><div class="gallery"><figure><a href="../img/1415872802-Playstation-Button-L1.png" target="_blank"><img src="../img/1415872802-Playstation-Button-L1.png" alt="Playstation Button L1" loading="lazy"></a><figcaption>Playstation Button L1</figcaption></figure><figure><a href="../img/3667653909-Playstation-Button-L2.png" target="_blank"><img src="../img/3667653909-Playstation-Button-L2.png" alt="Playstation Button L2" loading="lazy"></a><figcaption>Playstation Button L2</figcaption></figure><figure><a href="../img/3507486238-Playstation-Button-R1.png" target="_blank"><img src="../img/3507486238-Playstation-Button-R1.png" alt="Playstation Button R1" loading="lazy"></a><figcaption>Playstation Button R1</figcaption></figure><figure><a href="../img/2283666138-Playstation-Button-R2.png" target="_blank"><img src="../img/2283666138-Playstation-Button-R2.png" alt="Playstation Button R2" loading="lazy"></a><figcaption>Playstation Button R2</figcaption></figure><figure><a href="../img/310130791-Playstation-Button-X.png" target="_blank"><img src="../img/310130791-Playstation-Button-X.png" alt="Playstation Button X" loading="lazy"></a><figcaption>Playstation Button X</figcaption></figure><figure><a href="../img/202135531-Playstation-Dpad-Down.png" target="_blank"><img src="../img/202135531-Playstation-Dpad-Down.png" alt="Playstation Dpad Down" loading="lazy"></a><figcaption>Playstation Dpad Down</figcaption></figure><figure><a href="../img/2984521000-Playstation-Button-Select.png" target="_blank"><img src="../img/2984521000-Playstation-Button-Select.png" alt="Playstation Button Select" loading="lazy"></a><figcaption>Playstation Button Select</figcaption></figure><figure><a href="../img/2691718556-Playstation-Button-Start.png" target="_blank"><img src="../img/2691718556-Playstation-Button-Start.png" alt="Playstation Button Start" loading="lazy"></a><figcaption>Playstation Button Start</figcaption></figure></div><p style="margin-top:26px"><a class="pill" href="../cheats.html">Related curated section → Cheats</a></p></main>
   <aside class="toc"><div class="toc-h">On this page</div><nav id="toc-nav"></nav></aside>

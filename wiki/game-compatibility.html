@@ -78,15 +78,22 @@
 </thead>
 <tbody>
 <tr>
-<td></td>
-<td></td>
-<td></td>
+<td>HDD</td>
+<td>here</td>
+<td>here</td>
+</tr>
+<tr>
+<td>USB</td>
+<td>here</td>
+<td>here</td>
+</tr>
+<tr>
+<td>SMB</td>
+<td>here</td>
+<td>here</td>
 </tr>
 </tbody>
 </table>
-<p>| HDD | here | here |</p>
-<p>| USB | here | here |</p>
-<p>| SMB | here | here |</p>
 <ul>
 <li>
 <p><strong>EOL Compatibility List</strong> (managed by El_Patas) : here</p>
@@ -111,19 +118,43 @@
 </thead>
 <tbody>
 <tr>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
+<td>0×01</td>
+<td>help restoring the music/voices in several games</td>
+<td>PATCH_1.BIN</td>
+<td>$COMPATIBILITY_0×01</td>
+</tr>
+<tr>
+<td>0×02</td>
+<td>a variant of mode 0×01, with a second hack for not breaking the MDECoding of FMVs (was designed for the Colony Wars series)</td>
+<td>PATCH_2.BIN</td>
+<td>$COMPATIBILITY_0×02</td>
+</tr>
+<tr>
+<td>0×03</td>
+<td>can be used if the mode 0×01 doesn’t provide the expected results</td>
+<td>PATCH_3.BIN</td>
+<td>$COMPATIBILITY_0×03</td>
+</tr>
+<tr>
+<td>0×04</td>
+<td>prevent the emulator from writing a garbage value in two of the virtual GPU registers (fixes slowdowns, flickering, and many other glitches)</td>
+<td>PATCH_4.BIN</td>
+<td>$COMPATIBILITY_0×04</td>
+</tr>
+<tr>
+<td>0×05</td>
+<td>made for fixing the cutscenes of the PAL Resident Evil: Director’s Cut</td>
+<td>PATCH_5.BIN</td>
+<td>$COMPATIBILITY_0×05</td>
+</tr>
+<tr>
+<td>0×06</td>
+<td>disable the OSD shell of the emulator’s built-in BIOS, making some games that freeze on startup run</td>
+<td>PATCH_6.BIN</td>
+<td>$COMPATIBILITY_0×06</td>
 </tr>
 </tbody>
 </table>
-<p>| 0×01 | help restoring the music/voices in several games | PATCH_1.BIN | $COMPATIBILITY_0×01 |</p>
-<p>| 0×02 | a variant of mode 0×01, with a second hack for not breaking the MDECoding of FMVs (was designed for the Colony Wars series) | PATCH_2.BIN | $COMPATIBILITY_0×02 |</p>
-<p>| 0×03 | can be used if the mode 0×01 doesn’t provide the expected results | PATCH_3.BIN | $COMPATIBILITY_0×03 |</p>
-<p>| 0×04 | prevent the emulator from writing a garbage value in two of the virtual GPU registers (fixes slowdowns, flickering, and many other glitches) | PATCH_4.BIN | $COMPATIBILITY_0×04 |</p>
-<p>| 0×05 | made for fixing the cutscenes of the PAL Resident Evil: Director’s Cut | PATCH_5.BIN | $COMPATIBILITY_0×05 |</p>
-<p>| 0×06 | disable the OSD shell of the emulator’s built-in BIOS, making some games that freeze on startup run | PATCH_6.BIN | $COMPATIBILITY_0×06 |</p>
 <p><strong>Caution :</strong> Modes 0×01, 0×02, 0×03 and 0×05 cannot be enabled in the same time or combined. These are variants of the same hack and they are conflicting, so use only use one of them at a time. Please let us know (at ASSEMblergames) if you managed to solve a problem in your game by forcing modes, so I could integrate the fix in POPStarter.</p>
 <p><strong>How to use a mode ?</strong></p>
 <p>3 options :</p>

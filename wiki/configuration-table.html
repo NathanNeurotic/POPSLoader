@@ -52,78 +52,397 @@
 </thead>
 <tbody>
 <tr>
+<td><strong>$410</strong></td>
+<td>Display of the debug texts/pages</td>
+<td>0×00 = disables the debug printing</td>
+<td></td>
+</tr>
+<tr>
 <td></td>
 <td></td>
+<td>0×01 &lt; X &lt; 0xFF = defines the delay between each page of texts</td>
+<td>The higher the value is, the longer the delay is</td>
+</tr>
+<tr>
 <td></td>
+<td></td>
+<td>0xFF = the debug texts are displayed in realtime without delay (like in POPStarter 12 and lower)</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>$411</strong></td>
+<td>Break the POPStarter execution after an error has occured</td>
+<td>0×00 = POPStarter prints the error message for a short time, then it kicks the user to the OSD.</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>0×0X POPStarter prints the error message and sleeps on that screen indefinitely</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>$412</strong></td>
+<td>SetGsCrt hack</td>
+<td>0×00 = disabled (default)</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>0×01 = enabled</td>
+<td>Helps with the HDTVs that can’t deal with the interlaced resolutions thru component (plain green screens and other rubbish displayed otherwise).</td>
+</tr>
+<tr>
+<td><strong>$413</strong></td>
+<td>USB access delay, after the execution of the POPStarter embedded USB modules</td>
+<td>0×02 should be fine. Increase the value if POPStarter fails to access your USB device</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>$414</strong></td>
+<td>RESERVED (in USB operation mode)</td>
+<td>Must be 0×40</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>$415</strong></td>
+<td>User ID for individual VMCs</td>
+<td>If set to 0×00, the function is disabled.</td>
+<td>For assigning an ID to the couple of VMC, the value must be an ASCII character of “0”, “1”, “2”, “3”, “4”, “5”, “6”, “7”, “8” or “9”</td>
+</tr>
+<tr>
+<td><strong>$416</strong></td>
+<td>POPS dev9 module loading (in USB operation mode)</td>
+<td>0×00 = Let POPS load it Default is 0×03. If you need to wake the NIC up (for debugging stuff for example), set this to 0×00</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>0×03 = Forbids its loading</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>$417</strong></td>
+<td>NOT USED</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><strong>$418</strong></td>
+<td>Force a single compatibility mode</td>
+<td>0×00 = No compatibility mode is forced</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>0×0X = the respective compatibility mode is forced and the automatic activator gets disabled</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>$419</strong></td>
+<td>Force a single compatibility mode</td>
+<td>0×00 = No compatibility mode is forced</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>0×0X = the respective compatibility mode is forced and the automatic activator gets disabled</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>$41A</strong></td>
+<td>Force a single compatibility mode</td>
+<td>0×00 = No compatibility mode is forced</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>0×0X = the respective compatibility mode is forced and the automatic activator gets disabled</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>$41B</strong></td>
+<td>Force a single compatibility mode</td>
+<td>0×00 = No compatibility mode is forced</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>0×0X = the respective compatibility mode is forced and the automatic activator gets disabled</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>$41C</strong></td>
+<td>Force a single compatibility mode</td>
+<td>0×00 = No compatibility mode is forced</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>0×0X = the respective compatibility mode is forced and the automatic activator gets disabled</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>$41D</strong></td>
+<td>Force a single compatibility mode</td>
+<td>0×00 = No compatibility mode is forced</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>0×0X = the respective compatibility mode is forced and the automatic activator gets disabled</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>$41E</strong></td>
+<td>Force a single compatibility mode</td>
+<td>0×00 = No compatibility mode is forced</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>0×0X = the respective compatibility mode is forced and the automatic activator gets disabled</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>$41F</strong></td>
+<td>Force a single compatibility mode</td>
+<td>0×00 = No compatibility mode is forced</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>0×0X = the respective compatibility mode is forced and the automatic activator gets disabled</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>$420</strong></td>
+<td>Patch the genuine HDD check</td>
+<td>0×00 = Don’t patch</td>
+<td>Totally useless. When running in a PS2, a homebrew ATAD is used. When running in a PSX, the original POPS ATAD is used. Leave it to 0×01</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>0×01 = Patch</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>$421</strong></td>
+<td>Loading and execution of the OSD shell of the POPS built-in BIOS</td>
+<td>0×00 = Load in the user memory and execute (don’t patch anything)</td>
+<td>0×01 has the same effect as the compatibility mode 0×06. Skips the CD checks and the PS logo. Both don’t work if the user uses a BIOS.BIN</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>0×01 = Don’t load, don’t execute</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>$422</strong></td>
+<td>Exception breakpoints control</td>
+<td>0×00 = Break the emulator (don’t patch anything)</td>
+<td>0×01 NOPs the break instructions of the 2nd-stage exception handler, allowing the user to trigger IGR after the emulation has crashed (in a few cases)</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>0×01 = Don’t break the emulator</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>$423</strong></td>
+<td>Original SLBB-00001 disc0 integrity check control</td>
+<td>0×00 = Don’t skip the integrity check</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>0×01 = Skip the integrity check</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>$424</strong></td>
+<td>IGR exit method</td>
+<td>0×00 = Original SLBB-00001+PSBBN method</td>
+<td>0×00 causes the emulator to read the MBR by its own, without flushing the cache and without resetting the IOP. Crashy for most users.</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>0×01 = POPStarter r13 method</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>$425</strong></td>
+<td>IOPCD stack size (in USB operation mode)</td>
+<td>0×00 = Don’t patch</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>0×01 = Patch</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>$426</strong></td>
+<td>Delcro’s patches (in USB operation mode)</td>
+<td>0×00 = Don’t apply those to POPS</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>0×01 = Apply those to POPS</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>$427</strong></td>
+<td>Emulator modules loading failure</td>
+<td>0×00 = Don’t patch (Kick to the PS2 OSD)</td>
+<td>For your h4×0ring needz. . Patch it so you no longer have to care about the returned code of your injected IRX.</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>0×01 = Patch (Ignore and continue)</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>$428</strong></td>
+<td>Internal HDD initialization failure</td>
+<td>0×00 = Don’t patch (Kick to the PS2 OSD)</td>
+<td>For your h4×0ring needz.</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>0×01 = Patch (Ignore and continue)</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>$429</strong></td>
+<td>Virtual Memory Cards control</td>
+<td>0×00 = Use both VMCs</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>0×01 = Don’t use VMCs at all</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>0×02 = Use just the first VMC in the first virtual slot</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>$42A</strong></td>
+<td>Automatic PAL patch upon European VCD recognition</td>
+<td>0×00 = Disabled</td>
+<td>The Automatic PAL Patcher of POPStarter expects “Euro” at the offset $102514 of the VCD</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>0×01 = Enabled</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>0×02 = Force 480p</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>$42B</strong></td>
+<td>Resident modules loader</td>
+<td>0×00 = Disabled</td>
+<td>POPS/MODULE_0.IRX POPS/MODULE_1.IRX... up to POPS/MODULE_9.IRX. Are executed AFTER the IOP gets reset with IOPRP252.IMG, for Great Justice.</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>0×01 = Enabled</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>$42C</strong></td>
+<td>Software PowerOff fix</td>
+<td>0×00 = Disabled</td>
+<td>Can’t remember what it is. Perhaps it’s a redundant option of a deimplemented function… Prolific, mass ?</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>0×01 = Enabled</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>$42D</strong></td>
+<td>IGR textures loader</td>
+<td>0×00 = Disabled</td>
+<td>POPS/IGR_BG.TM2 POPS/IGR_NO.TM2 POPS/IGR_YES.TM2</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>0×01 = Enabled</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>$42E</strong></td>
+<td>Game license/region check of the POPS built-in BIOS</td>
+<td>0×00 = Leave unpatched</td>
+<td>The patch just NOPs the loop. The PS logo is not shown when a non-JAP game is run.</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>0×01 = Patch it so it does not loop the check when the VCD isn’t NTSC J</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>$42F</strong></td>
+<td>POPStarter automatic compatibility mode activator</td>
+<td>0×00 = Do not enable anything</td>
+<td>If set to 0×03 and a compatibility mode is forced, it will be changed to 0×02 automatically (applies the forced modes and not the automatic ones)</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>0×01 = Enable the automatic compatibility modes activation</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>0×02 = Enable the other subroutines (like LibCrypt cracks, when available)</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>0×03 = Enable all</td>
 <td></td>
 </tr>
 </tbody>
 </table>
-<p>| <strong>$410</strong> | Display of the debug texts/pages | 0×00 = disables the debug printing |  |</p>
-<p>|  |  | 0×01 &lt; X &lt; 0xFF = defines the delay between each page of texts | The higher the value is, the longer the delay is |</p>
-<p>|  |  | 0xFF = the debug texts are displayed in realtime without delay (like in POPStarter 12 and lower) |  |</p>
-<p>| <strong>$411</strong> | Break the POPStarter execution after an error has occured | 0×00 = POPStarter prints the error message for a short time, then it kicks the user to the OSD. |  |</p>
-<p>|  |  | 0×0X POPStarter prints the error message and sleeps on that screen indefinitely |  |</p>
-<p>| <strong>$412</strong> | SetGsCrt hack | 0×00 = disabled (default) |  |</p>
-<p>|  |  | 0×01 = enabled | Helps with the HDTVs that can’t deal with the interlaced resolutions thru component (plain green screens and other rubbish displayed otherwise). |</p>
-<p>| <strong>$413</strong> | USB access delay, after the execution of the POPStarter embedded USB modules | 0×02 should be fine. Increase the value if POPStarter fails to access your USB device |  |</p>
-<p>| <strong>$414</strong> | RESERVED (in USB operation mode) | Must be 0×40 |  |</p>
-<p>| <strong>$415</strong> | User ID for individual VMCs | If set to 0×00, the function is disabled. | For assigning an ID to the couple of VMC, the value must be an ASCII character of “0”, “1”, “2”, “3”, “4”, “5”, “6”, “7”, “8” or “9” |</p>
-<p>| <strong>$416</strong> | POPS dev9 module loading (in USB operation mode) | 0×00 = Let POPS load it Default is 0×03. If you need to wake the NIC up (for debugging stuff for example), set this to 0×00 |  |</p>
-<p>|  |  | 0×03 = Forbids its loading |  |</p>
-<p>| <strong>$417</strong> | NOT USED |  |  |</p>
-<p>| <strong>$418</strong> | Force a single compatibility mode | 0×00 = No compatibility mode is forced |  |</p>
-<p>|  |  | 0×0X = the respective compatibility mode is forced and the automatic activator gets disabled |  |</p>
-<p>| <strong>$419</strong> | Force a single compatibility mode | 0×00 = No compatibility mode is forced |  |</p>
-<p>|  |  | 0×0X = the respective compatibility mode is forced and the automatic activator gets disabled |  |</p>
-<p>| <strong>$41A</strong> | Force a single compatibility mode | 0×00 = No compatibility mode is forced |  |</p>
-<p>|  |  | 0×0X = the respective compatibility mode is forced and the automatic activator gets disabled |  |</p>
-<p>| <strong>$41B</strong> | Force a single compatibility mode | 0×00 = No compatibility mode is forced |  |</p>
-<p>|  |  | 0×0X = the respective compatibility mode is forced and the automatic activator gets disabled |  |</p>
-<p>| <strong>$41C</strong> | Force a single compatibility mode | 0×00 = No compatibility mode is forced |  |</p>
-<p>|  |  | 0×0X = the respective compatibility mode is forced and the automatic activator gets disabled |  |</p>
-<p>| <strong>$41D</strong> | Force a single compatibility mode | 0×00 = No compatibility mode is forced |  |</p>
-<p>|  |  | 0×0X = the respective compatibility mode is forced and the automatic activator gets disabled |  |</p>
-<p>| <strong>$41E</strong> | Force a single compatibility mode | 0×00 = No compatibility mode is forced |  |</p>
-<p>|  |  | 0×0X = the respective compatibility mode is forced and the automatic activator gets disabled |  |</p>
-<p>| <strong>$41F</strong> | Force a single compatibility mode | 0×00 = No compatibility mode is forced |  |</p>
-<p>|  |  | 0×0X = the respective compatibility mode is forced and the automatic activator gets disabled |  |</p>
-<p>| <strong>$420</strong> | Patch the genuine HDD check | 0×00 = Don’t patch | Totally useless. When running in a PS2, a homebrew ATAD is used. When running in a PSX, the original POPS ATAD is used. Leave it to 0×01 |</p>
-<p>|  |  | 0×01 = Patch |  |</p>
-<p>| <strong>$421</strong> | Loading and execution of the OSD shell of the POPS built-in BIOS | 0×00 = Load in the user memory and execute (don’t patch anything) | 0×01 has the same effect as the compatibility mode 0×06. Skips the CD checks and the PS logo. Both don’t work if the user uses a BIOS.BIN |</p>
-<p>|  |  | 0×01 = Don’t load, don’t execute |  |</p>
-<p>| <strong>$422</strong> | Exception breakpoints control | 0×00 = Break the emulator (don’t patch anything) | 0×01 NOPs the break instructions of the 2nd-stage exception handler, allowing the user to trigger IGR after the emulation has crashed (in a few cases) |</p>
-<p>|  |  | 0×01 = Don’t break the emulator |  |</p>
-<p>| <strong>$423</strong> | Original SLBB-00001 disc0 integrity check control | 0×00 = Don’t skip the integrity check |  |</p>
-<p>|  |  | 0×01 = Skip the integrity check |  |</p>
-<p>| <strong>$424</strong> | IGR exit method | 0×00 = Original SLBB-00001+PSBBN method | 0×00 causes the emulator to read the MBR by its own, without flushing the cache and without resetting the IOP. Crashy for most users. |</p>
-<p>|  |  | 0×01 = POPStarter r13 method |  |</p>
-<p>| <strong>$425</strong> | IOPCD stack size (in USB operation mode) | 0×00 = Don’t patch |  |</p>
-<p>|  |  | 0×01 = Patch |  |</p>
-<p>| <strong>$426</strong> | Delcro’s patches (in USB operation mode) | 0×00 = Don’t apply those to POPS |  |</p>
-<p>|  |  | 0×01 = Apply those to POPS |  |</p>
-<p>| <strong>$427</strong> | Emulator modules loading failure | 0×00 = Don’t patch (Kick to the PS2 OSD) | For your h4×0ring needz. . Patch it so you no longer have to care about the returned code of your injected IRX. |</p>
-<p>|  |  | 0×01 = Patch (Ignore and continue) |  |</p>
-<p>| <strong>$428</strong> | Internal HDD initialization failure | 0×00 = Don’t patch (Kick to the PS2 OSD) | For your h4×0ring needz. |</p>
-<p>|  |  | 0×01 = Patch (Ignore and continue) |  |</p>
-<p>| <strong>$429</strong> | Virtual Memory Cards control | 0×00 = Use both VMCs |</p>
-<p>|  |  | 0×01 = Don’t use VMCs at all |  |</p>
-<p>|  |  | 0×02 = Use just the first VMC in the first virtual slot |  |</p>
-<p>| <strong>$42A</strong> | Automatic PAL patch upon European VCD recognition | 0×00 = Disabled | The Automatic PAL Patcher of POPStarter expects “Euro” at the offset $102514 of the VCD |</p>
-<p>|  |  | 0×01 = Enabled |  |</p>
-<p>|  |  | 0×02 = Force 480p |  |</p>
-<p>| <strong>$42B</strong> | Resident modules loader | 0×00 = Disabled | POPS/MODULE_0.IRX POPS/MODULE_1.IRX... up to POPS/MODULE_9.IRX. Are executed AFTER the IOP gets reset with IOPRP252.IMG, for Great Justice. |</p>
-<p>|  |  | 0×01 = Enabled |  |</p>
-<p>| <strong>$42C</strong> | Software PowerOff fix | 0×00 = Disabled | Can’t remember what it is. Perhaps it’s a redundant option of a deimplemented function… Prolific, mass ? |</p>
-<p>|  |  | 0×01 = Enabled |  |</p>
-<p>| <strong>$42D</strong> | IGR textures loader | 0×00 = Disabled | POPS/IGR_BG.TM2 POPS/IGR_NO.TM2 POPS/IGR_YES.TM2 |</p>
-<p>|  |  | 0×01 = Enabled |  |</p>
-<p>| <strong>$42E</strong> | Game license/region check of the POPS built-in BIOS | 0×00 = Leave unpatched | The patch just NOPs the loop. The PS logo is not shown when a non-JAP game is run. |</p>
-<p>|  |  | 0×01 = Patch it so it does not loop the check when the VCD isn’t NTSC J |  |</p>
-<p>| <strong>$42F</strong> | POPStarter automatic compatibility mode activator | 0×00 = Do not enable anything | If set to 0×03 and a compatibility mode is forced, it will be changed to 0×02 automatically (applies the forced modes and not the automatic ones) |</p>
-<p>|  |  | 0×01 = Enable the automatic compatibility modes activation |  |</p>
-<p>|  |  | 0×02 = Enable the other subroutines (like LibCrypt cracks, when available) |  |</p>
-<p>|  |  | 0×03 = Enable all |  |</p>
 <p>______________________________________________________________________________________________________________</p>
 <h2><em>Default values :</em></h2>
 <p>______________________________________________________________________________________________________________</p>
