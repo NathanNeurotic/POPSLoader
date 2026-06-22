@@ -1,0 +1,119 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Launch arguments · POPStarter Docs</title>
+<meta name="description" content="Resurrected, searchable POPStarter documentation — cheats, patches, config, storage, multi-disc, IGR, downloads, and the POPSLoader fork.">
+<link rel="stylesheet" href="assets/style.css">
+</head><body data-base="">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu">☰</button>
+  <a class="brand" href="index.html">
+    <span class="psbtns"><i class="tri">&#9651;</i><i class="cir">&#9711;</i><i class="cro">&#10005;</i><i class="squ">&#9633;</i></span>
+    POPStarter <small>DOCS</small></a>
+  <div class="search">
+    <span class="ico">🔎</span>
+    <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <a href="index.html"><span class="em">🏠</span>Home</a>
+    <h4>POPSLoader · this project</h4>
+    <a href="popsloader.html"><span class="em">📦</span>POPSLoader docs</a>
+    <a href="launch-arguments.html" class="active"><span class="em">🚀</span>Launch arguments</a>
+    <h4>POPStarter · documentation</h4><a href="getting-started.html"><span class="em">🚀</span>Getting Started</a>
+<a href="storage.html"><span class="em">💾</span>Storage Backends</a>
+<a href="cheats.html"><span class="em">🎮</span>Cheats</a>
+<a href="compatibility.html"><span class="em">🩹</span>Patches & TROJANs</a>
+<a href="igr.html"><span class="em">🎯</span>IGR & Hotkeys</a>
+<a href="config.html"><span class="em">🔧</span>Config Table</a>
+<a href="multidisc.html"><span class="em">💿</span>Multi-disc & VMC</a>
+<a href="troubleshooting.html"><span class="em">🛠️</span>Troubleshooting</a>
+<a href="downloads.html"><span class="em">📦</span>Downloads</a>
+<a href="history.html"><span class="em">📜</span>History</a>
+    <h4>Reference</h4>
+    <a href="glossary.html"><span class="em">📖</span>Glossary</a>
+    <a href="commands.html"><span class="em">⌨️</span>Command index</a>
+    <a href="faq.html"><span class="em">❓</span>FAQ &amp; known bugs</a>
+    <a href="thread-study.html"><span class="em">🧵</span>Community knowledge</a>
+    <a href="credits.html"><span class="em">🙏</span>Credits</a>
+    <a href="wiki/index.html"><span class="em">📚</span>All wiki pages</a>
+  </nav>
+  <main class="content"><h1>Launch arguments</h1>
+<p class="lead">Boot POPSLoader <b>straight into a device's game list — or straight into a game</b> — from
+whatever launcher you already use (OPL's <b>Apps</b> tab, uLaunchELF / wLaunchELF, an NHDDL-style entry).
+The arguments go after the ELF path and are entirely optional: with none, POPSLoader just opens its normal
+cover-art carousel.</p>
+
+<div class="callout info"><div class="h">ℹ Where these go</div>Append the arguments to the POPSLoader ELF path
+in your launcher entry, separated by spaces — e.g. an OPL <code>conf_apps.cfg</code> line or a wLaunchELF
+shortcut: <code>mc0:/PS1_POPSLOADER/POPSLOADER.ELF -page=ata</code>.</div>
+
+<h2 id="arguments">The arguments</h2>
+<table>
+<thead><tr><th>Argument</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>-page=&lt;device&gt;</code></td><td>Open that device's game list (when used without <code>-game=</code>).</td></tr>
+<tr><td><code>-mode=&lt;device&gt;</code></td><td>NHDDL-compatible <b>alias</b> for <code>-page=</code> — identical behaviour, same values.</td></tr>
+<tr><td><code>-game=&lt;selector&gt;</code></td><td>Auto-launch a game. <b>Must be combined with <code>-page=</code>.</b></td></tr>
+<tr><td><code>-debug</code></td><td>Show an on-screen boot-context diagnostic toast.</td></tr>
+</tbody>
+</table>
+
+<h2 id="pages">Which device does each <code>-page=</code> value open?</h2>
+<p>Values are case-insensitive. The two HDD pages are distinct: <code>ata</code> opens the new <b>exFAT</b>
+internal drive (BDMA-ATA), while <code>hdd</code> / <code>pfs</code> / <code>apa</code> opens the classic
+<b>APA/PFS</b> HDD.</p>
+<table>
+<thead><tr><th>Opens this page</th><th>Accepted <code>-page=</code> / <code>-mode=</code> values</th></tr></thead>
+<tbody>
+<tr><td><b>HDD (exFAT)</b> — BDMA ATA</td><td><code>ata</code>, <code>ata0</code>, <code>ataN</code></td></tr>
+<tr><td><b>HDD (PFS)</b> — APA</td><td><code>hdd</code>, <code>hdd0</code>, <code>pfs</code>, <code>apa</code>, <code>apa0</code></td></tr>
+<tr><td><b>USB</b></td><td><code>usb</code>, <code>mass</code></td></tr>
+<tr><td><b>MX4SIO</b></td><td><code>mx4sio</code>, <code>mx4</code>, <code>sdc</code></td></tr>
+<tr><td><b>MMCE</b> (SD2PSX / MemCard&nbsp;PRO2)</td><td><code>mmce</code></td></tr>
+</tbody>
+</table>
+<p class="hint">⚠ Not navigable: <code>smb</code> and <code>i.Link</code> aren't implemented yet, and the bare
+<code>bdma</code> token is a no-op — use <code>ata</code> to reach the exFAT page. An unrecognised value is
+ignored and the carousel just opens on its default page.</p>
+
+<h2 id="auto-launch">Auto-launching a game (<code>-game=</code>)</h2>
+<p>Combine <code>-page=</code> with <code>-game=</code> to boot straight into a specific title. The selector
+format depends on the device:</p>
+<table>
+<thead><tr><th>Page</th><th><code>-game=</code> selector</th></tr></thead>
+<tbody>
+<tr><td>USB · MX4SIO · MMCE · <b>HDD (exFAT)</b></td><td>the <code>.VCD</code> filename, relative to that device's <code>POPS/</code> folder (for exFAT use <code>-page=ata</code>)</td></tr>
+<tr><td>HDD (PFS)</td><td><code>&lt;PARTITION&gt;|&lt;VCD&gt;</code> — the POPS partition label, a literal <code>|</code>, then the <code>.VCD</code> name (e.g. <code>__.POPS|SLUS_007.42.RAMPAGE.VCD</code>)</td></tr>
+</tbody>
+</table>
+
+<h2 id="examples">Examples</h2>
+<pre>POPSLOADER.ELF -page=ata                              &larr; open the exFAT HDD game list
+POPSLOADER.ELF -page=hdd                               &larr; open the APA/PFS HDD game list
+POPSLOADER.ELF -mode=ata                               &larr; same as -page=ata (NHDDL style)
+POPSLOADER.ELF -page=usb -game=Tekken 3.VCD            &larr; boot straight into a USB game
+POPSLOADER.ELF -page=ata -game=Final Fantasy IX.VCD    &larr; auto-launch from the exFAT drive
+POPSLOADER.ELF -page=hdd -debug                        &larr; open the HDD list + diagnostic toast</pre>
+
+<div class="callout"><div class="h">Good to know</div><ul>
+<li><b>Recovery:</b> hold <b>START</b> while booting to suppress any auto-launch and reach the menu — handy if an entry is mis-typed.</li>
+<li><b>Spaces &amp; quotes:</b> game names with spaces work as-is; surrounding quotes are stripped. Don't pack two flags into one quoted value.</li>
+<li><b>NHDDL parity:</b> <code>-mode=ata</code> exists because that's how NHDDL selects the internal ATA drive; in POPSLoader it opens the <b>HDD (exFAT)</b> page.</li>
+<li>These are a <b>POPSLoader</b> feature — stock POPStarter has no launch arguments.</li>
+</ul></div></main>
+  <aside class="toc"><div class="toc-h">On this page</div><nav id="toc-nav"></nav></aside>
+</div>
+<footer>
+  <p><b>POPStarter Documentation Archive</b> — community-recovered from the Wayback Machine
+  (ShaolinAssassin's <code>popstarter-documentation-stuff</code> wiki) and krHACKen's r13 changelog,
+  cross-checked and merged across snapshots. Built for the POPSLoader project.</p>
+  <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
+  emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
+  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed. Built on the
+  documentation of <b>ShaolinAssassin</b> and <b>krHACKen</b> — see <a href="credits.html">Credits</a>.</p>
+</footer>
+<script src="assets/app.js"></script>
+</body></html>
