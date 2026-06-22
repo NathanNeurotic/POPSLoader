@@ -611,7 +611,7 @@ apa:hdd:/__common/POPS/POPS_IOX.PAK
 <blockquote>
 <p><strong>Note on POPS files</strong> (<code>POPS_IOX.PAK</code>, <code>POPS.ELF</code>, <code>IOPRP252.IMG</code>): Sony-copyrighted — supply your own and<br />
 verify against the checksums on the <a href="downloads.html">Downloads</a> page.</p>
-</blockquote><h2 id="partition-installed-pops-games-pp-__-hddosd-psbbn">Partition-installed POPS games (PP.<em> / __.</em> — HDDOSD &amp; PSBBN)</h2>
+</blockquote><div class="callout amber"><div class="h">⚖ SMB Apps entries: some later OPL betas need <code>smb0:</code>, not <code>smb:</code></div>The SMB layout above uses the bare <code>smb:/APPS/…</code> form in <code>conf_apps.cfg</code>. On <b>some later OPL betas</b> the SMB Apps-page path is <b>reportedly</b> only accepted in the <code>smb0:</code> form — i.e. <code>Crash Bandicoot=smb0:/APPS/SB.Crash Bandicoot.ELF</code> rather than the <code>smb:</code> form. If an SMB Apps entry refuses to launch on a recent OPL build, switch the prefix from <code>smb:</code> to <code>smb0:</code> and retry. (Community / cross-sourced report — not confirmed across every beta.)</div><h2 id="partition-installed-pops-games-pp-__-hddosd-psbbn">Partition-installed POPS games (PP.<em> / __.</em> — HDDOSD &amp; PSBBN)</h2>
 <blockquote>
 <p><strong>This is an <em>additional</em> launch path, not a replacement.</strong> The standard internal-HDD method documented<br />
 above — the <code>__.POPS</code> / <code>__.POPS0</code>…<code>__.POPS9</code> partition holding named <code>.VCD</code> files — is unchanged and<br />
@@ -703,7 +703,7 @@ PS2 <code>SYSTEM.CNF</code> carries three ordered parameters — <strong>BOOT2</
   driver packs (El_isra, 2025): MMCE via <strong><a href="https://github.com/ps2-mmce/mmceman/releases/tag/popstarter">mmceman</a></strong>,<br />
   MX4SIO via BDMAssault. Both use the <strong>same USB folder layout &amp; prefix</strong> and appear on OPL's APPS page.<br />
 <em>(El_isra / TnA-Plastic)</em> — this is exactly what the modern <strong>POPSLoader</strong> fork wraps.</li>
-</ul><h2>More wiki sources</h2><div class="grid"><a class="tile" href="wiki/popstarter-hddosd.html"><b>POPSTARTER Hddosd</b><span>full wiki page</span></a>
+</ul><div class="callout info"><div class="h">ℹ Launching via OPL's Apps tab and getting a black screen?</div>If an HDD POPStarter ELF launched from OPL's <b>Apps</b> page black-screens with the <b>HDD&nbsp;LED stuck on</b>, OPL is usually waiting on a network/BDM/SMB device left on <b>Auto</b> — set the OPL devices you don't use to <b>Manual</b> or <b>Off</b>. This is a <i>launch-time</i> hang, distinct from the BOOT.ELF <i>exit</i> black-screen. See <a href="troubleshooting.html#two-black-screens">Troubleshooting → Two different black screens</a>.</div><h2>More wiki sources</h2><div class="grid"><a class="tile" href="wiki/popstarter-hddosd.html"><b>POPSTARTER Hddosd</b><span>full wiki page</span></a>
 <a class="tile" href="wiki/pfsshell.html"><b>Pfsshell</b><span>full wiki page</span></a>
 <a class="tile" href="wiki/irx-loader.html"><b>IRX Loader</b><span>full wiki page</span></a>
 <a class="tile" href="wiki/radhostclient.html"><b>Radhostclient</b><span>full wiki page</span></a></div><details class="deep"><summary>Cross-sourced quick-reference cards (provenance-tagged)</summary><div class="cards"><div class="card" id="usb-layout-mass-pops-root-pops-folder"><h3>USB layout: mass:/POPS/ (root POPS folder) <span class="badge primary">primary</span> <span class="cat-chip">storage</span></h3>
