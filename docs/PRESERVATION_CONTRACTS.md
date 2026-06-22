@@ -1,6 +1,6 @@
 # POPSLoader Preservation Contracts
 
-Date: 2026-06-21 (re-synced to BETA-13-PLAY HEAD 56a5ad5; BETA-12 released 2026-06-18 per STATE.md)
+Date: 2026-06-22 (re-synced to BETA-13-PLAY HEAD 3d89631; the `2735229` audit cleanup shifted line numbers in luasystem.cpp / ui.lua / system.lua — treat the cited function/symbol as the unit of truth where a line drifted. BETA-12 released 2026-06-18 per STATE.md)
 Branch documented: `BETA-13-PLAY` (the active rolling-candidate branch; BETA-12-PLAY
 is now ARCHIVAL/frozen and rolling-release.yml publishes from BETA-13-PLAY)
 
@@ -502,10 +502,14 @@ against an `_ms`-named constant for nav/scroll cadence — it will fly at ~60x
 because the source is µs (the exact `adaa8ee → d128779` bug: "one click = 5 lines",
 nuno6573 / LVD14 #504). Frame-count instead, or use `os.clock()` (stock Lua,
 returns SECONDS — the only pre-converted Lua time source, currently unused).
-**Still on the µs-as-ms footing (parked, masked by a per-frame clamp, NOT a
-license to copy the pattern):** the `MIN_ACTION_MS` action debounce
-(`emit_action`, `ui.lua:4547`) and the transition/carousel timers — a future
-`os.clock()` sweep is the intended fix, do not extend the µs-as-ms idiom.
+**Sweep COMPLETE (`9c3f64f` + `a8e61f3`):** the `MIN_ACTION_MS` action debounce was
+REMOVED (it compared a µs delta to a 220 "ms" constant); `emit_action` (`ui.lua:4577`)
+is now a thin `emit` wrapper and edge-triggering (`pressed = GPAD & ~OLDPAD`) is the
+only gate. The scene-fade / boot-fade / carousel timers were frame-paced and the
+PathEditor key-flash + launch-watchdog label unit-corrected (`Timer.getTime()/1000`).
+No live UI site treats `Timer.getTime()` as ms. **What breaks it:** reintroducing a
+wall-clock `Timer.getTime()` comparison against an `_ms`-named constant — frame-count
+instead, or use `os.clock()` (SECONDS).
 
 ### Input — fold the analog stick into the d-pad ONLY in real analog mode
 

@@ -35,16 +35,19 @@ page:
 
 | Page | Accepted values |
 | --- | --- |
-| **HDD** (PFS) | `hdd`, `ata`, `pfs`, `apa` |
+| **HDD (exFAT)** (BDMA ATA) | `ata`, `ata0`, `ataN` |
+| **HDD (PFS)** (APA) | `hdd`, `hdd0`, `pfs`, `apa`, `apa0` |
 | **USB** | `usb`, `mass` |
 | **MC** | `mc`, `memcard` *(accepted but not navigable — there is no standalone Memory Card page; standard PS2 memory cards are not a separate carousel device)* |
 | **MMCE** | `mmce` |
 | **MX4SIO** | `mx4sio`, `mx4`, `sdc` |
 | **SMB** | `smb` |
-| **BDMA** (HDD exFAT) | `bdma` *(accepted but not navigable — see below)* |
+| `bdma` (bare) | *accepted but a no-op — use `ata` to reach the HDD (exFAT) page; the bare `bdma` literal maps to no page* |
 
-`-mode=ata` is provided specifically for NHDDL parity (`-mode=ata` is how
-NHDDL selects the HDD/ATA path).
+`-mode=ata` / `-page=ata` is provided for NHDDL parity (`ata` is how NHDDL
+selects the internal ATA drive); it opens POPSLoader's **HDD (exFAT)** page
+(the BDMA-ATA backend, scene `GBDMHDD`). For the classic APA/PFS HDD page use
+`-page=hdd` / `-page=pfs`.
 
 ## What each argument actually does
 
@@ -55,11 +58,12 @@ device and switches to its list automatically. Combine with `-game=` to go
 one step further and auto-launch a specific title (see below); `-page=`
 alone just opens the list so you can pick.
 
-Enterable pages: **MMCE, MX4SIO, HDD (PFS), USB.** The HDD value
-targets the implemented **PFS** page. `bdma` (HDD exFAT) and the i.Link
-page are intentionally **not** wired, so `-page=bdma` is accepted but has
-no effect. An unrecognized value is ignored and the carousel starts on its
-default page (MMCE) with no auto-entry.
+Enterable pages: **MMCE, MX4SIO, HDD (exFAT), HDD (PFS), USB.** `-page=ata`
+targets the implemented **exFAT** (BDMA-ATA) page (scene `GBDMHDD`);
+`-page=hdd` / `-page=pfs` targets the classic **PFS** page. The bare `bdma`
+literal and the i.Link page are intentionally **not** wired, so `-page=bdma`
+is accepted but has no effect. An unrecognized value is ignored and the
+carousel starts on its default page (MMCE) with no auto-entry.
 
 ### `-game=` (auto-launch)
 Boots straight into launching a game. Requires **both** `-page=` and
@@ -71,6 +75,7 @@ Boots straight into launching a game. Requires **both** `-page=` and
 | USB | `<FILE>` relative to `mass:/POPS` |
 | MX4SIO | `<FILE>` relative to `mx4sio:/POPS` |
 | MMCE | `<FILE>` relative to `mmce0:/POPS` |
+| HDD (exFAT) | `<FILE>` relative to `mass:/POPS` (use `-page=ata`) |
 
 If auto-launch fails (game not found, etc.) POPSLoader does **not** hang —
 it falls back to the normal welcome screen + main menu and shows an error

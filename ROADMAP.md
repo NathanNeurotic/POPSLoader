@@ -16,7 +16,7 @@ This is the **forward plan**. For current runtime state, the canonical Known-Iss
 - `.github/workflows/rolling-release.yml` — automated rolling-release artifact publication on push to `BETA-13-PLAY` and on PR events.
 - `docs/archive/DOCUMENTATION_FOLLOWUP_AUDIT.md` — handoff plan for the post-BETA-10-5 doc cleanup work (now completed; see "Documentation cleanup" under Secondary Work).
 
-`SMB (v1)` and `ILINK` remain intentionally unimplemented menu entries. `HDD (exFAT)` is now implemented (BDMA Mode `ATA`, `df2eb9d`) and is validating on hardware.
+`SMB (v1)` and `ILINK` remain intentionally unimplemented menu entries. `HDD (exFAT)` is now implemented (BDMA Mode `ATA`, `df2eb9d`) and is validating on hardware; the launch-args path routes `-page=ata`/`-mode=ata` (and `ata0`/`ataN`) to it (opt 3, scene `GBDMHDD`), while `-page=hdd`/`apa`/`pfs` target the classic PFS page (opt 4) — `3d89631`.
 
 ## Immediate Priorities
 
@@ -43,7 +43,7 @@ This is the **forward plan**. For current runtime state, the canonical Known-Iss
 - **Decision: Layer C is closed at the `mmceman` win.** The projected 30-50% pre-Lua gain in `docs/archive/LAUNCH_HYGIENE.md` assumed all three deferrals; with `ds34bt`/`usbd` off the table the realistic remaining gain is small and not worth the unrecoverable input-loss risk.
 
 ### 5) Display, HDD, and UX verification
-- **Overscan (CRT inset)** — new OPL-style render-inset shipped but **not yet eyeballed on a CRT**. `Screen.setOverscan(permille)` / `getOverscan()` (`src/luaScreen.cpp`) drive a `graphics.cpp` transform that wraps every `gsKit_prim_*` draw site in `OVX()`/`OVY()` (identity at permille 0, so inert by default; math identical to OPL `rmSetOverscan`). The live adjuster is Settings → "Overscan (CRT inset)" (`bin/POPSLDR/ui.lua:3632`, ±5 step, live preview, discard restores). Confirm the inset on a real CRT.
+- **Overscan (CRT inset)** — new OPL-style render-inset shipped but **not yet eyeballed on a CRT**. `Screen.setOverscan(permille)` / `getOverscan()` (`src/luaScreen.cpp`) drive a `graphics.cpp` transform that wraps every `gsKit_prim_*` draw site in `OVX()`/`OVY()` (identity at permille 0, so inert by default; math identical to OPL `rmSetOverscan`). The live adjuster is Settings → "Overscan (CRT inset)" (`bin/POPSLDR/ui.lua:3649`, ±5 step, live preview, discard restores). Confirm the inset on a real CRT.
 - **HDD Proposal A** — the game scan now steers **off** the live boot pfs slot (`b159a43`; the boot/settings partition lives on the boot slot, "NEVER reuse"), and the boot RW mount is re-validated on the save path so settings save after a scan (`8d1e67a`). Still wants a **deliberate HW test** (Nuno) that game partitions still mount/list when forced off the boot slot. See **STATE.md** and memory `reference-hdd-pfs-slot-model`.
 - `U-06` targets the **PAL native 640×512 full-screen render** (the menu fills the screen, no letterbox; NTSC is 640×448). On PAL hardware confirm the full-screen fill *and* the auto-revert display-change confirm prompt (reverts if the new mode isn't confirmed, like OPL). See **STATE.md > Reported Hardware Status** (`U-06` row).
 - Re-run `U-08` / `U-09` on slower/large libraries to judge whether busy overlays communicate activity clearly enough.

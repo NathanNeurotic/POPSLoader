@@ -1,4 +1,4 @@
-Last updated: 2026-06-21 (BETA-13 session; frame-count nav + `Timer.getTime`-is-microseconds reality + layered `cover_default`/`cover_missing` art with `MISSING.png` dropped + OPL-style overscan render-inset + `Pads.getMode` binding). Active/rolling branch is now **`BETA-13-PLAY`** (`BETA-12-PLAY` is archival; public release is still BETA-12). For current Settings behavior, Known Issues, Preservation Contracts, Behavioral Invariants, and Hardware Status, see **`STATE.md`** (canonical) — this doc points there instead of restating them.
+Last updated: 2026-06-22 (BETA-13 session; frame-count nav + `Timer.getTime`-is-microseconds reality + layered `cover_default`/`cover_missing` art with `MISSING.png` dropped + OPL-style overscan render-inset + `Pads.getMode` binding). Active/rolling branch is now **`BETA-13-PLAY`** (`BETA-12-PLAY` is archival; public release is still BETA-12). For current Settings behavior, Known Issues, Preservation Contracts, Behavioral Invariants, and Hardware Status, see **`STATE.md`** (canonical) — this doc points there instead of restating them.
 
 # ARCHITECTURE
 
@@ -271,10 +271,12 @@ milliseconds, so every `_ms`-named gate ran ~1000× too fast. The canonical
 Enceladus-ecosystem idiom is therefore **frame-counting** — the sibling launchers
 (OSDMenu-Configurator, RETROLauncher) never read the wall clock for nav. Stock
 Lua's `os.clock()` (seconds) is the only pre-converted time source and is
-currently unused; a future `os.clock()` sweep is the proposed fix for the
-remaining µs-as-ms gates (`UI.InputConfig.MIN_ACTION_MS = 220` at `ui.lua:622`,
-the cover idle, and the transition/carousel timers — all parked, masked by a
-per-frame `max_step` clamp so not visibly broken).
+currently unused. The µs-as-ms timer sweep is **complete** (`9c3f64f` + `a8e61f3`):
+the unit-correct gates divide by 1000 (PathEditor key-flash / caret blink, the
+launch-watchdog label), and the animation timers were converted to frame-counting /
+frame-pacing (nav repeat, description scroll, cover idle, and the scene/boot-fade +
+carousel transition). The old per-press action debounce `MIN_ACTION_MS` was
+**removed entirely**; edge-triggering (`pressed = GPAD & ~OLDPAD`) is the only action gate.
 
 - **Nav auto-repeat is frame-counted** (`resolve_nav`, `ui.lua:4583`). `nav_fps`
   is `50` when `UI.SCR.Y >= 512` (PAL) else `60`; `NAV_DELAY_FRAMES =
@@ -327,11 +329,10 @@ The per-device game-list cache (USB/MMCE/MX4SIO and HDD) is an opt-in feature ga
 ### Cover art (separate from the icon atlas)
 `UI.CoverCache` (`ui.lua:257`, `max = 3`) is a 3-entry LRU of loaded box-art
 images, refreshed after a navigation settles via `CoverCache:UpdateSelection`
-(`ui.lua:326`). The refresh is gated by `UI.GameList.CoverIdleMs = 200`
-(`ui.lua:2331`) compared against a `Timer.getTime` value — which is
-**microseconds** (see Layer 4 › nav timing), so this "200 ms" idle is actually
-~200 µs and effectively fires next frame; it is one of the parked µs-as-ms
-timers awaiting an `os.clock()` sweep. Non-HDD covers are `base.png` beside the
+(`ui.lua:326`). The refresh is **frame-counted**: the cover decodes only after the cursor has been
+stable for ~250 ms (`COVER_IDLE_FRAMES = ceil(cover_fps * 0.25)`, `cover_fps` = 50
+PAL / 60 NTSC, `ui.lua`); a per-frame counter resets while the selection keeps
+changing, so the cover loads only once navigation settles. Non-HDD covers are `base.png` beside the
 VCD; HDD covers resolve `POPS/ART/<basename>.png` on the `hdd0:__common`
 partition via `PLDR.ResolveHddPartitionReadablePath` (`BuildCoverCandidates`,
 `ui.lua:175`). When a `<base>.png` cover loads it gets its own `COVER_W` inset
@@ -407,8 +408,9 @@ bus topology:
 `mass*` to "USB") but by a runtime BDM driver-name lookup. An in-tree IOP RPC
 helper, `bdm_query` (RPC id `0xB0D10B00`, `iop/bdm_query/bdm_query.c:11-13`),
 enumerates live block devices via `bdm_get_bd()`. The EE side (`FetchBdmList` +
-`ClassifyMassBackend`, `src/luasystem.cpp:184-217`) classifies by driver-name
-substring: `usb` -> USB, `sdc`/`mx4` -> MX4SIO, `mmce` -> MMCE. This lets the
+`ClassifyMassBackend`, `src/luasystem.cpp`) classifies by driver name: substring
+`usb` -> USB, `sdc`/`mx4` -> MX4SIO, `mmce` -> MMCE, and an **exact** `"ata"` match
+(`strcmp==0 && strlen==3`, mirroring OPL `bdmsupport.c`) -> exFAT internal HDD (BDMA-ATA). This lets the
 launcher classify `mass:/` without speculatively loading `mx4sio_bd` just to
 probe.
 
@@ -576,11 +578,12 @@ chrome/glyph atlas, not per-game box art (covers are `UI.CoverCache`, Layer 4).
 
 ### Launch arguments
 Parsed C-side (`parseLaunchArgs`, `src/main.cpp:198`), normalized in Lua: `NormalizeLaunchPage`
-(`system.lua:2204-2247`) folds page kinds (ata/pfs/apa/hdd -> HDD, usb/mass ->
-USB, mmce -> MMCE, mx4sio/mx4/sdc -> MX4SIO, etc.) into `PLDR.LAUNCH_ARGS`.
-`-page` auto-navigates the carousel via `page_to_opt = {MMCE=1, MX4SIO=2,
-HDD=4, USB=5, SMB=7}` (`system.lua:2481-2509`); HDD maps to the PFS page (4),
-and unimplemented pages (BDMA/i.Link) are deliberately not routed.
+(`system.lua`) folds page kinds: `ata`/`ata0`/`ataN` -> EXFAT, `hdd`/`apa`/`pfs` -> HDD,
+`usb`/`mass` -> USB, `mmce` -> MMCE, `mx4sio`/`mx4`/`sdc` -> MX4SIO, etc., into
+`PLDR.LAUNCH_ARGS`. `-page` (and the `-mode` alias) auto-navigate the carousel via
+`page_to_opt = {MMCE=1, MX4SIO=2, EXFAT=3, ATA=3, HDD=4, USB=5, SMB=7}`: EXFAT/ATA
+map to the exFAT page (opt 3, `GBDMHDD`) and HDD to the PFS page (opt 4). The bare
+`bdma` token and i.Link/SMB remain unrouted no-ops.
 
 ### On-disk settings (`.pldrs`)
 Plain KEY=VALUE text with **20 keys** (`EncodeSettings`, `system.lua:3072-3102`):
@@ -637,7 +640,7 @@ turned into a `.c` file by ps2sdk's `bin2c` (`BIN2S = $(PS2SDK)/bin/bin2c`,
 `Makefile:67`), exposing `<symbol>[]` + `size_<symbol>`; those compile to `.o`
 and link into the ELF (`EMBEDDED_RSC`, `Makefile:96-105`). The embedded IRX
 object list is at `Makefile:89-94` (usbd, audsrv, bdm, bdmfs_fatfs, usbmass_bd,
-cdfs, ds34bt, ds34usb, ps2dev9, ps2atad, ps2hdd-osd, ps2fs, mmceman, mx4sio_bd,
+cdfs, ds34bt, ds34usb, ps2dev9, ps2atad, ps2hdd-osd, ps2fs, mmceman, mx4sio_bd, ata_bd,
 bdm_query). At runtime, `embed_assets.cpp::embedded_get` (`src/embed_assets.cpp:195`)
 resolves blobs by normalizing the request (`embed:/` / `./` / leading-slash
 stripping, `IMG/` -> `POPSLDR/IMG/`) and looking the key up in the single

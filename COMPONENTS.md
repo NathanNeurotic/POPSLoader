@@ -1,4 +1,4 @@
-Last updated: 2026-06-21 (BETA-13 rolling candidate; HEAD = BETA-13-PLAY @ 56a5ad5; BETA-12 is the public release at af983d7, and BETA-12-PLAY is now ARCHIVAL/frozen). Since the prior pass: nav auto-repeat and the right-stick description scroll were re-cut to FRAME-COUNTING (the wall clock reads microseconds on PS2, so the old "_ms" gates fired every frame); the analog-stick→d-pad fold is now gated on a live-negotiated analog mode (new `Pads.getMode()` C binding) plus hysteresis; an OPL-style overscan (CRT inset) render transform was added (`Screen.setOverscan`/`getOverscan` + `OVX`/`OVY`); the game-list cover box now layers `cover_default.png` + `cover_missing.png` and `MISSING.png` was removed (−62 KB ELF); and two new settings keys (BOOT_SOUND, OVERSCAN) bring EncodeSettings to 20 keys. For current Settings behavior, Known Issues, Preservation Contracts, Behavioral Invariants, and Hardware Status, see **`STATE.md`** (canonical) — this doc points there instead of restating them.
+Last updated: 2026-06-22 (BETA-13 rolling candidate; HEAD = BETA-13-PLAY @ 3d89631; BETA-12 is the public release at af983d7, and BETA-12-PLAY is now ARCHIVAL/frozen). Since the prior pass: nav auto-repeat and the right-stick description scroll were re-cut to FRAME-COUNTING (the wall clock reads microseconds on PS2, so the old "_ms" gates fired every frame); the analog-stick→d-pad fold is now gated on a live-negotiated analog mode (new `Pads.getMode()` C binding) plus hysteresis; an OPL-style overscan (CRT inset) render transform was added (`Screen.setOverscan`/`getOverscan` + `OVX`/`OVY`); the game-list cover box now layers `cover_default.png` + `cover_missing.png` and `MISSING.png` was removed (−62 KB ELF); and two new settings keys (BOOT_SOUND, OVERSCAN) bring EncodeSettings to 20 keys. Since 56a5ad5: the HDD (exFAT) / BDMA-ATA backend landed (df2eb9d/6fd2142/afa1c09 — internal SATA/IDE drive enumerates under `mass:` classified by the EXACT ioctl driver-name `ata`, carousel opt 3 = exFAT page scene GBDMHDD); launch-arg routing (3d89631) maps `-page`/`-mode=ata*`→EXFAT (opt 3) and `=hdd`/`apa`/`pfs*`→HDD (opt 4); the audit cleanup (2735229) removed dead symbols and SHIFTED line numbers across luasystem.cpp/ui.lua/system.lua; the timer sweep finished (9c3f64f/a8e61f3) and the `MIN_ACTION_MS` action debounce was removed (edge-trigger is the only gate); and the Layer C lazy-IRX effort is CLOSED (ds34bt/usbd deferral DECLINED, only mmceman shipped). For current Settings behavior, Known Issues, Preservation Contracts, Behavioral Invariants, and Hardware Status, see **`STATE.md`** (canonical) — this doc points there instead of restating them.
 
 # COMPONENTS
 
@@ -177,9 +177,9 @@ copies are not read at runtime. Editing them requires a rebuild.
   `DetectBootDevice` (system.lua:1983), prefix rules under `ResolveBootContext`.
   `mass:/` is disambiguated via the BDM driver name (`classify_mass_boot`,
   system.lua:1866; `sdc`/`mx4` => MX4SIO).
-- Launch-arg ingest: `NormalizeLaunchPage` (system.lua:2204), `PLDR.LAUNCH_ARGS`
-  (system.lua:2249), carousel page auto-nav `page_to_opt` (system.lua:2481;
-  maps MMCE/MX4SIO/HDD/USB/SMB only).
+- Launch-arg ingest: `NormalizeLaunchPage` (system.lua; `ata*`->EXFAT,
+  `hdd*`/`apa*`/`pfs*`->HDD, bare `bdma`->no-op page value), `PLDR.LAUNCH_ARGS`,
+  carousel page auto-nav `page_to_opt` (MMCE=1/MX4SIO=2/EXFAT=3/ATA=3/HDD=4/USB=5/SMB=7).
 - Settings: `EncodeSettings` (system.lua:3072, **20 keys**: PROFILE,
   POPSTARTER_PATH, POPSTARTER_MODE, BDMA, DKWDRV_PATH, STRICT_HDD_PREEXEC_GATE,
   VIDEO_STANDARD, HIDE_TEXT, KEYBOARD_LAYOUT, BOOT_PAGE, MULTIDISC_COLLAPSE,
@@ -331,7 +331,7 @@ copies are not read at runtime. Editing them requires a rebuild.
   source pins. The active `mx4sio_bd.irx` is pinned from
   `iop/embed/PS2SDK_MX4SIO` (Makefile:247-251). Other IRX (iomanX, fileXio,
   sio2man, mcman, mcserv, padman, libsd, usbd, audsrv, usbmass_bd, cdfs,
-  ps2dev9, ps2atad, ps2hdd-osd, ps2fs, mmceman) resolve from `$(PS2SDK)/iop/irx/`
+  ps2dev9, ps2atad, ps2hdd-osd, ps2fs, mmceman, ata_bd) resolve from `$(PS2SDK)/iop/irx/`
   (vpath Makefile:216, object list Makefile:88-93).
 
 ## 6. Controller modules (`modules/`)

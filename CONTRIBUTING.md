@@ -1,4 +1,4 @@
-Last updated: 2026-06-21 (BETA-13 in progress)
+Last updated: 2026-06-22 (BETA-13 in progress)
 
 # CONTRIBUTING
 
@@ -69,7 +69,7 @@ Removal is the same three places in reverse (plus drop any fallback wiring). The
 ## Runtime Timing (frame-count, not wall-clock)
 `Timer.getTime()` returns **microseconds**, not milliseconds (`src/luatimer.cpp` returns the raw `clock() - tick` delta; `CLOCKS_PER_SEC` is `1e6` on the EE toolchain). Code that treats it as ms runs 1000x too fast — that was the root cause of nav auto-repeat "flying" (one press scrolling many rows) before it was reworked.
 - **The canonical Enceladus idiom for UI cadence is frame-counting**, not reading the wall clock — the sibling launchers do the same. New per-direction/per-step timing increments a counter once per frame and fires at frame thresholds derived from the live field rate (`nav_fps = (UI.SCR.Y >= 512) and 50 or 60`). See `resolve_nav` / `NavHoldFrames` (nav auto-repeat) and `DescScrollFrames` (description scroll) in `bin/POPSLDR/ui.lua`.
-- `os.clock()` (stock Lua, returns **seconds**) is the only pre-converted Lua time source and is currently unused. A couple of legacy timers (the action debounce `MIN_ACTION_MS`, the transition/carousel timers) still sit on the µs-as-ms footing but are masked by a per-frame clamp, so they are not visibly broken; prefer frame-counting (or `os.clock()` seconds) for any new timing rather than adding more `Timer.getTime()` math.
+- `os.clock()` (stock Lua, returns **seconds**) is the only pre-converted Lua time source and is currently unused. The action debounce (`MIN_ACTION_MS`) was **removed** — edge-triggering (`pressed = GPAD & ~OLDPAD`) is now the only gate, and the scene-fade / boot-fade / carousel transitions were frame-paced. Prefer frame-counting (or `os.clock()` seconds) for any new timing rather than adding more `Timer.getTime()` math.
 
 ## Settings Plumbing
 Settings are write-staged in the UI and committed through a single funnel — `PLDR.CommitSettingsChanges(opts)` in `bin/POPSLDR/system.lua` — which serializes the merged state to the per-device config. A new setting touches the whole chain: the parse/serialize round-trip and the `next_*` merge in `system.lua`, plus the UI commit call in `bin/POPSLDR/ui.lua` (e.g. the boot-sound setting flows `UI.BootSound` → `PLDR.CommitSettingsChanges({ boot_sound = ... })` → `PLDR.BOOT_SOUND`). Add the field to every link or it stages but never persists. The user-facing settings **behavior** (single-device parity, the HDD RW take-over) is canonical in `STATE.md > Settings` — don't restate it here.
