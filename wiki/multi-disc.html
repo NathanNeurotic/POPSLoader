@@ -35,8 +35,9 @@
     <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
   </nav>
   <main class="content"><h1>Multi Disc</h1><p class="prov-inline">📎 Recovered from the ShaolinAssassin wiki · snapshot 20250110103459</p><h1><strong>Swap disc feature</strong></h1>
-<p>______________________________________________________________________________________________________________</p>
-<p>You can now play multi-discs games with POPS. (Older snapshots: "Since OBT 15, POPStarter has a swap disc feature that lets you play multi-disc games easily.")</p>
+<hr>
+
+<p>You can now play multi-discs games with POPS.</p>
 <ol>
 <li>Create a DISCS.TXT text file containing the file names of your VCDs, one file name per line (with VCD extension)  ;</li>
 </ol>
@@ -50,10 +51,6 @@ DISCS.TXT line 4 = disc 4
 MGS_CD2.VCD
 [Empty]
 [Empty]
-</code></pre>
-<p>(Older snapshots used full names in this example instead of <code>[Empty]</code> placeholders:)</p>
-<pre><code>Metal Gear Solid (Disc 1).VCD
-Metal Gear Solid (Disc 2).VCD
 </code></pre>
 <ol start="2">
 <li>
@@ -113,18 +110,6 @@ mass:/POPS/XX.MGS_CD2.ELF
 mass:/POPS/MGS_CD1/DISCS.TXT
 mass:/POPS/MGS_CD2/DISCS.TXT
 </code></pre>
-<p>(Older snapshots showed the same setup with explicit per-disc VMC files included:)</p>
-<pre><code>mass:/POPS/MGS_CD1.VCD
-mass:/POPS/MGS_CD2.VCD
-mass:/POPS/XX.MGS_CD1.ELF
-mass:/POPS/XX.MGS_CD2.ELF
-mass:/POPS/MGS_CD1/DISCS.TXT
-mass:/POPS/MGS_CD1/SLOT0.VMC
-mass:/POPS/MGS_CD1/SLOT1.VMC
-mass:/POPS/MGS_CD2/DISCS.TXT
-mass:/POPS/MGS_CD2/SLOT0.VMC
-mass:/POPS/MGS_CD2/SLOT1.VMC
-</code></pre>
 <p>DISCS.TXT content :</p>
 <pre><code>MGS_CD1.VCD
 MGS_CD2.VCD
@@ -132,10 +117,10 @@ MGS_CD2.VCD
 <p><strong>Notes :</strong></p>
 <ul>
 <li>
-<p>The swap disc feature is useful only if you must swap discs <strong>without any PS1 reboot</strong>. For the other games, you only need to swap the VMCs manually (copy/paste VMCs from VMC disc 1 folder to VMC disc 2 folder) – or you can use the "trick" below to avoid such a manipulation ;</p>
+<p>The swap disc feature is useful only if you must swap discs <strong>without any PS1 reboot</strong>. For the other games, you only need to swap the VMCs manually (copy/paste VMCs from VMC disc 1 folder to VMC disc 2 folder) – or you can use the “trick” below to avoid such a manipulation ;</p>
 </li>
 <li>
-<p>If your game has more than 4 discs, install the forth first ones, play them until disc 4, then uninstall discs 1, 2 and 3, and install disc 5, 6, 7… (Older snapshots: "If your disc has more than 4 discs, …")</p>
+<p>If your game has more than 4 discs, install the forth first ones, play them until disc 4, then uninstall discs 1, 2 and 3, and install disc 5, 6, 7…</p>
 </li>
 <li>
 <p>Does not work properly with all games ((not working with Final Fantasy IX and Grandia) ;</p>
@@ -144,10 +129,10 @@ MGS_CD2.VCD
 <p>Multi disc games <a href="../downloads/Disc_Combining_Kits.7z">combined</a> to single VCDs still work, up to ~2GB per VCD.</p>
 </li>
 </ul>
-<p>(The last two notes — the Final Fantasy IX / Grandia caveat and the combined-VCD note — appear only in the newer snapshots.)</p>
-<p>______________________________________________________________________________________________________________</p>
+<hr>
+
 <h2><em>Use a single pair of VMCs for multi-disc games :</em></h2>
-<p>You can use the VMCDIR.TXT file to use only 1 pair of VMCs for a multi-disc game. This VMCDIR.TXT must be placed into disc 1 and disc 2 VMC game folders. Read <a href="../wiki/vmc.html">here</a> to know more about the VMCDIR.TXT file ("Setting a path for the VMC folder" section).</p>
+<p>You can use the VMCDIR.TXT file to use only 1 pair of VMCs for a multi-disc game. This VMCDIR.TXT must be placed into disc 1 and disc 2 VMC game folders. Read <a href="../wiki/vmc.html">here</a> to know more about the VMCDIR.TXT file (“Setting a path for the VMC folder” section).</p>
 <p><strong>Example :</strong></p>
 <pre><code>mass:/POPS/MGS_CD1.VCD
 mass:/POPS/MGS_CD2.VCD
@@ -158,40 +143,21 @@ mass:/POPS/MGS_CD1/VMCDIR.TXT
 mass:/POPS/MGS_CD2/DISCS.TXT
 mass:/POPS/MGS_CD2/VMCDIR.TXT
 </code></pre>
-<p>(Older snapshots gave a single-ELF variant of this example that also lists the explicit VMC files and shares one ELF across both discs:)</p>
-<pre><code>mass:/POPS/MGS.VCD
-mass:/POPS/MGS_2.VCD
-mass:/POPS/XX.MGS.ELF
-mass:/POPS/MGS/DISCS.TXT
-mass:/POPS/MGS/VMCDIR.TXT
-mass:/POPS/MGS/SLOT0.VMC
-mass:/POPS/MGS/SLOT1.VMC
-mass:/POPS/MGS_2/DISCS.TXT
-mass:/POPS/MGS_2/VMCDIR.TXT
-</code></pre>
 <p>DISCS.TXT content :</p>
 <pre><code>MGS_CD1.VCD
 MGS_CD2.VCD
 </code></pre>
-<p>(In the older single-ELF variant the DISCS.TXT instead reads:)</p>
-<pre><code>MGS.VCD
-MGS_2.VCD
-</code></pre>
 <p>VMCDIR.TXT content (= CD1 VMC game folder) :</p>
 <pre><code>MGS_CD1
 </code></pre>
-<p>(In the older single-ELF variant VMCDIR.TXT holds the name of the disc 1 VMC folder:)</p>
-<pre><code>MGS
-</code></pre>
 <p>In this situation, disc 1 and disc 2 share the same VMC folder.</p>
-<p>______________________________________________________________________________________________________________</p>
+<hr>
+
 <h2><em>DISCS POOPER</em></h2>
-<p>(Older snapshots titled this section "<em>Use DISCS POOPER tool !</em>".)</p>
 <p>DISCS_POOPER is a little program that does the boring job for you.</p>
 <ul>
 <li><strong>Download :</strong> here</li>
 </ul>
-<p>(The download link target varies across snapshots: the newest primary snapshot points to <code>DISCS_POOPER.BAT.7z</code>; snapshot 20240618063809 and the older 2017 snapshots point to the direct <code>DISCS_POOPER.EXE</code>. In the older snapshots the Download link appeared at the end of this section rather than the top.)</p>
 <p><strong>How to use it :</strong></p>
 <ol>
 <li>
@@ -217,9 +183,9 @@ MGS_2.VCD
 </li>
 </ol>
 <p><strong>Limits :</strong></p>
-<p>. Doesn't comply with 4 CDs limit of the swap disc feature (don't use it with more than 4 VCDs) ;</p>
-<p>. Barney Stinson voice non-included. (This second limit line appears only in the older 2017 snapshots.)</p>
-<p>______________________________________________________________________________________________________________</p>
+<p>. Doesn’t comply with 4 CDs limit of the swap disc feature (don’t use it with more than 4 VCDs) ;</p>
+<hr>
+
 <h3><a href="../wiki/index.html"><strong>Index</strong></a></h3><h2>Images &amp; screenshots</h2><div class="gallery"><figure><a href="../img/3405191067-Playstation-Button-Select.png" target="_blank"><img src="../img/3405191067-Playstation-Button-Select.png" alt="Playstation Button Select" loading="lazy"></a><figcaption>Playstation Button Select</figcaption></figure><figure><a href="../img/1165364186-Playstation-Button-L2.png" target="_blank"><img src="../img/1165364186-Playstation-Button-L2.png" alt="Playstation Button L2" loading="lazy"></a><figcaption>Playstation Button L2</figcaption></figure><figure><a href="../img/1712503932-Playstation-Button-R2.png" target="_blank"><img src="../img/1712503932-Playstation-Button-R2.png" alt="Playstation Button R2" loading="lazy"></a><figcaption>Playstation Button R2</figcaption></figure><figure><a href="../img/2651471562-Playstation-Button-T.png" target="_blank"><img src="../img/2651471562-Playstation-Button-T.png" alt="Playstation Button T" loading="lazy"></a><figcaption>Playstation Button T</figcaption></figure><figure><a href="../img/3199916752-Playstation-Dpad-Up.png" target="_blank"><img src="../img/3199916752-Playstation-Dpad-Up.png" alt="Playstation Dpad Up" loading="lazy"></a><figcaption>Playstation Dpad Up</figcaption></figure><figure><a href="../img/2374122730-Playstation-Dpad-Right.png" target="_blank"><img src="../img/2374122730-Playstation-Dpad-Right.png" alt="Playstation Dpad Right" loading="lazy"></a><figcaption>Playstation Dpad Right</figcaption></figure><figure><a href="../img/202135531-Playstation-Dpad-Down.png" target="_blank"><img src="../img/202135531-Playstation-Dpad-Down.png" alt="Playstation Dpad Down" loading="lazy"></a><figcaption>Playstation Dpad Down</figcaption></figure><figure><a href="../img/4108913469-Playstation-Dpad-Left.png" target="_blank"><img src="../img/4108913469-Playstation-Dpad-Left.png" alt="Playstation Dpad Left" loading="lazy"></a><figcaption>Playstation Dpad Left</figcaption></figure><figure><a href="../img/3011564833-Playstation-Button-S.png" target="_blank"><img src="../img/3011564833-Playstation-Button-S.png" alt="Playstation Button S" loading="lazy"></a><figcaption>Playstation Button S</figcaption></figure></div><p style="margin-top:26px"><a class="pill" href="../multidisc.html">Related curated section → Multi-disc & VMC</a></p></main>
   <aside class="toc"><div class="toc-h">On this page</div><nav id="toc-nav"></nav></aside>
 </div>

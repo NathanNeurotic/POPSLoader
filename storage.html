@@ -34,186 +34,111 @@
     <h4>Reference</h4>
     <a href="wiki/index.html"><span class="em">📚</span>All wiki pages</a>
   </nav>
-  <main class="content"><h1>Storage Backends</h1><p class="lead">Where the POPS folder, VCDs and support modules live on each device — USB, internal HDD, and SMB — plus the launch methods and per-mode ELF prefixes.</p><p class="prov-inline">📎 from the recovered <a href="wiki/usb-mode.html">USB Mode</a> wiki page · merged across snapshots, primary 20241207051934</p><h1><strong>POPStarter for USB Device Storage Type</strong></h1>
-<p>______________________________________________________________________________________________________________</p>
+  <main class="content"><h1>Storage Backends</h1><p class="lead">Where the POPS folder, VCDs and support modules live on each device — USB, internal HDD, and SMB — plus the launch methods and per-mode ELF prefixes.</p><p class="prov-inline">📎 from the recovered <a href="wiki/usb-mode.html">USB Mode</a> wiki page · merged across snapshots, primary 20170629123547</p><h1><strong>POPStarter for USB Device Storage Type</strong></h1>
+<hr>
+
 <h2><em>Requirements :</em></h2>
-<p><strong>POPS decrypted files :</strong></p>
-<p>To use POPStarter with an external HDD or a flash disk, you have to find and download the compressed POPS file. This file is named “POPS_IOX.PAK”…</p>
-<table>
-<thead>
-<tr>
-<th><strong>File name</strong></th>
-<th><strong>MD5</strong></th>
-<th><strong>Description</strong></th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>POPS_IOX.PAK</td>
-<td>a625d0b3036823cdbf04a3c0e1648901</td>
-<td>POPS.PAK with network modules embedded.</td>
-</tr>
-</tbody>
-</table>
-<p><strong>Other Software Requirements :</strong></p>
 <ul>
-<li>
-<p>A software that allows you to convert your disc images to the POPS virtual CDROM format (such as <a href="wiki/apps-last-version.html">CUE2POPS</a>) ;</p>
-</li>
-<li>
-<p>A PS2 software that allows you to execute the POPStarter ELFs (such as <a href="wiki/related-stuff.html">uLaunchELF</a>, or <a href="http://ichiba.geocities.jp/ysai187/PS2/FMCB/">Free MC Boot</a>), or a GUI to execute POPSTARTER.ELF by selecting the VCDs (such as <a href="wiki/apps-last-version.html">uLE_kHn</a>).</p>
-</li>
+<li><strong>POPS decrypted files :</strong></li>
 </ul>
-<p><strong>Hardware Requirements :</strong></p>
+<p>To use POPStarter with an external HDD or a flash disk, you have to find and download the compressed POPS file. This file is named “POPS_IOX.PAK”...</p>
+<table class="wiki"> <tr> <td> <strong>File name</strong> </td> <td> <strong>MD5</strong> </td> <td> <strong>Description</strong> </td> </tr> <tr> <td> POPS_IOX.PAK </td> <td> a625d0b3036823cdbf04a3c0e1648901 </td> <td> POPS.PAK with network modules embedded </td> </tr> </table>
+
 <ul>
-<li>
-<p>A PS2 console which is able to run PS2 unsigned code ;</p>
-</li>
-<li>
-<p>An USB mass storage device, FAT12 or FAT16 or FAT32 formatted (not NTFS !).</p>
-</li>
+<li><strong>Other Software Requirements :</strong></li>
 </ul>
-<p>______________________________________________________________________________________________________________</p>
+<p>. A software that allows you to convert your disc images to the POPS virtual CDROM format (such as <a href="wiki/apps-last-version.html">CUE2POPS</a>)<br />
+. A PS2 software that allows you to execute the POPStarter ELFs (such as <a href="wiki/related-stuff.html">uLaunchELF</a>, or <a href="http://ichiba.geocities.jp/ysai187/PS2/FMCB/">Free MC Boot</a>), or a GUI to execute POPSTARTER.ELF by selecting the VCDs (such as <a href="wiki/apps-last-version.html">uLE_kHn</a>)</p>
+<ul>
+<li><strong>Hardware Requirements :</strong></li>
+</ul>
+<p>. A PS2 console which is able to run PS2 unsigned code<br />
+. An USB mass storage device, FAT12 or FAT16 or FAT32 formatted (not NTFS !)</p>
+<hr>
+
 <h2><em>Installation :</em></h2>
-<p><strong>a) Installing the emulator :</strong></p>
+<ul>
+<li><strong>a) Installing the Emulator :</strong></li>
+</ul>
 <ol>
-<li>
-<p>Find and download the emulator compressed file ;</p>
-</li>
-<li>
-<p>Create a directory named “POPS” in the root of your USB device ;</p>
-</li>
-<li>
-<p>Copy POPS_IOX.PAK  into the “POPS” directory you’ve just created.</p>
-</li>
+<li>Find and download the emulator compressed file;</li>
+<li>Create a directory named “POPS” in the root of your USB device;</li>
+<li>Copy POPS_IOX.PAK  into the “POPS” directory you’ve just created.</li>
 </ol>
-<p><strong>b) Installing your PS1 Games :</strong></p>
+<ul>
+<li><strong>b) Installing your PS1 Games :</strong></li>
+</ul>
 <ol>
-<li>
-<p>Convert your BIN/CUE disc images to .VCD files using the latest stable version of <a href="wiki/vcd.html">CUE2POPS</a> ;</p>
-</li>
-<li>
-<p>Put your .VCD files in the “POPS” directory which is in the root of your USB device.</p>
-</li>
+<li>Convert your BIN/CUE disc images to .VCD files using the latest stable version of <a href="wiki/vcd.html">CUE2POPS</a> ;</li>
+<li>Put your .VCD files in the “POPS” directory which is in the root of your USB device.</li>
 </ol>
-<p><strong>c) Installing POPStarter :</strong></p>
+<ul>
+<li><strong>c) Installing POPStarter :</strong></li>
+</ul>
 <ol>
-<li>
-<p>Rename the POPStarter ELF as the name of your VCDs, replace the .VCD extension with a .ELF extension, add the XX. prefix (example : for running a VCD named “Crash Bandicoot (PAL).VCD”, the POPStarter ELF must be renamed as “XX.Crash Bandicoot (PAL).ELF”) ;</p>
-</li>
-<li>
-<p>Copy or leave the ELFs where you want to run them from.</p>
-</li>
-<li>
-<p>Enjoy !</p>
-</li>
+<li>Rename the POPStarter ELF as the name of your VCDs, replace the .VCD extension with a .elf extension, add the XX. prefix;   [example : for running a VCD named “Gran Turismo.VCD”, the POPStarter ELF must be renamed as “XX.Gran Turismo.elf”]</li>
+<li>Copy or leave the ELFs where you want to run them from.</li>
+<li>Enjoy !</li>
 </ol>
-<p>______________________________________________________________________________________________________________</p>
+<p><strong>Note :</strong> you no longer need PFS_WRAP.BIN since OBT8, it’s now embedded into POPStarter ELF.</p>
+<hr>
+
 <h2><em>Example of Setup :</em></h2>
-<pre><code>=== USB DEVICE, NEW LAUNCH TYPE ===
+<pre><code>
+=== USB DEVICE, NEW LAUNCH TYPE ===
 POPS/POPS_IOX.PAK
-POPS/Crash Bandicoot (PAL).VCD
-XX.Crash Bandicoot (PAL).ELF
+POPS/Crash Bandicoot.VCD
+XX.Crash Bandicoot.elf
+
 </code></pre>
-<p>______________________________________________________________________________________________________________</p>
+<hr>
+
 <h2><em>USB launch type :</em></h2>
 <p>USB supports only 1 launch type – the “new” one :</p>
-<table>
-<thead>
-<tr>
-<th></th>
-<th><strong>USB launch type</strong></th>
-<th></th>
-<th><strong>Prefix for POPStarter.ELF</strong></th>
-<th>XX.</th>
-<th></th>
-<th><strong>POPStarter folder name</strong></th>
-<th>POPS or POPS#</th>
-<th></th>
-<th><strong>Game name</strong></th>
-<th>GAME.VCD</th>
-<th></th>
-<th><strong>Description</strong></th>
-<th>Launch type introduced in POPStarter 13 WIP 02. Allows to run VCDs from an USB mass storage device.</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Example</strong></td>
-<td>With the POPStarter ELF renamed as SB.GAME.ELF, POPStarter will launch GAME.VCD which is in the POPStarter folder named POPS or POPS0 or POPS1 up to POPS9 placed at root of your USB device.</td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-</tr>
-</tbody>
-</table>
-<p>______________________________________________________________________________________________________________</p>
+<table class="wiki"> <tr> <td> </td> <td> <strong>USB launch type</strong> </td> </tr> <tr> <td> <strong>Prefix for POPStarter.ELF</strong> </td> <td> XX. </td> </tr> <tr> <td> <strong>POPStarter folder name</strong> </td> <td> POPS or POPS# </td> </tr> <tr> <td> <strong>Game name</strong> </td> <td> Name of the Game.VCD </td> </tr> <tr> <td> <strong>Description</strong> </td> <td> Launch type introduced in POPStarter 13 WIP 02. Allows to run VCDs from an USB mass storage device. </td> </tr> <tr> <td> <strong>Example</strong> </td> <td> With the POPStarter ELF renamed as XX.Some Game.elf, POPStarter will launch Some Game.VCD which is in the POPStarter folder named POPS or POPS0 or POPS1 up to POPS9 placed in USB root. </td> </tr> </table>
+
+<hr>
+
 <h2><em>Additional notes :</em></h2>
 <ul>
 <li>
-<p>The USB hard disk / flash disk has to be FAT12 or FAT16 or FAT32 formatted, AND DEFRAGMENTED ;</p>
+<p>The USB hard disk / flash disk has to be FAT12 or FAT16 or FAT32 formatted, AND DEFRAGMENTED.</p>
 </li>
 <li>
-<p>If you use several POPS# folders, the usual files for the POPS folder (POPS_IOX.PAK &amp; the TM2s) must remain in the main POPS folder ;</p>
+<p>If you use several POPS# folders, the usual files for the POPS folder (POPS_IOX.PAK &amp; the TM2s) must remain in the main POPS folder.</p>
 </li>
 <li>
-<p>If you have a BIOS.BIN, a PATCH_#.BIN, a TROJAN_#.BIN or a VMCDIR.TXT in the POPS folder, you’ll have to copy them to all the POPS# folder you create ;</p>
+<p>If you have a BIOS.BIN, a PATCH_#.BIN, a TROJAN_#.BIN or a VMCDIR.TXT in the POPS folder, you’ll have to copy them to all the POPS# folder you create.</p>
 </li>
 <li>
-<p>You can still use the old POPS.ELF+IOPRP252.IMG files (POPS.PAK), but updating to POPS_IOX.PAK is highly recommended ;</p>
+<p>You can still use the old POPS.ELF+IOPRP252.IMG files (POPS.PAK), but updating to POPS_IOX.PAK is highly recommended.</p>
 </li>
 <li>
-<p>You can use your own USB modules (usbd.irx &amp; usbhdfsd.irx, case sensitive, lowercase, no file size restriction) from mc#:/POPSTARTER/. When a file can’t be found in mc0:/POPSTARTER/, POPStarter tries to load it from mc1:/POPSTARTER/… mass is not supported ;</p>
+<p>You can use your own USB modules (usbd.irx &amp; usbhdfsd.irx, case sensitive, lowercase, no file size restriction) from mc#:/POPSTARTER/. When a file can’t be found in mc0:/POPSTARTER/, POPStarter tries to load it from mc1:/POPSTARTER/.... Mass is not supported (anymore).</p>
 </li>
 <li>
-<p>The third character of the ELF prefix is a dot (XXdot) ;</p>
+<p>The third character of the ELF prefix is a dot (XXdot).</p>
 </li>
 <li>
-<p>The prefix has to be uppercase ;</p>
+<p>The prefix has to be uppercase.</p>
 </li>
 <li>
 <p>The file extension .VCD has to be uppercase.</p>
 </li>
 </ul>
-<p>______________________________________________________________________________________________________________</p>
+<hr>
+
 <h3><a href="wiki/index.html"><strong>Index</strong></a></h3>
 <p class="prov-inline">📎 from the recovered <a href="wiki/hdd-mode.html">HDD Mode</a> wiki page · merged across snapshots, primary 20170629165244</p><h1><strong>POPStarter for internal HDD</strong></h1>
-<p>______________________________________________________________________________________________________________</p>
+<hr>
+
 <h2><em>Requirements :</em></h2>
 <ul>
 <li><strong>POPS decrypted files :</strong></li>
 </ul>
 <p>To use POPStarter with an internal HDD, you have to find and download the POPS decrypted files. These files are named “POPS.ELF” and “IOPRP252.IMG”...</p>
-<table>
-<thead>
-<tr>
-<th><strong>File name</strong></th>
-<th><strong>MD5</strong></th>
-<th><strong>Description</strong></th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>POPS.ELF</td>
-<td>355a892a8ce4e4a105469d4ef6f39a42</td>
-<td>main SLBB-00001 ELF, decrypted</td>
-</tr>
-<tr>
-<td>IOPRP252.IMG</td>
-<td>1db9c6020a2cd445a7bb176a1a3dd418</td>
-<td>can be found in some retail game discs and $CEI SDKs too</td>
-</tr>
-</tbody>
-</table>
+<table class="wiki"> <tr> <td> <strong>File name</strong> </td> <td> <strong>MD5</strong> </td> <td> <strong>Description</strong> </td> </tr> <tr> <td> POPS.ELF </td> <td> 355a892a8ce4e4a105469d4ef6f39a42 </td> <td> main SLBB-00001 ELF, decrypted </td> </tr> <tr> <td> IOPRP252.IMG </td> <td> 1db9c6020a2cd445a7bb176a1a3dd418 </td> <td> can be found in some retail game discs and $CEI SDKs too </td> </tr> </table>
+
 <ul>
 <li><strong>Other Software Requirements :</strong></li>
 </ul>
@@ -228,7 +153,8 @@ XX.Crash Bandicoot (PAL).ELF
 <p>. A PS2 console which is able to run PS2 unsigned code;<br />
 . A network adapter with/or a HDD interface;<br />
 . A PS2-formatted HDD that fits your network adapter/HDD interface.</p>
-<p>______________________________________________________________________________________________________________</p>
+<hr>
+
 <h2><em>Installation :</em></h2>
 <ul>
 <li><strong>a) Installing the Emulator :</strong></li>
@@ -254,7 +180,8 @@ Note : +__.POPS is not correct. Use <a href="wiki/related-stuff.html">AKuHAK’s
 <li>Copy or leave the ELFs where you want to run them from ;</li>
 <li>Enjoy !</li>
 </ol>
-<p>______________________________________________________________________________________________________________</p>
+<hr>
+
 <h2><em>Example of Setup :</em></h2>
 <pre><code>
 === INTERNAL HDD, NEW LAUNCH TYPE ===
@@ -264,7 +191,8 @@ __.POPS/Crash Bandicoot.VCD
 __sysconf/FMCB/Crash Bandicoot.elf
 
 </code></pre>
-<p>______________________________________________________________________________________________________________</p>
+<hr>
+
 <h2><em>POPSTARTER.KELF :</em></h2>
 <p>POPStarter bundle comes with a file named POPSTARTER.KELF (KELF = Krypo-ELF = ELF embedded into a container). It can be used if you have SONY Browser 2.00 (aka HDDOSD) installed on your HDD. Otherwise, it’s useless.</p>
 <p><strong>Notes if you use the POPStarter.KELF :</strong></p>
@@ -277,63 +205,12 @@ __sysconf/FMCB/Crash Bandicoot.elf
 </li>
 </ul>
 <p>Read <a href="wiki/popstarter-hddosd.html">here</a> for a guide about how to set it up.</p>
-<p>______________________________________________________________________________________________________________</p>
+<hr>
+
 <h2><em>HDD Launch types (advanced) :</em></h2>
 <p>HDD supports 3 “launch types”. The “launch type” relies on the prefix of your ELF names. Each type uses his own way to name the VCD file :</p>
-<table>
-<thead>
-<tr>
-<th></th>
-<th><strong>Old launch type</strong></th>
-<th><strong>Alternate old launch type</strong></th>
-<th><strong>New launch type</strong></th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>HDDOSD compatible</strong></td>
-<td>Yes</td>
-<td>No</td>
-<td>No</td>
-</tr>
-<tr>
-<td><strong>Partition shown in the HDDOSD/PSBBN/PSX XMB</strong></td>
-<td>Yes</td>
-<td>No</td>
-<td>–</td>
-</tr>
-<tr>
-<td><strong>Prefix for POPStarter.ELF</strong></td>
-<td>PP. (if used)</td>
-<td>__.</td>
-<td>No prefix</td>
-</tr>
-<tr>
-<td><strong>Prefix for partition name</strong></td>
-<td>PP.</td>
-<td>__.</td>
-<td>__.POPS or __.POPS#</td>
-</tr>
-<tr>
-<td><strong>Game name</strong></td>
-<td>IMAGE0.VCD (all uppercase)</td>
-<td>IMAGE0.VCD (all uppercase)</td>
-<td>Name of the Game.VCD</td>
-</tr>
-<tr>
-<td><strong>Examples</strong></td>
-<td>(1)</td>
-<td>(2)</td>
-<td>(3)</td>
-</tr>
-<tr>
-<td><strong>Description</strong></td>
-<td>Launch type that was used in POPStarter 12 and older. Allows to install one VCD per partition.</td>
-<td>Launch type that was used in POPStarter 12 and older. Allows to install one VCD per partition.</td>
-<td>Launch type introduced in POPStarter 13 WIP 01. Allows to put multiple VCDs in a single partition.</td>
-</tr>
-</tbody>
-</table>
+<table class="wiki"> <tr> <td> </td> <td> <strong>Old launch type</strong> </td> <td> <strong>Alternate old launch type</strong> </td> <td> <strong>New launch type</strong> </td> </tr> <tr> <td> <strong>HDDOSD compatible</strong> </td> <td> Yes </td> <td> No </td> <td> No </td> </tr> <tr> <td> <strong>Partition shown in the HDDOSD/PSBBN/PSX XMB</strong> </td> <td> Yes </td> <td> No </td> <td> – </td> </tr> <tr> <td> <strong>Prefix for POPStarter.ELF</strong> </td> <td> PP. (if used) </td> <td> __. </td> <td> No prefix </td> </tr> <tr> <td> <strong>Prefix for partition name</strong> </td> <td> PP. </td> <td> __. </td> <td> __.POPS or __.POPS# </td> </tr> <tr> <td> <strong>Game name</strong> </td> <td> IMAGE0.VCD (all uppercase) </td> <td> IMAGE0.VCD (all uppercase) </td> <td> Name of the Game.VCD </td> </tr> <tr> <td> <strong>Examples</strong> </td> <td> (1) </td> <td> (2) </td> <td> (3) </td> </tr> <tr> <td> <strong>Description</strong> </td> <td> Launch type that was used in POPStarter 12 and older. Allows to install one VCD per partition. </td> <td> Launch type that was used in POPStarter 12 and older. Allows to install one VCD per partition. </td> <td> Launch type introduced in POPStarter 13 WIP 01. Allows to put multiple VCDs in a single partition. </td> </tr> </table>
+
 <p><strong>Examples :</strong></p>
 <p>(1) With the POPStarter ELF renamed as PP.SomeGame.elf, POPStarter will launch IMAGE0.VCD which is in the partition named PP.SomeGame.</p>
 <p>(2) With the POPStarter ELF renamed as __.SomeGame.elf, POPStarter will launch IMAGE0.VCD which is in the partition named __.SomeGame.</p>
@@ -363,7 +240,8 @@ __.POPS/Crash Bandicoot.VCD
 __sysconf/FMCB/Crash Bandicoot.elf
 
 </code></pre>
-<p>______________________________________________________________________________________________________________</p>
+<hr>
+
 <h2><em>Additional notes :</em></h2>
 <ul>
 <li>
@@ -385,7 +263,8 @@ __sysconf/FMCB/Crash Bandicoot.elf
 <p>Whitespaces are not allowed in the partition names (for old launch types).</p>
 </li>
 </ul>
-<p>______________________________________________________________________________________________________________</p>
+<hr>
+
 <h2><em>Related stuff :</em></h2>
 <p>You may want to give a look at this :</p>
 <ul>
@@ -396,29 +275,17 @@ __sysconf/FMCB/Crash Bandicoot.elf
 <p>[HDD] <a href="wiki/radhostclient.html">Transfer VCD files over network using RadHostClient</a></p>
 </li>
 </ul>
-<p>______________________________________________________________________________________________________________</p>
+<hr>
+
 <h3><a href="wiki/index.html"><strong>Index</strong></a></h3>
-<p class="prov-inline">📎 from the recovered <a href="wiki/smb-mode.html">SMB Mode</a> wiki page · merged across snapshots, primary 20240310054522</p><h1><strong>POPStarter for SMB</strong></h1>
-<p>______________________________________________________________________________________________________________</p>
+<p class="prov-inline">📎 from the recovered <a href="wiki/smb-mode.html">SMB Mode</a> wiki page · merged across snapshots, primary 20200812185303</p><h1><strong>POPStarter for SMB</strong></h1>
+<hr>
+
 <h2><em>Requirements :</em></h2>
 <p><strong>POPS compressed file :</strong></p>
-<p>To use POPStarter in SMB mode, you have to find and download the compressed POPS file. This file is named “POPS_IOX.PAK”…</p>
-<table>
-<thead>
-<tr>
-<th><strong>File name</strong></th>
-<th><strong>MD5</strong></th>
-<th><strong>Description</strong></th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>POPS_IOX.PAK</td>
-<td>a625d0b3036823cdbf04a3c0e1648901</td>
-<td>POPS.PAK with network modules embedded.</td>
-</tr>
-</tbody>
-</table>
+<p>To use POPStarter in SMB mode, you have to find and download the compressed POPS file. This file is named “POPS_IOX.PAK”...</p>
+<table class="wiki"> <tbody><tr> <td> <strong>File name</strong> </td> <td> <strong>MD5</strong> </td> <td> <strong>Description</strong> </td> </tr> <tr> <td> POPS_IOX.PAK </td> <td> a625d0b3036823cdbf04a3c0e1648901 </td> <td> POPS.PAK with network modules embedded. </td> </tr> </tbody></table>
+
 <p><strong>Other Software Requirements :</strong></p>
 <ul>
 <li>
@@ -449,7 +316,8 @@ __sysconf/FMCB/Crash Bandicoot.elf
 <p>A PS2 Memory Card.</p>
 </li>
 </ul>
-<p>______________________________________________________________________________________________________________</p>
+<hr>
+
 <h2><em>Installation :</em></h2>
 <p><strong>a) Installing the emulator :</strong></p>
 <ol>
@@ -495,18 +363,22 @@ __sysconf/FMCB/Crash Bandicoot.elf
 </ul>
 <p>In a single line,</p>
 <pre><code>SERVER IP ADDRESS space SHARE NAME
+
 </code></pre>
 <p><strong>Example :</strong></p>
 <pre><code>192.168.0.254 My Shared Folder
+
 </code></pre>
 <p>You can also specify a port, like this (default is 445) :</p>
 <pre><code>192.168.0.254:139 My Shared Folder
+
 </code></pre>
 <p>For user authentication, write your username to line 2 and your password to line 3.</p>
 <p><strong>Example :</strong></p>
 <pre><code>192.168.0.254 My Shared Folder
 MyName
 MyPassword
+
 </code></pre>
 <p><strong>Note :</strong> for guest access, don’t write anything to line 2 and 3.</p>
 <ul>
@@ -514,11 +386,14 @@ MyPassword
 </ul>
 <p>In a single line,</p>
 <pre><code>PS2 IP ADDRESS space NETMASK space GATEWAY
+
 </code></pre>
 <p><strong>Example :</strong></p>
 <pre><code>192.168.0.13 255.255.255.0 192.168.0.254
+
 </code></pre>
-<p>______________________________________________________________________________________________________________</p>
+<hr>
+
 <h2><em>Example of setup :</em></h2>
 <pre><code>=== SMB LAUNCH TYPE ===
 mc#:/POPSTARTER/IPCONFIG.DAT
@@ -532,49 +407,16 @@ mc#:/POPSTARTER/smbman.irx
 smb0:/YourSharedFolder/POPS/POPS_IOX.PAK
 smb0:/YourSharedFolder/POPS/Crash Bandicoot (PAL).VCD
 mass:/SB.Crash Bandicoot (PAL).ELF
+
 </code></pre>
-<p>______________________________________________________________________________________________________________</p>
+<hr>
+
 <h2><em>SMB launch type :</em></h2>
 <p>SMB supports only 1 launch type – the “new” one :</p>
-<table>
-<thead>
-<tr>
-<th></th>
-<th><strong>SMB launch type</strong></th>
-<th></th>
-<th><strong>Prefix for POPStarter.ELF</strong></th>
-<th>SB.</th>
-<th></th>
-<th><strong>POPStarter folder name</strong></th>
-<th>POPS</th>
-<th></th>
-<th><strong>Game name</strong></th>
-<th>GAME.VCD</th>
-<th></th>
-<th><strong>Description</strong></th>
-<th>Launch type introduced in POPStarter 13 WIP 06, OBT 08. Allows to run VCDs from an SMB share.</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Example</strong></td>
-<td>With the POPStarter ELF renamed as SB.GAME.ELF, POPStarter will launch GAME.VCD which is in POPS folder, placed into your shared folder.</td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-</tr>
-</tbody>
-</table>
-<p>______________________________________________________________________________________________________________</p>
+<table class="wiki"> <tbody><tr> <td> </td> <td> <strong>SMB launch type</strong> </td> </tr> <tr> <td> <strong>Prefix for POPStarter.ELF</strong> </td> <td> SB. </td> </tr> <tr> <td> <strong>POPStarter folder name</strong> </td> <td> POPS </td> </tr> <tr> <td> <strong>Game name</strong> </td> <td> GAME.VCD </td> </tr> <tr> <td> <strong>Description</strong> </td> <td> Launch type introduced in POPStarter 13 WIP 06, OBT 08. Allows to run VCDs from an SMB share. </td> </tr> <tr> <td> <strong>Example</strong> </td> <td> With the POPStarter ELF renamed as SB.GAME.ELF, POPStarter will launch GAME.VCD which is in POPS folder, placed into your shared folder. </td> </tr> </tbody></table>
+
+<hr>
+
 <h2><em>Additional notes :</em></h2>
 <ul>
 <li>
@@ -596,10 +438,12 @@ mass:/SB.Crash Bandicoot (PAL).ELF
 <p>The prefix has to be uppercase.</p>
 </li>
 </ul>
-<p>______________________________________________________________________________________________________________</p>
+<hr>
+
 <h3><a href="wiki/index.html"><strong>Index</strong></a></h3>
 <p class="prov-inline">📎 from the recovered <a href="wiki/ps1cd-mode.html">Ps1cd Mode</a> wiki page · merged across snapshots, primary 20240310061934</p><h1><strong>PS1 CD mode</strong></h1>
-<p>______________________________________________________________________________________________________________</p>
+<hr>
+
 <p>PS1 CD mode is a native POPS feature. It lets you play your PS1 games (originals, backups and imports) from the CDVD drive.</p>
 <p><strong>Warning :</strong> playing game CDs is not recommended. Playing game CDs with swap trick is super-not-recommended (see notes).</p>
 <p>To use that mode, you must rename POPSTARTER.ELF file using the name you want, as long as there is no VCD (or partition) with such a name in your setup. It saves VMCs to the device according to the ELF prefix.</p>
@@ -650,7 +494,8 @@ mass:/SB.Crash Bandicoot (PAL).ELF
 <p>We found out after RIP 06 release that the HDD old launch type method (PP.GAME.ELF or __.GAME.ELF) <a href="https://assemblergames.com/threads/ps2-pops-stuff-popstarter.45347/page-112#post-952852">has a bug</a> : files from __common/POPS folder (and from __common/POPS/GAME) will not be loaded.</p>
 </li>
 </ul>
-<p>______________________________________________________________________________________________________________</p>
+<hr>
+
 <h3><a href="wiki/index.html"><strong>Index</strong></a></h3><h2>Storage backends and path maps (USB / SMB / HDD)</h2>
 <p>USB: the POPS folder must sit at the ROOT of a FAT12/16/32 (never NTFS), DEFRAGMENTED device, holding POPS_IOX.PAK (MD5 a625d0b3036823cdbf04a3c0e1648901), the VCDs, and the renamed launcher ELFs. POPStarter scans POPS, POPS0, POPS1 ... POPS9 at the root, letting you split a library across folders - but POPS_IOX.PAK and the TM2 IGR textures stay only in the MAIN POPS folder, while BIOS.BIN/PATCH_#.BIN/TROJAN_#.BIN/VMCDIR.TXT must be COPIED into every POPS# folder you create (they do not propagate). PS2-side USB/network modules (usbd.irx, usbhdfsd.irx) load from mc0:/POPSTARTER/ with an mc1 fallback; loading them from mass: is no longer supported, and PFS_WRAP.BIN was embedded into the ELF as of OBT8.</p>
 <p>SMB: create the POPS folder at the SHARE ROOT (not a subdirectory) with the same mandatory POPS_IOX.PAK plus the VCDs. PS2-side network modules (smbman.irx, ps2smap.irx, ps2ip.irx, ps2dev9.irx, smsutils.irx, poweroff.irx) and the two .DAT files live in mc0:/POPSTARTER/ (mc1 fallback). SMBCONFIG.DAT is three lines: 'IP[:port] SHARE NAME' (default port 445, append ':139' for legacy servers), then username, then plain-text password; leave lines 2 and 3 empty for guest access. IPCONFIG.DAT ('PS2_IP NETMASK GATEWAY') is OPTIONAL (DHCP otherwise). On a modern Windows host you must enable SMB 1.0/CIFS, disable password-protected sharing, and grant Guest/Everyone read-write - only on a trusted LAN, since SMB1 is insecure. IMPORTANT MYTH-BUSTING: SMB does NOT require a 'debug build'. SMB was added as a normal feature in Beta 8 (2015-10-23); the only debug caveat is the wiki note that startup debug text cannot be skipped in SMB mode (cosmetic).</p>

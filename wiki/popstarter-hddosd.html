@@ -34,77 +34,75 @@
     <h4>Reference</h4>
     <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
   </nav>
-  <main class="content"><h1>POPSTARTER Hddosd</h1><p class="prov-inline">📎 Recovered from the ShaolinAssassin wiki · snapshot 20170629123623</p><h1>[HDD] <strong>HDDOSD / POPSTARTER.KELF</strong></h1>
-<p>______________________________________________________________________________________________________________</p>
-<p>POPStarter bundle always comes with a file named POPSTARTER.KELF (KELF = Krypto-ELF = ELF embedded into a container). This file allows you to install POPStarter in the PS2 <a href="https://www.youtube.com/watch?v=AIncx59OFAQ">SONY Browser 2.00</a> – aka HDDOSD. It can be used if you have SONY Browser 2.00 (HDDOSD) installed on your HDD; otherwise, it’s useless. Let’s find out how.</p>
-<p>(Older snapshots named the file “POPStarter.KELF” and described it only as "This file allows you to install POPStarter in the PS2 Broswer 2.00 – aka HDDOSD." The KELF-container definition and the Sony Browser 2.00 YouTube link were added in later snapshots.)</p>
-<p>______________________________________________________________________________________________________________</p>
+  <main class="content"><h1>POPSTARTER Hddosd</h1><p class="prov-inline">📎 Recovered from the ShaolinAssassin wiki · snapshot 20170629123623</p><h1>[HDD] <strong>HDDOSD / POPStarter.KELF</strong></h1>
+<hr>
+
+<p>POPStarter bundle always come with a file named “POPStarter.KELF”. This file allows you to install POPStarter in the PS2 Broswer 2.00 – aka HDDOSD. Let’s find out how.</p>
+<hr>
+
 <h2><em>Hardware Requirements :</em></h2>
 <ul>
 <li>
 <p>PS2 HDD formatted, locally connected to your PC ;</p>
 </li>
 <li>
-<p>A Network Adaptor ;</p>
+<p>NA ;</p>
 </li>
 <li>
 <p>A crossover cable ;</p>
 </li>
 </ul>
-<p>(Older snapshots listed the second hardware item only as "NA" — i.e. the Network Adaptor.)</p>
 <h2><em>Software Requirements :</em></h2>
 <ul>
 <li>
 <p>uLE_kHn : <a href="../wiki/apps-last-version.html">here</a> ;</p>
 </li>
 <li>
-<p>POPSTARTER.KELF : <a href="../wiki/apps-last-version.html">here</a> ;</p>
+<p>POPStarter.KELF : <a href="../wiki/apps-last-version.html">here</a> ;</p>
 </li>
 <li>
 <p>AKuHAK’s reworked HDL_Dump : <a href="../wiki/related-stuff.html">here</a> ;</p>
 </li>
 <li>
-<p>HDDOSD already installed on your PS2 HDD (note from older snapshots: there was <a href="https://assemblergames.com/threads/ps2-pops-stuff.45347/page-102#post-932375">a bug with 1.00J HDDOSD version</a> – fixed in WIP 6 OBT 17. This bug note was dropped in later snapshots.).</p>
+<p>HDDOSD already installed on your PS2 HDD (note : there was <a href="http://assemblergames.com/l/threads/ps2-pops-stuff.45347/page-102#post-932375">a bug with 1.00J HDDOSD version</a> – fixed in WIP 6 OBT 17)..</p>
 </li>
 </ul>
-<p>______________________________________________________________________________________________________________</p>
+<hr>
+
 <p>To install POPStarter in HDDOSD, you will need :</p>
-<ul>
-<li>
-<p>to use the first HDD launch type (1 game = 1 partition). You can’t do it with the __.POPS partition. Your game partition will be a parent partition named PP.Name_of_my_Game.</p>
-</li>
-<li>
-<p>to inject some files into the partition header, to make it bootable from HDDOSD + to display infos related to your game + to customize the icon shown in the HDDOSD.</p>
-</li>
-</ul>
-<p><strong>How to install it (step-by-step) :</strong></p>
+<p>. to use the first HDD launch type (1 game = 1 partition). You can’t do it with the __.POPS partition. Your game partition will be a parent partition named PP.Name_of_my_Game.<br />
+. to inject some files into the partition header, to make it bootable from HDDOSD + to display infos related to your game + to customize the icon shown in the HDDOSD.</p>
+<p><strong>Set-by-step :</strong></p>
 <p><strong>1.</strong> [PS2] – First – if you don’t have it yet – install POPS (copy/paste IOPRP252.IMG &amp; POPS.ELF into __common/POPS/).</p>
-<p><strong>2.</strong> [PC] – Convert your game as a .VCD file.</p>
-<p><strong>3.</strong> [PS2] – Using uLE_kHn, create a partition large enough to store your game. Name it as PP.Name_of_my_Game (later snapshots: PP.GAME). Example : PP.Cotton_Original. (<strong>! no “+” in the partition name, no whitespaces !</strong>)</p>
-<p><strong>4.</strong> [PS2] – Transfer your VCD(s) into your PP.Name_of_my_Game (PP.GAME) partition and rename it IMAGE0.VCD.</p>
-<p><strong>5.</strong> [PS2] – Rename POPSTARTER.KELF as EXECUTE.KELF and copy/paste it into your PP.Name_of_my_Game (PP.GAME) partition.</p>
+<p><strong>2.</strong> [PC] – Convert your game as .VCD file.</p>
+<p><strong>3.</strong> [PS2] – Using uLE_kHn, create a partition large enough to store your game. Name it as PP.Name_of_my_Game. Example : PP.Cotton_Original. (<strong>! no “+” in the partition name, no whitespaces !</strong>)</p>
+<p><strong>4</strong>. [PS2] – Transfer your VCD into your PP.Name of my Game partition and rename it IMAGE0.VCD.</p>
+<p><strong>5.</strong> [PS2] – Rename POPStarter.KELF as EXECUTE.KELF and copy/paste it into your PP.Name of my Game.</p>
 <p>Your files should look like this :</p>
-<pre><code>__common/POPS/IOPRP252.IMG
+<pre><code>
+__common/POPS/IOPRP252.IMG
 __common/POPS/POPS.ELF
 PP.Cotton_Original/EXECUTE.KELF
 PP.Cotton_Original/IMAGE0.VCD
+
 </code></pre>
-<p>Before you can inject the files into the partition header, you need to get them ready for your particular game.</p>
+<p>Before you can inject the files into the partition hearder, you need to get them ready for your particular game.</p>
 <p><strong>6.</strong> [PC] – Download the sample files. The .7z includes :</p>
 <ul>
 <li>
-<p><strong>system.cnf</strong> = this file tells the PS2 where to look at for launching POPStarter (BOOT2 = pfs:/EXECUTE.KELF in system.cnf means that the file that will be launched from HDDOSD is EXECUTE.KELF, placed into the root of the partition).</p>
+<p>system.cnf = this file tells the PS2 where to look at for launching POPStarter (BOOT2 = pfs:/EXECUTE.KELF in system.cnf means that the file that will be launched from HDDOSD is EXECUTE.KELF, placed into the root of the partition).</p>
 </li>
 <li>
-<p><strong>list.ico</strong> = this file is a PS2 icon, made by myself using my profile picture from PSX-scene. You can learn how to create your own icons <a href="http://sksapps.com/index.php?page=Creating_Icons_tutorial.html">here</a> (very easy). If you want that HDDOSD displays a special image when you are about to delete a game/partition, repeat the process and name this file del.ico.</p>
+<p>list.ico = this file is a PS2 icon, made by myself using my profile picture from PSX-scene. You can learn how to create your own icons <a href="http://sksapps.com/index.php?page=Creating_Icons_tutorial.html">here</a> (very easy). If you want that HDDOSD displays a special image when you are about to delete a game/partition, repeat the process and name this file del.ico.</p>
 </li>
 <li>
-<p><strong>icon.sys</strong> = this file contains the infos that will be displayed in the HDDOSD. You need to edit it and fill some info inside. Use Notepad++.</p>
+<p>icon.sys = this files contains the infos that will be displayed in the HDDOSD. You need to edit it and fill some info inside. Use Notepad++.</p>
 </li>
 </ul>
-<pre><code>PS2X
+<pre><code>
+PS2X
 title0=Cotton Original // What will be displayed on the first line of the HDDOSD. Can be anything. I choose the name of the game. 16 caracters max.
-title1=[SLPM-86461] // What will be displayed on the 2nd line of the HDDOSD. Can be anything. I choose the &lt;game_ID&gt; of the game. 16 caracters max.
+title1=[SLPM-86461] // What will be displayed on the 2nd line of the HDDOSD. Can be anything. I choose the &amp;#60;game_ID&amp;#62; of the game. 16 caracters max.
 bgcola=0 // Background's alpha value.
 bgcol0=0,0,0 // Background's upper-left color (R,G,B).
 bgcol1=0,0,0 // Upper-right.
@@ -120,38 +118,48 @@ lightcol2=0,0,0 // Color of light source 2 (R,G,B).
 uninstallmes0= Voulez-vous supprimer ce jeu ? // Uninstall warning message.
 uninstallmes1= // Ignored if uninstallmes0 is 0 chars.
 uninstallmes2= // Ignored if uninstallmes0/1 is 0 chars.
+
 </code></pre>
 <p><strong>7.</strong> [PC] – So, create your icon(s) and edit icon.sys according to your will.</p>
-<p><strong>8.</strong> [PC] – Download AKuHAK’s reworked HDL_Dump zip folder, extract it at the root of your PC (C:), and delete the boot.elf file from inside (it’s miniopl – we don’t need it).</p>
-<p><strong>9.</strong> [PC] – Drop your system.cnf, list.ico, icon.sys inside the hdl_dumx folder. Hdl_dumx folder content :</p>
-<pre><code>- hdl_dumb.exe - no GUI version
+<p><strong>8.</strong> [PC] – Download AKuHAK’s reworked HDL_Dump zip folder, extract it at the root of your PC (C:), and delete boot.elf file from inside (it’s miniopl – we don’t need it).</p>
+<p><strong>9.</strong> [PC] – Drop your system.cnf, list.ico, icon.sys inside hdl_dumx folder. Hdl_dumx folder content :</p>
+<pre><code>
+- hdl_dumb.exe - no GUI version
 - hdl_dump.exe - GUI version
 - icon.sys
 - list.ico
 - system.cnf
+
 </code></pre>
 <p><strong>10.</strong> [PS2] – Connect your PS2 to your PC using a crossover cable, and launch hdl_svr_0.93.elf using uLE from it.</p>
-<p><strong>11.</strong> [PC] – Launch the command prompt.</p>
+<p><strong>11.</strong> [PC] – Launch command promt.</p>
 <p><strong>12.</strong> [PC] – Type :</p>
-<pre><code>cd C:\hdl_dumx_rev47\
+<pre><code>
+cd C:\hdl_dumx_rev47\
+
 </code></pre>
 <p><strong>13.</strong> [PC] – then :</p>
-<pre><code>C:\hdl_dumx_rev47\hdl_dump.exe modify_header 192.168.0.5 PP.Cotton_Original
+<pre><code>
+C:\hdl_dumx_rev47\hdl_dump.exe modify_header 192.168.0.5 PP.Cotton_Original
+
 </code></pre>
-<p>192.168.0.5 = your PS2 IP address ;</p>
-<p>PP.Cotton_Original = your partition.</p>
+<p>192.168.0.5 = your PS2 IP adress ;<br />
+PP.Cotton_Original = your partition.</p>
 <p><strong>14.</strong> [PC] – if you got it working you should get a message like this :</p>
-<pre><code>Succesfully read system.cnf = system.cnf injected into partition header
+<pre><code>
+Succesfully read system.cnf = system.cnf injected into partition header
 Succesfully read icon.sys
 Succesfully read list.ico
 Skipped del.ico = del.ico file missing from hdl_dumx folder
 Skipped boot.kelf
 Skipped boot.elf
 Skipped boot.kirx
+
 </code></pre>
 <p><strong>15.</strong> Done ! ;)</p>
-<p><strong>Note :</strong> when POPStarter gets an update, delete the file EXECUTE.KELF from PP.Name_of_my_Game (PP.GAME) and replace it with the new version.</p>
-<p>______________________________________________________________________________________________________________</p>
+<p><strong>Note :</strong> when POPStarter gets an update, delete the file EXECUTE.KELF from PP.Name_of_my_Game and replace it with the new version.</p>
+<hr>
+
 <h3><a href="../wiki/index.html"><strong>Index</strong></a></h3><h2>Images &amp; screenshots</h2><div class="gallery"><figure><a href="../img/137826717-PREVIEW.JPG" target="_blank"><img src="../img/137826717-PREVIEW.JPG" alt="PREVIEW" loading="lazy"></a><figcaption>PREVIEW</figcaption></figure></div><p style="margin-top:26px"><a class="pill" href="../storage.html">Related curated section → Storage Backends</a></p></main>
   <aside class="toc"><div class="toc-h">On this page</div><nav id="toc-nav"></nav></aside>
 </div>

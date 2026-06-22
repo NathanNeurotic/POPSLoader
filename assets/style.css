@@ -100,6 +100,7 @@ img{max-width:100%;border-radius:8px;border:1px solid var(--line2)}
 .content li{margin:.25em 0}
 .content hr{border:none;border-top:1px solid var(--line);margin:1.7em 0}
 .lead{font-size:17px;color:var(--ink2);max-width:76ch;line-height:1.6}
+.content p,.content li,.content td,.content th,.content h1,.content h2,.content h3,.content h4{overflow-wrap:break-word}
 .content table{width:100%;border-collapse:collapse;margin:1em 0;font-size:14px;display:block;overflow:auto}
 .content th,.content td{border:1px solid var(--line2);padding:8px 12px;text-align:left;vertical-align:top}
 .content th{background:rgba(40,64,140,.4);color:var(--ink);font-weight:700;text-transform:uppercase;

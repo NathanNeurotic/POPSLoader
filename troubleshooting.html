@@ -35,7 +35,8 @@
     <a href="wiki/index.html"><span class="em">📚</span>All wiki pages</a>
   </nav>
   <main class="content"><h1>Troubleshooting &amp; Display</h1><p class="lead">Boot/launch failures, USB-not-detected, HDTV/component fixes, widescreen, and game-specific lore.</p><p class="prov-inline">📎 from the recovered <a href="wiki/known-bugs.html">Known Bugs</a> wiki page · merged across snapshots, primary 20240913183110</p><h1><strong>Known bugs / limitations</strong></h1>
-<p>______________________________________________________________________________________________________________</p>
+<hr>
+
 <ul>
 <li>
 <p><strong>$COMPATIBILITY_0×07 mode :</strong> unfinished. Breaks the gamma.</p>
@@ -59,10 +60,12 @@
 <p><strong><a href="https://www.metagames-eu.com/forums/playstation-2/popstarter-revision-13-a-48-134569.html#post1776443">IGR :</a></strong> not working with a DS3 controller in BT mode (working in USB mode).</p>
 </li>
 </ul>
-<p>______________________________________________________________________________________________________________</p>
+<hr>
+
 <h3><a href="wiki/index.html"><strong>Index</strong></a></h3>
 <p class="prov-inline">📎 from the recovered <a href="wiki/troubleshooting-games.html">Troubleshooting Games</a> wiki page · merged across snapshots, primary 20240909123815</p><h1>[COMPATIBILITY] <strong>Troubleshooting games</strong></h1>
-<p>______________________________________________________________________________________________________________</p>
+<hr>
+
 <p>You can use the Cheat Engine feature to troubleshoot problematic games.</p>
 <p>Here is a ready-to-use <a href="downloads/CHEATS.TXT">CHEATS.TXT</a> file with all possible combinaison of modes which can help you and save you time :</p>
 <pre><code>Single compatibility mode test
@@ -249,10 +252,12 @@ COMPATIBILITY_0×06
 <p>SMB</p>
 </li>
 </ul>
-<p>______________________________________________________________________________________________________________</p>
+<hr>
+
 <h1><a href="wiki/home.html"><strong>Home</strong></a></h1>
 <p class="prov-inline">📎 from the recovered <a href="wiki/faqs.html">FAQS</a> wiki page · merged across snapshots, primary 20240909182922</p><h1><strong>FAQs</strong></h1>
-<p>______________________________________________________________________________________________________________</p>
+<hr>
+
 <ul>
 <li><strong>Question : does POPS support mutitap player ?</strong></li>
 </ul>
@@ -261,7 +266,8 @@ COMPATIBILITY_0×06
 <li><strong>Question : does POPS support physical memory card saving ?</strong></li>
 </ul>
 <p><strong>Answer :</strong> No, it doesnt. There is a technical reason about it : POPS doesnt save on a single memory card block but flashes the whole VMC. Doing it on physical memory card would be very slow if possible.</p>
-<p>______________________________________________________________________________________________________________</p>
+<hr>
+
 <h3><a href="wiki/index.html"><strong>Index</strong></a></h3><h2>Troubleshooting and display fixes</h2>
 <p>Boot/launch failures: enable the debug screen to see where a launch dies - hex-edit $410 to FF (realtime) or ~12 (paced), and optionally $411=0x01 to halt on the error so you can read it, or simply apply DEBUG_AND_HALT.PPF. SMB-mode setups already run debug-on. For 'USB drive not detected,' raise config offset $413 from 0x02 toward 0x05/0x0A, confirm FAT32 + a defragmented device + the POPS folder at the root, and remember $USBDELAY_# will NOT help (it patches POPS, not the loader). For 'POPS_IOX.PAK not found,' verify the PAK is in the main POPS folder (and duplicated logic for POPS# folders).</p>
 <p>Display: green-screen / no-signal on an HDTV over component is the SetGsCrt case - use $HDTVFIX (config $412=0x01), but leave it off on CRTs where it is incompatible. Force 480p with $480p (config $42A=0x02), noting some titles (e.g. Dead Or Alive) output an unsupported 480p signal. Screen geometry ($XPOS default 640, $YPOS no default, $DWSTRETCH default 2559, $DWCROP max 2560) works only in PAL/NTSC and is mutually exclusive with $480p.</p>

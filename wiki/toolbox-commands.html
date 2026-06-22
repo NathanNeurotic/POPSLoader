@@ -35,60 +35,14 @@
     <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
   </nav>
   <main class="content"><h1>Toolbox Commands</h1><p class="prov-inline">📎 Recovered from the ShaolinAssassin wiki · snapshot 20170907050300</p><h1><strong>Toolbox commands</strong></h1>
-<p>______________________________________________________________________________________________________________<br />
-<em>[ToolBox Version 1.0]</em></p>
+<hr>
+
+<p><em>[ToolBox Version 1.0]</em></p>
 <h2><em>List of Toolbox commands :</em></h2>
-<table>
-<thead>
-<tr>
-<th><strong>Command</strong></th>
-<th><strong>Description</strong></th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>-cue2pops</td>
-<td>Convert a BIN+CUE to a POPS formatted VCD</td>
-</tr>
-<tr>
-<td>-lc</td>
-<td>Make a LibCrypt cracker, for protected PAL games (TROJAN file)</td>
-</tr>
-<tr>
-<td>-vmode</td>
-<td>Make a PAL to NTSC patcher, expect unpleasant rendering (TROJAN file)</td>
-</tr>
-<tr>
-<td>-trainer</td>
-<td>Compile a trainer so you activate permanent game cheats (TROJAN file)</td>
-</tr>
-<tr>
-<td>-makeosd</td>
-<td>Convert a PS-X executable to a replacement OSD file (OSD.BIN)</td>
-</tr>
-<tr>
-<td>-igrpix</td>
-<td>Assemble an IGR theme that you can copy to VMC folders (PATCH file)</td>
-</tr>
-<tr>
-<td>-vmcid</td>
-<td>Configure POPStarter so it assigns a user ID to the VMCs</td>
-</tr>
-<tr>
-<td>-dbgdelay</td>
-<td>Configure POPStarter so you can see the debug texts for the time you want</td>
-</tr>
-<tr>
-<td>-usbdelay</td>
-<td>Configure the USB Mass access delay of POPStarter and the PFS Wrapper</td>
-</tr>
-<tr>
-<td>-cdid</td>
-<td>Save the disc identification data, for dev or version check purposes</td>
-</tr>
-</tbody>
-</table>
-<p>______________________________________________________________________________________________________________</p>
+<table class="wiki"> <tr> <td> <strong>Command</strong> </td> <td> <strong>Description</strong> </td> </tr> <tr> <td> -cue2pops </td> <td> Convert a BIN+CUE to a POPS formatted VCD </td> </tr> <tr> <td> -lc </td> <td> Make a LibCrypt cracker, for protected PAL games (TROJAN file) </td> </tr> <tr> <td> -vmode </td> <td> Make a PAL to NTSC patcher, expect unpleasant rendering (TROJAN file) </td> </tr> <tr> <td> -trainer </td> <td> Compile a trainer so you activate permanent game cheats (TROJAN file) </td> </tr> <tr> <td> -makeosd </td> <td> Convert a PS-X executable to a replacement OSD file (OSD.BIN) </td> </tr> <tr> <td> -igrpix </td> <td> Assemble an IGR theme that you can copy to VMC folders (PATCH file) </td> </tr> <tr> <td> -vmcid </td> <td> Configure POPStarter so it assigns a user ID to the VMCs </td> </tr> <tr> <td> -dbgdelay </td> <td> Configure POPStarter so you can see the debug texts for the time you want </td> </tr> <tr> <td> -usbdelay </td> <td> Configure the USB Mass access delay of POPStarter and the PFS Wrapper </td> </tr> <tr> <td> -cdid </td> <td> Save the disc identification data, for dev or version check purposes </td> </tr> </table>
+
+<hr>
+
 <h2><em>Details :</em></h2>
 <h3><strong><em>-cue2pops :</em></strong></h3>
 <ul>
@@ -132,7 +86,8 @@ toolbox -cue2pops &quot;K:\toolbox\AMERICAN_POOL.cue&quot;
 </ul>
 <p>Input_file must be an ASCII cuesheet (CUE) which points to a Mode 2 Form 1 CD-ROM image<br />
 Output_file is the filename of the VCD you want to create (optional).</p>
-<p>______________________________________________________________________________________________________________</p>
+<hr>
+
 <h3><strong><em>-lc :</em></strong></h3>
 <ul>
 <li><em>Tool name (version) :</em> LC Crack Trojan Maker</li>
@@ -162,7 +117,8 @@ The crack is applied to the POPS memory, so your VCD remains untouched.
 . a PCSX Save State v4 (Uncompressed)<br />
 . an ePSXe Save State (Uncompressed)<br />
 “(Uncompressed)” means that you must decompress it manually, using a gzip archiver such as 7-Zip…</p>
-<p>______________________________________________________________________________________________________________</p>
+<hr>
+
 <h3><strong><em>-vmode :</em></strong></h3>
 <ul>
 <li><em>Tool name (version) :</em> PAL2NTSC Trojan Maker v1.0</li>
@@ -202,7 +158,8 @@ toolbox -vmode &quot;K:\toolbox\SLUS_014.88&quot;
 . a PS2 Kernel Memory Dump (POPS)<br />
 . a PS2 User Memory Dump (POPS)<br />
 “(Uncompressed)” means that you must decompress it manually, using a gzip archiver such as 7-Zip…</p>
-<p>______________________________________________________________________________________________________________</p>
+<hr>
+
 <h3><strong><em>-trainer :</em></strong></h3>
 <ul>
 <li><em>Tool name (version) :</em> Game Trainer Maker Version 1.0</li>
@@ -246,7 +203,8 @@ $50000202 3BF1
 $8005D468 270F
 
 </code></pre>
-<p>______________________________________________________________________________________________________________</p>
+<hr>
+
 <h3><strong><em>-makeosd :</em></strong></h3>
 <ul>
 <li><em>Tool name (version) :</em> PS-X executable to OSD.BIN converter v1.0</li>
@@ -265,7 +223,8 @@ OSD.BIN can't be loaded when a BIOS.BIN is used.
 &quot;toolbox.exe&quot; -makeosd &quot;PSX.EXE&quot;
 
 </code></pre>
-<p>______________________________________________________________________________________________________________</p>
+<hr>
+
 <h3><strong><em>-igrpix :</em></strong></h3>
 <ul>
 <li><em>Tool name (version) :</em> IGR Texture Replacer Version 1.0</li>
@@ -290,7 +249,8 @@ In other words, I assemble per-game IGR &quot;themes&quot; with your TIM2 pictur
 toolbox -igrpix &quot;K:\toolbox\IGR_BG.TM2&quot; &quot;K:\toolbox\IGR_NO.TM2&quot; &quot;K:\toolbox\IGR_YES.TM2&quot;
 
 </code></pre>
-<p>______________________________________________________________________________________________________________</p>
+<hr>
+
 <h3><strong><em>-vmcid :</em></strong></h3>
 <ul>
 <li><em>Tool name (version) :</em> User ID assignment util for making POPS save in individual VMC couples</li>
@@ -313,7 +273,8 @@ Hello! I configure the POPStarter ELF/KELF to allow you and yours save on separa
 toolbox -vmcid &quot;K:\toolbox\XX.AMERICAN_POOL.ELF&quot;
 
 </code></pre>
-<p>______________________________________________________________________________________________________________</p>
+<hr>
+
 <h3><strong><em>-dbgdelay :</em></strong></h3>
 <ul>
 <li><em>Tool name (version) :</em> POPStarter debug pages delay config tool that has a long and stupid name</li>
@@ -336,7 +297,8 @@ Hello! I configure the POPStarter ELF/KELF so you can choose how long to print d
 toolbox -dbgdelay &quot;K:\toolbox\XX.AMERICAN_POOL.ELF&quot;
 
 </code></pre>
-<p>______________________________________________________________________________________________________________</p>
+<hr>
+
 <h3><strong><em>-usbdelay :</em></strong></h3>
 <ul>
 <li><em>Tool name (version) :</em> USB Access Delay Config Tool v1.0</li>
@@ -359,7 +321,8 @@ Hello! I let you set the USB access delay of Delcro's PFS Wrapper v2 and POPStar
 toolbox -usbdelay &quot;K:\toolbox\XX.AMERICAN_POOL.ELF&quot; &quot;K:\toolbox\PFS_WRAP.BIN&quot;
 
 </code></pre>
-<p>______________________________________________________________________________________________________________</p>
+<hr>
+
 <h3><strong><em>-cdid :</em></strong></h3>
 <ul>
 <li><em>Tool name (version) :</em> Game Identification Data Extractor (IdentRip)</li>
@@ -391,10 +354,12 @@ toolbox -cdid &quot;K:\toolbox\AMERICAN_POOL.bin&quot;
 . a Mode 2 Form 1 CDROM image<br />
 . an ASCII cuesheet (CUE) which points to a Mode 2 Form 1 CD-ROM image<br />
 . a POPS virtual CD-ROM image (VCD)</p>
-<p>______________________________________________________________________________________________________________</p>
+<hr>
+
 <h2><em><a href="../wiki/apps-last-version.html">POPS2CUE</a> :</em></h2>
 <p>It does what its name says : revert back the conversion from .VCD to .BIN+.CUE or (.CUE only) files. See the screenshot for commands.</p>
-<p>______________________________________________________________________________________________________________</p>
+<hr>
+
 <h3><a href="../wiki/index.html"><strong>Index</strong></a></h3><h2>Images &amp; screenshots</h2><div class="gallery"><figure><a href="../img/4139879895-toolbox01.jpg" target="_blank"><img src="../img/4139879895-toolbox01.jpg" alt="toolbox01" loading="lazy"></a><figcaption>toolbox01</figcaption></figure></div></main>
   <aside class="toc"><div class="toc-h">On this page</div><nav id="toc-nav"></nav></aside>
 </div>

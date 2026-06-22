@@ -35,32 +35,21 @@
     <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
   </nav>
   <main class="content"><h1>Quickstart HDD</h1><p class="prov-inline">📎 Recovered from the ShaolinAssassin wiki · snapshot 20250215035940</p><h1><strong>Quick start guide for internal HDD :</strong></h1>
-<p>______________________________________________________________________________________________________________</p>
+<hr>
+
 <p><em>(updated ~ 2020/02/09)</em></p>
-<p><em>(older snapshots: "updated ~ 2017/10/27"; and "[UPDATE 01-10-2016 – POPStarter version updated to OBT16]")</em></p>
 <p>This is a step-by-step basic guide for new POPStarter users. If you are already familiar with POPStarter, you don’t need it. Quickstarter pack includes last POPStarter version (Rev 13 Beta 2019/06/05).</p>
-<p><em>(older snapshots state different bundled POPStarter versions:</em><br />
-- <em>Rev 13 RIP 06 (2017/10/27 snapshot)</em><br />
-- <em>"last POPStarter BETA version [Rev 13 WIP 6 OBT 16] – which is now considered stable enough to be used as daily gaming version" (2016/01/10 snapshot)</em></p>
-<p><em>)</em></p>
 <ul>
 <li><strong>Download :</strong> <a href="../downloads/POPStarter_HDD_Quickstarter_Pack_20200209.zip">here</a></li>
 </ul>
-<p><em>(older snapshots linked earlier Quickstarter packs:</em><br />
-- <em><a href="../downloads/POPStarter_HDD_Quickstarter_Pack_20171027.7z">POPStarter_HDD_Quickstarter_Pack_20171027.7z</a></em><br />
-- <em>POPStarter_Quickstarter_Pack_HDD__2017_01_10</em></p>
-<p><em>)</em></p>
-<p>______________________________________________________________________________________________________________</p>
+<hr>
+
 <h2><em>Step-by-step :</em></h2>
 <p><strong>a) Installing the emulator :</strong></p>
 <p>Since POPS (the emulator) is copyrighted by SONY, it can not be redistributed with POPStarter. You have to find it. It’s made of 2 files (for HDD mode).</p>
 <pre><code>POPS.ELF     - MD5 : 355a892a8ce4e4a105469d4ef6f39a42
 IOPRP252.IMG - MD5 : 1db9c6020a2cd445a7bb176a1a3dd418
 </code></pre>
-<p><em>(In the 2016/01/10 snapshot the MD5s were rendered as links:</em><br />
-- <em>POPS.ELF – MD5 : 355a892a8ce4e4a105469d4ef6f39a42</em><br />
-- <em>IOPRP252.IMG – MD5 : 1db9c6020a2cd445a7bb176a1a3dd418</em></p>
-<p><em>)</em></p>
 <ol>
 <li>
 <p>Find and download POPS.ELF &amp; IOPRP252.IMG ;</p>
@@ -89,7 +78,6 @@ IOPRP252.IMG - MD5 : 1db9c6020a2cd445a7bb176a1a3dd418
 </li>
 </ol>
 <p><strong>c) Installing POPStarter :</strong></p>
-<p><em>This is the method described in the current/primary snapshot (rename-per-game), used in the 2017/10/27 and 2020/02/09 snapshots:</em></p>
 <ol>
 <li>
 <p>Rename the POPStarter ELF as the name of your VCDs, replace the .VCD extension with a .ELF extension (example : for running a VCD named “Crash Bandicoot.VCD”, the POPStarter ELF must be renamed as “Crash Bandicoot.ELF”) ;</p>
@@ -106,37 +94,15 @@ hdd:/__.POPS/GAME.VCD
 </code></pre>
 <p>=&gt; to launch your game, run GAME.ELF.</p>
 <p><strong>Note :</strong> tired of renaming tons of ELF files ? Put uLE_kHn_20191110/BOOT in mc0:/BOOT folder and put POPSTARTER.ELF (not renamed) in __common/POPS directory. This special uLE version can launch .VCD directly – just like you would do for any .ELF file.</p>
-<p><em>(older snapshot: the 2017/10/27 snapshot referenced uLE_kHn_20160723/BOOT instead of uLE_kHn_20191110/BOOT.)</em></p>
 <pre><code>hdd:/__common/POPS/IOPRP252.IMG
 hdd:/__common/POPS/POPS.ELF
 hdd:/__common/POPS/POPSTARTER.ELF
 hdd:/__.POPS/GAME.VCD
 mc0:/BOOT/BOOT.ELF
 </code></pre>
-<p>______________________________________________________________________________________________________________</p>
-<h3>Alternate "Installing POPStarter" method <em>(2016/01/10 snapshot — uLE_kHn.ELF in __common)</em></h3>
-<p><em>The oldest (2016/01/10) snapshot described a different POPStarter install procedure as the primary path, placing the special uLE directly in __common rather than in mc0:/BOOT, and not renaming a per-game ELF:</em></p>
-<ol>
-<li>
-<p>Put uLE_kHn.ELF in __common. This special uLE version can launch .VCD directly ;</p>
-</li>
-<li>
-<p>Put POPSTARTER.ELF into __common/POPS ;</p>
-</li>
-</ol>
-<p>Now, check your setup. It must be the same as this :</p>
-<pre><code>hdd:/__common/POPS/IOPRP252.IMG
-hdd:/__common/POPS/POPS.ELF
-hdd:/__common/POPS/POPSTARTER.ELF
-hdd:/__.POPS/GAME.VCD
-hdd:/__common/uLE_kHn.ELF
-</code></pre>
-<p>=&gt; to launch your game, run uLE_kHn.ELF, then launch GAME.VCD – just like you would do for any .ELF file.</p>
-<p>______________________________________________________________________________________________________________</p>
-<h2>Need help?</h2>
 <p>Need help ? Ask over at <a href="https://www.psx-place.com/threads/popstarter-beta-from-2019-06-05.19139/">PSX-Place</a>.</p>
-<p><em>(older snapshots pointed support to a different forum: <a href="https://assemblergames.com/threads/ps2-pops-stuff.45347/">ASSEMblergames</a>.)</em></p>
-<p>______________________________________________________________________________________________________________</p>
+<hr>
+
 <h3><a href="../wiki/home.html"><strong>Wiki Homepage</strong></a></h3><p style="margin-top:26px"><a class="pill" href="../storage.html">Related curated section → Storage Backends</a></p></main>
   <aside class="toc"><div class="toc-h">On this page</div><nav id="toc-nav"></nav></aside>
 </div>
