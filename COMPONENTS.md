@@ -397,10 +397,11 @@ Dispatch in the MainMenu `Play` handler (ui.lua:3997), OPT switch ~ui.lua:4227-4
 - `HDD (PFS)` (OPT4): implemented (routes to scene GHDD=5).
 - `USB` (OPT5): implemented.
 - `Disc (DKWDRV)` (OPT8): implemented.
-- `HDD (exFAT)` (OPT3): NOT implemented — surfaces "This backend isn't implemented
-  yet" (toast at ui.lua:4312).
-- `i.Link` (OPT6): NOT implemented (ui.lua:4396).
-- `SMB (v1)` (OPT7): NOT implemented (ui.lua:4398). There is no SMB C client;
+- `HDD (exFAT)` (OPT3): implemented — scans the exFAT internal drive as a `mass:`
+  backend (BDMA `ata`) via `InitATAPopsRoot` + `GetPS1GameLists` -> scene GBDMHDD=6
+  (ui.lua:4349). Classified by exact ioctl driver-name `ata`. Validating on hardware.
+- `i.Link` (OPT6): NOT implemented (ui.lua:4462).
+- `SMB (v1)` (OPT7): NOT implemented (ui.lua:4464). There is no SMB C client;
   the former `src/luaSMB.cpp` orphan was removed in commit f83dbbb (see
   Orphaned/dead-on-disk).
 

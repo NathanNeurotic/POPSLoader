@@ -19,7 +19,7 @@ This matrix tracks current behavior across:
 - busy/progress overlays,
 - cover art behavior,
 - exit handoff behavior,
-- currently unimplemented menu options (`HDD (exFAT)`, `SMB (v1)`, `i.Link`),
+- currently unimplemented menu options (`SMB (v1)`, `i.Link`; `HDD (exFAT)` is now implemented via BDMA `ATA` and is in hardware validation),
 - release package validation gates,
 - repository automation workflows that are not runtime/hardware gates.
 
@@ -80,7 +80,8 @@ These gates are defined by `.github/workflows/compilation.yml`. The separate `.g
 | D-03 | MX4SIO absent | No MX4SIO media | Open MX4SIO page | UI shows `No MX4SIO device detected` |
 | D-04 | MMCE absent | No MMCE card | Open MMCE page | UI shows MMCE-not-found notification |
 | D-05 | HDD PFS unavailable | No usable HDD | Open HDD (PFS) | explicit HDD status/partition error notification |
-| D-06 | HDD exFAT option status | any setup | Select `HDD (exFAT)` | UI shows `Not Implemented Yet` |
+| D-06 | HDD (exFAT) via BDMA ATA (present) | internal drive formatted exFAT, BDMA Mode = ATA, `POPS/` with VCDs | Select `HDD (exFAT)` | drive enumerates as a `mass:` slot reporting ioctl driver-name `ata`; `mass:/POPS` VCDs list; launch works with the `.ata` drivers staged (stripped) to `mc?:/POPSTARTER` (NEW — validating on hardware) |
+| D-06A | HDD (exFAT) absent | no exFAT internal drive / BDMA Mode ≠ ATA | Select `HDD (exFAT)` | UI shows `No exFAT HDD detected` notification (no hang) |
 | D-07 | SMB option status | any setup | Select `SMB (v1)` | UI shows `Not Implemented Yet` |
 | D-07A | i.Link option status | any setup | Select `i.Link` | UI shows `Not Implemented Yet` |
 | D-08 | HDD POPS partition scan | `__.POPS`, `__.POPS0`, and one higher `__.POPSN` present | Open HDD (PFS) | titles from all present POPS partitions list in stable partition order |

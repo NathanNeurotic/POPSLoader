@@ -67,7 +67,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 - **BOOT.ELF from HDD-booted POPSLoader** (U-10, FIXED): launches with `reboot_iop=0` via PR #479.
 
 ### Main menu feature status
-- Implemented: `MMCE`, `MX4SIO`, `HDD (PFS)`, `USB`, `Disc (DKWDRV)`. Not implemented: `HDD (exFAT)`, `SMB (v1)`, `ILINK`.
+- Implemented: `MMCE`, `MX4SIO`, `HDD (PFS)`, `USB`, `Disc (DKWDRV)`, and **`HDD (exFAT)`** (BDMA Mode `ATA`; scans/launches as a `mass:` device via `ata_bd.irx` + R3Z3N's ATA BDM Assault launch drivers — implemented `df2eb9d`, CI/Rolling green, **validating on hardware**). Not implemented: `SMB (v1)`, `ILINK`.
 - **Carousel device visibility** (Settings → Carousel Devices): a Shown/Hidden toggle per carousel device lets the user hide entries they don't use (e.g. the not-implemented stubs). Persisted as `HIDDEN_DEVICES` (CSV of stable device keys; all shown by default; a guard keeps ≥1 visible). The carousel nav/render skip hidden entries with no gaps; `UI.MainMenu.OPT` stays the real opts index so the launch dispatch is unchanged (with nothing hidden, behavior is identical). STATUS: implemented, validating on PCSX2/hardware.
 
 ### Exit handoff
@@ -104,7 +104,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 12. **The analog-stick → d-pad fold must stay gated on `Pads.getMode()` being analog/DualShock** — an ungated fold injects a phantom −127 on a digital pad and breaks up/down nav. `Pads.getMode()` (`PAD_MODECURID`, live mode) is the correct source; `Pads.getType()` (`PAD_MODETABLE`) is not.
 13. **Embedded assets are wired in 3 explicit coordinated places** — Makefile (`BIN2S` + `EMBEDDED_RSC`), `src/embed_assets.cpp` (extern + `ASSET_ENTRY` in **both** lookup tables), `bin/POPSLDR/images.lua` (`IMG_REGISTRATIONS`, bare-filename key). Adding/removing an asset that touches fewer than all three is a build or runtime break.
 
-**Intentionally not implemented** (must keep reporting that status until feature work lands): `HDD (exFAT)`, `SMB (v1)`, `ILINK`.
+**Intentionally not implemented** (must keep reporting that status until feature work lands): `SMB (v1)`, `ILINK`. (`HDD (exFAT)` is now **implemented** via BDMA Mode `ATA` — `df2eb9d`, CI/Rolling green, validating on hardware.)
 
 ## Preservation Contracts (hardware-load-bearing — do NOT regress)
 *See `docs/PRESERVATION_CONTRACTS.md` for the detailed code-level contract specs — exact `path:line` citations, what-breaks-it for each, and how to retest on hardware.*
@@ -175,7 +175,7 @@ Investigation artifacts archived under `docs/archive/`: `U10_INVESTIGATION.md`, 
 2. **"Failed to load HDD" from a non-HDD / via-launcher boot** — the remaining open launch-adjacent issue. Instrument + isolate.
 3. **Layer C full lazy IRX loading** — only the device-hint precursor shipped; aggressive deferrals (`mmceman` unless MMCE, `ds34bt` unless BT, `usbd` unless USB) queued for a separate PR. High reward for boot time; high risk to input availability.
 4. **`os.clock()` sweep for the remaining µs-as-ms timers** — nav and description scroll are now frame-counted, but the `MIN_ACTION_MS` action debounce and the transition/carousel timers still read `Timer.getTime()` as ms (µs in reality), currently masked by a per-frame max-step clamp. Convert them to `os.clock()` seconds (or frame-counting) for unit-correct timing.
-5. **`HDD (exFAT)`, `SMB (v1)`, `ILINK`** — intentionally unimplemented.
+5. **`SMB (v1)`, `ILINK`** — intentionally unimplemented. **`HDD (exFAT)`** is now implemented (BDMA Mode `ATA`, `df2eb9d`); validating on hardware.
 
 *(The old "`ps2hdd-osd.irx` → `ps2hdd.irx` driver swap probe" item is removed: HDD read-write was achieved instead via the `EnsureBootPartitionWritable` boot-partition remount take-over, and provato confirmed the HDD is RW-writable on hardware — the IRX swap is no longer the gating path.)*
 

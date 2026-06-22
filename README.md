@@ -35,10 +35,11 @@ POPSLoader's main menu exposes the following backends:
 *   **MX4SIO** (SD card via memory card slot adapter)
 *   **HDD (PFS)** (internal HDD via the PS2 network/ATA adapter)
 *   **USB** (`mass:`)
+*   **HDD (exFAT)** (`mass:` via BDMA Mode `ATA` — an internal SATA/IDE drive formatted exFAT; **new — validating on hardware**)
 *   **Disc (DKWDRV)** (boot DKWDRV to play PS1 discs)
 
 > [!NOTE]
-> The main menu also lists **HDD (exFAT)**, **i.Link**, and **SMB (v1)**, but these flows are not implemented yet — selecting them shows a "not implemented" notice. See [Known Issues & Planned Improvements](#known-issues--planned-improvements).
+> The main menu also lists **i.Link** and **SMB (v1)**, but these flows are not implemented yet — selecting them shows a "not implemented" notice. (**HDD (exFAT)** is now implemented via BDMA Mode `ATA` and is validating on hardware.) See [Known Issues & Planned Improvements](#known-issues--planned-improvements).
 
 > [!NOTE]
 > Game compatibility and drive loading performance may vary depending on your specific console model, adapter type, and the quality of your POPStarter/POPS binaries.
@@ -138,7 +139,7 @@ Press **Start** on the menu to open Settings; changes save when you confirm. Set
 
 | Setting | Options | What it does |
 | :--- | :--- | :--- |
-| **(one row per device: MMCE, MX4SIO, HDD (exFAT), HDD (PFS), USB, i.Link, SMB, Disc)** | **Shown** (default) · Hidden | Hide or show each entry on the main device carousel. Set unused or not-yet-implemented backends (e.g. HDD (exFAT), SMB, i.Link) to **Hidden** to remove them from the wheel. At least one device must stay **Shown**. Saved with your settings (`HIDDEN_DEVICES`); hidden entries are skipped during carousel navigation with no gaps, and launch behavior is unchanged. |
+| **(one row per device: MMCE, MX4SIO, HDD (exFAT), HDD (PFS), USB, i.Link, SMB, Disc)** | **Shown** (default) · Hidden | Hide or show each entry on the main device carousel. Set unused or not-yet-implemented backends (e.g. SMB, i.Link) to **Hidden** to remove them from the wheel. At least one device must stay **Shown**. Saved with your settings (`HIDDEN_DEVICES`); hidden entries are skipped during carousel navigation with no gaps, and launch behavior is unchanged. |
 
 ### Game List
 
@@ -157,7 +158,7 @@ Press **Start** on the menu to open Settings; changes save when you confirm. Set
 - **Video Standard** — **Auto** (default — matches your console's region) / NTSC / PAL. On PAL the UI now renders **natively at 640×512** so it fills the whole screen with no letterbox (NTSC is 640×448). A display-mode change shows a confirm prompt that **auto-reverts** if you don't confirm, so a bad mode can't strand you; you can also hold **Start** during boot to skip past a bad video mode.
 - **Overscan (CRT inset)** — **Off** (default) up to a numeric inset, adjusted in steps of **5** (OPL-style render inset, same math as OPL's overscan). Pulls the whole UI slightly toward the center of the screen so nothing is lost in a CRT's overscan border. The change previews live as you adjust it; backing out of Settings without saving restores the previous value. *(Mainly useful on a real CRT; on a flat panel you'll usually leave it Off.)*
 - **Boot sound** — **On** (default) / Off. Plays the startup chime over the boot splash. Turn it **Off** for a silent boot. (Hardware-confirmed to save and survive a reboot.)
-- **BDMA Mode** — mass-storage backend mode: **FAT32** (`FAT32-USB (None)`) / **USBEXFAT** (`exFAT-USB`) / **MX4SIO** / **MMCE**. The installed mode is recorded in a `bdma_mode.txt` marker file in the POPSTARTER pack folder (older `.pldr_bdma_mode` markers are still read for compatibility).
+- **BDMA Mode** — mass-storage backend mode: **FAT32** (`FAT32-USB (None)`) / **USBEXFAT** (`exFAT-USB`) / **MX4SIO** / **MMCE** / **ATA** (`exFAT-HDD` — an internal SATA/IDE drive formatted exFAT; *new, validating on hardware*). The installed mode is recorded in a `bdma_mode.txt` marker file in the POPSTARTER pack folder (older `.pldr_bdma_mode` markers are still read for compatibility).
 - **POPSTARTER Memory Card Folder** — toggles the `mc:/POPSTARTER` folder. Turning it **off deletes** `mc:/POPSTARTER` (with a confirm prompt). It is **interlocked with BDMA Mode**: you can't turn this folder off while BDMA Mode is on, and you can't enable BDMA Mode while this folder is off.
 - **Hide UI Text** — clears on-screen text for a clean cover-art view (also toggled with **Select**).
 - **Keyboard Layout** — on-screen keyboard layout for the path editor.
@@ -226,7 +227,8 @@ Planned for subsequent updates:
 *   **Settings UI Redesign (Berion)**: Visual overhaul replacing the current OPL-style focused-list with per-category Settings pages. Awaiting Berion's mockup PNGs.
 *   **GUI Themes**: Customizable colors / skins / fonts and a setting to skip the boot splash.
 *   **In-Game Features**: Support for per-game fixes, cheat codes, Virtual Memory Card (VMC) setups, and multi-disc swap prompts.
-*   **`HDD (exFAT)`, `SMB (v1)`, `i.Link`** menu flows: currently surface as "Not Implemented Yet" until feature work lands.
+*   **`HDD (exFAT)`** menu flow: now **implemented** as a `mass:` backend via BDMA Mode `ATA` (built, CI/Rolling green) — **validating on hardware**.
+*   **`SMB (v1)`, `i.Link`** menu flows: currently surface as "Not Implemented Yet" until feature work lands.
 
 See [STATE.md](STATE.md) "Known Open Work" and [ROADMAP.md](ROADMAP.md) for the prioritized backlog.
 

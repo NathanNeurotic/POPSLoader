@@ -16,7 +16,7 @@ This is the **forward plan**. For current runtime state, the canonical Known-Iss
 - `.github/workflows/rolling-release.yml` — automated rolling-release artifact publication on push to `BETA-13-PLAY` and on PR events.
 - `docs/archive/DOCUMENTATION_FOLLOWUP_AUDIT.md` — handoff plan for the post-BETA-10-5 doc cleanup work (now completed; see "Documentation cleanup" under Secondary Work).
 
-`HDD (exFAT)`, `SMB (v1)`, `ILINK` remain intentionally unimplemented menu entries.
+`SMB (v1)` and `ILINK` remain intentionally unimplemented menu entries. `HDD (exFAT)` is now implemented (BDMA Mode `ATA`, `df2eb9d`) and is validating on hardware.
 
 ## Immediate Priorities
 
@@ -63,7 +63,7 @@ The items previously parked here as "pragmatically accepted / known-broken" are 
 ## Secondary Work
 
 ### 1) Unimplemented menu paths
-- `HDD (exFAT)`, `SMB (v1)`, `ILINK` — intentionally not implemented; surface "not supported" if entered.
+- `SMB (v1)`, `ILINK` — intentionally not implemented; surface "not supported" if entered. `HDD (exFAT)` is now implemented as a `mass:` backend via BDMA Mode `ATA` (validating on hardware).
 
 ### 2) Art/asset behavior
 - Keep current cover behavior stable: sidecar PNG beside the selected `.VCD`, plus `hdd0:__common/POPS/ART/<title>.png` for HDD titles.

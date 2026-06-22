@@ -247,7 +247,7 @@ CONFIRM dispatches by OPT index inside the CONFIRM handler (`ui.lua:4148-4322`):
 |----|-------|--------|
 | 1 | MMCE | `DetectMMCESlot` + `GetPS1GameLists` -> scene `GSMB` |
 | 2 | MX4SIO | `InitMX4SIOPopsRoot` + `GetPS1GameLists` -> `GMX4SIO` |
-| 3 | HDD (exFAT) | **stub** — "not implemented" (`ui.lua:4234`) |
+| 3 | HDD (exFAT) | `InitATAPopsRoot` + `GetPS1GameLists` (BDMA `ata`) -> scene `GBDMHDD` (`ui.lua:4349`) — *implemented, validating on hardware* |
 | 4 | HDD (PFS) | `LoadHDDModules` + deps + `BuildGameList` -> `GHDD` |
 | 5 | USB | `ensureUsbMass` + `BuildMassGameListByType` -> `GUSBFAT` |
 | 6 | i.Link | **stub** (`ui.lua:4318`) |
