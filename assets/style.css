@@ -127,6 +127,12 @@ dl.credits{margin:0 0 8px}
 .credit dt{font-weight:800;color:var(--ink)}
 .credit dd{margin:0;color:var(--ink2);line-height:1.55}
 @media(max-width:680px){.credit{grid-template-columns:1fr;gap:2px}}
+/* download-the-whole-archive call to action */
+.archive-cta{margin:18px 0 26px;padding:20px 22px;border:1px solid var(--ps-tri);border-radius:12px;
+  background:linear-gradient(135deg,rgba(0,180,170,.12),rgba(40,64,140,.22))}
+.archive-cta .h{font-weight:800;font-size:16px;color:var(--ink);margin-bottom:6px}
+.archive-cta p{margin:.2em 0 14px;color:var(--ink2);line-height:1.55;max-width:80ch}
+.archive-cta .btn{display:inline-block;font-weight:700}
 .content table{width:100%;border-collapse:collapse;margin:1em 0;font-size:14px;display:block;overflow:auto}
 .content th,.content td{border:1px solid var(--line2);padding:8px 12px;text-align:left;vertical-align:top}
 .content th{background:rgba(40,64,140,.4);color:var(--ink);font-weight:700;text-transform:uppercase;
