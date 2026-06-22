@@ -73,7 +73,9 @@ set differently. (Internal HDD is the one device that doesn't use BDMA.) Full de
 <a class="path" href="storage.html#device-matrix"><div class="em">🧩</div>
 <b>MMCE</b><span>SD2PSX / MemCard&nbsp;PRO2 emulator card. BDMA&nbsp;Mode <code>MMCE</code>.</span></a>
 <a class="path" href="wiki/quickstart-hdd.html"><div class="em">💽</div>
-<b>Internal HDD</b><span>APA/PFS — most space, fastest. No BDMA needed.</span></a>
+<b>Internal HDD — APA/PFS</b><span>The classic HDL/OPL format. Most space, fastest. No BDMA needed.</span></a>
+<a class="path" href="storage.html#device-matrix"><div class="em">💽</div>
+<b>Internal HDD — exFAT</b><span>An exFAT-formatted internal drive. BDMA&nbsp;Mode <code>ATA</code> (newly added).</span></a>
 <a class="path" href="wiki/quickstart-smb.html"><div class="em">🌐</div>
 <b>Network (SMB)</b><span>Stream from a PC share. Needs a network adapter.</span></a>
 </div>
@@ -122,8 +124,10 @@ to match, then put the same <code>POPS</code> folder on that device:</p>
 <code>POPS/</code> folder onto the SD card. POPSLoader lists your games with cover art.</li>
 <li><b>MMCE</b> (SD2PSX / MemCard&nbsp;PRO2) — set BDMA&nbsp;Mode to <code>MMCE</code> and copy the <code>POPS/</code>
 folder onto the card's storage.</li>
-<li><b>Internal HDD</b> — a different layout (POPS files go in <code>__common</code>, each game in its own
-<code>__.POPS</code> partition; no BDMA). Follow the HDD quickstart.</li>
+<li><b>Internal HDD (APA/PFS)</b> — a different layout (POPS files go in <code>__common</code>, each game in its
+own <code>__.POPS</code> partition; no BDMA). Follow the HDD quickstart.</li>
+<li><b>Internal HDD (exFAT)</b> — format the internal drive exFAT and set BDMA&nbsp;Mode to <code>ATA</code>; then
+it works like the other mass devices (same <code>POPS/</code> layout, <code>XX.</code> launch). Newly added.</li>
 <li><b>Network (SMB)</b> — add the IRX modules + two <code>.DAT</code> config files and use the <code>SB.</code>
 prefix. Follow the SMB quickstart.</li>
 </ul>
