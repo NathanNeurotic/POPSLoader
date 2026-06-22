@@ -39,7 +39,7 @@
     <a href="credits.html"><span class="em">🙏</span>Credits</a>
     <a href="wiki/index.html"><span class="em">📚</span>All wiki pages</a>
   </nav>
-  <main class="content"><h1>Troubleshooting &amp; Display</h1><p class="lead">Boot/launch failures, USB-not-detected, HDTV/component fixes, widescreen, and game-specific lore.</p><div class="callout amber"><div class="h">⚖ Two different black screens — don't confuse them</div><b>Black screen + stuck HDD LED when launching an HDD POPStarter ELF from OPL's Apps page</b> is usually OPL waiting on a network/BDM/SMB device left on <b>Auto</b> — set the OPL devices you don't use to <b>Manual</b> or <b>Off</b> and it launches. That is <i>different</i> from the <b>black screen on IGR/exit</b>, which is an incompatible <code>BOOT.ELF</code> in the exit chain (fix: disable the ELF loader with stock <code>PATCH_9.BIN</code>, or replace/recompress <code>BOOT.ELF</code>).</div><div class="callout info"><div class="h">ℹ Step 0 — see the actual error</div>Boot a <b>debug</b> <code>POPSTARTER.ELF</code> (build byte <code>FF</code> shows a full log; classic <code>00</code> shows a black wait-screen until the PS logo) so you read the real failure instead of guessing. The config table's <code>$410</code>/<code>$411</code> debug bytes and <code>DEBUG_AND_HALT.PPF</code> help here.</div><p class="prov-inline">📎 from the recovered <a href="wiki/known-bugs.html">Known Bugs</a> wiki page · merged across snapshots, primary 20240913183110</p><h2 id="known-bugs-limitations"><strong>Known bugs / limitations</strong></h2>
+  <main class="content"><h1>Troubleshooting &amp; Display</h1><p class="lead">Boot/launch failures, USB-not-detected, HDTV/component fixes, widescreen, and game-specific lore.</p><div class="callout amber"><div class="h">⚖ Two different black screens — don't confuse them</div><b>Black screen + stuck HDD LED when launching an HDD POPStarter ELF from OPL's Apps page</b> is usually OPL waiting on a network/BDM/SMB device left on <b>Auto</b> — set the OPL devices you don't use to <b>Manual</b> or <b>Off</b> and it launches. That is <i>different</i> from the <b>black screen on IGR/exit</b>, which is an incompatible <code>BOOT.ELF</code> in the exit chain (fix: disable the ELF loader with stock <code>PATCH_9.BIN</code>, or replace/recompress <code>BOOT.ELF</code>).</div><div class="callout info"><div class="h">ℹ Step 0 — see the actual error</div>Boot a <b>debug</b> <code>POPSTARTER.ELF</code> (build byte <code>FF</code> shows a full log; classic <code>00</code> shows a black wait-screen until the PS logo) so you read the real failure instead of guessing. The config table's <code>$410</code>/<code>$411</code> debug bytes and <code>DEBUG_AND_HALT.PPF</code> help here.</div><h2 id="known-bugs-limitations"><strong>Known bugs / limitations</strong></h2>
 <hr>
 
 <ul>
@@ -66,7 +66,7 @@
 </li>
 </ul>
 <hr>
-<p class="prov-inline">📎 from the recovered <a href="wiki/troubleshooting-games.html">Troubleshooting Games</a> wiki page · merged across snapshots, primary 20240909123815</p><h2 id="compatibility-troubleshooting-games">[COMPATIBILITY] <strong>Troubleshooting games</strong></h2>
+<h2 id="compatibility-troubleshooting-games">[COMPATIBILITY] <strong>Troubleshooting games</strong></h2>
 <hr>
 
 <p>You can use the Cheat Engine feature to troubleshoot problematic games.</p>
@@ -258,7 +258,7 @@ COMPATIBILITY_0x06
 <hr>
 
 <h2 id="home"><a href="wiki/home.html"><strong>Home</strong></a></h2>
-<p class="prov-inline">📎 from the recovered <a href="wiki/faqs.html">FAQS</a> wiki page · merged across snapshots, primary 20240909182922</p><h2 id="faqs"><strong>FAQs</strong></h2>
+<h2 id="faqs"><strong>FAQs</strong></h2>
 <hr>
 
 <ul>
@@ -269,7 +269,7 @@ COMPATIBILITY_0x06
 <li><strong>Question : does POPS support physical memory card saving ?</strong></li>
 </ul>
 <p><strong>Answer :</strong> No, it doesnt. There is a technical reason about it : POPS doesnt save on a single memory card block but flashes the whole VMC. Doing it on physical memory card would be very slow if possible.</p>
-<hr><h2 id="troubleshooting-and-display-fixes">Troubleshooting and display fixes</h2>
+<hr><p class="prov-inline source-note">📎 Recovered from ShaolinAssassin's <a href="wiki/known-bugs.html">Known Bugs</a> · <a href="wiki/troubleshooting-games.html">Troubleshooting Games</a> · <a href="wiki/faqs.html">FAQS</a> wiki pages.</p><h2 id="troubleshooting-and-display-fixes">Troubleshooting and display fixes</h2>
 <p>Boot/launch failures: enable the debug screen to see where a launch dies - hex-edit $410 to FF (realtime) or ~12 (paced), and optionally $411=0x01 to halt on the error so you can read it, or simply apply DEBUG_AND_HALT.PPF. SMB-mode setups already run debug-on. For 'USB drive not detected,' raise config offset $413 from 0x02 toward 0x05/0x0A, confirm FAT32 + a defragmented device + the POPS folder at the root, and remember $USBDELAY_# will NOT help (it patches POPS, not the loader). For 'POPS_IOX.PAK not found,' verify the PAK is in the main POPS folder (and duplicated logic for POPS# folders).</p>
 <p>Display: green-screen / no-signal on an HDTV over component is the SetGsCrt case - use $HDTVFIX (config $412=0x01), but leave it off on CRTs where it is incompatible. Force 480p with $480p (config $42A=0x02), noting some titles (e.g. Dead Or Alive) output an unsupported 480p signal. Screen geometry ($XPOS default 640, $YPOS no default, $DWSTRETCH default 2559, $DWCROP max 2560) works only in PAL/NTSC and is mutually exclusive with $480p.</p>
 <p>Game-specific lore: Tomb Raider 1/2 CDDA music desync is a POPS emulation limitation, not a config error - don't chase it. Tekken 3 is fixed by combining modes 0x06+0x04 (a clean example that those two combine, since neither is in the exclusive 0x01/0x02/0x03/0x05 set). Jackie Chan Stuntmaster (SCES-01444) has a built-in LibCrypt crack; if a disc batch lacks LibCrypt and still freezes, fall back to $FAKELC or the explicit LibCrypt code block (a complete real example for the PAL release is in the corpus). If the OPL Apps menu gets corrupted after editing entries, delete conf_elm.cfg and conf_elms.cfg (keep conf_elmz.cfg). And always start CHEATS.TXT with $SAFEMODE, which gates the cheat engine until POPS has left the PS1 OSD - without it, codes that touch the OSD-load region crash POPS on startup.</p><h2 id="from-the-official-thread-troubleshooting-known-issues">From the official thread — troubleshooting &amp; known issues</h2>

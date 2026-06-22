@@ -68,7 +68,7 @@ the native APA/PFS internal HDD goes through BDMA — it loads the <b>BDM&nbsp;A
 the launcher reaches exFAT USB <i>and</i> the MX4SIO / MMCE devices. POPS itself still never reads an exFAT
 filesystem — BDMA presents the files to it. The HDD-exFAT “ATA”, iLink and UDPBD/UDPFS backends extend the same
 BDM mechanism but aren't hardware-tested yet. For large FAT32/exFAT USB drives, <b>32 KB or 64 KB allocation
-(cluster) size</b> is the confirmed-working format.</div><p class="prov-inline">📎 from the recovered <a href="wiki/usb-mode.html">USB Mode</a> wiki page · merged across snapshots, primary 20170629123547</p><h2 id="popstarter-for-usb-device-storage-type"><strong>POPStarter for USB Device Storage Type</strong></h2>
+(cluster) size</b> is the confirmed-working format.</div><h2 id="popstarter-for-usb-device-storage-type"><strong>POPStarter for USB Device Storage Type</strong></h2>
 <hr>
 
 <h2 id="requirements"><em>Requirements :</em></h2>
@@ -161,7 +161,7 @@ XX.Crash Bandicoot.elf
 </li>
 </ul>
 <hr>
-<p class="prov-inline">📎 from the recovered <a href="wiki/hdd-mode.html">HDD Mode</a> wiki page · merged across snapshots, primary 20170629165244</p><h2 id="popstarter-for-internal-hdd"><strong>POPStarter for internal HDD</strong></h2>
+<h2 id="popstarter-for-internal-hdd"><strong>POPStarter for internal HDD</strong></h2>
 <hr>
 
 <h2 id="requirements"><em>Requirements :</em></h2>
@@ -308,7 +308,7 @@ __sysconf/FMCB/Crash Bandicoot.elf
 </li>
 </ul>
 <hr>
-<p class="prov-inline">📎 from the recovered <a href="wiki/smb-mode.html">SMB Mode</a> wiki page · merged across snapshots, primary 20200812185303</p><h2 id="popstarter-for-smb"><strong>POPStarter for SMB</strong></h2>
+<h2 id="popstarter-for-smb"><strong>POPStarter for SMB</strong></h2>
 <hr>
 
 <h2 id="requirements"><em>Requirements :</em></h2>
@@ -469,7 +469,7 @@ mass:/SB.Crash Bandicoot (PAL).ELF
 </li>
 </ul>
 <hr>
-<p class="prov-inline">📎 from the recovered <a href="wiki/ps1cd-mode.html">Ps1cd Mode</a> wiki page · merged across snapshots, primary 20240310061934</p><h2 id="ps1-cd-mode"><strong>PS1 CD mode</strong></h2>
+<h2 id="ps1-cd-mode"><strong>PS1 CD mode</strong></h2>
 <hr>
 
 <p>PS1 CD mode is a native POPS feature. It lets you play your PS1 games (originals, backups and imports) from the CDVD drive.</p>
@@ -522,7 +522,7 @@ mass:/SB.Crash Bandicoot (PAL).ELF
 <p>We found out after RIP 06 release that the HDD old launch type method (PP.GAME.ELF or __.GAME.ELF) <a href="https://assemblergames.com/threads/ps2-pops-stuff-popstarter.45347/page-112#post-952852">has a bug</a> : files from __common/POPS folder (and from __common/POPS/GAME) will not be loaded.</p>
 </li>
 </ul>
-<hr><h2 id="storage-backends-and-path-maps-usb-smb-hdd">Storage backends and path maps (USB / SMB / HDD)</h2>
+<hr><p class="prov-inline source-note">📎 Recovered from ShaolinAssassin's <a href="wiki/usb-mode.html">USB Mode</a> · <a href="wiki/hdd-mode.html">HDD Mode</a> · <a href="wiki/smb-mode.html">SMB Mode</a> · <a href="wiki/ps1cd-mode.html">Ps1cd Mode</a> wiki pages.</p><h2 id="storage-backends-and-path-maps-usb-smb-hdd">Storage backends and path maps (USB / SMB / HDD)</h2>
 <p>USB: the POPS folder must sit at the ROOT of a FAT12/16/32 (never NTFS), DEFRAGMENTED device, holding POPS_IOX.PAK (MD5 a625d0b3036823cdbf04a3c0e1648901), the VCDs, and the renamed launcher ELFs. POPStarter scans POPS, POPS0, POPS1 ... POPS9 at the root, letting you split a library across folders - but POPS_IOX.PAK and the TM2 IGR textures stay only in the MAIN POPS folder, while BIOS.BIN/PATCH_#.BIN/TROJAN_#.BIN/VMCDIR.TXT must be COPIED into every POPS# folder you create (they do not propagate). PS2-side USB/network modules (usbd.irx, usbhdfsd.irx) load from mc0:/POPSTARTER/ with an mc1 fallback; loading them from mass: is no longer supported, and PFS_WRAP.BIN was embedded into the ELF as of OBT8.</p>
 <p>SMB: create the POPS folder at the SHARE ROOT (not a subdirectory) with the same mandatory POPS_IOX.PAK plus the VCDs. PS2-side network modules (smbman.irx, ps2smap.irx, ps2ip.irx, ps2dev9.irx, smsutils.irx, poweroff.irx) and the two .DAT files live in mc0:/POPSTARTER/ (mc1 fallback). SMBCONFIG.DAT is three lines: 'IP[:port] SHARE NAME' (default port 445, append ':139' for legacy servers), then username, then plain-text password; leave lines 2 and 3 empty for guest access. IPCONFIG.DAT ('PS2_IP NETMASK GATEWAY') is OPTIONAL (DHCP otherwise). On a modern Windows host you must enable SMB 1.0/CIFS, disable password-protected sharing, and grant Guest/Everyone read-write - only on a trusted LAN, since SMB1 is insecure. IMPORTANT MYTH-BUSTING: SMB does NOT require a 'debug build'. SMB was added as a normal feature in Beta 8 (2015-10-23); the only debug caveat is the wiki note that startup debug text cannot be skipped in SMB mode (cosmetic).</p>
 <p>Internal HDD: the modern WIP01 launch type puts VCDs in a PS2-formatted partition __.POPS (or __.POPS0..__.POPS9) with the DECRYPTED emulator (POPS.ELF MD5 355a892a8ce4e4a105469d4ef6f39a42 + IOPRP252.IMG MD5 1db9c6020a2cd445a7bb176a1a3dd418) in __common/POPS, and uses NO launcher prefix. Two legacy per-partition types survive: PP.<game> (HDDOSD-visible, KELF, IMAGE0.VCD) and __.<game> (hidden, IMAGE0.VCD). The partition name must be exactly __.POPS (a leading '+' is wrong); create it with AKuHAK's uLaunchELF or uLE_kHn. VMCs and per-game BIOS/OSD assets live under __common/POPS/<vmcfolder>/, decoupled from the VCD's own partition.</p>
