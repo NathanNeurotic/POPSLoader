@@ -21,6 +21,8 @@
 
 extern unsigned char mx4sio_bd_irx[];
 extern unsigned int size_mx4sio_bd_irx;
+extern unsigned char ata_bd_irx[];
+extern unsigned int size_ata_bd_irx;
 extern unsigned char bdm_query_irx[];
 extern unsigned int size_bdm_query_irx;
 
@@ -76,6 +78,7 @@ static bool bdm_fatfs_irx_loaded = false;
 static bool usbmass_irx_loaded = false;
 static bool cdfs_irx_loaded = false;
 static bool mx4sio_irx_loaded = false;
+static bool ata_irx_loaded = false;
 static bool mmceman_irx_loaded = false;
 
 static bool EnsureBDM()
@@ -213,6 +216,9 @@ static const char *ClassifyMassBackend(const char *driver)
 	}
 	if (strstr(driver, "mmce") != NULL) {
 		return "mmce";
+	}
+	if (strstr(driver, "ata") != NULL) {   // internal SATA/IDE drive read as exFAT via BDM ata_bd
+		return "ata";
 	}
 	return "other";
 }
@@ -1329,6 +1335,37 @@ static int lua_mx4sio_init(lua_State *L)
 	return 2;
 }
 
+static int lua_ata_init(lua_State *L)
+{
+	int argc = lua_gettop(L);
+	if (argc > 1) {
+		return luaL_error(L, "Argument error: System.initATA() takes at most one argument.");
+	}
+	if (argc == 1 && !lua_isnil(L, 1)) {
+		(void)luaL_checkstring(L, 1);
+	}
+
+	// ata_bd is a BDM block backend like mx4sio_bd: it makes the internal
+	// SATA/IDE drive (exFAT) enumerate under the mass: namespace, identified by
+	// the ioctl driver-name "ata" (see ClassifyMassBackend). Mirror the MX4SIO
+	// ordering and bring up the base BDM mass stack (bdm + bdmfs_fatfs +
+	// usbmass) first, then load ata_bd. EnsureUsbMass is idempotent.
+	bool ok = EnsureUsbMass();
+	if (ok && !ata_irx_loaded) {
+		ok = LoadIrxCheckedBuffer("ata_bd.irx", ata_bd_irx, size_ata_bd_irx, NULL, NULL);
+		if (ok) {
+			ata_irx_loaded = true;
+		}
+	}
+
+	lua_pushboolean(L, ok);
+	if (ok) {
+		return 1;
+	}
+	lua_pushstring(L, "IRX_LOAD_FAIL");
+	return 2;
+}
+
 static const luaL_Reg System_functions[] = {
 	{"openFile",                   lua_openfile},
 	{"readFile",                   lua_readfile},
@@ -1368,6 +1405,7 @@ static const luaL_Reg System_functions[] = {
 	{"ensureMmceman",          lua_ensure_mmceman},
 	{"reinitPad",              lua_reinit_pad},
 	{"initMX4SIO",             lua_mx4sio_init},
+	{"initATA",                lua_ata_init},
 	{"bdmList",                lua_bdm_list},
 	{"refreshMassBackends",    lua_refresh_mass_backends},
 	{"getMassBackendInfo",     lua_get_mass_backend_info},

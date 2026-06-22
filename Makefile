@@ -91,7 +91,7 @@ IOP_MODULES = iomanX.o fileXio.o \
 			  usbd.o audsrv.o bdm.o bdmfs_fatfs.o \
 			  usbmass_bd.o cdfs.o ds34bt.o ds34usb.o \
 			  ps2dev9.o ps2atad.o ps2hdd-osd.o ps2fs.o mmceman.o \
-			  mx4sio_bd.o bdm_query.o
+			  mx4sio_bd.o ata_bd.o bdm_query.o
 
 EMBEDDED_RSC = boot.o builtin_font.o \
 	asset_usb_png.o asset_smb_png.o asset_ilink_png.o asset_mmce_png.o asset_mx4sio_png.o asset_apahdd_png.o \

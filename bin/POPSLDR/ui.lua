@@ -626,7 +626,8 @@ UI = {
 	      { key = "FAT32", label = "FAT32-USB (None)" },
 	      { key = "USBEXFAT", label = "exFAT-USB" },
 	      { key = "MX4SIO", label = "MX4SIO" },
-	      { key = "MMCE", label = "MMCE" }
+	      { key = "MMCE", label = "MMCE" },
+	      { key = "ATA", label = "exFAT-HDD (ata)" }
 	    };
 	    VideoStandardModes = {
 	      {
@@ -2840,6 +2841,7 @@ UI = {
         if UI.Pad.Events.R3 and (UI.CURSCENE == UI.SCENES.GHDD
              or UI.CURSCENE == UI.SCENES.GSMB
              or UI.CURSCENE == UI.SCENES.GMX4SIO
+             or UI.CURSCENE == UI.SCENES.GBDMHDD
              or UI.CURSCENE == UI.SCENES.GUSBFAT) then
           PLDR.GLOBAL_HIDE = (PLDR.GLOBAL_HIDE ~= true)
           if type(PLDR.SaveSettingsAtomic) == "function" then
@@ -2873,6 +2875,7 @@ UI = {
           end
         elseif UI.Pad.Events.R1 and (UI.CURSCENE == UI.SCENES.GSMB
                or UI.CURSCENE == UI.SCENES.GMX4SIO
+               or UI.CURSCENE == UI.SCENES.GBDMHDD
                or UI.CURSCENE == UI.SCENES.GUSBFAT) then
           -- R1 re-runs the SAME scan entering the page does, in place: re-detect
           -- the device and rebuild the list -- for hotplugging a card/drive or a
@@ -2906,6 +2909,16 @@ UI = {
                 report("Scanning MX4SIO games...", 0.30)
                 PLDR.GetPS1GameLists(mx4sio_root, true, scan)
                 PLDR.SaveGameListCache(mx4sio_root..".gamecache", PLDR.GAMES, PLDR.HIDDEN)
+              end
+            elseif rescan_scene == UI.SCENES.GBDMHDD then
+              report("Refreshing mass backends...", 0.16)
+              if type(PLDR.RefreshMassBackends) == "function" then pcall(PLDR.RefreshMassBackends) end
+              local ata_root = PLDR.InitATAPopsRoot()
+              PLDR.CleanupGameList()
+              if type(ata_root) == "string" and ata_root ~= "" then
+                report("Scanning exFAT HDD games...", 0.30)
+                PLDR.GetPS1GameLists(ata_root, true, scan)
+                PLDR.SaveGameListCache(ata_root..".gamecache", PLDR.GAMES, PLDR.HIDDEN)
               end
             else
               report("Initializing USB backend...", 0.16)
@@ -2957,7 +2970,8 @@ UI = {
               -- now-correct PLDR.HIDDEN; SaveGameListCache no-ops when the cache is off.
               -- USB GAMEPATH is "" (entries self-qualify) so derive its root. (audit)
               local cache_path = nil
-              if (UI.CURSCENE == UI.SCENES.GSMB or UI.CURSCENE == UI.SCENES.GMX4SIO)
+              if (UI.CURSCENE == UI.SCENES.GSMB or UI.CURSCENE == UI.SCENES.GMX4SIO
+                  or UI.CURSCENE == UI.SCENES.GBDMHDD)
                  and type(PLDR.GAMEPATH) == "string" and PLDR.GAMEPATH ~= "" then
                 cache_path = PLDR.GAMEPATH..".gamecache"
               elseif UI.CURSCENE == UI.SCENES.GUSBFAT and type(PLDR.GetRootsByType) == "function" then
@@ -4333,7 +4347,35 @@ UI = {
             end, "Failed to load MX4SIO")
             if not ok then return end
           elseif UI.MainMenu.OPT == 3 then
-            UI.Notif_queue.add("This backend isn't implemented yet", "warn")
+            local ok = UI.RunBusyTask("Loading HDD (exFAT)...", function (report)
+              local scan_progress = UI.MakeBusyProgressReporter(report, "Scanning exFAT HDD games...", 0.48, 0.9)
+              report("Refreshing mass backends...", 0.18)
+              PLDR.CleanupGameList()
+              PLDR.GAMEPATH = ""
+              if type(PLDR.RefreshMassBackends) == "function" then
+                pcall(PLDR.RefreshMassBackends)
+              end
+              report("Locating exFAT HDD POPS folder...", 0.42)
+              local ata_root = PLDR.InitATAPopsRoot()
+              if ata_root == nil then
+                UI.Notif_queue.add("No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)", "warn")
+                return
+              end
+              PLDR.CleanupGameList()
+              local ata_cache = ata_root..".gamecache"
+              local ata_cg, ata_ch = PLDR.LoadGameListCache(ata_cache)
+              if ata_cg ~= nil then
+                PLDR.ApplyGameListCache(ata_cg, ata_root, ata_ch)
+                report("Loaded exFAT HDD list from cache...", 1.0)
+              else
+                report("Scanning exFAT HDD games...", 0.48)
+                PLDR.GetPS1GameLists(ata_root, true, scan_progress)
+                PLDR.SaveGameListCache(ata_cache, PLDR.GAMES, PLDR.HIDDEN)
+              end
+              report("Opening exFAT HDD list...", 1.0)
+              UI.SceneChange(UI.SCENES.GBDMHDD)
+            end, "Failed to load HDD (exFAT)")
+            if not ok then return end
 	          elseif UI.MainMenu.OPT == 4 then
 	            local ok = UI.RunBusyTask("Loading HDD...", function (report)
               local partition_progress = UI.MakeBusyProgressReporter(report, "Scanning HDD partitions...", 0.42, 0.66)

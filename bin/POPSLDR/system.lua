@@ -2473,14 +2473,16 @@ end
 --
 -- Page mapping mirrors UI.MainMenu.opts at the time of this writing:
 --   opts = {"MMCE","MX4SIO","HDD (exFAT)","HDD (PFS)","USB","i.Link","SMB (v1)","Disc (DKWDRV)"}
--- HDD launch arg targets the implemented PFS page (index 4); the BDMA
--- (HDD exFAT, index 3) and i.Link (index 6) pages are intentionally not
--- implemented so we don't auto-route to them.
+-- HDD launch arg targets the implemented PFS page (index 4); EXFAT targets the
+-- BDM HDD-exFAT page (index 3, now implemented via ata_bd). i.Link (index 6) and
+-- SMB-v1 remain stubs, so we don't auto-route to those.
 if type(PLDR) == "table" and type(PLDR.LAUNCH_ARGS) == "table"
    and type(PLDR.LAUNCH_ARGS.page) == "string" and PLDR.LAUNCH_ARGS.page ~= "" then
   local page_to_opt = {
     MMCE = 1,
     MX4SIO = 2,
+    EXFAT = 3,
+    ATA = 3,
     HDD = 4,
     USB = 5,
     SMB = 7,
@@ -2591,7 +2593,8 @@ local BDMA_UI_FILES = {
 local BDMA_SUFFIX = {
   USBEXFAT = ".usbexfat",
   MX4SIO = ".mx4sio",
-  MMCE = ".mmce"
+  MMCE = ".mmce",
+  ATA = ".ata"
 }
 
 PLDR.MASS = PLDR.MASS or {
@@ -3118,6 +3121,8 @@ local function NormalizeBdmaModeKey(mode)
     return "MX4SIO"
   elseif value == "MMCE" then
     return "MMCE"
+  elseif value == "ATA" or value == "HDDEXFAT" then
+    return "ATA"
   end
   return nil
 end
@@ -3875,6 +3880,9 @@ local function ClassifyMassRootDriver(driver)
   if string.find(value, "mx4", 1, true) ~= nil or string.find(value, "sdc", 1, true) ~= nil then
     return "mx4sio"
   end
+  if string.find(value, "ata", 1, true) ~= nil then
+    return "ata"   -- internal SATA/IDE drive read as exFAT via the BDM ata_bd block driver
+  end
   return "usb"
 end
 
@@ -3999,6 +4007,15 @@ local function EnsureMassBackendsReady(mode)
     return
   end
 
+  if mode == "ata" then
+    -- ata_bd is the BDM block driver for the internal exFAT drive. Idempotent;
+    -- mirrors the MX4SIO bring-up (usbmass first, then the device driver).
+    if type(System) == "table" and type(System.initATA) == "function" then
+      pcall(System.initATA)
+    end
+    return
+  end
+
   if type(PLDR) == "table" and type(PLDR.EnsureUsbMassReadyOnce) == "function" then
     pcall(PLDR.EnsureUsbMassReadyOnce)
     return
@@ -4021,11 +4038,13 @@ local function BuildMassRootIdentity(mode)
   local identity = {
     usb = {},
     mx4sio = {},
+    ata = {},
     present_roots = {}
   }
   local seen_present = {}
   local seen_usb = {}
   local seen_mx4 = {}
+  local seen_ata = {}
 
   for slot = 0, 9 do
     local root = (slot == 0) and "mass:/" or ("mass"..tostring(slot)..":/")
@@ -4044,6 +4063,11 @@ local function BuildMassRootIdentity(mode)
         if seen_mx4[normalized] ~= true then
           seen_mx4[normalized] = true
           table.insert(identity.mx4sio, normalized)
+        end
+      elseif kind == "ata" then
+        if seen_ata[normalized] ~= true then
+          seen_ata[normalized] = true
+          table.insert(identity.ata, normalized)
         end
       else
         if seen_usb[normalized] ~= true then
@@ -4098,11 +4122,37 @@ function PLDR.GetMX4SIOMassRootNow()
   return nil
 end
 
+local function BuildATAIdentityDeferred()
+  -- Bounded retry masks the first-entry probe quirk, like the MX4SIO path.
+  local attempts = 0
+  while attempts < 3 do
+    attempts = attempts + 1
+    local identity = BuildMassRootIdentity("ata")
+    if type(identity) == "table" and type(identity.ata) == "table" and #identity.ata > 0 then
+      return identity
+    end
+    WaitMassProbeRetry(attempts, 3)
+  end
+  return BuildMassRootIdentity("ata")
+end
+
+function PLDR.GetATAMassRootNow()
+  local identity = BuildATAIdentityDeferred()
+  if type(identity) == "table" and type(identity.ata) == "table" then
+    return identity.ata[1] or nil
+  end
+  return nil
+end
+
 function PLDR.GetRootsByType(kind, _mass_snapshot)
   local wanted = string.lower(tostring(kind or ""))
   if wanted == "mx4sio" then
     local identity = BuildMX4IdentityDeferred()
     return identity.mx4sio
+  end
+  if wanted == "ata" then
+    local identity = BuildATAIdentityDeferred()
+    return identity.ata
   end
 
   local identity = BuildUsbIdentityDeferred()
@@ -4585,6 +4635,17 @@ function PLDR.InitMX4SIOPopsRoot()
   local root = PLDR.GetMX4SIOMassRootNow()
   if type(root) == "string" and root ~= "" then
     PLDR.SetMX4SIORoot(root)
+    return root.."POPS/"
+  end
+  return nil
+end
+
+function PLDR.InitATAPopsRoot()
+  -- HDD (exFAT) is a BDM mass device read via ata_bd. It enumerates under the
+  -- mass: namespace with ioctl driver-name "ata" (NOT ata0:/). BuildATAIdentity
+  -- loads the driver (System.initATA, idempotent) and classifies the ata slot.
+  local root = PLDR.GetATAMassRootNow()
+  if type(root) == "string" and root ~= "" then
     return root.."POPS/"
   end
   return nil
@@ -5574,6 +5635,11 @@ local function ResolveLaunchPolicy(gamelocation, ui_scene)
   if current_scene == UI.SCENES.GMX4SIO then
     return BuildLaunchPolicy("MX4SIO", "mx4sio", "mx4sio", nil), "MX4SIO"
   end
+  if current_scene == UI.SCENES.GBDMHDD then
+    -- HDD (exFAT) is a BDM mass device (ata_bd). POPStarter reads it as mass:
+    -- via the .ata BDMA drivers, so the launch is identical to USB (XX. on mass:).
+    return BuildLaunchPolicy("USB", "mass", "mass", nil), "USB"
+  end
   if string.match(gamelocation, "^mx4sio") then
     return BuildLaunchPolicy("MX4SIO", "mx4sio", "mx4sio", nil), "MX4SIO"
   end
@@ -6162,6 +6228,12 @@ function PLDR.AutoLaunchFromLaunchArgs()
     gamelocation = "mx4sio:/POPS"
     if type(PLDR.InitMX4SIOPopsRoot) == "function" then
       pcall(PLDR.InitMX4SIOPopsRoot)
+    end
+  elseif (page == "EXFAT" or page == "ATA") and UI.SCENES.GBDMHDD ~= nil then
+    scene = UI.SCENES.GBDMHDD
+    gamelocation = "mass:/POPS"   -- ata exFAT enumerates under mass:; GBDMHDD scene drives the launch policy
+    if type(PLDR.InitATAPopsRoot) == "function" then
+      pcall(PLDR.InitATAPopsRoot)
     end
   elseif page == "MMCE" and UI.SCENES.GSMB ~= nil then
     scene = UI.SCENES.GSMB
