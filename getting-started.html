@@ -70,7 +70,10 @@ page so you know it's the correct file.</li>
 <div class="step"><h3>Convert your game</h3>
 <p>Drag your game's <code>.cue</code> file onto <b>CUE2POPS</b>. Out comes <code>YourGame.VCD</code> — that's the
 disc image POPStarter plays. (A few games want a tweak — see the <a href="compatibility.html">Compatibility</a>
-notes — but most just work.)</p></div>
+notes — but most just work.)</p>
+<p class="hint">⚠ <b>If conversion fails or your game won't boot</b>, open the <code>.cue</code> in a text editor and
+confirm the track line reads <code>MODE2/2352</code> — a plain <code>MODE1/2048</code> ISO rip won't convert.
+CUE2POPS is also what preserves CDDA audio tracks and multi-disc layouts.</p></div>
 
 <div class="step"><h3>Copy these onto the USB stick</h3>
 <pre>mass:/POPS/POPS_IOX.PAK     &larr; the POPS emulator (you supply this)

@@ -62,7 +62,8 @@ POPStarter's POPS payload (POPS.ELF, IOPRP252.IMG, POPS_IOX.PAK and the VCD) alw
 FAT32 USB or APA/PFS HDD. “exFAT support” means <b>BDM&nbsp;Assault</b> swaps the USB driver
 (<code>bdm_assault.irx</code>→<code>usbd.irx</code>, <code>usbd_bd_assault.irx</code>→<code>usbhdfsd.irx</code>);
 POPS itself never reads an exFAT filesystem. The internal-HDD “ATA” and iLink exFAT backends in the fork use the
-same BDM mechanism but are not yet hardware-tested.</div><p class="prov-inline">📎 from the recovered <a href="wiki/usb-mode.html">USB Mode</a> wiki page · merged across snapshots, primary 20170629123547</p><h2 id="popstarter-for-usb-device-storage-type"><strong>POPStarter for USB Device Storage Type</strong></h2>
+same BDM mechanism but are not yet hardware-tested. For large FAT32/exFAT USB drives, <b>32 KB or 64 KB
+allocation (cluster) size</b> is the confirmed-working format.</div><p class="prov-inline">📎 from the recovered <a href="wiki/usb-mode.html">USB Mode</a> wiki page · merged across snapshots, primary 20170629123547</p><h2 id="popstarter-for-usb-device-storage-type"><strong>POPStarter for USB Device Storage Type</strong></h2>
 <hr>
 
 <h2 id="requirements"><em>Requirements :</em></h2>
@@ -529,7 +530,7 @@ mass:/SB.Crash Bandicoot (PAL).ELF
 (Daily Build "Tenth Anniversary", Grimdoomer, official 1.1.0 / 1.2.0 betas) — the highest-confidence setups<br />
 on this site. The <code>Soul Blade</code> examples below use SLUS_002.40; substitute your own game. Save <code>title.cfg</code><br />
 as <strong><code>.cfg</code>, not <code>.txt</code></strong>, and it's best <strong>not</strong> to put the game ID in the <code>.VCD</code> filename for the<br />
-wLE_kHn / POPSLoader listings.</p>
+uLE_kHn (also seen as <code>wLE_kHn</code>) / POPSLoader listings.</p>
 </blockquote>
 <h3 id="usb-mass-storage">USB mass storage</h3>
 <p><strong>OPL — all versions — APPS page (renamed-ELF method):</strong></p>
