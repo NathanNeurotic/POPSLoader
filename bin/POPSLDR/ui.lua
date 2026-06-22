@@ -619,7 +619,6 @@ UI = {
       UI.LAYOUT.FOOTER_LABEL_Y = Round(UI.LAYOUT.FOOTER_ICON_Y + UI.LAYOUT.FOOTER_LABEL_Y_OFFSET)
     end;
     InputConfig = {
-      MIN_ACTION_MS = 220;
       DEBUG_INPUT_LOG = false;
     };
 	    BdmaModes = {
@@ -1228,10 +1227,12 @@ UI = {
         end
 
         local function StepFade(drawFn, alphaFrom, alphaTo, durationMs)
-          local timer = Timer.new()
-          local last_ms = Timer.getTime(timer)
+          -- Frame-paced: this loop runs one Screen.flip per iteration. The old
+          -- Timer.getTime() delta (microseconds) was always clamped to max_step, so
+          -- advancing a fixed step per frame reproduces the exact prior pacing with no
+          -- wall clock. (durationMs is "ms" only by this same step scale.)
           local elapsed = 0
-          local max_step = (UI.Transition and UI.Transition.max_step) or 33
+          local step = (UI.Transition and UI.Transition.max_step) or 33
           if durationMs <= 0 then
             drawFn()
             local alpha = Round(alphaTo)
@@ -1242,12 +1243,7 @@ UI = {
             return
           end
           while true do
-            local now_ms = Timer.getTime(timer)
-            local dt = now_ms - last_ms
-            last_ms = now_ms
-            if dt < 0 then dt = 0 end
-            if dt > max_step then dt = max_step end
-            elapsed = elapsed + dt
+            elapsed = elapsed + step
             if elapsed > durationMs then elapsed = durationMs end
             local t = Clamp01(elapsed / durationMs)
             local e = EaseInOutCubic(t)
@@ -2143,10 +2139,7 @@ UI = {
       target = nil,
       next_target = nil,
       allowSceneWrite = false,
-      timer = nil,
-      start = 0,
       elapsed = 0,
-      last_time = nil,
       max_step = 33,
       duration_out = 1200,
       duration_in = 1400,
@@ -2172,29 +2165,20 @@ UI = {
         end
       end,
       Start = function (target)
-        if UI.Transition.timer == nil then
-          UI.Transition.timer = Timer.new()
-        end
         UI.Transition.active = true
         UI.Transition.phase = "out"
         UI.Transition.target = target
         UI.Transition.next_target = nil
-        UI.Transition.start = Timer.getTime(UI.Transition.timer)
         UI.Transition.elapsed = 0
-        UI.Transition.last_time = UI.Transition.start
       end,
       Update = function ()
         if not UI.Transition.active then
           return 0
         end
-        local now = Timer.getTime(UI.Transition.timer)
-        local last = UI.Transition.last_time or now
-        local delta = now - last
-        if delta < 0 then delta = 0 end
-        local max_step = UI.Transition.max_step or 33
-        if delta > max_step then delta = max_step end
-        UI.Transition.elapsed = (UI.Transition.elapsed or 0) + delta
-        UI.Transition.last_time = now
+        -- Frame-paced: Update runs once per render frame. The old Timer.getTime() delta
+        -- (microseconds) was always clamped to max_step, so advancing a fixed max_step
+        -- per frame reproduces the exact prior pacing with no wall clock.
+        UI.Transition.elapsed = (UI.Transition.elapsed or 0) + (UI.Transition.max_step or 33)
         local elapsed = UI.Transition.elapsed or 0
         local duration = UI.Transition.phase == "out" and UI.Transition.duration_out or UI.Transition.duration_in
         if duration <= 0 then duration = 1 end
@@ -2223,9 +2207,7 @@ UI = {
               UI.OnSceneEnter(previous_scene, UI.CURSCENE)
             end
             UI.Transition.phase = "in"
-            UI.Transition.start = now
             UI.Transition.elapsed = 0
-            UI.Transition.last_time = now
             alpha = max_alpha
           else
             local queued = UI.Transition.next_target
@@ -4027,9 +4009,7 @@ UI = {
         animDir = 0,
         animDurSec = 0.55,
         slide = 0,
-        allowOptWrite = false,
-        timer = nil,
-        last_ms = nil
+        allowOptWrite = false
       };
       DrawOnly = function ()
         UI.MainMenu._draw_only = true
@@ -4078,14 +4058,6 @@ UI = {
           return ((index - 1) % count) + 1
         end
         local carousel = UI.MainMenu.Carousel
-        if carousel.timer == nil then
-          carousel.timer = Timer.new()
-          carousel.last_ms = Timer.getTime(carousel.timer)
-        end
-        local now_ms = Timer.getTime(carousel.timer)
-        local dt_ms = now_ms - (carousel.last_ms or now_ms)
-        carousel.last_ms = now_ms
-        if dt_ms < 0 then dt_ms = 0 end
         if not carousel.animActive then
           local sync_pos = pos_of[UI.MainMenu.OPT]
           if sync_pos == nil then
@@ -4104,7 +4076,9 @@ UI = {
         if carousel.animActive then
           if carousel.currentIndex ~= UI.MainMenu.OPT then
           end
-          local dt_sec = Clamp(dt_ms / 1000, 0, 1/30)
+          -- Frame-paced: runs once per render frame; the old dt was always clamped to
+          -- 1/30 s, so advance a fixed 1/30 s per frame (no microsecond clock).
+          local dt_sec = 1/30
           carousel.animT = carousel.animT + dt_sec
           local duration = carousel.animDurSec
           if duration <= 0 then duration = 0.01 end
@@ -4506,7 +4480,6 @@ UI = {
       NavEventTimer = nil;
       NavEventLast = 0;
       NavEventCount = 0;
-      LastActionEventMs = 0;
       Listen = function ()
         if UI.Pad.Timer == nil then
           UI.Pad.Timer = Timer.new()
@@ -4613,11 +4586,12 @@ UI = {
           emit(event)
         end
 
+        -- Action emits ride the rising edge only (pressed = GPAD & ~OLDPAD), so a held
+        -- button already fires once per press. The old MIN_ACTION_MS time debounce was a
+        -- no-op (it compared a microsecond delta to a 220 "ms" constant) AND, since it
+        -- shared one timestamp across every action button, "fixing" it would have dropped
+        -- legit quick distinct presses (CONFIRM->EXIT). Removed: edge-triggering is the gate.
         local function emit_action(event)
-          if (now - (UI.Pad.LastActionEventMs or 0)) < UI.InputConfig.MIN_ACTION_MS then
-            return
-          end
-          UI.Pad.LastActionEventMs = now
           emit(event)
         end
 
