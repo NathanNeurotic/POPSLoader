@@ -3432,13 +3432,23 @@ UI = {
         -- Build the items list. Sections and spacers are non-selectable
         -- markers; cycle/path/action items respond to focus + activation.
         local items = {}
+        -- Collapsible sections (session-only; resets on reboot, no new persisted key).
+        -- A collapsed section keeps its header (selectable, to re-expand) but its
+        -- cycle/path/info child rows are skipped from the row model entirely, so the
+        -- draw/nav/scroll machinery below needs no changes. Action rows (Save/Reset/
+        -- Discard) and the spacers around them are NEVER hidden -- AddAction resets the
+        -- collapse flag so they (and any following section) always stay reachable.
+        if type(UI.SettingsCollapsed) ~= "table" then UI.SettingsCollapsed = {} end
+        local collapsed_now = false
         local function AddSection(label)
-          table.insert(items, { kind = "section", label = label })
+          collapsed_now = (UI.SettingsCollapsed[label] == true)
+          table.insert(items, { kind = "section", label = label, collapsed = collapsed_now, collapsible = true })
         end
         local function AddSpacer()
           table.insert(items, { kind = "spacer" })
         end
         local function AddCycle(label, get_value, prev_fn, next_fn, dirty_fn)
+          if collapsed_now then return end
           table.insert(items, {
             kind = "cycle",
             label = label,
@@ -3451,9 +3461,11 @@ UI = {
         local function AddInfo(label, get_value)
           -- Read-only status row (not focusable -- see IsSelectable). Surfaces
           -- live runtime state next to the relevant setting.
+          if collapsed_now then return end
           table.insert(items, { kind = "info", label = label, value = get_value })
         end
         local function AddPath(label, get_value, open_fn, dirty_fn)
+          if collapsed_now then return end
           table.insert(items, {
             kind = "path",
             label = label,
@@ -3463,6 +3475,7 @@ UI = {
           })
         end
         local function AddAction(label, activate_fn, accent)
+          collapsed_now = false  -- actions (and anything after) are never hidden by a collapse
           table.insert(items, {
             kind = "action",
             label = label,
@@ -3759,8 +3772,9 @@ UI = {
         -- Focus normalization: clamp + skip non-selectable rows.
         local function IsSelectable(idx)
           local it = items[idx]
-          return it ~= nil and it.kind ~= "section" and it.kind ~= "spacer"
-            and it.kind ~= "info"
+          if it == nil then return false end
+          if it.kind == "section" then return it.collapsible == true end
+          return it.kind ~= "spacer" and it.kind ~= "info"
         end
         if type(UI.SettingsFocus) ~= "number" or UI.SettingsFocus < 1 or UI.SettingsFocus > #items then
           UI.SettingsFocus = 1
@@ -3812,7 +3826,12 @@ UI = {
           Graphics.drawRect(SAFE_LEFT, row_y - 2, SAFE_RIGHT - SAFE_LEFT, ROW_H, highlight_color)
         end
 
-        local function DrawSection(label, row_y)
+        local function DrawSection(label, row_y, collapsed, focused)
+          if focused then
+            Graphics.drawRect(SAFE_LEFT, row_y - 2, SAFE_RIGHT - SAFE_LEFT, SECTION_HEADER_H, highlight_color)
+          end
+          -- "+" = collapsed (press to expand), "-" = expanded (ASCII, font-safe).
+          Font.ftPrint(BFONT, SAFE_LEFT + 2, row_y, 0, 12, 16, collapsed and "+" or "-", focused and accent_color or separator_color)
           Font.ftPrint(BFONT, LABEL_X, row_y, 0, UI.SCR.X, 16, label, accent_color)
           Graphics.drawRect(SAFE_LEFT, row_y + SECTION_HEADER_H - 4, SAFE_RIGHT - SAFE_LEFT, 1, separator_color)
         end
@@ -3903,7 +3922,7 @@ UI = {
             or (row_y >= view_top and (row_y + item_h[i]) <= (footer_top_y + 1))
           if show then
             if it.kind == "section" then
-              DrawSection(it.label, row_y)
+              DrawSection(it.label, row_y, it.collapsed, UI.SettingsFocus == i)
             elseif it.kind == "spacer" then
               -- nothing to draw
             else
@@ -3945,14 +3964,23 @@ UI = {
 
         local focused_item = items[UI.SettingsFocus]
         if focused_item ~= nil then
+          local function SetSectionCollapsed(it, collapsed)
+            if it ~= nil and it.kind == "section" then
+              UI.SettingsCollapsed[it.label] = collapsed and true or nil
+            end
+          end
           if UI.Pad.Events.NAV_LEFT then
-            if focused_item.kind == "cycle" and focused_item.prev then focused_item.prev() end
+            if focused_item.kind == "section" then SetSectionCollapsed(focused_item, true)
+            elseif focused_item.kind == "cycle" and focused_item.prev then focused_item.prev() end
           end
           if UI.Pad.Events.NAV_RIGHT then
-            if focused_item.kind == "cycle" and focused_item.next then focused_item.next() end
+            if focused_item.kind == "section" then SetSectionCollapsed(focused_item, false)
+            elseif focused_item.kind == "cycle" and focused_item.next then focused_item.next() end
           end
           if UI.Pad.Events.CONFIRM then
-            if focused_item.kind == "cycle" and focused_item.next then
+            if focused_item.kind == "section" then
+              SetSectionCollapsed(focused_item, not (UI.SettingsCollapsed[focused_item.label] == true))
+            elseif focused_item.kind == "cycle" and focused_item.next then
               focused_item.next()
             elseif focused_item.kind == "path" and focused_item.open then
               focused_item.open()

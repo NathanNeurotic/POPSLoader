@@ -39,6 +39,15 @@ The flagship new feature this cycle (R3Z3N's ATA BDM Assault drivers + saildot4k
 - [ ] **Launch-arg routing (NEW — never HW-run):** booting with `-page=ata` (or `ata0`) opens the **HDD (exFAT)** page; `-page=hdd` / `hdd0` / `apa` / `apa0` / any `pfs` open the classic **HDD (PFS)** page. (`-page=ata -game=<VCD>` should auto-launch from the exFAT drive.) Confirm `-page=ata` no longer lands on the PFS page.
 - Report: empty list, a game that lists but won't launch, the drive showing under the wrong device, or a hang — include **console model** and **drive type/size**.
 
+### ⭐ Settings — collapsible sections (NEW, never run on hardware)
+
+The Settings page already scrolls (focus-following viewport + scrollbar). New this build: each **section header** (Storage / Display / Startup / Carousel Devices / Game List / POPSTARTER / Memory Card) can **collapse/expand** so long groups (e.g. the per-device "Carousel Devices" checklist) fold away.
+- [ ] Move the cursor onto a **section header** (it highlights; shows `-` when expanded, `+` when collapsed). Press **X** to toggle; **Left** collapses, **Right** expands.
+- [ ] Collapsing a section hides its rows and the list gets shorter (less scrolling); expanding brings them back. The cursor stays on the header.
+- [ ] ⚠️ **Save / Reset Defaults / Discard & Exit must ALWAYS stay reachable** regardless of which sections are collapsed — confirm you can still reach them after collapsing every section.
+- [ ] Every existing setting still saves/persists exactly as before (collapse state is session-only — it resets on reboot, nothing new is written to your settings file).
+- Report: a section that won't expand back, the actions becoming unreachable, the cursor getting stuck, or any setting failing to save.
+
 ### Navigation & input — ✅ core nav CONFIRMED on hardware (oldman63); the rest still to feel out
 
 - [x] **Up/Down + analog-stick item nav** — ✅ **CONFIRMED (oldman63):** d-pad and **left analog stick up/down** both land on **individual items** (item-by-item), and a held direction does smooth continuous scroll. *(The stick now folds into the d-pad and runs the same edge + auto-repeat path — no more "flies a whole page" / "can't select individual items" #501. A non-analog/digital pad is gated out so it can't inject a phantom direction; the auto-repeat is frame-counted, ~0.6 s before the first repeat then ~5/sec.)* Re-confirm on **each device's** list if you can.
