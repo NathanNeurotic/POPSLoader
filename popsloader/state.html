@@ -116,7 +116,7 @@
 </ul>
 <h3 id="main-menu-feature-status">Main menu feature status</h3>
 <ul>
-<li>Implemented: <code>MMCE</code>, <code>MX4SIO</code>, <code>HDD (PFS)</code>, <code>USB</code>, <code>Disc (DKWDRV)</code>. Not implemented: <code>HDD (exFAT)</code>, <code>SMB (v1)</code>, <code>ILINK</code>.</li>
+<li>Implemented: <code>MMCE</code>, <code>MX4SIO</code>, <code>HDD (PFS)</code>, <code>USB</code>, <code>Disc (DKWDRV)</code>, and <strong><code>HDD (exFAT)</code></strong> (BDMA Mode <code>ATA</code>; scans/launches as a <code>mass:</code> device via <code>ata_bd.irx</code> + R3Z3N's ATA BDM Assault launch drivers — implemented <code>df2eb9d</code>, CI/Rolling green, <strong>validating on hardware</strong>). Not implemented: <code>SMB (v1)</code>, <code>ILINK</code>.</li>
 <li><strong>Carousel device visibility</strong> (Settings → Carousel Devices): a Shown/Hidden toggle per carousel device lets the user hide entries they don't use (e.g. the not-implemented stubs). Persisted as <code>HIDDEN_DEVICES</code> (CSV of stable device keys; all shown by default; a guard keeps ≥1 visible). The carousel nav/render skip hidden entries with no gaps; <code>UI.MainMenu.OPT</code> stays the real opts index so the launch dispatch is unchanged (with nothing hidden, behavior is identical). STATUS: implemented, validating on PCSX2/hardware.</li>
 </ul>
 <h3 id="exit-handoff">Exit handoff</h3>
@@ -157,7 +157,7 @@
 <li><strong>The analog-stick → d-pad fold must stay gated on <code>Pads.getMode()</code> being analog/DualShock</strong> — an ungated fold injects a phantom −127 on a digital pad and breaks up/down nav. <code>Pads.getMode()</code> (<code>PAD_MODECURID</code>, live mode) is the correct source; <code>Pads.getType()</code> (<code>PAD_MODETABLE</code>) is not.</li>
 <li><strong>Embedded assets are wired in 3 explicit coordinated places</strong> — Makefile (<code>BIN2S</code> + <code>EMBEDDED_RSC</code>), <code>src/embed_assets.cpp</code> (extern + <code>ASSET_ENTRY</code> in <strong>both</strong> lookup tables), <code>bin/POPSLDR/images.lua</code> (<code>IMG_REGISTRATIONS</code>, bare-filename key). Adding/removing an asset that touches fewer than all three is a build or runtime break.</li>
 </ol>
-<p><strong>Intentionally not implemented</strong> (must keep reporting that status until feature work lands): <code>HDD (exFAT)</code>, <code>SMB (v1)</code>, <code>ILINK</code>.</p>
+<p><strong>Intentionally not implemented</strong> (must keep reporting that status until feature work lands): <code>SMB (v1)</code>, <code>ILINK</code>. (<code>HDD (exFAT)</code> is now <strong>implemented</strong> via BDMA Mode <code>ATA</code> — <code>df2eb9d</code>, CI/Rolling green, validating on hardware.)</p>
 <h2 id="preservation-contracts-hardware-load-bearing-do-not-regress">Preservation Contracts (hardware-load-bearing — do NOT regress)</h2>
 <p><em>See <code>docs/PRESERVATION_CONTRACTS.md</code> for the detailed code-level contract specs — exact <code>path:line</code> citations, what-breaks-it for each, and how to retest on hardware.</em><br />
 - <strong>D-10</strong> HDD POPSTARTER + HDD game — B2 fix <code>4ae6679</code> (PFS unmount before ExecPS2).<br />
@@ -345,7 +345,7 @@
 <li><strong>"Failed to load HDD" from a non-HDD / via-launcher boot</strong> — the remaining open launch-adjacent issue. Instrument + isolate.</li>
 <li><strong>Layer C full lazy IRX loading</strong> — only the device-hint precursor shipped; aggressive deferrals (<code>mmceman</code> unless MMCE, <code>ds34bt</code> unless BT, <code>usbd</code> unless USB) queued for a separate PR. High reward for boot time; high risk to input availability.</li>
 <li><strong><code>os.clock()</code> sweep for the remaining µs-as-ms timers</strong> — nav and description scroll are now frame-counted, but the <code>MIN_ACTION_MS</code> action debounce and the transition/carousel timers still read <code>Timer.getTime()</code> as ms (µs in reality), currently masked by a per-frame max-step clamp. Convert them to <code>os.clock()</code> seconds (or frame-counting) for unit-correct timing.</li>
-<li><strong><code>HDD (exFAT)</code>, <code>SMB (v1)</code>, <code>ILINK</code></strong> — intentionally unimplemented.</li>
+<li><strong><code>SMB (v1)</code>, <code>ILINK</code></strong> — intentionally unimplemented. <strong><code>HDD (exFAT)</code></strong> is now implemented (BDMA Mode <code>ATA</code>, <code>df2eb9d</code>); validating on hardware.</li>
 </ol>
 <p><em>(The old "<code>ps2hdd-osd.irx</code> → <code>ps2hdd.irx</code> driver swap probe" item is removed: HDD read-write was achieved instead via the <code>EnsureBootPartitionWritable</code> boot-partition remount take-over, and provato confirmed the HDD is RW-writable on hardware — the IRX swap is no longer the gating path.)</em></p>
 <h2 id="verification-status">Verification Status</h2>

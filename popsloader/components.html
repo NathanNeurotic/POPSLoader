@@ -450,10 +450,11 @@ copies are not read at runtime. Editing them requires a rebuild.</p>
 - <code>HDD (PFS)</code> (OPT4): implemented (routes to scene GHDD=5).<br />
 - <code>USB</code> (OPT5): implemented.<br />
 - <code>Disc (DKWDRV)</code> (OPT8): implemented.<br />
-- <code>HDD (exFAT)</code> (OPT3): NOT implemented — surfaces "This backend isn't implemented<br />
-  yet" (toast at ui.lua:4312).<br />
-- <code>i.Link</code> (OPT6): NOT implemented (ui.lua:4396).<br />
-- <code>SMB (v1)</code> (OPT7): NOT implemented (ui.lua:4398). There is no SMB C client;<br />
+- <code>HDD (exFAT)</code> (OPT3): implemented — scans the exFAT internal drive as a <code>mass:</code><br />
+  backend (BDMA <code>ata</code>) via <code>InitATAPopsRoot</code> + <code>GetPS1GameLists</code> -&gt; scene GBDMHDD=6<br />
+  (ui.lua:4349). Classified by exact ioctl driver-name <code>ata</code>. Validating on hardware.<br />
+- <code>i.Link</code> (OPT6): NOT implemented (ui.lua:4462).<br />
+- <code>SMB (v1)</code> (OPT7): NOT implemented (ui.lua:4464). There is no SMB C client;<br />
   the former <code>src/luaSMB.cpp</code> orphan was removed in commit f83dbbb (see<br />
   Orphaned/dead-on-disk).</p>
 <h2 id="preservation-contracts-hardware-load-bearing-do-not-regress">Preservation Contracts (hardware-load-bearing — do not regress)</h2>

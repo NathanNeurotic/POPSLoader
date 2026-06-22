@@ -69,11 +69,12 @@ The canonical, always-current <strong>Known Issues</strong> list and <strong>har
 <li><strong>MX4SIO</strong> (SD card via memory card slot adapter)</li>
 <li><strong>HDD (PFS)</strong> (internal HDD via the PS2 network/ATA adapter)</li>
 <li><strong>USB</strong> (<code>mass:</code>)</li>
+<li><strong>HDD (exFAT)</strong> (<code>mass:</code> via BDMA Mode <code>ATA</code> — an internal SATA/IDE drive formatted exFAT; <strong>new — validating on hardware</strong>)</li>
 <li><strong>Disc (DKWDRV)</strong> (boot DKWDRV to play PS1 discs)</li>
 </ul>
 <blockquote>
 <p><strong>ℹ️ Note</strong><br />
-The main menu also lists <strong>HDD (exFAT)</strong>, <strong>i.Link</strong>, and <strong>SMB (v1)</strong>, but these flows are not implemented yet — selecting them shows a "not implemented" notice. See <a href="#known-issues--planned-improvements">Known Issues &amp; Planned Improvements</a>.</p>
+The main menu also lists <strong>i.Link</strong> and <strong>SMB (v1)</strong>, but these flows are not implemented yet — selecting them shows a "not implemented" notice. (<strong>HDD (exFAT)</strong> is now implemented via BDMA Mode <code>ATA</code> and is validating on hardware.) See <a href="#known-issues--planned-improvements">Known Issues &amp; Planned Improvements</a>.</p>
 <p><strong>ℹ️ Note</strong><br />
 Game compatibility and drive loading performance may vary depending on your specific console model, adapter type, and the quality of your POPStarter/POPS binaries.</p>
 </blockquote>
@@ -301,7 +302,7 @@ Game compatibility and drive loading performance may vary depending on your spec
 <tr>
 <td style="text-align: left;"><strong>(one row per device: MMCE, MX4SIO, HDD (exFAT), HDD (PFS), USB, i.Link, SMB, Disc)</strong></td>
 <td style="text-align: left;"><strong>Shown</strong> (default) · Hidden</td>
-<td style="text-align: left;">Hide or show each entry on the main device carousel. Set unused or not-yet-implemented backends (e.g. HDD (exFAT), SMB, i.Link) to <strong>Hidden</strong> to remove them from the wheel. At least one device must stay <strong>Shown</strong>. Saved with your settings (<code>HIDDEN_DEVICES</code>); hidden entries are skipped during carousel navigation with no gaps, and launch behavior is unchanged.</td>
+<td style="text-align: left;">Hide or show each entry on the main device carousel. Set unused or not-yet-implemented backends (e.g. SMB, i.Link) to <strong>Hidden</strong> to remove them from the wheel. At least one device must stay <strong>Shown</strong>. Saved with your settings (<code>HIDDEN_DEVICES</code>); hidden entries are skipped during carousel navigation with no gaps, and launch behavior is unchanged.</td>
 </tr>
 </tbody>
 </table>
@@ -349,7 +350,7 @@ Game compatibility and drive loading performance may vary depending on your spec
 <li><strong>Video Standard</strong> — <strong>Auto</strong> (default — matches your console's region) / NTSC / PAL. On PAL the UI now renders <strong>natively at 640×512</strong> so it fills the whole screen with no letterbox (NTSC is 640×448). A display-mode change shows a confirm prompt that <strong>auto-reverts</strong> if you don't confirm, so a bad mode can't strand you; you can also hold <strong>Start</strong> during boot to skip past a bad video mode.</li>
 <li><strong>Overscan (CRT inset)</strong> — <strong>Off</strong> (default) up to a numeric inset, adjusted in steps of <strong>5</strong> (OPL-style render inset, same math as OPL's overscan). Pulls the whole UI slightly toward the center of the screen so nothing is lost in a CRT's overscan border. The change previews live as you adjust it; backing out of Settings without saving restores the previous value. <em>(Mainly useful on a real CRT; on a flat panel you'll usually leave it Off.)</em></li>
 <li><strong>Boot sound</strong> — <strong>On</strong> (default) / Off. Plays the startup chime over the boot splash. Turn it <strong>Off</strong> for a silent boot. (Hardware-confirmed to save and survive a reboot.)</li>
-<li><strong>BDMA Mode</strong> — mass-storage backend mode: <strong>FAT32</strong> (<code>FAT32-USB (None)</code>) / <strong>USBEXFAT</strong> (<code>exFAT-USB</code>) / <strong>MX4SIO</strong> / <strong>MMCE</strong>. The installed mode is recorded in a <code>bdma_mode.txt</code> marker file in the POPSTARTER pack folder (older <code>.pldr_bdma_mode</code> markers are still read for compatibility).</li>
+<li><strong>BDMA Mode</strong> — mass-storage backend mode: <strong>FAT32</strong> (<code>FAT32-USB (None)</code>) / <strong>USBEXFAT</strong> (<code>exFAT-USB</code>) / <strong>MX4SIO</strong> / <strong>MMCE</strong> / <strong>ATA</strong> (<code>exFAT-HDD</code> — an internal SATA/IDE drive formatted exFAT; <em>new, validating on hardware</em>). The installed mode is recorded in a <code>bdma_mode.txt</code> marker file in the POPSTARTER pack folder (older <code>.pldr_bdma_mode</code> markers are still read for compatibility).</li>
 <li><strong>POPSTARTER Memory Card Folder</strong> — toggles the <code>mc:/POPSTARTER</code> folder. Turning it <strong>off deletes</strong> <code>mc:/POPSTARTER</code> (with a confirm prompt). It is <strong>interlocked with BDMA Mode</strong>: you can't turn this folder off while BDMA Mode is on, and you can't enable BDMA Mode while this folder is off.</li>
 <li><strong>Hide UI Text</strong> — clears on-screen text for a clean cover-art view (also toggled with <strong>Select</strong>).</li>
 <li><strong>Keyboard Layout</strong> — on-screen keyboard layout for the path editor.</li>
@@ -409,7 +410,8 @@ Game compatibility and drive loading performance may vary depending on your spec
 *   <strong>Settings UI Redesign (Berion)</strong>: Visual overhaul replacing the current OPL-style focused-list with per-category Settings pages. Awaiting Berion's mockup PNGs.<br />
 *   <strong>GUI Themes</strong>: Customizable colors / skins / fonts and a setting to skip the boot splash.<br />
 *   <strong>In-Game Features</strong>: Support for per-game fixes, cheat codes, Virtual Memory Card (VMC) setups, and multi-disc swap prompts.<br />
-*   <strong><code>HDD (exFAT)</code>, <code>SMB (v1)</code>, <code>i.Link</code></strong> menu flows: currently surface as "Not Implemented Yet" until feature work lands.</p>
+*   <strong><code>HDD (exFAT)</code></strong> menu flow: now <strong>implemented</strong> as a <code>mass:</code> backend via BDMA Mode <code>ATA</code> (built, CI/Rolling green) — <strong>validating on hardware</strong>.<br />
+*   <strong><code>SMB (v1)</code>, <code>i.Link</code></strong> menu flows: currently surface as "Not Implemented Yet" until feature work lands.</p>
 <p>See <a href="state.html">STATE.md</a> "Known Open Work" and <a href="roadmap.html">ROADMAP.md</a> for the prioritized backlog.</p>
 <hr />
 <h2 id="credits">Credits</h2>
@@ -420,8 +422,9 @@ Game compatibility and drive loading performance may vary depending on your spec
 <li><strong>Berion</strong>: User interface design and theme assets.</li>
 <li><strong>nuno6573</strong>: Cover-art engine integrations and scripting.</li>
 <li><strong>Hugopocked</strong>: POPStarter fixes.</li>
+<li><strong>saildot4k</strong>: BDMA-ATA (exFAT internal-HDD / ATA backend), fixes, feedback, and oversight.</li>
 <li><strong>Ripto / NathanNeurotic</strong>: Maintenance, UI polishing, and release engineering.</li>
-<li><strong>P4NCHOL1NO, VizoR, provato, nuno6573, TnA-Plastic, saildot4k, and the community</strong>: Hardware testing.</li>
+<li><strong>P4NCHOL1NO, VizoR, provato, nuno6573, TnA-Plastic, and the community</strong>: Hardware testing.</li>
 </ul>
 <hr />
 <h2 id="development-building">Development &amp; Building</h2>

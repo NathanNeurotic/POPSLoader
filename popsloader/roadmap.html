@@ -53,7 +53,7 @@
 <p><strong>Infrastructure landed post-release:</strong><br />
 - <code>.github/workflows/rolling-release.yml</code> — automated rolling-release artifact publication on push to <code>BETA-13-PLAY</code> and on PR events.<br />
 - <code>docs/archive/DOCUMENTATION_FOLLOWUP_AUDIT.md</code> — handoff plan for the post-BETA-10-5 doc cleanup work (now completed; see "Documentation cleanup" under Secondary Work).</p>
-<p><code>HDD (exFAT)</code>, <code>SMB (v1)</code>, <code>ILINK</code> remain intentionally unimplemented menu entries.</p>
+<p><code>SMB (v1)</code> and <code>ILINK</code> remain intentionally unimplemented menu entries. <code>HDD (exFAT)</code> is now implemented (BDMA Mode <code>ATA</code>, <code>df2eb9d</code>) and is validating on hardware.</p>
 <h2 id="immediate-priorities">Immediate Priorities</h2>
 <h3 id="1-cut-beta-13">1) Cut BETA-13</h3>
 <ul>
@@ -103,7 +103,7 @@
 <h2 id="secondary-work">Secondary Work</h2>
 <h3 id="1-unimplemented-menu-paths">1) Unimplemented menu paths</h3>
 <ul>
-<li><code>HDD (exFAT)</code>, <code>SMB (v1)</code>, <code>ILINK</code> — intentionally not implemented; surface "not supported" if entered.</li>
+<li><code>SMB (v1)</code>, <code>ILINK</code> — intentionally not implemented; surface "not supported" if entered. <code>HDD (exFAT)</code> is now implemented as a <code>mass:</code> backend via BDMA Mode <code>ATA</code> (validating on hardware).</li>
 </ul>
 <h3 id="2-artasset-behavior">2) Art/asset behavior</h3>
 <ul>

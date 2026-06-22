@@ -58,7 +58,7 @@ Active dev branch is now <strong><code>BETA-13-PLAY</code></strong> (created off
 - busy/progress overlays,<br />
 - cover art behavior,<br />
 - exit handoff behavior,<br />
-- currently unimplemented menu options (<code>HDD (exFAT)</code>, <code>SMB (v1)</code>, <code>i.Link</code>),<br />
+- currently unimplemented menu options (<code>SMB (v1)</code>, <code>i.Link</code>; <code>HDD (exFAT)</code> is now implemented via BDMA <code>ATA</code> and is in hardware validation),<br />
 - release package validation gates,<br />
 - repository automation workflows that are not runtime/hardware gates.</p>
 <p>This file is the authoritative detailed run ledger for CI and hardware outcomes. The other root docs should summarize the active state and point here for chronology.</p>
@@ -356,10 +356,17 @@ Active dev branch is now <strong><code>BETA-13-PLAY</code></strong> (created off
 </tr>
 <tr>
 <td>D-06</td>
-<td>HDD exFAT option status</td>
-<td>any setup</td>
+<td>HDD (exFAT) via BDMA ATA (present)</td>
+<td>internal drive formatted exFAT, BDMA Mode = ATA, <code>POPS/</code> with VCDs</td>
 <td>Select <code>HDD (exFAT)</code></td>
-<td>UI shows <code>Not Implemented Yet</code></td>
+<td>drive enumerates as a <code>mass:</code> slot reporting ioctl driver-name <code>ata</code>; <code>mass:/POPS</code> VCDs list; launch works with the <code>.ata</code> drivers staged (stripped) to <code>mc?:/POPSTARTER</code> (NEW — validating on hardware)</td>
+</tr>
+<tr>
+<td>D-06A</td>
+<td>HDD (exFAT) absent</td>
+<td>no exFAT internal drive / BDMA Mode ≠ ATA</td>
+<td>Select <code>HDD (exFAT)</code></td>
+<td>UI shows <code>No exFAT HDD detected</code> notification (no hang)</td>
 </tr>
 <tr>
 <td>D-07</td>
