@@ -56,20 +56,25 @@ page so you know it's the correct file.</li>
 <li>A <b>USB stick formatted FAT32</b> (for fussy, CD-streaming games, format it with 16&nbsp;KB clusters).</li>
 </ul>
 
-<h2>Step 1 — Where will your games live?</h2>
-<p>Pick one. <b>USB is by far the easiest for your first game</b> — start there, branch out later.</p>
+<h2>Step 1 — Pick where your games live</h2>
+<p><a href="popsloader.html"><b>POPSLoader</b></a> plays from any of these — its <b>BDMA&nbsp;Mode</b> setting is the
+device selector. USB&nbsp;FAT32 is the easiest first step; <b>every other device is the same flow</b> with BDMA&nbsp;Mode
+set differently. (Internal HDD is the one device that doesn't use BDMA.) Full details in the
+<a href="storage.html#device-matrix">device matrix</a>.</p>
 <div class="paths">
 <a class="path rec" href="#usb"><span class="tag">Start here</span><div class="em">🔌</div>
-<b>USB stick</b><span>Simplest. No console surgery. Recommended for a first game.</span></a>
-<a class="path" href="wiki/quickstart-hdd.html"><div class="em">💽</div><b>Internal HDD</b>
-<span>More space, faster loads — but needs an installed HDD and extra setup.</span></a>
-<a class="path" href="wiki/quickstart-smb.html"><div class="em">🌐</div><b>Network (SMB)</b>
-<span>Stream from a PC share. Needs a PS2 network adapter and some config.</span></a>
+<b>USB — FAT32</b><span>Simplest. BDMA&nbsp;Mode <code>FAT32</code>. No console surgery.</span></a>
+<a class="path" href="storage.html#device-matrix"><div class="em">🔌</div>
+<b>USB — exFAT</b><span>For drives/files over FAT32's 4&nbsp;GB limit. BDMA&nbsp;Mode <code>USBEXFAT</code>.</span></a>
+<a class="path" href="storage.html#device-matrix"><div class="em">🟩</div>
+<b>MX4SIO</b><span>SD card in the memory-card slot (SIO2 adapter). BDMA&nbsp;Mode <code>MX4SIO</code>.</span></a>
+<a class="path" href="storage.html#device-matrix"><div class="em">🧩</div>
+<b>MMCE</b><span>SD2PSX / MemCard&nbsp;PRO2 emulator card. BDMA&nbsp;Mode <code>MMCE</code>.</span></a>
+<a class="path" href="wiki/quickstart-hdd.html"><div class="em">💽</div>
+<b>Internal HDD</b><span>APA/PFS — most space, fastest. No BDMA needed.</span></a>
+<a class="path" href="wiki/quickstart-smb.html"><div class="em">🌐</div>
+<b>Network (SMB)</b><span>Stream from a PC share. Needs a network adapter.</span></a>
 </div>
-<p class="hint">Got an <b>MX4SIO</b> SD adapter, an <b>MMCE</b> card (SD2PSX / MemCard&nbsp;PRO2), or an <b>exFAT</b>
-USB drive? <a href="popsloader.html">POPSLoader</a> plays from all of them — set its <b>BDMA&nbsp;Mode</b> to match
-(<code>FAT32</code> / <code>USBEXFAT</code> / <code>MX4SIO</code> / <code>MMCE</code>). BDMA is what reaches every
-device <i>except</i> the internal HDD. See the full <a href="storage.html#device-matrix">device matrix</a>.</p>
 
 <h2 id="usb">The simple path — USB</h2>
 <div class="steps">
@@ -105,8 +110,22 @@ people) — inside the game's folder, with <code>$SAFEMODE</code> on the first l
 pages have the rest.</p></div>
 </div>
 
-<h2>Using internal HDD or network instead?</h2>
-<p>Same idea, just a different file layout. Follow the matching quickstart guide:</p>
+<h2>Using a different device?</h2>
+<p>The convert → copy → launch flow above is the <b>same on every device</b> — set POPSLoader's <b>BDMA&nbsp;Mode</b>
+to match, then put the same <code>POPS</code> folder on that device:</p>
+<ul>
+<li><b>USB exFAT</b> — same as the USB steps above, just format exFAT and set BDMA&nbsp;Mode to <code>USBEXFAT</code>
+(needed for files/drives past FAT32's 4&nbsp;GB limit).</li>
+<li><b>MX4SIO</b> (SD via the SIO2/memory-card slot) — set BDMA&nbsp;Mode to <code>MX4SIO</code> and copy the
+<code>POPS/</code> folder onto the SD card. POPSLoader lists your games with cover art.</li>
+<li><b>MMCE</b> (SD2PSX / MemCard&nbsp;PRO2) — set BDMA&nbsp;Mode to <code>MMCE</code> and copy the <code>POPS/</code>
+folder onto the card's storage.</li>
+<li><b>Internal HDD</b> — a different layout (POPS files go in <code>__common</code>, each game in its own
+<code>__.POPS</code> partition; no BDMA). Follow the HDD quickstart.</li>
+<li><b>Network (SMB)</b> — add the IRX modules + two <code>.DAT</code> config files and use the <code>SB.</code>
+prefix. Follow the SMB quickstart.</li>
+</ul>
+<p>The classic per-device file layouts (USB / HDD / SMB) are in these quickstart guides:</p>
 <div class="grid"><a class="tile" href="wiki/quickstart-usb.html"><b>Quickstart USB</b><span>full wiki page</span></a>
 <a class="tile" href="wiki/quickstart-hdd.html"><b>Quickstart HDD</b><span>full wiki page</span></a>
 <a class="tile" href="wiki/quickstart-smb.html"><b>Quickstart SMB</b><span>full wiki page</span></a></div>
