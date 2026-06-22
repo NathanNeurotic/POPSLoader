@@ -50,7 +50,34 @@
 <tr><td>Force PAL</td><td><code>$FORCEPAL</code></td><td><code>PATCH_8.BIN</code></td><td>—</td><td><code>$42A</code></td><td>PAL patcher + Euro region</td></tr>
 <tr><td>480p output</td><td><code>$480p</code></td><td>—</td><td>—</td><td><code>$42A=0x02</code></td><td>not reliable on all titles</td></tr>
 <tr><td>Per-game fix bundle</td><td>—</td><td>—</td><td><code>TROJAN_7.BIN</code></td><td>—</td><td>cumulative per-game fixes</td></tr>
-</tbody></table><div class="callout amber"><div class="h">⚖ Same filename, different file — check before you drop it in</div>Two patch names carry two unrelated roles across sources. <code>PATCH_9.BIN</code>: the stock <b>disable-PAL-patcher</b> patch (= <code>$NOPAL</code>) <i>and</i> the <b>disable-ELF-loader</b> fix krHACKen posted for the BOOT.ELF black-screen-on-exit bug. <code>PATCH_5.BIN</code>: a stock compatibility-mode patch <i>and</i> the custom <b>IGR texture pack</b> shipped in El_isra's POPSLoader. Confirm which one you have.</div><div class="callout info"><div class="h">ℹ TROJAN_7.BIN — the farewell cumulative</div><code>TROJAN_7.BIN</code> (2020-04-02) bundles krHACKen's + Hugopocked's per-game fixes. Although cumulative, it is applied <b>per game</b> — placed in that game's VMC folder, not stacked with separate Hugopocked patches for the same title. The digit is a slot, not a version; POPStarter validates the file header against the filename. Compatibility modes map to config bytes <code>$418</code>–<code>$41F</code> (the force-mode array) — see the <a href="config.html">Config Table</a>.</div><p class="prov-inline">📎 from the recovered <a href="wiki/compatibility.html">Compatibility</a> wiki page · merged across snapshots, primary 20170629151818</p><h2 id="game-compatibility"><strong>Game Compatibility</strong></h2>
+</tbody></table><div class="callout amber"><div class="h">⚖ Same filename, different file — check before you drop it in</div>Two patch names carry two unrelated roles across sources. <code>PATCH_9.BIN</code>: the stock <b>disable-PAL-patcher</b> patch (= <code>$NOPAL</code>) <i>and</i> the <b>disable-ELF-loader</b> fix krHACKen posted for the BOOT.ELF black-screen-on-exit bug. <code>PATCH_5.BIN</code>: a stock compatibility-mode patch <i>and</i> the custom <b>IGR texture pack</b> shipped in El_isra's POPSLoader. Confirm which one you have.</div><div class="callout info"><div class="h">ℹ TROJAN_7.BIN — the farewell cumulative</div><code>TROJAN_7.BIN</code> (2020-04-02) bundles krHACKen's + Hugopocked's per-game fixes. Although cumulative, it is applied <b>per game</b> — placed in that game's VMC folder, not stacked with separate Hugopocked patches for the same title. The digit is a slot, not a version; POPStarter validates the file header against the filename. Compatibility modes map to config bytes <code>$418</code>–<code>$41F</code> (the force-mode array) — see the <a href="config.html">Config Table</a>.</div><h2 id="hugopocked">Hugopocked fixes — the leading community compatibility pack</h2>
+<p class="lead">When POPS' built-in fixes and the compatibility modes above aren't enough, <b>Hugopocked's per-game
+fixes</b> are the most comprehensive and still-actively-maintained patch set for POPStarter. They pick up where
+krHACKen's official fixes left off and push many titles that POPS gets wrong — freezes, garbled graphics,
+flickering, invisible characters — over the line to fully playable. Combined with POPStarter's built-in fixes
+and the compatibility modes, the great majority of the PS1 library runs correctly.</p>
+<div class="callout info"><div class="h">ℹ How to install — per game, not global</div>Hugopocked fixes install
+<b>differently</b> from the global <code>TROJAN_#.BIN</code> / <code>PATCH_#.BIN</code> files: you drop the fix
+into <b>that game's own folder</b> — the same per-game folder that holds its VMC — matched to the VCD basename:
+<ul>
+<li>USB — <code>mass:/POPS/&lt;GameBasename&gt;/</code></li>
+<li>Internal HDD — <code>hdd:/__common/POPS/&lt;GameBasename&gt;/</code></li>
+<li>SMB — <code>smb:/POPS/&lt;GameBasename&gt;/</code></li>
+</ul>
+The pack ships as <code>Hugopocked_POPStarter_Fixes_(2023-08-11).rar</code> (archive password
+<code>hugopocked</code>), with newer individual fixes posted since — e.g. an improved <b>Tekken&nbsp;3</b> fix
+dated 2024-01-31. The <a href="https://www.psx-place.com/threads/hugopocked-fixes-for-popstarter.39750/">Hugopocked
+thread on PSX-Place</a> is for <b>patch installation only</b> (not general emulator-install support), and its
+external download links are volatile.</div>
+<div class="callout amber"><div class="h">⚖ Don't stack Hugopocked with TROJAN_7.BIN for the same game</div>
+<code>TROJAN_7.BIN</code> is the <b>global cumulative</b> bundle (krHACKen + Hugopocked, 2020-04-02), dropped in
+the POPS folder; Hugopocked's per-game fixes go <b>in the game's own folder</b>. Applying <b>both</b> to the same
+title <b>adds</b> crashes — use one or the other.</div>
+<p>Representative fixes from the pack (community-reported): <b>Warcraft II</b> (freezing), <b>Spider-Man</b>
+(graphics), <b>Yu-Gi-Oh! Forbidden Memories</b> (flickering), <b>Resident Evil 3</b> (SLUS-00923, made finishable),
+<b>Castlevania: Symphony of the Night</b> Japanese (<i>Akumajou Dracula X – Gekka no Yasoukyoku</i>), and
+<b>Tekken&nbsp;3</b>. When a game shows a “black” or empty level it is often not a true black screen — the GTE
+places the player's 3D coordinates off-stage, and a Hugopocked-style code repositions it back on screen.</p><p class="prov-inline">📎 from the recovered <a href="wiki/compatibility.html">Compatibility</a> wiki page · merged across snapshots, primary 20170629151818</p><h2 id="game-compatibility"><strong>Game Compatibility</strong></h2>
 <hr>
 
 <p>POPS is able to emulate a large range of games perfectly fine with the POPStarter fixes – which makes it superior to <a href="http://psx-scene.com/forums/f292/ps2psxe-public-preview-feedback-discussions-64878/">PS2PSXE</a>. Best results are expected in internal HDD mode.</p>
