@@ -39,7 +39,7 @@
     <a href="../credits.html"><span class="em">🙏</span>Credits</a>
     <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
   </nav>
-  <main class="content"><h1>Preservation contracts</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/BETA-13-PLAY/docs/PRESERVATION_CONTRACTS.md">view on GitHub ↗</a></p><p>Date: 2026-06-21 (re-synced to BETA-13-PLAY HEAD 56a5ad5; BETA-12 released 2026-06-18 per STATE.md)<br />
+  <main class="content"><h1>Preservation contracts</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/BETA-13-PLAY/docs/PRESERVATION_CONTRACTS.md">view on GitHub ↗</a></p><p>Date: 2026-06-22 (re-synced to BETA-13-PLAY HEAD 3d89631; the <code>2735229</code> audit cleanup shifted line numbers in luasystem.cpp / ui.lua / system.lua — treat the cited function/symbol as the unit of truth where a line drifted. BETA-12 released 2026-06-18 per STATE.md)<br />
 Branch documented: <code>BETA-13-PLAY</code> (the active rolling-candidate branch; BETA-12-PLAY<br />
 is now ARCHIVAL/frozen and rolling-release.yml publishes from BETA-13-PLAY)</p>
 <p>Purpose: regression armor for the launch / ELF-handoff layer (the four launch<br />
@@ -500,10 +500,14 @@ against an <code>_ms</code>-named constant for nav/scroll cadence — it will fl
 because the source is µs (the exact <code>adaa8ee → d128779</code> bug: "one click = 5 lines",<br />
 nuno6573 / LVD14 #504). Frame-count instead, or use <code>os.clock()</code> (stock Lua,<br />
 returns SECONDS — the only pre-converted Lua time source, currently unused).<br />
-<strong>Still on the µs-as-ms footing (parked, masked by a per-frame clamp, NOT a<br />
-license to copy the pattern):</strong> the <code>MIN_ACTION_MS</code> action debounce<br />
-(<code>emit_action</code>, <code>ui.lua:4547</code>) and the transition/carousel timers — a future<br />
-<code>os.clock()</code> sweep is the intended fix, do not extend the µs-as-ms idiom.</p>
+<strong>Sweep COMPLETE (<code>9c3f64f</code> + <code>a8e61f3</code>):</strong> the <code>MIN_ACTION_MS</code> action debounce was<br />
+REMOVED (it compared a µs delta to a 220 "ms" constant); <code>emit_action</code> (<code>ui.lua:4577</code>)<br />
+is now a thin <code>emit</code> wrapper and edge-triggering (<code>pressed = GPAD &amp; ~OLDPAD</code>) is the<br />
+only gate. The scene-fade / boot-fade / carousel timers were frame-paced and the<br />
+PathEditor key-flash + launch-watchdog label unit-corrected (<code>Timer.getTime()/1000</code>).<br />
+No live UI site treats <code>Timer.getTime()</code> as ms. <strong>What breaks it:</strong> reintroducing a<br />
+wall-clock <code>Timer.getTime()</code> comparison against an <code>_ms</code>-named constant — frame-count<br />
+instead, or use <code>os.clock()</code> (SECONDS).</p>
 <h3 id="input-fold-the-analog-stick-into-the-d-pad-only-in-real-analog-mode">Input — fold the analog stick into the d-pad ONLY in real analog mode</h3>
 <p><strong>The contract:</strong> the left analog stick is folded into the d-pad direction bits in<br />
 <code>UI.Pad.Listen</code> <strong>only when the pad is genuinely in analog/DualShock mode</strong>, gated<br />

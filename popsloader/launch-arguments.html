@@ -92,8 +92,12 @@ page:</p>
 </thead>
 <tbody>
 <tr>
-<td><strong>HDD</strong> (PFS)</td>
-<td><code>hdd</code>, <code>ata</code>, <code>pfs</code>, <code>apa</code></td>
+<td><strong>HDD (exFAT)</strong> (BDMA ATA)</td>
+<td><code>ata</code>, <code>ata0</code>, <code>ataN</code></td>
+</tr>
+<tr>
+<td><strong>HDD (PFS)</strong> (APA)</td>
+<td><code>hdd</code>, <code>hdd0</code>, <code>pfs</code>, <code>apa</code>, <code>apa0</code></td>
 </tr>
 <tr>
 <td><strong>USB</strong></td>
@@ -116,13 +120,15 @@ page:</p>
 <td><code>smb</code></td>
 </tr>
 <tr>
-<td><strong>BDMA</strong> (HDD exFAT)</td>
-<td><code>bdma</code> <em>(accepted but not navigable — see below)</em></td>
+<td><code>bdma</code> (bare)</td>
+<td><em>accepted but a no-op — use <code>ata</code> to reach the HDD (exFAT) page; the bare <code>bdma</code> literal maps to no page</em></td>
 </tr>
 </tbody>
 </table>
-<p><code>-mode=ata</code> is provided specifically for NHDDL parity (<code>-mode=ata</code> is how<br />
-NHDDL selects the HDD/ATA path).</p>
+<p><code>-mode=ata</code> / <code>-page=ata</code> is provided for NHDDL parity (<code>ata</code> is how NHDDL<br />
+selects the internal ATA drive); it opens POPSLoader's <strong>HDD (exFAT)</strong> page<br />
+(the BDMA-ATA backend, scene <code>GBDMHDD</code>). For the classic APA/PFS HDD page use<br />
+<code>-page=hdd</code> / <code>-page=pfs</code>.</p>
 <h2 id="what-each-argument-actually-does">What each argument actually does</h2>
 <h3 id="-page-mode-open-a-devices-game-list"><code>-page=</code> / <code>-mode=</code> (open a device's game list)</h3>
 <p>Boots <strong>straight into the requested device's game list</strong> (the same screen<br />
@@ -130,11 +136,12 @@ you'd reach by scrolling to that page and pressing <strong>X</strong>) — it lo
 device and switches to its list automatically. Combine with <code>-game=</code> to go<br />
 one step further and auto-launch a specific title (see below); <code>-page=</code><br />
 alone just opens the list so you can pick.</p>
-<p>Enterable pages: <strong>MMCE, MX4SIO, HDD (PFS), USB.</strong> The HDD value<br />
-targets the implemented <strong>PFS</strong> page. <code>bdma</code> (HDD exFAT) and the i.Link<br />
-page are intentionally <strong>not</strong> wired, so <code>-page=bdma</code> is accepted but has<br />
-no effect. An unrecognized value is ignored and the carousel starts on its<br />
-default page (MMCE) with no auto-entry.</p>
+<p>Enterable pages: <strong>MMCE, MX4SIO, HDD (exFAT), HDD (PFS), USB.</strong> <code>-page=ata</code><br />
+targets the implemented <strong>exFAT</strong> (BDMA-ATA) page (scene <code>GBDMHDD</code>);<br />
+<code>-page=hdd</code> / <code>-page=pfs</code> targets the classic <strong>PFS</strong> page. The bare <code>bdma</code><br />
+literal and the i.Link page are intentionally <strong>not</strong> wired, so <code>-page=bdma</code><br />
+is accepted but has no effect. An unrecognized value is ignored and the<br />
+carousel starts on its default page (MMCE) with no auto-entry.</p>
 <h3 id="-game-auto-launch"><code>-game=</code> (auto-launch)</h3>
 <p>Boots straight into launching a game. Requires <strong>both</strong> <code>-page=</code> and<br />
 <code>-game=</code>. Auto-launch is wired for these pages:</p>
@@ -161,6 +168,10 @@ default page (MMCE) with no auto-entry.</p>
 <tr>
 <td>MMCE</td>
 <td><code>&lt;FILE&gt;</code> relative to <code>mmce0:/POPS</code></td>
+</tr>
+<tr>
+<td>HDD (exFAT)</td>
+<td><code>&lt;FILE&gt;</code> relative to <code>mass:/POPS</code> (use <code>-page=ata</code>)</td>
 </tr>
 </tbody>
 </table>

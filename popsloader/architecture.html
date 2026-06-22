@@ -39,7 +39,7 @@
     <a href="../credits.html"><span class="em">🙏</span>Credits</a>
     <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
   </nav>
-  <main class="content"><h1>Architecture</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/BETA-13-PLAY/ARCHITECTURE.md">view on GitHub ↗</a></p><p>Last updated: 2026-06-21 (BETA-13 session; frame-count nav + <code>Timer.getTime</code>-is-microseconds reality + layered <code>cover_default</code>/<code>cover_missing</code> art with <code>MISSING.png</code> dropped + OPL-style overscan render-inset + <code>Pads.getMode</code> binding). Active/rolling branch is now <strong><code>BETA-13-PLAY</code></strong> (<code>BETA-12-PLAY</code> is archival; public release is still BETA-12). For current Settings behavior, Known Issues, Preservation Contracts, Behavioral Invariants, and Hardware Status, see <strong><code>STATE.md</code></strong> (canonical) — this doc points there instead of restating them.</p>
+  <main class="content"><h1>Architecture</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/BETA-13-PLAY/ARCHITECTURE.md">view on GitHub ↗</a></p><p>Last updated: 2026-06-22 (BETA-13 session; frame-count nav + <code>Timer.getTime</code>-is-microseconds reality + layered <code>cover_default</code>/<code>cover_missing</code> art with <code>MISSING.png</code> dropped + OPL-style overscan render-inset + <code>Pads.getMode</code> binding). Active/rolling branch is now <strong><code>BETA-13-PLAY</code></strong> (<code>BETA-12-PLAY</code> is archival; public release is still BETA-12). For current Settings behavior, Known Issues, Preservation Contracts, Behavioral Invariants, and Hardware Status, see <strong><code>STATE.md</code></strong> (canonical) — this doc points there instead of restating them.</p>
 <h1 id="architecture">ARCHITECTURE</h1>
 <p>POPSLoader is a PS1-game launcher for the PlayStation 2, built on the Enceladus<br />
 runtime. The shipped binary is a single packed EE ELF (<code>bin/POPSLOADER.ELF</code>)<br />
@@ -325,10 +325,12 @@ milliseconds, so every <code>_ms</code>-named gate ran ~1000× too fast. The can
 Enceladus-ecosystem idiom is therefore <strong>frame-counting</strong> — the sibling launchers<br />
 (OSDMenu-Configurator, RETROLauncher) never read the wall clock for nav. Stock<br />
 Lua's <code>os.clock()</code> (seconds) is the only pre-converted time source and is<br />
-currently unused; a future <code>os.clock()</code> sweep is the proposed fix for the<br />
-remaining µs-as-ms gates (<code>UI.InputConfig.MIN_ACTION_MS = 220</code> at <code>ui.lua:622</code>,<br />
-the cover idle, and the transition/carousel timers — all parked, masked by a<br />
-per-frame <code>max_step</code> clamp so not visibly broken).</p>
+currently unused. The µs-as-ms timer sweep is <strong>complete</strong> (<code>9c3f64f</code> + <code>a8e61f3</code>):<br />
+the unit-correct gates divide by 1000 (PathEditor key-flash / caret blink, the<br />
+launch-watchdog label), and the animation timers were converted to frame-counting /<br />
+frame-pacing (nav repeat, description scroll, cover idle, and the scene/boot-fade +<br />
+carousel transition). The old per-press action debounce <code>MIN_ACTION_MS</code> was<br />
+<strong>removed entirely</strong>; edge-triggering (<code>pressed = GPAD &amp; ~OLDPAD</code>) is the only action gate.</p>
 <ul>
 <li><strong>Nav auto-repeat is frame-counted</strong> (<code>resolve_nav</code>, <code>ui.lua:4583</code>). <code>nav_fps</code><br />
   is <code>50</code> when <code>UI.SCR.Y &gt;= 512</code> (PAL) else <code>60</code>; <code>NAV_DELAY_FRAMES =
@@ -377,11 +379,10 @@ launches via <code>PLDR.RunPOPStarterGame</code> on CONFIRM. On <code>GHDD</code
 <h3 id="cover-art-separate-from-the-icon-atlas">Cover art (separate from the icon atlas)</h3>
 <p><code>UI.CoverCache</code> (<code>ui.lua:257</code>, <code>max = 3</code>) is a 3-entry LRU of loaded box-art<br />
 images, refreshed after a navigation settles via <code>CoverCache:UpdateSelection</code><br />
-(<code>ui.lua:326</code>). The refresh is gated by <code>UI.GameList.CoverIdleMs = 200</code><br />
-(<code>ui.lua:2331</code>) compared against a <code>Timer.getTime</code> value — which is<br />
-<strong>microseconds</strong> (see Layer 4 › nav timing), so this "200 ms" idle is actually<br />
-~200 µs and effectively fires next frame; it is one of the parked µs-as-ms<br />
-timers awaiting an <code>os.clock()</code> sweep. Non-HDD covers are <code>base.png</code> beside the<br />
+(<code>ui.lua:326</code>). The refresh is <strong>frame-counted</strong>: the cover decodes only after the cursor has been<br />
+stable for ~250 ms (<code>COVER_IDLE_FRAMES = ceil(cover_fps * 0.25)</code>, <code>cover_fps</code> = 50<br />
+PAL / 60 NTSC, <code>ui.lua</code>); a per-frame counter resets while the selection keeps<br />
+changing, so the cover loads only once navigation settles. Non-HDD covers are <code>base.png</code> beside the<br />
 VCD; HDD covers resolve <code>POPS/ART/&lt;basename&gt;.png</code> on the <code>hdd0:__common</code><br />
 partition via <code>PLDR.ResolveHddPartitionReadablePath</code> (<code>BuildCoverCandidates</code>,<br />
 <code>ui.lua:175</code>). When a <code>&lt;base&gt;.png</code> cover loads it gets its own <code>COVER_W</code> inset<br />
@@ -449,8 +450,9 @@ bus topology:</p>
 <code>mass*</code> to "USB") but by a runtime BDM driver-name lookup. An in-tree IOP RPC<br />
 helper, <code>bdm_query</code> (RPC id <code>0xB0D10B00</code>, <code>iop/bdm_query/bdm_query.c:11-13</code>),<br />
 enumerates live block devices via <code>bdm_get_bd()</code>. The EE side (<code>FetchBdmList</code> +<br />
-<code>ClassifyMassBackend</code>, <code>src/luasystem.cpp:184-217</code>) classifies by driver-name<br />
-substring: <code>usb</code> -&gt; USB, <code>sdc</code>/<code>mx4</code> -&gt; MX4SIO, <code>mmce</code> -&gt; MMCE. This lets the<br />
+<code>ClassifyMassBackend</code>, <code>src/luasystem.cpp</code>) classifies by driver name: substring<br />
+<code>usb</code> -&gt; USB, <code>sdc</code>/<code>mx4</code> -&gt; MX4SIO, <code>mmce</code> -&gt; MMCE, and an <strong>exact</strong> <code>"ata"</code> match<br />
+(<code>strcmp==0 &amp;&amp; strlen==3</code>, mirroring OPL <code>bdmsupport.c</code>) -&gt; exFAT internal HDD (BDMA-ATA). This lets the<br />
 launcher classify <code>mass:/</code> without speculatively loading <code>mx4sio_bd</code> just to<br />
 probe.</p>
 <h3 id="authoritative-boot-device-classification">Authoritative boot-device classification</h3>
@@ -599,11 +601,12 @@ caches it, and records permanent failures in <code>IMG_FAILED</code><br />
 chrome/glyph atlas, not per-game box art (covers are <code>UI.CoverCache</code>, Layer 4).</p>
 <h3 id="launch-arguments">Launch arguments</h3>
 <p>Parsed C-side (<code>parseLaunchArgs</code>, <code>src/main.cpp:198</code>), normalized in Lua: <code>NormalizeLaunchPage</code><br />
-(<code>system.lua:2204-2247</code>) folds page kinds (ata/pfs/apa/hdd -&gt; HDD, usb/mass -&gt;<br />
-USB, mmce -&gt; MMCE, mx4sio/mx4/sdc -&gt; MX4SIO, etc.) into <code>PLDR.LAUNCH_ARGS</code>.<br />
-<code>-page</code> auto-navigates the carousel via <code>page_to_opt = {MMCE=1, MX4SIO=2,
-HDD=4, USB=5, SMB=7}</code> (<code>system.lua:2481-2509</code>); HDD maps to the PFS page (4),<br />
-and unimplemented pages (BDMA/i.Link) are deliberately not routed.</p>
+(<code>system.lua</code>) folds page kinds: <code>ata</code>/<code>ata0</code>/<code>ataN</code> -&gt; EXFAT, <code>hdd</code>/<code>apa</code>/<code>pfs</code> -&gt; HDD,<br />
+<code>usb</code>/<code>mass</code> -&gt; USB, <code>mmce</code> -&gt; MMCE, <code>mx4sio</code>/<code>mx4</code>/<code>sdc</code> -&gt; MX4SIO, etc., into<br />
+<code>PLDR.LAUNCH_ARGS</code>. <code>-page</code> (and the <code>-mode</code> alias) auto-navigate the carousel via<br />
+<code>page_to_opt = {MMCE=1, MX4SIO=2, EXFAT=3, ATA=3, HDD=4, USB=5, SMB=7}</code>: EXFAT/ATA<br />
+map to the exFAT page (opt 3, <code>GBDMHDD</code>) and HDD to the PFS page (opt 4). The bare<br />
+<code>bdma</code> token and i.Link/SMB remain unrouted no-ops.</p>
 <h3 id="on-disk-settings-pldrs">On-disk settings (<code>.pldrs</code>)</h3>
 <p>Plain KEY=VALUE text with <strong>20 keys</strong> (<code>EncodeSettings</code>, <code>system.lua:3072-3102</code>):<br />
 <code>PROFILE</code>, <code>POPSTARTER_PATH</code>, <code>POPSTARTER_MODE</code>, <code>BDMA</code>, <code>DKWDRV_PATH</code>,<br />
@@ -655,7 +658,7 @@ turned into a <code>.c</code> file by ps2sdk's <code>bin2c</code> (<code>BIN2S =
 <code>Makefile:67</code>), exposing <code>&lt;symbol&gt;[]</code> + <code>size_&lt;symbol&gt;</code>; those compile to <code>.o</code><br />
 and link into the ELF (<code>EMBEDDED_RSC</code>, <code>Makefile:96-105</code>). The embedded IRX<br />
 object list is at <code>Makefile:89-94</code> (usbd, audsrv, bdm, bdmfs_fatfs, usbmass_bd,<br />
-cdfs, ds34bt, ds34usb, ps2dev9, ps2atad, ps2hdd-osd, ps2fs, mmceman, mx4sio_bd,<br />
+cdfs, ds34bt, ds34usb, ps2dev9, ps2atad, ps2hdd-osd, ps2fs, mmceman, mx4sio_bd, ata_bd,<br />
 bdm_query). At runtime, <code>embed_assets.cpp::embedded_get</code> (<code>src/embed_assets.cpp:195</code>)<br />
 resolves blobs by normalizing the request (<code>embed:/</code> / <code>./</code> / leading-slash<br />
 stripping, <code>IMG/</code> -&gt; <code>POPSLDR/IMG/</code>) and looking the key up in the single<br />
