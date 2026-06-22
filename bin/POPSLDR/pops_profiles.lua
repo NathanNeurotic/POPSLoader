@@ -10,19 +10,6 @@ PLDR.DEFAULT_PROFILE = DEFAULT_PROFILE
 -- to register an ELF that is stored on the same folder than POPSLOADER, please do it this way:
 -- System.currentDirectory().."/POPSTARTER.ELF"
 
-local function NormalizeDirPathCompat(path)
-  if NormalizeDirPath ~= nil then
-    return NormalizeDirPath(path)
-  end
-  if path == nil or path == "" then return "" end
-  if string.sub(path, -1) ~= "/" then
-    return path.."/"
-  end
-  return path
-end
-
-local APP_DIR_LOCAL = NormalizeDirPathCompat(APP_DIR or System.currentDirectory())
-
 PLDR.PROFILES = {
   {
     ELF="POPSTARTER.ELF";

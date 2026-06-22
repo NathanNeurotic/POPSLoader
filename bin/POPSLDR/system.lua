@@ -2027,7 +2027,6 @@ end
 if not loadedIrx then
   LoadIrxFromDir(JoinPath(APP_DIR_LOCAL, "POPSLDR/IRX"))
 end
-HDD_DIAG_BYPASS = 0
 local pldr_defaults = {
   REBOOT_IOP_WHILE_LOADING_POPSTARTER = 0;
   STRICT_HDD_PREEXEC_GATE = false;
@@ -2408,8 +2407,6 @@ local function DetectMX4SIOPrefixHint()
   return nil
 end
 PLDR.MX4SIO.PREFIX_HINT = DetectMX4SIOPrefixHint()
-if PLDR.MX4SIO.PREFIX_HINT ~= nil then
-end
 -- Keep runtime slot/status discovery page-driven; startup may still initialize
 -- backend drivers when boot/configured paths require them.
 PLDR.MMCE.PROBED = false
@@ -2458,9 +2455,6 @@ if UI.DEVLOCK ~= nil then
     UI.boot_device = UI.DEVLOCK.USB
   elseif boot_name == "MMCE" then
     UI.boot_device = UI.DEVLOCK.MMCE
-  end
-  if boot_name ~= nil then
-  else
   end
 end
 
@@ -2871,9 +2865,7 @@ local function EnsureDirectory(path)
   if doesFolderExist(path) then
     return true
   end
-  local ok, err = pcall(System.createDirectory, path)
-  if not ok then
-  end
+  local ok = pcall(System.createDirectory, path)
   return ok
 end
 
@@ -3199,7 +3191,11 @@ local function ApplySettingsState(state)
   end
   if type(state.gamelist_cache) == "boolean" then
     PLDR.GAMELIST_CACHE = state.gamelist_cache
+  end
+  if type(state.boot_sound) == "boolean" then
     PLDR.BOOT_SOUND = state.boot_sound
+  end
+  if state.overscan ~= nil then
     PLDR.OVERSCAN = math.floor(tonumber(state.overscan) or 0)
     if type(Screen) == "table" and type(Screen.setOverscan) == "function" then pcall(Screen.setOverscan, PLDR.OVERSCAN) end
   end

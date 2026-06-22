@@ -102,7 +102,7 @@ static FT_Vector delta;
 
 #define GLYPH_CACHE_PAGE_SIZE 256
 
-#define GLYPH_PAGE_OK(font, page) ((pageid <= font->cacheMaxPageID) && (font->glyphCache[page]))
+#define GLYPH_PAGE_OK(font, page) (((page) <= (font)->cacheMaxPageID) && ((font)->glyphCache[page]))
 
 #define ALIGN_TOP     (0 << 0)
 #define ALIGN_BOTTOM  (1 << 0)
@@ -113,12 +113,6 @@ static FT_Vector delta;
 #define ALIGN_NONE    (ALIGN_TOP | ALIGN_LEFT)
 #define ALIGN_CENTER  (ALIGN_VCENTER | ALIGN_HCENTER)
 
-
-// a simple maximum of two
-int max(int a, int b)
-{
-    return a > b ? a : b;
-}
 
 // a simple minimum of two
 int min(int a, int b)
@@ -295,13 +289,12 @@ static int fntLoadSlot(font_t *font, const char* path)
 
     fntInitSlot(font);
 
-   
-        buffer = readFile(path, -1, &bufferSize);
-        if (!buffer) {
-            DPRINTF("FNTSYS Font file loading failed: %s\n", path);
-            return FNT_ERROR;
-        }
-        font->dataPtr = buffer;
+    buffer = readFile(path, -1, &bufferSize);
+    if (!buffer) {
+        DPRINTF("FNTSYS Font file loading failed: %s\n", path);
+        return FNT_ERROR;
+    }
+    font->dataPtr = buffer;
 
 
 

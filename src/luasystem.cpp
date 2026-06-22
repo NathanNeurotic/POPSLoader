@@ -541,7 +541,7 @@ static int lua_setCurrentDirectory(lua_State *L)
 	           do
 	           {
 	                idx--;
-	           } while (temp_path[idx] != '/');
+	           } while (idx > 0 && temp_path[idx] != '/');
 	           temp_path[idx] = '\0';
 	        }
 	        
@@ -575,7 +575,7 @@ static int lua_dir(lua_State *L)
 	if (argc != 0 && argc != 1) return luaL_error(L, "Argument error: System.listDirectory([path]) takes zero or one argument.");
 	
         const char *temp_path = "";
-	char path[255];
+	char path[256];
 	
 	getcwd((char *)path, 256);
 	DPRINTF("current dir %s\n",(char *)path);
@@ -774,16 +774,9 @@ static int lua_rename(lua_State *L)
 	return 0;
 }
 
-static char modulePath[256];
-
-static void setModulePath()
-{
-	getcwd( modulePath, 256 );
-}
-
 static int lua_sleep(lua_State *L)
 {
-	if (lua_gettop(L) != 1) return luaL_error(L, "milliseconds expected.");
+	if (lua_gettop(L) != 1) return luaL_error(L, "seconds expected.");
 	int sec = luaL_checkinteger(L, 1);
 	sleep(sec);
 	return 0;
@@ -807,19 +800,6 @@ static int lua_exit(lua_State *L)
 	return 0;
 }
 
-
-void recursive_mkdir(char *dir) {
-	char *p = dir;
-	while (p) {
-		char *p2 = strstr(p, "/");
-		if (p2) {
-			p2[0] = 0;
-			mkdir(dir, 0777);
-			p = p2 + 1;
-			p2[0] = '/';
-		} else break;
-	}
-}
 
 static int lua_getmcinfo(lua_State *L){
 	int argc = lua_gettop(L);
@@ -888,8 +868,11 @@ static int lua_writefile(lua_State *L){
 	int argc = lua_gettop(L);
 	if (argc != 3) return luaL_error(L, "wrong number of arguments");
 	int fileHandle = luaL_checkinteger(L, 1);
-	const char *text = luaL_checkstring(L, 2);
-	int size = luaL_checknumber(L, 3);
+	size_t len = 0;
+	const char *text = luaL_checklstring(L, 2, &len);
+	int size = luaL_checkinteger(L, 3);
+	if (size < 0) size = 0;
+	if ((size_t)size > len) size = (int)len;
 	int written = write(fileHandle, text, size);
 	lua_pushinteger(L, written);
 	return 1;
@@ -1495,7 +1478,6 @@ void luaSystem_init(lua_State *L) {
 	lua_register(L, "doesFolderExist", lua_direxists);
 	lua_register(L, "print_uart", lua_sio_print);
 
-	setModulePath();
 	lua_newtable(L);
 	luaL_setfuncs(L, System_functions, 0);
 	lua_setglobal(L, "System");

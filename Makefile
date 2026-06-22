@@ -281,8 +281,6 @@ clean: cleanbin
 	rm -rf $(EE_OBJS_DIR)
 	rm -rf $(EE_ASM_DIR)
 
-	rm -f $(EMBEDDED_RSC)
-
 rebuild: clean all
 
 run:

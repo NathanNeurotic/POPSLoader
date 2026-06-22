@@ -1023,8 +1023,8 @@ GSTEXTURE* load_image(const char* path, bool delayed){
 		DPRINTF("Failed to load image %s.", path);
 		return NULL;
 	}
-	uint16_t magic;
-	fread(&magic, 1, 2, file);
+	uint16_t magic = 0;
+	if (fread(&magic, 1, 2, file) != 2) { fclose(file); DPRINTF("Failed to load image %s.", path); return NULL; }
 	fseek(file, 0, SEEK_SET);
 	GSTEXTURE* image = NULL;
 	if (magic == 0x4D42) image =      loadbmp(file, delayed);

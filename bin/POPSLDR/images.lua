@@ -91,8 +91,3 @@ function IMG.ReleaseAll()
   end
   IMG_FAILED = {}
 end
-
-local registered_count = 0
-for _, _ in pairs(IMG_SOURCES) do
-  registered_count = registered_count + 1
-end

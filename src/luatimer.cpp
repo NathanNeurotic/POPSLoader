@@ -117,7 +117,7 @@ static int lua_destroy(lua_State *L) {
 	if (timer->magic != TIMER_MAGIC) return luaL_error(L, "attempt to access wrong memory block type");
 	#endif
 	free(timer);
-	return 1;
+	return 0;
 }
 
 //Register our Timer Functions

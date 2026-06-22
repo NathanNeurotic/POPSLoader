@@ -36,7 +36,7 @@ local function SafeDoesFileExist(path)
     return okcall and res == true
   end
   if type(System) == "table" and type(System.openFile) == "function" and type(System.closeFile) == "function" then
-    local okfd, fd = pcall(System.openFile, path, O_RDONLY)
+    local okfd, fd = pcall(System.openFile, path, FREAD)
     if okfd and fd ~= nil and fd >= 0 then
       pcall(System.closeFile, fd)
       return true
@@ -842,10 +842,8 @@ UI = {
     end;
     Footer = {
       order = {"triangle", "circle", "cross", "square"};
-      order_with_r2 = {"triangle", "circle", "cross", "square"};
 	      order_with_start = {"triangle", "circle", "cross", "start"};
 	      order_with_start_r2 = {"triangle", "circle", "cross", "square", "start"};
-	      order_settings = {"circle", "cross", "square", "start", "select"};
 	      order_settings_save = {"circle", "cross", "start", "select"};
 	      order_keyboard = {"circle", "cross", "square", "start"};
 	      labels = {
@@ -1156,11 +1154,6 @@ UI = {
             boot_sound_loaded = nil
             return
           end
-
-          local sec = UI.BOOT_SOUND.SECONDS
-          if type(sec) ~= "number" or sec < 0 then sec = 0 end
-          local pad = UI.BOOT_SOUND.PAD_SECONDS
-          if type(pad) ~= "number" or pad < 0 then pad = 0 end
         end
         local function DrawSplashCover(img, screen_w, screen_h, alpha)
           if img == nil then return end
@@ -4074,8 +4067,6 @@ UI = {
           carousel.slide = 0
         end
         if carousel.animActive then
-          if carousel.currentIndex ~= UI.MainMenu.OPT then
-          end
           -- Frame-paced: runs once per render frame; the old dt was always clamped to
           -- 1/30 s, so advance a fixed 1/30 s per frame (no microsecond clock).
           local dt_sec = 1/30
@@ -4104,11 +4095,6 @@ UI = {
 	        if layout.CAROUSEL_Y_OFFSET ~= nil then
 	          center_y = center_y + layout.CAROUSEL_Y_OFFSET
 	        end
-        local function Clamp(value, min_val, max_val)
-          if value < min_val then return min_val end
-          if value > max_val then return max_val end
-          return value
-        end
         local function ResolveIcon(key)
           return IMG[key]
         end
@@ -4483,10 +4469,7 @@ UI = {
       Listen = function ()
         if UI.Pad.Timer == nil then
           UI.Pad.Timer = Timer.new()
-          UI.Pad.CLK = Timer.getTime(UI.Pad.Timer)
         end
-        local now = Timer.getTime(UI.Pad.Timer)
-        UI.Pad.CLK = now
         UI.Pad.OLDPAD = UI.Pad.GPAD
         UI.Pad.GPAD = Pads.get()
         GPAD = UI.Pad.GPAD
