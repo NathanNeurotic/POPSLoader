@@ -102,6 +102,7 @@ EMBEDDED_RSC = boot.o builtin_font.o \
 	asset_system_lua.o asset_ui_lua.o asset_images_lua.o asset_pops_profiles_lua.o asset_boot_adp.o \
 	asset_usbd_irx_usbexfat.o asset_usbhdfsd_irx_usbexfat.o asset_usbhdfsd_irx_mx4sio.o \
 	asset_usbd_irx_mmce.o asset_usbhdfsd_irx_mmce.o \
+	asset_usbd_irx_ata.o asset_usbhdfsd_irx_ata.o \
 	asset_icon_sys_bdma.o asset_list_icn_bdma.o asset_del_icn_bdma.o
 
 EE_OBJS = $(APP_CORE) $(LUA_LIBS) $(IOP_MODULES) $(EMBEDDED_RSC)
@@ -203,6 +204,10 @@ $(EE_ASM_DIR)asset_usbd_irx_mmce.c: bin/POPSLDR/usbd.irx.mmce | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_usbd_irx_mmce
 $(EE_ASM_DIR)asset_usbhdfsd_irx_mmce.c: bin/POPSLDR/usbhdfsd.irx.mmce | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_usbhdfsd_irx_mmce
+$(EE_ASM_DIR)asset_usbd_irx_ata.c: bin/POPSLDR/usbd.irx.ata | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_usbd_irx_ata
+$(EE_ASM_DIR)asset_usbhdfsd_irx_ata.c: bin/POPSLDR/usbhdfsd.irx.ata | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_usbhdfsd_irx_ata
 $(EE_ASM_DIR)asset_icon_sys_bdma.c: bin/POPSLDR/icon.sys.bdma | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_icon_sys_bdma
 $(EE_ASM_DIR)asset_list_icn_bdma.c: bin/POPSLDR/list.icn.bdma | $(EE_ASM_DIR)

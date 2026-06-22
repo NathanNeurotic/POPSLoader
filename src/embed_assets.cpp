@@ -79,6 +79,10 @@ extern unsigned char asset_usbd_irx_mmce[];
 extern unsigned int size_asset_usbd_irx_mmce;
 extern unsigned char asset_usbhdfsd_irx_mmce[];
 extern unsigned int size_asset_usbhdfsd_irx_mmce;
+extern unsigned char asset_usbd_irx_ata[];
+extern unsigned int size_asset_usbd_irx_ata;
+extern unsigned char asset_usbhdfsd_irx_ata[];
+extern unsigned int size_asset_usbhdfsd_irx_ata;
 extern unsigned char asset_icon_sys_bdma[];
 extern unsigned int size_asset_icon_sys_bdma;
 extern unsigned char asset_list_icn_bdma[];
@@ -132,11 +136,11 @@ static const embedded_asset_t g_embedded_assets[] = {
 	ASSET_ENTRY("usbhdfsd.irx.mx4sio", asset_usbhdfsd_irx_mx4sio),
 	ASSET_ENTRY("usbd.irx.mmce", asset_usbd_irx_mmce),
 	ASSET_ENTRY("usbhdfsd.irx.mmce", asset_usbhdfsd_irx_mmce),
-	// usbd.irx.ata / usbhdfsd.irx.ata are BYTE-IDENTICAL to the .usbexfat blobs
-	// (R3Z3N's ATA release differs only in how POPStarter APPLIES BDMA, not in
-	// these two files), so alias the usbexfat assets to avoid duplicate bytes.
-	ASSET_ENTRY("usbd.irx.ata", asset_usbd_irx_usbexfat),
-	ASSET_ENTRY("usbhdfsd.irx.ata", asset_usbhdfsd_irx_usbexfat),
+	// usbd.irx.ata / usbhdfsd.irx.ata are DISTINCT blobs (R3Z3N's ATA build), embedded
+	// on their own. ApplyBdmaMode stages them to mc?:/POPSTARTER/ stripped to usbd.irx /
+	// usbhdfsd.irx when BDMA Mode = ATA.
+	ASSET_ENTRY("usbd.irx.ata", asset_usbd_irx_ata),
+	ASSET_ENTRY("usbhdfsd.irx.ata", asset_usbhdfsd_irx_ata),
 	ASSET_ENTRY("icon.sys.bdma", asset_icon_sys_bdma),
 	ASSET_ENTRY("list.icn.bdma", asset_list_icn_bdma),
 	ASSET_ENTRY("del.icn.bdma", asset_del_icn_bdma),
@@ -180,8 +184,8 @@ static const embedded_asset_t g_embedded_assets[] = {
 	ASSET_ENTRY("POPSLDR/usbhdfsd.irx.mx4sio", asset_usbhdfsd_irx_mx4sio),
 	ASSET_ENTRY("POPSLDR/usbd.irx.mmce", asset_usbd_irx_mmce),
 	ASSET_ENTRY("POPSLDR/usbhdfsd.irx.mmce", asset_usbhdfsd_irx_mmce),
-	ASSET_ENTRY("POPSLDR/usbd.irx.ata", asset_usbd_irx_usbexfat),
-	ASSET_ENTRY("POPSLDR/usbhdfsd.irx.ata", asset_usbhdfsd_irx_usbexfat),
+	ASSET_ENTRY("POPSLDR/usbd.irx.ata", asset_usbd_irx_ata),
+	ASSET_ENTRY("POPSLDR/usbhdfsd.irx.ata", asset_usbhdfsd_irx_ata),
 	ASSET_ENTRY("POPSLDR/icon.sys.bdma", asset_icon_sys_bdma),
 	ASSET_ENTRY("POPSLDR/list.icn.bdma", asset_list_icn_bdma),
 	ASSET_ENTRY("POPSLDR/del.icn.bdma", asset_del_icn_bdma),
