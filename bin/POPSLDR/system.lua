@@ -3880,8 +3880,12 @@ local function ClassifyMassRootDriver(driver)
   if string.find(value, "mx4", 1, true) ~= nil or string.find(value, "sdc", 1, true) ~= nil then
     return "mx4sio"
   end
-  if string.find(value, "ata", 1, true) ~= nil then
-    return "ata"   -- internal SATA/IDE drive read as exFAT via the BDM ata_bd block driver
+  -- EXACT "ata", mirroring OPL bdmsupport.c (the ata_bd block driver reports the
+  -- name "ata" exactly). NOT a substring test -- that would mis-catch "sata"/"atad"
+  -- and risk leaking ata into the usb bucket below. usb/mx4sio keep their proven
+  -- substring matches so their working detection is unchanged.
+  if value == "ata" then
+    return "ata"
   end
   return "usb"
 end

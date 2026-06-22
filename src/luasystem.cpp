@@ -217,7 +217,11 @@ static const char *ClassifyMassBackend(const char *driver)
 	if (strstr(driver, "mmce") != NULL) {
 		return "mmce";
 	}
-	if (strstr(driver, "ata") != NULL) {   // internal SATA/IDE drive read as exFAT via BDM ata_bd
+	// EXACT match, mirroring OPL bdmsupport.c (!strcmp(driver,"ata") && strlen==3):
+	// the BDM ata_bd block driver reports the name "ata" exactly. A substring test
+	// would mis-catch "sata"/"atad" and could leak ata into the usb/mx4sio buckets
+	// (or vice-versa). usb/sdc/mx4/mmce above keep their proven substring matches.
+	if (strcmp(driver, "ata") == 0 && strlen(driver) == 3) {
 		return "ata";
 	}
 	return "other";
