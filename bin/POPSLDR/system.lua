@@ -5360,7 +5360,7 @@ local LaunchState = {
   PHASE_EXEC = "LAUNCH_EXEC",
   PHASE_FAILED = "LAUNCH_FAILED",
   phase = "IDLE",
-  watchdog_ms = 3000,
+  watchdog_ms = 3000,   -- real milliseconds (elapsed is divided from us at the post-exec annotation)
   fade_timer = nil,
   fade_start = 0
 }
@@ -5610,7 +5610,9 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
       rc = System.loadELF(exec_path, reboot_iop)
     end
   end
-  local elapsed_ms = Timer.getTime(LaunchState.fade_timer) - LaunchState.fade_start
+  -- Timer.getTime() is MICROSECONDS (raw clock() ticks, CLOCKS_PER_SEC=1e6); divide to
+  -- real ms so both the watchdog_ms threshold and the printed figure read correctly.
+  local elapsed_ms = (Timer.getTime(LaunchState.fade_timer) - LaunchState.fade_start) / 1000
   if elapsed_ms >= LaunchState.watchdog_ms then
     rc = string.format("%s (returned after %d ms)", tostring(rc), elapsed_ms)
   end

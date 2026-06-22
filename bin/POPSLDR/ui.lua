@@ -1770,8 +1770,14 @@ UI = {
         UI.PathEditor.pressed_until = 0
       end;
       _NowMs = function ()
+        -- Timer.getTime() is raw clock() ticks = MICROSECONDS on PS2 (CLOCKS_PER_SEC=1e6),
+        -- but every _NowMs caller (caret blink /300, key-flash +160, _IsPressed compare)
+        -- was authored in MILLISECONDS. Divide once here so the whole PathEditor is
+        -- unit-correct: the 160 "ms" key-flash now actually survives to the next frame
+        -- (it was expiring 160 us later, so the pressed-key highlight never showed) and
+        -- the caret blinks ~300 ms instead of ~1000x too fast.
         if UI.Pad ~= nil and UI.Pad.Timer ~= nil then
-          return tonumber(Timer.getTime(UI.Pad.Timer)) or 0
+          return (tonumber(Timer.getTime(UI.Pad.Timer)) or 0) / 1000
         end
         return 0
       end;
@@ -2332,7 +2338,6 @@ UI = {
       DetailsTotal = 0;       -- wrapped lines in the current description (0 = none)
       DetailsVisible = 0;     -- how many of them fit on screen this frame
       DescScrollFrames = nil; -- frames since last desc-scroll step (frame-count rate-limit)
-      PageNavAt = 0;          -- last left-stick fast-page-nav step (ms, for rate-limit)
       Reset = function ()
         UI.GameList.CURR = 1;
         UI.GameList.CoverLastIndex = nil
@@ -2341,7 +2346,6 @@ UI = {
         UI.GameList.DetailsTotal = 0
         UI.GameList.DetailsVisible = 0
         UI.GameList.DescScrollFrames = nil
-        UI.GameList.PageNavAt = 0
       end;
       Play = function()
         local layout = UI.LAYOUT
