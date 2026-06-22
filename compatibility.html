@@ -32,6 +32,9 @@
 <a href="downloads.html"><span class="em">📦</span>Downloads</a>
 <a href="history.html"><span class="em">📜</span>History</a>
     <h4>Reference</h4>
+    <a href="glossary.html"><span class="em">📖</span>Glossary</a>
+    <a href="commands.html"><span class="em">⌨️</span>Command index</a>
+    <a href="faq.html"><span class="em">❓</span>FAQ &amp; known bugs</a>
     <a href="wiki/index.html"><span class="em">📚</span>All wiki pages</a>
   </nav>
   <main class="content"><h1>Compatibility — Patches &amp; TROJANs</h1><p class="lead">PATCH_#.BIN files, $COMPATIBILITY modes, and TROJAN_# behaviour modifiers — three forms of the same capability. <b>“TROJAN” is POPStarter's name for a patch file, not malware.</b></p><div class="callout info"><div class="h">ℹ “TROJAN” = patch file</div>In POPStarter docs a “TROJAN” is simply a binary patch/behaviour file. It is <b>not</b> malicious software.</div><h2 id="equivalence">Equivalence map — one capability, three ways</h2>
@@ -47,7 +50,7 @@
 <tr><td>Force PAL</td><td><code>$FORCEPAL</code></td><td><code>PATCH_8.BIN</code></td><td>—</td><td><code>$42A</code></td><td>PAL patcher + Euro region</td></tr>
 <tr><td>480p output</td><td><code>$480p</code></td><td>—</td><td>—</td><td><code>$42A=0x02</code></td><td>not reliable on all titles</td></tr>
 <tr><td>Per-game fix bundle</td><td>—</td><td>—</td><td><code>TROJAN_7.BIN</code></td><td>—</td><td>cumulative per-game fixes</td></tr>
-</tbody></table><p class="prov-inline">📎 from the recovered <a href="wiki/compatibility.html">Compatibility</a> wiki page · merged across snapshots, primary 20170629151818</p><h1><strong>Game Compatibility</strong></h1>
+</tbody></table><p class="prov-inline">📎 from the recovered <a href="wiki/compatibility.html">Compatibility</a> wiki page · merged across snapshots, primary 20170629151818</p><h2 id="game-compatibility"><strong>Game Compatibility</strong></h2>
 <hr>
 
 <p>POPS is able to emulate a large range of games perfectly fine with the POPStarter fixes – which makes it superior to <a href="http://psx-scene.com/forums/f292/ps2psxe-public-preview-feedback-discussions-64878/">PS2PSXE</a>. Best results are expected in internal HDD mode.</p>
@@ -78,7 +81,7 @@
 </ul>
 <hr>
 
-<h2><em>Compatibility rates (04/21/2016) :</em></h2>
+<h2 id="compatibility-rates-04212016"><em>Compatibility rates (04/21/2016) :</em></h2>
 <p><em>(This section appears only in the original 2017-06-29 snapshot.)</em></p>
 <pre><code>
 * MODE (Region) : XX% games playable (games partially or perfectly emulated/games tested)
@@ -106,8 +109,8 @@
 </ul>
 <hr>
 
-<h2><em>Compatibility lists and forms :</em></h2>
-<h3>ElOtroLado Compatibility List</h3>
+<h2 id="compatibility-lists-and-forms"><em>Compatibility lists and forms :</em></h2>
+<h3 id="elotrolado-compatibility-list">ElOtroLado Compatibility List</h3>
 <p><em>(The newest 2024-06-20 snapshot promoted the ElOtroLado list — managed by El_Patas — to the primary, current list and marked the Google-Docs "Official" lists below as obsolete.)</em></p>
 <ul>
 <li><strong>ElOtroLado Compatibility List : [UPDATED – 20/01/2023]</strong></li>
@@ -133,7 +136,7 @@
 <li>2020-12-04 / 2022-10-26 snapshots: <em>[external compatibility list — link removed per policy]</em></li>
 <li>2017-06-29 / 2019-11-12 snapshots (then called the "EOL" / "ElOtroLado Compatibility List"): <em>[external compatibility list — link removed per policy]</em></li>
 </ul>
-<h3>Official Compatibility Lists (Google Docs)</h3>
+<h3 id="official-compatibility-lists-google-docs">Official Compatibility Lists (Google Docs)</h3>
 <p><em>(In the 2017 snapshot these were titled simply "Rev 13 Official Compatibility Lists"; the 2024 snapshot relabels the whole section </em><em>[OBSOLETE &amp; DEATH]</em><em>.)</em></p>
 <ul>
 <li><strong>Rev 13 Official Compatibility Lists :</strong> — <strong>[OBSOLETE &amp; DEATH] (per the 2024-06-20 snapshot)</strong></li>
@@ -165,7 +168,7 @@
 </tr>
 </tbody>
 </table>
-<h3>Old Compatibility Lists (outdated &amp; locked, for history)</h3>
+<h3 id="old-compatibility-lists-outdated-locked-for-history">Old Compatibility Lists (outdated &amp; locked, for history)</h3>
 <p><em>(This sub-list appears only in the 2017-06-29 snapshot.)</em></p>
 <ul>
 <li>POPStarter Rev 12 : here.</li>
@@ -173,7 +176,7 @@
 </ul>
 <hr>
 
-<h2><em>Compatibility modes :</em></h2>
+<h2 id="compatibility-modes"><em>Compatibility modes :</em></h2>
 <p>If your game is poorly emulated, you can enable a compatibility mode to try to fix your issue. <em>(older 2017 snapshot wording: "you can try to enable a compatibility mode to see if it helps.")</em></p>
 <table>
 <thead>
@@ -184,40 +187,40 @@
 </thead>
 <tbody>
 <tr>
-<td><strong>0×01</strong></td>
+<td><strong>0x01</strong></td>
 <td>Helps restoring the music/voices in several games.</td>
 </tr>
 <tr>
-<td><strong>0×02</strong></td>
-<td>A variant of mode 0×01, with a second hack for not breaking the MDECoding of FMVs (was designed for the Colony Wars series).</td>
+<td><strong>0x02</strong></td>
+<td>A variant of mode 0x01, with a second hack for not breaking the MDECoding of FMVs (was designed for the Colony Wars series).</td>
 </tr>
 <tr>
-<td><strong>0×03</strong></td>
-<td>Can be used if the mode 0×01 doesn’t provide the expected results.</td>
+<td><strong>0x03</strong></td>
+<td>Can be used if the mode 0x01 doesn’t provide the expected results.</td>
 </tr>
 <tr>
-<td><strong>0×04</strong></td>
+<td><strong>0x04</strong></td>
 <td>Fixes slowdowns, flickering, and many other glitches (prevents the emulator from writing a garbage value in two of the virtual GPU registers).</td>
 </tr>
 <tr>
-<td><strong>0×05</strong></td>
+<td><strong>0x05</strong></td>
 <td>Made for fixing the cutscenes of the PAL Resident Evil: Director’s Cut.</td>
 </tr>
 <tr>
-<td><strong>0×06</strong></td>
+<td><strong>0x06</strong></td>
 <td>Disables the OSD shell of the emulator’s built-in BIOS, making some games that freeze on startup run.</td>
 </tr>
 <tr>
-<td><strong>0×07</strong></td>
+<td><strong>0x07</strong></td>
 <td>Fixes the missing textures problems (example : <a href="https://www.youtube.com/watch?v=3LmGlgY_rNs&amp;feature=youtu.be">Tomb Raider III</a> ). Unfinished (breaks the gamma) <strong>[NOTE: This Mode is obsolete]</strong>.</td>
 </tr>
 </tbody>
 </table>
-<p><em>Notes on mode 0×07 wording across snapshots:</em> the 2017 snapshot had no caveat; the 2019/2020/2022 snapshots added "Unfinished (breaks the gamma)."; the 2024 snapshot added "<strong>[NOTE: This Mode is obsolete]</strong>".</p>
+<p><em>Notes on mode 0x07 wording across snapshots:</em> the 2017 snapshot had no caveat; the 2019/2020/2022 snapshots added "Unfinished (breaks the gamma)."; the 2024 snapshot added "<strong>[NOTE: This Mode is obsolete]</strong>".</p>
 <p><strong>Caution / Notes :</strong></p>
 <ul>
 <li>
-<p>Modes 0×01, 0×02, 0×03 and 0×05 cannot be enabled in the same time or combined. These are variants of the same hack and they are conflicting, so use only use one of them at a time.</p>
+<p>Modes 0x01, 0x02, 0x03 and 0x05 cannot be enabled in the same time or combined. These are variants of the same hack and they are conflicting, so use only use one of them at a time.</p>
 </li>
 <li>
 <p><em>(2017 snapshot only)</em> Please let us know (at <a href="http://assemblergames.com/l/threads/ps2-pops-stuff.45347/">ASSEMblergames</a>) if you managed to solve a problem in your game by forcing modes, so the fix can be integrated in POPStarter.</p>
@@ -235,10 +238,10 @@
 <p>hardcoding the mode in POPStarter (advanced user) : read <a href="wiki/configuration-table.html">POPStarter configuration table</a>.</p>
 </li>
 </ul>
-<p><strong>Note :</strong> <em>(added in the 2019-11-12 snapshot and kept since)</em> if your game lags badly or stalls randomly and that mode 0×04 doesn’t fix that, you can try to use <a href="wiki/special-cheats.html">$CODECACHE_ADDON_0 command</a> in a GAME/CHEATS.TXT file. Do not use it by default on all your games because most games will stop working with it.</p>
+<p><strong>Note :</strong> <em>(added in the 2019-11-12 snapshot and kept since)</em> if your game lags badly or stalls randomly and that mode 0x04 doesn’t fix that, you can try to use <a href="wiki/special-cheats.html">$CODECACHE_ADDON_0 command</a> in a GAME/CHEATS.TXT file. Do not use it by default on all your games because most games will stop working with it.</p>
 <hr>
 
-<h2><em>Game fixes (manual) :</em></h2>
+<h2 id="game-fixes-manual"><em>Game fixes (manual) :</em></h2>
 <p><em>(This whole section — the manual TROJAN-file game-fix list — appears only in the original 2017-06-29 snapshot. Later snapshots replaced it with the "Automated fixes" internal database described below.)</em></p>
 <p>In the game fixes archive, you can find some TROJAN files fixing problematic games. Copy the file in the VMC directory of your problematic game.</p>
 <p><strong>List of game fixes :</strong></p>
@@ -283,7 +286,7 @@
 <p>Destruction Derby 2 (SLES-00299)  – AntiCrash Fix</p>
 </li>
 <li>
-<p>Future Racer (SLES-03508) – “Boost” Fix + mode 0×04</p>
+<p>Future Racer (SLES-03508) – “Boost” Fix + mode 0x04</p>
 </li>
 <li>
 <p>Harry Potter And The Chamber Of Secrets (SLES-03972) – AntiCrash Fix</p>
@@ -381,13 +384,11 @@
 </ul>
 <hr>
 
-<h2><em>Automated fixes :</em></h2>
+<h2 id="automated-fixes"><em>Automated fixes :</em></h2>
 <p><em>(2017 snapshot wording:)</em> A list of all the LC cracks, crash fixes &amp; compatibility modes integrated into POPStarter can be found <a href="wiki/automated.html">here</a>. You don’t need to enable them/do something to get them enabled, as POPStarter will detect your game and apply the matching fix all by itself.</p>
 <p><em>(2019-and-later snapshots wording:)</em> POPStarter has an <a href="wiki/automated.html">internal database</a> containing various fixes (compatibility modes, LibCrypt cracks and miscellaneous fixes) for a big amount of games. These fixes will be automatically applied to your game, as long as you use proper dumps (for identification).</p>
-<hr>
-
-<h3><a href="wiki/index.html"><strong>Index</strong></a></h3><div class="callout red"><div class="h">⚠ Unverified / caution</div>PATCH_7.BIN (existence unconfirmed) - Present it in a RED warning box. State plainly: no primary file or definition survives; it is absent from the wiki, the r13 CHANGES.TXT, the IGR download table, and the community manual (which skips from PATCH_6 to PATCH_8). The &#x27;2014 krHACKen forced mode 0x06&#x27; vs &#x27;obsolete Mode 7&#x27; framings are community lore only. Explicitly distinguish it from the VERIFIED TROJAN_7.BIN game-fix bundle, which is a different file. Confidence: unverified.</div>
-<div class="callout amber"><div class="h">⚖ Conflicting sources</div>PATCH_9.BIN filename collision - Present as TWO separate site records that cross-warn each other in an AMBER box. (A) STOCK PATCH_9.BIN == $NOPAL, disables the auto PAL patcher so a PAL VCD runs in POPS native NTSC (wiki already calls it &#x27;obsolete (still working tho)&#x27;). (B) The 2020-03-21 krHACKen file that REUSES the name PATCH_9.BIN to disable the bugged ELF loader and restore IGR-to-OPL; PATCH_9.7z MD5 9db1e18bae92c4991e3de7e2a752558c (188 B), distributed via the IGR &#x27;Trojans and Patches&#x27; thread. Same filename, different binary - never mix them. NOT byte-diffed in this pass; flag that the 188 B/MD5 in the IGR table is not explicitly tied to one of the two roles.</div><h2>Per-game compatibility database</h2><p class="lead">krHACKen's integrated per-game fixes, LibCrypt cracks and compatibility modes — the full recovered database (Driver 2, Metal Gear Solid, DonPachi, Tomb Raider and hundreds more).</p><p class="prov-inline">📎 from the recovered <a href="wiki/automated.html">Automated</a> wiki page · merged across snapshots, primary 20240906210815</p><h1><strong>Compatibility modes, LibCrypt and various fixes integrated into POPStarter</strong></h1>
+<hr><div class="callout red"><div class="h">⚠ Unverified / caution</div>PATCH_7.BIN (existence unconfirmed) State plainly: no primary file or definition survives; it is absent from the wiki, the r13 CHANGES.TXT, the IGR download table, and the community manual (which skips from PATCH_6 to PATCH_8). The &#x27;2014 krHACKen forced mode 0x06&#x27; vs &#x27;obsolete Mode 7&#x27; framings are community lore only. Explicitly distinguish it from the VERIFIED TROJAN_7.BIN game-fix bundle, which is a different file.</div>
+<div class="callout amber"><div class="h">⚖ Conflicting sources</div>PATCH_9.BIN filename collision (A) STOCK PATCH_9.BIN == $NOPAL, disables the auto PAL patcher so a PAL VCD runs in POPS native NTSC (wiki already calls it &#x27;obsolete (still working tho)&#x27;). (B) The 2020-03-21 krHACKen file that REUSES the name PATCH_9.BIN to disable the bugged ELF loader and restore IGR-to-OPL; PATCH_9.7z MD5 9db1e18bae92c4991e3de7e2a752558c (188 B), distributed via the IGR &#x27;Trojans and Patches&#x27; thread. Same filename, different binary - never mix them.</div><h2>Per-game compatibility database</h2><p class="lead">krHACKen's integrated per-game fixes, LibCrypt cracks and compatibility modes — the full recovered database (Driver 2, Metal Gear Solid, DonPachi, Tomb Raider and hundreds more).</p><p class="prov-inline">📎 from the recovered <a href="wiki/automated.html">Automated</a> wiki page · merged across snapshots, primary 20240906210815</p><h2 id="compatibility-modes-libcrypt-and-various-fixes-integrated-into-popstarter"><strong>Compatibility modes, LibCrypt and various fixes integrated into POPStarter</strong></h2>
 <p><em>(Earliest snapshot 2017-06-29 titled this page "LC Cracks, crash fixes &amp; compatibility modes integrated into POPStarter".)</em></p>
 <hr>
 
@@ -398,141 +399,141 @@
 </blockquote>
 <hr>
 
-<h3><em>Compatibility modes :</em></h3>
+<h3 id="compatibility-modes"><em>Compatibility modes :</em></h3>
 <p>POPStarter Revision 13 Beta 2019/06/05 auto-activates <a href="wiki/compatibility.html">compatibility modes</a> for the following games <em>(older snapshots labelled this build "Revision 13 RIP 06")</em> :</p>
 <ul>
 <li>
-<p>40 Winks (SLUS-00874) : $COMPATIBILITY_0×04</p>
+<p>40 Winks (SLUS-00874) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>ASCII Entertainment Demo CD (SLUS-90010) : $COMPATIBILITY_0×04</p>
+<p>ASCII Entertainment Demo CD (SLUS-90010) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>ATV: Quad Power Racing (SLES-02822) : $COMPATIBILITY_0×04</p>
+<p>ATV: Quad Power Racing (SLES-02822) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>ATV: Quad Power Racing (SLUS-01137) : $COMPATIBILITY_0×04</p>
+<p>ATV: Quad Power Racing (SLUS-01137) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
 <p>Action Man: Destruction X (SLES-03083) : $SUBCDSTATUS</p>
 </li>
 <li>
-<p>Akumajou Dracula X: Gekka No Yasoukyoku v1.0 (SLPM-86023) : $COMPATIBILITY_0×01</p>
+<p>Akumajou Dracula X: Gekka No Yasoukyoku v1.0 (SLPM-86023) : $COMPATIBILITY_0x01</p>
 </li>
 <li>
-<p>Akumajou Dracula X: Gekka No Yasoukyoku v1.1 (SLPM-86023) : $COMPATIBILITY_0×01</p>
+<p>Akumajou Dracula X: Gekka No Yasoukyoku v1.1 (SLPM-86023) : $COMPATIBILITY_0x01</p>
 </li>
 <li>
-<p>Akumajou Dracula X: Gekka No Yasoukyoku v1.2 (SLPM-86023) : $COMPATIBILITY_0×01</p>
+<p>Akumajou Dracula X: Gekka No Yasoukyoku v1.2 (SLPM-86023) : $COMPATIBILITY_0x01</p>
 </li>
 <li>
-<p>Akumajou Dracula X: Gekka No Yasoukyoku v1.2 (SLPM-86023) : $COMPATIBILITY_0×01<br />
+<p>Akumajou Dracula X: Gekka No Yasoukyoku v1.2 (SLPM-86023) : $COMPATIBILITY_0x01<br />
 <em>(2017 snapshot identifies the second v1.2 as "En by Gemini+Throughhim413 v1.0")</em></p>
 </li>
 <li>
-<p>Apocalypse (SLES-00460) : $COMPATIBILITY_0×01</p>
+<p>Apocalypse (SLES-00460) : $COMPATIBILITY_0x01</p>
 </li>
 <li>
-<p>Apocalypse (SLES-00834) : $COMPATIBILITY_0×01</p>
+<p>Apocalypse (SLES-00834) : $COMPATIBILITY_0x01</p>
 </li>
 <li>
-<p>Apocalypse (SLES-00835, Megera) : $COMPATIBILITY_0×01</p>
+<p>Apocalypse (SLES-00835, Megera) : $COMPATIBILITY_0x01</p>
 </li>
 <li>
-<p>Apocalypse (SLES-01463) : $COMPATIBILITY_0×01</p>
+<p>Apocalypse (SLES-01463) : $COMPATIBILITY_0x01</p>
 </li>
 <li>
-<p>Apocalypse (SLUS-00373) : $COMPATIBILITY_0×01</p>
+<p>Apocalypse (SLUS-00373) : $COMPATIBILITY_0x01</p>
 </li>
 <li>
-<p>BDFL Manager 2001 (SLES-02977) : $COMPATIBILITY_0×04</p>
+<p>BDFL Manager 2001 (SLES-02977) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>BDFL Manager 2002 (SLES-03605) : $COMPATIBILITY_0×04</p>
+<p>BDFL Manager 2002 (SLES-03605) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Beat Mania 6th Mix + Core Remix (SLPM-87012) : $COMPATIBILITY_0×01</p>
+<p>Beat Mania 6th Mix + Core Remix (SLPM-87012) : $COMPATIBILITY_0x01</p>
 </li>
 <li>
-<p>Beat Mania 6th Mix + Core Remix (SLPM-87012, R18) : $COMPATIBILITY_0×01</p>
+<p>Beat Mania 6th Mix + Core Remix (SLPM-87012, R18) : $COMPATIBILITY_0x01</p>
 </li>
 <li>
-<p>Bio Hazard v1.1 (SLPS-00222) : $COMPATIBILITY_0×05</p>
+<p>Bio Hazard v1.1 (SLPS-00222) : $COMPATIBILITY_0x05</p>
 </li>
 <li>
-<p>Bio Hazard: Director's Cut (SLPS-00998) : $COMPATIBILITY_0×05</p>
+<p>Bio Hazard: Director's Cut (SLPS-00998) : $COMPATIBILITY_0x05</p>
 </li>
 <li>
-<p>Bio Hazard: Director's Cut: Dual Shock Ver. (SLPS-01512) : $COMPATIBILITY_0×05</p>
+<p>Bio Hazard: Director's Cut: Dual Shock Ver. (SLPS-01512) : $COMPATIBILITY_0x05</p>
 </li>
 <li>
-<p>Bloody Roar II (SCUS-94424) : $COMPATIBILITY_0×04</p>
+<p>Bloody Roar II (SCUS-94424) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Bust A Groove (SCUS-94263) : $COMPATIBILITY_0×04</p>
+<p>Bust A Groove (SCUS-94263) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Bust A Groove 2 (SLUS-01159) : $COMPATIBILITY_0×04</p>
+<p>Bust A Groove 2 (SLUS-01159) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Bust A Move 2: Dance Tengoku Mix (SLPM-86219) : $COMPATIBILITY_0×04</p>
+<p>Bust A Move 2: Dance Tengoku Mix (SLPM-86219) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Bust A Move: Dance &amp; Rhythm Action v1.0 (SLPS-01232) : $COMPATIBILITY_0×04</p>
+<p>Bust A Move: Dance &amp; Rhythm Action v1.0 (SLPS-01232) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Bust A Move: Dance &amp; Rhythm Action v1.1 (SLPS-01232) : $COMPATIBILITY_0×04</p>
+<p>Bust A Move: Dance &amp; Rhythm Action v1.1 (SLPS-01232) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Bust-A-Groove (SCES-01313) : $COMPATIBILITY_0×04</p>
+<p>Bust-A-Groove (SCES-01313) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Capcom Generation: Dai 5 Shuu Kakutouka Tachi (SLPS-01725) : $COMPATIBILITY_0×01</p>
+<p>Capcom Generation: Dai 5 Shuu Kakutouka Tachi (SLPS-01725) : $COMPATIBILITY_0x01</p>
 </li>
 <li>
-<p>Captain Tsubasa J: Get In The Tomorrow (SLPS-00310) : $COMPATIBILITY_0×04</p>
+<p>Captain Tsubasa J: Get In The Tomorrow (SLPS-00310) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Castlevania: Symphony Of The Night (SLES-00524) : $COMPATIBILITY_0×01</p>
+<p>Castlevania: Symphony Of The Night (SLES-00524) : $COMPATIBILITY_0x01</p>
 </li>
 <li>
-<p>Castlevania: Symphony Of The Night (SLUS-00067) : $COMPATIBILITY_0×01</p>
+<p>Castlevania: Symphony Of The Night (SLUS-00067) : $COMPATIBILITY_0x01</p>
 </li>
 <li>
-<p>Chessmaster II (SLES-02117) : $COMPATIBILITY_0×04</p>
+<p>Chessmaster II (SLES-02117) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Chrono Cross (Disc 1) (SLUS-01041) : $COMPATIBILITY_0×04</p>
+<p>Chrono Cross (Disc 1) (SLUS-01041) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Chrono Cross (Disc 2) (SLUS-01080) : $COMPATIBILITY_0×04</p>
+<p>Chrono Cross (Disc 2) (SLUS-01080) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Circuit Breakers (SLUS-00697) : $COMPATIBILITY_0×04</p>
+<p>Circuit Breakers (SLUS-00697) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Clock Tower (SLES-00870) : $COMPATIBILITY_0×04</p>
+<p>Clock Tower (SLES-00870) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Clock Tower (SLES-00871) : $COMPATIBILITY_0×04</p>
+<p>Clock Tower (SLES-00871) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Clock Tower (SLUS-00539) : $COMPATIBILITY_0×04</p>
+<p>Clock Tower (SLUS-00539) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Clock Tower 2 (SLPS-00657) : $COMPATIBILITY_0×04</p>
+<p>Clock Tower 2 (SLPS-00657) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Clock Tower 2 (Taikenban) (SLPM-80063) : $COMPATIBILITY_0×04</p>
+<p>Clock Tower 2 (Taikenban) (SLPM-80063) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Clock Tower II: The Struggle Within (SLUS-00695) : $COMPATIBILITY_0×04</p>
+<p>Clock Tower II: The Struggle Within (SLUS-00695) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Clock Tower II: The Struggle Within (SLUS-00695, RGR) : $COMPATIBILITY_0×04</p>
+<p>Clock Tower II: The Struggle Within (SLUS-00695, RGR) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Clock Tower: Ghost Head (SLPS-01290) : $COMPATIBILITY_0×04</p>
+<p>Clock Tower: Ghost Head (SLPS-01290) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
 <p>Codename: Tenka (SCUS-94409, Kudos) : $NOVMC1</p>
@@ -550,383 +551,383 @@
 <p>Colin McRae Rally 2.0 v1.1 (SLES-02605) : $CODECACHE_ADDON_0</p>
 </li>
 <li>
-<p>Colony Wars (Disc 1) (SLES-00860) : $COMPATIBILITY_0×02 $COMPATIBILITY_0×04</p>
+<p>Colony Wars (Disc 1) (SLES-00860) : $COMPATIBILITY_0x02 $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Colony Wars (Disc 1) (SLES-00861) : $COMPATIBILITY_0×02 $COMPATIBILITY_0×04</p>
+<p>Colony Wars (Disc 1) (SLES-00861) : $COMPATIBILITY_0x02 $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Colony Wars (Disc 1) (SLUS-00543) : $COMPATIBILITY_0×02 $COMPATIBILITY_0×04</p>
+<p>Colony Wars (Disc 1) (SLUS-00543) : $COMPATIBILITY_0x02 $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Colony Wars (Disc 2) (SLES-10860) : $COMPATIBILITY_0×02 $COMPATIBILITY_0×04</p>
+<p>Colony Wars (Disc 2) (SLES-10860) : $COMPATIBILITY_0x02 $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Colony Wars (Disc 2) (SLES-10861) : $COMPATIBILITY_0×02 $COMPATIBILITY_0×04</p>
+<p>Colony Wars (Disc 2) (SLES-10861) : $COMPATIBILITY_0x02 $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Colony Wars (Disc 2) (SLUS-00554) : $COMPATIBILITY_0×02 $COMPATIBILITY_0×04</p>
+<p>Colony Wars (Disc 2) (SLUS-00554) : $COMPATIBILITY_0x02 $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Colony Wars (SLED-00091) : $COMPATIBILITY_0×02 $COMPATIBILITY_0×04</p>
+<p>Colony Wars (SLED-00091) : $COMPATIBILITY_0x02 $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Colony Wars: Red Sun (SCES-01924) : $COMPATIBILITY_0×02 $COMPATIBILITY_0×04</p>
+<p>Colony Wars: Red Sun (SCES-01924) : $COMPATIBILITY_0x02 $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Colony Wars: Red Sun (SCES-02621) : $COMPATIBILITY_0×02 $COMPATIBILITY_0×04</p>
+<p>Colony Wars: Red Sun (SCES-02621) : $COMPATIBILITY_0x02 $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Colony Wars: Red Sun (SCES-02623) : $COMPATIBILITY_0×02 $COMPATIBILITY_0×04</p>
+<p>Colony Wars: Red Sun (SCES-02623) : $COMPATIBILITY_0x02 $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Colony Wars: Red Sun (SLUS-00866) : $COMPATIBILITY_0×02 $COMPATIBILITY_0×04</p>
+<p>Colony Wars: Red Sun (SLUS-00866) : $COMPATIBILITY_0x02 $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Colony Wars: Vengeance (SLES-01392) : $COMPATIBILITY_0×02 $COMPATIBILITY_0×04</p>
+<p>Colony Wars: Vengeance (SLES-01392) : $COMPATIBILITY_0x02 $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Colony Wars: Vengeance (SLES-01405) : $COMPATIBILITY_0×02 $COMPATIBILITY_0×04</p>
+<p>Colony Wars: Vengeance (SLES-01405) : $COMPATIBILITY_0x02 $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Colony Wars: Vengeance (SLES-01408) : $COMPATIBILITY_0×02 $COMPATIBILITY_0×04</p>
+<p>Colony Wars: Vengeance (SLES-01408) : $COMPATIBILITY_0x02 $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Colony Wars: Vengeance (SLUS-00722) : $COMPATIBILITY_0×02 $COMPATIBILITY_0×04</p>
+<p>Colony Wars: Vengeance (SLUS-00722) : $COMPATIBILITY_0x02 $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Cool Boarders (SCES-00568) : $COMPATIBILITY_0×03</p>
+<p>Cool Boarders (SCES-00568) : $COMPATIBILITY_0x03</p>
 </li>
 <li>
-<p>Cool Boarders (SCUS-94356) : $COMPATIBILITY_0×03</p>
+<p>Cool Boarders (SCUS-94356) : $COMPATIBILITY_0x03</p>
 </li>
 <li>
-<p>Cool Boarders 2 (SCES-00992) : $COMPATIBILITY_0×03</p>
+<p>Cool Boarders 2 (SCES-00992) : $COMPATIBILITY_0x03</p>
 </li>
 <li>
-<p>Cool Boarders 2 (SCUS-94358) : $COMPATIBILITY_0×03</p>
+<p>Cool Boarders 2 (SCUS-94358) : $COMPATIBILITY_0x03</p>
 </li>
 <li>
-<p>Cool Boarders 2: Killing Session (SLPS-00967) : $COMPATIBILITY_0×03</p>
+<p>Cool Boarders 2: Killing Session (SLPS-00967) : $COMPATIBILITY_0x03</p>
 </li>
 <li>
-<p>Critical Blow (SLPS-01044) : $COMPATIBILITY_0×04</p>
+<p>Critical Blow (SLPS-01044) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Cybernetic Empire (Disc 1) (SLPS-01912) : $COMPATIBILITY_0×04</p>
+<p>Cybernetic Empire (Disc 1) (SLPS-01912) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Cybernetic Empire (Disc 2) (SLPS-01913) : $COMPATIBILITY_0×04</p>
+<p>Cybernetic Empire (Disc 2) (SLPS-01913) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Cybernetic Empire (SLPS-01913, RGR) : $COMPATIBILITY_0×04</p>
+<p>Cybernetic Empire (SLPS-01913, RGR) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Dance Dance Revolution: Disney's Rave (SLPM-86667) : $COMPATIBILITY_0×06 <em>(from 2017 snapshot)</em></p>
+<p>Dance Dance Revolution: Disney's Rave (SLPM-86667) : $COMPATIBILITY_0x06 <em>(from 2017 snapshot)</em></p>
 </li>
 <li>
-<p>Dance Dance Revolution: Disney's Rave (SLPM-86667, R18) : $COMPATIBILITY_0×06 <em>(from 2017 snapshot)</em></p>
+<p>Dance Dance Revolution: Disney's Rave (SLPM-86667, R18) : $COMPATIBILITY_0x06 <em>(from 2017 snapshot)</em></p>
 </li>
 <li>
-<p>Dead Or Alive (SCES-01259) : $COMPATIBILITY_0×04</p>
+<p>Dead Or Alive (SCES-01259) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Dead Or Alive (SLPS-01289) : $COMPATIBILITY_0×04 $COMPATIBILITY_0×06</p>
+<p>Dead Or Alive (SLPS-01289) : $COMPATIBILITY_0x04 $COMPATIBILITY_0x06</p>
 </li>
 <li>
-<p>Dead Or Alive (SLUS-00606) : $COMPATIBILITY_0×04</p>
+<p>Dead Or Alive (SLUS-00606) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Die Hard Trilogy (SLES-00445) : $COMPATIBILITY_0×03</p>
+<p>Die Hard Trilogy (SLES-00445) : $COMPATIBILITY_0x03</p>
 </li>
 <li>
-<p>Die Hard Trilogy v1.0 (SLUS-00119) : $COMPATIBILITY_0×03</p>
+<p>Die Hard Trilogy v1.0 (SLUS-00119) : $COMPATIBILITY_0x03</p>
 </li>
 <li>
-<p>Die Hard Trilogy v1.1 (SLUS-00119) : $COMPATIBILITY_0×03</p>
+<p>Die Hard Trilogy v1.1 (SLUS-00119) : $COMPATIBILITY_0x03</p>
 </li>
 <li>
-<p>Disney Fais Ton Histoire!: Mulan (SCES-02004) : $COMPATIBILITY_0×01</p>
+<p>Disney Fais Ton Histoire!: Mulan (SCES-02004) : $COMPATIBILITY_0x01</p>
 </li>
 <li>
-<p>Disney Libro Animato Creativo: Mulan (SCES-02006) : $COMPATIBILITY_0×01</p>
+<p>Disney Libro Animato Creativo: Mulan (SCES-02006) : $COMPATIBILITY_0x01</p>
 </li>
 <li>
-<p>Disney's Aventura Interactiva: Mulan (SCES-02007) : $COMPATIBILITY_0×01</p>
+<p>Disney's Aventura Interactiva: Mulan (SCES-02007) : $COMPATIBILITY_0x01</p>
 </li>
 <li>
-<p>Disney's Story Studio: Mulan (SCES-01695) : $COMPATIBILITY_0×01</p>
+<p>Disney's Story Studio: Mulan (SCES-01695) : $COMPATIBILITY_0x01</p>
 </li>
 <li>
-<p>Disney's Verhalenstudio: Mulan (SCES-02264) : $COMPATIBILITY_0×01</p>
+<p>Disney's Verhalenstudio: Mulan (SCES-02264) : $COMPATIBILITY_0x01</p>
 </li>
 <li>
-<p>Disneys Interaktive Abenteuer: Mulan (SCES-02005) : $COMPATIBILITY_0×01</p>
+<p>Disneys Interaktive Abenteuer: Mulan (SCES-02005) : $COMPATIBILITY_0x01</p>
 </li>
 <li>
-<p>DonPachi (SLPS-00548) : $COMPATIBILITY_0×06 <em>(from 2017 snapshot)</em></p>
+<p>DonPachi (SLPS-00548) : $COMPATIBILITY_0x06 <em>(from 2017 snapshot)</em></p>
 </li>
 <li>
-<p>Double Dragon (SLPS-00191) : $COMPATIBILITY_0×03</p>
+<p>Double Dragon (SLPS-00191) : $COMPATIBILITY_0x03</p>
 </li>
 <li>
-<p>Dragon Valor (Disc 1) (SCES-01705) : $COMPATIBILITY_0×04</p>
+<p>Dragon Valor (Disc 1) (SCES-01705) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Dragon Valor (Disc 1) (SCES-02565) : $COMPATIBILITY_0×04</p>
+<p>Dragon Valor (Disc 1) (SCES-02565) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Dragon Valor (Disc 1) (SCES-02566) : $COMPATIBILITY_0×04</p>
+<p>Dragon Valor (Disc 1) (SCES-02566) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Dragon Valor (Disc 1) (SCES-02567) : $COMPATIBILITY_0×04</p>
+<p>Dragon Valor (Disc 1) (SCES-02567) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Dragon Valor (Disc 1) (SCES-02568) : $COMPATIBILITY_0×04</p>
+<p>Dragon Valor (Disc 1) (SCES-02568) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Dragon Valor (Disc 1) (SLPS-02190) : $COMPATIBILITY_0×04</p>
+<p>Dragon Valor (Disc 1) (SLPS-02190) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Dragon Valor (Disc 1) (SLUS-01092) : $COMPATIBILITY_0×04</p>
+<p>Dragon Valor (Disc 1) (SLUS-01092) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Dragon Valor (Disc 2) (SCES-11705) : $COMPATIBILITY_0×04</p>
+<p>Dragon Valor (Disc 2) (SCES-11705) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Dragon Valor (Disc 2) (SCES-12565) : $COMPATIBILITY_0×04</p>
+<p>Dragon Valor (Disc 2) (SCES-12565) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Dragon Valor (Disc 2) (SCES-12566) : $COMPATIBILITY_0×04</p>
+<p>Dragon Valor (Disc 2) (SCES-12566) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Dragon Valor (Disc 2) (SCES-12567) : $COMPATIBILITY_0×04</p>
+<p>Dragon Valor (Disc 2) (SCES-12567) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Dragon Valor (Disc 2) (SCES-12568) : $COMPATIBILITY_0×04</p>
+<p>Dragon Valor (Disc 2) (SCES-12568) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Dragon Valor (Disc 2) (SLPS-02191) : $COMPATIBILITY_0×04</p>
+<p>Dragon Valor (Disc 2) (SLPS-02191) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Dragon Valor (Disc 2) (SLUS-01164) : $COMPATIBILITY_0×04</p>
+<p>Dragon Valor (Disc 2) (SLUS-01164) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Enigma (Disc 1) (SLPS-01351) : $COMPATIBILITY_0×04</p>
+<p>Enigma (Disc 1) (SLPS-01351) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Enigma (Disc 2) (SLPS-01352) : $COMPATIBILITY_0×04</p>
+<p>Enigma (Disc 2) (SLPS-01352) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Final Fantasy IX (Disc 1) (SLES-02965) : $COMPATIBILITY_0×04</p>
+<p>Final Fantasy IX (Disc 1) (SLES-02965) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Final Fantasy IX (Disc 1) (SLES-02966) : $COMPATIBILITY_0×04</p>
+<p>Final Fantasy IX (Disc 1) (SLES-02966) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Final Fantasy IX (Disc 1) (SLES-02967) : $COMPATIBILITY_0×04</p>
+<p>Final Fantasy IX (Disc 1) (SLES-02967) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Final Fantasy IX (Disc 1) (SLES-02968) : $COMPATIBILITY_0×04</p>
+<p>Final Fantasy IX (Disc 1) (SLES-02968) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Final Fantasy IX (Disc 1) (SLES-02969) : $COMPATIBILITY_0×04</p>
+<p>Final Fantasy IX (Disc 1) (SLES-02969) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Final Fantasy IX (Disc 1) (SLPS-02000) : $COMPATIBILITY_0×04</p>
+<p>Final Fantasy IX (Disc 1) (SLPS-02000) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Final Fantasy IX (Disc 1) (SLUS-01251) : $COMPATIBILITY_0×04</p>
+<p>Final Fantasy IX (Disc 1) (SLUS-01251) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Final Fantasy IX (Disc 2) (SLES-12965) : $COMPATIBILITY_0×04</p>
+<p>Final Fantasy IX (Disc 2) (SLES-12965) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Final Fantasy IX (Disc 2) (SLES-12966) : $COMPATIBILITY_0×04</p>
+<p>Final Fantasy IX (Disc 2) (SLES-12966) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Final Fantasy IX (Disc 2) (SLES-12967) : $COMPATIBILITY_0×04</p>
+<p>Final Fantasy IX (Disc 2) (SLES-12967) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Final Fantasy IX (Disc 2) (SLES-12968) : $COMPATIBILITY_0×04</p>
+<p>Final Fantasy IX (Disc 2) (SLES-12968) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Final Fantasy IX (Disc 2) (SLES-12969) : $COMPATIBILITY_0×04</p>
+<p>Final Fantasy IX (Disc 2) (SLES-12969) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Final Fantasy IX (Disc 2) (SLPS-02001) : $COMPATIBILITY_0×04</p>
+<p>Final Fantasy IX (Disc 2) (SLPS-02001) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Final Fantasy IX (Disc 2) (SLUS-01295) : $COMPATIBILITY_0×04</p>
+<p>Final Fantasy IX (Disc 2) (SLUS-01295) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Final Fantasy IX (Disc 3) (SLES-22965) : $COMPATIBILITY_0×04</p>
+<p>Final Fantasy IX (Disc 3) (SLES-22965) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Final Fantasy IX (Disc 3) (SLES-22966) : $COMPATIBILITY_0×04</p>
+<p>Final Fantasy IX (Disc 3) (SLES-22966) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Final Fantasy IX (Disc 3) (SLES-22967) : $COMPATIBILITY_0×04</p>
+<p>Final Fantasy IX (Disc 3) (SLES-22967) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Final Fantasy IX (Disc 3) (SLES-22968) : $COMPATIBILITY_0×04</p>
+<p>Final Fantasy IX (Disc 3) (SLES-22968) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Final Fantasy IX (Disc 3) (SLES-22969) : $COMPATIBILITY_0×04</p>
+<p>Final Fantasy IX (Disc 3) (SLES-22969) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Final Fantasy IX (Disc 3) (SLPS-02002) : $COMPATIBILITY_0×04</p>
+<p>Final Fantasy IX (Disc 3) (SLPS-02002) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Final Fantasy IX (Disc 3) (SLUS-01296) : $COMPATIBILITY_0×04</p>
+<p>Final Fantasy IX (Disc 3) (SLUS-01296) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Final Fantasy IX (Disc 4) (SLES-32965) : $COMPATIBILITY_0×04</p>
+<p>Final Fantasy IX (Disc 4) (SLES-32965) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Final Fantasy IX (Disc 4) (SLES-32966) : $COMPATIBILITY_0×04</p>
+<p>Final Fantasy IX (Disc 4) (SLES-32966) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Final Fantasy IX (Disc 4) (SLES-32967) : $COMPATIBILITY_0×04</p>
+<p>Final Fantasy IX (Disc 4) (SLES-32967) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Final Fantasy IX (Disc 4) (SLES-32968) : $COMPATIBILITY_0×04</p>
+<p>Final Fantasy IX (Disc 4) (SLES-32968) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Final Fantasy IX (Disc 4) (SLES-32969) : $COMPATIBILITY_0×04</p>
+<p>Final Fantasy IX (Disc 4) (SLES-32969) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Final Fantasy IX (Disc 4) (SLPS-02003) : $COMPATIBILITY_0×04</p>
+<p>Final Fantasy IX (Disc 4) (SLPS-02003) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Final Fantasy IX (Disc 4) (SLUS-01297) : $COMPATIBILITY_0×04</p>
+<p>Final Fantasy IX (Disc 4) (SLUS-01297) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Frogger (SLES-00704) : $COMPATIBILITY_0×04</p>
+<p>Frogger (SLES-00704) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Frogger (SLUS-00506) : $COMPATIBILITY_0×04</p>
+<p>Frogger (SLUS-00506) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Future Racer (SLES-03508) : $COMPATIBILITY_0×04<br />
-<em>(2017 snapshot lists this as "Crash Fix – Compatibility Mode 0×04")</em></p>
+<p>Future Racer (SLES-03508) : $COMPATIBILITY_0x04<br />
+<em>(2017 snapshot lists this as "Crash Fix – Compatibility Mode 0x04")</em></p>
 </li>
 <li>
-<p>Gex 3D: Enter The Gecko (SLES-00596) : $COMPATIBILITY_0×04</p>
+<p>Gex 3D: Enter The Gecko (SLES-00596) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Gran Turismo (PAPX-90026) : $COMPATIBILITY_0×04</p>
+<p>Gran Turismo (PAPX-90026) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Gran Turismo (SCES-00984) : $COMPATIBILITY_0×04</p>
+<p>Gran Turismo (SCES-00984) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Gran Turismo (SCPS-10045) : $COMPATIBILITY_0×04</p>
+<p>Gran Turismo (SCPS-10045) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Gran Turismo 2 (Arcade Mode) v1.0 (SCUS-94455) : $COMPATIBILITY_0×01 $COMPATIBILITY_0×04</p>
+<p>Gran Turismo 2 (Arcade Mode) v1.0 (SCUS-94455) : $COMPATIBILITY_0x01 $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Gran Turismo 2 (Arcade Mode) v1.1 (SCUS-94455) : $COMPATIBILITY_0×01 $COMPATIBILITY_0×04</p>
+<p>Gran Turismo 2 (Arcade Mode) v1.1 (SCUS-94455) : $COMPATIBILITY_0x01 $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Gran Turismo 2 (Disc 1) (Arcade Mode) (SCES-02380) : $COMPATIBILITY_0×01 $COMPATIBILITY_0×04</p>
+<p>Gran Turismo 2 (Disc 1) (Arcade Mode) (SCES-02380) : $COMPATIBILITY_0x01 $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Gran Turismo 2 (Disc 1) (Arcade) (SCPS-10116) : $COMPATIBILITY_0×01 $COMPATIBILITY_0×04</p>
+<p>Gran Turismo 2 (Disc 1) (Arcade) (SCPS-10116) : $COMPATIBILITY_0x01 $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Gran Turismo 2 (Disc 2) (GT Mode) (SCES-12380) : $COMPATIBILITY_0×01 $COMPATIBILITY_0×04</p>
+<p>Gran Turismo 2 (Disc 2) (GT Mode) (SCES-12380) : $COMPATIBILITY_0x01 $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Gran Turismo 2 (Disc 2) (Gran Turismo) v1.0 (SCPS-10117) : $COMPATIBILITY_0×01 $COMPATIBILITY_0×04</p>
+<p>Gran Turismo 2 (Disc 2) (Gran Turismo) v1.0 (SCPS-10117) : $COMPATIBILITY_0x01 $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Gran Turismo 2 (Disc 2) (Gran Turismo) v1.1 (SCPS-10117) : $COMPATIBILITY_0×01 $COMPATIBILITY_0×04</p>
+<p>Gran Turismo 2 (Disc 2) (Gran Turismo) v1.1 (SCPS-10117) : $COMPATIBILITY_0x01 $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Gran Turismo 2 (Simulation Mode) v1.0 (SCUS-94488) : $COMPATIBILITY_0×01 $COMPATIBILITY_0×04</p>
+<p>Gran Turismo 2 (Simulation Mode) v1.0 (SCUS-94488) : $COMPATIBILITY_0x01 $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Gran Turismo 2 (Simulation Mode) v1.1 (SCUS-94488) : $COMPATIBILITY_0×01 $COMPATIBILITY_0×04</p>
+<p>Gran Turismo 2 (Simulation Mode) v1.1 (SCUS-94488) : $COMPATIBILITY_0x01 $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Gran Turismo 2 (Simulation Mode) v1.2 (SCUS-94488) : $COMPATIBILITY_0×01 $COMPATIBILITY_0×04</p>
+<p>Gran Turismo 2 (Simulation Mode) v1.2 (SCUS-94488) : $COMPATIBILITY_0x01 $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Gran Turismo v1.0 (SCUS-94194) : $COMPATIBILITY_0×04</p>
+<p>Gran Turismo v1.0 (SCUS-94194) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Gran Turismo v1.1 (SCUS-94194) : $COMPATIBILITY_0×04</p>
+<p>Gran Turismo v1.1 (SCUS-94194) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Grandia (Disc 1) (SCUS-94457) : $COMPATIBILITY_0×04</p>
+<p>Grandia (Disc 1) (SCUS-94457) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Grandia (Disc 1) (SLES-02397) : $COMPATIBILITY_0×04</p>
+<p>Grandia (Disc 1) (SLES-02397) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Grandia (Disc 1) (SLES-02398) : $COMPATIBILITY_0×04</p>
+<p>Grandia (Disc 1) (SLES-02398) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Grandia (Disc 1) (SLES-02399) : $COMPATIBILITY_0×04</p>
+<p>Grandia (Disc 1) (SLES-02399) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Grandia (Disc 1) (SLPS-02124) : $COMPATIBILITY_0×04</p>
+<p>Grandia (Disc 1) (SLPS-02124) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Grandia (Disc 2) (SCUS-94465) : $COMPATIBILITY_0×04</p>
+<p>Grandia (Disc 2) (SCUS-94465) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Grandia (Disc 2) (SLES-12397) : $COMPATIBILITY_0×04</p>
+<p>Grandia (Disc 2) (SLES-12397) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Grandia (Disc 2) (SLES-12398) : $COMPATIBILITY_0×04</p>
+<p>Grandia (Disc 2) (SLES-12398) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Grandia (Disc 2) (SLES-12399) : $COMPATIBILITY_0×04</p>
+<p>Grandia (Disc 2) (SLES-12399) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Grandia (Disc 2) (SLPS-02125) : $COMPATIBILITY_0×04</p>
+<p>Grandia (Disc 2) (SLPS-02125) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Grandia: Prologue (Taikenban) (SLPM-80297) : $COMPATIBILITY_0×04</p>
+<p>Grandia: Prologue (Taikenban) (SLPM-80297) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Jumping Flash! (SCUS-94103) : $COMPATIBILITY_0×01 $COMPATIBILITY_0×04</p>
+<p>Jumping Flash! (SCUS-94103) : $COMPATIBILITY_0x01 $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Jumping Flash! 2 (SCUS-94108) : $COMPATIBILITY_0×04</p>
+<p>Jumping Flash! 2 (SCUS-94108) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>LMA Manager 2001 (SLES-02975) : $COMPATIBILITY_0×04</p>
+<p>LMA Manager 2001 (SLES-02975) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>LMA Manager 2002 (SLES-03603) : $COMPATIBILITY_0×04</p>
+<p>LMA Manager 2002 (SLES-03603) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Legaia Densetsu (SCPS-10059) : $COMPATIBILITY_0×02 $COMPATIBILITY_0×04</p>
+<p>Legaia Densetsu (SCPS-10059) : $COMPATIBILITY_0x02 $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Legend Of Legaia (SCES-01752) : $COMPATIBILITY_0×02 $COMPATIBILITY_0×04</p>
+<p>Legend Of Legaia (SCES-01752) : $COMPATIBILITY_0x02 $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Legend Of Legaia (SCES-01944) : $COMPATIBILITY_0×02 $COMPATIBILITY_0×04</p>
+<p>Legend Of Legaia (SCES-01944) : $COMPATIBILITY_0x02 $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Legend Of Legaia (SCES-01945) : $COMPATIBILITY_0×02 $COMPATIBILITY_0×04</p>
+<p>Legend Of Legaia (SCES-01945) : $COMPATIBILITY_0x02 $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Legend Of Legaia (SCES-01946) : $COMPATIBILITY_0×02 $COMPATIBILITY_0×04</p>
+<p>Legend Of Legaia (SCES-01946) : $COMPATIBILITY_0x02 $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Legend Of Legaia (SCES-01947) : $COMPATIBILITY_0×02 $COMPATIBILITY_0×04</p>
+<p>Legend Of Legaia (SCES-01947) : $COMPATIBILITY_0x02 $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Legend Of Legaia (SCUS-94254) : $COMPATIBILITY_0×02 $COMPATIBILITY_0×04</p>
+<p>Legend Of Legaia (SCUS-94254) : $COMPATIBILITY_0x02 $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Legend Of Legaia (SCUS-94366) : $COMPATIBILITY_0×02 $COMPATIBILITY_0×04</p>
+<p>Legend Of Legaia (SCUS-94366) : $COMPATIBILITY_0x02 $COMPATIBILITY_0x04</p>
 </li>
 <li>
 <p>Lifeforce Tenka (SLES-00613) : $NOVMC1</p>
@@ -938,216 +939,216 @@
 <p>Lifeforce Tenka (SLES-00615) : $NOVMC1</p>
 </li>
 <li>
-<p>Manager De Liga 2001 (SLES-02979) : $COMPATIBILITY_0×04</p>
+<p>Manager De Liga 2001 (SLES-02979) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Manager De Liga 2002 (SLES-03607) : $COMPATIBILITY_0×04</p>
+<p>Manager De Liga 2002 (SLES-03607) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Marvel Super Heroes Vs. Street Fighter (SLES-01792) : $COMPATIBILITY_0×01</p>
+<p>Marvel Super Heroes Vs. Street Fighter (SLES-01792) : $COMPATIBILITY_0x01</p>
 </li>
 <li>
-<p>Marvel Super Heroes Vs. Street Fighter (SLUS-00793) : $COMPATIBILITY_0×01</p>
+<p>Marvel Super Heroes Vs. Street Fighter (SLUS-00793) : $COMPATIBILITY_0x01</p>
 </li>
 <li>
-<p>Marvel Super Heroes Vs. Street Fighter: EX Edition (SLPS-01915) : $COMPATIBILITY_0×01</p>
+<p>Marvel Super Heroes Vs. Street Fighter: EX Edition (SLPS-01915) : $COMPATIBILITY_0x01</p>
 </li>
 <li>
-<p>Marvel Super Heroes Vs. Street Fighter: EX Edition (Taikenban) (SLPM-80376) : $COMPATIBILITY_0×01</p>
+<p>Marvel Super Heroes Vs. Street Fighter: EX Edition (Taikenban) (SLPM-80376) : $COMPATIBILITY_0x01</p>
 </li>
 <li>
-<p>Marvel Vs. Capcom: Clash Of Super Heroes (SLES-02305) : $COMPATIBILITY_0×01</p>
+<p>Marvel Vs. Capcom: Clash Of Super Heroes (SLES-02305) : $COMPATIBILITY_0x01</p>
 </li>
 <li>
-<p>Marvel Vs. Capcom: Clash Of Super Heroes (SLUS-01059) : $COMPATIBILITY_0×01</p>
+<p>Marvel Vs. Capcom: Clash Of Super Heroes (SLUS-01059) : $COMPATIBILITY_0x01</p>
 </li>
 <li>
-<p>Marvel Vs. Capcom: Clash Of Super Heroes: EX Edition (SLPS-02368) : $COMPATIBILITY_0×01</p>
+<p>Marvel Vs. Capcom: Clash Of Super Heroes: EX Edition (SLPS-02368) : $COMPATIBILITY_0x01</p>
 </li>
 <li>
-<p>MediEvil (SCES-00311) : $COMPATIBILITY_0×01<br />
-<em>(2017 snapshot lists this as "MediEvil v1.1 (SCES-00311) – LibCrypt Crack – Compatibility Mode 0×01")</em></p>
+<p>MediEvil (SCES-00311) : $COMPATIBILITY_0x01<br />
+<em>(2017 snapshot lists this as "MediEvil v1.1 (SCES-00311) – LibCrypt Crack – Compatibility Mode 0x01")</em></p>
 </li>
 <li>
-<p>MediEvil (SCES-01492) : $COMPATIBILITY_0×01</p>
+<p>MediEvil (SCES-01492) : $COMPATIBILITY_0x01</p>
 </li>
 <li>
-<p>MediEvil (SCES-01493) : $COMPATIBILITY_0×01</p>
+<p>MediEvil (SCES-01493) : $COMPATIBILITY_0x01</p>
 </li>
 <li>
-<p>MediEvil (SCES-01494) : $COMPATIBILITY_0×01</p>
+<p>MediEvil (SCES-01494) : $COMPATIBILITY_0x01</p>
 </li>
 <li>
-<p>MediEvil (SCES-01495) : $COMPATIBILITY_0×01</p>
+<p>MediEvil (SCES-01495) : $COMPATIBILITY_0x01</p>
 </li>
 <li>
-<p>MediEvil (SCUS-94227) : $COMPATIBILITY_0×01</p>
+<p>MediEvil (SCUS-94227) : $COMPATIBILITY_0x01</p>
 </li>
 <li>
-<p>Mega Man Legends (SLES-01485) : $COMPATIBILITY_0×04</p>
+<p>Mega Man Legends (SLES-01485) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Mega Man Legends (SLUS-00603) : $COMPATIBILITY_0×04</p>
+<p>Mega Man Legends (SLUS-00603) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Mizzurna Falls (SLPS-01783) : $COMPATIBILITY_0×04</p>
+<p>Mizzurna Falls (SLPS-01783) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Mobil 1 Rally Championship (SLES-02574) : $COMPATIBILITY_0×04</p>
+<p>Mobil 1 Rally Championship (SLES-02574) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Mobil 1 Rally Championship (SLUS-01103) : $COMPATIBILITY_0×04</p>
+<p>Mobil 1 Rally Championship (SLUS-01103) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Muppet RaceMania (SLUS-01237) : $COMPATIBILITY_0×04</p>
+<p>Muppet RaceMania (SLUS-01237) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Myst (SCUS-94602) : $COMPATIBILITY_0×04</p>
+<p>Myst (SCUS-94602) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Myst (SLES-00218) : $COMPATIBILITY_0×04</p>
+<p>Myst (SLES-00218) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Myst v1.0 (SLPS-00024) : $COMPATIBILITY_0×04</p>
+<p>Myst v1.0 (SLPS-00024) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Myst v1.1 (SLPS-91023) : $COMPATIBILITY_0×04</p>
+<p>Myst v1.1 (SLPS-91023) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>N-Gen Racing (SLES-02086) : $COMPATIBILITY_0×04<br />
-<em>(2017 snapshot lists this as "LibCrypt Crack – Compatibility Mode 0×04")</em></p>
+<p>N-Gen Racing (SLES-02086) : $COMPATIBILITY_0x04<br />
+<em>(2017 snapshot lists this as "LibCrypt Crack – Compatibility Mode 0x04")</em></p>
 </li>
 <li>
-<p>N-Gen Racing (SLUS-01155) : $COMPATIBILITY_0×04</p>
+<p>N-Gen Racing (SLUS-01155) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
 <p>Need For Speed: V-Rally (SLUS-00590) : $CODECACHE_ADDON_0</p>
 </li>
 <li>
-<p>Nightmare Creatures II (SLES-02751) : $COMPATIBILITY_0×04</p>
+<p>Nightmare Creatures II (SLES-02751) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Nightmare Creatures II (SLUS-01112) : $COMPATIBILITY_0×04</p>
+<p>Nightmare Creatures II (SLUS-01112) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>PaRappa The Rapper (SCES-00743) : $COMPATIBILITY_0×04</p>
+<p>PaRappa The Rapper (SCES-00743) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>PaRappa The Rapper (SCUS-94183) : $COMPATIBILITY_0×04</p>
+<p>PaRappa The Rapper (SCUS-94183) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Pac-Man World (SLUS-00439) : $COMPATIBILITY_0×04</p>
+<p>Pac-Man World (SLUS-00439) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Parasite Eve II (Disc 1) (SLES-02558) : $COMPATIBILITY_0×04</p>
+<p>Parasite Eve II (Disc 1) (SLES-02558) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Parasite Eve II (Disc 1) (SLES-02559) : $COMPATIBILITY_0×04</p>
+<p>Parasite Eve II (Disc 1) (SLES-02559) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Parasite Eve II (Disc 1) (SLES-02560) : $COMPATIBILITY_0×04</p>
+<p>Parasite Eve II (Disc 1) (SLES-02560) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Parasite Eve II (Disc 1) (SLES-02561) : $COMPATIBILITY_0×04</p>
+<p>Parasite Eve II (Disc 1) (SLES-02561) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Parasite Eve II (Disc 1) (SLES-02562) : $COMPATIBILITY_0×04</p>
+<p>Parasite Eve II (Disc 1) (SLES-02562) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Parasite Eve II (Disc 1) (SLPS-02480) : $COMPATIBILITY_0×04</p>
+<p>Parasite Eve II (Disc 1) (SLPS-02480) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Parasite Eve II (Disc 1) (SLUS-01042) : $COMPATIBILITY_0×04</p>
+<p>Parasite Eve II (Disc 1) (SLUS-01042) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Parasite Eve II (Disc 2) (SLES-12558) : $COMPATIBILITY_0×04</p>
+<p>Parasite Eve II (Disc 2) (SLES-12558) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Parasite Eve II (Disc 2) (SLES-12559) : $COMPATIBILITY_0×04</p>
+<p>Parasite Eve II (Disc 2) (SLES-12559) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Parasite Eve II (Disc 2) (SLES-12560) : $COMPATIBILITY_0×04</p>
+<p>Parasite Eve II (Disc 2) (SLES-12560) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Parasite Eve II (Disc 2) (SLES-12561) : $COMPATIBILITY_0×04</p>
+<p>Parasite Eve II (Disc 2) (SLES-12561) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Parasite Eve II (Disc 2) (SLES-12562) : $COMPATIBILITY_0×04</p>
+<p>Parasite Eve II (Disc 2) (SLES-12562) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Parasite Eve II (Disc 2) (SLPS-02481) : $COMPATIBILITY_0×04</p>
+<p>Parasite Eve II (Disc 2) (SLPS-02481) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Parasite Eve II (Disc 2) (SLUS-01055) : $COMPATIBILITY_0×04</p>
+<p>Parasite Eve II (Disc 2) (SLUS-01055) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Pop'n Music (SLPM-87089) : $COMPATIBILITY_0×01</p>
+<p>Pop'n Music (SLPM-87089) : $COMPATIBILITY_0x01</p>
 </li>
 <li>
-<p>Porsche Challenge (SCES-00409) : $COMPATIBILITY_0×02</p>
+<p>Porsche Challenge (SCES-00409) : $COMPATIBILITY_0x02</p>
 </li>
 <li>
-<p>Porsche Challenge (SCUS-94187) : $COMPATIBILITY_0×02</p>
+<p>Porsche Challenge (SCUS-94187) : $COMPATIBILITY_0x02</p>
 </li>
 <li>
-<p>Porsche Challenge (SIPS-60016) : $COMPATIBILITY_0×02</p>
+<p>Porsche Challenge (SIPS-60016) : $COMPATIBILITY_0x02</p>
 </li>
 <li>
-<p>Rapid Racer (SCES-00394) : $COMPATIBILITY_0×04</p>
+<p>Rapid Racer (SCES-00394) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Ray Crisis (SLES-02882) : $COMPATIBILITY_0×04</p>
+<p>Ray Crisis (SLES-02882) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Raycrisis (SLPM-86450) : $COMPATIBILITY_0×04</p>
+<p>Raycrisis (SLPM-86450) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Raycrisis: Series Termination (SLUS-01217) : $COMPATIBILITY_0×04</p>
+<p>Raycrisis: Series Termination (SLUS-01217) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Resident Evil (SLES-00200) : $COMPATIBILITY_0×05</p>
+<p>Resident Evil (SLES-00200) : $COMPATIBILITY_0x05</p>
 </li>
 <li>
-<p>Resident Evil (SLES-00227) : $COMPATIBILITY_0×05</p>
+<p>Resident Evil (SLES-00227) : $COMPATIBILITY_0x05</p>
 </li>
 <li>
-<p>Resident Evil (SLES-00228) : $COMPATIBILITY_0×05</p>
+<p>Resident Evil (SLES-00228) : $COMPATIBILITY_0x05</p>
 </li>
 <li>
-<p>Resident Evil (SLUS-00170) : $COMPATIBILITY_0×05</p>
+<p>Resident Evil (SLUS-00170) : $COMPATIBILITY_0x05</p>
 </li>
 <li>
-<p>Resident Evil: Director's Cut (SLES-00969) : $COMPATIBILITY_0×05</p>
+<p>Resident Evil: Director's Cut (SLES-00969) : $COMPATIBILITY_0x05</p>
 </li>
 <li>
-<p>Resident Evil: Director's Cut (SLES-00970) : $COMPATIBILITY_0×05</p>
+<p>Resident Evil: Director's Cut (SLES-00970) : $COMPATIBILITY_0x05</p>
 </li>
 <li>
-<p>Resident Evil: Director's Cut (SLUS-00551) : $COMPATIBILITY_0×05</p>
+<p>Resident Evil: Director's Cut (SLUS-00551) : $COMPATIBILITY_0x05</p>
 </li>
 <li>
-<p>Resident Evil: Director's Cut: Dual Shock Ver. (SLUS-00747) : $COMPATIBILITY_0×05</p>
+<p>Resident Evil: Director's Cut: Dual Shock Ver. (SLUS-00747) : $COMPATIBILITY_0x05</p>
 </li>
 <li>
-<p>Rockman Dash: Hagane No Boukenshin (SLPS-01141) : $COMPATIBILITY_0×04</p>
+<p>Rockman Dash: Hagane No Boukenshin (SLPS-01141) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Silent Hill (SLED-01735) : $COMPATIBILITY_0×04</p>
+<p>Silent Hill (SLED-01735) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Silent Hill (SLES-01514) : $COMPATIBILITY_0×04</p>
+<p>Silent Hill (SLES-01514) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Silent Hill (SLUS-00707) : $COMPATIBILITY_0×04</p>
+<p>Silent Hill (SLUS-00707) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Silent Hill v1.0 (SLPM-86192) : $COMPATIBILITY_0×04</p>
+<p>Silent Hill v1.0 (SLPM-86192) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Silent Hill v1.1 (SLPM-86192) : $COMPATIBILITY_0×04</p>
+<p>Silent Hill v1.1 (SLPM-86192) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Sled Storm (SLES-02194) : $COMPATIBILITY_0×04</p>
+<p>Sled Storm (SLES-02194) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
 <p>Spider-Man (SLES-02886) : $SUBCDSTATUS</p>
@@ -1168,115 +1169,115 @@
 <p>Spider-Man (SLUS-00875) : $SUBCDSTATUS</p>
 </li>
 <li>
-<p>Spyro 2: Gateway To Glimmer (SCES-02104) : $COMPATIBILITY_0×01</p>
+<p>Spyro 2: Gateway To Glimmer (SCES-02104) : $COMPATIBILITY_0x01</p>
 </li>
 <li>
-<p>Spyro: Year Of The Dragon v1.0 (SCUS-94467) : $COMPATIBILITY_0×01</p>
+<p>Spyro: Year Of The Dragon v1.0 (SCUS-94467) : $COMPATIBILITY_0x01</p>
 </li>
 <li>
-<p>Spyro: Year Of The Dragon v1.1 (SCUS-94467) : $COMPATIBILITY_0×01</p>
+<p>Spyro: Year Of The Dragon v1.1 (SCUS-94467) : $COMPATIBILITY_0x01</p>
 </li>
 <li>
-<p>Star Gladiator: Episode 1: Final Crusade (SLES-00495) : $COMPATIBILITY_0×04</p>
+<p>Star Gladiator: Episode 1: Final Crusade (SLES-00495) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Star Gladiator: Episode 1: Final Crusade (SLPS-00539) : $COMPATIBILITY_0×04</p>
+<p>Star Gladiator: Episode 1: Final Crusade (SLPS-00539) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Star Gladiator: Episode 1: Final Crusade (SLUS-00372) : $COMPATIBILITY_0×04</p>
+<p>Star Gladiator: Episode 1: Final Crusade (SLUS-00372) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Street Fighter Collection 2 (SLES-01721) : $COMPATIBILITY_0×01</p>
+<p>Street Fighter Collection 2 (SLES-01721) : $COMPATIBILITY_0x01</p>
 </li>
 <li>
-<p>Street Fighter Collection 2 (SLUS-00746) : $COMPATIBILITY_0×01</p>
+<p>Street Fighter Collection 2 (SLUS-00746) : $COMPATIBILITY_0x01</p>
 </li>
 <li>
-<p>Street Fighter EX Plus Alpha (SLES-00939) : $COMPATIBILITY_0×04</p>
+<p>Street Fighter EX Plus Alpha (SLES-00939) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Street Fighter EX Plus Alpha (SLPM-86041) : $COMPATIBILITY_0×04</p>
+<p>Street Fighter EX Plus Alpha (SLPM-86041) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Street Fighter EX Plus Alpha (SLUS-00548) : $COMPATIBILITY_0×04</p>
+<p>Street Fighter EX Plus Alpha (SLUS-00548) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Strikers 1945 (SLPS-00407) : $COMPATIBILITY_0×04</p>
+<p>Strikers 1945 (SLPS-00407) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Super Puzzle Fighter II Turbo (SLES-00605) : $COMPATIBILITY_0×01</p>
+<p>Super Puzzle Fighter II Turbo (SLES-00605) : $COMPATIBILITY_0x01</p>
 </li>
 <li>
-<p>Super Puzzle Fighter II Turbo (SLUS-00418) : $COMPATIBILITY_0×01</p>
+<p>Super Puzzle Fighter II Turbo (SLUS-00418) : $COMPATIBILITY_0x01</p>
 </li>
 <li>
-<p>Syphon Filter (SCES-01910) : $COMPATIBILITY_0×04</p>
+<p>Syphon Filter (SCES-01910) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Syphon Filter (SCES-01911) : $COMPATIBILITY_0×04</p>
+<p>Syphon Filter (SCES-01911) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Syphon Filter (SCES-01913) : $COMPATIBILITY_0×04</p>
+<p>Syphon Filter (SCES-01913) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Syphon Filter (SCES-01914) : $COMPATIBILITY_0×04</p>
+<p>Syphon Filter (SCES-01914) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Syphon Filter (SLPS-02216) : $COMPATIBILITY_0×04</p>
+<p>Syphon Filter (SLPS-02216) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Syphon Filter v1.0 (SCUS-94240) : $COMPATIBILITY_0×04</p>
+<p>Syphon Filter v1.0 (SCUS-94240) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Syphon Filter v1.1 (SCUS-94240) : $COMPATIBILITY_0×04</p>
+<p>Syphon Filter v1.1 (SCUS-94240) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Team Buddies (SCES-01923) : $COMPATIBILITY_0×04</p>
+<p>Team Buddies (SCES-01923) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Team Buddies (SCES-02986) : $COMPATIBILITY_0×04</p>
+<p>Team Buddies (SCES-02986) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Team Buddies (SLUS-00869) : $COMPATIBILITY_0×04</p>
+<p>Team Buddies (SLUS-00869) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Tekken 3 (SCES-01237) : $COMPATIBILITY_0×01</p>
+<p>Tekken 3 (SCES-01237) : $COMPATIBILITY_0x01</p>
 </li>
 <li>
-<p>Tekken 3 (SLUS-00402) : $COMPATIBILITY_0×01</p>
+<p>Tekken 3 (SLUS-00402) : $COMPATIBILITY_0x01</p>
 </li>
 <li>
-<p>Tekken 3 v1.0 (SLPS-01300 / SLPS-91202) : $COMPATIBILITY_0×01<br />
-<em>(2017 snapshot lists this as "Compatibility Mode 0×01 – Compatibility Mode 0×06")</em></p>
+<p>Tekken 3 v1.0 (SLPS-01300 / SLPS-91202) : $COMPATIBILITY_0x01<br />
+<em>(2017 snapshot lists this as "Compatibility Mode 0x01 – Compatibility Mode 0x06")</em></p>
 </li>
 <li>
-<p>Test Drive 4 (SLES-00948) : $COMPATIBILITY_0×04</p>
+<p>Test Drive 4 (SLES-00948) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Test Drive 4 (SLUS-00487) : $COMPATIBILITY_0×04</p>
+<p>Test Drive 4 (SLUS-00487) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Test Drive 4×4 (SLES-01179) : $COMPATIBILITY_0×04</p>
+<p>Test Drive 4×4 (SLES-01179) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Tobal 2 v1.1 (SLPM-86033) : $COMPATIBILITY_0×06 <em>(from 2017 snapshot)</em></p>
+<p>Tobal 2 v1.1 (SLPM-86033) : $COMPATIBILITY_0x06 <em>(from 2017 snapshot)</em></p>
 </li>
 <li>
-<p>Tobal No.1 (SCUS-94208) : $COMPATIBILITY_0×04</p>
+<p>Tobal No.1 (SCUS-94208) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Tobal No.1 (SLES-00497) : $COMPATIBILITY_0×04</p>
+<p>Tobal No.1 (SLES-00497) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Tobal No.1 (SLPM-87405 / SLPS-00400) : $COMPATIBILITY_0×04<br />
-<em>(2017 snapshot lists this as "Compatibility Mode 0×04 – Compatibility Mode 0×06")</em></p>
+<p>Tobal No.1 (SLPM-87405 / SLPS-00400) : $COMPATIBILITY_0x04<br />
+<em>(2017 snapshot lists this as "Compatibility Mode 0x04 – Compatibility Mode 0x06")</em></p>
 </li>
 <li>
 <p>Tom And Jerry In House Trap (SLES-03181) : $NOPAL</p>
 </li>
 <li>
-<p>Turbo Prop Racing (SCUS-94229) : $COMPATIBILITY_0×01<br />
-<em>(2017 snapshot lists Turbo Prop Racing under Compatibility Mode 0×04)</em></p>
+<p>Turbo Prop Racing (SCUS-94229) : $COMPATIBILITY_0x01<br />
+<em>(2017 snapshot lists Turbo Prop Racing under Compatibility Mode 0x04)</em></p>
 </li>
 <li>
 <p>V-Rally: 97 Championship Edition v1.0 (SLES-00250) : $CODECACHE_ADDON_0</p>
@@ -1291,66 +1292,66 @@
 <p>V-Rally: Championship Edition (SLPS-01149 / SLPS-91099) : $CODECACHE_ADDON_0</p>
 </li>
 <li>
-<p>Vigilante 8: 2nd Battle (SLPS-02615) : $COMPATIBILITY_0×04</p>
+<p>Vigilante 8: 2nd Battle (SLPS-02615) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Vigilante 8: 2nd Offense (SLES-02162) : $COMPATIBILITY_0×04</p>
+<p>Vigilante 8: 2nd Offense (SLES-02162) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Vigilante 8: 2nd Offense (SLUS-00868) : $COMPATIBILITY_0×04</p>
+<p>Vigilante 8: 2nd Offense (SLUS-00868) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>WWF SmackDown! 2: Know Your Role (SLUS-01234) : $COMPATIBILITY_0×04</p>
+<p>WWF SmackDown! 2: Know Your Role (SLUS-01234) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Wild 9 (SLES-01333) : $COMPATIBILITY_0×04</p>
+<p>Wild 9 (SLES-01333) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Wild 9 (SLUS-00425) : $COMPATIBILITY_0×04</p>
+<p>Wild 9 (SLUS-00425) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Wildroid 9 (SCPS-10080) : $COMPATIBILITY_0×04</p>
+<p>Wildroid 9 (SCPS-10080) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Wip3out (SCES-01909) : $COMPATIBILITY_0×04</p>
+<p>Wip3out (SCES-01909) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>WipEout 2097 (SLES-00327) : $COMPATIBILITY_0×04</p>
+<p>WipEout 2097 (SLES-00327) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>WipEout 3 (SCPS-10098) : $COMPATIBILITY_0×04</p>
+<p>WipEout 3 (SCPS-10098) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>WipEout 3 (SLUS-00865) : $COMPATIBILITY_0×04</p>
+<p>WipEout 3 (SLUS-00865) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>WipEout 3: Special Edition (SCES-02845) : $COMPATIBILITY_0×04</p>
+<p>WipEout 3: Special Edition (SCES-02845) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Wipeout XL (SCUS-94351) : $COMPATIBILITY_0×04</p>
+<p>Wipeout XL (SCUS-94351) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Wipeout XL (SIPS-60010) : $COMPATIBILITY_0×04</p>
+<p>Wipeout XL (SIPS-60010) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>X-Men: Children Of The Atom (SLES-00198) : $COMPATIBILITY_0×04</p>
+<p>X-Men: Children Of The Atom (SLES-00198) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>X-Men: Children Of The Atom (SLUS-00044) : $COMPATIBILITY_0×04</p>
+<p>X-Men: Children Of The Atom (SLUS-00044) : $COMPATIBILITY_0x04</p>
 </li>
 <li>
-<p>Zero Divide (SLES-00159) : $COMPATIBILITY_0×04 $SUBCDSTATUS</p>
+<p>Zero Divide (SLES-00159) : $COMPATIBILITY_0x04 $SUBCDSTATUS</p>
 </li>
 <li>
-<p>Zero Divide (SLPS-00083) : $COMPATIBILITY_0×04 $SUBCDSTATUS</p>
+<p>Zero Divide (SLPS-00083) : $COMPATIBILITY_0x04 $SUBCDSTATUS</p>
 </li>
 <li>
-<p>Zero Divide (SLUS-00183) : $COMPATIBILITY_0×04 $SUBCDSTATUS</p>
+<p>Zero Divide (SLUS-00183) : $COMPATIBILITY_0x04 $SUBCDSTATUS</p>
 </li>
 </ul>
 <hr>
 
-<h3><em>LibCrypt fixes :</em></h3>
+<h3 id="libcrypt-fixes"><em>LibCrypt fixes :</em></h3>
 <p><a href="http://wiki.redump.org/index.php?title=PlayStation_1:_LibCrypt_protection">LibCrypt</a> is a protection introduced by SONY to prevent games being used on a mod-chipped system. POPStarter can by-pass this protection for <a href="http://redump.org/special-discs/">all known LibCrypt protected games</a>.</p>
 <p>POPStarter Revision 13 Beta 2019/06/05 auto-activates LibCrypt fixes for the following games <em>(older snapshots labelled this build "Revision 13 RIP 06")</em> :</p>
 <ul>
@@ -2027,7 +2028,7 @@
 </ul>
 <hr>
 
-<h3><em>Miscellaneous fixes :</em></h3>
+<h3 id="miscellaneous-fixes"><em>Miscellaneous fixes :</em></h3>
 <p>POPStarter Revision 13 Beta 2019/06/05 auto-activates miscellaneous fixes for the following games <em>(older snapshots labelled this build "Revision 13 RIP 06")</em> :</p>
 <ul>
 <li>
@@ -2361,9 +2362,9 @@
 </ul>
 <hr>
 
-<h2>Changelog / version history (from the 2017-06-29 snapshot)</h2>
+<h2 id="changelog-version-history-from-the-2017-06-29-snapshot">Changelog / version history (from the 2017-06-29 snapshot)</h2>
 <p><em>The 2017-06-29 snapshot of this page was a changelog-form document. It records per-game fix descriptions and recognised-disc counts across POPStarter Revision 13 WIP/OBT builds and the WIP 05 public release. The fix entries (Compatibility Mode, LibCrypt Crack, Crash Fix, VSync Fix, Disk Check Fix, Sound Fix, Boot/Load Fix, "2nd VMC is disabled", "Skip Metal Gear Featured Cutscenes", etc.) for that snapshot are preserved below.</em></p>
-<h3>New fixes integrated into POPStarter Revision 13 since WIP 05</h3>
+<h3 id="new-fixes-integrated-into-popstarter-revision-13-since-wip-05">New fixes integrated into POPStarter Revision 13 since WIP 05</h3>
 <p><em>[According to POPStarter changelogs]</em></p>
 <p><strong>——POPStarter Revision 13, WIP 06, OBT 15</strong></p>
 <p><strong>+540 DISCS</strong> are recognised.</p>
@@ -2377,8 +2378,8 @@
 <p><strong>495 DISCS</strong> (+34 Disks) are recognised.</p>
 <ul>
 <li>Alundra 2 – Fix</li>
-<li>ATV: Quad Power Racing (SLES-02822) – Compatibility Mode 0×04</li>
-<li>ATV: Quad Power Racing (SLUS-01137) – Compatibility Mode 0×04</li>
+<li>ATV: Quad Power Racing (SLES-02822) – Compatibility Mode 0x04</li>
+<li>ATV: Quad Power Racing (SLUS-01137) – Compatibility Mode 0x04</li>
 <li>Crash Bandicoot – Fix</li>
 <li>Crash Team Racing (SCUS-94426) – Sound Fix</li>
 <li>Cybernetic Empire (Disc 1) (SLPS-01912) – Crash Fix</li>
@@ -2411,34 +2412,34 @@
 <li>Um Jammer Lammy (SCPS-18011) – Crash Fix</li>
 <li>Um Jammer Lammy (SCUS-94448) – Crash Fix</li>
 </ul>
-<h3>POPStarter Revision 13, Build Date : 2015/06/03, WIP 05 PUBLIC RELEASE</h3>
+<h3 id="popstarter-revision-13-build-date-20150603-wip-05-public-release">POPStarter Revision 13, Build Date : 2015/06/03, WIP 05 PUBLIC RELEASE</h3>
 <p><em>[From wip05 documentation]</em></p>
 <p><strong>461 DISCS</strong> are recognised.</p>
-<p><em>The WIP 05 documentation lists every recognised disc with its exact fix description. The entries below preserve the per-game fix wording unique to that snapshot — note especially the items not present in later snapshots (e.g. the Metal Gear Solid "Skip Metal Gear Featured Cutscenes" set, the "2nd VMC is disabled" Codename/Lifeforce Tenka entries, the Tomb Raider "VSync Fix" set, Dance Dance Revolution / DonPachi / Tobal 2 0×06 entries, and the various "Crash Fix / Boot And Load Fix" descriptions).</em></p>
+<p><em>The WIP 05 documentation lists every recognised disc with its exact fix description. The entries below preserve the per-game fix wording unique to that snapshot — note especially the items not present in later snapshots (e.g. the Metal Gear Solid "Skip Metal Gear Featured Cutscenes" set, the "2nd VMC is disabled" Codename/Lifeforce Tenka entries, the Tomb Raider "VSync Fix" set, Dance Dance Revolution / DonPachi / Tobal 2 0x06 entries, and the various "Crash Fix / Boot And Load Fix" descriptions).</em></p>
 <ul>
 <li>007: Demain Ne Meurt Jamais (SLES-02375) – Crash Fix</li>
 <li>007: Der Morgen Stirbt Nie (SLES-02376) – Crash Fix</li>
 <li>007: Tomorrow Never Dies (SLES-01324) – Crash Fix</li>
 <li>007: Tomorrow Never Dies (SLPS-02604) – Crash Fix</li>
 <li>007: Tomorrow Never Dies (SLUS-00975) – Crash Fix</li>
-<li>40 Winks (SLUS-00874) – Compatibility Mode 0×04</li>
+<li>40 Winks (SLUS-00874) – Compatibility Mode 0x04</li>
 <li>Actua Ice Hockey 2 (SLES-01226) – LibCrypt Crack</li>
-<li>Akumajou Dracula X: Gekka No Yasoukyoku v1.0 (SLPM-86023) – Compatibility Mode 0×01</li>
-<li>Akumajou Dracula X: Gekka No Yasoukyoku v1.1 (SLPM-86023) – Compatibility Mode 0×01</li>
-<li>Akumajou Dracula X: Gekka No Yasoukyoku v1.2 (SLPM-86023) – Compatibility Mode 0×01</li>
-<li>Akumajou Dracula X: Gekka No Yasoukyoku v1.2 (SLPM-86023, En by Gemini+Throughhim413 v1.0) – Compatibility Mode 0×01</li>
+<li>Akumajou Dracula X: Gekka No Yasoukyoku v1.0 (SLPM-86023) – Compatibility Mode 0x01</li>
+<li>Akumajou Dracula X: Gekka No Yasoukyoku v1.1 (SLPM-86023) – Compatibility Mode 0x01</li>
+<li>Akumajou Dracula X: Gekka No Yasoukyoku v1.2 (SLPM-86023) – Compatibility Mode 0x01</li>
+<li>Akumajou Dracula X: Gekka No Yasoukyoku v1.2 (SLPM-86023, En by Gemini+Throughhim413 v1.0) – Compatibility Mode 0x01</li>
 <li>Anstoss: Premier Manager (SLES-02563) – LibCrypt Crack</li>
 <li>Ape Escape (SCES-01564) – LibCrypt Crack</li>
 <li>Ape Escape (SCES-02028) – LibCrypt Crack</li>
 <li>Ape Escape (SCES-02029) – LibCrypt Crack</li>
 <li>Ape Escape (SCES-02030) – LibCrypt Crack</li>
 <li>Ape Escape (SCES-02031) – LibCrypt Crack</li>
-<li>Apocalypse (SLES-00460) – Compatibility Mode 0×01</li>
-<li>Apocalypse (SLES-00834) – Compatibility Mode 0×01</li>
-<li>Apocalypse (SLES-00835, Megera) – Compatibility Mode 0×01</li>
-<li>Apocalypse (SLES-01463) – Compatibility Mode 0×01</li>
-<li>Apocalypse (SLUS-00373) – Compatibility Mode 0×01</li>
-<li>ASCII Entertainment Demo CD (SLUS-90010) – Compatibility Mode 0×04</li>
+<li>Apocalypse (SLES-00460) – Compatibility Mode 0x01</li>
+<li>Apocalypse (SLES-00834) – Compatibility Mode 0x01</li>
+<li>Apocalypse (SLES-00835, Megera) – Compatibility Mode 0x01</li>
+<li>Apocalypse (SLES-01463) – Compatibility Mode 0x01</li>
+<li>Apocalypse (SLUS-00373) – Compatibility Mode 0x01</li>
+<li>ASCII Entertainment Demo CD (SLUS-90010) – Compatibility Mode 0x04</li>
 <li>Asterix Mega Madness (SLES-03324) – LibCrypt Crack</li>
 <li>Barbie: Race &amp; Ride (SCES-02365) – LibCrypt Crack</li>
 <li>Barbie: Race &amp; Ride (SCES-02366) – LibCrypt Crack</li>
@@ -2447,139 +2448,139 @@
 <li>Barbie: Sports Extreme (SCES-02488) – LibCrypt Crack</li>
 <li>Barbie: Super Sport (SCES-02489) – LibCrypt Crack</li>
 <li>Barbie: Super Sports (SCES-02491) – LibCrypt Crack</li>
-<li>BDFL Manager 2001 (SLES-02977) – LibCrypt Crack – Compatibility Mode 0×04</li>
-<li>BDFL Manager 2002 (SLES-03605) – LibCrypt Crack – Compatibility Mode 0×04</li>
-<li>Beat Mania 6th Mix + Core Remix (SLPM-87012) – Compatibility Mode 0×01</li>
-<li>Beat Mania 6th Mix + Core Remix (SLPM-87012, R18) – Compatibility Mode 0×01</li>
-<li>Bio Hazard v1.1 (SLPS-00222) – Compatibility Mode 0×05</li>
-<li>Bio Hazard: Director's Cut (SLPS-00998) – Compatibility Mode 0×05</li>
-<li>Bio Hazard: Director's Cut: Dual Shock Ver. (SLPS-01512) – Compatibility Mode 0×05</li>
-<li>Bloody Roar II (SCUS-94424) – Compatibility Mode 0×04</li>
-<li>Bust A Groove (SCUS-94263) – Compatibility Mode 0×04</li>
-<li>Bust A Groove 2 (SLUS-01159) – Compatibility Mode 0×04</li>
-<li>Bust A Move 2: Dance Tengoku Mix (SLPM-86219) – Compatibility Mode 0×04</li>
-<li>Bust A Move: Dance &amp; Rhythm Action v1.0 (SLPS-01232) – Compatibility Mode 0×04</li>
-<li>Bust A Move: Dance &amp; Rhythm Action v1.1 (SLPS-01232) – Compatibility Mode 0×04</li>
-<li>Bust-A-Groove (SCES-01313) – Compatibility Mode 0×04</li>
+<li>BDFL Manager 2001 (SLES-02977) – LibCrypt Crack – Compatibility Mode 0x04</li>
+<li>BDFL Manager 2002 (SLES-03605) – LibCrypt Crack – Compatibility Mode 0x04</li>
+<li>Beat Mania 6th Mix + Core Remix (SLPM-87012) – Compatibility Mode 0x01</li>
+<li>Beat Mania 6th Mix + Core Remix (SLPM-87012, R18) – Compatibility Mode 0x01</li>
+<li>Bio Hazard v1.1 (SLPS-00222) – Compatibility Mode 0x05</li>
+<li>Bio Hazard: Director's Cut (SLPS-00998) – Compatibility Mode 0x05</li>
+<li>Bio Hazard: Director's Cut: Dual Shock Ver. (SLPS-01512) – Compatibility Mode 0x05</li>
+<li>Bloody Roar II (SCUS-94424) – Compatibility Mode 0x04</li>
+<li>Bust A Groove (SCUS-94263) – Compatibility Mode 0x04</li>
+<li>Bust A Groove 2 (SLUS-01159) – Compatibility Mode 0x04</li>
+<li>Bust A Move 2: Dance Tengoku Mix (SLPM-86219) – Compatibility Mode 0x04</li>
+<li>Bust A Move: Dance &amp; Rhythm Action v1.0 (SLPS-01232) – Compatibility Mode 0x04</li>
+<li>Bust A Move: Dance &amp; Rhythm Action v1.1 (SLPS-01232) – Compatibility Mode 0x04</li>
+<li>Bust-A-Groove (SCES-01313) – Compatibility Mode 0x04</li>
 <li>Canal+ Premier Manager (SLES-02293) – LibCrypt Crack</li>
-<li>Capcom Generation: Dai 5 Shuu Kakutouka Tachi (SLPS-01725) – Compatibility Mode 0×01</li>
-<li>Captain Tsubasa J: Get In The Tomorrow (SLPS-00310) – Compatibility Mode 0×04</li>
-<li>Castlevania: Symphony Of The Night (SLES-00524) – Compatibility Mode 0×01</li>
-<li>Castlevania: Symphony Of The Night (SLUS-00067) – Compatibility Mode 0×01</li>
-<li>Chessmaster II (SLES-02117) – Compatibility Mode 0×04</li>
-<li>Chrono Cross (Disc 1) (SLUS-01041) – Compatibility Mode 0×04</li>
-<li>Chrono Cross (Disc 2) (SLUS-01080) – Compatibility Mode 0×04</li>
-<li>Circuit Breakers (SLUS-00697) – Compatibility Mode 0×04</li>
-<li>Clock Tower (SLES-00870) – Compatibility Mode 0×04</li>
-<li>Clock Tower (SLES-00871) – Compatibility Mode 0×04</li>
-<li>Clock Tower (SLUS-00539) – Compatibility Mode 0×04</li>
-<li>Clock Tower 2 (SLPS-00657) – Compatibility Mode 0×04</li>
-<li>Clock Tower 2 (Taikenban) (SLPM-80063) – Compatibility Mode 0×04</li>
-<li>Clock Tower II: The Struggle Within (SLUS-00695) – Compatibility Mode 0×04</li>
-<li>Clock Tower II: The Struggle Within (SLUS-00695, RGR) – Compatibility Mode 0×04</li>
-<li>Clock Tower: Ghost Head (SLPS-01290) – Compatibility Mode 0×04</li>
+<li>Capcom Generation: Dai 5 Shuu Kakutouka Tachi (SLPS-01725) – Compatibility Mode 0x01</li>
+<li>Captain Tsubasa J: Get In The Tomorrow (SLPS-00310) – Compatibility Mode 0x04</li>
+<li>Castlevania: Symphony Of The Night (SLES-00524) – Compatibility Mode 0x01</li>
+<li>Castlevania: Symphony Of The Night (SLUS-00067) – Compatibility Mode 0x01</li>
+<li>Chessmaster II (SLES-02117) – Compatibility Mode 0x04</li>
+<li>Chrono Cross (Disc 1) (SLUS-01041) – Compatibility Mode 0x04</li>
+<li>Chrono Cross (Disc 2) (SLUS-01080) – Compatibility Mode 0x04</li>
+<li>Circuit Breakers (SLUS-00697) – Compatibility Mode 0x04</li>
+<li>Clock Tower (SLES-00870) – Compatibility Mode 0x04</li>
+<li>Clock Tower (SLES-00871) – Compatibility Mode 0x04</li>
+<li>Clock Tower (SLUS-00539) – Compatibility Mode 0x04</li>
+<li>Clock Tower 2 (SLPS-00657) – Compatibility Mode 0x04</li>
+<li>Clock Tower 2 (Taikenban) (SLPM-80063) – Compatibility Mode 0x04</li>
+<li>Clock Tower II: The Struggle Within (SLUS-00695) – Compatibility Mode 0x04</li>
+<li>Clock Tower II: The Struggle Within (SLUS-00695, RGR) – Compatibility Mode 0x04</li>
+<li>Clock Tower: Ghost Head (SLPS-01290) – Compatibility Mode 0x04</li>
 <li>Codename: Tenka (SCUS-94409, Kudos) – 2nd VMC is disabled</li>
 <li>Codename: Tenka v1.0 (SCUS-94409) – 2nd VMC is disabled</li>
-<li>Colony Wars (Disc 1) (SLES-00860) – Compatibility Mode 0×02 – Compatibility Mode 0×04</li>
-<li>Colony Wars (Disc 1) (SLES-00861) – Compatibility Mode 0×02 – Compatibility Mode 0×04</li>
-<li>Colony Wars (Disc 1) (SLUS-00543) – Compatibility Mode 0×02 – Compatibility Mode 0×04</li>
-<li>Colony Wars (Disc 2) (SLES-10860) – Compatibility Mode 0×02 – Compatibility Mode 0×04</li>
-<li>Colony Wars (Disc 2) (SLES-10861) – Compatibility Mode 0×02 – Compatibility Mode 0×04</li>
-<li>Colony Wars (Disc 2) (SLUS-00554) – Compatibility Mode 0×02 – Compatibility Mode 0×04</li>
-<li>Colony Wars (SLED-00091) – Compatibility Mode 0×02 – Compatibility Mode 0×04</li>
-<li>Colony Wars: Red Sun (SCES-01924) – Compatibility Mode 0×02 – Compatibility Mode 0×04</li>
-<li>Colony Wars: Red Sun (SCES-02621) – Compatibility Mode 0×02 – Compatibility Mode 0×04</li>
-<li>Colony Wars: Red Sun (SCES-02623) – Compatibility Mode 0×02 – Compatibility Mode 0×04</li>
-<li>Colony Wars: Red Sun (SLUS-00866) – Compatibility Mode 0×02 – Compatibility Mode 0×04</li>
-<li>Colony Wars: Vengeance (SLES-01392) – Compatibility Mode 0×02 – Compatibility Mode 0×04</li>
-<li>Colony Wars: Vengeance (SLES-01405) – Compatibility Mode 0×02 – Compatibility Mode 0×04</li>
-<li>Colony Wars: Vengeance (SLUS-00722) – Compatibility Mode 0×02 – Compatibility Mode 0×04</li>
-<li>Cool Boarders (SCES-00568) – Compatibility Mode 0×03</li>
-<li>Cool Boarders (SCUS-94356) – Compatibility Mode 0×03</li>
-<li>Cool Boarders 2 (SCES-00992) – Compatibility Mode 0×03</li>
-<li>Cool Boarders 2 (SCUS-94358) – Compatibility Mode 0×03</li>
-<li>Cool Boarders 2: Killing Session (SLPS-00967) – Compatibility Mode 0×03</li>
+<li>Colony Wars (Disc 1) (SLES-00860) – Compatibility Mode 0x02 – Compatibility Mode 0x04</li>
+<li>Colony Wars (Disc 1) (SLES-00861) – Compatibility Mode 0x02 – Compatibility Mode 0x04</li>
+<li>Colony Wars (Disc 1) (SLUS-00543) – Compatibility Mode 0x02 – Compatibility Mode 0x04</li>
+<li>Colony Wars (Disc 2) (SLES-10860) – Compatibility Mode 0x02 – Compatibility Mode 0x04</li>
+<li>Colony Wars (Disc 2) (SLES-10861) – Compatibility Mode 0x02 – Compatibility Mode 0x04</li>
+<li>Colony Wars (Disc 2) (SLUS-00554) – Compatibility Mode 0x02 – Compatibility Mode 0x04</li>
+<li>Colony Wars (SLED-00091) – Compatibility Mode 0x02 – Compatibility Mode 0x04</li>
+<li>Colony Wars: Red Sun (SCES-01924) – Compatibility Mode 0x02 – Compatibility Mode 0x04</li>
+<li>Colony Wars: Red Sun (SCES-02621) – Compatibility Mode 0x02 – Compatibility Mode 0x04</li>
+<li>Colony Wars: Red Sun (SCES-02623) – Compatibility Mode 0x02 – Compatibility Mode 0x04</li>
+<li>Colony Wars: Red Sun (SLUS-00866) – Compatibility Mode 0x02 – Compatibility Mode 0x04</li>
+<li>Colony Wars: Vengeance (SLES-01392) – Compatibility Mode 0x02 – Compatibility Mode 0x04</li>
+<li>Colony Wars: Vengeance (SLES-01405) – Compatibility Mode 0x02 – Compatibility Mode 0x04</li>
+<li>Colony Wars: Vengeance (SLUS-00722) – Compatibility Mode 0x02 – Compatibility Mode 0x04</li>
+<li>Cool Boarders (SCES-00568) – Compatibility Mode 0x03</li>
+<li>Cool Boarders (SCUS-94356) – Compatibility Mode 0x03</li>
+<li>Cool Boarders 2 (SCES-00992) – Compatibility Mode 0x03</li>
+<li>Cool Boarders 2 (SCUS-94358) – Compatibility Mode 0x03</li>
+<li>Cool Boarders 2: Killing Session (SLPS-00967) – Compatibility Mode 0x03</li>
 <li>Crash Bandicoot Racing (SCPS-10118) – Boot Fix – Load Fix</li>
 <li>Crash Bash (SCES-02834) – LibCrypt Crack</li>
 <li>Crash Team Racing (SCUS-94426) – Boot And Load Fix</li>
-<li>Critical Blow (SLPS-01044) – Compatibility Mode 0×04</li>
+<li>Critical Blow (SLPS-01044) – Compatibility Mode 0x04</li>
 <li>CTR: Crash Team Racing (SCES-02105) – LibCrypt Crack – Boot And Load Fix</li>
-<li>Dance Dance Revolution: Disney's Rave (SLPM-86667) – Compatibility Mode 0×06</li>
-<li>Dance Dance Revolution: Disney's Rave (SLPM-86667, R18) – Compatibility Mode 0×06</li>
-<li>Dead Or Alive (SCES-01259) – Compatibility Mode 0×04</li>
-<li>Dead Or Alive (SLPS-01289) – Compatibility Mode 0×04 – Compatibility Mode 0×06</li>
-<li>Dead Or Alive (SLUS-00606) – Compatibility Mode 0×04</li>
+<li>Dance Dance Revolution: Disney's Rave (SLPM-86667) – Compatibility Mode 0x06</li>
+<li>Dance Dance Revolution: Disney's Rave (SLPM-86667, R18) – Compatibility Mode 0x06</li>
+<li>Dead Or Alive (SCES-01259) – Compatibility Mode 0x04</li>
+<li>Dead Or Alive (SLPS-01289) – Compatibility Mode 0x04 – Compatibility Mode 0x06</li>
+<li>Dead Or Alive (SLUS-00606) – Compatibility Mode 0x04</li>
 <li>Destruction Derby 2 (SCUS-94350) – Crash Fix</li>
 <li>Destruction Derby 2 (SIPS-60012) – Crash Fix</li>
 <li>Destruction Derby 2 (SLES-00299) – Crash Fix</li>
-<li>Die Hard Trilogy (SLES-00445) – Compatibility Mode 0×03</li>
-<li>Die Hard Trilogy v1.0 (SLUS-00119) – Compatibility Mode 0×03</li>
-<li>Die Hard Trilogy v1.1 (SLUS-00119) – Compatibility Mode 0×03</li>
+<li>Die Hard Trilogy (SLES-00445) – Compatibility Mode 0x03</li>
+<li>Die Hard Trilogy v1.0 (SLUS-00119) – Compatibility Mode 0x03</li>
+<li>Die Hard Trilogy v1.1 (SLUS-00119) – Compatibility Mode 0x03</li>
 <li>Dino Crisis (SLES-02207) – LibCrypt Crack</li>
 <li>Dino Crisis (SLES-02208) – LibCrypt Crack</li>
 <li>Dino Crisis (SLES-02209) – LibCrypt Crack</li>
 <li>Dino Crisis (SLES-02210) – LibCrypt Crack</li>
 <li>Dino Crisis (SLES-02211) – LibCrypt Crack</li>
-<li>Disney Fais Ton Histoire!: Mulan (SCES-02004) – LibCrypt Crack – Compatibility Mode 0×01</li>
-<li>Disney Libro Animato Creativo: Mulan (SCES-02006) – LibCrypt Crack – Compatibility Mode 0×01</li>
+<li>Disney Fais Ton Histoire!: Mulan (SCES-02004) – LibCrypt Crack – Compatibility Mode 0x01</li>
+<li>Disney Libro Animato Creativo: Mulan (SCES-02006) – LibCrypt Crack – Compatibility Mode 0x01</li>
 <li>Disney Tarzan (SCES-01516) – LibCrypt Crack</li>
 <li>Disney Tarzan (SCES-01519) – LibCrypt Crack</li>
 <li>Disney's 102 Dalmatians: Puppies To The Rescue (SLES-03191) – LibCrypt Crack</li>
-<li>Disney's Aventura Interactiva: Mulan (SCES-02007) – LibCrypt Crack – Compatibility Mode 0×01</li>
-<li>Disney's Story Studio: Mulan (SCES-01695) – LibCrypt Crack – Compatibility Mode 0×01</li>
-<li>Disneys Interaktive Abenteuer: Mulan (SCES-02005) – LibCrypt Crack – Compatibility Mode 0×01</li>
+<li>Disney's Aventura Interactiva: Mulan (SCES-02007) – LibCrypt Crack – Compatibility Mode 0x01</li>
+<li>Disney's Story Studio: Mulan (SCES-01695) – LibCrypt Crack – Compatibility Mode 0x01</li>
+<li>Disneys Interaktive Abenteuer: Mulan (SCES-02005) – LibCrypt Crack – Compatibility Mode 0x01</li>
 <li>Disneys Tarzan (SCES-01518) – LibCrypt Crack</li>
-<li>DonPachi (SLPS-00548) – Compatibility Mode 0×06</li>
-<li>Double Dragon (SLPS-00191) – Compatibility Mode 0×03</li>
-<li>Dragon Valor (Disc 1) (SCES-01705) – Compatibility Mode 0×04</li>
-<li>Dragon Valor (Disc 1) (SCES-02565) – Compatibility Mode 0×04</li>
-<li>Dragon Valor (Disc 1) (SCES-02566) – Compatibility Mode 0×04</li>
-<li>Dragon Valor (Disc 1) (SCES-02567) – Compatibility Mode 0×04</li>
-<li>Dragon Valor (Disc 1) (SCES-02568) – Compatibility Mode 0×04</li>
-<li>Dragon Valor (Disc 1) (SLPS-02190) – Compatibility Mode 0×04</li>
-<li>Dragon Valor (Disc 1) (SLUS-01092) – Compatibility Mode 0×04</li>
-<li>Dragon Valor (Disc 2) (SCES-11705) – Compatibility Mode 0×04</li>
-<li>Dragon Valor (Disc 2) (SCES-12565) – Compatibility Mode 0×04</li>
-<li>Dragon Valor (Disc 2) (SCES-12566) – Compatibility Mode 0×04</li>
-<li>Dragon Valor (Disc 2) (SCES-12567) – Compatibility Mode 0×04</li>
-<li>Dragon Valor (Disc 2) (SCES-12568) – Compatibility Mode 0×04</li>
-<li>Dragon Valor (Disc 2) (SLPS-02191) – Compatibility Mode 0×04</li>
-<li>Dragon Valor (Disc 2) (SLUS-01164) – Compatibility Mode 0×04</li>
+<li>DonPachi (SLPS-00548) – Compatibility Mode 0x06</li>
+<li>Double Dragon (SLPS-00191) – Compatibility Mode 0x03</li>
+<li>Dragon Valor (Disc 1) (SCES-01705) – Compatibility Mode 0x04</li>
+<li>Dragon Valor (Disc 1) (SCES-02565) – Compatibility Mode 0x04</li>
+<li>Dragon Valor (Disc 1) (SCES-02566) – Compatibility Mode 0x04</li>
+<li>Dragon Valor (Disc 1) (SCES-02567) – Compatibility Mode 0x04</li>
+<li>Dragon Valor (Disc 1) (SCES-02568) – Compatibility Mode 0x04</li>
+<li>Dragon Valor (Disc 1) (SLPS-02190) – Compatibility Mode 0x04</li>
+<li>Dragon Valor (Disc 1) (SLUS-01092) – Compatibility Mode 0x04</li>
+<li>Dragon Valor (Disc 2) (SCES-11705) – Compatibility Mode 0x04</li>
+<li>Dragon Valor (Disc 2) (SCES-12565) – Compatibility Mode 0x04</li>
+<li>Dragon Valor (Disc 2) (SCES-12566) – Compatibility Mode 0x04</li>
+<li>Dragon Valor (Disc 2) (SCES-12567) – Compatibility Mode 0x04</li>
+<li>Dragon Valor (Disc 2) (SCES-12568) – Compatibility Mode 0x04</li>
+<li>Dragon Valor (Disc 2) (SLPS-02191) – Compatibility Mode 0x04</li>
+<li>Dragon Valor (Disc 2) (SLUS-01164) – Compatibility Mode 0x04</li>
 <li>EA Sports Superbike 2000 (SLES-02538) – LibCrypt Crack</li>
 <li>Eagle One: Harrier Attack (SLES-01715) – LibCrypt Crack</li>
-<li>Enigma (Disc 1) (SLPS-01351) – Compatibility Mode 0×04</li>
-<li>Enigma (Disc 2) (SLPS-01352) – Compatibility Mode 0×04</li>
+<li>Enigma (Disc 1) (SLPS-01351) – Compatibility Mode 0x04</li>
+<li>Enigma (Disc 2) (SLPS-01352) – Compatibility Mode 0x04</li>
 <li>Esto Es Futbol (SCES-01704) – LibCrypt Crack</li>
 <li>F1 2000 (SLES-02722) – LibCrypt Crack</li>
 <li>F1 2000 (SLES-02724) – LibCrypt Crack</li>
-<li>Final Fantasy IX (Disc 1) (SLES-02965) – LibCrypt Crack – Compatibility Mode 0×04</li>
-<li>Final Fantasy IX (Disc 1) (SLES-02966) – LibCrypt Crack – Compatibility Mode 0×04</li>
-<li>Final Fantasy IX (Disc 1) (SLES-02967) – LibCrypt Crack – Compatibility Mode 0×04</li>
-<li>Final Fantasy IX (Disc 1) (SLES-02968) – LibCrypt Crack – Compatibility Mode 0×04</li>
-<li>Final Fantasy IX (Disc 1) (SLES-02969) – LibCrypt Crack – Compatibility Mode 0×04</li>
-<li>Final Fantasy IX (Disc 1) (SLPS-02000) – Compatibility Mode 0×04</li>
-<li>Final Fantasy IX (Disc 1) (SLUS-01251) – Compatibility Mode 0×04</li>
-<li>Final Fantasy IX (Disc 2) (SLES-12965) – LibCrypt Crack – Compatibility Mode 0×04</li>
-<li>Final Fantasy IX (Disc 2) (SLES-12966) – LibCrypt Crack – Compatibility Mode 0×04</li>
-<li>Final Fantasy IX (Disc 2) (SLES-12967) – LibCrypt Crack – Compatibility Mode 0×04</li>
-<li>Final Fantasy IX (Disc 2) (SLES-12968) – LibCrypt Crack – Compatibility Mode 0×04</li>
-<li>Final Fantasy IX (Disc 2) (SLES-12969) – LibCrypt Crack – Compatibility Mode 0×04</li>
-<li>Final Fantasy IX (Disc 2) (SLPS-02001) – Compatibility Mode 0×04</li>
-<li>Final Fantasy IX (Disc 2) (SLUS-01295) – Compatibility Mode 0×04</li>
-<li>Final Fantasy IX (Disc 3) (SLES-22965) – LibCrypt Crack – Compatibility Mode 0×04</li>
-<li>Final Fantasy IX (Disc 3) (SLES-22966) – LibCrypt Crack – Compatibility Mode 0×04</li>
-<li>Final Fantasy IX (Disc 3) (SLES-22967) – LibCrypt Crack – Compatibility Mode 0×04</li>
-<li>Final Fantasy IX (Disc 3) (SLES-22968) – LibCrypt Crack – Compatibility Mode 0×04</li>
-<li>Final Fantasy IX (Disc 3) (SLES-22969) – LibCrypt Crack – Compatibility Mode 0×04</li>
-<li>Final Fantasy IX (Disc 3) (SLPS-02002) – Compatibility Mode 0×04</li>
-<li>Final Fantasy IX (Disc 3) (SLUS-01296) – Compatibility Mode 0×04</li>
-<li>Final Fantasy IX (Disc 4) (SLES-32965) – LibCrypt Crack – Compatibility Mode 0×04</li>
-<li>Final Fantasy IX (Disc 4) (SLES-32966) – LibCrypt Crack – Compatibility Mode 0×04</li>
-<li>Final Fantasy IX (Disc 4) (SLES-32967) – LibCrypt Crack – Compatibility Mode 0×04</li>
-<li>Final Fantasy IX (Disc 4) (SLES-32968) – LibCrypt Crack – Compatibility Mode 0×04</li>
-<li>Final Fantasy IX (Disc 4) (SLES-32969) – LibCrypt Crack – Compatibility Mode 0×04</li>
-<li>Final Fantasy IX (Disc 4) (SLPS-02003) – Compatibility Mode 0×04</li>
-<li>Final Fantasy IX (Disc 4) (SLUS-01297) – Compatibility Mode 0×04</li>
+<li>Final Fantasy IX (Disc 1) (SLES-02965) – LibCrypt Crack – Compatibility Mode 0x04</li>
+<li>Final Fantasy IX (Disc 1) (SLES-02966) – LibCrypt Crack – Compatibility Mode 0x04</li>
+<li>Final Fantasy IX (Disc 1) (SLES-02967) – LibCrypt Crack – Compatibility Mode 0x04</li>
+<li>Final Fantasy IX (Disc 1) (SLES-02968) – LibCrypt Crack – Compatibility Mode 0x04</li>
+<li>Final Fantasy IX (Disc 1) (SLES-02969) – LibCrypt Crack – Compatibility Mode 0x04</li>
+<li>Final Fantasy IX (Disc 1) (SLPS-02000) – Compatibility Mode 0x04</li>
+<li>Final Fantasy IX (Disc 1) (SLUS-01251) – Compatibility Mode 0x04</li>
+<li>Final Fantasy IX (Disc 2) (SLES-12965) – LibCrypt Crack – Compatibility Mode 0x04</li>
+<li>Final Fantasy IX (Disc 2) (SLES-12966) – LibCrypt Crack – Compatibility Mode 0x04</li>
+<li>Final Fantasy IX (Disc 2) (SLES-12967) – LibCrypt Crack – Compatibility Mode 0x04</li>
+<li>Final Fantasy IX (Disc 2) (SLES-12968) – LibCrypt Crack – Compatibility Mode 0x04</li>
+<li>Final Fantasy IX (Disc 2) (SLES-12969) – LibCrypt Crack – Compatibility Mode 0x04</li>
+<li>Final Fantasy IX (Disc 2) (SLPS-02001) – Compatibility Mode 0x04</li>
+<li>Final Fantasy IX (Disc 2) (SLUS-01295) – Compatibility Mode 0x04</li>
+<li>Final Fantasy IX (Disc 3) (SLES-22965) – LibCrypt Crack – Compatibility Mode 0x04</li>
+<li>Final Fantasy IX (Disc 3) (SLES-22966) – LibCrypt Crack – Compatibility Mode 0x04</li>
+<li>Final Fantasy IX (Disc 3) (SLES-22967) – LibCrypt Crack – Compatibility Mode 0x04</li>
+<li>Final Fantasy IX (Disc 3) (SLES-22968) – LibCrypt Crack – Compatibility Mode 0x04</li>
+<li>Final Fantasy IX (Disc 3) (SLES-22969) – LibCrypt Crack – Compatibility Mode 0x04</li>
+<li>Final Fantasy IX (Disc 3) (SLPS-02002) – Compatibility Mode 0x04</li>
+<li>Final Fantasy IX (Disc 3) (SLUS-01296) – Compatibility Mode 0x04</li>
+<li>Final Fantasy IX (Disc 4) (SLES-32965) – LibCrypt Crack – Compatibility Mode 0x04</li>
+<li>Final Fantasy IX (Disc 4) (SLES-32966) – LibCrypt Crack – Compatibility Mode 0x04</li>
+<li>Final Fantasy IX (Disc 4) (SLES-32967) – LibCrypt Crack – Compatibility Mode 0x04</li>
+<li>Final Fantasy IX (Disc 4) (SLES-32968) – LibCrypt Crack – Compatibility Mode 0x04</li>
+<li>Final Fantasy IX (Disc 4) (SLES-32969) – LibCrypt Crack – Compatibility Mode 0x04</li>
+<li>Final Fantasy IX (Disc 4) (SLPS-02003) – Compatibility Mode 0x04</li>
+<li>Final Fantasy IX (Disc 4) (SLUS-01297) – Compatibility Mode 0x04</li>
 <li>Final Fantasy VIII (Disc 1) (SLES-02080) – LibCrypt Crack</li>
 <li>Final Fantasy VIII (Disc 1) (SLES-02081) – LibCrypt Crack</li>
 <li>Final Fantasy VIII (Disc 1) (SLES-02082) – LibCrypt Crack</li>
@@ -2601,11 +2602,11 @@
 <li>Final Fantasy VIII (Disc 4) (SLES-32083) – LibCrypt Crack</li>
 <li>Final Fantasy VIII (Disc 4) (SLES-32084) – LibCrypt Crack</li>
 <li>Formula One 99 (SCES-01979) – LibCrypt Crack</li>
-<li>Frogger (SLES-00704) – Compatibility Mode 0×04</li>
-<li>Frogger (SLUS-00506) – Compatibility Mode 0×04</li>
+<li>Frogger (SLES-00704) – Compatibility Mode 0x04</li>
+<li>Frogger (SLUS-00506) – Compatibility Mode 0x04</li>
 <li>Frontschweine (SLES-02767) – LibCrypt Crack</li>
 <li>Fussball Live (SCES-01702) – LibCrypt Crack</li>
-<li>Future Racer (SLES-03508) – Crash Fix – Compatibility Mode 0×04</li>
+<li>Future Racer (SLES-03508) – Crash Fix – Compatibility Mode 0x04</li>
 <li>Galerians (Disc 1) (SLES-02328) – LibCrypt Crack</li>
 <li>Galerians (Disc 1) (SLES-02329) – LibCrypt Crack</li>
 <li>Galerians (Disc 1) (SLES-02330) – LibCrypt Crack</li>
@@ -2616,33 +2617,33 @@
 <li>Galerians (Disc 3) (SLES-22329) – LibCrypt Crack</li>
 <li>Galerians (Disc 3) (SLES-22330) – LibCrypt Crack</li>
 <li>Gekido: Urban Fighters (SLES-01241) – LibCrypt Crack</li>
-<li>Gex 3D: Enter The Gecko (SLES-00596) – Compatibility Mode 0×04</li>
-<li>Gran Turismo (PAPX-90026) – Compatibility Mode 0×04</li>
-<li>Gran Turismo (SCES-00984) – Compatibility Mode 0×04</li>
-<li>Gran Turismo (SCPS-10045) – Compatibility Mode 0×04</li>
-<li>Gran Turismo 2 (Arcade Mode) v1.0 (SCUS-94455) – Compatibility Mode 0×01 – Compatibility Mode 0×04</li>
-<li>Gran Turismo 2 (Arcade Mode) v1.1 (SCUS-94455) – Compatibility Mode 0×01 – Compatibility Mode 0×04</li>
-<li>Gran Turismo 2 (Disc 1) (Arcade Mode) (SCES-02380) – Compatibility Mode 0×01 – Compatibility Mode 0×04</li>
-<li>Gran Turismo 2 (Disc 1) (Arcade) (SCPS-10116) – Compatibility Mode 0×01 – Compatibility Mode 0×04</li>
-<li>Gran Turismo 2 (Disc 2) (Gran Turismo) v1.0 (SCPS-10117) – Compatibility Mode 0×01 – Compatibility Mode 0×04</li>
-<li>Gran Turismo 2 (Disc 2) (Gran Turismo) v1.1 (SCPS-10117) – Compatibility Mode 0×01 – Compatibility Mode 0×04</li>
-<li>Gran Turismo 2 (Disc 2) (GT Mode) (SCES-12380) – Compatibility Mode 0×01 – Compatibility Mode 0×04</li>
-<li>Gran Turismo 2 (Simulation Mode) v1.0 (SCUS-94488) – Compatibility Mode 0×01 – Compatibility Mode 0×04</li>
-<li>Gran Turismo 2 (Simulation Mode) v1.1 (SCUS-94488) – Compatibility Mode 0×01 – Compatibility Mode 0×04</li>
-<li>Gran Turismo 2 (Simulation Mode) v1.2 (SCUS-94488) – Compatibility Mode 0×01 – Compatibility Mode 0×04</li>
-<li>Gran Turismo v1.0 (SCUS-94194) – Compatibility Mode 0×04</li>
-<li>Gran Turismo v1.1 (SCUS-94194) – Compatibility Mode 0×04</li>
-<li>Grandia (Disc 1) (SCUS-94457) – Compatibility Mode 0×04</li>
-<li>Grandia (Disc 1) (SLES-02397) – Compatibility Mode 0×04</li>
-<li>Grandia (Disc 1) (SLES-02398) – Compatibility Mode 0×04</li>
-<li>Grandia (Disc 1) (SLES-02399) – Compatibility Mode 0×04</li>
-<li>Grandia (Disc 1) (SLPS-02124) – Compatibility Mode 0×04</li>
-<li>Grandia (Disc 2) (SCUS-94465) – Compatibility Mode 0×04</li>
-<li>Grandia (Disc 2) (SLES-12397) – Compatibility Mode 0×04</li>
-<li>Grandia (Disc 2) (SLES-12398) – Compatibility Mode 0×04</li>
-<li>Grandia (Disc 2) (SLES-12399) – Compatibility Mode 0×04</li>
-<li>Grandia (Disc 2) (SLPS-02125) – Compatibility Mode 0×04</li>
-<li>Grandia: Prologue (Taikenban) (SLPM-80297) – Compatibility Mode 0×04</li>
+<li>Gex 3D: Enter The Gecko (SLES-00596) – Compatibility Mode 0x04</li>
+<li>Gran Turismo (PAPX-90026) – Compatibility Mode 0x04</li>
+<li>Gran Turismo (SCES-00984) – Compatibility Mode 0x04</li>
+<li>Gran Turismo (SCPS-10045) – Compatibility Mode 0x04</li>
+<li>Gran Turismo 2 (Arcade Mode) v1.0 (SCUS-94455) – Compatibility Mode 0x01 – Compatibility Mode 0x04</li>
+<li>Gran Turismo 2 (Arcade Mode) v1.1 (SCUS-94455) – Compatibility Mode 0x01 – Compatibility Mode 0x04</li>
+<li>Gran Turismo 2 (Disc 1) (Arcade Mode) (SCES-02380) – Compatibility Mode 0x01 – Compatibility Mode 0x04</li>
+<li>Gran Turismo 2 (Disc 1) (Arcade) (SCPS-10116) – Compatibility Mode 0x01 – Compatibility Mode 0x04</li>
+<li>Gran Turismo 2 (Disc 2) (Gran Turismo) v1.0 (SCPS-10117) – Compatibility Mode 0x01 – Compatibility Mode 0x04</li>
+<li>Gran Turismo 2 (Disc 2) (Gran Turismo) v1.1 (SCPS-10117) – Compatibility Mode 0x01 – Compatibility Mode 0x04</li>
+<li>Gran Turismo 2 (Disc 2) (GT Mode) (SCES-12380) – Compatibility Mode 0x01 – Compatibility Mode 0x04</li>
+<li>Gran Turismo 2 (Simulation Mode) v1.0 (SCUS-94488) – Compatibility Mode 0x01 – Compatibility Mode 0x04</li>
+<li>Gran Turismo 2 (Simulation Mode) v1.1 (SCUS-94488) – Compatibility Mode 0x01 – Compatibility Mode 0x04</li>
+<li>Gran Turismo 2 (Simulation Mode) v1.2 (SCUS-94488) – Compatibility Mode 0x01 – Compatibility Mode 0x04</li>
+<li>Gran Turismo v1.0 (SCUS-94194) – Compatibility Mode 0x04</li>
+<li>Gran Turismo v1.1 (SCUS-94194) – Compatibility Mode 0x04</li>
+<li>Grandia (Disc 1) (SCUS-94457) – Compatibility Mode 0x04</li>
+<li>Grandia (Disc 1) (SLES-02397) – Compatibility Mode 0x04</li>
+<li>Grandia (Disc 1) (SLES-02398) – Compatibility Mode 0x04</li>
+<li>Grandia (Disc 1) (SLES-02399) – Compatibility Mode 0x04</li>
+<li>Grandia (Disc 1) (SLPS-02124) – Compatibility Mode 0x04</li>
+<li>Grandia (Disc 2) (SCUS-94465) – Compatibility Mode 0x04</li>
+<li>Grandia (Disc 2) (SLES-12397) – Compatibility Mode 0x04</li>
+<li>Grandia (Disc 2) (SLES-12398) – Compatibility Mode 0x04</li>
+<li>Grandia (Disc 2) (SLES-12399) – Compatibility Mode 0x04</li>
+<li>Grandia (Disc 2) (SLPS-02125) – Compatibility Mode 0x04</li>
+<li>Grandia: Prologue (Taikenban) (SLPM-80297) – Compatibility Mode 0x04</li>
 <li>Harry Potter And The Chamber Of Secrets (SLES-03972) – Crash Fix</li>
 <li>Harry Potter And The Chamber Of Secrets (SLES-03973) – Crash Fix</li>
 <li>Harry Potter And The Chamber Of Secrets (SLES-03974) – Crash Fix</li>
@@ -2655,8 +2656,8 @@
 <li>Harry Potter To Kenja No Ishi (SLPS-03355) – Crash Fix</li>
 <li>Hogs Of War (SLES-01041) – LibCrypt Crack</li>
 <li>Hogs Of War (SLES-02769) – LibCrypt Crack</li>
-<li>Jumping Flash! (SCUS-94103) – Compatibility Mode 0×01 – Compatibility Mode 0×04</li>
-<li>Jumping Flash! 2 (SCUS-94108) – Compatibility Mode 0×04</li>
+<li>Jumping Flash! (SCUS-94103) – Compatibility Mode 0x01 – Compatibility Mode 0x04</li>
+<li>Jumping Flash! 2 (SCUS-94108) – Compatibility Mode 0x04</li>
 <li>Le Mans 24 Hours (SLES-01362) – LibCrypt Crack</li>
 <li>Le Monde Des Bleus (SCES-01701) – LibCrypt Crack</li>
 <li>Legacy Of Kain: Soul Reaver (SLES-01301) – LibCrypt Crack</li>
@@ -2664,38 +2665,38 @@
 <li>Legacy Of Kain: Soul Reaver (SLES-02025) – LibCrypt Crack</li>
 <li>Legacy Of Kain: Soul Reaver (SLES-02026) – LibCrypt Crack</li>
 <li>Legacy Of Kain: Soul Reaver (SLES-02027) – LibCrypt Crack</li>
-<li>Legaia Densetsu (SCPS-10059) – Compatibility Mode 0×02 – Compatibility Mode 0×04</li>
-<li>Legend Of Legaia (SCES-01752) – Compatibility Mode 0×02 – Compatibility Mode 0×04</li>
-<li>Legend Of Legaia (SCES-01944) – Compatibility Mode 0×02 – Compatibility Mode 0×04</li>
-<li>Legend Of Legaia (SCES-01945) – Compatibility Mode 0×02 – Compatibility Mode 0×04</li>
-<li>Legend Of Legaia (SCES-01946) – Compatibility Mode 0×02 – Compatibility Mode 0×04</li>
-<li>Legend Of Legaia (SCES-01947) – Compatibility Mode 0×02 – Compatibility Mode 0×04</li>
-<li>Legend Of Legaia (SCUS-94254) – Compatibility Mode 0×02 – Compatibility Mode 0×04</li>
-<li>Legend Of Legaia (SCUS-94366) – Compatibility Mode 0×02 – Compatibility Mode 0×04</li>
+<li>Legaia Densetsu (SCPS-10059) – Compatibility Mode 0x02 – Compatibility Mode 0x04</li>
+<li>Legend Of Legaia (SCES-01752) – Compatibility Mode 0x02 – Compatibility Mode 0x04</li>
+<li>Legend Of Legaia (SCES-01944) – Compatibility Mode 0x02 – Compatibility Mode 0x04</li>
+<li>Legend Of Legaia (SCES-01945) – Compatibility Mode 0x02 – Compatibility Mode 0x04</li>
+<li>Legend Of Legaia (SCES-01946) – Compatibility Mode 0x02 – Compatibility Mode 0x04</li>
+<li>Legend Of Legaia (SCES-01947) – Compatibility Mode 0x02 – Compatibility Mode 0x04</li>
+<li>Legend Of Legaia (SCUS-94254) – Compatibility Mode 0x02 – Compatibility Mode 0x04</li>
+<li>Legend Of Legaia (SCUS-94366) – Compatibility Mode 0x02 – Compatibility Mode 0x04</li>
 <li>Les Cochons De Guerre (SLES-02766) – LibCrypt Crack</li>
 <li>Lifeforce: Tenka (SLES-00614) – 2nd VMC is disabled</li>
 <li>Lifeforce: Tenka (SLES-00615) – 2nd VMC is disabled</li>
-<li>LMA Manager 2001 (SLES-02975) – LibCrypt Crack – Compatibility Mode 0×04</li>
-<li>LMA Manager 2002 (SLES-03603) – LibCrypt Crack – Compatibility Mode 0×04</li>
+<li>LMA Manager 2001 (SLES-02975) – LibCrypt Crack – Compatibility Mode 0x04</li>
+<li>LMA Manager 2002 (SLES-03603) – LibCrypt Crack – Compatibility Mode 0x04</li>
 <li>Lucky Luke: Western Fever (SLES-03530) – Title Specific LibCrypt Crack</li>
-<li>Mánager De Liga 2001 (SLES-02979) – LibCrypt Crack – Compatibility Mode 0×04</li>
-<li>Mánager De Liga 2002 (SLES-03607) – LibCrypt Crack – Compatibility Mode 0×04</li>
+<li>Mánager De Liga 2001 (SLES-02979) – LibCrypt Crack – Compatibility Mode 0x04</li>
+<li>Mánager De Liga 2002 (SLES-03607) – LibCrypt Crack – Compatibility Mode 0x04</li>
 <li>Marranos En Guerra (SLES-02768) – LibCrypt Crack</li>
-<li>Marvel Super Heroes Vs. Street Fighter (SLES-01792) – Compatibility Mode 0×01</li>
-<li>Marvel Super Heroes Vs. Street Fighter (SLUS-00793) – Compatibility Mode 0×01</li>
-<li>Marvel Super Heroes Vs. Street Fighter: EX Edition (SLPS-01915) – Compatibility Mode 0×01</li>
-<li>Marvel Super Heroes Vs. Street Fighter: EX Edition (Taikenban) (SLPM-80376) – Compatibility Mode 0×01</li>
-<li>Marvel Vs. Capcom: Clash Of Super Heroes (SLES-02305) – Compatibility Mode 0×01</li>
-<li>Marvel Vs. Capcom: Clash Of Super Heroes (SLUS-01059) – Compatibility Mode 0×01</li>
-<li>Marvel Vs. Capcom: Clash Of Super Heroes: EX Edition (SLPS-02368) – Compatibility Mode 0×01</li>
-<li>MediEvil (SCES-01492) – LibCrypt Crack – Compatibility Mode 0×01</li>
-<li>MediEvil (SCES-01494) – LibCrypt Crack – Compatibility Mode 0×01</li>
-<li>MediEvil (SCES-01495) – LibCrypt Crack – Compatibility Mode 0×01</li>
-<li>MediEvil (SCUS-94227) – Compatibility Mode 0×01</li>
+<li>Marvel Super Heroes Vs. Street Fighter (SLES-01792) – Compatibility Mode 0x01</li>
+<li>Marvel Super Heroes Vs. Street Fighter (SLUS-00793) – Compatibility Mode 0x01</li>
+<li>Marvel Super Heroes Vs. Street Fighter: EX Edition (SLPS-01915) – Compatibility Mode 0x01</li>
+<li>Marvel Super Heroes Vs. Street Fighter: EX Edition (Taikenban) (SLPM-80376) – Compatibility Mode 0x01</li>
+<li>Marvel Vs. Capcom: Clash Of Super Heroes (SLES-02305) – Compatibility Mode 0x01</li>
+<li>Marvel Vs. Capcom: Clash Of Super Heroes (SLUS-01059) – Compatibility Mode 0x01</li>
+<li>Marvel Vs. Capcom: Clash Of Super Heroes: EX Edition (SLPS-02368) – Compatibility Mode 0x01</li>
+<li>MediEvil (SCES-01492) – LibCrypt Crack – Compatibility Mode 0x01</li>
+<li>MediEvil (SCES-01494) – LibCrypt Crack – Compatibility Mode 0x01</li>
+<li>MediEvil (SCES-01495) – LibCrypt Crack – Compatibility Mode 0x01</li>
+<li>MediEvil (SCUS-94227) – Compatibility Mode 0x01</li>
 <li>MediEvil 2 (SCES-02544) – LibCrypt Crack</li>
 <li>MediEvil 2 (SCES-02545) – LibCrypt Crack</li>
 <li>MediEvil 2 (SCES-02546) – LibCrypt Crack</li>
-<li>MediEvil v1.1 (SCES-00311) – LibCrypt Crack – Compatibility Mode 0×01</li>
+<li>MediEvil v1.1 (SCES-00311) – LibCrypt Crack – Compatibility Mode 0x01</li>
 <li>Men In Black: The Series: Crashdown (SLES-03519) – LibCrypt Crack</li>
 <li>Men In Black: The Series: Crashdown (SLES-03522) – LibCrypt Crack</li>
 <li>Metal Gear Solid (Disc 1) (SLES-01370) – Skip Metal Gear Featured Cutscenes</li>
@@ -2710,24 +2711,24 @@
 <li>Michelin Rally Masters: Race Of Champions (SLES-02395) – LibCrypt Crack</li>
 <li>Mike Tyson Boxing (SLES-02839) – LibCrypt Crack</li>
 <li>Mission: Impossible (SLES-01906) – LibCrypt Crack</li>
-<li>Mizzurna Falls (SLPS-01783) – Compatibility Mode 0×04</li>
-<li>Mobil 1 Rally Championship (SLES-02574) – Compatibility Mode 0×04</li>
-<li>Mobil 1 Rally Championship (SLUS-01103) – Compatibility Mode 0×04</li>
+<li>Mizzurna Falls (SLPS-01783) – Compatibility Mode 0x04</li>
+<li>Mobil 1 Rally Championship (SLES-02574) – Compatibility Mode 0x04</li>
+<li>Mobil 1 Rally Championship (SLUS-01103) – Compatibility Mode 0x04</li>
 <li>MoHo (SLES-02830) – LibCrypt Crack</li>
-<li>Muppet RaceMania (SLUS-01237) – Compatibility Mode 0×04</li>
-<li>Myst (SCUS-94602) – Compatibility Mode 0×04</li>
-<li>Myst (SLES-00218) – Compatibility Mode 0×04</li>
-<li>Myst v1.0 (SLPS-00024) – Compatibility Mode 0×04</li>
-<li>Myst v1.1 (SLPS-91023) – Compatibility Mode 0×04</li>
+<li>Muppet RaceMania (SLUS-01237) – Compatibility Mode 0x04</li>
+<li>Myst (SCUS-94602) – Compatibility Mode 0x04</li>
+<li>Myst (SLES-00218) – Compatibility Mode 0x04</li>
+<li>Myst v1.0 (SLPS-00024) – Compatibility Mode 0x04</li>
+<li>Myst v1.1 (SLPS-91023) – Compatibility Mode 0x04</li>
 <li>Need For Speed: Porsche 2000 (SLES-02689) – LibCrypt Crack</li>
 <li>Need For Speed: Porsche 2000 (SLES-02700) – LibCrypt Crack</li>
-<li>N-Gen Racing (SLES-02086) – LibCrypt Crack – Compatibility Mode 0×04</li>
-<li>N-Gen Racing (SLUS-01155) – Compatibility Mode 0×04</li>
-<li>Nightmare Creatures II (SLES-02751) – Compatibility Mode 0×04</li>
-<li>Nightmare Creatures II (SLUS-01112) – Compatibility Mode 0×04</li>
-<li>Pac-Man World (SLUS-00439) – Compatibility Mode 0×04</li>
-<li>PaRappa The Rapper (SCES-00743) – Compatibility Mode 0×04</li>
-<li>PaRappa The Rapper (SCUS-94183) – Compatibility Mode 0×04</li>
+<li>N-Gen Racing (SLES-02086) – LibCrypt Crack – Compatibility Mode 0x04</li>
+<li>N-Gen Racing (SLUS-01155) – Compatibility Mode 0x04</li>
+<li>Nightmare Creatures II (SLES-02751) – Compatibility Mode 0x04</li>
+<li>Nightmare Creatures II (SLUS-01112) – Compatibility Mode 0x04</li>
+<li>Pac-Man World (SLUS-00439) – Compatibility Mode 0x04</li>
+<li>PaRappa The Rapper (SCES-00743) – Compatibility Mode 0x04</li>
+<li>PaRappa The Rapper (SCUS-94183) – Compatibility Mode 0x04</li>
 <li>Parasite Eve II (Disc 1) (SLES-02558) – LibCrypt Crack</li>
 <li>Parasite Eve II (Disc 1) (SLES-02559) – LibCrypt Crack</li>
 <li>Parasite Eve II (Disc 1) (SLES-02560) – LibCrypt Crack</li>
@@ -2739,27 +2740,27 @@
 <li>Parasite Eve II (Disc 2) (SLES-12561) – LibCrypt Crack</li>
 <li>Parasite Eve II (Disc 2) (SLES-12562) – LibCrypt Crack</li>
 <li>PGA European Tour Golf (SLES-02061) – LibCrypt Crack</li>
-<li>Pop'n Music (SLPM-87089) – Compatibility Mode 0×01</li>
-<li>Porsche Challenge (SCES-00409) – Compatibility Mode 0×02</li>
-<li>Porsche Challenge (SCUS-94187) – Compatibility Mode 0×02</li>
-<li>Porsche Challenge (SIPS-60016) – Compatibility Mode 0×02</li>
+<li>Pop'n Music (SLPM-87089) – Compatibility Mode 0x01</li>
+<li>Porsche Challenge (SCES-00409) – Compatibility Mode 0x02</li>
+<li>Porsche Challenge (SCUS-94187) – Compatibility Mode 0x02</li>
+<li>Porsche Challenge (SIPS-60016) – Compatibility Mode 0x02</li>
 <li>Premier Manager 2000 (SLES-02292) – LibCrypt Crack</li>
 <li>Prince Naseem Boxing (SLES-00017) – LibCrypt Crack</li>
-<li>Rapid Racer (SCES-00394) – Compatibility Mode 0×04</li>
-<li>Ray Crisis (SLES-02882) – Compatibility Mode 0×04</li>
-<li>Raycrisis (SLPM-86450) – Compatibility Mode 0×04</li>
-<li>Raycrisis: Series Termination (SLUS-01217) – Compatibility Mode 0×04</li>
+<li>Rapid Racer (SCES-00394) – Compatibility Mode 0x04</li>
+<li>Ray Crisis (SLES-02882) – Compatibility Mode 0x04</li>
+<li>Raycrisis (SLPM-86450) – Compatibility Mode 0x04</li>
+<li>Raycrisis: Series Termination (SLUS-01217) – Compatibility Mode 0x04</li>
 <li>RC Revenge (SLES-02824) – LibCrypt Crack</li>
-<li>Resident Evil (SLUS-00170) – Compatibility Mode 0×05</li>
+<li>Resident Evil (SLUS-00170) – Compatibility Mode 0x05</li>
 <li>Resident Evil 3: Nemesis (SLES-02529) – LibCrypt Crack</li>
 <li>Resident Evil 3: Nemesis (SLES-02530) – LibCrypt Crack</li>
 <li>Resident Evil 3: Nemesis (SLES-02531) – LibCrypt Crack</li>
 <li>Resident Evil 3: Nemesis (SLES-02532) – LibCrypt Crack</li>
 <li>Resident Evil 3: Nemesis (SLES-02533) – LibCrypt Crack</li>
-<li>Resident Evil: Director's Cut (SLES-00969) – Compatibility Mode 0×05</li>
-<li>Resident Evil: Director's Cut (SLES-00970) – Compatibility Mode 0×05</li>
-<li>Resident Evil: Director's Cut (SLUS-00551) – Compatibility Mode 0×05</li>
-<li>Resident Evil: Director's Cut: Dual Shock Ver. (SLUS-00747) – Compatibility Mode 0×05</li>
+<li>Resident Evil: Director's Cut (SLES-00969) – Compatibility Mode 0x05</li>
+<li>Resident Evil: Director's Cut (SLES-00970) – Compatibility Mode 0x05</li>
+<li>Resident Evil: Director's Cut (SLUS-00551) – Compatibility Mode 0x05</li>
+<li>Resident Evil: Director's Cut: Dual Shock Ver. (SLUS-00747) – Compatibility Mode 0x05</li>
 <li>Roadsters (SLES-02326) – Crash Fix</li>
 <li>Roadsters (SLUS-01024) – Crash Fix</li>
 <li>Ronaldo V-Football (SLES-00995) – LibCrypt Crack</li>
@@ -2767,12 +2768,12 @@
 <li>SaGa Frontier 2 (SLES-02112) – LibCrypt Crack</li>
 <li>SaGa Frontier 2 (SLES-02113) – LibCrypt Crack</li>
 <li>SaGa Frontier 2 (SLES-02118) – LibCrypt Crack</li>
-<li>Silent Hill (SLED-01735) – Compatibility Mode 0×04</li>
-<li>Silent Hill (SLES-01514) – Compatibility Mode 0×04</li>
-<li>Silent Hill (SLUS-00707) – Compatibility Mode 0×04</li>
-<li>Silent Hill v1.0 (SLPM-86192) – Compatibility Mode 0×04</li>
-<li>Silent Hill v1.1 (SLPM-86192) – Compatibility Mode 0×04</li>
-<li>Sled Storm (SLES-02194) – Compatibility Mode 0×04</li>
+<li>Silent Hill (SLED-01735) – Compatibility Mode 0x04</li>
+<li>Silent Hill (SLES-01514) – Compatibility Mode 0x04</li>
+<li>Silent Hill (SLUS-00707) – Compatibility Mode 0x04</li>
+<li>Silent Hill v1.0 (SLPM-86192) – Compatibility Mode 0x04</li>
+<li>Silent Hill v1.1 (SLPM-86192) – Compatibility Mode 0x04</li>
+<li>Sled Storm (SLES-02194) – Compatibility Mode 0x04</li>
 <li>Sno-Cross Championship Racing (SLES-02763) – LibCrypt Crack</li>
 <li>Space Debris (SCES-02290) – LibCrypt Crack</li>
 <li>Space Debris (SCES-02430) – LibCrypt Crack</li>
@@ -2780,48 +2781,48 @@
 <li>Speed Freaks (SCES-01763) – LibCrypt Crack</li>
 <li>Spyro 2: Gateway To Glimmer (SCES-02104) – LibCrypt Crack</li>
 <li>Spyro: Year Of The Dragon v1.0 (SCES-02835) – LibCrypt Crack</li>
-<li>Spyro: Year Of The Dragon v1.0 (SCUS-94467) – Compatibility Mode 0×01</li>
+<li>Spyro: Year Of The Dragon v1.0 (SCUS-94467) – Compatibility Mode 0x01</li>
 <li>Spyro: Year Of The Dragon v1.1 (SCES-02835) – LibCrypt Crack</li>
-<li>Spyro: Year Of The Dragon v1.1 (SCUS-94467) – Compatibility Mode 0×01</li>
-<li>Star Gladiator: Episode 1: Final Crusade (SLES-00495) – Compatibility Mode 0×04</li>
-<li>Star Gladiator: Episode 1: Final Crusade (SLPS-00539) – Compatibility Mode 0×04</li>
-<li>Star Gladiator: Episode 1: Final Crusade (SLUS-00372) – Compatibility Mode 0×04</li>
-<li>Street Fighter Collection 2 (SLES-01721) – Compatibility Mode 0×01</li>
-<li>Street Fighter Collection 2 (SLUS-00746) – Compatibility Mode 0×01</li>
-<li>Street Fighter EX Plus Alpha (SLES-00939) – Compatibility Mode 0×04</li>
-<li>Street Fighter EX Plus Alpha (SLPM-86041) – Compatibility Mode 0×04</li>
-<li>Street Fighter EX Plus Alpha (SLUS-00548) – Compatibility Mode 0×04</li>
-<li>Strikers 1945 (SLPS-00407) – Compatibility Mode 0×04</li>
-<li>Super Puzzle Fighter II Turbo (SLES-00605) – Compatibility Mode 0×01</li>
-<li>Super Puzzle Fighter II Turbo (SLUS-00418) – Compatibility Mode 0×01</li>
+<li>Spyro: Year Of The Dragon v1.1 (SCUS-94467) – Compatibility Mode 0x01</li>
+<li>Star Gladiator: Episode 1: Final Crusade (SLES-00495) – Compatibility Mode 0x04</li>
+<li>Star Gladiator: Episode 1: Final Crusade (SLPS-00539) – Compatibility Mode 0x04</li>
+<li>Star Gladiator: Episode 1: Final Crusade (SLUS-00372) – Compatibility Mode 0x04</li>
+<li>Street Fighter Collection 2 (SLES-01721) – Compatibility Mode 0x01</li>
+<li>Street Fighter Collection 2 (SLUS-00746) – Compatibility Mode 0x01</li>
+<li>Street Fighter EX Plus Alpha (SLES-00939) – Compatibility Mode 0x04</li>
+<li>Street Fighter EX Plus Alpha (SLPM-86041) – Compatibility Mode 0x04</li>
+<li>Street Fighter EX Plus Alpha (SLUS-00548) – Compatibility Mode 0x04</li>
+<li>Strikers 1945 (SLPS-00407) – Compatibility Mode 0x04</li>
+<li>Super Puzzle Fighter II Turbo (SLES-00605) – Compatibility Mode 0x01</li>
+<li>Super Puzzle Fighter II Turbo (SLUS-00418) – Compatibility Mode 0x01</li>
 <li>Sydney 2000 (SLES-02857) – LibCrypt Crack</li>
 <li>Sydney 2000 (SLES-02860) – LibCrypt Crack</li>
-<li>Syphon Filter (SCES-01910) – Compatibility Mode 0×04</li>
-<li>Syphon Filter (SCES-01911) – Compatibility Mode 0×04</li>
-<li>Syphon Filter (SCES-01913) – Compatibility Mode 0×04</li>
-<li>Syphon Filter (SCES-01914) – Compatibility Mode 0×04</li>
-<li>Syphon Filter (SLPS-02216) – Compatibility Mode 0×04</li>
-<li>Syphon Filter v1.0 (SCUS-94240) – Compatibility Mode 0×04</li>
-<li>Syphon Filter v1.1 (SCUS-94240) – Compatibility Mode 0×04</li>
+<li>Syphon Filter (SCES-01910) – Compatibility Mode 0x04</li>
+<li>Syphon Filter (SCES-01911) – Compatibility Mode 0x04</li>
+<li>Syphon Filter (SCES-01913) – Compatibility Mode 0x04</li>
+<li>Syphon Filter (SCES-01914) – Compatibility Mode 0x04</li>
+<li>Syphon Filter (SLPS-02216) – Compatibility Mode 0x04</li>
+<li>Syphon Filter v1.0 (SCUS-94240) – Compatibility Mode 0x04</li>
+<li>Syphon Filter v1.1 (SCUS-94240) – Compatibility Mode 0x04</li>
 <li>TechnoMage: El Retorno De La Eternidad (SLES-03244) – LibCrypt Crack</li>
 <li>TechnoMage: En Quete de L'Eternite (SLES-03242) – LibCrypt Crack</li>
 <li>TechnoMage: Return Of Eternity (SLES-03241) – LibCrypt Crack</li>
 <li>TechnoMage: Ritorno All'Eternita (SLES-03243) – LibCrypt Crack</li>
-<li>Tekken 3 (SCES-01237) – Compatibility Mode 0×01</li>
-<li>Tekken 3 (SLUS-00402) – Compatibility Mode 0×01</li>
-<li>Tekken 3 v1.0 (SLPS-01300 / SLPS-91202) – Compatibility Mode 0×01 – Compatibility Mode 0×06</li>
-<li>Test Drive 4 (SLES-00948) – Compatibility Mode 0×04</li>
-<li>Test Drive 4 (SLUS-00487) – Compatibility Mode 0×04</li>
-<li>Test Drive 4×4 (SLES-01179) – Compatibility Mode 0×04</li>
+<li>Tekken 3 (SCES-01237) – Compatibility Mode 0x01</li>
+<li>Tekken 3 (SLUS-00402) – Compatibility Mode 0x01</li>
+<li>Tekken 3 v1.0 (SLPS-01300 / SLPS-91202) – Compatibility Mode 0x01 – Compatibility Mode 0x06</li>
+<li>Test Drive 4 (SLES-00948) – Compatibility Mode 0x04</li>
+<li>Test Drive 4 (SLUS-00487) – Compatibility Mode 0x04</li>
+<li>Test Drive 4×4 (SLES-01179) – Compatibility Mode 0x04</li>
 <li>The F.A Premier League Manager 2001 (SLES-03061) – LibCrypt Crack</li>
 <li>The Italian Job (SLES-03489) – LibCrypt Crack</li>
 <li>The Italian Job (SLES-03626) – LibCrypt Crack</li>
 <li>Theme Park World (SLES-02688) – LibCrypt Crack</li>
 <li>This Is Football (SCES-01700) – LibCrypt Crack</li>
 <li>This Is Football (SCES-01703) – LibCrypt Crack</li>
-<li>Tobal 2 v1.1 (SLPM-86033) – Compatibility Mode 0×06</li>
-<li>Tobal No.1 (SCUS-94208) – Compatibility Mode 0×04</li>
-<li>Tobal No.1 (SLPM-87405 / SLPS-00400) – Compatibility Mode 0×04 – Compatibility Mode 0×06</li>
+<li>Tobal 2 v1.1 (SLPM-86033) – Compatibility Mode 0x06</li>
+<li>Tobal No.1 (SCUS-94208) – Compatibility Mode 0x04</li>
+<li>Tobal No.1 (SLPM-87405 / SLPS-00400) – Compatibility Mode 0x04 – Compatibility Mode 0x06</li>
 <li>TOCA World Touring Cars (SLES-02572) – LibCrypt Crack</li>
 <li>TOCA World Touring Cars (SLES-02573) – LibCrypt Crack</li>
 <li>Tomb Raider (SLES-00024) – VSync Fix</li>
@@ -2845,7 +2846,7 @@
 <li>Tomb Raider v1.5 (SLUS-00152) – VSync Fix</li>
 <li>Tomb Raider v1.6 (SLUS-00152) – VSync Fix</li>
 <li>Tomb Raiders (SLPS-00617) – VSync Fix</li>
-<li>Turbo Prop Racing (SCUS-94229) – Compatibility Mode 0×04</li>
+<li>Turbo Prop Racing (SCUS-94229) – Compatibility Mode 0x04</li>
 <li>UEFA Euro 2000 (SLES-02704) – LibCrypt Crack</li>
 <li>UEFA Euro 2000 (SLES-02706) – LibCrypt Crack</li>
 <li>UEFA Euro 2000 (SLES-02707) – LibCrypt Crack</li>
@@ -2855,32 +2856,30 @@
 <li>Vagrant Story (SLES-02754) – LibCrypt Crack</li>
 <li>Vagrant Story (SLES-02755) – LibCrypt Crack</li>
 <li>Vagrant Story (SLES-02756) – LibCrypt Crack</li>
-<li>Vigilante 8: 2nd Battle (SLPS-02615) – Compatibility Mode 0×04</li>
-<li>Vigilante 8: 2nd Offense (SLES-02162) – Compatibility Mode 0×04</li>
-<li>Vigilante 8: 2nd Offense (SLUS-00868) – Compatibility Mode 0×04</li>
+<li>Vigilante 8: 2nd Battle (SLPS-02615) – Compatibility Mode 0x04</li>
+<li>Vigilante 8: 2nd Offense (SLES-02162) – Compatibility Mode 0x04</li>
+<li>Vigilante 8: 2nd Offense (SLUS-00868) – Compatibility Mode 0x04</li>
 <li>V-Rally: Championship Edition 2 (SLES-01907) – LibCrypt Crack</li>
 <li>Walt Disney World Quest: Magical Racing Tour (SLES-02733) – LibCrypt Crack</li>
-<li>Wild 9 (SLES-01333) – Compatibility Mode 0×04</li>
-<li>Wild 9 (SLUS-00425) – Compatibility Mode 0×04</li>
-<li>Wildroid 9 (SCPS-10080) – Compatibility Mode 0×04</li>
-<li>Wip3out (SCES-01909) – Compatibility Mode 0×04</li>
+<li>Wild 9 (SLES-01333) – Compatibility Mode 0x04</li>
+<li>Wild 9 (SLUS-00425) – Compatibility Mode 0x04</li>
+<li>Wildroid 9 (SCPS-10080) – Compatibility Mode 0x04</li>
+<li>Wip3out (SCES-01909) – Compatibility Mode 0x04</li>
 <li>WipEout (SCUS-94301) – Crash Fix</li>
 <li>WipEout (SIPS-60003) – Crash Fix</li>
-<li>WipEout 2097 (SLES-00327) – Compatibility Mode 0×04</li>
-<li>WipEout 3 (SCPS-10098) – Compatibility Mode 0×04</li>
-<li>WipEout 3 (SLUS-00865) – Compatibility Mode 0×04</li>
-<li>WipEout 3: Special Edition (SCES-02845) – Compatibility Mode 0×04</li>
+<li>WipEout 2097 (SLES-00327) – Compatibility Mode 0x04</li>
+<li>WipEout 3 (SCPS-10098) – Compatibility Mode 0x04</li>
+<li>WipEout 3 (SLUS-00865) – Compatibility Mode 0x04</li>
+<li>WipEout 3: Special Edition (SCES-02845) – Compatibility Mode 0x04</li>
 <li>WipEout v1.0 (SCES-00010) – Crash Fix</li>
 <li>WipEout v1.1 (SCES-00010) – Crash Fix</li>
-<li>Wipeout XL (SCUS-94351) – Compatibility Mode 0×04</li>
-<li>Wipeout XL (SIPS-60010) – Compatibility Mode 0×04</li>
-<li>WWF SmackDown! 2: Know Your Role (SLUS-01234) – Compatibility Mode 0×04</li>
-<li>X-Men: Children Of The Atom (SLES-00198) – Compatibility Mode 0×04</li>
-<li>X-Men: Children Of The Atom (SLUS-00044) – Compatibility Mode 0×04</li>
+<li>Wipeout XL (SCUS-94351) – Compatibility Mode 0x04</li>
+<li>Wipeout XL (SIPS-60010) – Compatibility Mode 0x04</li>
+<li>WWF SmackDown! 2: Know Your Role (SLUS-01234) – Compatibility Mode 0x04</li>
+<li>X-Men: Children Of The Atom (SLES-00198) – Compatibility Mode 0x04</li>
+<li>X-Men: Children Of The Atom (SLUS-00044) – Compatibility Mode 0x04</li>
 </ul>
-<hr>
-
-<h3><a href="wiki/index.html"><strong>Index</strong></a></h3><h2>From the official thread — compatibility notes &amp; per-game fixes</h2>
+<hr><h2 id="from-the-official-thread-compatibility-notes-per-game-fixes">From the official thread — compatibility notes &amp; per-game fixes</h2>
 <blockquote>
 <p>Sourced from the <a href="https://www.psx-place.com/threads/popstarter.19139/">official psx-place POPStarter thread</a>.</p>
 </blockquote>
@@ -2897,7 +2896,7 @@
 <li><strong>PAL PS1 games scroll/roll vertically through some HDMI adapters;</strong> <code>$NOPAL</code> stops the scroll but<br />
   off-centres the image (re-centre with <code>$XPOS</code>/<code>$YPOS</code>). <em>(R3dRapt0r39)</em></li>
 </ul>
-<h3>Per-game datapoints (community-verified)</h3>
+<h3 id="per-game-datapoints-community-verified">Per-game datapoints (community-verified)</h3>
 <table>
 <thead>
 <tr>
@@ -2939,7 +2938,7 @@
 <blockquote>
 <p><strong>Known multi-track-audio bug:</strong> newer Tomb Raider revisions and Air Combat lose all CD music/voice tracks<br />
 even when levels load (a POPS emulation limitation). <em>(Peppe90)</em></p>
-</blockquote><h2>From the official thread — PATCH / TROJAN details</h2>
+</blockquote><h2 id="from-the-official-thread-patch-trojan-details">From the official thread — PATCH / TROJAN details</h2>
 <blockquote>
 <p>Sourced from the <a href="https://www.psx-place.com/threads/popstarter.19139/">official psx-place POPStarter thread</a>.</p>
 </blockquote>
@@ -2959,7 +2958,8 @@ even when levels load (a POPS emulation limitation). <em>(Peppe90)</em></p>
 <li><strong>HugoPocked's per-game fixes install differently</strong> from global TROJAN/PATCH BINs — you drop the fix files<br />
 <strong>into that game's VMC folder</strong>. Thread:<br />
 <a href="https://www.psx-place.com/threads/hugopocked-fixes-for-popstarter.39750/">HugoPocked fixes for POPStarter</a>.</li>
-</ul><h2>More sources</h2><div class="grid"><a class="tile" href="wiki/rip-off.html"><b>Rip Off</b><span>full wiki page</span></a></div><details class="deep"><summary>Cross-sourced quick-reference cards (provenance-tagged)</summary><div class="cards"><div class="card" id="patch-1-bin-mode-0x01"><h3>PATCH_1.BIN (mode 0x01) <span class="badge primary">primary</span> <span class="cat-chip">patches</span></h3>
+</ul><h2>More sources</h2><div class="grid"><a class="tile" href="wiki/game-compatibility.html"><b>Game Compatibility</b><span>full wiki page</span></a>
+<a class="tile" href="wiki/rip-off.html"><b>Rip Off</b><span>full wiki page</span></a></div><details class="deep"><summary>Cross-sourced quick-reference cards (provenance-tagged)</summary><div class="cards"><div class="card" id="patch-1-bin-mode-0x01"><h3>PATCH_1.BIN (mode 0x01) <span class="badge primary">primary</span> <span class="cat-chip">patches</span></h3>
 <div class="field"><b>Effect:</b> &#x27;Helps restoring the music/voices in several games.&#x27;</div>
 <div class="field"><b>Scope:</b> Drop in game VMC dir (one game) or POPS dir (all games). r13.</div>
 <div class="field"><b>Conflicts:</b> MUST NOT combine with modes 0x02/0x03/0x05. May combine with 0x04/0x06.</div>
@@ -3126,7 +3126,7 @@ even when levels load (a POPS emulation limitation). <em>(Peppe90)</em></p>
 <div class="field"><b>Conflicts:</b> Interacts with the chosen IGR combo; addresses 2-pad IGR misfires.</div>
 <div class="ex">Drop TROJAN_9.BIN to stop pad-2 from opening the IGR menu</div>
 <div class="prov">📎 IGR &#x27;Trojans and Patches&#x27; thread t=9909 (Wayback 20230623044907)</div>
-</div></div></details></main>
+</div></div></details><h2 id="topic-index">All 4 wiki pages in this topic</h2><p class="lead">Every recovered page filed under this section — including the deep-reference pages not embedded above.</p><div class="grid"><a class="tile" href="wiki/automated.html"><b>Automated</b><span>automated</span></a><a class="tile" href="wiki/compatibility.html"><b>Compatibility</b><span>compatibility</span></a><a class="tile" href="wiki/game-compatibility.html"><b>Game Compatibility</b><span>Game-Compatibility</span></a><a class="tile" href="wiki/rip-off.html"><b>Rip Off</b><span>rip-off</span></a></div></main>
   <aside class="toc"><div class="toc-h">On this page</div><nav id="toc-nav"></nav></aside>
 </div>
 <footer>

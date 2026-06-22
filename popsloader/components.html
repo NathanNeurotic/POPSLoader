@@ -32,11 +32,14 @@
 <a href="../downloads.html"><span class="em">📦</span>Downloads</a>
 <a href="../history.html"><span class="em">📜</span>History</a>
     <h4>Reference</h4>
+    <a href="../glossary.html"><span class="em">📖</span>Glossary</a>
+    <a href="../commands.html"><span class="em">⌨️</span>Command index</a>
+    <a href="../faq.html"><span class="em">❓</span>FAQ &amp; known bugs</a>
     <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
   </nav>
   <main class="content"><h1>Components</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/BETA-13-PLAY/COMPONENTS.md">view on GitHub ↗</a></p><p>Last updated: 2026-06-21 (BETA-13 rolling candidate; HEAD = BETA-13-PLAY @ 56a5ad5; BETA-12 is the public release at af983d7, and BETA-12-PLAY is now ARCHIVAL/frozen). Since the prior pass: nav auto-repeat and the right-stick description scroll were re-cut to FRAME-COUNTING (the wall clock reads microseconds on PS2, so the old "_ms" gates fired every frame); the analog-stick→d-pad fold is now gated on a live-negotiated analog mode (new <code>Pads.getMode()</code> C binding) plus hysteresis; an OPL-style overscan (CRT inset) render transform was added (<code>Screen.setOverscan</code>/<code>getOverscan</code> + <code>OVX</code>/<code>OVY</code>); the game-list cover box now layers <code>cover_default.png</code> + <code>cover_missing.png</code> and <code>MISSING.png</code> was removed (−62 KB ELF); and two new settings keys (BOOT_SOUND, OVERSCAN) bring EncodeSettings to 20 keys. For current Settings behavior, Known Issues, Preservation Contracts, Behavioral Invariants, and Hardware Status, see <strong><code>STATE.md</code></strong> (canonical) — this doc points there instead of restating them.</p>
-<h1>COMPONENTS</h1>
-<h2>Purpose</h2>
+<h1 id="components">COMPONENTS</h1>
+<h2 id="purpose">Purpose</h2>
 <p>Current technical map of POPSLoader source files, their responsibility, and key<br />
 entry points. POPSLoader is a PS1-game launcher built on the Enceladus runtime:<br />
 EE C/C++, an embedded Lua application (<code>bin/POPSLDR/*.lua</code> compiled into the EE<br />
@@ -52,8 +55,8 @@ external audit flagged for removal — the 3D render pipeline (commit a56441c),<
 been removed from the tree and are documented as removed below. (The SMB<br />
 main-menu entry remains as an unimplemented stub.)</p>
 </blockquote>
-<h2>1. EE bootstrap and runtime (<code>src/</code>)</h2>
-<h3><code>src/main.cpp</code> — EE entry, pre-main IOP hygiene, IRX bring-up</h3>
+<h2 id="1-ee-bootstrap-and-runtime-src">1. EE bootstrap and runtime (<code>src/</code>)</h2>
+<h3 id="srcmaincpp-ee-entry-pre-main-iop-hygiene-irx-bring-up"><code>src/main.cpp</code> — EE entry, pre-main IOP hygiene, IRX bring-up</h3>
 <ul>
 <li><code>_ps2sdk_memory_init()</code> (main.cpp:619) runs BEFORE <code>main()</code> inside newlib's<br />
   memory-init hook. Gated on <code>-DRESET_IOP</code> (set in Makefile:34, applied<br />
@@ -83,7 +86,7 @@ main-menu entry remains as an unimplemented stub.)</p>
 <li>After IRX bring-up <code>main()</code> sets boot path/app dir, inits gsKit + pad, then<br />
   enters a loop running embedded <code>boot.lua</code> via <code>runScript</code>.</li>
 </ul>
-<h3><code>src/luaplayer.cpp</code> — Lua VM lifecycle and embedded asset wiring</h3>
+<h3 id="srcluaplayercpp-lua-vm-lifecycle-and-embedded-asset-wiring"><code>src/luaplayer.cpp</code> — Lua VM lifecycle and embedded asset wiring</h3>
 <ul>
 <li><code>g_embedded_lua_assets</code> (luaplayer.cpp:35-41) is the embedded script table:<br />
 <code>boot.lua</code>, <code>system.lua</code>, <code>ui.lua</code>, <code>images.lua</code>, <code>pops_profiles.lua</code>.</li>
@@ -99,7 +102,7 @@ main-menu entry remains as an unimplemented stub.)</p>
 <code>luaSound_init</code>, <code>luaHDD_init</code>. NOTE: <code>luaSMB_init</code> is NOT<br />
   called here (see Orphaned/dormant code below).</li>
 </ul>
-<h3><code>src/luasystem.cpp</code> — the largest binding surface (System.*)</h3>
+<h3 id="srcluasystemcpp-the-largest-binding-surface-system"><code>src/luasystem.cpp</code> — the largest binding surface (System.*)</h3>
 <ul>
 <li>Lazy IRX loaders (Layer C): <code>EnsureBDM</code>/<code>EnsureBDMFatFs</code>/<code>EnsureUsbMass</code><br />
   chain (luasystem.cpp:80-120), <code>EnsureMmceman</code> (luasystem.cpp:141).</li>
@@ -126,7 +129,7 @@ main-menu entry remains as an unimplemented stub.)</p>
   comment at luasystem.cpp:713 notes the shared helper was "historically used by<br />
   copyFile".) Not on the launch path.</li>
 </ul>
-<h3><code>src/luaHDD.cpp</code> — HDD (dev9) IRX stack and PFS mounting</h3>
+<h3 id="srcluahddcpp-hdd-dev9-irx-stack-and-pfs-mounting"><code>src/luaHDD.cpp</code> — HDD (dev9) IRX stack and PFS mounting</h3>
 <ul>
 <li><code>Load_HDD_IRX</code> (luaHDD.cpp:120, exposed as <code>HDD.Initialize</code> at luaHDD.cpp:173)<br />
   loads ps2dev9 -&gt; ps2atad -&gt; ps2hdd-osd -&gt; ps2fs back-to-back (luaHDD.cpp:142-161),<br />
@@ -135,7 +138,7 @@ main-menu entry remains as an unimplemented stub.)</p>
 <li><code>GetHDDStatus</code> via <code>HDIOC_STATUS</code> (luaHDD.cpp:93-96); on-demand mount<br />
 <code>MountPart</code>/<code>mnt</code> (luaHDD.cpp:21-92) producing <code>pfs%d:/</code> mount points.</li>
 </ul>
-<h3><code>src/embed_assets.cpp</code> — runtime name -&gt; embedded blob resolver</h3>
+<h3 id="srcembed_assetscpp-runtime-name-embedded-blob-resolver"><code>src/embed_assets.cpp</code> — runtime name -&gt; embedded blob resolver</h3>
 <ul>
 <li><code>embedded_get()</code> (embed_assets.cpp:195) normalizes paths (strips <code>embed:/</code>,<br />
   embed_assets.cpp:205; <code>./</code>, embed_assets.cpp:209; leading <code>/</code>,<br />
@@ -150,7 +153,7 @@ main-menu entry remains as an unimplemented stub.)</p>
 <code>cover_default.png</code> / <code>cover_missing.png</code> placeholders are MANDATORY embeds<br />
   (extern embed_assets.cpp:60-63; entries embed_assets.cpp:119-120 &amp; 166-167).</li>
 </ul>
-<h3>Other EE runtime files</h3>
+<h3 id="other-ee-runtime-files">Other EE runtime files</h3>
 <ul>
 <li><code>src/graphics.cpp</code> / <code>src/luagraphics.cpp</code> — gsKit 2D drawing + <code>Graphics.*</code><br />
   Lua bindings (<code>luaGraphics_init</code>, luagraphics.cpp). Image load/draw, the<br />
@@ -189,14 +192,14 @@ main-menu entry remains as an unimplemented stub.)</p>
 <li><code>src/luatimer.cpp</code> (<code>luaTimer_init</code>) — <code>Timer.*</code> bindings.</li>
 <li><code>src/system.cpp</code> — small EE system helpers.</li>
 </ul>
-<h3>3D rendering pipeline (removed)</h3>
+<h3 id="3d-rendering-pipeline-removed">3D rendering pipeline (removed)</h3>
 <p>The legacy 3D render pipeline (src/render.cpp, src/calc_3d.cpp,<br />
 src/gsKit3d_sup.cpp, src/luaRender.cpp and the Render/Lights/Camera Lua<br />
 bindings, plus the -lmath3d link) was dead at the application level and has been<br />
 removed from the tree (commit a56441c). These files are no longer on disk, no<br />
 longer in the Makefile object lists, and luaRender_init is no longer called<br />
 from luaplayer.cpp.</p>
-<h3>Orphaned / dead-on-disk</h3>
+<h3 id="orphaned-dead-on-disk">Orphaned / dead-on-disk</h3>
 <ul>
 <li><code>src/luaSMB.cpp</code> (SMB network-share client logon helpers) was orphan source —<br />
   never in the Makefile object lists and never initialized (<code>luaSMB_init</code> was<br />
@@ -204,10 +207,10 @@ from luaplayer.cpp.</p>
   exists in the tree. The SMB (v1) main-menu entry remains as an unimplemented<br />
   stub (OPT7, ui.lua:4397-4398) — see Feature Surface.</li>
 </ul>
-<h2>2. Embedded Lua application (<code>bin/POPSLDR/</code>)</h2>
+<h2 id="2-embedded-lua-application-binpopsldr">2. Embedded Lua application (<code>bin/POPSLDR/</code>)</h2>
 <p>All <code>bin/POPSLDR/*.lua</code> are bin2c'd into the EE ELF at build time; the on-card<br />
 copies are not read at runtime. Editing them requires a rebuild.</p>
-<h3><code>bin/POPSLDR/system.lua</code> — controller, device/launch engine, settings</h3>
+<h3 id="binpopsldrsystemlua-controller-devicelaunch-engine-settings"><code>bin/POPSLDR/system.lua</code> — controller, device/launch engine, settings</h3>
 <ul>
 <li>Owns device resolution, settings persistence, game-list building, the HDD<br />
   cache, and the launch engine. <code>require</code>s pops_profiles/ui/images<br />
@@ -251,7 +254,7 @@ copies are not read at runtime. Editing them requires a rebuild.</p>
 <code>AutoLaunchFromLaunchArgs</code> (system.lua:6139), then the single render loop<br />
   (system.lua:6364-6376; dispatch body 6365-6375 per-scene <code>Play()</code> + <code>UI.flip()</code>).</li>
 </ul>
-<h3><code>bin/POPSLDR/ui.lua</code> — the entire UI table, no main loop</h3>
+<h3 id="binpopsldruilua-the-entire-ui-table-no-main-loop"><code>bin/POPSLDR/ui.lua</code> — the entire UI table, no main loop</h3>
 <ul>
 <li>Defines one <code>UI</code> table literal (ui.lua:446) and <code>return UI</code> (ui.lua:4991).<br />
   Contains all scenes, the scene/transition state machine, notification queue,<br />
@@ -302,7 +305,7 @@ copies are not read at runtime. Editing them requires a rebuild.</p>
 <code>Transition.allowSceneWrite</code>, ui.lua:4981). Build-info display reads<br />
 <code>BUILD_INFO.txt</code> (<code>LoadBuildInfo</code>, ui.lua:4687).</li>
 </ul>
-<h3><code>bin/POPSLDR/pops_profiles.lua</code> — POPSTARTER.ELF location list</h3>
+<h3 id="binpopsldrpops_profileslua-popstarterelf-location-list"><code>bin/POPSLDR/pops_profiles.lua</code> — POPSTARTER.ELF location list</h3>
 <ul>
 <li><code>PLDR.PROFILES</code> (pops_profiles.lua:26-91) is a 16-entry ordered list of<br />
 <code>{ELF=path, DESC=text}</code> POPSTARTER.ELF <em>locations</em> (not per-game configs).<br />
@@ -310,7 +313,7 @@ copies are not read at runtime. Editing them requires a rebuild.</p>
   93-94). The orthogonal PROFILE_DEFAULT vs CUSTOM mode (system.lua:667-712)<br />
   decides whether the profile ELF or a typed override wins.</li>
 </ul>
-<h3><code>bin/POPSLDR/images.lua</code> — embedded UI glyph/chrome atlas</h3>
+<h3 id="binpopsldrimageslua-embedded-ui-glyphchrome-atlas"><code>bin/POPSLDR/images.lua</code> — embedded UI glyph/chrome atlas</h3>
 <ul>
 <li><code>IMG_REGISTRATIONS</code> (images.lua:11-37): 25 <code>{key, filename}</code> pairs (device<br />
   icons, backgrounds, splash layers, button/d-pad glyphs, <code>frame</code>, the optional<br />
@@ -326,7 +329,7 @@ copies are not read at runtime. Editing them requires a rebuild.</p>
   key just returns nil (marked in <code>IMG_FAILED</code>). This is UI chrome, NOT per-game<br />
   box art (game covers are <code>UI.CoverCache</code> in ui.lua).</li>
 </ul>
-<h2>3. Boot script (<code>etc/</code>)</h2>
+<h2 id="3-boot-script-etc">3. Boot script (<code>etc/</code>)</h2>
 <ul>
 <li><code>etc/boot.lua</code> (HDD-boot branch etc/boot.lua:37) mounts the HDD boot partition<br />
   to <code>pfs1:</code> (warning "NEVER USE IT FOR ANYTHING ELSE", boot.lua:48), normalizes<br />
@@ -336,7 +339,7 @@ copies are not read at runtime. Editing them requires a rebuild.</p>
   CI requires this file end with a <code>0x0A</code> newline.</li>
 <li><code>etc/update_lua_globals.sh</code> — dev helper for syncing Lua globals.</li>
 </ul>
-<h2>4. External ELF-handoff layer (<code>src/elf_loader/</code>)</h2>
+<h2 id="4-external-elf-handoff-layer-srcelf_loader">4. External ELF-handoff layer (<code>src/elf_loader/</code>)</h2>
 <ul>
 <li><code>src/elf_loader/src/elf.c</code> — the EE-side parent loader. Central reboot/HDD<br />
   routing fork <code>LoadELFFromFileExecPS2RebootIOPWithPartition</code> (elf.c:618): HDD<br />
@@ -363,7 +366,7 @@ copies are not read at runtime. Editing them requires a rebuild.</p>
   two-stage loader build (stage 1 builds <code>loader.elf</code> into BIOS memory; stage 2<br />
   bin2c-embeds it and archives <code>libcustom-elf-loader.a</code>).</li>
 </ul>
-<h2>5. IOP modules (<code>iop/</code>)</h2>
+<h2 id="5-iop-modules-iop">5. IOP modules (<code>iop/</code>)</h2>
 <ul>
 <li><code>iop/bdm_query/bdm_query.c</code> — in-tree IOP RPC helper (id <code>0xB0D10B00</code> defined<br />
   bdm_query.c:11, registered bdm_query.c:76; handler bdm_query.c:36) enumerating<br />
@@ -379,7 +382,7 @@ copies are not read at runtime. Editing them requires a rebuild.</p>
   ps2dev9, ps2atad, ps2hdd-osd, ps2fs, mmceman) resolve from <code>$(PS2SDK)/iop/irx/</code><br />
   (vpath Makefile:216, object list Makefile:88-93).</li>
 </ul>
-<h2>6. Controller modules (<code>modules/</code>)</h2>
+<h2 id="6-controller-modules-modules">6. Controller modules (<code>modules/</code>)</h2>
 <ul>
 <li><code>modules/ds34usb/</code> and <code>modules/ds34bt/</code> — DS3/DS4 USB and Bluetooth support,<br />
   built as EE static libs (<code>EXT_LIBS</code>, Makefile:72) and as IRX<br />
@@ -387,7 +390,7 @@ copies are not read at runtime. Editing them requires a rebuild.</p>
 <li><code>modules/pademu/</code> — pad-emulation IOP module sources (ds34bt/ds34usb/pademu).</li>
 <li><code>modules/Rules.bin.make</code> — shared module build rules.</li>
 </ul>
-<h2>7. On-card payload (<code>bin/POPSLDR/</code>, non-source)</h2>
+<h2 id="7-on-card-payload-binpopsldr-non-source">7. On-card payload (<code>bin/POPSLDR/</code>, non-source)</h2>
 <ul>
 <li><code>POPSTARTER.ELF</code> (the PS1 emulator front-end launched per game), <code>PATCH_5.BIN</code>,<br />
 <code>boot.adp</code>, <code>APPINFO.PBT</code>, <code>title.cfg</code>, MC icon set<br />
@@ -395,7 +398,7 @@ copies are not read at runtime. Editing them requires a rebuild.</p>
   source PNGs, and device-variant IRX<br />
   (<code>usbd.irx.{usbexfat,mx4sio,mmce}</code>, <code>usbhdfsd.irx.{usbexfat,mx4sio,mmce}</code>).</li>
 </ul>
-<h2>8. Build / package / CI</h2>
+<h2 id="8-build-package-ci">8. Build / package / CI</h2>
 <ul>
 <li><code>Makefile</code> — builds the EE ELF, bin2c-embeds all Lua/PNG/IRX assets<br />
   (<code>BIN2S = $(PS2SDK)/bin/bin2c</code>, Makefile:67; <code>EMBEDDED_RSC</code> Makefile:96-105),<br />
@@ -438,7 +441,7 @@ copies are not read at runtime. Editing them requires a rebuild.</p>
 <li><code>.github/workflows/opencode.yml</code> — <code>/oc</code> comment bot (DeepSeek). Not part of<br />
   release packaging or runtime behavior.</li>
 </ul>
-<h2>Current Feature Surface by Main Menu Option</h2>
+<h2 id="current-feature-surface-by-main-menu-option">Current Feature Surface by Main Menu Option</h2>
 <p>Dispatch in the MainMenu <code>Play</code> handler (ui.lua:3997), OPT switch ~ui.lua:4227-4404.<br />
 - <code>MMCE</code> (OPT1): implemented.<br />
 - <code>MX4SIO</code> (OPT2): implemented.<br />
@@ -451,7 +454,7 @@ copies are not read at runtime. Editing them requires a rebuild.</p>
 - <code>SMB (v1)</code> (OPT7): NOT implemented (ui.lua:4398). There is no SMB C client;<br />
   the former <code>src/luaSMB.cpp</code> orphan was removed in commit f83dbbb (see<br />
   Orphaned/dead-on-disk).</p>
-<h2>Preservation Contracts (hardware-load-bearing — do not regress)</h2>
+<h2 id="preservation-contracts-hardware-load-bearing-do-not-regress">Preservation Contracts (hardware-load-bearing — do not regress)</h2>
 <ul>
 <li>D-10 (HDD POPSTARTER + HDD game): the BRAM child-loader route via the<br />
   HDD-partition-context branch (loader.c:381-403, SifExitRpc+SifExitCmd at<br />
@@ -478,7 +481,7 @@ copies are not read at runtime. Editing them requires a rebuild.</p>
 NO cold-dev9 settle between HDD IRX loads. The "fail to load HDD" cold-dev9<br />
 settle fix lives on a separate rolling branch and is NOT merged here.</p>
 </blockquote>
-<h2>Primary Change Entry Points</h2>
+<h2 id="primary-change-entry-points">Primary Change Entry Points</h2>
 <ul>
 <li>Settings persistence/apply: <code>bin/POPSLDR/system.lua</code>, <code>bin/POPSLDR/ui.lua</code>.</li>
 <li>Device detection/classification: <code>bin/POPSLDR/system.lua</code>, <code>src/luasystem.cpp</code>,<br />

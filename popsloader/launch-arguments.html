@@ -32,6 +32,9 @@
 <a href="../downloads.html"><span class="em">📦</span>Downloads</a>
 <a href="../history.html"><span class="em">📜</span>History</a>
     <h4>Reference</h4>
+    <a href="../glossary.html"><span class="em">📖</span>Glossary</a>
+    <a href="../commands.html"><span class="em">⌨️</span>Command index</a>
+    <a href="../faq.html"><span class="em">❓</span>FAQ &amp; known bugs</a>
     <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
   </nav>
   <main class="content"><h1>Launch arguments</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/BETA-13-PLAY/docs/LAUNCH_ARGUMENTS.md">view on GitHub ↗</a></p><p>POPSLoader accepts NHDDL-style launch arguments so a front-end (OSDMenu /<br />
@@ -39,7 +42,7 @@ HOSDMenu, wLaunchELF, a forwarder, etc.) can boot it straight to a device<br />
 page or auto-launch a specific game. Arguments are parsed in<br />
 <code>src/main.cpp</code> <code>parseLaunchArgs()</code>, exposed to Lua via<br />
 <code>System.getLaunchArgs()</code>, and acted on in <code>bin/POPSLDR/system.lua</code>.</p>
-<h2>The arguments</h2>
+<h2 id="the-arguments">The arguments</h2>
 <table>
 <thead>
 <tr>
@@ -75,7 +78,7 @@ mc0:/PS1_POPSLOADER/POPSLOADER.ELF -page=hdd -debug
 <p>The first token is always POPSLoader's own ELF path; the launcher supplies<br />
 it as <code>argv[0]</code>. Pass each flag as its <strong>own</strong> argument entry — do not join<br />
 them into one quoted string (see <em>Front-end notes</em> below).</p>
-<h2>Accepted <code>-page</code> / <code>-mode</code> values</h2>
+<h2 id="accepted-page-mode-values">Accepted <code>-page</code> / <code>-mode</code> values</h2>
 <p>Values are case-insensitive. Aliases in parentheses resolve to the same<br />
 page:</p>
 <table>
@@ -118,8 +121,8 @@ page:</p>
 </table>
 <p><code>-mode=ata</code> is provided specifically for NHDDL parity (<code>-mode=ata</code> is how<br />
 NHDDL selects the HDD/ATA path).</p>
-<h2>What each argument actually does</h2>
-<h3><code>-page=</code> / <code>-mode=</code> (open a device's game list)</h3>
+<h2 id="what-each-argument-actually-does">What each argument actually does</h2>
+<h3 id="-page-mode-open-a-devices-game-list"><code>-page=</code> / <code>-mode=</code> (open a device's game list)</h3>
 <p>Boots <strong>straight into the requested device's game list</strong> (the same screen<br />
 you'd reach by scrolling to that page and pressing <strong>X</strong>) — it loads the<br />
 device and switches to its list automatically. Combine with <code>-game=</code> to go<br />
@@ -130,7 +133,7 @@ targets the implemented <strong>PFS</strong> page. <code>bdma</code> (HDD exFAT)
 page are intentionally <strong>not</strong> wired, so <code>-page=bdma</code> is accepted but has<br />
 no effect. An unrecognized value is ignored and the carousel starts on its<br />
 default page (MMCE) with no auto-entry.</p>
-<h3><code>-game=</code> (auto-launch)</h3>
+<h3 id="-game-auto-launch"><code>-game=</code> (auto-launch)</h3>
 <p>Boots straight into launching a game. Requires <strong>both</strong> <code>-page=</code> and<br />
 <code>-game=</code>. Auto-launch is wired for these pages:</p>
 <table>
@@ -166,7 +169,7 @@ toast describing what happened. <strong>SMB:</strong> SMB (v1) is an unimplement
 shows a "This backend isn't implemented yet" toast (no list opens).<br />
 <code>-page=smb -game=...</code> shows an "Auto-launch page not supported: SMB" toast.<br />
 Both leave you on the main menu.</p>
-<h3><code>-debug</code></h3>
+<h3 id="-debug"><code>-debug</code></h3>
 <p>Queues an on-screen info toast on the first main-menu frame listing:</p>
 <pre><code>[debug] boot context
 kind: &lt;HDD|USB|MC|MMCE|MX4SIO|SMB|HOST&gt;
@@ -185,7 +188,7 @@ downstream; if the toast never appears, the args didn't reach<br />
 free VRAM, and resolution; NTSC=2/PAL=3). It is omitted only if<br />
 <code>UI.VIDEO_READBACK</code> was not captured (e.g. the boot video-mode apply was<br />
 short-circuited).</p>
-<h2>Front-end notes (important)</h2>
+<h2 id="front-end-notes-important">Front-end notes (important)</h2>
 <ul>
 <li><strong>One flag per argument entry.</strong> Front-ends that pass each argument as a<br />
   distinct <code>argv</code> token (OSDMenu's <code>arg_OSDSYS_ITEM_&lt;n&gt;</code> lines, NHDDL,<br />
@@ -209,7 +212,7 @@ short-circuited).</p>
 <strong>no effect</strong> — you must run a current <code>POPSLOADER.ELF</code>. Verify with<br />
 <code>-debug</code>.</li>
 </ul>
-<h2>Example OSDMenu <code>OSDMENU.CNF</code> entry</h2>
+<h2 id="example-osdmenu-osdmenucnf-entry">Example OSDMenu <code>OSDMENU.CNF</code> entry</h2>
 <pre><code>name_OSDSYS_ITEM_1 = POPSLoader (HDD)
 path1_OSDSYS_ITEM_1 = mc0:/PS1_POPSLOADER/POPSLOADER.ELF
 arg_OSDSYS_ITEM_1 = -page=hdd
@@ -219,7 +222,7 @@ arg_OSDSYS_ITEM_1 = -page=hdd
 arg_OSDSYS_ITEM_1 = -game=__.POPS|SLUS_007.42.RAMPAGE.VCD
 arg_OSDSYS_ITEM_1 = -debug
 </code></pre>
-<h2>Source map (for maintainers)</h2>
+<h2 id="source-map-for-maintainers">Source map (for maintainers)</h2>
 <table>
 <thead>
 <tr>
@@ -254,7 +257,7 @@ arg_OSDSYS_ITEM_1 = -debug
 </tr>
 </tbody>
 </table>
-<h3>Why navigation needs <code>allowOptWrite</code></h3>
+<h3 id="why-navigation-needs-allowoptwrite">Why navigation needs <code>allowOptWrite</code></h3>
 <p><code>UI.MainMenu</code> installs a <code>__newindex</code> write-guard that silently drops any<br />
 <code>OPT</code> assignment unless <code>Carousel.allowOptWrite</code> is raised, and<br />
 <code>MainMenu.Play()</code> re-syncs the carousel <strong>from</strong> <code>OPT</code> every non-animating<br />

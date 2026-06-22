@@ -32,6 +32,9 @@
 <a href="../downloads.html"><span class="em">📦</span>Downloads</a>
 <a href="../history.html"><span class="em">📜</span>History</a>
     <h4>Reference</h4>
+    <a href="../glossary.html"><span class="em">📖</span>Glossary</a>
+    <a href="../commands.html"><span class="em">⌨️</span>Command index</a>
+    <a href="../faq.html"><span class="em">❓</span>FAQ &amp; known bugs</a>
     <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
   </nav>
   <main class="content"><h1>QA regression matrix</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/BETA-13-PLAY/QA_REGRESSION_MATRIX.md">view on GitHub ↗</a></p><p>Last updated: 2026-06-21 (BETA-13 rolling candidate in progress)<br />
@@ -40,7 +43,7 @@ Active dev branch is now <strong><code>BETA-13-PLAY</code></strong> (created off
 <blockquote>
 <p>This file is the detailed run ledger. For the canonical current state — Settings behavior, Known Issues, Preservation Contracts, Behavioral Invariants, and Hardware Status — see <strong><code>STATE.md</code></strong>; those shared blocks are not restated here.</p>
 </blockquote>
-<h2>Scope</h2>
+<h2 id="scope">Scope</h2>
 <p>This matrix tracks current behavior across:<br />
 - settings load/save/apply transaction flow,<br />
 - persisted UI preferences (<code>video standard</code>, <code>hide-text</code>, <code>keyboard layout</code>, <code>game-details display</code>, <code>description-scroll speed</code>, <code>game-list cache</code>, <code>boot sound</code>, <code>overscan</code>; the full persisted-key list — including launch/path/profile/device keys — lives in STATE.md),<br />
@@ -57,7 +60,7 @@ Active dev branch is now <strong><code>BETA-13-PLAY</code></strong> (created off
 - release package validation gates,<br />
 - repository automation workflows that are not runtime/hardware gates.</p>
 <p>This file is the authoritative detailed run ledger for CI and hardware outcomes. The other root docs should summarize the active state and point here for chronology.</p>
-<h2>Automated CI Gates</h2>
+<h2 id="automated-ci-gates">Automated CI Gates</h2>
 <p>These gates are defined by <code>.github/workflows/compilation.yml</code>. The separate <code>.github/workflows/opencode.yml</code> workflow only runs comment-triggered AI assistance and is not a build, package, runtime, or hardware validation gate.</p>
 <table>
 <thead>
@@ -119,8 +122,8 @@ Active dev branch is now <strong><code>BETA-13-PLAY</code></strong> (created off
 </tr>
 </tbody>
 </table>
-<h2>Manual Runtime Matrix</h2>
-<h3>Settings and persistence</h3>
+<h2 id="manual-runtime-matrix">Manual Runtime Matrix</h2>
+<h3 id="settings-and-persistence">Settings and persistence</h3>
 <table>
 <thead>
 <tr>
@@ -232,7 +235,7 @@ Active dev branch is now <strong><code>BETA-13-PLAY</code></strong> (created off
 </tr>
 </tbody>
 </table>
-<h3>Launch and path handling</h3>
+<h3 id="launch-and-path-handling">Launch and path handling</h3>
 <table>
 <thead>
 <tr>
@@ -302,7 +305,7 @@ Active dev branch is now <strong><code>BETA-13-PLAY</code></strong> (created off
 </tr>
 </tbody>
 </table>
-<h3>Device pages and backend behavior</h3>
+<h3 id="device-pages-and-backend-behavior">Device pages and backend behavior</h3>
 <table>
 <thead>
 <tr>
@@ -435,7 +438,7 @@ Active dev branch is now <strong><code>BETA-13-PLAY</code></strong> (created off
 </tr>
 </tbody>
 </table>
-<h3>UI behavior</h3>
+<h3 id="ui-behavior">UI behavior</h3>
 <table>
 <thead>
 <tr>
@@ -561,7 +564,7 @@ Active dev branch is now <strong><code>BETA-13-PLAY</code></strong> (created off
 </tr>
 </tbody>
 </table>
-<h2>Run Log Template</h2>
+<h2 id="run-log-template">Run Log Template</h2>
 <table>
 <thead>
 <tr>
@@ -1240,7 +1243,7 @@ Active dev branch is now <strong><code>BETA-13-PLAY</code></strong> (created off
 </tr>
 </tbody>
 </table>
-<h2>Current Verification Status</h2>
+<h2 id="current-verification-status">Current Verification Status</h2>
 <p><strong>Current recorded outcomes (2026-06-21, BETA-13 rolling candidate)</strong> — these supersede the older <code>Unknown</code>/<code>FAIL</code> narratives below, which are kept as the forensic chronology of how each case was resolved. For the canonical hardware table see <strong>STATE.md &gt; Reported Hardware Status</strong>. The BETA-13-candidate tester checklist lives in <strong><code>TESTING.md</code></strong>.</p>
 <p>Preservation set (do not regress — kept passing across the BETA-13 session):<br />
 - <strong>D-10</strong> HDD POPSTARTER + HDD game — <strong>PASS</strong> (B2 fix <code>4ae6679</code>, hardware 2026-05-22, reconfirmed 2026-05-28 Nuno). Preservation contract — <strong>do not regress.</strong><br />

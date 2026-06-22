@@ -32,9 +32,12 @@
 <a href="../downloads.html"><span class="em">📦</span>Downloads</a>
 <a href="../history.html"><span class="em">📜</span>History</a>
     <h4>Reference</h4>
+    <a href="../glossary.html"><span class="em">📖</span>Glossary</a>
+    <a href="../commands.html"><span class="em">⌨️</span>Command index</a>
+    <a href="../faq.html"><span class="em">❓</span>FAQ &amp; known bugs</a>
     <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
   </nav>
-  <main class="content"><h1>Help</h1><p class="prov-inline">📎 Recovered from the ShaolinAssassin wiki · snapshot 20200804033921</p><h1><strong>POPStarter Help</strong></h1>
+  <main class="content"><h1>Help</h1><p class="prov-inline">📎 Recovered from the ShaolinAssassin wiki · snapshot 20200804033921</p><h2 id="popstarter-help"><strong>POPStarter Help</strong></h2>
 <hr>
 
 <p><em>[From wip05 documentation – ! outdated for some parts !]</em></p>
@@ -112,7 +115,7 @@ Advanced users can also hardcode this setting in the <a href="https://bitbucket.
 <p>Put a PS BIOS in the VMC directory of your game (the BIOS region must match your game region, or be region-free), name it BIOS.BIN.</p>
 </li>
 <li>
-<p>If the game still does not run, delete the BIOS.BIN file you’ve copied and try the Compatibility Mode 0×06.</p>
+<p>If the game still does not run, delete the BIOS.BIN file you’ve copied and try the Compatibility Mode 0x06.</p>
 </li>
 <li>
 <p>If the game still does not run, the reason of the stall is something else that can’t be fixed for now.</p>
@@ -129,25 +132,25 @@ Advanced users can also hardcode this setting in the <a href="https://bitbucket.
 </ul>
 <ol>
 <li>
-<p>Compatibility mode 0×01 helps restoring the music/voices in several games</p>
+<p>Compatibility mode 0x01 helps restoring the music/voices in several games</p>
 </li>
 <li>
-<p>Compatibility mode 0×02 is a variant of mode 0×01, with a second hack for not breaking the MDECoding of FMVs (was designed for the Colony Wars series)</p>
+<p>Compatibility mode 0x02 is a variant of mode 0x01, with a second hack for not breaking the MDECoding of FMVs (was designed for the Colony Wars series)</p>
 </li>
 <li>
-<p>Compatibility mode 0×03 can be used if the mode 0×01 doesn’t provide the expected results</p>
+<p>Compatibility mode 0x03 can be used if the mode 0x01 doesn’t provide the expected results</p>
 </li>
 <li>
-<p>Compatibility mode 0×04 prevents the emulator from writing a garbage value in two of the virtual GPU registers (fixes slowdowns, flickering, and many other glitches)</p>
+<p>Compatibility mode 0x04 prevents the emulator from writing a garbage value in two of the virtual GPU registers (fixes slowdowns, flickering, and many other glitches)</p>
 </li>
 <li>
-<p>Compatibility mode 0×05 was made for fixing the cutscenes of the PAL Resident Evil: Director’s Cut.</p>
+<p>Compatibility mode 0x05 was made for fixing the cutscenes of the PAL Resident Evil: Director’s Cut.</p>
 </li>
 <li>
-<p>Compatibility mode 0×06 disables the OSD shell of the emulator’s built-in BIOS, making some games that freeze on startup run</p>
+<p>Compatibility mode 0x06 disables the OSD shell of the emulator’s built-in BIOS, making some games that freeze on startup run</p>
 </li>
 </ol>
-<p>Don’t combine modes 0×01, 0×02, 0×03 and 0×05. Activate only one of them, because they’re conflicting. Please let us know (at ASSEMblergames) if you managed to solve a problem in your game by forcing modes, so I could integrate the fix in POPStarter.</p>
+<p>Don’t combine modes 0x01, 0x02, 0x03 and 0x05. Activate only one of them, because they’re conflicting. Please let us know (at ASSEMblergames) if you managed to solve a problem in your game by forcing modes, so I could integrate the fix in POPStarter.</p>
 <p><strong>/software name here/ always add a + character in the name of the partition you’re trying to create</strong></p>
 <ul>
 <li>Download and use the latest version of Akuhak’s unofficial LaunchELF build. At the time I write this help file, it is ule_wip7. Go check for update !</li>
@@ -192,9 +195,7 @@ Advanced users can also hardcode this setting in the <a href="https://bitbucket.
 <p>If the PFS Wrapper comes with USBD.IRX or USBHDFSD.IRX modules (or both), copy it in your POPS directory, otherwise POPStarter’s embedded modules will be used by POPS.</p>
 </li>
 </ol>
-<hr>
-
-<h3><a href="../wiki/index.html"><strong>Index</strong></a></h3></main>
+<hr><p style="margin-top:26px"><a class="pill" href="../troubleshooting.html">Related curated section → Troubleshooting</a></p></main>
   <aside class="toc"><div class="toc-h">On this page</div><nav id="toc-nav"></nav></aside>
 </div>
 <footer>

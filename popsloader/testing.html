@@ -32,6 +32,9 @@
 <a href="../downloads.html"><span class="em">📦</span>Downloads</a>
 <a href="../history.html"><span class="em">📜</span>History</a>
     <h4>Reference</h4>
+    <a href="../glossary.html"><span class="em">📖</span>Glossary</a>
+    <a href="../commands.html"><span class="em">⌨️</span>Command index</a>
+    <a href="../faq.html"><span class="em">❓</span>FAQ &amp; known bugs</a>
     <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
   </nav>
   <main class="content"><h1>Testing</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/BETA-13-PLAY/TESTING.md">view on GitHub ↗</a></p><p><strong>Build:</strong> rolling <code>BETA-13-PLAY</code> (BETA-13 candidate; rolling now publishes from this branch — <code>BETA-12-PLAY</code> is frozen/archival). Public release is still BETA-12.<br />
@@ -39,7 +42,7 @@ This is the structured "what to test" companion to <strong><a href="rolling-note
 <p><strong>Devices:</strong> USB · MX4SIO (SD over SIO2) · MMCE (SD2PSX / MemCard PRO) · HDD (internal PFS). Test the ones you use; <strong>say which</strong> in every report.</p>
 <p><strong>How to report:</strong> ✅ pass / ❌ fail / ⚠️ odd. On a fail give: <strong>device</strong>, <strong>console model + region</strong> (e.g. SCPH-90008 PAL), <strong>how you launched POPSLoader</strong> (from which device / which launcher), <strong>exact steps</strong>, and a <strong>photo</strong> — error screens now print the real reason on line 2.</p>
 <hr />
-<h2>🟥 P0 — Must work on every device (boot · launch · no regressions)</h2>
+<h2 id="p0-must-work-on-every-device-boot-launch-no-regressions">🟥 P0 — Must work on every device (boot · launch · no regressions)</h2>
 <ul>
 <li>[ ] <strong>Boot to menu</strong> — launch from each device. The welcome <strong>splash appears instantly</strong> (no black screen first), <strong>centered from frame one</strong>, then the carousel. Report any black screen, off-center/letterboxed splash, wrong region/res that flips mid-fade, or hang.</li>
 <li>[ ] <strong>Normal PS1 launch</strong> — select a game on each device → <strong>X</strong> → POPStarter boots it.</li>
@@ -50,8 +53,8 @@ This is the structured "what to test" companion to <strong><a href="rolling-note
 <li>[ ] <strong>DKWDRV / Disc → exit to memory card:</strong> no hang on the picture.</li>
 <li>[ ] <strong>START-held recovery</strong> — hold <strong>START</strong> during boot → boots to a safe state; with <code>-page</code>/<code>-game</code> args it suppresses auto-launch so you can recover.</li>
 </ul>
-<h2>🟧 P1 — New features this cycle</h2>
-<h3>Navigation &amp; input — ✅ core nav CONFIRMED on hardware (oldman63); the rest still to feel out</h3>
+<h2 id="p1-new-features-this-cycle">🟧 P1 — New features this cycle</h2>
+<h3 id="navigation-input-core-nav-confirmed-on-hardware-oldman63-the-rest-still-to-feel-out">Navigation &amp; input — ✅ core nav CONFIRMED on hardware (oldman63); the rest still to feel out</h3>
 <ul>
 <li>[x] <strong>Up/Down + analog-stick item nav</strong> — ✅ <strong>CONFIRMED (oldman63):</strong> d-pad and <strong>left analog stick up/down</strong> both land on <strong>individual items</strong> (item-by-item), and a held direction does smooth continuous scroll. <em>(The stick now folds into the d-pad and runs the same edge + auto-repeat path — no more "flies a whole page" / "can't select individual items" #501. A non-analog/digital pad is gated out so it can't inject a phantom direction; the auto-repeat is frame-counted, ~0.6 s before the first repeat then ~5/sec.)</em> Re-confirm on <strong>each device's</strong> list if you can.</li>
 <li>[ ] <strong>Page-jump &amp; top/bottom</strong> — on a big list: <strong>LEFT / RIGHT</strong> (d-pad <strong>or</strong> left stick left/right) jumps a <strong>page</strong> at a time; <strong>L1</strong> ping-pongs <strong>top ↔ bottom</strong>. Confirm these still work after the nav rework.</li>
@@ -75,7 +78,7 @@ This is the structured "what to test" companion to <strong><a href="rolling-note
 <li>[ ] <strong>Carousel Devices visibility</strong> — <em>Settings → Carousel Devices</em> → hide e.g. SMB / i.Link → they leave the wheel with <strong>no gaps</strong>, ≥1 stays, launching the others unchanged.</li>
 <li>[ ] <strong>Multi-disc collapse</strong> — <em>Settings → Game List</em>, files named <code>Game (Disc 1).VCD</code> / <code>Game (Disc 2).VCD</code> → only <strong>Disc 1</strong> shows; swap discs in-game via VMC.</li>
 </ul>
-<h2>🟨 P2 — Hide / settings persistence</h2>
+<h2 id="p2-hide-settings-persistence">🟨 P2 — Hide / settings persistence</h2>
 <ul>
 <li>[ ] <strong>L3 hide/unhide</strong> on every device incl. <strong>HDD</strong> (drops <code>.hide</code> next to the VCD; on HDD writes to the boot partition — old "add it from a PC" is now only a write-failure fallback).</li>
 <li>[ ] <strong>Hidden games filter</strong> — <em>Hidden</em> filters out; <em>Visible (manage)</em> shows dimmed so L3 can toggle them back.</li>
@@ -83,30 +86,30 @@ This is the structured "what to test" companion to <strong><a href="rolling-note
 <li>[ ] <strong>Unsaved-changes prompt</strong> — change a <em>cycle</em> setting (Game details / scroll speed / cache / Boot sound / Overscan / Boot Page) and press <strong>BACK</strong> without saving → it warns you.</li>
 <li>[ ] <strong>POPSTARTER MC Folder toggle + BDMA interlock</strong> — toggle the <code>mc:/POPSTARTER</code> folder (off <strong>deletes</strong> it, with confirm). Can't disable the folder while BDMA is on, nor enable BDMA while the folder is off. <em>(BDMA mode now in <code>bdma_mode.txt</code>; legacy <code>.pldr_bdma_mode</code> still read.)</em></li>
 </ul>
-<h2>🟦 P3 — Display / PAL (needs PAL hardware — we have none on the team)</h2>
+<h2 id="p3-display-pal-needs-pal-hardware-we-have-none-on-the-team">🟦 P3 — Display / PAL (needs PAL hardware — we have none on the team)</h2>
 <ul>
 <li>[ ] <strong>Video Standard</strong> — <em>Settings → Display</em>. <strong>Auto</strong> default should match your console's region. On <strong>PAL</strong> the UI should fill the screen <strong>edge-to-edge at 640×512</strong> (no letterbox). Report your console's <strong>actual output</strong> reading.</li>
 <li>[ ] <strong>Display-change confirm/revert</strong> — change the mode; if you don't confirm in time it <strong>auto-reverts</strong>.</li>
 <li>[ ] <strong>Overscan (CRT inset)</strong> ⭐ <strong>NEW — needs a CRT eyeball, not yet verified.</strong> <em>Settings → Game List → Overscan (CRT inset)</em> (default <strong>Off</strong>; <strong>LEFT/RIGHT steps ±5</strong>, live preview). Raise it on a CRT that crops the edges → the whole UI should shrink <strong>uniformly toward center</strong> (OPL-style render inset). Discarding the settings change restores the previous value. Report the value that just clears your bezel.</li>
 </ul>
-<h2>⬜ P4 — Cosmetic / polish</h2>
+<h2 id="p4-cosmetic-polish">⬜ P4 — Cosmetic / polish</h2>
 <ul>
 <li>[ ] List a touch <strong>wider</strong>; device name (e.g. "USB") no longer overlaps the <strong>top row</strong>; "Building…" overlay calmer.</li>
 <li>[ ] <strong>Cover placeholder art</strong> ⭐ <strong>NEW assets, needs an eyeball on NTSC + PAL.</strong> No live cover now draws a layered jewel-case placeholder (<code>cover_default.png</code>), with a <code>cover_missing.png</code> overlay <strong>only</strong> when the preview is <strong>ON</strong> but the game has no cover. <em>(The old "Cover disabled" </em><em>text</em><em> label is gone.)</em> Confirm the default cover, the missing overlay, and <code>frame.png</code> all <strong>register</strong> with the jewel-case window (right-anchored, no drift) on both NTSC and PAL.</li>
 <li>[ ] <strong>Cover-art preview</strong> toggles with <strong>Square</strong> — OFF shows the plain default case (no overlay), ON shows the live cover or the missing-overlay placeholder.</li>
 <li>[ ] <strong>Scroll position kept</strong> returning from Settings (cursor doesn't snap to row 1).</li>
 </ul>
-<h2>🧪 P5 — Robustness (only if you hit it)</h2>
+<h2 id="p5-robustness-only-if-you-hit-it">🧪 P5 — Robustness (only if you hit it)</h2>
 <ul>
 <li>[ ] <strong>Corrupt / oversized cover</strong> (PNG/JPEG/BMP) — must <strong>not crash</strong> the list (hardened this cycle).</li>
 <li>[ ] <strong>Very long VCD filenames</strong> — ~<strong>73 chars</strong> practical limit; longer may fail to launch.</li>
 </ul>
-<h2>📦 Release zip contents</h2>
+<h2 id="release-zip-contents">📦 Release zip contents</h2>
 <ul>
 <li>[ ] The rolling zip ships, at the <strong>root</strong>: a <strong><code>POPSTARTER/</code></strong> folder (SMB <code>.irx</code> pack), <strong><code>POPS/PATCH_5.BIN</code></strong>, <strong><code>POPSTARTER.ELF</code></strong> (also copied into <strong><code>POPS/</code></strong>) — confirm they're present in your download. <em>(POPS engine binaries are not redistributable and are NOT included; you still supply your own.)</em></li>
 </ul>
 <hr />
-<h2>ℹ️ Known issues — expected, please don't re-report (unless your case differs)</h2>
+<h2 id="i-known-issues-expected-please-dont-re-report-unless-your-case-differs">ℹ️ Known issues — expected, please don't re-report (unless your case differs)</h2>
 <ul>
 <li><strong>"Failed to load HDD" when POPSLoader is launched from a non-HDD device</strong> via a launcher (config-specific, seen by Nuno) — most setups list the HDD fine. <strong>If you hit it, post your exact boot config</strong>; it now shows the real reason on a second line. Workaround: boot from the HDD, or open the HDD page a few seconds after the menu.</li>
 <li><strong>PAL console still showing PAL when NTSC is selected</strong> (#495) — known, being chased; the "actual output" reading helps.</li>

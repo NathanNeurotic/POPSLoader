@@ -32,12 +32,38 @@
 <a href="downloads.html"><span class="em">📦</span>Downloads</a>
 <a href="history.html"><span class="em">📜</span>History</a>
     <h4>Reference</h4>
+    <a href="glossary.html"><span class="em">📖</span>Glossary</a>
+    <a href="commands.html"><span class="em">⌨️</span>Command index</a>
+    <a href="faq.html"><span class="em">❓</span>FAQ &amp; known bugs</a>
     <a href="wiki/index.html"><span class="em">📚</span>All wiki pages</a>
   </nav>
-  <main class="content"><h1>Storage Backends</h1><p class="lead">Where the POPS folder, VCDs and support modules live on each device — USB, internal HDD, and SMB — plus the launch methods and per-mode ELF prefixes.</p><p class="prov-inline">📎 from the recovered <a href="wiki/usb-mode.html">USB Mode</a> wiki page · merged across snapshots, primary 20170629123547</p><h1><strong>POPStarter for USB Device Storage Type</strong></h1>
+  <main class="content"><h1>Storage Backends</h1><p class="lead">Where the POPS folder, VCDs and support modules live on each device — USB, internal HDD, SMB, plus the modern MMCE / MX4SIO / exFAT backends — and the launch methods and per-mode ELF prefixes.</p><h2 id="device-matrix">Device &amp; storage backend matrix</h2>
+<p class="lead">Where your VCDs can live and how the launcher reaches each device. Stock POPStarter ships
+USB / internal-HDD / SMB; <b>MMCE, MX4SIO and exFAT-USB</b> arrived as krHACKen side-modules and are
+first-class backends in the <a href="popsloader.html">POPSLoader fork</a>. Backends marked “untested” are
+wired as menu stubs but not yet hardware-verified. Click a header to sort.</p>
+<table data-sortable>
+<thead><tr><th>Backend</th><th>Filesystem</th><th>Provided by</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>Internal HDD</td><td>APA / PFS</td><td>POPStarter core + fork</td><td>✅ Working</td></tr>
+<tr><td>USB</td><td>FAT32</td><td>POPStarter core + fork</td><td>✅ Working</td></tr>
+<tr><td>USB (exFAT)</td><td>exFAT via BDM&nbsp;Assault</td><td>side-module + fork</td><td>✅ Working</td></tr>
+<tr><td>MX4SIO</td><td>FAT32 / exFAT — SD via SIO2 slot</td><td>side-module + fork</td><td>✅ Working</td></tr>
+<tr><td>MMCE</td><td>SD2PSX / MemCard&nbsp;PRO2</td><td>side-module + fork</td><td>✅ Working</td></tr>
+<tr><td>Disc (DKWDRV)</td><td>physical PS1 disc handoff</td><td>fork</td><td>✅ Working</td></tr>
+<tr><td>SMB</td><td>network share</td><td>POPStarter core</td><td>✅ core · ⚠ fork stub</td></tr>
+<tr><td>HDD exFAT — BDM “ATA”</td><td>exFAT on internal SATA</td><td>fork</td><td>⚠ Stub — untested</td></tr>
+<tr><td>iLink (IEEE&nbsp;1394)</td><td>exFAT over FireWire</td><td>fork</td><td>⚠ Stub — untested</td></tr>
+</tbody></table>
+<div class="callout amber"><div class="h">⚖ exFAT is driver substitution, not native POPS support</div>
+POPStarter's POPS payload (POPS.ELF, IOPRP252.IMG, POPS_IOX.PAK and the VCD) always lives on a native path —
+FAT32 USB or APA/PFS HDD. “exFAT support” means <b>BDM&nbsp;Assault</b> swaps the USB driver
+(<code>bdm_assault.irx</code>→<code>usbd.irx</code>, <code>usbd_bd_assault.irx</code>→<code>usbhdfsd.irx</code>);
+POPS itself never reads an exFAT filesystem. The internal-HDD “ATA” and iLink exFAT backends in the fork use the
+same BDM mechanism but are not yet hardware-tested.</div><p class="prov-inline">📎 from the recovered <a href="wiki/usb-mode.html">USB Mode</a> wiki page · merged across snapshots, primary 20170629123547</p><h2 id="popstarter-for-usb-device-storage-type"><strong>POPStarter for USB Device Storage Type</strong></h2>
 <hr>
 
-<h2><em>Requirements :</em></h2>
+<h2 id="requirements"><em>Requirements :</em></h2>
 <ul>
 <li><strong>POPS decrypted files :</strong></li>
 </ul>
@@ -56,7 +82,7 @@
 . An USB mass storage device, FAT12 or FAT16 or FAT32 formatted (not NTFS !)</p>
 <hr>
 
-<h2><em>Installation :</em></h2>
+<h2 id="installation"><em>Installation :</em></h2>
 <ul>
 <li><strong>a) Installing the Emulator :</strong></li>
 </ul>
@@ -83,7 +109,7 @@
 <p><strong>Note :</strong> you no longer need PFS_WRAP.BIN since OBT8, it’s now embedded into POPStarter ELF.</p>
 <hr>
 
-<h2><em>Example of Setup :</em></h2>
+<h2 id="example-of-setup"><em>Example of Setup :</em></h2>
 <pre><code>
 === USB DEVICE, NEW LAUNCH TYPE ===
 POPS/POPS_IOX.PAK
@@ -93,13 +119,13 @@ XX.Crash Bandicoot.elf
 </code></pre>
 <hr>
 
-<h2><em>USB launch type :</em></h2>
+<h2 id="usb-launch-type"><em>USB launch type :</em></h2>
 <p>USB supports only 1 launch type – the “new” one :</p>
 <table class="wiki"> <tr> <td> </td> <td> <strong>USB launch type</strong> </td> </tr> <tr> <td> <strong>Prefix for POPStarter.ELF</strong> </td> <td> XX. </td> </tr> <tr> <td> <strong>POPStarter folder name</strong> </td> <td> POPS or POPS# </td> </tr> <tr> <td> <strong>Game name</strong> </td> <td> Name of the Game.VCD </td> </tr> <tr> <td> <strong>Description</strong> </td> <td> Launch type introduced in POPStarter 13 WIP 02. Allows to run VCDs from an USB mass storage device. </td> </tr> <tr> <td> <strong>Example</strong> </td> <td> With the POPStarter ELF renamed as XX.Some Game.elf, POPStarter will launch Some Game.VCD which is in the POPStarter folder named POPS or POPS0 or POPS1 up to POPS9 placed in USB root. </td> </tr> </table>
 
 <hr>
 
-<h2><em>Additional notes :</em></h2>
+<h2 id="additional-notes"><em>Additional notes :</em></h2>
 <ul>
 <li>
 <p>The USB hard disk / flash disk has to be FAT12 or FAT16 or FAT32 formatted, AND DEFRAGMENTED.</p>
@@ -127,12 +153,10 @@ XX.Crash Bandicoot.elf
 </li>
 </ul>
 <hr>
-
-<h3><a href="wiki/index.html"><strong>Index</strong></a></h3>
-<p class="prov-inline">📎 from the recovered <a href="wiki/hdd-mode.html">HDD Mode</a> wiki page · merged across snapshots, primary 20170629165244</p><h1><strong>POPStarter for internal HDD</strong></h1>
+<p class="prov-inline">📎 from the recovered <a href="wiki/hdd-mode.html">HDD Mode</a> wiki page · merged across snapshots, primary 20170629165244</p><h2 id="popstarter-for-internal-hdd"><strong>POPStarter for internal HDD</strong></h2>
 <hr>
 
-<h2><em>Requirements :</em></h2>
+<h2 id="requirements"><em>Requirements :</em></h2>
 <ul>
 <li><strong>POPS decrypted files :</strong></li>
 </ul>
@@ -155,7 +179,7 @@ XX.Crash Bandicoot.elf
 . A PS2-formatted HDD that fits your network adapter/HDD interface.</p>
 <hr>
 
-<h2><em>Installation :</em></h2>
+<h2 id="installation"><em>Installation :</em></h2>
 <ul>
 <li><strong>a) Installing the Emulator :</strong></li>
 </ul>
@@ -182,7 +206,7 @@ Note : +__.POPS is not correct. Use <a href="wiki/related-stuff.html">AKuHAK’s
 </ol>
 <hr>
 
-<h2><em>Example of Setup :</em></h2>
+<h2 id="example-of-setup"><em>Example of Setup :</em></h2>
 <pre><code>
 === INTERNAL HDD, NEW LAUNCH TYPE ===
 __common/POPS/IOPRP252.IMG
@@ -193,7 +217,7 @@ __sysconf/FMCB/Crash Bandicoot.elf
 </code></pre>
 <hr>
 
-<h2><em>POPSTARTER.KELF :</em></h2>
+<h2 id="popstarterkelf"><em>POPSTARTER.KELF :</em></h2>
 <p>POPStarter bundle comes with a file named POPSTARTER.KELF (KELF = Krypo-ELF = ELF embedded into a container). It can be used if you have SONY Browser 2.00 (aka HDDOSD) installed on your HDD. Otherwise, it’s useless.</p>
 <p><strong>Notes if you use the POPStarter.KELF :</strong></p>
 <ul>
@@ -207,7 +231,7 @@ __sysconf/FMCB/Crash Bandicoot.elf
 <p>Read <a href="wiki/popstarter-hddosd.html">here</a> for a guide about how to set it up.</p>
 <hr>
 
-<h2><em>HDD Launch types (advanced) :</em></h2>
+<h2 id="hdd-launch-types-advanced"><em>HDD Launch types (advanced) :</em></h2>
 <p>HDD supports 3 “launch types”. The “launch type” relies on the prefix of your ELF names. Each type uses his own way to name the VCD file :</p>
 <table class="wiki"> <tr> <td> </td> <td> <strong>Old launch type</strong> </td> <td> <strong>Alternate old launch type</strong> </td> <td> <strong>New launch type</strong> </td> </tr> <tr> <td> <strong>HDDOSD compatible</strong> </td> <td> Yes </td> <td> No </td> <td> No </td> </tr> <tr> <td> <strong>Partition shown in the HDDOSD/PSBBN/PSX XMB</strong> </td> <td> Yes </td> <td> No </td> <td> – </td> </tr> <tr> <td> <strong>Prefix for POPStarter.ELF</strong> </td> <td> PP. (if used) </td> <td> __. </td> <td> No prefix </td> </tr> <tr> <td> <strong>Prefix for partition name</strong> </td> <td> PP. </td> <td> __. </td> <td> __.POPS or __.POPS# </td> </tr> <tr> <td> <strong>Game name</strong> </td> <td> IMAGE0.VCD (all uppercase) </td> <td> IMAGE0.VCD (all uppercase) </td> <td> Name of the Game.VCD </td> </tr> <tr> <td> <strong>Examples</strong> </td> <td> (1) </td> <td> (2) </td> <td> (3) </td> </tr> <tr> <td> <strong>Description</strong> </td> <td> Launch type that was used in POPStarter 12 and older. Allows to install one VCD per partition. </td> <td> Launch type that was used in POPStarter 12 and older. Allows to install one VCD per partition. </td> <td> Launch type introduced in POPStarter 13 WIP 01. Allows to put multiple VCDs in a single partition. </td> </tr> </table>
 
@@ -242,7 +266,7 @@ __sysconf/FMCB/Crash Bandicoot.elf
 </code></pre>
 <hr>
 
-<h2><em>Additional notes :</em></h2>
+<h2 id="additional-notes"><em>Additional notes :</em></h2>
 <ul>
 <li>
 <p>The internal HDD has to be PS2 formatted. If you need to format it, use the latest WIP version of AKuHAK’s uLaunchELF HDD edition.</p>
@@ -265,7 +289,7 @@ __sysconf/FMCB/Crash Bandicoot.elf
 </ul>
 <hr>
 
-<h2><em>Related stuff :</em></h2>
+<h2 id="related-stuff"><em>Related stuff :</em></h2>
 <p>You may want to give a look at this :</p>
 <ul>
 <li>
@@ -276,12 +300,10 @@ __sysconf/FMCB/Crash Bandicoot.elf
 </li>
 </ul>
 <hr>
-
-<h3><a href="wiki/index.html"><strong>Index</strong></a></h3>
-<p class="prov-inline">📎 from the recovered <a href="wiki/smb-mode.html">SMB Mode</a> wiki page · merged across snapshots, primary 20200812185303</p><h1><strong>POPStarter for SMB</strong></h1>
+<p class="prov-inline">📎 from the recovered <a href="wiki/smb-mode.html">SMB Mode</a> wiki page · merged across snapshots, primary 20200812185303</p><h2 id="popstarter-for-smb"><strong>POPStarter for SMB</strong></h2>
 <hr>
 
-<h2><em>Requirements :</em></h2>
+<h2 id="requirements"><em>Requirements :</em></h2>
 <p><strong>POPS compressed file :</strong></p>
 <p>To use POPStarter in SMB mode, you have to find and download the compressed POPS file. This file is named “POPS_IOX.PAK”...</p>
 <table class="wiki"> <tbody><tr> <td> <strong>File name</strong> </td> <td> <strong>MD5</strong> </td> <td> <strong>Description</strong> </td> </tr> <tr> <td> POPS_IOX.PAK </td> <td> a625d0b3036823cdbf04a3c0e1648901 </td> <td> POPS.PAK with network modules embedded. </td> </tr> </tbody></table>
@@ -318,7 +340,7 @@ __sysconf/FMCB/Crash Bandicoot.elf
 </ul>
 <hr>
 
-<h2><em>Installation :</em></h2>
+<h2 id="installation"><em>Installation :</em></h2>
 <p><strong>a) Installing the emulator :</strong></p>
 <ol>
 <li>
@@ -394,7 +416,7 @@ MyPassword
 </code></pre>
 <hr>
 
-<h2><em>Example of setup :</em></h2>
+<h2 id="example-of-setup"><em>Example of setup :</em></h2>
 <pre><code>=== SMB LAUNCH TYPE ===
 mc#:/POPSTARTER/IPCONFIG.DAT
 mc#:/POPSTARTER/SMBCONFIG.DAT
@@ -411,13 +433,13 @@ mass:/SB.Crash Bandicoot (PAL).ELF
 </code></pre>
 <hr>
 
-<h2><em>SMB launch type :</em></h2>
+<h2 id="smb-launch-type"><em>SMB launch type :</em></h2>
 <p>SMB supports only 1 launch type – the “new” one :</p>
 <table class="wiki"> <tbody><tr> <td> </td> <td> <strong>SMB launch type</strong> </td> </tr> <tr> <td> <strong>Prefix for POPStarter.ELF</strong> </td> <td> SB. </td> </tr> <tr> <td> <strong>POPStarter folder name</strong> </td> <td> POPS </td> </tr> <tr> <td> <strong>Game name</strong> </td> <td> GAME.VCD </td> </tr> <tr> <td> <strong>Description</strong> </td> <td> Launch type introduced in POPStarter 13 WIP 06, OBT 08. Allows to run VCDs from an SMB share. </td> </tr> <tr> <td> <strong>Example</strong> </td> <td> With the POPStarter ELF renamed as SB.GAME.ELF, POPStarter will launch GAME.VCD which is in POPS folder, placed into your shared folder. </td> </tr> </tbody></table>
 
 <hr>
 
-<h2><em>Additional notes :</em></h2>
+<h2 id="additional-notes"><em>Additional notes :</em></h2>
 <ul>
 <li>
 <p>You can NOT use the old POPS.ELF+IOPRP252.IMG files (POPS.PAK) in SMB mode, updating to POPS_IOX.PAK is <strong>mandatory</strong> ;</p>
@@ -439,9 +461,7 @@ mass:/SB.Crash Bandicoot (PAL).ELF
 </li>
 </ul>
 <hr>
-
-<h3><a href="wiki/index.html"><strong>Index</strong></a></h3>
-<p class="prov-inline">📎 from the recovered <a href="wiki/ps1cd-mode.html">Ps1cd Mode</a> wiki page · merged across snapshots, primary 20240310061934</p><h1><strong>PS1 CD mode</strong></h1>
+<p class="prov-inline">📎 from the recovered <a href="wiki/ps1cd-mode.html">Ps1cd Mode</a> wiki page · merged across snapshots, primary 20240310061934</p><h2 id="ps1-cd-mode"><strong>PS1 CD mode</strong></h2>
 <hr>
 
 <p>PS1 CD mode is a native POPS feature. It lets you play your PS1 games (originals, backups and imports) from the CDVD drive.</p>
@@ -494,16 +514,14 @@ mass:/SB.Crash Bandicoot (PAL).ELF
 <p>We found out after RIP 06 release that the HDD old launch type method (PP.GAME.ELF or __.GAME.ELF) <a href="https://assemblergames.com/threads/ps2-pops-stuff-popstarter.45347/page-112#post-952852">has a bug</a> : files from __common/POPS folder (and from __common/POPS/GAME) will not be loaded.</p>
 </li>
 </ul>
-<hr>
-
-<h3><a href="wiki/index.html"><strong>Index</strong></a></h3><h2>Storage backends and path maps (USB / SMB / HDD)</h2>
+<hr><h2 id="storage-backends-and-path-maps-usb-smb-hdd">Storage backends and path maps (USB / SMB / HDD)</h2>
 <p>USB: the POPS folder must sit at the ROOT of a FAT12/16/32 (never NTFS), DEFRAGMENTED device, holding POPS_IOX.PAK (MD5 a625d0b3036823cdbf04a3c0e1648901), the VCDs, and the renamed launcher ELFs. POPStarter scans POPS, POPS0, POPS1 ... POPS9 at the root, letting you split a library across folders - but POPS_IOX.PAK and the TM2 IGR textures stay only in the MAIN POPS folder, while BIOS.BIN/PATCH_#.BIN/TROJAN_#.BIN/VMCDIR.TXT must be COPIED into every POPS# folder you create (they do not propagate). PS2-side USB/network modules (usbd.irx, usbhdfsd.irx) load from mc0:/POPSTARTER/ with an mc1 fallback; loading them from mass: is no longer supported, and PFS_WRAP.BIN was embedded into the ELF as of OBT8.</p>
 <p>SMB: create the POPS folder at the SHARE ROOT (not a subdirectory) with the same mandatory POPS_IOX.PAK plus the VCDs. PS2-side network modules (smbman.irx, ps2smap.irx, ps2ip.irx, ps2dev9.irx, smsutils.irx, poweroff.irx) and the two .DAT files live in mc0:/POPSTARTER/ (mc1 fallback). SMBCONFIG.DAT is three lines: 'IP[:port] SHARE NAME' (default port 445, append ':139' for legacy servers), then username, then plain-text password; leave lines 2 and 3 empty for guest access. IPCONFIG.DAT ('PS2_IP NETMASK GATEWAY') is OPTIONAL (DHCP otherwise). On a modern Windows host you must enable SMB 1.0/CIFS, disable password-protected sharing, and grant Guest/Everyone read-write - only on a trusted LAN, since SMB1 is insecure. IMPORTANT MYTH-BUSTING: SMB does NOT require a 'debug build'. SMB was added as a normal feature in Beta 8 (2015-10-23); the only debug caveat is the wiki note that startup debug text cannot be skipped in SMB mode (cosmetic).</p>
 <p>Internal HDD: the modern WIP01 launch type puts VCDs in a PS2-formatted partition __.POPS (or __.POPS0..__.POPS9) with the DECRYPTED emulator (POPS.ELF MD5 355a892a8ce4e4a105469d4ef6f39a42 + IOPRP252.IMG MD5 1db9c6020a2cd445a7bb176a1a3dd418) in __common/POPS, and uses NO launcher prefix. Two legacy per-partition types survive: PP.<game> (HDDOSD-visible, KELF, IMAGE0.VCD) and __.<game> (hidden, IMAGE0.VCD). The partition name must be exactly __.POPS (a leading '+' is wrong); create it with AKuHAK's uLaunchELF or uLE_kHn. VMCs and per-game BIOS/OSD assets live under __common/POPS/<vmcfolder>/, decoupled from the VCD's own partition.</p>
-<h2>Launch methods and per-mode ELF prefixes</h2>
+<h2 id="launch-methods-and-per-mode-elf-prefixes">Launch methods and per-mode ELF prefixes</h2>
 <p>Three launch methods exist. (1) Renamed-ELF-per-game: each game gets its own copy of POPSTARTER.ELF renamed to '<prefix><VCD name>.elf', where the prefix is XX. for USB, SB. for SMB, none for the modern HDD type, or PP./__. for the two legacy HDD types. The third character of every prefix is a literal dot, and both the prefix and the .VCD extension must be UPPERCASE or matching fails. This is the classic method and the reason the others exist: one ELF per game is tedious for large libraries.</p>
 <p>(2) Single direct-VCD: place ONE un-renamed POPSTARTER.ELF in the POPS folder and launch the .VCD directly. The special uLaunchELF build uLE_kHn (e.g. uLE_kHn_20191110) can run a .VCD like an ELF - put its BOOT at mc0:/BOOT/BOOT.ELF. (Base report's 'wLE_kHn' is a typo; the correct name is uLE_kHn, 'u' for uLaunchELF.) uLE_kHn supports USB but not SMB at time of writing. OPL's 'Apps' tab (driving conf_apps.cfg / APPS/<game>/<game>.elf) is the other common direct-launch UI and works across USB/HDD/SMB.</p>
-<p>(3) The modern POPSLoader fork (Lua/Enceladus): a single POPSLOADER.ELF plus bundled scripts/textures/modules; drop VCDs in a POPS folder alongside your POPStarter ELF and the POPS support files (IOPRP252.IMG, POPS.ELF, POPS.PAK, POPS_IOX.PAK), then run POPSLOADER.ELF. It boots from MC/MMCE/MX4SIO/USB (FAT32/exFAT) and runs games from MMCE/MX4SIO/USB/APA-HDD - a superset of stock POPStarter's backends.</p><h2>Maintainer-verified file structures (confirmed working)</h2>
+<p>(3) The modern POPSLoader fork (Lua/Enceladus): a single POPSLOADER.ELF plus bundled scripts/textures/modules; drop VCDs in a POPS folder alongside your POPStarter ELF and the POPS support files (IOPRP252.IMG, POPS.ELF, POPS.PAK, POPS_IOX.PAK), then run POPSLOADER.ELF. It boots from MC/MMCE/MX4SIO/USB (FAT32/exFAT) and runs games from MMCE/MX4SIO/USB/APA-HDD - a superset of stock POPStarter's backends.</p><h2 id="maintainer-verified-file-structures-confirmed-working">Maintainer-verified file structures (confirmed working)</h2>
 <blockquote>
 <p>These exact layouts are <strong>first-party, tested by the POPSLoader maintainer</strong> across multiple OPL forks<br />
 (Daily Build "Tenth Anniversary", Grimdoomer, official 1.1.0 / 1.2.0 betas) — the highest-confidence setups<br />
@@ -511,7 +529,7 @@ on this site. The <code>Soul Blade</code> examples below use SLUS_002.40; substi
 as <strong><code>.cfg</code>, not <code>.txt</code></strong>, and it's best <strong>not</strong> to put the game ID in the <code>.VCD</code> filename for the<br />
 wLE_kHn / POPSLoader listings.</p>
 </blockquote>
-<h3>USB mass storage</h3>
+<h3 id="usb-mass-storage">USB mass storage</h3>
 <p><strong>OPL — all versions — APPS page (renamed-ELF method):</strong></p>
 <pre><code>mass:/POPS/SLUS_002.40.Soul Blade.VCD            (converted from your BIN/CUE PS1 backup)
 mass:/POPS/SLUS_002.40.Soul Blade/               (per-game VMC + HugoPocked fixes folder)
@@ -538,7 +556,7 @@ mass:/APPS/PS1_POPSLDR/title.cfg
         boot=POPSLOADER.ELF
 </code></pre>
 <p><strong>HugoPocked per-game fixes:</strong> drop them in a folder named after the VCD, e.g. <code>123.VCD</code> → <code>mass:/POPS/123/</code>.</p>
-<h3>exFAT on USB — BDMAssault enabler (case-sensitive!)</h3>
+<h3 id="exfat-on-usb-bdmassault-enabler-case-sensitive">exFAT on USB — BDMAssault enabler (case-sensitive!)</h3>
 <p>israpps' <a href="https://github.com/israpps/BDMAssault">BDMAssault</a> renames <code>usbd_bd_assault.irx</code> and<br />
 <code>bdm_assault.irx</code>. Place on a memory card (exact case matters):</p>
 <pre><code>mc?:/POPSTARTER/usbd.irx
@@ -546,7 +564,7 @@ mc?:/POPSTARTER/usbhdfsd.irx
 mc?:/SYS-CONF/USBD.IRX
 mc?:/SYS-CONF/USBHDFSD.IRX
 </code></pre>
-<h3>SMB (Ethernet)</h3>
+<h3 id="smb-ethernet">SMB (Ethernet)</h3>
 <p>Confirmed on recent Grimdoomer, Daily Build, and the official OPL betas.<br />
 <strong>Required <code>mc?:/POPSTARTER/</code> files for SMB:</strong> <code>IPCONFIG.DAT</code>, <code>SMBCONFIG.DAT</code>, <code>poweroff.irx</code>, <code>ps2dev9.irx</code>,<br />
 <code>ps2ip.irx</code>, <code>ps2smap.irx</code>, <code>smbman.irx</code>, <code>SMSUTILS.irx</code>, <code>usbd.irx</code>, <code>usbhdfsd.irx</code> (the last two are the<br />
@@ -559,7 +577,7 @@ smb:/APPS/Soul Blade/title.cfg
         title=[PS1]Soul Blade
         boot=SB.SLUS_002.40.Soul Blade.ELF
 </code></pre>
-<h3>Internal SATA/IDE HDD/SSD — PFS-APA</h3>
+<h3 id="internal-sataide-hddssd-pfs-apa">Internal SATA/IDE HDD/SSD — PFS-APA</h3>
 <p><strong>OPL — all versions — APPS page:</strong></p>
 <pre><code>hdd:/__.POPS/SLUS_002.40.Soul Blade.VCD
 hdd:/__common/POPS/IOPRP252.IMG
@@ -570,7 +588,7 @@ hdd:/+OPL/APPS/Soul Blade/title.cfg
         title=[PS1]Soul Blade
         boot=SLUS_002.40.Soul Blade.ELF
 </code></pre>
-<h3>exFAT internal — NOT supported, except via APA-Jail</h3>
+<h3 id="exfat-internal-not-supported-except-via-apa-jail">exFAT internal — NOT supported, except via APA-Jail</h3>
 <p>POPStarter does <strong>not</strong> support internal exFAT storage directly. With APA-Jail you can do:</p>
 <pre><code>exfat:hdd:APPS/Soul Blade/SLUS_002.4.0.Soul Blade.ELF
 exfat:hdd:APPS/Soul Blade/title.cfg   (title=Soul Blade / boot=SLUS_002.4.0.Soul Blade.ELF)
@@ -583,7 +601,7 @@ apa:hdd:/__common/POPS/POPS_IOX.PAK
 <blockquote>
 <p><strong>Note on POPS files</strong> (<code>POPS_IOX.PAK</code>, <code>POPS.ELF</code>, <code>IOPRP252.IMG</code>): Sony-copyrighted — supply your own and<br />
 verify against the checksums on the <a href="downloads.html">Downloads</a> page.</p>
-</blockquote><h2>Partition-installed POPS games (PP.<em> / __.</em> — HDDOSD &amp; PSBBN)</h2>
+</blockquote><h2 id="partition-installed-pops-games-pp-__-hddosd-psbbn">Partition-installed POPS games (PP.<em> / __.</em> — HDDOSD &amp; PSBBN)</h2>
 <blockquote>
 <p><strong>This is an <em>additional</em> launch path, not a replacement.</strong> The standard internal-HDD method documented<br />
 above — the <code>__.POPS</code> / <code>__.POPS0</code>…<code>__.POPS9</code> partition holding named <code>.VCD</code> files — is unchanged and<br />
@@ -602,7 +620,7 @@ from the <strong>partition name</strong>, not from the VCD filename.</p>
 <p>To launch one, the renamed POPSTARTER ELF uses the <strong><code>PP.</code> prefix plus the partition name</strong> —<br />
 <code>PP.&lt;name&gt;.ELF</code> — because every such partition's image is <code>IMAGE0.VCD</code>, the launcher pulls the game name<br />
 from the <strong>partition</strong>, not the disc image.</p>
-<h3>uLE_kHn launch map</h3>
+<h3 id="ule_khn-launch-map">uLE_kHn launch map</h3>
 <table>
 <thead>
 <tr>
@@ -629,7 +647,7 @@ from the <strong>partition</strong>, not the disc image.</p>
 </tr>
 </tbody>
 </table>
-<h3>How it resolves</h3>
+<h3 id="how-it-resolves">How it resolves</h3>
 <p>A partition-installed game is accepted when <strong>either</strong> the partition is an <code>hdd0:__.POPS*</code> partition <strong>or</strong><br />
 the full path is <code>pfs0:/IMAGE0.VCD</code>:</p>
 <pre><code>if (partition is not hdd0:__.POPS*  &amp;&amp;  fullpath is not pfs0:/IMAGE0.VCD)
@@ -645,7 +663,7 @@ PS2 <code>SYSTEM.CNF</code> carries three ordered parameters — <strong>BOOT2</
 <blockquote>
 <p><strong>Source:</strong> R3Z3N (launch map + partition-acceptance logic) and Ripto, via the POPSLoader community,<br />
 2026-06-21. This is the partition layout commonly produced by HDDOSD and PSBBN.</p>
-</blockquote><h2>From the official thread — storage, modules &amp; modern devices</h2>
+</blockquote><h2 id="from-the-official-thread-storage-modules-modern-devices">From the official thread — storage, modules &amp; modern devices</h2>
 <blockquote>
 <p>Sourced from the <a href="https://www.psx-place.com/threads/popstarter.19139/">official psx-place POPStarter thread</a>.<br />
 <strong>krHACKen</strong> items are authoritative.</p>
@@ -668,7 +686,7 @@ PS2 <code>SYSTEM.CNF</code> carries three ordered parameters — <strong>BOOT2</
 <li><strong>Launcher prefixes are device-specific and not interchangeable:</strong> <code>XX.</code> for USB, <code>SB.</code> for SMB — and you<br />
   must also edit <code>title.cfg</code> to match. <em>(Lambada)</em></li>
 </ul>
-<h3>Modern storage (post-abandonment community drivers)</h3>
+<h3 id="modern-storage-post-abandonment-community-drivers">Modern storage (post-abandonment community drivers)</h3>
 <ul>
 <li><strong>exFAT on USB</strong> works via <strong><a href="https://github.com/israpps/BDMAssault">BDMAssault</a></strong> (israpps). <em>(Ripto)</em></li>
 <li><strong>MX4SIO (SD2PSX-style) and MMCE (SD2PSX / PSXMemCard / MemCard PRO2)</strong> are supported through community<br />
@@ -817,7 +835,7 @@ PS2 <code>SYSTEM.CNF</code> carries three ordered parameters — <strong>BOOT2</
 <div class="field"><b>Conflicts:</b> Separate project from krHACKen&#x27;s POPStarter; supports exFAT and MMCE/MX4SIO that stock POPStarter does not.</div>
 <div class="ex">POPS/POPSLOADER.ELF + POPS/&lt;game&gt;.VCD + POPS/POPS_IOX.PAK ; run POPSLOADER.ELF</div>
 <div class="prov">📎 PRIMARY: github.com/NathanNeurotic/POPSLoader; psx-place fork thread 49539</div>
-</div></div></details></main>
+</div></div></details><h2 id="topic-index">All 10 wiki pages in this topic</h2><p class="lead">Every recovered page filed under this section — including the deep-reference pages not embedded above.</p><div class="grid"><a class="tile" href="wiki/hdd-mode.html"><b>HDD Mode</b><span>hdd-mode</span></a><a class="tile" href="wiki/irx-loader.html"><b>IRX Loader</b><span>irx-loader</span></a><a class="tile" href="wiki/pfsshell.html"><b>Pfsshell</b><span>pfsshell</span></a><a class="tile" href="wiki/popstarter-hddosd.html"><b>POPSTARTER Hddosd</b><span>popstarter-hddosd</span></a><a class="tile" href="wiki/ps1cd-mode.html"><b>Ps1cd Mode</b><span>ps1cd-mode</span></a><a class="tile" href="wiki/radhostclient.html"><b>Radhostclient</b><span>radhostclient</span></a><a class="tile" href="wiki/smb-mode.html"><b>SMB Mode</b><span>smb-mode</span></a><a class="tile" href="wiki/ule-khn.html"><b>ULE kHn</b><span>uLE_kHn</span></a><a class="tile" href="wiki/usb-mode.html"><b>USB Mode</b><span>usb-mode</span></a><a class="tile" href="wiki/vcd.html"><b>VCD</b><span>vcd</span></a></div></main>
   <aside class="toc"><div class="toc-h">On this page</div><nav id="toc-nav"></nav></aside>
 </div>
 <footer>

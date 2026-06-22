@@ -1,0 +1,89 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FAQ &amp; known bugs · POPStarter Docs</title>
+<meta name="description" content="Resurrected, searchable POPStarter documentation — cheats, patches, config, storage, multi-disc, IGR, downloads, and the POPSLoader fork.">
+<link rel="stylesheet" href="assets/style.css">
+</head><body data-base="">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu">☰</button>
+  <a class="brand" href="index.html">
+    <span class="psbtns"><i class="tri">&#9651;</i><i class="cir">&#9711;</i><i class="cro">&#10005;</i><i class="squ">&#9633;</i></span>
+    POPStarter <small>DOCS</small></a>
+  <div class="search">
+    <span class="ico">🔎</span>
+    <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <a href="index.html"><span class="em">🏠</span>Home</a>
+    <h4>POPSLoader · this project</h4>
+    <a href="popsloader.html"><span class="em">📦</span>POPSLoader docs</a>
+    <h4>POPStarter · documentation</h4><a href="getting-started.html"><span class="em">🚀</span>Getting Started</a>
+<a href="storage.html"><span class="em">💾</span>Storage Backends</a>
+<a href="cheats.html"><span class="em">🎮</span>Cheats</a>
+<a href="compatibility.html"><span class="em">🩹</span>Patches & TROJANs</a>
+<a href="igr.html"><span class="em">🎯</span>IGR & Hotkeys</a>
+<a href="config.html"><span class="em">🔧</span>Config Table</a>
+<a href="multidisc.html"><span class="em">💿</span>Multi-disc & VMC</a>
+<a href="troubleshooting.html"><span class="em">🛠️</span>Troubleshooting</a>
+<a href="downloads.html"><span class="em">📦</span>Downloads</a>
+<a href="history.html"><span class="em">📜</span>History</a>
+    <h4>Reference</h4>
+    <a href="glossary.html"><span class="em">📖</span>Glossary</a>
+    <a href="commands.html"><span class="em">⌨️</span>Command index</a>
+    <a href="faq.html" class="active"><span class="em">❓</span>FAQ &amp; known bugs</a>
+    <a href="wiki/index.html"><span class="em">📚</span>All wiki pages</a>
+  </nav>
+  <main class="content"><h1>FAQ &amp; known bugs</h1><p class="lead">Straight answers to the questions people actually ask, each linking to the deep reference — followed by the recovered FAQ and known-bugs pages in full.</p><div class="cards"><div class="card" id="why-is-my-game-a-black-screen"><h3>Why is my game a black screen?</h3><div class="field">Most often an incompatible <code>BOOT.ELF</code> in the IGR/exit chain (disable the ELF loader with stock <code>PATCH_9.BIN</code>), or a missing/wrong POPS file. Boot a debug build first to read the actual error.</div><a class="pill" href="igr.html">→ full details</a></div><div class="card" id="how-do-i-force-pal-or-fix-50-60-hz"><h3>How do I force PAL, or fix 50/60 Hz?</h3><div class="field"><code>$FORCEPAL</code> forces the PAL patcher + Euro region; <code>$NOPAL</code> runs a PAL game in native NTSC. <code>PATCH_8.BIN</code> / <code>PATCH_9.BIN</code> are the binary equivalents. After <code>$NOPAL</code> you usually need <code>$YPOS_##</code> to re-center.</div><a class="pill" href="cheats.html#forcepal">→ full details</a></div><div class="card" id="does-it-support-exfat-usb"><h3>Does it support exFAT USB?</h3><div class="field">Yes on USB, via <b>BDM&nbsp;Assault</b> (it swaps the USB drivers) — it is not native POPS support. MX4SIO and MMCE also work. See the device matrix.</div><a class="pill" href="storage.html#device-matrix">→ full details</a></div><div class="card" id="my-cheats-do-nothing-why"><h3>My cheats do nothing — why?</h3><div class="field"><code>CHEATS.TXT</code> must be <b>UPPERCASE</b> on internal HDD/PFS or it is silently ignored, and <i>raw</i> GameShark codes need <code>$SAFEMODE</code> on the first line (named <code>$commands</code> do not).</div><a class="pill" href="cheats.html">→ full details</a></div><div class="card" id="my-usb-drive-isn-t-detected"><h3>My USB drive isn&#x27;t detected</h3><div class="field">Increase <code>$USBDELAY_#</code> (or config byte <code>$413</code>) and confirm a FAT32/exFAT format with 32K/64K clusters. <code>$USBDELAY</code> patches streaming — it does not fix detection; <code>$413</code> does.</div><a class="pill" href="troubleshooting.html">→ full details</a></div><div class="card" id="saves-disappear-after-i-reboot-the-ps2"><h3>Saves disappear after I reboot the PS2</h3><div class="field">Reported on some PS2 Slim + USB-VMC setups (saves write then vanish); internal HDD is reliable. Make sure each game has its own VMC folder.</div><a class="pill" href="multidisc.html">→ full details</a></div><div class="card" id="which-buttons-open-the-igr-menu"><h3>Which buttons open the IGR menu?</h3><div class="field"><code>$IGR0</code>/<code>$IGR3</code> = L1+L2+R1+R2+✕+↓ · <code>$IGR1</code>/<code>$IGR4</code> = Select+Start · <code>$IGR2</code>/<code>$IGR5</code> = L1+L2+R1+R2+Select+Start. (0–2 open the menu, 3–5 terminate POPS.)</div><a class="pill" href="igr.html">→ full details</a></div><div class="card" id="how-do-i-set-up-a-multi-disc-game"><h3>How do I set up a multi-disc game?</h3><div class="field">Put a <code>DISCS.TXT</code> listing every disc's VCD in each disc's folder, and a <code>VMCDIR.TXT</code> pointing discs 2/3 at disc 1's VMC so they share one memory card.</div><a class="pill" href="multidisc.html">→ full details</a></div><div class="card" id="is-this-legal-where-s-the-emulator"><h3>Is this legal? Where&#x27;s the emulator?</h3><div class="field">POPStarter and POPSLoader are homebrew launchers and are redistributable. The Sony POPS emulator is <b>not</b> included — you supply your own legally-obtained files (verify them by the published MD5s).</div><a class="pill" href="downloads.html">→ full details</a></div><div class="card" id="what-s-the-latest-canonical-popstarter-build"><h3>What&#x27;s the latest/canonical POPStarter build?</h3><div class="field">Rev 13 Beta 2019/06/05 (USB drivers dated 2019-01-14) — the final public beta. It ships only the launcher, no Sony binaries.</div><a class="pill" href="history.html">→ full details</a></div><div class="card" id="does-it-support-widescreen"><h3>Does it support widescreen?</h3><div class="field">Yes via GTE FOV hacks: <code>$WIDESCREEN</code> (16:9), <code>$ULTRA_WIDESCREEN</code>, <code>$EYEFINITY</code> (≈3×16:9). They don't fix HUDs/fonts/2D backgrounds and don't work on every game.</div><a class="pill" href="cheats.html#widescreen">→ full details</a></div></div><h2>Recovered FAQ</h2><p class="prov-inline">📎 from the recovered <a href="wiki/faqs.html">FAQS</a> wiki page · merged across snapshots, primary 20240909182922</p><h2 id="faqs"><strong>FAQs</strong></h2>
+<hr>
+
+<ul>
+<li><strong>Question : does POPS support mutitap player ?</strong></li>
+</ul>
+<p><strong>Answer :</strong> Unfortunately, no. Only the 2 first controllers are recognised.</p>
+<ul>
+<li><strong>Question : does POPS support physical memory card saving ?</strong></li>
+</ul>
+<p><strong>Answer :</strong> No, it doesnt. There is a technical reason about it : POPS doesnt save on a single memory card block but flashes the whole VMC. Doing it on physical memory card would be very slow if possible.</p>
+<hr><h2>Known bugs &amp; limitations</h2><p class="prov-inline">📎 from the recovered <a href="wiki/known-bugs.html">Known Bugs</a> wiki page · merged across snapshots, primary 20240913183110</p><h2 id="known-bugs-limitations"><strong>Known bugs / limitations</strong></h2>
+<hr>
+
+<ul>
+<li>
+<p><strong>$COMPATIBILITY_0x07 mode :</strong> unfinished. Breaks the gamma.</p>
+</li>
+<li>
+<p><strong>$WIDESCREEN command :</strong> unfinished. No render fix…</p>
+</li>
+<li>
+<p><strong>Multi-disc support :</strong> does not work properly with all games (not working with : <a href="https://assemblergames.com/threads/ps2-pops-stuff-popstarter.45347/page-102#post-927043">Final Fantasy IX</a>, <a href="https://assemblergames.com/threads/ps2-pops-stuff-popstarter.45347/page-100#post-920264">Grandia</a>).</p>
+</li>
+<li>
+<p><strong><a href="https://assemblergames.com/threads/ps2-pops-stuff-popstarter.45347/page-109#post-950500">POPS USB oddities :</a></strong> we found out that latest USBD and USBHDFSD drivers reduced performances in BOTH POPStarter and POPS – so USBD and USBHDFSD drivers embedded into POPStarter are quite old. You can use your own USB modules (named as usbd.irx &amp; usbhdfsd.irx, case sensitive, lowercase, no file size restriction) from mc#:/POPSTARTER – but expect lower performances.</p>
+</li>
+<li>
+<p><strong><a href="https://assemblergames.com/threads/ps2-pops-stuff-popstarter.45347/page-112#post-952852">PS1 CD mode :</a></strong> we found out after RIP 06 release that the HDD old launch type method (PP.PS1CD.ELF or __.PS1CD.ELF) has a bug : files from __common/POPS folder (and from __common/POPS/PS1CD) will not be loaded.</p>
+</li>
+<li>
+<p><strong><a href="https://assemblergames.com/threads/ps2-pops-stuff-popstarter.45347/page-105#post-936970">PS3 support :</a></strong> POPStarter test build works in a CECHA (no controller response on POPS tho).</p>
+</li>
+<li>
+<p><strong><a href="https://www.metagames-eu.com/forums/playstation-2/popstarter-revision-13-a-48-134569.html#post1776443">IGR :</a></strong> not working with a DS3 controller in BT mode (working in USB mode).</p>
+</li>
+</ul>
+<hr></main>
+  <aside class="toc"><div class="toc-h">On this page</div><nav id="toc-nav"></nav></aside>
+</div>
+<footer>
+  <p><b>POPStarter Documentation Archive</b> — community-recovered from the Wayback Machine
+  (ShaolinAssassin's <code>popstarter-documentation-stuff</code> wiki) and krHACKen's r13 changelog,
+  cross-checked and merged across snapshots. Built for the POPSLoader project.</p>
+  <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
+  emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
+  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed.</p>
+</footer>
+<script src="assets/app.js"></script>
+</body></html>

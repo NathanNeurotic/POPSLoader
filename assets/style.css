@@ -101,6 +101,20 @@ img{max-width:100%;border-radius:8px;border:1px solid var(--line2)}
 .content hr{border:none;border-top:1px solid var(--line);margin:1.7em 0}
 .lead{font-size:17px;color:var(--ink2);max-width:76ch;line-height:1.6}
 .content p,.content li,.content td,.content th,.content h1,.content h2,.content h3,.content h4{overflow-wrap:break-word}
+/* grouped wiki index + glossary + faq */
+.sec-jump{font-size:12px;font-weight:600;color:var(--ps-x);text-decoration:none;margin-left:.5em;opacity:.8}
+.sec-jump:hover{opacity:1;text-decoration:underline}
+.az-jump{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 22px}
+.az-jump a{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 4px;
+  border:1px solid var(--line2);border-radius:6px;color:var(--ink2);text-decoration:none;font-weight:700;font-size:13px}
+.az-jump a:hover{background:rgba(40,64,140,.4);color:var(--ink);border-color:var(--ps-x)}
+dl.glossary{margin:0}
+.gloss{padding:14px 0;border-bottom:1px solid var(--line)}
+.gloss dt{font-weight:800;color:var(--ink);font-size:15.5px;margin-bottom:5px}
+.gloss dt::before{content:"▸ ";color:var(--ps-tri)}
+.gloss dd{margin:0;color:var(--ink2);line-height:1.55;max-width:80ch}
+.gloss:target dt{color:var(--ps-tri)}
+.gloss:target{background:rgba(120,150,255,.05);border-radius:8px;padding-left:10px;margin-left:-10px}
 .content table{width:100%;border-collapse:collapse;margin:1em 0;font-size:14px;display:block;overflow:auto}
 .content th,.content td{border:1px solid var(--line2);padding:8px 12px;text-align:left;vertical-align:top}
 .content th{background:rgba(40,64,140,.4);color:var(--ink);font-weight:700;text-transform:uppercase;

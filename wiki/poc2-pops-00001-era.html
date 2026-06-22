@@ -32,9 +32,12 @@
 <a href="../downloads.html"><span class="em">📦</span>Downloads</a>
 <a href="../history.html"><span class="em">📜</span>History</a>
     <h4>Reference</h4>
+    <a href="../glossary.html"><span class="em">📖</span>Glossary</a>
+    <a href="../commands.html"><span class="em">⌨️</span>Command index</a>
+    <a href="../faq.html"><span class="em">❓</span>FAQ &amp; known bugs</a>
     <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
   </nav>
-  <main class="content"><h1>POC2 POPS 00001 Era</h1><p class="prov-inline">📎 Recovered from the ShaolinAssassin wiki · snapshot 20200812190314</p><h1><strong>POC2/POPS-00001 era</strong></h1>
+  <main class="content"><h1>POC2 POPS 00001 Era</h1><p class="prov-inline">📎 Recovered from the ShaolinAssassin wiki · snapshot 20200812190314</p><h2 id="poc2pops-00001-era"><strong>POC2/POPS-00001 era</strong></h2>
 <hr>
 
 <ul>
@@ -104,11 +107,11 @@ MYDUMP.BIN (your modified PS1 game disc image, in the root of the partition, fil
 <p>POPS-00001/POC2 wasn’t end-user friendly and required a lot of hexediting -hey, it was just a POC after all…</p>
 <hr>
 
-<h2><em>Hardware Requirements :</em></h2>
+<h2 id="hardware-requirements"><em>Hardware Requirements :</em></h2>
 <ul>
 <li>PS2 HDD formatted</li>
 </ul>
-<h2><em>Software Requirements :</em></h2>
+<h2 id="software-requirements"><em>Software Requirements :</em></h2>
 <ul>
 <li>
 <p>uLE_ev</p>
@@ -119,7 +122,7 @@ MYDUMP.BIN (your modified PS1 game disc image, in the root of the partition, fil
 </ul>
 <hr>
 
-<h2><em>POC2 Files hierarchy :</em></h2>
+<h2 id="poc2-files-hierarchy"><em>POC2 Files hierarchy :</em></h2>
 <pre><code>PP.POPS-00001/disc/disc0 [the original Bishi Bashi image]
 PP.POPS-00001/EXECUTE.ELF [POPS in it's container]
 PP.POPS-00001/MYDUMP.BIN [Your game image]
@@ -132,8 +135,8 @@ __common/ps1emu/card1 [used VMC image, slot 2, created by the emu]
 <p>@<a href="https://assemblergames.com/threads/ps2-pops-stuff.45347/page-2#post-664727">ASSEMblergames</a></p>
 <hr>
 
-<h2><em>Installing the POC2 :</em></h2>
-<h3><strong>Creating the game partition :</strong></h3>
+<h2 id="installing-the-poc2"><em>Installing the POC2 :</em></h2>
+<h3 id="creating-the-game-partition"><strong>Creating the game partition :</strong></h3>
 <ol>
 <li>Before creating the game partition, we had to harcode the game partition name into the EXECUTE.ELF. If we can use this file at it is for the first game installed on the HDD, it was a must-to-do if we wanted to have several games installed.</li>
 </ol>
@@ -148,8 +151,8 @@ __common/ps1emu/card1 [used VMC image, slot 2, created by the emu]
 <p>Optional step : we could also inject another BIOS into the EXECUTE.ELF.</p>
 </li>
 </ol>
-<p>POPS built-in BIOS starts at offset 0×508B0. To replace it with a console BIOS we had first to remove some garbage at the end of the BIOS we wanted to use with an hex editor (after 0×7FF90, “Copyright 1993,1994,1995© Sony Computer Entertainment Inc”), then insert the rest into the EXECUTE.ELF. Keep in mind that the BIOS had to match the region of the game. That’s why an alternate EXECUTE.ELF quickly spread out : EXECUTE_POPS-PSP-660_BIOS_.ELF, which has the region free BIOS from Popsloader PS1 PSP emulator embedded.</p>
-<h3><strong>Installing POC2/POPS-00001 files :</strong></h3>
+<p>POPS built-in BIOS starts at offset 0x508B0. To replace it with a console BIOS we had first to remove some garbage at the end of the BIOS we wanted to use with an hex editor (after 0x7FF90, “Copyright 1993,1994,1995© Sony Computer Entertainment Inc”), then insert the rest into the EXECUTE.ELF. Keep in mind that the BIOS had to match the region of the game. That’s why an alternate EXECUTE.ELF quickly spread out : EXECUTE_POPS-PSP-660_BIOS_.ELF, which has the region free BIOS from Popsloader PS1 PSP emulator embedded.</p>
+<h3 id="installing-poc2pops-00001-files"><strong>Installing POC2/POPS-00001 files :</strong></h3>
 <p>It was the easy part. All we had to do was a copy/paste of the files into the new partition.</p>
 <pre><code>PP.POPS-00001/disc/disc0 [the original Bishi Bashi image]
 PP.POPS-00001/EXECUTE.ELF [POPS in it's container]
@@ -157,7 +160,7 @@ PP.POPS-00001/MYDUMP.BIN [Your game image]
 
 </code></pre>
 <p>Keep in mind that each partition created had to have the disc0 file and the EXECUTE.ELF into.</p>
-<h3><strong>Editing the game dump :</strong></h3>
+<h3 id="editing-the-game-dump"><strong>Editing the game dump :</strong></h3>
 <p>This was the tricky part for people not familiar with hexedition like me.</p>
 <ol>
 <li>
@@ -172,9 +175,7 @@ PP.POPS-00001/MYDUMP.BIN [Your game image]
 <li>Then we could save the double-modified dump as MYDUMP.BIN and transfer it to the game partition.</li>
 </ol>
 <p>All these steps for only 1 game * facepalm *</p>
-<hr>
-
-<h3><a href="../wiki/index.html"><strong>Index</strong></a></h3><h2>Images &amp; screenshots</h2><div class="gallery"><figure><a href="../img/2713835435-2437330.JPG" target="_blank"><img src="../img/2713835435-2437330.JPG" alt="2437330" loading="lazy"></a><figcaption>2437330</figcaption></figure><figure><a href="../img/1562921491-POPSLOADPATH.JPG" target="_blank"><img src="../img/1562921491-POPSLOADPATH.JPG" alt="POPSLOADPATH" loading="lazy"></a><figcaption>POPSLOADPATH</figcaption></figure><figure><a href="../img/2153831563-ESdBYV.jpg" target="_blank"><img src="../img/2153831563-ESdBYV.jpg" alt="ESdBYV" loading="lazy"></a><figcaption>ESdBYV</figcaption></figure><figure><a href="../img/142663629-1.png" target="_blank"><img src="../img/142663629-1.png" alt="1" loading="lazy"></a><figcaption>1</figcaption></figure><figure><a href="../img/95817135-3.png" target="_blank"><img src="../img/95817135-3.png" alt="3" loading="lazy"></a><figcaption>3</figcaption></figure><figure><a href="../img/1892307345-4.png" target="_blank"><img src="../img/1892307345-4.png" alt="4" loading="lazy"></a><figcaption>4</figcaption></figure><figure><a href="../img/88704396-5.png" target="_blank"><img src="../img/88704396-5.png" alt="5" loading="lazy"></a><figcaption>5</figcaption></figure><figure><a href="../img/1177744224-6.png" target="_blank"><img src="../img/1177744224-6.png" alt="6" loading="lazy"></a><figcaption>6</figcaption></figure></div><p style="margin-top:26px"><a class="pill" href="../history.html">Related curated section → History</a></p></main>
+<hr><h2>Images &amp; screenshots</h2><div class="gallery"><figure><a href="../img/2713835435-2437330.JPG" target="_blank"><img src="../img/2713835435-2437330.JPG" alt="2437330" loading="lazy"></a><figcaption>2437330</figcaption></figure><figure><a href="../img/1562921491-POPSLOADPATH.JPG" target="_blank"><img src="../img/1562921491-POPSLOADPATH.JPG" alt="POPSLOADPATH" loading="lazy"></a><figcaption>POPSLOADPATH</figcaption></figure><figure><a href="../img/2153831563-ESdBYV.jpg" target="_blank"><img src="../img/2153831563-ESdBYV.jpg" alt="ESdBYV" loading="lazy"></a><figcaption>ESdBYV</figcaption></figure><figure><a href="../img/142663629-1.png" target="_blank"><img src="../img/142663629-1.png" alt="1" loading="lazy"></a><figcaption>1</figcaption></figure><figure><a href="../img/95817135-3.png" target="_blank"><img src="../img/95817135-3.png" alt="3" loading="lazy"></a><figcaption>3</figcaption></figure><figure><a href="../img/1892307345-4.png" target="_blank"><img src="../img/1892307345-4.png" alt="4" loading="lazy"></a><figcaption>4</figcaption></figure><figure><a href="../img/88704396-5.png" target="_blank"><img src="../img/88704396-5.png" alt="5" loading="lazy"></a><figcaption>5</figcaption></figure><figure><a href="../img/1177744224-6.png" target="_blank"><img src="../img/1177744224-6.png" alt="6" loading="lazy"></a><figcaption>6</figcaption></figure></div><p style="margin-top:26px"><a class="pill" href="../history.html">Related curated section → History</a></p></main>
   <aside class="toc"><div class="toc-h">On this page</div><nav id="toc-nav"></nav></aside>
 </div>
 <footer>

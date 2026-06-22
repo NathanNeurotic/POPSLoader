@@ -32,12 +32,15 @@
 <a href="../downloads.html"><span class="em">📦</span>Downloads</a>
 <a href="../history.html"><span class="em">📜</span>History</a>
     <h4>Reference</h4>
+    <a href="../glossary.html"><span class="em">📖</span>Glossary</a>
+    <a href="../commands.html"><span class="em">⌨️</span>Command index</a>
+    <a href="../faq.html"><span class="em">❓</span>FAQ &amp; known bugs</a>
     <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
   </nav>
-  <main class="content"><h1>HDD Mode</h1><p class="prov-inline">📎 Recovered from the ShaolinAssassin wiki · snapshot 20170629165244</p><h1><strong>POPStarter for internal HDD</strong></h1>
+  <main class="content"><h1>HDD Mode</h1><p class="prov-inline">📎 Recovered from the ShaolinAssassin wiki · snapshot 20170629165244</p><h2 id="popstarter-for-internal-hdd"><strong>POPStarter for internal HDD</strong></h2>
 <hr>
 
-<h2><em>Requirements :</em></h2>
+<h2 id="requirements"><em>Requirements :</em></h2>
 <ul>
 <li><strong>POPS decrypted files :</strong></li>
 </ul>
@@ -60,7 +63,7 @@
 . A PS2-formatted HDD that fits your network adapter/HDD interface.</p>
 <hr>
 
-<h2><em>Installation :</em></h2>
+<h2 id="installation"><em>Installation :</em></h2>
 <ul>
 <li><strong>a) Installing the Emulator :</strong></li>
 </ul>
@@ -87,7 +90,7 @@ Note : +__.POPS is not correct. Use <a href="../wiki/related-stuff.html">AKuHAK�
 </ol>
 <hr>
 
-<h2><em>Example of Setup :</em></h2>
+<h2 id="example-of-setup"><em>Example of Setup :</em></h2>
 <pre><code>
 === INTERNAL HDD, NEW LAUNCH TYPE ===
 __common/POPS/IOPRP252.IMG
@@ -98,7 +101,7 @@ __sysconf/FMCB/Crash Bandicoot.elf
 </code></pre>
 <hr>
 
-<h2><em>POPSTARTER.KELF :</em></h2>
+<h2 id="popstarterkelf"><em>POPSTARTER.KELF :</em></h2>
 <p>POPStarter bundle comes with a file named POPSTARTER.KELF (KELF = Krypo-ELF = ELF embedded into a container). It can be used if you have SONY Browser 2.00 (aka HDDOSD) installed on your HDD. Otherwise, it’s useless.</p>
 <p><strong>Notes if you use the POPStarter.KELF :</strong></p>
 <ul>
@@ -112,7 +115,7 @@ __sysconf/FMCB/Crash Bandicoot.elf
 <p>Read <a href="../wiki/popstarter-hddosd.html">here</a> for a guide about how to set it up.</p>
 <hr>
 
-<h2><em>HDD Launch types (advanced) :</em></h2>
+<h2 id="hdd-launch-types-advanced"><em>HDD Launch types (advanced) :</em></h2>
 <p>HDD supports 3 “launch types”. The “launch type” relies on the prefix of your ELF names. Each type uses his own way to name the VCD file :</p>
 <table class="wiki"> <tr> <td> </td> <td> <strong>Old launch type</strong> </td> <td> <strong>Alternate old launch type</strong> </td> <td> <strong>New launch type</strong> </td> </tr> <tr> <td> <strong>HDDOSD compatible</strong> </td> <td> Yes </td> <td> No </td> <td> No </td> </tr> <tr> <td> <strong>Partition shown in the HDDOSD/PSBBN/PSX XMB</strong> </td> <td> Yes </td> <td> No </td> <td> – </td> </tr> <tr> <td> <strong>Prefix for POPStarter.ELF</strong> </td> <td> PP. (if used) </td> <td> __. </td> <td> No prefix </td> </tr> <tr> <td> <strong>Prefix for partition name</strong> </td> <td> PP. </td> <td> __. </td> <td> __.POPS or __.POPS# </td> </tr> <tr> <td> <strong>Game name</strong> </td> <td> IMAGE0.VCD (all uppercase) </td> <td> IMAGE0.VCD (all uppercase) </td> <td> Name of the Game.VCD </td> </tr> <tr> <td> <strong>Examples</strong> </td> <td> (1) </td> <td> (2) </td> <td> (3) </td> </tr> <tr> <td> <strong>Description</strong> </td> <td> Launch type that was used in POPStarter 12 and older. Allows to install one VCD per partition. </td> <td> Launch type that was used in POPStarter 12 and older. Allows to install one VCD per partition. </td> <td> Launch type introduced in POPStarter 13 WIP 01. Allows to put multiple VCDs in a single partition. </td> </tr> </table>
 
@@ -147,7 +150,7 @@ __sysconf/FMCB/Crash Bandicoot.elf
 </code></pre>
 <hr>
 
-<h2><em>Additional notes :</em></h2>
+<h2 id="additional-notes"><em>Additional notes :</em></h2>
 <ul>
 <li>
 <p>The internal HDD has to be PS2 formatted. If you need to format it, use the latest WIP version of AKuHAK’s uLaunchELF HDD edition.</p>
@@ -170,7 +173,7 @@ __sysconf/FMCB/Crash Bandicoot.elf
 </ul>
 <hr>
 
-<h2><em>Related stuff :</em></h2>
+<h2 id="related-stuff"><em>Related stuff :</em></h2>
 <p>You may want to give a look at this :</p>
 <ul>
 <li>
@@ -180,9 +183,7 @@ __sysconf/FMCB/Crash Bandicoot.elf
 <p>[HDD] <a href="../wiki/radhostclient.html">Transfer VCD files over network using RadHostClient</a></p>
 </li>
 </ul>
-<hr>
-
-<h3><a href="../wiki/index.html"><strong>Index</strong></a></h3><p style="margin-top:26px"><a class="pill" href="../storage.html">Related curated section → Storage Backends</a></p></main>
+<hr><p style="margin-top:26px"><a class="pill" href="../storage.html">Related curated section → Storage Backends</a></p></main>
   <aside class="toc"><div class="toc-h">On this page</div><nav id="toc-nav"></nav></aside>
 </div>
 <footer>

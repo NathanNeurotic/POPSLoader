@@ -32,12 +32,15 @@
 <a href="../downloads.html"><span class="em">📦</span>Downloads</a>
 <a href="../history.html"><span class="em">📜</span>History</a>
     <h4>Reference</h4>
+    <a href="../glossary.html"><span class="em">📖</span>Glossary</a>
+    <a href="../commands.html"><span class="em">⌨️</span>Command index</a>
+    <a href="../faq.html"><span class="em">❓</span>FAQ &amp; known bugs</a>
     <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
   </nav>
   <main class="content"><h1>Rolling notes</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/BETA-13-PLAY/ROLLING_NOTES.md">view on GitHub ↗</a></p><p><strong>This is a bleeding-edge TEST build, not a stable release.</strong> It has everything from the latest stable <strong>plus</strong> features still being tested. Please try it and report anything odd — and mention you're on the <strong>rolling</strong> build. To go back to stable, just reinstall the latest entry on the <strong>Releases</strong> page.</p>
 <p>Here's everything new or changed <strong>since BETA-9</strong>.</p>
 <hr />
-<h2>🆕 Currently testing (newest — we'd love your feedback)</h2>
+<h2 id="currently-testing-newest-wed-love-your-feedback">🆕 Currently testing (newest — we'd love your feedback)</h2>
 <p><strong>Newest this cycle — UI, cover art &amp; navigation (please eyeball the items marked below):</strong><br />
 - <strong>Per-game info text</strong> — drop a <code>&lt;game&gt;.txt</code> next to a game, then turn on <em>Settings → Game details</em> (<strong>Off / Left / Center / Right</strong> alignment) to show it in a panel under the cover. Your line breaks are kept. Scroll long text with the <strong>right analog stick</strong>, and set the pace in <em>Settings → Description scroll speed</em> (<strong>Fast / Medium / Slow</strong>). The three speeds are now distinct (≈1, 3 and 7 lines/sec) — previously they all felt the same. Please tell us if the scroll feel is right.<br />
 - <strong>Smoother list navigation</strong> — the <strong>left analog stick</strong> now moves the cursor <strong>one game at a time</strong> (just like the d-pad), with a comfortable hold-to-repeat (it starts repeating after a short hold, then about 5 items/sec). <strong>Left/Right</strong> (d-pad or stick) jumps a <strong>whole page</strong>, and <strong>L1</strong> still bounces between top ↔ bottom. The stick only kicks in on real analog/DualShock pads now (a digital pad no longer injects a phantom direction), so up/down lands on individual items cleanly — <strong>oldman63 and Nuno6573 confirmed this on hardware</strong>. And the list no longer bogs down while cover art is on — it was redoing work every frame; please tell us if scrolling feels snappy with covers enabled.<br />
@@ -57,7 +60,7 @@
 <li><strong>Carousel device visibility</strong> — <em>Settings → Carousel Devices.</em> Hide carousel entries you don't use (including the not-yet-implemented stubs like <strong>SMB</strong> / <strong>iLink</strong>) with a <strong>Shown / Hidden</strong> toggle per device; at least one device always stays visible. Your launch behavior is unchanged — hidden entries are just skipped on the carousel.</li>
 <li><strong>HDD settings now save on the HDD</strong> — on an HDD install, your Settings save <strong>directly to the HDD</strong> (on its boot partition), right where POPSLoader lives — same as a USB / MX4SIO / MMCE install keeps its own settings. This used to be a read-only "probe"; it's a real save now. It boots on PCSX2 and provato confirmed the HDD is writable on real hardware, but the full save flow is still validating on hardware — so please save a setting, reboot, and tell us if it stuck.</li>
 </ul>
-<h2>🎮 Since BETA-9 — the big stuff</h2>
+<h2 id="since-beta-9-the-big-stuff">🎮 Since BETA-9 — the big stuff</h2>
 <p><strong>Internal HDD (PFS)</strong><br />
 - Major HDD reliability fixes — games that wouldn't launch from an HDD-resident POPSTARTER now work.<br />
 - The HDD game list now loads even when you start POPSLoader from <strong>USB or Memory Card</strong> (it waits for a cold drive to spin up instead of failing instantly).<br />
@@ -72,14 +75,14 @@
 <p><strong>Polish</strong><br />
 - Leaner, faster build (removed unused internals) and assorted stability fixes.<br />
 - A full documentation overhaul.</p>
-<h2>⚠️ Known issues / still being verified</h2>
+<h2 id="known-issues-still-being-verified">⚠️ Known issues / still being verified</h2>
 <p><em>Canonical list: </em><em>STATE.md &gt; Known Issues</em><em>. Tester summary:</em><br />
 - <strong>Confirmed on hardware this cycle (thank you!):</strong> the <strong>Boot sound</strong> toggle saves and survives a reboot (oldman63); up/down <strong>and</strong> left-stick navigation land on individual items with smooth continuous scroll (oldman63); and the latest rolling is running well overall (Nuno6573).<br />
 - <strong>Still wants an eyeball (works in testing, not yet hardware-confirmed):</strong> the new <strong>cover-box artwork</strong> (default cover + missing mark lining up inside the jewel-case frame on <strong>NTSC and PAL</strong>), the <strong>Overscan (CRT inset)</strong> on a real tube TV, and the <strong>Description scroll speed</strong> feel. Please report on these specifically.<br />
 - <strong>Other new features aren't broadly hardware-confirmed yet.</strong> HDD in-app hide (L3), HDD-resident settings save, native PAL 640×512, and the POPSTARTER Memory Card Folder toggle all boot on PCSX2, and provato confirmed the HDD is writable on real hardware — but the full flows are still validating on hardware. These are exactly what we're asking you to test; please report what works and what doesn't.<br />
 - <strong><em>"Failed to load HDD" on the second boot</em> — FIXED.</strong> That was the cache bug above (it hit setups that had loaded the HDD successfully at least once before). If you ever see it again, it now shows the real error on a second line — please screenshot.<br />
 - <strong><em>"Failed to load HDD" from a non-HDD boot</em> — still open (config-specific).</strong> On a specific setup, launching POPSLoader from <strong>USB / Memory Card</strong> via a launcher can fault while building the <strong>HDD</strong> game list (most setups list the HDD fine; POPSLoader itself starts normally). Workaround: boot POPSLoader from the HDD, or wait a few seconds on the menu before opening the HDD page. We're still isolating this one — if it hits you, tell us your exact boot setup.</p>
-<h2>Install</h2>
+<h2 id="install">Install</h2>
 <p>Extract to your device like any POPSLoader build, replacing your current install.</p></main>
   <aside class="toc"><div class="toc-h">On this page</div><nav id="toc-nav"></nav></aside>
 </div>

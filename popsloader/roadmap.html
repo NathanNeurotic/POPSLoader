@@ -32,12 +32,15 @@
 <a href="../downloads.html"><span class="em">📦</span>Downloads</a>
 <a href="../history.html"><span class="em">📜</span>History</a>
     <h4>Reference</h4>
+    <a href="../glossary.html"><span class="em">📖</span>Glossary</a>
+    <a href="../commands.html"><span class="em">⌨️</span>Command index</a>
+    <a href="../faq.html"><span class="em">❓</span>FAQ &amp; known bugs</a>
     <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
   </nav>
   <main class="content"><h1>Roadmap</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/BETA-13-PLAY/ROADMAP.md">view on GitHub ↗</a></p><p>Last updated: 2026-06-21 (BETA-13 in progress)</p>
-<h1>ROADMAP</h1>
+<h1 id="roadmap">ROADMAP</h1>
 <p>This is the <strong>forward plan</strong>. For current runtime state, the canonical Known-Issues list, the Preservation Contracts, the Behavioral Invariants, and the per-case Hardware Status, see <strong><code>STATE.md</code></strong> — those volatile/shared facts live there and are not re-enumerated here.</p>
-<h2>Status Snapshot</h2>
+<h2 id="status-snapshot">Status Snapshot</h2>
 <ul>
 <li><strong>Public release is still BETA-12</strong> (shipped 2026-06-18; BETA-11 2026-06-15). <strong>BETA-13 is the in-progress rolling candidate, not yet cut.</strong> The active dev branch is <strong><code>BETA-13-PLAY</code></strong> (created off <code>BETA-12-PLAY</code> @<code>8d1e67a</code>); <strong><code>BETA-12-PLAY</code> is now archival/frozen.</strong> <code>rolling-release.yml</code> was repiped to publish from <code>BETA-13-PLAY</code> (tip moves per push; see <code>git log</code>).</li>
 <li>The 2026-06 (BETA-12-era) deliverables: HDD-resident settings save + in-app HDD <code>.hide</code> (boot-partition RW take-over via <code>EnsureBootPartitionWritable</code>), PAL native 640×512 full-screen render + auto-revert display-change confirm, the <code>bdma_mode.txt</code> marker rename (legacy names still read), the POPSTARTER Memory Card Folder toggle + BDMA⟺folder interlock, the launch-args auto-launch consumer, and the live CI luac syntax gate. See <strong>STATE.md &gt; Repo-Verified Runtime State</strong> for the detail.</li>
@@ -49,26 +52,26 @@
 - <code>.github/workflows/rolling-release.yml</code> — automated rolling-release artifact publication on push to <code>BETA-13-PLAY</code> and on PR events.<br />
 - <code>docs/archive/DOCUMENTATION_FOLLOWUP_AUDIT.md</code> — handoff plan for the post-BETA-10-5 doc cleanup work (now completed; see "Documentation cleanup" under Secondary Work).</p>
 <p><code>HDD (exFAT)</code>, <code>SMB (v1)</code>, <code>ILINK</code> remain intentionally unimplemented menu entries.</p>
-<h2>Immediate Priorities</h2>
-<h3>1) Cut BETA-13</h3>
+<h2 id="immediate-priorities">Immediate Priorities</h2>
+<h3 id="1-cut-beta-13">1) Cut BETA-13</h3>
 <ul>
 <li>The BETA-13 input/UX/cover work is in and the headline items are <strong>hardware-confirmed</strong>: up/down + analog-stick nav land on individual items with smooth continuous scroll (oldman63), boot sound saves and survives reboot (oldman63), and "everything working fantastically" on the latest rolling (Nuno6573). See <strong>STATE.md &gt; Reported Hardware Status</strong>.</li>
 <li>Remaining BETA-13 eyeballs before the cut (none currently believed broken — all "awaiting a look"): the Overscan (CRT inset) render-inset on a real CRT; the <code>cover_default.png</code> + <code>cover_missing.png</code> overlay registration against the jewel-case window on <strong>both</strong> NTSC and PAL; the description right-stick scroll feel; and the HDD <strong>Proposal A</strong> scan-slot steering (deliberate HW test — see #5 below).</li>
 <li>Cutting BETA-13 needs the <strong>tree-adopting merge to <code>master</code></strong> (the proven <code>-s ours</code> + <code>read-tree</code> + verify-empty-diff mechanic; <code>master</code> diverges from the dev branch, so a plain merge is wrong). See the release git-mechanics captured for BETA-12.</li>
 </ul>
-<h3>2) <code>os.clock()</code> timer-unit sweep</h3>
+<h3 id="2-osclock-timer-unit-sweep">2) <code>os.clock()</code> timer-unit sweep</h3>
 <ul>
 <li><strong>Root-cause fact</strong> (also recorded in DECISIONS / ARCHITECTURE / AGENTS): <code>Timer.getTime()</code> returns <strong>microseconds</strong> on PS2 (it is a raw <code>clock()</code> tick; <code>CLOCKS_PER_SEC</code> is 1e6 on the ee toolchain). The UI historically treated it as milliseconds, so every <code>_ms</code> timing ran ~1000× too fast. Nav auto-repeat and description scroll were already moved to <strong>frame-counting</strong> (the canonical Enceladus idiom — sibling launchers OSDMenu-Configurator and RETROLauncher frame-count too), which fixed the visible breakage.</li>
 <li>Still on the µs-as-ms footing, masked (not visibly broken) by a per-frame clamp: the <code>MIN_ACTION_MS = 220</code> action debounce (<code>bin/POPSLDR/ui.lua:622</code>, gated against <code>max_step</code> ≈ 33 ms <code>dt</code> clamps) and the transition / carousel timers. The proposed fix is a sweep to <code>os.clock()</code> (stock Lua, returns <strong>seconds</strong>, already pre-converted, currently <strong>unused</strong> anywhere in <code>bin/POPSLDR/*.lua</code>).</li>
 </ul>
-<h3>3) Settings UI redesign (Berion mockup) — gated</h3>
+<h3 id="3-settings-ui-redesign-berion-mockup-gated">3) Settings UI redesign (Berion mockup) — gated</h3>
 <ul>
 <li>Blocked on Berion's mockup PNGs landing at <code>C:\Users\natha\Documents\assets\</code> and being committed to <code>docs/mockups/</code>. Without the visual oracle, the Lua port is hard to start.</li>
 <li>The original launch-path hardware blockers (D-10/D-14/D-15/DKWDRV-MC/BOOT.ELF, and now U-10) are settled. <strong>However</strong>, the 2026-06 HDD-resident settings save, in-app HDD <code>.hide</code>, and PAL-512 features are still <strong>validating on hardware</strong> (boot on PCSX2; HDD RW confirmed on hardware by provato; full flows not yet broadly hardware-confirmed). Per the maintainer, don't kick off the redesign until those settle, so the redesign builds on a verified settings/persistence base. See <strong>STATE.md &gt; Reported Hardware Status</strong>.</li>
 <li>Scope: Context menu, Settings (per-category pages superseding the OPL focused-list), Joypad configuration, On-screen keyboard. Boot/splash and game list are out of scope.</li>
 <li>Full implementation prompt and per-screen pixel specs live in <code>docs/archive/GUI_OVERHAUL_PROMPT.md</code>.</li>
 </ul>
-<h3>4) Layer C full lazy IRX loading</h3>
+<h3 id="4-layer-c-full-lazy-irx-loading">4) Layer C full lazy IRX loading</h3>
 <ul>
 <li>Precursor (pre-IRX device classification hint) landed in PR #458.</li>
 <li><strong><code>mmceman</code> deferral — SHIPPED</strong> (PR #471, merged; commit <code>d10ec56</code>). MMCE boots load mmceman eagerly (gate at <code>src/main.cpp:503</code>); USB/MC/MX4SIO/HDD boots defer it and lazy-load on demand via <code>PLDR.EnsureMmceReadyOnce()</code> (<code>bin/POPSLDR/system.lua:1206</code> — <code>System.ensureMmceman</code> + <code>System.reinitPad</code>). MMCE pad-input behavior hardware-confirmed (FifthFox, commit <code>9f2d550</code>). The vendored mmceman blob was later dropped in favor of ps2sdk's <code>mmceman</code> (no <code>iop/embed/mmceman.irx</code> in-tree).</li>
@@ -76,18 +79,18 @@
 <li><strong><code>usbd</code> deferral</strong> — queued, HIGH RISK. <code>ds34usb</code> (USB DS3/4 pads, the most common pad type) depends on <code>usbd</code>. Without <code>usbd</code>, USB pads stop working. Cannot ship without a robust opt-in or careful boot-time decision.</li>
 <li>Expected gain per the audit in <code>docs/archive/LAUNCH_HYGIENE.md</code>: 30-50% pre-Lua startup time reduction once all three deferrals land.</li>
 </ul>
-<h3>5) Display, HDD, and UX verification</h3>
+<h3 id="5-display-hdd-and-ux-verification">5) Display, HDD, and UX verification</h3>
 <ul>
 <li><strong>Overscan (CRT inset)</strong> — new OPL-style render-inset shipped but <strong>not yet eyeballed on a CRT</strong>. <code>Screen.setOverscan(permille)</code> / <code>getOverscan()</code> (<code>src/luaScreen.cpp</code>) drive a <code>graphics.cpp</code> transform that wraps every <code>gsKit_prim_*</code> draw site in <code>OVX()</code>/<code>OVY()</code> (identity at permille 0, so inert by default; math identical to OPL <code>rmSetOverscan</code>). The live adjuster is Settings → "Overscan (CRT inset)" (<code>bin/POPSLDR/ui.lua:3632</code>, ±5 step, live preview, discard restores). Confirm the inset on a real CRT.</li>
 <li><strong>HDD Proposal A</strong> — the game scan now steers <strong>off</strong> the live boot pfs slot (<code>b159a43</code>; the boot/settings partition lives on the boot slot, "NEVER reuse"), and the boot RW mount is re-validated on the save path so settings save after a scan (<code>8d1e67a</code>). Still wants a <strong>deliberate HW test</strong> (Nuno) that game partitions still mount/list when forced off the boot slot. See <strong>STATE.md</strong> and memory <code>reference-hdd-pfs-slot-model</code>.</li>
 <li><code>U-06</code> targets the <strong>PAL native 640×512 full-screen render</strong> (the menu fills the screen, no letterbox; NTSC is 640×448). On PAL hardware confirm the full-screen fill <em>and</em> the auto-revert display-change confirm prompt (reverts if the new mode isn't confirmed, like OPL). See <strong>STATE.md &gt; Reported Hardware Status</strong> (<code>U-06</code> row).</li>
 <li>Re-run <code>U-08</code> / <code>U-09</code> on slower/large libraries to judge whether busy overlays communicate activity clearly enough.</li>
 </ul>
-<h3>6) Coverage and documentation</h3>
+<h3 id="6-coverage-and-documentation">6) Coverage and documentation</h3>
 <ul>
 <li>Add concrete run logs for: D-13 device switching without runtime locks, S-09 keyboard layout persistence, U-11 boot-device label display.</li>
 </ul>
-<h2>Resolved Since BETA-10-5 (no longer blocking)</h2>
+<h2 id="resolved-since-beta-10-5-no-longer-blocking">Resolved Since BETA-10-5 (no longer blocking)</h2>
 <p>The items previously parked here as "pragmatically accepted / known-broken" are now <strong>resolved</strong> — see <strong>STATE.md &gt; Known Issues</strong> (Recently resolved) and <strong>&gt; Reported Hardware Status</strong> for the canonical record:</p>
 <ul>
 <li><strong>U-10 BOOT.ELF from HDD-booted POPSLoader</strong> — RESOLVED via PR #479 (<code>reboot_iop=0</code>). Investigation archived under <code>docs/archive/U10_INVESTIGATION.md</code>.</li>
@@ -95,17 +98,17 @@
 <li><strong>Class-A start failures (HOSDmenu / some wLaunchELF builds)</strong> — RESOLVED (maintainer-confirmed 2026-06-15).</li>
 <li><strong>HDD read-write</strong> — achieved via the <code>EnsureBootPartitionWritable</code> boot-partition remount take-over (the launcher owns its boot pfs slot and remounts it RW), <strong>not</strong> the old <code>ps2hdd-osd.irx</code> → <code>ps2hdd.irx</code> IRX-swap probe. provato confirmed the HDD is RW-writable on real hardware; the old swap-probe item is dropped. HDD-resident settings save + in-app HDD <code>.hide</code> now ship on this path (still validating the full flow on hardware).</li>
 </ul>
-<h2>Secondary Work</h2>
-<h3>1) Unimplemented menu paths</h3>
+<h2 id="secondary-work">Secondary Work</h2>
+<h3 id="1-unimplemented-menu-paths">1) Unimplemented menu paths</h3>
 <ul>
 <li><code>HDD (exFAT)</code>, <code>SMB (v1)</code>, <code>ILINK</code> — intentionally not implemented; surface "not supported" if entered.</li>
 </ul>
-<h3>2) Art/asset behavior</h3>
+<h3 id="2-artasset-behavior">2) Art/asset behavior</h3>
 <ul>
 <li>Keep current cover behavior stable: sidecar PNG beside the selected <code>.VCD</code>, plus <code>hdd0:__common/POPS/ART/&lt;title&gt;.png</code> for HDD titles.</li>
 <li>The no-cover / preview-off cover box now draws the layered <code>cover_default.png</code> base (+ <code>cover_missing.png</code> overlay when a game has no cover); <code>MISSING.png</code> was <strong>removed</strong> and is no longer a fallback anywhere; <code>default.png</code> stays an optional legacy cover override. The canonical detail (asset layering, the embed-mechanism's 3 coordinated edit sites, the ELF-size delta) lives in <strong>STATE.md &gt; Cover art</strong> — don't re-enumerate it here.</li>
 </ul>
-<h3>3) Install/build clarity</h3>
+<h3 id="3-installbuild-clarity">3) Install/build clarity</h3>
 <ul>
 <li>Keep CI package layout and docs synchronized.</li>
 <li><code>ps2dev/ps2dev</code> image is pinned to <code>v2.0.0</code> in <code>.github/workflows/compilation.yml</code> and <code>.github/workflows/rolling-release.yml</code> (post-release pin at commit <code>ba8f0d0</code>).</li>
@@ -113,24 +116,24 @@
 <li>Rolling release workflow publishes a single <code>POPSLOADER-rolling-release.zip</code> asset to the canonical <code>rolling-release</code> GitHub Release; both push-to-<code>BETA-13-PLAY</code> and PR events overwrite the same asset (last-write-wins).</li>
 <li><strong>Redistributable launcher in the zips.</strong> <code>POPSTARTER.ELF</code> (the redistributable POPStarter homebrew launcher — the POPS engine binaries are <strong>not</strong> redistributable and are not shipped) now ships in both zips: <code>rolling-release.yml</code> puts it at the <strong>zip root</strong> next to <code>POPSLOADER.ELF</code> <strong>and</strong> in <code>POPS/</code>, and also ships a <code>POPSTARTER/</code> pack folder (BDMA/SMB modules) + <code>POPS/PATCH_5.BIN</code> at the rolling root; <code>compilation.yml</code> (the strict-verified <code>PS1_POPSLOADER/</code> install zip) ships <code>POPSTARTER.ELF</code> in <code>PS1_POPSLOADER/</code> (next to <code>POPSLOADER.ELF</code>) <strong>and</strong> <code>POPS/</code>.</li>
 </ul>
-<h3>4) Settings UI redesign</h3>
+<h3 id="4-settings-ui-redesign">4) Settings UI redesign</h3>
 <ul>
 <li>2026-05-19/20 OPL-style focused-list shipped (Settings page rewrite). Hardware verification deferred per the launch-path retest sequence.</li>
 <li>Berion-mockup-driven GUI overhaul is queued (see #5 below). The OPL focused list is intended to be replaced when that overhaul lands, so further iteration on the focused list is paused unless a specific bug appears.</li>
 </ul>
-<h3>5) Full GUI overhaul (Berion mockups)</h3>
+<h3 id="5-full-gui-overhaul-berion-mockups">5) Full GUI overhaul (Berion mockups)</h3>
 <ul>
 <li>2026-05-24: graphics-team mockups by Berion and the matching PNG asset set landed (<code>f8fec64</code>). Full implementation prompt and per-screen pixel specs live in <code>docs/archive/GUI_OVERHAUL_PROMPT.md</code>.</li>
 <li>Scope: Context menu, Settings (per-category pages superseding the OPL focused-list), Joypad configuration, On-screen keyboard. Boot/splash and game list are out of scope.</li>
 <li>Prereq: the launch-path hardware verification (DKWDRV-on-HDD, wLaunchELF, U-10) has now settled — all resolved (see <strong>STATE.md &gt; Known Issues</strong>). The remaining gate is the 2026-06 HDD-resident settings save + in-app HDD <code>.hide</code> + PAL-512 features, which are still validating on hardware; the category-page Settings model in the prompt replaces the OPL focused-list, so coordinate retest sequencing once those settle.</li>
 <li>Mockup HTML/JSX wrapper from Berion's package is referenced by the prompt but not yet committed; either commit the mockup files or use a screenshot/hosted-mockup oracle before starting the Lua port.</li>
 </ul>
-<h3>6) Documentation cleanup (per <code>docs/archive/DOCUMENTATION_FOLLOWUP_AUDIT.md</code>) — DONE 2026-06-17</h3>
+<h3 id="6-documentation-cleanup-per-docsarchivedocumentation_followup_auditmd-done-2026-06-17">6) Documentation cleanup (per <code>docs/archive/DOCUMENTATION_FOLLOWUP_AUDIT.md</code>) — DONE 2026-06-17</h3>
 <ul>
 <li><strong>Completed 2026-06-17.</strong> The doc set was consolidated: the volatile status facts were merged into the canonical <code>STATE.md</code> (including the former <code>TRUTHSHEET.md</code>), the obsolete/superseded docs were archived under <code>docs/archive/</code>, and the doc set was de-duplicated so each fact lives in exactly one place. The original three-PR plan (source-of-truth sync, agent/handoff cleanup, architecture/component/release polish) is folded into this consolidation.</li>
 <li>Was out of scope (and stayed so): any change to runtime code or to CI/build/release workflows; this was doc-only.</li>
 </ul>
-<h2>Deferred Ideas</h2>
+<h2 id="deferred-ideas">Deferred Ideas</h2>
 <ul>
 <li>Additional themes/skins.</li>
 <li>Broader network/backend support after SMB and ILINK have defined baselines.</li>
