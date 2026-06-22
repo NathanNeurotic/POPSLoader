@@ -242,8 +242,9 @@ See [STATE.md](STATE.md) "Known Open Work" and [ROADMAP.md](ROADMAP.md) for the 
 *   **Berion**: User interface design and theme assets.
 *   **nuno6573**: Cover-art engine integrations and scripting.
 *   **Hugopocked**: POPStarter fixes.
+*   **saildot4k**: BDMA-ATA (exFAT internal-HDD / ATA backend), fixes, feedback, and oversight.
 *   **Ripto / NathanNeurotic**: Maintenance, UI polishing, and release engineering.
-*   **P4NCHOL1NO, VizoR, provato, nuno6573, TnA-Plastic, saildot4k, and the community**: Hardware testing.
+*   **P4NCHOL1NO, VizoR, provato, nuno6573, TnA-Plastic, and the community**: Hardware testing.
 
 ---
 
