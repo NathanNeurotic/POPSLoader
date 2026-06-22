@@ -37,9 +37,11 @@
     <a href="faq.html"><span class="em">❓</span>FAQ &amp; known bugs</a>
     <a href="wiki/index.html"><span class="em">📚</span>All wiki pages</a>
   </nav>
-  <main class="content"><h1>Getting Started</h1><p class="lead">Want to play a PS1 game on your PS2 with POPStarter? Here is the whole thing start-to-finish, kept deliberately simple. The rest of the site is reference for when you want to go deeper.</p><div class="callout info"><div class="h">ℹ The short version</div>Convert your PS1 disc to a <code>.VCD</code>
-file, drop it on a USB stick with two small support files, and launch it. Most people are playing within 15
-minutes. The steps below walk you through it — the rest of this site is reference for when you actually need it.</div>
+  <main class="content"><h1>Getting Started</h1><p class="lead">Want to play a PS1 game on your PS2 with POPStarter? Here is the whole thing start-to-finish, kept deliberately simple. The rest of the site is reference for when you want to go deeper.</p><div class="callout info"><div class="h">ℹ The short version</div>Convert your PS1 disc to a <code>.VCD</code>,
+put it on the device you want to play from, and launch it — easiest with <b>POPSLoader</b>, the cover-art menu
+this site belongs to. POPSLoader's <b>BDMA&nbsp;Mode</b> setting is the device selector: it lets you play from
+<b>FAT32 or exFAT USB, an MX4SIO SD adapter, an MMCE card</b> (SD2PSX / MemCard&nbsp;PRO2), or the <b>internal
+HDD</b> — use whatever you have. The walkthrough below starts with a plain USB stick as the simplest case.</div>
 
 <h2>What you need</h2>
 <ul class="checklist">
@@ -64,6 +66,10 @@ page so you know it's the correct file.</li>
 <a class="path" href="wiki/quickstart-smb.html"><div class="em">🌐</div><b>Network (SMB)</b>
 <span>Stream from a PC share. Needs a PS2 network adapter and some config.</span></a>
 </div>
+<p class="hint">Got an <b>MX4SIO</b> SD adapter, an <b>MMCE</b> card (SD2PSX / MemCard&nbsp;PRO2), or an <b>exFAT</b>
+USB drive? <a href="popsloader.html">POPSLoader</a> plays from all of them — set its <b>BDMA&nbsp;Mode</b> to match
+(<code>FAT32</code> / <code>USBEXFAT</code> / <code>MX4SIO</code> / <code>MMCE</code>). BDMA is what reaches every
+device <i>except</i> the internal HDD. See the full <a href="storage.html#device-matrix">device matrix</a>.</p>
 
 <h2 id="usb">The simple path — USB</h2>
 <div class="steps">
@@ -109,8 +115,9 @@ pages have the rest.</p></div>
 <ul>
 <li><b>Cheat or fix doing nothing?</b> The file must be named <code>CHEATS.TXT</code> in UPPERCASE, in the
 game's folder.</li>
-<li><b>Game won't start from USB?</b> Confirm <code>POPS_IOX.PAK</code> is in <code>mass:/POPS/</code> and the
-drive is FAT32 (not NTFS/exFAT, unless you set up BDMAssault).</li>
+<li><b>Game won't start from USB?</b> Confirm <code>POPS_IOX.PAK</code> is in <code>mass:/POPS/</code>. A plain
+FAT32 drive needs nothing special; for an <b>exFAT</b> drive (or MX4SIO / MMCE) set POPSLoader's <b>BDMA&nbsp;Mode</b>
+to match — BDMA is what reaches every device except the internal HDD.</li>
 <li><b>Green or blank screen on an HDTV?</b> Add <code>$HDTVFIX</code> (or hex-edit config byte <code>$412</code>
 from 0 to 1).</li>
 <li><b>Kicked back to the file browser right after launching?</b> Usually a wrong/old <code>POPSTARTER.ELF</code>
@@ -122,9 +129,9 @@ or an incompatible <code>BOOT.ELF</code> — see Troubleshooting.</li>
 <p>POPStarter is a <b>launcher</b>, not an emulator. The actual PlayStation 1 emulation is done by <b>POPS</b>
 — a program Sony shipped on certain PS2/PSX consoles (which is why you have to supply it yourself). POPStarter
 takes your <code>.VCD</code> game, applies any cheats/patches, and hands it to POPS to run. <b>POPSLoader</b>
-(this project) is a modern, menu-driven front-end for all of it that also adds USB-exFAT, MMCE and MX4SIO
-support. Everything beyond this point on the site is the deep reference — dip in only when you need a specific
-answer.</p></details>
+(this project) is a modern, menu-driven front-end for all of it; its <b>BDMA&nbsp;Mode</b> setting also lets you
+play from exFAT USB, MX4SIO and MMCE — not just FAT32 USB and the HDD. Everything beyond this point on the site
+is the deep reference — dip in only when you need a specific answer.</p></details>
 </main>
   <aside class="toc"><div class="toc-h">On this page</div><nav id="toc-nav"></nav></aside>
 </div>

@@ -39,31 +39,34 @@
   </nav>
   <main class="content"><h1>Storage Backends</h1><p class="lead">Where the POPS folder, VCDs and support modules live on each device — USB, internal HDD, SMB, plus the modern MMCE / MX4SIO / exFAT backends — and the launch methods and per-mode ELF prefixes.</p><h2 id="device-matrix">Device &amp; storage backend matrix</h2>
 <p class="lead">Where your VCDs can live and how the launcher reaches each device. Stock POPStarter ships
-USB / internal-HDD / SMB; <b>MMCE, MX4SIO and exFAT-USB</b> arrived as krHACKen side-modules and are
-first-class backends in the <a href="popsloader.html">POPSLoader fork</a>. Backends marked “untested” are
-wired as menu stubs but not yet hardware-verified. Click a header to sort.</p>
+USB / internal-HDD / SMB. In the <a href="popsloader.html">POPSLoader fork</a>, the <b>BDMA&nbsp;Mode</b> setting
+is the mass-storage <b>device selector</b> — <code>FAT32</code> (plain USB), <code>USBEXFAT</code> (exFAT USB),
+<code>MX4SIO</code>, or <code>MMCE</code> — so BDMA is what lets you use <b>exFAT USB <i>and</i> the other devices</b>
+(MX4SIO, MMCE), not just exFAT. <b>BDMA is required for every device except the internal HDD.</b> Backends marked
+“untested” are wired as menu stubs but not yet hardware-verified. Click a header to sort.</p>
 <table data-sortable>
-<thead><tr><th>Backend</th><th>Filesystem</th><th>Provided by</th><th>Status</th></tr></thead>
+<thead><tr><th>Backend</th><th>Filesystem</th><th>How it's reached</th><th>Status</th></tr></thead>
 <tbody>
-<tr><td>Internal HDD</td><td>APA / PFS</td><td>POPStarter core + fork</td><td>✅ Working</td></tr>
-<tr><td>USB</td><td>FAT32</td><td>POPStarter core + fork</td><td>✅ Working</td></tr>
-<tr><td>USB (exFAT)</td><td>exFAT via BDM&nbsp;Assault</td><td>side-module + fork</td><td>✅ Working</td></tr>
-<tr><td>MX4SIO</td><td>FAT32 / exFAT — SD via SIO2 slot</td><td>side-module + fork</td><td>✅ Working</td></tr>
-<tr><td>MMCE</td><td>SD2PSX / MemCard&nbsp;PRO2</td><td>side-module + fork</td><td>✅ Working</td></tr>
+<tr><td>Internal HDD</td><td>APA / PFS</td><td>native (no BDMA)</td><td>✅ Working</td></tr>
+<tr><td>USB</td><td>FAT32</td><td>BDMA <code>FAT32</code></td><td>✅ Working</td></tr>
+<tr><td>USB (exFAT)</td><td>exFAT</td><td>BDMA <code>USBEXFAT</code></td><td>✅ Working</td></tr>
+<tr><td>MX4SIO</td><td>FAT32 / exFAT — SD via SIO2 slot</td><td>BDMA <code>MX4SIO</code></td><td>✅ Working</td></tr>
+<tr><td>MMCE</td><td>SD2PSX / MemCard&nbsp;PRO2</td><td>BDMA <code>MMCE</code></td><td>✅ Working</td></tr>
 <tr><td>Disc (DKWDRV)</td><td>physical PS1 disc handoff</td><td>fork</td><td>✅ Working</td></tr>
 <tr><td>SMB</td><td>network share</td><td>POPStarter core</td><td>✅ core · ⚠ fork stub</td></tr>
-<tr><td>HDD exFAT — BDM “ATA”</td><td>exFAT on internal SATA</td><td>fork</td><td>⚠ Stub — untested</td></tr>
-<tr><td>iLink (IEEE&nbsp;1394)</td><td>exFAT over FireWire</td><td>fork</td><td>⚠ Stub — untested</td></tr>
-<tr><td>UDPBD</td><td>UDP block device — games streamed over Ethernet from a PC <code>udpbd</code> server (modern SMB alternative)</td><td>fork</td><td>⚠ Stub — untested</td></tr>
-<tr><td>UDPFS</td><td>UDP network filesystem backend</td><td>fork</td><td>⚠ Stub — untested</td></tr>
+<tr><td>HDD exFAT — BDM “ATA”</td><td>exFAT on internal SATA</td><td>BDM (fork)</td><td>⚠ Stub — untested</td></tr>
+<tr><td>iLink (IEEE&nbsp;1394)</td><td>exFAT over FireWire</td><td>BDM (fork)</td><td>⚠ Stub — untested</td></tr>
+<tr><td>UDPBD</td><td>UDP block device — games streamed over Ethernet from a PC <code>udpbd</code> server (modern SMB alternative)</td><td>BDM (fork)</td><td>⚠ Stub — untested</td></tr>
+<tr><td>UDPFS</td><td>UDP network filesystem backend</td><td>BDM (fork)</td><td>⚠ Stub — untested</td></tr>
 </tbody></table>
-<div class="callout amber"><div class="h">⚖ exFAT is driver substitution, not native POPS support</div>
-POPStarter's POPS payload (POPS.ELF, IOPRP252.IMG, POPS_IOX.PAK and the VCD) always lives on a native path —
-FAT32 USB or APA/PFS HDD. “exFAT support” means <b>BDM&nbsp;Assault</b> swaps the USB driver
-(<code>bdm_assault.irx</code>→<code>usbd.irx</code>, <code>usbd_bd_assault.irx</code>→<code>usbhdfsd.irx</code>);
-POPS itself never reads an exFAT filesystem. The internal-HDD “ATA” and iLink exFAT backends in the fork use the
-same BDM mechanism but are not yet hardware-tested. For large FAT32/exFAT USB drives, <b>32 KB or 64 KB
-allocation (cluster) size</b> is the confirmed-working format.</div><p class="prov-inline">📎 from the recovered <a href="wiki/usb-mode.html">USB Mode</a> wiki page · merged across snapshots, primary 20170629123547</p><h2 id="popstarter-for-usb-device-storage-type"><strong>POPStarter for USB Device Storage Type</strong></h2>
+<div class="callout amber"><div class="h">⚖ BDMA Mode is the device selector — and exFAT isn't native POPS</div>
+In the POPSLoader fork, <b>BDMA&nbsp;Mode</b> picks the mass-storage backend: <code>FAT32</code> (plain USB, no
+special driver), <code>USBEXFAT</code> (exFAT USB), <code>MX4SIO</code>, or <code>MMCE</code>. Everything except
+the native APA/PFS internal HDD goes through BDMA — it loads the <b>BDM&nbsp;Assault</b> driver set, which is how
+the launcher reaches exFAT USB <i>and</i> the MX4SIO / MMCE devices. POPS itself still never reads an exFAT
+filesystem — BDMA presents the files to it. The HDD-exFAT “ATA”, iLink and UDPBD/UDPFS backends extend the same
+BDM mechanism but aren't hardware-tested yet. For large FAT32/exFAT USB drives, <b>32 KB or 64 KB allocation
+(cluster) size</b> is the confirmed-working format.</div><p class="prov-inline">📎 from the recovered <a href="wiki/usb-mode.html">USB Mode</a> wiki page · merged across snapshots, primary 20170629123547</p><h2 id="popstarter-for-usb-device-storage-type"><strong>POPStarter for USB Device Storage Type</strong></h2>
 <hr>
 
 <h2 id="requirements"><em>Requirements :</em></h2>
