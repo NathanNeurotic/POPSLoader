@@ -2221,7 +2221,12 @@ local function NormalizeLaunchPage(value)
   if key == "" then
     return nil
   end
-  if key == "hdd" or key == "ata" or key == "pfs" or key == "apa" then
+  -- ata / ata0 / ataN -> the exFAT internal-HDD page (BDMA ATA, scene GBDMHDD, opt 3).
+  -- hdd / hdd0, apa / apa0, and any pfs slot -> the classic APA/PFS HDD page (opt 4).
+  if string.match(key, "^ata%d*$") then
+    return "EXFAT"
+  end
+  if string.match(key, "^hdd%d*$") or string.match(key, "^apa%d*$") or string.match(key, "^pfs%d*$") then
     return "HDD"
   end
   if key == "usb" or key == "mass" then

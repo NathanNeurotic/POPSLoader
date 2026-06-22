@@ -36,6 +36,7 @@ The flagship new feature this cycle (R3Z3N's ATA BDM Assault drivers + saildot4k
 - [ ] Select a game → **X** → it **launches** through POPStarter (same as USB/MX4SIO).
 - [ ] ⚠️ **Classification:** the exFAT drive must list/launch **only** under HDD (exFAT) — confirm it does **NOT** also appear under **USB** or **MX4SIO**, and that USB/MX4SIO still work normally. *(ATA is matched by exact ioctl driver-name `ata`, so it shouldn't leak — but this is exactly what hardware needs to confirm.)*
 - [ ] No exFAT drive present / BDMA Mode ≠ ATA → the page shows **"No exFAT HDD detected"** and does **not** hang.
+- [ ] **Launch-arg routing (NEW — never HW-run):** booting with `-page=ata` (or `ata0`) opens the **HDD (exFAT)** page; `-page=hdd` / `hdd0` / `apa` / `apa0` / any `pfs` open the classic **HDD (PFS)** page. (`-page=ata -game=<VCD>` should auto-launch from the exFAT drive.) Confirm `-page=ata` no longer lands on the PFS page.
 - Report: empty list, a game that lists but won't launch, the drive showing under the wrong device, or a hang — include **console model** and **drive type/size**.
 
 ### Navigation & input — ✅ core nav CONFIRMED on hardware (oldman63); the rest still to feel out
@@ -88,6 +89,7 @@ The flagship new feature this cycle (R3Z3N's ATA BDM Assault drivers + saildot4k
 
 - [ ] **Corrupt / oversized cover** (PNG/JPEG/BMP) — must **not crash** the list (hardened this cycle).
 - [ ] **Very long VCD filenames** — ~**73 chars** practical limit; longer may fail to launch.
+- [ ] **DualShock 4 over Bluetooth** (only if you use one) — lightbar colour + rumble still behave after a code fix that stopped the BT output report carrying ~29 bytes of uninitialized data. Confirm the DS4 still pairs, the lightbar sets, and rumble works.
 
 ## 📦 Release zip contents
 
