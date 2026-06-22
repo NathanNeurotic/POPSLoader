@@ -40,8 +40,8 @@
     <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
   </nav>
   <main class="content"><h1>Testing</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/BETA-13-PLAY/TESTING.md">view on GitHub ↗</a></p><p><strong>Build:</strong> rolling <code>BETA-13-PLAY</code> (BETA-13 candidate; rolling now publishes from this branch — <code>BETA-12-PLAY</code> is frozen/archival). Public release is still BETA-12.<br />
-This is the structured "what to test" companion to <strong><a href="rolling-notes.html">ROLLING_NOTES.md</a></strong> ("what's new"); for the canonical status / invariants / known-issues list see <strong><a href="state.html">STATE.md</a></strong>. Regenerate when the rolling batch changes.</p>
-<p><strong>Devices:</strong> USB · MX4SIO (SD over SIO2) · MMCE (SD2PSX / MemCard PRO) · HDD (internal PFS). Test the ones you use; <strong>say which</strong> in every report.</p>
+This is the structured "what to test" companion to <strong><a href="rolling-notes.html">ROLLING_NOTES.md</a></strong> ("what's new"); for the canonical status / invariants / known-issues list see <strong><a href="state.html">STATE.md</a></strong>. Regenerate when the rolling batch changes. <em>(Last refreshed: 2026-06-22 — added the new HDD (exFAT) / BDMA-ATA backend and the on-screen-keyboard feedback fix.)</em></p>
+<p><strong>Devices:</strong> USB · MX4SIO (SD over SIO2) · MMCE (SD2PSX / MemCard PRO) · HDD (internal PFS) · <strong>HDD (exFAT) — NEW, BDMA Mode ATA</strong>. Test the ones you use; <strong>say which</strong> in every report.</p>
 <p><strong>How to report:</strong> ✅ pass / ❌ fail / ⚠️ odd. On a fail give: <strong>device</strong>, <strong>console model + region</strong> (e.g. SCPH-90008 PAL), <strong>how you launched POPSLoader</strong> (from which device / which launcher), <strong>exact steps</strong>, and a <strong>photo</strong> — error screens now print the real reason on line 2.</p>
 <hr />
 <h2 id="p0-must-work-on-every-device-boot-launch-no-regressions">🟥 P0 — Must work on every device (boot · launch · no regressions)</h2>
@@ -56,6 +56,18 @@ This is the structured "what to test" companion to <strong><a href="rolling-note
 <li>[ ] <strong>START-held recovery</strong> — hold <strong>START</strong> during boot → boots to a safe state; with <code>-page</code>/<code>-game</code> args it suppresses auto-launch so you can recover.</li>
 </ul>
 <h2 id="p1-new-features-this-cycle">🟧 P1 — New features this cycle</h2>
+<h3 id="hdd-exfat-via-bdma-ata-brand-new-backend-never-run-on-hardware">⭐⭐ HDD (exFAT) via BDMA ATA — BRAND-NEW backend, NEVER run on hardware</h3>
+<p>The flagship new feature this cycle (R3Z3N's ATA BDM Assault drivers + saildot4k's backend work): play from an <strong>exFAT-formatted internal SATA/IDE drive</strong>, exactly like a big USB stick. <strong>If you have an exFAT internal drive, this is the single most valuable thing you can test.</strong> CI-green, but zero hardware runs so far.</p>
+<p><strong>Setup:</strong><br />
+1. Format the internal drive <strong>exFAT</strong> (NOT the classic APA/PFS HDL layout — that's the separate "HDD (PFS)" entry).<br />
+2. Put a <strong><code>POPS/</code></strong> folder at the drive root with your <code>.VCD</code> files (+ your own <code>POPS_IOX.PAK</code>, <code>POPSTARTER.ELF</code>) — same layout as a USB stick.<br />
+3. <em>Settings → BDMA Mode → </em><em>ATA</em><em><em> and save. </em>(On apply, the <code>.ata</code> launch drivers are copied — with the <code>.ata</code> suffix stripped — to <code>mc?:/POPSTARTER/</code>.)</em></p>
+<p><strong>Test:</strong><br />
+- [ ] Open the <strong>HDD (exFAT)</strong> carousel entry → it scans <code>mass:/POPS</code> and <strong>lists your games</strong>.<br />
+- [ ] Select a game → <strong>X</strong> → it <strong>launches</strong> through POPStarter (same as USB/MX4SIO).<br />
+- [ ] ⚠️ <strong>Classification:</strong> the exFAT drive must list/launch <strong>only</strong> under HDD (exFAT) — confirm it does <strong>NOT</strong> also appear under <strong>USB</strong> or <strong>MX4SIO</strong>, and that USB/MX4SIO still work normally. <em>(ATA is matched by exact ioctl driver-name <code>ata</code>, so it shouldn't leak — but this is exactly what hardware needs to confirm.)</em><br />
+- [ ] No exFAT drive present / BDMA Mode ≠ ATA → the page shows <strong>"No exFAT HDD detected"</strong> and does <strong>not</strong> hang.<br />
+- Report: empty list, a game that lists but won't launch, the drive showing under the wrong device, or a hang — include <strong>console model</strong> and <strong>drive type/size</strong>.</p>
 <h3 id="navigation-input-core-nav-confirmed-on-hardware-oldman63-the-rest-still-to-feel-out">Navigation &amp; input — ✅ core nav CONFIRMED on hardware (oldman63); the rest still to feel out</h3>
 <ul>
 <li>[x] <strong>Up/Down + analog-stick item nav</strong> — ✅ <strong>CONFIRMED (oldman63):</strong> d-pad and <strong>left analog stick up/down</strong> both land on <strong>individual items</strong> (item-by-item), and a held direction does smooth continuous scroll. <em>(The stick now folds into the d-pad and runs the same edge + auto-repeat path — no more "flies a whole page" / "can't select individual items" #501. A non-analog/digital pad is gated out so it can't inject a phantom direction; the auto-repeat is frame-counted, ~0.6 s before the first repeat then ~5/sec.)</em> Re-confirm on <strong>each device's</strong> list if you can.</li>
@@ -100,6 +112,7 @@ This is the structured "what to test" companion to <strong><a href="rolling-note
 <li>[ ] <strong>Cover placeholder art</strong> ⭐ <strong>NEW assets, needs an eyeball on NTSC + PAL.</strong> No live cover now draws a layered jewel-case placeholder (<code>cover_default.png</code>), with a <code>cover_missing.png</code> overlay <strong>only</strong> when the preview is <strong>ON</strong> but the game has no cover. <em>(The old "Cover disabled" </em><em>text</em><em> label is gone.)</em> Confirm the default cover, the missing overlay, and <code>frame.png</code> all <strong>register</strong> with the jewel-case window (right-anchored, no drift) on both NTSC and PAL.</li>
 <li>[ ] <strong>Cover-art preview</strong> toggles with <strong>Square</strong> — OFF shows the plain default case (no overlay), ON shows the live cover or the missing-overlay placeholder.</li>
 <li>[ ] <strong>Scroll position kept</strong> returning from Settings (cursor doesn't snap to row 1).</li>
+<li>[ ] <strong>On-screen keyboard feedback</strong> (editing a POPSTARTER / DKWDRV path) — pressing a key now <strong>flashes it</strong> briefly, and the text caret <strong>blinks</strong> at a normal rate. <em>(Both were broken by a microsecond-vs-millisecond timer bug — the flash expired before the next frame so it never showed, and the caret blinked ~1000× too fast; purely cosmetic, no input behavior change.)</em></li>
 </ul>
 <h2 id="p5-robustness-only-if-you-hit-it">🧪 P5 — Robustness (only if you hit it)</h2>
 <ul>

@@ -1244,6 +1244,13 @@ Active dev branch is now <strong><code>BETA-13-PLAY</code></strong> (created off
 <td><strong>PASS — "everything working fantastically" (Nuno6573 2026-06-21).</strong></td>
 </tr>
 <tr>
+<td>2026-06-22</td>
+<td>BETA-13 backend + cleanup</td>
+<td>HDD (exFAT) / BDMA-ATA backend wired (<code>df2eb9d</code>/<code>6fd2142</code>/<code>afa1c09</code>): scans + launches as a <code>mass:</code> device, classified by EXACT ioctl driver-name <code>ata</code> (mirrors OPL <code>bdmsupport.c</code>); <code>.ata</code> launch drivers staged stripped to <code>mc?:/POPSTARTER</code>. Microsecond-as-ms timer sweep finished (<code>9c3f64f</code> PathEditor key-flash + caret blink + launch-watchdog label + dead <code>PageNavAt</code>; <code>a8e61f3</code> removed the dead action debounce + frame-paced the scene-fade/boot-fade/carousel preserving feel). Layer C lazy-IRX closed: <code>ds34bt</code>/<code>usbd</code> deferral <strong>DECLINED</strong> (both hard-import <code>usbd</code>; boot-hint ≠ pad transport → would strand USB/BT input on non-USB boots).</td>
+<td>D-06 / D-06A / U-07 / Layer C</td>
+<td>Repo / CI + Rolling <strong>green</strong>. <strong>HDD (exFAT): never run on hardware</strong> — needs a tester with an exFAT internal drive (TESTING.md P1). Timer/animation/debounce: behavior-preserving + luac-gated; PathEditor key-flash now actually shows (was a no-op).</td>
+</tr>
+<tr>
 <td>YYYY-MM-DD</td>
 <td>SCPH-xxxxx</td>
 <td>USB/MMCE/MX4SIO/HDD details</td>
@@ -1263,6 +1270,7 @@ Active dev branch is now <strong><code>BETA-13-PLAY</code></strong> (created off
 - <strong>Boot sound save + survives reboot (S-13)</strong> — <strong>PASS</strong> (oldman63, 2026-06-20).<br />
 - <strong>Up/down + analog-stick nav lands on individual items; continuous scroll fine (U-13/U-14)</strong> — <strong>PASS</strong> (oldman63, 2026-06-20).<br />
 - <strong>Broad rolling-release pass</strong> — <strong>PASS</strong>, "everything working fantastically" (Nuno6573, 2026-06-21).<br />
+- <strong>HDD (exFAT) via BDMA ATA (D-06 / D-06A)</strong> — NEW backend (<code>df2eb9d</code>), CI/Rolling green, <strong>never run on hardware</strong>. Needs a tester with an exFAT-formatted internal drive: confirm the <code>HDD (exFAT)</code> page lists <code>mass:/POPS</code> and games <strong>launch</strong>, and that the drive does NOT mis-classify as USB/MX4SIO. Tester steps in <strong><code>TESTING.md</code></strong> P1.<br />
 - <strong>Still pending an eyeball (NOT broken):</strong> overscan CRT inset on a real CRT (S-14), <code>cover_default</code> + <code>cover_missing</code> overlay registration on NTSC + PAL (U-16), description-scroll feel (U-15), HDD Proposal A deliberate HW test (game scan steered off the boot slot), PAL-despite-NTSC carry-forward (no team PAL HW).<br />
 - The 2026-06 HDD-RW / PAL-512 / BDMA-folder features are repository-verified and <strong>boot on PCSX2</strong>; provato confirmed the <strong>HDD is RW-writable on real hardware</strong>; full flows are <strong>still validating on hardware</strong> (not yet broadly hardware-confirmed). See STATE.md &gt; Known Issues / Reported Hardware Status.</p>
 <ul>
