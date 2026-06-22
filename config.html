@@ -35,6 +35,7 @@
     <a href="glossary.html"><span class="em">📖</span>Glossary</a>
     <a href="commands.html"><span class="em">⌨️</span>Command index</a>
     <a href="faq.html"><span class="em">❓</span>FAQ &amp; known bugs</a>
+    <a href="credits.html"><span class="em">🙏</span>Credits</a>
     <a href="wiki/index.html"><span class="em">📚</span>All wiki pages</a>
   </nav>
   <main class="content"><h1>Config Table ($410–$42F)</h1><p class="lead">POPStarter r13 stores a 32-byte configuration table at file offset <code>$410</code> inside POPSTARTER.ELF/.KELF. Each byte is one setting.</p><div class="callout info"><div class="h">ℹ Nuance</div>&#x27;classic 00 vs debug FF&#x27; build label The LABEL is community shorthand, not a verbatim krHACKen string, BUT it is accurate and grounded: it is literally the state of config byte $410 (00 = off = shipped/&#x27;classic&#x27;, FF = realtime = old POPStarter-12). Nuance to state: any value 0x01-0xFE gives PACED (not just 00/FF) debug, and DEBUG_AND_HALT.PPF also flips $411.</div>
@@ -290,7 +291,8 @@ Here is what I can do for you :
   cross-checked and merged across snapshots. Built for the POPSLoader project.</p>
   <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
   emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
-  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed.</p>
+  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed. Built on the
+  documentation of <b>ShaolinAssassin</b> and <b>krHACKen</b> — see <a href="credits.html">Credits</a>.</p>
 </footer>
 <script src="assets/app.js"></script>
 </body></html>

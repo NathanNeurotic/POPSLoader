@@ -115,6 +115,18 @@ dl.glossary{margin:0}
 .gloss dd{margin:0;color:var(--ink2);line-height:1.55;max-width:80ch}
 .gloss:target dt{color:var(--ps-tri)}
 .gloss:target{background:rgba(120,150,255,.05);border-radius:8px;padding-left:10px;margin-left:-10px}
+/* credits */
+.credit-hero{margin:18px 0 30px;padding:22px 24px;border:1px solid var(--line2);border-left:4px solid var(--ps-tri);
+  border-radius:12px;background:linear-gradient(135deg,rgba(40,64,140,.28),rgba(8,12,28,.5))}
+.credit-hero .ch-tag{font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--ps-tri);margin-bottom:6px}
+.credit-hero h2{margin:.1em 0 .3em;font-size:26px;border:none;padding:0}
+.credit-hero h2::after{display:none}
+.credit-hero p{margin:0;color:var(--ink2);line-height:1.6;max-width:80ch}
+dl.credits{margin:0 0 8px}
+.credit{display:grid;grid-template-columns:minmax(150px,230px) 1fr;gap:6px 22px;padding:11px 0;border-bottom:1px solid var(--line);align-items:start}
+.credit dt{font-weight:800;color:var(--ink)}
+.credit dd{margin:0;color:var(--ink2);line-height:1.55}
+@media(max-width:680px){.credit{grid-template-columns:1fr;gap:2px}}
 .content table{width:100%;border-collapse:collapse;margin:1em 0;font-size:14px;display:block;overflow:auto}
 .content th,.content td{border:1px solid var(--line2);padding:8px 12px;text-align:left;vertical-align:top}
 .content th{background:rgba(40,64,140,.4);color:var(--ink);font-weight:700;text-transform:uppercase;

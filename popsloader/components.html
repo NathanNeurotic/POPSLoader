@@ -35,6 +35,7 @@
     <a href="../glossary.html"><span class="em">📖</span>Glossary</a>
     <a href="../commands.html"><span class="em">⌨️</span>Command index</a>
     <a href="../faq.html"><span class="em">❓</span>FAQ &amp; known bugs</a>
+    <a href="../credits.html"><span class="em">🙏</span>Credits</a>
     <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
   </nav>
   <main class="content"><h1>Components</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/BETA-13-PLAY/COMPONENTS.md">view on GitHub ↗</a></p><p>Last updated: 2026-06-21 (BETA-13 rolling candidate; HEAD = BETA-13-PLAY @ 56a5ad5; BETA-12 is the public release at af983d7, and BETA-12-PLAY is now ARCHIVAL/frozen). Since the prior pass: nav auto-repeat and the right-stick description scroll were re-cut to FRAME-COUNTING (the wall clock reads microseconds on PS2, so the old "_ms" gates fired every frame); the analog-stick→d-pad fold is now gated on a live-negotiated analog mode (new <code>Pads.getMode()</code> C binding) plus hysteresis; an OPL-style overscan (CRT inset) render transform was added (<code>Screen.setOverscan</code>/<code>getOverscan</code> + <code>OVX</code>/<code>OVY</code>); the game-list cover box now layers <code>cover_default.png</code> + <code>cover_missing.png</code> and <code>MISSING.png</code> was removed (−62 KB ELF); and two new settings keys (BOOT_SOUND, OVERSCAN) bring EncodeSettings to 20 keys. For current Settings behavior, Known Issues, Preservation Contracts, Behavioral Invariants, and Hardware Status, see <strong><code>STATE.md</code></strong> (canonical) — this doc points there instead of restating them.</p>
@@ -502,7 +503,8 @@ settle fix lives on a separate rolling branch and is NOT merged here.</p>
   cross-checked and merged across snapshots. Built for the POPSLoader project.</p>
   <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
   emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
-  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed.</p>
+  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed. Built on the
+  documentation of <b>ShaolinAssassin</b> and <b>krHACKen</b> — see <a href="../credits.html">Credits</a>.</p>
 </footer>
 <script src="../assets/app.js"></script>
 </body></html>
