@@ -1,9 +1,9 @@
 # POPSLoader — Tester Checklist (BETA-13 candidate)
 
 **Build:** rolling `BETA-13-PLAY` (BETA-13 candidate; rolling now publishes from this branch — `BETA-12-PLAY` is frozen/archival). Public release is still BETA-12.
-This is the structured "what to test" companion to **[ROLLING_NOTES.md](ROLLING_NOTES.md)** ("what's new"); for the canonical status / invariants / known-issues list see **[STATE.md](STATE.md)**. Regenerate when the rolling batch changes. _(Last refreshed: 2026-06-22 — added the new HDD (exFAT) / BDMA-ATA backend and the on-screen-keyboard feedback fix.)_
+This is the structured "what to test" companion to **[ROLLING_NOTES.md](ROLLING_NOTES.md)** ("what's new"); for the canonical status / invariants / known-issues list see **[STATE.md](STATE.md)**. Regenerate when the rolling batch changes. _(Last refreshed: 2026-06-23 — added the new end-to-end SMB (v1) network game browsing (implemented, CI+Rolling green, validating on hardware); prior: HDD (exFAT) / BDMA-ATA backend and the on-screen-keyboard feedback fix.)_
 
-**Devices:** USB · MX4SIO (SD over SIO2) · MMCE (SD2PSX / MemCard PRO) · HDD (internal PFS) · **HDD (exFAT) — NEW, BDMA Mode ATA**. Test the ones you use; **say which** in every report.
+**Devices:** USB · MX4SIO (SD over SIO2) · MMCE (SD2PSX / MemCard PRO) · HDD (internal PFS) · **HDD (exFAT) — BDMA Mode ATA** · **SMB (v1) network share — NEW**. Test the ones you use; **say which** in every report.
 
 **How to report:** ✅ pass / ❌ fail / ⚠️ odd. On a fail give: **device**, **console model + region** (e.g. SCPH-90008 PAL), **how you launched POPSLoader** (from which device / which launcher), **exact steps**, and a **photo** — error screens now print the real reason on line 2.
 
@@ -48,19 +48,32 @@ The Settings page already scrolls (focus-following viewport + scrollbar). New th
 - [ ] Every existing setting still saves/persists exactly as before (collapse state is session-only — it resets on reboot, nothing new is written to your settings file).
 - Report: a section that won't expand back, the actions becoming unreachable, the cursor getting stuck, or any setting failing to save.
 
-### ⭐ SMB / Network settings + module install (NEW — writes files to the memory card)
+### ⭐⭐ SMB (v1) network game browsing — NEW end-to-end, never run on hardware
 
-A new **SMB / Network** section in Settings lets you enter your server/share/credentials and **install the in-game SMB streaming pack into `mc0:/POPSTARTER/`** (the same way BDMA installs its modules). **POPSLoader itself still loads no network code and connects to nothing** — the pack is what POPStarter uses to stream a game off a share at launch, which a later build wires up. **Nothing SMB runs at boot.** The SMB *carousel* page still shows "not implemented".
+SMB (v1) is now **implemented end-to-end** (CI + Rolling green) and **validating on hardware** — so far it has **zero hardware runs**. You set your server/share/credentials in a new **SMB / Network** Settings section, **install the in-game SMB streaming pack into `mc0:/POPSTARTER/`** (the same way BDMA installs its modules), then **browse and launch** PS1 games straight off a network share from the **SMB** carousel page. Networking is **lazy**: the stack comes up and the share opens **only** when you enter the SMB page or trigger a settings action — **nothing SMB runs at boot**. **NetBIOS is not supported** (the address type must be **IP**); the in-game pack is what POPStarter uses to stream the game off the share at launch.
+
+**Setup:**
+1. *Settings* → expand **SMB / Network** → set **Server IP**, **Share**, **User/Password**, **IP assignment** (DHCP/Static), **Port** (445), **Games path**, **Link mode**. Address type stays **IP**.
+2. Set **SMB modules → Installed** and **Save** (this writes the pack + `SMBCONFIG.DAT`/`IPCONFIG.DAT` — see the install checks below).
+
+**Settings + module install:**
 - [ ] *Settings* → expand **SMB / Network**. Top row **SMB modules** (Installed / Not installed); below: **IP assignment** (DHCP/Static), **PS2 IP / Netmask / Gateway / DNS**, **Link mode**, **Address type**, **NetBIOS name**, **Server IP**, **Port** (445), **Share**, **User**, **Password**, **Games path**.
 - [ ] **Cycle** rows change with **Left/Right** / **X**; **text** rows open the on-screen keyboard on **X**. Password masks (`****`); empty **Games path** shows *"(auto / cwd-relative)"*; empty Share/User show *"(not set)"*.
 - [ ] Edit fields → **unsaved (accent) marker** → **Save Changes** → **reboot** → values **persisted** exactly as entered.
 - [ ] ⭐ **SMB modules = Installed → Save:** `mc0:/POPSTARTER/` should now hold `poweroff.irx`, `ps2dev9.irx`, `ps2ip.irx`, `ps2smap.irx`, `smbman.irx`, `SMSUTILS.irx`, plus `SMBCONFIG.DAT` and (only when **IP assignment = Static**) `IPCONFIG.DAT`. Open `SMBCONFIG.DAT`: line 1 = `<Server>[:<Port>] <Share>`, then (if User set) username + password on lines 2/3. `IPCONFIG.DAT` = `<PS2 IP> <Netmask> <Gateway>`, and is **absent on DHCP**.
-- [ ] ⭐ **Change an SMB field while Installed → Save:** the `.DAT` files **regenerate** with the new values (the 6 IRX are rewritten harmlessly).
+- [ ] ⭐ **Change an SMB field while Installed → Save:** the in-game `SMBCONFIG.DAT`/`IPCONFIG.DAT` are **backfilled on every save** — generated if missing, **regenerated** with the new values when changed (the 6 IRX are rewritten harmlessly).
 - [ ] ⭐⚠️ **SMB modules = Not installed → Save:** the 8 SMB files are **removed**, but **`icon.sys`, `*.icn`, and any installed BDMA modules (`usbd.irx`/`usbhdfsd.irx`) MUST remain** — confirm BDMA still works afterward.
 - [ ] **Reset Defaults** sets SMB modules → Not installed + fields to defaults (Save then uninstalls, mirroring BDMA→FAT32).
 - [ ] ⚠️ **No regression:** every *other* setting still saves/loads as before, and **boot time is unchanged**.
 - Report: a field that won't persist, the wrong files installed/removed, **BDMA modules or icons clobbered by SMB-off**, or any boot slowdown.
-- **Not yet testable (later build):** actually browsing/launching SMB games — the streaming pack is staged, but the carousel page isn't wired. The exact `.DAT` byte format is from the recovered POPStarter docs and is **hardware-confirmable only** (report if POPStarter rejects a generated `SMBCONFIG.DAT`).
+
+**Connect / browse / launch / disconnect (the new end-to-end path — never HW-run):**
+- [ ] ⭐ **Lazy connect — confirm boot is untouched first:** boot straight to the menu and **stay off** the SMB page → **no** network activity, no slowdown, no errors. Networking must come up **only** on entering the SMB page (or a settings action), **never** at boot.
+- [ ] ⭐ **Browse:** open the **SMB** carousel entry → it brings up the stack, opens the share, **scans `POPS/` and lists your VCD games** like any other device. Report a hang, an empty list with games present, or a connect error.
+- [ ] ⭐ **Launch:** select an SMB game → **X** → it hands off to POPStarter (argv0 selector `smb:/POPS/SB.<name>.ELF`) and **POPStarter streams the VCD from its own `smb:/POPS` mount** (via `mc:/POPSTARTER/SMBCONFIG.DAT`). *(Hardware-only unknown: the exact device prefix POPStarter accepts — we ship `smb:/POPS/SB.<name>.ELF`, with `mass:/POPS/SB.<name>.ELF` then `mass:/SB.<name>.ELF` as fallbacks. If a game lists but won't launch, note the exact behaviour.)*
+- [ ] ⭐ **Disconnect on exit:** leave the SMB page → the share is closed and the session logged off (`CLOSESHARE` + `LOGOFF`); a **failed** connect also tears down cleanly with **no half-open session** left behind. Re-entering the page should reconnect fresh.
+- [ ] ⭐ **Blank-share picker:** clear the **Share** field, then enter the SMB page → it enumerates the server's shares (`GETSHARELIST`) and an in-UI **picker** lets you choose one; your choice **persists** (settings + the in-game `SMBCONFIG.DAT`) and it reconnects. Report a picker that lists nothing, a choice that doesn't stick, or a reconnect that fails.
+- The `.DAT` byte format is from the recovered POPStarter docs and is **hardware-confirmable only** (report if POPStarter rejects a generated `SMBCONFIG.DAT`). Other hardware-only unknowns: the connect handshake and the `GETSHARELIST` DMA.
 
 ### Navigation & input — ✅ core nav CONFIRMED on hardware (oldman63); the rest still to feel out
 

@@ -58,12 +58,15 @@ device and switches to its list automatically. Combine with `-game=` to go
 one step further and auto-launch a specific title (see below); `-page=`
 alone just opens the list so you can pick.
 
-Enterable pages: **MMCE, MX4SIO, HDD (exFAT), HDD (PFS), USB.** `-page=ata`
-targets the implemented **exFAT** (BDMA-ATA) page (scene `GBDMHDD`);
-`-page=hdd` / `-page=pfs` targets the classic **PFS** page. The bare `bdma`
-literal and the i.Link page are intentionally **not** wired, so `-page=bdma`
-is accepted but has no effect. An unrecognized value is ignored and the
-carousel starts on its default page (MMCE) with no auto-entry.
+Enterable pages: **MMCE, MX4SIO, HDD (exFAT), HDD (PFS), USB, SMB.**
+`-page=ata` targets the implemented **exFAT** (BDMA-ATA) page (scene
+`GBDMHDD`); `-page=hdd` / `-page=pfs` targets the classic **PFS** page.
+`-page=smb` opens the **SMB (v1)** network page (scene `GSMBNET`), which
+connects to the configured share lazily on entry (implemented, CI + Rolling
+green, validating on hardware). The bare `bdma` literal and the i.Link page
+are intentionally **not** wired, so `-page=bdma` is accepted but has no
+effect. An unrecognized value is ignored and the carousel starts on its
+default page (MMCE) with no auto-entry.
 
 ### `-game=` (auto-launch)
 Boots straight into launching a game. Requires **both** `-page=` and
@@ -76,14 +79,16 @@ Boots straight into launching a game. Requires **both** `-page=` and
 | MX4SIO | `<FILE>` relative to `mx4sio:/POPS` |
 | MMCE | `<FILE>` relative to `mmce0:/POPS` |
 | HDD (exFAT) | `<FILE>` relative to `mass:/POPS` (use `-page=ata`) |
+| SMB | `<FILE>` relative to the share's `POPS` folder — POPSLoader hands off to POPStarter with the `smb:/POPS/SB.<name>.ELF` selector |
 
 If auto-launch fails (game not found, etc.) POPSLoader does **not** hang —
 it falls back to the normal welcome screen + main menu and shows an error
-toast describing what happened. **SMB:** SMB (v1) is an unimplemented stub.
-`-page=smb` positions the carousel on the SMB page, but auto-entering it
-shows a "This backend isn't implemented yet" toast (no list opens).
-`-page=smb -game=...` shows an "Auto-launch page not supported: SMB" toast.
-Both leave you on the main menu.
+toast describing what happened. **SMB:** SMB (v1) network browsing is
+implemented (CI + Rolling green, validating on hardware). `-page=smb` opens
+the SMB page (scene `GSMBNET`), which brings up the network stack lazily and
+opens the configured share before scanning its POPS folder for VCD games.
+`-page=smb -game=...` auto-launches a title from the share (see the
+auto-launch table above).
 
 ### `-debug`
 Queues an on-screen info toast on the first main-menu frame listing:

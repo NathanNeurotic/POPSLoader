@@ -16,7 +16,7 @@ This is the **forward plan**. For current runtime state, the canonical Known-Iss
 - `.github/workflows/rolling-release.yml` — automated rolling-release artifact publication on push to `BETA-13-PLAY` and on PR events.
 - `docs/archive/DOCUMENTATION_FOLLOWUP_AUDIT.md` — handoff plan for the post-BETA-10-5 doc cleanup work (now completed; see "Documentation cleanup" under Secondary Work).
 
-`SMB (v1)` and `ILINK` remain intentionally unimplemented menu entries. `HDD (exFAT)` is now implemented (BDMA Mode `ATA`, `df2eb9d`) and is validating on hardware; the launch-args path routes `-page=ata`/`-mode=ata` (and `ata0`/`ataN`) to it (opt 3, scene `GBDMHDD`), while `-page=hdd`/`apa`/`pfs` target the classic PFS page (opt 4) — `3d89631`.
+`SMB (v1)` network game browsing is now implemented (CI + Rolling green, validating on hardware): the SMB carousel page / `GSMBNET` scene with network settings, an install-toggle SMB module pack, lazy connect-on-entry, share browse, and POPStarter launch via `smb:/POPS/SB.<name>.ELF` — see Secondary Work §1 for the detail. `ILINK` remains an intentionally unimplemented menu entry. `HDD (exFAT)` is also implemented (BDMA Mode `ATA`, `df2eb9d`) and is validating on hardware; the launch-args path routes `-page=ata`/`-mode=ata` (and `ata0`/`ataN`) to it (opt 3, scene `GBDMHDD`), while `-page=hdd`/`apa`/`pfs` target the classic PFS page (opt 4) — `3d89631`.
 
 ## Immediate Priorities
 
@@ -64,8 +64,10 @@ The items previously parked here as "pragmatically accepted / known-broken" are 
 
 ## Secondary Work
 
-### 1) Unimplemented menu paths
-- `SMB (v1)`, `ILINK` — intentionally not implemented; surface "not supported" if entered. `HDD (exFAT)` is now implemented as a `mass:` backend via BDMA Mode `ATA` (validating on hardware).
+### 1) Menu paths
+- `SMB (v1)` network game browsing — **implemented** (CI + Rolling green, **validating on hardware**, not yet hardware-confirmed). End to end: an SMB carousel page (scene `GSMBNET`, main-menu `OPT==7`) with a network SETTINGS section (server IP, share, user/password, DHCP-or-static IP assignment, port, games path/cwd, link mode — IP addressing only), a BDMA-style "SMB modules" install toggle (copies the 6-IRX in-game SMB streaming pack — `poweroff`/`ps2dev9`/`ps2ip`/`ps2smap`/`smbman`/`SMSUTILS` — into `mc:/POPSTARTER` and generates `IPCONFIG.DAT` + `SMBCONFIG.DAT` from the settings; OFF removes only those SMB files), **lazy** connect (the network stack and share open only on entering the SMB page or on a settings action — never at boot; Path B = OPL's netman recipe, dev9 shared once across HDD + SMB via `g_dev9_loaded`), share browse listing VCD games like any other device, POPStarter launch via argv0 selector `smb:/POPS/SB.<name>.ELF`, disconnect on leaving the page (also tears down a failed connect so no half-open session lingers), a blank-share `GETSHARELIST` picker (persisted to settings + the in-game `SMBCONFIG.DAT`, then reconnects), and `.DAT` backfill on every settings save when the pack is installed. NetBIOS is **not** supported (deferred — `nbns.irx` is OPL-custom, not stock ps2sdk; address type must be IP). Commits on `BETA-13-PLAY`: settings `ee4d454`, module toggle `121823d`, build `0cf7f81`, connect/browse `43033dc`, launch `68f9ed5`, Increment-3 polish `154c872`, `.DAT` backfill `5d0e302`, connect-failure session-leak fix `f5ac26c`, in-UI share picker `1169dbc`. **Hardware-only unknowns still flagged:** the exact argv0 device prefix POPStarter accepts (ship `smb:/POPS/SB.<name>.ELF`; fallbacks `mass:/POPS/SB.<name>.ELF` then `mass:/SB.<name>.ELF`), the connect handshake, and the `GETSHARELIST` DMA.
+- `ILINK` — intentionally **not implemented**; surface "not supported" if entered.
+- `HDD (exFAT)` is implemented as a `mass:` backend via BDMA Mode `ATA` (validating on hardware).
 
 ### 2) Art/asset behavior
 - Keep current cover behavior stable: sidecar PNG beside the selected `.VCD`, plus `hdd0:__common/POPS/ART/<title>.png` for HDD titles.
@@ -95,5 +97,5 @@ The items previously parked here as "pragmatically accepted / known-broken" are 
 ## Deferred Ideas
 
 - Additional themes/skins.
-- Broader network/backend support after SMB and ILINK have defined baselines.
+- Broader network/backend support building on the `SMB (v1)` baseline (now implemented, validating on hardware) and once `ILINK` has a defined baseline.
 - More ambitious artwork cache policy after current launch/runtime issues are stable.

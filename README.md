@@ -39,7 +39,7 @@ POPSLoader's main menu exposes the following backends:
 *   **Disc (DKWDRV)** (boot DKWDRV to play PS1 discs)
 
 > [!NOTE]
-> The main menu also lists **i.Link** and **SMB (v1)**, but these flows are not implemented yet — selecting them shows a "not implemented" notice. (**HDD (exFAT)** is now implemented via BDMA Mode `ATA` and is validating on hardware.) See [Known Issues & Planned Improvements](#known-issues--planned-improvements).
+> The main menu also lists **i.Link**, but that flow is not implemented yet — selecting it shows a "not implemented" notice. **SMB (v1)** network game browsing is now implemented (CI + Rolling green) and is validating on hardware. (**HDD (exFAT)** is likewise implemented via BDMA Mode `ATA` and is validating on hardware.) See [Known Issues & Planned Improvements](#known-issues--planned-improvements).
 
 > [!NOTE]
 > Game compatibility and drive loading performance may vary depending on your specific console model, adapter type, and the quality of your POPStarter/POPS binaries.
@@ -139,7 +139,7 @@ Press **Start** on the menu to open Settings; changes save when you confirm. Set
 
 | Setting | Options | What it does |
 | :--- | :--- | :--- |
-| **(one row per device: MMCE, MX4SIO, HDD (exFAT), HDD (PFS), USB, i.Link, SMB, Disc)** | **Shown** (default) · Hidden | Hide or show each entry on the main device carousel. Set unused or not-yet-implemented backends (e.g. SMB, i.Link) to **Hidden** to remove them from the wheel. At least one device must stay **Shown**. Saved with your settings (`HIDDEN_DEVICES`); hidden entries are skipped during carousel navigation with no gaps, and launch behavior is unchanged. |
+| **(one row per device: MMCE, MX4SIO, HDD (exFAT), HDD (PFS), USB, i.Link, SMB, Disc)** | **Shown** (default) · Hidden | Hide or show each entry on the main device carousel. Set unused or not-yet-implemented backends (e.g. i.Link) to **Hidden** to remove them from the wheel. At least one device must stay **Shown**. Saved with your settings (`HIDDEN_DEVICES`); hidden entries are skipped during carousel navigation with no gaps, and launch behavior is unchanged. |
 
 ### Game List
 
@@ -228,7 +228,8 @@ Planned for subsequent updates:
 *   **GUI Themes**: Customizable colors / skins / fonts and a setting to skip the boot splash.
 *   **In-Game Features**: Support for per-game fixes, cheat codes, Virtual Memory Card (VMC) setups, and multi-disc swap prompts.
 *   **`HDD (exFAT)`** menu flow: now **implemented** as a `mass:` backend via BDMA Mode `ATA` (built, CI/Rolling green) — **validating on hardware**.
-*   **`SMB (v1)`, `i.Link`** menu flows: currently surface as "Not Implemented Yet" until feature work lands.
+*   **`SMB (v1)`** network game browsing: now **implemented** (settings, an "SMB modules" install toggle, lazy connect, share browse, launch, and disconnect-on-exit; built, CI/Rolling green) — **validating on hardware**.
+*   **`i.Link`** menu flow: currently surfaces as "Not Implemented Yet" until feature work lands.
 
 See [STATE.md](STATE.md) "Known Open Work" and [ROADMAP.md](ROADMAP.md) for the prioritized backlog.
 

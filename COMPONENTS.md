@@ -15,8 +15,10 @@ technical claim below cites `path:line` against this worktree.
 > dormant), that is called out explicitly rather than omitted. Several files an
 > external audit flagged for removal — the 3D render pipeline (commit a56441c),
 > `md5`, and the orphaned SMB / `strUtils` source (commit f83dbbb) — have since
-> been removed from the tree and are documented as removed below. (The SMB
-> main-menu entry remains as an unimplemented stub.)
+> been removed from the tree and are documented as removed below. (The old
+> orphan `src/luaSMB.cpp` is gone; SMB (v1) is now a real, wired feature — a C
+> binding inside the `System.*` surface plus the GSMBNET scene — documented
+> below. Implemented this cycle, CI+Rolling green, validating on hardware.)
 
 ## 1. EE bootstrap and runtime (`src/`)
 
@@ -61,8 +63,12 @@ technical claim below cites `path:line` against this worktree.
   (luaplayer.cpp:294-302).
 - Registered binding modules (luaplayer.cpp:282-288): `luaGraphics_init`,
   `luaControls_init`, `luaScreen_init`, `luaTimer_init`, `luaSystem_init`,
-  `luaSound_init`, `luaHDD_init`. NOTE: `luaSMB_init` is NOT
-  called here (see Orphaned/dormant code below).
+  `luaSound_init`, `luaHDD_init`. NOTE: there is no separate `luaSMB_init` —
+  the SMB (v1) network client lives inside the `System.*` surface
+  (`initSMB`/`connectSMB`/`disconnectSMB`, registered by `luaSystem_init`;
+  the Lua-side `PLDR.InitSMBPopsRoot` wraps them), not a standalone module.
+  The old orphan `src/luaSMB.cpp`
+  (commit f83dbbb) is unrelated and removed (see Orphaned/dead-on-disk).
 
 ### `src/luasystem.cpp` — the largest binding surface (System.*)
 - Lazy IRX loaders (Layer C): `EnsureBDM`/`EnsureBDMFatFs`/`EnsureUsbMass`
@@ -80,6 +86,20 @@ technical claim below cites `path:line` against this worktree.
   `lua_set_exec_keep_pfs_mask` (luasystem.cpp:945).
 - Launch-arg binding `lua_getLaunchArgs` (luasystem.cpp:1211) and boot-hint
   binding `lua_getBootDeviceHint` (luasystem.cpp:1227).
+- SMB (v1) network client (Path B = OPL's netman recipe; implemented this cycle,
+  CI+Rolling green, validating on hardware). Lazy net stack `EnsureNet`
+  (luasystem.cpp:1412): brings up dev9 once via the shared `EnsureDev9`/
+  `g_dev9_loaded` guard, then loads `netman` + `smap` + `ps2ips` + `smbman` and
+  `ps2ip` and calls `NetManInit` — NEVER at boot, only on a menu/settings action.
+  Bindings registered in the `System.*` table (luasystem.cpp:1776-1779):
+  `initSMB` (`lua_smb_init`), `connectSMB` (`lua_smb_connect`, luasystem.cpp:1578),
+  `disconnectSMB` (`lua_smb_disconnect`, luasystem.cpp:1724 — `CLOSESHARE`+`LOGOFF`,
+  also torn down on a failed connect so no half-open session lingers). Connect
+  drives the `ps2smb.h` devctls (`LOGON`/`ECHO`/`OPENSHARE`) on `smb0:`. A
+  blank Share field triggers `SMB_DEVCTL_GETSHARELIST` (luasystem.cpp:1686-1701)
+  to enumerate the server's shares for the in-UI picker. EE links `-lnetman`
+  `-lps2ip` `-lps2ips`. NetBIOS is NOT supported (deferred: `nbns.irx` is
+  OPL-custom, not stock ps2sdk — address type must be IP).
 - `lua_rename` (luasystem.cpp:753) is a non-atomic copy+delete, but the
   safe-promote fix has **landed in this worktree**: it calls the shared
   `copy_file_contents` (luasystem.cpp:714) and **only `remove()`s the source if
@@ -159,11 +179,13 @@ longer in the Makefile object lists, and luaRender_init is no longer called
 from luaplayer.cpp.
 
 ### Orphaned / dead-on-disk
-- `src/luaSMB.cpp` (SMB network-share client logon helpers) was orphan source —
-  never in the Makefile object lists and never initialized (`luaSMB_init` was
-  uncalled) — and was DELETED in commit f83dbbb (2026-06-13). It no longer
-  exists in the tree. The SMB (v1) main-menu entry remains as an unimplemented
-  stub (OPT7, ui.lua:4397-4398) — see Feature Surface.
+- `src/luaSMB.cpp` (the old orphan SMB network-share logon helpers) was orphan
+  source — never in the Makefile object lists and never initialized — and was
+  DELETED in commit f83dbbb (2026-06-13). It no longer exists in the tree. This
+  dead file is NOT the current SMB feature: SMB (v1) was re-implemented this
+  cycle as a live C binding inside the `System.*` surface (luasystem.cpp,
+  `EnsureNet`/`lua_smb_connect`) plus Lua wiring (GSMBNET scene, OPT7) — see
+  the luasystem.cpp SMB notes above and Feature Surface below.
 
 ## 2. Embedded Lua application (`bin/POPSLDR/`)
 All `bin/POPSLDR/*.lua` are bin2c'd into the EE ELF at build time; the on-card
@@ -217,9 +239,11 @@ copies are not read at runtime. Editing them requires a rebuild.
   Contains all scenes, the scene/transition state machine, notification queue,
   busy overlay, cover-art cache, path-editor keyboard, modals, and input layer.
   It has NO main loop — the loop lives at the bottom of system.lua.
-- Scenes enum `UI.SCENES` (ui.lua:448-458): GUSBFAT=1, GSMB=3 (reused for MMCE
-  and SMB), GMX4SIO=4, GHDD=5 (GAPAHDD aliases 5), GBDMHDD=6, MMAIN=8,
-  MPROFILE=9, CREDITS=10.
+- Scenes enum `UI.SCENES` (ui.lua:448-458): GUSBFAT=1, GSMB=3 (the MMCE list
+  page — despite the name, NOT the network-SMB page), GMX4SIO=4, GHDD=5
+  (GAPAHDD aliases 5), GBDMHDD=6, GSMBNET=7 (the live SMB (v1) network page),
+  MMAIN=8, MPROFILE=9, CREDITS=10. SMB (v1) now has its OWN dedicated scene
+  (GSMBNET=7); it does NOT reuse GSMB=3.
 - Main menu carousel `UI.MainMenu` (table ui.lua:3976, opts ui.lua:3978; the
   CONFIRM/Play dispatch is the MainMenu `Play` handler at ui.lua:3997, OPT switch
   ~4227-4404). Game list `UI.GameList` (table ui.lua:2324), launch trigger
@@ -401,9 +425,25 @@ Dispatch in the MainMenu `Play` handler (ui.lua:3997), OPT switch ~ui.lua:4227-4
   backend (BDMA `ata`) via `InitATAPopsRoot` + `GetPS1GameLists` -> scene GBDMHDD=6
   (ui.lua:4349). Classified by exact ioctl driver-name `ata`. Validating on hardware.
 - `i.Link` (OPT6): NOT implemented (ui.lua:4462).
-- `SMB (v1)` (OPT7): NOT implemented (ui.lua:4464). There is no SMB C client;
-  the former `src/luaSMB.cpp` orphan was removed in commit f83dbbb (see
-  Orphaned/dead-on-disk).
+- `SMB (v1)` (OPT7): implemented — routes to scene GSMBNET=7. SMB / Network
+  settings (server IP, share, user/password, IP assignment DHCP-or-static, port,
+  games path/cwd, link mode; IP addressing only) plus an "SMB modules" install
+  toggle that copies the POPStarter in-game SMB streaming pack (6 IRX:
+  poweroff/ps2dev9/ps2ip/ps2smap/smbman/SMSUTILS) into `mc:/POPSTARTER` and
+  generates `IPCONFIG.DAT` + `SMBCONFIG.DAT` from the settings (backfilled on
+  every settings save while the pack is installed). CONNECT is LAZY (net stack
+  + share open only on entering the SMB page or a settings action, never at
+  boot) via the luasystem.cpp `EnsureNet`/`connectSMB` bindings; BROWSE scans
+  the share's POPS folder and lists VCDs; a blank Share field opens an in-UI
+  picker driven by `GETSHARELIST`; LAUNCH hands off to POPStarter with argv0
+  selector `smb:/POPS/SB.<name>.ELF` (POPStarter streams the VCD from its own
+  `smb:/POPS` mount via `mc:/POPSTARTER/SMBCONFIG.DAT`); DISCONNECT
+  (`CLOSESHARE`+`LOGOFF`) on leaving the page. NetBIOS is deferred (address type
+  must be IP). Implemented this cycle, CI+Rolling green, **validating on
+  hardware** — the exact argv0 device prefix POPStarter accepts (fallbacks
+  `mass:/POPS/SB.<name>.ELF` then `mass:/SB.<name>.ELF`), the connect handshake,
+  and the `GETSHARELIST` DMA are the hardware-only unknowns. See the
+  luasystem.cpp SMB notes.
 
 ## Preservation Contracts (hardware-load-bearing — do not regress)
 - D-10 (HDD POPSTARTER + HDD game): the BRAM child-loader route via the

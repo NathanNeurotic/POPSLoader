@@ -219,9 +219,11 @@ UI.Credits.Play` (`system.lua:6364-6376`).
 
 ### Scenes
 `UI.SCENES` is a numeric enum: `GUSBFAT=1`, `GSMB=3`, `GMX4SIO=4`, `GHDD=5`
-(`GAPAHDD` aliases 5), `GBDMHDD=6`, `MMAIN=8`, `MPROFILE=9`, `CREDITS=10`.
-`GSMB=3` is overloaded: it is the destination for the **MMCE** list as well as
-conceptually "SMB". Scene changes go through `UI.SceneChange` ->
+(`GAPAHDD` aliases 5), `GBDMHDD=6`, `GSMBNET=7`, `MMAIN=8`, `MPROFILE=9`,
+`CREDITS=10`.
+`GSMB=3` is the destination for the **MMCE** list. SMB (v1) network browsing has
+its own dedicated scene `GSMBNET=7` (see "Main menu and per-device entry").
+Scene changes go through `UI.SceneChange` ->
 `UI.RequestScene` -> `UI.Transition.Start`, a two-phase out/in `EaseInOutCubic`
 crossfade that swaps `UI.CURSCENE` at the midpoint.
 
@@ -251,7 +253,7 @@ CONFIRM dispatches by OPT index inside the CONFIRM handler (`ui.lua:4148-4322`):
 | 4 | HDD (PFS) | `LoadHDDModules` + deps + `BuildGameList` -> `GHDD` |
 | 5 | USB | `ensureUsbMass` + `BuildMassGameListByType` -> `GUSBFAT` |
 | 6 | i.Link | **stub** (`ui.lua:4318`) |
-| 7 | SMB (v1) | **stub** (`ui.lua:4320`) |
+| 7 | SMB (v1) | `InitSMBPopsRoot` (lazy connect + share scan) + `GetPS1GameLists` -> scene `GSMBNET` (`ui.lua:4320`) — *implemented, CI+Rolling green, validating on hardware* |
 | 8 | Disc (DKWDRV) | open DKWDRV modal |
 
 `UI.RunBusyTask` (`ui.lua:715`) wraps every device-load worker in `pcall`
@@ -582,8 +584,9 @@ Parsed C-side (`parseLaunchArgs`, `src/main.cpp:198`), normalized in Lua: `Norma
 `usb`/`mass` -> USB, `mmce` -> MMCE, `mx4sio`/`mx4`/`sdc` -> MX4SIO, etc., into
 `PLDR.LAUNCH_ARGS`. `-page` (and the `-mode` alias) auto-navigate the carousel via
 `page_to_opt = {MMCE=1, MX4SIO=2, EXFAT=3, ATA=3, HDD=4, USB=5, SMB=7}`: EXFAT/ATA
-map to the exFAT page (opt 3, `GBDMHDD`) and HDD to the PFS page (opt 4). The bare
-`bdma` token and i.Link/SMB remain unrouted no-ops.
+map to the exFAT page (opt 3, `GBDMHDD`), HDD to the PFS page (opt 4), and `SMB`
+to the SMB (v1) network page (opt 7, `GSMBNET`). The bare `bdma` token and i.Link
+remain unrouted no-ops.
 
 ### On-disk settings (`.pldrs`)
 Plain KEY=VALUE text with **20 keys** (`EncodeSettings`, `system.lua:3072-3102`):

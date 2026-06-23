@@ -19,7 +19,7 @@ This matrix tracks current behavior across:
 - busy/progress overlays,
 - cover art behavior,
 - exit handoff behavior,
-- currently unimplemented menu options (`SMB (v1)`, `i.Link`; `HDD (exFAT)` is now implemented via BDMA `ATA` and is in hardware validation),
+- network/streaming menu options (`SMB (v1)` is now implemented — connect/browse/launch/disconnect over the share — and is in hardware validation; `HDD (exFAT)` is now implemented via BDMA `ATA` and is in hardware validation; `i.Link` remains unimplemented),
 - release package validation gates,
 - repository automation workflows that are not runtime/hardware gates.
 
@@ -82,7 +82,10 @@ These gates are defined by `.github/workflows/compilation.yml`. The separate `.g
 | D-05 | HDD PFS unavailable | No usable HDD | Open HDD (PFS) | explicit HDD status/partition error notification |
 | D-06 | HDD (exFAT) via BDMA ATA (present) | internal drive formatted exFAT, BDMA Mode = ATA, `POPS/` with VCDs | Select `HDD (exFAT)` | drive enumerates as a `mass:` slot reporting ioctl driver-name `ata`; `mass:/POPS` VCDs list; launch works with the `.ata` drivers staged (stripped) to `mc?:/POPSTARTER` (NEW — validating on hardware) |
 | D-06A | HDD (exFAT) absent | no exFAT internal drive / BDMA Mode ≠ ATA | Select `HDD (exFAT)` | UI shows `No exFAT HDD detected` notification (no hang) |
-| D-07 | SMB option status | any setup | Select `SMB (v1)` | UI shows `Not Implemented Yet` |
+| D-07 | SMB (v1) connect/browse | SMB settings configured (server IP, share, user/password, IP assignment, port, games path) + SMB modules pack installed (`mc:/POPSTARTER` IRX + `IPCONFIG.DAT`/`SMBCONFIG.DAT` generated) | Select `SMB (v1)` (scene `GSMBNET`) | Network stack comes up lazily on entering the SMB page (NEVER at boot); the share opens (Path B netman recipe), the share's `POPS/` folder scans, and VCD games list like any other device. With the Share field empty, `GETSHARELIST` enumerates the server's shares and an in-UI picker lets you choose one (choice persisted to settings + in-game `SMBCONFIG.DAT`, then reconnects). NEW — validating on hardware. |
+| D-07B | SMB (v1) launch | SMB connected and a VCD listed (D-07) | Launch an SMB title | POPStarter receives argv0 selector `smb:/POPS/SB.<name>.ELF` and streams the VCD from its own `smb:/POPS` mount via `mc:/POPSTARTER/SMBCONFIG.DAT`. (HW-only unknown: the exact argv0 device prefix POPStarter accepts — ship `smb:/POPS/SB.<name>.ELF`; fallbacks `mass:/POPS/SB.<name>.ELF` then `mass:/SB.<name>.ELF`.) NEW — validating on hardware. |
+| D-07C | SMB (v1) disconnect | SMB connected (D-07) | Leave the SMB page; also force a failed connect | Leaving the SMB page tears the session down (`CLOSESHARE`+`LOGOFF`); a failed connect also tears down so no half-open session lingers. NEW — validating on hardware. |
+| D-07D | SMB option absent | SMB modules pack NOT installed / no reachable server | Select `SMB (v1)` | Connect is lazy and fails cleanly with the session torn down (no half-open session); no hang. NEW — validating on hardware. |
 | D-07A | i.Link option status | any setup | Select `i.Link` | UI shows `Not Implemented Yet` |
 | D-08 | HDD POPS partition scan | `__.POPS`, `__.POPS0`, and one higher `__.POPSN` present | Open HDD (PFS) | titles from all present POPS partitions list in stable partition order |
 | D-09 | HDD duplicate title names | Same VCD filename exists in two POPS partitions | Launch each entry from HDD (PFS) | each entry launches from its own source partition |
