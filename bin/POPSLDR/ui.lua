@@ -2765,15 +2765,6 @@ UI = {
             UI.Notif_queue.add("No games found on this device", "warn")
             return
           end
-          -- Net-SMB (GSMBNET) is connect + browse only in this build. The POPStarter
-          -- SMB launch handoff (smb:/POPS/SB.<name>.ELF) is the next increment and is
-          -- hardware-only verifiable, so gate it cleanly here -- otherwise
-          -- ResolveLaunchPolicy has no GSMBNET case and would misclassify the smb0:/
-          -- game as a mass: launch (audit wfsw7yfsf). (GSMB=MMCE-SMB still launches.)
-          if UI.CURSCENE == UI.SCENES.GSMBNET then
-            UI.Notif_queue.add("SMB browsing works -- launching arrives in the next build", "warn")
-            return
-          end
           local configured_popstarter_path = tostring(PLDR.POPSTARTER_PATH or "")
           if type(PLDR.GetEffectiveConfiguredPopstarterPath) == "function" then
             configured_popstarter_path = tostring(PLDR.GetEffectiveConfiguredPopstarterPath(PLDR.POPSTARTER_PATH, PLDR.SELECTED_PROFILE) or configured_popstarter_path)
@@ -2810,7 +2801,9 @@ UI = {
           end
           local root, rel = string.match(entry or "", "^([^|]+)|(.+)$")
           local vcd_full = ResolveSelectedVcdPath(entry, PLDR.GAMEPATH)
-          if UI.CURSCENE ~= UI.SCENES.GHDD then -- only check if game can be found on USB and SMB
+          -- Skip the existence preflight on net-SMB too: per-file stat over the live
+          -- smb0: browse mount is unreliable, and this is only a (non-blocking) toast.
+          if UI.CURSCENE ~= UI.SCENES.GHDD and UI.CURSCENE ~= UI.SCENES.GSMBNET then
             if not doesFileExist(vcd_full) then
               UI.Notif_queue.add("Game file missing\n"..vcd_full, "error")
             end

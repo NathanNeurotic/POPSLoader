@@ -5524,6 +5524,9 @@ local function BuildDisplayNameFromEntry(entry)
 end
 
 local function SelectPopstarterSelectorPrefix(device_page)
+  if device_page == "SMB" then
+    return "SB."   -- net-SMB selector prefix (POPStarter SMB-stream mode)
+  end
   if device_page == "USB" or device_page == "MMCE" or device_page == "SMB/MMCE" or device_page == "MX4SIO" then
     return "XX."
   end
@@ -5536,6 +5539,16 @@ end
 local function BuildPopstarterSelectorPath(device_page, game_name)
   if game_name == nil or game_name == "" then
     return ""
+  end
+  if device_page == "SMB" then
+    -- Net-SMB argv0 (this becomes POPSTARTER.ELF's argv[0]). POPStarter parses the
+    -- basename "SB.<name>.ELF" -> SMB-stream mode + <name>, then reads <name>.VCD from
+    -- its own smb:/POPS/ mount (mc:/POPSTARTER/SMBCONFIG.DAT). ⚠ HARDWARE-ONLY: both the
+    -- device prefix (smb:/ here, pattern-matching the USB mass:/POPS/ form) AND whether
+    -- POPStarter reads the SB. prefix from argv0 are PS2-confirm-only -- if the share
+    -- connects but a game won't boot, the first fallbacks to try are
+    -- "mass:/POPS/SB."..game_name..".ELF" then "mass:/SB."..game_name..".ELF".
+    return "smb:/POPS/SB."..game_name..".ELF"
   end
   if device_page == "HDD" then
     return BuildLiteralElfName(game_name)
@@ -5969,6 +5982,14 @@ local function ResolveLaunchPolicy(gamelocation, ui_scene)
     local mmce_device = string.match(mmce_prefix, "^([%a]+%d*)") or "mmce0"
     return BuildLaunchPolicy("MMCE", "mass", mmce_device, TranslateMMCEPathForPopStarter), "SMB/MMCE"
   end
+  if current_scene == UI.SCENES.GSMBNET then
+    -- Net-SMB launch (Increment 2). The menu device is smb0:, but POPStarter mounts
+    -- its OWN smb:/ namespace via mc:/POPSTARTER/SMBCONFIG.DAT. A distinct policy
+    -- name + device_page "SMB" (NOT MMCE-SMB's "SMB/MMCE") routes the selector
+    -- builders to the SB. argv0 (smb:/POPS/SB.<name>.ELF). No path transform: the
+    -- bare-name selection passes straight through.
+    return BuildLaunchPolicy("SMB", "smb", "smb", nil), "SMB"
+  end
   return BuildLaunchPolicy("unknown", "mass", "mass", nil), "unknown"
 end
 
@@ -6170,7 +6191,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     pops_root = mmce_prefix.."POPS/"
     boot_source_mode = "mass"
     device_mode = mmce_prefix
-  elseif string.match(normalized_gamelocation, "^smb:/") or device_page == "SMB/MMCE" then
+  elseif string.match(normalized_gamelocation, "^smb%d*:/") or device_page == "SMB/MMCE" or device_page == "SMB" then
     pops_root = "smb:/POPS/"
     boot_source_mode = "smb"
     device_mode = "smb"
