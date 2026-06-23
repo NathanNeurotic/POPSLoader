@@ -4557,53 +4557,10 @@ UI = {
 	          elseif UI.MainMenu.OPT == 6 then
 	            UI.Notif_queue.add("This backend isn't implemented yet", "warn")
 	          elseif UI.MainMenu.OPT == 7 then
-            -- SMB (v1): connect + browse. LAZY -- InitSMBPopsRoot brings the network up
-            -- and opens the share HERE (never at boot); mirrors the OPT==3 exFAT handler.
-            local ok = UI.RunBusyTask("Connecting to SMB...", function (report)
-              local scan_progress = UI.MakeBusyProgressReporter(report, "Scanning SMB games...", 0.55, 0.9)
-              report("Bringing up network...", 0.2)
-              PLDR.CleanupGameList()
-              PLDR.GAMEPATH = ""
-              report("Connecting to the share...", 0.4)
-              local smb_root, smb_err, smb_extra = PLDR.InitSMBPopsRoot()
-              if smb_root == nil then
-                local msg
-                if smb_err == "NO_SHARE" then
-                  -- Share field blank: GETSHARELIST returned the server's shares so the
-                  -- user knows what to put in SMB settings.
-                  msg = (type(smb_extra) == "string" and smb_extra ~= "")
-                    and ("No Share set in SMB settings\nAvailable: "..smb_extra)
-                    or "No Share set in SMB settings\n(server returned no shares)"
-                else
-                  msg = ({
-                    NO_LINK       = "No network link\ncheck the Ethernet cable / adapter",
-                    DHCP_FAIL     = "DHCP failed\nset a static IP in SMB settings",
-                    CONN_FAIL     = "Can't reach the server\ncheck Server IP / Port in SMB settings",
-                    LOGON_FAIL    = "SMB login failed\ncheck User / Password",
-                    ECHO_FAIL     = "SMB connection dropped",
-                    SHARE_FAIL    = "Share not found\ncheck the Share name (host must allow SMB1)",
-                    IRX_LOAD_FAIL = "SMB modules failed to load",
-                    NETBIOS_NA    = "NetBIOS isn't supported\nset Address type = IP + a Server IP",
-                  })[smb_err] or "SMB connect failed"
-                end
-                UI.Notif_queue.add(msg, "warn")
-                return
-              end
-              PLDR.CleanupGameList()
-              local smb_cache = smb_root..".gamecache"
-              local smb_cg, smb_ch = PLDR.LoadGameListCache(smb_cache)
-              if smb_cg ~= nil then
-                PLDR.ApplyGameListCache(smb_cg, smb_root, smb_ch)
-                report("Loaded SMB list from cache...", 1.0)
-              else
-                report("Scanning SMB games...", 0.55)
-                PLDR.GetPS1GameLists(smb_root, true, scan_progress)
-                PLDR.SaveGameListCache(smb_cache, PLDR.GAMES, PLDR.HIDDEN)
-              end
-              report("Opening SMB list...", 1.0)
-              UI.SceneChange(UI.SCENES.GSMBNET)
-            end, "Failed to connect to SMB")
-            if not ok then return end
+            -- SMB (v1): connect + browse (LAZY -- never at boot). The whole connect +
+            -- blank-Share picker + reconnect flow lives in UI.RunSmbConnectFlow to keep
+            -- this menu handler's locals under Lua's per-function cap.
+            UI.RunSmbConnectFlow()
 	          elseif UI.MainMenu.OPT == 8 then
 	            if type(System) == "table" and type(System.ensureCDFS) == "function" then
 	              System.ensureCDFS()
@@ -5059,6 +5016,139 @@ function UI.RunConfirm(lines)
     end
   end
   return false
+end
+
+-- Blocking SMB share picker: list the discovered shares, Up/Down to move, X selects, O
+-- cancels. Returns the chosen share name (string) or nil. Mirrors the RunConfirm modal
+-- (Screen.clear/flip + raw Pads.get), with EDGE-detected nav (one press = one move; also
+-- neutralises PCSX2's constant phantom PAD_UP) and a scrolling window for long lists.
+function UI.RunSharePicker(shares)
+  if type(Screen) ~= "table" or type(Screen.flip) ~= "function"
+     or type(Pads) ~= "table" or type(Pads.get) ~= "function" then
+    return nil
+  end
+  if type(shares) ~= "table" or #shares == 0 then return nil end
+  local sel, prev, MAXVIS = 1, 0, 10
+  local settle = 0
+  while settle < 30 do
+    local okp, gp = pcall(Pads.get)
+    if settle >= 8 and okp and type(gp) == "number"
+       and (gp & (PAD_CROSS | PAD_CIRCLE | PAD_UP | PAD_DOWN)) == 0 then break end
+    Screen.flip()
+    settle = settle + 1
+  end
+  local f, total = 0, 60 * 60
+  while f < total do
+    Screen.clear(UI.SCR.BGCOL or Color.new(20, 30, 80))
+    local vis = math.min(#shares, MAXVIS)
+    local top = 1
+    if #shares > MAXVIS then
+      top = sel - math.floor(MAXVIS / 2)
+      if top < 1 then top = 1 end
+      if top > #shares - MAXVIS + 1 then top = #shares - MAXVIS + 1 end
+    end
+    local y = UI.SCR.Y_MID - (vis * 11) - 18
+    Font.ftPrint(LFONT, UI.SCR.X_MID, y - 26, 8, UI.SCR.X, 24, "Select a share", UI.CCOL.YELLOW)
+    for i = top, math.min(top + MAXVIS - 1, #shares) do
+      local is_sel = (i == sel)
+      local label = is_sel and ("> "..tostring(shares[i]).." <") or tostring(shares[i])
+      Font.ftPrint(SFONT, UI.SCR.X_MID, y, 8, UI.SCR.X, 16, label, is_sel and UI.CCOL.YELLOW or UI.CCOL.GREY)
+      y = y + 22
+    end
+    Font.ftPrint(BFONT, UI.SCR.X_MID, y + 14, 8, UI.SCR.X, 24, "X = Select      O = Cancel", UI.CCOL.GREY)
+    Screen.flip()
+    f = f + 1
+    local okp, gp = pcall(Pads.get)
+    gp = (okp and type(gp) == "number") and gp or 0
+    local pressed = gp & ~prev
+    prev = gp
+    if (pressed & PAD_UP) ~= 0 then sel = (sel - 2) % #shares + 1 end
+    if (pressed & PAD_DOWN) ~= 0 then sel = sel % #shares + 1 end
+    if (pressed & PAD_CROSS) ~= 0 then return shares[sel] end
+    if (pressed & PAD_CIRCLE) ~= 0 then return nil end
+  end
+  return nil
+end
+
+-- Full net-SMB connect flow (OPT==7): connect + scan into GSMBNET. If the Share field is
+-- blank, GETSHARELIST's shares are offered via UI.RunSharePicker (run OUTSIDE the busy
+-- task, which owns the screen); the chosen share is persisted (settings sidecar + the
+-- in-game SMBCONFIG.DAT) and we reconnect. Bounded rounds so a bad server can't loop forever.
+-- Lives here (not inline in the menu handler) to keep that handler under Lua's local cap.
+function UI.RunSmbConnectFlow()
+  local share_choices = nil   -- comma-list set when a connect returns NO_SHARE with shares
+  local function attempt()
+    share_choices = nil
+    local entered = false
+    UI.RunBusyTask("Connecting to SMB...", function (report)
+      local scan_progress = UI.MakeBusyProgressReporter(report, "Scanning SMB games...", 0.55, 0.9)
+      report("Bringing up network...", 0.2)
+      PLDR.CleanupGameList()
+      PLDR.GAMEPATH = ""
+      report("Connecting to the share...", 0.4)
+      local smb_root, smb_err, smb_extra = PLDR.InitSMBPopsRoot()
+      if smb_root == nil then
+        if smb_err == "NO_SHARE" and type(smb_extra) == "string" and smb_extra ~= "" then
+          share_choices = smb_extra   -- offer the picker after this busy task closes
+          return
+        end
+        local msg
+        if smb_err == "NO_SHARE" then
+          msg = "No Share set in SMB settings\n(server returned no shares)"
+        else
+          msg = ({
+            NO_LINK       = "No network link\ncheck the Ethernet cable / adapter",
+            DHCP_FAIL     = "DHCP failed\nset a static IP in SMB settings",
+            CONN_FAIL     = "Can't reach the server\ncheck Server IP / Port in SMB settings",
+            LOGON_FAIL    = "SMB login failed\ncheck User / Password",
+            ECHO_FAIL     = "SMB connection dropped",
+            SHARE_FAIL    = "Share not found\ncheck the Share name (host must allow SMB1)",
+            IRX_LOAD_FAIL = "SMB modules failed to load",
+            NETBIOS_NA    = "NetBIOS isn't supported\nset Address type = IP + a Server IP",
+          })[smb_err] or "SMB connect failed"
+        end
+        UI.Notif_queue.add(msg, "warn")
+        return
+      end
+      PLDR.CleanupGameList()
+      local smb_cache = smb_root..".gamecache"
+      local smb_cg, smb_ch = PLDR.LoadGameListCache(smb_cache)
+      if smb_cg ~= nil then
+        PLDR.ApplyGameListCache(smb_cg, smb_root, smb_ch)
+        report("Loaded SMB list from cache...", 1.0)
+      else
+        report("Scanning SMB games...", 0.55)
+        PLDR.GetPS1GameLists(smb_root, true, scan_progress)
+        PLDR.SaveGameListCache(smb_cache, PLDR.GAMES, PLDR.HIDDEN)
+      end
+      report("Opening SMB list...", 1.0)
+      UI.SceneChange(UI.SCENES.GSMBNET)
+      entered = true
+    end, "Failed to connect to SMB")
+    return entered
+  end
+  local rounds = 0
+  while true do
+    if attempt() then break end               -- entered the SMB scene
+    if share_choices == nil then break end     -- a real error was already shown
+    rounds = rounds + 1
+    if rounds > 3 then break end
+    local shares = {}
+    for s in string.gmatch(share_choices, "([^,]+)") do
+      local t = string.match(s, "^%s*(.-)%s*$")
+      if t ~= nil and t ~= "" then shares[#shares + 1] = t end
+    end
+    local picked = UI.RunSharePicker(shares)
+    if picked == nil then
+      UI.Notif_queue.add("No Share selected", "warn")
+      break
+    end
+    -- Persist the choice so browse, launch, AND the in-game SMBCONFIG.DAT all use it.
+    PLDR.SMB.SHARE = picked
+    UI.SmbDraft = nil   -- force the settings editor to re-seed from the new value
+    pcall(PLDR.SaveSettingsAtomic)
+    pcall(PLDR.SyncSmbDat)
+  end
 end
 
 -- Display-change safety net: after a video-mode switch, confirm it IN THE NEW
