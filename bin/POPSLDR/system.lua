@@ -4936,9 +4936,10 @@ function PLDR.InitSMBPopsRoot()
   if type(System.initSMB) == "function" and not System.initSMB() then
     return nil, "IRX_LOAD_FAIL"
   end
-  local ok, dev_or_err = System.connectSMB(PLDR.SMB)
+  local ok, dev_or_err, extra = System.connectSMB(PLDR.SMB)
   if not ok then
-    return nil, tostring(dev_or_err or "CONN_FAIL")
+    -- extra carries the comma-separated share list when dev_or_err == "NO_SHARE".
+    return nil, tostring(dev_or_err or "CONN_FAIL"), extra
   end
   -- dev_or_err = the mounted device handle ("smb0:"). PLDR.SMB.PATH is an optional
   -- cwd-relative subfolder UNDER the share (blank = share root), then POPS/. Forward

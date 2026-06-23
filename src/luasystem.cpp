@@ -1606,9 +1606,10 @@ static int lua_smb_connect(lua_State *L)
 	dhcp = lua_toboolean(L, -1);
 	lua_pop(L, 1);
 
-	// Increment 1 supports IP addressing only; NetBIOS (nbns) is a later stage.
+	// IP addressing only. NetBIOS needs nbns.irx, which is OPL-custom (not in stock
+	// ps2sdk) -> a build dependency we deliberately don't pull in. Use a Server IP.
 	if (!strcmp(addrtype, "netbios")) {
-		SMB_PUSH_ERR("CONN_FAIL");
+		SMB_PUSH_ERR("NETBIOS_NA");
 	}
 	if (!EnsureSMB()) {
 		SMB_PUSH_ERR("IRX_LOAD_FAIL");
@@ -1679,8 +1680,30 @@ static int lua_smb_connect(lua_State *L)
 	}
 
 	if (strlen(share) == 0) {
-		// Increment 1 requires an explicit share; the GETSHARELIST picker is later.
-		SMB_PUSH_ERR("SHARE_FAIL");
+		// No share configured -> enumerate the server's shares so the user knows what to
+		// set. Returns (false, "NO_SHARE", "<comma-separated names>"). Buffer 64-byte
+		// aligned for the IOP->EE DMA (per OPL smblab.c:55 / ethsupport.c:499-523).
+		static ShareEntry_t sharelist[128] __attribute__((aligned(64)));
+		smbGetShareList_in_t getsharelist;
+		memset(sharelist, 0, sizeof(sharelist));
+		getsharelist.EE_addr = (void *)&sharelist[0];
+		getsharelist.maxent = 128;
+		int count = fileXioDevctl("smb0:", SMB_DEVCTL_GETSHARELIST, (void *)&getsharelist, sizeof(getsharelist), NULL, 0);
+		char names[512];
+		names[0] = '\0';
+		for (int i = 0; i < count && i < 128; i++) {
+			if (sharelist[i].ShareName[0] == '\0') {
+				continue;
+			}
+			if (names[0] != '\0') {
+				strncat(names, ", ", sizeof(names) - strlen(names) - 1);
+			}
+			strncat(names, sharelist[i].ShareName, sizeof(names) - strlen(names) - 1);
+		}
+		lua_pushboolean(L, false);
+		lua_pushstring(L, "NO_SHARE");
+		lua_pushstring(L, names);
+		return 3;
 	}
 	strncpy(openshare.ShareName, share, sizeof(openshare.ShareName) - 1);
 	if (fileXioDevctl("smb0:", SMB_DEVCTL_OPENSHARE, (void *)&openshare, sizeof(openshare), NULL, 0) < 0) {
@@ -1693,6 +1716,23 @@ static int lua_smb_connect(lua_State *L)
 }
 #undef SMB_GET_STR
 #undef SMB_PUSH_ERR
+
+// System.disconnectSMB() -- close the share + log off (mirror OPL ethSMBDisconnect,
+// ethsupport.c:144-159). Called on SMB-page exit so the connection doesn't linger.
+// Best-effort: the IRX stay loaded (lazy) and a later connectSMB re-LOGONs; errors
+// here are nothing to recover from. No-op if SMB was never brought up.
+static int lua_smb_disconnect(lua_State *L)
+{
+	if (lua_gettop(L) > 0) {
+		return luaL_error(L, "Argument error: System.disconnectSMB() takes no arguments.");
+	}
+	if (smb_irx_loaded) {
+		fileXioDevctl("smb0:", SMB_DEVCTL_CLOSESHARE, NULL, 0, NULL, 0);
+		fileXioDevctl("smb0:", SMB_DEVCTL_LOGOFF, NULL, 0, NULL, 0);
+	}
+	lua_pushboolean(L, true);
+	return 1;
+}
 
 static const luaL_Reg System_functions[] = {
 	{"openFile",                   lua_openfile},
@@ -1736,6 +1776,7 @@ static const luaL_Reg System_functions[] = {
 	{"initATA",                lua_ata_init},
 	{"initSMB",                lua_smb_init},
 	{"connectSMB",             lua_smb_connect},
+	{"disconnectSMB",          lua_smb_disconnect},
 	{"bdmList",                lua_bdm_list},
 	{"refreshMassBackends",    lua_refresh_mass_backends},
 	{"getMassBackendInfo",     lua_get_mass_backend_info},

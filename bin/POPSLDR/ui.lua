@@ -2644,7 +2644,12 @@ UI = {
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
         if UI.Pad.Events.EXIT then UI.CreditsReturnScene = UI.CURSCENE; UI.SceneChange(UI.SCENES.CREDITS) end
-        if UI.Pad.Events.BACK then UI.SceneChange(UI.SCENES.MMAIN) end
+        if UI.Pad.Events.BACK then
+          if UI.CURSCENE == UI.SCENES.GSMBNET and type(System) == "table" and type(System.disconnectSMB) == "function" then
+            pcall(System.disconnectSMB)   -- free the share + connection when leaving the SMB page
+          end
+          UI.SceneChange(UI.SCENES.MMAIN)
+        end
         if ammount > 0 then
           if UI.Pad.Events.NAV_DOWN then UI.GameList.CURR = CLAMP(UI.GameList.CURR+1, 1, ammount) end
           if UI.Pad.Events.NAV_RIGHT then UI.GameList.CURR = CLAMP(UI.GameList.CURR+UI.GameList.MAXDRAW, 1, ammount) end
@@ -4560,17 +4565,27 @@ UI = {
               PLDR.CleanupGameList()
               PLDR.GAMEPATH = ""
               report("Connecting to the share...", 0.4)
-              local smb_root, smb_err = PLDR.InitSMBPopsRoot()
+              local smb_root, smb_err, smb_extra = PLDR.InitSMBPopsRoot()
               if smb_root == nil then
-                local msg = ({
-                  NO_LINK       = "No network link\ncheck the Ethernet cable / adapter",
-                  DHCP_FAIL     = "DHCP failed\nset a static IP in SMB settings",
-                  CONN_FAIL     = "Can't reach the server\ncheck Server IP / Port in SMB settings",
-                  LOGON_FAIL    = "SMB login failed\ncheck User / Password",
-                  ECHO_FAIL     = "SMB connection dropped",
-                  SHARE_FAIL    = "Share not found\ncheck the Share name (host must allow SMB1)",
-                  IRX_LOAD_FAIL = "SMB modules failed to load",
-                })[smb_err] or "SMB connect failed"
+                local msg
+                if smb_err == "NO_SHARE" then
+                  -- Share field blank: GETSHARELIST returned the server's shares so the
+                  -- user knows what to put in SMB settings.
+                  msg = (type(smb_extra) == "string" and smb_extra ~= "")
+                    and ("No Share set in SMB settings\nAvailable: "..smb_extra)
+                    or "No Share set in SMB settings\n(server returned no shares)"
+                else
+                  msg = ({
+                    NO_LINK       = "No network link\ncheck the Ethernet cable / adapter",
+                    DHCP_FAIL     = "DHCP failed\nset a static IP in SMB settings",
+                    CONN_FAIL     = "Can't reach the server\ncheck Server IP / Port in SMB settings",
+                    LOGON_FAIL    = "SMB login failed\ncheck User / Password",
+                    ECHO_FAIL     = "SMB connection dropped",
+                    SHARE_FAIL    = "Share not found\ncheck the Share name (host must allow SMB1)",
+                    IRX_LOAD_FAIL = "SMB modules failed to load",
+                    NETBIOS_NA    = "NetBIOS isn't supported\nset Address type = IP + a Server IP",
+                  })[smb_err] or "SMB connect failed"
+                end
                 UI.Notif_queue.add(msg, "warn")
                 return
               end
