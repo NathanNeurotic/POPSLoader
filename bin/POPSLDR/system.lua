@@ -3807,6 +3807,12 @@ function PLDR.CommitSettingsChanges(opts)
     end
   end
 
+  -- Backfill / refresh the in-game SMB .DAT on every commit: if the pack is installed but
+  -- the config files are missing or stale, regenerate them from the saved settings. Cheap
+  -- no-op when SMB isn't installed. Best-effort -- settings are already persisted, so a
+  -- .DAT write hiccup must never fail the commit.
+  pcall(PLDR.SyncSmbDat)
+
   EmitStage("finalize", "Finalizing settings")
   PLDR.ReconcileBdmaModeWithEffectiveState()
   return true, nil
@@ -4631,6 +4637,33 @@ function PLDR.RemoveSmbModules()
   if not ok and UI ~= nil and UI.Notif_queue ~= nil then
     UI.Notif_queue.add("Failed to remove some SMB modules")
   end
+  return ok
+end
+
+-- Keep the in-game SMB config (the IPCONFIG.DAT / SMBCONFIG.DAT POPStarter reads) in
+-- sync with PLDR.SMB whenever the SMB pack is installed (smbman.irx present): GENERATE
+-- them if missing, UPDATE if the network settings changed, drop a stale IPCONFIG.DAT on
+-- DHCP. No-op if the pack isn't installed (so it's safe to call unconditionally). Write-
+-- if-changed to spare the memory card. Called on every settings commit so the .DAT always
+-- track the saved settings -- even if the modules were installed or the files removed out
+-- of band (the install/remove path itself still owns the full pack via Apply/RemoveSmbModules).
+function PLDR.SyncSmbDat()
+  if not doesFileExist(POPSTARTER_PACK_ROOT.."/smbman.irx") then
+    return false
+  end
+  local cfg = PLDR.SmbCopy(PLDR.SMB)
+  local function write_if_changed(dest, body)
+    if body == nil then
+      return DeleteIfExists(dest)        -- DHCP: no static IPCONFIG.DAT should exist
+    end
+    if ReadWholeFile(dest) == body then
+      return true                        -- already current; skip the mc write
+    end
+    return WriteBytesAtomicBounded(body, dest)
+  end
+  local ok = true
+  if not write_if_changed(POPSTARTER_PACK_ROOT.."/IPCONFIG.DAT", PLDR.RenderSmbIpconfig(cfg)) then ok = false end
+  if not write_if_changed(POPSTARTER_PACK_ROOT.."/SMBCONFIG.DAT", PLDR.RenderSmbConfig(cfg)) then ok = false end
   return ok
 end
 
