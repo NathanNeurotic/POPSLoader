@@ -39,6 +39,8 @@
     <a href="../thread-study.html"><span class="em">🧵</span>Community knowledge</a>
     <a href="../credits.html"><span class="em">🙏</span>Credits</a>
     <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
+    <h4>Related projects</h4>
+    <a href="https://nathanneurotic.github.io/Open-PS2-Loader"><span class="em">🎮</span>RiptOPL (OPL) docs ↗</a>
   </nav>
   <main class="content"><h1>Testing</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/BETA-13-PLAY/TESTING.md">view on GitHub ↗</a></p><p><strong>Build:</strong> rolling <code>BETA-13-PLAY</code> (BETA-13 candidate; rolling now publishes from this branch — <code>BETA-12-PLAY</code> is frozen/archival). Public release is still BETA-12.<br />
 This is the structured "what to test" companion to <strong><a href="rolling-notes.html">ROLLING_NOTES.md</a></strong> ("what's new"); for the canonical status / invariants / known-issues list see <strong><a href="state.html">STATE.md</a></strong>. Regenerate when the rolling batch changes. <em>(Last refreshed: 2026-06-22 — added the new HDD (exFAT) / BDMA-ATA backend and the on-screen-keyboard feedback fix.)</em></p>
@@ -70,6 +72,13 @@ This is the structured "what to test" companion to <strong><a href="rolling-note
 - [ ] No exFAT drive present / BDMA Mode ≠ ATA → the page shows <strong>"No exFAT HDD detected"</strong> and does <strong>not</strong> hang.<br />
 - [ ] <strong>Launch-arg routing (NEW — never HW-run):</strong> booting with <code>-page=ata</code> (or <code>ata0</code>) opens the <strong>HDD (exFAT)</strong> page; <code>-page=hdd</code> / <code>hdd0</code> / <code>apa</code> / <code>apa0</code> / any <code>pfs</code> open the classic <strong>HDD (PFS)</strong> page. (<code>-page=ata -game=&lt;VCD&gt;</code> should auto-launch from the exFAT drive.) Confirm <code>-page=ata</code> no longer lands on the PFS page.<br />
 - Report: empty list, a game that lists but won't launch, the drive showing under the wrong device, or a hang — include <strong>console model</strong> and <strong>drive type/size</strong>.</p>
+<h3 id="settings-collapsible-sections-new-never-run-on-hardware">⭐ Settings — collapsible sections (NEW, never run on hardware)</h3>
+<p>The Settings page already scrolls (focus-following viewport + scrollbar). New this build: each <strong>section header</strong> (Storage / Display / Startup / Carousel Devices / Game List / POPSTARTER / Memory Card) can <strong>collapse/expand</strong> so long groups (e.g. the per-device "Carousel Devices" checklist) fold away.<br />
+- [ ] Move the cursor onto a <strong>section header</strong> (it highlights; shows <code>-</code> when expanded, <code>+</code> when collapsed). Press <strong>X</strong> to toggle; <strong>Left</strong> collapses, <strong>Right</strong> expands.<br />
+- [ ] Collapsing a section hides its rows and the list gets shorter (less scrolling); expanding brings them back. The cursor stays on the header.<br />
+- [ ] ⚠️ <strong>Save / Reset Defaults / Discard &amp; Exit must ALWAYS stay reachable</strong> regardless of which sections are collapsed — confirm you can still reach them after collapsing every section.<br />
+- [ ] Every existing setting still saves/persists exactly as before (collapse state is session-only — it resets on reboot, nothing new is written to your settings file).<br />
+- Report: a section that won't expand back, the actions becoming unreachable, the cursor getting stuck, or any setting failing to save.</p>
 <h3 id="navigation-input-core-nav-confirmed-on-hardware-oldman63-the-rest-still-to-feel-out">Navigation &amp; input — ✅ core nav CONFIRMED on hardware (oldman63); the rest still to feel out</h3>
 <ul>
 <li>[x] <strong>Up/Down + analog-stick item nav</strong> — ✅ <strong>CONFIRMED (oldman63):</strong> d-pad and <strong>left analog stick up/down</strong> both land on <strong>individual items</strong> (item-by-item), and a held direction does smooth continuous scroll. <em>(The stick now folds into the d-pad and runs the same edge + auto-repeat path — no more "flies a whole page" / "can't select individual items" #501. A non-analog/digital pad is gated out so it can't inject a phantom direction; the auto-repeat is frame-counted, ~0.6 s before the first repeat then ~5/sec.)</em> Re-confirm on <strong>each device's</strong> list if you can.</li>

@@ -39,6 +39,8 @@
     <a href="thread-study.html"><span class="em">🧵</span>Community knowledge</a>
     <a href="credits.html"><span class="em">🙏</span>Credits</a>
     <a href="wiki/index.html"><span class="em">📚</span>All wiki pages</a>
+    <h4>Related projects</h4>
+    <a href="https://nathanneurotic.github.io/Open-PS2-Loader"><span class="em">🎮</span>RiptOPL (OPL) docs ↗</a>
   </nav>
   <main class="content"><h1>Config Table ($410–$42F)</h1><p class="lead">POPStarter r13 stores a 32-byte configuration table at file offset <code>$410</code> inside POPSTARTER.ELF/.KELF. Each byte is one setting.</p><div class="callout info"><div class="h">ℹ Nuance</div>&#x27;classic 00 vs debug FF&#x27; build label The LABEL is community shorthand, not a verbatim krHACKen string, BUT it is accurate and grounded: it is literally the state of config byte $410 (00 = off = shipped/&#x27;classic&#x27;, FF = realtime = old POPStarter-12). Nuance to state: any value 0x01-0xFE gives PACED (not just 00/FF) debug, and DEBUG_AND_HALT.PPF also flips $411.</div>
 <div class="callout info"><div class="h">ℹ Nuance</div>$415 / $429 exact byte enumeration - Note that $429 values 00/01/02 (both/none/first-only) are confirmed, but the precise byte values of a few peripheral offsets ($415 ASCII range, $417 residual 0x01 meaning, $42C purpose) are documented qualitatively only</div><h2 id="popstarter-configuration-table-advanced-settings"><strong>POPStarter Configuration Table – Advanced Settings</strong></h2>
