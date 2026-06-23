@@ -4289,15 +4289,23 @@ function PLDR.GetMX4SIOMassRootNow()
 end
 
 local function BuildATAIdentityDeferred()
-  -- Bounded retry masks the first-entry probe quirk, like the MX4SIO path.
+  -- The internal HDD via ata_bd/BDM enumerates ASYNCHRONOUSLY and is slower to appear
+  -- than MX4SIO/USB (dev9 bring-up + HDD spin-up + BDM registration all take time).
+  -- The old retry re-scanned with NO delay, racing that enumeration -> "No exFAT HDD
+  -- detected" on real hardware (CosmicScale 2026-06-23). Retry WITH a 1s settle between
+  -- attempts -- the same pattern the USB path uses, and NHDDL's devices_bdm.c retry loop
+  -- (the authoritative exFAT-HDD launcher: it re-opendir's mass: spaced apart, not once).
   local attempts = 0
-  while attempts < 3 do
+  while attempts < 4 do
     attempts = attempts + 1
     local identity = BuildMassRootIdentity("ata")
     if type(identity) == "table" and type(identity.ata) == "table" and #identity.ata > 0 then
       return identity
     end
-    WaitMassProbeRetry(attempts, 3)
+    WaitMassProbeRetry(attempts, 4)
+    if attempts < 4 and type(System) == "table" and type(System.sleep) == "function" then
+      pcall(System.sleep, 1)
+    end
   end
   return BuildMassRootIdentity("ata")
 end
