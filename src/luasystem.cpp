@@ -1420,7 +1420,13 @@ static bool EnsureNet()
 	if (!LoadIrxCheckedBuffer("ps2ips.irx", ps2ips_irx, size_ps2ips_irx, NULL, NULL)) {
 		return false;
 	}
-	ps2ipInit();
+	// This ps2sdk's ps2ipInit takes the initial IP config; start with zeros -- the
+	// real DHCP/static config is applied later by SmbApplyIPConfig (ps2ip_setconfig).
+	struct ip4_addr ip_zero, mask_zero, gw_zero;
+	ip4_addr_set_zero(&ip_zero);
+	ip4_addr_set_zero(&mask_zero);
+	ip4_addr_set_zero(&gw_zero);
+	ps2ipInit(&ip_zero, &mask_zero, &gw_zero);
 	net_irx_loaded = true;
 	return true;
 }
