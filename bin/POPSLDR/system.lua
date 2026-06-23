@@ -4971,6 +4971,16 @@ function PLDR.InitSMBPopsRoot()
   end
   local ok, dev_or_err, extra = System.connectSMB(PLDR.SMB)
   if not ok then
+    -- connectSMB does LOGON+ECHO BEFORE the share check, so a post-LOGON failure
+    -- (ECHO_FAIL / NO_SHARE / SHARE_FAIL) returns with a session already logged on. Tear
+    -- it down here -- the BACK-hook disconnect only fires once GSMBNET is entered, which a
+    -- failed connect never reaches, so without this a blank-Share (NO_SHARE) attempt would
+    -- leak a half-open session every time (caught by the wg6dhihar review). disconnectSMB
+    -- is idempotent + smb_irx_loaded-gated, so it's a harmless no-op for pre-LOGON failures
+    -- (NO_LINK / DHCP_FAIL / NETBIOS_NA / IRX_LOAD_FAIL). Covers both callers of this fn.
+    if type(System.disconnectSMB) == "function" then
+      pcall(System.disconnectSMB)
+    end
     -- extra carries the comma-separated share list when dev_or_err == "NO_SHARE".
     return nil, tostring(dev_or_err or "CONN_FAIL"), extra
   end
