@@ -3069,6 +3069,108 @@ local function NormalizeBootPage(value)
   return "Carousel"
 end
 
+-- ============================================================================
+-- SMB / Network config (Stage 1: settings only -- no network code yet).
+-- Mirrors OPL's net/SMB fields, but the games path is cwd-relative by default
+-- (blank PATH = auto), resolved later with arg > custom > cwd precedence (the
+-- same ladder POPSTARTER/DKWDRV paths use). Stored as a PLDR.SMB sub-table,
+-- persisted as individual SMB_<KEY>= sidecar lines so arbitrary share/user/pass
+-- strings stay intact (only newline is forbidden, and the on-screen keyboard
+-- can't produce one). SMB never touches the boot path: the network stack is
+-- brought up lazily on SMB-page entry (a later stage), never here or at boot.
+PLDR.SMB_FIELDS = {
+  { key = "DHCP",      kind = "bool", default = true },
+  { key = "PS2_IP",    kind = "str",  default = "192.168.0.10" },
+  { key = "NETMASK",   kind = "str",  default = "255.255.255.0" },
+  { key = "GATEWAY",   kind = "str",  default = "192.168.0.1" },
+  { key = "DNS",       kind = "str",  default = "192.168.0.1" },
+  { key = "LINKMODE",  kind = "enum", default = "auto", choices = { "auto", "100full", "100half", "10full", "10half" } },
+  { key = "ADDR_TYPE", kind = "enum", default = "ip",   choices = { "ip", "netbios" } },
+  { key = "NB_ADDR",   kind = "str",  default = "" },
+  { key = "SERVER",    kind = "str",  default = "192.168.0.1" },
+  { key = "PORT",      kind = "str",  default = "445" },
+  { key = "SHARE",     kind = "str",  default = "" },
+  { key = "USER",      kind = "str",  default = "" },
+  { key = "PASS",      kind = "str",  default = "" },
+  { key = "PATH",      kind = "str",  default = "" },
+}
+
+-- Normalize one field value to its kind: bool -> boolean, enum -> a valid choice
+-- (else its default), str -> single-line trimmed string capped at 255 chars.
+local function SmbSanitize(field, value)
+  if field == nil then return nil end
+  if field.kind == "bool" then
+    if type(value) == "boolean" then return value end
+    local s = string.lower(tostring(value or ""))
+    return (s == "1" or s == "true" or s == "on" or s == "yes")
+  elseif field.kind == "enum" then
+    local s = string.lower(tostring(value or ""))
+    for i = 1, #field.choices do
+      if field.choices[i] == s then return s end
+    end
+    return field.default
+  else
+    local s = tostring(value or "")
+    s = string.gsub(s, "[\r\n]", "")  -- sidecar is line-delimited; keep values single-line
+    if string.len(s) > 255 then s = string.sub(s, 1, 255) end
+    return s
+  end
+end
+
+-- Fresh config from the spec defaults.
+function PLDR.SmbDefaults()
+  local cfg = {}
+  for i = 1, #PLDR.SMB_FIELDS do
+    cfg[PLDR.SMB_FIELDS[i].key] = PLDR.SMB_FIELDS[i].default
+  end
+  return cfg
+end
+
+-- Copy + sanitize a config against the spec (drops unknown keys, fills missing
+-- keys with defaults). Used for snapshot/apply rollback + commit ingestion.
+function PLDR.SmbCopy(src)
+  src = (type(src) == "table") and src or {}
+  local cfg = {}
+  for i = 1, #PLDR.SMB_FIELDS do
+    local f = PLDR.SMB_FIELDS[i]
+    local v = src[f.key]
+    if v == nil then v = f.default end
+    cfg[f.key] = SmbSanitize(f, v)
+  end
+  return cfg
+end
+
+-- Append SMB_<KEY>=value lines to an EncodeSettings line list. bool -> 1/0.
+function PLDR.SmbAppendLines(lines, cfg)
+  cfg = PLDR.SmbCopy(cfg)
+  for i = 1, #PLDR.SMB_FIELDS do
+    local f = PLDR.SMB_FIELDS[i]
+    local v = cfg[f.key]
+    if f.kind == "bool" then
+      v = (v == true) and "1" or "0"
+    else
+      v = tostring(v or "")
+    end
+    lines[#lines + 1] = "SMB_"..f.key.."="..v
+  end
+end
+
+-- Parse SMB_<KEY>= lines from sidecar data into a fresh config (a missing key
+-- keeps its default; a present-but-empty value -- SMB_SHARE= -- parses to "").
+function PLDR.SmbParse(data)
+  local cfg = PLDR.SmbDefaults()
+  if type(data) ~= "string" then return cfg end
+  for i = 1, #PLDR.SMB_FIELDS do
+    local f = PLDR.SMB_FIELDS[i]
+    local k = "SMB_"..f.key
+    local raw = string.match(data, "\n"..k.."=([^\n]*)") or string.match(data, "^"..k.."=([^\n]*)")
+    if raw ~= nil then
+      cfg[f.key] = SmbSanitize(f, raw)
+    end
+  end
+  return cfg
+end
+
 local function EncodeSettings()
   local selected_profile = tonumber(PLDR.SELECTED_PROFILE) or 1
   local selection_mode = NormalizePopstarterSelectionMode(PLDR.POPSTARTER_SELECTION_MODE)
@@ -3099,6 +3201,7 @@ local function EncodeSettings()
     "OVERSCAN="..tostring(math.floor(tonumber(PLDR.OVERSCAN) or 0)),
     "DESC_SCROLL_SPEED="..((PLDR.DESC_SCROLL_SPEED == "fast" or PLDR.DESC_SCROLL_SPEED == "medium") and PLDR.DESC_SCROLL_SPEED or "slow")
   }
+  PLDR.SmbAppendLines(lines, PLDR.SMB)
   return table.concat(lines, "\n").."\n"
 end
 
@@ -3144,7 +3247,8 @@ local function SnapshotSettingsState()
     gamelist_cache = (PLDR.GAMELIST_CACHE == true),
     boot_sound = (PLDR.BOOT_SOUND ~= false),
     overscan = math.floor(tonumber(PLDR.OVERSCAN) or 0),
-    desc_scroll_speed = ((PLDR.DESC_SCROLL_SPEED == "fast" or PLDR.DESC_SCROLL_SPEED == "medium") and PLDR.DESC_SCROLL_SPEED or "slow")
+    desc_scroll_speed = ((PLDR.DESC_SCROLL_SPEED == "fast" or PLDR.DESC_SCROLL_SPEED == "medium") and PLDR.DESC_SCROLL_SPEED or "slow"),
+    smb = PLDR.SmbCopy(PLDR.SMB)
   }
 end
 
@@ -3203,6 +3307,9 @@ local function ApplySettingsState(state)
   if state.overscan ~= nil then
     PLDR.OVERSCAN = math.floor(tonumber(state.overscan) or 0)
     if type(Screen) == "table" and type(Screen.setOverscan) == "function" then pcall(Screen.setOverscan, PLDR.OVERSCAN) end
+  end
+  if type(state.smb) == "table" then
+    PLDR.SMB = PLDR.SmbCopy(state.smb)
   end
   PLDR.ApplyVideoStandardRuntime(PLDR.VIDEO_STANDARD)
   if type(state.hide_text) == "boolean" and type(UI) == "table" then
@@ -3325,6 +3432,7 @@ function PLDR.LoadSettingsNonFatal()
   PLDR.GAMELIST_CACHE = false  -- opt-in persistent per-device USB/MMCE/MX4SIO list cache (OFF = always live scan)
   PLDR.BOOT_SOUND = true  -- play the boot/splash chime (default ON; oldman63 #501 wanted an off switch)
   PLDR.OVERSCAN = 0  -- CRT overscan inset, permille (0 = off; OPL rmSetOverscan units/math)
+  PLDR.SMB = PLDR.SmbDefaults()  -- SMB/Network config (settings only; network loads lazily, never at boot)
   if type(UI) == "table" then
     if type(UI.SetHideTextMode) == "function" then
       UI.SetHideTextMode(false, false)
@@ -3523,6 +3631,9 @@ function PLDR.LoadSettingsNonFatal()
   else
     PLDR.HIDDEN_DEVICES = PLDR.NormalizeHiddenDevices(PLDR.HIDDEN_DEVICES)
   end
+  if type(PLDR.SmbParse) == "function" then
+    PLDR.SMB = PLDR.SmbParse(data)
+  end
   PLDR.BDMA_MODE_KEY = NormalizeBdmaModeKey(bdma_mode) or PLDR.BDMA_MODE_KEY
   PLDR.ReconcileBdmaModeWithEffectiveState()
   -- Invariant: BDMA/SMB modules live in mc:/POPSTARTER, so an enabled BDMA REQUIRES
@@ -3597,7 +3708,8 @@ function PLDR.CommitSettingsChanges(opts)
     gamelist_cache = next_gamelist_cache,
     boot_sound = next_boot_sound,
     overscan = next_overscan,
-    hidden_devices = PLDR.NormalizeHiddenDevices(opts.hidden_devices or prev.hidden_devices)
+    hidden_devices = PLDR.NormalizeHiddenDevices(opts.hidden_devices or prev.hidden_devices),
+    smb = (type(opts.smb) == "table") and PLDR.SmbCopy(opts.smb) or prev.smb
   }
   local apply_bdma = opts.apply_bdma == true
   local bdma_token = opts.bdma_token

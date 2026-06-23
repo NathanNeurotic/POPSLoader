@@ -48,6 +48,17 @@ The Settings page already scrolls (focus-following viewport + scrollbar). New th
 - [ ] Every existing setting still saves/persists exactly as before (collapse state is session-only — it resets on reboot, nothing new is written to your settings file).
 - Report: a section that won't expand back, the actions becoming unreachable, the cursor getting stuck, or any setting failing to save.
 
+### ⭐ SMB / Network settings (NEW, settings-only — no network code yet)
+
+A new **SMB / Network** section in Settings lets you enter your server/share/credentials ahead of the actual SMB browsing (which lands in a later build). This stage is **config + persistence only** — nothing connects to a network yet, and **no SMB code runs at boot or anywhere outside this page.** The SMB *carousel* page still shows "not implemented".
+- [ ] *Settings* → expand **SMB / Network**. You should see: **IP assignment** (DHCP/Static), **PS2 IP / Netmask / Gateway / DNS**, **Link mode**, **Address type**, **NetBIOS name**, **Server IP**, **Port** (445), **Share**, **User**, **Password**, **Games path**.
+- [ ] **Cycle** rows (IP assignment, Link mode, Address type) change with **Left/Right** / **X**. **Text** rows (IPs, Server, Share, User, Password, Games path) open the on-screen keyboard on **X**.
+- [ ] Password shows masked (`****`); empty **Games path** shows *"(auto / cwd-relative)"*; empty Share/User show *"(not set)"*.
+- [ ] Edit a couple of fields → they show the **unsaved (accent) marker** → **Save Changes** → **reboot** → values **persisted** exactly as entered.
+- [ ] **Reset Defaults** restores the SMB fields to defaults (DHCP on, Server 192.168.0.1, Port 445, blank Share/User/Password/Games path) — then Save to keep.
+- [ ] ⚠️ **No regression:** every *other* setting still saves/loads as before, and **boot time is unchanged** (SMB must never load anything at boot).
+- Report: a field that won't persist, garbled values after reboot, any other setting breaking, or any boot-time slowdown.
+
 ### Navigation & input — ✅ core nav CONFIRMED on hardware (oldman63); the rest still to feel out
 
 - [x] **Up/Down + analog-stick item nav** — ✅ **CONFIRMED (oldman63):** d-pad and **left analog stick up/down** both land on **individual items** (item-by-item), and a held direction does smooth continuous scroll. *(The stick now folds into the d-pad and runs the same edge + auto-repeat path — no more "flies a whole page" / "can't select individual items" #501. A non-analog/digital pad is gated out so it can't inject a phantom direction; the auto-repeat is frame-counted, ~0.6 s before the first repeat then ~5/sec.)* Re-confirm on **each device's** list if you can.

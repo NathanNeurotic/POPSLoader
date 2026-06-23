@@ -665,6 +665,8 @@ UI = {
     PopstarterPathDraft = nil;
     DkwdrvPathDraft = nil;
     KeyboardLayoutDraft = nil;
+    SmbDraft = nil;
+    SmbDirty = false;
     HideTextMode = false;
     SettingsReturnScene = nil;
     SettingsEntryHideTextMode = false;
@@ -3167,6 +3169,7 @@ UI = {
                 overscan = overscan_val,
                 hide_text = UI.HideTextMode == true,
                 prev_hide_text = UI.SettingsEntryHideTextMode == true,
+                smb = UI.SmbDraft,
                 apply_bdma = UI.BdmaDirty,
                 bdma_token = save_token,
                 on_stage = report_stage
@@ -3224,6 +3227,7 @@ UI = {
             UI.PopPathProfileDefaultDirty = false
             UI.DkwdrvDirty = false
             UI.VideoStandardDirty = false
+            UI.SmbDirty = false
             clear_settings_session()
             -- HDD-write probe (TEST): on an HDD boot, report whether a __.POPS
             -- GAME partition accepts a scoped write (used for HDD per-game .hide
@@ -3283,6 +3287,7 @@ UI = {
               UI.PopPathProfileDefaultDirty = false
               UI.DkwdrvDirty = false
               UI.VideoStandardDirty = false
+              UI.SmbDirty = false
               clear_settings_session()
               UI.SceneChange(target_scene)
             end
@@ -3398,6 +3403,20 @@ UI = {
           if tostring(UI.KeyboardLayoutDraft or "") ~= tostring(default_keyboard_layout) then
             UI.KeyboardLayoutDraft = default_keyboard_layout
             UI.ProfileDirty = true
+          end
+          if type(PLDR.SmbDefaults) == "function" and type(PLDR.SMB_FIELDS) == "table" then
+            local smb_def = PLDR.SmbDefaults()
+            local smb_cur = (type(UI.SmbDraft) == "table") and UI.SmbDraft or {}
+            local smb_changed = false
+            for i = 1, #PLDR.SMB_FIELDS do
+              local k = PLDR.SMB_FIELDS[i].key
+              if tostring(smb_cur[k]) ~= tostring(smb_def[k]) then smb_changed = true end
+            end
+            UI.SmbDraft = smb_def
+            if smb_changed then
+              UI.SmbDirty = true
+              UI.ProfileDirty = true
+            end
           end
           UI.Notif_queue.add("Profile defaults restored", "ok")
         end
@@ -3672,6 +3691,33 @@ UI = {
           function() return (UI.Overscan or 0) ~= (UI.SettingsEntryOverscan or 0) end
         )
 
+        -- SMB / Network (Stage 1: config only -- the network stack loads lazily on
+        -- the SMB page, never here/at boot). Spec-driven rows from PLDR.SMB_FIELDS;
+        -- all editing routes through UI.SmbDraft + UI.SmbDirty (committed as opts.smb).
+        if type(PLDR.SMB_FIELDS) == "table" then
+          AddSection("SMB / Network")
+          for smb_i = 1, #PLDR.SMB_FIELDS do
+            local smb_field = PLDR.SMB_FIELDS[smb_i]
+            local smb_label = UI.SmbFieldLabel(smb_field)
+            if smb_field.kind == "bool" or smb_field.kind == "enum" then
+              AddCycle(
+                smb_label,
+                function() return UI.SmbFieldDisplay(smb_field) end,
+                function() UI.SmbFieldCycle(smb_field, -1) end,
+                function() UI.SmbFieldCycle(smb_field, 1) end,
+                function() return UI.SmbFieldDirty(smb_field.key) end
+              )
+            else
+              AddPath(
+                smb_label,
+                function() return UI.SmbFieldDisplay(smb_field) end,
+                function() UI.SmbFieldOpenEditor(smb_field) end,
+                function() return UI.SmbFieldDirty(smb_field.key) end
+              )
+            end
+          end
+        end
+
         AddSection("POPSTARTER")
         AddCycle(
           "Profile",
@@ -3721,6 +3767,7 @@ UI = {
             or (UI.BootSound == true) ~= (UI.SettingsEntryBootSound == true)
             or (math.floor(tonumber(UI.Overscan) or 0)) ~= (math.floor(tonumber(UI.SettingsEntryOverscan) or 0))
             or (UI.BootPageIndex or 1) ~= (UI.SettingsEntryBootPageIndex or 1)
+            or (UI.SmbDirty == true)
         end
 
         local function ToggleMcFolder()
@@ -4951,6 +4998,100 @@ function UI.RunVideoModeConfirm(seconds)
   end
   return false
 end
+-- ===== SMB / Network settings field helpers (Stage 1: config only) ==========
+-- Spec-driven row rendering for the "SMB / Network" settings section. The field
+-- spec + persistence live in system.lua (PLDR.SMB_FIELDS / PLDR.Smb*). These are
+-- module-level (NOT Play-locals) to keep the big settings closure under Lua's
+-- per-function local cap. Editing routes through a single draft (UI.SmbDraft) +
+-- dirty flag (UI.SmbDirty); the settings commit passes opts.smb = UI.SmbDraft.
+UI._SMB_LABELS = {
+  DHCP = "IP assignment", PS2_IP = "PS2 IP", NETMASK = "Netmask",
+  GATEWAY = "Gateway", DNS = "DNS", LINKMODE = "Link mode",
+  ADDR_TYPE = "Address type", NB_ADDR = "NetBIOS name", SERVER = "Server IP",
+  PORT = "Port", SHARE = "Share", USER = "User", PASS = "Password",
+  PATH = "Games path",
+}
+UI._SMB_ENUM_LABELS = {
+  LINKMODE = { auto = "Auto", ["100full"] = "100M Full", ["100half"] = "100M Half", ["10full"] = "10M Full", ["10half"] = "10M Half" },
+  ADDR_TYPE = { ip = "IP address", netbios = "NetBIOS name" },
+}
+local function _SmbTruncMiddle(s, max)
+  s = tostring(s or "")
+  if string.len(s) <= max then return s end
+  local keep = math.floor((max - 3) / 2)
+  if keep < 1 then keep = 1 end
+  return string.sub(s, 1, keep).."..."..string.sub(s, string.len(s) - keep + 1)
+end
+function UI.SmbEnsureDraft()
+  if type(UI.SmbDraft) ~= "table" then
+    if type(PLDR) == "table" and type(PLDR.SmbCopy) == "function" then
+      UI.SmbDraft = PLDR.SmbCopy(PLDR.SMB)
+    else
+      UI.SmbDraft = {}
+    end
+  end
+  return UI.SmbDraft
+end
+function UI.SmbFieldLabel(field)
+  return UI._SMB_LABELS[field.key] or field.key
+end
+function UI.SmbFieldDirty(key)
+  local d = UI.SmbEnsureDraft()
+  local cur = (type(PLDR) == "table" and type(PLDR.SMB) == "table") and PLDR.SMB[key] or nil
+  return tostring(d[key]) ~= tostring(cur)
+end
+function UI.SmbFieldDisplay(field)
+  local d = UI.SmbEnsureDraft()
+  local v = d[field.key]
+  if field.kind == "bool" then
+    if field.key == "DHCP" then
+      return (v == true) and "DHCP (automatic)" or "Static (manual)"
+    end
+    return (v == true) and "On" or "Off"
+  elseif field.kind == "enum" then
+    local m = UI._SMB_ENUM_LABELS[field.key]
+    return (m and m[v]) or tostring(v or "")
+  else
+    local s = tostring(v or "")
+    if field.key == "PASS" then
+      if s == "" then return "(not set)" end
+      return string.rep("*", math.min(string.len(s), 16))
+    end
+    if s == "" then
+      if field.key == "PATH" then return "(auto / cwd-relative)" end
+      return "(not set)"
+    end
+    return _SmbTruncMiddle(s, 38)
+  end
+end
+function UI.SmbFieldCycle(field, dir)
+  local d = UI.SmbEnsureDraft()
+  if field.kind == "bool" then
+    d[field.key] = not (d[field.key] == true)
+  elseif field.kind == "enum" then
+    local choices = field.choices or {}
+    local idx = 1
+    for i = 1, #choices do
+      if choices[i] == d[field.key] then idx = i break end
+    end
+    idx = idx + (tonumber(dir) or 1)
+    if idx < 1 then idx = #choices elseif idx > #choices then idx = 1 end
+    d[field.key] = choices[idx] or field.default
+  end
+  UI.SmbDirty = true
+end
+function UI.SmbFieldOpenEditor(field)
+  local d = UI.SmbEnsureDraft()
+  local title = "Edit "..(UI._SMB_LABELS[field.key] or field.key)
+  if type(UI.PathEditor) == "table" and type(UI.PathEditor.Open) == "function" then
+    UI.PathEditor.Open(title, tostring(d[field.key] or ""), function(value)
+      local dd = UI.SmbEnsureDraft()
+      dd[field.key] = string.gsub(tostring(value or ""), "[\r\n]", "")
+      UI.SmbDirty = true
+    end)
+  end
+end
+
 function UI.SyncSettingsDraftFromRuntime()
   if type(PLDR) == "table" and type(PLDR.GetEffectiveConfiguredPopstarterPath) == "function" then
     UI.PopstarterPathDraft = tostring(PLDR.GetEffectiveConfiguredPopstarterPath(PLDR.POPSTARTER_PATH, PLDR.SELECTED_PROFILE) or "")
@@ -4967,6 +5108,12 @@ function UI.SyncSettingsDraftFromRuntime()
   UI.PopPathProfileDefaultDirty = false
   UI.DkwdrvDirty = false
   UI.VideoStandardDirty = false
+  if type(PLDR) == "table" and type(PLDR.SmbCopy) == "function" then
+    UI.SmbDraft = PLDR.SmbCopy(PLDR.SMB)
+  else
+    UI.SmbDraft = {}
+  end
+  UI.SmbDirty = false
 end
 function UI.SyncSettingsSelectionFromRuntime()
   if type(PLDR.ReconcileBdmaModeWithEffectiveState) == "function" then
