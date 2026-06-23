@@ -2332,7 +2332,9 @@ UI = {
         local layout = UI.LAYOUT
         UI.GameList.MAXDRAW = layout.LIST_MAX
         local titles = {
-          [UI.SCENES.GUSBFAT] = "USB"
+          [UI.SCENES.GUSBFAT] = "USB",
+          [UI.SCENES.GBDMHDD] = "BDM HDD",
+          [UI.SCENES.GSMBNET] = "SMB"
         }
         local scene_title = titles[UI.CURSCENE]
         -- Lift the device label clear of the first game row: it's centered at
@@ -2342,10 +2344,10 @@ UI = {
         if scene_title ~= nil and not UI.ShouldHideAuxText(UI.CURSCENE) then
           Font.ftPrint(LFONT, UI.SCR.X_MID, device_title_y, 8, UI.SCR.X, 16, scene_title, UI.CCOL.GREY)
         end
-        local placeholders = {
-          [UI.SCENES.GBDMHDD] = "BDM HDD",
-          [UI.SCENES.GSMBNET] = "SMB"
-        }
+        -- No scenes are placeholders anymore: GBDMHDD (exFAT) + GSMBNET (SMB) render the
+        -- real game list via `titles` above. Keeping the (now-empty) table + guard so a
+        -- genuinely-unimplemented future backend can still opt into the stub render.
+        local placeholders = {}
         local placeholder_title = placeholders[UI.CURSCENE]
         if placeholder_title ~= nil then
           if not UI.ShouldHideAuxText(UI.CURSCENE) then
@@ -2761,6 +2763,15 @@ UI = {
         local function LaunchSelectedGame(launch_options)
           if ammount <= 0 then
             UI.Notif_queue.add("No games found on this device", "warn")
+            return
+          end
+          -- Net-SMB (GSMBNET) is connect + browse only in this build. The POPStarter
+          -- SMB launch handoff (smb:/POPS/SB.<name>.ELF) is the next increment and is
+          -- hardware-only verifiable, so gate it cleanly here -- otherwise
+          -- ResolveLaunchPolicy has no GSMBNET case and would misclassify the smb0:/
+          -- game as a mass: launch (audit wfsw7yfsf). (GSMB=MMCE-SMB still launches.)
+          if UI.CURSCENE == UI.SCENES.GSMBNET then
+            UI.Notif_queue.add("SMB browsing works -- launching arrives in the next build", "warn")
             return
           end
           local configured_popstarter_path = tostring(PLDR.POPSTARTER_PATH or "")

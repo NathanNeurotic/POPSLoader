@@ -3110,7 +3110,8 @@ PLDR.SMB_FIELDS = {
 
 -- Normalize one field value to its kind: bool -> boolean, enum -> a valid choice
 -- (else its default), str -> single-line trimmed string capped at 255 chars.
-local function SmbSanitize(field, value)
+-- PLDR method (NOT a chunk-level local) -- system.lua is near Lua's 200-local cap.
+function PLDR.SmbSanitize(field, value)
   if field == nil then return nil end
   if field.kind == "bool" then
     if type(value) == "boolean" then return value end
@@ -3148,7 +3149,7 @@ function PLDR.SmbCopy(src)
     local f = PLDR.SMB_FIELDS[i]
     local v = src[f.key]
     if v == nil then v = f.default end
-    cfg[f.key] = SmbSanitize(f, v)
+    cfg[f.key] = PLDR.SmbSanitize(f,v)
   end
   return cfg
 end
@@ -3178,7 +3179,7 @@ function PLDR.SmbParse(data)
     local k = "SMB_"..f.key
     local raw = string.match(data, "\n"..k.."=([^\n]*)") or string.match(data, "^"..k.."=([^\n]*)")
     if raw ~= nil then
-      cfg[f.key] = SmbSanitize(f, raw)
+      cfg[f.key] = PLDR.SmbSanitize(f,raw)
     end
   end
   return cfg
@@ -4556,8 +4557,11 @@ end
 -- (CRLF-separated) carry USER then plaintext PASS, omitted entirely for guest.
 function PLDR.RenderSmbConfig(cfg)
   local server = tostring(cfg.SERVER or "")
-  local port = tostring(cfg.PORT or "445")
-  local line1 = server..((port ~= "" and port ~= "445") and (":"..port) or "").." "..tostring(cfg.SHARE or "")
+  -- Canonicalize PORT numerically so "0445"/" 445 "/non-numeric all collapse to the
+  -- default (no :port emitted), keeping the .DAT and the C connect path in agreement.
+  local pnum = tonumber(cfg.PORT)
+  local portpart = (pnum ~= nil and pnum ~= 445) and (":"..tostring(pnum)) or ""
+  local line1 = server..portpart.." "..tostring(cfg.SHARE or "")
   local user = tostring(cfg.USER or "")
   if user ~= "" then
     return line1.."\r\n"..user.."\r\n"..tostring(cfg.PASS or "")
