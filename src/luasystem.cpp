@@ -17,10 +17,15 @@
 #include "include/system.h"
 #include "include/dprintf.h"
 
-// Menu-side SMB (Increment 1). ps2sdk ports headers (-I$(PS2SDK)/ports/include).
+// Menu-side SMB (Increment 1). ps2sdk network headers. Wrapped in extern "C": this
+// is a C++ TU and these headers don't all guard their decls, so without it NetManInit/
+// NetManIoctl/NetManSetLinkMode/ps2ipInit references get C++-mangled and fail to link
+// against the plain-C libnetman/libps2ips.
+extern "C" {
 #include <ps2ip.h>
 #include <netman.h>
 #include <ps2smb.h>
+}
 
 #define MAX_DIR_FILES 512
 
