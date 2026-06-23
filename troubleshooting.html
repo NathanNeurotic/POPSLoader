@@ -36,11 +36,14 @@
     <a href="glossary.html"><span class="em">📖</span>Glossary</a>
     <a href="commands.html"><span class="em">⌨️</span>Command index</a>
     <a href="faq.html"><span class="em">❓</span>FAQ &amp; known bugs</a>
+    <a href="known-issues.html"><span class="em">🐞</span>Known issues</a>
+    <a href="compatibility-table.html"><span class="em">📊</span>Compatibility table</a>
     <a href="thread-study.html"><span class="em">🧵</span>Community knowledge</a>
     <a href="credits.html"><span class="em">🙏</span>Credits</a>
     <a href="wiki/index.html"><span class="em">📚</span>All wiki pages</a>
     <h4>Related projects</h4>
     <a href="https://nathanneurotic.github.io/Open-PS2-Loader"><span class="em">🎮</span>RiptOPL (OPL) docs ↗</a>
+    <a href="https://ps2homebrewstore.com"><span class="em">🛒</span>PS2 Homebrew Store ↗</a>
   </nav>
   <main class="content"><h1>Troubleshooting &amp; Display</h1><p class="lead">Boot/launch failures, USB-not-detected, HDTV/component fixes, widescreen, and game-specific lore.</p><div class="callout amber" id="two-black-screens"><div class="h">⚖ Two different black screens — don't confuse them</div><b>Black screen + stuck HDD LED when launching an HDD POPStarter ELF from OPL's Apps page</b> is usually OPL waiting on a network/BDM/SMB device left on <b>Auto</b> — set the OPL devices you don't use to <b>Manual</b> or <b>Off</b> and it launches. That is <i>different</i> from the <b>black screen on IGR/exit</b>, which is an incompatible <code>BOOT.ELF</code> in the exit chain (fix: disable the ELF loader with stock <code>PATCH_9.BIN</code>, or replace/recompress <code>BOOT.ELF</code>).</div><div class="callout info"><div class="h">ℹ Step 0 — see the actual error</div>Boot a <b>debug</b> <code>POPSTARTER.ELF</code> (build byte <code>FF</code> shows a full log; classic <code>00</code> shows a black wait-screen until the PS logo) so you read the real failure instead of guessing. The config table's <code>$410</code>/<code>$411</code> debug bytes and <code>DEBUG_AND_HALT.PPF</code> help here.</div><h2 id="known-bugs-limitations"><strong>Known bugs / limitations</strong></h2>
 <hr>
