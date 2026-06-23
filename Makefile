@@ -48,7 +48,7 @@ BINDIR = bin/
 EE_BIN = $(BINDIR)enceladus.elf
 EE_BIN_PKD = $(BINDIR)POPSLOADER.ELF
 
-EE_LIBS = -L$(PS2SDK)/ports/lib -L$(PS2DEV)/gsKit/lib/ -Lmodules/ds34bt/ee/ -Lmodules/ds34usb/ee/ -lpatches -lfileXio -lpad -ldebug -llua -ljpeg -lfreetype -lgskit_toolkit -lgskit -ldmakit -lpng -lz -lmc -laudsrv  -lds34bt -lds34usb
+EE_LIBS = -L$(PS2SDK)/ports/lib -L$(PS2DEV)/gsKit/lib/ -Lmodules/ds34bt/ee/ -Lmodules/ds34usb/ee/ -lpatches -lfileXio -lpad -ldebug -llua -ljpeg -lfreetype -lgskit_toolkit -lgskit -ldmakit -lpng -lz -lmc -laudsrv  -lds34bt -lds34usb -lnetman -lps2ips
 EE_LIBS += src/elf_loader/libcustom-elf-loader.a
 EE_INCS += -I$(PS2DEV)/gsKit/include -I$(PS2SDK)/ports/include -I$(PS2SDK)/ports/include/freetype2 -I$(PS2SDK)/ports/include/zlib
 EE_INCS += -Imodules/ds34bt/ee -Imodules/ds34usb/ee
@@ -92,6 +92,12 @@ IOP_MODULES = iomanX.o fileXio.o \
 			  usbmass_bd.o cdfs.o ds34bt.o ds34usb.o \
 			  ps2dev9.o ps2atad.o ps2hdd-osd.o ps2fs.o mmceman.o \
 			  mx4sio_bd.o ata_bd.o bdm_query.o
+
+# Menu-side SMB network stack (Increment 1). LAZY -- loaded by EnsureNet in
+# luasystem.cpp only on SMB-page entry, NEVER at boot (main.cpp boot-loads only its
+# explicit core set, not all of IOP_MODULES). ps2ip is the netman variant
+# (ps2ip-nm.irx) via the explicit rule below, bin2c'd as the symbol ps2ip_irx.
+IOP_MODULES += netman.o smap.o ps2ips.o smbman.o ps2ip.o
 
 EMBEDDED_RSC = boot.o builtin_font.o \
 	asset_usb_png.o asset_smb_png.o asset_ilink_png.o asset_mmce_png.o asset_mx4sio_png.o asset_apahdd_png.o \
@@ -242,6 +248,12 @@ $(EE_ASM_DIR)asset_smb_smsutils_irx.c: bin/POPSLDR/popsmb/SMSUTILS.irx | $(EE_AS
 vpath %.irx iop/embed/
 vpath %.irx $(PS2SDK)/iop/irx/
 IRXTAG = $(subst -,_,$(notdir $(addsuffix _irx, $(basename $<))))
+
+# Menu SMB needs the netman ps2ip variant (ps2ip-nm.irx), bin2c'd as the symbol
+# ps2ip_irx so the C extern matches. Explicit rule overrides the generic %.c:%.irx
+# below (which would grab the wrong ps2ip.irx). Source resolves via the vpath above.
+$(EE_ASM_DIR)ps2ip.c: ps2ip-nm.irx | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ ps2ip_irx
 
 $(EE_ASM_DIR)%.c: %.irx | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ $(IRXTAG)
