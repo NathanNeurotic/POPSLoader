@@ -108,6 +108,10 @@ IMPORT_BIN2C(ps2atad_irx);
 IMPORT_BIN2C(ps2hdd_osd_irx);
 IMPORT_BIN2C(ps2fs_irx);
 
+// Defined in luasystem.cpp. ps2dev9 is shared with the menu-side SMB net stack
+// (EnsureNet) -- load it exactly once across the HDD and SMB paths.
+extern bool g_dev9_loaded;
+
 #define CHECK_ERR(MODULE) if (ID < 0 || RET == 1) {lua_pushboolean(L, false); lua_pushstring(L, MODULE); lua_pushinteger(L, ID); lua_pushinteger(L, RET); goto ERR;}
 
 enum HDDLOADSTATES {
@@ -138,10 +142,13 @@ static int Load_HDD_IRX(lua_State *L) {
                            "-o" _N "10" _N
                            "-n" _N "40";
 #undef _N
-    /* PS2DEV9.IRX */
-    ID = SifExecModuleBuffer(&ps2dev9_irx, size_ps2dev9_irx, 0, NULL, &RET);
-    DPRINTF(" [DEV9.IRX]: ret=%d, ID=%d\n", RET, ID);
-    CHECK_ERR("DEV9");
+    /* PS2DEV9.IRX -- shared with the SMB net path (EnsureNet); load exactly once. */
+    if (!g_dev9_loaded) {
+        ID = SifExecModuleBuffer(&ps2dev9_irx, size_ps2dev9_irx, 0, NULL, &RET);
+        DPRINTF(" [DEV9.IRX]: ret=%d, ID=%d\n", RET, ID);
+        CHECK_ERR("DEV9");
+        g_dev9_loaded = true;
+    }
 
     /* PS2ATAD.IRX */
     ID = SifExecModuleBuffer(&ps2atad_irx, size_ps2atad_irx, 0, NULL, &RET);

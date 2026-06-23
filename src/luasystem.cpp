@@ -17,6 +17,11 @@
 #include "include/system.h"
 #include "include/dprintf.h"
 
+// Menu-side SMB (Increment 1). ps2sdk ports headers (-I$(PS2SDK)/ports/include).
+#include <ps2ip.h>
+#include <netman.h>
+#include <ps2smb.h>
+
 #define MAX_DIR_FILES 512
 
 extern unsigned char mx4sio_bd_irx[];
@@ -37,6 +42,17 @@ extern unsigned int size_cdfs_irx;
 
 extern unsigned char mmceman_irx[];
 extern unsigned int size_mmceman_irx;
+
+// Menu-side SMB network stack (lazy; see EnsureNet/EnsureSMB below).
+extern unsigned char netman_irx[];   extern unsigned int size_netman_irx;
+extern unsigned char smap_irx[];     extern unsigned int size_smap_irx;
+extern unsigned char ps2ip_irx[];    extern unsigned int size_ps2ip_irx;   // ps2ip-nm.irx (Makefile explicit rule)
+extern unsigned char ps2ips_irx[];   extern unsigned int size_ps2ips_irx;
+extern unsigned char smbman_irx[];   extern unsigned int size_smbman_irx;
+// SMSUTILS reused from the embedded popsmb pack (embed_assets.cpp).
+extern unsigned char asset_smb_smsutils_irx[];  extern unsigned int size_asset_smb_smsutils_irx;
+// ps2dev9 is the IOP_MODULES buffer also loaded by the HDD path (luaHDD.cpp).
+extern unsigned char ps2dev9_irx[];  extern unsigned int size_ps2dev9_irx;
 
 extern int pad_reinit();
 
@@ -1353,6 +1369,311 @@ static int lua_ata_init(lua_State *L)
 	return 2;
 }
 
+// ============================================================================
+// Menu-side SMB browse (Increment 1: connect + list). Mirrors OPL's proven
+// netman recipe (Open-PS2-Loader src/ethsupport.c). LAZY: these IRX load only
+// here (System.initSMB / connectSMB on SMB-page entry), never at boot. ps2dev9
+// is SHARED with the HDD path (luaHDD.cpp) -- coordinated via g_dev9_loaded so it
+// loads exactly once. HARDWARE-ONLY verifiable: link-up/DHCP bind, the LOGON/
+// OPENSHARE handshake, and the smb0: dir-walk need a real PS2 + a live SMB server.
+// ============================================================================
+bool g_dev9_loaded = false;   // shared with luaHDD.cpp Load_HDD_IRX (load ps2dev9 once)
+static bool net_irx_loaded = false;
+static bool smb_irx_loaded = false;
+
+static bool EnsureDev9()
+{
+	if (g_dev9_loaded) {
+		return true;
+	}
+	if (!LoadIrxCheckedBuffer("ps2dev9.irx", ps2dev9_irx, size_ps2dev9_irx, NULL, NULL)) {
+		return false;
+	}
+	g_dev9_loaded = true;
+	return true;
+}
+
+// dev9 -> netman(+NetManInit) -> SMSUTILS -> smap -> ps2ip(-nm) -> ps2ips, then
+// ps2ip_init(). Mirrors OPL ethLoadModules; httpclient is intentionally skipped.
+static bool EnsureNet()
+{
+	if (net_irx_loaded) {
+		return true;
+	}
+	if (!EnsureDev9()) {
+		return false;
+	}
+	if (!LoadIrxCheckedBuffer("netman.irx", netman_irx, size_netman_irx, NULL, NULL)) {
+		return false;
+	}
+	NetManInit();
+	if (!LoadIrxCheckedBuffer("SMSUTILS.irx", asset_smb_smsutils_irx, size_asset_smb_smsutils_irx, NULL, NULL)) {
+		return false;
+	}
+	if (!LoadIrxCheckedBuffer("smap.irx", smap_irx, size_smap_irx, NULL, NULL)) {
+		return false;
+	}
+	if (!LoadIrxCheckedBuffer("ps2ip.irx", ps2ip_irx, size_ps2ip_irx, NULL, NULL)) {
+		return false;
+	}
+	if (!LoadIrxCheckedBuffer("ps2ips.irx", ps2ips_irx, size_ps2ips_irx, NULL, NULL)) {
+		return false;
+	}
+	ps2ip_init();
+	net_irx_loaded = true;
+	return true;
+}
+
+static bool EnsureSMB()
+{
+	if (smb_irx_loaded) {
+		return true;
+	}
+	if (!EnsureNet()) {
+		return false;
+	}
+	if (!LoadIrxCheckedBuffer("smbman.irx", smbman_irx, size_smbman_irx, NULL, NULL)) {
+		return false;
+	}
+	smb_irx_loaded = true;
+	return true;
+}
+
+static int SmbLinkUp(void)
+{
+	return (NetManIoctl(NETMAN_NETIF_IOCTL_GET_LINK_STATUS, NULL, 0, NULL, 0) == NETMAN_NETIF_ETH_LINK_STATE_UP);
+}
+
+static int SmbDhcpBound(void)
+{
+	t_ip_info ip_info;
+	if (ps2ip_getconfig("sm0", &ip_info) < 0) {
+		return 0;
+	}
+	if (!ip_info.dhcp_enabled) {
+		return 1;
+	}
+	return (ip_info.dhcp_status == DHCP_STATE_BOUND || ip_info.dhcp_status == DHCP_STATE_OFF);
+}
+
+// Poll a check fn up to 30s (mirrors OPL WaitValidNetState; sleep() is the same
+// newlib delay System.sleep uses). Returns 0 when valid, -1 on timeout.
+static int SmbWaitNetState(int (*check)(void))
+{
+	for (int i = 0; i < 30; i++) {
+		if (check()) {
+			return 0;
+		}
+		sleep(1);
+	}
+	return -1;
+}
+
+static int SmbApplyLinkMode(int mode)
+{
+	static int current = NETMAN_NETIF_ETH_LINK_MODE_AUTO;
+	int result = 0;
+	if (current != mode) {
+		if ((result = NetManSetLinkMode(mode)) == 0) {
+			current = mode;
+		}
+	}
+	return result;
+}
+
+static int SmbLinkModeConst(const char *m)
+{
+	if (!strcmp(m, "100full")) return NETMAN_NETIF_ETH_LINK_MODE_100M_FDX;
+	if (!strcmp(m, "100half")) return NETMAN_NETIF_ETH_LINK_MODE_100M_HDX;
+	if (!strcmp(m, "10full"))  return NETMAN_NETIF_ETH_LINK_MODE_10M_FDX;
+	if (!strcmp(m, "10half"))  return NETMAN_NETIF_ETH_LINK_MODE_10M_HDX;
+	return NETMAN_NETIF_ETH_LINK_MODE_AUTO;
+}
+
+static void SmbParseOctets(const char *s, unsigned char out[4])
+{
+	int a = 0, b = 0, c = 0, d = 0;
+	out[0] = out[1] = out[2] = out[3] = 0;
+	if (s != NULL && sscanf(s, "%d.%d.%d.%d", &a, &b, &c, &d) == 4) {
+		out[0] = (unsigned char)a; out[1] = (unsigned char)b;
+		out[2] = (unsigned char)c; out[3] = (unsigned char)d;
+	}
+}
+
+// Apply the PS2 IP config (mirrors OPL ethApplyIPConfig). Interface = "sm0".
+static int SmbApplyIPConfig(int dhcp, const unsigned char ip[4], const unsigned char mask[4],
+                            const unsigned char gw[4], const unsigned char dns[4])
+{
+	t_ip_info ip_info;
+	struct ip4_addr ipaddr, netmask, gateway, dnsaddr;
+	if (ps2ip_getconfig("sm0", &ip_info) < 0) {
+		return -1;
+	}
+	if (dhcp) {
+		ip4_addr_set_zero((struct ip4_addr *)&ip_info.ipaddr);
+		ip4_addr_set_zero((struct ip4_addr *)&ip_info.netmask);
+		ip4_addr_set_zero((struct ip4_addr *)&ip_info.gw);
+		ip_info.dhcp_enabled = 1;
+		ps2ip_setconfig(&ip_info);
+	} else {
+		IP4_ADDR(&ipaddr, ip[0], ip[1], ip[2], ip[3]);
+		IP4_ADDR(&netmask, mask[0], mask[1], mask[2], mask[3]);
+		IP4_ADDR(&gateway, gw[0], gw[1], gw[2], gw[3]);
+		IP4_ADDR(&dnsaddr, dns[0], dns[1], dns[2], dns[3]);
+		ip_addr_set((struct ip4_addr *)&ip_info.ipaddr, &ipaddr);
+		ip_addr_set((struct ip4_addr *)&ip_info.netmask, &netmask);
+		ip_addr_set((struct ip4_addr *)&ip_info.gw, &gateway);
+		ip_info.dhcp_enabled = 0;
+		ps2ip_setconfig(&ip_info);
+		dns_setserver(0, &dnsaddr);
+	}
+	return 0;
+}
+
+// System.initSMB() -- load the SMB IRX stack (lazy). true / (false,"IRX_LOAD_FAIL").
+static int lua_smb_init(lua_State *L)
+{
+	if (lua_gettop(L) > 0) {
+		return luaL_error(L, "Argument error: System.initSMB() takes no arguments.");
+	}
+	bool ok = EnsureSMB();
+	lua_pushboolean(L, ok);
+	if (ok) {
+		return 1;
+	}
+	lua_pushstring(L, "IRX_LOAD_FAIL");
+	return 2;
+}
+
+#define SMB_GET_STR(key, buf) do { \
+		lua_getfield(L, 1, key); \
+		if (lua_isstring(L, -1)) { strncpy((buf), lua_tostring(L, -1), sizeof(buf) - 1); (buf)[sizeof(buf) - 1] = '\0'; } \
+		lua_pop(L, 1); \
+	} while (0)
+#define SMB_PUSH_ERR(code) do { lua_pushboolean(L, false); lua_pushstring(L, (code)); return 2; } while (0)
+
+// System.connectSMB(cfg) -- bring up the network + connect/open the share.
+// cfg = PLDR.SMB. Returns (true,"smb0:") on success, or (false,"<ERR>") where ERR
+// is NO_LINK / DHCP_FAIL / CONN_FAIL / LOGON_FAIL / ECHO_FAIL / SHARE_FAIL / IRX_LOAD_FAIL.
+static int lua_smb_connect(lua_State *L)
+{
+	if (lua_gettop(L) != 1 || !lua_istable(L, 1)) {
+		return luaL_error(L, "System.connectSMB(cfg) expects a config table.");
+	}
+
+	char server[256] = {0}, share[256] = {0}, user[256] = {0}, pass[256] = {0};
+	char ps2ip_s[64] = {0}, netmask_s[64] = {0}, gw_s[64] = {0}, dns_s[64] = {0};
+	char linkmode[16] = {0}, addrtype[16] = {0};
+	int port = 445;
+	int dhcp = 0;
+
+	SMB_GET_STR("SERVER", server);
+	SMB_GET_STR("SHARE", share);
+	SMB_GET_STR("USER", user);
+	SMB_GET_STR("PASS", pass);
+	SMB_GET_STR("PS2_IP", ps2ip_s);
+	SMB_GET_STR("NETMASK", netmask_s);
+	SMB_GET_STR("GATEWAY", gw_s);
+	SMB_GET_STR("DNS", dns_s);
+	SMB_GET_STR("LINKMODE", linkmode);
+	SMB_GET_STR("ADDR_TYPE", addrtype);
+	lua_getfield(L, 1, "PORT");
+	if (lua_isstring(L, -1)) { int p = 0; if (sscanf(lua_tostring(L, -1), "%d", &p) == 1) port = p; }
+	else if (lua_isnumber(L, -1)) { port = (int)lua_tointeger(L, -1); }
+	lua_pop(L, 1);
+	if (port <= 0) { port = 445; }
+	lua_getfield(L, 1, "DHCP");
+	dhcp = lua_toboolean(L, -1);
+	lua_pop(L, 1);
+
+	// Increment 1 supports IP addressing only; NetBIOS (nbns) is a later stage.
+	if (!strcmp(addrtype, "netbios")) {
+		SMB_PUSH_ERR("CONN_FAIL");
+	}
+	if (!EnsureSMB()) {
+		SMB_PUSH_ERR("IRX_LOAD_FAIL");
+	}
+
+	// ---- bring up the interface (mirrors OPL ethInitApplyConfig) ----
+	int mode = SmbLinkModeConst(linkmode);
+	do {
+		if (SmbWaitNetState(&SmbLinkUp) != 0) { SMB_PUSH_ERR("NO_LINK"); }
+	} while (SmbApplyLinkMode(mode) != 0);
+	if (SmbWaitNetState(&SmbLinkUp) != 0) { SMB_PUSH_ERR("NO_LINK"); }
+
+	unsigned char ip4[4], mask4[4], gw4[4], dns4[4];
+	SmbParseOctets(ps2ip_s, ip4);
+	SmbParseOctets(netmask_s, mask4);
+	SmbParseOctets(gw_s, gw4);
+	SmbParseOctets(dns_s, dns4);
+	SmbApplyIPConfig(dhcp, ip4, mask4, gw4, dns4);
+
+	if (dhcp && SmbWaitNetState(&SmbDhcpBound) != 0) {
+		SMB_PUSH_ERR("DHCP_FAIL");
+	}
+
+	// ---- SMB handshake on smb0: (mirrors OPL ethSMBConnect) ----
+	smbLogOn_in_t logon;
+	smbEcho_in_t echo;
+	smbOpenShare_in_t openshare;
+	int result;
+	memset(&logon, 0, sizeof(logon));
+	memset(&echo, 0, sizeof(echo));
+	memset(&openshare, 0, sizeof(openshare));
+
+	strncpy(logon.serverIP, server, sizeof(logon.serverIP) - 1);
+	logon.serverPort = port;
+
+	if (strlen(pass) > 0) {
+		smbGetPasswordHashes_in_t passwd;
+		smbGetPasswordHashes_out_t passwdhashes;
+		memset(&passwd, 0, sizeof(passwd));
+		strncpy(logon.User, user, sizeof(logon.User) - 1);
+		strncpy(passwd.password, pass, sizeof(passwd.password) - 1);
+		if (fileXioDevctl("smb0:", SMB_DEVCTL_GETPASSWORDHASHES, (void *)&passwd, sizeof(passwd), (void *)&passwdhashes, sizeof(passwdhashes)) == 0) {
+			memcpy((void *)logon.Password, (void *)&passwdhashes, sizeof(passwdhashes));
+			logon.PasswordType = HASHED_PASSWORD;
+			memcpy((void *)openshare.Password, (void *)&passwdhashes, sizeof(passwdhashes));
+			openshare.PasswordType = HASHED_PASSWORD;
+		} else {
+			strncpy(logon.Password, pass, sizeof(logon.Password) - 1);
+			logon.PasswordType = PLAINTEXT_PASSWORD;
+			strncpy(openshare.Password, pass, sizeof(openshare.Password) - 1);
+			openshare.PasswordType = PLAINTEXT_PASSWORD;
+		}
+	} else {
+		strncpy(logon.User, user, sizeof(logon.User) - 1);
+		logon.PasswordType = NO_PASSWORD;
+		openshare.PasswordType = NO_PASSWORD;
+	}
+
+	result = fileXioDevctl("smb0:", SMB_DEVCTL_LOGON, (void *)&logon, sizeof(logon), NULL, 0);
+	if (result < 0) {
+		SMB_PUSH_ERR((result == -SMB_DEVCTL_LOGON_ERR_CONN) ? "CONN_FAIL" : "LOGON_FAIL");
+	}
+
+	strcpy(echo.echo, "ALIVE ECHO TEST");
+	echo.len = strlen("ALIVE ECHO TEST");
+	if (fileXioDevctl("smb0:", SMB_DEVCTL_ECHO, (void *)&echo, sizeof(echo), NULL, 0) < 0) {
+		SMB_PUSH_ERR("ECHO_FAIL");
+	}
+
+	if (strlen(share) == 0) {
+		// Increment 1 requires an explicit share; the GETSHARELIST picker is later.
+		SMB_PUSH_ERR("SHARE_FAIL");
+	}
+	strncpy(openshare.ShareName, share, sizeof(openshare.ShareName) - 1);
+	if (fileXioDevctl("smb0:", SMB_DEVCTL_OPENSHARE, (void *)&openshare, sizeof(openshare), NULL, 0) < 0) {
+		SMB_PUSH_ERR("SHARE_FAIL");
+	}
+
+	lua_pushboolean(L, true);
+	lua_pushstring(L, "smb0:");
+	return 2;
+}
+#undef SMB_GET_STR
+#undef SMB_PUSH_ERR
+
 static const luaL_Reg System_functions[] = {
 	{"openFile",                   lua_openfile},
 	{"readFile",                   lua_readfile},
@@ -1393,6 +1714,8 @@ static const luaL_Reg System_functions[] = {
 	{"reinitPad",              lua_reinit_pad},
 	{"initMX4SIO",             lua_mx4sio_init},
 	{"initATA",                lua_ata_init},
+	{"initSMB",                lua_smb_init},
+	{"connectSMB",             lua_smb_connect},
 	{"bdmList",                lua_bdm_list},
 	{"refreshMassBackends",    lua_refresh_mass_backends},
 	{"getMassBackendInfo",     lua_get_mass_backend_info},
