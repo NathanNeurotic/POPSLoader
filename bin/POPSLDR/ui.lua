@@ -3719,8 +3719,8 @@ UI = {
           AddCycle(
             "SMB modules",
             function() return (UI.SmbModulesDraft == true) and "Installed" or "Not installed" end,
-            function() UI.SmbModulesDraft = not (UI.SmbModulesDraft == true); UI.SmbModulesDirty = true end,
-            function() UI.SmbModulesDraft = not (UI.SmbModulesDraft == true); UI.SmbModulesDirty = true end,
+            function() UI.ToggleSmbModulesDraft() end,
+            function() UI.ToggleSmbModulesDraft() end,
             function() return (UI.SmbModulesDraft == true) ~= (PLDR.SMB_MODULES == true) end
           )
           for smb_i = 1, #PLDR.SMB_FIELDS do
@@ -3812,6 +3812,12 @@ UI = {
           if (bdma_draft ~= nil and bdma_draft ~= "FAT32")
              or (PLDR.BDMA_MODE_KEY ~= nil and PLDR.BDMA_MODE_KEY ~= "FAT32") then
             UI.Notif_queue.add("Can't disable while BDMA is enabled\nSet BDMA Mode to FAT32 (None) first", "warn")
+            return
+          end
+          -- Same rule for SMB: the streaming pack lives in this folder, so it can't be
+          -- deleted while SMB modules are installed (draft or saved).
+          if (UI.SmbModulesDraft == true) or (PLDR.SMB_MODULES == true) then
+            UI.Notif_queue.add("Can't disable while SMB modules are installed\nSet SMB modules to Not installed first", "warn")
             return
           end
           local confirmed = UI.RunConfirm({
@@ -5118,6 +5124,19 @@ function UI.SmbFieldOpenEditor(field)
       UI.SmbDirty = true
     end)
   end
+end
+-- Master toggle for the SMB pack. Mirrors CycleBdma's guard: can't install while the
+-- POPSTARTER memory-card folder is off (the modules live there). Module-level to avoid
+-- adding a Play-closure local.
+function UI.ToggleSmbModulesDraft()
+  if (UI.SmbModulesDraft ~= true) and type(PLDR) == "table" and PLDR.POPSTARTER_MC_FOLDER == false then
+    if type(UI.Notif_queue) == "table" then
+      UI.Notif_queue.add("Enable the POPSTARTER Folder first\n(SMB modules must live on the memory card)", "warn")
+    end
+    return
+  end
+  UI.SmbModulesDraft = not (UI.SmbModulesDraft == true)
+  UI.SmbModulesDirty = true
 end
 
 function UI.SyncSettingsDraftFromRuntime()

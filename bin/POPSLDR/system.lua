@@ -3660,10 +3660,10 @@ function PLDR.LoadSettingsNonFatal()
   end
   PLDR.BDMA_MODE_KEY = NormalizeBdmaModeKey(bdma_mode) or PLDR.BDMA_MODE_KEY
   PLDR.ReconcileBdmaModeWithEffectiveState()
-  -- Invariant: BDMA/SMB modules live in mc:/POPSTARTER, so an enabled BDMA REQUIRES
-  -- the folder. Never honor an inconsistent saved state -- if BDMA is on, force the
-  -- POPSTARTER folder on (it can only be disabled while BDMA = FAT32/None).
-  if PLDR.BDMA_MODE_KEY ~= nil and PLDR.BDMA_MODE_KEY ~= "FAT32" then
+  -- Invariant: BDMA/SMB modules live in mc:/POPSTARTER, so enabled BDMA *or* installed
+  -- SMB modules REQUIRE the folder. Never honor an inconsistent saved state -- force the
+  -- POPSTARTER folder on (it can only be disabled while BDMA = FAT32/None AND SMB off).
+  if (PLDR.BDMA_MODE_KEY ~= nil and PLDR.BDMA_MODE_KEY ~= "FAT32") or (PLDR.SMB_MODULES == true) then
     PLDR.POPSTARTER_MC_FOLDER = true
   end
   PLDR.ApplyVideoStandardRuntime(PLDR.VIDEO_STANDARD)
@@ -3714,6 +3714,10 @@ function PLDR.CommitSettingsChanges(opts)
   -- next_collapse pattern directly above.
   local next_hide_text = (prev.hide_text == true)
   if type(opts.hide_text) == "boolean" then next_hide_text = opts.hide_text end
+  -- Same explicit-boolean rule as next_hide_text above: the `and/or` idiom would
+  -- collapse a legitimate `false` to prev, so SMB modules could never toggle OFF.
+  local next_smb_modules = (prev.smb_modules == true)
+  if type(opts.smb_modules) == "boolean" then next_smb_modules = opts.smb_modules end
   local next_state = {
     profile = next_profile,
     popstarter_path = NormalizeSelectedProfilePopstarterPath(next_profile, opts.popstarter_path or prev.popstarter_path, next_popstarter_mode),
@@ -3734,7 +3738,7 @@ function PLDR.CommitSettingsChanges(opts)
     overscan = next_overscan,
     hidden_devices = PLDR.NormalizeHiddenDevices(opts.hidden_devices or prev.hidden_devices),
     smb = (type(opts.smb) == "table") and PLDR.SmbCopy(opts.smb) or prev.smb,
-    smb_modules = (type(opts.smb_modules) == "boolean") and opts.smb_modules or prev.smb_modules
+    smb_modules = next_smb_modules
   }
   local apply_bdma = opts.apply_bdma == true
   local bdma_token = opts.bdma_token
@@ -3768,7 +3772,8 @@ function PLDR.CommitSettingsChanges(opts)
         popstarter_mode = next_state.popstarter_mode,
         bdma_mode = prev.bdma_mode,
         dkwdrv_path = next_state.dkwdrv_path,
-        video_standard = next_state.video_standard
+        video_standard = next_state.video_standard,
+        smb_modules = prev.smb_modules   -- BDMA failed before the apply_smb block ran, so SMB was never (un)installed; keep the flag matching the untouched card
       })
       -- The sidecar was already written with the NEW bdma_mode above; the apply
       -- just failed and we rolled bdma_mode back to prev in memory. Re-persist so
