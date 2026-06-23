@@ -64,6 +64,7 @@ extern int pad_reinit();
 
 static bool LoadIrxCheckedBuffer(const char *name, unsigned char *irx, unsigned int size, int *out_id, int *out_ret);
 static void BuildMassRootPath(int index, char *out_root, size_t out_sz);
+static bool EnsureDev9();   // defined below (with the SMB block); load-once via g_dev9_loaded
 
 #ifndef USBMASS_IOCTL_GET_DRIVERNAME
 #define USBMASS_IOCTL_GET_DRIVERNAME 0x0003
@@ -1355,10 +1356,17 @@ static int lua_ata_init(lua_State *L)
 
 	// ata_bd is a BDM block backend like mx4sio_bd: it makes the internal
 	// SATA/IDE drive (exFAT) enumerate under the mass: namespace, identified by
-	// the ioctl driver-name "ata" (see ClassifyMassBackend). Mirror the MX4SIO
-	// ordering and bring up the base BDM mass stack (bdm + bdmfs_fatfs +
-	// usbmass) first, then load ata_bd. EnsureUsbMass is idempotent.
-	bool ok = EnsureUsbMass();
+	// the ioctl driver-name "ata" (see ClassifyMassBackend).
+	//
+	// HW-BUG FIX (CosmicScale report 2026-06-23, "No exFAT HDD detected"): ata_bd is
+	// a RAW ATA block driver and needs dev9 (the PS2 HDD-bus hardware) up first.
+	// Unlike mx4sio_bd -- whose bus driver sio2man is boot-loaded -- dev9 is NOT
+	// boot-loaded (only the APA-HDD path loads it), so on a non-HDD boot the drive
+	// never enumerated. Load dev9 (shared with the HDD path, load-once via
+	// g_dev9_loaded). Deliberately do NOT bring up atad/ps2hdd/pfs: APA-Jail exFAT is
+	// read raw, and the APA stack would not see (and could fight) the exFAT region
+	// -- matches CosmicScale's "disable PFS" hint (he authored APA-Jail).
+	bool ok = EnsureDev9() && EnsureUsbMass();
 	if (ok && !ata_irx_loaded) {
 		ok = LoadIrxCheckedBuffer("ata_bd.irx", ata_bd_irx, size_ata_bd_irx, NULL, NULL);
 		if (ok) {
