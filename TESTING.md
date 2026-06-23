@@ -48,16 +48,19 @@ The Settings page already scrolls (focus-following viewport + scrollbar). New th
 - [ ] Every existing setting still saves/persists exactly as before (collapse state is session-only — it resets on reboot, nothing new is written to your settings file).
 - Report: a section that won't expand back, the actions becoming unreachable, the cursor getting stuck, or any setting failing to save.
 
-### ⭐ SMB / Network settings (NEW, settings-only — no network code yet)
+### ⭐ SMB / Network settings + module install (NEW — writes files to the memory card)
 
-A new **SMB / Network** section in Settings lets you enter your server/share/credentials ahead of the actual SMB browsing (which lands in a later build). This stage is **config + persistence only** — nothing connects to a network yet, and **no SMB code runs at boot or anywhere outside this page.** The SMB *carousel* page still shows "not implemented".
-- [ ] *Settings* → expand **SMB / Network**. You should see: **IP assignment** (DHCP/Static), **PS2 IP / Netmask / Gateway / DNS**, **Link mode**, **Address type**, **NetBIOS name**, **Server IP**, **Port** (445), **Share**, **User**, **Password**, **Games path**.
-- [ ] **Cycle** rows (IP assignment, Link mode, Address type) change with **Left/Right** / **X**. **Text** rows (IPs, Server, Share, User, Password, Games path) open the on-screen keyboard on **X**.
-- [ ] Password shows masked (`****`); empty **Games path** shows *"(auto / cwd-relative)"*; empty Share/User show *"(not set)"*.
-- [ ] Edit a couple of fields → they show the **unsaved (accent) marker** → **Save Changes** → **reboot** → values **persisted** exactly as entered.
-- [ ] **Reset Defaults** restores the SMB fields to defaults (DHCP on, Server 192.168.0.1, Port 445, blank Share/User/Password/Games path) — then Save to keep.
-- [ ] ⚠️ **No regression:** every *other* setting still saves/loads as before, and **boot time is unchanged** (SMB must never load anything at boot).
-- Report: a field that won't persist, garbled values after reboot, any other setting breaking, or any boot-time slowdown.
+A new **SMB / Network** section in Settings lets you enter your server/share/credentials and **install the in-game SMB streaming pack into `mc0:/POPSTARTER/`** (the same way BDMA installs its modules). **POPSLoader itself still loads no network code and connects to nothing** — the pack is what POPStarter uses to stream a game off a share at launch, which a later build wires up. **Nothing SMB runs at boot.** The SMB *carousel* page still shows "not implemented".
+- [ ] *Settings* → expand **SMB / Network**. Top row **SMB modules** (Installed / Not installed); below: **IP assignment** (DHCP/Static), **PS2 IP / Netmask / Gateway / DNS**, **Link mode**, **Address type**, **NetBIOS name**, **Server IP**, **Port** (445), **Share**, **User**, **Password**, **Games path**.
+- [ ] **Cycle** rows change with **Left/Right** / **X**; **text** rows open the on-screen keyboard on **X**. Password masks (`****`); empty **Games path** shows *"(auto / cwd-relative)"*; empty Share/User show *"(not set)"*.
+- [ ] Edit fields → **unsaved (accent) marker** → **Save Changes** → **reboot** → values **persisted** exactly as entered.
+- [ ] ⭐ **SMB modules = Installed → Save:** `mc0:/POPSTARTER/` should now hold `poweroff.irx`, `ps2dev9.irx`, `ps2ip.irx`, `ps2smap.irx`, `smbman.irx`, `SMSUTILS.irx`, plus `SMBCONFIG.DAT` and (only when **IP assignment = Static**) `IPCONFIG.DAT`. Open `SMBCONFIG.DAT`: line 1 = `<Server>[:<Port>] <Share>`, then (if User set) username + password on lines 2/3. `IPCONFIG.DAT` = `<PS2 IP> <Netmask> <Gateway>`, and is **absent on DHCP**.
+- [ ] ⭐ **Change an SMB field while Installed → Save:** the `.DAT` files **regenerate** with the new values (the 6 IRX are rewritten harmlessly).
+- [ ] ⭐⚠️ **SMB modules = Not installed → Save:** the 8 SMB files are **removed**, but **`icon.sys`, `*.icn`, and any installed BDMA modules (`usbd.irx`/`usbhdfsd.irx`) MUST remain** — confirm BDMA still works afterward.
+- [ ] **Reset Defaults** sets SMB modules → Not installed + fields to defaults (Save then uninstalls, mirroring BDMA→FAT32).
+- [ ] ⚠️ **No regression:** every *other* setting still saves/loads as before, and **boot time is unchanged**.
+- Report: a field that won't persist, the wrong files installed/removed, **BDMA modules or icons clobbered by SMB-off**, or any boot slowdown.
+- **Not yet testable (later build):** actually browsing/launching SMB games — the streaming pack is staged, but the carousel page isn't wired. The exact `.DAT` byte format is from the recovered POPStarter docs and is **hardware-confirmable only** (report if POPStarter rejects a generated `SMBCONFIG.DAT`).
 
 ### Navigation & input — ✅ core nav CONFIRMED on hardware (oldman63); the rest still to feel out
 

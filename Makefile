@@ -103,7 +103,9 @@ EMBEDDED_RSC = boot.o builtin_font.o \
 	asset_usbd_irx_usbexfat.o asset_usbhdfsd_irx_usbexfat.o asset_usbhdfsd_irx_mx4sio.o \
 	asset_usbd_irx_mmce.o asset_usbhdfsd_irx_mmce.o \
 	asset_usbd_irx_ata.o asset_usbhdfsd_irx_ata.o \
-	asset_icon_sys_bdma.o asset_list_icn_bdma.o asset_del_icn_bdma.o
+	asset_icon_sys_bdma.o asset_list_icn_bdma.o asset_del_icn_bdma.o \
+	asset_smb_poweroff_irx.o asset_smb_ps2dev9_irx.o asset_smb_ps2ip_irx.o \
+	asset_smb_ps2smap_irx.o asset_smb_smbman_irx.o asset_smb_smsutils_irx.o
 
 EE_OBJS = $(APP_CORE) $(LUA_LIBS) $(IOP_MODULES) $(EMBEDDED_RSC)
 
@@ -214,6 +216,23 @@ $(EE_ASM_DIR)asset_list_icn_bdma.c: bin/POPSLDR/list.icn.bdma | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_list_icn_bdma
 $(EE_ASM_DIR)asset_del_icn_bdma.c: bin/POPSLDR/del.icn.bdma | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_del_icn_bdma
+
+# SMB streaming pack (popsmb/) -- embedded into the ELF; PLDR.ApplySmbModules stages
+# these to mc?:/POPSTARTER/ when SMB modules are turned on. Explicit rules (more
+# specific than the generic `vpath %.irx` rule below) + the popsmb/ source path keep
+# them distinct from the IOP boot modules ps2dev9.o / ps2ip.o (which resolve via vpath).
+$(EE_ASM_DIR)asset_smb_poweroff_irx.c: bin/POPSLDR/popsmb/poweroff.irx | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_smb_poweroff_irx
+$(EE_ASM_DIR)asset_smb_ps2dev9_irx.c: bin/POPSLDR/popsmb/ps2dev9.irx | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_smb_ps2dev9_irx
+$(EE_ASM_DIR)asset_smb_ps2ip_irx.c: bin/POPSLDR/popsmb/ps2ip.irx | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_smb_ps2ip_irx
+$(EE_ASM_DIR)asset_smb_ps2smap_irx.c: bin/POPSLDR/popsmb/ps2smap.irx | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_smb_ps2smap_irx
+$(EE_ASM_DIR)asset_smb_smbman_irx.c: bin/POPSLDR/popsmb/smbman.irx | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_smb_smbman_irx
+$(EE_ASM_DIR)asset_smb_smsutils_irx.c: bin/POPSLDR/popsmb/SMSUTILS.irx | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_smb_smsutils_irx
 
 #------------------------------------------------------------------#
 

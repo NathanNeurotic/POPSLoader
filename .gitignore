@@ -32,6 +32,8 @@ bin/test.pdf
 bin/System/noindex.lua
 *.a
 *.irx
+# SMB streaming pack IRX are embedded into the ELF (bin2c), so they must be tracked.
+!bin/POPSLDR/popsmb/*.irx
 
 obj/
 asm/

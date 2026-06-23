@@ -2596,6 +2596,19 @@ local BDMA_SUFFIX = {
   ATA = ".ata"
 }
 
+-- SMB-modules pack (mirrors the BDMA install pattern; SAME mc:/POPSTARTER folder,
+-- DISJOINT file set). The 6 IRX install statically (no per-backend suffix); the 2
+-- .DAT are GENERATED at install time from PLDR.SMB. SMB-OFF deletes ONLY these 8
+-- files, leaving icon.sys/*.icn and the BDMA usbd/usbhdfsd modules untouched
+-- (basenames verified disjoint from BDMA_COPY_FILES + BDMA_UI_FILES). Uppercase
+-- SMSUTILS.irx matches bin/POPSLDR/popsmb/ exactly (the mc FS is case-preserving,
+-- so install name and delete name must stay in lockstep).
+-- PLDR fields (NOT chunk-level locals) -- system.lua is near Lua's 200-local cap.
+PLDR.SMB_IRX_FILES = {
+  "poweroff.irx", "ps2dev9.irx", "ps2ip.irx",
+  "ps2smap.irx", "smbman.irx", "SMSUTILS.irx"
+}
+
 PLDR.MASS = PLDR.MASS or {
   CACHE = {},
   ORDER = {},
@@ -3199,7 +3212,8 @@ local function EncodeSettings()
     "GAMELIST_CACHE="..((PLDR.GAMELIST_CACHE == true) and "1" or "0"),
     "BOOT_SOUND="..((PLDR.BOOT_SOUND ~= false) and "1" or "0"),
     "OVERSCAN="..tostring(math.floor(tonumber(PLDR.OVERSCAN) or 0)),
-    "DESC_SCROLL_SPEED="..((PLDR.DESC_SCROLL_SPEED == "fast" or PLDR.DESC_SCROLL_SPEED == "medium") and PLDR.DESC_SCROLL_SPEED or "slow")
+    "DESC_SCROLL_SPEED="..((PLDR.DESC_SCROLL_SPEED == "fast" or PLDR.DESC_SCROLL_SPEED == "medium") and PLDR.DESC_SCROLL_SPEED or "slow"),
+    "SMB_MODULES="..((PLDR.SMB_MODULES == true) and "1" or "0")
   }
   PLDR.SmbAppendLines(lines, PLDR.SMB)
   return table.concat(lines, "\n").."\n"
@@ -3248,7 +3262,8 @@ local function SnapshotSettingsState()
     boot_sound = (PLDR.BOOT_SOUND ~= false),
     overscan = math.floor(tonumber(PLDR.OVERSCAN) or 0),
     desc_scroll_speed = ((PLDR.DESC_SCROLL_SPEED == "fast" or PLDR.DESC_SCROLL_SPEED == "medium") and PLDR.DESC_SCROLL_SPEED or "slow"),
-    smb = PLDR.SmbCopy(PLDR.SMB)
+    smb = PLDR.SmbCopy(PLDR.SMB),
+    smb_modules = (PLDR.SMB_MODULES == true)
   }
 end
 
@@ -3310,6 +3325,9 @@ local function ApplySettingsState(state)
   end
   if type(state.smb) == "table" then
     PLDR.SMB = PLDR.SmbCopy(state.smb)
+  end
+  if type(state.smb_modules) == "boolean" then
+    PLDR.SMB_MODULES = state.smb_modules
   end
   PLDR.ApplyVideoStandardRuntime(PLDR.VIDEO_STANDARD)
   if type(state.hide_text) == "boolean" and type(UI) == "table" then
@@ -3433,6 +3451,7 @@ function PLDR.LoadSettingsNonFatal()
   PLDR.BOOT_SOUND = true  -- play the boot/splash chime (default ON; oldman63 #501 wanted an off switch)
   PLDR.OVERSCAN = 0  -- CRT overscan inset, permille (0 = off; OPL rmSetOverscan units/math)
   PLDR.SMB = PLDR.SmbDefaults()  -- SMB/Network config (settings only; network loads lazily, never at boot)
+  PLDR.SMB_MODULES = false  -- whether the SMB streaming pack is installed in mc:/POPSTARTER (sidecar-truthed)
   if type(UI) == "table" then
     if type(UI.SetHideTextMode) == "function" then
       UI.SetHideTextMode(false, false)
@@ -3634,6 +3653,11 @@ function PLDR.LoadSettingsNonFatal()
   if type(PLDR.SmbParse) == "function" then
     PLDR.SMB = PLDR.SmbParse(data)
   end
+  local smb_modules = string.match(data, "\nSMB_MODULES=([^\n]+)") or string.match(data, "^SMB_MODULES=([^\n]+)")
+  local smb_modules_enabled = ParseBooleanSetting(smb_modules)
+  if smb_modules_enabled ~= nil then
+    PLDR.SMB_MODULES = smb_modules_enabled == true
+  end
   PLDR.BDMA_MODE_KEY = NormalizeBdmaModeKey(bdma_mode) or PLDR.BDMA_MODE_KEY
   PLDR.ReconcileBdmaModeWithEffectiveState()
   -- Invariant: BDMA/SMB modules live in mc:/POPSTARTER, so an enabled BDMA REQUIRES
@@ -3709,7 +3733,8 @@ function PLDR.CommitSettingsChanges(opts)
     boot_sound = next_boot_sound,
     overscan = next_overscan,
     hidden_devices = PLDR.NormalizeHiddenDevices(opts.hidden_devices or prev.hidden_devices),
-    smb = (type(opts.smb) == "table") and PLDR.SmbCopy(opts.smb) or prev.smb
+    smb = (type(opts.smb) == "table") and PLDR.SmbCopy(opts.smb) or prev.smb,
+    smb_modules = (type(opts.smb_modules) == "boolean") and opts.smb_modules or prev.smb_modules
   }
   local apply_bdma = opts.apply_bdma == true
   local bdma_token = opts.bdma_token
@@ -3754,6 +3779,25 @@ function PLDR.CommitSettingsChanges(opts)
       PLDR.SaveSettingsAtomic()
       PLDR.ReconcileBdmaModeWithEffectiveState()
       return false, "bdma_apply_failed"
+    end
+  end
+
+  if opts.apply_smb == true then
+    EmitStage("apply_smb", "Applying SMB modules")
+    -- next_state was already applied above, so PLDR.SMB / PLDR.SMB_MODULES hold the
+    -- DESIRED state: ApplySmbModules reads PLDR.SMB for the .DAT, smb_modules picks
+    -- install vs remove. On failure, roll the flag back to prev + re-persist so the
+    -- sidecar matches the effective (rolled-back) state, mirroring the BDMA rollback.
+    local smb_ok
+    if next_state.smb_modules == true then
+      smb_ok = PLDR.ApplySmbModules()
+    else
+      smb_ok = PLDR.RemoveSmbModules()
+    end
+    if not smb_ok then
+      PLDR.SMB_MODULES = (prev.smb_modules == true)
+      PLDR.SaveSettingsAtomic()
+      return false, "smb_apply_failed"
     end
   end
 
@@ -4475,6 +4519,102 @@ function PLDR.ApplyBdmaMode(mode_key)
   end
   WriteBdmaModeMarker(selected)
   return true
+end
+
+-- ============================================================================
+-- SMB-modules install/remove. Mirrors ApplyBdmaMode's copy/delete pattern, but:
+--   * the source-of-truth is the .pldrs SMB_MODULES=1/0 line (no on-card marker,
+--     no boot reconcile -- unlike BDMA's bdma_mode.txt);
+--   * the 2 .DAT files are GENERATED from PLDR.SMB, not copied;
+--   * SMB-OFF deletes ONLY the 8 SMB-exclusive files (never RemovePopstarterMcFolder).
+-- All hardware-only-verifiable: the exact .DAT byte format is grounded in the
+-- recovered POPStarter docs but only a real PS2 + this smbman.irx confirm it.
+-- ============================================================================
+
+-- IPCONFIG.DAT body, or nil when DHCP (caller deletes any stale file instead).
+-- Format: "<PS2_IP> <NETMASK> <GATEWAY>" (single line, no trailing newline).
+function PLDR.RenderSmbIpconfig(cfg)
+  if cfg.DHCP == true then return nil end
+  return tostring(cfg.PS2_IP or "").." "..tostring(cfg.NETMASK or "").." "..tostring(cfg.GATEWAY or "")
+end
+
+-- SMBCONFIG.DAT body. Line 1 = "<SERVER>[:<PORT>] <SHARE>" (the colon-port only
+-- when PORT != 445; the colon binds to the server, never the share). Lines 2/3
+-- (CRLF-separated) carry USER then plaintext PASS, omitted entirely for guest.
+function PLDR.RenderSmbConfig(cfg)
+  local server = tostring(cfg.SERVER or "")
+  local port = tostring(cfg.PORT or "445")
+  local line1 = server..((port ~= "" and port ~= "445") and (":"..port) or "").." "..tostring(cfg.SHARE or "")
+  local user = tostring(cfg.USER or "")
+  if user ~= "" then
+    return line1.."\r\n"..user.."\r\n"..tostring(cfg.PASS or "")
+  end
+  return line1
+end
+
+-- ON: install the SMB pack into mc:/POPSTARTER. Stages the 6 IRX (filesystem
+-- override -> embedded fallback, exactly like ApplyBdmaMode) and generates the
+-- 2 .DAT from the current PLDR.SMB. Idempotent (atomic overwrites), so it is safe
+-- to re-run whenever an SMB field changes to regenerate the .DAT.
+function PLDR.ApplySmbModules()
+  if not PLDR.EnsurePopstarterDir() then
+    if UI ~= nil and UI.Notif_queue ~= nil then UI.Notif_queue.add("Cannot access mc0:/POPSTARTER") end
+    return false
+  end
+  local cfg = PLDR.SmbCopy(PLDR.SMB)
+  for i = 1, #PLDR.SMB_IRX_FILES do
+    local name = PLDR.SMB_IRX_FILES[i]
+    local dest = POPSTARTER_PACK_ROOT.."/"..name
+    local paths = PLDR.BdmaSourceCandidates(name)
+    local fd, source = PLDR.TryOpenFirst(paths)
+    if fd ~= nil and (type(fd) ~= "number" or fd >= 0) then
+      System.closeFile(fd)
+    end
+    if source == nil then
+      local bytes = GetEmbeddedAssetBytes(name)
+      if bytes == nil then
+        if UI ~= nil and UI.Notif_queue ~= nil then UI.Notif_queue.add("Missing SMB module (tried):\n"..table.concat(paths, "\n")) end
+        return false
+      end
+      if not WriteBytesAtomicBounded(bytes, dest) then return false end
+    else
+      local src_size = GetFileSizeSafe(source)
+      if not CopyExternalAtomicBounded(source, dest, src_size) then return false end
+    end
+  end
+  -- IPCONFIG.DAT: write the static line, or delete any stale file when on DHCP.
+  local ip_dest = POPSTARTER_PACK_ROOT.."/IPCONFIG.DAT"
+  local ip_body = PLDR.RenderSmbIpconfig(cfg)
+  if ip_body == nil then
+    if not DeleteIfExists(ip_dest) then return false end
+  else
+    if not WriteBytesAtomicBounded(ip_body, ip_dest) then return false end
+  end
+  -- SMBCONFIG.DAT: always generated from the current settings.
+  if not WriteBytesAtomicBounded(PLDR.RenderSmbConfig(cfg), POPSTARTER_PACK_ROOT.."/SMBCONFIG.DAT") then
+    return false
+  end
+  return true
+end
+
+-- OFF: delete ONLY the 8 SMB-exclusive files from mc:/POPSTARTER, trying them all
+-- (so a partial/never-installed pack still cleans up). Leaves icon.sys / *.icn and
+-- the BDMA usbd/usbhdfsd modules intact. NEVER calls RemovePopstarterMcFolder.
+function PLDR.RemoveSmbModules()
+  if not PLDR.EnsurePopstarterDir() then
+    if UI ~= nil and UI.Notif_queue ~= nil then UI.Notif_queue.add("Cannot access mc0:/POPSTARTER") end
+    return false
+  end
+  local ok = true
+  for i = 1, #PLDR.SMB_IRX_FILES do
+    if not DeleteIfExists(POPSTARTER_PACK_ROOT.."/"..PLDR.SMB_IRX_FILES[i]) then ok = false end
+  end
+  if not DeleteIfExists(POPSTARTER_PACK_ROOT.."/IPCONFIG.DAT") then ok = false end
+  if not DeleteIfExists(POPSTARTER_PACK_ROOT.."/SMBCONFIG.DAT") then ok = false end
+  if not ok and UI ~= nil and UI.Notif_queue ~= nil then
+    UI.Notif_queue.add("Failed to remove some SMB modules")
+  end
+  return ok
 end
 
 function PLDR.EnsurePopstarterUiAssets()

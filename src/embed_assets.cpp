@@ -91,6 +91,19 @@ extern unsigned char asset_del_icn_bdma[];
 extern unsigned int size_asset_del_icn_bdma;
 extern unsigned char asset_boot_adp[];
 extern unsigned int size_asset_boot_adp;
+// SMB streaming pack (popsmb/) -- staged to mc?:/POPSTARTER/ by PLDR.ApplySmbModules.
+extern unsigned char asset_smb_poweroff_irx[];
+extern unsigned int size_asset_smb_poweroff_irx;
+extern unsigned char asset_smb_ps2dev9_irx[];
+extern unsigned int size_asset_smb_ps2dev9_irx;
+extern unsigned char asset_smb_ps2ip_irx[];
+extern unsigned int size_asset_smb_ps2ip_irx;
+extern unsigned char asset_smb_ps2smap_irx[];
+extern unsigned int size_asset_smb_ps2smap_irx;
+extern unsigned char asset_smb_smbman_irx[];
+extern unsigned int size_asset_smb_smbman_irx;
+extern unsigned char asset_smb_smsutils_irx[];
+extern unsigned int size_asset_smb_smsutils_irx;
 
 #define ASSET_ENTRY(key_name, symbol_name) { key_name, symbol_name, (size_t)size_##symbol_name }
 
@@ -145,6 +158,12 @@ static const embedded_asset_t g_embedded_assets[] = {
 	ASSET_ENTRY("list.icn.bdma", asset_list_icn_bdma),
 	ASSET_ENTRY("del.icn.bdma", asset_del_icn_bdma),
 	ASSET_ENTRY("boot.adp", asset_boot_adp),
+	ASSET_ENTRY("poweroff.irx", asset_smb_poweroff_irx),
+	ASSET_ENTRY("ps2dev9.irx", asset_smb_ps2dev9_irx),
+	ASSET_ENTRY("ps2ip.irx", asset_smb_ps2ip_irx),
+	ASSET_ENTRY("ps2smap.irx", asset_smb_ps2smap_irx),
+	ASSET_ENTRY("smbman.irx", asset_smb_smbman_irx),
+	ASSET_ENTRY("SMSUTILS.irx", asset_smb_smsutils_irx),
 
 
 	ASSET_ENTRY("POPSLDR/IMG/USB.png", asset_usb_png),
@@ -189,7 +208,13 @@ static const embedded_asset_t g_embedded_assets[] = {
 	ASSET_ENTRY("POPSLDR/icon.sys.bdma", asset_icon_sys_bdma),
 	ASSET_ENTRY("POPSLDR/list.icn.bdma", asset_list_icn_bdma),
 	ASSET_ENTRY("POPSLDR/del.icn.bdma", asset_del_icn_bdma),
-	ASSET_ENTRY("POPSLDR/boot.adp", asset_boot_adp)
+	ASSET_ENTRY("POPSLDR/boot.adp", asset_boot_adp),
+	ASSET_ENTRY("POPSLDR/poweroff.irx", asset_smb_poweroff_irx),
+	ASSET_ENTRY("POPSLDR/ps2dev9.irx", asset_smb_ps2dev9_irx),
+	ASSET_ENTRY("POPSLDR/ps2ip.irx", asset_smb_ps2ip_irx),
+	ASSET_ENTRY("POPSLDR/ps2smap.irx", asset_smb_ps2smap_irx),
+	ASSET_ENTRY("POPSLDR/smbman.irx", asset_smb_smbman_irx),
+	ASSET_ENTRY("POPSLDR/SMSUTILS.irx", asset_smb_smsutils_irx)
 };
 
 static const embedded_asset_t *embedded_find(const char *key)

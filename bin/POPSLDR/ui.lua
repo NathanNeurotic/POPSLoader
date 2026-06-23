@@ -667,6 +667,8 @@ UI = {
     KeyboardLayoutDraft = nil;
     SmbDraft = nil;
     SmbDirty = false;
+    SmbModulesDraft = false;
+    SmbModulesDirty = false;
     HideTextMode = false;
     SettingsReturnScene = nil;
     SettingsEntryHideTextMode = false;
@@ -3101,6 +3103,7 @@ UI = {
             prepare = 0.18,
             save = 0.42,
             apply_bdma = 0.76,
+            apply_smb = 0.86,
             finalize = 0.96
           }
           local function report_stage(stage, message)
@@ -3170,6 +3173,9 @@ UI = {
                 hide_text = UI.HideTextMode == true,
                 prev_hide_text = UI.SettingsEntryHideTextMode == true,
                 smb = UI.SmbDraft,
+                smb_modules = UI.SmbModulesDraft,
+                apply_smb = (UI.SmbModulesDirty == true)
+                            or (UI.SmbModulesDraft == true and UI.SmbDirty == true),
                 apply_bdma = UI.BdmaDirty,
                 bdma_token = save_token,
                 on_stage = report_stage
@@ -3228,6 +3234,7 @@ UI = {
             UI.DkwdrvDirty = false
             UI.VideoStandardDirty = false
             UI.SmbDirty = false
+            UI.SmbModulesDirty = false
             clear_settings_session()
             -- HDD-write probe (TEST): on an HDD boot, report whether a __.POPS
             -- GAME partition accepts a scoped write (used for HDD per-game .hide
@@ -3271,6 +3278,10 @@ UI = {
               UI.Notif_queue.add("BDMA mode change didn't apply\nsettings weren't saved", "error")
               UI.SyncSettingsSelectionFromRuntime()
               UI.SyncSettingsDraftFromRuntime()
+            elseif reason == "smb_apply_failed" then
+              UI.Notif_queue.add("SMB modules didn't install/remove\nsettings were rolled back", "error")
+              UI.SyncSettingsSelectionFromRuntime()
+              UI.SyncSettingsDraftFromRuntime()
             elseif reason == "save_failed" then
               UI.Notif_queue.add("Couldn't save settings\n"..tostring(PLDR.SETTINGS_PATH or "mc0:/POPSTARTER/.pldrs").." may be read-only"..((type(BOOT_MX4SIO_PROBE_RESULT) == "string" and BOOT_MX4SIO_PROBE_RESULT ~= "") and "\nmx4sio probe: "..BOOT_MX4SIO_PROBE_RESULT or ""), "error")
               UI.SyncSettingsSelectionFromRuntime()
@@ -3288,6 +3299,7 @@ UI = {
               UI.DkwdrvDirty = false
               UI.VideoStandardDirty = false
               UI.SmbDirty = false
+              UI.SmbModulesDirty = false
               clear_settings_session()
               UI.SceneChange(target_scene)
             end
@@ -3417,6 +3429,11 @@ UI = {
               UI.SmbDirty = true
               UI.ProfileDirty = true
             end
+          end
+          if UI.SmbModulesDraft == true then   -- default = not installed (mirrors BDMA->FAT32 reset)
+            UI.SmbModulesDraft = false
+            UI.SmbModulesDirty = true
+            UI.ProfileDirty = true
           end
           UI.Notif_queue.add("Profile defaults restored", "ok")
         end
@@ -3696,6 +3713,16 @@ UI = {
         -- all editing routes through UI.SmbDraft + UI.SmbDirty (committed as opts.smb).
         if type(PLDR.SMB_FIELDS) == "table" then
           AddSection("SMB / Network")
+          -- Master switch: install/remove the in-game SMB streaming pack in
+          -- mc:/POPSTARTER (mirrors the BDMA Mode row). Applied at save time via
+          -- opts.apply_smb -> PLDR.ApplySmbModules/RemoveSmbModules.
+          AddCycle(
+            "SMB modules",
+            function() return (UI.SmbModulesDraft == true) and "Installed" or "Not installed" end,
+            function() UI.SmbModulesDraft = not (UI.SmbModulesDraft == true); UI.SmbModulesDirty = true end,
+            function() UI.SmbModulesDraft = not (UI.SmbModulesDraft == true); UI.SmbModulesDirty = true end,
+            function() return (UI.SmbModulesDraft == true) ~= (PLDR.SMB_MODULES == true) end
+          )
           for smb_i = 1, #PLDR.SMB_FIELDS do
             local smb_field = PLDR.SMB_FIELDS[smb_i]
             local smb_label = UI.SmbFieldLabel(smb_field)
@@ -3768,6 +3795,7 @@ UI = {
             or (math.floor(tonumber(UI.Overscan) or 0)) ~= (math.floor(tonumber(UI.SettingsEntryOverscan) or 0))
             or (UI.BootPageIndex or 1) ~= (UI.SettingsEntryBootPageIndex or 1)
             or (UI.SmbDirty == true)
+            or (UI.SmbModulesDirty == true)
         end
 
         local function ToggleMcFolder()
@@ -5114,6 +5142,8 @@ function UI.SyncSettingsDraftFromRuntime()
     UI.SmbDraft = {}
   end
   UI.SmbDirty = false
+  UI.SmbModulesDraft = (type(PLDR) == "table" and PLDR.SMB_MODULES == true)
+  UI.SmbModulesDirty = false
 end
 function UI.SyncSettingsSelectionFromRuntime()
   if type(PLDR.ReconcileBdmaModeWithEffectiveState) == "function" then
