@@ -1380,6 +1380,7 @@ static int lua_ata_init(lua_State *L)
 bool g_dev9_loaded = false;   // shared with luaHDD.cpp Load_HDD_IRX (load ps2dev9 once)
 static bool net_irx_loaded = false;
 static bool smb_irx_loaded = false;
+static char SMB_IFNAME[] = "sm0";   // mutable: ps2ip_getconfig takes char*, not const char*
 
 static bool EnsureDev9()
 {
@@ -1419,7 +1420,7 @@ static bool EnsureNet()
 	if (!LoadIrxCheckedBuffer("ps2ips.irx", ps2ips_irx, size_ps2ips_irx, NULL, NULL)) {
 		return false;
 	}
-	ps2ip_init();
+	ps2ipInit();
 	net_irx_loaded = true;
 	return true;
 }
@@ -1447,7 +1448,7 @@ static int SmbLinkUp(void)
 static int SmbDhcpBound(void)
 {
 	t_ip_info ip_info;
-	if (ps2ip_getconfig("sm0", &ip_info) < 0) {
+	if (ps2ip_getconfig(SMB_IFNAME, &ip_info) < 0) {
 		return 0;
 	}
 	if (!ip_info.dhcp_enabled) {
@@ -1506,7 +1507,7 @@ static int SmbApplyIPConfig(int dhcp, const unsigned char ip[4], const unsigned 
 {
 	t_ip_info ip_info;
 	struct ip4_addr ipaddr, netmask, gateway, dnsaddr;
-	if (ps2ip_getconfig("sm0", &ip_info) < 0) {
+	if (ps2ip_getconfig(SMB_IFNAME, &ip_info) < 0) {
 		return -1;
 	}
 	if (dhcp) {
