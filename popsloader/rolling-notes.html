@@ -5,12 +5,11 @@
 <link rel="stylesheet" href="../assets/style.css">
 </head><body data-base="../">
 <header class="topbar">
-  <button class="menu-btn" aria-label="Menu">☰</button>
+  <button class="menu-btn" aria-label="Menu"></button>
   <a class="brand" href="../index.html">
     <span class="psbtns"><i class="tri">&#9651;</i><i class="cir">&#9711;</i><i class="cro">&#10005;</i><i class="squ">&#9633;</i></span>
     POPStarter <small>DOCS</small></a>
   <div class="search">
-    <span class="ico">🔎</span>
     <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
     <kbd>/</kbd>
     <div id="results"></div>
@@ -18,39 +17,39 @@
 </header>
 <div class="layout">
   <nav class="sidebar">
-    <a href="../index.html"><span class="em">🏠</span>Home</a>
+    <a href="../index.html">Home</a>
     <h4>POPSLoader · this project</h4>
-    <a href="../popsloader.html" class="active"><span class="em">📦</span>POPSLoader docs</a>
-    <a href="../launch-arguments.html"><span class="em">🚀</span>Launch arguments</a>
-    <h4>POPStarter · documentation</h4><a href="../getting-started.html"><span class="em">🚀</span>Getting Started</a>
-<a href="../storage.html"><span class="em">💾</span>Storage Backends</a>
-<a href="../cheats.html"><span class="em">🎮</span>Cheats</a>
-<a href="../compatibility.html"><span class="em">🩹</span>Patches & TROJANs</a>
-<a href="../igr.html"><span class="em">🎯</span>IGR & Hotkeys</a>
-<a href="../config.html"><span class="em">🔧</span>Config Table</a>
-<a href="../multidisc.html"><span class="em">💿</span>Multi-disc & VMC</a>
-<a href="../troubleshooting.html"><span class="em">🛠️</span>Troubleshooting</a>
-<a href="../downloads.html"><span class="em">📦</span>Downloads</a>
-<a href="../history.html"><span class="em">📜</span>History</a>
+    <a href="../popsloader.html" class="active">POPSLoader docs</a>
+    <a href="../launch-arguments.html">Launch arguments</a>
+    <h4>POPStarter · documentation</h4><a href="../getting-started.html">Getting Started</a>
+<a href="../storage.html">Storage Backends</a>
+<a href="../cheats.html">Cheats</a>
+<a href="../compatibility.html">Patches & TROJANs</a>
+<a href="../igr.html">IGR & Hotkeys</a>
+<a href="../config.html">Config Table</a>
+<a href="../multidisc.html">Multi-disc & VMC</a>
+<a href="../troubleshooting.html">Troubleshooting</a>
+<a href="../downloads.html">Downloads</a>
+<a href="../history.html">History</a>
     <h4>Reference</h4>
-    <a href="../glossary.html"><span class="em">📖</span>Glossary</a>
-    <a href="../commands.html"><span class="em">⌨️</span>Command index</a>
-    <a href="../faq.html"><span class="em">❓</span>FAQ &amp; known bugs</a>
-    <a href="../known-issues.html"><span class="em">🐞</span>Known issues</a>
-    <a href="../compatibility-table.html"><span class="em">📊</span>Compatibility table</a>
-    <a href="../thread-study.html"><span class="em">🧵</span>Community knowledge</a>
-    <a href="../credits.html"><span class="em">🙏</span>Credits</a>
-    <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
+    <a href="../glossary.html">Glossary</a>
+    <a href="../commands.html">Command index</a>
+    <a href="../faq.html">FAQ &amp; known bugs</a>
+    <a href="../known-issues.html">Known issues</a>
+    <a href="../compatibility-table.html">Compatibility table</a>
+    <a href="../thread-study.html">Community knowledge</a>
+    <a href="../credits.html">Credits</a>
+    <a href="../wiki/index.html">All wiki pages</a>
     <h4>Related projects</h4>
-    <a href="https://nathanneurotic.github.io/Open-PS2-Loader"><span class="em">🎮</span>RiptOPL (OPL) docs ↗</a>
-    <a href="https://ps2homebrewstore.com"><span class="em">🛒</span>PS2 Homebrew Store ↗</a>
+    <a href="https://nathanneurotic.github.io/Open-PS2-Loader">RiptOPL (OPL) docs ↗</a>
+    <a href="https://ps2homebrewstore.com">PS2 Homebrew Store ↗</a>
   </nav>
   <main class="content"><h1>Rolling notes</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/BETA-13-PLAY/ROLLING_NOTES.md">view on GitHub ↗</a></p><p><strong>This is a bleeding-edge TEST build, not a stable release.</strong> It has everything from the latest stable <strong>plus</strong> features still being tested. Please try it and report anything odd — and mention you're on the <strong>rolling</strong> build. To go back to stable, just reinstall the latest entry on the <strong>Releases</strong> page.</p>
 <p>Here's everything new or changed <strong>since BETA-9</strong>.</p>
 <hr />
-<h2 id="currently-testing-newest-wed-love-your-feedback">🆕 Currently testing (newest — we'd love your feedback)</h2>
+<h2 id="currently-testing-newest-wed-love-your-feedback"> Currently testing (newest — we'd love your feedback)</h2>
 <ul>
-<li><strong>🆕 Internal HDD (exFAT) — NEW backend!</strong> You can now play from an <strong>exFAT-formatted internal SATA/IDE drive</strong>, picked from the carousel's <strong>HDD (exFAT)</strong> entry. Set <em>Settings → BDMA Mode</em> to <strong>ATA</strong>, put the usual <code>POPS/</code> folder (with your <code>.VCD</code> files) on the exFAT drive, and it works just like USB / MX4SIO / MMCE — same layout, same <code>XX.</code> launch; the <strong>BDM Assault</strong> drivers (R3Z3N's ATA build) do the rest. It's built and the rolling build is green, but it <strong>has not been tested on real hardware yet</strong> — if you have an exFAT internal drive, please try it and tell us whether the <strong>HDD (exFAT)</strong> page lists your games and they <strong>launch</strong>. (Don't see your games? Confirm the drive is <strong>exFAT</strong>, BDMA Mode is <strong>ATA</strong>, and your files are in <code>POPS/</code>.)</li>
+<li><strong> Internal HDD (exFAT) — NEW backend!</strong> You can now play from an <strong>exFAT-formatted internal SATA/IDE drive</strong>, picked from the carousel's <strong>HDD (exFAT)</strong> entry. Set <em>Settings → BDMA Mode</em> to <strong>ATA</strong>, put the usual <code>POPS/</code> folder (with your <code>.VCD</code> files) on the exFAT drive, and it works just like USB / MX4SIO / MMCE — same layout, same <code>XX.</code> launch; the <strong>BDM Assault</strong> drivers (R3Z3N's ATA build) do the rest. It's built and the rolling build is green, but it <strong>has not been tested on real hardware yet</strong> — if you have an exFAT internal drive, please try it and tell us whether the <strong>HDD (exFAT)</strong> page lists your games and they <strong>launch</strong>. (Don't see your games? Confirm the drive is <strong>exFAT</strong>, BDMA Mode is <strong>ATA</strong>, and your files are in <code>POPS/</code>.)</li>
 </ul>
 <p><strong>Newest this cycle — UI, cover art &amp; navigation (please eyeball the items marked below):</strong><br />
 - <strong>Per-game info text</strong> — drop a <code>&lt;game&gt;.txt</code> next to a game, then turn on <em>Settings → Game details</em> (<strong>Off / Left / Center / Right</strong> alignment) to show it in a panel under the cover. Your line breaks are kept. Scroll long text with the <strong>right analog stick</strong>, and set the pace in <em>Settings → Description scroll speed</em> (<strong>Fast / Medium / Slow</strong>). The three speeds are now distinct (≈1, 3 and 7 lines/sec) — previously they all felt the same. Please tell us if the scroll feel is right.<br />
@@ -71,7 +70,7 @@
 <li><strong>Carousel device visibility</strong> — <em>Settings → Carousel Devices.</em> Hide carousel entries you don't use (including the not-yet-implemented stubs like <strong>SMB</strong> / <strong>iLink</strong>) with a <strong>Shown / Hidden</strong> toggle per device; at least one device always stays visible. Your launch behavior is unchanged — hidden entries are just skipped on the carousel.</li>
 <li><strong>HDD settings now save on the HDD</strong> — on an HDD install, your Settings save <strong>directly to the HDD</strong> (on its boot partition), right where POPSLoader lives — same as a USB / MX4SIO / MMCE install keeps its own settings. This used to be a read-only "probe"; it's a real save now. It boots on PCSX2 and provato confirmed the HDD is writable on real hardware, but the full save flow is still validating on hardware — so please save a setting, reboot, and tell us if it stuck.</li>
 </ul>
-<h2 id="since-beta-9-the-big-stuff">🎮 Since BETA-9 — the big stuff</h2>
+<h2 id="since-beta-9-the-big-stuff"> Since BETA-9 — the big stuff</h2>
 <p><strong>Internal HDD (PFS)</strong><br />
 - Major HDD reliability fixes — games that wouldn't launch from an HDD-resident POPSTARTER now work.<br />
 - The HDD game list now loads even when you start POPSLoader from <strong>USB or Memory Card</strong> (it waits for a cold drive to spin up instead of failing instantly).<br />
@@ -86,7 +85,7 @@
 <p><strong>Polish</strong><br />
 - Leaner, faster build (removed unused internals) and assorted stability fixes.<br />
 - A full documentation overhaul.</p>
-<h2 id="known-issues-still-being-verified">⚠️ Known issues / still being verified</h2>
+<h2 id="known-issues-still-being-verified"> Known issues / still being verified</h2>
 <p><em>Canonical list: </em><em>STATE.md &gt; Known Issues</em><em>. Tester summary:</em><br />
 - <strong>Confirmed on hardware this cycle (thank you!):</strong> the <strong>Boot sound</strong> toggle saves and survives a reboot (oldman63); up/down <strong>and</strong> left-stick navigation land on individual items with smooth continuous scroll (oldman63); and the latest rolling is running well overall (Nuno6573).<br />
 - <strong>Still wants an eyeball (works in testing, not yet hardware-confirmed):</strong> the new <strong>cover-box artwork</strong> (default cover + missing mark lining up inside the jewel-case frame on <strong>NTSC and PAL</strong>), the <strong>Overscan (CRT inset)</strong> on a real tube TV, and the <strong>Description scroll speed</strong> feel. Please report on these specifically.<br />

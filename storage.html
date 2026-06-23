@@ -5,12 +5,11 @@
 <link rel="stylesheet" href="assets/style.css">
 </head><body data-base="">
 <header class="topbar">
-  <button class="menu-btn" aria-label="Menu">☰</button>
+  <button class="menu-btn" aria-label="Menu"></button>
   <a class="brand" href="index.html">
     <span class="psbtns"><i class="tri">&#9651;</i><i class="cir">&#9711;</i><i class="cro">&#10005;</i><i class="squ">&#9633;</i></span>
     POPStarter <small>DOCS</small></a>
   <div class="search">
-    <span class="ico">🔎</span>
     <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
     <kbd>/</kbd>
     <div id="results"></div>
@@ -18,32 +17,32 @@
 </header>
 <div class="layout">
   <nav class="sidebar">
-    <a href="index.html"><span class="em">🏠</span>Home</a>
+    <a href="index.html">Home</a>
     <h4>POPSLoader · this project</h4>
-    <a href="popsloader.html"><span class="em">📦</span>POPSLoader docs</a>
-    <a href="launch-arguments.html"><span class="em">🚀</span>Launch arguments</a>
-    <h4>POPStarter · documentation</h4><a href="getting-started.html"><span class="em">🚀</span>Getting Started</a>
-<a href="storage.html" class="active"><span class="em">💾</span>Storage Backends</a>
-<a href="cheats.html"><span class="em">🎮</span>Cheats</a>
-<a href="compatibility.html"><span class="em">🩹</span>Patches & TROJANs</a>
-<a href="igr.html"><span class="em">🎯</span>IGR & Hotkeys</a>
-<a href="config.html"><span class="em">🔧</span>Config Table</a>
-<a href="multidisc.html"><span class="em">💿</span>Multi-disc & VMC</a>
-<a href="troubleshooting.html"><span class="em">🛠️</span>Troubleshooting</a>
-<a href="downloads.html"><span class="em">📦</span>Downloads</a>
-<a href="history.html"><span class="em">📜</span>History</a>
+    <a href="popsloader.html">POPSLoader docs</a>
+    <a href="launch-arguments.html">Launch arguments</a>
+    <h4>POPStarter · documentation</h4><a href="getting-started.html">Getting Started</a>
+<a href="storage.html" class="active">Storage Backends</a>
+<a href="cheats.html">Cheats</a>
+<a href="compatibility.html">Patches & TROJANs</a>
+<a href="igr.html">IGR & Hotkeys</a>
+<a href="config.html">Config Table</a>
+<a href="multidisc.html">Multi-disc & VMC</a>
+<a href="troubleshooting.html">Troubleshooting</a>
+<a href="downloads.html">Downloads</a>
+<a href="history.html">History</a>
     <h4>Reference</h4>
-    <a href="glossary.html"><span class="em">📖</span>Glossary</a>
-    <a href="commands.html"><span class="em">⌨️</span>Command index</a>
-    <a href="faq.html"><span class="em">❓</span>FAQ &amp; known bugs</a>
-    <a href="known-issues.html"><span class="em">🐞</span>Known issues</a>
-    <a href="compatibility-table.html"><span class="em">📊</span>Compatibility table</a>
-    <a href="thread-study.html"><span class="em">🧵</span>Community knowledge</a>
-    <a href="credits.html"><span class="em">🙏</span>Credits</a>
-    <a href="wiki/index.html"><span class="em">📚</span>All wiki pages</a>
+    <a href="glossary.html">Glossary</a>
+    <a href="commands.html">Command index</a>
+    <a href="faq.html">FAQ &amp; known bugs</a>
+    <a href="known-issues.html">Known issues</a>
+    <a href="compatibility-table.html">Compatibility table</a>
+    <a href="thread-study.html">Community knowledge</a>
+    <a href="credits.html">Credits</a>
+    <a href="wiki/index.html">All wiki pages</a>
     <h4>Related projects</h4>
-    <a href="https://nathanneurotic.github.io/Open-PS2-Loader"><span class="em">🎮</span>RiptOPL (OPL) docs ↗</a>
-    <a href="https://ps2homebrewstore.com"><span class="em">🛒</span>PS2 Homebrew Store ↗</a>
+    <a href="https://nathanneurotic.github.io/Open-PS2-Loader">RiptOPL (OPL) docs ↗</a>
+    <a href="https://ps2homebrewstore.com">PS2 Homebrew Store ↗</a>
   </nav>
   <main class="content"><h1>Storage Backends</h1><p class="lead">Where the POPS folder, VCDs and support modules live on each device — USB, internal HDD, SMB, plus the modern MMCE / MX4SIO / exFAT backends — and the launch methods and per-mode ELF prefixes.</p><h2 id="device-matrix">Device &amp; storage backend matrix</h2>
 <p class="lead">Where your VCDs can live and how the launcher reaches each device. Stock POPStarter ships
@@ -56,19 +55,19 @@ but not yet hardware-verified. Click a header to sort.</p>
 <table data-sortable>
 <thead><tr><th>Backend</th><th>Filesystem</th><th>How it's reached</th><th>Status</th></tr></thead>
 <tbody>
-<tr><td>Internal HDD (APA/PFS)</td><td>APA / PFS</td><td>native (no BDMA)</td><td>✅ Working</td></tr>
-<tr><td>Internal HDD (exFAT)</td><td>exFAT on the internal SATA/IDE drive</td><td>BDMA <code>ATA</code></td><td>✅ New</td></tr>
-<tr><td>USB</td><td>FAT32</td><td>BDMA <code>FAT32</code></td><td>✅ Working</td></tr>
-<tr><td>USB (exFAT)</td><td>exFAT</td><td>BDMA <code>USBEXFAT</code></td><td>✅ Working</td></tr>
-<tr><td>MX4SIO</td><td>FAT32 / exFAT — SD via SIO2 slot</td><td>BDMA <code>MX4SIO</code></td><td>✅ Working</td></tr>
-<tr><td>MMCE</td><td>SD2PSX / MemCard&nbsp;PRO2</td><td>BDMA <code>MMCE</code></td><td>✅ Working</td></tr>
-<tr><td>Disc (DKWDRV)</td><td>physical PS1 disc handoff</td><td>fork</td><td>✅ Working</td></tr>
-<tr><td>SMB</td><td>network share</td><td>POPStarter core</td><td>✅ core · ⚠ fork stub</td></tr>
-<tr><td>iLink (IEEE&nbsp;1394)</td><td>exFAT over FireWire</td><td>BDM (fork)</td><td>⚠ Stub — untested</td></tr>
-<tr><td>UDPBD</td><td>UDP block device — games streamed over Ethernet from a PC <code>udpbd</code> server (modern SMB alternative)</td><td>BDM (fork)</td><td>⚠ Stub — untested</td></tr>
-<tr><td>UDPFS</td><td>UDP network filesystem backend</td><td>BDM (fork)</td><td>⚠ Stub — untested</td></tr>
+<tr><td>Internal HDD (APA/PFS)</td><td>APA / PFS</td><td>native (no BDMA)</td><td> Working</td></tr>
+<tr><td>Internal HDD (exFAT)</td><td>exFAT on the internal SATA/IDE drive</td><td>BDMA <code>ATA</code></td><td> New</td></tr>
+<tr><td>USB</td><td>FAT32</td><td>BDMA <code>FAT32</code></td><td> Working</td></tr>
+<tr><td>USB (exFAT)</td><td>exFAT</td><td>BDMA <code>USBEXFAT</code></td><td> Working</td></tr>
+<tr><td>MX4SIO</td><td>FAT32 / exFAT — SD via SIO2 slot</td><td>BDMA <code>MX4SIO</code></td><td> Working</td></tr>
+<tr><td>MMCE</td><td>SD2PSX / MemCard&nbsp;PRO2</td><td>BDMA <code>MMCE</code></td><td> Working</td></tr>
+<tr><td>Disc (DKWDRV)</td><td>physical PS1 disc handoff</td><td>fork</td><td> Working</td></tr>
+<tr><td>SMB</td><td>network share</td><td>POPStarter core</td><td> core ·  fork stub</td></tr>
+<tr><td>iLink (IEEE&nbsp;1394)</td><td>exFAT over FireWire</td><td>BDM (fork)</td><td> Stub — untested</td></tr>
+<tr><td>UDPBD</td><td>UDP block device — games streamed over Ethernet from a PC <code>udpbd</code> server (modern SMB alternative)</td><td>BDM (fork)</td><td> Stub — untested</td></tr>
+<tr><td>UDPFS</td><td>UDP network filesystem backend</td><td>BDM (fork)</td><td> Stub — untested</td></tr>
 </tbody></table>
-<div class="callout amber"><div class="h">⚖ BDMA Mode is the device selector — and exFAT isn't native POPS</div>
+<div class="callout amber"><div class="h">BDMA Mode is the device selector — and exFAT isn't native POPS</div>
 In the POPSLoader fork, <b>BDMA&nbsp;Mode</b> picks the mass-storage backend: <code>FAT32</code> (plain USB, no
 special driver), <code>USBEXFAT</code> (exFAT USB), <code>MX4SIO</code>, <code>MMCE</code>, or <code>ATA</code>
 (the <b>internal exFAT HDD</b> — newly added via R3Z3N's ATA BDM&nbsp;Assault drivers; built and CI-green,
@@ -530,7 +529,7 @@ mass:/SB.Crash Bandicoot (PAL).ELF
 <p>We found out after RIP 06 release that the HDD old launch type method (PP.GAME.ELF or __.GAME.ELF) <a href="https://assemblergames.com/threads/ps2-pops-stuff-popstarter.45347/page-112#post-952852">has a bug</a> : files from __common/POPS folder (and from __common/POPS/GAME) will not be loaded.</p>
 </li>
 </ul>
-<hr><p class="prov-inline source-note">📎 Recovered from ShaolinAssassin's <a href="wiki/usb-mode.html">USB Mode</a> · <a href="wiki/hdd-mode.html">HDD Mode</a> · <a href="wiki/smb-mode.html">SMB Mode</a> · <a href="wiki/ps1cd-mode.html">Ps1cd Mode</a> wiki pages.</p><h2 id="storage-backends-and-path-maps-usb-smb-hdd">Storage backends and path maps (USB / SMB / HDD)</h2>
+<hr><p class="prov-inline source-note"> Recovered from ShaolinAssassin's <a href="wiki/usb-mode.html">USB Mode</a> · <a href="wiki/hdd-mode.html">HDD Mode</a> · <a href="wiki/smb-mode.html">SMB Mode</a> · <a href="wiki/ps1cd-mode.html">Ps1cd Mode</a> wiki pages.</p><h2 id="storage-backends-and-path-maps-usb-smb-hdd">Storage backends and path maps (USB / SMB / HDD)</h2>
 <p>USB: the POPS folder must sit at the ROOT of a FAT12/16/32 (never NTFS), DEFRAGMENTED device, holding POPS_IOX.PAK (MD5 a625d0b3036823cdbf04a3c0e1648901), the VCDs, and the renamed launcher ELFs. POPStarter scans POPS, POPS0, POPS1 ... POPS9 at the root, letting you split a library across folders - but POPS_IOX.PAK and the TM2 IGR textures stay only in the MAIN POPS folder, while BIOS.BIN/PATCH_#.BIN/TROJAN_#.BIN/VMCDIR.TXT must be COPIED into every POPS# folder you create (they do not propagate). PS2-side USB/network modules (usbd.irx, usbhdfsd.irx) load from mc0:/POPSTARTER/ with an mc1 fallback; loading them from mass: is no longer supported, and PFS_WRAP.BIN was embedded into the ELF as of OBT8.</p>
 <p>SMB: create the POPS folder at the SHARE ROOT (not a subdirectory) with the same mandatory POPS_IOX.PAK plus the VCDs. PS2-side network modules (smbman.irx, ps2smap.irx, ps2ip.irx, ps2dev9.irx, smsutils.irx, poweroff.irx) and the two .DAT files live in mc0:/POPSTARTER/ (mc1 fallback). SMBCONFIG.DAT is three lines: 'IP[:port] SHARE NAME' (default port 445, append ':139' for legacy servers), then username, then plain-text password; leave lines 2 and 3 empty for guest access. IPCONFIG.DAT ('PS2_IP NETMASK GATEWAY') is OPTIONAL (DHCP otherwise). On a modern Windows host you must enable SMB 1.0/CIFS, disable password-protected sharing, and grant Guest/Everyone read-write - only on a trusted LAN, since SMB1 is insecure. IMPORTANT MYTH-BUSTING: SMB does NOT require a 'debug build'. SMB was added as a normal feature in Beta 8 (2015-10-23); the only debug caveat is the wiki note that startup debug text cannot be skipped in SMB mode (cosmetic).</p>
 <p>Internal HDD: the modern WIP01 launch type puts VCDs in a PS2-formatted partition __.POPS (or __.POPS0..__.POPS9) with the DECRYPTED emulator (POPS.ELF MD5 355a892a8ce4e4a105469d4ef6f39a42 + IOPRP252.IMG MD5 1db9c6020a2cd445a7bb176a1a3dd418) in __common/POPS, and uses NO launcher prefix. Two legacy per-partition types survive: PP.<game> (HDDOSD-visible, KELF, IMAGE0.VCD) and __.<game> (hidden, IMAGE0.VCD). The partition name must be exactly __.POPS (a leading '+' is wrong); create it with AKuHAK's uLaunchELF or uLE_kHn. VMCs and per-game BIOS/OSD assets live under __common/POPS/<vmcfolder>/, decoupled from the VCD's own partition.</p>
@@ -617,7 +616,7 @@ apa:hdd:/__common/POPS/POPS_IOX.PAK
 <blockquote>
 <p><strong>Note on POPS files</strong> (<code>POPS_IOX.PAK</code>, <code>POPS.ELF</code>, <code>IOPRP252.IMG</code>): Sony-copyrighted — supply your own and<br />
 verify against the checksums on the <a href="downloads.html">Downloads</a> page.</p>
-</blockquote><div class="callout amber"><div class="h">⚖ SMB Apps entries: some later OPL betas need <code>smb0:</code>, not <code>smb:</code></div>The SMB layout above uses the bare <code>smb:/APPS/…</code> form in <code>conf_apps.cfg</code>. On <b>some later OPL betas</b> the SMB Apps-page path is <b>reportedly</b> only accepted in the <code>smb0:</code> form — i.e. <code>Crash Bandicoot=smb0:/APPS/SB.Crash Bandicoot.ELF</code> rather than the <code>smb:</code> form. If an SMB Apps entry refuses to launch on a recent OPL build, switch the prefix from <code>smb:</code> to <code>smb0:</code> and retry. (Community / cross-sourced report — not confirmed across every beta.)</div><h2 id="partition-installed-pops-games-pp-__-hddosd-psbbn">Partition-installed POPS games (PP.<em> / __.</em> — HDDOSD &amp; PSBBN)</h2>
+</blockquote><div class="callout amber"><div class="h">SMB Apps entries: some later OPL betas need <code>smb0:</code>, not <code>smb:</code></div>The SMB layout above uses the bare <code>smb:/APPS/…</code> form in <code>conf_apps.cfg</code>. On <b>some later OPL betas</b> the SMB Apps-page path is <b>reportedly</b> only accepted in the <code>smb0:</code> form — i.e. <code>Crash Bandicoot=smb0:/APPS/SB.Crash Bandicoot.ELF</code> rather than the <code>smb:</code> form. If an SMB Apps entry refuses to launch on a recent OPL build, switch the prefix from <code>smb:</code> to <code>smb0:</code> and retry. (Community / cross-sourced report — not confirmed across every beta.)</div><h2 id="partition-installed-pops-games-pp-__-hddosd-psbbn">Partition-installed POPS games (PP.<em> / __.</em> — HDDOSD &amp; PSBBN)</h2>
 <blockquote>
 <p><strong>This is an <em>additional</em> launch path, not a replacement.</strong> The standard internal-HDD method documented<br />
 above — the <code>__.POPS</code> / <code>__.POPS0</code>…<code>__.POPS9</code> partition holding named <code>.VCD</code> files — is unchanged and<br />
@@ -709,7 +708,7 @@ PS2 <code>SYSTEM.CNF</code> carries three ordered parameters — <strong>BOOT2</
   driver packs (El_isra, 2025): MMCE via <strong><a href="https://github.com/ps2-mmce/mmceman/releases/tag/popstarter">mmceman</a></strong>,<br />
   MX4SIO via BDMAssault. Both use the <strong>same USB folder layout &amp; prefix</strong> and appear on OPL's APPS page.<br />
 <em>(El_isra / TnA-Plastic)</em> — this is exactly what the modern <strong>POPSLoader</strong> fork wraps.</li>
-</ul><div class="callout info"><div class="h">ℹ Launching via OPL's Apps tab and getting a black screen?</div>If an HDD POPStarter ELF launched from OPL's <b>Apps</b> page black-screens with the <b>HDD&nbsp;LED stuck on</b>, OPL is usually waiting on a network/BDM/SMB device left on <b>Auto</b> — set the OPL devices you don't use to <b>Manual</b> or <b>Off</b>. This is a <i>launch-time</i> hang, distinct from the BOOT.ELF <i>exit</i> black-screen. See <a href="troubleshooting.html#two-black-screens">Troubleshooting → Two different black screens</a>.</div><h2>More wiki sources</h2><div class="grid"><a class="tile" href="wiki/popstarter-hddosd.html"><b>POPSTARTER Hddosd</b><span>full wiki page</span></a>
+</ul><div class="callout info"><div class="h">Launching via OPL's Apps tab and getting a black screen?</div>If an HDD POPStarter ELF launched from OPL's <b>Apps</b> page black-screens with the <b>HDD&nbsp;LED stuck on</b>, OPL is usually waiting on a network/BDM/SMB device left on <b>Auto</b> — set the OPL devices you don't use to <b>Manual</b> or <b>Off</b>. This is a <i>launch-time</i> hang, distinct from the BOOT.ELF <i>exit</i> black-screen. See <a href="troubleshooting.html#two-black-screens">Troubleshooting → Two different black screens</a>.</div><h2>More wiki sources</h2><div class="grid"><a class="tile" href="wiki/popstarter-hddosd.html"><b>POPSTARTER Hddosd</b><span>full wiki page</span></a>
 <a class="tile" href="wiki/pfsshell.html"><b>Pfsshell</b><span>full wiki page</span></a>
 <a class="tile" href="wiki/irx-loader.html"><b>IRX Loader</b><span>full wiki page</span></a>
 <a class="tile" href="wiki/radhostclient.html"><b>Radhostclient</b><span>full wiki page</span></a></div><details class="deep"><summary>Cross-sourced quick-reference cards (provenance-tagged)</summary><div class="cards"><div class="card" id="usb-layout-mass-pops-root-pops-folder"><h3>USB layout: mass:/POPS/ (root POPS folder) <span class="badge primary">primary</span> <span class="cat-chip">storage</span></h3>
@@ -717,140 +716,140 @@ PS2 <code>SYSTEM.CNF</code> carries three ordered parameters — <strong>BOOT2</
 <div class="field"><b>Scope:</b> USB mass storage. USB launch type introduced WIP02.</div>
 <div class="field"><b>Conflicts:</b> NTFS unsupported. Fragmentation causes failures. POPS_IOX.PAK (MD5 a625d0b3036823cdbf04a3c0e1648901) required; legacy POPS.PAK still works but updating is recommended.</div>
 <div class="ex">POPS/POPS_IOX.PAK ; POPS/Crash Bandicoot.VCD ; XX.Crash Bandicoot.elf</div>
-<div class="prov">📎 PRIMARY: ShaolinAssassin wiki usb-mode (Wayback 20170629123547)</div>
+<div class="prov"> PRIMARY: ShaolinAssassin wiki usb-mode (Wayback 20170629123547)</div>
 </div>
 <div class="card" id="usb-scan-order-pops-pops0-pops9"><h3>USB scan order: POPS, POPS0..POPS9 <span class="badge primary">primary</span> <span class="cat-chip">storage</span></h3>
 <div class="field"><b>Effect:</b> POPStarter looks for the named VCD in POPS or POPS0..POPS9 at USB root (split a large library across folders). POPS_IOX.PAK + the TM2 textures stay in the MAIN POPS folder; BIOS.BIN/PATCH_#.BIN/TROJAN_#.BIN/VMCDIR.TXT must be COPIED into every POPS# folder.</div>
 <div class="field"><b>Scope:</b> USB mode. POPS#-folder feature introduced r13 WIP06 OBT; reading VCDs from POPS# bugfixed Beta 11 (2015-11-11).</div>
 <div class="field"><b>Conflicts:</b> Per-game assets do NOT auto-share across POPS# folders - must be duplicated.</div>
 <div class="ex">POPS0/Tekken.VCD launched by XX.Tekken.elf; copy VMCDIR.TXT into each POPS# folder</div>
-<div class="prov">📎 PRIMARY: ShaolinAssassin wiki usb-mode (Wayback 20170629123547) + changelog Beta 11 (Wayback 20170629142002)</div>
+<div class="prov"> PRIMARY: ShaolinAssassin wiki usb-mode (Wayback 20170629123547) + changelog Beta 11 (Wayback 20170629142002)</div>
 </div>
 <div class="card" id="usb-launcher-elf-naming-xx-name-elf"><h3>USB launcher ELF naming: XX.&lt;name&gt;.elf <span class="badge primary">primary</span> <span class="cat-chip">launch</span></h3>
 <div class="field"><b>Effect:</b> Rename the POPStarter ELF to the VCD&#x27;s name, swap .VCD for .elf, add the &#x27;XX.&#x27; prefix (third char is a literal dot). Prefix and the .VCD extension must be UPPERCASE. USB supports ONLY this &#x27;new&#x27; launch type.</div>
 <div class="field"><b>Scope:</b> USB mode only.</div>
 <div class="field"><b>Conflicts:</b> Lowercase prefix or lowercase .vcd breaks matching.</div>
 <div class="ex">VCD &#x27;Gran Turismo.VCD&#x27; -&gt; ELF &#x27;XX.Gran Turismo.elf&#x27;</div>
-<div class="prov">📎 PRIMARY: ShaolinAssassin wiki usb-mode (Wayback 20170629123547)</div>
+<div class="prov"> PRIMARY: ShaolinAssassin wiki usb-mode (Wayback 20170629123547)</div>
 </div>
 <div class="card" id="usb-network-modules-mc0-popstarter-then-mc1-popstarter"><h3>USB/network modules: mc0:/POPSTARTER/ then mc1:/POPSTARTER/ <span class="badge primary">primary</span> <span class="cat-chip">storage</span></h3>
 <div class="field"><b>Effect:</b> POPStarter loads usbd.irx/usbhdfsd.irx (and network modules) from the MC POPSTARTER folder, slot 0 first, falling back to mc1 when a file is missing. Loading modules from &#x27;mass&#x27; is NO longer supported. PFS_WRAP.BIN no longer needed since OBT8 (embedded into the ELF).</div>
 <div class="field"><b>Scope:</b> USB mode, beta 8+; mc1 fallback added Beta 9 (2015-10-24).</div>
 <div class="field"><b>Conflicts:</b> Custom usbd.irx/usbhdfsd.irx on mass: are ignored; they must be on the MC.</div>
 <div class="ex">mc0:/POPSTARTER/usbd.irx ; mc0:/POPSTARTER/usbhdfsd.irx</div>
-<div class="prov">📎 PRIMARY: ShaolinAssassin wiki usb-mode (Wayback 20170629123547) + changelog Beta 8/9</div>
+<div class="prov"> PRIMARY: ShaolinAssassin wiki usb-mode (Wayback 20170629123547) + changelog Beta 8/9</div>
 </div>
 <div class="card" id="smb-layout-smb0-share-pops"><h3>SMB layout: smb0:/&lt;Share&gt;/POPS/ <span class="badge primary">primary</span> <span class="cat-chip">storage</span></h3>
 <div class="field"><b>Effect:</b> SMB/network storage. Create a POPS directory at the SHARE ROOT (not a subdir); put POPS_IOX.PAK (same file as USB, MD5 a625d0b3036823cdbf04a3c0e1648901, MANDATORY) and the VCDs there. Requires a PS2 NIC + cable + MC.</div>
 <div class="field"><b>Scope:</b> SMB mode. Backend added Beta 8 (2015-10-23); SB. launch type r13 WIP06/OBT08.</div>
 <div class="field"><b>Conflicts:</b> POPS must be at share root. Legacy POPS.PAK unsupported in SMB.</div>
 <div class="ex">smb0:/My Shared Folder/POPS/POPS_IOX.PAK ; smb0:/My Shared Folder/POPS/Crash Bandicoot.VCD</div>
-<div class="prov">📎 PRIMARY: ShaolinAssassin wiki smb-mode + quickstart-smb (Wayback 20170629160319 / 20180208032618)</div>
+<div class="prov"> PRIMARY: ShaolinAssassin wiki smb-mode + quickstart-smb (Wayback 20170629160319 / 20180208032618)</div>
 </div>
 <div class="card" id="smb-launcher-elf-naming-sb-name-elf"><h3>SMB launcher ELF naming: SB.&lt;name&gt;.elf <span class="badge primary">primary</span> <span class="cat-chip">launch</span></h3>
 <div class="field"><b>Effect:</b> Rename POPStarter ELF to the VCD name, .VCD -&gt; .elf, add the &#x27;SB.&#x27; prefix (third char a literal dot). Uppercase prefix + uppercase .VCD. The ELF can live anywhere you launch from; only the VCD must be in the SMB POPS folder.</div>
 <div class="field"><b>Scope:</b> SMB mode only. Launch type r13 WIP06 OBT08.</div>
 <div class="field"><b>Conflicts:</b> SMB POPS folder name is fixed &#x27;POPS&#x27; (no documented POPS# multi-folder for SMB).</div>
 <div class="ex">VCD &#x27;Crash Bandicoot.VCD&#x27; -&gt; ELF &#x27;SB.Crash Bandicoot.elf&#x27;</div>
-<div class="prov">📎 PRIMARY: ShaolinAssassin wiki smb-mode + quickstart-smb (Wayback 20170629160319 / 20180208032618)</div>
+<div class="prov"> PRIMARY: ShaolinAssassin wiki smb-mode + quickstart-smb (Wayback 20170629160319 / 20180208032618)</div>
 </div>
 <div class="card" id="smb-modules-folder-mc-popstarter"><h3>SMB modules folder: mc#:/POPSTARTER/ <span class="badge primary">primary</span> <span class="cat-chip">storage</span></h3>
 <div class="field"><b>Effect:</b> The PS2-side network modules + the two .DAT config files live in mc0:/POPSTARTER/ (falls back to mc1). Module set: poweroff.irx, ps2dev9.irx, smsutils.irx, ps2ip.irx, ps2smap.irx, smbman.irx, plus IPCONFIG.DAT, SMBCONFIG.DAT.</div>
 <div class="field"><b>Scope:</b> SMB mode. mc1 fallback added Beta 9 (2015-10-24).</div>
 <div class="field"><b>Conflicts:</b> Missing/wrong network modules -&gt; SMB init fails.</div>
 <div class="ex">mc0:/POPSTARTER/SMBCONFIG.DAT ; mc0:/POPSTARTER/IPCONFIG.DAT ; mc0:/POPSTARTER/smbman.irx</div>
-<div class="prov">📎 PRIMARY: ShaolinAssassin wiki smb-mode + quickstart-smb (Wayback 20170629160319 / 20180208032618)</div>
+<div class="prov"> PRIMARY: ShaolinAssassin wiki smb-mode + quickstart-smb (Wayback 20170629160319 / 20180208032618)</div>
 </div>
 <div class="card" id="smbconfig-dat-syntax"><h3>SMBCONFIG.DAT syntax <span class="badge primary">primary</span> <span class="cat-chip">storage</span></h3>
 <div class="field"><b>Effect:</b> Line 1: &#x27;&lt;SERVER IP&gt; &lt;SHARE NAME&gt;&#x27; (optional &#x27;:PORT&#x27; on the IP, default 445, e.g. &#x27;:139&#x27;). Line 2 = username, Line 3 = plain-text password for authenticated shares; leave lines 2 and 3 EMPTY for guest access.</div>
 <div class="field"><b>Scope:</b> SMB mode. Port selection added Beta 11 (2015-11-11); authentication added Beta 12 (2015-11-24).</div>
 <div class="field"><b>Conflicts:</b> Default access is GUEST/non-password (Beta 8). Credentials vs guest mismatch fails the connection.</div>
 <div class="ex">192.168.0.254 My Shared Folder / MyName / MyPassword (or &#x27;192.168.0.254:139 My Shared Folder&#x27; + empty lines 2-3 for guest)</div>
-<div class="prov">📎 PRIMARY: ShaolinAssassin wiki smb-mode + changelog Beta 11/12 (Wayback 20170629160319 / 20170629142002)</div>
+<div class="prov"> PRIMARY: ShaolinAssassin wiki smb-mode + changelog Beta 11/12 (Wayback 20170629160319 / 20170629142002)</div>
 </div>
 <div class="card" id="ipconfig-dat-syntax-optional"><h3>IPCONFIG.DAT syntax (optional) <span class="badge primary">primary</span> <span class="cat-chip">storage</span></h3>
 <div class="field"><b>Effect:</b> Single line: &#x27;&lt;PS2 IP&gt; &lt;NETMASK&gt; &lt;GATEWAY&gt;&#x27;. OPTIONAL (DHCP/auto otherwise). Only needed for a static PS2 IP.</div>
 <div class="field"><b>Scope:</b> SMB mode. Made optional in Beta 11 (2015-11-11).</div>
 <div class="field"><b>Conflicts:</b> Omit to let POPStarter use defaults.</div>
 <div class="ex">192.168.0.13 255.255.255.0 192.168.0.254</div>
-<div class="prov">📎 PRIMARY: ShaolinAssassin wiki smb-mode + changelog Beta 11</div>
+<div class="prov"> PRIMARY: ShaolinAssassin wiki smb-mode + changelog Beta 11</div>
 </div>
 <div class="card" id="refuted-debug-build-required-for-smb"><h3>REFUTED: &#x27;debug build required for SMB&#x27; <span class="badge primary">primary</span> <span class="cat-chip">storage</span></h3>
 <div class="field"><b>Effect:</b> FALSE. SMB was added as a STANDARD feature in Beta 8 (2015-10-23): &#x27;Added support for ps2host, napLink and SMB (NOT password protected, fixed port 445) shares&#x27; - no debug gating. The only debug-related caveat is the wiki note &#x27;Debug infos at startup can NOT be skipped in SMB mode&#x27; (cosmetic startup print, NOT a build requirement).</div>
 <div class="field"><b>Scope:</b> SMB mode, Beta 8 onward.</div>
 <div class="field"><b>Conflicts:</b> Do not conflate &#x27;startup debug text always shown&#x27; with &#x27;must use a debug build&#x27;.</div>
 <div class="ex">Beta 8 line: &#x27;Added support for ... SMB (NOT password protected, fixed port 445) shares&#x27;</div>
-<div class="prov">📎 PRIMARY: r13 changelog Beta 8 (Wayback 20170629142002) + wiki smb-mode Additional notes (Wayback 20170629160319)</div>
+<div class="prov"> PRIMARY: r13 changelog Beta 8 (Wayback 20170629142002) + wiki smb-mode Additional notes (Wayback 20170629160319)</div>
 </div>
 <div class="card" id="windows-host-smb-share-setup"><h3>Windows host SMB share setup <span class="badge community">community</span> <span class="cat-chip">storage</span></h3>
 <div class="field"><b>Effect:</b> To serve POPS over SMB from modern Windows: enable &#x27;SMB 1.0/CIFS File Sharing Support&#x27;, turn OFF &#x27;Password protected sharing&#x27;, grant Guest/Everyone Read/Write on the share. POPStarter&#x27;s SMB client is legacy (SMB1, guest, port 445).</div>
 <div class="field"><b>Scope:</b> Host-side (Windows 10/11) for SMB mode. COMMUNITY guidance - not in the official wiki.</div>
 <div class="field"><b>Conflicts:</b> SMB1 is insecure and disabled by default on modern Windows - only enable on a trusted LAN. A NAS exposing SMB2/3-only with mandatory auth may still work via SMBCONFIG.DAT credentials, but guest+SMB1 is the documented path.</div>
 <div class="ex">Windows feature &#x27;SMB 1.0/CIFS File Sharing Support&#x27; ON; &#x27;Password protected sharing&#x27; OFF; share POPS folder Guest=RW</div>
-<div class="prov">📎 COMMUNITY: chipnetics.com/tutorials/ps2-opl-with-samba/; ps2-home t=326; gbatemp 613924</div>
+<div class="prov"> COMMUNITY: chipnetics.com/tutorials/ps2-opl-with-samba/; ps2-home t=326; gbatemp 613924</div>
 </div>
 <div class="card" id="pops-smb-config-on-console-smb-editor"><h3>pops-smb-config (on-console SMB editor) <span class="badge secondary">near-primary</span> <span class="cat-chip">storage</span></h3>
 <div class="field"><b>Effect:</b> A PS2 homebrew tool to edit POPStarter&#x27;s SMBCONFIG.DAT/IPCONFIG.DAT on the console itself (no PC). Confirms the 3-line SMBCONFIG.DAT format.</div>
 <div class="field"><b>Scope:</b> Companion utility for SMB mode.</div>
 <div class="field"><b>Conflicts:</b> Third-party tool; not part of POPStarter.</div>
 <div class="ex">Edits mc0:/POPSTARTER/SMBCONFIG.DAT in-place on the PS2</div>
-<div class="prov">📎 NEAR-PRIMARY: github.com/blckbearx/pops-smb-config; psx-place resource 1237</div>
+<div class="prov"> NEAR-PRIMARY: github.com/blckbearx/pops-smb-config; psx-place resource 1237</div>
 </div>
 <div class="card" id="hdd-layout-pops-pops0-9-common-pops-new-launch-type"><h3>HDD layout: __.POPS / __.POPS0..9 + __common/POPS (NEW launch type) <span class="badge primary">primary</span> <span class="cat-chip">storage</span></h3>
 <div class="field"><b>Effect:</b> Internal HDD, modern multi-VCD type. VCDs go in PS2-formatted partition __.POPS (or __.POPS0..__.POPS9). Emulator (decrypted POPS.ELF + IOPRP252.IMG) goes in a POPS folder inside the __common partition. NO prefix on the launcher ELF (named &lt;game&gt;.elf for &lt;game&gt;.VCD).</div>
 <div class="field"><b>Scope:</b> Internal HDD. New launch type introduced POPStarter 13 WIP01.</div>
 <div class="field"><b>Conflicts:</b> Partition must be named __.POPS (leading double-underscore-dot) - &#x27;+__.POPS&#x27; is WRONG (use AKuHAK&#x27;s uLaunchELF or uLE_kHn to create a partition without the &#x27;+&#x27;). Names case-sensitive; .VCD uppercase.</div>
 <div class="ex">__common/POPS/IOPRP252.IMG ; __common/POPS/POPS.ELF ; __.POPS/Crash Bandicoot.VCD ; __sysconf/FMCB/Crash Bandicoot.elf</div>
-<div class="prov">📎 PRIMARY: ShaolinAssassin wiki hdd-mode (Wayback 20170629165244)</div>
+<div class="prov"> PRIMARY: ShaolinAssassin wiki hdd-mode (Wayback 20170629165244)</div>
 </div>
 <div class="card" id="hdd-legacy-old-type-pp-game-partition-hddosd-visible"><h3>HDD legacy OLD type: PP.&lt;game&gt; partition (HDDOSD-visible) <span class="badge primary">primary</span> <span class="cat-chip">storage</span></h3>
 <div class="field"><b>Effect:</b> One VCD per partition named PP.&lt;game&gt;; the VCD is always IMAGE0.VCD (uppercase); launcher prefix PP. (KELF EXECUTE.KELF for HDDOSD). The only type SHOWN in HDDOSD/PSBBN/PSX XMB. POPStarter 12 and older; still supported.</div>
 <div class="field"><b>Scope:</b> Internal HDD, legacy.</div>
 <div class="field"><b>Conflicts:</b> No whitespace in old-type partition names. 1 partition = 1 game (except multi-disc).</div>
 <div class="ex">PP.Crash_Bandicoot/EXECUTE.KELF ; PP.Crash_Bandicoot/IMAGE0.VCD</div>
-<div class="prov">📎 PRIMARY: ShaolinAssassin wiki hdd-mode (Wayback 20170629165244)</div>
+<div class="prov"> PRIMARY: ShaolinAssassin wiki hdd-mode (Wayback 20170629165244)</div>
 </div>
 <div class="card" id="hdd-legacy-alternate-type-game-partition-hidden"><h3>HDD legacy ALTERNATE type: __.&lt;game&gt; partition (hidden) <span class="badge primary">primary</span> <span class="cat-chip">storage</span></h3>
 <div class="field"><b>Effect:</b> One VCD per partition named __.&lt;game&gt;; VCD is IMAGE0.VCD (uppercase); launcher prefix __. ; partition is HIDDEN (not shown in HDDOSD/PSBBN/XMB). POPStarter 12 and older.</div>
 <div class="field"><b>Scope:</b> Internal HDD, legacy; not HDDOSD-compatible.</div>
 <div class="field"><b>Conflicts:</b> Hidden by design; no whitespace in partition name.</div>
 <div class="ex">__.Crash_Bandicoot/IMAGE0.VCD ; __sysconf/FMCB/__.Crash Bandicoot.elf</div>
-<div class="prov">📎 PRIMARY: ShaolinAssassin wiki hdd-mode (Wayback 20170629165244)</div>
+<div class="prov"> PRIMARY: ShaolinAssassin wiki hdd-mode (Wayback 20170629165244)</div>
 </div>
 <div class="card" id="popstarter-kelf-hddosd-sony-browser-2-00"><h3>POPSTARTER.KELF (HDDOSD / Sony Browser 2.00) <span class="badge primary">primary</span> <span class="cat-chip">storage</span></h3>
 <div class="field"><b>Effect:</b> The bundle ships POPSTARTER.KELF (Krypto-ELF, ELF in a Sony container) for when Sony Browser 2.00 (HDDOSD) is installed; otherwise useless. Partition prefix PP.; 1 partition = 1 game (unless multi-disc).</div>
 <div class="field"><b>Scope:</b> Internal HDD with HDDOSD/Browser 2.00 only.</div>
 <div class="field"><b>Conflicts:</b> Useless without HDDOSD.</div>
 <div class="ex">POPSTARTER.KELF placed per PP.&lt;game&gt; partition</div>
-<div class="prov">📎 PRIMARY: ShaolinAssassin wiki hdd-mode (Wayback 20170629165244)</div>
+<div class="prov"> PRIMARY: ShaolinAssassin wiki hdd-mode (Wayback 20170629165244)</div>
 </div>
 <div class="card" id="hdd-emulator-files-pops-elf-ioprp252-img-decrypted"><h3>HDD emulator files: POPS.ELF + IOPRP252.IMG (decrypted) <span class="badge primary">primary</span> <span class="cat-chip">storage</span></h3>
 <div class="field"><b>Effect:</b> HDD mode uses the DECRYPTED POPS files (not POPS_IOX.PAK), in __common/POPS. POPS.ELF MD5 355a892a8ce4e4a105469d4ef6f39a42 (the SLBB-00001 ELF). IOPRP252.IMG MD5 1db9c6020a2cd445a7bb176a1a3dd418 (from some retail discs / $CEI SDKs).</div>
 <div class="field"><b>Scope:</b> Internal HDD mode.</div>
 <div class="field"><b>Conflicts:</b> Sony-copyrighted, not redistributed with POPStarter; user must source them.</div>
 <div class="ex">__common/POPS/POPS.ELF (MD5 355a892a...) ; __common/POPS/IOPRP252.IMG (MD5 1db9c602...)</div>
-<div class="prov">📎 PRIMARY: ShaolinAssassin wiki hdd-mode requirements table (Wayback 20170629165244)</div>
+<div class="prov"> PRIMARY: ShaolinAssassin wiki hdd-mode requirements table (Wayback 20170629165244)</div>
 </div>
 <div class="card" id="launch-method-1-renamed-elf-per-game"><h3>Launch method 1: renamed-ELF-per-game <span class="badge primary">primary</span> <span class="cat-chip">launch</span></h3>
 <div class="field"><b>Effect:</b> Each game has its own copy of POPSTARTER.ELF renamed to &#x27;&lt;prefix&gt;&lt;VCD name&gt;.elf&#x27;. Prefix XX. (USB), SB. (SMB), or none/PP./__. (HDD per type). Launched via uLaunchELF, FMCB/FHDB, OPL Apps, etc.</div>
 <div class="field"><b>Scope:</b> All storage types.</div>
 <div class="field"><b>Conflicts:</b> Tedious for big libraries (one ELF per game) - the reason uLE_kHn and POPSLoader exist.</div>
 <div class="ex">XX.Crash Bandicoot.elf launches Crash Bandicoot.VCD</div>
-<div class="prov">📎 PRIMARY: ShaolinAssassin wiki usb/smb/hdd-mode (Wayback 20170629123547 / 20170629160319 / 20170629165244)</div>
+<div class="prov"> PRIMARY: ShaolinAssassin wiki usb/smb/hdd-mode (Wayback 20170629123547 / 20170629160319 / 20170629165244)</div>
 </div>
 <div class="card" id="launch-method-2-single-direct-vcd-ule-khn-opl-apps"><h3>Launch method 2: single direct-VCD (uLE_kHn / OPL Apps) <span class="badge primary">primary</span> <span class="cat-chip">launch</span></h3>
 <div class="field"><b>Effect:</b> Avoids per-game renaming. Place ONE un-renamed POPSTARTER.ELF in the POPS folder; a special uLaunchELF build (uLE_kHn, e.g. uLE_kHn_20191110) launches a .VCD directly like an ELF (put its BOOT at mc0:/BOOT). OPL&#x27;s &#x27;Apps&#x27; tab (conf_apps.cfg / APPS/&lt;game&gt;/&lt;game&gt;.elf) is the other common direct-launch UI. CORRECTS base report&#x27;s &#x27;wLE_kHn&#x27; typo -&gt; &#x27;uLE_kHn&#x27;.</div>
 <div class="field"><b>Scope:</b> USB (uLE_kHn; &#x27;SMB not supported ATM&#x27;) + OPL Apps for USB/HDD/SMB.</div>
 <div class="field"><b>Conflicts:</b> uLE_kHn did not support SMB at time of writing.</div>
 <div class="ex">mass:/POPS/POPSTARTER.ELF + mass:/POPS/Crash Bandicoot.VCD + mc0:/BOOT/BOOT.ELF (uLE_kHn)</div>
-<div class="prov">📎 PRIMARY: ShaolinAssassin wiki uLE_kHn (Wayback 20170629140906); ps2-home OPL-Apps tutorials t=123/t=3216/t=2295</div>
+<div class="prov"> PRIMARY: ShaolinAssassin wiki uLE_kHn (Wayback 20170629140906); ps2-home OPL-Apps tutorials t=123/t=3216/t=2295</div>
 </div>
 <div class="card" id="launch-method-3-modern-popsloader-fork-lua-enceladus"><h3>Launch method 3: modern POPSLoader fork (Lua/Enceladus) <span class="badge primary">primary</span> <span class="cat-chip">launch</span></h3>
 <div class="field"><b>Effect:</b> POPSLoader is a Lua launcher on the Enceladus runtime bundling POPSLOADER.ELF + Lua scripts + textures + modules; drop .VCDs in a POPS folder plus your POPStarter ELF + POPS support files (IOPRP252.IMG, POPS.ELF, POPS.PAK, POPS_IOX.PAK), then run POPSLOADER.ELF. Boots from MC/MMCE/MX4SIO/USB(FAT32/exFAT); runs games from MMCE/MX4SIO/USB/APA-HDD. Originally by El_isra; current fork maintained by NathanNeurotic.</div>
 <div class="field"><b>Scope:</b> Modern (post-POPStarter) fork; broad device support incl. MMCE/MX4SIO/exFAT not in stock POPStarter.</div>
 <div class="field"><b>Conflicts:</b> Separate project from krHACKen&#x27;s POPStarter; supports exFAT and MMCE/MX4SIO that stock POPStarter does not.</div>
 <div class="ex">POPS/POPSLOADER.ELF + POPS/&lt;game&gt;.VCD + POPS/POPS_IOX.PAK ; run POPSLOADER.ELF</div>
-<div class="prov">📎 PRIMARY: github.com/NathanNeurotic/POPSLoader; psx-place fork thread 49539</div>
+<div class="prov"> PRIMARY: github.com/NathanNeurotic/POPSLoader; psx-place fork thread 49539</div>
 </div></div></details><h2 id="topic-index">All 10 wiki pages in this topic</h2><p class="lead">Every recovered page filed under this section — including the deep-reference pages not embedded above.</p><div class="grid"><a class="tile" href="wiki/hdd-mode.html"><b>HDD Mode</b><span>hdd-mode</span></a><a class="tile" href="wiki/irx-loader.html"><b>IRX Loader</b><span>irx-loader</span></a><a class="tile" href="wiki/pfsshell.html"><b>Pfsshell</b><span>pfsshell</span></a><a class="tile" href="wiki/popstarter-hddosd.html"><b>POPSTARTER Hddosd</b><span>popstarter-hddosd</span></a><a class="tile" href="wiki/ps1cd-mode.html"><b>Ps1cd Mode</b><span>ps1cd-mode</span></a><a class="tile" href="wiki/radhostclient.html"><b>Radhostclient</b><span>radhostclient</span></a><a class="tile" href="wiki/smb-mode.html"><b>SMB Mode</b><span>smb-mode</span></a><a class="tile" href="wiki/ule-khn.html"><b>ULE kHn</b><span>uLE_kHn</span></a><a class="tile" href="wiki/usb-mode.html"><b>USB Mode</b><span>usb-mode</span></a><a class="tile" href="wiki/vcd.html"><b>VCD</b><span>vcd</span></a></div></main>
   <aside class="toc"><div class="toc-h">On this page</div><nav id="toc-nav"></nav></aside>
 </div>

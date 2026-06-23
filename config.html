@@ -5,12 +5,11 @@
 <link rel="stylesheet" href="assets/style.css">
 </head><body data-base="">
 <header class="topbar">
-  <button class="menu-btn" aria-label="Menu">☰</button>
+  <button class="menu-btn" aria-label="Menu"></button>
   <a class="brand" href="index.html">
     <span class="psbtns"><i class="tri">&#9651;</i><i class="cir">&#9711;</i><i class="cro">&#10005;</i><i class="squ">&#9633;</i></span>
     POPStarter <small>DOCS</small></a>
   <div class="search">
-    <span class="ico">🔎</span>
     <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
     <kbd>/</kbd>
     <div id="results"></div>
@@ -18,35 +17,35 @@
 </header>
 <div class="layout">
   <nav class="sidebar">
-    <a href="index.html"><span class="em">🏠</span>Home</a>
+    <a href="index.html">Home</a>
     <h4>POPSLoader · this project</h4>
-    <a href="popsloader.html"><span class="em">📦</span>POPSLoader docs</a>
-    <a href="launch-arguments.html"><span class="em">🚀</span>Launch arguments</a>
-    <h4>POPStarter · documentation</h4><a href="getting-started.html"><span class="em">🚀</span>Getting Started</a>
-<a href="storage.html"><span class="em">💾</span>Storage Backends</a>
-<a href="cheats.html"><span class="em">🎮</span>Cheats</a>
-<a href="compatibility.html"><span class="em">🩹</span>Patches & TROJANs</a>
-<a href="igr.html"><span class="em">🎯</span>IGR & Hotkeys</a>
-<a href="config.html" class="active"><span class="em">🔧</span>Config Table</a>
-<a href="multidisc.html"><span class="em">💿</span>Multi-disc & VMC</a>
-<a href="troubleshooting.html"><span class="em">🛠️</span>Troubleshooting</a>
-<a href="downloads.html"><span class="em">📦</span>Downloads</a>
-<a href="history.html"><span class="em">📜</span>History</a>
+    <a href="popsloader.html">POPSLoader docs</a>
+    <a href="launch-arguments.html">Launch arguments</a>
+    <h4>POPStarter · documentation</h4><a href="getting-started.html">Getting Started</a>
+<a href="storage.html">Storage Backends</a>
+<a href="cheats.html">Cheats</a>
+<a href="compatibility.html">Patches & TROJANs</a>
+<a href="igr.html">IGR & Hotkeys</a>
+<a href="config.html" class="active">Config Table</a>
+<a href="multidisc.html">Multi-disc & VMC</a>
+<a href="troubleshooting.html">Troubleshooting</a>
+<a href="downloads.html">Downloads</a>
+<a href="history.html">History</a>
     <h4>Reference</h4>
-    <a href="glossary.html"><span class="em">📖</span>Glossary</a>
-    <a href="commands.html"><span class="em">⌨️</span>Command index</a>
-    <a href="faq.html"><span class="em">❓</span>FAQ &amp; known bugs</a>
-    <a href="known-issues.html"><span class="em">🐞</span>Known issues</a>
-    <a href="compatibility-table.html"><span class="em">📊</span>Compatibility table</a>
-    <a href="thread-study.html"><span class="em">🧵</span>Community knowledge</a>
-    <a href="credits.html"><span class="em">🙏</span>Credits</a>
-    <a href="wiki/index.html"><span class="em">📚</span>All wiki pages</a>
+    <a href="glossary.html">Glossary</a>
+    <a href="commands.html">Command index</a>
+    <a href="faq.html">FAQ &amp; known bugs</a>
+    <a href="known-issues.html">Known issues</a>
+    <a href="compatibility-table.html">Compatibility table</a>
+    <a href="thread-study.html">Community knowledge</a>
+    <a href="credits.html">Credits</a>
+    <a href="wiki/index.html">All wiki pages</a>
     <h4>Related projects</h4>
-    <a href="https://nathanneurotic.github.io/Open-PS2-Loader"><span class="em">🎮</span>RiptOPL (OPL) docs ↗</a>
-    <a href="https://ps2homebrewstore.com"><span class="em">🛒</span>PS2 Homebrew Store ↗</a>
+    <a href="https://nathanneurotic.github.io/Open-PS2-Loader">RiptOPL (OPL) docs ↗</a>
+    <a href="https://ps2homebrewstore.com">PS2 Homebrew Store ↗</a>
   </nav>
-  <main class="content"><h1>Config Table ($410–$42F)</h1><p class="lead">POPStarter r13 stores a 32-byte configuration table at file offset <code>$410</code> inside POPSTARTER.ELF/.KELF. Each byte is one setting.</p><div class="callout info"><div class="h">ℹ Nuance</div>&#x27;classic 00 vs debug FF&#x27; build label The LABEL is community shorthand, not a verbatim krHACKen string, BUT it is accurate and grounded: it is literally the state of config byte $410 (00 = off = shipped/&#x27;classic&#x27;, FF = realtime = old POPStarter-12). Nuance to state: any value 0x01-0xFE gives PACED (not just 00/FF) debug, and DEBUG_AND_HALT.PPF also flips $411.</div>
-<div class="callout info"><div class="h">ℹ Nuance</div>$415 / $429 exact byte enumeration - Note that $429 values 00/01/02 (both/none/first-only) are confirmed, but the precise byte values of a few peripheral offsets ($415 ASCII range, $417 residual 0x01 meaning, $42C purpose) are documented qualitatively only</div><h2 id="popstarter-configuration-table-advanced-settings"><strong>POPStarter Configuration Table – Advanced Settings</strong></h2>
+  <main class="content"><h1>Config Table ($410–$42F)</h1><p class="lead">POPStarter r13 stores a 32-byte configuration table at file offset <code>$410</code> inside POPSTARTER.ELF/.KELF. Each byte is one setting.</p><div class="callout info"><div class="h"> Nuance</div>&#x27;classic 00 vs debug FF&#x27; build label The LABEL is community shorthand, not a verbatim krHACKen string, BUT it is accurate and grounded: it is literally the state of config byte $410 (00 = off = shipped/&#x27;classic&#x27;, FF = realtime = old POPStarter-12). Nuance to state: any value 0x01-0xFE gives PACED (not just 00/FF) debug, and DEBUG_AND_HALT.PPF also flips $411.</div>
+<div class="callout info"><div class="h"> Nuance</div>$415 / $429 exact byte enumeration - Note that $429 values 00/01/02 (both/none/first-only) are confirmed, but the precise byte values of a few peripheral offsets ($415 ASCII range, $417 residual 0x01 meaning, $42C purpose) are documented qualitatively only</div><h2 id="popstarter-configuration-table-advanced-settings"><strong>POPStarter Configuration Table – Advanced Settings</strong></h2>
 <hr>
 
 <p>This documentation concerns the advanced configuration of POPStarter r13, involving the harcoding (or the patch-on-load) of settings to the POPStarter ELF/KELF...</p>
@@ -81,7 +80,7 @@ Here is what I can do for you :
 - NO_AUTO_PATCH.PPF : Disables everything (modes, LC cracks...) (new).
 
 </code></pre>
-<hr><p class="prov-inline source-note">📎 Recovered from ShaolinAssassin's <a href="wiki/configuration-table.html">Configuration Table</a> wiki page.</p><h2>Images &amp; screenshots</h2><div class="gallery"><figure><a href="img/28454758-Sans-titre-1.jpg" target="_blank"><img src="img/28454758-Sans-titre-1.jpg" alt="Sans titre 1" loading="lazy"></a><figcaption>Sans titre 1</figcaption></figure></div><h2 id="the-32-byte-config-table-in-popstarterelfkelf">The 32-byte config table in POPSTARTER.ELF/.KELF</h2>
+<hr><p class="prov-inline source-note"> Recovered from ShaolinAssassin's <a href="wiki/configuration-table.html">Configuration Table</a> wiki page.</p><h2>Images &amp; screenshots</h2><div class="gallery"><figure><a href="img/28454758-Sans-titre-1.jpg" target="_blank"><img src="img/28454758-Sans-titre-1.jpg" alt="Sans titre 1" loading="lazy"></a><figcaption>Sans titre 1</figcaption></figure></div><h2 id="the-32-byte-config-table-in-popstarterelfkelf">The 32-byte config table in POPSTARTER.ELF/.KELF</h2>
 <p>POPStarter r13 stores a single contiguous 32-byte configuration table at file offset $410 (1040 dec) through $42F, one byte per setting, in both the ELF and the KELF (byte-identical tables). The verified factory default is: 00 00 00 02 40 00 03 01 | 00 00 00 00 00 00 00 00 | 01 00 01 01 01 01 01 01 | 01 00 01 01 01 01 01 03. Patch it by direct hex edit or via the PPF bunch pack (PPF-O-Matic); always back up the original 32 bytes first.</p>
 <p>The base report's four seed offsets are adjudicated as follows. $410 = debug-text display (00 = off / 'classic', 01-FE = paced page delay, FF = realtime / old POPStarter-12 behaviour) - the base's '04 = debug print' is imprecise, since 04 is merely a short delay. $413 = USB access delay, default 0x02 (raise it if a USB drive isn't detected) - and this is the offset that fixes detection, NOT the $USBDELAY_# cheat, which patches POPS for streaming. $42A is multi-valued: 00 = PAL patcher off, 01 = auto-PAL (default), 02 = force 480p. The big correction is $412: in r13 it is the SetGsCrt/HDTVFIX hack (default 0x00), NOT a 'function skipper.' The function skipper genuinely lived at $412 in pre-Beta-13 builds and was REMOVED in Beta 13 (2015-12-07, ~10 KB saved); the freed byte was repurposed for HDTVFIX in Beta 15/16. Relatedly, the USB delay migrated: the 2015 PFS-wrapper delay was at $417 (default 0x05 then 0x00), which is marked 'NOT USED' in r13 - old guides citing 417h are obsolete.</p>
 <p>Beyond the seeds, the full table was recovered: $411 halt-on-error, $414 RESERVED (=0x40), $415 per-VMC user ID (ASCII digit), $416 POPS dev9 loading, $418-$41F the 8-slot force-compatibility array, $420 HDD check (leave 0x01), $421 BIOS OSD shell (= mode 0x06), $422 exception breakpoints (IGR-after-crash), $423 SLBB-00001 integrity, $424 IGR exit method (gates the BOOT.ELF chain), $425 IOPCD stack, $426 Delcro's patches, $427/$428 module/HDD failure-ignore, $429 VMC count (00 both / 01 none / 02 first only), $42B MODULE_#.IRX resident loader, $42C software-poweroff fix (purpose uncertain even to the author), $42D IGR-textures loader, $42E region/license check, and $42F the auto-patch master switch (00 none / 01 auto modes / 02 LibCrypt subroutines / 03 all (default) / 04 test mode). The PPF bunch pack maps friendly patches onto these bytes: DEBUG_AND_HALT ($410+$411), NO_VMC / ONLY_1ST_VMC ($429), NO_PAL ($42A), FORCE_MODEX ($418-$41F), DEFAULT_IGR_TEXTURES ($42D), LC_ONLY / NO_AUTO_PATCH / NO_LC_CRACKS ($42F).</p><h2 id="from-the-official-thread-config-table-direct-hex-edits">From the official thread — config-table &amp; direct hex edits</h2>
@@ -110,185 +109,185 @@ Here is what I can do for you :
 <div class="field"><b>Scope:</b> POPSTARTER.ELF/.KELF, r13. Patch via hex edit or the PPF bunch pack.</div>
 <div class="field"><b>Conflicts:</b> krHACKen: &#x27;don&#x27;t tamper unless you know exactly what it is for; back up the default config first.&#x27;</div>
 <div class="ex">$410..$42F = 00 00 00 02 40 00 03 01 00 00 00 00 00 00 00 00 01 00 01 01 01 01 01 01 01 00 01 01 01 01 01 03</div>
-<div class="prov">📎 PRIMARY: config-table wiki (Wayback 20170626021731 / 20220321112104) + direct hexdump of archive.org popstarter-r-13-beta-20190605</div>
+<div class="prov"> PRIMARY: config-table wiki (Wayback 20170626021731 / 20220321112104) + direct hexdump of archive.org popstarter-r-13-beta-20190605</div>
 </div>
 <div class="card" id="410-debug-text-display"><h3>$410 - debug text display <span class="badge primary">primary</span> <span class="cat-chip">config</span></h3>
 <div class="field"><b>Effect:</b> 0x00 = debug printing DISABLED (factory default, the &#x27;classic&#x27; build). 0x01-0xFE = delay between debug pages (higher = longer; ~0x12/18 dec readable). 0xFF = realtime debug text (POPStarter 12 behavior). Basis of the community &#x27;classic 00 vs debug FF&#x27; label.</div>
 <div class="field"><b>Scope:</b> POPSTARTER.ELF/.KELF byte $410. r13. SMB-mode setups effectively run debug-on.</div>
 <div class="field"><b>Conflicts:</b> Equivalent to applying DEBUG_AND_HALT.PPF (which also sets $411).</div>
 <div class="ex">Set byte $410 to 12 (=18 dec) for paced debug pages, or FF for realtime</div>
-<div class="prov">📎 PRIMARY: config-table wiki + ELF hexdump; ps2-home debug tutorial t=5311 (Wayback 20190808161830)</div>
+<div class="prov"> PRIMARY: config-table wiki + ELF hexdump; ps2-home debug tutorial t=5311 (Wayback 20190808161830)</div>
 </div>
 <div class="card" id="411-break-halt-on-error"><h3>$411 - break/halt on error <span class="badge primary">primary</span> <span class="cat-chip">config</span></h3>
 <div class="field"><b>Effect:</b> 0x00 = print the error briefly then kick to PS2 OSD (default). Non-zero = print the error and sleep on that screen indefinitely (so you can read it).</div>
 <div class="field"><b>Scope:</b> POPSTARTER.ELF/.KELF byte $411. r13. Default 0x00.</div>
 <div class="field"><b>Conflicts:</b> Pairs with $410: DEBUG_AND_HALT.PPF sets both.</div>
 <div class="ex">Set $411=0x01 to freeze on the error/debug screen when a game fails to boot</div>
-<div class="prov">📎 PRIMARY: config-table wiki (Wayback 20170626021731) + ELF hexdump</div>
+<div class="prov"> PRIMARY: config-table wiki (Wayback 20170626021731) + ELF hexdump</div>
 </div>
 <div class="card" id="412-setgscrt-hdtvfix-hack"><h3>$412 - SetGsCrt / HDTVFIX hack <span class="badge primary">primary</span> <span class="cat-chip">config</span></h3>
 <div class="field"><b>Effect:</b> 0x00 = disabled (default). 0x01 = enabled. The feature exposed as the $HDTVFIX cheat. CORRECTION to base report: in r13 $412 is HDTVFIX, NOT a &#x27;function skipper&#x27;. The function skipper lived at $412 ONLY in pre-Beta-13 builds and was REMOVED in WIP06 Beta 13 (2015-12-07, ~10KB saved); the freed byte was repurposed for SetGsCrt in Beta 15/16 (2016).</div>
 <div class="field"><b>Scope:</b> POPSTARTER.ELF/.KELF byte $412. r13. Default 0x00. SetGsCrt implemented Beta 15, default-off Beta 16.</div>
 <div class="field"><b>Conflicts:</b> INCOMPATIBLE with some CRT TVs. Equivalent to $HDTVFIX.</div>
 <div class="ex">$HDTVFIX, or hex-edit byte $412=0x01, to fix green-screen on a component HDTV</div>
-<div class="prov">📎 PRIMARY: r13 CHANGES.TXT (function-skipper removal 2015/12/07; HDTVFIX 2016/09/18 + 2016/11/20) + config-table wiki + ELF hexdump</div>
+<div class="prov"> PRIMARY: r13 CHANGES.TXT (function-skipper removal 2015/12/07; HDTVFIX 2016/09/18 + 2016/11/20) + config-table wiki + ELF hexdump</div>
 </div>
 <div class="card" id="413-usb-access-delay"><h3>$413 - USB access delay <span class="badge primary">primary</span> <span class="cat-chip">config</span></h3>
 <div class="field"><b>Effect:</b> USB access delay applied AFTER POPStarter&#x27;s embedded USB modules run (how long it waits before reaching the USB device). Default 0x02. Increase if POPStarter fails to access the USB device.</div>
 <div class="field"><b>Scope:</b> POPSTARTER.ELF/.KELF byte $413. r13. USB mode. Default 0x02 (verified).</div>
 <div class="field"><b>Conflicts:</b> DO NOT confuse with the $USBDELAY_# CHEATS.TXT command (that patches POPS for streaming and does NOT help find the drive). Distinct from the old PFS-wrapper delay at $417.</div>
 <div class="ex">USB drive not detected: hex-edit byte $413 from 02 up to 05/0A until it mounts</div>
-<div class="prov">📎 PRIMARY: config-table wiki + ELF hexdump; ps2-home debug tutorial t=5311</div>
+<div class="prov"> PRIMARY: config-table wiki + ELF hexdump; ps2-home debug tutorial t=5311</div>
 </div>
 <div class="card" id="414-reserved"><h3>$414 - RESERVED <span class="badge primary">primary</span> <span class="cat-chip">config</span></h3>
 <div class="field"><b>Effect:</b> RESERVED (in USB operation mode). Must be 0x40. Not a user tunable.</div>
 <div class="field"><b>Scope:</b> POPSTARTER.ELF/.KELF byte $414. r13. Default 0x40.</div>
 <div class="field"><b>Conflicts:</b> Changing it can break USB operation.</div>
 <div class="ex">(leave at 0x40)</div>
-<div class="prov">📎 PRIMARY: config-table wiki + ELF hexdump</div>
+<div class="prov"> PRIMARY: config-table wiki + ELF hexdump</div>
 </div>
 <div class="card" id="415-per-vmc-user-id"><h3>$415 - per-VMC user ID <span class="badge primary">primary</span> <span class="cat-chip">config</span></h3>
 <div class="field"><b>Effect:</b> User ID for individual VMCs. 0x00 = disabled (default). Set to the ASCII code of a digit &#x27;0&#x27;..&#x27;9&#x27; (0x30..0x39) to tag the VMC pair to a user (lets multiple users keep separate VMCs from one install).</div>
 <div class="field"><b>Scope:</b> POPSTARTER.ELF/.KELF byte $415. r13. Default 0x00.</div>
 <div class="field"><b>Conflicts:</b> Value must be a literal ASCII digit byte (0x31 for &#x27;1&#x27;), not raw 0x01.</div>
 <div class="ex">Set $415=0x32 (ASCII &#x27;2&#x27;) so this build uses VMCs tagged for user 2</div>
-<div class="prov">📎 PRIMARY: config-table wiki + ELF hexdump</div>
+<div class="prov"> PRIMARY: config-table wiki + ELF hexdump</div>
 </div>
 <div class="card" id="416-pops-dev9-module-loading"><h3>$416 - POPS dev9 module loading <span class="badge primary">primary</span> <span class="cat-chip">config</span></h3>
 <div class="field"><b>Effect:</b> POPS dev9 module loading (USB mode). 0x00 = let POPS load dev9. 0x03 = forbid loading (default). Set 0x00 to wake the NIC (e.g. for debugging).</div>
 <div class="field"><b>Scope:</b> POPSTARTER.ELF/.KELF byte $416. r13. Default 0x03.</div>
 <div class="field"><b>Conflicts:</b> Only relevant in USB mode.</div>
 <div class="ex">(default 0x03 keeps NIC off during USB play)</div>
-<div class="prov">📎 PRIMARY: config-table wiki + ELF hexdump</div>
+<div class="prov"> PRIMARY: config-table wiki + ELF hexdump</div>
 </div>
 <div class="card" id="417-not-used-legacy-pfs-wrapper-usb-delay"><h3>$417 - NOT USED (legacy PFS-wrapper USB delay) <span class="badge primary">primary</span> <span class="cat-chip">config</span></h3>
 <div class="field"><b>Effect:</b> Marked &#x27;NOT USED&#x27; in the r13 wiki (vestigial; shipped byte reads 0x01). HISTORICALLY this was the PFS-wrapper USB delay (default 0x05 in Beta 2 2015-06-25, changed to 0x00 in Beta 8 2015-10-23). Old guides citing &#x27;USB delay at 417h&#x27; refer to this obsolete PFS-wrapper delay; in r13 use $413.</div>
 <div class="field"><b>Scope:</b> POPSTARTER.ELF/.KELF byte $417. r13 = NOT USED; 2015 betas = PFS-wrapper delay.</div>
 <div class="field"><b>Conflicts:</b> Do not patch $417 expecting a USB-detect fix in r13.</div>
 <div class="ex">(do not edit; use $413 instead)</div>
-<div class="prov">📎 PRIMARY: r13 CHANGES.TXT (Beta 2 + Beta 8) + config-table wiki + ELF hexdump; Pastebin 719TCAd5</div>
+<div class="prov"> PRIMARY: r13 CHANGES.TXT (Beta 2 + Beta 8) + config-table wiki + ELF hexdump; Pastebin 719TCAd5</div>
 </div>
 <div class="card" id="418-41f-force-compatibility-modes-8-slots"><h3>$418-$41F - force compatibility modes (8 slots) <span class="badge primary">primary</span> <span class="cat-chip">config</span></h3>
 <div class="field"><b>Effect:</b> Force a single compatibility mode per byte; 8 slots = force up to 8 modes simultaneously. Per byte: 0x00 = no mode; 0x0X = force that mode AND disable the automatic activator. All default 0x00. The 8-slot design was added WIP02 (2014-08-22).</div>
 <div class="field"><b>Scope:</b> POPSTARTER.ELF/.KELF bytes $418-$41F. r13.</div>
 <div class="field"><b>Conflicts:</b> Hardcoded equivalent of $COMPATIBILITY_0x##. Modes 0x01/0x02/0x03/0x05 still must NOT be combined. Forcing any mode here interacts with $42F (auto-changes 0x03 -&gt; 0x02).</div>
 <div class="ex">Hardcode mode 0x04 + 0x06 globally: $418=0x04, $419=0x06 (rest 0x00)</div>
-<div class="prov">📎 PRIMARY: config-table wiki + CHANGES.TXT 2014/08/22 + ELF hexdump</div>
+<div class="prov"> PRIMARY: config-table wiki + CHANGES.TXT 2014/08/22 + ELF hexdump</div>
 </div>
 <div class="card" id="420-patch-the-genuine-hdd-check"><h3>$420 - patch the genuine HDD check <span class="badge primary">primary</span> <span class="cat-chip">config</span></h3>
 <div class="field"><b>Effect:</b> 0x00 = don&#x27;t patch. 0x01 = patch (default). Effectively a no-op for end users (homebrew ATAD on PS2, original POPS ATAD on PSX). krHACKen: &#x27;totally useless, leave it to 0x01.&#x27;</div>
 <div class="field"><b>Scope:</b> POPSTARTER.ELF/.KELF byte $420. r13. Default 0x01.</div>
 <div class="field"><b>Conflicts:</b> No practical reason to change.</div>
 <div class="ex">(leave at 0x01)</div>
-<div class="prov">📎 PRIMARY: config-table wiki + ELF hexdump</div>
+<div class="prov"> PRIMARY: config-table wiki + ELF hexdump</div>
 </div>
 <div class="card" id="421-load-execute-pops-bios-osd-shell"><h3>$421 - load/execute POPS BIOS OSD shell <span class="badge primary">primary</span> <span class="cat-chip">config</span></h3>
 <div class="field"><b>Effect:</b> 0x00 = load into user memory and execute (default; don&#x27;t patch). 0x01 = don&#x27;t load/execute - same effect as compatibility mode 0x06 (skips CD checks and the PS logo). Neither value applies if a user BIOS.BIN is supplied.</div>
 <div class="field"><b>Scope:</b> POPSTARTER.ELF/.KELF byte $421. r13. Default 0x00.</div>
 <div class="field"><b>Conflicts:</b> Hardcoded equivalent of mode 0x06 / $COMPATIBILITY_0x06. Overridden by a user BIOS.BIN.</div>
 <div class="ex">Set $421=0x01 to globally skip the BIOS OSD shell / PS logo (same as mode 6)</div>
-<div class="prov">📎 PRIMARY: config-table wiki + ELF hexdump</div>
+<div class="prov"> PRIMARY: config-table wiki + ELF hexdump</div>
 </div>
 <div class="card" id="422-exception-breakpoints"><h3>$422 - exception breakpoints <span class="badge primary">primary</span> <span class="cat-chip">config</span></h3>
 <div class="field"><b>Effect:</b> 0x00 = break the emulator. 0x01 = NOP the 2nd-stage exception handler&#x27;s break instructions, allowing IGR after the emulation has crashed (in a few cases). Shipped default 0x01.</div>
 <div class="field"><b>Scope:</b> POPSTARTER.ELF/.KELF byte $422. r13. Default 0x01.</div>
 <div class="field"><b>Conflicts:</b> Debug/recovery aid.</div>
 <div class="ex">(default 0x01 lets you IGR out of a crashed emulator)</div>
-<div class="prov">📎 PRIMARY: config-table wiki + ELF hexdump</div>
+<div class="prov"> PRIMARY: config-table wiki + ELF hexdump</div>
 </div>
 <div class="card" id="423-slbb-00001-disc0-integrity-check"><h3>$423 - SLBB-00001 disc0 integrity check <span class="badge primary">primary</span> <span class="cat-chip">config</span></h3>
 <div class="field"><b>Effect:</b> Original SLBB-00001 disc0 integrity-check control. 0x00 = don&#x27;t skip. 0x01 = skip (default). Relates to the PSX/PSBBN SLBB-00001 boot disc path.</div>
 <div class="field"><b>Scope:</b> POPSTARTER.ELF/.KELF byte $423. r13. Default 0x01.</div>
 <div class="ex">(default 0x01)</div>
-<div class="prov">📎 PRIMARY: config-table wiki + ELF hexdump</div>
+<div class="prov"> PRIMARY: config-table wiki + ELF hexdump</div>
 </div>
 <div class="card" id="424-igr-exit-method"><h3>$424 - IGR exit method <span class="badge primary">primary</span> <span class="cat-chip">config</span></h3>
 <div class="field"><b>Effect:</b> 0x00 = original SLBB-00001+PSBBN method (reads MBR itself, no cache flush, no IOP reset - crashy for most users). 0x01 = POPStarter r13 method (default), which enables the mc0-&gt;mc1:/BOOT/BOOT.ELF-&gt;OSDSYS exit chain from Beta 13.</div>
 <div class="field"><b>Scope:</b> POPSTARTER.ELF/.KELF byte $424. r13. Default 0x01.</div>
 <div class="field"><b>Conflicts:</b> Leaving 0x00 reproduces the old crashy exit.</div>
 <div class="ex">(default 0x01 enables the BOOT.ELF exit chain)</div>
-<div class="prov">📎 PRIMARY: config-table wiki + CHANGES.TXT 2015/12/07 + ELF hexdump</div>
+<div class="prov"> PRIMARY: config-table wiki + CHANGES.TXT 2015/12/07 + ELF hexdump</div>
 </div>
 <div class="card" id="425-iopcd-stack-size-patch"><h3>$425 - IOPCD stack size patch <span class="badge primary">primary</span> <span class="cat-chip">config</span></h3>
 <div class="field"><b>Effect:</b> IOPCD stack size patch (USB mode). 0x00 = don&#x27;t patch. 0x01 = patch (default).</div>
 <div class="field"><b>Scope:</b> POPSTARTER.ELF/.KELF byte $425. r13. Default 0x01. USB mode.</div>
 <div class="ex">(default 0x01)</div>
-<div class="prov">📎 PRIMARY: config-table wiki + ELF hexdump</div>
+<div class="prov"> PRIMARY: config-table wiki + ELF hexdump</div>
 </div>
 <div class="card" id="426-delcro-s-patches"><h3>$426 - Delcro&#x27;s patches <span class="badge primary">primary</span> <span class="cat-chip">config</span></h3>
 <div class="field"><b>Effect:</b> Delcro&#x27;s patches (USB mode). 0x00 = don&#x27;t apply to POPS. 0x01 = apply (default).</div>
 <div class="field"><b>Scope:</b> POPSTARTER.ELF/.KELF byte $426. r13. Default 0x01. USB mode.</div>
 <div class="ex">(default 0x01)</div>
-<div class="prov">📎 PRIMARY: config-table wiki + ELF hexdump</div>
+<div class="prov"> PRIMARY: config-table wiki + ELF hexdump</div>
 </div>
 <div class="card" id="427-emulator-modules-load-failure-behavior"><h3>$427 - emulator-modules load-failure behavior <span class="badge primary">primary</span> <span class="cat-chip">config</span></h3>
 <div class="field"><b>Effect:</b> 0x00 = don&#x27;t patch (kick to PS2 OSD). 0x01 = patch: ignore the returned code of an injected IRX and continue (default). &#x27;For your h4x0ring needz.&#x27;</div>
 <div class="field"><b>Scope:</b> POPSTARTER.ELF/.KELF byte $427. r13. Default 0x01.</div>
 <div class="field"><b>Conflicts:</b> Developer/modder convenience for custom injected IRX.</div>
 <div class="ex">(default 0x01)</div>
-<div class="prov">📎 PRIMARY: config-table wiki + ELF hexdump</div>
+<div class="prov"> PRIMARY: config-table wiki + ELF hexdump</div>
 </div>
 <div class="card" id="428-internal-hdd-init-failure-behavior"><h3>$428 - internal-HDD init-failure behavior <span class="badge primary">primary</span> <span class="cat-chip">config</span></h3>
 <div class="field"><b>Effect:</b> 0x00 = don&#x27;t patch (kick to PS2 OSD). 0x01 = patch: ignore and continue (default). &#x27;For your h4x0ring needz.&#x27;</div>
 <div class="field"><b>Scope:</b> POPSTARTER.ELF/.KELF byte $428. r13. Default 0x01.</div>
 <div class="ex">(default 0x01)</div>
-<div class="prov">📎 PRIMARY: config-table wiki + ELF hexdump</div>
+<div class="prov"> PRIMARY: config-table wiki + ELF hexdump</div>
 </div>
 <div class="card" id="429-virtual-memory-cards-control"><h3>$429 - Virtual Memory Cards control <span class="badge primary">primary</span> <span class="cat-chip">config</span></h3>
 <div class="field"><b>Effect:</b> 0x00 = use both VMCs (default). 0x01 = don&#x27;t use VMCs at all. 0x02 = use only the first VMC in the first virtual slot. This (NOT $42A) controls how many VMCs are created. Hardcoded equivalent of $NOVMC0/$NOVMC1.</div>
 <div class="field"><b>Scope:</b> POPSTARTER.ELF/.KELF byte $429. r13. Default 0x00.</div>
 <div class="field"><b>Conflicts:</b> PPF equivalents: NO_VMC.PPF (=0x01), ONLY_1ST_VMC.PPF (=0x02).</div>
 <div class="ex">Disable all VMCs globally: $429=0x01 (or NO_VMC.PPF)</div>
-<div class="prov">📎 PRIMARY: config-table wiki + ELF hexdump</div>
+<div class="prov"> PRIMARY: config-table wiki + ELF hexdump</div>
 </div>
 <div class="card" id="42a-auto-pal-patch-480p"><h3>$42A - auto-PAL patch / 480p <span class="badge primary">primary</span> <span class="cat-chip">config</span></h3>
 <div class="field"><b>Effect:</b> 0x00 = disabled (PAL patcher off, = $NOPAL). 0x01 = enabled (auto-PAL when &#x27;Euro&#x27; is found at VCD offset $102514; default). 0x02 = FORCE 480p output. 480p calc added Beta 15 (2016-09-18).</div>
 <div class="field"><b>Scope:</b> POPSTARTER.ELF/.KELF byte $42A. r13. Default 0x01.</div>
 <div class="field"><b>Conflicts:</b> 0x02 is the hardcoded equivalent of $480p (cannot be done via a PATCH file). 0x00 = NO_PAL.PPF / $NOPAL. Some games (e.g. Dead Or Alive) output an unsupported 480p signal.</div>
 <div class="ex">Force 480p: byte $42A=0x02 (or $480p). Disable PAL patcher: $42A=0x00 (or $NOPAL)</div>
-<div class="prov">📎 PRIMARY: config-table wiki + CHANGES.TXT 2016/09/18 + ELF hexdump</div>
+<div class="prov"> PRIMARY: config-table wiki + CHANGES.TXT 2016/09/18 + ELF hexdump</div>
 </div>
 <div class="card" id="42b-resident-modules-loader"><h3>$42B - resident modules loader <span class="badge primary">primary</span> <span class="cat-chip">config</span></h3>
 <div class="field"><b>Effect:</b> 0x00 = disabled. 0x01 = enabled (default). Loads POPS/MODULE_0.IRX .. MODULE_9.IRX AFTER the IOP is reset with IOPRP252.IMG (kills matching embedded POPS drivers).</div>
 <div class="field"><b>Scope:</b> POPSTARTER.ELF/.KELF byte $42B. r13. Default 0x01.</div>
 <div class="field"><b>Conflicts:</b> Enables the MODULE_#.IRX user-driver injection system.</div>
 <div class="ex">(default 0x01)</div>
-<div class="prov">📎 PRIMARY: config-table wiki + ELF hexdump</div>
+<div class="prov"> PRIMARY: config-table wiki + ELF hexdump</div>
 </div>
 <div class="card" id="42c-software-poweroff-fix"><h3>$42C - software PowerOff fix <span class="badge primary">primary</span> <span class="cat-chip">config</span></h3>
 <div class="field"><b>Effect:</b> 0x00 = disabled. 0x01 = enabled (default). Purpose uncertain even to the author (&#x27;can&#x27;t remember... perhaps redundant... Prolific, mass?&#x27;).</div>
 <div class="field"><b>Scope:</b> POPSTARTER.ELF/.KELF byte $42C. r13. Default 0x01.</div>
 <div class="field"><b>Conflicts:</b> Author admits ambiguity (possibly Prolific/mass-storage poweroff).</div>
 <div class="ex">(default 0x01)</div>
-<div class="prov">📎 PRIMARY: config-table wiki + ELF hexdump</div>
+<div class="prov"> PRIMARY: config-table wiki + ELF hexdump</div>
 </div>
 <div class="card" id="42d-igr-textures-loader"><h3>$42D - IGR textures loader <span class="badge primary">primary</span> <span class="cat-chip">config</span></h3>
 <div class="field"><b>Effect:</b> 0x00 = disabled. 0x01 = enabled (default). Loads POPS/IGR_BG.TM2, IGR_NO.TM2, IGR_YES.TM2 for the IGR menu skin.</div>
 <div class="field"><b>Scope:</b> POPSTARTER.ELF/.KELF byte $42D. r13. Default 0x01.</div>
 <div class="field"><b>Conflicts:</b> PPF to disable: DEFAULT_IGR_TEXTURES.PPF (sets 0x00, reverts to built-in textures).</div>
 <div class="ex">(default 0x01)</div>
-<div class="prov">📎 PRIMARY: config-table wiki + ELF hexdump</div>
+<div class="prov"> PRIMARY: config-table wiki + ELF hexdump</div>
 </div>
 <div class="card" id="42e-game-license-region-check"><h3>$42E - game license/region check <span class="badge primary">primary</span> <span class="cat-chip">config</span></h3>
 <div class="field"><b>Effect:</b> 0x00 = leave unpatched. 0x01 = patch so the BIOS doesn&#x27;t loop the region check when the VCD isn&#x27;t NTSC-J (default; NOPs the loop). The PS logo is not shown for non-JAP games.</div>
 <div class="field"><b>Scope:</b> POPSTARTER.ELF/.KELF byte $42E. r13. Default 0x01.</div>
 <div class="field"><b>Conflicts:</b> Trade-off: region-free skips the PS logo for non-JP titles.</div>
 <div class="ex">(default 0x01)</div>
-<div class="prov">📎 PRIMARY: config-table wiki + ELF hexdump</div>
+<div class="prov"> PRIMARY: config-table wiki + ELF hexdump</div>
 </div>
 <div class="card" id="42f-automatic-compatibility-mode-activator-master-switch"><h3>$42F - automatic compatibility-mode activator (master switch) <span class="badge primary">primary</span> <span class="cat-chip">config</span></h3>
 <div class="field"><b>Effect:</b> 0x00 = enable nothing. 0x01 = automatic compatibility-mode activation. 0x02 = other subroutines (LibCrypt cracks). 0x03 = ALL (default). 0x04 = &#x27;test mode&#x27; (disables per-game fixes, automated modes and LibCrypt fixes; enables integrated test-hacks; added WIP06 Prototype 2 2017-05-27). Special: if 0x03 AND a mode is forced in $418-$41F, it auto-changes to 0x02.</div>
 <div class="field"><b>Scope:</b> POPSTARTER.ELF/.KELF byte $42F (last byte). r13. Default 0x03.</div>
 <div class="field"><b>Conflicts:</b> PPF equivalents: NO_AUTO_PATCH.PPF (=0x00), LC_ONLY.PPF (=0x02), NO_LC_CRACKS.PPF. 0x04 is a diagnostic mode - not for normal play.</div>
 <div class="ex">Disable all auto-patching: $42F=0x00 (NO_AUTO_PATCH.PPF). LibCrypt-only: $42F=0x02 (LC_ONLY.PPF)</div>
-<div class="prov">📎 PRIMARY: CHANGES.TXT 2017/05/27 (Prototype 2 adds the 0x04 test mode) + ELF hexdump. Note: the recovered config-table wiki rows list 0x00–0x03 only.</div>
+<div class="prov"> PRIMARY: CHANGES.TXT 2017/05/27 (Prototype 2 adds the 0x04 test mode) + ELF hexdump. Note: the recovered config-table wiki rows list 0x00–0x03 only.</div>
 </div>
 <div class="card" id="classic-00-vs-debug-ff-build-label"><h3>&#x27;classic 00 vs debug FF&#x27; build label <span class="badge secondary">near-primary</span> <span class="cat-chip">config</span></h3>
 <div class="field"><b>Effect:</b> Community shorthand for the two states of config byte $410: &#x27;classic&#x27; ships $410=0x00 (silent boot), &#x27;debug&#x27; is $410=0xFF (realtime debug text, old POPStarter-12 behavior). NOT a separate codebase - same ELF, one byte differs (plus optionally $411).</div>
 <div class="field"><b>Scope:</b> POPSTARTER.ELF/.KELF byte $410. Canonical r13 download ships &#x27;classic&#x27; (00).</div>
 <div class="field"><b>Conflicts:</b> VERDICT: the LABEL is informal community usage, but ACCURATE and grounded in the primary $410 semantics. Nuance: 0x01-0xFE gives PACED debug (not just 00/FF), and DEBUG_AND_HALT also flips $411.</div>
 <div class="ex">&#x27;Classic&#x27;: $410=00. &#x27;Debug realtime&#x27;: $410=FF. &#x27;Debug paced&#x27;: $410=12 (18 dec)</div>
-<div class="prov">📎 NEAR-PRIMARY: derived from PRIMARY $410 definition + verified shipped byte 0x00 + ps2-home tutorial t=5311. Exact phrase is community, not a verbatim krHACKen string.</div>
+<div class="prov"> NEAR-PRIMARY: derived from PRIMARY $410 definition + verified shipped byte 0x00 + ps2-home tutorial t=5311. Exact phrase is community, not a verbatim krHACKen string.</div>
 </div></div></details><h2 id="topic-index">All 1 wiki pages in this topic</h2><p class="lead">Every recovered page filed under this section — including the deep-reference pages not embedded above.</p><div class="grid"><a class="tile" href="wiki/configuration-table.html"><b>Configuration Table</b><span>configuration-table</span></a></div></main>
   <aside class="toc"><div class="toc-h">On this page</div><nav id="toc-nav"></nav></aside>
 </div>

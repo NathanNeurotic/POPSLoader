@@ -5,12 +5,11 @@
 <link rel="stylesheet" href="../assets/style.css">
 </head><body data-base="../">
 <header class="topbar">
-  <button class="menu-btn" aria-label="Menu">☰</button>
+  <button class="menu-btn" aria-label="Menu"></button>
   <a class="brand" href="../index.html">
     <span class="psbtns"><i class="tri">&#9651;</i><i class="cir">&#9711;</i><i class="cro">&#10005;</i><i class="squ">&#9633;</i></span>
     POPStarter <small>DOCS</small></a>
   <div class="search">
-    <span class="ico">🔎</span>
     <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
     <kbd>/</kbd>
     <div id="results"></div>
@@ -18,39 +17,39 @@
 </header>
 <div class="layout">
   <nav class="sidebar">
-    <a href="../index.html"><span class="em">🏠</span>Home</a>
+    <a href="../index.html">Home</a>
     <h4>POPSLoader · this project</h4>
-    <a href="../popsloader.html" class="active"><span class="em">📦</span>POPSLoader docs</a>
-    <a href="../launch-arguments.html"><span class="em">🚀</span>Launch arguments</a>
-    <h4>POPStarter · documentation</h4><a href="../getting-started.html"><span class="em">🚀</span>Getting Started</a>
-<a href="../storage.html"><span class="em">💾</span>Storage Backends</a>
-<a href="../cheats.html"><span class="em">🎮</span>Cheats</a>
-<a href="../compatibility.html"><span class="em">🩹</span>Patches & TROJANs</a>
-<a href="../igr.html"><span class="em">🎯</span>IGR & Hotkeys</a>
-<a href="../config.html"><span class="em">🔧</span>Config Table</a>
-<a href="../multidisc.html"><span class="em">💿</span>Multi-disc & VMC</a>
-<a href="../troubleshooting.html"><span class="em">🛠️</span>Troubleshooting</a>
-<a href="../downloads.html"><span class="em">📦</span>Downloads</a>
-<a href="../history.html"><span class="em">📜</span>History</a>
+    <a href="../popsloader.html" class="active">POPSLoader docs</a>
+    <a href="../launch-arguments.html">Launch arguments</a>
+    <h4>POPStarter · documentation</h4><a href="../getting-started.html">Getting Started</a>
+<a href="../storage.html">Storage Backends</a>
+<a href="../cheats.html">Cheats</a>
+<a href="../compatibility.html">Patches & TROJANs</a>
+<a href="../igr.html">IGR & Hotkeys</a>
+<a href="../config.html">Config Table</a>
+<a href="../multidisc.html">Multi-disc & VMC</a>
+<a href="../troubleshooting.html">Troubleshooting</a>
+<a href="../downloads.html">Downloads</a>
+<a href="../history.html">History</a>
     <h4>Reference</h4>
-    <a href="../glossary.html"><span class="em">📖</span>Glossary</a>
-    <a href="../commands.html"><span class="em">⌨️</span>Command index</a>
-    <a href="../faq.html"><span class="em">❓</span>FAQ &amp; known bugs</a>
-    <a href="../known-issues.html"><span class="em">🐞</span>Known issues</a>
-    <a href="../compatibility-table.html"><span class="em">📊</span>Compatibility table</a>
-    <a href="../thread-study.html"><span class="em">🧵</span>Community knowledge</a>
-    <a href="../credits.html"><span class="em">🙏</span>Credits</a>
-    <a href="../wiki/index.html"><span class="em">📚</span>All wiki pages</a>
+    <a href="../glossary.html">Glossary</a>
+    <a href="../commands.html">Command index</a>
+    <a href="../faq.html">FAQ &amp; known bugs</a>
+    <a href="../known-issues.html">Known issues</a>
+    <a href="../compatibility-table.html">Compatibility table</a>
+    <a href="../thread-study.html">Community knowledge</a>
+    <a href="../credits.html">Credits</a>
+    <a href="../wiki/index.html">All wiki pages</a>
     <h4>Related projects</h4>
-    <a href="https://nathanneurotic.github.io/Open-PS2-Loader"><span class="em">🎮</span>RiptOPL (OPL) docs ↗</a>
-    <a href="https://ps2homebrewstore.com"><span class="em">🛒</span>PS2 Homebrew Store ↗</a>
+    <a href="https://nathanneurotic.github.io/Open-PS2-Loader">RiptOPL (OPL) docs ↗</a>
+    <a href="https://ps2homebrewstore.com">PS2 Homebrew Store ↗</a>
   </nav>
   <main class="content"><h1>Testing</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/BETA-13-PLAY/TESTING.md">view on GitHub ↗</a></p><p><strong>Build:</strong> rolling <code>BETA-13-PLAY</code> (BETA-13 candidate; rolling now publishes from this branch — <code>BETA-12-PLAY</code> is frozen/archival). Public release is still BETA-12.<br />
 This is the structured "what to test" companion to <strong><a href="rolling-notes.html">ROLLING_NOTES.md</a></strong> ("what's new"); for the canonical status / invariants / known-issues list see <strong><a href="state.html">STATE.md</a></strong>. Regenerate when the rolling batch changes. <em>(Last refreshed: 2026-06-22 — added the new HDD (exFAT) / BDMA-ATA backend and the on-screen-keyboard feedback fix.)</em></p>
 <p><strong>Devices:</strong> USB · MX4SIO (SD over SIO2) · MMCE (SD2PSX / MemCard PRO) · HDD (internal PFS) · <strong>HDD (exFAT) — NEW, BDMA Mode ATA</strong>. Test the ones you use; <strong>say which</strong> in every report.</p>
-<p><strong>How to report:</strong> ✅ pass / ❌ fail / ⚠️ odd. On a fail give: <strong>device</strong>, <strong>console model + region</strong> (e.g. SCPH-90008 PAL), <strong>how you launched POPSLoader</strong> (from which device / which launcher), <strong>exact steps</strong>, and a <strong>photo</strong> — error screens now print the real reason on line 2.</p>
+<p><strong>How to report:</strong>  pass /  fail /  odd. On a fail give: <strong>device</strong>, <strong>console model + region</strong> (e.g. SCPH-90008 PAL), <strong>how you launched POPSLoader</strong> (from which device / which launcher), <strong>exact steps</strong>, and a <strong>photo</strong> — error screens now print the real reason on line 2.</p>
 <hr />
-<h2 id="p0-must-work-on-every-device-boot-launch-no-regressions">🟥 P0 — Must work on every device (boot · launch · no regressions)</h2>
+<h2 id="p0-must-work-on-every-device-boot-launch-no-regressions"> P0 — Must work on every device (boot · launch · no regressions)</h2>
 <ul>
 <li>[ ] <strong>Boot to menu</strong> — launch from each device. The welcome <strong>splash appears instantly</strong> (no black screen first), <strong>centered from frame one</strong>, then the carousel. Report any black screen, off-center/letterboxed splash, wrong region/res that flips mid-fade, or hang.</li>
 <li>[ ] <strong>Normal PS1 launch</strong> — select a game on each device → <strong>X</strong> → POPStarter boots it.</li>
@@ -61,8 +60,8 @@ This is the structured "what to test" companion to <strong><a href="rolling-note
 <li>[ ] <strong>DKWDRV / Disc → exit to memory card:</strong> no hang on the picture.</li>
 <li>[ ] <strong>START-held recovery</strong> — hold <strong>START</strong> during boot → boots to a safe state; with <code>-page</code>/<code>-game</code> args it suppresses auto-launch so you can recover.</li>
 </ul>
-<h2 id="p1-new-features-this-cycle">🟧 P1 — New features this cycle</h2>
-<h3 id="hdd-exfat-via-bdma-ata-brand-new-backend-never-run-on-hardware">⭐⭐ HDD (exFAT) via BDMA ATA — BRAND-NEW backend, NEVER run on hardware</h3>
+<h2 id="p1-new-features-this-cycle"> P1 — New features this cycle</h2>
+<h3 id="hdd-exfat-via-bdma-ata-brand-new-backend-never-run-on-hardware"> HDD (exFAT) via BDMA ATA — BRAND-NEW backend, NEVER run on hardware</h3>
 <p>The flagship new feature this cycle (R3Z3N's ATA BDM Assault drivers + saildot4k's backend work): play from an <strong>exFAT-formatted internal SATA/IDE drive</strong>, exactly like a big USB stick. <strong>If you have an exFAT internal drive, this is the single most valuable thing you can test.</strong> CI-green, but zero hardware runs so far.</p>
 <p><strong>Setup:</strong><br />
 1. Format the internal drive <strong>exFAT</strong> (NOT the classic APA/PFS HDL layout — that's the separate "HDD (PFS)" entry).<br />
@@ -71,22 +70,34 @@ This is the structured "what to test" companion to <strong><a href="rolling-note
 <p><strong>Test:</strong><br />
 - [ ] Open the <strong>HDD (exFAT)</strong> carousel entry → it scans <code>mass:/POPS</code> and <strong>lists your games</strong>.<br />
 - [ ] Select a game → <strong>X</strong> → it <strong>launches</strong> through POPStarter (same as USB/MX4SIO).<br />
-- [ ] ⚠️ <strong>Classification:</strong> the exFAT drive must list/launch <strong>only</strong> under HDD (exFAT) — confirm it does <strong>NOT</strong> also appear under <strong>USB</strong> or <strong>MX4SIO</strong>, and that USB/MX4SIO still work normally. <em>(ATA is matched by exact ioctl driver-name <code>ata</code>, so it shouldn't leak — but this is exactly what hardware needs to confirm.)</em><br />
+- [ ]  <strong>Classification:</strong> the exFAT drive must list/launch <strong>only</strong> under HDD (exFAT) — confirm it does <strong>NOT</strong> also appear under <strong>USB</strong> or <strong>MX4SIO</strong>, and that USB/MX4SIO still work normally. <em>(ATA is matched by exact ioctl driver-name <code>ata</code>, so it shouldn't leak — but this is exactly what hardware needs to confirm.)</em><br />
 - [ ] No exFAT drive present / BDMA Mode ≠ ATA → the page shows <strong>"No exFAT HDD detected"</strong> and does <strong>not</strong> hang.<br />
 - [ ] <strong>Launch-arg routing (NEW — never HW-run):</strong> booting with <code>-page=ata</code> (or <code>ata0</code>) opens the <strong>HDD (exFAT)</strong> page; <code>-page=hdd</code> / <code>hdd0</code> / <code>apa</code> / <code>apa0</code> / any <code>pfs</code> open the classic <strong>HDD (PFS)</strong> page. (<code>-page=ata -game=&lt;VCD&gt;</code> should auto-launch from the exFAT drive.) Confirm <code>-page=ata</code> no longer lands on the PFS page.<br />
 - Report: empty list, a game that lists but won't launch, the drive showing under the wrong device, or a hang — include <strong>console model</strong> and <strong>drive type/size</strong>.</p>
-<h3 id="settings-collapsible-sections-new-never-run-on-hardware">⭐ Settings — collapsible sections (NEW, never run on hardware)</h3>
+<h3 id="settings-collapsible-sections-new-never-run-on-hardware"> Settings — collapsible sections (NEW, never run on hardware)</h3>
 <p>The Settings page already scrolls (focus-following viewport + scrollbar). New this build: each <strong>section header</strong> (Storage / Display / Startup / Carousel Devices / Game List / POPSTARTER / Memory Card) can <strong>collapse/expand</strong> so long groups (e.g. the per-device "Carousel Devices" checklist) fold away.<br />
 - [ ] Move the cursor onto a <strong>section header</strong> (it highlights; shows <code>-</code> when expanded, <code>+</code> when collapsed). Press <strong>X</strong> to toggle; <strong>Left</strong> collapses, <strong>Right</strong> expands.<br />
 - [ ] Collapsing a section hides its rows and the list gets shorter (less scrolling); expanding brings them back. The cursor stays on the header.<br />
-- [ ] ⚠️ <strong>Save / Reset Defaults / Discard &amp; Exit must ALWAYS stay reachable</strong> regardless of which sections are collapsed — confirm you can still reach them after collapsing every section.<br />
+- [ ]  <strong>Save / Reset Defaults / Discard &amp; Exit must ALWAYS stay reachable</strong> regardless of which sections are collapsed — confirm you can still reach them after collapsing every section.<br />
 - [ ] Every existing setting still saves/persists exactly as before (collapse state is session-only — it resets on reboot, nothing new is written to your settings file).<br />
 - Report: a section that won't expand back, the actions becoming unreachable, the cursor getting stuck, or any setting failing to save.</p>
-<h3 id="navigation-input-core-nav-confirmed-on-hardware-oldman63-the-rest-still-to-feel-out">Navigation &amp; input — ✅ core nav CONFIRMED on hardware (oldman63); the rest still to feel out</h3>
+<h3 id="smb-network-settings-module-install-new-writes-files-to-the-memory-card"> SMB / Network settings + module install (NEW — writes files to the memory card)</h3>
+<p>A new <strong>SMB / Network</strong> section in Settings lets you enter your server/share/credentials and <strong>install the in-game SMB streaming pack into <code>mc0:/POPSTARTER/</code></strong> (the same way BDMA installs its modules). <strong>POPSLoader itself still loads no network code and connects to nothing</strong> — the pack is what POPStarter uses to stream a game off a share at launch, which a later build wires up. <strong>Nothing SMB runs at boot.</strong> The SMB <em>carousel</em> page still shows "not implemented".<br />
+- [ ] <em>Settings</em> → expand <strong>SMB / Network</strong>. Top row <strong>SMB modules</strong> (Installed / Not installed); below: <strong>IP assignment</strong> (DHCP/Static), <strong>PS2 IP / Netmask / Gateway / DNS</strong>, <strong>Link mode</strong>, <strong>Address type</strong>, <strong>NetBIOS name</strong>, <strong>Server IP</strong>, <strong>Port</strong> (445), <strong>Share</strong>, <strong>User</strong>, <strong>Password</strong>, <strong>Games path</strong>.<br />
+- [ ] <strong>Cycle</strong> rows change with <strong>Left/Right</strong> / <strong>X</strong>; <strong>text</strong> rows open the on-screen keyboard on <strong>X</strong>. Password masks (<code>****</code>); empty <strong>Games path</strong> shows <em>"(auto / cwd-relative)"</em>; empty Share/User show <em>"(not set)"</em>.<br />
+- [ ] Edit fields → <strong>unsaved (accent) marker</strong> → <strong>Save Changes</strong> → <strong>reboot</strong> → values <strong>persisted</strong> exactly as entered.<br />
+- [ ]  <strong>SMB modules = Installed → Save:</strong> <code>mc0:/POPSTARTER/</code> should now hold <code>poweroff.irx</code>, <code>ps2dev9.irx</code>, <code>ps2ip.irx</code>, <code>ps2smap.irx</code>, <code>smbman.irx</code>, <code>SMSUTILS.irx</code>, plus <code>SMBCONFIG.DAT</code> and (only when <strong>IP assignment = Static</strong>) <code>IPCONFIG.DAT</code>. Open <code>SMBCONFIG.DAT</code>: line 1 = <code>&lt;Server&gt;[:&lt;Port&gt;] &lt;Share&gt;</code>, then (if User set) username + password on lines 2/3. <code>IPCONFIG.DAT</code> = <code>&lt;PS2 IP&gt; &lt;Netmask&gt; &lt;Gateway&gt;</code>, and is <strong>absent on DHCP</strong>.<br />
+- [ ]  <strong>Change an SMB field while Installed → Save:</strong> the <code>.DAT</code> files <strong>regenerate</strong> with the new values (the 6 IRX are rewritten harmlessly).<br />
+- [ ]  <strong>SMB modules = Not installed → Save:</strong> the 8 SMB files are <strong>removed</strong>, but <strong><code>icon.sys</code>, <code>*.icn</code>, and any installed BDMA modules (<code>usbd.irx</code>/<code>usbhdfsd.irx</code>) MUST remain</strong> — confirm BDMA still works afterward.<br />
+- [ ] <strong>Reset Defaults</strong> sets SMB modules → Not installed + fields to defaults (Save then uninstalls, mirroring BDMA→FAT32).<br />
+- [ ]  <strong>No regression:</strong> every <em>other</em> setting still saves/loads as before, and <strong>boot time is unchanged</strong>.<br />
+- Report: a field that won't persist, the wrong files installed/removed, <strong>BDMA modules or icons clobbered by SMB-off</strong>, or any boot slowdown.<br />
+- <strong>Not yet testable (later build):</strong> actually browsing/launching SMB games — the streaming pack is staged, but the carousel page isn't wired. The exact <code>.DAT</code> byte format is from the recovered POPStarter docs and is <strong>hardware-confirmable only</strong> (report if POPStarter rejects a generated <code>SMBCONFIG.DAT</code>).</p>
+<h3 id="navigation-input-core-nav-confirmed-on-hardware-oldman63-the-rest-still-to-feel-out">Navigation &amp; input —  core nav CONFIRMED on hardware (oldman63); the rest still to feel out</h3>
 <ul>
-<li>[x] <strong>Up/Down + analog-stick item nav</strong> — ✅ <strong>CONFIRMED (oldman63):</strong> d-pad and <strong>left analog stick up/down</strong> both land on <strong>individual items</strong> (item-by-item), and a held direction does smooth continuous scroll. <em>(The stick now folds into the d-pad and runs the same edge + auto-repeat path — no more "flies a whole page" / "can't select individual items" #501. A non-analog/digital pad is gated out so it can't inject a phantom direction; the auto-repeat is frame-counted, ~0.6 s before the first repeat then ~5/sec.)</em> Re-confirm on <strong>each device's</strong> list if you can.</li>
+<li>[x] <strong>Up/Down + analog-stick item nav</strong> —  <strong>CONFIRMED (oldman63):</strong> d-pad and <strong>left analog stick up/down</strong> both land on <strong>individual items</strong> (item-by-item), and a held direction does smooth continuous scroll. <em>(The stick now folds into the d-pad and runs the same edge + auto-repeat path — no more "flies a whole page" / "can't select individual items" #501. A non-analog/digital pad is gated out so it can't inject a phantom direction; the auto-repeat is frame-counted, ~0.6 s before the first repeat then ~5/sec.)</em> Re-confirm on <strong>each device's</strong> list if you can.</li>
 <li>[ ] <strong>Page-jump &amp; top/bottom</strong> — on a big list: <strong>LEFT / RIGHT</strong> (d-pad <strong>or</strong> left stick left/right) jumps a <strong>page</strong> at a time; <strong>L1</strong> ping-pongs <strong>top ↔ bottom</strong>. Confirm these still work after the nav rework.</li>
-<li>[ ] <strong>R3 = reveal / hide hidden games</strong> ⭐ <strong>STILL never run on hardware. Test on each device</strong> (HDD / USB / MX4SIO / MMCE — R3 is ignored elsewhere):<br />
+<li>[ ] <strong>R3 = reveal / hide hidden games</strong>  <strong>STILL never run on hardware. Test on each device</strong> (HDD / USB / MX4SIO / MMCE — R3 is ignored elsewhere):<br />
   1. Hide a couple of games with <strong>L3</strong> (with <em>Hidden games</em> set to <strong>Visible (manage)</strong>).<br />
   2. <em>Settings → Game List → Hidden games → </em><em>Hidden</em><strong> (they vanish). <em>(R3 toggles this same setting in place, so you can also just press R3.)</em><br />
   3. On the device list press </strong>R3<strong> → list rebuilds, hidden games </strong>reappear dimmed<strong> + toast <em>"Showing hidden games (dimmed) -- press L3 to unhide"</em>.<br />
@@ -94,19 +105,19 @@ This is the structured "what to test" companion to <strong><a href="rolling-note
   5. </strong>R3<strong> again → hidden games vanish + <em>"Hidden games are now hidden"</em>.<br />
   6. </strong>Reboot<em><em> → the Hidden-games state persisted. </em>(A failed save toasts "(could NOT save -- reverts on reboot)".)</em></li>
 <li>Report: empty/wrong list after R3, a crash, a device failing to re-scan, or the setting not sticking.</li>
-<li>[ ] <strong>Boot sound On/Off</strong> — <em>Settings → Game List → Boot sound</em> (default <strong>On</strong>) gates the splash chime. ✅ <strong>save survives reboot CONFIRMED (oldman63);</strong> still confirm Off actually silences the chime.</li>
+<li>[ ] <strong>Boot sound On/Off</strong> — <em>Settings → Game List → Boot sound</em> (default <strong>On</strong>) gates the splash chime.  <strong>save survives reboot CONFIRMED (oldman63);</strong> still confirm Off actually silences the chime.</li>
 <li>[ ] <strong>Per-game info text</strong> — drop <code>&lt;game&gt;.txt</code> next to a game → <em>Settings → Game List → Game details = Left/Center/Right aligned</em> → blurb under the cover in that alignment, line breaks kept. <em>Off</em> hides it.</li>
 <li>[ ] <strong>Description scroll</strong> — long <code>.txt</code> scrolls with the <strong>right analog stick</strong>; <em>Settings → Game List → Description scroll speed = Fast/Medium/Slow</em> now actually changes the pace (default <strong>Slow</strong>, ~1 line/sec; the speed setting was previously ignored). Confirm Fast/Medium/Slow feel distinct.</li>
 <li>[ ] <strong>Game list cache (opt-in, default OFF)</strong> — <em>Settings → Game list cache → ON:</em></li>
 <li>[ ] First entry builds; second entry / reboot <strong>loads fast</strong> (no "Building…").</li>
-<li>[ ] ⚠️ <strong>CRITICAL: launch a game FROM the cached list</strong> on each device incl. <strong>HDD</strong> — it must still <strong>launch correctly</strong>, not just load fast.</li>
+<li>[ ]  <strong>CRITICAL: launch a game FROM the cached list</strong> on each device incl. <strong>HDD</strong> — it must still <strong>launch correctly</strong>, not just load fast.</li>
 <li>[ ] <strong>R1</strong> forces a rebuild.</li>
 <li>[ ] Toggle a list-affecting setting (Multi-disc / Hidden games) → cache <strong>rebuilds</strong>, doesn't serve a stale list.</li>
 <li>[ ] <strong>Boot Page</strong> — <em>Settings → Startup</em> → pick a device → after boot it lands <strong>straight in that device's list</strong> (or Carousel default).</li>
 <li>[ ] <strong>Carousel Devices visibility</strong> — <em>Settings → Carousel Devices</em> → hide e.g. SMB / i.Link → they leave the wheel with <strong>no gaps</strong>, ≥1 stays, launching the others unchanged.</li>
 <li>[ ] <strong>Multi-disc collapse</strong> — <em>Settings → Game List</em>, files named <code>Game (Disc 1).VCD</code> / <code>Game (Disc 2).VCD</code> → only <strong>Disc 1</strong> shows; swap discs in-game via VMC.</li>
 </ul>
-<h2 id="p2-hide-settings-persistence">🟨 P2 — Hide / settings persistence</h2>
+<h2 id="p2-hide-settings-persistence"> P2 — Hide / settings persistence</h2>
 <ul>
 <li>[ ] <strong>L3 hide/unhide</strong> on every device incl. <strong>HDD</strong> (drops <code>.hide</code> next to the VCD; on HDD writes to the boot partition — old "add it from a PC" is now only a write-failure fallback).</li>
 <li>[ ] <strong>Hidden games filter</strong> — <em>Hidden</em> filters out; <em>Visible (manage)</em> shows dimmed so L3 can toggle them back.</li>
@@ -114,32 +125,32 @@ This is the structured "what to test" companion to <strong><a href="rolling-note
 <li>[ ] <strong>Unsaved-changes prompt</strong> — change a <em>cycle</em> setting (Game details / scroll speed / cache / Boot sound / Overscan / Boot Page) and press <strong>BACK</strong> without saving → it warns you.</li>
 <li>[ ] <strong>POPSTARTER MC Folder toggle + BDMA interlock</strong> — toggle the <code>mc:/POPSTARTER</code> folder (off <strong>deletes</strong> it, with confirm). Can't disable the folder while BDMA is on, nor enable BDMA while the folder is off. <em>(BDMA mode now in <code>bdma_mode.txt</code>; legacy <code>.pldr_bdma_mode</code> still read.)</em></li>
 </ul>
-<h2 id="p3-display-pal-needs-pal-hardware-we-have-none-on-the-team">🟦 P3 — Display / PAL (needs PAL hardware — we have none on the team)</h2>
+<h2 id="p3-display-pal-needs-pal-hardware-we-have-none-on-the-team"> P3 — Display / PAL (needs PAL hardware — we have none on the team)</h2>
 <ul>
 <li>[ ] <strong>Video Standard</strong> — <em>Settings → Display</em>. <strong>Auto</strong> default should match your console's region. On <strong>PAL</strong> the UI should fill the screen <strong>edge-to-edge at 640×512</strong> (no letterbox). Report your console's <strong>actual output</strong> reading.</li>
 <li>[ ] <strong>Display-change confirm/revert</strong> — change the mode; if you don't confirm in time it <strong>auto-reverts</strong>.</li>
-<li>[ ] <strong>Overscan (CRT inset)</strong> ⭐ <strong>NEW — needs a CRT eyeball, not yet verified.</strong> <em>Settings → Game List → Overscan (CRT inset)</em> (default <strong>Off</strong>; <strong>LEFT/RIGHT steps ±5</strong>, live preview). Raise it on a CRT that crops the edges → the whole UI should shrink <strong>uniformly toward center</strong> (OPL-style render inset). Discarding the settings change restores the previous value. Report the value that just clears your bezel.</li>
+<li>[ ] <strong>Overscan (CRT inset)</strong>  <strong>NEW — needs a CRT eyeball, not yet verified.</strong> <em>Settings → Game List → Overscan (CRT inset)</em> (default <strong>Off</strong>; <strong>LEFT/RIGHT steps ±5</strong>, live preview). Raise it on a CRT that crops the edges → the whole UI should shrink <strong>uniformly toward center</strong> (OPL-style render inset). Discarding the settings change restores the previous value. Report the value that just clears your bezel.</li>
 </ul>
-<h2 id="p4-cosmetic-polish">⬜ P4 — Cosmetic / polish</h2>
+<h2 id="p4-cosmetic-polish"> P4 — Cosmetic / polish</h2>
 <ul>
 <li>[ ] List a touch <strong>wider</strong>; device name (e.g. "USB") no longer overlaps the <strong>top row</strong>; "Building…" overlay calmer.</li>
-<li>[ ] <strong>Cover placeholder art</strong> ⭐ <strong>NEW assets, needs an eyeball on NTSC + PAL.</strong> No live cover now draws a layered jewel-case placeholder (<code>cover_default.png</code>), with a <code>cover_missing.png</code> overlay <strong>only</strong> when the preview is <strong>ON</strong> but the game has no cover. <em>(The old "Cover disabled" </em><em>text</em><em> label is gone.)</em> Confirm the default cover, the missing overlay, and <code>frame.png</code> all <strong>register</strong> with the jewel-case window (right-anchored, no drift) on both NTSC and PAL.</li>
+<li>[ ] <strong>Cover placeholder art</strong>  <strong>NEW assets, needs an eyeball on NTSC + PAL.</strong> No live cover now draws a layered jewel-case placeholder (<code>cover_default.png</code>), with a <code>cover_missing.png</code> overlay <strong>only</strong> when the preview is <strong>ON</strong> but the game has no cover. <em>(The old "Cover disabled" </em><em>text</em><em> label is gone.)</em> Confirm the default cover, the missing overlay, and <code>frame.png</code> all <strong>register</strong> with the jewel-case window (right-anchored, no drift) on both NTSC and PAL.</li>
 <li>[ ] <strong>Cover-art preview</strong> toggles with <strong>Square</strong> — OFF shows the plain default case (no overlay), ON shows the live cover or the missing-overlay placeholder.</li>
 <li>[ ] <strong>Scroll position kept</strong> returning from Settings (cursor doesn't snap to row 1).</li>
 <li>[ ] <strong>On-screen keyboard feedback</strong> (editing a POPSTARTER / DKWDRV path) — pressing a key now <strong>flashes it</strong> briefly, and the text caret <strong>blinks</strong> at a normal rate. <em>(Both were broken by a microsecond-vs-millisecond timer bug — the flash expired before the next frame so it never showed, and the caret blinked ~1000× too fast; purely cosmetic, no input behavior change.)</em></li>
 </ul>
-<h2 id="p5-robustness-only-if-you-hit-it">🧪 P5 — Robustness (only if you hit it)</h2>
+<h2 id="p5-robustness-only-if-you-hit-it"> P5 — Robustness (only if you hit it)</h2>
 <ul>
 <li>[ ] <strong>Corrupt / oversized cover</strong> (PNG/JPEG/BMP) — must <strong>not crash</strong> the list (hardened this cycle).</li>
 <li>[ ] <strong>Very long VCD filenames</strong> — ~<strong>73 chars</strong> practical limit; longer may fail to launch.</li>
 <li>[ ] <strong>DualShock 4 over Bluetooth</strong> (only if you use one) — lightbar colour + rumble still behave after a code fix that stopped the BT output report carrying ~29 bytes of uninitialized data. Confirm the DS4 still pairs, the lightbar sets, and rumble works.</li>
 </ul>
-<h2 id="release-zip-contents">📦 Release zip contents</h2>
+<h2 id="release-zip-contents"> Release zip contents</h2>
 <ul>
 <li>[ ] The rolling zip ships, at the <strong>root</strong>: a <strong><code>POPSTARTER/</code></strong> folder (SMB <code>.irx</code> pack), <strong><code>POPS/PATCH_5.BIN</code></strong>, <strong><code>POPSTARTER.ELF</code></strong> (also copied into <strong><code>POPS/</code></strong>) — confirm they're present in your download. <em>(POPS engine binaries are not redistributable and are NOT included; you still supply your own.)</em></li>
 </ul>
 <hr />
-<h2 id="i-known-issues-expected-please-dont-re-report-unless-your-case-differs">ℹ️ Known issues — expected, please don't re-report (unless your case differs)</h2>
+<h2 id="i-known-issues-expected-please-dont-re-report-unless-your-case-differs"> Known issues — expected, please don't re-report (unless your case differs)</h2>
 <ul>
 <li><strong>"Failed to load HDD" when POPSLoader is launched from a non-HDD device</strong> via a launcher (config-specific, seen by Nuno) — most setups list the HDD fine. <strong>If you hit it, post your exact boot config</strong>; it now shows the real reason on a second line. Workaround: boot from the HDD, or open the HDD page a few seconds after the menu.</li>
 <li><strong>PAL console still showing PAL when NTSC is selected</strong> (#495) — known, being chased; the "actual output" reading helps.</li>

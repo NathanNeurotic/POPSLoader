@@ -5,12 +5,11 @@
 <link rel="stylesheet" href="assets/style.css">
 </head><body data-base="">
 <header class="topbar">
-  <button class="menu-btn" aria-label="Menu">☰</button>
+  <button class="menu-btn" aria-label="Menu"></button>
   <a class="brand" href="index.html">
     <span class="psbtns"><i class="tri">&#9651;</i><i class="cir">&#9711;</i><i class="cro">&#10005;</i><i class="squ">&#9633;</i></span>
     POPStarter <small>DOCS</small></a>
   <div class="search">
-    <span class="ico">🔎</span>
     <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
     <kbd>/</kbd>
     <div id="results"></div>
@@ -18,37 +17,37 @@
 </header>
 <div class="layout">
   <nav class="sidebar">
-    <a href="index.html"><span class="em">🏠</span>Home</a>
+    <a href="index.html">Home</a>
     <h4>POPSLoader · this project</h4>
-    <a href="popsloader.html"><span class="em">📦</span>POPSLoader docs</a>
-    <a href="launch-arguments.html"><span class="em">🚀</span>Launch arguments</a>
-    <h4>POPStarter · documentation</h4><a href="getting-started.html"><span class="em">🚀</span>Getting Started</a>
-<a href="storage.html"><span class="em">💾</span>Storage Backends</a>
-<a href="cheats.html"><span class="em">🎮</span>Cheats</a>
-<a href="compatibility.html"><span class="em">🩹</span>Patches & TROJANs</a>
-<a href="igr.html" class="active"><span class="em">🎯</span>IGR & Hotkeys</a>
-<a href="config.html"><span class="em">🔧</span>Config Table</a>
-<a href="multidisc.html"><span class="em">💿</span>Multi-disc & VMC</a>
-<a href="troubleshooting.html"><span class="em">🛠️</span>Troubleshooting</a>
-<a href="downloads.html"><span class="em">📦</span>Downloads</a>
-<a href="history.html"><span class="em">📜</span>History</a>
+    <a href="popsloader.html">POPSLoader docs</a>
+    <a href="launch-arguments.html">Launch arguments</a>
+    <h4>POPStarter · documentation</h4><a href="getting-started.html">Getting Started</a>
+<a href="storage.html">Storage Backends</a>
+<a href="cheats.html">Cheats</a>
+<a href="compatibility.html">Patches & TROJANs</a>
+<a href="igr.html" class="active">IGR & Hotkeys</a>
+<a href="config.html">Config Table</a>
+<a href="multidisc.html">Multi-disc & VMC</a>
+<a href="troubleshooting.html">Troubleshooting</a>
+<a href="downloads.html">Downloads</a>
+<a href="history.html">History</a>
     <h4>Reference</h4>
-    <a href="glossary.html"><span class="em">📖</span>Glossary</a>
-    <a href="commands.html"><span class="em">⌨️</span>Command index</a>
-    <a href="faq.html"><span class="em">❓</span>FAQ &amp; known bugs</a>
-    <a href="known-issues.html"><span class="em">🐞</span>Known issues</a>
-    <a href="compatibility-table.html"><span class="em">📊</span>Compatibility table</a>
-    <a href="thread-study.html"><span class="em">🧵</span>Community knowledge</a>
-    <a href="credits.html"><span class="em">🙏</span>Credits</a>
-    <a href="wiki/index.html"><span class="em">📚</span>All wiki pages</a>
+    <a href="glossary.html">Glossary</a>
+    <a href="commands.html">Command index</a>
+    <a href="faq.html">FAQ &amp; known bugs</a>
+    <a href="known-issues.html">Known issues</a>
+    <a href="compatibility-table.html">Compatibility table</a>
+    <a href="thread-study.html">Community knowledge</a>
+    <a href="credits.html">Credits</a>
+    <a href="wiki/index.html">All wiki pages</a>
     <h4>Related projects</h4>
-    <a href="https://nathanneurotic.github.io/Open-PS2-Loader"><span class="em">🎮</span>RiptOPL (OPL) docs ↗</a>
-    <a href="https://ps2homebrewstore.com"><span class="em">🛒</span>PS2 Homebrew Store ↗</a>
+    <a href="https://nathanneurotic.github.io/Open-PS2-Loader">RiptOPL (OPL) docs ↗</a>
+    <a href="https://ps2homebrewstore.com">PS2 Homebrew Store ↗</a>
   </nav>
-  <main class="content"><h1>IGR &amp; Hotkeys</h1><p class="lead">In-Game Reset, the <code>mc0:/BOOT/BOOT.ELF</code> exit chain, and the in-game hotkeys.</p><div class="callout red"><div class="h">⚠ Unverified / caution</div>PATCH_7.BIN (existence unconfirmed) State plainly: no primary file or definition survives; it is absent from the wiki, the r13 CHANGES.TXT, the IGR download table, and the community manual (which skips from PATCH_6 to PATCH_8). The &#x27;2014 krHACKen forced mode 0x06&#x27; vs &#x27;obsolete Mode 7&#x27; framings are community lore only. Explicitly distinguish it from the VERIFIED TROJAN_7.BIN game-fix bundle, which is a different file.</div>
-<div class="callout amber"><div class="h">⚖ Conflicting sources</div>PATCH_9.BIN filename collision (A) STOCK PATCH_9.BIN == $NOPAL, disables the auto PAL patcher so a PAL VCD runs in POPS native NTSC (wiki already calls it &#x27;obsolete (still working tho)&#x27;). (B) The 2020-03-21 krHACKen file that REUSES the name PATCH_9.BIN to disable the bugged ELF loader and restore IGR-to-OPL; PATCH_9.7z MD5 9db1e18bae92c4991e3de7e2a752558c (188 B), distributed via the IGR &#x27;Trojans and Patches&#x27; thread. Same filename, different binary - never mix them.</div>
-<div class="callout info"><div class="h">ℹ Nuance</div>Default IGR combo (L1+Select+Start) The default-skin-enabled fact is primary (CHANGES.TXT), but the specific default button combo is from a PS2-HOME tutorial, not the CHANGES.TXT; confidence near-primary.</div>
-<div class="callout red"><div class="h">⚠ Unverified / caution</div>TROJAN_6 / TROJAN_8 - Note they are absent from the recovered IGR download table (only 0-5, 7, 9 exist there); whether they ever existed is unknown. Low-importance gap.</div><h2 id="in-game-reset"><strong>In-Game-Reset</strong></h2>
+  <main class="content"><h1>IGR &amp; Hotkeys</h1><p class="lead">In-Game Reset, the <code>mc0:/BOOT/BOOT.ELF</code> exit chain, and the in-game hotkeys.</p><div class="callout red"><div class="h"> Unverified / caution</div>PATCH_7.BIN (existence unconfirmed) State plainly: no primary file or definition survives; it is absent from the wiki, the r13 CHANGES.TXT, the IGR download table, and the community manual (which skips from PATCH_6 to PATCH_8). The &#x27;2014 krHACKen forced mode 0x06&#x27; vs &#x27;obsolete Mode 7&#x27; framings are community lore only. Explicitly distinguish it from the VERIFIED TROJAN_7.BIN game-fix bundle, which is a different file.</div>
+<div class="callout amber"><div class="h"> Conflicting sources</div>PATCH_9.BIN filename collision (A) STOCK PATCH_9.BIN == $NOPAL, disables the auto PAL patcher so a PAL VCD runs in POPS native NTSC (wiki already calls it &#x27;obsolete (still working tho)&#x27;). (B) The 2020-03-21 krHACKen file that REUSES the name PATCH_9.BIN to disable the bugged ELF loader and restore IGR-to-OPL; PATCH_9.7z MD5 9db1e18bae92c4991e3de7e2a752558c (188 B), distributed via the IGR &#x27;Trojans and Patches&#x27; thread. Same filename, different binary - never mix them.</div>
+<div class="callout info"><div class="h"> Nuance</div>Default IGR combo (L1+Select+Start) The default-skin-enabled fact is primary (CHANGES.TXT), but the specific default button combo is from a PS2-HOME tutorial, not the CHANGES.TXT; confidence near-primary.</div>
+<div class="callout red"><div class="h"> Unverified / caution</div>TROJAN_6 / TROJAN_8 - Note they are absent from the recovered IGR download table (only 0-5, 7, 9 exist there); whether they ever existed is unknown. Low-importance gap.</div><h2 id="in-game-reset"><strong>In-Game-Reset</strong></h2>
 <hr>
 
 <h2 id="igr-behaviour-modifiers"><em>IGR Behaviour Modifiers :</em></h2>
@@ -296,7 +295,7 @@ OR – [optionnal step] compiled them as a PATCH_#.BIN ;</p>
 5. No
 
 </code></pre>
-<hr><p class="prov-inline source-note">📎 Recovered from ShaolinAssassin's <a href="wiki/igr.html">IGR</a> · <a href="wiki/hotkeys.html">Hotkeys</a> · <a href="wiki/bios-osd-handlers.html">BIOS OSD Handlers</a> · <a href="wiki/igr-textures.html">IGR Textures</a> wiki pages.</p><h2>Images &amp; screenshots</h2><div class="gallery"><figure><a href="img/1646263520-Original.png" target="_blank"><img src="img/1646263520-Original.png" alt="Original" loading="lazy"></a><figcaption>Original</figcaption></figure><figure><a href="img/2807855345-preview_en.png" target="_blank"><img src="img/2807855345-preview_en.png" alt="preview en" loading="lazy"></a><figcaption>preview en</figcaption></figure><figure><a href="img/3600508499-preview_sp.png" target="_blank"><img src="img/3600508499-preview_sp.png" alt="preview sp" loading="lazy"></a><figcaption>preview sp</figcaption></figure><figure><a href="img/1470393228-lopoprev.png" target="_blank"><img src="img/1470393228-lopoprev.png" alt="lopoprev" loading="lazy"></a><figcaption>lopoprev</figcaption></figure></div>
+<hr><p class="prov-inline source-note"> Recovered from ShaolinAssassin's <a href="wiki/igr.html">IGR</a> · <a href="wiki/hotkeys.html">Hotkeys</a> · <a href="wiki/bios-osd-handlers.html">BIOS OSD Handlers</a> · <a href="wiki/igr-textures.html">IGR Textures</a> wiki pages.</p><h2>Images &amp; screenshots</h2><div class="gallery"><figure><a href="img/1646263520-Original.png" target="_blank"><img src="img/1646263520-Original.png" alt="Original" loading="lazy"></a><figcaption>Original</figcaption></figure><figure><a href="img/2807855345-preview_en.png" target="_blank"><img src="img/2807855345-preview_en.png" alt="preview en" loading="lazy"></a><figcaption>preview en</figcaption></figure><figure><a href="img/3600508499-preview_sp.png" target="_blank"><img src="img/3600508499-preview_sp.png" alt="preview sp" loading="lazy"></a><figcaption>preview sp</figcaption></figure><figure><a href="img/1470393228-lopoprev.png" target="_blank"><img src="img/1470393228-lopoprev.png" alt="lopoprev" loading="lazy"></a><figcaption>lopoprev</figcaption></figure></div>
 <h2>Images &amp; screenshots</h2><div class="gallery"><figure><a href="img/1390009092-IGR_BG.png" target="_blank"><img src="img/1390009092-IGR_BG.png" alt="IGR BG" loading="lazy"></a><figcaption>IGR BG</figcaption></figure><figure><a href="img/3308953039-IGR_YES.png" target="_blank"><img src="img/3308953039-IGR_YES.png" alt="IGR YES" loading="lazy"></a><figcaption>IGR YES</figcaption></figure><figure><a href="img/4238144417-preview-guidelines.png" target="_blank"><img src="img/4238144417-preview-guidelines.png" alt="preview guidelines" loading="lazy"></a><figcaption>preview guidelines</figcaption></figure><figure><a href="img/2013401434-animated_preview.gif" target="_blank"><img src="img/2013401434-animated_preview.gif" alt="animated preview" loading="lazy"></a><figcaption>animated preview</figcaption></figure></div><h2 id="igr-in-game-reset-and-the-exit-chain">IGR, in-game reset, and the exit chain</h2>
 <p>In-Game Reset (IGR) is POPStarter's pad-driven exit/reset. With no modifier set, the default combo (community-reported L1+Select+Start) opens a Japanese-language IGR menu (the skin is enabled by default in the config table). You override it with one of six $IGR# CHEATS.TXT commands (or the equivalent TROJAN_0..5.BIN) - and only one IGR behaviour is active at a time. The canonical CHANGES.TXT pins the combos exactly: $IGR0/$IGR3 use L1+L2+R1+R2+X+Down, $IGR1/$IGR4 use Start+Select, $IGR2/$IGR5 use L1+L2+R1+R2+Start+Select; the IGR0/1/2 trio OPENS the menu while IGR3/4/5 TERMINATE POPS directly with no popup. $IGR5 (the OPL-style no-popup macro) was broken in earlier r13 builds and fixed only in the 2019-06-05 final - so the canonical package is the one where it reliably works. $NOIGR (== PATCH_0.BIN) disables IGR entirely. CORRECTION: the widely-mirrored Portuguese manual swaps $IGR4 and $IGR5; the CHANGES.TXT ordering above is authoritative.</p>
 <p>The EXIT CHAIN (added Beta 13, 2015-12-07, gated by config $424=0x01): on IGR quit AND on POPStarter's own quit-on-failure, the launcher tries mc0:/BOOT/BOOT.ELF, then mc1:/BOOT/BOOT.ELF, and if neither is found/valid it drops to the PS2 Browser (OSDSYS, which runs FMCB/FHDB if installed). Two crucial caveats: there is NO documented path override (a user publicly asked krHACKen for one in 2016 and it was never implemented - BOOT.ELF must physically live on a memory card), and if POPS itself cannot initialise (can't load modules or open the VCD) the launcher is bypassed and you fall straight to the OSD.</p>
@@ -305,84 +304,84 @@ OR – [optionnal step] compiled them as a PATCH_#.BIN ;</p>
 <div class="field"><b>Scope:</b> CHEATS.TXT command, integrated 2016/11/20 WIP06 Beta 16. Standalone equivalent: TROJAN_0.BIN.</div>
 <div class="field"><b>Conflicts:</b> Mutually exclusive with other $IGR#/$NOIGR. A global CHEATS.TXT can override per-game.</div>
 <div class="ex">$IGR0</div>
-<div class="prov">📎 PRIMARY: r13 CHANGES.TXT line 303 (archive.org popstarter-r-13-beta-20190605); wiki igr glyphs (Wayback 20190403162824)</div>
+<div class="prov"> PRIMARY: r13 CHANGES.TXT line 303 (archive.org popstarter-r-13-beta-20190605); wiki igr glyphs (Wayback 20190403162824)</div>
 </div>
 <div class="card" id="igr1"><h3>$IGR1 <span class="badge primary">primary</span> <span class="cat-chip">igr</span></h3>
 <div class="field"><b>Effect:</b> Hold Start+Select to OPEN the IGR menu.</div>
 <div class="field"><b>Scope:</b> CHEATS.TXT command (Beta 16, 2016/11/20). Standalone equivalent: TROJAN_1.BIN.</div>
 <div class="field"><b>Conflicts:</b> Mutually exclusive with other $IGR#/$NOIGR.</div>
 <div class="ex">$IGR1</div>
-<div class="prov">📎 PRIMARY: r13 CHANGES.TXT line 304</div>
+<div class="prov"> PRIMARY: r13 CHANGES.TXT line 304</div>
 </div>
 <div class="card" id="igr2"><h3>$IGR2 <span class="badge primary">primary</span> <span class="cat-chip">igr</span></h3>
 <div class="field"><b>Effect:</b> Hold L1+L2+R1+R2+Start+Select to OPEN the IGR menu.</div>
 <div class="field"><b>Scope:</b> CHEATS.TXT command (Beta 16, 2016/11/20). Standalone equivalent: TROJAN_2.BIN.</div>
 <div class="field"><b>Conflicts:</b> Mutually exclusive with other $IGR#/$NOIGR.</div>
 <div class="ex">$IGR2</div>
-<div class="prov">📎 PRIMARY: r13 CHANGES.TXT line 305</div>
+<div class="prov"> PRIMARY: r13 CHANGES.TXT line 305</div>
 </div>
 <div class="card" id="igr3"><h3>$IGR3 <span class="badge primary">primary</span> <span class="cat-chip">igr</span></h3>
 <div class="field"><b>Effect:</b> Hold L1+L2+R1+R2+X+Down to TERMINATE POPS directly (no menu). On quit POPStarter then tries mc0:/BOOT/BOOT.ELF, then mc1:/BOOT/BOOT.ELF, else Browser/OSDSYS.</div>
 <div class="field"><b>Scope:</b> CHEATS.TXT command (Beta 16, 2016/11/20). Standalone equivalent: TROJAN_3.BIN.</div>
 <div class="field"><b>Conflicts:</b> Mutually exclusive with other $IGR#/$NOIGR. No documented BOOT.ELF path override.</div>
 <div class="ex">$IGR3</div>
-<div class="prov">📎 PRIMARY: r13 CHANGES.TXT line 306; BOOT.ELF chain CHANGES.TXT Beta 13</div>
+<div class="prov"> PRIMARY: r13 CHANGES.TXT line 306; BOOT.ELF chain CHANGES.TXT Beta 13</div>
 </div>
 <div class="card" id="igr4"><h3>$IGR4 <span class="badge primary">primary</span> <span class="cat-chip">igr</span></h3>
 <div class="field"><b>Effect:</b> Hold Start+Select to TERMINATE POPS directly (no menu).</div>
 <div class="field"><b>Scope:</b> CHEATS.TXT command (Beta 16, 2016/11/20). Standalone equivalent: TROJAN_4.BIN.</div>
 <div class="field"><b>Conflicts:</b> Mutually exclusive with other $IGR#/$NOIGR. The Portuguese PDFCoffee/Scribd manual mistranslates $IGR4/$IGR5 ordering - the canonical CHANGES.TXT is authoritative.</div>
 <div class="ex">$IGR4</div>
-<div class="prov">📎 PRIMARY: r13 CHANGES.TXT line 307</div>
+<div class="prov"> PRIMARY: r13 CHANGES.TXT line 307</div>
 </div>
 <div class="card" id="igr5"><h3>$IGR5 <span class="badge primary">primary</span> <span class="cat-chip">igr</span></h3>
 <div class="field"><b>Effect:</b> Hold L1+L2+R1+R2+Start+Select to TERMINATE POPS directly (no menu) - the OPL-style no-popup exit macro. Was broken in earlier r13 builds and FIXED in the final 2019/06/05 build.</div>
 <div class="field"><b>Scope:</b> CHEATS.TXT command (Beta 16, 2016/11/20; fixed 2019/06/05). Standalone equivalent: TROJAN_5.BIN.</div>
 <div class="field"><b>Conflicts:</b> Mutually exclusive with other $IGR#/$NOIGR. Combo matches OPL&#x27;s own IGR exit macro. CORRECTS base report&#x27;s combo gloss to L1+L2+R1+R2+Start+Select.</div>
 <div class="ex">$IGR5</div>
-<div class="prov">📎 PRIMARY: r13 CHANGES.TXT line 308 + line 9 (&#x27;$IGR5 was not working, fixed in this last build&#x27;); OPL macro https://github.com/ps2homebrew/Open-PS2-Loader/discussions/543</div>
+<div class="prov"> PRIMARY: r13 CHANGES.TXT line 308 + line 9 (&#x27;$IGR5 was not working, fixed in this last build&#x27;); OPL macro https://github.com/ps2homebrew/Open-PS2-Loader/discussions/543</div>
 </div>
 <div class="card" id="noigr"><h3>$NOIGR <span class="badge primary">primary</span> <span class="cat-chip">igr</span></h3>
 <div class="field"><b>Effect:</b> Disables the IGR menu entirely (no in-game-reset trigger). Means the only exit is whatever the game itself or a hard reset provides.</div>
 <div class="field"><b>Scope:</b> CHEATS.TXT command. Standalone equivalent: PATCH_0.BIN.</div>
 <div class="field"><b>Conflicts:</b> Overrides any $IGR# combo.</div>
 <div class="ex">$NOIGR</div>
-<div class="prov">📎 PRIMARY: r13 CHANGES.TXT line 309; PATCH_0.BIN equivalent IGR thread t=9909</div>
+<div class="prov"> PRIMARY: r13 CHANGES.TXT line 309; PATCH_0.BIN equivalent IGR thread t=9909</div>
 </div>
 <div class="card" id="default-igr-trigger-no-modifier"><h3>Default IGR trigger (no modifier) <span class="badge secondary">near-primary</span> <span class="cat-chip">igr</span></h3>
 <div class="field"><b>Effect:</b> With no $IGR#/TROJAN set, the default combo (community-reported L1+Select+Start) opens POPStarter&#x27;s IGR menu - a Japanese-language reset/return prompt. The IGR &#x27;skin&#x27; is enabled by default in the config table.</div>
 <div class="field"><b>Scope:</b> All r13 betas. Menu text is Japanese unless a translated IGR texture is installed.</div>
 <div class="field"><b>Conflicts:</b> Overridden by any $IGR#/$NOIGR or TROJAN_#.BIN/PATCH_0.BIN.</div>
 <div class="ex">In-game hold L1+Select+Start -&gt; IGR menu -&gt; YES -&gt; confirm</div>
-<div class="prov">📎 PRIMARY skin default: CHANGES.TXT line 702 (2014/08/22 WIP02). NEAR-PRIMARY combo: Jay-Jay PS2-HOME t=127 (Wayback 20230619145423)</div>
+<div class="prov"> PRIMARY skin default: CHANGES.TXT line 702 (2014/08/22 WIP02). NEAR-PRIMARY combo: Jay-Jay PS2-HOME t=127 (Wayback 20230619145423)</div>
 </div>
 <div class="card" id="boot-elf-exit-chain"><h3>BOOT.ELF exit chain <span class="badge primary">primary</span> <span class="cat-chip">igr</span></h3>
 <div class="field"><b>Effect:</b> On IGR quit AND on POPStarter quit-on-failure, the launcher tries mc0:/BOOT/BOOT.ELF, then mc1:/BOOT/BOOT.ELF; if not found/invalid it exits to the PS2 Browser (OSDSYS, which runs FMCB/FHDB if installed). Added 2015/12/07 WIP06 Beta 13. mc0 before mc1.</div>
 <div class="field"><b>Scope:</b> Global, all storage modes; Beta 13 -&gt; r13 final. Gated by config $424=0x01 (the r13 IGR exit method).</div>
 <div class="field"><b>Conflicts:</b> If POPS itself can&#x27;t init (modules/VCD), the launcher is NOT invoked - you drop straight to OSD. No way to point the chain at MASS/HDD; BOOT.ELF must live on a memory card.</div>
 <div class="ex">Put your launcher at mc0:/BOOT/BOOT.ELF so IGR-quit returns there</div>
-<div class="prov">📎 PRIMARY: r13 CHANGES.TXT lines 388-391 (archive.org popstarter-r-13-beta-20190605); Jay-Jay PS2-HOME t=127 (Wayback 20230619145423)</div>
+<div class="prov"> PRIMARY: r13 CHANGES.TXT lines 388-391 (archive.org popstarter-r-13-beta-20190605); Jay-Jay PS2-HOME t=127 (Wayback 20230619145423)</div>
 </div>
 <div class="card" id="no-documented-boot-elf-path-override"><h3>No documented BOOT.ELF path override <span class="badge secondary">near-primary</span> <span class="cat-chip">igr</span></h3>
 <div class="field"><b>Effect:</b> There is NO config/command to redirect the exit chain away from mc0/mc1:/BOOT/BOOT.ELF - the path is hard-coded. A user (Jay-Jay) publicly asked krHACKen for an override on 2016-11-28; it was never implemented through r13.</div>
 <div class="field"><b>Scope:</b> All r13 builds through 2019/06/05.</div>
 <div class="field"><b>Conflicts:</b> Only escapes: replace BOOT.ELF with your launcher, $NOIGR/$IGR5 to suppress, or the 2020 PATCH_9.BIN to fall back to OSDSYS.</div>
 <div class="ex">Want IGR to land in uLaunchELF? Name uLaunchELF itself BOOT.ELF at mc0:/BOOT/BOOT.ELF</div>
-<div class="prov">📎 NEAR-PRIMARY: Jay-Jay PS2-HOME t=127 (Wayback 20230619145423); absent from CHANGES.TXT</div>
+<div class="prov"> NEAR-PRIMARY: Jay-Jay PS2-HOME t=127 (Wayback 20230619145423); absent from CHANGES.TXT</div>
 </div>
 <div class="card" id="quit-on-failure-uses-the-same-boot-elf-chain"><h3>Quit-on-failure uses the same BOOT.ELF chain <span class="badge primary">primary</span> <span class="cat-chip">igr</span></h3>
 <div class="field"><b>Effect:</b> POPStarter&#x27;s quit-on-failure code (when POPStarter, not POPS, bails) runs the SAME mc0/mc1:/BOOT/BOOT.ELF -&gt; Browser chain as IGR exit. Added together in Beta 13.</div>
 <div class="field"><b>Scope:</b> Since 2015/12/07 Beta 13.</div>
 <div class="field"><b>Conflicts:</b> Only applies when POPStarter reaches the failure path; a POPS init failure bypasses it and drops to OSD.</div>
 <div class="ex">(automatic)</div>
-<div class="prov">📎 PRIMARY: r13 CHANGES.TXT line 389</div>
+<div class="prov"> PRIMARY: r13 CHANGES.TXT line 389</div>
 </div>
 <div class="card" id="untested-ps1-software-reset-hotkey-select-l2-r2-x"><h3>Untested PS1 software-reset hotkey (Select+L2+R2+X) <span class="badge primary">primary</span> <span class="cat-chip">igr</span></h3>
 <div class="field"><b>Effect:</b> An additional, explicitly-untested PS1 software reset combo added alongside the IGR-modifier integration. Note the same combo was earlier a speed-up/FPS-boost hotkey (combo reuse across builds).</div>
 <div class="field"><b>Scope:</b> Added ~Beta 16. Marked untested by the author.</div>
 <div class="field"><b>Conflicts:</b> Reliability unknown (author flagged it untested).</div>
 <div class="ex">Select+L2+R2+X</div>
-<div class="prov">📎 PRIMARY: r13 CHANGES.TXT line 310</div>
+<div class="prov"> PRIMARY: r13 CHANGES.TXT line 310</div>
 </div></div></details><h2 id="topic-index">All 4 wiki pages in this topic</h2><p class="lead">Every recovered page filed under this section — including the deep-reference pages not embedded above.</p><div class="grid"><a class="tile" href="wiki/bios-osd-handlers.html"><b>BIOS OSD Handlers</b><span>bios-osd-handlers</span></a><a class="tile" href="wiki/hotkeys.html"><b>Hotkeys</b><span>hotkeys</span></a><a class="tile" href="wiki/igr.html"><b>IGR</b><span>igr</span></a><a class="tile" href="wiki/igr-textures.html"><b>IGR Textures</b><span>igr-textures</span></a></div></main>
   <aside class="toc"><div class="toc-h">On this page</div><nav id="toc-nav"></nav></aside>
 </div>

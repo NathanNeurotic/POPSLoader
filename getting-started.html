@@ -5,12 +5,11 @@
 <link rel="stylesheet" href="assets/style.css">
 </head><body data-base="">
 <header class="topbar">
-  <button class="menu-btn" aria-label="Menu">☰</button>
+  <button class="menu-btn" aria-label="Menu"></button>
   <a class="brand" href="index.html">
     <span class="psbtns"><i class="tri">&#9651;</i><i class="cir">&#9711;</i><i class="cro">&#10005;</i><i class="squ">&#9633;</i></span>
     POPStarter <small>DOCS</small></a>
   <div class="search">
-    <span class="ico">🔎</span>
     <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
     <kbd>/</kbd>
     <div id="results"></div>
@@ -18,34 +17,34 @@
 </header>
 <div class="layout">
   <nav class="sidebar">
-    <a href="index.html"><span class="em">🏠</span>Home</a>
+    <a href="index.html">Home</a>
     <h4>POPSLoader · this project</h4>
-    <a href="popsloader.html"><span class="em">📦</span>POPSLoader docs</a>
-    <a href="launch-arguments.html"><span class="em">🚀</span>Launch arguments</a>
-    <h4>POPStarter · documentation</h4><a href="getting-started.html" class="active"><span class="em">🚀</span>Getting Started</a>
-<a href="storage.html"><span class="em">💾</span>Storage Backends</a>
-<a href="cheats.html"><span class="em">🎮</span>Cheats</a>
-<a href="compatibility.html"><span class="em">🩹</span>Patches & TROJANs</a>
-<a href="igr.html"><span class="em">🎯</span>IGR & Hotkeys</a>
-<a href="config.html"><span class="em">🔧</span>Config Table</a>
-<a href="multidisc.html"><span class="em">💿</span>Multi-disc & VMC</a>
-<a href="troubleshooting.html"><span class="em">🛠️</span>Troubleshooting</a>
-<a href="downloads.html"><span class="em">📦</span>Downloads</a>
-<a href="history.html"><span class="em">📜</span>History</a>
+    <a href="popsloader.html">POPSLoader docs</a>
+    <a href="launch-arguments.html">Launch arguments</a>
+    <h4>POPStarter · documentation</h4><a href="getting-started.html" class="active">Getting Started</a>
+<a href="storage.html">Storage Backends</a>
+<a href="cheats.html">Cheats</a>
+<a href="compatibility.html">Patches & TROJANs</a>
+<a href="igr.html">IGR & Hotkeys</a>
+<a href="config.html">Config Table</a>
+<a href="multidisc.html">Multi-disc & VMC</a>
+<a href="troubleshooting.html">Troubleshooting</a>
+<a href="downloads.html">Downloads</a>
+<a href="history.html">History</a>
     <h4>Reference</h4>
-    <a href="glossary.html"><span class="em">📖</span>Glossary</a>
-    <a href="commands.html"><span class="em">⌨️</span>Command index</a>
-    <a href="faq.html"><span class="em">❓</span>FAQ &amp; known bugs</a>
-    <a href="known-issues.html"><span class="em">🐞</span>Known issues</a>
-    <a href="compatibility-table.html"><span class="em">📊</span>Compatibility table</a>
-    <a href="thread-study.html"><span class="em">🧵</span>Community knowledge</a>
-    <a href="credits.html"><span class="em">🙏</span>Credits</a>
-    <a href="wiki/index.html"><span class="em">📚</span>All wiki pages</a>
+    <a href="glossary.html">Glossary</a>
+    <a href="commands.html">Command index</a>
+    <a href="faq.html">FAQ &amp; known bugs</a>
+    <a href="known-issues.html">Known issues</a>
+    <a href="compatibility-table.html">Compatibility table</a>
+    <a href="thread-study.html">Community knowledge</a>
+    <a href="credits.html">Credits</a>
+    <a href="wiki/index.html">All wiki pages</a>
     <h4>Related projects</h4>
-    <a href="https://nathanneurotic.github.io/Open-PS2-Loader"><span class="em">🎮</span>RiptOPL (OPL) docs ↗</a>
-    <a href="https://ps2homebrewstore.com"><span class="em">🛒</span>PS2 Homebrew Store ↗</a>
+    <a href="https://nathanneurotic.github.io/Open-PS2-Loader">RiptOPL (OPL) docs ↗</a>
+    <a href="https://ps2homebrewstore.com">PS2 Homebrew Store ↗</a>
   </nav>
-  <main class="content"><h1>Getting Started</h1><p class="lead">Want to play a PS1 game on your PS2 with POPStarter? Here is the whole thing start-to-finish, kept deliberately simple. The rest of the site is reference for when you want to go deeper.</p><div class="callout info"><div class="h">ℹ The short version</div>Convert your PS1 disc to a <code>.VCD</code>,
+  <main class="content"><h1>Getting Started</h1><p class="lead">Want to play a PS1 game on your PS2 with POPStarter? Here is the whole thing start-to-finish, kept deliberately simple. The rest of the site is reference for when you want to go deeper.</p><div class="callout info"><div class="h"> The short version</div>Convert your PS1 disc to a <code>.VCD</code>,
 put it on the device you want to play from, and launch it — easiest with <b>POPSLoader</b>, the cover-art menu
 this site belongs to. POPSLoader's <b>BDMA&nbsp;Mode</b> setting is the device selector: it lets you play from
 <b>FAT32 or exFAT USB, an MX4SIO SD adapter, an MMCE card</b> (SD2PSX / MemCard&nbsp;PRO2), or the <b>internal
@@ -70,19 +69,19 @@ device selector. USB&nbsp;FAT32 is the easiest first step; <b>every other device
 set differently. (Internal HDD is the one device that doesn't use BDMA.) Full details in the
 <a href="storage.html#device-matrix">device matrix</a>.</p>
 <div class="paths">
-<a class="path rec" href="#usb"><span class="tag">Start here</span><div class="em">🔌</div>
+<a class="path rec" href="#usb"><span class="tag">Start here</span><div class="em"></div>
 <b>USB — FAT32</b><span>Simplest. BDMA&nbsp;Mode <code>FAT32</code>. No console surgery.</span></a>
-<a class="path" href="storage.html#device-matrix"><div class="em">🔌</div>
+<a class="path" href="storage.html#device-matrix"><div class="em"></div>
 <b>USB — exFAT</b><span>For drives/files over FAT32's 4&nbsp;GB limit. BDMA&nbsp;Mode <code>USBEXFAT</code>.</span></a>
-<a class="path" href="storage.html#device-matrix"><div class="em">🟩</div>
+<a class="path" href="storage.html#device-matrix"><div class="em"></div>
 <b>MX4SIO</b><span>SD card in the memory-card slot (SIO2 adapter). BDMA&nbsp;Mode <code>MX4SIO</code>.</span></a>
-<a class="path" href="storage.html#device-matrix"><div class="em">🧩</div>
+<a class="path" href="storage.html#device-matrix"><div class="em"></div>
 <b>MMCE</b><span>SD2PSX / MemCard&nbsp;PRO2 emulator card. BDMA&nbsp;Mode <code>MMCE</code>.</span></a>
-<a class="path" href="wiki/quickstart-hdd.html"><div class="em">💽</div>
+<a class="path" href="wiki/quickstart-hdd.html"><div class="em"></div>
 <b>Internal HDD — APA/PFS</b><span>The classic HDL/OPL format. Most space, fastest. No BDMA needed.</span></a>
-<a class="path" href="storage.html#device-matrix"><div class="em">💽</div>
+<a class="path" href="storage.html#device-matrix"><div class="em"></div>
 <b>Internal HDD — exFAT</b><span>An exFAT-formatted internal drive. BDMA&nbsp;Mode <code>ATA</code> (newly added).</span></a>
-<a class="path" href="wiki/quickstart-smb.html"><div class="em">🌐</div>
+<a class="path" href="wiki/quickstart-smb.html"><div class="em"></div>
 <b>Network (SMB)</b><span>Stream from a PC share. Needs a network adapter.</span></a>
 </div>
 
@@ -92,7 +91,7 @@ set differently. (Internal HDD is the one device that doesn't use BDMA.) Full de
 <p>Drag your game's <code>.cue</code> file onto <b>CUE2POPS</b>. Out comes <code>YourGame.VCD</code> — that's the
 disc image POPStarter plays. (A few games want a tweak — see the <a href="compatibility.html">Compatibility</a>
 notes — but most just work.)</p>
-<p class="hint">⚠ <b>If conversion fails or your game won't boot</b>, open the <code>.cue</code> in a text editor and
+<p class="hint"> <b>If conversion fails or your game won't boot</b>, open the <code>.cue</code> in a text editor and
 confirm the track line reads <code>MODE2/2352</code> — a plain <code>MODE1/2048</code> ISO rip won't convert.
 CUE2POPS is also what preserves CDDA audio tracks and multi-disc layouts.</p></div>
 

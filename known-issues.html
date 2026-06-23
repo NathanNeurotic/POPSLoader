@@ -5,12 +5,11 @@
 <link rel="stylesheet" href="assets/style.css">
 </head><body data-base="">
 <header class="topbar">
-  <button class="menu-btn" aria-label="Menu">☰</button>
+  <button class="menu-btn" aria-label="Menu"></button>
   <a class="brand" href="index.html">
     <span class="psbtns"><i class="tri">&#9651;</i><i class="cir">&#9711;</i><i class="cro">&#10005;</i><i class="squ">&#9633;</i></span>
     POPStarter <small>DOCS</small></a>
   <div class="search">
-    <span class="ico">🔎</span>
     <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
     <kbd>/</kbd>
     <div id="results"></div>
@@ -18,32 +17,32 @@
 </header>
 <div class="layout">
   <nav class="sidebar">
-    <a href="index.html"><span class="em">🏠</span>Home</a>
+    <a href="index.html">Home</a>
     <h4>POPSLoader · this project</h4>
-    <a href="popsloader.html"><span class="em">📦</span>POPSLoader docs</a>
-    <a href="launch-arguments.html"><span class="em">🚀</span>Launch arguments</a>
-    <h4>POPStarter · documentation</h4><a href="getting-started.html"><span class="em">🚀</span>Getting Started</a>
-<a href="storage.html"><span class="em">💾</span>Storage Backends</a>
-<a href="cheats.html"><span class="em">🎮</span>Cheats</a>
-<a href="compatibility.html"><span class="em">🩹</span>Patches & TROJANs</a>
-<a href="igr.html"><span class="em">🎯</span>IGR & Hotkeys</a>
-<a href="config.html"><span class="em">🔧</span>Config Table</a>
-<a href="multidisc.html"><span class="em">💿</span>Multi-disc & VMC</a>
-<a href="troubleshooting.html"><span class="em">🛠️</span>Troubleshooting</a>
-<a href="downloads.html"><span class="em">📦</span>Downloads</a>
-<a href="history.html"><span class="em">📜</span>History</a>
+    <a href="popsloader.html">POPSLoader docs</a>
+    <a href="launch-arguments.html">Launch arguments</a>
+    <h4>POPStarter · documentation</h4><a href="getting-started.html">Getting Started</a>
+<a href="storage.html">Storage Backends</a>
+<a href="cheats.html">Cheats</a>
+<a href="compatibility.html">Patches & TROJANs</a>
+<a href="igr.html">IGR & Hotkeys</a>
+<a href="config.html">Config Table</a>
+<a href="multidisc.html">Multi-disc & VMC</a>
+<a href="troubleshooting.html">Troubleshooting</a>
+<a href="downloads.html">Downloads</a>
+<a href="history.html">History</a>
     <h4>Reference</h4>
-    <a href="glossary.html"><span class="em">📖</span>Glossary</a>
-    <a href="commands.html"><span class="em">⌨️</span>Command index</a>
-    <a href="faq.html"><span class="em">❓</span>FAQ &amp; known bugs</a>
-    <a href="known-issues.html" class="active"><span class="em">🐞</span>Known issues</a>
-    <a href="compatibility-table.html"><span class="em">📊</span>Compatibility table</a>
-    <a href="thread-study.html"><span class="em">🧵</span>Community knowledge</a>
-    <a href="credits.html"><span class="em">🙏</span>Credits</a>
-    <a href="wiki/index.html"><span class="em">📚</span>All wiki pages</a>
+    <a href="glossary.html">Glossary</a>
+    <a href="commands.html">Command index</a>
+    <a href="faq.html">FAQ &amp; known bugs</a>
+    <a href="known-issues.html" class="active">Known issues</a>
+    <a href="compatibility-table.html">Compatibility table</a>
+    <a href="thread-study.html">Community knowledge</a>
+    <a href="credits.html">Credits</a>
+    <a href="wiki/index.html">All wiki pages</a>
     <h4>Related projects</h4>
-    <a href="https://nathanneurotic.github.io/Open-PS2-Loader"><span class="em">🎮</span>RiptOPL (OPL) docs ↗</a>
-    <a href="https://ps2homebrewstore.com"><span class="em">🛒</span>PS2 Homebrew Store ↗</a>
+    <a href="https://nathanneurotic.github.io/Open-PS2-Loader">RiptOPL (OPL) docs ↗</a>
+    <a href="https://ps2homebrewstore.com">PS2 Homebrew Store ↗</a>
   </nav>
   <main class="content"><h1>Known issues at a glance</h1><p class="lead">The recurring POPStarter / POPSLoader problems and their fixes, in one place — each row links to the page that documents it in full. For the longer Q&amp;A and the recovered known-bugs pages, see <a href="faq.html">FAQ &amp; known bugs</a>.</p><p>A consolidated index of the recurring problems and their fixes — each row links to the page with the full detail.</p><table class="wiki"><tbody><tr><td><b>Symptom</b></td><td><b>Likely cause</b></td><td><b>Fix</b></td></tr><tr><td>Black screen on IGR / exit (after a game runs)</td><td>An incompatible <code>BOOT.ELF</code> sits in the exit chain.</td><td>Disable the ELF loader with stock <code>PATCH_9.BIN</code>, or replace/recompress <code>BOOT.ELF</code>. <a href="troubleshooting.html#two-black-screens">details →</a></td></tr><tr><td>Black screen + stuck HDD LED launching an HDD ELF from OPL’s Apps page</td><td>OPL is waiting on a network/BDM/SMB device left on <b>Auto</b>.</td><td>Set the OPL devices you don’t use to <b>Manual</b> or <b>Off</b>. <a href="troubleshooting.html#two-black-screens">details →</a></td></tr><tr><td>Expected 240p but got 480i / 576i</td><td><code>$HDTVFIX</code> is active (config byte <code>$412</code> or in <code>CHEATS.TXT</code>).</td><td>Remove <code>$HDTVFIX</code> — it forces interlaced output for displays that reject 240p/288p. <a href="config.html">details →</a></td></tr><tr><td>USB drive not detected</td><td>USB access delay too low, or a poor format.</td><td>Raise config byte <code>$413</code> (<code>$USBDELAY_#</code> only patches streaming, not detection); use FAT32/exFAT with 32K–64K clusters. <a href="troubleshooting.html">details →</a></td></tr><tr><td>exFAT USB not detected</td><td>BDM modules not renamed.</td><td>Place <code>usbd.irx</code> / <code>usbhdfsd.irx</code> in <code>mc?:/POPSTARTER</code> (BDMA); keep an internal HDD on APA/PFS. <a href="storage.html#device-matrix">details →</a></td></tr><tr><td>Cheats do nothing</td><td>Lowercase <code>CHEATS.TXT</code> on a PFS volume, or raw codes with no <code>$SAFEMODE</code>.</td><td>Use an UPPERCASE <code>CHEATS.TXT</code>; put <code>$SAFEMODE</code> on the first line for raw GameShark/AR codes. <a href="cheats.html">details →</a></td></tr><tr><td>A game’s CHEATS / VMC / fixes are ignored</td><td>The per-game support folder name includes <code>.VCD</code> or uses the display title.</td><td>Name the folder exactly the VCD basename (no <code>.VCD</code>); on HDD keep per-game fixes under <code>__common/POPS</code>. <a href="storage.html">details →</a></td></tr><tr><td>SMB share ignored / won’t connect</td><td>Typos: <code>IPCONFIG.DAY</code> / <code>SMBCONFIG.DAY</code> / <code>poweroff.irc</code>, or wrong case.</td><td>Use <code>.DAT</code> and <code>poweroff.irx</code> with correct case. <a href="storage.html">details →</a></td></tr><tr><td>SMB black screen / won’t launch</td><td>Missing <code>SB.</code> prefix, or <code>smb:</code> vs <code>smb0:</code> mismatch.</td><td>Use <code>SB.&lt;Game&gt;.ELF</code>; try the <code>smb0:</code> form on newer OPL betas. <a href="storage.html">details →</a></td></tr><tr><td>SMB boots but saves fail</td><td>The share is read-only / guest has no write access.</td><td>Grant write access so POPStarter can create <code>SLOT0.VMC</code> / <code>SLOT1.VMC</code>. <a href="storage.html">details →</a></td></tr><tr><td>Modern Windows / NAS unreachable over SMB</td><td>SMB1/CIFS disabled, guest blocked, or port 445 closed.</td><td>Enable SMB1 on an isolated network, or use a dedicated writable PS2 share. <a href="storage.html">details →</a></td></tr><tr><td>HDD returns to Browser / can’t find VCDs</td><td>The <code>__.POPS</code> partition is missing its dot or has the wrong case (or a <code>+__.POPS</code> was created).</td><td>Use exactly <code>hdd0:/__.POPS/</code> (VCDs) + <code>hdd0:/__common/POPS/</code> (common files). <a href="storage.html">details →</a></td></tr><tr><td>A POPS0–POPS9 game boots without its patches/handlers</td><td>Support files live only in the main <code>POPS</code> folder.</td><td>Copy <code>BIOS.BIN</code>, <code>PATCH_#.BIN</code>, <code>TROJAN_#.BIN</code>, <code>VMCDIR.TXT</code> into each <code>POPS#</code> folder (keep <code>POPS_IOX.PAK</code> + IGR textures in main). <a href="storage.html">details →</a></td></tr><tr><td>OPL Apps entry missing / launches nothing</td><td>Saved as <code>title.cfg.txt</code>, wrong APPS folder, or a <code>boot=</code> mismatch.</td><td>Save a plain <code>title.cfg</code> beside the ELF; <code>boot=</code> must match the ELF name. <a href="storage.html">details →</a></td></tr><tr><td>Final-build behavior (e.g. <code>$IGR5</code>, byte meanings) doesn’t match</td><td>An older RIP/WIP build is in use.</td><td>Use Rev 13 Beta 2019/06/05 — the canonical final public build. <a href="history.html">details →</a></td></tr><tr><td>SMB shows debug / status text</td><td>SMB mode forces startup status text — it is not a "wrong build" signal.</td><td>Ignore it; don’t chase a debug build. <a href="config.html">details →</a></td></tr><tr><td>Multi-disc swap / shared VMC fails</td><td><code>DISCS.TXT</code> / <code>VMCDIR.TXT</code> misplaced or wrong filenames.</td><td><code>DISCS.TXT</code> in every disc folder; <code>VMCDIR.TXT</code> in the later-disc folders, with exact VCD names. <a href="multidisc.html">details →</a></td></tr><tr><td>POPSLoader: blank screen / can’t list games</td><td>The <code>POPSLDR</code> folder isn’t beside <code>POPSLOADER.ELF</code>.</td><td>Keep <code>POPSLDR/</code> next to the ELF. <a href="popsloader.html">details →</a></td></tr><tr><td>POPSLoader fork: USB / MX4SIO / MMCE games missing</td><td>BDMA disabled, wrong mode, or <code>mc0</code> missing.</td><td>Use <code>mc0</code>, enable BDMA, and select only the device mode you actually use. <a href="storage.html#device-matrix">details →</a></td></tr><tr><td>No saves to a physical PS1 memory card</td><td>POPStarter is VMC-only (per-game virtual cards).</td><td>Use the per-game VMC; physical-card saving isn’t supported. <a href="multidisc.html">details →</a></td></tr><tr><td>Only two controllers are recognized</td><td>No multitap support.</td><td>Only the first two pads work. <a href="faq.html">(by design)</a></td></tr></tbody></table></main>
   <aside class="toc"><div class="toc-h">On this page</div><nav id="toc-nav"></nav></aside>
