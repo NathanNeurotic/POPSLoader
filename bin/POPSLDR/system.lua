@@ -4921,6 +4921,36 @@ function PLDR.InitATAPopsRoot()
   return nil
 end
 
+-- Menu-side SMB (Increment 1). LAZY: brings up the network + connects/opens the share
+-- HERE (never at boot), then returns the cwd-relative games root device:/[PATH/]POPS/.
+-- Returns nil + an error code (NO_LINK/DHCP_FAIL/CONN_FAIL/LOGON_FAIL/ECHO_FAIL/
+-- SHARE_FAIL/IRX_LOAD_FAIL) for the UI to map to a message. Mirrors InitATAPopsRoot.
+function PLDR.InitSMBPopsRoot()
+  if type(System) ~= "table" or type(System.connectSMB) ~= "function" then
+    return nil, "IRX_LOAD_FAIL"
+  end
+  if type(System.initSMB) == "function" and not System.initSMB() then
+    return nil, "IRX_LOAD_FAIL"
+  end
+  local ok, dev_or_err = System.connectSMB(PLDR.SMB)
+  if not ok then
+    return nil, tostring(dev_or_err or "CONN_FAIL")
+  end
+  -- dev_or_err = the mounted device handle ("smb0:"). PLDR.SMB.PATH is an optional
+  -- cwd-relative subfolder UNDER the share (blank = share root), then POPS/. Forward
+  -- slashes keep it consistent with IsDevicePath (^%a+%d*:/) + the rest of the loader.
+  -- NOTE [HW]: smb0: path-separator acceptance is hardware-only-verifiable -- if the
+  -- share connects but lists nothing, the separator / leading-slash is the suspect.
+  local dev = tostring(dev_or_err or "smb0:")
+  local sub = tostring((type(PLDR.SMB) == "table" and PLDR.SMB.PATH) or "")
+  sub = string.gsub(sub, "\\", "/")
+  sub = string.gsub(sub, "^/+", "")
+  sub = string.gsub(sub, "/+$", "")
+  local root = dev.."/"
+  if sub ~= "" then root = root..sub.."/" end
+  return root.."POPS/"
+end
+
 function PLDR.BuildMassGameListByType(kind, mass_snapshot, on_progress)
   PLDR.CleanupGameList()
   PLDR.HIDDEN = {}

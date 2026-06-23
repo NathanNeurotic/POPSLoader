@@ -452,6 +452,7 @@ UI = {
       GHDD = 5,
       GAPAHDD = 5,
       GBDMHDD = 6,
+      GSMBNET = 7,
       MMAIN = 8,
       MPROFILE = 9,
       CREDITS = 10
@@ -486,6 +487,7 @@ UI = {
         or scene == UI.SCENES.GMX4SIO
         or scene == UI.SCENES.GHDD
         or scene == UI.SCENES.GBDMHDD
+        or scene == UI.SCENES.GSMBNET
     end;
     ShouldHideAuxText = function (scene)
       return UI.HideTextMode and UI.IsHideToggleScene(scene or UI.CURSCENE)
@@ -2341,7 +2343,8 @@ UI = {
           Font.ftPrint(LFONT, UI.SCR.X_MID, device_title_y, 8, UI.SCR.X, 16, scene_title, UI.CCOL.GREY)
         end
         local placeholders = {
-          [UI.SCENES.GBDMHDD] = "BDM HDD"
+          [UI.SCENES.GBDMHDD] = "BDM HDD",
+          [UI.SCENES.GSMBNET] = "SMB"
         }
         local placeholder_title = placeholders[UI.CURSCENE]
         if placeholder_title ~= nil then
@@ -2825,6 +2828,7 @@ UI = {
              or UI.CURSCENE == UI.SCENES.GSMB
              or UI.CURSCENE == UI.SCENES.GMX4SIO
              or UI.CURSCENE == UI.SCENES.GBDMHDD
+             or UI.CURSCENE == UI.SCENES.GSMBNET
              or UI.CURSCENE == UI.SCENES.GUSBFAT) then
           PLDR.GLOBAL_HIDE = (PLDR.GLOBAL_HIDE ~= true)
           if type(PLDR.SaveSettingsAtomic) == "function" then
@@ -2859,6 +2863,7 @@ UI = {
         elseif UI.Pad.Events.R1 and (UI.CURSCENE == UI.SCENES.GSMB
                or UI.CURSCENE == UI.SCENES.GMX4SIO
                or UI.CURSCENE == UI.SCENES.GBDMHDD
+               or UI.CURSCENE == UI.SCENES.GSMBNET
                or UI.CURSCENE == UI.SCENES.GUSBFAT) then
           -- R1 re-runs the SAME scan entering the page does, in place: re-detect
           -- the device and rebuild the list -- for hotplugging a card/drive or a
@@ -2902,6 +2907,15 @@ UI = {
                 report("Scanning exFAT HDD games...", 0.30)
                 PLDR.GetPS1GameLists(ata_root, true, scan)
                 PLDR.SaveGameListCache(ata_root..".gamecache", PLDR.GAMES, PLDR.HIDDEN)
+              end
+            elseif rescan_scene == UI.SCENES.GSMBNET then
+              report("Reconnecting to SMB...", 0.16)
+              local smb_root = PLDR.InitSMBPopsRoot()
+              PLDR.CleanupGameList()
+              if type(smb_root) == "string" and smb_root ~= "" then
+                report("Scanning SMB games...", 0.30)
+                PLDR.GetPS1GameLists(smb_root, true, scan)
+                PLDR.SaveGameListCache(smb_root..".gamecache", PLDR.GAMES, PLDR.HIDDEN)
               end
             else
               report("Initializing USB backend...", 0.16)
@@ -2954,7 +2968,7 @@ UI = {
               -- USB GAMEPATH is "" (entries self-qualify) so derive its root. (audit)
               local cache_path = nil
               if (UI.CURSCENE == UI.SCENES.GSMB or UI.CURSCENE == UI.SCENES.GMX4SIO
-                  or UI.CURSCENE == UI.SCENES.GBDMHDD)
+                  or UI.CURSCENE == UI.SCENES.GBDMHDD or UI.CURSCENE == UI.SCENES.GSMBNET)
                  and type(PLDR.GAMEPATH) == "string" and PLDR.GAMEPATH ~= "" then
                 cache_path = PLDR.GAMEPATH..".gamecache"
               elseif UI.CURSCENE == UI.SCENES.GUSBFAT and type(PLDR.GetRootsByType) == "function" then
@@ -4534,7 +4548,43 @@ UI = {
 	          elseif UI.MainMenu.OPT == 6 then
 	            UI.Notif_queue.add("This backend isn't implemented yet", "warn")
 	          elseif UI.MainMenu.OPT == 7 then
-	            UI.Notif_queue.add("This backend isn't implemented yet", "warn")
+            -- SMB (v1): connect + browse. LAZY -- InitSMBPopsRoot brings the network up
+            -- and opens the share HERE (never at boot); mirrors the OPT==3 exFAT handler.
+            local ok = UI.RunBusyTask("Connecting to SMB...", function (report)
+              local scan_progress = UI.MakeBusyProgressReporter(report, "Scanning SMB games...", 0.55, 0.9)
+              report("Bringing up network...", 0.2)
+              PLDR.CleanupGameList()
+              PLDR.GAMEPATH = ""
+              report("Connecting to the share...", 0.4)
+              local smb_root, smb_err = PLDR.InitSMBPopsRoot()
+              if smb_root == nil then
+                local msg = ({
+                  NO_LINK       = "No network link\ncheck the Ethernet cable / adapter",
+                  DHCP_FAIL     = "DHCP failed\nset a static IP in SMB settings",
+                  CONN_FAIL     = "Can't reach the server\ncheck Server IP / Port in SMB settings",
+                  LOGON_FAIL    = "SMB login failed\ncheck User / Password",
+                  ECHO_FAIL     = "SMB connection dropped",
+                  SHARE_FAIL    = "Share not found\ncheck the Share name (host must allow SMB1)",
+                  IRX_LOAD_FAIL = "SMB modules failed to load",
+                })[smb_err] or "SMB connect failed"
+                UI.Notif_queue.add(msg, "warn")
+                return
+              end
+              PLDR.CleanupGameList()
+              local smb_cache = smb_root..".gamecache"
+              local smb_cg, smb_ch = PLDR.LoadGameListCache(smb_cache)
+              if smb_cg ~= nil then
+                PLDR.ApplyGameListCache(smb_cg, smb_root, smb_ch)
+                report("Loaded SMB list from cache...", 1.0)
+              else
+                report("Scanning SMB games...", 0.55)
+                PLDR.GetPS1GameLists(smb_root, true, scan_progress)
+                PLDR.SaveGameListCache(smb_cache, PLDR.GAMES, PLDR.HIDDEN)
+              end
+              report("Opening SMB list...", 1.0)
+              UI.SceneChange(UI.SCENES.GSMBNET)
+            end, "Failed to connect to SMB")
+            if not ok then return end
 	          elseif UI.MainMenu.OPT == 8 then
 	            if type(System) == "table" and type(System.ensureCDFS) == "function" then
 	              System.ensureCDFS()
@@ -4871,7 +4921,8 @@ UI.GAME_SCENES = {
   [UI.SCENES.GSMB] = true,
   [UI.SCENES.GMX4SIO] = true,
   [UI.SCENES.GHDD] = true,
-  [UI.SCENES.GBDMHDD] = true
+  [UI.SCENES.GBDMHDD] = true,
+  [UI.SCENES.GSMBNET] = true
 }
 function UI.IsGameScene(scene)
   return UI.GAME_SCENES[scene] == true
