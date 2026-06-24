@@ -4828,6 +4828,15 @@ youtube.com/@hugopocked6695
 ]], currcol)
         if UI.BUILD_INFO ~= nil and UI.BUILD_INFO.stamp ~= nil then
           local stamp_y = Round(layout.FOOTER_LABEL_Y - 18)
+          -- The credits body above is TOP-anchored (fixed offsets from TITLE_Y) while
+          -- this stamp is BOTTOM-anchored (SCR.Y - 64). On the 64px-shorter NTSC screen
+          -- (SCR.Y=448 -> stamp_y=384) the stamp rides UP into the credits body and overlaps
+          -- it (provato HW report); PAL (512 -> 448) clears it. Floor the stamp just below
+          -- the body so it can't overlap on either standard. Body starts at TITLE_Y+80
+          -- (ui.lua:4812, spacing 20); the lowest drawn credits line lands ~TITLE_Y+80+14*20.
+          -- Floor a touch past that (16*20) -- a safe overshoot that stays on-screen (<448).
+          local credits_bottom = (layout.TITLE_Y + 80) + (16 * 20) + 4
+          if stamp_y < credits_bottom then stamp_y = credits_bottom end
           Font.ftPrint(SFONT, layout.SAFE.L, stamp_y, 0, UI.SCR.X, 16, UI.BUILD_INFO.stamp, UI.CCOL.GREY)
         end
 
