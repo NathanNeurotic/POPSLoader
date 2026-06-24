@@ -2324,10 +2324,6 @@ UI = {
         if _da ~= "center" and _da ~= "right" then _da = "left" end
         UI.DetailsAlign = ((type(PLDR) == "table" and PLDR.SHOW_DETAILS == true) and _da) or "off"
         UI.SettingsEntryDetailsAlign = UI.DetailsAlign
-        local _ds = (type(PLDR) == "table" and PLDR.DESC_SCROLL_SPEED) or "slow"
-        if _ds ~= "fast" and _ds ~= "medium" then _ds = "slow" end
-        UI.DescScrollSpeed = _ds
-        UI.SettingsEntryDescScrollSpeed = UI.DescScrollSpeed
         UI.GameListCache = (type(PLDR) == "table" and PLDR.GAMELIST_CACHE == true)
         UI.SettingsEntryGameListCache = UI.GameListCache
         UI.BootSound = (type(PLDR) == "table" and PLDR.BOOT_SOUND ~= false)
@@ -2730,17 +2726,13 @@ UI = {
           if UI.CoverCache ~= nil and (UI.GameList.DetailsTotal or 0) > (UI.GameList.DetailsVisible or 0)
              and type(Pads) == "table" and type(Pads.getRightStick) == "function" then
             local ok_rs, _, rv = pcall(Pads.getRightStick)
-            local _spd = (type(PLDR) == "table" and PLDR.DESC_SCROLL_SPEED) or "slow"
             -- One scroll step every _secs seconds, FRAME-COUNTED (not the wall clock):
-            -- Timer.getTime() is microseconds on PS2, so the old "(now - DescScrollAt)
-            -- >= _ms" gate was sub-frame and scrolled every frame regardless of the
-            -- speed setting (oldman63: too fast, all three speeds felt the same). This
-            -- block runs once per vblank-paced frame, so step_frames = ceil(_secs * fps)
-            -- is unit-safe and identical in real seconds on PAL (50Hz) and NTSC (60Hz).
-            -- Tune the feel below in SECONDS.
-            local _dz, _secs = 80, 0.9        -- slow (default): firm push, ~1.1 lines/sec
-            if _spd == "fast" then _dz, _secs = 48, 0.15
-            elseif _spd == "medium" then _dz, _secs = 64, 0.3 end
+            -- Timer.getTime() is microseconds on PS2, so a wall-clock gate would be
+            -- sub-frame and scroll every frame. This block runs once per vblank-paced
+            -- frame, so step_frames = ceil(_secs * fps) is unit-safe and identical in real
+            -- seconds on PAL (50Hz) and NTSC (60Hz). Pace is fixed at Fast (the speed
+            -- setting was removed -- provato + maintainer: Fast is best).
+            local _dz, _secs = 48, 0.15        -- Fast: light push, ~7 lines/sec
             if ok_rs and type(rv) == "number" and math.abs(rv) > _dz then
               local fps = ((UI.SCR.Y or 448) >= 512) and 50 or 60
               local step_frames = math.ceil(_secs * fps)
@@ -3211,8 +3203,6 @@ UI = {
           local gamelist_cache_val = UI.GameListCache == true
           local boot_sound_val = UI.BootSound == true
           local overscan_val = math.floor(tonumber(UI.Overscan) or 0)
-          local desc_scroll_speed_val = UI.DescScrollSpeed
-          if desc_scroll_speed_val ~= "fast" and desc_scroll_speed_val ~= "medium" then desc_scroll_speed_val = "slow" end
           local video_live_before = nil
           if type(Screen) == "table" and type(Screen.getMode) == "function" then
             local okb, mb = pcall(Screen.getMode)
@@ -3235,7 +3225,6 @@ UI = {
                 global_hide = global_hide_val,
                 show_details = show_details_val,
                 details_align = details_align_val,
-                desc_scroll_speed = desc_scroll_speed_val,
                 gamelist_cache = gamelist_cache_val,
                 boot_sound = boot_sound_val,
                 overscan = overscan_val,
@@ -3272,7 +3261,6 @@ UI = {
             PLDR.GLOBAL_HIDE = global_hide_val
             PLDR.SHOW_DETAILS = show_details_val
             PLDR.DETAILS_ALIGN = details_align_val
-            PLDR.DESC_SCROLL_SPEED = desc_scroll_speed_val
             PLDR.GAMELIST_CACHE = gamelist_cache_val
             PLDR.BOOT_SOUND = boot_sound_val
             PLDR.OVERSCAN = overscan_val
@@ -3442,10 +3430,6 @@ UI = {
           end
           if UI.DetailsAlign ~= nil and UI.DetailsAlign ~= "off" then
             UI.DetailsAlign = "off"
-            UI.ProfileDirty = true
-          end
-          if UI.DescScrollSpeed ~= nil and UI.DescScrollSpeed ~= "slow" then
-            UI.DescScrollSpeed = "slow"
             UI.ProfileDirty = true
           end
           if UI.GameListCache == true then
@@ -3732,23 +3716,6 @@ UI = {
           function() UI.DetailsAlign = DetailsAlignStep(UI.DetailsAlign, -1) end,
           function() return tostring(UI.DetailsAlign) ~= tostring(UI.SettingsEntryDetailsAlign) end
         )
-        local DESC_SPEED_SEQ = {"fast", "medium", "slow"}
-        local DESC_SPEED_TXT = {fast = "Fast", medium = "Medium", slow = "Slow"}
-        local function DescSpeedStep(cur, dir)
-          local idx = 1
-          for i = 1, #DESC_SPEED_SEQ do
-            if DESC_SPEED_SEQ[i] == cur then idx = i; break end
-          end
-          idx = ((idx - 1 + dir) % #DESC_SPEED_SEQ) + 1
-          return DESC_SPEED_SEQ[idx]
-        end
-        AddCycle(
-          "Description scroll speed",
-          function() return DESC_SPEED_TXT[UI.DescScrollSpeed] or "Slow" end,
-          function() UI.DescScrollSpeed = DescSpeedStep(UI.DescScrollSpeed, 1) end,
-          function() UI.DescScrollSpeed = DescSpeedStep(UI.DescScrollSpeed, -1) end,
-          function() return tostring(UI.DescScrollSpeed) ~= tostring(UI.SettingsEntryDescScrollSpeed) end
-        )
         AddCycle(
           "Game list cache",
           function() return UI.GameListCache and "On" or "Off" end,
@@ -3858,7 +3825,6 @@ UI = {
             or (UI.MultiDiscCollapse == true) ~= (UI.SettingsEntryMultiDiscCollapse == true)
             or (UI.GlobalHide == true) ~= (UI.SettingsEntryGlobalHide == true)
             or tostring(UI.DetailsAlign) ~= tostring(UI.SettingsEntryDetailsAlign)
-            or tostring(UI.DescScrollSpeed) ~= tostring(UI.SettingsEntryDescScrollSpeed)
             or (UI.GameListCache == true) ~= (UI.SettingsEntryGameListCache == true)
             or (UI.BootSound == true) ~= (UI.SettingsEntryBootSound == true)
             or (math.floor(tonumber(UI.Overscan) or 0)) ~= (math.floor(tonumber(UI.SettingsEntryOverscan) or 0))
