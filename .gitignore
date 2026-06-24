@@ -68,5 +68,8 @@ outdated/
 
 # Ensure specific tracked binary assets stay visible
 !bin/POPSLDR/POPSTARTER.ELF
+# POPStarter build variants (MAIN/DEBUG/USBDELAY/USBDELAY_DEBUG) -- shipped in releases
+# renamed "POPSTARTER VERSIONS". Negate past the blanket *.elf rule above.
+!bin/POPSLDR/PROFILES/**
 !iop/embed/BDMASSAULT_MX4SIO/*.irx
 !POPSTARTER/*.irx

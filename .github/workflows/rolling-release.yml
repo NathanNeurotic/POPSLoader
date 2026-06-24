@@ -193,8 +193,16 @@ jobs:
             ZIP_ROOTS="$ZIP_ROOTS POPS"
           fi
 
+          # Ship the POPStarter version variants (tracked bin/POPSLDR/PROFILES) at the ZIP
+          # ROOT, renamed "POPSTARTER VERSIONS" -- the MAIN/DEBUG/USBDELAY/USBDELAY_DEBUG
+          # POPSTARTER.ELF builds, as-is. Zipped via its OWN find below: the spaced folder
+          # name would word-split the unquoted $ZIP_ROOTS, so it can't go in that list.
+          if [ -d bin/POPSLDR/PROFILES ]; then
+            cp -r bin/POPSLDR/PROFILES "$BUNDLE_DIR/POPSTARTER VERSIONS"
+          fi
+
           cd "$BUNDLE_DIR"
-          find $ZIP_ROOTS -type f ! -name '.gitkeep' | LC_ALL=C sort | zip -X -9 "../$BUNDLE_ZIP" -@ >/dev/null
+          { find $ZIP_ROOTS -type f ! -name '.gitkeep'; [ -d "POPSTARTER VERSIONS" ] && find "POPSTARTER VERSIONS" -type f; } | LC_ALL=C sort | zip -X -9 "../$BUNDLE_ZIP" -@ >/dev/null
           cd - >/dev/null
 
           echo "== Rolling release bundle contents =="

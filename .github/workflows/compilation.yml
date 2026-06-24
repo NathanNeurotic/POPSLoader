@@ -170,8 +170,15 @@ jobs:
           cp -f bin/POPSLDR/PATCH_5.BIN dist_root/POPS/PATCH_5.BIN
           cp -f bin/POPSLDR/POPSTARTER.ELF dist_root/POPS/POPSTARTER.ELF
 
+          # Ship the POPStarter version variants (tracked bin/POPSLDR/PROFILES) renamed
+          # "POPSTARTER VERSIONS" -- the MAIN/DEBUG/USBDELAY/USBDELAY_DEBUG builds, as-is.
+          # Its own find below (the folder name has a space).
+          if [ -d bin/POPSLDR/PROFILES ]; then
+            cp -r bin/POPSLDR/PROFILES "dist_root/POPSTARTER VERSIONS"
+          fi
+
           cd dist_root
-          find PS1_POPSLOADER POPS -type f | LC_ALL=C sort | zip -X -9 ../POPSLOADER.zip -@ >/dev/null
+          { find PS1_POPSLOADER POPS -type f; [ -d "POPSTARTER VERSIONS" ] && find "POPSTARTER VERSIONS" -type f; } | LC_ALL=C sort | zip -X -9 ../POPSLOADER.zip -@ >/dev/null
           cd - >/dev/null
 
           echo "== Package contents =="
@@ -203,10 +210,16 @@ jobs:
               names = [n for n in z.namelist() if n and not n.endswith("/")]
           actual = set(names)
 
+          # The POPSTARTER VERSIONS/ folder (POPStarter build variants from
+          # bin/POPSLDR/PROFILES) is user-managed and variable, so verify it loosely
+          # (present + ELF-only) while exact-matching the curated installer payload.
+          versions = {n for n in actual if n.startswith("POPSTARTER VERSIONS/")}
+          core = actual - versions
+
           # Root dirs
           top = sorted({n.split("/", 1)[0] for n in names if "/" in n})
-          if top != ["POPS", "PS1_POPSLOADER"]:
-              print("ERROR: zip root must contain exactly POPS/ and PS1_POPSLOADER/")
+          if top != ["POPS", "POPSTARTER VERSIONS", "PS1_POPSLOADER"]:
+              print("ERROR: zip root must contain exactly POPS/, POPSTARTER VERSIONS/ and PS1_POPSLOADER/")
               print("Top dirs:", top)
               sys.exit(1)
 
@@ -216,10 +229,10 @@ jobs:
               print("ERROR: zip must not contain files at root:", root_files)
               sys.exit(1)
 
-          # Exact set
-          if actual != expected:
-              missing = sorted(expected - actual)
-              extra = sorted(actual - expected)
+          # Exact set for the curated installer payload (POPSTARTER VERSIONS excluded)
+          if core != expected:
+              missing = sorted(expected - core)
+              extra = sorted(core - expected)
               print("ERROR: package file set mismatch")
               if missing:
                   print("Missing:")
@@ -227,6 +240,15 @@ jobs:
               if extra:
                   print("Extra:")
                   print("\n".join(extra))
+              sys.exit(1)
+
+          # POPSTARTER VERSIONS/: must be present and contain only .ELF builds
+          if not versions:
+              print("ERROR: POPSTARTER VERSIONS/ folder is missing from the zip")
+              sys.exit(1)
+          non_elf = sorted(n for n in versions if not n.upper().endswith(".ELF"))
+          if non_elf:
+              print("ERROR: POPSTARTER VERSIONS/ must contain only .ELF files; found:", non_elf)
               sys.exit(1)
 
           # Forbidden old TM2 payload entries
