@@ -85,6 +85,21 @@ local function StripVcdExtension(name)
   local s = tostring(name or "")
   return (string.gsub(s, "%.[Vv][Cc][Dd]$", ""))
 end
+-- Remove a Redump/No-Intro disc marker -- "(Disc N)", "[Disc N]", "(Disk N)", "(CD N)",
+-- "(Disc N of M)" -- from an ALREADY-extension-stripped display name. DISPLAY/lookup only;
+-- the launch path keeps the full marked name. Mirrors the BRACKETED-ONLY grammar of
+-- system.lua IsSecondaryDisc (a bare "... Disc N" suffix is deliberately NOT touched --
+-- that was a 19-false-positive trap). The whole bracket group is consumed so "(Disc 1 of
+-- 2)" and a mid-name "(Disc 1) (Leon)" both clean up; leftover/edge spaces are tidied.
+local function StripDiscMarker(name)
+  local s = tostring(name or "")
+  s = string.gsub(s, "[%(%[]%s*[Dd][Ii][Ss][CcKk]%s*%d+[^%)%]]*[%)%]]", " ")
+  s = string.gsub(s, "[%(%[]%s*[Cc][Dd]%s*%d+[^%)%]]*[%)%]]", " ")
+  s = string.gsub(s, "%s+", " ")
+  s = string.gsub(s, "^%s+", "")
+  s = string.gsub(s, "%s+$", "")
+  return s
+end
 
 -- Horizontal marquee for the selected, overflowing game-list row. There is
 -- no scissor/clip API for a pixel-smooth scroll, so this steps by whole
@@ -178,15 +193,21 @@ local function BuildCoverCandidates(vcd_path, use_hdd_common_art, entry)
     if basename == "" then
       basename = BasenameWithoutExtension(vcd_path)
     end
+    local stripped_basename = StripDiscMarker(basename)
     if basename == "" then
       return {}
     end
     if type(PLDR) == "table" and type(PLDR.ResolveHddPartitionReadablePath) == "function" then
-      local resolved = PLDR.ResolveHddPartitionReadablePath("hdd0:__common", "POPS/ART/"..basename..".png")
-      if resolved ~= nil then
-        return { resolved }
+      -- One art file serves all discs: try the disc-marker-stripped name first, then
+      -- the exact per-disc name (back-compat with existing <full-name>.png covers).
+      local out = {}
+      if stripped_basename ~= "" and stripped_basename ~= basename then
+        local r1 = PLDR.ResolveHddPartitionReadablePath("hdd0:__common", "POPS/ART/"..stripped_basename..".png")
+        if r1 ~= nil then out[#out + 1] = r1 end
       end
-      return {}
+      local r2 = PLDR.ResolveHddPartitionReadablePath("hdd0:__common", "POPS/ART/"..basename..".png")
+      if r2 ~= nil then out[#out + 1] = r2 end
+      return out
     end
     return {}
   end
@@ -194,9 +215,17 @@ local function BuildCoverCandidates(vcd_path, use_hdd_common_art, entry)
     return {}
   end
   local base = StripExtension(vcd_path)
-  return {
-    base..".png"
-  }
+  -- One art file serves all discs: try the disc-marker-stripped name first, then the
+  -- exact per-disc name for back-compat with existing <full-name>.png covers.
+  local dir, name = string.match(base, "^(.*/)([^/]+)$")
+  if dir == nil then dir, name = "", base end
+  local stripped = StripDiscMarker(name)
+  local out = {}
+  if stripped ~= "" and stripped ~= name then
+    out[#out + 1] = dir..stripped..".png"
+  end
+  out[#out + 1] = base..".png"
+  return out
 end
 -- Read a game's "<name>.txt" details sidecar. Bounded so a stray huge file can't
 -- stall the snappy cover-load path it rides on.
@@ -345,10 +374,19 @@ function CoverCache:UpdateSelection(vcd_path, use_hdd_common_art, entry)
   -- feature is on (otherwise this read is skipped so navigation stays snappy).
   -- Stored raw; the list view word-wraps it under the cover.
   if type(PLDR) == "table" and PLDR.SHOW_DETAILS == true and candidates[1] ~= nil then
-    local desc_path = string.gsub(candidates[1], "%.png$", ".txt")
-    if desc_path ~= candidates[1] then
-      self.last_desc = ReadGameDetailsText(desc_path)
-      self.last_desc_lines = nil  -- re-wrap lazily for the new description
+    -- Try the .txt next to each cover candidate in order (disc-marker-stripped name
+    -- first, exact name as back-compat fallback). One <name>.txt serves all discs;
+    -- first existing read wins.
+    for ci = 1, #candidates do
+      local desc_path = string.gsub(candidates[ci], "%.png$", ".txt")
+      if desc_path ~= candidates[ci] then
+        local d = ReadGameDetailsText(desc_path)
+        if d ~= nil then
+          self.last_desc = d
+          self.last_desc_lines = nil  -- re-wrap lazily for the new description
+          break
+        end
+      end
     end
   end
   for i = 1, #candidates do
@@ -2411,6 +2449,14 @@ UI = {
             c = (i == UI.GameList.CURR) and LIST_HIDDEN_SELECTED_COLOR or LIST_HIDDEN_COLOR
           end
           local label = StripVcdExtension(display_name)
+          -- Collapsed multi-disc: the only disc-marked row visible is the disc-1
+          -- representative, so drop its "(Disc N)" marker for a clean title. GATED on
+          -- collapse -- with collapse OFF every disc shows and trimming would render the
+          -- Disc 1 / Disc 2 rows identically.
+          if type(PLDR) == "table" and PLDR.COLLAPSE_MULTIDISC == true then
+            local trimmed = StripDiscMarker(label)
+            if trimmed ~= "" then label = trimmed end
+          end
           -- Only the focused row scrolls (OPL-style); others clip as before.
           if i == UI.GameList.CURR then
             label = MarqueeLabel(BFONT, label, layout.LIST_W, UI.GameList.MarqueeTick or 0)
