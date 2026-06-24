@@ -3432,7 +3432,10 @@ end
 
 function PLDR.LoadSettingsNonFatal()
   local defaults_profile = tonumber(PLDR.DEFAULT_PROFILE) or 1
-  PLDR.EnsurePopstarterDir()
+  -- NOTE: do NOT EnsurePopstarterDir() here. This runs while applying DEFAULTS, before the
+  -- saved POPSTARTER_MC_FOLDER is parsed from the sidecar -- so the OFF guard couldn't see
+  -- the user's choice and the folder (+ its OSD icons) was rebuilt on EVERY boot even when
+  -- toggled OFF (provato HW report). The ensure now happens AFTER the load, at the call site.
   PLDR.SELECTED_PROFILE = defaults_profile
   PLDR.BDMA_MODE_KEY = "FAT32"
   PLDR.POPSTARTER_SELECTION_MODE = POPSTARTER_MODE_PROFILE_DEFAULT
@@ -4668,6 +4671,10 @@ function PLDR.SyncSmbDat()
 end
 
 function PLDR.EnsurePopstarterUiAssets()
+  -- Folder OFF: never recreate it. EnsurePopstarterDir no-ops (returns true) when OFF, so
+  -- without this guard the asset copies below would rebuild the folder + icons. Defensive:
+  -- the BDMA interlock already blocks the only current caller (ApplyBdmaMode) while OFF.
+  if PLDR.POPSTARTER_MC_FOLDER == false then return true end
   if not PLDR.EnsurePopstarterDir() then
     if UI ~= nil and UI.Notif_queue ~= nil then
       UI.Notif_queue.add("Cannot access mc0:/POPSTARTER")
@@ -6774,6 +6781,11 @@ local show_boot_credits = true
 -- START-held video + Boot-Page recovery that used to live at the top of
 -- do_boot_init. (#501 splash centering)
 PLDR.LoadSettingsNonFatal()
+-- Ensure the MC POPSTARTER folder ONLY AFTER settings load, so the saved
+-- POPSTARTER_MC_FOLDER is honored. EnsurePopstarterDir self-guards: ON -> create (the
+-- folder + OSD icons appear on boot as before); OFF -> no-op (stays deleted, fixing the
+-- every-boot recreation provato reported). This is the only LoadSettingsNonFatal call site.
+pcall(PLDR.EnsurePopstarterDir)
 if boot_start_held then
   PLDR.VIDEO_STANDARD = PLDR.VIDEO_STANDARD_AUTO
   if type(PLDR.ApplyVideoStandardRuntime) == "function" then
