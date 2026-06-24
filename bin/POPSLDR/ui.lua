@@ -2316,6 +2316,13 @@ UI = {
         UI.SettingsEntryHiddenDevices = (type(PLDR) == "table" and type(PLDR.NormalizeHiddenDevices) == "function") and PLDR.NormalizeHiddenDevices(UI.DeviceHiddenDraft) or ""
         UI.MultiDiscCollapse = (type(PLDR) == "table" and PLDR.COLLAPSE_MULTIDISC == true)
         UI.SettingsEntryMultiDiscCollapse = UI.MultiDiscCollapse
+        -- If an R3 reveal was active, restore the real persisted setting before the
+        -- Settings page reads it (reveal only transiently cleared GLOBAL_HIDE).
+        if PLDR._GLOBAL_HIDE_SAVED ~= nil then
+          PLDR.GLOBAL_HIDE = (PLDR._GLOBAL_HIDE_SAVED == true)
+          PLDR._GLOBAL_HIDE_SAVED = nil
+          UI.RevealHidden = false
+        end
         UI.GlobalHide = (type(PLDR) == "table" and PLDR.GLOBAL_HIDE == true)
         UI.SettingsEntryGlobalHide = UI.GlobalHide
         -- Game-details draft as a 4-way value: off | left | center | right. Derived
@@ -2690,6 +2697,13 @@ UI = {
           if UI.CURSCENE == UI.SCENES.GSMBNET and type(System) == "table" and type(System.disconnectSMB) == "function" then
             pcall(System.disconnectSMB)   -- free the share + connection when leaving the SMB page
           end
+          -- Drop any transient R3 reveal on the way out (restore the real persisted hide
+          -- setting) so reveal is per-visit and never leaks to the next device list.
+          if PLDR._GLOBAL_HIDE_SAVED ~= nil then
+            PLDR.GLOBAL_HIDE = (PLDR._GLOBAL_HIDE_SAVED == true)
+          end
+          UI.RevealHidden = false
+          PLDR._GLOBAL_HIDE_SAVED = nil
           UI.SceneChange(UI.SCENES.MMAIN)
         end
         if ammount > 0 then
@@ -2877,11 +2891,21 @@ UI = {
              or UI.CURSCENE == UI.SCENES.GBDMHDD
              or UI.CURSCENE == UI.SCENES.GSMBNET
              or UI.CURSCENE == UI.SCENES.GUSBFAT) then
-          PLDR.GLOBAL_HIDE = (PLDR.GLOBAL_HIDE ~= true)
-          if type(PLDR.SaveSettingsAtomic) == "function" then
-            local ok_s, saved = pcall(PLDR.SaveSettingsAtomic)
-            r3_save_ok = (ok_s and saved ~= false)
+          -- Reveal is a TRANSIENT per-session view: temporarily clear GLOBAL_HIDE so the
+          -- scan re-includes hidden games (dimmed); re-hide restores it. Does NOT touch the
+          -- persisted setting -- Settings > Game List > Hidden games owns that single source
+          -- of truth. (R3 used to flip+PERSIST GLOBAL_HIDE, fighting the Settings page and
+          -- then blocking the L3 unhide it tells you to use -- provato HW report.)
+          UI.RevealHidden = (UI.RevealHidden ~= true)
+          if PLDR._GLOBAL_HIDE_SAVED == nil then
+            PLDR._GLOBAL_HIDE_SAVED = (PLDR.GLOBAL_HIDE == true)   -- capture the real setting once (false stored as false, not nil)
           end
+          if UI.RevealHidden then
+            PLDR.GLOBAL_HIDE = false                               -- reveal: scan re-includes hidden (dimmed)
+          else
+            PLDR.GLOBAL_HIDE = (PLDR._GLOBAL_HIDE_SAVED == true)   -- re-hide: restore the captured setting
+          end
+          r3_save_ok = true   -- nothing persisted now, so never a save-failure case
           r3_hide_toggle = true
           UI.Pad.Events.R1 = true   -- drive the same in-place rebuild R1 performs
         end
@@ -2990,8 +3014,8 @@ UI = {
           end
         end
         if UI.Pad.Events.L3 and ammount > 0 then
-          if PLDR.GLOBAL_HIDE then
-            UI.Notif_queue.add("[Global Hide ON]\nTurn 'Hidden games' off in Settings to manage", "warn")
+          if PLDR.GLOBAL_HIDE and UI.RevealHidden ~= true then
+            UI.Notif_queue.add("Hidden games are filtered out.\nPress R3 to reveal them, then L3 to unhide.", "warn")
           elseif UI.CURSCENE == UI.SCENES.GHDD then
             local entry = PLDR.GAMES[UI.GameList.CURR]
             local was_hidden = PLDR.IsGameHidden(entry)
@@ -3031,8 +3055,8 @@ UI = {
           end
         end
         if r3_hide_toggle then
-          local _r3msg = (PLDR.GLOBAL_HIDE == true) and "Hidden games are now hidden"
-            or "Showing hidden games (dimmed) -- press L3 to unhide"
+          local _r3msg = (UI.RevealHidden == true) and "Showing hidden games (dimmed) -- press L3 to unhide"
+            or "Hidden games filtered out again"
           if r3_save_ok then
             UI.Notif_queue.add(_r3msg, "ok")
           else
@@ -3259,6 +3283,8 @@ UI = {
             end
             PLDR.COLLAPSE_MULTIDISC = multidisc_collapse_val
             PLDR.GLOBAL_HIDE = global_hide_val
+            PLDR._GLOBAL_HIDE_SAVED = nil   -- Settings Save re-establishes the persisted truth + drops any transient R3 reveal
+            UI.RevealHidden = false
             PLDR.SHOW_DETAILS = show_details_val
             PLDR.DETAILS_ALIGN = details_align_val
             PLDR.GAMELIST_CACHE = gamelist_cache_val
