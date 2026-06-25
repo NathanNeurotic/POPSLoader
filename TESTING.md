@@ -89,7 +89,7 @@ SMB (v1) is now **implemented end-to-end** (CI + Rolling green) and **validating
   - Report: empty/wrong list after R3, a crash, a device failing to re-scan, or the setting not sticking.
 - [ ] **Boot sound On/Off** — *Settings → Game List → Boot sound* (default **On**) gates the splash chime. ✅ **save survives reboot CONFIRMED (oldman63);** still confirm Off actually silences the chime.
 - [ ] **Per-game info text** — drop `<game>.txt` next to a game → *Settings → Game List → Game details = Left/Center/Right aligned* → blurb under the cover in that alignment, line breaks kept. *Off* hides it.
-- [ ] **Description scroll** — long `.txt` scrolls with the **right analog stick**; *Settings → Game List → Description scroll speed = Fast/Medium/Slow* now actually changes the pace (default **Slow**, ~1 line/sec; the speed setting was previously ignored). Confirm Fast/Medium/Slow feel distinct.
+- [ ] **Description scroll** — long `.txt` scrolls with the **right analog stick** at a fixed **Fast** pace (~7 lines/sec, frame-counted). The Fast/Medium/Slow speed setting was removed (provato: Fast is best). Confirm the scroll feels right.
 - [ ] **Game list cache (opt-in, default OFF)** — *Settings → Game list cache → ON:*
   - [ ] First entry builds; second entry / reboot **loads fast** (no "Building…").
   - [ ] ⚠️ **CRITICAL: launch a game FROM the cached list** on each device incl. **HDD** — it must still **launch correctly**, not just load fast.
@@ -104,7 +104,7 @@ SMB (v1) is now **implemented end-to-end** (CI + Rolling green) and **validating
 - [ ] **L3 hide/unhide** on every device incl. **HDD** (drops `.hide` next to the VCD; on HDD writes to the boot partition — old "add it from a PC" is now only a write-failure fallback).
 - [ ] **Hidden games filter** — *Hidden* filters out; *Visible (manage)* shows dimmed so L3 can toggle them back.
 - [ ] **Settings save & persist** — change a setting, **reboot**, confirm it stuck. **Especially HDD installs** (settings save to the HDD boot partition now — RW confirmed by provato, full flow wants more confirmation).
-- [ ] **Unsaved-changes prompt** — change a *cycle* setting (Game details / scroll speed / cache / Boot sound / Overscan / Boot Page) and press **BACK** without saving → it warns you.
+- [ ] **Unsaved-changes prompt** — change a *cycle* setting (Game details / cache / Boot sound / Overscan / Boot Page) and press **BACK** without saving → it warns you.
 - [ ] **POPSTARTER MC Folder toggle + BDMA interlock** — toggle the `mc:/POPSTARTER` folder (off **deletes** it, with confirm). Can't disable the folder while BDMA is on, nor enable BDMA while the folder is off. *(BDMA mode now in `bdma_mode.txt`; legacy `.pldr_bdma_mode` still read.)*
 
 ## 🟦 P3 — Display / PAL (needs PAL hardware — we have none on the team)

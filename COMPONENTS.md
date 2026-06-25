@@ -206,7 +206,7 @@ copies are not read at runtime. Editing them requires a rebuild.
   POPSTARTER_PATH, POPSTARTER_MODE, BDMA, DKWDRV_PATH, STRICT_HDD_PREEXEC_GATE,
   VIDEO_STANDARD, HIDE_TEXT, KEYBOARD_LAYOUT, BOOT_PAGE, MULTIDISC_COLLAPSE,
   GLOBAL_HIDE, POPSTARTER_MC_FOLDER, HIDDEN_DEVICES, SHOW_DETAILS, DETAILS_ALIGN,
-  GAMELIST_CACHE, BOOT_SOUND, OVERSCAN, DESC_SCROLL_SPEED — BOOT_SOUND and OVERSCAN
+  GAMELIST_CACHE, BOOT_SOUND, OVERSCAN — BOOT_SOUND and OVERSCAN
   are new this cycle), `LoadSettingsNonFatal` (system.lua:3301),
   `SaveSettingsAtomic` (system.lua:3262) -> `WriteAtomic` (system.lua:2663),
   `CommitSettingsChanges` (transactional, system.lua:3540). Per-device sidecar
@@ -275,8 +275,8 @@ copies are not read at runtime. Editing them requires a rebuild.
   they register with the jewel-case window on both NTSC and PAL.
 - Right-stick description scroll (ui.lua:2669-2700) is FRAME-COUNTED too via
   `UI.GameList.DescScrollFrames` (ui.lua:2334): step every `ceil(_secs*fps)`
-  frames (ui.lua:2684-2687), with the "Description scroll speed" setting in
-  SECONDS — slow 0.9 (default) / medium 0.3 / fast 0.15 (ui.lua:2680-2682).
+  frames (ui.lua:2684-2687), fixed at the Fast pace (`_secs` = 0.15, ~7
+  lines/sec; the Fast/Medium/Slow "Description scroll speed" setting was removed).
 - Cover-art LRU `CoverCache` (ui.lua:257-343), candidate builder
   `BuildCoverCandidates` (ui.lua:175): non-HDD = `base.png` beside the VCD
   (ui.lua:196-198), HDD = `hdd0:__common/POPS/ART/<basename>.png` (ui.lua:185).

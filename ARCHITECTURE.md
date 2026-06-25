@@ -290,11 +290,10 @@ carousel transition). The old per-press action debounce `MIN_ACTION_MS` was
   delays were compared against a µs clock and cleared every frame, so a single
   press scrolled ~5 lines.
 - **Description right-stick scroll is frame-counted too** (`ui.lua:2683-2696`):
-  `step_frames = ceil(_secs * fps)`, with speeds expressed in **seconds** —
-  slow `0.9`, medium `0.3`, fast `0.15` (`ui.lua:2680-2682`) — tracked by
-  `UI.GameList.DescScrollFrames`. The "Description scroll speed" Fast/Med/Slow
-  setting now actually changes the feel (it previously gated a sub-frame µs value
-  and ignored the setting).
+  `step_frames = ceil(_secs * fps)`, fixed at the **Fast** pace (`_secs` =
+  `0.15`, ~7 lines/sec) — tracked by `UI.GameList.DescScrollFrames`. The
+  Fast/Med/Slow "Description scroll speed" setting was removed (provato: Fast
+  is best); the frame-counting fix it shipped with still stands.
 
 **Analog-stick → d-pad fold is gated on real analog mode** (`ui.lua:4469-4511`).
 The left stick is OR'd into the d-pad direction bits **only** when
@@ -595,7 +594,7 @@ Plain KEY=VALUE text with **20 keys** (`EncodeSettings`, `system.lua:3072-3102`)
 `BOOT_PAGE`, `MULTIDISC_COLLAPSE`, `GLOBAL_HIDE`, `POPSTARTER_MC_FOLDER`,
 `HIDDEN_DEVICES`, `SHOW_DETAILS`, `DETAILS_ALIGN`, `GAMELIST_CACHE`, `BOOT_SOUND`
 (default on; gates the splash ADPCM chime), `OVERSCAN` (CRT inset permille,
-default `0`; see the overscan note below), `DESC_SCROLL_SPEED`. STATE.md is
+default `0`; see the overscan note below). STATE.md is
 canonical for what each key means and its UI surface.
 Location is the **per-device** sidecar `APP_DIR/.pldrs`, preferred for every
 device — **including HDD installs**, which now persist on the HDD boot partition
