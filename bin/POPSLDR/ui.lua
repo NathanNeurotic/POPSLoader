@@ -2331,6 +2331,8 @@ UI = {
         if _da ~= "center" and _da ~= "right" then _da = "left" end
         UI.DetailsAlign = ((type(PLDR) == "table" and PLDR.SHOW_DETAILS == true) and _da) or "off"
         UI.SettingsEntryDetailsAlign = UI.DetailsAlign
+        UI.HddFs = ((type(PLDR) == "table" and PLDR.HDD_FS == "EXFAT") and "EXFAT") or "PFS"
+        UI.SettingsEntryHddFs = UI.HddFs
         UI.GameListCache = (type(PLDR) == "table" and PLDR.GAMELIST_CACHE == true)
         UI.SettingsEntryGameListCache = UI.GameListCache
         UI.BootSound = (type(PLDR) == "table" and PLDR.BOOT_SOUND ~= false)
@@ -3224,6 +3226,7 @@ UI = {
           local details_align_val = (show_details_val and UI.DetailsAlign)
             or ((type(PLDR) == "table" and PLDR.DETAILS_ALIGN) or "left")
           if details_align_val ~= "center" and details_align_val ~= "right" then details_align_val = "left" end
+          local hdd_fs_val = (UI.HddFs == "EXFAT") and "EXFAT" or "PFS"
           local gamelist_cache_val = UI.GameListCache == true
           local boot_sound_val = UI.BootSound == true
           local overscan_val = math.floor(tonumber(UI.Overscan) or 0)
@@ -3249,6 +3252,7 @@ UI = {
                 global_hide = global_hide_val,
                 show_details = show_details_val,
                 details_align = details_align_val,
+                hdd_fs = hdd_fs_val,
                 gamelist_cache = gamelist_cache_val,
                 boot_sound = boot_sound_val,
                 overscan = overscan_val,
@@ -3287,6 +3291,7 @@ UI = {
             UI.RevealHidden = false
             PLDR.SHOW_DETAILS = show_details_val
             PLDR.DETAILS_ALIGN = details_align_val
+            PLDR.HDD_FS = hdd_fs_val
             PLDR.GAMELIST_CACHE = gamelist_cache_val
             PLDR.BOOT_SOUND = boot_sound_val
             PLDR.OVERSCAN = overscan_val
@@ -3695,6 +3700,9 @@ UI = {
           end
           for di = 1, #PLDR.CAROUSEL_DEVICE_KEYS do
             local dkey = PLDR.CAROUSEL_DEVICE_KEYS[di]
+            -- EXFAT + PFS are governed by the single "Internal HDD" toggle below, not by a
+            -- per-device Shown/Hidden row here (CosmicScale: one toggle, not two that fight).
+            if dkey ~= "EXFAT" and dkey ~= "PFS" then
             local dlabel = (type(UI.MainMenu) == "table" and type(UI.MainMenu.opts) == "table" and UI.MainMenu.opts[di]) or dkey
             AddCycle(
               dlabel,
@@ -3707,8 +3715,20 @@ UI = {
                 return d ~= e
               end
             )
+            end
           end
         end
+
+        -- Internal-HDD filesystem: which of the two HDD pages shows on the carousel --
+        -- Sony APA/PFS (default) or APA-Jail exFAT. Mutually exclusive (one shows, the
+        -- other hides). A -page=ata launch still auto-enters exFAT regardless of this.
+        AddCycle(
+          "Internal HDD",
+          function() return (UI.HddFs == "EXFAT") and "exFAT (APA-Jail)" or "PFS (default)" end,
+          function() UI.HddFs = (UI.HddFs == "EXFAT") and "PFS" or "EXFAT" end,
+          function() UI.HddFs = (UI.HddFs == "EXFAT") and "PFS" or "EXFAT" end,
+          function() return tostring(UI.HddFs) ~= tostring(UI.SettingsEntryHddFs) end
+        )
 
         AddSection("Game List")
         AddCycle(

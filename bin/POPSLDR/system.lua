@@ -3066,9 +3066,18 @@ end
 -- True if the given carousel device key is currently hidden from the carousel.
 function PLDR.IsDeviceHidden(key)
   if key == nil then return false end
+  local ukey = string.upper(tostring(key))
+  -- The two internal-HDD pages (PFS, exFAT) are mutually exclusive: only the one chosen in
+  -- Settings > Internal HDD shows on the carousel; the other is always hidden. (A -page=ata
+  -- launch still auto-enters exFAT regardless -- that path sets OPT directly and never
+  -- consults this, so CosmicScale's PSBBN-from-HDD boot is unaffected.)
+  if ukey == "EXFAT" or ukey == "PFS" then
+    local fs = (string.upper(tostring(PLDR.HDD_FS or "PFS")) == "EXFAT") and "EXFAT" or "PFS"
+    return ukey ~= fs
+  end
   local csv = string.upper(tostring(PLDR.HIDDEN_DEVICES or ""))
   if csv == "" then return false end
-  return string.find(","..csv..",", ","..string.upper(tostring(key))..",", 1, true) ~= nil
+  return string.find(","..csv..",", ","..ukey..",", 1, true) ~= nil
 end
 
 -- Boot Page (persisted landing page after the boot sequence): "Carousel"
@@ -3210,6 +3219,7 @@ local function EncodeSettings()
     "HIDDEN_DEVICES="..PLDR.NormalizeHiddenDevices(PLDR.HIDDEN_DEVICES),
     "SHOW_DETAILS="..((PLDR.SHOW_DETAILS == true) and "1" or "0"),
     "DETAILS_ALIGN="..((PLDR.DETAILS_ALIGN == "center" or PLDR.DETAILS_ALIGN == "right") and PLDR.DETAILS_ALIGN or "left"),
+    "HDD_FS="..((PLDR.HDD_FS == "EXFAT") and "EXFAT" or "PFS"),
     "GAMELIST_CACHE="..((PLDR.GAMELIST_CACHE == true) and "1" or "0"),
     "BOOT_SOUND="..((PLDR.BOOT_SOUND ~= false) and "1" or "0"),
     "OVERSCAN="..tostring(math.floor(tonumber(PLDR.OVERSCAN) or 0)),
@@ -3258,6 +3268,7 @@ local function SnapshotSettingsState()
     hidden_devices = PLDR.NormalizeHiddenDevices(PLDR.HIDDEN_DEVICES),
     show_details = (PLDR.SHOW_DETAILS == true),
     details_align = ((PLDR.DETAILS_ALIGN == "center" or PLDR.DETAILS_ALIGN == "right") and PLDR.DETAILS_ALIGN or "left"),
+    hdd_fs = ((PLDR.HDD_FS == "EXFAT") and "EXFAT" or "PFS"),
     gamelist_cache = (PLDR.GAMELIST_CACHE == true),
     boot_sound = (PLDR.BOOT_SOUND ~= false),
     overscan = math.floor(tonumber(PLDR.OVERSCAN) or 0),
@@ -3308,6 +3319,9 @@ local function ApplySettingsState(state)
   end
   if type(state.details_align) == "string" then
     PLDR.DETAILS_ALIGN = (state.details_align == "center" or state.details_align == "right") and state.details_align or "left"
+  end
+  if type(state.hdd_fs) == "string" then
+    PLDR.HDD_FS = (state.hdd_fs == "EXFAT") and "EXFAT" or "PFS"
   end
   if type(state.gamelist_cache) == "boolean" then
     PLDR.GAMELIST_CACHE = state.gamelist_cache
@@ -3445,6 +3459,7 @@ function PLDR.LoadSettingsNonFatal()
   PLDR.HIDDEN_DEVICES = ""
   PLDR.SHOW_DETAILS = false
   PLDR.DETAILS_ALIGN = "left"  -- left|center|right; alignment of the game-details box (used only when SHOW_DETAILS)
+  PLDR.HDD_FS = "PFS"  -- PFS|EXFAT; which internal-HDD page the carousel shows (mutually exclusive; default PFS)
   PLDR.GAMELIST_CACHE = false  -- opt-in persistent per-device USB/MMCE/MX4SIO list cache (OFF = always live scan)
   PLDR.BOOT_SOUND = true  -- play the boot/splash chime (default ON; oldman63 #501 wanted an off switch)
   PLDR.OVERSCAN = 0  -- CRT overscan inset, permille (0 = off; OPL rmSetOverscan units/math)
@@ -3562,6 +3577,7 @@ function PLDR.LoadSettingsNonFatal()
   local hidden_devices = string.match(data, "\nHIDDEN_DEVICES=([^\n]*)") or string.match(data, "^HIDDEN_DEVICES=([^\n]*)")
   local show_details = string.match(data, "\nSHOW_DETAILS=([^\n]+)") or string.match(data, "^SHOW_DETAILS=([^\n]+)")
   local details_align = string.match(data, "\nDETAILS_ALIGN=([^\n]+)") or string.match(data, "^DETAILS_ALIGN=([^\n]+)")
+  local hdd_fs = string.match(data, "\nHDD_FS=([^\n]+)") or string.match(data, "^HDD_FS=([^\n]+)")
   local gamelist_cache = string.match(data, "\nGAMELIST_CACHE=([^\n]+)") or string.match(data, "^GAMELIST_CACHE=([^\n]+)")
   local boot_sound = string.match(data, "\nBOOT_SOUND=([^\n]+)") or string.match(data, "^BOOT_SOUND=([^\n]+)")
   local overscan = string.match(data, "\nOVERSCAN=([^\n]+)") or string.match(data, "^OVERSCAN=([^\n]+)")
@@ -3625,6 +3641,9 @@ function PLDR.LoadSettingsNonFatal()
   end
   if details_align ~= nil then
     PLDR.DETAILS_ALIGN = (details_align == "center" or details_align == "right") and details_align or "left"
+  end
+  if hdd_fs ~= nil then
+    PLDR.HDD_FS = (string.upper(hdd_fs) == "EXFAT") and "EXFAT" or "PFS"
   end
   local glc = ParseBooleanSetting(gamelist_cache)
   if glc ~= nil then
@@ -3694,6 +3713,8 @@ function PLDR.CommitSettingsChanges(opts)
   if type(opts.show_details) == "boolean" then next_show_details = opts.show_details end
   local next_details_align = (prev.details_align == "center" or prev.details_align == "right") and prev.details_align or "left"
   if opts.details_align == "left" or opts.details_align == "center" or opts.details_align == "right" then next_details_align = opts.details_align end
+  local next_hdd_fs = (prev.hdd_fs == "EXFAT") and "EXFAT" or "PFS"
+  if opts.hdd_fs == "PFS" or opts.hdd_fs == "EXFAT" then next_hdd_fs = opts.hdd_fs end
   local next_gamelist_cache = (prev.gamelist_cache == true)
   if type(opts.gamelist_cache) == "boolean" then next_gamelist_cache = opts.gamelist_cache end
   local next_boot_sound = (prev.boot_sound ~= false)
@@ -3724,6 +3745,7 @@ function PLDR.CommitSettingsChanges(opts)
     global_hide = next_global_hide,
     show_details = next_show_details,
     details_align = next_details_align,
+    hdd_fs = next_hdd_fs,
     gamelist_cache = next_gamelist_cache,
     boot_sound = next_boot_sound,
     overscan = next_overscan,
