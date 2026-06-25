@@ -112,6 +112,13 @@ IMPORT_BIN2C(ps2fs_irx);
 // (EnsureNet) -- load it exactly once across the HDD and SMB paths.
 extern bool g_dev9_loaded;
 
+// Defined in luasystem.cpp. Brings up dev9 + bdm + bdmfs_fatfs + ata_bd (the BDM-enabled
+// atad) load-once, so the HDD-boot APA path and the exFAT page SHARE ONE atad instance:
+// ata_bd's atad library drives PFS (ps2hdd/ps2fs below) while its BDM "ata" device drives
+// exFAT. Replaces the old plain-ps2atad load -- two atad copies froze the exFAT scan when
+// POPSLoader was booted from an APA-Jail HDD (CosmicScale 2026-06-25).
+extern bool EnsureAtaBdm();
+
 #define CHECK_ERR(MODULE) if (ID < 0 || RET == 1) {lua_pushboolean(L, false); lua_pushstring(L, MODULE); lua_pushinteger(L, ID); lua_pushinteger(L, RET); goto ERR;}
 
 enum HDDLOADSTATES {
@@ -142,18 +149,19 @@ static int Load_HDD_IRX(lua_State *L) {
                            "-o" _N "10" _N
                            "-n" _N "40";
 #undef _N
-    /* PS2DEV9.IRX -- shared with the SMB net path (EnsureNet); load exactly once. */
-    if (!g_dev9_loaded) {
-        ID = SifExecModuleBuffer(&ps2dev9_irx, size_ps2dev9_irx, 0, NULL, &RET);
-        DPRINTF(" [DEV9.IRX]: ret=%d, ID=%d\n", RET, ID);
-        CHECK_ERR("DEV9");
-        g_dev9_loaded = true;
+    /* dev9 + bdm + bdmfs_fatfs + ata_bd (the BDM-enabled atad), load-once via EnsureAtaBdm.
+     * ata_bd IS ps2atad built with ATA_ENABLE_BDM=1: the SAME atad library ps2hdd/ps2fs use
+     * below, PLUS a BDM "ata" mass device for exFAT -- so ONE instance serves both APA/PFS
+     * and exFAT (the config OPL ships). Replaces the old plain-ps2atad load here: booting
+     * from an APA HDD loaded plain ps2atad AND a 2nd ata_bd on the exFAT page = two atad
+     * copies re-initing the live ATA bus -> the 42% scan freeze (CosmicScale APA-Jail). */
+    if (!EnsureAtaBdm()) {
+        lua_pushboolean(L, false);
+        lua_pushstring(L, "ATA_BD");
+        lua_pushinteger(L, -1);
+        lua_pushinteger(L, -1);
+        goto ERR;
     }
-
-    /* PS2ATAD.IRX */
-    ID = SifExecModuleBuffer(&ps2atad_irx, size_ps2atad_irx, 0, NULL, &RET);
-    DPRINTF(" [ATAD.IRX]: ret=%d, ID=%d\n", RET, ID);
-    CHECK_ERR("ATAD");
 
     /* PS2HDD.IRX */
     ID = SifExecModuleBuffer(&ps2hdd_osd_irx, size_ps2hdd_osd_irx, sizeof(hddarg), hddarg, &RET);

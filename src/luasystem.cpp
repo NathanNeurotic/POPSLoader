@@ -100,7 +100,6 @@ static bool bdm_fatfs_irx_loaded = false;
 static bool usbmass_irx_loaded = false;
 static bool cdfs_irx_loaded = false;
 static bool mx4sio_irx_loaded = false;
-static bool ata_irx_loaded = false;
 static bool mmceman_irx_loaded = false;
 
 static bool EnsureBDM()
@@ -1344,6 +1343,33 @@ static int lua_mx4sio_init(lua_State *L)
 	return 2;
 }
 
+// Bring up the BDM-enabled ATA stack ONCE: dev9 -> bdm -> bdmfs_fatfs (+ usbmass_bd) -> ata_bd.
+// ata_bd IS ps2atad compiled with ATA_ENABLE_BDM=1 -- it registers BOTH the atad library
+// (used by ps2hdd/ps2fs for APA/PFS) AND a BDM "ata" mass device (exFAT). The BDM FS layer
+// MUST precede it so ata_bd's bdm_connect_bd registration succeeds. SHARED by the HDD-boot
+// APA path (luaHDD.cpp Load_HDD_IRX) and the exFAT page (lua_ata_init) so ONE instance serves
+// both -- the config OPL ships. Booting from an APA HDD used to load plain ps2atad (boot) AND
+// a SECOND ata_bd (exFAT page): two atad copies re-initing the live ATA bus -> the 42% scan
+// freeze with the HDD light latched on (CosmicScale APA-Jail HDD, 2026-06-25). Load-once via
+// g_ata_bd_loaded (a non-static global shared with luaHDD.cpp).
+bool g_ata_bd_loaded = false;
+bool EnsureAtaBdm()
+{
+	if (!EnsureDev9()) {
+		return false;
+	}
+	if (!EnsureUsbMass()) {   // dev9 -> bdm -> bdmfs_fatfs -> usbmass_bd; bdm MUST precede ata_bd
+		return false;
+	}
+	if (!g_ata_bd_loaded) {
+		if (!LoadIrxCheckedBuffer("ata_bd.irx", ata_bd_irx, size_ata_bd_irx, NULL, NULL)) {
+			return false;
+		}
+		g_ata_bd_loaded = true;
+	}
+	return true;
+}
+
 static int lua_ata_init(lua_State *L)
 {
 	int argc = lua_gettop(L);
@@ -1354,25 +1380,13 @@ static int lua_ata_init(lua_State *L)
 		(void)luaL_checkstring(L, 1);
 	}
 
-	// ata_bd is a BDM block backend like mx4sio_bd: it makes the internal
-	// SATA/IDE drive (exFAT) enumerate under the mass: namespace, identified by
-	// the ioctl driver-name "ata" (see ClassifyMassBackend).
-	//
-	// HW-BUG FIX (CosmicScale report 2026-06-23, "No exFAT HDD detected"): ata_bd is
-	// a RAW ATA block driver and needs dev9 (the PS2 HDD-bus hardware) up first.
-	// Unlike mx4sio_bd -- whose bus driver sio2man is boot-loaded -- dev9 is NOT
-	// boot-loaded (only the APA-HDD path loads it), so on a non-HDD boot the drive
-	// never enumerated. Load dev9 (shared with the HDD path, load-once via
-	// g_dev9_loaded). Deliberately do NOT bring up atad/ps2hdd/pfs: APA-Jail exFAT is
-	// read raw, and the APA stack would not see (and could fight) the exFAT region
-	// -- matches CosmicScale's "disable PFS" hint (he authored APA-Jail).
-	bool ok = EnsureDev9() && EnsureUsbMass();
-	if (ok && !ata_irx_loaded) {
-		ok = LoadIrxCheckedBuffer("ata_bd.irx", ata_bd_irx, size_ata_bd_irx, NULL, NULL);
-		if (ok) {
-			ata_irx_loaded = true;
-		}
-	}
+	// Bring up the BDM-enabled atad (ata_bd) for the exFAT mass device via EnsureAtaBdm.
+	// It is SHARED + load-once with the HDD-boot APA path (luaHDD.cpp): when POPSLoader was
+	// booted from an APA HDD (atad already resident for the pfs1: settings) this does NOT
+	// load a SECOND atad onto the live ATA bus -- that duplicate load was the 42% scan freeze
+	// (CosmicScale APA-Jail HDD, 2026-06-25). On a non-HDD boot it brings the whole stack up
+	// itself (dev9 -> bdm -> bdmfs_fatfs -> ata_bd), exactly as before.
+	bool ok = EnsureAtaBdm();
 
 	lua_pushboolean(L, ok);
 	if (ok) {
