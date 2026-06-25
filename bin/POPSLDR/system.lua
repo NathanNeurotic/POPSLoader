@@ -3485,6 +3485,29 @@ function PLDR.LoadSettingsNonFatal()
   -- writes the user's settings to the per-device location and the
   -- legacy MC copy stops being authoritative. Subsequent boots will
   -- find the sidecar first and stay on it.
+  -- -page=ata (CosmicScale): when the launch arg targets the internal exFAT drive, keep the
+  -- settings .pldrs ON that drive (its own cwd-equivalent), not the hdd0 boot partition that
+  -- POPSLOADER.ELF happened to launch from. Same shape as the HDD-cwd sidecar override above,
+  -- just rooted at the exFAT mass device. The exFAT BDM stack is already up on an HDD boot
+  -- (EnsureAtaBdm loads bdmfs_fatfs+ata_bd before this runs); GetATAMassRootNow enumerates it
+  -- with the same bounded retry the game scan uses, and the mass: sidecar probe below already
+  -- self-heals the lazy-mount timing. [HW: exFAT write support + enum timing are PS2-confirm.]
+  do
+    local pg = (type(PLDR.LAUNCH_ARGS) == "table") and string.lower(tostring(PLDR.LAUNCH_ARGS.page or "")) or ""
+    if (pg == "ata" or pg == "exfat") and type(PLDR.GetATAMassRootNow) == "function" then
+      local ok_root, ata_root = pcall(PLDR.GetATAMassRootNow)
+      if ok_root and type(ata_root) == "string" and ata_root ~= "" then
+        PLDR.SETTINGS_PATH_SIDECAR = JoinPath(ata_root, ".pldrs")
+        PLDR.SETTINGS_PATH = PLDR.SETTINGS_PATH_SIDECAR
+        -- The exFAT sidecar is a plain per-device mass: sidecar, NOT the HDD-partition
+        -- RW-takeover path. Clear the HDD-partition fields (set above when POPSLOADER.ELF
+        -- booted from the hdd0 pfs partition) so SaveSettingsAtomic writes via the normal
+        -- mass:/.pldrs sidecar branch, not the pfs read-only remount.
+        PLDR.SETTINGS_HDD_PARTITION = nil
+        PLDR.SETTINGS_HDD_RELPATH = nil
+      end
+    end
+  end
   local sidecar = PLDR.SETTINGS_PATH_SIDECAR
   local fallback = PLDR.SETTINGS_PATH_FALLBACK
   local loaded_path = nil
