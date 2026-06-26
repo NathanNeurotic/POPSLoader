@@ -6789,6 +6789,37 @@ local show_boot_credits = true
 -- SLOW device bring-up stays under the splash (do_boot_init). This restores the
 -- START-held video + Boot-Page recovery that used to live at the top of
 -- do_boot_init. (#501 splash centering)
+-- When a -page flag selects a device, its settings READ+WRITE to THAT device's POPS
+-- folder instead of the boot cwd (CosmicScale 2026-06-25: "when a flag is used, read and
+-- write to the selected device"). So a launcher booted from an APA HDD with -page=ata
+-- keeps its .pldrs on the exFAT drive (mass:/POPS/.pldrs) -- self-contained, travels with
+-- the drive. Override the sidecar HERE -- AFTER InitATAPopsRoot is defined and the ata BDM
+-- is up (boot.lua's HDD mount already ran EnsureAtaBdm), and BEFORE the single
+-- LoadSettingsNonFatal below -- so its existing probe / mass-mount-settle / migrate /
+-- atomic-write logic targets the device unchanged (read correct video from frame one, no
+-- post-splash re-apply flicker). The FALLBACK is pointed at the prior cwd sidecar so an
+-- existing cwd/HDD config MIGRATES onto the device on the first boot (read from cwd, then
+-- pinned to the device; next save lands on the device). ATA is the only -page target wired
+-- here: it is the exFAT case asked for and the only device with a boot-callable root
+-- resolver (USB/MMCE resolve their root only inside the ui.lua entry handlers); every other
+-- -page target keeps the cwd sidecar.
+if type(PLDR.LAUNCH_ARGS) == "table" and type(PLDR.LAUNCH_ARGS.page) == "string"
+   and type(PLDR.InitATAPopsRoot) == "function" then
+  local flag_page = string.upper(PLDR.LAUNCH_ARGS.page)
+  if flag_page == "ATA" or flag_page == "EXFAT" then
+    local games_root = PLDR.InitATAPopsRoot()  -- "mass:/POPS/" (settles via the deferred probe), or nil if no exFAT
+    if type(games_root) == "string" and games_root ~= "" then
+      local prior_sidecar = PLDR.SETTINGS_PATH_SIDECAR
+      if type(prior_sidecar) == "string" and prior_sidecar ~= "" then
+        PLDR.SETTINGS_PATH_FALLBACK = prior_sidecar  -- migrate a prior cwd/HDD config onto the device on first boot
+      end
+      PLDR.SETTINGS_PATH_SIDECAR = games_root..".pldrs"  -- e.g. mass:/POPS/.pldrs
+      PLDR.SETTINGS_PATH = PLDR.SETTINGS_PATH_SIDECAR
+      PLDR.SETTINGS_HDD_PARTITION = nil  -- exFAT writes go through the per-device sidecar branch, not the HDD takeover
+      PLDR.SETTINGS_HDD_RELPATH = nil
+    end
+  end
+end
 PLDR.LoadSettingsNonFatal()
 -- Ensure the MC POPSTARTER folder ONLY AFTER settings load, so the saved
 -- POPSTARTER_MC_FOLDER is honored. EnsurePopstarterDir self-guards: ON -> create (the
