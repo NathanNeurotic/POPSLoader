@@ -215,15 +215,24 @@ local function BuildCoverCandidates(vcd_path, use_hdd_common_art, entry)
     return {}
   end
   local base = StripExtension(vcd_path)
-  -- One art file serves all discs: try the disc-marker-stripped name first, then the
-  -- exact per-disc name for back-compat with existing <full-name>.png covers.
+  -- Cover lookup, in priority order. Two axes:
+  --   * location: a "POPS/ART/" subfolder FIRST (the canonical art location -- matches
+  --     the HDD/PFS __common/POPS/ART layout above, so every device is uniform), then
+  --     beside the .vcd as back-compat with art that predates the ART/ folder.
+  --   * name: the disc-marker-stripped name first (one art file serves every disc of a
+  --     multi-disc game), then the exact per-disc name (back-compat <full-name>.png).
+  -- The .txt details sidecar rides this same candidate list (each .png -> .txt). For a
+  -- single-disc game with no ART/ folder this is one extra (cheap, cached) stat; the
+  -- CoverCache memoizes misses so it costs once per game per session, not per frame.
   local dir, name = string.match(base, "^(.*/)([^/]+)$")
   if dir == nil then dir, name = "", base end
   local stripped = StripDiscMarker(name)
+  local art_dir = dir.."ART/"
+  local has_stripped = (stripped ~= "" and stripped ~= name)
   local out = {}
-  if stripped ~= "" and stripped ~= name then
-    out[#out + 1] = dir..stripped..".png"
-  end
+  if has_stripped then out[#out + 1] = art_dir..stripped..".png" end
+  out[#out + 1] = art_dir..name..".png"
+  if has_stripped then out[#out + 1] = dir..stripped..".png" end
   out[#out + 1] = base..".png"
   return out
 end
