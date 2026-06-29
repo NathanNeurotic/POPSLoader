@@ -1768,6 +1768,36 @@ function PLDR.ResolvePopstarterPath(path)
   return ResolvePopstarterPath(path)
 end
 
+local function BuildDeviceLocalPopstarterCandidate(gamelocation, policy_name)
+  if policy_name == "HDD" then
+    return nil, nil
+  end
+  local root = EnsureTrailingSlash(tostring(gamelocation or ""))
+  if root == "" or not IsAbsoluteDevicePath(root) then
+    return nil, nil
+  end
+  local lowered = string.lower(root)
+  if string.match(lowered, "^hdd%d*:") ~= nil or string.match(lowered, "^pfs%d*:") ~= nil then
+    return nil, nil
+  end
+  return root.."POPSTARTER.ELF", root
+end
+
+function PLDR.ResolveLaunchPopstarterPath(gamelocation, configured_path, policy_name)
+  local colocated, root = BuildDeviceLocalPopstarterCandidate(gamelocation, policy_name)
+  if colocated ~= nil and doesFileExist(colocated) then
+    return colocated
+  end
+  if colocated ~= nil and type(PLDR.IsExplicitATASession) == "function" and PLDR.IsExplicitATASession()
+     and type(PLDR.GetMassMountDriver) == "function" then
+    local driver = PLDR.GetMassMountDriver(root)
+    if string.lower(tostring(driver or "")) == "ata" then
+      return colocated
+    end
+  end
+  return ResolvePopstarterPath(configured_path)
+end
+
 function PLDR.GetEffectiveConfiguredPopstarterPath(path, profile)
   local selected_profile = tonumber(profile) or tonumber(PLDR.SELECTED_PROFILE) or tonumber(PLDR.DEFAULT_PROFILE) or 1
   return NormalizeSelectedProfilePopstarterPath(selected_profile, path or PLDR.POPSTARTER_PATH, PLDR.POPSTARTER_SELECTION_MODE)
@@ -2284,6 +2314,14 @@ if type(System) == "table" and type(System.getLaunchArgs) == "function" then
       PLDR.LAUNCH_ARGS.debug = true
     end
   end
+end
+
+function PLDR.IsExplicitATASession()
+  if type(PLDR.LAUNCH_ARGS) ~= "table" then
+    return false
+  end
+  local page = string.upper(tostring(PLDR.LAUNCH_ARGS.page or ""))
+  return page == "ATA" or page == "EXFAT"
 end
 
 PLDR.VIDEO_STANDARD_AUTO = "AUTO"
@@ -3068,10 +3106,12 @@ function PLDR.IsDeviceHidden(key)
   if key == nil then return false end
   local ukey = string.upper(tostring(key))
   -- The two internal-HDD pages (PFS, exFAT) are mutually exclusive: only the one chosen in
-  -- Settings > Internal HDD shows on the carousel; the other is always hidden. (A -page=ata
-  -- launch still auto-enters exFAT regardless -- that path sets OPT directly and never
-  -- consults this, so CosmicScale's PSBBN-from-HDD boot is unaffected.)
+  -- Settings > Internal HDD shows on the carousel; the other is always hidden. An explicit
+  -- -page=ata launch is an exFAT session even if the selected device's .pldrs still says PFS.
   if ukey == "EXFAT" or ukey == "PFS" then
+    if type(PLDR.IsExplicitATASession) == "function" and PLDR.IsExplicitATASession() then
+      return ukey ~= "EXFAT"
+    end
     local fs = (string.upper(tostring(PLDR.HDD_FS or "PFS")) == "EXFAT") and "EXFAT" or "PFS"
     return ukey ~= fs
   end
@@ -3949,6 +3989,7 @@ local function CollectStartupBackendTargets()
   local seen_hdd_paths = {}
   local seen_roots = {}
   local boot_name = select(1, DetectBootDevice())
+  local explicit_ata_session = type(PLDR.IsExplicitATASession) == "function" and PLDR.IsExplicitATASession()
   targets.boot_name = boot_name
 
   if boot_name == "USB" then
@@ -3957,7 +3998,7 @@ local function CollectStartupBackendTargets()
     targets.mmce = true
   elseif boot_name == "MX4SIO" then
     targets.mx4sio = true
-  elseif boot_name == "HDD" then
+  elseif boot_name == "HDD" and not explicit_ata_session then
     targets.hdd = true
   end
 
@@ -3981,10 +4022,10 @@ local function CollectStartupBackendTargets()
       targets.mx4sio = true
     elseif string.match(normalized, "^mmce%d*:/") ~= nil then
       targets.mmce = true
-    elseif string.match(normalized, "^pfs%d*:/") ~= nil or string.match(normalized, "^hdd%d:") ~= nil then
+    elseif not explicit_ata_session and (string.match(normalized, "^pfs%d*:/") ~= nil or string.match(normalized, "^hdd%d:") ~= nil) then
       targets.hdd = true
       AddUniqueStartupPath(targets.hdd_paths, seen_hdd_paths, paths[i])
-    elseif targets.boot_name == "HDD" and (IsDefaultRelativePopstarterPath(raw) or IsLegacyDefaultPopstarterPath(raw)) then
+    elseif not explicit_ata_session and targets.boot_name == "HDD" and (IsDefaultRelativePopstarterPath(raw) or IsLegacyDefaultPopstarterPath(raw)) then
       targets.hdd = true
       AddUniqueStartupPath(targets.hdd_paths, seen_hdd_paths, raw)
     else
@@ -6134,17 +6175,20 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
   local failure_context = {
     launch_diagnostics = launch_diagnostics
   }
-  local popstarter = ResolvePopstarterPath(configured_popstarter)
+  local popstarter = PLDR.ResolveLaunchPopstarterPath(gamelocation, configured_popstarter, policy.name)
   launch_diagnostics.effective_path = popstarter
-  local popstarter_partition_context = ResolvePopstarterPartitionContext(configured_popstarter, popstarter, hdd_partition_label)
+  local popstarter_on_hdd = IsHddExecContextPath(popstarter)
+  local popstarter_partition_context = nil
+  if popstarter_on_hdd then
+    popstarter_partition_context = ResolvePopstarterPartitionContext(configured_popstarter, popstarter, hdd_partition_label)
+  end
   local configured_partition_context = nil
-  if IsHddExecContextPath(configured_popstarter) then
+  if popstarter_on_hdd and IsHddExecContextPath(configured_popstarter) then
     configured_partition_context = select(1, BuildHddPartitionContext(configured_popstarter))
   end
   if configured_partition_context ~= nil and configured_partition_context ~= "" then
     popstarter_partition_context = configured_partition_context
   end
-  local popstarter_on_hdd = IsHddExecContextPath(popstarter)
   local use_minimal_hdd_popstarter_exec = false
   if use_minimal_hdd_popstarter_exec then
     popstarter_partition_context = nil
@@ -6618,10 +6662,20 @@ function PLDR.AutoLaunchFromLaunchArgs()
     end
   elseif (page == "EXFAT" or page == "ATA") and UI.SCENES.GBDMHDD ~= nil then
     scene = UI.SCENES.GBDMHDD
-    gamelocation = "mass:/POPS"   -- ata exFAT enumerates under mass:; GBDMHDD scene drives the launch policy
+    local ata_root = nil
     if type(PLDR.InitATAPopsRoot) == "function" then
-      pcall(PLDR.InitATAPopsRoot)
+      local ok_root, root = pcall(PLDR.InitATAPopsRoot)
+      if ok_root and type(root) == "string" and root ~= "" then
+        ata_root = root
+      end
     end
+    if ata_root == nil then
+      if type(UI.Notif_queue) == "table" and type(UI.Notif_queue.add) == "function" then
+        UI.Notif_queue.add("No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)", "warn")
+      end
+      return false
+    end
+    gamelocation = ata_root
   elseif page == "MMCE" and UI.SCENES.GSMB ~= nil then
     scene = UI.SCENES.GSMB
     if type(PLDR.DetectMMCESlot) == "function" then

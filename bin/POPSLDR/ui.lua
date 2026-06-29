@@ -2838,22 +2838,10 @@ UI = {
             configured_popstarter_path = tostring(PLDR.GetEffectiveConfiguredPopstarterPath(PLDR.POPSTARTER_PATH, PLDR.SELECTED_PROFILE) or configured_popstarter_path)
           end
           local popstarter_path = configured_popstarter_path
-          if type(PLDR.ResolvePopstarterPath) == "function" then
+          if type(PLDR.ResolveLaunchPopstarterPath) == "function" then
+            popstarter_path = PLDR.ResolveLaunchPopstarterPath(PLDR.GAMEPATH, configured_popstarter_path)
+          elseif type(PLDR.ResolvePopstarterPath) == "function" then
             popstarter_path = PLDR.ResolvePopstarterPath(configured_popstarter_path)
-          end
-          -- Device-local launcher (CosmicScale): prefer the POPSTARTER.ELF sitting in the
-          -- game's OWN device POPS/ folder (e.g. mass:/POPS/POPSTARTER.ELF) so POPSLoader
-          -- launches games regardless of where POPSLOADER.ELF itself was started from. Scoped
-          -- to simple device paths (mass:/usb:/mmce:/smb: -- PLDR.GAMEPATH ends with POPS/);
-          -- HDD-PFS keeps its own partition/profile scheme. Falls back to the configured path
-          -- when no co-located launcher exists, so existing setups are unchanged.
-          local _gp = string.lower(tostring(PLDR.GAMEPATH or ""))
-          if string.match(_gp, "^%a+%d*:/") ~= nil
-             and string.match(_gp, "^hdd%d*:") == nil and string.match(_gp, "^pfs%d*:") == nil then
-            local colocated = tostring(PLDR.GAMEPATH).."POPSTARTER.ELF"
-            if doesFileExist(colocated) then
-              popstarter_path = colocated
-            end
           end
           local popstarter_ok = false
           if type(PLDR.PopstarterProbeWithEnsure) == "function" then

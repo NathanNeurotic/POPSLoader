@@ -1366,6 +1366,8 @@ bool EnsureAtaBdm()
 			return false;
 		}
 		g_ata_bd_loaded = true;
+		// Match NHDDL/wLaunchELF ordering: let ata_bd settle before ps2hdd/ps2fs touch it.
+		sleep(1);
 	}
 	return true;
 }
