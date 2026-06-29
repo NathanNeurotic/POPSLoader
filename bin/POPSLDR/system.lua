@@ -1784,16 +1784,14 @@ local function BuildDeviceLocalPopstarterCandidate(gamelocation, policy_name)
 end
 
 function PLDR.ResolveLaunchPopstarterPath(gamelocation, configured_path, policy_name)
-  local colocated, root = BuildDeviceLocalPopstarterCandidate(gamelocation, policy_name)
+  -- Prefer the game's device-local POPSTARTER.ELF only when it actually EXISTS; otherwise fall
+  -- through to the configured/sidecar chain (ResolvePopstarterPath) so a games-only exFAT drive
+  -- still launches from an MC-resident POPSTARTER. The ata_bd settle (EnsureAtaBdm) guarantees the
+  -- ATA device is mounted before this probe, so there is no race that justifies pinning a path the
+  -- file probe can't yet see -- doing so would only strand the working fallback.
+  local colocated = BuildDeviceLocalPopstarterCandidate(gamelocation, policy_name)
   if colocated ~= nil and doesFileExist(colocated) then
     return colocated
-  end
-  if colocated ~= nil and type(PLDR.IsExplicitATASession) == "function" and PLDR.IsExplicitATASession()
-     and type(PLDR.GetMassMountDriver) == "function" then
-    local driver = PLDR.GetMassMountDriver(root)
-    if string.lower(tostring(driver or "")) == "ata" then
-      return colocated
-    end
   end
   return ResolvePopstarterPath(configured_path)
 end
