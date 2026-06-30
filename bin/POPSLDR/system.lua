@@ -3227,7 +3227,7 @@ PLDR.SMB_FIELDS = {
   { key = "ADDR_TYPE", kind = "enum", default = "ip",   choices = { "ip", "netbios" } },
   { key = "NB_ADDR",   kind = "str",  default = "" },
   { key = "SERVER",    kind = "str",  default = "192.168.0.1" },
-  { key = "PORT",      kind = "str",  default = "445" },
+  { key = "PORT",      kind = "str",  default = "1111" },
   { key = "SHARE",     kind = "str",  default = "" },
   { key = "USER",      kind = "str",  default = "" },
   { key = "PASS",      kind = "str",  default = "" },
