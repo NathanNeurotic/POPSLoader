@@ -4404,7 +4404,13 @@ local function BuildUsbIdentityDeferred()
 end
 
 local function BuildMX4IdentityDeferred()
-  -- Bounded retry masks first-entry quirk without exposing a second manual attempt.
+  -- Bounded retry masks the first-entry quirk: mx4sio_bd self-detects the SD card on its
+  -- own IOP thread AFTER the IRX loads, so the EE side must SETTLE between re-scans or it
+  -- races the still-mounting FAT volume and finds nothing. Sleep 1s between attempts -- the
+  -- same pattern BuildUsbIdentityDeferred and BuildATAIdentityDeferred use. (7462a41 dropped
+  -- the old InitMX4SIOPopsRoot retry/settle loop and left THIS builder as the only deferred
+  -- one without a delay, so a cold first entry kicked out at "Locating MX4SIO..." 42% because
+  -- identity.mx4sio was still empty -- regression reported ~2026-06-17.)
   local attempts = 0
   while attempts < 3 do
     attempts = attempts + 1
@@ -4413,6 +4419,9 @@ local function BuildMX4IdentityDeferred()
       return identity
     end
     WaitMassProbeRetry(attempts, 3)
+    if attempts < 3 and type(System) == "table" and type(System.sleep) == "function" then
+      pcall(System.sleep, 1)
+    end
   end
   return BuildMassRootIdentity("mx4sio")
 end
