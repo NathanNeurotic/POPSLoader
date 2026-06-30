@@ -350,14 +350,16 @@ function CoverCache:GetOrLoad(path)
   if self.failed[path] then
     return nil
   end
-  if not SafeDoesFileExist(path) then
-    self.failed[path] = true
-    return nil
-  end
   if type(Graphics) ~= "table" or type(Graphics.loadImage) ~= "function" then
     self.failed[path] = true
     return nil
   end
+  -- Let the loader open the file itself (Graphics.loadImage -> fopen) instead of gating on a
+  -- separate doesFileExist() open() probe first: on some BDM filesystems a direct nested
+  -- open() of <dir>/ART/<file> can miss where the loader's fopen still reads it, so the
+  -- pre-probe would wrongly hide a loadable cover. loadImage returns nil for a genuinely
+  -- missing/unreadable file (memoized below), so behavior is identical for every cover that
+  -- already works -- just less restrictive for the ART/ subfolder case.
   local img = Graphics.loadImage(path)
   if img == nil then
     self.failed[path] = true
