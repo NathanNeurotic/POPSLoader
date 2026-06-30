@@ -1,7 +1,7 @@
 # POPSLoader — Tester Checklist (BETA-13 candidate)
 
 **Build:** rolling `BETA-13-PLAY` (BETA-13 candidate; rolling now publishes from this branch — `BETA-12-PLAY` is frozen/archival). Public release is still BETA-12.
-This is the structured "what to test" companion to **[ROLLING_NOTES.md](ROLLING_NOTES.md)** ("what's new"); for the canonical status / invariants / known-issues list see **[STATE.md](STATE.md)**. Regenerate when the rolling batch changes. _(Last refreshed: 2026-06-23 — added the new end-to-end SMB (v1) network game browsing (implemented, CI+Rolling green, validating on hardware); prior: HDD (exFAT) / BDMA-ATA backend and the on-screen-keyboard feedback fix.)_
+This is the structured "what to test" companion to **[ROLLING_NOTES.md](ROLLING_NOTES.md)** ("what's new"); for the canonical status / invariants / known-issues list see **[STATE.md](STATE.md)**. Regenerate when the rolling batch changes. _(Last refreshed: 2026-06-29 — added **per-device POPSTARTER.ELF resolution** (per-device builds incl. the USB-delay build; APA `hdd0:__common/POPS/`), the **normal-HDD-still-works** check after the shared-ATA-driver unification, and the **`POPS/ART/`** cover/details folder. Prior: end-to-end SMB (v1) network browsing; HDD (exFAT) / BDMA-ATA backend; on-screen-keyboard feedback fix.)_
 
 **Devices:** USB · MX4SIO (SD over SIO2) · MMCE (SD2PSX / MemCard PRO) · HDD (internal PFS) · **HDD (exFAT) — BDMA Mode ATA** · **SMB (v1) network share — NEW**. Test the ones you use; **say which** in every report.
 
@@ -16,6 +16,7 @@ This is the structured "what to test" companion to **[ROLLING_NOTES.md](ROLLING_
 - [ ] **MX4SIO specifically** — confirm it still loads + launches. *(A −48 KB optimization re-pointed MX4SIO's embedded `usbd.irx`; proven byte-identical by inspection but not run on hardware — the one size change worth a deliberate test.)*
 - [ ] **Preservation set — MUST still work:**
   - [ ] **HDD-resident POPSTARTER → HDD game (D-10):** on an HDD install where `POPSTARTER.ELF` lives on the HDD, launch an HDD game. No black screen.
+  - [ ] ⭐⭐ **Normal internal HDD (PFS) still fully works** — boot from a normal internal PS2 hard drive → reach the menu, your **settings load and save**, and you can **scan + launch** a PS1 game from the **HDD (PFS)** list with no black screen. *(A behind-the-scenes change unified the internal-HDD and exFAT paths onto one shared ATA driver. Source analysis says normal HDD is unaffected — it's the same config OPL/NHDDL ship — but this is the single confirmation that closes it out. If a normal HDD game ever fails to launch or settings stop saving, say so.)*
   - [ ] **Launched-from-MC/USB (U-10 family):** boot POPSLoader from a memory card / USB via a launcher (OSD-XMB, wLaunchELF), then open the HDD page and launch.
   - [ ] **DKWDRV / Disc → exit to memory card:** no hang on the picture.
 - [ ] **START-held recovery** — hold **START** during boot → boots to a safe state; with `-page`/`-game` args it suppresses auto-launch so you can recover.
@@ -38,6 +39,20 @@ The flagship new feature this cycle (R3Z3N's ATA BDM Assault drivers + saildot4k
 - [ ] No exFAT drive present / BDMA Mode ≠ ATA → the page shows **"No exFAT HDD detected"** and does **not** hang.
 - [ ] **Launch-arg routing (NEW — never HW-run):** booting with `-page=ata` (or `ata0`) opens the **HDD (exFAT)** page; `-page=hdd` / `hdd0` / `apa` / `apa0` / any `pfs` open the classic **HDD (PFS)** page. (`-page=ata -game=<VCD>` should auto-launch from the exFAT drive.) Confirm `-page=ata` no longer lands on the PFS page.
 - Report: empty list, a game that lists but won't launch, the drive showing under the wrong device, or a hang — include **console model** and **drive type/size**.
+
+### ⭐⭐ Per-device POPSTARTER.ELF — NEW, never run on hardware
+
+POPSLoader now picks the `POPSTARTER.ELF` for a launch **per device**, so you can keep a different POPStarter build on each device. At launch the search order is: **(1)** an explicit **POPSTARTER Path** you set in *Settings* (or an absolute Profile pick) if it resolves → **(2)** the game's own **`<device>:/POPS/POPSTARTER.ELF`** if present → **(3)** the `POPSTARTER.ELF` next to where **POPSLOADER.ELF** launched from → **(4)** the `mc0:`/`mc1:/POPSTARTER` fallback. On the internal **PFS HDD**, step 2 is **`hdd0:__common/POPS/POPSTARTER.ELF`**. The device + cwd steps are existence-gated, so a device with no copy just falls through — **per-device builds are enabled, not forced.** The release ships multiple POPStarter builds for exactly this (a normal one, a **USB-delay** one, and debug variants — the "POPSTARTER VERSIONS" in the zip).
+
+**Test (each removable device — USB / exFAT / MX4SIO / MMCE):**
+- [ ] ⭐ **Per-device build pickup (the headline use):** drop a specific `POPSTARTER.ELF` build — e.g. the **USB-delay** build — into the **USB** drive's `POPS/` folder. Launch a USB game (ideally one that *only* runs with the USB-delay build) → it should now use **that** build and launch. Other devices keep using their own / the fallback build.
+- [ ] **Existing setups unchanged:** a device with **no** `POPSTARTER.ELF` in its `POPS/` folder still launches games exactly as before (it falls through to the launcher's own copy / the Memory Card).
+- [ ] **Custom path always wins:** set an explicit **POPSTARTER Path** in *Settings* (an absolute path) → that build is used on **every** device regardless of any per-device copies. Clearing it returns to the per-device order.
+- Report: a per-device build that **isn't** picked up, an existing setup that **stopped** launching, or the wrong build being used.
+
+**Test (internal PFS HDD — launch-critical, please be thorough):**
+- [ ] ⭐⭐ **HDD game launches via `__common`:** on a PSBBN / HDD-OSD internal drive where the POPStarter binaries live at **`hdd0:__common/POPS/`**, launch a PS1 game from the **HDD (PFS)** list → it boots POPStarter with **no black screen**. *(The new `hdd0:__common/POPS/POPSTARTER.ELF` step routes through the same internal-HDD machinery as before, but it has not been run on hardware — this is the most regression-prone path.)*
+- Report: a black screen, a "can't find POPSTARTER" message, or any hang launching an internal-HDD game.
 
 ### ⭐ Settings — collapsible sections (NEW, never run on hardware)
 
@@ -88,7 +103,8 @@ SMB (v1) is now **implemented end-to-end** (CI + Rolling green) and **validating
   6. **Reboot** → the Hidden-games state persisted. *(A failed save toasts "(could NOT save -- reverts on reboot)".)*
   - Report: empty/wrong list after R3, a crash, a device failing to re-scan, or the setting not sticking.
 - [ ] **Boot sound On/Off** — *Settings → Game List → Boot sound* (default **On**) gates the splash chime. ✅ **save survives reboot CONFIRMED (oldman63);** still confirm Off actually silences the chime.
-- [ ] **Per-game info text** — drop `<game>.txt` next to a game → *Settings → Game List → Game details = Left/Center/Right aligned* → blurb under the cover in that alignment, line breaks kept. *Off* hides it.
+- [ ] ⭐ **Covers & details from `POPS/ART/`** (NEW layout) — covers and the `<game>.txt` details file are now looked up in a **`POPS/ART/`** subfolder **first** on every device (`<device>:/POPS/ART/<game>.png` and `.txt`; internal HDD: `__common/POPS/ART/`), and still found **beside the `.VCD`** for older art. Confirm a cover placed in `POPS/ART/` shows up, and one beside the `.VCD` still works. For a **multi-disc** game, one file named **without** the `(Disc N)` part covers/describes every disc.
+- [ ] **Per-game info text** — add a `<game>.txt` (in `POPS/ART/` or beside the game) → *Settings → Game List → Game details = Left/Center/Right aligned* → blurb under the cover in that alignment, line breaks kept. *Off* hides it.
 - [ ] **Description scroll** — long `.txt` scrolls with the **right analog stick** at a fixed **Fast** pace (~7 lines/sec, frame-counted). The Fast/Medium/Slow speed setting was removed (provato: Fast is best). Confirm the scroll feels right.
 - [ ] **Game list cache (opt-in, default OFF)** — *Settings → Game list cache → ON:*
   - [ ] First entry builds; second entry / reboot **loads fast** (no "Building…").
