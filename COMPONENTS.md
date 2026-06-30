@@ -229,6 +229,23 @@ copies are not read at runtime. Editing them requires a rebuild.
   per-device `reboot_iop`). HDD pre-exec gate `ValidateHddPopstarterExecGate`
   (system.lua:1655). Keep-PFS-mask prep `PrepareForExternalELFLaunch`
   (local def system.lua:1120, PLDR wrapper system.lua:1793).
+- POPSTARTER.ELF resolution `PLDR.ResolveLaunchPopstarterPath`
+  (system.lua:1816) is PER DEVICE, existence-gated at each step so a device with
+  no copy falls through. REMOVABLE (USB / exFAT-ATA / MX4SIO / MMCE), in order:
+  1. an explicit user-configured ABSOLUTE path (the custom "POPSTARTER Path", or
+  an absolute Profile selection) when it resolves; 2. the game's own
+  `<device>:/POPS/POPSTARTER.ELF` when it exists (lets a per-device build — e.g.
+  a USB-delay POPSTARTER dropped in the USB drive's `POPS` folder — be used
+  WITHOUT forcing it); 3. `POPSTARTER.ELF` in the launcher's own folder (cwd,
+  `ResolveCwdSidecarPopstarter` system.lua:1786); 4. the `mc0:/mc1:/POPSTARTER`
+  + configured-default fallback net. INTERNAL-PFS HDD (APA): 1. custom; 2.
+  `hdd0:__common/POPS/POPSTARTER.ELF` (resolved through the SAME partition
+  machinery as the shipped `__common` profile, so the D-10/D-15 partition-context
+  + embedded-loader handoff is preserved, system.lua:1842-1848); 3. cwd /
+  boot-sidecar; 4. mc net. Profiles act as PRESETS — an absolute Profile
+  selection IS the step-1 custom path. This supersedes the earlier
+  "prefer the device-local copy first" precedence (an explicit custom path now
+  wins). Landed this cycle (28e40bb / 9f2477c / 26bb06c), validating on hardware.
 - Startup ordering at module end: `LoadSettingsNonFatal` ->
   `AutoInitStartupBackends` (system.lua:3920) -> `SurfaceLaunchArgsDebug` ->
   `AutoLaunchFromLaunchArgs` (system.lua:6139), then the single render loop
@@ -278,8 +295,17 @@ copies are not read at runtime. Editing them requires a rebuild.
   frames (ui.lua:2684-2687), fixed at the Fast pace (`_secs` = 0.15, ~7
   lines/sec; the Fast/Medium/Slow "Description scroll speed" setting was removed).
 - Cover-art LRU `CoverCache` (ui.lua:257-343), candidate builder
-  `BuildCoverCandidates` (ui.lua:175): non-HDD = `base.png` beside the VCD
-  (ui.lua:196-198), HDD = `hdd0:__common/POPS/ART/<basename>.png` (ui.lua:185).
+  `BuildCoverCandidates` (ui.lua:190). On EVERY device the cover (`<name>.png`)
+  and its matching `<name>.txt` details sidecar are sought in a `POPS/ART/`
+  subfolder FIRST (the canonical, device-uniform location), then BESIDE the
+  `.vcd` for back-compat with art that predates the `ART/` folder. Removable
+  builds `<device>:/POPS/ART/<game>.png` then `<device>:/POPS/<game>.png`
+  (ui.lua:230-236); HDD/PFS builds `hdd0:__common/POPS/ART/<game>.png` from the
+  `__common` partition (ui.lua:205-208). Within each location the
+  disc-marker-stripped name is tried FIRST (so ONE art/details file serves every
+  disc of a multi-disc game) then the exact per-disc `<full-name>.png`
+  (back-compat). The `.txt` details sidecar rides the same candidate list (each
+  `.png` -> `.txt`).
 - WRITE-GUARD GOTCHA: `__newindex` metatables on `UI.MainMenu` and `UI`
   (ui.lua:4957 & 4979) silently DROP writes to `UI.MainMenu.OPT` (unless
   `Carousel.allowOptWrite`, ui.lua:4960) and `UI.CURSCENE` (unless

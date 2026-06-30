@@ -333,11 +333,18 @@ images, refreshed after a navigation settles via `CoverCache:UpdateSelection`
 (`ui.lua:326`). The refresh is **frame-counted**: the cover decodes only after the cursor has been
 stable for ~250 ms (`COVER_IDLE_FRAMES = ceil(cover_fps * 0.25)`, `cover_fps` = 50
 PAL / 60 NTSC, `ui.lua`); a per-frame counter resets while the selection keeps
-changing, so the cover loads only once navigation settles. Non-HDD covers are `base.png` beside the
-VCD; HDD covers resolve `POPS/ART/<basename>.png` on the `hdd0:__common`
-partition via `PLDR.ResolveHddPartitionReadablePath` (`BuildCoverCandidates`,
-`ui.lua:175`). When a `<base>.png` cover loads it gets its own `COVER_W` inset
-(`ui.lua:575`, value `232`).
+changing, so the cover loads only once navigation settles. Cover-art seeking is
+**uniform across devices** (`BuildCoverCandidates`, `ui.lua:190`): on every device
+the `<name>.png` cover is sought in a `POPS/ART/` subfolder **first** (the canonical
+location), then **beside the `.vcd`** as back-compat for art that predates the `ART/`
+folder. For removable devices that means `<device>:/POPS/ART/<game>.png` then
+`<device>:/POPS/<game>.png`; for HDD/PFS it is `hdd0:__common`'s
+`POPS/ART/<game>.png`, mounted from the `__common` partition via
+`PLDR.ResolveHddPartitionReadablePath`. In each location the **disc-marker-stripped**
+name is tried first (so ONE art file serves every disc of a multi-disc game), then
+the exact per-disc `<full-name>.png` for back-compat. The matching `<name>.txt`
+details sidecar rides the **same** candidate list (each `.png` -> `.txt`). When a
+`<base>.png` cover loads it gets its own `COVER_W` inset (`ui.lua:624`, value `232`).
 
 **Layered placeholder (no `MISSING.png`).** When there is no live cover the box
 draws two embedded assets instead of a single combined image (the old "Cover
@@ -565,6 +572,26 @@ pfs, USB mass, MX4SIO, MMCE, and MC layouts. `DEFAULT_PROFILE = 1`
 `CUSTOM`, `system.lua:667-732`) decides whether the profile's ELF or a typed
 override wins. In `PROFILE_DEFAULT` mode the persisted `POPSTARTER_PATH=` line is
 intentionally empty (`system.lua:3077-3082`).
+
+#### Launch-time POPSTARTER.ELF resolution (per device)
+At launch, `PLDR.ResolveLaunchPopstarterPath` (`system.lua:1816`) picks the actual
+POPSTARTER.ELF per device, in order. For **removable** devices (USB / internal
+exFAT-ATA / MX4SIO / MMCE): **1.** an explicit user-configured absolute path (the
+"POPSTARTER Path" custom setting, or an absolute Profile selection — Profiles act as
+presets, so an absolute Profile *is* this step-1 custom path) when it resolves;
+**2.** the game's own `<device>:/POPS/POPSTARTER.ELF` when it exists; **3.**
+POPSTARTER.ELF in the folder POPSLOADER.ELF launched from (cwd); **4.** the existing
+`mc0:`/`mc1:` + configured-default fallback net. Both the device and cwd steps are
+existence-gated, so a device with no POPSTARTER falls straight through — this lets a
+**per-device** build be used without forcing it (e.g. a USB-delay POPSTARTER dropped
+in a USB drive's `POPS/` folder is used for that drive's games, a faster build
+elsewhere). For the **internal-PFS HDD (APA)** the order is the same shape with
+`hdd0:__common/POPS/POPSTARTER.ELF` as step 2, resolved through the **same partition
+machinery** as the shipped `__common` profile (mounts `__common`, runs the D-10/D-15
+partition-context + embedded-loader path), so HDD launch mechanics are preserved.
+This **supersedes** the earlier "prefer the device-local copy first" precedence
+(`ee4cba0`): an explicit custom path now wins. Landed `28e40bb` / `9f2477c` (device
+before cwd) / `26bb06c` (APA `__common`); not yet hardware-tested.
 
 ### Image atlas (`bin/POPSLDR/images.lua`)
 `IMG_REGISTRATIONS` (`images.lua:11-36`) is 25 `{key, filename}` pairs (device

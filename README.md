@@ -69,9 +69,9 @@ Place all files on the root of your storage device (`mass:/`, `mx4sio:/`, `mmce0
 | File Path | Description |
 | :--- | :--- |
 | `<device>:/POPS/GameName.VCD` | Your PS1 game image |
-| `<device>:/POPS/GameName.png` | Optional cover art (200x200 8-bit PNG recommended) |
+| `<device>:/POPS/ART/GameName.png` | Optional cover art (200x200 8-bit PNG recommended). The `POPS/ART/` subfolder is the canonical, uniform location — checked first; a `<device>:/POPS/GameName.png` beside the VCD still works for back-compat. The matching `GameName.txt` *Game details* sidecar lives alongside the cover (same lookup). |
 | `<device>:/POPS/IOPRP252.IMG` | Required POPS support file |
-| `<device>:/POPS/POPSTARTER.ELF` | POPStarter launcher binary |
+| `<device>:/POPS/POPSTARTER.ELF` | POPStarter launcher binary. A `POPSTARTER.ELF` dropped here is used automatically for that device's games (so you can keep, say, a USB-delay build on the USB drive without forcing it everywhere) — unless you set an explicit **POPSTARTER Path**, which always wins. See [Settings](#other-settings). |
 | `<device>:/POPS/POPS.ELF` | POPS emulator engine binary |
 | `<device>:/POPS/POPS.PAK` | Emulator resources payload |
 | `<device>:/POPS/POPS_IOX.PAK` | Emulator input/output resources payload |
@@ -147,12 +147,12 @@ Press **Start** on the menu to open Settings; changes save when you confirm. Set
 | :--- | :--- | :--- |
 | **Multi-disc games** | **Show all discs** (default) · First disc only | *First disc only* hides the secondary discs of multi-disc games so only disc 1 shows. **Detection is purely by filename** — a disc is hidden if its name contains `(Disc 2)`, `(Disc 3)`, `(CD 2)`, `(Disk 2)`… (any number ≥ 2). So it **only works if you name your files with that convention**, e.g. `Final Fantasy IX (Disc 1).VCD` / `Final Fantasy IX (Disc 2).VCD`. Launch disc 1 and swap discs in-game via your VMC. (PS1 discs carry no shared "this is the same game" metadata, so the filename is the only signal.) Applies to every device. |
 | **Hidden games** | **Visible (manage)** (default) · Hidden | Per-game hide layer. Press **L3** on any game to hide or unhide it — hiding writes (or removes) a tiny `<name>.hide` marker next to the game's `.VCD`, exactly like the `<name>.png` cover. *Hidden* filters tagged games out of the list; *Visible (manage)* shows them **dimmed** so you can manage them with L3. In-app hiding works on **every device** — USB / MX4SIO / MMCE / Memory Card **and the internal HDD** (POPSLoader writes the `.hide` on the HDD via its read-write boot-partition mount). |
-| **Game details** | **Off** (default) · Left · Center · Right | Shows a per-game blurb from a `<game>.txt` sidecar in a small panel under the cover, in the chosen text alignment (*Off* hides it). Authored line breaks are preserved; scroll a long blurb with the **right analog stick**. |
+| **Game details** | **Off** (default) · Left · Center · Right | Shows a per-game blurb from a `<game>.txt` sidecar in a small panel under the cover, in the chosen text alignment (*Off* hides it). The `.txt` is sought right alongside the cover (the `POPS/ART/` folder first, then beside the `.VCD`), and the disc-marker-stripped name is tried first so one file serves every disc of a multi-disc game. Authored line breaks are preserved; scroll a long blurb with the **right analog stick**. |
 | **Game list cache** | **Off** (default) · On | When **On**, USB / MMCE / MX4SIO **and the internal HDD (PFS)** save their scanned game list per device so the "Building game list…" rescan only runs once (rebuild it with **R1**). **Off** = always live-scan (the default, unchanged behavior). |
 
 ### Other settings
 
-- **Profile / POPSTARTER mode / POPSTARTER path** — which `POPSTARTER.ELF` to use (a per-device profile, or a custom path).
+- **Profile / POPSTARTER mode / POPSTARTER path** — which `POPSTARTER.ELF` to use. At launch POPSLoader resolves it per device in order: **(1)** an explicit **POPSTARTER Path** you set (an absolute path; an absolute Profile selection counts as this) when it resolves; **(2)** the game device's own `<device>:/POPS/POPSTARTER.ELF` if present — on the internal **PFS HDD** this step is `hdd0:__common/POPS/POPSTARTER.ELF` instead; **(3)** the `POPSTARTER.ELF` next to where `POPSLOADER.ELF` launched from; **(4)** the `mc0:`/`mc1:/POPSTARTER` + configured-default fallback. So a per-device build is picked up automatically without being forced, an explicit custom path always wins, and Profiles act as presets.
 - **DKWDRV Path** — path to `DKWDRV.ELF` used by the Disc option.
 - **Video Standard** — **Auto** (default — matches your console's region) / NTSC / PAL. On PAL the UI now renders **natively at 640×512** so it fills the whole screen with no letterbox (NTSC is 640×448). A display-mode change shows a confirm prompt that **auto-reverts** if you don't confirm, so a bad mode can't strand you; you can also hold **Start** during boot to skip past a bad video mode.
 - **Overscan (CRT inset)** — **Off** (default) up to a numeric inset, adjusted in steps of **5** (OPL-style render inset, same math as OPL's overscan). Pulls the whole UI slightly toward the center of the screen so nothing is lost in a CRT's overscan border. The change previews live as you adjust it; backing out of Settings without saving restores the previous value. *(Mainly useful on a real CRT; on a flat panel you'll usually leave it Off.)*
@@ -207,8 +207,8 @@ HDD-installed POPSLoader saves its `.pldrs` settings file **on the HDD itself**,
 
 ### Cover art is not showing up
 *   Check that the cover image is in `.png` format.
-*   The PNG filename must match the `.VCD` game filename exactly (e.g. `Crash Bandicoot.VCD` requires `Crash Bandicoot.png`).
-*   Ensure the cover art is placed in the same folder as the VCD (or `__common/POPS/ART/` on HDD).
+*   The PNG filename must match the `.VCD` game filename (e.g. `Crash Bandicoot.VCD` requires `Crash Bandicoot.png`). For a multi-disc game, the disc-marker-stripped name (`Crash Bandicoot.png`) is tried first so one cover serves every disc; an exact per-disc name still works.
+*   Place the cover in the `POPS/ART/` subfolder — the canonical location, checked first on every device (`<device>:/POPS/ART/` on removable media, `__common/POPS/ART/` on the HDD). A PNG sitting beside the `.VCD` still works for back-compat.
 *   Confirm cover-art preview is enabled — press **Square (□)** in the game list to toggle it.
 *   For best compatibility and performance, use 200x200 pixel images.
 
