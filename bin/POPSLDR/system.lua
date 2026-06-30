@@ -1815,14 +1815,16 @@ end
 
 function PLDR.ResolveLaunchPopstarterPath(gamelocation, configured_path, policy_name)
   -- Deterministic launch-time POPSTARTER.ELF resolution for REMOVABLE devices
-  -- (USB / exFAT-ATA / MX4SIO / MMCE):  custom -> cwd -> <game device>:/POPS/ .
-  --   1. an explicit user-configured absolute path (custom field, or an absolute profile) when it exists;
-  --   2. else POPSTARTER.ELF next to where POPSLOADER.ELF launched from (cwd);
-  --   3. else the game's own <device>:/POPS/POPSTARTER.ELF, only if it exists;
+  -- (USB / exFAT-ATA / MX4SIO / MMCE):  custom -> <game device>:/POPS/ -> cwd .
+  --   1. an explicit user-configured absolute path (custom field, or an absolute profile) when it resolves;
+  --   2. else the game's own <device>:/POPS/POPSTARTER.ELF, when it exists -- this lets a per-device
+  --      build (e.g. a USB-delay POPSTARTER on the USB drive, a faster one elsewhere) be used WITHOUT
+  --      enforcing it: drop nothing on the device and step 3 covers you;
+  --   3. else POPSTARTER.ELF next to where POPSLOADER.ELF launched from (cwd);
   --   4. else the existing fallback net (mc0:/mc1:/POPSTARTER + the configured default).
-  -- HDD/APA is intentionally UNCHANGED: BuildDeviceLocalPopstarterCandidate returns nil for
-  -- HDD/pfs/empty roots, so those fall straight through to the HDD-aware resolver exactly as
-  -- before (preserving the D-10/D-15 partition-context + embedded-loader path).
+  -- HDD/APA does NOT take this branch: BuildDeviceLocalPopstarterCandidate returns nil for
+  -- HDD/pfs/empty roots, so those fall straight through to the HDD-aware resolver (preserving the
+  -- D-10/D-15 partition-context + embedded-loader path).
   local colocated = BuildDeviceLocalPopstarterCandidate(gamelocation, policy_name)
   if colocated == nil then
     return ResolvePopstarterPath(configured_path)
@@ -1830,7 +1832,7 @@ function PLDR.ResolveLaunchPopstarterPath(gamelocation, configured_path, policy_
 
   -- 1. Custom: an explicit absolute path the user configured wins outright -- but only when it
   --    actually resolves, so a stale/typo'd custom path falls through instead of stranding a
-  --    launch that the cwd/device steps would otherwise satisfy.
+  --    launch that the device/cwd steps would otherwise satisfy.
   if IsAbsoluteDevicePath(configured_path) then
     local custom = ResolvePopstarterPath(configured_path)
     if custom ~= nil and custom ~= "" and PLDR.PopstarterProbeWithEnsure(custom) then
@@ -1838,15 +1840,15 @@ function PLDR.ResolveLaunchPopstarterPath(gamelocation, configured_path, policy_
     end
   end
 
-  -- 2. cwd: POPSTARTER.ELF in the launcher's own folder.
+  -- 2. device-local: the game's own <device>:/POPS/POPSTARTER.ELF, when it exists.
+  if doesFileExist(colocated) then
+    return colocated
+  end
+
+  -- 3. cwd: POPSTARTER.ELF in the launcher's own folder.
   local cwd_popstarter = ResolveCwdSidecarPopstarter()
   if cwd_popstarter ~= nil then
     return cwd_popstarter
-  end
-
-  -- 3. device-local: the game's own device POPS/ folder.
-  if doesFileExist(colocated) then
-    return colocated
   end
 
   -- 4. fallback net: mc0:/mc1:/POPSTARTER + the configured default (unchanged resolver engine).
