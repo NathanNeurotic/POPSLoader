@@ -1,4 +1,4 @@
-Last updated: 2026-06-22 (BETA-13 rolling candidate; HEAD = BETA-13-PLAY @ 3d89631; BETA-12 is the public release at af983d7, and BETA-12-PLAY is now ARCHIVAL/frozen). Since the prior pass: nav auto-repeat and the right-stick description scroll were re-cut to FRAME-COUNTING (the wall clock reads microseconds on PS2, so the old "_ms" gates fired every frame); the analog-stick→d-pad fold is now gated on a live-negotiated analog mode (new `Pads.getMode()` C binding) plus hysteresis; an OPL-style overscan (CRT inset) render transform was added (`Screen.setOverscan`/`getOverscan` + `OVX`/`OVY`); the game-list cover box now layers `cover_default.png` + `cover_missing.png` and `MISSING.png` was removed (−62 KB ELF); and two new settings keys (BOOT_SOUND, OVERSCAN) bring EncodeSettings to 20 keys. Since 56a5ad5: the HDD (exFAT) / BDMA-ATA backend landed (df2eb9d/6fd2142/afa1c09 — internal SATA/IDE drive enumerates under `mass:` classified by the EXACT ioctl driver-name `ata`, carousel opt 3 = exFAT page scene GBDMHDD); launch-arg routing (3d89631) maps `-page`/`-mode=ata*`→EXFAT (opt 3) and `=hdd`/`apa`/`pfs*`→HDD (opt 4); the audit cleanup (2735229) removed dead symbols and SHIFTED line numbers across luasystem.cpp/ui.lua/system.lua; the timer sweep finished (9c3f64f/a8e61f3) and the `MIN_ACTION_MS` action debounce was removed (edge-trigger is the only gate); and the Layer C lazy-IRX effort is CLOSED (ds34bt/usbd deferral DECLINED, only mmceman shipped). For current Settings behavior, Known Issues, Preservation Contracts, Behavioral Invariants, and Hardware Status, see **`STATE.md`** (canonical) — this doc points there instead of restating them.
+Last updated: 2026-06-30 (BETA-13 rolling candidate; HEAD = BETA-13-PLAY; BETA-12 is the public release at af983d7, and BETA-12-PLAY is now ARCHIVAL/frozen). Since the prior pass: nav auto-repeat and the right-stick description scroll were re-cut to FRAME-COUNTING (the wall clock reads microseconds on PS2, so the old "_ms" gates fired every frame); the analog-stick→d-pad fold is now gated on a live-negotiated analog mode (new `Pads.getMode()` C binding) plus hysteresis; an OPL-style overscan (CRT inset) render transform was added (`Screen.setOverscan`/`getOverscan` + `OVX`/`OVY`); the game-list cover box now layers `cover_default.png` + `cover_missing.png` and `MISSING.png` was removed (−62 KB ELF); the BOOT_SOUND/OVERSCAN keys plus the new `ART_LOCATION` (selectable cover/details folder) bring documented EncodeSettings coverage to 22 keys + the appended SMB block, and `CoverCache:GetOrLoad` dropped its `open()` existence pre-probe so the loader's `fopen` alone decides (helps `POPS/ART` covers on BDM filesystems). Since 56a5ad5: the HDD (exFAT) / BDMA-ATA backend landed (df2eb9d/6fd2142/afa1c09 — internal SATA/IDE drive enumerates under `mass:` classified by the EXACT ioctl driver-name `ata`, carousel opt 3 = exFAT page scene GBDMHDD); launch-arg routing (3d89631) maps `-page`/`-mode=ata*`→EXFAT (opt 3) and `=hdd`/`apa`/`pfs*`→HDD (opt 4); the audit cleanup (2735229) removed dead symbols and SHIFTED line numbers across luasystem.cpp/ui.lua/system.lua; the timer sweep finished (9c3f64f/a8e61f3) and the `MIN_ACTION_MS` action debounce was removed (edge-trigger is the only gate); and the Layer C lazy-IRX effort is CLOSED (ds34bt/usbd deferral DECLINED, only mmceman shipped). For current Settings behavior, Known Issues, Preservation Contracts, Behavioral Invariants, and Hardware Status, see **`STATE.md`** (canonical) — this doc points there instead of restating them.
 
 # COMPONENTS
 
@@ -202,12 +202,13 @@ copies are not read at runtime. Editing them requires a rebuild.
 - Launch-arg ingest: `NormalizeLaunchPage` (system.lua; `ata*`->EXFAT,
   `hdd*`/`apa*`/`pfs*`->HDD, bare `bdma`->no-op page value), `PLDR.LAUNCH_ARGS`,
   carousel page auto-nav `page_to_opt` (MMCE=1/MX4SIO=2/EXFAT=3/ATA=3/HDD=4/USB=5/SMB=7).
-- Settings: `EncodeSettings` (system.lua:3072, **20 keys**: PROFILE,
+- Settings: `EncodeSettings` (system.lua:3072, **22 keys** + appended SMB block: PROFILE,
   POPSTARTER_PATH, POPSTARTER_MODE, BDMA, DKWDRV_PATH, STRICT_HDD_PREEXEC_GATE,
   VIDEO_STANDARD, HIDE_TEXT, KEYBOARD_LAYOUT, BOOT_PAGE, MULTIDISC_COLLAPSE,
   GLOBAL_HIDE, POPSTARTER_MC_FOLDER, HIDDEN_DEVICES, SHOW_DETAILS, DETAILS_ALIGN,
-  GAMELIST_CACHE, BOOT_SOUND, OVERSCAN — BOOT_SOUND and OVERSCAN
-  are new this cycle), `LoadSettingsNonFatal` (system.lua:3301),
+  ART_LOCATION, HDD_FS, GAMELIST_CACHE, BOOT_SOUND, OVERSCAN, SMB_MODULES — ART_LOCATION
+  is new this cycle, HDD_FS and SMB_MODULES were already persisted but uncounted, and the
+  SMB connection block is appended after these by SmbAppendLines), `LoadSettingsNonFatal` (system.lua:3301),
   `SaveSettingsAtomic` (system.lua:3262) -> `WriteAtomic` (system.lua:2663),
   `CommitSettingsChanges` (transactional, system.lua:3540). Per-device sidecar
   `.pldrs` at APP_DIR for every device; **HDD installs now persist on the HDD
@@ -294,18 +295,22 @@ copies are not read at runtime. Editing them requires a rebuild.
   `UI.GameList.DescScrollFrames` (ui.lua:2334): step every `ceil(_secs*fps)`
   frames (ui.lua:2684-2687), fixed at the Fast pace (`_secs` = 0.15, ~7
   lines/sec; the Fast/Medium/Slow "Description scroll speed" setting was removed).
-- Cover-art LRU `CoverCache` (ui.lua:257-343), candidate builder
-  `BuildCoverCandidates` (ui.lua:190). On EVERY device the cover (`<name>.png`)
-  and its matching `<name>.txt` details sidecar are sought in a `POPS/ART/`
-  subfolder FIRST (the canonical, device-uniform location), then BESIDE the
-  `.vcd` for back-compat with art that predates the `ART/` folder. Removable
-  builds `<device>:/POPS/ART/<game>.png` then `<device>:/POPS/<game>.png`
-  (ui.lua:230-236); HDD/PFS builds `hdd0:__common/POPS/ART/<game>.png` from the
-  `__common` partition (ui.lua:205-208). Within each location the
-  disc-marker-stripped name is tried FIRST (so ONE art/details file serves every
-  disc of a multi-disc game) then the exact per-disc `<full-name>.png`
-  (back-compat). The `.txt` details sidecar rides the same candidate list (each
-  `.png` -> `.txt`).
+- Cover-art LRU `CoverCache` (ui.lua:305-374), candidate builder
+  `BuildCoverCandidates` (ui.lua:190). On **removable** devices the cover
+  (`<name>.png`) and its matching `<name>.txt` details sidecar lookup folder is
+  **user-selectable** (`PLDR.ART_LOCATION`, *Settings > Game List > Cover/details
+  folder*, default `pops_art`): `pops_art` -> `<device>:/POPS/ART/<game>.png`,
+  `pops` -> the game's own `POPS/` folder beside the `.vcd`, `art` ->
+  `<device>:/ART/<game>.png` (ui.lua:226-247); the game's own `POPS/` folder is
+  ALWAYS appended as a final fallback (ui.lua:246). HDD/PFS is fixed:
+  `hdd0:__common/POPS/ART/<game>.png` from the `__common` partition
+  (ui.lua:200-211). Within each folder the disc-marker-stripped name is tried
+  FIRST (so ONE art/details file serves every disc of a multi-disc game) then the
+  exact per-disc `<full-name>.png` (back-compat). The `.txt` details sidecar rides
+  the same candidate list (each `.png` -> `.txt`). `GetOrLoad` (ui.lua:344) loads
+  via `Graphics.loadImage`/`fopen` directly with NO `doesFileExist`/`open()`
+  pre-probe, so a nested `POPS/ART/<file>` the loader's `fopen` can read isn't
+  hidden by an `open()` that misses on some BDM filesystems.
 - WRITE-GUARD GOTCHA: `__newindex` metatables on `UI.MainMenu` and `UI`
   (ui.lua:4957 & 4979) silently DROP writes to `UI.MainMenu.OPT` (unless
   `Carousel.allowOptWrite`, ui.lua:4960) and `UI.CURSCENE` (unless

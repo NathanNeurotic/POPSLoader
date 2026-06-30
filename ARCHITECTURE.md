@@ -334,17 +334,24 @@ images, refreshed after a navigation settles via `CoverCache:UpdateSelection`
 stable for ~250 ms (`COVER_IDLE_FRAMES = ceil(cover_fps * 0.25)`, `cover_fps` = 50
 PAL / 60 NTSC, `ui.lua`); a per-frame counter resets while the selection keeps
 changing, so the cover loads only once navigation settles. Cover-art seeking is
-**uniform across devices** (`BuildCoverCandidates`, `ui.lua:190`): on every device
-the `<name>.png` cover is sought in a `POPS/ART/` subfolder **first** (the canonical
-location), then **beside the `.vcd`** as back-compat for art that predates the `ART/`
-folder. For removable devices that means `<device>:/POPS/ART/<game>.png` then
-`<device>:/POPS/<game>.png`; for HDD/PFS it is `hdd0:__common`'s
+**device-aware** (`BuildCoverCandidates`, `ui.lua:190`). On **removable** devices the
+lookup folder is **user-selectable** (*Settings > Game List > Cover/details folder*,
+`PLDR.ART_LOCATION`, default `pops_art`): `POPS/ART` tries
+`<device>:/POPS/ART/<game>.png` first, `POPS` uses the game's own `POPS/` folder
+beside the `.vcd`, and `ART` tries a top-level `<device>:/ART/<game>.png`; the game's
+own `POPS/` folder is **always also appended** as a final fallback so art beside the
+`.vcd` never stops showing. For HDD/PFS the path is fixed to `hdd0:__common`'s
 `POPS/ART/<game>.png`, mounted from the `__common` partition via
-`PLDR.ResolveHddPartitionReadablePath`. In each location the **disc-marker-stripped**
+`PLDR.ResolveHddPartitionReadablePath`. In each folder the **disc-marker-stripped**
 name is tried first (so ONE art file serves every disc of a multi-disc game), then
 the exact per-disc `<full-name>.png` for back-compat. The matching `<name>.txt`
 details sidecar rides the **same** candidate list (each `.png` -> `.txt`). When a
 `<base>.png` cover loads it gets its own `COVER_W` inset (`ui.lua:624`, value `232`).
+`CoverCache:GetOrLoad` (`ui.lua:344`) no longer pre-probes existence with an
+`open()` (`doesFileExist`) call; it lets `Graphics.loadImage` (`fopen`) open the file
+directly, since a nested `open()` of `POPS/ART/<file>` can miss on some BDM
+filesystems where the loader's `fopen` reads it fine. (The `.txt` sidecar still reads
+via `open()`, so a details file under `POPS/ART` is bound by that nested-open behavior.)
 
 **Layered placeholder (no `MISSING.png`).** When there is no live cover the box
 draws two embedded assets instead of a single combined image (the old "Cover
@@ -615,13 +622,16 @@ to the SMB (v1) network page (opt 7, `GSMBNET`). The bare `bdma` token and i.Lin
 remain unrouted no-ops.
 
 ### On-disk settings (`.pldrs`)
-Plain KEY=VALUE text with **20 keys** (`EncodeSettings`, `system.lua:3072-3102`):
+Plain KEY=VALUE text with **22 keys** (`EncodeSettings`, `system.lua:3072-3102`),
+then the SMB connection block (`SMB_*`) appended by `SmbAppendLines`:
 `PROFILE`, `POPSTARTER_PATH`, `POPSTARTER_MODE`, `BDMA`, `DKWDRV_PATH`,
 `STRICT_HDD_PREEXEC_GATE`, `VIDEO_STANDARD`, `HIDE_TEXT`, `KEYBOARD_LAYOUT`,
 `BOOT_PAGE`, `MULTIDISC_COLLAPSE`, `GLOBAL_HIDE`, `POPSTARTER_MC_FOLDER`,
-`HIDDEN_DEVICES`, `SHOW_DETAILS`, `DETAILS_ALIGN`, `GAMELIST_CACHE`, `BOOT_SOUND`
+`HIDDEN_DEVICES`, `SHOW_DETAILS`, `DETAILS_ALIGN`, `ART_LOCATION` (removable
+cover/details folder: `pops_art` default / `pops` / `art`), `HDD_FS` (`PFS` or
+`EXFAT`), `GAMELIST_CACHE`, `BOOT_SOUND`
 (default on; gates the splash ADPCM chime), `OVERSCAN` (CRT inset permille,
-default `0`; see the overscan note below). STATE.md is
+default `0`; see the overscan note below), `SMB_MODULES`. STATE.md is
 canonical for what each key means and its UI surface.
 Location is the **per-device** sidecar `APP_DIR/.pldrs`, preferred for every
 device — **including HDD installs**, which now persist on the HDD boot partition
