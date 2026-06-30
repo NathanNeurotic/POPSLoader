@@ -1822,11 +1822,31 @@ function PLDR.ResolveLaunchPopstarterPath(gamelocation, configured_path, policy_
   --      enforcing it: drop nothing on the device and step 3 covers you;
   --   3. else POPSTARTER.ELF next to where POPSLOADER.ELF launched from (cwd);
   --   4. else the existing fallback net (mc0:/mc1:/POPSTARTER + the configured default).
-  -- HDD/APA does NOT take this branch: BuildDeviceLocalPopstarterCandidate returns nil for
-  -- HDD/pfs/empty roots, so those fall straight through to the HDD-aware resolver (preserving the
-  -- D-10/D-15 partition-context + embedded-loader path).
+  -- HDD/APA takes the branch just below (BuildDeviceLocalPopstarterCandidate returns nil for
+  -- HDD/pfs/empty roots): its own ordered resolution is custom -> hdd0:__common/POPS/ -> cwd -> net,
+  -- routed through the SAME partition machinery as the shipped __common profiles (D-10/D-15 path).
   local colocated = BuildDeviceLocalPopstarterCandidate(gamelocation, policy_name)
   if colocated == nil then
+    -- 1. Custom: an explicit absolute configured path wins when it resolves.
+    if IsAbsoluteDevicePath(configured_path) then
+      local custom = ResolvePopstarterPath(configured_path)
+      if custom ~= nil and custom ~= "" and PLDR.PopstarterProbeWithEnsure(custom) then
+        return custom
+      end
+    end
+    -- 2. APA common partition: hdd0:__common/POPS/POPSTARTER.ELF when present. Resolved through the
+    --    SAME path the shipped bare-pfs __common profile uses (mounts __common on the POPSTARTER slot,
+    --    returns the pfs path), so the downstream D-10 partition-context + embedded-loader handoff is
+    --    identical to selecting that profile. On a miss, release the probe's slot so the boot-sidecar
+    --    fallback below starts from a clean slot state.
+    if (policy_name == "HDD") or IsHddExecContextPath(gamelocation) then
+      local common = ResolvePopstarterPath("hdd0:__common:pfs:/POPS/POPSTARTER.ELF")
+      if common ~= nil and common ~= "" and PLDR.PopstarterProbeWithEnsure(common) then
+        return common
+      end
+      UMountHddPartitionTracked(HDD_SLOT_POPSTARTER)
+    end
+    -- 3 + 4. cwd / net: the existing HDD-aware resolver (boot-device sidecar + mc fallback), unchanged.
     return ResolvePopstarterPath(configured_path)
   end
 
