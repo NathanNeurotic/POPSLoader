@@ -215,25 +215,35 @@ local function BuildCoverCandidates(vcd_path, use_hdd_common_art, entry)
     return {}
   end
   local base = StripExtension(vcd_path)
-  -- Cover lookup, in priority order. Two axes:
-  --   * location: a "POPS/ART/" subfolder FIRST (the canonical art location -- matches
-  --     the HDD/PFS __common/POPS/ART layout above, so every device is uniform), then
-  --     beside the .vcd as back-compat with art that predates the ART/ folder.
-  --   * name: the disc-marker-stripped name first (one art file serves every disc of a
-  --     multi-disc game), then the exact per-disc name (back-compat <full-name>.png).
-  -- The .txt details sidecar rides this same candidate list (each .png -> .txt). For a
-  -- single-disc game with no ART/ folder this is one extra (cheap, cached) stat; the
-  -- CoverCache memoizes misses so it costs once per game per session, not per frame.
+  -- Cover/details FOLDER is user-selectable (Settings > Game List > "Cover/details folder",
+  -- PLDR.ART_LOCATION): "pops_art" = a POPS/ART/ subfolder (default; matches the HDD/PFS
+  -- __common/POPS/ART layout); "pops" = the game's own POPS folder beside the .vcd; "art" =
+  -- a top-level <device>:/ART/ folder. The game's own folder is ALWAYS also checked as a
+  -- final back-compat fallback so art beside the .vcd never stops showing. Within each
+  -- folder the disc-marker-stripped name is tried first (one file serves every disc of a
+  -- multi-disc game), then the exact per-disc name. The .txt details sidecar rides this
+  -- same list (each .png -> .txt). CoverCache memoizes misses (once per game per session).
   local dir, name = string.match(base, "^(.*/)([^/]+)$")
   if dir == nil then dir, name = "", base end
   local stripped = StripDiscMarker(name)
-  local art_dir = dir.."ART/"
   local has_stripped = (stripped ~= "" and stripped ~= name)
-  local out = {}
-  if has_stripped then out[#out + 1] = art_dir..stripped..".png" end
-  out[#out + 1] = art_dir..name..".png"
-  if has_stripped then out[#out + 1] = dir..stripped..".png" end
-  out[#out + 1] = base..".png"
+  local loc = (type(PLDR) == "table" and PLDR.ART_LOCATION) or "pops_art"
+  local out, seen = {}, {}
+  local function add_dir(d)
+    if d == nil or d == "" then return end
+    if has_stripped then
+      local p = d..stripped..".png"
+      if not seen[p] then seen[p] = true; out[#out + 1] = p end
+    end
+    local p2 = d..name..".png"
+    if not seen[p2] then seen[p2] = true; out[#out + 1] = p2 end
+  end
+  if loc == "pops_art" then
+    add_dir(dir.."ART/")
+  elseif loc == "art" then
+    add_dir((string.match(dir, "^(%a+%d*:/)") or dir).."ART/")
+  end
+  add_dir(dir)   -- the game's own folder (beside the .vcd) -- always a fallback
   return out
 end
 -- Read a game's "<name>.txt" details sidecar. Bounded so a stray huge file can't
@@ -2342,6 +2352,10 @@ UI = {
         UI.SettingsEntryDetailsAlign = UI.DetailsAlign
         UI.HddFs = ((type(PLDR) == "table" and PLDR.HDD_FS == "EXFAT") and "EXFAT") or "PFS"
         UI.SettingsEntryHddFs = UI.HddFs
+        local _al = (type(PLDR) == "table" and PLDR.ART_LOCATION) or "pops_art"
+        if _al ~= "pops" and _al ~= "art" then _al = "pops_art" end
+        UI.ArtLocation = _al
+        UI.SettingsEntryArtLocation = UI.ArtLocation
         UI.GameListCache = (type(PLDR) == "table" and PLDR.GAMELIST_CACHE == true)
         UI.SettingsEntryGameListCache = UI.GameListCache
         UI.BootSound = (type(PLDR) == "table" and PLDR.BOOT_SOUND ~= false)
@@ -3238,6 +3252,7 @@ UI = {
             or ((type(PLDR) == "table" and PLDR.DETAILS_ALIGN) or "left")
           if details_align_val ~= "center" and details_align_val ~= "right" then details_align_val = "left" end
           local hdd_fs_val = (UI.HddFs == "EXFAT") and "EXFAT" or "PFS"
+          local art_location_val = (UI.ArtLocation == "pops" or UI.ArtLocation == "art") and UI.ArtLocation or "pops_art"
           local gamelist_cache_val = UI.GameListCache == true
           local boot_sound_val = UI.BootSound == true
           local overscan_val = math.floor(tonumber(UI.Overscan) or 0)
@@ -3264,6 +3279,7 @@ UI = {
                 show_details = show_details_val,
                 details_align = details_align_val,
                 hdd_fs = hdd_fs_val,
+                art_location = art_location_val,
                 gamelist_cache = gamelist_cache_val,
                 boot_sound = boot_sound_val,
                 overscan = overscan_val,
@@ -3303,6 +3319,7 @@ UI = {
             PLDR.SHOW_DETAILS = show_details_val
             PLDR.DETAILS_ALIGN = details_align_val
             PLDR.HDD_FS = hdd_fs_val
+            PLDR.ART_LOCATION = art_location_val
             PLDR.GAMELIST_CACHE = gamelist_cache_val
             PLDR.BOOT_SOUND = boot_sound_val
             PLDR.OVERSCAN = overscan_val
@@ -3773,6 +3790,26 @@ UI = {
           function() UI.DetailsAlign = DetailsAlignStep(UI.DetailsAlign, -1) end,
           function() return tostring(UI.DetailsAlign) ~= tostring(UI.SettingsEntryDetailsAlign) end
         )
+        -- Where REMOVABLE-device cover .png + details .txt are looked for (HDD keeps its
+        -- __common/POPS/ART layout). "POPS/ART" is the default; the game's own POPS folder
+        -- (beside the .vcd) is always also checked as a back-compat fallback.
+        local ART_LOCATION_SEQ = {"pops_art", "pops", "art"}
+        local ART_LOCATION_TXT = {pops = "POPS (beside game)", pops_art = "POPS/ART", art = "ART (at root)"}
+        local function ArtLocationStep(cur, dir)
+          local idx = 1
+          for i = 1, #ART_LOCATION_SEQ do
+            if ART_LOCATION_SEQ[i] == cur then idx = i; break end
+          end
+          idx = ((idx - 1 + dir) % #ART_LOCATION_SEQ) + 1
+          return ART_LOCATION_SEQ[idx]
+        end
+        AddCycle(
+          "Cover/details folder",
+          function() return ART_LOCATION_TXT[UI.ArtLocation] or "POPS/ART" end,
+          function() UI.ArtLocation = ArtLocationStep(UI.ArtLocation, 1) end,
+          function() UI.ArtLocation = ArtLocationStep(UI.ArtLocation, -1) end,
+          function() return tostring(UI.ArtLocation) ~= tostring(UI.SettingsEntryArtLocation) end
+        )
         AddCycle(
           "Game list cache",
           function() return UI.GameListCache and "On" or "Off" end,
@@ -3882,6 +3919,7 @@ UI = {
             or (UI.MultiDiscCollapse == true) ~= (UI.SettingsEntryMultiDiscCollapse == true)
             or (UI.GlobalHide == true) ~= (UI.SettingsEntryGlobalHide == true)
             or tostring(UI.DetailsAlign) ~= tostring(UI.SettingsEntryDetailsAlign)
+            or tostring(UI.ArtLocation) ~= tostring(UI.SettingsEntryArtLocation)
             or (UI.GameListCache == true) ~= (UI.SettingsEntryGameListCache == true)
             or (UI.BootSound == true) ~= (UI.SettingsEntryBootSound == true)
             or (math.floor(tonumber(UI.Overscan) or 0)) ~= (math.floor(tonumber(UI.SettingsEntryOverscan) or 0))

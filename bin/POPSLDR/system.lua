@@ -3336,6 +3336,7 @@ local function EncodeSettings()
     "HIDDEN_DEVICES="..PLDR.NormalizeHiddenDevices(PLDR.HIDDEN_DEVICES),
     "SHOW_DETAILS="..((PLDR.SHOW_DETAILS == true) and "1" or "0"),
     "DETAILS_ALIGN="..((PLDR.DETAILS_ALIGN == "center" or PLDR.DETAILS_ALIGN == "right") and PLDR.DETAILS_ALIGN or "left"),
+    "ART_LOCATION="..((PLDR.ART_LOCATION == "pops" or PLDR.ART_LOCATION == "art") and PLDR.ART_LOCATION or "pops_art"),
     "HDD_FS="..((PLDR.HDD_FS == "EXFAT") and "EXFAT" or "PFS"),
     "GAMELIST_CACHE="..((PLDR.GAMELIST_CACHE == true) and "1" or "0"),
     "BOOT_SOUND="..((PLDR.BOOT_SOUND ~= false) and "1" or "0"),
@@ -3385,6 +3386,7 @@ local function SnapshotSettingsState()
     hidden_devices = PLDR.NormalizeHiddenDevices(PLDR.HIDDEN_DEVICES),
     show_details = (PLDR.SHOW_DETAILS == true),
     details_align = ((PLDR.DETAILS_ALIGN == "center" or PLDR.DETAILS_ALIGN == "right") and PLDR.DETAILS_ALIGN or "left"),
+    art_location = ((PLDR.ART_LOCATION == "pops" or PLDR.ART_LOCATION == "art") and PLDR.ART_LOCATION or "pops_art"),
     hdd_fs = ((PLDR.HDD_FS == "EXFAT") and "EXFAT" or "PFS"),
     gamelist_cache = (PLDR.GAMELIST_CACHE == true),
     boot_sound = (PLDR.BOOT_SOUND ~= false),
@@ -3436,6 +3438,9 @@ local function ApplySettingsState(state)
   end
   if type(state.details_align) == "string" then
     PLDR.DETAILS_ALIGN = (state.details_align == "center" or state.details_align == "right") and state.details_align or "left"
+  end
+  if type(state.art_location) == "string" then
+    PLDR.ART_LOCATION = (state.art_location == "pops" or state.art_location == "art") and state.art_location or "pops_art"
   end
   if type(state.hdd_fs) == "string" then
     PLDR.HDD_FS = (state.hdd_fs == "EXFAT") and "EXFAT" or "PFS"
@@ -3576,6 +3581,7 @@ function PLDR.LoadSettingsNonFatal()
   PLDR.HIDDEN_DEVICES = ""
   PLDR.SHOW_DETAILS = false
   PLDR.DETAILS_ALIGN = "left"  -- left|center|right; alignment of the game-details box (used only when SHOW_DETAILS)
+  PLDR.ART_LOCATION = "pops_art"  -- pops|pops_art|art; where REMOVABLE-device cover .png + details .txt live (HDD uses __common/POPS/ART)
   PLDR.HDD_FS = "PFS"  -- PFS|EXFAT; which internal-HDD page the carousel shows (mutually exclusive; default PFS)
   PLDR.GAMELIST_CACHE = false  -- opt-in persistent per-device USB/MMCE/MX4SIO list cache (OFF = always live scan)
   PLDR.BOOT_SOUND = true  -- play the boot/splash chime (default ON; oldman63 #501 wanted an off switch)
@@ -3694,6 +3700,7 @@ function PLDR.LoadSettingsNonFatal()
   local hidden_devices = string.match(data, "\nHIDDEN_DEVICES=([^\n]*)") or string.match(data, "^HIDDEN_DEVICES=([^\n]*)")
   local show_details = string.match(data, "\nSHOW_DETAILS=([^\n]+)") or string.match(data, "^SHOW_DETAILS=([^\n]+)")
   local details_align = string.match(data, "\nDETAILS_ALIGN=([^\n]+)") or string.match(data, "^DETAILS_ALIGN=([^\n]+)")
+  local art_location = string.match(data, "\nART_LOCATION=([^\n]+)") or string.match(data, "^ART_LOCATION=([^\n]+)")
   local hdd_fs = string.match(data, "\nHDD_FS=([^\n]+)") or string.match(data, "^HDD_FS=([^\n]+)")
   local gamelist_cache = string.match(data, "\nGAMELIST_CACHE=([^\n]+)") or string.match(data, "^GAMELIST_CACHE=([^\n]+)")
   local boot_sound = string.match(data, "\nBOOT_SOUND=([^\n]+)") or string.match(data, "^BOOT_SOUND=([^\n]+)")
@@ -3758,6 +3765,9 @@ function PLDR.LoadSettingsNonFatal()
   end
   if details_align ~= nil then
     PLDR.DETAILS_ALIGN = (details_align == "center" or details_align == "right") and details_align or "left"
+  end
+  if art_location ~= nil then
+    PLDR.ART_LOCATION = (art_location == "pops" or art_location == "art") and art_location or "pops_art"
   end
   if hdd_fs ~= nil then
     PLDR.HDD_FS = (string.upper(hdd_fs) == "EXFAT") and "EXFAT" or "PFS"
@@ -3830,6 +3840,8 @@ function PLDR.CommitSettingsChanges(opts)
   if type(opts.show_details) == "boolean" then next_show_details = opts.show_details end
   local next_details_align = (prev.details_align == "center" or prev.details_align == "right") and prev.details_align or "left"
   if opts.details_align == "left" or opts.details_align == "center" or opts.details_align == "right" then next_details_align = opts.details_align end
+  local next_art_location = (prev.art_location == "pops" or prev.art_location == "art") and prev.art_location or "pops_art"
+  if opts.art_location == "pops" or opts.art_location == "pops_art" or opts.art_location == "art" then next_art_location = opts.art_location end
   local next_hdd_fs = (prev.hdd_fs == "EXFAT") and "EXFAT" or "PFS"
   if opts.hdd_fs == "PFS" or opts.hdd_fs == "EXFAT" then next_hdd_fs = opts.hdd_fs end
   local next_gamelist_cache = (prev.gamelist_cache == true)
@@ -3862,6 +3874,7 @@ function PLDR.CommitSettingsChanges(opts)
     global_hide = next_global_hide,
     show_details = next_show_details,
     details_align = next_details_align,
+    art_location = next_art_location,
     hdd_fs = next_hdd_fs,
     gamelist_cache = next_gamelist_cache,
     boot_sound = next_boot_sound,
