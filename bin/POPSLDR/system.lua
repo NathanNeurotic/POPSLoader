@@ -1783,16 +1783,73 @@ local function BuildDeviceLocalPopstarterCandidate(gamelocation, policy_name)
   return root.."POPSTARTER.ELF", root
 end
 
+local function ResolveCwdSidecarPopstarter()
+  -- POPSTARTER.ELF sitting in the folder POPSLOADER.ELF itself launched from ("cwd").
+  -- Probes the same launcher-dir sources the HDD boot-sidecar uses, but only for plain
+  -- removable devices: HDD/pfs candidates are skipped here so they keep flowing through the
+  -- (untouched) HDD-aware resolver + partition machinery in ResolvePopstarterPath.
+  local bases = {}
+  local function add_base(b)
+    if b ~= nil and b ~= "" then bases[#bases + 1] = b end
+  end
+  add_base(APP_DIR_LOCAL)
+  add_base(CaptureCurrentDirectory())
+  add_base(BOOT_ARGV0_RAW)
+  add_base(BOOT_PATH_RAW)
+  add_base(APP_DIR_RAW)
+  local seen = {}
+  for i = 1, #bases do
+    local candidate = BuildPopstarterSidecarCandidate(bases[i])
+    if candidate ~= nil and candidate ~= "" and not seen[candidate] then
+      seen[candidate] = true
+      if not IsHddExecContextPath(candidate) then
+        local resolved = ResolvePathWithEnsure(candidate)
+        if resolved ~= nil then
+          return resolved
+        end
+      end
+    end
+  end
+  return nil
+end
+
 function PLDR.ResolveLaunchPopstarterPath(gamelocation, configured_path, policy_name)
-  -- Prefer the game's device-local POPSTARTER.ELF only when it actually EXISTS; otherwise fall
-  -- through to the configured/sidecar chain (ResolvePopstarterPath) so a games-only exFAT drive
-  -- still launches from an MC-resident POPSTARTER. The ata_bd settle (EnsureAtaBdm) guarantees the
-  -- ATA device is mounted before this probe, so there is no race that justifies pinning a path the
-  -- file probe can't yet see -- doing so would only strand the working fallback.
+  -- Deterministic launch-time POPSTARTER.ELF resolution for REMOVABLE devices
+  -- (USB / exFAT-ATA / MX4SIO / MMCE):  custom -> cwd -> <game device>:/POPS/ .
+  --   1. an explicit user-configured absolute path (custom field, or an absolute profile) when it exists;
+  --   2. else POPSTARTER.ELF next to where POPSLOADER.ELF launched from (cwd);
+  --   3. else the game's own <device>:/POPS/POPSTARTER.ELF, only if it exists;
+  --   4. else the existing fallback net (mc0:/mc1:/POPSTARTER + the configured default).
+  -- HDD/APA is intentionally UNCHANGED: BuildDeviceLocalPopstarterCandidate returns nil for
+  -- HDD/pfs/empty roots, so those fall straight through to the HDD-aware resolver exactly as
+  -- before (preserving the D-10/D-15 partition-context + embedded-loader path).
   local colocated = BuildDeviceLocalPopstarterCandidate(gamelocation, policy_name)
-  if colocated ~= nil and doesFileExist(colocated) then
+  if colocated == nil then
+    return ResolvePopstarterPath(configured_path)
+  end
+
+  -- 1. Custom: an explicit absolute path the user configured wins outright -- but only when it
+  --    actually resolves, so a stale/typo'd custom path falls through instead of stranding a
+  --    launch that the cwd/device steps would otherwise satisfy.
+  if IsAbsoluteDevicePath(configured_path) then
+    local custom = ResolvePopstarterPath(configured_path)
+    if custom ~= nil and custom ~= "" and PLDR.PopstarterProbeWithEnsure(custom) then
+      return custom
+    end
+  end
+
+  -- 2. cwd: POPSTARTER.ELF in the launcher's own folder.
+  local cwd_popstarter = ResolveCwdSidecarPopstarter()
+  if cwd_popstarter ~= nil then
+    return cwd_popstarter
+  end
+
+  -- 3. device-local: the game's own device POPS/ folder.
+  if doesFileExist(colocated) then
     return colocated
   end
+
+  -- 4. fallback net: mc0:/mc1:/POPSTARTER + the configured default (unchanged resolver engine).
   return ResolvePopstarterPath(configured_path)
 end
 
