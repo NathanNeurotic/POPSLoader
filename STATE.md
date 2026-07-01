@@ -142,6 +142,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 | **Overall latest rolling** | **PASS** ("everything working fantastically") | 2026-06-21 (Nuno6573) | General confirmation, not item-by-item. |
 | **Overscan (CRT inset)** | Implemented / boots on PCSX2 | 2026-06-20 | Not yet CRT/HW-eyeballed. |
 | **Cover-art layering** (`cover_default` + `cover_missing` overlay) | Implemented / boots on PCSX2 | 2026-06-20 | Eyeball that both register inside the jewel-case frame on NTSC + PAL. |
+| **Cover/details folder (`ART_LOCATION`) art lookup** | **PASS** | 2026-06-30 (FifthFox) | Covers show on hardware via the *Cover/details folder* setting. The earlier "POPS/ART fails" report was tester name/placement (user error), matching the SDK finding (`open`==`fopen`, nested reads work; wf w0ucpisvc). The `6641860` pre-probe drop was inert; the "No cover. Looked for:" caption ships as a self-diagnosis aid. |
 | **HDD scan steered off the boot pfs slot** (Proposal A) | Implemented / boots on PCSX2 | 2026-06-20 | `b159a43`. Wants a deliberate HW test that game partitions still mount/list off the boot slot. |
 
 ## Known Issues *(canonical — the single list; README / AGENTS / ROLLING_NOTES point here)*
