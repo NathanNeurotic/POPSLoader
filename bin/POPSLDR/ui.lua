@@ -311,7 +311,8 @@ local CoverCache = {
   last_img = nil,
   last_desc = nil,
   last_desc_lines = nil,
-  desc_scroll = 0
+  desc_scroll = 0,
+  last_cover_probe = nil  -- primary path we looked for when a cover is MISSING (list-view diagnostic)
 }
 function CoverCache:Clear()
   local free_ok = type(Graphics) == "table" and type(Graphics.freeImage) == "function"
@@ -328,6 +329,7 @@ function CoverCache:Clear()
   self.last_desc = nil
   self.last_desc_lines = nil
   self.desc_scroll = 0
+  self.last_cover_probe = nil
 end
 function CoverCache:EvictIfNeeded()
   while #self.order > self.max do
@@ -354,12 +356,15 @@ function CoverCache:GetOrLoad(path)
     self.failed[path] = true
     return nil
   end
-  -- Let the loader open the file itself (Graphics.loadImage -> fopen) instead of gating on a
-  -- separate doesFileExist() open() probe first: on some BDM filesystems a direct nested
-  -- open() of <dir>/ART/<file> can miss where the loader's fopen still reads it, so the
-  -- pre-probe would wrongly hide a loadable cover. loadImage returns nil for a genuinely
-  -- missing/unreadable file (memoized below), so behavior is identical for every cover that
-  -- already works -- just less restrictive for the ART/ subfolder case.
+  -- Load straight through Graphics.loadImage (fopen) with no separate doesFileExist() open()
+  -- pre-probe. In ps2sdk fopen and open both funnel through the SAME libcglue _open
+  -- (ee/libcglue/src/glue.c -> __path_absolute), so an open() existence check and an fopen()
+  -- load resolve the identical path: the pre-probe was just a redundant second open of the
+  -- same file, never a gate that behaved differently for a nested POPS/ART/ path. Dropping it
+  -- only saves that syscall; loadImage returns nil for a genuinely missing/unreadable file
+  -- (memoized below). This is a cleanup, NOT a cover fix -- nested subfolder reads work on the
+  -- BDM/FAT drivers (OPL reads mass:/ART/ the same way), so a POPS/ART cover that does not
+  -- show is a filename/location problem, not a read-path one.
   local img = Graphics.loadImage(path)
   if img == nil then
     self.failed[path] = true
@@ -386,6 +391,7 @@ function CoverCache:UpdateSelection(vcd_path, use_hdd_common_art, entry)
   self.last_img = nil
   self.last_desc = nil
   self.last_desc_lines = nil
+  self.last_cover_probe = nil
   self.desc_scroll = 0  -- new selection -> start its description at the top
   if (use_hdd_common_art ~= true) and (vcd_path == nil or vcd_path == "") then
     return nil
@@ -417,6 +423,10 @@ function CoverCache:UpdateSelection(vcd_path, use_hdd_common_art, entry)
       return img
     end
   end
+  -- No cover loaded: remember the FIRST place we looked (candidates[1], the ART_LOCATION
+  -- choice) so the list view can print a small "looked for <path>" caption -- lets a tester
+  -- confirm the .png name/folder without a hardware round-trip.
+  self.last_cover_probe = candidates[1]
   return nil
 end
 
@@ -2674,6 +2684,33 @@ UI = {
           end
           if IMG.frame ~= nil and frame_w ~= nil and frame_h ~= nil then
             Graphics.drawScaleImage(IMG.frame, frame_x, draw_y, frame_w, frame_h)
+          end
+          -- Missing-cover diagnostic: when preview is ON but the selected game has NO cover
+          -- (and the details panel isn't already using this space, and UI text isn't hidden),
+          -- print the primary path we looked for so a tester can confirm the .png name/folder
+          -- without a hardware round-trip. Device prefix trimmed; folder + filename on their
+          -- own lines. Clears with the same Select / Hide-UI-Text that clears other text.
+          if cover_enabled and cover_img == nil and details_lines == nil
+             and UI.HideTextMode ~= true and UI.CoverCache ~= nil
+             and type(UI.CoverCache.last_cover_probe) == "string"
+             and UI.CoverCache.last_cover_probe ~= "" then
+            local shown = string.match(UI.CoverCache.last_cover_probe, "^%a+%d*:/(.+)$")
+                          or UI.CoverCache.last_cover_probe
+            local folder, fname = string.match(shown, "^(.*/)([^/]+)$")
+            local cap_lines = { "No cover. Looked for:" }
+            if folder ~= nil then
+              cap_lines[#cap_lines + 1] = folder
+              cap_lines[#cap_lines + 1] = fname
+            else
+              cap_lines[#cap_lines + 1] = shown
+            end
+            local cap_y = draw_y + art_h + 8
+            local cap_bottom = (layout.FOOTER_ICON_Y or (UI.SCR.Y - 56)) - 18
+            for ci = 1, #cap_lines do
+              if cap_y > cap_bottom then break end
+              Font.ftPrint(SFONT, draw_x, cap_y, 0, draw_w, 14, cap_lines[ci], UI.CCOL.GREY)
+              cap_y = cap_y + 14
+            end
           end
           -- (Cover preview OFF now shows the plain default cover above -- no text label.)
           -- Paint the description: window the visible slice from the scroll offset,
