@@ -347,11 +347,13 @@ name is tried first (so ONE art file serves every disc of a multi-disc game), th
 the exact per-disc `<full-name>.png` for back-compat. The matching `<name>.txt`
 details sidecar rides the **same** candidate list (each `.png` -> `.txt`). When a
 `<base>.png` cover loads it gets its own `COVER_W` inset (`ui.lua:624`, value `232`).
-`CoverCache:GetOrLoad` (`ui.lua:344`) no longer pre-probes existence with an
-`open()` (`doesFileExist`) call; it lets `Graphics.loadImage` (`fopen`) open the file
-directly, since a nested `open()` of `POPS/ART/<file>` can miss on some BDM
-filesystems where the loader's `fopen` reads it fine. (The `.txt` sidecar still reads
-via `open()`, so a details file under `POPS/ART` is bound by that nested-open behavior.)
+`CoverCache:GetOrLoad` (`ui.lua:344`) drops the `doesFileExist`/`open()` existence
+pre-probe and lets `Graphics.loadImage` (`fopen`) open the file directly. In ps2sdk
+`open()` and `fopen()` share the same libcglue `_open`, so this is a redundant-syscall
+cleanup, NOT a fix: nested subfolder reads work on the BDM/FAT drivers (OPL reads
+`mass:/ART/` the same way), so a missing `POPS/ART` cover is a filename/location issue.
+When no cover loads, the list view prints a "No cover. Looked for: <path>" caption so a
+tester can self-check the name/folder without a hardware round-trip.
 
 **Layered placeholder (no `MISSING.png`).** When there is no live cover the box
 draws two embedded assets instead of a single combined image (the old "Cover
