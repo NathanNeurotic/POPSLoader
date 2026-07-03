@@ -190,15 +190,25 @@ $(EE_ASM_DIR)asset_cover_default_png.c: bin/POPSLDR/IMG/cover_default.png | $(EE
 $(EE_ASM_DIR)asset_cover_missing_png.c: bin/POPSLDR/IMG/cover_missing.png | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_cover_missing_png
 
-# Lua scripts
-$(EE_ASM_DIR)asset_system_lua.c: bin/POPSLDR/system.lua | $(EE_ASM_DIR)
-	$(BIN2S) $< $@ asset_system_lua
-$(EE_ASM_DIR)asset_ui_lua.c: bin/POPSLDR/ui.lua | $(EE_ASM_DIR)
-	$(BIN2S) $< $@ asset_ui_lua
-$(EE_ASM_DIR)asset_images_lua.c: bin/POPSLDR/images.lua | $(EE_ASM_DIR)
-	$(BIN2S) $< $@ asset_images_lua
-$(EE_ASM_DIR)asset_pops_profiles_lua.c: bin/POPSLDR/pops_profiles.lua | $(EE_ASM_DIR)
-	$(BIN2S) $< $@ asset_pops_profiles_lua
+# Lua scripts. The committed .lua source stays fully commented (single source of
+# truth); a build-time minifier (tools/lua_minify.py) strips comments + collapses
+# whitespace before bin2c, shrinking the embedded payload. The minifier is provably
+# token-preserving (it re-scans its output and hard-fails on any token change), so
+# the embedded program is identical to the source. Falls back to a raw copy only if
+# python3 is absent (e.g. a bare local checkout); CI ships python3, so shipped builds
+# are always minified. etc/boot.lua is intentionally left un-minified (boot-critical).
+$(EE_ASM_DIR)asset_system_lua.c: bin/POPSLDR/system.lua tools/lua_minify.py | $(EE_ASM_DIR)
+	@if command -v python3 >/dev/null 2>&1; then python3 tools/lua_minify.py $< $(EE_ASM_DIR)system.min.lua; else cp $< $(EE_ASM_DIR)system.min.lua; fi
+	$(BIN2S) $(EE_ASM_DIR)system.min.lua $@ asset_system_lua
+$(EE_ASM_DIR)asset_ui_lua.c: bin/POPSLDR/ui.lua tools/lua_minify.py | $(EE_ASM_DIR)
+	@if command -v python3 >/dev/null 2>&1; then python3 tools/lua_minify.py $< $(EE_ASM_DIR)ui.min.lua; else cp $< $(EE_ASM_DIR)ui.min.lua; fi
+	$(BIN2S) $(EE_ASM_DIR)ui.min.lua $@ asset_ui_lua
+$(EE_ASM_DIR)asset_images_lua.c: bin/POPSLDR/images.lua tools/lua_minify.py | $(EE_ASM_DIR)
+	@if command -v python3 >/dev/null 2>&1; then python3 tools/lua_minify.py $< $(EE_ASM_DIR)images.min.lua; else cp $< $(EE_ASM_DIR)images.min.lua; fi
+	$(BIN2S) $(EE_ASM_DIR)images.min.lua $@ asset_images_lua
+$(EE_ASM_DIR)asset_pops_profiles_lua.c: bin/POPSLDR/pops_profiles.lua tools/lua_minify.py | $(EE_ASM_DIR)
+	@if command -v python3 >/dev/null 2>&1; then python3 tools/lua_minify.py $< $(EE_ASM_DIR)pops_profiles.min.lua; else cp $< $(EE_ASM_DIR)pops_profiles.min.lua; fi
+	$(BIN2S) $(EE_ASM_DIR)pops_profiles.min.lua $@ asset_pops_profiles_lua
 $(EE_ASM_DIR)asset_boot_adp.c: bin/POPSLDR/boot.adp | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_boot_adp
 

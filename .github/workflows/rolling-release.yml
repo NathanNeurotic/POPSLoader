@@ -99,6 +99,17 @@ jobs:
           set -eu
           make clean elfloader all
 
+      - name: Report ELF size
+        shell: sh
+        run: |
+          set -eu
+          echo "== ELF sizes (this build) =="
+          for f in bin/enceladus.elf bin/POPSLOADER.ELF; do
+            if [ -f "$f" ]; then
+              printf "%-24s %10d bytes\n" "$f" "$(wc -c < "$f")"
+            fi
+          done
+
       - name: Verify embedded build identity
         shell: sh
         run: |
