@@ -73,3 +73,7 @@ outdated/
 !bin/POPSLDR/PROFILES/**
 !iop/embed/BDMASSAULT_MX4SIO/*.irx
 !POPSTARTER/*.irx
+
+# Python bytecode cache (build tooling)
+__pycache__/
+*.pyc

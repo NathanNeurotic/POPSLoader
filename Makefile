@@ -394,3 +394,11 @@ $(EE_OBJS_DIR)%.o: $(EE_SRC_DIR)%.cpp | $(EE_OBJS_DIR)
 
 include $(PS2SDK)/samples/Makefile.pref
 include $(PS2SDK)/samples/Makefile.eeglobal
+
+# Optimize POPSLoader's own C/C++ objects for SIZE. Appended AFTER the ps2sdk
+# eeglobal include so -Os lands LAST in the flag list and wins over the default -O2
+# (last -O wins). Only affects objects compiled here (APP_CORE + LUA_LIBS); the
+# embedded .irx modules and the prebuilt ports (lua/png/z/freetype/gsKit) are not
+# recompiled. Reversible on its own if a hardware smoke test ever shows a regression.
+EE_CFLAGS  += -Os
+EE_CXXFLAGS += -Os
