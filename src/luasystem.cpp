@@ -1594,46 +1594,30 @@ static int lua_smb_init(lua_State *L)
 	} while (0)
 #define SMB_PUSH_ERR(code) do { lua_pushboolean(L, false); lua_pushstring(L, (code)); return 2; } while (0)
 
-// System.connectSMB(cfg) -- bring up the network + connect/open the share.
-// cfg = PLDR.SMB. Returns (true,"smb0:") on success, or (false,"<ERR>") where ERR
-// is NO_LINK / IPCFG_FAIL / DHCP_FAIL / CONN_FAIL / PROT_FAIL / LOGON_FAIL /
-// ECHO_FAIL / SHARE_FAIL / NETBIOS_NA / IRX_LOAD_FAIL.
-static int lua_smb_connect(lua_State *L)
+// System.smbNetUp(cfg) -- interface bring-up ONLY (link wait + link mode + IP
+// config + DHCP wait). Split from connectSMB so Lua can report per-phase progress
+// between the (up to 30 s each) blocking waits instead of freezing one overlay
+// frame through the whole bring-up. cfg = PLDR.SMB. Returns true, or
+// (false,"<ERR>") with ERR = NO_LINK / IPCFG_FAIL / DHCP_FAIL / IRX_LOAD_FAIL.
+static int lua_smb_netup(lua_State *L)
 {
 	if (lua_gettop(L) != 1 || !lua_istable(L, 1)) {
-		return luaL_error(L, "System.connectSMB(cfg) expects a config table.");
+		return luaL_error(L, "System.smbNetUp(cfg) expects a config table.");
 	}
 
-	char server[256] = {0}, share[256] = {0}, user[256] = {0}, pass[256] = {0};
 	char ps2ip_s[64] = {0}, netmask_s[64] = {0}, gw_s[64] = {0}, dns_s[64] = {0};
-	char linkmode[16] = {0}, addrtype[16] = {0};
-	int port = 445;
+	char linkmode[16] = {0};
 	int dhcp = 0;
 
-	SMB_GET_STR("SERVER", server);
-	SMB_GET_STR("SHARE", share);
-	SMB_GET_STR("USER", user);
-	SMB_GET_STR("PASS", pass);
 	SMB_GET_STR("PS2_IP", ps2ip_s);
 	SMB_GET_STR("NETMASK", netmask_s);
 	SMB_GET_STR("GATEWAY", gw_s);
 	SMB_GET_STR("DNS", dns_s);
 	SMB_GET_STR("LINKMODE", linkmode);
-	SMB_GET_STR("ADDR_TYPE", addrtype);
-	lua_getfield(L, 1, "PORT");
-	if (lua_isstring(L, -1)) { int p = 0; if (sscanf(lua_tostring(L, -1), "%d", &p) == 1) port = p; }
-	else if (lua_isnumber(L, -1)) { port = (int)lua_tointeger(L, -1); }
-	lua_pop(L, 1);
-	if (port <= 0) { port = 445; }
 	lua_getfield(L, 1, "DHCP");
 	dhcp = lua_toboolean(L, -1);
 	lua_pop(L, 1);
 
-	// IP addressing only. NetBIOS needs nbns.irx, which is OPL-custom (not in stock
-	// ps2sdk) -> a build dependency we deliberately don't pull in. Use a Server IP.
-	if (!strcmp(addrtype, "netbios")) {
-		SMB_PUSH_ERR("NETBIOS_NA");
-	}
 	if (!EnsureSMB()) {
 		SMB_PUSH_ERR("IRX_LOAD_FAIL");
 	}
@@ -1658,6 +1642,44 @@ static int lua_smb_connect(lua_State *L)
 
 	if (dhcp && SmbWaitNetState(&SmbDhcpBound) != 0) {
 		SMB_PUSH_ERR("DHCP_FAIL");
+	}
+
+	lua_pushboolean(L, true);
+	return 1;
+}
+
+// System.connectSMB(cfg) -- the SMB handshake on smb0: (LOGON/ECHO/OPENSHARE).
+// Call System.smbNetUp(cfg) FIRST (PLDR.InitSMBPopsRoot does). cfg = PLDR.SMB.
+// Returns (true,"smb0:") on success, or (false,"<ERR>") where ERR is CONN_FAIL /
+// PROT_FAIL / LOGON_FAIL / ECHO_FAIL / SHARE_FAIL / NETBIOS_NA / IRX_LOAD_FAIL.
+static int lua_smb_connect(lua_State *L)
+{
+	if (lua_gettop(L) != 1 || !lua_istable(L, 1)) {
+		return luaL_error(L, "System.connectSMB(cfg) expects a config table.");
+	}
+
+	char server[256] = {0}, share[256] = {0}, user[256] = {0}, pass[256] = {0};
+	char addrtype[16] = {0};
+	int port = 445;
+
+	SMB_GET_STR("SERVER", server);
+	SMB_GET_STR("SHARE", share);
+	SMB_GET_STR("USER", user);
+	SMB_GET_STR("PASS", pass);
+	SMB_GET_STR("ADDR_TYPE", addrtype);
+	lua_getfield(L, 1, "PORT");
+	if (lua_isstring(L, -1)) { int p = 0; if (sscanf(lua_tostring(L, -1), "%d", &p) == 1) port = p; }
+	else if (lua_isnumber(L, -1)) { port = (int)lua_tointeger(L, -1); }
+	lua_pop(L, 1);
+	if (port <= 0) { port = 445; }
+
+	// IP addressing only. NetBIOS needs nbns.irx, which is OPL-custom (not in stock
+	// ps2sdk) -> a build dependency we deliberately don't pull in. Use a Server IP.
+	if (!strcmp(addrtype, "netbios")) {
+		SMB_PUSH_ERR("NETBIOS_NA");
+	}
+	if (!EnsureSMB()) {
+		SMB_PUSH_ERR("IRX_LOAD_FAIL");
 	}
 
 	// ---- SMB handshake on smb0: (mirrors OPL ethSMBConnect) ----
@@ -1817,6 +1839,7 @@ static const luaL_Reg System_functions[] = {
 	{"initMX4SIO",             lua_mx4sio_init},
 	{"initATA",                lua_ata_init},
 	{"initSMB",                lua_smb_init},
+	{"smbNetUp",               lua_smb_netup},
 	{"connectSMB",             lua_smb_connect},
 	{"disconnectSMB",          lua_smb_disconnect},
 	{"bdmList",                lua_bdm_list},

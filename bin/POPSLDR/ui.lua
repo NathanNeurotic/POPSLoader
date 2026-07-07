@@ -1792,6 +1792,17 @@ UI = {
           {"BACK","DONE"}
         }
       };
+      -- R2/UPPER mode on non-letter keys: digits and brackets shift to the symbols
+      -- the layouts can't otherwise produce (@ # $ % ^ * " < > | { } ~ `). Without
+      -- these, common SMB credentials (an @ in a username, a $ hidden-share suffix,
+      -- most password symbols) were IMPOSSIBLE to type -- "right settings" that
+      -- could never be entered. Keys stay single-char, so key widths, navigation,
+      -- and _InsertText need no changes.
+      SHIFT_MAP = {
+        ["0"] = "@", ["1"] = "#", ["2"] = "$", ["3"] = "%", ["4"] = "^",
+        ["5"] = "*", ["6"] = "\"", ["7"] = "<", ["8"] = ">", ["9"] = "|",
+        ["["] = "{", ["]"] = "}", ["-"] = "~", ["="] = "`",
+      };
       _NormalizeLayout = function (layout)
         if type(PLDR) == "table" and type(PLDR.NormalizeKeyboardLayout) == "function" then
           return PLDR.NormalizeKeyboardLayout(layout)
@@ -1892,8 +1903,12 @@ UI = {
       _DisplayKey = function (key)
         if key == nil then return "" end
         if key == "SPACE" then return "SPACE" end
-        if UI.PathEditor.upper and string.match(key, "^[a-z]$") then
-          return string.upper(key)
+        if UI.PathEditor.upper then
+          if string.match(key, "^[a-z]$") then
+            return string.upper(key)
+          end
+          local shifted = UI.PathEditor.SHIFT_MAP[key]
+          if shifted ~= nil then return shifted end
         end
         return key
       end;
@@ -2085,8 +2100,12 @@ UI = {
             return
           elseif key ~= nil and key ~= "" then
             local out = key
-            if UI.PathEditor.upper and string.match(out, "^[a-z]$") then
-              out = string.upper(out)
+            if UI.PathEditor.upper then
+              if string.match(out, "^[a-z]$") then
+                out = string.upper(out)
+              elseif UI.PathEditor.SHIFT_MAP[out] ~= nil then
+                out = UI.PathEditor.SHIFT_MAP[out]
+              end
             end
             UI.PathEditor._InsertText(out)
           end
@@ -2109,7 +2128,7 @@ UI = {
 
         Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 8, 8, UI.SCR.X, 16, UI.PathEditor.title, UI.CCOL.YELLOW)
         Font.ftPrint(SFONT, input_x + 10, input_y + 10, 0, input_w - 20, 16, UI.PathEditor._BuildVisibleValue(46), Color.new(150, 205, 255, 128))
-        local mode_label = UI.PathEditor.upper and "Case: UPPER  (R2)" or "Case: lower  (R2)"
+        local mode_label = UI.PathEditor.upper and "Case/Symbols: UPPER  (R2)" or "Case/Symbols: lower  (R2)"
         local info_label = mode_label.."   Cursor: L1 / R1"
         Font.ftPrint(SFONT, input_x + 2, input_y + input_h + 10, 0, input_w - 4, 16, info_label, UI.CCOL.GREY)
 
@@ -2918,6 +2937,15 @@ UI = {
               return
             end
           end
+          -- SMB stream launches read their server/share from mc:/POPSTARTER/
+          -- SMBCONFIG.DAT, which exists only once the SMB modules pack is
+          -- installed. Browsing works WITHOUT it (the menu has its own embedded
+          -- stack), so without this gate a launch fails in-game with zero
+          -- explanation.
+          if UI.CURSCENE == UI.SCENES.GSMBNET and PLDR.SMB_MODULES ~= true then
+            UI.Notif_queue.add("SMB modules are not installed\nGames list but won't boot without them --\ninstall via Settings > SMB modules, then Save", "error")
+            return
+          end
           local entry = PLDR.GAMES[UI.GameList.CURR]
           if entry == nil then
             UI.Notif_queue.add("Couldn't read that game selection", "error")
@@ -3054,7 +3082,7 @@ UI = {
               if type(System) == "table" and type(System.disconnectSMB) == "function" then
                 pcall(System.disconnectSMB)
               end
-              local smb_root, smb_err = PLDR.InitSMBPopsRoot()
+              local smb_root, smb_err = PLDR.InitSMBPopsRoot(report)
               PLDR.CleanupGameList()
               if type(smb_root) == "string" and smb_root ~= "" then
                 report("Scanning SMB games...", 0.30)
@@ -5324,6 +5352,12 @@ end
 -- in-game SMBCONFIG.DAT) and we reconnect. Bounded rounds so a bad server can't loop forever.
 -- Lives here (not inline in the menu handler) to keep that handler under Lua's local cap.
 function UI.RunSmbConnectFlow()
+  -- Browsing works without the mc:/POPSTARTER SMB pack (the menu has its own
+  -- embedded stack), but LAUNCHING doesn't -- warn up front (browse stays usable;
+  -- the launch dispatch enforces the hard gate).
+  if type(PLDR) == "table" and PLDR.SMB_MODULES ~= true then
+    UI.Notif_queue.add("SMB modules are not installed\nGames will list but won't boot -- install them\nvia Settings > SMB modules first", "warn")
+  end
   local share_choices = nil   -- comma-list set when a connect returns NO_SHARE with shares
   local function attempt()
     share_choices = nil
@@ -5333,8 +5367,7 @@ function UI.RunSmbConnectFlow()
       report("Bringing up network...", 0.2)
       PLDR.CleanupGameList()
       PLDR.GAMEPATH = ""
-      report("Connecting to the share...", 0.4)
-      local smb_root, smb_err, smb_extra = PLDR.InitSMBPopsRoot()
+      local smb_root, smb_err, smb_extra = PLDR.InitSMBPopsRoot(report)
       if smb_root == nil then
         if smb_err == "NO_SHARE" and type(smb_extra) == "string" and smb_extra ~= "" then
           share_choices = smb_extra   -- offer the picker after this busy task closes
@@ -5355,6 +5388,16 @@ function UI.RunSmbConnectFlow()
         PLDR.SaveGameListCache(smb_cache, PLDR.GAMES, PLDR.HIDDEN)
       end
       report("Opening SMB list...", 1.0)
+      -- Games path shapes BROWSING only: POPStarter's SMBCONFIG.DAT carries just
+      -- SERVER[:PORT] SHARE (no path), and it reads <share>/POPS -- so a set
+      -- Games path lists games that cannot launch. Say so instead of half-working.
+      do
+        local gp = tostring((type(PLDR.SMB) == "table" and PLDR.SMB.PATH) or "")
+        gp = string.match(gp, "^[%s/\\]*(.-)[%s/\\]*$") or ""
+        if gp ~= "" and string.lower(gp) ~= "pops" then
+          UI.Notif_queue.add("Games path affects browsing only:\nPOPStarter can only launch games from <share>/POPS", "warn")
+        end
+      end
       UI.SceneChange(UI.SCENES.GSMBNET)
       entered = true
     end, "Failed to connect to SMB")
@@ -5436,7 +5479,7 @@ UI._SMB_LABELS = {
   GATEWAY = "Gateway", DNS = "DNS", LINKMODE = "Link mode",
   ADDR_TYPE = "Address type", NB_ADDR = "NetBIOS name", SERVER = "Server IP",
   PORT = "Port", SHARE = "Share", USER = "User", PASS = "Password",
-  PATH = "Games path",
+  PATH = "Games path (folder holding POPS)",
 }
 UI._SMB_ENUM_LABELS = {
   LINKMODE = { auto = "Auto", ["100full"] = "100M Full", ["100half"] = "100M Half", ["10full"] = "10M Full", ["10half"] = "10M Half" },
@@ -5485,7 +5528,9 @@ function UI.SmbFieldDisplay(field)
       return string.rep("*", math.min(string.len(s), 16))
     end
     if s == "" then
-      if field.key == "PATH" then return "(auto / cwd-relative)" end
+      -- There is no cwd on an SMB share and nothing is auto-detected: blank means
+      -- the share ROOT, and POPS/ is always appended (browse root = <share>/POPS).
+      if field.key == "PATH" then return "(share root)" end
       return "(not set)"
     end
     return _SmbTruncMiddle(s, 38)

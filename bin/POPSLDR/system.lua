@@ -1777,7 +1777,13 @@ local function BuildDeviceLocalPopstarterCandidate(gamelocation, policy_name)
     return nil, nil
   end
   local lowered = string.lower(root)
-  if string.match(lowered, "^hdd%d*:") ~= nil or string.match(lowered, "^pfs%d*:") ~= nil then
+  -- smb roots are skipped alongside hdd/pfs: device-local resolution is scoped to
+  -- USB/exFAT-ATA/MX4SIO/MMCE. A stale POPSTARTER.ELF left in a share's POPS/
+  -- folder (common after wholesale USB copies) would otherwise silently shadow
+  -- the known-good cwd/MC build AND route the exec ELF read over smb0:, a
+  -- HW-unproven path; POPStarter's SMBCONFIG.DAT flow expects mc0/mc1 anyway.
+  if string.match(lowered, "^hdd%d*:") ~= nil or string.match(lowered, "^pfs%d*:") ~= nil
+     or string.match(lowered, "^smb%d*:") ~= nil then
     return nil, nil
   end
   return root.."POPSTARTER.ELF", root
@@ -3984,6 +3990,15 @@ function PLDR.CommitSettingsChanges(opts)
       smb_ok = PLDR.RemoveSmbModules()
     end
     if not smb_ok then
+      -- A FAILED FRESH INSTALL cleans its partial pack off the card: a mid-stage
+      -- failure otherwise strands smbman.irx there, and SyncSmbDat's
+      -- "smbman.irx exists" probe then treats the broken pack as installed on
+      -- every later commit. Only for fresh installs -- ApplySmbModules also
+      -- re-runs to refresh the .DATs on an ALREADY-installed pack, and cleaning
+      -- up on a transient refresh failure would delete a working pack.
+      if next_state.smb_modules == true and prev.smb_modules ~= true then
+        pcall(PLDR.RemoveSmbModules)
+      end
       PLDR.SMB_MODULES = (prev.smb_modules == true)
       PLDR.SaveSettingsAtomic()
       return false, "smb_apply_failed"
@@ -5165,13 +5180,28 @@ end
 -- HERE (never at boot), then returns the cwd-relative games root device:/[PATH/]POPS/.
 -- Returns nil + an error code (NO_LINK/DHCP_FAIL/CONN_FAIL/LOGON_FAIL/ECHO_FAIL/
 -- SHARE_FAIL/IRX_LOAD_FAIL) for the UI to map to a message. Mirrors InitATAPopsRoot.
-function PLDR.InitSMBPopsRoot()
+function PLDR.InitSMBPopsRoot(report)
   if type(System) ~= "table" or type(System.connectSMB) ~= "function" then
     return nil, "IRX_LOAD_FAIL"
   end
+  if type(report) ~= "function" then report = function() end end
+  pcall(report, "Loading network modules...", 0.22)
   if type(System.initSMB) == "function" and not System.initSMB() then
     return nil, "IRX_LOAD_FAIL"
   end
+  -- Interface bring-up as its own phase (System.smbNetUp) so the overlay can say
+  -- WHICH long wait is happening (link vs DHCP take up to 30 s each) -- one frozen
+  -- "Connecting..." frame through the whole bring-up read as a hang and invited a
+  -- power-cycle. The handshake (connectSMB) then attributes its own failures.
+  if type(System.smbNetUp) == "function" then
+    pcall(report, (type(PLDR.SMB) == "table" and PLDR.SMB.DHCP == true)
+                  and "Waiting for link + DHCP lease..." or "Waiting for network link...", 0.3)
+    local up_ok, up_err = System.smbNetUp(PLDR.SMB)
+    if not up_ok then
+      return nil, tostring(up_err or "NO_LINK")
+    end
+  end
+  pcall(report, "Logging on to the share...", 0.42)
   local ok, dev_or_err, extra = System.connectSMB(PLDR.SMB)
   if not ok then
     -- connectSMB does LOGON+ECHO BEFORE the share check, so a post-LOGON failure
@@ -5197,6 +5227,10 @@ function PLDR.InitSMBPopsRoot()
   sub = string.gsub(sub, "\\", "/")
   sub = string.gsub(sub, "^/+", "")
   sub = string.gsub(sub, "/+$", "")
+  -- Forgive the natural mistake: POPS/ is ALWAYS appended below, so a user whose
+  -- games live at <share>/PS1/POPS will type "PS1/POPS" -- without this, the scan
+  -- root became smb0:/PS1/POPS/POPS/ and the list came up empty with no hint.
+  sub = string.gsub(sub, "/?[Pp][Oo][Pp][Ss]$", "")
   local root = dev.."/"
   if sub ~= "" then root = root..sub.."/" end
   return root.."POPS/"
@@ -7034,6 +7068,12 @@ PLDR.LoadSettingsNonFatal()
 -- folder + OSD icons appear on boot as before); OFF -> no-op (stays deleted, fixing the
 -- every-boot recreation provato reported). This is the only LoadSettingsNonFatal call site.
 pcall(PLDR.EnsurePopstarterDir)
+-- Boot-time heal for the in-game SMB .DATs: the rolling zip ships TEMPLATE
+-- SMBCONFIG.DAT/IPCONFIG.DAT ("SMBip:SMBport..." placeholders) in its POPSTARTER/
+-- folder, and a user who copies that onto the card AFTER configuring SMB in-app
+-- would stream against the placeholders until the next settings save. SyncSmbDat
+-- is already guarded (no-op unless smbman.irx is staged) and write-if-changed.
+pcall(PLDR.SyncSmbDat)
 if boot_start_held then
   PLDR.VIDEO_STANDARD = PLDR.VIDEO_STANDARD_AUTO
   if type(PLDR.ApplyVideoStandardRuntime) == "function" then
