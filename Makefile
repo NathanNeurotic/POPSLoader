@@ -48,7 +48,10 @@ BINDIR = bin/
 EE_BIN = $(BINDIR)enceladus.elf
 EE_BIN_PKD = $(BINDIR)POPSLOADER.ELF
 
-EE_LIBS = -L$(PS2SDK)/ports/lib -L$(PS2DEV)/gsKit/lib/ -Lmodules/ds34bt/ee/ -Lmodules/ds34usb/ee/ -lpatches -lfileXio -lpad -ldebug -llua -ljpeg -lfreetype -lgskit_toolkit -lgskit -ldmakit -lpng -lz -lmc -laudsrv  -lds34bt -lds34usb -lnetman -lps2ip -lps2ips
+# -lps2ips (NOT -lps2ip): the menu SMB binds the EE to the IOP-side lwip stack via
+# the ps2ips RPC (ps2ip_init in EnsureNet); linking the EE-side lwip (-lps2ip) would
+# resurrect the orphaned-second-stack bug the 2026-07 audit found (U02).
+EE_LIBS = -L$(PS2SDK)/ports/lib -L$(PS2DEV)/gsKit/lib/ -Lmodules/ds34bt/ee/ -Lmodules/ds34usb/ee/ -lpatches -lfileXio -lpad -ldebug -llua -ljpeg -lfreetype -lgskit_toolkit -lgskit -ldmakit -lpng -lz -lmc -laudsrv  -lds34bt -lds34usb -lnetman -lps2ips
 EE_LIBS += src/elf_loader/libcustom-elf-loader.a
 EE_INCS += -I$(PS2DEV)/gsKit/include -I$(PS2SDK)/ports/include -I$(PS2SDK)/ports/include/freetype2 -I$(PS2SDK)/ports/include/zlib
 EE_INCS += -Imodules/ds34bt/ee -Imodules/ds34usb/ee

@@ -3235,7 +3235,9 @@ PLDR.SMB_FIELDS = {
 }
 
 -- Normalize one field value to its kind: bool -> boolean, enum -> a valid choice
--- (else its default), str -> single-line trimmed string capped at 255 chars.
+-- (else its default), str -> single-line string capped at 255 chars, trimmed of
+-- leading/trailing whitespace (except PASS -- a password may legitimately begin or
+-- end with a space, and trimming would break a working config on reload).
 -- PLDR method (NOT a chunk-level local) -- system.lua is near Lua's 200-local cap.
 function PLDR.SmbSanitize(field, value)
   if field == nil then return nil end
@@ -3252,6 +3254,12 @@ function PLDR.SmbSanitize(field, value)
   else
     local s = tostring(value or "")
     s = string.gsub(s, "[\r\n]", "")  -- sidecar is line-delimited; keep values single-line
+    if field.key ~= "PASS" then
+      -- The on-screen keyboard's SPACE key makes an invisible trailing space one
+      -- press away, and the row renders untrimmed values with no quoting -- the
+      -- user sees "right" settings and an unexplainable connect failure.
+      s = string.match(s, "^%s*(.-)%s*$") or s
+    end
     if string.len(s) > 255 then s = string.sub(s, 1, 255) end
     return s
   end
@@ -4721,8 +4729,14 @@ function PLDR.RenderSmbConfig(cfg)
   local portpart = (pnum ~= nil and pnum ~= 445) and (":"..tostring(pnum)) or ""
   local line1 = server..portpart.." "..tostring(cfg.SHARE or "")
   local user = tostring(cfg.USER or "")
-  if user ~= "" then
-    return line1.."\r\n"..user.."\r\n"..tostring(cfg.PASS or "")
+  local pass = tostring(cfg.PASS or "")
+  -- Credential gate matches the C connect path (lua_smb_connect authenticates
+  -- whenever PASS is non-empty, with whatever USER holds -- even empty). A
+  -- password-with-blank-User config must reach POPStarter too, or the menu
+  -- browses fine while in-game streaming silently lacks the proven-needed
+  -- credentials. Both-blank stays guest (line 1 only).
+  if user ~= "" or pass ~= "" then
+    return line1.."\r\n"..user.."\r\n"..pass
   end
   return line1
 end
@@ -6127,7 +6141,10 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   -- real ms so both the watchdog_ms threshold and the printed figure read correctly.
   local elapsed_ms = (Timer.getTime(LaunchState.fade_timer) - LaunchState.fade_start) / 1000
   if elapsed_ms >= LaunchState.watchdog_ms then
-    rc = string.format("%s (returned after %d ms)", tostring(rc), elapsed_ms)
+    -- math.floor: Lua 5.4 '/' yields a float, and a non-integral float into %d raises
+    -- "number has no integer representation" -- which would crash the diagnostic
+    -- screen on exactly the slow-failure path this annotation exists for.
+    rc = string.format("%s (returned after %d ms)", tostring(rc), math.floor(elapsed_ms))
   end
   RestoreWorkingDirectory(previous_cwd)
   BlockLaunchFailure(

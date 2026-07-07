@@ -19,10 +19,13 @@
 
 // Menu-side SMB (Increment 1). ps2sdk network headers. Wrapped in extern "C": this
 // is a C++ TU and these headers don't all guard their decls, so without it NetManInit/
-// NetManIoctl/NetManSetLinkMode/ps2ipInit references get C++-mangled and fail to link
-// against the plain-C libnetman/libps2ips.
+// NetManIoctl/NetManSetLinkMode/ps2ip_init references get C++-mangled and fail to link
+// against the plain-C libnetman/libps2ips. ps2ip.h stays for the header-only ip4 types
+// (struct ip4_addr / IP4_ADDR / ip_addr_set) SmbApplyIPConfig uses; ps2ips.h is the
+// RPC client to the IOP-side stack -- the one smbman actually uses (see EnsureNet).
 extern "C" {
 #include <ps2ip.h>
+#include <ps2ips.h>
 #include <netman.h>
 #include <ps2smb.h>
 }
@@ -1449,13 +1452,16 @@ static bool EnsureNet()
 	if (!LoadIrxCheckedBuffer("ps2ips.irx", ps2ips_irx, size_ps2ips_irx, NULL, NULL)) {
 		return false;
 	}
-	// This ps2sdk's ps2ipInit takes the initial IP config; start with zeros -- the
-	// real DHCP/static config is applied later by SmbApplyIPConfig (ps2ip_setconfig).
-	struct ip4_addr ip_zero, mask_zero, gw_zero;
-	ip4_addr_set_zero(&ip_zero);
-	ip4_addr_set_zero(&mask_zero);
-	ip4_addr_set_zero(&gw_zero);
-	ps2ipInit(&ip_zero, &mask_zero, &gw_zero);
+	// Bind the EE to the IOP-SIDE lwip stack via the ps2ips RPC (OPL ethLoadModules
+	// does exactly this). ps2ip-nm.irx already registered the IOP stack with netman;
+	// smbman does its TCP on THAT stack. The old EE-side ps2ipInit(...) here stood up
+	// a second, orphaned EE stack that never received a frame -- all later IP config
+	// (SmbApplyIPConfig) and DHCP went to it, so connect failed on hardware regardless
+	// of settings. After ps2ip_init(), ps2ip_getconfig/ps2ip_setconfig/dns_setserver
+	// dispatch over the RPC to the stack smbman uses.
+	if (ps2ip_init() < 0) {
+		return false;
+	}
 	net_irx_loaded = true;
 	return true;
 }
@@ -1590,7 +1596,8 @@ static int lua_smb_init(lua_State *L)
 
 // System.connectSMB(cfg) -- bring up the network + connect/open the share.
 // cfg = PLDR.SMB. Returns (true,"smb0:") on success, or (false,"<ERR>") where ERR
-// is NO_LINK / DHCP_FAIL / CONN_FAIL / LOGON_FAIL / ECHO_FAIL / SHARE_FAIL / IRX_LOAD_FAIL.
+// is NO_LINK / IPCFG_FAIL / DHCP_FAIL / CONN_FAIL / PROT_FAIL / LOGON_FAIL /
+// ECHO_FAIL / SHARE_FAIL / NETBIOS_NA / IRX_LOAD_FAIL.
 static int lua_smb_connect(lua_State *L)
 {
 	if (lua_gettop(L) != 1 || !lua_istable(L, 1)) {
@@ -1643,7 +1650,11 @@ static int lua_smb_connect(lua_State *L)
 	SmbParseOctets(netmask_s, mask4);
 	SmbParseOctets(gw_s, gw4);
 	SmbParseOctets(dns_s, dns4);
-	SmbApplyIPConfig(dhcp, ip4, mask4, gw4, dns4);
+	// Surface an IP-config failure as its own error instead of letting it fall
+	// through and masquerade as CONN_FAIL (static) or an instantly-passed DHCP wait.
+	if (SmbApplyIPConfig(dhcp, ip4, mask4, gw4, dns4) != 0) {
+		SMB_PUSH_ERR("IPCFG_FAIL");
+	}
 
 	if (dhcp && SmbWaitNetState(&SmbDhcpBound) != 0) {
 		SMB_PUSH_ERR("DHCP_FAIL");
@@ -1686,7 +1697,16 @@ static int lua_smb_connect(lua_State *L)
 
 	result = fileXioDevctl("smb0:", SMB_DEVCTL_LOGON, (void *)&logon, sizeof(logon), NULL, 0);
 	if (result < 0) {
-		SMB_PUSH_ERR((result == -SMB_DEVCTL_LOGON_ERR_CONN) ? "CONN_FAIL" : "LOGON_FAIL");
+		// Three-way map: an SMBv1 protocol-negotiation refusal (modern Windows/Samba
+		// default posture) is NOT a credentials problem -- give it its own code so the
+		// UI can say "enable SMBv1 on the host" instead of "check User / Password".
+		if (result == -SMB_DEVCTL_LOGON_ERR_CONN) {
+			SMB_PUSH_ERR("CONN_FAIL");
+		} else if (result == -SMB_DEVCTL_LOGON_ERR_PROT) {
+			SMB_PUSH_ERR("PROT_FAIL");
+		} else {
+			SMB_PUSH_ERR("LOGON_FAIL");
+		}
 	}
 
 	strcpy(echo.echo, "ALIVE ECHO TEST");
@@ -1702,9 +1722,15 @@ static int lua_smb_connect(lua_State *L)
 		static ShareEntry_t sharelist[128] __attribute__((aligned(64)));
 		smbGetShareList_in_t getsharelist;
 		memset(sharelist, 0, sizeof(sharelist));
+		// smbman fills the buffer from the IOP via raw SIF DMA, which bypasses the EE
+		// D-cache. Write back + invalidate BEFORE the devctl so no dirty zero line from
+		// the memset overwrites DMA'd entries, and again AFTER so reads see RAM, not
+		// stale cached zeros (silently-skipped share names).
+		FlushCache(0);
 		getsharelist.EE_addr = (void *)&sharelist[0];
 		getsharelist.maxent = 128;
 		int count = fileXioDevctl("smb0:", SMB_DEVCTL_GETSHARELIST, (void *)&getsharelist, sizeof(getsharelist), NULL, 0);
+		FlushCache(0);
 		char names[512];
 		names[0] = '\0';
 		for (int i = 0; i < count && i < 128; i++) {

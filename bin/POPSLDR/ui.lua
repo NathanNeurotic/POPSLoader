@@ -3008,6 +3008,7 @@ UI = {
           -- fresh live scan that then OVERWRITES the device's .gamecache so the
           -- refresh survives a reboot.
           local rescan_scene = UI.CURSCENE
+          local smb_rescan_err = nil   -- set by the GSMBNET arm; drives the toast below
           UI.RunBusyTask("Refreshing list...", function (report)
             local scan = UI.MakeBusyProgressReporter(report, "Scanning games...", 0.30, 0.95)
             if rescan_scene == UI.SCENES.GSMB then
@@ -3047,12 +3048,21 @@ UI = {
               end
             elseif rescan_scene == UI.SCENES.GSMBNET then
               report("Reconnecting to SMB...", 0.16)
-              local smb_root = PLDR.InitSMBPopsRoot()
+              -- Tear the live session down first: R1 used to re-LOGON over the open
+              -- smbman session (a state the entry path never reaches, HW-untested).
+              if type(System) == "table" and type(System.disconnectSMB) == "function" then
+                pcall(System.disconnectSMB)
+              end
+              local smb_root, smb_err = PLDR.InitSMBPopsRoot()
               PLDR.CleanupGameList()
               if type(smb_root) == "string" and smb_root ~= "" then
                 report("Scanning SMB games...", 0.30)
                 PLDR.GetPS1GameLists(smb_root, true, scan)
                 PLDR.SaveGameListCache(smb_root..".gamecache", PLDR.GAMES, PLDR.HIDDEN)
+              else
+                -- Surface the REAL reconnect error instead of the generic
+                -- "List refreshed (no games found)" the fallthrough would toast.
+                smb_rescan_err = smb_err or "CONN_FAIL"
               end
             else
               report("Initializing USB backend...", 0.16)
@@ -3073,6 +3083,8 @@ UI = {
           UI.GameList.CoverPending = false
           if r3_hide_toggle then
             -- R3 drove this rebuild; its reveal/hide toast fires below instead.
+          elseif smb_rescan_err ~= nil then
+            UI.Notif_queue.add(UI.SmbErrorMessage(smb_rescan_err), "warn")
           elseif #PLDR.GAMES < 1 then
             UI.Notif_queue.add("List refreshed (no games found)", "warn")
           else
@@ -5225,6 +5237,27 @@ function UI.RunSharePicker(shares)
   return nil
 end
 
+-- Map a connectSMB error code to the user-facing message. Shared by the connect
+-- flow below AND the R1 rescan arm (which used to swallow the reconnect error and
+-- toast a misleading "List refreshed (no games found)").
+function UI.SmbErrorMessage(err)
+  if err == "NO_SHARE" then
+    return "No Share set in SMB settings\n(server returned no shares)"
+  end
+  return ({
+    NO_LINK       = "No network link\ncheck the Ethernet cable / adapter",
+    IPCFG_FAIL    = "Couldn't apply the PS2 IP settings\ntry again or power-cycle the network adapter",
+    DHCP_FAIL     = "DHCP failed\nset a static IP in SMB settings",
+    CONN_FAIL     = "Can't reach the server\ncheck Server IP / Port in SMB settings",
+    PROT_FAIL     = "Server refused SMBv1\nenable SMBv1 support on the host",
+    LOGON_FAIL    = "SMB login failed\ncheck User / Password",
+    ECHO_FAIL     = "SMB connection dropped",
+    SHARE_FAIL    = "Share not found\ncheck the Share name (host must allow SMB1)",
+    IRX_LOAD_FAIL = "SMB modules failed to load",
+    NETBIOS_NA    = "NetBIOS isn't supported\nset Address type = IP + a Server IP",
+  })[err] or "SMB connect failed"
+end
+
 -- Full net-SMB connect flow (OPT==7): connect + scan into GSMBNET. If the Share field is
 -- blank, GETSHARELIST's shares are offered via UI.RunSharePicker (run OUTSIDE the busy
 -- task, which owns the screen); the chosen share is persisted (settings sidecar + the
@@ -5247,22 +5280,7 @@ function UI.RunSmbConnectFlow()
           share_choices = smb_extra   -- offer the picker after this busy task closes
           return
         end
-        local msg
-        if smb_err == "NO_SHARE" then
-          msg = "No Share set in SMB settings\n(server returned no shares)"
-        else
-          msg = ({
-            NO_LINK       = "No network link\ncheck the Ethernet cable / adapter",
-            DHCP_FAIL     = "DHCP failed\nset a static IP in SMB settings",
-            CONN_FAIL     = "Can't reach the server\ncheck Server IP / Port in SMB settings",
-            LOGON_FAIL    = "SMB login failed\ncheck User / Password",
-            ECHO_FAIL     = "SMB connection dropped",
-            SHARE_FAIL    = "Share not found\ncheck the Share name (host must allow SMB1)",
-            IRX_LOAD_FAIL = "SMB modules failed to load",
-            NETBIOS_NA    = "NetBIOS isn't supported\nset Address type = IP + a Server IP",
-          })[smb_err] or "SMB connect failed"
-        end
-        UI.Notif_queue.add(msg, "warn")
+        UI.Notif_queue.add(UI.SmbErrorMessage(smb_err), "warn")
         return
       end
       PLDR.CleanupGameList()
