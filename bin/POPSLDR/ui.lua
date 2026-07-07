@@ -2325,6 +2325,7 @@ UI = {
           {key = "USB",      label = "USB"},
           {key = "MMCE",     label = "MMCE"},
           {key = "HDD",      label = "HDD (PFS)"},
+          {key = "EXFAT",    label = "HDD (exFAT)"},
         }
         UI.BootPageIndex = 1
         for i = 1, #UI.BootPageModes do
@@ -3441,22 +3442,17 @@ UI = {
             end
             UI.SceneChange(target_scene)
           else
+            -- Failure path: keep the DRAFTS intact (no draft resync from runtime) so
+            -- the user's edits survive for a retry -- a failed save used to destroy
+            -- every pending change. Toasts tell the truth about scope: on a BDMA/SMB
+            -- apply failure the sidecar save already SUCCEEDED with everything else;
+            -- only that one subsystem was rolled back (and re-persisted).
             if reason == "bdma_apply_failed" then
-              UI.Notif_queue.add("BDMA mode change didn't apply\nsettings weren't saved", "error")
-              UI.SyncSettingsSelectionFromRuntime()
-              UI.SyncSettingsDraftFromRuntime()
+              UI.Notif_queue.add("BDMA mode change didn't apply\nBDMA reverted; other settings were saved", "error")
             elseif reason == "smb_apply_failed" then
-              UI.Notif_queue.add("SMB modules didn't install/remove\nsettings were rolled back", "error")
-              UI.SyncSettingsSelectionFromRuntime()
-              UI.SyncSettingsDraftFromRuntime()
-            elseif reason == "save_failed" then
-              UI.Notif_queue.add("Couldn't save settings\n"..tostring(PLDR.SETTINGS_PATH or "mc0:/POPSTARTER/.pldrs").." may be read-only"..((type(BOOT_MX4SIO_PROBE_RESULT) == "string" and BOOT_MX4SIO_PROBE_RESULT ~= "") and "\nmx4sio probe: "..BOOT_MX4SIO_PROBE_RESULT or ""), "error")
-              UI.SyncSettingsSelectionFromRuntime()
-              UI.SyncSettingsDraftFromRuntime()
+              UI.Notif_queue.add("SMB modules didn't install/remove\nmodule setting reverted; other settings were saved", "error")
             else
               UI.Notif_queue.add("Couldn't save settings\n"..tostring(PLDR.SETTINGS_PATH or "mc0:/POPSTARTER/.pldrs").." may be read-only"..((type(BOOT_MX4SIO_PROBE_RESULT) == "string" and BOOT_MX4SIO_PROBE_RESULT ~= "") and "\nmx4sio probe: "..BOOT_MX4SIO_PROBE_RESULT or ""), "error")
-              UI.SyncSettingsSelectionFromRuntime()
-              UI.SyncSettingsDraftFromRuntime()
             end
             if allow_fallback_exit == true then
               UI.ProfileDirty = false
@@ -3571,12 +3567,29 @@ UI = {
             UI.SetHideTextMode(false, false)
             UI.ProfileDirty = true
           end
-          local default_keyboard_layout = "QWERTY"
+          -- "ABC" = the same default a genuine fresh install gets (LoadSettingsNonFatal
+          -- + NormalizeKeyboardLayout's fall-through). This used to say QWERTY, so
+          -- Reset Defaults produced a DIFFERENT state than factory-fresh.
+          local default_keyboard_layout = "ABC"
           if type(PLDR) == "table" and type(PLDR.NormalizeKeyboardLayout) == "function" then
             default_keyboard_layout = PLDR.NormalizeKeyboardLayout(default_keyboard_layout)
           end
           if tostring(UI.KeyboardLayoutDraft or "") ~= tostring(default_keyboard_layout) then
             UI.KeyboardLayoutDraft = default_keyboard_layout
+            UI.ProfileDirty = true
+          end
+          -- These three were MISSING from Reset Defaults (the action's label promised
+          -- them): Internal HDD page, cover/details folder, carousel device visibility.
+          if tostring(UI.HddFs) ~= "PFS" then
+            UI.HddFs = "PFS"
+            UI.ProfileDirty = true
+          end
+          if tostring(UI.ArtLocation) ~= "pops_art" then
+            UI.ArtLocation = "pops_art"
+            UI.ProfileDirty = true
+          end
+          if type(UI.DeviceHiddenDraft) == "table" and next(UI.DeviceHiddenDraft) ~= nil then
+            UI.DeviceHiddenDraft = {}
             UI.ProfileDirty = true
           end
           if type(PLDR.SmbDefaults) == "function" and type(PLDR.SMB_FIELDS) == "table" then
@@ -3601,9 +3614,28 @@ UI = {
           UI.Notif_queue.add("Profile defaults restored", "ok")
         end
 
+        -- Trim the raw keyboard buffer (the OSK's SPACE key makes invisible
+        -- leading/trailing spaces easy, and a trailing space silently fails the
+        -- launch resolver's existence gate -- it would use a DIFFERENT POPSTARTER
+        -- than the one configured, with zero indication). Then warn (save anyway --
+        -- the device may simply be unplugged) when the typed file doesn't exist.
+        -- HDD-form paths skip the probe: a bare doesFileExist on an unmounted hdd0:
+        -- path would false-warn on perfectly valid custom HDD paths.
+        local function TrimAndProbePathDraft(path)
+          path = string.match(tostring(path or ""), "^%s*(.-)%s*$") or ""
+          if path ~= "" and string.match(path, "^[Hh][Dd][Dd]%d*:") == nil
+             and string.match(path, "^[Pp][Ff][Ss]%d*:") == nil then
+            local ok, exists = pcall(doesFileExist, path)
+            if not (ok and exists == true) then
+              UI.Notif_queue.add("Path saved, file not found:\n"..path, "warn")
+            end
+          end
+          return path
+        end
+
         local function OpenPopstarterPathEditor()
           UI.PathEditor.Open("Edit POPStarter Path", UI.PopstarterPathDraft or "", function(path)
-            UI.PopstarterPathDraft = tostring(path or "")
+            UI.PopstarterPathDraft = TrimAndProbePathDraft(path)
             UI.PopPathDirty = true
             UI.PopPathProfileDefaultDirty = false
             UI.ProfileDirty = true
@@ -3612,7 +3644,7 @@ UI = {
 
         local function OpenDkwdrvPathEditor()
           UI.PathEditor.Open("Edit DKWDRV Path", UI.DkwdrvPathDraft or "", function(path)
-            UI.DkwdrvPathDraft = tostring(path or "")
+            UI.DkwdrvPathDraft = TrimAndProbePathDraft(path)
             UI.DkwdrvDirty = true
             UI.ProfileDirty = true
           end)
@@ -3907,7 +3939,11 @@ UI = {
           for smb_i = 1, #PLDR.SMB_FIELDS do
             local smb_field = PLDR.SMB_FIELDS[smb_i]
             local smb_label = UI.SmbFieldLabel(smb_field)
-            if smb_field.kind == "bool" or smb_field.kind == "enum" then
+            if smb_field.hidden == true then
+              -- Spec-only field (ADDR_TYPE/NB_ADDR): kept so old sidecars parse,
+              -- but not rendered -- the connect binding can't honor it (NetBIOS
+              -- needs nbns.irx), so a row here would sell a guaranteed failure.
+            elseif smb_field.kind == "bool" or smb_field.kind == "enum" then
               AddCycle(
                 smb_label,
                 function() return UI.SmbFieldDisplay(smb_field) end,
@@ -3971,6 +4007,7 @@ UI = {
             or (UI.GlobalHide == true) ~= (UI.SettingsEntryGlobalHide == true)
             or tostring(UI.DetailsAlign) ~= tostring(UI.SettingsEntryDetailsAlign)
             or tostring(UI.ArtLocation) ~= tostring(UI.SettingsEntryArtLocation)
+            or tostring(UI.HddFs) ~= tostring(UI.SettingsEntryHddFs)
             or (UI.GameListCache == true) ~= (UI.SettingsEntryGameListCache == true)
             or (UI.BootSound == true) ~= (UI.SettingsEntryBootSound == true)
             or (math.floor(tonumber(UI.Overscan) or 0)) ~= (math.floor(tonumber(UI.SettingsEntryOverscan) or 0))
@@ -3981,9 +4018,18 @@ UI = {
 
         local function ToggleMcFolder()
           if PLDR.POPSTARTER_MC_FOLDER == false then
+            -- Gate the flag flip on the save actually persisting: with a failed save
+            -- the sidecar still says 0, so next boot would re-delete what we just
+            -- restored (flag/folder lockstep is the whole point of this toggle).
             PLDR.POPSTARTER_MC_FOLDER = true
+            local on_saved = false
+            pcall(function() on_saved = (PLDR.SaveSettingsAtomic() == true) end)
+            if not on_saved then
+              PLDR.POPSTARTER_MC_FOLDER = false
+              UI.Notif_queue.add("Couldn't save settings -- POPSTARTER folder NOT restored", "error")
+              return
+            end
             pcall(PLDR.EnsurePopstarterDir)
-            pcall(PLDR.SaveSettingsAtomic)
             UI.Notif_queue.add("POPSTARTER folder restored on the memory card\n(set a BDMA mode to re-add the exFAT/SMB modules)", "ok")
             return
           end
@@ -4011,14 +4057,28 @@ UI = {
           })
           if confirmed then
             PLDR.POPSTARTER_MC_FOLDER = false
-            pcall(PLDR.SaveSettingsAtomic)
+            -- Delete ONLY when the save persisted. It used to delete regardless: a
+            -- failed save left the sidecar saying 1, so the next boot's
+            -- EnsurePopstarterDir silently recreated the folder the user just
+            -- deleted (the every-boot-recreation provato reported).
+            local off_saved = false
+            pcall(function() off_saved = (PLDR.SaveSettingsAtomic() == true) end)
+            if not off_saved then
+              PLDR.POPSTARTER_MC_FOLDER = true
+              UI.Notif_queue.add("Couldn't save settings -- POPSTARTER folder NOT deleted", "error")
+              return
+            end
             pcall(PLDR.RemovePopstarterMcFolder)
             UI.Notif_queue.add("POPSTARTER folder deleted from the memory card", "warn")
           end
         end
 
         AddSpacer()
-        AddAction("Save Changes",      function() queue_exit(UI.SCENES.MMAIN, true) end, true)
+        -- allow_fallback_exit=false: a FAILED save keeps the user on the Settings
+        -- page with every draft edit intact for a retry (it used to force-exit and
+        -- destroy them). The BACK-prompt Save below keeps true -- the user was
+        -- already leaving, so exit-on-failure matches their intent there.
+        AddAction("Save Changes",      function() queue_exit(UI.SCENES.MMAIN, false) end, true)
         AddAction("Reset Defaults",    function() ResetDefaults() end, false)
         AddAction("Discard & Exit",    function() discard_settings_and_return() end, false)
         AddSpacer()
@@ -5453,7 +5513,21 @@ function UI.SmbFieldOpenEditor(field)
   if type(UI.PathEditor) == "table" and type(UI.PathEditor.Open) == "function" then
     UI.PathEditor.Open(title, tostring(d[field.key] or ""), function(value)
       local dd = UI.SmbEnsureDraft()
-      dd[field.key] = string.gsub(tostring(value or ""), "[\r\n]", "")
+      local typed = string.gsub(tostring(value or ""), "[\r\n]", "")
+      -- Sanitize NOW (trim + PORT/IP shape validation) so the row immediately
+      -- shows what the connect path and SMBCONFIG.DAT will actually use -- and
+      -- TELL the user when their input was rejected, instead of silently
+      -- substituting at commit time and leaving a mysteriously reset field.
+      local cleaned = typed
+      if type(PLDR) == "table" and type(PLDR.SmbSanitize) == "function" then
+        cleaned = PLDR.SmbSanitize(field, typed)
+      end
+      if tostring(cleaned) ~= typed and type(UI.Notif_queue) == "table" then
+        -- Covers both a rejected shape (falls to the field default) and a
+        -- whitespace trim -- either way the user sees the value actually kept.
+        UI.Notif_queue.add((UI._SMB_LABELS[field.key] or field.key).." adjusted -- using \""..tostring(cleaned).."\"", "warn")
+      end
+      dd[field.key] = cleaned
       UI.SmbDirty = true
     end)
   end

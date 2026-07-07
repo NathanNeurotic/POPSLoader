@@ -3205,6 +3205,9 @@ local function NormalizeBootPage(value)
   if key == "USB" then return "USB" end
   if key == "MMCE" then return "MMCE" end
   if key == "HDD" or key == "APAHDD" or key == "APA" or key == "PFS" then return "HDD" end
+  -- exFAT internal HDD (carousel opt 3). Accepting EXFAT/ATA here is what lets the
+  -- Boot Page target the exFAT page at all (it used to fold to Carousel).
+  if key == "EXFAT" or key == "ATA" then return "EXFAT" end
   return "Carousel"
 end
 
@@ -3224,8 +3227,13 @@ PLDR.SMB_FIELDS = {
   { key = "GATEWAY",   kind = "str",  default = "192.168.0.1" },
   { key = "DNS",       kind = "str",  default = "192.168.0.1" },
   { key = "LINKMODE",  kind = "enum", default = "auto", choices = { "auto", "100full", "100half", "10full", "10half" } },
-  { key = "ADDR_TYPE", kind = "enum", default = "ip",   choices = { "ip", "netbios" } },
-  { key = "NB_ADDR",   kind = "str",  default = "" },
+  -- ADDR_TYPE/NB_ADDR are kept in the spec so old sidecar lines still parse, but
+  -- HIDDEN from the settings UI: the connect binding hard-rejects "netbios"
+  -- (nbns.irx is OPL-custom, deliberately not built), so offering it was selling a
+  -- guaranteed connect failure as a peer choice. Dropping "netbios" from choices
+  -- makes SmbSanitize's enum branch coerce any persisted value back to "ip".
+  { key = "ADDR_TYPE", kind = "enum", default = "ip",   choices = { "ip" }, hidden = true },
+  { key = "NB_ADDR",   kind = "str",  default = "", hidden = true },
   { key = "SERVER",    kind = "str",  default = "192.168.0.1" },
   { key = "PORT",      kind = "str",  default = "1111" },
   { key = "SHARE",     kind = "str",  default = "" },
@@ -3259,6 +3267,20 @@ function PLDR.SmbSanitize(field, value)
       -- press away, and the row renders untrimmed values with no quoting -- the
       -- user sees "right" settings and an unexplainable connect failure.
       s = string.match(s, "^%s*(.-)%s*$") or s
+    end
+    -- Per-key shape validation: garbage used to be silently REINTERPRETED
+    -- differently by each consumer (PORT="44S" -> the C connect sscanf'd 44, the
+    -- .DAT tonumber'd nil and implied 445, the row displayed "44S"). Invalid
+    -- values fall to the field default so the row always shows what both the
+    -- connect path and SMBCONFIG.DAT will actually use.
+    if field.key == "PORT" then
+      local p = string.match(s, "^%d+$") and tonumber(s) or nil
+      if p == nil or p < 1 or p > 65535 then return field.default end
+    elseif field.key == "PS2_IP" or field.key == "NETMASK"
+           or field.key == "GATEWAY" or field.key == "DNS" then
+      local a, b, c, d = string.match(s, "^(%d+)%.(%d+)%.(%d+)%.(%d+)$")
+      local function octet(o) o = tonumber(o); return o ~= nil and o >= 0 and o <= 255 end
+      if not (octet(a) and octet(b) and octet(c) and octet(d)) then return field.default end
     end
     if string.len(s) > 255 then s = string.sub(s, 1, 255) end
     return s
@@ -3692,6 +3714,11 @@ function PLDR.LoadSettingsNonFatal()
     PLDR.ApplyVideoStandardRuntime(PLDR.VIDEO_STANDARD)
     return false
   end
+  -- Normalize CRLF (and stray lone CR) BEFORE any key is matched: a .pldrs
+  -- hand-edited in Windows Notepad keeps the trailing \r in every ([^\n]+)
+  -- capture, silently reverting booleans/enums to defaults and appending a
+  -- literal \r to paths. Also covers the SMB block (SmbParse gets this data).
+  data = string.gsub(data, "\r\n?", "\n")
   local profile = tonumber(string.match(data, "\nPROFILE=([^\n]+)")) or tonumber(string.match(data, "^PROFILE=([^\n]+)"))
   local popstarter_path = string.match(data, "\nPOPSTARTER_PATH=([^\n]*)") or string.match(data, "^POPSTARTER_PATH=([^\n]*)")
   local popstarter_mode = string.match(data, "\nPOPSTARTER_MODE=([^\n]+)") or string.match(data, "^POPSTARTER_MODE=([^\n]+)")
@@ -3873,7 +3900,13 @@ function PLDR.CommitSettingsChanges(opts)
     popstarter_path = NormalizeSelectedProfilePopstarterPath(next_profile, opts.popstarter_path or prev.popstarter_path, next_popstarter_mode),
     popstarter_mode = next_popstarter_mode,
     bdma_mode = NormalizeBdmaModeKey(opts.bdma_mode) or prev.bdma_mode,
-    dkwdrv_path = opts.dkwdrv_path or prev.dkwdrv_path,
+    -- Empty means "restore default", both live and persisted -- matching the
+    -- loader (which ignores an empty DKWDRV_PATH= line and falls to the default).
+    -- Without this, clearing the field left "" live for the session ("No DKWDRV
+    -- found") but silently reverted to the default after a reboot.
+    dkwdrv_path = ((opts.dkwdrv_path ~= nil and opts.dkwdrv_path ~= "") and tostring(opts.dkwdrv_path))
+                  or ((prev.dkwdrv_path ~= nil and prev.dkwdrv_path ~= "") and prev.dkwdrv_path)
+                  or tostring(PLDR.DKWDRV_DEFAULT_PATH),
     video_standard = NormalizeVideoStandard(opts.video_standard or prev.video_standard),
     hide_text = next_hide_text,
     keyboard_layout = NormalizeKeyboardLayout(opts.keyboard_layout or prev.keyboard_layout),
@@ -6909,14 +6942,19 @@ PLDR.SurfaceLaunchArgsDebug()
 -- leaves the default MMCE-at-index-1 carousel behavior untouched.
 if type(PLDR.LAUNCH_ARGS) ~= "table"
    or type(PLDR.LAUNCH_ARGS.page) ~= "string" or PLDR.LAUNCH_ARGS.page == "" then
-  local boot_to_opt = { MMCE = 1, MX4SIO = 2, HDD = 4, USB = 5 }
+  local boot_to_opt = { MMCE = 1, MX4SIO = 2, EXFAT = 3, HDD = 4, USB = 5 }
   local opt = boot_to_opt[tostring(PLDR.BOOT_PAGE or "Carousel")]
   -- If the chosen Boot Page device has been hidden from the carousel, don't
-  -- auto-enter it -- fall back to the normal carousel instead.
+  -- auto-enter it -- fall back to the normal carousel instead. Toast WHY (this
+  -- also fires when Internal HDD flipped PFS<->exFAT and stranded the saved HDD
+  -- Boot Page): a silent fallback reads as "Boot Page is broken".
   if opt ~= nil and type(PLDR.IsDeviceHidden) == "function"
      and type(PLDR.CAROUSEL_DEVICE_KEYS) == "table"
      and PLDR.IsDeviceHidden(PLDR.CAROUSEL_DEVICE_KEYS[opt]) then
     opt = nil
+    if type(UI) == "table" and type(UI.Notif_queue) == "table" then
+      UI.Notif_queue.add("Boot Page device is hidden -- landed on the carousel.\nCheck Settings > Boot Page / Internal HDD.", "warn")
+    end
   end
   -- MX4SIO crash-loop guard: its probe can stall in a vendored IOP driver when
   -- no card is present. If a prior MX4SIO entry left the pending marker set it
