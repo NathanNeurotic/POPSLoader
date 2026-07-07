@@ -389,10 +389,12 @@ $(EE_OBJS_DIR)%.o: $(EE_SRC_DIR)%.cpp | $(EE_OBJS_DIR)
 include $(PS2SDK)/samples/Makefile.pref
 include $(PS2SDK)/samples/Makefile.eeglobal
 
-# Optimize POPSLoader's own C/C++ objects for SIZE. Appended AFTER the ps2sdk
-# eeglobal include so -Os lands LAST in the flag list and wins over the default -O2
-# (last -O wins). Only affects objects compiled here (APP_CORE + LUA_LIBS); the
-# embedded .irx modules and the prebuilt ports (lua/png/z/freetype/gsKit) are not
-# recompiled. Reversible on its own if a hardware smoke test ever shows a regression.
-EE_CFLAGS  += -Os
-EE_CXXFLAGS += -Os
+# -Os was REVERTED (2026-07-07): its hardware smoke test failed. Issue #508
+# (oldman63, SCPH-30004R) reported "No USB backend detected" for BOTH a FAT32
+# pendrive and an exFAT SSD on the -Os rolling build, while the July 1-2 build
+# (identical except the minifier, which is proven token/line/bytecode-identical)
+# listed USB fine for FifthFox. -Os is a code-gen change on the EE objects that
+# drive the timing-sensitive USB/BDM enumeration -- prime suspect, cheap to
+# isolate by reverting. Do NOT re-add without a USB + boot smoke test on real
+# hardware in the same rolling cycle. (The app then builds at the ps2sdk default
+# -O2; the ~15-20 KB packed-size win is not worth a broken USB page.)
