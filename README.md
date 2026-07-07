@@ -112,7 +112,7 @@ Navigate POPSLoader using a standard PS2 controller.
 | **Square (□)** | Toggle cover-art preview on / off (in the game list) |
 | **Right Analog Stick (up / down)** | Scroll a long game description that doesn't fully fit on screen (when *Game details* are enabled and a `<game>.txt` is present). |
 | **L3 (left stick click)** | Hide / unhide the selected game (writes/removes a `<name>.hide` marker — works on every device, including the internal HDD). Set *Settings → Game List → Hidden games* to *Visible (manage)* to show hidden games dimmed, then press **L3** on a dimmed entry to unhide it. |
-| **R3 (right stick click)** | Reveal / re-hide this device's hidden games. When *Settings → Game List → Hidden games* is set to *Hidden* (games filtered out of the list), press **R3** to rebuild the list with them shown dimmed so you can manage them (then **L3** unhides); press **R3** again to hide them. Mirrors the *Hidden games* setting and is saved with it. |
+| **R3 (right stick click)** | Reveal / re-hide this device's hidden games — a **temporary view for this session only**. When *Settings → Game List → Hidden games* is set to *Hidden* (games filtered out of the list), press **R3** to rebuild the list with them shown dimmed so you can manage them (then **L3** unhides); press **R3** again to hide them. Nothing is saved: the persisted setting lives in *Settings → Game List → Hidden games* and comes back in force when you leave the page or reboot. |
 | **R2** | Launch in "HDD Alt" mode (HDD (PFS) game list only — for an HDD-resident POPSTARTER) |
 
 ### On-screen Keyboard (Settings path editor)
@@ -121,7 +121,8 @@ Navigate POPSLoader using a standard PS2 controller.
 | :--- | :--- |
 | **L1 / R1** | Move the text cursor Left / Right |
 | **Square (□)** | Delete character (backspace) |
-| **R2** | Toggle uppercase / lowercase |
+| **R2** | Toggle uppercase / symbols — letters shift to UPPERCASE, and the digit/bracket keys type `@ # $ % ^ * " < > \| { } ~ \`` (for usernames, hidden shares ending `$`, and symbol passwords) |
+| **Circle (O)** | Close the keyboard. With unsaved typing it asks for a **second press** (within ~1.5 s) before discarding |
 
 ---
 
@@ -133,13 +134,14 @@ Press **Start** on the menu to open Settings; changes save when you confirm. Set
 
 | Setting | Options | What it does |
 | :--- | :--- | :--- |
-| **Boot Page** | **Carousel** (default) · MX4SIO · USB · MMCE · HDD (PFS) | Where POPSLoader lands after the boot sequence. *Carousel* shows the normal device wheel. Pick a device and POPSLoader opens **straight into that device's game list** at startup (it loads that backend automatically). A `-page=` launch argument still overrides this for that one boot. |
+| **Boot Page** | **Carousel** (default) · MX4SIO · USB · MMCE · HDD (PFS) · HDD (exFAT) | Where POPSLoader lands after the boot sequence. *Carousel* shows the normal device wheel. Pick a device and POPSLoader opens **straight into that device's game list** at startup (it loads that backend automatically). If the chosen device is hidden (e.g. an HDD Boot Page after switching *Internal HDD* the other way), boot lands on the carousel with a message saying why. A `-page=` launch argument still overrides this for that one boot. |
 
 ### Carousel Devices
 
 | Setting | Options | What it does |
 | :--- | :--- | :--- |
-| **(one row per device: MMCE, MX4SIO, HDD (exFAT), HDD (PFS), USB, i.Link, SMB, Disc)** | **Shown** (default) · Hidden | Hide or show each entry on the main device carousel. Set unused or not-yet-implemented backends (e.g. i.Link) to **Hidden** to remove them from the wheel. At least one device must stay **Shown**. Saved with your settings (`HIDDEN_DEVICES`); hidden entries are skipped during carousel navigation with no gaps, and launch behavior is unchanged. |
+| **(one row per device: MMCE, MX4SIO, USB, i.Link, SMB, Disc)** | **Shown** (default) · Hidden | Hide or show each entry on the main device carousel. Set unused or not-yet-implemented backends (e.g. i.Link) to **Hidden** to remove them from the wheel. At least one device must stay **Shown**. Saved with your settings (`HIDDEN_DEVICES`); hidden entries are skipped during carousel navigation with no gaps, and launch behavior is unchanged. |
+| **Internal HDD** | **PFS (default)** · exFAT (APA-Jail) | Picks which of the two internal-HDD pages shows on the carousel — the classic Sony APA/PFS page, or the APA-Jail **exFAT** page (BDMA ATA backend). They are **mutually exclusive**: one shows, the other hides (saved as `HDD_FS`). A `-page=ata` (or `exfat`) launch argument still opens the exFAT page regardless of this setting. |
 
 ### Game List
 
@@ -162,6 +164,25 @@ Press **Start** on the menu to open Settings; changes save when you confirm. Set
 - **POPSTARTER Memory Card Folder** — toggles the `mc:/POPSTARTER` folder. Turning it **off deletes** `mc:/POPSTARTER` (with a confirm prompt). It is **interlocked with BDMA Mode**: you can't turn this folder off while BDMA Mode is on, and you can't enable BDMA Mode while this folder is off.
 - **Hide UI Text** — clears on-screen text for a clean cover-art view (also toggled with **Select**).
 - **Keyboard Layout** — on-screen keyboard layout for the path editor.
+
+### SMB / Network
+
+Browse and launch PS1 games from an **SMBv1** network share via the **SMB** carousel entry. Networking is **lazy**: nothing network-related runs at boot; the stack comes up only when you open the SMB page. *(New feature — validating on hardware.)*
+
+| Setting | Default | What it does |
+| :--- | :--- | :--- |
+| **SMB modules** | Not installed | Installs the in-game SMB streaming pack (6 IRX + `SMBCONFIG.DAT`/`IPCONFIG.DAT`) into `mc:/POPSTARTER` on Save. **Required to LAUNCH games** — browsing works without it, and the loader warns (and blocks a launch) when it's missing. Interlocked with the *POPSTARTER Memory Card Folder* toggle. |
+| **IP assignment** | DHCP | DHCP or Static. Static uses the **PS2 IP / Netmask / Gateway / DNS** rows (validated as dotted quads). |
+| **Link mode** | Auto | Ethernet negotiation (Auto / 100 full / 100 half / 10 full / 10 half). |
+| **Server IP** | 192.168.0.1 | The SMB server's IP address. (NetBIOS names are not supported — use the IP.) |
+| **Port** | **1111** | The server's SMB TCP port. **Stock SMB servers listen on 445** — the 1111 default suits alternate-port SMBv1 setups (e.g. the PS2-Servers configs); set it to whatever your server actually listens on. Written into `SMBCONFIG.DAT` as `SERVER:PORT` (445 is implied and omitted). |
+| **Share** | *(not set)* | The share name. **Leave it blank** and the SMB page lists the server's shares in an in-app picker; your choice is saved. |
+| **User / Password** | *(guest)* | Credentials, when the share needs them (either one set = credentials are used, in-app and in-game). Values are trimmed except the password; the R2 symbol shift types `@ # $ %` etc. |
+| **Games path (folder holding POPS)** | *(share root)* | Optional folder under the share that CONTAINS your `POPS/` folder. **Browsing only**: POPStarter launches from `<share>/POPS`, so prefer sharing the folder itself and leaving this blank. |
+
+Share layout: `\\server\share\POPS\Game.VCD` (plus the usual POPS support files). Launches hand POPStarter an `SB.<name>.ELF` selector and it streams the `.VCD` from the share using the installed pack's `SMBCONFIG.DAT`.
+
+**SMB fails to connect?** The error names the failing step. "No network link" = cable/adapter; "DHCP failed" = try Static; "Can't reach the server" = check Server IP **and Port** (stock servers = 445); "Server refused SMBv1" = enable SMBv1 support on the host (modern Windows/Samba disable it by default); "SMB login failed" = credentials; "Share not found" = share name (or use the blank-Share picker).
 
 ---
 
@@ -220,7 +241,7 @@ HDD-installed POPSLoader saves its `.pldrs` settings file **on the HDD itself**,
 
 ## Known Issues & Planned Improvements
 
-Confirmed broken: see the single canonical **[STATE.md > Known Issues](STATE.md#known-issues-canonical--the-single-list-readme--agents--rolling_notes-point-here)** list (currently just the "Failed to load HDD" from a non-HDD boot case).
+Confirmed broken: see the single canonical **[STATE.md > Known Issues](STATE.md#known-issues-canonical--the-single-list-readme--agents--rolling_notes-point-here)** list (currently: the "Failed to load HDD" from a non-HDD boot case, and the SMB connect failure whose root cause is fixed in code and awaiting its first hardware run — the full 2026-07-07 audit and fixes are in [docs/REPO_AUDIT_2026-07-07.md](docs/REPO_AUDIT_2026-07-07.md)).
 
 Planned for subsequent updates:
 *   **Layer C Lazy IRX Loading**: Defer device-specific IRX modules so they only load when the boot device family needs them, reducing boot time. The `mmceman` portion has **landed** (PR #471): it is now loaded eagerly only when POPSLoader is booted from an MMCE device, and deferred everywhere else. Further deferral of `ds34bt` / `usbd` was **declined** (2026-06-22): both hard-import `usbd` and the only available defer trigger is the boot device family — not the same as pad transport — so deferring them would strand USB / Bluetooth controller input (unrecoverable without a reboot) for a small boot-time gain. They are kept loaded eagerly; the Layer C effort is closed at the `mmceman` win.

@@ -202,15 +202,17 @@ copies are not read at runtime. Editing them requires a rebuild.
 - Launch-arg ingest: `NormalizeLaunchPage` (system.lua; `ata*`->EXFAT,
   `hdd*`/`apa*`/`pfs*`->HDD, bare `bdma`->no-op page value), `PLDR.LAUNCH_ARGS`,
   carousel page auto-nav `page_to_opt` (MMCE=1/MX4SIO=2/EXFAT=3/ATA=3/HDD=4/USB=5/SMB=7).
-- Settings: `EncodeSettings` (system.lua:3072, **22 keys** + appended SMB block: PROFILE,
+- Settings: `EncodeSettings` (system.lua:3387, **22 keys** + appended SMB block: PROFILE,
   POPSTARTER_PATH, POPSTARTER_MODE, BDMA, DKWDRV_PATH, STRICT_HDD_PREEXEC_GATE,
   VIDEO_STANDARD, HIDE_TEXT, KEYBOARD_LAYOUT, BOOT_PAGE, MULTIDISC_COLLAPSE,
   GLOBAL_HIDE, POPSTARTER_MC_FOLDER, HIDDEN_DEVICES, SHOW_DETAILS, DETAILS_ALIGN,
   ART_LOCATION, HDD_FS, GAMELIST_CACHE, BOOT_SOUND, OVERSCAN, SMB_MODULES — ART_LOCATION
   is new this cycle, HDD_FS and SMB_MODULES were already persisted but uncounted, and the
-  SMB connection block is appended after these by SmbAppendLines), `LoadSettingsNonFatal` (system.lua:3301),
-  `SaveSettingsAtomic` (system.lua:3262) -> `WriteAtomic` (system.lua:2663),
-  `CommitSettingsChanges` (transactional, system.lua:3540). Per-device sidecar
+  SMB connection block is appended after these by SmbAppendLines), `LoadSettingsNonFatal` (system.lua:3650,
+  normalizes CRLF before parsing — a Notepad-edited sidecar used to silently revert
+  most settings), `SaveSettingsAtomic` (system.lua:3598, retries the MC fallback once
+  when a non-MC sidecar write fails) -> `WriteAtomic` (system.lua:2793),
+  `CommitSettingsChanges` (transactional, system.lua:3912). Per-device sidecar
   `.pldrs` at APP_DIR for every device; **HDD installs now persist on the HDD
   boot partition** via the `PLDR.HDD.EnsureBootPartitionWritable` RW mount
   take-over (system.lua:2159) — no `mc0:` carve-out. `mc0:/POPSTARTER/.pldrs`
@@ -220,7 +222,7 @@ copies are not read at runtime. Editing them requires a rebuild.
   `HDD.BuildGameList` (system.lua:4720, `partition|relpath`). HDD cache
   (`CreateCache` system.lua:4880 / `ReadCache` system.lua:4927) is gated on the
   `PLDR.GAMELIST_CACHE` setting (opt-in, default OFF; default set at
-  system.lua:3319, runtime gate checks at system.lua:4522/5031/5078).
+  system.lua:3672; runtime gate checks live in the cache save/load helpers).
   `USECACHE` (system.lua:2048) is a dead legacy flag. The same `GAMELIST_CACHE`
   gate covers the USB/MMCE/MX4SIO list cache (`SaveGameListCache`
   system.lua:4816; there is no separate `ReadGameListCache` function — the HDD

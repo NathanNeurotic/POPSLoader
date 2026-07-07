@@ -189,8 +189,8 @@ control to the real application:
 
 ## Layer 4 — UI and scene system (`bin/POPSLDR/ui.lua` + the controller in `system.lua`)
 
-The embedded Lua application is split into a controller (`system.lua`, ~6291
-lines) and a view (`ui.lua`, ~4825 lines), plus two data modules
+The embedded Lua application is split into a controller (`system.lua`, ~7200
+lines) and a view (`ui.lua`, ~5800 lines), plus two data modules
 (`pops_profiles.lua`, `images.lua`).
 
 ### Control flow lives in `system.lua`, not `ui.lua`
@@ -624,7 +624,9 @@ to the SMB (v1) network page (opt 7, `GSMBNET`). The bare `bdma` token and i.Lin
 remain unrouted no-ops.
 
 ### On-disk settings (`.pldrs`)
-Plain KEY=VALUE text with **22 keys** (`EncodeSettings`, `system.lua:3072-3102`),
+Plain KEY=VALUE text with **22 keys** (`EncodeSettings`, `system.lua:3387`; the
+loader normalizes CRLF before parsing, and `usb:`/`smb:`-prefixed boots fall back
+to the MC settings path since those filesystems aren't live in-app),
 then the SMB connection block (`SMB_*`) appended by `SmbAppendLines`:
 `PROFILE`, `POPSTARTER_PATH`, `POPSTARTER_MODE`, `BDMA`, `DKWDRV_PATH`,
 `STRICT_HDD_PREEXEC_GATE`, `VIDEO_STANDARD`, `HIDE_TEXT`, `KEYBOARD_LAYOUT`,
