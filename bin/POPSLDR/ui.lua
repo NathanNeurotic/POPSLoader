@@ -1494,6 +1494,31 @@ UI = {
               end
             end
           end
+          -- cwd / app-dir fallback, DEFAULT PATH ONLY (an explicit custom path is
+          -- never shadowed): the default is mc-only, so a DKWDRV.ELF sitting next
+          -- to POPSLOADER.ELF on USB/exFAT/MMCE was never found -- unlike
+          -- POPSTARTER, whose ladder probes the launcher's own folder. Also
+          -- probes the mc1: twin of the mc0: default for slot-2-only consoles.
+          if (elf_path == nil or not SafeDoesFileExist(elf_path))
+            and configured_path == tostring((type(PLDR) == "table" and PLDR.DKWDRV_DEFAULT_PATH) or "") then
+            local probes = {}
+            if string.match(string.lower(configured_path), "^mc0:") ~= nil then
+              probes[#probes + 1] = "mc1:"..string.sub(configured_path, 5)
+            end
+            local cwd = nil
+            pcall(function() cwd = System.currentDirectory() end)
+            if type(cwd) == "string" and cwd ~= "" then
+              if string.sub(cwd, -1) ~= "/" then cwd = cwd.."/" end
+              probes[#probes + 1] = cwd.."DKWDRV.ELF"
+              probes[#probes + 1] = cwd.."PS1_DKWDRV/DKWDRV.ELF"
+            end
+            for pi = 1, #probes do
+              if SafeDoesFileExist(probes[pi]) then
+                elf_path = probes[pi]
+                break
+              end
+            end
+          end
           if elf_path == nil or not SafeDoesFileExist(elf_path) then
             UI.Modal.Close()
             UI.Notif_queue.add("No DKWDRV found at this path\n"..configured_path, "error")

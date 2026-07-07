@@ -2069,14 +2069,26 @@ local function ResolveBootContext()
   -- apa: forms, AND the mounted pfs%d:/ form are all excluded -- HDD
   -- in any shape falls back to mc0 via the doesFileExist check in
   -- LoadSettingsNonFatal.
+  --
+  -- usb:/ and smb:/ argv0 prefixes are excluded for a harder reason: those
+  -- filesystems DON'T EXIST inside POPSLoader (main.cpp fully resets the IOP,
+  -- dropping the launcher's usbhdfsd/smbman; we embed only bdmfs "mass:", and
+  -- the network stack is lazy-never-at-boot). A sidecar pinned there made
+  -- settings load as defaults every boot and every save fail forever. With
+  -- sidecar=nil the existing machinery falls back to mc0:/POPSTARTER/.pldrs,
+  -- exactly like the HDD exclusion above. (uLaunchELF rewrites usb:->mass:
+  -- before exec, so the usb: arm mostly guards other launchers; smb: is the
+  -- real-world case via OPL/uLE network launches.)
   local sidecar = nil
   if type(APP_DIR_LOCAL) == "string" and APP_DIR_LOCAL ~= "" then
     local lower = string.lower(APP_DIR_LOCAL)
-    local is_hdd_backed = string.match(lower, "^hdd%d*:") ~= nil
+    local is_unwritable_boot = string.match(lower, "^hdd%d*:") ~= nil
        or string.match(lower, "^pfs%d*:") ~= nil
        or string.match(lower, "^ata%d*:") ~= nil
        or string.match(lower, "^apa%d*:") ~= nil
-    if not is_hdd_backed then
+       or string.match(lower, "^usb%d*:") ~= nil
+       or string.match(lower, "^smb%d*:") ~= nil
+    if not is_unwritable_boot then
       sidecar = JoinPath(CanonicalizeMassSlot0(APP_DIR_LOCAL), ".pldrs")
     end
   end
@@ -2647,7 +2659,28 @@ end
 
 require("images")
 
+-- POPSTARTER pack root: prefer mc0:/POPSTARTER whenever slot 1 has a card
+-- (existing installs + the legacy settings migration unchanged), else fall to
+-- mc1:/POPSTARTER when slot 2 does. This was hardcoded mc0:, which stranded
+-- memory-card-slot-2-only consoles: BDMA/SMB module installs failed with
+-- "Cannot access mc0:/POPSTARTER", the MC settings fallback failed, and the
+-- MX4SIO crash marker never persisted. POPStarter itself documentedly reads
+-- every pack file from mc0:/POPSTARTER with a per-file mc1:/POPSTARTER
+-- fallback, so staging on mc1 is coherent end-to-end. Resolved ONCE here,
+-- BEFORE the locals below capture it (POPSTARTER_PACK_ROOT, the bdma marker,
+-- the FAT32 remove list, SETTINGS_PATH_FALLBACK, the MX4SIO pending marker).
 PLDR.POPSTARTER_DIR = "mc0:/POPSTARTER"
+do
+  local mc0_ok = false
+  pcall(function() mc0_ok = (doesFolderExist("mc0:/") == true) end)
+  if not mc0_ok then
+    local mc1_ok = false
+    pcall(function() mc1_ok = (doesFolderExist("mc1:/") == true) end)
+    if mc1_ok then
+      PLDR.POPSTARTER_DIR = "mc1:/POPSTARTER"
+    end
+  end
+end
 
 -- Settings path resolution: prefer a per-device sidecar at
 -- APP_DIR_LOCAL/.pldrs so a POPSLoader installed on USB / MX4SIO / MMCE
@@ -2664,7 +2697,7 @@ PLDR.POPSTARTER_DIR = "mc0:/POPSTARTER"
 -- becomes the path subsequent saves use, so saves go back where loads
 -- came from. If neither file exists yet, sidecar wins (or fallback if
 -- no sidecar is computable, e.g. HDD-backed APP_DIR).
-PLDR.SETTINGS_PATH_FALLBACK = "mc0:/POPSTARTER/.pldrs"
+PLDR.SETTINGS_PATH_FALLBACK = PLDR.POPSTARTER_DIR.."/.pldrs"
 PLDR.SETTINGS_PATH_SIDECAR = ResolveBootContext().sidecar_path
 PLDR.SETTINGS_PATH = PLDR.SETTINGS_PATH_SIDECAR or PLDR.SETTINGS_PATH_FALLBACK
 -- HDD-cwd install: POPSLoader booted FROM the HDD, so its settings belong ON the
@@ -2701,9 +2734,11 @@ local BDMA_COPY_FILES = {
   "usbd.irx",
   "usbhdfsd.irx"
 }
+-- Derived from the resolved pack root (NOT hardcoded mc0:) so the FAT32-revert
+-- path cleans the same slot the modules were staged to.
 local BDMA_FAT32_REMOVE_FILES = {
-  "mc0:/POPSTARTER/usbd.irx",
-  "mc0:/POPSTARTER/usbhdfsd.irx"
+  POPSTARTER_PACK_ROOT.."/usbd.irx",
+  POPSTARTER_PACK_ROOT.."/usbhdfsd.irx"
 }
 local BDMA_UI_FILES = {
   { src = "icon.sys.bdma", dst = "icon.sys" },
@@ -3586,11 +3621,24 @@ function PLDR.SaveSettingsAtomic()
   -- don't depend on mc0:/POPSTARTER existing.
   if target_is_mc and not mc_dir_ok then
     if UI ~= nil and UI.Notif_queue ~= nil then
-      UI.Notif_queue.add("Cannot access mc0:/POPSTARTER")
+      UI.Notif_queue.add("Cannot access "..tostring(PLDR.POPSTARTER_DIR))
     end
     return false
   end
   local ok = WriteAtomic(target, data)
+  -- Belt-and-suspenders: a non-MC sidecar target that fails to write (unplugged
+  -- device, or a boot source whose filesystem isn't live in-app) retries the MC
+  -- fallback ONCE and pins future saves there on success -- "Failed to save
+  -- settings" forever was the old behavior.
+  if not ok and not target_is_mc and PLDR.SETTINGS_PATH_FALLBACK ~= nil then
+    if PLDR.EnsurePopstarterDir() and WriteAtomic(PLDR.SETTINGS_PATH_FALLBACK, data) then
+      PLDR.SETTINGS_PATH = PLDR.SETTINGS_PATH_FALLBACK
+      ok = true
+      if UI ~= nil and UI.Notif_queue ~= nil then
+        UI.Notif_queue.add("Saved to "..tostring(PLDR.SETTINGS_PATH_FALLBACK).."\n(the usual settings location wasn't writable)", "warn")
+      end
+    end
+  end
   if not ok and UI ~= nil and UI.Notif_queue ~= nil then
     UI.Notif_queue.add("Failed to save settings")
   end
@@ -4672,7 +4720,7 @@ function PLDR.ApplyBdmaMode(mode_key)
   local selected = mode_key or "FAT32"
   if not PLDR.EnsurePopstarterDir() then
     if UI ~= nil and UI.Notif_queue ~= nil then
-      UI.Notif_queue.add("Cannot access mc0:/POPSTARTER")
+      UI.Notif_queue.add("Cannot access "..tostring(PLDR.POPSTARTER_DIR))
     end
     return false
   end
@@ -4795,7 +4843,7 @@ end
 -- to re-run whenever an SMB field changes to regenerate the .DAT.
 function PLDR.ApplySmbModules()
   if not PLDR.EnsurePopstarterDir() then
-    if UI ~= nil and UI.Notif_queue ~= nil then UI.Notif_queue.add("Cannot access mc0:/POPSTARTER") end
+    if UI ~= nil and UI.Notif_queue ~= nil then UI.Notif_queue.add("Cannot access "..tostring(PLDR.POPSTARTER_DIR)) end
     return false
   end
   local cfg = PLDR.SmbCopy(PLDR.SMB)
@@ -4839,7 +4887,7 @@ end
 -- the BDMA usbd/usbhdfsd modules intact. NEVER calls RemovePopstarterMcFolder.
 function PLDR.RemoveSmbModules()
   if not PLDR.EnsurePopstarterDir() then
-    if UI ~= nil and UI.Notif_queue ~= nil then UI.Notif_queue.add("Cannot access mc0:/POPSTARTER") end
+    if UI ~= nil and UI.Notif_queue ~= nil then UI.Notif_queue.add("Cannot access "..tostring(PLDR.POPSTARTER_DIR)) end
     return false
   end
   local ok = true
@@ -4888,7 +4936,7 @@ function PLDR.EnsurePopstarterUiAssets()
   if PLDR.POPSTARTER_MC_FOLDER == false then return true end
   if not PLDR.EnsurePopstarterDir() then
     if UI ~= nil and UI.Notif_queue ~= nil then
-      UI.Notif_queue.add("Cannot access mc0:/POPSTARTER")
+      UI.Notif_queue.add("Cannot access "..tostring(PLDR.POPSTARTER_DIR))
     end
     return false
   end
