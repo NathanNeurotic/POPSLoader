@@ -2346,9 +2346,11 @@ local function NormalizeLaunchPage(value)
   if key == "" then
     return nil
   end
-  -- ata / ata0 / ataN -> the exFAT internal-HDD page (BDMA ATA, scene GBDMHDD, opt 3).
+  -- ata / ata0 / ataN / exfat -> the exFAT internal-HDD page (BDMA ATA, scene
+  -- GBDMHDD, opt 3). "exfat" is the obvious guess (the page is literally named
+  -- "HDD (exFAT)" and the internal token is EXFAT) and used to be a silent no-op.
   -- hdd / hdd0, apa / apa0, and any pfs slot -> the classic APA/PFS HDD page (opt 4).
-  if string.match(key, "^ata%d*$") then
+  if key == "exfat" or string.match(key, "^ata%d*$") then
     return "EXFAT"
   end
   if string.match(key, "^hdd%d*$") or string.match(key, "^apa%d*$") or string.match(key, "^pfs%d*$") then
@@ -6940,6 +6942,37 @@ function PLDR.AutoLaunchFromLaunchArgs()
     UI.LASTSCENE = scene
   end
 
+  -- Pre-flight the -game file (non-HDD pages only: HDD entries resolve through
+  -- partition context and are untouched). A missing file used to exec POPStarter
+  -- anyway and fail on ITS screen (or a black screen) with none of POPSLoader's
+  -- launch diagnostics -- easy to hit, since the game list displays multi-disc
+  -- names with the " (Disc N)" suffix trimmed. Probes the page root and its
+  -- mass:/mass0: alias twin (the same swap RunPOPStarterGame's fallback does);
+  -- only a miss on BOTH fails, so a working launch can't be false-blocked.
+  if gamelocation ~= nil and gamelocation ~= "" then
+    local base = EnsureTrailingSlash(gamelocation)
+    local raw_path = base..game
+    local exists = false
+    pcall(function() exists = (doesFileExist(raw_path) == true) end)
+    if not exists then
+      local alt = nil
+      if string.match(base, "^[Mm][Aa][Ss][Ss]:/") then
+        alt = string.gsub(base, "^[Mm][Aa][Ss][Ss]:/", "mass0:/", 1)
+      elseif string.match(base, "^[Mm][Aa][Ss][Ss]0:/") then
+        alt = string.gsub(base, "^[Mm][Aa][Ss][Ss]0:/", "mass:/", 1)
+      end
+      if alt ~= nil then
+        pcall(function() exists = (doesFileExist(alt..game) == true) end)
+      end
+    end
+    if not exists then
+      if type(UI.Notif_queue) == "table" and type(UI.Notif_queue.add) == "function" then
+        UI.Notif_queue.add("-game not found:\n"..raw_path, "error")
+      end
+      return false
+    end
+  end
+
   local ok, err = pcall(PLDR.RunPOPStarterGame, gamelocation, game, scene, nil)
   if not ok and type(UI.Notif_queue) == "table" and type(UI.Notif_queue.add) == "function" then
     UI.Notif_queue.add("Auto-launch failed: "..tostring(err), "error")
@@ -7002,6 +7035,28 @@ end
 -- below as an upvalue). Inner block kept at its original indentation for a clean diff.
 local function do_boot_init()
 PLDR.AutoInitStartupBackends()
+-- LATE START re-poll: the pre-splash poll above covers wired port-0 pads (pad_init
+-- blocks until stable), but DS3/DS4 over ds34usb/ds34bt enumerate asynchronously
+-- over seconds -- a user holding START on such a pad through boot was MISSED by
+-- the early poll, so the recovery never fired in the exact unbootable-config
+-- scenario it exists for. Seconds have now passed under the splash (backend
+-- init), so BT/USB pads are enumerated; re-poll and re-apply the safe video mode
+-- when this late poll is the one that catches the hold. (No sleeps: System.sleep
+-- takes integer seconds only and pre-splash delays would regress splash-first boot.)
+if not boot_start_held and type(Pads) == "table" and type(Pads.get) == "function"
+   and type(PAD_START) == "number" then
+  for _ = 1, 16 do
+    local ok_pad, gp = pcall(Pads.get)
+    if ok_pad and type(gp) == "number" and (gp & PAD_START) ~= 0 then
+      boot_start_held = true
+      PLDR.VIDEO_STANDARD = PLDR.VIDEO_STANDARD_AUTO
+      if type(PLDR.ApplyVideoStandardRuntime) == "function" then
+        pcall(PLDR.ApplyVideoStandardRuntime, PLDR.VIDEO_STANDARD_AUTO)
+      end
+      break
+    end
+  end
+end
 -- Auto-launch BEFORE surfacing the debug toast: Notif_queue keeps only the
 -- 2 newest toasts, so queueing the debug toast last guarantees it survives
 -- an auto-launch failure toast instead of being evicted by it. (On

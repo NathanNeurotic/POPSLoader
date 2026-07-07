@@ -333,19 +333,10 @@ run:
 reset:
 	ps2client -h $(PS2LINK_IP) reset   
 
-POPSLDR_PKG = POPSLoader.7z
-PKG_DIR = bin/package
-package: $(EE_BIN_PKD)
-	rm -f $(POPSLDR_PKG)
-	rm -rf $(PKG_DIR)
-	mkdir -p $(PKG_DIR)
-	cp $(EE_BIN_PKD) $(PKG_DIR)/
-	cp bin/changelog LICENSE README.md $(PKG_DIR)/
-	find bin/POPSLDR -maxdepth 1 -type f -exec cp {} $(PKG_DIR)/ \;
-	@if [ -d bin/POPSTARTER ]; then cp -r bin/POPSTARTER $(PKG_DIR)/; fi
-	@if ls bin/POPSLDR/IMG/*.png >/dev/null 2>&1; then cp bin/POPSLDR/IMG/*.png $(PKG_DIR)/; fi
-	@if ls bin/POPSLDR/IRX/*.irx >/dev/null 2>&1; then cp bin/POPSLDR/IRX/*.irx $(PKG_DIR)/; fi
-	cd $(PKG_DIR); 7z a ../$(POPSLDR_PKG) .
+# The old local `make package` target was DELETED (2026-07 audit U60): it predated
+# the rolling-release layout and produced a 7z missing the SMB pack, the POPS/
+# folder, and the POPSTARTER version variants ("works on rolling, fails on this
+# 7z" confusion). .github/workflows/rolling-release.yml is the packaging path.
 
 dummys:
 	touch $(BINDIR)A.vcd

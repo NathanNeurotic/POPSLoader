@@ -416,6 +416,33 @@ function CoverCache:UpdateSelection(vcd_path, use_hdd_common_art, entry)
       end
     end
   end
+  -- HDD/PFS quirk: BuildCoverCandidates' HDD branch only returns candidates the
+  -- partition resolver EXISTENCE-CONFIRMED, so with no cover .png the list is
+  -- EMPTY -- which used to also skip the .txt (a Game.txt without a Game.png
+  -- showed details on every removable device but not on HDD) and starve the
+  -- missing-cover caption. Resolve the .txt independently here.
+  if use_hdd_common_art == true and type(PLDR) == "table"
+     and PLDR.SHOW_DETAILS == true and self.last_desc == nil
+     and type(PLDR.ResolveHddPartitionReadablePath) == "function" then
+    local hdd_base = ExtractHddArtBasename(entry)
+    if hdd_base ~= "" then
+      local hdd_names = {}
+      local hdd_stripped = StripDiscMarker(hdd_base)
+      if hdd_stripped ~= "" and hdd_stripped ~= hdd_base then hdd_names[1] = hdd_stripped end
+      hdd_names[#hdd_names + 1] = hdd_base
+      for ni = 1, #hdd_names do
+        local ok_txt, txt_path = pcall(PLDR.ResolveHddPartitionReadablePath, "hdd0:__common", "POPS/ART/"..hdd_names[ni]..".txt")
+        if ok_txt and type(txt_path) == "string" and txt_path ~= "" then
+          local d = ReadGameDetailsText(txt_path)
+          if d ~= nil then
+            self.last_desc = d
+            self.last_desc_lines = nil
+            break
+          end
+        end
+      end
+    end
+  end
   for i = 1, #candidates do
     local img = self:GetOrLoad(candidates[i])
     if img ~= nil then
@@ -425,8 +452,18 @@ function CoverCache:UpdateSelection(vcd_path, use_hdd_common_art, entry)
   end
   -- No cover loaded: remember the FIRST place we looked (candidates[1], the ART_LOCATION
   -- choice) so the list view can print a small "looked for <path>" caption -- lets a tester
-  -- confirm the .png name/folder without a hardware round-trip.
+  -- confirm the .png name/folder without a hardware round-trip. The HDD branch has no
+  -- candidate when the png is missing (see above), so synthesize the DISPLAY-ONLY
+  -- expected path -- the one page whose art location is least guessable.
   self.last_cover_probe = candidates[1]
+  if self.last_cover_probe == nil and use_hdd_common_art == true then
+    local cap_base = ExtractHddArtBasename(entry)
+    if cap_base ~= "" then
+      local cap_stripped = StripDiscMarker(cap_base)
+      if cap_stripped ~= "" then cap_base = cap_stripped end
+      self.last_cover_probe = "hdd0:__common/POPS/ART/"..cap_base..".png"
+    end
+  end
   return nil
 end
 
@@ -814,7 +851,11 @@ UI = {
       local last_ms = -1000
       local function now_ms()
         if UI.Pad ~= nil and UI.Pad.Timer ~= nil then
-          return tonumber(Timer.getTime(UI.Pad.Timer)) or 0
+          -- Timer.getTime is MICROSECONDS; divide so the `< 20` throttle below
+          -- really means 20 ms. Raw µs made the throttle never suppress, so every
+          -- per-file progress callback repainted + vsync'd (~1 frame PER FILE on a
+          -- big scan -- roughly 8-10 s of pure overlay overhead per 500 games).
+          return (tonumber(Timer.getTime(UI.Pad.Timer)) or 0) / 1000
         end
         return 0
       end
@@ -1076,7 +1117,10 @@ UI = {
         -- and the messages already end in "..." so the dots were redundant churn.
         local tick_ms = (math.floor((tonumber(UI.SavingAnimTick) or 0))) * 200
         if UI.Pad ~= nil and UI.Pad.Timer ~= nil then
-          tick_ms = math.floor(Timer.getTime(UI.Pad.Timer))
+          -- /1000: Timer.getTime is MICROSECONDS; the marquee divisor math below
+          -- assumes ms (raw µs would wrap the whole bar ~60x/sec = flicker). The
+          -- marquee branch is only reachable with a nil progress (latent today).
+          tick_ms = math.floor(Timer.getTime(UI.Pad.Timer) / 1000)
         end
         local box_w = 320
         local box_h = 110
@@ -1674,7 +1718,16 @@ UI = {
       ConfirmExit = function ()
         UI.LAUNCHING = true
         UI.Modal.Close()
-        if type(PLDR) == "table" and type(PLDR.PrepareForExternalELFLaunch) == "function" then
+        -- On an HDD boot, tear the pfs mounts down cold (same pattern as the
+        -- BOOT.ELF arm): exitToBrowser is a bare ExecOSD with no unmount, and a
+        -- settings save may have left the boot partition RW-mounted -- handing
+        -- OSDSYS a still-RW journal-less PFS mount is an unclean-unmount
+        -- corruption vector for the partition holding POPSLoader itself.
+        local hdd_loaded = type(PLDR) == "table" and type(PLDR.HDD) == "table"
+          and tonumber(PLDR.HDD.LOADSTATE or 0) ~= 0
+        if hdd_loaded and type(PLDR.PrepareForColdExternalELFLaunch) == "function" then
+          pcall(PLDR.PrepareForColdExternalELFLaunch)
+        elseif type(PLDR) == "table" and type(PLDR.PrepareForExternalELFLaunch) == "function" then
           pcall(PLDR.PrepareForExternalELFLaunch, nil)
         end
         System.exitToBrowser()
@@ -1858,6 +1911,8 @@ UI = {
         UI.PathEditor.pressed_row = 0
         UI.PathEditor.pressed_col = 0
         UI.PathEditor.pressed_until = 0
+        UI.PathEditor.initial = UI.PathEditor.value   -- for the circle discard-confirm
+        UI.PathEditor.discard_until = 0
         UI.PathEditor.layout_key = UI.PathEditor._NormalizeLayout(UI.KeyboardLayoutDraft or (type(PLDR) == "table" and PLDR.KEYBOARD_LAYOUT) or "QWERTY")
       end;
       Close = function ()
@@ -1868,6 +1923,8 @@ UI = {
         UI.PathEditor.pressed_row = 0
         UI.PathEditor.pressed_col = 0
         UI.PathEditor.pressed_until = 0
+        UI.PathEditor.initial = nil
+        UI.PathEditor.discard_until = 0
       end;
       _NowMs = function ()
         -- Timer.getTime() is raw clock() ticks = MICROSECONDS on PS2 (CLOCKS_PER_SEC=1e6),
@@ -1940,8 +1997,13 @@ UI = {
       _SetLayout = function (layout_key)
         local normalized = UI.PathEditor._NormalizeLayout(layout_key)
         UI.PathEditor.layout_key = normalized
-        UI.KeyboardLayoutDraft = normalized
-        UI.ProfileDirty = true
+        -- Dirty only on an ACTUAL change: pressing X on the already-active layout
+        -- button used to set ProfileDirty, lighting the Profile row and raising a
+        -- phantom unsaved-changes prompt for a session where nothing changed.
+        if UI.KeyboardLayoutDraft ~= normalized then
+          UI.KeyboardLayoutDraft = normalized
+          UI.ProfileDirty = true
+        end
         local row_size = UI.PathEditor._RowSize(UI.PathEditor.row)
         if row_size > 0 then
           UI.PathEditor.col = CLAMP(UI.PathEditor.col, 1, row_size)
@@ -2047,7 +2109,20 @@ UI = {
       HandleInput = function ()
         if not UI.PathEditor.active then return end
         if UI.Pad.Events.BACK then
-          UI.PathEditor.Close()
+          -- Circle with UNSAVED typing asks for a second circle press (within
+          -- ~1.5 s) before discarding -- one reflexive press used to silently
+          -- throw away a whole typed credential (Square/backspace is one button
+          -- over). Untouched fields keep the single-press close.
+          local edited = (UI.PathEditor.initial ~= nil)
+            and (UI.PathEditor.value ~= UI.PathEditor.initial)
+          if not edited or UI.PathEditor._NowMs() < (UI.PathEditor.discard_until or 0) then
+            UI.PathEditor.Close()
+          else
+            UI.PathEditor.discard_until = UI.PathEditor._NowMs() + 1500
+            if type(UI.Notif_queue) == "table" then
+              UI.Notif_queue.add("Press CIRCLE again to discard what you typed", "warn")
+            end
+          end
           return
         end
         if UI.Pad.Events.L1 then
@@ -2363,6 +2438,13 @@ UI = {
         UI.ProfileDirty = false
         UI.BdmaDirty = false
         UI.VideoStandardDirty = false
+        -- Entry snapshots so per-row dirty indicators + the BDMA/Video dirty flags
+        -- compare against the state at entry (cycle-away-and-back = clean) instead
+        -- of set-on-touch; the Profile row's indicator also stops lighting up when
+        -- an UNRELATED row sets the aggregate UI.ProfileDirty flag.
+        UI.SettingsEntryProfile = (type(UI.ProfileQuery) == "table" and UI.ProfileQuery.curopt) or 1
+        UI.SettingsEntryBdmaModeIndex = UI.BdmaModeIndex or 1
+        UI.SettingsEntryVideoStandardIndex = UI.VideoStandardIndex or 1
         UI.BootPageModes = {
           {key = "Carousel", label = "Carousel (default)"},
           {key = "MX4SIO",   label = "MX4SIO"},
@@ -2394,10 +2476,15 @@ UI = {
         UI.SettingsEntryMultiDiscCollapse = UI.MultiDiscCollapse
         -- If an R3 reveal was active, restore the real persisted setting before the
         -- Settings page reads it (reveal only transiently cleared GLOBAL_HIDE).
+        -- Flag a rebuild for the RETURN path: the list still shows the revealed
+        -- hidden games, and going back without a rescan left it contradicting the
+        -- restored GLOBAL_HIDE (L3 then said "press R3 to reveal" while the games
+        -- were visibly on screen).
         if PLDR._GLOBAL_HIDE_SAVED ~= nil then
           PLDR.GLOBAL_HIDE = (PLDR._GLOBAL_HIDE_SAVED == true)
           PLDR._GLOBAL_HIDE_SAVED = nil
           UI.RevealHidden = false
+          UI.PendingHideRebuild = true
         end
         UI.GlobalHide = (type(PLDR) == "table" and PLDR.GLOBAL_HIDE == true)
         UI.SettingsEntryGlobalHide = UI.GlobalHide
@@ -2638,7 +2725,12 @@ UI = {
           local details_h, details_visible, details_total = 0, 0, 0
           UI.GameList.DetailsTotal = 0
           UI.GameList.DetailsVisible = 0
-          if cover_enabled and type(PLDR) == "table" and PLDR.SHOW_DETAILS == true
+          -- HideTextMode ~= true: Select (Hide UI Text) hides this details blurb
+          -- like the caption/footer text it shares the panel with (compute gate,
+          -- not paint gate: also skips the wrap/window work and the cover-lift,
+          -- so the cover renders at its normal details-off position).
+          if cover_enabled and UI.HideTextMode ~= true
+             and type(PLDR) == "table" and PLDR.SHOW_DETAILS == true
              and UI.CoverCache ~= nil and type(UI.CoverCache.last_desc) == "string"
              and UI.CoverCache.last_desc ~= "" then
             local footer_y = layout.FOOTER_ICON_Y or (UI.SCR.Y - 56)
@@ -3029,6 +3121,13 @@ UI = {
           r3_hide_toggle = true
           UI.Pad.Events.R1 = true   -- drive the same in-place rebuild R1 performs
         end
+        -- A Settings visit cancelled an R3 reveal (restoring GLOBAL_HIDE) while
+        -- this list still showed the revealed games: rebuild via the same R1
+        -- raise so the list matches the restored setting on return.
+        if UI.PendingHideRebuild == true then
+          UI.PendingHideRebuild = false
+          UI.Pad.Events.R1 = true
+        end
         if UI.Pad.Events.CONFIRM then
           LaunchSelectedGame(nil)
         elseif UI.Pad.Events.R2 and UI.CURSCENE == UI.SCENES.GHDD then
@@ -3126,7 +3225,8 @@ UI = {
               report("Building USB game list...", 0.30)
               PLDR.BuildMassGameListByType("usb", nil, scan)
               local usb_roots_r1 = PLDR.GetRootsByType("usb")
-              if type(usb_roots_r1) == "table" and usb_roots_r1[1] ~= nil and #PLDR.GAMES > 0 then
+              -- #==1: never cache a combined multi-drive list to one root's file.
+              if type(usb_roots_r1) == "table" and usb_roots_r1[1] ~= nil and #usb_roots_r1 == 1 and #PLDR.GAMES > 0 then
                 PLDR.SaveGameListCache(usb_roots_r1[1].."POPS/.gamecache", PLDR.GAMES, PLDR.HIDDEN)
               end
             end
@@ -3176,7 +3276,8 @@ UI = {
                 cache_path = PLDR.GAMEPATH..".gamecache"
               elseif UI.CURSCENE == UI.SCENES.GUSBFAT and type(PLDR.GetRootsByType) == "function" then
                 local r = PLDR.GetRootsByType("usb")
-                if type(r) == "table" and r[1] ~= nil then cache_path = r[1].."POPS/.gamecache" end
+                -- #==1: same multi-drive guard as the USB scan cache sites.
+                if type(r) == "table" and r[1] ~= nil and #r == 1 then cache_path = r[1].."POPS/.gamecache" end
               end
               if cache_path ~= nil and type(PLDR.SaveGameListCache) == "function" then
                 PLDR.SaveGameListCache(cache_path, PLDR.GAMES, PLDR.HIDDEN)
@@ -3573,7 +3674,9 @@ UI = {
           end
           if UI.BdmaModeIndex ~= 1 then
             UI.BdmaModeIndex = 1
-            UI.BdmaDirty = true
+            -- vs the entry snapshot: resetting BACK to the mode the page was
+            -- opened with must not trigger a needless BDMA module reinstall.
+            UI.BdmaDirty = (UI.BdmaModeIndex ~= (UI.SettingsEntryBdmaModeIndex or 1))
           end
           if (UI.BootPageIndex or 1) ~= 1 then
             UI.BootPageIndex = 1
@@ -3614,7 +3717,7 @@ UI = {
           end
           if UI.VideoStandardIndex ~= default_video_index then
             UI.VideoStandardIndex = default_video_index
-            UI.VideoStandardDirty = true
+            UI.VideoStandardDirty = (UI.VideoStandardIndex ~= (UI.SettingsEntryVideoStandardIndex or 1))
           end
           if UI.HideTextMode then
             UI.SetHideTextMode(false, false)
@@ -3779,7 +3882,11 @@ UI = {
             return
           end
           UI.BdmaModeIndex = next_idx
-          UI.BdmaDirty = true
+          -- Compare against the entry snapshot (not set-on-touch): cycling away
+          -- and back used to leave a phantom dirty flag, and Save then ran a full
+          -- needless BDMA module reinstall (ApplyBdmaMode has no same-mode
+          -- short-circuit).
+          UI.BdmaDirty = (UI.BdmaModeIndex ~= (UI.SettingsEntryBdmaModeIndex or 1))
         end
         AddCycle(
           "BDMA Mode",
@@ -3795,13 +3902,11 @@ UI = {
           function() return tostring((UI.VideoStandardModes[UI.VideoStandardIndex] or UI.VideoStandardModes[1] or {}).label or "") end,
           function()
             UI.VideoStandardIndex = CycleIndex(UI.VideoStandardIndex, -1, #UI.VideoStandardModes)
-            UI.VideoStandardDirty = true
-            UI.ProfileDirty = true
+            UI.VideoStandardDirty = (UI.VideoStandardIndex ~= (UI.SettingsEntryVideoStandardIndex or 1))
           end,
           function()
             UI.VideoStandardIndex = CycleIndex(UI.VideoStandardIndex,  1, #UI.VideoStandardModes)
-            UI.VideoStandardDirty = true
-            UI.ProfileDirty = true
+            UI.VideoStandardDirty = (UI.VideoStandardIndex ~= (UI.SettingsEntryVideoStandardIndex or 1))
           end,
           function() return UI.VideoStandardDirty == true end
         )
@@ -4021,7 +4126,10 @@ UI = {
           function() return "Profile "..tostring(UI.ProfileQuery.curopt) end,
           function() CycleProfile(-1) end,
           function() CycleProfile( 1) end,
-          function() return UI.ProfileDirty == true end
+          -- Own-value comparison, NOT the aggregate UI.ProfileDirty: that flag is
+          -- set by many unrelated rows (video, device hide, path edits), which
+          -- misleadingly lit THIS row. The aggregate still drives the save prompt.
+          function() return (UI.ProfileQuery.curopt or 1) ~= (UI.SettingsEntryProfile or 1) end
         )
         AddPath(
           "POPSTARTER Path",
@@ -4638,10 +4746,12 @@ UI = {
 	              end
               local slots = PLDR.GetMMCESlots()
               if #slots < 1 then
+                -- Toast and stay on the carousel (no SceneChange): every sibling
+                -- no-device branch (MX4SIO/exFAT, and the second MMCE check just
+                -- below) returns without entering an empty game list.
                 UI.Notif_queue.add("No MMCE device detected\nchecked mmce0: and mmce1:", "warn")
                 PLDR.CleanupGameList()
                 PLDR.GAMEPATH = ""
-                UI.SceneChange(UI.SCENES.GSMB)
                 return
               end
               report("Preparing MMCE list...", 0.42)
@@ -4799,7 +4909,10 @@ UI = {
 	                UI.Notif_queue.add("No USB backend detected\nreseat the drive and try again", "warn")
 	              end
 	              report("Building USB game list...", 0.44)
-	              local usb_cache = (usb_roots ~= nil and usb_roots[1] ~= nil) and (usb_roots[1].."POPS/.gamecache") or nil
+	              -- Single-drive only: the combined multi-drive list was cached to the
+	              -- FIRST root's file, so a later boot with only drive A served ghost
+	              -- entries for absent drive B. Multi-drive setups always live-scan.
+	              local usb_cache = (usb_roots ~= nil and usb_roots[1] ~= nil and #usb_roots == 1) and (usb_roots[1].."POPS/.gamecache") or nil
 	              local usb_cg, usb_ch = nil, nil
 	              if usb_cache ~= nil then usb_cg, usb_ch = PLDR.LoadGameListCache(usb_cache) end
 	              if usb_cg ~= nil then

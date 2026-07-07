@@ -101,7 +101,7 @@ static clock_t boot_start = 0;
 /* NHDDL-style launch arguments. Parsed early in main() so downstream
  * code (IRX loading, Lua boot) can act on the requested mode.
  *
- *   -page=hdd|ata|usb|mc|mmce|mx4sio|smb|bdma   auto-navigate to that page
+ *   -page=hdd|ata|exfat|usb|mc|mmce|mx4sio|smb|bdma   auto-navigate to that page
  *                                            (ata|ata0|ataN -> HDD exFAT page;
  *                                             hdd|apa|pfs -> HDD PFS page)
  *   -mode=<value>                            NHDDL-compatible alias for -page= (e.g. -mode=ata)

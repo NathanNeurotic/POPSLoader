@@ -112,13 +112,25 @@ def _tokens(segs):
 
 
 def minify(src):
+    """LINE-PRESERVING minify: every dropped comment / collapsed whitespace run
+    re-emits exactly its original newline count, so each surviving token keeps its
+    source line number. This matters operationally: the embedded chunk loads under
+    the SOURCE chunkname ("system.lua"), and the red crash screen prints its line
+    numbers -- before this, a tester's photographed "system.lua:6500" pointed up to
+    ~483 lines away from the real source site (and a python3-less local build,
+    which embeds the raw file, reported DIFFERENT coordinates for the same commit).
+    Costs ~600 bytes of newlines across the two big files."""
     segs = scan(src)
     out_parts = []
     for kind, text in segs:
+        nl = text.count('\n') if kind in ('comment', 'ws') else 0
         if kind == 'comment':
-            continue
-        if kind == 'ws':
-            out_parts.append('\n' if '\n' in text else ' ')
+            # A line comment holds no newline (the scanner stops before it) ->
+            # emit a space so adjacent tokens stay separated; a long comment
+            # re-emits its newlines so line numbers hold.
+            out_parts.append('\n' * nl if nl else ' ')
+        elif kind == 'ws':
+            out_parts.append('\n' * nl if nl else ' ')
         else:
             out_parts.append(text)
     out = ''.join(out_parts)
