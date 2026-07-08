@@ -4,6 +4,10 @@
   <img src="banner.jpg" alt="POPSLoader Banner" width="800"/>
 </p>
 
+<p align="center">
+  <a href="https://mega.nz/folder/W9wXyLjD#8hk7Wv-EEPfKPTDN-guKdQ"><img src="https://img.shields.io/badge/MEGA-Rolling%20Archive-%23D90007?style=flat&logo=mega&logoColor=white" alt="MEGA Rolling Archive"/></a>
+</p>
+
 POPSLoader is a graphical PlayStation 2 homebrew launcher designed to easily browse and launch your PS1 games (using POPStarter) from various storage devices. It features a clean, responsive layout, cover art support, sound effects, an on-screen keyboard, and direct memory card exit shortcuts.
 
 The current public release is **BETA-11** (released 2026-06-15). Development continues on the `BETA-12-PLAY` branch; rolling test artifacts are published continuously (see [Development & Building](#development--building)).
@@ -248,3 +252,5 @@ This cleans, force-regenerates the embedded child ELF loader (`elfloader`), then
 
 To grab the latest test build, download from the rolling release URL:
 [https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/POPSLOADER-rolling-release.zip](https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/POPSLOADER-rolling-release.zip)
+
+> 🗄️ **Permanent archive (MEGA):** the GitHub `rolling-release` pre-release only ever holds the *latest* build; every push overwrites it. So **every** branch rolling build is also archived permanently to MEGA as one self-contained zip, each in its own immutable `run_<number>` folder (nothing is ever overwritten there). Click the **MEGA Rolling Archive** badge at the top of this README, or [browse the archive here](https://mega.nz/folder/W9wXyLjD#8hk7Wv-EEPfKPTDN-guKdQ), to grab any past build.

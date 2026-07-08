@@ -324,3 +324,65 @@ jobs:
           for path, name in asset_specs:
               upload_asset(path, name)
           PY
+
+  # --- MEGA archival (branch rolling builds only) -------------------------------------------
+  # The GitHub 'rolling-release' tag above keeps OVERWRITING the latest build. To keep a
+  # PERMANENT record, every branch rolling build is ALSO archived to MEGA as one immutable,
+  # self-contained zip (the same all-in-one bundle published to the release). Mirrors RiptOPL.
+  # A SEPARATE job on a plain runner: Difegue/action-megacmd is a Docker action and cannot run
+  # nested inside the ps2dev container job above, so it downloads the already-built artifact and
+  # uploads that. Runs after build-and-publish, so the GitHub release is complete first and a
+  # MEGA hiccup can never block or alter it -- MEGA is purely additive.
+  mega-archive:
+    name: Archive rolling build to MEGA
+    needs: build-and-publish
+    # Only real branch pushes archive (PR builds skip). Secret-less forks also skip via the
+    # per-step env.USERNAME guard below, so this never fails for a fork.
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    env:
+      # Repo secrets MEGA_USERNAME / MEGA_PASSWORD, exposed under the names USERNAME / PASSWORD
+      # because Difegue/action-megacmd reads exactly those env names -- and so the steps can gate
+      # on `env.USERNAME != ''`, making a run without the secrets SKIP the archive cleanly.
+      USERNAME: ${{ secrets.MEGA_USERNAME }}
+      PASSWORD: ${{ secrets.MEGA_PASSWORD }}
+    steps:
+      - name: Download the built rolling bundle
+        if: env.USERNAME != '' && env.PASSWORD != ''
+        uses: actions/download-artifact@v6
+        with:
+          name: POPSLOADER-rolling-release
+          path: mega-dl
+
+      - name: Prepare the immutable MEGA archive
+        if: env.USERNAME != '' && env.PASSWORD != ''
+        shell: bash
+        run: |
+          set -eu
+          SRC="mega-dl/POPSLOADER-rolling-release.zip"
+          if [ ! -f "$SRC" ]; then
+            echo "built bundle missing ($SRC) -- refusing to archive to MEGA" >&2
+            exit 1
+          fi
+          SHORT_SHA="$(echo "${GITHUB_SHA}" | cut -c1-7)"
+          # run number keeps every build in its OWN immutable folder (nothing on MEGA is ever
+          # overwritten); the short SHA ties the archive back to the exact commit.
+          ARCHIVE="POPSLOADER-ROLLING-run${GITHUB_RUN_NUMBER}-${SHORT_SHA}.zip"
+          mkdir -p mega-out
+          cp "$SRC" "mega-out/${ARCHIVE}"
+          sha256sum "mega-out/${ARCHIVE}" | tee "mega-out/${ARCHIVE}.sha256"
+          echo "MEGA_ARCHIVE=mega-out/${ARCHIVE}" >> "$GITHUB_ENV"
+          # Top folder MUST be the one shared as the README's MEGA link. run_<n> leaf = immutable.
+          echo "MEGA_REMOTE_DIR=/POPSLoader/Rolling/run_${GITHUB_RUN_NUMBER}/" >> "$GITHUB_ENV"
+
+      - name: Upload the rolling archive to MEGA
+        if: env.USERNAME != '' && env.PASSWORD != ''
+        # Pinned to a full commit SHA (NOT @master): this third-party action runs WITH the MEGA
+        # credentials, so it is frozen to a reviewed snapshot instead of whatever master holds at
+        # build time. bf698c6 == the action's v1.4.0 release. Bump deliberately (re-review first).
+        uses: Difegue/action-megacmd@bf698c68edaf91143b2a52d3468595202011bf17 # v1.4.0
+        with:
+          # `mega-put -c <archive> <remotedir>/`: -c creates the remote folder path if missing,
+          # the trailing slash puts the file INTO that folder. Uploads ONLY the single all-in-one
+          # zip. Credentials come from the job-level USERNAME/PASSWORD env (read by those names).
+          args: put -c ${{ env.MEGA_ARCHIVE }} ${{ env.MEGA_REMOTE_DIR }}
