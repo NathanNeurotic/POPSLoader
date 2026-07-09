@@ -95,6 +95,36 @@ SMB (v1) is now **implemented end-to-end** (CI + Rolling green) and **validating
 - [ ] ⭐ **Blank-share picker:** clear the **Share** field, then enter the SMB page → it enumerates the server's shares (`GETSHARELIST`) and an in-UI **picker** lets you choose one; your choice **persists** (settings + the in-game `SMBCONFIG.DAT`) and it reconnects. Report a picker that lists nothing, a choice that doesn't stick, or a reconnect that fails.
 - The `.DAT` byte format is from the recovered POPStarter docs and is **hardware-confirmable only** (report if POPStarter rejects a generated `SMBCONFIG.DAT`). Other hardware-only unknowns: the connect handshake and the `GETSHARELIST` DMA.
 
+### ⭐⭐ Adaptive BDMA — NEW, never run on hardware (needs a two-device setup, e.g. MMCE + USB)
+
+- [ ] Turn on *Settings → Storage → Adaptive BDMA* (leave **BDMA Mode** on whatever you normally use), save.
+- [ ] Launch a game from **MMCE**, then (after coming back) a game from **USB** — **both should boot without touching Settings in between.** This is the whole feature: before, whichever BDMA Mode was saved broke the other device's launches.
+- [ ] First launch on a *different* device shows a small "Adaptive BDMA: staged ... modules" notice; launching from the **same** device again shows **no** notice — that means it checked the memory card first and **skipped the write** because the right drivers were already there. Two same-device launches in a row with a "staged" notice each time = the check is broken, please report.
+- [ ] If your USB drive is **exFAT**: keep **BDMA Mode = exFAT-USB** saved — USB launches should keep the exFAT drivers. If it's **FAT32**: any other saved mode is fine — USB launches remove the drivers so POPStarter's built-in stack runs.
+- [ ] MX4SIO and HDD (exFAT) launches pick their own drivers the same way. Classic **HDD (PFS)** games and DKWDRV are untouched by this feature.
+- [ ] With Adaptive on, trying to turn the **POPSTARTER Folder** off is blocked with a notice (turn Adaptive off first) — confirm the block appears.
+
+### ⭐⭐ Partition-installed PS1 games on the HDD page — NEW, never run on hardware
+
+*(For drives with HDDOSD / PSBBN-style installs: one partition per game, named `PP.Something` — or `__.Something` for hidden ones — with the disc image inside always called `IMAGE0.VCD`.)*
+
+- [ ] Open the **HDD (PFS)** page on a drive that has such partitions → each should appear in the list **under its own name** (the partition name without the `PP.` part), alongside any classic `__.POPS` games. A drive with ONLY partition installs (no `__.POPS` at all) should open the page too.
+- [ ] ⭐ **Launch one** → POPStarter should boot it. *(This exercises POPStarter's `PP.Name.ELF` launch convention from a launcher, which has never been run on hardware from POPSLoader. If it black-screens or drops back, note whether your POPStarter is the r13 beta and where it lives — that's the key data.)*
+- [ ] `PP.` partitions that are **apps, not games** (e.g. CodeBreaker installs) should **NOT** appear — only partitions actually containing an `IMAGE0.VCD` are listed.
+- [ ] Cover art / description for these games: name the `.png` / `.txt` in `__common/POPS/ART/` after the game (partition name without the `PP.` / `__.` part).
+- [ ] **L3** hide / unhide works on them like any other game (the marker is written to the game's own partition).
+- [ ] In-game **memory card saves (VMCs)**: check whether saves work and where they land (`__common/POPS/<name>/SLOT0.VMC` is the documented spot). The POPStarter wiki documents a known bug in this launch type around `__common` files — whether it bites VMCs on the current beta is exactly what we need to learn.
+
+### ⭐ Boot chime re-encoded (half the size) — needs an ear-check
+
+- [ ] The boot chime should sound **exactly like before** — same tune, same pitch, same speed, full length. *(It was re-encoded at a lower sample rate; analysis says nothing audible changed, but a real console's sound chip is the only proof. "Sounds slow/low/chipmunked or crackly" = report immediately, it's a one-commit revert.)*
+
+### ⭐ HDD page diagnostics (for the "HDD list comes up empty when booted from USB/MC" rig)
+
+- [ ] If the HDD page ever shows **"No '__.POPS' partitions"** on a drive that definitely has them: the notice now ends with **"(last mount rc: N)"** — please report that number.
+- [ ] A new **"HDD dir read failed: ..."** notice means the partition mounted but wouldn't list — report it with the text.
+- [ ] If the HDD page said "HDD not usable" right after boot, going back to the carousel and re-entering the page a few seconds later should now **recover on its own** once the drive spins up (it used to stay dead until reboot).
+
 ### Navigation & input — ✅ core nav CONFIRMED on hardware (oldman63); the rest still to feel out
 
 - [x] **Up/Down + analog-stick item nav** — ✅ **CONFIRMED (oldman63):** d-pad and **left analog stick up/down** both land on **individual items** (item-by-item), and a held direction does smooth continuous scroll. *(The stick now folds into the d-pad and runs the same edge + auto-repeat path — no more "flies a whole page" / "can't select individual items" #501. A non-analog/digital pad is gated out so it can't inject a phantom direction; the auto-repeat is frame-counted, ~0.6 s before the first repeat then ~5/sec.)* Re-confirm on **each device's** list if you can.

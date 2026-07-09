@@ -86,7 +86,8 @@ Place VCD game files inside your dedicated POPS partitions, and system binaries 
 | File Path | Description |
 | :--- | :--- |
 | `hdd:/__.POPS/GameName.VCD` | Your PS1 game image (can also use partitions `__.POPS0` through `__.POPS9`) |
-| `hdd:/__common/POPS/ART/GameName.png` | Cover art folder |
+| `hdd:/PP.GameName/IMAGE0.VCD` | *(new, validating on hardware)* A **partition-installed** game (HDDOSD / PSBBN style: one partition per game, `PP.` visible or `__.` hidden, image always named `IMAGE0.VCD`). These are listed on the HDD page under the partition's name and launched with POPStarter's `PP.GameName.ELF` convention. |
+| `hdd:/__common/POPS/ART/GameName.png` | Cover art folder (partition-installed games use the partition name minus its `PP.` / `__.` prefix) |
 | `hdd:/__common/POPS/IOPRP252.IMG` | Required POPS support file |
 | `hdd:/__common/POPS/POPSTARTER.ELF` | POPStarter launcher binary |
 | `hdd:/__common/POPS/POPS.ELF` | POPS emulator engine binary |
@@ -165,7 +166,8 @@ Press **Start** on the menu to open Settings; changes save when you confirm. Set
 - **Overscan (CRT inset)** — **Off** (default) up to a numeric inset, adjusted in steps of **5** (OPL-style render inset, same math as OPL's overscan). Pulls the whole UI slightly toward the center of the screen so nothing is lost in a CRT's overscan border. The change previews live as you adjust it; backing out of Settings without saving restores the previous value. *(Mainly useful on a real CRT; on a flat panel you'll usually leave it Off.)*
 - **Boot sound** — **On** (default) / Off. Plays the startup chime over the boot splash. Turn it **Off** for a silent boot. (Hardware-confirmed to save and survive a reboot.)
 - **BDMA Mode** — mass-storage backend mode: **FAT32** (`FAT32-USB (None)`) / **USBEXFAT** (`exFAT-USB`) / **MX4SIO** / **MMCE** / **ATA** (`exFAT-HDD (ata)` — an internal SATA/IDE drive formatted exFAT; *new, validating on hardware*). The installed mode is recorded in a `bdma_mode.txt` marker file in the POPSTARTER pack folder (older `.pldr_bdma_mode` markers are still read for compatibility).
-- **POPSTARTER Memory Card Folder** — toggles the `mc:/POPSTARTER` folder. Turning it **off deletes** `mc:/POPSTARTER` (with a confirm prompt). It is **interlocked with BDMA Mode**: you can't turn this folder off while BDMA Mode is on, and you can't enable BDMA Mode while this folder is off.
+- **Adaptive BDMA** — *(new, validating on hardware)* stages the right BDMA drivers for the **game you launch**, automatically, so MMCE and USB (and MX4SIO / exFAT-HDD) games can coexist without flipping BDMA Mode between launches. It checks first and skips the write when the correct drivers are already on the card. The USB page can't tell FAT32 from exFAT drives, so there your saved **BDMA Mode** decides: `exFAT-USB` keeps the exFAT drivers for USB launches, anything else means your USB drive is FAT32 (drivers removed, POPStarter's built-in stack used). Default **Off**.
+- **POPSTARTER Memory Card Folder** — toggles the `mc:/POPSTARTER` folder. Turning it **off deletes** `mc:/POPSTARTER` (with a confirm prompt). It is **interlocked with BDMA Mode**: you can't turn this folder off while BDMA Mode is on (or while Adaptive BDMA is on), and you can't enable either while this folder is off.
 - **Hide UI Text** — clears on-screen text for a clean cover-art view (also toggled with **Select**).
 - **Keyboard Layout** — on-screen keyboard layout for the path editor.
 
