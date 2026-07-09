@@ -5493,6 +5493,80 @@ local function AppendHddGameList(partition, list_path, on_progress, partition_in
   end
 end
 
+-- ============================================================================
+-- Partition-installed POPS games (HDDOSD / PSBBN style): ONE APA/PFS partition
+-- per game, named "PP.<name>" (browser-visible) or "__.<name>" (hidden), with
+-- the disc image always at the partition root as IMAGE0.VCD (uppercase). The
+-- game's identity is the PARTITION NAME, never the VCD filename; POPStarter
+-- launches one via the argv0 basename "PP.<partition>.ELF" (it mounts the
+-- partition by its own name and boots pfs:/IMAGE0.VCD). Source: recovered
+-- POPStarter wiki (hdd-mode) + R3Z3N. HW-UNVERIFIED: the current r13 beta has
+-- a documented old-launch-type bug around __common/POPS assets (VMC/cheats
+-- scope unclear) -- listing/launching still works per the wiki contract.
+
+-- A "game candidate" partition name: exactly the 3-char "PP." / "__." prefix
+-- with a non-empty tail, EXCLUDING the named-VCD container whitelist
+-- (__.POPS, __.POPS0..9) which the classic scan below owns. Reserved system
+-- partitions (__system, __common, ...) have no dot at position 3, so the
+-- prefix test alone excludes them.
+function PLDR.HDD.IsPartitionGameCandidateName(name)
+  if type(name) ~= "string" or #name <= 3 then return false end
+  local prefix = string.sub(name, 1, 3)
+  if prefix ~= "PP." and prefix ~= "__." then return false end
+  if string.match(name, "^__%.POPS%d?$") then return false end
+  return true
+end
+
+-- An encoded HDD game entry ("PART|rel") that denotes a partition-installed
+-- game: candidate partition name + the fixed IMAGE0.VCD payload.
+function PLDR.IsPartitionInstalledHddEntry(partition, relpath)
+  if type(partition) ~= "string" or type(relpath) ~= "string" then return false end
+  if string.upper(relpath) ~= "IMAGE0.VCD" then return false end
+  return PLDR.HDD.IsPartitionGameCandidateName(partition)
+end
+
+-- Enumerate the APA table (HDD.ListPartitions, read-only) and mount-probe each
+-- candidate for a root IMAGE0.VCD -- name alone is a proven false-positive trap
+-- (HDDOSD apps ship as PP.* partitions too, e.g. CodeBreaker). Fills
+-- PLDR.HDD.PARTGAMES = { {partition=..., hidden=...}, ... } and flips FOUNDANY
+-- so a PP.-only library still opens the page. Runs under the same
+-- HAS_CHECKED gate as the classic probe (its caller).
+function PLDR.HDD.DiscoverPartitionGames(on_progress)
+  PLDR.HDD.PARTGAMES = {}
+  if type(HDD) ~= "table" or type(HDD.ListPartitions) ~= "function" then return end
+  local ok, parts = pcall(HDD.ListPartitions)
+  if not ok or type(parts) ~= "table" then return end
+  local candidates = {}
+  for i = 1, #parts do
+    if PLDR.HDD.IsPartitionGameCandidateName(parts[i]) then
+      candidates[#candidates + 1] = parts[i]
+    end
+  end
+  table.sort(candidates)
+  for i = 1, #candidates do
+    local partition = candidates[i]
+    local mounted, prefix, slot = MountHddGamePartitionTracked("hdd0:"..partition, FIO_MT_RDONLY)
+    if mounted and prefix ~= nil then
+      local has_image = false
+      pcall(function() has_image = (doesFileExist(prefix.."IMAGE0.VCD") == true) end)
+      if has_image then
+        -- Same .hide sidecar convention as every other device: IMAGE0.hide
+        -- next to the VCD on the game's own partition (L3 writes it there).
+        local is_hidden = false
+        pcall(function() is_hidden = (doesFileExist(prefix.."IMAGE0.hide") == true) end)
+        PLDR.HDD.PARTGAMES[#PLDR.HDD.PARTGAMES + 1] = { partition = partition, hidden = is_hidden }
+        PLDR.HDD.FOUNDANY = true
+      end
+      if slot ~= nil then
+        UMountHddPartitionTracked(slot)
+      end
+    end
+    if type(on_progress) == "function" then
+      pcall(on_progress, i / math.max(#candidates, 1))
+    end
+  end
+end
+
 function PLDR.HDD.CheckAvailableHddPopsParts(on_progress)
   if not PLDR.HDD.HAS_CHECKED then --HDD is checked only once since it cannot be removed/replaced without damaging the console
     PLDR.HDD.FOUNDANY = false
@@ -5519,6 +5593,9 @@ function PLDR.HDD.CheckAvailableHddPopsParts(on_progress)
         pcall(on_progress, i / math.max(total_partitions, 1))
       end
     end
+    -- Partition-installed games ride the same once-per-boot check. pcall'd:
+    -- a discovery fault must never take the classic __.POPS scan down with it.
+    pcall(PLDR.HDD.DiscoverPartitionGames, on_progress)
     PLDR.HDD.HAS_CHECKED = true
   end
   if type(on_progress) == "function" then
@@ -5552,6 +5629,24 @@ function PLDR.HDD.BuildGameList(on_progress)
       end
     elseif type(on_progress) == "function" then
       pcall(on_progress, i / math.max(total_partitions, 1))
+    end
+  end
+  -- Partition-installed games (PP./__. one-partition-per-game): discovered by
+  -- DiscoverPartitionGames under the same HAS_CHECKED gate; encoded like every
+  -- HDD entry so caching / hiding / launch routing flow through unchanged.
+  local partgames = PLDR.HDD.PARTGAMES or {}
+  for i = 1, #partgames do
+    local pg = partgames[i]
+    if type(pg) == "table" and type(pg.partition) == "string" then
+      local is_hidden = pg.hidden == true
+      if not (PLDR.GLOBAL_HIDE and is_hidden) then
+        local encoded = EncodeHddGameEntry(pg.partition, "IMAGE0.VCD")
+        if encoded ~= nil then
+          if is_hidden then PLDR.HIDDEN[encoded] = true end
+          table.insert(PLDR.GAMES, encoded)
+          PLDR.HDD.GAMEPARTS[encoded] = "hdd0:"..pg.partition
+        end
+      end
     end
   end
   if type(on_progress) == "function" then
@@ -5971,8 +6066,14 @@ local function BuildDisplayNameFromEntry(entry)
     return ""
   end
   local display_name = entry
-  local hdd_relpath = string.match(display_name, "^[^|]+|(.+)$")
+  local hdd_partition, hdd_relpath = string.match(display_name, "^([^|]+)|(.+)$")
   if hdd_relpath ~= nil then
+    -- Partition-installed game: the identity is the partition name minus its
+    -- 3-char prefix ("PP."/"__."), never the fixed "IMAGE0" payload name.
+    if type(PLDR.IsPartitionInstalledHddEntry) == "function"
+       and PLDR.IsPartitionInstalledHddEntry(hdd_partition, hdd_relpath) then
+      return string.sub(hdd_partition, 4)
+    end
     display_name = string.match(hdd_relpath, "([^/]+)$") or hdd_relpath
   end
   return string.gsub(display_name, "%.[Vv][Cc][Dd]$", "")
@@ -6719,6 +6820,15 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     selection_for_name = NormalizeHddRelpath(hdd_relpath or selected_entry)
   end
   local game_name = DeriveGameNameFromSelection(selection_for_name)
+  if policy.name == "HDD" and type(PLDR.IsPartitionInstalledHddEntry) == "function"
+     and PLDR.IsPartitionInstalledHddEntry(hdd_partition_label, hdd_relpath) then
+    -- Partition-installed game: POPStarter's selector is the PARTITION name,
+    -- never "IMAGE0" -- the argv0 basename "PP.<partition>.ELF" tells it to
+    -- mount hdd0:PP.<partition> and boot pfs:/IMAGE0.VCD. The label is used
+    -- LITERALLY (no SanitizeGameName): partition names are case-sensitive and
+    -- must match the APA label exactly.
+    game_name = TrimTrailingWhitespace(hdd_partition_label)
+  end
   local vcd_basename_raw = selected_entry
   if policy.name == "HDD" then
     vcd_basename_raw = NormalizeHddRelpath(hdd_relpath or selected_entry)

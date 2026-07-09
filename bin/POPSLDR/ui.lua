@@ -181,7 +181,14 @@ local function ExtractHddArtBasename(entry)
   if candidate == "" then
     return ""
   end
-  local relpath = string.match(candidate, "^[^|]+|(.+)$")
+  local partition, relpath = string.match(candidate, "^([^|]+)|(.+)$")
+  -- Partition-installed game: art + details .txt are named after the game (the
+  -- partition name minus its 3-char prefix, matching POPStarter's own
+  -- __common/POPS/<name> asset convention), never "IMAGE0".
+  if relpath ~= nil and type(PLDR) == "table" and type(PLDR.IsPartitionInstalledHddEntry) == "function"
+     and PLDR.IsPartitionInstalledHddEntry(partition, relpath) then
+    return string.sub(partition, 4)
+  end
   if relpath ~= nil and relpath ~= "" then
     candidate = relpath
   end
@@ -2614,9 +2621,16 @@ UI = {
           if i >= (UI.GameList.STARTUP+UI.GameList.MAXDRAW) then break end
           local Y = layout.LIST_Y + ((i-UI.GameList.STARTUP) * layout.LIST_ROW_H)
           local display_name = PLDR.GAMES[i]
-          local hdd_relpath = string.match(display_name or "", "^[^|]+|(.+)$")
+          local hdd_part, hdd_relpath = string.match(display_name or "", "^([^|]+)|(.+)$")
           if hdd_relpath ~= nil then
-            display_name = string.match(hdd_relpath, "([^/]+)$") or hdd_relpath
+            if type(PLDR.IsPartitionInstalledHddEntry) == "function"
+               and PLDR.IsPartitionInstalledHddEntry(hdd_part, hdd_relpath) then
+              -- Partition-installed game: show the partition name minus its
+              -- 3-char prefix, not the fixed "IMAGE0" payload name.
+              display_name = string.sub(hdd_part, 4)
+            else
+              display_name = string.match(hdd_relpath, "([^/]+)$") or hdd_relpath
+            end
           end
 	          local c = (i == UI.GameList.CURR) and UI.COLORS.LIST_SELECTED or UI.COLORS.LIST_UNSELECTED
           if PLDR.IsGameHidden and PLDR.IsGameHidden(PLDR.GAMES[i]) then

@@ -108,6 +108,43 @@ static int GetHDDStatus(lua_State *L) {
     return 1;
 }
 
+/* APA dirent semantics for a dread() on "hdd0:": every record is one partition
+ * table entry; stat.attr distinguishes main vs sub records and stat.mode holds
+ * the partition-format magic. Values match ps2sdk <libhdd.h> (ATTR_MAIN_PARTITION
+ * / FS_TYPE_PFS; defined locally so this file keeps its existing include set)
+ * and the OPL / wLaunchELF enumerators built on this same API. */
+#define APA_ATTR_MAIN_PARTITION 0x0000
+#define APA_FS_TYPE_PFS         0x0100
+
+/* HDD.ListPartitions() -> array of PFS main-partition NAMES ({} when none;
+ * nil, rc when hdd0: won't open -- e.g. ps2hdd not loaded yet). Read-only over
+ * the APA table: nothing is mounted here; callers mount-probe the names they
+ * care about through the tracked-slot helpers. */
+static int ListPartitions(lua_State *L)
+{
+    int fd = fileXioDopen("hdd0:");
+    if (fd < 0)
+    {
+        DPRINTF("%s: fileXioDopen(hdd0:) failed rc=%d\n", __func__, fd);
+        lua_pushnil(L);
+        lua_pushinteger(L, fd);
+        return 2;
+    }
+    lua_newtable(L);
+    int n = 0;
+    iox_dirent_t dirent;
+    while (fileXioDread(fd, &dirent) > 0)
+    {
+        if (dirent.stat.attr != APA_ATTR_MAIN_PARTITION) continue; /* skip sub-partition records */
+        if (dirent.stat.mode != APA_FS_TYPE_PFS) continue;         /* PFS-formatted only (skips __mbr/HDL/raw) */
+        lua_pushstring(L, dirent.name);
+        lua_rawseti(L, -2, ++n);
+    }
+    fileXioDclose(fd);
+    DPRINTF("%s: %d PFS main partitions\n", __func__, n);
+    return 1;
+}
+
 #define IMPORT_BIN2C(_n)       \
     extern unsigned char _n[]; \
     extern unsigned int size_##_n
@@ -197,6 +234,7 @@ static const luaL_Reg HDD_functions[] = {
   	{"UMountPartition",    UmountPart},
     {"Initialize", Load_HDD_IRX},
     {"GetHDDStatus", GetHDDStatus},
+    {"ListPartitions", ListPartitions},
     {0, 0}
 };
 
