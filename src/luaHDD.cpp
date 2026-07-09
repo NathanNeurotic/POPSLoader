@@ -29,8 +29,13 @@ static int MountPart(lua_State *L)
     if (argc >= 2) indx = luaL_checkinteger(L, 2);
     if (argc == 3) openmod = luaL_checkinteger(L, 3);
 
-    lua_pushboolean(L, (mnt(mount, indx, openmod)==0));
-    return 1;
+    /* Second return = the raw mount rc so Lua can tell a clean "partition
+     * absent" apart from an I/O fault (Nuno's non-HDD-boot HDD-list failure
+     * shows only "No '__.POPS' partitions" today, hiding WHY mounts failed). */
+    int rc = mnt(mount, indx, openmod);
+    lua_pushboolean(L, rc == 0);
+    lua_pushinteger(L, rc);
+    return 2;
 
 }
 
@@ -67,15 +72,18 @@ int mnt(const char* path, int index, int openmod)
      * fail-fast attempt. Was: a single zero-delay unmount+remount. */
     int max_attempts = hdd_spinup_waited ? 1 : 12;
     int attempt;
+    int last_rc = -4;
     for (attempt = 1; attempt <= max_attempts; attempt++)
     {
         DPRINTF("Mounting '%s' into pfs%d: (attempt %d/%d)\n", path, index, attempt, max_attempts);
-        if (fileXioMount(PFS, path, openmod) >= 0)
+        int rc = fileXioMount(PFS, path, openmod);
+        if (rc >= 0)
         {
             hdd_spinup_waited = 1;
             if (attempt > 1) DPRINTF("mount ok after %d attempts (cold spin-up)\n", attempt);
             return 0;
         }
+        last_rc = rc;
         /* best-effort unmount in case the slot was left mounted by something else */
         if (fileXioUmount(PFS) < 0)
             DPRINTF("pre-retry unmount no-op\n");
@@ -86,8 +94,10 @@ int mnt(const char* path, int index, int openmod)
         }
     }
     hdd_spinup_waited = 1; /* budget spent: platter has had time; stop waiting on later partitions */
-    DPRINTF("mount failed for '%s' after %d attempt(s)\n", path, max_attempts);
-    return -4;
+    DPRINTF("mount failed for '%s' after %d attempt(s), rc %d\n", path, max_attempts, last_rc);
+    /* Real fileXioMount rc (negative errno family), not a made-up constant, so
+     * callers can distinguish absent-partition from I/O-fault classes. */
+    return (last_rc < 0) ? last_rc : -4;
 }
 
 static int GetHDDStatus(lua_State *L) {

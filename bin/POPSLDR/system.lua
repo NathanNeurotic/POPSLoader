@@ -808,7 +808,7 @@ local function MountHddPartitionTracked(partition, slot, mode)
       mount_mode = 0
     end
   end
-  local ok, mounted = pcall(HDD.MountPartition, normalized_partition, mount_slot, mount_mode)
+  local ok, mounted, mount_rc = pcall(HDD.MountPartition, normalized_partition, mount_slot, mount_mode)
   if ok and mounted == true then
     local prefix = BuildMountedPfsPrefix(mount_slot)
     local recorded = RememberRecordedHddMount(normalized_partition, prefix)
@@ -820,6 +820,11 @@ local function MountHddPartitionTracked(partition, slot, mode)
       return false, nil
     end
     return true, recorded
+  end
+  -- Third return = raw fileXioMount rc (when the mount was actually attempted)
+  -- so scan callers can report WHY the HDD list came up empty, not just that it did.
+  if ok then
+    return false, nil, tonumber(mount_rc)
   end
   return false, nil
 end
@@ -924,17 +929,19 @@ local function MountHddGamePartitionTracked(partition, mode)
     return false, nil, nil
   end
   local candidates = GetHddGameSlotCandidates()
+  local last_rc = nil
   for i = 1, #candidates do
     local slot = candidates[i]
-    local mounted, prefix = MountHddPartitionTracked(normalized_partition, slot, mode)
+    local mounted, prefix, mount_rc = MountHddPartitionTracked(normalized_partition, slot, mode)
     if mounted and prefix ~= nil then
       if type(PLDR) == "table" and type(PLDR.HDD) == "table" then
         PLDR.HDD.GAME_SLOT = slot
       end
       return true, prefix, slot
     end
+    if mount_rc ~= nil then last_rc = mount_rc end
   end
-  return false, nil, nil
+  return false, nil, nil, last_rc
 end
 
 local function ResolveHddGamePartitionReadablePath(partition, relpath)
@@ -5353,6 +5360,9 @@ local function AppendHddGameList(partition, list_path, on_progress, partition_in
   end
   local DIR = System.listDirectory(list_path)
   if DIR == nil then
+    -- The partition mounted but its root would not list: surface it instead of
+    -- silently showing "No games found" (dir-read faults were invisible before).
+    pcall(UI.Notif_queue.add, string.format("HDD dir read failed: %s (%s)", tostring(list_path), tostring(partition)))
     if type(on_progress) == "function" then
       pcall(on_progress, (tonumber(partition_index) or 1) / math.max(tonumber(partition_total) or 1, 1))
     end
@@ -5390,17 +5400,22 @@ function PLDR.HDD.CheckAvailableHddPopsParts(on_progress)
     PLDR.HDD.FOUNDANY = false
     PLDR.HDD.AVAILABLE = {}
     PLDR.HDD.GAME_SLOT = nil
+    PLDR.HDD.LAST_MOUNT_RC = nil
     local ordered_partitions = GetOrderedHddPopsPartitions()
     local total_partitions = #ordered_partitions
     for i = 1, total_partitions do
       local partition = ordered_partitions[i]
-      local mounted, _, slot = MountHddGamePartitionTracked("hdd0:"..partition, FIO_MT_RDONLY)
+      local mounted, _, slot, mount_rc = MountHddGamePartitionTracked("hdd0:"..partition, FIO_MT_RDONLY)
       PLDR.HDD.AVAILABLE[partition] = mounted == true
       if mounted == true then
         PLDR.HDD.FOUNDANY = true
         if slot ~= nil then
           UMountHddPartitionTracked(slot)
         end
+      elseif mount_rc ~= nil then
+        -- Breadcrumb for the "empty list from a non-HDD boot" class: keep the
+        -- last raw mount rc so the page can say WHY nothing mounted.
+        PLDR.HDD.LAST_MOUNT_RC = mount_rc
       end
       if type(on_progress) == "function" then
         pcall(on_progress, i / math.max(total_partitions, 1))
@@ -5473,6 +5488,17 @@ function PLDR.LoadHDDModules()
     end
     if PLDR.HDD.LOADSTATE ~= -1 then
       PLDR.HDD.LOADSTATE = 1
+    end
+  elseif PLDR.HDD.LOADSTATE == -1 and HDD_EXEC_INIT_DONE then
+    -- The IRX stack loaded but the FIRST status probe latched -1 forever. A
+    -- mechanically cold drive can report not-ready on the first page open and
+    -- be fine seconds later, so re-probe the status (a cheap devctl; no IRX is
+    -- ever reloaded) on each visit instead of staying dead until reboot.
+    SUCCESS = HDD.GetHDDStatus()
+    PLDR.HDD.STATUS = SUCCESS
+    if SUCCESS == 0 then
+      PLDR.HDD.LOADSTATE = 1
+      UI.Notif_queue.add("HDD is ready now (status recovered)")
     end
   end
 end

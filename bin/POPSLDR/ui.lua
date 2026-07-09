@@ -4870,7 +4870,10 @@ UI = {
 	                  UI.Notif_queue.add("HDD list loaded from cache (R1 rescans)", "ok")
 	                end
 	                if not PLDR.HDD.FOUNDANY then
-	                  UI.Notif_queue.add("No '__.POPS' partitions on hdd0:\nformat one with __.POPS / __.POPS0...9", "warn")
+	                  -- The rc suffix tells a real mount fault apart from clean absence
+                  -- (the empty-list-from-a-launcher-boot class reports only this toast).
+                  local rc_hint = (PLDR.HDD.LAST_MOUNT_RC ~= nil) and (" (last mount rc: "..tostring(PLDR.HDD.LAST_MOUNT_RC)..")") or ""
+                  UI.Notif_queue.add("No '__.POPS' partitions on hdd0:\nformat one with __.POPS / __.POPS0...9"..rc_hint, "warn")
 	                elseif #PLDR.GAMES < 1 then
                   UI.Notif_queue.add("No games found on hdd0:\n(__.POPS partitions are empty)", "warn")
                 end

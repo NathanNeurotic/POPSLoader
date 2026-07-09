@@ -110,7 +110,7 @@ Navigate POPSLoader using a standard PS2 controller.
 | **R1** | Refresh / rescan the current device's game list, in place (e.g. after hot-plugging a drive or card). USB / MMCE / MX4SIO / HDD (PFS) re-scan live by default; if *Game list cache* is enabled in Settings they instead rebuild their saved per-device cache. |
 | **Cross (X)** | Confirm option / Launch selected game |
 | **Circle (O)** | Go back to the Main Menu / Cancel |
-| **Triangle (△)** | Exit shortcut / BOOT.ELF shortcut where available |
+| **Triangle (△)** | Open the Credits screen (any button returns you to where you were). Exit shortcuts, including BOOT.ELF where available, live in the Exit menu opened with **Circle** on the Main Menu. |
 | **Start** | Open the Settings / Profile Editor |
 | **Select** | Toggle "Hide Text Mode" (clears the UI for a clean view of cover art) |
 | **Square (□)** | Toggle cover-art preview on / off (in the game list) |
