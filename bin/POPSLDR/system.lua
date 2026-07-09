@@ -3404,6 +3404,7 @@ local function EncodeSettings()
     "POPSTARTER_PATH="..persisted_popstarter,
     "POPSTARTER_MODE="..selection_mode,
     "BDMA="..tostring(PLDR.BDMA_MODE_KEY or "FAT32"),
+    "BDMA_ADAPTIVE="..((PLDR.BDMA_ADAPTIVE == true) and "1" or "0"),
     "DKWDRV_PATH="..tostring(PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH),
     "STRICT_HDD_PREEXEC_GATE="..((PLDR.STRICT_HDD_PREEXEC_GATE == true) and "1" or "0"),
     "VIDEO_STANDARD="..tostring(NormalizeVideoStandard(PLDR.VIDEO_STANDARD)),
@@ -3456,6 +3457,7 @@ local function SnapshotSettingsState()
     popstarter_path = NormalizeSelectedProfilePopstarterPath(profile, PLDR.POPSTARTER_PATH, PLDR.POPSTARTER_SELECTION_MODE),
     popstarter_mode = NormalizePopstarterSelectionMode(PLDR.POPSTARTER_SELECTION_MODE),
     bdma_mode = NormalizeBdmaModeKey(PLDR.BDMA_MODE_KEY) or "FAT32",
+    bdma_adaptive = (PLDR.BDMA_ADAPTIVE == true),
     dkwdrv_path = tostring(PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH),
     video_standard = NormalizeVideoStandard(PLDR.VIDEO_STANDARD),
     hide_text = (type(UI) == "table" and UI.HideTextMode == true) or false,
@@ -3491,6 +3493,9 @@ local function ApplySettingsState(state)
   local bdma = NormalizeBdmaModeKey(state.bdma_mode)
   if bdma ~= nil then
     PLDR.BDMA_MODE_KEY = bdma
+  end
+  if type(state.bdma_adaptive) == "boolean" then
+    PLDR.BDMA_ADAPTIVE = state.bdma_adaptive
   end
   if state.dkwdrv_path ~= nil then
     PLDR.DKWDRV_PATH = tostring(state.dkwdrv_path)
@@ -3594,7 +3599,11 @@ end
 
 function PLDR.ReconcileBdmaModeWithEffectiveState()
   local effective = ResolveEffectiveBdmaMode()
-  if effective ~= nil then
+  -- With Adaptive BDMA on, bdma_mode.txt tracks the LAST LAUNCH's variant, not
+  -- the user's chosen mode -- letting it override here would clobber the saved
+  -- preference (which the adaptive USB arm resolves from). The marker still
+  -- answers "what is installed" for the equipped check; only the override is gated.
+  if effective ~= nil and PLDR.BDMA_ADAPTIVE ~= true then
     PLDR.BDMA_MODE_KEY = effective
   else
     PLDR.BDMA_MODE_KEY = NormalizeBdmaModeKey(PLDR.BDMA_MODE_KEY) or "FAT32"
@@ -3662,6 +3671,7 @@ function PLDR.LoadSettingsNonFatal()
   -- toggled OFF (provato HW report). The ensure now happens AFTER the load, at the call site.
   PLDR.SELECTED_PROFILE = defaults_profile
   PLDR.BDMA_MODE_KEY = "FAT32"
+  PLDR.BDMA_ADAPTIVE = false  -- per-launch BDMA variant staging (issue #509); default OFF, user opts in
   PLDR.POPSTARTER_SELECTION_MODE = POPSTARTER_MODE_PROFILE_DEFAULT
   PLDR.STRICT_HDD_PREEXEC_GATE = false
   PLDR.VIDEO_STANDARD = PLDR.VIDEO_STANDARD_AUTO
@@ -3803,6 +3813,7 @@ function PLDR.LoadSettingsNonFatal()
   local gamelist_cache = string.match(data, "\nGAMELIST_CACHE=([^\n]+)") or string.match(data, "^GAMELIST_CACHE=([^\n]+)")
   local boot_sound = string.match(data, "\nBOOT_SOUND=([^\n]+)") or string.match(data, "^BOOT_SOUND=([^\n]+)")
   local overscan = string.match(data, "\nOVERSCAN=([^\n]+)") or string.match(data, "^OVERSCAN=([^\n]+)")
+  local bdma_adaptive = string.match(data, "\nBDMA_ADAPTIVE=([^\n]+)") or string.match(data, "^BDMA_ADAPTIVE=([^\n]+)")
   if profile ~= nil and PLDR.PROFILES ~= nil and PLDR.PROFILES[profile] ~= nil then
     PLDR.SELECTED_PROFILE = profile
     PLDR.POPSTARTER_PATH = PLDR.PROFILES[profile].ELF
@@ -3878,6 +3889,12 @@ function PLDR.LoadSettingsNonFatal()
   if bs ~= nil then
     PLDR.BOOT_SOUND = bs == true
   end
+  -- Parsed BEFORE the BDMA reconcile below: the reconcile's marker-override is
+  -- gated on this flag, so it must reflect the sidecar by the time it runs.
+  local ba = ParseBooleanSetting(bdma_adaptive)
+  if ba ~= nil then
+    PLDR.BDMA_ADAPTIVE = ba == true
+  end
   local ov = tonumber(overscan)
   if ov ~= nil then
     PLDR.OVERSCAN = math.floor(ov)
@@ -3946,6 +3963,8 @@ function PLDR.CommitSettingsChanges(opts)
   if type(opts.gamelist_cache) == "boolean" then next_gamelist_cache = opts.gamelist_cache end
   local next_boot_sound = (prev.boot_sound ~= false)
   if type(opts.boot_sound) == "boolean" then next_boot_sound = opts.boot_sound end
+  local next_bdma_adaptive = (prev.bdma_adaptive == true)
+  if type(opts.bdma_adaptive) == "boolean" then next_bdma_adaptive = opts.bdma_adaptive end
   local next_overscan = math.floor(tonumber(prev.overscan) or 0)
   if type(opts.overscan) == "number" then next_overscan = math.floor(opts.overscan) end
   -- Explicit boolean check, NOT `(type==boolean) and opts.x or prev.x`: that
@@ -3963,6 +3982,7 @@ function PLDR.CommitSettingsChanges(opts)
     popstarter_path = NormalizeSelectedProfilePopstarterPath(next_profile, opts.popstarter_path or prev.popstarter_path, next_popstarter_mode),
     popstarter_mode = next_popstarter_mode,
     bdma_mode = NormalizeBdmaModeKey(opts.bdma_mode) or prev.bdma_mode,
+    bdma_adaptive = next_bdma_adaptive,
     -- Empty means "restore default", both live and persisted -- matching the
     -- loader (which ignores an empty DKWDRV_PATH= line and falls to the default).
     -- Without this, clearing the field left "" live for the session ("No DKWDRV
@@ -4804,6 +4824,84 @@ function PLDR.ApplyBdmaMode(mode_key)
   end
   WriteBdmaModeMarker(selected)
   return true
+end
+
+-- ============================================================================
+-- Adaptive BDMA (issue #509): with the manual global BDMA Mode, a user playing
+-- from BOTH e.g. MMCE and FAT32-USB must flip Settings between launches (the
+-- staged variant serves one device and breaks the other). When BDMA_ADAPTIVE is
+-- on, the variant for the LAUNCHED game's device is staged at launch time --
+-- and, per the design ask, only after an equipped check so an already-correct
+-- card takes ZERO memory-card writes.
+
+function PLDR.ResolveAdaptiveBdmaTarget(ui_scene, device_page)
+  -- exFAT internal HDD launches masquerade as USB (mass:) by design; the scene
+  -- is the only reliable discriminator, so check it first.
+  if type(UI) == "table" and type(UI.SCENES) == "table" and ui_scene == UI.SCENES.GBDMHDD then
+    return "ATA"
+  end
+  if device_page == "MX4SIO" then return "MX4SIO" end
+  if device_page == "MMCE" or device_page == "SMB/MMCE" then return "MMCE" end
+  if device_page == "USB" then
+    -- FAT32-vs-exFAT USB is not detectable from here (identical driver name),
+    -- so honor the user's saved USB-family preference: a user whose drive needs
+    -- the exFAT modules has BDMA Mode = exFAT-USB saved (it never worked any
+    -- other way). Any other saved mode says their USB drive is FAT32 -> remove
+    -- the modules so POPStarter's built-in USB stack takes over.
+    if NormalizeBdmaModeKey(PLDR.BDMA_MODE_KEY) == "USBEXFAT" then
+      return "USBEXFAT"
+    end
+    return "FAT32"
+  end
+  -- HDD (PFS), net-SMB, DKWDRV, unknown: POPStarter doesn't consume the BDMA
+  -- pair for these; leave whatever is staged alone.
+  return nil
+end
+
+-- "Equipped proper" = the on-card reality matches the target, checked BEFORE
+-- any write: for FAT32 both modules must be absent; for the others both files
+-- must exist AND the bdma_mode.txt marker (written only after a fully
+-- successful stage) must name the same variant.
+function PLDR.IsBdmaModeEquipped(mode_key)
+  local target = NormalizeBdmaModeKey(mode_key)
+  if target == nil then
+    return false
+  end
+  local have_all = true
+  local have_none = true
+  for i = 1, #BDMA_COPY_FILES do
+    local exists = false
+    pcall(function() exists = (doesFileExist(POPSTARTER_PACK_ROOT.."/"..BDMA_COPY_FILES[i]) == true) end)
+    if exists then have_none = false else have_all = false end
+  end
+  if target == "FAT32" then
+    return have_none
+  end
+  if not have_all then
+    return false
+  end
+  return ResolveEffectiveBdmaMode() == target
+end
+
+function PLDR.MaybeApplyAdaptiveBdma(ui_scene, device_page)
+  if PLDR.BDMA_ADAPTIVE ~= true then return true end
+  -- POPSTARTER folder off: modules can't live on the card, and the load-time
+  -- invariant keeps effective BDMA at FAT32 in that state. Nothing to stage.
+  if PLDR.POPSTARTER_MC_FOLDER == false then return true end
+  local target = PLDR.ResolveAdaptiveBdmaTarget(ui_scene, device_page)
+  if target == nil then return true end
+  if PLDR.IsBdmaModeEquipped(target) then return true end
+  local ok, why = PLDR.ApplyBdmaModeOnce(target, PLDR.NextBdmaApplyToken())
+  if UI ~= nil and UI.Notif_queue ~= nil then
+    if ok then
+      UI.Notif_queue.add("Adaptive BDMA: staged "..tostring(target).." modules", "ok")
+    else
+      -- Never block the launch on a staging hiccup: launching with whatever is
+      -- staged is exactly today's manual behavior, so this can't regress it.
+      UI.Notif_queue.add("Adaptive BDMA couldn't stage "..tostring(target).."\nlaunching with current modules ("..tostring(why or "apply failed")..")", "warn")
+    end
+  end
+  return ok
 end
 
 -- ============================================================================
@@ -6405,6 +6503,11 @@ end
 
 function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
   local policy, device_page = ResolveLaunchPolicy(gamelocation, ui_scene)
+  -- Adaptive BDMA (issue #509): stage the launched device's module variant
+  -- before exec (zero card writes when already equipped). pcall'd so a staging
+  -- fault can never take the launch path down with it; on failure the launch
+  -- proceeds with whatever is staged -- exactly the manual-mode behavior.
+  pcall(PLDR.MaybeApplyAdaptiveBdma, ui_scene, device_page)
   local selected_entry = tostring(game or "")
   local hdd_partition_label = nil
   local hdd_relpath = nil

@@ -2504,6 +2504,8 @@ UI = {
         UI.SettingsEntryGameListCache = UI.GameListCache
         UI.BootSound = (type(PLDR) == "table" and PLDR.BOOT_SOUND ~= false)
         UI.SettingsEntryBootSound = UI.BootSound
+        UI.BdmaAdaptive = (type(PLDR) == "table" and PLDR.BDMA_ADAPTIVE == true)
+        UI.SettingsEntryBdmaAdaptive = UI.BdmaAdaptive
         UI.Overscan = math.floor(tonumber(type(PLDR) == "table" and PLDR.OVERSCAN or 0) or 0)
         UI.SettingsEntryOverscan = UI.Overscan
         UI.SettingsEntryKeyboardLayout = tostring(UI.KeyboardLayoutDraft or (type(PLDR) == "table" and PLDR.KEYBOARD_LAYOUT) or "QWERTY")
@@ -3461,6 +3463,7 @@ UI = {
           local art_location_val = (UI.ArtLocation == "pops" or UI.ArtLocation == "art") and UI.ArtLocation or "pops_art"
           local gamelist_cache_val = UI.GameListCache == true
           local boot_sound_val = UI.BootSound == true
+          local bdma_adaptive_val = UI.BdmaAdaptive == true
           local overscan_val = math.floor(tonumber(UI.Overscan) or 0)
           local video_live_before = nil
           if type(Screen) == "table" and type(Screen.getMode) == "function" then
@@ -3488,6 +3491,7 @@ UI = {
                 art_location = art_location_val,
                 gamelist_cache = gamelist_cache_val,
                 boot_sound = boot_sound_val,
+                bdma_adaptive = bdma_adaptive_val,
                 overscan = overscan_val,
                 hide_text = UI.HideTextMode == true,
                 prev_hide_text = UI.SettingsEntryHideTextMode == true,
@@ -3528,6 +3532,7 @@ UI = {
             PLDR.ART_LOCATION = art_location_val
             PLDR.GAMELIST_CACHE = gamelist_cache_val
             PLDR.BOOT_SOUND = boot_sound_val
+            PLDR.BDMA_ADAPTIVE = bdma_adaptive_val
             PLDR.OVERSCAN = overscan_val
             if type(PLDR.ApplyVideoStandardRuntime) == "function" then
               PLDR.ApplyVideoStandardRuntime(video_key)
@@ -3700,6 +3705,10 @@ UI = {
           end
           if UI.BootSound ~= true then   -- default ON
             UI.BootSound = true
+            UI.ProfileDirty = true
+          end
+          if UI.BdmaAdaptive == true then   -- default OFF
+            UI.BdmaAdaptive = false
             UI.ProfileDirty = true
           end
           if (math.floor(tonumber(UI.Overscan) or 0)) ~= 0 then   -- default 0 (off)
@@ -3894,6 +3903,25 @@ UI = {
           function() CycleBdma(-1) end,
           function() CycleBdma(1) end,
           function() return UI.BdmaDirty == true end
+        )
+        -- Adaptive BDMA (issue #509): stage the BDMA variant per LAUNCHED game's
+        -- device instead of the one global mode above (which then reads as the
+        -- USB-page preference: exFAT-USB keeps the modules on USB launches, any
+        -- other value means FAT32/none there). Zero card writes when the right
+        -- variant is already staged.
+        local function ToggleAdaptiveBdma()
+          if UI.BdmaAdaptive ~= true and PLDR.POPSTARTER_MC_FOLDER == false then
+            UI.Notif_queue.add("Enable the POPSTARTER Folder first\n(BDMA / SMB modules must live on the memory card)", "warn")
+            return
+          end
+          UI.BdmaAdaptive = not (UI.BdmaAdaptive == true)
+        end
+        AddCycle(
+          "Adaptive BDMA",
+          function() return UI.BdmaAdaptive and "On (per-device)" or "Off" end,
+          function() ToggleAdaptiveBdma() end,
+          function() ToggleAdaptiveBdma() end,
+          function() return (UI.BdmaAdaptive == true) ~= (UI.SettingsEntryBdmaAdaptive == true) end
         )
 
         AddSection("Display")
@@ -4171,6 +4199,7 @@ UI = {
             or tostring(UI.HddFs) ~= tostring(UI.SettingsEntryHddFs)
             or (UI.GameListCache == true) ~= (UI.SettingsEntryGameListCache == true)
             or (UI.BootSound == true) ~= (UI.SettingsEntryBootSound == true)
+            or (UI.BdmaAdaptive == true) ~= (UI.SettingsEntryBdmaAdaptive == true)
             or (math.floor(tonumber(UI.Overscan) or 0)) ~= (math.floor(tonumber(UI.SettingsEntryOverscan) or 0))
             or (UI.BootPageIndex or 1) ~= (UI.SettingsEntryBootPageIndex or 1)
             or (UI.SmbDirty == true)
@@ -4206,6 +4235,13 @@ UI = {
           -- deleted while SMB modules are installed (draft or saved).
           if (UI.SmbModulesDraft == true) or (PLDR.SMB_MODULES == true) then
             UI.Notif_queue.add("Can't disable while SMB modules are installed\nSet SMB modules to Not installed first", "warn")
+            return
+          end
+          -- And for Adaptive BDMA: it stages modules INTO this folder at launch
+          -- time, so deleting the folder while it's on would just silently
+          -- neuter the feature (staging no-ops with the folder off).
+          if (UI.BdmaAdaptive == true) or (PLDR.BDMA_ADAPTIVE == true) then
+            UI.Notif_queue.add("Can't disable while Adaptive BDMA is on\nTurn Adaptive BDMA off first", "warn")
             return
           end
           local confirmed = UI.RunConfirm({
