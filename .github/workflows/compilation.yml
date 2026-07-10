@@ -13,7 +13,28 @@ on:
       - run_build
 
 jobs:
+  # Boot-brick gate on a plain glibc runner: the ps2dev container is Alpine/musl
+  # where lupa has no wheel (its in-container step self-skips), so the harness
+  # runs HERE and the build depends on it -- an un-bootable embedded-Lua change
+  # (the d4b04be attach-before-init class) fails this job before anything ships.
+  # Infra failures (pip outage) skip cleanly; only real harness failures gate.
+  lua-harness:
+    name: Host-execute embedded Lua (boot-brick gate)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Run the host harness
+        shell: bash
+        run: |
+          set -eu
+          python3 -m pip install --quiet lupa 2>/dev/null \
+            || python3 -m pip install --quiet --break-system-packages lupa \
+            || { echo "lupa install failed on ubuntu (infra); skipping"; exit 0; }
+          python3 tools/host_harness.py
+
   build:
+    needs: lua-harness
     runs-on: ubuntu-latest
     container:
       # Pinned to v2.0.0 (2026-05-17 release) so unrelated upstream
