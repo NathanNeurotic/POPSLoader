@@ -628,7 +628,8 @@ Plain KEY=VALUE text with **22 keys** (`EncodeSettings`, `system.lua:3387`; the
 loader normalizes CRLF before parsing, and `usb:`/`smb:`-prefixed boots fall back
 to the MC settings path since those filesystems aren't live in-app),
 then the SMB connection block (`SMB_*`) appended by `SmbAppendLines`:
-`PROFILE`, `POPSTARTER_PATH`, `POPSTARTER_MODE`, `BDMA`, `DKWDRV_PATH`,
+`PROFILE`, `POPSTARTER_PATH`, `POPSTARTER_MODE`, `BDMA`, `BDMA_ADAPTIVE`
+(per-launch BDMA variant staging, default off; see STATE.md), `DKWDRV_PATH`,
 `STRICT_HDD_PREEXEC_GATE`, `VIDEO_STANDARD`, `HIDE_TEXT`, `KEYBOARD_LAYOUT`,
 `BOOT_PAGE`, `MULTIDISC_COLLAPSE`, `GLOBAL_HIDE`, `POPSTARTER_MC_FOLDER`,
 `HIDDEN_DEVICES`, `SHOW_DETAILS`, `DETAILS_ALIGN`, `ART_LOCATION` (removable

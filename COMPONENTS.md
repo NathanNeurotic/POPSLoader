@@ -117,6 +117,16 @@ technical claim below cites `path:line` against this worktree.
   This BETA-13-PLAY state has NO inter-module cold-dev9 settle delay here.
 - `GetHDDStatus` via `HDIOC_STATUS` (luaHDD.cpp:93-96); on-demand mount
   `MountPart`/`mnt` (luaHDD.cpp:21-92) producing `pfs%d:/` mount points.
+  `HDD.MountPartition` returns `(ok, rc)` — the second value is the raw
+  `fileXioMount` rc (2026-07-09 diagnostics; `mnt` no longer collapses failures
+  to a constant `-4`).
+- `HDD.ListPartitions` (2026-07-09) — read-only APA-table enumerator:
+  `fileXioDopen("hdd0:")` + `fileXioDread`, keeping main-partition records with
+  the PFS format magic (the OPL / wLaunchELF technique; constants mirror ps2sdk
+  `libhdd.h`). Names are snapshotted into a static buffer and the dir fd closed
+  BEFORE any Lua-heap call so an allocation longjmp can't leak a ps2hdd slot.
+  Returns the name array, or `nil, rc` before ps2hdd loads. Consumed by
+  `PLDR.HDD.DiscoverPartitionGames` (partition-installed `PP.`/`__.` games).
 
 ### `src/embed_assets.cpp` — runtime name -> embedded blob resolver
 - `embedded_get()` (embed_assets.cpp:195) normalizes paths (strips `embed:/`,
