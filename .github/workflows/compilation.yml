@@ -98,6 +98,23 @@ jobs:
             fi
           fi
 
+      # Runtime gate on top of the syntax gate above: EXECUTES system.lua (and
+      # ui.lua at its real require point) under a mocked PS2 environment, then a
+      # functional battery. Catches the class luac -p cannot: attach-before-init
+      # load-order bricks (d4b04be shipped un-bootable rolling builds), nil-global
+      # calls, load-time type errors. Environment problems (no lupa wheel for this
+      # container) SKIP cleanly; a real harness failure HARD-FAILS the build.
+      - name: Host-execute the embedded Lua (boot-brick gate)
+        shell: bash
+        run: |
+          set -eu
+          if ! command -v python3 >/dev/null 2>&1; then echo "python3 unavailable; skipping host harness"; exit 0; fi
+          if ! python3 -c "import lupa" 2>/dev/null; then
+            python3 -m pip install --quiet lupa 2>/dev/null               || python3 -m pip install --quiet --break-system-packages lupa 2>/dev/null               || pip3 install --quiet lupa 2>/dev/null               || { echo "lupa not installable in this container; skipping host harness"; exit 0; }
+          fi
+          python3 -c "import lupa" 2>/dev/null || { echo "lupa import failed post-install; skipping host harness"; exit 0; }
+          python3 tools/host_harness.py
+
       - name: Compile project
         shell: sh
         run: |
