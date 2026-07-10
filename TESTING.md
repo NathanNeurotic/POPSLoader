@@ -98,10 +98,12 @@ SMB (v1) is now **implemented end-to-end** (CI + Rolling green) and **validating
 ### ⭐⭐ Adaptive BDMA — NEW, never run on hardware (needs a two-device setup, e.g. MMCE + USB)
 
 - [ ] Turn on *Settings → Storage → Adaptive BDMA* (leave **BDMA Mode** on whatever you normally use), save.
-- [ ] Launch a game from **MMCE**, then (after coming back) a game from **USB** — **both should boot without touching Settings in between.** This is the whole feature: before, whichever BDMA Mode was saved broke the other device's launches.
-- [ ] First launch on a *different* device shows a small "Adaptive BDMA: staged ... modules" notice; launching from the **same** device again shows **no** notice — that means it checked the memory card first and **skipped the write** because the right drivers were already there. Two same-device launches in a row with a "staged" notice each time = the check is broken, please report.
-- [ ] If your USB drive is **exFAT**: keep **BDMA Mode = exFAT-USB** saved — USB launches should keep the exFAT drivers. If it's **FAT32**: any other saved mode is fine — USB launches remove the drivers so POPStarter's built-in stack runs.
+- [ ] ⭐ Launch a game from **MMCE**, then (after coming back) a game from **USB** — **both booting, without touching Settings in between, IS the pass.** This is the whole feature: before, whichever BDMA Mode was saved broke the other device's launches. *(There is deliberately no on-screen notice on success — the launch hands off to POPStarter before anything could be shown.)*
+- [ ] Optional deeper check: after launching from a device, look at `mc:/POPSTARTER/bdma_mode.txt` (e.g. from wLaunchELF) — it should name that device's driver set (`MMCE`, `MX4SIO`, `USBEXFAT`, `ATA`, or `FAT32` after a FAT32-USB launch).
+- [ ] If staging ever **fails**, the launch is **cancelled** and a warning notice explains why — you're never dropped into a black screen with wrong drivers. Report the notice text if you see one.
+- [ ] If your USB drive is **exFAT**: keep **BDMA Mode = exFAT-USB** saved — USB launches keep the exFAT drivers. If it's **FAT32**: any other saved mode is fine — USB launches remove the drivers so POPStarter's built-in stack runs.
 - [ ] MX4SIO and HDD (exFAT) launches pick their own drivers the same way. Classic **HDD (PFS)** games and DKWDRV are untouched by this feature.
+- [ ] Turn Adaptive **off** again (after having launched from a different device) and save — your **BDMA Mode** row should still show the mode YOU chose, and the drivers for it should be back on the card (the turn-off restores them). A BDMA Mode row that silently changed to some other device's mode = bug, please report.
 - [ ] With Adaptive on, trying to turn the **POPSTARTER Folder** off is blocked with a notice (turn Adaptive off first) — confirm the block appears.
 
 ### ⭐⭐ Partition-installed PS1 games on the HDD page — NEW, never run on hardware

@@ -122,6 +122,14 @@ static int GetHDDStatus(lua_State *L) {
  * care about through the tracked-slot helpers. */
 static int ListPartitions(lua_State *L)
 {
+    /* Snapshot the qualifying names BEFORE touching the Lua heap:
+     * lua_newtable/lua_pushstring can longjmp on an allocation failure, and an
+     * unwind past fileXioDclose would strand one of ps2hdd's fixed directory
+     * slots. APA partition names cap at 32 bytes; 512 main partitions is far
+     * beyond any real drive (truncated with a log line if ever exceeded). */
+    #define LP_MAX_PARTS 512
+    static char lp_names[LP_MAX_PARTS][33];
+    int n = 0;
     int fd = fileXioDopen("hdd0:");
     if (fd < 0)
     {
@@ -130,17 +138,27 @@ static int ListPartitions(lua_State *L)
         lua_pushinteger(L, fd);
         return 2;
     }
-    lua_newtable(L);
-    int n = 0;
     iox_dirent_t dirent;
     while (fileXioDread(fd, &dirent) > 0)
     {
         if (dirent.stat.attr != APA_ATTR_MAIN_PARTITION) continue; /* skip sub-partition records */
         if (dirent.stat.mode != APA_FS_TYPE_PFS) continue;         /* PFS-formatted only (skips __mbr/HDL/raw) */
-        lua_pushstring(L, dirent.name);
-        lua_rawseti(L, -2, ++n);
+        if (n >= LP_MAX_PARTS)
+        {
+            DPRINTF("%s: more than %d PFS partitions, truncating\n", __func__, LP_MAX_PARTS);
+            break;
+        }
+        strncpy(lp_names[n], dirent.name, 32);
+        lp_names[n][32] = '\0';
+        n++;
     }
     fileXioDclose(fd);
+    lua_newtable(L);
+    for (int i = 0; i < n; i++)
+    {
+        lua_pushstring(L, lp_names[i]);
+        lua_rawseti(L, -2, i + 1);
+    }
     DPRINTF("%s: %d PFS main partitions\n", __func__, n);
     return 1;
 }

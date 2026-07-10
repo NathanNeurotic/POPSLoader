@@ -4054,6 +4054,26 @@ function PLDR.CommitSettingsChanges(opts)
     end
   end
 
+  -- Adaptive BDMA ON->OFF transition: while adaptive was on, bdma_mode.txt
+  -- tracked the LAST LAUNCH, not the chosen mode -- and with the flag now off,
+  -- the finalize/boot reconcile adopts the marker again. Without a restage,
+  -- turning adaptive off silently flips the saved BDMA Mode to whatever
+  -- launched last (clobbering e.g. an exFAT-USB preference). Re-assert the
+  -- chosen mode on the card; the equipped check keeps this zero-write when the
+  -- card already matches (including when apply_bdma above just staged it).
+  -- Best-effort: settings are saved either way; a failure surfaces and leaves
+  -- the marker-adopt behavior, which at least reflects what is on the card.
+  if prev.bdma_adaptive == true and next_bdma_adaptive == false then
+    if type(PLDR.IsBdmaModeEquipped) == "function"
+       and not PLDR.IsBdmaModeEquipped(next_state.bdma_mode) then
+      EmitStage("apply_bdma", "Restoring BDMA mode")
+      local restaged = PLDR.ApplyBdmaModeOnce(next_state.bdma_mode, PLDR.NextBdmaApplyToken())
+      if not restaged and UI ~= nil and UI.Notif_queue ~= nil then
+        UI.Notif_queue.add("Couldn't restore BDMA mode "..tostring(next_state.bdma_mode).."\nre-select it under Settings > Storage to restage", "warn")
+      end
+    end
+  end
+
   if opts.apply_smb == true then
     EmitStage("apply_smb", "Applying SMB modules")
     -- next_state was already applied above, so PLDR.SMB / PLDR.SMB_MODULES hold the
@@ -4892,14 +4912,13 @@ function PLDR.MaybeApplyAdaptiveBdma(ui_scene, device_page)
   if target == nil then return true end
   if PLDR.IsBdmaModeEquipped(target) then return true end
   local ok, why = PLDR.ApplyBdmaModeOnce(target, PLDR.NextBdmaApplyToken())
-  if UI ~= nil and UI.Notif_queue ~= nil then
-    if ok then
-      UI.Notif_queue.add("Adaptive BDMA: staged "..tostring(target).." modules", "ok")
-    else
-      -- Never block the launch on a staging hiccup: launching with whatever is
-      -- staged is exactly today's manual behavior, so this can't regress it.
-      UI.Notif_queue.add("Adaptive BDMA couldn't stage "..tostring(target).."\nlaunching with current modules ("..tostring(why or "apply failed")..")", "warn")
-    end
+  -- No success toast: a successful launch execs POPStarter and never returns to
+  -- the UI loop, so nothing queued here could ever render. The tester-visible
+  -- success signal is the launch itself (and bdma_mode.txt naming the variant).
+  if not ok and UI ~= nil and UI.Notif_queue ~= nil then
+    -- The caller CANCELS the launch on false, returning to the menu loop --
+    -- which is the only place this warn can actually be seen.
+    UI.Notif_queue.add("Adaptive BDMA couldn't stage "..tostring(target).." -- launch cancelled\n("..tostring(why or "apply failed")..") check the memory card, or turn Adaptive BDMA off", "warn")
   end
   return ok
 end
@@ -5525,6 +5544,32 @@ function PLDR.IsPartitionInstalledHddEntry(partition, relpath)
   return PLDR.HDD.IsPartitionGameCandidateName(partition)
 end
 
+-- Sort key for HDD game entries: the DISPLAYED name (lowercased), not the raw
+-- "PART|rel" encoding -- raw order put every "PP.*" entry ahead of every
+-- "__.POPS*" entry ('P' < '_' in ASCII) even though the list shows neither
+-- prefix, breaking alphabetical browsing on mixed drives.
+function PLDR.HDD.GameEntryDisplayKey(entry)
+  local e = tostring(entry or "")
+  local part, rel = string.match(e, "^([^|]+)|(.+)$")
+  if rel ~= nil then
+    if PLDR.IsPartitionInstalledHddEntry(part, rel) then
+      return string.lower(string.sub(part, 4))
+    end
+    local base = string.match(rel, "([^/]+)$") or rel
+    return string.lower((string.gsub(base, "%.[Vv][Cc][Dd]$", "")))
+  end
+  return string.lower(e)
+end
+
+-- Comparator for table.sort over PLDR.GAMES on the HDD page; ties break on the
+-- raw entry so the order stays deterministic.
+function PLDR.HDD.CompareGameEntriesByDisplay(a, b)
+  local ka = PLDR.HDD.GameEntryDisplayKey(a)
+  local kb = PLDR.HDD.GameEntryDisplayKey(b)
+  if ka ~= kb then return ka < kb end
+  return tostring(a or "") < tostring(b or "")
+end
+
 -- Enumerate the APA table (HDD.ListPartitions, read-only) and mount-probe each
 -- candidate for a root IMAGE0.VCD -- name alone is a proven false-positive trap
 -- (HDDOSD apps ship as PP.* partitions too, e.g. CodeBreaker). Fills
@@ -5590,12 +5635,18 @@ function PLDR.HDD.CheckAvailableHddPopsParts(on_progress)
         PLDR.HDD.LAST_MOUNT_RC = mount_rc
       end
       if type(on_progress) == "function" then
-        pcall(on_progress, i / math.max(total_partitions, 1))
+        -- Scaled to 0..0.6: the partition-game discovery below owns 0.6..1.0,
+        -- keeping this phase's progress monotonic (it used to jump backwards).
+        pcall(on_progress, (i / math.max(total_partitions, 1)) * 0.6)
       end
     end
     -- Partition-installed games ride the same once-per-boot check. pcall'd:
     -- a discovery fault must never take the classic __.POPS scan down with it.
-    pcall(PLDR.HDD.DiscoverPartitionGames, on_progress)
+    local disco_progress = nil
+    if type(on_progress) == "function" then
+      disco_progress = function(r) pcall(on_progress, 0.6 + (tonumber(r) or 0) * 0.4) end
+    end
+    pcall(PLDR.HDD.DiscoverPartitionGames, disco_progress)
     PLDR.HDD.HAS_CHECKED = true
   end
   if type(on_progress) == "function" then
@@ -5634,12 +5685,15 @@ function PLDR.HDD.BuildGameList(on_progress)
   -- Partition-installed games (PP./__. one-partition-per-game): discovered by
   -- DiscoverPartitionGames under the same HAS_CHECKED gate; encoded like every
   -- HDD entry so caching / hiding / launch routing flow through unchanged.
+  -- Multi-disc collapse applies to the partition-derived DISPLAY name, same as
+  -- every other list source (a per-disc install shape is "PP.Game (Disc 2)").
   local partgames = PLDR.HDD.PARTGAMES or {}
   for i = 1, #partgames do
     local pg = partgames[i]
     if type(pg) == "table" and type(pg.partition) == "string" then
       local is_hidden = pg.hidden == true
-      if not (PLDR.GLOBAL_HIDE and is_hidden) then
+      if not (PLDR.GLOBAL_HIDE and is_hidden)
+         and not (PLDR.COLLAPSE_MULTIDISC and IsSecondaryDisc(string.sub(pg.partition, 4))) then
         local encoded = EncodeHddGameEntry(pg.partition, "IMAGE0.VCD")
         if encoded ~= nil then
           if is_hidden then PLDR.HIDDEN[encoded] = true end
@@ -5652,7 +5706,7 @@ function PLDR.HDD.BuildGameList(on_progress)
   if type(on_progress) == "function" then
     pcall(on_progress, 1.0)
   end
-  table.sort(PLDR.GAMES)
+  table.sort(PLDR.GAMES, PLDR.HDD.CompareGameEntriesByDisplay)
 end
 
 function PLDR.LoadHDDModules()
@@ -5914,7 +5968,7 @@ function PLDR.HDD.ApplyCachedList()
       end
     end
   end
-  table.sort(PLDR.GAMES)
+  table.sort(PLDR.GAMES, PLDR.HDD.CompareGameEntriesByDisplay)
   PLDR.HDD.FROM_CACHE = true
   if #PLDR.GAMES > 0 then
     PLDR.HDD.FOUNDANY = true
@@ -6059,24 +6113,6 @@ local function BuildLiteralElfName(value)
     return trimmed
   end
   return trimmed..".ELF"
-end
-
-local function BuildDisplayNameFromEntry(entry)
-  if entry == nil or entry == "" then
-    return ""
-  end
-  local display_name = entry
-  local hdd_partition, hdd_relpath = string.match(display_name, "^([^|]+)|(.+)$")
-  if hdd_relpath ~= nil then
-    -- Partition-installed game: the identity is the partition name minus its
-    -- 3-char prefix ("PP."/"__."), never the fixed "IMAGE0" payload name.
-    if type(PLDR.IsPartitionInstalledHddEntry) == "function"
-       and PLDR.IsPartitionInstalledHddEntry(hdd_partition, hdd_relpath) then
-      return string.sub(hdd_partition, 4)
-    end
-    display_name = string.match(hdd_relpath, "([^/]+)$") or hdd_relpath
-  end
-  return string.gsub(display_name, "%.[Vv][Cc][Dd]$", "")
 end
 
 local function SelectPopstarterSelectorPrefix(device_page)
@@ -6604,11 +6640,6 @@ end
 
 function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
   local policy, device_page = ResolveLaunchPolicy(gamelocation, ui_scene)
-  -- Adaptive BDMA (issue #509): stage the launched device's module variant
-  -- before exec (zero card writes when already equipped). pcall'd so a staging
-  -- fault can never take the launch path down with it; on failure the launch
-  -- proceeds with whatever is staged -- exactly the manual-mode behavior.
-  pcall(PLDR.MaybeApplyAdaptiveBdma, ui_scene, device_page)
   local selected_entry = tostring(game or "")
   local hdd_partition_label = nil
   local hdd_relpath = nil
@@ -6854,6 +6885,20 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
       nil,
       failure_context
     )
+    return
+  end
+  -- Adaptive BDMA (issue #509): stage the launched device's module variant.
+  -- Runs AFTER the cheap launch validations above (a blocked launch must not
+  -- cost memory-card writes) and before the exec; nothing in between reads the
+  -- staged modules. Zero card writes when the right variant is already
+  -- equipped. On a staging FAILURE the launch is CANCELLED: the card may hold
+  -- the wrong (or half-written) modules and the game would just black-screen
+  -- inside POPStarter with no diagnostics -- aborting returns to the menu
+  -- loop, the only place the queued warn toast can actually render. pcall'd:
+  -- an unexpected staging ERROR falls through to a normal launch instead of
+  -- taking the whole launch path down.
+  local adaptive_ok, adaptive_res = pcall(PLDR.MaybeApplyAdaptiveBdma, ui_scene, device_page)
+  if adaptive_ok and adaptive_res == false then
     return
   end
   local selector_prefix = SelectPopstarterSelectorPrefix(device_page)
