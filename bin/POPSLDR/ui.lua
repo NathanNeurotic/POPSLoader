@@ -974,8 +974,8 @@ UI = {
 	        circle_main = "Exit",
 	        circle_other = "Back",
 	        start_profiles = "Settings",
-	        start_reset = "Reset Defaults",
-	        select_toggle = "Toggle UI",
+	        start_reset = "Reset",
+	        select_toggle = "Hide Text",
 	        square_backspace = "Backspace",
 	        cross_confirm = "Confirm",
 	        cross_enter = "Enter",
@@ -1847,7 +1847,7 @@ UI = {
       pressed_col = 0;
       pressed_until = 0;
       layout_key = "QWERTY";
-      layout_order = {"QWERTY", "ABC", "DVORAK"};
+      layout_order = {"QWERTY", "DVORAK", "ABC"};
       layouts = {
         ABC = {
           {"a","b","c","d","e","f","g","h","i","j"},
@@ -3664,7 +3664,7 @@ UI = {
           end
         end
 
-        local keyboard_layouts = (UI.PathEditor and UI.PathEditor.layout_order) or {"QWERTY", "ABC", "DVORAK"}
+        local keyboard_layouts = (UI.PathEditor and UI.PathEditor.layout_order) or {"QWERTY", "DVORAK", "ABC"}
         local function CurrentKeyboardLayoutIndex()
           local key = string.upper(tostring(UI.KeyboardLayoutDraft or "QWERTY"))
           for i = 1, #keyboard_layouts do
@@ -3995,6 +3995,15 @@ UI = {
           function() UI.BootPageIndex = CycleIndex(UI.BootPageIndex,  1, #UI.BootPageModes) end,
           function() return (UI.BootPageIndex or 1) ~= (UI.SettingsEntryBootPageIndex or 1) end
         )
+        -- Keyboard Layout lives under Startup (moved out of POPSTARTER: it is a
+        -- global input preference, not a per-POPSTARTER setting -- R3Z3N review).
+        AddCycle(
+          "Keyboard Layout",
+          function() return string.upper(tostring(UI.KeyboardLayoutDraft or "QWERTY")) end,
+          function() CycleKeyboardLayout(-1) end,
+          function() CycleKeyboardLayout( 1) end,
+          KeyboardLayoutDirty
+        )
 
         -- Carousel device visibility checklist: a Shown/Hidden row per main-menu
         -- device. Toggling hides/shows it on the carousel (all shown by default).
@@ -4043,7 +4052,7 @@ UI = {
         -- other hides). A -page=ata launch still auto-enters exFAT regardless of this.
         AddCycle(
           "Internal HDD",
-          function() return (UI.HddFs == "EXFAT") and "exFAT (APA-Jail)" or "PFS (default)" end,
+          function() return (UI.HddFs == "EXFAT") and "exFAT" or "APA / PFS (default)" end,
           function() UI.HddFs = (UI.HddFs == "EXFAT") and "PFS" or "EXFAT" end,
           function() UI.HddFs = (UI.HddFs == "EXFAT") and "PFS" or "EXFAT" end,
           function() return tostring(UI.HddFs) ~= tostring(UI.SettingsEntryHddFs) end
@@ -4193,13 +4202,7 @@ UI = {
           OpenDkwdrvPathEditor,
           function() return UI.DkwdrvDirty == true end
         )
-        AddCycle(
-          "Keyboard Layout",
-          function() return string.upper(tostring(UI.KeyboardLayoutDraft or "QWERTY")) end,
-          function() CycleKeyboardLayout(-1) end,
-          function() CycleKeyboardLayout( 1) end,
-          KeyboardLayoutDirty
-        )
+        -- (Keyboard Layout moved to the Startup section -- R3Z3N review.)
 
         local function HasUnsavedChanges()
           return UI.ProfileDirty == true
@@ -4474,13 +4477,14 @@ UI = {
 
         -- Minimal scrollbar so "there's more below/above" is discoverable.
         if scrolling and total_h > 0 then
+          local bar_w = 6  -- 3x the old 2px hairline so it's actually discoverable (R3Z3N review)
           local track_x = SAFE_RIGHT + 4
           local thumb_h = math.max(16, math.floor(view_h * view_h / total_h))
           local max_scroll = total_h - view_h
           local t = (max_scroll > 0) and (scroll / max_scroll) or 0
           local thumb_y = view_top + math.floor((view_h - thumb_h) * t)
-          Graphics.drawRect(track_x, view_top, 2, view_h, separator_color)
-          Graphics.drawRect(track_x, thumb_y, 2, thumb_h, accent_color)
+          Graphics.drawRect(track_x, view_top, bar_w, view_h, separator_color)
+          Graphics.drawRect(track_x, thumb_y, bar_w, thumb_h, accent_color)
         end
 
         Input_GetEvent()
