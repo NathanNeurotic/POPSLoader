@@ -3892,19 +3892,24 @@ UI = {
         -- draw/nav/scroll machinery below needs no changes. Action rows (Save/Reset/
         -- Discard) and the spacers around them are NEVER hidden -- AddAction resets the
         -- collapse flag so they (and any following section) always stay reachable.
-        if type(UI.SettingsCollapsed) ~= "table" then UI.SettingsCollapsed = {} end
-        local collapsed_now = false
+        -- ACCORDION model (R3Z3N review): every section's children are always in
+        -- the item list so nav flows through them, but only the section holding the
+        -- FOCUSED row renders expanded -- the others show a single header line.
+        -- Headers are non-selectable, so nav skips them and lands on the next
+        -- section's first item at a boundary, and the section you leave collapses
+        -- on its own. `section` tags each child with its owning section label.
+        local current_section = nil
         local function AddSection(label)
-          collapsed_now = (UI.SettingsCollapsed[label] == true)
-          table.insert(items, { kind = "section", label = label, collapsed = collapsed_now, collapsible = true })
+          current_section = label
+          table.insert(items, { kind = "section", label = label })
         end
         local function AddSpacer()
           table.insert(items, { kind = "spacer" })
         end
         local function AddCycle(label, get_value, prev_fn, next_fn, dirty_fn)
-          if collapsed_now then return end
           table.insert(items, {
             kind = "cycle",
+            section = current_section,
             label = label,
             value = get_value,
             prev = prev_fn,
@@ -3915,13 +3920,12 @@ UI = {
         local function AddInfo(label, get_value)
           -- Read-only status row (not focusable -- see IsSelectable). Surfaces
           -- live runtime state next to the relevant setting.
-          if collapsed_now then return end
-          table.insert(items, { kind = "info", label = label, value = get_value })
+          table.insert(items, { kind = "info", section = current_section, label = label, value = get_value })
         end
         local function AddPath(label, get_value, open_fn, dirty_fn)
-          if collapsed_now then return end
           table.insert(items, {
             kind = "path",
+            section = current_section,
             label = label,
             value = get_value,
             open = open_fn,
@@ -3929,7 +3933,7 @@ UI = {
           })
         end
         local function AddAction(label, activate_fn, accent)
-          collapsed_now = false  -- actions (and anything after) are never hidden by a collapse
+          current_section = nil  -- actions belong to no section (always shown)
           table.insert(items, {
             kind = "action",
             label = label,
@@ -4355,7 +4359,9 @@ UI = {
         local function IsSelectable(idx)
           local it = items[idx]
           if it == nil then return false end
-          if it.kind == "section" then return it.collapsible == true end
+          -- Section headers are non-selectable (accordion): nav skips them so it
+          -- lands on the section's first item, not the header.
+          if it.kind == "section" then return false end
           return it.kind ~= "spacer" and it.kind ~= "info"
         end
         if type(UI.SettingsFocus) ~= "number" or UI.SettingsFocus < 1 or UI.SettingsFocus > #items then
@@ -4382,16 +4388,38 @@ UI = {
           end
         end
 
-        -- Compute total content height for top-Y placement.
+        -- Accordion: the OPEN section = the section of the focused row (sticky when
+        -- focus is on an action, which has no section, so the last section stays
+        -- open). A row is visible only if it's a header/spacer/action or a child of
+        -- the open section; collapsed sections render as their single header line.
+        do
+          local ff = items[UI.SettingsFocus]
+          if ff ~= nil and ff.section ~= nil then UI.SettingsOpenSection = ff.section end
+          if UI.SettingsOpenSection == nil then
+            for _, it in ipairs(items) do
+              if it.kind == "section" then UI.SettingsOpenSection = it.label; break end
+            end
+          end
+        end
+        local open_section = UI.SettingsOpenSection
+        local function IsVisibleItem(it)
+          if it == nil then return false end
+          if it.kind == "section" or it.kind == "spacer" or it.kind == "action" then return true end
+          return it.section == open_section
+        end
+
+        -- Compute total content height for top-Y placement (visible rows only).
         local total_h = 0
         for i = 1, #items do
           local it = items[i]
-          if it.kind == "section" then
-            total_h = total_h + SECTION_HEADER_H + (i > 1 and SECTION_GAP_BEFORE or 0)
-          elseif it.kind == "spacer" then
-            total_h = total_h + SPACER_H
-          else
-            total_h = total_h + ROW_H
+          if IsVisibleItem(it) then
+            if it.kind == "section" then
+              total_h = total_h + SECTION_HEADER_H + (i > 1 and SECTION_GAP_BEFORE or 0)
+            elseif it.kind == "spacer" then
+              total_h = total_h + SPACER_H
+            else
+              total_h = total_h + ROW_H
+            end
           end
         end
         local footer_top_y = (layout.FOOTER_ICON_Y or (UI.SCR.Y - (layout.BTN_BAR_SAFE_BOTTOM or 56))) - 18
@@ -4488,12 +4516,18 @@ UI = {
           local acc = 0
           for i = 1, #items do
             local it = items[i]
-            if it.kind == "section" and i > 1 then acc = acc + SECTION_GAP_BEFORE end
-            item_off[i] = acc
-            if it.kind == "section" then item_h[i] = SECTION_HEADER_H
-            elseif it.kind == "spacer" then item_h[i] = SPACER_H
-            else item_h[i] = ROW_H end
-            acc = acc + item_h[i]
+            if IsVisibleItem(it) then
+              if it.kind == "section" and i > 1 then acc = acc + SECTION_GAP_BEFORE end
+              item_off[i] = acc
+              if it.kind == "section" then item_h[i] = SECTION_HEADER_H
+              elseif it.kind == "spacer" then item_h[i] = SPACER_H
+              else item_h[i] = ROW_H end
+              acc = acc + item_h[i]
+            else
+              -- Collapsed-section child: no space, no offset advance.
+              item_off[i] = acc
+              item_h[i] = 0
+            end
           end
         end
         local scrolling = total_h > view_h
@@ -4520,18 +4554,22 @@ UI = {
 
         for i = 1, #items do
           local it = items[i]
-          local row_y = base_y + item_off[i] - scroll
-          -- When scrolling, draw only fully-visible rows so nothing paints
-          -- over the title or footer; when it fits, draw everything (original).
-          local show = (not scrolling)
-            or (row_y >= view_top and (row_y + item_h[i]) <= (footer_top_y + 1))
-          if show then
-            if it.kind == "section" then
-              DrawSection(it.label, row_y, it.collapsed, UI.SettingsFocus == i)
-            elseif it.kind == "spacer" then
-              -- nothing to draw
-            else
-              DrawRow(it, row_y, UI.SettingsFocus == i)
+          if IsVisibleItem(it) then
+            local row_y = base_y + item_off[i] - scroll
+            -- When scrolling, draw only fully-visible rows so nothing paints
+            -- over the title or footer; when it fits, draw everything (original).
+            local show = (not scrolling)
+              or (row_y >= view_top and (row_y + item_h[i]) <= (footer_top_y + 1))
+            if show then
+              if it.kind == "section" then
+                -- "+" collapsed / "-" expanded, driven by the open section; headers
+                -- are never focused (non-selectable).
+                DrawSection(it.label, row_y, it.label ~= open_section, false)
+              elseif it.kind == "spacer" then
+                -- nothing to draw
+              else
+                DrawRow(it, row_y, UI.SettingsFocus == i)
+              end
             end
           end
         end
@@ -4570,23 +4608,16 @@ UI = {
 
         local focused_item = items[UI.SettingsFocus]
         if focused_item ~= nil then
-          local function SetSectionCollapsed(it, collapsed)
-            if it ~= nil and it.kind == "section" then
-              UI.SettingsCollapsed[it.label] = collapsed and true or nil
-            end
-          end
+          -- Focus is never on a section header (non-selectable), so there are no
+          -- section-collapse branches: the accordion follows focus automatically.
           if UI.Pad.Events.NAV_LEFT then
-            if focused_item.kind == "section" then SetSectionCollapsed(focused_item, true)
-            elseif focused_item.kind == "cycle" and focused_item.prev then focused_item.prev() end
+            if focused_item.kind == "cycle" and focused_item.prev then focused_item.prev() end
           end
           if UI.Pad.Events.NAV_RIGHT then
-            if focused_item.kind == "section" then SetSectionCollapsed(focused_item, false)
-            elseif focused_item.kind == "cycle" and focused_item.next then focused_item.next() end
+            if focused_item.kind == "cycle" and focused_item.next then focused_item.next() end
           end
           if UI.Pad.Events.CONFIRM then
-            if focused_item.kind == "section" then
-              SetSectionCollapsed(focused_item, not (UI.SettingsCollapsed[focused_item.label] == true))
-            elseif focused_item.kind == "cycle" and focused_item.next then
+            if focused_item.kind == "cycle" and focused_item.next then
               focused_item.next()
             elseif focused_item.kind == "path" and focused_item.open then
               focused_item.open()
