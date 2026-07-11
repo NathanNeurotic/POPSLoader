@@ -13,7 +13,28 @@ on:
       - run_build
 
 jobs:
+  # Boot-brick gate on a plain glibc runner: the ps2dev container is Alpine/musl
+  # where lupa has no wheel (its in-container step self-skips), so the harness
+  # runs HERE and the build depends on it -- an un-bootable embedded-Lua change
+  # (the d4b04be attach-before-init class) fails this job before anything ships.
+  # Infra failures (pip outage) skip cleanly; only real harness failures gate.
+  lua-harness:
+    name: Host-execute embedded Lua (boot-brick gate)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Run the host harness
+        shell: bash
+        run: |
+          set -eu
+          python3 -m pip install --quiet lupa 2>/dev/null \
+            || python3 -m pip install --quiet --break-system-packages lupa \
+            || { echo "lupa install failed on ubuntu (infra); skipping"; exit 0; }
+          python3 tools/host_harness.py
+
   build:
+    needs: lua-harness
     runs-on: ubuntu-latest
     container:
       # Pinned to v2.0.0 (2026-05-17 release) so unrelated upstream
@@ -98,6 +119,23 @@ jobs:
             fi
           fi
 
+      # Runtime gate on top of the syntax gate above: EXECUTES system.lua (and
+      # ui.lua at its real require point) under a mocked PS2 environment, then a
+      # functional battery. Catches the class luac -p cannot: attach-before-init
+      # load-order bricks (d4b04be shipped un-bootable rolling builds), nil-global
+      # calls, load-time type errors. Environment problems (no lupa wheel for this
+      # container) SKIP cleanly; a real harness failure HARD-FAILS the build.
+      - name: Host-execute the embedded Lua (boot-brick gate)
+        shell: bash
+        run: |
+          set -eu
+          if ! command -v python3 >/dev/null 2>&1; then echo "python3 unavailable; skipping host harness"; exit 0; fi
+          if ! python3 -c "import lupa" 2>/dev/null; then
+            python3 -m pip install --quiet lupa 2>/dev/null               || python3 -m pip install --quiet --break-system-packages lupa 2>/dev/null               || pip3 install --quiet lupa 2>/dev/null               || { echo "lupa not installable in this container; skipping host harness"; exit 0; }
+          fi
+          python3 -c "import lupa" 2>/dev/null || { echo "lupa import failed post-install; skipping host harness"; exit 0; }
+          python3 tools/host_harness.py
+
       - name: Compile project
         shell: sh
         run: |
@@ -168,9 +206,17 @@ jobs:
           cp -f bin/POPSLDR/del.icn dist_root/PS1_POPSLOADER/del.icn
 
           cp -f bin/POPSLDR/PATCH_5.BIN dist_root/POPS/PATCH_5.BIN
+          cp -f bin/POPSLDR/POPSTARTER.ELF dist_root/POPS/POPSTARTER.ELF
+
+          # Ship the POPStarter version variants (tracked bin/POPSLDR/PROFILES) renamed
+          # "POPSTARTER VERSIONS" -- the MAIN/DEBUG/USBDELAY/USBDELAY_DEBUG builds, as-is.
+          # Its own find below (the folder name has a space).
+          if [ -d bin/POPSLDR/PROFILES ]; then
+            cp -r bin/POPSLDR/PROFILES "dist_root/POPSTARTER VERSIONS"
+          fi
 
           cd dist_root
-          find PS1_POPSLOADER POPS -type f | LC_ALL=C sort | zip -X -9 ../POPSLOADER.zip -@ >/dev/null
+          { find PS1_POPSLOADER POPS -type f; [ -d "POPSTARTER VERSIONS" ] && find "POPSTARTER VERSIONS" -type f; } | LC_ALL=C sort | zip -X -9 ../POPSLOADER.zip -@ >/dev/null
           cd - >/dev/null
 
           echo "== Package contents =="
@@ -186,6 +232,7 @@ jobs:
           zpath = "POPSLOADER.zip"
           expected = {
               "POPS/PATCH_5.BIN",
+              "POPS/POPSTARTER.ELF",
               "PS1_POPSLOADER/APPINFO.PBT",
               "PS1_POPSLOADER/BUILD_INFO.txt",
               "PS1_POPSLOADER/POPSLOADER.ELF",
@@ -201,10 +248,16 @@ jobs:
               names = [n for n in z.namelist() if n and not n.endswith("/")]
           actual = set(names)
 
+          # The POPSTARTER VERSIONS/ folder (POPStarter build variants from
+          # bin/POPSLDR/PROFILES) is user-managed and variable, so verify it loosely
+          # (present + ELF-only) while exact-matching the curated installer payload.
+          versions = {n for n in actual if n.startswith("POPSTARTER VERSIONS/")}
+          core = actual - versions
+
           # Root dirs
           top = sorted({n.split("/", 1)[0] for n in names if "/" in n})
-          if top != ["POPS", "PS1_POPSLOADER"]:
-              print("ERROR: zip root must contain exactly POPS/ and PS1_POPSLOADER/")
+          if top != ["POPS", "POPSTARTER VERSIONS", "PS1_POPSLOADER"]:
+              print("ERROR: zip root must contain exactly POPS/, POPSTARTER VERSIONS/ and PS1_POPSLOADER/")
               print("Top dirs:", top)
               sys.exit(1)
 
@@ -214,10 +267,10 @@ jobs:
               print("ERROR: zip must not contain files at root:", root_files)
               sys.exit(1)
 
-          # Exact set
-          if actual != expected:
-              missing = sorted(expected - actual)
-              extra = sorted(actual - expected)
+          # Exact set for the curated installer payload (POPSTARTER VERSIONS excluded)
+          if core != expected:
+              missing = sorted(expected - core)
+              extra = sorted(core - expected)
               print("ERROR: package file set mismatch")
               if missing:
                   print("Missing:")
@@ -225,6 +278,15 @@ jobs:
               if extra:
                   print("Extra:")
                   print("\n".join(extra))
+              sys.exit(1)
+
+          # POPSTARTER VERSIONS/: must be present and contain only .ELF builds
+          if not versions:
+              print("ERROR: POPSTARTER VERSIONS/ folder is missing from the zip")
+              sys.exit(1)
+          non_elf = sorted(n for n in versions if not n.upper().endswith(".ELF"))
+          if non_elf:
+              print("ERROR: POPSTARTER VERSIONS/ must contain only .ELF files; found:", non_elf)
               sys.exit(1)
 
           # Forbidden old TM2 payload entries

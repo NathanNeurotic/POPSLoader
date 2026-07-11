@@ -293,6 +293,11 @@ static int build_hdd_embedded_loader_target_from_hdd_path(const char *source_pat
 		return -1;
 	}
 
+	/* Need at least "hddN:" before the +5 skip; a short "hdd"/"hdd0" token would
+	   make source_path + 5 point past the NUL and the strchr read out of bounds. */
+	if (strlen(source_path) < 5) {
+		return -1;
+	}
 	partition_end = strchr(source_path + 5, ':');
 	if (partition_end == NULL) {
 		return -1;
@@ -346,7 +351,9 @@ static int ExecuteHddBackedViaEmbeddedLoader(const char *resolved_path, const ch
 	if ((partition_context == NULL || partition_context[0] == '\0') &&
 	    resolved_path != NULL && strncmp(resolved_path, "hdd", 3) == 0) {
 		static char derived_partition[128];
-		const char *partition_end = strchr(resolved_path + 5, ':');
+		/* Guard the +5 skip: a short "hdd"/"hdd0" would read past the NUL. A NULL
+		   partition_end leaves partition_context unset, same as "no ':' found". */
+		const char *partition_end = (strlen(resolved_path) >= 5) ? strchr(resolved_path + 5, ':') : NULL;
 		size_t partition_len = partition_end != NULL ? (size_t)(partition_end - resolved_path) + 1 : 0;
 		if (partition_len > 0 && partition_len < sizeof(derived_partition)) {
 			memcpy(derived_partition, resolved_path, partition_len);

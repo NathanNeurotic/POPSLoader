@@ -101,8 +101,10 @@ static clock_t boot_start = 0;
 /* NHDDL-style launch arguments. Parsed early in main() so downstream
  * code (IRX loading, Lua boot) can act on the requested mode.
  *
- *   -page=hdd|usb|mc|mmce|mx4sio|smb|bdma   auto-navigate to that page
- *   -mode=<value>                            NHDDL-compatible alias
+ *   -page=hdd|ata|exfat|usb|mc|mmce|mx4sio|smb|bdma   auto-navigate to that page
+ *                                            (ata|ata0|ataN -> HDD exFAT page;
+ *                                             hdd|apa|pfs -> HDD PFS page)
+ *   -mode=<value>                            NHDDL-compatible alias for -page= (e.g. -mode=ata)
  *   -game=<selector>                         auto-launch that game
  *   -debug                                   enable on-screen diagnostics
  *
@@ -221,7 +223,7 @@ static void parseLaunchArgs(int argc, char ** argv)
             snprintf(launch_arg_page, sizeof(launch_arg_page), "%s", token + 6);
             trimLaunchArgToken(launch_arg_page);
         } else if (strncmp(token, "-mode=", 6) == 0) {
-            /* NHDDL-compat alias: -mode=ata maps to our -page=ata/hdd flow */
+            /* NHDDL-compat alias for -page=: e.g. -mode=ata -> the HDD (exFAT) page */
             snprintf(launch_arg_page, sizeof(launch_arg_page), "%s", token + 6);
             trimLaunchArgToken(launch_arg_page);
         } else if (strncmp(token, "-game=", 6) == 0) {

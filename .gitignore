@@ -32,6 +32,8 @@ bin/test.pdf
 bin/System/noindex.lua
 *.a
 *.irx
+# SMB streaming pack IRX are embedded into the ELF (bin2c), so they must be tracked.
+!bin/POPSLDR/popsmb/*.irx
 
 obj/
 asm/
@@ -43,6 +45,7 @@ bin/POPSLDR/.pldrs
 bin/LICENSE
 !EMBED/*
 bin/POPSLDR/hdd_gamecache.lua
+bin/POPSLDR/hdd_gamecache.txt
 !iop/embed/*.irx
 *.orig
 
@@ -57,6 +60,20 @@ artifacts/
 # Outdated/superseded local working files (audit reports, prompts, old build outputs)
 outdated/
 
+# Local reference clones pulled by audit agents (ps2sdk / OPL / gsKit / ps2-packer)
+.codex_refs/
+
+# POPStarter-docs research working material (first-party notes + agent corpus)
+.research/
+
 # Ensure specific tracked binary assets stay visible
 !bin/POPSLDR/POPSTARTER.ELF
+# POPStarter build variants (MAIN/DEBUG/USBDELAY/USBDELAY_DEBUG) -- shipped in releases
+# renamed "POPSTARTER VERSIONS". Negate past the blanket *.elf rule above.
+!bin/POPSLDR/PROFILES/**
 !iop/embed/BDMASSAULT_MX4SIO/*.irx
+!POPSTARTER/*.irx
+
+# Python bytecode cache (build tooling)
+__pycache__/
+*.pyc

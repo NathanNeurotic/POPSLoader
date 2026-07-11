@@ -102,7 +102,7 @@ static FT_Vector delta;
 
 #define GLYPH_CACHE_PAGE_SIZE 256
 
-#define GLYPH_PAGE_OK(font, page) ((pageid <= font->cacheMaxPageID) && (font->glyphCache[page]))
+#define GLYPH_PAGE_OK(font, page) (((page) <= (font)->cacheMaxPageID) && ((font)->glyphCache[page]))
 
 #define ALIGN_TOP     (0 << 0)
 #define ALIGN_BOTTOM  (1 << 0)
@@ -113,12 +113,6 @@ static FT_Vector delta;
 #define ALIGN_NONE    (ALIGN_TOP | ALIGN_LEFT)
 #define ALIGN_CENTER  (ALIGN_VCENTER | ALIGN_HCENTER)
 
-
-// a simple maximum of two
-int max(int a, int b)
-{
-    return a > b ? a : b;
-}
 
 // a simple minimum of two
 int min(int a, int b)
@@ -295,13 +289,12 @@ static int fntLoadSlot(font_t *font, const char* path)
 
     fntInitSlot(font);
 
-   
-        buffer = readFile(path, -1, &bufferSize);
-        if (!buffer) {
-            DPRINTF("FNTSYS Font file loading failed: %s\n", path);
-            return FNT_ERROR;
-        }
-        font->dataPtr = buffer;
+    buffer = readFile(path, -1, &bufferSize);
+    if (!buffer) {
+        DPRINTF("FNTSYS Font file loading failed: %s\n", path);
+        return FNT_ERROR;
+    }
+    font->dataPtr = buffer;
 
 
 
@@ -621,6 +614,17 @@ int fntRenderString(int id, int x, int y, short aligned, size_t width, size_t he
         }
     }
 
+    // Right alignment: shift x left by the full text width so the string ENDS at x
+    // (symmetric with HCENTER's half-shift). Inert for existing callers (which pass
+    // only ALIGN_LEFT/ALIGN_HCENTER); used by the right-aligned game-details box.
+    if (aligned & ALIGN_RIGHT) {
+        if (width) {
+            x -= min(fntCalcDimensions(id, string), width);
+        } else {
+            x -= fntCalcDimensions(id, string);
+        }
+    }
+
     if (aligned & ALIGN_VCENTER) {
         y += (FNTSYS_CHAR_SIZE - 4) >> 1;
     } else {
@@ -744,6 +748,17 @@ int fntRenderString(int id, int x, int y, short aligned, size_t width, size_t he
             x -= min(fntCalcDimensions(id, string), width) >> 1;
         } else {
             x -= fntCalcDimensions(id, string) >> 1;
+        }
+    }
+
+    // Right alignment: shift x left by the full text width so the string ENDS at x
+    // (symmetric with HCENTER's half-shift). Inert for existing callers (which pass
+    // only ALIGN_LEFT/ALIGN_HCENTER); used by the right-aligned game-details box.
+    if (aligned & ALIGN_RIGHT) {
+        if (width) {
+            x -= min(fntCalcDimensions(id, string), width);
+        } else {
+            x -= fntCalcDimensions(id, string);
         }
     }
 

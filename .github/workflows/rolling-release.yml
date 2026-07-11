@@ -3,7 +3,7 @@ name: Rolling Release
 on:
   push:
     branches:
-      - BETA-12-PLAY
+      - BETA-13-PLAY
   pull_request:
     types:
       - opened
@@ -19,7 +19,28 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Boot-brick gate on a plain glibc runner: the ps2dev container is Alpine/musl
+  # where lupa has no wheel (its in-container step self-skips), so the harness
+  # runs HERE and the build depends on it -- an un-bootable embedded-Lua change
+  # (the d4b04be attach-before-init class) fails this job and never publishes.
+  # Infra failures (pip outage) skip cleanly; only real harness failures gate.
+  lua-harness:
+    name: Host-execute embedded Lua (boot-brick gate)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Run the host harness
+        shell: bash
+        run: |
+          set -eu
+          python3 -m pip install --quiet lupa 2>/dev/null \
+            || python3 -m pip install --quiet --break-system-packages lupa \
+            || { echo "lupa install failed on ubuntu (infra); skipping"; exit 0; }
+          python3 tools/host_harness.py
+
   build-and-publish:
+    needs: lua-harness
     name: Build and publish rolling release
     runs-on: ubuntu-latest
     container:
@@ -93,11 +114,42 @@ jobs:
             fi
           fi
 
+      # Runtime gate on top of the syntax gate above: EXECUTES system.lua (and
+      # ui.lua at its real require point) under a mocked PS2 environment, then a
+      # functional battery. Catches the class luac -p cannot: attach-before-init
+      # load-order bricks (d4b04be shipped un-bootable rolling builds), nil-global
+      # calls, load-time type errors. Environment problems (no lupa wheel for this
+      # container) SKIP cleanly; a real harness failure HARD-FAILS the build.
+      - name: Host-execute the embedded Lua (boot-brick gate)
+        shell: bash
+        run: |
+          set -eu
+          if ! command -v python3 >/dev/null 2>&1; then echo "python3 unavailable; skipping host harness"; exit 0; fi
+          if ! python3 -c "import lupa" 2>/dev/null; then
+            python3 -m pip install --quiet lupa 2>/dev/null \
+              || python3 -m pip install --quiet --break-system-packages lupa 2>/dev/null \
+              || pip3 install --quiet lupa 2>/dev/null \
+              || { echo "lupa not installable in this container; skipping host harness"; exit 0; }
+          fi
+          python3 -c "import lupa" 2>/dev/null || { echo "lupa import failed post-install; skipping host harness"; exit 0; }
+          python3 tools/host_harness.py
+
       - name: Compile project
         shell: sh
         run: |
           set -eu
           make clean elfloader all
+
+      - name: Report ELF size
+        shell: sh
+        run: |
+          set -eu
+          echo "== ELF sizes (this build) =="
+          for f in bin/enceladus.elf bin/POPSLOADER.ELF; do
+            if [ -f "$f" ]; then
+              printf "%-24s %10d bytes\n" "$f" "$(wc -c < "$f")"
+            fi
+          done
 
       - name: Verify embedded build identity
         shell: sh
@@ -154,6 +206,9 @@ jobs:
               if not raw_path:
                   continue
               rel = pathlib.Path(raw_path.decode("utf-8"))
+              # POPSTARTER/ ships at the ZIP ROOT (copied below), not under source/.
+              if rel.parts and rel.parts[0] == "POPSTARTER":
+                  continue
               dest = source_root / rel
               dest.parent.mkdir(parents=True, exist_ok=True)
               shutil.copy2(rel, dest)
@@ -162,8 +217,44 @@ jobs:
           cp -f bin/POPSLOADER.ELF "$BUNDLE_DIR/POPSLOADER.ELF"
           cp -f bin/POPSLDR/BUILD_INFO.txt "$BUNDLE_DIR/source/bin/POPSLDR/BUILD_INFO.txt"
 
+          # Ship the POPSTARTER pack folder (BDMA / SMB modules, etc.) at the ZIP ROOT
+          # so users can drop it straight onto a memory card. Tracked at the repo root;
+          # .gitkeep is excluded so a still-empty folder ships nothing.
+          ZIP_ROOTS="POPSLOADER.ELF source"
+          if [ -d POPSTARTER ]; then
+            cp -r POPSTARTER "$BUNDLE_DIR/POPSTARTER"
+            ZIP_ROOTS="$ZIP_ROOTS POPSTARTER"
+          fi
+
+          # Ship the POPStarter launcher (POPSTARTER.ELF) at the ZIP ROOT next to
+          # POPSLOADER.ELF -- the same file is also copied into POPS/ below, so it's
+          # present wherever a user's setup expects it. Sourced from the tracked
+          # bin/POPSLDR/POPSTARTER.ELF (an embed input, survives make clean).
+          if [ -f bin/POPSLDR/POPSTARTER.ELF ]; then
+            cp -f bin/POPSLDR/POPSTARTER.ELF "$BUNDLE_DIR/POPSTARTER.ELF"
+            ZIP_ROOTS="$ZIP_ROOTS POPSTARTER.ELF"
+          fi
+
+          # Ship a POPS/ folder at the zip ROOT with PATCH_5.BIN and a copy of
+          # POPSTARTER.ELF -- the files users drop into their own POPS folder
+          # (README step 3). Sourced from the tracked binaries.
+          if [ -f bin/POPSLDR/PATCH_5.BIN ] || [ -f bin/POPSLDR/POPSTARTER.ELF ]; then
+            mkdir -p "$BUNDLE_DIR/POPS"
+            [ -f bin/POPSLDR/PATCH_5.BIN ] && cp -f bin/POPSLDR/PATCH_5.BIN "$BUNDLE_DIR/POPS/PATCH_5.BIN"
+            [ -f bin/POPSLDR/POPSTARTER.ELF ] && cp -f bin/POPSLDR/POPSTARTER.ELF "$BUNDLE_DIR/POPS/POPSTARTER.ELF"
+            ZIP_ROOTS="$ZIP_ROOTS POPS"
+          fi
+
+          # Ship the POPStarter version variants (tracked bin/POPSLDR/PROFILES) at the ZIP
+          # ROOT, renamed "POPSTARTER VERSIONS" -- the MAIN/DEBUG/USBDELAY/USBDELAY_DEBUG
+          # POPSTARTER.ELF builds, as-is. Zipped via its OWN find below: the spaced folder
+          # name would word-split the unquoted $ZIP_ROOTS, so it can't go in that list.
+          if [ -d bin/POPSLDR/PROFILES ]; then
+            cp -r bin/POPSLDR/PROFILES "$BUNDLE_DIR/POPSTARTER VERSIONS"
+          fi
+
           cd "$BUNDLE_DIR"
-          find POPSLOADER.ELF source -type f | LC_ALL=C sort | zip -X -9 "../$BUNDLE_ZIP" -@ >/dev/null
+          { find $ZIP_ROOTS -type f ! -name '.gitkeep'; [ -d "POPSTARTER VERSIONS" ] && find "POPSTARTER VERSIONS" -type f; } | LC_ALL=C sort | zip -X -9 "../$BUNDLE_ZIP" -@ >/dev/null
           cd - >/dev/null
 
           echo "== Rolling release bundle contents =="

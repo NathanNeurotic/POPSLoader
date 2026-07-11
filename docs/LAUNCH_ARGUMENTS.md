@@ -35,16 +35,19 @@ page:
 
 | Page | Accepted values |
 | --- | --- |
-| **HDD** (PFS) | `hdd`, `ata`, `pfs`, `apa` |
+| **HDD (exFAT)** (BDMA ATA) | `ata`, `ata0`, `ataN` |
+| **HDD (PFS)** (APA) | `hdd`, `hdd0`, `pfs`, `apa`, `apa0` |
 | **USB** | `usb`, `mass` |
-| **MC** | `mc`, `memcard` |
+| **MC** | `mc`, `memcard` *(accepted but not navigable — there is no standalone Memory Card page; standard PS2 memory cards are not a separate carousel device)* |
 | **MMCE** | `mmce` |
 | **MX4SIO** | `mx4sio`, `mx4`, `sdc` |
 | **SMB** | `smb` |
-| **BDMA** (HDD exFAT) | `bdma` *(accepted but not navigable — see below)* |
+| `bdma` (bare) | *accepted but a no-op — use `ata` to reach the HDD (exFAT) page; the bare `bdma` literal maps to no page* |
 
-`-mode=ata` is provided specifically for NHDDL parity (`-mode=ata` is how
-NHDDL selects the HDD/ATA path).
+`-mode=ata` / `-page=ata` is provided for NHDDL parity (`ata` is how NHDDL
+selects the internal ATA drive); it opens POPSLoader's **HDD (exFAT)** page
+(the BDMA-ATA backend, scene `GBDMHDD`). For the classic APA/PFS HDD page use
+`-page=hdd` / `-page=pfs`.
 
 ## What each argument actually does
 
@@ -55,10 +58,14 @@ device and switches to its list automatically. Combine with `-game=` to go
 one step further and auto-launch a specific title (see below); `-page=`
 alone just opens the list so you can pick.
 
-Enterable pages: **MMCE, MX4SIO, HDD (PFS), USB, SMB.** The HDD value
-targets the implemented **PFS** page. `bdma` (HDD exFAT) and the i.Link
-page are intentionally **not** wired, so `-page=bdma` is accepted but has
-no effect. An unrecognized value is ignored and the carousel starts on its
+Enterable pages: **MMCE, MX4SIO, HDD (exFAT), HDD (PFS), USB, SMB.**
+`-page=ata` targets the implemented **exFAT** (BDMA-ATA) page (scene
+`GBDMHDD`); `-page=hdd` / `-page=pfs` targets the classic **PFS** page.
+`-page=smb` opens the **SMB (v1)** network page (scene `GSMBNET`), which
+connects to the configured share lazily on entry (implemented, CI + Rolling
+green, validating on hardware). The bare `bdma` literal and the i.Link page
+are intentionally **not** wired, so `-page=bdma` is accepted but has no
+effect. An unrecognized value is ignored and the carousel starts on its
 default page (MMCE) with no auto-entry.
 
 ### `-game=` (auto-launch)
@@ -67,17 +74,21 @@ Boots straight into launching a game. Requires **both** `-page=` and
 
 | Page | `-game=` selector format |
 | --- | --- |
-| HDD | game title as listed in POPSLoader (e.g. `Bomberman - Party Edition`) |
+| HDD | `<PARTITION>\|<VCD>` — the POPS partition label, a literal `\|`, then the `.VCD` filename (e.g. `__.POPS\|SLUS_007.42.RAMPAGE.VCD`). A bare title fails with an "Invalid HDD game entry" toast. |
 | USB | `<FILE>` relative to `mass:/POPS` |
 | MX4SIO | `<FILE>` relative to `mx4sio:/POPS` |
 | MMCE | `<FILE>` relative to `mmce0:/POPS` |
+| HDD (exFAT) | `<FILE>` relative to `mass:/POPS` (use `-page=ata`) |
+| SMB | `<FILE>` relative to the share's `POPS` folder — POPSLoader hands off to POPStarter with the `smb:/POPS/SB.<name>.ELF` selector |
 
 If auto-launch fails (game not found, etc.) POPSLoader does **not** hang —
 it falls back to the normal welcome screen + main menu and shows an error
-toast describing what happened. **SMB:** `-page=smb` opens the SMB list like
-the other devices, but SMB has **no `-game` auto-launch wired** — passing
-`-page=smb -game=...` shows an "Auto-launch page not supported" toast and
-leaves you on the main menu at SMB.
+toast describing what happened. **SMB:** SMB (v1) network browsing is
+implemented (CI + Rolling green, validating on hardware). `-page=smb` opens
+the SMB page (scene `GSMBNET`), which brings up the network stack lazily and
+opens the configured share before scanning its POPS folder for VCD games.
+`-page=smb -game=...` auto-launches a title from the share (see the
+auto-launch table above).
 
 ### `-debug`
 Queues an on-screen info toast on the first main-menu frame listing:
@@ -88,6 +99,7 @@ kind: <HDD|USB|MC|MMCE|MX4SIO|SMB|HOST>
 boot_path: <argv[0]>
 sidecar: <settings sidecar path>
 settings: <resolved settings path>
+video: req=<n> got=<n> free=<n> <W>x<H>
 args.page: <normalized page or <nil>>
 args.game: <selector or <nil>>
 ```
@@ -96,6 +108,11 @@ Use this to confirm the args actually reached POPSLoader. If the toast
 shows `args.page: HDD` you know parsing works and any remaining problem is
 downstream; if the toast never appears, the args didn't reach
 `parseLaunchArgs()` at all (front-end delivery or an outdated build).
+
+The `video:` line is the GS mode readback (requested vs. obtained mode,
+free VRAM, and resolution; NTSC=2/PAL=3). It is omitted only if
+`UI.VIDEO_READBACK` was not captured (e.g. the boot video-mode apply was
+short-circuited).
 
 ## Front-end notes (important)
 
@@ -109,12 +126,14 @@ downstream; if the toast never appears, the args didn't reach
 - **Whitespace / quotes are tolerated.** Leading/trailing spaces and one
   pair of surrounding quotes are stripped from each token (some CNF parsers
   leave a trailing space on the line). Internal spaces in `-game=` values
-  are preserved, so titles like `Bomberman - Party Edition` are fine.
+  are preserved (USB/MX4SIO/MMCE `.VCD` filenames may contain spaces; the
+  HDD selector is the `<PARTITION>|<VCD>` form, not a bare title).
 - **OSDMenu Browser-icon (PATINFO) launches** don't read
   `arg_OSDSYS_ITEM_*`; for those, arguments come from the OSDMenu
   `SYSTEM.CNF` `arg` extensions in the partition attribute area.
-- **Build requirement.** These arguments only exist in builds from
-  `BETA-12-PLAY` (feature added 2026-05-25). All Lua runs from assets
+- **Build requirement.** These arguments shipped in **BETA-12** (feature
+  added 2026-05-25 on the `BETA-12-PLAY` dev branch). Builds older than
+  BETA-12 do not have them. All Lua runs from assets
   embedded in the ELF at build time, so updating on-card `.lua` files has
   **no effect** — you must run a current `POPSLOADER.ELF`. Verify with
   `-debug`.
@@ -131,7 +150,7 @@ Add games or debug as additional, separate `arg_OSDSYS_ITEM_1` lines:
 
 ```
 arg_OSDSYS_ITEM_1 = -page=hdd
-arg_OSDSYS_ITEM_1 = -game=Bomberman - Party Edition
+arg_OSDSYS_ITEM_1 = -game=__.POPS|SLUS_007.42.RAMPAGE.VCD
 arg_OSDSYS_ITEM_1 = -debug
 ```
 

@@ -63,11 +63,32 @@ static void PngReadFromMemory(png_structp png_ptr, png_bytep outBytes, png_size_
 static GSTEXTURE* decode_png_stream(png_structp png_ptr, png_infop info_ptr, bool delayed)
 {
 	GSTEXTURE* tex = (GSTEXTURE*)malloc(sizeof(GSTEXTURE));
+	if (tex == NULL) return NULL;  // OOM: don't write tex->Delayed through NULL
 	tex->Delayed = delayed;
+	tex->Mem = NULL;   // NULL-init BEFORE the first libpng call that can longjmp, so
+	tex->Clut = NULL;  // the error cleanup below can free() these unconditionally.
 
 	png_uint_32 width, height;
-	png_bytep *row_pointers;
+	// volatile: written AFTER setjmp and read in the longjmp cleanup, so per the C
+	// standard they must be volatile to hold a defined value after a longjmp.
+	png_bytep * volatile row_pointers = NULL;
+	volatile int row_count = 0;
 	int row, i, k = 0, j, bit_depth, color_type, interlace_type;
+
+	// Own the libpng error path: a corrupt/truncated PNG -- or an allocation failure
+	// routed here via longjmp below -- frees THIS function's in-progress buffers
+	// (which the caller's setjmp cannot see; that was the leak) and fails cleanly.
+	// On the normal path setjmp returns 0 and this block never runs.
+	if (setjmp(png_jmpbuf(png_ptr))) {
+		if (row_pointers != NULL) {
+			for (row = 0; row < row_count; row++) free(row_pointers[row]);
+			free(row_pointers);
+		}
+		free(tex->Mem);
+		free(tex->Clut);
+		free(tex);
+		return NULL;
+	}
 
 	png_read_info(png_ptr, info_ptr);
 	/* Enable proper handling for interlaced PNGs.
@@ -86,6 +107,15 @@ static GSTEXTURE* decode_png_stream(png_structp png_ptr, png_infop info_ptr, boo
 	png_set_filler(png_ptr, 0xff, PNG_FILLER_AFTER);
 	png_read_update_info(png_ptr, info_ptr);
 
+	// Reject zero/oversized dimensions before allocating from them (matches the
+	// JPEG dimension cap). png_uint_32 width/height are attacker-controlled IHDR
+	// fields; an absurd value would drive a huge alloc and an int-cast row loop.
+	// (Codex F3 2026-06-20)
+	if (width == 0 || height == 0 || width > 8192u || height > 8192u) {
+		DPRINTF("PNG: rejecting out-of-range dimensions %ux%u\n", (unsigned)width, (unsigned)height);
+		longjmp(png_jmpbuf(png_ptr), 1);
+	}
+
 	tex->Width = width;
 	tex->Height = height;
 	tex->VramClut = 0;
@@ -97,9 +127,15 @@ static GSTEXTURE* decode_png_stream(png_structp png_ptr, png_infop info_ptr, boo
 		int row_bytes = png_get_rowbytes(png_ptr, info_ptr);
 		tex->PSM = GS_PSM_CT32;
 		tex->Mem = (u32*)memalign(128, gsKit_texture_size_ee(tex->Width, tex->Height, tex->PSM));
+		if (tex->Mem == NULL) longjmp(png_jmpbuf(png_ptr), 1);
 
 		row_pointers = (png_byte**)calloc(height, sizeof(png_bytep));
-		for (row = 0; row < (int)height; row++) row_pointers[row] = (png_bytep)malloc(row_bytes);
+		if (row_pointers == NULL) longjmp(png_jmpbuf(png_ptr), 1);
+		row_count = (int)height;  // calloc zeroed the array; cleanup frees all entries (NULL = no-op)
+		for (row = 0; row < (int)height; row++) {
+			row_pointers[row] = (png_bytep)malloc(row_bytes);
+			if (row_pointers[row] == NULL) longjmp(png_jmpbuf(png_ptr), 1);
+		}
 		png_read_image(png_ptr, row_pointers);
 
 		struct pixel { u8 r,g,b,a; };
@@ -113,15 +149,23 @@ static GSTEXTURE* decode_png_stream(png_structp png_ptr, png_infop info_ptr, boo
 
 		for (row = 0; row < (int)height; row++) free(row_pointers[row]);
 		free(row_pointers);
+		row_pointers = NULL;
+		row_count = 0;
 	}
 	else if (png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_RGB)
 	{
 		int row_bytes = png_get_rowbytes(png_ptr, info_ptr);
 		tex->PSM = GS_PSM_CT24;
 		tex->Mem = (u32*)memalign(128, gsKit_texture_size_ee(tex->Width, tex->Height, tex->PSM));
+		if (tex->Mem == NULL) longjmp(png_jmpbuf(png_ptr), 1);
 
 		row_pointers = (png_byte**)calloc(height, sizeof(png_bytep));
-		for (row = 0; row < (int)height; row++) row_pointers[row] = (png_bytep)malloc(row_bytes);
+		if (row_pointers == NULL) longjmp(png_jmpbuf(png_ptr), 1);
+		row_count = (int)height;  // calloc zeroed the array; cleanup frees all entries (NULL = no-op)
+		for (row = 0; row < (int)height; row++) {
+			row_pointers[row] = (png_bytep)malloc(row_bytes);
+			if (row_pointers[row] == NULL) longjmp(png_jmpbuf(png_ptr), 1);
+		}
 		png_read_image(png_ptr, row_pointers);
 
 		struct pixel3 { u8 r,g,b; };
@@ -134,6 +178,8 @@ static GSTEXTURE* decode_png_stream(png_structp png_ptr, png_infop info_ptr, boo
 
 		for (row = 0; row < (int)height; row++) free(row_pointers[row]);
 		free(row_pointers);
+		row_pointers = NULL;
+		row_count = 0;
 	}
 	else if (png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_PALETTE) {
 		struct png_clut { u8 r, g, b, a; };
@@ -150,12 +196,19 @@ static GSTEXTURE* decode_png_stream(png_structp png_ptr, png_infop info_ptr, boo
 			int row_bytes = png_get_rowbytes(png_ptr, info_ptr);
 			tex->PSM = GS_PSM_T4;
 			tex->Mem = (u32*)memalign(128, gsKit_texture_size_ee(tex->Width, tex->Height, tex->PSM));
+			if (tex->Mem == NULL) longjmp(png_jmpbuf(png_ptr), 1);
 
 			row_pointers = (png_byte**)calloc(height, sizeof(png_bytep));
-			for (row = 0; row < (int)height; row++) row_pointers[row] = (png_bytep)malloc(row_bytes);
+			if (row_pointers == NULL) longjmp(png_jmpbuf(png_ptr), 1);
+			row_count = (int)height;  // calloc zeroed the array; cleanup frees all entries (NULL = no-op)
+			for (row = 0; row < (int)height; row++) {
+				row_pointers[row] = (png_bytep)malloc(row_bytes);
+				if (row_pointers[row] == NULL) longjmp(png_jmpbuf(png_ptr), 1);
+			}
 			png_read_image(png_ptr, row_pointers);
 
 			tex->Clut = (u32*)memalign(128, gsKit_texture_size_ee(8, 2, GS_PSM_CT32));
+			if (tex->Clut == NULL) longjmp(png_jmpbuf(png_ptr), 1);
 			memset(tex->Clut, 0, gsKit_texture_size_ee(8, 2, GS_PSM_CT32));
 
 			unsigned char *pixel = (unsigned char *)tex->Mem;
@@ -181,17 +234,26 @@ static GSTEXTURE* decode_png_stream(png_structp png_ptr, png_infop info_ptr, boo
 
 			for (row = 0; row < (int)height; row++) free(row_pointers[row]);
 			free(row_pointers);
+			row_pointers = NULL;
+			row_count = 0;
 		}
 		else if (bit_depth == 8) {
 			int row_bytes = png_get_rowbytes(png_ptr, info_ptr);
 			tex->PSM = GS_PSM_T8;
 			tex->Mem = (u32*)memalign(128, gsKit_texture_size_ee(tex->Width, tex->Height, tex->PSM));
+			if (tex->Mem == NULL) longjmp(png_jmpbuf(png_ptr), 1);
 
 			row_pointers = (png_byte**)calloc(height, sizeof(png_bytep));
-			for (row = 0; row < (int)height; row++) row_pointers[row] = (png_bytep)malloc(row_bytes);
+			if (row_pointers == NULL) longjmp(png_jmpbuf(png_ptr), 1);
+			row_count = (int)height;  // calloc zeroed the array; cleanup frees all entries (NULL = no-op)
+			for (row = 0; row < (int)height; row++) {
+				row_pointers[row] = (png_bytep)malloc(row_bytes);
+				if (row_pointers[row] == NULL) longjmp(png_jmpbuf(png_ptr), 1);
+			}
 			png_read_image(png_ptr, row_pointers);
 
 			tex->Clut = (u32*)memalign(128, gsKit_texture_size_ee(16, 16, GS_PSM_CT32));
+			if (tex->Clut == NULL) longjmp(png_jmpbuf(png_ptr), 1);
 			memset(tex->Clut, 0, gsKit_texture_size_ee(16, 16, GS_PSM_CT32));
 
 			unsigned char *pixel = (unsigned char *)tex->Mem;
@@ -219,6 +281,8 @@ static GSTEXTURE* decode_png_stream(png_structp png_ptr, png_infop info_ptr, boo
 
 			for (row = 0; row < (int)height; row++) free(row_pointers[row]);
 			free(row_pointers);
+			row_pointers = NULL;
+			row_count = 0;
 		}
 	}
 	else {
@@ -234,7 +298,12 @@ static GSTEXTURE* decode_png_stream(png_structp png_ptr, png_infop info_ptr, boo
 	if (!tex->Delayed)
 	{
 		tex->Vram = gsKit_vram_alloc(gsGlobal, gsKit_texture_size(tex->Width, tex->Height, tex->PSM), GSKIT_ALLOC_USERBUFFER);
-		if (tex->Vram == GSKIT_ALLOC_ERROR) return NULL;
+		if (tex->Vram == GSKIT_ALLOC_ERROR) {
+			free(tex->Mem);
+			if (tex->Clut != NULL) free(tex->Clut);
+			free(tex);
+			return NULL;
+		}
 
 		if (tex->Clut != NULL)
 		{
@@ -243,7 +312,12 @@ static GSTEXTURE* decode_png_stream(png_structp png_ptr, png_infop info_ptr, boo
 			else
 				tex->VramClut = gsKit_vram_alloc(gsGlobal, gsKit_texture_size(16, 16, GS_PSM_CT32), GSKIT_ALLOC_USERBUFFER);
 
-			if (tex->VramClut == GSKIT_ALLOC_ERROR) return NULL;
+			if (tex->VramClut == GSKIT_ALLOC_ERROR) {
+				free(tex->Mem);
+				free(tex->Clut);
+				free(tex);
+				return NULL;
+			}
 		}
 
 		gsKit_texture_upload(gsGlobal, tex);
@@ -374,16 +448,33 @@ GSTEXTURE* loadbmp(FILE* File, bool delayed)
 	tex->Height = Bitmap.InfoHeader.Height;
 	tex->Filter = GS_FILTER_NEAREST;
 
+	// Reject unsupported bit depths up front so tex->PSM is always set by one of the
+	// branches below before it is read at gsKit_texture_size_ee -- otherwise a 32-bit
+	// (or 1/2-bit) BMP cover skips every branch and sizes the alloc from an
+	// uninitialized PSM (uninitialized read). (Codex F2)
+	if (Bitmap.InfoHeader.BitCount != 4 && Bitmap.InfoHeader.BitCount != 8 &&
+	    Bitmap.InfoHeader.BitCount != 16 && Bitmap.InfoHeader.BitCount != 24) {
+		DPRINTF("BMP: unsupported bit depth %d\n", Bitmap.InfoHeader.BitCount);
+		free(tex);
+		fclose(File);
+		return NULL;
+	}
+
 	if(Bitmap.InfoHeader.BitCount == 4)
 	{
 		tex->PSM = GS_PSM_T4;
 		tex->Clut = (u32*)memalign(128, gsKit_texture_size_ee(8, 2, GS_PSM_CT32));
+		if (tex->Clut == NULL) { DPRINTF("BMP: CLUT alloc failed\n"); free(tex); fclose(File); return NULL; }
 		tex->ClutPSM = GS_PSM_CT32;
 		tex->ClutStorageMode = GS_CLUT_STORAGE_CSM1;
 
 		memset(tex->Clut, 0, gsKit_texture_size_ee(8, 2, GS_PSM_CT32));
 		fseek(File, BMP_PALETTE_OFFSET, SEEK_SET);
-		if (fread(tex->Clut, Bitmap.InfoHeader.ColorUsed*sizeof(u32), 1, File) <= 0)
+		// Clamp the file-supplied palette count to the 16-entry T4 CLUT buffer so a
+		// malformed ColorUsed can't overflow the fixed-size heap buffer above.
+		u32 bmp_clut4 = Bitmap.InfoHeader.ColorUsed;
+		if (bmp_clut4 > 16) bmp_clut4 = 16;
+		if (fread(tex->Clut, bmp_clut4*sizeof(u32), 1, File) <= 0)
 		{
 			if (tex->Clut) {
 				free(tex->Clut);
@@ -415,11 +506,16 @@ GSTEXTURE* loadbmp(FILE* File, bool delayed)
 	{
 		tex->PSM = GS_PSM_T8;
 		tex->Clut = (u32*)memalign(128, gsKit_texture_size_ee(16, 16, GS_PSM_CT32));
+		if (tex->Clut == NULL) { DPRINTF("BMP: CLUT alloc failed\n"); free(tex); fclose(File); return NULL; }
 		tex->ClutPSM = GS_PSM_CT32;
 
 		memset(tex->Clut, 0, gsKit_texture_size_ee(16, 16, GS_PSM_CT32));
 		fseek(File, BMP_PALETTE_OFFSET, SEEK_SET);
-		if (fread(tex->Clut, Bitmap.InfoHeader.ColorUsed*sizeof(u32), 1, File) <= 0)
+		// Clamp the file-supplied palette count to the 256-entry T8 CLUT buffer so a
+		// malformed ColorUsed can't overflow the fixed-size heap buffer above.
+		u32 bmp_clut8 = Bitmap.InfoHeader.ColorUsed;
+		if (bmp_clut8 > 256) bmp_clut8 = 256;
+		if (fread(tex->Clut, bmp_clut8*sizeof(u32), 1, File) <= 0)
 		{
 			if (tex->Clut) {
 				free(tex->Clut);
@@ -485,11 +581,41 @@ GSTEXTURE* loadbmp(FILE* File, bool delayed)
 	FTexSize = (u32)ftell_end;
 	FTexSize -= Bitmap.FileHeader.Offset;
 
+	// Reject impossible dimensions, then require the file to actually contain
+	// enough pixel bytes for the declared W*H at this bit depth (BMP rows pad to
+	// 4 bytes). The per-depth conversion loops below index `image` by
+	// tex->Width*tex->Height, so a truncated/crafted BMP with a short FTexSize
+	// would read past `image` (OOB). (Codex F2 2026-06-20)
+	{
+		if (tex->Width <= 0 || tex->Height <= 0 || tex->Width > 8192 || tex->Height > 8192) {
+			DPRINTF("BMP: bad dimensions %dx%d\n", tex->Width, tex->Height);
+			free(tex->Clut);
+			free(tex);
+			fclose(File);
+			return NULL;
+		}
+		u32 bmp_stride = (((u32)tex->Width * (u32)Bitmap.InfoHeader.BitCount + 31u) / 32u) * 4u;
+		if (FTexSize < bmp_stride * (u32)tex->Height) {
+			DPRINTF("BMP: insufficient pixel data (%u < %u)\n", FTexSize, bmp_stride * (u32)tex->Height);
+			free(tex->Clut);
+			free(tex);
+			fclose(File);
+			return NULL;
+		}
+	}
+
 	fseek(File, Bitmap.FileHeader.Offset, SEEK_SET);
 
 	u32 TextureSize = gsKit_texture_size_ee(tex->Width, tex->Height, tex->PSM);
 
 	tex->Mem = (u32*)memalign(128,TextureSize);
+	if (tex->Mem == NULL) {
+		DPRINTF("BMP: pixel buffer alloc failed\n");
+		free(tex->Clut);   // NULL-inited up front; set only in the 4/8-bit paths below
+		free(tex);
+		fclose(File);
+		return NULL;
+	}
 
 	if(Bitmap.InfoHeader.BitCount == 24)
 	{
@@ -504,6 +630,7 @@ GSTEXTURE* loadbmp(FILE* File, bool delayed)
 				free(tex->Clut);
 				tex->Clut = NULL;
 			}
+			free(tex);
 			fclose(File);
 			return NULL;
 		}
@@ -542,6 +669,7 @@ GSTEXTURE* loadbmp(FILE* File, bool delayed)
 				free(tex->Clut);
 				tex->Clut = NULL;
 			}
+			free(tex);
 			fclose(File);
 			return NULL;
 		}
@@ -584,6 +712,7 @@ GSTEXTURE* loadbmp(FILE* File, bool delayed)
 				free(tex->Clut);
 				tex->Clut = NULL;
 			}
+			free(tex);
 			fclose(File);
 			return NULL;
 		}
@@ -601,6 +730,7 @@ GSTEXTURE* loadbmp(FILE* File, bool delayed)
 			DPRINTF("BMP: Read failed!, Size %d\n", FTexSize);
 			free(image);
 			image = NULL;
+			free(tex);
 			fclose(File);
 			return NULL;
 		}
@@ -646,6 +776,14 @@ GSTEXTURE* loadbmp(FILE* File, bool delayed)
 		if(tex->Vram == GSKIT_ALLOC_ERROR)
 		{
 			DPRINTF("VRAM Allocation Failed. Will not upload texture.\n");
+			free(tex->Mem);
+			tex->Mem = NULL;
+			if(tex->Clut != NULL)
+			{
+				free(tex->Clut);
+				tex->Clut = NULL;
+			}
+			free(tex);
 			return NULL;
 		}
 
@@ -659,6 +797,11 @@ GSTEXTURE* loadbmp(FILE* File, bool delayed)
 			if(tex->VramClut == GSKIT_ALLOC_ERROR)
 			{
 				DPRINTF("VRAM CLUT Allocation Failed. Will not upload texture.\n");
+				free(tex->Mem);
+				tex->Mem = NULL;
+				free(tex->Clut);
+				tex->Clut = NULL;
+				free(tex);
 				return NULL;
 			}
 		}
@@ -729,11 +872,21 @@ static void  _ps2_load_JPEG_generic(GSTEXTURE *Texture, struct jpeg_decompress_s
 	Texture->Clut = NULL;
 	Texture->ClutStorageMode = GS_CLUT_STORAGE_CSM1;
 
-	textureSize = cinfo->output_width*cinfo->output_height*cinfo->out_color_components;
+	// Reject implausible dimensions before the multiply so a crafted JPEG can't wrap
+	// output_width*output_height*components (32-bit) to a small value -> undersized
+	// alloc -> heap overflow in jpeg_read_scanlines. The cover path passes
+	// scale_down=false so dims are otherwise uncapped; 8192 is far above any real
+	// cover yet keeps the product < INT_MAX (8192*8192*4 = 268M). (Codex F3)
+	if (cinfo->output_width == 0 || cinfo->output_height == 0
+	    || cinfo->output_width > 8192u || cinfo->output_height > 8192u)
+		longjmp(jerr->setjmp_buffer, 1);
+	textureSize = (int)cinfo->output_width * (int)cinfo->output_height * cinfo->out_color_components;
 	#ifdef DEBUG
 	DPRINTF("Texture Size = %i\n",textureSize);
 	#endif
 	Texture->Mem = (u32*)memalign(128, textureSize);
+	if (Texture->Mem == NULL)
+		longjmp(jerr->setjmp_buffer, 1);  // OOM (oversized/corrupt cover) -> setjmp cleanup frees Mem/Clut/tex + fclose
 
 	unsigned int row_stride = textureSize/Texture->Height;
 	unsigned char *row_pointer = (unsigned char *)Texture->Mem;
@@ -750,19 +903,23 @@ GSTEXTURE* loadjpeg(FILE* fp, bool scale_down, bool delayed)
 
 
     GSTEXTURE* tex = (GSTEXTURE*)malloc(sizeof(GSTEXTURE));
-	tex->Delayed = delayed;
 
 	struct jpeg_decompress_struct cinfo;
 	struct my_error_mgr jerr;
 
 	if (tex == NULL) {
 		DPRINTF("jpeg: error Texture is NULL\n");
+		if (fp != NULL) fclose(fp);
 		return NULL;
 	}
+	tex->Delayed = delayed;  // set only after the NULL check (don't write through NULL)
+	tex->Mem = NULL;   // NULL-init so the setjmp cleanup's free() is safe even if a
+	tex->Clut = NULL;  // longjmp fires before the decode runs (mirrors the PNG/BMP path)
 
 	if (fp == NULL)
 	{
 		DPRINTF("jpeg: Failed to load file\n");
+		free(tex);
 		return NULL;
 	}
 
@@ -776,8 +933,9 @@ GSTEXTURE* loadjpeg(FILE* fp, bool scale_down, bool delayed)
 		*/
 		jpeg_destroy_decompress(&cinfo);
 		fclose(fp);
-		if (tex->Mem)
-			free(tex->Mem);
+		free(tex->Mem);   // NULL-init above -> safe whether or not the decode ran
+		free(tex->Clut);  // ditto; the struct itself used to leak on every JPEG error
+		free(tex);
 		DPRINTF("jpeg: error during processing file\n");
 		return NULL;
 	}
@@ -797,6 +955,14 @@ GSTEXTURE* loadjpeg(FILE* fp, bool scale_down, bool delayed)
 		if(tex->Vram == GSKIT_ALLOC_ERROR)
 		{
 			DPRINTF("VRAM Allocation Failed. Will not upload texture.\n");
+			free(tex->Mem);
+			tex->Mem = NULL;
+			if(tex->Clut != NULL)
+			{
+				free(tex->Clut);
+				tex->Clut = NULL;
+			}
+			free(tex);
 			return NULL;
 		}
 
@@ -810,6 +976,11 @@ GSTEXTURE* loadjpeg(FILE* fp, bool scale_down, bool delayed)
 			if(tex->VramClut == GSKIT_ALLOC_ERROR)
 			{
 				DPRINTF("VRAM CLUT Allocation Failed. Will not upload texture.\n");
+				free(tex->Mem);
+				tex->Mem = NULL;
+				free(tex->Clut);
+				tex->Clut = NULL;
+				free(tex);
 				return NULL;
 			}
 		}
@@ -852,8 +1023,8 @@ GSTEXTURE* load_image(const char* path, bool delayed){
 		DPRINTF("Failed to load image %s.", path);
 		return NULL;
 	}
-	uint16_t magic;
-	fread(&magic, 1, 2, file);
+	uint16_t magic = 0;
+	if (fread(&magic, 1, 2, file) != 2) { fclose(file); DPRINTF("Failed to load image %s.", path); return NULL; }
 	fseek(file, 0, SEEK_SET);
 	GSTEXTURE* image = NULL;
 	if (magic == 0x4D42) image =      loadbmp(file, delayed);
@@ -954,6 +1125,46 @@ int getFreeVRAM(){
 	return (4096 - (gsGlobal->CurrentPointer / 1024));
 }
 
+// ---- Overscan (CRT inset) transform -------------------------------------
+// Adapts OPL's render-coordinate overscan (renderman.c rmSetOverscan) to
+// POPSLoader's single draw chokepoint: every gsKit_prim_* coordinate below runs
+// through OVX/OVY, which scale the whole UI uniformly toward screen center by the
+// overscan permille. The math is IDENTICAL to OPL: margin = W*permille/2000 per
+// edge, scale = 1 - permille/1000, so OVX(x) = x*scale + margin == OPL's X_SCALE.
+// At overscan 0 the transform is the IDENTITY -> the default render is unchanged.
+static int   g_overscan = 0;     // permille (OPL CONFIG_OPL_OVERSCAN units); 0 = off
+static float g_ov_scale = 1.0f;
+static float g_ov_ox    = 0.0f;
+static float g_ov_oy    = 0.0f;
+
+static void recompute_overscan(void)
+{
+	float s = 1.0f - (float)g_overscan / 1000.0f;
+	if (s < 0.80f) s = 0.80f;   // clamp: never shrink past 20% total (sane CRT range)
+	if (s > 1.0f)  s = 1.0f;
+	g_ov_scale = s;
+	if (gsGlobal != NULL) {
+		g_ov_ox = (1.0f - s) * (float)gsGlobal->Width  * 0.5f;
+		g_ov_oy = (1.0f - s) * (float)gsGlobal->Height * 0.5f;
+	} else {
+		g_ov_ox = 0.0f;
+		g_ov_oy = 0.0f;
+	}
+}
+
+void set_overscan(int permille)
+{
+	if (permille < 0)   permille = 0;
+	if (permille > 200) permille = 200;   // 200 permille = 20% total inset, the clamp above
+	g_overscan = permille;
+	recompute_overscan();
+}
+
+int get_overscan(void) { return g_overscan; }
+
+static inline float OVX(float x) { return x * g_ov_scale + g_ov_ox; }
+static inline float OVY(float y) { return y * g_ov_scale + g_ov_oy; }
+// -------------------------------------------------------------------------
 
 void drawImageCentered(GSTEXTURE* source, float x, float y, float width, float height, float startx, float starty, float endx, float endy, Color color)
 {
@@ -962,12 +1173,12 @@ void drawImageCentered(GSTEXTURE* source, float x, float y, float width, float h
 		gsKit_TexManager_bind(gsGlobal, source);
 	}
 	gsKit_prim_sprite_texture(gsGlobal, source,
-					x-width/2, // X1
-					y-height/2, // Y1
+					OVX(x-width/2), // X1
+					OVY(y-height/2), // Y1
 					startx,  // U1
 					starty,  // V1
-					(width/2+x), // X2
-					(height/2+y), // Y2
+					OVX(width/2+x), // X2
+					OVY(height/2+y), // Y2
 					endx, // U2
 					endy, // V2
 					1,
@@ -982,12 +1193,12 @@ void drawImage(GSTEXTURE* source, float x, float y, float width, float height, f
 		gsKit_TexManager_bind(gsGlobal, source);
 	}
 	gsKit_prim_sprite_texture(gsGlobal, source,
-					x-0.5f, // X1
-					y-0.5f, // Y1
+					OVX(x-0.5f), // X1
+					OVY(y-0.5f), // Y1
 					startx,  // U1
 					starty,  // V1
-					(width+x)-0.5f, // X2
-					(height+y)-0.5f, // Y2
+					OVX((width+x)-0.5f), // X2
+					OVY((height+y)-0.5f), // Y2
 					endx, // U2
 					endy, // V2
 					1,
@@ -1004,53 +1215,53 @@ void drawImageRotate(GSTEXTURE* source, float x, float y, float width, float hei
 		gsKit_TexManager_bind(gsGlobal, source);
 	}
 	gsKit_prim_quad_texture(gsGlobal, source,
-							(-width/2)*c - (-height/2)*s+x, (-height/2)*c + (-width/2)*s+y, startx, starty,
-							(-width/2)*c - height/2*s+x, height/2*c + (-width/2)*s+y, startx, endy,
-							width/2*c - (-height/2)*s+x, (-height/2)*c + width/2*s+y, endx, starty,
-							width/2*c - height/2*s+x, height/2*c + width/2*s+y, endx, endy,
+							OVX((-width/2)*c - (-height/2)*s+x), OVY((-height/2)*c + (-width/2)*s+y), startx, starty,
+							OVX((-width/2)*c - height/2*s+x), OVY(height/2*c + (-width/2)*s+y), startx, endy,
+							OVX(width/2*c - (-height/2)*s+x), OVY((-height/2)*c + width/2*s+y), endx, starty,
+							OVX(width/2*c - height/2*s+x), OVY(height/2*c + width/2*s+y), endx, endy,
 							1, color);
 
 }
 
 void drawPixel(float x, float y, Color color)
 {
-	gsKit_prim_point(gsGlobal, x, y, 1, color);
+	gsKit_prim_point(gsGlobal, OVX(x), OVY(y), 1, color);
 }
 
 void drawLine(float x, float y, float x2, float y2, Color color)
 {
-	gsKit_prim_line(gsGlobal, x, y, x2, y2, 1, color);
+	gsKit_prim_line(gsGlobal, OVX(x), OVY(y), OVX(x2), OVY(y2), 1, color);
 }
 
 
 void drawRect(float x, float y, int width, int height, Color color)
 {
-	gsKit_prim_sprite(gsGlobal, x-0.5f, y-0.5f, (x+width)-0.5f, (y+height)-0.5f, 1, color);
+	gsKit_prim_sprite(gsGlobal, OVX(x-0.5f), OVY(y-0.5f), OVX((x+width)-0.5f), OVY((y+height)-0.5f), 1, color);
 }
 
 void drawRectCentered(float x, float y, int width, int height, Color color)
 {
-	gsKit_prim_sprite(gsGlobal, x-width/2, y-height/2, (x+width)-width/2, (y+height)-height/2, 1, color);
+	gsKit_prim_sprite(gsGlobal, OVX(x-width/2), OVY(y-height/2), OVX((x+width)-width/2), OVY((y+height)-height/2), 1, color);
 }
 
 void drawTriangle(float x, float y, float x2, float y2, float x3, float y3, Color color)
 {
-	gsKit_prim_triangle(gsGlobal, x, y, x2, y2, x3, y3, 1, color);
+	gsKit_prim_triangle(gsGlobal, OVX(x), OVY(y), OVX(x2), OVY(y2), OVX(x3), OVY(y3), 1, color);
 }
 
 void drawTriangle_gouraud(float x, float y, float x2, float y2, float x3, float y3, Color color, Color color2, Color color3)
 {
-	gsKit_prim_triangle_gouraud(gsGlobal, x, y, x2, y2, x3, y3, 1, color, color2, color3);
+	gsKit_prim_triangle_gouraud(gsGlobal, OVX(x), OVY(y), OVX(x2), OVY(y2), OVX(x3), OVY(y3), 1, color, color2, color3);
 }
 
 void drawQuad(float x, float y, float x2, float y2, float x3, float y3, float x4, float y4, Color color)
 {
-	gsKit_prim_quad(gsGlobal, x, y, x2, y2, x3, y3, x4, y4, 1, color);
+	gsKit_prim_quad(gsGlobal, OVX(x), OVY(y), OVX(x2), OVY(y2), OVX(x3), OVY(y3), OVX(x4), OVY(y4), 1, color);
 }
 
 void drawQuad_gouraud(float x, float y, float x2, float y2, float x3, float y3, float x4, float y4, Color color, Color color2, Color color3, Color color4)
 {
-	gsKit_prim_quad_gouraud(gsGlobal, x, y, x2, y2, x3, y3, x4, y4, 1, color, color2, color3, color4);
+	gsKit_prim_quad_gouraud(gsGlobal, OVX(x), OVY(y), OVX(x2), OVY(y2), OVX(x3), OVY(y3), OVX(x4), OVY(y4), 1, color, color2, color3, color4);
 }
 
 void drawCircle(float x, float y, float radius, u64 color, u8 filled)
@@ -1061,13 +1272,13 @@ void drawCircle(float x, float y, float radius, u64 color, u8 filled)
 
 	for (a = 0; a < 36; a++) {
 		ra = DEG2RAD(a*10);
-		v[a*2] = cos(ra) * radius + x;
-		v[a*2+1] = sin(ra) * radius + y;
+		v[a*2] = OVX(cos(ra) * radius + x);
+		v[a*2+1] = OVY(sin(ra) * radius + y);
 	}
 
 	if (!filled) {
-		v[36*2] = radius + x;
-		v[36*2 + 1] = y;
+		v[36*2] = OVX(radius + x);
+		v[36*2 + 1] = OVY(y);
 	}
 
 	if (filled)
@@ -1125,6 +1336,7 @@ void setVideoMode(s16 mode, int width, int height, int psm, s16 interlace, s16 f
 	gsKit_vram_clear(gsGlobal);
 	gsKit_init_screen(gsGlobal);
 	gsKit_set_display_offset(gsGlobal, -0.5f, -0.5f);
+	recompute_overscan();   // screen dims just changed -> refresh the overscan offsets
 	gsKit_sync_flip(gsGlobal);
 
 	gsKit_mode_switch(gsGlobal, GS_ONESHOT);
@@ -1135,9 +1347,9 @@ void fntDrawQuad(rm_quad_t *q)
 {
     gsKit_TexManager_bind(gsGlobal, q->txt);
     gsKit_prim_sprite_texture(gsGlobal, q->txt,
-                              q->ul.x-0.5f, q->ul.y-0.5f,
+                              OVX(q->ul.x-0.5f), OVY(q->ul.y-0.5f),
                               q->ul.u, q->ul.v,
-                              q->br.x-0.5f, q->br.y-0.5f,
+                              OVX(q->br.x-0.5f), OVY(q->br.y-0.5f),
                               q->br.u, q->br.v, 1, q->color);
 }
 

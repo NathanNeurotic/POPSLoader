@@ -10,7 +10,7 @@ static char padBuf[256] __attribute__((aligned(64)));
 static char actAlign[6];
 static int actuators;
 
-int port, slot;
+static int port, slot;
 
 int waitPadReady(int port, int slot)
 {
@@ -126,21 +126,6 @@ int initializePad(int port, int slot)
     waitPadReady(port, slot);
 
     return 1;
-}
-
-struct padButtonStatus readPad(int port, int slot)
-{
-    struct padButtonStatus buttons;
-    int ret;    
-
-    do {
-    	ret = padGetState(port, slot);
-    } while((ret != PAD_STATE_STABLE) && (ret != PAD_STATE_FINDCTP1));  
-
-    ret = padRead(port, slot, &buttons);      
-
-    return buttons;
-
 }
 
 int isButtonPressed(u32 button)

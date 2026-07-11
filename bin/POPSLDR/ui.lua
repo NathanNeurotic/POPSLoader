@@ -36,7 +36,7 @@ local function SafeDoesFileExist(path)
     return okcall and res == true
   end
   if type(System) == "table" and type(System.openFile) == "function" and type(System.closeFile) == "function" then
-    local okfd, fd = pcall(System.openFile, path, O_RDONLY)
+    local okfd, fd = pcall(System.openFile, path, FREAD)
     if okfd and fd ~= nil and fd >= 0 then
       pcall(System.closeFile, fd)
       return true
@@ -84,6 +84,21 @@ local LIST_HIDDEN_SELECTED_COLOR = Color.new(150, 152, 182, 110)
 local function StripVcdExtension(name)
   local s = tostring(name or "")
   return (string.gsub(s, "%.[Vv][Cc][Dd]$", ""))
+end
+-- Remove a Redump/No-Intro disc marker -- "(Disc N)", "[Disc N]", "(Disk N)", "(CD N)",
+-- "(Disc N of M)" -- from an ALREADY-extension-stripped display name. DISPLAY/lookup only;
+-- the launch path keeps the full marked name. Mirrors the BRACKETED-ONLY grammar of
+-- system.lua IsSecondaryDisc (a bare "... Disc N" suffix is deliberately NOT touched --
+-- that was a 19-false-positive trap). The whole bracket group is consumed so "(Disc 1 of
+-- 2)" and a mid-name "(Disc 1) (Leon)" both clean up; leftover/edge spaces are tidied.
+local function StripDiscMarker(name)
+  local s = tostring(name or "")
+  s = string.gsub(s, "[%(%[]%s*[Dd][Ii][Ss][CcKk]%s*%d+[^%)%]]*[%)%]]", " ")
+  s = string.gsub(s, "[%(%[]%s*[Cc][Dd]%s*%d+[^%)%]]*[%)%]]", " ")
+  s = string.gsub(s, "%s+", " ")
+  s = string.gsub(s, "^%s+", "")
+  s = string.gsub(s, "%s+$", "")
+  return s
 end
 
 -- Horizontal marquee for the selected, overflowing game-list row. There is
@@ -166,7 +181,14 @@ local function ExtractHddArtBasename(entry)
   if candidate == "" then
     return ""
   end
-  local relpath = string.match(candidate, "^[^|]+|(.+)$")
+  local partition, relpath = string.match(candidate, "^([^|]+)|(.+)$")
+  -- Partition-installed game: art + details .txt are named after the game (the
+  -- partition name minus its 3-char prefix, matching POPStarter's own
+  -- __common/POPS/<name> asset convention), never "IMAGE0".
+  if relpath ~= nil and type(PLDR) == "table" and type(PLDR.IsPartitionInstalledHddEntry) == "function"
+     and PLDR.IsPartitionInstalledHddEntry(partition, relpath) then
+    return string.sub(partition, 4)
+  end
   if relpath ~= nil and relpath ~= "" then
     candidate = relpath
   end
@@ -178,15 +200,21 @@ local function BuildCoverCandidates(vcd_path, use_hdd_common_art, entry)
     if basename == "" then
       basename = BasenameWithoutExtension(vcd_path)
     end
+    local stripped_basename = StripDiscMarker(basename)
     if basename == "" then
       return {}
     end
     if type(PLDR) == "table" and type(PLDR.ResolveHddPartitionReadablePath) == "function" then
-      local resolved = PLDR.ResolveHddPartitionReadablePath("hdd0:__common", "POPS/ART/"..basename..".png")
-      if resolved ~= nil then
-        return { resolved }
+      -- One art file serves all discs: try the disc-marker-stripped name first, then
+      -- the exact per-disc name (back-compat with existing <full-name>.png covers).
+      local out = {}
+      if stripped_basename ~= "" and stripped_basename ~= basename then
+        local r1 = PLDR.ResolveHddPartitionReadablePath("hdd0:__common", "POPS/ART/"..stripped_basename..".png")
+        if r1 ~= nil then out[#out + 1] = r1 end
       end
-      return {}
+      local r2 = PLDR.ResolveHddPartitionReadablePath("hdd0:__common", "POPS/ART/"..basename..".png")
+      if r2 ~= nil then out[#out + 1] = r2 end
+      return out
     end
     return {}
   end
@@ -194,9 +222,36 @@ local function BuildCoverCandidates(vcd_path, use_hdd_common_art, entry)
     return {}
   end
   local base = StripExtension(vcd_path)
-  return {
-    base..".png"
-  }
+  -- Cover/details FOLDER is user-selectable (Settings > Game List > "Cover/details folder",
+  -- PLDR.ART_LOCATION): "pops_art" = a POPS/ART/ subfolder (default; matches the HDD/PFS
+  -- __common/POPS/ART layout); "pops" = the game's own POPS folder beside the .vcd; "art" =
+  -- a top-level <device>:/ART/ folder. The game's own folder is ALWAYS also checked as a
+  -- final back-compat fallback so art beside the .vcd never stops showing. Within each
+  -- folder the disc-marker-stripped name is tried first (one file serves every disc of a
+  -- multi-disc game), then the exact per-disc name. The .txt details sidecar rides this
+  -- same list (each .png -> .txt). CoverCache memoizes misses (once per game per session).
+  local dir, name = string.match(base, "^(.*/)([^/]+)$")
+  if dir == nil then dir, name = "", base end
+  local stripped = StripDiscMarker(name)
+  local has_stripped = (stripped ~= "" and stripped ~= name)
+  local loc = (type(PLDR) == "table" and PLDR.ART_LOCATION) or "pops_art"
+  local out, seen = {}, {}
+  local function add_dir(d)
+    if d == nil or d == "" then return end
+    if has_stripped then
+      local p = d..stripped..".png"
+      if not seen[p] then seen[p] = true; out[#out + 1] = p end
+    end
+    local p2 = d..name..".png"
+    if not seen[p2] then seen[p2] = true; out[#out + 1] = p2 end
+  end
+  if loc == "pops_art" then
+    add_dir(dir.."ART/")
+  elseif loc == "art" then
+    add_dir((string.match(dir, "^(%a+%d*:/)") or dir).."ART/")
+  end
+  add_dir(dir)   -- the game's own folder (beside the .vcd) -- always a fallback
+  return out
 end
 -- Read a game's "<name>.txt" details sidecar. Bounded so a stray huge file can't
 -- stall the snappy cover-load path it rides on.
@@ -219,38 +274,40 @@ local function ReadGameDetailsText(path)
   if type(data) == "string" and data ~= "" then return data end
   return nil
 end
--- Greedy word-wrap to max_chars per line, collapsing the source's own whitespace
--- so a details blurb re-flows to the narrow cover column, clipped to max_lines
--- (last kept line gets an ellipsis when more was dropped).
-local function WrapGameDetails(text, max_chars, max_lines)
-  if type(text) ~= "string" then return "" end
+-- Word-wrap a details blurb into an ARRAY of lines, PRESERVING the source's own
+-- line breaks: split on newlines first, then greedily wrap each line to max_chars;
+-- a blank source line stays a blank line (paragraph spacing). Returns ALL lines
+-- (no clipping) -- the list view windows/scrolls this. A trailing newline in the
+-- .txt is stripped so it doesn't reserve a phantom blank line at the end.
+local function WrapGameDetailsLines(text, max_chars)
+  local out = {}
+  if type(text) ~= "string" then return out end
+  text = string.gsub(text, "%s+$", "")
+  if text == "" then return out end
   max_chars = tonumber(max_chars) or 30
   if max_chars < 8 then max_chars = 8 end
-  max_lines = tonumber(max_lines) or 4
-  if max_lines < 1 then max_lines = 1 end
-  local lines = {}
-  local cur = ""
-  local truncated = false
-  for word in string.gmatch(text, "%S+") do
-    if cur == "" then
-      cur = word
-    elseif (#cur + 1 + #word) <= max_chars then
-      cur = cur.." "..word
+  -- Iterate source line-by-line (strip a trailing CR); the appended "\n" makes
+  -- gmatch yield the final line too. Authored line breaks survive this way.
+  for src in string.gmatch(text .. "\n", "([^\n]*)\n") do
+    src = string.gsub(src, "\r$", "")
+    if string.match(src, "%S") == nil then
+      out[#out + 1] = ""
     else
-      lines[#lines + 1] = cur
-      cur = word
-      if #lines >= max_lines then truncated = true; break end
+      local cur = ""
+      for word in string.gmatch(src, "%S+") do
+        if cur == "" then
+          cur = word
+        elseif (#cur + 1 + #word) <= max_chars then
+          cur = cur .. " " .. word
+        else
+          out[#out + 1] = cur
+          cur = word
+        end
+      end
+      if cur ~= "" then out[#out + 1] = cur end
     end
   end
-  if not truncated and cur ~= "" and #lines < max_lines then
-    lines[#lines + 1] = cur
-  end
-  if truncated and #lines > 0 then
-    local last = lines[#lines]
-    if #last > max_chars - 1 then last = string.sub(last, 1, max_chars - 1) end
-    lines[#lines] = last.."..."
-  end
-  return table.concat(lines, "\n")
+  return out
 end
 local CoverCache = {
   max = 3,
@@ -259,7 +316,10 @@ local CoverCache = {
   failed = {},
   last_key = nil,
   last_img = nil,
-  last_desc = nil
+  last_desc = nil,
+  last_desc_lines = nil,
+  desc_scroll = 0,
+  last_cover_probe = nil  -- primary path we looked for when a cover is MISSING (list-view diagnostic)
 }
 function CoverCache:Clear()
   local free_ok = type(Graphics) == "table" and type(Graphics.freeImage) == "function"
@@ -274,6 +334,9 @@ function CoverCache:Clear()
   self.last_key = nil
   self.last_img = nil
   self.last_desc = nil
+  self.last_desc_lines = nil
+  self.desc_scroll = 0
+  self.last_cover_probe = nil
 end
 function CoverCache:EvictIfNeeded()
   while #self.order > self.max do
@@ -296,14 +359,19 @@ function CoverCache:GetOrLoad(path)
   if self.failed[path] then
     return nil
   end
-  if not SafeDoesFileExist(path) then
-    self.failed[path] = true
-    return nil
-  end
   if type(Graphics) ~= "table" or type(Graphics.loadImage) ~= "function" then
     self.failed[path] = true
     return nil
   end
+  -- Load straight through Graphics.loadImage (fopen) with no separate doesFileExist() open()
+  -- pre-probe. In ps2sdk fopen and open both funnel through the SAME libcglue _open
+  -- (ee/libcglue/src/glue.c -> __path_absolute), so an open() existence check and an fopen()
+  -- load resolve the identical path: the pre-probe was just a redundant second open of the
+  -- same file, never a gate that behaved differently for a nested POPS/ART/ path. Dropping it
+  -- only saves that syscall; loadImage returns nil for a genuinely missing/unreadable file
+  -- (memoized below). This is a cleanup, NOT a cover fix -- nested subfolder reads work on the
+  -- BDM/FAT drivers (OPL reads mass:/ART/ the same way), so a POPS/ART cover that does not
+  -- show is a filename/location problem, not a read-path one.
   local img = Graphics.loadImage(path)
   if img == nil then
     self.failed[path] = true
@@ -329,6 +397,9 @@ function CoverCache:UpdateSelection(vcd_path, use_hdd_common_art, entry)
   self.last_key = key
   self.last_img = nil
   self.last_desc = nil
+  self.last_desc_lines = nil
+  self.last_cover_probe = nil
+  self.desc_scroll = 0  -- new selection -> start its description at the top
   if (use_hdd_common_art ~= true) and (vcd_path == nil or vcd_path == "") then
     return nil
   end
@@ -337,9 +408,46 @@ function CoverCache:UpdateSelection(vcd_path, use_hdd_common_art, entry)
   -- feature is on (otherwise this read is skipped so navigation stays snappy).
   -- Stored raw; the list view word-wraps it under the cover.
   if type(PLDR) == "table" and PLDR.SHOW_DETAILS == true and candidates[1] ~= nil then
-    local desc_path = string.gsub(candidates[1], "%.png$", ".txt")
-    if desc_path ~= candidates[1] then
-      self.last_desc = ReadGameDetailsText(desc_path)
+    -- Try the .txt next to each cover candidate in order (disc-marker-stripped name
+    -- first, exact name as back-compat fallback). One <name>.txt serves all discs;
+    -- first existing read wins.
+    for ci = 1, #candidates do
+      local desc_path = string.gsub(candidates[ci], "%.png$", ".txt")
+      if desc_path ~= candidates[ci] then
+        local d = ReadGameDetailsText(desc_path)
+        if d ~= nil then
+          self.last_desc = d
+          self.last_desc_lines = nil  -- re-wrap lazily for the new description
+          break
+        end
+      end
+    end
+  end
+  -- HDD/PFS quirk: BuildCoverCandidates' HDD branch only returns candidates the
+  -- partition resolver EXISTENCE-CONFIRMED, so with no cover .png the list is
+  -- EMPTY -- which used to also skip the .txt (a Game.txt without a Game.png
+  -- showed details on every removable device but not on HDD) and starve the
+  -- missing-cover caption. Resolve the .txt independently here.
+  if use_hdd_common_art == true and type(PLDR) == "table"
+     and PLDR.SHOW_DETAILS == true and self.last_desc == nil
+     and type(PLDR.ResolveHddPartitionReadablePath) == "function" then
+    local hdd_base = ExtractHddArtBasename(entry)
+    if hdd_base ~= "" then
+      local hdd_names = {}
+      local hdd_stripped = StripDiscMarker(hdd_base)
+      if hdd_stripped ~= "" and hdd_stripped ~= hdd_base then hdd_names[1] = hdd_stripped end
+      hdd_names[#hdd_names + 1] = hdd_base
+      for ni = 1, #hdd_names do
+        local ok_txt, txt_path = pcall(PLDR.ResolveHddPartitionReadablePath, "hdd0:__common", "POPS/ART/"..hdd_names[ni]..".txt")
+        if ok_txt and type(txt_path) == "string" and txt_path ~= "" then
+          local d = ReadGameDetailsText(txt_path)
+          if d ~= nil then
+            self.last_desc = d
+            self.last_desc_lines = nil
+            break
+          end
+        end
+      end
     end
   end
   for i = 1, #candidates do
@@ -347,6 +455,20 @@ function CoverCache:UpdateSelection(vcd_path, use_hdd_common_art, entry)
     if img ~= nil then
       self.last_img = img
       return img
+    end
+  end
+  -- No cover loaded: remember the FIRST place we looked (candidates[1], the ART_LOCATION
+  -- choice) so the list view can print a small "looked for <path>" caption -- lets a tester
+  -- confirm the .png name/folder without a hardware round-trip. The HDD branch has no
+  -- candidate when the png is missing (see above), so synthesize the DISPLAY-ONLY
+  -- expected path -- the one page whose art location is least guessable.
+  self.last_cover_probe = candidates[1]
+  if self.last_cover_probe == nil and use_hdd_common_art == true then
+    local cap_base = ExtractHddArtBasename(entry)
+    if cap_base ~= "" then
+      local cap_stripped = StripDiscMarker(cap_base)
+      if cap_stripped ~= "" then cap_base = cap_stripped end
+      self.last_cover_probe = "hdd0:__common/POPS/ART/"..cap_base..".png"
     end
   end
   return nil
@@ -443,6 +565,7 @@ UI = {
       GHDD = 5,
       GAPAHDD = 5,
       GBDMHDD = 6,
+      GSMBNET = 7,
       MMAIN = 8,
       MPROFILE = 9,
       CREDITS = 10
@@ -477,6 +600,7 @@ UI = {
         or scene == UI.SCENES.GMX4SIO
         or scene == UI.SCENES.GHDD
         or scene == UI.SCENES.GBDMHDD
+        or scene == UI.SCENES.GSMBNET
     end;
     ShouldHideAuxText = function (scene)
       return UI.HideTextMode and UI.IsHideToggleScene(scene or UI.CURSCENE)
@@ -509,7 +633,20 @@ UI = {
       if type(UI.GameList) == "table" then
         UI.GameList.CoverLastIndex = nil
         UI.GameList.CoverPending = false
-        UI.GameList.CoverPendingAt = 0
+        UI.GameList.CoverPendingFrames = 0
+        -- Entering a device game-list from a non-list scene (carousel/menu): open at
+        -- the top instead of inheriting the previously-viewed device's (clamped)
+        -- cursor -- UI.GameList.CURR is a single global index shared across pages.
+        -- Gated to carousel->list entry, so R1 in-place rescan and the -page /
+        -- Boot-Page auto-enter (which set CURR deliberately, or want the top anyway)
+        -- are untouched. Overlays opened FROM a list that return to it -- Credits AND
+        -- Settings (MPROFILE) -- are exempted so they keep your scroll position.
+        -- UI.IsGameScene(nil) is false, so a first/unknown prev is fine.
+        if UI.IsGameScene(scene) and not UI.IsGameScene(prev_scene)
+           and prev_scene ~= UI.SCENES.CREDITS and prev_scene ~= UI.SCENES.MPROFILE then
+          UI.GameList.CURR = 1
+          UI.GameList.STARTUP = 1
+        end
       end
     end;
     --- Color Constants
@@ -573,9 +710,14 @@ UI = {
       UI.LAYOUT.TITLE_Y = Round(safe.T + 6)
       UI.LAYOUT.STATUS_Y = Round(UI.LAYOUT.TITLE_Y + 20)
       UI.LAYOUT.ICON_ROW_Y = Round(UI.SCR.Y_MID - 40)
-      UI.LAYOUT.LIST_X = Round(safe.L)
+      -- Expand the list 3px MORE on each side (oldman63 #501 r4): left margin 40 -> 18
+      -- and the gap before the cover 3 -> 0, so the list now runs FLUSH to the opaque
+      -- 256-wide frame box (SCR.X - safe.R - 256) on the right and 18px from the screen
+      -- edge on the left. NB: both are past CRT action-safe now -- the left characters
+      -- and the right edge butting the cover frame want a hardware eyeball. Cover unmoved.
+      UI.LAYOUT.LIST_X = Round(safe.L - 22)
       UI.LAYOUT.LIST_Y = Round(safe.T + 16)
-      UI.LAYOUT.LIST_W = math.floor(safe_w * 0.52)
+      UI.LAYOUT.LIST_W = (UI.SCR.X - safe.R - 256) - UI.LAYOUT.LIST_X
       UI.LAYOUT.LIST_MAX = math.floor((safe_h - 80) / UI.LAYOUT.LIST_ROW_H)
       if UI.LAYOUT.LIST_MAX < 1 then
         UI.LAYOUT.LIST_MAX = 1
@@ -592,14 +734,14 @@ UI = {
       UI.LAYOUT.FOOTER_LABEL_Y = Round(UI.LAYOUT.FOOTER_ICON_Y + UI.LAYOUT.FOOTER_LABEL_Y_OFFSET)
     end;
     InputConfig = {
-      MIN_ACTION_MS = 220;
       DEBUG_INPUT_LOG = false;
     };
 	    BdmaModes = {
 	      { key = "FAT32", label = "FAT32-USB (None)" },
 	      { key = "USBEXFAT", label = "exFAT-USB" },
 	      { key = "MX4SIO", label = "MX4SIO" },
-	      { key = "MMCE", label = "MMCE" }
+	      { key = "MMCE", label = "MMCE" },
+	      { key = "ATA", label = "exFAT-HDD (ata)" }
 	    };
 	    VideoStandardModes = {
 	      {
@@ -638,6 +780,10 @@ UI = {
     PopstarterPathDraft = nil;
     DkwdrvPathDraft = nil;
     KeyboardLayoutDraft = nil;
+    SmbDraft = nil;
+    SmbDirty = false;
+    SmbModulesDraft = false;
+    SmbModulesDirty = false;
     HideTextMode = false;
     SettingsReturnScene = nil;
     SettingsEntryHideTextMode = false;
@@ -712,7 +858,11 @@ UI = {
       local last_ms = -1000
       local function now_ms()
         if UI.Pad ~= nil and UI.Pad.Timer ~= nil then
-          return tonumber(Timer.getTime(UI.Pad.Timer)) or 0
+          -- Timer.getTime is MICROSECONDS; divide so the `< 20` throttle below
+          -- really means 20 ms. Raw µs made the throttle never suppress, so every
+          -- per-file progress callback repainted + vsync'd (~1 frame PER FILE on a
+          -- big scan -- roughly 8-10 s of pure overlay overhead per 500 games).
+          return (tonumber(Timer.getTime(UI.Pad.Timer)) or 0) / 1000
         end
         return 0
       end
@@ -815,10 +965,8 @@ UI = {
     end;
     Footer = {
       order = {"triangle", "circle", "cross", "square"};
-      order_with_r2 = {"triangle", "circle", "cross", "square"};
 	      order_with_start = {"triangle", "circle", "cross", "start"};
 	      order_with_start_r2 = {"triangle", "circle", "cross", "square", "start"};
-	      order_settings = {"circle", "cross", "square", "start", "select"};
 	      order_settings_save = {"circle", "cross", "start", "select"};
 	      order_keyboard = {"circle", "cross", "square", "start"};
 	      labels = {
@@ -970,16 +1118,17 @@ UI = {
       UI.Notif_queue.display()
       UI.Modal.Draw()
       if UI.SavingActive then
-        local tick = math.floor((tonumber(UI.SavingAnimTick) or 0))
-        local tick_ms = tick * 200
+        -- Animation clock for the bar marquee (ms). The spinner + animated title
+        -- dots were removed: the title is center-aligned, so a changing-width dot
+        -- string re-centered it every 200ms (the tester's "flickers for no reason"),
+        -- and the messages already end in "..." so the dots were redundant churn.
+        local tick_ms = (math.floor((tonumber(UI.SavingAnimTick) or 0))) * 200
         if UI.Pad ~= nil and UI.Pad.Timer ~= nil then
-          tick_ms = math.floor(Timer.getTime(UI.Pad.Timer))
-          tick = math.floor(tick_ms / 200)
+          -- /1000: Timer.getTime is MICROSECONDS; the marquee divisor math below
+          -- assumes ms (raw µs would wrap the whole bar ~60x/sec = flicker). The
+          -- marquee branch is only reachable with a nil progress (latent today).
+          tick_ms = math.floor(Timer.getTime(UI.Pad.Timer) / 1000)
         end
-        local dots = {"", ".", "..", "..."}
-        local spinners = {"|", "/", "-", "\\"}
-        local dot_suffix = dots[(tick % #dots) + 1]
-        local spinner = spinners[(tick % #spinners) + 1]
         local box_w = 320
         local box_h = 110
         local box_x = UI.SCR.X_MID - (box_w / 2)
@@ -994,24 +1143,13 @@ UI = {
 	        Graphics.drawRect(box_x, box_y + box_h - 2, box_w, 2, UI.CCOL.GREY)
 	        Graphics.drawRect(bar_x, bar_y, bar_w, bar_h, Color.new(24, 34, 68, 128))
 	        Graphics.drawRect(bar_x + 1, bar_y + 1, bar_w - 2, bar_h - 2, Color.new(10, 14, 26, 128))
-	        local pulse_w = math.max(12, math.floor((bar_w - 4) * 0.08))
-	        local pulse_travel = math.max(0, (bar_w - 4) - pulse_w)
-	        local pulse_offset = 0
-	        if pulse_travel > 0 then
-	          pulse_offset = math.floor((tick_ms / 60) % (pulse_travel + 1))
-	        end
-	        Graphics.drawRect(bar_x + 2 + pulse_offset, bar_y + 3, pulse_w, bar_h - 6, Color.new(120, 190, 255, 36))
+	        -- (Removed the always-on pulse sweep: it slid across the whole bar
+	        -- independent of progress, reading as a detached/glitchy highlight.)
 	        if type(UI.SavingProgress) == "number" then
 	          local fill_w = math.floor((bar_w - 4) * UI.SavingProgress + 0.5)
 	          if fill_w > 0 then
+	            -- Determinate: a single clean fill, no moving shimmer overlay.
 	            Graphics.drawRect(bar_x + 2, bar_y + 2, fill_w, bar_h - 4, Color.new(110, 190, 255, 120))
-	            local shimmer_w = math.max(14, math.floor((bar_w - 4) * 0.12))
-	            local shimmer_travel = math.max(0, fill_w - shimmer_w)
-	            local shimmer_offset = 0
-	            if shimmer_travel > 0 then
-	              shimmer_offset = math.floor((tick_ms / 45) % (shimmer_travel + 1))
-	            end
-	            Graphics.drawRect(bar_x + 2 + shimmer_offset, bar_y + 2, math.min(shimmer_w, fill_w), bar_h - 4, Color.new(210, 235, 255, 48))
 	          end
 	        else
           local marquee_w = math.max(42, math.floor((bar_w - 4) * 0.26))
@@ -1022,11 +1160,11 @@ UI = {
           end
           Graphics.drawRect(bar_x + 2 + offset, bar_y + 2, marquee_w, bar_h - 4, Color.new(110, 190, 255, 96))
         end
-        Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 20, 8, UI.SCR.X, 16, tostring(UI.SavingMessage or "Saving/Applying...")..dot_suffix, UI.CCOL.YELLOW)
+        Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 20, 8, UI.SCR.X, 16, tostring(UI.SavingMessage or "Saving/Applying..."), UI.CCOL.YELLOW)
         if type(UI.SavingProgress) == "number" then
-          Font.ftPrint(SFONT, UI.SCR.X_MID, box_y + 84, 8, UI.SCR.X, 16, tostring(math.floor(UI.SavingProgress * 100 + 0.5)).."%  "..spinner, UI.CCOL.GREY)
+          Font.ftPrint(SFONT, UI.SCR.X_MID, box_y + 84, 8, UI.SCR.X, 16, tostring(math.floor(UI.SavingProgress * 100 + 0.5)).."%", UI.CCOL.GREY)
         else
-          Font.ftPrint(SFONT, UI.SCR.X_MID, box_y + 84, 8, UI.SCR.X, 16, "Working "..spinner, UI.CCOL.GREY)
+          Font.ftPrint(SFONT, UI.SCR.X_MID, box_y + 84, 8, UI.SCR.X, 16, "Working...", UI.CCOL.GREY)
         end
       end
       if UI.Transition ~= nil then
@@ -1043,7 +1181,7 @@ UI = {
       Screen.flip()
     end;
     WelcomeDraw = {
-      Play = function (next_scene, show_boot_credits)
+      Play = function (next_scene, show_boot_credits, boot_init_fn)
 	        -- Boot splash fades in from black, then fades out into the next scene.
 	        local function DrawBackground()
 	          Screen.clear(Color.new(0, 0, 0))
@@ -1086,7 +1224,8 @@ UI = {
           if boot_sound_tried then return end
           boot_sound_tried = true
 
-          if UI.BOOT_SOUND == nil or UI.BOOT_SOUND.ENABLED ~= true then
+          if UI.BOOT_SOUND == nil or UI.BOOT_SOUND.ENABLED ~= true
+             or (type(PLDR) == "table" and PLDR.BOOT_SOUND == false) then
             return
           end
           if type(Sound) ~= "table" or type(Sound.loadADPCM) ~= "function" then
@@ -1141,11 +1280,6 @@ UI = {
             boot_sound_loaded = nil
             return
           end
-
-          local sec = UI.BOOT_SOUND.SECONDS
-          if type(sec) ~= "number" or sec < 0 then sec = 0 end
-          local pad = UI.BOOT_SOUND.PAD_SECONDS
-          if type(pad) ~= "number" or pad < 0 then pad = 0 end
         end
         local function DrawSplashCover(img, screen_w, screen_h, alpha)
           if img == nil then return end
@@ -1212,10 +1346,12 @@ UI = {
         end
 
         local function StepFade(drawFn, alphaFrom, alphaTo, durationMs)
-          local timer = Timer.new()
-          local last_ms = Timer.getTime(timer)
+          -- Frame-paced: this loop runs one Screen.flip per iteration. The old
+          -- Timer.getTime() delta (microseconds) was always clamped to max_step, so
+          -- advancing a fixed step per frame reproduces the exact prior pacing with no
+          -- wall clock. (durationMs is "ms" only by this same step scale.)
           local elapsed = 0
-          local max_step = (UI.Transition and UI.Transition.max_step) or 33
+          local step = (UI.Transition and UI.Transition.max_step) or 33
           if durationMs <= 0 then
             drawFn()
             local alpha = Round(alphaTo)
@@ -1226,12 +1362,7 @@ UI = {
             return
           end
           while true do
-            local now_ms = Timer.getTime(timer)
-            local dt = now_ms - last_ms
-            last_ms = now_ms
-            if dt < 0 then dt = 0 end
-            if dt > max_step then dt = max_step end
-            elapsed = elapsed + dt
+            elapsed = elapsed + step
             if elapsed > durationMs then elapsed = durationMs end
             local t = Clamp01(elapsed / durationMs)
             local e = EaseInOutCubic(t)
@@ -1283,6 +1414,14 @@ UI = {
         local INTRO_FADE_OUT_MS = math.floor(FADE_OUT_MS * INTRO_FADE_SCALE + 0.5)
 
         StepFade(DrawSplash, 128, 0, INTRO_FADE_IN_MS)
+        -- Run the heavy boot init (settings load + device bring-up + boot-page
+        -- selection) HERE, with the splash already painted: the synchronous work
+        -- freezes on THIS splash frame instead of behind a black screen, so the
+        -- splash COVERS what used to be the boot black-out (the device settle
+        -- retries, the #494 USB sidecar wait, etc.). The hold/credits/menu below
+        -- then resume and read the now-ready state. (boot_init_fn never returns on
+        -- a -game auto-launch -- the splash just showed briefly before the launch.)
+        if type(boot_init_fn) == "function" then boot_init_fn() end
         StepHoldFrames(DrawSplash, SPLASH_HOLD_FRAMES)
         StepFade(DrawSplash, 0, 128, INTRO_FADE_OUT_MS)
 
@@ -1403,6 +1542,31 @@ UI = {
                   elf_path = probe
                   break
                 end
+              end
+            end
+          end
+          -- cwd / app-dir fallback, DEFAULT PATH ONLY (an explicit custom path is
+          -- never shadowed): the default is mc-only, so a DKWDRV.ELF sitting next
+          -- to POPSLOADER.ELF on USB/exFAT/MMCE was never found -- unlike
+          -- POPSTARTER, whose ladder probes the launcher's own folder. Also
+          -- probes the mc1: twin of the mc0: default for slot-2-only consoles.
+          if (elf_path == nil or not SafeDoesFileExist(elf_path))
+            and configured_path == tostring((type(PLDR) == "table" and PLDR.DKWDRV_DEFAULT_PATH) or "") then
+            local probes = {}
+            if string.match(string.lower(configured_path), "^mc0:") ~= nil then
+              probes[#probes + 1] = "mc1:"..string.sub(configured_path, 5)
+            end
+            local cwd = nil
+            pcall(function() cwd = System.currentDirectory() end)
+            if type(cwd) == "string" and cwd ~= "" then
+              if string.sub(cwd, -1) ~= "/" then cwd = cwd.."/" end
+              probes[#probes + 1] = cwd.."DKWDRV.ELF"
+              probes[#probes + 1] = cwd.."PS1_DKWDRV/DKWDRV.ELF"
+            end
+            for pi = 1, #probes do
+              if SafeDoesFileExist(probes[pi]) then
+                elf_path = probes[pi]
+                break
               end
             end
           end
@@ -1561,7 +1725,16 @@ UI = {
       ConfirmExit = function ()
         UI.LAUNCHING = true
         UI.Modal.Close()
-        if type(PLDR) == "table" and type(PLDR.PrepareForExternalELFLaunch) == "function" then
+        -- On an HDD boot, tear the pfs mounts down cold (same pattern as the
+        -- BOOT.ELF arm): exitToBrowser is a bare ExecOSD with no unmount, and a
+        -- settings save may have left the boot partition RW-mounted -- handing
+        -- OSDSYS a still-RW journal-less PFS mount is an unclean-unmount
+        -- corruption vector for the partition holding POPSLoader itself.
+        local hdd_loaded = type(PLDR) == "table" and type(PLDR.HDD) == "table"
+          and tonumber(PLDR.HDD.LOADSTATE or 0) ~= 0
+        if hdd_loaded and type(PLDR.PrepareForColdExternalELFLaunch) == "function" then
+          pcall(PLDR.PrepareForColdExternalELFLaunch)
+        elseif type(PLDR) == "table" and type(PLDR.PrepareForExternalELFLaunch) == "function" then
           pcall(PLDR.PrepareForExternalELFLaunch, nil)
         end
         System.exitToBrowser()
@@ -1704,6 +1877,17 @@ UI = {
           {"BACK","DONE"}
         }
       };
+      -- R2/UPPER mode on non-letter keys: digits and brackets shift to the symbols
+      -- the layouts can't otherwise produce (@ # $ % ^ * " < > | { } ~ `). Without
+      -- these, common SMB credentials (an @ in a username, a $ hidden-share suffix,
+      -- most password symbols) were IMPOSSIBLE to type -- "right settings" that
+      -- could never be entered. Keys stay single-char, so key widths, navigation,
+      -- and _InsertText need no changes.
+      SHIFT_MAP = {
+        ["0"] = "@", ["1"] = "#", ["2"] = "$", ["3"] = "%", ["4"] = "^",
+        ["5"] = "*", ["6"] = "\"", ["7"] = "<", ["8"] = ">", ["9"] = "|",
+        ["["] = "{", ["]"] = "}", ["-"] = "~", ["="] = "`",
+      };
       _NormalizeLayout = function (layout)
         if type(PLDR) == "table" and type(PLDR.NormalizeKeyboardLayout) == "function" then
           return PLDR.NormalizeKeyboardLayout(layout)
@@ -1734,6 +1918,8 @@ UI = {
         UI.PathEditor.pressed_row = 0
         UI.PathEditor.pressed_col = 0
         UI.PathEditor.pressed_until = 0
+        UI.PathEditor.initial = UI.PathEditor.value   -- for the circle discard-confirm
+        UI.PathEditor.discard_until = 0
         UI.PathEditor.layout_key = UI.PathEditor._NormalizeLayout(UI.KeyboardLayoutDraft or (type(PLDR) == "table" and PLDR.KEYBOARD_LAYOUT) or "QWERTY")
       end;
       Close = function ()
@@ -1744,10 +1930,18 @@ UI = {
         UI.PathEditor.pressed_row = 0
         UI.PathEditor.pressed_col = 0
         UI.PathEditor.pressed_until = 0
+        UI.PathEditor.initial = nil
+        UI.PathEditor.discard_until = 0
       end;
       _NowMs = function ()
+        -- Timer.getTime() is raw clock() ticks = MICROSECONDS on PS2 (CLOCKS_PER_SEC=1e6),
+        -- but every _NowMs caller (caret blink /300, key-flash +160, _IsPressed compare)
+        -- was authored in MILLISECONDS. Divide once here so the whole PathEditor is
+        -- unit-correct: the 160 "ms" key-flash now actually survives to the next frame
+        -- (it was expiring 160 us later, so the pressed-key highlight never showed) and
+        -- the caret blinks ~300 ms instead of ~1000x too fast.
         if UI.Pad ~= nil and UI.Pad.Timer ~= nil then
-          return tonumber(Timer.getTime(UI.Pad.Timer)) or 0
+          return (tonumber(Timer.getTime(UI.Pad.Timer)) or 0) / 1000
         end
         return 0
       end;
@@ -1798,16 +1992,25 @@ UI = {
       _DisplayKey = function (key)
         if key == nil then return "" end
         if key == "SPACE" then return "SPACE" end
-        if UI.PathEditor.upper and string.match(key, "^[a-z]$") then
-          return string.upper(key)
+        if UI.PathEditor.upper then
+          if string.match(key, "^[a-z]$") then
+            return string.upper(key)
+          end
+          local shifted = UI.PathEditor.SHIFT_MAP[key]
+          if shifted ~= nil then return shifted end
         end
         return key
       end;
       _SetLayout = function (layout_key)
         local normalized = UI.PathEditor._NormalizeLayout(layout_key)
         UI.PathEditor.layout_key = normalized
-        UI.KeyboardLayoutDraft = normalized
-        UI.ProfileDirty = true
+        -- Dirty only on an ACTUAL change: pressing X on the already-active layout
+        -- button used to set ProfileDirty, lighting the Profile row and raising a
+        -- phantom unsaved-changes prompt for a session where nothing changed.
+        if UI.KeyboardLayoutDraft ~= normalized then
+          UI.KeyboardLayoutDraft = normalized
+          UI.ProfileDirty = true
+        end
         local row_size = UI.PathEditor._RowSize(UI.PathEditor.row)
         if row_size > 0 then
           UI.PathEditor.col = CLAMP(UI.PathEditor.col, 1, row_size)
@@ -1913,7 +2116,20 @@ UI = {
       HandleInput = function ()
         if not UI.PathEditor.active then return end
         if UI.Pad.Events.BACK then
-          UI.PathEditor.Close()
+          -- Circle with UNSAVED typing asks for a second circle press (within
+          -- ~1.5 s) before discarding -- one reflexive press used to silently
+          -- throw away a whole typed credential (Square/backspace is one button
+          -- over). Untouched fields keep the single-press close.
+          local edited = (UI.PathEditor.initial ~= nil)
+            and (UI.PathEditor.value ~= UI.PathEditor.initial)
+          if not edited or UI.PathEditor._NowMs() < (UI.PathEditor.discard_until or 0) then
+            UI.PathEditor.Close()
+          else
+            UI.PathEditor.discard_until = UI.PathEditor._NowMs() + 1500
+            if type(UI.Notif_queue) == "table" then
+              UI.Notif_queue.add("Press CIRCLE again to discard what you typed", "warn")
+            end
+          end
           return
         end
         if UI.Pad.Events.L1 then
@@ -1991,8 +2207,12 @@ UI = {
             return
           elseif key ~= nil and key ~= "" then
             local out = key
-            if UI.PathEditor.upper and string.match(out, "^[a-z]$") then
-              out = string.upper(out)
+            if UI.PathEditor.upper then
+              if string.match(out, "^[a-z]$") then
+                out = string.upper(out)
+              elseif UI.PathEditor.SHIFT_MAP[out] ~= nil then
+                out = UI.PathEditor.SHIFT_MAP[out]
+              end
             end
             UI.PathEditor._InsertText(out)
           end
@@ -2015,7 +2235,7 @@ UI = {
 
         Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 8, 8, UI.SCR.X, 16, UI.PathEditor.title, UI.CCOL.YELLOW)
         Font.ftPrint(SFONT, input_x + 10, input_y + 10, 0, input_w - 20, 16, UI.PathEditor._BuildVisibleValue(46), Color.new(150, 205, 255, 128))
-        local mode_label = UI.PathEditor.upper and "Case: UPPER  (R2)" or "Case: lower  (R2)"
+        local mode_label = UI.PathEditor.upper and "Case/Symbols: UPPER  (R2)" or "Case/Symbols: lower  (R2)"
         local info_label = mode_label.."   Cursor: L1 / R1"
         Font.ftPrint(SFONT, input_x + 2, input_y + input_h + 10, 0, input_w - 4, 16, info_label, UI.CCOL.GREY)
 
@@ -2113,10 +2333,7 @@ UI = {
       target = nil,
       next_target = nil,
       allowSceneWrite = false,
-      timer = nil,
-      start = 0,
       elapsed = 0,
-      last_time = nil,
       max_step = 33,
       duration_out = 1200,
       duration_in = 1400,
@@ -2142,29 +2359,20 @@ UI = {
         end
       end,
       Start = function (target)
-        if UI.Transition.timer == nil then
-          UI.Transition.timer = Timer.new()
-        end
         UI.Transition.active = true
         UI.Transition.phase = "out"
         UI.Transition.target = target
         UI.Transition.next_target = nil
-        UI.Transition.start = Timer.getTime(UI.Transition.timer)
         UI.Transition.elapsed = 0
-        UI.Transition.last_time = UI.Transition.start
       end,
       Update = function ()
         if not UI.Transition.active then
           return 0
         end
-        local now = Timer.getTime(UI.Transition.timer)
-        local last = UI.Transition.last_time or now
-        local delta = now - last
-        if delta < 0 then delta = 0 end
-        local max_step = UI.Transition.max_step or 33
-        if delta > max_step then delta = max_step end
-        UI.Transition.elapsed = (UI.Transition.elapsed or 0) + delta
-        UI.Transition.last_time = now
+        -- Frame-paced: Update runs once per render frame. The old Timer.getTime() delta
+        -- (microseconds) was always clamped to max_step, so advancing a fixed max_step
+        -- per frame reproduces the exact prior pacing with no wall clock.
+        UI.Transition.elapsed = (UI.Transition.elapsed or 0) + (UI.Transition.max_step or 33)
         local elapsed = UI.Transition.elapsed or 0
         local duration = UI.Transition.phase == "out" and UI.Transition.duration_out or UI.Transition.duration_in
         if duration <= 0 then duration = 1 end
@@ -2193,9 +2401,7 @@ UI = {
               UI.OnSceneEnter(previous_scene, UI.CURSCENE)
             end
             UI.Transition.phase = "in"
-            UI.Transition.start = now
             UI.Transition.elapsed = 0
-            UI.Transition.last_time = now
             alpha = max_alpha
           else
             local queued = UI.Transition.next_target
@@ -2239,12 +2445,20 @@ UI = {
         UI.ProfileDirty = false
         UI.BdmaDirty = false
         UI.VideoStandardDirty = false
+        -- Entry snapshots so per-row dirty indicators + the BDMA/Video dirty flags
+        -- compare against the state at entry (cycle-away-and-back = clean) instead
+        -- of set-on-touch; the Profile row's indicator also stops lighting up when
+        -- an UNRELATED row sets the aggregate UI.ProfileDirty flag.
+        UI.SettingsEntryProfile = (type(UI.ProfileQuery) == "table" and UI.ProfileQuery.curopt) or 1
+        UI.SettingsEntryBdmaModeIndex = UI.BdmaModeIndex or 1
+        UI.SettingsEntryVideoStandardIndex = UI.VideoStandardIndex or 1
         UI.BootPageModes = {
           {key = "Carousel", label = "Carousel (default)"},
           {key = "MX4SIO",   label = "MX4SIO"},
           {key = "USB",      label = "USB"},
           {key = "MMCE",     label = "MMCE"},
           {key = "HDD",      label = "HDD (PFS)"},
+          {key = "EXFAT",    label = "HDD (exFAT)"},
         }
         UI.BootPageIndex = 1
         for i = 1, #UI.BootPageModes do
@@ -2267,10 +2481,40 @@ UI = {
         UI.SettingsEntryHiddenDevices = (type(PLDR) == "table" and type(PLDR.NormalizeHiddenDevices) == "function") and PLDR.NormalizeHiddenDevices(UI.DeviceHiddenDraft) or ""
         UI.MultiDiscCollapse = (type(PLDR) == "table" and PLDR.COLLAPSE_MULTIDISC == true)
         UI.SettingsEntryMultiDiscCollapse = UI.MultiDiscCollapse
+        -- If an R3 reveal was active, restore the real persisted setting before the
+        -- Settings page reads it (reveal only transiently cleared GLOBAL_HIDE).
+        -- Flag a rebuild for the RETURN path: the list still shows the revealed
+        -- hidden games, and going back without a rescan left it contradicting the
+        -- restored GLOBAL_HIDE (L3 then said "press R3 to reveal" while the games
+        -- were visibly on screen).
+        if PLDR._GLOBAL_HIDE_SAVED ~= nil then
+          PLDR.GLOBAL_HIDE = (PLDR._GLOBAL_HIDE_SAVED == true)
+          PLDR._GLOBAL_HIDE_SAVED = nil
+          UI.RevealHidden = false
+          UI.PendingHideRebuild = true
+        end
         UI.GlobalHide = (type(PLDR) == "table" and PLDR.GLOBAL_HIDE == true)
         UI.SettingsEntryGlobalHide = UI.GlobalHide
-        UI.ShowDetails = (type(PLDR) == "table" and PLDR.SHOW_DETAILS == true)
-        UI.SettingsEntryShowDetails = UI.ShowDetails
+        -- Game-details draft as a 4-way value: off | left | center | right. Derived
+        -- from the on/off (PLDR.SHOW_DETAILS) + the alignment (PLDR.DETAILS_ALIGN).
+        local _da = (type(PLDR) == "table" and PLDR.DETAILS_ALIGN) or "left"
+        if _da ~= "center" and _da ~= "right" then _da = "left" end
+        UI.DetailsAlign = ((type(PLDR) == "table" and PLDR.SHOW_DETAILS == true) and _da) or "off"
+        UI.SettingsEntryDetailsAlign = UI.DetailsAlign
+        UI.HddFs = ((type(PLDR) == "table" and PLDR.HDD_FS == "EXFAT") and "EXFAT") or "PFS"
+        UI.SettingsEntryHddFs = UI.HddFs
+        local _al = (type(PLDR) == "table" and PLDR.ART_LOCATION) or "pops_art"
+        if _al ~= "pops" and _al ~= "art" then _al = "pops_art" end
+        UI.ArtLocation = _al
+        UI.SettingsEntryArtLocation = UI.ArtLocation
+        UI.GameListCache = (type(PLDR) == "table" and PLDR.GAMELIST_CACHE == true)
+        UI.SettingsEntryGameListCache = UI.GameListCache
+        UI.BootSound = (type(PLDR) == "table" and PLDR.BOOT_SOUND ~= false)
+        UI.SettingsEntryBootSound = UI.BootSound
+        UI.BdmaAdaptive = (type(PLDR) == "table" and PLDR.BDMA_ADAPTIVE == true)
+        UI.SettingsEntryBdmaAdaptive = UI.BdmaAdaptive
+        UI.Overscan = math.floor(tonumber(type(PLDR) == "table" and PLDR.OVERSCAN or 0) or 0)
+        UI.SettingsEntryOverscan = UI.Overscan
         UI.SettingsEntryKeyboardLayout = tostring(UI.KeyboardLayoutDraft or (type(PLDR) == "table" and PLDR.KEYBOARD_LAYOUT) or "QWERTY")
         UI.SettingsFocus = 1
         UI.SceneChange(UI.SCENES.MPROFILE)
@@ -2290,36 +2534,50 @@ UI = {
       STARTUP = 1;
       CoverLastIndex = nil;
       CoverPending = false;
-      CoverPendingAt = 0;
-      CoverIdleMs = 200;
+      CoverPendingFrames = 0;  -- frames the selection has been stable (frame-count cover-load settle)
+      DetailsTotal = 0;       -- wrapped lines in the current description (0 = none)
+      DetailsVisible = 0;     -- how many of them fit on screen this frame
+      DescScrollFrames = nil; -- frames since last desc-scroll step (frame-count rate-limit)
       Reset = function ()
         UI.GameList.CURR = 1;
         UI.GameList.CoverLastIndex = nil
         UI.GameList.CoverPending = false
-        UI.GameList.CoverPendingAt = 0
+        UI.GameList.CoverPendingFrames = 0
+        UI.GameList.DetailsTotal = 0
+        UI.GameList.DetailsVisible = 0
+        UI.GameList.DescScrollFrames = nil
       end;
       Play = function()
         local layout = UI.LAYOUT
         UI.GameList.MAXDRAW = layout.LIST_MAX
-        local titles = {
-          [UI.SCENES.GUSBFAT] = "USB"
-        }
+        -- Device gamelist pages no longer show a top device-name label. MMCE /
+        -- MX4SIO / HDD (PFS) never did; on the pages that had one (USB, exFAT,
+        -- net-SMB) the label sat right above the first row and duplicated the
+        -- carousel the user just came from. Only USB's ever showed in practice
+        -- (FifthFox review). Table kept empty so a genuinely-new backend could
+        -- still opt back into a title if one is ever actually needed.
+        local titles = {}
         local scene_title = titles[UI.CURSCENE]
+        -- Lift the device label clear of the first game row: it's centered at
+        -- TITLE_Y, only ~10px above LIST_Y, so a long first-row title overlaps it.
+        -- Raise ~8px (to the top safe edge) without moving the list. (#501)
+        local device_title_y = layout.TITLE_Y - 8
         if scene_title ~= nil and not UI.ShouldHideAuxText(UI.CURSCENE) then
-          Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, scene_title, UI.CCOL.GREY)
+          Font.ftPrint(LFONT, UI.SCR.X_MID, device_title_y, 8, UI.SCR.X, 16, scene_title, UI.CCOL.GREY)
         end
-        local placeholders = {
-          [UI.SCENES.GBDMHDD] = "BDM HDD"
-        }
+        -- No scenes are placeholders anymore: GBDMHDD (exFAT) + GSMBNET (SMB) render the
+        -- real game list via `titles` above. Keeping the (now-empty) table + guard so a
+        -- genuinely-unimplemented future backend can still opt into the stub render.
+        local placeholders = {}
         local placeholder_title = placeholders[UI.CURSCENE]
         if placeholder_title ~= nil then
           if not UI.ShouldHideAuxText(UI.CURSCENE) then
-            Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, placeholder_title, UI.CCOL.GREY)
+            Font.ftPrint(LFONT, UI.SCR.X_MID, device_title_y, 8, UI.SCR.X, 16, placeholder_title, UI.CCOL.GREY)
             Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID, 20, UI.SCR.X, 32, "Not implemented yet", UI.CCOL.YELLOW)
           end
           Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
-          if UI.Pad.Events.EXIT then UI.SceneChange(UI.SCENES.CREDITS) end
+          if UI.Pad.Events.EXIT then UI.CreditsReturnScene = UI.CURSCENE; UI.SceneChange(UI.SCENES.CREDITS) end
           if UI.Pad.Events.BACK then UI.SceneChange(UI.SCENES.MMAIN) end
           if UI.Pad.Events.CONFIRM then
             UI.Notif_queue.add("This backend isn't implemented yet", "warn")
@@ -2365,15 +2623,30 @@ UI = {
           if i >= (UI.GameList.STARTUP+UI.GameList.MAXDRAW) then break end
           local Y = layout.LIST_Y + ((i-UI.GameList.STARTUP) * layout.LIST_ROW_H)
           local display_name = PLDR.GAMES[i]
-          local hdd_relpath = string.match(display_name or "", "^[^|]+|(.+)$")
+          local hdd_part, hdd_relpath = string.match(display_name or "", "^([^|]+)|(.+)$")
           if hdd_relpath ~= nil then
-            display_name = string.match(hdd_relpath, "([^/]+)$") or hdd_relpath
+            if type(PLDR.IsPartitionInstalledHddEntry) == "function"
+               and PLDR.IsPartitionInstalledHddEntry(hdd_part, hdd_relpath) then
+              -- Partition-installed game: show the partition name minus its
+              -- 3-char prefix, not the fixed "IMAGE0" payload name.
+              display_name = string.sub(hdd_part, 4)
+            else
+              display_name = string.match(hdd_relpath, "([^/]+)$") or hdd_relpath
+            end
           end
 	          local c = (i == UI.GameList.CURR) and UI.COLORS.LIST_SELECTED or UI.COLORS.LIST_UNSELECTED
           if PLDR.IsGameHidden and PLDR.IsGameHidden(PLDR.GAMES[i]) then
             c = (i == UI.GameList.CURR) and LIST_HIDDEN_SELECTED_COLOR or LIST_HIDDEN_COLOR
           end
           local label = StripVcdExtension(display_name)
+          -- Collapsed multi-disc: the only disc-marked row visible is the disc-1
+          -- representative, so drop its "(Disc N)" marker for a clean title. GATED on
+          -- collapse -- with collapse OFF every disc shows and trimming would render the
+          -- Disc 1 / Disc 2 rows identically.
+          if type(PLDR) == "table" and PLDR.COLLAPSE_MULTIDISC == true then
+            local trimmed = StripDiscMarker(label)
+            if trimmed ~= "" then label = trimmed end
+          end
           -- Only the focused row scrolls (OPL-style); others clip as before.
           if i == UI.GameList.CURR then
             label = MarqueeLabel(BFONT, label, layout.LIST_W, UI.GameList.MarqueeTick or 0)
@@ -2392,69 +2665,50 @@ UI = {
           local preview_h = layout.PREVIEW_H
           local preview_img = nil
           local preview_is_live_cover = false
-          if cover_enabled then
-            if cover_img ~= nil then
-              preview_img = cover_img
-              preview_is_live_cover = true
-            else
-              preview_img = IMG.missing
-            end
-          else
-            preview_img = IMG.default or IMG.missing
+          if cover_enabled and cover_img ~= nil then
+            preview_img = cover_img
+            preview_is_live_cover = true
           end
+          -- When there is NO live cover -- preview OFF (Square), or ON but the game
+          -- has no cover art -- the placeholder below draws cover_default.png, with
+          -- cover_missing.png overlaid only when the preview is ON (enabled + missing).
           local draw_x = preview_x
           local draw_y = preview_y
           local draw_w = preview_w
           local draw_h = preview_h
-          if preview_img ~= nil then
-            if preview_is_live_cover then
-              -- Pixel-aspect-correct the cover. The PS2 displays the whole
-              -- 640xY framebuffer as one 4:3 frame, so equal pixel counts
-              -- render at different shapes per standard: a fixed pixel-square
-              -- looks slightly tall on NTSC (Y=448) and WIDE/stretched on
-              -- PAL-native (Y=512). Size the cover from the source image's true
-              -- aspect so it displays correctly on BOTH standards -- a source
-              -- of iw:ih shows right when cover_w/cover_h = (iw/ih)*(480/SCR.Y).
-              -- Fit that inside the COVER_W square window and keep the original
-              -- top/right anchor so on-screen placement is otherwise unchanged.
-              local box = math.min(layout.COVER_W or 232, draw_w, draw_h)
-              local iw = Graphics.getImageWidth(preview_img)
-              local ih = Graphics.getImageHeight(preview_img)
-              if type(iw) ~= "number" or iw <= 0 then iw = 1 end
-              if type(ih) ~= "number" or ih <= 0 then ih = 1 end
-              local ratio = (iw / ih) * (480 / (UI.SCR.Y or 448))
-              local cover_w, cover_h
-              if ratio >= 1 then
-                cover_w = box
-                cover_h = Round(box / ratio)
-              else
-                cover_h = box
-                cover_w = Round(box * ratio)
-              end
-              if cover_w > draw_w then cover_w = draw_w end
-              if cover_h > draw_h then cover_h = draw_h end
-              local cover_x = draw_x + (draw_w - cover_w)
-              local cover_y = draw_y
-              Graphics.drawScaleImage(preview_img, cover_x, cover_y, cover_w, cover_h)
+          -- Pixel-aspect-correct the cover + frame, and compute their on-screen size
+          -- UP FRONT (independent of Y) so the per-game description can sit directly
+          -- under the REAL artwork. The PS2 stretches the whole 640xY framebuffer to
+          -- one 4:3 frame, so a fixed pixel-square shows tall on NTSC (Y=448) and
+          -- wide on PAL (Y=512) (#496); size from the source aspect * (480/SCR.Y),
+          -- fit inside the COVER_W box, and keep the top/right anchor.
+          local cover_w, cover_h = nil, nil
+          if preview_img ~= nil and preview_is_live_cover then
+            local box = math.min(layout.COVER_W or 232, draw_w, draw_h)
+            local iw = Graphics.getImageWidth(preview_img)
+            local ih = Graphics.getImageHeight(preview_img)
+            if type(iw) ~= "number" or iw <= 0 then iw = 1 end
+            if type(ih) ~= "number" or ih <= 0 then ih = 1 end
+            local ratio = (iw / ih) * (480 / (UI.SCR.Y or 448))
+            if ratio >= 1 then
+              cover_w = box
+              cover_h = Round(box / ratio)
             else
-              Graphics.drawScaleImage(preview_img, draw_x, draw_y, draw_w, draw_h)
+              cover_h = box
+              cover_w = Round(box * ratio)
             end
+            if cover_w > draw_w then cover_w = draw_w end
+            if cover_h > draw_h then cover_h = draw_h end
           end
+          -- frame.png is the decorative border (256x256), same aspect correction so
+          -- it stays square on BOTH standards instead of warping per video mode.
+          local frame_w, frame_h = nil, nil
           if IMG.frame ~= nil then
-            -- Same pixel-aspect correction as the live cover above. frame.png is
-            -- a square (256x256) asset, but the PS2 stretches the whole 640xY
-            -- framebuffer to one 4:3 frame, so a flat pixel-square renders TALL
-            -- on NTSC (Y=448) and WIDE on PAL-native (Y=512) -- the warped border
-            -- the tester reported (#496). Size it from its own aspect *
-            -- (480/SCR.Y) and fit it in the preview box, top/right anchored to
-            -- match the cover, so the frame stays square on BOTH standards
-            -- instead of leaning the opposite way per video mode.
             local fiw = Graphics.getImageWidth(IMG.frame)
             local fih = Graphics.getImageHeight(IMG.frame)
             if type(fiw) ~= "number" or fiw <= 0 then fiw = 1 end
             if type(fih) ~= "number" or fih <= 0 then fih = 1 end
             local fratio = (fiw / fih) * (480 / (UI.SCR.Y or 448))
-            local frame_w, frame_h
             if fratio >= 1 then
               frame_w = draw_w
               frame_h = Round(draw_w / fratio)
@@ -2464,28 +2718,194 @@ UI = {
             end
             if frame_w > draw_w then frame_w = draw_w end
             if frame_h > draw_h then frame_h = draw_h end
-            local frame_x = draw_x + (draw_w - frame_w)
-            local frame_y = draw_y
-            Graphics.drawScaleImage(IMG.frame, frame_x, frame_y, frame_w, frame_h)
           end
-          -- Game details: a word-wrapped, centered blurb tucked under the cover --
-          -- shown only when the feature is on AND a "<name>.txt" was found for the
-          -- selected game, so it gracefully disappears otherwise. Accompanies the
-          -- cover (rides its load), clipped to the gap above the button bar.
-          if cover_enabled and type(PLDR) == "table" and PLDR.SHOW_DETAILS == true
+          -- Visible art height = the taller of the cover/frame (both top-anchored).
+          -- The missing/disabled placeholder now shares the frame's aspect-corrected
+          -- rect (see the draw below), so the frame_h branch already accounts for it;
+          -- only fall back to the full box height when there is NO frame to size to,
+          -- otherwise details would sit ~17px (NTSC) below a dead gap. (#496/#501)
+          local art_h = 0
+          if cover_h ~= nil and cover_h > art_h then art_h = cover_h end
+          if frame_h ~= nil and frame_h > art_h then art_h = frame_h end
+          if frame_h == nil and not preview_is_live_cover and draw_h > art_h then
+            art_h = draw_h
+          end
+          if art_h <= 0 then art_h = draw_h end
+          -- Per-game details: when the feature is on AND a "<name>.txt" was found,
+          -- wrap it, place it DIRECTLY under the artwork, and lift the [art + gap +
+          -- text] group so it CENTERS in the content area (top safe margin .. above
+          -- the button bar) -- biased up so it doesn't feel bottom-heavy, and with no
+          -- dead gap between art and text. A blurb taller than fits is windowed and
+          -- SCROLLS with the right analog stick (input section). The art never moves
+          -- DOWN from its normal spot; the line budget clears the footer icons.
+          local details_lines, details_y, details_first = nil, nil, 1
+          local details_line_h, details_gap = 14, 4
+          local details_h, details_visible, details_total = 0, 0, 0
+          UI.GameList.DetailsTotal = 0
+          UI.GameList.DetailsVisible = 0
+          -- HideTextMode ~= true: Select (Hide UI Text) hides this details blurb
+          -- like the caption/footer text it shares the panel with (compute gate,
+          -- not paint gate: also skips the wrap/window work and the cover-lift,
+          -- so the cover renders at its normal details-off position).
+          if cover_enabled and UI.HideTextMode ~= true
+             and type(PLDR) == "table" and PLDR.SHOW_DETAILS == true
              and UI.CoverCache ~= nil and type(UI.CoverCache.last_desc) == "string"
              and UI.CoverCache.last_desc ~= "" then
-            local center_x = draw_x + Round(draw_w / 2)
-            local desc_y = draw_y + draw_h + 6
             local footer_y = layout.FOOTER_ICON_Y or (UI.SCR.Y - 56)
-            local line_h = 14
-            local avail = footer_y - desc_y - 2
-            if avail >= line_h then
-              local max_lines = math.floor(avail / line_h)
-              local wrapped = WrapGameDetails(UI.CoverCache.last_desc, 30, max_lines)
-              if wrapped ~= "" then
-                Font.ftPrintMultiLineAligned(SFONT, center_x, desc_y, line_h, draw_w, avail, wrapped, UI.CCOL.GREY)
-              end
+            -- Clear the footer ICON ROW (icons are centred on footer_y, ~12px tall
+            -- each half) with real breathing room, not just the icon centres: at -24
+            -- the last info-text line sat right on top of the button menu (FifthFox).
+            -- A bigger clearance also raises the whole centred [art + text] group, so
+            -- the artwork lifts too (what FifthFox asked for once the device label is
+            -- gone). Trades ~1 visible description line for the gap, which is fine.
+            local bottom_limit = footer_y - 40
+            local top_margin = ((layout.SAFE and layout.SAFE.T) or 24) + 8
+            local avail = bottom_limit - top_margin
+            -- Pull the Details window up into the frame's transparent bottom margin
+            -- (frame.png's case art ends ~8px above frame_h) so it starts ~one line closer
+            -- to the cover for a bigger window (oldman63). Only when the frame is the lower
+            -- edge (placeholder, or a cover shorter than the frame).
+            local details_art_h = art_h
+            if frame_h ~= nil and frame_h >= (cover_h or 0) then
+              details_art_h = art_h - Round(frame_h * 0.03)
+              if details_art_h < 0 then details_art_h = 0 end
+            end
+            local cap = math.floor((avail - details_art_h - details_gap) / details_line_h)
+            if cap < 1 then cap = 1 end
+            local all_lines = UI.CoverCache.last_desc_lines
+            if all_lines == nil then
+              -- Wrap ONCE per selection and cache it; re-wrapping the .txt every
+              -- frame was dragging list nav while cover preview is on (#499/#501).
+              all_lines = WrapGameDetailsLines(UI.CoverCache.last_desc, 30)
+              UI.CoverCache.last_desc_lines = all_lines
+            end
+            details_total = #all_lines
+            if details_total > 0 then
+              details_visible = details_total
+              if details_visible > cap then details_visible = cap end
+              details_h = details_visible * details_line_h
+              -- clamp the persisted scroll offset to the current line count
+              local max_off = details_total - details_visible
+              if max_off < 0 then max_off = 0 end
+              local off = UI.CoverCache.desc_scroll or 0
+              if off < 0 then off = 0 end
+              if off > max_off then off = max_off end
+              UI.CoverCache.desc_scroll = off
+              details_first = off + 1
+              details_lines = all_lines
+              UI.GameList.DetailsTotal = details_total
+              UI.GameList.DetailsVisible = details_visible
+              local group_h = details_art_h + details_gap + details_h
+              local group_top = Round(top_margin + (avail - group_h) / 2)
+              if group_top < top_margin then group_top = top_margin end
+              if group_top > draw_y then group_top = draw_y end  -- only lift up, never down
+              -- Belt-and-suspenders: never let the group bottom cross into the button
+              -- bar, even on an unusually short screen where the art nearly fills the
+              -- content band (unreachable on real PS2 video modes; keeps the footer
+              -- icons clear if one ever exists). Prioritizes footer clearance.
+              if group_top + group_h > bottom_limit then group_top = bottom_limit - group_h end
+              draw_y = group_top
+              details_y = draw_y + details_art_h + details_gap
+            end
+          end
+          -- Draw the cover/placeholder at the (possibly lifted) draw_y. The default
+          -- cover, the missing overlay, and the frame all share the frame's
+          -- aspect-corrected, right-anchored rect (frame_x,draw_y,frame_w,frame_h) so
+          -- they register with the jewel-case window on BOTH NTSC and PAL; a live
+          -- cover uses its own COVER_W inset (also right-anchored).
+          local frame_x = (frame_w ~= nil) and (draw_x + (draw_w - frame_w)) or draw_x
+          if preview_is_live_cover and preview_img ~= nil and cover_w ~= nil and cover_h ~= nil then
+            -- Live cover art: right-anchored inside the frame window.
+            local cover_x = draw_x + (draw_w - cover_w)
+            Graphics.drawScaleImage(preview_img, cover_x, draw_y, cover_w, cover_h)
+          elseif frame_w ~= nil and frame_h ~= nil then
+            -- No live cover -> the DEFAULT cover, drawn INSET in the case WINDOW exactly
+            -- like a live cover (right of the spine, above the case bottom) so the case
+            -- LEFT SPINE and borders don't cover it and it can't overhang the bottom.
+            -- frame.png is a jewel case: opaque left spine (~x0-25), top/bottom bars, and a
+            -- transparent cover window to the right. Drawing cover_default across the FULL
+            -- frame rect hid its left edge under the spine AND poked ~9% below the case on
+            -- PAL (provato). cover_default.png is square 256x256, so size it in the COVER_W
+            -- box with the same aspect correction + right-anchor a live cover uses; the
+            -- "missing cover" overlay rides the same rect.
+            local pbox = math.min(layout.COVER_W or 232, draw_w, draw_h)
+            local pratio = 480 / (UI.SCR.Y or 448)   -- square image -> iw/ih = 1
+            local ph_w, ph_h
+            if pratio >= 1 then ph_w = pbox; ph_h = Round(pbox / pratio)
+            else ph_h = pbox; ph_w = Round(pbox * pratio) end
+            if ph_w > draw_w then ph_w = draw_w end
+            if ph_h > draw_h then ph_h = draw_h end
+            local ph_x = draw_x + (draw_w - ph_w)
+            if IMG.cover_default ~= nil then
+              Graphics.drawScaleImage(IMG.cover_default, ph_x, draw_y, ph_w, ph_h)
+            end
+            if cover_enabled and IMG.cover_missing ~= nil then
+              Graphics.drawScaleImage(IMG.cover_missing, ph_x, draw_y, ph_w, ph_h)
+            end
+          end
+          if IMG.frame ~= nil and frame_w ~= nil and frame_h ~= nil then
+            Graphics.drawScaleImage(IMG.frame, frame_x, draw_y, frame_w, frame_h)
+          end
+          -- Missing-cover diagnostic: when preview is ON but the selected game has NO cover
+          -- (and the details panel isn't already using this space, and UI text isn't hidden),
+          -- print the primary path we looked for so a tester can confirm the .png name/folder
+          -- without a hardware round-trip. Device prefix trimmed; folder + filename on their
+          -- own lines. Clears with the same Select / Hide-UI-Text that clears other text.
+          if cover_enabled and cover_img == nil and details_lines == nil
+             and UI.HideTextMode ~= true and UI.CoverCache ~= nil
+             and type(UI.CoverCache.last_cover_probe) == "string"
+             and UI.CoverCache.last_cover_probe ~= "" then
+            local shown = string.match(UI.CoverCache.last_cover_probe, "^%a+%d*:/(.+)$")
+                          or UI.CoverCache.last_cover_probe
+            local folder, fname = string.match(shown, "^(.*/)([^/]+)$")
+            local cap_lines = { "No cover. Looked for:" }
+            if folder ~= nil then
+              cap_lines[#cap_lines + 1] = folder
+              cap_lines[#cap_lines + 1] = fname
+            else
+              cap_lines[#cap_lines + 1] = shown
+            end
+            local cap_y = draw_y + art_h + 8
+            local cap_bottom = (layout.FOOTER_ICON_Y or (UI.SCR.Y - 56)) - 40  -- same footer clearance as the details panel
+            for ci = 1, #cap_lines do
+              if cap_y > cap_bottom then break end
+              Font.ftPrint(SFONT, draw_x, cap_y, 0, draw_w, 14, cap_lines[ci], UI.CCOL.GREY)
+              cap_y = cap_y + 14
+            end
+          end
+          -- (Cover preview OFF now shows the plain default cover above -- no text label.)
+          -- Paint the description: window the visible slice from the scroll offset,
+          -- with a "..." affordance when there's more above/below (font-safe, same
+          -- idiom as the old truncation). draw_y/details_y already include the lift.
+          if details_lines ~= nil and details_y ~= nil and details_visible > 0 then
+            local buf = {}
+            for k = details_first, details_first + details_visible - 1 do
+              buf[#buf + 1] = details_lines[k] or ""
+            end
+            if details_first > 1 and #buf > 0 then
+              local L = buf[1] or ""
+              if #L > 27 then L = string.sub(L, 1, 27) end
+              buf[1] = "..." .. L
+            end
+            if (details_first + details_visible - 1) < details_total and #buf > 0 then
+              local L = buf[#buf] or ""
+              if #L > 27 then L = string.sub(L, 1, 27) end
+              buf[#buf] = L .. "..."
+            end
+            -- Left-align each line (ALIGN_LEFT = 0) at the panel's left edge instead
+            -- of centering, so a "table"-style sidecar (Title=..., Genre=..., etc.)
+            -- reads cleanly as a list. One ftPrint per visible line.
+            -- Alignment of the description box per the Game-details setting: left
+            -- (ALIGN_LEFT=0) at the panel's left edge, center (ALIGN_HCENTER=8) on its
+            -- middle, right (ALIGN_RIGHT=4) at its right edge.
+            local d_align = (type(PLDR) == "table") and PLDR.DETAILS_ALIGN or "left"
+            local d_x, d_flag = draw_x, 0
+            if d_align == "center" then d_x, d_flag = draw_x + Round(draw_w / 2), 8
+            elseif d_align == "right" then d_x, d_flag = draw_x + draw_w, 4 end
+            local ly = details_y
+            for bi = 1, #buf do
+              Font.ftPrint(SFONT, d_x, ly, d_flag, draw_w, details_line_h, buf[bi], UI.CCOL.GREY)
+              ly = ly + details_line_h
             end
           end
         end
@@ -2497,8 +2917,20 @@ UI = {
         end
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
-        if UI.Pad.Events.EXIT then UI.SceneChange(UI.SCENES.CREDITS) end
-        if UI.Pad.Events.BACK then UI.SceneChange(UI.SCENES.MMAIN) end
+        if UI.Pad.Events.EXIT then UI.CreditsReturnScene = UI.CURSCENE; UI.SceneChange(UI.SCENES.CREDITS) end
+        if UI.Pad.Events.BACK then
+          if UI.CURSCENE == UI.SCENES.GSMBNET and type(System) == "table" and type(System.disconnectSMB) == "function" then
+            pcall(System.disconnectSMB)   -- free the share + connection when leaving the SMB page
+          end
+          -- Drop any transient R3 reveal on the way out (restore the real persisted hide
+          -- setting) so reveal is per-visit and never leaks to the next device list.
+          if PLDR._GLOBAL_HIDE_SAVED ~= nil then
+            PLDR.GLOBAL_HIDE = (PLDR._GLOBAL_HIDE_SAVED == true)
+          end
+          UI.RevealHidden = false
+          PLDR._GLOBAL_HIDE_SAVED = nil
+          UI.SceneChange(UI.SCENES.MMAIN)
+        end
         if ammount > 0 then
           if UI.Pad.Events.NAV_DOWN then UI.GameList.CURR = CLAMP(UI.GameList.CURR+1, 1, ammount) end
           if UI.Pad.Events.NAV_RIGHT then UI.GameList.CURR = CLAMP(UI.GameList.CURR+UI.GameList.MAXDRAW, 1, ammount) end
@@ -2516,17 +2948,55 @@ UI = {
               UI.GameList.CURR = 1
             end
           end
+          -- (Left-stick navigation now feeds the d-pad globally in the pad poll --
+          -- OPL-style stick->d-pad fold -- so the stick does smooth item-by-item nav
+          -- with auto-repeat just like the d-pad. The page-jump is NAV_LEFT/RIGHT
+          -- (stick left/right or d-pad left/right) above; L1 jumps top/bottom.
+          -- Replaces the old 250ms whole-page stick jump (oldman63 #501: "sped up
+          -- like crazy, can't select individual items" -- jumping pages, not items).)
+          -- Right analog stick scrolls a description that's too long to fully fit
+          -- under the cover (when game details are on). The stick is otherwise
+          -- unused here (R3 is the click, separate), so this is a free, discoverable
+          -- "read the rest" gesture. Sensitivity + step rate come from the
+          -- "Description scroll speed" setting (fast/medium/slow); slow is the
+          -- deliberate default (firm push, ~2 lines/sec) so a light touch does
+          -- nothing and it never flies past. DetailsTotal / DetailsVisible were set
+          -- by the render block this frame.
+          if UI.CoverCache ~= nil and (UI.GameList.DetailsTotal or 0) > (UI.GameList.DetailsVisible or 0)
+             and type(Pads) == "table" and type(Pads.getRightStick) == "function" then
+            local ok_rs, _, rv = pcall(Pads.getRightStick)
+            -- One scroll step every _secs seconds, FRAME-COUNTED (not the wall clock):
+            -- Timer.getTime() is microseconds on PS2, so a wall-clock gate would be
+            -- sub-frame and scroll every frame. This block runs once per vblank-paced
+            -- frame, so step_frames = ceil(_secs * fps) is unit-safe and identical in real
+            -- seconds on PAL (50Hz) and NTSC (60Hz). Pace is fixed at Fast (the speed
+            -- setting was removed -- provato + maintainer: Fast is best).
+            local _dz, _secs = 48, 0.15        -- Fast: light push, ~7 lines/sec
+            if ok_rs and type(rv) == "number" and math.abs(rv) > _dz then
+              local fps = ((UI.SCR.Y or 448) >= 512) and 50 or 60
+              local step_frames = math.ceil(_secs * fps)
+              local f = (UI.GameList.DescScrollFrames or step_frames) + 1
+              if f >= step_frames then
+                local off = UI.CoverCache.desc_scroll or 0
+                if rv > 0 then off = off + 1 else off = off - 1 end
+                local max_off = (UI.GameList.DetailsTotal or 0) - (UI.GameList.DetailsVisible or 0)
+                if off < 0 then off = 0 end
+                if off > max_off then off = max_off end
+                UI.CoverCache.desc_scroll = off
+                f = 0
+              end
+              UI.GameList.DescScrollFrames = f
+            else
+              UI.GameList.DescScrollFrames = nil  -- released: next push scrolls right away
+            end
+          end
         end
         if UI.Pad.Events.SQUARE then
           UI.CoverPreviewEnabled = not UI.CoverPreviewEnabled
-          local now = 0
-          if UI.Pad.Timer ~= nil then
-            now = Timer.getTime(UI.Pad.Timer)
-          end
           if UI.CoverPreviewEnabled then
             UI.GameList.CoverLastIndex = nil
             UI.GameList.CoverPending = true
-            UI.GameList.CoverPendingAt = now - UI.GameList.CoverIdleMs
+            UI.GameList.CoverPendingFrames = 9999  -- re-enabled: load on the next settled frame
             UI.Notif_queue.add("Cover Art enabled", "ok")
           else
             if UI.CoverCache ~= nil then
@@ -2537,31 +3007,38 @@ UI = {
           end
         end
         if UI.CoverCache ~= nil then
-          local now = 0
-          if UI.Pad.Timer ~= nil then
-            now = Timer.getTime(UI.Pad.Timer)
-          end
+          -- Cover-load settle: DECODE the selection's cover only after the cursor has been
+          -- STABLE for ~250ms, FRAME-COUNTED (Timer.getTime is microseconds, so the old
+          -- CoverIdleMs=200 was sub-frame and re-decoded the cover on nearly every selection
+          -- change while scrolling, dragging navigation -- oldman63). CURR keeps changing
+          -- while you scroll so the counter resets and nothing decodes; the cover loads only
+          -- once you stop.
           local nav_event = UI.Pad.Events.NAV_DOWN or UI.Pad.Events.NAV_RIGHT or UI.Pad.Events.NAV_UP or UI.Pad.Events.NAV_LEFT
+          local cover_fps = ((UI.SCR.Y or 448) >= 512) and 50 or 60
+          local COVER_IDLE_FRAMES = math.ceil(cover_fps * 0.25)  -- ~250ms, above the nav repeat rate
           if UI.CoverPreviewEnabled == false then
             UI.GameList.CoverPending = false
-            UI.GameList.CoverPendingAt = now
+            UI.GameList.CoverPendingFrames = 0
             UI.CoverCache:UpdateSelection(nil)
           elseif ammount <= 0 then
             UI.GameList.CoverLastIndex = nil
             UI.GameList.CoverPending = false
-            UI.GameList.CoverPendingAt = now
+            UI.GameList.CoverPendingFrames = 0
             UI.CoverCache:UpdateSelection(nil)
           else
             if UI.GameList.CURR ~= UI.GameList.CoverLastIndex then
               UI.GameList.CoverLastIndex = UI.GameList.CURR
               UI.GameList.CoverPending = true
-              UI.GameList.CoverPendingAt = now
+              UI.GameList.CoverPendingFrames = 0
             end
-            if UI.GameList.CoverPending and not nav_event and (now - UI.GameList.CoverPendingAt) >= UI.GameList.CoverIdleMs then
-              local entry = PLDR.GAMES[UI.GameList.CURR]
-              local vcd_path = ResolveSelectedVcdPath(entry, PLDR.GAMEPATH)
-              UI.CoverCache:UpdateSelection(vcd_path, UI.CURSCENE == UI.SCENES.GHDD, entry)
-              UI.GameList.CoverPending = false
+            if UI.GameList.CoverPending then
+              UI.GameList.CoverPendingFrames = (UI.GameList.CoverPendingFrames or 0) + 1
+              if not nav_event and UI.GameList.CoverPendingFrames >= COVER_IDLE_FRAMES then
+                local entry = PLDR.GAMES[UI.GameList.CURR]
+                local vcd_path = ResolveSelectedVcdPath(entry, PLDR.GAMEPATH)
+                UI.CoverCache:UpdateSelection(vcd_path, UI.CURSCENE == UI.SCENES.GHDD, entry)
+                UI.GameList.CoverPending = false
+              end
             end
           end
         end
@@ -2575,7 +3052,9 @@ UI = {
             configured_popstarter_path = tostring(PLDR.GetEffectiveConfiguredPopstarterPath(PLDR.POPSTARTER_PATH, PLDR.SELECTED_PROFILE) or configured_popstarter_path)
           end
           local popstarter_path = configured_popstarter_path
-          if type(PLDR.ResolvePopstarterPath) == "function" then
+          if type(PLDR.ResolveLaunchPopstarterPath) == "function" then
+            popstarter_path = PLDR.ResolveLaunchPopstarterPath(PLDR.GAMEPATH, configured_popstarter_path)
+          elseif type(PLDR.ResolvePopstarterPath) == "function" then
             popstarter_path = PLDR.ResolvePopstarterPath(configured_popstarter_path)
           end
           local popstarter_ok = false
@@ -2599,6 +3078,15 @@ UI = {
               return
             end
           end
+          -- SMB stream launches read their server/share from mc:/POPSTARTER/
+          -- SMBCONFIG.DAT, which exists only once the SMB modules pack is
+          -- installed. Browsing works WITHOUT it (the menu has its own embedded
+          -- stack), so without this gate a launch fails in-game with zero
+          -- explanation.
+          if UI.CURSCENE == UI.SCENES.GSMBNET and PLDR.SMB_MODULES ~= true then
+            UI.Notif_queue.add("SMB modules are not installed\nGames list but won't boot without them --\ninstall via Settings > SMB modules, then Save", "error")
+            return
+          end
           local entry = PLDR.GAMES[UI.GameList.CURR]
           if entry == nil then
             UI.Notif_queue.add("Couldn't read that game selection", "error")
@@ -2606,7 +3094,9 @@ UI = {
           end
           local root, rel = string.match(entry or "", "^([^|]+)|(.+)$")
           local vcd_full = ResolveSelectedVcdPath(entry, PLDR.GAMEPATH)
-          if UI.CURSCENE ~= UI.SCENES.GHDD then -- only check if game can be found on USB and SMB
+          -- Skip the existence preflight on net-SMB too: per-file stat over the live
+          -- smb0: browse mount is unreliable, and this is only a (non-blocking) toast.
+          if UI.CURSCENE ~= UI.SCENES.GHDD and UI.CURSCENE ~= UI.SCENES.GSMBNET then
             if not doesFileExist(vcd_full) then
               UI.Notif_queue.add("Game file missing\n"..vcd_full, "error")
             end
@@ -2623,6 +3113,45 @@ UI = {
             PLDR.RunPOPStarterGame(launch_path, entry, UI.CURSCENE, launch_options)
           end
         end
+        -- R3 = reveal / re-hide this device's hidden games. The "Hidden games"
+        -- setting (GLOBAL_HIDE) filters hidden entries out of the list at SCAN
+        -- time, so flipping it requires rebuilding the current device's list --
+        -- reuse the proven R1 force-refresh path below by raising its event.
+        -- Persisted so it stays in sync with Settings > Game List > Hidden games.
+        -- Revealed games render dimmed; press L3 to unhide. Only the device list
+        -- scenes R1 serves are eligible (others ignore R3 harmlessly).
+        local r3_hide_toggle, r3_save_ok = false, true
+        if UI.Pad.Events.R3 and (UI.CURSCENE == UI.SCENES.GHDD
+             or UI.CURSCENE == UI.SCENES.GSMB
+             or UI.CURSCENE == UI.SCENES.GMX4SIO
+             or UI.CURSCENE == UI.SCENES.GBDMHDD
+             or UI.CURSCENE == UI.SCENES.GSMBNET
+             or UI.CURSCENE == UI.SCENES.GUSBFAT) then
+          -- Reveal is a TRANSIENT per-session view: temporarily clear GLOBAL_HIDE so the
+          -- scan re-includes hidden games (dimmed); re-hide restores it. Does NOT touch the
+          -- persisted setting -- Settings > Game List > Hidden games owns that single source
+          -- of truth. (R3 used to flip+PERSIST GLOBAL_HIDE, fighting the Settings page and
+          -- then blocking the L3 unhide it tells you to use -- provato HW report.)
+          UI.RevealHidden = (UI.RevealHidden ~= true)
+          if PLDR._GLOBAL_HIDE_SAVED == nil then
+            PLDR._GLOBAL_HIDE_SAVED = (PLDR.GLOBAL_HIDE == true)   -- capture the real setting once (false stored as false, not nil)
+          end
+          if UI.RevealHidden then
+            PLDR.GLOBAL_HIDE = false                               -- reveal: scan re-includes hidden (dimmed)
+          else
+            PLDR.GLOBAL_HIDE = (PLDR._GLOBAL_HIDE_SAVED == true)   -- re-hide: restore the captured setting
+          end
+          r3_save_ok = true   -- nothing persisted now, so never a save-failure case
+          r3_hide_toggle = true
+          UI.Pad.Events.R1 = true   -- drive the same in-place rebuild R1 performs
+        end
+        -- A Settings visit cancelled an R3 reveal (restoring GLOBAL_HIDE) while
+        -- this list still showed the revealed games: rebuild via the same R1
+        -- raise so the list matches the restored setting on return.
+        if UI.PendingHideRebuild == true then
+          UI.PendingHideRebuild = false
+          UI.Pad.Events.R1 = true
+        end
         if UI.Pad.Events.CONFIRM then
           LaunchSelectedGame(nil)
         elseif UI.Pad.Events.R2 and UI.CURSCENE == UI.SCENES.GHDD then
@@ -2638,19 +3167,25 @@ UI = {
           UI.GameList.CURR = 1
           UI.GameList.CoverLastIndex = nil
           UI.GameList.CoverPending = false
-          if #PLDR.GAMES < 1 then
+          if r3_hide_toggle then
+            -- R3 drove this rebuild; its reveal/hide toast fires below instead.
+          elseif #PLDR.GAMES < 1 then
             UI.Notif_queue.add("HDD list refreshed (no games found)", "warn")
           else
             UI.Notif_queue.add("HDD list refreshed", "ok")
           end
         elseif UI.Pad.Events.R1 and (UI.CURSCENE == UI.SCENES.GSMB
                or UI.CURSCENE == UI.SCENES.GMX4SIO
+               or UI.CURSCENE == UI.SCENES.GBDMHDD
+               or UI.CURSCENE == UI.SCENES.GSMBNET
                or UI.CURSCENE == UI.SCENES.GUSBFAT) then
           -- R1 re-runs the SAME scan entering the page does, in place: re-detect
           -- the device and rebuild the list -- for hotplugging a card/drive or a
-          -- config change without leaving the page. These devices keep no
-          -- persistent cache (unlike HDD), so it's simply a fresh live scan.
+          -- config change without leaving the page. This is the FORCE path: a
+          -- fresh live scan that then OVERWRITES the device's .gamecache so the
+          -- refresh survives a reboot.
           local rescan_scene = UI.CURSCENE
+          local smb_rescan_err = nil   -- set by the GSMBNET arm; drives the toast below
           UI.RunBusyTask("Refreshing list...", function (report)
             local scan = UI.MakeBusyProgressReporter(report, "Scanning games...", 0.30, 0.95)
             if rescan_scene == UI.SCENES.GSMB then
@@ -2664,6 +3199,7 @@ UI = {
               if type(mmce_prefix) == "string" and mmce_prefix ~= "" and doesFolderExist(mmce_prefix.."POPS/") then
                 report("Scanning MMCE games...", 0.30)
                 PLDR.GetPS1GameLists(mmce_prefix.."POPS/", true, scan)
+                PLDR.SaveGameListCache(mmce_prefix.."POPS/.gamecache", PLDR.GAMES, PLDR.HIDDEN)
               end
             elseif rescan_scene == UI.SCENES.GMX4SIO then
               report("Refreshing mass backends...", 0.16)
@@ -2675,6 +3211,35 @@ UI = {
               if type(mx4sio_root) == "string" and mx4sio_root ~= "" then
                 report("Scanning MX4SIO games...", 0.30)
                 PLDR.GetPS1GameLists(mx4sio_root, true, scan)
+                PLDR.SaveGameListCache(mx4sio_root..".gamecache", PLDR.GAMES, PLDR.HIDDEN)
+              end
+            elseif rescan_scene == UI.SCENES.GBDMHDD then
+              report("Refreshing mass backends...", 0.16)
+              if type(PLDR.RefreshMassBackends) == "function" then pcall(PLDR.RefreshMassBackends) end
+              local ata_root = PLDR.InitATAPopsRoot()
+              PLDR.CleanupGameList()
+              if type(ata_root) == "string" and ata_root ~= "" then
+                report("Scanning exFAT HDD games...", 0.30)
+                PLDR.GetPS1GameLists(ata_root, true, scan)
+                PLDR.SaveGameListCache(ata_root..".gamecache", PLDR.GAMES, PLDR.HIDDEN)
+              end
+            elseif rescan_scene == UI.SCENES.GSMBNET then
+              report("Reconnecting to SMB...", 0.16)
+              -- Tear the live session down first: R1 used to re-LOGON over the open
+              -- smbman session (a state the entry path never reaches, HW-untested).
+              if type(System) == "table" and type(System.disconnectSMB) == "function" then
+                pcall(System.disconnectSMB)
+              end
+              local smb_root, smb_err = PLDR.InitSMBPopsRoot(report)
+              PLDR.CleanupGameList()
+              if type(smb_root) == "string" and smb_root ~= "" then
+                report("Scanning SMB games...", 0.30)
+                PLDR.GetPS1GameLists(smb_root, true, scan)
+                PLDR.SaveGameListCache(smb_root..".gamecache", PLDR.GAMES, PLDR.HIDDEN)
+              else
+                -- Surface the REAL reconnect error instead of the generic
+                -- "List refreshed (no games found)" the fallthrough would toast.
+                smb_rescan_err = smb_err or "CONN_FAIL"
               end
             else
               report("Initializing USB backend...", 0.16)
@@ -2683,21 +3248,30 @@ UI = {
               PLDR.CleanupGameList()
               report("Building USB game list...", 0.30)
               PLDR.BuildMassGameListByType("usb", nil, scan)
+              local usb_roots_r1 = PLDR.GetRootsByType("usb")
+              -- #==1: never cache a combined multi-drive list to one root's file.
+              if type(usb_roots_r1) == "table" and usb_roots_r1[1] ~= nil and #usb_roots_r1 == 1 and #PLDR.GAMES > 0 then
+                PLDR.SaveGameListCache(usb_roots_r1[1].."POPS/.gamecache", PLDR.GAMES, PLDR.HIDDEN)
+              end
             end
             report("Done", 1.0)
           end, "Failed to refresh list")
           UI.GameList.CURR = 1
           UI.GameList.CoverLastIndex = nil
           UI.GameList.CoverPending = false
-          if #PLDR.GAMES < 1 then
+          if r3_hide_toggle then
+            -- R3 drove this rebuild; its reveal/hide toast fires below instead.
+          elseif smb_rescan_err ~= nil then
+            UI.Notif_queue.add(UI.SmbErrorMessage(smb_rescan_err), "warn")
+          elseif #PLDR.GAMES < 1 then
             UI.Notif_queue.add("List refreshed (no games found)", "warn")
           else
             UI.Notif_queue.add("List refreshed", "ok")
           end
         end
         if UI.Pad.Events.L3 and ammount > 0 then
-          if PLDR.GLOBAL_HIDE then
-            UI.Notif_queue.add("[Global Hide ON]\nTurn 'Hidden games' off in Settings to manage", "warn")
+          if PLDR.GLOBAL_HIDE and UI.RevealHidden ~= true then
+            UI.Notif_queue.add("Hidden games are filtered out.\nPress R3 to reveal them, then L3 to unhide.", "warn")
           elseif UI.CURSCENE == UI.SCENES.GHDD then
             local entry = PLDR.GAMES[UI.GameList.CURR]
             local was_hidden = PLDR.IsGameHidden(entry)
@@ -2714,9 +3288,36 @@ UI = {
             local ok, reason = PLDR.SetGameHidden(entry, vcd_path, not was_hidden)
             if ok then
               UI.Notif_queue.add(was_hidden and "Game shown" or "Game hidden", "ok")
+              -- Keep the opt-in per-device cache coherent: its H-records (written at
+              -- scan time) would otherwise revert this hide on the next page re-entry,
+              -- since a cache HIT never re-reads the live .hide. Re-save with the
+              -- now-correct PLDR.HIDDEN; SaveGameListCache no-ops when the cache is off.
+              -- USB GAMEPATH is "" (entries self-qualify) so derive its root. (audit)
+              local cache_path = nil
+              if (UI.CURSCENE == UI.SCENES.GSMB or UI.CURSCENE == UI.SCENES.GMX4SIO
+                  or UI.CURSCENE == UI.SCENES.GBDMHDD or UI.CURSCENE == UI.SCENES.GSMBNET)
+                 and type(PLDR.GAMEPATH) == "string" and PLDR.GAMEPATH ~= "" then
+                cache_path = PLDR.GAMEPATH..".gamecache"
+              elseif UI.CURSCENE == UI.SCENES.GUSBFAT and type(PLDR.GetRootsByType) == "function" then
+                local r = PLDR.GetRootsByType("usb")
+                -- #==1: same multi-drive guard as the USB scan cache sites.
+                if type(r) == "table" and r[1] ~= nil and #r == 1 then cache_path = r[1].."POPS/.gamecache" end
+              end
+              if cache_path ~= nil and type(PLDR.SaveGameListCache) == "function" then
+                PLDR.SaveGameListCache(cache_path, PLDR.GAMES, PLDR.HIDDEN)
+              end
             else
               UI.Notif_queue.add("Couldn't update hidden state ("..tostring(reason)..")", "error")
             end
+          end
+        end
+        if r3_hide_toggle then
+          local _r3msg = (UI.RevealHidden == true) and "Showing hidden games (dimmed) -- press L3 to unhide"
+            or "Hidden games filtered out again"
+          if r3_save_ok then
+            UI.Notif_queue.add(_r3msg, "ok")
+          else
+            UI.Notif_queue.add(_r3msg.."\n(could NOT save -- reverts on reboot)", "warn")
           end
         end
         local cross_label = UI.Footer.labels.cross_launch
@@ -2829,6 +3430,10 @@ UI = {
 
         local function discard_settings_and_return()
           restore_settings_session()
+          -- the live overscan preview changed the GS display; restore the saved value
+          if type(Screen) == "table" and type(Screen.setOverscan) == "function" then
+            pcall(Screen.setOverscan, math.floor(tonumber(PLDR.OVERSCAN) or 0))
+          end
           local return_scene = UI.GetSettingsReturnScene()
           clear_settings_session()
           UI.SceneChange(return_scene)
@@ -2840,6 +3445,7 @@ UI = {
             prepare = 0.18,
             save = 0.42,
             apply_bdma = 0.76,
+            apply_smb = 0.86,
             finalize = 0.96
           }
           local function report_stage(stage, message)
@@ -2871,7 +3477,16 @@ UI = {
           local boot_page_key = boot_page_entry and boot_page_entry.key or "Carousel"
           local multidisc_collapse_val = UI.MultiDiscCollapse == true
           local global_hide_val = UI.GlobalHide == true
-          local show_details_val = UI.ShowDetails == true
+          local show_details_val = (UI.DetailsAlign ~= nil and UI.DetailsAlign ~= "off")
+          local details_align_val = (show_details_val and UI.DetailsAlign)
+            or ((type(PLDR) == "table" and PLDR.DETAILS_ALIGN) or "left")
+          if details_align_val ~= "center" and details_align_val ~= "right" then details_align_val = "left" end
+          local hdd_fs_val = (UI.HddFs == "EXFAT") and "EXFAT" or "PFS"
+          local art_location_val = (UI.ArtLocation == "pops" or UI.ArtLocation == "art") and UI.ArtLocation or "pops_art"
+          local gamelist_cache_val = UI.GameListCache == true
+          local boot_sound_val = UI.BootSound == true
+          local bdma_adaptive_val = UI.BdmaAdaptive == true
+          local overscan_val = math.floor(tonumber(UI.Overscan) or 0)
           local video_live_before = nil
           if type(Screen) == "table" and type(Screen.getMode) == "function" then
             local okb, mb = pcall(Screen.getMode)
@@ -2893,8 +3508,19 @@ UI = {
                 multidisc_collapse = multidisc_collapse_val,
                 global_hide = global_hide_val,
                 show_details = show_details_val,
+                details_align = details_align_val,
+                hdd_fs = hdd_fs_val,
+                art_location = art_location_val,
+                gamelist_cache = gamelist_cache_val,
+                boot_sound = boot_sound_val,
+                bdma_adaptive = bdma_adaptive_val,
+                overscan = overscan_val,
                 hide_text = UI.HideTextMode == true,
                 prev_hide_text = UI.SettingsEntryHideTextMode == true,
+                smb = UI.SmbDraft,
+                smb_modules = UI.SmbModulesDraft,
+                apply_smb = (UI.SmbModulesDirty == true)
+                            or (UI.SmbModulesDraft == true and UI.SmbDirty == true),
                 apply_bdma = UI.BdmaDirty,
                 bdma_token = save_token,
                 on_stage = report_stage
@@ -2920,7 +3546,16 @@ UI = {
             end
             PLDR.COLLAPSE_MULTIDISC = multidisc_collapse_val
             PLDR.GLOBAL_HIDE = global_hide_val
+            PLDR._GLOBAL_HIDE_SAVED = nil   -- Settings Save re-establishes the persisted truth + drops any transient R3 reveal
+            UI.RevealHidden = false
             PLDR.SHOW_DETAILS = show_details_val
+            PLDR.DETAILS_ALIGN = details_align_val
+            PLDR.HDD_FS = hdd_fs_val
+            PLDR.ART_LOCATION = art_location_val
+            PLDR.GAMELIST_CACHE = gamelist_cache_val
+            PLDR.BOOT_SOUND = boot_sound_val
+            PLDR.BDMA_ADAPTIVE = bdma_adaptive_val
+            PLDR.OVERSCAN = overscan_val
             if type(PLDR.ApplyVideoStandardRuntime) == "function" then
               PLDR.ApplyVideoStandardRuntime(video_key)
             end
@@ -2947,17 +3582,20 @@ UI = {
             UI.PopPathProfileDefaultDirty = false
             UI.DkwdrvDirty = false
             UI.VideoStandardDirty = false
+            UI.SmbDirty = false
+            UI.SmbModulesDirty = false
             clear_settings_session()
             -- HDD-write probe (TEST): on an HDD boot, report whether a __.POPS
-            -- partition accepts a scoped write -- tells us if settings/.hide can
-            -- live on the HDD. Settings already saved (to mc0: on HDD); this only
-            -- reports. (nil return = not an HDD boot -> no toast.)
+            -- GAME partition accepts a scoped write (used for HDD per-game .hide
+            -- markers). Settings already saved to the HDD BOOT partition via
+            -- EnsureBootPartitionWritable -- NOT mc0:; this is just a game-partition
+            -- diagnostic. (nil return = not an HDD boot -> no toast.)
             if type(PLDR.ProbeHddSettingsWrite) == "function" then
               local hdd_w_ok, hdd_w_info = PLDR.ProbeHddSettingsWrite()
               if hdd_w_ok == true then
-                UI.Notif_queue.add("HDD partition "..tostring(hdd_w_info).." is WRITABLE -- settings can live on HDD", "ok")
+                UI.Notif_queue.add("__.POPS partition "..tostring(hdd_w_info).." accepts writes (game-partition RW test)", "ok")
               elseif hdd_w_ok == false then
-                UI.Notif_queue.add("HDD write test FAILED ("..tostring(hdd_w_info)..")\nsettings stay on the memory card", "warn")
+                UI.Notif_queue.add("HDD game-partition write test FAILED ("..tostring(hdd_w_info)..")", "warn")
               end
             end
             -- Display-change safety: if the GS mode actually switched, confirm it
@@ -2985,18 +3623,17 @@ UI = {
             end
             UI.SceneChange(target_scene)
           else
+            -- Failure path: keep the DRAFTS intact (no draft resync from runtime) so
+            -- the user's edits survive for a retry -- a failed save used to destroy
+            -- every pending change. Toasts tell the truth about scope: on a BDMA/SMB
+            -- apply failure the sidecar save already SUCCEEDED with everything else;
+            -- only that one subsystem was rolled back (and re-persisted).
             if reason == "bdma_apply_failed" then
-              UI.Notif_queue.add("BDMA mode change didn't apply\nsettings weren't saved", "error")
-              UI.SyncSettingsSelectionFromRuntime()
-              UI.SyncSettingsDraftFromRuntime()
-            elseif reason == "save_failed" then
-              UI.Notif_queue.add("Couldn't save settings\n"..tostring(PLDR.SETTINGS_PATH or "mc0:/POPSTARTER/.pldrs").." may be read-only"..((type(BOOT_MX4SIO_PROBE_RESULT) == "string" and BOOT_MX4SIO_PROBE_RESULT ~= "") and "\nmx4sio probe: "..BOOT_MX4SIO_PROBE_RESULT or ""), "error")
-              UI.SyncSettingsSelectionFromRuntime()
-              UI.SyncSettingsDraftFromRuntime()
+              UI.Notif_queue.add("BDMA mode change didn't apply\nBDMA reverted; other settings were saved", "error")
+            elseif reason == "smb_apply_failed" then
+              UI.Notif_queue.add("SMB modules didn't install/remove\nmodule setting reverted; other settings were saved", "error")
             else
               UI.Notif_queue.add("Couldn't save settings\n"..tostring(PLDR.SETTINGS_PATH or "mc0:/POPSTARTER/.pldrs").." may be read-only"..((type(BOOT_MX4SIO_PROBE_RESULT) == "string" and BOOT_MX4SIO_PROBE_RESULT ~= "") and "\nmx4sio probe: "..BOOT_MX4SIO_PROBE_RESULT or ""), "error")
-              UI.SyncSettingsSelectionFromRuntime()
-              UI.SyncSettingsDraftFromRuntime()
             end
             if allow_fallback_exit == true then
               UI.ProfileDirty = false
@@ -3005,6 +3642,8 @@ UI = {
               UI.PopPathProfileDefaultDirty = false
               UI.DkwdrvDirty = false
               UI.VideoStandardDirty = false
+              UI.SmbDirty = false
+              UI.SmbModulesDirty = false
               clear_settings_session()
               UI.SceneChange(target_scene)
             end
@@ -3062,7 +3701,9 @@ UI = {
           end
           if UI.BdmaModeIndex ~= 1 then
             UI.BdmaModeIndex = 1
-            UI.BdmaDirty = true
+            -- vs the entry snapshot: resetting BACK to the mode the page was
+            -- opened with must not trigger a needless BDMA module reinstall.
+            UI.BdmaDirty = (UI.BdmaModeIndex ~= (UI.SettingsEntryBdmaModeIndex or 1))
           end
           if (UI.BootPageIndex or 1) ~= 1 then
             UI.BootPageIndex = 1
@@ -3076,8 +3717,25 @@ UI = {
             UI.GlobalHide = false
             UI.ProfileDirty = true
           end
-          if UI.ShowDetails == true then
-            UI.ShowDetails = false
+          if UI.DetailsAlign ~= nil and UI.DetailsAlign ~= "off" then
+            UI.DetailsAlign = "off"
+            UI.ProfileDirty = true
+          end
+          if UI.GameListCache == true then
+            UI.GameListCache = false
+            UI.ProfileDirty = true
+          end
+          if UI.BootSound ~= true then   -- default ON
+            UI.BootSound = true
+            UI.ProfileDirty = true
+          end
+          if UI.BdmaAdaptive == true then   -- default OFF
+            UI.BdmaAdaptive = false
+            UI.ProfileDirty = true
+          end
+          if (math.floor(tonumber(UI.Overscan) or 0)) ~= 0 then   -- default 0 (off)
+            UI.Overscan = 0
+            if type(Screen) == "table" and type(Screen.setOverscan) == "function" then pcall(Screen.setOverscan, 0) end
             UI.ProfileDirty = true
           end
           local default_video_key = VIDEO_STANDARD_AUTO
@@ -3090,13 +3748,16 @@ UI = {
           end
           if UI.VideoStandardIndex ~= default_video_index then
             UI.VideoStandardIndex = default_video_index
-            UI.VideoStandardDirty = true
+            UI.VideoStandardDirty = (UI.VideoStandardIndex ~= (UI.SettingsEntryVideoStandardIndex or 1))
           end
           if UI.HideTextMode then
             UI.SetHideTextMode(false, false)
             UI.ProfileDirty = true
           end
-          local default_keyboard_layout = "QWERTY"
+          -- "ABC" = the same default a genuine fresh install gets (LoadSettingsNonFatal
+          -- + NormalizeKeyboardLayout's fall-through). This used to say QWERTY, so
+          -- Reset Defaults produced a DIFFERENT state than factory-fresh.
+          local default_keyboard_layout = "ABC"
           if type(PLDR) == "table" and type(PLDR.NormalizeKeyboardLayout) == "function" then
             default_keyboard_layout = PLDR.NormalizeKeyboardLayout(default_keyboard_layout)
           end
@@ -3104,12 +3765,64 @@ UI = {
             UI.KeyboardLayoutDraft = default_keyboard_layout
             UI.ProfileDirty = true
           end
+          -- These three were MISSING from Reset Defaults (the action's label promised
+          -- them): Internal HDD page, cover/details folder, carousel device visibility.
+          if tostring(UI.HddFs) ~= "PFS" then
+            UI.HddFs = "PFS"
+            UI.ProfileDirty = true
+          end
+          if tostring(UI.ArtLocation) ~= "pops_art" then
+            UI.ArtLocation = "pops_art"
+            UI.ProfileDirty = true
+          end
+          if type(UI.DeviceHiddenDraft) == "table" and next(UI.DeviceHiddenDraft) ~= nil then
+            UI.DeviceHiddenDraft = {}
+            UI.ProfileDirty = true
+          end
+          if type(PLDR.SmbDefaults) == "function" and type(PLDR.SMB_FIELDS) == "table" then
+            local smb_def = PLDR.SmbDefaults()
+            local smb_cur = (type(UI.SmbDraft) == "table") and UI.SmbDraft or {}
+            local smb_changed = false
+            for i = 1, #PLDR.SMB_FIELDS do
+              local k = PLDR.SMB_FIELDS[i].key
+              if tostring(smb_cur[k]) ~= tostring(smb_def[k]) then smb_changed = true end
+            end
+            UI.SmbDraft = smb_def
+            if smb_changed then
+              UI.SmbDirty = true
+              UI.ProfileDirty = true
+            end
+          end
+          if UI.SmbModulesDraft == true then   -- default = not installed (mirrors BDMA->FAT32 reset)
+            UI.SmbModulesDraft = false
+            UI.SmbModulesDirty = true
+            UI.ProfileDirty = true
+          end
           UI.Notif_queue.add("Profile defaults restored", "ok")
+        end
+
+        -- Trim the raw keyboard buffer (the OSK's SPACE key makes invisible
+        -- leading/trailing spaces easy, and a trailing space silently fails the
+        -- launch resolver's existence gate -- it would use a DIFFERENT POPSTARTER
+        -- than the one configured, with zero indication). Then warn (save anyway --
+        -- the device may simply be unplugged) when the typed file doesn't exist.
+        -- HDD-form paths skip the probe: a bare doesFileExist on an unmounted hdd0:
+        -- path would false-warn on perfectly valid custom HDD paths.
+        local function TrimAndProbePathDraft(path)
+          path = string.match(tostring(path or ""), "^%s*(.-)%s*$") or ""
+          if path ~= "" and string.match(path, "^[Hh][Dd][Dd]%d*:") == nil
+             and string.match(path, "^[Pp][Ff][Ss]%d*:") == nil then
+            local ok, exists = pcall(doesFileExist, path)
+            if not (ok and exists == true) then
+              UI.Notif_queue.add("Path saved, file not found:\n"..path, "warn")
+            end
+          end
+          return path
         end
 
         local function OpenPopstarterPathEditor()
           UI.PathEditor.Open("Edit POPStarter Path", UI.PopstarterPathDraft or "", function(path)
-            UI.PopstarterPathDraft = tostring(path or "")
+            UI.PopstarterPathDraft = TrimAndProbePathDraft(path)
             UI.PopPathDirty = true
             UI.PopPathProfileDefaultDirty = false
             UI.ProfileDirty = true
@@ -3118,7 +3831,7 @@ UI = {
 
         local function OpenDkwdrvPathEditor()
           UI.PathEditor.Open("Edit DKWDRV Path", UI.DkwdrvPathDraft or "", function(path)
-            UI.DkwdrvPathDraft = tostring(path or "")
+            UI.DkwdrvPathDraft = TrimAndProbePathDraft(path)
             UI.DkwdrvDirty = true
             UI.ProfileDirty = true
           end)
@@ -3137,13 +3850,23 @@ UI = {
         -- Build the items list. Sections and spacers are non-selectable
         -- markers; cycle/path/action items respond to focus + activation.
         local items = {}
+        -- Collapsible sections (session-only; resets on reboot, no new persisted key).
+        -- A collapsed section keeps its header (selectable, to re-expand) but its
+        -- cycle/path/info child rows are skipped from the row model entirely, so the
+        -- draw/nav/scroll machinery below needs no changes. Action rows (Save/Reset/
+        -- Discard) and the spacers around them are NEVER hidden -- AddAction resets the
+        -- collapse flag so they (and any following section) always stay reachable.
+        if type(UI.SettingsCollapsed) ~= "table" then UI.SettingsCollapsed = {} end
+        local collapsed_now = false
         local function AddSection(label)
-          table.insert(items, { kind = "section", label = label })
+          collapsed_now = (UI.SettingsCollapsed[label] == true)
+          table.insert(items, { kind = "section", label = label, collapsed = collapsed_now, collapsible = true })
         end
         local function AddSpacer()
           table.insert(items, { kind = "spacer" })
         end
         local function AddCycle(label, get_value, prev_fn, next_fn, dirty_fn)
+          if collapsed_now then return end
           table.insert(items, {
             kind = "cycle",
             label = label,
@@ -3156,9 +3879,11 @@ UI = {
         local function AddInfo(label, get_value)
           -- Read-only status row (not focusable -- see IsSelectable). Surfaces
           -- live runtime state next to the relevant setting.
+          if collapsed_now then return end
           table.insert(items, { kind = "info", label = label, value = get_value })
         end
         local function AddPath(label, get_value, open_fn, dirty_fn)
+          if collapsed_now then return end
           table.insert(items, {
             kind = "path",
             label = label,
@@ -3168,6 +3893,7 @@ UI = {
           })
         end
         local function AddAction(label, activate_fn, accent)
+          collapsed_now = false  -- actions (and anything after) are never hidden by a collapse
           table.insert(items, {
             kind = "action",
             label = label,
@@ -3187,7 +3913,11 @@ UI = {
             return
           end
           UI.BdmaModeIndex = next_idx
-          UI.BdmaDirty = true
+          -- Compare against the entry snapshot (not set-on-touch): cycling away
+          -- and back used to leave a phantom dirty flag, and Save then ran a full
+          -- needless BDMA module reinstall (ApplyBdmaMode has no same-mode
+          -- short-circuit).
+          UI.BdmaDirty = (UI.BdmaModeIndex ~= (UI.SettingsEntryBdmaModeIndex or 1))
         end
         AddCycle(
           "BDMA Mode",
@@ -3196,6 +3926,25 @@ UI = {
           function() CycleBdma(1) end,
           function() return UI.BdmaDirty == true end
         )
+        -- Adaptive BDMA (issue #509): stage the BDMA variant per LAUNCHED game's
+        -- device instead of the one global mode above (which then reads as the
+        -- USB-page preference: exFAT-USB keeps the modules on USB launches, any
+        -- other value means FAT32/none there). Zero card writes when the right
+        -- variant is already staged.
+        local function ToggleAdaptiveBdma()
+          if UI.BdmaAdaptive ~= true and PLDR.POPSTARTER_MC_FOLDER == false then
+            UI.Notif_queue.add("Enable the POPSTARTER Folder first\n(BDMA / SMB modules must live on the memory card)", "warn")
+            return
+          end
+          UI.BdmaAdaptive = not (UI.BdmaAdaptive == true)
+        end
+        AddCycle(
+          "Adaptive BDMA",
+          function() return UI.BdmaAdaptive and "On (per-device)" or "Off" end,
+          function() ToggleAdaptiveBdma() end,
+          function() ToggleAdaptiveBdma() end,
+          function() return (UI.BdmaAdaptive == true) ~= (UI.SettingsEntryBdmaAdaptive == true) end
+        )
 
         AddSection("Display")
         AddCycle(
@@ -3203,13 +3952,11 @@ UI = {
           function() return tostring((UI.VideoStandardModes[UI.VideoStandardIndex] or UI.VideoStandardModes[1] or {}).label or "") end,
           function()
             UI.VideoStandardIndex = CycleIndex(UI.VideoStandardIndex, -1, #UI.VideoStandardModes)
-            UI.VideoStandardDirty = true
-            UI.ProfileDirty = true
+            UI.VideoStandardDirty = (UI.VideoStandardIndex ~= (UI.SettingsEntryVideoStandardIndex or 1))
           end,
           function()
             UI.VideoStandardIndex = CycleIndex(UI.VideoStandardIndex,  1, #UI.VideoStandardModes)
-            UI.VideoStandardDirty = true
-            UI.ProfileDirty = true
+            UI.VideoStandardDirty = (UI.VideoStandardIndex ~= (UI.SettingsEntryVideoStandardIndex or 1))
           end,
           function() return UI.VideoStandardDirty == true end
         )
@@ -3272,6 +4019,9 @@ UI = {
           end
           for di = 1, #PLDR.CAROUSEL_DEVICE_KEYS do
             local dkey = PLDR.CAROUSEL_DEVICE_KEYS[di]
+            -- EXFAT + PFS are governed by the single "Internal HDD" toggle below, not by a
+            -- per-device Shown/Hidden row here (CosmicScale: one toggle, not two that fight).
+            if dkey ~= "EXFAT" and dkey ~= "PFS" then
             local dlabel = (type(UI.MainMenu) == "table" and type(UI.MainMenu.opts) == "table" and UI.MainMenu.opts[di]) or dkey
             AddCycle(
               dlabel,
@@ -3284,8 +4034,20 @@ UI = {
                 return d ~= e
               end
             )
+            end
           end
         end
+
+        -- Internal-HDD filesystem: which of the two HDD pages shows on the carousel --
+        -- Sony APA/PFS (default) or APA-Jail exFAT. Mutually exclusive (one shows, the
+        -- other hides). A -page=ata launch still auto-enters exFAT regardless of this.
+        AddCycle(
+          "Internal HDD",
+          function() return (UI.HddFs == "EXFAT") and "exFAT (APA-Jail)" or "PFS (default)" end,
+          function() UI.HddFs = (UI.HddFs == "EXFAT") and "PFS" or "EXFAT" end,
+          function() UI.HddFs = (UI.HddFs == "EXFAT") and "PFS" or "EXFAT" end,
+          function() return tostring(UI.HddFs) ~= tostring(UI.SettingsEntryHddFs) end
+        )
 
         AddSection("Game List")
         AddCycle(
@@ -3302,13 +4064,111 @@ UI = {
           function() UI.GlobalHide = not UI.GlobalHide end,
           function() return (UI.GlobalHide == true) ~= (UI.SettingsEntryGlobalHide == true) end
         )
+        local DETAILS_ALIGN_SEQ = {"off", "left", "center", "right"}
+        local DETAILS_ALIGN_TXT = {off = "Off", left = "Left aligned", center = "Center aligned", right = "Right aligned"}
+        local function DetailsAlignStep(cur, dir)
+          local idx = 1
+          for i = 1, #DETAILS_ALIGN_SEQ do
+            if DETAILS_ALIGN_SEQ[i] == cur then idx = i; break end
+          end
+          idx = ((idx - 1 + dir) % #DETAILS_ALIGN_SEQ) + 1
+          return DETAILS_ALIGN_SEQ[idx]
+        end
         AddCycle(
           "Game details",
-          function() return UI.ShowDetails and "Shown" or "Hidden" end,
-          function() UI.ShowDetails = not UI.ShowDetails end,
-          function() UI.ShowDetails = not UI.ShowDetails end,
-          function() return (UI.ShowDetails == true) ~= (UI.SettingsEntryShowDetails == true) end
+          function() return DETAILS_ALIGN_TXT[UI.DetailsAlign] or "Off" end,
+          function() UI.DetailsAlign = DetailsAlignStep(UI.DetailsAlign, 1) end,
+          function() UI.DetailsAlign = DetailsAlignStep(UI.DetailsAlign, -1) end,
+          function() return tostring(UI.DetailsAlign) ~= tostring(UI.SettingsEntryDetailsAlign) end
         )
+        -- Where REMOVABLE-device cover .png + details .txt are looked for (HDD keeps its
+        -- __common/POPS/ART layout). "POPS/ART" is the default; the game's own POPS folder
+        -- (beside the .vcd) is always also checked as a back-compat fallback.
+        local ART_LOCATION_SEQ = {"pops_art", "pops", "art"}
+        local ART_LOCATION_TXT = {pops = "POPS (beside game)", pops_art = "POPS/ART", art = "ART (at root)"}
+        local function ArtLocationStep(cur, dir)
+          local idx = 1
+          for i = 1, #ART_LOCATION_SEQ do
+            if ART_LOCATION_SEQ[i] == cur then idx = i; break end
+          end
+          idx = ((idx - 1 + dir) % #ART_LOCATION_SEQ) + 1
+          return ART_LOCATION_SEQ[idx]
+        end
+        AddCycle(
+          "Cover/details folder",
+          function() return ART_LOCATION_TXT[UI.ArtLocation] or "POPS/ART" end,
+          function() UI.ArtLocation = ArtLocationStep(UI.ArtLocation, 1) end,
+          function() UI.ArtLocation = ArtLocationStep(UI.ArtLocation, -1) end,
+          function() return tostring(UI.ArtLocation) ~= tostring(UI.SettingsEntryArtLocation) end
+        )
+        AddCycle(
+          "Game list cache",
+          function() return UI.GameListCache and "On" or "Off" end,
+          function() UI.GameListCache = not UI.GameListCache end,
+          function() UI.GameListCache = not UI.GameListCache end,
+          function() return (UI.GameListCache == true) ~= (UI.SettingsEntryGameListCache == true) end
+        )
+        AddCycle(
+          "Boot sound",
+          function() return UI.BootSound and "On" or "Off" end,
+          function() UI.BootSound = not UI.BootSound end,
+          function() UI.BootSound = not UI.BootSound end,
+          function() return (UI.BootSound == true) ~= (UI.SettingsEntryBootSound == true) end
+        )
+        AddCycle(
+          "Overscan (CRT inset)",
+          function() return (UI.Overscan or 0) == 0 and "Off" or tostring(UI.Overscan) end,
+          function()
+            UI.Overscan = math.min((UI.Overscan or 0) + 5, 100)
+            if type(Screen) == "table" and type(Screen.setOverscan) == "function" then pcall(Screen.setOverscan, UI.Overscan) end
+          end,
+          function()
+            UI.Overscan = math.max((UI.Overscan or 0) - 5, 0)
+            if type(Screen) == "table" and type(Screen.setOverscan) == "function" then pcall(Screen.setOverscan, UI.Overscan) end
+          end,
+          function() return (UI.Overscan or 0) ~= (UI.SettingsEntryOverscan or 0) end
+        )
+
+        -- SMB / Network (Stage 1: config only -- the network stack loads lazily on
+        -- the SMB page, never here/at boot). Spec-driven rows from PLDR.SMB_FIELDS;
+        -- all editing routes through UI.SmbDraft + UI.SmbDirty (committed as opts.smb).
+        if type(PLDR.SMB_FIELDS) == "table" then
+          AddSection("SMB / Network")
+          -- Master switch: install/remove the in-game SMB streaming pack in
+          -- mc:/POPSTARTER (mirrors the BDMA Mode row). Applied at save time via
+          -- opts.apply_smb -> PLDR.ApplySmbModules/RemoveSmbModules.
+          AddCycle(
+            "SMB modules",
+            function() return (UI.SmbModulesDraft == true) and "Installed" or "Not installed" end,
+            function() UI.ToggleSmbModulesDraft() end,
+            function() UI.ToggleSmbModulesDraft() end,
+            function() return (UI.SmbModulesDraft == true) ~= (PLDR.SMB_MODULES == true) end
+          )
+          for smb_i = 1, #PLDR.SMB_FIELDS do
+            local smb_field = PLDR.SMB_FIELDS[smb_i]
+            local smb_label = UI.SmbFieldLabel(smb_field)
+            if smb_field.hidden == true then
+              -- Spec-only field (ADDR_TYPE/NB_ADDR): kept so old sidecars parse,
+              -- but not rendered -- the connect binding can't honor it (NetBIOS
+              -- needs nbns.irx), so a row here would sell a guaranteed failure.
+            elseif smb_field.kind == "bool" or smb_field.kind == "enum" then
+              AddCycle(
+                smb_label,
+                function() return UI.SmbFieldDisplay(smb_field) end,
+                function() UI.SmbFieldCycle(smb_field, -1) end,
+                function() UI.SmbFieldCycle(smb_field, 1) end,
+                function() return UI.SmbFieldDirty(smb_field.key) end
+              )
+            else
+              AddPath(
+                smb_label,
+                function() return UI.SmbFieldDisplay(smb_field) end,
+                function() UI.SmbFieldOpenEditor(smb_field) end,
+                function() return UI.SmbFieldDirty(smb_field.key) end
+              )
+            end
+          end
+        end
 
         AddSection("POPSTARTER")
         AddCycle(
@@ -3316,7 +4176,10 @@ UI = {
           function() return "Profile "..tostring(UI.ProfileQuery.curopt) end,
           function() CycleProfile(-1) end,
           function() CycleProfile( 1) end,
-          function() return UI.ProfileDirty == true end
+          -- Own-value comparison, NOT the aggregate UI.ProfileDirty: that flag is
+          -- set by many unrelated rows (video, device hide, path edits), which
+          -- misleadingly lit THIS row. The aggregate still drives the save prompt.
+          function() return (UI.ProfileQuery.curopt or 1) ~= (UI.SettingsEntryProfile or 1) end
         )
         AddPath(
           "POPSTARTER Path",
@@ -3347,13 +4210,38 @@ UI = {
             or UI.VideoStandardDirty == true
             or HideTextDirty()
             or KeyboardLayoutDirty()
+            -- Value-cycle settings are tracked by snapshot comparison (their cycle
+            -- handlers set NO dirty flag), so they must be compared here too -- else a
+            -- lone change to one is dropped on BACK with no save prompt. Same
+            -- expressions as each widget's own dirty indicator. (review)
+            or (UI.MultiDiscCollapse == true) ~= (UI.SettingsEntryMultiDiscCollapse == true)
+            or (UI.GlobalHide == true) ~= (UI.SettingsEntryGlobalHide == true)
+            or tostring(UI.DetailsAlign) ~= tostring(UI.SettingsEntryDetailsAlign)
+            or tostring(UI.ArtLocation) ~= tostring(UI.SettingsEntryArtLocation)
+            or tostring(UI.HddFs) ~= tostring(UI.SettingsEntryHddFs)
+            or (UI.GameListCache == true) ~= (UI.SettingsEntryGameListCache == true)
+            or (UI.BootSound == true) ~= (UI.SettingsEntryBootSound == true)
+            or (UI.BdmaAdaptive == true) ~= (UI.SettingsEntryBdmaAdaptive == true)
+            or (math.floor(tonumber(UI.Overscan) or 0)) ~= (math.floor(tonumber(UI.SettingsEntryOverscan) or 0))
+            or (UI.BootPageIndex or 1) ~= (UI.SettingsEntryBootPageIndex or 1)
+            or (UI.SmbDirty == true)
+            or (UI.SmbModulesDirty == true)
         end
 
         local function ToggleMcFolder()
           if PLDR.POPSTARTER_MC_FOLDER == false then
+            -- Gate the flag flip on the save actually persisting: with a failed save
+            -- the sidecar still says 0, so next boot would re-delete what we just
+            -- restored (flag/folder lockstep is the whole point of this toggle).
             PLDR.POPSTARTER_MC_FOLDER = true
+            local on_saved = false
+            pcall(function() on_saved = (PLDR.SaveSettingsAtomic() == true) end)
+            if not on_saved then
+              PLDR.POPSTARTER_MC_FOLDER = false
+              UI.Notif_queue.add("Couldn't save settings -- POPSTARTER folder NOT restored", "error")
+              return
+            end
             pcall(PLDR.EnsurePopstarterDir)
-            pcall(PLDR.SaveSettingsAtomic)
             UI.Notif_queue.add("POPSTARTER folder restored on the memory card\n(set a BDMA mode to re-add the exFAT/SMB modules)", "ok")
             return
           end
@@ -3363,6 +4251,19 @@ UI = {
           if (bdma_draft ~= nil and bdma_draft ~= "FAT32")
              or (PLDR.BDMA_MODE_KEY ~= nil and PLDR.BDMA_MODE_KEY ~= "FAT32") then
             UI.Notif_queue.add("Can't disable while BDMA is enabled\nSet BDMA Mode to FAT32 (None) first", "warn")
+            return
+          end
+          -- Same rule for SMB: the streaming pack lives in this folder, so it can't be
+          -- deleted while SMB modules are installed (draft or saved).
+          if (UI.SmbModulesDraft == true) or (PLDR.SMB_MODULES == true) then
+            UI.Notif_queue.add("Can't disable while SMB modules are installed\nSet SMB modules to Not installed first", "warn")
+            return
+          end
+          -- And for Adaptive BDMA: it stages modules INTO this folder at launch
+          -- time, so deleting the folder while it's on would just silently
+          -- neuter the feature (staging no-ops with the folder off).
+          if (UI.BdmaAdaptive == true) or (PLDR.BDMA_ADAPTIVE == true) then
+            UI.Notif_queue.add("Can't disable while Adaptive BDMA is on\nTurn Adaptive BDMA off first", "warn")
             return
           end
           local confirmed = UI.RunConfirm({
@@ -3375,14 +4276,28 @@ UI = {
           })
           if confirmed then
             PLDR.POPSTARTER_MC_FOLDER = false
-            pcall(PLDR.SaveSettingsAtomic)
+            -- Delete ONLY when the save persisted. It used to delete regardless: a
+            -- failed save left the sidecar saying 1, so the next boot's
+            -- EnsurePopstarterDir silently recreated the folder the user just
+            -- deleted (the every-boot-recreation provato reported).
+            local off_saved = false
+            pcall(function() off_saved = (PLDR.SaveSettingsAtomic() == true) end)
+            if not off_saved then
+              PLDR.POPSTARTER_MC_FOLDER = true
+              UI.Notif_queue.add("Couldn't save settings -- POPSTARTER folder NOT deleted", "error")
+              return
+            end
             pcall(PLDR.RemovePopstarterMcFolder)
             UI.Notif_queue.add("POPSTARTER folder deleted from the memory card", "warn")
           end
         end
 
         AddSpacer()
-        AddAction("Save Changes",      function() queue_exit(UI.SCENES.MMAIN, true) end, true)
+        -- allow_fallback_exit=false: a FAILED save keeps the user on the Settings
+        -- page with every draft edit intact for a retry (it used to force-exit and
+        -- destroy them). The BACK-prompt Save below keeps true -- the user was
+        -- already leaving, so exit-on-failure matches their intent there.
+        AddAction("Save Changes",      function() queue_exit(UI.SCENES.MMAIN, false) end, true)
         AddAction("Reset Defaults",    function() ResetDefaults() end, false)
         AddAction("Discard & Exit",    function() discard_settings_and_return() end, false)
         AddSpacer()
@@ -3398,8 +4313,9 @@ UI = {
         -- Focus normalization: clamp + skip non-selectable rows.
         local function IsSelectable(idx)
           local it = items[idx]
-          return it ~= nil and it.kind ~= "section" and it.kind ~= "spacer"
-            and it.kind ~= "info"
+          if it == nil then return false end
+          if it.kind == "section" then return it.collapsible == true end
+          return it.kind ~= "spacer" and it.kind ~= "info"
         end
         if type(UI.SettingsFocus) ~= "number" or UI.SettingsFocus < 1 or UI.SettingsFocus > #items then
           UI.SettingsFocus = 1
@@ -3451,7 +4367,12 @@ UI = {
           Graphics.drawRect(SAFE_LEFT, row_y - 2, SAFE_RIGHT - SAFE_LEFT, ROW_H, highlight_color)
         end
 
-        local function DrawSection(label, row_y)
+        local function DrawSection(label, row_y, collapsed, focused)
+          if focused then
+            Graphics.drawRect(SAFE_LEFT, row_y - 2, SAFE_RIGHT - SAFE_LEFT, SECTION_HEADER_H, highlight_color)
+          end
+          -- "+" = collapsed (press to expand), "-" = expanded (ASCII, font-safe).
+          Font.ftPrint(BFONT, SAFE_LEFT + 2, row_y, 0, 12, 16, collapsed and "+" or "-", focused and accent_color or separator_color)
           Font.ftPrint(BFONT, LABEL_X, row_y, 0, UI.SCR.X, 16, label, accent_color)
           Graphics.drawRect(SAFE_LEFT, row_y + SECTION_HEADER_H - 4, SAFE_RIGHT - SAFE_LEFT, 1, separator_color)
         end
@@ -3542,7 +4463,7 @@ UI = {
             or (row_y >= view_top and (row_y + item_h[i]) <= (footer_top_y + 1))
           if show then
             if it.kind == "section" then
-              DrawSection(it.label, row_y)
+              DrawSection(it.label, row_y, it.collapsed, UI.SettingsFocus == i)
             elseif it.kind == "spacer" then
               -- nothing to draw
             else
@@ -3584,14 +4505,23 @@ UI = {
 
         local focused_item = items[UI.SettingsFocus]
         if focused_item ~= nil then
+          local function SetSectionCollapsed(it, collapsed)
+            if it ~= nil and it.kind == "section" then
+              UI.SettingsCollapsed[it.label] = collapsed and true or nil
+            end
+          end
           if UI.Pad.Events.NAV_LEFT then
-            if focused_item.kind == "cycle" and focused_item.prev then focused_item.prev() end
+            if focused_item.kind == "section" then SetSectionCollapsed(focused_item, true)
+            elseif focused_item.kind == "cycle" and focused_item.prev then focused_item.prev() end
           end
           if UI.Pad.Events.NAV_RIGHT then
-            if focused_item.kind == "cycle" and focused_item.next then focused_item.next() end
+            if focused_item.kind == "section" then SetSectionCollapsed(focused_item, false)
+            elseif focused_item.kind == "cycle" and focused_item.next then focused_item.next() end
           end
           if UI.Pad.Events.CONFIRM then
-            if focused_item.kind == "cycle" and focused_item.next then
+            if focused_item.kind == "section" then
+              SetSectionCollapsed(focused_item, not (UI.SettingsCollapsed[focused_item.label] == true))
+            elseif focused_item.kind == "cycle" and focused_item.next then
               focused_item.next()
             elseif focused_item.kind == "path" and focused_item.open then
               focused_item.open()
@@ -3641,9 +4571,7 @@ UI = {
         animDir = 0,
         animDurSec = 0.55,
         slide = 0,
-        allowOptWrite = false,
-        timer = nil,
-        last_ms = nil
+        allowOptWrite = false
       };
       DrawOnly = function ()
         UI.MainMenu._draw_only = true
@@ -3692,14 +4620,6 @@ UI = {
           return ((index - 1) % count) + 1
         end
         local carousel = UI.MainMenu.Carousel
-        if carousel.timer == nil then
-          carousel.timer = Timer.new()
-          carousel.last_ms = Timer.getTime(carousel.timer)
-        end
-        local now_ms = Timer.getTime(carousel.timer)
-        local dt_ms = now_ms - (carousel.last_ms or now_ms)
-        carousel.last_ms = now_ms
-        if dt_ms < 0 then dt_ms = 0 end
         if not carousel.animActive then
           local sync_pos = pos_of[UI.MainMenu.OPT]
           if sync_pos == nil then
@@ -3716,9 +4636,9 @@ UI = {
           carousel.slide = 0
         end
         if carousel.animActive then
-          if carousel.currentIndex ~= UI.MainMenu.OPT then
-          end
-          local dt_sec = Clamp(dt_ms / 1000, 0, 1/30)
+          -- Frame-paced: runs once per render frame; the old dt was always clamped to
+          -- 1/30 s, so advance a fixed 1/30 s per frame (no microsecond clock).
+          local dt_sec = 1/30
           carousel.animT = carousel.animT + dt_sec
           local duration = carousel.animDurSec
           if duration <= 0 then duration = 0.01 end
@@ -3744,13 +4664,8 @@ UI = {
 	        if layout.CAROUSEL_Y_OFFSET ~= nil then
 	          center_y = center_y + layout.CAROUSEL_Y_OFFSET
 	        end
-        local function Clamp(value, min_val, max_val)
-          if value < min_val then return min_val end
-          if value > max_val then return max_val end
-          return value
-        end
         local function ResolveIcon(key)
-          return IMG[key] or IMG["missing"]
+          return IMG[key]
         end
         if not UI.MainMenu.icons_ready then
           for _, key in ipairs(icon_keys) do
@@ -3770,7 +4685,7 @@ UI = {
           local pos_y = Round(y - (icon_h / 2))
           Graphics.drawImage(icon, pos_x, pos_y, color)
         end
-        local first_icon = ResolveIcon(icon_keys[1] or "missing")
+        local first_icon = ResolveIcon(icon_keys[1])
         local base_icon_w = 0
         if first_icon ~= nil then
           base_icon_w = Graphics.getImageWidth(first_icon)
@@ -3819,15 +4734,20 @@ UI = {
           end
           return 0
         end
+        -- With a single visible device, draw ONLY the center icon. Otherwise the
+        -- carousel ghosts the same icon across the -3..3 slots, which reads as a
+        -- scrollable multi-item list of one repeated entry (oldman63).
         for k = -3, 3 do
-          local idx = WrapIndex(base_scroll + k, profcnt)
-          local x = center_x + slot_spacing * (k - scroll_frac)
-          local y = center_y
-          local dist = math.abs(k - scroll_frac)
-          local alpha = SlotAlpha(dist)
-          if alpha > 0 then
-            local tint = Color.new(128, 128, 128, alpha)
-            DrawIcon(idx, x, y, tint)
+          if profcnt > 1 or k == 0 then
+            local idx = WrapIndex(base_scroll + k, profcnt)
+            local x = center_x + slot_spacing * (k - scroll_frac)
+            local y = center_y
+            local dist = math.abs(k - scroll_frac)
+            local alpha = SlotAlpha(dist)
+            if alpha > 0 then
+              local tint = Color.new(128, 128, 128, alpha)
+              DrawIcon(idx, x, y, tint)
+            end
           end
         end
         local labels, order = UI.Footer.ResolveLegend({
@@ -3853,7 +4773,7 @@ UI = {
           UI.MainMenu.PendingAutoEnter = false
           UI.Pad.Events.CONFIRM = true
         end
-        if not carousel.animActive then
+        if not carousel.animActive and profcnt > 1 then  -- no left/right nav with a single visible device
           if UI.Pad.Events.NAV_RIGHT then
             carousel.targetIndex = WrapIndex(carousel.currentIndex + 1, profcnt)
             carousel.animDir = 1
@@ -3869,7 +4789,7 @@ UI = {
             carousel.slide = 0
           end
         end
-        if UI.Pad.Events.EXIT then UI.SceneChange(UI.SCENES.CREDITS) end
+        if UI.Pad.Events.EXIT then UI.CreditsReturnScene = UI.CURSCENE; UI.SceneChange(UI.SCENES.CREDITS) end
         if UI.Pad.Events.BACK then
           UI.Modal.OpenExit()
           return
@@ -3884,10 +4804,12 @@ UI = {
 	              end
               local slots = PLDR.GetMMCESlots()
               if #slots < 1 then
+                -- Toast and stay on the carousel (no SceneChange): every sibling
+                -- no-device branch (MX4SIO/exFAT, and the second MMCE check just
+                -- below) returns without entering an empty game list.
                 UI.Notif_queue.add("No MMCE device detected\nchecked mmce0: and mmce1:", "warn")
                 PLDR.CleanupGameList()
                 PLDR.GAMEPATH = ""
-                UI.SceneChange(UI.SCENES.GSMB)
                 return
               end
               report("Preparing MMCE list...", 0.42)
@@ -3901,9 +4823,15 @@ UI = {
               end
 	              PLDR.CleanupGameList()
 	              local mmce_pops = mmce_prefix.."POPS/"
-	              if doesFolderExist(mmce_pops) then
+	              local mmce_cache = mmce_pops..".gamecache"
+	              local mmce_cg, mmce_ch = PLDR.LoadGameListCache(mmce_cache)
+	              if mmce_cg ~= nil then
+	                PLDR.ApplyGameListCache(mmce_cg, mmce_pops, mmce_ch)
+	                report("Loaded MMCE list from cache...", 1.0)
+	              elseif doesFolderExist(mmce_pops) then
 	                report("Scanning MMCE games...", 0.48)
 	                PLDR.GetPS1GameLists(mmce_pops, true, scan_progress)
+	                PLDR.SaveGameListCache(mmce_cache, PLDR.GAMES, PLDR.HIDDEN)
 	              else
 	                UI.Notif_queue.add("MMCE has no POPS folder\nexpected mmce0:/POPS/", "warn")
 	              end
@@ -3938,15 +4866,51 @@ UI = {
                 UI.Notif_queue.add("No MX4SIO device detected", "warn")
                 return
 	              end
-	              report("Scanning MX4SIO games...", 0.48)
 	              PLDR.CleanupGameList()
-	              PLDR.GetPS1GameLists(mx4sio_root, true, scan_progress)
+	              local mx4sio_cache = mx4sio_root..".gamecache"
+	              local mx4_cg, mx4_ch = PLDR.LoadGameListCache(mx4sio_cache)
+	              if mx4_cg ~= nil then
+	                PLDR.ApplyGameListCache(mx4_cg, mx4sio_root, mx4_ch)
+	                report("Loaded MX4SIO list from cache...", 1.0)
+	              else
+	                report("Scanning MX4SIO games...", 0.48)
+	                PLDR.GetPS1GameLists(mx4sio_root, true, scan_progress)
+	                PLDR.SaveGameListCache(mx4sio_cache, PLDR.GAMES, PLDR.HIDDEN)
+	              end
 	              report("Opening MX4SIO list...", 1.0)
 	              UI.SceneChange(UI.SCENES.GMX4SIO)
             end, "Failed to load MX4SIO")
             if not ok then return end
           elseif UI.MainMenu.OPT == 3 then
-            UI.Notif_queue.add("This backend isn't implemented yet", "warn")
+            local ok = UI.RunBusyTask("Loading HDD (exFAT)...", function (report)
+              local scan_progress = UI.MakeBusyProgressReporter(report, "Scanning exFAT HDD games...", 0.48, 0.9)
+              report("Refreshing mass backends...", 0.18)
+              PLDR.CleanupGameList()
+              PLDR.GAMEPATH = ""
+              if type(PLDR.RefreshMassBackends) == "function" then
+                pcall(PLDR.RefreshMassBackends)
+              end
+              report("Locating exFAT HDD POPS folder...", 0.42)
+              local ata_root = PLDR.InitATAPopsRoot()
+              if ata_root == nil then
+                UI.Notif_queue.add("No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)", "warn")
+                return
+              end
+              PLDR.CleanupGameList()
+              local ata_cache = ata_root..".gamecache"
+              local ata_cg, ata_ch = PLDR.LoadGameListCache(ata_cache)
+              if ata_cg ~= nil then
+                PLDR.ApplyGameListCache(ata_cg, ata_root, ata_ch)
+                report("Loaded exFAT HDD list from cache...", 1.0)
+              else
+                report("Scanning exFAT HDD games...", 0.48)
+                PLDR.GetPS1GameLists(ata_root, true, scan_progress)
+                PLDR.SaveGameListCache(ata_cache, PLDR.GAMES, PLDR.HIDDEN)
+              end
+              report("Opening exFAT HDD list...", 1.0)
+              UI.SceneChange(UI.SCENES.GBDMHDD)
+            end, "Failed to load HDD (exFAT)")
+            if not ok then return end
 	          elseif UI.MainMenu.OPT == 4 then
 	            local ok = UI.RunBusyTask("Loading HDD...", function (report)
               local partition_progress = UI.MakeBusyProgressReporter(report, "Scanning HDD partitions...", 0.42, 0.66)
@@ -3964,7 +4928,10 @@ UI = {
 	                  UI.Notif_queue.add("HDD list loaded from cache (R1 rescans)", "ok")
 	                end
 	                if not PLDR.HDD.FOUNDANY then
-	                  UI.Notif_queue.add("No '__.POPS' partitions on hdd0:\nformat one with __.POPS / __.POPS0...9", "warn")
+	                  -- The rc suffix tells a real mount fault apart from clean absence
+                  -- (the empty-list-from-a-launcher-boot class reports only this toast).
+                  local rc_hint = (PLDR.HDD.LAST_MOUNT_RC ~= nil) and (" (last mount rc: "..tostring(PLDR.HDD.LAST_MOUNT_RC)..")") or ""
+                  UI.Notif_queue.add("No '__.POPS' partitions on hdd0:\nformat one with __.POPS / __.POPS0...9"..rc_hint, "warn")
 	                elseif #PLDR.GAMES < 1 then
                   UI.Notif_queue.add("No games found on hdd0:\n(__.POPS partitions are empty)", "warn")
                 end
@@ -4003,16 +4970,30 @@ UI = {
 	                UI.Notif_queue.add("No USB backend detected\nreseat the drive and try again", "warn")
 	              end
 	              report("Building USB game list...", 0.44)
-	              local games = PLDR.BuildMassGameListByType("usb", nil, build_progress)
-	              if (games == nil or #games < 1) and usb_roots ~= nil and #usb_roots > 0 then
-	                report("Retrying USB scan...", 0.9)
-	                if type(System) == "table" and type(System.ensureUsbMass) == "function" then
-	                  System.ensureUsbMass()
-                end
-	                if type(PLDR.RefreshMassBackends) == "function" then
-	                  pcall(PLDR.RefreshMassBackends)
+	              -- Single-drive only: the combined multi-drive list was cached to the
+	              -- FIRST root's file, so a later boot with only drive A served ghost
+	              -- entries for absent drive B. Multi-drive setups always live-scan.
+	              local usb_cache = (usb_roots ~= nil and usb_roots[1] ~= nil and #usb_roots == 1) and (usb_roots[1].."POPS/.gamecache") or nil
+	              local usb_cg, usb_ch = nil, nil
+	              if usb_cache ~= nil then usb_cg, usb_ch = PLDR.LoadGameListCache(usb_cache) end
+	              if usb_cg ~= nil then
+	                PLDR.ApplyGameListCache(usb_cg, "", usb_ch)
+	                report("Loaded USB list from cache...", 1.0)
+	              else
+	                local games = PLDR.BuildMassGameListByType("usb", nil, build_progress)
+	                if (games == nil or #games < 1) and usb_roots ~= nil and #usb_roots > 0 then
+	                  report("Retrying USB scan...", 0.9)
+	                  if type(System) == "table" and type(System.ensureUsbMass) == "function" then
+	                    System.ensureUsbMass()
+	                  end
+	                  if type(PLDR.RefreshMassBackends) == "function" then
+	                    pcall(PLDR.RefreshMassBackends)
+	                  end
+	                  games = PLDR.BuildMassGameListByType("usb", nil, retry_progress)
 	                end
-	                games = PLDR.BuildMassGameListByType("usb", nil, retry_progress)
+	                if usb_cache ~= nil and #PLDR.GAMES > 0 then
+	                  PLDR.SaveGameListCache(usb_cache, PLDR.GAMES, PLDR.HIDDEN)
+	                end
 	              end
 	              report("Opening USB list...", 1.0)
               UI.SceneChange(UI.SCENES.GUSBFAT)
@@ -4021,7 +5002,10 @@ UI = {
 	          elseif UI.MainMenu.OPT == 6 then
 	            UI.Notif_queue.add("This backend isn't implemented yet", "warn")
 	          elseif UI.MainMenu.OPT == 7 then
-	            UI.Notif_queue.add("This backend isn't implemented yet", "warn")
+            -- SMB (v1): connect + browse (LAZY -- never at boot). The whole connect +
+            -- blank-Share picker + reconnect flow lives in UI.RunSmbConnectFlow to keep
+            -- this menu handler's locals under Lua's per-function cap.
+            UI.RunSmbConnectFlow()
 	          elseif UI.MainMenu.OPT == 8 then
 	            if type(System) == "table" and type(System.ensureCDFS) == "function" then
 	              System.ensureCDFS()
@@ -4053,23 +5037,84 @@ UI = {
       };
       NavHeld = {};
       NavNeutral = {UP = true, DOWN = true, LEFT = true, RIGHT = true};
+      NavHoldFrames = {}; -- per-direction frames-held counter (frame-count auto-repeat)
+      StickV = 0;        -- latched left-stick vertical fold state (-1 up / 0 / +1 down)
+      StickH = 0;        -- latched left-stick horizontal fold state (-1 left / 0 / +1 right)
       Queue = {};
       DebugPadTimer = nil;
       DebugPadLast = 0;
       NavEventTimer = nil;
       NavEventLast = 0;
       NavEventCount = 0;
-      LastActionEventMs = 0;
       Listen = function ()
         if UI.Pad.Timer == nil then
           UI.Pad.Timer = Timer.new()
-          UI.Pad.CLK = Timer.getTime(UI.Pad.Timer)
         end
-        local now = Timer.getTime(UI.Pad.Timer)
-        UI.Pad.CLK = now
         UI.Pad.OLDPAD = UI.Pad.GPAD
         UI.Pad.GPAD = Pads.get()
         GPAD = UI.Pad.GPAD
+        -- OPL-style: fold the LEFT ANALOG STICK into the d-pad direction bits so
+        -- stick navigation runs through the exact same edge + auto-repeat path as
+        -- the d-pad (OPL pad.c readPad does this) -- smooth item-by-item, no separate
+        -- page-jump. getLeftStick returns (h, v) centered at 0 (up/left negative,
+        -- down/right positive).
+        --
+        -- GATE (mirrors OPL pad.c:201 `if ((pad->buttons.mode >> 4) == 0x07)`): only
+        -- fold when the pad is ACTUALLY in analog/DualShock mode. A digital-mode pad
+        -- (src/pad.cpp initializePad leaves modes==0 controllers digital) returns
+        -- stale/zero analog bytes -> getLeftStick reports ~ -127 -> WITHOUT this gate
+        -- that injects a phantom PAD_UP|PAD_LEFT every frame and breaks up/down nav
+        -- (Nuno6573 #BETA-13). Pads.getMode() == PAD_MODECURID high nibble: 0x5
+        -- analog, 0x7 DualShock, 0x4 digital, 0 no-data. nil-safe: if getMode is
+        -- absent or non-analog, we skip the fold entirely (d-pad still works).
+        --
+        -- HYSTERESIS: assert a direction at |v|>64 but only RELEASE it below |v|<40,
+        -- and latch the asserted side. A stick parked at the deadzone boundary can't
+        -- dither across the threshold and edge-spam the immediate-fire nav branch
+        -- (resolve_nav fresh-press bypass) -> no runaway scroll.
+        local stick_analog = false
+        if type(Pads) == "table" and type(Pads.getMode) == "function" then
+          local ok_md, md = pcall(Pads.getMode)
+          if ok_md and type(md) == "number" and (md == PAD_ANALOG or md == PAD_DUALSHOCK) then
+            stick_analog = true
+          end
+        end
+        if stick_analog and type(Pads.getLeftStick) == "function" then
+          local ok_ls, lh, lv = pcall(Pads.getLeftStick)
+          if ok_ls then
+            local ASSERT, RELEASE = 64, 40
+            if type(lv) ~= "number" then lv = 0 end
+            if type(lh) ~= "number" then lh = 0 end
+            -- vertical latch
+            if UI.Pad.StickV == 0 then
+              if lv < -ASSERT then UI.Pad.StickV = -1
+              elseif lv > ASSERT then UI.Pad.StickV = 1 end
+            elseif UI.Pad.StickV == -1 then
+              if lv > -RELEASE then UI.Pad.StickV = 0 end
+            else
+              if lv < RELEASE then UI.Pad.StickV = 0 end
+            end
+            -- horizontal latch
+            if UI.Pad.StickH == 0 then
+              if lh < -ASSERT then UI.Pad.StickH = -1
+              elseif lh > ASSERT then UI.Pad.StickH = 1 end
+            elseif UI.Pad.StickH == -1 then
+              if lh > -RELEASE then UI.Pad.StickH = 0 end
+            else
+              if lh < RELEASE then UI.Pad.StickH = 0 end
+            end
+            if UI.Pad.StickV == -1 then UI.Pad.GPAD = UI.Pad.GPAD | PAD_UP
+            elseif UI.Pad.StickV == 1 then UI.Pad.GPAD = UI.Pad.GPAD | PAD_DOWN end
+            if UI.Pad.StickH == -1 then UI.Pad.GPAD = UI.Pad.GPAD | PAD_LEFT
+            elseif UI.Pad.StickH == 1 then UI.Pad.GPAD = UI.Pad.GPAD | PAD_RIGHT end
+            GPAD = UI.Pad.GPAD
+          end
+        else
+          -- not analog this frame: drop any latched stick direction so a stale
+          -- latch can't keep asserting after the pad changes mode / disconnects.
+          UI.Pad.StickV = 0
+          UI.Pad.StickH = 0
+        end
 
         local pressed = UI.Pad.GPAD & ~UI.Pad.OLDPAD
         local released = ~UI.Pad.GPAD & UI.Pad.OLDPAD
@@ -4104,11 +5149,12 @@ UI = {
           emit(event)
         end
 
+        -- Action emits ride the rising edge only (pressed = GPAD & ~OLDPAD), so a held
+        -- button already fires once per press. The old MIN_ACTION_MS time debounce was a
+        -- no-op (it compared a microsecond delta to a 220 "ms" constant) AND, since it
+        -- shared one timestamp across every action button, "fixing" it would have dropped
+        -- legit quick distinct presses (CONFIRM->EXIT). Removed: edge-triggering is the gate.
         local function emit_action(event)
-          if (now - (UI.Pad.LastActionEventMs or 0)) < UI.InputConfig.MIN_ACTION_MS then
-            return
-          end
-          UI.Pad.LastActionEventMs = now
           emit(event)
         end
 
@@ -4125,27 +5171,50 @@ UI = {
         if (pressed & PAD_L3) ~= 0 then emit_action("L3") end
         if (pressed & PAD_R3) ~= 0 then emit_action("R3") end
 
-        local function resolve_nav(dir, is_down)
-          local was_down = UI.Pad.NavHeld[dir] == true
+        -- Nav auto-repeat, the CANONICAL Enceladus-ecosystem way: COUNT FRAMES, never
+        -- read the wall clock. Timer.getTime() returns raw clock() ticks -- MICROSECONDS
+        -- on PS2 (CLOCKS_PER_SEC = 1e6), undocumented -- and comparing that us value to
+        -- ms-named constants cleared both gates every frame, so UP/DOWN auto-repeated
+        -- ~60x/sec ("one click = 5 lines", up/down only, ANY device incl. keyboard --
+        -- nuno6573 / LVD14 #504). The sibling Enceladus launchers (OSDMenu-Configurator
+        -- ui_common.lua, RETROLauncher funciones.lua) deliberately avoid the timer and
+        -- gate nav on a per-frame hold counter scaled by the refresh rate. UI.Pad.Listen
+        -- runs once per vblank-paced frame, so one increment == one frame: frame-rate
+        -- independent and unit-safe. The press edge fires immediately; only UP/DOWN
+        -- repeat (LEFT/RIGHT stay edge-only so holding never page-jumps/spins the
+        -- carousel). Cadence keeps the OPL intent: ~0.6s initial delay then ~0.2s repeat,
+        -- derived from the video mode (PAL 50Hz / NTSC 60Hz).
+        local nav_fps = ((UI.SCR.Y or 448) >= 512) and 50 or 60
+        local NAV_DELAY_FRAMES = math.ceil(nav_fps * 0.6)   -- frames before the 1st repeat
+        local NAV_RATE_FRAMES  = math.ceil(nav_fps * 0.2)   -- frames between repeats (~5/s)
+        local function resolve_nav(dir, is_down, repeatable)
           if not is_down then
-            if was_down then
-              UI.Pad.NavNeutral[dir] = true
-            end
+            if UI.Pad.NavHeld[dir] == true then UI.Pad.NavNeutral[dir] = true end
             UI.Pad.NavHeld[dir] = false
+            UI.Pad.NavHoldFrames[dir] = 0
             return false
           end
+          local was_held = UI.Pad.NavHeld[dir] == true
           UI.Pad.NavHeld[dir] = true
-          if not UI.Pad.NavNeutral[dir] then
-            return false
+          if not was_held and UI.Pad.NavNeutral[dir] then
+            UI.Pad.NavNeutral[dir] = false
+            UI.Pad.NavHoldFrames[dir] = 0
+            return true
           end
-          UI.Pad.NavNeutral[dir] = false
-          return true
+          if repeatable and was_held then
+            local f = (UI.Pad.NavHoldFrames[dir] or 0) + 1
+            UI.Pad.NavHoldFrames[dir] = f
+            if f >= NAV_DELAY_FRAMES and ((f - NAV_DELAY_FRAMES) % NAV_RATE_FRAMES) == 0 then
+              return true
+            end
+          end
+          return false
         end
 
-        if resolve_nav("UP", ((UI.Pad.GPAD & PAD_UP) ~= 0)) then emit_nav("NAV_UP") end
-        if resolve_nav("DOWN", ((UI.Pad.GPAD & PAD_DOWN) ~= 0)) then emit_nav("NAV_DOWN") end
-        if resolve_nav("LEFT", ((UI.Pad.GPAD & PAD_LEFT) ~= 0)) then emit_nav("NAV_LEFT") end
-        if resolve_nav("RIGHT", ((UI.Pad.GPAD & PAD_RIGHT) ~= 0)) then emit_nav("NAV_RIGHT") end
+        if resolve_nav("UP", ((UI.Pad.GPAD & PAD_UP) ~= 0), true) then emit_nav("NAV_UP") end
+        if resolve_nav("DOWN", ((UI.Pad.GPAD & PAD_DOWN) ~= 0), true) then emit_nav("NAV_DOWN") end
+        if resolve_nav("LEFT", ((UI.Pad.GPAD & PAD_LEFT) ~= 0), false) then emit_nav("NAV_LEFT") end
+        if resolve_nav("RIGHT", ((UI.Pad.GPAD & PAD_RIGHT) ~= 0), false) then emit_nav("NAV_RIGHT") end
 
         if UI.InputConfig.DEBUG_INPUT_LOG then
           if UI.Pad.DebugPadTimer == nil then
@@ -4189,7 +5258,8 @@ UI = {
 Design by Berion
 Scripts by nuno6573 and Ripto
 Based on Enceladus by Daniel Santos
-Testing by P4NCHOL1NO, VizoR, provato, nuno6573, oldman63, and Community
+Testing by P4NCHOL1NO, VizoR, provato,
+nuno6573, oldman63, saildot4k, and Community
 
 Special Thanks To:
 krHACKen for making POPStarter
@@ -4203,6 +5273,15 @@ youtube.com/@hugopocked6695
 ]], currcol)
         if UI.BUILD_INFO ~= nil and UI.BUILD_INFO.stamp ~= nil then
           local stamp_y = Round(layout.FOOTER_LABEL_Y - 18)
+          -- The credits body above is TOP-anchored (fixed offsets from TITLE_Y) while
+          -- this stamp is BOTTOM-anchored (SCR.Y - 64). On the 64px-shorter NTSC screen
+          -- (SCR.Y=448 -> stamp_y=384) the stamp rides UP into the credits body and overlaps
+          -- it (provato HW report); PAL (512 -> 448) clears it. Floor the stamp just below
+          -- the body so it can't overlap on either standard. Body starts at TITLE_Y+80
+          -- (ui.lua:4812, spacing 20); the lowest drawn credits line lands ~TITLE_Y+80+14*20.
+          -- Floor a touch past that (16*20) -- a safe overshoot that stays on-screen (<448).
+          local credits_bottom = (layout.TITLE_Y + 80) + (16 * 20) + 4
+          if stamp_y < credits_bottom then stamp_y = credits_bottom end
           Font.ftPrint(SFONT, layout.SAFE.L, stamp_y, 0, UI.SCR.X, 16, UI.BUILD_INFO.stamp, UI.CCOL.GREY)
         end
 
@@ -4210,7 +5289,11 @@ youtube.com/@hugopocked6695
           Input_GetEvent()
           if UI.HandleGlobalInput(false) then return end
           if UI.Pad.Events.EXIT or UI.Pad.Events.BACK or UI.Pad.Events.ANY then
-            UI.SceneChange(UI.SCENES.MMAIN)
+            -- Return to wherever Credits was opened from (e.g. the game list, so it
+            -- doesn't bounce to the Main Menu and force a rescan); MMAIN otherwise.
+            local back_scene = UI.CreditsReturnScene or UI.SCENES.MMAIN
+            UI.CreditsReturnScene = nil
+            UI.SceneChange(back_scene)
           end
         end
 
@@ -4268,7 +5351,8 @@ UI.GAME_SCENES = {
   [UI.SCENES.GSMB] = true,
   [UI.SCENES.GMX4SIO] = true,
   [UI.SCENES.GHDD] = true,
-  [UI.SCENES.GBDMHDD] = true
+  [UI.SCENES.GBDMHDD] = true,
+  [UI.SCENES.GSMBNET] = true
 }
 function UI.IsGameScene(scene)
   return UI.GAME_SCENES[scene] == true
@@ -4388,6 +5472,160 @@ function UI.RunConfirm(lines)
   return false
 end
 
+-- Blocking SMB share picker: list the discovered shares, Up/Down to move, X selects, O
+-- cancels. Returns the chosen share name (string) or nil. Mirrors the RunConfirm modal
+-- (Screen.clear/flip + raw Pads.get), with EDGE-detected nav (one press = one move; also
+-- neutralises PCSX2's constant phantom PAD_UP) and a scrolling window for long lists.
+function UI.RunSharePicker(shares)
+  if type(Screen) ~= "table" or type(Screen.flip) ~= "function"
+     or type(Pads) ~= "table" or type(Pads.get) ~= "function" then
+    return nil
+  end
+  if type(shares) ~= "table" or #shares == 0 then return nil end
+  local sel, prev, MAXVIS = 1, 0, 10
+  local settle = 0
+  while settle < 30 do
+    local okp, gp = pcall(Pads.get)
+    if settle >= 8 and okp and type(gp) == "number"
+       and (gp & (PAD_CROSS | PAD_CIRCLE | PAD_UP | PAD_DOWN)) == 0 then break end
+    Screen.flip()
+    settle = settle + 1
+  end
+  local f, total = 0, 60 * 60
+  while f < total do
+    Screen.clear(UI.SCR.BGCOL or Color.new(20, 30, 80))
+    local vis = math.min(#shares, MAXVIS)
+    local top = 1
+    if #shares > MAXVIS then
+      top = sel - math.floor(MAXVIS / 2)
+      if top < 1 then top = 1 end
+      if top > #shares - MAXVIS + 1 then top = #shares - MAXVIS + 1 end
+    end
+    local y = UI.SCR.Y_MID - (vis * 11) - 18
+    Font.ftPrint(LFONT, UI.SCR.X_MID, y - 26, 8, UI.SCR.X, 24, "Select a share", UI.CCOL.YELLOW)
+    for i = top, math.min(top + MAXVIS - 1, #shares) do
+      local is_sel = (i == sel)
+      local label = is_sel and ("> "..tostring(shares[i]).." <") or tostring(shares[i])
+      Font.ftPrint(SFONT, UI.SCR.X_MID, y, 8, UI.SCR.X, 16, label, is_sel and UI.CCOL.YELLOW or UI.CCOL.GREY)
+      y = y + 22
+    end
+    Font.ftPrint(BFONT, UI.SCR.X_MID, y + 14, 8, UI.SCR.X, 24, "X = Select      O = Cancel", UI.CCOL.GREY)
+    Screen.flip()
+    f = f + 1
+    local okp, gp = pcall(Pads.get)
+    gp = (okp and type(gp) == "number") and gp or 0
+    local pressed = gp & ~prev
+    prev = gp
+    if (pressed & PAD_UP) ~= 0 then sel = (sel - 2) % #shares + 1 end
+    if (pressed & PAD_DOWN) ~= 0 then sel = sel % #shares + 1 end
+    if (pressed & PAD_CROSS) ~= 0 then return shares[sel] end
+    if (pressed & PAD_CIRCLE) ~= 0 then return nil end
+  end
+  return nil
+end
+
+-- Map a connectSMB error code to the user-facing message. Shared by the connect
+-- flow below AND the R1 rescan arm (which used to swallow the reconnect error and
+-- toast a misleading "List refreshed (no games found)").
+function UI.SmbErrorMessage(err)
+  if err == "NO_SHARE" then
+    return "No Share set in SMB settings\n(server returned no shares)"
+  end
+  return ({
+    NO_LINK       = "No network link\ncheck the Ethernet cable / adapter",
+    IPCFG_FAIL    = "Couldn't apply the PS2 IP settings\ntry again or power-cycle the network adapter",
+    DHCP_FAIL     = "DHCP failed\nset a static IP in SMB settings",
+    CONN_FAIL     = "Can't reach the server\ncheck Server IP / Port in SMB settings",
+    PROT_FAIL     = "Server refused SMBv1\nenable SMBv1 support on the host",
+    LOGON_FAIL    = "SMB login failed\ncheck User / Password",
+    ECHO_FAIL     = "SMB connection dropped",
+    SHARE_FAIL    = "Share not found\ncheck the Share name (host must allow SMB1)",
+    IRX_LOAD_FAIL = "SMB modules failed to load",
+    NETBIOS_NA    = "NetBIOS isn't supported\nset Address type = IP + a Server IP",
+  })[err] or "SMB connect failed"
+end
+
+-- Full net-SMB connect flow (OPT==7): connect + scan into GSMBNET. If the Share field is
+-- blank, GETSHARELIST's shares are offered via UI.RunSharePicker (run OUTSIDE the busy
+-- task, which owns the screen); the chosen share is persisted (settings sidecar + the
+-- in-game SMBCONFIG.DAT) and we reconnect. Bounded rounds so a bad server can't loop forever.
+-- Lives here (not inline in the menu handler) to keep that handler under Lua's local cap.
+function UI.RunSmbConnectFlow()
+  -- Browsing works without the mc:/POPSTARTER SMB pack (the menu has its own
+  -- embedded stack), but LAUNCHING doesn't -- warn up front (browse stays usable;
+  -- the launch dispatch enforces the hard gate).
+  if type(PLDR) == "table" and PLDR.SMB_MODULES ~= true then
+    UI.Notif_queue.add("SMB modules are not installed\nGames will list but won't boot -- install them\nvia Settings > SMB modules first", "warn")
+  end
+  local share_choices = nil   -- comma-list set when a connect returns NO_SHARE with shares
+  local function attempt()
+    share_choices = nil
+    local entered = false
+    UI.RunBusyTask("Connecting to SMB...", function (report)
+      local scan_progress = UI.MakeBusyProgressReporter(report, "Scanning SMB games...", 0.55, 0.9)
+      report("Bringing up network...", 0.2)
+      PLDR.CleanupGameList()
+      PLDR.GAMEPATH = ""
+      local smb_root, smb_err, smb_extra = PLDR.InitSMBPopsRoot(report)
+      if smb_root == nil then
+        if smb_err == "NO_SHARE" and type(smb_extra) == "string" and smb_extra ~= "" then
+          share_choices = smb_extra   -- offer the picker after this busy task closes
+          return
+        end
+        UI.Notif_queue.add(UI.SmbErrorMessage(smb_err), "warn")
+        return
+      end
+      PLDR.CleanupGameList()
+      local smb_cache = smb_root..".gamecache"
+      local smb_cg, smb_ch = PLDR.LoadGameListCache(smb_cache)
+      if smb_cg ~= nil then
+        PLDR.ApplyGameListCache(smb_cg, smb_root, smb_ch)
+        report("Loaded SMB list from cache...", 1.0)
+      else
+        report("Scanning SMB games...", 0.55)
+        PLDR.GetPS1GameLists(smb_root, true, scan_progress)
+        PLDR.SaveGameListCache(smb_cache, PLDR.GAMES, PLDR.HIDDEN)
+      end
+      report("Opening SMB list...", 1.0)
+      -- Games path shapes BROWSING only: POPStarter's SMBCONFIG.DAT carries just
+      -- SERVER[:PORT] SHARE (no path), and it reads <share>/POPS -- so a set
+      -- Games path lists games that cannot launch. Say so instead of half-working.
+      do
+        local gp = tostring((type(PLDR.SMB) == "table" and PLDR.SMB.PATH) or "")
+        gp = string.match(gp, "^[%s/\\]*(.-)[%s/\\]*$") or ""
+        if gp ~= "" and string.lower(gp) ~= "pops" then
+          UI.Notif_queue.add("Games path affects browsing only:\nPOPStarter can only launch games from <share>/POPS", "warn")
+        end
+      end
+      UI.SceneChange(UI.SCENES.GSMBNET)
+      entered = true
+    end, "Failed to connect to SMB")
+    return entered
+  end
+  local rounds = 0
+  while true do
+    if attempt() then break end               -- entered the SMB scene
+    if share_choices == nil then break end     -- a real error was already shown
+    rounds = rounds + 1
+    if rounds > 3 then break end
+    local shares = {}
+    for s in string.gmatch(share_choices, "([^,]+)") do
+      local t = string.match(s, "^%s*(.-)%s*$")
+      if t ~= nil and t ~= "" then shares[#shares + 1] = t end
+    end
+    local picked = UI.RunSharePicker(shares)
+    if picked == nil then
+      UI.Notif_queue.add("No Share selected", "warn")
+      break
+    end
+    -- Persist the choice so browse, launch, AND the in-game SMBCONFIG.DAT all use it.
+    PLDR.SMB.SHARE = picked
+    UI.SmbDraft = nil   -- force the settings editor to re-seed from the new value
+    pcall(PLDR.SaveSettingsAtomic)
+    pcall(PLDR.SyncSmbDat)
+  end
+end
+
 -- Display-change safety net: after a video-mode switch, confirm it IN THE NEW
 -- mode and auto-revert if the user can't confirm (e.g. the new mode shows nothing
 -- on their display). Mirrors OPL's "keep this video mode?" prompt. Blocking; uses
@@ -4429,6 +5667,129 @@ function UI.RunVideoModeConfirm(seconds)
   end
   return false
 end
+-- ===== SMB / Network settings field helpers (Stage 1: config only) ==========
+-- Spec-driven row rendering for the "SMB / Network" settings section. The field
+-- spec + persistence live in system.lua (PLDR.SMB_FIELDS / PLDR.Smb*). These are
+-- module-level (NOT Play-locals) to keep the big settings closure under Lua's
+-- per-function local cap. Editing routes through a single draft (UI.SmbDraft) +
+-- dirty flag (UI.SmbDirty); the settings commit passes opts.smb = UI.SmbDraft.
+UI._SMB_LABELS = {
+  DHCP = "IP assignment", PS2_IP = "PS2 IP", NETMASK = "Netmask",
+  GATEWAY = "Gateway", DNS = "DNS", LINKMODE = "Link mode",
+  ADDR_TYPE = "Address type", NB_ADDR = "NetBIOS name", SERVER = "Server IP",
+  PORT = "Port", SHARE = "Share", USER = "User", PASS = "Password",
+  PATH = "Games path (folder holding POPS)",
+}
+UI._SMB_ENUM_LABELS = {
+  LINKMODE = { auto = "Auto", ["100full"] = "100M Full", ["100half"] = "100M Half", ["10full"] = "10M Full", ["10half"] = "10M Half" },
+  ADDR_TYPE = { ip = "IP address", netbios = "NetBIOS name" },
+}
+local function _SmbTruncMiddle(s, max)
+  s = tostring(s or "")
+  if string.len(s) <= max then return s end
+  local keep = math.floor((max - 3) / 2)
+  if keep < 1 then keep = 1 end
+  return string.sub(s, 1, keep).."..."..string.sub(s, string.len(s) - keep + 1)
+end
+function UI.SmbEnsureDraft()
+  if type(UI.SmbDraft) ~= "table" then
+    if type(PLDR) == "table" and type(PLDR.SmbCopy) == "function" then
+      UI.SmbDraft = PLDR.SmbCopy(PLDR.SMB)
+    else
+      UI.SmbDraft = {}
+    end
+  end
+  return UI.SmbDraft
+end
+function UI.SmbFieldLabel(field)
+  return UI._SMB_LABELS[field.key] or field.key
+end
+function UI.SmbFieldDirty(key)
+  local d = UI.SmbEnsureDraft()
+  local cur = (type(PLDR) == "table" and type(PLDR.SMB) == "table") and PLDR.SMB[key] or nil
+  return tostring(d[key]) ~= tostring(cur)
+end
+function UI.SmbFieldDisplay(field)
+  local d = UI.SmbEnsureDraft()
+  local v = d[field.key]
+  if field.kind == "bool" then
+    if field.key == "DHCP" then
+      return (v == true) and "DHCP (automatic)" or "Static (manual)"
+    end
+    return (v == true) and "On" or "Off"
+  elseif field.kind == "enum" then
+    local m = UI._SMB_ENUM_LABELS[field.key]
+    return (m and m[v]) or tostring(v or "")
+  else
+    local s = tostring(v or "")
+    if field.key == "PASS" then
+      if s == "" then return "(not set)" end
+      return string.rep("*", math.min(string.len(s), 16))
+    end
+    if s == "" then
+      -- There is no cwd on an SMB share and nothing is auto-detected: blank means
+      -- the share ROOT, and POPS/ is always appended (browse root = <share>/POPS).
+      if field.key == "PATH" then return "(share root)" end
+      return "(not set)"
+    end
+    return _SmbTruncMiddle(s, 38)
+  end
+end
+function UI.SmbFieldCycle(field, dir)
+  local d = UI.SmbEnsureDraft()
+  if field.kind == "bool" then
+    d[field.key] = not (d[field.key] == true)
+  elseif field.kind == "enum" then
+    local choices = field.choices or {}
+    local idx = 1
+    for i = 1, #choices do
+      if choices[i] == d[field.key] then idx = i break end
+    end
+    idx = idx + (tonumber(dir) or 1)
+    if idx < 1 then idx = #choices elseif idx > #choices then idx = 1 end
+    d[field.key] = choices[idx] or field.default
+  end
+  UI.SmbDirty = true
+end
+function UI.SmbFieldOpenEditor(field)
+  local d = UI.SmbEnsureDraft()
+  local title = "Edit "..(UI._SMB_LABELS[field.key] or field.key)
+  if type(UI.PathEditor) == "table" and type(UI.PathEditor.Open) == "function" then
+    UI.PathEditor.Open(title, tostring(d[field.key] or ""), function(value)
+      local dd = UI.SmbEnsureDraft()
+      local typed = string.gsub(tostring(value or ""), "[\r\n]", "")
+      -- Sanitize NOW (trim + PORT/IP shape validation) so the row immediately
+      -- shows what the connect path and SMBCONFIG.DAT will actually use -- and
+      -- TELL the user when their input was rejected, instead of silently
+      -- substituting at commit time and leaving a mysteriously reset field.
+      local cleaned = typed
+      if type(PLDR) == "table" and type(PLDR.SmbSanitize) == "function" then
+        cleaned = PLDR.SmbSanitize(field, typed)
+      end
+      if tostring(cleaned) ~= typed and type(UI.Notif_queue) == "table" then
+        -- Covers both a rejected shape (falls to the field default) and a
+        -- whitespace trim -- either way the user sees the value actually kept.
+        UI.Notif_queue.add((UI._SMB_LABELS[field.key] or field.key).." adjusted -- using \""..tostring(cleaned).."\"", "warn")
+      end
+      dd[field.key] = cleaned
+      UI.SmbDirty = true
+    end)
+  end
+end
+-- Master toggle for the SMB pack. Mirrors CycleBdma's guard: can't install while the
+-- POPSTARTER memory-card folder is off (the modules live there). Module-level to avoid
+-- adding a Play-closure local.
+function UI.ToggleSmbModulesDraft()
+  if (UI.SmbModulesDraft ~= true) and type(PLDR) == "table" and PLDR.POPSTARTER_MC_FOLDER == false then
+    if type(UI.Notif_queue) == "table" then
+      UI.Notif_queue.add("Enable the POPSTARTER Folder first\n(SMB modules must live on the memory card)", "warn")
+    end
+    return
+  end
+  UI.SmbModulesDraft = not (UI.SmbModulesDraft == true)
+  UI.SmbModulesDirty = true
+end
+
 function UI.SyncSettingsDraftFromRuntime()
   if type(PLDR) == "table" and type(PLDR.GetEffectiveConfiguredPopstarterPath) == "function" then
     UI.PopstarterPathDraft = tostring(PLDR.GetEffectiveConfiguredPopstarterPath(PLDR.POPSTARTER_PATH, PLDR.SELECTED_PROFILE) or "")
@@ -4445,6 +5806,14 @@ function UI.SyncSettingsDraftFromRuntime()
   UI.PopPathProfileDefaultDirty = false
   UI.DkwdrvDirty = false
   UI.VideoStandardDirty = false
+  if type(PLDR) == "table" and type(PLDR.SmbCopy) == "function" then
+    UI.SmbDraft = PLDR.SmbCopy(PLDR.SMB)
+  else
+    UI.SmbDraft = {}
+  end
+  UI.SmbDirty = false
+  UI.SmbModulesDraft = (type(PLDR) == "table" and PLDR.SMB_MODULES == true)
+  UI.SmbModulesDirty = false
 end
 function UI.SyncSettingsSelectionFromRuntime()
   if type(PLDR.ReconcileBdmaModeWithEffectiveState) == "function" then

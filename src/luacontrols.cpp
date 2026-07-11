@@ -60,6 +60,25 @@ static int lua_getpad(lua_State *L) {
 	return 1;
 }
 
+// Current controller mode (high nibble of the libpad mode id): 0x7 DualShock,
+// 0x5 analog, 0x4 digital, 0 == no analog data / no pad. Mirrors OPL's
+// `pad->buttons.mode >> 4` gate (src/pad.c). NOTE: this is NOT padInfoMode's
+// PAD_MODETABLE (that returns a *capability-table* entry, which lua_gettype
+// uses) -- PAD_MODECURID returns the *live* negotiated mode, which is what the
+// stick-fold gate must use so a digital-mode pad's stale analog bytes are never
+// read as a direction.
+static int lua_getmode(lua_State *L){
+	int argc = lua_gettop(L);
+	if (argc != 0 && argc != 1) return luaL_error(L, "wrong number of arguments.");
+	int port = 0;
+	if (argc == 1){
+		port = luaL_checkinteger(L, 1);
+		if (port > 1) return luaL_error(L, "wrong port number.");
+	}
+	lua_pushinteger(L, padInfoMode(port, 0, PAD_MODECURID, 0));
+	return 1;
+}
+
 static int lua_getleft(lua_State *L){
 	int argc = lua_gettop(L);
 	if (argc != 0 && argc != 1) return luaL_error(L, "wrong number of arguments.");
@@ -69,13 +88,28 @@ static int lua_getleft(lua_State *L){
 		if (port > 1) return luaL_error(L, "wrong port number.");
 	}
 
-	padButtonStatus buttons;
+	// Zero-init + neutral-default so an UNREAD or FAILED frame yields centered
+	// (0,0), never stack garbage or a phantom -127. We gate on the read return
+	// (mirrors lua_getpad above) and report neutral (0,0) when no source gave
+	// data. NOTE: a *successful* padRead on a digital-mode pad still returns
+	// stale/zero analog bytes (== a phantom -127); that case is the consumer's
+	// responsibility -- ui.lua MUST gate the fold on Pads.getMode() being
+	// analog/DualShock (mirrors OPL pad.c). This C hardening only removes the
+	// uninitialized-garbage and failed-read phantoms.
+	padButtonStatus buttons = {0};
+	buttons.ljoy_h = 127;
+	buttons.ljoy_v = 127;
+	int have = 0;
 
 	int state = padGetState(port, 0);
 
-	if ((state == PAD_STATE_STABLE) || (state == PAD_STATE_FINDCTP1)) padRead(port, 0, &buttons);
-	if (ds34bt_get_status(port) & DS34BT_STATE_RUNNING) ds34bt_get_data(port, (u8 *)&buttons.btns);
-	if (ds34usb_get_status(port) & DS34USB_STATE_RUNNING) ds34usb_get_data(port, (u8 *)&buttons.btns);
+	if ((state == PAD_STATE_STABLE) || (state == PAD_STATE_FINDCTP1)) {
+		if (padRead(port, 0, &buttons) != 0) have = 1;
+	}
+	if (ds34bt_get_status(port) & DS34BT_STATE_RUNNING) { if (ds34bt_get_data(port, (u8 *)&buttons.btns) != 0) have = 1; }
+	if (ds34usb_get_status(port) & DS34USB_STATE_RUNNING) { if (ds34usb_get_data(port, (u8 *)&buttons.btns) != 0) have = 1; }
+
+	if (!have) { lua_pushinteger(L, 0); lua_pushinteger(L, 0); return 2; }
 
 	lua_pushinteger(L, buttons.ljoy_h-127);
 	lua_pushinteger(L, buttons.ljoy_v-127);
@@ -91,13 +125,20 @@ static int lua_getright(lua_State *L){
 		if (port > 1) return luaL_error(L, "wrong port number.");
 	}
 
-	padButtonStatus buttons;
+	padButtonStatus buttons = {0};
+	buttons.rjoy_h = 127;
+	buttons.rjoy_v = 127;
+	int have = 0;
 
 	int state = padGetState(port, 0);
 
-	if ((state == PAD_STATE_STABLE) || (state == PAD_STATE_FINDCTP1)) padRead(port, 0, &buttons);
-	if (ds34bt_get_status(port) & DS34BT_STATE_RUNNING) ds34bt_get_data(port, (u8 *)&buttons.btns);
-	if (ds34usb_get_status(port) & DS34USB_STATE_RUNNING) ds34usb_get_data(port, (u8 *)&buttons.btns);
+	if ((state == PAD_STATE_STABLE) || (state == PAD_STATE_FINDCTP1)) {
+		if (padRead(port, 0, &buttons) != 0) have = 1;
+	}
+	if (ds34bt_get_status(port) & DS34BT_STATE_RUNNING) { if (ds34bt_get_data(port, (u8 *)&buttons.btns) != 0) have = 1; }
+	if (ds34usb_get_status(port) & DS34USB_STATE_RUNNING) { if (ds34usb_get_data(port, (u8 *)&buttons.btns) != 0) have = 1; }
+
+	if (!have) { lua_pushinteger(L, 0); lua_pushinteger(L, 0); return 2; }
 
 	lua_pushinteger(L, buttons.rjoy_h-127);
 	lua_pushinteger(L, buttons.rjoy_v-127);
@@ -234,6 +275,7 @@ static const luaL_Reg Pads_functions[] = {
   {"getLeftStick",    lua_getleft},
   {"getRightStick",  lua_getright},
   {"getType",         lua_gettype},
+  {"getMode",         lua_getmode},
   {"getPressure", lua_getpressure},
   {"rumble",           lua_rumble},
   {"setLED",          lua_set_led},

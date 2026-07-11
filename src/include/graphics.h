@@ -81,6 +81,9 @@ extern int GetInterlacedFrameMode();
 
 extern int getFreeVRAM();
 
+extern void set_overscan(int permille);
+extern int get_overscan(void);
+
 extern float FPSCounter(int interval);
 
 extern void setVideoMode(s16 mode, int width, int height, int psm, s16 interlace, s16 field, bool zbuffering, int psmz);

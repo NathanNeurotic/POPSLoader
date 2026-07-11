@@ -57,8 +57,10 @@ extern unsigned int size_asset_frame_png;
 extern unsigned char asset_default_png[];
 extern unsigned int size_asset_default_png;
 #endif
-extern unsigned char asset_missing_png[];
-extern unsigned int size_asset_missing_png;
+extern unsigned char asset_cover_default_png[];
+extern unsigned int size_asset_cover_default_png;
+extern unsigned char asset_cover_missing_png[];
+extern unsigned int size_asset_cover_missing_png;
 extern unsigned char asset_system_lua[];
 extern unsigned int size_asset_system_lua;
 extern unsigned char asset_ui_lua[];
@@ -71,14 +73,16 @@ extern unsigned char asset_usbd_irx_usbexfat[];
 extern unsigned int size_asset_usbd_irx_usbexfat;
 extern unsigned char asset_usbhdfsd_irx_usbexfat[];
 extern unsigned int size_asset_usbhdfsd_irx_usbexfat;
-extern unsigned char asset_usbd_irx_mx4sio[];
-extern unsigned int size_asset_usbd_irx_mx4sio;
 extern unsigned char asset_usbhdfsd_irx_mx4sio[];
 extern unsigned int size_asset_usbhdfsd_irx_mx4sio;
 extern unsigned char asset_usbd_irx_mmce[];
 extern unsigned int size_asset_usbd_irx_mmce;
 extern unsigned char asset_usbhdfsd_irx_mmce[];
 extern unsigned int size_asset_usbhdfsd_irx_mmce;
+extern unsigned char asset_usbd_irx_ata[];
+extern unsigned int size_asset_usbd_irx_ata;
+extern unsigned char asset_usbhdfsd_irx_ata[];
+extern unsigned int size_asset_usbhdfsd_irx_ata;
 extern unsigned char asset_icon_sys_bdma[];
 extern unsigned int size_asset_icon_sys_bdma;
 extern unsigned char asset_list_icn_bdma[];
@@ -87,6 +91,19 @@ extern unsigned char asset_del_icn_bdma[];
 extern unsigned int size_asset_del_icn_bdma;
 extern unsigned char asset_boot_adp[];
 extern unsigned int size_asset_boot_adp;
+// SMB streaming pack (popsmb/) -- staged to mc?:/POPSTARTER/ by PLDR.ApplySmbModules.
+extern unsigned char asset_smb_poweroff_irx[];
+extern unsigned int size_asset_smb_poweroff_irx;
+extern unsigned char asset_smb_ps2dev9_irx[];
+extern unsigned int size_asset_smb_ps2dev9_irx;
+extern unsigned char asset_smb_ps2ip_irx[];
+extern unsigned int size_asset_smb_ps2ip_irx;
+extern unsigned char asset_smb_ps2smap_irx[];
+extern unsigned int size_asset_smb_ps2smap_irx;
+extern unsigned char asset_smb_smbman_irx[];
+extern unsigned int size_asset_smb_smbman_irx;
+extern unsigned char asset_smb_smsutils_irx[];
+extern unsigned int size_asset_smb_smsutils_irx;
 
 #define ASSET_ENTRY(key_name, symbol_name) { key_name, symbol_name, (size_t)size_##symbol_name }
 
@@ -116,21 +133,37 @@ static const embedded_asset_t g_embedded_assets[] = {
 #ifdef HAVE_ASSET_DEFAULT_PNG
 	ASSET_ENTRY("default.png", asset_default_png),
 #endif
-	ASSET_ENTRY("MISSING.png", asset_missing_png),
+	ASSET_ENTRY("cover_default.png", asset_cover_default_png),
+	ASSET_ENTRY("cover_missing.png", asset_cover_missing_png),
 	ASSET_ENTRY("system.lua", asset_system_lua),
 	ASSET_ENTRY("ui.lua", asset_ui_lua),
 	ASSET_ENTRY("images.lua", asset_images_lua),
 	ASSET_ENTRY("pops_profiles.lua", asset_pops_profiles_lua),
 	ASSET_ENTRY("usbd.irx.usbexfat", asset_usbd_irx_usbexfat),
 	ASSET_ENTRY("usbhdfsd.irx.usbexfat", asset_usbhdfsd_irx_usbexfat),
-	ASSET_ENTRY("usbd.irx.mx4sio", asset_usbd_irx_mx4sio),
+	// usbd.irx.mx4sio is BYTE-IDENTICAL to usbd.irx.usbexfat (the SD/BDM stack
+	// reuses the same usbd base), so this key aliases that one blob to save ~48KB
+	// in the ELF. If a future build needs a distinct mx4sio usbd.irx, restore a
+	// separate asset_usbd_irx_mx4sio (extern + Makefile rule + EMBEDDED_RSC entry).
+	ASSET_ENTRY("usbd.irx.mx4sio", asset_usbd_irx_usbexfat),
 	ASSET_ENTRY("usbhdfsd.irx.mx4sio", asset_usbhdfsd_irx_mx4sio),
 	ASSET_ENTRY("usbd.irx.mmce", asset_usbd_irx_mmce),
 	ASSET_ENTRY("usbhdfsd.irx.mmce", asset_usbhdfsd_irx_mmce),
+	// usbd.irx.ata / usbhdfsd.irx.ata are DISTINCT blobs (R3Z3N's ATA build), embedded
+	// on their own. ApplyBdmaMode stages them to mc?:/POPSTARTER/ stripped to usbd.irx /
+	// usbhdfsd.irx when BDMA Mode = ATA.
+	ASSET_ENTRY("usbd.irx.ata", asset_usbd_irx_ata),
+	ASSET_ENTRY("usbhdfsd.irx.ata", asset_usbhdfsd_irx_ata),
 	ASSET_ENTRY("icon.sys.bdma", asset_icon_sys_bdma),
 	ASSET_ENTRY("list.icn.bdma", asset_list_icn_bdma),
 	ASSET_ENTRY("del.icn.bdma", asset_del_icn_bdma),
 	ASSET_ENTRY("boot.adp", asset_boot_adp),
+	ASSET_ENTRY("poweroff.irx", asset_smb_poweroff_irx),
+	ASSET_ENTRY("ps2dev9.irx", asset_smb_ps2dev9_irx),
+	ASSET_ENTRY("ps2ip.irx", asset_smb_ps2ip_irx),
+	ASSET_ENTRY("ps2smap.irx", asset_smb_ps2smap_irx),
+	ASSET_ENTRY("smbman.irx", asset_smb_smbman_irx),
+	ASSET_ENTRY("SMSUTILS.irx", asset_smb_smsutils_irx),
 
 
 	ASSET_ENTRY("POPSLDR/IMG/USB.png", asset_usb_png),
@@ -158,21 +191,30 @@ static const embedded_asset_t g_embedded_assets[] = {
 #ifdef HAVE_ASSET_DEFAULT_PNG
 	ASSET_ENTRY("POPSLDR/IMG/default.png", asset_default_png),
 #endif
-	ASSET_ENTRY("POPSLDR/IMG/MISSING.png", asset_missing_png),
+	ASSET_ENTRY("POPSLDR/IMG/cover_default.png", asset_cover_default_png),
+	ASSET_ENTRY("POPSLDR/IMG/cover_missing.png", asset_cover_missing_png),
 	ASSET_ENTRY("POPSLDR/system.lua", asset_system_lua),
 	ASSET_ENTRY("POPSLDR/ui.lua", asset_ui_lua),
 	ASSET_ENTRY("POPSLDR/images.lua", asset_images_lua),
 	ASSET_ENTRY("POPSLDR/pops_profiles.lua", asset_pops_profiles_lua),
 	ASSET_ENTRY("POPSLDR/usbd.irx.usbexfat", asset_usbd_irx_usbexfat),
 	ASSET_ENTRY("POPSLDR/usbhdfsd.irx.usbexfat", asset_usbhdfsd_irx_usbexfat),
-	ASSET_ENTRY("POPSLDR/usbd.irx.mx4sio", asset_usbd_irx_mx4sio),
+	ASSET_ENTRY("POPSLDR/usbd.irx.mx4sio", asset_usbd_irx_usbexfat),
 	ASSET_ENTRY("POPSLDR/usbhdfsd.irx.mx4sio", asset_usbhdfsd_irx_mx4sio),
 	ASSET_ENTRY("POPSLDR/usbd.irx.mmce", asset_usbd_irx_mmce),
 	ASSET_ENTRY("POPSLDR/usbhdfsd.irx.mmce", asset_usbhdfsd_irx_mmce),
+	ASSET_ENTRY("POPSLDR/usbd.irx.ata", asset_usbd_irx_ata),
+	ASSET_ENTRY("POPSLDR/usbhdfsd.irx.ata", asset_usbhdfsd_irx_ata),
 	ASSET_ENTRY("POPSLDR/icon.sys.bdma", asset_icon_sys_bdma),
 	ASSET_ENTRY("POPSLDR/list.icn.bdma", asset_list_icn_bdma),
 	ASSET_ENTRY("POPSLDR/del.icn.bdma", asset_del_icn_bdma),
-	ASSET_ENTRY("POPSLDR/boot.adp", asset_boot_adp)
+	ASSET_ENTRY("POPSLDR/boot.adp", asset_boot_adp),
+	ASSET_ENTRY("POPSLDR/poweroff.irx", asset_smb_poweroff_irx),
+	ASSET_ENTRY("POPSLDR/ps2dev9.irx", asset_smb_ps2dev9_irx),
+	ASSET_ENTRY("POPSLDR/ps2ip.irx", asset_smb_ps2ip_irx),
+	ASSET_ENTRY("POPSLDR/ps2smap.irx", asset_smb_ps2smap_irx),
+	ASSET_ENTRY("POPSLDR/smbman.irx", asset_smb_smbman_irx),
+	ASSET_ENTRY("POPSLDR/SMSUTILS.irx", asset_smb_smsutils_irx)
 };
 
 static const embedded_asset_t *embedded_find(const char *key)
@@ -184,14 +226,6 @@ static const embedded_asset_t *embedded_find(const char *key)
 	}
 
 	return NULL;
-}
-
-static int is_default_png_key(const char *key)
-{
-	return key != NULL &&
-	       (strcmp(key, "default.png") == 0 ||
-	        strcmp(key, "IMG/default.png") == 0 ||
-	        strcmp(key, "POPSLDR/IMG/default.png") == 0);
 }
 
 int embedded_get(const char* path_or_name, const uint8_t** out_data, size_t* out_size)
@@ -237,11 +271,6 @@ int embedded_get(const char* path_or_name, const uint8_t** out_data, size_t* out
 	if (asset == NULL && lookup_key != input && strchr(input, '/') == NULL) {
 		asset = embedded_find(input);
 	}
-#ifndef HAVE_ASSET_DEFAULT_PNG
-	if (asset == NULL && (is_default_png_key(lookup_key) || is_default_png_key(input))) {
-		asset = embedded_find("MISSING.png");
-	}
-#endif
 	if (asset == NULL) {
 		return 0;
 	}

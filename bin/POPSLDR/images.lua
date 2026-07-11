@@ -31,8 +31,9 @@ local IMG_REGISTRATIONS = {
   {"cross", "cross.png"},
   {"square", "square.png"},
   {"frame", "frame.png"},
-  {"missing", "MISSING.png"},
   {"default", "default.png"},
+  {"cover_default", "cover_default.png"},
+  {"cover_missing", "cover_missing.png"},
 }
 
 local IMG_SOURCES = {}
@@ -42,9 +43,7 @@ for x = 1, #IMG_REGISTRATIONS do
   IMG_SOURCES[name] = path
 end
 
-local IMG_FALLBACKS = {
-  default = "missing"
-}
+local IMG_FALLBACKS = {}
 
 local IMG_FAILED = {}
 
@@ -91,9 +90,4 @@ function IMG.ReleaseAll()
     end
   end
   IMG_FAILED = {}
-end
-
-local registered_count = 0
-for _, _ in pairs(IMG_SOURCES) do
-  registered_count = registered_count + 1
 end

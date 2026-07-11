@@ -1,3 +1,44 @@
+[1.0.0] - July 10th, 2026
+POPSLoader graduates from the BETA line to 1.0.0: the culmination of the BETA-9 through BETA-13 cycle. The core (boot + launch across MMCE / USB / MX4SIO / SD2PS2TD / internal HDD) is hardware-confirmed by multiple testers. Newer features noted "validating on hardware" below are opt-in and off by default, so they degrade gracefully.
+
+New storage backends
+- Feature: Internal HDD (exFAT) backend via BDMA Mode `ATA`. Play from an exFAT-formatted internal SATA/IDE drive; it scans/launches as a `mass:` device through R3Z3N's ATA BDM Assault drivers on a unified `ata_bd` atad shared with the APA/PFS stack (scene `GBDMHDD`, main-menu opt 3; select via Carousel Devices > Internal HDD > exFAT). Hardware-confirmed for scan/launch (CosmicScale).
+- Feature: SMB (v1) network game browsing. Browse and launch PS1 games off a Windows/SMBv1 share (scene `GSMBNET`, opt 7): a network settings section, an installable in-game SMB streaming module pack, lazy connect-on-entry (the network stack never touches boot), share browse, launch via argv0 `smb:/POPS/SB.<name>.ELF`, disconnect on exit, and a blank-Share GETSHARELIST picker. IP addressing only (NetBIOS deferred). Default SMB port 1111 (set it to your server's real port). NEW this release and still validating on hardware.
+- Feature: Partition-installed PS1 games. HDDOSD/PSBBN one-partition-per-game installs (`PP.<name>`, or hidden `__.<name>`, image `IMAGE0.VCD`) list on the HDD (PFS) page under their partition name and launch via POPStarter's `PP.<name>.ELF` convention. App partitions without an `IMAGE0.VCD` are filtered out. Validating on hardware.
+
+BDMA / launch
+- Feature: Adaptive BDMA (opt-in). Stages the correct BDMA driver variant for the launched game's device automatically, with an equipped-check that skips the write when the card already matches, so MMCE / USB / MX4SIO / exFAT-HDD games coexist without flipping BDMA Mode by hand. Validating on hardware.
+- Feature: POPSTARTER Memory Card Folder toggle with a BDMA/SMB interlock. Disabling it deletes `mc:/POPSTARTER` (confirm-gated); it can't be disabled while BDMA, SMB modules, or Adaptive BDMA need it.
+- change: BDMA-mode marker renamed `.pldr_bdma_mode` to `bdma_mode.txt` (legacy names still read; mSAS-shared).
+- Feature: Per-device POPSTARTER.ELF resolution. An explicit custom/absolute-Profile path wins, else the game device's own `<device>:/POPS/POPSTARTER.ELF`, else the launcher's cwd copy, else the Memory Card; APA uses `hdd0:__common/POPS/POPSTARTER.ELF`. Profiles act as presets.
+- Feature: NHDDL-style launch arguments `-page=<device>` / `-mode=<device>` (alias) / `-game=<selector>` / `-debug`; `-page=` auto-navigates the carousel and `-game=` auto-launches. Supports HDD `PARTITION|relpath`, USB `FILE.VCD`, MX4SIO, MMCE, exFAT (`-page=ata`).
+- change: MX4SIO is classified by mount-driver evidence only (`mx4sio:/`, `sdc`/`mx4` ioctl, or a marker); pure USB boots never load `mx4sio_bd`, and `mx4sio_bd` always loads `usbmass_bd` first. MX4SIO first-entry detection gets a larger retry budget for flaky SD-over-SPI bridges (FifthFox).
+
+HDD
+- Feature: HDD-resident settings save plus in-app hide. Settings save directly on the HDD boot partition (an RW mount take-over) instead of falling back to the Memory Card; L3 hides/unhides an HDD game in place (writes the `.hide` on the game's own partition), R3 reveals a device's hidden games for the session.
+- Fix: HDD game list loads reliably (cold-drive spin-up wait; the second-boot cache crash is fixed; the scan is steered off the boot pfs slot; settings still save after a scan).
+- change: HDD-page diagnostics. The real mount error code surfaces on the page, a dir-read fault is reported, and a bad first HDD status re-probes instead of latching dead.
+
+Display / audio
+- Feature: PAL native 640x512 full-screen render plus an Auto video-standard default that matches the console region, with a display-change confirm/revert and a hold-START escape. PAL hardware validation pending.
+- Feature: Overscan (CRT inset) live adjuster, OPL-style, off by default.
+- change: Boot chime re-encoded at 22.05 kHz mono (~190 KB smaller, same length and pitch).
+- Feature: Boot sound On/Off setting (default On). Hardware-confirmed to save/persist.
+
+UI / navigation / game list
+- change: Navigation rework. The left analog stick moves item-by-item like the d-pad (gated to real analog pads so a digital pad can't inject a phantom direction), with frame-counted auto-repeat; page-jump on Left/Right, top/bottom bounce on L1. Hardware-confirmed.
+- Feature: Per-game description text (`<game>.txt`) shown in a panel under the cover (off/left/center/right), with right-stick scroll for long text.
+- Feature: Selectable Cover/details folder on removable devices (POPS/ART default, POPS beside the game, or a top-level ART/), with the game's own POPS/ always checked as a fallback. Hardware-confirmed (FifthFox).
+- change: Cover-art placeholder is now a layered jewel-case image (`cover_default` plus a `cover_missing` overlay), replacing the old text label and the single `MISSING.png` (-62 KB). Device-name gamelist labels removed for consistency.
+- Feature: Boot Page (open straight into a device list), Carousel device visibility (hide unused entries), Multi-disc collapse (hide the extra discs of a multi-disc game), and an opt-in per-device Game list cache.
+
+Size / internals
+- change: A build-time Lua minifier plus assorted trims shrink the shipped ELF (proven token/bytecode-preserving).
+- Internal: a live CI Lua syntax gate (`luac -p`) plus a host-execution "boot-brick" gate that runs the embedded Lua under a mocked PS2 environment and blocks a build that would not boot.
+- Internal: every rolling build auto-archives to MEGA (mirrors RiptOPL), with a README badge.
+- Fix: swept the microsecond-vs-millisecond `Timer.getTime()` misuse across the UI to frame-counting.
+- Internal: multiple full-repo / Codex audit passes with the verified findings fixed.
+
 [Unreleased]
 - Feature: `PLDR.LAUNCH_ARGS.game` auto-launch consumer — `-page=<kind> -game=<selector>` now triggers `PLDR.RunPOPStarterGame` after `AutoInitStartupBackends` (PR #470). Supports HDD (`PARTITION|relpath`), USB (`FILE.VCD` relative to `mass:/POPS`), MX4SIO, MMCE.
 - Feature: `-debug` boot-context toast — `PLDR.SurfaceLaunchArgsDebug()` queues a toast showing kind, boot_path, sidecar_path, settings, and parsed launch args. Useful for diagnosing environment classification without rebuilding with DPRINTF (PR #470).

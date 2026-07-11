@@ -29,8 +29,13 @@ static int MountPart(lua_State *L)
     if (argc >= 2) indx = luaL_checkinteger(L, 2);
     if (argc == 3) openmod = luaL_checkinteger(L, 3);
 
-    lua_pushboolean(L, (mnt(mount, indx, openmod)==0));
-    return 1;
+    /* Second return = the raw mount rc so Lua can tell a clean "partition
+     * absent" apart from an I/O fault (Nuno's non-HDD-boot HDD-list failure
+     * shows only "No '__.POPS' partitions" today, hiding WHY mounts failed). */
+    int rc = mnt(mount, indx, openmod);
+    lua_pushboolean(L, rc == 0);
+    lua_pushinteger(L, rc);
+    return 2;
 
 }
 
@@ -67,15 +72,18 @@ int mnt(const char* path, int index, int openmod)
      * fail-fast attempt. Was: a single zero-delay unmount+remount. */
     int max_attempts = hdd_spinup_waited ? 1 : 12;
     int attempt;
+    int last_rc = -4;
     for (attempt = 1; attempt <= max_attempts; attempt++)
     {
         DPRINTF("Mounting '%s' into pfs%d: (attempt %d/%d)\n", path, index, attempt, max_attempts);
-        if (fileXioMount(PFS, path, openmod) >= 0)
+        int rc = fileXioMount(PFS, path, openmod);
+        if (rc >= 0)
         {
             hdd_spinup_waited = 1;
             if (attempt > 1) DPRINTF("mount ok after %d attempts (cold spin-up)\n", attempt);
             return 0;
         }
+        last_rc = rc;
         /* best-effort unmount in case the slot was left mounted by something else */
         if (fileXioUmount(PFS) < 0)
             DPRINTF("pre-retry unmount no-op\n");
@@ -86,8 +94,10 @@ int mnt(const char* path, int index, int openmod)
         }
     }
     hdd_spinup_waited = 1; /* budget spent: platter has had time; stop waiting on later partitions */
-    DPRINTF("mount failed for '%s' after %d attempt(s)\n", path, max_attempts);
-    return -4;
+    DPRINTF("mount failed for '%s' after %d attempt(s), rc %d\n", path, max_attempts, last_rc);
+    /* Real fileXioMount rc (negative errno family), not a made-up constant, so
+     * callers can distinguish absent-partition from I/O-fault classes. */
+    return (last_rc < 0) ? last_rc : -4;
 }
 
 static int GetHDDStatus(lua_State *L) {
@@ -95,6 +105,61 @@ static int GetHDDStatus(lua_State *L) {
     /* 0 = HDD connected and formatted, 1 = not formatted, 2 = HDD not usable, 3 = HDD not connected. */
     lua_pushinteger(L, ret);
     DPRINTF("%s: HDD status is %d\n", __func__, ret);
+    return 1;
+}
+
+/* APA dirent semantics for a dread() on "hdd0:": every record is one partition
+ * table entry; stat.attr distinguishes main vs sub records and stat.mode holds
+ * the partition-format magic. Values match ps2sdk <libhdd.h> (ATTR_MAIN_PARTITION
+ * / FS_TYPE_PFS; defined locally so this file keeps its existing include set)
+ * and the OPL / wLaunchELF enumerators built on this same API. */
+#define APA_ATTR_MAIN_PARTITION 0x0000
+#define APA_FS_TYPE_PFS         0x0100
+
+/* HDD.ListPartitions() -> array of PFS main-partition NAMES ({} when none;
+ * nil, rc when hdd0: won't open -- e.g. ps2hdd not loaded yet). Read-only over
+ * the APA table: nothing is mounted here; callers mount-probe the names they
+ * care about through the tracked-slot helpers. */
+static int ListPartitions(lua_State *L)
+{
+    /* Snapshot the qualifying names BEFORE touching the Lua heap:
+     * lua_newtable/lua_pushstring can longjmp on an allocation failure, and an
+     * unwind past fileXioDclose would strand one of ps2hdd's fixed directory
+     * slots. APA partition names cap at 32 bytes; 512 main partitions is far
+     * beyond any real drive (truncated with a log line if ever exceeded). */
+    #define LP_MAX_PARTS 512
+    static char lp_names[LP_MAX_PARTS][33];
+    int n = 0;
+    int fd = fileXioDopen("hdd0:");
+    if (fd < 0)
+    {
+        DPRINTF("%s: fileXioDopen(hdd0:) failed rc=%d\n", __func__, fd);
+        lua_pushnil(L);
+        lua_pushinteger(L, fd);
+        return 2;
+    }
+    iox_dirent_t dirent;
+    while (fileXioDread(fd, &dirent) > 0)
+    {
+        if (dirent.stat.attr != APA_ATTR_MAIN_PARTITION) continue; /* skip sub-partition records */
+        if (dirent.stat.mode != APA_FS_TYPE_PFS) continue;         /* PFS-formatted only (skips __mbr/HDL/raw) */
+        if (n >= LP_MAX_PARTS)
+        {
+            DPRINTF("%s: more than %d PFS partitions, truncating\n", __func__, LP_MAX_PARTS);
+            break;
+        }
+        strncpy(lp_names[n], dirent.name, 32);
+        lp_names[n][32] = '\0';
+        n++;
+    }
+    fileXioDclose(fd);
+    lua_newtable(L);
+    for (int i = 0; i < n; i++)
+    {
+        lua_pushstring(L, lp_names[i]);
+        lua_rawseti(L, -2, i + 1);
+    }
+    DPRINTF("%s: %d PFS main partitions\n", __func__, n);
     return 1;
 }
 
@@ -107,6 +172,17 @@ IMPORT_BIN2C(ps2dev9_irx);
 IMPORT_BIN2C(ps2atad_irx);
 IMPORT_BIN2C(ps2hdd_osd_irx);
 IMPORT_BIN2C(ps2fs_irx);
+
+// Defined in luasystem.cpp. ps2dev9 is shared with the menu-side SMB net stack
+// (EnsureNet) -- load it exactly once across the HDD and SMB paths.
+extern bool g_dev9_loaded;
+
+// Defined in luasystem.cpp. Brings up dev9 + bdm + bdmfs_fatfs + ata_bd (the BDM-enabled
+// atad) load-once, so the HDD-boot APA path and the exFAT page SHARE ONE atad instance:
+// ata_bd's atad library drives PFS (ps2hdd/ps2fs below) while its BDM "ata" device drives
+// exFAT. Replaces the old plain-ps2atad load -- two atad copies froze the exFAT scan when
+// POPSLoader was booted from an APA-Jail HDD (CosmicScale 2026-06-25).
+extern bool EnsureAtaBdm();
 
 #define CHECK_ERR(MODULE) if (ID < 0 || RET == 1) {lua_pushboolean(L, false); lua_pushstring(L, MODULE); lua_pushinteger(L, ID); lua_pushinteger(L, RET); goto ERR;}
 
@@ -138,15 +214,19 @@ static int Load_HDD_IRX(lua_State *L) {
                            "-o" _N "10" _N
                            "-n" _N "40";
 #undef _N
-    /* PS2DEV9.IRX */
-    ID = SifExecModuleBuffer(&ps2dev9_irx, size_ps2dev9_irx, 0, NULL, &RET);
-    DPRINTF(" [DEV9.IRX]: ret=%d, ID=%d\n", RET, ID);
-    CHECK_ERR("DEV9");
-
-    /* PS2ATAD.IRX */
-    ID = SifExecModuleBuffer(&ps2atad_irx, size_ps2atad_irx, 0, NULL, &RET);
-    DPRINTF(" [ATAD.IRX]: ret=%d, ID=%d\n", RET, ID);
-    CHECK_ERR("ATAD");
+    /* dev9 + bdm + bdmfs_fatfs + ata_bd (the BDM-enabled atad), load-once via EnsureAtaBdm.
+     * ata_bd IS ps2atad built with ATA_ENABLE_BDM=1: the SAME atad library ps2hdd/ps2fs use
+     * below, PLUS a BDM "ata" mass device for exFAT -- so ONE instance serves both APA/PFS
+     * and exFAT (the config OPL ships). Replaces the old plain-ps2atad load here: booting
+     * from an APA HDD loaded plain ps2atad AND a 2nd ata_bd on the exFAT page = two atad
+     * copies re-initing the live ATA bus -> the 42% scan freeze (CosmicScale APA-Jail). */
+    if (!EnsureAtaBdm()) {
+        lua_pushboolean(L, false);
+        lua_pushstring(L, "ATA_BD");
+        lua_pushinteger(L, -1);
+        lua_pushinteger(L, -1);
+        goto ERR;
+    }
 
     /* PS2HDD.IRX */
     ID = SifExecModuleBuffer(&ps2hdd_osd_irx, size_ps2hdd_osd_irx, sizeof(hddarg), hddarg, &RET);
@@ -172,6 +252,7 @@ static const luaL_Reg HDD_functions[] = {
   	{"UMountPartition",    UmountPart},
     {"Initialize", Load_HDD_IRX},
     {"GetHDDStatus", GetHDDStatus},
+    {"ListPartitions", ListPartitions},
     {0, 0}
 };
 

@@ -48,7 +48,10 @@ BINDIR = bin/
 EE_BIN = $(BINDIR)enceladus.elf
 EE_BIN_PKD = $(BINDIR)POPSLOADER.ELF
 
-EE_LIBS = -L$(PS2SDK)/ports/lib -L$(PS2DEV)/gsKit/lib/ -Lmodules/ds34bt/ee/ -Lmodules/ds34usb/ee/ -lpatches -lfileXio -lpad -ldebug -llua -ljpeg -lfreetype -lgskit_toolkit -lgskit -ldmakit -lpng -lz -lmc -laudsrv  -lds34bt -lds34usb
+# -lps2ips (NOT -lps2ip): the menu SMB binds the EE to the IOP-side lwip stack via
+# the ps2ips RPC (ps2ip_init in EnsureNet); linking the EE-side lwip (-lps2ip) would
+# resurrect the orphaned-second-stack bug the 2026-07 audit found (U02).
+EE_LIBS = -L$(PS2SDK)/ports/lib -L$(PS2DEV)/gsKit/lib/ -Lmodules/ds34bt/ee/ -Lmodules/ds34usb/ee/ -lpatches -lfileXio -lpad -ldebug -llua -ljpeg -lfreetype -lgskit_toolkit -lgskit -ldmakit -lpng -lz -lmc -laudsrv  -lds34bt -lds34usb -lnetman -lps2ips
 EE_LIBS += src/elf_loader/libcustom-elf-loader.a
 EE_INCS += -I$(PS2DEV)/gsKit/include -I$(PS2SDK)/ports/include -I$(PS2SDK)/ports/include/freetype2 -I$(PS2SDK)/ports/include/zlib
 EE_INCS += -Imodules/ds34bt/ee -Imodules/ds34usb/ee
@@ -66,8 +69,9 @@ endif
 
 BIN2S = $(PS2SDK)/bin/bin2c
 
-# `default.png` is an optional cover placeholder. When it is absent from the
-# checkout, the runtime falls back to the required `MISSING.png` asset.
+# `default.png` is an optional legacy cover override. When absent from the checkout
+# it is simply not embedded; the game-list cover box uses cover_default.png (+
+# cover_missing.png overlay) for the no-cover / preview-off states.
 OPTIONAL_EMBEDDED_RSC =
 ifneq ($(wildcard bin/POPSLDR/IMG/default.png),)
 OPTIONAL_EMBEDDED_RSC += asset_default_png.o
@@ -90,18 +94,27 @@ IOP_MODULES = iomanX.o fileXio.o \
 			  usbd.o audsrv.o bdm.o bdmfs_fatfs.o \
 			  usbmass_bd.o cdfs.o ds34bt.o ds34usb.o \
 			  ps2dev9.o ps2atad.o ps2hdd-osd.o ps2fs.o mmceman.o \
-			  mx4sio_bd.o bdm_query.o
+			  mx4sio_bd.o ata_bd.o bdm_query.o
+
+# Menu-side SMB network stack (Increment 1). LAZY -- loaded by EnsureNet in
+# luasystem.cpp only on SMB-page entry, NEVER at boot (main.cpp boot-loads only its
+# explicit core set, not all of IOP_MODULES). ps2ip is the netman variant
+# (ps2ip-nm.irx) via the explicit rule below, bin2c'd as the symbol ps2ip_irx.
+IOP_MODULES += netman.o smap.o ps2ips.o smbman.o ps2ip.o
 
 EMBEDDED_RSC = boot.o builtin_font.o \
 	asset_usb_png.o asset_smb_png.o asset_ilink_png.o asset_mmce_png.o asset_mx4sio_png.o asset_apahdd_png.o \
 	asset_bdhdd_png.o asset_bg_png.o asset_bkg_png.o asset_bgm_png.o asset_disc_png.o asset_splash_bg_png.o \
 	asset_splash_logo_png.o asset_splash_appname_png.o asset_splash_credits_png.o asset_select_png.o \
 	asset_start_png.o asset_triangle_png.o asset_circle_png.o asset_cross_png.o asset_square_png.o \
-	asset_frame_png.o asset_missing_png.o $(OPTIONAL_EMBEDDED_RSC) \
+	asset_frame_png.o asset_cover_default_png.o asset_cover_missing_png.o $(OPTIONAL_EMBEDDED_RSC) \
 	asset_system_lua.o asset_ui_lua.o asset_images_lua.o asset_pops_profiles_lua.o asset_boot_adp.o \
-	asset_usbd_irx_usbexfat.o asset_usbhdfsd_irx_usbexfat.o asset_usbd_irx_mx4sio.o asset_usbhdfsd_irx_mx4sio.o \
+	asset_usbd_irx_usbexfat.o asset_usbhdfsd_irx_usbexfat.o asset_usbhdfsd_irx_mx4sio.o \
 	asset_usbd_irx_mmce.o asset_usbhdfsd_irx_mmce.o \
-	asset_icon_sys_bdma.o asset_list_icn_bdma.o asset_del_icn_bdma.o
+	asset_usbd_irx_ata.o asset_usbhdfsd_irx_ata.o \
+	asset_icon_sys_bdma.o asset_list_icn_bdma.o asset_del_icn_bdma.o \
+	asset_smb_poweroff_irx.o asset_smb_ps2dev9_irx.o asset_smb_ps2ip_irx.o \
+	asset_smb_ps2smap_irx.o asset_smb_smbman_irx.o asset_smb_smsutils_irx.o
 
 EE_OBJS = $(APP_CORE) $(LUA_LIBS) $(IOP_MODULES) $(EMBEDDED_RSC)
 
@@ -175,18 +188,30 @@ $(EE_ASM_DIR)asset_frame_png.c: bin/POPSLDR/IMG/frame.png | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_frame_png
 $(EE_ASM_DIR)asset_default_png.c: bin/POPSLDR/IMG/default.png | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_default_png
-$(EE_ASM_DIR)asset_missing_png.c: bin/POPSLDR/IMG/MISSING.png | $(EE_ASM_DIR)
-	$(BIN2S) $< $@ asset_missing_png
+$(EE_ASM_DIR)asset_cover_default_png.c: bin/POPSLDR/IMG/cover_default.png | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_cover_default_png
+$(EE_ASM_DIR)asset_cover_missing_png.c: bin/POPSLDR/IMG/cover_missing.png | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_cover_missing_png
 
-# Lua scripts
-$(EE_ASM_DIR)asset_system_lua.c: bin/POPSLDR/system.lua | $(EE_ASM_DIR)
-	$(BIN2S) $< $@ asset_system_lua
-$(EE_ASM_DIR)asset_ui_lua.c: bin/POPSLDR/ui.lua | $(EE_ASM_DIR)
-	$(BIN2S) $< $@ asset_ui_lua
-$(EE_ASM_DIR)asset_images_lua.c: bin/POPSLDR/images.lua | $(EE_ASM_DIR)
-	$(BIN2S) $< $@ asset_images_lua
-$(EE_ASM_DIR)asset_pops_profiles_lua.c: bin/POPSLDR/pops_profiles.lua | $(EE_ASM_DIR)
-	$(BIN2S) $< $@ asset_pops_profiles_lua
+# Lua scripts. The committed .lua source stays fully commented (single source of
+# truth); a build-time minifier (tools/lua_minify.py) strips comments + collapses
+# whitespace before bin2c, shrinking the embedded payload. The minifier is provably
+# token-preserving (it re-scans its output and hard-fails on any token change), so
+# the embedded program is identical to the source. Falls back to a raw copy only if
+# python3 is absent (e.g. a bare local checkout); CI ships python3, so shipped builds
+# are always minified. etc/boot.lua is intentionally left un-minified (boot-critical).
+$(EE_ASM_DIR)asset_system_lua.c: bin/POPSLDR/system.lua tools/lua_minify.py | $(EE_ASM_DIR)
+	@if command -v python3 >/dev/null 2>&1; then python3 tools/lua_minify.py $< $(EE_ASM_DIR)system.min.lua; else cp $< $(EE_ASM_DIR)system.min.lua; fi
+	$(BIN2S) $(EE_ASM_DIR)system.min.lua $@ asset_system_lua
+$(EE_ASM_DIR)asset_ui_lua.c: bin/POPSLDR/ui.lua tools/lua_minify.py | $(EE_ASM_DIR)
+	@if command -v python3 >/dev/null 2>&1; then python3 tools/lua_minify.py $< $(EE_ASM_DIR)ui.min.lua; else cp $< $(EE_ASM_DIR)ui.min.lua; fi
+	$(BIN2S) $(EE_ASM_DIR)ui.min.lua $@ asset_ui_lua
+$(EE_ASM_DIR)asset_images_lua.c: bin/POPSLDR/images.lua tools/lua_minify.py | $(EE_ASM_DIR)
+	@if command -v python3 >/dev/null 2>&1; then python3 tools/lua_minify.py $< $(EE_ASM_DIR)images.min.lua; else cp $< $(EE_ASM_DIR)images.min.lua; fi
+	$(BIN2S) $(EE_ASM_DIR)images.min.lua $@ asset_images_lua
+$(EE_ASM_DIR)asset_pops_profiles_lua.c: bin/POPSLDR/pops_profiles.lua tools/lua_minify.py | $(EE_ASM_DIR)
+	@if command -v python3 >/dev/null 2>&1; then python3 tools/lua_minify.py $< $(EE_ASM_DIR)pops_profiles.min.lua; else cp $< $(EE_ASM_DIR)pops_profiles.min.lua; fi
+	$(BIN2S) $(EE_ASM_DIR)pops_profiles.min.lua $@ asset_pops_profiles_lua
 $(EE_ASM_DIR)asset_boot_adp.c: bin/POPSLDR/boot.adp | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_boot_adp
 
@@ -194,20 +219,39 @@ $(EE_ASM_DIR)asset_usbd_irx_usbexfat.c: bin/POPSLDR/usbd.irx.usbexfat | $(EE_ASM
 	$(BIN2S) $< $@ asset_usbd_irx_usbexfat
 $(EE_ASM_DIR)asset_usbhdfsd_irx_usbexfat.c: bin/POPSLDR/usbhdfsd.irx.usbexfat | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_usbhdfsd_irx_usbexfat
-$(EE_ASM_DIR)asset_usbd_irx_mx4sio.c: bin/POPSLDR/usbd.irx.mx4sio | $(EE_ASM_DIR)
-	$(BIN2S) $< $@ asset_usbd_irx_mx4sio
 $(EE_ASM_DIR)asset_usbhdfsd_irx_mx4sio.c: bin/POPSLDR/usbhdfsd.irx.mx4sio | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_usbhdfsd_irx_mx4sio
 $(EE_ASM_DIR)asset_usbd_irx_mmce.c: bin/POPSLDR/usbd.irx.mmce | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_usbd_irx_mmce
 $(EE_ASM_DIR)asset_usbhdfsd_irx_mmce.c: bin/POPSLDR/usbhdfsd.irx.mmce | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_usbhdfsd_irx_mmce
+$(EE_ASM_DIR)asset_usbd_irx_ata.c: bin/POPSLDR/usbd.irx.ata | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_usbd_irx_ata
+$(EE_ASM_DIR)asset_usbhdfsd_irx_ata.c: bin/POPSLDR/usbhdfsd.irx.ata | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_usbhdfsd_irx_ata
 $(EE_ASM_DIR)asset_icon_sys_bdma.c: bin/POPSLDR/icon.sys.bdma | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_icon_sys_bdma
 $(EE_ASM_DIR)asset_list_icn_bdma.c: bin/POPSLDR/list.icn.bdma | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_list_icn_bdma
 $(EE_ASM_DIR)asset_del_icn_bdma.c: bin/POPSLDR/del.icn.bdma | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_del_icn_bdma
+
+# SMB streaming pack (popsmb/) -- embedded into the ELF; PLDR.ApplySmbModules stages
+# these to mc?:/POPSTARTER/ when SMB modules are turned on. Explicit rules (more
+# specific than the generic `vpath %.irx` rule below) + the popsmb/ source path keep
+# them distinct from the IOP boot modules ps2dev9.o / ps2ip.o (which resolve via vpath).
+$(EE_ASM_DIR)asset_smb_poweroff_irx.c: bin/POPSLDR/popsmb/poweroff.irx | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_smb_poweroff_irx
+$(EE_ASM_DIR)asset_smb_ps2dev9_irx.c: bin/POPSLDR/popsmb/ps2dev9.irx | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_smb_ps2dev9_irx
+$(EE_ASM_DIR)asset_smb_ps2ip_irx.c: bin/POPSLDR/popsmb/ps2ip.irx | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_smb_ps2ip_irx
+$(EE_ASM_DIR)asset_smb_ps2smap_irx.c: bin/POPSLDR/popsmb/ps2smap.irx | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_smb_ps2smap_irx
+$(EE_ASM_DIR)asset_smb_smbman_irx.c: bin/POPSLDR/popsmb/smbman.irx | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_smb_smbman_irx
+$(EE_ASM_DIR)asset_smb_smsutils_irx.c: bin/POPSLDR/popsmb/SMSUTILS.irx | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_smb_smsutils_irx
 
 #------------------------------------------------------------------#
 
@@ -217,6 +261,12 @@ $(EE_ASM_DIR)asset_del_icn_bdma.c: bin/POPSLDR/del.icn.bdma | $(EE_ASM_DIR)
 vpath %.irx iop/embed/
 vpath %.irx $(PS2SDK)/iop/irx/
 IRXTAG = $(subst -,_,$(notdir $(addsuffix _irx, $(basename $<))))
+
+# Menu SMB needs the netman ps2ip variant (ps2ip-nm.irx), bin2c'd as the symbol
+# ps2ip_irx so the C extern matches. Explicit rule overrides the generic %.c:%.irx
+# below (which would grab the wrong ps2ip.irx). Source resolves via the vpath above.
+$(EE_ASM_DIR)ps2ip.c: ps2ip-nm.irx | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ ps2ip_irx
 
 $(EE_ASM_DIR)%.c: %.irx | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ $(IRXTAG)
@@ -275,8 +325,6 @@ clean: cleanbin
 	rm -rf $(EE_OBJS_DIR)
 	rm -rf $(EE_ASM_DIR)
 
-	rm -f $(EMBEDDED_RSC)
-
 rebuild: clean all
 
 run:
@@ -285,19 +333,10 @@ run:
 reset:
 	ps2client -h $(PS2LINK_IP) reset   
 
-POPSLDR_PKG = POPSLoader.7z
-PKG_DIR = bin/package
-package: $(EE_BIN_PKD)
-	rm -f $(POPSLDR_PKG)
-	rm -rf $(PKG_DIR)
-	mkdir -p $(PKG_DIR)
-	cp $(EE_BIN_PKD) $(PKG_DIR)/
-	cp bin/changelog LICENSE README.md $(PKG_DIR)/
-	find bin/POPSLDR -maxdepth 1 -type f -exec cp {} $(PKG_DIR)/ \;
-	@if [ -d bin/POPSTARTER ]; then cp -r bin/POPSTARTER $(PKG_DIR)/; fi
-	@if ls bin/POPSLDR/IMG/*.png >/dev/null 2>&1; then cp bin/POPSLDR/IMG/*.png $(PKG_DIR)/; fi
-	@if ls bin/POPSLDR/IRX/*.irx >/dev/null 2>&1; then cp bin/POPSLDR/IRX/*.irx $(PKG_DIR)/; fi
-	cd $(PKG_DIR); 7z a ../$(POPSLDR_PKG) .
+# The old local `make package` target was DELETED (2026-07 audit U60): it predated
+# the rolling-release layout and produced a 7z missing the SMB pack, the POPS/
+# folder, and the POPSTARTER version variants ("works on rolling, fails on this
+# 7z" confusion). .github/workflows/rolling-release.yml is the packaging path.
 
 dummys:
 	touch $(BINDIR)A.vcd
@@ -349,3 +388,13 @@ $(EE_OBJS_DIR)%.o: $(EE_SRC_DIR)%.cpp | $(EE_OBJS_DIR)
 
 include $(PS2SDK)/samples/Makefile.pref
 include $(PS2SDK)/samples/Makefile.eeglobal
+
+# -Os was REVERTED (2026-07-07): its hardware smoke test failed. Issue #508
+# (oldman63, SCPH-30004R) reported "No USB backend detected" for BOTH a FAT32
+# pendrive and an exFAT SSD on the -Os rolling build, while the July 1-2 build
+# (identical except the minifier, which is proven token/line/bytecode-identical)
+# listed USB fine for FifthFox. -Os is a code-gen change on the EE objects that
+# drive the timing-sensitive USB/BDM enumeration -- prime suspect, cheap to
+# isolate by reverting. Do NOT re-add without a USB + boot smoke test on real
+# hardware in the same rolling cycle. (The app then builds at the ps2sdk default
+# -O2; the ~15-20 KB packed-size win is not worth a broken USB page.)
