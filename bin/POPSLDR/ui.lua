@@ -2550,11 +2550,13 @@ UI = {
       Play = function()
         local layout = UI.LAYOUT
         UI.GameList.MAXDRAW = layout.LIST_MAX
-        local titles = {
-          [UI.SCENES.GUSBFAT] = "USB",
-          [UI.SCENES.GBDMHDD] = "BDM HDD",
-          [UI.SCENES.GSMBNET] = "SMB"
-        }
+        -- Device gamelist pages no longer show a top device-name label. MMCE /
+        -- MX4SIO / HDD (PFS) never did; on the pages that had one (USB, exFAT,
+        -- net-SMB) the label sat right above the first row and duplicated the
+        -- carousel the user just came from. Only USB's ever showed in practice
+        -- (FifthFox review). Table kept empty so a genuinely-new backend could
+        -- still opt back into a title if one is ever actually needed.
+        local titles = {}
         local scene_title = titles[UI.CURSCENE]
         -- Lift the device label clear of the first game row: it's centered at
         -- TITLE_Y, only ~10px above LIST_Y, so a long first-row title overlaps it.
@@ -2750,7 +2752,13 @@ UI = {
              and UI.CoverCache ~= nil and type(UI.CoverCache.last_desc) == "string"
              and UI.CoverCache.last_desc ~= "" then
             local footer_y = layout.FOOTER_ICON_Y or (UI.SCR.Y - 56)
-            local bottom_limit = footer_y - 24  -- clear the centered footer icons
+            -- Clear the footer ICON ROW (icons are centred on footer_y, ~12px tall
+            -- each half) with real breathing room, not just the icon centres: at -24
+            -- the last info-text line sat right on top of the button menu (FifthFox).
+            -- A bigger clearance also raises the whole centred [art + text] group, so
+            -- the artwork lifts too (what FifthFox asked for once the device label is
+            -- gone). Trades ~1 visible description line for the gap, which is fine.
+            local bottom_limit = footer_y - 40
             local top_margin = ((layout.SAFE and layout.SAFE.T) or 24) + 8
             local avail = bottom_limit - top_margin
             -- Pull the Details window up into the frame's transparent bottom margin
@@ -2858,7 +2866,7 @@ UI = {
               cap_lines[#cap_lines + 1] = shown
             end
             local cap_y = draw_y + art_h + 8
-            local cap_bottom = (layout.FOOTER_ICON_Y or (UI.SCR.Y - 56)) - 18
+            local cap_bottom = (layout.FOOTER_ICON_Y or (UI.SCR.Y - 56)) - 40  -- same footer clearance as the details panel
             for ci = 1, #cap_lines do
               if cap_y > cap_bottom then break end
               Font.ftPrint(SFONT, draw_x, cap_y, 0, draw_w, 14, cap_lines[ci], UI.CCOL.GREY)
