@@ -80,8 +80,8 @@ Place all files on the root of your storage device (`mass:/`, `mx4sio:/`, `mmce0
 | `<device>:/POPS/POPS.PAK` | Emulator resources payload |
 | `<device>:/POPS/POPS_IOX.PAK` | Emulator input/output resources payload |
 
-### Internal HDD Setup
-Place VCD game files inside your dedicated POPS partitions, and system binaries inside `__common/POPS/`:
+### Internal HDD Setup: HDD (PFS) / APA partitions
+This layout is for the classic **HDD (PFS)** drive (Sony APA partitions via the network/ATA adapter). Place VCD game files inside your dedicated POPS partitions, and system binaries inside `__common/POPS/`:
 
 | File Path | Description |
 | :--- | :--- |
@@ -93,6 +93,8 @@ Place VCD game files inside your dedicated POPS partitions, and system binaries 
 | `hdd:/__common/POPS/POPS.ELF` | POPS emulator engine binary |
 | `hdd:/__common/POPS/POPS.PAK` | Emulator resources payload |
 | `hdd:/__common/POPS/POPS_IOX.PAK` | Emulator input/output resources payload |
+
+> **An exFAT internal drive is set up differently (like a USB drive, not like this).** The **HDD (exFAT)** drive (BDMA Mode `ATA`) mounts as `mass:` and uses the **same flat layout as a USB / removable drive**, not APA partitions. Put a single `POPS/` folder at the drive's root holding your `.VCD` games and the POPS system files (`PATCH_5.BIN`, `IOPRP252.IMG`, `POPS.ELF`, `POPS.PAK`, `POPS_IOX.PAK`, `POPSTARTER.ELF`), exactly like the **USB / removable** table above (`<device>:/POPS/...`), with covers under `POPS/ART/`. Do **not** create `__.POPS` partitions or a `__common/` folder on an exFAT drive.
 
 ---
 
