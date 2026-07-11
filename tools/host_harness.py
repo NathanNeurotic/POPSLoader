@@ -457,6 +457,42 @@ t13 = E('''function()
 end''')()
 check("T13 bad first HDD status recovers on re-probe (no dead latch)", t13)
 
+# T14 i18n: PLDR.L translates when a language is set, falls back to English otherwise
+t14 = E('''function()
+  local langs = 0
+  for _ in pairs(PLDR.I18N) do langs = langs + 1 end
+  if langs < 5 then return false, "langs="..langs end
+  PLDR.LANGUAGE = "EN"
+  if PLDR.L("Settings") ~= "Settings" then return false, "EN passthrough" end
+  PLDR.LANGUAGE = "FR"
+  if PLDR.L("Settings") == "Settings" then return false, "FR did not translate Settings" end
+  if PLDR.L("Back") ~= "Retour" then return false, "FR Back="..tostring(PLDR.L("Back")) end
+  -- unlisted / path-like strings fall back to English unchanged
+  if PLDR.L("mc0:/POPS/GAME.VCD") ~= "mc0:/POPS/GAME.VCD" then return false, "path not passthrough" end
+  if PLDR.L("some string with no translation") ~= "some string with no translation" then return false, "unlisted not passthrough" end
+  -- a bogus language falls back to English
+  PLDR.LANGUAGE = "ZZ"
+  if PLDR.L("Settings") ~= "Settings" then return false, "bad-lang fallback" end
+  PLDR.LANGUAGE = "EN"
+  return true
+end''')()
+check("T14 i18n L() translates + falls back to English for unlisted/paths/bad-lang", t14)
+
+# T15 LANGUAGE persists (save -> sidecar -> reload)
+t15 = E('''function()
+  PLDR.LANGUAGE = "DE"
+  local saved = PLDR.SaveSettingsAtomic()
+  local sidecar = nil
+  for path, content in pairs(FAKEFS.files) do
+    if string.match(path, "%.pldrs$") and string.find(content, "LANGUAGE=", 1, true) then sidecar = content end
+  end
+  if not (saved and sidecar and string.find(sidecar, "LANGUAGE=DE", 1, true)) then return false, "save" end
+  PLDR.LANGUAGE = "EN"
+  PLDR.LoadSettingsNonFatal()
+  return PLDR.LANGUAGE == "DE"
+end''')()
+check("T15 LANGUAGE persists (save -> sidecar -> reload)", t15)
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")

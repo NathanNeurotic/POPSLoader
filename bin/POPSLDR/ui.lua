@@ -946,7 +946,8 @@ UI = {
       end;
       add = function (notif, sev)
         local q = UI.Notif_queue
-        local text = tostring(notif or "")
+        -- Localize static toasts (dynamic/unlisted text falls through to English).
+        local text = PLDR.L(tostring(notif or ""))
         local head, body
         local nl = string.find(text, "\n", 1, true)
         if nl then
@@ -1099,7 +1100,7 @@ UI = {
           end
           local label = labels and labels[key] or nil
           if label ~= nil then
-            Font.ftPrint(SFONT, x, labelY, 8, UI.LAYOUT.FOOTER_LABEL_W, 16, label, UI.CCOL.GREY)
+            Font.ftPrint(SFONT, x, labelY, 8, UI.LAYOUT.FOOTER_LABEL_W, 16, PLDR.L(label), UI.CCOL.GREY)
           end
         end
       end;
@@ -1819,7 +1820,7 @@ UI = {
         Graphics.drawRect(box_x, box_y, box_w, box_h, Color.new(0, 0, 0, 200))
         Graphics.drawRect(box_x, box_y, box_w, 2, UI.CCOL.GREY)
         Graphics.drawRect(box_x, box_y + box_h - 2, box_w, 2, UI.CCOL.GREY)
-        Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 10, 8, UI.SCR.X, 16, UI.Modal.title, UI.CCOL.YELLOW)
+        Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 10, 8, UI.SCR.X, 16, PLDR.L(UI.Modal.title), UI.CCOL.YELLOW)
         for i, line in ipairs(body_lines) do
           Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 50 + (i - 1) * line_spacing, 8, UI.SCR.X, 16, line, UI.CCOL.GREY)
         end
@@ -2552,6 +2553,7 @@ UI = {
         UI.Overscan = math.floor(tonumber(type(PLDR) == "table" and PLDR.OVERSCAN or 0) or 0)
         UI.SettingsEntryOverscan = UI.Overscan
         UI.SettingsEntryKeyboardLayout = tostring(UI.KeyboardLayoutDraft or (type(PLDR) == "table" and PLDR.KEYBOARD_LAYOUT) or "QWERTY")
+        UI.SettingsEntryLanguage = tostring(UI.LanguageDraft or (type(PLDR) == "table" and PLDR.LANGUAGE) or "EN")
         UI.SettingsFocus = 1
         UI.SceneChange(UI.SCENES.MPROFILE)
         return true
@@ -3378,7 +3380,7 @@ UI = {
       Play = function ()
         local layout = UI.LAYOUT
         local profcnt = #PLDR.PROFILES
-        Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Settings", UI.CCOL.GREY)
+        Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, PLDR.L("Settings"), UI.CCOL.GREY)
 
         -- OPL-style focused-list Settings page.
         --
@@ -3453,6 +3455,11 @@ UI = {
         end
 
         local function restore_settings_session()
+          -- Revert the LIVE-applied UI language before re-syncing drafts (the
+          -- Language row applies live; discard must undo it).
+          if type(PLDR) == "table" and UI.SettingsEntryLanguage ~= nil then
+            PLDR.LANGUAGE = tostring(UI.SettingsEntryLanguage)
+          end
           UI.SyncSettingsSelectionFromRuntime()
           UI.SyncSettingsDraftFromRuntime()
           UI.SetHideTextMode(UI.SettingsEntryHideTextMode == true, false)
@@ -3539,6 +3546,7 @@ UI = {
                 bdma_mode = mode_key,
                 video_standard = video_key,
                 keyboard_layout = UI.KeyboardLayoutDraft or (type(PLDR) == "table" and PLDR.KEYBOARD_LAYOUT) or "QWERTY",
+                language = UI.LanguageDraft or (type(PLDR) == "table" and PLDR.LANGUAGE) or "EN",
                 boot_page = boot_page_key,
                 hidden_devices = UI.DeviceHiddenDraft,
                 multidisc_collapse = multidisc_collapse_val,
@@ -3575,6 +3583,11 @@ UI = {
               PLDR.KEYBOARD_LAYOUT = PLDR.NormalizeKeyboardLayout(UI.KeyboardLayoutDraft or PLDR.KEYBOARD_LAYOUT or "QWERTY")
             else
               PLDR.KEYBOARD_LAYOUT = UI.KeyboardLayoutDraft or PLDR.KEYBOARD_LAYOUT or "QWERTY"
+            end
+            if type(PLDR) == "table" and type(PLDR.NormalizeLanguage) == "function" then
+              PLDR.LANGUAGE = PLDR.NormalizeLanguage(UI.LanguageDraft or PLDR.LANGUAGE or "EN")
+            else
+              PLDR.LANGUAGE = UI.LanguageDraft or PLDR.LANGUAGE or "EN"
             end
             PLDR.BOOT_PAGE = boot_page_key
             if type(UI.DeviceHiddenDraft) == "table" and type(PLDR.NormalizeHiddenDevices) == "function" then
@@ -3715,6 +3728,28 @@ UI = {
           UI.KeyboardLayoutDraft = keyboard_layouts[idx]
         end
 
+        -- UI language (i18n). Cycling LIVE-APPLIES (sets PLDR.LANGUAGE so the whole
+        -- UI re-renders in that language immediately, per R3Z3N's "auto apply as you
+        -- move about"); discard reverts it via restore_settings_session.
+        local language_order = (type(PLDR) == "table" and PLDR.LANGUAGE_ORDER) or {"EN"}
+        local function CurrentLanguageIndex()
+          local key = string.upper(tostring(UI.LanguageDraft or "EN"))
+          for i = 1, #language_order do
+            if string.upper(tostring(language_order[i])) == key then return i end
+          end
+          return 1
+        end
+        local function CycleLanguage(delta)
+          local n = #language_order
+          if n <= 0 then return end
+          local idx = CycleIndex(CurrentLanguageIndex(), delta, n)
+          UI.LanguageDraft = language_order[idx]
+          if type(PLDR) == "table" then PLDR.LANGUAGE = UI.LanguageDraft end  -- live-apply
+        end
+        local function LanguageDirty()
+          return tostring(UI.LanguageDraft or "EN") ~= tostring(UI.SettingsEntryLanguage or "EN")
+        end
+
         local function ResetDefaults()
           local default_profile = tonumber(PLDR.DEFAULT_PROFILE) or 1
           local next_default = CLAMP(default_profile, 1, profcnt)
@@ -3799,6 +3834,11 @@ UI = {
           end
           if tostring(UI.KeyboardLayoutDraft or "") ~= tostring(default_keyboard_layout) then
             UI.KeyboardLayoutDraft = default_keyboard_layout
+            UI.ProfileDirty = true
+          end
+          if tostring(UI.LanguageDraft or "") ~= "EN" then   -- default UI language = English
+            UI.LanguageDraft = "EN"
+            if type(PLDR) == "table" then PLDR.LANGUAGE = "EN" end  -- live-apply the reset
             UI.ProfileDirty = true
           end
           -- These three were MISSING from Reset Defaults (the action's label promised
@@ -4044,6 +4084,17 @@ UI = {
           function() CycleKeyboardLayout( 1) end,
           KeyboardLayoutDirty
         )
+        -- Language (i18n): shows the language's OWN name; cycling live-applies (R3Z3N).
+        AddCycle(
+          "Language",
+          function()
+            local code = tostring(UI.LanguageDraft or "EN")
+            return (type(PLDR) == "table" and PLDR.LANGUAGE_NAMES and PLDR.LANGUAGE_NAMES[code]) or code
+          end,
+          function() CycleLanguage(-1) end,
+          function() CycleLanguage( 1) end,
+          LanguageDirty
+        )
 
         -- Carousel device visibility checklist: a Shown/Hidden row per main-menu
         -- device. Toggling hides/shows it on the carousel (all shown by default).
@@ -4255,6 +4306,7 @@ UI = {
             or UI.VideoStandardDirty == true
             or HideTextDirty()
             or KeyboardLayoutDirty()
+            or LanguageDirty()
             -- Value-cycle settings are tracked by snapshot comparison (their cycle
             -- handlers set NO dirty flag), so they must be compared here too -- else a
             -- lone change to one is dropped on BACK with no save prompt. Same
@@ -4454,7 +4506,7 @@ UI = {
           end
           -- "+" = collapsed (press to expand), "-" = expanded (ASCII, font-safe).
           Font.ftPrint(BFONT, SAFE_LEFT + 2, row_y, 0, 12, 16, collapsed and "+" or "-", focused and accent_color or separator_color)
-          Font.ftPrint(BFONT, LABEL_X, row_y, 0, UI.SCR.X, 16, label, accent_color)
+          Font.ftPrint(BFONT, LABEL_X, row_y, 0, UI.SCR.X, 16, PLDR.L(label), accent_color)
           Graphics.drawRect(SAFE_LEFT, row_y + SECTION_HEADER_H - 4, SAFE_RIGHT - SAFE_LEFT, 1, separator_color)
         end
 
@@ -4470,11 +4522,13 @@ UI = {
             Font.ftPrint(BFONT, UI.SCR.X_MID, row_y, 8, UI.SCR.X, 16, it.label, color)
             return
           end
-          -- Focused row tickers a too-long label; others clip statically.
-          local label_disp = it.label
-          if focused then label_disp = MarqueeLabel(BFONT, tostring(it.label or ""), LABEL_W, marquee_tick) end
+          -- Focused row tickers a too-long label; others clip statically. Label is
+          -- localized (L() falls back to English for anything untranslated).
+          local base_label = PLDR.L(it.label)
+          local label_disp = base_label
+          if focused then label_disp = MarqueeLabel(BFONT, tostring(base_label or ""), LABEL_W, marquee_tick) end
           Font.ftPrint(BFONT, LABEL_X, row_y, 0, LABEL_W, 16, label_disp, label_text_color)
-          local value_text = it.value and tostring(it.value() or "") or ""
+          local value_text = PLDR.L(it.value and tostring(it.value() or "") or "")
           local dirty = (it.dirty and it.dirty()) == true
           local value_text_color
           if dirty then
@@ -4804,7 +4858,7 @@ UI = {
         local center_label_idx = carousel.animActive and carousel.targetIndex or base_sel
         local top_y = layout.TITLE_Y
         if not UI.ShouldHideAuxText(UI.CURSCENE) then
-          Font.ftPrint(UI.FONT.LABEL, UI.SCR.X_MID, top_y, 8, UI.SCR.X, 16, UI.MainMenu.opts[visible_seq[center_label_idx] or visible_seq[1]], UI.COLORS.TEXT_PRIMARY)
+          Font.ftPrint(UI.FONT.LABEL, UI.SCR.X_MID, top_y, 8, UI.SCR.X, 16, PLDR.L(UI.MainMenu.opts[visible_seq[center_label_idx] or visible_seq[1]]), UI.COLORS.TEXT_PRIMARY)
         end
         local status_y = top_y + 12
         local boot_label = UI.boot_device_label
@@ -5897,6 +5951,11 @@ function UI.SyncSettingsDraftFromRuntime()
     UI.KeyboardLayoutDraft = PLDR.NormalizeKeyboardLayout(PLDR.KEYBOARD_LAYOUT)
   else
     UI.KeyboardLayoutDraft = tostring(PLDR.KEYBOARD_LAYOUT or "QWERTY")
+  end
+  if type(PLDR) == "table" and type(PLDR.NormalizeLanguage) == "function" then
+    UI.LanguageDraft = PLDR.NormalizeLanguage(PLDR.LANGUAGE)
+  else
+    UI.LanguageDraft = tostring(PLDR.LANGUAGE or "EN")
   end
   UI.PopPathDirty = false
   UI.PopPathProfileDefaultDirty = false
