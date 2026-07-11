@@ -4569,7 +4569,17 @@ local function BuildUsbIdentityDeferred()
   return identity or BuildMassRootIdentity("usb")
 end
 
+-- MX4SIO gets the LARGEST retry budget of the deferred mass builders (USB 3,
+-- ATA 4, MX4SIO 6): the SD-over-SPI bridge (MX4SIO / SD2PS2TD) is the slowest and
+-- flakiest to mount, and FifthFox reported intermittent "not detected" on real
+-- hardware that a manual R1 rescan (a whole fresh set of attempts) reliably fixed
+-- -- i.e. the card just needs more init+settle cycles than 3. Each attempt re-runs
+-- the init (EnsureMassBackendsReady -> System.initMX4SIO) and WaitMassProbeRetry
+-- re-pokes (refreshMassBackends) before the 1s settle, so more attempts = more of
+-- exactly the bring-up work R1 does, without making the user press R1.
 local function BuildMX4IdentityDeferred()
+  -- FUNCTION-local (not chunk-level): system.lua's main chunk is near Lua's 200-local cap.
+  local MX4_PROBE_ATTEMPTS = 6
   -- Bounded retry masks the first-entry quirk: mx4sio_bd self-detects the SD card on its
   -- own IOP thread AFTER the IRX loads, so the EE side must SETTLE between re-scans or it
   -- races the still-mounting FAT volume and finds nothing. Sleep 1s between attempts -- the
@@ -4578,14 +4588,14 @@ local function BuildMX4IdentityDeferred()
   -- one without a delay, so a cold first entry kicked out at "Locating MX4SIO..." 42% because
   -- identity.mx4sio was still empty -- regression reported ~2026-06-17.)
   local attempts = 0
-  while attempts < 3 do
+  while attempts < MX4_PROBE_ATTEMPTS do
     attempts = attempts + 1
     local identity = BuildMassRootIdentity("mx4sio")
     if type(identity) == "table" and type(identity.mx4sio) == "table" and #identity.mx4sio > 0 then
       return identity
     end
-    WaitMassProbeRetry(attempts, 3)
-    if attempts < 3 and type(System) == "table" and type(System.sleep) == "function" then
+    WaitMassProbeRetry(attempts, MX4_PROBE_ATTEMPTS)
+    if attempts < MX4_PROBE_ATTEMPTS and type(System) == "table" and type(System.sleep) == "function" then
       pcall(System.sleep, 1)
     end
   end
