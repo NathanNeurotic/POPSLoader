@@ -4228,13 +4228,15 @@ UI = {
         )
         AddPath(
           "POPSTARTER Path",
-          function() return TruncateMiddle(UI.PopstarterPathDraft or PLDR.POPSTARTER_PATH or "", 40) end,
+          -- Full path (DrawRow tickers it when focused, middle-ellipsis otherwise).
+          function() return tostring(UI.PopstarterPathDraft or PLDR.POPSTARTER_PATH or "") end,
           OpenPopstarterPathEditor,
           function() return UI.PopPathDirty == true or UI.PopPathProfileDefaultDirty == true end
         )
         AddPath(
           "DKWDRV Path",
-          function() return TruncateMiddle(UI.DkwdrvPathDraft or PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF", 40) end,
+          -- Full path (DrawRow tickers it when focused, middle-ellipsis otherwise).
+          function() return tostring(UI.DkwdrvPathDraft or PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF") end,
           OpenDkwdrvPathEditor,
           function() return UI.DkwdrvDirty == true end
         )
@@ -4401,6 +4403,18 @@ UI = {
           top_y = layout.TITLE_Y + TITLE_GAP
         end
 
+        -- Marquee tick for the FOCUSED row's overflowing label/value (ticker per
+        -- R3Z3N review). Resets when the selection changes; MarqueeLabel is a
+        -- no-op when the text already fits, so only genuinely-too-long focused
+        -- text scrolls (holds at the head, then scrolls, then loops).
+        if UI.SettingsMarqueeSel ~= UI.SettingsFocus then
+          UI.SettingsMarqueeSel = UI.SettingsFocus
+          UI.SettingsMarqueeTick = 0
+        else
+          UI.SettingsMarqueeTick = (UI.SettingsMarqueeTick or 0) + 1
+        end
+        local marquee_tick = UI.SettingsMarqueeTick or 0
+
         -- Draw
         local function DrawHighlight(row_y)
           Graphics.drawRect(SAFE_LEFT, row_y - 2, SAFE_RIGHT - SAFE_LEFT, ROW_H, highlight_color)
@@ -4428,7 +4442,10 @@ UI = {
             Font.ftPrint(BFONT, UI.SCR.X_MID, row_y, 8, UI.SCR.X, 16, it.label, color)
             return
           end
-          Font.ftPrint(BFONT, LABEL_X, row_y, 0, LABEL_W, 16, it.label, label_text_color)
+          -- Focused row tickers a too-long label; others clip statically.
+          local label_disp = it.label
+          if focused then label_disp = MarqueeLabel(BFONT, tostring(it.label or ""), LABEL_W, marquee_tick) end
+          Font.ftPrint(BFONT, LABEL_X, row_y, 0, LABEL_W, 16, label_disp, label_text_color)
           local value_text = it.value and tostring(it.value() or "") or ""
           local dirty = (it.dirty and it.dirty()) == true
           local value_text_color
@@ -4439,7 +4456,15 @@ UI = {
           else
             value_text_color = label_color
           end
-          Font.ftPrint(BFONT, VALUE_X, row_y, 0, VALUE_W, 16, value_text, value_text_color)
+          -- Focused row tickers a too-long value/path; non-focused paths keep the
+          -- middle-ellipsis so both the device prefix and filename stay visible.
+          local value_disp = value_text
+          if focused then
+            value_disp = MarqueeLabel(BFONT, value_text, VALUE_W, marquee_tick)
+          elseif it.kind == "path" then
+            value_disp = TruncateMiddle(value_text, 40)
+          end
+          Font.ftPrint(BFONT, VALUE_X, row_y, 0, VALUE_W, 16, value_disp, value_text_color)
           if focused and it.kind == "cycle" then
             -- Small left/right arrow chevrons hint at D-pad cycling.
             Font.ftPrint(BFONT, VALUE_X - 14, row_y, 0, 12, 16, "<", accent_color)
