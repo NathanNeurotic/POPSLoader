@@ -32,6 +32,12 @@ maintainer wires it into the build for you (adding your language to the picker u
 5. Send the finished file back to the maintainer (reply with it on Discord, or open a pull request that
    adds/updates the file in this folder). The maintainer injects it and it ships in the next build.
 
+## Available files
+
+- `hungarian.tsv` (right column starts as English to overwrite).
+- `brazilian-portuguese.tsv` (right column is pre-seeded with the current Portuguese, so you only adjust
+  the Brazilian wording where it differs from European Portuguese). Pairs with the ABNT keyboard layout.
+
 ## Notes
 
 - The existing French, German, Portuguese, Spanish, and Italian translations were machine-assisted, so
