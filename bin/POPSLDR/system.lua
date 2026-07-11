@@ -2448,6 +2448,9 @@ PLDR.CONSOLE_REGION_MODE = CONSOLE_REGION_MODE
 PLDR.KEYBOARD_LAYOUT_ABC = "ABC"
 PLDR.KEYBOARD_LAYOUT_QWERTY = "QWERTY"
 PLDR.KEYBOARD_LAYOUT_DVORAK = "DVORAK"
+PLDR.KEYBOARD_LAYOUT_AZERTY = "AZERTY"  -- French
+PLDR.KEYBOARD_LAYOUT_QWERTZ = "QWERTZ"  -- German
+PLDR.KEYBOARD_LAYOUT_ABNT = "ABNT"      -- Brazilian Portuguese (letters mirror QWERTY; accents/cedilla need non-ASCII, out of scope here)
 
 local function NormalizeVideoStandard(value)
   local key = string.upper(tostring(value or ""))
@@ -2467,6 +2470,15 @@ local function NormalizeKeyboardLayout(value)
   end
   if key == PLDR.KEYBOARD_LAYOUT_DVORAK then
     return PLDR.KEYBOARD_LAYOUT_DVORAK
+  end
+  if key == PLDR.KEYBOARD_LAYOUT_AZERTY then
+    return PLDR.KEYBOARD_LAYOUT_AZERTY
+  end
+  if key == PLDR.KEYBOARD_LAYOUT_QWERTZ then
+    return PLDR.KEYBOARD_LAYOUT_QWERTZ
+  end
+  if key == PLDR.KEYBOARD_LAYOUT_ABNT then
+    return PLDR.KEYBOARD_LAYOUT_ABNT
   end
   return PLDR.KEYBOARD_LAYOUT_ABC
 end

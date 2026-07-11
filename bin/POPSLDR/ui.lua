@@ -1847,8 +1847,41 @@ UI = {
       pressed_col = 0;
       pressed_until = 0;
       layout_key = "QWERTY";
-      layout_order = {"QWERTY", "DVORAK", "ABC"};
+      layout_order = {"QWERTY", "DVORAK", "ABC", "AZERTY", "QWERTZ", "ABNT"};
       layouts = {
+        -- AZERTY (French): letters in the AZERTY arrangement; digits/symbols kept
+        -- consistent with QWERTY so path/credential entry is unchanged.
+        AZERTY = {
+          {"a","z","e","r","t","y","u","i","o","p"},
+          {"q","s","d","f","g","h","j","k","l","m"},
+          {"w","x","c","v","b","n",",",";",".","/"},
+          {"0","1","2","3","4","5","6","7","8","9",":","_"},
+          {"-","?","!","&","\\","'","(",")","+","=","[","]"},
+          {"SPACE","DEL","CLR"},
+          {"BACK","DONE"}
+        },
+        -- QWERTZ (German): QWERTY with Y and Z swapped.
+        QWERTZ = {
+          {"q","w","e","r","t","z","u","i","o","p"},
+          {"a","s","d","f","g","h","j","k","l",";"},
+          {"y","x","c","v","b","n","m",",",".","/"},
+          {"0","1","2","3","4","5","6","7","8","9",":","_"},
+          {"-","?","!","&","\\","'","(",")","+","=","[","]"},
+          {"SPACE","DEL","CLR"},
+          {"BACK","DONE"}
+        },
+        -- ABNT (Brazilian Portuguese): the alphanumeric portion is QWERTY; the
+        -- distinguishing ABNT keys (c-cedilla, accents) are non-ASCII and the OSK
+        -- is single-char ASCII (see SHIFT_MAP note), so they are intentionally absent.
+        ABNT = {
+          {"q","w","e","r","t","y","u","i","o","p"},
+          {"a","s","d","f","g","h","j","k","l",";"},
+          {"z","x","c","v","b","n","m",",",".","/"},
+          {"0","1","2","3","4","5","6","7","8","9",":","_"},
+          {"-","?","!","&","\\","'","(",")","+","=","[","]"},
+          {"SPACE","DEL","CLR"},
+          {"BACK","DONE"}
+        },
         ABC = {
           {"a","b","c","d","e","f","g","h","i","j"},
           {"k","l","m","n","o","p","q","r","s","t"},
@@ -1893,7 +1926,7 @@ UI = {
           return PLDR.NormalizeKeyboardLayout(layout)
         end
         local key = string.upper(tostring(layout or ""))
-        if key == "ABC" or key == "DVORAK" then
+        if key == "ABC" or key == "DVORAK" or key == "AZERTY" or key == "QWERTZ" or key == "ABNT" then
           return key
         end
         return "QWERTY"
@@ -1987,6 +2020,9 @@ UI = {
       _LayoutButtonWidth = function (layout_key)
         if layout_key == "QWERTY" then return 94 end
         if layout_key == "DVORAK" then return 88 end
+        -- AZERTY / QWERTZ / ABNT mirror QWERTY's grid dimensions (same max row
+        -- length), so they use the QWERTY button width.
+        if layout_key == "AZERTY" or layout_key == "QWERTZ" or layout_key == "ABNT" then return 94 end
         return 62
       end;
       _DisplayKey = function (key)
