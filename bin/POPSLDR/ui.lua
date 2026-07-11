@@ -1161,11 +1161,11 @@ UI = {
           end
           Graphics.drawRect(bar_x + 2 + offset, bar_y + 2, marquee_w, bar_h - 4, Color.new(110, 190, 255, 96))
         end
-        Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 20, 8, UI.SCR.X, 16, tostring(UI.SavingMessage or "Saving/Applying..."), UI.CCOL.YELLOW)
+        Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 20, 8, UI.SCR.X, 16, PLDR.L(tostring(UI.SavingMessage or "Saving/Applying...")), UI.CCOL.YELLOW)
         if type(UI.SavingProgress) == "number" then
           Font.ftPrint(SFONT, UI.SCR.X_MID, box_y + 84, 8, UI.SCR.X, 16, tostring(math.floor(UI.SavingProgress * 100 + 0.5)).."%", UI.CCOL.GREY)
         else
-          Font.ftPrint(SFONT, UI.SCR.X_MID, box_y + 84, 8, UI.SCR.X, 16, "Working...", UI.CCOL.GREY)
+          Font.ftPrint(SFONT, UI.SCR.X_MID, box_y + 84, 8, UI.SCR.X, 16, PLDR.L("Working..."), UI.CCOL.GREY)
         end
       end
       if UI.Transition ~= nil then
@@ -1806,11 +1806,11 @@ UI = {
       end;
       Draw = function ()
         if not UI.Modal.active then return end
-        local body_lines = WrapText(UI.Modal.body or "", 38)
+        local body_lines = WrapText(PLDR.L(UI.Modal.body or ""), 38)
         local line_spacing = 16
-        local confirm_label = UI.Modal.options[1] or "Confirm"
-        local cancel_label = UI.Modal.options[2] or "Cancel"
-        local triangle_label = UI.Modal.options[3]
+        local confirm_label = PLDR.L(UI.Modal.options[1] or "Confirm")
+        local cancel_label = PLDR.L(UI.Modal.options[2] or "Cancel")
+        local triangle_label = UI.Modal.options[3] and PLDR.L(UI.Modal.options[3]) or nil
         local extra_footer_h = (triangle_label ~= nil) and 16 or 0
         local box_w = 320
         local box_h = 140 + (math.max(1, #body_lines) - 1) * line_spacing + extra_footer_h
@@ -2270,7 +2270,7 @@ UI = {
         Graphics.drawRect(input_x, input_y, input_w, input_h, Color.new(18, 28, 56, 128))
         Graphics.drawRect(input_x + 1, input_y + 1, input_w - 2, input_h - 2, Color.new(4, 6, 14, 128))
 
-        Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 8, 8, UI.SCR.X, 16, UI.PathEditor.title, UI.CCOL.YELLOW)
+        Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 8, 8, UI.SCR.X, 16, PLDR.L(UI.PathEditor.title), UI.CCOL.YELLOW)
         Font.ftPrint(SFONT, input_x + 10, input_y + 10, 0, input_w - 20, 16, UI.PathEditor._BuildVisibleValue(46), Color.new(150, 205, 255, 128))
         local mode_label = UI.PathEditor.upper and "Case/Symbols: UPPER  (R2)" or "Case/Symbols: lower  (R2)"
         local info_label = mode_label.."   Cursor: L1 / R1"
@@ -2611,7 +2611,7 @@ UI = {
         if placeholder_title ~= nil then
           if not UI.ShouldHideAuxText(UI.CURSCENE) then
             Font.ftPrint(LFONT, UI.SCR.X_MID, device_title_y, 8, UI.SCR.X, 16, placeholder_title, UI.CCOL.GREY)
-            Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID, 20, UI.SCR.X, 32, "Not implemented yet", UI.CCOL.YELLOW)
+            Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID, 20, UI.SCR.X, 32, PLDR.L("Not implemented yet"), UI.CCOL.YELLOW)
           end
           Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
@@ -2949,8 +2949,8 @@ UI = {
         end
         if ammount <= 0 then
           if not UI.ShouldHideAuxText(UI.CURSCENE) then
-            Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, UI.SCR.Y_MID, 20, UI.SCR.X, 32, "No games found", UI.CCOL.YELLOW)
-            Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID+1, UI.SCR.Y_MID+1, 20, UI.SCR.X, 32, "No games found", UI.CCOL.TRANSP_BLACK)
+            Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, UI.SCR.Y_MID, 20, UI.SCR.X, 32, PLDR.L("No games found"), UI.CCOL.YELLOW)
+            Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID+1, UI.SCR.Y_MID+1, 20, UI.SCR.X, 32, PLDR.L("No games found"), UI.CCOL.TRANSP_BLACK)
           end
         end
         Input_GetEvent()
@@ -5607,10 +5607,10 @@ function UI.RunConfirm(lines)
     Screen.clear(UI.SCR.BGCOL or Color.new(20, 30, 80))
     local y = UI.SCR.Y_MID - (#lines * 11) - 24
     for i = 1, #lines do
-      Font.ftPrint(SFONT, UI.SCR.X_MID, y, 8, UI.SCR.X, 16, tostring(lines[i] or ""), UI.CCOL.GREY)
+      Font.ftPrint(SFONT, UI.SCR.X_MID, y, 8, UI.SCR.X, 16, PLDR.L(tostring(lines[i] or "")), UI.CCOL.GREY)
       y = y + 22
     end
-    Font.ftPrint(BFONT, UI.SCR.X_MID, y + 16, 8, UI.SCR.X, 24, "X = Yes      O = No", UI.CCOL.YELLOW)
+    Font.ftPrint(BFONT, UI.SCR.X_MID, y + 16, 8, UI.SCR.X, 24, PLDR.L("X = Yes      O = No"), UI.CCOL.YELLOW)
     Screen.flip()
     f = f + 1
     local okp, gp = pcall(Pads.get)
@@ -5652,14 +5652,14 @@ function UI.RunSharePicker(shares)
       if top > #shares - MAXVIS + 1 then top = #shares - MAXVIS + 1 end
     end
     local y = UI.SCR.Y_MID - (vis * 11) - 18
-    Font.ftPrint(LFONT, UI.SCR.X_MID, y - 26, 8, UI.SCR.X, 24, "Select a share", UI.CCOL.YELLOW)
+    Font.ftPrint(LFONT, UI.SCR.X_MID, y - 26, 8, UI.SCR.X, 24, PLDR.L("Select a share"), UI.CCOL.YELLOW)
     for i = top, math.min(top + MAXVIS - 1, #shares) do
       local is_sel = (i == sel)
       local label = is_sel and ("> "..tostring(shares[i]).." <") or tostring(shares[i])
       Font.ftPrint(SFONT, UI.SCR.X_MID, y, 8, UI.SCR.X, 16, label, is_sel and UI.CCOL.YELLOW or UI.CCOL.GREY)
       y = y + 22
     end
-    Font.ftPrint(BFONT, UI.SCR.X_MID, y + 14, 8, UI.SCR.X, 24, "X = Select      O = Cancel", UI.CCOL.GREY)
+    Font.ftPrint(BFONT, UI.SCR.X_MID, y + 14, 8, UI.SCR.X, 24, PLDR.L("X = Select      O = Cancel"), UI.CCOL.GREY)
     Screen.flip()
     f = f + 1
     local okp, gp = pcall(Pads.get)

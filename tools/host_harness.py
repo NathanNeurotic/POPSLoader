@@ -493,6 +493,33 @@ t15 = E('''function()
 end''')()
 check("T15 LANGUAGE persists (save -> sidecar -> reload)", t15)
 
+# T16 the newly-wired "English holdout" draw sites (modal body/hints, busy overlay,
+# path-editor title, empty-states, share picker) must have their keys in the table so
+# PLDR.L() at those sites actually translates. A future table regen dropping any of
+# these would silently regress those spots back to English, so assert them explicitly.
+t16 = E('''function()
+  PLDR.LANGUAGE = "FR"
+  local holdouts = {
+    "Not implemented yet",                                  -- game-list stub
+    "No games found",                                       -- empty device
+    "Saving/Applying...",                                   -- busy overlay
+    "Working...",                                           -- busy overlay (indeterminate)
+    "X = Yes      O = No",                                  -- RunConfirm hint
+    "Delete the POPSTARTER folder from the memory card?",   -- RunConfirm prose
+    "Return to OSDSYS?",                                    -- modal body
+    "Edit POPStarter Path",                                 -- path editor title
+    "Select a share",                                       -- SMB share picker
+    "X = Select      O = Cancel",                           -- SMB share picker hint
+  }
+  for _, k in ipairs(holdouts) do
+    local t = PLDR.L(k)
+    if t == nil or t == k then return false, "not translated: "..k end
+  end
+  PLDR.LANGUAGE = "EN"
+  return true
+end''')()
+check("T16 newly-wired holdout keys (modal/overlay/picker/empty-state) translate", t16)
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")
