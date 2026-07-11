@@ -9,7 +9,7 @@ Operational guidance and entry point for AI agents (cloud or interactive) workin
 POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, with behavior primarily orchestrated by **embedded Lua** modules (`system.lua`, `ui.lua`, `images.lua`, `pops_profiles.lua`). The Lua is bin2c'd into the EE ELF at build time, so a *runtime* Lua error (nil global, type error, **load-order** error) is invisible to `luac -p` and to CI and only surfaces on real PS2 / PCSX2.
 
 - Released line: **1.0.0** (2026-07-10; previously BETA-12 2026-06-18, BETA-11 2026-06-15). Cut from `BETA-13-PLAY` (the BETA-13 candidate graduated to 1.0.0).
-- Dev branch: **`BETA-13-PLAY`** (the active/rolling branch; `BETA-12-PLAY` is now **archival/frozen**). The rolling-release workflow publishes from `BETA-13-PLAY`.
+- Dev branch: **`dev`** (the active/rolling branch; `BETA-12-PLAY` is now **archival/frozen**). The rolling-release workflow publishes from `dev`.
 - Testers: maintainer + Nuno (primary), CosmicScale (secondary), plus **provato** and **nuno6573**. Agents cannot run hardware tests — claims of hardware verification must cite a recorded result in `QA_REGRESSION_MATRIX.md`.
 
 > **Historical note**: Earlier entry-point docs framed D-10 (HDD POPSTARTER + HDD game) as the single urgent unresolved objective. D-10 was resolved by the B2 PFS-unmount fix at commit `4ae6679` and is now a **preservation contract, not an open blocker** (see `STATE.md > Preservation Contracts`).
@@ -52,7 +52,7 @@ Changes in these files can break core behavior and require extra care:
 - `etc/boot.lua` (pfs1: boot mount normalization)
 - `Makefile`
 - `.github/workflows/compilation.yml`
-- `.github/workflows/rolling-release.yml` (publishes the bare ELF + zip from one build to the canonical `rolling-release` tag on push to `BETA-13-PLAY` and on PR events)
+- `.github/workflows/rolling-release.yml` (publishes the bare ELF + zip from one build to the canonical `rolling-release` tag on push to `dev` and on PR events)
 
 ## Change Discipline
 - Keep diffs minimal and localized. One objective per branch/PR when feasible.
@@ -70,7 +70,7 @@ Changes in these files can break core behavior and require extra care:
 - GitHub Actions is the canonical build path. The pinned CI image is `ps2dev/ps2dev:v2.0.0`.
 - **The embedded-Lua syntax gate is now LIVE** (`luac5.4 -p` on `bin/POPSLDR/*.lua` + `etc/boot.lua`; the workflows `apk add lua5.4` and hard-fail on a syntax error). It used to silently skip because the ps2dev image shipped no `luac`. It catches **SYNTAX only** — runtime nil-global / type / **load-order** errors stay invisible to it (the `d4b04be` boot brick was exactly such a case).
 - **A host-execution gate covers the runtime class** (2026-07-10): `tools/host_harness.py` EXECUTES the real `system.lua` chunk (ui.lua require'd at its real point) under a mocked PS2 environment on host Lua 5.4 (lupa), then runs a functional battery (Adaptive BDMA staging cycle, partition-game scan, settings round-trips). Both workflows run it after the syntax gate — a real failure hard-fails the build; a container that can't install lupa skips cleanly (check the step log: "skipping host harness" means only the syntax gate ran). Run it locally with `python tools/host_harness.py`. It executes up to the splash/main-loop handoff only, with mocked I/O — hardware remains the only truth for launch paths.
-- Rolling-release publishes the bare `POPSLOADER.ELF` and the zip from one build to the floating `rolling-release` GitHub Release; push-to-`BETA-13-PLAY` and PR events (including drafts) overwrite the same assets (last-write-wins). `POPSTARTER.ELF` (the redistributable homebrew launcher — the POPS engine binaries are NOT redistributable) now ships in both the rolling zip and the formal install zip; do not strip it from a packaging step.
+- Rolling-release publishes the bare `POPSLOADER.ELF` and the zip from one build to the floating `rolling-release` GitHub Release; push-to-`dev` and PR events (including drafts) overwrite the same assets (last-write-wins). `POPSTARTER.ELF` (the redistributable homebrew launcher — the POPS engine binaries are NOT redistributable) now ships in both the rolling zip and the formal install zip; do not strip it from a packaging step.
 - Hardware testing happens on real PS2 hardware via the maintainer and the testers. Agents cannot run hardware tests.
 
 ## Gotchas / Footguns

@@ -1,4 +1,4 @@
-Last updated: 2026-06-21 (BETA-13 rolling candidate; body reflects the 2026-06-20/21 input/nav + cover-art + overscan + HDD-scan-slot session on top of the 2026-06 HDD-RW take-over / PAL-512 / BDMA-folder work). Released line: **1.0.0** (2026-07-10; graduated from the BETA line: BETA-12 was 2026-06-18, BETA-11 2026-06-15). Active dev branch is now **`BETA-13-PLAY`** (created off `BETA-12-PLAY`; **`BETA-12-PLAY` is frozen/archival**); `rolling-release.yml` publishes from `BETA-13-PLAY`. **1.0.0** was cut from **`BETA-13-PLAY`** on 2026-07-10 (the BETA-13 candidate graduated to the 1.0.0 release). Tip moves per push; see `git log`.
+Last updated: 2026-06-21 (BETA-13 rolling candidate; body reflects the 2026-06-20/21 input/nav + cover-art + overscan + HDD-scan-slot session on top of the 2026-06 HDD-RW take-over / PAL-512 / BDMA-folder work). Released line: **1.0.0** (2026-07-10; graduated from the BETA line: BETA-12 was 2026-06-18, BETA-11 2026-06-15). Active dev branch is now **`dev`** (created off `BETA-12-PLAY`; **`BETA-12-PLAY` is frozen/archival**); `rolling-release.yml` publishes from `dev`. **1.0.0** was cut from **`BETA-13-PLAY`** on 2026-07-10 (the BETA-13 candidate graduated to the 1.0.0 release). Tip moves per push; see `git log`.
 
 # STATE
 
@@ -87,7 +87,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 ### CI / release
 - Release packaging policy is `PS1_POPSLOADER/*` + `POPS/PATCH_5.BIN` with strict manifest validation; build is gated on embedded build-identity markers (`Exec path:`, `PrepareForColdExternalELFLaunch`, `BOOT.ELF launch failed`) in `bin/enceladus.elf`; embedded-loader blob staleness check; CI image pinned to `ps2dev/ps2dev:v2.0.0`.
 - **The embedded-Lua syntax gate is now LIVE** (`luac5.4 -p` on `bin/POPSLDR/*.lua` + `etc/boot.lua`). It used to silently **skip** because the ps2dev image shipped no `luac`; the workflows now `apk add lua5.4` and hard-fail on a syntax error. It catches **SYNTAX only** — runtime nil-global / type / **load-order** errors stay invisible to CI (the `d4b04be` boot brick was exactly such a case).
-- `rolling-release.yml` publishes both the bare `POPSLOADER.ELF` and the zip from one build to the floating `rolling-release` GitHub Release on every push to **`BETA-13-PLAY`** and on PR events.
+- `rolling-release.yml` publishes both the bare `POPSLOADER.ELF` and the zip from one build to the floating `rolling-release` GitHub Release on every push to **`dev`** and on PR events.
 - **`POPSTARTER.ELF` ships in both zips** (the redistributable POPStarter launcher; the POPS engine binaries are NOT redistributable). `rolling-release.yml` puts `POPSTARTER.ELF` at the zip **root** (next to `POPSLOADER.ELF`) and in `POPS/`; the formal `compilation.yml` install zip ships it in `PS1_POPSLOADER/` (next to `POPSLOADER.ELF`) and `POPS/`. `POPS/PATCH_5.BIN` and a `POPSTARTER/` SMB pack folder ship at the rolling-zip root.
 
 ## Behavioral Invariants (must preserve)
@@ -191,7 +191,7 @@ Investigation artifacts archived under `docs/archive/`: `U10_INVESTIGATION.md`, 
 *(The old "`ps2hdd-osd.irx` → `ps2hdd.irx` driver swap probe" item is removed: HDD read-write was achieved instead via the `EnsureBootPartitionWritable` boot-partition remount take-over, and provato confirmed the HDD is RW-writable on hardware — the IRX swap is no longer the gating path.)*
 
 ## Verification Status
-- **1.0.0** is the public release (2026-07-10; previously BETA-12 2026-06-18, BETA-11 2026-06-15). It was cut from **`BETA-13-PLAY`**, which remains the rolling-publish source. The branch tip moves per push (see `git log`) — code/build statements above are repository-verified around the current tip.
+- **1.0.0** is the public release (2026-07-10; previously BETA-12 2026-06-18, BETA-11 2026-06-15). It was cut from **`BETA-13-PLAY`** (renamed to **`dev`** after the 1.0.0 cut), which remains the rolling-publish source. The branch tip moves per push (see `git log`) — code/build statements above are repository-verified around the current tip.
 - The 2026-06 HDD/PAL/BDMA features are repository-verified and **boot on PCSX2**; provato confirmed the **HDD is RW-writable on real hardware**; the full feature flows are **still validating on hardware** and are **not** broadly hardware-confirmed.
 - Hardware behavior is `Unknown (verify on hardware)` unless explicitly recorded above (or in `QA_REGRESSION_MATRIX.md`) with a date.
 - See `QA_REGRESSION_MATRIX.md` for the full experiment chronology and `DECISIONS.md` for the decision log.

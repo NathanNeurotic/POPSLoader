@@ -3,7 +3,7 @@ name: Rolling Release
 on:
   push:
     branches:
-      - BETA-13-PLAY
+      - dev
   pull_request:
     types:
       - opened

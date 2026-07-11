@@ -55,7 +55,7 @@ The full invariant list is in **STATE.md > Behavioral Invariants** — preserve 
 - The `rolling-release.yml` zip is the loose dev bundle (different layout from the strict install zip): `POPSLOADER.ELF` + `POPSTARTER.ELF` at the zip root, a `POPS/` folder (`PATCH_5.BIN` + `POPSTARTER.ELF`), a `POPSTARTER/` pack folder (BDMA / SMB modules), and a `source/` tree. It is not strict-verified.
 - CI build is gated on embedded build-identity markers (`Exec path:`, `PrepareForColdExternalELFLaunch`, `BOOT.ELF launch failed`) being present in `bin/enceladus.elf`, plus an embedded-loader blob staleness check.
 - The `ps2dev/ps2dev` container image is pinned to `v2.0.0`.
-- The rolling-release workflow publishes a single canonical asset on push-to-`BETA-13-PLAY` (the active rolling branch; `BETA-12-PLAY` is archival/frozen) and on PR events (last-write-wins on the shared asset).
+- The rolling-release workflow publishes a single canonical asset on push-to-`dev` (the active rolling branch; `BETA-12-PLAY` is archival/frozen) and on PR events (last-write-wins on the shared asset).
 - **The embedded-Lua syntax gate is now LIVE** (`luac5.4 -p` on the embedded Lua; the workflows `apk add lua5.4` and hard-fail on a syntax error). It used to silently skip because the ps2dev image shipped no `luac`. It catches **SYNTAX only** — runtime nil-global / type / **load-order** errors stay invisible to CI, so still cold-boot test the build in PCSX2 (the `d4b04be` load-order boot brick was exactly such a case).
 
 ## Embedded Assets (adding / removing one)

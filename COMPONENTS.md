@@ -10,7 +10,7 @@ ELF via bin2c), embedded IOP IRX modules, and a BRAM child ELF-loader. Every
 technical claim below cites `path:line` against this worktree.
 
 > Scope note: this file documents what is actually present and wired in the
-> BETA-13-PLAY rolling state (the active branch; BETA-12-PLAY is frozen). Where a
+> `dev` rolling state (the active branch; BETA-12-PLAY is frozen). Where a
 > component is on disk but unused (dead or
 > dormant), that is called out explicitly rather than omitted. Several files an
 > external audit flagged for removal — the 3D render pipeline (commit a56441c),
@@ -449,7 +449,7 @@ copies are not read at runtime. Editing them requires a rebuild.
   next to `POPSLOADER.ELF` (compilation.yml:161) AND in `POPS/`
   (compilation.yml:171), both on the manifest's required-file list.
   See `STATE.md > CI / release`.
-- `.github/workflows/rolling-release.yml` — on push to **BETA-13-PLAY**
+- `.github/workflows/rolling-release.yml` — on push to **dev**
   (rolling-release.yml:6) and PR events: bundles the ELF + full git-tracked source
   and force-updates the `rolling-release` prerelease via the GitHub API. The
   redistributable `POPSTARTER.ELF` now ships at the ZIP ROOT next to

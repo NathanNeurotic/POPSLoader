@@ -726,7 +726,7 @@ Two build workflows duplicate most logic inline:
 - `compilation.yml` — runs on all branches/tags/PRs/dispatch; runs the now-LIVE
   embedded-Lua syntax gate (`luac5.4 -p`, see below), builds, and packages
   `POPSLOADER.zip` as an artifact (no GitHub release).
-- `rolling-release.yml` — runs on push to `BETA-13-PLAY` (the active rolling
+- `rolling-release.yml` — runs on push to `dev` (the active rolling
   branch; repiped from `BETA-12-PLAY`) and PR events; bundles the ELF + full
   git-tracked source and force-updates a single `rolling-release` prerelease via
   the GitHub API.
