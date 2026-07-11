@@ -37,6 +37,7 @@ The 2026-07-09 wave inserted code into the launch path and the HDD scan. Adaptiv
 - [ ] **Adaptive BDMA** (MMCE + USB): turn it on, launch an MMCE game then a USB game with no settings change between; both boot.
 - [ ] **Partition-installed games** (PSBBN/HDDOSD drive): the HDD (PFS) page lists `PP.` games by name and one launches.
 - [ ] **HDD-resident settings save + L3 hide / R3 reveal** on an HDD install: save a setting, reboot, it stuck.
+- [ ] **FifthFox review follow-ups (2026-07-10):** MX4SIO detects on the first page entry without needing an R1 rescan (retry budget was raised); the gamelist pages no longer show a top device-name label (e.g. no "USB" over the list); and per-game info text sits clear of the bottom button menu. Eyeball on NTSC (and PAL if available).
 
 ## Not blockers (documented pending; accept or delegate)
 
