@@ -140,6 +140,16 @@ static bool EnsureUsbMass()
 	if (!EnsureBDMFatFs()) {
 		return false;
 	}
+	// bdmfs_fatfs registers as the BDM filesystem provider; give it a moment to
+	// settle before usbmass_bd starts producing block devices. Loading usbmass_bd
+	// back-to-back races the not-yet-ready FS layer, so the first USB device connect
+	// can fail to mount and no mass: root ever appears ("No USB backend detected",
+	// deterministically, since usbmass_irx_loaded then latches and a menu rescan only
+	// re-queries devices -- it never reloads/re-settles the modules). wLaunchELF_R3Z
+	// (saildot4k's "all devices work" fork) does exactly this 1s settle here
+	// (waitForUsbMassBdmfsSettle / USB_MASS_BDMFS_SETTLE_MS=1000), and our ATA path
+	// already settles the same way after ata_bd. Mirror it for USB.
+	sleep(1);
 	if (!LoadIrxCheckedBuffer("usbmass_bd.irx", usbmass_bd_irx, size_usbmass_bd_irx, NULL, NULL)) {
 		return false;
 	}
