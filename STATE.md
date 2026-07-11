@@ -1,4 +1,4 @@
-Last updated: 2026-06-21 (BETA-13 rolling candidate; body reflects the 2026-06-20/21 input/nav + cover-art + overscan + HDD-scan-slot session on top of the 2026-06 HDD-RW take-over / PAL-512 / BDMA-folder work). Released line: **BETA-12** (2026-06-18; BETA-11 was 2026-06-15). Active dev branch is now **`BETA-13-PLAY`** (created off `BETA-12-PLAY`; **`BETA-12-PLAY` is frozen/archival**); `rolling-release.yml` publishes from `BETA-13-PLAY`. BETA-13 is the in-progress rolling candidate — **not yet cut**. Tip moves per push; see `git log`.
+Last updated: 2026-06-21 (BETA-13 rolling candidate; body reflects the 2026-06-20/21 input/nav + cover-art + overscan + HDD-scan-slot session on top of the 2026-06 HDD-RW take-over / PAL-512 / BDMA-folder work). Released line: **1.0.0** (2026-07-10; graduated from the BETA line: BETA-12 was 2026-06-18, BETA-11 2026-06-15). Active dev branch is now **`BETA-13-PLAY`** (created off `BETA-12-PLAY`; **`BETA-12-PLAY` is frozen/archival**); `rolling-release.yml` publishes from `BETA-13-PLAY`. **1.0.0** was cut from **`BETA-13-PLAY`** on 2026-07-10 (the BETA-13 candidate graduated to the 1.0.0 release). Tip moves per push; see `git log`.
 
 # STATE
 
@@ -191,7 +191,7 @@ Investigation artifacts archived under `docs/archive/`: `U10_INVESTIGATION.md`, 
 *(The old "`ps2hdd-osd.irx` → `ps2hdd.irx` driver swap probe" item is removed: HDD read-write was achieved instead via the `EnsureBootPartitionWritable` boot-partition remount take-over, and provato confirmed the HDD is RW-writable on hardware — the IRX swap is no longer the gating path.)*
 
 ## Verification Status
-- **BETA-12** is the public release (2026-06-18; BETA-11 2026-06-15). **`BETA-13-PLAY` is the active dev branch** and the rolling-publish source; **`BETA-12-PLAY` is frozen/archival**. BETA-13 is the in-progress rolling candidate (not yet cut). The branch tip moves per push (see `git log`) — code/build statements above are repository-verified around the current tip.
+- **1.0.0** is the public release (2026-07-10; previously BETA-12 2026-06-18, BETA-11 2026-06-15). It was cut from **`BETA-13-PLAY`**, which remains the rolling-publish source. The branch tip moves per push (see `git log`) — code/build statements above are repository-verified around the current tip.
 - The 2026-06 HDD/PAL/BDMA features are repository-verified and **boot on PCSX2**; provato confirmed the **HDD is RW-writable on real hardware**; the full feature flows are **still validating on hardware** and are **not** broadly hardware-confirmed.
 - Hardware behavior is `Unknown (verify on hardware)` unless explicitly recorded above (or in `QA_REGRESSION_MATRIX.md`) with a date.
 - See `QA_REGRESSION_MATRIX.md` for the full experiment chronology and `DECISIONS.md` for the decision log.
