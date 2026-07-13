@@ -4332,8 +4332,9 @@ end
 
 local function EncodeSettings()
   -- POPSTARTER_PATH: "" = Automatic. (The legacy PROFILE=/POPSTARTER_MODE=
-  -- keys are no longer written; old files carried an empty POPSTARTER_PATH in
-  -- PROFILE_DEFAULT mode, so they load as Automatic with no migration step.)
+  -- keys are no longer written; on load, an old file's PROFILE=N preset pick
+  -- is migrated into POPSTARTER_PATH -- see LoadSettingsNonFatal -- so the
+  -- first save after upgrading persists the migrated path and sheds the keys.)
   local lines = {
     "POPSTARTER_PATH="..tostring(PLDR.POPSTARTER_PATH or ""),
     "BDMA="..tostring(PLDR.BDMA_MODE_KEY or "FAT32"),
@@ -4593,6 +4594,28 @@ function PLDR.SaveSettingsAtomic()
   return ok
 end
 
+-- The old pops_profiles.lua preset paths, kept ONLY for the one-time legacy
+-- config migration in LoadSettingsNonFatal (see the POPSTARTER_PATH block
+-- there). Index 1 (the relative same-folder default) intentionally absent:
+-- it maps to Automatic.
+local LEGACY_PROFILE_PRESET_PATHS = {
+  [2]  = "hdd0:__common:pfs:/POPS/POPSTARTER.ELF",
+  [3]  = "hdd0:__common:pfs3:/POPS/POPSTARTER.ELF",
+  [4]  = "hdd0:__common:pfs1:/POPS/POPSTARTER.ELF",
+  [5]  = "hdd0:__common:pfs2:/POPS/POPSTARTER.ELF",
+  [6]  = "mass:/POPS/POPSTARTER.ELF",
+  [7]  = "mass0:/POPS/POPSTARTER.ELF",
+  [8]  = "mass1:/POPS/POPSTARTER.ELF",
+  [9]  = "mass2:/POPS/POPSTARTER.ELF",
+  [10] = "mx4sio:/POPS/POPSTARTER.ELF",
+  [11] = "mmce0:/POPS/POPSTARTER.ELF",
+  [12] = "mmce1:/POPS/POPSTARTER.ELF",
+  [13] = "mc0:/POPS/POPSTARTER.ELF",
+  [14] = "mc1:/POPS/POPSTARTER.ELF",
+  [15] = "mc1:/POPSTARTER/POPSTARTER.ELF",
+  [16] = "mc0:/POPSTARTER/POPSTARTER.ELF",
+}
+
 function PLDR.LoadSettingsNonFatal()
   -- NOTE: do NOT EnsurePopstarterDir() here. This runs while applying DEFAULTS, before the
   -- saved POPSTARTER_MC_FOLDER is parsed from the sidecar -- so the OFF guard couldn't see
@@ -4739,13 +4762,26 @@ function PLDR.LoadSettingsNonFatal()
   local overscan = string.match(data, "\nOVERSCAN=([^\n]+)") or string.match(data, "^OVERSCAN=([^\n]+)")
   local bdma_adaptive = string.match(data, "\nBDMA_ADAPTIVE=([^\n]+)") or string.match(data, "^BDMA_ADAPTIVE=([^\n]+)")
   local language = string.match(data, "\nLANGUAGE=([^\n]+)") or string.match(data, "^LANGUAGE=([^\n]+)")
-  -- POPSTARTER_PATH: empty/missing = Automatic. Legacy .pldrs are covered
-  -- with no migration step: their PROFILE=/POPSTARTER_MODE= keys are simply
-  -- ignored, PROFILE_DEFAULT files always persisted an empty POPSTARTER_PATH
-  -- (-> Automatic, whose ladder probes everything the presets pointed at),
-  -- and CUSTOM files persisted the actual path.
+  -- POPSTARTER_PATH: empty/missing = Automatic. Legacy .pldrs migration
+  -- (2026-07-13 profiles drop): old files persisted an EMPTY POPSTARTER_PATH
+  -- and carried the chosen preset only in PROFILE=N -- the old loader
+  -- materialized that preset's absolute path. The Automatic ladder does NOT
+  -- probe everything the presets pointed at (mc?:/POPS/ never; the
+  -- hdd0:__common presets only for HDD-policy launches), so an empty path +
+  -- legacy PROFILE=N (N>=2) loads as that preset's path here: it then behaves
+  -- as an explicit custom path -- tried first, ladder fall-through -- exactly
+  -- the old effective behavior (adversarial-review finding). PROFILE=1 was
+  -- the relative default -> Automatic. The legacy keys are never written
+  -- back: the next save persists the migrated path and drops them.
   if popstarter_path ~= nil then
     PLDR.POPSTARTER_PATH = tostring(popstarter_path)
+  end
+  if tostring(PLDR.POPSTARTER_PATH or "") == "" then
+    local legacy_profile = tonumber(string.match(data, "\nPROFILE=([^\n]+)") or string.match(data, "^PROFILE=([^\n]+)"))
+    local legacy_path = legacy_profile ~= nil and LEGACY_PROFILE_PRESET_PATHS[legacy_profile] or nil
+    if legacy_path ~= nil then
+      PLDR.POPSTARTER_PATH = legacy_path
+    end
   end
   if dkwdrv_path ~= nil and dkwdrv_path ~= "" then
     PLDR.DKWDRV_PATH = dkwdrv_path

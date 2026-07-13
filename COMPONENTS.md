@@ -214,7 +214,8 @@ copies are not read at runtime. Editing them requires a rebuild.
   carousel page auto-nav `page_to_opt` (MMCE=1/MX4SIO=2/EXFAT=3/ATA=3/HDD=4/USB=5/SMB=7).
 - Settings: `EncodeSettings` (**22 keys** + appended SMB block:
   POPSTARTER_PATH (`""` = Automatic; the legacy PROFILE/POPSTARTER_MODE keys are
-  no longer written and are ignored on load — profiles dropped 2026-07-13),
+  no longer written, and on load a legacy PROFILE=N pick migrates into
+  POPSTARTER_PATH — profiles dropped 2026-07-13),
   BDMA, BDMA_ADAPTIVE, DKWDRV_PATH, STRICT_HDD_PREEXEC_GATE,
   VIDEO_STANDARD, HIDE_TEXT, KEYBOARD_LAYOUT, LANGUAGE, BOOT_PAGE, MULTIDISC_COLLAPSE,
   GLOBAL_HIDE, POPSTARTER_MC_FOLDER, HIDDEN_DEVICES, SHOW_DETAILS, DETAILS_ALIGN,

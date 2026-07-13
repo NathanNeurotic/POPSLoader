@@ -89,7 +89,7 @@ The **Profile** row (Profile 1..16 presets) is gone. *Settings → POPSTARTER �
 - [ ] On **Automatic**, every device that launched before still launches (nothing to configure).
 - [ ] Set an explicit path → that build is used; set a **wrong/unplugged** path → the launch **still works** via the automatic order (no error unless nothing is found anywhere).
 - [ ] With **no** `POPSTARTER.ELF` anywhere, launching warns that none was found (instead of a silent failure).
-- [ ] If you had a **Profile** selected in an older build: after updating, launches still work (old profile picks fall back to Automatic — the automatic order probes the same locations the presets pointed at).
+- [ ] If you had a **Profile** selected in an older build: after updating, launches still work with zero setup — your preset choice is carried over into **POPSTARTER Path** automatically on first boot (check *Settings → POPSTARTER*: the old preset's path should be filled in; the default Profile 1 shows Automatic).
 - Report: a setup that launched before the update and stopped after it — include where your `POPSTARTER.ELF` files live.
 
 ### ⭐⭐ SMB (v1) network game browsing — NEW end-to-end, never run on hardware

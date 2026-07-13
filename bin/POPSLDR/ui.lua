@@ -4299,9 +4299,11 @@ UI = {
 
         AddSection("POPSTARTER")
         -- No Profile preset row anymore (R3Z3N: dropped the inherited profile
-        -- system): one user-defined path, empty = Automatic. The launch ladder
-        -- (custom -> game device -> launcher folder -> mc) covers everything the
-        -- 16 presets did, without ever showing a pfsN partition number.
+        -- system): one user-defined path, empty = Automatic (the launch ladder:
+        -- custom -> game device -> launcher folder -> mc), never showing a pfsN
+        -- partition number. A legacy config's PROFILE=N pick is migrated into
+        -- this path at load (system.lua LoadSettingsNonFatal) since the ladder
+        -- does not probe every old preset location.
         AddPath(
           "POPSTARTER Path",
           -- Full path (DrawRow tickers it when focused, middle-ellipsis otherwise).

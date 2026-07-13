@@ -575,9 +575,10 @@ On success `ExecPS2` never returns, short-circuiting the normal UI boot.
 `SELECTED_PROFILE`, and the `PROFILE_DEFAULT`/`CUSTOM` selection mode are gone.
 One value remains: `PLDR.POPSTARTER_PATH`. **Empty = Automatic** (the launch
 ladder below; the Settings row shows "Automatic"); a set path = step-1 custom
-with silent ladder fallback when it doesn't resolve. Legacy `.pldrs` need no
-migration: `PROFILE=`/`POPSTARTER_MODE=` are ignored on load, and
-`PROFILE_DEFAULT` files always persisted an empty `POPSTARTER_PATH=`.
+with silent ladder fallback when it doesn't resolve. Legacy `.pldrs` migrate
+on load: an empty path + `PROFILE=N` (N>=2) materializes that old preset's
+absolute path into `POPSTARTER_PATH` (the Automatic ladder doesn't probe
+every preset location); `PROFILE=1` lands on Automatic.
 
 #### Launch-time POPSTARTER.ELF resolution (per device)
 At launch, `PLDR.ResolveLaunchPopstarterPath` (`system.lua`) picks the actual
@@ -632,8 +633,8 @@ cover/details folder: `pops_art` default / `pops` / `art`), `HDD_FS` (`PFS` or
 `EXFAT`), `GAMELIST_CACHE`, `BOOT_SOUND`
 (default on; gates the splash ADPCM chime), `OVERSCAN` (CRT inset permille,
 default `0`; see the overscan note below), `SMB_MODULES`. The legacy
-`PROFILE=`/`POPSTARTER_MODE=` keys are no longer written and are ignored on
-load (2026-07-13). STATE.md is canonical for what each key means and its UI
+`PROFILE=`/`POPSTARTER_MODE=` keys are no longer written; on load a legacy
+`PROFILE=N` pick migrates into `POPSTARTER_PATH` (2026-07-13). STATE.md is canonical for what each key means and its UI
 surface.
 Location is the **per-device** sidecar `APP_DIR/.pldrs`, preferred for every
 device — **including HDD installs**, which now persist on the HDD boot partition
