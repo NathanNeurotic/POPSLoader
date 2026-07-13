@@ -2637,7 +2637,11 @@ PLDR.I18N = {
     ["POPSTARTER Path"] = "Chemin POPSTARTER",
     ["POPSTARTER folder deleted from the memory card"] = "Dossier POPSTARTER supprimé de la carte mémoire",
     ["POPSTARTER folder restored on the memory card\n(set a BDMA mode to re-add the exFAT/SMB modules)"] = "Dossier POPSTARTER restauré sur la carte mémoire\n(réglez un mode BDMA pour rajouter les modules exFAT/SMB)",
+    ["Keep"] = "Conserver",
+    ["No"] = "Non",
     ["Press CIRCLE again to discard what you typed"] = "Appuyez de nouveau sur CIRCLE pour effacer votre saisie",
+    ["Press CROSS again to discard what you typed"] = "Appuyez de nouveau sur CROSS pour effacer votre saisie",
+    ["Revert"] = "Rétablir",
     ["Profile"] = "Profil",
     ["Profile defaults restored"] = "Valeurs par défaut du profil restaurées",
     ["Rebuilding HDD game list..."] = "Reconstruction de la liste HDD...",
@@ -2689,9 +2693,6 @@ PLDR.I18N = {
     ["Video Standard"] = "Standard vidéo",
     ["Visible (manage)"] = "Visible (gérer)",
     ["Working..."] = "En cours...",
-    ["X = Keep      O = Revert"] = "X = Conserver      O = Rétablir",
-    ["X = Select      O = Cancel"] = "X = Sélectionner      O = Annuler",
-    ["X = Yes      O = No"] = "X = Oui      O = Non",
     ["Yes"] = "Oui",
     ["manually). Your POPSLoader settings are kept."] = "manuellement). Vos réglages POPSLoader sont conservés.",
     ["return until you turn this back On (or re-add them"] = "reviendront pas tant que vous ne réactivez pas (ou rajoutez",
@@ -2826,7 +2827,11 @@ PLDR.I18N = {
     ["POPSTARTER Path"] = "POPSTARTER-Pfad",
     ["POPSTARTER folder deleted from the memory card"] = "POPSTARTER-Ordner von der Memory Card gelöscht",
     ["POPSTARTER folder restored on the memory card\n(set a BDMA mode to re-add the exFAT/SMB modules)"] = "POPSTARTER-Ordner auf der Memory Card wiederhergestellt\n(BDMA-Modus setzen, um exFAT/SMB-Module wieder hinzuzufügen)",
+    ["Keep"] = "Behalten",
+    ["No"] = "Nein",
     ["Press CIRCLE again to discard what you typed"] = "CIRCLE erneut drücken, um Eingabe zu verwerfen",
+    ["Press CROSS again to discard what you typed"] = "CROSS erneut drücken, um Eingabe zu verwerfen",
+    ["Revert"] = "Zurücksetzen",
     ["Profile"] = "Profil",
     ["Profile defaults restored"] = "Profil-Standardwerte wiederhergestellt",
     ["Rebuilding HDD game list..."] = "HDD-Spieleliste wird neu erstellt...",
@@ -2879,9 +2884,6 @@ PLDR.I18N = {
     ["Visible"] = "Sichtbar",
     ["Visible (manage)"] = "Sichtbar (verwalten)",
     ["Working..."] = "Arbeite...",
-    ["X = Keep      O = Revert"] = "X = Behalten      O = Zurücksetzen",
-    ["X = Select      O = Cancel"] = "X = Auswählen      O = Abbrechen",
-    ["X = Yes      O = No"] = "X = Ja      O = Nein",
     ["Yes"] = "Ja",
     ["manually). Your POPSLoader settings are kept."] = "manuell). Deine POPSLoader-Einstellungen bleiben erhalten.",
     ["return until you turn this back On (or re-add them"] = "zurück, bis du dies wieder auf An stellst (oder sie neu",
@@ -3013,7 +3015,11 @@ PLDR.I18N = {
     ["POPSTARTER Path"] = "Caminho do POPSTARTER",
     ["POPSTARTER folder deleted from the memory card"] = "Pasta POPSTARTER excluída do cartão de memória",
     ["POPSTARTER folder restored on the memory card\n(set a BDMA mode to re-add the exFAT/SMB modules)"] = "Pasta POPSTARTER restaurada no cartão de memória\n(defina um modo BDMA para readicionar os módulos exFAT/SMB)",
+    ["Keep"] = "Manter",
+    ["No"] = "Não",
     ["Press CIRCLE again to discard what you typed"] = "Pressione CIRCLE novamente para descartar o que digitou",
+    ["Press CROSS again to discard what you typed"] = "Pressione CROSS novamente para descartar o que digitou",
+    ["Revert"] = "Reverter",
     ["Profile"] = "Perfil",
     ["Profile defaults restored"] = "Padrões do perfil restaurados",
     ["Rebuilding HDD game list..."] = "Reconstruindo lista de jogos do HDD...",
@@ -3066,9 +3072,6 @@ PLDR.I18N = {
     ["Visible"] = "Visível",
     ["Visible (manage)"] = "Visível (gerenciar)",
     ["Working..."] = "Trabalhando...",
-    ["X = Keep      O = Revert"] = "X = Manter      O = Reverter",
-    ["X = Select      O = Cancel"] = "X = Selecionar      O = Cancelar",
-    ["X = Yes      O = No"] = "X = Sim      O = Não",
     ["Yes"] = "Sim",
     ["manually). Your POPSLoader settings are kept."] = "manualmente). Suas configurações do POPSLoader são mantidas.",
     ["return until you turn this back On (or re-add them"] = "voltar até você ligar isso de novo (ou readicioná-los",
@@ -3206,7 +3209,11 @@ PLDR.I18N = {
     ["POPSTARTER Path"] = "Ruta de POPSTARTER",
     ["POPSTARTER folder deleted from the memory card"] = "Carpeta POPSTARTER eliminada de la tarjeta de memoria",
     ["POPSTARTER folder restored on the memory card\n(set a BDMA mode to re-add the exFAT/SMB modules)"] = "Carpeta POPSTARTER restaurada en la tarjeta de memoria\n(elige un modo BDMA para volver a añadir los módulos exFAT/SMB)",
+    ["Keep"] = "Mantener",
+    ["No"] = "No",
     ["Press CIRCLE again to discard what you typed"] = "Pulsa CIRCLE de nuevo para descartar lo escrito",
+    ["Press CROSS again to discard what you typed"] = "Pulsa CROSS de nuevo para descartar lo escrito",
+    ["Revert"] = "Revertir",
     ["Profile"] = "Perfil",
     ["Profile defaults restored"] = "Valores del perfil restaurados",
     ["Rebuilding HDD game list..."] = "Recreando lista de juegos HDD...",
@@ -3258,9 +3265,6 @@ PLDR.I18N = {
     ["Video Standard"] = "Estándar de vídeo",
     ["Visible (manage)"] = "Visible (gestionar)",
     ["Working..."] = "Trabajando...",
-    ["X = Keep      O = Revert"] = "X = Mantener      O = Revertir",
-    ["X = Select      O = Cancel"] = "X = Seleccionar      O = Cancelar",
-    ["X = Yes      O = No"] = "X = Sí      O = No",
     ["Yes"] = "Sí",
     ["manually). Your POPSLoader settings are kept."] = "manualmente). Tus ajustes de POPSLoader se conservan.",
     ["return until you turn this back On (or re-add them"] = "volverán hasta que lo actives de nuevo (o los vuelvas a añadir",
@@ -3393,7 +3397,11 @@ PLDR.I18N = {
     ["POPSTARTER Path"] = "Percorso POPSTARTER",
     ["POPSTARTER folder deleted from the memory card"] = "Cartella POPSTARTER eliminata dalla memory card",
     ["POPSTARTER folder restored on the memory card\n(set a BDMA mode to re-add the exFAT/SMB modules)"] = "Cartella POPSTARTER ripristinata sulla memory card\n(imposta una modalità BDMA per riaggiungere i moduli exFAT/SMB)",
+    ["Keep"] = "Mantieni",
+    ["No"] = "No",
     ["Press CIRCLE again to discard what you typed"] = "Premi di nuovo CIRCLE per scartare il testo digitato",
+    ["Press CROSS again to discard what you typed"] = "Premi di nuovo CROSS per scartare il testo digitato",
+    ["Revert"] = "Ripristina",
     ["Profile"] = "Profilo",
     ["Profile defaults restored"] = "Valori predefiniti profilo ripristinati",
     ["Rebuilding HDD game list..."] = "Ricreazione lista giochi HDD...",
@@ -3446,9 +3454,6 @@ PLDR.I18N = {
     ["Visible"] = "Visibile",
     ["Visible (manage)"] = "Visibile (gestisci)",
     ["Working..."] = "Elaborazione...",
-    ["X = Keep      O = Revert"] = "X = Mantieni      O = Ripristina",
-    ["X = Select      O = Cancel"] = "X = Seleziona      O = Annulla",
-    ["X = Yes      O = No"] = "X = Sì      O = No",
     ["Yes"] = "Sì",
     ["manually). Your POPSLoader settings are kept."] = "manualmente). Le impostazioni POPSLoader sono mantenute.",
     ["return until you turn this back On (or re-add them"] = "torneranno finché non riattivi (o li riaggiungi",
@@ -3801,6 +3806,23 @@ local function ReadWholeFile(path)
     return nil, "read failed"
   end
   return table.concat(chunks)
+end
+
+-- Console button convention from rom0:ROMVER (byte 5 = region letter, e.g.
+-- "0170JC20030325"): Japanese-ROM consoles use CIRCLE = confirm / CROSS =
+-- cancel (R3Z3N review). Probed ONCE here at boot -- the pad mapping
+-- (UI.Pad.Listen) and every footer/hint glyph follow PLDR.CONFIRM_CIRCLE via
+-- the UI.Confirm*/Back* helpers, so the whole UI flips together. rom0: is
+-- kernel-resident (no module load needed); any failure leaves the Western
+-- cross-confirm default.
+PLDR.ROMVER = nil
+PLDR.CONFIRM_CIRCLE = false
+do
+  local ok, data = pcall(ReadWholeFile, "rom0:ROMVER")
+  if ok and type(data) == "string" and string.len(data) >= 5 then
+    PLDR.ROMVER = string.match(data, "^%w+") or nil
+    PLDR.CONFIRM_CIRCLE = (string.sub(data, 5, 5) == "J")
+  end
 end
 
 -- Promote a fully-written temp file onto dest as safely as System.rename allows.

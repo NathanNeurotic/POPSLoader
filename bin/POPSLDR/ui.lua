@@ -605,6 +605,39 @@ UI = {
     ShouldHideAuxText = function (scene)
       return UI.HideTextMode and UI.IsHideToggleScene(scene or UI.CURSCENE)
     end;
+    -- Region-native confirm mapping (R3Z3N review): Japanese-ROM consoles
+    -- (rom0:ROMVER byte 5 == 'J' -> PLDR.CONFIRM_CIRCLE, probed at boot in
+    -- system.lua) use CIRCLE = confirm / CROSS = cancel; everywhere else the
+    -- reverse. Scenes consume abstract CONFIRM/BACK events, so the pad map in
+    -- UI.Pad.Listen plus these glyph helpers are the ONLY swap points: footer
+    -- icons, modal hints and blocking prompts all route through them.
+    ConfirmSwapped = function ()
+      return type(PLDR) == "table" and PLDR.CONFIRM_CIRCLE == true
+    end;
+    ConfirmGlyphKey = function ()  -- footer/IMG key of the CONFIRM button
+      return UI.ConfirmSwapped() and "circle" or "cross"
+    end;
+    BackGlyphKey = function ()
+      return UI.ConfirmSwapped() and "cross" or "circle"
+    end;
+    ConfirmGlyphLetter = function ()  -- text hints ("X: Confirm" style)
+      return UI.ConfirmSwapped() and "O" or "X"
+    end;
+    BackGlyphLetter = function ()
+      return UI.ConfirmSwapped() and "X" or "O"
+    end;
+    ConfirmPadMask = function ()  -- raw Pads.get bitmask of CONFIRM
+      return UI.ConfirmSwapped() and PAD_CIRCLE or PAD_CROSS
+    end;
+    BackPadMask = function ()
+      return UI.ConfirmSwapped() and PAD_CROSS or PAD_CIRCLE
+    end;
+    -- "X = Yes      O = No"-style line for the blocking prompts, composed from
+    -- word-level i18n keys so the glyph letters can swap per region.
+    PadHintPair = function (confirm_word, back_word)
+      return UI.ConfirmGlyphLetter().." = "..PLDR.L(confirm_word)
+        .."      "..UI.BackGlyphLetter().." = "..PLDR.L(back_word)
+    end;
     RequestScene = function (SCENE)
       if UI.Transition ~= nil and UI.Transition.Start ~= nil then
         if UI.Transition.active then
@@ -965,11 +998,14 @@ UI = {
       UI.Notif_queue.add(msg, sev)
     end;
     Footer = {
-      order = {"triangle", "circle", "cross", "square"};
-	      order_with_start = {"triangle", "circle", "cross", "start"};
-	      order_with_start_r2 = {"triangle", "circle", "cross", "square", "start"};
-	      order_settings_save = {"circle", "cross", "start", "select"};
-	      order_keyboard = {"circle", "cross", "square", "start"};
+      -- Legend orders use the semantic tokens "confirm"/"back" (resolved to the
+      -- region-native cross/circle glyph in ResolveLegend). Confirm always sits
+      -- FAR LEFT, back/exit at the right edge -- R3Z3N review.
+      order = {"confirm", "square", "back", "triangle"};
+      order_with_start = {"confirm", "start", "back", "triangle"};
+      order_with_start_r2 = {"confirm", "square", "start", "back", "triangle"};
+      order_settings_save = {"confirm", "start", "select", "back"};
+      order_keyboard = {"confirm", "square", "start", "back"};
 	      labels = {
 	        triangle = "Credits",
 	        circle_main = "Exit",
@@ -998,6 +1034,10 @@ UI = {
       ResolveLegend = function (opts)
         local order = opts.order or UI.Footer.order
         local order_id = opts.order_id or "default"
+        -- Callers still pass labels by SEMANTIC role: opts.circle = the
+        -- back/cancel action, opts.cross = the confirm action. Which physical
+        -- glyph carries each role follows the region-native mapping (constant
+        -- for the whole session, so the cache stays valid).
         local circle_label = opts.circle or UI.Footer.labels.circle_other
         local cross_label = opts.cross or UI.Footer.labels.cross_confirm
         local start_label = opts.start or UI.Footer.labels.start_profiles
@@ -1009,18 +1049,29 @@ UI = {
         if cached ~= nil then
           return cached.labels, cached.order
         end
+        local confirm_key = UI.ConfirmGlyphKey()
+        local back_key = UI.BackGlyphKey()
         local labels = {
           triangle = UI.Footer.labels.triangle,
-          circle = circle_label,
-          cross = cross_label,
+          [back_key] = circle_label,
+          [confirm_key] = cross_label,
           start = start_label,
           select = select_label
         }
         if square_label ~= nil then
           labels.square = square_label
         end
-        UI.Footer.legend_cache[key] = {labels = labels, order = order}
-        return labels, order
+        -- Translate the semantic order tokens to the physical glyph keys the
+        -- Draw loop indexes IMG[] with.
+        local physical = {}
+        for i = 1, #order do
+          local entry = order[i]
+          if entry == "confirm" then entry = confirm_key
+          elseif entry == "back" then entry = back_key end
+          physical[i] = entry
+        end
+        UI.Footer.legend_cache[key] = {labels = labels, order = physical}
+        return labels, physical
       end;
       Draw = function (labels, order)
         if UI.ShouldHideAuxText(UI.CURSCENE) then
@@ -1480,9 +1531,12 @@ UI = {
       menu_items = nil;
       menu_index = 1;
       -- One place builds every "X: Confirm    O: Cancel" hint line so the
-      -- glyph letters stay consistent across modals.
+      -- glyph letters stay consistent across modals AND follow the
+      -- region-native confirm mapping (confirm always listed first).
       ButtonHint = function (confirm_label, cancel_label)
-        return ("X: %s    O: %s"):format(confirm_label, cancel_label)
+        return ("%s: %s    %s: %s"):format(
+          UI.ConfirmGlyphLetter(), confirm_label,
+          UI.BackGlyphLetter(), cancel_label)
       end;
       OpenExit = function ()
         UI.Modal.active = true
@@ -2239,7 +2293,11 @@ UI = {
           else
             UI.PathEditor.discard_until = UI.PathEditor._NowMs() + 1500
             if type(UI.Notif_queue) == "table" then
-              UI.Notif_queue.add("Press CIRCLE again to discard what you typed", "warn")
+              -- Name whichever physical button is BACK on this console.
+              local msg = UI.ConfirmSwapped()
+                and "Press CROSS again to discard what you typed"
+                or "Press CIRCLE again to discard what you typed"
+              UI.Notif_queue.add(msg, "warn")
             end
           end
           return
@@ -5408,8 +5466,11 @@ UI = {
           emit(event)
         end
 
-        if (pressed & PAD_CROSS) ~= 0 then emit_action("CONFIRM") end
-        if (pressed & PAD_CIRCLE) ~= 0 then emit_action("BACK") end
+        -- Region-native mapping: on Japanese-ROM consoles CIRCLE confirms and
+        -- CROSS cancels (UI.ConfirmPadMask -- R3Z3N review). Every scene sees
+        -- only the abstract CONFIRM/BACK events, so this is the single flip.
+        if (pressed & UI.ConfirmPadMask()) ~= 0 then emit_action("CONFIRM") end
+        if (pressed & UI.BackPadMask()) ~= 0 then emit_action("BACK") end
         if (pressed & PAD_TRIANGLE) ~= 0 then emit_action("EXIT") end
         if (pressed & PAD_START) ~= 0 then emit("START") end
         if (pressed & PAD_SELECT) ~= 0 then emit("SELECT") end
@@ -5686,19 +5747,21 @@ function UI.ApplyVideoStandardFromRuntime(video_standard)
       req_mode, got_mode, free_vram, UI.SCR.X, UI.SCR.Y)
   end
 end
--- Generic blocking yes/no confirm (X = Yes, O = No). `lines` = array of text lines.
--- Frame-paced + button-release-gated like RunVideoModeConfirm; defaults to NO on a
--- ~30s timeout so a destructive prompt can never auto-confirm itself.
+-- Generic blocking yes/no confirm (confirm = Yes, back = No; glyphs follow the
+-- region-native mapping). `lines` = array of text lines. Frame-paced +
+-- button-release-gated like RunVideoModeConfirm; defaults to NO on a ~30s
+-- timeout so a destructive prompt can never auto-confirm itself.
 function UI.RunConfirm(lines)
   if type(Screen) ~= "table" or type(Screen.flip) ~= "function"
      or type(Pads) ~= "table" or type(Pads.get) ~= "function" then
     return false
   end
   if type(lines) ~= "table" then lines = { tostring(lines or "") } end
+  local yes_mask, no_mask = UI.ConfirmPadMask(), UI.BackPadMask()
   local settle = 0
   while settle < 30 do
     local okp, gp = pcall(Pads.get)
-    if settle >= 8 and okp and type(gp) == "number" and (gp & (PAD_CROSS | PAD_CIRCLE)) == 0 then break end
+    if settle >= 8 and okp and type(gp) == "number" and (gp & (yes_mask | no_mask)) == 0 then break end
     Screen.flip()
     settle = settle + 1
   end
@@ -5710,13 +5773,13 @@ function UI.RunConfirm(lines)
       Font.ftPrint(SFONT, UI.SCR.X_MID, y, 8, UI.SCR.X, 16, PLDR.L(tostring(lines[i] or "")), UI.CCOL.GREY)
       y = y + 22
     end
-    Font.ftPrint(BFONT, UI.SCR.X_MID, y + 16, 8, UI.SCR.X, 24, PLDR.L("X = Yes      O = No"), UI.CCOL.YELLOW)
+    Font.ftPrint(BFONT, UI.SCR.X_MID, y + 16, 8, UI.SCR.X, 24, UI.PadHintPair("Yes", "No"), UI.CCOL.YELLOW)
     Screen.flip()
     f = f + 1
     local okp, gp = pcall(Pads.get)
     if okp and type(gp) == "number" then
-      if (gp & PAD_CROSS) ~= 0 then return true end
-      if (gp & PAD_CIRCLE) ~= 0 then return false end
+      if (gp & yes_mask) ~= 0 then return true end
+      if (gp & no_mask) ~= 0 then return false end
     end
   end
   return false
@@ -5733,11 +5796,12 @@ function UI.RunSharePicker(shares)
   end
   if type(shares) ~= "table" or #shares == 0 then return nil end
   local sel, prev, MAXVIS = 1, 0, 10
+  local pick_mask, cancel_mask = UI.ConfirmPadMask(), UI.BackPadMask()
   local settle = 0
   while settle < 30 do
     local okp, gp = pcall(Pads.get)
     if settle >= 8 and okp and type(gp) == "number"
-       and (gp & (PAD_CROSS | PAD_CIRCLE | PAD_UP | PAD_DOWN)) == 0 then break end
+       and (gp & (pick_mask | cancel_mask | PAD_UP | PAD_DOWN)) == 0 then break end
     Screen.flip()
     settle = settle + 1
   end
@@ -5759,7 +5823,7 @@ function UI.RunSharePicker(shares)
       Font.ftPrint(SFONT, UI.SCR.X_MID, y, 8, UI.SCR.X, 16, label, is_sel and UI.CCOL.YELLOW or UI.CCOL.GREY)
       y = y + 22
     end
-    Font.ftPrint(BFONT, UI.SCR.X_MID, y + 14, 8, UI.SCR.X, 24, PLDR.L("X = Select      O = Cancel"), UI.CCOL.GREY)
+    Font.ftPrint(BFONT, UI.SCR.X_MID, y + 14, 8, UI.SCR.X, 24, UI.PadHintPair("Select", "Cancel"), UI.CCOL.GREY)
     Screen.flip()
     f = f + 1
     local okp, gp = pcall(Pads.get)
@@ -5768,8 +5832,8 @@ function UI.RunSharePicker(shares)
     prev = gp
     if (pressed & PAD_UP) ~= 0 then sel = (sel - 2) % #shares + 1 end
     if (pressed & PAD_DOWN) ~= 0 then sel = sel % #shares + 1 end
-    if (pressed & PAD_CROSS) ~= 0 then return shares[sel] end
-    if (pressed & PAD_CIRCLE) ~= 0 then return nil end
+    if (pressed & pick_mask) ~= 0 then return shares[sel] end
+    if (pressed & cancel_mask) ~= 0 then return nil end
   end
   return nil
 end
@@ -5891,12 +5955,14 @@ function UI.RunVideoModeConfirm(seconds)
   -- immune to that, and Screen.flip's vsync provides the pacing.
   local FPS = 60
   local total_frames = (tonumber(seconds) or 15) * FPS
-  -- Let the freshly-switched GS settle (>= ~0.5s), AND wait for the Save X/O to
-  -- release so a still-held button isn't read as an instant confirm/revert.
+  -- Let the freshly-switched GS settle (>= ~0.5s), AND wait for the Save
+  -- confirm/back buttons to release so a still-held button isn't read as an
+  -- instant confirm/revert.
+  local keep_mask, revert_mask = UI.ConfirmPadMask(), UI.BackPadMask()
   local settle = 0
   while settle < 90 do
     local okp, gp = pcall(Pads.get)
-    if settle >= 30 and okp and type(gp) == "number" and (gp & (PAD_CROSS | PAD_CIRCLE)) == 0 then break end
+    if settle >= 30 and okp and type(gp) == "number" and (gp & (keep_mask | revert_mask)) == 0 then break end
     Screen.flip()
     settle = settle + 1
   end
@@ -5905,14 +5971,14 @@ function UI.RunVideoModeConfirm(seconds)
     local remaining = math.max(0, math.ceil((total_frames - f) / FPS))
     Screen.clear(UI.SCR.BGCOL or Color.new(20, 30, 80))
     Font.ftPrint(LFONT, UI.SCR.X_MID, UI.SCR.Y_MID - 70, 8, UI.SCR.X, 32, "Keep this display mode?", UI.CCOL.YELLOW)
-    Font.ftPrint(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID, 8, UI.SCR.X, 24, "X = Keep      O = Revert", UI.CCOL.GREY)
+    Font.ftPrint(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID, 8, UI.SCR.X, 24, UI.PadHintPair("Keep", "Revert"), UI.CCOL.GREY)
     Font.ftPrint(SFONT, UI.SCR.X_MID, UI.SCR.Y_MID + 54, 8, UI.SCR.X, 16, "Reverting in "..tostring(remaining).."s if not confirmed", UI.CCOL.GREY)
     Screen.flip()
     f = f + 1
     local okp, gp = pcall(Pads.get)
     if okp and type(gp) == "number" then
-      if (gp & PAD_CROSS) ~= 0 then return true end
-      if (gp & PAD_CIRCLE) ~= 0 then return false end
+      if (gp & keep_mask) ~= 0 then return true end
+      if (gp & revert_mask) ~= 0 then return false end
     end
   end
   return false
