@@ -1977,25 +1977,30 @@ UI = {
       pressed_col = 0;
       pressed_until = 0;
       layout_key = "QWERTY";
+      -- Cycled by the Settings -> Startup -> Keyboard Layout row. The keyboard
+      -- itself no longer hosts a layout strip: it duplicated that setting and
+      -- ate a nav row (R3Z3N review, r3configurator model).
       layout_order = {"QWERTY", "DVORAK", "ABC", "AZERTY", "QWERTZ", "ABNT"};
+      -- Every layout: number row FIRST (r3configurator model -- R3Z3N review),
+      -- then the letter rows, then symbols, then the action rows.
       layouts = {
         -- AZERTY (French): letters in the AZERTY arrangement; digits/symbols kept
         -- consistent with QWERTY so path/credential entry is unchanged.
         AZERTY = {
+          {"0","1","2","3","4","5","6","7","8","9",":","_"},
           {"a","z","e","r","t","y","u","i","o","p"},
           {"q","s","d","f","g","h","j","k","l","m"},
           {"w","x","c","v","b","n",",",";",".","/"},
-          {"0","1","2","3","4","5","6","7","8","9",":","_"},
           {"-","?","!","&","\\","'","(",")","+","=","[","]"},
           {"SPACE","DEL","CLR"},
           {"BACK","DONE"}
         },
         -- QWERTZ (German): QWERTY with Y and Z swapped.
         QWERTZ = {
+          {"0","1","2","3","4","5","6","7","8","9",":","_"},
           {"q","w","e","r","t","z","u","i","o","p"},
           {"a","s","d","f","g","h","j","k","l",";"},
           {"y","x","c","v","b","n","m",",",".","/"},
-          {"0","1","2","3","4","5","6","7","8","9",":","_"},
           {"-","?","!","&","\\","'","(",")","+","=","[","]"},
           {"SPACE","DEL","CLR"},
           {"BACK","DONE"}
@@ -2004,37 +2009,37 @@ UI = {
         -- distinguishing ABNT keys (c-cedilla, accents) are non-ASCII and the OSK
         -- is single-char ASCII (see SHIFT_MAP note), so they are intentionally absent.
         ABNT = {
+          {"0","1","2","3","4","5","6","7","8","9",":","_"},
           {"q","w","e","r","t","y","u","i","o","p"},
           {"a","s","d","f","g","h","j","k","l",";"},
           {"z","x","c","v","b","n","m",",",".","/"},
-          {"0","1","2","3","4","5","6","7","8","9",":","_"},
           {"-","?","!","&","\\","'","(",")","+","=","[","]"},
           {"SPACE","DEL","CLR"},
           {"BACK","DONE"}
         },
         ABC = {
+          {"0","1","2","3","4","5","6","7","8","9"},
           {"a","b","c","d","e","f","g","h","i","j"},
           {"k","l","m","n","o","p","q","r","s","t"},
-          {"u","v","w","x","y","z","0","1","2","3"},
-          {"4","5","6","7","8","9",":","/",".","_"},
+          {"u","v","w","x","y","z",":","/",".","_"},
           {"-","?","!","&","\\","'","(",")",",",";","+"},
           {"=","[","]","SPACE","DEL","CLR"},
           {"BACK","DONE"}
         },
         QWERTY = {
+          {"0","1","2","3","4","5","6","7","8","9",":","_"},
           {"q","w","e","r","t","y","u","i","o","p"},
           {"a","s","d","f","g","h","j","k","l",";"},
           {"z","x","c","v","b","n","m",",",".","/"},
-          {"0","1","2","3","4","5","6","7","8","9",":","_"},
           {"-","?","!","&","\\","'","(",")","+","=","[","]"},
           {"SPACE","DEL","CLR"},
           {"BACK","DONE"}
         },
         DVORAK = {
+          {"0","1","2","3","4","5","6","7","8","9",":","_"},
           {"'",";",",",".","p","y","f","g","c","r","l"},
           {"a","o","e","u","i","d","h","t","n","s"},
           {"q","j","k","x","b","m","w","v","z","/"},
-          {"0","1","2","3","4","5","6","7","8","9",":","_"},
           {"-","?","!","&","\\","(",")","+","=","[","]"},
           {"SPACE","DEL","CLR"},
           {"BACK","DONE"}
@@ -2074,9 +2079,12 @@ UI = {
         UI.PathEditor.title = tostring(title or "Edit Path")
         UI.PathEditor.value = tostring(initial or "")
         UI.PathEditor.on_confirm = on_confirm
-        UI.PathEditor.row = 1
+        -- Start UPPERCASE with the cursor on the first LETTER row (row 2 --
+        -- row 1 is the number row), i.e. Q on QWERTY: r3configurator model,
+        -- R3Z3N review.
+        UI.PathEditor.row = 2
         UI.PathEditor.col = 1
-        UI.PathEditor.upper = false
+        UI.PathEditor.upper = true
         UI.PathEditor.cursor = string.len(UI.PathEditor.value or "")
         UI.PathEditor.pressed_row = 0
         UI.PathEditor.pressed_col = 0
@@ -2109,9 +2117,6 @@ UI = {
         return 0
       end;
       _RowSize = function (row)
-        if row == 0 then
-          return #UI.PathEditor.layout_order
-        end
         local rows = UI.PathEditor._CurrentRows()
         local r = rows[row]
         if r == nil then return 0 end
@@ -2133,9 +2138,6 @@ UI = {
         UI.PathEditor._ClampCursor()
       end;
       _CurrentKey = function ()
-        if UI.PathEditor.row == 0 then
-          return UI.PathEditor.layout_order[UI.PathEditor.col]
-        end
         local rows = UI.PathEditor._CurrentRows()
         local row = rows[UI.PathEditor.row]
         if row == nil then return nil end
@@ -2146,14 +2148,6 @@ UI = {
         if key == "BACK" or key == "DONE" then return 84 end
         if key == "DEL" or key == "CLR" then return 54 end
         return 38
-      end;
-      _LayoutButtonWidth = function (layout_key)
-        if layout_key == "QWERTY" then return 94 end
-        if layout_key == "DVORAK" then return 88 end
-        -- AZERTY / QWERTZ / ABNT mirror QWERTY's grid dimensions (same max row
-        -- length), so they use the QWERTY button width.
-        if layout_key == "AZERTY" or layout_key == "QWERTZ" or layout_key == "ABNT" then return 94 end
-        return 62
       end;
       _DisplayKey = function (key)
         if key == nil then return "" end
@@ -2166,25 +2160,6 @@ UI = {
           if shifted ~= nil then return shifted end
         end
         return key
-      end;
-      _SetLayout = function (layout_key)
-        local normalized = UI.PathEditor._NormalizeLayout(layout_key)
-        UI.PathEditor.layout_key = normalized
-        -- Dirty only on an ACTUAL change: pressing X on the already-active layout
-        -- button used to set ProfileDirty, lighting the Profile row and raising a
-        -- phantom unsaved-changes prompt for a session where nothing changed.
-        if UI.KeyboardLayoutDraft ~= normalized then
-          UI.KeyboardLayoutDraft = normalized
-          UI.ProfileDirty = true
-        end
-        local row_size = UI.PathEditor._RowSize(UI.PathEditor.row)
-        if row_size > 0 then
-          UI.PathEditor.col = CLAMP(UI.PathEditor.col, 1, row_size)
-        else
-          UI.PathEditor.row = 1
-          UI.PathEditor.col = 1
-        end
-        return normalized
       end;
       _BuildVisibleValue = function (max_chars)
         local raw = tostring(UI.PathEditor.value or "")
@@ -2253,14 +2228,6 @@ UI = {
         UI.PathEditor.pressed_until = UI.PathEditor._NowMs() + 160
       end;
       _FlashKey = function (target_key)
-        for c = 1, #UI.PathEditor.layout_order do
-          if UI.PathEditor.layout_order[c] == target_key then
-            UI.PathEditor.pressed_row = 0
-            UI.PathEditor.pressed_col = c
-            UI.PathEditor.pressed_until = UI.PathEditor._NowMs() + 160
-            return
-          end
-        end
         local rows = UI.PathEditor._CurrentRows()
         for r = 1, #rows do
           local row = rows[r]
@@ -2275,9 +2242,19 @@ UI = {
         end
       end;
       _IsPressed = function (row, col)
-        return UI.PathEditor.pressed_row == row
-          and UI.PathEditor.pressed_col == col
-          and UI.PathEditor._NowMs() <= (tonumber(UI.PathEditor.pressed_until) or 0)
+        if UI.PathEditor.pressed_row ~= row or UI.PathEditor.pressed_col ~= col then
+          return false
+        end
+        if UI.PathEditor._NowMs() <= (tonumber(UI.PathEditor.pressed_until) or 0) then
+          return true
+        end
+        -- Holding CONFIRM keeps the key visually pressed for the whole hold:
+        -- the fixed 160 ms stamp alone read as a timed blip that ended while
+        -- the button was still down (R3Z3N review). Only while the cursor is
+        -- still on the flashed key, so navigating away drops the highlight.
+        return UI.PathEditor.row == row and UI.PathEditor.col == col
+          and UI.Pad ~= nil and type(UI.Pad.GPAD) == "number"
+          and (UI.Pad.GPAD & UI.ConfirmPadMask()) ~= 0
       end;
       HandleInput = function ()
         if not UI.PathEditor.active then return end
@@ -2319,12 +2296,12 @@ UI = {
         local rows = UI.PathEditor._CurrentRows()
         local max_rows = #rows
         if UI.Pad.Events.NAV_UP then
-          UI.PathEditor.row = CLAMP(UI.PathEditor.row - 1, 0, max_rows)
+          UI.PathEditor.row = CLAMP(UI.PathEditor.row - 1, 1, max_rows)
           local row_size = UI.PathEditor._RowSize(UI.PathEditor.row)
           UI.PathEditor.col = CLAMP(UI.PathEditor.col, 1, row_size)
         end
         if UI.Pad.Events.NAV_DOWN then
-          UI.PathEditor.row = CLAMP(UI.PathEditor.row + 1, 0, max_rows)
+          UI.PathEditor.row = CLAMP(UI.PathEditor.row + 1, 1, max_rows)
           local row_size = UI.PathEditor._RowSize(UI.PathEditor.row)
           UI.PathEditor.col = CLAMP(UI.PathEditor.col, 1, row_size)
         end
@@ -2359,10 +2336,7 @@ UI = {
         if UI.Pad.Events.CONFIRM then
           UI.PathEditor._FlashCurrentKey()
           local key = UI.PathEditor._CurrentKey()
-          if UI.PathEditor.row == 0 then
-            UI.PathEditor._SetLayout(key)
-            return
-          elseif key == "SPACE" then
+          if key == "SPACE" then
             UI.PathEditor._InsertText(" ")
           elseif key == "DEL" then
             UI.PathEditor._DeleteChar()
@@ -2405,55 +2379,17 @@ UI = {
 
         Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 8, 8, UI.SCR.X, 16, PLDR.L(UI.PathEditor.title), UI.CCOL.YELLOW)
         Font.ftPrint(SFONT, input_x + 10, input_y + 10, 0, input_w - 20, 16, UI.PathEditor._BuildVisibleValue(46), Color.new(150, 205, 255, 128))
-        local mode_label = UI.PathEditor.upper and "Case/Symbols: UPPER  (R2)" or "Case/Symbols: lower  (R2)"
+        -- The label names the state R2 SWITCHES TO, not the current one
+        -- (R3Z3N: "tell people what you would change to, not what you are on").
+        local mode_label = UI.PathEditor.upper and "Case/Symbols: lower  (R2)" or "Case/Symbols: UPPER  (R2)"
         local info_label = mode_label.."   Cursor: L1 / R1"
         Font.ftPrint(SFONT, input_x + 2, input_y + input_h + 10, 0, input_w - 4, 16, info_label, UI.CCOL.GREY)
 
         local key_h = 24
         local key_gap = 6
-        local layout_h = 22
-        local layout_gap = 8
-        local layout_y = input_y + input_h + 30
-        local layout_w = 0
-        for i = 1, #UI.PathEditor.layout_order do
-          layout_w = layout_w + UI.PathEditor._LayoutButtonWidth(UI.PathEditor.layout_order[i])
-          if i < #UI.PathEditor.layout_order then
-            layout_w = layout_w + layout_gap
-          end
-        end
-        local layout_x = math.floor(box_x + ((box_w - layout_w) / 2))
-        local layout_cursor_x = layout_x
-        for i = 1, #UI.PathEditor.layout_order do
-          local layout_key = UI.PathEditor.layout_order[i]
-          local button_w = UI.PathEditor._LayoutButtonWidth(layout_key)
-          local selected = (UI.PathEditor.row == 0 and UI.PathEditor.col == i)
-          local active = (UI.PathEditor.layout_key == layout_key)
-          local pressed = UI.PathEditor._IsPressed(0, i)
-          local border = Color.new(40, 68, 110, 128)
-          local fill = Color.new(10, 16, 30, 128)
-          local text_color = UI.CCOL.GREY
-          if active then
-            border = Color.new(70, 126, 190, 128)
-            fill = Color.new(22, 44, 74, 128)
-            text_color = Color.new(168, 212, 255, 128)
-          end
-          if selected then
-            border = Color.new(90, 170, 255, 128)
-            fill = Color.new(30, 64, 118, 128)
-            text_color = Color.new(180, 220, 255, 128)
-          end
-          if pressed then
-            border = Color.new(120, 210, 255, 128)
-            fill = Color.new(54, 118, 180, 128)
-            text_color = Color.new(200, 230, 255, 128)
-          end
-          Graphics.drawRect(layout_cursor_x, layout_y, button_w, layout_h, border)
-          Graphics.drawRect(layout_cursor_x + 1, layout_y + 1, button_w - 2, layout_h - 2, fill)
-          Font.ftPrint(SFONT, Round(layout_cursor_x + (button_w / 2)), layout_y + 3, 8, button_w, 16, layout_key, text_color)
-          layout_cursor_x = layout_cursor_x + button_w + layout_gap
-        end
-
-        local start_y = layout_y + layout_h + 8
+        -- (The in-keyboard layout strip is gone -- the Settings page's Keyboard
+        -- Layout row is the one chooser. The grid starts where the strip sat.)
+        local start_y = input_y + input_h + 30
         local rows = UI.PathEditor._CurrentRows()
         for r = 1, #rows do
           local row = rows[r]
