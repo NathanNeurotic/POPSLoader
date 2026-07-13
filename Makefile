@@ -108,7 +108,7 @@ EMBEDDED_RSC = boot.o builtin_font.o \
 	asset_splash_logo_png.o asset_splash_appname_png.o asset_splash_credits_png.o asset_select_png.o \
 	asset_start_png.o asset_triangle_png.o asset_circle_png.o asset_cross_png.o asset_square_png.o \
 	asset_frame_png.o asset_cover_default_png.o asset_cover_missing_png.o $(OPTIONAL_EMBEDDED_RSC) \
-	asset_system_lua.o asset_ui_lua.o asset_images_lua.o asset_pops_profiles_lua.o asset_boot_adp.o \
+	asset_system_lua.o asset_ui_lua.o asset_images_lua.o asset_boot_adp.o \
 	asset_usbd_irx_usbexfat.o asset_usbhdfsd_irx_usbexfat.o asset_usbhdfsd_irx_mx4sio.o \
 	asset_usbd_irx_mmce.o asset_usbhdfsd_irx_mmce.o \
 	asset_usbd_irx_ata.o asset_usbhdfsd_irx_ata.o \
@@ -209,9 +209,6 @@ $(EE_ASM_DIR)asset_ui_lua.c: bin/POPSLDR/ui.lua tools/lua_minify.py | $(EE_ASM_D
 $(EE_ASM_DIR)asset_images_lua.c: bin/POPSLDR/images.lua tools/lua_minify.py | $(EE_ASM_DIR)
 	@if command -v python3 >/dev/null 2>&1; then python3 tools/lua_minify.py $< $(EE_ASM_DIR)images.min.lua; else cp $< $(EE_ASM_DIR)images.min.lua; fi
 	$(BIN2S) $(EE_ASM_DIR)images.min.lua $@ asset_images_lua
-$(EE_ASM_DIR)asset_pops_profiles_lua.c: bin/POPSLDR/pops_profiles.lua tools/lua_minify.py | $(EE_ASM_DIR)
-	@if command -v python3 >/dev/null 2>&1; then python3 tools/lua_minify.py $< $(EE_ASM_DIR)pops_profiles.min.lua; else cp $< $(EE_ASM_DIR)pops_profiles.min.lua; fi
-	$(BIN2S) $(EE_ASM_DIR)pops_profiles.min.lua $@ asset_pops_profiles_lua
 $(EE_ASM_DIR)asset_boot_adp.c: bin/POPSLDR/boot.adp | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_boot_adp
 

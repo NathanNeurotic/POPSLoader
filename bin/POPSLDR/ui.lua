@@ -808,7 +808,6 @@ UI = {
 	    VideoStandardDirty = false;
 	    ProfileDirty = false;
 	    PopPathDirty = false;
-	    PopPathProfileDefaultDirty = false;
 	    DkwdrvDirty = false;
     PopstarterPathDraft = nil;
     DkwdrvPathDraft = nil;
@@ -2553,9 +2552,7 @@ UI = {
         UI.VideoStandardDirty = false
         -- Entry snapshots so per-row dirty indicators + the BDMA/Video dirty flags
         -- compare against the state at entry (cycle-away-and-back = clean) instead
-        -- of set-on-touch; the Profile row's indicator also stops lighting up when
-        -- an UNRELATED row sets the aggregate UI.ProfileDirty flag.
-        UI.SettingsEntryProfile = (type(UI.ProfileQuery) == "table" and UI.ProfileQuery.curopt) or 1
+        -- of set-on-touch.
         UI.SettingsEntryBdmaModeIndex = UI.BdmaModeIndex or 1
         UI.SettingsEntryVideoStandardIndex = UI.VideoStandardIndex or 1
         UI.BootPageModes = {
@@ -3154,10 +3151,9 @@ UI = {
             UI.Notif_queue.add("No games found on this device", "warn")
             return
           end
+          -- Empty = Automatic (no user-defined path): the launch resolver walks
+          -- the device/cwd/mc ladder on its own (profiles dropped -- R3Z3N).
           local configured_popstarter_path = tostring(PLDR.POPSTARTER_PATH or "")
-          if type(PLDR.GetEffectiveConfiguredPopstarterPath) == "function" then
-            configured_popstarter_path = tostring(PLDR.GetEffectiveConfiguredPopstarterPath(PLDR.POPSTARTER_PATH, PLDR.SELECTED_PROFILE) or configured_popstarter_path)
-          end
           local popstarter_path = configured_popstarter_path
           if type(PLDR.ResolveLaunchPopstarterPath) == "function" then
             popstarter_path = PLDR.ResolveLaunchPopstarterPath(PLDR.GAMEPATH, configured_popstarter_path)
@@ -3171,9 +3167,17 @@ UI = {
             popstarter_ok = doesFileExist(popstarter_path)
           end
           if not popstarter_ok then
-            local message = "No POPSTARTER found at this path\n"..configured_popstarter_path
-            if configured_popstarter_path ~= tostring(popstarter_path) then
-              message = message.."\nResolved: "..tostring(popstarter_path)
+            -- The only user-facing POPSTARTER warning by design: a set-but-stale
+            -- custom path falls through the ladder SILENTLY; only "nothing found
+            -- anywhere" warns (R3Z3N).
+            local message
+            if configured_popstarter_path == "" then
+              message = "No POPSTARTER.ELF found\nchecked the game device, the launcher folder and mc0:/mc1:"
+            else
+              message = "No POPSTARTER found at this path\n"..configured_popstarter_path
+              if configured_popstarter_path ~= tostring(popstarter_path) then
+                message = message.."\nResolved: "..tostring(popstarter_path)
+              end
             end
             UI.Notif_queue.add(message, "error")
             return
@@ -3445,10 +3449,8 @@ UI = {
     };
     ProfileQuery = {
       lastopt = 1;
-      curopt = 1;
       Play = function ()
         local layout = UI.LAYOUT
-        local profcnt = #PLDR.PROFILES
         Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, PLDR.L("Settings"), UI.CCOL.GREY)
 
         -- OPL-style focused-list Settings page.
@@ -3540,7 +3542,6 @@ UI = {
           UI.ProfileDirty = false
           UI.BdmaDirty = false
           UI.PopPathDirty = false
-          UI.PopPathProfileDefaultDirty = false
           UI.DkwdrvDirty = false
           UI.VideoStandardDirty = false
         end
@@ -3575,16 +3576,8 @@ UI = {
             PLDR._bdma_apply_seq = (tonumber(PLDR._bdma_apply_seq) or 0) + 1
             save_token = "bdma:"..tostring(PLDR._bdma_apply_seq)
           end
-          local profile_index = CLAMP(UI.ProfileQuery.curopt, 1, #PLDR.PROFILES)
+          -- Empty = Automatic (profiles dropped -- R3Z3N): persists as-is.
           local pop_path = tostring(UI.PopstarterPathDraft or PLDR.POPSTARTER_PATH or "")
-          local popstarter_mode = nil
-          if UI.PopPathDirty == true then
-            popstarter_mode = "CUSTOM"
-          elseif UI.PopPathProfileDefaultDirty == true then
-            popstarter_mode = "PROFILE_DEFAULT"
-          elseif type(PLDR.GetEffectiveConfiguredPopstarterPath) == "function" then
-            pop_path = tostring(PLDR.GetEffectiveConfiguredPopstarterPath(pop_path, profile_index) or pop_path)
-          end
           local dkwdrv_path = tostring(UI.DkwdrvPathDraft or PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
           local mode_entry = UI.BdmaModes[UI.BdmaModeIndex] or UI.BdmaModes[1]
           local mode_key = mode_entry and mode_entry.key or "FAT32"
@@ -3613,9 +3606,7 @@ UI = {
           local ok_run, result, reason = xpcall(function()
             if type(PLDR.CommitSettingsChanges) == "function" then
               return PLDR.CommitSettingsChanges({
-                profile = profile_index,
                 popstarter_path = pop_path,
-                popstarter_mode = popstarter_mode,
                 dkwdrv_path = dkwdrv_path,
                 bdma_mode = mode_key,
                 video_standard = video_key,
@@ -3645,10 +3636,6 @@ UI = {
               })
             end
 
-            PLDR.SELECTED_PROFILE = profile_index
-            if popstarter_mode ~= nil then
-              PLDR.POPSTARTER_SELECTION_MODE = popstarter_mode
-            end
             PLDR.POPSTARTER_PATH = pop_path
             PLDR.DKWDRV_PATH = dkwdrv_path
             PLDR.BDMA_MODE_KEY = mode_key
@@ -3702,7 +3689,6 @@ UI = {
             UI.ProfileDirty = false
             UI.BdmaDirty = false
             UI.PopPathDirty = false
-            UI.PopPathProfileDefaultDirty = false
             UI.DkwdrvDirty = false
             UI.VideoStandardDirty = false
             UI.SmbDirty = false
@@ -3762,7 +3748,6 @@ UI = {
               UI.ProfileDirty = false
               UI.BdmaDirty = false
               UI.PopPathDirty = false
-              UI.PopPathProfileDefaultDirty = false
               UI.DkwdrvDirty = false
               UI.VideoStandardDirty = false
               UI.SmbDirty = false
@@ -3774,19 +3759,6 @@ UI = {
         end
 
         -- Field-specific helpers (used by item callbacks below).
-        local function CycleProfile(delta)
-          local next_opt = CycleIndex(UI.ProfileQuery.curopt, delta, profcnt)
-          if next_opt ~= UI.ProfileQuery.curopt then
-            UI.ProfileQuery.curopt = next_opt
-            if not UI.PopPathDirty then
-              local profile = PLDR.PROFILES[UI.ProfileQuery.curopt]
-              UI.PopstarterPathDraft = tostring((profile and profile.ELF) or UI.PopstarterPathDraft or "")
-              UI.PopPathProfileDefaultDirty = true
-            end
-            UI.ProfileDirty = true
-          end
-        end
-
         local keyboard_layouts = (UI.PathEditor and UI.PathEditor.layout_order) or {"QWERTY", "DVORAK", "ABC"}
         local function CurrentKeyboardLayoutIndex()
           local key = string.upper(tostring(UI.KeyboardLayoutDraft or "QWERTY"))
@@ -3825,17 +3797,10 @@ UI = {
         end
 
         local function ResetDefaults()
-          local default_profile = tonumber(PLDR.DEFAULT_PROFILE) or 1
-          local next_default = CLAMP(default_profile, 1, profcnt)
-          if next_default ~= UI.ProfileQuery.curopt then
-            UI.ProfileQuery.curopt = next_default
-            UI.ProfileDirty = true
-          end
-          local default_entry = PLDR.PROFILES[next_default]
-          if default_entry ~= nil then
-            UI.PopstarterPathDraft = tostring(default_entry.ELF or UI.PopstarterPathDraft or "")
-            UI.PopPathDirty = false
-            UI.PopPathProfileDefaultDirty = true
+          -- POPSTARTER path default = "" (Automatic ladder; profiles dropped).
+          if tostring(UI.PopstarterPathDraft or "") ~= "" then
+            UI.PopstarterPathDraft = ""
+            UI.PopPathDirty = true
             UI.ProfileDirty = true
           end
           local default_dkw = tostring(PLDR.DKWDRV_DEFAULT_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
@@ -3948,7 +3913,7 @@ UI = {
             UI.SmbModulesDirty = true
             UI.ProfileDirty = true
           end
-          UI.Notif_queue.add("Profile defaults restored", "ok")
+          UI.Notif_queue.add("Defaults restored", "ok")
         end
 
         -- Trim the raw keyboard buffer (the OSK's SPACE key makes invisible
@@ -3972,9 +3937,9 @@ UI = {
 
         local function OpenPopstarterPathEditor()
           UI.PathEditor.Open("Edit POPStarter Path", UI.PopstarterPathDraft or "", function(path)
+            -- Committing an EMPTY value is meaningful: it selects Automatic.
             UI.PopstarterPathDraft = TrimAndProbePathDraft(path)
             UI.PopPathDirty = true
-            UI.PopPathProfileDefaultDirty = false
             UI.ProfileDirty = true
           end)
         end
@@ -4333,22 +4298,20 @@ UI = {
         end
 
         AddSection("POPSTARTER")
-        AddCycle(
-          "Profile",
-          function() return "Profile "..tostring(UI.ProfileQuery.curopt) end,
-          function() CycleProfile(-1) end,
-          function() CycleProfile( 1) end,
-          -- Own-value comparison, NOT the aggregate UI.ProfileDirty: that flag is
-          -- set by many unrelated rows (video, device hide, path edits), which
-          -- misleadingly lit THIS row. The aggregate still drives the save prompt.
-          function() return (UI.ProfileQuery.curopt or 1) ~= (UI.SettingsEntryProfile or 1) end
-        )
+        -- No Profile preset row anymore (R3Z3N: dropped the inherited profile
+        -- system): one user-defined path, empty = Automatic. The launch ladder
+        -- (custom -> game device -> launcher folder -> mc) covers everything the
+        -- 16 presets did, without ever showing a pfsN partition number.
         AddPath(
           "POPSTARTER Path",
           -- Full path (DrawRow tickers it when focused, middle-ellipsis otherwise).
-          function() return tostring(UI.PopstarterPathDraft or PLDR.POPSTARTER_PATH or "") end,
+          function()
+            local p = tostring(UI.PopstarterPathDraft or PLDR.POPSTARTER_PATH or "")
+            if p == "" or string.lower(p) == "popstarter.elf" then return "Automatic" end
+            return p
+          end,
           OpenPopstarterPathEditor,
-          function() return UI.PopPathDirty == true or UI.PopPathProfileDefaultDirty == true end
+          function() return UI.PopPathDirty == true end
         )
         AddPath(
           "DKWDRV Path",
@@ -4363,7 +4326,6 @@ UI = {
           return UI.ProfileDirty == true
             or UI.BdmaDirty == true
             or UI.PopPathDirty == true
-            or UI.PopPathProfileDefaultDirty == true
             or UI.DkwdrvDirty == true
             or UI.VideoStandardDirty == true
             or HideTextDirty()
@@ -6043,11 +6005,7 @@ function UI.ToggleSmbModulesDraft()
 end
 
 function UI.SyncSettingsDraftFromRuntime()
-  if type(PLDR) == "table" and type(PLDR.GetEffectiveConfiguredPopstarterPath) == "function" then
-    UI.PopstarterPathDraft = tostring(PLDR.GetEffectiveConfiguredPopstarterPath(PLDR.POPSTARTER_PATH, PLDR.SELECTED_PROFILE) or "")
-  else
-    UI.PopstarterPathDraft = tostring(PLDR.POPSTARTER_PATH or "")
-  end
+  UI.PopstarterPathDraft = tostring(PLDR.POPSTARTER_PATH or "")
   UI.DkwdrvPathDraft = tostring(PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
   if type(PLDR) == "table" and type(PLDR.NormalizeKeyboardLayout) == "function" then
     UI.KeyboardLayoutDraft = PLDR.NormalizeKeyboardLayout(PLDR.KEYBOARD_LAYOUT)
@@ -6060,7 +6018,6 @@ function UI.SyncSettingsDraftFromRuntime()
     UI.LanguageDraft = tostring(PLDR.LANGUAGE or "EN")
   end
   UI.PopPathDirty = false
-  UI.PopPathProfileDefaultDirty = false
   UI.DkwdrvDirty = false
   UI.VideoStandardDirty = false
   if type(PLDR) == "table" and type(PLDR.SmbCopy) == "function" then
@@ -6087,8 +6044,6 @@ function UI.SyncSettingsSelectionFromRuntime()
   if type(UI.ApplyVideoStandardFromRuntime) == "function" then
     UI.ApplyVideoStandardFromRuntime(PLDR.VIDEO_STANDARD)
   end
-  local selected_profile = tonumber(PLDR.SELECTED_PROFILE) or tonumber(PLDR.DEFAULT_PROFILE) or 1
-  UI.ProfileQuery.curopt = CLAMP(selected_profile, 1, #PLDR.PROFILES)
 end
 UI.SyncSettingsDraftFromRuntime()
 UI.SyncSettingsSelectionFromRuntime()

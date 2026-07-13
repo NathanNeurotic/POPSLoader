@@ -7,7 +7,6 @@
 
   POPSLoader Main script. dont touch unless you know what youre doing
   to do cosmetic changes, please check the `ui.lua` and `images.lua` files
-  to add custom popstarter profiles check `pops_profiles.lua`
 
   Licensed under GNU General public license v3.0
 --]]
@@ -656,80 +655,11 @@ local function BuildPartitionScopedExecInfo(path, authoritative_partition_contex
   }
 end
 
-local function GetProfilePopstarterPath(profile)
-  local index = tonumber(profile)
-  if index == nil or type(PLDR.PROFILES) ~= "table" or PLDR.PROFILES[index] == nil then
-    return ""
-  end
-  return tostring(PLDR.PROFILES[index].ELF or "")
-end
-
-local POPSTARTER_MODE_PROFILE_DEFAULT = "PROFILE_DEFAULT"
-local POPSTARTER_MODE_CUSTOM = "CUSTOM"
-
-local function NormalizePopstarterSelectionMode(mode)
-  local normalized = string.upper(tostring(mode or ""))
-  if normalized == POPSTARTER_MODE_PROFILE_DEFAULT then
-    return POPSTARTER_MODE_PROFILE_DEFAULT
-  end
-  return POPSTARTER_MODE_CUSTOM
-end
-
-local function NormalizeSelectedProfilePopstarterPath(profile, path, mode)
-  local selected_profile_path = GetProfilePopstarterPath(profile)
-  local configured_path = tostring(path or "")
-  local selected_mode = NormalizePopstarterSelectionMode(mode or PLDR.POPSTARTER_SELECTION_MODE)
-
-  if selected_mode == POPSTARTER_MODE_PROFILE_DEFAULT then
-    if selected_profile_path ~= "" then
-      return selected_profile_path
-    end
-    return configured_path
-  end
-
-  if configured_path == "" then
-    return ""
-  end
-
-  return configured_path
-end
-
-local function GetPopstarterStorageBackend(path)
-  local candidate = string.lower(tostring(path or ""))
-  if string.match(candidate, "^hdd%d:") ~= nil or string.match(candidate, "^pfs%d*:/") ~= nil then
-    return "HDD"
-  end
-  if candidate == "" then
-    return "UNKNOWN"
-  end
-  return "NON_HDD"
-end
-
-local function ResolveProfilePopstarterSelection(profile, selected_path, persisted_path, mode)
-  local selected_mode = NormalizePopstarterSelectionMode(mode)
-  local normalized_selected = NormalizeSelectedProfilePopstarterPath(profile, selected_path, selected_mode)
-  local normalized_persisted = NormalizeSelectedProfilePopstarterPath(profile, persisted_path, selected_mode)
-  local selected_backend = GetPopstarterStorageBackend(normalized_selected)
-  local persisted_backend = GetPopstarterStorageBackend(normalized_persisted)
-  local rule = "persisted_wins"
-  local effective = normalized_persisted
-
-  if normalized_persisted == "" then
-    rule = "selected_wins_missing_persisted"
-    effective = normalized_selected
-  end
-
-  effective = NormalizeSelectedProfilePopstarterPath(profile, effective, selected_mode)
-  return {
-    effective_path = effective,
-    normalized_selected_path = normalized_selected,
-    normalized_persisted_path = normalized_persisted,
-    selected_backend = selected_backend,
-    persisted_backend = persisted_backend,
-    rule = rule,
-    mode = selected_mode
-  }
-end
+-- (The profile-preset system -- pops_profiles.lua, PROFILE=/POPSTARTER_MODE=
+-- config keys, SELECTED_PROFILE -- was dropped per R3Z3N's review. One value
+-- remains: PLDR.POPSTARTER_PATH. Empty = Automatic, i.e. the launch ladder in
+-- ResolveLaunchPopstarterPath; non-empty = the user's path, tried first with
+-- silent ladder fallback when it doesn't resolve.)
 
 local function NormalizeHddHelperSlot(slot)
   local normalized = tonumber(slot)
@@ -1888,11 +1818,6 @@ function PLDR.ResolveLaunchPopstarterPath(gamelocation, configured_path, policy_
   return ResolvePopstarterPath(configured_path)
 end
 
-function PLDR.GetEffectiveConfiguredPopstarterPath(path, profile)
-  local selected_profile = tonumber(profile) or tonumber(PLDR.SELECTED_PROFILE) or tonumber(PLDR.DEFAULT_PROFILE) or 1
-  return NormalizeSelectedProfilePopstarterPath(selected_profile, path or PLDR.POPSTARTER_PATH, PLDR.POPSTARTER_SELECTION_MODE)
-end
-
 function PLDR.ResolveHddReadablePath(path)
   return ResolveHddReadablePath(path)
 end
@@ -2162,12 +2087,11 @@ end
 local pldr_defaults = {
   REBOOT_IOP_WHILE_LOADING_POPSTARTER = 0;
   STRICT_HDD_PREEXEC_GATE = false;
-  POPSTARTER_PATH = "POPSTARTER.ELF";
-  POPSTARTER_SELECTION_MODE = POPSTARTER_MODE_PROFILE_DEFAULT;
+  -- "" = Automatic POPSTARTER resolution (the ladder); a path = custom-first.
+  POPSTARTER_PATH = "";
   GAMEPATH = ".";
   GAMES = {};
   HDDCACHE = nil;
-  PROFILES = {};
   HDD = {
     -- Cross-boot HDD disk cache: RE-ENABLED 2026-06-19 with a plain-text, loadfile-
     -- FREE reader (the old .lua cache used loadfile, which is NIL in the embedded
@@ -2642,8 +2566,6 @@ PLDR.I18N = {
     ["Press CIRCLE again to discard what you typed"] = "Appuyez de nouveau sur CIRCLE pour effacer votre saisie",
     ["Press CROSS again to discard what you typed"] = "Appuyez de nouveau sur CROSS pour effacer votre saisie",
     ["Revert"] = "Rétablir",
-    ["Profile"] = "Profil",
-    ["Profile defaults restored"] = "Valeurs par défaut du profil restaurées",
     ["Rebuilding HDD game list..."] = "Reconstruction de la liste HDD...",
     ["Refreshing HDD list..."] = "Actualisation de la liste HDD...",
     ["Refreshing list..."] = "Actualisation de la liste...",
@@ -2679,6 +2601,8 @@ PLDR.I18N = {
     ["Select a share"] = "Sélectionnez un partage",
     ["Server refused SMBv1\nenable SMBv1 support on the host"] = "Le serveur a refusé SMBv1\nactivez la prise en charge SMBv1 sur l'hôte",
     ["Settings"] = "Réglages",
+    ["Automatic"] = "Automatique",
+    ["Defaults restored"] = "Valeurs par défaut restaurées",
     ["Share not found\ncheck the Share name (host must allow SMB1)"] = "Partage introuvable\nvérifiez le nom du partage (l'hôte doit autoriser SMB1)",
     ["Show all discs"] = "Afficher tous les disques",
     ["Showing hidden games (dimmed) -- press L3 to unhide"] = "Jeux masqués affichés (grisés) -- L3 pour démasquer",
@@ -2832,8 +2756,6 @@ PLDR.I18N = {
     ["Press CIRCLE again to discard what you typed"] = "CIRCLE erneut drücken, um Eingabe zu verwerfen",
     ["Press CROSS again to discard what you typed"] = "CROSS erneut drücken, um Eingabe zu verwerfen",
     ["Revert"] = "Zurücksetzen",
-    ["Profile"] = "Profil",
-    ["Profile defaults restored"] = "Profil-Standardwerte wiederhergestellt",
     ["Rebuilding HDD game list..."] = "HDD-Spieleliste wird neu erstellt...",
     ["Refreshing HDD list..."] = "HDD-Liste wird aktualisiert...",
     ["Refreshing list..."] = "Liste wird aktualisiert...",
@@ -2869,6 +2791,8 @@ PLDR.I18N = {
     ["Select a share"] = "Freigabe auswählen",
     ["Server refused SMBv1\nenable SMBv1 support on the host"] = "Server hat SMBv1 abgelehnt\nSMBv1-Unterstützung am Host aktivieren",
     ["Settings"] = "Einstellungen",
+    ["Automatic"] = "Automatisch",
+    ["Defaults restored"] = "Standardwerte wiederhergestellt",
     ["Share not found\ncheck the Share name (host must allow SMB1)"] = "Freigabe nicht gefunden\nFreigabename prüfen (Host muss SMB1 erlauben)",
     ["Show all discs"] = "Alle Discs anzeigen",
     ["Showing hidden games (dimmed) -- press L3 to unhide"] = "Zeige ausgeblendete Spiele (gedimmt) -- L3 zum Einblenden",
@@ -3020,8 +2944,6 @@ PLDR.I18N = {
     ["Press CIRCLE again to discard what you typed"] = "Pressione CIRCLE novamente para descartar o que digitou",
     ["Press CROSS again to discard what you typed"] = "Pressione CROSS novamente para descartar o que digitou",
     ["Revert"] = "Reverter",
-    ["Profile"] = "Perfil",
-    ["Profile defaults restored"] = "Padrões do perfil restaurados",
     ["Rebuilding HDD game list..."] = "Reconstruindo lista de jogos do HDD...",
     ["Refreshing HDD list..."] = "Atualizando lista do HDD...",
     ["Refreshing list..."] = "Atualizando lista...",
@@ -3057,6 +2979,8 @@ PLDR.I18N = {
     ["Select a share"] = "Selecione um share",
     ["Server refused SMBv1\nenable SMBv1 support on the host"] = "Servidor recusou SMBv1\native o suporte a SMBv1 no host",
     ["Settings"] = "Configurações",
+    ["Automatic"] = "Automático",
+    ["Defaults restored"] = "Padrões restaurados",
     ["Share not found\ncheck the Share name (host must allow SMB1)"] = "Share não encontrado\nverifique o nome do Share (host deve permitir SMB1)",
     ["Show all discs"] = "Mostrar todos os discos",
     ["Showing hidden games (dimmed) -- press L3 to unhide"] = "Mostrando jogos ocultos (esmaecidos) -- pressione L3 para reexibir",
@@ -3214,8 +3138,6 @@ PLDR.I18N = {
     ["Press CIRCLE again to discard what you typed"] = "Pulsa CIRCLE de nuevo para descartar lo escrito",
     ["Press CROSS again to discard what you typed"] = "Pulsa CROSS de nuevo para descartar lo escrito",
     ["Revert"] = "Revertir",
-    ["Profile"] = "Perfil",
-    ["Profile defaults restored"] = "Valores del perfil restaurados",
     ["Rebuilding HDD game list..."] = "Recreando lista de juegos HDD...",
     ["Refreshing HDD list..."] = "Actualizando lista HDD...",
     ["Refreshing list..."] = "Actualizando lista...",
@@ -3251,6 +3173,8 @@ PLDR.I18N = {
     ["Select a share"] = "Selecciona un recurso",
     ["Server refused SMBv1\nenable SMBv1 support on the host"] = "El servidor rechazó SMBv1\nactiva la compatibilidad con SMBv1 en el host",
     ["Settings"] = "Ajustes",
+    ["Automatic"] = "Automático",
+    ["Defaults restored"] = "Valores predeterminados restaurados",
     ["Share not found\ncheck the Share name (host must allow SMB1)"] = "Recurso no encontrado\nrevisa el nombre del recurso (el host debe permitir SMB1)",
     ["Show all discs"] = "Mostrar todos los discos",
     ["Showing hidden games (dimmed) -- press L3 to unhide"] = "Mostrando juegos ocultos (atenuados) -- pulsa L3 para mostrarlos",
@@ -3402,8 +3326,6 @@ PLDR.I18N = {
     ["Press CIRCLE again to discard what you typed"] = "Premi di nuovo CIRCLE per scartare il testo digitato",
     ["Press CROSS again to discard what you typed"] = "Premi di nuovo CROSS per scartare il testo digitato",
     ["Revert"] = "Ripristina",
-    ["Profile"] = "Profilo",
-    ["Profile defaults restored"] = "Valori predefiniti profilo ripristinati",
     ["Rebuilding HDD game list..."] = "Ricreazione lista giochi HDD...",
     ["Refreshing HDD list..."] = "Aggiornamento lista HDD...",
     ["Refreshing list..."] = "Aggiornamento lista...",
@@ -3439,6 +3361,8 @@ PLDR.I18N = {
     ["Select a share"] = "Seleziona una condivisione",
     ["Server refused SMBv1\nenable SMBv1 support on the host"] = "Il server ha rifiutato SMBv1\nabilita il supporto SMBv1 sull'host",
     ["Settings"] = "Impostazioni",
+    ["Automatic"] = "Automatico",
+    ["Defaults restored"] = "Predefiniti ripristinati",
     ["Share not found\ncheck the Share name (host must allow SMB1)"] = "Condivisione non trovata\ncontrolla il nome condivisione (l'host deve consentire SMB1)",
     ["Show all discs"] = "Mostra tutti i dischi",
     ["Showing hidden games (dimmed) -- press L3 to unhide"] = "Giochi nascosti mostrati (in grigio) -- premi L3 per renderli visibili",
@@ -3574,7 +3498,6 @@ function CYCLE_CLAMP(a, MIN, MAX)
   return a
 end
 
-require("pops_profiles")
 local ok_ui, ui_or_err = pcall(require, "ui")
 if not ok_ui then
   local traceback = ui_or_err
@@ -3727,7 +3650,6 @@ do
   end
 end
 PLDR.BDMA_MODE_KEY = "FAT32"
-PLDR.SELECTED_PROFILE = tonumber(PLDR.DEFAULT_PROFILE) or 1
 PLDR.DKWDRV_DEFAULT_PATH = "mc0:/PS1_DKWDRV/DKWDRV.ELF"
 PLDR.DKWDRV_PATH = tostring(PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH)
 PLDR.KEYBOARD_LAYOUT = NormalizeKeyboardLayout(PLDR.KEYBOARD_LAYOUT)
@@ -4409,17 +4331,11 @@ function PLDR.SmbParse(data)
 end
 
 local function EncodeSettings()
-  local selected_profile = tonumber(PLDR.SELECTED_PROFILE) or 1
-  local selection_mode = NormalizePopstarterSelectionMode(PLDR.POPSTARTER_SELECTION_MODE)
-  local configured_popstarter = NormalizeSelectedProfilePopstarterPath(selected_profile, PLDR.POPSTARTER_PATH, selection_mode)
-  local persisted_popstarter = configured_popstarter
-  if selection_mode == POPSTARTER_MODE_PROFILE_DEFAULT then
-    persisted_popstarter = ""
-  end
+  -- POPSTARTER_PATH: "" = Automatic. (The legacy PROFILE=/POPSTARTER_MODE=
+  -- keys are no longer written; old files carried an empty POPSTARTER_PATH in
+  -- PROFILE_DEFAULT mode, so they load as Automatic with no migration step.)
   local lines = {
-    "PROFILE="..tostring(selected_profile),
-    "POPSTARTER_PATH="..persisted_popstarter,
-    "POPSTARTER_MODE="..selection_mode,
+    "POPSTARTER_PATH="..tostring(PLDR.POPSTARTER_PATH or ""),
     "BDMA="..tostring(PLDR.BDMA_MODE_KEY or "FAT32"),
     "BDMA_ADAPTIVE="..((PLDR.BDMA_ADAPTIVE == true) and "1" or "0"),
     "DKWDRV_PATH="..tostring(PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH),
@@ -4469,11 +4385,8 @@ local function NormalizeBdmaModeKey(mode)
 end
 
 local function SnapshotSettingsState()
-  local profile = tonumber(PLDR.SELECTED_PROFILE) or tonumber(PLDR.DEFAULT_PROFILE) or 1
   return {
-    profile = profile,
-    popstarter_path = NormalizeSelectedProfilePopstarterPath(profile, PLDR.POPSTARTER_PATH, PLDR.POPSTARTER_SELECTION_MODE),
-    popstarter_mode = NormalizePopstarterSelectionMode(PLDR.POPSTARTER_SELECTION_MODE),
+    popstarter_path = tostring(PLDR.POPSTARTER_PATH or ""),
     bdma_mode = NormalizeBdmaModeKey(PLDR.BDMA_MODE_KEY) or "FAT32",
     bdma_adaptive = (PLDR.BDMA_ADAPTIVE == true),
     dkwdrv_path = tostring(PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH),
@@ -4501,13 +4414,8 @@ local function ApplySettingsState(state)
   if state == nil then
     return
   end
-  local profile = tonumber(state.profile)
-  if profile ~= nil and PLDR.PROFILES ~= nil and PLDR.PROFILES[profile] ~= nil then
-    PLDR.SELECTED_PROFILE = profile
-  end
-  PLDR.POPSTARTER_SELECTION_MODE = NormalizePopstarterSelectionMode(state.popstarter_mode)
   if state.popstarter_path ~= nil then
-    PLDR.POPSTARTER_PATH = NormalizeSelectedProfilePopstarterPath(PLDR.SELECTED_PROFILE, state.popstarter_path, PLDR.POPSTARTER_SELECTION_MODE)
+    PLDR.POPSTARTER_PATH = tostring(state.popstarter_path)
   end
   local bdma = NormalizeBdmaModeKey(state.bdma_mode)
   if bdma ~= nil then
@@ -4686,15 +4594,13 @@ function PLDR.SaveSettingsAtomic()
 end
 
 function PLDR.LoadSettingsNonFatal()
-  local defaults_profile = tonumber(PLDR.DEFAULT_PROFILE) or 1
   -- NOTE: do NOT EnsurePopstarterDir() here. This runs while applying DEFAULTS, before the
   -- saved POPSTARTER_MC_FOLDER is parsed from the sidecar -- so the OFF guard couldn't see
   -- the user's choice and the folder (+ its OSD icons) was rebuilt on EVERY boot even when
   -- toggled OFF (provato HW report). The ensure now happens AFTER the load, at the call site.
-  PLDR.SELECTED_PROFILE = defaults_profile
   PLDR.BDMA_MODE_KEY = "FAT32"
   PLDR.BDMA_ADAPTIVE = false  -- per-launch BDMA variant staging (issue #509); default OFF, user opts in
-  PLDR.POPSTARTER_SELECTION_MODE = POPSTARTER_MODE_PROFILE_DEFAULT
+  PLDR.POPSTARTER_PATH = ""  -- "" = Automatic (the launch ladder); a path = custom-first
   PLDR.STRICT_HDD_PREEXEC_GATE = false
   PLDR.VIDEO_STANDARD = PLDR.VIDEO_STANDARD_AUTO
   PLDR.DKWDRV_PATH = tostring(PLDR.DKWDRV_DEFAULT_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
@@ -4720,9 +4626,6 @@ function PLDR.LoadSettingsNonFatal()
     else
       UI.HideTextMode = false
     end
-  end
-  if PLDR.PROFILES ~= nil and PLDR.PROFILES[defaults_profile] ~= nil then
-    PLDR.POPSTARTER_PATH = PLDR.PROFILES[defaults_profile].ELF
   end
   -- Resolve actual settings source: prefer per-device sidecar
   -- (APP_DIR/.pldrs), fall back to legacy mc0:/POPSTARTER/.pldrs.
@@ -4815,9 +4718,7 @@ function PLDR.LoadSettingsNonFatal()
   -- capture, silently reverting booleans/enums to defaults and appending a
   -- literal \r to paths. Also covers the SMB block (SmbParse gets this data).
   data = string.gsub(data, "\r\n?", "\n")
-  local profile = tonumber(string.match(data, "\nPROFILE=([^\n]+)")) or tonumber(string.match(data, "^PROFILE=([^\n]+)"))
   local popstarter_path = string.match(data, "\nPOPSTARTER_PATH=([^\n]*)") or string.match(data, "^POPSTARTER_PATH=([^\n]*)")
-  local popstarter_mode = string.match(data, "\nPOPSTARTER_MODE=([^\n]+)") or string.match(data, "^POPSTARTER_MODE=([^\n]+)")
   local bdma_mode = string.match(data, "\nBDMA=([^\n]+)") or string.match(data, "^BDMA=([^\n]+)") or string.match(data, "\nBDMA_MODE=([^\n]+)") or string.match(data, "^BDMA_MODE=([^\n]+)")
   local dkwdrv_path = string.match(data, "\nDKWDRV_PATH=([^\n]*)") or string.match(data, "^DKWDRV_PATH=([^\n]*)")
   local strict_hdd_preexec_gate = string.match(data, "\nSTRICT_HDD_PREEXEC_GATE=([^\n]+)") or string.match(data, "^STRICT_HDD_PREEXEC_GATE=([^\n]+)")
@@ -4838,26 +4739,14 @@ function PLDR.LoadSettingsNonFatal()
   local overscan = string.match(data, "\nOVERSCAN=([^\n]+)") or string.match(data, "^OVERSCAN=([^\n]+)")
   local bdma_adaptive = string.match(data, "\nBDMA_ADAPTIVE=([^\n]+)") or string.match(data, "^BDMA_ADAPTIVE=([^\n]+)")
   local language = string.match(data, "\nLANGUAGE=([^\n]+)") or string.match(data, "^LANGUAGE=([^\n]+)")
-  if profile ~= nil and PLDR.PROFILES ~= nil and PLDR.PROFILES[profile] ~= nil then
-    PLDR.SELECTED_PROFILE = profile
-    PLDR.POPSTARTER_PATH = PLDR.PROFILES[profile].ELF
+  -- POPSTARTER_PATH: empty/missing = Automatic. Legacy .pldrs are covered
+  -- with no migration step: their PROFILE=/POPSTARTER_MODE= keys are simply
+  -- ignored, PROFILE_DEFAULT files always persisted an empty POPSTARTER_PATH
+  -- (-> Automatic, whose ladder probes everything the presets pointed at),
+  -- and CUSTOM files persisted the actual path.
+  if popstarter_path ~= nil then
+    PLDR.POPSTARTER_PATH = tostring(popstarter_path)
   end
-  local persisted_candidate = ""
-  if popstarter_path ~= nil and popstarter_path ~= "" then
-    persisted_candidate = popstarter_path
-  end
-  PLDR.POPSTARTER_SELECTION_MODE = NormalizePopstarterSelectionMode(popstarter_mode)
-  local selection = ResolveProfilePopstarterSelection(
-    PLDR.SELECTED_PROFILE,
-    GetProfilePopstarterPath(PLDR.SELECTED_PROFILE),
-    persisted_candidate,
-    PLDR.POPSTARTER_SELECTION_MODE
-  )
-  PLDR.POPSTARTER_PATH = selection.effective_path
-  PLDR.POPSTARTER_SELECTION_MODE = selection.mode
-  PLDR.SETTINGS_POPSTARTER_SELECTION_RULE = selection.rule
-  PLDR.SETTINGS_POPSTARTER_SELECTED_BACKEND = selection.selected_backend
-  PLDR.SETTINGS_POPSTARTER_PERSISTED_BACKEND = selection.persisted_backend
   if dkwdrv_path ~= nil and dkwdrv_path ~= "" then
     PLDR.DKWDRV_PATH = dkwdrv_path
   end
@@ -4974,8 +4863,6 @@ function PLDR.CommitSettingsChanges(opts)
   if type(opts.prev_hide_text) == "boolean" then
     prev.hide_text = opts.prev_hide_text
   end
-  local next_profile = tonumber(opts.profile) or prev.profile
-  local next_popstarter_mode = NormalizePopstarterSelectionMode(opts.popstarter_mode or prev.popstarter_mode)
   local next_collapse = (prev.multidisc_collapse == true)
   if type(opts.multidisc_collapse) == "boolean" then next_collapse = opts.multidisc_collapse end
   local next_global_hide = (prev.global_hide == true)
@@ -5007,9 +4894,9 @@ function PLDR.CommitSettingsChanges(opts)
   local next_smb_modules = (prev.smb_modules == true)
   if type(opts.smb_modules) == "boolean" then next_smb_modules = opts.smb_modules end
   local next_state = {
-    profile = next_profile,
-    popstarter_path = NormalizeSelectedProfilePopstarterPath(next_profile, opts.popstarter_path or prev.popstarter_path, next_popstarter_mode),
-    popstarter_mode = next_popstarter_mode,
+    -- "" is a real value (Automatic), so only nil falls back to prev -- and ""
+    -- is truthy in Lua, so the or-chain preserves a deliberate clear.
+    popstarter_path = tostring(opts.popstarter_path or prev.popstarter_path or ""),
     bdma_mode = NormalizeBdmaModeKey(opts.bdma_mode) or prev.bdma_mode,
     bdma_adaptive = next_bdma_adaptive,
     -- Empty means "restore default", both live and persisted -- matching the
@@ -5281,12 +5168,6 @@ local function CollectStartupBackendTargets()
   AddUniqueStartupPath(paths, seen_paths, APP_DIR_LOCAL)
   AddUniqueStartupPath(paths, seen_paths, PLDR.POPSTARTER_PATH)
   AddUniqueStartupPath(paths, seen_paths, PLDR.DKWDRV_PATH)
-  if type(PLDR.PROFILES) == "table" then
-    local selected = tonumber(PLDR.SELECTED_PROFILE)
-    if selected ~= nil and PLDR.PROFILES[selected] ~= nil then
-      AddUniqueStartupPath(paths, seen_paths, PLDR.PROFILES[selected].ELF)
-    end
-  end
 
   for i = 1, #paths do
     local raw = tostring(paths[i] or "")
@@ -7368,7 +7249,7 @@ local function BuildLaunchDiagnosticsLines(diag)
     return out
   end
   local lines = {
-    "Diag prf="..v(diag.selected_profile_id).." route="..v(diag.route).." src="..v(diag.source_pfs_slot),
+    "Diag route="..v(diag.route).." src="..v(diag.source_pfs_slot),
     "Diag cfg="..v(diag.configured_path),
     "Diag cfg_reason="..v(diag.configured_path_reason),
     "Diag eff="..v(diag.normalized_profile_selected_path),
@@ -7404,10 +7285,9 @@ local function BlockLaunchFailure(rc, popstarter, device_page, argv0, game_path,
   local boot_label_disp = (context and type(context.boot_device_label) == "string" and context.boot_device_label ~= "")
     and context.boot_device_label or "?"
   local body = string.format(
-    "LAUNCH RETURNED\nrc=%s\nDev:%s Prf:%s Rt:%s\nGate:%s Open:%s/%s\nPOP:%s\nCfg:%s (%s)\nEff:%s (%s)\nExec:%s\nAPP:%s\nBoot:%s [%s]\nPath:Hdd=%s Reboot=%s Cold=%s API:%s\nCtx:%s\nArg0:%s\nGame:%s%s\nPress X/O to continue.",
+    "LAUNCH RETURNED\nrc=%s\nDev:%s Rt:%s\nGate:%s Open:%s/%s\nPOP:%s\nCfg:%s (%s)\nEff:%s (%s)\nExec:%s\nAPP:%s\nBoot:%s [%s]\nPath:Hdd=%s Reboot=%s Cold=%s API:%s\nCtx:%s\nArg0:%s\nGame:%s%s\nPress X/O to continue.",
     tostring(rc),
     tostring(device_page),
-    tostring(context and context.launch_diagnostics and context.launch_diagnostics.selected_profile_id or nil),
     tostring(launch_route or "default"),
     tostring(hdd_preexec_gate_mode or "n/a"),
     tostring(open_rc),
@@ -7687,13 +7567,12 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     hdd_partition_label, hdd_relpath = ParseHddGameEntry(selected_entry)
     hdd_relpath = NormalizeHddRelpath(hdd_relpath or selected_entry)
   end
-  local selected_profile_id = tonumber(PLDR.SELECTED_PROFILE) or tonumber(PLDR.DEFAULT_PROFILE) or 1
   local persisted_popstarter_path = PLDR and PLDR.POPSTARTER_PATH or nil
   local persisted_popstarter_path_reason = persisted_popstarter_path == nil and "cfg_nil" or nil
-  local configured_popstarter = NormalizeSelectedProfilePopstarterPath(selected_profile_id, persisted_popstarter_path)
-  local configured_popstarter_reason = configured_popstarter == "" and "eff_nil" or nil
+  -- "" = Automatic (no user path; the ladder resolves) -- profiles dropped.
+  local configured_popstarter = tostring(persisted_popstarter_path or "")
+  local configured_popstarter_reason = configured_popstarter == "" and "automatic" or nil
   local launch_diagnostics = {
-    selected_profile_id = selected_profile_id,
     route = nil,
     persisted_popstarter_path = persisted_popstarter_path,
     normalized_profile_selected_path = configured_popstarter,

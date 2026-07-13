@@ -22,7 +22,6 @@ from lupa import lua54
 REPO = pathlib.Path(__file__).resolve().parent.parent
 UI_SRC = (REPO / "bin/POPSLDR/ui.lua").read_text(encoding="utf-8")
 SYS_SRC = (REPO / "bin/POPSLDR/system.lua").read_text(encoding="utf-8")
-PROFILES_SRC = (REPO / "bin/POPSLDR/pops_profiles.lua").read_text(encoding="utf-8")
 
 # Truncate system.lua at the splash/main-loop handoff: everything above (every
 # definition + the settings load) still executes for real.
@@ -194,7 +193,7 @@ POPSLDR_VER = "harness"
 GPAD = 0
 BFONT, SFONT, LFONT = 1, 1, 1
 
--- requires: pops_profiles is the real file; images is stubbed (IMG above)
+-- requires: images is stubbed (IMG above)
 package = package or {}
 package.preload = package.preload or {}
 package.preload["images"] = function() return true end
@@ -203,15 +202,22 @@ package.preload["images"] = function() return true end
 lua.execute(MOCKS)
 preload = lua.eval(
     "function(src, name) return function() return load(src, name)() end end")
-lua.globals().package.preload["pops_profiles"] = preload(PROFILES_SRC, "pops_profiles.lua")
 # ui.lua is require'd FROM system.lua (line ~2578), after PLDR exists -- the
 # app's real order. Preload the real source so that require executes it.
 lua.globals().package.preload["ui"] = preload(UI_SRC, "ui.lua")
 
 results = []
 def check(name, cond, detail=""):
-    results.append((name, bool(cond), detail))
-    print(f"{'PASS' if cond else 'FAIL'}  {name}" + (f"  [{detail}]" if detail and not cond else ""))
+    # Lua tests return `false, "reason"`; with unpack_returned_tuples that
+    # arrives as a PYTHON TUPLE, and bool((False, "reason")) is True -- every
+    # two-value failure used to false-PASS. Unpack before truth-testing.
+    if isinstance(cond, tuple):
+        if len(cond) > 1 and detail == "":
+            detail = str(cond[1])
+        cond = cond[0]
+    ok = cond is True or (cond not in (None, False) and not isinstance(cond, bool) and bool(cond))
+    results.append((name, ok, detail))
+    print(f"{'PASS' if ok else 'FAIL'}  {name}" + (f"  [{detail}]" if detail and not ok else ""))
 
 # ---- load the real chunks in app order ----
 def load_chunk(name, src):
@@ -504,12 +510,14 @@ t16 = E('''function()
     "No games found",                                       -- empty device
     "Saving/Applying...",                                   -- busy overlay
     "Working...",                                           -- busy overlay (indeterminate)
-    "X = Yes      O = No",                                  -- RunConfirm hint
+    "Yes", "No",                                            -- RunConfirm hint words (composed, region-aware)
+    "Keep", "Revert",                                       -- RunVideoModeConfirm hint words
     "Delete the POPSTARTER folder from the memory card?",   -- RunConfirm prose
     "Return to OSDSYS?",                                    -- modal body
     "Edit POPStarter Path",                                 -- path editor title
     "Select a share",                                       -- SMB share picker
-    "X = Select      O = Cancel",                           -- SMB share picker hint
+    "Select", "Cancel",                                     -- share picker hint words
+    "Automatic",                                            -- POPSTARTER Path row (empty = ladder)
   }
   for _, k in ipairs(holdouts) do
     local t = PLDR.L(k)
@@ -519,6 +527,46 @@ t16 = E('''function()
   return true
 end''')()
 check("T16 newly-wired holdout keys (modal/overlay/picker/empty-state) translate", t16)
+
+# T17 POPSTARTER_PATH (profiles dropped): "" = Automatic round-trips; a custom
+# path round-trips; legacy PROFILE=/POPSTARTER_MODE= keys are ignored on load
+# (PROFILE_DEFAULT files persisted an empty path, so they land on Automatic).
+t17 = E('''function()
+  -- custom path round-trip
+  PLDR.POPSTARTER_PATH = "mass:/POPS/CUSTOM.ELF"
+  if not PLDR.SaveSettingsAtomic() then return false, "save custom" end
+  PLDR.POPSTARTER_PATH = "sentinel"
+  PLDR.LoadSettingsNonFatal()
+  if PLDR.POPSTARTER_PATH ~= "mass:/POPS/CUSTOM.ELF" then
+    return false, "custom reload="..tostring(PLDR.POPSTARTER_PATH)
+  end
+  -- Automatic ("" round-trip)
+  PLDR.POPSTARTER_PATH = ""
+  if not PLDR.SaveSettingsAtomic() then return false, "save auto" end
+  PLDR.POPSTARTER_PATH = "sentinel"
+  PLDR.LoadSettingsNonFatal()
+  if PLDR.POPSTARTER_PATH ~= "" then return false, "auto reload="..tostring(PLDR.POPSTARTER_PATH) end
+  -- the sidecar must not carry the legacy keys anymore
+  local sidecar = nil
+  for path, content in pairs(FAKEFS.files) do
+    if string.match(path, "%.pldrs$") and string.find(content, "POPSTARTER_PATH=", 1, true) then sidecar = content end
+  end
+  if sidecar == nil then return false, "no sidecar" end
+  if string.find(sidecar, "POPSTARTER_MODE=", 1, true) or string.match(sidecar, "\\nPROFILE=") then
+    return false, "legacy keys still written"
+  end
+  -- legacy config: PROFILE/POPSTARTER_MODE present, empty path -> Automatic
+  for path, content in pairs(FAKEFS.files) do
+    if string.match(path, "%.pldrs$") then
+      FAKEFS.files[path] = "PROFILE=5\\nPOPSTARTER_PATH=\\nPOPSTARTER_MODE=PROFILE_DEFAULT\\n"..content
+    end
+  end
+  PLDR.POPSTARTER_PATH = "sentinel"
+  PLDR.LoadSettingsNonFatal()
+  if PLDR.POPSTARTER_PATH ~= "" then return false, "legacy reload="..tostring(PLDR.POPSTARTER_PATH) end
+  return true
+end''')()
+check("T17 POPSTARTER_PATH round-trips (custom + Automatic) and legacy PROFILE keys are ignored", t17)
 
 print()
 fails = [r for r in results if not r[1]]
