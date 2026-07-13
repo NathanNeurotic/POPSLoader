@@ -60,10 +60,9 @@ without hardware re-verification, see `PRESERVATION_CONTRACTS.md`.
 +----------------------------------------------------------------------------------------------+
 | EMBEDDED LUA APPLICATION                                                                       |
 |   etc/boot.lua         mount HDD boot part -> pfs1: ; MX4SIO slot xlate ; fonts ; require()    |
-|   pops_profiles.lua    PLDR.PROFILES (16 POPSTARTER.ELF location candidates)                   |
 |   images.lua           IMG_REGISTRATIONS (UI glyph/icon atlas, lazy from embedded PNGs)        |
 |   system.lua  <----- controller: device resolution, settings, game lists, LAUNCH ENGINE       |
-|        |                  require()s ui + pops_profiles + images, owns the main loop           |
+|        |                  require()s ui + images, owns the main loop                           |
 |        v                                                                                       |
 |   ui.lua               one big UI table: scenes, transitions, modals, carousel, cover cache    |
 +----------------------------------------------------------------------------------------------+
@@ -148,8 +147,8 @@ the flag is wired to the compiler at `Makefile:53-55`. Because this runs before
 native bindings, installs the embedded asset machinery, and runs `boot.lua`.
 
 - The runtime Lua assets are embedded as byte arrays
-  (`src/luaplayer.cpp:35-41`): `boot.lua`, `system.lua`, `ui.lua`,
-  `images.lua`, `pops_profiles.lua`.
+  (`src/luaplayer.cpp`): `boot.lua`, `system.lua`, `ui.lua`, `images.lua`.
+  (`pops_profiles.lua` was removed 2026-07-13 with the profile system.)
 - `InstallEmbeddedLuaSearcher` (`src/luaplayer.cpp:114`) makes `require()`
   resolve modules from the embedded table via `FindEmbeddedLua`.
 - `DisableLuaFilesystemScriptLoaders` (`src/luaplayer.cpp:148`) NILs `dofile`
@@ -189,16 +188,15 @@ control to the real application:
 
 ## Layer 4 — UI and scene system (`bin/POPSLDR/ui.lua` + the controller in `system.lua`)
 
-The embedded Lua application is split into a controller (`system.lua`, ~7200
-lines) and a view (`ui.lua`, ~5800 lines), plus two data modules
-(`pops_profiles.lua`, `images.lua`).
+The embedded Lua application is split into a controller (`system.lua`, ~8500
+lines) and a view (`ui.lua`, ~6000 lines), plus a data module (`images.lua`).
 
 ### Control flow lives in `system.lua`, not `ui.lua`
 `ui.lua` defines one giant `UI` table literal (`ui.lua:446` ... `return UI` at
 `ui.lua:4825`) holding every scene, the transition state machine, the
 notification queue, busy overlays, the cover cache, the path-editor keyboard,
 modals, and input — but **no main loop**. The controller `system.lua` loads the
-modules (`pops_profiles` -> `ui` -> `images`, `system.lua:2433-2526`), runs the
+modules (`ui` -> `images`), runs the
 init sequence, and owns the single render loop at the very bottom of the file.
 Device bring-up now runs inside `do_boot_init` under the welcome splash
 (splash-first, commit `6b65b18`), while `LoadSettingsNonFatal` + the video-mode
@@ -571,36 +569,33 @@ On success `ExecPS2` never returns, short-circuiting the normal UI boot.
 
 ## Data and config layer
 
-### POPS "profiles" (`bin/POPSLDR/pops_profiles.lua`)
-A "profile" is **not** a per-game tuning record. `PLDR.PROFILES`
-(`pops_profiles.lua:26-91`) is a 16-entry ordered list of candidate
-`POPSTARTER.ELF` **locations** (`{ELF=path, DESC=text}`) across same-folder, HDD
-pfs, USB mass, MX4SIO, MMCE, and MC layouts. `DEFAULT_PROFILE = 1`
-(`pops_profiles.lua:8-9`) is the same-folder ELF and seeds
-`PLDR.POPSTARTER_PATH`. An orthogonal selection mode (`PROFILE_DEFAULT` vs
-`CUSTOM`, `system.lua:667-732`) decides whether the profile's ELF or a typed
-override wins. In `PROFILE_DEFAULT` mode the persisted `POPSTARTER_PATH=` line is
-intentionally empty (`system.lua:3077-3082`).
+### POPSTARTER path (one value; the profile presets are gone)
+**2026-07-13 (R3Z3N review round 2): the profile-preset system was removed** —
+`pops_profiles.lua` (16 preset `POPSTARTER.ELF` locations), `PLDR.PROFILES`,
+`SELECTED_PROFILE`, and the `PROFILE_DEFAULT`/`CUSTOM` selection mode are gone.
+One value remains: `PLDR.POPSTARTER_PATH`. **Empty = Automatic** (the launch
+ladder below; the Settings row shows "Automatic"); a set path = step-1 custom
+with silent ladder fallback when it doesn't resolve. Legacy `.pldrs` need no
+migration: `PROFILE=`/`POPSTARTER_MODE=` are ignored on load, and
+`PROFILE_DEFAULT` files always persisted an empty `POPSTARTER_PATH=`.
 
 #### Launch-time POPSTARTER.ELF resolution (per device)
-At launch, `PLDR.ResolveLaunchPopstarterPath` (`system.lua:1816`) picks the actual
+At launch, `PLDR.ResolveLaunchPopstarterPath` (`system.lua`) picks the actual
 POPSTARTER.ELF per device, in order. For **removable** devices (USB / internal
-exFAT-ATA / MX4SIO / MMCE): **1.** an explicit user-configured absolute path (the
-"POPSTARTER Path" custom setting, or an absolute Profile selection — Profiles act as
-presets, so an absolute Profile *is* this step-1 custom path) when it resolves;
-**2.** the game's own `<device>:/POPS/POPSTARTER.ELF` when it exists; **3.**
+exFAT-ATA / MX4SIO / MMCE): **1.** the explicit user-configured absolute path
+("POPSTARTER Path") when it resolves; **2.** the game's own
+`<device>:/POPS/POPSTARTER.ELF` when it exists; **3.**
 POPSTARTER.ELF in the folder POPSLOADER.ELF launched from (cwd); **4.** the existing
-`mc0:`/`mc1:` + configured-default fallback net. Both the device and cwd steps are
+`mc0:`/`mc1:` fallback net. Both the device and cwd steps are
 existence-gated, so a device with no POPSTARTER falls straight through — this lets a
 **per-device** build be used without forcing it (e.g. a USB-delay POPSTARTER dropped
 in a USB drive's `POPS/` folder is used for that drive's games, a faster build
 elsewhere). For the **internal-PFS HDD (APA)** the order is the same shape with
-`hdd0:__common/POPS/POPSTARTER.ELF` as step 2, resolved through the **same partition
-machinery** as the shipped `__common` profile (mounts `__common`, runs the D-10/D-15
-partition-context + embedded-loader path), so HDD launch mechanics are preserved.
-This **supersedes** the earlier "prefer the device-local copy first" precedence
-(`ee4cba0`): an explicit custom path now wins. Landed `28e40bb` / `9f2477c` (device
-before cwd) / `26bb06c` (APA `__common`); not yet hardware-tested.
+`hdd0:__common/POPS/POPSTARTER.ELF` as step 2, resolved through the partition
+machinery that preserves the D-10/D-15 partition-context + embedded-loader path.
+The profiles removal did **not** touch this ladder (UI/config layer only). The
+only user-facing POPSTARTER warning is the launch-time "no POPSTARTER.ELF found
+anywhere" toast; a set-but-stale custom path falls through silently by design.
 
 ### Image atlas (`bin/POPSLDR/images.lua`)
 `IMG_REGISTRATIONS` (`images.lua:11-36`) is 25 `{key, filename}` pairs (device
@@ -624,20 +619,22 @@ to the SMB (v1) network page (opt 7, `GSMBNET`). The bare `bdma` token and i.Lin
 remain unrouted no-ops.
 
 ### On-disk settings (`.pldrs`)
-Plain KEY=VALUE text with **22 keys** (`EncodeSettings`, `system.lua:3387`; the
+Plain KEY=VALUE text with **22 keys** (`EncodeSettings`, `system.lua`; the
 loader normalizes CRLF before parsing, and `usb:`/`smb:`-prefixed boots fall back
 to the MC settings path since those filesystems aren't live in-app),
 then the SMB connection block (`SMB_*`) appended by `SmbAppendLines`:
-`PROFILE`, `POPSTARTER_PATH`, `POPSTARTER_MODE`, `BDMA`, `BDMA_ADAPTIVE`
+`POPSTARTER_PATH` (`""` = Automatic), `BDMA`, `BDMA_ADAPTIVE`
 (per-launch BDMA variant staging, default off; see STATE.md), `DKWDRV_PATH`,
 `STRICT_HDD_PREEXEC_GATE`, `VIDEO_STANDARD`, `HIDE_TEXT`, `KEYBOARD_LAYOUT`,
-`BOOT_PAGE`, `MULTIDISC_COLLAPSE`, `GLOBAL_HIDE`, `POPSTARTER_MC_FOLDER`,
+`LANGUAGE`, `BOOT_PAGE`, `MULTIDISC_COLLAPSE`, `GLOBAL_HIDE`, `POPSTARTER_MC_FOLDER`,
 `HIDDEN_DEVICES`, `SHOW_DETAILS`, `DETAILS_ALIGN`, `ART_LOCATION` (removable
 cover/details folder: `pops_art` default / `pops` / `art`), `HDD_FS` (`PFS` or
 `EXFAT`), `GAMELIST_CACHE`, `BOOT_SOUND`
 (default on; gates the splash ADPCM chime), `OVERSCAN` (CRT inset permille,
-default `0`; see the overscan note below), `SMB_MODULES`. STATE.md is
-canonical for what each key means and its UI surface.
+default `0`; see the overscan note below), `SMB_MODULES`. The legacy
+`PROFILE=`/`POPSTARTER_MODE=` keys are no longer written and are ignored on
+load (2026-07-13). STATE.md is canonical for what each key means and its UI
+surface.
 Location is the **per-device** sidecar `APP_DIR/.pldrs`, preferred for every
 device — **including HDD installs**, which now persist on the HDD boot partition
 itself via the `PLDR.HDD.EnsureBootPartitionWritable` RW mount take-over

@@ -52,8 +52,9 @@ technical claim below cites `path:line` against this worktree.
   enters a loop running embedded `boot.lua` via `runScript`.
 
 ### `src/luaplayer.cpp` — Lua VM lifecycle and embedded asset wiring
-- `g_embedded_lua_assets` (luaplayer.cpp:35-41) is the embedded script table:
-  `boot.lua`, `system.lua`, `ui.lua`, `images.lua`, `pops_profiles.lua`.
+- `g_embedded_lua_assets` (luaplayer.cpp) is the embedded script table:
+  `boot.lua`, `system.lua`, `ui.lua`, `images.lua` (`pops_profiles.lua` was
+  removed 2026-07-13 with the profile-preset system).
 - `runScript()` (luaplayer.cpp:254) creates the Lua state, installs the embedded
   searcher (`InstallEmbeddedLuaSearcher`, luaplayer.cpp:272), disables on-disk
   script loaders (`DisableLuaFilesystemScriptLoaders`, luaplayer.cpp:273 — nils
@@ -203,8 +204,7 @@ copies are not read at runtime. Editing them requires a rebuild.
 
 ### `bin/POPSLDR/system.lua` — controller, device/launch engine, settings
 - Owns device resolution, settings persistence, game-list building, the HDD
-  cache, and the launch engine. `require`s pops_profiles/ui/images
-  (system.lua:2433, 2526).
+  cache, and the launch engine. `require`s ui/images.
 - Boot-device classification: `ResolveBootContext` (system.lua:1849) /
   `DetectBootDevice` (system.lua:1983), prefix rules under `ResolveBootContext`.
   `mass:/` is disambiguated via the BDM driver name (`classify_mass_boot`,
@@ -212,12 +212,13 @@ copies are not read at runtime. Editing them requires a rebuild.
 - Launch-arg ingest: `NormalizeLaunchPage` (system.lua; `ata*`->EXFAT,
   `hdd*`/`apa*`/`pfs*`->HDD, bare `bdma`->no-op page value), `PLDR.LAUNCH_ARGS`,
   carousel page auto-nav `page_to_opt` (MMCE=1/MX4SIO=2/EXFAT=3/ATA=3/HDD=4/USB=5/SMB=7).
-- Settings: `EncodeSettings` (system.lua:3387, **22 keys** + appended SMB block: PROFILE,
-  POPSTARTER_PATH, POPSTARTER_MODE, BDMA, DKWDRV_PATH, STRICT_HDD_PREEXEC_GATE,
-  VIDEO_STANDARD, HIDE_TEXT, KEYBOARD_LAYOUT, BOOT_PAGE, MULTIDISC_COLLAPSE,
+- Settings: `EncodeSettings` (**22 keys** + appended SMB block:
+  POPSTARTER_PATH (`""` = Automatic; the legacy PROFILE/POPSTARTER_MODE keys are
+  no longer written and are ignored on load — profiles dropped 2026-07-13),
+  BDMA, BDMA_ADAPTIVE, DKWDRV_PATH, STRICT_HDD_PREEXEC_GATE,
+  VIDEO_STANDARD, HIDE_TEXT, KEYBOARD_LAYOUT, LANGUAGE, BOOT_PAGE, MULTIDISC_COLLAPSE,
   GLOBAL_HIDE, POPSTARTER_MC_FOLDER, HIDDEN_DEVICES, SHOW_DETAILS, DETAILS_ALIGN,
-  ART_LOCATION, HDD_FS, GAMELIST_CACHE, BOOT_SOUND, OVERSCAN, SMB_MODULES — ART_LOCATION
-  is new this cycle, HDD_FS and SMB_MODULES were already persisted but uncounted, and the
+  ART_LOCATION, HDD_FS, GAMELIST_CACHE, BOOT_SOUND, OVERSCAN, SMB_MODULES — the
   SMB connection block is appended after these by SmbAppendLines), `LoadSettingsNonFatal` (system.lua:3650,
   normalizes CRLF before parsing — a Notepad-edited sidecar used to silently revert
   most settings), `SaveSettingsAtomic` (system.lua:3598, retries the MC fallback once
@@ -243,22 +244,22 @@ copies are not read at runtime. Editing them requires a rebuild.
   (system.lua:1655). Keep-PFS-mask prep `PrepareForExternalELFLaunch`
   (local def system.lua:1120, PLDR wrapper system.lua:1793).
 - POPSTARTER.ELF resolution `PLDR.ResolveLaunchPopstarterPath`
-  (system.lua:1816) is PER DEVICE, existence-gated at each step so a device with
+  (system.lua) is PER DEVICE, existence-gated at each step so a device with
   no copy falls through. REMOVABLE (USB / exFAT-ATA / MX4SIO / MMCE), in order:
-  1. an explicit user-configured ABSOLUTE path (the custom "POPSTARTER Path", or
-  an absolute Profile selection) when it resolves; 2. the game's own
+  1. the explicit user-configured ABSOLUTE path (the "POPSTARTER Path" setting)
+  when it resolves; 2. the game's own
   `<device>:/POPS/POPSTARTER.ELF` when it exists (lets a per-device build — e.g.
   a USB-delay POPSTARTER dropped in the USB drive's `POPS` folder — be used
   WITHOUT forcing it); 3. `POPSTARTER.ELF` in the launcher's own folder (cwd,
-  `ResolveCwdSidecarPopstarter` system.lua:1786); 4. the `mc0:/mc1:/POPSTARTER`
-  + configured-default fallback net. INTERNAL-PFS HDD (APA): 1. custom; 2.
-  `hdd0:__common/POPS/POPSTARTER.ELF` (resolved through the SAME partition
-  machinery as the shipped `__common` profile, so the D-10/D-15 partition-context
-  + embedded-loader handoff is preserved, system.lua:1842-1848); 3. cwd /
-  boot-sidecar; 4. mc net. Profiles act as PRESETS — an absolute Profile
-  selection IS the step-1 custom path. This supersedes the earlier
-  "prefer the device-local copy first" precedence (an explicit custom path now
-  wins). Landed this cycle (28e40bb / 9f2477c / 26bb06c), validating on hardware.
+  `ResolveCwdSidecarPopstarter`); 4. the `mc0:/mc1:/POPSTARTER`
+  fallback net. INTERNAL-PFS HDD (APA): 1. custom; 2.
+  `hdd0:__common/POPS/POPSTARTER.ELF` (resolved through the partition
+  machinery that preserves the D-10/D-15 partition-context
+  + embedded-loader handoff); 3. cwd /
+  boot-sidecar; 4. mc net. **The 16-preset profile system was removed
+  2026-07-13** (R3Z3N review): `PLDR.POPSTARTER_PATH` is the single value,
+  `""` = Automatic (the ladder), a set path = step-1 custom with silent
+  fallback; the ladder itself is unchanged. Validating on hardware.
 - Startup ordering at module end: `LoadSettingsNonFatal` ->
   `AutoInitStartupBackends` (system.lua:3920) -> `SurfaceLaunchArgsDebug` ->
   `AutoLaunchFromLaunchArgs` (system.lua:6139), then the single render loop
@@ -331,13 +332,6 @@ copies are not read at runtime. Editing them requires a rebuild.
   `Carousel.allowOptWrite`, ui.lua:4960) and `UI.CURSCENE` (unless
   `Transition.allowSceneWrite`, ui.lua:4981). Build-info display reads
   `BUILD_INFO.txt` (`LoadBuildInfo`, ui.lua:4687).
-
-### `bin/POPSLDR/pops_profiles.lua` — POPSTARTER.ELF location list
-- `PLDR.PROFILES` (pops_profiles.lua:26-91) is a 16-entry ordered list of
-  `{ELF=path, DESC=text}` POPSTARTER.ELF *locations* (not per-game configs).
-  `DEFAULT_PROFILE = 1` seeds `PLDR.POPSTARTER_PATH` (pops_profiles.lua:8,
-  93-94). The orthogonal PROFILE_DEFAULT vs CUSTOM mode (system.lua:667-712)
-  decides whether the profile ELF or a typed override wins.
 
 ### `bin/POPSLDR/images.lua` — embedded UI glyph/chrome atlas
 - `IMG_REGISTRATIONS` (images.lua:11-37): 25 `{key, filename}` pairs (device
