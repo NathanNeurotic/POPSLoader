@@ -4513,17 +4513,54 @@ UI = {
           end
         end
         local open_section = UI.SettingsOpenSection
-        local function IsVisibleItem(it)
+
+        -- Drop-down animation (R3Z3N review: instant accordion opens are
+        -- jarring). Frame-counted -- one Play() call == one vblank-paced frame,
+        -- NEVER Timer.getTime (microseconds trap): the newly-opened section's
+        -- children reveal top-down over ~6 frames. The focused row is always
+        -- included so nav never lands on a hidden row, which also means
+        -- entering a section from below (focus = last child) opens instantly
+        -- instead of jittering rows in above the cursor.
+        local ACCORDION_FRAMES = 6
+        if UI.SettingsAccordionSection ~= open_section then
+          UI.SettingsAccordionSection = open_section
+          UI.SettingsAccordionFrame = 1
+        elseif (UI.SettingsAccordionFrame or ACCORDION_FRAMES) < ACCORDION_FRAMES then
+          UI.SettingsAccordionFrame = (UI.SettingsAccordionFrame or 0) + 1
+        end
+        local anim_frame = UI.SettingsAccordionFrame or ACCORDION_FRAMES
+        local child_ord = {}
+        local reveal
+        do
+          local n_children = 0
+          for i = 1, #items do
+            local it = items[i]
+            if it.kind ~= "section" and it.kind ~= "spacer" and it.section == open_section then
+              n_children = n_children + 1
+              child_ord[i] = n_children
+            end
+          end
+          reveal = n_children
+          if anim_frame < ACCORDION_FRAMES and n_children > 0 then
+            reveal = math.ceil(n_children * anim_frame / ACCORDION_FRAMES)
+            local f_ord = child_ord[UI.SettingsFocus]
+            if f_ord ~= nil and f_ord > reveal then reveal = f_ord end
+          end
+        end
+
+        local function IsVisibleItem(it, idx)
           if it == nil then return false end
           if it.kind == "section" or it.kind == "spacer" then return true end
-          return it.section == open_section
+          if it.section ~= open_section then return false end
+          local ord = child_ord[idx]
+          return ord == nil or ord <= reveal
         end
 
         -- Compute total content height for top-Y placement (visible rows only).
         local total_h = 0
         for i = 1, #items do
           local it = items[i]
-          if IsVisibleItem(it) then
+          if IsVisibleItem(it, i) then
             if it.kind == "section" then
               total_h = total_h + SECTION_HEADER_H + (i > 1 and SECTION_GAP_BEFORE or 0)
             elseif it.kind == "spacer" then
@@ -4628,7 +4665,7 @@ UI = {
           local acc = 0
           for i = 1, #items do
             local it = items[i]
-            if IsVisibleItem(it) then
+            if IsVisibleItem(it, i) then
               if it.kind == "section" and i > 1 then acc = acc + SECTION_GAP_BEFORE end
               item_off[i] = acc
               if it.kind == "section" then item_h[i] = SECTION_HEADER_H
@@ -4666,7 +4703,7 @@ UI = {
 
         for i = 1, #items do
           local it = items[i]
-          if IsVisibleItem(it) then
+          if IsVisibleItem(it, i) then
             local row_y = base_y + item_off[i] - scroll
             -- When scrolling, draw only fully-visible rows so nothing paints
             -- over the title or footer; when it fits, draw everything (original).
