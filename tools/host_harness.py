@@ -530,9 +530,11 @@ check("T16 newly-wired holdout keys (modal/overlay/picker/empty-state) translate
 
 # T17 POPSTARTER_PATH (profiles dropped): "" = Automatic round-trips; a custom
 # path round-trips; the legacy keys are never written; and a legacy PROFILE=N
-# pick MIGRATES into POPSTARTER_PATH on load (N>=2 -> the old preset's absolute
-# path, PROFILE=1 -> Automatic) because the Automatic ladder does not probe
-# every old preset location (adversarial-review finding).
+# pick MIGRATES into POPSTARTER_PATH on load (the __common presets are the
+# load-bearing case: HDD POPSTARTER + removable game = the supported D-14
+# setup, which the Automatic ladder does not cover -- adversarial-review
+# finding). PROFILE=1 and the mc?:/POPS presets 13/14 land on Automatic (a
+# memory card never carries a POPS folder -- maintainer).
 t17 = E('''function()
   -- custom path round-trip
   PLDR.POPSTARTER_PATH = "mass:/POPS/CUSTOM.ELF"
@@ -557,32 +559,38 @@ t17 = E('''function()
   if string.find(sidecar, "POPSTARTER_MODE=", 1, true) or string.match(sidecar, "\\nPROFILE=") then
     return false, "legacy keys still written"
   end
-  -- legacy config, preset selected: PROFILE=13 (mc0:/POPS -- a location the
-  -- Automatic ladder never probes) + empty path -> migrates to that path
+  -- legacy config, preset selected: PROFILE=2 (hdd0:__common -- the D-14
+  -- HDD-POPSTARTER-with-removable-games setup the ladder doesn't cover)
+  -- + empty path -> migrates to that preset's path
   local base = nil
   for path, content in pairs(FAKEFS.files) do
     if string.match(path, "%.pldrs$") then
       if base == nil then base = {} end
       base[path] = content
-      FAKEFS.files[path] = "PROFILE=13\\nPOPSTARTER_PATH=\\nPOPSTARTER_MODE=PROFILE_DEFAULT\\n"..content
+      FAKEFS.files[path] = "PROFILE=2\\nPOPSTARTER_PATH=\\nPOPSTARTER_MODE=PROFILE_DEFAULT\\n"..content
     end
   end
   if base == nil then return false, "no sidecar for legacy test" end
   PLDR.POPSTARTER_PATH = "sentinel"
   PLDR.LoadSettingsNonFatal()
-  if PLDR.POPSTARTER_PATH ~= "mc0:/POPS/POPSTARTER.ELF" then
+  if PLDR.POPSTARTER_PATH ~= "hdd0:__common:pfs:/POPS/POPSTARTER.ELF" then
     return false, "legacy preset reload="..tostring(PLDR.POPSTARTER_PATH)
   end
-  -- legacy config, default preset: PROFILE=1 + empty path -> Automatic
-  for path, content in pairs(base) do
-    FAKEFS.files[path] = "PROFILE=1\\nPOPSTARTER_PATH=\\nPOPSTARTER_MODE=PROFILE_DEFAULT\\n"..content
+  -- legacy defaults -> Automatic: PROFILE=1 (relative default) and
+  -- PROFILE=13 (mc?:/POPS -- never a real location, dropped from the map)
+  for _, legacy_n in ipairs({"1", "13"}) do
+    for path, content in pairs(base) do
+      FAKEFS.files[path] = "PROFILE="..legacy_n.."\\nPOPSTARTER_PATH=\\nPOPSTARTER_MODE=PROFILE_DEFAULT\\n"..content
+    end
+    PLDR.POPSTARTER_PATH = "sentinel"
+    PLDR.LoadSettingsNonFatal()
+    if PLDR.POPSTARTER_PATH ~= "" then
+      return false, "legacy PROFILE="..legacy_n.." reload="..tostring(PLDR.POPSTARTER_PATH)
+    end
   end
-  PLDR.POPSTARTER_PATH = "sentinel"
-  PLDR.LoadSettingsNonFatal()
-  if PLDR.POPSTARTER_PATH ~= "" then return false, "legacy default reload="..tostring(PLDR.POPSTARTER_PATH) end
   -- a real persisted path beats any legacy PROFILE= leftover
   for path, content in pairs(base) do
-    FAKEFS.files[path] = "PROFILE=13\\nPOPSTARTER_PATH=mass:/POPS/MINE.ELF\\n"..content
+    FAKEFS.files[path] = "PROFILE=2\\nPOPSTARTER_PATH=mass:/POPS/MINE.ELF\\n"..content
   end
   PLDR.LoadSettingsNonFatal()
   if PLDR.POPSTARTER_PATH ~= "mass:/POPS/MINE.ELF" then
@@ -590,7 +598,7 @@ t17 = E('''function()
   end
   return true
 end''')()
-check("T17 POPSTARTER_PATH round-trips (custom + Automatic) + legacy PROFILE=N migrates (13->mc0:/POPS, 1->Automatic, explicit wins)", t17)
+check("T17 POPSTARTER_PATH round-trips (custom + Automatic) + legacy PROFILE=N migrates (2->__common, 1/13->Automatic, explicit wins)", t17)
 
 print()
 fails = [r for r in results if not r[1]]

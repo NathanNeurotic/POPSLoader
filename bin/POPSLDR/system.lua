@@ -4596,8 +4596,13 @@ end
 
 -- The old pops_profiles.lua preset paths, kept ONLY for the one-time legacy
 -- config migration in LoadSettingsNonFatal (see the POPSTARTER_PATH block
--- there). Index 1 (the relative same-folder default) intentionally absent:
--- it maps to Automatic.
+-- there). The load-bearing entries are the hdd0:__common ones (an
+-- HDD-resident POPSTARTER driving removable-device games is the supported
+-- D-14 setup, and the ladder probes __common only for HDD-page launches) and
+-- the cross-device removable ones. Intentionally absent: index 1 (the
+-- relative same-folder default) and the old mc?:/POPS presets 13/14 -- a
+-- memory card never carries a POPS folder (maintainer), so migrating those
+-- could only pin a phantom path; they map to Automatic instead.
 local LEGACY_PROFILE_PRESET_PATHS = {
   [2]  = "hdd0:__common:pfs:/POPS/POPSTARTER.ELF",
   [3]  = "hdd0:__common:pfs3:/POPS/POPSTARTER.ELF",
@@ -4610,8 +4615,6 @@ local LEGACY_PROFILE_PRESET_PATHS = {
   [10] = "mx4sio:/POPS/POPSTARTER.ELF",
   [11] = "mmce0:/POPS/POPSTARTER.ELF",
   [12] = "mmce1:/POPS/POPSTARTER.ELF",
-  [13] = "mc0:/POPS/POPSTARTER.ELF",
-  [14] = "mc1:/POPS/POPSTARTER.ELF",
   [15] = "mc1:/POPSTARTER/POPSTARTER.ELF",
   [16] = "mc0:/POPSTARTER/POPSTARTER.ELF",
 }
@@ -4766,12 +4769,14 @@ function PLDR.LoadSettingsNonFatal()
   -- (2026-07-13 profiles drop): old files persisted an EMPTY POPSTARTER_PATH
   -- and carried the chosen preset only in PROFILE=N -- the old loader
   -- materialized that preset's absolute path. The Automatic ladder does NOT
-  -- probe everything the presets pointed at (mc?:/POPS/ never; the
-  -- hdd0:__common presets only for HDD-policy launches), so an empty path +
-  -- legacy PROFILE=N (N>=2) loads as that preset's path here: it then behaves
-  -- as an explicit custom path -- tried first, ladder fall-through -- exactly
-  -- the old effective behavior (adversarial-review finding). PROFILE=1 was
-  -- the relative default -> Automatic. The legacy keys are never written
+  -- probe everything the presets pointed at (the hdd0:__common presets only
+  -- resolve for HDD-policy launches -- but HDD POPSTARTER + removable game is
+  -- the supported D-14 setup -- and cross-device removable presets likewise),
+  -- so an empty path + a legacy PROFILE=N in the mapping table loads as that
+  -- preset's path here: it then behaves as an explicit custom path -- tried
+  -- first, ladder fall-through -- exactly the old effective behavior
+  -- (adversarial-review finding). PROFILE=1 (relative default) and the
+  -- mc?:/POPS presets map to Automatic. The legacy keys are never written
   -- back: the next save persists the migrated path and drops them.
   if popstarter_path ~= nil then
     PLDR.POPSTARTER_PATH = tostring(popstarter_path)
