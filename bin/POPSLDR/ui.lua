@@ -975,7 +975,7 @@ UI = {
 	        circle_main = "Exit",
 	        circle_other = "Back",
 	        start_profiles = "Settings",
-	        start_reset = "Reset",
+	        start_menu = "Menu",
 	        select_toggle = "Hide Text",
 	        square_backspace = "Backspace",
 	        cross_confirm = "Confirm",
@@ -1475,6 +1475,15 @@ UI = {
       cancel_action = nil;
       triangle_action = nil;
       ignore_until_release = false;
+      -- List-menu mode: when menu_items is set the modal is a small vertical
+      -- chooser (Up/Down + Confirm) instead of the X/O/Triangle button prompt.
+      menu_items = nil;
+      menu_index = 1;
+      -- One place builds every "X: Confirm    O: Cancel" hint line so the
+      -- glyph letters stay consistent across modals.
+      ButtonHint = function (confirm_label, cancel_label)
+        return ("X: %s    O: %s"):format(confirm_label, cancel_label)
+      end;
       OpenExit = function ()
         UI.Modal.active = true
         UI.Modal.title = "Exit"
@@ -1716,11 +1725,31 @@ UI = {
         end
         UI.Modal.ignore_until_release = true
       end;
+      -- The settings page's Save/Reset/Discard actions live behind START
+      -- (R3Z3N review: inline list rows for them sat oddly above Memory Card
+      -- and made reaching them a scroll chore).
+      OpenSettingsMenu = function (on_save, on_reset, on_discard)
+        UI.Modal.active = true
+        UI.Modal.title = "Settings"
+        UI.Modal.body = ""
+        UI.Modal.menu_items = {
+          { label = "Save Changes",   action = on_save },
+          { label = "Reset Defaults", action = on_reset },
+          { label = "Discard & Exit", action = on_discard },
+        }
+        UI.Modal.menu_index = 1
+        UI.Modal.confirm_action = nil
+        UI.Modal.cancel_action = UI.Modal.Close
+        UI.Modal.triangle_action = nil
+        UI.Modal.ignore_until_release = true
+      end;
       Close = function ()
         UI.Modal.active = false
         UI.Modal.confirm_action = nil
         UI.Modal.cancel_action = nil
         UI.Modal.triangle_action = nil
+        UI.Modal.menu_items = nil
+        UI.Modal.menu_index = 1
         UI.Modal.ignore_until_release = false
       end;
       ConfirmExit = function ()
@@ -1786,6 +1815,27 @@ UI = {
           end
           return
         end
+        if UI.Modal.menu_items ~= nil then
+          local n = #UI.Modal.menu_items
+          if n > 0 then
+            if UI.Pad.Events.NAV_UP then
+              UI.Modal.menu_index = ((UI.Modal.menu_index - 2) % n) + 1
+            end
+            if UI.Pad.Events.NAV_DOWN then
+              UI.Modal.menu_index = (UI.Modal.menu_index % n) + 1
+            end
+          end
+          if UI.Pad.Events.CONFIRM then
+            local entry = UI.Modal.menu_items[UI.Modal.menu_index]
+            UI.Modal.Close()
+            if entry ~= nil and type(entry.action) == "function" then
+              entry.action()
+            end
+          elseif UI.Pad.Events.BACK then
+            UI.Modal.Close()
+          end
+          return
+        end
         if UI.Pad.Events.CONFIRM then
           if UI.Modal.confirm_action ~= nil then
             UI.Modal.confirm_action()
@@ -1806,6 +1856,31 @@ UI = {
       end;
       Draw = function ()
         if not UI.Modal.active then return end
+        if UI.Modal.menu_items ~= nil then
+          local n = #UI.Modal.menu_items
+          local row_h = 22
+          local box_w = 320
+          local box_h = 96 + n * row_h
+          local box_x = math.floor(UI.SCR.X_MID - (box_w / 2))
+          local box_y = math.floor(UI.SCR.Y_MID - (box_h / 2))
+          Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, UI.CCOL.MODAL_BACKDROP)
+          Graphics.drawRect(box_x, box_y, box_w, box_h, Color.new(0, 0, 0, 200))
+          Graphics.drawRect(box_x, box_y, box_w, 2, UI.CCOL.GREY)
+          Graphics.drawRect(box_x, box_y + box_h - 2, box_w, 2, UI.CCOL.GREY)
+          Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 10, 8, UI.SCR.X, 16, PLDR.L(UI.Modal.title), UI.CCOL.YELLOW)
+          local accent = (UI.COLORS and UI.COLORS.TEXT_PRIMARY) or UI.CCOL.YELLOW
+          for i = 1, n do
+            local row_y = box_y + 44 + (i - 1) * row_h
+            local selected = (i == UI.Modal.menu_index)
+            if selected then
+              Graphics.drawRect(box_x + 16, row_y - 2, box_w - 32, row_h - 2, Color.new(50, 80, 160, 110))
+            end
+            Font.ftPrint(BFONT, UI.SCR.X_MID, row_y, 8, UI.SCR.X, 16, PLDR.L(UI.Modal.menu_items[i].label), selected and accent or UI.CCOL.GREY)
+          end
+          local hint = UI.Modal.ButtonHint(PLDR.L("Confirm"), PLDR.L("Cancel"))
+          Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + box_h - 26, 8, UI.SCR.X, 16, hint, UI.CCOL.GREY)
+          return
+        end
         local body_lines = WrapText(PLDR.L(UI.Modal.body or ""), 38)
         local line_spacing = 16
         local confirm_label = PLDR.L(UI.Modal.options[1] or "Confirm")
@@ -1824,7 +1899,7 @@ UI = {
         for i, line in ipairs(body_lines) do
           Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 50 + (i - 1) * line_spacing, 8, UI.SCR.X, 16, line, UI.CCOL.GREY)
         end
-        local hint1 = ("X: %s    O: %s"):format(confirm_label, cancel_label)
+        local hint1 = UI.Modal.ButtonHint(confirm_label, cancel_label)
         if triangle_label ~= nil then
           local hint2 = ("Triangle: %s"):format(triangle_label)
           Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + box_h - 60, 8, UI.SCR.X, 16, hint1, UI.CCOL.GREY)
@@ -3385,9 +3460,8 @@ UI = {
         -- OPL-style focused-list Settings page.
         --
         -- Layout: title -> stack of items (section headers, cycle rows, path
-        -- rows, action rows). A single highlight bar follows the focused row.
-        -- Section headers are non-selectable separators. The footer just shows
-        -- "Back / Select / Reset / Hide" -- the whole interaction is
+        -- rows). A single highlight bar follows the focused row. Section
+        -- headers are non-selectable separators. The whole interaction is
         -- D-pad-driven so the previous one-button-per-field hotkey grid is
         -- gone (Square/L1/R1/Left/Right/Up/Down were each tied to a single
         -- widget; that has been replaced with a single focused cursor).
@@ -3395,11 +3469,11 @@ UI = {
         -- Bindings:
         --   D-pad Up/Down: move focus, skipping section headers and spacers.
         --   D-pad Left/Right: cycle the focused value (cycle items only).
-        --   X (CONFIRM): activate focused item -- cycles a cycle row,
-        --                opens the path editor for a path row, or fires the
-        --                action for an action row.
+        --   X (CONFIRM): activate focused item -- cycles a cycle row or
+        --                opens the path editor for a path row.
         --   O (BACK): discard staged edits and return to the previous scene.
-        --   Start (Reset Defaults): keep the legacy "Reset Defaults" shortcut.
+        --   Start: opens the Save Changes / Reset Defaults / Discard & Exit
+        --          menu (UI.Modal.OpenSettingsMenu -- R3Z3N review).
         --   Select: hide-text toggle (global; handled outside this block).
         --
         -- Persistence: every field still routes through the same draft
@@ -3411,9 +3485,15 @@ UI = {
 
         local accent_color    = (UI.COLORS and UI.COLORS.TEXT_PRIMARY) or UI.CCOL.YELLOW
         local label_color     = UI.CCOL.GREY
-        local muted_color     = Color.new(128, 128, 128, 110)
         local highlight_color = Color.new(50, 80, 160, 110)
         local separator_color = Color.new(140, 200, 255, 60)
+        -- Distinct row roles (R3Z3N review): headers get their own hue (warm
+        -- gold -- they are chrome, not rows) instead of sharing the focus/dirty
+        -- accent blue, and read-only rows render shades darker than selectable
+        -- ones so they can't be mistaken for editable fields.
+        local section_color      = Color.new(215, 185, 100, 128)
+        local section_line_color = Color.new(215, 185, 100, 60)
+        local readonly_color     = Color.new(82, 82, 82, 100)
 
         local TITLE_GAP = 22
         local SECTION_GAP_BEFORE = 10
@@ -3924,14 +4004,10 @@ UI = {
         end
 
         -- Build the items list. Sections and spacers are non-selectable
-        -- markers; cycle/path/action items respond to focus + activation.
+        -- markers; cycle/path items respond to focus + activation. Save/Reset/
+        -- Discard are NOT rows anymore: START opens them as a modal menu
+        -- (UI.Modal.OpenSettingsMenu -- R3Z3N review).
         local items = {}
-        -- Collapsible sections (session-only; resets on reboot, no new persisted key).
-        -- A collapsed section keeps its header (selectable, to re-expand) but its
-        -- cycle/path/info child rows are skipped from the row model entirely, so the
-        -- draw/nav/scroll machinery below needs no changes. Action rows (Save/Reset/
-        -- Discard) and the spacers around them are NEVER hidden -- AddAction resets the
-        -- collapse flag so they (and any following section) always stay reachable.
         -- ACCORDION model (R3Z3N review): every section's children are always in
         -- the item list so nav flows through them, but only the section holding the
         -- FOCUSED row renders expanded -- the others show a single header line.
@@ -3972,16 +4048,6 @@ UI = {
             dirty = dirty_fn
           })
         end
-        local function AddAction(label, activate_fn, accent)
-          current_section = nil  -- actions belong to no section (always shown)
-          table.insert(items, {
-            kind = "action",
-            label = label,
-            activate = activate_fn,
-            accent = accent == true
-          })
-        end
-
         AddSection("Storage")
         local function CycleBdma(dir)
           local next_idx = CycleIndex(UI.BdmaModeIndex, dir, #UI.BdmaModes)
@@ -4059,9 +4125,11 @@ UI = {
             return name.." "..tostring(UI.SCR.X or "?").."x"..tostring(UI.SCR.Y or "?")
           end
         )
+        -- Value reads On/Off (not Hidden/Visible): the old state-words made the
+        -- row read like a description of the text, not a toggle -- R3Z3N review.
         AddCycle(
           "Hide UI Text",
-          function() return UI.HideTextMode and "Hidden" or "Visible" end,
+          function() return UI.HideTextMode and "On" or "Off" end,
           function() UI.SetHideTextMode(not UI.HideTextMode, false) end,
           function() UI.SetHideTextMode(not UI.HideTextMode, false) end,
           HideTextDirty
@@ -4390,14 +4458,6 @@ UI = {
         end
 
         AddSpacer()
-        -- allow_fallback_exit=false: a FAILED save keeps the user on the Settings
-        -- page with every draft edit intact for a retry (it used to force-exit and
-        -- destroy them). The BACK-prompt Save below keeps true -- the user was
-        -- already leaving, so exit-on-failure matches their intent there.
-        AddAction("Save Changes",      function() queue_exit(UI.SCENES.MMAIN, false) end, true)
-        AddAction("Reset Defaults",    function() ResetDefaults() end, false)
-        AddAction("Discard & Exit",    function() discard_settings_and_return() end, false)
-        AddSpacer()
         AddSection("Memory Card")
         AddCycle(
           "POPSTARTER Folder",
@@ -4440,10 +4500,9 @@ UI = {
           end
         end
 
-        -- Accordion: the OPEN section = the section of the focused row (sticky when
-        -- focus is on an action, which has no section, so the last section stays
-        -- open). A row is visible only if it's a header/spacer/action or a child of
-        -- the open section; collapsed sections render as their single header line.
+        -- Accordion: the OPEN section = the section of the focused row. A row is
+        -- visible only if it's a header/spacer or a child of the open section;
+        -- collapsed sections render as their single header line.
         do
           local ff = items[UI.SettingsFocus]
           if ff ~= nil and ff.section ~= nil then UI.SettingsOpenSection = ff.section end
@@ -4456,7 +4515,7 @@ UI = {
         local open_section = UI.SettingsOpenSection
         local function IsVisibleItem(it)
           if it == nil then return false end
-          if it.kind == "section" or it.kind == "spacer" or it.kind == "action" then return true end
+          if it.kind == "section" or it.kind == "spacer" then return true end
           return it.section == open_section
         end
 
@@ -4505,23 +4564,19 @@ UI = {
             Graphics.drawRect(SAFE_LEFT, row_y - 2, SAFE_RIGHT - SAFE_LEFT, SECTION_HEADER_H, highlight_color)
           end
           -- "+" = collapsed (press to expand), "-" = expanded (ASCII, font-safe).
-          Font.ftPrint(BFONT, SAFE_LEFT + 2, row_y, 0, 12, 16, collapsed and "+" or "-", focused and accent_color or separator_color)
-          Font.ftPrint(BFONT, LABEL_X, row_y, 0, UI.SCR.X, 16, PLDR.L(label), accent_color)
-          Graphics.drawRect(SAFE_LEFT, row_y + SECTION_HEADER_H - 4, SAFE_RIGHT - SAFE_LEFT, 1, separator_color)
+          Font.ftPrint(BFONT, SAFE_LEFT + 2, row_y, 0, 12, 16, collapsed and "+" or "-", focused and section_color or section_line_color)
+          Font.ftPrint(BFONT, LABEL_X, row_y, 0, UI.SCR.X, 16, PLDR.L(label), section_color)
+          Graphics.drawRect(SAFE_LEFT, row_y + SECTION_HEADER_H - 4, SAFE_RIGHT - SAFE_LEFT, 1, section_line_color)
         end
 
         local function DrawRow(it, row_y, focused)
-          if focused and it.kind ~= "action" then
+          if focused then
             DrawHighlight(row_y)
           end
-          local label_text_color = focused and accent_color or label_color
-          if it.kind == "action" then
-            -- Action items are centered, accent-tinted when focused.
-            local color = focused and accent_color or (it.accent and accent_color or label_color)
-            if focused then DrawHighlight(row_y) end
-            Font.ftPrint(BFONT, UI.SCR.X_MID, row_y, 8, UI.SCR.X, 16, it.label, color)
-            return
-          end
+          -- Read-only rows dim BOTH label and value (they are never focused).
+          local label_text_color = focused and accent_color
+            or (it.kind == "info" and readonly_color)
+            or label_color
           -- Focused row tickers a too-long label; others clip statically. Label is
           -- localized (L() falls back to English for anything untranslated).
           local base_label = PLDR.L(it.label)
@@ -4530,11 +4585,14 @@ UI = {
           Font.ftPrint(BFONT, LABEL_X, row_y, 0, LABEL_W, 16, label_disp, label_text_color)
           local value_text = PLDR.L(it.value and tostring(it.value() or "") or "")
           local dirty = (it.dirty and it.dirty()) == true
+          -- Editable values (cycle AND path) share the selectable grey; only
+          -- read-only info values drop to the darker inert shade, so
+          -- "looks dim" == "can't be edited" holds everywhere on the page.
           local value_text_color
           if dirty then
             value_text_color = accent_color
-          elseif it.kind == "path" or it.kind == "info" then
-            value_text_color = muted_color
+          elseif it.kind == "info" then
+            value_text_color = readonly_color
           else
             value_text_color = label_color
           end
@@ -4557,7 +4615,7 @@ UI = {
         -- Focus-following scroll viewport. The page previously placed a fixed
         -- top-Y and, when the item stack was taller than the title->footer
         -- area, simply OVERFLOWED off-screen -- lower rows (Show Devices
-        -- checkboxes, the Save/Reset/Discard actions) became unreachable.
+        -- checkboxes) became unreachable.
         -- Precompute each item's content offset (variable row heights), then
         -- scroll only when needed so the focused row stays visible. When the
         -- content fits, item_off + base_y == the original y exactly, so the
@@ -4675,9 +4733,6 @@ UI = {
               focused_item.next()
             elseif focused_item.kind == "path" and focused_item.open then
               focused_item.open()
-            elseif focused_item.kind == "action" and focused_item.activate then
-              focused_item.activate()
-              return
             end
           end
         end
@@ -4695,7 +4750,15 @@ UI = {
           return
         end
         if UI.Pad.Events.START then
-          ResetDefaults()
+          -- Save's allow_fallback_exit=false: a FAILED save keeps the user on
+          -- the Settings page with every draft edit intact for a retry. The
+          -- BACK-prompt Save keeps true -- the user was already leaving, so
+          -- exit-on-failure matches their intent there.
+          UI.Modal.OpenSettingsMenu(
+            function() queue_exit(UI.SCENES.MMAIN, false) end,
+            function() ResetDefaults() end,
+            function() discard_settings_and_return() end
+          )
         end
 
         local labels, order = UI.Footer.ResolveLegend({
@@ -4703,7 +4766,7 @@ UI = {
           order_id = "settings_focus",
           circle = UI.Footer.labels.circle_other,
           cross = UI.Footer.labels.cross_select,
-          start = UI.Footer.labels.start_reset,
+          start = UI.Footer.labels.start_menu,
           select = UI.Footer.labels.select_toggle
         })
         UI.Footer.Draw(labels, order)
