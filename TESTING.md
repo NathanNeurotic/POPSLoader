@@ -1,7 +1,7 @@
-# POPSLoader — Tester Checklist (BETA-13 candidate)
+# POPSLoader — Tester Checklist (rolling `dev`)
 
-**Build:** rolling `BETA-13-PLAY` (BETA-13 candidate; rolling now publishes from this branch — `BETA-12-PLAY` is frozen/archival). Public release is still BETA-12.
-This is the structured "what to test" companion to **[ROLLING_NOTES.md](ROLLING_NOTES.md)** ("what's new"); for the canonical status / invariants / known-issues list see **[STATE.md](STATE.md)**. Regenerate when the rolling batch changes. _(Last refreshed: 2026-06-29 — added **per-device POPSTARTER.ELF resolution** (per-device builds incl. the USB-delay build; APA `hdd0:__common/POPS/`), the **normal-HDD-still-works** check after the shared-ATA-driver unification, and the **`POPS/ART/`** cover/details folder. Prior: end-to-end SMB (v1) network browsing; HDD (exFAT) / BDMA-ATA backend; on-screen-keyboard feedback fix.)_
+**Build:** the rolling build published from `dev`. Public release is **1.0.1** (2026-07-13).
+This is the structured "what to test" companion to **[ROLLING_NOTES.md](ROLLING_NOTES.md)** ("what's new"); for the canonical status / invariants / known-issues list see **[STATE.md](STATE.md)**. Regenerate when the rolling batch changes. _(Last refreshed: 2026-07-13 — added the **settings-review round 2** batch: Start-button settings menu, region-native confirm button (Japanese consoles), keyboard rework, POPSTARTER Path "Automatic" (profile presets removed). Prior: per-device POPSTARTER.ELF resolution; normal-HDD-still-works; `POPS/ART/` cover folder; SMB (v1); HDD (exFAT).)_
 
 **Devices:** USB · MX4SIO (SD over SIO2) · MMCE (SD2PSX / MemCard PRO) · HDD (internal PFS) · **HDD (exFAT) — BDMA Mode ATA** · **SMB (v1) network share — NEW**. Test the ones you use; **say which** in every report.
 
@@ -44,7 +44,7 @@ The flagship new feature this cycle (R3Z3N's ATA BDM Assault drivers + saildot4k
 
 ### ⭐⭐ Per-device POPSTARTER.ELF — NEW, never run on hardware
 
-POPSLoader now picks the `POPSTARTER.ELF` for a launch **per device**, so you can keep a different POPStarter build on each device. At launch the search order is: **(1)** an explicit **POPSTARTER Path** you set in *Settings* (or an absolute Profile pick) if it resolves → **(2)** the game's own **`<device>:/POPS/POPSTARTER.ELF`** if present → **(3)** the `POPSTARTER.ELF` next to where **POPSLOADER.ELF** launched from → **(4)** the `mc0:`/`mc1:/POPSTARTER` fallback. On the internal **PFS HDD**, step 2 is **`hdd0:__common/POPS/POPSTARTER.ELF`**. The device + cwd steps are existence-gated, so a device with no copy just falls through — **per-device builds are enabled, not forced.** The release ships multiple POPStarter builds for exactly this (a normal one, a **USB-delay** one, and debug variants — the "POPSTARTER VERSIONS" in the zip).
+POPSLoader now picks the `POPSTARTER.ELF` for a launch **per device**, so you can keep a different POPStarter build on each device. At launch the search order is: **(1)** an explicit **POPSTARTER Path** you set in *Settings* if it resolves → **(2)** the game's own **`<device>:/POPS/POPSTARTER.ELF`** if present → **(3)** the `POPSTARTER.ELF` next to where **POPSLOADER.ELF** launched from → **(4)** the `mc0:`/`mc1:/POPSTARTER` fallback. On the internal **PFS HDD**, step 2 is **`hdd0:__common/POPS/POPSTARTER.ELF`**. The device + cwd steps are existence-gated, so a device with no copy just falls through — **per-device builds are enabled, not forced.** The release ships multiple POPStarter builds for exactly this (a normal one, a **USB-delay** one, and debug variants — the "POPSTARTER VERSIONS" in the zip). *(The old 16-entry Profile preset list is gone — leave **POPSTARTER Path** on **Automatic** for the order above, or set a path to pin one build.)*
 
 **Test (each removable device — USB / exFAT / MX4SIO / MMCE):**
 - [ ] ⭐ **Per-device build pickup (the headline use):** drop a specific `POPSTARTER.ELF` build — e.g. the **USB-delay** build — into the **USB** drive's `POPS/` folder. Launch a USB game (ideally one that *only* runs with the USB-delay build) → it should now use **that** build and launch. Other devices keep using their own / the fallback build.
@@ -56,14 +56,41 @@ POPSLoader now picks the `POPSTARTER.ELF` for a launch **per device**, so you ca
 - [ ] ⭐⭐ **HDD game launches via `__common`:** on a PSBBN / HDD-OSD internal drive where the POPStarter binaries live at **`hdd0:__common/POPS/`**, launch a PS1 game from the **HDD (PFS)** list → it boots POPStarter with **no black screen**. *(The new `hdd0:__common/POPS/POPSTARTER.ELF` step routes through the same internal-HDD machinery as before, but it has not been run on hardware — this is the most regression-prone path.)*
 - Report: a black screen, a "can't find POPSTARTER" message, or any hang launching an internal-HDD game.
 
-### ⭐ Settings — collapsible sections (NEW, never run on hardware)
+### ⭐ Settings page — round-2 redesign (NEW, never run on hardware)
 
-The Settings page already scrolls (focus-following viewport + scrollbar). New this build: each **section header** (Storage / Display / Startup / Carousel Devices / Game List / SMB / Network / POPSTARTER / Memory Card — 8 sections) can **collapse/expand** so long groups (e.g. the per-device "Carousel Devices" checklist) fold away.
-- [ ] Move the cursor onto a **section header** (it highlights; shows `-` when expanded, `+` when collapsed). Press **X** to toggle; **Left** collapses, **Right** expands.
-- [ ] Collapsing a section hides its rows and the list gets shorter (less scrolling); expanding brings them back. The cursor stays on the header.
-- [ ] ⚠️ **Save / Reset Defaults / Discard & Exit must ALWAYS stay reachable** regardless of which sections are collapsed — confirm you can still reach them after collapsing every section.
-- [ ] Every existing setting still saves/persists exactly as before (collapse state is session-only — it resets on reboot, nothing new is written to your settings file).
-- Report: a section that won't expand back, the actions becoming unreachable, the cursor getting stuck, or any setting failing to save.
+The Settings page is now an **accordion**: only the section your cursor is in shows its rows; the others fold to a single header line. Headers are **gold** (they're labels, not rows), read-only status lines (like *Actual output*) are **dimmed darker** than anything you can select, and a section now **unfolds over a few frames** instead of snapping open.
+- [ ] Move Up/Down through the whole page — every section opens as you enter it, the one you left folds, and the unfold looks like a quick drop-down (not an instant snap, not a slow crawl).
+- [ ] Nothing dimmed-dark can be selected, and everything selectable can be reached. The dim *Actual output* line under Video Standard is informational — confirm it's obviously not an editable field now.
+- [ ] ⚠️ **Save / Reset Defaults / Discard & Exit moved off the list: press START** — a small menu opens (Up/Down + Confirm; the cancel button closes it). Confirm all three actions work from it, and that the old inline rows are gone.
+- [ ] Backing out with unsaved changes still asks "Save your changes before leaving?" exactly as before.
+- [ ] **Hide UI Text** now reads **On/Off** (it was Hidden/Visible). Confirm On hides the footer/help text as before and the value survives a save + reboot.
+- [ ] Every existing setting still saves/persists exactly as before.
+- Report: a section that won't open, the START menu not appearing, an action firing twice, the cursor getting stuck mid-animation, or any setting failing to save.
+
+### ⭐ Region-native confirm button (NEW — needs a JAPANESE console + any Western console)
+
+On Japanese consoles the PS2 convention is **Circle = confirm, Cross = cancel**. POPSLoader now reads the console ROM at boot and flips its buttons AND all on-screen hints to match.
+- [ ] **On a Japanese console** (any NTSC-J model): Circle confirms/launches, Cross cancels/goes back — everywhere (menus, settings, keyboard, the "Keep this display mode?" prompt, exit dialog). Every footer hint and every "X:/O:" text names the right button.
+- [ ] **On a US/PAL console**: absolutely nothing changed — Cross still confirms everywhere.
+- [ ] The **confirm action is always the left-most item** in the button bar at the bottom of every page, on both console types.
+- Report: any screen where the buttons and the printed hints disagree, or where the old mapping stuck.
+
+### ⭐ On-screen keyboard rework (NEW, never run on hardware)
+
+- [ ] The keyboard opens **UPPERCASE** with the cursor on the **letter row** (Q on QWERTY), and the **number row is at the top**.
+- [ ] The **Case/Symbols (R2)** label names the mode you'd **switch to** — press R2 and the typed case follows.
+- [ ] **Hold Confirm on a key** — the key stays visually pressed for as long as you hold (it used to blink once and go dark mid-hold). Releasing or moving off drops it. Held Confirm still types **one** character, not a stream.
+- [ ] The **layout strip inside the keyboard is gone** — the layout (QWERTY / DVORAK / ABC / AZERTY / QWERTZ / ABNT) is picked in *Settings → Startup → Keyboard Layout* only. Confirm changing it there changes the keyboard.
+- Report: the cursor landing somewhere odd on open, a layout with a misplaced key, or the pressed-key highlight misbehaving.
+
+### ⭐ POPSTARTER Path — "Automatic" (profile presets removed; NEW, never run on hardware)
+
+The **Profile** row (Profile 1..16 presets) is gone. *Settings → POPSTARTER → POPSTARTER Path* now shows **Automatic** by default — POPSLoader finds `POPSTARTER.ELF` on its own (the per-device order above). Set a path to pin a specific build; **clear the path** in the editor to go back to Automatic.
+- [ ] On **Automatic**, every device that launched before still launches (nothing to configure).
+- [ ] Set an explicit path → that build is used; set a **wrong/unplugged** path → the launch **still works** via the automatic order (no error unless nothing is found anywhere).
+- [ ] With **no** `POPSTARTER.ELF` anywhere, launching warns that none was found (instead of a silent failure).
+- [ ] If you had a **Profile** selected in an older build: after updating, launches still work with zero setup — your preset choice is carried over into **POPSTARTER Path** automatically on first boot (check *Settings → POPSTARTER*: the old preset's path should be filled in; the default Profile 1 shows Automatic).
+- Report: a setup that launched before the update and stopped after it — include where your `POPSTARTER.ELF` files live.
 
 ### ⭐⭐ SMB (v1) network game browsing — NEW end-to-end, never run on hardware
 

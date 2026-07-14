@@ -3,7 +3,7 @@ name: Rolling Release
 on:
   push:
     branches:
-      - BETA-13-PLAY
+      - dev
   pull_request:
     types:
       - opened
@@ -77,7 +77,7 @@ jobs:
         shell: bash
         run: |
           set -eu
-          LUA_FILES="etc/boot.lua bin/POPSLDR/system.lua bin/POPSLDR/ui.lua bin/POPSLDR/images.lua bin/POPSLDR/pops_profiles.lua"
+          LUA_FILES="etc/boot.lua bin/POPSLDR/system.lua bin/POPSLDR/ui.lua bin/POPSLDR/images.lua"
           for f in $LUA_FILES; do
             [ -f "$f" ] || { echo "ERROR: $f not found" >&2; exit 1; }
           done

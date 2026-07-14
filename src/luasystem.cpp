@@ -140,6 +140,16 @@ static bool EnsureUsbMass()
 	if (!EnsureBDMFatFs()) {
 		return false;
 	}
+	// bdmfs_fatfs registers as the BDM filesystem provider; give it a moment to
+	// settle before usbmass_bd starts producing block devices. Loading usbmass_bd
+	// back-to-back races the not-yet-ready FS layer, so the first USB device connect
+	// can fail to mount and no mass: root ever appears ("No USB backend detected",
+	// deterministically, since usbmass_irx_loaded then latches and a menu rescan only
+	// re-queries devices -- it never reloads/re-settles the modules). wLaunchELF_R3Z
+	// (saildot4k's "all devices work" fork) does exactly this 1s settle here
+	// (waitForUsbMassBdmfsSettle / USB_MASS_BDMFS_SETTLE_MS=1000), and our ATA path
+	// already settles the same way after ata_bd. Mirror it for USB.
+	sleep(1);
 	if (!LoadIrxCheckedBuffer("usbmass_bd.irx", usbmass_bd_irx, size_usbmass_bd_irx, NULL, NULL)) {
 		return false;
 	}
@@ -1346,7 +1356,7 @@ static int lua_mx4sio_init(lua_State *L)
 	return 2;
 }
 
-// Bring up the BDM-enabled ATA stack ONCE: dev9 -> bdm -> bdmfs_fatfs (+ usbmass_bd) -> ata_bd.
+// Bring up the BDM-enabled ATA stack ONCE: dev9 -> bdm -> bdmfs_fatfs -> ata_bd.
 // ata_bd IS ps2atad compiled with ATA_ENABLE_BDM=1 -- it registers BOTH the atad library
 // (used by ps2hdd/ps2fs for APA/PFS) AND a BDM "ata" mass device (exFAT). The BDM FS layer
 // MUST precede it so ata_bd's bdm_connect_bd registration succeeds. SHARED by the HDD-boot
@@ -1361,10 +1371,21 @@ bool EnsureAtaBdm()
 	if (!EnsureDev9()) {
 		return false;
 	}
-	if (!EnsureUsbMass()) {   // dev9 -> bdm -> bdmfs_fatfs -> usbmass_bd; bdm MUST precede ata_bd
+	// ATA uses ata_bd, NOT the USB mass block driver -- load only the BDM FS base
+	// (bdm + bdmfs_fatfs), never usbmass_bd, so bringing up the internal exFAT/APA
+	// drive does not also spin up USB enumeration. Matches wLaunchELF_R3Z's
+	// loadAtaBlockDriver (bdm -> bdmfs -> ata_bd, no usbmass_bd). Verified independent:
+	// ata_bd registers its own BDM "ata" device + the atad library for PFS, and the
+	// APA-boot path (luaHDD.cpp Load_HDD_IRX) needs the same bdm/bdmfs/ata_bd and never
+	// usbmass_bd; ClassifyMassRootDriver treats "ata" and "usb" as distinct buckets.
+	if (!EnsureBDMFatFs()) {   // dev9 -> bdm -> bdmfs_fatfs; bdm MUST precede ata_bd
 		return false;
 	}
 	if (!g_ata_bd_loaded) {
+		// Let bdmfs_fatfs settle before ata_bd registers with the BDM core -- the same
+		// 1s settle EnsureUsbMass applies before usbmass_bd (R3Z gets the equivalent gap
+		// from loading dev9 between bdmfs and ata_bd; we load dev9 first, so settle here).
+		sleep(1);
 		if (!LoadIrxCheckedBuffer("ata_bd.irx", ata_bd_irx, size_ata_bd_irx, NULL, NULL)) {
 			return false;
 		}

@@ -10,7 +10,7 @@
 
 POPSLoader is a graphical PlayStation 2 homebrew launcher designed to easily browse and launch your PS1 games (using POPStarter) from various storage devices. It features a clean, responsive layout, cover art support, sound effects, an on-screen keyboard, and direct memory card exit shortcuts.
 
-The current public release is **1.0.0** (released 2026-07-10). Rolling test artifacts continue to be published from the `BETA-13-PLAY` branch (see [Development & Building](#development--building)).
+The current public release is **1.0.1** (released 2026-07-13). Rolling test artifacts continue to be published from the `dev` branch (see [Development & Building](#development--building)).
 
 ---
 
@@ -80,8 +80,8 @@ Place all files on the root of your storage device (`mass:/`, `mx4sio:/`, `mmce0
 | `<device>:/POPS/POPS.PAK` | Emulator resources payload |
 | `<device>:/POPS/POPS_IOX.PAK` | Emulator input/output resources payload |
 
-### Internal HDD Setup
-Place VCD game files inside your dedicated POPS partitions, and system binaries inside `__common/POPS/`:
+### Internal HDD Setup: HDD (PFS) / APA partitions
+This layout is for the classic **HDD (PFS)** drive (Sony APA partitions via the network/ATA adapter). Place VCD game files inside your dedicated POPS partitions, and system binaries inside `__common/POPS/`:
 
 | File Path | Description |
 | :--- | :--- |
@@ -93,6 +93,8 @@ Place VCD game files inside your dedicated POPS partitions, and system binaries 
 | `hdd:/__common/POPS/POPS.ELF` | POPS emulator engine binary |
 | `hdd:/__common/POPS/POPS.PAK` | Emulator resources payload |
 | `hdd:/__common/POPS/POPS_IOX.PAK` | Emulator input/output resources payload |
+
+> **An exFAT internal drive is set up differently (like a USB drive, not like this).** The **HDD (exFAT)** drive (BDMA Mode `ATA`) mounts as `mass:` and uses the **same flat layout as a USB / removable drive**, not APA partitions. Put a single `POPS/` folder at the drive's root holding your `.VCD` games and the POPS system files (`PATCH_5.BIN`, `IOPRP252.IMG`, `POPS.ELF`, `POPS.PAK`, `POPS_IOX.PAK`, `POPSTARTER.ELF`), exactly like the **USB / removable** table above (`<device>:/POPS/...`), with covers under `POPS/ART/`. Do **not** create `__.POPS` partitions or a `__common/` folder on an exFAT drive.
 
 ---
 
@@ -109,10 +111,10 @@ Navigate POPSLoader using a standard PS2 controller.
 | **L1** | Jump to the top of the game list — press again to bounce to the bottom |
 | **Left Analog Stick (up / down)** | Navigate the game list item-by-item — the stick folds into the d-pad, so a held push scrolls smoothly with the same auto-repeat (only an analog/DualShock pad's stick is read; a digital pad is ignored). Push the stick **left / right** to page-jump like the d-pad. |
 | **R1** | Refresh / rescan the current device's game list, in place (e.g. after hot-plugging a drive or card). USB / MMCE / MX4SIO / HDD (PFS) re-scan live by default; if *Game list cache* is enabled in Settings they instead rebuild their saved per-device cache. |
-| **Cross (X)** | Confirm option / Launch selected game |
-| **Circle (O)** | Go back to the Main Menu / Cancel |
+| **Cross (X)** | Confirm option / Launch selected game. On a **Japanese-ROM console** the convention flips automatically: **Circle confirms and Cross cancels** (POPSLoader reads `rom0:ROMVER` at boot), and every on-screen button hint follows. |
+| **Circle (O)** | Go back to the Main Menu / Cancel (Cross on a Japanese-ROM console) |
 | **Triangle (△)** | Open the Credits screen (any button returns you to where you were). Exit shortcuts, including BOOT.ELF where available, live in the Exit menu opened with **Circle** on the Main Menu. |
-| **Start** | Open the Settings / Profile Editor |
+| **Start** | Open Settings |
 | **Select** | Toggle "Hide Text Mode" (clears the UI for a clean view of cover art) |
 | **Square (□)** | Toggle cover-art preview on / off (in the game list) |
 | **Right Analog Stick (up / down)** | Scroll a long game description that doesn't fully fit on screen (when *Game details* are enabled and a `<game>.txt` is present). |
@@ -126,14 +128,16 @@ Navigate POPSLoader using a standard PS2 controller.
 | :--- | :--- |
 | **L1 / R1** | Move the text cursor Left / Right |
 | **Square (□)** | Delete character (backspace) |
-| **R2** | Toggle uppercase / symbols — letters shift to UPPERCASE, and the digit/bracket keys type `@ # $ % ^ * " < > \| { } ~ \`` (for usernames, hidden shares ending `$`, and symbol passwords) |
+| **R2** | Toggle uppercase / symbols — letters shift to UPPERCASE, and the digit/bracket keys type `@ # $ % ^ * " < > \| { } ~ \`` (for usernames, hidden shares ending `$`, and symbol passwords). The on-screen label always names the mode R2 will **switch to**. |
 | **Circle (O)** | Close the keyboard. With unsaved typing it asks for a **second press** (within ~1.5 s) before discarding |
+
+The keyboard opens **uppercase with the cursor on the first letter row** and the **number row sits at the top**. The layout itself (QWERTY / DVORAK / ABC / AZERTY / QWERTZ / ABNT) is picked in *Settings → Startup → Keyboard Layout*.
 
 ---
 
 ## Settings
 
-Press **Start** on the menu to open Settings; changes save when you confirm. Settings persist per install with **single-device parity** — every device, **including the internal HDD**, saves a `.pldrs` file next to the launcher. HDD installs write that sidecar **on the HDD boot partition itself** (POPSLoader remounts its own boot partition read-write to do so — there is no `mc0:` fallback for HDD installs). For the full rules, see **[STATE.md > Settings](STATE.md#settings-single-device-parity)**.
+Press **Start** on the menu to open Settings. Inside Settings, **Start** opens the **Save Changes / Reset Defaults / Discard & Exit** menu (they are no longer rows in the list); changes save when you confirm. Settings persist per install with **single-device parity** — every device, **including the internal HDD**, saves a `.pldrs` file next to the launcher. HDD installs write that sidecar **on the HDD boot partition itself** (POPSLoader remounts its own boot partition read-write to do so — there is no `mc0:` fallback for HDD installs). For the full rules, see **[STATE.md > Settings](STATE.md#settings-single-device-parity)**.
 
 ### Startup
 
@@ -160,7 +164,7 @@ Press **Start** on the menu to open Settings; changes save when you confirm. Set
 
 ### Other settings
 
-- **Profile / POPSTARTER mode / POPSTARTER path** — which `POPSTARTER.ELF` to use. At launch POPSLoader resolves it per device in order: **(1)** an explicit **POPSTARTER Path** you set (an absolute path; an absolute Profile selection counts as this) when it resolves; **(2)** the game device's own `<device>:/POPS/POPSTARTER.ELF` if present — on the internal **PFS HDD** this step is `hdd0:__common/POPS/POPSTARTER.ELF` instead; **(3)** the `POPSTARTER.ELF` next to where `POPSLOADER.ELF` launched from; **(4)** the `mc0:`/`mc1:/POPSTARTER` + configured-default fallback. So a per-device build is picked up automatically without being forced, an explicit custom path always wins, and Profiles act as presets.
+- **POPSTARTER Path** — which `POPSTARTER.ELF` to use. Leave it on **Automatic** (the default) and POPSLoader resolves it per device at launch: **(1)** the game device's own `<device>:/POPS/POPSTARTER.ELF` if present — on the internal **PFS HDD** this step is `hdd0:__common/POPS/POPSTARTER.ELF` instead; **(2)** the `POPSTARTER.ELF` next to where `POPSLOADER.ELF` launched from; **(3)** the `mc0:`/`mc1:/POPSTARTER` fallback. Or set an explicit path — it is tried **first**, and if it doesn't resolve (drive unplugged, typo) the launch silently falls back to the same Automatic order; you're only warned when **no** `POPSTARTER.ELF` is found anywhere. (The old 16-entry Profile preset list is gone — and if you had a preset selected, it's carried over into this path automatically on first boot, so nothing stops launching. No more `pfsN` partition numbers on screen.) Clearing the path in the editor returns it to Automatic.
 - **DKWDRV Path** — path to `DKWDRV.ELF` used by the Disc option.
 - **Video Standard** — **Auto** (default — matches your console's region) / NTSC / PAL. On PAL the UI now renders **natively at 640×512** so it fills the whole screen with no letterbox (NTSC is 640×448). A display-mode change shows a confirm prompt that **auto-reverts** if you don't confirm, so a bad mode can't strand you; you can also hold **Start** during boot to skip past a bad video mode.
 - **Overscan (CRT inset)** — **Off** (default) up to a numeric inset, adjusted in steps of **5** (OPL-style render inset, same math as OPL's overscan). Pulls the whole UI slightly toward the center of the screen so nothing is lost in a CRT's overscan border. The change previews live as you adjust it; backing out of Settings without saving restores the previous value. *(Mainly useful on a real CRT; on a flat panel you'll usually leave it Off.)*
@@ -168,8 +172,8 @@ Press **Start** on the menu to open Settings; changes save when you confirm. Set
 - **BDMA Mode** — mass-storage backend mode: **FAT32** (`FAT32-USB (None)`) / **USBEXFAT** (`exFAT-USB`) / **MX4SIO** / **MMCE** / **ATA** (`exFAT-HDD (ata)` — an internal SATA/IDE drive formatted exFAT; *new, validating on hardware*). The installed mode is recorded in a `bdma_mode.txt` marker file in the POPSTARTER pack folder (older `.pldr_bdma_mode` markers are still read for compatibility).
 - **Adaptive BDMA** — *(new, validating on hardware)* stages the right BDMA drivers for the **game you launch**, automatically, so MMCE and USB (and MX4SIO / exFAT-HDD) games can coexist without flipping BDMA Mode between launches. It checks first and skips the write when the correct drivers are already on the card. The USB page can't tell FAT32 from exFAT drives, so there your saved **BDMA Mode** decides: `exFAT-USB` keeps the exFAT drivers for USB launches, anything else means your USB drive is FAT32 (drivers removed, POPStarter's built-in stack used). Default **Off**.
 - **POPSTARTER Memory Card Folder** — toggles the `mc:/POPSTARTER` folder. Turning it **off deletes** `mc:/POPSTARTER` (with a confirm prompt). It is **interlocked with BDMA Mode**: you can't turn this folder off while BDMA Mode is on (or while Adaptive BDMA is on), and you can't enable either while this folder is off.
-- **Hide UI Text** — clears on-screen text for a clean cover-art view (also toggled with **Select**).
-- **Keyboard Layout** — on-screen keyboard layout for the path editor.
+- **Hide UI Text** — **On/Off**; clears on-screen text for a clean cover-art view (also toggled with **Select**).
+- **Keyboard Layout** — on-screen keyboard layout for the path editor (QWERTY / DVORAK / ABC / AZERTY / QWERTZ / ABNT). This is the only place the layout is chosen; the keyboard itself no longer carries a layout strip.
 
 ### SMB / Network
 
@@ -278,7 +282,7 @@ See [STATE.md](STATE.md) "Known Open Work" and [ROADMAP.md](ROADMAP.md) for the 
 
 ## Development & Building
 
-GitHub Actions is the canonical build path. The pinned CI image is `ps2dev/ps2dev:v2.0.0`. Every change must pass the CI workflow in `.github/workflows/compilation.yml` before merging; rolling release artifacts for testing are produced by `.github/workflows/rolling-release.yml` on push to `BETA-13-PLAY` and on pull request events. CI now runs a live `luac` syntax gate over the embedded Lua (`bin/POPSLDR/*.lua` + `etc/boot.lua`) and hard-fails on a syntax error — note this catches **syntax** only; runtime and load-order errors still only surface on real PS2 / PCSX2.
+GitHub Actions is the canonical build path. The pinned CI image is `ps2dev/ps2dev:v2.0.0`. Every change must pass the CI workflow in `.github/workflows/compilation.yml` before merging; rolling release artifacts for testing are produced by `.github/workflows/rolling-release.yml` on push to `dev` and on pull request events. CI now runs a live `luac` syntax gate over the embedded Lua (`bin/POPSLDR/*.lua` + `etc/boot.lua`) and hard-fails on a syntax error — note this catches **syntax** only; runtime and load-order errors still only surface on real PS2 / PCSX2.
 
 POPSLoader is an EE C/C++ application (`src/`) with the entire front-end UI and launch logic written as embedded Lua (`bin/POPSLDR/*.lua`, `etc/boot.lua`) and an embedded IOP-side child ELF loader (`src/elf_loader/`). The Lua scripts, PNG art, IRX modules, and the child loader are all baked directly into the EE ELF at build time via `bin2c`, so the on-card scripts are not read at runtime — building from source is required to change them.
 

@@ -605,6 +605,39 @@ UI = {
     ShouldHideAuxText = function (scene)
       return UI.HideTextMode and UI.IsHideToggleScene(scene or UI.CURSCENE)
     end;
+    -- Region-native confirm mapping (R3Z3N review): Japanese-ROM consoles
+    -- (rom0:ROMVER byte 5 == 'J' -> PLDR.CONFIRM_CIRCLE, probed at boot in
+    -- system.lua) use CIRCLE = confirm / CROSS = cancel; everywhere else the
+    -- reverse. Scenes consume abstract CONFIRM/BACK events, so the pad map in
+    -- UI.Pad.Listen plus these glyph helpers are the ONLY swap points: footer
+    -- icons, modal hints and blocking prompts all route through them.
+    ConfirmSwapped = function ()
+      return type(PLDR) == "table" and PLDR.CONFIRM_CIRCLE == true
+    end;
+    ConfirmGlyphKey = function ()  -- footer/IMG key of the CONFIRM button
+      return UI.ConfirmSwapped() and "circle" or "cross"
+    end;
+    BackGlyphKey = function ()
+      return UI.ConfirmSwapped() and "cross" or "circle"
+    end;
+    ConfirmGlyphLetter = function ()  -- text hints ("X: Confirm" style)
+      return UI.ConfirmSwapped() and "O" or "X"
+    end;
+    BackGlyphLetter = function ()
+      return UI.ConfirmSwapped() and "X" or "O"
+    end;
+    ConfirmPadMask = function ()  -- raw Pads.get bitmask of CONFIRM
+      return UI.ConfirmSwapped() and PAD_CIRCLE or PAD_CROSS
+    end;
+    BackPadMask = function ()
+      return UI.ConfirmSwapped() and PAD_CROSS or PAD_CIRCLE
+    end;
+    -- "X = Yes      O = No"-style line for the blocking prompts, composed from
+    -- word-level i18n keys so the glyph letters can swap per region.
+    PadHintPair = function (confirm_word, back_word)
+      return UI.ConfirmGlyphLetter().." = "..PLDR.L(confirm_word)
+        .."      "..UI.BackGlyphLetter().." = "..PLDR.L(back_word)
+    end;
     RequestScene = function (SCENE)
       if UI.Transition ~= nil and UI.Transition.Start ~= nil then
         if UI.Transition.active then
@@ -775,7 +808,6 @@ UI = {
 	    VideoStandardDirty = false;
 	    ProfileDirty = false;
 	    PopPathDirty = false;
-	    PopPathProfileDefaultDirty = false;
 	    DkwdrvDirty = false;
     PopstarterPathDraft = nil;
     DkwdrvPathDraft = nil;
@@ -946,7 +978,8 @@ UI = {
       end;
       add = function (notif, sev)
         local q = UI.Notif_queue
-        local text = tostring(notif or "")
+        -- Localize static toasts (dynamic/unlisted text falls through to English).
+        local text = PLDR.L(tostring(notif or ""))
         local head, body
         local nl = string.find(text, "\n", 1, true)
         if nl then
@@ -964,18 +997,21 @@ UI = {
       UI.Notif_queue.add(msg, sev)
     end;
     Footer = {
-      order = {"triangle", "circle", "cross", "square"};
-	      order_with_start = {"triangle", "circle", "cross", "start"};
-	      order_with_start_r2 = {"triangle", "circle", "cross", "square", "start"};
-	      order_settings_save = {"circle", "cross", "start", "select"};
-	      order_keyboard = {"circle", "cross", "square", "start"};
+      -- Legend orders use the semantic tokens "confirm"/"back" (resolved to the
+      -- region-native cross/circle glyph in ResolveLegend). Confirm always sits
+      -- FAR LEFT, back/exit at the right edge -- R3Z3N review.
+      order = {"confirm", "square", "back", "triangle"};
+      order_with_start = {"confirm", "start", "back", "triangle"};
+      order_with_start_r2 = {"confirm", "square", "start", "back", "triangle"};
+      order_settings_save = {"confirm", "start", "select", "back"};
+      order_keyboard = {"confirm", "square", "start", "back"};
 	      labels = {
 	        triangle = "Credits",
 	        circle_main = "Exit",
 	        circle_other = "Back",
 	        start_profiles = "Settings",
-	        start_reset = "Reset Defaults",
-	        select_toggle = "Toggle UI",
+	        start_menu = "Menu",
+	        select_toggle = "Hide Text",
 	        square_backspace = "Backspace",
 	        cross_confirm = "Confirm",
 	        cross_enter = "Enter",
@@ -997,6 +1033,10 @@ UI = {
       ResolveLegend = function (opts)
         local order = opts.order or UI.Footer.order
         local order_id = opts.order_id or "default"
+        -- Callers still pass labels by SEMANTIC role: opts.circle = the
+        -- back/cancel action, opts.cross = the confirm action. Which physical
+        -- glyph carries each role follows the region-native mapping (constant
+        -- for the whole session, so the cache stays valid).
         local circle_label = opts.circle or UI.Footer.labels.circle_other
         local cross_label = opts.cross or UI.Footer.labels.cross_confirm
         local start_label = opts.start or UI.Footer.labels.start_profiles
@@ -1008,18 +1048,29 @@ UI = {
         if cached ~= nil then
           return cached.labels, cached.order
         end
+        local confirm_key = UI.ConfirmGlyphKey()
+        local back_key = UI.BackGlyphKey()
         local labels = {
           triangle = UI.Footer.labels.triangle,
-          circle = circle_label,
-          cross = cross_label,
+          [back_key] = circle_label,
+          [confirm_key] = cross_label,
           start = start_label,
           select = select_label
         }
         if square_label ~= nil then
           labels.square = square_label
         end
-        UI.Footer.legend_cache[key] = {labels = labels, order = order}
-        return labels, order
+        -- Translate the semantic order tokens to the physical glyph keys the
+        -- Draw loop indexes IMG[] with.
+        local physical = {}
+        for i = 1, #order do
+          local entry = order[i]
+          if entry == "confirm" then entry = confirm_key
+          elseif entry == "back" then entry = back_key end
+          physical[i] = entry
+        end
+        UI.Footer.legend_cache[key] = {labels = labels, order = physical}
+        return labels, physical
       end;
       Draw = function (labels, order)
         if UI.ShouldHideAuxText(UI.CURSCENE) then
@@ -1099,7 +1150,7 @@ UI = {
           end
           local label = labels and labels[key] or nil
           if label ~= nil then
-            Font.ftPrint(SFONT, x, labelY, 8, UI.LAYOUT.FOOTER_LABEL_W, 16, label, UI.CCOL.GREY)
+            Font.ftPrint(SFONT, x, labelY, 8, UI.LAYOUT.FOOTER_LABEL_W, 16, PLDR.L(label), UI.CCOL.GREY)
           end
         end
       end;
@@ -1160,11 +1211,11 @@ UI = {
           end
           Graphics.drawRect(bar_x + 2 + offset, bar_y + 2, marquee_w, bar_h - 4, Color.new(110, 190, 255, 96))
         end
-        Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 20, 8, UI.SCR.X, 16, tostring(UI.SavingMessage or "Saving/Applying..."), UI.CCOL.YELLOW)
+        Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 20, 8, UI.SCR.X, 16, PLDR.L(tostring(UI.SavingMessage or "Saving/Applying...")), UI.CCOL.YELLOW)
         if type(UI.SavingProgress) == "number" then
           Font.ftPrint(SFONT, UI.SCR.X_MID, box_y + 84, 8, UI.SCR.X, 16, tostring(math.floor(UI.SavingProgress * 100 + 0.5)).."%", UI.CCOL.GREY)
         else
-          Font.ftPrint(SFONT, UI.SCR.X_MID, box_y + 84, 8, UI.SCR.X, 16, "Working...", UI.CCOL.GREY)
+          Font.ftPrint(SFONT, UI.SCR.X_MID, box_y + 84, 8, UI.SCR.X, 16, PLDR.L("Working..."), UI.CCOL.GREY)
         end
       end
       if UI.Transition ~= nil then
@@ -1474,6 +1525,18 @@ UI = {
       cancel_action = nil;
       triangle_action = nil;
       ignore_until_release = false;
+      -- List-menu mode: when menu_items is set the modal is a small vertical
+      -- chooser (Up/Down + Confirm) instead of the X/O/Triangle button prompt.
+      menu_items = nil;
+      menu_index = 1;
+      -- One place builds every "X: Confirm    O: Cancel" hint line so the
+      -- glyph letters stay consistent across modals AND follow the
+      -- region-native confirm mapping (confirm always listed first).
+      ButtonHint = function (confirm_label, cancel_label)
+        return ("%s: %s    %s: %s"):format(
+          UI.ConfirmGlyphLetter(), confirm_label,
+          UI.BackGlyphLetter(), cancel_label)
+      end;
       OpenExit = function ()
         UI.Modal.active = true
         UI.Modal.title = "Exit"
@@ -1715,11 +1778,31 @@ UI = {
         end
         UI.Modal.ignore_until_release = true
       end;
+      -- The settings page's Save/Reset/Discard actions live behind START
+      -- (R3Z3N review: inline list rows for them sat oddly above Memory Card
+      -- and made reaching them a scroll chore).
+      OpenSettingsMenu = function (on_save, on_reset, on_discard)
+        UI.Modal.active = true
+        UI.Modal.title = "Settings"
+        UI.Modal.body = ""
+        UI.Modal.menu_items = {
+          { label = "Save Changes",   action = on_save },
+          { label = "Reset Defaults", action = on_reset },
+          { label = "Discard & Exit", action = on_discard },
+        }
+        UI.Modal.menu_index = 1
+        UI.Modal.confirm_action = nil
+        UI.Modal.cancel_action = UI.Modal.Close
+        UI.Modal.triangle_action = nil
+        UI.Modal.ignore_until_release = true
+      end;
       Close = function ()
         UI.Modal.active = false
         UI.Modal.confirm_action = nil
         UI.Modal.cancel_action = nil
         UI.Modal.triangle_action = nil
+        UI.Modal.menu_items = nil
+        UI.Modal.menu_index = 1
         UI.Modal.ignore_until_release = false
       end;
       ConfirmExit = function ()
@@ -1785,6 +1868,27 @@ UI = {
           end
           return
         end
+        if UI.Modal.menu_items ~= nil then
+          local n = #UI.Modal.menu_items
+          if n > 0 then
+            if UI.Pad.Events.NAV_UP then
+              UI.Modal.menu_index = ((UI.Modal.menu_index - 2) % n) + 1
+            end
+            if UI.Pad.Events.NAV_DOWN then
+              UI.Modal.menu_index = (UI.Modal.menu_index % n) + 1
+            end
+          end
+          if UI.Pad.Events.CONFIRM then
+            local entry = UI.Modal.menu_items[UI.Modal.menu_index]
+            UI.Modal.Close()
+            if entry ~= nil and type(entry.action) == "function" then
+              entry.action()
+            end
+          elseif UI.Pad.Events.BACK then
+            UI.Modal.Close()
+          end
+          return
+        end
         if UI.Pad.Events.CONFIRM then
           if UI.Modal.confirm_action ~= nil then
             UI.Modal.confirm_action()
@@ -1805,11 +1909,36 @@ UI = {
       end;
       Draw = function ()
         if not UI.Modal.active then return end
-        local body_lines = WrapText(UI.Modal.body or "", 38)
+        if UI.Modal.menu_items ~= nil then
+          local n = #UI.Modal.menu_items
+          local row_h = 22
+          local box_w = 320
+          local box_h = 96 + n * row_h
+          local box_x = math.floor(UI.SCR.X_MID - (box_w / 2))
+          local box_y = math.floor(UI.SCR.Y_MID - (box_h / 2))
+          Graphics.drawRect(0, 0, UI.SCR.X, UI.SCR.Y, UI.CCOL.MODAL_BACKDROP)
+          Graphics.drawRect(box_x, box_y, box_w, box_h, Color.new(0, 0, 0, 200))
+          Graphics.drawRect(box_x, box_y, box_w, 2, UI.CCOL.GREY)
+          Graphics.drawRect(box_x, box_y + box_h - 2, box_w, 2, UI.CCOL.GREY)
+          Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 10, 8, UI.SCR.X, 16, PLDR.L(UI.Modal.title), UI.CCOL.YELLOW)
+          local accent = (UI.COLORS and UI.COLORS.TEXT_PRIMARY) or UI.CCOL.YELLOW
+          for i = 1, n do
+            local row_y = box_y + 44 + (i - 1) * row_h
+            local selected = (i == UI.Modal.menu_index)
+            if selected then
+              Graphics.drawRect(box_x + 16, row_y - 2, box_w - 32, row_h - 2, Color.new(50, 80, 160, 110))
+            end
+            Font.ftPrint(BFONT, UI.SCR.X_MID, row_y, 8, UI.SCR.X, 16, PLDR.L(UI.Modal.menu_items[i].label), selected and accent or UI.CCOL.GREY)
+          end
+          local hint = UI.Modal.ButtonHint(PLDR.L("Confirm"), PLDR.L("Cancel"))
+          Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + box_h - 26, 8, UI.SCR.X, 16, hint, UI.CCOL.GREY)
+          return
+        end
+        local body_lines = WrapText(PLDR.L(UI.Modal.body or ""), 38)
         local line_spacing = 16
-        local confirm_label = UI.Modal.options[1] or "Confirm"
-        local cancel_label = UI.Modal.options[2] or "Cancel"
-        local triangle_label = UI.Modal.options[3]
+        local confirm_label = PLDR.L(UI.Modal.options[1] or "Confirm")
+        local cancel_label = PLDR.L(UI.Modal.options[2] or "Cancel")
+        local triangle_label = UI.Modal.options[3] and PLDR.L(UI.Modal.options[3]) or nil
         local extra_footer_h = (triangle_label ~= nil) and 16 or 0
         local box_w = 320
         local box_h = 140 + (math.max(1, #body_lines) - 1) * line_spacing + extra_footer_h
@@ -1819,11 +1948,11 @@ UI = {
         Graphics.drawRect(box_x, box_y, box_w, box_h, Color.new(0, 0, 0, 200))
         Graphics.drawRect(box_x, box_y, box_w, 2, UI.CCOL.GREY)
         Graphics.drawRect(box_x, box_y + box_h - 2, box_w, 2, UI.CCOL.GREY)
-        Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 10, 8, UI.SCR.X, 16, UI.Modal.title, UI.CCOL.YELLOW)
+        Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 10, 8, UI.SCR.X, 16, PLDR.L(UI.Modal.title), UI.CCOL.YELLOW)
         for i, line in ipairs(body_lines) do
           Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 50 + (i - 1) * line_spacing, 8, UI.SCR.X, 16, line, UI.CCOL.GREY)
         end
-        local hint1 = ("X: %s    O: %s"):format(confirm_label, cancel_label)
+        local hint1 = UI.Modal.ButtonHint(confirm_label, cancel_label)
         if triangle_label ~= nil then
           local hint2 = ("Triangle: %s"):format(triangle_label)
           Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + box_h - 60, 8, UI.SCR.X, 16, hint1, UI.CCOL.GREY)
@@ -1847,31 +1976,69 @@ UI = {
       pressed_col = 0;
       pressed_until = 0;
       layout_key = "QWERTY";
-      layout_order = {"QWERTY", "ABC", "DVORAK"};
+      -- Cycled by the Settings -> Startup -> Keyboard Layout row. The keyboard
+      -- itself no longer hosts a layout strip: it duplicated that setting and
+      -- ate a nav row (R3Z3N review, r3configurator model).
+      layout_order = {"QWERTY", "DVORAK", "ABC", "AZERTY", "QWERTZ", "ABNT"};
+      -- Every layout: number row FIRST (r3configurator model -- R3Z3N review),
+      -- then the letter rows, then symbols, then the action rows.
       layouts = {
+        -- AZERTY (French): letters in the AZERTY arrangement; digits/symbols kept
+        -- consistent with QWERTY so path/credential entry is unchanged.
+        AZERTY = {
+          {"0","1","2","3","4","5","6","7","8","9",":","_"},
+          {"a","z","e","r","t","y","u","i","o","p"},
+          {"q","s","d","f","g","h","j","k","l","m"},
+          {"w","x","c","v","b","n",",",";",".","/"},
+          {"-","?","!","&","\\","'","(",")","+","=","[","]"},
+          {"SPACE","DEL","CLR"},
+          {"BACK","DONE"}
+        },
+        -- QWERTZ (German): QWERTY with Y and Z swapped.
+        QWERTZ = {
+          {"0","1","2","3","4","5","6","7","8","9",":","_"},
+          {"q","w","e","r","t","z","u","i","o","p"},
+          {"a","s","d","f","g","h","j","k","l",";"},
+          {"y","x","c","v","b","n","m",",",".","/"},
+          {"-","?","!","&","\\","'","(",")","+","=","[","]"},
+          {"SPACE","DEL","CLR"},
+          {"BACK","DONE"}
+        },
+        -- ABNT (Brazilian Portuguese): the alphanumeric portion is QWERTY; the
+        -- distinguishing ABNT keys (c-cedilla, accents) are non-ASCII and the OSK
+        -- is single-char ASCII (see SHIFT_MAP note), so they are intentionally absent.
+        ABNT = {
+          {"0","1","2","3","4","5","6","7","8","9",":","_"},
+          {"q","w","e","r","t","y","u","i","o","p"},
+          {"a","s","d","f","g","h","j","k","l",";"},
+          {"z","x","c","v","b","n","m",",",".","/"},
+          {"-","?","!","&","\\","'","(",")","+","=","[","]"},
+          {"SPACE","DEL","CLR"},
+          {"BACK","DONE"}
+        },
         ABC = {
+          {"0","1","2","3","4","5","6","7","8","9"},
           {"a","b","c","d","e","f","g","h","i","j"},
           {"k","l","m","n","o","p","q","r","s","t"},
-          {"u","v","w","x","y","z","0","1","2","3"},
-          {"4","5","6","7","8","9",":","/",".","_"},
+          {"u","v","w","x","y","z",":","/",".","_"},
           {"-","?","!","&","\\","'","(",")",",",";","+"},
           {"=","[","]","SPACE","DEL","CLR"},
           {"BACK","DONE"}
         },
         QWERTY = {
+          {"0","1","2","3","4","5","6","7","8","9",":","_"},
           {"q","w","e","r","t","y","u","i","o","p"},
           {"a","s","d","f","g","h","j","k","l",";"},
           {"z","x","c","v","b","n","m",",",".","/"},
-          {"0","1","2","3","4","5","6","7","8","9",":","_"},
           {"-","?","!","&","\\","'","(",")","+","=","[","]"},
           {"SPACE","DEL","CLR"},
           {"BACK","DONE"}
         },
         DVORAK = {
+          {"0","1","2","3","4","5","6","7","8","9",":","_"},
           {"'",";",",",".","p","y","f","g","c","r","l"},
           {"a","o","e","u","i","d","h","t","n","s"},
           {"q","j","k","x","b","m","w","v","z","/"},
-          {"0","1","2","3","4","5","6","7","8","9",":","_"},
           {"-","?","!","&","\\","(",")","+","=","[","]"},
           {"SPACE","DEL","CLR"},
           {"BACK","DONE"}
@@ -1893,7 +2060,7 @@ UI = {
           return PLDR.NormalizeKeyboardLayout(layout)
         end
         local key = string.upper(tostring(layout or ""))
-        if key == "ABC" or key == "DVORAK" then
+        if key == "ABC" or key == "DVORAK" or key == "AZERTY" or key == "QWERTZ" or key == "ABNT" then
           return key
         end
         return "QWERTY"
@@ -1911,9 +2078,12 @@ UI = {
         UI.PathEditor.title = tostring(title or "Edit Path")
         UI.PathEditor.value = tostring(initial or "")
         UI.PathEditor.on_confirm = on_confirm
-        UI.PathEditor.row = 1
+        -- Start UPPERCASE with the cursor on the first LETTER row (row 2 --
+        -- row 1 is the number row), i.e. Q on QWERTY: r3configurator model,
+        -- R3Z3N review.
+        UI.PathEditor.row = 2
         UI.PathEditor.col = 1
-        UI.PathEditor.upper = false
+        UI.PathEditor.upper = true
         UI.PathEditor.cursor = string.len(UI.PathEditor.value or "")
         UI.PathEditor.pressed_row = 0
         UI.PathEditor.pressed_col = 0
@@ -1946,9 +2116,6 @@ UI = {
         return 0
       end;
       _RowSize = function (row)
-        if row == 0 then
-          return #UI.PathEditor.layout_order
-        end
         local rows = UI.PathEditor._CurrentRows()
         local r = rows[row]
         if r == nil then return 0 end
@@ -1970,9 +2137,6 @@ UI = {
         UI.PathEditor._ClampCursor()
       end;
       _CurrentKey = function ()
-        if UI.PathEditor.row == 0 then
-          return UI.PathEditor.layout_order[UI.PathEditor.col]
-        end
         local rows = UI.PathEditor._CurrentRows()
         local row = rows[UI.PathEditor.row]
         if row == nil then return nil end
@@ -1983,11 +2147,6 @@ UI = {
         if key == "BACK" or key == "DONE" then return 84 end
         if key == "DEL" or key == "CLR" then return 54 end
         return 38
-      end;
-      _LayoutButtonWidth = function (layout_key)
-        if layout_key == "QWERTY" then return 94 end
-        if layout_key == "DVORAK" then return 88 end
-        return 62
       end;
       _DisplayKey = function (key)
         if key == nil then return "" end
@@ -2000,25 +2159,6 @@ UI = {
           if shifted ~= nil then return shifted end
         end
         return key
-      end;
-      _SetLayout = function (layout_key)
-        local normalized = UI.PathEditor._NormalizeLayout(layout_key)
-        UI.PathEditor.layout_key = normalized
-        -- Dirty only on an ACTUAL change: pressing X on the already-active layout
-        -- button used to set ProfileDirty, lighting the Profile row and raising a
-        -- phantom unsaved-changes prompt for a session where nothing changed.
-        if UI.KeyboardLayoutDraft ~= normalized then
-          UI.KeyboardLayoutDraft = normalized
-          UI.ProfileDirty = true
-        end
-        local row_size = UI.PathEditor._RowSize(UI.PathEditor.row)
-        if row_size > 0 then
-          UI.PathEditor.col = CLAMP(UI.PathEditor.col, 1, row_size)
-        else
-          UI.PathEditor.row = 1
-          UI.PathEditor.col = 1
-        end
-        return normalized
       end;
       _BuildVisibleValue = function (max_chars)
         local raw = tostring(UI.PathEditor.value or "")
@@ -2087,14 +2227,6 @@ UI = {
         UI.PathEditor.pressed_until = UI.PathEditor._NowMs() + 160
       end;
       _FlashKey = function (target_key)
-        for c = 1, #UI.PathEditor.layout_order do
-          if UI.PathEditor.layout_order[c] == target_key then
-            UI.PathEditor.pressed_row = 0
-            UI.PathEditor.pressed_col = c
-            UI.PathEditor.pressed_until = UI.PathEditor._NowMs() + 160
-            return
-          end
-        end
         local rows = UI.PathEditor._CurrentRows()
         for r = 1, #rows do
           local row = rows[r]
@@ -2109,9 +2241,19 @@ UI = {
         end
       end;
       _IsPressed = function (row, col)
-        return UI.PathEditor.pressed_row == row
-          and UI.PathEditor.pressed_col == col
-          and UI.PathEditor._NowMs() <= (tonumber(UI.PathEditor.pressed_until) or 0)
+        if UI.PathEditor.pressed_row ~= row or UI.PathEditor.pressed_col ~= col then
+          return false
+        end
+        if UI.PathEditor._NowMs() <= (tonumber(UI.PathEditor.pressed_until) or 0) then
+          return true
+        end
+        -- Holding CONFIRM keeps the key visually pressed for the whole hold:
+        -- the fixed 160 ms stamp alone read as a timed blip that ended while
+        -- the button was still down (R3Z3N review). Only while the cursor is
+        -- still on the flashed key, so navigating away drops the highlight.
+        return UI.PathEditor.row == row and UI.PathEditor.col == col
+          and UI.Pad ~= nil and type(UI.Pad.GPAD) == "number"
+          and (UI.Pad.GPAD & UI.ConfirmPadMask()) ~= 0
       end;
       HandleInput = function ()
         if not UI.PathEditor.active then return end
@@ -2127,7 +2269,11 @@ UI = {
           else
             UI.PathEditor.discard_until = UI.PathEditor._NowMs() + 1500
             if type(UI.Notif_queue) == "table" then
-              UI.Notif_queue.add("Press CIRCLE again to discard what you typed", "warn")
+              -- Name whichever physical button is BACK on this console.
+              local msg = UI.ConfirmSwapped()
+                and "Press CROSS again to discard what you typed"
+                or "Press CIRCLE again to discard what you typed"
+              UI.Notif_queue.add(msg, "warn")
             end
           end
           return
@@ -2149,12 +2295,12 @@ UI = {
         local rows = UI.PathEditor._CurrentRows()
         local max_rows = #rows
         if UI.Pad.Events.NAV_UP then
-          UI.PathEditor.row = CLAMP(UI.PathEditor.row - 1, 0, max_rows)
+          UI.PathEditor.row = CLAMP(UI.PathEditor.row - 1, 1, max_rows)
           local row_size = UI.PathEditor._RowSize(UI.PathEditor.row)
           UI.PathEditor.col = CLAMP(UI.PathEditor.col, 1, row_size)
         end
         if UI.Pad.Events.NAV_DOWN then
-          UI.PathEditor.row = CLAMP(UI.PathEditor.row + 1, 0, max_rows)
+          UI.PathEditor.row = CLAMP(UI.PathEditor.row + 1, 1, max_rows)
           local row_size = UI.PathEditor._RowSize(UI.PathEditor.row)
           UI.PathEditor.col = CLAMP(UI.PathEditor.col, 1, row_size)
         end
@@ -2189,10 +2335,7 @@ UI = {
         if UI.Pad.Events.CONFIRM then
           UI.PathEditor._FlashCurrentKey()
           local key = UI.PathEditor._CurrentKey()
-          if UI.PathEditor.row == 0 then
-            UI.PathEditor._SetLayout(key)
-            return
-          elseif key == "SPACE" then
+          if key == "SPACE" then
             UI.PathEditor._InsertText(" ")
           elseif key == "DEL" then
             UI.PathEditor._DeleteChar()
@@ -2233,57 +2376,19 @@ UI = {
         Graphics.drawRect(input_x, input_y, input_w, input_h, Color.new(18, 28, 56, 128))
         Graphics.drawRect(input_x + 1, input_y + 1, input_w - 2, input_h - 2, Color.new(4, 6, 14, 128))
 
-        Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 8, 8, UI.SCR.X, 16, UI.PathEditor.title, UI.CCOL.YELLOW)
+        Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 8, 8, UI.SCR.X, 16, PLDR.L(UI.PathEditor.title), UI.CCOL.YELLOW)
         Font.ftPrint(SFONT, input_x + 10, input_y + 10, 0, input_w - 20, 16, UI.PathEditor._BuildVisibleValue(46), Color.new(150, 205, 255, 128))
-        local mode_label = UI.PathEditor.upper and "Case/Symbols: UPPER  (R2)" or "Case/Symbols: lower  (R2)"
+        -- The label names the state R2 SWITCHES TO, not the current one
+        -- (R3Z3N: "tell people what you would change to, not what you are on").
+        local mode_label = UI.PathEditor.upper and "Case/Symbols: lower  (R2)" or "Case/Symbols: UPPER  (R2)"
         local info_label = mode_label.."   Cursor: L1 / R1"
         Font.ftPrint(SFONT, input_x + 2, input_y + input_h + 10, 0, input_w - 4, 16, info_label, UI.CCOL.GREY)
 
         local key_h = 24
         local key_gap = 6
-        local layout_h = 22
-        local layout_gap = 8
-        local layout_y = input_y + input_h + 30
-        local layout_w = 0
-        for i = 1, #UI.PathEditor.layout_order do
-          layout_w = layout_w + UI.PathEditor._LayoutButtonWidth(UI.PathEditor.layout_order[i])
-          if i < #UI.PathEditor.layout_order then
-            layout_w = layout_w + layout_gap
-          end
-        end
-        local layout_x = math.floor(box_x + ((box_w - layout_w) / 2))
-        local layout_cursor_x = layout_x
-        for i = 1, #UI.PathEditor.layout_order do
-          local layout_key = UI.PathEditor.layout_order[i]
-          local button_w = UI.PathEditor._LayoutButtonWidth(layout_key)
-          local selected = (UI.PathEditor.row == 0 and UI.PathEditor.col == i)
-          local active = (UI.PathEditor.layout_key == layout_key)
-          local pressed = UI.PathEditor._IsPressed(0, i)
-          local border = Color.new(40, 68, 110, 128)
-          local fill = Color.new(10, 16, 30, 128)
-          local text_color = UI.CCOL.GREY
-          if active then
-            border = Color.new(70, 126, 190, 128)
-            fill = Color.new(22, 44, 74, 128)
-            text_color = Color.new(168, 212, 255, 128)
-          end
-          if selected then
-            border = Color.new(90, 170, 255, 128)
-            fill = Color.new(30, 64, 118, 128)
-            text_color = Color.new(180, 220, 255, 128)
-          end
-          if pressed then
-            border = Color.new(120, 210, 255, 128)
-            fill = Color.new(54, 118, 180, 128)
-            text_color = Color.new(200, 230, 255, 128)
-          end
-          Graphics.drawRect(layout_cursor_x, layout_y, button_w, layout_h, border)
-          Graphics.drawRect(layout_cursor_x + 1, layout_y + 1, button_w - 2, layout_h - 2, fill)
-          Font.ftPrint(SFONT, Round(layout_cursor_x + (button_w / 2)), layout_y + 3, 8, button_w, 16, layout_key, text_color)
-          layout_cursor_x = layout_cursor_x + button_w + layout_gap
-        end
-
-        local start_y = layout_y + layout_h + 8
+        -- (The in-keyboard layout strip is gone -- the Settings page's Keyboard
+        -- Layout row is the one chooser. The grid starts where the strip sat.)
+        local start_y = input_y + input_h + 30
         local rows = UI.PathEditor._CurrentRows()
         for r = 1, #rows do
           local row = rows[r]
@@ -2447,9 +2552,7 @@ UI = {
         UI.VideoStandardDirty = false
         -- Entry snapshots so per-row dirty indicators + the BDMA/Video dirty flags
         -- compare against the state at entry (cycle-away-and-back = clean) instead
-        -- of set-on-touch; the Profile row's indicator also stops lighting up when
-        -- an UNRELATED row sets the aggregate UI.ProfileDirty flag.
-        UI.SettingsEntryProfile = (type(UI.ProfileQuery) == "table" and UI.ProfileQuery.curopt) or 1
+        -- of set-on-touch.
         UI.SettingsEntryBdmaModeIndex = UI.BdmaModeIndex or 1
         UI.SettingsEntryVideoStandardIndex = UI.VideoStandardIndex or 1
         UI.BootPageModes = {
@@ -2516,6 +2619,7 @@ UI = {
         UI.Overscan = math.floor(tonumber(type(PLDR) == "table" and PLDR.OVERSCAN or 0) or 0)
         UI.SettingsEntryOverscan = UI.Overscan
         UI.SettingsEntryKeyboardLayout = tostring(UI.KeyboardLayoutDraft or (type(PLDR) == "table" and PLDR.KEYBOARD_LAYOUT) or "QWERTY")
+        UI.SettingsEntryLanguage = tostring(UI.LanguageDraft or (type(PLDR) == "table" and PLDR.LANGUAGE) or "EN")
         UI.SettingsFocus = 1
         UI.SceneChange(UI.SCENES.MPROFILE)
         return true
@@ -2573,7 +2677,7 @@ UI = {
         if placeholder_title ~= nil then
           if not UI.ShouldHideAuxText(UI.CURSCENE) then
             Font.ftPrint(LFONT, UI.SCR.X_MID, device_title_y, 8, UI.SCR.X, 16, placeholder_title, UI.CCOL.GREY)
-            Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID, 20, UI.SCR.X, 32, "Not implemented yet", UI.CCOL.YELLOW)
+            Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID, 20, UI.SCR.X, 32, PLDR.L("Not implemented yet"), UI.CCOL.YELLOW)
           end
           Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
@@ -2911,8 +3015,8 @@ UI = {
         end
         if ammount <= 0 then
           if not UI.ShouldHideAuxText(UI.CURSCENE) then
-            Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, UI.SCR.Y_MID, 20, UI.SCR.X, 32, "No games found", UI.CCOL.YELLOW)
-            Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID+1, UI.SCR.Y_MID+1, 20, UI.SCR.X, 32, "No games found", UI.CCOL.TRANSP_BLACK)
+            Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, UI.SCR.Y_MID, 20, UI.SCR.X, 32, PLDR.L("No games found"), UI.CCOL.YELLOW)
+            Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID+1, UI.SCR.Y_MID+1, 20, UI.SCR.X, 32, PLDR.L("No games found"), UI.CCOL.TRANSP_BLACK)
           end
         end
         Input_GetEvent()
@@ -3047,10 +3151,9 @@ UI = {
             UI.Notif_queue.add("No games found on this device", "warn")
             return
           end
+          -- Empty = Automatic (no user-defined path): the launch resolver walks
+          -- the device/cwd/mc ladder on its own (profiles dropped -- R3Z3N).
           local configured_popstarter_path = tostring(PLDR.POPSTARTER_PATH or "")
-          if type(PLDR.GetEffectiveConfiguredPopstarterPath) == "function" then
-            configured_popstarter_path = tostring(PLDR.GetEffectiveConfiguredPopstarterPath(PLDR.POPSTARTER_PATH, PLDR.SELECTED_PROFILE) or configured_popstarter_path)
-          end
           local popstarter_path = configured_popstarter_path
           if type(PLDR.ResolveLaunchPopstarterPath) == "function" then
             popstarter_path = PLDR.ResolveLaunchPopstarterPath(PLDR.GAMEPATH, configured_popstarter_path)
@@ -3064,9 +3167,17 @@ UI = {
             popstarter_ok = doesFileExist(popstarter_path)
           end
           if not popstarter_ok then
-            local message = "No POPSTARTER found at this path\n"..configured_popstarter_path
-            if configured_popstarter_path ~= tostring(popstarter_path) then
-              message = message.."\nResolved: "..tostring(popstarter_path)
+            -- The only user-facing POPSTARTER warning by design: a set-but-stale
+            -- custom path falls through the ladder SILENTLY; only "nothing found
+            -- anywhere" warns (R3Z3N).
+            local message
+            if configured_popstarter_path == "" then
+              message = "No POPSTARTER.ELF found\nchecked the game device, the launcher folder and mc0:/mc1:"
+            else
+              message = "No POPSTARTER found at this path\n"..configured_popstarter_path
+              if configured_popstarter_path ~= tostring(popstarter_path) then
+                message = message.."\nResolved: "..tostring(popstarter_path)
+              end
             end
             UI.Notif_queue.add(message, "error")
             return
@@ -3338,18 +3449,15 @@ UI = {
     };
     ProfileQuery = {
       lastopt = 1;
-      curopt = 1;
       Play = function ()
         local layout = UI.LAYOUT
-        local profcnt = #PLDR.PROFILES
-        Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, "Settings", UI.CCOL.GREY)
+        Font.ftPrint(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 8, UI.SCR.X, 16, PLDR.L("Settings"), UI.CCOL.GREY)
 
         -- OPL-style focused-list Settings page.
         --
         -- Layout: title -> stack of items (section headers, cycle rows, path
-        -- rows, action rows). A single highlight bar follows the focused row.
-        -- Section headers are non-selectable separators. The footer just shows
-        -- "Back / Select / Reset / Hide" -- the whole interaction is
+        -- rows). A single highlight bar follows the focused row. Section
+        -- headers are non-selectable separators. The whole interaction is
         -- D-pad-driven so the previous one-button-per-field hotkey grid is
         -- gone (Square/L1/R1/Left/Right/Up/Down were each tied to a single
         -- widget; that has been replaced with a single focused cursor).
@@ -3357,11 +3465,11 @@ UI = {
         -- Bindings:
         --   D-pad Up/Down: move focus, skipping section headers and spacers.
         --   D-pad Left/Right: cycle the focused value (cycle items only).
-        --   X (CONFIRM): activate focused item -- cycles a cycle row,
-        --                opens the path editor for a path row, or fires the
-        --                action for an action row.
+        --   X (CONFIRM): activate focused item -- cycles a cycle row or
+        --                opens the path editor for a path row.
         --   O (BACK): discard staged edits and return to the previous scene.
-        --   Start (Reset Defaults): keep the legacy "Reset Defaults" shortcut.
+        --   Start: opens the Save Changes / Reset Defaults / Discard & Exit
+        --          menu (UI.Modal.OpenSettingsMenu -- R3Z3N review).
         --   Select: hide-text toggle (global; handled outside this block).
         --
         -- Persistence: every field still routes through the same draft
@@ -3373,9 +3481,15 @@ UI = {
 
         local accent_color    = (UI.COLORS and UI.COLORS.TEXT_PRIMARY) or UI.CCOL.YELLOW
         local label_color     = UI.CCOL.GREY
-        local muted_color     = Color.new(128, 128, 128, 110)
         local highlight_color = Color.new(50, 80, 160, 110)
         local separator_color = Color.new(140, 200, 255, 60)
+        -- Distinct row roles (R3Z3N review): headers get their own hue (warm
+        -- gold -- they are chrome, not rows) instead of sharing the focus/dirty
+        -- accent blue, and read-only rows render shades darker than selectable
+        -- ones so they can't be mistaken for editable fields.
+        local section_color      = Color.new(215, 185, 100, 128)
+        local section_line_color = Color.new(215, 185, 100, 60)
+        local readonly_color     = Color.new(82, 82, 82, 100)
 
         local TITLE_GAP = 22
         local SECTION_GAP_BEFORE = 10
@@ -3417,13 +3531,17 @@ UI = {
         end
 
         local function restore_settings_session()
+          -- Revert the LIVE-applied UI language before re-syncing drafts (the
+          -- Language row applies live; discard must undo it).
+          if type(PLDR) == "table" and UI.SettingsEntryLanguage ~= nil then
+            PLDR.LANGUAGE = tostring(UI.SettingsEntryLanguage)
+          end
           UI.SyncSettingsSelectionFromRuntime()
           UI.SyncSettingsDraftFromRuntime()
           UI.SetHideTextMode(UI.SettingsEntryHideTextMode == true, false)
           UI.ProfileDirty = false
           UI.BdmaDirty = false
           UI.PopPathDirty = false
-          UI.PopPathProfileDefaultDirty = false
           UI.DkwdrvDirty = false
           UI.VideoStandardDirty = false
         end
@@ -3458,16 +3576,8 @@ UI = {
             PLDR._bdma_apply_seq = (tonumber(PLDR._bdma_apply_seq) or 0) + 1
             save_token = "bdma:"..tostring(PLDR._bdma_apply_seq)
           end
-          local profile_index = CLAMP(UI.ProfileQuery.curopt, 1, #PLDR.PROFILES)
+          -- Empty = Automatic (profiles dropped -- R3Z3N): persists as-is.
           local pop_path = tostring(UI.PopstarterPathDraft or PLDR.POPSTARTER_PATH or "")
-          local popstarter_mode = nil
-          if UI.PopPathDirty == true then
-            popstarter_mode = "CUSTOM"
-          elseif UI.PopPathProfileDefaultDirty == true then
-            popstarter_mode = "PROFILE_DEFAULT"
-          elseif type(PLDR.GetEffectiveConfiguredPopstarterPath) == "function" then
-            pop_path = tostring(PLDR.GetEffectiveConfiguredPopstarterPath(pop_path, profile_index) or pop_path)
-          end
           local dkwdrv_path = tostring(UI.DkwdrvPathDraft or PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
           local mode_entry = UI.BdmaModes[UI.BdmaModeIndex] or UI.BdmaModes[1]
           local mode_key = mode_entry and mode_entry.key or "FAT32"
@@ -3496,13 +3606,12 @@ UI = {
           local ok_run, result, reason = xpcall(function()
             if type(PLDR.CommitSettingsChanges) == "function" then
               return PLDR.CommitSettingsChanges({
-                profile = profile_index,
                 popstarter_path = pop_path,
-                popstarter_mode = popstarter_mode,
                 dkwdrv_path = dkwdrv_path,
                 bdma_mode = mode_key,
                 video_standard = video_key,
                 keyboard_layout = UI.KeyboardLayoutDraft or (type(PLDR) == "table" and PLDR.KEYBOARD_LAYOUT) or "QWERTY",
+                language = UI.LanguageDraft or (type(PLDR) == "table" and PLDR.LANGUAGE) or "EN",
                 boot_page = boot_page_key,
                 hidden_devices = UI.DeviceHiddenDraft,
                 multidisc_collapse = multidisc_collapse_val,
@@ -3527,10 +3636,6 @@ UI = {
               })
             end
 
-            PLDR.SELECTED_PROFILE = profile_index
-            if popstarter_mode ~= nil then
-              PLDR.POPSTARTER_SELECTION_MODE = popstarter_mode
-            end
             PLDR.POPSTARTER_PATH = pop_path
             PLDR.DKWDRV_PATH = dkwdrv_path
             PLDR.BDMA_MODE_KEY = mode_key
@@ -3539,6 +3644,11 @@ UI = {
               PLDR.KEYBOARD_LAYOUT = PLDR.NormalizeKeyboardLayout(UI.KeyboardLayoutDraft or PLDR.KEYBOARD_LAYOUT or "QWERTY")
             else
               PLDR.KEYBOARD_LAYOUT = UI.KeyboardLayoutDraft or PLDR.KEYBOARD_LAYOUT or "QWERTY"
+            end
+            if type(PLDR) == "table" and type(PLDR.NormalizeLanguage) == "function" then
+              PLDR.LANGUAGE = PLDR.NormalizeLanguage(UI.LanguageDraft or PLDR.LANGUAGE or "EN")
+            else
+              PLDR.LANGUAGE = UI.LanguageDraft or PLDR.LANGUAGE or "EN"
             end
             PLDR.BOOT_PAGE = boot_page_key
             if type(UI.DeviceHiddenDraft) == "table" and type(PLDR.NormalizeHiddenDevices) == "function" then
@@ -3579,7 +3689,6 @@ UI = {
             UI.ProfileDirty = false
             UI.BdmaDirty = false
             UI.PopPathDirty = false
-            UI.PopPathProfileDefaultDirty = false
             UI.DkwdrvDirty = false
             UI.VideoStandardDirty = false
             UI.SmbDirty = false
@@ -3639,7 +3748,6 @@ UI = {
               UI.ProfileDirty = false
               UI.BdmaDirty = false
               UI.PopPathDirty = false
-              UI.PopPathProfileDefaultDirty = false
               UI.DkwdrvDirty = false
               UI.VideoStandardDirty = false
               UI.SmbDirty = false
@@ -3651,20 +3759,7 @@ UI = {
         end
 
         -- Field-specific helpers (used by item callbacks below).
-        local function CycleProfile(delta)
-          local next_opt = CycleIndex(UI.ProfileQuery.curopt, delta, profcnt)
-          if next_opt ~= UI.ProfileQuery.curopt then
-            UI.ProfileQuery.curopt = next_opt
-            if not UI.PopPathDirty then
-              local profile = PLDR.PROFILES[UI.ProfileQuery.curopt]
-              UI.PopstarterPathDraft = tostring((profile and profile.ELF) or UI.PopstarterPathDraft or "")
-              UI.PopPathProfileDefaultDirty = true
-            end
-            UI.ProfileDirty = true
-          end
-        end
-
-        local keyboard_layouts = (UI.PathEditor and UI.PathEditor.layout_order) or {"QWERTY", "ABC", "DVORAK"}
+        local keyboard_layouts = (UI.PathEditor and UI.PathEditor.layout_order) or {"QWERTY", "DVORAK", "ABC"}
         local function CurrentKeyboardLayoutIndex()
           local key = string.upper(tostring(UI.KeyboardLayoutDraft or "QWERTY"))
           for i = 1, #keyboard_layouts do
@@ -3679,18 +3774,33 @@ UI = {
           UI.KeyboardLayoutDraft = keyboard_layouts[idx]
         end
 
-        local function ResetDefaults()
-          local default_profile = tonumber(PLDR.DEFAULT_PROFILE) or 1
-          local next_default = CLAMP(default_profile, 1, profcnt)
-          if next_default ~= UI.ProfileQuery.curopt then
-            UI.ProfileQuery.curopt = next_default
-            UI.ProfileDirty = true
+        -- UI language (i18n). Cycling LIVE-APPLIES (sets PLDR.LANGUAGE so the whole
+        -- UI re-renders in that language immediately, per R3Z3N's "auto apply as you
+        -- move about"); discard reverts it via restore_settings_session.
+        local language_order = (type(PLDR) == "table" and PLDR.LANGUAGE_ORDER) or {"EN"}
+        local function CurrentLanguageIndex()
+          local key = string.upper(tostring(UI.LanguageDraft or "EN"))
+          for i = 1, #language_order do
+            if string.upper(tostring(language_order[i])) == key then return i end
           end
-          local default_entry = PLDR.PROFILES[next_default]
-          if default_entry ~= nil then
-            UI.PopstarterPathDraft = tostring(default_entry.ELF or UI.PopstarterPathDraft or "")
-            UI.PopPathDirty = false
-            UI.PopPathProfileDefaultDirty = true
+          return 1
+        end
+        local function CycleLanguage(delta)
+          local n = #language_order
+          if n <= 0 then return end
+          local idx = CycleIndex(CurrentLanguageIndex(), delta, n)
+          UI.LanguageDraft = language_order[idx]
+          if type(PLDR) == "table" then PLDR.LANGUAGE = UI.LanguageDraft end  -- live-apply
+        end
+        local function LanguageDirty()
+          return tostring(UI.LanguageDraft or "EN") ~= tostring(UI.SettingsEntryLanguage or "EN")
+        end
+
+        local function ResetDefaults()
+          -- POPSTARTER path default = "" (Automatic ladder; profiles dropped).
+          if tostring(UI.PopstarterPathDraft or "") ~= "" then
+            UI.PopstarterPathDraft = ""
+            UI.PopPathDirty = true
             UI.ProfileDirty = true
           end
           local default_dkw = tostring(PLDR.DKWDRV_DEFAULT_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
@@ -3765,6 +3875,11 @@ UI = {
             UI.KeyboardLayoutDraft = default_keyboard_layout
             UI.ProfileDirty = true
           end
+          if tostring(UI.LanguageDraft or "") ~= "EN" then   -- default UI language = English
+            UI.LanguageDraft = "EN"
+            if type(PLDR) == "table" then PLDR.LANGUAGE = "EN" end  -- live-apply the reset
+            UI.ProfileDirty = true
+          end
           -- These three were MISSING from Reset Defaults (the action's label promised
           -- them): Internal HDD page, cover/details folder, carousel device visibility.
           if tostring(UI.HddFs) ~= "PFS" then
@@ -3798,7 +3913,7 @@ UI = {
             UI.SmbModulesDirty = true
             UI.ProfileDirty = true
           end
-          UI.Notif_queue.add("Profile defaults restored", "ok")
+          UI.Notif_queue.add("Defaults restored", "ok")
         end
 
         -- Trim the raw keyboard buffer (the OSK's SPACE key makes invisible
@@ -3822,9 +3937,9 @@ UI = {
 
         local function OpenPopstarterPathEditor()
           UI.PathEditor.Open("Edit POPStarter Path", UI.PopstarterPathDraft or "", function(path)
+            -- Committing an EMPTY value is meaningful: it selects Automatic.
             UI.PopstarterPathDraft = TrimAndProbePathDraft(path)
             UI.PopPathDirty = true
-            UI.PopPathProfileDefaultDirty = false
             UI.ProfileDirty = true
           end)
         end
@@ -3848,27 +3963,28 @@ UI = {
         end
 
         -- Build the items list. Sections and spacers are non-selectable
-        -- markers; cycle/path/action items respond to focus + activation.
+        -- markers; cycle/path items respond to focus + activation. Save/Reset/
+        -- Discard are NOT rows anymore: START opens them as a modal menu
+        -- (UI.Modal.OpenSettingsMenu -- R3Z3N review).
         local items = {}
-        -- Collapsible sections (session-only; resets on reboot, no new persisted key).
-        -- A collapsed section keeps its header (selectable, to re-expand) but its
-        -- cycle/path/info child rows are skipped from the row model entirely, so the
-        -- draw/nav/scroll machinery below needs no changes. Action rows (Save/Reset/
-        -- Discard) and the spacers around them are NEVER hidden -- AddAction resets the
-        -- collapse flag so they (and any following section) always stay reachable.
-        if type(UI.SettingsCollapsed) ~= "table" then UI.SettingsCollapsed = {} end
-        local collapsed_now = false
+        -- ACCORDION model (R3Z3N review): every section's children are always in
+        -- the item list so nav flows through them, but only the section holding the
+        -- FOCUSED row renders expanded -- the others show a single header line.
+        -- Headers are non-selectable, so nav skips them and lands on the next
+        -- section's first item at a boundary, and the section you leave collapses
+        -- on its own. `section` tags each child with its owning section label.
+        local current_section = nil
         local function AddSection(label)
-          collapsed_now = (UI.SettingsCollapsed[label] == true)
-          table.insert(items, { kind = "section", label = label, collapsed = collapsed_now, collapsible = true })
+          current_section = label
+          table.insert(items, { kind = "section", label = label })
         end
         local function AddSpacer()
           table.insert(items, { kind = "spacer" })
         end
         local function AddCycle(label, get_value, prev_fn, next_fn, dirty_fn)
-          if collapsed_now then return end
           table.insert(items, {
             kind = "cycle",
+            section = current_section,
             label = label,
             value = get_value,
             prev = prev_fn,
@@ -3879,29 +3995,18 @@ UI = {
         local function AddInfo(label, get_value)
           -- Read-only status row (not focusable -- see IsSelectable). Surfaces
           -- live runtime state next to the relevant setting.
-          if collapsed_now then return end
-          table.insert(items, { kind = "info", label = label, value = get_value })
+          table.insert(items, { kind = "info", section = current_section, label = label, value = get_value })
         end
         local function AddPath(label, get_value, open_fn, dirty_fn)
-          if collapsed_now then return end
           table.insert(items, {
             kind = "path",
+            section = current_section,
             label = label,
             value = get_value,
             open = open_fn,
             dirty = dirty_fn
           })
         end
-        local function AddAction(label, activate_fn, accent)
-          collapsed_now = false  -- actions (and anything after) are never hidden by a collapse
-          table.insert(items, {
-            kind = "action",
-            label = label,
-            activate = activate_fn,
-            accent = accent == true
-          })
-        end
-
         AddSection("Storage")
         local function CycleBdma(dir)
           local next_idx = CycleIndex(UI.BdmaModeIndex, dir, #UI.BdmaModes)
@@ -3979,9 +4084,11 @@ UI = {
             return name.." "..tostring(UI.SCR.X or "?").."x"..tostring(UI.SCR.Y or "?")
           end
         )
+        -- Value reads On/Off (not Hidden/Visible): the old state-words made the
+        -- row read like a description of the text, not a toggle -- R3Z3N review.
         AddCycle(
           "Hide UI Text",
-          function() return UI.HideTextMode and "Hidden" or "Visible" end,
+          function() return UI.HideTextMode and "On" or "Off" end,
           function() UI.SetHideTextMode(not UI.HideTextMode, false) end,
           function() UI.SetHideTextMode(not UI.HideTextMode, false) end,
           HideTextDirty
@@ -3994,6 +4101,26 @@ UI = {
           function() UI.BootPageIndex = CycleIndex(UI.BootPageIndex, -1, #UI.BootPageModes) end,
           function() UI.BootPageIndex = CycleIndex(UI.BootPageIndex,  1, #UI.BootPageModes) end,
           function() return (UI.BootPageIndex or 1) ~= (UI.SettingsEntryBootPageIndex or 1) end
+        )
+        -- Keyboard Layout lives under Startup (moved out of POPSTARTER: it is a
+        -- global input preference, not a per-POPSTARTER setting -- R3Z3N review).
+        AddCycle(
+          "Keyboard Layout",
+          function() return string.upper(tostring(UI.KeyboardLayoutDraft or "QWERTY")) end,
+          function() CycleKeyboardLayout(-1) end,
+          function() CycleKeyboardLayout( 1) end,
+          KeyboardLayoutDirty
+        )
+        -- Language (i18n): shows the language's OWN name; cycling live-applies (R3Z3N).
+        AddCycle(
+          "Language",
+          function()
+            local code = tostring(UI.LanguageDraft or "EN")
+            return (type(PLDR) == "table" and PLDR.LANGUAGE_NAMES and PLDR.LANGUAGE_NAMES[code]) or code
+          end,
+          function() CycleLanguage(-1) end,
+          function() CycleLanguage( 1) end,
+          LanguageDirty
         )
 
         -- Carousel device visibility checklist: a Shown/Hidden row per main-menu
@@ -4043,7 +4170,7 @@ UI = {
         -- other hides). A -page=ata launch still auto-enters exFAT regardless of this.
         AddCycle(
           "Internal HDD",
-          function() return (UI.HddFs == "EXFAT") and "exFAT (APA-Jail)" or "PFS (default)" end,
+          function() return (UI.HddFs == "EXFAT") and "exFAT" or "APA / PFS (default)" end,
           function() UI.HddFs = (UI.HddFs == "EXFAT") and "PFS" or "EXFAT" end,
           function() UI.HddFs = (UI.HddFs == "EXFAT") and "PFS" or "EXFAT" end,
           function() return tostring(UI.HddFs) ~= tostring(UI.SettingsEntryHddFs) end
@@ -4171,45 +4298,41 @@ UI = {
         end
 
         AddSection("POPSTARTER")
-        AddCycle(
-          "Profile",
-          function() return "Profile "..tostring(UI.ProfileQuery.curopt) end,
-          function() CycleProfile(-1) end,
-          function() CycleProfile( 1) end,
-          -- Own-value comparison, NOT the aggregate UI.ProfileDirty: that flag is
-          -- set by many unrelated rows (video, device hide, path edits), which
-          -- misleadingly lit THIS row. The aggregate still drives the save prompt.
-          function() return (UI.ProfileQuery.curopt or 1) ~= (UI.SettingsEntryProfile or 1) end
-        )
+        -- No Profile preset row anymore (R3Z3N: dropped the inherited profile
+        -- system): one user-defined path, empty = Automatic (the launch ladder:
+        -- custom -> game device -> launcher folder -> mc), never showing a pfsN
+        -- partition number. A legacy config's PROFILE=N pick is migrated into
+        -- this path at load (system.lua LoadSettingsNonFatal) since the ladder
+        -- does not probe every old preset location.
         AddPath(
           "POPSTARTER Path",
-          function() return TruncateMiddle(UI.PopstarterPathDraft or PLDR.POPSTARTER_PATH or "", 40) end,
+          -- Full path (DrawRow tickers it when focused, middle-ellipsis otherwise).
+          function()
+            local p = tostring(UI.PopstarterPathDraft or PLDR.POPSTARTER_PATH or "")
+            if p == "" or string.lower(p) == "popstarter.elf" then return "Automatic" end
+            return p
+          end,
           OpenPopstarterPathEditor,
-          function() return UI.PopPathDirty == true or UI.PopPathProfileDefaultDirty == true end
+          function() return UI.PopPathDirty == true end
         )
         AddPath(
           "DKWDRV Path",
-          function() return TruncateMiddle(UI.DkwdrvPathDraft or PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF", 40) end,
+          -- Full path (DrawRow tickers it when focused, middle-ellipsis otherwise).
+          function() return tostring(UI.DkwdrvPathDraft or PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF") end,
           OpenDkwdrvPathEditor,
           function() return UI.DkwdrvDirty == true end
         )
-        AddCycle(
-          "Keyboard Layout",
-          function() return string.upper(tostring(UI.KeyboardLayoutDraft or "QWERTY")) end,
-          function() CycleKeyboardLayout(-1) end,
-          function() CycleKeyboardLayout( 1) end,
-          KeyboardLayoutDirty
-        )
+        -- (Keyboard Layout moved to the Startup section -- R3Z3N review.)
 
         local function HasUnsavedChanges()
           return UI.ProfileDirty == true
             or UI.BdmaDirty == true
             or UI.PopPathDirty == true
-            or UI.PopPathProfileDefaultDirty == true
             or UI.DkwdrvDirty == true
             or UI.VideoStandardDirty == true
             or HideTextDirty()
             or KeyboardLayoutDirty()
+            or LanguageDirty()
             -- Value-cycle settings are tracked by snapshot comparison (their cycle
             -- handlers set NO dirty flag), so they must be compared here too -- else a
             -- lone change to one is dropped on BACK with no save prompt. Same
@@ -4293,14 +4416,6 @@ UI = {
         end
 
         AddSpacer()
-        -- allow_fallback_exit=false: a FAILED save keeps the user on the Settings
-        -- page with every draft edit intact for a retry (it used to force-exit and
-        -- destroy them). The BACK-prompt Save below keeps true -- the user was
-        -- already leaving, so exit-on-failure matches their intent there.
-        AddAction("Save Changes",      function() queue_exit(UI.SCENES.MMAIN, false) end, true)
-        AddAction("Reset Defaults",    function() ResetDefaults() end, false)
-        AddAction("Discard & Exit",    function() discard_settings_and_return() end, false)
-        AddSpacer()
         AddSection("Memory Card")
         AddCycle(
           "POPSTARTER Folder",
@@ -4314,7 +4429,9 @@ UI = {
         local function IsSelectable(idx)
           local it = items[idx]
           if it == nil then return false end
-          if it.kind == "section" then return it.collapsible == true end
+          -- Section headers are non-selectable (accordion): nav skips them so it
+          -- lands on the section's first item, not the header.
+          if it.kind == "section" then return false end
           return it.kind ~= "spacer" and it.kind ~= "info"
         end
         if type(UI.SettingsFocus) ~= "number" or UI.SettingsFocus < 1 or UI.SettingsFocus > #items then
@@ -4341,16 +4458,74 @@ UI = {
           end
         end
 
-        -- Compute total content height for top-Y placement.
+        -- Accordion: the OPEN section = the section of the focused row. A row is
+        -- visible only if it's a header/spacer or a child of the open section;
+        -- collapsed sections render as their single header line.
+        do
+          local ff = items[UI.SettingsFocus]
+          if ff ~= nil and ff.section ~= nil then UI.SettingsOpenSection = ff.section end
+          if UI.SettingsOpenSection == nil then
+            for _, it in ipairs(items) do
+              if it.kind == "section" then UI.SettingsOpenSection = it.label; break end
+            end
+          end
+        end
+        local open_section = UI.SettingsOpenSection
+
+        -- Drop-down animation (R3Z3N review: instant accordion opens are
+        -- jarring). Frame-counted -- one Play() call == one vblank-paced frame,
+        -- NEVER Timer.getTime (microseconds trap): the newly-opened section's
+        -- children reveal top-down over ~6 frames. The focused row is always
+        -- included so nav never lands on a hidden row, which also means
+        -- entering a section from below (focus = last child) opens instantly
+        -- instead of jittering rows in above the cursor.
+        local ACCORDION_FRAMES = 6
+        if UI.SettingsAccordionSection ~= open_section then
+          UI.SettingsAccordionSection = open_section
+          UI.SettingsAccordionFrame = 1
+        elseif (UI.SettingsAccordionFrame or ACCORDION_FRAMES) < ACCORDION_FRAMES then
+          UI.SettingsAccordionFrame = (UI.SettingsAccordionFrame or 0) + 1
+        end
+        local anim_frame = UI.SettingsAccordionFrame or ACCORDION_FRAMES
+        local child_ord = {}
+        local reveal
+        do
+          local n_children = 0
+          for i = 1, #items do
+            local it = items[i]
+            if it.kind ~= "section" and it.kind ~= "spacer" and it.section == open_section then
+              n_children = n_children + 1
+              child_ord[i] = n_children
+            end
+          end
+          reveal = n_children
+          if anim_frame < ACCORDION_FRAMES and n_children > 0 then
+            reveal = math.ceil(n_children * anim_frame / ACCORDION_FRAMES)
+            local f_ord = child_ord[UI.SettingsFocus]
+            if f_ord ~= nil and f_ord > reveal then reveal = f_ord end
+          end
+        end
+
+        local function IsVisibleItem(it, idx)
+          if it == nil then return false end
+          if it.kind == "section" or it.kind == "spacer" then return true end
+          if it.section ~= open_section then return false end
+          local ord = child_ord[idx]
+          return ord == nil or ord <= reveal
+        end
+
+        -- Compute total content height for top-Y placement (visible rows only).
         local total_h = 0
         for i = 1, #items do
           local it = items[i]
-          if it.kind == "section" then
-            total_h = total_h + SECTION_HEADER_H + (i > 1 and SECTION_GAP_BEFORE or 0)
-          elseif it.kind == "spacer" then
-            total_h = total_h + SPACER_H
-          else
-            total_h = total_h + ROW_H
+          if IsVisibleItem(it, i) then
+            if it.kind == "section" then
+              total_h = total_h + SECTION_HEADER_H + (i > 1 and SECTION_GAP_BEFORE or 0)
+            elseif it.kind == "spacer" then
+              total_h = total_h + SPACER_H
+            else
+              total_h = total_h + ROW_H
+            end
           end
         end
         local footer_top_y = (layout.FOOTER_ICON_Y or (UI.SCR.Y - (layout.BTN_BAR_SAFE_BOTTOM or 56))) - 18
@@ -4362,6 +4537,18 @@ UI = {
           top_y = layout.TITLE_Y + TITLE_GAP
         end
 
+        -- Marquee tick for the FOCUSED row's overflowing label/value (ticker per
+        -- R3Z3N review). Resets when the selection changes; MarqueeLabel is a
+        -- no-op when the text already fits, so only genuinely-too-long focused
+        -- text scrolls (holds at the head, then scrolls, then loops).
+        if UI.SettingsMarqueeSel ~= UI.SettingsFocus then
+          UI.SettingsMarqueeSel = UI.SettingsFocus
+          UI.SettingsMarqueeTick = 0
+        else
+          UI.SettingsMarqueeTick = (UI.SettingsMarqueeTick or 0) + 1
+        end
+        local marquee_tick = UI.SettingsMarqueeTick or 0
+
         -- Draw
         local function DrawHighlight(row_y)
           Graphics.drawRect(SAFE_LEFT, row_y - 2, SAFE_RIGHT - SAFE_LEFT, ROW_H, highlight_color)
@@ -4372,35 +4559,47 @@ UI = {
             Graphics.drawRect(SAFE_LEFT, row_y - 2, SAFE_RIGHT - SAFE_LEFT, SECTION_HEADER_H, highlight_color)
           end
           -- "+" = collapsed (press to expand), "-" = expanded (ASCII, font-safe).
-          Font.ftPrint(BFONT, SAFE_LEFT + 2, row_y, 0, 12, 16, collapsed and "+" or "-", focused and accent_color or separator_color)
-          Font.ftPrint(BFONT, LABEL_X, row_y, 0, UI.SCR.X, 16, label, accent_color)
-          Graphics.drawRect(SAFE_LEFT, row_y + SECTION_HEADER_H - 4, SAFE_RIGHT - SAFE_LEFT, 1, separator_color)
+          Font.ftPrint(BFONT, SAFE_LEFT + 2, row_y, 0, 12, 16, collapsed and "+" or "-", focused and section_color or section_line_color)
+          Font.ftPrint(BFONT, LABEL_X, row_y, 0, UI.SCR.X, 16, PLDR.L(label), section_color)
+          Graphics.drawRect(SAFE_LEFT, row_y + SECTION_HEADER_H - 4, SAFE_RIGHT - SAFE_LEFT, 1, section_line_color)
         end
 
         local function DrawRow(it, row_y, focused)
-          if focused and it.kind ~= "action" then
+          if focused then
             DrawHighlight(row_y)
           end
-          local label_text_color = focused and accent_color or label_color
-          if it.kind == "action" then
-            -- Action items are centered, accent-tinted when focused.
-            local color = focused and accent_color or (it.accent and accent_color or label_color)
-            if focused then DrawHighlight(row_y) end
-            Font.ftPrint(BFONT, UI.SCR.X_MID, row_y, 8, UI.SCR.X, 16, it.label, color)
-            return
-          end
-          Font.ftPrint(BFONT, LABEL_X, row_y, 0, LABEL_W, 16, it.label, label_text_color)
-          local value_text = it.value and tostring(it.value() or "") or ""
+          -- Read-only rows dim BOTH label and value (they are never focused).
+          local label_text_color = focused and accent_color
+            or (it.kind == "info" and readonly_color)
+            or label_color
+          -- Focused row tickers a too-long label; others clip statically. Label is
+          -- localized (L() falls back to English for anything untranslated).
+          local base_label = PLDR.L(it.label)
+          local label_disp = base_label
+          if focused then label_disp = MarqueeLabel(BFONT, tostring(base_label or ""), LABEL_W, marquee_tick) end
+          Font.ftPrint(BFONT, LABEL_X, row_y, 0, LABEL_W, 16, label_disp, label_text_color)
+          local value_text = PLDR.L(it.value and tostring(it.value() or "") or "")
           local dirty = (it.dirty and it.dirty()) == true
+          -- Editable values (cycle AND path) share the selectable grey; only
+          -- read-only info values drop to the darker inert shade, so
+          -- "looks dim" == "can't be edited" holds everywhere on the page.
           local value_text_color
           if dirty then
             value_text_color = accent_color
-          elseif it.kind == "path" or it.kind == "info" then
-            value_text_color = muted_color
+          elseif it.kind == "info" then
+            value_text_color = readonly_color
           else
             value_text_color = label_color
           end
-          Font.ftPrint(BFONT, VALUE_X, row_y, 0, VALUE_W, 16, value_text, value_text_color)
+          -- Focused row tickers a too-long value/path; non-focused paths keep the
+          -- middle-ellipsis so both the device prefix and filename stay visible.
+          local value_disp = value_text
+          if focused then
+            value_disp = MarqueeLabel(BFONT, value_text, VALUE_W, marquee_tick)
+          elseif it.kind == "path" then
+            value_disp = TruncateMiddle(value_text, 40)
+          end
+          Font.ftPrint(BFONT, VALUE_X, row_y, 0, VALUE_W, 16, value_disp, value_text_color)
           if focused and it.kind == "cycle" then
             -- Small left/right arrow chevrons hint at D-pad cycling.
             Font.ftPrint(BFONT, VALUE_X - 14, row_y, 0, 12, 16, "<", accent_color)
@@ -4411,7 +4610,7 @@ UI = {
         -- Focus-following scroll viewport. The page previously placed a fixed
         -- top-Y and, when the item stack was taller than the title->footer
         -- area, simply OVERFLOWED off-screen -- lower rows (Show Devices
-        -- checkboxes, the Save/Reset/Discard actions) became unreachable.
+        -- checkboxes) became unreachable.
         -- Precompute each item's content offset (variable row heights), then
         -- scroll only when needed so the focused row stays visible. When the
         -- content fits, item_off + base_y == the original y exactly, so the
@@ -4424,12 +4623,18 @@ UI = {
           local acc = 0
           for i = 1, #items do
             local it = items[i]
-            if it.kind == "section" and i > 1 then acc = acc + SECTION_GAP_BEFORE end
-            item_off[i] = acc
-            if it.kind == "section" then item_h[i] = SECTION_HEADER_H
-            elseif it.kind == "spacer" then item_h[i] = SPACER_H
-            else item_h[i] = ROW_H end
-            acc = acc + item_h[i]
+            if IsVisibleItem(it, i) then
+              if it.kind == "section" and i > 1 then acc = acc + SECTION_GAP_BEFORE end
+              item_off[i] = acc
+              if it.kind == "section" then item_h[i] = SECTION_HEADER_H
+              elseif it.kind == "spacer" then item_h[i] = SPACER_H
+              else item_h[i] = ROW_H end
+              acc = acc + item_h[i]
+            else
+              -- Collapsed-section child: no space, no offset advance.
+              item_off[i] = acc
+              item_h[i] = 0
+            end
           end
         end
         local scrolling = total_h > view_h
@@ -4456,31 +4661,36 @@ UI = {
 
         for i = 1, #items do
           local it = items[i]
-          local row_y = base_y + item_off[i] - scroll
-          -- When scrolling, draw only fully-visible rows so nothing paints
-          -- over the title or footer; when it fits, draw everything (original).
-          local show = (not scrolling)
-            or (row_y >= view_top and (row_y + item_h[i]) <= (footer_top_y + 1))
-          if show then
-            if it.kind == "section" then
-              DrawSection(it.label, row_y, it.collapsed, UI.SettingsFocus == i)
-            elseif it.kind == "spacer" then
-              -- nothing to draw
-            else
-              DrawRow(it, row_y, UI.SettingsFocus == i)
+          if IsVisibleItem(it, i) then
+            local row_y = base_y + item_off[i] - scroll
+            -- When scrolling, draw only fully-visible rows so nothing paints
+            -- over the title or footer; when it fits, draw everything (original).
+            local show = (not scrolling)
+              or (row_y >= view_top and (row_y + item_h[i]) <= (footer_top_y + 1))
+            if show then
+              if it.kind == "section" then
+                -- "+" collapsed / "-" expanded, driven by the open section; headers
+                -- are never focused (non-selectable).
+                DrawSection(it.label, row_y, it.label ~= open_section, false)
+              elseif it.kind == "spacer" then
+                -- nothing to draw
+              else
+                DrawRow(it, row_y, UI.SettingsFocus == i)
+              end
             end
           end
         end
 
         -- Minimal scrollbar so "there's more below/above" is discoverable.
         if scrolling and total_h > 0 then
+          local bar_w = 6  -- 3x the old 2px hairline so it's actually discoverable (R3Z3N review)
           local track_x = SAFE_RIGHT + 4
           local thumb_h = math.max(16, math.floor(view_h * view_h / total_h))
           local max_scroll = total_h - view_h
           local t = (max_scroll > 0) and (scroll / max_scroll) or 0
           local thumb_y = view_top + math.floor((view_h - thumb_h) * t)
-          Graphics.drawRect(track_x, view_top, 2, view_h, separator_color)
-          Graphics.drawRect(track_x, thumb_y, 2, thumb_h, accent_color)
+          Graphics.drawRect(track_x, view_top, bar_w, view_h, separator_color)
+          Graphics.drawRect(track_x, thumb_y, bar_w, thumb_h, accent_color)
         end
 
         Input_GetEvent()
@@ -4505,29 +4715,19 @@ UI = {
 
         local focused_item = items[UI.SettingsFocus]
         if focused_item ~= nil then
-          local function SetSectionCollapsed(it, collapsed)
-            if it ~= nil and it.kind == "section" then
-              UI.SettingsCollapsed[it.label] = collapsed and true or nil
-            end
-          end
+          -- Focus is never on a section header (non-selectable), so there are no
+          -- section-collapse branches: the accordion follows focus automatically.
           if UI.Pad.Events.NAV_LEFT then
-            if focused_item.kind == "section" then SetSectionCollapsed(focused_item, true)
-            elseif focused_item.kind == "cycle" and focused_item.prev then focused_item.prev() end
+            if focused_item.kind == "cycle" and focused_item.prev then focused_item.prev() end
           end
           if UI.Pad.Events.NAV_RIGHT then
-            if focused_item.kind == "section" then SetSectionCollapsed(focused_item, false)
-            elseif focused_item.kind == "cycle" and focused_item.next then focused_item.next() end
+            if focused_item.kind == "cycle" and focused_item.next then focused_item.next() end
           end
           if UI.Pad.Events.CONFIRM then
-            if focused_item.kind == "section" then
-              SetSectionCollapsed(focused_item, not (UI.SettingsCollapsed[focused_item.label] == true))
-            elseif focused_item.kind == "cycle" and focused_item.next then
+            if focused_item.kind == "cycle" and focused_item.next then
               focused_item.next()
             elseif focused_item.kind == "path" and focused_item.open then
               focused_item.open()
-            elseif focused_item.kind == "action" and focused_item.activate then
-              focused_item.activate()
-              return
             end
           end
         end
@@ -4545,7 +4745,15 @@ UI = {
           return
         end
         if UI.Pad.Events.START then
-          ResetDefaults()
+          -- Save's allow_fallback_exit=false: a FAILED save keeps the user on
+          -- the Settings page with every draft edit intact for a retry. The
+          -- BACK-prompt Save keeps true -- the user was already leaving, so
+          -- exit-on-failure matches their intent there.
+          UI.Modal.OpenSettingsMenu(
+            function() queue_exit(UI.SCENES.MMAIN, false) end,
+            function() ResetDefaults() end,
+            function() discard_settings_and_return() end
+          )
         end
 
         local labels, order = UI.Footer.ResolveLegend({
@@ -4553,7 +4761,7 @@ UI = {
           order_id = "settings_focus",
           circle = UI.Footer.labels.circle_other,
           cross = UI.Footer.labels.cross_select,
-          start = UI.Footer.labels.start_reset,
+          start = UI.Footer.labels.start_menu,
           select = UI.Footer.labels.select_toggle
         })
         UI.Footer.Draw(labels, order)
@@ -4708,7 +4916,7 @@ UI = {
         local center_label_idx = carousel.animActive and carousel.targetIndex or base_sel
         local top_y = layout.TITLE_Y
         if not UI.ShouldHideAuxText(UI.CURSCENE) then
-          Font.ftPrint(UI.FONT.LABEL, UI.SCR.X_MID, top_y, 8, UI.SCR.X, 16, UI.MainMenu.opts[visible_seq[center_label_idx] or visible_seq[1]], UI.COLORS.TEXT_PRIMARY)
+          Font.ftPrint(UI.FONT.LABEL, UI.SCR.X_MID, top_y, 8, UI.SCR.X, 16, PLDR.L(UI.MainMenu.opts[visible_seq[center_label_idx] or visible_seq[1]]), UI.COLORS.TEXT_PRIMARY)
         end
         local status_y = top_y + 12
         local boot_label = UI.boot_device_label
@@ -5158,8 +5366,11 @@ UI = {
           emit(event)
         end
 
-        if (pressed & PAD_CROSS) ~= 0 then emit_action("CONFIRM") end
-        if (pressed & PAD_CIRCLE) ~= 0 then emit_action("BACK") end
+        -- Region-native mapping: on Japanese-ROM consoles CIRCLE confirms and
+        -- CROSS cancels (UI.ConfirmPadMask -- R3Z3N review). Every scene sees
+        -- only the abstract CONFIRM/BACK events, so this is the single flip.
+        if (pressed & UI.ConfirmPadMask()) ~= 0 then emit_action("CONFIRM") end
+        if (pressed & UI.BackPadMask()) ~= 0 then emit_action("BACK") end
         if (pressed & PAD_TRIANGLE) ~= 0 then emit_action("EXIT") end
         if (pressed & PAD_START) ~= 0 then emit("START") end
         if (pressed & PAD_SELECT) ~= 0 then emit("SELECT") end
@@ -5436,19 +5647,21 @@ function UI.ApplyVideoStandardFromRuntime(video_standard)
       req_mode, got_mode, free_vram, UI.SCR.X, UI.SCR.Y)
   end
 end
--- Generic blocking yes/no confirm (X = Yes, O = No). `lines` = array of text lines.
--- Frame-paced + button-release-gated like RunVideoModeConfirm; defaults to NO on a
--- ~30s timeout so a destructive prompt can never auto-confirm itself.
+-- Generic blocking yes/no confirm (confirm = Yes, back = No; glyphs follow the
+-- region-native mapping). `lines` = array of text lines. Frame-paced +
+-- button-release-gated like RunVideoModeConfirm; defaults to NO on a ~30s
+-- timeout so a destructive prompt can never auto-confirm itself.
 function UI.RunConfirm(lines)
   if type(Screen) ~= "table" or type(Screen.flip) ~= "function"
      or type(Pads) ~= "table" or type(Pads.get) ~= "function" then
     return false
   end
   if type(lines) ~= "table" then lines = { tostring(lines or "") } end
+  local yes_mask, no_mask = UI.ConfirmPadMask(), UI.BackPadMask()
   local settle = 0
   while settle < 30 do
     local okp, gp = pcall(Pads.get)
-    if settle >= 8 and okp and type(gp) == "number" and (gp & (PAD_CROSS | PAD_CIRCLE)) == 0 then break end
+    if settle >= 8 and okp and type(gp) == "number" and (gp & (yes_mask | no_mask)) == 0 then break end
     Screen.flip()
     settle = settle + 1
   end
@@ -5457,16 +5670,16 @@ function UI.RunConfirm(lines)
     Screen.clear(UI.SCR.BGCOL or Color.new(20, 30, 80))
     local y = UI.SCR.Y_MID - (#lines * 11) - 24
     for i = 1, #lines do
-      Font.ftPrint(SFONT, UI.SCR.X_MID, y, 8, UI.SCR.X, 16, tostring(lines[i] or ""), UI.CCOL.GREY)
+      Font.ftPrint(SFONT, UI.SCR.X_MID, y, 8, UI.SCR.X, 16, PLDR.L(tostring(lines[i] or "")), UI.CCOL.GREY)
       y = y + 22
     end
-    Font.ftPrint(BFONT, UI.SCR.X_MID, y + 16, 8, UI.SCR.X, 24, "X = Yes      O = No", UI.CCOL.YELLOW)
+    Font.ftPrint(BFONT, UI.SCR.X_MID, y + 16, 8, UI.SCR.X, 24, UI.PadHintPair("Yes", "No"), UI.CCOL.YELLOW)
     Screen.flip()
     f = f + 1
     local okp, gp = pcall(Pads.get)
     if okp and type(gp) == "number" then
-      if (gp & PAD_CROSS) ~= 0 then return true end
-      if (gp & PAD_CIRCLE) ~= 0 then return false end
+      if (gp & yes_mask) ~= 0 then return true end
+      if (gp & no_mask) ~= 0 then return false end
     end
   end
   return false
@@ -5483,11 +5696,12 @@ function UI.RunSharePicker(shares)
   end
   if type(shares) ~= "table" or #shares == 0 then return nil end
   local sel, prev, MAXVIS = 1, 0, 10
+  local pick_mask, cancel_mask = UI.ConfirmPadMask(), UI.BackPadMask()
   local settle = 0
   while settle < 30 do
     local okp, gp = pcall(Pads.get)
     if settle >= 8 and okp and type(gp) == "number"
-       and (gp & (PAD_CROSS | PAD_CIRCLE | PAD_UP | PAD_DOWN)) == 0 then break end
+       and (gp & (pick_mask | cancel_mask | PAD_UP | PAD_DOWN)) == 0 then break end
     Screen.flip()
     settle = settle + 1
   end
@@ -5502,14 +5716,14 @@ function UI.RunSharePicker(shares)
       if top > #shares - MAXVIS + 1 then top = #shares - MAXVIS + 1 end
     end
     local y = UI.SCR.Y_MID - (vis * 11) - 18
-    Font.ftPrint(LFONT, UI.SCR.X_MID, y - 26, 8, UI.SCR.X, 24, "Select a share", UI.CCOL.YELLOW)
+    Font.ftPrint(LFONT, UI.SCR.X_MID, y - 26, 8, UI.SCR.X, 24, PLDR.L("Select a share"), UI.CCOL.YELLOW)
     for i = top, math.min(top + MAXVIS - 1, #shares) do
       local is_sel = (i == sel)
       local label = is_sel and ("> "..tostring(shares[i]).." <") or tostring(shares[i])
       Font.ftPrint(SFONT, UI.SCR.X_MID, y, 8, UI.SCR.X, 16, label, is_sel and UI.CCOL.YELLOW or UI.CCOL.GREY)
       y = y + 22
     end
-    Font.ftPrint(BFONT, UI.SCR.X_MID, y + 14, 8, UI.SCR.X, 24, "X = Select      O = Cancel", UI.CCOL.GREY)
+    Font.ftPrint(BFONT, UI.SCR.X_MID, y + 14, 8, UI.SCR.X, 24, UI.PadHintPair("Select", "Cancel"), UI.CCOL.GREY)
     Screen.flip()
     f = f + 1
     local okp, gp = pcall(Pads.get)
@@ -5518,8 +5732,8 @@ function UI.RunSharePicker(shares)
     prev = gp
     if (pressed & PAD_UP) ~= 0 then sel = (sel - 2) % #shares + 1 end
     if (pressed & PAD_DOWN) ~= 0 then sel = sel % #shares + 1 end
-    if (pressed & PAD_CROSS) ~= 0 then return shares[sel] end
-    if (pressed & PAD_CIRCLE) ~= 0 then return nil end
+    if (pressed & pick_mask) ~= 0 then return shares[sel] end
+    if (pressed & cancel_mask) ~= 0 then return nil end
   end
   return nil
 end
@@ -5641,12 +5855,14 @@ function UI.RunVideoModeConfirm(seconds)
   -- immune to that, and Screen.flip's vsync provides the pacing.
   local FPS = 60
   local total_frames = (tonumber(seconds) or 15) * FPS
-  -- Let the freshly-switched GS settle (>= ~0.5s), AND wait for the Save X/O to
-  -- release so a still-held button isn't read as an instant confirm/revert.
+  -- Let the freshly-switched GS settle (>= ~0.5s), AND wait for the Save
+  -- confirm/back buttons to release so a still-held button isn't read as an
+  -- instant confirm/revert.
+  local keep_mask, revert_mask = UI.ConfirmPadMask(), UI.BackPadMask()
   local settle = 0
   while settle < 90 do
     local okp, gp = pcall(Pads.get)
-    if settle >= 30 and okp and type(gp) == "number" and (gp & (PAD_CROSS | PAD_CIRCLE)) == 0 then break end
+    if settle >= 30 and okp and type(gp) == "number" and (gp & (keep_mask | revert_mask)) == 0 then break end
     Screen.flip()
     settle = settle + 1
   end
@@ -5655,14 +5871,14 @@ function UI.RunVideoModeConfirm(seconds)
     local remaining = math.max(0, math.ceil((total_frames - f) / FPS))
     Screen.clear(UI.SCR.BGCOL or Color.new(20, 30, 80))
     Font.ftPrint(LFONT, UI.SCR.X_MID, UI.SCR.Y_MID - 70, 8, UI.SCR.X, 32, "Keep this display mode?", UI.CCOL.YELLOW)
-    Font.ftPrint(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID, 8, UI.SCR.X, 24, "X = Keep      O = Revert", UI.CCOL.GREY)
+    Font.ftPrint(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID, 8, UI.SCR.X, 24, UI.PadHintPair("Keep", "Revert"), UI.CCOL.GREY)
     Font.ftPrint(SFONT, UI.SCR.X_MID, UI.SCR.Y_MID + 54, 8, UI.SCR.X, 16, "Reverting in "..tostring(remaining).."s if not confirmed", UI.CCOL.GREY)
     Screen.flip()
     f = f + 1
     local okp, gp = pcall(Pads.get)
     if okp and type(gp) == "number" then
-      if (gp & PAD_CROSS) ~= 0 then return true end
-      if (gp & PAD_CIRCLE) ~= 0 then return false end
+      if (gp & keep_mask) ~= 0 then return true end
+      if (gp & revert_mask) ~= 0 then return false end
     end
   end
   return false
@@ -5791,19 +6007,19 @@ function UI.ToggleSmbModulesDraft()
 end
 
 function UI.SyncSettingsDraftFromRuntime()
-  if type(PLDR) == "table" and type(PLDR.GetEffectiveConfiguredPopstarterPath) == "function" then
-    UI.PopstarterPathDraft = tostring(PLDR.GetEffectiveConfiguredPopstarterPath(PLDR.POPSTARTER_PATH, PLDR.SELECTED_PROFILE) or "")
-  else
-    UI.PopstarterPathDraft = tostring(PLDR.POPSTARTER_PATH or "")
-  end
+  UI.PopstarterPathDraft = tostring(PLDR.POPSTARTER_PATH or "")
   UI.DkwdrvPathDraft = tostring(PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
   if type(PLDR) == "table" and type(PLDR.NormalizeKeyboardLayout) == "function" then
     UI.KeyboardLayoutDraft = PLDR.NormalizeKeyboardLayout(PLDR.KEYBOARD_LAYOUT)
   else
     UI.KeyboardLayoutDraft = tostring(PLDR.KEYBOARD_LAYOUT or "QWERTY")
   end
+  if type(PLDR) == "table" and type(PLDR.NormalizeLanguage) == "function" then
+    UI.LanguageDraft = PLDR.NormalizeLanguage(PLDR.LANGUAGE)
+  else
+    UI.LanguageDraft = tostring(PLDR.LANGUAGE or "EN")
+  end
   UI.PopPathDirty = false
-  UI.PopPathProfileDefaultDirty = false
   UI.DkwdrvDirty = false
   UI.VideoStandardDirty = false
   if type(PLDR) == "table" and type(PLDR.SmbCopy) == "function" then
@@ -5830,8 +6046,6 @@ function UI.SyncSettingsSelectionFromRuntime()
   if type(UI.ApplyVideoStandardFromRuntime) == "function" then
     UI.ApplyVideoStandardFromRuntime(PLDR.VIDEO_STANDARD)
   end
-  local selected_profile = tonumber(PLDR.SELECTED_PROFILE) or tonumber(PLDR.DEFAULT_PROFILE) or 1
-  UI.ProfileQuery.curopt = CLAMP(selected_profile, 1, #PLDR.PROFILES)
 end
 UI.SyncSettingsDraftFromRuntime()
 UI.SyncSettingsSelectionFromRuntime()

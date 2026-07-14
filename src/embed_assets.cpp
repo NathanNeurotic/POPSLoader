@@ -67,8 +67,6 @@ extern unsigned char asset_ui_lua[];
 extern unsigned int size_asset_ui_lua;
 extern unsigned char asset_images_lua[];
 extern unsigned int size_asset_images_lua;
-extern unsigned char asset_pops_profiles_lua[];
-extern unsigned int size_asset_pops_profiles_lua;
 extern unsigned char asset_usbd_irx_usbexfat[];
 extern unsigned int size_asset_usbd_irx_usbexfat;
 extern unsigned char asset_usbhdfsd_irx_usbexfat[];
@@ -138,7 +136,6 @@ static const embedded_asset_t g_embedded_assets[] = {
 	ASSET_ENTRY("system.lua", asset_system_lua),
 	ASSET_ENTRY("ui.lua", asset_ui_lua),
 	ASSET_ENTRY("images.lua", asset_images_lua),
-	ASSET_ENTRY("pops_profiles.lua", asset_pops_profiles_lua),
 	ASSET_ENTRY("usbd.irx.usbexfat", asset_usbd_irx_usbexfat),
 	ASSET_ENTRY("usbhdfsd.irx.usbexfat", asset_usbhdfsd_irx_usbexfat),
 	// usbd.irx.mx4sio is BYTE-IDENTICAL to usbd.irx.usbexfat (the SD/BDM stack
@@ -196,7 +193,6 @@ static const embedded_asset_t g_embedded_assets[] = {
 	ASSET_ENTRY("POPSLDR/system.lua", asset_system_lua),
 	ASSET_ENTRY("POPSLDR/ui.lua", asset_ui_lua),
 	ASSET_ENTRY("POPSLDR/images.lua", asset_images_lua),
-	ASSET_ENTRY("POPSLDR/pops_profiles.lua", asset_pops_profiles_lua),
 	ASSET_ENTRY("POPSLDR/usbd.irx.usbexfat", asset_usbd_irx_usbexfat),
 	ASSET_ENTRY("POPSLDR/usbhdfsd.irx.usbexfat", asset_usbhdfsd_irx_usbexfat),
 	ASSET_ENTRY("POPSLDR/usbd.irx.mx4sio", asset_usbd_irx_usbexfat),
