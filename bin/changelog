@@ -1,3 +1,35 @@
+[1.0.1] - July 13th, 2026
+A fix and polish release: the two storage-init fixes suspected behind the "No USB backend detected" reports, plus the full settings-UI review from R3Z3N (two rounds) and UI localization. Nothing in this release changes the launch engine; the D-10/D-14/D-15 launch paths are untouched.
+
+Storage fixes
+- Fix: USB drives failing to mount with "No USB backend detected" on both FAT32 and exFAT. The USB module chain now waits for the exFAT filesystem module to settle before the mass driver loads (matches wLaunchELF_R3Z init order). This was reproducible on real hardware while the same drives worked in wOPL/wLaunchELF; if USB devices stopped listing for you on 1.0.0, this build is the fix candidate.
+- Fix: the internal exFAT HDD (BDMA ATA) init no longer loads the USB mass driver alongside its own; the two backends initialize independently (also matches wLaunchELF_R3Z).
+
+Settings and buttons (R3Z3N review)
+- Feature: settings sections are a focus-driven accordion: the section under the cursor unfolds (with a short drop-down animation), the rest collapse to one header line. Headers have their own color and read-only status lines render dimmed so they can't be mistaken for editable fields.
+- change: Save Changes / Reset Defaults / Discard & Exit moved off the settings list; START opens them as a small menu. Backing out with unsaved changes still prompts.
+- Feature: region-native confirm button. On Japanese-ROM consoles (rom0:ROMVER) Circle confirms and Cross cancels, everywhere, with every on-screen hint following; Western consoles are unchanged. The confirm action is always the left-most footer item.
+- Feature: overflowing setting labels and paths ticker-scroll when focused.
+- change: "Hide UI Text" values read On/Off; footer/label wording polish; a thicker settings scrollbar.
+
+On-screen keyboard (R3Z3N review)
+- Feature: AZERTY (French), QWERTZ (German) and ABNT (Brazilian) layouts join QWERTY/DVORAK/ABC.
+- change: the number row sits on top, the keyboard opens UPPERCASE with the cursor on the letter row, and the Case/Symbols label names the mode R2 switches to.
+- change: the layout picker inside the keyboard is gone; the layout is chosen once in Settings > Startup > Keyboard Layout.
+- Fix: holding Confirm keeps the pressed key highlighted for the whole hold instead of a timed blink.
+
+Languages
+- Feature: UI localization. Settings > Startup > Language: English, French, German, Portuguese, Spanish, Italian; applies live as you cycle. Machine-assisted translations; corrections welcome.
+- Feature: community translation flow (docs/translations/) with pre-seeded Hungarian and Brazilian Portuguese templates.
+
+POPSTARTER path
+- change: the 16-entry Profile preset list is removed. Settings > POPSTARTER > POPSTARTER Path defaults to Automatic: the launcher finds POPSTARTER.ELF per device (game device's POPS folder, then the launcher's own folder, then the Memory Card; hdd0:__common/POPS on the PFS HDD). Set a path to pin a specific build; a stale path falls back silently; you're only warned if none is found anywhere. Old configs migrate automatically, including a previously selected preset.
+
+Under the hood
+- change: launch diagnostics drop the profile fields; the host test harness gained coverage for the settings round-trip and legacy migration, plus a fix for a test-result reporting bug.
+
+The settings/keyboard/confirm-button changes and the storage fixes above are new since 1.0.0 and validating on hardware.
+
 [1.0.0] - July 10th, 2026
 POPSLoader graduates from the BETA line to 1.0.0: the culmination of the BETA-9 through BETA-13 cycle. The core (boot + launch across MMCE / USB / MX4SIO / SD2PS2TD / internal HDD) is hardware-confirmed by multiple testers. Newer features noted "validating on hardware" below are opt-in and off by default, so they degrade gracefully.
 

@@ -1,6 +1,6 @@
-# POPSLoader — Tester Checklist (BETA-13 candidate)
+# POPSLoader — Tester Checklist (rolling `dev`)
 
-**Build:** rolling `BETA-13-PLAY` (BETA-13 candidate; rolling now publishes from this branch — `BETA-12-PLAY` is frozen/archival). Public release is still BETA-12.
+**Build:** the rolling build published from `dev`. Public release is **1.0.1** (2026-07-13).
 This is the structured "what to test" companion to **[ROLLING_NOTES.md](ROLLING_NOTES.md)** ("what's new"); for the canonical status / invariants / known-issues list see **[STATE.md](STATE.md)**. Regenerate when the rolling batch changes. _(Last refreshed: 2026-07-13 — added the **settings-review round 2** batch: Start-button settings menu, region-native confirm button (Japanese consoles), keyboard rework, POPSTARTER Path "Automatic" (profile presets removed). Prior: per-device POPSTARTER.ELF resolution; normal-HDD-still-works; `POPS/ART/` cover folder; SMB (v1); HDD (exFAT).)_
 
 **Devices:** USB · MX4SIO (SD over SIO2) · MMCE (SD2PSX / MemCard PRO) · HDD (internal PFS) · **HDD (exFAT) — BDMA Mode ATA** · **SMB (v1) network share — NEW**. Test the ones you use; **say which** in every report.

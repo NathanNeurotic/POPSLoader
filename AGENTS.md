@@ -8,7 +8,7 @@ Operational guidance and entry point for AI agents (cloud or interactive) workin
 
 POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, with behavior primarily orchestrated by **embedded Lua** modules (`system.lua`, `ui.lua`, `images.lua`). The Lua is bin2c'd into the EE ELF at build time, so a *runtime* Lua error (nil global, type error, **load-order** error) is invisible to `luac -p` and to CI and only surfaces on real PS2 / PCSX2. (`pops_profiles.lua` was removed 2026-07-13 with the profile-preset system.)
 
-- Released line: **1.0.0** (2026-07-10; previously BETA-12 2026-06-18, BETA-11 2026-06-15). Cut from `BETA-13-PLAY` (the BETA-13 candidate graduated to 1.0.0).
+- Released line: **1.0.1** (2026-07-13; previously 1.0.0 2026-07-10, BETA-12 2026-06-18). Cut from `dev` via the tree-adopting merge.
 - Dev branch: **`dev`** (the active/rolling branch; `BETA-12-PLAY` is now **archival/frozen**). The rolling-release workflow publishes from `dev`.
 - Testers: maintainer + Nuno (primary), CosmicScale (secondary), plus **provato** and **nuno6573**. Agents cannot run hardware tests — claims of hardware verification must cite a recorded result in `QA_REGRESSION_MATRIX.md`.
 

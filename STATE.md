@@ -1,4 +1,4 @@
-Last updated: 2026-07-13 (post-1.0.0 `dev`; body reflects the R3Z3N settings-review round 2 — START settings menu, region-native confirm swap, keyboard rework, accordion animation, **profiles system removed** — on top of the accordion/i18n round 1 and the 2026-06 work). Released line: **1.0.0** (2026-07-10; graduated from the BETA line: BETA-12 was 2026-06-18, BETA-11 2026-06-15). Active dev branch is now **`dev`** (created off `BETA-12-PLAY`; **`BETA-12-PLAY` is frozen/archival**); `rolling-release.yml` publishes from `dev`. **1.0.0** was cut from **`BETA-13-PLAY`** on 2026-07-10 (the BETA-13 candidate graduated to the 1.0.0 release). Tip moves per push; see `git log`.
+Last updated: 2026-07-13 (post-1.0.0 `dev`; body reflects the R3Z3N settings-review round 2 — START settings menu, region-native confirm swap, keyboard rework, accordion animation, **profiles system removed** — on top of the accordion/i18n round 1 and the 2026-06 work). Released line: **1.0.1** (2026-07-13; previously 1.0.0 on 2026-07-10, graduated from the BETA line). Active dev branch is **`dev`**; `rolling-release.yml` publishes from `dev`. Tip moves per push; see `git log`.
 
 # STATE
 
