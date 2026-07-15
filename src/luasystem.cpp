@@ -6,6 +6,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sifrpc.h>
+#include <iopheap.h>   // SifAllocIopHeap/SifFreeIopHeap for the 128 KiB BDM-cache probe
 #include <string.h>
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
@@ -1346,6 +1347,56 @@ static int lua_get_boot_profile(lua_State *L)
 	return 1;
 }
 
+// Probe the IOP for a contiguous 128 KiB block -- the exact size bd_cache_create()
+// demands for EVERY raw USB block device (32 * 8 * 512, libbdm/src/bd_cache.c:8),
+// allocated because usbmass_bd sets parNr = 0 and bdm caches every parNr==0 device.
+// BOTH of those allocations are UNCHECKED and dereferenced unconditionally
+// (bd_cache.c:162-168), so if the IOP cannot supply the block the USB mass worker
+// dies AFTER every IRX has already loaded successfully -- which is exactly the
+// "modules OK, no drive seen" we cannot currently explain.
+// This matters because POPSLoader loads far more IOP modules than OPL or
+// wLaunchELF (ds34usb, ds34bt, audsrv, mcman, mcserv, padman, sio2man, ppctty),
+// so IOP memory pressure is a genuine POPSLoader-vs-them delta -- and unlike every
+// other theory it blames nothing about the tester's drive or console.
+// We allocate and immediately free, so this is a measurement, not a reservation.
+static int lua_iop_heap_probe(lua_State *L)
+{
+	const int want = 128 * 1024;
+	int got_128k = 0;
+	int largest = 0;
+
+	void *p = SifAllocIopHeap(want);
+	if (p != NULL) {
+		got_128k = 1;
+		largest = want;
+		SifFreeIopHeap(p);
+	} else {
+		// Binary-search downward for the largest block the IOP will still give us.
+		// A number well under 128 KiB is the smoking gun.
+		int lo = 0, hi = want;
+		while (lo < hi) {
+			int mid = lo + (hi - lo + 1) / 2;
+			void *q = SifAllocIopHeap(mid);
+			if (q != NULL) {
+				SifFreeIopHeap(q);
+				lo = mid;
+			} else {
+				hi = mid - 1;
+			}
+			if (hi - lo < 1024) break;   // 1 KiB resolution is plenty
+		}
+		largest = lo;
+	}
+	lua_newtable(L);
+	lua_pushstring(L, "can_alloc_128k");
+	lua_pushboolean(L, got_128k);
+	lua_settable(L, -3);
+	lua_pushstring(L, "largest");
+	lua_pushinteger(L, largest);
+	lua_settable(L, -3);
+	return 1;
+}
+
 static int lua_get_usb_diag(lua_State *L)
 {
 	lua_newtable(L);
@@ -1925,6 +1976,7 @@ static const luaL_Reg System_functions[] = {
 	{"ensureBDMFatFs",         lua_ensure_bdm_fatfs},
 	{"ensureUsbMass",          lua_ensure_usb_mass},
 	{"getUsbDiag",            lua_get_usb_diag},
+	{"iopHeapProbe",          lua_iop_heap_probe},
 	{"getBootProfile",        lua_get_boot_profile},
 	{"ensureCDFS",             lua_ensure_cdfs},
 	{"ensureMmceman",          lua_ensure_mmceman},

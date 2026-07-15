@@ -2,7 +2,7 @@
 
 **This is an opt-in EXPERIMENTAL build. It is not a replacement for the public release, and it is not the rolling build either.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.0.1**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** the version reads **1.0.2-dev-EXP7** (Settings, and the build info on the boot/credits screen). If it says plain **1.0.1** you are on the public release, and if it says **1.0.2-dev** with no EXP on the end you are on the rolling build. Both are different builds to this one.
+**How to tell you are running it:** the version reads **1.0.2-dev-EXP8** (Settings, and the build info on the boot/credits screen). If it says plain **1.0.1** you are on the public release, and if it says **1.0.2-dev** with no EXP on the end you are on the rolling build. Both are different builds to this one.
 
 **What the name means:** this build is the **rolling** build (1.0.2-dev) plus the experiments below. It is not the 1.0.1 release plus experiments. Everything currently in rolling is in here too, including the menu and Settings cleanup. Earlier experimental builds were misleadingly named 1.0.1-EXP, which made this look like it was missing the newer work. It never was; the name was just wrong.
 
@@ -17,8 +17,8 @@
 | Build | Size |
 | :--- | :--- |
 | 1.0.1 (public release) | 1,715,300 bytes |
-| **This build (EXP7)** | **1,313,892 bytes** |
-| | **401,408 bytes smaller (23%)** |
+| **This build (EXP8)** | **1,314,724 bytes** |
+| | **400,576 bytes smaller (23%)** |
 
 The size work removed weight the PS2 was never using. It changes no features, no settings and no menus: everything from 1.0.1 is here working exactly as it shipped. Three separate changes got us there, and they fail in **completely different ways**, so if something breaks we will know instantly which one did it.
 
@@ -82,7 +82,17 @@ We are not guessing at a clever fix any more; we are using what demonstrably wor
 
 **What to watch for, and this is the important part:** these drivers are used by **USB, MX4SIO, and the internal exFAT drive**. If your USB, MX4SIO or exFAT HDD worked before and does **not** work in this build, that is a serious report and we want it immediately. It is a single change and we can undo it in one step.
 
-**If you are one of the two people whose USB has never worked: this is the build.** Please just open the USB page and tell us if your games appear.
+**3. If it still fails, it now tells us exactly where.** The error line in square brackets used to say only `[modules OK, no drive seen]`, which lumped four completely different faults into one sentence. It now reads something like:
+
+`[no block device published, bdm=0, iop128k=NO(61440)]`
+
+or
+
+`[drive found but not mounted, bdm=1, iop128k=ok]`
+
+Those mean different things and need different fixes, and we could never tell them apart before. The `iop128k` part checks whether the PS2's controller chip can still hand over the 128 KB of memory the drive system needs. **If it says NO, then POPSLoader is using too much of that memory before your drive ever gets a chance** — and that is entirely our fault, nothing to do with your drive.
+
+**If you are one of the two people whose USB has never worked: this is the build.** Open the USB page. If your games appear, we are done. If they do not, a photo of that bracket line tells us which of four things to fix, without you having to run another test.
 
 ---
 
@@ -121,9 +131,9 @@ Mostly, **use it normally**. If your games launch, you can read the menus, and y
 
 ## How to report
 
-Please say **which build** (1.0.2-dev-EXP7), **which device**, your **console model and region**, and what you did. A photo helps, especially for anything text related.
+Please say **which build** (1.0.2-dev-EXP8), **which device**, your **console model and region**, and what you did. A photo helps, especially for anything text related.
 
-If it all just works, that is a valuable report too. "EXP7 fine on USB and HDD, text and covers look normal" is genuinely all we need.
+If it all just works, that is a valuable report too. "EXP8 fine on USB and HDD, text and covers look normal" is genuinely all we need.
 
 ---
 

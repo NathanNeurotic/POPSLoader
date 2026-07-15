@@ -5583,7 +5583,46 @@ function PLDR.GetUsbDiagText()
       return m[1].." failed (id "..tostring(m[2])..", rc "..tostring(m[3])..")"
     end
   end
-  return "modules OK, no drive seen"
+  -- Every module loaded. Now split the four ways this can still fail, because
+  -- "modules OK, no drive seen" conflates all of them and that ambiguity has cost
+  -- this bug three tester cycles.
+  --   bdm=0  -> usbmass_bd never published a block device: it died in probe /
+  --             connect / SET_CONFIGURATION / SCSI warm-up, or in bd_cache_create's
+  --             UNCHECKED 128 KiB alloc.
+  --   bdm>0  -> BDM has the drive but bdmfs_fatfs never mounted it as massN:
+  --             (f_mount failed, or the GPT handler's alloc-failure-returns-0 bug
+  --             made BDM stop trying other filesystem handlers).
+  -- iop128k=no is the smoking gun for the cache-alloc theory: POPSLoader loads far
+  -- more IOP modules than OPL/wLaunchELF, so we may simply be out of contiguous IOP
+  -- RAM by the time BDM wants its cache. That is OUR footprint, not the user's drive.
+  local parts = {}
+  local n = -1
+  if type(System.bdmList) == "function" then
+    local ok_l, l = pcall(System.bdmList)
+    if ok_l and type(l) == "table" then
+      n = 0
+      for _ in pairs(l) do n = n + 1 end
+    end
+  end
+  parts[#parts + 1] = "bdm=" .. ((n >= 0) and tostring(n) or "?")
+
+  if type(System.iopHeapProbe) == "function" then
+    local ok_h, h = pcall(System.iopHeapProbe)
+    if ok_h and type(h) == "table" then
+      if h.can_alloc_128k then
+        parts[#parts + 1] = "iop128k=ok"
+      else
+        parts[#parts + 1] = "iop128k=NO(" .. tostring(h.largest or "?") .. ")"
+      end
+    end
+  end
+
+  if n == 0 then
+    return "no block device published, " .. table.concat(parts, " ")
+  elseif n > 0 then
+    return "drive found but not mounted, " .. table.concat(parts, " ")
+  end
+  return "modules OK, no drive seen, " .. table.concat(parts, " ")
 end
 
 -- How long to keep looking for a USB drive before giving up.
