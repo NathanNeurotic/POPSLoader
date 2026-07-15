@@ -23,6 +23,22 @@ This is the structured "what to test" companion to **[ROLLING_NOTES.md](ROLLING_
 
 ## 🟧 P1 — New features this cycle
 
+### ⭐ Menu and Settings cleanup (NEW, never run on hardware)
+
+Mostly a "does anything feel missing?" pass. Nothing was removed from what the launcher can DO, only from what it advertises.
+
+- [ ] **Main menu button bar** reads exactly *Select / Settings / Exit*. Credits is gone from it.
+- [ ] **Game list button bar** reads exactly *Launch / Back*. Cover Art, Settings and Credits are gone from the bar, but they all still WORK: **Square** still toggles cover art, **START** still opens Settings. Confirm both.
+- [ ] **Credits now lives in Settings** (*Settings, About, Credits*). Open it, then back out: you should land back on Settings, and **any setting you changed but did not save must still be changed**.
+- [ ] **One menu for leaving Settings.** Change something, then press **Circle** to leave: you should get the same *Save Changes / Reset Defaults / Discard & Exit* menu that **START** opens (not the old X-Save/O-Cancel/Triangle prompt). With nothing changed, Circle should just leave with no prompt.
+- [ ] **Select on the Settings page no longer hides the text.** It should do nothing there. It must still work on the device list and the game lists. Hide UI Text is now only *Settings, Display, Hide UI Text*.
+- [ ] **Keyboard opens in QWERTY** on a fresh install (it was ABC). ABC is still selectable in *Settings, Startup, Keyboard Layout*.
+- [ ] *Settings, **Device List*** (renamed from "Carousel Devices") still hides and shows devices exactly as before.
+- [ ] *Settings, Game List, Cover/details folder* now reads **device:/POPS/ART** and so on. Your covers must still be found exactly as before, this is only wording.
+- [ ] *Settings, Game List, Hidden games* now has a dimmed line under it: **"How to hide a game / L3 on the game list"**. Try it: L3 on a game hides it.
+- [ ] **Translations:** switch language and check the new rows (About, Credits, Device List, the hide hint) are translated and not blank.
+- Report: any button that stopped working (as opposed to stopped being listed), a Credits trip that lost your unsaved settings, or a blank or missing label.
+
 ### ⭐⭐ HDD (exFAT) via BDMA ATA — BRAND-NEW backend, NEVER run on hardware
 
 The flagship new feature this cycle (R3Z3N's ATA BDM Assault drivers + saildot4k's backend work): play from an **exFAT-formatted internal SATA/IDE drive**, exactly like a big USB stick. **If you have an exFAT internal drive, this is the single most valuable thing you can test.** CI-green, but zero hardware runs so far.
@@ -31,7 +47,7 @@ The flagship new feature this cycle (R3Z3N's ATA BDM Assault drivers + saildot4k
 1. Format the internal drive **exFAT** (NOT the classic APA/PFS HDL layout — that's the separate "HDD (PFS)" entry).
 2. Put a **`POPS/`** folder at the drive root with your `.VCD` files (+ your own `POPS_IOX.PAK`, `POPSTARTER.ELF`) — same layout as a USB stick.
 3. *Settings → BDMA Mode → **ATA*** and save. *(On apply, the `.ata` launch drivers are copied — with the `.ata` suffix stripped — to `mc?:/POPSTARTER/`.)*
-4. *Settings → Carousel Devices → **Internal HDD → exFAT (APA-Jail)*** and save. The **HDD (exFAT)** entry replaces **HDD (PFS)** on the carousel — the two internal-HDD pages are mutually exclusive; pick **PFS** again to get the classic page back. *(A `-page=ata` boot argument opens the exFAT page regardless of this setting.)*
+4. *Settings → **Device List** → **Internal HDD → exFAT (APA-Jail)*** and save. The **HDD (exFAT)** entry replaces **HDD (PFS)** on the carousel — the two internal-HDD pages are mutually exclusive; pick **PFS** again to get the classic page back. *(A `-page=ata` boot argument opens the exFAT page regardless of this setting.)*
 
 **Test:**
 - [ ] Open the **HDD (exFAT)** carousel entry → it scans `mass:/POPS` and **lists your games**.
@@ -80,7 +96,7 @@ On Japanese consoles the PS2 convention is **Circle = confirm, Cross = cancel**.
 - [ ] The keyboard opens **UPPERCASE** with the cursor on the **letter row** (Q on QWERTY), and the **number row is at the top**.
 - [ ] The **Case/Symbols (R2)** label names the mode you'd **switch to** — press R2 and the typed case follows.
 - [ ] **Hold Confirm on a key** — the key stays visually pressed for as long as you hold (it used to blink once and go dark mid-hold). Releasing or moving off drops it. Held Confirm still types **one** character, not a stream.
-- [ ] The **layout strip inside the keyboard is gone** — the layout (QWERTY / DVORAK / ABC / AZERTY / QWERTZ / ABNT) is picked in *Settings → Startup → Keyboard Layout* only. Confirm changing it there changes the keyboard.
+- [ ] The **layout strip inside the keyboard is gone** — the layout (**QWERTY** default / DVORAK / ABC / AZERTY / QWERTZ / ABNT) is picked in *Settings → Startup → Keyboard Layout* only. Confirm changing it there changes the keyboard.
 - Report: the cursor landing somewhere odd on open, a layout with a misplaced key, or the pressed-key highlight misbehaving.
 
 ### ⭐ POPSTARTER Path — "Automatic" (profile presets removed; NEW, never run on hardware)
@@ -176,7 +192,7 @@ SMB (v1) is now **implemented end-to-end** (CI + Rolling green) and **validating
   - [ ] **R1** forces a rebuild.
   - [ ] Toggle a list-affecting setting (Multi-disc / Hidden games) → cache **rebuilds**, doesn't serve a stale list.
 - [ ] **Boot Page** — *Settings → Startup* → pick a device → after boot it lands **straight in that device's list** (or Carousel default).
-- [ ] **Carousel Devices visibility** — *Settings → Carousel Devices* → hide e.g. SMB / i.Link → they leave the wheel with **no gaps**, ≥1 stays, launching the others unchanged.
+- [ ] **Device List visibility** — *Settings → Device List* → hide e.g. SMB / i.Link → they leave the wheel with **no gaps**, ≥1 stays, launching the others unchanged.
 - [ ] **Multi-disc collapse** — *Settings → Game List*, files named `Game (Disc 1).VCD` / `Game (Disc 2).VCD` → only **Disc 1** shows; swap discs in-game via VMC.
 
 ## 🟨 P2 — Hide / settings persistence
