@@ -245,7 +245,12 @@ static unsigned int boot_ms(void)
     if (boot_start == 0) {
         return 0;
     }
-    return (unsigned int)(((clock() - boot_start) * 1000) / CLOCKS_PER_SEC);
+    // clock() counts MICROSECONDS here (_CLOCKS_PER_SEC_ == 1000000), so the old
+    // `(delta * 1000) / CLOCKS_PER_SEC` overflowed 32-bit signed once delta passed
+    // 2,147,483us -- i.e. every stamp after the first ~2.1 SECONDS of boot returned
+    // garbage, which is precisely the range worth measuring. Do it in 64-bit.
+    // Same family as the Timer.getTime()-is-microseconds trap on the Lua side.
+    return (unsigned int)(((unsigned long long)(clock() - boot_start) * 1000ULL) / (unsigned long long)CLOCKS_PER_SEC);
 }
 
 static void InsertChar(char *base, size_t base_size, char *pos, char ch)
@@ -294,9 +299,45 @@ static void NormalizeDirPath(char *path, size_t size)
     }
 }
 
+// Boot profile storage. BootStamp's only consumer was DPRINTF, which is #ifdef
+// DEBUG and compiles to NOTHING in a shipped build -- so this profile has existed
+// all along and has never once reached anyone. Exactly the blind spot that let two
+// wrong USB fixes ship (see the usbd rc capture above). The whole boot is a black
+// screen and we cannot currently say which module owns it. Record the stamps so
+// System.getBootProfile() can show them.
+#define BOOT_STAGE_MAX 24
+typedef struct {
+    const char *stage;   // static string literal; not copied
+    unsigned int ms;
+} boot_stage_t;
+static boot_stage_t g_boot_stages[BOOT_STAGE_MAX];
+static int g_boot_stage_count = 0;
+
 static void BootStamp(const char *stage)
 {
-    DPRINTF("BOOT: %s %u\n", stage, boot_ms());
+    unsigned int ms = boot_ms();
+    if (g_boot_stage_count < BOOT_STAGE_MAX) {
+        g_boot_stages[g_boot_stage_count].stage = stage;
+        g_boot_stages[g_boot_stage_count].ms = ms;
+        g_boot_stage_count++;
+    }
+    DPRINTF("BOOT: %s %u\n", stage, ms);
+}
+
+// Read side for luasystem.cpp's System.getBootProfile().
+extern "C" int BootProfileCount(void)
+{
+    return g_boot_stage_count;
+}
+extern "C" const char *BootProfileStage(int i)
+{
+    if (i < 0 || i >= g_boot_stage_count) return "";
+    return g_boot_stages[i].stage != NULL ? g_boot_stages[i].stage : "";
+}
+extern "C" unsigned int BootProfileMs(int i)
+{
+    if (i < 0 || i >= g_boot_stage_count) return 0;
+    return g_boot_stages[i].ms;
 }
 
 void setLuaBootPath(int argc, char ** argv, int idx)
@@ -491,6 +532,7 @@ int main(int argc, char * argv[])
     BootStamp("fileXio load/init");
 
 	LOAD_IRX_NARG(sio2man_irx);
+    BootStamp("sio2man");
     if (filexio_ok) {
         /* Layer C: mmceman is only needed for MMCE memcards (third-party
          * memory card adapters like MemoryCard Pro that expose mmce0:/,
@@ -549,10 +591,14 @@ int main(int argc, char * argv[])
     }
     LOAD_IRX_NARG(mcman_irx);
     LOAD_IRX_NARG(mcserv_irx);
+    BootStamp("mcman+mcserv");
     initMC();
+    BootStamp("initMC");
     LOAD_IRX_NARG(padman_irx);
+    BootStamp("padman");
 
     LOAD_IRX_NARG(libsd_irx);
+    BootStamp("libsd");
 
 
     // load USB modules
@@ -565,15 +611,19 @@ int main(int argc, char * argv[])
     // Deliberately no DPRINTF on failure: DPRINTF IS the bug. The codes go to
     // g_usbd_load_* and reach the tester on the USB page via System.getUsbDiag().
     LoadIrxChecked("usbd_irx", &usbd_irx, size_usbd_irx, &g_usbd_load_id, &g_usbd_load_ret);
+    BootStamp("usbd");
 
 
     int ds3pads = 1;
     LOAD_IRX(ds34usb_irx, 4, (char *)&ds3pads);
     LOAD_IRX(ds34bt_irx, 4, (char *)&ds3pads);
+    BootStamp("ds34usb+ds34bt load");
     ds34usb_init();
     ds34bt_init();
+    BootStamp("ds34 init");
 
     LOAD_IRX_NARG(audsrv_irx);
+    BootStamp("audsrv");
 	
         setLuaBootPath (argc, argv, 0);
         if (argc > 0 && argv[0]) {
@@ -585,7 +635,9 @@ int main(int argc, char * argv[])
 	// init internals library
     
     // graphics (gsKit)
+    BootStamp("IRX block done (screen still black)");
     initGraphics();
+    BootStamp("initGraphics");
 
     pad_init();
 

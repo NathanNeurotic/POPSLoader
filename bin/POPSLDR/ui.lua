@@ -5572,6 +5572,15 @@ youtube.com/@hugopocked6695
           local credits_bottom = (layout.TITLE_Y + 80) + (16 * 20) + 4
           if stamp_y < credits_bottom then stamp_y = credits_bottom end
           Font.ftPrint(SFONT, layout.SAFE.L, stamp_y, 0, UI.SCR.X, 16, UI.BUILD_INFO.stamp, UI.CCOL.GREY)
+          -- Boot profile under the build stamp. The whole IRX block runs before
+          -- the screen exists, so this is a direct measure of the boot black
+          -- screen and of which module owns it. A tester can photograph it.
+          if type(PLDR.GetBootProfileText) == "function" then
+            local ok_b, boot_txt = pcall(PLDR.GetBootProfileText)
+            if ok_b and type(boot_txt) == "string" and boot_txt ~= "" then
+              Font.ftPrint(SFONT, layout.SAFE.L, stamp_y + 14, 0, UI.SCR.X, 16, boot_txt, UI.CCOL.GREY)
+            end
+          end
         end
 
         if not UI.Credits._draw_only then

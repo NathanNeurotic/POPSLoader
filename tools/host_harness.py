@@ -714,6 +714,43 @@ if lua.globals().PLDR.GetUsbDiagText() is not None:
     print("    T19 FAIL: throwing getUsbDiag should yield nil, not propagate")
 check("T19 USB diag names the first broken module + splits module-fail from no-drive", t19)
 
+# ---------------------------------------------------------------------------
+# T20 Boot profile (EXP6). BootStamp's stamps are CUMULATIVE ms since EE start,
+# so the cost of a module is the DELTA between consecutive stamps, not the stamp
+# itself. Reporting the largest absolute stamp instead of the largest delta would
+# always just name the LAST stage -- a plausible-looking readout that is wrong
+# every single time. That is the whole value of this feature, so pin it.
+def boot_prof(pairs):
+    entries = ", ".join('{ stage = "%s", ms = %d }' % (n, ms) for n, ms in pairs)
+    lua.execute("System.getBootProfile = function() return { %s } end" % entries)
+    r = lua.globals().PLDR.GetBootProfileText()
+    return r if isinstance(r, str) else str(r)
+
+t20 = True
+# ds34 is the expensive one (2000->5000 = +3000), even though "audsrv" has a bigger stamp
+got = boot_prof([("iomanX", 100), ("usbd", 2000), ("ds34", 5000), ("audsrv", 5100)])
+if "ds34" not in got or "+3000" not in got:
+    t20 = False; print(f"    T20 FAIL: largest DELTA not identified: {got!r}")
+if "5100" not in got:
+    t20 = False; print(f"    T20 FAIL: total should be the LAST stamp: {got!r}")
+# the first stage is a delta from 0, and can legitimately be the worst
+got = boot_prof([("iomanX", 4000), ("usbd", 4100)])
+if "iomanX" not in got or "+4000" not in got:
+    t20 = False; print(f"    T20 FAIL: first stage delta (from 0) missed: {got!r}")
+# a late-but-cheap stage must NOT win just for having the biggest absolute stamp
+got = boot_prof([("a", 3000), ("b", 3010), ("c", 3020)])
+if '"a"' in got or "+10" in got or "a +3000" not in got:
+    t20 = False; print(f"    T20 FAIL: expected 'a +3000' to win on delta: {got!r}")
+# degenerate inputs must not crash the credits screen
+for bad in ["{}", "0", "nil"]:
+    lua.execute("System.getBootProfile = function() return %s end" % bad)
+    if lua.globals().PLDR.GetBootProfileText() is not None:
+        t20 = False; print(f"    T20 FAIL: {bad} should yield nil")
+lua.execute("System.getBootProfile = function() error('boom') end")
+if lua.globals().PLDR.GetBootProfileText() is not None:
+    t20 = False; print("    T20 FAIL: throwing getBootProfile should yield nil")
+check("T20 Boot profile reports slowest stage by DELTA (not biggest cumulative stamp)", t20)
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")

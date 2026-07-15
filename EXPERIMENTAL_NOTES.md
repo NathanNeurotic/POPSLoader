@@ -2,7 +2,7 @@
 
 **This is an opt-in EXPERIMENTAL build. It is not a replacement for the public release, and it is not the rolling build either.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.0.1**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** the version reads **1.0.2-dev-EXP5** (Settings, and the build info on the boot/credits screen). If it says plain **1.0.1** you are on the public release, and if it says **1.0.2-dev** with no EXP on the end you are on the rolling build. Both are different builds to this one.
+**How to tell you are running it:** the version reads **1.0.2-dev-EXP6** (Settings, and the build info on the boot/credits screen). If it says plain **1.0.1** you are on the public release, and if it says **1.0.2-dev** with no EXP on the end you are on the rolling build. Both are different builds to this one.
 
 **What the name means:** this build is the **rolling** build (1.0.2-dev) plus the experiments below. It is not the 1.0.1 release plus experiments. Everything currently in rolling is in here too, including the menu and Settings cleanup. Earlier experimental builds were misleadingly named 1.0.1-EXP, which made this look like it was missing the newer work. It never was; the name was just wrong.
 
@@ -17,8 +17,8 @@
 | Build | Size |
 | :--- | :--- |
 | 1.0.1 (public release) | 1,715,300 bytes |
-| **This build (EXP5)** | **1,315,220 bytes** |
-| | **400,080 bytes smaller (23%)** |
+| **This build (EXP6)** | **1,315,764 bytes** |
+| | **399,536 bytes smaller (23%)** |
 
 The size work removed weight the PS2 was never using. It changes no features, no settings and no menus: everything from 1.0.1 is here working exactly as it shipped. Three separate changes got us there, and they fail in **completely different ways**, so if something breaks we will know instantly which one did it.
 
@@ -80,6 +80,24 @@ Two testers get **"No USB backend detected"** and an empty USB list, on hardware
 
 ---
 
+## Also in this build: boot timings on the Credits screen (NEW, nothing to do)
+
+**This changes nothing about how POPSLoader works. It just shows a number.**
+
+POPSLoader shows a black screen for a while when it starts. That is not the PS2 being slow: it is POPSLoader loading its drivers, and the screen is not switched on until every driver has finished. We want to move the welcome picture and the startup sound to the front, so they cover that wait instead of following it. Before changing anything in the startup order, which is the easiest part of the program to break, we want to know where the time actually goes.
+
+So this build measures itself. Open **Settings** and then **About** and then **Credits**, and under the small grey build line there is now a second grey line like this:
+
+`boot 4820ms (slowest: ds34usb+ds34bt load +2100ms)`
+
+That is how long the black screen lasted, and which driver was the worst offender.
+
+**If you can, please send a photo of those two grey lines.** Different consoles and different attached hardware will give very different answers, and that is exactly what we want to know. There is nothing to turn on and nothing to configure.
+
+(Honest note: the loader has been able to measure this since long before now, but the numbers were only ever sent to a debug output that is switched off in the builds we give you. So they were collected and thrown away every single boot. Same for the USB error above. We are fixing that habit.)
+
+---
+
 ## What to test
 
 Mostly, **use it normally**. If your games launch, you can read the menus, and your covers show, the size work is good.
@@ -97,9 +115,9 @@ Mostly, **use it normally**. If your games launch, you can read the menus, and y
 
 ## How to report
 
-Please say **which build** (1.0.2-dev-EXP5), **which device**, your **console model and region**, and what you did. A photo helps, especially for anything text related.
+Please say **which build** (1.0.2-dev-EXP6), **which device**, your **console model and region**, and what you did. A photo helps, especially for anything text related.
 
-If it all just works, that is a valuable report too. "EXP5 fine on USB and HDD, text and covers look normal" is genuinely all we need.
+If it all just works, that is a valuable report too. "EXP6 fine on USB and HDD, text and covers look normal" is genuinely all we need.
 
 ---
 

@@ -1314,6 +1314,33 @@ static int lua_ensure_bdm_fatfs(lua_State *L)
 // Fields are the raw SifExecModuleBuffer id/ret per module, -999 if never
 // attempted. usbd is loaded once at boot (main.cpp) because ds34usb/ds34bt
 // hard-import it for pad input; the rest load lazily on USB-page entry.
+// Boot profile: {stage=..., ms=...} per stage, in boot order. Backed by
+// main.cpp's BootStamp, whose only consumer used to be a DPRINTF that compiles
+// to nothing in a release build. The ENTIRE IRX block runs before initGraphics(),
+// so all of it is black screen -- this is how we find out which module owns it
+// instead of guessing.
+extern "C" int BootProfileCount(void);
+extern "C" const char *BootProfileStage(int i);
+extern "C" unsigned int BootProfileMs(int i);
+
+static int lua_get_boot_profile(lua_State *L)
+{
+	int n = BootProfileCount();
+	lua_newtable(L);
+	for (int i = 0; i < n; i++) {
+		lua_pushinteger(L, i + 1);
+		lua_newtable(L);
+		lua_pushstring(L, "stage");
+		lua_pushstring(L, BootProfileStage(i));
+		lua_settable(L, -3);
+		lua_pushstring(L, "ms");
+		lua_pushinteger(L, (lua_Integer)BootProfileMs(i));
+		lua_settable(L, -3);
+		lua_settable(L, -3);
+	}
+	return 1;
+}
+
 static int lua_get_usb_diag(lua_State *L)
 {
 	lua_newtable(L);
@@ -1893,6 +1920,7 @@ static const luaL_Reg System_functions[] = {
 	{"ensureBDMFatFs",         lua_ensure_bdm_fatfs},
 	{"ensureUsbMass",          lua_ensure_usb_mass},
 	{"getUsbDiag",            lua_get_usb_diag},
+	{"getBootProfile",        lua_get_boot_profile},
 	{"ensureCDFS",             lua_ensure_cdfs},
 	{"ensureMmceman",          lua_ensure_mmceman},
 	{"reinitPad",              lua_reinit_pad},

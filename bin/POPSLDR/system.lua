@@ -5516,6 +5516,44 @@ end
 -- The whole point is to split "a module failed to load" from "the modules are up
 -- but no drive enumerated" -- indistinguishable until now, which is why two
 -- shipped fixes for this bug were aimed at the wrong half.
+-- One line summarising where boot time went: the total, and the single most
+-- expensive stage. main.cpp runs the ENTIRE IRX block before initGraphics(), so
+-- every millisecond here is black screen. Shown on the Credits screen because a
+-- tester can photograph it; BootStamp itself has always existed but only ever fed
+-- a DPRINTF, which is compiled out of release builds.
+-- Deliberately reports the biggest DELTA, not the biggest absolute stamp: the
+-- stamps are cumulative, so the gap between consecutive stamps is the cost of the
+-- module that sits between them.
+function PLDR.GetBootProfileText()
+  if type(System) ~= "table" or type(System.getBootProfile) ~= "function" then
+    return nil
+  end
+  local ok, prof = pcall(System.getBootProfile)
+  if not ok or type(prof) ~= "table" then
+    return nil
+  end
+  local n = 0
+  for _ in pairs(prof) do n = n + 1 end
+  if n < 1 then return nil end
+
+  local total, prev = 0, 0
+  local worst_name, worst_delta = nil, -1
+  for i = 1, n do
+    local e = prof[i]
+    if type(e) == "table" and type(e.ms) == "number" then
+      local d = e.ms - prev
+      if d > worst_delta then
+        worst_delta = d
+        worst_name = tostring(e.stage or "?")
+      end
+      prev = e.ms
+      total = e.ms
+    end
+  end
+  if worst_name == nil then return nil end
+  return "boot "..tostring(total).."ms (slowest: "..worst_name.." +"..tostring(worst_delta).."ms)"
+end
+
 function PLDR.GetUsbDiagText()
   if type(System) ~= "table" or type(System.getUsbDiag) ~= "function" then
     return nil
