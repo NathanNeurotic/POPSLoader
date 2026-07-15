@@ -79,6 +79,9 @@ extern unsigned int size_libsd_irx;
 
 extern unsigned char usbd_irx;
 extern unsigned int size_usbd_irx;
+// USB bring-up diagnostics, defined in luasystem.cpp (surfaced via System.getUsbDiag).
+extern int g_usbd_load_id;
+extern int g_usbd_load_ret;
 
 extern unsigned char audsrv_irx;
 extern unsigned int size_audsrv_irx;
@@ -553,7 +556,15 @@ int main(int argc, char * argv[])
 
 
     // load USB modules
-    LOAD_IRX_NARG(usbd_irx);
+    // usbd MUST load here, not lazily with the mass stack: ds34usb/ds34bt below
+    // hard-import it for pad input. (wLaunchELF_R3Z gets to load usbd adjacent to
+    // usbmass_bd only because it ships DS34 ?= 0 and has no pad driver to serve.)
+    // Capture the result -- LOAD_IRX_NARG feeds id/ret to DPRINTF, which is a no-op
+    // in a release build, so a failed usbd load was previously invisible and got
+    // reported to us as "No USB backend detected", i.e. blamed on the drive.
+    // Deliberately no DPRINTF on failure: DPRINTF IS the bug. The codes go to
+    // g_usbd_load_* and reach the tester on the USB page via System.getUsbDiag().
+    LoadIrxChecked("usbd_irx", &usbd_irx, size_usbd_irx, &g_usbd_load_id, &g_usbd_load_ret);
 
 
     int ds3pads = 1;

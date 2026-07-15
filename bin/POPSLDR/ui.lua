@@ -5225,7 +5225,13 @@ UI = {
               report("Checking USB roots...", 0.38)
               PLDR.CleanupGameList()
               PLDR.GAMEPATH = ""
+              -- Show the retry so a longer probe reads as "still looking" and not as a
+              -- freeze. Only an already-failing setup ever sees past attempt 1.
+              PLDR.UsbProbeProgress = function(attempt, total)
+                report("Looking for USB drive... ("..tostring(attempt).."/"..tostring(total)..")", 0.38)
+              end
               local usb_roots = PLDR.GetRootsByType("usb")
+              PLDR.UsbProbeProgress = nil
               if usb_roots == nil or #usb_roots < 1 then
                 if type(System) == "table" and type(System.ensureUsbMass) == "function" then
                   System.ensureUsbMass()
@@ -5236,7 +5242,18 @@ UI = {
                 usb_roots = PLDR.GetRootsByType("usb")
               end
 	              if usb_roots == nil or #usb_roots < 1 then
-	                UI.Notif_queue.add("No USB backend detected\nreseat the drive and try again", "warn")
+	                -- Say WHY. The base string stays byte-identical so the five existing
+	                -- translations still match; the diagnostic rides on a third line as raw
+	                -- numbers (untranslated on purpose -- a tester photographing the screen
+	                -- is the only telemetry this bug has).
+	                local msg = "No USB backend detected\nreseat the drive and try again"
+	                local diag = nil
+	                if type(PLDR.GetUsbDiagText) == "function" then
+	                  local ok_d, d = pcall(PLDR.GetUsbDiagText)
+	                  if ok_d and type(d) == "string" and d ~= "" then diag = d end
+	                end
+	                if diag ~= nil then msg = msg.."\n["..diag.."]" end
+	                UI.Notif_queue.add(msg, "warn")
 	              end
 	              report("Building USB game list...", 0.44)
 	              -- Single-drive only: the combined multi-drive list was cached to the

@@ -101,6 +101,21 @@ static bool mass_backend_cache_valid = false;
 static bool bdm_irx_loaded = false;
 static bool bdm_fatfs_irx_loaded = false;
 static bool usbmass_irx_loaded = false;
+
+// USB bring-up diagnostics. Every LoadIrxCheckedBuffer below used to pass
+// NULL,NULL and throw the IRX return codes away, and main.cpp's usbd load goes
+// through LOAD_IRX_NARG whose only consumer is DPRINTF -- which compiles to
+// nothing in a release build. So when a tester reports "No USB backend
+// detected" we have had literally no way to tell a failed module load apart
+// from a drive that never enumerated. Two "root cause found" fixes have now
+// been shipped and refuted on hardware because of that blind spot. Record the
+// codes and let the UI show them.
+// -999 = "never attempted" (distinct from a real negative rc).
+int g_usbd_load_id = -999;   // written by main.cpp at boot
+int g_usbd_load_ret = -999;
+static int g_bdm_id = -999, g_bdm_ret = -999;
+static int g_bdmfs_id = -999, g_bdmfs_ret = -999;
+static int g_usbmass_id = -999, g_usbmass_ret = -999;
 static bool cdfs_irx_loaded = false;
 static bool mx4sio_irx_loaded = false;
 static bool mmceman_irx_loaded = false;
@@ -110,7 +125,7 @@ static bool EnsureBDM()
 	if (bdm_irx_loaded) {
 		return true;
 	}
-	if (!LoadIrxCheckedBuffer("bdm.irx", bdm_irx, size_bdm_irx, NULL, NULL)) {
+	if (!LoadIrxCheckedBuffer("bdm.irx", bdm_irx, size_bdm_irx, &g_bdm_id, &g_bdm_ret)) {
 		return false;
 	}
 	bdm_irx_loaded = true;
@@ -125,7 +140,7 @@ static bool EnsureBDMFatFs()
 	if (!EnsureBDM()) {
 		return false;
 	}
-	if (!LoadIrxCheckedBuffer("bdmfs_fatfs.irx", bdmfs_fatfs_irx, size_bdmfs_fatfs_irx, NULL, NULL)) {
+	if (!LoadIrxCheckedBuffer("bdmfs_fatfs.irx", bdmfs_fatfs_irx, size_bdmfs_fatfs_irx, &g_bdmfs_id, &g_bdmfs_ret)) {
 		return false;
 	}
 	bdm_fatfs_irx_loaded = true;
@@ -150,7 +165,7 @@ static bool EnsureUsbMass()
 	// (waitForUsbMassBdmfsSettle / USB_MASS_BDMFS_SETTLE_MS=1000), and our ATA path
 	// already settles the same way after ata_bd. Mirror it for USB.
 	sleep(1);
-	if (!LoadIrxCheckedBuffer("usbmass_bd.irx", usbmass_bd_irx, size_usbmass_bd_irx, NULL, NULL)) {
+	if (!LoadIrxCheckedBuffer("usbmass_bd.irx", usbmass_bd_irx, size_usbmass_bd_irx, &g_usbmass_id, &g_usbmass_ret)) {
 		return false;
 	}
 	usbmass_irx_loaded = true;
@@ -1295,6 +1310,29 @@ static int lua_ensure_bdm_fatfs(lua_State *L)
 	return 1;
 }
 
+// Report the USB bring-up state so the USB page can say WHY it found nothing.
+// Fields are the raw SifExecModuleBuffer id/ret per module, -999 if never
+// attempted. usbd is loaded once at boot (main.cpp) because ds34usb/ds34bt
+// hard-import it for pad input; the rest load lazily on USB-page entry.
+static int lua_get_usb_diag(lua_State *L)
+{
+	lua_newtable(L);
+#define DIAG_FIELD(k, v) do { lua_pushstring(L, k); lua_pushinteger(L, (v)); lua_settable(L, -3); } while (0)
+	DIAG_FIELD("usbd_id", g_usbd_load_id);
+	DIAG_FIELD("usbd_ret", g_usbd_load_ret);
+	DIAG_FIELD("bdm_id", g_bdm_id);
+	DIAG_FIELD("bdm_ret", g_bdm_ret);
+	DIAG_FIELD("bdmfs_id", g_bdmfs_id);
+	DIAG_FIELD("bdmfs_ret", g_bdmfs_ret);
+	DIAG_FIELD("usbmass_id", g_usbmass_id);
+	DIAG_FIELD("usbmass_ret", g_usbmass_ret);
+#undef DIAG_FIELD
+	lua_pushstring(L, "usbmass_loaded");
+	lua_pushboolean(L, usbmass_irx_loaded ? 1 : 0);
+	lua_settable(L, -3);
+	return 1;
+}
+
 static int lua_ensure_usb_mass(lua_State *L)
 {
 	lua_pushboolean(L, EnsureUsbMass());
@@ -1854,6 +1892,7 @@ static const luaL_Reg System_functions[] = {
 	{"ensureBDM",              lua_ensure_bdm},
 	{"ensureBDMFatFs",         lua_ensure_bdm_fatfs},
 	{"ensureUsbMass",          lua_ensure_usb_mass},
+	{"getUsbDiag",            lua_get_usb_diag},
 	{"ensureCDFS",             lua_ensure_cdfs},
 	{"ensureMmceman",          lua_ensure_mmceman},
 	{"reinitPad",              lua_reinit_pad},

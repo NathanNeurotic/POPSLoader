@@ -5510,19 +5510,80 @@ local function BuildMassRootIdentity(mode)
   return identity
 end
 
-local function BuildUsbIdentityDeferred()
-  -- Bounded retry masks the first-entry USB probe quirk without requiring
-  -- the user to leave and re-enter the page.
+-- Turn System.getUsbDiag()'s raw IRX return codes into one short line for the
+-- USB error toast. Deliberately NOT translated: these are numbers for us, and a
+-- tester photographing the screen is the only channel we have.
+-- The whole point is to split "a module failed to load" from "the modules are up
+-- but no drive enumerated" -- indistinguishable until now, which is why two
+-- shipped fixes for this bug were aimed at the wrong half.
+function PLDR.GetUsbDiagText()
+  if type(System) ~= "table" or type(System.getUsbDiag) ~= "function" then
+    return nil
+  end
+  local ok, d = pcall(System.getUsbDiag)
+  if not ok or type(d) ~= "table" then
+    return nil
+  end
+  local function bad(id, ret)
+    -- -999 = never attempted. A load is good when both id and ret are >= 0.
+    if id == -999 then return true end
+    return not (type(id) == "number" and type(ret) == "number" and id >= 0 and ret >= 0)
+  end
+  -- Report the FIRST broken link in the chain; everything after it is a
+  -- meaningless cascade.
+  local chain = {
+    {"usbd", d.usbd_id, d.usbd_ret},
+    {"bdm", d.bdm_id, d.bdm_ret},
+    {"bdmfs_fatfs", d.bdmfs_id, d.bdmfs_ret},
+    {"usbmass_bd", d.usbmass_id, d.usbmass_ret},
+  }
+  for _, m in ipairs(chain) do
+    if bad(m[2], m[3]) then
+      if m[2] == -999 then
+        return m[1].." never loaded"
+      end
+      return m[1].." failed (id "..tostring(m[2])..", rc "..tostring(m[3])..")"
+    end
+  end
+  return "modules OK, no drive seen"
+end
+
+-- How long to keep looking for a USB drive before giving up.
+-- Was 3 (~2s). wLaunchELF_R3Z -- which browses the SAME drive fine on the SAME
+-- console that reports "No USB backend detected" to us -- never gives up at all:
+-- scanUsbMassDevices (filer.c:903) re-runs loadUsbModules() + re-stats usb0..N on
+-- every UI tick, and its 5s throttle is gated on USB_mass_scanned, which is only
+-- set once a drive is FOUND. So while nothing is found R3Z rescans continuously,
+-- forever, for as long as you sit in the browser. We looked for two seconds and
+-- quit permanently. A drive that enumerates at t=6s is found by R3Z and is
+-- invisible to us no matter how many times the tester retries.
+-- We cannot literally loop forever (this is a blocking scan on page entry, not a
+-- UI loop), so bound it -- but bound it at "slower than any plausible drive"
+-- rather than at 2 seconds. A working setup still returns on attempt 1 and pays
+-- nothing; only an already-failing setup ever waits.
+local USB_PROBE_ATTEMPTS = 12
+
+local function BuildUsbIdentityDeferred(progress)
   local attempts = 0
   local identity = nil
-  while attempts < 3 do
+  while attempts < USB_PROBE_ATTEMPTS do
     attempts = attempts + 1
+    -- BuildMassRootIdentity -> EnsureMassBackendsReady("usb") -> EnsureUsbMassReadyOnce
+    -- re-attempts the module load every pass. EnsureUsbMass only latches on
+    -- SUCCESS, so a failed load is retried here the way R3Z retries it.
     identity = BuildMassRootIdentity("usb")
     if type(identity) == "table" and type(identity.usb) == "table" and #identity.usb > 0 then
       return identity
     end
-    WaitMassProbeRetry(attempts, 3)
-    if attempts < 3 and type(System) == "table" and type(System.sleep) == "function" then
+    local hook = progress
+    if type(hook) ~= "function" and type(PLDR.UsbProbeProgress) == "function" then
+      hook = PLDR.UsbProbeProgress
+    end
+    if type(hook) == "function" then
+      pcall(hook, attempts, USB_PROBE_ATTEMPTS)
+    end
+    WaitMassProbeRetry(attempts, USB_PROBE_ATTEMPTS)
+    if attempts < USB_PROBE_ATTEMPTS and type(System) == "table" and type(System.sleep) == "function" then
       pcall(System.sleep, 1)
     end
   end

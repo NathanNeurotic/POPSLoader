@@ -2,7 +2,7 @@
 
 **This is an opt-in EXPERIMENTAL build. It is not a replacement for the public release, and it is not the rolling build either.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.0.1**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** the version reads **1.0.1-EXP4** (Settings, and the build info on the boot/credits screen). If it says plain 1.0.1, you are on the normal release, not this build.
+**How to tell you are running it:** the version reads **1.0.1-EXP5** (Settings, and the build info on the boot/credits screen). If it says plain 1.0.1, you are on the normal release, not this build.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
 
@@ -15,8 +15,8 @@
 | Build | Size |
 | :--- | :--- |
 | 1.0.1 (public release) | 1,715,300 bytes |
-| **This build (EXP4)** | **1,314,740 bytes** |
-| | **400,592 bytes smaller (23%)** |
+| **This build (EXP5)** | **1,315,220 bytes** |
+| | **400,080 bytes smaller (23%)** |
 
 The size work removed weight the PS2 was never using. It changes no features, no settings and no menus: everything from 1.0.1 is here working exactly as it shipped. Three separate changes got us there, and they fail in **completely different ways**, so if something breaks we will know instantly which one did it.
 
@@ -62,6 +62,22 @@ Until now the two internal-hard-drive pages were an either/or: *Settings, Device
 
 ---
 
+## Also in this build: USB, for the two people it has never worked for (NEW)
+
+**If your USB drive already works, skip this section. Nothing here changes anything for you.**
+
+Two testers get **"No USB backend detected"** and an empty USB list, on hardware where wOPL and wLaunchELF browse the same drive off the same port with no trouble. That is our bug, not their console and not their drive. Two separate attempted fixes have now shipped and neither one moved it, so this build stops guessing and does two things instead.
+
+**1. It says what actually went wrong.** Until now the USB error blamed the drive no matter what the real cause was, because the loader threw away the result codes of every USB driver it loads. It genuinely could not tell "a driver failed to start" apart from "the drivers are fine, no drive turned up". Those need completely different fixes, and we have been unable to tell which one we were even looking at. The error now carries a short line in square brackets, like `[modules OK, no drive seen]` or `[usbd failed (id -1, rc -1)]`.
+
+**If you get the USB error, a photo of that bracket line is the single most useful thing you can send us.** It is the first real information this bug has ever produced.
+
+**2. It waits a lot longer before giving up.** POPSLoader looked for a USB drive for about two seconds and then quit, permanently, for the rest of that boot. wLaunchELF never quits: it keeps re-checking the whole time you sit in its file browser, which is very likely why the same drive works there and not here. This build keeps looking for about twelve seconds and shows a "Looking for USB drive... (3/12)" counter while it does. If your USB already works you will never see the counter, because it stops the moment it finds the drive.
+
+**If this fixes it for you, that tells us the drive was simply slow to appear and we were impatient.** If you still get the error after the full count, the bracket line tells us which half of the problem to go after. Either result is a real answer, which is more than we have had so far.
+
+---
+
 ## What to test
 
 Mostly, **use it normally**. If your games launch, you can read the menus, and your covers show, the size work is good.
@@ -79,9 +95,9 @@ Mostly, **use it normally**. If your games launch, you can read the menus, and y
 
 ## How to report
 
-Please say **which build** (1.0.1-EXP4), **which device**, your **console model and region**, and what you did. A photo helps, especially for anything text related.
+Please say **which build** (1.0.1-EXP5), **which device**, your **console model and region**, and what you did. A photo helps, especially for anything text related.
 
-If it all just works, that is a valuable report too. "EXP4 fine on USB and HDD, text and covers look normal" is genuinely all we need.
+If it all just works, that is a valuable report too. "EXP5 fine on USB and HDD, text and covers look normal" is genuinely all we need.
 
 ---
 

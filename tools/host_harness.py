@@ -654,6 +654,66 @@ t18 = E('''function()
 end''')()
 check("T18 Internal-HDD visibility truth table (PFS/EXFAT/BOTH x -page=ata) + BOTH persists", t18)
 
+# ---------------------------------------------------------------------------
+# T19 USB diagnostics (EXP5). PLDR.GetUsbDiagText turns System.getUsbDiag()'s raw
+# IRX codes into the line a tester reads off the screen and relays back to us.
+# This is the ONLY telemetry this bug has, so its branch logic has to be right:
+# it must name the FIRST broken link (everything after is a cascade), and it must
+# distinguish "a module failed" from "modules are up, no drive enumerated" --
+# exactly the split we could not make for four days, which is why two shipped
+# "root cause found" fixes were aimed at the wrong half of the problem.
+OK = 0  # a good load is id >= 0 and ret >= 0
+def usb_diag(**kw):
+    d = dict(usbd_id=OK, usbd_ret=OK, bdm_id=OK, bdm_ret=OK,
+             bdmfs_id=OK, bdmfs_ret=OK, usbmass_id=OK, usbmass_ret=OK)
+    d.update(kw)
+    # Must be a REAL Lua function: GetUsbDiagText gates on
+    # type(System.getUsbDiag) == "function", which is correct for the actual C
+    # binding, but lupa marshals a Python callable as *userdata* and the
+    # permissive mock's __index auto-stub returns 0 rather than a table. Either
+    # one makes the guard (correctly) bail, so build the mock in Lua.
+    fields = ", ".join("%s = %d" % (k, v) for k, v in sorted(d.items()))
+    lua.execute("System.getUsbDiag = function() return { %s } end" % fields)
+    r = lua.globals().PLDR.GetUsbDiagText()
+    return r if isinstance(r, str) else str(r)
+
+t19_cases = [
+    # (kwargs, expected substring, why it matters)
+    ({},                                  "modules OK, no drive seen", "all good -> blame the drive, not a module"),
+    ({"usbd_id": -1},                     "usbd failed",              "usbd rc<0 -> name usbd"),
+    ({"usbd_ret": -1},                    "usbd failed",              "usbd ret<0 counts as failed too"),
+    ({"usbd_id": -999},                   "usbd never loaded",        "-999 = never attempted, not a real rc"),
+    ({"bdm_id": -1},                      "bdm failed",               "bdm rc<0 -> name bdm"),
+    ({"bdmfs_id": -5},                    "bdmfs_fatfs failed",       "bdmfs rc<0 -> name bdmfs_fatfs"),
+    ({"usbmass_id": -1},                  "usbmass_bd failed",        "usbmass rc<0 -> name usbmass_bd"),
+    # first-broken-link ordering: usbd is upstream of everything
+    ({"usbd_id": -1, "usbmass_id": -1},   "usbd failed",              "report the FIRST break, not the cascade"),
+    ({"bdm_id": -1, "usbmass_id": -1},    "bdm failed",               "bdm upstream of usbmass"),
+]
+t19 = True
+for kw, want, why in t19_cases:
+    got = usb_diag(**kw)
+    if want not in got:
+        t19 = False
+        print(f"    T19 FAIL ({why}): expected {want!r} in {got!r}")
+# the rc numbers must actually reach the string, or a photo of the screen is useless
+got = usb_diag(usbd_id=-17, usbd_ret=-23)
+if "-17" not in got or "-23" not in got:
+    t19 = False
+    print(f"    T19 FAIL: rc values not surfaced: {got!r}")
+# a binding that returns a non-table (older ELF, or the permissive stub's 0)
+# must degrade to nil rather than crash the USB page mid-error-toast
+lua.execute("System.getUsbDiag = function() return 0 end")
+if lua.globals().PLDR.GetUsbDiagText() is not None:
+    t19 = False
+    print("    T19 FAIL: non-table getUsbDiag should yield nil, not a string")
+# and a binding that throws must be caught (it is pcall'd)
+lua.execute("System.getUsbDiag = function() error('boom') end")
+if lua.globals().PLDR.GetUsbDiagText() is not None:
+    t19 = False
+    print("    T19 FAIL: throwing getUsbDiag should yield nil, not propagate")
+check("T19 USB diag names the first broken module + splits module-fail from no-drive", t19)
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")
