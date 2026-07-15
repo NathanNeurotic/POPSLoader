@@ -2,7 +2,7 @@
 
 **This is an opt-in EXPERIMENTAL build. It is not a replacement for the public release, and it is not the rolling build either.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.0.1**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** the version reads **1.0.2-dev-EXP6** (Settings, and the build info on the boot/credits screen). If it says plain **1.0.1** you are on the public release, and if it says **1.0.2-dev** with no EXP on the end you are on the rolling build. Both are different builds to this one.
+**How to tell you are running it:** the version reads **1.0.2-dev-EXP7** (Settings, and the build info on the boot/credits screen). If it says plain **1.0.1** you are on the public release, and if it says **1.0.2-dev** with no EXP on the end you are on the rolling build. Both are different builds to this one.
 
 **What the name means:** this build is the **rolling** build (1.0.2-dev) plus the experiments below. It is not the 1.0.1 release plus experiments. Everything currently in rolling is in here too, including the menu and Settings cleanup. Earlier experimental builds were misleadingly named 1.0.1-EXP, which made this look like it was missing the newer work. It never was; the name was just wrong.
 
@@ -17,8 +17,8 @@
 | Build | Size |
 | :--- | :--- |
 | 1.0.1 (public release) | 1,715,300 bytes |
-| **This build (EXP6)** | **1,315,764 bytes** |
-| | **399,536 bytes smaller (23%)** |
+| **This build (EXP7)** | **1,313,892 bytes** |
+| | **401,408 bytes smaller (23%)** |
 
 The size work removed weight the PS2 was never using. It changes no features, no settings and no menus: everything from 1.0.1 is here working exactly as it shipped. Three separate changes got us there, and they fail in **completely different ways**, so if something breaks we will know instantly which one did it.
 
@@ -64,19 +64,19 @@ Until now the two internal-hard-drive pages were an either/or: *Settings, Device
 
 ---
 
-## Also in this build: USB, for the two people it has never worked for (NEW)
+## Also in this build: USB now uses wLaunchELF's own drivers (NEW, this is the real attempt)
 
-**If your USB drive already works, skip this section. Nothing here changes anything for you.**
+**If your USB drive already works, this is the section to watch. It changes the USB drivers for everyone.**
 
-Two testers get **"No USB backend detected"** and an empty USB list, on hardware where wOPL and wLaunchELF browse the same drive off the same port with no trouble. That is our bug, not their console and not their drive. Two separate attempted fixes have now shipped and neither one moved it, so this build stops guessing and does two things instead.
+Two testers get **"No USB backend detected"** and an empty USB list. Their drives work perfectly in wOPL and in wLaunchELF R3Z, on the same console, in the same port. So the drive is fine, the console is fine, and the port is fine. It is our code.
 
-**1. It says what actually went wrong.** Until now the USB error blamed the drive no matter what the real cause was, because the loader threw away the result codes of every USB driver it loads. It genuinely could not tell "a driver failed to start" apart from "the drivers are fine, no drive turned up". Those need completely different fixes, and we have been unable to tell which one we were even looking at. The error now carries a short line in square brackets, like `[modules OK, no drive seen]` or `[usbd failed (id -1, rc -1)]`.
+We had been shipping our own mixture of USB drivers: two of the three came from one place, and the third came from whatever the build server happened to have. Nobody chose that combination on purpose, and no other launcher runs it.
 
-**If you get the USB error, a photo of that bracket line is the single most useful thing you can send us.** It is the first real information this bug has ever produced.
+**This build simply uses the drivers from wLaunchELF R3Z instead, all three of them, as a matched set.** That is the version already proven to read these exact drives on these exact consoles. We are not guessing at a clever fix any more; we are using what demonstrably works.
 
-**2. It waits a lot longer before giving up.** POPSLoader looked for a USB drive for about two seconds and then quit, permanently, for the rest of that boot. wLaunchELF never quits: it keeps re-checking the whole time you sit in its file browser, which is very likely why the same drive works there and not here. This build keeps looking for about twelve seconds and shows a "Looking for USB drive... (3/12)" counter while it does. If your USB already works you will never see the counter, because it stops the moment it finds the drive.
+**What to watch for, and this is the important part:** these drivers are used by **USB, MX4SIO, and the internal exFAT drive**. If your USB, MX4SIO or exFAT HDD worked before and does **not** work in this build, that is a serious report and we want it immediately. It is a single change and we can undo it in one step.
 
-**If this fixes it for you, that tells us the drive was simply slow to appear and we were impatient.** If you still get the error after the full count, the bracket line tells us which half of the problem to go after. Either result is a real answer, which is more than we have had so far.
+**If you are one of the two people whose USB has never worked: this is the build.** Please just open the USB page and tell us if your games appear.
 
 ---
 
@@ -115,9 +115,9 @@ Mostly, **use it normally**. If your games launch, you can read the menus, and y
 
 ## How to report
 
-Please say **which build** (1.0.2-dev-EXP6), **which device**, your **console model and region**, and what you did. A photo helps, especially for anything text related.
+Please say **which build** (1.0.2-dev-EXP7), **which device**, your **console model and region**, and what you did. A photo helps, especially for anything text related.
 
-If it all just works, that is a valuable report too. "EXP6 fine on USB and HDD, text and covers look normal" is genuinely all we need.
+If it all just works, that is a valuable report too. "EXP7 fine on USB and HDD, text and covers look normal" is genuinely all we need.
 
 ---
 
