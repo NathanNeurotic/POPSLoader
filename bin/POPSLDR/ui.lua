@@ -1000,18 +1000,29 @@ UI = {
       -- Legend orders use the semantic tokens "confirm"/"back" (resolved to the
       -- region-native cross/circle glyph in ResolveLegend). Confirm always sits
       -- FAR LEFT, back/exit at the right edge -- R3Z3N review.
-      order = {"confirm", "square", "back", "triangle"};
-      order_with_start = {"confirm", "start", "back", "triangle"};
-      order_with_start_r2 = {"confirm", "square", "start", "back", "triangle"};
-      order_settings_save = {"confirm", "start", "select", "back"};
+      --
+      -- DELIBERATELY SHORT (R3Z3N review round 3, seconded by Berion: "I would
+      -- drop credits, settings and game art buttons in games list"; main menu is
+      -- exactly "select, settings, exit"). The footer advertises the PRIMARY
+      -- action plus the way out, nothing else. The dropped bindings still WORK
+      -- where they worked before (Square still toggles cover art on a game list,
+      -- START still opens Settings) -- only the legend clutter is gone. Credits
+      -- moved into Settings entirely, so the Triangle binding is gone with it.
+      order = {"confirm", "square", "back"};
+      order_with_start = {"confirm", "start", "back"};
+      order_with_start_r2 = {"confirm", "back"};
+      order_settings_save = {"confirm", "start", "back"};
       order_keyboard = {"confirm", "square", "start", "back"};
+	      -- No `triangle` (Credits) or `select_toggle` (Hide Text) entries: neither
+	      -- appears in any order above anymore. Credits moved into Settings and the
+	      -- Settings page no longer hijacks Select. ResolveLegend/Draw tolerate a
+	      -- nil label, so an order that names a glyph with no label just draws the
+	      -- glyph -- but nothing does.
 	      labels = {
-	        triangle = "Credits",
 	        circle_main = "Exit",
 	        circle_other = "Back",
 	        start_profiles = "Settings",
 	        start_menu = "Menu",
-	        select_toggle = "Hide Text",
 	        square_backspace = "Backspace",
 	        cross_confirm = "Confirm",
 	        cross_enter = "Enter",
@@ -1760,24 +1771,10 @@ UI = {
         UI.Modal.triangle_action = nil
         UI.Modal.ignore_until_release = true
       end;
-      OpenSaveSettings = function (on_save, on_discard)
-        UI.Modal.active = true
-        UI.Modal.title = "Save Settings"
-        UI.Modal.body = "Save your changes before leaving?"
-        UI.Modal.options = {"Save", "Cancel", "Don't Save"}
-        UI.Modal.confirm_action = function ()
-          UI.Modal.Close()
-          if type(on_save) == "function" then on_save() end
-        end
-        UI.Modal.cancel_action = function ()
-          UI.Modal.Close()
-        end
-        UI.Modal.triangle_action = function ()
-          UI.Modal.Close()
-          if type(on_discard) == "function" then on_discard() end
-        end
-        UI.Modal.ignore_until_release = true
-      end;
+      -- (OpenSaveSettings, the old X-Save/O-Cancel/Triangle-Don't-Save leave
+      -- prompt, was removed: Back and START now open the identical
+      -- OpenSettingsMenu chooser -- R3Z3N review round 3, "they should be the
+      -- same".)
       -- The settings page's Save/Reset/Discard actions live behind START
       -- (R3Z3N review: inline list rows for them sat oddly above Memory Card
       -- and made reaching them a scroll chore).
@@ -2534,8 +2531,13 @@ UI = {
         return true
       end
       if UI.LAUNCHING then return false end
+      -- Select toggles Hide-Text on the scenes it actually helps (the carousel
+      -- and the game lists, where it clears the view for cover art). NOT on the
+      -- Settings page: hiding the text of the page you are reading is nonsense
+      -- (R3Z3N review round 3, "get rid of hid text here"). Settings still
+      -- exposes it as the Display > Hide UI Text row.
       if UI.Pad.Events.SELECT then
-        if UI.IsHideToggleScene(UI.CURSCENE) or UI.CURSCENE == UI.SCENES.MPROFILE then
+        if UI.IsHideToggleScene(UI.CURSCENE) then
           UI.ToggleHideTextMode(true)
           return true
         end
@@ -2681,7 +2683,6 @@ UI = {
           end
           Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
-          if UI.Pad.Events.EXIT then UI.CreditsReturnScene = UI.CURSCENE; UI.SceneChange(UI.SCENES.CREDITS) end
           if UI.Pad.Events.BACK then UI.SceneChange(UI.SCENES.MMAIN) end
           if UI.Pad.Events.CONFIRM then
             UI.Notif_queue.add("This backend isn't implemented yet", "warn")
@@ -3021,7 +3022,6 @@ UI = {
         end
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
-        if UI.Pad.Events.EXIT then UI.CreditsReturnScene = UI.CURSCENE; UI.SceneChange(UI.SCENES.CREDITS) end
         if UI.Pad.Events.BACK then
           if UI.CURSCENE == UI.SCENES.GSMBNET and type(System) == "table" and type(System.disconnectSMB) == "function" then
             pcall(System.disconnectSMB)   -- free the share + connection when leaving the SMB page
@@ -4007,6 +4007,18 @@ UI = {
             dirty = dirty_fn
           })
         end
+        -- A plain label row that DOES something on Confirm (no value, no dirty
+        -- marker). Unlike the old Save/Reset/Discard action rows this one lives
+        -- INSIDE a section, so it obeys the accordion and reads as a normal
+        -- settings row -- which was the objection to the old ones.
+        local function AddAction(label, activate_fn)
+          table.insert(items, {
+            kind = "action",
+            section = current_section,
+            label = label,
+            activate = activate_fn
+          })
+        end
         AddSection("Storage")
         local function CycleBdma(dir)
           local next_idx = CycleIndex(UI.BdmaModeIndex, dir, #UI.BdmaModes)
@@ -4125,7 +4137,10 @@ UI = {
 
         -- Carousel device visibility checklist: a Shown/Hidden row per main-menu
         -- device. Toggling hides/shows it on the carousel (all shown by default).
-        AddSection("Carousel Devices")
+        -- "Device List", not "Carousel Devices" -- R3Z3N review round 3:
+        -- "carousel is actually device list". The rows pick which devices appear
+        -- on the main menu; calling it by our internal widget name helped nobody.
+        AddSection("Device List")
         if type(PLDR) == "table" and type(PLDR.CAROUSEL_DEVICE_KEYS) == "table" then
           local function ToggleDevice(dkey)
             if type(UI.DeviceHiddenDraft) ~= "table" then UI.DeviceHiddenDraft = {} end
@@ -4191,6 +4206,14 @@ UI = {
           function() UI.GlobalHide = not UI.GlobalHide end,
           function() return (UI.GlobalHide == true) ~= (UI.SettingsEntryGlobalHide == true) end
         )
+        -- This row said WHETHER hidden games show, but never how to hide one, so
+        -- the feature was undiscoverable ("I dont know how to hide games..." --
+        -- R3Z3N review round 3). A read-only hint costs one dimmed line and
+        -- answers it where the question is actually asked.
+        AddInfo(
+          "How to hide a game",
+          function() return "L3 on the game list" end
+        )
         local DETAILS_ALIGN_SEQ = {"off", "left", "center", "right"}
         local DETAILS_ALIGN_TXT = {off = "Off", left = "Left aligned", center = "Center aligned", right = "Right aligned"}
         local function DetailsAlignStep(cur, dir)
@@ -4212,7 +4235,10 @@ UI = {
         -- __common/POPS/ART layout). "POPS/ART" is the default; the game's own POPS folder
         -- (beside the .vcd) is always also checked as a back-compat fallback.
         local ART_LOCATION_SEQ = {"pops_art", "pops", "art"}
-        local ART_LOCATION_TXT = {pops = "POPS (beside game)", pops_art = "POPS/ART", art = "ART (at root)"}
+        -- Spell the paths out with the device prefix. "POPS/ART" alone was
+        -- ambiguous enough that R3Z3N had to ask "I presume you mean
+        -- device:/POPS/ART?" (review round 3) -- so just say so.
+        local ART_LOCATION_TXT = {pops = "device:/POPS", pops_art = "device:/POPS/ART", art = "device:/ART"}
         local function ArtLocationStep(cur, dir)
           local idx = 1
           for i = 1, #ART_LOCATION_SEQ do
@@ -4223,7 +4249,7 @@ UI = {
         end
         AddCycle(
           "Cover/details folder",
-          function() return ART_LOCATION_TXT[UI.ArtLocation] or "POPS/ART" end,
+          function() return ART_LOCATION_TXT[UI.ArtLocation] or "device:/POPS/ART" end,
           function() UI.ArtLocation = ArtLocationStep(UI.ArtLocation, 1) end,
           function() UI.ArtLocation = ArtLocationStep(UI.ArtLocation, -1) end,
           function() return tostring(UI.ArtLocation) ~= tostring(UI.SettingsEntryArtLocation) end
@@ -4424,6 +4450,18 @@ UI = {
           function() ToggleMcFolder() end,
           function() return false end
         )
+
+        -- Credits live here now, not on a Triangle binding advertised in every
+        -- footer ("put credits in settings imo" -- R3Z3N review round 3).
+        -- CreditsReturnScene is the existing generic return mechanism, so this
+        -- comes back to Settings with the drafts intact (returning via
+        -- SceneChange does NOT re-run SyncSettingsDraftFromRuntime -- only the
+        -- START-entry handler does -- so staged edits survive the trip).
+        AddSection("About")
+        AddAction("Credits", function()
+          UI.CreditsReturnScene = UI.SCENES.MPROFILE
+          UI.SceneChange(UI.SCENES.CREDITS)
+        end)
 
         -- Focus normalization: clamp + skip non-selectable rows.
         local function IsSelectable(idx)
@@ -4728,32 +4766,44 @@ UI = {
               focused_item.next()
             elseif focused_item.kind == "path" and focused_item.open then
               focused_item.open()
+            elseif focused_item.kind == "action" and focused_item.activate then
+              focused_item.activate()
+              return
             end
           end
         end
 
+        -- ONE menu for both routes (R3Z3N review round 3: "the back button
+        -- prompt is different than the start prompt ... they should be the
+        -- same"). Back with unsaved edits and START now open the identical
+        -- Save Changes / Reset Defaults / Discard & Exit chooser; the old
+        -- X-Save/O-Cancel/Triangle-Don't-Save prompt is gone. Back with NOTHING
+        -- staged still leaves immediately -- prompting to save nothing is noise.
+        --
+        -- The one deliberate difference is where a SAVE lands you, which is the
+        -- user's own intent in each case: Back was on the way out, so it exits
+        -- to the scene it came from (and allow_fallback_exit=true, since a
+        -- failed save should not strand someone who was already leaving);
+        -- START was not, so it stays put on failure (allow_fallback_exit=false)
+        -- keeping every draft edit for a retry.
+        local function OpenSettingsActionMenu(save_target, allow_fallback_exit)
+          UI.Modal.OpenSettingsMenu(
+            function() queue_exit(save_target, allow_fallback_exit) end,
+            function() ResetDefaults() end,
+            function() discard_settings_and_return() end
+          )
+        end
+
         if UI.Pad.Events.BACK then
           if HasUnsavedChanges() then
-            local return_scene = UI.GetSettingsReturnScene()
-            UI.Modal.OpenSaveSettings(
-              function() queue_exit(return_scene, true) end,
-              function() discard_settings_and_return() end
-            )
+            OpenSettingsActionMenu(UI.GetSettingsReturnScene(), true)
           else
             discard_settings_and_return()
           end
           return
         end
         if UI.Pad.Events.START then
-          -- Save's allow_fallback_exit=false: a FAILED save keeps the user on
-          -- the Settings page with every draft edit intact for a retry. The
-          -- BACK-prompt Save keeps true -- the user was already leaving, so
-          -- exit-on-failure matches their intent there.
-          UI.Modal.OpenSettingsMenu(
-            function() queue_exit(UI.SCENES.MMAIN, false) end,
-            function() ResetDefaults() end,
-            function() discard_settings_and_return() end
-          )
+          OpenSettingsActionMenu(UI.SCENES.MMAIN, false)
         end
 
         local labels, order = UI.Footer.ResolveLegend({
@@ -4761,8 +4811,7 @@ UI = {
           order_id = "settings_focus",
           circle = UI.Footer.labels.circle_other,
           cross = UI.Footer.labels.cross_select,
-          start = UI.Footer.labels.start_menu,
-          select = UI.Footer.labels.select_toggle
+          start = UI.Footer.labels.start_menu
         })
         UI.Footer.Draw(labels, order)
       end;
@@ -4997,7 +5046,6 @@ UI = {
             carousel.slide = 0
           end
         end
-        if UI.Pad.Events.EXIT then UI.CreditsReturnScene = UI.CURSCENE; UI.SceneChange(UI.SCENES.CREDITS) end
         if UI.Pad.Events.BACK then
           UI.Modal.OpenExit()
           return
