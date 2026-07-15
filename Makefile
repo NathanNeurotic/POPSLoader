@@ -81,9 +81,11 @@ endif
 #-------------------------- App Content ---------------------------#
 EXT_LIBS = modules/ds34usb/ee/libds34usb.a modules/ds34bt/ee/libds34bt.a
 
+# ftmin.o overrides FT_Init_FreeType/FT_Done_FreeType so libfreetype's ftinit.c
+# (which names EVERY font driver) never enters the link -- see src/ftmin.c.
 APP_CORE = main.o system.o pad.o graphics.o \
 		   atlas.o fntsys.o embed_assets.o \
-		   sound.o
+		   sound.o ftmin.o
 
 LUA_LIBS =	luaplayer.o luasound.o luacontrols.o \
 			luatimer.o luaScreen.o luagraphics.o \
