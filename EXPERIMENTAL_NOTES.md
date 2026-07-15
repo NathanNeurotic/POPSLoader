@@ -2,7 +2,9 @@
 
 **This is an opt-in EXPERIMENTAL build. It is not a replacement for the public release, and it is not the rolling build either.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.0.1**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** the version reads **1.0.1-EXP5** (Settings, and the build info on the boot/credits screen). If it says plain 1.0.1, you are on the normal release, not this build.
+**How to tell you are running it:** the version reads **1.0.2-dev-EXP5** (Settings, and the build info on the boot/credits screen). If it says plain **1.0.1** you are on the public release, and if it says **1.0.2-dev** with no EXP on the end you are on the rolling build. Both are different builds to this one.
+
+**What the name means:** this build is the **rolling** build (1.0.2-dev) plus the experiments below. It is not the 1.0.1 release plus experiments. Everything currently in rolling is in here too, including the menu and Settings cleanup. Earlier experimental builds were misleadingly named 1.0.1-EXP, which made this look like it was missing the newer work. It never was; the name was just wrong.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
 
@@ -22,7 +24,7 @@ The size work removed weight the PS2 was never using. It changes no features, no
 
 The one actual new thing, the **Both** option for internal HDDs, is **off by default** and described further down.
 
-*(This build also carries the menu and Settings cleanup that is currently in the rolling build: shorter button bars, Credits moved into Settings, QWERTY keyboard default, and so on. That part is not what this channel is testing, but if you spot something odd there, say so anyway.)*
+*(The menu and Settings cleanup from the rolling build is in here too: shorter button bars, Credits moved into Settings, QWERTY keyboard default, and so on. That part is not what this channel is testing, but if you spot something odd there, say so anyway.)*
 
 ### Change 1: a stripped internal helper (about 194 KB)
 
@@ -95,7 +97,7 @@ Mostly, **use it normally**. If your games launch, you can read the menus, and y
 
 ## How to report
 
-Please say **which build** (1.0.1-EXP5), **which device**, your **console model and region**, and what you did. A photo helps, especially for anything text related.
+Please say **which build** (1.0.2-dev-EXP5), **which device**, your **console model and region**, and what you did. A photo helps, especially for anything text related.
 
 If it all just works, that is a valuable report too. "EXP5 fine on USB and HDD, text and covers look normal" is genuinely all we need.
 

@@ -1,6 +1,10 @@
 # POPSLoader — Rolling Test Build ⚙️
 
-**This is a bleeding-edge TEST build, not a stable release.** It has everything from the latest stable **plus** features still being tested. Please try it and report anything odd — and mention you're on the **rolling** build. To go back to stable, just reinstall the latest entry on the **Releases** page.
+**This is a bleeding-edge TEST build, not a stable release.** It has everything from the latest stable **plus** features still being tested.
+
+**This build names itself, so you never have to guess which one you are on.** Settings and the boot screen read **1.0.2-dev**. If yours reads plain **1.0.1**, that is the public release and none of the changes below are in it. (The `1.0.2` part only means "newer than 1.0.1". It is not a promise about what the next release will be called.)
+
+Please try it and report anything odd, and say the version you see. To go back to stable, just reinstall the latest entry on the **Releases** page.
 
 Here's everything new or changed **since BETA-9**.
 
