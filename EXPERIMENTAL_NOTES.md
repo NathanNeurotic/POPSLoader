@@ -1,8 +1,8 @@
 # POPSLoader: Experimental Build 🧪
 
-**This is an opt-in EXPERIMENTAL build. It is not a replacement for the public release, and it is not the rolling build either.** It exists so testers can try size optimizations in isolation, without them reaching anyone who did not ask for it. The public release (**1.0.1**) and the rolling test build are both untouched by anything here.
+**This is an opt-in EXPERIMENTAL build. It is not a replacement for the public release, and it is not the rolling build either.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.0.1**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** the version reads **1.0.1-EXP3** (Settings, and the build info on the boot/credits screen). If it says plain 1.0.1, you are on the normal release, not this build.
+**How to tell you are running it:** the version reads **1.0.1-EXP4** (Settings, and the build info on the boot/credits screen). If it says plain 1.0.1, you are on the normal release, not this build.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
 
@@ -10,17 +10,19 @@
 
 ## What is different in this build
 
-**Only one thing: it is smaller. Almost a quarter smaller.**
+**Two things: it is almost a quarter smaller, and you can optionally show both internal HDD pages at once.**
 
 | Build | Size |
 | :--- | :--- |
 | 1.0.1 (public release) | 1,715,300 bytes |
-| **This build (EXP3)** | **1,314,708 bytes** |
+| **This build (EXP4)** | **1,314,740 bytes** |
 | | **400,592 bytes smaller (23%)** |
 
-No new features. No settings changes. No menu changes. Everything from 1.0.1 is here, working exactly as it shipped. We only removed weight that the PS2 was never using.
+The size work removed weight the PS2 was never using. It changes no features, no settings and no menus: everything from 1.0.1 is here working exactly as it shipped. Three separate changes got us there, and they fail in **completely different ways**, so if something breaks we will know instantly which one did it.
 
-Three separate changes got us there, and they fail in **completely different ways**, so if something breaks we will know instantly which one did it.
+The one actual new thing, the **Both** option for internal HDDs, is **off by default** and described further down.
+
+*(This build also carries the menu and Settings cleanup that is currently in the rolling build: shorter button bars, Credits moved into Settings, QWERTY keyboard default, and so on. That part is not what this channel is testing, but if you spot something odd there, say so anyway.)*
 
 ### Change 1: a stripped internal helper (about 194 KB)
 
@@ -46,9 +48,23 @@ POPSLoader was carrying a full JPEG decoder, which was **16% of all the program 
 
 ---
 
+## Also in this build: both internal HDD pages at once (NEW, opt-in, off by default)
+
+Until now the two internal-hard-drive pages were an either/or: *Settings, Device List, Internal HDD* let you pick **APA / PFS** or **exFAT**, and the one you did not pick vanished from the device list. R3Z3N pointed out they can happily coexist, and he was right, so that setting now has a third choice: **Both**.
+
+**Nothing changes unless you choose it.** The default is still **APA / PFS**, and an existing install keeps whatever it had. Pick **Both** and the device list simply shows both HDD entries.
+
+**Why this was safe to do:** the two pages already shared one internal driver. A change back in June put APA/PFS and exFAT on a single shared ATA driver (with the exact one-second settling pauses R3Z3N described), because loading two copies of it was what caused the old 42% scan freeze. So "Both" only stops hiding a page that already worked. No driver code was touched for this.
+
+**If you turn Both on, please test this specific order:** cold boot, open **HDD (exFAT) FIRST**, let it list your games, back out, and then open **HDD (PFS)**. That exact sequence was impossible before, so it is the one genuinely new situation in this build. If PFS then hangs on "Loading HDD modules", shows "HDD not usable", or lists nothing, say so, that is exactly the report worth having. Power-cycle between attempts: a failed HDD load is remembered for the rest of that boot, so retrying without a reboot is not a second try.
+
+**If you leave it on APA / PFS** (the default), nothing about your setup changed at all.
+
+---
+
 ## What to test
 
-Mostly, **use it normally**. If your games launch, you can read the menus, and your covers show, all three changes are good.
+Mostly, **use it normally**. If your games launch, you can read the menus, and your covers show, the size work is good.
 
 - [ ] **Boot to the menu** from whichever device you normally launch POPSLoader from.
 - [ ] **Can you read everything?** Game names, menu text, Settings, the footer button hints. This covers change 2. If text looks *fine*, it is fine.
@@ -59,13 +75,13 @@ Mostly, **use it normally**. If your games launch, you can read the menus, and y
 - [ ] **Exit paths:** the Disc (DKWDRV) option, and exiting back to your launcher or the browser.
 - [ ] **One cosmetic thing worth a glance:** text weight. Dropping the unused font machinery also drops an automatic hinting step. Our font should not need it, but if the text looks noticeably thinner, blurrier, or just *different* from 1.0.1, that is worth reporting even though it is only cosmetic.
 
-**Anything that worked on 1.0.1 and does not work here is exactly the report we need.** All three changes are single, cleanly revertable commits, so any one of them can be dropped on its own.
+**Anything that worked on 1.0.1 and does not work here is exactly the report we need.** Every change here is a single, cleanly revertable commit, so any one of them can be dropped on its own.
 
 ## How to report
 
-Please say **which build** (1.0.1-EXP3), **which device**, your **console model and region**, and what you did. A photo helps, especially for anything text related.
+Please say **which build** (1.0.1-EXP4), **which device**, your **console model and region**, and what you did. A photo helps, especially for anything text related.
 
-If it all just works, that is a valuable report too. "EXP3 fine on USB and HDD, text and covers look normal" is genuinely all we need.
+If it all just works, that is a valuable report too. "EXP4 fine on USB and HDD, text and covers look normal" is genuinely all we need.
 
 ---
 

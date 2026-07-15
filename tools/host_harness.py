@@ -603,6 +603,57 @@ t17 = E('''function()
 end''')()
 check("T17 POPSTARTER_PATH round-trips (custom + Automatic) + legacy PROFILE=N migrates (2->__common, 1/13->Automatic, explicit wins)", t17)
 
+# T18 Internal-HDD page visibility truth table (EXP4: HDD_FS gains "BOTH").
+# No test covered IsDeviceHidden at all before. The load-bearing cases are the
+# back-compat ones: a missing/unknown HDD_FS, and an -page=ata session, must
+# behave EXACTLY as they did when the setting was 2-valued.
+t18 = E('''function()
+  local saved_fs, saved_args = PLDR.HDD_FS, PLDR.LAUNCH_ARGS
+  local function vis(fs, page)
+    PLDR.HDD_FS = fs
+    PLDR.LAUNCH_ARGS = page and {page = page} or {}
+    -- IsDeviceHidden returns HIDDEN; invert to "shown" for readability
+    return (not PLDR.IsDeviceHidden("PFS")), (not PLDR.IsDeviceHidden("EXFAT"))
+  end
+  local cases = {
+    -- fs,        page,   want_pfs, want_exfat, why
+    {"PFS",       nil,    true,  false, "default: PFS only"},
+    {nil,         nil,    true,  false, "MISSING key must resolve to PFS (back-compat)"},
+    {"garbage",   nil,    true,  false, "unknown value must resolve to PFS"},
+    {"EXFAT",     nil,    false, true,  "exFAT only"},
+    {"BOTH",      nil,    true,  true,  "BOTH shows both (the EXP4 point)"},
+    {"both",      nil,    true,  true,  "value is case-insensitive"},
+    {"PFS",       "ATA",  false, true,  "-page=ata forces exFAT even when set to PFS"},
+    {"BOTH",      "ATA",  false, true,  "-page=ata isolation still wins over BOTH"},
+  }
+  for _, c in ipairs(cases) do
+    local p, e = vis(c[1], c[2])
+    if p ~= c[3] or e ~= c[4] then
+      PLDR.HDD_FS, PLDR.LAUNCH_ARGS = saved_fs, saved_args
+      return false, string.format("%s: fs=%s page=%s -> pfs=%s exfat=%s (want pfs=%s exfat=%s)",
+        c[5], tostring(c[1]), tostring(c[2]), tostring(p), tostring(e), tostring(c[3]), tostring(c[4]))
+    end
+  end
+  -- BOTH must survive a save -> sidecar -> reload round trip
+  PLDR.HDD_FS = "BOTH"
+  if not PLDR.SaveSettingsAtomic() then
+    PLDR.HDD_FS, PLDR.LAUNCH_ARGS = saved_fs, saved_args
+    return false, "save failed"
+  end
+  local wrote = false
+  for path, content in pairs(FAKEFS.files) do
+    if string.match(path, "%.pldrs$") and string.find(content, "HDD_FS=BOTH", 1, true) then wrote = true end
+  end
+  PLDR.HDD_FS = "sentinel"
+  PLDR.LoadSettingsNonFatal()
+  local reloaded = PLDR.HDD_FS
+  PLDR.HDD_FS, PLDR.LAUNCH_ARGS = saved_fs, saved_args
+  if not wrote then return false, "HDD_FS=BOTH not written to the sidecar" end
+  if reloaded ~= "BOTH" then return false, "reload gave "..tostring(reloaded) end
+  return true
+end''')()
+check("T18 Internal-HDD visibility truth table (PFS/EXFAT/BOTH x -page=ata) + BOTH persists", t18)
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")

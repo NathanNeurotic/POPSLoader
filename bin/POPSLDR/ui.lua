@@ -2606,7 +2606,8 @@ UI = {
         if _da ~= "center" and _da ~= "right" then _da = "left" end
         UI.DetailsAlign = ((type(PLDR) == "table" and PLDR.SHOW_DETAILS == true) and _da) or "off"
         UI.SettingsEntryDetailsAlign = UI.DetailsAlign
-        UI.HddFs = ((type(PLDR) == "table" and PLDR.HDD_FS == "EXFAT") and "EXFAT") or "PFS"
+        UI.HddFs = (type(PLDR) == "table" and type(PLDR.NormalizeHddFs) == "function")
+    and PLDR.NormalizeHddFs(PLDR.HDD_FS) or "PFS"
         UI.SettingsEntryHddFs = UI.HddFs
         local _al = (type(PLDR) == "table" and PLDR.ART_LOCATION) or "pops_art"
         if _al ~= "pops" and _al ~= "art" then _al = "pops_art" end
@@ -3591,7 +3592,8 @@ UI = {
           local details_align_val = (show_details_val and UI.DetailsAlign)
             or ((type(PLDR) == "table" and PLDR.DETAILS_ALIGN) or "left")
           if details_align_val ~= "center" and details_align_val ~= "right" then details_align_val = "left" end
-          local hdd_fs_val = (UI.HddFs == "EXFAT") and "EXFAT" or "PFS"
+          local hdd_fs_val = (type(PLDR.NormalizeHddFs) == "function")
+          and PLDR.NormalizeHddFs(UI.HddFs) or "PFS"
           local art_location_val = (UI.ArtLocation == "pops" or UI.ArtLocation == "art") and UI.ArtLocation or "pops_art"
           local gamelist_cache_val = UI.GameListCache == true
           local boot_sound_val = UI.BootSound == true
@@ -4180,14 +4182,25 @@ UI = {
           end
         end
 
-        -- Internal-HDD filesystem: which of the two HDD pages shows on the carousel --
-        -- Sony APA/PFS (default) or APA-Jail exFAT. Mutually exclusive (one shows, the
-        -- other hides). A -page=ata launch still auto-enters exFAT regardless of this.
+        -- Internal-HDD page(s) on the carousel: Sony APA/PFS (default), APA-Jail exFAT,
+        -- or BOTH. "Both" is new (R3Z3N: the two can coexist) and is purely a visibility
+        -- choice -- the driver stacks were already unified onto one shared, load-once
+        -- ata_bd that serves APA/PFS and exFAT together, settles included. A -page=ata
+        -- launch still auto-enters exFAT and hides PFS regardless of this setting.
+        local HDD_FS_SEQ = {"PFS", "EXFAT", "BOTH"}
+        local HDD_FS_TXT = {PFS = "APA / PFS (default)", EXFAT = "exFAT", BOTH = "Both"}
+        local function HddFsStep(cur, dir)
+          local idx = 1
+          for i = 1, #HDD_FS_SEQ do
+            if HDD_FS_SEQ[i] == cur then idx = i; break end
+          end
+          return HDD_FS_SEQ[((idx - 1 + dir) % #HDD_FS_SEQ) + 1]
+        end
         AddCycle(
           "Internal HDD",
-          function() return (UI.HddFs == "EXFAT") and "exFAT" or "APA / PFS (default)" end,
-          function() UI.HddFs = (UI.HddFs == "EXFAT") and "PFS" or "EXFAT" end,
-          function() UI.HddFs = (UI.HddFs == "EXFAT") and "PFS" or "EXFAT" end,
+          function() return HDD_FS_TXT[UI.HddFs] or "APA / PFS (default)" end,
+          function() UI.HddFs = HddFsStep(UI.HddFs, -1) end,
+          function() UI.HddFs = HddFsStep(UI.HddFs, 1) end,
           function() return tostring(UI.HddFs) ~= tostring(UI.SettingsEntryHddFs) end
         )
 

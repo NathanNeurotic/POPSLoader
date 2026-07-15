@@ -4155,18 +4155,38 @@ function PLDR.NormalizeHiddenDevices(value)
   return table.concat(out, ",")
 end
 
+-- The Internal-HDD page selector: "PFS" (default) | "EXFAT" | "BOTH".
+-- ONE normalizer so every site (encode/snapshot/apply/parse/commit/UI/visibility)
+-- agrees; each used to inline its own `(x == "EXFAT") and "EXFAT" or "PFS"`, which
+-- silently collapses any third value back to PFS. Anything unrecognized -- and a
+-- MISSING key -- still resolves to PFS, so no existing install changes until the
+-- user opts in (the back-compat contract from 1f2d7ca).
+PLDR.HDD_FS_VALUES = {"PFS", "EXFAT", "BOTH"}
+function PLDR.NormalizeHddFs(v)
+  local u = string.upper(tostring(v or ""))
+  if u == "EXFAT" then return "EXFAT" end
+  if u == "BOTH" then return "BOTH" end
+  return "PFS"
+end
+
 -- True if the given carousel device key is currently hidden from the carousel.
 function PLDR.IsDeviceHidden(key)
   if key == nil then return false end
   local ukey = string.upper(tostring(key))
-  -- The two internal-HDD pages (PFS, exFAT) are mutually exclusive: only the one chosen in
-  -- Settings > Internal HDD shows on the carousel; the other is always hidden. An explicit
-  -- -page=ata launch is an exFAT session even if the selected device's .pldrs still says PFS.
+  -- Which internal-HDD page(s) the carousel shows: Settings > Device List > Internal HDD.
+  -- PFS (default) or EXFAT shows exactly one; BOTH shows both (R3Z3N: APA-Jail and PFS can
+  -- coexist). This is ONLY a visibility rule -- it has never gated a driver, mount or IRX.
+  -- The stacks were already unified onto ONE load-once ata_bd that serves APA/PFS and exFAT
+  -- together (`EnsureAtaBdm`, src/luasystem.cpp; called by BOTH luaHDD.cpp's Load_HDD_IRX and
+  -- lua_ata_init, and it already carries R3Z3N's two 1s settles). So BOTH needs no C change.
+  -- An explicit -page=ata launch is still an exFAT session regardless of this setting: that
+  -- isolation is launch-arg-scoped and deliberately unchanged.
   if ukey == "EXFAT" or ukey == "PFS" then
     if type(PLDR.IsExplicitATASession) == "function" and PLDR.IsExplicitATASession() then
       return ukey ~= "EXFAT"
     end
-    local fs = (string.upper(tostring(PLDR.HDD_FS or "PFS")) == "EXFAT") and "EXFAT" or "PFS"
+    local fs = PLDR.NormalizeHddFs(PLDR.HDD_FS)
+    if fs == "BOTH" then return false end
     return ukey ~= fs
   end
   local csv = string.upper(tostring(PLDR.HIDDEN_DEVICES or ""))
@@ -4341,7 +4361,7 @@ local function EncodeSettings()
     "SHOW_DETAILS="..((PLDR.SHOW_DETAILS == true) and "1" or "0"),
     "DETAILS_ALIGN="..((PLDR.DETAILS_ALIGN == "center" or PLDR.DETAILS_ALIGN == "right") and PLDR.DETAILS_ALIGN or "left"),
     "ART_LOCATION="..((PLDR.ART_LOCATION == "pops" or PLDR.ART_LOCATION == "art") and PLDR.ART_LOCATION or "pops_art"),
-    "HDD_FS="..((PLDR.HDD_FS == "EXFAT") and "EXFAT" or "PFS"),
+    "HDD_FS="..PLDR.NormalizeHddFs(PLDR.HDD_FS),
     "GAMELIST_CACHE="..((PLDR.GAMELIST_CACHE == true) and "1" or "0"),
     "BOOT_SOUND="..((PLDR.BOOT_SOUND ~= false) and "1" or "0"),
     "OVERSCAN="..tostring(math.floor(tonumber(PLDR.OVERSCAN) or 0)),
@@ -4390,7 +4410,7 @@ local function SnapshotSettingsState()
     show_details = (PLDR.SHOW_DETAILS == true),
     details_align = ((PLDR.DETAILS_ALIGN == "center" or PLDR.DETAILS_ALIGN == "right") and PLDR.DETAILS_ALIGN or "left"),
     art_location = ((PLDR.ART_LOCATION == "pops" or PLDR.ART_LOCATION == "art") and PLDR.ART_LOCATION or "pops_art"),
-    hdd_fs = ((PLDR.HDD_FS == "EXFAT") and "EXFAT" or "PFS"),
+    hdd_fs = PLDR.NormalizeHddFs(PLDR.HDD_FS),
     gamelist_cache = (PLDR.GAMELIST_CACHE == true),
     boot_sound = (PLDR.BOOT_SOUND ~= false),
     overscan = math.floor(tonumber(PLDR.OVERSCAN) or 0),
@@ -4447,7 +4467,7 @@ local function ApplySettingsState(state)
     PLDR.ART_LOCATION = (state.art_location == "pops" or state.art_location == "art") and state.art_location or "pops_art"
   end
   if type(state.hdd_fs) == "string" then
-    PLDR.HDD_FS = (state.hdd_fs == "EXFAT") and "EXFAT" or "PFS"
+    PLDR.HDD_FS = PLDR.NormalizeHddFs(state.hdd_fs)
   end
   if type(state.gamelist_cache) == "boolean" then
     PLDR.GAMELIST_CACHE = state.gamelist_cache
@@ -4628,7 +4648,7 @@ function PLDR.LoadSettingsNonFatal()
   PLDR.SHOW_DETAILS = false
   PLDR.DETAILS_ALIGN = "left"  -- left|center|right; alignment of the game-details box (used only when SHOW_DETAILS)
   PLDR.ART_LOCATION = "pops_art"  -- pops|pops_art|art; where REMOVABLE-device cover .png + details .txt live (HDD uses __common/POPS/ART)
-  PLDR.HDD_FS = "PFS"  -- PFS|EXFAT; which internal-HDD page the carousel shows (mutually exclusive; default PFS)
+  PLDR.HDD_FS = "PFS"  -- PFS|EXFAT|BOTH; which internal-HDD page(s) the carousel shows. Default PFS: an install with no HDD_FS= line must not change.
   PLDR.GAMELIST_CACHE = false  -- opt-in persistent per-device USB/MMCE/MX4SIO list cache (OFF = always live scan)
   PLDR.BOOT_SOUND = true  -- play the boot/splash chime (default ON; oldman63 #501 wanted an off switch)
   PLDR.OVERSCAN = 0  -- CRT overscan inset, permille (0 = off; OPL rmSetOverscan units/math)
@@ -4826,7 +4846,7 @@ function PLDR.LoadSettingsNonFatal()
     PLDR.ART_LOCATION = (art_location == "pops" or art_location == "art") and art_location or "pops_art"
   end
   if hdd_fs ~= nil then
-    PLDR.HDD_FS = (string.upper(hdd_fs) == "EXFAT") and "EXFAT" or "PFS"
+    PLDR.HDD_FS = PLDR.NormalizeHddFs(hdd_fs)
   end
   local glc = ParseBooleanSetting(gamelist_cache)
   if glc ~= nil then
@@ -4902,8 +4922,8 @@ function PLDR.CommitSettingsChanges(opts)
   if opts.details_align == "left" or opts.details_align == "center" or opts.details_align == "right" then next_details_align = opts.details_align end
   local next_art_location = (prev.art_location == "pops" or prev.art_location == "art") and prev.art_location or "pops_art"
   if opts.art_location == "pops" or opts.art_location == "pops_art" or opts.art_location == "art" then next_art_location = opts.art_location end
-  local next_hdd_fs = (prev.hdd_fs == "EXFAT") and "EXFAT" or "PFS"
-  if opts.hdd_fs == "PFS" or opts.hdd_fs == "EXFAT" then next_hdd_fs = opts.hdd_fs end
+  local next_hdd_fs = PLDR.NormalizeHddFs(prev.hdd_fs)
+  if opts.hdd_fs ~= nil then next_hdd_fs = PLDR.NormalizeHddFs(opts.hdd_fs) end
   local next_gamelist_cache = (prev.gamelist_cache == true)
   if type(opts.gamelist_cache) == "boolean" then next_gamelist_cache = opts.gamelist_cache end
   local next_boot_sound = (prev.boot_sound ~= false)
