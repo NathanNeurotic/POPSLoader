@@ -63,9 +63,9 @@ Mostly, **use it normally**. If your games launch and you can read the menus, bo
 
 ## How to report
 
-Please say **which build** (1.0.1-EXP2), **which device**, your **console model and region**, and what you did. A photo helps, especially for anything text related.
+Please say **which build** (1.0.1-EXP3), **which device**, your **console model and region**, and what you did. A photo helps, especially for anything text related.
 
-If it all just works, that is a valuable report too. "EXP2 fine on USB and HDD, text looks normal" is genuinely all we need.
+If it all just works, that is a valuable report too. "EXP3 fine on USB and HDD, text and covers look normal" is genuinely all we need.
 
 ---
 
