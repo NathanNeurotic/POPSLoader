@@ -147,7 +147,12 @@ static bool EnsureBDMFatFs()
 	return true;
 }
 
-static bool EnsureUsbMass()
+// Non-static so main.cpp can bring the USB mass stack up at BOOT, adjacent to
+// usbd, instead of minutes later on USB-page entry. Idempotent via the latches
+// below, so the later Lua-side call becomes a no-op -- which MATTERS: loading a
+// second copy of a block driver onto a live bus is the exact bug class that
+// caused the old 42% ATA freeze.
+bool EnsureUsbMass()
 {
 	if (usbmass_irx_loaded) {
 		return true;

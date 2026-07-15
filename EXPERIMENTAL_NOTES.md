@@ -72,7 +72,13 @@ Two testers get **"No USB backend detected"** and an empty USB list. Their drive
 
 We had been shipping our own mixture of USB drivers: two of the three came from one place, and the third came from whatever the build server happened to have. Nobody chose that combination on purpose, and no other launcher runs it.
 
-**This build simply uses the drivers from wLaunchELF R3Z instead, all three of them, as a matched set.** That is the version already proven to read these exact drives on these exact consoles. We are not guessing at a clever fix any more; we are using what demonstrably works.
+**This build does two things, both copied from the launchers that work.**
+
+**1. It uses the drivers from wLaunchELF R3Z, all three of them, as a matched set.** That is the version already proven to read these exact drives on these exact consoles.
+
+**2. It starts the USB drivers together, at startup.** POPSLoader used to switch on the main USB driver when it booted, but the drive-reading part only when you opened the USB page, which could be minutes later. By then the PS2 had already found your drive and nobody was listening. Both wOPL and wLaunchELF start the whole set together, within milliseconds, so the drive is noticed the moment it appears. We now do the same. This is very likely why unplugging and replugging the drive changed anything at all: replugging makes the PS2 announce the drive a second time, when someone is finally listening.
+
+We are not guessing at a clever fix any more; we are using what demonstrably works. Note this makes startup a little slower for everyone, which we will pay back separately.
 
 **What to watch for, and this is the important part:** these drivers are used by **USB, MX4SIO, and the internal exFAT drive**. If your USB, MX4SIO or exFAT HDD worked before and does **not** work in this build, that is a serious report and we want it immediately. It is a single change and we can undo it in one step.
 

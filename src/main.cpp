@@ -82,6 +82,8 @@ extern unsigned int size_usbd_irx;
 // USB bring-up diagnostics, defined in luasystem.cpp (surfaced via System.getUsbDiag).
 extern int g_usbd_load_id;
 extern int g_usbd_load_ret;
+// Defined in luasystem.cpp; brings up bdm + bdmfs_fatfs + usbmass_bd (idempotent).
+extern bool EnsureUsbMass(void);
 
 extern unsigned char audsrv_irx;
 extern unsigned int size_audsrv_irx;
@@ -612,6 +614,22 @@ int main(int argc, char * argv[])
     // g_usbd_load_* and reach the tester on the USB page via System.getUsbDiag().
     LoadIrxChecked("usbd_irx", &usbd_irx, size_usbd_irx, &g_usbd_load_id, &g_usbd_load_ret);
     BootStamp("usbd");
+
+    // Bring the USB mass stack up HERE, adjacent to usbd -- matching what the two
+    // launchers that read sAGA's drive actually do. wLaunchELF_R3Z's loadUsbModules()
+    // does loadUsbDModule() then bdm/bdmfs_fatfs/settle/usbmass_bd in ONE function;
+    // OPL's bdmsupport.c LoadModules() does bdm/bdmfs_fatfs/usbd/usbmass_bd back to
+    // back. POPSLoader was the ONLY one loading usbd at boot and usbmass_bd minutes
+    // later on page entry, which is the only configuration that depends on usbd's
+    // late re-probe path (doRegisterDriver -> probeDeviceTree) to match a pendrive
+    // that was ALREADY enumerated at boot. On OPL/R3Z the drive is matched by the
+    // normal connect callback because usbmass_bd's driver is registered before the
+    // device is ever seen.
+    // Idempotent: EnsureUsbMass latches on success, so the lazy Lua-side call on
+    // USB-page entry becomes a no-op rather than a second load.
+    // Costs boot time (this is why the EXP6 boot profile landed first).
+    EnsureUsbMass();
+    BootStamp("usb mass stack (bdm+bdmfs_fatfs+usbmass_bd)");
 
 
     int ds3pads = 1;
