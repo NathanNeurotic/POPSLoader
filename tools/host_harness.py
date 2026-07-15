@@ -518,6 +518,9 @@ t16 = E('''function()
     "Select a share",                                       -- SMB share picker
     "Select", "Cancel",                                     -- share picker hint words
     "Automatic",                                            -- POPSTARTER Path row (empty = ladder)
+    "Device List",                                          -- renamed section (was Carousel Devices)
+    "About", "Credits",                                     -- Credits moved into Settings
+    "How to hide a game", "L3 on the game list",            -- the L3 discoverability hint
   }
   for _, k in ipairs(holdouts) do
     local t = PLDR.L(k)
