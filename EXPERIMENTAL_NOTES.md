@@ -48,7 +48,7 @@ POPSLoader was carrying a full JPEG decoder, which was **16% of all the program 
 
 ## What to test
 
-Mostly, **use it normally**. If your games launch and you can read the menus, both changes are good.
+Mostly, **use it normally**. If your games launch, you can read the menus, and your covers show, all three changes are good.
 
 - [ ] **Boot to the menu** from whichever device you normally launch POPSLoader from.
 - [ ] **Can you read everything?** Game names, menu text, Settings, the footer button hints. This covers change 2. If text looks *fine*, it is fine.
@@ -59,7 +59,7 @@ Mostly, **use it normally**. If your games launch and you can read the menus, bo
 - [ ] **Exit paths:** the Disc (DKWDRV) option, and exiting back to your launcher or the browser.
 - [ ] **One cosmetic thing worth a glance:** text weight. Dropping the unused font machinery also drops an automatic hinting step. Our font should not need it, but if the text looks noticeably thinner, blurrier, or just *different* from 1.0.1, that is worth reporting even though it is only cosmetic.
 
-**Anything that worked on 1.0.1 and does not work here is exactly the report we need.** Both changes are single, cleanly revertable commits.
+**Anything that worked on 1.0.1 and does not work here is exactly the report we need.** All three changes are single, cleanly revertable commits, so any one of them can be dropped on its own.
 
 ## How to report
 
