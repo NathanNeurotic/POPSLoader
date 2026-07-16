@@ -4482,6 +4482,16 @@ UI = {
         -- SceneChange does NOT re-run SyncSettingsDraftFromRuntime -- only the
         -- START-entry handler does -- so staged edits survive the trip).
         AddSection("About")
+        -- The advertised "check which build you are on" spot. POPSLDR_VER comes
+        -- from the embedded boot.lua so it is ALWAYS available -- unlike the
+        -- BUILD_INFO.txt stamp, which needs a loose file next to the ELF that a
+        -- normal one-file install never has (sAGA: told to check the version,
+        -- found nothing anywhere).
+        AddInfo("Version", function()
+          local ver = tostring(rawget(_G, "POPSLDR_VER") or "")
+          if ver == "" then return "(unknown)" end
+          return ver
+        end)
         AddAction("Credits", function()
           UI.CreditsReturnScene = UI.SCENES.MPROFILE
           UI.SceneChange(UI.SCENES.CREDITS)
@@ -5571,26 +5581,56 @@ If you bought it, you have been scammed
 Compatibility problems? Visit:
 youtube.com/@hugopocked6695
 ]], currcol)
+        -- Build-identity + boot-timing lines (bottom-anchored above the footer).
+        -- Line 1: the BUILD_INFO.txt stamp when that loose file sits next to the
+        -- ELF, else the embedded POPSLDR_VER. A normal one-file install ships NO
+        -- BUILD_INFO.txt (the zip buries it under source/), and the old block
+        -- gated BOTH lines on the stamp -- so testers saw neither the version nor
+        -- the boot timing this channel asks them to photograph (sAGA, EXP8).
+        local id_line = nil
         if UI.BUILD_INFO ~= nil and UI.BUILD_INFO.stamp ~= nil then
+          id_line = UI.BUILD_INFO.stamp
+        else
+          local ver = tostring(rawget(_G, "POPSLDR_VER") or "")
+          if ver ~= "" then id_line = "POPSLoader "..ver end
+        end
+        -- Boot profile: the whole IRX block runs before the screen exists, so
+        -- this is a direct measure of the boot black screen and of which module
+        -- owns it. A tester can photograph it. NOT nested in the stamp gate.
+        local boot_line = nil
+        if type(PLDR.GetBootProfileText) == "function" then
+          local ok_b, boot_txt = pcall(PLDR.GetBootProfileText)
+          if ok_b and type(boot_txt) == "string" and boot_txt ~= "" then
+            boot_line = boot_txt
+          end
+        end
+        if id_line ~= nil or boot_line ~= nil then
+          local line_count = ((id_line ~= nil) and 1 or 0) + ((boot_line ~= nil) and 1 or 0)
+          local stack_h = 14 * (line_count - 1)
           local stamp_y = Round(layout.FOOTER_LABEL_Y - 18)
           -- The credits body above is TOP-anchored (fixed offsets from TITLE_Y) while
-          -- this stamp is BOTTOM-anchored (SCR.Y - 64). On the 64px-shorter NTSC screen
-          -- (SCR.Y=448 -> stamp_y=384) the stamp rides UP into the credits body and overlaps
-          -- it (provato HW report); PAL (512 -> 448) clears it. Floor the stamp just below
-          -- the body so it can't overlap on either standard. Body starts at TITLE_Y+80
-          -- (ui.lua:4812, spacing 20); the lowest drawn credits line lands ~TITLE_Y+80+14*20.
-          -- Floor a touch past that (16*20) -- a safe overshoot that stays on-screen (<448).
-          local credits_bottom = (layout.TITLE_Y + 80) + (16 * 20) + 4
+          -- this stack is BOTTOM-anchored. On the 64px-shorter NTSC screen the stack
+          -- rides UP into the credits body (provato HW report), so floor it just below
+          -- the body's lowest line (~TITLE_Y+80+14*20, spacing 20); PAL never floors.
+          -- The OLD floor (16*20+4) put line 1 at y=434 on NTSC: baseline (y+15,
+          -- fntsys) at row 449 = clipped on a 448-line framebuffer, and a second line
+          -- at y=448 = entirely off-screen. Invisible while the BUILD_INFO gate hid
+          -- this layout; fatal once EXP9 un-gated it (the boot line IS the tester
+          -- photo this channel asks for). Floor at 15*20: NTSC lines land at 410/424,
+          -- baselines 425/439 <= 447, with the body ending ~405-408 just above.
+          local credits_bottom = (layout.TITLE_Y + 80) + (15 * 20)
           if stamp_y < credits_bottom then stamp_y = credits_bottom end
-          Font.ftPrint(SFONT, layout.SAFE.L, stamp_y, 0, UI.SCR.X, 16, UI.BUILD_INFO.stamp, UI.CCOL.GREY)
-          -- Boot profile under the build stamp. The whole IRX block runs before
-          -- the screen exists, so this is a direct measure of the boot black
-          -- screen and of which module owns it. A tester can photograph it.
-          if type(PLDR.GetBootProfileText) == "function" then
-            local ok_b, boot_txt = pcall(PLDR.GetBootProfileText)
-            if ok_b and type(boot_txt) == "string" and boot_txt ~= "" then
-              Font.ftPrint(SFONT, layout.SAFE.L, stamp_y + 14, 0, UI.SCR.X, 16, boot_txt, UI.CCOL.GREY)
-            end
+          -- Belt-and-braces: keep every baseline (y+15) on-screen whatever the floor
+          -- did -- a few px of body overlap beats losing the photo line entirely.
+          local max_first = UI.SCR.Y - 16 - stack_h
+          if stamp_y > max_first then stamp_y = max_first end
+          local line_y = stamp_y
+          if id_line ~= nil then
+            Font.ftPrint(SFONT, layout.SAFE.L, line_y, 0, UI.SCR.X, 16, id_line, UI.CCOL.GREY)
+            line_y = line_y + 14
+          end
+          if boot_line ~= nil then
+            Font.ftPrint(SFONT, layout.SAFE.L, line_y, 0, UI.SCR.X, 16, boot_line, UI.CCOL.GREY)
           end
         end
 

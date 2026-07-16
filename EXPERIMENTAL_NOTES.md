@@ -2,11 +2,19 @@
 
 **This is an opt-in EXPERIMENTAL build. It is not a replacement for the public release, and it is not the rolling build either.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.0.1**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** the version reads **1.0.2-dev-EXP8** (Settings, and the build info on the boot/credits screen). If it says plain **1.0.1** you are on the public release, and if it says **1.0.2-dev** with no EXP on the end you are on the rolling build. Both are different builds to this one.
+**How to tell you are running it:** open **Settings**, then **About**, and read the **Version** row: it says **v1.0.2-dev-EXP9**. One step further into **Credits**, the small grey line at the bottom left says **POPSLoader v1.0.2-dev-EXP9** (or an exact build stamp, if a `BUILD_INFO.txt` file sits next to your POPSLOADER.ELF). **This build is currently the only one that shows a version on screen at all.** The public release, the rolling build, and every experimental build up to EXP8 show nothing in either place; that was a real bug, reported by sAGA, and it is fixed here. So the check is simple: version says EXP9 = this build; no version anywhere = an older build, update to this one.
 
 **What the name means:** this build is the **rolling** build (1.0.2-dev) plus the experiments below. It is not the 1.0.1 release plus experiments. Everything currently in rolling is in here too, including the menu and Settings cleanup. Earlier experimental builds were misleadingly named 1.0.1-EXP, which made this look like it was missing the newer work. It never was; the name was just wrong.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
+
+---
+
+## New in EXP9
+
+**1. USB games now launch with a drive-resident POPSTARTER.ELF.** If your `POPSTARTER.ELF` lives only in the USB drive's `POPS/` folder (no copy next to POPSLOADER.ELF, none on a memory card), launching a USB game used to fail with "No POPSTARTER.ELF found, checked the game device, the launcher folder and mc0:/mc1:" even though the file was right there. The message was wrong: the launch check never actually looked at the drive. It does now, and it looks at the same place the launch itself uses. Nothing changes for anyone whose POPSTARTER lives on a memory card or next to POPSLOADER.ELF; those setups pass exactly as before. **If USB launches were failing for you this way, this build is the retest.** This bug turned out to be as old as the per-device POPSTARTER feature itself. It was invisible to almost everyone because the memory card fallback quietly caught them.
+
+**2. The version and the boot timing now actually show up.** sAGA reported that the Credits page had no version line and no timing line, and he was right. Both lines only appeared if a loose `BUILD_INFO.txt` file happened to sit next to POPSLOADER.ELF, and a normal install (you copy one file) never has that. Fixed twice over: **Settings, then About** now has a **Version** row that always works, and the **Credits** page now always shows the build line (the version, or the exact build stamp when available) with the boot timing under it. The photos we asked for in the EXP8 notes are possible now, and we would still love them.
 
 ---
 
@@ -17,8 +25,8 @@
 | Build | Size |
 | :--- | :--- |
 | 1.0.1 (public release) | 1,715,300 bytes |
-| **This build (EXP8)** | **1,314,724 bytes** |
-| | **400,576 bytes smaller (23%)** |
+| **This build (EXP9)** | **about 1,315,000 bytes** |
+| | **about 400,000 bytes smaller (23%)** |
 
 The size work removed weight the PS2 was never using. It changes no features, no settings and no menus: everything from 1.0.1 is here working exactly as it shipped. Three separate changes got us there, and they fail in **completely different ways**, so if something breaks we will know instantly which one did it.
 
@@ -84,11 +92,11 @@ We are not guessing at a clever fix any more; we are using what demonstrably wor
 
 **3. If it still fails, it now tells us exactly where.** The error line in square brackets used to say only `[modules OK, no drive seen]`, which lumped four completely different faults into one sentence. It now reads something like:
 
-`[no block device published, bdm=0, iop128k=NO(61440)]`
+`[no block device published, bdm=0 iop128k=NO(61440)]`
 
 or
 
-`[drive found but not mounted, bdm=1, iop128k=ok]`
+`[drive found but not mounted, bdm=1 iop128k=ok]`
 
 Those mean different things and need different fixes, and we could never tell them apart before. The `iop128k` part checks whether the PS2's controller chip can still hand over the 128 KB of memory the drive system needs. **If it says NO, then POPSLoader is using too much of that memory before your drive ever gets a chance** — and that is entirely our fault, nothing to do with your drive.
 
@@ -102,13 +110,13 @@ Those mean different things and need different fixes, and we could never tell th
 
 POPSLoader shows a black screen for a while when it starts. That is not the PS2 being slow: it is POPSLoader loading its drivers, and the screen is not switched on until every driver has finished. We want to move the welcome picture and the startup sound to the front, so they cover that wait instead of following it. Before changing anything in the startup order, which is the easiest part of the program to break, we want to know where the time actually goes.
 
-So this build measures itself. Open **Settings** and then **About** and then **Credits**, and under the small grey build line there is now a second grey line like this:
+So this build measures itself. Open **Settings**, then **About**, then **Credits**. At the bottom left there are two small grey lines: the build line (the version, or the exact build stamp when available), and under it a timing line like this:
 
 `boot 4820ms (slowest: ds34usb+ds34bt load +2100ms)`
 
 That is how long the black screen lasted, and which driver was the worst offender.
 
-**If you can, please send a photo of those two grey lines.** Different consoles and different attached hardware will give very different answers, and that is exactly what we want to know. There is nothing to turn on and nothing to configure.
+**If you can, please send a photo of those two grey lines.** Different consoles and different attached hardware will give very different answers, and that is exactly what we want to know. There is nothing to turn on and nothing to configure. (In EXP8 these lines were missing on a normal install; sAGA caught it. EXP9 fixes it, see "New in EXP9" above.)
 
 (Honest note: the loader has been able to measure this since long before now, but the numbers were only ever sent to a debug output that is switched off in the builds we give you. So they were collected and thrown away every single boot. Same for the USB error above. We are fixing that habit.)
 
@@ -131,9 +139,9 @@ Mostly, **use it normally**. If your games launch, you can read the menus, and y
 
 ## How to report
 
-Please say **which build** (1.0.2-dev-EXP8), **which device**, your **console model and region**, and what you did. A photo helps, especially for anything text related.
+Please say **which build** (v1.0.2-dev-EXP9, from Settings then About), **which device**, your **console model and region**, and what you did. A photo helps, especially for anything text related.
 
-If it all just works, that is a valuable report too. "EXP8 fine on USB and HDD, text and covers look normal" is genuinely all we need.
+If it all just works, that is a valuable report too. "EXP9 fine on USB and HDD, text and covers look normal" is genuinely all we need.
 
 ---
 
