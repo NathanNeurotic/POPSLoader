@@ -2606,7 +2606,8 @@ UI = {
         if _da ~= "center" and _da ~= "right" then _da = "left" end
         UI.DetailsAlign = ((type(PLDR) == "table" and PLDR.SHOW_DETAILS == true) and _da) or "off"
         UI.SettingsEntryDetailsAlign = UI.DetailsAlign
-        UI.HddFs = ((type(PLDR) == "table" and PLDR.HDD_FS == "EXFAT") and "EXFAT") or "PFS"
+        UI.HddFs = (type(PLDR) == "table" and type(PLDR.NormalizeHddFs) == "function")
+    and PLDR.NormalizeHddFs(PLDR.HDD_FS) or "PFS"
         UI.SettingsEntryHddFs = UI.HddFs
         local _al = (type(PLDR) == "table" and PLDR.ART_LOCATION) or "pops_art"
         if _al ~= "pops" and _al ~= "art" then _al = "pops_art" end
@@ -3602,7 +3603,8 @@ UI = {
           local details_align_val = (show_details_val and UI.DetailsAlign)
             or ((type(PLDR) == "table" and PLDR.DETAILS_ALIGN) or "left")
           if details_align_val ~= "center" and details_align_val ~= "right" then details_align_val = "left" end
-          local hdd_fs_val = (UI.HddFs == "EXFAT") and "EXFAT" or "PFS"
+          local hdd_fs_val = (type(PLDR.NormalizeHddFs) == "function")
+          and PLDR.NormalizeHddFs(UI.HddFs) or "PFS"
           local art_location_val = (UI.ArtLocation == "pops" or UI.ArtLocation == "art") and UI.ArtLocation or "pops_art"
           local gamelist_cache_val = UI.GameListCache == true
           local boot_sound_val = UI.BootSound == true
@@ -4191,14 +4193,25 @@ UI = {
           end
         end
 
-        -- Internal-HDD filesystem: which of the two HDD pages shows on the carousel --
-        -- Sony APA/PFS (default) or APA-Jail exFAT. Mutually exclusive (one shows, the
-        -- other hides). A -page=ata launch still auto-enters exFAT regardless of this.
+        -- Internal-HDD page(s) on the carousel: Sony APA/PFS (default), APA-Jail exFAT,
+        -- or BOTH. "Both" is new (R3Z3N: the two can coexist) and is purely a visibility
+        -- choice -- the driver stacks were already unified onto one shared, load-once
+        -- ata_bd that serves APA/PFS and exFAT together, settles included. A -page=ata
+        -- launch still auto-enters exFAT and hides PFS regardless of this setting.
+        local HDD_FS_SEQ = {"PFS", "EXFAT", "BOTH"}
+        local HDD_FS_TXT = {PFS = "APA / PFS (default)", EXFAT = "exFAT", BOTH = "Both"}
+        local function HddFsStep(cur, dir)
+          local idx = 1
+          for i = 1, #HDD_FS_SEQ do
+            if HDD_FS_SEQ[i] == cur then idx = i; break end
+          end
+          return HDD_FS_SEQ[((idx - 1 + dir) % #HDD_FS_SEQ) + 1]
+        end
         AddCycle(
           "Internal HDD",
-          function() return (UI.HddFs == "EXFAT") and "exFAT" or "APA / PFS (default)" end,
-          function() UI.HddFs = (UI.HddFs == "EXFAT") and "PFS" or "EXFAT" end,
-          function() UI.HddFs = (UI.HddFs == "EXFAT") and "PFS" or "EXFAT" end,
+          function() return HDD_FS_TXT[UI.HddFs] or "APA / PFS (default)" end,
+          function() UI.HddFs = HddFsStep(UI.HddFs, -1) end,
+          function() UI.HddFs = HddFsStep(UI.HddFs, 1) end,
           function() return tostring(UI.HddFs) ~= tostring(UI.SettingsEntryHddFs) end
         )
 
@@ -4469,6 +4482,16 @@ UI = {
         -- SceneChange does NOT re-run SyncSettingsDraftFromRuntime -- only the
         -- START-entry handler does -- so staged edits survive the trip).
         AddSection("About")
+        -- The advertised "check which build you are on" spot. POPSLDR_VER comes
+        -- from the embedded boot.lua so it is ALWAYS available -- unlike the
+        -- BUILD_INFO.txt stamp, which needs a loose file next to the ELF that a
+        -- normal one-file install never has (sAGA: told to check the version,
+        -- found nothing anywhere).
+        AddInfo("Version", function()
+          local ver = tostring(rawget(_G, "POPSLDR_VER") or "")
+          if ver == "" then return "(unknown)" end
+          return ver
+        end)
         AddAction("Credits", function()
           UI.CreditsReturnScene = UI.SCENES.MPROFILE
           UI.SceneChange(UI.SCENES.CREDITS)
@@ -5223,7 +5246,13 @@ UI = {
               report("Checking USB roots...", 0.38)
               PLDR.CleanupGameList()
               PLDR.GAMEPATH = ""
+              -- Show the retry so a longer probe reads as "still looking" and not as a
+              -- freeze. Only an already-failing setup ever sees past attempt 1.
+              PLDR.UsbProbeProgress = function(attempt, total)
+                report("Looking for USB drive... ("..tostring(attempt).."/"..tostring(total)..")", 0.38)
+              end
               local usb_roots = PLDR.GetRootsByType("usb")
+              PLDR.UsbProbeProgress = nil
               if usb_roots == nil or #usb_roots < 1 then
                 if type(System) == "table" and type(System.ensureUsbMass) == "function" then
                   System.ensureUsbMass()
@@ -5234,7 +5263,18 @@ UI = {
                 usb_roots = PLDR.GetRootsByType("usb")
               end
 	              if usb_roots == nil or #usb_roots < 1 then
-	                UI.Notif_queue.add("No USB backend detected\nreseat the drive and try again", "warn")
+	                -- Say WHY. The base string stays byte-identical so the five existing
+	                -- translations still match; the diagnostic rides on a third line as raw
+	                -- numbers (untranslated on purpose -- a tester photographing the screen
+	                -- is the only telemetry this bug has).
+	                local msg = "No USB backend detected\nreseat the drive and try again"
+	                local diag = nil
+	                if type(PLDR.GetUsbDiagText) == "function" then
+	                  local ok_d, d = pcall(PLDR.GetUsbDiagText)
+	                  if ok_d and type(d) == "string" and d ~= "" then diag = d end
+	                end
+	                if diag ~= nil then msg = msg.."\n["..diag.."]" end
+	                UI.Notif_queue.add(msg, "warn")
 	              end
 	              report("Building USB game list...", 0.44)
 	              -- Single-drive only: the combined multi-drive list was cached to the
@@ -5541,18 +5581,57 @@ If you bought it, you have been scammed
 Compatibility problems? Visit:
 youtube.com/@hugopocked6695
 ]], currcol)
+        -- Build-identity + boot-timing lines (bottom-anchored above the footer).
+        -- Line 1: the BUILD_INFO.txt stamp when that loose file sits next to the
+        -- ELF, else the embedded POPSLDR_VER. A normal one-file install ships NO
+        -- BUILD_INFO.txt (the zip buries it under source/), and the old block
+        -- gated BOTH lines on the stamp -- so testers saw neither the version nor
+        -- the boot timing this channel asks them to photograph (sAGA, EXP8).
+        local id_line = nil
         if UI.BUILD_INFO ~= nil and UI.BUILD_INFO.stamp ~= nil then
+          id_line = UI.BUILD_INFO.stamp
+        else
+          local ver = tostring(rawget(_G, "POPSLDR_VER") or "")
+          if ver ~= "" then id_line = "POPSLoader "..ver end
+        end
+        -- Boot profile: the whole IRX block runs before the screen exists, so
+        -- this is a direct measure of the boot black screen and of which module
+        -- owns it. A tester can photograph it. NOT nested in the stamp gate.
+        local boot_line = nil
+        if type(PLDR.GetBootProfileText) == "function" then
+          local ok_b, boot_txt = pcall(PLDR.GetBootProfileText)
+          if ok_b and type(boot_txt) == "string" and boot_txt ~= "" then
+            boot_line = boot_txt
+          end
+        end
+        if id_line ~= nil or boot_line ~= nil then
+          local line_count = ((id_line ~= nil) and 1 or 0) + ((boot_line ~= nil) and 1 or 0)
+          local stack_h = 14 * (line_count - 1)
           local stamp_y = Round(layout.FOOTER_LABEL_Y - 18)
           -- The credits body above is TOP-anchored (fixed offsets from TITLE_Y) while
-          -- this stamp is BOTTOM-anchored (SCR.Y - 64). On the 64px-shorter NTSC screen
-          -- (SCR.Y=448 -> stamp_y=384) the stamp rides UP into the credits body and overlaps
-          -- it (provato HW report); PAL (512 -> 448) clears it. Floor the stamp just below
-          -- the body so it can't overlap on either standard. Body starts at TITLE_Y+80
-          -- (ui.lua:4812, spacing 20); the lowest drawn credits line lands ~TITLE_Y+80+14*20.
-          -- Floor a touch past that (16*20) -- a safe overshoot that stays on-screen (<448).
-          local credits_bottom = (layout.TITLE_Y + 80) + (16 * 20) + 4
+          -- this stack is BOTTOM-anchored. On the 64px-shorter NTSC screen the stack
+          -- rides UP into the credits body (provato HW report), so floor it just below
+          -- the body's lowest line (~TITLE_Y+80+14*20, spacing 20); PAL never floors.
+          -- The OLD floor (16*20+4) put line 1 at y=434 on NTSC: baseline (y+15,
+          -- fntsys) at row 449 = clipped on a 448-line framebuffer, and a second line
+          -- at y=448 = entirely off-screen. Invisible while the BUILD_INFO gate hid
+          -- this layout; fatal once EXP9 un-gated it (the boot line IS the tester
+          -- photo this channel asks for). Floor at 15*20: NTSC lines land at 410/424,
+          -- baselines 425/439 <= 447, with the body ending ~405-408 just above.
+          local credits_bottom = (layout.TITLE_Y + 80) + (15 * 20)
           if stamp_y < credits_bottom then stamp_y = credits_bottom end
-          Font.ftPrint(SFONT, layout.SAFE.L, stamp_y, 0, UI.SCR.X, 16, UI.BUILD_INFO.stamp, UI.CCOL.GREY)
+          -- Belt-and-braces: keep every baseline (y+15) on-screen whatever the floor
+          -- did -- a few px of body overlap beats losing the photo line entirely.
+          local max_first = UI.SCR.Y - 16 - stack_h
+          if stamp_y > max_first then stamp_y = max_first end
+          local line_y = stamp_y
+          if id_line ~= nil then
+            Font.ftPrint(SFONT, layout.SAFE.L, line_y, 0, UI.SCR.X, 16, id_line, UI.CCOL.GREY)
+            line_y = line_y + 14
+          end
+          if boot_line ~= nil then
+            Font.ftPrint(SFONT, layout.SAFE.L, line_y, 0, UI.SCR.X, 16, boot_line, UI.CCOL.GREY)
+          end
         end
 
         if not UI.Credits._draw_only then

@@ -4342,18 +4342,38 @@ function PLDR.NormalizeHiddenDevices(value)
   return table.concat(out, ",")
 end
 
+-- The Internal-HDD page selector: "PFS" (default) | "EXFAT" | "BOTH".
+-- ONE normalizer so every site (encode/snapshot/apply/parse/commit/UI/visibility)
+-- agrees; each used to inline its own `(x == "EXFAT") and "EXFAT" or "PFS"`, which
+-- silently collapses any third value back to PFS. Anything unrecognized -- and a
+-- MISSING key -- still resolves to PFS, so no existing install changes until the
+-- user opts in (the back-compat contract from 1f2d7ca).
+PLDR.HDD_FS_VALUES = {"PFS", "EXFAT", "BOTH"}
+function PLDR.NormalizeHddFs(v)
+  local u = string.upper(tostring(v or ""))
+  if u == "EXFAT" then return "EXFAT" end
+  if u == "BOTH" then return "BOTH" end
+  return "PFS"
+end
+
 -- True if the given carousel device key is currently hidden from the carousel.
 function PLDR.IsDeviceHidden(key)
   if key == nil then return false end
   local ukey = string.upper(tostring(key))
-  -- The two internal-HDD pages (PFS, exFAT) are mutually exclusive: only the one chosen in
-  -- Settings > Internal HDD shows on the carousel; the other is always hidden. An explicit
-  -- -page=ata launch is an exFAT session even if the selected device's .pldrs still says PFS.
+  -- Which internal-HDD page(s) the carousel shows: Settings > Device List > Internal HDD.
+  -- PFS (default) or EXFAT shows exactly one; BOTH shows both (R3Z3N: APA-Jail and PFS can
+  -- coexist). This is ONLY a visibility rule -- it has never gated a driver, mount or IRX.
+  -- The stacks were already unified onto ONE load-once ata_bd that serves APA/PFS and exFAT
+  -- together (`EnsureAtaBdm`, src/luasystem.cpp; called by BOTH luaHDD.cpp's Load_HDD_IRX and
+  -- lua_ata_init, and it already carries R3Z3N's two 1s settles). So BOTH needs no C change.
+  -- An explicit -page=ata launch is still an exFAT session regardless of this setting: that
+  -- isolation is launch-arg-scoped and deliberately unchanged.
   if ukey == "EXFAT" or ukey == "PFS" then
     if type(PLDR.IsExplicitATASession) == "function" and PLDR.IsExplicitATASession() then
       return ukey ~= "EXFAT"
     end
-    local fs = (string.upper(tostring(PLDR.HDD_FS or "PFS")) == "EXFAT") and "EXFAT" or "PFS"
+    local fs = PLDR.NormalizeHddFs(PLDR.HDD_FS)
+    if fs == "BOTH" then return false end
     return ukey ~= fs
   end
   local csv = string.upper(tostring(PLDR.HIDDEN_DEVICES or ""))
@@ -4528,7 +4548,7 @@ local function EncodeSettings()
     "SHOW_DETAILS="..((PLDR.SHOW_DETAILS == true) and "1" or "0"),
     "DETAILS_ALIGN="..((PLDR.DETAILS_ALIGN == "center" or PLDR.DETAILS_ALIGN == "right") and PLDR.DETAILS_ALIGN or "left"),
     "ART_LOCATION="..((PLDR.ART_LOCATION == "pops" or PLDR.ART_LOCATION == "art") and PLDR.ART_LOCATION or "pops_art"),
-    "HDD_FS="..((PLDR.HDD_FS == "EXFAT") and "EXFAT" or "PFS"),
+    "HDD_FS="..PLDR.NormalizeHddFs(PLDR.HDD_FS),
     "GAMELIST_CACHE="..((PLDR.GAMELIST_CACHE == true) and "1" or "0"),
     "BOOT_SOUND="..((PLDR.BOOT_SOUND ~= false) and "1" or "0"),
     "OVERSCAN="..tostring(math.floor(tonumber(PLDR.OVERSCAN) or 0)),
@@ -4577,7 +4597,7 @@ local function SnapshotSettingsState()
     show_details = (PLDR.SHOW_DETAILS == true),
     details_align = ((PLDR.DETAILS_ALIGN == "center" or PLDR.DETAILS_ALIGN == "right") and PLDR.DETAILS_ALIGN or "left"),
     art_location = ((PLDR.ART_LOCATION == "pops" or PLDR.ART_LOCATION == "art") and PLDR.ART_LOCATION or "pops_art"),
-    hdd_fs = ((PLDR.HDD_FS == "EXFAT") and "EXFAT" or "PFS"),
+    hdd_fs = PLDR.NormalizeHddFs(PLDR.HDD_FS),
     gamelist_cache = (PLDR.GAMELIST_CACHE == true),
     boot_sound = (PLDR.BOOT_SOUND ~= false),
     overscan = math.floor(tonumber(PLDR.OVERSCAN) or 0),
@@ -4634,7 +4654,7 @@ local function ApplySettingsState(state)
     PLDR.ART_LOCATION = (state.art_location == "pops" or state.art_location == "art") and state.art_location or "pops_art"
   end
   if type(state.hdd_fs) == "string" then
-    PLDR.HDD_FS = (state.hdd_fs == "EXFAT") and "EXFAT" or "PFS"
+    PLDR.HDD_FS = PLDR.NormalizeHddFs(state.hdd_fs)
   end
   if type(state.gamelist_cache) == "boolean" then
     PLDR.GAMELIST_CACHE = state.gamelist_cache
@@ -4815,7 +4835,7 @@ function PLDR.LoadSettingsNonFatal()
   PLDR.SHOW_DETAILS = false
   PLDR.DETAILS_ALIGN = "left"  -- left|center|right; alignment of the game-details box (used only when SHOW_DETAILS)
   PLDR.ART_LOCATION = "pops_art"  -- pops|pops_art|art; where REMOVABLE-device cover .png + details .txt live (HDD uses __common/POPS/ART)
-  PLDR.HDD_FS = "PFS"  -- PFS|EXFAT; which internal-HDD page the carousel shows (mutually exclusive; default PFS)
+  PLDR.HDD_FS = "PFS"  -- PFS|EXFAT|BOTH; which internal-HDD page(s) the carousel shows. Default PFS: an install with no HDD_FS= line must not change.
   PLDR.GAMELIST_CACHE = false  -- opt-in persistent per-device USB/MMCE/MX4SIO list cache (OFF = always live scan)
   PLDR.BOOT_SOUND = true  -- play the boot/splash chime (default ON; oldman63 #501 wanted an off switch)
   PLDR.OVERSCAN = 0  -- CRT overscan inset, permille (0 = off; OPL rmSetOverscan units/math)
@@ -5013,7 +5033,7 @@ function PLDR.LoadSettingsNonFatal()
     PLDR.ART_LOCATION = (art_location == "pops" or art_location == "art") and art_location or "pops_art"
   end
   if hdd_fs ~= nil then
-    PLDR.HDD_FS = (string.upper(hdd_fs) == "EXFAT") and "EXFAT" or "PFS"
+    PLDR.HDD_FS = PLDR.NormalizeHddFs(hdd_fs)
   end
   local glc = ParseBooleanSetting(gamelist_cache)
   if glc ~= nil then
@@ -5089,8 +5109,8 @@ function PLDR.CommitSettingsChanges(opts)
   if opts.details_align == "left" or opts.details_align == "center" or opts.details_align == "right" then next_details_align = opts.details_align end
   local next_art_location = (prev.art_location == "pops" or prev.art_location == "art") and prev.art_location or "pops_art"
   if opts.art_location == "pops" or opts.art_location == "pops_art" or opts.art_location == "art" then next_art_location = opts.art_location end
-  local next_hdd_fs = (prev.hdd_fs == "EXFAT") and "EXFAT" or "PFS"
-  if opts.hdd_fs == "PFS" or opts.hdd_fs == "EXFAT" then next_hdd_fs = opts.hdd_fs end
+  local next_hdd_fs = PLDR.NormalizeHddFs(prev.hdd_fs)
+  if opts.hdd_fs ~= nil then next_hdd_fs = PLDR.NormalizeHddFs(opts.hdd_fs) end
   local next_gamelist_cache = (prev.gamelist_cache == true)
   if type(opts.gamelist_cache) == "boolean" then next_gamelist_cache = opts.gamelist_cache end
   local next_boot_sound = (prev.boot_sound ~= false)
@@ -5677,19 +5697,157 @@ local function BuildMassRootIdentity(mode)
   return identity
 end
 
-local function BuildUsbIdentityDeferred()
-  -- Bounded retry masks the first-entry USB probe quirk without requiring
-  -- the user to leave and re-enter the page.
+-- Turn System.getUsbDiag()'s raw IRX return codes into one short line for the
+-- USB error toast. Deliberately NOT translated: these are numbers for us, and a
+-- tester photographing the screen is the only channel we have.
+-- The whole point is to split "a module failed to load" from "the modules are up
+-- but no drive enumerated" -- indistinguishable until now, which is why two
+-- shipped fixes for this bug were aimed at the wrong half.
+-- One line summarising where boot time went: the total, and the single most
+-- expensive stage. main.cpp runs the ENTIRE IRX block before initGraphics(), so
+-- every millisecond here is black screen. Shown on the Credits screen because a
+-- tester can photograph it; BootStamp itself has always existed but only ever fed
+-- a DPRINTF, which is compiled out of release builds.
+-- Deliberately reports the biggest DELTA, not the biggest absolute stamp: the
+-- stamps are cumulative, so the gap between consecutive stamps is the cost of the
+-- module that sits between them.
+function PLDR.GetBootProfileText()
+  if type(System) ~= "table" or type(System.getBootProfile) ~= "function" then
+    return nil
+  end
+  local ok, prof = pcall(System.getBootProfile)
+  if not ok or type(prof) ~= "table" then
+    return nil
+  end
+  local n = 0
+  for _ in pairs(prof) do n = n + 1 end
+  if n < 1 then return nil end
+
+  local total, prev = 0, 0
+  local worst_name, worst_delta = nil, -1
+  for i = 1, n do
+    local e = prof[i]
+    if type(e) == "table" and type(e.ms) == "number" then
+      local d = e.ms - prev
+      if d > worst_delta then
+        worst_delta = d
+        worst_name = tostring(e.stage or "?")
+      end
+      prev = e.ms
+      total = e.ms
+    end
+  end
+  if worst_name == nil then return nil end
+  return "boot "..tostring(total).."ms (slowest: "..worst_name.." +"..tostring(worst_delta).."ms)"
+end
+
+function PLDR.GetUsbDiagText()
+  if type(System) ~= "table" or type(System.getUsbDiag) ~= "function" then
+    return nil
+  end
+  local ok, d = pcall(System.getUsbDiag)
+  if not ok or type(d) ~= "table" then
+    return nil
+  end
+  local function bad(id, ret)
+    -- -999 = never attempted. A load is good when both id and ret are >= 0.
+    if id == -999 then return true end
+    return not (type(id) == "number" and type(ret) == "number" and id >= 0 and ret >= 0)
+  end
+  -- Report the FIRST broken link in the chain; everything after it is a
+  -- meaningless cascade.
+  local chain = {
+    {"usbd", d.usbd_id, d.usbd_ret},
+    {"bdm", d.bdm_id, d.bdm_ret},
+    {"bdmfs_fatfs", d.bdmfs_id, d.bdmfs_ret},
+    {"usbmass_bd", d.usbmass_id, d.usbmass_ret},
+  }
+  for _, m in ipairs(chain) do
+    if bad(m[2], m[3]) then
+      if m[2] == -999 then
+        return m[1].." never loaded"
+      end
+      return m[1].." failed (id "..tostring(m[2])..", rc "..tostring(m[3])..")"
+    end
+  end
+  -- Every module loaded. Now split the four ways this can still fail, because
+  -- "modules OK, no drive seen" conflates all of them and that ambiguity has cost
+  -- this bug three tester cycles.
+  --   bdm=0  -> usbmass_bd never published a block device: it died in probe /
+  --             connect / SET_CONFIGURATION / SCSI warm-up, or in bd_cache_create's
+  --             UNCHECKED 128 KiB alloc.
+  --   bdm>0  -> BDM has the drive but bdmfs_fatfs never mounted it as massN:
+  --             (f_mount failed, or the GPT handler's alloc-failure-returns-0 bug
+  --             made BDM stop trying other filesystem handlers).
+  -- iop128k=no is the smoking gun for the cache-alloc theory: POPSLoader loads far
+  -- more IOP modules than OPL/wLaunchELF, so we may simply be out of contiguous IOP
+  -- RAM by the time BDM wants its cache. That is OUR footprint, not the user's drive.
+  local parts = {}
+  local n = -1
+  if type(System.bdmList) == "function" then
+    local ok_l, l = pcall(System.bdmList)
+    if ok_l and type(l) == "table" then
+      n = 0
+      for _ in pairs(l) do n = n + 1 end
+    end
+  end
+  parts[#parts + 1] = "bdm=" .. ((n >= 0) and tostring(n) or "?")
+
+  if type(System.iopHeapProbe) == "function" then
+    local ok_h, h = pcall(System.iopHeapProbe)
+    if ok_h and type(h) == "table" then
+      if h.can_alloc_128k then
+        parts[#parts + 1] = "iop128k=ok"
+      else
+        parts[#parts + 1] = "iop128k=NO(" .. tostring(h.largest or "?") .. ")"
+      end
+    end
+  end
+
+  if n == 0 then
+    return "no block device published, " .. table.concat(parts, " ")
+  elseif n > 0 then
+    return "drive found but not mounted, " .. table.concat(parts, " ")
+  end
+  return "modules OK, no drive seen, " .. table.concat(parts, " ")
+end
+
+-- How long to keep looking for a USB drive before giving up.
+-- Was 3 (~2s). wLaunchELF_R3Z -- which browses the SAME drive fine on the SAME
+-- console that reports "No USB backend detected" to us -- never gives up at all:
+-- scanUsbMassDevices (filer.c:903) re-runs loadUsbModules() + re-stats usb0..N on
+-- every UI tick, and its 5s throttle is gated on USB_mass_scanned, which is only
+-- set once a drive is FOUND. So while nothing is found R3Z rescans continuously,
+-- forever, for as long as you sit in the browser. We looked for two seconds and
+-- quit permanently. A drive that enumerates at t=6s is found by R3Z and is
+-- invisible to us no matter how many times the tester retries.
+-- We cannot literally loop forever (this is a blocking scan on page entry, not a
+-- UI loop), so bound it -- but bound it at "slower than any plausible drive"
+-- rather than at 2 seconds. A working setup still returns on attempt 1 and pays
+-- nothing; only an already-failing setup ever waits.
+local USB_PROBE_ATTEMPTS = 12
+
+local function BuildUsbIdentityDeferred(progress)
   local attempts = 0
   local identity = nil
-  while attempts < 3 do
+  while attempts < USB_PROBE_ATTEMPTS do
     attempts = attempts + 1
+    -- BuildMassRootIdentity -> EnsureMassBackendsReady("usb") -> EnsureUsbMassReadyOnce
+    -- re-attempts the module load every pass. EnsureUsbMass only latches on
+    -- SUCCESS, so a failed load is retried here the way R3Z retries it.
     identity = BuildMassRootIdentity("usb")
     if type(identity) == "table" and type(identity.usb) == "table" and #identity.usb > 0 then
       return identity
     end
-    WaitMassProbeRetry(attempts, 3)
-    if attempts < 3 and type(System) == "table" and type(System.sleep) == "function" then
+    local hook = progress
+    if type(hook) ~= "function" and type(PLDR.UsbProbeProgress) == "function" then
+      hook = PLDR.UsbProbeProgress
+    end
+    if type(hook) == "function" then
+      pcall(hook, attempts, USB_PROBE_ATTEMPTS)
+    end
+    WaitMassProbeRetry(attempts, USB_PROBE_ATTEMPTS)
+    if attempts < USB_PROBE_ATTEMPTS and type(System) == "table" and type(System.sleep) == "function" then
       pcall(System.sleep, 1)
     end
   end

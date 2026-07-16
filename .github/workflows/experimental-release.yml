@@ -1,0 +1,421 @@
+name: Experimental Release
+
+# Publishes the OPT-IN experimental channel from the `experimental` branch.
+# Deliberately isolated from the stable and rolling channels:
+#   * triggers ONLY on pushes to `experimental` (never dev/master), and has no
+#     pull_request trigger, so an experimental PR can never publish anything
+#   * publishes to its own floating `experimental` tag as a PRE-RELEASE with
+#     make_latest=false, so it can never displace the public release
+#   * no MEGA archive job (that mirror is the rolling channel's)
+# Testers get a build whose only variable is the optimization under test.
+
+on:
+  push:
+    branches:
+      - experimental
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: experimental-release
+  cancel-in-progress: false
+
+jobs:
+  # Boot-brick gate on a plain glibc runner: the ps2dev container is Alpine/musl
+  # where lupa has no wheel (its in-container step self-skips), so the harness
+  # runs HERE and the build depends on it -- an un-bootable embedded-Lua change
+  # (the d4b04be attach-before-init class) fails this job and never publishes.
+  # Infra failures (pip outage) skip cleanly; only real harness failures gate.
+  lua-harness:
+    name: Host-execute embedded Lua (boot-brick gate)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Run the host harness
+        shell: bash
+        run: |
+          set -eu
+          python3 -m pip install --quiet lupa 2>/dev/null \
+            || python3 -m pip install --quiet --break-system-packages lupa \
+            || { echo "lupa install failed on ubuntu (infra); skipping"; exit 0; }
+          python3 tools/host_harness.py
+
+  build-and-publish:
+    needs: lua-harness
+    name: Build and publish experimental release
+    runs-on: ubuntu-latest
+    container:
+      image: ps2dev/ps2dev:v2.0.0
+
+    steps:
+      - name: Install dependencies
+        shell: sh
+        run: |
+          set -eu
+          apk add --no-cache build-base git bash p7zip findutils coreutils zip unzip python3 lua5.4 ca-certificates
+
+      - name: Workaround permission issue
+        shell: sh
+        run: |
+          set -eu
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Generate build info
+        shell: sh
+        run: |
+          set -eu
+          COMMIT_SHORT="$(echo "$GITHUB_SHA" | cut -c1-7)"
+          BUILD_UTC="$(date -u '+%Y-%m-%d %H:%MZ')"
+          printf "%s\n%s\n" "$COMMIT_SHORT" "$BUILD_UTC" > bin/POPSLDR/BUILD_INFO.txt
+          cat bin/POPSLDR/BUILD_INFO.txt
+
+      - name: Validate bundled Lua sources (syntax/newline)
+        shell: bash
+        run: |
+          set -eu
+          LUA_FILES="etc/boot.lua bin/POPSLDR/system.lua bin/POPSLDR/ui.lua bin/POPSLDR/images.lua"
+          for f in $LUA_FILES; do
+            [ -f "$f" ] || { echo "ERROR: $f not found" >&2; exit 1; }
+          done
+          LAST_BYTE_HEX="$(tail -c 1 etc/boot.lua | od -An -tx1 | tr -d '[:space:]')"
+          [ "$LAST_BYTE_HEX" = "0a" ] || { echo "ERROR: etc/boot.lua must end with newline (0x0A)" >&2; exit 1; }
+          # lua5.4 is installed as a build dependency above, so this gate is LIVE.
+          # It used to silently skip: the ps2dev image ships no bare `luac`, so the
+          # old `command -v luac` check always fell through to the skip branch and
+          # embedded-Lua syntax errors shipped unseen (they only crash on real PS2
+          # hardware). Alpine installs the versioned `luac5.4`, so probe for it and
+          # HARD-FAIL rather than ever skipping again.
+          LUAC=""
+          for cand in luac5.4 luac luac5.3; do
+            if command -v "$cand" >/dev/null 2>&1; then LUAC="$cand"; break; fi
+          done
+          if [ -n "$LUAC" ]; then
+            for f in $LUA_FILES; do
+              "$LUAC" -p "$f" || { echo "ERROR: $LUAC -p failed for $f" >&2; exit 1; }
+            done
+            echo "Lua syntax validated with $LUAC"
+          else
+            LUA=""
+            for cand in lua5.4 lua lua5.3; do
+              if command -v "$cand" >/dev/null 2>&1; then LUA="$cand"; break; fi
+            done
+            if [ -n "$LUA" ]; then
+              for f in $LUA_FILES; do
+                "$LUA" -e "assert(loadfile('$f'))" || { echo "ERROR: loadfile failed for $f" >&2; exit 1; }
+              done
+              echo "Lua syntax validated with $LUA (loadfile)"
+            else
+              echo "ERROR: lua5.4 is a build dependency but no luac/lua was found -- the Lua syntax gate must not silently skip" >&2
+              exit 1
+            fi
+          fi
+
+      # Runtime gate on top of the syntax gate above: EXECUTES system.lua (and
+      # ui.lua at its real require point) under a mocked PS2 environment, then a
+      # functional battery. Catches the class luac -p cannot: attach-before-init
+      # load-order bricks (d4b04be shipped un-bootable rolling builds), nil-global
+      # calls, load-time type errors. Environment problems (no lupa wheel for this
+      # container) SKIP cleanly; a real harness failure HARD-FAILS the build.
+      - name: Host-execute the embedded Lua (boot-brick gate)
+        shell: bash
+        run: |
+          set -eu
+          if ! command -v python3 >/dev/null 2>&1; then echo "python3 unavailable; skipping host harness"; exit 0; fi
+          if ! python3 -c "import lupa" 2>/dev/null; then
+            python3 -m pip install --quiet lupa 2>/dev/null \
+              || python3 -m pip install --quiet --break-system-packages lupa 2>/dev/null \
+              || pip3 install --quiet lupa 2>/dev/null \
+              || { echo "lupa not installable in this container; skipping host harness"; exit 0; }
+          fi
+          python3 -c "import lupa" 2>/dev/null || { echo "lupa import failed post-install; skipping host harness"; exit 0; }
+          python3 tools/host_harness.py
+
+      - name: Compile project
+        shell: sh
+        run: |
+          set -eu
+          make clean elfloader all
+
+      - name: Report ELF size
+        shell: sh
+        run: |
+          set -eu
+          echo "== ELF sizes (this build) =="
+          for f in bin/enceladus.elf bin/POPSLOADER.ELF; do
+            if [ -f "$f" ]; then
+              printf "%-24s %10d bytes\n" "$f" "$(wc -c < "$f")"
+            fi
+          done
+
+      - name: Verify embedded build identity
+        shell: sh
+        run: |
+          set -eu
+
+          require_marker() {
+            marker="$1"
+            target="$2"
+            if ! grep -aF "$marker" "$target" >/dev/null; then
+              echo "ERROR: expected embedded marker '$marker' missing from $target" >&2
+              exit 1
+            fi
+          }
+
+          [ -f bin/enceladus.elf ] || { echo "ERROR: bin/enceladus.elf missing after build" >&2; exit 1; }
+          [ -f src/elf_loader/loader.c ] || { echo "ERROR: generated embedded loader blob missing" >&2; exit 1; }
+          if [ ! src/elf_loader/loader.c -nt src/elf_loader/src/loader/src/loader.c ]; then
+            echo "WARN: loader.c timestamp is not newer than loader source; validating content parity" >&2
+            TMP_LOADER_C="$(mktemp)"
+            "${PS2SDK}/bin/bin2c" src/elf_loader/src/loader/bin/loader.elf "$TMP_LOADER_C" loader_elf
+            if ! cmp -s src/elf_loader/loader.c "$TMP_LOADER_C"; then
+              echo "ERROR: embedded loader blob content does not match src/elf_loader/src/loader/bin/loader.elf" >&2
+              rm -f "$TMP_LOADER_C"
+              exit 1
+            fi
+            rm -f "$TMP_LOADER_C"
+          fi
+
+          require_marker "Exec path:" bin/enceladus.elf
+          require_marker "PrepareForColdExternalELFLaunch" bin/enceladus.elf
+          require_marker "BOOT.ELF launch failed" bin/enceladus.elf
+
+      - name: Create experimental release bundle
+        shell: sh
+        run: |
+          set -eu
+
+          BUNDLE_DIR="experimental_bundle"
+          BUNDLE_ZIP="POPSLOADER-experimental.zip"
+
+          rm -rf "$BUNDLE_DIR" "$BUNDLE_ZIP"
+          mkdir -p "$BUNDLE_DIR/source"
+
+          python3 - <<'PY'
+          import pathlib
+          import shutil
+          import subprocess
+
+          source_root = pathlib.Path("experimental_bundle/source")
+          tracked = subprocess.check_output(["git", "ls-files", "-z"]).split(b"\0")
+
+          for raw_path in tracked:
+              if not raw_path:
+                  continue
+              rel = pathlib.Path(raw_path.decode("utf-8"))
+              # POPSTARTER/ ships at the ZIP ROOT (copied below), not under source/.
+              if rel.parts and rel.parts[0] == "POPSTARTER":
+                  continue
+              dest = source_root / rel
+              dest.parent.mkdir(parents=True, exist_ok=True)
+              shutil.copy2(rel, dest)
+          PY
+
+          cp -f bin/POPSLOADER.ELF "$BUNDLE_DIR/POPSLOADER.ELF"
+          cp -f bin/POPSLDR/BUILD_INFO.txt "$BUNDLE_DIR/source/bin/POPSLDR/BUILD_INFO.txt"
+
+          # Ship the POPSTARTER pack folder (BDMA / SMB modules, etc.) at the ZIP ROOT
+          # so users can drop it straight onto a memory card. Tracked at the repo root;
+          # .gitkeep is excluded so a still-empty folder ships nothing.
+          ZIP_ROOTS="POPSLOADER.ELF source"
+          if [ -d POPSTARTER ]; then
+            cp -r POPSTARTER "$BUNDLE_DIR/POPSTARTER"
+            ZIP_ROOTS="$ZIP_ROOTS POPSTARTER"
+          fi
+
+          # Ship the POPStarter launcher (POPSTARTER.ELF) at the ZIP ROOT next to
+          # POPSLOADER.ELF -- the same file is also copied into POPS/ below, so it's
+          # present wherever a user's setup expects it. Sourced from the tracked
+          # bin/POPSLDR/POPSTARTER.ELF (an embed input, survives make clean).
+          if [ -f bin/POPSLDR/POPSTARTER.ELF ]; then
+            cp -f bin/POPSLDR/POPSTARTER.ELF "$BUNDLE_DIR/POPSTARTER.ELF"
+            ZIP_ROOTS="$ZIP_ROOTS POPSTARTER.ELF"
+          fi
+
+          # Ship a POPS/ folder at the zip ROOT with PATCH_5.BIN and a copy of
+          # POPSTARTER.ELF -- the files users drop into their own POPS folder
+          # (README step 3). Sourced from the tracked binaries.
+          if [ -f bin/POPSLDR/PATCH_5.BIN ] || [ -f bin/POPSLDR/POPSTARTER.ELF ]; then
+            mkdir -p "$BUNDLE_DIR/POPS"
+            [ -f bin/POPSLDR/PATCH_5.BIN ] && cp -f bin/POPSLDR/PATCH_5.BIN "$BUNDLE_DIR/POPS/PATCH_5.BIN"
+            [ -f bin/POPSLDR/POPSTARTER.ELF ] && cp -f bin/POPSLDR/POPSTARTER.ELF "$BUNDLE_DIR/POPS/POPSTARTER.ELF"
+            ZIP_ROOTS="$ZIP_ROOTS POPS"
+          fi
+
+          # Ship the POPStarter version variants (tracked bin/POPSLDR/PROFILES) at the ZIP
+          # ROOT, renamed "POPSTARTER VERSIONS" -- the MAIN/DEBUG/USBDELAY/USBDELAY_DEBUG
+          # POPSTARTER.ELF builds, as-is. Zipped via its OWN find below: the spaced folder
+          # name would word-split the unquoted $ZIP_ROOTS, so it can't go in that list.
+          if [ -d bin/POPSLDR/PROFILES ]; then
+            cp -r bin/POPSLDR/PROFILES "$BUNDLE_DIR/POPSTARTER VERSIONS"
+          fi
+
+          cd "$BUNDLE_DIR"
+          { find $ZIP_ROOTS -type f ! -name '.gitkeep'; [ -d "POPSTARTER VERSIONS" ] && find "POPSTARTER VERSIONS" -type f; } | LC_ALL=C sort | zip -X -9 "../$BUNDLE_ZIP" -@ >/dev/null
+          cd - >/dev/null
+
+          echo "== Experimental release bundle contents =="
+          unzip -Z1 "$BUNDLE_ZIP" | sed -n '1,80p'
+
+      - name: Upload workflow artifact
+        if: success()
+        uses: actions/upload-artifact@v6
+        with:
+          name: POPSLOADER-experimental
+          path: POPSLOADER-experimental.zip
+          if-no-files-found: error
+          compression-level: 0
+
+      - name: Publish experimental release
+        if: success()
+        shell: sh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          TAG_NAME: experimental
+          ASSET_PATH: POPSLOADER-experimental.zip
+          ASSET_NAME: POPSLOADER-experimental.zip
+        run: |
+          set -eu
+          python3 - <<'PY'
+          import json
+          import mimetypes
+          import os
+          import pathlib
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+
+          api_root = "https://api.github.com"
+          upload_root = "https://uploads.github.com"
+          repo = os.environ["REPOSITORY"]
+          token = os.environ["GH_TOKEN"]
+          sha = os.environ["SHA"]
+          tag = os.environ["TAG_NAME"]
+          asset_specs = [
+              (pathlib.Path(os.environ["ASSET_PATH"]), os.environ["ASSET_NAME"]),
+              (pathlib.Path("bin/POPSLOADER.ELF"), "POPSLOADER.ELF"),
+          ]
+          run_url = f"https://github.com/{repo}/actions/runs/{os.environ['RUN_ID']}/attempts/{os.environ['RUN_ATTEMPT']}"
+
+          def request(method, url, payload=None, headers=None):
+              data = None
+              req_headers = {
+                  "Accept": "application/vnd.github+json",
+                  "Authorization": f"Bearer {token}",
+                  "X-GitHub-Api-Version": "2022-11-28",
+              }
+              if headers:
+                  req_headers.update(headers)
+              if payload is not None:
+                  data = json.dumps(payload).encode("utf-8")
+                  req_headers["Content-Type"] = "application/json"
+              req = urllib.request.Request(url, data=data, headers=req_headers, method=method)
+              try:
+                  with urllib.request.urlopen(req) as res:
+                      body = res.read()
+                      if not body:
+                          return None
+                      return json.loads(body.decode("utf-8"))
+              except urllib.error.HTTPError as exc:
+                  body = exc.read().decode("utf-8", errors="replace")
+                  raise RuntimeError(f"{method} {url} failed: {exc.code}\n{body}") from exc
+
+          def request_maybe(method, url, payload=None):
+              try:
+                  return request(method, url, payload)
+              except RuntimeError as exc:
+                  if "failed: 404" in str(exc):
+                      return None
+                  raise
+
+          ref_url = f"{api_root}/repos/{repo}/git/ref/tags/{urllib.parse.quote(tag)}"
+          ref = request_maybe("GET", ref_url)
+          if ref:
+              request("PATCH", f"{api_root}/repos/{repo}/git/refs/tags/{urllib.parse.quote(tag)}", {
+                  "sha": sha,
+                  "force": True,
+              })
+          else:
+              request("POST", f"{api_root}/repos/{repo}/git/refs", {
+                  "ref": f"refs/tags/{tag}",
+                  "sha": sha,
+              })
+
+          notes_path = pathlib.Path("EXPERIMENTAL_NOTES.md")
+          try:
+              notes = notes_path.read_text(encoding="utf-8").rstrip()
+          except OSError:
+              notes = "Experimental test build."
+          body = "\n".join([
+              notes,
+              "",
+              "---",
+              "_Automatic experimental build:_",
+              f"- Event: {os.environ['EVENT_NAME']}",
+              f"- Ref: {os.environ['REF_NAME']}",
+              f"- Commit: {sha}",
+              f"- Run: {run_url}",
+          ])
+          release_payload = {
+              "tag_name": tag,
+              "target_commitish": sha,
+              "name": "Experimental Build",
+              "body": body,
+              "draft": False,
+              "prerelease": True,
+              "make_latest": "false",
+          }
+
+          release = request_maybe("GET", f"{api_root}/repos/{repo}/releases/tags/{urllib.parse.quote(tag)}")
+          if release:
+              release = request("PATCH", f"{api_root}/repos/{repo}/releases/{release['id']}", release_payload)
+          else:
+              release = request("POST", f"{api_root}/repos/{repo}/releases", release_payload)
+
+          assets = request("GET", f"{api_root}/repos/{repo}/releases/{release['id']}/assets?per_page=100") or []
+          existing_by_name = {asset.get("name"): asset for asset in assets}
+
+          def upload_asset(path, name):
+              existing = existing_by_name.get(name)
+              if existing:
+                  request("DELETE", f"{api_root}/repos/{repo}/releases/assets/{existing['id']}")
+              content_type = mimetypes.guess_type(name)[0] or "application/octet-stream"
+              upload_url = f"{upload_root}/repos/{repo}/releases/{release['id']}/assets?name={urllib.parse.quote(name)}"
+              asset_bytes = path.read_bytes()
+              req = urllib.request.Request(
+                  upload_url,
+                  data=asset_bytes,
+                  headers={
+                      "Accept": "application/vnd.github+json",
+                      "Authorization": f"Bearer {token}",
+                      "Content-Type": content_type,
+                      "Content-Length": str(len(asset_bytes)),
+                      "X-GitHub-Api-Version": "2022-11-28",
+                  },
+                  method="POST",
+              )
+              try:
+                  with urllib.request.urlopen(req) as res:
+                      uploaded = json.loads(res.read().decode("utf-8"))
+              except urllib.error.HTTPError as exc:
+                  body = exc.read().decode("utf-8", errors="replace")
+                  raise RuntimeError(f"upload failed for {name}: {exc.code}\n{body}") from exc
+              print(f"Uploaded asset: {uploaded['browser_download_url']}")
+
+          print(f"Updated {tag}: {release['html_url']}")
+          for path, name in asset_specs:
+              upload_asset(path, name)
+          PY

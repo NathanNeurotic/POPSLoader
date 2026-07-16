@@ -6,6 +6,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sifrpc.h>
+#include <iopheap.h>   // SifAllocIopHeap/SifFreeIopHeap for the 128 KiB BDM-cache probe
 #include <string.h>
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
@@ -101,6 +102,21 @@ static bool mass_backend_cache_valid = false;
 static bool bdm_irx_loaded = false;
 static bool bdm_fatfs_irx_loaded = false;
 static bool usbmass_irx_loaded = false;
+
+// USB bring-up diagnostics. Every LoadIrxCheckedBuffer below used to pass
+// NULL,NULL and throw the IRX return codes away, and main.cpp's usbd load goes
+// through LOAD_IRX_NARG whose only consumer is DPRINTF -- which compiles to
+// nothing in a release build. So when a tester reports "No USB backend
+// detected" we have had literally no way to tell a failed module load apart
+// from a drive that never enumerated. Two "root cause found" fixes have now
+// been shipped and refuted on hardware because of that blind spot. Record the
+// codes and let the UI show them.
+// -999 = "never attempted" (distinct from a real negative rc).
+int g_usbd_load_id = -999;   // written by main.cpp at boot
+int g_usbd_load_ret = -999;
+static int g_bdm_id = -999, g_bdm_ret = -999;
+static int g_bdmfs_id = -999, g_bdmfs_ret = -999;
+static int g_usbmass_id = -999, g_usbmass_ret = -999;
 static bool cdfs_irx_loaded = false;
 static bool mx4sio_irx_loaded = false;
 static bool mmceman_irx_loaded = false;
@@ -110,7 +126,7 @@ static bool EnsureBDM()
 	if (bdm_irx_loaded) {
 		return true;
 	}
-	if (!LoadIrxCheckedBuffer("bdm.irx", bdm_irx, size_bdm_irx, NULL, NULL)) {
+	if (!LoadIrxCheckedBuffer("bdm.irx", bdm_irx, size_bdm_irx, &g_bdm_id, &g_bdm_ret)) {
 		return false;
 	}
 	bdm_irx_loaded = true;
@@ -125,14 +141,19 @@ static bool EnsureBDMFatFs()
 	if (!EnsureBDM()) {
 		return false;
 	}
-	if (!LoadIrxCheckedBuffer("bdmfs_fatfs.irx", bdmfs_fatfs_irx, size_bdmfs_fatfs_irx, NULL, NULL)) {
+	if (!LoadIrxCheckedBuffer("bdmfs_fatfs.irx", bdmfs_fatfs_irx, size_bdmfs_fatfs_irx, &g_bdmfs_id, &g_bdmfs_ret)) {
 		return false;
 	}
 	bdm_fatfs_irx_loaded = true;
 	return true;
 }
 
-static bool EnsureUsbMass()
+// Non-static so main.cpp can bring the USB mass stack up at BOOT, adjacent to
+// usbd, instead of minutes later on USB-page entry. Idempotent via the latches
+// below, so the later Lua-side call becomes a no-op -- which MATTERS: loading a
+// second copy of a block driver onto a live bus is the exact bug class that
+// caused the old 42% ATA freeze.
+bool EnsureUsbMass()
 {
 	if (usbmass_irx_loaded) {
 		return true;
@@ -150,7 +171,7 @@ static bool EnsureUsbMass()
 	// (waitForUsbMassBdmfsSettle / USB_MASS_BDMFS_SETTLE_MS=1000), and our ATA path
 	// already settles the same way after ata_bd. Mirror it for USB.
 	sleep(1);
-	if (!LoadIrxCheckedBuffer("usbmass_bd.irx", usbmass_bd_irx, size_usbmass_bd_irx, NULL, NULL)) {
+	if (!LoadIrxCheckedBuffer("usbmass_bd.irx", usbmass_bd_irx, size_usbmass_bd_irx, &g_usbmass_id, &g_usbmass_ret)) {
 		return false;
 	}
 	usbmass_irx_loaded = true;
@@ -1295,6 +1316,106 @@ static int lua_ensure_bdm_fatfs(lua_State *L)
 	return 1;
 }
 
+// Report the USB bring-up state so the USB page can say WHY it found nothing.
+// Fields are the raw SifExecModuleBuffer id/ret per module, -999 if never
+// attempted. usbd is loaded once at boot (main.cpp) because ds34usb/ds34bt
+// hard-import it for pad input; the rest load lazily on USB-page entry.
+// Boot profile: {stage=..., ms=...} per stage, in boot order. Backed by
+// main.cpp's BootStamp, whose only consumer used to be a DPRINTF that compiles
+// to nothing in a release build. The ENTIRE IRX block runs before initGraphics(),
+// so all of it is black screen -- this is how we find out which module owns it
+// instead of guessing.
+extern "C" int BootProfileCount(void);
+extern "C" const char *BootProfileStage(int i);
+extern "C" unsigned int BootProfileMs(int i);
+
+static int lua_get_boot_profile(lua_State *L)
+{
+	int n = BootProfileCount();
+	lua_newtable(L);
+	for (int i = 0; i < n; i++) {
+		lua_pushinteger(L, i + 1);
+		lua_newtable(L);
+		lua_pushstring(L, "stage");
+		lua_pushstring(L, BootProfileStage(i));
+		lua_settable(L, -3);
+		lua_pushstring(L, "ms");
+		lua_pushinteger(L, (lua_Integer)BootProfileMs(i));
+		lua_settable(L, -3);
+		lua_settable(L, -3);
+	}
+	return 1;
+}
+
+// Probe the IOP for a contiguous 128 KiB block -- the exact size bd_cache_create()
+// demands for EVERY raw USB block device (32 * 8 * 512, libbdm/src/bd_cache.c:8),
+// allocated because usbmass_bd sets parNr = 0 and bdm caches every parNr==0 device.
+// BOTH of those allocations are UNCHECKED and dereferenced unconditionally
+// (bd_cache.c:162-168), so if the IOP cannot supply the block the USB mass worker
+// dies AFTER every IRX has already loaded successfully -- which is exactly the
+// "modules OK, no drive seen" we cannot currently explain.
+// This matters because POPSLoader loads far more IOP modules than OPL or
+// wLaunchELF (ds34usb, ds34bt, audsrv, mcman, mcserv, padman, sio2man, ppctty),
+// so IOP memory pressure is a genuine POPSLoader-vs-them delta -- and unlike every
+// other theory it blames nothing about the tester's drive or console.
+// We allocate and immediately free, so this is a measurement, not a reservation.
+static int lua_iop_heap_probe(lua_State *L)
+{
+	const int want = 128 * 1024;
+	int got_128k = 0;
+	int largest = 0;
+
+	void *p = SifAllocIopHeap(want);
+	if (p != NULL) {
+		got_128k = 1;
+		largest = want;
+		SifFreeIopHeap(p);
+	} else {
+		// Binary-search downward for the largest block the IOP will still give us.
+		// A number well under 128 KiB is the smoking gun.
+		int lo = 0, hi = want;
+		while (lo < hi) {
+			int mid = lo + (hi - lo + 1) / 2;
+			void *q = SifAllocIopHeap(mid);
+			if (q != NULL) {
+				SifFreeIopHeap(q);
+				lo = mid;
+			} else {
+				hi = mid - 1;
+			}
+			if (hi - lo < 1024) break;   // 1 KiB resolution is plenty
+		}
+		largest = lo;
+	}
+	lua_newtable(L);
+	lua_pushstring(L, "can_alloc_128k");
+	lua_pushboolean(L, got_128k);
+	lua_settable(L, -3);
+	lua_pushstring(L, "largest");
+	lua_pushinteger(L, largest);
+	lua_settable(L, -3);
+	return 1;
+}
+
+static int lua_get_usb_diag(lua_State *L)
+{
+	lua_newtable(L);
+#define DIAG_FIELD(k, v) do { lua_pushstring(L, k); lua_pushinteger(L, (v)); lua_settable(L, -3); } while (0)
+	DIAG_FIELD("usbd_id", g_usbd_load_id);
+	DIAG_FIELD("usbd_ret", g_usbd_load_ret);
+	DIAG_FIELD("bdm_id", g_bdm_id);
+	DIAG_FIELD("bdm_ret", g_bdm_ret);
+	DIAG_FIELD("bdmfs_id", g_bdmfs_id);
+	DIAG_FIELD("bdmfs_ret", g_bdmfs_ret);
+	DIAG_FIELD("usbmass_id", g_usbmass_id);
+	DIAG_FIELD("usbmass_ret", g_usbmass_ret);
+#undef DIAG_FIELD
+	lua_pushstring(L, "usbmass_loaded");
+	lua_pushboolean(L, usbmass_irx_loaded ? 1 : 0);
+	lua_settable(L, -3);
+	return 1;
+}
+
 static int lua_ensure_usb_mass(lua_State *L)
 {
 	lua_pushboolean(L, EnsureUsbMass());
@@ -1854,6 +1975,9 @@ static const luaL_Reg System_functions[] = {
 	{"ensureBDM",              lua_ensure_bdm},
 	{"ensureBDMFatFs",         lua_ensure_bdm_fatfs},
 	{"ensureUsbMass",          lua_ensure_usb_mass},
+	{"getUsbDiag",            lua_get_usb_diag},
+	{"iopHeapProbe",          lua_iop_heap_probe},
+	{"getBootProfile",        lua_get_boot_profile},
 	{"ensureCDFS",             lua_ensure_cdfs},
 	{"ensureMmceman",          lua_ensure_mmceman},
 	{"reinitPad",              lua_reinit_pad},

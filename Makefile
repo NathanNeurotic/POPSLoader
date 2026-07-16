@@ -51,7 +51,7 @@ EE_BIN_PKD = $(BINDIR)POPSLOADER.ELF
 # -lps2ips (NOT -lps2ip): the menu SMB binds the EE to the IOP-side lwip stack via
 # the ps2ips RPC (ps2ip_init in EnsureNet); linking the EE-side lwip (-lps2ip) would
 # resurrect the orphaned-second-stack bug the 2026-07 audit found (U02).
-EE_LIBS = -L$(PS2SDK)/ports/lib -L$(PS2DEV)/gsKit/lib/ -Lmodules/ds34bt/ee/ -Lmodules/ds34usb/ee/ -lpatches -lfileXio -lpad -ldebug -llua -ljpeg -lfreetype -lgskit_toolkit -lgskit -ldmakit -lpng -lz -lmc -laudsrv  -lds34bt -lds34usb -lnetman -lps2ips
+EE_LIBS = -L$(PS2SDK)/ports/lib -L$(PS2DEV)/gsKit/lib/ -Lmodules/ds34bt/ee/ -Lmodules/ds34usb/ee/ -lpatches -lfileXio -lpad -ldebug -llua -lfreetype -lgskit_toolkit -lgskit -ldmakit -lpng -lz -lmc -laudsrv  -lds34bt -lds34usb -lnetman -lps2ips
 EE_LIBS += src/elf_loader/libcustom-elf-loader.a
 EE_INCS += -I$(PS2DEV)/gsKit/include -I$(PS2SDK)/ports/include -I$(PS2SDK)/ports/include/freetype2 -I$(PS2SDK)/ports/include/zlib
 EE_INCS += -Imodules/ds34bt/ee -Imodules/ds34usb/ee
@@ -81,9 +81,11 @@ endif
 #-------------------------- App Content ---------------------------#
 EXT_LIBS = modules/ds34usb/ee/libds34usb.a modules/ds34bt/ee/libds34bt.a
 
+# ftmin.o overrides FT_Init_FreeType/FT_Done_FreeType so libfreetype's ftinit.c
+# (which names EVERY font driver) never enters the link -- see src/ftmin.c.
 APP_CORE = main.o system.o pad.o graphics.o \
 		   atlas.o fntsys.o embed_assets.o \
-		   sound.o
+		   sound.o ftmin.o
 
 LUA_LIBS =	luaplayer.o luasound.o luacontrols.o \
 			luatimer.o luaScreen.o luagraphics.o \
