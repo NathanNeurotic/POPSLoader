@@ -877,7 +877,9 @@ UI = {
         -- was captured here and discarded). Truncate so the toast stays readable.
         local err_detail = tostring(a)
         if #err_detail > 160 then err_detail = string.sub(err_detail, 1, 160).."..." end
-        UI.Notif_queue.add(tostring(failure_message or "Operation failed").."\n"..err_detail, "error")
+        -- Pre-translate the title: add-time L runs on the CONCATENATED string, so
+        -- the 8 existing "Failed to load ..." translations never matched (oldman63).
+        UI.Notif_queue.add(PLDR.L(tostring(failure_message or "Operation failed")).."\n"..err_detail, "error")
         return false, a
       end
       return true, a, b, c, d
@@ -1951,7 +1953,7 @@ UI = {
         end
         local hint1 = UI.Modal.ButtonHint(confirm_label, cancel_label)
         if triangle_label ~= nil then
-          local hint2 = ("Triangle: %s"):format(triangle_label)
+          local hint2 = ("%s: %s"):format(PLDR.L("Triangle"), triangle_label)
           Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + box_h - 60, 8, UI.SCR.X, 16, hint1, UI.CCOL.GREY)
           Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + box_h - 45, 8, UI.SCR.X, 16, hint2, UI.CCOL.GREY)
         else
@@ -2964,7 +2966,7 @@ UI = {
             local shown = string.match(UI.CoverCache.last_cover_probe, "^%a+%d*:/(.+)$")
                           or UI.CoverCache.last_cover_probe
             local folder, fname = string.match(shown, "^(.*/)([^/]+)$")
-            local cap_lines = { "No cover. Looked for:" }
+            local cap_lines = { PLDR.L("No cover. Looked for:") }
             if folder ~= nil then
               cap_lines[#cap_lines + 1] = folder
               cap_lines[#cap_lines + 1] = fname
@@ -5001,13 +5003,17 @@ UI = {
         if not UI.ShouldHideAuxText(UI.CURSCENE) then
           Font.ftPrint(UI.FONT.LABEL, UI.SCR.X_MID, top_y, 8, UI.SCR.X, 16, PLDR.L(UI.MainMenu.opts[visible_seq[center_label_idx] or visible_seq[1]]), UI.COLORS.TEXT_PRIMARY)
         end
-        local status_y = top_y + 12
+        -- STATUS_Y (TITLE_Y + 20), not top_y + 12: the status font draws at the
+        -- post-reset 17px em (bigger than the 13.75px LABEL title above it!), so
+        -- a 12px gap visibly collided on hardware (oldman63 photo). The carousel
+        -- icon math already assumes STATUS_Y, so nothing below moves.
+        local status_y = layout.STATUS_Y
         local boot_label = UI.boot_device_label
         if (boot_label == nil or boot_label == "") and UI.boot_device ~= nil and UI.boot_device ~= DEVLOCK.NONE then
           boot_label = UI.device_lock_name(UI.boot_device)
         end
         if boot_label ~= nil and boot_label ~= "" and not UI.ShouldHideAuxText(UI.CURSCENE) then
-          Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Booted from: "..tostring(boot_label), UI.COLORS.TEXT_PRIMARY)
+          Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, PLDR.L("Booted from:").." "..tostring(boot_label), UI.COLORS.TEXT_PRIMARY)
           status_y = status_y + 12
         end
         local function Lerp(a, b, t)
@@ -5301,7 +5307,10 @@ UI = {
 	                -- translations still match; the diagnostic rides on a third line as raw
 	                -- numbers (untranslated on purpose -- a tester photographing the screen
 	                -- is the only telemetry this bug has).
-	                local msg = "No USB backend detected\nreseat the drive and try again"
+	                -- Pre-translate: appending the [diag] line below defeats the toast
+	                -- queue's add-time exact-match, so the translated base was reverting
+	                -- to English in EXACTLY the failure case testers photograph.
+	                local msg = PLDR.L("No USB backend detected\nreseat the drive and try again")
 	                local diag = nil
 	                if type(PLDR.GetUsbDiagText) == "function" then
 	                  local ok_d, d = pcall(PLDR.GetUsbDiagText)
@@ -5596,8 +5605,8 @@ UI = {
         local layout = UI.LAYOUT
         local currcol = UI.CCOL.GREY
 		
-          Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 20, UI.SCR.X, 40, "POPSLoader\nfor POPStarter", currcol)
-          Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 60, 20, UI.SCR.X, 40, "Code by El_isra", currcol)
+          Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 20, UI.SCR.X, 40, PLDR.L("POPSLoader\nfor POPStarter"), currcol)
+          Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 60, 20, UI.SCR.X, 40, PLDR.L("Code by El_isra"), currcol)
           Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 80, 20, UI.SCR.X, UI.SCR.Y, [[
 Design by Berion
 Scripts by nuno6573 and Ripto
@@ -6042,9 +6051,9 @@ function UI.RunVideoModeConfirm(seconds)
   while f < total_frames do
     local remaining = math.max(0, math.ceil((total_frames - f) / FPS))
     Screen.clear(UI.SCR.BGCOL or Color.new(20, 30, 80))
-    Font.ftPrint(LFONT, UI.SCR.X_MID, UI.SCR.Y_MID - 70, 8, UI.SCR.X, 32, "Keep this display mode?", UI.CCOL.YELLOW)
+    Font.ftPrint(LFONT, UI.SCR.X_MID, UI.SCR.Y_MID - 70, 8, UI.SCR.X, 32, PLDR.L("Keep this display mode?"), UI.CCOL.YELLOW)
     Font.ftPrint(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID, 8, UI.SCR.X, 24, UI.PadHintPair("Keep", "Revert"), UI.CCOL.GREY)
-    Font.ftPrint(SFONT, UI.SCR.X_MID, UI.SCR.Y_MID + 54, 8, UI.SCR.X, 16, "Reverting in "..tostring(remaining).."s if not confirmed", UI.CCOL.GREY)
+    Font.ftPrint(SFONT, UI.SCR.X_MID, UI.SCR.Y_MID + 54, 8, UI.SCR.X, 16, PLDR.L("Reverting in").." "..tostring(remaining).."s "..PLDR.L("if not confirmed"), UI.CCOL.GREY)
     Screen.flip()
     f = f + 1
     local okp, gp = pcall(Pads.get)
