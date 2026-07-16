@@ -5253,49 +5253,16 @@ UI = {
             end, "Failed to load MX4SIO")
             if not ok then return end
           elseif UI.MainMenu.OPT == 3 then
-            -- EXP11: if a PREVIOUS exFAT probe froze the console, its crash marker
-            -- survived the reboot -- surface the frozen step number before trying
-            -- again, so even an unphotographed hang produces data (mirrors the
-            -- MX4SIO auto-enter marker; the exFAT branch had no trace at all).
-            if type(PLDR.ReadAtaProbeMarker) == "function" then
-              local stuck = PLDR.ReadAtaProbeMarker()
-              if stuck ~= nil then
-                UI.Notif_queue.add("Last exFAT HDD check never finished\nit froze at step "..tostring(stuck).." -- please report that number", "warn")
-              end
-            end
             local ok = UI.RunBusyTask("Loading HDD (exFAT)...", function (report)
-              -- Scan window starts at 0.52: integers 43..50 belong to the staged
-              -- ATA bring-up steps (a frozen percent names the stalled native call).
-              local scan_progress = UI.MakeBusyProgressReporter(report, "Scanning exFAT HDD games...", 0.52, 0.9)
+              local scan_progress = UI.MakeBusyProgressReporter(report, "Scanning exFAT HDD games...", 0.48, 0.9)
               report("Refreshing mass backends...", 0.18)
               PLDR.CleanupGameList()
               PLDR.GAMEPATH = ""
               if type(PLDR.RefreshMassBackends) == "function" then
                 pcall(PLDR.RefreshMassBackends)
               end
-              -- IOP headroom readout painted BEFORE the first blocking ATA call:
-              -- the top-ranked freeze theory is BDM's unchecked 128KiB cache alloc,
-              -- so iop128k=NO in the frozen photo confirms it in one shot.
-              local iop_line = ""
-              if type(System) == "table" and type(System.iopHeapProbe) == "function" then
-                local ok_h, h = pcall(System.iopHeapProbe)
-                if ok_h and type(h) == "table" then
-                  iop_line = h.can_alloc_128k and " [iop128k=ok]" or (" [iop128k=NO("..tostring(h.largest or "?")..")]")
-                end
-              end
-              report(PLDR.L("Locating exFAT HDD POPS folder...")..iop_line, 0.42)
-              -- Staged progress: system.lua's _AtaStage paints through this hook
-              -- (and persists the crash marker) right before each blocking call.
-              PLDR.AtaProbeProgress = function(pct, msg)
-                report(tostring(msg)..iop_line, pct)
-              end
-              -- pcall so a Lua error mid-probe can't leak the hook or strand the
-              -- marker (a stranded marker = a false "froze last time" toast).
+              report(PLDR.L("Locating exFAT HDD POPS folder..."), 0.42)
               local ok_probe, ata_root = pcall(PLDR.InitATAPopsRoot)
-              PLDR.AtaProbeProgress = nil
-              if type(PLDR.ClearAtaProbeMarker) == "function" then
-                PLDR.ClearAtaProbeMarker()
-              end
               if not ok_probe then ata_root = nil end
               if ata_root == nil then
                 UI.Notif_queue.add("No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)", "warn")
@@ -5308,7 +5275,7 @@ UI = {
                 PLDR.ApplyGameListCache(ata_cg, ata_root, ata_ch)
                 report("Loaded exFAT HDD list from cache...", 1.0)
               else
-                report("Scanning exFAT HDD games...", 0.52)
+                report("Scanning exFAT HDD games...", 0.48)
                 PLDR.GetPS1GameLists(ata_root, true, scan_progress)
                 PLDR.SaveGameListCache(ata_cache, PLDR.GAMES, PLDR.HIDDEN)
               end
