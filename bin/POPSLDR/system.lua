@@ -5312,7 +5312,9 @@ function PLDR.CommitSettingsChanges(opts)
     -- sidecar matches the effective (rolled-back) state, mirroring the BDMA rollback.
     local smb_ok
     if next_state.smb_modules == true then
-      smb_ok = PLDR.ApplySmbModules()
+      smb_ok = PLDR.ApplySmbModules(function(i, n, name)
+        EmitStage("apply_smb", PLDR.L("Applying SMB modules").." ("..tostring(i).."/"..tostring(n)..") "..tostring(name))
+      end)
     else
       smb_ok = PLDR.RemoveSmbModules()
     end
@@ -6404,14 +6406,23 @@ end
 -- override -> embedded fallback, exactly like ApplyBdmaMode) and generates the
 -- 2 .DAT from the current PLDR.SMB. Idempotent (atomic overwrites), so it is safe
 -- to re-run whenever an SMB field changes to regenerate the .DAT.
-function PLDR.ApplySmbModules()
+function PLDR.ApplySmbModules(progress)
   if not PLDR.EnsurePopstarterDir() then
     if UI ~= nil and UI.Notif_queue ~= nil then UI.Notif_queue.add(PLDR.L("Cannot access").." "..tostring(PLDR.POPSTARTER_DIR)) end
     return false
   end
+  -- Per-file progress (maintainer report: the save overlay sat on one static
+  -- "Applying SMB modules" through 8 slow memory-card writes -- long enough
+  -- that a normal user reads it as a crash). progress(i, total, name) fires
+  -- before each write; the caller repaints. Best-effort, never load-bearing.
+  local total = #PLDR.SMB_IRX_FILES + 2  -- the 6 IRX + IPCONFIG.DAT + SMBCONFIG.DAT
+  local function step(i, name)
+    if type(progress) == "function" then pcall(progress, i, total, name) end
+  end
   local cfg = PLDR.SmbCopy(PLDR.SMB)
   for i = 1, #PLDR.SMB_IRX_FILES do
     local name = PLDR.SMB_IRX_FILES[i]
+    step(i, name)
     local dest = POPSTARTER_PACK_ROOT.."/"..name
     local paths = PLDR.BdmaSourceCandidates(name)
     local fd, source = PLDR.TryOpenFirst(paths)
@@ -6431,6 +6442,7 @@ function PLDR.ApplySmbModules()
     end
   end
   -- IPCONFIG.DAT: write the static line, or delete any stale file when on DHCP.
+  step(#PLDR.SMB_IRX_FILES + 1, "IPCONFIG.DAT")
   local ip_dest = POPSTARTER_PACK_ROOT.."/IPCONFIG.DAT"
   local ip_body = PLDR.RenderSmbIpconfig(cfg)
   if ip_body == nil then
@@ -6439,6 +6451,7 @@ function PLDR.ApplySmbModules()
     if not WriteBytesAtomicBounded(ip_body, ip_dest) then return false end
   end
   -- SMBCONFIG.DAT: always generated from the current settings.
+  step(total, "SMBCONFIG.DAT")
   if not WriteBytesAtomicBounded(PLDR.RenderSmbConfig(cfg), POPSTARTER_PACK_ROOT.."/SMBCONFIG.DAT") then
     return false
   end
