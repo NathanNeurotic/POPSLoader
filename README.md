@@ -268,15 +268,21 @@ See [STATE.md](STATE.md) "Known Open Work" and [ROADMAP.md](ROADMAP.md) for the 
 
 ## Credits
 
-*   **israpps (El_isra)**: Original POPSLoader project creator.
+*   **[israpps (El_isra)](https://github.com/israpps)**: Original POPSLoader project creator.
 *   **Daniel Santos**: Creator of the Enceladus runtime foundation.
 *   **krHACKen**: Author of POPStarter.
 *   **Berion**: User interface design and theme assets.
-*   **nuno6573**: Cover-art engine integrations and scripting.
+*   **[nuno6573](https://github.com/nuno6573)**: Cover-art engine integrations, scripting, and hardware testing.
 *   **Hugopocked**: POPStarter fixes.
-*   **saildot4k**: BDMA-ATA (exFAT internal-HDD / ATA backend), fixes, feedback, and oversight.
+*   **[saildot4k](https://github.com/saildot4k) (R3Z3N)**: BDMA-ATA (exFAT internal-HDD / ATA backend), the wLaunchELF_R3Z reference work our USB fixes are built on, the settings-UI review rounds, fixes, feedback, and oversight.
+*   **[oldman63](https://github.com/oldman63) (Sári Gábor)**: The complete Hungarian localization, plus the localization bug reports that hardened it for every language.
+*   **sAGA**: Relentless hardware testing and pin-sharp reports — the USB enumeration saga, the internal-HDD freeze diagnosis rounds, and UI suggestions that shipped.
+*   **CosmicScale**: exFAT internal-HDD hardware verification and the per-device POPSTARTER idea.
+*   **FifthFox**: The per-device USB-delay POPSTARTER report that shaped the launch resolver.
 *   **Ripto / NathanNeurotic**: Maintenance, UI polishing, and release engineering.
-*   **P4NCHOL1NO, VizoR, provato, nuno6573, TnA-Plastic, and the community**: Hardware testing.
+*   **P4NCHOL1NO, VizoR, provato, TnA-Plastic, and the community**: Hardware testing.
+
+*(GitHub's sidebar can't be trusted to show this repo's contributors — it omits the contributors box on forked repositories — so this list is the canonical one. If you contributed and aren't here, that's a bug: open an issue.)*
 
 ---
 
