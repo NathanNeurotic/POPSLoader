@@ -2,11 +2,23 @@
 
 **This is an opt-in EXPERIMENTAL build. It is not a replacement for the public release, and it is not the rolling build either.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.0.1**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** open **Settings**, then **About**, and read the **Version** row: it says **v1.0.2-dev-EXP10**. One step further into **Credits**, the small grey line at the bottom left says **POPSLoader v1.0.2-dev-EXP10** (or an exact build stamp, if a `BUILD_INFO.txt` file sits next to your POPSLOADER.ELF). Only experimental builds from EXP9 on show a version on screen at all; the public release, the rolling build, and everything up to EXP8 show nothing in either place (a real bug, reported by sAGA, fixed in EXP9). So the check is simple: version says EXP10 = this build; version says EXP9 = the previous experimental, please update; no version anywhere = an older build, update to this one.
+**How to tell you are running it:** open **Settings**, then **About**, and read the **Version** row: it says **v1.0.2-dev-EXP11**. One step further into **Credits**, the small grey line at the bottom left says **POPSLoader v1.0.2-dev-EXP11** (or an exact build stamp, if a `BUILD_INFO.txt` file sits next to your POPSLOADER.ELF). The check is simple: a version ending in **-EXP11** = this build; **-EXP10** or **-EXP9** = an older experimental, please update; plain **v1.0.2-dev** with no EXP = the rolling test build (which now carries everything the experimental channel graduated); no version anywhere = the public 1.0.1 release or older.
 
 **What the name means:** this build is the **rolling** build (1.0.2-dev) plus the experiments below. It is not the 1.0.1 release plus experiments. Everything currently in rolling is in here too, including the menu and Settings cleanup. Earlier experimental builds were misleadingly named 1.0.1-EXP, which made this look like it was missing the newer work. It never was; the name was just wrong.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
+
+---
+
+## New in EXP11: the frozen 42% now tells us where it is stuck
+
+**This is for the internal exFAT drive freeze sAGA reported (the screen stuck at "Locating exFAT HDD POPS folder... 42%"). EXP11 does not fix the drive yet; it makes the freeze name its own cause.**
+
+Two findings from digging into that report. First, the current build genuinely cannot read his 4TB drive: it is partitioned in the newer GPT style, and the drive support in this build only understands the older MBR style, while OPL builds carry newer drive support that understands both. That alone would show "No exFAT HDD detected" after a few seconds, politely. The plan for that is a driver update in EXP12. Second, and separately, the check is not failing politely, it is freezing, and a freeze means one specific internal call never came back. That is the bug EXP11 instruments.
+
+**What changed:** the single silent "Locating exFAT HDD POPS folder... 42%" step is now split into numbered sub-steps, **43 through 50**, each painting its own message before the call it names. If the screen freezes, the number on it identifies the exact stuck call, from one photo. The message also carries an `[iop128k=...]` readout; if it says `NO`, the console ran out of the specific memory the drive system needs, which is our leading suspect and entirely our fault, not the drive's. And if the console freezes and you reboot, POPSLoader now remembers: the next time you open the exFAT page it says "Last exFAT HDD check never finished, it froze at step N", so nothing is lost even without a photo. (The remembering needs the standard POPSTARTER folder on your memory card; if you turned that folder off in Settings, the photo is the only record.)
+
+**What to do (sAGA, this is your one-boot test):** update to EXP11, open the **HDD (exFAT)** page once, and give it up to two minutes, since some failure paths are slow rather than truly stuck. If it freezes, photograph the screen: the message, the number, and the bracket. If you see "No exFAT HDD detected" after a few seconds instead, that is expected for now and actually good news, it means the freeze is gone for you and the GPT drive support in EXP12 is the remaining step. Give the USB page one quick look afterwards to confirm it still works.
 
 ---
 
@@ -31,7 +43,7 @@
 | Build | Size |
 | :--- | :--- |
 | 1.0.1 (public release) | 1,715,300 bytes |
-| **This build (EXP10)** | **about 1,320,000 bytes** |
+| **This build (EXP11)** | **about 1,320,000 bytes** |
 | | **about 400,000 bytes smaller (23%)** |
 
 The size work removed weight the PS2 was never using. It changes no features, no settings and no menus: everything from 1.0.1 is here working exactly as it shipped. Three separate changes got us there, and they fail in **completely different ways**, so if something breaks we will know instantly which one did it.
@@ -145,9 +157,9 @@ Mostly, **use it normally**. If your games launch, you can read the menus, and y
 
 ## How to report
 
-Please say **which build** (v1.0.2-dev-EXP10, from Settings then About), **which device**, your **console model and region**, and what you did. A photo helps, especially for anything text related.
+Please say **which build** (v1.0.2-dev-EXP11, from Settings then About), **which device**, your **console model and region**, and what you did. A photo helps, especially for anything text related.
 
-If it all just works, that is a valuable report too. "EXP10 fine on USB and HDD, text and covers look normal" is genuinely all we need.
+If it all just works, that is a valuable report too. "EXP11 fine on USB and HDD, text and covers look normal" is genuinely all we need.
 
 ---
 
