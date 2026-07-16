@@ -3160,6 +3160,21 @@ UI = {
             return
           end
           local root, rel = string.match(entry or "", "^([^|]+)|(.+)$")
+          -- Launch progress (maintainer: an ATA launch sat "a very long time on a
+          -- frozen state before the game launched"). Everything below -- the
+          -- POPSTARTER probes, the game-file probe, the adaptive-BDMA driver
+          -- staging inside RunPOPStarterGame -- is blocking device I/O that
+          -- painted NOTHING, so the game list just froze. Paint before each slow
+          -- step; the last frame stays up until POPStarter takes the screen
+          -- (the exec never returns, so there is no hide to do on success).
+          local function paint(msg, pct)
+            if type(UI.ShowSavingOverlay) == "function" then pcall(UI.ShowSavingOverlay, msg, pct) end
+          end
+          local function unpaint()
+            if type(UI.HideSavingOverlay) == "function" then pcall(UI.HideSavingOverlay) end
+            PLDR.LaunchProgress = nil
+          end
+          paint(PLDR.L("Checking POPSTARTER..."), 0.12)
           -- Empty = Automatic (no user-defined path): the launch resolver walks
           -- the device/cwd/mc ladder on its own (profiles dropped -- R3Z3N).
           local configured_popstarter_path = tostring(PLDR.POPSTARTER_PATH or "")
@@ -3199,12 +3214,14 @@ UI = {
                 message = message.."\n"..PLDR.L("Resolved:").." "..tostring(popstarter_path)
               end
             end
+            unpaint()
             UI.Notif_queue.add(message, "error")
             return
           end
           if type(launch_options) == "table" and launch_options.hdd_selector_mode == "full_hdd_pfs0" then
             local lowered_popstarter = string.lower(tostring(popstarter_path or ""))
             if string.match(lowered_popstarter, "^hdd%d:") == nil and string.match(lowered_popstarter, "^pfs%d*:/") == nil then
+              unpaint()
               UI.Notif_queue.add("HDD Alt mode needs POPSTARTER on HDD", "warn")
               return
             end
@@ -3215,9 +3232,11 @@ UI = {
           -- stack), so without this gate a launch fails in-game with zero
           -- explanation.
           if UI.CURSCENE == UI.SCENES.GSMBNET and PLDR.SMB_MODULES ~= true then
+            unpaint()
             UI.Notif_queue.add("SMB modules are not installed\nGames list but won't boot without them --\ninstall via Settings > SMB modules, then Save", "error")
             return
           end
+          paint(PLDR.L("Checking the game file..."), 0.30)
           local vcd_full = ResolveSelectedVcdPath(entry, PLDR.GAMEPATH)
           -- Skip the existence preflight on net-SMB too: per-file stat over the live
           -- smb0: browse mount is unreliable, and this is only a (non-blocking) toast.
@@ -3226,6 +3245,11 @@ UI = {
               UI.Notif_queue.add(PLDR.L("Game file missing").."\n"..vcd_full, "error")
             end
           end
+          -- Hook the slow stages INSIDE RunPOPStarterGame (adaptive-BDMA driver
+          -- staging = several memory-card writes; the handoff itself). Cleared
+          -- on the cancel path; on success the exec never comes back.
+          PLDR.LaunchProgress = paint
+          paint(PLDR.L("Starting the game..."), 0.50)
           local launch_path = PLDR.GAMEPATH
           if UI.CURSCENE == UI.SCENES.GHDD then
             launch_path = ""
@@ -3237,6 +3261,11 @@ UI = {
           else
             PLDR.RunPOPStarterGame(launch_path, entry, UI.CURSCENE, launch_options)
           end
+          -- Reached ONLY when the launch did not exec (cancelled by the adaptive
+          -- -BDMA staging gate, or failed): a successful launch never returns
+          -- here. Drop the overlay so the menu is usable and the failure toast
+          -- is readable instead of sitting behind a stuck progress box.
+          unpaint()
         end
         -- R3 = reveal / re-hide this device's hidden games. The "Hidden games"
         -- setting (GLOBAL_HIDE) filters hidden entries out of the list at SCAN
