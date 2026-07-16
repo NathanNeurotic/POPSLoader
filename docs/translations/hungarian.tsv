@@ -15,11 +15,11 @@ At least one device must stay on the carousel	Legalább egy eszköznek meg kell 
 Auto (console region)	Automatikus (konzol régiója)
 Back	Vissza
 Backspace	Visszatörlés
-BDMA and SMB modules -- from mc0: / mc1:. They won't	BDMA és SMB modulok -– az mc0: / mc1: eszközökről.
+BDMA and SMB modules -- from mc0: / mc1:. They won't	BDMA és SMB modulok -- az mc0: / mc1: eszközökről.
 BDMA Mode	BDMA mód
 BDMA mode change didn't apply\nBDMA reverted; other settings were saved	A BDMA-mód váltása nem került alkalmazásra\nA BDMA-mód visszaállt; az egyéb beállítások mentésre kerültek
-Boot Page	Boot lap
-Boot sound	Boot hang
+Boot Page	Startlap
+Boot sound	Starthang
 BOOT.ELF not found\nchecked mc0:/BOOT and mc1:/BOOT	A BOOT.ELF fájl nem található\nEllenőrizve: mc0:/BOOT és mc1:/BOOT
 Bringing up network...	Hálózat felépítése...
 Building HDD game list...	HDD játéklista összeállítása...
@@ -31,14 +31,14 @@ Can't reach the server\ncheck Server IP / Port in SMB settings	Nem sikerült kap
 Cancel	Mégsem
 Carousel (default)	Carousel (alapértelmezett)
 Carousel Devices	Carousel eszközök
-Center aligned	Középre igazított
+Center aligned	Középre igazítva
 Code by El_isra	Kódolás: El_isra
 Confirm	Megerősítés
 Connecting to SMB...	Csatlakozás az SMB-hez...
 Couldn't apply the PS2 IP settings\ntry again or power-cycle the network adapter	A PS2 IP-beállításai nem alkalmazhatók\npróbálja meg újra, vagy indítsa újra a hálózati adaptert
 Couldn't read that game selection	Nem sikerült elolvasni ezt a játékválasztást
-Couldn't save settings -- POPSTARTER folder NOT deleted	A beállítások mentése nem sikerült –- a POPSTARTER mappa NEM lett törölve
-Couldn't save settings -- POPSTARTER folder NOT restored	A beállítások mentése nem sikerült –- a POPSTARTER mappa NEM került visszaállításra
+Couldn't save settings -- POPSTARTER folder NOT deleted	A beállítások mentése nem sikerült -- a POPSTARTER mappa NEM lett törölve
+Couldn't save settings -- POPSTARTER folder NOT restored	A beállítások mentése nem sikerült -- a POPSTARTER mappa NEM került visszaállításra
 Cover Art	Borítókép
 Cover Art disabled	Borítóképek letiltva
 Cover Art enabled	Borítóképek engedélyezve
@@ -51,7 +51,7 @@ DHCP failed\nset a static IP in SMB settings	A DHCP nem sikerült\nÁllítson be
 Disc (DKWDRV)	Fizikai lemez (DKWDRV)
 Discard & Exit	Elvetés & Kilépés
 Display	Kijelző
-Display reverted -- new mode wasn't confirmed	A kijelzőmód visszaállt -– az új mód nem került megerősítésre
+Display reverted -- new mode wasn't confirmed	A kijelzőmód visszaállt -- az új mód nem került megerősítésre
 DKWDRV Path	DKWDRV útvonal
 Don't Save	Ne mentse el
 Edit DKWDRV Path	DKWDRV útvonal szerkesztése
@@ -92,7 +92,7 @@ Keep this display mode?	Megtartja ezt a megjelenítési módot?
 Keyboard Layout	Billentyűzetkiosztás
 Launch	Indítás
 Launch DKWDRV?	Elindítja a DKWDRV-t?
-Left aligned	Balra igazított
+Left aligned	Balra igazítva
 List refreshed	Lista frissítve
 List refreshed (no games found)	A lista frissítve (nincsenek játékok)
 Loaded SMB list from cache...	Az SMB-lista betöltése a gyorsítótárból...
@@ -105,13 +105,13 @@ manually). Your POPSLoader settings are kept.	kézzel). A POPSLoader beállítá
 Memory Card	Memóriakártya
 MMCE has no POPS folder\nexpected mmce0:/POPS/	Az MMCE-n nincs POPS mappa\nelvárás az mmce0:/POPS/
 Multi-disc games	Többlemezes játékok
-NetBIOS isn't supported\nset Address type = IP + a Server IP	A NetBIOS nem támogatott\nállítsd be a címtípust: IP + egy szerver IP-címe
+NetBIOS isn't supported\nset Address type = IP + a Server IP	A NetBIOS nem támogatott\nállítsa be a címtípust: IP + egy szerver IP-címe
 No cover. Looked for:	Nincs borító. Itt keresve:
 No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)	Nincs észlelt exFAT merevlemez\nformázza le a belső meghajtót exFAT formátumra (BDMA mód = ATA)
 No games found	Nincsenek játékok
 No games found on hdd0:\n(__.POPS partitions are empty)	Nincsenek játékok a hdd0-n:\n(a __.POPS partíciók üresek)
 No games found on this device	Az eszközön nem találhatóak játékok
-No MMCE device detected\nchecked mmce0: and mmce1:	Nem észlelhető MMCE-eszköz\nellenőrzve: mmce0: és mmce1:
+No MMCE device detected\nchecked mmce0: and mmce1:	Nem észlelhető MMCE-eszköz\nellenőrizve: mmce0: és mmce1:
 No MX4SIO device detected	Nem észlelhető MX4SIO eszköz
 No network link\ncheck the Ethernet cable / adapter	Nincs hálózati kapcsolat\nEllenőrizze az Ethernet-kábelt / adaptert
 No Share selected	Nincs kiválasztott megosztás
@@ -134,7 +134,7 @@ POPSTARTER folder restored on the memory card\n(set a BDMA mode to re-add the ex
 POPSTARTER Path	POPSTARTER útvonal
 Press CIRCLE again to discard what you typed	Nyomja meg újra a KÖR gombot, hogy törölje a beírt szöveget
 Profile	Profil
-Profile defaults restored	Alapértelmezett profil beállítások visszaállítva
+Profile defaults restored	Alapértelmezett profilbeállítások visszaállítva
 Rebuilding HDD game list...	A HDD-n lévő játékok listájának ismételt összeállítása...
 Refreshing HDD list...	A HDD-lista frissítése...
 Refreshing list...	Lista frissítése...
@@ -143,8 +143,8 @@ Reset	Visszaállítás
 Reset Defaults	Alapértelmezések visszaállítása
 Retrying USB scan...	Az USB-ellenőrzés újraindítása...
 Return to OSDSYS?	Vissza az OSDSYS-hez?
-return until you turn this back On (or re-add them	addig nem jelennek meg, amíg ezt újra be nem kapcsolja (vagy újra hozzá nem adja őket)
-Right aligned	Jobbra igazított
+return until you turn this back On (or re-add them	addig nem jelennek meg, amíg ezt újra be nem kapcsolja\n(vagy újra hozzá nem adja őket)
+Right aligned	Jobbra igazítva
 Save	Mentés
 Save Changes	Változások mentése
 Save Settings	Beállítások mentése
@@ -164,7 +164,7 @@ Server refused SMBv1\nenable SMBv1 support on the host	A szerver elutasította a
 Settings	Beállítások
 Share not found\ncheck the Share name (host must allow SMB1)	A megosztás nem található\nEllenőrizze a megosztás nevét (a gazdagépnek engedélyeznie kell az SMB1-et)
 Show all discs	Minden lemez megjelenítése
-Showing hidden games (dimmed) -- press L3 to unhide	Rejtett játékok megjelenítése (elhalványítva) –- L3 megnyomásával láthatóvá tehetők
+Showing hidden games (dimmed) -- press L3 to unhide	Rejtett játékok megjelenítése (elhalványítva) -- L3 megnyomásával láthatóvá tehetők
 Shown	Megjelenítve
 SMB / Network	SMB / Hálózat
 SMB connect failed	Az SMB-kapcsolat sikertelen
@@ -172,14 +172,14 @@ SMB connection dropped	Az SMB-kapcsolat megszakadt
 SMB login failed\ncheck User / Password	Az SMB-bejelentkezés sikertelen volt\nEllenőrizze a felhasználónevet és a jelszót
 SMB modules	SMB modulok
 SMB modules are not installed\nGames list but won't boot without them --\ninstall via Settings > SMB modules, then Save	Az SMB-modulok nincsenek telepítve\nA játékok listája megjelenik, de ezek nélkül a rendszer nem indul el --\nTelepítse őket a Beállítások > SMB-modulok menüpontban, majd kattintson a Mentés gombra
-SMB modules are not installed\nGames will list but won't boot -- install them\nvia Settings > SMB modules first	Az SMB-modulok nincsenek telepítve\nA játékok megjelennek a listában, de nem indulnak el -– először telepítse őket\na Beállítások > SMB-modulok menüpontban
+SMB modules are not installed\nGames will list but won't boot -- install them\nvia Settings > SMB modules first	Az SMB-modulok nincsenek telepítve\nA játékok megjelennek a listában, de nem indulnak el -- először telepítse őket\na Beállítások > SMB-modulok menüpontban
 SMB modules didn't install/remove\nmodule setting reverted; other settings were saved	Az SMB-modulok telepítése/eltávolítása nem sikerült\nA modul beállításai visszaálltak; az egyéb beállítások mentésre kerültek
 SMB modules failed to load	Az SMB-modulok betöltése nem sikerült
 Startup	Indítás
 Static (manual)	Statikus (manuális)
 Storage	Tároló
 This backend isn't implemented yet	Ez a háttérrendszer még nincs megvalósítva
-This removes the POPSTARTER pack -- including the	Ezzel eltávolítja a POPSTARTER csomagot –- beleértve a
+This removes the POPSTARTER pack -- including the	Ezzel eltávolítja a POPSTARTER csomagot -- beleértve a
 UI text hidden	UI szövegek elrejtve
 UI text shown	UI szövegek megjelenítve
 Video Standard	Videó szabvány
