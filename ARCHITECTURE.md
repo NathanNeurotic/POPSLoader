@@ -597,6 +597,12 @@ machinery that preserves the D-10/D-15 partition-context + embedded-loader path.
 The profiles removal did **not** touch this ladder (UI/config layer only). The
 only user-facing POPSTARTER warning is the launch-time "no POPSTARTER.ELF found
 anywhere" toast; a set-but-stale custom path falls through silently by design.
+The `ui.lua` launch preflight (the gate that shows that toast) resolves with the
+**game entry's own device root** on removable pages — NOT `PLDR.GAMEPATH`, which
+is deliberately empty on the multi-drive USB page (its entries encode their root
+as `"<root>POPS/|name.vcd"`) — so the gate probes exactly what
+`RunPOPStarterGame(root, rel)` will resolve at launch. GHDD keeps `GAMEPATH`
+(its entries encode a partition name, and the partition machinery is separate).
 
 ### Image atlas (`bin/POPSLDR/images.lua`)
 `IMG_REGISTRATIONS` (`images.lua:11-36`) is 25 `{key, filename}` pairs (device
