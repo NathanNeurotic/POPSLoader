@@ -2,10 +2,10 @@ English (do not edit)	Hungarian (put your translation here)
 (not set)	(nincs beállítva)
 (share root)	(gyökérkönyvtár megosztása)
 (unknown)	(ismeretlen)
-100M Full	100M Full
-100M Half	100M Half
-10M Full	10M Full
-10M Half	10M Half
+100M Full	100M teljes
+100M Half	100M fél
+10M Full	10M teljes
+10M Half	10M fél
 Actual output	Aktuális kimenet
 Adaptive BDMA	Adaptív BDMA
 APA / PFS (default)	APA / PFS (alapértelmezett)
@@ -14,7 +14,7 @@ ART (at root)	ART (a főkönyvtárban)
 At least one device must stay on the carousel	Legalább egy eszköznek meg kell maradnia
 Auto (console region)	Automatikus (konzol régiója)
 Back	Vissza
-Backspace	Backspace
+Backspace	Visszatörlés
 BDMA and SMB modules -- from mc0: / mc1:. They won't	BDMA és SMB modulok -– az mc0: / mc1: eszközökről.
 BDMA Mode	BDMA mód
 BDMA mode change didn't apply\nBDMA reverted; other settings were saved	A BDMA-mód váltása nem került alkalmazásra\nA BDMA-mód visszaállt; az egyéb beállítások mentésre kerültek
@@ -175,7 +175,7 @@ SMB modules are not installed\nGames list but won't boot without them --\ninstal
 SMB modules are not installed\nGames will list but won't boot -- install them\nvia Settings > SMB modules first	Az SMB-modulok nincsenek telepítve\nA játékok megjelennek a listában, de nem indulnak el -– először telepítse őket\na Beállítások > SMB-modulok menüpontban
 SMB modules didn't install/remove\nmodule setting reverted; other settings were saved	Az SMB-modulok telepítése/eltávolítása nem sikerült\nA modul beállításai visszaálltak; az egyéb beállítások mentésre kerültek
 SMB modules failed to load	Az SMB-modulok betöltése nem sikerült
-Startup	Startup
+Startup	Indítás
 Static (manual)	Statikus (manuális)
 Storage	Tároló
 This backend isn't implemented yet	Ez a háttérrendszer még nincs megvalósítva
@@ -190,3 +190,20 @@ X = Keep      O = Revert	X = Megtart      O = Visszavon
 X = Select      O = Cancel	X = Kiválaszt      O = Mégsem
 X = Yes      O = No	X = Igen      O = Nem
 Yes	Igen
+About	Névjegy
+Automatic	Automatikus
+Booted from:	Indítva innen:
+Defaults restored	Alapértelmezések visszaállítva
+Device List	Eszközlista
+How to hide a game	Játék elrejtése
+if not confirmed	múlva, ha nincs megerősítve
+Keep	Megtart
+L3 on the game list	L3 a játéklistán
+Menu	Menü
+No	Nem
+Operation failed	A művelet sikertelen
+Press CROSS again to discard what you typed	Nyomja meg újra a KERESZT gombot a beírtak elvetéséhez
+Revert	Visszavon
+Reverting in	Visszaállítás
+Triangle	Háromszög
+No POPSTARTER.ELF found\nchecked the game device, the launcher folder and mc0:/mc1:	Nem található POPSTARTER.ELF\nellenőrizve: a játék eszköze, az indító mappája és mc0:/mc1:

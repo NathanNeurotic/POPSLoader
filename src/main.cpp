@@ -589,7 +589,7 @@ int main(int argc, char * argv[])
         DPRINTF("Skipping mmceman init; fileXio not ready.\n");
         mmce_slot0_ready = 0;
         mmce_slot1_ready = 0;
-        BootStamp("mmceman load/init (skipped)");
+        BootStamp("mmceman skipped");
     }
     LOAD_IRX_NARG(mcman_irx);
     LOAD_IRX_NARG(mcserv_irx);
@@ -629,7 +629,7 @@ int main(int argc, char * argv[])
     // USB-page entry becomes a no-op rather than a second load.
     // Costs boot time (this is why the EXP6 boot profile landed first).
     EnsureUsbMass();
-    BootStamp("usb mass stack (bdm+bdmfs_fatfs+usbmass_bd)");
+    BootStamp("usb mass stack");  // bdm+bdmfs_fatfs+usbmass_bd -- keep the label short: it must fit the Credits line
 
 
     int ds3pads = 1;
@@ -653,7 +653,7 @@ int main(int argc, char * argv[])
 	// init internals library
     
     // graphics (gsKit)
-    BootStamp("IRX block done (screen still black)");
+    BootStamp("IRX block done");  // the screen is still black here; label kept short for the Credits line
     initGraphics();
     BootStamp("initGraphics");
 
