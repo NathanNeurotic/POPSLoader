@@ -1372,7 +1372,19 @@ static int lua_get_boot_profile(lua_State *L)
 // We allocate and immediately free, so this is a measurement, not a reservation.
 static int lua_iop_heap_probe(lua_State *L)
 {
-	const int want = 128 * 1024;
+	// Optional byte-size argument (default 128 KiB). EXP14 uses ~136 KiB: BDM's
+	// bd_cache_create allocates a ~131 KiB contiguous cache INSIDE ata_bd's module
+	// start with NO failure check -- on a tight IOP the NULL write lands on the
+	// exception vectors and wedges the IOP forever (the frozen-45 photo). Probing
+	// the real size (plus margin) BEFORE the load turns that freeze into a
+	// refusable, legible condition.
+	int want = 128 * 1024;
+	if (lua_gettop(L) >= 1 && lua_isnumber(L, 1)) {
+		int asked = (int)lua_tointeger(L, 1);
+		if (asked > 0 && asked <= 1024 * 1024) {
+			want = asked;
+		}
+	}
 	int got_128k = 0;
 	int largest = 0;
 
@@ -1500,29 +1512,28 @@ static int lua_mx4sio_init(lua_State *L)
 bool g_ata_bd_loaded = false;
 bool EnsureAtaBdm()
 {
+	// EXP14: byte-faithful to wLaunchELF_R3Z's loadAtaBlockDriver (init.c:1510-1532),
+	// the maintainer's designated known-good reference: **bdm -> bdmfs_fatfs -> dev9 ->
+	// ata_bd**, NO settle before ata_bd (dev9's load is the natural gap), one
+	// success-gated settle after. Our old shape (dev9 first + a pre-ata_bd sleep) was
+	// a paraphrase; after the 45-freeze photo we stop paraphrasing the reference.
+	// ATA uses ata_bd, NOT the USB mass block driver -- load only the BDM FS base
+	// (bdm + bdmfs_fatfs), never usbmass_bd, so bringing up the internal exFAT/APA
+	// drive does not also spin up USB enumeration. ata_bd registers its own BDM "ata"
+	// device + the atad library for PFS; shared with the APA-boot path.
+	if (!EnsureBDMFatFs()) {   // bdm -> bdmfs_fatfs; bdm MUST precede ata_bd
+		return false;
+	}
 	if (!EnsureDev9()) {
 		return false;
 	}
-	// ATA uses ata_bd, NOT the USB mass block driver -- load only the BDM FS base
-	// (bdm + bdmfs_fatfs), never usbmass_bd, so bringing up the internal exFAT/APA
-	// drive does not also spin up USB enumeration. Matches wLaunchELF_R3Z's
-	// loadAtaBlockDriver (bdm -> bdmfs -> ata_bd, no usbmass_bd). Verified independent:
-	// ata_bd registers its own BDM "ata" device + the atad library for PFS, and the
-	// APA-boot path (luaHDD.cpp Load_HDD_IRX) needs the same bdm/bdmfs/ata_bd and never
-	// usbmass_bd; ClassifyMassRootDriver treats "ata" and "usb" as distinct buckets.
-	if (!EnsureBDMFatFs()) {   // dev9 -> bdm -> bdmfs_fatfs; bdm MUST precede ata_bd
-		return false;
-	}
 	if (!g_ata_bd_loaded) {
-		// Let bdmfs_fatfs settle before ata_bd registers with the BDM core -- the same
-		// 1s settle EnsureUsbMass applies before usbmass_bd (R3Z gets the equivalent gap
-		// from loading dev9 between bdmfs and ata_bd; we load dev9 first, so settle here).
-		sleep(1);
 		if (!LoadIrxCheckedBuffer("ata_bd.irx", ata_bd_irx, size_ata_bd_irx, NULL, NULL)) {
 			return false;
 		}
 		g_ata_bd_loaded = true;
-		// Match NHDDL/wLaunchELF ordering: let ata_bd settle before ps2hdd/ps2fs touch it.
+		// R3Z's pauseAfterAtaBlockDriverLoad: settle only after a SUCCESSFUL load,
+		// before ps2hdd/ps2fs (or the mass sweep) touch the fresh BDM device.
 		sleep(1);
 	}
 	return true;

@@ -5711,16 +5711,42 @@ local function EnsureMassBackendsReady(mode)
     -- to settle + ata_bd + settle. All three stay pcall'd and order-identical to
     -- the old single initATA call (EnsureAtaBdm re-runs the latched steps).
     if type(System) == "table" then
-      if type(System.ensureDev9) == "function" then
-        PLDR._AtaStage(0.43, "exFAT HDD: starting dev9 (43)...")
-        pcall(System.ensureDev9)
-      end
+      -- EXP14: staged in wLaunchELF_R3Z's exact order (bdm+bdmfs first, dev9
+      -- second, ata_bd last -- its loadAtaBlockDriver recipe; we had dev9 first).
       if type(System.ensureBDMFatFs) == "function" then
-        PLDR._AtaStage(0.44, "exFAT HDD: starting the filesystem base (44)...")
+        PLDR._AtaStage(0.43, "exFAT HDD: starting the filesystem base (43)...")
         pcall(System.ensureBDMFatFs)
       end
+      if type(System.ensureDev9) == "function" then
+        PLDR._AtaStage(0.44, "exFAT HDD: starting dev9 (44)...")
+        pcall(System.ensureDev9)
+      end
+      -- EXP14 heap guard: ata_bd's module start allocates a ~131KiB contiguous
+      -- BDM drive cache with NO failure check -- on a tight IOP the failed
+      -- alloc's NULL write lands on the exception vectors and wedges the IOP
+      -- forever (the frozen-45 photo; OPL survives on a freshly reset lean
+      -- IOP). Probe the real size FRESH here, after dev9 took its share, and
+      -- REFUSE the load when the block isn't free: a named error beats a
+      -- frozen console. Bracket numbers stay untranslated (photo telemetry).
+      local fresh = nil
+      if type(System.iopHeapProbe) == "function" then
+        local ok_h, h = pcall(System.iopHeapProbe, 136 * 1024)
+        if ok_h and type(h) == "table" then fresh = h end
+      end
+      if fresh ~= nil and fresh.can_alloc_128k ~= true then
+        if PLDR._ata_heap_warned ~= true then
+          PLDR._ata_heap_warned = true
+          if type(UI) == "table" and type(UI.Notif_queue) == "table" then
+            pcall(UI.Notif_queue.add,
+              "Not enough free IOP memory for the drive system\nunplug USB devices and retry -- this is our bug, not the drive\n[need 136k, largest "..tostring(fresh.largest or "?").."]", "error")
+          end
+        end
+        PLDR._AtaStage(0.45, "exFAT HDD: ATA driver skipped (45): IOP memory low...")
+        return
+      end
       if type(System.initATA) == "function" then
-        PLDR._AtaStage(0.45, "exFAT HDD: starting the ATA driver (45)...")
+        local tag = (fresh ~= nil) and " [pre136k=ok]" or ""
+        PLDR._AtaStage(0.45, "exFAT HDD: starting the ATA driver (45)"..tag.."...")
         pcall(System.initATA)
       end
     end

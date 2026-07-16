@@ -2,11 +2,27 @@
 
 **This is an opt-in EXPERIMENTAL build. It is not a replacement for the public release, and it is not the rolling build either.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.0.1**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** open **Settings**, then **About**, and read the **Version** row: it says **v1.0.2-dev-EXP13**. One step further into **Credits**, the small grey line at the bottom left says **POPSLoader v1.0.2-dev-EXP13** (or an exact build stamp, if a `BUILD_INFO.txt` file sits next to your POPSLOADER.ELF). The check is simple: a version ending in **-EXP11** = this build; **-EXP10** or **-EXP9** = an older experimental, please update; plain **v1.0.2-dev** with no EXP = the rolling test build (which now carries everything the experimental channel graduated); no version anywhere = the public 1.0.1 release or older.
+**How to tell you are running it:** open **Settings**, then **About**, and read the **Version** row: it says **v1.0.2-dev-EXP14**. One step further into **Credits**, the small grey line at the bottom left says **POPSLoader v1.0.2-dev-EXP14** (or an exact build stamp, if a `BUILD_INFO.txt` file sits next to your POPSLOADER.ELF). The check is simple: a version ending in **-EXP11** = this build; **-EXP10** or **-EXP9** = an older experimental, please update; plain **v1.0.2-dev** with no EXP = the rolling test build (which now carries everything the experimental channel graduated); no version anywhere = the public 1.0.1 release or older.
 
 **What the name means:** this build is the **rolling** build (1.0.2-dev) plus the experiments below. It is not the 1.0.1 release plus experiments. Everything currently in rolling is in here too, including the menu and Settings cleanup. Earlier experimental builds were misleadingly named 1.0.1-EXP, which made this look like it was missing the newer work. It never was; the name was just wrong.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
+
+---
+
+## New in EXP14: the frozen 45 gets a suspect, a guard, and one unplug-the-USB test
+
+sAGA's photo did its job: the freeze is inside the ATA driver's own startup, and two deep source dives (our code, wLaunchELF R3Z's, and OPL's) agree on the leading suspect. The surprise: **R3Z and OPL run the exact same stock ATA driver we do.** What differs is the environment: at startup the driver allocates a large drive cache **with no failure check**, and if that allocation fails it silently corrupts the part of the console's IO memory that handles everything, which looks exactly like our permanent freeze. OPL starts from a freshly reset, lean IO processor and always has the room; our build carries the most drivers of the three (sound, pads, USB), and **every USB device that is plugged in takes its own copy of that same cache first**.
+
+Three changes in EXP14:
+
+**1. The bring-up order is now exactly R3Z's** (filesystem base, then dev9, then the ATA driver, with R3Z's settle placement). The numbered steps changed with it: 43 is now the filesystem base and 44 is dev9.
+
+**2. A guard now refuses to start the ATA driver when the memory it needs is not free.** Instead of freezing, you get a message saying so, with the numbers on it. If you see that message, the memory theory is confirmed and the proper fix (a patched driver that fails politely, plus a leaner memory footprint) is next.
+
+**3. The step-45 message now shows a fresh memory check** taken right before the driver starts, so even a freeze that gets past the guard tells us more.
+
+**sAGA, the one test that matters, no rebuild needed on your part: unplug every USB device, then open the HDD (exFAT) page.** If the page stops freezing (either the drive appears, or you get a polite message), the memory theory is confirmed on hardware. Then plug the USB drive back in and try again; if it freezes only with USB plugged in, that is double confirmation. Photos of whatever you see, as always.
 
 ---
 
@@ -61,7 +77,7 @@ Two findings from digging into that report. First, the current build genuinely c
 | Build | Size |
 | :--- | :--- |
 | 1.0.1 (public release) | 1,715,300 bytes |
-| **This build (EXP13)** | **about 1,320,000 bytes** |
+| **This build (EXP14)** | **about 1,320,000 bytes** |
 | | **about 400,000 bytes smaller (23%)** |
 
 The size work removed weight the PS2 was never using. It changes no features, no settings and no menus: everything from 1.0.1 is here working exactly as it shipped. Three separate changes got us there, and they fail in **completely different ways**, so if something breaks we will know instantly which one did it.
@@ -175,9 +191,9 @@ Mostly, **use it normally**. If your games launch, you can read the menus, and y
 
 ## How to report
 
-Please say **which build** (v1.0.2-dev-EXP13, from Settings then About), **which device**, your **console model and region**, and what you did. A photo helps, especially for anything text related.
+Please say **which build** (v1.0.2-dev-EXP14, from Settings then About), **which device**, your **console model and region**, and what you did. A photo helps, especially for anything text related.
 
-If it all just works, that is a valuable report too. "EXP13 fine on USB and HDD, text and covers look normal" is genuinely all we need.
+If it all just works, that is a valuable report too. "EXP14 fine on USB and HDD, text and covers look normal" is genuinely all we need.
 
 ---
 

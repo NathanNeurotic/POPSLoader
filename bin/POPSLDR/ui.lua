@@ -5257,6 +5257,7 @@ UI = {
               report("Locating exFAT HDD POPS folder..."..iop_line, 0.42)
               -- Staged progress: system.lua's _AtaStage paints through this hook
               -- (and persists the crash marker) right before each blocking call.
+              PLDR._ata_heap_warned = nil  -- one heap-guard toast per page entry
               PLDR.AtaProbeProgress = function(pct, msg)
                 report(tostring(msg)..iop_line, pct)
               end
