@@ -3151,12 +3151,29 @@ UI = {
             UI.Notif_queue.add("No games found on this device", "warn")
             return
           end
+          local entry = PLDR.GAMES[UI.GameList.CURR]
+          if entry == nil then
+            UI.Notif_queue.add("Couldn't read that game selection", "error")
+            return
+          end
+          local root, rel = string.match(entry or "", "^([^|]+)|(.+)$")
           -- Empty = Automatic (no user-defined path): the launch resolver walks
           -- the device/cwd/mc ladder on its own (profiles dropped -- R3Z3N).
           local configured_popstarter_path = tostring(PLDR.POPSTARTER_PATH or "")
           local popstarter_path = configured_popstarter_path
+          -- Resolve against the root the launch call itself will use. USB entries encode
+          -- their own device root ("<root>POPS/|name") and the USB page keeps
+          -- PLDR.GAMEPATH = "" (multi-drive lists), so resolving with GAMEPATH here never
+          -- checked <drive>:/POPS/POPSTARTER.ELF and a drive-resident-only POPSTARTER
+          -- failed this gate even though RunPOPStarterGame(root, rel) below would have
+          -- found it (sAGA/oldman63). GHDD keeps GAMEPATH: its entries encode a partition
+          -- name, not a device root.
+          local resolve_location = PLDR.GAMEPATH
+          if UI.CURSCENE ~= UI.SCENES.GHDD and root ~= nil and IsDevicePath(root) then
+            resolve_location = root
+          end
           if type(PLDR.ResolveLaunchPopstarterPath) == "function" then
-            popstarter_path = PLDR.ResolveLaunchPopstarterPath(PLDR.GAMEPATH, configured_popstarter_path)
+            popstarter_path = PLDR.ResolveLaunchPopstarterPath(resolve_location, configured_popstarter_path)
           elseif type(PLDR.ResolvePopstarterPath) == "function" then
             popstarter_path = PLDR.ResolvePopstarterPath(configured_popstarter_path)
           end
@@ -3198,12 +3215,6 @@ UI = {
             UI.Notif_queue.add("SMB modules are not installed\nGames list but won't boot without them --\ninstall via Settings > SMB modules, then Save", "error")
             return
           end
-          local entry = PLDR.GAMES[UI.GameList.CURR]
-          if entry == nil then
-            UI.Notif_queue.add("Couldn't read that game selection", "error")
-            return
-          end
-          local root, rel = string.match(entry or "", "^([^|]+)|(.+)$")
           local vcd_full = ResolveSelectedVcdPath(entry, PLDR.GAMEPATH)
           -- Skip the existence preflight on net-SMB too: per-file stat over the live
           -- smb0: browse mount is unreliable, and this is only a (non-blocking) toast.
