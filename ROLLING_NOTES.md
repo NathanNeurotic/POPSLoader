@@ -2,11 +2,24 @@
 
 **This is a bleeding-edge TEST build, not a stable release.** It has everything from the latest stable **plus** features still being tested.
 
-**This build names itself, so you never have to guess which one you are on.** Settings and the boot screen read **1.0.2-dev**. If yours reads plain **1.0.1**, that is the public release and none of the changes below are in it. (The `1.0.2` part only means "newer than 1.0.1". It is not a promise about what the next release will be called.)
+**This build names itself, so you never have to guess which one you are on.** Open **Settings**, then **About**: the **Version** row reads **v1.0.2-dev**. One step further into **Credits**, a small grey line at the bottom left says the same (with the boot timing under it). If neither place shows a version at all, you are on the public **1.0.1** release or an older build, and none of the changes below are in it. If the version ends in **-EXP** and a number, you are on the separate experimental build. (The `1.0.2` part only means "newer than 1.0.1". It is not a promise about what the next release will be called.)
 
 Please try it and report anything odd, and say the version you see. To go back to stable, just reinstall the latest entry on the **Releases** page.
 
 Here's everything new or changed **since BETA-9**.
+
+---
+
+## 🎓 Just graduated from the experimental channel (2026-07-16, all of it new to rolling)
+
+The experimental build's changes proved out and have all landed here. In one list, newest first:
+
+- **The build is almost a quarter smaller** (about 400 KB off). Three separate removals: stripped leftover developer data from the internal launch helper, dropped unused font-format machinery, dropped an unused JPEG decoder. Each fails differently, so if something breaks the symptom names the culprit: games failing to launch or a black screen at the handoff points at the helper; missing or garbled menu text points at the font work; one specific missing cover (a `.png` that is secretly a renamed JPEG) points at the JPEG drop. Real PNG covers are untouched.
+- **USB now uses wLaunchELF R3Z's drivers, loaded together at startup.** This fixed the two testers whose drives were invisible, and it changes the USB drivers for everyone. If your USB, MX4SIO, or internal exFAT drive worked before and does not now, that is a serious report and we want it immediately. If USB fails, the error now includes a bracket line like `[drive found but not mounted, bdm=1 iop128k=ok]`; a photo of it tells us exactly which of four faults to fix.
+- **USB games launch with a drive-resident POPSTARTER.ELF.** If your `POPSTARTER.ELF` lives only in the USB drive's `POPS/` folder, launching used to fail with "No POPSTARTER.ELF found" even though the file was there. Fixed; the launch check now looks at the same place the launch itself uses. Setups with POPSTARTER on a memory card or next to POPSLOADER.ELF behave exactly as before.
+- **The version and boot timing are now on screen.** Settings, then About, has a **Version** row; the Credits page shows the build line with a boot-timing line under it, like `boot 4820ms (slowest: ds34usb+ds34bt load +2100ms)`. Photos of those two grey lines from different consoles are genuinely useful.
+- **Both internal HDD pages at once (opt-in, off by default).** *Settings, Device List, Internal HDD* now has a **Both** choice alongside APA/PFS and exFAT, so the device list can show both HDD entries. If you turn it on, one specific order is worth testing: cold boot, open HDD (exFAT) first, let it list, back out, then open HDD (PFS). Power-cycle between attempts.
+- **POPSLoader speaks Hungarian.** *Settings, Startup, Language:* **Magyar** (translation by oldman63). Hungarian speakers: check that the double-accented letters (the o and u in words like "főkönyvtár") draw correctly and nothing runs off the edge of a row. Untranslated lines stay English by design.
 
 ---
 
