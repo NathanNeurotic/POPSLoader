@@ -37,7 +37,7 @@ Confirm	Megerősítés
 Connecting to SMB...	Csatlakozás az SMB-hez...
 Couldn't apply the PS2 IP settings\ntry again or power-cycle the network adapter	A PS2 IP-beállításai nem alkalmazhatók\npróbálja meg újra, vagy indítsa újra a hálózati adaptert
 Couldn't read that game selection	Nem sikerült elolvasni ezt a játékválasztást
-Couldn't save settings -- POPSTARTER folder NOT deleted	A beállítások mentése nem sikerült -- a POPSTARTER mappa NEM került törlésre
+Couldn't save settings -- POPSTARTER folder NOT deleted	A beállítások mentése nem sikerült -- a POPSTARTER mappa NEM lett törölve
 Couldn't save settings -- POPSTARTER folder NOT restored	A beállítások mentése nem sikerült -- a POPSTARTER mappa NEM került visszaállításra
 Cover Art	Borítókép
 Cover Art disabled	Borítóképek letiltva
@@ -45,7 +45,7 @@ Cover Art enabled	Borítóképek engedélyezve
 Cover/details folder	Borító/Részletek mappa
 Credits	Köszönetek
 Delete the POPSTARTER folder from the memory card?	Törli a POPSTARTER mappát a memóriakártyáról?
-Design by Berion\nScripts by nuno6573 and Ripto\nBased on Enceladus by Daniel Santos\nTesting by P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k, and Community\n\nSpecial Thanks To:\nkrHACKen for making POPStarter\nuyjulian, fjtrujy, HWC, and others for always helping\n\nThis program is free and open source\nIf you bought it, you have been scammed\n\nCompatibility problems? Visit:\nyoutube.com/@hugopocked6695	Tervezés: Berion\nSzkriptek: nuno6573 és Ripto\nBázis: Daniel Santos „Enceladus” című munkája\nTesztelés: P4NCHOL1NO, VizoR, provato,\nnuno6573, sAGA/oldman63, saildot4k és a közösség\n\nKülön köszönet:\nkrHACKennek a POPStarter elkészítéséért\nuyjuliannek, fjtrujy-nak, HWC-nek és másoknak a folyamatos segítségért\n\nEz a program ingyenes és nyílt forráskódú\nHa megvásárolta, akkor átverték\n\nKompatibilitási problémák? Látogasson el ide:\nyoutube.com/@hugopocked6695
+Design by Berion\nScripts by nuno6573 and Ripto\nBased on Enceladus by Daniel Santos\nTesting by P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k, and Community\n\nSpecial Thanks To:\nkrHACKen for making POPStarter\nuyjulian, fjtrujy, HWC, and others for always helping\n\nThis program is free and open source\nIf you bought it, you have been scammed\n\nCompatibility problems? Visit:\nyoutube.com/@hugopocked6695	Tervezés: Berion\nSzkriptek: nuno6573 és Ripto\nBázis: Daniel Santos „Enceladus” című munkája\nTesztelés: P4NCHOL1NO, VizoR, provato,\nnuno6573, sAGA/oldman63, saildot4k és a közösség\n\nKülön köszönet:\nkrHACKennek a POPStarter elkészítéséért\nuyjuliannek, fjtrujy-nak, HWC-nek és másoknak a folyamatos segítségért\n\nEz a program ingyenes és nyílt forráskódú\nHa megvásároltad, akkor átvertek\n\nKompatibilitási problémák? Látogass el ide:\nyoutube.com/@hugopocked6695
 DHCP (automatic)	DHCP (automatikus)
 DHCP failed\nset a static IP in SMB settings	A DHCP nem sikerült\nÁllítson be statikus IP-címet az SMB-beállításokban
 Disc (DKWDRV)	Fizikai lemez (DKWDRV)
@@ -70,22 +70,22 @@ Failed to refresh HDD list	A merevlemez-lista frissítése nem sikerült
 Failed to refresh list	A lista frissítése nem sikerült
 FAT32-USB (None)	FAT32-USB (No BDMA)
 First disc only	Csak az első lemez
-Game details	Játék részletek
+Game details	Játék részletei
 Game hidden	Játék elrejtése
 Game List	Játéklista
 Game list cache	Játéklista-gyorsítótár
 Game shown	Játék megjelenítése
 Games path affects browsing only:\nPOPStarter can only launch games from <share>/POPS	A játékok elérési útvonala kizárólag a böngészést érinti:\nA POPStarter csak a <share>/POPS mappából indíthat játékokat
 HDD Alt mode needs POPSTARTER on HDD	A HDD Alt módhoz POPSTARTER szükséges a HDD-n
-HDD list loaded from cache (R1 rescans)	A HDD-lista betöltődött a gyorsítótárból (R1 a lista frissítése)
+HDD list loaded from cache (R1 rescans)	A HDD-lista betöltődött a gyorsítótárból (R1 lista frissítése)
 HDD list refreshed	A HDD-lista frissült
 HDD list refreshed (no games found)	A HDD-lista frissült (nincs játék)
 Hidden	Rejtett
 Hidden games	Rejtett játékok
-Hidden games are filtered out.\nPress R3 to reveal them, then L3 to unhide.	A rejtett játékok kiszűrésre kerülnek.\nNyomja meg az R3 gombot az elrejtéshez, az L3 gombot a megjelenítéshez.
-Hidden games filtered out again	Az elrejtett játékok kiszűrve
+Hidden games are filtered out.\nPress R3 to reveal them, then L3 to unhide.	A rejtett játékok kiszűrésre kerülnek.\nNyomja meg az R3 gombot az elrejtésükhöz, majd az L3 gombot a megjelenítésükhöz.
+Hidden games filtered out again	A rejtett játékok kiszűrve
 Hide Text	Szöveg elrejtése
-Hide UI Text	UI szövegek elrejtése
+Hide UI Text	UI szövegek elrejtve
 Installed	Telepített
 Internal HDD	Belső HDD
 Keep this display mode?	Megtartja ezt a megjelenítési módot?
@@ -103,15 +103,15 @@ Loading MX4SIO...	MX4SIO betöltése...
 Loading USB...	USB betöltése...
 manually). Your POPSLoader settings are kept.	kézzel). A POPSLoader beállításai megmaradnak.
 Memory Card	Memóriakártya
-MMCE has no POPS folder\nexpected mmce0:/POPS/	Az MMCE-n nincs POPS mappa\nelvárás az mmce0:/POPS/ mappa
+MMCE has no POPS folder\nexpected mmce0:/POPS/	Az MMCE-n nincs POPS mappa\nelvárás az mmce0:/POPS/
 Multi-disc games	Többlemezes játékok
 NetBIOS isn't supported\nset Address type = IP + a Server IP	A NetBIOS nem támogatott\nállítsa be a címtípust: IP + egy szerver IP-címe
-No cover. Looked for:	Nincs borító. Itt kerestük:
+No cover. Looked for:	Nincs borító. Itt keresve:
 No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)	Nincs észlelt exFAT merevlemez\nformázza le a belső meghajtót exFAT formátumra (BDMA mód = ATA)
 No games found	Nincsenek játékok
 No games found on hdd0:\n(__.POPS partitions are empty)	Nincsenek játékok a hdd0-n:\n(a __.POPS partíciók üresek)
 No games found on this device	Az eszközön nem találhatóak játékok
-No MMCE device detected\nchecked mmce0: and mmce1:	Nem észlelhető MMCE-eszköz\nellenőrizve itt: mmce0: és mmce1:
+No MMCE device detected\nchecked mmce0: and mmce1:	Nem észlelhető MMCE-eszköz\nellenőrizve: mmce0: és mmce1:
 No MX4SIO device detected	Nem észlelhető MX4SIO eszköz
 No network link\ncheck the Ethernet cable / adapter	Nincs hálózati kapcsolat\nEllenőrizze az Ethernet-kábelt / adaptert
 No Share selected	Nincs kiválasztott megosztás
@@ -127,7 +127,7 @@ On (per-device)	Be (eszközönként)
 Opening SMB list...	SMB-lista megnyitása...
 Overscan (CRT inset)	Overscan (CRT betét)
 POPS (beside game)	POPS (a játék mellett)
-POPSLoader\nfor POPStarter	POPSLoader\na POPStarter kezeléséhez
+POPSLoader\nfor POPStarter	POPSLoader\na POPStarterhez
 POPSTARTER Folder	POPSTARTER mappa
 POPSTARTER folder deleted from the memory card	A POPSTARTER mappa törölve lett a memóriakártyáról
 POPSTARTER folder restored on the memory card\n(set a BDMA mode to re-add the exFAT/SMB modules)	A POPSTARTER mappa visszaállítva a memóriakártyán\n(állítsa be a BDMA módot az exFAT/SMB modulok újbóli hozzáadásához)
@@ -142,7 +142,7 @@ Rescanning HDD partitions...	A merevlemez-partíciók újraszkennelése...
 Reset	Visszaállítás
 Reset Defaults	Alapértelmezések visszaállítása
 Retrying USB scan...	Az USB-ellenőrzés újraindítása...
-Return to OSDSYS?	Kilépés az OSDSYS-be?
+Return to OSDSYS?	Vissza az OSDSYS-hez?
 return until you turn this back On (or re-add them	addig nem jelennek meg, amíg ezt újra be nem kapcsolja\n(vagy újra hozzá nem adja őket)
 Right aligned	Jobbra igazítva
 Save	Mentés
@@ -163,8 +163,8 @@ Select a share	Válasszon megosztást
 Server refused SMBv1\nenable SMBv1 support on the host	A szerver elutasította az SMBv1-et\nEngedélyezze az SMBv1 támogatást a gazdagépen
 Settings	Beállítások
 Share not found\ncheck the Share name (host must allow SMB1)	A megosztás nem található\nEllenőrizze a megosztás nevét (a gazdagépnek engedélyeznie kell az SMB1-et)
-Show all discs	Az összes lemez megjelenítése
-Showing hidden games (dimmed) -- press L3 to unhide	Rejtett játékok megjelenítése (elhalványítva) -- az L3 megnyomásával láthatóvá tehetők
+Show all discs	Minden lemez megjelenítése
+Showing hidden games (dimmed) -- press L3 to unhide	Rejtett játékok megjelenítése (elhalványítva) -- L3 megnyomásával láthatóvá tehetők
 Shown	Megjelenítve
 SMB / Network	SMB / Hálózat
 SMB connect failed	Az SMB-kapcsolat sikertelen
@@ -195,19 +195,15 @@ Automatic	Automatikus
 Booted from:	Indítva innen:
 Defaults restored	Alapértelmezések visszaállítva
 Device List	Eszközlista
-How to hide a game	Hogyan lehet elrejteni egy játékot
+How to hide a game	Játék elrejtése
 if not confirmed	múlva, ha nincs megerősítve
 Keep	Megtart
 L3 on the game list	L3 a játéklistán
 Menu	Menü
 No	Nem
-Operation failed	Sikertelen művelet
+Operation failed	A művelet sikertelen
 Press CROSS again to discard what you typed	Nyomja meg újra a KERESZT gombot a beírtak elvetéséhez
 Revert	Visszavon
 Reverting in	Visszaállítás
 Triangle	Háromszög
-No POPSTARTER.ELF found\nchecked the game device, the launcher folder and mc0:/mc1:	Nem található a POPSTARTER.ELF fájl\nellenőrizve itt: a játék eszköze, az indító mappája és mc0:/mc1:
-Checking POPSTARTER...	POPSTARTER ellenőrzése...
-Checking the game file...	A játékfájl ellenőrzése...
-Starting the game...	A játék indítása...
-Staging drivers for this device	Illesztőprogramok előkészítése ehhez az eszközhöz
+No POPSTARTER.ELF found\nchecked the game device, the launcher folder and mc0:/mc1:	Nem található POPSTARTER.ELF\nellenőrizve: a játék eszköze, az indító mappája és mc0:/mc1:
