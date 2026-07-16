@@ -6429,16 +6429,32 @@ function PLDR.ApplySmbModules(progress)
     if fd ~= nil and (type(fd) ~= "number" or fd >= 0) then
       System.closeFile(fd)
     end
+    -- Resolve what SHOULD be there before writing anything.
+    local bytes, want_size = nil, nil
     if source == nil then
-      local bytes = GetEmbeddedAssetBytes(name)
+      bytes = GetEmbeddedAssetBytes(name)
       if bytes == nil then
         if UI ~= nil and UI.Notif_queue ~= nil then UI.Notif_queue.add(PLDR.L("Missing SMB module (tried):").."\n"..table.concat(paths, "\n")) end
         return false
       end
+      want_size = #bytes
+    else
+      want_size = GetFileSizeSafe(source)
+    end
+    -- Skip files already installed (maintainer: "it shouldn't be pasting the
+    -- files unless they aren't there already"). These 6 IRX are static build
+    -- artifacts, so a byte-size match means the right file is on the card --
+    -- the same staleness test IsBdmaModeEquipped uses to avoid rewriting a
+    -- correct card. Turns a re-save from 8 slow memory-card writes into 2
+    -- (only the settings-bearing .DATs below always regenerate). A missing
+    -- dest gives GetFileSizeSafe nil, so a fresh install still writes all 6.
+    local have_size = GetFileSizeSafe(dest)
+    if have_size ~= nil and want_size ~= nil and have_size == want_size and have_size > 0 then
+      -- already present and the right size: leave it alone
+    elseif bytes ~= nil then
       if not WriteBytesAtomicBounded(bytes, dest) then return false end
     else
-      local src_size = GetFileSizeSafe(source)
-      if not CopyExternalAtomicBounded(source, dest, src_size) then return false end
+      if not CopyExternalAtomicBounded(source, dest, want_size) then return false end
     end
   end
   -- IPCONFIG.DAT: write the static line, or delete any stale file when on DHCP.
