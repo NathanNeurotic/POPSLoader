@@ -186,7 +186,7 @@ Video Standard	Videó szabvány
 Visible	Látható
 Visible (manage)	Látható (kezelhető)
 Working...	Dolgozok...
-X = Keep      O = Revert  X = Megtart      O = Visszavon
-X = Select    O = Cancel  X = Kiválaszt    O = Mégsem
-X = Yes       O = No  X = Igen         O = Nem
-Yes  Igen
+X = Keep      O = Revert	X = Megtart      O = Visszavon
+X = Select    O = Cancel	X = Kiválaszt    O = Mégsem
+X = Yes       O = No	X = Igen         O = Nem
+Yes	Igen
