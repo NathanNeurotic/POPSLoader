@@ -2,11 +2,17 @@
 
 **This is an opt-in EXPERIMENTAL build. It is not a replacement for the public release, and it is not the rolling build either.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.0.1**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** open **Settings**, then **About**, and read the **Version** row: it says **v1.0.2-dev-EXP9**. One step further into **Credits**, the small grey line at the bottom left says **POPSLoader v1.0.2-dev-EXP9** (or an exact build stamp, if a `BUILD_INFO.txt` file sits next to your POPSLOADER.ELF). **This build is currently the only one that shows a version on screen at all.** The public release, the rolling build, and every experimental build up to EXP8 show nothing in either place; that was a real bug, reported by sAGA, and it is fixed here. So the check is simple: version says EXP9 = this build; no version anywhere = an older build, update to this one.
+**How to tell you are running it:** open **Settings**, then **About**, and read the **Version** row: it says **v1.0.2-dev-EXP10**. One step further into **Credits**, the small grey line at the bottom left says **POPSLoader v1.0.2-dev-EXP10** (or an exact build stamp, if a `BUILD_INFO.txt` file sits next to your POPSLOADER.ELF). Only experimental builds from EXP9 on show a version on screen at all; the public release, the rolling build, and everything up to EXP8 show nothing in either place (a real bug, reported by sAGA, fixed in EXP9). So the check is simple: version says EXP10 = this build; version says EXP9 = the previous experimental, please update; no version anywhere = an older build, update to this one.
 
 **What the name means:** this build is the **rolling** build (1.0.2-dev) plus the experiments below. It is not the 1.0.1 release plus experiments. Everything currently in rolling is in here too, including the menu and Settings cleanup. Earlier experimental builds were misleadingly named 1.0.1-EXP, which made this look like it was missing the newer work. It never was; the name was just wrong.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
+
+---
+
+## New in EXP10
+
+**POPSLoader speaks Hungarian.** Open **Settings**, then **Startup**, then **Language**, and pick **Magyar**. The translation was contributed by oldman63, so this build exists partly so he can see his own work on a real screen. Two things worth a look from any Hungarian speaker: whether the special letters with double accents (the o and u in words like "főkönyvtár" or "műveletek") draw correctly everywhere, and whether any menu text runs off the edge of its row. Everything untranslated simply stays English, which is normal and safe. (This build also picks up the rolling build's newest housekeeping, nothing user-visible.)
 
 ---
 
@@ -25,7 +31,7 @@
 | Build | Size |
 | :--- | :--- |
 | 1.0.1 (public release) | 1,715,300 bytes |
-| **This build (EXP9)** | **about 1,315,000 bytes** |
+| **This build (EXP10)** | **about 1,320,000 bytes** |
 | | **about 400,000 bytes smaller (23%)** |
 
 The size work removed weight the PS2 was never using. It changes no features, no settings and no menus: everything from 1.0.1 is here working exactly as it shipped. Three separate changes got us there, and they fail in **completely different ways**, so if something breaks we will know instantly which one did it.
@@ -139,9 +145,9 @@ Mostly, **use it normally**. If your games launch, you can read the menus, and y
 
 ## How to report
 
-Please say **which build** (v1.0.2-dev-EXP9, from Settings then About), **which device**, your **console model and region**, and what you did. A photo helps, especially for anything text related.
+Please say **which build** (v1.0.2-dev-EXP10, from Settings then About), **which device**, your **console model and region**, and what you did. A photo helps, especially for anything text related.
 
-If it all just works, that is a valuable report too. "EXP9 fine on USB and HDD, text and covers look normal" is genuinely all we need.
+If it all just works, that is a valuable report too. "EXP10 fine on USB and HDD, text and covers look normal" is genuinely all we need.
 
 ---
 
