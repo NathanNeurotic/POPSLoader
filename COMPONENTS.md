@@ -390,14 +390,19 @@ copies are not read at runtime. Editing them requires a rebuild.
   live block devices via `bdm_get_bd()`; the EE side
   classifies each backend by driver-name substring. Built from source
   (Makefile:241-245).
-- `iop/embed/` — pinned/in-tree IRX blobs bin2c'd into the ELF: `bdm.irx`,
-  `bdmfs_fatfs.irx`, `bdmfs_vfat.irx`, `mx4sio_bd.irx`
+- `iop/embed/` — pinned/in-tree IRX blobs bin2c'd into the ELF: `mx4sio_bd.irx`
   (+`mx4sio_bd_mini.irx`), plus the `PS2SDK_MX4SIO` and `BDMASSAULT_MX4SIO`
   source pins. The active `mx4sio_bd.irx` is pinned from
-  `iop/embed/PS2SDK_MX4SIO` (Makefile:247-251). Other IRX (iomanX, fileXio,
-  sio2man, mcman, mcserv, padman, libsd, usbd, audsrv, usbmass_bd, cdfs,
-  ps2dev9, ps2atad, ps2hdd-osd, ps2fs, mmceman, ata_bd) resolve from `$(PS2SDK)/iop/irx/`
-  (vpath Makefile:216, object list Makefile:88-93).
+  `iop/embed/PS2SDK_MX4SIO`. (`bdmfs_vfat.irx` also sits here but is DEAD —
+  no object in IOP_MODULES references it.) **The whole BDM set — bdm,
+  bdmfs_fatfs, usbmass_bd, ata_bd — resolves from `$(PS2SDK)/iop/irx/` as one
+  matched same-build set** (EXP12: the vendored wLaunchELF_R3Z fallback blobs
+  for bdm/bdmfs_fatfs/usbmass_bd were removed — they were R3Z's last-resort
+  copies with NO GPT support, while R3Z itself and OPL prefer the SDK set;
+  the Makefile vpath falls through automatically). Other IRX (iomanX,
+  fileXio, sio2man, mcman, mcserv, padman, libsd, usbd, audsrv, cdfs,
+  ps2dev9, ps2atad, ps2hdd-osd, ps2fs, mmceman) resolve from
+  `$(PS2SDK)/iop/irx/` the same way.
 
 ## 6. Controller modules (`modules/`)
 - `modules/ds34usb/` and `modules/ds34bt/` — DS3/DS4 USB and Bluetooth support,

@@ -2,11 +2,23 @@
 
 **This is an opt-in EXPERIMENTAL build. It is not a replacement for the public release, and it is not the rolling build either.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.0.1**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** open **Settings**, then **About**, and read the **Version** row: it says **v1.0.2-dev-EXP11**. One step further into **Credits**, the small grey line at the bottom left says **POPSLoader v1.0.2-dev-EXP11** (or an exact build stamp, if a `BUILD_INFO.txt` file sits next to your POPSLOADER.ELF). The check is simple: a version ending in **-EXP11** = this build; **-EXP10** or **-EXP9** = an older experimental, please update; plain **v1.0.2-dev** with no EXP = the rolling test build (which now carries everything the experimental channel graduated); no version anywhere = the public 1.0.1 release or older.
+**How to tell you are running it:** open **Settings**, then **About**, and read the **Version** row: it says **v1.0.2-dev-EXP12**. One step further into **Credits**, the small grey line at the bottom left says **POPSLoader v1.0.2-dev-EXP12** (or an exact build stamp, if a `BUILD_INFO.txt` file sits next to your POPSLOADER.ELF). The check is simple: a version ending in **-EXP11** = this build; **-EXP10** or **-EXP9** = an older experimental, please update; plain **v1.0.2-dev** with no EXP = the rolling test build (which now carries everything the experimental channel graduated); no version anywhere = the public 1.0.1 release or older.
 
 **What the name means:** this build is the **rolling** build (1.0.2-dev) plus the experiments below. It is not the 1.0.1 release plus experiments. Everything currently in rolling is in here too, including the menu and Settings cleanup. Earlier experimental builds were misleadingly named 1.0.1-EXP, which made this look like it was missing the newer work. It never was; the name was just wrong.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
+
+---
+
+## New in EXP12: the internal-drive support gets the modern drivers
+
+**This is the fix the EXP11 detective work pointed at, and it changes the storage drivers for everyone, so please read the watch-for below.**
+
+The drive system (the BDM core, the FAT/exFAT filesystem, the USB reader and the ATA reader) now all comes from one current PS2SDK build, as a matched set. Before this, three of those four pieces were older bundled copies that, among other things, did not understand GPT partitioned drives at all. The new set is the same family OPL builds use, which is exactly why sAGA's 4TB internal drive works there and not here. With EXP12 that drive should finally be able to appear on the HDD (exFAT) page.
+
+**What to test if you are sAGA:** open the HDD (exFAT) page. Your 4TB GPT drive appearing and listing games is the win. Two honest caveats: drives larger than 2TB currently report as 2TB, so keep your games within the first 2TB of the drive for now (a proper fix is planned); and if the page shows an error with `iop128k=NO` in the bracket, photograph it, that is a known memory-pressure signature with its own fix path.
+
+**What to watch for, everyone else:** this replaces the USB drivers again. If USB, MX4SIO, or the internal exFAT drive worked on EXP11 or the rolling build and does NOT work here, that is the single most important report you can make, and it is a one-step revert. The EXP11 numbered-step diagnostics (43 through 50) are still in this build, so any freeze still names its own cause.
 
 ---
 
@@ -43,7 +55,7 @@ Two findings from digging into that report. First, the current build genuinely c
 | Build | Size |
 | :--- | :--- |
 | 1.0.1 (public release) | 1,715,300 bytes |
-| **This build (EXP11)** | **about 1,320,000 bytes** |
+| **This build (EXP12)** | **about 1,320,000 bytes** |
 | | **about 400,000 bytes smaller (23%)** |
 
 The size work removed weight the PS2 was never using. It changes no features, no settings and no menus: everything from 1.0.1 is here working exactly as it shipped. Three separate changes got us there, and they fail in **completely different ways**, so if something breaks we will know instantly which one did it.
@@ -157,9 +169,9 @@ Mostly, **use it normally**. If your games launch, you can read the menus, and y
 
 ## How to report
 
-Please say **which build** (v1.0.2-dev-EXP11, from Settings then About), **which device**, your **console model and region**, and what you did. A photo helps, especially for anything text related.
+Please say **which build** (v1.0.2-dev-EXP12, from Settings then About), **which device**, your **console model and region**, and what you did. A photo helps, especially for anything text related.
 
-If it all just works, that is a valuable report too. "EXP11 fine on USB and HDD, text and covers look normal" is genuinely all we need.
+If it all just works, that is a valuable report too. "EXP12 fine on USB and HDD, text and covers look normal" is genuinely all we need.
 
 ---
 
