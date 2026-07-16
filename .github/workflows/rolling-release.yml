@@ -270,7 +270,12 @@ jobs:
           compression-level: 0
 
       - name: Publish rolling release
-        if: success()
+        # push-only: pull_request runs still build + harness-gate the merge
+        # preview, but must never move the floating rolling-release tag -- PR
+        # #510 (opened 2026-07-16) silently republished the rolling channel
+        # from its synthetic merge commit because this step had no event gate
+        # (the MEGA job below always had one).
+        if: success() && github.event_name == 'push'
         shell: sh
         env:
           GH_TOKEN: ${{ github.token }}
