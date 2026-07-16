@@ -4788,14 +4788,60 @@ UI = {
         if UI.Pad.Events.NAV_DOWN then MoveFocus( 1) end
 
         local focused_item = items[UI.SettingsFocus]
+        -- Section jump (sAGA: "to skip the SMB block, you have to click through
+        -- every item"). Move focus to the previous/next section's first selectable
+        -- row; the accordion follows focus, so the old block collapses and the new
+        -- one opens in one press. L1/R1 work from ANY row; LEFT/RIGHT do the same
+        -- on rows that don't consume them (cycle rows keep left/right = value
+        -- prev/next -- hijacking those would break value editing).
+        local function JumpSection(delta)
+          local order, seen = {}, {}
+          for _, it in ipairs(items) do
+            local sec = (it.kind == "section") and it.label or it.section
+            if sec ~= nil and not seen[sec] then
+              seen[sec] = true
+              order[#order + 1] = sec
+            end
+          end
+          if #order < 2 then return end
+          local cur = (focused_item ~= nil and focused_item.section) or UI.SettingsOpenSection
+          local idx = 1
+          for i = 1, #order do
+            if order[i] == cur then idx = i; break end
+          end
+          -- Walk past sections with no selectable rows (all-info blocks) instead
+          -- of dead-ending on them.
+          for step = 1, #order - 1 do
+            local target = order[((idx - 1 + delta * step) % #order) + 1]
+            for i = 1, #items do
+              if items[i].section == target and IsSelectable(i) then
+                UI.SettingsFocus = i
+                return
+              end
+            end
+          end
+        end
+        if UI.Pad.Events.L1 then JumpSection(-1) end
+        if UI.Pad.Events.R1 then JumpSection(1) end
+        -- Re-capture after a shoulder jump so same-frame LEFT/RIGHT/CONFIRM act
+        -- on the row focus actually landed on, not the pre-jump one.
+        focused_item = items[UI.SettingsFocus]
         if focused_item ~= nil then
           -- Focus is never on a section header (non-selectable), so there are no
           -- section-collapse branches: the accordion follows focus automatically.
           if UI.Pad.Events.NAV_LEFT then
-            if focused_item.kind == "cycle" and focused_item.prev then focused_item.prev() end
+            if focused_item.kind == "cycle" and focused_item.prev then
+              focused_item.prev()
+            else
+              JumpSection(-1)
+            end
           end
           if UI.Pad.Events.NAV_RIGHT then
-            if focused_item.kind == "cycle" and focused_item.next then focused_item.next() end
+            if focused_item.kind == "cycle" and focused_item.next then
+              focused_item.next()
+            else
+              JumpSection(1)
+            end
           end
           if UI.Pad.Events.CONFIRM then
             if focused_item.kind == "cycle" and focused_item.next then
