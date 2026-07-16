@@ -5721,16 +5721,19 @@ local function EnsureMassBackendsReady(mode)
         PLDR._AtaStage(0.44, "exFAT HDD: starting dev9 (44)...")
         pcall(System.ensureDev9)
       end
-      -- EXP14 heap guard: ata_bd's module start allocates a ~131KiB contiguous
-      -- BDM drive cache with NO failure check -- on a tight IOP the failed
-      -- alloc's NULL write lands on the exception vectors and wedges the IOP
-      -- forever (the frozen-45 photo; OPL survives on a freshly reset lean
-      -- IOP). Probe the real size FRESH here, after dev9 took its share, and
-      -- REFUSE the load when the block isn't free: a named error beats a
-      -- frozen console. Bracket numbers stay untranslated (photo telemetry).
+      -- EXP15 heap guard, threshold raised 136K -> 200K: sAGA's EXP14 photo
+      -- showed [pre136k=ok] AND a freeze -- because this probe runs BEFORE the
+      -- module LOAD, and ata_bd's own text+data+bss (~20-30KiB) is consumed by
+      -- the load before _start reaches the UNCHECKED ~131KiB bd_cache alloc.
+      -- 136KiB free pre-load can leave ~106KiB at alloc time: under the need.
+      -- 200KiB = cache 132 + module ~30 + margin. This build is the
+      -- discriminator: a refusal toast with largest between 136k and 200k
+      -- CONFIRMS the heap theory; [pre200k=ok] plus a freeze KILLS it and
+      -- promotes the _start race / the PIO IDENTIFY stall (no timeout alarm).
+      -- Bracket numbers stay untranslated (photo telemetry).
       local fresh = nil
       if type(System.iopHeapProbe) == "function" then
-        local ok_h, h = pcall(System.iopHeapProbe, 136 * 1024)
+        local ok_h, h = pcall(System.iopHeapProbe, 200 * 1024)
         if ok_h and type(h) == "table" then fresh = h end
       end
       if fresh ~= nil and fresh.can_alloc_128k ~= true then
@@ -5745,7 +5748,7 @@ local function EnsureMassBackendsReady(mode)
         return
       end
       if type(System.initATA) == "function" then
-        local tag = (fresh ~= nil) and " [pre136k=ok]" or ""
+        local tag = (fresh ~= nil) and " [pre200k=ok]" or ""
         PLDR._AtaStage(0.45, "exFAT HDD: starting the ATA driver (45)"..tag.."...")
         pcall(System.initATA)
       end
