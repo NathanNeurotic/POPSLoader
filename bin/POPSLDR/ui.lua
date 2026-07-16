@@ -1648,7 +1648,7 @@ UI = {
           end
           if elf_path == nil or not SafeDoesFileExist(elf_path) then
             UI.Modal.Close()
-            UI.Notif_queue.add("No DKWDRV found at this path\n"..configured_path, "error")
+            UI.Notif_queue.add(PLDR.L("No DKWDRV found at this path").."\n"..configured_path, "error")
             return
           end
           UI.LAUNCHING = true
@@ -1766,7 +1766,7 @@ UI = {
             pcall(PLDR.RestoreWorkingDirectory, previous_cwd)
           end
           UI.LAUNCHING = false
-          UI.Notify("DKWDRV failed to launch\nreturn code: "..tostring(rc), 150, "error")
+          UI.Notify(PLDR.L("DKWDRV failed to launch").."\n"..PLDR.L("return code:").." "..tostring(rc), 150, "error")
           return
         end
         UI.Modal.cancel_action = UI.Modal.Close
@@ -1856,7 +1856,7 @@ UI = {
         -- reboot=1 attempts were chasing the wrong mechanism.
         local rc = System.loadELF(elf_path, reboot_iop)
         UI.LAUNCHING = false
-        UI.Notify("BOOT.ELF failed to launch\nreturn code: "..tostring(rc), 150, "error")
+        UI.Notify(PLDR.L("BOOT.ELF failed to launch").."\n"..PLDR.L("return code:").." "..tostring(rc), 150, "error")
         return
       end;
       HandleInput = function ()
@@ -2379,8 +2379,8 @@ UI = {
         Font.ftPrint(SFONT, input_x + 10, input_y + 10, 0, input_w - 20, 16, UI.PathEditor._BuildVisibleValue(46), Color.new(150, 205, 255, 128))
         -- The label names the state R2 SWITCHES TO, not the current one
         -- (R3Z3N: "tell people what you would change to, not what you are on").
-        local mode_label = UI.PathEditor.upper and "Case/Symbols: lower  (R2)" or "Case/Symbols: UPPER  (R2)"
-        local info_label = mode_label.."   Cursor: L1 / R1"
+        local mode_label = UI.PathEditor.upper and PLDR.L("Case/Symbols: lower  (R2)") or PLDR.L("Case/Symbols: UPPER  (R2)")
+        local info_label = mode_label.."   "..PLDR.L("Cursor: L1 / R1")
         Font.ftPrint(SFONT, input_x + 2, input_y + input_h + 10, 0, input_w - 4, 16, info_label, UI.CCOL.GREY)
 
         local key_h = 24
@@ -2712,7 +2712,7 @@ UI = {
         if UI.CURSCENE == UI.SCENES.GSMB then
           local slots = PLDR.GetMMCESlots()
           if #slots > 1 and not UI.ShouldHideAuxText(UI.CURSCENE) then
-            Font.ftPrint(SFONT, layout.LIST_X, layout.LIST_Y - 20, 0, UI.SCR.X, 16, "Slot: "..PLDR.MMCE.PREFIX, UI.CCOL.GREY)
+            Font.ftPrint(SFONT, layout.LIST_X, layout.LIST_Y - 20, 0, UI.SCR.X, 16, PLDR.L("Slot:").." "..PLDR.MMCE.PREFIX, UI.CCOL.GREY)
           end
         end
         if (UI.GameList.CURR > (UI.GameList.STARTUP+(UI.GameList.MAXDRAW-1))) then
@@ -3194,9 +3194,9 @@ UI = {
             if configured_popstarter_path == "" then
               message = "No POPSTARTER.ELF found\nchecked the game device, the launcher folder and mc0:/mc1:"
             else
-              message = "No POPSTARTER found at this path\n"..configured_popstarter_path
+              message = PLDR.L("No POPSTARTER found at this path").."\n"..configured_popstarter_path
               if configured_popstarter_path ~= tostring(popstarter_path) then
-                message = message.."\nResolved: "..tostring(popstarter_path)
+                message = message.."\n"..PLDR.L("Resolved:").." "..tostring(popstarter_path)
               end
             end
             UI.Notif_queue.add(message, "error")
@@ -3223,7 +3223,7 @@ UI = {
           -- smb0: browse mount is unreliable, and this is only a (non-blocking) toast.
           if UI.CURSCENE ~= UI.SCENES.GHDD and UI.CURSCENE ~= UI.SCENES.GSMBNET then
             if not doesFileExist(vcd_full) then
-              UI.Notif_queue.add("Game file missing\n"..vcd_full, "error")
+              UI.Notif_queue.add(PLDR.L("Game file missing").."\n"..vcd_full, "error")
             end
           end
           local launch_path = PLDR.GAMEPATH
@@ -3404,7 +3404,7 @@ UI = {
             if ok then
               UI.Notif_queue.add(was_hidden and "Game shown" or "Game hidden", "ok")
             else
-              UI.Notif_queue.add("Couldn't write .hide to the HDD ("..tostring(reason or "")..").\nYou can still add a \"<game>.hide\" next to the .VCD from a PC.", "warn")
+              UI.Notif_queue.add(PLDR.L("Couldn't write .hide to the HDD").." ("..tostring(reason or "")..")\n"..PLDR.L("You can still add a \"<game>.hide\" next to the .VCD from a PC."), "warn")
             end
           else
             local entry = PLDR.GAMES[UI.GameList.CURR]
@@ -3432,7 +3432,7 @@ UI = {
                 PLDR.SaveGameListCache(cache_path, PLDR.GAMES, PLDR.HIDDEN)
               end
             else
-              UI.Notif_queue.add("Couldn't update hidden state ("..tostring(reason)..")", "error")
+              UI.Notif_queue.add(PLDR.L("Couldn't update hidden state").." ("..tostring(reason)..")", "error")
             end
           end
         end
@@ -3442,7 +3442,7 @@ UI = {
           if r3_save_ok then
             UI.Notif_queue.add(_r3msg, "ok")
           else
-            UI.Notif_queue.add(_r3msg.."\n(could NOT save -- reverts on reboot)", "warn")
+            UI.Notif_queue.add(PLDR.L(_r3msg).."\n"..PLDR.L("(could NOT save -- reverts on reboot)"), "warn")
           end
         end
         local cross_label = UI.Footer.labels.cross_launch
@@ -3757,7 +3757,7 @@ UI = {
             elseif reason == "smb_apply_failed" then
               UI.Notif_queue.add("SMB modules didn't install/remove\nmodule setting reverted; other settings were saved", "error")
             else
-              UI.Notif_queue.add("Couldn't save settings\n"..tostring(PLDR.SETTINGS_PATH or "mc0:/POPSTARTER/.pldrs").." may be read-only"..((type(BOOT_MX4SIO_PROBE_RESULT) == "string" and BOOT_MX4SIO_PROBE_RESULT ~= "") and "\nmx4sio probe: "..BOOT_MX4SIO_PROBE_RESULT or ""), "error")
+              UI.Notif_queue.add(PLDR.L("Couldn't save settings").."\n"..tostring(PLDR.SETTINGS_PATH or "mc0:/POPSTARTER/.pldrs").." may be read-only"..((type(BOOT_MX4SIO_PROBE_RESULT) == "string" and BOOT_MX4SIO_PROBE_RESULT ~= "") and "\nmx4sio probe: "..BOOT_MX4SIO_PROBE_RESULT or ""), "error")
             end
             if allow_fallback_exit == true then
               UI.ProfileDirty = false
@@ -3944,7 +3944,7 @@ UI = {
              and string.match(path, "^[Pp][Ff][Ss]%d*:") == nil then
             local ok, exists = pcall(doesFileExist, path)
             if not (ok and exists == true) then
-              UI.Notif_queue.add("Path saved, file not found:\n"..path, "warn")
+              UI.Notif_queue.add(PLDR.L("Path saved, file not found:").."\n"..path, "warn")
             end
           end
           return path
@@ -5254,7 +5254,7 @@ UI = {
                   iop_line = h.can_alloc_128k and " [iop128k=ok]" or (" [iop128k=NO("..tostring(h.largest or "?")..")]")
                 end
               end
-              report("Locating exFAT HDD POPS folder..."..iop_line, 0.42)
+              report(PLDR.L("Locating exFAT HDD POPS folder...")..iop_line, 0.42)
               -- Staged progress: system.lua's _AtaStage paints through this hook
               -- (and persists the crash marker) right before each blocking call.
               PLDR.AtaProbeProgress = function(pct, msg)
@@ -5307,12 +5307,12 @@ UI = {
 	                  -- The rc suffix tells a real mount fault apart from clean absence
                   -- (the empty-list-from-a-launcher-boot class reports only this toast).
                   local rc_hint = (PLDR.HDD.LAST_MOUNT_RC ~= nil) and (" (last mount rc: "..tostring(PLDR.HDD.LAST_MOUNT_RC)..")") or ""
-                  UI.Notif_queue.add("No '__.POPS' partitions on hdd0:\nformat one with __.POPS / __.POPS0...9"..rc_hint, "warn")
+                  UI.Notif_queue.add(PLDR.L("No '__.POPS' partitions on hdd0:\nformat one with __.POPS / __.POPS0...9")..rc_hint, "warn")
 	                elseif #PLDR.GAMES < 1 then
                   UI.Notif_queue.add("No games found on hdd0:\n(__.POPS partitions are empty)", "warn")
                 end
               else
-                UI.Notif_queue.add("HDD not usable\nstatus: "..PLDR.HDD.STATUS, "error")
+                UI.Notif_queue.add(PLDR.L("HDD not usable").."\n"..PLDR.L("status:").." "..PLDR.HDD.STATUS, "error")
               end
               report("Opening HDD list...", 1.0)
               UI.SceneChange(UI.SCENES.GHDD)
@@ -5335,7 +5335,7 @@ UI = {
               -- Show the retry so a longer probe reads as "still looking" and not as a
               -- freeze. Only an already-failing setup ever sees past attempt 1.
               PLDR.UsbProbeProgress = function(attempt, total)
-                report("Looking for USB drive... ("..tostring(attempt).."/"..tostring(total)..")", 0.38)
+                report(PLDR.L("Looking for USB drive...").." ("..tostring(attempt).."/"..tostring(total)..")", 0.38)
               end
               local usb_roots = PLDR.GetRootsByType("usb")
               PLDR.UsbProbeProgress = nil
@@ -6201,7 +6201,7 @@ function UI.SmbFieldCycle(field, dir)
 end
 function UI.SmbFieldOpenEditor(field)
   local d = UI.SmbEnsureDraft()
-  local title = "Edit "..(UI._SMB_LABELS[field.key] or field.key)
+  local title = PLDR.L("Edit").." "..PLDR.L(UI._SMB_LABELS[field.key] or field.key)
   if type(UI.PathEditor) == "table" and type(UI.PathEditor.Open) == "function" then
     UI.PathEditor.Open(title, tostring(d[field.key] or ""), function(value)
       local dd = UI.SmbEnsureDraft()
@@ -6217,7 +6217,7 @@ function UI.SmbFieldOpenEditor(field)
       if tostring(cleaned) ~= typed and type(UI.Notif_queue) == "table" then
         -- Covers both a rejected shape (falls to the field default) and a
         -- whitespace trim -- either way the user sees the value actually kept.
-        UI.Notif_queue.add((UI._SMB_LABELS[field.key] or field.key).." adjusted -- using \""..tostring(cleaned).."\"", "warn")
+        UI.Notif_queue.add(PLDR.L(UI._SMB_LABELS[field.key] or field.key).." "..PLDR.L("adjusted -- using").." \""..tostring(cleaned).."\"", "warn")
       end
       dd[field.key] = cleaned
       UI.SmbDirty = true
