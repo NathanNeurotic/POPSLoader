@@ -63,7 +63,7 @@ These gates are defined by `.github/workflows/compilation.yml`. The separate `.g
 ### Launch and path handling
 | ID | Area | Setup | Action | Pass Criteria |
 |---|---|---|---|---|
-| L-01 | Missing POPStarter path | Configure nonexistent POPStarter path | Launch game | UI shows `No POPSTARTER found at this path` notification (followed by the configured path; if the resolved path differs, also a `Resolved:` line) |
+| L-01 | Missing POPStarter path | Configure nonexistent POPStarter path, with **no** `POPSTARTER.ELF` available on the game device, the launcher folder, or `mc0:`/`mc1:` (a resolvable fallback copy silently launches instead — that is the designed silent fallthrough, not a failure) | Launch game | UI shows `No POPSTARTER found at this path` notification (followed by the configured path; if the resolved path differs, also a `Resolved:` line) |
 | L-02 | Missing DKWDRV path | Configure nonexistent DKWDRV path | Launch Disc option | UI shows `No DKWDRV found at this path` (plus the configured path) |
 | L-03 | `mc?:/` POPStarter alias (`mc0`) | Place POPStarter only on `mc0:/` and configure `mc?:/` | Launch game | Path resolves to `mc0:/` and launch proceeds |
 | L-04 | `mc?:/` POPStarter alias (`mc1`) | Place POPStarter only on `mc1:/` and configure `mc?:/` | Launch game | Path resolves to `mc1:/` and launch proceeds |
@@ -71,6 +71,7 @@ These gates are defined by `.github/workflows/compilation.yml`. The separate `.g
 | L-06 | Invalid alias targets | Configure `mc?:/` path with file on neither card | Launch game/Disc option | Launch is blocked with explicit missing-file notification |
 | L-07 | BOOT.ELF exit fallback | Put `BOOT.ELF` on `mc0:/BOOT/` only, then `mc1:/BOOT/` only | Open Exit modal and choose `BOOT.ELF` | `mc0:/BOOT/BOOT.ELF` is preferred and `mc1:/BOOT/BOOT.ELF` is used as fallback |
 | L-08 | Automatic/default local POPSTARTER path | Start from a settings file with POPSTARTER Path on Automatic (empty; or an older file whose legacy PROFILE keys are now ignored), with the game device's own `<device>:/POPS/POPSTARTER.ELF` and/or local cwd `POPSTARTER.ELF` present | Cold boot and launch a game | Launch does not stop at `Cant find POPSTARTER ELF`. For a removable device the resolver (`PLDR.ResolveLaunchPopstarterPath`, `bin/POPSLDR/system.lua`) tries, in order: the explicit user-configured absolute POPSTARTER Path when it resolves; then the game's own `<device>:/POPS/POPSTARTER.ELF` when it exists; then cwd `POPSTARTER.ELF`; then the `mc0:`→`mc1:` net. A stale custom path does not block the device/cwd fallbacks. (Both device + cwd steps are existence-gated — a device with no `POPSTARTER.ELF` simply falls through.) |
+| L-09 | USB drive-resident-only POPSTARTER (sAGA repro) | POPSTARTER Path on Automatic; `POPSTARTER.ELF` present **only** at the USB drive's `POPS/` folder (none beside POPSLOADER.ELF, none on `mc0:`/`mc1:`) | Open the USB page and launch a game | Launch proceeds using `<drive>:/POPS/POPSTARTER.ELF`; **no** `No POPSTARTER.ELF found` toast. (Pre-2026-07-16 this failed: the `ui.lua` preflight resolved with the USB page's empty `PLDR.GAMEPATH` instead of the game entry's own device root, so the device rung never ran — the gate blocked before `RunPOPStarterGame` could resolve correctly.) |
 
 ### Device pages and backend behavior
 | ID | Area | Setup | Action | Pass Criteria |
