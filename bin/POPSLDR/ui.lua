@@ -5653,7 +5653,12 @@ UI = {
 		
           Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 20, UI.SCR.X, 40, PLDR.L("POPSLoader\nfor POPStarter"), currcol)
           Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 60, 20, UI.SCR.X, 40, PLDR.L("Code by El_isra"), currcol)
-          Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 80, 20, UI.SCR.X, UI.SCR.Y, [[
+          -- The long-string literal keeps a trailing newline that the TSV key
+          -- lacks, so L() never matched and the body stayed English under every
+          -- language even though the full translation exists (sAGA's photo:
+          -- two Hungarian lines above an English block). Strip it for the
+          -- lookup; the renderer never needed the trailing blank line.
+          Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 80, 20, UI.SCR.X, UI.SCR.Y, PLDR.L((([[
 Design by Berion
 Scripts by nuno6573 and Ripto
 Based on Enceladus by Daniel Santos
@@ -5669,7 +5674,7 @@ If you bought it, you have been scammed
 
 Compatibility problems? Visit:
 youtube.com/@hugopocked6695
-]], currcol)
+]]):gsub("\n$", ""))), currcol)
         -- Build-identity + boot-timing lines (bottom-anchored above the footer).
         -- Line 1: the BUILD_INFO.txt stamp when that loose file sits next to the
         -- ELF, else the embedded POPSLDR_VER. A normal one-file install ships NO
