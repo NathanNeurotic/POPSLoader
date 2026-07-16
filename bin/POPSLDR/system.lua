@@ -4842,7 +4842,7 @@ function PLDR.SaveSettingsAtomic()
   -- don't depend on mc0:/POPSTARTER existing.
   if target_is_mc and not mc_dir_ok then
     if UI ~= nil and UI.Notif_queue ~= nil then
-      UI.Notif_queue.add("Cannot access "..tostring(PLDR.POPSTARTER_DIR))
+      UI.Notif_queue.add(PLDR.L("Cannot access").." "..tostring(PLDR.POPSTARTER_DIR))
     end
     return false
   end
@@ -4856,7 +4856,7 @@ function PLDR.SaveSettingsAtomic()
       PLDR.SETTINGS_PATH = PLDR.SETTINGS_PATH_FALLBACK
       ok = true
       if UI ~= nil and UI.Notif_queue ~= nil then
-        UI.Notif_queue.add("Saved to "..tostring(PLDR.SETTINGS_PATH_FALLBACK).."\n(the usual settings location wasn't writable)", "warn")
+        UI.Notif_queue.add(PLDR.L("Saved to").." "..tostring(PLDR.SETTINGS_PATH_FALLBACK).."\n"..PLDR.L("(the usual settings location wasn't writable)"), "warn")
       end
     end
   end
@@ -5299,7 +5299,7 @@ function PLDR.CommitSettingsChanges(opts)
       EmitStage("apply_bdma", "Restoring BDMA mode")
       local restaged = PLDR.ApplyBdmaModeOnce(next_state.bdma_mode, PLDR.NextBdmaApplyToken())
       if not restaged and UI ~= nil and UI.Notif_queue ~= nil then
-        UI.Notif_queue.add("Couldn't restore BDMA mode "..tostring(next_state.bdma_mode).."\nre-select it under Settings > Storage to restage", "warn")
+        UI.Notif_queue.add(PLDR.L("Couldn't restore BDMA mode").." "..tostring(next_state.bdma_mode).."\n"..PLDR.L("re-select it under Settings > Storage to restage"), "warn")
       end
     end
   end
@@ -6206,7 +6206,7 @@ function PLDR.ApplyBdmaMode(mode_key)
   local selected = mode_key or "FAT32"
   if not PLDR.EnsurePopstarterDir() then
     if UI ~= nil and UI.Notif_queue ~= nil then
-      UI.Notif_queue.add("Cannot access "..tostring(PLDR.POPSTARTER_DIR))
+      UI.Notif_queue.add(PLDR.L("Cannot access").." "..tostring(PLDR.POPSTARTER_DIR))
     end
     return false
   end
@@ -6231,14 +6231,14 @@ function PLDR.ApplyBdmaMode(mode_key)
   local suffix = BDMA_SUFFIX[selected]
   if suffix == nil then
     if UI ~= nil and UI.Notif_queue ~= nil then
-      UI.Notif_queue.add("Unknown BDMA mode: "..tostring(selected))
+      UI.Notif_queue.add(PLDR.L("Unknown BDMA mode:").." "..tostring(selected))
     end
     return false
   end
 
   if not PLDR.EnsureBackendForAppDir() then
     if UI ~= nil and UI.Notif_queue ~= nil then
-      UI.Notif_queue.add("BDMA source backend not ready:\n"..APP_DIR_NORM)
+      UI.Notif_queue.add(PLDR.L("BDMA source backend not ready:").."\n"..APP_DIR_NORM)
     end
     return false
   end
@@ -6261,7 +6261,7 @@ function PLDR.ApplyBdmaMode(mode_key)
       end
       if bytes == nil then
         if UI ~= nil and UI.Notif_queue ~= nil then
-          UI.Notif_queue.add("Missing BDMA source (tried):\n"..table.concat(paths, "\n"))
+          UI.Notif_queue.add(PLDR.L("Missing BDMA source (tried):").."\n"..table.concat(paths, "\n"))
         end
         return false
       end
@@ -6355,7 +6355,7 @@ function PLDR.MaybeApplyAdaptiveBdma(ui_scene, device_page)
   if not ok and UI ~= nil and UI.Notif_queue ~= nil then
     -- The caller CANCELS the launch on false, returning to the menu loop --
     -- which is the only place this warn can actually be seen.
-    UI.Notif_queue.add("Adaptive BDMA couldn't stage "..tostring(target).." -- launch cancelled\n("..tostring(why or "apply failed")..") check the memory card, or turn Adaptive BDMA off", "warn")
+    UI.Notif_queue.add(PLDR.L("Adaptive BDMA couldn't stage").." "..tostring(target).." "..PLDR.L("-- launch cancelled").."\n("..tostring(why or "apply failed")..") "..PLDR.L("check the memory card, or turn Adaptive BDMA off"), "warn")
   end
   return ok
 end
@@ -6406,7 +6406,7 @@ end
 -- to re-run whenever an SMB field changes to regenerate the .DAT.
 function PLDR.ApplySmbModules()
   if not PLDR.EnsurePopstarterDir() then
-    if UI ~= nil and UI.Notif_queue ~= nil then UI.Notif_queue.add("Cannot access "..tostring(PLDR.POPSTARTER_DIR)) end
+    if UI ~= nil and UI.Notif_queue ~= nil then UI.Notif_queue.add(PLDR.L("Cannot access").." "..tostring(PLDR.POPSTARTER_DIR)) end
     return false
   end
   local cfg = PLDR.SmbCopy(PLDR.SMB)
@@ -6421,7 +6421,7 @@ function PLDR.ApplySmbModules()
     if source == nil then
       local bytes = GetEmbeddedAssetBytes(name)
       if bytes == nil then
-        if UI ~= nil and UI.Notif_queue ~= nil then UI.Notif_queue.add("Missing SMB module (tried):\n"..table.concat(paths, "\n")) end
+        if UI ~= nil and UI.Notif_queue ~= nil then UI.Notif_queue.add(PLDR.L("Missing SMB module (tried):").."\n"..table.concat(paths, "\n")) end
         return false
       end
       if not WriteBytesAtomicBounded(bytes, dest) then return false end
@@ -6450,7 +6450,7 @@ end
 -- the BDMA usbd/usbhdfsd modules intact. NEVER calls RemovePopstarterMcFolder.
 function PLDR.RemoveSmbModules()
   if not PLDR.EnsurePopstarterDir() then
-    if UI ~= nil and UI.Notif_queue ~= nil then UI.Notif_queue.add("Cannot access "..tostring(PLDR.POPSTARTER_DIR)) end
+    if UI ~= nil and UI.Notif_queue ~= nil then UI.Notif_queue.add(PLDR.L("Cannot access").." "..tostring(PLDR.POPSTARTER_DIR)) end
     return false
   end
   local ok = true
@@ -6499,14 +6499,14 @@ function PLDR.EnsurePopstarterUiAssets()
   if PLDR.POPSTARTER_MC_FOLDER == false then return true end
   if not PLDR.EnsurePopstarterDir() then
     if UI ~= nil and UI.Notif_queue ~= nil then
-      UI.Notif_queue.add("Cannot access "..tostring(PLDR.POPSTARTER_DIR))
+      UI.Notif_queue.add(PLDR.L("Cannot access").." "..tostring(PLDR.POPSTARTER_DIR))
     end
     return false
   end
 
   if not PLDR.EnsureBackendForAppDir() then
     if UI ~= nil and UI.Notif_queue ~= nil then
-      UI.Notif_queue.add("BDMA source backend not ready:\n"..APP_DIR_NORM)
+      UI.Notif_queue.add(PLDR.L("BDMA source backend not ready:").."\n"..APP_DIR_NORM)
     end
     return false
   end
@@ -6532,7 +6532,7 @@ function PLDR.EnsurePopstarterUiAssets()
         end
         if bytes == nil then
           if UI ~= nil and UI.Notif_queue ~= nil then
-            UI.Notif_queue.add("Missing BDMA UI source (tried):\n"..table.concat(paths, "\n"))
+            UI.Notif_queue.add(PLDR.L("Missing BDMA UI source (tried):").."\n"..table.concat(paths, "\n"))
           end
           return false
         end
@@ -6916,7 +6916,7 @@ local function AppendHddGameList(partition, list_path, on_progress, partition_in
   if DIR == nil then
     -- The partition mounted but its root would not list: surface it instead of
     -- silently showing "No games found" (dir-read faults were invisible before).
-    pcall(UI.Notif_queue.add, string.format("HDD dir read failed: %s (%s)", tostring(list_path), tostring(partition)))
+    pcall(UI.Notif_queue.add, PLDR.L("HDD dir read failed:")..string.format(" %s (%s)", tostring(list_path), tostring(partition)))
     if type(on_progress) == "function" then
       pcall(on_progress, (tonumber(partition_index) or 1) / math.max(tonumber(partition_total) or 1, 1))
     end
