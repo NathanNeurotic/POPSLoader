@@ -1316,6 +1316,17 @@ static int lua_ensure_bdm_fatfs(lua_State *L)
 	return 1;
 }
 
+// Staged ATA bring-up (EXP11 diagnostics): expose dev9 alone so the Lua side can
+// paint a distinct progress step before EACH blocking module load. EnsureAtaBdm
+// re-runs EnsureDev9/EnsureBDMFatFs internally, but both are load-once latched,
+// so pre-calling them from Lua reduces System.initATA to settle + ata_bd + settle
+// -- and a frozen on-screen percent then names the exact stalled module start.
+static int lua_ensure_dev9(lua_State *L)
+{
+	lua_pushboolean(L, EnsureDev9());
+	return 1;
+}
+
 // Report the USB bring-up state so the USB page can say WHY it found nothing.
 // Fields are the raw SifExecModuleBuffer id/ret per module, -999 if never
 // attempted. usbd is loaded once at boot (main.cpp) because ds34usb/ds34bt
@@ -1974,6 +1985,7 @@ static const luaL_Reg System_functions[] = {
 	{"resolveAssetType",   lua_resolveAssetType},
 	{"ensureBDM",              lua_ensure_bdm},
 	{"ensureBDMFatFs",         lua_ensure_bdm_fatfs},
+	{"ensureDev9",             lua_ensure_dev9},
 	{"ensureUsbMass",          lua_ensure_usb_mass},
 	{"getUsbDiag",            lua_get_usb_diag},
 	{"iopHeapProbe",          lua_iop_heap_probe},
