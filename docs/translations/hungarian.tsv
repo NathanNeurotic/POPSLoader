@@ -45,7 +45,7 @@ Cover Art enabled	Borítóképek engedélyezve
 Cover/details folder	Borító/Részletek mappa
 Credits	Köszönetek
 Delete the POPSTARTER folder from the memory card?	Törli a POPSTARTER mappát a memóriakártyáról?
-Design by Berion\nScripts by nuno6573 and Ripto\nBased on Enceladus by Daniel Santos\nTesting by P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k, and Community\n\nSpecial Thanks To:\nkrHACKen for making POPStarter\nuyjulian, fjtrujy, HWC, and others for always helping\n\nThis program is free and open source\nIf you bought it, you have been scammed\n\nCompatibility problems? Visit:\nyoutube.com/@hugopocked6695	Tervezés: Berion\nSzkriptek: nuno6573 és Ripto\nBázis: Daniel Santos „Enceladus” című munkája\nTesztelés: P4NCHOL1NO, VizoR, provato,\ nnuno6573, sAGA/oldman63, saildot4k és a közösség\n\nKülön köszönet:\nkrHACKennek a POPStarter elkészítéséért\nuyjuliannek, fjtrujy-nak, HWC-nek és másoknak a folyamatos segítségért\n\nEz a program ingyenes és nyílt forráskódú\nHa megvásároltad, akkor átvertek\n\nKompatibilitási problémák? Látogass el ide:\nyoutube.com/@hugopocked6695
+Design by Berion\nScripts by nuno6573 and Ripto\nBased on Enceladus by Daniel Santos\nTesting by P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k, and Community\n\nSpecial Thanks To:\nkrHACKen for making POPStarter\nuyjulian, fjtrujy, HWC, and others for always helping\n\nThis program is free and open source\nIf you bought it, you have been scammed\n\nCompatibility problems? Visit:\nyoutube.com/@hugopocked6695	Tervezés: Berion\nSzkriptek: nuno6573 és Ripto\nBázis: Daniel Santos „Enceladus” című munkája\nTesztelés: P4NCHOL1NO, VizoR, provato,\nnuno6573, sAGA/oldman63, saildot4k és a közösség\n\nKülön köszönet:\nkrHACKennek a POPStarter elkészítéséért\nuyjuliannek, fjtrujy-nak, HWC-nek és másoknak a folyamatos segítségért\n\nEz a program ingyenes és nyílt forráskódú\nHa megvásároltad, akkor átvertek\n\nKompatibilitási problémák? Látogass el ide:\nyoutube.com/@hugopocked6695
 DHCP (automatic)	DHCP (automatikus)
 DHCP failed\nset a static IP in SMB settings	A DHCP nem sikerült\nÁllítson be statikus IP-címet az SMB-beállításokban
 Disc (DKWDRV)	Fizikai lemez (DKWDRV)
@@ -171,7 +171,7 @@ SMB connect failed	Az SMB-kapcsolat sikertelen
 SMB connection dropped	Az SMB-kapcsolat megszakadt
 SMB login failed\ncheck User / Password	Az SMB-bejelentkezés sikertelen volt\nEllenőrizze a felhasználónevet és a jelszót
 SMB modules	SMB modulok
-SMB modules are not installed\nGames list but won't boot without them --\ninstall via Settings > SMB modules, then Save		Az SMB-modulok nincsenek telepítve\nA játékok listája megjelenik, de ezek nélkül a rendszer nem indul el --\nTelepítse őket a Beállítások > SMB-modulok menüpontban, majd kattintson a Mentés gombra
+SMB modules are not installed\nGames list but won't boot without them --\ninstall via Settings > SMB modules, then Save	Az SMB-modulok nincsenek telepítve\nA játékok listája megjelenik, de ezek nélkül a rendszer nem indul el --\nTelepítse őket a Beállítások > SMB-modulok menüpontban, majd kattintson a Mentés gombra
 SMB modules are not installed\nGames will list but won't boot -- install them\nvia Settings > SMB modules first	Az SMB-modulok nincsenek telepítve\nA játékok megjelennek a listában, de nem indulnak el -– először telepítse őket\na Beállítások > SMB-modulok menüpontban
 SMB modules didn't install/remove\nmodule setting reverted; other settings were saved	Az SMB-modulok telepítése/eltávolítása nem sikerült\nA modul beállításai visszaálltak; az egyéb beállítások mentésre kerültek
 SMB modules failed to load	Az SMB-modulok betöltése nem sikerült
@@ -187,6 +187,6 @@ Visible	Látható
 Visible (manage)	Látható (kezelhető)
 Working...	Dolgozok...
 X = Keep      O = Revert	X = Megtart      O = Visszavon
-X = Select    O = Cancel	X = Kiválaszt    O = Mégsem
-X = Yes       O = No		X = Igen         O = Nem
+X = Select      O = Cancel	X = Kiválaszt      O = Mégsem
+X = Yes      O = No	X = Igen      O = Nem
 Yes	Igen
