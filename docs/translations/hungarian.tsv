@@ -169,7 +169,7 @@ Shown	Megjelenítve
 SMB / Network	SMB / Hálózat
 SMB connect failed	Az SMB-kapcsolat sikertelen
 SMB connection dropped	Az SMB-kapcsolat megszakadt
-SMB login failed\ncheck User / Password  Az SMB-bejelentkezés sikertelen volt\nEllenőrizze a felhasználónevet és a jelszót
+SMB login failed\ncheck User / Password	Az SMB-bejelentkezés sikertelen volt\nEllenőrizze a felhasználónevet és a jelszót
 SMB modules  SMB modulok
 SMB modules are not installed\nGames list but won't boot without them --\ninstall via Settings > SMB modules, then Save  Az SMB-modulok nincsenek telepítve\nA játékok listája megjelenik, de ezek nélkül a rendszer nem indul el --\nTelepítse őket a Beállítások > SMB-modulok menüpontban, majd kattintson a Mentés gombra
 SMB modules are not installed\nGames will list but won't boot -- install them\nvia Settings > SMB modules first	Az SMB-modulok nincsenek telepítve\nA játékok megjelennek a listában, de nem indulnak el -- először telepítse őket\na Beállítások > SMB-modulok menüpontban
