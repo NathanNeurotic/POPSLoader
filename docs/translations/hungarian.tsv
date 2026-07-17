@@ -87,7 +87,7 @@ Enter	Enter
 Exit	Kilépés
 Failed to connect to SMB	Nem sikerült csatlakozni az SMB-hez
 Failed to load HDD	A HDD betöltése nem sikerült
-Failed to load HDD (exFAT)	A HDD (exFAT) betöltése nem sikerült
+Failed to load HDD (exFAT)	Az exFAT HDD betöltése nem sikerült
 Failed to load MMCE	Az MMCE betöltése nem sikerült
 Failed to load MX4SIO	Az MX4SIO betöltése nem sikerült
 Failed to load USB	Az USB betöltése nem sikerült
