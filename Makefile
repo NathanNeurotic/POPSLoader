@@ -295,19 +295,6 @@ iop/bdm_query/bdm_query.irx: iop/bdm_query
 $(EE_ASM_DIR)bdm_query.c: iop/bdm_query/bdm_query.irx | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ bdm_query_irx
 
-# ata_bd.irx is BUILT FROM SOURCE (iop/ata_bd_fast) rather than picked up from
-# iop/embed/ or the SDK via vpath: it carries the phantom-slave busy-wait cap
-# that keeps the exFAT page's ATA bring-up from spending minutes waiting on a
-# device 1 that no retail PS2 has. This explicit rule is more specific than the
-# generic $(EE_ASM_DIR)%.c: %.irx rule above, so it wins and the vpath copies are
-# never consulted for ata_bd -- iop/embed/ata_bd.irx is deleted to keep exactly
-# one ata_bd in the tree (a stale unused blob is how EXP17 got mislabelled).
-iop/ata_bd_fast/ata_bd.irx: iop/ata_bd_fast
-	$(MAKE) -C $<
-
-$(EE_ASM_DIR)ata_bd.c: iop/ata_bd_fast/ata_bd.irx | $(EE_ASM_DIR)
-	$(BIN2S) $< $@ ata_bd_irx
-
 # PS2SDK MX4SIO IRX (embedded)
 PS2SDK_MX4SIO_DIR = iop/embed/PS2SDK_MX4SIO
 

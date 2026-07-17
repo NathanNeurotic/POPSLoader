@@ -2,47 +2,44 @@
 
 **This is an opt-in EXPERIMENTAL build.** The public release (**1.0.1**) and the rolling test build are untouched by anything here.
 
-**How to tell you are running it:** open **Settings**, then **About**, and read the **Version** row: it says **v1.0.2-dev-EXP21**. A version with no EXP on the end is the rolling test build; no version at all means the public 1.0.1 release or older.
+**How to tell you are running it:** open **Settings**, then **About**, and read the **Version** row: it says **v1.0.2-dev-EXP22**. A version with no EXP on the end is the rolling test build; no version at all means the public 1.0.1 release or older.
 
 ---
 
-## EXP21: stop looking for a second drive that cannot exist
+## EXP22: load the ATA driver when everything else loads, not on the page
 
-Two things worth trying, smallest first.
+The last several builds were me editing the ATA driver. That was wrong, and the diagnosis is settled: EXP18 and EXP19 shipped wLaunchELF R3Z's ATA driver **byte for byte**, and it still froze. A driver that reads the drive perfectly in R3Z cannot be the problem. It never was.
 
-### First, and it costs nothing: let the build you already have run for ten full minutes
+Reading R3Z's and OPL's actual source side by side made the real difference obvious, and it is not in the driver at all. It is *when* we load it.
 
-The maintainer's own drive takes about five minutes on the exFAT page and then works. If your drive is a little slower, two minutes was never going to be enough to see it finish. **On any recent build, open the HDD (exFAT) page and walk away for a full ten minutes before powering off.** If a game list appears, this was a very slow wait and not a freeze, and that changes everything we do next. This one test would tell us more than another build.
+- **OPL** loads all its drive drivers back to back at startup, on a background worker, and then scans.
+- **R3Z** loads the whole ATA stack together on a freshly prepared system.
+- **POPSLoader** loaded the USB driver at startup but the internal-drive (ATA) driver **minutes later, on the exFAT page, on the main thread that draws the screen.**
 
-### What EXP21 changes
+That last one is the freeze: the screen is frozen at step 45 because it is waiting on a driver load that we kicked off *right there on the drawing thread*, onto a system that has been running since power-on. It is the one arrangement neither working tool uses. And it is the exact mistake our own code already fixed for the USB driver a while back, and simply never fixed for the ATA one.
 
-When the ATA driver starts, it checks the internal drive bay for **two** drives, a master and a slave, the way a PC hard-drive cable can carry two. A PlayStation 2's internal bay only ever holds **one**. So the driver has always been doing a second drive's worth of work against hardware that is not there, and that phantom second drive is the one piece of the startup that can trip over the part reading your real drive.
+**EXP22 loads the ATA driver at startup, right next to the USB driver, the way OPL and R3Z do.** By the time you open the exFAT page, the driver is already up, so the step that used to freeze is now nothing to wait for.
 
-EXP21 simply stops looking for the drive that cannot exist.
+### What this means for you
 
-That is the whole change. It is a deletion, not an addition, and it is correct regardless of whether it fixes the stall: there is genuinely no second drive to find.
-
-### Honest odds
-
-I will not oversell this the way EXP17 and EXP20 got oversold. This is a reasonable, safe change, and it might not be the fix. Here is the plain reasoning: wLaunchELF R3Z runs the exact same drive code on your exact drive and does **not** stall, which means either your adapter is not reporting a phantom drive at all (in which case this changes nothing for you), or it is and something else in our build is what tips it over. EXP21 removes one of the two things that would have to collide. If it works, good. If it stops at step 45 again, that is not a wasted result: it rules this out and points us at the other half.
-
-It cannot make anything worse, and it does not touch your controller or sound.
+- The exFAT page should come up without the long stall at 45%.
+- Boot may take a couple of seconds longer, because the drive driver now comes up during startup instead of when you open the page. If EXP22 fixes the freeze, that startup cost gets tuned down afterward so only people who actually have an internal drive pay it.
 
 ### What to do
 
-Open the **HDD (exFAT)** page.
+Just use it normally. Boot, then open the **HDD (exFAT)** page.
 
-- **Your games listing** means the phantom-drive work was the problem and we are done.
-- **Stops at step 45 again** tells us the collision is elsewhere, and we look at the last remaining lead.
+- **Your games listing, without the long freeze** means this was it: the driver was being loaded at the wrong time, and now it is not.
+- **A freeze somewhere else** (a different step number, or during boot) is still useful: it tells us the problem was never the driver load and points at the drive scan instead.
 
-As before: if it is slow rather than stopped, please give it the full ten minutes before powering off.
+No unplugging anything, no waiting ten minutes, no special steps. If it still misbehaves, a photo of wherever it stops is all I need.
 
-### Where things honestly stand
+### Honest note
 
-Seven explanations have now been ruled out by your photos: not memory, not your drive, not your adapter, not GPT support, not a stale driver file, not the driver set, and not the busy-wait timing. What is left is a narrow timing question inside our own startup, and EXP21 tests the cleaner half of it.
+This is the first build in a while that changes *our* program instead of the driver or your setup, and it is grounded in what the two launchers that read your drive actually do. I am not going to promise it is the fix. But it is aimed at a real, specific difference between us and them, and if it is wrong it will be wrong in a way that finally points somewhere new.
 
 ---
 
 ## How to report
 
-Please say **which build** (v1.0.2-dev-EXP21, from Settings then About), **which device**, your **console model and region**, and what you did. A photo helps.
+Please say **which build** (v1.0.2-dev-EXP22, from Settings then About), **which device**, your **console model and region**, and what you did. A photo helps.
