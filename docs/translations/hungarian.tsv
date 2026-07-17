@@ -147,7 +147,7 @@ No	Nem
 No '__.POPS' partitions on hdd0:\nformat one with __.POPS / __.POPS0...9	Nincs '__.POPS' partíció a hdd0-on:\nHozzon létre egyet __.POPS / __.POPS0...9 néven
 No cover. Looked for:	Nincs borító. Itt keresve:
 No DKWDRV found at this path	Ezen az elérési úton nincs DKWDRV
-No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)	Nincs észlelt exFAT merevlemez\nformázza le a belső meghajtót exFAT formátumra (BDMA mód = ATA)
+No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)	Nincs észlelt exFAT HDD\nformázza le a belső HDD-t exFAT formátumra (BDMA mód = ATA)
 No games found	Nincsenek játékok
 No games found on hdd0:\n(__.POPS partitions are empty)	Nincsenek játékok a hdd0-n:\n(a __.POPS partíciók üresek)
 No games found on this device	Az eszközön nem találhatóak játékok
