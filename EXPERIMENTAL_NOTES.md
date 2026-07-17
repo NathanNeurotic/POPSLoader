@@ -1,53 +1,39 @@
 # POPSLoader: Experimental Build 🧪
 
-**This is an opt-in EXPERIMENTAL build.** The public release (**1.0.1**) is untouched by anything here.
+**This is an opt-in EXPERIMENTAL build.** The public release (**1.0.1**) and the rolling test build are untouched by anything here.
 
-**How to tell you are running it:** open **Settings**, then **About**, and read the **Version** row: it says **v1.0.2-dev-EXP18**. A version with no EXP on the end is the rolling test build; no version at all means the public 1.0.1 release or older.
+**How to tell you are running it:** open **Settings**, then **About**, and read the **Version** row: it says **v1.0.2-dev-EXP19**. A version with no EXP on the end is the rolling test build; no version at all means the public 1.0.1 release or older.
 
 ---
 
-## EXP18: the first build that actually runs wLaunchELF R3Z's drive drivers
+## EXP19: same drivers as EXP18, but the screen tells us where it stops
 
-**sAGA, EXP17 was our mistake, not your hardware.** You spent six minutes on a build we told you matched R3Z. It didn't. Here is exactly what went wrong and what changed.
+**sAGA: one button, one photo. That is the entire ask.**
 
-### What we got wrong
+EXP18 proved something important, even though it froze: it ran **wLaunchELF R3Z v4.70's exact four drive drivers**, verified byte-for-byte against R3Z's own released build. The same bytes that read your drive perfectly in R3Z froze in POPSLoader. So the drivers are cleared. Whatever is wrong is something POPSLoader does *around* them, and that is our problem to fix, not yours.
 
-The internal drive uses four driver files together: the drive-system core, the FAT/exFAT filesystem, the USB reader, and the ATA reader. R3Z ships a specific combination of those four, and it works on your console.
+But EXP18 could only tell you "42%", because that build had no step numbers in it. That was our oversight: we removed the numbered steps from the rolling build for a good reason (they were writing to your memory card dozens of times and making the page crawl), and then built EXP17 and EXP18 on top of rolling, throwing away the one thing that was teaching us anything.
 
-Every attempt so far swapped **some** of them:
+**EXP19 = EXP18's drivers + the numbered steps back.** The steps are now free: the memory-card writing that caused the slowdown is down to a single write, so nothing crawls.
 
-- **EXP12–15** took three of R3Z's four and kept our own stale ATA reader. → froze.
-- **EXP17** took R3Z's ATA reader and kept our own three older ones. → froze (your 42%).
+### What to do
 
-Neither build was ever R3Z's set. We kept saying "we're matching R3Z" while shipping combinations **nobody has ever shipped**, so of course they behaved in ways nobody had ever seen. Your 42% was not a wasted test: it proved the build we sent was not the build we thought we sent.
+Open the **HDD (exFAT)** page once. Give it up to two minutes. Then photograph whatever is on screen.
 
-### What EXP18 is
+- **A number between 43 and 50** tells us exactly which internal call stops, with R3Z's own drivers in place. That is information we have never had, and it points straight at the part of POPSLoader that is at fault.
+- **Your games listing** means the driver set fixed it and we are done.
+- **"No exFAT HDD detected"** after a few seconds means the freeze is gone and something smaller is left.
 
-**All four files, together, byte-for-byte identical to wLaunchELF R3Z v4.70.** Not "the same source." The same bytes, verified by checksum against R3Z's own released build:
+There is no wrong outcome here. Every one of them narrows it.
 
-| File | This build | Same as R3Z v4.70? |
-| :--- | :--- | :--- |
-| ATA reader | `16c5d9f0…` | yes |
-| Drive-system core | `2ada1262…` | yes |
-| FAT/exFAT filesystem | `597b23ad…` | yes |
-| USB reader | `9b3ca260…` | yes |
+### Where things honestly stand
 
-The ATA reader is the one that had never been checked. Our build compiles against a PS2SDK snapshot from May that predates an upstream fix called *"atad: fix device probing"* — R3Z, OPL and the mainstream RiptOPL build all carry it; we never did. The old code resets the drive bus once, **assumes** the first drive is selected, then checks the second drive without telling the bus which drive should answer. On an aftermarket SATA adapter, which is what both affected testers use, that can simply stop, inside the driver's own startup, where nothing can interrupt it.
+Five explanations have been ruled out, each by your photos: it is not memory, not your drive, not your adapter, not GPT support, and not the stale driver file we did (genuinely) have. That is real progress by elimination, even though it has not felt like it. What is left is small and it is on our side of the fence.
 
-That fix was found by an independent audit that did the one check nobody else did: compare the **bytes** instead of the source.
-
-### What to test
-
-**Open the HDD (exFAT) page.** That is the whole test.
-
-- **sAGA:** your 4TB GPT drive appearing and listing games is the win. This build also restores GPT support (the older drive-system core in the rolling build cannot read GPT at all). One honest caveat: drives over 2TB still report as 2TB, so keep games within the first 2TB for now.
-- **Maintainer:** your drive should behave like it does on rolling, without the long stall.
-- **Everyone:** this changes the drive drivers for **USB and MX4SIO too**. If either worked before and does not now, that is the single most important report you can make, and it is a one-step revert.
-
-**If it still freezes:** then R3Z's exact drivers freeze in our build while working in R3Z's, which means the cause is something POPSLoader does around them, and we will say so plainly instead of inventing another theory. Either result is real information this time.
+Your USB, for what it is worth, went from completely broken to working during the same stretch, and that was your reports too.
 
 ---
 
 ## How to report
 
-Please say **which build** (v1.0.2-dev-EXP18, from Settings then About), **which device**, your **console model and region**, and what you did. A photo helps.
+Please say **which build** (v1.0.2-dev-EXP19, from Settings then About), **which device**, your **console model and region**, and what you did. A photo helps.
