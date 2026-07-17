@@ -1,25 +1,36 @@
 English (do not edit)	Hungarian (put your translation here)
+(could NOT save -- reverts on reboot)	(could NOT save -- reverts on reboot)
 (not set)	(nincs beállítva)
 (share root)	(gyökérkönyvtár megosztása)
+(the usual settings location wasn't writable)	(the usual settings location wasn't writable)
 (unknown)	(ismeretlen)
+-- launch cancelled	-- launch cancelled
 100M Full	100M teljes
 100M Half	100M fél
 10M Full	10M teljes
 10M Half	10M fél
+About	Névjegy
 Actual output	Aktuális kimenet
 Adaptive BDMA	Adaptív BDMA
+Adaptive BDMA couldn't stage	Adaptive BDMA couldn't stage
+adjusted -- using	adjusted -- using
 APA / PFS (default)	APA / PFS (alapértelmezett)
 Applying BDMA mode	BDMA mód alkalmazása
+Applying SMB modules	Applying SMB modules
 ART (at root)	ART (a főkönyvtárban)
 At least one device must stay on the carousel	Legalább egy eszköznek meg kell maradnia
 Auto (console region)	Automatikus (konzol régiója)
+Automatic	Automatikus
 Back	Vissza
 Backspace	Visszatörlés
 BDMA Mode	BDMA mód
 BDMA mode change didn't apply\nBDMA reverted; other settings were saved	A BDMA-mód váltása nem került alkalmazásra\nA BDMA-mód visszaállt; az egyéb beállítások mentésre kerültek
+BDMA source backend not ready:	BDMA source backend not ready:
 Boot Page	Startlap
 Boot sound	Starthang
+BOOT.ELF failed to launch	BOOT.ELF failed to launch
 BOOT.ELF not found\nchecked mc0:/BOOT and mc1:/BOOT	A BOOT.ELF fájl nem található\nEllenőrizve: mc0:/BOOT és mc1:/BOOT
+Booted from:	Indítva innen:
 Bringing up network...	Hálózat felépítése...
 Building HDD game list...	HDD játéklista összeállítása...
 Building USB game list...	USB játéklista összeállítása...
@@ -28,31 +39,46 @@ Can't disable while BDMA is enabled\nSet BDMA Mode to FAT32 (None) first	A BDMA 
 Can't disable while SMB modules are installed\nSet SMB modules to Not installed first	Az SMB-modulok telepítése mellett nem lehet letiltani\nElőször állítsa az SMB-modulokat „Nincs telepítve” állapotra
 Can't reach the server\ncheck Server IP / Port in SMB settings	Nem sikerült kapcsolatot létesíteni a szerverrel\nEllenőrizze a szerver IP-címét és portját az SMB-beállításokban
 Cancel	Mégsem
+Cannot access	Cannot access
 Carousel (default)	Carousel (alapértelmezett)
 Carousel Devices	Carousel eszközök
+Case/Symbols: lower  (R2)	Case/Symbols: lower  (R2)
+Case/Symbols: UPPER  (R2)	Case/Symbols: UPPER  (R2)
 Center aligned	Középre igazítva
+check the memory card, or turn Adaptive BDMA off	check the memory card, or turn Adaptive BDMA off
+Checking POPSTARTER...	POPSTARTER ellenőrzése...
+Checking the game file...	A játékfájl ellenőrzése...
 Code by El_isra	Kódolás: El_isra
 Confirm	Megerősítés
 Connecting to SMB...	Csatlakozás az SMB-hez...
 Couldn't apply the PS2 IP settings\ntry again or power-cycle the network adapter	A PS2 IP-beállításai nem alkalmazhatók\npróbálja meg újra, vagy indítsa újra a hálózati adaptert
 Couldn't read that game selection	Nem sikerült elolvasni ezt a játékválasztást
+Couldn't restore BDMA mode	Couldn't restore BDMA mode
+Couldn't save settings	Couldn't save settings
 Couldn't save settings -- POPSTARTER folder NOT deleted	A beállítások mentése nem sikerült -- a POPSTARTER mappa NEM került törlésre
 Couldn't save settings -- POPSTARTER folder NOT restored	A beállítások mentése nem sikerült -- a POPSTARTER mappa NEM került visszaállításra
+Couldn't update hidden state	Couldn't update hidden state
+Couldn't write .hide to the HDD	Couldn't write .hide to the HDD
 Cover Art	Borítókép
 Cover Art disabled	Borítóképek letiltva
 Cover Art enabled	Borítóképek engedélyezve
 Cover/details folder	Borító/Részletek mappa
 Credits	Köszönetek
+Cursor: L1 / R1	Cursor: L1 / R1
+Defaults restored	Alapértelmezések visszaállítva
 Delete the POPSTARTER folder from the memory card?	Törli a POPSTARTER mappát a memóriakártyáról?
 Design by Berion\nScripts by nuno6573 and Ripto\nBased on Enceladus by Daniel Santos\nTesting by P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k, and Community\n\nSpecial Thanks To:\nkrHACKen for making POPStarter\nuyjulian, fjtrujy, HWC, and others for always helping\n\nThis program is free and open source\nIf you bought it, you have been scammed\n\nCompatibility problems? Visit:\nyoutube.com/@hugopocked6695	Tervezés: Berion\nSzkriptek: nuno6573 és Ripto\nBázis: Daniel Santos „Enceladus” című munkája\nTesztelés: P4NCHOL1NO, VizoR, provato,\nnuno6573, sAGA/oldman63, saildot4k és a közösség\n\nKülön köszönet:\nkrHACKennek a POPStarter elkészítéséért\nuyjuliannek, fjtrujy-nak, HWC-nek és másoknak a folyamatos segítségért\n\nEz a program ingyenes és nyílt forráskódú\nHa megvásárolta, akkor átverték\n\nKompatibilitási problémák? Látogasson el ide:\nyoutube.com/@hugopocked6695
+Device List	Eszközlista
 DHCP (automatic)	DHCP (automatikus)
 DHCP failed\nset a static IP in SMB settings	A DHCP nem sikerült\nÁllítson be statikus IP-címet az SMB-beállításokban
 Disc (DKWDRV)	Fizikai lemez (DKWDRV)
 Discard & Exit	Elvetés & Kilépés
 Display	Kijelző
 Display reverted -- new mode wasn't confirmed	A kijelzőmód visszaállt -- az új mód nem került megerősítésre
+DKWDRV failed to launch	DKWDRV failed to launch
 DKWDRV Path	DKWDRV útvonal
 Don't Save	Ne mentse el
+Edit	Edit
 Edit DKWDRV Path	DKWDRV útvonal szerkesztése
 Edit POPStarter Path	POPStarter útvonal szerkesztése
 Enable the POPSTARTER Folder first\n(BDMA / SMB modules must live on the memory card)	Először engedélyezze a POPSTARTER mappát\n(a BDMA / SMB moduloknak a memóriakártyán kell lenniük)
@@ -70,25 +96,32 @@ Failed to refresh list	A lista frissítése nem sikerült
 FAT32-USB (None)	FAT32-USB (No BDMA)
 First disc only	Csak az első lemez
 Game details	Játék részletek
+Game file missing	Game file missing
 Game hidden	Játék elrejtése
 Game List	Játéklista
 Game list cache	Játéklista-gyorsítótár
 Game shown	Játék megjelenítése
 Games path affects browsing only:\nPOPStarter can only launch games from <share>/POPS	A játékok elérési útvonala kizárólag a böngészést érinti:\nA POPStarter csak a <share>/POPS mappából indíthat játékokat
 HDD Alt mode needs POPSTARTER on HDD	A HDD Alt módhoz POPSTARTER szükséges a HDD-n
+HDD dir read failed:	HDD dir read failed:
 HDD list loaded from cache (R1 rescans)	A HDD-lista betöltődött a gyorsítótárból (R1 a lista frissítése)
 HDD list refreshed	A HDD-lista frissült
 HDD list refreshed (no games found)	A HDD-lista frissült (nincs játék)
+HDD not usable	HDD not usable
 Hidden	Rejtett
 Hidden games	Rejtett játékok
 Hidden games are filtered out.\nPress R3 to reveal them, then L3 to unhide.	A rejtett játékok kiszűrésre kerülnek.\nNyomja meg az R3 gombot az elrejtéshez, az L3 gombot a megjelenítéshez.
 Hidden games filtered out again	Az elrejtett játékok kiszűrve
 Hide Text	Szöveg elrejtése
 Hide UI Text	UI szövegek elrejtése
+How to hide a game	Hogyan lehet elrejteni egy játékot
+if not confirmed	múlva, ha nincs megerősítve
 Installed	Telepített
 Internal HDD	Belső HDD
+Keep	Megtart
 Keep this display mode?	Megtartja ezt a megjelenítési módot?
 Keyboard Layout	Billentyűzetkiosztás
+L3 on the game list	L3 a játéklistán
 Launch	Indítás
 Launch DKWDRV?	Elindítja a DKWDRV-t?
 Left aligned	Balra igazítva
@@ -100,11 +133,20 @@ Loading HDD...	HDD betöltése...
 Loading MMCE...	MMCE betöltése...
 Loading MX4SIO...	MX4SIO betöltése...
 Loading USB...	USB betöltése...
+Locating exFAT HDD POPS folder...	Locating exFAT HDD POPS folder...
+Looking for USB drive...	Looking for USB drive...
 Memory Card	Memóriakártya
+Menu	Menü
+Missing BDMA source (tried):	Missing BDMA source (tried):
+Missing BDMA UI source (tried):	Missing BDMA UI source (tried):
+Missing SMB module (tried):	Missing SMB module (tried):
 MMCE has no POPS folder\nexpected mmce0:/POPS/	Az MMCE-n nincs POPS mappa\nelvárás az mmce0:/POPS/ mappa
 Multi-disc games	Többlemezes játékok
 NetBIOS isn't supported\nset Address type = IP + a Server IP	A NetBIOS nem támogatott\nállítsa be a címtípust: IP + egy szerver IP-címe
+No	Nem
+No '__.POPS' partitions on hdd0:\nformat one with __.POPS / __.POPS0...9	No '__.POPS' partitions on hdd0:\nformat one with __.POPS / __.POPS0...9
 No cover. Looked for:	Nincs borító. Itt kerestük:
+No DKWDRV found at this path	No DKWDRV found at this path
 No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)	Nincs észlelt exFAT merevlemez\nformázza le a belső meghajtót exFAT formátumra (BDMA mód = ATA)
 No games found	Nincsenek játékok
 No games found on hdd0:\n(__.POPS partitions are empty)	Nincsenek játékok a hdd0-n:\n(a __.POPS partíciók üresek)
@@ -112,6 +154,8 @@ No games found on this device	Az eszközön nem találhatóak játékok
 No MMCE device detected\nchecked mmce0: and mmce1:	Nem észlelhető MMCE-eszköz\nellenőrizve itt: mmce0: és mmce1:
 No MX4SIO device detected	Nem észlelhető MX4SIO eszköz
 No network link\ncheck the Ethernet cable / adapter	Nincs hálózati kapcsolat\nEllenőrizze az Ethernet-kábelt / adaptert
+No POPSTARTER found at this path	No POPSTARTER found at this path
+No POPSTARTER.ELF found\nchecked the game device, the launcher folder and mc0:/mc1:	Nem található a POPSTARTER.ELF fájl\nellenőrizve itt: a játék eszköze, az indító mappája és mc0:/mc1:
 No Share selected	Nincs kiválasztott megosztás
 No Share set in SMB settings\n(server returned no shares)	Az SMB-beállításokban nincs megadva megosztás\n(a szerver nem adott vissza megosztásokat)
 No USB backend detected\nreseat the drive and try again	Nem észlelhető USB-háttérrendszer\nHelyezze be ismételten a meghajtót, majd próbálja újra
@@ -123,7 +167,9 @@ On	Be
 On (default)	Be (alapértelmezett)
 On (per-device)	Be (eszközönként)
 Opening SMB list...	SMB-lista megnyitása...
+Operation failed	Sikertelen művelet
 Overscan (CRT inset)	Overscan (CRT betét)
+Path saved, file not found:	Path saved, file not found:
 POPS (beside game)	POPS (a játék mellett)
 POPSLoader\nfor POPStarter	POPSLoader\na POPStarter kezeléséhez
 POPSTARTER Folder	POPSTARTER mappa
@@ -131,21 +177,28 @@ POPSTARTER folder deleted from the memory card	A POPSTARTER mappa törölve lett
 POPSTARTER folder restored on the memory card\n(set a BDMA mode to re-add the exFAT/SMB modules)	A POPSTARTER mappa visszaállítva a memóriakártyán\n(állítsa be a BDMA módot az exFAT/SMB modulok újbóli hozzáadásához)
 POPSTARTER Path	POPSTARTER útvonal
 Press CIRCLE again to discard what you typed	Nyomja meg újra a KÖR gombot, hogy törölje a beírt szöveget
+Press CROSS again to discard what you typed	Nyomja meg újra a KERESZT gombot a beírtak elvetéséhez
 Profile	Profil
 Profile defaults restored	Alapértelmezett profilbeállítások visszaállítva
+re-select it under Settings > Storage to restage	re-select it under Settings > Storage to restage
 Rebuilding HDD game list...	A HDD-n lévő játékok listájának ismételt összeállítása...
 Refreshing HDD list...	A HDD-lista frissítése...
 Refreshing list...	Lista frissítése...
 Rescanning HDD partitions...	A merevlemez-partíciók újraszkennelése...
 Reset	Visszaállítás
 Reset Defaults	Alapértelmezések visszaállítása
+Resolved:	Resolved:
 Retrying USB scan...	Az USB-ellenőrzés újraindítása...
+return code:	return code:
 Return to OSDSYS?	Kilépés az OSDSYS-be?
+Revert	Visszavon
+Reverting in	Visszaállítás
 Right aligned	Jobbra igazítva
 Save	Mentés
 Save Changes	Változások mentése
 Save Settings	Beállítások mentése
 Save your changes before leaving?	Elmenti a módosításokat, mielőtt kilép?
+Saved to	Saved to
 Saving settings	Beállítások mentése
 Saving...	Mentés...
 Saving/Applying...	Mentés/Alkalmazás...
@@ -163,6 +216,7 @@ Share not found\ncheck the Share name (host must allow SMB1)	A megosztás nem ta
 Show all discs	Az összes lemez megjelenítése
 Showing hidden games (dimmed) -- press L3 to unhide	Rejtett játékok megjelenítése (elhalványítva) -- az L3 megnyomásával láthatóvá tehetők
 Shown	Megjelenítve
+Slot:	Slot:
 SMB / Network	SMB / Hálózat
 SMB connect failed	Az SMB-kapcsolat sikertelen
 SMB connection dropped	Az SMB-kapcsolat megszakadt
@@ -172,12 +226,18 @@ SMB modules are not installed\nGames list but won't boot without them --\ninstal
 SMB modules are not installed\nGames will list but won't boot -- install them\nvia Settings > SMB modules first	Az SMB-modulok nincsenek telepítve\nA játékok megjelennek a listában, de nem indulnak el -- először telepítse őket\na Beállítások > SMB-modulok menüpontban
 SMB modules didn't install/remove\nmodule setting reverted; other settings were saved	Az SMB-modulok telepítése/eltávolítása nem sikerült\nA modul beállításai visszaálltak; az egyéb beállítások mentésre kerültek
 SMB modules failed to load	Az SMB-modulok betöltése nem sikerült
+Staging drivers for this device	Illesztőprogramok előkészítése ehhez az eszközhöz
+Starting the game...	A játék indítása...
 Startup	Indítás
 Static (manual)	Statikus (manuális)
+status:	status:
 Storage	Tároló
 This backend isn't implemented yet	Ez a háttérrendszer még nincs megvalósítva
+This removes the POPSTARTER pack -- including the\nBDMA and SMB modules -- from mc0: / mc1:. They won't\nreturn until you turn this back On (or re-add them\nmanually). Your POPSLoader settings are kept.	Ezzel eltávolítja a POPSTARTER csomagot -- beleértve a\nBDMA és SMB modulokat -- az mc0: / mc1: eszközökről.\nAddig nem jelennek meg, amíg ezt újra be nem kapcsolja\n(vagy kézzel újra hozzá nem adja). A beállítások megmaradnak.
+Triangle	Háromszög
 UI text hidden	UI szövegek elrejtve
 UI text shown	UI szövegek megjelenítve
+Unknown BDMA mode:	Unknown BDMA mode:
 Video Standard	Videó szabvány
 Visible	Látható
 Visible (manage)	Látható (kezelhető)
@@ -186,25 +246,4 @@ X = Keep      O = Revert	X = Megtart      O = Visszavon
 X = Select      O = Cancel	X = Kiválaszt      O = Mégsem
 X = Yes      O = No	X = Igen      O = Nem
 Yes	Igen
-About	Névjegy
-Automatic	Automatikus
-Booted from:	Indítva innen:
-Defaults restored	Alapértelmezések visszaállítva
-Device List	Eszközlista
-How to hide a game	Hogyan lehet elrejteni egy játékot
-if not confirmed	múlva, ha nincs megerősítve
-Keep	Megtart
-L3 on the game list	L3 a játéklistán
-Menu	Menü
-No	Nem
-Operation failed	Sikertelen művelet
-Press CROSS again to discard what you typed	Nyomja meg újra a KERESZT gombot a beírtak elvetéséhez
-Revert	Visszavon
-Reverting in	Visszaállítás
-Triangle	Háromszög
-No POPSTARTER.ELF found\nchecked the game device, the launcher folder and mc0:/mc1:	Nem található a POPSTARTER.ELF fájl\nellenőrizve itt: a játék eszköze, az indító mappája és mc0:/mc1:
-Checking POPSTARTER...	POPSTARTER ellenőrzése...
-Checking the game file...	A játékfájl ellenőrzése...
-Starting the game...	A játék indítása...
-Staging drivers for this device	Illesztőprogramok előkészítése ehhez az eszközhöz
-This removes the POPSTARTER pack -- including the\nBDMA and SMB modules -- from mc0: / mc1:. They won't\nreturn until you turn this back On (or re-add them\nmanually). Your POPSLoader settings are kept.	Ezzel eltávolítja a POPSTARTER csomagot -- beleértve a\nBDMA és SMB modulokat -- az mc0: / mc1: eszközökről.\nAddig nem jelennek meg, amíg ezt újra be nem kapcsolja\n(vagy kézzel újra hozzá nem adja). A beállítások megmaradnak.
+You can still add a "<game>.hide" next to the .VCD from a PC.	You can still add a "<game>.hide" next to the .VCD from a PC.
