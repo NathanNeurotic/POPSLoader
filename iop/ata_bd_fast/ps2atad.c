@@ -1269,6 +1269,22 @@ static int ata_init_devices(ata_devinfo_t *devinfo)
         return ATA_RES_ERR_NODEV; // Returns 0 in v1.04.
     }
 
+    /*  POPSLoader: a retail PS2's internal ATA bus is master-only -- there is no
+        slave drive. The config loop below runs a full round of ATA commands
+        (IDENTIFY, set-transfer-mode, SMART, idle) AND bdm_connect_bd() for every
+        device it thinks exists. bdm_connect_bd wakes bdm's mount thread (prio 48),
+        which preempts this _start (running on the low-prio modload thread) and
+        starts reading device 0's partition table through the SAME single
+        atad_cmd_state / ata_evflg / alarm this function is still using. If a flaky
+        adapter floats the slave's status register so device 1 reads "present", the
+        loop then issues device-1's commands CONCURRENTLY with that mount read --
+        two writers on one unguarded command state. Forcing the nonexistent slave
+        out here leaves exactly one ATA consumer after the connect (the mount
+        thread, serialized), which is how a master-only bus should behave anyway.
+        Harmless if the collision was never the cause; simply skips work for a
+        drive that cannot exist. */
+    devinfo[1].exists = 0;
+
     if (ata_dvrp_workaround) {
         /* If there is a device 1, grab it's info too.  */
         ata_probing_phantom_slave = 1;
