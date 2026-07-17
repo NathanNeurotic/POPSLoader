@@ -4470,13 +4470,11 @@ UI = {
             UI.Notif_queue.add("Can't disable while Adaptive BDMA is on\nTurn Adaptive BDMA off first", "warn")
             return
           end
+          -- ONE key per sentence; RunConfirm splits on \n after translating.
           local confirmed = UI.RunConfirm({
             "Delete the POPSTARTER folder from the memory card?",
             "",
-            "This removes the POPSTARTER pack -- including the",
-            "BDMA and SMB modules -- from mc0: / mc1:. They won't",
-            "return until you turn this back On (or re-add them",
-            "manually). Your POPSLoader settings are kept.",
+            "This removes the POPSTARTER pack -- including the\nBDMA and SMB modules -- from mc0: / mc1:. They won't\nreturn until you turn this back On (or re-add them\nmanually). Your POPSLoader settings are kept.",
           })
           if confirmed then
             PLDR.POPSTARTER_MC_FOLDER = false
@@ -5885,6 +5883,26 @@ function UI.RunConfirm(lines)
     return false
   end
   if type(lines) ~= "table" then lines = { tostring(lines or "") } end
+  -- Translate FIRST, then split on \n into display lines. Callers pass ONE key
+  -- per SENTENCE (line breaks inside it), never one key per display line: this
+  -- prompt used to be four hand-wrapped fragments, each its own i18n key, so a
+  -- translator was handed "...They won't" / "return until you turn this back On
+  -- (or re-add them" / "manually)..." and had nowhere to put Hungarian word
+  -- order. sAGA: "why does this expression consist of three parts? the logic of
+  -- the translation falls apart completely." He was right. Splitting AFTER L()
+  -- also lets each language choose its own break points.
+  local disp = {}
+  for i = 1, #lines do
+    local s = PLDR.L(tostring(lines[i] or ""))
+    local start = 1
+    while true do
+      local nl = string.find(s, "\n", start, true)
+      if nl == nil then disp[#disp + 1] = string.sub(s, start); break end
+      disp[#disp + 1] = string.sub(s, start, nl - 1)
+      start = nl + 1
+    end
+  end
+  lines = disp
   local yes_mask, no_mask = UI.ConfirmPadMask(), UI.BackPadMask()
   local settle = 0
   while settle < 30 do

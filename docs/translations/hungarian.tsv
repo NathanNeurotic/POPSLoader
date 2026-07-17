@@ -15,7 +15,6 @@ At least one device must stay on the carousel	Legalább egy eszköznek meg kell 
 Auto (console region)	Automatikus (konzol régiója)
 Back	Vissza
 Backspace	Visszatörlés
-BDMA and SMB modules -- from mc0: / mc1:. They won't	BDMA és SMB modulok -- az mc0: / mc1: eszközökről.
 BDMA Mode	BDMA mód
 BDMA mode change didn't apply\nBDMA reverted; other settings were saved	A BDMA-mód váltása nem került alkalmazásra\nA BDMA-mód visszaállt; az egyéb beállítások mentésre kerültek
 Boot Page	Startlap
@@ -101,7 +100,6 @@ Loading HDD...	HDD betöltése...
 Loading MMCE...	MMCE betöltése...
 Loading MX4SIO...	MX4SIO betöltése...
 Loading USB...	USB betöltése...
-manually). Your POPSLoader settings are kept.	kézzel). A POPSLoader beállításai megmaradnak.
 Memory Card	Memóriakártya
 MMCE has no POPS folder\nexpected mmce0:/POPS/	Az MMCE-n nincs POPS mappa\nelvárás az mmce0:/POPS/ mappa
 Multi-disc games	Többlemezes játékok
@@ -143,7 +141,6 @@ Reset	Visszaállítás
 Reset Defaults	Alapértelmezések visszaállítása
 Retrying USB scan...	Az USB-ellenőrzés újraindítása...
 Return to OSDSYS?	Kilépés az OSDSYS-be?
-return until you turn this back On (or re-add them	addig nem jelennek meg, amíg ezt újra be nem kapcsolja\n(vagy újra hozzá nem adja őket)
 Right aligned	Jobbra igazítva
 Save	Mentés
 Save Changes	Változások mentése
@@ -179,7 +176,6 @@ Startup	Indítás
 Static (manual)	Statikus (manuális)
 Storage	Tároló
 This backend isn't implemented yet	Ez a háttérrendszer még nincs megvalósítva
-This removes the POPSTARTER pack -- including the	Ezzel eltávolítja a POPSTARTER csomagot -- beleértve a
 UI text hidden	UI szövegek elrejtve
 UI text shown	UI szövegek megjelenítve
 Video Standard	Videó szabvány
@@ -211,3 +207,4 @@ Checking POPSTARTER...	POPSTARTER ellenőrzése...
 Checking the game file...	A játékfájl ellenőrzése...
 Starting the game...	A játék indítása...
 Staging drivers for this device	Illesztőprogramok előkészítése ehhez az eszközhöz
+This removes the POPSTARTER pack -- including the\nBDMA and SMB modules -- from mc0: / mc1:. They won't\nreturn until you turn this back On (or re-add them\nmanually). Your POPSLoader settings are kept.	Ezzel eltávolítja a POPSTARTER csomagot -- beleértve a\nBDMA és SMB modulokat -- az mc0: / mc1: eszközökről.\nAddig nem jelennek meg, amíg ezt újra be nem kapcsolja\n(vagy kézzel újra hozzá nem adja). A beállítások megmaradnak.
