@@ -36,7 +36,7 @@ Building HDD game list...	HDD játéklista összeállítása...
 Building USB game list...	USB játéklista összeállítása...
 Can't disable while Adaptive BDMA is on\nTurn Adaptive BDMA off first	Az Adaptive BDMA bekapcsolt állapotában nem lehet kikapcsolni\nElőször kapcsolja ki az Adaptive BDMA-t
 Can't disable while BDMA is enabled\nSet BDMA Mode to FAT32 (None) first	A BDMA engedélyezése mellett nem lehet letiltani\nElőször állítsa a BDMA módot FAT32 (No BDMA) értékre
-Can't disable while SMB modules are installed\nSet SMB modules to Not installed first	Az SMB-modulok telepítése mellett nem lehet letiltani\nElőször állítsa az SMB-modulokat „Nincs telepítve” állapotra
+Can't disable while SMB modules are installed\nSet SMB modules to Not installed first	Az SMB-modulok telepítése mellett nem lehet letiltani\nElőször állítsa az SMB-modulokat "Nincs telepítve" állapotra
 Can't reach the server\ncheck Server IP / Port in SMB settings	Nem sikerült kapcsolatot létesíteni a szerverrel\nEllenőrizze a szerver IP-címét és portját az SMB-beállításokban
 Cancel	Mégsem
 Cannot access	Nem lehet hozzáférni
@@ -67,7 +67,7 @@ Credits	Közreműködők
 Cursor: L1 / R1	Kurzor: L1 / R1
 Defaults restored	Alapértelmezések visszaállítva
 Delete the POPSTARTER folder from the memory card?	Törli a POPSTARTER mappát a memóriakártyáról?
-Design by Berion\nScripts by nuno6573 and Ripto\nBased on Enceladus by Daniel Santos\nTesting by P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k, and Community\n\nSpecial Thanks To:\nkrHACKen for making POPStarter\nuyjulian, fjtrujy, HWC, and others for always helping\n\nThis program is free and open source\nIf you bought it, you have been scammed\n\nCompatibility problems? Visit:\nyoutube.com/@hugopocked6695	Tervezés: Berion\nSzkriptek: nuno6573 és Ripto\nBázis: Daniel Santos „Enceladus” című munkája\nTesztelés: P4NCHOL1NO, VizoR, provato,\nnuno6573, sAGA/oldman63, saildot4k és a közösség\n\nKülön köszönet:\nkrHACKennek a POPStarter elkészítéséért\nuyjuliannek, fjtrujy-nak, HWC-nek és másoknak a folyamatos segítségért\n\nEz a program ingyenes és nyílt forráskódú\nHa megvásárolta, akkor átverték\n\nKompatibilitási problémák? Látogasson el ide:\nyoutube.com/@hugopocked6695
+Design by Berion\nScripts by nuno6573 and Ripto\nBased on Enceladus by Daniel Santos\nTesting by P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k, and Community\n\nSpecial Thanks To:\nkrHACKen for making POPStarter\nuyjulian, fjtrujy, HWC, and others for always helping\n\nThis program is free and open source\nIf you bought it, you have been scammed\n\nCompatibility problems? Visit:\nyoutube.com/@hugopocked6695	Tervezés: Berion\nSzkriptek: nuno6573 és Ripto\nBázis: Daniel Santos "Enceladus" című munkája\nTesztelés: P4NCHOL1NO, VizoR, provato,\nnuno6573, sAGA/oldman63, saildot4k és a közösség\n\nKülön köszönet:\nkrHACKennek a POPStarter elkészítéséért\nuyjuliannek, fjtrujy-nak, HWC-nek és másoknak a folyamatos segítségért\n\nEz a program ingyenes és nyílt forráskódú\nHa megvásárolta, akkor átverték\n\nKompatibilitási problémák? Látogasson el ide:\nyoutube.com/@hugopocked6695
 Device List	Eszközlista
 DHCP (automatic)	DHCP (automatikus)
 DHCP failed\nset a static IP in SMB settings	A DHCP nem sikerült\nÁllítson be statikus IP-címet az SMB-beállításokban
@@ -246,4 +246,4 @@ X = Keep      O = Revert	X = Megtart      O = Visszavon
 X = Select      O = Cancel	X = Kiválaszt      O = Mégsem
 X = Yes      O = No	X = Igen      O = Nem
 Yes	Igen
-You can still add a "<game>.hide" next to the .VCD from a PC.	PC-ről továbbra is hozzáadhat egy „<game>.hide” fájlt a .VCD mellé.
+You can still add a "<game>.hide" next to the .VCD from a PC.	PC-ről továbbra is hozzáadhat egy "<game>.hide" fájlt a .VCD mellé.
