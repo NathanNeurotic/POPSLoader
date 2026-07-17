@@ -3436,7 +3436,6 @@ PLDR.I18N = {
     ["Edit POPStarter Path"] = "POPStarter útvonal szerkesztése",
     ["Enable the POPSTARTER Folder first\n(BDMA / SMB modules must live on the memory card)"] = "Először engedélyezze a POPSTARTER mappát\n(a BDMA / SMB moduloknak a memóriakártyán kell lenniük)",
     ["Enable the POPSTARTER Folder first\n(SMB modules must live on the memory card)"] = "Először engedélyezze a POPSTARTER mappát\n(az SMB-moduloknak a memóriakártyán kell lenniük)",
-    ["English (do not edit)"] = "Hungarian (put your translation here)",
     ["Exit"] = "Kilépés",
     ["FAT32-USB (None)"] = "FAT32-USB (No BDMA)",
     ["Failed to connect to SMB"] = "Nem sikerült csatlakozni az SMB-hez",
