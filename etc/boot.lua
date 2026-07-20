@@ -80,8 +80,8 @@ if string.find(ARGV0, "^[Mm][Xx]4[Ss][Ii][Oo]") then
   -- The writable filesystem path is the mass*:/ slot where bdmfs_fatfs
   -- mounts the SD card once mx4sio_bd has loaded. The slot is volatile
   -- (depends on hotplug + IRX load order), so we identify it
-  -- dynamically by the same ioctl driver-name rule PR #472 uses for
-  -- boot-device classification: sdc/mx4 ioctl => MX4SIO.
+  -- dynamically from the lock-free BDM device table: sdc/mx4 driver name plus
+  -- parId identifies the writable mass slot without opening every filesystem root.
   --
   -- PR #472 also enforces at the C layer that mx4sio_bd requires
   -- usbmass_bd to be loaded first (maintainer rule: "mx4sio will need
@@ -103,19 +103,26 @@ if string.find(ARGV0, "^[Mm][Xx]4[Ss][Ii][Oo]") then
   -- that here so the scan succeeds even when the first probe misses.
   System.sleep(1)
   local function scan_for_mx4sio_root()
-    if type(System.refreshMassBackends) == "function" then
+    if type(System) == "table" and type(System.refreshMassBackends) == "function" then
       pcall(System.refreshMassBackends)
     end
-    if type(System.getMassMountDriver) ~= "function" then
-      return nil, "no_getMassMountDriver"
+    if type(System) ~= "table" or type(System.bdmList) ~= "function" then
+      return nil, "no_bdm_list"
     end
-    for slot = 0, 9 do
-      local root = (slot == 0) and "mass:/" or ("mass"..tostring(slot)..":/")
-      local ok, driver = pcall(System.getMassMountDriver, root)
-      if ok and type(driver) == "string" and driver ~= "" then
+    local ok, list = pcall(System.bdmList)
+    if not ok or type(list) ~= "table" then
+      return nil, "no_bdm_list"
+    end
+    for _, info in pairs(list) do
+      if type(info) == "table" then
+        local driver = tostring(info.name or "")
         local lowered = string.lower(driver)
         if string.find(lowered, "mx4", 1, true) ~= nil or string.find(lowered, "sdc", 1, true) ~= nil then
-          return root, "found:"..root.."="..driver
+          local slot = tonumber(info.parId)
+          if slot ~= nil and slot >= 0 and slot <= 9 then
+            local root = (slot == 0) and "mass:/" or ("mass"..tostring(slot)..":/")
+            return root, "found:"..root.."="..driver
+          end
         end
       end
     end

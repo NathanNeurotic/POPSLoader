@@ -751,6 +751,178 @@ if lua.globals().PLDR.GetBootProfileText() is not None:
     t20 = False; print("    T20 FAIL: throwing getBootProfile should yield nil")
 check("T20 Boot profile reports slowest stage by DELTA (not biggest cumulative stamp)", t20)
 
+# T21 MMCE readiness is truthful and retryable.
+t21 = E('''function()
+  local raw_exists = doesFolderExist
+  local raw_ensure = System.ensureMmceman
+  local raw_reinit = System.reinitPad
+  local phase = 0
+  local pad_reinits = 0
+  doesFolderExist = function(path)
+    if phase == 1 and path == "mmce0:/" then return true end
+    return false
+  end
+  System.ensureMmceman = function() return true end
+  System.reinitPad = function() pad_reinits = pad_reinits + 1; return true end
+  PLDR._mmce_ready = nil
+  PLDR._mmce_pad_reinitialized = nil
+  PLDR.MMCE.PROBED = false
+  PLDR.MMCE.SLOTS = {}
+  PLDR.MMCE.PREFIX = nil
+
+  local first = PLDR.DetectMMCESlot(true)
+  local first_retryable = first == nil and PLDR._mmce_ready ~= true
+                       and PLDR.MMCE.PROBED == false and PLDR.MMCE.PREFIX == nil
+  phase = 1
+  local second = PLDR.DetectMMCESlot(true)
+  local second_ready = second == "mmce0:/" and PLDR._mmce_ready == true
+                    and PLDR.MMCE.PROBED == true and PLDR.MMCE.PREFIX == "mmce0:/"
+  local pad_once = pad_reinits == 1
+
+  doesFolderExist = raw_exists
+  System.ensureMmceman = raw_ensure
+  System.reinitPad = raw_reinit
+  return first_retryable and second_ready and pad_once
+end''')()
+check("T21 MMCE timeout stays retryable; later root appearance succeeds without double pad reinit", t21)
+
+# T22 MX4SIO identity must use bdmList and never open all mass roots.
+t22 = E('''function()
+  local raw_list = System.bdmList
+  local raw_init = System.initMX4SIO
+  local raw_refresh = System.refreshMassBackends
+  local raw_mount_driver = System.getMassMountDriver
+  local raw_exists = doesFolderExist
+  local fs_root_probes = 0
+  local native_driver_probes = 0
+
+  System.bdmList = function()
+    return {
+      { name = "usb", parId = 0 },
+      { name = "sdc", parId = 3 }
+    }
+  end
+  System.initMX4SIO = function() return true end
+  System.refreshMassBackends = function() return true end
+  System.getMassMountDriver = function(root)
+    native_driver_probes = native_driver_probes + 1
+    return nil
+  end
+  doesFolderExist = function(path)
+    if string.match(tostring(path), "^mass%d*:/$") then
+      fs_root_probes = fs_root_probes + 1
+    end
+    return false
+  end
+  PLDR._mx4_initial_settle_done = nil
+
+  local root = PLDR.GetMX4SIOMassRootNow()
+
+  System.bdmList = raw_list
+  System.initMX4SIO = raw_init
+  System.refreshMassBackends = raw_refresh
+  System.getMassMountDriver = raw_mount_driver
+  doesFolderExist = raw_exists
+  return root == "mass3:/" and fs_root_probes == 0 and native_driver_probes == 0
+end''')()
+check("T22 MX4SIO root identity comes from lock-free BDM table (no mass0-9 filesystem sweep)", t22)
+
+# T23 The broad storage revert must keep ATA out of the pre-graphics MC boot path.
+t23 = True
+main_src = (REPO / "src" / "main.cpp").read_text(encoding="utf-8")
+main_fn = main_src[main_src.index("int main(int argc, char * argv[])"):]
+pre_graphics = main_fn[:main_fn.index("initGraphics();")]
+if "EnsureAtaBdm();" in pre_graphics:
+    t23 = False
+    print("    T23 FAIL: ATA BDM is still loaded before graphics")
+check("T23 MC boot does not initialize the ATA BDM stack before graphics", t23)
+
+# T24 A stale marker must not force byte-identical BDMA driver rewrites.
+t24 = "local function FileBytesMatch" in SYS_SRC
+bdma_pos = SYS_SRC.find("function PLDR.ApplyBdmaMode(mode_key)")
+if bdma_pos < 0 or "FileBytesMatch(dest, bytes)" not in SYS_SRC[bdma_pos:bdma_pos + 7000]:
+    t24 = False
+check("T24 adaptive BDMA can skip byte-identical driver rewrites", t24)
+
+# T25 Exercise the MMCE launch path and capture the exact native call triple.
+t25 = E('''function()
+  local raw_load = System.loadELF
+  local raw_adaptive = PLDR.BDMA_ADAPTIVE
+  local raw_path = PLDR.POPSTARTER_PATH
+  local raw_reboot = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
+  local raw_prefix = PLDR.MMCE.PREFIX
+  local raw_confirm = UI.Pad.Events.CONFIRM
+  local raw_input = Input_GetEvent
+  local raw_resolve = PLDR.ResolveLaunchPopstarterPath
+  local raw_probe = PLDR.PopstarterProbeWithEnsure
+  local raw_stage = PLDR.MaybeApplyAdaptiveBdma
+  local raw_open = System.openFile
+  local raw_size = System.sizeFile
+  local raw_close = System.closeFile
+  local captured = nil
+
+  PLDR.BDMA_ADAPTIVE = false
+  PLDR.POPSTARTER_PATH = "mc0:/POPSTARTER/POPSTARTER.ELF"
+  PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER = 1
+  PLDR.MMCE.PREFIX = "mmce0:/"
+  UI.Pad.Events.CONFIRM = true
+  Input_GetEvent = function() return 0 end
+  PLDR.ResolveLaunchPopstarterPath = function() return "mc0:/POPSTARTER/POPSTARTER.ELF" end
+  PLDR.PopstarterProbeWithEnsure = function() return true end
+  PLDR.MaybeApplyAdaptiveBdma = function() return true end
+  System.openFile = function(path, mode)
+    if path == "mc0:/POPSTARTER/POPSTARTER.ELF" and mode == FREAD then return 25 end
+    return raw_open(path, mode)
+  end
+  System.sizeFile = function(fd) if fd == 25 then return 3 end return raw_size(fd) end
+  System.closeFile = function(fd) if fd == 25 then return 0 end return raw_close(fd) end
+  System.loadELF = function(path, reboot_iop, selector)
+    captured = { path = path, reboot = reboot_iop, selector = selector }
+    return 0
+  end
+
+  PLDR.RunPOPStarterGame("mmce0:/POPS/", "Test Game.VCD", nil)
+
+  System.loadELF = raw_load
+  PLDR.BDMA_ADAPTIVE = raw_adaptive
+  PLDR.POPSTARTER_PATH = raw_path
+  PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER = raw_reboot
+  PLDR.MMCE.PREFIX = raw_prefix
+  UI.Pad.Events.CONFIRM = raw_confirm
+  Input_GetEvent = raw_input
+  PLDR.ResolveLaunchPopstarterPath = raw_resolve
+  PLDR.PopstarterProbeWithEnsure = raw_probe
+  PLDR.MaybeApplyAdaptiveBdma = raw_stage
+  System.openFile = raw_open
+  System.sizeFile = raw_size
+  System.closeFile = raw_close
+
+  return type(captured) == "table"
+     and captured.path == "mc0:/POPSTARTER/POPSTARTER.ELF"
+     and captured.reboot == 1
+     and captured.selector == "mass:/POPS/XX.Test Game.ELF"
+end''')()
+check("T25 MMCE launch hands System.loadELF exactly one mass:/POPS/XX selector", t25)
+
+# T26 Pin the native registration and argv packing side of the contract.
+t26 = True
+cpp_contract = (REPO / "src" / "luasystem.cpp").read_text(encoding="utf-8")
+start = cpp_contract.index("static int lua_loadELF(lua_State *L)")
+end = cpp_contract.index("static int lua_loadELFWithPartition", start)
+bridge = cpp_contract[start:end]
+for token in [
+    "luaL_checkinteger(L, 2)",
+    "luaL_checkstring(L, 3)",
+    "LoadELFFromFileExecPS2RebootIOP(elftoload, 1, argv_static)",
+]:
+    if token not in bridge:
+        t26 = False
+        print("    T26 FAIL: missing native bridge token: " + token)
+if '{"loadELF",' not in cpp_contract or "lua_loadELF}" not in cpp_contract:
+    t26 = False
+    print("    T26 FAIL: System.loadELF is not registered to lua_loadELF")
+check("T26 native System.loadELF packs reboot flag separately from selector argv0", t26)
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")
