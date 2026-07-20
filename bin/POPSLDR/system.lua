@@ -5682,10 +5682,45 @@ local function EnsureMassBackendsReady(mode)
   end
 
   if mode == "ata" then
-    -- ata_bd is the BDM block driver for the internal exFAT drive. Idempotent;
-    -- mirrors the MX4SIO bring-up (usbmass first, then the device driver).
-    if type(System) == "table" and type(System.initATA) == "function" then
-      pcall(System.initATA)
+    -- ata_bd is the BDM block driver for the internal exFAT drive. Load it on a
+    -- BACKGROUND worker thread (OPL's model) so the EE main thread keeps flipping
+    -- frames and servicing SIF while ata_bd's _start runs on the IOP. Loading it
+    -- SYNCHRONOUSLY on the UI thread with a full IOP is the exFAT-page freeze
+    -- (EXP19). The APA/PFS boot path loads ata_bd via luaHDD -> the SYNCHRONOUS
+    -- System.initATA and is NOT affected -- only this device-page path goes async.
+    -- The poll is bounded and Screen.flip-driven, so it can NEVER freeze: on
+    -- timeout it just gives up and the page reports no drive.
+    local S = System
+    local have_async = type(S) == "table"
+      and type(S.initATAAsync) == "function"
+      and type(S.initATAStatus) == "function"
+    if have_async then
+      local started = -1
+      pcall(function() started = S.initATAAsync() end)
+      -- started: -1 spawn-failed, 0 idle, 1 running, 2 done-ok, 3 done-fail
+      if type(started) == "number" and started >= 0 then
+        -- Frame-count the timeout, NOT Timer.getTime (that is MICROSECONDS -- see
+        -- the timer-getTime-microseconds trap). Each iteration flips a frame
+        -- (~1/60s) so the display + SIF pipeline stay live; a working load
+        -- finishes in seconds, so ~180s is a generous ceiling before we bail.
+        local can_flip = type(Screen) == "table" and type(Screen.flip) == "function"
+        local st = started
+        for _ = 1, (180 * 60) do
+          if st == 2 or st == 3 then break end
+          if can_flip then
+            pcall(Screen.flip)
+          elseif type(S.sleep) == "function" then
+            pcall(S.sleep, 0)
+          end
+          local ok2, s2 = pcall(S.initATAStatus)
+          if ok2 and type(s2) == "number" then st = s2 end
+        end
+        return
+      end
+      -- async couldn't start (thread create failed) -- fall through to sync.
+    end
+    if type(S) == "table" and type(S.initATA) == "function" then
+      pcall(S.initATA)
     end
     return
   end

@@ -6,6 +6,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sifrpc.h>
+#include <kernel.h>    // ee_thread_t / CreateThread / StartThread / ExitDeleteThread for the async ata_bd worker
 #include <iopheap.h>   // SifAllocIopHeap/SifFreeIopHeap for the 128 KiB BDM-cache probe
 #include <string.h>
 #define NEWLIB_PORT_AWARE
@@ -1555,6 +1556,82 @@ static int lua_ata_init(lua_State *L)
 }
 
 // ============================================================================
+// Async exFAT-page ata_bd bring-up (OPL's worker-thread model, mirrors the
+// proven Graphics.threadLoadImage worker in luagraphics.cpp -- ee_thread_t,
+// priority 16, ExitDeleteThread). The exFAT DEVICE PAGE loads ata_bd on a
+// BACKGROUND EE thread so the EE main thread stays alive (flipping frames /
+// servicing SIF) while ata_bd's _start runs on the IOP. Loading it
+// SYNCHRONOUSLY on the UI thread with a full IOP (pad+sound+usb resident) is
+// the one config that hangs (EXP19 froze); OPL loads it on its IO worker
+// thread and it completes (bdmsupport.c bdmLoadBlockDeviceModules).
+//
+// THE APA/PFS BOOT PATH IS UNCHANGED: luaHDD.cpp Load_HDD_IRX calls the
+// SYNCHRONOUS EnsureAtaBdm at boot, on a lean IOP, and it must finish before
+// pfs1: mounts -- do NOT route that through this. Only System.initATAAsync is
+// new; System.initATA (sync) stays for APA and as the fallback. Load-once via
+// the SAME g_ata_bd_loaded, so whichever path loads ata_bd first wins.
+// ============================================================================
+extern void *_gp;   // GP for spawned EE threads (same symbol luagraphics uses)
+
+// 0=idle 1=running 2=done-ok 3=done-fail. Written by the worker thread, polled
+// from Lua on the main thread; volatile so the poll re-reads it each frame.
+static volatile int g_ata_async_state = 0;
+static u8 g_ata_async_stack[8192] __attribute__((aligned(16)));
+
+static int ata_async_thread(void *arg)
+{
+	(void)arg;
+	bool ok = EnsureAtaBdm();
+	g_ata_async_state = ok ? 2 : 3;
+	ExitDeleteThread();
+	return 0;
+}
+
+// System.initATAAsync(): kick the ata_bd bring-up onto a worker thread and
+// return immediately with the state int. If ata_bd is already loaded (e.g. an
+// APA-HDD boot brought it up) it reports done-ok (2) without spawning. Returns
+// -1 if the thread could not be created, so the Lua caller falls back to the
+// synchronous System.initATA.
+static int lua_ata_init_async(lua_State *L)
+{
+	if (g_ata_bd_loaded) {
+		g_ata_async_state = 2;
+		lua_pushinteger(L, 2);
+		return 1;
+	}
+	if (g_ata_async_state == 1) {   // already running -- do not spawn a second
+		lua_pushinteger(L, 1);
+		return 1;
+	}
+	g_ata_async_state = 1;
+	ee_thread_t th;
+	th.attr = 0;
+	th.option = 0;
+	th.func = (void *)ata_async_thread;
+	th.stack = (void *)g_ata_async_stack;
+	th.stack_size = sizeof(g_ata_async_stack);
+	th.gp_reg = &_gp;
+	th.initial_priority = 16;   // same as the proven Graphics.threadLoadImage worker
+	int tid = CreateThread(&th);
+	if (tid < 0) {
+		g_ata_async_state = 0;   // spawn failed -> caller uses sync fallback
+		lua_pushinteger(L, -1);
+		return 1;
+	}
+	StartThread(tid, NULL);
+	lua_pushinteger(L, 1);
+	return 1;
+}
+
+// System.initATAStatus(): 0=idle 1=running 2=done-ok 3=done-fail. Poll each frame.
+static int lua_ata_init_status(lua_State *L)
+{
+	(void)L;
+	lua_pushinteger(L, g_ata_async_state);
+	return 1;
+}
+
+// ============================================================================
 // Menu-side SMB browse (Increment 1: connect + list). Mirrors OPL's proven
 // netman recipe (Open-PS2-Loader src/ethsupport.c). LAZY: these IRX load only
 // here (System.initSMB / connectSMB on SMB-page entry), never at boot. ps2dev9
@@ -1995,6 +2072,8 @@ static const luaL_Reg System_functions[] = {
 	{"reinitPad",              lua_reinit_pad},
 	{"initMX4SIO",             lua_mx4sio_init},
 	{"initATA",                lua_ata_init},
+	{"initATAAsync",           lua_ata_init_async},
+	{"initATAStatus",          lua_ata_init_status},
 	{"initSMB",                lua_smb_init},
 	{"smbNetUp",               lua_smb_netup},
 	{"connectSMB",             lua_smb_connect},
