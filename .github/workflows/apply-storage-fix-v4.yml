@@ -1,0 +1,127 @@
+name: Validate launch handoff and ATA order
+
+on:
+  pull_request:
+    branches:
+      - dev
+
+permissions:
+  contents: write
+
+concurrency:
+  group: validate-launch-handoff-ata-order
+  cancel-in-progress: true
+
+jobs:
+  host-validation:
+    name: Host regression and handoff battery
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v5
+        with:
+          ref: agent/fix-mmce-mx4-first-entry
+          fetch-depth: 0
+
+      - name: Apply validation patch
+        run: python3 tools/apply_storage_fix_v4.py
+
+      - name: Install Lua runtime bridge
+        run: |
+          python3 -m pip install --quiet lupa 2>/dev/null \
+            || python3 -m pip install --quiet --break-system-packages lupa
+
+      - name: Run host harness
+        run: python3 tools/host_harness.py
+
+      - name: Validate source invariants
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          main = Path('src/main.cpp').read_text()
+          body = main[main.index('int main(int argc, char * argv[])'):]
+          pre_graphics = body[:body.index('initGraphics();')]
+          assert 'EnsureUsbMass();' not in pre_graphics
+          assert 'EnsureAtaBdm();' not in pre_graphics
+          system = Path('bin/POPSLDR/system.lua').read_text()
+          ata_start = system.index('if mode == "ata" then')
+          ata_end = system.index('return\n  end', ata_start)
+          ata = system[ata_start:ata_end]
+          assert ata.index('System.ensureBDMFatFs') < ata.index('System.ensureDev9') < ata.index('System.initATA')
+          cpp = Path('src/luasystem.cpp').read_text()
+          bridge = cpp[cpp.index('static int lua_loadELF(lua_State *L)'):cpp.index('static int lua_loadELFWithPartition')]
+          assert 'luaL_checkinteger(L, 2)' in bridge
+          assert 'luaL_checkstring(L, 3)' in bridge
+          assert '{"loadELF",' in cpp
+          print('launch and ATA invariants passed')
+          PY
+
+      - name: Check patch cleanliness
+        run: git diff --check
+
+  ps2-build-validation:
+    name: PS2 build and Lua syntax
+    runs-on: ubuntu-latest
+    container:
+      image: ps2dev/ps2dev:v2.0.0
+    steps:
+      - name: Install dependencies
+        shell: sh
+        run: apk add --no-cache build-base git bash p7zip findutils coreutils zip unzip python3 lua5.4 ca-certificates
+
+      - name: Mark checkout safe
+        shell: sh
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Checkout PR branch
+        uses: actions/checkout@v5
+        with:
+          ref: agent/fix-mmce-mx4-first-entry
+          fetch-depth: 0
+
+      - name: Apply validation patch
+        shell: sh
+        run: python3 tools/apply_storage_fix_v4.py
+
+      - name: Validate Lua syntax
+        shell: sh
+        run: luac5.4 -p etc/boot.lua bin/POPSLDR/system.lua bin/POPSLDR/ui.lua bin/POPSLDR/images.lua
+
+      - name: Compile project
+        shell: sh
+        run: make clean elfloader all
+
+      - name: Check patch cleanliness
+        shell: sh
+        run: git diff --check
+
+  commit-fix:
+    name: Commit validated handoff/order fix
+    needs:
+      - host-validation
+      - ps2-build-validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v5
+        with:
+          ref: agent/fix-mmce-mx4-first-entry
+          fetch-depth: 0
+
+      - name: Apply validation patch
+        run: python3 tools/apply_storage_fix_v4.py
+
+      - name: Remove temporary validator
+        run: |
+          rm -f tools/apply_storage_fix_v4.py
+          rm -f .github/workflows/apply-storage-fix-v4.yml
+
+      - name: Commit and push
+        run: |
+          set -eu
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add bin/POPSLDR/system.lua src/luasystem.cpp tools/host_harness.py tools/apply_storage_fix_v4.py .github/workflows/apply-storage-fix-v4.yml
+          git commit -m "test(storage): pin POPStarter handoff and ATA lazy order"
+          git push origin HEAD:agent/fix-mmce-mx4-first-entry
