@@ -751,6 +751,86 @@ if lua.globals().PLDR.GetBootProfileText() is not None:
     t20 = False; print("    T20 FAIL: throwing getBootProfile should yield nil")
 check("T20 Boot profile reports slowest stage by DELTA (not biggest cumulative stamp)", t20)
 
+# ---------------------------------------------------------------------------
+# T21 MMCE readiness is truthful and retryable. A successful mmceman IRX load
+# must not permanently latch ready when mmce0:/mmce1:/ have not appeared yet.
+t21 = E('''function()
+  local raw_exists = doesFolderExist
+  local raw_ensure = System.ensureMmceman
+  local raw_reinit = System.reinitPad
+  local phase = 0
+  local pad_reinits = 0
+  doesFolderExist = function(path)
+    if phase == 1 and path == "mmce0:/" then return true end
+    return false
+  end
+  System.ensureMmceman = function() return true end
+  System.reinitPad = function() pad_reinits = pad_reinits + 1; return true end
+  PLDR._mmce_ready = nil
+  PLDR._mmce_pad_reinitialized = nil
+  PLDR.MMCE.PROBED = false
+  PLDR.MMCE.SLOTS = {}
+  PLDR.MMCE.PREFIX = nil
+
+  local first = PLDR.DetectMMCESlot(true)
+  local first_retryable = first == nil and PLDR._mmce_ready ~= true
+                       and PLDR.MMCE.PROBED == false and PLDR.MMCE.PREFIX == nil
+
+  phase = 1
+  local second = PLDR.DetectMMCESlot(true)
+  local second_ready = second == "mmce0:/" and PLDR._mmce_ready == true
+                    and PLDR.MMCE.PROBED == true and PLDR.MMCE.PREFIX == "mmce0:/"
+  local pad_once = pad_reinits == 1
+
+  doesFolderExist = raw_exists
+  System.ensureMmceman = raw_ensure
+  System.reinitPad = raw_reinit
+  return first_retryable and second_ready and pad_once
+end''')()
+check("T21 MMCE timeout stays retryable; later root appearance succeeds without double pad reinit", t21)
+
+# T22 MX4SIO identity discovery must use bdmList and never open all ten mass
+# filesystems merely to learn which parId belongs to the sdc/mx4 driver.
+t22 = E('''function()
+  local raw_list = System.bdmList
+  local raw_init = System.initMX4SIO
+  local raw_refresh = System.refreshMassBackends
+  local raw_mount_driver = System.getMassMountDriver
+  local raw_exists = doesFolderExist
+  local fs_root_probes = 0
+  local native_driver_probes = 0
+
+  System.bdmList = function()
+    return {
+      { name = "usb", parId = 0 },
+      { name = "sdc", parId = 3 }
+    }
+  end
+  System.initMX4SIO = function() return true end
+  System.refreshMassBackends = function() return true end
+  System.getMassMountDriver = function(root)
+    native_driver_probes = native_driver_probes + 1
+    return nil
+  end
+  doesFolderExist = function(path)
+    if string.match(tostring(path), "^mass%d*:/$") then
+      fs_root_probes = fs_root_probes + 1
+    end
+    return false
+  end
+  PLDR._mx4_initial_settle_done = nil
+
+  local root = PLDR.GetMX4SIOMassRootNow()
+
+  System.bdmList = raw_list
+  System.initMX4SIO = raw_init
+  System.refreshMassBackends = raw_refresh
+  System.getMassMountDriver = raw_mount_driver
+  doesFolderExist = raw_exists
+  return root == "mass3:/" and fs_root_probes == 0 and native_driver_probes == 0
+end''')()
+check("T22 MX4SIO root identity comes from lock-free BDM table (no mass0-9 filesystem sweep)", t22)
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")

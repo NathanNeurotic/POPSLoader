@@ -1140,34 +1140,60 @@ local function ExpandPathCandidates(path)
   return expanded
 end
 
+local function IsAnyMmceRootReady()
+  local candidates = {"mmce0:/", "mmce1:/"}
+  for i = 1, #candidates do
+    local root = candidates[i]
+    local ok_root, has_root = pcall(doesFolderExist, root)
+    if ok_root and has_root == true then
+      return true
+    end
+    local ok_pops, has_pops = pcall(doesFolderExist, root.."POPS/")
+    if ok_pops and has_pops == true then
+      return true
+    end
+  end
+  return false
+end
+
 function PLDR.EnsureMmceReadyOnce()
   if PLDR._mmce_ready then
     return true
   end
 
-  -- Layer C lazy load: mmceman.irx is only loaded eagerly when boot
-  -- device is MMCE (see src/main.cpp). For USB / MC / MX4SIO / HDD
-  -- (any of hdd*, pfs*, ata*, apa*) boots, the IRX is deferred and
-  -- must be loaded here before any mmce%d:/ accessor will work.
-  -- MMCE (third-party memory card adapters like MemoryCard Pro) is a
-  -- distinct device from standard PS2 MC -- MC uses mc%d:/ paths and
-  -- the always-loaded mcman/mcserv IRX stack, not mmceman.
-  -- System.ensureMmceman() is idempotent: no-op if already loaded.
+  -- Module load success is not filesystem readiness. On non-MMCE boots the IRX
+  -- is loaded lazily, and real hardware can expose mmce0:/ or mmce1:/ shortly
+  -- after SifExecModuleBuffer returns. Keep those states separate so a transient
+  -- first miss is retryable instead of being permanently latched as ready.
   if type(System) == "table" and type(System.ensureMmceman) == "function" then
-    pcall(System.ensureMmceman)
+    local ok_load, loaded = pcall(System.ensureMmceman)
+    if not ok_load or loaded ~= true then
+      return false
+    end
   end
 
-  -- mmceman shares the SIO2 bus with the controller. Loading it on demand
-  -- here (after padman already opened the pad at boot) can disrupt the pad's
-  -- in-flight transfer and silently kill input on the MMCE list. Re-open the
-  -- pad port now that mmceman is up so buttons keep working. Idempotent and
-  -- only reached on the MMCE-page path, so it has no effect on other devices.
-  if type(System) == "table" and type(System.reinitPad) == "function" then
-    pcall(System.reinitPad)
+  -- mmceman shares SIO2 with the controller. Re-open the pad once after the
+  -- successful module load, before waiting for the card roots to appear.
+  if not PLDR._mmce_pad_reinitialized then
+    if type(System) == "table" and type(System.reinitPad) == "function" then
+      pcall(System.reinitPad)
+    end
+    PLDR._mmce_pad_reinitialized = true
   end
 
-  PLDR._mmce_ready = true
-  return true
+  for attempt = 1, 5 do
+    if IsAnyMmceRootReady() then
+      PLDR._mmce_ready = true
+      return true
+    end
+    if attempt < 5 and type(System) == "table" and type(System.sleep) == "function" then
+      pcall(System.sleep, 1)
+    end
+  end
+
+  -- No card yet (or a slow/failed mount): do not poison later page entry, launch
+  -- preflight, hot-plug, or R1 refresh attempts with a false ready latch.
+  return false
 end
 
 function PLDR.ExpandMcAlias(path)
@@ -5621,6 +5647,61 @@ local function ClassifyMassRootDriver(driver)
   return "usb"
 end
 
+local function BuildBdmMassIdentity()
+  local identity = {
+    usb = {},
+    mx4sio = {},
+    ata = {},
+    present_roots = {}
+  }
+  if type(System) ~= "table" or type(System.bdmList) ~= "function" then
+    return identity
+  end
+
+  local ok, list = pcall(System.bdmList)
+  if not ok or type(list) ~= "table" then
+    return identity
+  end
+
+  local seen_present = {}
+  local seen_usb = {}
+  local seen_mx4 = {}
+  local seen_ata = {}
+  for _, info in pairs(list) do
+    if type(info) == "table" then
+      local slot = tonumber(info.parId)
+      if slot ~= nil and slot >= 0 and slot <= 9 then
+        local root = (slot == 0) and "mass:/" or ("mass"..tostring(slot)..":/")
+        root = NormalizeMassRoot(root)
+        if root ~= nil then
+          if seen_present[root] ~= true then
+            seen_present[root] = true
+            table.insert(identity.present_roots, root)
+          end
+          local kind = ClassifyMassRootDriver(info.name)
+          if kind == "mx4sio" then
+            if seen_mx4[root] ~= true then
+              seen_mx4[root] = true
+              table.insert(identity.mx4sio, root)
+            end
+          elseif kind == "ata" then
+            if seen_ata[root] ~= true then
+              seen_ata[root] = true
+              table.insert(identity.ata, root)
+            end
+          else
+            if seen_usb[root] ~= true then
+              seen_usb[root] = true
+              table.insert(identity.usb, root)
+            end
+          end
+        end
+      end
+    end
+  end
+  return identity
+end
+
 local function ClassifyStartupMassTargets(targets)
   if type(targets) ~= "table" or type(targets.mass_roots) ~= "table" then
     return
@@ -5736,8 +5817,19 @@ end
 
 local function EnsureMassBackendsReady(mode)
   if mode == "mx4sio" then
+    local initialized = false
     if type(System) == "table" and type(System.initMX4SIO) == "function" then
-      pcall(System.initMX4SIO)
+      local ok, ready = pcall(System.initMX4SIO)
+      initialized = ok and ready == true
+    end
+    -- The block device registers asynchronously after the IRX load. Settle once
+    -- before the first lock-free BDM-table read; later misses use the existing
+    -- six-attempt retry loop and its one-second spacing.
+    if initialized and not PLDR._mx4_initial_settle_done then
+      if type(System) == "table" and type(System.sleep) == "function" then
+        pcall(System.sleep, 1)
+      end
+      PLDR._mx4_initial_settle_done = true
     end
     return
   end
@@ -5806,6 +5898,14 @@ local function BuildMassRootIdentity(mode, attempt)
   -- the IOP (safe even mid-mount), so ask it first: zero registered block
   -- devices means the sweep can only wait on that lock for nothing -- skip it
   -- for this attempt and let the retry/toast flow proceed.
+  -- MX4SIO identity is available directly from bdm_query (driver name + parId).
+  -- Do not open mass:/ through mass9:/ merely to discover which slot belongs to
+  -- sdc/mx4: fileXioDopen can block forever while bdmfs_fatfs owns its mount lock,
+  -- preventing the surrounding retry loop from ever reaching attempt two.
+  if mode == "mx4sio" then
+    return BuildBdmMassIdentity()
+  end
+
   local try_txt = (attempt ~= nil) and (" (try "..tostring(attempt).." of 4)") or ""
   if mode == "ata" and type(System) == "table" and type(System.bdmList) == "function" then
     PLDR._AtaStage(0.46, "exFAT HDD: asking BDM for devices (46)"..try_txt.."...")
@@ -6637,13 +6737,19 @@ function PLDR.DetectMMCESlot(force_refresh)
   if PLDR.MMCE.PROBED and not force_refresh then
     return PLDR.MMCE.PREFIX
   end
-  if type(PLDR.EnsureMmceReadyOnce) == "function" then
-    pcall(PLDR.EnsureMmceReadyOnce)
-  end
-  PLDR.MMCE.PROBED = true
+
+  PLDR.MMCE.PROBED = false
   PLDR.MMCE.SLOTS = {}
   PLDR.MMCE.INDEX = 1
   PLDR.MMCE.PREFIX = nil
+
+  if type(PLDR.EnsureMmceReadyOnce) == "function" then
+    local ok_ready, ready = pcall(PLDR.EnsureMmceReadyOnce)
+    if not ok_ready or ready ~= true then
+      return nil
+    end
+  end
+
   local candidates = {"mmce0:/", "mmce1:/"}
   for i = 1, #candidates do
     local candidate = candidates[i]
@@ -6652,9 +6758,13 @@ function PLDR.DetectMMCESlot(force_refresh)
     end
   end
   if #PLDR.MMCE.SLOTS > 0 then
+    PLDR.MMCE.PROBED = true
     PLDR.MMCE.PREFIX = PLDR.MMCE.SLOTS[PLDR.MMCE.INDEX]
     return PLDR.MMCE.PREFIX
   end
+
+  -- A negative probe can be transient during lazy mount or hot-plug. Keep it
+  -- retryable instead of caching an empty slot list for the rest of the session.
   return nil
 end
 
