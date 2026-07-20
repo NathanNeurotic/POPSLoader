@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - agent/fix-mmce-mx4-first-entry
+  pull_request:
+    branches:
+      - dev
 
 permissions:
   contents: write
