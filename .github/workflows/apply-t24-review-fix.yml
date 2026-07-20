@@ -1,0 +1,52 @@
+name: Apply T24 review fix
+
+on:
+  pull_request:
+    branches:
+      - dev
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-t24-review-fix
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout follow-up branch
+        uses: actions/checkout@v5
+        with:
+          ref: agent/fix-mmce-mx4-after-storage-revert
+          fetch-depth: 0
+
+      - name: Apply review fix
+        run: python3 tools/apply_t24_review_fix.py
+
+      - name: Install Lua runtime bridge
+        run: |
+          python3 -m pip install --quiet lupa 2>/dev/null \
+            || python3 -m pip install --quiet --break-system-packages lupa
+
+      - name: Run host harness
+        run: python3 tools/host_harness.py
+
+      - name: Check patch cleanliness
+        run: git diff --check
+
+      - name: Remove temporary review tooling
+        run: |
+          rm -f tools/apply_t24_review_fix.py
+          rm -f .github/workflows/apply-t24-review-fix.yml
+
+      - name: Commit and push
+        run: |
+          set -eu
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "test(storage): scope BDMA review assertion dynamically"
+          git push origin HEAD:agent/fix-mmce-mx4-after-storage-revert
