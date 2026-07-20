@@ -1,9 +1,6 @@
 name: Apply validated storage fix
 
 on:
-  push:
-    branches:
-      - agent/fix-mmce-mx4-first-entry
   pull_request:
     branches:
       - dev
@@ -13,7 +10,7 @@ permissions:
 
 concurrency:
   group: apply-storage-fix
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   host-validation:
