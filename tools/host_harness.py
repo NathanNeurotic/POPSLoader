@@ -840,8 +840,13 @@ check("T23 MC boot does not initialize the ATA BDM stack before graphics", t23)
 # T24 A stale marker must not force byte-identical BDMA driver rewrites.
 t24 = "local function FileBytesMatch" in SYS_SRC
 bdma_pos = SYS_SRC.find("function PLDR.ApplyBdmaMode(mode_key)")
-if bdma_pos < 0 or "FileBytesMatch(dest, bytes)" not in SYS_SRC[bdma_pos:bdma_pos + 7000]:
+if bdma_pos < 0:
     t24 = False
+else:
+    next_function = SYS_SRC.find("\nfunction ", bdma_pos + 1)
+    bdma_scope = SYS_SRC[bdma_pos:next_function if next_function != -1 else None]
+    if "FileBytesMatch(dest, bytes)" not in bdma_scope:
+        t24 = False
 check("T24 adaptive BDMA can skip byte-identical driver rewrites", t24)
 
 # T25 Exercise the MMCE launch path and capture the exact native call triple.
