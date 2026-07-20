@@ -617,44 +617,13 @@ int main(int argc, char * argv[])
     LoadIrxChecked("usbd_irx", &usbd_irx, size_usbd_irx, &g_usbd_load_id, &g_usbd_load_ret);
     BootStamp("usbd");
 
-    // Bring the USB mass stack up HERE, adjacent to usbd -- matching what the two
-    // launchers that read sAGA's drive actually do. wLaunchELF_R3Z's loadUsbModules()
-    // does loadUsbDModule() then bdm/bdmfs_fatfs/settle/usbmass_bd in ONE function;
-    // OPL's bdmsupport.c LoadModules() does bdm/bdmfs_fatfs/usbd/usbmass_bd back to
-    // back. POPSLoader was the ONLY one loading usbd at boot and usbmass_bd minutes
-    // later on page entry, which is the only configuration that depends on usbd's
-    // late re-probe path (doRegisterDriver -> probeDeviceTree) to match a pendrive
-    // that was ALREADY enumerated at boot. On OPL/R3Z the drive is matched by the
-    // normal connect callback because usbmass_bd's driver is registered before the
-    // device is ever seen.
-    // Idempotent: EnsureUsbMass latches on success, so the lazy Lua-side call on
-    // USB-page entry becomes a no-op rather than a second load.
-    // Costs boot time (this is why the EXP6 boot profile landed first).
-    EnsureUsbMass();
-    BootStamp("usb mass stack");  // bdm+bdmfs_fatfs+usbmass_bd -- keep the label short: it must fit the Credits line
-
-    // Bring the ATA/BDM block stack up HERE too, back-to-back with usbmass_bd --
-    // the same coordinated window OPL and wLaunchELF_R3Z load ALL their block
-    // device drivers in, and the same fix already applied to usbmass_bd above.
-    //
-    // The exFAT-page freeze was ata_bd being loaded LATE (minutes after boot, on
-    // the page, synchronously on the UI thread) onto a bdm core that has been live
-    // since boot -- the one configuration neither working launcher uses. OPL loads
-    // bdm/bdmfs/usbd/usbmass THEN ata_bd back-to-back at init (bdmsupport.c +
-    // hddLoadModules, on a worker thread); R3Z loads the whole ATA stack together
-    // on a lean/just-reset IOP (loadAtaBlockDriver). EXP18/19 proved the driver
-    // BYTES are byte-for-byte R3Z's and still froze, so the difference was never
-    // the driver -- it was WHEN we load it. Loading it here makes the exFAT page's
-    // System.initATA a no-op (g_ata_bd_loaded already latched), so step 45 can no
-    // longer be the hang point.
-    //
-    // Safe on a driveless console: ata_bd's _start exits immediately when SPD
-    // reports no ATA device ("HDD is not connected, exiting"). An APA-HDD boot
-    // already loads this via HDD.Initialize, so g_ata_bd_loaded makes it a no-op
-    // there. Costs boot time only when an internal drive is actually present --
-    // and that cost buys an exFAT page that no longer blocks the UI.
-    EnsureAtaBdm();
-    BootStamp("ata bdm stack");  // dev9+ata_bd -- keep the label short for the Credits line
+    // Keep block-device stacks device-specific and lazy. usbd must remain here for
+    // DS3/DS4 pad support, but bdm/bdmfs_fatfs, usbmass_bd, ata_bd and mx4sio_bd
+    // are loaded only when their page or boot source requires them. Loading every
+    // BDM backend before graphics caused a 5+ second black screen on MC boot and
+    // left a long-lived mixed BDM environment that regressed MX4SIO and POPStarter
+    // removable-device handoff. This restores the 1.0.1 startup boundary while the
+    // load-once native helpers still prevent duplicate drivers.
 
 
     int ds3pads = 1;

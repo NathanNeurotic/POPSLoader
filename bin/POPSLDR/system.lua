@@ -4087,6 +4087,18 @@ local function GetFileSizeSafe(path)
   return size_val
 end
 
+local function FileBytesMatch(path, expected)
+  if type(expected) ~= "string" then
+    return false
+  end
+  local expected_size = string.len(expected)
+  if GetFileSizeSafe(path) ~= expected_size then
+    return false
+  end
+  local ok_read, actual = pcall(ReadWholeFile, path)
+  return ok_read and type(actual) == "string" and actual == expected
+end
+
 local function CopyExternalAtomicBounded(source, dest, expected_size)
   local tmp = dest..".tmp"
   if doesFileExist(tmp) then
@@ -6393,6 +6405,7 @@ function PLDR.ApplyBdmaMode(mode_key)
     if fd ~= nil and (type(fd) ~= "number" or fd >= 0) then
       System.closeFile(fd)
     end
+    local dest = POPSTARTER_PACK_ROOT.."/"..name
     if source == nil then
       local bytes = nil
       if type(System) == "table" and type(System.getEmbeddedAsset) == "function" then
@@ -6407,17 +6420,32 @@ function PLDR.ApplyBdmaMode(mode_key)
         end
         return false
       end
-      local dest = POPSTARTER_PACK_ROOT.."/"..name
-      local ok_write, wrote = pcall(WriteBytesAtomicBounded, bytes, dest)
-      if not ok_write or not wrote then
-        return false
+      -- Marker loss or an interrupted settings migration must not rewrite an
+      -- already-identical IRX through the slow tmp/bak/copy/rename MC path.
+      if not FileBytesMatch(dest, bytes) then
+        local ok_write, wrote = pcall(WriteBytesAtomicBounded, bytes, dest)
+        if not ok_write or not wrote then
+          return false
+        end
       end
     else
-      local dest = POPSTARTER_PACK_ROOT.."/"..name
-      local src_size = GetFileSizeSafe(source)
-      local ok, copied = pcall(CopyExternalAtomicBounded, source, dest, src_size)
-      if not ok or not copied then
-        return false
+      -- Release packs may provide an external override instead of the embedded
+      -- asset. Compare exact bytes first; if they differ, reuse the bytes already
+      -- read for the write rather than reading the source a second time.
+      local ok_source, source_bytes = pcall(ReadWholeFile, source)
+      if ok_source and type(source_bytes) == "string" then
+        if not FileBytesMatch(dest, source_bytes) then
+          local ok_write, wrote = pcall(WriteBytesAtomicBounded, source_bytes, dest)
+          if not ok_write or not wrote then
+            return false
+          end
+        end
+      else
+        local src_size = GetFileSizeSafe(source)
+        local ok, copied = pcall(CopyExternalAtomicBounded, source, dest, src_size)
+        if not ok or not copied then
+          return false
+        end
       end
     end
   end

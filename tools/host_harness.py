@@ -831,6 +831,31 @@ t22 = E('''function()
 end''')()
 check("T22 MX4SIO root identity comes from lock-free BDM table (no mass0-9 filesystem sweep)", t22)
 
+# T23 Hardware-startup invariant: mass backends must remain lazy on MC boot.
+# This is source-level because the host Lua harness cannot execute main.cpp/IOP.
+t23 = True
+main_src = (REPO / "src" / "main.cpp").read_text(encoding="utf-8")
+main_fn = main_src[main_src.index("int main(int argc, char * argv[])"):]
+pre_graphics = main_fn[:main_fn.index("initGraphics();")]
+if "EnsureUsbMass();" in pre_graphics or "EnsureAtaBdm();" in pre_graphics:
+    t23 = False
+    print("    T23 FAIL: USB/ATA BDM stack is still loaded before graphics")
+cpp_src = (REPO / "src" / "luasystem.cpp").read_text(encoding="utf-8")
+ata_start = cpp_src.index("bool EnsureAtaBdm()")
+ata_end = cpp_src.index("static int lua_ata_init", ata_start)
+ata_body = cpp_src[ata_start:ata_end]
+if ata_body.index("EnsureBDMFatFs()") > ata_body.index("EnsureDev9()"):
+    t23 = False
+    print("    T23 FAIL: lazy ATA order is dev9-first instead of BDM-FS-first")
+check("T23 MC boot keeps USB/ATA BDM lazy; ATA uses BDM-FS -> dev9 -> ata order", t23)
+
+# T24 BDMA restaging must exact-compare existing files before atomic rewriting.
+t24 = "local function FileBytesMatch" in SYS_SRC
+bdma_pos = SYS_SRC.find("function PLDR.ApplyBdmaMode(mode_key)")
+if bdma_pos < 0 or "FileBytesMatch(dest, bytes)" not in SYS_SRC[bdma_pos:bdma_pos + 7000]:
+    t24 = False
+check("T24 adaptive BDMA can skip byte-identical driver rewrites", t24)
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")

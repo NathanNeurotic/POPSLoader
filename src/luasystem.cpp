@@ -1500,32 +1500,25 @@ static int lua_mx4sio_init(lua_State *L)
 bool g_ata_bd_loaded = false;
 bool EnsureAtaBdm()
 {
-	if (!EnsureDev9()) {
-		return false;
-	}
-	// ATA uses ata_bd, NOT the USB mass block driver -- load only the BDM FS base
-	// (bdm + bdmfs_fatfs), never usbmass_bd, so bringing up the internal exFAT/APA
-	// drive does not also spin up USB enumeration. Matches wLaunchELF_R3Z's
-	// loadAtaBlockDriver (bdm -> bdmfs -> ata_bd, no usbmass_bd). Verified independent:
-	// ata_bd registers its own BDM "ata" device + the atad library for PFS, and the
-	// APA-boot path (luaHDD.cpp Load_HDD_IRX) needs the same bdm/bdmfs/ata_bd and never
-	// usbmass_bd; ClassifyMassRootDriver treats "ata" and "usb" as distinct buckets.
-	if (!EnsureBDMFatFs()) {   // dev9 -> bdm -> bdmfs_fatfs; bdm MUST precede ata_bd
-		return false;
-	}
-	if (!g_ata_bd_loaded) {
-		// Let bdmfs_fatfs settle before ata_bd registers with the BDM core -- the same
-		// 1s settle EnsureUsbMass applies before usbmass_bd (R3Z gets the equivalent gap
-		// from loading dev9 between bdmfs and ata_bd; we load dev9 first, so settle here).
-		sleep(1);
-		if (!LoadIrxCheckedBuffer("ata_bd.irx", ata_bd_irx, size_ata_bd_irx, NULL, NULL)) {
-			return false;
-		}
-		g_ata_bd_loaded = true;
-		// Match NHDDL/wLaunchELF ordering: let ata_bd settle before ps2hdd/ps2fs touch it.
-		sleep(1);
-	}
-	return true;
+    // Match wLaunchELF-R3Z's device-specific loadAtaBlockDriver sequence. The
+    // BDM filesystem base is established first; loading dev9 next provides the
+    // natural separation before ata_bd registers both atad and the BDM device.
+    if (!EnsureBDMFatFs()) {
+        return false;
+    }
+    if (!EnsureDev9()) {
+        return false;
+    }
+    if (!g_ata_bd_loaded) {
+        if (!LoadIrxCheckedBuffer("ata_bd.irx", ata_bd_irx, size_ata_bd_irx, NULL, NULL)) {
+            return false;
+        }
+        g_ata_bd_loaded = true;
+        // Let the drive and BDM partition registration settle before the first
+        // page query. This delay is paid only when ATA is actually requested.
+        sleep(1);
+    }
+    return true;
 }
 
 static int lua_ata_init(lua_State *L)
