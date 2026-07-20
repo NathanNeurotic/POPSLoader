@@ -57,6 +57,7 @@ local raw_refresh_mass_backends = type(System) == "table" and System.refreshMass
 local raw_init_mx4sio = type(System) == "table" and System.initMX4SIO or nil
 local raw_ensure_mmceman = type(System) == "table" and System.ensureMmceman or nil
 local mx4_mass_root_probe_budget = 0
+local mx4_mass_root_driver_slot = nil
 local mx4_initial_settle_done = false
 local mmce_initial_settle_attempted = false
 local bdm_snapshot = nil
@@ -119,6 +120,7 @@ if type(raw_init_mx4sio) == "function" then
     invalidate_bdm_snapshot()
     if ok == true then
       mx4_mass_root_probe_budget = 10
+      mx4_mass_root_driver_slot = nil
       if not mx4_initial_settle_done and type(System.sleep) == "function" then
         System.sleep(1)
         mx4_initial_settle_done = true
@@ -132,17 +134,19 @@ end
 if type(raw_get_mass_mount_driver) == "function" then
   System.getMassMountDriver = function(root)
     local slot = parse_mass_root_slot(root)
-    if slot ~= nil then
+    local active_probe = slot ~= nil and (mx4_mass_root_probe_budget > 0 or mx4_mass_root_driver_slot == slot)
+    if active_probe then
       local driver = bdm_driver_for_mass_slot(slot)
-      if driver ~= nil then
-        return driver
+      if mx4_mass_root_driver_slot == slot then
+        mx4_mass_root_driver_slot = nil
       end
       -- During the MX4SIO root sweep, a missing BDM entry means "not present yet".
       -- Do not fall back to fileXioDopen while the mount thread may own the FS lock.
-      if mx4_mass_root_probe_budget > 0 then
-        return nil
-      end
+      return driver
     end
+    -- Outside the explicitly bounded MX4SIO sweep, always query the live native
+    -- path. The BDM snapshot is intentionally not consulted here: hot-plug state
+    -- may have changed since the last refresh/init that invalidated the cache.
     return raw_get_mass_mount_driver(root)
   end
 end
@@ -151,8 +155,18 @@ if type(raw_does_folder_exist) == "function" then
   doesFolderExist = function(path)
     local slot = parse_mass_root_slot(path)
     if slot ~= nil and mx4_mass_root_probe_budget > 0 then
+      local present = bdm_driver_for_mass_slot(slot) ~= nil
       mx4_mass_root_probe_budget = mx4_mass_root_probe_budget - 1
-      return bdm_driver_for_mass_slot(slot) ~= nil
+      -- BuildMassRootIdentity asks for the driver's name immediately after an
+      -- existing root. Preserve one paired lookup when slot 9 consumes the final
+      -- budget unit; otherwise Gemini's suggested budget gate would send that last
+      -- lookup back through the same blocking fileXio path this PR avoids.
+      if present and mx4_mass_root_probe_budget == 0 then
+        mx4_mass_root_driver_slot = slot
+      elseif mx4_mass_root_probe_budget == 0 then
+        mx4_mass_root_driver_slot = nil
+      end
+      return present
     end
     return raw_does_folder_exist(path)
   end
@@ -282,6 +296,7 @@ if string.find(ARGV0, "^[Mm][Xx]4[Ss][Ii][Oo]") then
   -- The boot-time scan does not consume the ten-probe page-sweep budget.
   -- Clear it so unrelated mass-root checks before page entry retain normal semantics.
   mx4_mass_root_probe_budget = 0
+  mx4_mass_root_driver_slot = nil
   invalidate_bdm_snapshot()
   BOOT_MX4SIO_PROBE_RESULT = table.concat(probe_trace, ";")
   if MX_ROOT ~= nil then
