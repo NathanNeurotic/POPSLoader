@@ -65,16 +65,15 @@ jobs:
         shell: sh
         run: |
           set -eu
-          LUAC=""
-          for cand in luac5.4 luac lua5.4; do
-            if command -v "$cand" >/dev/null 2>&1; then LUAC="$cand"; break; fi
+          LUA_TOOL=""
+          for cand in luac5.4 luac lua5.4 lua; do
+            if command -v "$cand" >/dev/null 2>&1; then LUA_TOOL="$cand"; break; fi
           done
-          [ -n "$LUAC" ] || { echo "No Lua parser found" >&2; exit 1; }
-          if echo "$LUAC" | grep -q '^lua'; then
-            "$LUAC" -e "assert(loadfile('etc/boot.lua')); assert(loadfile('bin/POPSLDR/system.lua')); assert(loadfile('bin/POPSLDR/ui.lua')); assert(loadfile('bin/POPSLDR/images.lua'))"
-          else
-            "$LUAC" -p etc/boot.lua bin/POPSLDR/system.lua bin/POPSLDR/ui.lua bin/POPSLDR/images.lua
-          fi
+          [ -n "$LUA_TOOL" ] || { echo "No Lua parser found" >&2; exit 1; }
+          case "$LUA_TOOL" in
+            luac*) "$LUA_TOOL" -p etc/boot.lua bin/POPSLDR/system.lua bin/POPSLDR/ui.lua bin/POPSLDR/images.lua ;;
+            *) "$LUA_TOOL" -e "assert(loadfile('etc/boot.lua')); assert(loadfile('bin/POPSLDR/system.lua')); assert(loadfile('bin/POPSLDR/ui.lua')); assert(loadfile('bin/POPSLDR/images.lua'))" ;;
+          esac
 
       - name: Compile project
         shell: sh
