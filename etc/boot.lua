@@ -34,6 +34,154 @@ end
 -- string.find calls below into the boot error screen; "" just falls through to the
 -- normal mass/mc resolution path, same as any non-HDD/non-MX4SIO launcher.
 local ARGV0 = System.GetArgv0() or ""
+
+-- First-entry storage hardening.
+--
+-- MX4SIO's block device and FAT mount come up asynchronously. The existing page
+-- retry loop was bounded, but its first mass-root sweep still called fileXioDopen
+-- through doesFolderExist/getMassMountDriver while bdmfs_fatfs could be holding its
+-- mount lock. One blocked call meant the retry loop never reached attempt two. For
+-- the ten bare mass roots immediately following initMX4SIO, answer presence and
+-- driver identity from bdm_query's lock-free device list instead. Normal folder
+-- probes (including massN:/POPS/) still use the real filesystem after the initial
+-- one-second settle.
+--
+-- MMCE is lazy-loaded on non-MMCE boots. EnsureMmceReadyOnce intentionally calls
+-- System.ensureMmceman only once, so an immediate probe can race the freshly loaded
+-- driver and make first entry fail while a second entry works. Wrap the load with a
+-- bounded first-load settle/probe window; the existing system.lua code still owns
+-- the final slot detection and pad reinitialization.
+local raw_does_folder_exist = doesFolderExist
+local raw_get_mass_mount_driver = type(System) == "table" and System.getMassMountDriver or nil
+local raw_refresh_mass_backends = type(System) == "table" and System.refreshMassBackends or nil
+local raw_init_mx4sio = type(System) == "table" and System.initMX4SIO or nil
+local raw_ensure_mmceman = type(System) == "table" and System.ensureMmceman or nil
+local mx4_mass_root_probe_budget = 0
+local mx4_initial_settle_done = false
+local mmce_initial_settle_attempted = false
+local bdm_snapshot = nil
+
+local function invalidate_bdm_snapshot()
+  bdm_snapshot = nil
+end
+
+local function read_bdm_snapshot()
+  if type(bdm_snapshot) == "table" then
+    return bdm_snapshot
+  end
+  bdm_snapshot = false
+  if type(System) == "table" and type(System.bdmList) == "function" then
+    local ok, list = pcall(System.bdmList)
+    if ok and type(list) == "table" then
+      bdm_snapshot = list
+      return bdm_snapshot
+    end
+  end
+  return nil
+end
+
+local function parse_mass_root_slot(path)
+  local candidate = string.lower(tostring(path or ""))
+  if candidate == "mass:/" or candidate == "mass0:/" then
+    return 0
+  end
+  local slot = string.match(candidate, "^mass([1-9]):/$")
+  return tonumber(slot)
+end
+
+local function bdm_driver_for_mass_slot(slot)
+  local list = read_bdm_snapshot()
+  if type(list) ~= "table" then
+    return nil
+  end
+  for _, info in pairs(list) do
+    if type(info) == "table" and tonumber(info.parId) == tonumber(slot) then
+      local name = tostring(info.name or "")
+      if name ~= "" then
+        return name
+      end
+    end
+  end
+  return nil
+end
+
+if type(raw_refresh_mass_backends) == "function" then
+  System.refreshMassBackends = function(...)
+    local result = raw_refresh_mass_backends(...)
+    invalidate_bdm_snapshot()
+    return result
+  end
+end
+
+if type(raw_init_mx4sio) == "function" then
+  System.initMX4SIO = function(...)
+    local ok, reason = raw_init_mx4sio(...)
+    invalidate_bdm_snapshot()
+    if ok == true then
+      mx4_mass_root_probe_budget = 10
+      if not mx4_initial_settle_done and type(System.sleep) == "function" then
+        System.sleep(1)
+        mx4_initial_settle_done = true
+        invalidate_bdm_snapshot()
+      end
+    end
+    return ok, reason
+  end
+end
+
+if type(raw_get_mass_mount_driver) == "function" then
+  System.getMassMountDriver = function(root)
+    local slot = parse_mass_root_slot(root)
+    if slot ~= nil then
+      local driver = bdm_driver_for_mass_slot(slot)
+      if driver ~= nil then
+        return driver
+      end
+      -- During the MX4SIO root sweep, a missing BDM entry means "not present yet".
+      -- Do not fall back to fileXioDopen while the mount thread may own the FS lock.
+      if mx4_mass_root_probe_budget > 0 then
+        return nil
+      end
+    end
+    return raw_get_mass_mount_driver(root)
+  end
+end
+
+if type(raw_does_folder_exist) == "function" then
+  doesFolderExist = function(path)
+    local slot = parse_mass_root_slot(path)
+    if slot ~= nil and mx4_mass_root_probe_budget > 0 then
+      mx4_mass_root_probe_budget = mx4_mass_root_probe_budget - 1
+      return bdm_driver_for_mass_slot(slot) ~= nil
+    end
+    return raw_does_folder_exist(path)
+  end
+end
+
+if type(raw_ensure_mmceman) == "function" then
+  System.ensureMmceman = function(...)
+    local ok, reason = raw_ensure_mmceman(...)
+    if ok ~= true or mmce_initial_settle_attempted then
+      return ok, reason
+    end
+
+    mmce_initial_settle_attempted = true
+    for attempt = 1, 5 do
+      local slot_ready = false
+      local ok0, ready0 = pcall(raw_does_folder_exist, "mmce0:/")
+      local ok1, ready1 = pcall(raw_does_folder_exist, "mmce1:/")
+      slot_ready = (ok0 and ready0 == true) or (ok1 and ready1 == true)
+      if slot_ready then
+        break
+      end
+      if attempt < 5 and type(System.sleep) == "function" then
+        System.sleep(1)
+      end
+    end
+    return ok, reason
+  end
+end
+
 if string.find(ARGV0, "^hdd0:") then
   local MNTPART
   BOOTPATH = nil
@@ -80,8 +228,9 @@ if string.find(ARGV0, "^[Mm][Xx]4[Ss][Ii][Oo]") then
   -- The writable filesystem path is the mass*:/ slot where bdmfs_fatfs
   -- mounts the SD card once mx4sio_bd has loaded. The slot is volatile
   -- (depends on hotplug + IRX load order), so we identify it
-  -- dynamically by the same ioctl driver-name rule PR #472 uses for
-  -- boot-device classification: sdc/mx4 ioctl => MX4SIO.
+  -- dynamically by the BDM driver name and parId. Unlike the old
+  -- getMassMountDriver sweep, this does not fileXioDopen every mass root
+  -- while the filesystem mount thread may still own its lock.
   --
   -- PR #472 also enforces at the C layer that mx4sio_bd requires
   -- usbmass_bd to be loaded first (maintainer rule: "mx4sio will need
@@ -93,29 +242,25 @@ if string.find(ARGV0, "^[Mm][Xx]4[Ss][Ii][Oo]") then
   if type(System) == "table" and type(System.initMX4SIO) == "function" then
     pcall(System.initMX4SIO)
   end
-  -- Initial settle for the MX4SIO double-ping. PR #476 had a single
-  -- 1-second sleep + single scan; Nuno's 2026-05-28 PM hardware test
-  -- showed that's not enough on real hardware -- the BDM didn't see
-  -- the SD card on the first probe, the scan returned nothing, the
-  -- cwd translation never happened, and settings still tried to write
-  -- to mx4sio:/<path>/.pldrs. PLDR.InitMX4SIOPopsRoot uses a 3-attempt
-  -- retry with sleep(1) between failures (~3s worst case) -- mirror
-  -- that here so the scan succeeds even when the first probe misses.
-  System.sleep(1)
   local function scan_for_mx4sio_root()
     if type(System.refreshMassBackends) == "function" then
       pcall(System.refreshMassBackends)
     end
-    if type(System.getMassMountDriver) ~= "function" then
-      return nil, "no_getMassMountDriver"
+    invalidate_bdm_snapshot()
+    local list = read_bdm_snapshot()
+    if type(list) ~= "table" then
+      return nil, "no_bdm_list"
     end
-    for slot = 0, 9 do
-      local root = (slot == 0) and "mass:/" or ("mass"..tostring(slot)..":/")
-      local ok, driver = pcall(System.getMassMountDriver, root)
-      if ok and type(driver) == "string" and driver ~= "" then
+    for _, info in pairs(list) do
+      if type(info) == "table" then
+        local driver = tostring(info.name or "")
         local lowered = string.lower(driver)
         if string.find(lowered, "mx4", 1, true) ~= nil or string.find(lowered, "sdc", 1, true) ~= nil then
-          return root, "found:"..root.."="..driver
+          local slot = tonumber(info.parId)
+          if slot ~= nil and slot >= 0 and slot <= 9 then
+            local root = (slot == 0) and "mass:/" or ("mass"..tostring(slot)..":/")
+            return root, "found:"..root.."="..driver
+          end
         end
       end
     end
@@ -134,6 +279,10 @@ if string.find(ARGV0, "^[Mm][Xx]4[Ss][Ii][Oo]") then
       System.sleep(1)
     end
   end
+  -- The boot-time scan does not consume the ten-probe page-sweep budget.
+  -- Clear it so unrelated mass-root checks before page entry retain normal semantics.
+  mx4_mass_root_probe_budget = 0
+  invalidate_bdm_snapshot()
   BOOT_MX4SIO_PROBE_RESULT = table.concat(probe_trace, ";")
   if MX_ROOT ~= nil then
     BOOT_MX4SIO_PREFIX = MX_ROOT
