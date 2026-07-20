@@ -148,11 +148,9 @@ static bool EnsureBDMFatFs()
 	return true;
 }
 
-// Non-static so main.cpp can bring the USB mass stack up at BOOT, adjacent to
-// usbd, instead of minutes later on USB-page entry. Idempotent via the latches
-// below, so the later Lua-side call becomes a no-op -- which MATTERS: loading a
-// second copy of a block driver onto a live bus is the exact bug class that
-// caused the old 42% ATA freeze.
+// Device-specific lazy USB mass entry point. usbd itself remains boot-loaded
+// for DS3/DS4 pad support; bdm/bdmfs_fatfs/usbmass_bd are loaded only when USB
+// or MX4SIO actually requests the shared mass stack. Idempotent via the latches.
 bool EnsureUsbMass()
 {
 	if (usbmass_irx_loaded) {
@@ -1316,11 +1314,9 @@ static int lua_ensure_bdm_fatfs(lua_State *L)
 	return 1;
 }
 
-// Staged ATA bring-up (EXP11 diagnostics): expose dev9 alone so the Lua side can
-// paint a distinct progress step before EACH blocking module load. EnsureAtaBdm
-// re-runs EnsureDev9/EnsureBDMFatFs internally, but both are load-once latched,
-// so pre-calling them from Lua reduces System.initATA to settle + ata_bd + settle
-// -- and a frozen on-screen percent then names the exact stalled module start.
+// Staged ATA bring-up diagnostics: expose dev9 separately so Lua can paint a
+// distinct progress step while preserving the actual lazy order
+// bdm -> bdmfs_fatfs -> dev9 -> ata_bd.
 static int lua_ensure_dev9(lua_State *L)
 {
 	lua_pushboolean(L, EnsureDev9());
@@ -1488,7 +1484,7 @@ static int lua_mx4sio_init(lua_State *L)
 	return 2;
 }
 
-// Bring up the BDM-enabled ATA stack ONCE: dev9 -> bdm -> bdmfs_fatfs -> ata_bd.
+// Bring up the BDM-enabled ATA stack ONCE: bdm -> bdmfs_fatfs -> dev9 -> ata_bd.
 // ata_bd IS ps2atad compiled with ATA_ENABLE_BDM=1 -- it registers BOTH the atad library
 // (used by ps2hdd/ps2fs for APA/PFS) AND a BDM "ata" mass device (exFAT). The BDM FS layer
 // MUST precede it so ata_bd's bdm_connect_bd registration succeeds. SHARED by the HDD-boot

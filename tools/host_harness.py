@@ -856,6 +856,107 @@ if bdma_pos < 0 or "FileBytesMatch(dest, bytes)" not in SYS_SRC[bdma_pos:bdma_po
     t24 = False
 check("T24 adaptive BDMA can skip byte-identical driver rewrites", t24)
 
+# T25 Exercise the real MMCE launch path through RunPOPStarterGame and capture the
+# arguments presented to System.loadELF. This pins the POPStarter one-selector
+# contract, not just the string builder in isolation.
+t25 = E('''function()
+  local raw_load = System.loadELF
+  local raw_adaptive = PLDR.BDMA_ADAPTIVE
+  local raw_path = PLDR.POPSTARTER_PATH
+  local raw_reboot = PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER
+  local raw_prefix = PLDR.MMCE.PREFIX
+  local raw_confirm = UI.Pad.Events.CONFIRM
+  local raw_input = Input_GetEvent
+  local raw_resolve = PLDR.ResolveLaunchPopstarterPath
+  local raw_probe = PLDR.PopstarterProbeWithEnsure
+  local raw_stage = PLDR.MaybeApplyAdaptiveBdma
+  local raw_open = System.openFile
+  local raw_size = System.sizeFile
+  local raw_close = System.closeFile
+  local captured = nil
+
+  PLDR.BDMA_ADAPTIVE = false
+  PLDR.POPSTARTER_PATH = "mc0:/POPSTARTER/POPSTARTER.ELF"
+  PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER = 1
+  PLDR.MMCE.PREFIX = "mmce0:/"
+  FAKEFS.files["mc0:/POPSTARTER/POPSTARTER.ELF"] = "ELF"
+  FAKEFS.files["mmce0:/POPS/Test Game.VCD"] = "VCD"
+  FAKEFS.files["mass:/POPS/XX.Test Game.ELF"] = "SELECTOR"
+  UI.Pad.Events.CONFIRM = true
+  Input_GetEvent = function() return 0 end
+  PLDR.ResolveLaunchPopstarterPath = function() return "mc0:/POPSTARTER/POPSTARTER.ELF" end
+  PLDR.PopstarterProbeWithEnsure = function() return true end
+  PLDR.MaybeApplyAdaptiveBdma = function() return true end
+  System.openFile = function(path, mode)
+    if path == "mc0:/POPSTARTER/POPSTARTER.ELF" and mode == FREAD then return 25 end
+    return raw_open(path, mode)
+  end
+  System.sizeFile = function(fd) if fd == 25 then return 3 end return raw_size(fd) end
+  System.closeFile = function(fd) if fd == 25 then return 0 end return raw_close(fd) end
+  System.loadELF = function(path, reboot_iop, selector)
+    captured = { path = path, reboot = reboot_iop, selector = selector }
+    return 0
+  end
+
+  PLDR.RunPOPStarterGame("mmce0:/POPS/", "Test Game.VCD", nil)
+
+  System.loadELF = raw_load
+  PLDR.BDMA_ADAPTIVE = raw_adaptive
+  PLDR.POPSTARTER_PATH = raw_path
+  PLDR.REBOOT_IOP_WHILE_LOADING_POPSTARTER = raw_reboot
+  PLDR.MMCE.PREFIX = raw_prefix
+  UI.Pad.Events.CONFIRM = raw_confirm
+  Input_GetEvent = raw_input
+  PLDR.ResolveLaunchPopstarterPath = raw_resolve
+  PLDR.PopstarterProbeWithEnsure = raw_probe
+  PLDR.MaybeApplyAdaptiveBdma = raw_stage
+  System.openFile = raw_open
+  System.sizeFile = raw_size
+  System.closeFile = raw_close
+
+  print("T25_CAPTURE path="..tostring(captured and captured.path)
+    .." reboot="..tostring(captured and captured.reboot)
+    .." selector="..tostring(captured and captured.selector))
+  return type(captured) == "table"
+     and captured.path == "mc0:/POPSTARTER/POPSTARTER.ELF"
+     and captured.reboot == 1
+     and captured.selector == "mass:/POPS/XX.Test Game.ELF"
+end''')()
+check("T25 MMCE launch hands System.loadELF exactly one mass:/POPS/XX selector", t25)
+
+# T26 Pin the C registration/packing side of the same contract. System.loadELF
+# must map to lua_loadELF, read reboot_iop from slot 2 and selector from slot 3.
+t26 = True
+cpp_contract = (REPO / "src" / "luasystem.cpp").read_text(encoding="utf-8")
+start = cpp_contract.index("static int lua_loadELF(lua_State *L)")
+end = cpp_contract.index("static int lua_loadELFWithPartition", start)
+bridge = cpp_contract[start:end]
+for token in [
+    "luaL_checkinteger(L, 2)",
+    "luaL_checkstring(L, 3)",
+    "LoadELFFromFileExecPS2RebootIOP(elftoload, 1, argv_static)",
+]:
+    if token not in bridge:
+        t26 = False
+        print("    T26 FAIL: missing native bridge token: " + token)
+if '{"loadELF",' not in cpp_contract or "lua_loadELF}" not in cpp_contract:
+    t26 = False
+    print("    T26 FAIL: System.loadELF is not registered to lua_loadELF")
+check("T26 native System.loadELF packs reboot flag separately from selector argv0", t26)
+
+# T27 Verify the page-level preloads preserve the same BDM-FS -> dev9 -> ATA order.
+t27 = True
+ata_fn_start = SYS_SRC.index("local function EnsureMassBackendsReady(mode)")
+ata_fn_end = SYS_SRC.index("local function WaitMassProbeRetry", ata_fn_start)
+ata_lua = SYS_SRC[ata_fn_start:ata_fn_end]
+pos_bdm = ata_lua.find("pcall(System.ensureBDMFatFs)")
+pos_dev9 = ata_lua.find("pcall(System.ensureDev9)")
+pos_ata = ata_lua.find("pcall(System.initATA)")
+if not (pos_bdm >= 0 and pos_bdm < pos_dev9 < pos_ata):
+    t27 = False
+    print(f"    T27 FAIL: positions bdm={pos_bdm} dev9={pos_dev9} ata={pos_ata}")
+check("T27 exFAT page stages BDM-FS -> dev9 -> ATA in native order", t27)
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")

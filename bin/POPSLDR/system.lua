@@ -5847,23 +5847,18 @@ local function EnsureMassBackendsReady(mode)
   end
 
   if mode == "ata" then
-    -- ata_bd is the BDM block driver for the internal exFAT drive. Idempotent;
-    -- mirrors the MX4SIO bring-up (usbmass first, then the device driver).
-    -- EXP11: staged. Each blocking module load gets its own painted integer
-    -- percent FIRST, so a frozen overlay names the stalled step (the 42%-freeze
-    -- investigation: SifExecModuleBuffer has no timeout; ata_bd's module start
-    -- runs the whole ATA probe + BDM cache alloc before returning). ensureDev9 /
-    -- ensureBDMFatFs are load-once latched, so pre-calling them reduces initATA
-    -- to settle + ata_bd + settle. All three stay pcall'd and order-identical to
-    -- the old single initATA call (EnsureAtaBdm re-runs the latched steps).
+    -- Device-specific lazy ATA sequence, matching wLaunchELF-R3Z end to end:
+    -- bdm -> bdmfs_fatfs -> dev9 -> ata_bd. Each blocking module boundary gets
+    -- a painted stage before the call. The native helpers are load-once latched,
+    -- so System.initATA only performs the remaining ata_bd load and final settle.
     if type(System) == "table" then
-      if type(System.ensureDev9) == "function" then
-        PLDR._AtaStage(0.43, "exFAT HDD: starting dev9 (43)...")
-        pcall(System.ensureDev9)
-      end
       if type(System.ensureBDMFatFs) == "function" then
-        PLDR._AtaStage(0.44, "exFAT HDD: starting the filesystem base (44)...")
+        PLDR._AtaStage(0.43, "exFAT HDD: starting the filesystem base (43)...")
         pcall(System.ensureBDMFatFs)
+      end
+      if type(System.ensureDev9) == "function" then
+        PLDR._AtaStage(0.44, "exFAT HDD: starting dev9 (44)...")
+        pcall(System.ensureDev9)
       end
       if type(System.initATA) == "function" then
         PLDR._AtaStage(0.45, "exFAT HDD: starting the ATA driver (45)...")
