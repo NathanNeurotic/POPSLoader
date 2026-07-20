@@ -1,0 +1,116 @@
+name: Apply validated storage fix
+
+on:
+  push:
+    branches:
+      - agent/fix-mmce-mx4-first-entry
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-storage-fix
+  cancel-in-progress: false
+
+jobs:
+  host-validation:
+    name: Host regression battery
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v5
+        with:
+          ref: agent/fix-mmce-mx4-first-entry
+          fetch-depth: 0
+
+      - name: Apply authoritative storage patch
+        run: python3 tools/apply_storage_fix.py
+
+      - name: Install Lua runtime bridge
+        run: |
+          python3 -m pip install --quiet lupa 2>/dev/null \
+            || python3 -m pip install --quiet --break-system-packages lupa
+
+      - name: Run host harness
+        run: python3 tools/host_harness.py
+
+      - name: Check patch cleanliness
+        run: git diff --check
+
+  ps2-build-validation:
+    name: PS2 build and Lua syntax
+    runs-on: ubuntu-latest
+    container:
+      image: ps2dev/ps2dev:v2.0.0
+    steps:
+      - name: Install dependencies
+        shell: sh
+        run: apk add --no-cache build-base git bash p7zip findutils coreutils zip unzip python3 lua5.4 ca-certificates
+
+      - name: Mark checkout safe
+        shell: sh
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Checkout PR branch
+        uses: actions/checkout@v5
+        with:
+          ref: agent/fix-mmce-mx4-first-entry
+          fetch-depth: 0
+
+      - name: Apply authoritative storage patch
+        shell: sh
+        run: python3 tools/apply_storage_fix.py
+
+      - name: Validate Lua syntax
+        shell: sh
+        run: |
+          set -eu
+          LUAC=""
+          for cand in luac5.4 luac lua5.4; do
+            if command -v "$cand" >/dev/null 2>&1; then LUAC="$cand"; break; fi
+          done
+          [ -n "$LUAC" ] || { echo "No Lua parser found" >&2; exit 1; }
+          if echo "$LUAC" | grep -q '^lua'; then
+            "$LUAC" -e "assert(loadfile('etc/boot.lua')); assert(loadfile('bin/POPSLDR/system.lua')); assert(loadfile('bin/POPSLDR/ui.lua')); assert(loadfile('bin/POPSLDR/images.lua'))"
+          else
+            "$LUAC" -p etc/boot.lua bin/POPSLDR/system.lua bin/POPSLDR/ui.lua bin/POPSLDR/images.lua
+          fi
+
+      - name: Compile project
+        shell: sh
+        run: make clean elfloader all
+
+      - name: Check patch cleanliness
+        shell: sh
+        run: git diff --check
+
+  commit-fix:
+    name: Commit validated fix
+    needs:
+      - host-validation
+      - ps2-build-validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v5
+        with:
+          ref: agent/fix-mmce-mx4-first-entry
+          fetch-depth: 0
+
+      - name: Apply authoritative storage patch
+        run: python3 tools/apply_storage_fix.py
+
+      - name: Remove temporary applicator
+        run: |
+          rm -f tools/apply_storage_fix.py
+          rm -f .github/workflows/apply-storage-fix.yml
+
+      - name: Commit and push
+        run: |
+          set -eu
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add etc/boot.lua bin/POPSLDR/system.lua tools/host_harness.py tools/apply_storage_fix.py .github/workflows/apply-storage-fix.yml
+          git commit -m "fix(storage): centralize MMCE and MX4SIO readiness"
+          git push origin HEAD:agent/fix-mmce-mx4-first-entry
