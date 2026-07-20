@@ -84,8 +84,6 @@ extern int g_usbd_load_id;
 extern int g_usbd_load_ret;
 // Defined in luasystem.cpp; brings up bdm + bdmfs_fatfs + usbmass_bd (idempotent).
 extern bool EnsureUsbMass(void);
-// Defined in luasystem.cpp; brings up dev9 + bdm + bdmfs_fatfs + ata_bd (idempotent, load-once).
-extern bool EnsureAtaBdm(void);
 
 extern unsigned char audsrv_irx;
 extern unsigned int size_audsrv_irx;
@@ -632,29 +630,6 @@ int main(int argc, char * argv[])
     // Costs boot time (this is why the EXP6 boot profile landed first).
     EnsureUsbMass();
     BootStamp("usb mass stack");  // bdm+bdmfs_fatfs+usbmass_bd -- keep the label short: it must fit the Credits line
-
-    // Bring the ATA/BDM block stack up HERE too, back-to-back with usbmass_bd --
-    // the same coordinated window OPL and wLaunchELF_R3Z load ALL their block
-    // device drivers in, and the same fix already applied to usbmass_bd above.
-    //
-    // The exFAT-page freeze was ata_bd being loaded LATE (minutes after boot, on
-    // the page, synchronously on the UI thread) onto a bdm core that has been live
-    // since boot -- the one configuration neither working launcher uses. OPL loads
-    // bdm/bdmfs/usbd/usbmass THEN ata_bd back-to-back at init (bdmsupport.c +
-    // hddLoadModules, on a worker thread); R3Z loads the whole ATA stack together
-    // on a lean/just-reset IOP (loadAtaBlockDriver). EXP18/19 proved the driver
-    // BYTES are byte-for-byte R3Z's and still froze, so the difference was never
-    // the driver -- it was WHEN we load it. Loading it here makes the exFAT page's
-    // System.initATA a no-op (g_ata_bd_loaded already latched), so step 45 can no
-    // longer be the hang point.
-    //
-    // Safe on a driveless console: ata_bd's _start exits immediately when SPD
-    // reports no ATA device ("HDD is not connected, exiting"). An APA-HDD boot
-    // already loads this via HDD.Initialize, so g_ata_bd_loaded makes it a no-op
-    // there. Costs boot time only when an internal drive is actually present --
-    // and that cost buys an exFAT page that no longer blocks the UI.
-    EnsureAtaBdm();
-    BootStamp("ata bdm stack");  // dev9+ata_bd -- keep the label short for the Credits line
 
 
     int ds3pads = 1;

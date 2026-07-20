@@ -3408,8 +3408,8 @@ PLDR.I18N = {
     ["Can't reach the server\ncheck Server IP / Port in SMB settings"] = "Nem sikerült kapcsolatot létesíteni a szerverrel\nEllenőrizze a szerver IP-címét és portját az SMB-beállításokban",
     ["Cancel"] = "Mégsem",
     ["Cannot access"] = "Nem lehet hozzáférni",
-    ["Carousel (default)"] = "Carousel (alapértelmezett)",
-    ["Carousel Devices"] = "Carousel eszközök",
+    ["Carousel (default)"] = "Eszközlista (alapértelmezett)",
+    ["Carousel Devices"] = "Eszközök",
     ["Case/Symbols: lower  (R2)"] = "Betűk/szimbólumok: kisbetűs  (R2)",
     ["Case/Symbols: UPPER  (R2)"] = "Betűk/szimbólumok: NAGYBETŰS  (R2)",
     ["Center aligned"] = "Középre igazítva",
@@ -3441,7 +3441,7 @@ PLDR.I18N = {
     ["DHCP failed\nset a static IP in SMB settings"] = "A DHCP nem sikerült\nÁllítson be statikus IP-címet az SMB-beállításokban",
     ["Disc (DKWDRV)"] = "Fizikai lemez (DKWDRV)",
     ["Discard & Exit"] = "Elvetés & Kilépés",
-    ["Display"] = "Kijelző",
+    ["Display"] = "Megjelenés",
     ["Display reverted -- new mode wasn't confirmed"] = "A kijelzőmód visszaállt -- az új mód nem került megerősítésre",
     ["DKWDRV failed to launch"] = "A DKWDRV indítása nem sikerült",
     ["DKWDRV Path"] = "DKWDRV útvonal",
@@ -3475,8 +3475,8 @@ PLDR.I18N = {
     ["HDD list refreshed"] = "A HDD-lista frissült",
     ["HDD list refreshed (no games found)"] = "A HDD-lista frissült (nincs játék)",
     ["HDD not usable"] = "A HDD nem használható",
-    ["Hidden"] = "Rejtett",
-    ["Hidden games"] = "Rejtett játékok",
+    ["Hidden"] = "Elrejtve",
+    ["Hidden games"] = "Elrejtett játékok",
     ["Hidden games are filtered out.\nPress R3 to reveal them, then L3 to unhide."] = "A rejtett játékok kiszűrésre kerülnek.\nNyomja meg az R3 gombot a megjelenítéshez, az L3 gombot a rejtés feloldásához.",
     ["Hidden games filtered out again"] = "Rejtett játékok kiszűrve",
     ["Hide Text"] = "Szöveg elrejtése",
@@ -3567,7 +3567,7 @@ PLDR.I18N = {
     ["Saving settings"] = "Beállítások mentése",
     ["Saving..."] = "Mentés...",
     ["Saving/Applying..."] = "Mentés/Alkalmazás...",
-    ["Scanning exFAT HDD games..."] = "Az exFAT HDD-n lévő játékok beolvasása...",
+    ["Scanning exFAT HDD games..."] = "exFAT HDD-n lévő játékok beolvasása...",
     ["Scanning games..."] = "Játékok beolvasása...",
     ["Scanning HDD partitions..."] = "HDD partíciók beolvasása...",
     ["Scanning MMCE games..."] = "MMCE-játékok beolvasása...",
@@ -3578,9 +3578,9 @@ PLDR.I18N = {
     ["Server refused SMBv1\nenable SMBv1 support on the host"] = "A szerver elutasította az SMBv1-et\nEngedélyezze az SMBv1 támogatást a gazdagépen",
     ["Settings"] = "Beállítások",
     ["Share not found\ncheck the Share name (host must allow SMB1)"] = "A megosztás nem található\nEllenőrizze a megosztás nevét (a gazdagépnek engedélyeznie kell az SMB1-et)",
-    ["Show all discs"] = "Minden lemez megjelenítése",
+    ["Show all discs"] = "Összes lemez",
     ["Showing hidden games (dimmed) -- press L3 to unhide"] = "Rejtett játékok megjelenítése (elhalványítva) -- az L3 megnyomásával láthatóvá tehetők",
-    ["Shown"] = "Megjelenik",
+    ["Shown"] = "Megjelenítés",
     ["Slot:"] = "Nyílás:",
     ["SMB / Network"] = "SMB / Hálózat",
     ["SMB connect failed"] = "Az SMB-kapcsolat sikertelen",
@@ -3605,7 +3605,7 @@ PLDR.I18N = {
     ["Unknown BDMA mode:"] = "Ismeretlen BDMA mód:",
     ["Video Standard"] = "Videó szabvány",
     ["Visible"] = "Látható",
-    ["Visible (manage)"] = "Látható (kezelhető)",
+    ["Visible (manage)"] = "Láthatóak (kezelhetők)",
     ["Working..."] = "Dolgozok...",
     ["X = Keep      O = Revert"] = "X = Megtart      O = Visszavon",
     ["X = Select      O = Cancel"] = "X = Kiválaszt      O = Mégsem",
@@ -4286,67 +4286,6 @@ end
 function PLDR.IsMx4sioAutoEnterPending()
   local ok, exists = pcall(doesFileExist, MX4SIO_PENDING_MARKER)
   return ok and exists == true
-end
-
--- exFAT-ATA probe crash-marker + staged-progress hook (EXP11 diagnostics).
--- The 42%-freeze investigation showed the whole ATA bring-up runs inside
--- blocking native calls with NO timeout (SifExecModuleBuffer, fileXio RPCs,
--- an untimed filesystem-lock WaitSema): a wedge freezes the overlay on the
--- last painted frame and, until now, left no trace and recurred every boot.
--- Same bounding pattern as the MX4SIO marker just above: persist "step N in
--- flight" before each staged native call, clear when the probe returns; a
--- later boot finding the marker can SAY where the previous attempt froze.
--- The step number is the same integer the overlay paints, so a tester photo
--- and the marker agree. All best-effort pcall -- the diagnostics must never
--- themselves wedge anything. (PLDR methods, not chunk locals: this chunk is
--- near Lua's 200-local cap.)
-function PLDR.SetAtaProbeMarker(step)
-  pcall(PLDR.EnsurePopstarterDir)
-  pcall(WriteAtomic, PLDR.POPSTARTER_DIR.."/.ata_probe_pending", tostring(step or "?"))
-end
-function PLDR.ClearAtaProbeMarker()
-  PLDR._ata_marker_last = nil
-  pcall(System.removeFile, PLDR.POPSTARTER_DIR.."/.ata_probe_pending")
-end
-function PLDR.ReadAtaProbeMarker()
-  local p = PLDR.POPSTARTER_DIR.."/.ata_probe_pending"
-  local ok, exists = pcall(doesFileExist, p)
-  if not ok or exists ~= true then return nil end
-  local ok_r, data = pcall(ReadWholeFile, p)
-  if ok_r and type(data) == "string" and data ~= "" then
-    return (string.match(data, "%S+")) or "?"
-  end
-  return "?"
-end
--- One place does both jobs: repaint (via the ui.lua-installed hook) and
--- persist the marker. SCOPED TO THE MANUAL exFAT PAGE by the hook check:
--- the boot-time -page=ata flows run BEFORE settings load, where a marker
--- write's EnsurePopstarterDir would re-create a user-deleted mc POPSTARTER
--- folder (POPSTARTER_MC_FOLDER is still nil there -- the provato every-boot
--- recreation trap), and those flows can't show the next-boot toast anyway,
--- so they must neither write markers nor (see GetATAMassRootNow) clear a
--- surviving one -- that would destroy the evidence before it is read.
--- Paint FIRST, then persist, so the photo and the marker agree on N; the
--- marker write is itself MC IO inside the window under diagnosis, and if IT
--- wedges the photo says N while the marker still says the previous step --
--- that disagreement is the signature of the marker IO, not the named call.
--- The marker is written only when the INTEGER step changes, so the per-slot
--- sweep doesn't grind the memory card.
-function PLDR._AtaStage(pct, msg)
-  if type(PLDR.AtaProbeProgress) ~= "function" then return end
-  pcall(PLDR.AtaProbeProgress, pct, msg)
-  -- Marker: ONE memory-card write per page entry, at the FIRST staged step only.
-  -- The old code wrote on every step CHANGE: ~25 writes per entry once the
-  -- 4-attempt retry loop cycles 43..49 (each = EnsurePopstarterDir's asset sweep
-  -- + a full WriteAtomic rename dance). That was the "horrific lag in the 40s"
-  -- the maintainer hit on rolling -- the EXP11 review predicted it and I shipped
-  -- it anyway. The painted steps are free; only the marker costs. One write
-  -- still answers the question the marker exists for ("did a probe never
-  -- return?"), and the photographed step number is the precise answer.
-  if PLDR._ata_marker_last == nil then
-    PLDR._ata_marker_last = math.floor((tonumber(pct) or 0) * 100 + 0.5)
-    PLDR.SetAtaProbeMarker("in-flight")
-  end
 end
 
 local function RecursiveRemoveDir(dir, preserve_path, depth)
@@ -5745,26 +5684,8 @@ local function EnsureMassBackendsReady(mode)
   if mode == "ata" then
     -- ata_bd is the BDM block driver for the internal exFAT drive. Idempotent;
     -- mirrors the MX4SIO bring-up (usbmass first, then the device driver).
-    -- EXP11: staged. Each blocking module load gets its own painted integer
-    -- percent FIRST, so a frozen overlay names the stalled step (the 42%-freeze
-    -- investigation: SifExecModuleBuffer has no timeout; ata_bd's module start
-    -- runs the whole ATA probe + BDM cache alloc before returning). ensureDev9 /
-    -- ensureBDMFatFs are load-once latched, so pre-calling them reduces initATA
-    -- to settle + ata_bd + settle. All three stay pcall'd and order-identical to
-    -- the old single initATA call (EnsureAtaBdm re-runs the latched steps).
-    if type(System) == "table" then
-      if type(System.ensureDev9) == "function" then
-        PLDR._AtaStage(0.43, "exFAT HDD: starting dev9 (43)...")
-        pcall(System.ensureDev9)
-      end
-      if type(System.ensureBDMFatFs) == "function" then
-        PLDR._AtaStage(0.44, "exFAT HDD: starting the filesystem base (44)...")
-        pcall(System.ensureBDMFatFs)
-      end
-      if type(System.initATA) == "function" then
-        PLDR._AtaStage(0.45, "exFAT HDD: starting the ATA driver (45)...")
-        pcall(System.initATA)
-      end
+    if type(System) == "table" and type(System.initATA) == "function" then
+      pcall(System.initATA)
     end
     return
   end
@@ -5785,7 +5706,7 @@ local function WaitMassProbeRetry(attempt, max_attempts)
   end
 end
 
-local function BuildMassRootIdentity(mode, attempt)
+local function BuildMassRootIdentity(mode)
   EnsureMassBackendsReady(mode)
 
   local identity = {
@@ -5799,32 +5720,9 @@ local function BuildMassRootIdentity(mode, attempt)
   local seen_mx4 = {}
   local seen_ata = {}
 
-  -- EXP11 (ata only): the slot sweep below funnels every probe through fileXio
-  -- into bdmfs_fatfs's untimed filesystem lock -- which the BDM mount thread
-  -- holds across an ENTIRE mount attempt. If the mount is wedged, the first
-  -- dopen blocks forever. bdm_query's device list is a lock-free array read on
-  -- the IOP (safe even mid-mount), so ask it first: zero registered block
-  -- devices means the sweep can only wait on that lock for nothing -- skip it
-  -- for this attempt and let the retry/toast flow proceed.
-  local try_txt = (attempt ~= nil) and (" (try "..tostring(attempt).." of 4)") or ""
-  if mode == "ata" and type(System) == "table" and type(System.bdmList) == "function" then
-    PLDR._AtaStage(0.46, "exFAT HDD: asking BDM for devices (46)"..try_txt.."...")
-    local ok_l, l = pcall(System.bdmList)
-    if ok_l and type(l) == "table" then
-      local n = 0
-      for _ in pairs(l) do n = n + 1 end
-      if n == 0 then
-        return identity
-      end
-    end
-  end
-
   for slot = 0, 9 do
     local root = (slot == 0) and "mass:/" or ("mass"..tostring(slot)..":/")
     local normalized = NormalizeMassRoot(root)
-    if mode == "ata" then
-      PLDR._AtaStage(0.47, "exFAT HDD: checking slot "..tostring(slot).." (47)"..try_txt.."...")
-    end
     if normalized ~= nil and doesFolderExist(normalized) then
       if seen_present[normalized] ~= true then
         seen_present[normalized] = true
@@ -5833,9 +5731,6 @@ local function BuildMassRootIdentity(mode, attempt)
 
       -- Only classify mounted roots. Probing absent slots can be slow and can
       -- produce unstable driver readings on some hardware.
-      if mode == "ata" then
-        PLDR._AtaStage(0.48, "exFAT HDD: reading slot "..tostring(slot).."'s driver (48)"..try_txt.."...")
-      end
       local driver = PLDR.GetMassMountDriver(normalized)
       local kind = ClassifyMassRootDriver(driver)
       if kind == "mx4sio" then
@@ -6075,34 +5970,20 @@ local function BuildATAIdentityDeferred()
   local attempts = 0
   while attempts < 4 do
     attempts = attempts + 1
-    local identity = BuildMassRootIdentity("ata", attempts)
+    local identity = BuildMassRootIdentity("ata")
     if type(identity) == "table" and type(identity.ata) == "table" and #identity.ata > 0 then
-      PLDR._AtaStage(0.50, "exFAT HDD: drive found (50)...")
       return identity
     end
-    -- EXP11: WaitMassProbeRetry's refresh is a synchronous RPC to bdm_query --
-    -- on a wedged IOP it blocks forever, so it gets its own painted step.
-    PLDR._AtaStage(0.49, "exFAT HDD: re-checking backends (49, try "..tostring(attempts).." of 4)...")
     WaitMassProbeRetry(attempts, 4)
     if attempts < 4 and type(System) == "table" and type(System.sleep) == "function" then
       pcall(System.sleep, 1)
     end
   end
-  return BuildMassRootIdentity("ata", 4)
+  return BuildMassRootIdentity("ata")
 end
 
 function PLDR.GetATAMassRootNow()
   local identity = BuildATAIdentityDeferred()
-  -- EXP11: the probe RETURNED (found or not), so no native call is wedged --
-  -- clear the crash marker, but ONLY if this run actually wrote one
-  -- (_ata_marker_last is set solely by _AtaStage, which is hook-gated to the
-  -- manual exFAT page). A hook-less flow (-page=ata boot, auto-launch) must
-  -- not clear a marker left by an earlier freeze: the manual page entry is
-  -- the only place that READS it, and wiping it here would destroy the
-  -- evidence before it is ever shown.
-  if PLDR._ata_marker_last ~= nil and type(PLDR.ClearAtaProbeMarker) == "function" then
-    PLDR.ClearAtaProbeMarker()
-  end
   if type(identity) == "table" and type(identity.ata) == "table" then
     return identity.ata[1] or nil
   end
