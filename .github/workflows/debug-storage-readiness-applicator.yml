@@ -1,0 +1,36 @@
+name: Capture readiness applicator failure
+
+on:
+  pull_request:
+    branches:
+      - dev
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout clean follow-up branch
+        uses: actions/checkout@v5
+        with:
+          ref: agent/fix-mmce-mx4-after-storage-revert
+
+      - name: Capture applicator output
+        id: apply
+        continue-on-error: true
+        run: |
+          python3 tools/apply_storage_readiness_followup.py > readiness-applicator.log 2>&1
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Upload applicator output
+        uses: actions/upload-artifact@v4
+        with:
+          name: readiness-applicator-log
+          path: readiness-applicator.log
+
+      - name: Print and preserve result
+        run: |
+          cat readiness-applicator.log
+          test "${{ steps.apply.outputs.exit_code }}" = "0"
