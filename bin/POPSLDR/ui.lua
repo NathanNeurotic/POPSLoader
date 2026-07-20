@@ -78,9 +78,14 @@ end
 -- can't be used either: it would eat the tail of titles containing a dot
 -- ("Mr. Driller" -> "Mr"). So match .VCD specifically.
 -- Faded palette for hidden games shown in the "manage" view (Global Hide off).
--- The existing GREY renders brighter than LIST_UNSELECTED; these read as dimmer.
-local LIST_HIDDEN_COLOR = Color.new(92, 94, 120, 70)
-local LIST_HIDDEN_SELECTED_COLOR = Color.new(150, 152, 182, 110)
+-- sAGA (#536): the old shade still read too clearly next to the white normal
+-- rows. PS2 alpha is 0-128 (GREY above is 128 = fully opaque), so the lever is
+-- alpha: the UNSELECTED hidden row drops to "barely visible" (~1/4 opacity) so a
+-- hidden game barely registers, while the SELECTED hidden row stays dim-but-
+-- findable so you can still navigate to it to un-hide. Tune on hardware if
+-- either reads too faint/strong; the intent is "clearly less visible than before".
+local LIST_HIDDEN_COLOR = Color.new(80, 82, 104, 34)
+local LIST_HIDDEN_SELECTED_COLOR = Color.new(132, 134, 162, 80)
 local function StripVcdExtension(name)
   local s = tostring(name or "")
   return (string.gsub(s, "%.[Vv][Cc][Dd]$", ""))
@@ -2149,7 +2154,16 @@ UI = {
       end;
       _DisplayKey = function (key)
         if key == nil then return "" end
-        if key == "SPACE" then return "SPACE" end
+        -- The word-keys (SPACE/BACK/DONE) are user-facing labels, so translate them
+        -- for DISPLAY while the raw key string stays the input-logic identifier
+        -- (sAGA #538: BACK/DONE could not be translated). Single-character keys are
+        -- never translated. Falls back to the English word if untranslated.
+        if key == "SPACE" or key == "BACK" or key == "DONE" then
+          if type(PLDR) == "table" and type(PLDR.L) == "function" then
+            return PLDR.L(key)
+          end
+          return key
+        end
         if UI.PathEditor.upper then
           if string.match(key, "^[a-z]$") then
             return string.upper(key)
@@ -3281,23 +3295,41 @@ UI = {
              or UI.CURSCENE == UI.SCENES.GBDMHDD
              or UI.CURSCENE == UI.SCENES.GSMBNET
              or UI.CURSCENE == UI.SCENES.GUSBFAT) then
-          -- Reveal is a TRANSIENT per-session view: temporarily clear GLOBAL_HIDE so the
-          -- scan re-includes hidden games (dimmed); re-hide restores it. Does NOT touch the
-          -- persisted setting -- Settings > Game List > Hidden games owns that single source
-          -- of truth. (R3 used to flip+PERSIST GLOBAL_HIDE, fighting the Settings page and
-          -- then blocking the L3 unhide it tells you to use -- provato HW report.)
-          UI.RevealHidden = (UI.RevealHidden ~= true)
-          if PLDR._GLOBAL_HIDE_SAVED == nil then
-            PLDR._GLOBAL_HIDE_SAVED = (PLDR.GLOBAL_HIDE == true)   -- capture the real setting once (false stored as false, not nil)
-          end
-          if UI.RevealHidden then
-            PLDR.GLOBAL_HIDE = false                               -- reveal: scan re-includes hidden (dimmed)
+          -- R3 reveal/re-hide only MEANS anything when the persisted "Hide hidden
+          -- games" setting is ON -- that setting is what filters hidden entries out
+          -- of the scan. When it is OFF, hidden games are ALWAYS shown (dimmed), so
+          -- there is nothing to reveal or re-hide. R3 used to toggle regardless and
+          -- fire "Hidden games filtered out again" while the games stayed on screen,
+          -- contradicting what the user saw (sAGA #539). Detect the real setting and
+          -- explain instead of lying. (During an active reveal GLOBAL_HIDE is the
+          -- transient false, so consult the captured _GLOBAL_HIDE_SAVED.)
+          local real_hide
+          if PLDR._GLOBAL_HIDE_SAVED ~= nil then
+            real_hide = (PLDR._GLOBAL_HIDE_SAVED == true)
           else
-            PLDR.GLOBAL_HIDE = (PLDR._GLOBAL_HIDE_SAVED == true)   -- re-hide: restore the captured setting
+            real_hide = (PLDR.GLOBAL_HIDE == true)
           end
-          r3_save_ok = true   -- nothing persisted now, so never a save-failure case
-          r3_hide_toggle = true
-          UI.Pad.Events.R1 = true   -- drive the same in-place rebuild R1 performs
+          if not real_hide then
+            UI.Notif_queue.add(PLDR.L("Hidden games are already shown here (dimmed)\nEnable \"Hide hidden games\" in Settings to filter them out"), "ok")
+          else
+            -- Reveal is a TRANSIENT per-session view: temporarily clear GLOBAL_HIDE so the
+            -- scan re-includes hidden games (dimmed); re-hide restores it. Does NOT touch the
+            -- persisted setting -- Settings > Game List > Hidden games owns that single source
+            -- of truth. (R3 used to flip+PERSIST GLOBAL_HIDE, fighting the Settings page and
+            -- then blocking the L3 unhide it tells you to use -- provato HW report.)
+            UI.RevealHidden = (UI.RevealHidden ~= true)
+            if PLDR._GLOBAL_HIDE_SAVED == nil then
+              PLDR._GLOBAL_HIDE_SAVED = (PLDR.GLOBAL_HIDE == true)   -- capture the real setting once (false stored as false, not nil)
+            end
+            if UI.RevealHidden then
+              PLDR.GLOBAL_HIDE = false                               -- reveal: scan re-includes hidden (dimmed)
+            else
+              PLDR.GLOBAL_HIDE = (PLDR._GLOBAL_HIDE_SAVED == true)   -- re-hide: restore the captured setting
+            end
+            r3_save_ok = true   -- nothing persisted now, so never a save-failure case
+            r3_hide_toggle = true
+            UI.Pad.Events.R1 = true   -- drive the same in-place rebuild R1 performs
+          end
         end
         -- A Settings visit cancelled an R3 reveal (restoring GLOBAL_HIDE) while
         -- this list still showed the revealed games: rebuild via the same R1
@@ -6215,7 +6247,15 @@ function UI.SmbFieldCycle(field, dir)
 end
 function UI.SmbFieldOpenEditor(field)
   local d = UI.SmbEnsureDraft()
-  local title = PLDR.L("Edit").." "..PLDR.L(UI._SMB_LABELS[field.key] or field.key)
+  -- Full-phrase template, NOT L("Edit").." "..L(field): concatenating a fixed
+  -- "Edit" translation in front of the field name produces wrong grammar in other
+  -- languages (sAGA #538: "szerkesztes NETMASK" instead of "NETMASK szerkesztese").
+  -- The translator supplies "Edit %s" with %s wherever the language needs it, and
+  -- the (also-translated) field name is substituted. pcall guards a malformed
+  -- translation (no %s) with the old concatenation so a bad string never crashes.
+  local field_label = PLDR.L(UI._SMB_LABELS[field.key] or field.key)
+  local fmt_ok, fmt_title = pcall(string.format, PLDR.L("Edit %s"), field_label)
+  local title = fmt_ok and fmt_title or (PLDR.L("Edit").." "..field_label)
   if type(UI.PathEditor) == "table" and type(UI.PathEditor.Open) == "function" then
     UI.PathEditor.Open(title, tostring(d[field.key] or ""), function(value)
       local dd = UI.SmbEnsureDraft()

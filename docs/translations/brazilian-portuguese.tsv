@@ -12,6 +12,7 @@ English (do not edit)	Brazilian Portuguese (adjust the pre-filled Portuguese)
 Actual output	Saída real
 Adaptive BDMA	BDMA Adaptativo
 Adaptive BDMA couldn't stage	Adaptive BDMA couldn't stage
+Address type	Address type
 adjusted -- using	adjusted -- using
 APA / PFS (default)	APA / PFS (padrão)
 Applying BDMA mode	Aplicando modo BDMA
@@ -20,6 +21,7 @@ ART (at root)	ART (na raiz)
 At least one device must stay on the carousel	Ao menos um dispositivo deve ficar no carrossel
 Auto (console region)	Auto (região do console)
 Back	Voltar
+BACK	BACK
 Backspace	Backspace
 BDMA and SMB modules -- from mc0: / mc1:. They won't	módulos BDMA e SMB -- de mc0: / mc1:. Não vão
 BDMA Mode	Modo BDMA
@@ -71,8 +73,11 @@ Display	Tela
 Display reverted -- new mode wasn't confirmed	Tela revertida -- novo modo não confirmado
 DKWDRV failed to launch	DKWDRV failed to launch
 DKWDRV Path	Caminho do DKWDRV
+DNS	DNS
 Don't Save	Não salvar
+DONE	DONE
 Edit	Edit
+Edit %s	Edit %s
 Edit DKWDRV Path	Editar caminho do DKWDRV
 Edit POPStarter Path	Editar caminho do POPStarter
 Enable the POPSTARTER Folder first\n(BDMA / SMB modules must live on the memory card)	Ative a pasta POPSTARTER primeiro\n(módulos BDMA / SMB devem ficar no cartão de memória)
@@ -95,7 +100,9 @@ Game hidden	Jogo ocultado
 Game List	Lista de jogos
 Game list cache	Cache da lista de jogos
 Game shown	Jogo exibido
+Games path (folder holding POPS)	Games path (folder holding POPS)
 Games path affects browsing only:\nPOPStarter can only launch games from <share>/POPS	O caminho de jogos afeta só a navegação:\nPOPStarter só inicia jogos de <share>/POPS
+Gateway	Gateway
 HDD Alt mode needs POPSTARTER on HDD	Modo HDD Alt precisa do POPSTARTER no HDD
 HDD dir read failed:	HDD dir read failed:
 HDD list loaded from cache (R1 rescans)	Lista do HDD carregada do cache (R1 rescaneia)
@@ -104,17 +111,21 @@ HDD list refreshed (no games found)	Lista do HDD atualizada (nenhum jogo encontr
 HDD not usable	HDD not usable
 Hidden	Oculto
 Hidden games	Jogos ocultos
+Hidden games are already shown here (dimmed)\nEnable "Hide hidden games" in Settings to filter them out	Hidden games are already shown here (dimmed)\nEnable "Hide hidden games" in Settings to filter them out
 Hidden games are filtered out.\nPress R3 to reveal them, then L3 to unhide.	Jogos ocultos estão filtrados.\nPressione R3 para revelá-los, depois L3 para reexibir.
 Hidden games filtered out again	Jogos ocultos filtrados novamente
 Hide Text	Ocultar texto
 Hide UI Text	Ocultar texto da interface
 Installed	Instalado
 Internal HDD	HDD interno
+IP address	IP address
+IP assignment	IP assignment
 Keep this display mode?	Manter este modo de tela?
 Keyboard Layout	Layout do teclado
 Launch	Iniciar
 Launch DKWDRV?	Iniciar DKWDRV?
 Left aligned	Alinhado à esquerda
+Link mode	Link mode
 List refreshed	Lista atualizada
 List refreshed (no games found)	Lista atualizada (nenhum jogo encontrado)
 Loaded SMB list from cache...	Lista SMB carregada do cache...
@@ -133,6 +144,8 @@ Missing SMB module (tried):	Missing SMB module (tried):
 MMCE has no POPS folder\nexpected mmce0:/POPS/	MMCE não tem pasta POPS\nesperado mmce0:/POPS/
 Multi-disc games	Jogos multi-disco
 NetBIOS isn't supported\nset Address type = IP + a Server IP	NetBIOS não é suportado\ndefina Tipo de endereço = IP + um IP do servidor
+NetBIOS name	NetBIOS name
+Netmask	Netmask
 No '__.POPS' partitions on hdd0:\nformat one with __.POPS / __.POPS0...9	No '__.POPS' partitions on hdd0:\nformat one with __.POPS / __.POPS0...9
 No cover. Looked for:	Sem capa. Procurado em:
 No DKWDRV found at this path	No DKWDRV found at this path
@@ -156,6 +169,7 @@ On (default)	Ligado (padrão)
 On (per-device)	Ligado (por dispositivo)
 Opening SMB list...	Abrindo lista SMB...
 Overscan (CRT inset)	Overscan (recuo CRT)
+Password	Password
 Path saved, file not found:	Path saved, file not found:
 POPS (beside game)	POPS (ao lado do jogo)
 POPSLoader\nfor POPStarter	POPSLoader\npara POPStarter
@@ -163,9 +177,11 @@ POPSTARTER Folder	Pasta POPSTARTER
 POPSTARTER folder deleted from the memory card	Pasta POPSTARTER excluída do cartão de memória
 POPSTARTER folder restored on the memory card\n(set a BDMA mode to re-add the exFAT/SMB modules)	Pasta POPSTARTER restaurada no cartão de memória\n(defina um modo BDMA para readicionar os módulos exFAT/SMB)
 POPSTARTER Path	Caminho do POPSTARTER
+Port	Port
 Press CIRCLE again to discard what you typed	Pressione CIRCLE novamente para descartar o que digitou
 Profile	Perfil
 Profile defaults restored	Padrões do perfil restaurados
+PS2 IP	PS2 IP
 re-select it under Settings > Storage to restage	re-select it under Settings > Storage to restage
 Rebuilding HDD game list...	Reconstruindo lista de jogos do HDD...
 Refreshing HDD list...	Atualizando lista do HDD...
@@ -195,8 +211,10 @@ Scanning MX4SIO games...	Escaneando jogos do MX4SIO...
 Scanning SMB games...	Escaneando jogos do SMB...
 Select	Selecionar
 Select a share	Selecione um share
+Server IP	Server IP
 Server refused SMBv1\nenable SMBv1 support on the host	Servidor recusou SMBv1\native o suporte a SMBv1 no host
 Settings	Configurações
+Share	Share
 Share not found\ncheck the Share name (host must allow SMB1)	Share não encontrado\nverifique o nome do Share (host deve permitir SMB1)
 Show all discs	Mostrar todos os discos
 Showing hidden games (dimmed) -- press L3 to unhide	Mostrando jogos ocultos (esmaecidos) -- pressione L3 para reexibir
@@ -211,6 +229,7 @@ SMB modules are not installed\nGames list but won't boot without them --\ninstal
 SMB modules are not installed\nGames will list but won't boot -- install them\nvia Settings > SMB modules first	Módulos SMB não instalados\nJogos aparecem mas não iniciam -- instale-os\nprimeiro em Configurações > Módulos SMB
 SMB modules didn't install/remove\nmodule setting reverted; other settings were saved	Módulos SMB não instalados/removidos\nconfiguração de módulos revertida; outras foram salvas
 SMB modules failed to load	Falha ao carregar módulos SMB
+SPACE	SPACE
 Startup	Inicialização
 Static (manual)	Estático (manual)
 status:	status:
@@ -220,6 +239,7 @@ This removes the POPSTARTER pack -- including the	Isso remove o pacote POPSTARTE
 UI text hidden	Texto da interface ocultado
 UI text shown	Texto da interface exibido
 Unknown BDMA mode:	Unknown BDMA mode:
+User	User
 Video Standard	Padrão de vídeo
 Visible	Visível
 Visible (manage)	Visível (gerenciar)
