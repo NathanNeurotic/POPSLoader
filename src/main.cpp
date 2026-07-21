@@ -633,16 +633,15 @@ int main(int argc, char * argv[])
 
     /* NO mx4sio_bd at boot (maintainer, EXP32 revision): storage stacks load
      * LAZILY when their device is engaged -- cwd/boot-device determines what
-     * boot needs (boot.lua's mx4sio: branch loads it on an mx4sio boot), and
-     * the MX4SIO page loads it on first entry. This matches wLaunchELF_R3Z
-     * (storage_driver_stack_mode, stacks on engagement) and OPL (transports on
-     * its IO worker at first BDM init). It is also load-bearing for the
-     * MMCE<->MX4SIO gate below in Lua: R3Z3N (the R3Z author): the two adapters
-     * "tie /ACK (a pin on the memcard port) differently" -- an ELECTRICAL
-     * conflict no bus manager can arbitrate -- so the two drivers must never
-     * be resident together. Lazy loading means most sessions engage at most
-     * one, and the first engaged wins the session (R3Z switches by full IOP
-     * reset; we decline the second with a restart message). */
+     * boot needs (boot.lua's mx4sio: branch loads it on an mx4sio boot, the
+     * legacy-mass sidecar heal in system.lua escalates usb -> mx4sio -> ata
+     * when a mass* cwd doesn't resolve as USB), and the MX4SIO page loads it
+     * on first entry. Matches wLaunchELF_R3Z (stacks on engagement) and OPL
+     * (transports at first BDM init). mmceman and mx4sio_bd COEXIST when both
+     * get engaged -- official OPL runs both resident in the field on the same
+     * freesio2 bus manager we carry (EXP31); no gate (maintainer call,
+     * 2026-07-21 -- see EnsureMassBackendsReady in system.lua for the
+     * recorded R3Z3N tradeoff). */
 
     /* NO internal-drive (ata) load at boot -- maintainer's EXP24 verdict: the
      * ~5-6s "ata bdm stack" black-screen cost is unacceptable. The exFAT page

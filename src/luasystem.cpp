@@ -1492,16 +1492,15 @@ static int lua_reinit_pad(lua_State *L)
 }
 
 // EXP32: mx4sio_bd loads LAZILY, on engagement -- the MX4SIO page's first entry
-// (via System.initMX4SIO) or an mx4sio: boot (boot.lua). No boot-time load:
-// storage stacks load when their device is engaged (wLaunchELF_R3Z's
-// storage_driver_stack_mode model; OPL loads transports at first BDM init on
-// its worker). This is load-bearing for the MMCE<->MX4SIO gate in system.lua:
-// the two adapters tie the memcard port's /ACK pin differently (R3Z3N) -- an
-// ELECTRICAL conflict -- so the two drivers must never be resident together,
-// and lazy loading means the first engaged wins the session. The module load
-// itself is cheap and returns promptly (card detection runs on the driver's
-// own IOP thread). Failure never latches: the next page entry retries
-// (success-only latch, OPL's rule). usbmass_bd stays ordered first
+// (via System.initMX4SIO), an mx4sio: boot (boot.lua), or the legacy-mass
+// sidecar heal (system.lua) when a mass* cwd turns out not to be USB-backed.
+// No boot-time load: storage stacks load when their device is engaged
+// (wLaunchELF_R3Z's model; OPL loads transports at first BDM init on its
+// worker). Coexists with mmceman when both get engaged (official OPL runs
+// both resident on freesio2; maintainer call 2026-07-21, no gate). The module
+// load itself is cheap and returns promptly (card detection runs on the
+// driver's own IOP thread). Failure never latches: the next page entry
+// retries (success-only latch, OPL's rule). usbmass_bd stays ordered first
 // (maintainer 2026-05-28: "mx4sio will need the usb drivers to activate
 // before it"; EnsureUsbMass is idempotent/latched -- a no-op after boot).
 bool EnsureMx4sioBd(void)

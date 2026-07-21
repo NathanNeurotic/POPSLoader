@@ -1145,21 +1145,10 @@ function PLDR.EnsureMmceReadyOnce()
     return true
   end
 
-  -- MMCE<->MX4SIO GATE (mirror of the one in EnsureMassBackendsReady): the
-  -- conflict is ELECTRICAL -- the two adapters tie the memcard port's /ACK pin
-  -- differently (R3Z3N, 2026-07-21) -- so the two drivers must never be
-  -- resident together. wLaunchELF_R3Z full-IOP-resets to switch between them;
-  -- NHDDL never loads mmceman when MX4SIO mode is on. First engaged wins the
-  -- session; decline the second with the restart message.
-  if type(System) == "table" and type(System.getSio2Owner) == "function" then
-    local ok_o, owner = pcall(System.getSio2Owner)
-    if ok_o and owner == "MX4SIO" then
-      if UI ~= nil and UI.Notif_queue ~= nil then
-        UI.Notif_queue.add(PLDR.L("MX4SIO was used this session -- restart to browse MMCE\n(the two share a bus and cannot run together)"), "warn")
-      end
-      return false
-    end
-  end
+  -- NO MMCE<->MX4SIO gate (maintainer, 2026-07-21): official OPL runs both
+  -- drivers resident together in the field on the same freesio2 bus manager
+  -- we now carry (EXP31). See the matching note in EnsureMassBackendsReady's
+  -- mx4sio branch for the recorded R3Z3N tradeoff.
 
   -- Layer C lazy load: mmceman.irx is only loaded eagerly when boot
   -- device is MMCE (see src/main.cpp). For USB / MC / MX4SIO / HDD
@@ -5000,8 +4989,20 @@ function PLDR.LoadSettingsNonFatal()
     -- (BuildUsbIdentityDeferred). Only a mass*: sidecar needs it -- MC/HDD/MMCE
     -- are already mounted at boot, so they skip the retry (and its sleep).
     if loaded_path == nil and string.match(string.lower(sidecar), "^mass%d*:/") ~= nil then
-      for _ = 1, 3 do
+      -- Legacy-mass boot-device resolution (maintainer, 2026-07-21): an old
+      -- launcher can hand us a mass* argv0 that is REALLY an MX4SIO card or
+      -- the internal exFAT drive, not USB -- and that slot only exists once
+      -- ITS driver is loaded. So the heal ladder escalates: pass 1 = USB only
+      -- (the common case, unchanged); passes 2-3 also lazy-load mx4sio_bd
+      -- (cheap; its slot then mounts and the ioctl names it "sdc") and kick
+      -- the ata worker (non-blocking; an exFAT-backed cwd resolves once the
+      -- drive registers). Bounded: 3 passes x 1s, same as before.
+      for attempt = 1, 3 do
         if type(PLDR.EnsureUsbMassReadyOnce) == "function" then pcall(PLDR.EnsureUsbMassReadyOnce) end
+        if attempt >= 2 and type(System) == "table" then
+          if type(System.initMX4SIO) == "function" then pcall(System.initMX4SIO) end
+          if type(System.initATAAsync) == "function" then pcall(System.initATAAsync) end
+        end
         if type(PLDR.RefreshMassBackends) == "function" then pcall(PLDR.RefreshMassBackends) end
         if type(System) == "table" and type(System.sleep) == "function" then pcall(System.sleep, 1) end
         loaded_path = ProbeSidecarAliases()
@@ -5755,25 +5756,16 @@ end
 -- no-op, a single boot-failure retry, or a bounded status poll.
 local function EnsureMassBackendsReady(mode)
   if mode == "mx4sio" then
-    -- MMCE<->MX4SIO GATE (R3Z3N, the R3Z author, 2026-07-21: the two adapters
-    -- "tie /ACK (a pin on the memcard port) differently" -- the conflict is
-    -- ELECTRICAL, so no bus manager can arbitrate it; wLaunchELF_R3Z switches
-    -- between the two stacks with a FULL IOP RESET, NHDDL never loads mmceman
-    -- in mx4sio mode). First driver engaged wins the session; decline the
-    -- second with the restart message. IRX cannot unload, so a restart is the
-    -- honest switch path -- same as R3Z's reset, minus the in-place reboot.
-    if type(System) == "table" and type(System.getSio2Owner) == "function" then
-      local ok_o, owner = pcall(System.getSio2Owner)
-      if ok_o and owner == "MMCE" then
-        if UI ~= nil and UI.Notif_queue ~= nil then
-          UI.Notif_queue.add(PLDR.L("MMCE was used this session -- restart to browse MX4SIO\n(the two share a bus and cannot run together)"), "warn")
-        end
-        return false
-      end
-    end
-    -- LAZY load on first engagement (R3Z/OPL model; no boot-time load). A
-    -- failed load never latches -- the next entry retries (OPL's success-only
-    -- latch rule). Latched no-op once loaded.
+    -- LAZY load on first engagement (maintainer directive; OPL loads
+    -- transports at first BDM init, R3Z loads stacks when engaged). NO
+    -- MMCE<->MX4SIO gate (maintainer, 2026-07-21): official OPL runs mmceman
+    -- and mx4sio_bd resident together in the field and it works; we carry the
+    -- same freesio2 bus manager OPL does (EXP31). [Recorded tradeoff: R3Z3N
+    -- advises gating -- the adapters tie the memcard port's /ACK differently
+    -- -- and R3Z full-IOP-resets between the stacks; the maintainer weighed
+    -- OPL's field evidence and chose coexistence.] A failed load never
+    -- latches -- the next entry retries (OPL's success-only latch rule).
+    -- Latched no-op once loaded.
     if type(System) == "table" and type(System.initMX4SIO) == "function" then
       local ok_c, loaded = pcall(System.initMX4SIO)
       return ok_c and loaded ~= false

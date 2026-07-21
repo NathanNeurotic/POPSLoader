@@ -5288,15 +5288,14 @@ UI = {
 	              PLDR.CleanupGameList()
 	              PLDR.GAMEPATH = ""
               -- EXP32: mx4sio_bd loads LAZILY on this first entry (R3Z/OPL
-              -- model; the MMCE<->MX4SIO electrical gate lives in system.lua's
-              -- dispatcher and queues its own message when it declines). After
-              -- the load: a bounded opendir+ioctl sweep (3 passes, 1s
+              -- model; coexists with mmceman -- no gate, maintainer call).
+              -- After the load: a bounded opendir+ioctl sweep (3 passes, 1s
               -- settles). No markers, no bdm_query poke, no unbounded wait.
               report("Locating MX4SIO POPS folder...", 0.42)
               local mx4sio_root, mx4_status = PLDR.InitMX4SIOPopsRoot()
               if mx4sio_root == nil then
                 if mx4_status == "notready" then
-                  UI.Notif_queue.add("MX4SIO could not start this session", "warn")
+                  UI.Notif_queue.add("MX4SIO driver failed to load\ntry the page again, or reboot", "warn")
                 else
                   UI.Notif_queue.add("No MX4SIO device detected", "warn")
                 end
