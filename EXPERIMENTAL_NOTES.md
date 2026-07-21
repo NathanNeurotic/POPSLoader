@@ -2,7 +2,7 @@
 
 **This is an opt-in EXPERIMENTAL build. It is not a replacement for the public release, and it is not the rolling build either.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.0.1**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** open **Settings**, then **About**, and read the **Version** row: it says **v1.0.2-dev-EXP28**. The **Credits** page shows the same line at the bottom left, with the boot timing under it. A version ending in **-EXP28** = this build; any older EXP number = an older experimental, please update; plain **v1.0.2-dev** = the rolling test build; no version anywhere = the public 1.0.1 release or older.
+**How to tell you are running it:** open **Settings**, then **About**, and read the **Version** row: it says **v1.0.2-dev-EXP29**. The **Credits** page shows the same line at the bottom left, with the boot timing under it. A version ending in **-EXP29** = this build; any older EXP number = an older experimental, please update; plain **v1.0.2-dev** = the rolling test build; no version anywhere = the public 1.0.1 release or older.
 
 **What the name means:** this build is the **rolling** build (1.0.2-dev) plus the experiments below, nothing missing.
 
@@ -10,7 +10,19 @@
 
 ---
 
-## New in EXP28: MMCE and MX4SIO now respect each other
+## New in EXP29: the conflict message became a restart offer
+
+EXP28 blocked the second of MMCE/MX4SIO with a message. EXP29 upgrades that to the maintainer's suggestion: a proper choice. Opening the conflicting page now asks **"MX4SIO is active, restart POPSLoader to browse MMCE?"** with Restart and Cancel. Choosing Restart relaunches POPSLoader through the full system reset and lands you **directly on the page you wanted**, with the bus clean. Cancel returns to the carousel. This is safer than restarting the driver stack in place (the approach wLaunchELF R3Z uses): a fresh boot rebuilds everything through the most-tested path in the program instead of hand-restoring twenty pieces of live state.
+
+Two scope notes: sessions booted from the internal HDD keep the plain message for now (their relaunch path preserves the running system, so a restart would not actually clear the bus), and the restart loses only session-transient things (the temporary hidden-games reveal, an open SMB connection); saved settings are untouched.
+
+### EXP29 test, one minute
+
+From a memory card or USB boot: open MX4SIO (works), then open MMCE. Expected: the dialog appears; Restart brings POPSLoader back up on the MMCE page and it scans; Cancel just returns. Then the same the other way around.
+
+---
+
+## EXP28: MMCE and MX4SIO now respect each other
 
 The maintainer's cross-device test found the last conflict pair: with both the MMCE driver and the MX4SIO driver loaded in one session, the second device's game scan hangs at 48% during directory reads. They share the same internal bus (the one the pads and memory cards also live on), and the reference launchers agree they cannot coexist: NHDDL refuses to load both, and wLaunchELF R3Z restarts its whole driver stack when switching between them. Each alone works perfectly.
 

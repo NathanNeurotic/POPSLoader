@@ -2,6 +2,10 @@ English (do not edit)	Brazilian Portuguese (adjust the pre-filled Portuguese)
 (could NOT save -- reverts on reboot)	(could NOT save -- reverts on reboot)
 (not set)	(não definido)
 (share root)	(raiz do share)
+(the two share a bus and cannot run together)	MMCE was used this session -- restart to browse MX4SIO
+(the two share a bus and cannot run together)
+(the two share a bus and cannot run together)	MX4SIO was used this session -- restart to browse MMCE
+(the two share a bus and cannot run together)
 (the usual settings location wasn't writable)	(the usual settings location wasn't writable)
 (unknown)	(desconhecido)
 -- launch cancelled	-- launch cancelled
@@ -14,6 +18,7 @@ Adaptive BDMA	BDMA Adaptativo
 Adaptive BDMA couldn't stage	Adaptive BDMA couldn't stage
 Address type	Address type
 adjusted -- using	adjusted -- using
+Another device	Another device
 APA / PFS (default)	APA / PFS (padrão)
 Applying BDMA mode	Aplicando modo BDMA
 Applying SMB modules	Applying SMB modules
@@ -65,6 +70,7 @@ Credits	Créditos
 Cursor: L1 / R1	Cursor: L1 / R1
 Delete the POPSTARTER folder from the memory card?	Excluir a pasta POPSTARTER do cartão de memória?
 Design by Berion\nScripts by nuno6573 and Ripto\nBased on Enceladus by Daniel Santos\nTesting by P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k, and Community\n\nSpecial Thanks To:\nkrHACKen for making POPStarter\nuyjulian, fjtrujy, HWC, and others for always helping\n\nThis program is free and open source\nIf you bought it, you have been scammed\n\nCompatibility problems? Visit:\nyoutube.com/@hugopocked6695	Design por Berion\nScripts por nuno6573 e Ripto\nBaseado em Enceladus por Daniel Santos\nTestes por P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k e Comunidade\n\nAgradecimentos especiais a:\nkrHACKen por criar o POPStarter\nuyjulian, fjtrujy, HWC e outros por sempre ajudarem\n\nEste programa é livre e de código aberto\nSe você pagou por ele, foi enganado\n\nProblemas de compatibilidade? Visite:\nyoutube.com/@hugopocked6695
+Device conflict	Device conflict
 DHCP (automatic)	DHCP (automático)
 DHCP failed\nset a static IP in SMB settings	DHCP falhou\ndefina um IP estático nas configurações SMB
 Disc (DKWDRV)	Disco (DKWDRV)
@@ -120,6 +126,7 @@ Installed	Instalado
 Internal HDD	HDD interno
 IP address	IP address
 IP assignment	IP assignment
+is active -- restart POPSLoader to browse	is active -- restart POPSLoader to browse
 Keep this display mode?	Manter este modo de tela?
 Keyboard Layout	Layout do teclado
 Launch	Iniciar
@@ -143,12 +150,8 @@ Missing BDMA UI source (tried):	Missing BDMA UI source (tried):
 Missing SMB module (tried):	Missing SMB module (tried):
 MMCE has no POPS folder\nexpected mmce0:/POPS/	MMCE não tem pasta POPS\nesperado mmce0:/POPS/
 MMCE was used this session -- restart to browse MX4SIO
-(the two share a bus and cannot run together)	MMCE was used this session -- restart to browse MX4SIO
-(the two share a bus and cannot run together)
 Multi-disc games	Jogos multi-disco
 MX4SIO was used this session -- restart to browse MMCE
-(the two share a bus and cannot run together)	MX4SIO was used this session -- restart to browse MMCE
-(the two share a bus and cannot run together)
 NetBIOS isn't supported\nset Address type = IP + a Server IP	NetBIOS não é suportado\ndefina Tipo de endereço = IP + um IP do servidor
 NetBIOS name	NetBIOS name
 Netmask	Netmask
@@ -196,6 +199,8 @@ Rescanning HDD partitions...	Rescaneando partições do HDD...
 Reset	Redefinir
 Reset Defaults	Restaurar padrões
 Resolved:	Resolved:
+Restart	Restart
+Restart failed -- power cycle to switch device	Restart failed -- power cycle to switch device
 Retrying USB scan...	Tentando escanear USB novamente...
 return code:	return code:
 Return to OSDSYS?	Voltar ao OSDSYS?

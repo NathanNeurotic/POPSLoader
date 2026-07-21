@@ -2,6 +2,10 @@ English (do not edit)	Hungarian (put your translation here)
 (could NOT save -- reverts on reboot)	(NEM sikerült menteni -- újraindításkor visszaáll az eredeti állapotra)
 (not set)	(nincs beállítva)
 (share root)	(gyökérkönyvtár megosztása)
+(the two share a bus and cannot run together)	MMCE was used this session -- restart to browse MX4SIO
+(the two share a bus and cannot run together)
+(the two share a bus and cannot run together)	MX4SIO was used this session -- restart to browse MMCE
+(the two share a bus and cannot run together)
 (the usual settings location wasn't writable)	(a beállítások szokásos helye nem volt írható)
 (unknown)	(ismeretlen)
 -- launch cancelled	-- az indítás megszakítva
@@ -15,6 +19,7 @@ Adaptive BDMA	Adaptív BDMA
 Adaptive BDMA couldn't stage	Az adaptív BDMA nem tudott szakaszosan működni
 Address type	Address type
 adjusted -- using	kiigazítva -- a következővel
+Another device	Another device
 APA / PFS (default)	APA / PFS (alapértelmezett)
 Applying BDMA mode	BDMA mód alkalmazása
 Applying SMB modules	SMB modulok alkalmazása
@@ -70,6 +75,7 @@ Cursor: L1 / R1	Kurzor: L1 / R1
 Defaults restored	Alapértelmezések visszaállítva
 Delete the POPSTARTER folder from the memory card?	Törli a POPSTARTER mappát a memóriakártyáról?
 Design by Berion\nScripts by nuno6573 and Ripto\nBased on Enceladus by Daniel Santos\nTesting by P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k, and Community\n\nSpecial Thanks To:\nkrHACKen for making POPStarter\nuyjulian, fjtrujy, HWC, and others for always helping\n\nThis program is free and open source\nIf you bought it, you have been scammed\n\nCompatibility problems? Visit:\nyoutube.com/@hugopocked6695	Tervezés: Berion\nSzkriptek: nuno6573 és Ripto\nBázis: Daniel Santos 'Enceladus' című munkája\nTesztelés: P4NCHOL1NO, VizoR, provato,\nnuno6573, sAGA/oldman63, saildot4k és a közösség\n\nKülön köszönet:\nkrHACKennek a POPStarter elkészítéséért\nuyjuliannek, fjtrujy-nak, HWC-nek és másoknak a folyamatos segítségért\n\nEz a program ingyenes és nyílt forráskódú\nHa megvásárolta, akkor átverték\n\nKompatibilitási problémák? Látogasson el ide:\nyoutube.com/@hugopocked6695
+Device conflict	Device conflict
 Device List	Eszközlista
 DHCP (automatic)	DHCP (automatikus)
 DHCP failed\nset a static IP in SMB settings	A DHCP nem sikerült\nÁllítson be statikus IP-címet az SMB-beállításokban
@@ -128,6 +134,7 @@ Installed	Telepített
 Internal HDD	Belső HDD
 IP address	IP address
 IP assignment	IP assignment
+is active -- restart POPSLoader to browse	is active -- restart POPSLoader to browse
 Keep	Megtart
 Keep this display mode?	Megtartja ezt a megjelenítési módot?
 Keyboard Layout	Billentyűzetkiosztás
@@ -153,12 +160,8 @@ Missing BDMA UI source (tried):	Hiányzó BDMA UI forrás (megpróbálva):
 Missing SMB module (tried):	Hiányzó SMB modul (megpróbálva):
 MMCE has no POPS folder\nexpected mmce0:/POPS/	Az MMCE-n nincs POPS mappa\nelvárás az mmce0:/POPS/ mappa
 MMCE was used this session -- restart to browse MX4SIO
-(the two share a bus and cannot run together)	MMCE was used this session -- restart to browse MX4SIO
-(the two share a bus and cannot run together)
 Multi-disc games	Többlemezes játékok
 MX4SIO was used this session -- restart to browse MMCE
-(the two share a bus and cannot run together)	MX4SIO was used this session -- restart to browse MMCE
-(the two share a bus and cannot run together)
 NetBIOS isn't supported\nset Address type = IP + a Server IP	A NetBIOS nem támogatott\nállítsa be a címtípust: IP + egy szerver IP-címe
 NetBIOS name	NetBIOS name
 Netmask	Netmask
@@ -210,6 +213,8 @@ Rescanning HDD partitions...	A HDD partíciók újraszkennelése...
 Reset	Visszaállítás
 Reset Defaults	Alapértelmezések visszaállítása
 Resolved:	Resolved:
+Restart	Restart
+Restart failed -- power cycle to switch device	Restart failed -- power cycle to switch device
 Retrying USB scan...	Az USB-ellenőrzés újraindítása...
 return code:	válaszkód:
 Return to OSDSYS?	Kilépés az OSDSYS-be?

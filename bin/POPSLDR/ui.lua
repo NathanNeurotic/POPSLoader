@@ -868,6 +868,49 @@ UI = {
       UI.SavingMessage = "Saving..."
       UI.SavingProgress = nil
     end;
+    -- SIO2 conflict dialog (maintainer, 2026-07-20): mmceman and mx4sio_bd
+    -- cannot share the IOP session (same SIO2 port, raw register ownership,
+    -- no timeouts -- the 48% scan hang). Instead of only blocking, offer a
+    -- POPSLoader RESTART: self-exec through the IOP-reset launch route with
+    -- -page=<target>, so the fresh instance boots clean and lands directly on
+    -- the page the user wanted. Safer than an in-place R3Z-style reset: the
+    -- boot sequence rebuilds everything by definition, no latch surgery.
+    -- Returns true when it handled the entry (dialog opened -> caller must
+    -- return without scanning). Falls through (false) when: no conflict, or
+    -- an hdd0:-booted session (its launch route preserves the IOP, so a
+    -- restart would NOT clear the bus -- the system.lua guard toast covers it).
+    MaybeOfferSio2Restart = function (target)
+      if type(System) ~= "table" or type(System.getSio2Owner) ~= "function" then return false end
+      local ok, owner = pcall(System.getSio2Owner)
+      if not ok or type(owner) ~= "string" or owner == "" or owner == target then return false end
+      local argv0 = ""
+      if type(System.GetArgv0) == "function" then
+        local ok0, a0 = pcall(System.GetArgv0)
+        if ok0 and type(a0) == "string" then argv0 = a0 end
+      end
+      local low = string.lower(argv0)
+      if string.find(low, "^hdd") or string.find(low, "^pfs")
+         or string.find(low, "^ata") or string.find(low, "^apa") then
+        return false
+      end
+      local owner_label = (owner == "BOTH") and PLDR.L("Another device") or owner
+      UI.Modal.active = true
+      UI.Modal.title = PLDR.L("Device conflict")
+      UI.Modal.body = owner_label.." "..PLDR.L("is active -- restart POPSLoader to browse").." "..target.."?"
+      UI.Modal.options = {PLDR.L("Restart"), PLDR.L("Cancel")}
+      UI.Modal.confirm_action = function ()
+        local self_path = argv0
+        if self_path == "" then self_path = "POPSLOADER.ELF" end
+        local page_arg = (target == "MMCE") and "-page=mmce" or "-page=mx4sio"
+        pcall(System.loadELF, self_path, 1, self_path, page_arg)
+        -- Reaching here means the exec FAILED (a successful exec never returns).
+        UI.Modal.Close()
+        UI.Notif_queue.add(PLDR.L("Restart failed -- power cycle to switch device"), "error")
+      end
+      UI.Modal.cancel_action = UI.Modal.Close
+      UI.Modal.ignore_until_release = true
+      return true
+    end;
     RunBusyTask = function (initial_message, worker, failure_message)
       UI.ShowSavingOverlay(initial_message or "Working...", 0.05)
       local function report(message, progress)
@@ -5224,6 +5267,9 @@ UI = {
         end
 	          if UI.Pad.Events.CONFIRM then
 	          if UI.MainMenu.OPT == 1 then
+	            -- SIO2 conflict: offer the restart dialog instead of scanning into
+	            -- the guard (MX4SIO resident would hang MMCE reads at 48%).
+	            if UI.MaybeOfferSio2Restart("MMCE") then return end
 	            local ok = UI.RunBusyTask("Loading MMCE...", function (report)
               local scan_progress = UI.MakeBusyProgressReporter(report, "Scanning MMCE games...", 0.48, 0.88)
 	              report("Detecting MMCE device...", 0.18)
@@ -5268,6 +5314,8 @@ UI = {
             end, "Failed to load MMCE")
             if not ok then return end
 	          elseif UI.MainMenu.OPT == 2 then
+	            -- SIO2 conflict: mirror of the MMCE-entry dialog above.
+	            if UI.MaybeOfferSio2Restart("MX4SIO") then return end
 	            local ok = UI.RunBusyTask("Loading MX4SIO...", function (report)
               local scan_progress = UI.MakeBusyProgressReporter(report, "Scanning MX4SIO games...", 0.48, 0.9)
 	              report("Refreshing mass backends...", 0.18)

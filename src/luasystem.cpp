@@ -1052,20 +1052,33 @@ static int lua_loadELF(lua_State *L)
 	int rebootIOP = luaL_checkinteger(L, 2);
 	int extra_args = argc - 2;
 	static char selector_buf[256];
-	static char *argv_static[2];
+	static char launcharg_buf[64];
+	static char *argv_static[3];
 
 	DPRINTF("# Loading ELF '%s' iop_reboot=%d, extra_args=%d\n", elftoload, rebootIOP, extra_args);
 	if (extra_args > 0) {
 		const char *selector = luaL_checkstring(L, 3);
 		snprintf(selector_buf, sizeof(selector_buf), "%s", selector ? selector : "");
 		argv_static[0] = selector_buf;
-		argv_static[1] = NULL;
-		DPRINTF("# Loading ELF argv0='%s' argc=1\n", argv_static[0]);
+		int argn = 1;
+		// Optional 2nd extra arg -> target argv[1]. Added for the SIO2-conflict
+		// self-restart (System.loadELF(self, 1, self, "-page=mmce")): argv[0]
+		// stays the ELF path (the child's device/cwd resolution keys off it),
+		// argv[1] carries one launch flag parseLaunchArgs picks up (it scans
+		// argv[1..]). The 1-arg POPSTARTER call sites are byte-identical.
+		if (extra_args > 1) {
+			const char *launcharg = luaL_checkstring(L, 4);
+			snprintf(launcharg_buf, sizeof(launcharg_buf), "%s", launcharg ? launcharg : "");
+			argv_static[1] = launcharg_buf;
+			argn = 2;
+		}
+		argv_static[argn] = NULL;
+		DPRINTF("# Loading ELF argv0='%s' argc=%d\n", argv_static[0], argn);
 		int rc;
 		if (rebootIOP != 0) {
-			rc = LoadELFFromFileExecPS2RebootIOP(elftoload, 1, argv_static);
+			rc = LoadELFFromFileExecPS2RebootIOP(elftoload, argn, argv_static);
 		} else {
-			rc = LoadELFFromFileExecPS2(elftoload, 1, argv_static);
+			rc = LoadELFFromFileExecPS2(elftoload, argn, argv_static);
 		}
 		ClearExecKeepPfsMask();
 		lua_pushinteger(L, rc);
