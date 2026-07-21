@@ -295,11 +295,12 @@ iop/bdm_query/bdm_query.irx: iop/bdm_query
 $(EE_ASM_DIR)bdm_query.c: iop/bdm_query/bdm_query.irx | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ bdm_query_irx
 
-# PS2SDK MX4SIO IRX (embedded)
-PS2SDK_MX4SIO_DIR = iop/embed/PS2SDK_MX4SIO
-
-$(EE_ASM_DIR)mx4sio_bd.c: $(PS2SDK_MX4SIO_DIR)/mx4sio_bd.irx | $(EE_ASM_DIR)
-	$(BIN2S) $< $@ mx4sio_bd_irx
+# mx4sio_bd.irx now resolves via the generic %.irx rule + vpath, i.e. from the
+# SAME ps2sdk that provides bdm/bdmfs_fatfs/usbmass_bd -- BDM drivers must be one
+# vintage as a matched set. The old pinned copy (iop/embed/PS2SDK_MX4SIO/, left
+# in place, untouched) predates the R3Z-era bdm core and its device registration
+# never completes against it: that pairing was the MX4SIO page hanging at 42%
+# since the EXP7 bdm swap (c1debd1). Do NOT re-pin it here.
 
 #------------------------------------------------------------------#
 elfloader: src/elf_loader/libcustom-elf-loader.a

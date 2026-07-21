@@ -1554,6 +1554,18 @@ static int lua_ata_init(lua_State *L)
 	return 2;
 }
 
+// System.ataReady(): TRUE iff ata_bd came up at boot (main.cpp gated load, or the
+// hdd0: boot path via luaHDD). Pure read, NO side effects -- the exFAT device page
+// keys off this instead of ever loading drivers itself. Loading BDM-atad from the
+// page wedges the IOP module loader (detection runs inline in _start and its DMA
+// wait can block forever on a busy IOP -- the "42%" hang family, EXP18/19-proven),
+// so the page must only ever OBSERVE the boot's result.
+static int lua_ata_ready(lua_State *L)
+{
+	lua_pushboolean(L, g_ata_bd_loaded ? 1 : 0);
+	return 1;
+}
+
 // ============================================================================
 // Menu-side SMB browse (Increment 1: connect + list). Mirrors OPL's proven
 // netman recipe (Open-PS2-Loader src/ethsupport.c). LAZY: these IRX load only
@@ -1995,6 +2007,7 @@ static const luaL_Reg System_functions[] = {
 	{"reinitPad",              lua_reinit_pad},
 	{"initMX4SIO",             lua_mx4sio_init},
 	{"initATA",                lua_ata_init},
+	{"ataReady",               lua_ata_ready},
 	{"initSMB",                lua_smb_init},
 	{"smbNetUp",               lua_smb_netup},
 	{"connectSMB",             lua_smb_connect},

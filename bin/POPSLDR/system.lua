@@ -5682,11 +5682,16 @@ local function EnsureMassBackendsReady(mode)
   end
 
   if mode == "ata" then
-    -- ata_bd is the BDM block driver for the internal exFAT drive. Idempotent;
-    -- mirrors the MX4SIO bring-up (usbmass first, then the device driver).
-    if type(System) == "table" and type(System.initATA) == "function" then
-      pcall(System.initATA)
-    end
+    -- DELIBERATELY NO DRIVER LOAD. ata_bd (BDM-atad) runs full drive detection
+    -- inline in its _start, in the loading thread, and one of its DMA waits has
+    -- no timeout backing -- loading it mid-session on a busy IOP can block
+    -- forever and wedge the IOP module loader, which then hangs the NEXT page
+    -- that loads a driver too (the "42%" hang family; EXP18/19 proved even
+    -- byte-exact known-good drivers freeze this way). The stack now comes up at
+    -- BOOT (main.cpp, gated off MMCE/mx4sio: boots; hdd0: boots get it via
+    -- HDD.Initialize). The page only OBSERVES the result via System.ataReady()
+    -- in BuildATAIdentityDeferred; if boot did not bring ata up, the page
+    -- reports no drive instead of wedging the console.
     return
   end
 
@@ -5961,6 +5966,16 @@ function PLDR.GetMX4SIOMassRootNow()
 end
 
 local function BuildATAIdentityDeferred()
+  -- If boot did NOT bring the ata stack up (MMCE/mx4sio: boots gate it off, or
+  -- the load failed / no drive), there is nothing to enumerate and NOTHING to
+  -- load here -- page-time driver loading is the wedge class this build removes
+  -- (see EnsureMassBackendsReady). One no-retry scan keeps the return shape.
+  if type(System) == "table" and type(System.ataReady) == "function" then
+    local ok, ready = pcall(System.ataReady)
+    if ok and ready == false then
+      return BuildMassRootIdentity("ata")
+    end
+  end
   -- The internal HDD via ata_bd/BDM enumerates ASYNCHRONOUSLY and is slower to appear
   -- than MX4SIO/USB (dev9 bring-up + HDD spin-up + BDM registration all take time).
   -- The old retry re-scanned with NO delay, racing that enumeration -> "No exFAT HDD
@@ -6739,8 +6754,9 @@ end
 
 function PLDR.InitATAPopsRoot()
   -- HDD (exFAT) is a BDM mass device read via ata_bd. It enumerates under the
-  -- mass: namespace with ioctl driver-name "ata" (NOT ata0:/). BuildATAIdentity
-  -- loads the driver (System.initATA, idempotent) and classifies the ata slot.
+  -- mass: namespace with ioctl driver-name "ata" (NOT ata0:/). The driver comes
+  -- up at BOOT (never here -- page-time loads wedge, see EnsureMassBackendsReady);
+  -- BuildATAIdentityDeferred only observes System.ataReady() and classifies slots.
   local root = PLDR.GetATAMassRootNow()
   if type(root) == "string" and root ~= "" then
     return root.."POPS/"
