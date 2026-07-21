@@ -10,7 +10,20 @@ Here's everything new or changed **since BETA-9**.
 
 ---
 
-## 🎓 Just graduated from the experimental channel (2026-07-16, all of it new to rolling)
+## 🎓 Just graduated from the experimental channel (2026-07-20 — the storage wave)
+
+Six experimental builds proved out on real hardware in one intensive day and have all landed here:
+
+- **The two "hangs at 42%" are fixed for real.** They were two separate bugs. The MX4SIO page hang: a mid-July driver update replaced three of the four storage drivers but left the MX4SIO one behind, and the mismatched pair never finished registering the card — all four now ship from one matching set. The internal exFAT HDD freeze: the drive's driver does all its detection inside the load call, and loading it mid-session could stall the whole system — it now loads on demand from its own page, in the background, with the screen alive.
+- **The internal exFAT HDD works, including big GPT drives.** Hardware-confirmed on a 4TB drive: the page lists games and launches them. The first open after boot costs a few seconds while the drive spins up; after that it is instant. Boot time is unchanged (nothing drive-related loads at boot).
+- **MMCE and MX4SIO now respect each other.** They share an internal bus and cannot run in one session (every reference launcher agrees). Using one and then opening the other now asks: "restart POPSLoader to switch?" — choosing Restart relaunches clean and lands directly on the page you wanted (hardware-confirmed working). Internal-HDD-booted sessions show a plain message instead.
+- **Launching is snappier.** The "Staging drivers for this device" step at launch (with Adaptive BDMA on) used to sit for a long time; it is now a quick paste of the two driver files.
+- **Cover art sits inside the case frame.** Real covers used to poke out of the jewel-case overlay (worst on PAL); they are now fitted to the case's actual window on every video mode.
+- One note from the journey: an earlier experimental build loaded the drive stack at boot and broke MMCE game launches; that approach is gone, and MX4SIO and MMCE launches are both hardware-confirmed working on the final form.
+
+---
+
+## 🎓 Graduated from the experimental channel (2026-07-16, all of it new to rolling)
 
 The experimental build's changes proved out and have all landed here. In one list, newest first:
 
@@ -21,7 +34,7 @@ The experimental build's changes proved out and have all landed here. In one lis
 - **Both internal HDD pages at once (opt-in, off by default).** *Settings, Device List, Internal HDD* now has a **Both** choice alongside APA/PFS and exFAT, so the device list can show both HDD entries. If you turn it on, one specific order is worth testing: cold boot, open HDD (exFAT) first, let it list, back out, then open HDD (PFS). Power-cycle between attempts.
 - **POPSLoader speaks Hungarian.** *Settings, Startup, Language:* **Magyar** (translation by oldman63). Hungarian speakers: check that the double-accented letters (the o and u in words like "főkönyvtár") draw correctly and nothing runs off the edge of a row. Untranslated lines stay English by design.
 - **Settings: jump between blocks instead of scrolling through them** (sAGA's suggestion). Press **L1 / R1** anywhere in Settings to hop to the previous or next section; the block you leave folds shut and the one you land on opens. **Left / Right** do the same on rows that are not value pickers (on a value row they still change the value, as before). Skipping the whole SMB block is now one press.
-- **The exFAT HDD check now explains itself if it gets stuck.** One tester's internal drive froze the "Locating exFAT HDD POPS folder..." step at a silent 42%. That one step is now split into numbered sub-steps (43 through 50), each with its own message, plus an `[iop128k=...]` memory readout. If it ever freezes for you, photograph the screen: the number and bracket on it tell us exactly which internal call got stuck. If you reboot instead, the next visit to the exFAT page reports the step it froze at. A clean "No exFAT HDD detected" after a few seconds is unchanged, and drives partitioned in the newer GPT style are a known gap with a driver update planned.
+- **The exFAT HDD check now explains itself if it gets stuck.** One tester's internal drive froze the "Locating exFAT HDD POPS folder..." step at a silent 42%. That one step is now split into numbered sub-steps (43 through 50), each with its own message, plus an `[iop128k=...]` memory readout. If it ever freezes for you, photograph the screen: the number and bracket on it tell us exactly which internal call got stuck. If you reboot instead, the next visit to the exFAT page reports the step it froze at. A clean "No exFAT HDD detected" after a few seconds is unchanged. *(Update 2026-07-20: the freeze itself and the GPT-drive gap are both fixed — see the storage wave at the top of this file.)*
 
 ---
 

@@ -6,6 +6,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sifrpc.h>
+#include <kernel.h>    // ee_thread_t / CreateThread / StartThread / ExitDeleteThread for the async ata_bd worker
 #include <iopheap.h>   // SifAllocIopHeap/SifFreeIopHeap for the 128 KiB BDM-cache probe
 #include <string.h>
 #define NEWLIB_PORT_AWARE
@@ -215,6 +216,29 @@ bool EnsureMmceman()
 void MarkMmcemanLoaded()
 {
 	mmceman_irx_loaded = true;
+}
+
+// System.getSio2Owner(): which SIO2-bus storage driver is resident this
+// session -- "" (neither), "MMCE" (mmceman), "MX4SIO" (mx4sio_bd), or "BOTH"
+// (the already-conflicted legacy state this guard exists to prevent). mmceman
+// and mx4sio_bd cannot coexist on one IOP: both drive the shared SIO2 bus and
+// sustained reads from one hang with the other resident (HW-confirmed 48%
+// MMCE-scan hang after an MX4SIO visit, 2026-07-20; NHDDL hardcodes the same
+// exclusion, wLaunchELF_R3Z IOP-resets between them). Until we have R3Z's
+// reset, the pages check this and DECLINE the second driver with a message.
+// Reads the load latches directly so it cannot miss a C-internal load path.
+static int lua_get_sio2_owner(lua_State *L)
+{
+	if (mmceman_irx_loaded && mx4sio_irx_loaded) {
+		lua_pushstring(L, "BOTH");
+	} else if (mmceman_irx_loaded) {
+		lua_pushstring(L, "MMCE");
+	} else if (mx4sio_irx_loaded) {
+		lua_pushstring(L, "MX4SIO");
+	} else {
+		lua_pushstring(L, "");
+	}
+	return 1;
 }
 
 static bool EnsureBdmQueryRpc()
@@ -1028,20 +1052,33 @@ static int lua_loadELF(lua_State *L)
 	int rebootIOP = luaL_checkinteger(L, 2);
 	int extra_args = argc - 2;
 	static char selector_buf[256];
-	static char *argv_static[2];
+	static char launcharg_buf[64];
+	static char *argv_static[3];
 
 	DPRINTF("# Loading ELF '%s' iop_reboot=%d, extra_args=%d\n", elftoload, rebootIOP, extra_args);
 	if (extra_args > 0) {
 		const char *selector = luaL_checkstring(L, 3);
 		snprintf(selector_buf, sizeof(selector_buf), "%s", selector ? selector : "");
 		argv_static[0] = selector_buf;
-		argv_static[1] = NULL;
-		DPRINTF("# Loading ELF argv0='%s' argc=1\n", argv_static[0]);
+		int argn = 1;
+		// Optional 2nd extra arg -> target argv[1]. Added for the SIO2-conflict
+		// self-restart (System.loadELF(self, 1, self, "-page=mmce")): argv[0]
+		// stays the ELF path (the child's device/cwd resolution keys off it),
+		// argv[1] carries one launch flag parseLaunchArgs picks up (it scans
+		// argv[1..]). The 1-arg POPSTARTER call sites are byte-identical.
+		if (extra_args > 1) {
+			const char *launcharg = luaL_checkstring(L, 4);
+			snprintf(launcharg_buf, sizeof(launcharg_buf), "%s", launcharg ? launcharg : "");
+			argv_static[1] = launcharg_buf;
+			argn = 2;
+		}
+		argv_static[argn] = NULL;
+		DPRINTF("# Loading ELF argv0='%s' argc=%d\n", argv_static[0], argn);
 		int rc;
 		if (rebootIOP != 0) {
-			rc = LoadELFFromFileExecPS2RebootIOP(elftoload, 1, argv_static);
+			rc = LoadELFFromFileExecPS2RebootIOP(elftoload, argn, argv_static);
 		} else {
-			rc = LoadELFFromFileExecPS2(elftoload, 1, argv_static);
+			rc = LoadELFFromFileExecPS2(elftoload, argn, argv_static);
 		}
 		ClearExecKeepPfsMask();
 		lua_pushinteger(L, rc);
@@ -1554,6 +1591,96 @@ static int lua_ata_init(lua_State *L)
 	return 2;
 }
 
+// System.ataReady(): TRUE iff the ata stack is up (the lazy async worker below
+// finished, or an hdd0: boot brought it up via luaHDD). Pure read, NO side
+// effects -- BuildATAIdentityDeferred keys off this to skip pointless retries
+// after a failed/absent bring-up.
+static int lua_ata_ready(lua_State *L)
+{
+	lua_pushboolean(L, g_ata_bd_loaded ? 1 : 0);
+	return 1;
+}
+
+// ============================================================================
+// Lazy async ata_bd bring-up (OPL's arrangement). There is NO boot-time ata
+// load (maintainer: the ~5-6s black-screen cost is unacceptable); the exFAT
+// page kicks this worker on entry and polls, screen alive. OPL is the
+// precedent for the whole shape: its "ps2atad_irx" embed is actually the SDK's
+// ata_bd.irx blob (OPL Makefile:622) loaded mid-session on its IO worker
+// thread, on the same consoles where our old SYNCHRONOUS page-time load froze.
+// The earlier async attempt (EXP23) was sunk by two since-fixed bugs riding
+// along -- a bdm core with no GPT support and a mismatched mx4sio_bd -- not by
+// this mechanism. Worker mirrors the proven Graphics.threadLoadImage pattern
+// (ee_thread_t, priority 16, ExitDeleteThread).
+//
+// THE APA/PFS BOOT PATH IS UNCHANGED: luaHDD.cpp Load_HDD_IRX calls the
+// SYNCHRONOUS EnsureAtaBdm at boot on hdd0: boots (must finish before pfs1:
+// mounts) -- do NOT route that through this. Load-once via the SAME
+// g_ata_bd_loaded, so whichever path loads ata_bd first wins.
+// ============================================================================
+extern void *_gp;   // GP for spawned EE threads (same symbol luagraphics uses)
+
+// 0=idle 1=running 2=done-ok 3=done-fail. Written by the worker thread, polled
+// from Lua on the main thread; volatile so the poll re-reads it each frame.
+static volatile int g_ata_async_state = 0;
+static u8 g_ata_async_stack[8192] __attribute__((aligned(16)));
+
+static int ata_async_thread(void *arg)
+{
+	(void)arg;
+	bool ok = EnsureAtaBdm();
+	g_ata_async_state = ok ? 2 : 3;
+	ExitDeleteThread();
+	return 0;
+}
+
+// System.initATAAsync(): kick the ata_bd bring-up onto a worker thread and
+// return immediately with the state int. If ata_bd is already loaded (e.g. an
+// APA-HDD boot brought it up) it reports done-ok (2) without spawning. Returns
+// -1 if the thread could not be created, so the Lua caller falls back to the
+// synchronous System.initATA.
+static int lua_ata_init_async(lua_State *L)
+{
+	if (g_ata_bd_loaded) {
+		g_ata_async_state = 2;
+		lua_pushinteger(L, 2);
+		return 1;
+	}
+	if (g_ata_async_state == 1) {   // already running -- do not spawn a second
+		lua_pushinteger(L, 1);
+		return 1;
+	}
+	g_ata_async_state = 1;
+	ee_thread_t th;
+	th.attr = 0;
+	th.option = 0;
+	th.func = (void *)ata_async_thread;
+	th.stack = (void *)g_ata_async_stack;
+	th.stack_size = sizeof(g_ata_async_stack);
+	th.gp_reg = &_gp;
+	th.initial_priority = 16;   // same as the proven Graphics.threadLoadImage worker
+	int tid = CreateThread(&th);
+	if (tid < 0) {
+		g_ata_async_state = 0;   // spawn failed -> caller uses sync fallback
+		lua_pushinteger(L, -1);
+		return 1;
+	}
+	StartThread(tid, NULL);
+	lua_pushinteger(L, 1);
+	return 1;
+}
+
+// System.initATAStatus(): 0=idle 1=running 2=done-ok 3=done-fail. Poll each frame.
+// ALSO the cross-page cascade guard: while state==1 an ata load is in flight on
+// the IOP module loader -- other pages must NOT queue their own driver load
+// behind it (System.initMX4SIO would block forever if the ata load ever wedges).
+static int lua_ata_init_status(lua_State *L)
+{
+	(void)L;
+	lua_pushinteger(L, g_ata_async_state);
+	return 1;
+}
+
 // ============================================================================
 // Menu-side SMB browse (Increment 1: connect + list). Mirrors OPL's proven
 // netman recipe (Open-PS2-Loader src/ethsupport.c). LAZY: these IRX load only
@@ -1995,6 +2122,10 @@ static const luaL_Reg System_functions[] = {
 	{"reinitPad",              lua_reinit_pad},
 	{"initMX4SIO",             lua_mx4sio_init},
 	{"initATA",                lua_ata_init},
+	{"ataReady",               lua_ata_ready},
+	{"initATAAsync",           lua_ata_init_async},
+	{"initATAStatus",          lua_ata_init_status},
+	{"getSio2Owner",           lua_get_sio2_owner},
 	{"initSMB",                lua_smb_init},
 	{"smbNetUp",               lua_smb_netup},
 	{"connectSMB",             lua_smb_connect},

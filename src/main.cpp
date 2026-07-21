@@ -631,6 +631,15 @@ int main(int argc, char * argv[])
     EnsureUsbMass();
     BootStamp("usb mass stack");  // bdm+bdmfs_fatfs+usbmass_bd -- keep the label short: it must fit the Credits line
 
+    /* NO internal-drive (ata) load at boot -- maintainer's EXP24 verdict: the
+     * ~5-6s "ata bdm stack" black-screen cost is unacceptable. The exFAT page
+     * brings the stack up LAZILY on a background EE worker (System.initATAAsync
+     * in luasystem.cpp) -- the same arrangement OPL uses: OPL's "ps2atad_irx" is
+     * actually the SDK's ata_bd.irx blob loaded mid-session on its IO worker
+     * thread, and that works on the same consoles that froze our old
+     * synchronous page-time load. hdd0:/APA boots still bring atad up via
+     * boot.lua -> HDD.Initialize -> the synchronous EnsureAtaBdm (pfs1: needs
+     * it before settings mount), exactly as they always have. */
 
     int ds3pads = 1;
     LOAD_IRX(ds34usb_irx, 4, (char *)&ds3pads);
