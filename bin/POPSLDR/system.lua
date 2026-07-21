@@ -6039,10 +6039,11 @@ end
 -- (USB keeps its own builder unchanged below: its attempt ladder + diag flow
 -- is HW-confirmed since the #508 fix, and USB has no freeze channel.)
 local function BuildBoundedIdentityDeferred(mode)
+  local identity, ready
   local attempts = 0
   while attempts < 3 do
     attempts = attempts + 1
-    local identity, ready = BuildMassRootIdentity(mode)
+    identity, ready = BuildMassRootIdentity(mode)
     if ready == false then
       return identity, false
     end
@@ -6053,7 +6054,9 @@ local function BuildBoundedIdentityDeferred(mode)
       pcall(System.sleep, 1)
     end
   end
-  return BuildMassRootIdentity(mode)
+  -- Return the LAST attempt's result -- re-sweeping here would be a redundant
+  -- fourth pass of the same probes (review finding on the EXP32 PR).
+  return identity, ready
 end
 
 -- Both Now-getters return (root|nil, status): "ready" with a root, or nil with
