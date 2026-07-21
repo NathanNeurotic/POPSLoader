@@ -2,7 +2,7 @@
 
 **This is an opt-in EXPERIMENTAL build. It is not a replacement for the public release, and it is not the rolling build either.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.0.1**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** open **Settings**, then **About**, and read the **Version** row: it says **v1.0.2-dev-EXP26**. The **Credits** page shows the same line at the bottom left, with the boot timing under it. A version ending in **-EXP26** = this build; any older EXP number = an older experimental, please update; plain **v1.0.2-dev** = the rolling test build; no version anywhere = the public 1.0.1 release or older.
+**How to tell you are running it:** open **Settings**, then **About**, and read the **Version** row: it says **v1.0.2-dev-EXP27**. The **Credits** page shows the same line at the bottom left, with the boot timing under it. A version ending in **-EXP27** = this build; any older EXP number = an older experimental, please update; plain **v1.0.2-dev** = the rolling test build; no version anywhere = the public 1.0.1 release or older.
 
 **What the name means:** this build is the **rolling** build (1.0.2-dev) plus the experiments below, nothing missing.
 
@@ -10,7 +10,13 @@
 
 ---
 
-## New in EXP26: the loading-screen corruption is fixed
+## New in EXP27: cover art stays inside the case frame
+
+The maintainer's screenshot showed real cover art spilling out of the jewel-case frame (bottom-right), while the placeholder and disabled art sat correctly inside it. Confirmed by measuring the frame image and replaying the sizing math: the real cover was sized against a fixed screen box and anchored to the case's outer edge, so it overflowed the case's transparent cover window by 5px on the right on NTSC, 21px on PAL, and portrait covers ran 17px past the window bottom. EXP27 sizes and anchors the cover inside the case's actual window, measured from the frame image itself, so it scales with the case and stays contained on every video standard by construction. Placeholder and disabled art are untouched. One look at any game with cover art confirms it.
+
+---
+
+## EXP26: the loading-screen corruption is fixed
 
 EXP25's maintainer test confirmed the two headline goals on real hardware: fast boot with the internal drive loading on demand from its own page, and the MX4SIO page working right after it. One cosmetic bug came with it: **severe visual corruption while the exFAT page loaded the drive**, clearing up the moment loading finished. That was ours: while the drive loaded in the background, the waiting loop flipped the screen every frame without drawing anything between flips, so the display alternated between two stale frames. EXP26 redraws the progress overlay properly on every frame instead, so the load now shows a steady, animated progress screen. Same fix applies to the brief wait the MX4SIO page does when the drive is still coming up.
 

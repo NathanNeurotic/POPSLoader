@@ -2804,26 +2804,9 @@ UI = {
           -- one 4:3 frame, so a fixed pixel-square shows tall on NTSC (Y=448) and
           -- wide on PAL (Y=512) (#496); size from the source aspect * (480/SCR.Y),
           -- fit inside the COVER_W box, and keep the top/right anchor.
-          local cover_w, cover_h = nil, nil
-          if preview_img ~= nil and preview_is_live_cover then
-            local box = math.min(layout.COVER_W or 232, draw_w, draw_h)
-            local iw = Graphics.getImageWidth(preview_img)
-            local ih = Graphics.getImageHeight(preview_img)
-            if type(iw) ~= "number" or iw <= 0 then iw = 1 end
-            if type(ih) ~= "number" or ih <= 0 then ih = 1 end
-            local ratio = (iw / ih) * (480 / (UI.SCR.Y or 448))
-            if ratio >= 1 then
-              cover_w = box
-              cover_h = Round(box / ratio)
-            else
-              cover_h = box
-              cover_w = Round(box * ratio)
-            end
-            if cover_w > draw_w then cover_w = draw_w end
-            if cover_h > draw_h then cover_h = draw_h end
-          end
           -- frame.png is the decorative border (256x256), same aspect correction so
           -- it stays square on BOTH standards instead of warping per video mode.
+          -- Sized FIRST: the live cover below now fits inside the FRAME's window.
           local frame_w, frame_h = nil, nil
           if IMG.frame ~= nil then
             local fiw = Graphics.getImageWidth(IMG.frame)
@@ -2840,6 +2823,50 @@ UI = {
             end
             if frame_w > draw_w then frame_w = draw_w end
             if frame_h > draw_h then frame_h = draw_h end
+          end
+          local cover_w, cover_h, cover_x_abs, cover_y_off = nil, nil, nil, 0
+          if preview_img ~= nil and preview_is_live_cover then
+            local iw = Graphics.getImageWidth(preview_img)
+            local ih = Graphics.getImageHeight(preview_img)
+            if type(iw) ~= "number" or iw <= 0 then iw = 1 end
+            if type(ih) ~= "number" or ih <= 0 then ih = 1 end
+            local ratio = (iw / ih) * (480 / (UI.SCR.Y or 448))
+            if frame_w ~= nil and frame_h ~= nil then
+              -- Fit INSIDE the jewel case's cover window, measured from frame.png's
+              -- alpha channel (256x256 art; the transparent slot right of the spine
+              -- spans x 26..250, y 4..229). The window rect is FRAME-RELATIVE, so it
+              -- scales with the case on every video mode and containment holds by
+              -- construction. The old COVER_W screen-box sizing anchored the art to
+              -- the frame's OUTER edge and overflowed the window (5px right on NTSC,
+              -- 21px on PAL, and a portrait cover ran 17px past the window bottom,
+              -- flush with the case's absolute bottom edge -- the GTA screenshot,
+              -- 2026-07-20). Placeholder/disabled art keep their own tuned rect
+              -- (maintainer confirmed those register correctly).
+              local win_w = frame_w * (225 / 256)
+              local win_h = frame_h * (226 / 256)
+              local cw = win_h * ratio
+              if cw > win_w then cw = win_w end
+              cover_w = Round(cw)
+              cover_h = Round(cw / ratio)
+              local frame_x0 = draw_x + (draw_w - frame_w)
+              -- Right-anchored INSIDE the window (window right edge = png x 251),
+              -- top at the window top (png y 4); offset rides the lifted draw_y.
+              cover_x_abs = Round(frame_x0 + frame_w * (251 / 256) - cover_w)
+              cover_y_off = Round(frame_h * (4 / 256))
+            else
+              -- No frame art present: keep the original COVER_W box sizing.
+              local box = math.min(layout.COVER_W or 232, draw_w, draw_h)
+              if ratio >= 1 then
+                cover_w = box
+                cover_h = Round(box / ratio)
+              else
+                cover_h = box
+                cover_w = Round(box * ratio)
+              end
+              if cover_w > draw_w then cover_w = draw_w end
+              if cover_h > draw_h then cover_h = draw_h end
+              cover_x_abs = draw_x + (draw_w - cover_w)
+            end
           end
           -- Visible art height = the taller of the cover/frame (both top-anchored).
           -- The missing/disabled placeholder now shares the frame's aspect-corrected
@@ -2937,9 +2964,9 @@ UI = {
           -- cover uses its own COVER_W inset (also right-anchored).
           local frame_x = (frame_w ~= nil) and (draw_x + (draw_w - frame_w)) or draw_x
           if preview_is_live_cover and preview_img ~= nil and cover_w ~= nil and cover_h ~= nil then
-            -- Live cover art: right-anchored inside the frame window.
-            local cover_x = draw_x + (draw_w - cover_w)
-            Graphics.drawScaleImage(preview_img, cover_x, draw_y, cover_w, cover_h)
+            -- Live cover art: fitted + right-anchored inside the case WINDOW
+            -- (cover_x_abs/cover_y_off computed with the frame sizing above).
+            Graphics.drawScaleImage(preview_img, cover_x_abs, draw_y + cover_y_off, cover_w, cover_h)
           elseif frame_w ~= nil and frame_h ~= nil then
             -- No live cover -> the DEFAULT cover, drawn INSET in the case WINDOW exactly
             -- like a live cover (right of the spine, above the case bottom) so the case
